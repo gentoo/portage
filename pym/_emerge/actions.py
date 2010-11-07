@@ -1009,10 +1009,11 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 						if len(provider_dblinks) > 1:
 							for provider_dblink in provider_dblinks:
-								pkg_key = ("installed", myroot,
-									provider_dblink.mycpv, "nomerge")
-								if pkg_key not in clean_set:
-									provider_pkgs.add(vardb.get(pkg_key))
+								provider_pkg = resolver._pkg(
+									provider_dblink.mycpv, "installed",
+									root_config, installed=True)
+								if provider_pkg not in clean_set:
+									provider_pkgs.add(provider_pkg)
 
 						if provider_pkgs:
 							continue
@@ -1021,8 +1022,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 							lib_consumers.update(owner_set)
 
 					for consumer_dblink in list(lib_consumers):
-						if ("installed", myroot, consumer_dblink.mycpv,
-							"nomerge") in clean_set:
+						if resolver._pkg(consumer_dblink.mycpv, "installed",
+							root_config, installed=True) in clean_set:
 							lib_consumers.remove(consumer_dblink)
 							continue
 
@@ -1073,8 +1074,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 			for pkg, consumers in consumer_map.items():
 				for consumer_dblink in set(chain(*consumers.values())):
-					consumer_pkg = vardb.get(("installed", myroot,
-						consumer_dblink.mycpv, "nomerge"))
+					consumer_pkg = resolver._pkg(consumer_dblink.mycpv,
+						"installed", root_config, installed=True)
 					if not resolver._add_pkg(pkg,
 						Dependency(parent=consumer_pkg,
 						priority=UnmergeDepPriority(runtime=True),

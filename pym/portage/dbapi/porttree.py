@@ -570,7 +570,7 @@ class portdbapi(dbapi):
 
 	def getfetchsizes(self, mypkg, useflags=None, debug=0, myrepo=None):
 		# returns a filename:size dictionnary of remaining downloads
-		myebuild = self.findname(mypkg, myrepo=myrepo)
+		myebuild, mytree = self.findname2(mypkg, myrepo=myrepo)
 		if myebuild is None:
 			raise AssertionError(_("ebuild not found for '%s'") % mypkg)
 		pkgdir = os.path.dirname(myebuild)
@@ -581,7 +581,7 @@ class portdbapi(dbapi):
 				writemsg(_("[empty/missing/bad digest]: %s\n") % (mypkg,))
 			return {}
 		filesdict={}
-		myfiles = self.getFetchMap(mypkg, useflags=useflags)
+		myfiles = self.getFetchMap(mypkg, useflags=useflags, mytree=mytree)
 		#XXX: maybe this should be improved: take partial downloads
 		# into account? check checksums?
 		for myfile in myfiles:

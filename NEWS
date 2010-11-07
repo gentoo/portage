@@ -6,6 +6,13 @@ portage-2.2
 * Add link level dependency awareness to emerge --depclean and --prune actions
   in order to protect against uninstallation of required libraries.
 * Add support for generic package sets (also see RELEASE-NOTES)
+* Add support for FEATURES=preserve-libs which preserves libraries when the
+  sonames change during upgrade or downgrade, and the @preserved-rebuild
+  package set which rebuilds consumers of preserved libraries.
+* Improve handling of repositories/overlays for cases in which the same ebuild
+  is provided by multiple repositories but with different masking status, and
+  support for repository constraints on atoms (atom::repo) in configuration
+  files.
 * Add EAPI 4_pre1 support, for testing purposes.
 
 portage-2.1.9
