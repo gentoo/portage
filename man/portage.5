@@ -698,7 +698,10 @@ masters = gentoo kde
 .TP
 .BR /etc/portage/env/
 .RS
-In this directory additional package-specific bashrc files can be created.
+In this directory additional package\-specific bashrc files can be created.
+Note that if package\-specific environment variable settings are all that's
+needed, then \fB/etc/portage/package.env\fR should be used instead of the
+bashrc approach that is described here.
 Portage will source all of them after \fB/etc/portage/bashrc\fR in the following
 order:
 .nr step 1 1
