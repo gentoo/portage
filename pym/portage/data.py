@@ -89,7 +89,7 @@ except KeyError:
 	portage_gid=0
 	userpriv_groups = [portage_gid]
 	writemsg(colorize("BAD",
-		"portage: "+portageuser+" user or "+portagegroup+" group missing.") + "\n", noiselevel=-1)
+		"portage: "+_portage_uname+" user or "+_portage_grpname+" group missing.") + "\n", noiselevel=-1)
 	writemsg(colorize("BAD",
 		"         In Prefix Portage this is quite dramatic") + "\n", noiselevel=-1)
 	writemsg(colorize("BAD",
