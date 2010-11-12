@@ -2758,6 +2758,20 @@ class dblink(object):
 			self._scheduler.dblinkElog(self,
 				phase, _eerror, lines)
 
+	def _elog_subprocess(self, funcname, phase, lines):
+		"""
+		Subprocesses call this in order to create elog messages in
+		$T, for collection by the main process.
+		"""
+		cmd = "source %s/isolated-functions.sh ; " % \
+			portage._shell_quote(self.settings["PORTAGE_BIN_PATH"])
+		for line in lines:
+			cmd += "%s %s ; " % (funcname, portage._shell_quote(line))
+		env = self.settings.environ()
+		env['EBUILD_PHASE'] = phase
+		subprocess.call([portage.const.BASH_BINARY, "-c", cmd],
+			env=env)
+
 	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
 		"""
@@ -3627,7 +3641,7 @@ class dblink(object):
 						msg.append(_("This file will be renamed to a different name:"))
 						msg.append("  '%s'" % backup_dest)
 						msg.append("")
-						self._eerror("preinst", msg)
+						self._elog_subprocess("eerror", "preinst", msg)
 						if movefile(mydest, backup_dest,
 							mysettings=self.settings,
 							encoding=_encodings['merge']) is None:
@@ -3705,7 +3719,7 @@ class dblink(object):
 						msg.append(_("This file will be merged with a different name:"))
 						msg.append("  '%s'" % newdest)
 						msg.append("")
-						self._eerror("preinst", msg)
+						self._elog_subprocess("eerror", "preinst", msg)
 						mydest = newdest
 
 					elif stat.S_ISREG(mydmode) or (stat.S_ISLNK(mydmode) and os.path.exists(mydest) and stat.S_ISREG(os.stat(mydest)[stat.ST_MODE])):
