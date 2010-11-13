@@ -1,6 +1,8 @@
 # Copyright 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import traceback
+
 import portage
 from portage import os
 from _emerge.SpawnProcess import SpawnProcess
@@ -35,7 +37,15 @@ class MergeProcess(SpawnProcess):
 		# is triggered when dblink._scheduler is None.
 		self.dblink._scheduler = None
 
-		rval = self.dblink._merge_process(self.srcroot, self.destroot,
-			self.cfgfiledict, self.conf_mem_file)
-
-		os._exit(rval)
+		rval = 1
+		try:
+			rval = self.dblink._merge_process(self.srcroot, self.destroot,
+				self.cfgfiledict, self.conf_mem_file)
+		except SystemExit:
+			raise
+		except:
+			traceback.print_exc()
+		finally:
+			# Call os._exit() from finally block, in order to suppress any
+			# finally blocks from earlier in the call stack. See bug #345289.
+			os._exit(rval)
