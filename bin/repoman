@@ -291,6 +291,7 @@ qahelp={
 	"inherit.autotools":"Ebuild inherits autotools but does not call eautomake, eautoconf or eautoreconf",
 	"inherit.deprecated":"Ebuild inherits a deprecated eclass",
 	"java.eclassesnotused":"With virtual/jdk in DEPEND you must inherit a java eclass",
+	"wxwidgets.eclassnotused":"Ebuild DEPENDs on x11-libs/wxGTK without inheriting wxwidgets.eclass",
 	"KEYWORDS.dropped":"Ebuilds that appear to have dropped KEYWORDS for some arch",
 	"KEYWORDS.missing":"Ebuilds that have a missing or empty KEYWORDS variable",
 	"KEYWORDS.stable":"Ebuilds that have been added directly with stable KEYWORDS",
@@ -404,6 +405,7 @@ qawarnings = set((
 "inherit.autotools",
 "inherit.deprecated",
 "java.eclassesnotused",
+"wxwidgets.eclassnotused",
 "metadata.warning",
 "virtual.versioned",
 "virtual.exists",
@@ -1631,6 +1633,7 @@ for x in scanlist:
 
 		inherited_java_eclass = "java-pkg-2" in inherited or \
 			"java-pkg-opt-2" in inherited
+		inherited_wxwidgets_eclass = "wxwidgets" in inherited
 		operator_tokens = set(["||", "(", ")"])
 		type_list, badsyntax = [], []
 		for mytype in ("DEPEND", "RDEPEND", "PDEPEND",
@@ -1667,6 +1670,14 @@ for x in scanlist:
 						atom.cp == "virtual/jdk":
 						stats['java.eclassesnotused'] += 1
 						fails['java.eclassesnotused'].append(relative_path)
+					elif mytype == "DEPEND" and \
+						not is_blocker and \
+						not inherited_wxwidgets_eclass and \
+						atom.cp == "x11-libs/wxGTK":
+						stats['wxwidgets.eclassnotused'] += 1
+						fails['wxwidgets.eclassnotused'].append(
+							relative_path + ": DEPENDs on x11-libs/wxGTK"
+							" without inheriting wxwidgets.eclass")
 					elif mytype in ("PDEPEND", "RDEPEND"):
 						if not is_blocker and \
 							atom.cp in suspect_rdepend:
