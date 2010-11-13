@@ -92,7 +92,11 @@ for mykey in biglist:
 		if "--debug" in sys.argv:
 			print("* ignoring broken log entry for %s (likely injected)" % mykey)
 	except ValueError as e:
-		print("* %s is an ambigous package name, candidates are:\n%s" % (mykey, e))
+		try:
+			print("* %s is an ambigous package name, candidates are:\n%s" % (mykey, e))
+		except AttributeError:
+			# FIXME: Find out what causes this (bug #344845).
+			print("* %s is an ambigous package name" % (mykey,))
 		continue
 	if mylist:
 		#print "mylist:",mylist
