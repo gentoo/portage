@@ -309,7 +309,7 @@ class slot_conflict_handler(object):
 							end = start + len(ver)
 							atom_str = atom_str[:start] + \
 								colorize("BAD", ver) + \
-								atom_str[end+1:]
+								atom_str[end:]
 							if slot:
 								atom_str = atom_str.replace(":" + slot, colorize("BAD", ":" + slot))
 						
