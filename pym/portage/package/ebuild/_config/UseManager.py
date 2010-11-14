@@ -6,8 +6,9 @@ __all__ = (
 )
 
 from portage import os
-from portage.dep import ExtendedAtomDict, remove_slot
-from portage.util import grabfile, grabdict_package, stack_lists
+from portage.dep import ExtendedAtomDict, remove_slot, _get_useflag_re
+from portage.localization import _
+from portage.util import grabfile, grabdict_package, read_corresponding_eapi_file, stack_lists, writemsg
 from portage.versions import cpv_getkey
 
 from portage.package.ebuild._config.helper import ordered_by_atom_specificity
@@ -63,17 +64,49 @@ class UseManager(object):
 		return ret
 
 	def _parse_profile_files_to_list(self, file_name, locations):
-		return tuple(
-			tuple(grabfile(os.path.join(x, file_name), recursive=1))
-			for x in locations)
+		ret = []
+		for profile in locations:
+			profile_lines = []
+			path = os.path.join(profile, file_name)
+			lines = grabfile(path, recursive=1)
+			eapi = read_corresponding_eapi_file(path)
+			useflag_re = _get_useflag_re(eapi)
+			for prefixed_useflag in lines:
+				if prefixed_useflag[:1] == "-":
+					useflag = prefixed_useflag[1:]
+				else:
+					useflag = prefixed_useflag
+				if useflag_re.match(useflag) is None:
+					writemsg(_("--- Invalid USE flag in '%s': '%s'\n") % (path, prefixed_useflag))
+				else:
+					profile_lines.append(prefixed_useflag)
+			ret.append(tuple(profile_lines))
+		return tuple(ret)
 
 	def _parse_profile_files_to_dict(self, file_name, locations, juststrings=False):
 		ret = []
-		raw = [grabdict_package(os.path.join(x, file_name),
-			juststrings=juststrings, recursive=1, verify_eapi=True) for x in locations]
-		for rawdict in raw:
+		for profile in locations:
+			profile_dict = {}
 			cpdict = {}
-			for k, v in rawdict.items():
+			path = os.path.join(profile, file_name)
+			file_dict = grabdict_package(path, recursive=1, verify_eapi=True)
+			eapi = read_corresponding_eapi_file(path)
+			useflag_re = _get_useflag_re(eapi)
+			for k, v in file_dict.items():
+				useflags = []
+				for prefixed_useflag in v:
+					if prefixed_useflag[:1] == "-":
+						useflag = prefixed_useflag[1:]
+					else:
+						useflag = prefixed_useflag
+					if useflag_re.match(useflag) is None:
+						writemsg(_("--- Invalid USE flag for '%s' in '%s': '%s'\n") % (k, path, prefixed_useflag))
+					else:
+						useflags.append(prefixed_useflag)
+				profile_dict.setdefault(k, []).extend(useflags)
+			for k, v in profile_dict.items():
+				if juststrings:
+					v = " ".join(v)
 				cpdict.setdefault(k.cp, {})[k] = v
 			ret.append(cpdict)
 		return ret
