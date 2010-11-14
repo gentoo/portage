@@ -43,9 +43,9 @@ class UseManager(object):
 		#--------------------------------
 		#	puse
 
-		self._usemask_list = self._parse_profile_files_to_list("use.mask", profiles)
-		self._useforce_list = self._parse_profile_files_to_list("use.force", profiles)
-		self._useunsatisfiable_list = self._parse_profile_files_to_list("use.unsatisfiable", profiles)
+		self._usemask_list = self._parse_profile_files_to_tuple("use.mask", profiles)
+		self._useforce_list = self._parse_profile_files_to_tuple("use.force", profiles)
+		self._useunsatisfiable_list = self._parse_profile_files_to_tuple("use.unsatisfiable", profiles)
 		self._pusemask_list = self._parse_profile_files_to_dict("package.use.mask", profiles)
 		self._pkgprofileuse = self._parse_profile_files_to_dict("package.use", profiles, juststrings=True)
 		self._puseforce_list = self._parse_profile_files_to_dict("package.use.force", profiles)
@@ -63,7 +63,7 @@ class UseManager(object):
 
 		return ret
 
-	def _parse_profile_files_to_list(self, file_name, locations):
+	def _parse_profile_files_to_tuple(self, file_name, locations):
 		ret = []
 		for profile in locations:
 			profile_lines = []
