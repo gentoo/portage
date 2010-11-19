@@ -1746,8 +1746,15 @@ class config(object):
 					if v is None:
 						continue
 					prefix = k.lower() + '_'
-					for x in v.split():
-						expand_use.append(prefix + x)
+					if k in myincrementals:
+						for x in v.split():
+							if x[:1] == '-':
+								expand_use.append('-' + prefix + x[1:])
+							else:
+								expand_use.append(prefix + x)
+					else:
+						for x in v.split():
+							expand_use.append(prefix + x)
 				if expand_use:
 					expand_use.append(use)
 					use  = ' '.join(expand_use)
