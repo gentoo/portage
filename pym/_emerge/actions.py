@@ -1898,6 +1898,12 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	emergelog(xterm_titles, " === sync")
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
 	myportdir = portdb.porttree_root
+	if not myportdir:
+		myportdir = settings.get('PORTDIR', '')
+		if myportdir and myportdir.strip():
+			myportdir = os.path.realpath(myportdir)
+		else:
+			myportdir = None
 	out = portage.output.EOutput()
 	global_config_path = GLOBAL_CONFIG_PATH
 	if settings['EPREFIX']:
@@ -1915,7 +1921,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		st = None
 	if st is None:
 		print(">>>",myportdir,"not found, creating it.")
-		os.makedirs(myportdir,0o755)
+		portage.util.ensure_dirs(myportdir, mode=0o755)
 		st = os.stat(myportdir)
 
 	usersync_uid = None

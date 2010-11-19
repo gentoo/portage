@@ -1511,8 +1511,7 @@ def emerge_main():
 				'prune', 'unmerge') or not \
 				(fetchonly or \
 				(buildpkgonly and secpass >= 1) or \
-				myaction in ("metadata", "regen") or \
-				(myaction == "sync" and os.access(settings["PORTDIR"], os.W_OK)))
+				myaction in ("metadata", "regen", "sync"))
 			if portage.secpass < 1 or \
 				need_superuser:
 				if need_superuser:
