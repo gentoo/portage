@@ -1999,7 +1999,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		exitcode = git_sync_timestamps(settings, myportdir)
 		if exitcode == os.EX_OK:
 			updatecache_flg = True
-	elif syncuri[:8]=="rsync://":
+	elif syncuri[:8]=="rsync://" or syncuri[:6]=="ssh://":
 		for vcs_dir in vcs_dirs:
 			writemsg_level(("!!! %s appears to be under revision " + \
 				"control (contains %s).\n!!! Aborting rsync sync.\n") % \
@@ -2107,8 +2107,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			maxretries = -1 #default number of retries
 
 		retries=0
-		user_name, hostname, port = re.split(
-			"rsync://([^:/]+@)?([^:/]*)(:[0-9]+)?", syncuri, maxsplit=3)[1:4]
+		proto, user_name, hostname, port = re.split(
+			"(rsync|ssh)://([^:/]+@)?([^:/]*)(:[0-9]+)?", syncuri, maxsplit=4)[1:5]
 		if port is None:
 			port=""
 		if user_name is None:
@@ -2212,6 +2212,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				writemsg_stdout(
 					"\n\n>>> Starting retry %d of %d with %s\n" % \
 					(retries, effective_maxretries, dosyncuri), noiselevel=-1)
+
+			if dosyncuri.startswith('ssh://'):
+				dosyncuri = dosyncuri[6:].replace('/', ':', 1)
 
 			if mytimestamp != 0 and "--quiet" not in myopts:
 				print(">>> Checking server timestamp ...")
