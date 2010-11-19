@@ -207,6 +207,7 @@ class config(object):
 		self._accept_chost_re = None
 		self._accept_properties = None
 		self._features_overrides = []
+		self._make_defaults = None
 
 		# _unknown_features records unknown features that
 		# have triggered warning messages, and ensures that
@@ -428,13 +429,7 @@ class config(object):
 			if self.profiles:
 				mygcfg_dlists = [getconfig(os.path.join(x, "make.defaults"),
 					expand=expand_map) for x in self.profiles]
-
-				for cfg in mygcfg_dlists:
-					if cfg:
-						self.make_defaults_use.append(cfg.get("USE", ""))
-					else:
-						self.make_defaults_use.append("")
-				self.make_defaults_use = tuple(self.make_defaults_use)
+				self._make_defaults = mygcfg_dlists
 				self.mygcfg = stack_dicts(mygcfg_dlists,
 					incrementals=self.incrementals)
 				if self.mygcfg is None:
@@ -1774,6 +1769,36 @@ class config(object):
 			if v is not None:
 				use_expand_dict[k] = v
 
+		# In order to best accomodate the long-standing practice of
+		# setting default USE_EXPAND variables in the profile's
+		# make.defaults, we translate these variables into their
+		# equivalent USE flags so that useful incremental behavior
+		# is enabled (for sub-profiles).
+		configdict_defaults = self.configdict['defaults']
+		if self._make_defaults is not None:
+			for i, cfg in enumerate(self._make_defaults):
+				if not cfg:
+					self.make_defaults_use.append("")
+					continue
+				use = cfg.get("USE", "")
+				expand_use = []
+				for k in use_expand_dict:
+					v = cfg.get(k)
+					if v is None:
+						continue
+					prefix = k.lower() + '_'
+					for x in v.split():
+						expand_use.append(prefix + x)
+				if expand_use:
+					expand_use.append(use)
+					use  = ' '.join(expand_use)
+				self.make_defaults_use.append(use)
+			self.make_defaults_use = tuple(self.make_defaults_use)
+			configdict_defaults['USE'] = ' '.join(
+				stack_lists([x.split() for x in self.make_defaults_use]))
+			# Set to None so this code only runs once.
+			self._make_defaults = None
+
 		if not self.uvlist:
 			for x in self["USE_ORDER"].split(":"):
 				if x in self.configdict:
@@ -1831,6 +1856,12 @@ class config(object):
 						myflags.add(x)
 				else:
 					myflags.add(x)
+
+			if curdb is configdict_defaults:
+				# USE_EXPAND flags from make.defaults are handled
+				# earlier, in order to provide useful incremental
+				# behavior (for sub-profiles).
+				continue
 
 			for var in cur_use_expand:
 				var_lower = var.lower()
