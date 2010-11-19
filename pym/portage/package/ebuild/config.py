@@ -1838,6 +1838,24 @@ class config(object):
 		myflags.difference_update(self.usemask)
 		self.configlist[-1]["USE"]= " ".join(sorted(myflags))
 
+		if self.mycpv is None:
+			# Generate global USE_EXPAND variables settings that are
+			# consistent with USE, for display by emerge --info. For
+			# package instances, these are instead generated via
+			# setcpv().
+			for k in use_expand:
+				prefix = k.lower() + '_'
+				prefix_len = len(prefix)
+				expand_flags = set( x[prefix_len:] for x in myflags \
+					if x[:prefix_len] == prefix )
+				var_split = use_expand_dict.get(k, '').split()
+				var_split = [ x for x in var_split if x in expand_flags ]
+				var_split.extend(sorted(expand_flags.difference(var_split)))
+				if var_split:
+					self.configlist[-1][k] = ' '.join(var_split)
+				elif k in self:
+					self.configlist[-1][k] = ''
+
 	@property
 	def virts_p(self):
 		warnings.warn("portage config.virts_p attribute " + \
