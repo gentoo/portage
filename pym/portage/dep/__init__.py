@@ -636,9 +636,6 @@ _usedep_re = {
 }
 
 def _get_usedep_re(eapi):
-	if eapi is None:
-		eapi = str(EAPI)
-
 	return _usedep_re["0"]
 #	if eapi in ("0", "1", "2_pre1", "2_pre2", "2_pre3", "2", "3_pre1", "3_pre2", "3", "4_pre1"):
 #		return _usedep_re["0"]
@@ -1609,9 +1606,6 @@ _useflag_re = {
 }
 
 def _get_useflag_re(eapi):
-	if eapi is None:
-		eapi = str(EAPI)
-
 	return _useflag_re["0"]
 #	if eapi in ("0", "1", "2_pre1", "2_pre2", "2_pre3", "2", "3_pre1", "3_pre2", "3", "4_pre1"):
 #		return _useflag_re["0"]
