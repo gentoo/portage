@@ -2991,7 +2991,7 @@ class depgraph(object):
 								if need_enabled:
 									if not pkg.built:
 										pkgsettings.setcpv(pkg)
-										if not pkgsettings.usemask.difference(need_enabled):
+										if not pkgsettings.usemask.intersection(need_enabled):
 											# Be careful about masked flags, since they
 											# typically aren't adjustable by the user.
 											packages_with_invalid_use_config.append(pkg)
