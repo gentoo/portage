@@ -2953,16 +2953,40 @@ class depgraph(object):
 						else:
 							use = self._pkg_use_enabled(pkg)
 
-						if atom.use.enabled.difference(use) and \
-							atom.use.enabled.difference(use).difference(atom.use.missing_enabled.difference(pkg.iuse.all)):
-							if not pkg.built:
-								packages_with_invalid_use_config.append(pkg)
-							continue
-						if atom.use.disabled.intersection(use) or \
-							atom.use.disabled.difference(pkg.iuse.all).difference(atom.use.missing_disabled):
-							if not pkg.built:
-								packages_with_invalid_use_config.append(pkg)
-							continue
+						if atom.use.enabled:
+							need_enabled = atom.use.enabled.difference(use)
+							if need_enabled:
+								need_enabled = need_enabled.difference(
+									atom.use.missing_enabled.difference(pkg.iuse.all))
+								if need_enabled:
+									if not pkg.built:
+										pkgsettings.setcpv(pkg)
+										if not pkgsettings.usemask.difference(need_enabled):
+											# Be careful about masked flags, since they
+											# typically aren't adjustable by the user.
+											packages_with_invalid_use_config.append(pkg)
+									continue
+
+						if atom.use.disabled:
+							need_disabled = atom.use.disabled.intersection(use)
+							if need_disabled:
+								if not pkg.built:
+									pkgsettings.setcpv(pkg)
+									if not pkgsettings.useforce.difference(
+										pkgsettings.usemask).intersection(need_disabled):
+										# Be careful about forced flags, since they
+										# typically aren't adjustable by the user.
+										packages_with_invalid_use_config.append(pkg)
+								continue
+
+							need_disabled = atom.use.disabled.difference(
+								pkg.iuse.all).difference(atom.use.missing_disabled)
+							if need_disabled:
+								# Don't add this to packages_with_invalid_use_config
+								# since missing_disabled indicates an IUSE issue, and
+								# IUSE cannot be adjusted by the user.
+								continue
+
 					elif atom.unevaluated_atom.use:
 						#Make sure we don't miss a 'missing IUSE'.
 						if pkg.iuse.get_missing_iuse(atom.unevaluated_atom.use.required):
