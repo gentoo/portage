@@ -2990,8 +2990,7 @@ class depgraph(object):
 									atom.use.missing_enabled.difference(pkg.iuse.all))
 								if need_enabled:
 									if not pkg.built:
-										pkgsettings.setcpv(pkg)
-										if not pkgsettings.usemask.intersection(need_enabled):
+										if not pkg.use.mask.intersection(need_enabled):
 											# Be careful about masked flags, since they
 											# typically aren't adjustable by the user.
 											packages_with_invalid_use_config.append(pkg)
@@ -3001,9 +3000,8 @@ class depgraph(object):
 							need_disabled = atom.use.disabled.intersection(use)
 							if need_disabled:
 								if not pkg.built:
-									pkgsettings.setcpv(pkg)
-									if not pkgsettings.useforce.difference(
-										pkgsettings.usemask).intersection(need_disabled):
+									if not pkg.use.force.difference(
+										pkg.use.mask).intersection(need_disabled):
 										# Be careful about forced flags, since they
 										# typically aren't adjustable by the user.
 										packages_with_invalid_use_config.append(pkg)
