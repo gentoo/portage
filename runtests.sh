@@ -15,6 +15,13 @@ case "${NOCOLOR:-false}" in
 		;;
 esac
 
+interrupted() {
+	echo "interrupted." >&2
+	exit 1
+}
+
+trap interrupted SIGINT
+
 exit_status="0"
 for version in ${PYTHON_VERSIONS}; do
 	if [[ -x /usr/bin/python${version} ]]; then
