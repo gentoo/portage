@@ -22,11 +22,9 @@ class UseManager(object):
 		#--------------------------------
 		#	use.mask			_usemask_list
 		#	use.force			_useforce_list
-		#	use.unsatisfiable		_useunsatisfiable_list
 		#	package.use.mask		_pusemask_list
 		#	package.use			_pkgprofileuse
 		#	package.use.force		_puseforce_list
-		#	package.use.unsatisfiable	_puseunsatisfiable_list
 		#--------------------------------
 		#	user config
 		#--------------------------------
@@ -45,11 +43,9 @@ class UseManager(object):
 
 		self._usemask_list = self._parse_profile_files_to_tuple("use.mask", profiles)
 		self._useforce_list = self._parse_profile_files_to_tuple("use.force", profiles)
-		self._useunsatisfiable_list = self._parse_profile_files_to_tuple("use.unsatisfiable", profiles)
 		self._pusemask_list = self._parse_profile_files_to_dict("package.use.mask", profiles)
 		self._pkgprofileuse = self._parse_profile_files_to_dict("package.use", profiles, juststrings=True)
 		self._puseforce_list = self._parse_profile_files_to_dict("package.use.force", profiles)
-		self._puseunsatisfiable_list = self._parse_profile_files_to_dict("package.use.unsatisfiable", profiles)
 
 		self._pusedict = self._parse_user_files_to_extatomdict("package.use", abs_user_config, user_config)
 
@@ -148,25 +144,6 @@ class UseManager(object):
 				if pkg_useforce:
 					useforce.extend(pkg_useforce)
 		return frozenset(stack_lists(useforce, incremental=True))
-
-	def getUseUnsatisfiable(self, pkg=None):
-		if pkg is None:
-			return frozenset(stack_lists(
-				self._useunsatisfiable_list, incremental=True))
-
-		cp = getattr(pkg, "cp", None)
-		if cp is None:
-			cp = cpv_getkey(remove_slot(pkg))
-		useunsatisfiable = []
-		for i, punsatisfiable_dict in enumerate(self._puseunsatisfiable_list):
-			if self._useunsatisfiable_list[i]:
-				useunsatisfiable.append(self._useunsatisfiable_list[i])
-			cpdict = punsatisfiable_dict.get(cp)
-			if cpdict:
-				pkg_useunsatisfiable = ordered_by_atom_specificity(cpdict, pkg)
-				if pkg_useunsatisfiable:
-					useunsatisfiable.extend(pkg_useunsatisfiable)
-		return frozenset(stack_lists(useunsatisfiable, incremental=True))
 
 	def getPUSE(self, pkg):
 		cp = getattr(pkg, "cp", None)

@@ -512,7 +512,6 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		# flags from a parent package that is being merged to a $ROOT that is
 		# different from the one that mysettings represents.
 		mymasks.update(mysettings.usemask)
-		mymasks.update(mysettings.useunsatisfiable)
 		mymasks.update(mysettings.archlist())
 		mymasks.discard(mysettings["ARCH"])
 		useforce.update(mysettings.useforce)
