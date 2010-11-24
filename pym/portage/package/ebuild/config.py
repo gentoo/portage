@@ -205,7 +205,6 @@ class config(object):
 			self._non_user_variables = clone._non_user_variables
 			self.usemask = clone.usemask
 			self.useforce = clone.useforce
-			self.useunsatisfiable = clone.useunsatisfiable
 			self.puse = clone.puse
 			self.user_profile_dir = clone.user_profile_dir
 			self.local_config = clone.local_config
@@ -515,7 +514,6 @@ class config(object):
 			#Initialize all USE related variables we track ourselves.
 			self.usemask = self._use_manager.getUseMask()
 			self.useforce = self._use_manager.getUseForce()
-			self.useunsatisfiable = self._use_manager.getUseUnsatisfiable()
 			self.configdict["conf"]["USE"] = \
 				self._use_manager.extract_global_USE_changes( \
 					self.configdict["conf"].get("USE", ""))
@@ -891,7 +889,6 @@ class config(object):
 				" ".join(self.make_defaults_use)
 			self.usemask = self._use_manager.getUseMask()
 			self.useforce = self._use_manager.getUseForce()
-			self.useunsatisfiable = self._use_manager.getUseUnsatisfiable()
 		self.regenerate()
 
 	class _lazy_vars(object):
@@ -1131,11 +1128,6 @@ class config(object):
 			self.usemask = usemask
 			has_changed = True
 
-		useunsatisfiable = self._use_manager.getUseUnsatisfiable(cpv_slot)
-		if useunsatisfiable != self.useunsatisfiable:
-			self.useunsatisfiable = useunsatisfiable
-			has_changed = True
-
 		oldpuse = self.puse
 		self.puse = self._use_manager.getPUSE(cpv_slot)
 		if oldpuse != self.puse:
@@ -1366,9 +1358,6 @@ class config(object):
 
 	def _getUseForce(self, pkg):
 		return self._use_manager.getUseForce(pkg)
-
-	def _getUseUnsatisfiable(self, pkg):
-		return self._use_manager.getUseUnsatisfiable(pkg)
 
 	def _getMaskAtom(self, cpv, metadata):
 		"""

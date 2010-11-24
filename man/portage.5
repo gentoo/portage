@@ -36,12 +36,10 @@ package.unmask
 package.use
 package.use.force
 package.use.mask
-package.use.unsatisfiable
 parent
 profile.bashrc
 use.force
 use.mask
-use.unsatisfiable
 virtuals
 .fi
 .TP
@@ -339,26 +337,6 @@ a '\-'.
 x11\-libs/qt \-mysql
 .fi
 .TP
-.BR package.use.unsatisfiable
-Per\-package marking of USE flags as potentially unsatisfiable.
-
-.I Note:
-In a cascading profile setup, you can remove USE flags in children 
-profiles which were added by parent profiles by prefixing the flag with 
-a '\-'.
-
-.I Format:
-.nf
-\- comments begin with # (no inline comments)
-\- one DEPEND atom per line with space-delimited USE flags
-.fi
-
-.I Example:
-.nf
-# KDE is unstable on this architecture
-dev-vcs/subversion kde
-.fi
-.TP
 .BR parent
 This contains a path to the parent profile.  It may be either relative or 
 absolute.  The paths will be relative to the location of the profile.  Most 
@@ -407,22 +385,6 @@ a '\-'.
 doc
 # unmask mysql
 \-mysql
-.fi
-.TP
-.BR use.unsatisfiable
-Some USE flags enable optional dependencies, which are allowed to be
-unsatisfiable in some configurations. This is useful for stable packages,
-which have optional dependencies on unstable packages.
-
-.I Note:
-In a cascading profile setup, you can remove USE flags in children 
-profiles which were added by parent profiles by prefixing the flag with 
-a '\-'.
-
-.I Format:
-.nf
-\- comments begin with # (no inline comments)
-\- one USE flag per line
 .fi
 .TP
 .BR virtuals
