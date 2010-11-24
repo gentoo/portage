@@ -2204,7 +2204,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					(retries, effective_maxretries, dosyncuri), noiselevel=-1)
 
 			if dosyncuri.startswith('ssh://'):
-				dosyncuri = dosyncuri[6:].replace('/', ':', 1)
+				dosyncuri = dosyncuri[6:].replace('/', ':/', 1)
 
 			if mytimestamp != 0 and "--quiet" not in myopts:
 				print(">>> Checking server timestamp ...")
