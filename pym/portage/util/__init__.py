@@ -354,6 +354,8 @@ def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=Fals
 	""" Does the same thing as grabdict except it validates keys
 	    with isvalidatom()"""
 	pkgs=grabdict(myfilename, juststrings, empty=1, recursive=recursive)
+	if not pkgs:
+		return pkgs
 	if verify_eapi and eapi is None:
 		eapi = read_corresponding_eapi_file(myfilename)
 
@@ -375,6 +377,8 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=Fals
 	remember_source_file=False, verify_eapi=False, eapi=None):
 
 	pkgs=grabfile(myfilename, compatlevel, recursive=recursive, remember_source_file=True)
+	if not pkgs:
+		return pkgs
 	if verify_eapi and eapi is None:
 		eapi = read_corresponding_eapi_file(myfilename)
 	mybasename = os.path.basename(myfilename)
