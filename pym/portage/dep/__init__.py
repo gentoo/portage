@@ -31,7 +31,6 @@ import re, sys
 import warnings
 from itertools import chain
 import portage.exception
-from portage.const import EAPI
 from portage.eapi import eapi_has_slot_deps, eapi_has_src_uri_arrows, \
 	eapi_has_use_deps, eapi_has_strong_blocks, eapi_has_use_dep_defaults
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString
@@ -636,6 +635,13 @@ _usedep_re = {
 }
 
 def _get_usedep_re(eapi):
+	"""
+	@param eapi: The EAPI
+	@type eapi: String or None
+	@rtype: regular expression object
+	@return: A regular expression object that matches valid USE flags for the
+		given eapi. If eapi is None then the latest supported EAPI is assumed.
+	"""
 	return _usedep_re["0"]
 #	if eapi in ("0", "1", "2_pre1", "2_pre2", "2_pre3", "2", "3_pre1", "3_pre2", "3", "4_pre1"):
 #		return _usedep_re["0"]
@@ -673,8 +679,6 @@ class _use_dep(object):
 	def __init__(self, use, eapi, enabled_flags=None, disabled_flags=None, missing_enabled=None, \
 		missing_disabled=None, conditional=None, required=None):
 
-		if eapi is None:
-			eapi = str(EAPI)
 		self.eapi = eapi
 
 		if enabled_flags is not None:
