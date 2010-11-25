@@ -2008,7 +2008,8 @@ class config(object):
 		eapi = self.get('EAPI')
 		phase = self.get('EBUILD_PHASE')
 		filter_calling_env = False
-		if phase not in ('clean', 'cleanrm', 'depend', 'fetch'):
+		if self.mycpv is not None and \
+			phase not in ('clean', 'cleanrm', 'depend', 'fetch'):
 			temp_dir = self.get('T')
 			if temp_dir is not None and \
 				os.path.exists(os.path.join(temp_dir, 'environment')):
