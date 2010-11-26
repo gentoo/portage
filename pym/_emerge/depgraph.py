@@ -2285,10 +2285,8 @@ class depgraph(object):
 				need_enable = sorted(atom.use.enabled.difference(use).intersection(pkg.iuse.all))
 				need_disable = sorted(atom.use.disabled.intersection(use).intersection(pkg.iuse.all))
 
-				pkgsettings = self._frozen_config.pkgsettings[pkg.root]
-				pkgsettings.setcpv(pkg)
 				untouchable_flags = \
-					frozenset(chain(pkgsettings.usemask, pkgsettings.useforce))
+					frozenset(chain(pkg.use.mask, pkg.use.force))
 				if untouchable_flags.intersection(
 					chain(need_enable, need_disable)):
 					continue
@@ -2336,10 +2334,8 @@ class depgraph(object):
 					involved_flags = set(chain(conditional.equal, conditional.not_equal, \
 						conditional.enabled, conditional.disabled))
 
-					pkgsettings = self._frozen_config.pkgsettings[myparent.root]
-					pkgsettings.setcpv(myparent)
 					untouchable_flags = \
-						frozenset(chain(pkgsettings.usemask, pkgsettings.useforce))
+						frozenset(chain(myparent.use.mask, myparent.use.force))
 					if untouchable_flags.intersection(involved_flags):
 						continue
 
@@ -2983,16 +2979,38 @@ class depgraph(object):
 						else:
 							use = self._pkg_use_enabled(pkg)
 
-						if atom.use.enabled.difference(use) and \
-							atom.use.enabled.difference(use).difference(atom.use.missing_enabled.difference(pkg.iuse.all)):
-							if not pkg.built:
-								packages_with_invalid_use_config.append(pkg)
-							continue
-						if atom.use.disabled.intersection(use) or \
-							atom.use.disabled.difference(pkg.iuse.all).difference(atom.use.missing_disabled):
-							if not pkg.built:
-								packages_with_invalid_use_config.append(pkg)
-							continue
+						if atom.use.enabled:
+							need_enabled = atom.use.enabled.difference(use)
+							if need_enabled:
+								need_enabled = need_enabled.difference(
+									atom.use.missing_enabled.difference(pkg.iuse.all))
+								if need_enabled:
+									if not pkg.built:
+										if not pkg.use.mask.intersection(need_enabled):
+											# Be careful about masked flags, since they
+											# typically aren't adjustable by the user.
+											packages_with_invalid_use_config.append(pkg)
+									continue
+
+						if atom.use.disabled:
+							need_disabled = atom.use.disabled.intersection(use)
+							if need_disabled:
+								if not pkg.built:
+									if not pkg.use.force.difference(
+										pkg.use.mask).intersection(need_disabled):
+										# Be careful about forced flags, since they
+										# typically aren't adjustable by the user.
+										packages_with_invalid_use_config.append(pkg)
+								continue
+
+							need_disabled = atom.use.disabled.difference(
+								pkg.iuse.all).difference(atom.use.missing_disabled)
+							if need_disabled:
+								# Don't add this to packages_with_invalid_use_config
+								# since missing_disabled indicates an IUSE issue, and
+								# IUSE cannot be adjusted by the user.
+								continue
+
 					elif atom.unevaluated_atom.use:
 						#Make sure we don't miss a 'missing IUSE'.
 						if pkg.iuse.get_missing_iuse(atom.unevaluated_atom.use.required):
@@ -3074,10 +3092,9 @@ class depgraph(object):
 						("--newuse" in self._frozen_config.myopts or \
 						"--reinstall" in self._frozen_config.myopts) and \
 						cpv in vardb.match(atom):
-						pkgsettings.setcpv(pkg)
 						forced_flags = set()
-						forced_flags.update(pkgsettings.useforce)
-						forced_flags.update(pkgsettings.usemask)
+						forced_flags.update(pkg.use.force)
+						forced_flags.update(pkg.use.mask)
 						old_use = vardb.aux_get(cpv, ["USE"])[0].split()
 						old_iuse = set(filter_iuse_defaults(
 							vardb.aux_get(cpv, ["IUSE"])[0].split()))
@@ -4776,10 +4793,8 @@ class depgraph(object):
 						affecting_use.update(extract_affecting_use(dep_str, atom))
 					
 					#Don't show flags as 'affecting' if the user can't change them,
-					pkgsettings = self._frozen_config.pkgsettings[node.root]
-					pkgsettings.setcpv(node)
-					affecting_use.difference_update(pkgsettings.usemask, \
-						pkgsettings.useforce)
+					affecting_use.difference_update(node.use.mask, \
+						node.use.force)
 
 					pkg_name = node.cpv
 					if affecting_use:
