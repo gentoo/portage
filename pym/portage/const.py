@@ -13,7 +13,10 @@ import os
 BPREFIX = EPREFIX
 # pick up EPREFIX from the environment if set
 if "EPREFIX" in os.environ:
-	EPREFIX = os.path.normpath(os.environ["EPREFIX"])
+	if os.environ["EPREFIX"] != "":
+		EPREFIX = os.path.normpath(os.environ["EPREFIX"])
+	else
+		EPREFIX = os.environ["EPREFIX"]
 
 # ===========================================================================
 # START OF CONSTANTS -- START OF CONSTANTS -- START OF CONSTANTS -- START OF
