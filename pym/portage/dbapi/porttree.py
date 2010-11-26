@@ -84,12 +84,11 @@ class portdbapi(dbapi):
 			from portage import settings
 			self.settings = config(clone=settings)
 
-		if _unused_param is not None and \
-			_unused_param != self.settings['PORTDIR']:
+		if _unused_param is not None:
 			warnings.warn("The first parameter of the " + \
 				"portage.dbapi.porttree.portdbapi" + \
-				" constructor is now unused. " + \
-				"mysettings['PORTDIR'] will be used instead.",
+				" constructor is unused since portage-2.1.8. " + \
+				"mysettings['PORTDIR'] is used instead.",
 				DeprecationWarning, stacklevel=2)
 
 		self.repositories = self.settings.repositories
