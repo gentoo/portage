@@ -2201,6 +2201,8 @@ class depgraph(object):
 			xinfo = _unicode_decode('"%s"') % (myparent,)
 		# Discard null/ from failed cpv_expand category expansion.
 		xinfo = xinfo.replace("null/", "")
+		if root != "/":
+			xinfo = "%s for %s" % (xinfo, root)
 		masked_packages = []
 		missing_use = []
 		masked_pkg_instances = set()
