@@ -248,9 +248,7 @@ class portdbapi(dbapi):
 		it must return a path to the repository
 		TreeMap = { id:path }
 		"""
-		if repository_id in self.treemap:
-			return self.treemap[repository_id]
-		return None
+		return self.treemap.get(repository_id)
 
 	def getRepositoryName(self, canonical_repo_path):
 		"""
@@ -300,12 +298,11 @@ class portdbapi(dbapi):
 		if not mycpv:
 			return (None, 0)
 
-		if myrepo:
-			if myrepo in self.treemap:
-				mytree = self.treemap[myrepo]
-			else:
+		if myrepo is not None:
+			mytree = self.treemap.get(myrepo)
+			if mytree is None:
 				return (None, 0)
-		
+
 		mysplit = mycpv.split("/")
 		psplit = pkgsplit(mysplit[1])
 		if psplit is None or len(mysplit) != 2:
@@ -434,12 +431,11 @@ class portdbapi(dbapi):
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise KeyError if error'
 		cache_me = False
-		if myrepo:
-			if myrepo in self.treemap:
-				mytree = self.treemap[myrepo]
-			else:
+		if myrepo is not None:
+			mytree = self.treemap.get(myrepo)
+			if mytree is None:
 				raise KeyError(myrepo)
-				
+
 		if not mytree:
 			cache_me = True
 		if not mytree and not self._known_keys.intersection(
@@ -626,10 +622,9 @@ class portdbapi(dbapi):
 		elif useflags is None:
 			if mysettings:
 				useflags = mysettings["USE"].split()
-		if myrepo:
-			if myrepo in self.treemap:
-				mytree = self.treemap[myrepo]
-			else:
+		if myrepo is not None:
+			mytree = self.treemap.get(myrepo)
+			if mytree is None:
 				return False
 		else:
 			mytree = None
