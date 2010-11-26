@@ -77,6 +77,7 @@ environ_whitelist += [
 	"COLORTERM", "DISPLAY", "EDITOR", "LESS",
 	"LESSOPEN", "LOGNAME", "LS_COLORS", "PAGER",
 	"TERM", "TERMCAP", "USER",
+	'ftp_proxy', 'http_proxy', 'no_proxy',
 ]
 
 # tempdir settings
