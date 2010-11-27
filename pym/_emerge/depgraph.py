@@ -2951,37 +2951,41 @@ class depgraph(object):
 						else:
 							use = self._pkg_use_enabled(pkg)
 
+						use_match = True
+						can_adjust_use = not pkg.built
+
 						if atom.use.enabled:
 							need_enabled = atom.use.enabled.difference(use)
 							if need_enabled:
 								need_enabled = need_enabled.difference(
 									atom.use.missing_enabled.difference(pkg.iuse.all))
 								if need_enabled:
-									if not pkg.built:
-										if not pkg.use.mask.intersection(need_enabled):
-											# Be careful about masked flags, since they
-											# typically aren't adjustable by the user.
-											packages_with_invalid_use_config.append(pkg)
-									continue
+									use_match = False
+									if can_adjust_use:
+										if pkg.use.mask.intersection(need_enabled):
+											can_adjust_use = False
 
 						if atom.use.disabled:
 							need_disabled = atom.use.disabled.intersection(use)
 							if need_disabled:
-								if not pkg.built:
-									if not pkg.use.force.difference(
-										pkg.use.mask).intersection(need_disabled):
-										# Be careful about forced flags, since they
-										# typically aren't adjustable by the user.
-										packages_with_invalid_use_config.append(pkg)
-								continue
+								need_disabled = need_disabled.difference(
+									atom.use.missing_disabled.difference(pkg.iuse.all))
+								if need_disabled:
+									use_match = False
+									if can_adjust_use:
+										if pkg.use.force.difference(
+											pkg.use.mask).intersection(need_disabled):
+											can_adjust_use = False
 
-							need_disabled = atom.use.disabled.difference(
-								pkg.iuse.all).difference(atom.use.missing_disabled)
-							if need_disabled:
-								# Don't add this to packages_with_invalid_use_config
-								# since missing_disabled indicates an IUSE issue, and
-								# IUSE cannot be adjusted by the user.
-								continue
+						if can_adjust_use:
+							# Above we must ensure that this package has
+							# absolutely no use.force, use.mask, or IUSE
+							# issues that the user typically can't make
+							# adjustments to solve (see bug #345979).
+							packages_with_invalid_use_config.append(pkg)
+
+						if not use_match:
+							continue
 
 					elif atom.unevaluated_atom.use:
 						#Make sure we don't miss a 'missing IUSE'.
