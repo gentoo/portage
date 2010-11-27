@@ -2934,6 +2934,13 @@ class depgraph(object):
 					if not installed and myarg:
 						found_available_arg = True
 
+					if atom.unevaluated_atom.use:
+						#Make sure we don't miss a 'missing IUSE'.
+						if pkg.iuse.get_missing_iuse(atom.unevaluated_atom.use.required):
+							# Don't add this to packages_with_invalid_use_config
+							# since IUSE cannot be adjusted by the user.
+							continue
+
 					if atom.use:
 						if pkg.iuse.get_missing_iuse(atom.use.required):
 							# Don't add this to packages_with_invalid_use_config
@@ -2985,13 +2992,6 @@ class depgraph(object):
 							packages_with_invalid_use_config.append(pkg)
 
 						if not use_match:
-							continue
-
-					elif atom.unevaluated_atom.use:
-						#Make sure we don't miss a 'missing IUSE'.
-						if pkg.iuse.get_missing_iuse(atom.unevaluated_atom.use.required):
-							# Don't add this to packages_with_invalid_use_config
-							# since IUSE cannot be adjusted by the user.
 							continue
 
 					#check REQUIRED_USE constraints
