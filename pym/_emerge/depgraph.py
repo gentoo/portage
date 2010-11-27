@@ -2960,29 +2960,35 @@ class depgraph(object):
 
 						use_match = True
 						can_adjust_use = not pkg.built
+						missing_enabled = atom.use.missing_enabled.difference(pkg.iuse.all)
+						missing_disabled = atom.use.missing_disabled.difference(pkg.iuse.all)
 
 						if atom.use.enabled:
 							need_enabled = atom.use.enabled.difference(use)
 							if need_enabled:
-								need_enabled = need_enabled.difference(
-									atom.use.missing_enabled.difference(pkg.iuse.all))
+								need_enabled = need_enabled.difference(missing_enabled)
 								if need_enabled:
 									use_match = False
 									if can_adjust_use:
 										if pkg.use.mask.intersection(need_enabled):
 											can_adjust_use = False
+										if can_adjust_use:
+											if missing_disabled.intersection(need_enabled):
+												can_adjust_use = False
 
 						if atom.use.disabled:
 							need_disabled = atom.use.disabled.intersection(use)
 							if need_disabled:
-								need_disabled = need_disabled.difference(
-									atom.use.missing_disabled.difference(pkg.iuse.all))
+								need_disabled = need_disabled.difference(missing_disabled)
 								if need_disabled:
 									use_match = False
 									if can_adjust_use:
 										if pkg.use.force.difference(
 											pkg.use.mask).intersection(need_disabled):
 											can_adjust_use = False
+										if can_adjust_use:
+											if missing_enabled.intersection(need_disabled):
+												can_adjust_use = False
 
 						if not use_match:
 							if can_adjust_use:
@@ -2990,6 +2996,10 @@ class depgraph(object):
 								# absolutely no use.force, use.mask, or IUSE
 								# issues that the user typically can't make
 								# adjustments to solve (see bug #345979).
+								# FIXME: Conditional USE deps complicate
+								# issues. This code currently excludes cases
+								# in which the user can adjust the parent
+								# package's USE in order to satisfy the dep.
 								packages_with_invalid_use_config.append(pkg)
 							continue
 
