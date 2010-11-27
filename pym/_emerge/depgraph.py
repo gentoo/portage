@@ -3014,14 +3014,13 @@ class depgraph(object):
 											pkg.use.mask).intersection(need_disabled):
 											can_adjust_use = False
 
-						if can_adjust_use:
-							# Above we must ensure that this package has
-							# absolutely no use.force, use.mask, or IUSE
-							# issues that the user typically can't make
-							# adjustments to solve (see bug #345979).
-							packages_with_invalid_use_config.append(pkg)
-
 						if not use_match:
+							if can_adjust_use:
+								# Above we must ensure that this package has
+								# absolutely no use.force, use.mask, or IUSE
+								# issues that the user typically can't make
+								# adjustments to solve (see bug #345979).
+								packages_with_invalid_use_config.append(pkg)
 							continue
 
 					#check REQUIRED_USE constraints
