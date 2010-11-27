@@ -55,7 +55,7 @@ class UseManager(object):
 			pusedict = grabdict_package(
 				os.path.join(location, file_name), recursive=1, allow_wildcard=True, allow_repo=True, verify_eapi=False)
 			for k, v in pusedict.items():
-				ret.setdefault(k.cp, {})[k] = v
+				ret.setdefault(k.cp, {})[k] = tuple(v)
 
 		return ret
 
@@ -103,9 +103,11 @@ class UseManager(object):
 			for k, v in profile_dict.items():
 				if juststrings:
 					v = " ".join(v)
+				else:
+					v = tuple(v)
 				cpdict.setdefault(k.cp, {})[k] = v
 			ret.append(cpdict)
-		return ret
+		return tuple(ret)
 
 	def getUseMask(self, pkg=None):
 		if pkg is None:
