@@ -73,7 +73,8 @@ class UseManager(object):
 				else:
 					useflag = prefixed_useflag
 				if useflag_re.match(useflag) is None:
-					writemsg(_("--- Invalid USE flag in '%s': '%s'\n") % (path, prefixed_useflag))
+					writemsg(_("--- Invalid USE flag in '%s': '%s'\n") % \
+						(path, prefixed_useflag), noiselevel=-1)
 				else:
 					profile_lines.append(prefixed_useflag)
 			ret.append(tuple(profile_lines))
@@ -96,7 +97,8 @@ class UseManager(object):
 					else:
 						useflag = prefixed_useflag
 					if useflag_re.match(useflag) is None:
-						writemsg(_("--- Invalid USE flag for '%s' in '%s': '%s'\n") % (k, path, prefixed_useflag))
+						writemsg(_("--- Invalid USE flag for '%s' in '%s': '%s'\n") % \
+							(k, path, prefixed_useflag), noiselevel=-1)
 					else:
 						useflags.append(prefixed_useflag)
 				profile_dict.setdefault(k, []).extend(useflags)
