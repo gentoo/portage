@@ -54,7 +54,7 @@ class PortageSettings:
 		self.user_config_dir = const.USER_CONFIG_PATH
 		self.reload_world()
 		self.reset_use_flags()
-		self.virtuals = self.settings.virtuals
+		self.virtuals = self.settings.getvirtuals()
 		# lower case is nicer
 		self.keys = [key.lower() for key in portage.auxdbkeys]
 		return
