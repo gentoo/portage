@@ -78,9 +78,6 @@ source "${PORTAGE_BIN_PATH}/isolated-functions.sh"  &>/dev/null
 
 [[ $PORTAGE_QUIET != "" ]] && export PORTAGE_QUIET
 
-# the sandbox is disabled by default except when overridden in the relevant stages
-export SANDBOX_ON="0"
-
 # sandbox support functions; defined prior to profile.bashrc srcing, since the profile might need to add a default exception (/usr/lib64/conftest fex)
 _sb_append_var() {
 	local _v=$1 ; shift
@@ -106,12 +103,15 @@ if [[ -w $T ]] ; then
 	export TEMP=$T
 	export TMP=$T
 	export TMPDIR=$T
-else
+elif [[ $SANDBOX_ON = 1 ]] ; then
 	for x in TEMP TMP TMPDIR ; do
 		[[ -n ${!x} ]] && addwrite "${!x}"
 	done
 	unset x
 fi
+
+# the sandbox is disabled by default except when overridden in the relevant stages
+export SANDBOX_ON=0
 
 lchown() {
 	chown -h "$@"
@@ -1267,7 +1267,7 @@ dyn_help() {
 debug-print() {
 	# if $T isn't defined, we're in dep calculation mode and
 	# shouldn't do anything
-	[[ ! -d ${T} || ${#} -eq 0 ]] && return 0
+	[[ $EBUILD_PHASE = depend || ! -d ${T} || ${#} -eq 0 ]] && return 0
 
 	if [[ ${ECLASS_DEBUG_OUTPUT} == on ]]; then
 		printf 'debug: %s\n' "${@}" >&2
@@ -1275,16 +1275,19 @@ debug-print() {
 		printf 'debug: %s\n' "${@}" >> "${ECLASS_DEBUG_OUTPUT}"
 	fi
 
-	# default target
-	printf '%s\n' "${@}" >> "${T}/eclass-debug.log"
-	# let the portage user own/write to this file
-	chmod g+w "${T}/eclass-debug.log" &>/dev/null
+	if [[ -w $T ]] ; then
+		# default target
+		printf '%s\n' "${@}" >> "${T}/eclass-debug.log"
+		# let the portage user own/write to this file
+		chgrp portage "${T}/eclass-debug.log" &>/dev/null
+		chmod g+w "${T}/eclass-debug.log" &>/dev/null
+	fi
 }
 
 # The following 2 functions are debug-print() wrappers
 
 debug-print-function() {
-	debug-print "${1}, parameters: ${*:2}"
+	debug-print "${1}: entering function, parameters: ${*:2}"
 }
 
 debug-print-section() {

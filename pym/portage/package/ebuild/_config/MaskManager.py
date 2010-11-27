@@ -17,21 +17,30 @@ class MaskManager(object):
 		self._punmaskdict = ExtendedAtomDict(list)
 		self._pmaskdict = ExtendedAtomDict(list)
 
-		#Read profile/package.mask form every repo.
+		#Read profile/package.mask from every repo.
 		#Repositories inherit masks from their parent profiles and
 		#are able to remove mask from them with -atoms.
 		#Such a removal affects only the current repo, but not the parent.
 		#Add ::repo specs to every atom to make sure atoms only affect
 		#packages from the current repo.
 
+		# Cache the repository-wide package.mask files as a particular
+		# repo may be often referenced by others as the master.
+		pmask_cache = {}
+
+		def grab_pmask(loc):
+			if loc not in pmask_cache:
+				pmask_cache[loc] = grabfile_package(
+						os.path.join(loc, "profiles", "package.mask"),
+						recursive=1, remember_source_file=True, verify_eapi=True)
+			return pmask_cache[loc]
+
 		repo_pkgmasklines = []
 		for repo in repositories.repos_with_profiles():
 			lines = []
-			repo_lines = grabfile_package(os.path.join(repo.location, "profiles", "package.mask"), \
-				recursive=1, remember_source_file=True, verify_eapi=True)
+			repo_lines = grab_pmask(repo.location)
 			for master in repo.masters:
-				master_lines = grabfile_package(os.path.join(master.location, "profiles", "package.mask"), \
-					recursive=1, remember_source_file=True, verify_eapi=True)
+				master_lines = grab_pmask(master.location)
 				lines.append(stack_lists([master_lines, repo_lines], incremental=1,
 					remember_source_file=True, warn_for_unmatched_removal=True,
 					strict_warn_for_unmatched_removal=strict_umatched_removal))
@@ -48,9 +57,9 @@ class MaskManager(object):
 			lines = stack_lists([repo_lines], incremental=1, \
 				remember_source_file=True, warn_for_unmatched_removal=True,
 				strict_warn_for_unmatched_removal=strict_umatched_removal)
-			repo_pkgmasklines.extend(append_repo(lines, repo.name, remember_source_file=True))
+			repo_pkgunmasklines.extend(append_repo(lines, repo.name, remember_source_file=True))
 
-		#Read package.mask form the user's profile. Stack them in the end
+		#Read package.mask from the user's profile. Stack them in the end
 		#to allow profiles to override masks from their parent profiles.
 		profile_pkgmasklines = []
 		profile_pkgunmasklines = []
@@ -106,7 +115,7 @@ class MaskManager(object):
 		@param slot: The package's slot
 		@type slot: String
 		@rtype: String
-		@return: An matching atom string or None if one is not found.
+		@return: A matching atom string or None if one is not found.
 		"""
 
 		cp = cpv_getkey(cpv)

@@ -84,12 +84,11 @@ class portdbapi(dbapi):
 			from portage import settings
 			self.settings = config(clone=settings)
 
-		if _unused_param is not None and \
-			_unused_param != self.settings['PORTDIR']:
+		if _unused_param is not None:
 			warnings.warn("The first parameter of the " + \
 				"portage.dbapi.porttree.portdbapi" + \
-				" constructor is now unused. " + \
-				"mysettings['PORTDIR'] will be used instead.",
+				" constructor is unused since portage-2.1.8. " + \
+				"mysettings['PORTDIR'] is used instead.",
 				DeprecationWarning, stacklevel=2)
 
 		self.repositories = self.settings.repositories
@@ -249,9 +248,7 @@ class portdbapi(dbapi):
 		it must return a path to the repository
 		TreeMap = { id:path }
 		"""
-		if repository_id in self.treemap:
-			return self.treemap[repository_id]
-		return None
+		return self.treemap.get(repository_id)
 
 	def getRepositoryName(self, canonical_repo_path):
 		"""
@@ -301,12 +298,11 @@ class portdbapi(dbapi):
 		if not mycpv:
 			return (None, 0)
 
-		if myrepo:
-			if myrepo in self.treemap:
-				mytree = self.treemap[myrepo]
-			else:
+		if myrepo is not None:
+			mytree = self.treemap.get(myrepo)
+			if mytree is None:
 				return (None, 0)
-		
+
 		mysplit = mycpv.split("/")
 		psplit = pkgsplit(mysplit[1])
 		if psplit is None or len(mysplit) != 2:
@@ -435,12 +431,11 @@ class portdbapi(dbapi):
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise KeyError if error'
 		cache_me = False
-		if myrepo:
-			if myrepo in self.treemap:
-				mytree = self.treemap[myrepo]
-			else:
+		if myrepo is not None:
+			mytree = self.treemap.get(myrepo)
+			if mytree is None:
 				raise KeyError(myrepo)
-				
+
 		if not mytree:
 			cache_me = True
 		if not mytree and not self._known_keys.intersection(
@@ -570,7 +565,7 @@ class portdbapi(dbapi):
 
 	def getfetchsizes(self, mypkg, useflags=None, debug=0, myrepo=None):
 		# returns a filename:size dictionnary of remaining downloads
-		myebuild = self.findname(mypkg, myrepo=myrepo)
+		myebuild, mytree = self.findname2(mypkg, myrepo=myrepo)
 		if myebuild is None:
 			raise AssertionError(_("ebuild not found for '%s'") % mypkg)
 		pkgdir = os.path.dirname(myebuild)
@@ -581,7 +576,7 @@ class portdbapi(dbapi):
 				writemsg(_("[empty/missing/bad digest]: %s\n") % (mypkg,))
 			return {}
 		filesdict={}
-		myfiles = self.getFetchMap(mypkg, useflags=useflags)
+		myfiles = self.getFetchMap(mypkg, useflags=useflags, mytree=mytree)
 		#XXX: maybe this should be improved: take partial downloads
 		# into account? check checksums?
 		for myfile in myfiles:
@@ -627,10 +622,9 @@ class portdbapi(dbapi):
 		elif useflags is None:
 			if mysettings:
 				useflags = mysettings["USE"].split()
-		if myrepo:
-			if myrepo in self.treemap:
-				mytree = self.treemap[myrepo]
-			else:
+		if myrepo is not None:
+			mytree = self.treemap.get(myrepo)
+			if mytree is None:
 				return False
 		else:
 			mytree = None

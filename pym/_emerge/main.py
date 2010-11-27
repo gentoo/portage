@@ -390,33 +390,34 @@ def insert_optional_args(args):
 				return False
 
 	valid_integers = valid_integers()
+	y_or_n = ('y', 'n',)
 
 	new_args = []
 
 	default_arg_opts = {
-		'--autounmask'           : ('n',),
-		'--buildpkg'             : ('n',),
-		'--complete-graph' : ('n',),
+		'--autounmask'           : y_or_n,
+		'--buildpkg'             : y_or_n,
+		'--complete-graph'       : y_or_n,
 		'--deep'       : valid_integers,
-		'--deselect'   : ('n',),
-		'--binpkg-respect-use'   : ('n', 'y',),
-		'--fail-clean'           : ('n',),
-		'--getbinpkg'            : ('n',),
-		'--getbinpkgonly'        : ('n',),
+		'--deselect'             : y_or_n,
+		'--binpkg-respect-use'   : y_or_n,
+		'--fail-clean'           : y_or_n,
+		'--getbinpkg'            : y_or_n,
+		'--getbinpkgonly'        : y_or_n,
 		'--jobs'       : valid_integers,
-		'--keep-going'           : ('n',),
-		'--package-moves'        : ('n',),
-		'--rebuilt-binaries'     : ('n',),
+		'--keep-going'           : y_or_n,
+		'--package-moves'        : y_or_n,
+		'--rebuilt-binaries'     : y_or_n,
 		'--root-deps'  : ('rdeps',),
-		'--select'               : ('n',),
-		'--selective'            : ('n',),
-		"--use-ebuild-visibility": ('n',),
-		'--usepkg'               : ('n',),
-		'--usepkgonly'           : ('n',),
+		'--select'               : y_or_n,
+		'--selective'            : y_or_n,
+		"--use-ebuild-visibility": y_or_n,
+		'--usepkg'               : y_or_n,
+		'--usepkgonly'           : y_or_n,
 	}
 
 	if _ENABLE_DYN_LINK_MAP:
-		default_arg_opts['--depclean-lib-check'] = ('n',)
+		default_arg_opts['--depclean-lib-check'] = y_or_n
 
 	short_arg_opts = {
 		'D' : valid_integers,
@@ -426,11 +427,11 @@ def insert_optional_args(args):
 	# Don't make things like "-kn" expand to "-k n"
 	# since existence of -n makes it too ambiguous.
 	short_arg_opts_n = {
-		'b' : ('n',),
-		'g' : ('n',),
-		'G' : ('n',),
-		'k' : ('n',),
-		'K' : ('n',),
+		'b' : y_or_n,
+		'g' : y_or_n,
+		'G' : y_or_n,
+		'k' : y_or_n,
+		'K' : y_or_n,
 	}
 
 	arg_stack = args[:]
@@ -525,12 +526,14 @@ def parse_opts(tmpcmdline, silent=False):
 	])
 
 	longopt_aliases = {"--cols":"--columns", "--skip-first":"--skipfirst"}
+	true_y_or_n = ("True", "y", "n")
+	true_y = ("True", "y")
 	argument_options = {
 
 		"--autounmask": {
 			"help"    : "automatically unmask packages",
 			"type"    : "choice",
-			"choices" : ("True", "n")
+			"choices" : true_y_or_n
 		},
 
 		"--accept-properties": {
@@ -550,7 +553,7 @@ def parse_opts(tmpcmdline, silent=False):
 			"shortopt" : "-b",
 			"help"     : "build binary packages",
 			"type"     : "choice",
-			"choices"  : ("True", "n")
+			"choices"  : true_y_or_n
 		},
 
 		"--config-root": {
@@ -566,7 +569,7 @@ def parse_opts(tmpcmdline, silent=False):
 		"--complete-graph": {
 			"help"    : "completely account for all known dependencies",
 			"type"    : "choice",
-			"choices" : ("True", "n")
+			"choices" : true_y_or_n
 		},
 
 		"--deep": {
@@ -584,7 +587,7 @@ def parse_opts(tmpcmdline, silent=False):
 		"--deselect": {
 			"help"    : "remove atoms/sets from the world file",
 			"type"    : "choice",
-			"choices" : ("True", "n")
+			"choices" : true_y_or_n
 		},
 
 		"--exclude": {
@@ -598,7 +601,7 @@ def parse_opts(tmpcmdline, silent=False):
 		"--fail-clean": {
 			"help"    : "clean temp files after build failure",
 			"type"    : "choice",
-			"choices" : ("True", "n")
+			"choices" : true_y_or_n
 		},
 
 		"--jobs": {
@@ -614,7 +617,7 @@ def parse_opts(tmpcmdline, silent=False):
 		"--keep-going": {
 			"help"    : "continue as much as possible after an error",
 			"type"    : "choice",
-			"choices" : ("True", "n")
+			"choices" : true_y_or_n
 		},
 
 		"--load-average": {
@@ -641,34 +644,34 @@ def parse_opts(tmpcmdline, silent=False):
 			"help"    : "discard binary packages if their use flags \
 				don't match the current configuration",
 			"type"    : "choice",
-			"choices" : ("True", "y", "n")
+			"choices" : true_y_or_n
 		},
 
 		"--getbinpkg": {
 			"shortopt" : "-g",
 			"help"     : "fetch binary packages",
 			"type"     : "choice",
-			"choices"  : ("True", "n")
+			"choices"  : true_y_or_n
 		},
 
 		"--getbinpkgonly": {
 			"shortopt" : "-G",
 			"help"     : "fetch binary packages only",
 			"type"     : "choice",
-			"choices"  : ("True", "n")
+			"choices"  : true_y_or_n
 		},
 
 		"--package-moves": {
 			"help"     : "perform package moves when necessary",
 			"type"     : "choice",
-			"choices"  : ("True", "n")
+			"choices"  : true_y_or_n
 		},
 
 		"--rebuilt-binaries": {
 			"help"     : "replace installed packages with binary " + \
 			             "packages that have been rebuilt",
 			"type"     : "choice",
-			"choices"  : ("True", "n")
+			"choices"  : true_y_or_n
 		},
 		
 		"--rebuilt-binaries-timestamp": {
@@ -692,34 +695,34 @@ def parse_opts(tmpcmdline, silent=False):
 			"help"    : "add specified packages to the world set " + \
 			            "(inverse of --oneshot)",
 			"type"    : "choice",
-			"choices" : ("True", "n")
+			"choices" : true_y_or_n
 		},
 
 		"--selective": {
 			"help"    : "similar to the --noreplace but does not take " + \
 			            "precedence over options such as --newuse",
 			"type"    : "choice",
-			"choices" : ("True", "n")
+			"choices" : true_y_or_n
 		},
 
 		"--use-ebuild-visibility": {
 			"help"     : "use unbuilt ebuild metadata for visibility checks on built packages",
 			"type"     : "choice",
-			"choices"  : ("True", "n")
+			"choices"  : true_y_or_n
 		},
 
 		"--usepkg": {
 			"shortopt" : "-k",
 			"help"     : "use binary packages",
 			"type"     : "choice",
-			"choices"  : ("True", "n")
+			"choices"  : true_y_or_n
 		},
 
 		"--usepkgonly": {
 			"shortopt" : "-K",
 			"help"     : "use only binary packages",
 			"type"     : "choice",
-			"choices"  : ("True", "n")
+			"choices"  : true_y_or_n
 		},
 
 	}
@@ -728,7 +731,7 @@ def parse_opts(tmpcmdline, silent=False):
 		argument_options["--depclean-lib-check"] = {
 			"help"    : "check for consumers of libraries before removing them",
 			"type"    : "choice",
-			"choices" : ("True", "n")
+			"choices" : true_y_or_n
 		}
 
 	from optparse import OptionParser
@@ -761,10 +764,10 @@ def parse_opts(tmpcmdline, silent=False):
 
 	myoptions, myargs = parser.parse_args(args=tmpcmdline)
 
-	if myoptions.autounmask in ("True",):
+	if myoptions.autounmask in true_y:
 		myoptions.autounmask = True
 
-	if myoptions.buildpkg in ("True",):
+	if myoptions.buildpkg in true_y:
 		myoptions.buildpkg = True
 	else:
 		myoptions.buildpkg = None
@@ -773,21 +776,21 @@ def parse_opts(tmpcmdline, silent=False):
 		myoptions.reinstall = "changed-use"
 		myoptions.changed_use = False
 
-	if myoptions.deselect == "True":
+	if myoptions.deselect in true_y:
 		myoptions.deselect = True
 
-	if myoptions.binpkg_respect_use in ("y", "True",):
+	if myoptions.binpkg_respect_use in true_y:
 		myoptions.binpkg_respect_use = True
 	else:
 		myoptions.binpkg_respect_use = None
 
-	if myoptions.complete_graph in ("y", "True",):
+	if myoptions.complete_graph in true_y:
 		myoptions.complete_graph = True
 	else:
 		myoptions.complete_graph = None
 
 	if _ENABLE_DYN_LINK_MAP:
-		if myoptions.depclean_lib_check in ("True",):
+		if myoptions.depclean_lib_check in true_y:
 			myoptions.depclean_lib_check = True
 
 	if myoptions.exclude:
@@ -815,40 +818,40 @@ def parse_opts(tmpcmdline, silent=False):
 			parser.error("Invalid Atom(s) in --exclude parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n" % \
 				(",".join(bad_atoms),))
 
-	if myoptions.fail_clean == "True":
+	if myoptions.fail_clean in true_y:
 		myoptions.fail_clean = True
 
-	if myoptions.getbinpkg in ("True",):
+	if myoptions.getbinpkg in true_y:
 		myoptions.getbinpkg = True
 	else:
 		myoptions.getbinpkg = None
 
-	if myoptions.getbinpkgonly in ("True",):
+	if myoptions.getbinpkgonly in true_y:
 		myoptions.getbinpkgonly = True
 	else:
 		myoptions.getbinpkgonly = None
 
-	if myoptions.keep_going in ("True",):
+	if myoptions.keep_going in true_y:
 		myoptions.keep_going = True
 	else:
 		myoptions.keep_going = None
 
-	if myoptions.package_moves in ("True",):
+	if myoptions.package_moves in true_y:
 		myoptions.package_moves = True
 
-	if myoptions.rebuilt_binaries in ("True",):
+	if myoptions.rebuilt_binaries in true_y:
 		myoptions.rebuilt_binaries = True
 
-	if myoptions.root_deps == "True":
+	if myoptions.root_deps in true_y:
 		myoptions.root_deps = True
 
-	if myoptions.select == "True":
+	if myoptions.select in true_y:
 		myoptions.select = True
 		myoptions.oneshot = False
 	elif myoptions.select == "n":
 		myoptions.oneshot = True
 
-	if myoptions.selective == "True":
+	if myoptions.selective in true_y:
 		myoptions.selective = True
 
 	if myoptions.backtrack is not None:
@@ -931,17 +934,17 @@ def parse_opts(tmpcmdline, silent=False):
 
 		myoptions.rebuilt_binaries_timestamp = rebuilt_binaries_timestamp
 
-	if myoptions.use_ebuild_visibility in ("True",):
+	if myoptions.use_ebuild_visibility in true_y:
 		myoptions.use_ebuild_visibility = True
 	else:
 		myoptions.use_ebuild_visibility = None
 
-	if myoptions.usepkg in ("True",):
+	if myoptions.usepkg in true_y:
 		myoptions.usepkg = True
 	else:
 		myoptions.usepkg = None
 
-	if myoptions.usepkgonly in ("True",):
+	if myoptions.usepkgonly in true_y:
 		myoptions.usepkgonly = True
 	else:
 		myoptions.usepkgonly = None
@@ -1511,8 +1514,7 @@ def emerge_main():
 				'prune', 'unmerge') or not \
 				(fetchonly or \
 				(buildpkgonly and secpass >= 1) or \
-				myaction in ("metadata", "regen") or \
-				(myaction == "sync" and os.access(settings["PORTDIR"], os.W_OK)))
+				myaction in ("metadata", "regen", "sync"))
 			if portage.secpass < 1 or \
 				need_superuser:
 				if need_superuser:

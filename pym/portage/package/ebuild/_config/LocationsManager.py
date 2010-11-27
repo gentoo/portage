@@ -38,7 +38,7 @@ class LocationsManager(object):
 		self._check_var_directory("PORTAGE_CONFIGROOT", self.config_root)
 		self.abs_user_config = os.path.join(self.config_root, USER_CONFIG_PATH)
 
-		if not config_profile_path:
+		if config_profile_path is None:
 			config_profile_path = \
 				os.path.join(self.config_root, PROFILE_PATH)
 			if os.path.isdir(config_profile_path):
@@ -51,12 +51,16 @@ class LocationsManager(object):
 				else:
 					self.profile_path = None
 		else:
+			# NOTE: repoman may pass in an empty string
+			# here, in order to create an empty profile
+			# for checking dependencies of packages with
+			# empty KEYWORDS.
 			self.profile_path = config_profile_path
 
 
 		# The symlink might not exist or might not be a symlink.
 		self.profiles = []
-		if self.profile_path is not None:
+		if self.profile_path:
 			try:
 				self._addProfile(os.path.realpath(self.profile_path))
 			except ParseError as e:

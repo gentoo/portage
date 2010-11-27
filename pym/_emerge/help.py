@@ -112,7 +112,8 @@ def help(myopts, havecolor=1):
 		for line in wrap(paragraph, desc_width):
 			print(desc_indent + line)
 		print()
-		print("       " + green("--deselect") + "[=%s]" % turquoise("n"))
+		print("       " + green("--deselect") + " [ %s | %s ]" % \
+			(turquoise("y"), turquoise("n")))
 
 		paragraph = \
 			"Remove atoms and/or sets from the world file. This action is implied " + \
@@ -299,7 +300,8 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print() 
-		print("       " + green("--autounmask") + "[=%s]" % turquoise("n"))
+		print("       " + green("--autounmask") + " [ %s | %s ]" % \
+			(turquoise("y"), turquoise("n")))
 		desc = "Automatically unmask packages. If any configuration " + \
 			"changes are required, then they will be displayed " + \
 			"after the merge list and emerge will immediately " + \
@@ -318,14 +320,16 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
-		print("        " + green("--binpkg-respect-use") + \
-			" < " + turquoise("y") + " | " + turquoise("n") + " >")
+		print("        " + green("--binpkg-respect-use") + " [ %s | %s ]" % \
+			(turquoise("y"), turquoise("n")))
 		desc = "Tells emerge to ignore binary packages if their use flags" + \
 			" don't match the current configuration. (default: 'n')"
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
-		print("       "+green("--buildpkg") + "[=%s]" % turquoise("n") + " ("+green("-b")+" short option)")
+		print("       " + green("--buildpkg") + \
+			" [ %s | %s ] (%s short option)" % \
+			(turquoise("y"), turquoise("n"), green("-b")))
 		desc = "Tells emerge to build binary packages for all ebuilds processed in" + \
 			" addition to actually merging the packages. Useful for maintainers" + \
 			" or if you administrate multiple Gentoo Linux systems (build once," + \
@@ -362,7 +366,8 @@ def help(myopts, havecolor=1):
 		print("              Display the pretend output in a tabular form. Versions are")
 		print("              aligned vertically.")
 		print()
-		print("       "+green("--complete-graph") + "[=%s]" % turquoise("n"))
+		print("       "+green("--complete-graph") + " [ %s | %s ]" % \
+			(turquoise("y"), turquoise("n")))
 		desc = "This causes emerge to consider the deep dependencies of all" + \
 			" packages from the world set. With this option enabled," + \
 			" emerge will bail out if it determines that the given operation will" + \
@@ -399,7 +404,8 @@ def help(myopts, havecolor=1):
 		print()
 
 		if _ENABLE_DYN_LINK_MAP:
-			print("       " + green("--depclean-lib-check") + "[=%s]" % turquoise("n"))
+			print("       " + green("--depclean-lib-check") + " [ %s | %s ]" % \
+				(turquoise("y"), turquoise("n")))
 			desc = "Account for library link-level dependencies during " + \
 				"--depclean and --prune actions. This " + \
 				"option is enabled by default. In some cases this can " + \
@@ -423,7 +429,8 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
-		print("       "+green("--fail-clean[=n]"))
+		print("       " + green("--fail-clean") + " [ %s | %s ]" % \
+			(turquoise("y"), turquoise("n")))
 		desc = "Clean up temporary files after a build failure. This is " + \
 			"particularly useful if you have PORTAGE_TMPDIR on " + \
 			"tmpfs. If this option is enabled, you probably also want " + \
@@ -442,13 +449,17 @@ def help(myopts, havecolor=1):
 		print("              Same as --fetchonly except that all package files, including those")
 		print("              not required to build the package, will be processed.")
 		print()
-		print("       "+green("--getbinpkg")+ "[=%s]" % turquoise("n") + " ("+green("-g")+" short option)")
+		print("       " + green("--getbinpkg") + \
+			" [ %s | %s ] (%s short option)" % \
+			(turquoise("y"), turquoise("n"), green("-g")))
 		print("              Using the server and location defined in PORTAGE_BINHOST, portage")
 		print("              will download the information from each binary file there and it")
 		print("              will use that information to help build the dependency list. This")
 		print("              option implies '-k'. (Use -gK for binary-only merging.)")
 		print()
-		print("       "+green("--getbinpkgonly")+ "[=%s]" % turquoise("n") + " ("+green("-G")+" short option)")
+		print("       " + green("--getbinpkgonly") + \
+			" [ %s | %s ] (%s short option)" % \
+			(turquoise("y"), turquoise("n"), green("-G")))
 		print("              This option is identical to -g, as above, except it will not use")
 		print("              ANY information from the local machine. All binaries will be")
 		print("              downloaded from the remote server without consulting packages")
@@ -467,7 +478,8 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
-		print("       " + green("--keep-going") + "[=%s]" % turquoise("n"))
+		print("       " + green("--keep-going") + " [ %s | %s ]" % \
+			(turquoise("y"), turquoise("n")))
 		desc = "Continue as much as possible after " + \
 			"an error. When an error occurs, " + \
 			"dependencies are recalculated for " + \
@@ -537,7 +549,8 @@ def help(myopts, havecolor=1):
 		print("              Only merge (or pretend to merge) the dependencies of the")
 		print("              specified packages, not the packages themselves.")
 		print()
-		print("       " + green("--package-moves") + "[=%s]" % turquoise("n"))
+		print("       " + green("--package-moves") + " [ %s | %s ]" % \
+			(turquoise("y"), turquoise("n")))
 		desc = "Perform package moves when necessary. This option " + \
 			"is enabled by default. WARNING: This option " + \
 			"should remain enabled under normal circumstances. " + \
@@ -575,7 +588,8 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
-		print("       "+green("--rebuilt-binaries") + "[=%s]" % turquoise("n"))
+		print("       " + green("--rebuilt-binaries") + " [ %s | %s ]" % \
+			(turquoise("y"), turquoise("n")))
 		desc = "Replace installed packages with binary packages that have " + \
 			"been rebuilt. Rebuilds are detected by comparison of " + \
 			"BUILD_TIME package metadata. This option is enabled " + \
@@ -619,7 +633,8 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
-		print("       " + green("--select") + "[=%s]" % turquoise("n"))
+		print("       " + green("--select") + " [ %s | %s ]" % \
+			(turquoise("y"), turquoise("n")))
 		desc = "Add specified packages to the world set (inverse of " + \
 			"--oneshot). This is useful if you want to " + \
 			"use EMERGE_DEFAULT_OPTS to make " + \
@@ -627,7 +642,8 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
-		print("       " + green("--selective") + "[=%s]" % turquoise("n"))
+		print("       " + green("--selective") + " [ %s | %s ]" % \
+			(turquoise("y"), turquoise("n")))
 		desc = "This is similar to the --noreplace option, except that it " + \
 			"does not take precedence over options such as --newuse. " + \
 			"Some options, such as --update, imply --selective. " + \
@@ -673,13 +689,16 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
-		print("       " + green("--use-ebuild-visibility") + "[=%s]" % turquoise("n"))
+		print("       " + green("--use-ebuild-visibility") + " [ %s | %s ]" % \
+			(turquoise("y"), turquoise("n")))
 		desc = "Use unbuilt ebuild metadata for visibility " + \
 			"checks on built packages."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
-		print("       "+green("--usepkg")+ "[=%s]" % turquoise("n") + " ("+green("-k")+" short option)")
+		print("       " + green("--usepkg") + \
+			" [ %s | %s ] (%s short option)" % \
+			(turquoise("y"), turquoise("n"), green("-k")))
 		print("              Tell emerge to use binary packages (from $PKGDIR) if they are")
 		print("              available, thus possibly avoiding some time-consuming compiles.")
 		print("              This option is useful for CD installs; you can export")
@@ -687,7 +706,9 @@ def help(myopts, havecolor=1):
 		print("              emerge \"pull\" binary packages from the CD in order to satisfy") 
 		print("              dependencies.")
 		print()
-		print("       "+green("--usepkgonly")+ "[=%s]" % turquoise("n") + " ("+green("-K")+" short option)")
+		print("       " + green("--usepkgonly") + \
+			" [ %s | %s ] (%s short option)" % \
+			(turquoise("y"), turquoise("n"), green("-K")))
 		print("              Like --usepkg above, except this only allows the use of binary")
 		print("              packages, and it will abort the emerge if the package is not")
 		print("              available at the time of dependency calculation.")

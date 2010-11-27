@@ -79,9 +79,7 @@ class circular_dependency_handler(object):
 		return "\n".join(msg)
 
 	def _get_use_mask_and_force(self, pkg):
-		pkgsettings = self.depgraph._frozen_config.pkgsettings[pkg.root]
-		pkgsettings.setcpv(pkg)
-		return frozenset(pkgsettings.usemask), frozenset(pkgsettings.useforce)
+		return pkg.use.mask, pkg.use.force
 
 	def _get_autounmask_changes(self, pkg):
 		needed_use_config_change = self.depgraph._dynamic_config._needed_use_config_changes.get(pkg)

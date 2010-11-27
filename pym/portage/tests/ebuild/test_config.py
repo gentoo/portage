@@ -10,6 +10,28 @@ from portage.tests.resolver.ResolverPlayground import ResolverPlayground, Resolv
 
 class ConfigTestCase(TestCase):
 
+	def testClone(self):
+		"""
+		Test the clone via constructor.
+		"""
+
+		ebuilds = {
+			"dev-libs/A-1": { },
+		}
+
+		playground = ResolverPlayground(ebuilds=ebuilds)
+		try:
+			settings = config(clone=playground.settings)
+			result = playground.run(["=dev-libs/A-1"])
+			pkg, existing_node = result.depgraph._select_package(
+				playground.root, "=dev-libs/A-1")
+			settings.setcpv(pkg)
+
+			# clone after setcpv tests deepcopy of LazyItemsDict
+			settings2 = config(clone=settings)
+		finally:
+			playground.cleanup()
+
 	def testFeaturesMutation(self):
 		"""
 		Test whether mutation of config.features updates the FEATURES

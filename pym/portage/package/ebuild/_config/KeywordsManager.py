@@ -21,11 +21,7 @@ class KeywordsManager(object):
 			for x in profiles]
 		for pkeyworddict in rawpkeywords:
 			if not pkeyworddict:
-				# Omit non-existent files from the stack. This isn't
-				# feasible for package.use (among other package.*
-				# files such as package.use.mask) since it is stacked
-				# in layers with make.defaults USE, and the layer
-				# indices need to align.
+				# Omit non-existent files from the stack.
 				continue
 			cpdict = {}
 			for k, v in pkeyworddict.items():

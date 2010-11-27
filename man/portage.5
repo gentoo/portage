@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Aug 2010" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "Nov 2010" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -378,6 +378,14 @@ a '\-'.
 \- comments begin with # (no inline comments)
 \- one USE flag per line
 .fi
+
+.I Example:
+.nf
+# mask doc
+doc
+# unmask mysql
+\-mysql
+.fi
 .TP
 .BR virtuals
 This controls what packages will provide a virtual by default.  For example, 
@@ -661,7 +669,10 @@ masters = gentoo kde
 .TP
 .BR /etc/portage/env/
 .RS
-In this directory additional package-specific bashrc files can be created.
+In this directory additional package\-specific bashrc files can be created.
+Note that if package\-specific environment variable settings are all that's
+needed, then \fB/etc/portage/package.env\fR should be used instead of the
+bashrc approach that is described here.
 Portage will source all of them after \fB/etc/portage/bashrc\fR in the following
 order:
 .nr step 1 1
@@ -952,9 +963,9 @@ Every time you emerge a package, the package that you requested is
 recorded here.  Then when you run `emerge world \-up`, the list of 
 packages is read from this file.  Note that this does not mean that the 
 packages that were installed as dependencies are listed here.  For 
-example, if you run `emerge mod_php` and you do not have apache 
-already, then "dev\-php/mod_php" is recorded in the world file but 
-"net\-www/apache" is not.  For more information, review \fBemerge\fR(1).
+example, if you run `emerge mod_wsgi` and you do not have apache 
+already, then "www\-apache/mod_wsgi" is recorded in the world file but 
+"www\-servers/apache" is not.  For more information, review \fBemerge\fR(1).
 
 .I Format:
 .nf
@@ -984,6 +995,7 @@ Please report bugs via http://bugs.gentoo.org/
 Marius Mauch <genone@gentoo.org>
 Mike Frysinger <vapier@gentoo.org>
 Drake Wyrm <wyrm@haell.com>
+Arfrever Frehtes Taifersar Arahesis <arfrever@gentoo.org>
 .fi
 .SH "SEE ALSO"
 .BR emerge (1),

@@ -1,6 +1,8 @@
 # Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import traceback
+
 from _emerge.SpawnProcess import SpawnProcess
 import sys
 import portage
@@ -95,10 +97,17 @@ class EbuildFetcher(SpawnProcess):
 			not in ('yes', 'true')
 
 		rval = 1
-		if fetch(self._uri_map, self._settings, fetchonly=self.fetchonly):
-			rval = os.EX_OK
-
-		os._exit(rval)
+		try:
+			if fetch(self._uri_map, self._settings, fetchonly=self.fetchonly):
+				rval = os.EX_OK
+		except SystemExit:
+			raise
+		except:
+			traceback.print_exc()
+		finally:
+			# Call os._exit() from finally block, in order to suppress any
+			# finally blocks from earlier in the call stack. See bug #345289.
+			os._exit(rval)
 
 	def _get_uri_map(self, portdb, ebuild_path):
 		"""

@@ -314,10 +314,30 @@ class Package(Task):
 
 	class _use_class(object):
 
-		__slots__ = ("__weakref__", "enabled")
+		__slots__ = ("enabled", "_force", "_pkg", "_mask")
 
-		def __init__(self, use):
-			self.enabled = frozenset(use)
+		def __init__(self, pkg, use_str):
+			self._pkg = pkg
+			self._force = None
+			self._mask = None
+			self.enabled = frozenset(use_str.split())
+
+		def _init_force_mask(self):
+			pkgsettings = self._pkg._get_pkgsettings()
+			self._force = pkgsettings.useforce
+			self._mask = pkgsettings.usemask
+
+		@property
+		def force(self):
+			if self._force is None:
+				self._init_force_mask()
+			return self._force
+
+		@property
+		def mask(self):
+			if self._mask is None:
+				self._init_force_mask()
+			return self._mask
 
 	@property
 	def repo(self):
@@ -326,8 +346,14 @@ class Package(Task):
 	@property
 	def use(self):
 		if self._use is None:
-			self._use = self._use_class(self.metadata['USE'].split())
+			self.metadata._init_use()
 		return self._use
+
+	def _get_pkgsettings(self):
+		pkgsettings = self.root_config.trees[
+			'porttree'].dbapi.doebuild_settings
+		pkgsettings.setcpv(self)
+		return pkgsettings
 
 	class _iuse(object):
 
@@ -461,6 +487,31 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 
 		self.update(metadata)
 
+	def _init_use(self):
+		if self._pkg.built:
+			use_str = self['USE']
+			self._pkg._use = self._pkg._use_class(
+				self._pkg, use_str)
+		else:
+			try:
+				use_str = _PackageMetadataWrapperBase.__getitem__(self, 'USE')
+			except KeyError:
+				use_str = None
+			calculated_use = False
+			if not use_str:
+				use_str = self._pkg._get_pkgsettings()["PORTAGE_USE"]
+				calculated_use = True
+			_PackageMetadataWrapperBase.__setitem__(self, 'USE', use_str)
+			self._pkg._use = self._pkg._use_class(
+				self._pkg, use_str)
+			# Initialize these now, since USE access has just triggered
+			# setcpv, and we want to cache the result of the force/mask
+			# calculations that were done.
+			if calculated_use:
+				self._pkg._use._init_force_mask()
+
+		return use_str
+
 	def __getitem__(self, k):
 		v = _PackageMetadataWrapperBase.__getitem__(self, k)
 		if k in self._use_conditional_keys:
@@ -478,11 +529,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 		elif k == 'USE' and not self._pkg.built:
 			if not v:
 				# This is lazy because it's expensive.
-				pkgsettings = self._pkg.root_config.trees[
-					'porttree'].dbapi.doebuild_settings
-				pkgsettings.setcpv(self._pkg)
-				v = pkgsettings["PORTAGE_USE"]
-				_PackageMetadataWrapperBase.__setitem__(self, 'USE', v)
+				v = self._init_use()
 
 		return v
 

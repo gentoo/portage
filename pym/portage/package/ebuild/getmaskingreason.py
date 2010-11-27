@@ -47,7 +47,10 @@ def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_lo
 	locations.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
 		USER_CONFIG_PATH))
 	locations.reverse()
-	pmasklists = [(x, grablines(os.path.join(x, "package.mask"), recursive=1)) for x in locations]
+	pmasklists = []
+	for profile in locations:
+		pmask_filename = os.path.join(profile, "package.mask")
+		pmasklists.append((pmask_filename, grablines(pmask_filename, recursive=1)))
 
 	pmaskdict = settings._mask_manager._pmaskdict
 	if mycp in pmaskdict:
@@ -57,7 +60,7 @@ def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_lo
 				for pmask in pmasklists:
 					comment = ""
 					comment_valid = -1
-					pmask_filename = os.path.join(pmask[0], "package.mask")
+					pmask_filename = pmask[0]
 					for i in range(len(pmask[1])):
 						l = pmask[1][i].strip()
 						try:
@@ -79,7 +82,7 @@ def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_lo
 							else:
 								return comment
 						elif comment_valid != -1:
-							# Apparently this comment applies to muliple masks, so
+							# Apparently this comment applies to multiple masks, so
 							# it remains valid until a blank line is encountered.
 							comment_valid += 1
 	if return_location:

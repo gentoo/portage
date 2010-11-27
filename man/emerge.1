@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Oct 2010" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Nov 2010" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -133,7 +133,7 @@ unmerge matched packages that have no reverse dependencies. Use
 \fB\-\-depclean\fR together with \fB\-\-verbose\fR to show reverse
 dependencies.
 .TP
-.BR "\-\-deselect[=n]"
+.BR "\-\-deselect [ y | n ]"
 Remove atoms and/or sets from the world file. This action is implied
 by uninstall actions, including \fB-\-depclean\fR,
 \fB-\-prune\fR and \fB-\-unmerge\fR. Use \fB-\-deselect=n\fR
@@ -284,7 +284,7 @@ acceptance of the first choice. This option is
 intended to be set in the \fBmake.conf\fR(5)
 \fBEMERGE_DEFAULT_OPTS\fR variable.
 .TP
-.BR "\-\-autounmask[=n]"
+.BR "\-\-autounmask [ y | n ]"
 Automatically unmask packages. If any configuration
 changes are required, then they will be displayed
 after the merge list and emerge will immediately
@@ -299,11 +299,11 @@ Specifies an integer number of times to backtrack if
 dependency calculation fails due to a conflict or an
 unsatisfied dependency (default: \'10\').
 .TP
-.BR "\-\-binpkg\-respect\-use < y | n >"
+.BR "\-\-binpkg\-respect\-use [ y | n ]"
 Tells emerge to ignore binary packages if their use flags
 don't match the current configuration. (default: \'n\')
 .TP
-.BR "\-\-buildpkg[=n] " (\fB\-b\fR)
+.BR "\-\-buildpkg [ y | n ] (\-b short option)"
 Tells emerge to build binary packages for all ebuilds processed in
 addition to actually merging the packages.  Useful for maintainers
 or if you administrate multiple Gentoo Linux systems (build once,
@@ -334,7 +334,7 @@ is not a tty (by default, color is disabled unless stdout is a tty).
 Used alongside \fB\-\-pretend\fR to cause the package name, new version, 
 and old version to be displayed in an aligned format for easy cut\-n\-paste.
 .TP
-.BR "\-\-complete\-graph[=n]"
+.BR "\-\-complete\-graph [ y | n ]"
 This causes \fBemerge\fR to consider the deep dependencies of all
 packages from the world set. With this option enabled,
 \fBemerge\fR will bail out if it determines that the given operation will
@@ -363,7 +363,7 @@ listed in the dependencies of a package.  Also see \fB\-\-with\-bdeps\fR for
 behavior with respect to build time dependencies that are not strictly
 required.
 .TP
-.BR "\-\-depclean\-lib\-check[=n]"
+.BR "\-\-depclean\-lib\-check [ y | n ]"
 Account for library link-level dependencies during
 \fB-\-depclean\fR and \fB-\-prune\fR actions. This
 option is enabled by default. In some cases this can
@@ -380,7 +380,7 @@ A space separated list of package names or slot atoms.
 Emerge won't  install any ebuild or binary package that
 matches any of the given package atoms.
 .TP
-.BR "\-\-fail\-clean[=n]"
+.BR "\-\-fail\-clean [ y | n ]"
 Clean up temporary files after a build failure. This is
 particularly useful if you have \fBPORTAGE_TMPDIR\fR on
 tmpfs. If this option is enabled, you probably also want
@@ -395,14 +395,14 @@ packages (fetch things from SRC_URI based upon USE setting).
 Instead of doing any package building, just perform fetches for all
 packages (fetch everything in SRC_URI regardless of USE setting).
 .TP
-.BR "\-\-getbinpkg[=n] " (\fB\-g\fR)
+.BR "\-\-getbinpkg [ y | n ] (\-g short option)"
 Using the server and location defined in \fIPORTAGE_BINHOST\fR (see 
 \fBmake.conf\fR(5)), portage will download the information from each binary 
 package found and it will use that information to help build the dependency 
 list.  This option implies \fB\-k\fR.  (Use \fB\-gK\fR for binary\-only 
 merging.)
 .TP
-.BR "\-\-getbinpkgonly[=n] " (\fB\-G\fR)
+.BR "\-\-getbinpkgonly [ y | n ] (\-G short option)"
 This option is identical to \fB\-g\fR, as above, except binaries from the
 remote server are preferred over local packages if they are not identical.
 .TP
@@ -417,7 +417,7 @@ Note that interactive packages currently force a setting
 of \fI\-\-jobs=1\fR. This issue can be temporarily avoided
 by specifying \fI\-\-accept\-properties=\-interactive\fR.
 .TP
-.BR "\-\-keep\-going[=n]"
+.BR "\-\-keep\-going [ y | n ]"
 Continue as much as possible after an error. When an error occurs,
 dependencies are recalculated for remaining packages and any with
 unsatisfied dependencies are automatically dropped. Also see
@@ -478,7 +478,7 @@ for later updating.
 Only merge (or pretend to merge) the dependencies of the packages
 specified, not the packages themselves.
 .TP
-.BR "\-\-package\-moves[=n]"
+.BR "\-\-package\-moves [ y | n ]"
 Perform package moves when necessary. This option
 is enabled by default. \fBWARNING:\fR This option
 should remain enabled under normal circumstances.
@@ -519,7 +519,7 @@ Disable the warning message that's shown prior to
 to be set in the \fBmake.conf\fR(5)
 \fBEMERGE_DEFAULT_OPTS\fR variable.
 .TP
-.BR "\-\-rebuilt\-binaries[=n]"
+.BR "\-\-rebuilt\-binaries [ y | n ]"
 Replace installed packages with binary packages that have
 been rebuilt. Rebuilds are detected by comparison of
 BUILD_TIME package metadata. This option is enabled
@@ -554,13 +554,13 @@ be enabled under normal circumstances. For currently supported
 \fBDEPEND\fR variable. However, behavior may change for new
 \fBEAPI\fRs when related extensions are added in the future.
 .TP
-.BR "\-\-select"[=n]
+.BR "\-\-select [ y | n ]"
 Add specified packages to the world set (inverse of
 \fB\-\-oneshot\fR). This is useful if you want to
 use \fBEMERGE_DEFAULT_OPTS\fR to make
 \fB\-\-oneshot\fR behavior default.
 .TP
-.BR "\-\-selective"[=n]
+.BR "\-\-selective [ y | n ]"
 This is similar to the \fB\-\-noreplace\fR option, except that it
 does not take precedence over options such as \fB\-\-newuse\fR.
 Some options, such as \fB\-\-update\fR, imply \fB\-\-selective\fR.
@@ -593,17 +593,17 @@ for testing and development. Package atoms specified on
 the command line are greedy, meaning that unspecific
 atoms may match multiple versions of slotted packages.
 .TP
-.BR "\-\-use\-ebuild\-visibility[=n]"
+.BR "\-\-use\-ebuild\-visibility [ y | n ]"
 Use unbuilt ebuild metadata for visibility
 checks on built packages.
 .TP
-.BR "\-\-usepkg[=n] " (\fB\-k\fR) 
+.BR "\-\-usepkg [ y | n ] (\-k short option)"
 Tells emerge to use binary packages (from $PKGDIR) if they are available, thus 
 possibly avoiding some time\-consuming compiles.  This option is useful for CD 
 installs; you can export PKGDIR=/mnt/cdrom/packages and then use this option to 
 have emerge "pull" binary packages from the CD in order to satisfy dependencies.
 .TP
-.BR "\-\-usepkgonly[=n] " (\fB\-K\fR)
+.BR "\-\-usepkgonly [ y | n ] (\-K short option)"
 Tells emerge to only use binary packages (from $PKGDIR).  All the binary 
 packages must be available at the time of dependency calculation or emerge 
 will simply abort.  Portage does not use $PORTDIR when calculating dependency 

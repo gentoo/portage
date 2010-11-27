@@ -81,7 +81,18 @@ def _spawn_fetch(settings, args, **kwargs):
 		if args[0] != BASH_BINARY:
 			args = [BASH_BINARY, "-c", "exec \"$@\"", args[0]] + args
 
-	rval = spawn_func(args, env=settings.environ(), **kwargs)
+	# Ensure that EBUILD_PHASE is set to fetch, so that config.environ()
+	# does not filter the calling environment (which may contain needed
+	# proxy variables, as in bug #315421).
+	phase_backup = settings.get('EBUILD_PHASE')
+	settings['EBUILD_PHASE'] = 'fetch'
+	try:
+		rval = spawn_func(args, env=settings.environ(), **kwargs)
+	finally:
+		if phase_backup is None:
+			settings.pop('EBUILD_PHASE', None)
+		else:
+			settings['EBUILD_PHASE'] = phase_backup
 
 	return rval
 

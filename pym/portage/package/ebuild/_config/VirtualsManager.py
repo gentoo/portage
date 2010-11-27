@@ -20,7 +20,7 @@ class VirtualsManager(object):
 		if kwargs.get("_copy"):
 			return
 
-		assert len(args) == 1, "VirtualsManager.__init__ takes one positional arguments"
+		assert len(args) == 1, "VirtualsManager.__init__ takes one positional argument"
 		assert not kwargs, "unknown keyword argument(s) '%s' passed to VirtualsManager.__init__" % \
 			", ".join(kwargs)
 

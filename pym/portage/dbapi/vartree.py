@@ -10,6 +10,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum:_perform_md5_merge@perform_md5',
 	'portage.data:portage_gid,portage_uid,secpass',
 	'portage.dbapi.dep_expand:dep_expand',
+	'portage.dbapi._MergeProcess:MergeProcess',
 	'portage.dep:dep_getkey,isjustname,match_from_list,' + \
 	 	'use_reduce,_slot_re',
 	'portage.elog:elog_process,_preload_elog_modules',
@@ -421,7 +422,7 @@ class vardbapi(dbapi):
 			self.matchcache[mycat][mydep] = mymatch
 		return self.matchcache[mycat][mydep][:]
 
-	def findname(self, mycpv):
+	def findname(self, mycpv, myrepo=None):
 		return self.getpath(str(mycpv), filename=catsplit(mycpv)[1]+".ebuild")
 
 	def flush_cache(self):
@@ -2758,6 +2759,20 @@ class dblink(object):
 			self._scheduler.dblinkElog(self,
 				phase, _eerror, lines)
 
+	def _elog_subprocess(self, funcname, phase, lines):
+		"""
+		Subprocesses call this in order to create elog messages in
+		$T, for collection by the main process.
+		"""
+		cmd = "source %s/isolated-functions.sh ; " % \
+			portage._shell_quote(self.settings["PORTAGE_BIN_PATH"])
+		for line in lines:
+			cmd += "%s %s ; " % (funcname, portage._shell_quote(line))
+		env = self.settings.environ()
+		env['EBUILD_PHASE'] = phase
+		subprocess.call([portage.const.BASH_BINARY, "-c", cmd],
+			env=env)
+
 	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
 		"""
@@ -3183,19 +3198,11 @@ class dblink(object):
 			'w', encoding=_encodings['repo.content'], errors='backslashreplace'
 			).write(str(counter))
 
-		# open CONTENTS file (possibly overwriting old one) for recording
-		outfile = codecs.open(_unicode_encode(
-			os.path.join(self.dbtmpdir, 'CONTENTS'),
-			encoding=_encodings['fs'], errors='strict'),
-			mode='w', encoding=_encodings['repo.content'],
-			errors='backslashreplace')
-
 		self.updateprotect()
 
 		#if we have a file containing previously-merged config file md5sums, grab it.
 		conf_mem_file = os.path.join(self._eroot, CONFIG_MEMORY_FILE)
 		cfgfiledict = grabdict(conf_mem_file)
-		cfgfiledict_orig = cfgfiledict.copy()
 		if "NOCONFMEM" in self.settings:
 			cfgfiledict["IGNORE"]=1
 		else:
@@ -3210,61 +3217,18 @@ class dblink(object):
 				cfgfiledict["IGNORE"] = 1
 				break
 
-		# Don't bump mtimes on merge since some application require
-		# preservation of timestamps.  This means that the unmerge phase must
-		# check to see if file belongs to an installed instance in the same
-		# slot.
-		mymtime = None
+		merge_task = MergeProcess(
+			background=(self.settings.get('PORTAGE_BACKGROUND') == '1'),
+			cfgfiledict=cfgfiledict, conf_mem_file=conf_mem_file, dblink=self,
+			destroot=destroot,
+			logfile=self.settings.get('PORTAGE_LOG_FILE'),
+			scheduler=(scheduler or PollScheduler().sched_iface),
+			srcroot=srcroot)
 
-		# set umask to 0 for merging; back up umask, save old one in prevmask (since this is a global change)
-		prevmask = os.umask(0)
-		secondhand = []
-
-		# we do a first merge; this will recurse through all files in our srcroot but also build up a
-		# "second hand" of symlinks to merge later
-		if self.mergeme(srcroot, destroot, outfile, secondhand, "", cfgfiledict, mymtime):
-			return 1
-
-		# now, it's time for dealing our second hand; we'll loop until we can't merge anymore.	The rest are
-		# broken symlinks.  We'll merge them too.
-		lastlen = 0
-		while len(secondhand) and len(secondhand)!=lastlen:
-			# clear the thirdhand.	Anything from our second hand that
-			# couldn't get merged will be added to thirdhand.
-
-			thirdhand = []
-			if self.mergeme(srcroot, destroot, outfile, thirdhand,
-				secondhand, cfgfiledict, mymtime):
-				return 1
-
-			#swap hands
-			lastlen = len(secondhand)
-
-			# our thirdhand now becomes our secondhand.  It's ok to throw
-			# away secondhand since thirdhand contains all the stuff that
-			# couldn't be merged.
-			secondhand = thirdhand
-
-		if len(secondhand):
-			# force merge of remaining symlinks (broken or circular; oh well)
-			if self.mergeme(srcroot, destroot, outfile, None,
-				secondhand, cfgfiledict, mymtime):
-				return 1
-		self._md5_merge_map.clear()
-
-		#restore umask
-		os.umask(prevmask)
-
-		#if we opened it, close it
-		outfile.flush()
-		outfile.close()
-
-		# write out our collection of md5sums
-		cfgfiledict.pop("IGNORE", None)
-		if cfgfiledict != cfgfiledict_orig:
-			ensure_dirs(os.path.dirname(conf_mem_file),
-				gid=portage_gid, mode=0o2750, mask=0o2)
-			writedict(cfgfiledict, conf_mem_file)
+		merge_task.start()
+		rval = merge_task.wait()
+		if rval != os.EX_OK:
+			return rval
 
 		# These caches are populated during collision-protect and the data
 		# they contain is now invalid. It's very important to invalidate
@@ -3449,6 +3413,74 @@ class dblink(object):
 
 		return backup_p
 
+	def _merge_process(self, srcroot, destroot, cfgfiledict, conf_mem_file):
+
+		cfgfiledict_orig = cfgfiledict.copy()
+
+		# open CONTENTS file (possibly overwriting old one) for recording
+		outfile = codecs.open(_unicode_encode(
+			os.path.join(self.dbtmpdir, 'CONTENTS'),
+			encoding=_encodings['fs'], errors='strict'),
+			mode='w', encoding=_encodings['repo.content'],
+			errors='backslashreplace')
+
+		# Don't bump mtimes on merge since some application require
+		# preservation of timestamps.  This means that the unmerge phase must
+		# check to see if file belongs to an installed instance in the same
+		# slot.
+		mymtime = None
+
+		# set umask to 0 for merging; back up umask, save old one in prevmask (since this is a global change)
+		prevmask = os.umask(0)
+		secondhand = []
+
+		# we do a first merge; this will recurse through all files in our srcroot but also build up a
+		# "second hand" of symlinks to merge later
+		if self.mergeme(srcroot, destroot, outfile, secondhand, "", cfgfiledict, mymtime):
+			return 1
+
+		# now, it's time for dealing our second hand; we'll loop until we can't merge anymore.	The rest are
+		# broken symlinks.  We'll merge them too.
+		lastlen = 0
+		while len(secondhand) and len(secondhand)!=lastlen:
+			# clear the thirdhand.	Anything from our second hand that
+			# couldn't get merged will be added to thirdhand.
+
+			thirdhand = []
+			if self.mergeme(srcroot, destroot, outfile, thirdhand,
+				secondhand, cfgfiledict, mymtime):
+				return 1
+
+			#swap hands
+			lastlen = len(secondhand)
+
+			# our thirdhand now becomes our secondhand.  It's ok to throw
+			# away secondhand since thirdhand contains all the stuff that
+			# couldn't be merged.
+			secondhand = thirdhand
+
+		if len(secondhand):
+			# force merge of remaining symlinks (broken or circular; oh well)
+			if self.mergeme(srcroot, destroot, outfile, None,
+				secondhand, cfgfiledict, mymtime):
+				return 1
+
+		#restore umask
+		os.umask(prevmask)
+
+		#if we opened it, close it
+		outfile.flush()
+		outfile.close()
+
+		# write out our collection of md5sums
+		if cfgfiledict != cfgfiledict_orig:
+			cfgfiledict.pop("IGNORE", None)
+			ensure_dirs(os.path.dirname(conf_mem_file),
+				gid=portage_gid, mode=0o2750, mask=0o2)
+			writedict(cfgfiledict, conf_mem_file)
+
+		return os.EX_OK
+
 	def mergeme(self, srcroot, destroot, outfile, secondhand, stufftomerge, cfgfiledict, thismtime):
 		"""
 		
@@ -3479,7 +3511,6 @@ class dblink(object):
 
 		showMessage = self._display_merge
 		writemsg = self._display_merge
-		scheduler = self._scheduler
 
 		os = _os_merge
 		sep = os.sep
@@ -3498,10 +3529,6 @@ class dblink(object):
 			offset = ""
 
 		for i, x in enumerate(mergelist):
-
-			if scheduler is not None and \
-				0 == i % self._file_merge_yield_interval:
-				scheduler.scheduleYield()
 
 			mysrc = join(srcroot, offset, x)
 			mydest = join(destroot, offset, x)
@@ -3615,7 +3642,7 @@ class dblink(object):
 						msg.append(_("This file will be renamed to a different name:"))
 						msg.append("  '%s'" % backup_dest)
 						msg.append("")
-						self._eerror("preinst", msg)
+						self._elog_subprocess("eerror", "preinst", msg)
 						if movefile(mydest, backup_dest,
 							mysettings=self.settings,
 							encoding=_encodings['merge']) is None:
@@ -3693,7 +3720,7 @@ class dblink(object):
 						msg.append(_("This file will be merged with a different name:"))
 						msg.append("  '%s'" % newdest)
 						msg.append("")
-						self._eerror("preinst", msg)
+						self._elog_subprocess("eerror", "preinst", msg)
 						mydest = newdest
 
 					elif stat.S_ISREG(mydmode) or (stat.S_ISLNK(mydmode) and os.path.exists(mydest) and stat.S_ISREG(os.stat(mydest)[stat.ST_MODE])):

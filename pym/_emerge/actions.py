@@ -1009,10 +1009,11 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 						if len(provider_dblinks) > 1:
 							for provider_dblink in provider_dblinks:
-								pkg_key = ("installed", myroot,
-									provider_dblink.mycpv, "nomerge")
-								if pkg_key not in clean_set:
-									provider_pkgs.add(vardb.get(pkg_key))
+								provider_pkg = resolver._pkg(
+									provider_dblink.mycpv, "installed",
+									root_config, installed=True)
+								if provider_pkg not in clean_set:
+									provider_pkgs.add(provider_pkg)
 
 						if provider_pkgs:
 							continue
@@ -1021,8 +1022,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 							lib_consumers.update(owner_set)
 
 					for consumer_dblink in list(lib_consumers):
-						if ("installed", myroot, consumer_dblink.mycpv,
-							"nomerge") in clean_set:
+						if resolver._pkg(consumer_dblink.mycpv, "installed",
+							root_config, installed=True) in clean_set:
 							lib_consumers.remove(consumer_dblink)
 							continue
 
@@ -1073,8 +1074,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 			for pkg, consumers in consumer_map.items():
 				for consumer_dblink in set(chain(*consumers.values())):
-					consumer_pkg = vardb.get(("installed", myroot,
-						consumer_dblink.mycpv, "nomerge"))
+					consumer_pkg = resolver._pkg(consumer_dblink.mycpv,
+						"installed", root_config, installed=True)
 					if not resolver._add_pkg(pkg,
 						Dependency(parent=consumer_pkg,
 						priority=UnmergeDepPriority(runtime=True),
@@ -1897,6 +1898,12 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	emergelog(xterm_titles, " === sync")
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
 	myportdir = portdb.porttree_root
+	if not myportdir:
+		myportdir = settings.get('PORTDIR', '')
+		if myportdir and myportdir.strip():
+			myportdir = os.path.realpath(myportdir)
+		else:
+			myportdir = None
 	out = portage.output.EOutput()
 	global_config_path = GLOBAL_CONFIG_PATH
 	if settings['EPREFIX']:
@@ -1914,7 +1921,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		st = None
 	if st is None:
 		print(">>>",myportdir,"not found, creating it.")
-		os.makedirs(myportdir,0o755)
+		portage.util.ensure_dirs(myportdir, mode=0o755)
 		st = os.stat(myportdir)
 
 	usersync_uid = None
@@ -1992,7 +1999,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		exitcode = git_sync_timestamps(settings, myportdir)
 		if exitcode == os.EX_OK:
 			updatecache_flg = True
-	elif syncuri[:8]=="rsync://":
+	elif syncuri[:8]=="rsync://" or syncuri[:6]=="ssh://":
 		for vcs_dir in vcs_dirs:
 			writemsg_level(("!!! %s appears to be under revision " + \
 				"control (contains %s).\n!!! Aborting rsync sync.\n") % \
@@ -2100,8 +2107,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			maxretries = -1 #default number of retries
 
 		retries=0
-		user_name, hostname, port = re.split(
-			"rsync://([^:/]+@)?([^:/]*)(:[0-9]+)?", syncuri, maxsplit=3)[1:4]
+		proto, user_name, hostname, port = re.split(
+			"(rsync|ssh)://([^:/]+@)?([^:/]*)(:[0-9]+)?", syncuri, maxsplit=4)[1:5]
 		if port is None:
 			port=""
 		if user_name is None:
@@ -2205,6 +2212,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				writemsg_stdout(
 					"\n\n>>> Starting retry %d of %d with %s\n" % \
 					(retries, effective_maxretries, dosyncuri), noiselevel=-1)
+
+			if dosyncuri.startswith('ssh://'):
+				dosyncuri = dosyncuri[6:].replace('/', ':/', 1)
 
 			if mytimestamp != 0 and "--quiet" not in myopts:
 				print(">>> Checking server timestamp ...")

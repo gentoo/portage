@@ -270,8 +270,16 @@ def stack_lists(lists, incremental=1, remember_source_file=False,
 					if ignore_repo and not "::" in token:
 						#Let -cat/pkg remove cat/pkg::repo.
 						to_be_removed = []
+						token_slice = token[1:]
 						for atom in new_list:
-							if atom == token[1:] or atom.split("::")[0] == token[1:]:
+							atom_without_repo = atom
+							if atom.repo is not None:
+								# Atom.without_repo instantiates a new Atom,
+								# which is unnecessary here, so use string
+								# replacement instead.
+								atom_without_repo = \
+									atom.replace("::" + atom.repo, "", 1)
+							if atom_without_repo == token_slice:
 								to_be_removed.append(atom)
 						if to_be_removed:
 							matched = True
@@ -376,12 +384,14 @@ def read_corresponding_eapi_file(filename):
 
 	return eapi
 
-def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=False, allow_repo=False, verify_eapi=False):
+def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=False, allow_repo=False,
+	verify_eapi=False, eapi=None):
 	""" Does the same thing as grabdict except it validates keys
 	    with isvalidatom()"""
 	pkgs=grabdict(myfilename, juststrings, empty=1, recursive=recursive)
-	eapi = None
-	if verify_eapi:
+	if not pkgs:
+		return pkgs
+	if verify_eapi and eapi is None:
 		eapi = read_corresponding_eapi_file(myfilename)
 
 	# We need to call keys() here in order to avoid the possibility of
@@ -398,12 +408,13 @@ def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=Fals
 			atoms[k] = v
 	return atoms
 
-def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=False, allow_repo=False, \
-	remember_source_file=False, verify_eapi=False):
+def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=False, allow_repo=False,
+	remember_source_file=False, verify_eapi=False, eapi=None):
 
 	pkgs=grabfile(myfilename, compatlevel, recursive=recursive, remember_source_file=True)
-	eapi = None
-	if verify_eapi:
+	if not pkgs:
+		return pkgs
+	if verify_eapi and eapi is None:
 		eapi = read_corresponding_eapi_file(myfilename)
 	mybasename = os.path.basename(myfilename)
 	atoms = []
@@ -1315,23 +1326,10 @@ class LazyItemsDict(UserDict):
 
 	def __deepcopy__(self, memo=None):
 		"""
-		WARNING: If any of the lazy items contains a bound method then it's
-		typical for deepcopy() to raise an exception like this:
-
-			File "/usr/lib/python2.5/copy.py", line 189, in deepcopy
-				y = _reconstruct(x, rv, 1, memo)
-			File "/usr/lib/python2.5/copy.py", line 322, in _reconstruct
-				y = callable(*args)
-			File "/usr/lib/python2.5/copy_reg.py", line 92, in __newobj__
-				return cls.__new__(cls, *args)
-			TypeError: instancemethod expected at least 2 arguments, got 0
-
-		If deepcopy() needs to work, this problem can be avoided by
-		implementing lazy items with normal (non-bound) functions.
-
-		If deepcopy() raises a TypeError for a lazy item that has been added
-		via a call to addLazySingleton(), the singleton will be automatically
-		evaluated and deepcopy() will instead be called on the result.
+		This forces evaluation of each contained lazy item, and deepcopy of
+		the result. A TypeError is raised if any contained lazy item is not
+		a singleton, since it is not necessarily possible for the behavior
+		of this type of item to be safely preserved.
 		"""
 		if memo is None:
 			memo = {}
@@ -1339,19 +1337,13 @@ class LazyItemsDict(UserDict):
 		memo[id(self)] = result
 		for k in self:
 			k_copy = deepcopy(k, memo)
-			if k in self.lazy_items:
-				lazy_item = self.lazy_items[k]
-				try:
-					result.lazy_items[k_copy] = deepcopy(lazy_item, memo)
-				except TypeError:
-					if not lazy_item.singleton:
-						raise
-					UserDict.__setitem__(result,
-						k_copy, deepcopy(self[k], memo))
-				else:
-					UserDict.__setitem__(result, k_copy, None)
-			else:
-				UserDict.__setitem__(result, k_copy, deepcopy(self[k], memo))
+			lazy_item = self.lazy_items.get(k)
+			if lazy_item is not None:
+				if not lazy_item.singleton:
+					raise TypeError(_unicode_decode("LazyItemsDict " + \
+						"deepcopy is unsafe with lazy items that are " + \
+						"not singletons: key=%s value=%s") % (k, lazy_item,))
+			UserDict.__setitem__(result, k_copy, deepcopy(self[k], memo))
 		return result
 
 	class _LazyItem(object):

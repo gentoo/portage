@@ -131,7 +131,7 @@ ebuild = portage.normalize_path(ebuild)
 ebuild_portdir = os.path.realpath(
 	os.path.dirname(os.path.dirname(os.path.dirname(ebuild))))
 ebuild = os.path.join(ebuild_portdir, *ebuild.split(os.path.sep)[-3:])
-vdb_path = os.path.join(portage.settings['EROOT'], VDB_PATH)
+vdb_path = os.path.realpath(os.path.join(portage.settings['EROOT'], VDB_PATH))
 
 # Make sure that portdb.findname() returns the correct ebuild.
 if ebuild_portdir != vdb_path and \
@@ -153,9 +153,11 @@ if ebuild_portdir != vdb_path and \
 # Constrain eclass resolution to the master(s)
 # that are specified in layout.conf (using an
 # approach similar to repoman's).
-myrepo = portage.portdb.getRepositoryName(ebuild_portdir)
-repo_info = portage.portdb._repo_info[ebuild_portdir]
-portage.portdb.porttrees = list(repo_info.eclass_db.porttrees)
+myrepo = None
+if ebuild_portdir != vdb_path:
+	myrepo = portage.portdb.getRepositoryName(ebuild_portdir)
+	repo_info = portage.portdb._repo_info[ebuild_portdir]
+	portage.portdb.porttrees = list(repo_info.eclass_db.porttrees)
 
 if not os.path.exists(ebuild):
 	print("'%s' does not exist." % ebuild)
