@@ -271,8 +271,16 @@ def stack_lists(lists, incremental=1, remember_source_file=False,
 					if ignore_repo and not "::" in token:
 						#Let -cat/pkg remove cat/pkg::repo.
 						to_be_removed = []
+						token_slice = token[1:]
 						for atom in new_list:
-							if atom == token[1:] or atom.split("::")[0] == token[1:]:
+							atom_without_repo = atom
+							if atom.repo is not None:
+								# Atom.without_repo instantiates a new Atom,
+								# which is unnecessary here, so use string
+								# replacement instead.
+								atom_without_repo = \
+									atom.replace("::" + atom.repo, "", 1)
+							if atom_without_repo == token_slice:
 								to_be_removed.append(atom)
 						if to_be_removed:
 							matched = True

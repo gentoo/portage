@@ -55,7 +55,7 @@ class UseManager(object):
 			pusedict = grabdict_package(
 				os.path.join(location, file_name), recursive=1, allow_wildcard=True, allow_repo=True, verify_eapi=False)
 			for k, v in pusedict.items():
-				ret.setdefault(k.cp, {})[k] = v
+				ret.setdefault(k.cp, {})[k] = tuple(v)
 
 		return ret
 
@@ -73,7 +73,8 @@ class UseManager(object):
 				else:
 					useflag = prefixed_useflag
 				if useflag_re.match(useflag) is None:
-					writemsg(_("--- Invalid USE flag in '%s': '%s'\n") % (path, prefixed_useflag))
+					writemsg(_("--- Invalid USE flag in '%s': '%s'\n") % \
+						(path, prefixed_useflag), noiselevel=-1)
 				else:
 					profile_lines.append(prefixed_useflag)
 			ret.append(tuple(profile_lines))
@@ -96,16 +97,19 @@ class UseManager(object):
 					else:
 						useflag = prefixed_useflag
 					if useflag_re.match(useflag) is None:
-						writemsg(_("--- Invalid USE flag for '%s' in '%s': '%s'\n") % (k, path, prefixed_useflag))
+						writemsg(_("--- Invalid USE flag for '%s' in '%s': '%s'\n") % \
+							(k, path, prefixed_useflag), noiselevel=-1)
 					else:
 						useflags.append(prefixed_useflag)
 				profile_dict.setdefault(k, []).extend(useflags)
 			for k, v in profile_dict.items():
 				if juststrings:
 					v = " ".join(v)
+				else:
+					v = tuple(v)
 				cpdict.setdefault(k.cp, {})[k] = v
 			ret.append(cpdict)
-		return ret
+		return tuple(ret)
 
 	def getUseMask(self, pkg=None):
 		if pkg is None:
