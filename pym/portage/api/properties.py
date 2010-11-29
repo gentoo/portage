@@ -7,13 +7,13 @@
 
 """Provides a properties class to hold ebuild variables"""
 
-from portage.api.settings import settings
+from portage.api.settings import default_settings
 
 
 class Properties(object):
 	"""Contains all variables in an ebuild."""
 
-	__slots__ = settings.keys + ["_dict", "__doc__", "__str__"]
+	__slots__ = default_settings.keys + ["_dict", "__doc__", "__str__"]
 
 
 	def __init__(self, _dict = None):

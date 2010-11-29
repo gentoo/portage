@@ -9,7 +9,7 @@ import os.path
 
 import portage
 from portage import pkgsplit
-from portage.api.settings import settings
+from portage.api.settings import default_settings
 from portage.dep import Atom
 from portage import manifest
 from portage.api.flag import get_flags
@@ -17,7 +17,7 @@ from portage.api.properties import Properties
 from portage.util import writemsg_level, grabfile
 
 
-def get_path(cpv, file=None, vardb=True, root=None):
+def get_path(cpv, file=None, vardb=True, root=None, settings=default_settings):
 	"""Returns a path to the specified category/package-version in 
 	either the vardb or portdb
 	
@@ -28,6 +28,8 @@ def get_path(cpv, file=None, vardb=True, root=None):
 	@param vardb: bool, defaults to  True
 	@type root: string
 	@param root: tree root to use
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	@rtype string
 	@return '/path/to/file'
 	"""
@@ -45,7 +47,7 @@ def get_path(cpv, file=None, vardb=True, root=None):
 		return dir
 
 
-def xmatch(root, *args, **kwargs):
+def xmatch(root, settings, *args, **kwargs):
 	"""Pass arguments on to portage's caching match function.
 	xmatch('match-all',package-name) returns all ebuilds of <package-name> in a list,
 	xmatch('match-visible',package-name) returns non-masked ebuilds,
@@ -58,6 +60,7 @@ def xmatch(root, *args, **kwargs):
 	
 	@type root: string
 	@param root: tree root to use
+	@param settings: portage config settings instance.
 	@param args:  The arument to pass to the dbapi.xmatch()
 	@param kwargs: the extra arguments to pass to dbapi.xmatch()
 	@rtype list
@@ -67,13 +70,15 @@ def xmatch(root, *args, **kwargs):
 	return results
 
 
-def get_versions(cp, include_masked=True, root=None):
+def get_versions(cp, include_masked=True, root=None, settings=default_settings):
 	"""Returns all available ebuilds for the package
 	
 	@type cp: string
 	@param cp:  'cat/pkg'
 	@type root: string
 	@param root: tree root to use
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	@rtype
 	@return
 	"""
@@ -88,13 +93,15 @@ def get_versions(cp, include_masked=True, root=None):
 	return  results
 
 
-def get_hard_masked(cp, root=None):
+def get_hard_masked(cp, root=None, settings=default_settings):
 	"""
 	
 	@type cp: string
 	@param cp:  'cat/pkg'
 	@type root: string
 	@param root: tree root to use
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	@rtype tuple
 	@return (hard_masked_nocheck, hardmasked)
 	"""
@@ -123,7 +130,7 @@ def get_hard_masked(cp, root=None):
 	return hard_masked_nocheck, hardmasked
 
 
-def get_installed_files(cpv, root=None):
+def get_installed_files(cpv, root=None, settings=default_settings):
 	"""Get a list of installed files for an ebuild, assuming it has
 	been installed.
 
@@ -131,6 +138,8 @@ def get_installed_files(cpv, root=None):
 	@param cpv: 'cat/pkg-ver'
 	@type root: string
 	@param root: tree root to use
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	@rtype list of strings
 	"""
 	if root is None:
@@ -155,13 +164,15 @@ def best(versions):
 	return portage.best(versions)
 
 
-def get_best_ebuild(cp, root=None):
+def get_best_ebuild(cp, root=None, settings=default_settings):
 	"""returns the best available cpv
 	
 	@type cp: string
 	@param cp: 'cat/pkg'
 	@type root: string
 	@param root: tree root to use
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	@rtype str
 	"""
 	if root is None:
@@ -169,7 +180,7 @@ def get_best_ebuild(cp, root=None):
 	return xmatch(root, "bestmatch-visible", cp)
 
 
-def get_dep_ebuild(dep, root=None):
+def get_dep_ebuild(dep, root=None, settings=default_settings):
 	"""Progresively checks for available ebuilds that match the dependency.
 	returns what it finds as up to three options.
 	
@@ -177,6 +188,8 @@ def get_dep_ebuild(dep, root=None):
 	@param dep: a valid dependency
 	@type root: string
 	@param root: tree root to use
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	@rtype set
 	@return  best_ebuild, keyworded_ebuild, masked_ebuild
 	"""
@@ -202,11 +215,13 @@ def get_dep_ebuild(dep, root=None):
 	return best_ebuild, keyworded_ebuild, masked_ebuild
 
 
-def get_virtual_dep(atom):
+def get_virtual_dep(atom, settings=default_settings):
 	"""Returns the first (prefered) resolved virtual dependency
 	if there is more than 1 possible resolution
 	
 	@param atom: dependency string
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	@rtpye: string
 	@return 'cat/pkg-ver'
 	"""
@@ -227,13 +242,15 @@ def get_masking_status(cpv):
 	return status
 
 
-def get_masking_reason(cpv, root=None):
+def get_masking_reason(cpv, root=None, settings=default_settings):
 	"""Strips trailing \n from, and returns the masking reason given by portage
 	
 	@type cpv: string
 	@param cpv: 'cat/pkg-ver'
 	@type root: string
 	@param root: tree root to use
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	@rtype str
 	"""
 	if root is None:
@@ -256,7 +273,7 @@ def get_masking_reason(cpv, root=None):
 	return reason
 
 
-def get_size(cpv, formatted_string=True, root=None):
+def get_size(cpv, formatted_string=True, root=None, settings=default_settings):
 	""" Returns size of package to fetch.
 	
 	@type cpv: string
@@ -264,6 +281,8 @@ def get_size(cpv, formatted_string=True, root=None):
 	@param formatted_string: defaults to True
 	@type root: string
 	@param root: tree root to use
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	@rtype str, or int
 	"""
 	if root is None:
@@ -274,7 +293,7 @@ def get_size(cpv, formatted_string=True, root=None):
 	ebuild = settings.portdb[root].findname(cpv)
 	pkgdir = os.path.dirname(ebuild)
 	mf = manifest.Manifest(pkgdir, settings.settings["DISTDIR"])
-	iuse, final_use = get_flags(cpv, final_setting=True, root=root)
+	iuse, final_use = get_flags(cpv, final_setting=True, root=root, settings=default_settings)
 	#writemsg_level( "DATA_CONNECT: get_size; Attempting to get fetchlist final use= " + str(final_use),
 		#level=logging.DEBUG)
 	try:
@@ -302,13 +321,15 @@ def get_size(cpv, formatted_string=True, root=None):
 	return total[0]
 
 
-def get_properties(cpv, want_dict=False, root=None):
+def get_properties(cpv, want_dict=False, root=None, settings=default_settings):
 	"""Get all ebuild variables in one chunk.
 	
 	@type cpv: string
 	@param cpv: 'cat/pkg-ver'
 	@type root: string
 	@param root: tree root to use
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	@rtype
 	@return all properties of cpv
 	"""
@@ -334,13 +355,15 @@ def get_properties(cpv, want_dict=False, root=None):
 	return Properties(prop_dict)
 
 
-def is_overlay(cpv, root=None): # lifted from gentoolkit
+def is_overlay(cpv, root=None, settings=default_settings): # lifted from gentoolkit
 	"""Returns true if the package is in an overlay.
 	
 	@type cpv: string
 	@param cpv: 'cat/pkg-ver'
 	@type root: string
 	@param root: tree root to use
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	@rtype bool
 	"""
 	if root is None:
@@ -352,13 +375,15 @@ def is_overlay(cpv, root=None): # lifted from gentoolkit
 	return ovl != settings.portdir
 
 
-def get_overlay(cpv, root=None):
+def get_overlay(cpv, root=None, settings=default_settings):
 	"""Returns a portage overlay id
 	
 	@type cpv: string
 	@param cpv: 'cat/pkg-ver'
 	@type root: string
 	@param root: tree root to use
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	@rtype str
 	@return portage overlay id. or 'Deprecated?
 	'"""
@@ -373,12 +398,14 @@ def get_overlay(cpv, root=None):
 	return ovl
 
 
-def get_overlay_name(ovl_path=None, cpv=None, root=None):
+def get_overlay_name(ovl_path=None, cpv=None, root=None, settings=default_settings):
 	"""Returns the overlay name for either the overlay path or the cpv of a pkg
 	
 	@param ovl_path: optional portage overlay path
 	@param cpv: optional cat/pkg-ver string
 	@type root: string
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	@param root: tree root to use
 	@rtype str
 	"""
@@ -391,20 +418,24 @@ def get_overlay_name(ovl_path=None, cpv=None, root=None):
 	return name or "????"
 
 
-def get_repositories(root=None):
+def get_repositories(root=None, settings=default_settings):
 	"""Returns a list of all repositories for root
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	"""
 	if root is None:
 		root = settings.settings["ROOT"]
 	return self.portdb[root].getRepositories()
 
 
-def get_system_pkgs(root=None): # lifted from gentoolkit
+def get_system_pkgs(root=None, settings=default_settings): # lifted from gentoolkit
 	"""Returns a tuple of lists, first list is resolved system packages,
 	second is a list of unresolved packages.
 	
 	@type root: string
 	@param root: tree root to use
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	@rtype: tuple 
 	@return (resolved, unresolved) pkg lists
 	"""
@@ -426,12 +457,14 @@ def get_system_pkgs(root=None): # lifted from gentoolkit
 	return (resolved, unresolved)
 
 
-def get_allnodes(root=None):
+def get_allnodes(root=None, settings=default_settings):
 	"""Returns a list of all availabe cat/pkg's available from the tree
 	and configured overlays. Subject to masking.
 	
 	@type root: string
 	@param root: tree root to use
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	@rtpye: list
 	@return: ['cat/pkg1', 'cat/pkg2',...]
 	"""
@@ -440,12 +473,14 @@ def get_allnodes(root=None):
 	return settings.portdb[root].cp_all()
 
 
-def get_installed_list(root=None):
+def get_installed_list(root=None, settings=default_settings):
 	"""Returns a list of all installed cat/pkg-ver available from the tree
 	and configured overlays. Subject to masking.
 	
 	@type root: string
 	@param root: tree root to use
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	@rtpye: list
 	@return: ['cat/pkg1-ver', 'cat/pkg2-ver',...]
 	"""
@@ -454,13 +489,15 @@ def get_installed_list(root=None):
 	return settings.vardb[root].cpv_all()
 
 
-def get_cp_all(root=None, vardb=False, categories=None, trees=None):
+def get_cp_all(root=None, vardb=False, categories=None, trees=None, settings=default_settings):
 	"""
 	This returns a list of all keys in our tree or trees
 	@param categories: optional list of categories to search or 
 		defaults to settings.portdb.settings.categories
 	@param trees: optional list of trees to search the categories in or
 		defaults to settings.portdb.porttrees
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	@rtype list of [cat/pkg,...]
 	"""
 	if root is None:
@@ -476,19 +513,26 @@ def get_cp_all(root=None, vardb=False, categories=None, trees=None):
 	return settings.portdb[root].cp_all(categories, trees)
 
 
-def get_cp_list(root=None, cp=None, trees=None):
+def get_cp_list(root=None, cp=None, trees=None, settings=default_settings):
+	"""
+		@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
+	"""
 	if root is None:
 		root = settings.settings["ROOT"]
 	return settings.portdb[root].cp_list(cp, trees)
 
 
-def findLicensePath(license_name, root=None):
+def findLicensePath(license_name, root=None, settings=default_settings):
+	"""@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
+	"""
 	if root is None:
 		root = settings.settings["ROOT"]
 	return settings.portdb[root].findLicensePath(license_name)
 
 
-def getFetchMap(pkg, useflags=None, tree=None):
+def getFetchMap(pkg, useflags=None, tree=None, settings=default_settings):
 	"""
 	Get the SRC_URI metadata as a dict which maps each file name to a
 	set of alternative URIs.
@@ -501,6 +545,8 @@ def getFetchMap(pkg, useflags=None, tree=None):
 	@param tree: The canonical path of the tree in which the ebuild
 		is located, or None for automatic lookup
 	@type pkg: String
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	@returns: A dict which maps each file name to a set of alternative
 		URIs.
 	@rtype: dict
@@ -510,16 +556,20 @@ def getFetchMap(pkg, useflags=None, tree=None):
 	return settings.portdb[root].getfetchsizes(pkg, useflags, tree)
 
 
-def getfetchsizes(pkg, useflags=None, root=None):
+def getfetchsizes(pkg, useflags=None, root=None, settings=default_settings):
 	"""Returns a filename:size dictionnary of remaining downloads
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	"""
 	if root is None:
 		root = settings.settings["ROOT"]
 	return settings.portdb[root].getfetchsizes(pkg, useflags)
 
 
-def cpv_exists(cpv, root=None):
+def cpv_exists(cpv, root=None, settings=default_settings):
 	"""Tells us whether an actual ebuild exists on disk (no masking)
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	"""
 	if root is None:
 		root = settings.settings["ROOT"]

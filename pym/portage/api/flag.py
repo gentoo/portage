@@ -21,12 +21,12 @@ __all__ = (
 
 import sys
 
-from portage.api.settings import settings
+from portage.api.settings import default_settings
 
 import portage
 
 
-def get_iuse(cpv, root=None):
+def get_iuse(cpv, root=None, settings=default_settings):
 	"""Gets the current IUSE flags from the tree
 
 	To be used when a gentoolkit package object is not needed
@@ -34,6 +34,8 @@ def get_iuse(cpv, root=None):
 	@param cpv: cat/pkg-ver
 	@type root: string
 	@param root: tree root to use
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	@rtype list
 	@returns [] or the list of IUSE flags
 	"""
@@ -45,7 +47,7 @@ def get_iuse(cpv, root=None):
 		return []
 
 
-def get_installed_use(cpv, use="USE", root=None):
+def get_installed_use(cpv, use="USE", root=None, settings=default_settings):
 	"""Gets the installed USE flags from the VARDB
 
 	To be used when a gentoolkit package object is not needed
@@ -55,6 +57,8 @@ def get_installed_use(cpv, use="USE", root=None):
 	@param use: 1 of ["USE", "PKGUSE"]
 	@type root: string
 	@param root: tree root to use
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	@rtype list
 	@returns [] or the list of IUSE flags
 	"""
@@ -91,7 +95,7 @@ def reduce_flags(the_list):
 	return r
 
 
-def filter_flags(use, use_expand_hidden, usemasked, useforced):
+def filter_flags(use, use_expand_hidden, usemasked, useforced, settings=default_settings):
 	"""Filter function to remove hidden or otherwise not normally
 	visible USE flags from a list.
 
@@ -103,6 +107,8 @@ def filter_flags(use, use_expand_hidden, usemasked, useforced):
 	@param usemasked: list of masked USE flags.
 	@type useforced: list
 	@param useforced: the forced USE flags.
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	@rtype: list
 	@return the filtered USE flags.
 	"""
@@ -126,13 +132,15 @@ def filter_flags(use, use_expand_hidden, usemasked, useforced):
 	return use
 
 
-def get_all_cpv_use(cpv, root=None):
+def get_all_cpv_use(cpv, root=None, settings=default_settings):
 	"""Uses portage to determine final USE flags and settings for an emerge
 
 	@type cpv: string
 	@param cpv: eg cat/pkg-ver
 	@type root: string
 	@param root: tree root to use
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	@rtype: lists
 	@return  use, use_expand_hidden, usemask, useforce
 	"""
@@ -141,7 +149,7 @@ def get_all_cpv_use(cpv, root=None):
 	use = None
 	settings.portdb[root].settings.unlock()
 	try:
-		settings.portdb[root].settings.setcpv(cpv, use_cache=True, mydb=settings.portdb[root])
+		settings.portdb[root].settings.setcpv(cpv, mydb=settings.portdb[root])
 		use = settings.settings['PORTAGE_USE'].split()
 		use_expand_hidden = settings.settings["USE_EXPAND_HIDDEN"].split()
 		usemask = list(settings.portdb[root].settings.usemask)
@@ -156,7 +164,7 @@ def get_all_cpv_use(cpv, root=None):
 	return use, use_expand_hidden, usemask, useforce
 
 
-def get_flags(cpv, final_setting=False, root=None):
+def get_flags(cpv, final_setting=False, root=None, settings=default_settings):
 	"""Retrieves all information needed to filter out hidden, masked, etc.
 	USE flags for a given package.
 
@@ -168,14 +176,16 @@ def get_flags(cpv, final_setting=False, root=None):
 	@type root: string
 	@param root: pass through variable needed, tree root to use
 		for other function calls.
+	@param settings: optional portage config settings instance.
+		defaults to portage.api.settings.default_settings
 	@rtype: list or list, list
 	@return IUSE or IUSE, final_flags
 	"""
-	final_use, use_expand_hidden, usemasked, useforced = get_all_cpv_use(cpv, root)
-	iuse_flags = filter_flags(get_iuse(cpv), use_expand_hidden, usemasked, useforced)
-	#flags = filter_flags(use_flags, use_expand_hidden, usemasked, useforced)
+	final_use, use_expand_hidden, usemasked, useforced = get_all_cpv_use(cpv, root, settings)
+	iuse_flags = filter_flags(get_iuse(cpv), use_expand_hidden, usemasked, useforced, settings)
+	#flags = filter_flags(use_flags, use_expand_hidden, usemasked, useforced, settings)
 	if final_setting:
-		final_flags = filter_flags(final_use,  use_expand_hidden, usemasked, useforced)
+		final_flags = filter_flags(final_use,  use_expand_hidden, usemasked, useforced, settings)
 		return iuse_flags, final_flags
 	return iuse_flags
 

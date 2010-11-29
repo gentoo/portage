@@ -114,7 +114,7 @@ class PortageSettings:
 		return self.settings.virtuals
 
 
-settings = PortageSettings()
+default_settings = PortageSettings()
 
 
 def reload_portage():
