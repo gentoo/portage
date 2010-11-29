@@ -15,7 +15,7 @@ BPREFIX = EPREFIX
 if "EPREFIX" in os.environ:
 	if os.environ["EPREFIX"] != "":
 		EPREFIX = os.path.normpath(os.environ["EPREFIX"])
-	else
+	else:
 		EPREFIX = os.environ["EPREFIX"]
 
 # ===========================================================================
