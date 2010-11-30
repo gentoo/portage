@@ -1861,13 +1861,14 @@ class dblink(object):
 							os = portage.os
 							perf_md5 = portage.checksum.perform_md5
 
+				file_data = pkgfiles[objkey]
+				file_type = file_data[0]
+
 				# don't try to unmerge the prefix offset itself
 				if len(obj) <= len(EPREFIX) or not obj.startswith(EPREFIX):
 					show_unmerge("---", unmerge_desc["!prefix"], file_type, obj)
 					continue
 
-				file_data = pkgfiles[objkey]
-				file_type = file_data[0]
 				statobj = None
 				try:
 					statobj = os.stat(obj)
