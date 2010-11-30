@@ -2972,10 +2972,6 @@ class depgraph(object):
 							continue
 
 					if atom.use:
-						if pkg.iuse.get_missing_iuse(atom.use.required):
-							# Don't add this to packages_with_invalid_use_config
-							# since IUSE cannot be adjusted by the user.
-							continue
 
 						matched_pkgs_ignore_use.append(pkg)
 						if allow_use_changes:
