@@ -1832,6 +1832,7 @@ class dblink(object):
 			unmerge_desc["!mtime"] = _("!mtime")
 			unmerge_desc["!obj"] = _("!obj")
 			unmerge_desc["!sym"] = _("!sym")
+			unmerge_desc["!prefix"] = _("!prefix")
 
 			real_root = self.settings['ROOT']
 			real_root_len = len(real_root) - 1
@@ -1859,6 +1860,11 @@ class dblink(object):
 						else:
 							os = portage.os
 							perf_md5 = portage.checksum.perform_md5
+
+				# don't try to unmerge the prefix offset itself
+				if len(obj) <= len(EPREFIX) or not obj.startswith(EPREFIX):
+					show_unmerge("---", unmerge_desc["!prefix"], file_type, obj)
+					continue
 
 				file_data = pkgfiles[objkey]
 				file_type = file_data[0]
@@ -1984,9 +1990,6 @@ class dblink(object):
 			mydirs.reverse()
 
 			for obj in mydirs:
-				# don't try to unmerge the prefix offset itself
-				if len(obj) <= len(EPREFIX):
-					continue
 				try:
 					if bsd_chflags:
 						lstatobj = os.lstat(obj)
