@@ -482,8 +482,8 @@ class vardbapi(dbapi):
 			del f
 		except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError) as e:
 			if isinstance(e, pickle.UnpicklingError):
-				writemsg(_("!!! Error loading '%s': %s\n") % \
-					(self._aux_cache_filename, str(e)), noiselevel=-1)
+				writemsg(_unicode_decode(_("!!! Error loading '%s': %s\n")) % \
+					(self._aux_cache_filename, e), noiselevel=-1)
 			del e
 
 		if not aux_cache or \
