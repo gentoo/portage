@@ -155,8 +155,7 @@ class dbapi(object):
 			iuse = frozenset(x.lstrip('+-') for x in iuse.split())
 			missing_iuse = False
 			for x in atom.unevaluated_atom.use.required:
-				if x not in iuse and x not in atom.use.missing_enabled \
-					and x not in atom.use.missing_disabled and not iuse_implicit_match(x):
+				if x not in iuse and not iuse_implicit_match(x):
 					missing_iuse = True
 					break
 			if missing_iuse:
