@@ -1925,7 +1925,7 @@ def match_from_list(mydep, candidate_list):
 				continue
 			mylist.append(x)
 
-	if mydep.use:
+	if mydep.unevaluated_atom.use:
 		candidate_list = mylist
 		mylist = []
 		for x in candidate_list:
