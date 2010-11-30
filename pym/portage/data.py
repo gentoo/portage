@@ -80,11 +80,19 @@ _portage_grpname = os.environ.get('PORTAGE_GRPNAME', PORTAGE_GROUPNAME)
 
 #Discover the uid and gid of the portage user/group
 try:
-	portage_uid = pwd.getpwnam(_portage_uname)[2]
 	portage_gid = grp.getgrnam(_portage_grpname)[2]
-	if secpass < 1 and portage_gid in os.getgroups():
-		secpass=1
 except KeyError:
+	# some sysadmins are insane, bug #344307
+	if _portage_grpname.isdigit():
+		portage_gid = int(_portage_grpname)
+	else:
+		portage_gid = None
+try:
+	portage_uid = pwd.getpwnam(_portage_uname)[2]
+except KeyError:
+	portage_uid = None
+
+if portage_uid is None or portage_gid is None:
 	portage_uid=0
 	portage_gid=0
 	userpriv_groups = [portage_gid]
@@ -108,6 +116,8 @@ except KeyError:
 #		noiselevel=-1)
 	portage_group_warning()
 else:
+	if secpass < 1 and portage_gid in os.getgroups():
+		secpass=1
 	userpriv_groups = [portage_gid]
 	if secpass >= 2:
 		class _LazyUserprivGroups(portage.proxy.objectproxy.ObjectProxy):
