@@ -2964,6 +2964,9 @@ class depgraph(object):
 						missing_disabled = atom.use.missing_disabled.difference(pkg.iuse.all)
 
 						if atom.use.enabled:
+							if atom.use.enabled.intersection(missing_disabled):
+								use_match = False
+								can_adjust_use = False
 							need_enabled = atom.use.enabled.difference(use)
 							if need_enabled:
 								need_enabled = need_enabled.difference(missing_enabled)
@@ -2972,11 +2975,11 @@ class depgraph(object):
 									if can_adjust_use:
 										if pkg.use.mask.intersection(need_enabled):
 											can_adjust_use = False
-										if can_adjust_use:
-											if missing_disabled.intersection(need_enabled):
-												can_adjust_use = False
 
 						if atom.use.disabled:
+							if atom.use.disabled.intersection(missing_enabled):
+								use_match = False
+								can_adjust_use = False
 							need_disabled = atom.use.disabled.intersection(use)
 							if need_disabled:
 								need_disabled = need_disabled.difference(missing_disabled)
@@ -2986,9 +2989,6 @@ class depgraph(object):
 										if pkg.use.force.difference(
 											pkg.use.mask).intersection(need_disabled):
 											can_adjust_use = False
-										if can_adjust_use:
-											if missing_enabled.intersection(need_disabled):
-												can_adjust_use = False
 
 						if not use_match:
 							if can_adjust_use:
