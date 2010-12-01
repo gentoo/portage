@@ -171,7 +171,9 @@ class dbapi(object):
 					break
 			if missing_iuse:
 				continue
-			if not self._use_mutable:
+			if not atom.use:
+				pass
+			elif not self._use_mutable:
 				missing_enabled = atom.use.missing_enabled.difference(iuse)
 				missing_disabled = atom.use.missing_disabled.difference(iuse)
 
