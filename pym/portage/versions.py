@@ -348,7 +348,7 @@ def cpv_getversion(mycpv):
 
 def cpv_sort_key():
 	"""
-	Create an object for sorting cpvs, to be useed as the 'key' parameter
+	Create an object for sorting cpvs, to be used as the 'key' parameter
 	in places like list.sort() or sorted(). This calls catpkgsplit() once for
 	each cpv and caches the result. If a given cpv is invalid or two cpvs
 	have different category/package names, then plain string (> and <)
