@@ -2064,7 +2064,7 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
 		if [[ -n $QA_PREBUILT ]] ; then
 
 			# these ones support fnmatch patterns
-			QA_EXECSTAC+=" $QA_PREBUILT"
+			QA_EXECSTACK+=" $QA_PREBUILT"
 			QA_TEXTRELS+=" $QA_PREBUILT"
 			QA_WX_LOAD+=" $QA_PREBUILT"
 
