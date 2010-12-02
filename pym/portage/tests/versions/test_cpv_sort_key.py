@@ -8,8 +8,8 @@ class CpvSortKeyTestCase(TestCase):
 
 	def testCpvSortKey(self):
 
-		tests = [ (( "a", "b", "a/b-2", "a/a-1", "a/b-1"),
-			( "a", "a/a-1", "a/b-1", "a/b-2", "b")),
+		tests = [ (("a/b-2_alpha", "a", "b", "a/b-2", "a/a-1", "a/b-1"),
+			( "a", "a/a-1", "a/b-1", "a/b-2_alpha", "a/b-2", "b")),
 		]
 
 		for test in tests:
