@@ -881,6 +881,7 @@ class config(object):
 		self.modifiedkeys = []
 		if not keeping_pkg:
 			self.mycpv = None
+			self._setcpv_args_hash = None
 			self.puse = ""
 			del self._penv[:]
 			self.configdict["pkg"].clear()
