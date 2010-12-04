@@ -1025,6 +1025,7 @@ class Scheduler(PollScheduler):
 				os.makedirs(infloc)
 				portage.xpak.tbz2(tbz2_file).unpackinfo(infloc)
 				ebuild_path = os.path.join(infloc, x.pf + ".ebuild")
+				settings.configdict["pkg"]["MERGE_TYPE"] = "binary"
 
 			else:
 				tree = "porttree"
@@ -1032,6 +1033,10 @@ class Scheduler(PollScheduler):
 				ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
 				if ebuild_path is None:
 					raise AssertionError("ebuild not found for '%s'" % x.cpv)
+				if self._build_opts.buildpkgonly:
+					settings.configdict["pkg"]["MERGE_TYPE"] = "buildonly"
+				else:
+					settings.configdict["pkg"]["MERGE_TYPE"] = "source"
 
 			portage.package.ebuild.doebuild.doebuild_environment(ebuild_path,
 				"pretend", settings=settings,
