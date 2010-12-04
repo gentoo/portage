@@ -668,7 +668,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# if any of these are being called, handle them -- running them out of
 		# the sandbox -- and stop now.
 		if mydo in ("config", "help", "info", "postinst",
-			"preinst", "pretend", "postrm", "prerm", "setup"):
+			"preinst", "pretend", "postrm", "prerm"):
 			return _spawn_phase(mydo, mysettings,
 				fd_pipes=fd_pipes, logfile=logfile, returnpid=returnpid)
 
