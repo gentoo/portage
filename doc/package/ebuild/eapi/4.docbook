@@ -290,6 +290,14 @@ src_install() {
 			The AA and KV variables are no longer exported to the ebuild environment.
 			</para>
 		</section>
+		<section id='package-ebuild-eapi-4_pre1-variables-merge-type'>
+			<title>MERGE_TYPE</title>
+			<para>
+			The type of package that is being merged. Possible values are:
+			"source" if building and installing a package from source, "binary" if installing a binary
+			package, and "buildonly" if building a binary package without installing it.
+			</para>
+		</section>
 		<section id='package-ebuild-eapi-4_pre1-variables-replaced-versions'>
 			<title>REPLACING_VERSIONS and REPLACED_BY_VERSION</title>
 			<para>

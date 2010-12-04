@@ -55,6 +55,7 @@ class Binpkg(CompositeTask):
 		self._build_dir = EbuildBuildDir(
 			scheduler=self.scheduler, settings=settings)
 		settings.configdict["pkg"]["EMERGE_FROM"] = pkg.type_name
+		settings.configdict["pkg"]["MERGE_TYPE"] = "binary"
 
 		# The prefetcher has already completed or it
 		# could be running now. If it's running now,
