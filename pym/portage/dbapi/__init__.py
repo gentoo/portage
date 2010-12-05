@@ -151,7 +151,6 @@ class dbapi(object):
 				iuse, slot, use = self.aux_get(cpv, ["IUSE", "SLOT", "USE"])
 			except KeyError:
 				continue
-			use = use.split()
 			iuse = frozenset(x.lstrip('+-') for x in iuse.split())
 			missing_iuse = False
 			for x in atom.unevaluated_atom.use.required:
@@ -163,6 +162,12 @@ class dbapi(object):
 			if not atom.use:
 				pass
 			elif not self._use_mutable:
+				# Use IUSE to validate USE settings for built packages,
+				# in case the package manager that built this package
+				# failed to do that for some reason (or in case of
+				# data corruption).
+				use = frozenset(x for x in use.split() if x in iuse or \
+					iuse_implicit_match(x))
 				missing_enabled = atom.use.missing_enabled.difference(iuse)
 				missing_disabled = atom.use.missing_disabled.difference(iuse)
 
