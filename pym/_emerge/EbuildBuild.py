@@ -41,7 +41,7 @@ class EbuildBuild(CompositeTask):
 		self._tree = tree
 		portdb = root_config.trees[tree].dbapi
 		settings.setcpv(pkg)
-		settings.configdict["pkg"]["EMERGE_FROM"] = pkg.type_name
+		settings.configdict["pkg"]["EMERGE_FROM"] = "ebuild"
 		if self.opts.buildpkgonly:
 			settings.configdict["pkg"]["MERGE_TYPE"] = "buildonly"
 		else:
