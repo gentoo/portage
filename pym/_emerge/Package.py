@@ -321,6 +321,14 @@ class Package(Task):
 			self._force = None
 			self._mask = None
 			self.enabled = frozenset(use_str.split())
+			if pkg.built:
+				# Use IUSE to validate USE settings for built packages,
+				# in case the package manager that built this package
+				# failed to do that for some reason (or in case of
+				# data corruption).
+				missing_iuse = pkg.iuse.get_missing_iuse(self.enabled)
+				if missing_iuse:
+					self.enabled = self.enabled.difference(missing_iuse)
 
 		def _init_force_mask(self):
 			pkgsettings = self._pkg._get_pkgsettings()
