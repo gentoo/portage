@@ -685,7 +685,15 @@ ebuild_phase_with_hooks() {
 }
 
 dyn_pretend() {
-	ebuild_phase_with_hooks pkg_pretend
+	if [[ -e $PORTAGE_BUILDDIR/.pretended ]] ; then
+		vecho ">>> It appears that '$PF' is already pretended; skipping."
+		vecho ">>> Remove '$PORTAGE_BUILDDIR/.pretended' to force pretend."
+		return 0
+	fi
+	ebuild_phase pre_pkg_pretend
+	ebuild_phase pkg_pretend
+	> "$PORTAGE_BUILDDIR"/.pretended
+	ebuild_phase post_pkg_pretend
 }
 
 dyn_setup() {
