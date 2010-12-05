@@ -979,7 +979,6 @@ class Scheduler(PollScheduler):
 		os.execv(mynewargv[0], mynewargv)
 
 	def _run_pkg_pretend(self):
-		shown_verifying_msg = False
 
 		failures = 0
 
@@ -996,13 +995,8 @@ class Scheduler(PollScheduler):
 			if "pretend" not in x.metadata.defined_phases:
 				continue
 
-			if not shown_verifying_msg and self._background:
-				shown_verifying_msg = True
-				self._status_msg("Running pre-merge checks")
-
-			if not self._background:
-				out_str =">>> Running pre-merge checks for " + colorize("INFORM", x.cpv) + "\n"
-				portage.util.writemsg_stdout(out_str, noiselevel=-1)
+			out_str =">>> Running pre-merge checks for " + colorize("INFORM", x.cpv) + "\n"
+			portage.util.writemsg_stdout(out_str, noiselevel=-1)
 
 			root_config = x.root_config
 			settings = self.pkgsettings[root_config.root]
