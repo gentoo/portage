@@ -642,8 +642,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		if eapi_exports_merge_type(mysettings["EAPI"]) and \
 			"MERGE_TYPE" not in mysettings.configdict["pkg"]:
 			if tree == "porttree":
+				mysettings.configdict["pkg"]["EMERGE_FROM"] = "ebuild"
 				mysettings.configdict["pkg"]["MERGE_TYPE"] = "source"
 			elif tree == "bintree":
+				mysettings.configdict["pkg"]["EMERGE_FROM"] = "binary"
 				mysettings.configdict["pkg"]["MERGE_TYPE"] = "binary"
 
 		if eapi_exports_replace_vars(mysettings["EAPI"]) and \
