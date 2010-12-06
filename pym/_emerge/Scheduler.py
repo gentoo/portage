@@ -1021,6 +1021,7 @@ class Scheduler(PollScheduler):
 				if x.built:
 					tree = "bintree"
 					bintree = root_config.trees["bintree"].dbapi.bintree
+					fetched = False
 
 					# Display fetch on stdout, so that it's always clear what
 					# is consuming time here.
@@ -1031,6 +1032,7 @@ class Scheduler(PollScheduler):
 						if fetcher.wait() != os.EX_OK:
 							failures += 1
 							continue
+						fetched = fetcher.pkg_path
 
 					verifier = BinpkgVerifier(pkg=x,
 						scheduler=sched_iface)
@@ -1039,6 +1041,8 @@ class Scheduler(PollScheduler):
 						failures += 1
 						continue
 
+					if fetched:
+						bintree.inject(x.cpv, filename=fetched)
 					tbz2_file = bintree.getname(x.cpv)
 					infloc = os.path.join(tmpdir, x.category, x.pf, "build-info")
 					os.makedirs(infloc)
