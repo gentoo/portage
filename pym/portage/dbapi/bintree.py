@@ -333,12 +333,10 @@ class binarytree(object):
 			mydata = mytbz2.get_data()
 			updated_items = update_dbentries([mylist], mydata)
 			mydata.update(updated_items)
-			mydata[_unicode_encode('PF',
-				encoding=_encodings['repo.content'])] = \
+			mydata[b'PF'] = \
 				_unicode_encode(mynewpkg + "\n",
 				encoding=_encodings['repo.content'])
-			mydata[_unicode_encode('CATEGORY',
-				encoding=_encodings['repo.content'])] = \
+			mydata[b'CATEGORY'] = \
 				_unicode_encode(mynewcat + "\n",
 				encoding=_encodings['repo.content'])
 			if mynewpkg != myoldpkg:
@@ -439,9 +437,7 @@ class binarytree(object):
 
 		if st is not None:
 			# For invalid packages, other_cat could be None.
-			other_cat = portage.xpak.tbz2(dest_path).getfile(
-				_unicode_encode("CATEGORY",
-				encoding=_encodings['repo.content']))
+			other_cat = portage.xpak.tbz2(dest_path).getfile(b"CATEGORY")
 			if other_cat:
 				other_cat = _unicode_decode(other_cat,
 					encoding=_encodings['repo.content'], errors='replace')
@@ -621,17 +617,11 @@ class binarytree(object):
 						self.invalids.append(myfile[:-5])
 						continue
 					metadata_bytes = portage.xpak.tbz2(full_path).get_data()
-					mycat = _unicode_decode(metadata_bytes.get(
-						_unicode_encode("CATEGORY",
-						encoding=_encodings['repo.content']), ""),
+					mycat = _unicode_decode(metadata_bytes.get(b"CATEGORY", ""),
 						encoding=_encodings['repo.content'], errors='replace')
-					mypf = _unicode_decode(metadata_bytes.get(
-						_unicode_encode("PF",
-						encoding=_encodings['repo.content']), ""),
+					mypf = _unicode_decode(metadata_bytes.get(b"PF", ""),
 						encoding=_encodings['repo.content'], errors='replace')
-					slot = _unicode_decode(metadata_bytes.get(
-						_unicode_encode("SLOT",
-						encoding=_encodings['repo.content']), ""),
+					slot = _unicode_decode(metadata_bytes.get(b"SLOT", ""),
 						encoding=_encodings['repo.content'], errors='replace')
 					mypkg = myfile[:-5]
 					if not mycat or not mypf or not slot:
