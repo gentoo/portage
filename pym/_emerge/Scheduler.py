@@ -2014,7 +2014,7 @@ class Scheduler(PollScheduler):
 		db = root_config.trees[tree_type].dbapi
 		db_keys = list(self.trees[root_config.root][
 			tree_type].dbapi._aux_cache_keys)
-		metadata = zip(db_keys, db.aux_get(cpv, db_keys))
+		metadata = zip(db_keys, db.aux_get(cpv, db_keys, myrepo=myrepo))
 		return Package(built=(type_name != 'ebuild'),
 			cpv=cpv, metadata=metadata,
 			root_config=root_config, installed=installed)
