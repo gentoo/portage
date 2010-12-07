@@ -657,7 +657,9 @@ class Scheduler(PollScheduler):
 		type_name = RootConfig.tree_pkg_map[pkg_dblink.treetype]
 		root_config = self.trees[pkg_dblink.myroot]["root_config"]
 		installed = type_name == "installed"
-		return self._pkg(cpv, type_name, root_config, installed=installed)
+		repo = pkg_dblink.settings.get("PORTAGE_REPO_NAME")
+		return self._pkg(cpv, type_name, root_config,
+			installed=installed, myrepo=repo)
 
 	def _dblink_elog(self, pkg_dblink, phase, func, msgs):
 
@@ -1977,21 +1979,34 @@ class Scheduler(PollScheduler):
 			if world_locked:
 				world_set.unlock()
 
-	def _pkg(self, cpv, type_name, root_config, installed=False):
+	def _pkg(self, cpv, type_name, root_config, installed=False, myrepo=None):
 		"""
 		Get a package instance from the cache, or create a new
 		one if necessary. Raises KeyError from aux_get if it
 		failures for some reason (package does not exist or is
 		corrupt).
 		"""
+
+		if type_name != "ebuild":
+			# For installed (and binary) packages we don't care for the repo
+			# when it comes to hashing, because there can only be one cpv.
+			# So overwrite the repo_key with type_name.
+			repo_key = type_name
+			myrepo = None
+		elif myrepo is None:
+			raise AssertionError(
+				"Scheduler._pkg() called without 'myrepo' argument")
+		else:
+			repo_key = myrepo
+
 		operation = "merge"
 		if installed:
 			operation = "nomerge"
 
-		if self._digraph is not None:
+		if self._graph_config is not None:
 			# Reuse existing instance when available.
-			pkg = self._digraph.get(
-				(type_name, root_config.root, cpv, operation))
+			pkg = self._graph_config.pkg_cache.get(
+				(type_name, root_config.root, cpv, operation, repo_key))
 			if pkg is not None:
 				return pkg
 
