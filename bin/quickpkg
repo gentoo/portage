@@ -92,10 +92,10 @@ def quickpkg_atom(options, infos, arg, eout):
 				continue
 			if "bindist" in iuse and "bindist" not in use:
 				eout.ewarn("%s: package was emerged with USE=-bindist!" % cpv)
-				eout.ewarn("%s: it may not be legal to redistribute this." % cpv)
+				eout.ewarn("%s: it might not be legal to redistribute this." % cpv)
 			elif "bindist" in restrict:
 				eout.ewarn("%s: package has RESTRICT=bindist!" % cpv)
-				eout.ewarn("%s: it may not be legal to redistribute this." % cpv)
+				eout.ewarn("%s: it might not be legal to redistribute this." % cpv)
 			eout.ebegin("Building package for %s" % cpv)
 			pkgs_for_arg += 1
 			contents = dblnk.getcontents()
