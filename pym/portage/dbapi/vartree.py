@@ -4092,8 +4092,6 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 		else:
 			os = portage.os
 
-	from portage.util import normalize_path
-	import tarfile
 	root = normalize_path(root).rstrip(os.path.sep) + os.path.sep
 	id_strings = {}
 	maxval = len(contents)
@@ -4130,8 +4128,6 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 		tarinfo = tar.gettarinfo(live_path, arcname)
 
 		if stat.S_ISREG(lst.st_mode):
-			# break hardlinks due to bug #185305
-			tarinfo.type = tarfile.REGTYPE
 			if protect and protect(path):
 				# Create an empty file as a place holder in order to avoid
 				# potential collision-protect issues.
