@@ -1,4 +1,4 @@
-#!@PORTAGE_PYTHON@ -O
+#!@PREFIX_PORTAGE_PYTHON@ -O
 
 # Ripped from HP and updated from Debian
 # Update by Gentoo to support unicode output

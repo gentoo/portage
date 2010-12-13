@@ -24,9 +24,9 @@ trap interrupted SIGINT
 
 exit_status="0"
 for version in ${PYTHON_VERSIONS}; do
-	if [[ -x @PORTAGE_PYTHON@${version} ]]; then
+	if [[ -x @PREFIX_PORTAGE_PYTHON@${version} ]]; then
 		echo -e "${GOOD}Testing with Python ${version}...${NORMAL}"
-		if ! @PORTAGE_PYTHON@${version} pym/portage/tests/runTests; then
+		if ! @PREFIX_PORTAGE_PYTHON@${version} pym/portage/tests/runTests; then
 			echo -e "${BAD}Testing with Python ${version} failed${NORMAL}"
 			exit_status="1"
 		fi

@@ -31,7 +31,7 @@ sedexp=(
 	-e "s,${at}PORTAGE_FIND${at},@PORTAGE_FIND@,g"
 	-e "s,${at}PORTAGE_GREP${at},@PORTAGE_GREP@,g"
 	-e "s,${at}PORTAGE_MV${at},@PORTAGE_MV@,g"
-	-e "s,${at}PORTAGE_PYTHON${at},@PORTAGE_PYTHON@,g"
+	-e "s,${at}PORTAGE_PYTHON${at},@PREFIX_PORTAGE_PYTHON@,g"
 	-e "s,${at}PORTAGE_RM${at},@PORTAGE_RM@,g"
 	-e "s,${at}PORTAGE_SED${at},@PORTAGE_SED@,g"
 	-e "s,${at}PORTAGE_WGET${at},@PORTAGE_WGET@,g"

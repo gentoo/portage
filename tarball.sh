@@ -15,7 +15,7 @@ export DEST="${TMP}/${PKG}-${V}"
 
 ./tabcheck.py $(
 	find ./ -name .git -o -name .hg -prune -o -type f ! -name '*.py' -print \
-		| xargs grep -l "#\!@PORTAGE_PYTHON@"
+		| xargs grep -l "#\!@PREFIX_PORTAGE_PYTHON@"
 	find ./ -name .git -o -name .hg -prune -o -type f -name '*.py' -print
 )
 

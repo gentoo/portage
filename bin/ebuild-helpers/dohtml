@@ -7,7 +7,7 @@ source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 PORTAGE_BIN_PATH=${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}
 PORTAGE_PYM_PATH=${PORTAGE_PYM_PATH:-@PORTAGE_BASE@/pym}
 PYTHONPATH=$PORTAGE_PYM_PATH${PYTHONPATH:+:}$PYTHONPATH \
-	"${PORTAGE_PYTHON:-@PORTAGE_PYTHON@}" "$PORTAGE_BIN_PATH/dohtml.py" "$@"
+	"${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" "$PORTAGE_BIN_PATH/dohtml.py" "$@"
 
 ret=$?
 [[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"

@@ -16,19 +16,17 @@ dnl GENTOO_PATH_PYTHON([minimum-version], [path])
 dnl author: Fabian Groffen <grobian a gentoo.org>
 AC_DEFUN([GENTOO_PATH_PYTHON],
 [
-  AC_PATH_PROG([HERE_PORTAGE_PYTHON], [python], no, $2)
-  dnl Portage's ebuild.sh defines PORTAGE_PYTHON itself now :(
-  PORTAGE_PYTHON="$HERE_PORTAGE_PYTHON"
+  AC_PATH_PROG([PREFIX_PORTAGE_PYTHON], [python], no, $2)
 
   dnl is is there at all?
-  if test "$PORTAGE_PYTHON" = "no" ; then
+  if test "$PREFIX_PORTAGE_PYTHON" = "no" ; then
     AC_MSG_ERROR([no python found in your path])
   fi
 
   dnl is it the version we want?
-  ver=`$PORTAGE_PYTHON -c 'import sys; print sys.version.split(" ")[[0]]'`
-  AC_MSG_CHECKING([whether $PORTAGE_PYTHON $ver >= $1])
-  cmp=`$PORTAGE_PYTHON -c 'import sys; print sys.version.split(" ")[[0]] >= "$1"'`
+  ver=`$PREFIX_PORTAGE_PYTHON -c 'import sys; print sys.version.split(" ")[[0]]'`
+  AC_MSG_CHECKING([whether $PREFIX_PORTAGE_PYTHON $ver >= $1])
+  cmp=`$PREFIX_PORTAGE_PYTHON -c 'import sys; print sys.version.split(" ")[[0]] >= "$1"'`
   if test "$cmp" = "True" ; then
     AC_MSG_RESULT([yes])
   else

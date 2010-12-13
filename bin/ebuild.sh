@@ -209,7 +209,7 @@ portageq() {
 	fi
 
 	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-	"${PORTAGE_PYTHON:-@PORTAGE_PYTHON@}" "${PORTAGE_BIN_PATH}/portageq" "$@"
+	"${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" "${PORTAGE_BIN_PATH}/portageq" "$@"
 }
 
 
@@ -1813,7 +1813,7 @@ filter_readonly_variables() {
 		"
 	fi
 
-	"${PORTAGE_PYTHON:-@PORTAGE_PYTHON@}" "${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars}" || die "filter-bash-environment.py failed"
+	"${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" "${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars}" || die "filter-bash-environment.py failed"
 }
 
 # @FUNCTION: preprocess_ebuild_env
