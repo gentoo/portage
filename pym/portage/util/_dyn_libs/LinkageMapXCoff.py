@@ -17,7 +17,7 @@ from portage.util import getlibpaths
 from portage.util import grabfile
 from portage.util import normalize_path
 from portage.util import writemsg_level
-from portage.const import EPREFIX
+from portage.const import EPREFIX, BASH_BINARY
 from portage.util._dyn_libs.LinkageMapELF import LinkageMapELF
 
 class LinkageMapXCoff(LinkageMapELF):
