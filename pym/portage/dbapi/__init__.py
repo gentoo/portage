@@ -128,7 +128,7 @@ class dbapi(object):
 		cpv_iter = iter(match_from_list(atom, cpv_iter))
 		if atom.slot:
 			cpv_iter = self._iter_match_slot(atom, cpv_iter, myrepo)
-		if atom.use:
+		if atom.unevaluated_atom.use:
 			cpv_iter = self._iter_match_use(atom, cpv_iter, myrepo)
 		if atom.repo:
 			cpv_iter = self._iter_match_repo(atom, cpv_iter, myrepo)
@@ -162,22 +162,43 @@ class dbapi(object):
 				iuse, slot, use = self.aux_get(cpv, ["IUSE", "SLOT", "USE"], myrepo=myrepo)
 			except KeyError:
 				continue
-			use = use.split()
 			iuse = frozenset(x.lstrip('+-') for x in iuse.split())
 			missing_iuse = False
-			for x in atom.use.required:
-				if x not in iuse and x not in atom.use.missing_enabled \
-					and x not in atom.use.missing_disabled and not iuse_implicit_match(x):
+			for x in atom.unevaluated_atom.use.required:
+				if x not in iuse and not iuse_implicit_match(x):
 					missing_iuse = True
 					break
 			if missing_iuse:
 				continue
-			if not self._use_mutable:
-				if atom.use.enabled.difference(use).difference(atom.use.missing_enabled):
-					continue
-				if atom.use.disabled.intersection(use) or \
-					atom.use.disabled.difference(iuse).difference(atom.use.missing_disabled):
-					continue
+			if not atom.use:
+				pass
+			elif not self._use_mutable:
+				# Use IUSE to validate USE settings for built packages,
+				# in case the package manager that built this package
+				# failed to do that for some reason (or in case of
+				# data corruption).
+				use = frozenset(x for x in use.split() if x in iuse or \
+					iuse_implicit_match(x))
+				missing_enabled = atom.use.missing_enabled.difference(iuse)
+				missing_disabled = atom.use.missing_disabled.difference(iuse)
+
+				if atom.use.enabled:
+					if atom.use.enabled.intersection(missing_disabled):
+						continue
+					need_enabled = atom.use.enabled.difference(use)
+					if need_enabled:
+						need_enabled = need_enabled.difference(missing_enabled)
+						if need_enabled:
+							continue
+
+				if atom.use.disabled:
+					if atom.use.disabled.intersection(missing_enabled):
+						continue
+					need_disabled = atom.use.disabled.intersection(use)
+					if need_disabled:
+						need_disabled = need_disabled.difference(missing_disabled)
+						if need_disabled:
+							continue
 			else:
 				# Check masked and forced flags for repoman.
 				mysettings = getattr(self, 'settings', None)

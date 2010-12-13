@@ -33,7 +33,9 @@ from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
 
+from _emerge.BinpkgFetcher import BinpkgFetcher
 from _emerge.BinpkgPrefetcher import BinpkgPrefetcher
+from _emerge.BinpkgVerifier import BinpkgVerifier
 from _emerge.Blocker import Blocker
 from _emerge.BlockerDB import BlockerDB
 from _emerge.clear_caches import clear_caches
@@ -655,7 +657,9 @@ class Scheduler(PollScheduler):
 		type_name = RootConfig.tree_pkg_map[pkg_dblink.treetype]
 		root_config = self.trees[pkg_dblink.myroot]["root_config"]
 		installed = type_name == "installed"
-		return self._pkg(cpv, type_name, root_config, installed=installed)
+		repo = pkg_dblink.settings.get("PORTAGE_REPO_NAME")
+		return self._pkg(cpv, type_name, root_config,
+			installed=installed, myrepo=repo)
 
 	def _dblink_elog(self, pkg_dblink, phase, func, msgs):
 
@@ -979,9 +983,18 @@ class Scheduler(PollScheduler):
 		os.execv(mynewargv[0], mynewargv)
 
 	def _run_pkg_pretend(self):
-		shown_verifying_msg = False
+		"""
+		Since pkg_pretend output may be important, this method sends all
+		output directly to stdout (regardless of options like --quiet or
+		--jobs).
+		"""
 
 		failures = 0
+
+		# Use a local PollScheduler instance here, since we don't
+		# want tasks here to trigger the usual Scheduler callbacks
+		# that handle job scheduling and status display.
+		sched_iface = PollScheduler().sched_iface
 
 		for x in self._mergelist:
 			if not isinstance(x, Package):
@@ -996,67 +1009,85 @@ class Scheduler(PollScheduler):
 			if "pretend" not in x.metadata.defined_phases:
 				continue
 
-			if not shown_verifying_msg and self._background:
-				shown_verifying_msg = True
-				self._status_msg("Running pre-merge checks")
-
-			if not self._background:
-				out_str =">>> Running pre-merge checks for " + colorize("INFORM", x.cpv) + "\n"
-				portage.util.writemsg_stdout(out_str, noiselevel=-1)
+			out_str =">>> Running pre-merge checks for " + colorize("INFORM", x.cpv) + "\n"
+			portage.util.writemsg_stdout(out_str, noiselevel=-1)
 
 			root_config = x.root_config
 			settings = self.pkgsettings[root_config.root]
+			settings.setcpv(x)
 			tmpdir = tempfile.mkdtemp()
 			tmpdir_orig = settings["PORTAGE_TMPDIR"]
 			settings["PORTAGE_TMPDIR"] = tmpdir
 
-			if x.built:
-				tree = "bintree"
-				bintree = root_config.trees["bintree"].dbapi.bintree
-				if bintree.isremote(x.cpv):
-					fetcher = BinpkgPrefetcher(background=self._background,
-						logfile=self.settings.get("PORTAGE_LOG_FILE"), pkg=x, scheduler=self._sched_iface)
-					fetcher.start()
-					fetcher.wait()
+			try:
+				if x.built:
+					tree = "bintree"
+					bintree = root_config.trees["bintree"].dbapi.bintree
+					fetched = False
 
-				tbz2_file = bintree.getname(x.cpv)
-				infloc = os.path.join(tmpdir, x.category, x.pf, "build-info")
-				os.makedirs(infloc)
-				portage.xpak.tbz2(tbz2_file).unpackinfo(infloc)
-				ebuild_path = os.path.join(infloc, x.pf + ".ebuild")
+					# Display fetch on stdout, so that it's always clear what
+					# is consuming time here.
+					if bintree.isremote(x.cpv):
+						fetcher = BinpkgFetcher(pkg=x,
+							scheduler=sched_iface)
+						fetcher.start()
+						if fetcher.wait() != os.EX_OK:
+							failures += 1
+							continue
+						fetched = fetcher.pkg_path
 
-			else:
-				tree = "porttree"
-				portdb = root_config.trees["porttree"].dbapi
-				ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
-				if ebuild_path is None:
-					raise AssertionError("ebuild not found for '%s'" % x.cpv)
+					verifier = BinpkgVerifier(pkg=x,
+						scheduler=sched_iface)
+					verifier.start()
+					if verifier.wait() != os.EX_OK:
+						failures += 1
+						continue
 
-			portage.package.ebuild.doebuild.doebuild_environment(ebuild_path,
-				"pretend", settings=settings,
-				db=self.trees[settings["ROOT"]][tree].dbapi)
-			prepare_build_dirs(root_config.root, settings, cleanup=0)
+					if fetched:
+						bintree.inject(x.cpv, filename=fetched)
+					tbz2_file = bintree.getname(x.cpv)
+					infloc = os.path.join(tmpdir, x.category, x.pf, "build-info")
+					os.makedirs(infloc)
+					portage.xpak.tbz2(tbz2_file).unpackinfo(infloc)
+					ebuild_path = os.path.join(infloc, x.pf + ".ebuild")
+					settings.configdict["pkg"]["EMERGE_FROM"] = "binary"
+					settings.configdict["pkg"]["MERGE_TYPE"] = "binary"
 
-			vardb = root_config.trees['vartree'].dbapi
-			settings["REPLACING_VERSIONS"] = " ".join(
-				set(portage.versions.cpv_getversion(match) \
-					for match in vardb.match(x.slot_atom) + \
-					vardb.match('='+x.cpv)))
-			pretend_phase = EbuildPhase(background=self._background,
-				phase="pretend", scheduler=self._sched_iface,
-				settings=settings)
+				else:
+					tree = "porttree"
+					portdb = root_config.trees["porttree"].dbapi
+					ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
+					if ebuild_path is None:
+						raise AssertionError("ebuild not found for '%s'" % x.cpv)
+					settings.configdict["pkg"]["EMERGE_FROM"] = "ebuild"
+					if self._build_opts.buildpkgonly:
+						settings.configdict["pkg"]["MERGE_TYPE"] = "buildonly"
+					else:
+						settings.configdict["pkg"]["MERGE_TYPE"] = "source"
 
-			pretend_phase.start()
-			ret = pretend_phase.wait()
+				portage.package.ebuild.doebuild.doebuild_environment(ebuild_path,
+					"pretend", settings=settings,
+					db=self.trees[settings["ROOT"]][tree].dbapi)
+				prepare_build_dirs(root_config.root, settings, cleanup=0)
 
-			portage.elog.elog_process(x.cpv, settings)
+				vardb = root_config.trees['vartree'].dbapi
+				settings["REPLACING_VERSIONS"] = " ".join(
+					set(portage.versions.cpv_getversion(match) \
+						for match in vardb.match(x.slot_atom) + \
+						vardb.match('='+x.cpv)))
+				pretend_phase = EbuildPhase(
+					phase="pretend", scheduler=sched_iface,
+					settings=settings)
 
-			if ret == os.EX_OK:
+				pretend_phase.start()
+				ret = pretend_phase.wait()
+				if ret != os.EX_OK:
+					failures += 1
+				portage.elog.elog_process(x.cpv, settings)
+			finally:
 				shutil.rmtree(tmpdir)
-			settings["PORTAGE_TMPDIR"] = tmpdir_orig
+				settings["PORTAGE_TMPDIR"] = tmpdir_orig
 
-			if ret != os.EX_OK:
-				failures += 1
 		if failures:
 			return 1
 		return os.EX_OK
@@ -1948,21 +1979,34 @@ class Scheduler(PollScheduler):
 			if world_locked:
 				world_set.unlock()
 
-	def _pkg(self, cpv, type_name, root_config, installed=False):
+	def _pkg(self, cpv, type_name, root_config, installed=False, myrepo=None):
 		"""
 		Get a package instance from the cache, or create a new
 		one if necessary. Raises KeyError from aux_get if it
 		failures for some reason (package does not exist or is
 		corrupt).
 		"""
+
+		if type_name != "ebuild":
+			# For installed (and binary) packages we don't care for the repo
+			# when it comes to hashing, because there can only be one cpv.
+			# So overwrite the repo_key with type_name.
+			repo_key = type_name
+			myrepo = None
+		elif myrepo is None:
+			raise AssertionError(
+				"Scheduler._pkg() called without 'myrepo' argument")
+		else:
+			repo_key = myrepo
+
 		operation = "merge"
 		if installed:
 			operation = "nomerge"
 
-		if self._digraph is not None:
+		if self._graph_config is not None:
 			# Reuse existing instance when available.
-			pkg = self._digraph.get(
-				(type_name, root_config.root, cpv, operation))
+			pkg = self._graph_config.pkg_cache.get(
+				(type_name, root_config.root, cpv, operation, repo_key))
 			if pkg is not None:
 				return pkg
 
@@ -1970,7 +2014,7 @@ class Scheduler(PollScheduler):
 		db = root_config.trees[tree_type].dbapi
 		db_keys = list(self.trees[root_config.root][
 			tree_type].dbapi._aux_cache_keys)
-		metadata = zip(db_keys, db.aux_get(cpv, db_keys))
+		metadata = zip(db_keys, db.aux_get(cpv, db_keys, myrepo=myrepo))
 		return Package(built=(type_name != 'ebuild'),
 			cpv=cpv, metadata=metadata,
 			root_config=root_config, installed=installed)

@@ -30,6 +30,7 @@ from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage import output
+from portage.localization import _
 from portage.output import red, green
 from portage.process import find_binary
 from portage import exception
@@ -310,14 +311,13 @@ def get_commit_message_with_editor(editor, message=None):
 	from tempfile import mkstemp
 	fd, filename = mkstemp()
 	try:
-		os.write(fd, _unicode_encode(
+		os.write(fd, _unicode_encode(_(
 			"\n# Please enter the commit message " + \
 			"for your changes.\n# (Comment lines starting " + \
-			"with '#' will not be included)\n",
+			"with '#' will not be included)\n"),
 			encoding=_encodings['content'], errors='backslashreplace'))
 		if message:
-			os.write(fd, _unicode_encode("#\n",
-				encoding=_encodings['content'], errors='backslashreplace'))
+			os.write(fd, b"#\n")
 			for line in message:
 				os.write(fd, _unicode_encode("#" + line,
 					encoding=_encodings['content'], errors='backslashreplace'))

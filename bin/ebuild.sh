@@ -691,7 +691,15 @@ ebuild_phase_with_hooks() {
 }
 
 dyn_pretend() {
-	ebuild_phase_with_hooks pkg_pretend
+	if [[ -e $PORTAGE_BUILDDIR/.pretended ]] ; then
+		vecho ">>> It appears that '$PF' is already pretended; skipping."
+		vecho ">>> Remove '$PORTAGE_BUILDDIR/.pretended' to force pretend."
+		return 0
+	fi
+	ebuild_phase pre_pkg_pretend
+	ebuild_phase pkg_pretend
+	> "$PORTAGE_BUILDDIR"/.pretended
+	ebuild_phase post_pkg_pretend
 }
 
 dyn_setup() {
@@ -1688,7 +1696,8 @@ PORTAGE_READONLY_METADATA="DEFINED_PHASES DEPEND DESCRIPTION
 	PDEPEND PROVIDE RDEPEND RESTRICT SLOT SRC_URI"
 
 PORTAGE_READONLY_VARS="D EBUILD EBUILD_PHASE \
-	EBUILD_SH_ARGS ECLASSDIR EMERGE_FROM FILESDIR PM_EBUILD_HOOK_DIR \
+	EBUILD_SH_ARGS ECLASSDIR EMERGE_FROM FILESDIR MERGE_TYPE \
+	PM_EBUILD_HOOK_DIR \
 	PORTAGE_ACTUAL_DISTDIR PORTAGE_ARCHLIST PORTAGE_BASHRC  \
 	PORTAGE_BINPKG_FILE PORTAGE_BINPKG_TAR_OPTS PORTAGE_BINPKG_TMPFILE \
 	PORTAGE_BIN_PATH PORTAGE_BUILDDIR PORTAGE_BUNZIP2_COMMAND \
@@ -2079,7 +2088,7 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
 		if [[ -n $QA_PREBUILT ]] ; then
 
 			# these ones support fnmatch patterns
-			QA_EXECSTAC+=" $QA_PREBUILT"
+			QA_EXECSTACK+=" $QA_PREBUILT"
 			QA_TEXTRELS+=" $QA_PREBUILT"
 			QA_WX_LOAD+=" $QA_PREBUILT"
 

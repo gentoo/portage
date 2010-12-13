@@ -1925,40 +1925,40 @@ def match_from_list(mydep, candidate_list):
 				continue
 			mylist.append(x)
 
-	if mydep.use:
+	if mydep.unevaluated_atom.use:
 		candidate_list = mylist
 		mylist = []
 		for x in candidate_list:
 			use = getattr(x, "use", None)
 			if use is not None:
-				is_valid_flag = x.iuse.is_valid_flag
-				use_config_mismatch = False
-
-				for y in mydep.use.enabled:
-					if is_valid_flag(y):
-						if y not in use.enabled:
-							use_config_mismatch = True
-							break	
-					else:
-						if y not in mydep.use.missing_enabled:
-							use_config_mismatch = True
-							break
-
-				if use_config_mismatch:
+				if mydep.unevaluated_atom.use and \
+					not x.iuse.is_valid_flag(
+					mydep.unevaluated_atom.use.required):
 					continue
 
-				for y in mydep.use.disabled:
-					if is_valid_flag(y):
-						if y in use.enabled:
-							use_config_mismatch = True
-							break
-					else:
-						if y not in mydep.use.missing_disabled:
-							use_config_mismatch = True
-							break
+				if mydep.use:
 
-				if use_config_mismatch:
-					continue
+					missing_enabled = mydep.use.missing_enabled.difference(x.iuse.all)
+					missing_disabled = mydep.use.missing_disabled.difference(x.iuse.all)
+
+					if mydep.use.enabled:
+						if mydep.use.enabled.intersection(missing_disabled):
+							continue
+						need_enabled = mydep.use.enabled.difference(use.enabled)
+						if need_enabled:
+							need_enabled = need_enabled.difference(missing_enabled)
+							if need_enabled:
+								continue
+
+					if mydep.use.disabled:
+						if mydep.use.disabled.intersection(missing_enabled):
+							continue
+						need_disabled = mydep.use.disabled.intersection(use.enabled)
+						if need_disabled:
+							need_disabled = need_disabled.difference(missing_disabled)
+							if need_disabled:
+								continue
+
 			mylist.append(x)
 
 	if mydep.repo:

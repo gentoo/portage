@@ -339,6 +339,7 @@ do_cfg() {
 2) Delete update, keeping original as is
 3) Interactively merge original with update
 4) Show differences again
+5) Save update as example config
 Please select from the menu above (-1 to ignore this update): "
 			my_input=$(read_int)
 		fi
@@ -360,6 +361,8 @@ Please select from the menu above (-1 to ignore this update): "
 			   continue
 			   ;;
 			4) continue
+			   ;;
+			5) do_distconf "${file}" "${ofile}"
 			   ;;
 			*) continue
 			   ;;
@@ -442,6 +445,39 @@ Please select from the menu above (-1 to exit, losing this merge): "
 	done
 	rm ${rm_opts} "${mfile}"
 	return 255
+}
+
+do_distconf() {
+	# search for any previously saved distribution config
+	# files and number the current one accordingly
+
+	local file="${1}"
+	local ofile="${2}"
+	local -i count
+	local -i size
+	local -i fill
+	local -i f
+	local suffix
+	local efile
+
+	count=0
+	while true ; do
+		size=${#count}
+		fill=$((4-$size))
+		suffix=".dist_"
+		while [ $fill -gt 0 ] ; do
+			((fill--))
+			suffix+="0"
+		done
+		suffix+="${count}"
+		efile="${ofile}${suffix}"
+		if [[ ! -f ${efile} ]]; then
+			echo ${efile}
+			mv ${mv_opts} ${file} ${efile}
+			break
+		fi
+		((count++))
+	done
 }
 
 die() {

@@ -27,7 +27,8 @@ from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
 from portage.dbapi.vartree import vartree
 from portage.dep import Atom, isvalidatom, match_from_list, use_reduce, _repo_separator, _slot_separator
-from portage.eapi import eapi_exports_AA, eapi_supports_prefix, eapi_exports_replace_vars
+from portage.eapi import eapi_exports_AA, eapi_exports_merge_type, \
+	eapi_supports_prefix, eapi_exports_replace_vars
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.exception import InvalidDependString, PortageException
 from portage.localization import _
@@ -893,6 +894,7 @@ class config(object):
 		self.modifiedkeys = []
 		if not keeping_pkg:
 			self.mycpv = None
+			self._setcpv_args_hash = None
 			self.puse = ""
 			del self._penv[:]
 			self.configdict["pkg"].clear()
@@ -2072,6 +2074,9 @@ class config(object):
 		# Don't export AA to the ebuild environment in EAPIs that forbid it
 		if not eapi_exports_AA(eapi):
 			mydict.pop("AA", None)
+
+		if not eapi_exports_merge_type(eapi):
+			mydict.pop("MERGE_TYPE", None)
 
 		# Prefix variables are supported starting with EAPI 3.
 		# but during transition, we just support them anywhere

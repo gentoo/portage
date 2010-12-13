@@ -40,7 +40,8 @@ from portage.data import portage_gid, portage_uid, secpass, \
 	uid, userpriv_groups
 from portage.dbapi.virtual import fakedbapi
 from portage.dep import Atom, paren_enclose, use_reduce
-from portage.eapi import eapi_exports_KV, eapi_exports_replace_vars, \
+from portage.eapi import eapi_exports_KV, eapi_exports_merge_type, \
+	eapi_exports_replace_vars, \
 	eapi_has_src_prepare_and_src_configure, eapi_has_pkg_pretend
 from portage.elog import elog_process
 from portage.elog.messages import eerror, eqawarn
@@ -641,6 +642,15 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if rval != os.EX_OK:
 				return rval
 
+		if eapi_exports_merge_type(mysettings["EAPI"]) and \
+			"MERGE_TYPE" not in mysettings.configdict["pkg"]:
+			if tree == "porttree":
+				mysettings.configdict["pkg"]["EMERGE_FROM"] = "ebuild"
+				mysettings.configdict["pkg"]["MERGE_TYPE"] = "source"
+			elif tree == "bintree":
+				mysettings.configdict["pkg"]["EMERGE_FROM"] = "binary"
+				mysettings.configdict["pkg"]["MERGE_TYPE"] = "binary"
+
 		if eapi_exports_replace_vars(mysettings["EAPI"]) and \
 			(mydo in ("pretend", "setup") or \
 			("noauto" not in features and not returnpid and \
@@ -663,7 +673,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# if any of these are being called, handle them -- running them out of
 		# the sandbox -- and stop now.
 		if mydo in ("config", "help", "info", "postinst",
-			"preinst", "pretend", "postrm", "prerm", "setup"):
+			"preinst", "pretend", "postrm", "prerm"):
 			return _spawn_phase(mydo, mysettings,
 				fd_pipes=fd_pipes, logfile=logfile, returnpid=returnpid)
 
