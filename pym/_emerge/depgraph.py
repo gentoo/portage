@@ -5132,6 +5132,7 @@ class depgraph(object):
 					self._frozen_config.excluded_pkgs.findAtomForPackage(pkg,
 						modified_use=self._pkg_use_enabled(pkg)):
 					continue
+				break
 
 			if pkg is None:
 				# It does no exist or it is corrupt.
