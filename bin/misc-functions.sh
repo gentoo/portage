@@ -1416,7 +1416,10 @@ postinst_aix() {
 		EOF
 		[[ -n ${delmembers} ]] || continue
 		einfo "dropping ${archive}[${delmembers# }]"
-		${ar} -X32_64 -z -o -d "${EROOT}${archive}" ${delmembers} || die "cannot remove${delmembers} from ${archive}"
+		rm -f "${EROOT}${archive}".new || die "cannot prune ${EROOT}${archive}.new"
+		cp "${EROOT}${archive}" "${EROOT}${archive}".new || die "cannot backup ${archive}"
+		${ar} -X32_64 -z -o -d "${EROOT}${archive}".new ${delmembers} || die "cannot remove${delmembers} from ${archive}.new"
+		mv -f "${EROOT}${archive}".new "${EROOT}${archive}" || die "cannot put ${EROOT}${archive} in place"
 		eend $?
 	done
 	local libmetadir keepmembers prunedirs=()
