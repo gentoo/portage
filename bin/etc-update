@@ -460,11 +460,13 @@ do_distconf() {
 	local suffix
 	local efile
 
-	for count in $(seq 0 9999); do
+	count=0
+	while true ; do
 		size=${#count}
-		let fill=$((4-$size))
+		fill=$((4-$size))
 		suffix=".dist_"
-		for f in $(seq 1 $fill); do
+		while [ $fill -gt 0 ] ; do
+			((fill--))
 			suffix+="0"
 		done
 		suffix+="${count}"
@@ -474,6 +476,7 @@ do_distconf() {
 			mv ${mv_opts} ${file} ${efile}
 			break
 		fi
+		((count++))
 	done
 }
 
