@@ -16,7 +16,9 @@ dnl GENTOO_PATH_PYTHON([minimum-version], [path])
 dnl author: Fabian Groffen <grobian a gentoo.org>
 AC_DEFUN([GENTOO_PATH_PYTHON],
 [
-  AC_PATH_PROG([PORTAGE_PYTHON], [python], no, $2)
+  AC_PATH_PROG([HERE_PORTAGE_PYTHON], [python], no, $2)
+  dnl Portage's ebuild.sh defines PORTAGE_PYTHON itself now :(
+  PORTAGE_PYTHON="$HERE_PORTAGE_PYTHON"
 
   dnl is is there at all?
   if test "$PORTAGE_PYTHON" = "no" ; then
