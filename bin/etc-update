@@ -466,7 +466,11 @@ do_distconf() {
 		suffix+="${count}"
 		efile="${ofile}${suffix}"
 		if [[ ! -f ${efile} ]]; then
-			mv ${mv_opts} ${file} ${efile}
+			mv ${mv_opts} "${file}" "${efile}"
+			break
+		elif diff_command "${file}" "${efile}" &> /dev/null; then
+			# replace identical copy
+			mv "${file}" "${efile}"
 			break
 		fi
 	done
