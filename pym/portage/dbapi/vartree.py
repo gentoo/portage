@@ -772,7 +772,7 @@ class vardbapi(dbapi):
 		"""
 		if not hasattr(pkg, "getcontents"):
 			pkg = self._dblink(pkg)
-		root = self._eroot
+		root = self.settings['ROOT']
 		root_len = len(root) - 1
 		new_contents = pkg.getcontents().copy()
 		removed = 0
