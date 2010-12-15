@@ -454,29 +454,25 @@ do_distconf() {
 	local file="${1}"
 	local ofile="${2}"
 	local -i count
-	local -i size
 	local -i fill
-	local -i f
 	local suffix
 	local efile
 
-	count=0
-	while true ; do
-		size=${#count}
-		fill=$((4-$size))
+	for ((count = 0; count <= 9999; count++)); do
 		suffix=".dist_"
-		while [ $fill -gt 0 ] ; do
-			((fill--))
+		for ((fill = 4 - ${#count}; fill > 0; fill--)); do
 			suffix+="0"
 		done
 		suffix+="${count}"
 		efile="${ofile}${suffix}"
 		if [[ ! -f ${efile} ]]; then
-			echo ${efile}
-			mv ${mv_opts} ${file} ${efile}
+			mv ${mv_opts} "${file}" "${efile}"
+			break
+		elif diff_command "${file}" "${efile}" &> /dev/null; then
+			# replace identical copy
+			mv "${file}" "${efile}"
 			break
 		fi
-		((count++))
 	done
 }
 
