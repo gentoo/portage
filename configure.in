@@ -197,7 +197,7 @@ AC_HELP_STRING([--with-offset-prefix],
 
 if test "x$PORTAGE_EPREFIX" != "x"
 then
-	PORTAGE_EPREFIX=`${PORTAGE_PYTHON} -c "import os; print os.path.normpath('$PORTAGE_EPREFIX')"`
+	PORTAGE_EPREFIX=`${PREFIX_PORTAGE_PYTHON} -c "import os; print os.path.normpath('$PORTAGE_EPREFIX')"`
 	DEFAULT_PATH="${PORTAGE_EPREFIX}/usr/sbin:${PORTAGE_EPREFIX}/usr/bin:${PORTAGE_EPREFIX}/sbin:${PORTAGE_EPREFIX}/bin"
 else
 	# this is what trunk uses in ebuild.sh
