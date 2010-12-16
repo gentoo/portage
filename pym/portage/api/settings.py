@@ -16,7 +16,7 @@ class PortageSettings:
 	well as some other commonly used data used in/from the  api.
 	"""
 	
-	def __init__(self):
+	def __init__(self, config_root=None):
 		# declare some globals
 		self.portdir = None
 		self.portdir_overlay = None
@@ -27,7 +27,10 @@ class PortageSettings:
 		self.virtuals =  None
 		self.keys =  None
 		self.UseFlagDict = None
-		self.reset()
+		if config_root is None:
+			self.reset()
+		else:
+			
 
 
 	def reset_use_flags(self):
@@ -58,6 +61,38 @@ class PortageSettings:
 		# lower case is nicer
 		self.keys = [key.lower() for key in portage.auxdbkeys]
 		return
+
+
+	def _load_config(trees=None, config_root=None):
+		kwargs = {}
+		if config_root:
+			env_fetch = (("target_root", "ROOT"))
+			kwargs['config_root'] = config_root
+		else:
+			env_fetch = (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT"))
+		for k, envvar in env_fetch:
+			v = os.environ.get(envvar, None)
+			if v and v.strip():
+				kwargs[k] = v
+		trees = portage.create_trees(trees=trees, **kwargs)
+
+		for root, root_trees in trees.items():
+			settings = root_trees["vartree"].settings
+			settings._init_dirs()
+			setconfig = load_default_config(settings, root_trees)
+			root_trees["root_config"] = RootConfig(settings, root_trees, setconfig)
+
+		settings = trees["/"]["vartree"].settings
+
+		for myroot in trees:
+			if myroot != "/":
+				settings = trees[myroot]["vartree"].settings
+				break
+
+		mtimedbfile = os.path.join(settings['EROOT'], portage.CACHE_PATH, "mtimedb")
+		mtimedb = portage.MtimeDB(mtimedbfile)
+		portage.output._init(config_root=settings['PORTAGE_CONFIGROOT'])
+		return settings, trees, mtimedb
 
 
 	def _load_dbapis(self):
