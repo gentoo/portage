@@ -296,20 +296,24 @@ class slot_conflict_handler(object):
 						atom_str = str(atom)
 						if version:
 							op = atom.operator
-							ver = cpv_getversion(atom.cpv)
+							ver = None
+							if atom.cp != atom.cpv:
+								ver = cpv_getversion(atom.cpv)
 							slot = atom.slot
 
 							if op == "=*":
 								op = "="
 								ver += "*"
 
-							atom_str = atom_str.replace(op, colorize("BAD", op), 1)
-							
-							start = atom_str.rfind(ver)
-							end = start + len(ver)
-							atom_str = atom_str[:start] + \
-								colorize("BAD", ver) + \
-								atom_str[end:]
+							if op is not None:
+								atom_str = atom_str.replace(op, colorize("BAD", op), 1)
+
+							if ver is not None:
+								start = atom_str.rfind(ver)
+								end = start + len(ver)
+								atom_str = atom_str[:start] + \
+									colorize("BAD", ver) + \
+									atom_str[end:]
 							if slot:
 								atom_str = atom_str.replace(":" + slot, colorize("BAD", ":" + slot))
 						

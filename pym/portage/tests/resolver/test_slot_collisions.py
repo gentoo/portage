@@ -15,6 +15,8 @@ class SlotCollisionTestCase(TestCase):
 			"dev-libs/B-1": { "IUSE": "foo" },
 			"dev-libs/C-1": { "DEPEND": "dev-libs/A[foo]", "EAPI": 2 },
 			"dev-libs/D-1": { "DEPEND": "dev-libs/A[foo=] dev-libs/B[foo=]", "IUSE": "foo", "EAPI": 2 },
+			"dev-libs/E-1": {  },
+			"dev-libs/E-2": { "IUSE": "foo" },
 
 			"app-misc/Z-1": { },
 			"app-misc/Z-2": { },
@@ -30,6 +32,8 @@ class SlotCollisionTestCase(TestCase):
 			"app-misc/A-1": { "IUSE": "foo +bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": EAPI_4 },
 			"app-misc/B-1": { "DEPEND": "=app-misc/A-1[foo=]", "IUSE": "foo", "EAPI": 2 },
 			"app-misc/C-1": { "DEPEND": "=app-misc/A-1[foo]", "EAPI": 2 },
+			"app-misc/E-1": { "RDEPEND": "dev-libs/E[foo?]", "IUSE": "foo", "EAPI": "2" },
+			"app-misc/F-1": { "RDEPEND": "=dev-libs/E-1", "IUSE": "foo", "EAPI": "2" },
 			}
 		installed = {
 			"dev-libs/A-1": { "PDEPEND": "foo? ( dev-libs/B )", "IUSE": "foo", "USE": "foo" }, 
@@ -64,6 +68,14 @@ class SlotCollisionTestCase(TestCase):
 				["=app-misc/X-2", "=app-misc/Y-2"],
 				success = False,
 				mergelist = ["app-misc/Z-1", "app-misc/Z-2", "app-misc/X-2", "app-misc/Y-2"],
+				ignore_mergelist_order = True,
+				slot_collision_solutions = []
+				),
+
+			ResolverPlaygroundTestCase(
+				["=app-misc/E-1", "=app-misc/F-1"],
+				success = False,
+				mergelist = ["dev-libs/E-1", "dev-libs/E-2", "app-misc/E-1", "app-misc/F-1"],
 				ignore_mergelist_order = True,
 				slot_collision_solutions = []
 				),
