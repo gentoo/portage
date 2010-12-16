@@ -16,7 +16,7 @@ import time
 import tempfile
 import base64
 
-_all_errors = [ValueError, socket.error]
+_all_errors = [NotImplementedError, ValueError, socket.error]
 
 try:
 	from html.parser import HTMLParser as html_parser_HTMLParser
