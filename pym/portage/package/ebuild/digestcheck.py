@@ -67,13 +67,12 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None):
 			eout.ebegin(_("checking %s ;-)") % f)
 			ftype = mf.findFile(f)
 			if ftype is None:
-				raise KeyError(f)
+				eout.eend(1)
+				writemsg(_("\n!!! Missing digest for '%s'\n") % (f,),
+					noiselevel=-1)
+				return 0
 			mf.checkFileHashes(ftype, f)
 			eout.eend(0)
-	except KeyError as e:
-		eout.eend(1)
-		writemsg(_("\n!!! Missing digest for %s\n") % str(e), noiselevel=-1)
-		return 0
 	except FileNotFound as e:
 		eout.eend(1)
 		writemsg(_("\n!!! A file listed in the Manifest could not be found: %s\n") % str(e),
