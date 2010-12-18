@@ -719,6 +719,9 @@ for path in portdb.porttrees:
 					"Invalid %s profile (%s) for arch %s in %s line %d",
 					arch[2], arch[1], arch[0], desc_path, i+1)
 				continue
+			if os.path.exists(
+				os.path.join(profile_desc.abs_path, 'deprecated')):
+				continue
 			profile_list.append(profile_desc)
 		desc_file.close()
 
