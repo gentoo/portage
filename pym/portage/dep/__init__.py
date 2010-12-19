@@ -1984,7 +1984,7 @@ def match_from_list(mydep, candidate_list):
 	return mylist
 
 def human_readable_required_use(required_use):
-	return required_use.replace("^^", "only-one-of").replace("||", "any-of")
+	return required_use.replace("^^", "exactly-one-of").replace("||", "any-of")
 
 def get_required_use_flags(required_use):
 	"""
