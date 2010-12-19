@@ -1134,7 +1134,14 @@ class Atom(_atom_base):
 			without_use = Atom(m.group('without_use'), allow_repo=allow_repo)
 		else:
 			use = None
-			without_use = self
+			if unevaluated_atom is not None and \
+				unevaluated_atom.use is not None:
+				# unevaluated_atom.use is used for IUSE checks when matching
+				# packages, so it must not propagate to without_use
+				without_use = Atom(s, allow_wildcard=allow_wildcard,
+					allow_repo=allow_repo)
+			else:
+				without_use = self
 
 		self.__dict__['use'] = use
 		self.__dict__['without_use'] = without_use
