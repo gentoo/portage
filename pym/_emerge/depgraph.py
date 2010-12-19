@@ -1206,7 +1206,8 @@ class depgraph(object):
 				if not dep_string:
 					continue
 
-				dep_string = portage.dep.paren_enclose(dep_string)
+				dep_string = portage.dep.paren_enclose(dep_string,
+					unevaluated_atom=True)
 
 				if not self._add_pkg_dep_string(
 					pkg, dep_root, dep_priority, dep_string,
@@ -1482,7 +1483,8 @@ class depgraph(object):
 		"""
 		pkg, dep_root, dep_priority, dep_struct = \
 			self._dynamic_config._dep_disjunctive_stack.pop()
-		dep_string = portage.dep.paren_enclose(dep_struct)
+		dep_string = portage.dep.paren_enclose(dep_struct,
+			unevaluated_atom=True)
 		if not self._add_pkg_dep_string(
 			pkg, dep_root, dep_priority, dep_string, allow_unsatisfied):
 			return 0

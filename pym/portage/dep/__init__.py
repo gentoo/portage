@@ -232,7 +232,7 @@ class paren_normalize(list):
 					self._zap_parens(x, dest)
 		return dest
 
-def paren_enclose(mylist):
+def paren_enclose(mylist, unevaluated_atom=False):
 	"""
 	Convert a list to a string with sublists enclosed with parens.
 
@@ -251,6 +251,8 @@ def paren_enclose(mylist):
 		if isinstance(x, list):
 			mystrparts.append("( "+paren_enclose(x)+" )")
 		else:
+			if unevaluated_atom:
+				x = getattr(x, 'unevaluated_atom', x)
 			mystrparts.append(x)
 	return " ".join(mystrparts)
 
