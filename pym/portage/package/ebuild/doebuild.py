@@ -1453,11 +1453,12 @@ def _post_src_install_uid_fix(mysettings, out):
 							fixlafiles_announced = True
 							writemsg("Fixing .la files\n", fd=out)
 						writemsg("   %s\n" % fpath[len(destdir):], fd=out)
-						f = open(_unicode_encode(fpath,
+						# write_atomic succeeds even in some cases in which
+						# a normal write might fail due to file permission
+						# settings on some operating systems such as HP-UX
+						write_atomic(_unicode_encode(fpath,
 							encoding=_encodings['merge'], errors='strict'),
-							mode='wb')
-						f.write(new_contents)
-						f.close()
+							new_contents, mode='wb')
 
 				mystat = os.lstat(fpath)
 				if stat.S_ISREG(mystat.st_mode) and \
