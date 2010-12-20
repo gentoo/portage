@@ -188,6 +188,6 @@ then
 	# https://bugzilla.redhat.com/show_bug.cgi?id=444310
 	while read -r -d $'\0' emptydir
 	do
-		touch "$emptydir"/.keepdir
+		>> "$emptydir"/.keepdir
 	done < <(find "${D}${prepstrip_sources_dir}/" -type d -empty -print0)
 fi

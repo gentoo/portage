@@ -14,7 +14,7 @@ case $1 in
 		shift
 		for skip in "$@" ; do
 			[[ -d ${D}${skip} || -f ${D}${skip} ]] \
-				&& touch "${D}${skip}.ecompress.skip"
+				&& >> "${D}${skip}.ecompress.skip"
 		done
 		exit 0
 		;;
@@ -22,8 +22,11 @@ case $1 in
 		shift
 		set -- "${@/%/.ecompress.dir}"
 		set -- "${@/#/${D}}"
-		touch "$@"
-		ret=$?
+		ret=0
+		for x in "$@" ; do
+			>> "$x"
+			((ret|=$?))
+		done
 		[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
 		exit $ret
 		;;
