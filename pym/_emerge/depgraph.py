@@ -4988,6 +4988,9 @@ class depgraph(object):
 			if pkg_status != "nomerge":
 				continue
 
+			if x.root != root_config.root:
+				continue
+
 			try:
 				myfavkey = create_world_atom(x, args_set, root_config)
 				if myfavkey:
@@ -5003,6 +5006,8 @@ class depgraph(object):
 		all_added = []
 		for arg in self._dynamic_config._initial_arg_list:
 			if not isinstance(arg, SetArg):
+				continue
+			if arg.root_config.root != root_config.root:
 				continue
 			k = arg.name
 			if k in ("selected", "world") or \
