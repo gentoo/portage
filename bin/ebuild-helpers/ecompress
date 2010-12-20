@@ -95,8 +95,11 @@ case $1 in
 		;;
 	--queue)
 		shift
-		touch "${@/%/.ecompress.file}"
-		ret=$?
+		ret=0
+		for x in "${@/%/.ecompress.file}" ; do
+			>> "$x"
+			((ret|=$?))
+		done
 		[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
 		exit $ret
 		;;
