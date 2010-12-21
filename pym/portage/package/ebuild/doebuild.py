@@ -676,12 +676,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		mycpv = "/".join((mysettings["CATEGORY"], mysettings["PF"]))
 
-		emerge_skip_distfiles = returnpid
-		emerge_skip_digest = returnpid
 		# Only try and fetch the files if we are going to need them ...
 		# otherwise, if user has FEATURES=noauto and they run `ebuild clean
 		# unpack compile install`, we will try and fetch 4 times :/
-		need_distfiles = not emerge_skip_distfiles and \
+		need_distfiles = \
 			(mydo in ("fetch", "unpack") or \
 			mydo not in ("digest", "manifest") and "noauto" not in features)
 		alist = mysettings.configdict["pkg"].get("A")
@@ -694,7 +692,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			alist = set(alist.split())
 			aalist = set(aalist.split())
 		elif alist is None or aalist is None or \
-			(not emerge_skip_distfiles and need_distfiles):
+			need_distfiles:
 			# Make sure we get the correct tree in case there are overlays.
 			mytree = os.path.realpath(
 				os.path.dirname(os.path.dirname(mysettings["O"])))
@@ -712,7 +710,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			mysettings.configdict["pkg"]["A"] = " ".join(alist)
 			mysettings.configdict["pkg"]["AA"] = " ".join(aalist)
 
-			if not emerge_skip_distfiles and need_distfiles:
+			if need_distfiles:
 				if "mirror" in features or fetchall:
 					fetchme = aalist
 				else:
@@ -741,7 +739,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				return not digestgen(mysettings=mysettings, myportdb=mydbapi)
 			elif mydo == "digest":
 				return not digestgen(mysettings=mysettings, myportdb=mydbapi)
-			elif mydo != 'fetch' and not emerge_skip_digest and \
+			elif mydo != 'fetch' and \
 				"digest" in mysettings.features:
 				# Don't do this when called by emerge or when called just
 				# for fetch (especially parallel-fetch) since it's not needed
