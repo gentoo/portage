@@ -679,18 +679,23 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		mycpv = "/".join((mysettings["CATEGORY"], mysettings["PF"]))
 
-		emerge_skip_distfiles = returnpid
-		emerge_skip_digest = returnpid
 		# Only try and fetch the files if we are going to need them ...
 		# otherwise, if user has FEATURES=noauto and they run `ebuild clean
 		# unpack compile install`, we will try and fetch 4 times :/
-		need_distfiles = not emerge_skip_distfiles and \
+		need_distfiles = \
 			(mydo in ("fetch", "unpack") or \
 			mydo not in ("digest", "manifest") and "noauto" not in features)
 		alist = mysettings.configdict["pkg"].get("A")
 		aalist = mysettings.configdict["pkg"].get("AA")
-		if alist is None or aalist is None or \
-			(not emerge_skip_distfiles and need_distfiles):
+		if not hasattr(mydbapi, 'getFetchMap'):
+			if alist is None:
+				alist = ""
+			if aalist is None:
+				aalist = ""
+			alist = set(alist.split())
+			aalist = set(aalist.split())
+		elif alist is None or aalist is None or \
+			need_distfiles:
 			# Make sure we get the correct tree in case there are overlays.
 			mytree = os.path.realpath(
 				os.path.dirname(os.path.dirname(mysettings["O"])))
@@ -708,7 +713,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			mysettings.configdict["pkg"]["A"] = " ".join(alist)
 			mysettings.configdict["pkg"]["AA"] = " ".join(aalist)
 
-			if not emerge_skip_distfiles and need_distfiles:
+			if need_distfiles:
 				if "mirror" in features or fetchall:
 					fetchme = aalist
 				else:
@@ -737,7 +742,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				return not digestgen(mysettings=mysettings, myportdb=mydbapi)
 			elif mydo == "digest":
 				return not digestgen(mysettings=mysettings, myportdb=mydbapi)
-			elif mydo != 'fetch' and not emerge_skip_digest and \
+			elif mydo != 'fetch' and \
 				"digest" in mysettings.features:
 				# Don't do this when called by emerge or when called just
 				# for fetch (especially parallel-fetch) since it's not needed
@@ -749,7 +754,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				return 1
 
 		# See above comment about fetching only when needed
-		if not emerge_skip_distfiles and \
+		if tree == 'porttree' and \
 			not digestcheck(checkme, mysettings, "strict" in features):
 			return 1
 
@@ -757,7 +762,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			return 0
 
 		# remove PORTAGE_ACTUAL_DISTDIR once cvs/svn is supported via SRC_URI
-		if (mydo != "setup" and "noauto" not in features) or mydo == "unpack":
+		if tree == 'porttree' and \
+			((mydo != "setup" and "noauto" not in features) \
+			or mydo == "unpack"):
 			_prepare_fake_distdir(mysettings, alist)
 
 		#initial dep checks complete; time to process main commands
@@ -1496,11 +1503,12 @@ def _post_src_install_uid_fix(mysettings, out):
 							fixlafiles_announced = True
 							writemsg("Fixing .la files\n", fd=out)
 						writemsg("   %s\n" % fpath[len(destdir):], fd=out)
-						f = open(_unicode_encode(fpath,
+						# write_atomic succeeds even in some cases in which
+						# a normal write might fail due to file permission
+						# settings on some operating systems such as HP-UX
+						write_atomic(_unicode_encode(fpath,
 							encoding=_encodings['merge'], errors='strict'),
-							mode='wb')
-						f.write(new_contents)
-						f.close()
+							new_contents, mode='wb')
 
 				mystat = os.lstat(fpath)
 				if stat.S_ISREG(mystat.st_mode) and \

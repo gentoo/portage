@@ -1188,7 +1188,8 @@ class depgraph(object):
 				if not dep_string:
 					continue
 
-				dep_string = portage.dep.paren_enclose(dep_string)
+				dep_string = portage.dep.paren_enclose(dep_string,
+					unevaluated_atom=True)
 
 				if not self._add_pkg_dep_string(
 					pkg, dep_root, dep_priority, dep_string,
@@ -1465,7 +1466,8 @@ class depgraph(object):
 		"""
 		pkg, dep_root, dep_priority, dep_struct = \
 			self._dynamic_config._dep_disjunctive_stack.pop()
-		dep_string = portage.dep.paren_enclose(dep_struct)
+		dep_string = portage.dep.paren_enclose(dep_struct,
+			unevaluated_atom=True)
 		if not self._add_pkg_dep_string(
 			pkg, dep_root, dep_priority, dep_string, allow_unsatisfied):
 			return 0
@@ -5027,12 +5029,10 @@ class depgraph(object):
 		portdb = self._frozen_config.trees[self._frozen_config.target_root]["porttree"].dbapi
 		added_favorites = set()
 		for x in self._dynamic_config._set_nodes:
-			pkg_type = x.type_name
-			root = x.root
-			pkg_key = x.cpv
-			pkg_status = x.operation
-			pkg_repo = x.repo
-			if pkg_status != "nomerge":
+			if x.operation != "nomerge":
+				continue
+
+			if x.root != root_config.root:
 				continue
 
 			try:
@@ -5043,13 +5043,15 @@ class depgraph(object):
 					added_favorites.add(myfavkey)
 			except portage.exception.InvalidDependString as e:
 				writemsg("\n\n!!! '%s' has invalid PROVIDE: %s\n" % \
-					(pkg_key, str(e)), noiselevel=-1)
+					(x.cpv, e), noiselevel=-1)
 				writemsg("!!! see '%s'\n\n" % os.path.join(
-					root, portage.VDB_PATH, pkg_key, "PROVIDE"), noiselevel=-1)
+					x.root, portage.VDB_PATH, x.cpv, "PROVIDE"), noiselevel=-1)
 				del e
 		all_added = []
 		for arg in self._dynamic_config._initial_arg_list:
 			if not isinstance(arg, SetArg):
+				continue
+			if arg.root_config.root != root_config.root:
 				continue
 			k = arg.name
 			if k in ("selected", "world") or \

@@ -332,12 +332,15 @@ keepdir() {
 	if [ "$1" == "-R" ] || [ "$1" == "-r" ]; then
 		shift
 		find "$@" -type d -printf "${ED}%p/.keep_${CATEGORY}_${PN}-${SLOT}\n" \
-			| tr "\n" "\0" | ${XARGS} -0 -n100 touch || \
-			die "Failed to recursively create .keep files"
+			| tr "\n" "\0" | \
+			while read -r -d $'\0' ; do
+				>> "$REPLY" || \
+					die "Failed to recursively create .keep files"
+			done
 	else
 		for x in "$@"; do
-			touch "${ED}${x}/.keep_${CATEGORY}_${PN}-${SLOT}" || \
-				die "Failed to create .keep in ${ED}${x}"
+			>> "${ED}${x}/.keep_${CATEGORY}_${PN}-${SLOT}" || \
+				die "Failed to create .keep in ${D}${x}"
 		done
 	fi
 }
@@ -698,7 +701,8 @@ dyn_pretend() {
 	fi
 	ebuild_phase pre_pkg_pretend
 	ebuild_phase pkg_pretend
-	> "$PORTAGE_BUILDDIR"/.pretended
+	>> "$PORTAGE_BUILDDIR/.pretended" || \
+		die "Failed to create $PORTAGE_BUILDDIR/.pretended"
 	ebuild_phase post_pkg_pretend
 }
 
@@ -710,7 +714,8 @@ dyn_setup() {
 	fi
 	ebuild_phase pre_pkg_setup
 	ebuild_phase pkg_setup
-	> "$PORTAGE_BUILDDIR"/.setuped
+	>> "$PORTAGE_BUILDDIR/.setuped" || \
+		die "Failed to create $PORTAGE_BUILDDIR/.setuped"
 	ebuild_phase post_pkg_setup
 }
 
@@ -757,7 +762,8 @@ dyn_unpack() {
 	ebuild_phase pre_src_unpack
 	vecho ">>> Unpacking source..."
 	ebuild_phase src_unpack
-	touch "${PORTAGE_BUILDDIR}/.unpacked" || die "IO Failure -- Failed 'touch .unpacked' in ${PORTAGE_BUILDDIR}"
+	>> "$PORTAGE_BUILDDIR/.unpacked" || \
+		die "Failed to create $PORTAGE_BUILDDIR/.unpacked"
 	vecho ">>> Source unpacked in ${WORKDIR}"
 	ebuild_phase post_src_unpack
 }
@@ -1002,7 +1008,8 @@ dyn_prepare() {
 	ebuild_phase pre_src_prepare
 	vecho ">>> Preparing source in $PWD ..."
 	ebuild_phase src_prepare
-	touch "$PORTAGE_BUILDDIR"/.prepared
+	>> "$PORTAGE_BUILDDIR/.prepared" || \
+		die "Failed to create $PORTAGE_BUILDDIR/.prepared"
 	vecho ">>> Source prepared."
 	ebuild_phase post_src_prepare
 
@@ -1033,7 +1040,8 @@ dyn_configure() {
 
 	vecho ">>> Configuring source in $PWD ..."
 	ebuild_phase src_configure
-	touch "$PORTAGE_BUILDDIR"/.configured
+	>> "$PORTAGE_BUILDDIR/.configured" || \
+		die "Failed to create $PORTAGE_BUILDDIR/.configured"
 	vecho ">>> Source configured."
 
 	ebuild_phase post_src_configure
@@ -1065,7 +1073,8 @@ dyn_compile() {
 
 	vecho ">>> Compiling source in $PWD ..."
 	ebuild_phase src_compile
-	touch "$PORTAGE_BUILDDIR"/.compiled
+	>> "$PORTAGE_BUILDDIR/.compiled" || \
+		die "Failed to create $PORTAGE_BUILDDIR/.compiled"
 	vecho ">>> Source compiled."
 
 	ebuild_phase post_src_compile
@@ -1104,8 +1113,8 @@ dyn_test() {
 		addpredict /
 		ebuild_phase pre_src_test
 		ebuild_phase src_test
-		touch "$PORTAGE_BUILDDIR/.tested" || \
-			die "Failed to 'touch .tested' in $PORTAGE_BUILDDIR"
+		>> "$PORTAGE_BUILDDIR/.tested" || \
+			die "Failed to create $PORTAGE_BUILDDIR/.tested"
 		ebuild_phase post_src_test
 		SANDBOX_PREDICT=${save_sp}
 	fi
@@ -1156,7 +1165,8 @@ dyn_install() {
 	export _E_DOCDESTTREE_=""
 
 	ebuild_phase src_install
-	touch "${PORTAGE_BUILDDIR}/.installed"
+	>> "$PORTAGE_BUILDDIR/.installed" || \
+		die "Failed to create $PORTAGE_BUILDDIR/.installed"
 	vecho ">>> Completed installing ${PF} into ${ED}"
 	vecho
 	ebuild_phase post_src_install
@@ -1196,7 +1206,7 @@ dyn_install() {
 	[ -n "${PORTAGE_REPO_NAME}" ]  && echo "${PORTAGE_REPO_NAME}" > repository
 	if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT}
 	then
-		touch DEBUGBUILD
+		>> DEBUGBUILD
 	fi
 	trap - SIGINT SIGQUIT
 }
@@ -1833,7 +1843,7 @@ preprocess_ebuild_env() {
 		_portage_filter_opts+=" --filter-features --filter-locale --filter-path --filter-sandbox"
 	fi
 	filter_readonly_variables $_portage_filter_opts < "${T}"/environment \
-		> "${T}"/environment.filtered || return $?
+		>> "$T/environment.filtered" || return $?
 	unset _portage_filter_opts
 	mv "${T}"/environment.filtered "${T}"/environment || return $?
 	rm -f "${T}/environment.success" || return $?
@@ -1859,7 +1869,7 @@ preprocess_ebuild_env() {
 		# Rely on save_ebuild_env() to filter out any remaining variables
 		# and functions that could interfere with the current environment.
 		save_ebuild_env || exit $?
-		touch "${T}/environment.success" || exit $?
+		>> "$T/environment.success" || exit $?
 	) > "${T}/environment.filtered"
 	local retval
 	if [ -e "${T}/environment.success" ] ; then

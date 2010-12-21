@@ -1622,7 +1622,8 @@ dyn_package() {
 		echo ${md5_hash} > "${PORTAGE_BUILDDIR}"/build-info/BINPKGMD5
 	vecho ">>> Done."
 	cd "${PORTAGE_BUILDDIR}"
-	touch .packaged || die "Failed to 'touch .packaged' in ${PORTAGE_BUILDDIR}"
+	>> "$PORTAGE_BUILDDIR/.packaged" || \
+		die "Failed to create $PORTAGE_BUILDDIR/.packaged"
 }
 
 dyn_spec() {

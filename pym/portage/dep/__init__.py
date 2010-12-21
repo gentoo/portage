@@ -232,7 +232,7 @@ class paren_normalize(list):
 					self._zap_parens(x, dest)
 		return dest
 
-def paren_enclose(mylist):
+def paren_enclose(mylist, unevaluated_atom=False):
 	"""
 	Convert a list to a string with sublists enclosed with parens.
 
@@ -251,6 +251,8 @@ def paren_enclose(mylist):
 		if isinstance(x, list):
 			mystrparts.append("( "+paren_enclose(x)+" )")
 		else:
+			if unevaluated_atom:
+				x = getattr(x, 'unevaluated_atom', x)
 			mystrparts.append(x)
 	return " ".join(mystrparts)
 
@@ -1982,7 +1984,7 @@ def match_from_list(mydep, candidate_list):
 	return mylist
 
 def human_readable_required_use(required_use):
-	return required_use.replace("^^", "only-one-of").replace("||", "any-of")
+	return required_use.replace("^^", "exactly-one-of").replace("||", "any-of")
 
 def get_required_use_flags(required_use):
 	"""

@@ -330,7 +330,10 @@ class RepoConfigLoader(object):
 				location_map[r.location] = name
 				treemap[name] = r.location
 
-		prepos_order = [repo.name for repo in prepos.values() if repo.location is not None]
+		# filter duplicates from aliases, by only including
+		# items where repo.name == key
+		prepos_order = [repo.name for key, repo in prepos.items() \
+			if repo.name == key and repo.location is not None]
 		prepos_order.sort(key=repo_priority, reverse=True)
 
 		if portdir in location_map:

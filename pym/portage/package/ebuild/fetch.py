@@ -98,7 +98,7 @@ def _spawn_fetch(settings, args, **kwargs):
 	return rval
 
 _userpriv_test_write_file_cache = {}
-_userpriv_test_write_cmd_script = "touch %(file_path)s 2>/dev/null ; rval=$? ; " + \
+_userpriv_test_write_cmd_script = ">> %(file_path)s 2>/dev/null ; rval=$? ; " + \
 	"rm -f  %(file_path)s ; exit $rval"
 
 def _userpriv_test_write_file(settings, file_path):
