@@ -688,9 +688,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		aalist = mysettings.configdict["pkg"].get("AA")
 		if not hasattr(mydbapi, 'getFetchMap'):
 			if alist is None:
-				alist = set()
+				alist = ""
 			if aalist is None:
-				aalist = set()
+				aalist = ""
+			alist = set(alist.split())
+			aalist = set(aalist.split())
 		elif alist is None or aalist is None or \
 			(not emerge_skip_distfiles and need_distfiles):
 			# Make sure we get the correct tree in case there are overlays.
