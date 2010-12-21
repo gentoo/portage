@@ -239,7 +239,7 @@ build_dir_phases = set(["setup", "unpack", "prepare", "configure", "compile",
 # If the current metadata is invalid then force the ebuild to be
 # sourced again even if $T/environment already exists.
 ebuild_changed = False
-if build_dir_phases.intersection(pargs):
+if mytree == "porttree" and build_dir_phases.intersection(pargs):
 	metadata, st, emtime = \
 		portage.portdb._pull_valid_cache(cpv, ebuild, ebuild_portdir)
 	if metadata is None:

@@ -686,7 +686,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			mydo not in ("digest", "manifest") and "noauto" not in features)
 		alist = mysettings.configdict["pkg"].get("A")
 		aalist = mysettings.configdict["pkg"].get("AA")
-		if alist is None or aalist is None or \
+		if not hasattr(mydbapi, 'getFetchMap'):
+			if alist is None:
+				alist = set()
+			if aalist is None:
+				aalist = set()
+		elif alist is None or aalist is None or \
 			(not emerge_skip_distfiles and need_distfiles):
 			# Make sure we get the correct tree in case there are overlays.
 			mytree = os.path.realpath(
@@ -746,7 +751,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				return 1
 
 		# See above comment about fetching only when needed
-		if not emerge_skip_distfiles and \
+		if tree == 'porttree' and \
 			not digestcheck(checkme, mysettings, "strict" in features):
 			return 1
 
@@ -754,7 +759,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			return 0
 
 		# remove PORTAGE_ACTUAL_DISTDIR once cvs/svn is supported via SRC_URI
-		if (mydo != "setup" and "noauto" not in features) or mydo == "unpack":
+		if tree == 'porttree' and \
+			((mydo != "setup" and "noauto" not in features) \
+			or mydo == "unpack"):
 			_prepare_fake_distdir(mysettings, alist)
 
 		#initial dep checks complete; time to process main commands
