@@ -832,7 +832,6 @@ class Display(object):
 				self.print_msg.append((myprint, self.verboseadd, repoadd))
 
 				if not self.conf.tree_display \
-					and self.conf.quiet \
 					and not self.conf.no_restart \
 					and pkg.root == self.conf.running_root.root \
 					and match_from_list(PORTAGE_PACKAGE_ATOM, [pkg]) \
