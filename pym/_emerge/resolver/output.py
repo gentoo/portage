@@ -725,7 +725,6 @@ def display(depgraph, mylist, favorites=[], verbosity=None):
 			p.append((myprint, verboseadd, repoadd))
 
 			if not conf.tree_display and \
-				conf.quiet and \
 				not conf.no_restart and \
 				pkg.root == conf.running_root.root and \
 				match_from_list(
