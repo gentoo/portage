@@ -1,1069 +1,865 @@
 # Copyright 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+"""Resolver output display operation.
+"""
+
 __all__ = (
-	"display", "filter_iuse_defaults",
+	"Display", "filter_iuse_defaults"
 	)
 
-import codecs
-import re
 import sys
 
 from portage import os
-from portage import _encodings, _unicode_decode, _unicode_encode
+from portage import _unicode_decode
 from portage.dbapi.dep_expand import dep_expand
 from portage.const import PORTAGE_PACKAGE_ATOM
 from portage.dep import cpvequal, match_from_list
 from portage.exception import InvalidDependString
-from portage._sets.base import InternalPackageSet
-from portage.output import blue, bold, colorize, create_color_func, darkblue, darkgreen, green, nc_len, red, \
-	teal, turquoise, yellow
+from portage.output import ( blue, bold, colorize, create_color_func,
+	darkblue, darkgreen, green, nc_len, red, teal, turquoise, yellow )
 bad = create_color_func("BAD")
-from portage.util import writemsg, writemsg_stdout
+from portage.util import writemsg_stdout
 from portage.versions import best, catpkgsplit, cpv_getkey
 
 from _emerge.Blocker import Blocker
 from _emerge.create_world_atom import create_world_atom
-from _emerge.Package import Package
+from _emerge.resolver.output_helpers import ( _DisplayConfig, _tree_display,
+	_PackageCounters, _create_use_string, _format_size, _calc_changelog, PkgInfo)
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
 
+
 def filter_iuse_defaults(iuse):
+	"""Performs an absolute value action on an use flag list.
+	
+	@param iuse: list of use flags
+	@rtype list
+		"""
 	for flag in iuse:
 		if flag.startswith("+") or flag.startswith("-"):
 			yield flag[1:]
 		else:
 			yield flag
 
-class _RepoDisplay(object):
-	def __init__(self, roots):
-		self._shown_repos = {}
-		self._unknown_repo = False
-		repo_paths = set()
-		for root_config in roots.values():
-			portdir = root_config.settings.get("PORTDIR")
-			if root_config.settings.repositories:
-				repo_paths.update(root_config.settings.repositories.repoUserLocationList())
-		repo_paths = list(repo_paths)
-		self._repo_paths = repo_paths
-		self._repo_paths_real = [ os.path.realpath(repo_path) \
-			for repo_path in repo_paths ]
 
-		# pre-allocate index for PORTDIR so that it always has index 0.
-		for root_config in roots.values():
-			portdb = root_config.trees["porttree"].dbapi
-			portdir = portdb.porttree_root
-			if portdir:
-				self.repoStr(portdir)
-
-	def repoStr(self, repo_path_real):
-		real_index = -1
-		if repo_path_real:
-			real_index = self._repo_paths_real.index(repo_path_real)
-		if real_index == -1:
-			s = "?"
-			self._unknown_repo = True
-		else:
-			shown_repos = self._shown_repos
-			repo_paths = self._repo_paths
-			repo_path = repo_paths[real_index]
-			index = shown_repos.get(repo_path)
-			if index is None:
-				index = len(shown_repos)
-				shown_repos[repo_path] = index
-			s = str(index)
-		return s
-
-	def __str__(self):
-		output = []
-		shown_repos = self._shown_repos
-		unknown_repo = self._unknown_repo
-		if shown_repos or self._unknown_repo:
-			output.append("Portage tree and overlays:\n")
-		show_repo_paths = list(shown_repos)
-		for repo_path, repo_index in shown_repos.items():
-			show_repo_paths[repo_index] = repo_path
-		if show_repo_paths:
-			for index, repo_path in enumerate(show_repo_paths):
-				output.append(" "+teal("["+str(index)+"]")+" %s\n" % repo_path)
-		if unknown_repo:
-			output.append(" "+teal("[?]") + \
-				" indicates that the source repository could not be determined\n")
-		return "".join(output)
-
-	if sys.hexversion < 0x3000000:
-
-		__unicode__ = __str__
-
-		def __str__(self):
-			return _unicode_encode(self.__unicode__(),
-				encoding=_encodings['content'])
-
-class _PackageCounters(object):
+class Display(object):
+	"""Formats and outputs the depgrah supplied it for merge/re-merge, etc.
+	
+	__call__()
+	@param depgraph: list
+	@param favorites: defaults to []
+	@param verbosity: integer, defaults to None
+	"""
 
 	def __init__(self):
-		self.upgrades   = 0
-		self.downgrades = 0
-		self.new        = 0
-		self.newslot    = 0
-		self.reinst     = 0
-		self.uninst     = 0
-		self.blocks     = 0
-		self.blocks_satisfied         = 0
-		self.totalsize  = 0
-		self.restrict_fetch           = 0
-		self.restrict_fetch_satisfied = 0
-		self.interactive              = 0
-		self.binary                   = 0
+		self.changelogs = []
+		self.print_msg = []
+		self.blockers = []
+		self.counters = _PackageCounters()
+		self.resolver = None
+		self.resolved = None
+		self.vardb = None
+		self.portdb = None
+		self.verboseadd = ''
+		self.oldlp = None
+		self.myfetchlist = None
+		self.indent = ''
+		self.is_new = True
+		self.cur_use = None
+		self.cur_iuse = None
+		self.old_use = ''
+		self.old_iuse = ''
+		self.use_expand = None
+		self.use_expand_hidden = None
+		self.pkgsettings = None
+		self.forced_flags = None
+		self.newlp = None
+		self.conf = None
+		self.blocker_style = None
 
-	def __str__(self):
-		total_installs = self.upgrades + self.downgrades + self.newslot + self.new + self.reinst
-		myoutput = []
-		details = []
-		myoutput.append("Total: %s package" % total_installs)
-		if total_installs != 1:
-			myoutput.append("s")
-		if total_installs != 0:
-			myoutput.append(" (")
-		if self.upgrades > 0:
-			details.append("%s upgrade" % self.upgrades)
-			if self.upgrades > 1:
-				details[-1] += "s"
-		if self.downgrades > 0:
-			details.append("%s downgrade" % self.downgrades)
-			if self.downgrades > 1:
-				details[-1] += "s"
-		if self.new > 0:
-			details.append("%s new" % self.new)
-		if self.newslot > 0:
-			details.append("%s in new slot" % self.newslot)
-			if self.newslot > 1:
-				details[-1] += "s"
-		if self.reinst > 0:
-			details.append("%s reinstall" % self.reinst)
-			if self.reinst > 1:
-				details[-1] += "s"
-		if self.binary > 0:
-			details.append("%s binary" % self.binary)
-			if self.binary > 1:
-				details[-1] = details[-1][:-1] + "ies"
-		if self.uninst > 0:
-			details.append("%s uninstall" % self.uninst)
-			if self.uninst > 1:
-				details[-1] += "s"
-		if self.interactive > 0:
-			details.append("%s %s" % (self.interactive,
-				colorize("WARN", "interactive")))
-		myoutput.append(", ".join(details))
-		if total_installs != 0:
-			myoutput.append(")")
-		myoutput.append(", Size of downloads: %s" % _format_size(self.totalsize))
-		if self.restrict_fetch:
-			myoutput.append("\nFetch Restriction: %s package" % \
-				self.restrict_fetch)
-			if self.restrict_fetch > 1:
-				myoutput.append("s")
-		if self.restrict_fetch_satisfied < self.restrict_fetch:
-			myoutput.append(bad(" (%s unsatisfied)") % \
-				(self.restrict_fetch - self.restrict_fetch_satisfied))
-		if self.blocks > 0:
-			myoutput.append("\nConflict: %s block" % \
-				self.blocks)
-			if self.blocks > 1:
-				myoutput.append("s")
-			if self.blocks_satisfied < self.blocks:
-				myoutput.append(bad(" (%s unsatisfied)") % \
-					(self.blocks - self.blocks_satisfied))
-		return "".join(myoutput)
 
-class _DisplayConfig(object):
-	def __init__(self, depgraph, mylist, favorites, verbosity):
-		frozen_config = depgraph._frozen_config
-		dynamic_config = depgraph._dynamic_config
-
-		self.mylist = mylist
-		self.favorites = InternalPackageSet(favorites, allow_repo=True)
-		self.verbosity = verbosity
-
-		if self.verbosity is None:
-			self.verbosity = ("--quiet" in frozen_config.myopts and 1 or \
-				"--verbose" in frozen_config.myopts and 3 or 2)
-
-		self.oneshot = "--oneshot" in frozen_config.myopts or \
-			"--onlydeps" in frozen_config.myopts
-		self.columns = "--columns" in frozen_config.myopts
-		self.tree_display = "--tree" in frozen_config.myopts
-		self.alphabetical = "--alphabetical" in frozen_config.myopts
-		self.quiet = "--quiet" in frozen_config.myopts
-		self.all_flags = self.verbosity == 3 or self.quiet
-		self.print_use_string = self.verbosity != 1 or "--verbose" in frozen_config.myopts
-		self.changelog = "--changelog" in frozen_config.myopts
-		self.edebug = frozen_config.edebug
-		self.no_restart = frozen_config._opts_no_restart.intersection(frozen_config.myopts)
-		self.unordered_display = "--unordered-display" in frozen_config.myopts
-
-		mywidth = 130
-		if "COLUMNWIDTH" in frozen_config.settings:
-			try:
-				mywidth = int(frozen_config.settings["COLUMNWIDTH"])
-			except ValueError as e:
-				writemsg("!!! %s\n" % str(e), noiselevel=-1)
-				writemsg("!!! Unable to parse COLUMNWIDTH='%s'\n" % \
-					frozen_config.settings["COLUMNWIDTH"], noiselevel=-1)
-				del e
-		self.columnwidth = mywidth
-
-		self.repo_display = _RepoDisplay(frozen_config.roots)
-		self.trees = frozen_config.trees
-		self.pkgsettings = frozen_config.pkgsettings
-		self.target_root = frozen_config.target_root
-		self.running_root = frozen_config._running_root
-		self.roots = frozen_config.roots
-
-		self.blocker_parents = dynamic_config._blocker_parents
-		self.reinstall_nodes = dynamic_config._reinstall_nodes
-		self.digraph = dynamic_config.digraph
-		self.blocker_uninstalls = dynamic_config._blocker_uninstalls
-		self.slot_pkg_map = dynamic_config._slot_pkg_map
-		self.set_nodes = dynamic_config._set_nodes
-
-		self.pkg_use_enabled = depgraph._pkg_use_enabled
-		self.pkg = depgraph._pkg
-
-# formats a size given in bytes nicely
-def _format_size(mysize):
-	if isinstance(mysize, basestring):
-		return mysize
-	if 0 != mysize % 1024:
-		# Always round up to the next kB so that it doesn't show 0 kB when
-		# some small file still needs to be fetched.
-		mysize += 1024 - mysize % 1024
-	mystr=str(mysize//1024)
-	mycount=len(mystr)
-	while (mycount > 3):
-		mycount-=3
-		mystr=mystr[:mycount]+","+mystr[mycount:]
-	return mystr+" kB"
-
-def display(depgraph, mylist, favorites=[], verbosity=None):
-
-	conf = _DisplayConfig(depgraph, mylist, favorites, verbosity)
-
-	changelogs=[]
-	p=[]
-	blockers = []
-	counters = _PackageCounters()
-	repo_display = conf.repo_display
-	unsatisfied_blockers = []
-	ordered_nodes = []
-	for x in conf.mylist:
-		if isinstance(x, Blocker):
-			counters.blocks += 1
-			if x.satisfied:
-				ordered_nodes.append(x)
-				counters.blocks_satisfied += 1
-			else:
-				unsatisfied_blockers.append(x)
+	def _blockers(self, pkg, fetch_symbol):
+		"""Processes pkg for blockers and adds colorized strings to
+		self.print_msg and self.blockers
+		
+		@param pkg: _emerge.Package instance
+		@param fetch_symbol: string
+		@rtype: bool
+		Modifies class globals: self.blocker_style, self.resolved,
+			self.print_msg
+		"""
+		if pkg.satisfied:
+			self.blocker_style = "PKG_BLOCKER_SATISFIED"
+			addl = "%s  %s  " % (colorize(self.blocker_style, "b"),
+				fetch_symbol)
 		else:
-			ordered_nodes.append(x)
-
-	if conf.tree_display:
-		display_list = _tree_display(conf, ordered_nodes)
-	else:
-		display_list = [(x, 0, True) for x in ordered_nodes]
-
-	mylist = display_list
-	for x in unsatisfied_blockers:
-		mylist.append((x, 0, True))
-
-	# files to fetch list - avoids counting a same file twice
-	# in size display (verbose mode)
-	myfetchlist=[]
-
-	# Use this set to detect when all the "repoadd" strings are "[0]"
-	# and disable the entire repo display in this case.
-	repoadd_set = set()
-
-	for mylist_index in range(len(mylist)):
-		x, depth, ordered = mylist[mylist_index]
-		pkg_type = x[0]
-		myroot = x[1]
-		pkg_key = x[2]
-		portdb = conf.trees[myroot]["porttree"].dbapi
-		vardb = conf.trees[myroot]["vartree"].dbapi
-		pkgsettings = conf.pkgsettings[myroot]
-
-		fetch=" "
-		indent = " " * depth
-
-		if isinstance(x, Blocker):
-			if x.satisfied:
-				blocker_style = "PKG_BLOCKER_SATISFIED"
-				addl = "%s  %s  " % (colorize(blocker_style, "b"), fetch)
-			else:
-				blocker_style = "PKG_BLOCKER"
-				addl = "%s  %s  " % (colorize(blocker_style, "B"), fetch)
-			resolved = dep_expand(
-				str(x.atom).lstrip("!"), mydb=vardb, settings=pkgsettings)
-			if conf.columns and conf.quiet:
-				addl += " " + colorize(blocker_style, str(resolved))
-			else:
-				addl = "[%s %s] %s%s" % \
-					(colorize(blocker_style, "blocks"),
-					addl, indent, colorize(blocker_style, str(resolved)))
-			block_parents = conf.blocker_parents.parent_nodes(x)
-			block_parents = set([pnode[2] for pnode in block_parents])
-			block_parents = ", ".join(block_parents)
-			if resolved!=x[2]:
-				addl += colorize(blocker_style,
-					" (\"%s\" is blocking %s)") % \
-					(str(x.atom).lstrip("!"), block_parents)
-			else:
-				addl += colorize(blocker_style,
-					" (is blocking %s)") % block_parents
-			if isinstance(x, Blocker) and x.satisfied:
-				if conf.columns:
-					continue
-				p.append(addl)
-			else:
-				blockers.append(addl)
+			self.blocker_style = "PKG_BLOCKER"
+			addl = "%s  %s  " % (colorize(self.blocker_style, "B"),
+				fetch_symbol)
+		self.resolved = dep_expand(
+			str(pkg.atom).lstrip("!"), mydb=self.vardb, 
+			settings=self.pkgsettings
+			)
+		if self.conf.columns and self.conf.quiet:
+			addl += " " + colorize(self.blocker_style, str(self.resolved))
 		else:
-			pkg_status = x[3]
-			pkg_merge = ordered and pkg_status == "merge"
-			if not pkg_merge and pkg_status == "merge":
-				pkg_status = "nomerge"
-			built = pkg_type != "ebuild"
-			pkg = x
-			metadata = pkg.metadata
-			ebuild_path = None
-			repo_name = pkg.repo
-			if pkg.type_name == "ebuild":
-				ebuild_path = portdb.findname(pkg.cpv, myrepo=repo_name)
-				if ebuild_path is None:
-					raise AssertionError(
-						"ebuild not found for '%s'" % pkg.cpv)
-				repo_path_real = os.path.dirname(os.path.dirname(
-					os.path.dirname(ebuild_path)))
-			else:
-				repo_path_real = portdb.getRepositoryPath(repo_name)
-			pkg_use = list(conf.pkg_use_enabled(pkg))
-			if not pkg.built and pkg.operation == 'merge' and \
-				'fetch' in pkg.metadata.restrict:
-				fetch = red("F")
-				if ordered:
-					counters.restrict_fetch += 1
-				if portdb.fetch_check(pkg_key, pkg_use, myrepo=pkg.repo):
-					fetch = green("f")
-					if ordered:
-						counters.restrict_fetch_satisfied += 1
+			addl = "[%s %s] %s%s" % \
+				(colorize(self.blocker_style, "blocks"),
+				addl, self.indent, 
+				colorize(self.blocker_style, str(self.resolved))
+				)
+		block_parents = self.conf.blocker_parents.parent_nodes(pkg)
+		block_parents = set([pnode[2] for pnode in block_parents])
+		block_parents = ", ".join(block_parents)
+		if self.resolved != pkg[2]:
+			addl += colorize(self.blocker_style,
+				" (\"%s\" is blocking %s)") % \
+				(str(pkg.atom).lstrip("!"), block_parents)
+		else:
+			addl += colorize(self.blocker_style,
+				" (is blocking %s)") % block_parents
+		if isinstance(pkg, Blocker) and pkg.satisfied:
+			if self.conf.columns:
+				return True
+			self.print_msg.append(addl)
+		else:
+			self.blockers.append(addl)
+		return False
 
-			#we need to use "--emptrytree" testing here rather than "empty" param testing because "empty"
-			#param is used for -u, where you still *do* want to see when something is being upgraded.
-			myoldbest = []
-			myinslotlist = None
-			installed_versions = vardb.match(cpv_getkey(pkg_key))
-			if vardb.cpv_exists(pkg_key):
-				addl="  "+yellow("R")+fetch+"  "
-				if ordered:
-					if pkg_merge:
-						counters.reinst += 1
-						if pkg_type == "binary":
-							counters.binary += 1
-					elif pkg_status == "uninstall":
-						counters.uninst += 1
-			# filter out old-style virtual matches
-			elif installed_versions and \
-				cpv_getkey(installed_versions[0]) == \
-				cpv_getkey(pkg_key):
-				myinslotlist = vardb.match(pkg.slot_atom)
-				# If this is the first install of a new-style virtual, we
-				# need to filter out old-style virtual matches.
-				if myinslotlist and \
-					cpv_getkey(myinslotlist[0]) != \
-					cpv_getkey(pkg_key):
-					myinslotlist = None
-				if myinslotlist:
-					myoldbest = myinslotlist[:]
-					addl = "   " + fetch
-					if not cpvequal(pkg_key,
-						best([pkg_key] + myoldbest)):
-						# Downgrade in slot
-						addl += turquoise("U")+blue("D")
-						if ordered:
-							counters.downgrades += 1
-							if pkg_type == "binary":
-								counters.binary += 1
-					else:
-						# Update in slot
-						addl += turquoise("U") + " "
-						if ordered:
-							counters.upgrades += 1
-							if pkg_type == "binary":
-								counters.binary += 1
-				else:
-					# New slot, mark it new.
-					addl = " " + green("NS") + fetch + "  "
-					myoldbest = vardb.match(cpv_getkey(pkg_key))
-					if ordered:
-						counters.newslot += 1
-						if pkg_type == "binary":
-							counters.binary += 1
 
-				if conf.changelog:
-					inst_matches = vardb.match(pkg.slot_atom)
-					if inst_matches:
-						ebuild_path_cl = ebuild_path
-						if ebuild_path_cl is None:
-							# binary package
-							ebuild_path_cl = portdb.findname(pkg.cpv, myrepo=pkg.repo)
+	def _display_use(self, pkg, myoldbest, myinslotlist):
+		""" USE flag display
+		
+		@param pkg: _emerge.Package instance
+		@param myoldbest: list of installed versions
+		@param myinslotlist: list of installed slots
+		Modifies class globals: self.forced_flags, self.cur_iuse,
+			self.old_iuse, self.old_use, self.use_expand
+		"""
+			
+		self.forced_flags = set()
+		self.pkgsettings.setcpv(pkg) # for package.use.{mask,force}
+		self.forced_flags.update(self.pkgsettings.useforce)
+		self.forced_flags.update(self.pkgsettings.usemask)
 
-						if ebuild_path_cl is not None:
-							changelogs.extend(_calc_changelog(
-								ebuild_path_cl, inst_matches[0], pkg.cpv))
-			else:
-				addl = " " + green("N") + " " + fetch + "  "
-				if ordered:
-					counters.new += 1
-					if pkg_type == "binary":
-						counters.binary += 1
+		self.cur_use = [flag for flag in self.conf.pkg_use_enabled(pkg) \
+			if flag in pkg.iuse.all]
+		self.cur_iuse = sorted(pkg.iuse.all)
 
-			verboseadd = ""
-			repoadd = None
+		if myoldbest and myinslotlist:
+			previous_cpv = myoldbest[0]
+		else:
+			previous_cpv = pkg.cpv
+		if self.vardb.cpv_exists(previous_cpv):
+			self.old_iuse, self.old_use = self.vardb.aux_get(
+					previous_cpv, ["IUSE", "USE"])
+			self.old_iuse = list(set(
+				filter_iuse_defaults(self.old_iuse.split())))
+			self.old_iuse.sort()
+			self.old_use = self.old_use.split()
+			self.is_new = False
+		else:
+			self.old_iuse = []
+			self.old_use = []
+			self.is_new = True
 
-			if True:
-				# USE flag display
-				forced_flags = set()
-				pkgsettings.setcpv(pkg) # for package.use.{mask,force}
-				forced_flags.update(pkgsettings.useforce)
-				forced_flags.update(pkgsettings.usemask)
+		self.old_use = [flag for flag in self.old_use if flag in self.old_iuse]
 
-				cur_use = [flag for flag in conf.pkg_use_enabled(pkg) \
-					if flag in pkg.iuse.all]
-				cur_iuse = sorted(pkg.iuse.all)
+		self.use_expand = self.pkgsettings["USE_EXPAND"].lower().split()
+		self.use_expand.sort()
+		self.use_expand.reverse()
+		self.use_expand_hidden = \
+			self.pkgsettings["USE_EXPAND_HIDDEN"].lower().split()
+		return
 
-				if myoldbest and myinslotlist:
-					previous_cpv = myoldbest[0]
-				else:
-					previous_cpv = pkg.cpv
-				if vardb.cpv_exists(previous_cpv):
-					old_iuse, old_use = vardb.aux_get(
-							previous_cpv, ["IUSE", "USE"])
-					old_iuse = list(set(
-						filter_iuse_defaults(old_iuse.split())))
-					old_iuse.sort()
-					old_use = old_use.split()
-					is_new = False
-				else:
-					old_iuse = []
-					old_use = []
-					is_new = True
 
-				old_use = [flag for flag in old_use if flag in old_iuse]
+	def map_to_use_expand(self, myvals, forced_flags=False,
+		remove_hidden=True):
+		"""Map use expand variables
+		
+		@param myvals: list
+		@param forced_flags: bool
+		@param remove_hidden: bool
+		@rtype ret dictionary 
+			or ret dict, forced dict.
+		"""
+		ret = {}
+		forced = {}
+		for exp in self.use_expand:
+			ret[exp] = []
+			forced[exp] = set()
+			for val in myvals[:]:
+				if val.startswith(exp.lower()+"_"):
+					if val in self.forced_flags:
+						forced[exp].add(val[len(exp)+1:])
+					ret[exp].append(val[len(exp)+1:])
+					myvals.remove(val)
+		ret["USE"] = myvals
+		forced["USE"] = [val for val in myvals \
+			if val in self.forced_flags]
+		if remove_hidden:
+			for exp in self.use_expand_hidden:
+				ret.pop(exp, None)
+		if forced_flags:
+			return ret, forced
+		return ret
 
-				use_expand = pkgsettings["USE_EXPAND"].lower().split()
-				use_expand.sort()
-				use_expand.reverse()
-				use_expand_hidden = \
-					pkgsettings["USE_EXPAND_HIDDEN"].lower().split()
 
-				def map_to_use_expand(myvals, forcedFlags=False,
-					removeHidden=True):
-					ret = {}
-					forced = {}
-					for exp in use_expand:
-						ret[exp] = []
-						forced[exp] = set()
-						for val in myvals[:]:
-							if val.startswith(exp.lower()+"_"):
-								if val in forced_flags:
-									forced[exp].add(val[len(exp)+1:])
-								ret[exp].append(val[len(exp)+1:])
-								myvals.remove(val)
-					ret["USE"] = myvals
-					forced["USE"] = [val for val in myvals \
-						if val in forced_flags]
-					if removeHidden:
-						for exp in use_expand_hidden:
-							ret.pop(exp, None)
-					if forcedFlags:
-						return ret, forced
-					return ret
+	def recheck_hidden(self, pkg):
+		""" Prevent USE_EXPAND_HIDDEN flags from being hidden if they
+		are the only thing that triggered reinstallation.
+		
+		@param pkg: _emerge.Package instance
+		Modifies self.use_expand_hidden, self.use_expand, self.verboseadd
+		"""
+		reinst_flags_map = {}
+		reinstall_for_flags = self.conf.reinstall_nodes.get(pkg)
+		reinst_expand_map = None
+		if reinstall_for_flags:
+			reinst_flags_map = self.map_to_use_expand(
+				list(reinstall_for_flags), remove_hidden=False)
+			for k in list(reinst_flags_map):
+				if not reinst_flags_map[k]:
+					del reinst_flags_map[k]
+			if not reinst_flags_map.get("USE"):
+				reinst_expand_map = reinst_flags_map.copy()
+				reinst_expand_map.pop("USE", None)
+		if reinst_expand_map and \
+			not set(reinst_expand_map).difference(
+			self.use_expand_hidden):
+			self.use_expand_hidden = \
+				set(self.use_expand_hidden).difference(
+				reinst_expand_map)
 
-				# Prevent USE_EXPAND_HIDDEN flags from being hidden if they
-				# are the only thing that triggered reinstallation.
-				reinst_flags_map = {}
-				reinstall_for_flags = conf.reinstall_nodes.get(pkg)
-				reinst_expand_map = None
-				if reinstall_for_flags:
-					reinst_flags_map = map_to_use_expand(
-						list(reinstall_for_flags), removeHidden=False)
-					for k in list(reinst_flags_map):
-						if not reinst_flags_map[k]:
-							del reinst_flags_map[k]
-					if not reinst_flags_map.get("USE"):
-						reinst_expand_map = reinst_flags_map.copy()
-						reinst_expand_map.pop("USE", None)
-				if reinst_expand_map and \
-					not set(reinst_expand_map).difference(
-					use_expand_hidden):
-					use_expand_hidden = \
-						set(use_expand_hidden).difference(
-						reinst_expand_map)
+		cur_iuse_map, iuse_forced = \
+			self.map_to_use_expand(self.cur_iuse, forced_flags=True)
+		cur_use_map = self.map_to_use_expand(self.cur_use)
+		old_iuse_map = self.map_to_use_expand(self.old_iuse)
+		old_use_map = self.map_to_use_expand(self.old_use)
 
-				cur_iuse_map, iuse_forced = \
-					map_to_use_expand(cur_iuse, forcedFlags=True)
-				cur_use_map = map_to_use_expand(cur_use)
-				old_iuse_map = map_to_use_expand(old_iuse)
-				old_use_map = map_to_use_expand(old_use)
-
-				use_expand.sort()
-				use_expand.insert(0, "USE")
-				
-				for key in use_expand:
-					if key in use_expand_hidden:
-						continue
-					verboseadd += _create_use_string(conf, key.upper(),
-						cur_iuse_map[key], iuse_forced[key],
-						cur_use_map[key], old_iuse_map[key],
-						old_use_map[key], is_new,
-						reinst_flags_map.get(key))
-
-			if conf.verbosity == 3:
-				# size verbose
-				mysize=0
-				if pkg_type == "ebuild" and pkg_merge:
-					try:
-						myfilesdict = portdb.getfetchsizes(pkg_key,
-							useflags=pkg_use, myrepo=pkg.repo)
-					except InvalidDependString:
-						# should have been masked before it was selected
-						raise
-					if myfilesdict is None:
-						myfilesdict="[empty/missing/bad digest]"
-					else:
-						for myfetchfile in myfilesdict:
-							if myfetchfile not in myfetchlist:
-								mysize+=myfilesdict[myfetchfile]
-								myfetchlist.append(myfetchfile)
-						if ordered:
-							counters.totalsize += mysize
-					verboseadd += _format_size(mysize)
-
-				# overlay verbose
-				# assign index for a previous version in the same slot
-				has_previous = False
-				repo_name_prev = None
-				slot_matches = vardb.match(pkg.slot_atom)
-				if slot_matches:
-					has_previous = True
-					repo_name_prev = vardb.aux_get(slot_matches[0],
-						["repository"])[0]
-
-				# now use the data to generate output
-				if pkg.installed or not has_previous:
-					repoadd = repo_display.repoStr(repo_path_real)
-				else:
-					repo_path_prev = None
-					if repo_name_prev:
-						repo_path_prev = portdb.getRepositoryPath(
-							repo_name_prev)
-					if repo_path_prev == repo_path_real:
-						repoadd = repo_display.repoStr(repo_path_real)
-					else:
-						repoadd = "%s=>%s" % (
-							repo_display.repoStr(repo_path_prev),
-							repo_display.repoStr(repo_path_real))
-				if repoadd:
-					repoadd_set.add(repoadd)
-
-			xs = [cpv_getkey(pkg_key)] + \
-				list(catpkgsplit(pkg_key)[2:])
-			if xs[2] == "r0":
-				xs[2] = ""
-			else:
-				xs[2] = "-" + xs[2]
-
-			oldlp = conf.columnwidth - 30
-			newlp = oldlp - 30
-
-			# Convert myoldbest from a list to a string.
-			if not myoldbest:
-				myoldbest = ""
-			else:
-				for pos, key in enumerate(myoldbest):
-					key = catpkgsplit(key)[2] + \
-						"-" + catpkgsplit(key)[3]
-					if key[-3:] == "-r0":
-						key = key[:-3]
-					myoldbest[pos] = key
-				myoldbest = blue("["+", ".join(myoldbest)+"]")
-
-			pkg_cp = xs[0]
-			root_config = conf.roots[myroot]
-			system_set = root_config.sets["system"]
-			world_set  = root_config.sets["selected"]
-
-			pkg_system = False
-			pkg_world = False
-			try:
-				pkg_system = system_set.findAtomForPackage(pkg, modified_use=conf.pkg_use_enabled(pkg))
-				pkg_world  = world_set.findAtomForPackage(pkg, modified_use=conf.pkg_use_enabled(pkg))
-				if not (conf.oneshot or pkg_world) and \
-					myroot == conf.target_root and \
-					conf.favorites.findAtomForPackage(pkg, modified_use=conf.pkg_use_enabled(pkg)):
-					# Maybe it will be added to world now.
-					if create_world_atom(pkg, conf.favorites, root_config):
-						pkg_world = True
-			except InvalidDependString:
-				# This is reported elsewhere if relevant.
-				pass
-
-			def pkgprint(pkg_str):
-				if pkg_merge:
-					if built:
-						if pkg_system:
-							return colorize("PKG_BINARY_MERGE_SYSTEM", pkg_str)
-						elif pkg_world:
-							return colorize("PKG_BINARY_MERGE_WORLD", pkg_str)
-						else:
-							return colorize("PKG_BINARY_MERGE", pkg_str)
-					else:
-						if pkg_system:
-							return colorize("PKG_MERGE_SYSTEM", pkg_str)
-						elif pkg_world:
-							return colorize("PKG_MERGE_WORLD", pkg_str)
-						else:
-							return colorize("PKG_MERGE", pkg_str)
-				elif pkg_status == "uninstall":
-					return colorize("PKG_UNINSTALL", pkg_str)
-				else:
-					if pkg_system:
-						return colorize("PKG_NOMERGE_SYSTEM", pkg_str)
-					elif pkg_world:
-						return colorize("PKG_NOMERGE_WORLD", pkg_str)
-					else:
-						return colorize("PKG_NOMERGE", pkg_str)
-
-			if 'interactive' in pkg.metadata.properties and \
-				pkg.operation == 'merge':
-				addl = colorize("WARN", "I") + addl[1:]
-				if ordered:
-					counters.interactive += 1
-
-			if x[1]!="/":
-				if myoldbest:
-					myoldbest +=" "
-				if conf.columns:
-					if conf.quiet:
-						myprint=addl+" "+indent+pkgprint(pkg_cp)
-						myprint=myprint+darkblue(" "+xs[1]+xs[2])+" "
-						myprint=myprint+myoldbest
-						myprint=myprint+darkgreen("to "+x[1])
-						verboseadd = None
-					else:
-						if not pkg_merge:
-							myprint = "[%s] %s%s" % \
-								(pkgprint(pkg_status.ljust(13)),
-								indent, pkgprint(pkg.cp))
-						else:
-							myprint = "[%s %s] %s%s" % \
-								(pkgprint(pkg.type_name), addl,
-								indent, pkgprint(pkg.cp))
-						if (newlp-nc_len(myprint)) > 0:
-							myprint=myprint+(" "*(newlp-nc_len(myprint)))
-						myprint=myprint+"["+darkblue(xs[1]+xs[2])+"] "
-						if (oldlp-nc_len(myprint)) > 0:
-							myprint=myprint+" "*(oldlp-nc_len(myprint))
-						myprint=myprint+myoldbest
-						myprint += darkgreen("to " + pkg.root)
-				else:
-					if not pkg_merge:
-						myprint = "[%s] " % pkgprint(pkg_status.ljust(13))
-					else:
-						myprint = "[%s %s] " % (pkgprint(pkg_type), addl)
-					myprint += indent + pkgprint(pkg_key) + " " + \
-						myoldbest + darkgreen("to " + myroot)
-			else:
-				if conf.columns:
-					if conf.quiet:
-						myprint=addl+" "+indent+pkgprint(pkg_cp)
-						myprint=myprint+" "+green(xs[1]+xs[2])+" "
-						myprint=myprint+myoldbest
-						verboseadd = None
-					else:
-						if not pkg_merge:
-							myprint = "[%s] %s%s" % \
-								(pkgprint(pkg_status.ljust(13)),
-								indent, pkgprint(pkg.cp))
-						else:
-							myprint = "[%s %s] %s%s" % \
-								(pkgprint(pkg.type_name), addl,
-								indent, pkgprint(pkg.cp))
-						if (newlp-nc_len(myprint)) > 0:
-							myprint=myprint+(" "*(newlp-nc_len(myprint)))
-						myprint=myprint+green(" ["+xs[1]+xs[2]+"] ")
-						if (oldlp-nc_len(myprint)) > 0:
-							myprint=myprint+(" "*(oldlp-nc_len(myprint)))
-						myprint += myoldbest
-				else:
-					if not pkg_merge:
-						myprint = "[%s] %s%s %s" % \
-							(pkgprint(pkg_status.ljust(13)),
-							indent, pkgprint(pkg.cpv),
-							myoldbest)
-					else:
-						myprint = "[%s %s] %s%s %s" % \
-							(pkgprint(pkg_type), addl, indent,
-							pkgprint(pkg.cpv), myoldbest)
-
-			if conf.columns and pkg.operation == "uninstall":
+		self.use_expand.sort()
+		self.use_expand.insert(0, "USE")
+		
+		for key in self.use_expand:
+			if key in self.use_expand_hidden:
 				continue
-			p.append((myprint, verboseadd, repoadd))
+			self.verboseadd += _create_use_string(self.conf, key.upper(),
+				cur_iuse_map[key], iuse_forced[key],
+				cur_use_map[key], old_iuse_map[key],
+				old_use_map[key], self.is_new,
+				reinst_flags_map.get(key))
+		return
 
-			if not conf.tree_display and \
-				conf.quiet and \
-				not conf.no_restart and \
-				pkg.root == conf.running_root.root and \
-				match_from_list(
-				PORTAGE_PACKAGE_ATOM, [pkg]) and \
-				not conf.quiet:
-				if not vardb.cpv_exists(pkg.cpv) or \
-					'9999' in pkg.cpv or \
-					'git' in pkg.inherited:
-					if mylist_index < len(mylist) - 1:
-						p.append(colorize("WARN", "*** Portage will stop merging at this point and reload itself,"))
-						p.append(colorize("WARN", "    then resume the merge."))
 
-	show_repos = repoadd_set and repoadd_set != set(["0"])
+	@staticmethod
+	def pkgprint(pkg_str, pkg_info):
+		"""Colorizes a string acording to pkg_info settings
+		
+		@param pkg_str: string
+		@param pkg_info: dictionary
+		@rtype colorized string
+		"""
+		if pkg_info.merge:
+			if pkg_info.built:
+				if pkg_info.system:
+					return colorize("PKG_BINARY_MERGE_SYSTEM", pkg_str)
+				elif pkg_info.world:
+					return colorize("PKG_BINARY_MERGE_WORLD", pkg_str)
+				else:
+					return colorize("PKG_BINARY_MERGE", pkg_str)
+			else:
+				if pkg_info.system:
+					return colorize("PKG_MERGE_SYSTEM", pkg_str)
+				elif pkg_info.world:
+					return colorize("PKG_MERGE_WORLD", pkg_str)
+				else:
+					return colorize("PKG_MERGE", pkg_str)
+		elif pkg_info.operation == "uninstall":
+			return colorize("PKG_UNINSTALL", pkg_str)
+		else:
+			if pkg_info.system:
+				return colorize("PKG_NOMERGE_SYSTEM", pkg_str)
+			elif pkg_info.world:
+				return colorize("PKG_NOMERGE_WORLD", pkg_str)
+			else:
+				return colorize("PKG_NOMERGE", pkg_str)
 
-	for x in p:
-		if isinstance(x, basestring):
-			writemsg_stdout("%s\n" % (x,), noiselevel=-1)
-			continue
 
-		myprint, verboseadd, repoadd = x
+	def verbose_size(self, pkg, repoadd_set, pkg_info):
+		"""Determines teh size of the downloads reqired
+		
+		@param pkg: _emerge.Package instance
+		@param repoadd_set: set of repos to add
+		@param pkg_info: dictionary
+		Modifies class globals: self.myfetchlist, self.counters.totalsize,
+			self.verboseadd, repoadd_set.
+		"""
+		mysize = 0
+		if pkg.type_name == "ebuild" and pkg_info.merge:
+			try:
+				myfilesdict = self.portdb.getfetchsizes(pkg.cpv,
+					useflags=pkg_info.use, myrepo=pkg.repo)
+			except InvalidDependString:
+				# should have been masked before it was selected
+				raise
+			if myfilesdict is None:
+				myfilesdict = "[empty/missing/bad digest]"
+			else:
+				for myfetchfile in myfilesdict:
+					if myfetchfile not in self.myfetchlist:
+						mysize += myfilesdict[myfetchfile]
+						self.myfetchlist.append(myfetchfile)
+				if pkg_info.ordered:
+					self.counters.totalsize += mysize
+			self.verboseadd += _format_size(mysize)
 
-		if verboseadd:
-			myprint += " " + verboseadd
+		# overlay verbose
+		# assign index for a previous version in the same slot
+		slot_matches = self.vardb.match(pkg.slot_atom)
+		if slot_matches:
+			repo_name_prev = self.vardb.aux_get(slot_matches[0],
+				["repository"])[0]
+		else:
+			repo_name_prev = None
 
-		if show_repos and repoadd:
-			myprint += " " + teal("[%s]" % repoadd)
+		# now use the data to generate output
+		if pkg.installed or not slot_matches:
+			repoadd = self.conf.repo_display.repoStr(
+				pkg_info.repo_path_real)
+		else:
+			repo_path_prev = None
+			if repo_name_prev:
+				repo_path_prev = self.portdb.getRepositoryPath(
+					repo_name_prev)
+			if repo_path_prev == pkg_info.repo_path_real:
+				repoadd = self.conf.repo_display.repoStr(
+					pkg_info.repo_path_real)
+			else:
+				repoadd = "%s=>%s" % (
+					self.conf.repo_display.repoStr(repo_path_prev),
+					self.conf.repo_display.repoStr(pkg_info.repo_path_real))
+		if repoadd:
+			repoadd_set.add(repoadd)
 
-		writemsg_stdout("%s\n" % (myprint,), noiselevel=-1)
 
-	for x in blockers:
-		writemsg_stdout("%s\n" % (x,), noiselevel=-1)
+	@staticmethod
+	def convert_myoldbest(myoldbest):
+		"""converts and colorizes a version list to a string
+		
+		@param myoldbest: list
+		@rtype string.
+		"""
+		# Convert myoldbest from a list to a string. 
+		myoldbest_str = ""
+		if myoldbest:
+			for pos, key in enumerate(myoldbest):
+				key = catpkgsplit(key)[2] + \
+					"-" + catpkgsplit(key)[3]
+				if key[-3:] == "-r0":
+					key = key[:-3]
+				myoldbest[pos] = key
+			myoldbest_str = blue("["+", ".join(myoldbest)+"]")
+		return myoldbest_str
 
-	if conf.verbosity == 3:
-		writemsg_stdout('\n%s\n' % (counters,), noiselevel=-1)
+
+	def set_interactive(self, pkg, ordered, addl):
+		"""Increments counters.interactive if the pkg is to
+		be merged and it's metadata has interactive set True
+
+		@param pkg: _emerge.Package instance
+		@param ordered: boolean
+		@param addl: already defined string to add to
+		"""
+		if 'interactive' in pkg.metadata.properties and \
+			pkg.operation == 'merge':
+			addl = colorize("WARN", "I") + addl[1:]
+			if ordered:
+				self.counters.interactive += 1
+		return addl
+
+	def _set_non_root_columns(self, addl, pkg_info, pkg):
+		"""sets the indent level and formats the output
+		
+		@param addl: already defined string to add to
+		@param pkg_info: dictionary
+		@param pkg: _emerge.Package instance
+		@rtype string
+		"""
+		if self.conf.quiet:
+			myprint = addl + " " + self.indent + \
+				self.pkgprint(pkg_info.cp, pkg_info)
+			myprint = myprint+darkblue(" "+pkg_info.ver)+" "
+			myprint = myprint+pkg_info.oldbest
+			myprint = myprint+darkgreen("to "+pkg.root)
+			self.verboseadd = None
+		else:
+			if not pkg_info.merge:
+				myprint = "[%s] %s%s" % \
+					(self.pkgprint(pkg_info.operation.ljust(13), pkg_info),
+					self.indent, self.pkgprint(pkg.cp, pkg_info))
+			else:
+				myprint = "[%s %s] %s%s" % \
+					(self.pkgprint(pkg.type_name, pkg_info), addl,
+					self.indent, self.pkgprint(pkg.cp, pkg_info))
+			if (self.newlp-nc_len(myprint)) > 0:
+				myprint = myprint+(" "*(self.newlp-nc_len(myprint)))
+			myprint = myprint+"["+darkblue(pkg_info.ver)+"] "
+			if (self.oldlp-nc_len(myprint)) > 0:
+				myprint = myprint+" "*(self.oldlp-nc_len(myprint))
+			myprint = myprint+pkg_info.oldbest
+			myprint += darkgreen("to " + pkg.root)
+		return myprint
+
+
+	def _set_root_columns(self, addl, pkg_info, pkg):
+		"""sets the indent level and formats the output
+		
+		@param addl: already defined string to add to
+		@param pkg_info: dictionary
+		@param pkg: _emerge.Package instance
+		@rtype string
+		Modifies self.verboseadd
+		"""
+		if self.conf.quiet:
+			myprint = addl + " " + self.indent + \
+				self.pkgprint(pkg_info.cp, pkg_info)
+			myprint = myprint+" "+green(pkg_info.ver)+" "
+			myprint = myprint+pkg_info.oldbest
+			self.verboseadd = None
+		else:
+			if not pkg_info.merge:
+				myprint = "[%s] %s%s" % \
+					(self.pkgprint(pkg_info.operation.ljust(13), pkg_info),
+					self.indent, self.pkgprint(pkg.cp, pkg_info))
+			else:
+				myprint = "[%s %s] %s%s" % \
+					(self.pkgprint(pkg.type_name, pkg_info), addl,
+					self.indent, self.pkgprint(pkg.cp, pkg_info))
+			if (self.newlp-nc_len(myprint)) > 0:
+				myprint = myprint+(" "*(self.newlp-nc_len(myprint)))
+			myprint = myprint+green(" ["+pkg_info.ver+"] ")
+			if (self.oldlp-nc_len(myprint)) > 0:
+				myprint = myprint+(" "*(self.oldlp-nc_len(myprint)))
+			myprint += pkg_info.oldbest
+		return myprint
+
+
+	def _set_no_columns(self, pkg, pkg_info, addl):
+		"""prints pkg info without column indentation.
+
+		@param pkg: _emerge.Package instance
+		@param pkg_info: dictionary
+		@param addl: the current text to add for the next line to output
+		@rtype the updated addl
+		"""
+		if not pkg_info.merge:
+			myprint = "[%s] %s%s %s" % \
+				(self.pkgprint(pkg_info.operation.ljust(13),
+				pkg_info),
+				self.indent, self.pkgprint(pkg.cpv, pkg_info),
+				pkg_info.oldbest)
+		else:
+			myprint = "[%s %s] %s%s %s" % \
+				(self.pkgprint(pkg.type_name, pkg_info),
+				addl, self.indent,
+				self.pkgprint(pkg.cpv, pkg_info), pkg_info.oldbest)
+		return myprint
+
+
+	def _insert_slot(self, pkg, pkg_info, myinslotlist):
+		"""Adds slot info to the message
+		
+		@returns addl: formatted slot info
+		@returns myoldbest: installed version list
+		Modifies self.counters.downgrades, self.counters.upgrades,
+			self.counters.binary
+		"""
+		myoldbest = myinslotlist[:]
+		addl = "   " + pkg_info.fetch_symbol
+		if not cpvequal(pkg.cpv,
+			best([pkg.cpv] + myoldbest)):
+			# Downgrade in slot
+			addl += turquoise("U")+blue("D")
+			if pkg_info.ordered:
+				self.counters.downgrades += 1
+				if pkg.type_name == "binary":
+					self.counters.binary += 1
+		else:
+			# Update in slot
+			addl += turquoise("U") + " "
+			if pkg_info.ordered:
+				self.counters.upgrades += 1
+				if pkg.type_name == "binary":
+					self.counters.binary += 1
+		return addl, myoldbest
+
+
+	def _new_slot(self, pkg, pkg_info):
+		"""New slot, mark it new.
+		
+		@returns addl: formatted slot info
+		@returns myoldbest: installed version list
+		Modifies self.counters.newslot, self.counters.binary
+		"""
+		addl = " " + green("NS") + pkg_info.fetch_symbol + "  "
+		myoldbest = self.vardb.match(cpv_getkey(pkg.cpv))
+		if pkg_info.ordered:
+			self.counters.newslot += 1
+			if pkg.type_name == "binary":
+				self.counters.binary += 1
+		return addl, myoldbest
+
+
+	def print_messages(self, show_repos):
+		"""Performs the actual output printing of the pre-formatted
+		messages
+		
+		@param show_repos: bool.
+		"""
+		for msg in self.print_msg:
+			if isinstance(msg, basestring):
+				writemsg_stdout("%s\n" % (msg,), noiselevel=-1)
+				continue
+			myprint, self.verboseadd, repoadd = msg
+			if self.verboseadd:
+				myprint += " " + self.verboseadd
+			if show_repos and repoadd:
+				myprint += " " + teal("[%s]" % repoadd)
+			writemsg_stdout("%s\n" % (myprint,), noiselevel=-1)
+		return
+
+
+	def print_blockers(self):
+		"""Performs the actual output printing of the pre-formatted
+		blocker messages
+		"""
+		for pkg in self.blockers:
+			writemsg_stdout("%s\n" % (pkg,), noiselevel=-1)
+		return
+
+
+	def print_verbose(self, show_repos):
+		"""Prints the verbose output to std_out
+		
+		@param show_repos: bool.
+		"""
+		writemsg_stdout('\n%s\n' % (self.counters,), noiselevel=-1)
 		if show_repos:
 			# Use _unicode_decode() to force unicode format string so
 			# that RepoDisplay.__unicode__() is called in python2.
-			writemsg_stdout(_unicode_decode("%s") % (repo_display,),
+			writemsg_stdout(_unicode_decode("%s") % (self.conf.repo_display,),
 				noiselevel=-1)
+		return
 
-	if conf.changelog:
+
+	def print_changelog(self):
+		"""Prints the changelog text to std_out
+		"""
 		writemsg_stdout('\n', noiselevel=-1)
-		for revision,text in changelogs:
+		for revision, text in self.changelogs:
 			writemsg_stdout(bold('*'+revision) + '\n' + text,
 				noiselevel=-1)
+		return
 
-	return os.EX_OK
 
-
-def _create_use_string(conf, name, cur_iuse, iuse_forced, cur_use,
-	old_iuse, old_use,
-	is_new, reinst_flags):
-
-	if not conf.print_use_string:
-		return ""
-
-	enabled = []
-	if conf.alphabetical:
-		disabled = enabled
-		removed = enabled
-	else:
-		disabled = []
-		removed = []
-	cur_iuse = set(cur_iuse)
-	enabled_flags = cur_iuse.intersection(cur_use)
-	removed_iuse = set(old_iuse).difference(cur_iuse)
-	any_iuse = cur_iuse.union(old_iuse)
-	any_iuse = list(any_iuse)
-	any_iuse.sort()
-	for flag in any_iuse:
-		flag_str = None
-		isEnabled = False
-		reinst_flag = reinst_flags and flag in reinst_flags
-		if flag in enabled_flags:
-			isEnabled = True
-			if is_new or flag in old_use and \
-				(conf.all_flags or reinst_flag):
-				flag_str = red(flag)
-			elif flag not in old_iuse:
-				flag_str = yellow(flag) + "%*"
-			elif flag not in old_use:
-				flag_str = green(flag) + "*"
-		elif flag in removed_iuse:
-			if conf.all_flags or reinst_flag:
-				flag_str = yellow("-" + flag) + "%"
-				if flag in old_use:
-					flag_str += "*"
-				flag_str = "(" + flag_str + ")"
-				removed.append(flag_str)
-			continue
-		else:
-			if is_new or flag in old_iuse and \
-				flag not in old_use and \
-				(conf.all_flags or reinst_flag):
-				flag_str = blue("-" + flag)
-			elif flag not in old_iuse:
-				flag_str = yellow("-" + flag)
-				if flag not in iuse_forced:
-					flag_str += "%"
-			elif flag in old_use:
-				flag_str = green("-" + flag) + "*"
-		if flag_str:
-			if flag in iuse_forced:
-				flag_str = "(" + flag_str + ")"
-			if isEnabled:
-				enabled.append(flag_str)
+	def get_display_list(self, mylist):
+		"""Determines the display list to process
+		
+		@param mylist
+		@rtype list
+		Modifies self.counters.blocks, self.counters.blocks_satisfied,
+			
+		"""
+		unsatisfied_blockers = []
+		ordered_nodes = []
+		for pkg in mylist:
+			if isinstance(pkg, Blocker):
+				self.counters.blocks += 1
+				if pkg.satisfied:
+					ordered_nodes.append(pkg)
+					self.counters.blocks_satisfied += 1
+				else:
+					unsatisfied_blockers.append(pkg)
 			else:
-				disabled.append(flag_str)
-
-	if conf.alphabetical:
-		ret = " ".join(enabled)
-	else:
-		ret = " ".join(enabled + disabled + removed)
-	if ret:
-		ret = '%s="%s" ' % (name, ret)
-	return ret
-
-
-def _tree_display(conf, mylist):
-
-	# If there are any Uninstall instances, add the
-	# corresponding blockers to the digraph.
-	mygraph = conf.digraph.copy()
-
-	executed_uninstalls = set(node for node in mylist \
-		if isinstance(node, Package) and node.operation == "unmerge")
-
-	for uninstall in conf.blocker_uninstalls.leaf_nodes():
-		uninstall_parents = \
-			conf.blocker_uninstalls.parent_nodes(uninstall)
-		if not uninstall_parents:
-			continue
-
-		# Remove the corresponding "nomerge" node and substitute
-		# the Uninstall node.
-		inst_pkg = conf.pkg(uninstall.cpv, "installed",
-			uninstall.root_config, installed=True)
-
-		try:
-			mygraph.remove(inst_pkg)
-		except KeyError:
-			pass
-
-		try:
-			inst_pkg_blockers = conf.blocker_parents.child_nodes(inst_pkg)
-		except KeyError:
-			inst_pkg_blockers = []
-
-		# Break the Package -> Uninstall edges.
-		mygraph.remove(uninstall)
-
-		# Resolution of a package's blockers
-		# depend on it's own uninstallation.
-		for blocker in inst_pkg_blockers:
-			mygraph.add(uninstall, blocker)
-
-		# Expand Package -> Uninstall edges into
-		# Package -> Blocker -> Uninstall edges.
-		for blocker in uninstall_parents:
-			mygraph.add(uninstall, blocker)
-			for parent in conf.blocker_parents.parent_nodes(blocker):
-				if parent != inst_pkg:
-					mygraph.add(blocker, parent)
-
-		# If the uninstall task did not need to be executed because
-		# of an upgrade, display Blocker -> Upgrade edges since the
-		# corresponding Blocker -> Uninstall edges will not be shown.
-		upgrade_node = \
-			conf.slot_pkg_map[uninstall.root].get(uninstall.slot_atom)
-		if upgrade_node is not None and \
-			uninstall not in executed_uninstalls:
-			for blocker in uninstall_parents:
-				mygraph.add(upgrade_node, blocker)
-
-	if conf.unordered_display:
-		display_list = _unordered_tree_display(mygraph, mylist)
-	else:
-		display_list = _ordered_tree_display(conf, mygraph, mylist)
-
-	_prune_tree_display(display_list)
-
-	return display_list
-
-def _unordered_tree_display(mygraph, mylist):
-	display_list = []
-	seen_nodes = set()
-
-	def print_node(node, depth):
-
-		if node in seen_nodes:
-			pass
+				ordered_nodes.append(pkg)
+		if self.conf.tree_display:
+			display_list = _tree_display(self.conf, ordered_nodes)
 		else:
-			seen_nodes.add(node)
+			display_list = [(pkg, 0, True) for pkg in ordered_nodes]
+		for pkg in unsatisfied_blockers:
+			display_list.append((pkg, 0, True))
+		return display_list
 
-			if isinstance(node, (Blocker, Package)):
-				display_list.append((node, depth, True))
+
+	def set_pkg_info(self, pkg, ordered):
+		"""Sets various pkg_info dictionary variables
+		
+		@param pkg: _emerge.Package instance
+		@param ordered: bool
+		@rtype pkg_info dictionary
+		Modifies self.counters.restrict_fetch, 
+			self.counters.restrict_fetch_satisfied
+		"""
+		pkg_info = PkgInfo()
+		pkg_info.ordered = ordered
+		pkg_info.fetch_symbol = " "
+		pkg_info.operation = pkg.operation
+		pkg_info.merge = ordered and pkg_info.operation == "merge"
+		if not pkg_info.merge and pkg_info.operation == "merge":
+			pkg_info.operation = "nomerge"
+		pkg_info.built = pkg.type_name != "ebuild"
+		pkg_info.ebuild_path = None
+		pkg_info.repo_name = pkg.repo
+		if pkg.type_name == "ebuild":
+			pkg_info.ebuild_path = self.portdb.findname(
+				pkg.cpv, myrepo=pkg_info.repo_name)
+			if pkg_info.ebuild_path is None:
+				raise AssertionError(
+					"ebuild not found for '%s'" % pkg.cpv)
+			pkg_info.repo_path_real = os.path.dirname(os.path.dirname(
+				os.path.dirname(pkg_info.ebuild_path)))
+		else:
+			pkg_info.repo_path_real = \
+				self.portdb.getRepositoryPath(pkg.metadata["repository"])
+		pkg_info.use = list(self.conf.pkg_use_enabled(pkg))
+		if not pkg.built and pkg.operation == 'merge' and \
+			'fetch' in pkg.metadata.restrict:
+			pkg_info.fetch_symbol = red("F")
+			if pkg_info.ordered:
+				self.counters.restrict_fetch += 1
+			if self.portdb.fetch_check(pkg.cpv, pkg_info.use,
+					myrepo=pkg.repo):
+				pkg_info.fetch_symbol = green("f")
+				if pkg_info.ordered:
+					self.counters.restrict_fetch_satisfied += 1
+		return pkg_info
+
+
+	def do_changelog(self, pkg, pkg_info):
+		"""Processes and adds the changelog text to the master text for output
+		
+		@param pkg: _emerge.Package instance
+		@param pkg_info: dictionay
+		Modifies self.changelogs
+		"""
+		inst_matches = self.vardb.match(pkg.slot_atom)
+		if inst_matches:
+			ebuild_path_cl = pkg_info.ebuild_path
+			if ebuild_path_cl is None:
+				# binary package
+				ebuild_path_cl = self.portdb.findname(pkg.cpv, myrepo=pkg.repo)
+			if ebuild_path_cl is not None:
+				self.changelogs.extend(_calc_changelog(
+					ebuild_path_cl, inst_matches[0], pkg.cpv))
+		return
+
+
+	def check_system_world(self, pkg):
+		"""Checks for any occurances of the package in the system or world sets
+		
+		@param pkg: _emerge.Package instance
+		@rtype system and world booleans
+		"""
+		root_config = self.conf.roots[pkg.root]
+		system_set = root_config.sets["system"]
+		world_set  = root_config.sets["selected"]
+		system = False
+		world = False
+		try:
+			system = system_set.findAtomForPackage(
+				pkg, modified_use=self.conf.pkg_use_enabled(pkg))
+			world = world_set.findAtomForPackage(
+				pkg, modified_use=self.conf.pkg_use_enabled(pkg))
+			if not (self.conf.oneshot or world) and \
+				pkg.root == self.conf.target_root and \
+				self.conf.favorites.findAtomForPackage(
+					pkg, modified_use=self.conf.pkg_use_enabled(pkg)
+					):
+				# Maybe it will be added to world now.
+				if create_world_atom(pkg, self.conf.favorites, root_config):
+					world = True
+		except InvalidDependString:
+			# This is reported elsewhere if relevant.
+			pass
+		return system, world 
+
+
+	@staticmethod
+	def get_ver_str(pkg):
+		"""Obtains the version string
+		@param pkg: _emerge.Package instance
+		@rtype string
+		"""
+		ver_str = list(catpkgsplit(pkg.cpv)[2:])
+		if ver_str[1] == "r0":
+			ver_str[1] = ""
+		else:
+			ver_str[1] = "-" + ver_str[1]
+		return ver_str[0]+ver_str[1]
+
+
+	def _get_installed_best(self, pkg, pkg_info):
+		""" we need to use "--emptrytree" testing here rather than
+		"empty" param testing because "empty"
+		param is used for -u, where you still *do* want to see when
+		something is being upgraded.
+		
+		@param pkg: _emerge.Package instance
+		@param pkg_info: dictionay
+		@rtype addl, myoldbest: list, myinslotlist: list
+		Modifies self.counters.reinst, self.counters.binary, self.counters.new
+			
+		"""
+		myoldbest = []
+		myinslotlist = None
+		installed_versions = self.vardb.match(cpv_getkey(pkg.cpv))
+		if self.vardb.cpv_exists(pkg.cpv):
+			addl = "  "+yellow("R")+pkg_info.fetch_symbol+"  "
+			if pkg_info.ordered:
+				if pkg_info.merge:
+					self.counters.reinst += 1
+					if pkg.type_name == "binary":
+						self.counters.binary += 1
+				elif pkg_info.operation == "uninstall":
+					self.counters.uninst += 1
+		# filter out old-style virtual matches
+		elif installed_versions and \
+			cpv_getkey(installed_versions[0]) == cpv_getkey(pkg.cpv):
+			myinslotlist = self.vardb.match(pkg.slot_atom)
+			# If this is the first install of a new-style virtual, we
+			# need to filter out old-style virtual matches.
+			if myinslotlist and \
+				cpv_getkey(myinslotlist[0]) != cpv_getkey(pkg.cpv):
+				myinslotlist = None
+			if myinslotlist:
+				addl, myoldbest = self._insert_slot(pkg, pkg_info, myinslotlist)
 			else:
-				depth = -1
-
-			for child_node in mygraph.child_nodes(node):
-				print_node(child_node, depth + 1)
-
-	for root_node in mygraph.root_nodes():
-		print_node(root_node, 0)
-
-	return display_list
-
-def _ordered_tree_display(conf, mygraph, mylist):
-	depth = 0
-	shown_edges = set()
-	tree_nodes = []
-	display_list = []
-
-	for x in mylist:
-		depth = len(tree_nodes)
-		while depth and x not in \
-			mygraph.child_nodes(tree_nodes[depth-1]):
-				depth -= 1
-		if depth:
-			tree_nodes = tree_nodes[:depth]
-			tree_nodes.append(x)
-			display_list.append((x, depth, True))
-			shown_edges.add((x, tree_nodes[depth-1]))
+				addl, myoldbest = self._new_slot(pkg, pkg_info)
+			if self.conf.changelog:
+				self.do_changelog(pkg, pkg_info)
 		else:
-			traversed_nodes = set() # prevent endless circles
-			traversed_nodes.add(x)
-			def add_parents(current_node, ordered):
-				parent_nodes = None
-				# Do not traverse to parents if this node is an
-				# an argument or a direct member of a set that has
-				# been specified as an argument (system or world).
-				if current_node not in conf.set_nodes:
-					parent_nodes = mygraph.parent_nodes(current_node)
-				if parent_nodes:
-					child_nodes = set(mygraph.child_nodes(current_node))
-					selected_parent = None
-					# First, try to avoid a direct cycle.
-					for node in parent_nodes:
-						if not isinstance(node, (Blocker, Package)):
-							continue
-						if node not in traversed_nodes and \
-							node not in child_nodes:
-							edge = (current_node, node)
-							if edge in shown_edges:
-								continue
-							selected_parent = node
-							break
-					if not selected_parent:
-						# A direct cycle is unavoidable.
-						for node in parent_nodes:
-							if not isinstance(node, (Blocker, Package)):
-								continue
-							if node not in traversed_nodes:
-								edge = (current_node, node)
-								if edge in shown_edges:
-									continue
-								selected_parent = node
-								break
-					if selected_parent:
-						shown_edges.add((current_node, selected_parent))
-						traversed_nodes.add(selected_parent)
-						add_parents(selected_parent, False)
-				display_list.append((current_node,
-					len(tree_nodes), ordered))
-				tree_nodes.append(current_node)
-			tree_nodes = []
-			add_parents(x, True)
+			addl = " " + green("N") + " " + pkg_info.fetch_symbol + "  "
+			if pkg_info.ordered:
+				self.counters.new += 1
+				if pkg.type_name == "binary":
+					self.counters.binary += 1
+		return addl, myoldbest, myinslotlist
 
-	return display_list
 
-def _prune_tree_display(display_list):
-	last_merge_depth = 0
-	for i in range(len(display_list) - 1, -1, -1):
-		node, depth, ordered = display_list[i]
-		if not ordered and depth == 0 and i > 0 \
-			and node == display_list[i-1][0] and \
-			display_list[i-1][1] == 0:
-			# An ordered node got a consecutive duplicate
-			# when the tree was being filled in.
-			del display_list[i]
-			continue
-		if ordered and isinstance(node, Package) \
-			and node.operation in ('merge', 'uninstall'):
-			last_merge_depth = depth
-			continue
-		if depth >= last_merge_depth or \
-			i < len(display_list) - 1 and \
-			depth >= display_list[i+1][1]:
-				del display_list[i]
+	def __call__(self, depgraph, mylist, favorites=None, verbosity=None):
+		"""The main operation to format and display the resolver output.
+		
+		@param depgraph: dependency grah
+		@param mylist: list of packages being processed
+		@param favorites: list, defaults to []
+		@param verbosity: verbose level, defaults to None
+		Modifies self.conf, self.myfetchlist, self.portdb, self.vardb,
+			self.pkgsettings, self.verboseadd, self.oldlp, self.newlp, 
+			self.print_msg, 
+		"""
+		if favorites is None:
+			favorites = []
+		self.conf = _DisplayConfig(depgraph, mylist, favorites, verbosity)
+		mylist = self.get_display_list(self.conf.mylist)
+		# files to fetch list - avoids counting a same file twice
+		# in size display (verbose mode)
+		self.myfetchlist = []
+		# Use this set to detect when all the "repoadd" strings are "[0]"
+		# and disable the entire repo display in this case.
+		repoadd_set = set()
 
-def _calc_changelog(ebuildpath,current,next):
-	if ebuildpath == None or not os.path.exists(ebuildpath):
-		return []
-	current = '-'.join(catpkgsplit(current)[1:])
-	if current.endswith('-r0'):
-		current = current[:-3]
-	next = '-'.join(catpkgsplit(next)[1:])
-	if next.endswith('-r0'):
-		next = next[:-3]
-	changelogpath = os.path.join(os.path.split(ebuildpath)[0],'ChangeLog')
-	try:
-		changelog = codecs.open(_unicode_encode(changelogpath,
-			encoding=_encodings['fs'], errors='strict'),
-			mode='r', encoding=_encodings['repo.content'], errors='replace'
-		).read()
-	except SystemExit:
-		raise # Needed else can't exit
-	except:
-		return []
-	divisions = _find_changelog_tags(changelog)
-	#print 'XX from',current,'to',next
-	#for div,text in divisions: print 'XX',div
-	# skip entries for all revisions above the one we are about to emerge
-	for i in range(len(divisions)):
-		if divisions[i][0]==next:
-			divisions = divisions[i:]
-			break
-	# find out how many entries we are going to display
-	for i in range(len(divisions)):
-		if divisions[i][0]==current:
-			divisions = divisions[:i]
-			break
-	else:
-	    # couldnt find the current revision in the list. display nothing
-		return []
-	return divisions
+		for mylist_index in range(len(mylist)):
+			pkg, depth, ordered = mylist[mylist_index]
+			self.portdb = self.conf.trees[pkg.root]["porttree"].dbapi
+			self.vardb = self.conf.trees[pkg.root]["vartree"].dbapi
+			self.pkgsettings = self.conf.pkgsettings[pkg.root]
+			self.indent = " " * depth
 
-def _find_changelog_tags(changelog):
-	divs = []
-	release = None
-	while 1:
-		match = re.search(r'^\*\ ?([-a-zA-Z0-9_.+]*)(?:\ .*)?\n',changelog,re.M)
-		if match is None:
-			if release is not None:
-				divs.append((release,changelog))
-			return divs
-		if release is not None:
-			divs.append((release,changelog[:match.start()]))
-		changelog = changelog[match.end():]
-		release = match.group(1)
-		if release.endswith('.ebuild'):
-			release = release[:-7]
-		if release.endswith('-r0'):
-			release = release[:-3]
+			if isinstance(pkg, Blocker):
+				if self._blockers(pkg, fetch_symbol=" "):
+					continue
+			else:
+				pkg_info = self.set_pkg_info(pkg, ordered)
+				addl, pkg_info.oldbest, myinslotlist = \
+					self._get_installed_best(pkg, pkg_info)
+				self.verboseadd = ""
+				repoadd = None
+				self._display_use(pkg, pkg_info.oldbest, myinslotlist)
+				self.recheck_hidden(pkg)
+				if self.conf.verbosity == 3:
+					self.verbose_size(pkg, repoadd_set, pkg_info)
+
+				pkg_info.cp = cpv_getkey(pkg.cpv)
+				pkg_info.ver = self.get_ver_str(pkg)
+
+				self.oldlp = self.conf.columnwidth - 30
+				self.newlp = self.oldlp - 30
+				pkg_info.oldbest = self.convert_myoldbest(pkg_info.oldbest)
+				pkg_info.system, pkg_info.world = \
+					self.check_system_world(pkg)
+				addl = self.set_interactive(pkg, pkg_info.ordered, addl)
+
+				if pkg.root != "/":
+					if pkg_info.oldbest:
+						pkg_info.oldbest += " "
+					if self.conf.columns:
+						myprint = self._set_non_root_columns(
+							addl, pkg_info, pkg)
+					else:
+						if not pkg_info.merge:
+							myprint = "[%s] " % (
+								self.pkgprint(pkg_info.operation.ljust(13),
+								pkg_info)
+								)
+						else:
+							myprint = "[%s %s] " % (
+								self.pkgprint(pkg.type_name, pkg_info), addl)
+						myprint += self.indent + \
+							self.pkgprint(pkg.cpv, pkg_info) + " " + \
+							pkg_info.oldbest + darkgreen("to " + pkg.root)
+				else:
+					if self.conf.columns:
+						myprint = self._set_root_columns(
+							addl, pkg_info, pkg)
+					else:
+						myprint = self._set_no_columns(
+							pkg, pkg_info, addl)
+
+				if self.conf.columns and pkg.operation == "uninstall":
+					continue
+				self.print_msg.append((myprint, self.verboseadd, repoadd))
+
+				if not self.conf.tree_display \
+					and self.conf.quiet \
+					and not self.conf.no_restart \
+					and pkg.root == self.conf.running_root.root \
+					and match_from_list(PORTAGE_PACKAGE_ATOM, [pkg]) \
+					and not self.conf.quiet:
+
+					if not self.vardb.cpv_exists(pkg.cpv) or \
+						'9999' in pkg.cpv or \
+						'git' in pkg.inherited:
+						if mylist_index < len(mylist) - 1:
+							self.print_msg.append(
+								colorize(
+									"WARN", "*** Portage will stop merging "
+									"at this point and reload itself,"
+									)
+								)
+							self.print_msg.append(
+								colorize("WARN", "    then resume the merge.")
+								)
+
+		show_repos = repoadd_set and repoadd_set != set(["0"])
+
+		# now finally print out the messages
+		self.print_messages(show_repos)
+		self.print_blockers()
+		if self.conf.verbosity == 3:
+			self.print_verbose(show_repos)
+		if self.conf.changelog:
+			self.print_changelog()
+
+		return os.EX_OK

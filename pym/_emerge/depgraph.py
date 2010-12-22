@@ -55,7 +55,7 @@ from _emerge.UnmergeDepPriority import UnmergeDepPriority
 from _emerge.resolver.backtracking import Backtracker, BacktrackParameter
 from _emerge.resolver.slot_collision import slot_conflict_handler
 from _emerge.resolver.circular_dependency import circular_dependency_handler
-from _emerge.resolver.output import display, filter_iuse_defaults
+from _emerge.resolver.output import Display, filter_iuse_defaults
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -1024,10 +1024,10 @@ class depgraph(object):
 				self._add_parent_atom(pkg, parent_atom)
 
 		""" This section determines whether we go deeper into dependencies or not.
-		    We want to go deeper on a few occasions:
-		    Installing package A, we need to make sure package A's deps are met.
-		    emerge --deep <pkgspec>; we need to recursively check dependencies of pkgspec
-		    If we are in --nodeps (no recursion) mode, we obviously only check 1 level of dependencies.
+			We want to go deeper on a few occasions:
+			Installing package A, we need to make sure package A's deps are met.
+			emerge --deep <pkgspec>; we need to recursively check dependencies of pkgspec
+			If we are in --nodeps (no recursion) mode, we obviously only check 1 level of dependencies.
 		"""
 		if arg_atoms:
 			depth = 0
@@ -4718,6 +4718,7 @@ class depgraph(object):
 		# redundantly displaying this exact same merge list
 		# again via _show_merge_list().
 		self._dynamic_config._displayed_list = mylist
+		display = Display()
 
 		return display(self, mylist, favorites, verbosity)
 
