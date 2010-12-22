@@ -416,7 +416,7 @@ def display(depgraph, mylist, favorites=[], verbosity=None):
 						ebuild_path_cl = ebuild_path
 						if ebuild_path_cl is None:
 							# binary package
-							ebuild_path_cl = portdb.findname(pkg.cpv)
+							ebuild_path_cl = portdb.findname(pkg.cpv, myrepo=pkg.repo)
 
 						if ebuild_path_cl is not None:
 							changelogs.extend(_calc_changelog(
