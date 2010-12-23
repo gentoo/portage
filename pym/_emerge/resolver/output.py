@@ -326,7 +326,7 @@ class Display(object):
 
 		# now use the data to generate output
 		if pkg.installed or not slot_matches:
-			repoadd = self.conf.repo_display.repoStr(
+			self.repoadd = self.conf.repo_display.repoStr(
 				pkg_info.repo_path_real)
 		else:
 			repo_path_prev = None
@@ -334,14 +334,14 @@ class Display(object):
 				repo_path_prev = self.portdb.getRepositoryPath(
 					repo_name_prev)
 			if repo_path_prev == pkg_info.repo_path_real:
-				repoadd = self.conf.repo_display.repoStr(
+				self.repoadd = self.conf.repo_display.repoStr(
 					pkg_info.repo_path_real)
 			else:
-				repoadd = "%s=>%s" % (
+				self.repoadd = "%s=>%s" % (
 					self.conf.repo_display.repoStr(repo_path_prev),
 					self.conf.repo_display.repoStr(pkg_info.repo_path_real))
-		if repoadd:
-			repoadd_set.add(repoadd)
+		if self.repoadd:
+			repoadd_set.add(self.repoadd)
 
 
 	@staticmethod
@@ -785,7 +785,7 @@ class Display(object):
 				addl, pkg_info.oldbest, myinslotlist = \
 					self._get_installed_best(pkg, pkg_info)
 				self.verboseadd = ""
-				repoadd = None
+				self.repoadd = None
 				self._display_use(pkg, pkg_info.oldbest, myinslotlist)
 				self.recheck_hidden(pkg)
 				if self.conf.verbosity == 3:
@@ -829,7 +829,7 @@ class Display(object):
 
 				if self.conf.columns and pkg.operation == "uninstall":
 					continue
-				self.print_msg.append((myprint, self.verboseadd, repoadd))
+				self.print_msg.append((myprint, self.verboseadd, self.repoadd))
 
 				if not self.conf.tree_display \
 					and not self.conf.no_restart \
