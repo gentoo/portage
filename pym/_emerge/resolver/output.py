@@ -5,7 +5,7 @@
 """
 
 __all__ = (
-	"Display", "filter_iuse_defaults"
+	"Display",
 	)
 
 import sys
@@ -29,19 +29,6 @@ from _emerge.resolver.output_helpers import ( _DisplayConfig, _tree_display,
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
-
-
-def filter_iuse_defaults(iuse):
-	"""Performs an absolute value action on an use flag list.
-	
-	@param iuse: list of use flags
-	@rtype list
-		"""
-	for flag in iuse:
-		if flag.startswith("+") or flag.startswith("-"):
-			yield flag[1:]
-		else:
-			yield flag
 
 
 class Display(object):
