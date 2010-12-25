@@ -54,7 +54,7 @@ from _emerge.UnmergeDepPriority import UnmergeDepPriority
 
 from _emerge.resolver.slot_collision import slot_conflict_handler
 from _emerge.resolver.circular_dependency import circular_dependency_handler
-from _emerge.resolver.output import display, filter_iuse_defaults
+from _emerge.resolver.output import display
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -3078,9 +3078,9 @@ class depgraph(object):
 						forced_flags = set()
 						forced_flags.update(pkg.use.force)
 						forced_flags.update(pkg.use.mask)
-						old_use = vardb.aux_get(cpv, ["USE"])[0].split()
-						old_iuse = set(filter_iuse_defaults(
-							vardb.aux_get(cpv, ["IUSE"])[0].split()))
+						inst_pkg = vardb.match_pkgs('=' + pkg.cpv)[0]
+						old_use = inst_pkg.use.enabled
+						old_iuse = inst_pkg.iuse.all
 						cur_use = self._pkg_use_enabled(pkg)
 						cur_iuse = pkg.iuse.all
 						reinstall_for_flags = \
