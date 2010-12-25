@@ -140,25 +140,21 @@ class Display(object):
 		"""
 			
 		self.forced_flags = set()
-		self.pkgsettings.setcpv(pkg) # for package.use.{mask,force}
-		self.forced_flags.update(self.pkgsettings.useforce)
-		self.forced_flags.update(self.pkgsettings.usemask)
+		self.forced_flags.update(pkg.use.force)
+		self.forced_flags.update(pkg.use.mask)
 
 		self.cur_use = [flag for flag in self.conf.pkg_use_enabled(pkg) \
 			if flag in pkg.iuse.all]
 		self.cur_iuse = sorted(pkg.iuse.all)
 
 		if myoldbest and myinslotlist:
-			previous_cpv = myoldbest[0]
+			previous_cpv = myoldbest[0].cpv
 		else:
 			previous_cpv = pkg.cpv
 		if self.vardb.cpv_exists(previous_cpv):
-			self.old_iuse, self.old_use = self.vardb.aux_get(
-					previous_cpv, ["IUSE", "USE"])
-			self.old_iuse = list(set(
-				filter_iuse_defaults(self.old_iuse.split())))
-			self.old_iuse.sort()
-			self.old_use = self.old_use.split()
+			previous_pkg = self.vardb.match_pkgs('=' + previous_cpv)[0]
+			self.old_iuse = sorted(previous_pkg.iuse.all)
+			self.old_use = previous_pkg.use.enabled
 			self.is_new = False
 		else:
 			self.old_iuse = []
@@ -354,13 +350,14 @@ class Display(object):
 		# Convert myoldbest from a list to a string. 
 		myoldbest_str = ""
 		if myoldbest:
-			for pos, key in enumerate(myoldbest):
-				key = catpkgsplit(key)[2] + \
-					"-" + catpkgsplit(key)[3]
+			versions = []
+			for pos, pkg in enumerate(myoldbest):
+				key = catpkgsplit(pkg.cpv)[2] + \
+					"-" + catpkgsplit(pkg.cpv)[3]
 				if key[-3:] == "-r0":
 					key = key[:-3]
-				myoldbest[pos] = key
-			myoldbest_str = blue("["+", ".join(myoldbest)+"]")
+				versions.append(key)
+			myoldbest_str = blue("["+", ".join(versions)+"]")
 		return myoldbest_str
 
 
@@ -476,10 +473,9 @@ class Display(object):
 		Modifies self.counters.downgrades, self.counters.upgrades,
 			self.counters.binary
 		"""
-		myoldbest = myinslotlist[:]
 		addl = "   " + pkg_info.fetch_symbol
 		if not cpvequal(pkg.cpv,
-			best([pkg.cpv] + myoldbest)):
+			best([pkg.cpv] + [x.cpv for x in myinslotlist])):
 			# Downgrade in slot
 			addl += turquoise("U")+blue("D")
 			if pkg_info.ordered:
@@ -493,7 +489,7 @@ class Display(object):
 				self.counters.upgrades += 1
 				if pkg.type_name == "binary":
 					self.counters.binary += 1
-		return addl, myoldbest
+		return addl
 
 
 	def _new_slot(self, pkg, pkg_info):
@@ -504,12 +500,11 @@ class Display(object):
 		Modifies self.counters.newslot, self.counters.binary
 		"""
 		addl = " " + green("NS") + pkg_info.fetch_symbol + "  "
-		myoldbest = self.vardb.match(cpv_getkey(pkg.cpv))
 		if pkg_info.ordered:
 			self.counters.newslot += 1
 			if pkg.type_name == "binary":
 				self.counters.binary += 1
-		return addl, myoldbest
+		return addl
 
 
 	def print_messages(self, show_repos):
@@ -714,7 +709,7 @@ class Display(object):
 		"""
 		myoldbest = []
 		myinslotlist = None
-		installed_versions = self.vardb.match(cpv_getkey(pkg.cpv))
+		installed_versions = self.vardb.match_pkgs(pkg.cp)
 		if self.vardb.cpv_exists(pkg.cpv):
 			addl = "  "+yellow("R")+pkg_info.fetch_symbol+"  "
 			if pkg_info.ordered:
@@ -726,17 +721,19 @@ class Display(object):
 					self.counters.uninst += 1
 		# filter out old-style virtual matches
 		elif installed_versions and \
-			cpv_getkey(installed_versions[0]) == cpv_getkey(pkg.cpv):
-			myinslotlist = self.vardb.match(pkg.slot_atom)
+			installed_versions[0].cp == pkg.cp:
+			myinslotlist = self.vardb.match_pkgs(pkg.slot_atom)
 			# If this is the first install of a new-style virtual, we
 			# need to filter out old-style virtual matches.
 			if myinslotlist and \
-				cpv_getkey(myinslotlist[0]) != cpv_getkey(pkg.cpv):
+				myinslotlist[0].cp != pkg.cp:
 				myinslotlist = None
 			if myinslotlist:
-				addl, myoldbest = self._insert_slot(pkg, pkg_info, myinslotlist)
+				myoldbest = myinslotlist[:]
+				addl = self._insert_slot(pkg, pkg_info, myinslotlist)
 			else:
-				addl, myoldbest = self._new_slot(pkg, pkg_info)
+				myoldbest = installed_versions
+				addl = self._new_slot(pkg, pkg_info)
 			if self.conf.changelog:
 				self.do_changelog(pkg, pkg_info)
 		else:
@@ -791,7 +788,7 @@ class Display(object):
 				if self.conf.verbosity == 3:
 					self.verbose_size(pkg, repoadd_set, pkg_info)
 
-				pkg_info.cp = cpv_getkey(pkg.cpv)
+				pkg_info.cp = pkg.cp
 				pkg_info.ver = self.get_ver_str(pkg)
 
 				self.oldlp = self.conf.columnwidth - 30
