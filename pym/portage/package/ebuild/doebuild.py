@@ -60,7 +60,9 @@ from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.EbuildSpawnProcess import EbuildSpawnProcess
+from _emerge.Package import Package
 from _emerge.PollScheduler import PollScheduler
+from _emerge.RootConfig import RootConfig
 
 _unsandboxed_phases = frozenset([
 	"clean", "cleanrm", "config",
@@ -593,7 +595,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# data are never installed via the ebuild command. Don't bother when
 		# returnpid == True since there's no need to do this every time emerge
 		# executes a phase.
-		if not returnpid:
+		if tree == "porttree":
 			rval = _validate_deps(mysettings, myroot, mydo, mydbapi)
 			if rval != os.EX_OK:
 				return rval
@@ -1006,7 +1008,7 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 		set(["clean", "cleanrm", "help", "prerm", "postrm"])
 	dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 	misc_keys = ["LICENSE", "PROPERTIES", "PROVIDE", "RESTRICT", "SRC_URI"]
-	other_keys = ["SLOT", "EAPI"]
+	other_keys = ["EAPI", "IUSE", "SLOT"]
 	all_keys = dep_keys + misc_keys + other_keys
 	metadata = dict(zip(all_keys,
 		mydbapi.aux_get(mysettings.mycpv, all_keys)))
@@ -1014,28 +1016,18 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 	class FakeTree(object):
 		def __init__(self, mydb):
 			self.dbapi = mydb
-	dep_check_trees = {myroot:{}}
-	dep_check_trees[myroot]["porttree"] = \
-		FakeTree(fakedbapi(settings=mysettings))
+
+	root_config = RootConfig(mysettings, {"porttree":FakeTree(mydbapi)}, None)
+
+	pkg = Package(built=False, cpv=mysettings.mycpv,
+		metadata=metadata, root_config=root_config,
+		type_name="ebuild")
 
 	msgs = []
-	for dep_type in dep_keys:
-		mycheck = dep_check(metadata[dep_type], None, mysettings,
-			myuse="all", myroot=myroot, trees=dep_check_trees)
-		if not mycheck[0]:
-			msgs.append("  %s: %s\n    %s\n" % (
-				dep_type, metadata[dep_type], mycheck[1]))
-
-	eapi = metadata["EAPI"]
-	for k in misc_keys:
-		try:
-			use_reduce(metadata[k], is_src_uri=(k=="SRC_URI"), eapi=eapi)
-		except InvalidDependString as e:
-			msgs.append("  %s: %s\n    %s\n" % (
-				k, metadata[k], str(e)))
-
-	if not metadata["SLOT"]:
-		msgs.append(_("  SLOT is undefined\n"))
+	if pkg.invalid:
+		for k, v in pkg.invalid.items():
+			for msg in v:
+				msgs.append("  %s\n" % (msg,))
 
 	if msgs:
 		portage.util.writemsg_level(_("Error(s) in metadata for '%s':\n") % \
