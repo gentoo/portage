@@ -1006,10 +1006,9 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 
 	invalid_dep_exempt_phases = \
 		set(["clean", "cleanrm", "help", "prerm", "postrm"])
-	dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
-	misc_keys = ["LICENSE", "PROPERTIES", "PROVIDE", "RESTRICT", "SRC_URI"]
-	other_keys = ["EAPI", "IUSE", "SLOT"]
-	all_keys = dep_keys + misc_keys + other_keys
+	all_keys = set(Package.metadata_keys)
+	all_keys.add("SRC_URI")
+	all_keys = tuple(all_keys)
 	metadata = dict(zip(all_keys,
 		mydbapi.aux_get(mysettings.mycpv, all_keys)))
 
