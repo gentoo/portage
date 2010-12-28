@@ -103,7 +103,8 @@ class EbuildFetcher(SpawnProcess):
 		rval = 1
 		try:
 			if fetch(self._uri_map, self._settings, fetchonly=self.fetchonly,
-				digests=copy.deepcopy(self._digests)):
+				digests=copy.deepcopy(self._digests),
+				allow_missing_digests=False):
 				rval = os.EX_OK
 		except SystemExit:
 			raise
