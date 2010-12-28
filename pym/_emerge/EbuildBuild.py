@@ -111,14 +111,27 @@ class EbuildBuild(CompositeTask):
 		settings = self.settings
 
 		if opts.fetchonly:
+			if opts.pretend:
 				fetcher = EbuildFetchonly(
 					fetch_all=opts.fetch_all_uri,
 					pkg=pkg, pretend=opts.pretend,
 					settings=settings)
 				retval = fetcher.execute()
 				self.returncode = retval
-				self.wait()
-				return
+			else:
+				fetcher = EbuildFetcher(
+					config_pool=self.config_pool,
+					fetchall=self.opts.fetch_all_uri,
+					fetchonly=self.opts.fetchonly,
+					background=False,
+					logfile=None,
+					pkg=self.pkg,
+					scheduler=self.scheduler)
+				fetcher.start()
+				self.returncode = fetcher.wait()
+
+			self.wait()
+			return
 
 		self._build_dir = EbuildBuildDir(
 			scheduler=self.scheduler, settings=settings)
