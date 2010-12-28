@@ -532,7 +532,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 
 		orig_digests = mydigests.get(myfile, {})
 
-		if not allow_missing_digests:
+		if not (allow_missing_digests or listonly):
 			verifiable_hash_types = set(orig_digests).intersection(hashfunc_map)
 			verifiable_hash_types.discard("size")
 			if not verifiable_hash_types:
@@ -551,9 +551,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 				writemsg(_("!!! Got:      %s\n!!! Expected: %s\n") % \
 					(reason[1], reason[2]), noiselevel=-1)
 
-				if listonly:
-					continue
-				elif fetchonly:
+				if fetchonly:
 					failed_files.add(myfile)
 					continue
 				else:
