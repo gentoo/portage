@@ -26,7 +26,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 
 from portage import OrderedDict, os, selinux, _encodings, \
 	_shell_quote, _unicode_encode
-from portage.checksum import perform_md5, verify_all
+from portage.checksum import hashfunc_map, perform_md5, verify_all
 from portage.const import BASH_BINARY, CUSTOM_MIRRORS_FILE, \
 	GLOBAL_CONFIG_PATH
 from portage.data import portage_gid, portage_uid, secpass, userpriv_groups
@@ -231,7 +231,8 @@ _size_suffix_map = {
 }
 
 def fetch(myuris, mysettings, listonly=0, fetchonly=0,
-	locks_in_subdir=".locks", use_locks=1, try_mirrors=1, digests=None):
+	locks_in_subdir=".locks", use_locks=1, try_mirrors=1, digests=None,
+	allow_missing_digests=True):
 	"fetch files.  Will use digest file if available."
 
 	if not myuris:
@@ -530,6 +531,34 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 		fetched = 0
 
 		orig_digests = mydigests.get(myfile, {})
+
+		if not allow_missing_digests:
+			verifiable_hash_types = set(orig_digests).intersection(hashfunc_map)
+			verifiable_hash_types.discard("size")
+			if not verifiable_hash_types:
+				expected = set(hashfunc_map)
+				expected.discard("size")
+				expected = " ".join(sorted(expected))
+				got = set(orig_digests)
+				got.discard("size")
+				got = " ".join(sorted(got))
+				reason = (_("Insufficient data for checksum verification"),
+					got, expected)
+				writemsg(_("!!! Fetched file: %s VERIFY FAILED!\n") % myfile,
+					noiselevel=-1)
+				writemsg(_("!!! Reason: %s\n") % reason[0],
+					noiselevel=-1)
+				writemsg(_("!!! Got:      %s\n!!! Expected: %s\n") % \
+					(reason[1], reason[2]), noiselevel=-1)
+
+				if listonly:
+					continue
+				elif fetchonly:
+					failed_files.add(myfile)
+					continue
+				else:
+					return 0
+
 		size = orig_digests.get("size")
 		if size == 0:
 			# Zero-byte distfiles are always invalid, so discard their digests.
