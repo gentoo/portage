@@ -230,7 +230,8 @@ _size_suffix_map = {
 	'Y' : 80,
 }
 
-def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",use_locks=1, try_mirrors=1):
+def fetch(myuris, mysettings, listonly=0, fetchonly=0,
+	locks_in_subdir=".locks", use_locks=1, try_mirrors=1, digests=None):
 	"fetch files.  Will use digest file if available."
 
 	if not myuris:
@@ -352,12 +353,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 	skip_manifest = mysettings.get("EBUILD_SKIP_MANIFEST") == "1"
 	pkgdir = mysettings.get("O")
-	if not (pkgdir is None or skip_manifest):
+	if digests is None and not (pkgdir is None or skip_manifest):
 		mydigests = Manifest(
 			pkgdir, mysettings["DISTDIR"]).getTypeDigests("DIST")
-	else:
+	elif digests is None:
 		# no digests because fetch was not called for a specific package
 		mydigests = {}
+	else:
+		mydigests = digests
 
 	ro_distdirs = [x for x in \
 		shlex_split(mysettings.get("PORTAGE_RO_DISTDIRS", "")) \
