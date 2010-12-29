@@ -460,7 +460,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 
 	if can_fetch and not fetch_to_ro:
 		global _userpriv_test_write_file_cache
-		dirmode  = 0o2070
+		dirmode  = 0o070
 		filemode =   0o60
 		modemask =    0o2
 		dir_gid = portage_gid
