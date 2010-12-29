@@ -206,7 +206,7 @@ user_special() {
 			echo "ERROR: user_special() called without arguments"
 			return 1
 		fi
-		while read pat; do
+		while read -r pat; do
 			echo ${1} | grep "${pat}" > /dev/null && return 0
 		done < ${PORTAGE_CONFIGROOT}etc/etc-update.special
 	fi

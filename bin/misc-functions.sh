@@ -322,7 +322,7 @@ install_qa_check() {
 		fi
 
 		# Save NEEDED information after removing self-contained providers
-		scanelf -qyRF '%a;%p;%S;%r;%n' "${D}" | { while IFS= read l; do
+		scanelf -qyRF '%a;%p;%S;%r;%n' "${D}" | { while IFS= read -r l; do
 			arch=${l%%;*}; l=${l#*;}
 			obj="/${l%%;*}"; l=${l#*;}
 			soname=${l%%;*}; l=${l#*;}
@@ -664,7 +664,7 @@ install_qa_check() {
 				echo "Please do not file a Gentoo bug and instead" \
 				"report the above QA issues directly to the upstream" \
 				"developers of this software." | fmt -w 70 | \
-				while read line ; do eqawarn "${line}" ; done
+				while read -r line ; do eqawarn "${line}" ; done
 				eqawarn "Homepage: ${HOMEPAGE}"
 				hasq stricter ${FEATURES} && die "install aborted due to" \
 					"poor programming practices shown above"
@@ -774,7 +774,7 @@ preinst_sfperms() {
 	if hasq sfperms $FEATURES; then
 		local i
 		find "${D}" -type f -perm -4000 -print0 | \
-		while read -d $'\0' i ; do
+		while read -r -d $'\0' i ; do
 			if [ -n "$(find "$i" -perm -2000)" ] ; then
 				ebegin ">>> SetUID and SetGID: [chmod o-r] /${i#${D}}"
 				chmod o-r "$i"
@@ -786,7 +786,7 @@ preinst_sfperms() {
 			fi
 		done
 		find "${D}" -type f -perm -2000 -print0 | \
-		while read -d $'\0' i ; do
+		while read -r -d $'\0' i ; do
 			if [ -n "$(find "$i" -perm -4000)" ] ; then
 				# This case is already handled
 				# by the SetUID check above.
