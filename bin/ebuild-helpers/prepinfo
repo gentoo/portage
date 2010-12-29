@@ -23,7 +23,7 @@ if [[ ! -d ${D}${infodir} ]] ; then
 	fi
 fi
 
-find "${D}${infodir}" -type d -print0 | while read -d $'\0' x ; do
+find "${D}${infodir}" -type d -print0 | while read -r -d $'\0' x ; do
 	for f in "${x}"/.keepinfodir*; do
 		[[ -e ${f} ]] && continue 2
 	done

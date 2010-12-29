@@ -79,7 +79,7 @@ else
 	git_log_opts+=" $TREE_ISH"
 fi
 skip_next=false
-git log $git_log_opts | fmt -w 80 -p "    " | while read ; do
+git log $git_log_opts | fmt -w 80 -p "    " | while read -r ; do
 	if [[ $skip_next = true ]] ; then
 		skip_next=false
 	elif [[ $REPLY = "    svn path="* ]] ; then
