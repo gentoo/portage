@@ -916,6 +916,9 @@ multiple directories.
 .PD 1
 .TP
 \fBdosed\fR \fI"s:orig:change:g" <filename>\fR
+Beginning with \fBEAPI 4\fR, the \fBdosed\fR helper no longer exists. Ebuilds
+should call \fBsed(1)\fR directly (and assume that it is GNU sed).
+
 Performs sed in place on \fIfilename\fR inside ${ED}. If no expression is
 given then \fI"s:${D}::g"\fR is used as the default expression.  Note
 that this expression does \fBNOT\fR use the offset prefix.
