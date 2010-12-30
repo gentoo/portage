@@ -19,7 +19,7 @@ Here's a simple example ebuild:
 # Distributed under the terms of the GNU General Public License v2
 # $Header: $
 
-EAPI="3"
+EAPI="4"
 
 inherit some_eclass another_eclass
 
@@ -41,8 +41,8 @@ src_configure() {
 }
 
 src_install() {
-	emake install DESTDIR="${D}" || die "Install failed"
-	dodoc NEWS README* THANKS AUTHORS BUGS ChangeLog || die "dodoc failed"
+	emake DESTDIR="${D}" install
+	dodoc NEWS README* THANKS AUTHORS BUGS ChangeLog
 }
 .fi
 .SH "VARIABLES"
@@ -663,6 +663,14 @@ default_src_test
 \fBdie\fR \fI[reason]\fR
 Causes the current emerge process to be aborted. The final display will
 include \fIreason\fR.
+
+Beginning with \fBEAPI 4\fR, all helpers automatically call \fBdie\fR
+whenever some sort of error occurs. Helper calls may be prefixed with
+the \fBnonfatal\fR helper in order to prevent errors from being fatal.
+.TP
+\fBnonfatal\fR \fI<helper>\fR
+Execute \fIhelper\fR and \fIdo not\fR call die if it fails.
+The \fBnonfatal\fR helper is available beginning with \fBEAPI 4\fR.
 .TP
 \fBuse\fR \fI<USE item>\fR
 If \fIUSE item\fR is in the \fBUSE\fR variable, the function will silently
