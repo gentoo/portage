@@ -923,6 +923,45 @@ multiple directories.
 .RE
 .PD 1
 .TP
+\fBdocompress\fR \fI[-x] <path> [list of more paths]\fR
+.RS
+Beginning with \fBEAPI 4\fR, the \fBdocompress\fR helper is used to
+manage lists of files to be included or excluded from optional compression.
+If the first argument is \fB-x\fR, add each of its subsequent arguments to
+the exclusion list. Otherwise, add each argument to the inclusion list.
+The inclusion list initially contains \fI/usr/share/doc\fR,
+\fI/usr/share/info\fR, and \fI/usr/share/man\fR. The exclusion list
+initially contains \fI/usr/share/doc/${PF}/html\fR.
+
+The optional compression shall be carried out after \fBsrc_install\fR
+has completed, and before the execution of any subsequent phase
+function. For each item in the inclusion list, pretend it has the
+value of the \fBD\fR variable prepended, then:
+
+.RS
+If it is a directory, act as if every file or directory immediately
+under this directory were in the inclusion list.
+
+If the item is a file, it may be compressed unless it has been
+excluded as described below.
+
+If the item does not exist, it is ignored.
+.RE
+
+Whether an item is to be excluded is determined as follows: For each
+item in the exclusion list, pretend it has the value of the \fBD\fR
+variable prepended, then:
+
+.RS
+If it is a directory, act as if every file or directory immediately
+under this directory were in the exclusion list.
+
+If the item is a file, it shall not be compressed.
+
+If the item does not exist, it is ignored.
+.RE
+.RE
+.TP
 \fBdosed\fR \fI"s:orig:change:g" <filename>\fR
 Beginning with \fBEAPI 4\fR, the \fBdosed\fR helper no longer exists. Ebuilds
 should call \fBsed(1)\fR directly (and assume that it is GNU sed).
