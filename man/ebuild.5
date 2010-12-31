@@ -1109,9 +1109,11 @@ Sets the subdir used by \fBdodoc\fR and \fBdohtml\fR
 when installing into the document tree
 (based in /usr/share/doc/${PF}/).  Default is no subdir, or just "".
 .TP
-\fBdodoc\fR \fI<document> [list of more documents]\fR
+\fBdodoc\fR \fI[-r] <document> [list of more documents]\fR
 Installs a document or a list of documents into /usr/share/doc/${PF}/\fI<docinto path>\fR.
 Documents are marked for compression.  Creates all necessary dirs.
+Beginning with \fBEAPI 4\fR, there is support recursion, enabled by the
+new \fI\-r\fR option.
 
 .PD 0
 .TP
