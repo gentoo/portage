@@ -23,7 +23,7 @@ from portage.cache.mappings import slot_dict_class
 from portage.const import CACHE_PATH
 from portage.dbapi.virtual import fakedbapi
 from portage.dep import Atom, use_reduce, paren_enclose
-from portage.exception import InvalidPackageName, \
+from portage.exception import AlarmSignal, InvalidPackageName, \
 	PermissionDenied, PortageException
 from portage.localization import _
 from portage import _movefile
@@ -806,7 +806,18 @@ class binarytree(object):
 							rmt_idx.readBody(f_dec)
 							pkgindex = rmt_idx
 				finally:
-					f.close()
+					# Timeout after 5 seconds, in case close() blocks
+					# indefinitely (see bug #350139).
+					try:
+						try:
+							AlarmSignal.register(5)
+							f.close()
+						finally:
+							AlarmSignal.unregister()
+					except AlarmSignal:
+						writemsg("\n\n!!! %s\n" % \
+							_("Timed out while closing connection to binhost"),
+							noiselevel=-1)
 			except EnvironmentError as e:
 				writemsg(_("\n\n!!! Error fetching binhost package" \
 					" info from '%s'\n") % base_url)
