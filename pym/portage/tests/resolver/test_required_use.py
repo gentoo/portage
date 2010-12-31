@@ -38,6 +38,12 @@ class RequiredUSETestCase(TestCase):
 			"dev-libs/C-12": {"EAPI": "4", "IUSE": "foo +bar",  "REQUIRED_USE": "!foo? ( !bar )"},
 			"dev-libs/C-13": {"EAPI": "4", "IUSE": "+foo +bar", "REQUIRED_USE": "!foo? ( !bar )"},
 			"dev-libs/C-14": {"EAPI": "4", "IUSE": "+foo bar",  "REQUIRED_USE": "!foo? ( !bar )"},
+
+			"dev-libs/D-1" : {"EAPI": "4", "IUSE": "+w +x +y z",    "REQUIRED_USE": "w? ( x || ( y z ) )"},
+			"dev-libs/D-2" : {"EAPI": "4", "IUSE": "+w +x +y +z",   "REQUIRED_USE": "w? ( x || ( y z ) )"},
+			"dev-libs/D-3" : {"EAPI": "4", "IUSE": "+w +x y z",     "REQUIRED_USE": "w? ( x || ( y z ) )"},
+			"dev-libs/D-4" : {"EAPI": "4", "IUSE": "+w x +y +z",    "REQUIRED_USE": "w? ( x || ( y z ) )"},
+			"dev-libs/D-5" : {"EAPI": "4", "IUSE": "w x y z",       "REQUIRED_USE": "w? ( x || ( y z ) )"},
 			}
 
 		test_cases = (
@@ -67,6 +73,12 @@ class RequiredUSETestCase(TestCase):
 			ResolverPlaygroundTestCase(["=dev-libs/C-12"], success = False),
 			ResolverPlaygroundTestCase(["=dev-libs/C-13"], success = True, mergelist=["dev-libs/C-13"]),
 			ResolverPlaygroundTestCase(["=dev-libs/C-14"], success = True, mergelist=["dev-libs/C-14"]),
+
+			ResolverPlaygroundTestCase(["=dev-libs/D-1"],  success = True, mergelist=["dev-libs/D-1"]),
+			ResolverPlaygroundTestCase(["=dev-libs/D-2"],  success = True, mergelist=["dev-libs/D-2"]),
+			ResolverPlaygroundTestCase(["=dev-libs/D-3"],  success = False),
+			ResolverPlaygroundTestCase(["=dev-libs/D-4"],  success = False),
+			ResolverPlaygroundTestCase(["=dev-libs/D-5"],  success = True, mergelist=["dev-libs/D-5"]),
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds)
