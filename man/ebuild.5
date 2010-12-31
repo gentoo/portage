@@ -159,6 +159,23 @@ source	source\-build which is scheduled for merge
 Contains the path of the build log. If \fBPORT_LOGDIR\fR variable is unset then
 \fBPORTAGE_LOG_FILE\fR=\fB"${T}/build.log"\fR.
 .TP
+.B REPLACED_BY_VERSION
+Beginning with \fBEAPI 4\fR, the REPLACED_BY_VERSION variable can be
+used in pkg_prerm and pkg_postrm to query the package version that
+is replacing the current package. If there is no replacement package,
+the variable will be empty, otherwise it will contain a single version
+number.
+.TP
+.B REPLACING_VERSIONS
+Beginning with \fBEAPI 4\fR, the REPLACING_VERSIONS variable can be
+used in pkg_pretend, pkg_setup, pkg_preinst and pkg_postinst to query
+the package version(s) that the current package is replacing. If there
+are no packages to replace, the variable will be empty, otherwise it
+will contain a space\-separated list of version numbers corresponding
+to the package version(s) being replaced. Typically, this variable will
+not contain more than one version, but according to PMS it can contain
+more.
+.TP
 \fBROOT\fR = \fI"/"\fR
 Contains the path that portage should use as the root of the live filesystem.
 When packages wish to make changes to the live filesystem, they should do so in
