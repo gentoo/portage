@@ -27,9 +27,9 @@ class SlotCollisionTestCase(TestCase):
 			"sci-libs/L-1": { "DEPEND": "sci-libs/K[-foo]", "EAPI": 2 },
 			"sci-libs/M-1": { "DEPEND": "sci-libs/K[foo=]", "IUSE": "+foo", "EAPI": 2 },
 
-			#~ "app-misc/A-1": { "IUSE": "foo +bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": 4 },
-			#~ "app-misc/B-1": { "DEPEND": "=app-misc/A-1[foo=]", "IUSE": "foo", "EAPI": 2 },
-			#~ "app-misc/C-1": { "DEPEND": "=app-misc/A-1[foo]", "EAPI": 2 },
+			"app-misc/A-1": { "IUSE": "foo +bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": "4" },
+			"app-misc/B-1": { "DEPEND": "=app-misc/A-1[foo=]", "IUSE": "foo", "EAPI": 2 },
+			"app-misc/C-1": { "DEPEND": "=app-misc/A-1[foo]", "EAPI": 2 },
 			"app-misc/E-1": { "RDEPEND": "dev-libs/E[foo?]", "IUSE": "foo", "EAPI": "2" },
 			"app-misc/F-1": { "RDEPEND": "=dev-libs/E-1", "IUSE": "foo", "EAPI": "2" },
 			}
@@ -42,7 +42,7 @@ class SlotCollisionTestCase(TestCase):
 			"sci-libs/K-1": { "IUSE": "foo", "USE": "" },
 			"sci-libs/L-1": { "DEPEND": "sci-libs/K[-foo]" },
 
-			#~ "app-misc/A-1": { "IUSE": "+foo bar", "USE": "foo", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": 4 },
+			"app-misc/A-1": { "IUSE": "+foo bar", "USE": "foo", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": "4" },
 			}
 
 		test_cases = (
@@ -88,13 +88,13 @@ class SlotCollisionTestCase(TestCase):
 				),
 
 			#Conflict with REQUIRED_USE
-			#~ ResolverPlaygroundTestCase(
-				#~ ["=app-misc/C-1", "=app-misc/B-1"],
-				#~ all_permutations = True,
-				#~ slot_collision_solutions = [],
-				#~ mergelist = ["app-misc/A-1", "app-misc/C-1", "app-misc/B-1"],
-				#~ ignore_mergelist_order = True,
-				#~ success = False),
+			ResolverPlaygroundTestCase(
+				["=app-misc/C-1", "=app-misc/B-1"],
+				all_permutations = True,
+				slot_collision_solutions = [],
+				mergelist = ["app-misc/A-1", "app-misc/C-1", "app-misc/B-1"],
+				ignore_mergelist_order = True,
+				success = False),
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)

@@ -7,6 +7,7 @@ from portage.tests.resolver.ResolverPlayground import ResolverPlayground, Resolv
 class AutounmaskTestCase(TestCase):
 
 	def testAutounmask(self):
+
 		ebuilds = {
 			#ebuilds to test use changes
 			"dev-libs/A-1": { "SLOT": 1, "DEPEND": "dev-libs/B[foo]", "EAPI": 2}, 
@@ -42,10 +43,10 @@ class AutounmaskTestCase(TestCase):
 			"dev-util/R-1": { "IUSE": "bar" },
 
 			#ebuilds to test interaction with REQUIRED_USE
-			#~ "app-portage/A-1": { "DEPEND": "app-portage/B[foo]", "EAPI": 2 }, 
-			#~ "app-portage/A-2": { "DEPEND": "app-portage/B[foo=]", "IUSE": "+foo", "REQUIRED_USE": "foo", "EAPI": 4 }, 
-#~ 
-			#~ "app-portage/B-1": { "IUSE": "foo +bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": 4 }, 
+			"app-portage/A-1": { "DEPEND": "app-portage/B[foo]", "EAPI": 2 }, 
+			"app-portage/A-2": { "DEPEND": "app-portage/B[foo=]", "IUSE": "+foo", "REQUIRED_USE": "foo", "EAPI": "4" }, 
+
+			"app-portage/B-1": { "IUSE": "foo +bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": "4" }, 
 			}
 
 		test_cases = (
@@ -168,16 +169,16 @@ class AutounmaskTestCase(TestCase):
 					use_changes = { "dev-util/R-1": { "bar": True } }),
 
 				#Test interaction with REQUIRED_USE.
-				#~ ResolverPlaygroundTestCase(
-					#~ ["=app-portage/A-1"],
-					#~ options = { "--autounmask": True },
-					#~ use_changes = None,
-					#~ success = False),
-				#~ ResolverPlaygroundTestCase(
-					#~ ["=app-portage/A-2"],
-					#~ options = { "--autounmask": True },
-					#~ use_changes = None,
-					#~ success = False),
+				ResolverPlaygroundTestCase(
+					["=app-portage/A-1"],
+					options = { "--autounmask": True },
+					use_changes = None,
+					success = False),
+				ResolverPlaygroundTestCase(
+					["=app-portage/A-2"],
+					options = { "--autounmask": True },
+					use_changes = None,
+					success = False),
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds)
