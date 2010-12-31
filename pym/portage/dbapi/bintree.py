@@ -733,6 +733,14 @@ class binarytree(object):
 			parsed_url = urlparse(base_url)
 			host = parsed_url.netloc
 			port = parsed_url.port
+			user = None
+			passwd = None
+			user_passwd = ""
+			if "@" in host:
+				user, host = host.split("@", 1)
+				user_passwd = user + "@"
+				if ":" in user:
+					user, passwd = user.split(":", 1)
 			port_args = []
 			if port is not None:
 				port_str = ":%s" % (port,)
@@ -775,7 +783,7 @@ class binarytree(object):
 						if port is not None:
 							port_args = ['-P', "%s" % (port,)]
 						proc = subprocess.Popen(['sftp'] + port_args + \
-							[host + ":" + path, tmp_filename])
+							[user_passwd + host + ":" + path, tmp_filename])
 						if proc.wait() != os.EX_OK:
 							raise
 						f = open(tmp_filename, 'rb')
@@ -783,7 +791,8 @@ class binarytree(object):
 						if port is not None:
 							port_args = ['-p', "%s" % (port,)]
 						proc = subprocess.Popen(['ssh'] + port_args + \
-							[host, '--', 'cat', path], stdout=subprocess.PIPE)
+							[user_passwd + host, '--', 'cat', path],
+							stdout=subprocess.PIPE)
 						f = proc.stdout
 					else:
 						raise
