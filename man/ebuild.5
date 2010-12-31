@@ -655,6 +655,29 @@ Should contain everything required to install the package in the temporary
 \fIinstall directory\fR.
 .br
 Initial working directory of $S.
+
+Beginning with \fBEAPI 4\fR, if src_install is undefined then the
+following default implementation is used:
+
+.nf
+src_install() {
+    if [[ \-f Makefile || \-f GNUmakefile || \-f makefile ]] ; then
+        emake DESTDIR="${D}" install
+    fi
+
+    if [[ \-z $DOCS ]] ; then
+        local d
+        for d in README* ChangeLog AUTHORS NEWS TODO CHANGES \\
+                THANKS BUGS FAQ CREDITS CHANGELOG ; do
+            [[ \-s "${d}" ]] && dodoc "${d}"
+        done
+    elif [[ $(declare \-p DOCS) == "declare \-a "* ]] ; then
+        dodoc "${DOCS[@]}"
+    else
+        dodoc ${DOCS}
+    fi
+}
+.fi
 .TP
 .B pkg_preinst pkg_postinst
 All modifications required on the live\-filesystem before and after the
