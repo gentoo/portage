@@ -8,8 +8,6 @@ class SlotCollisionTestCase(TestCase):
 
 	def testSlotCollision(self):
 
-		EAPI_4 = '4_pre1'
-
 		ebuilds = {
 			"dev-libs/A-1": { "PDEPEND": "foo? ( dev-libs/B )", "IUSE": "foo" }, 
 			"dev-libs/B-1": { "IUSE": "foo" },
@@ -29,7 +27,7 @@ class SlotCollisionTestCase(TestCase):
 			"sci-libs/L-1": { "DEPEND": "sci-libs/K[-foo]", "EAPI": 2 },
 			"sci-libs/M-1": { "DEPEND": "sci-libs/K[foo=]", "IUSE": "+foo", "EAPI": 2 },
 
-			"app-misc/A-1": { "IUSE": "foo +bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": EAPI_4 },
+			"app-misc/A-1": { "IUSE": "foo +bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": "4" },
 			"app-misc/B-1": { "DEPEND": "=app-misc/A-1[foo=]", "IUSE": "foo", "EAPI": 2 },
 			"app-misc/C-1": { "DEPEND": "=app-misc/A-1[foo]", "EAPI": 2 },
 			"app-misc/E-1": { "RDEPEND": "dev-libs/E[foo?]", "IUSE": "foo", "EAPI": "2" },
@@ -44,7 +42,7 @@ class SlotCollisionTestCase(TestCase):
 			"sci-libs/K-1": { "IUSE": "foo", "USE": "" },
 			"sci-libs/L-1": { "DEPEND": "sci-libs/K[-foo]" },
 
-			"app-misc/A-1": { "IUSE": "+foo bar", "USE": "foo", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": EAPI_4 },
+			"app-misc/A-1": { "IUSE": "+foo bar", "USE": "foo", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": "4" },
 			}
 
 		test_cases = (

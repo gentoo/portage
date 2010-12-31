@@ -10,20 +10,19 @@ class RequiredUSETestCase(TestCase):
 		"""
 		Only simple REQUIRED_USE values here. The parser is tested under in dep/testCheckRequiredUse
 		"""
-		EAPI_4 = '4_pre1'
 
 		ebuilds = {
-			"dev-libs/A-1": {"EAPI": EAPI_4, "IUSE": "foo bar", "REQUIRED_USE": "|| ( foo bar )"},
-			"dev-libs/A-2": {"EAPI": EAPI_4, "IUSE": "foo +bar", "REQUIRED_USE": "|| ( foo bar )"},
-			"dev-libs/A-3": {"EAPI": EAPI_4, "IUSE": "+foo bar", "REQUIRED_USE": "|| ( foo bar )"},
-			"dev-libs/A-4": {"EAPI": EAPI_4, "IUSE": "+foo +bar", "REQUIRED_USE": "|| ( foo bar )"},
-			"dev-libs/A-5": {"EAPI": EAPI_4, "IUSE": "+foo +bar", "REQUIRED_USE": "|| ( )"},
+			"dev-libs/A-1" : {"EAPI": "4", "IUSE": "foo bar",   "REQUIRED_USE": "|| ( foo bar )"},
+			"dev-libs/A-2" : {"EAPI": "4", "IUSE": "foo +bar",  "REQUIRED_USE": "|| ( foo bar )"},
+			"dev-libs/A-3" : {"EAPI": "4", "IUSE": "+foo bar",  "REQUIRED_USE": "|| ( foo bar )"},
+			"dev-libs/A-4" : {"EAPI": "4", "IUSE": "+foo +bar", "REQUIRED_USE": "|| ( foo bar )"},
+			"dev-libs/A-5" : {"EAPI": "4", "IUSE": "+foo +bar", "REQUIRED_USE": "|| ( )"},
 
-			"dev-libs/B-1": {"EAPI": EAPI_4, "IUSE": "foo bar", "REQUIRED_USE": "^^ ( foo bar )"},
-			"dev-libs/B-2": {"EAPI": EAPI_4, "IUSE": "foo +bar", "REQUIRED_USE": "^^ ( foo bar )"},
-			"dev-libs/B-3": {"EAPI": EAPI_4, "IUSE": "+foo bar", "REQUIRED_USE": "^^ ( foo bar )"},
-			"dev-libs/B-4": {"EAPI": EAPI_4, "IUSE": "+foo +bar", "REQUIRED_USE": "^^ ( foo bar )"},
-			"dev-libs/B-5": {"EAPI": EAPI_4, "IUSE": "+foo +bar", "REQUIRED_USE": "^^ ( )"},
+			"dev-libs/B-1" : {"EAPI": "4", "IUSE": "foo bar",   "REQUIRED_USE": "^^ ( foo bar )"},
+			"dev-libs/B-2" : {"EAPI": "4", "IUSE": "foo +bar",  "REQUIRED_USE": "^^ ( foo bar )"},
+			"dev-libs/B-3" : {"EAPI": "4", "IUSE": "+foo bar",  "REQUIRED_USE": "^^ ( foo bar )"},
+			"dev-libs/B-4" : {"EAPI": "4", "IUSE": "+foo +bar", "REQUIRED_USE": "^^ ( foo bar )"},
+			"dev-libs/B-5" : {"EAPI": "4", "IUSE": "+foo +bar", "REQUIRED_USE": "^^ ( )"},
 
 			"dev-libs/C-1" : {"EAPI": "4", "IUSE": "+foo bar",  "REQUIRED_USE": "foo? ( !bar )"},
 			"dev-libs/C-2" : {"EAPI": "4", "IUSE": "+foo +bar", "REQUIRED_USE": "foo? ( !bar )"},

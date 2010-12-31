@@ -8,8 +8,6 @@ class AutounmaskTestCase(TestCase):
 
 	def testAutounmask(self):
 
-		EAPI_4 = '4_pre1'
-
 		ebuilds = {
 			#ebuilds to test use changes
 			"dev-libs/A-1": { "SLOT": 1, "DEPEND": "dev-libs/B[foo]", "EAPI": 2}, 
@@ -46,9 +44,9 @@ class AutounmaskTestCase(TestCase):
 
 			#ebuilds to test interaction with REQUIRED_USE
 			"app-portage/A-1": { "DEPEND": "app-portage/B[foo]", "EAPI": 2 }, 
-			"app-portage/A-2": { "DEPEND": "app-portage/B[foo=]", "IUSE": "+foo", "REQUIRED_USE": "foo", "EAPI": EAPI_4 }, 
+			"app-portage/A-2": { "DEPEND": "app-portage/B[foo=]", "IUSE": "+foo", "REQUIRED_USE": "foo", "EAPI": "4" }, 
 
-			"app-portage/B-1": { "IUSE": "foo +bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": EAPI_4 }, 
+			"app-portage/B-1": { "IUSE": "foo +bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": "4" }, 
 			}
 
 		test_cases = (
