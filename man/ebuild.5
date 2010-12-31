@@ -596,6 +596,15 @@ before other variable declarations unless these variables are used in global
 scope of eclasses.
 .SH "PHASE FUNCTIONS"
 .TP
+.B pkg_pretend
+Beginning with \fBEAPI 4\fR, this function can be defined in order to
+check that miscellaneous requirements are met. It is called as early
+as possible, before any attempt is made to satisfy dependencies. If the
+function detects a problem then it should call eerror and die. The
+environment (variables, functions, temporary directories, etc..) that
+is used to execute pkg_pretend is not saved and therefore is not
+available in phases that execute afterwards.
+.TP
 .B pkg_nofetch
 If you turn on \fIfetch\fR in \fBRESTRICT\fR, then this function will be
 run when the files in \fBSRC_URI\fR cannot be found.  Useful for
