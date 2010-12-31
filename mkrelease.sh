@@ -71,6 +71,11 @@ cp "${SOURCE_DIR}/"{DEVELOPING,LICENSE,NEWS,RELEASE-NOTES,TEST-NOTES} \
 
 rm -rf "$SOURCE_DIR" || die "directory cleanup failed"
 
+echo ">>> Setting portage.VERSION"
+sed -e "s/^VERSION=.*/VERSION=\"${VERSION}\"/" \
+	-i "${RELEASE_DIR}/pym/portage/__init__.py" || \
+	die "Failed to patch portage.VERSION"
+
 echo ">>> Creating Changelog"
 git_log_opts=""
 if [ -n "$CHANGELOG_REVISION" ] ; then
