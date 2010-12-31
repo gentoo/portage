@@ -137,6 +137,24 @@ not support \fB${ED}\fR, helpers use \fB${D}\fR where
 they would otherwise use \fB${ED}\fR.
 Do not modify this variable.
 .TP
+.B MERGE_TYPE
+Beginning with \fBEAPI 4\fR, the MERGE_TYPE variable can be used to
+query the current merge type. This variable will contain one of the
+following possible values:
+
+.RS
+.TS
+l l
+__
+l l.
+Value	Meaning
+
+binary	previously\-built which is scheduled for merge
+buildonly	source\-build which is not scheduled for merge
+source	source\-build which is scheduled for merge
+.TE
+.RE
+.TP
 .B PORTAGE_LOG_FILE
 Contains the path of the build log. If \fBPORT_LOGDIR\fR variable is unset then
 \fBPORTAGE_LOG_FILE\fR=\fB"${T}/build.log"\fR.
