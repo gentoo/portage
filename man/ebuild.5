@@ -817,6 +817,7 @@ ${\fIECONF_SOURCE\fR:-.}/configure \\
 	\-\-mandir="${EPREFIX}"/usr/share/man \\
 	\-\-sysconfdir="${EPREFIX}"/etc \\
 	${CTARGET:+\-\-target=${CTARGET}} \\
+	\-\-disable\-dependency\-tracking \\
 	\fI${EXTRA_ECONF}\fR \\
 	\fIconfigure options\fR || die "econf failed"
 .fi
@@ -826,6 +827,8 @@ extra arguments to \fBeconf\fR. Also note that \fBeconf\fR automatically
 calls \fBdie\fR if the configure script fails.
 Beginning with \fBEAPI 3\fR, \fBeconf\fR uses the \fB${EPREFIX}\fR
 variable which is disregarded for prior \fBEAPI\fR values.
+Beginning with \fBEAPI 4\fR, \fBeconf\fR adds
+\fI\-\-disable\-dependency\-tracking\fR to the arguments.
 .TP
 \fBemake\fR \fI[make options]\fR
 This is used as a replacement for make.  Performs 'make ${MAKEOPTS}
