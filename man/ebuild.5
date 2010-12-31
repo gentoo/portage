@@ -19,7 +19,7 @@ Here's a simple example ebuild:
 # Distributed under the terms of the GNU General Public License v2
 # $Header: $
 
-EAPI="3"
+EAPI="4"
 
 inherit some_eclass another_eclass
 
@@ -41,8 +41,8 @@ src_configure() {
 }
 
 src_install() {
-	emake install DESTDIR="${D}" || die "Install failed"
-	dodoc NEWS README* THANKS AUTHORS BUGS ChangeLog || die "dodoc failed"
+	emake DESTDIR="${D}" install
+	dodoc NEWS README* THANKS AUTHORS BUGS ChangeLog
 }
 .fi
 .SH "VARIABLES"
@@ -137,9 +137,44 @@ not support \fB${ED}\fR, helpers use \fB${D}\fR where
 they would otherwise use \fB${ED}\fR.
 Do not modify this variable.
 .TP
+.B MERGE_TYPE
+Beginning with \fBEAPI 4\fR, the MERGE_TYPE variable can be used to
+query the current merge type. This variable will contain one of the
+following possible values:
+
+.RS
+.TS
+l l
+__
+l l.
+Value	Meaning
+
+binary	previously\-built which is scheduled for merge
+buildonly	source\-build which is not scheduled for merge
+source	source\-build which is scheduled for merge
+.TE
+.RE
+.TP
 .B PORTAGE_LOG_FILE
 Contains the path of the build log. If \fBPORT_LOGDIR\fR variable is unset then
 \fBPORTAGE_LOG_FILE\fR=\fB"${T}/build.log"\fR.
+.TP
+.B REPLACED_BY_VERSION
+Beginning with \fBEAPI 4\fR, the REPLACED_BY_VERSION variable can be
+used in pkg_prerm and pkg_postrm to query the package version that
+is replacing the current package. If there is no replacement package,
+the variable will be empty, otherwise it will contain a single version
+number.
+.TP
+.B REPLACING_VERSIONS
+Beginning with \fBEAPI 4\fR, the REPLACING_VERSIONS variable can be
+used in pkg_pretend, pkg_setup, pkg_preinst and pkg_postinst to query
+the package version(s) that the current package is replacing. If there
+are no packages to replace, the variable will be empty, otherwise it
+will contain a space\-separated list of version numbers corresponding
+to the package version(s) being replaced. Typically, this variable will
+not contain more than one version, but according to PMS it can contain
+more.
 .TP
 \fBROOT\fR = \fI"/"\fR
 Contains the path that portage should use as the root of the live filesystem.
@@ -346,6 +381,21 @@ foo[bar=]	bar? ( foo[bar] ) !bar? ( foo[\-bar] )
 foo[!bar=]	bar? ( foo[\-bar] ) !bar? ( foo[bar] )
 .TE
 .RE
+.TP
+.B Atom USE defauts
+Beginning with \fBEAPI 4\fR, \fBUSE\fR dependencies may specify default
+assumptions about values for flags that may or may not be missing from
+the \fBIUSE\fR of the matched package. Such defaults are specified by
+immediately following a flag with either \fB(+)\fR or \fB(\-)\fR. Use
+\fB(+)\fR to behave as if a missing flag is present and enabled, or
+\fB(\-)\fR to behave as if it is present and disabled:
+
+.RS
+.nf
+media\-video/ffmpeg[threads(+)]
+media\-video/ffmpeg[threads(\-)]
+.fi
+.RE
 .RE
 .TP
 .B Dynamic DEPENDs
@@ -428,6 +478,24 @@ This should contain a list of all packages that should be merged after this one,
 but may be merged before if need be.
 .br
 You may use the same syntax to vary dependencies as seen above in \fBDEPEND\fR.
+.TP
+\fBREQUIRED_USE\fR
+Beginning with \fBEAPI 4\fR, the \fBREQUIRED_USE\fR variable can be
+used to specify combinations of \fBUSE\fR flags that are allowed
+or not allowed. Elements can be nested when necessary.
+.TS
+l l
+__
+l l.
+Behavior	Expression
+
+If flag1 enabled then flag2 disabled	flag1? ( !flag2 )
+If flag1 enabled then flag2 disabled	flag1? ( flag2 )
+If flag1 disabled then flag2 enabled	!flag1? ( flag2 )
+If flag1 disabled then flag2 disabled	!flag1? ( !flag2 )
+Must enable any one or more (inclusive or)	|| ( flag1 flag2 flag3 )
+Must enable exactly one but not more (exclusive or)	^^ ( flag1 flag2 flag3 )
+.TE
 .TP
 \fBRESTRICT\fR = \fI[strip,mirror,fetch,userpriv]\fR
 This should be a space delimited list of portage features to restrict.
@@ -563,6 +631,15 @@ before other variable declarations unless these variables are used in global
 scope of eclasses.
 .SH "PHASE FUNCTIONS"
 .TP
+.B pkg_pretend
+Beginning with \fBEAPI 4\fR, this function can be defined in order to
+check that miscellaneous requirements are met. It is called as early
+as possible, before any attempt is made to satisfy dependencies. If the
+function detects a problem then it should call eerror and die. The
+environment (variables, functions, temporary directories, etc..) that
+is used to execute pkg_pretend is not saved and therefore is not
+available in phases that execute afterwards.
+.TP
 .B pkg_nofetch
 If you turn on \fIfetch\fR in \fBRESTRICT\fR, then this function will be
 run when the files in \fBSRC_URI\fR cannot be found.  Useful for
@@ -613,6 +690,29 @@ Should contain everything required to install the package in the temporary
 \fIinstall directory\fR.
 .br
 Initial working directory of $S.
+
+Beginning with \fBEAPI 4\fR, if src_install is undefined then the
+following default implementation is used:
+
+.nf
+src_install() {
+    if [[ \-f Makefile || \-f GNUmakefile || \-f makefile ]] ; then
+        emake DESTDIR="${D}" install
+    fi
+
+    if [[ \-z $DOCS ]] ; then
+        local d
+        for d in README* ChangeLog AUTHORS NEWS TODO CHANGES \\
+                THANKS BUGS FAQ CREDITS CHANGELOG ; do
+            [[ \-s "${d}" ]] && dodoc "${d}"
+        done
+    elif [[ $(declare \-p DOCS) == "declare \-a "* ]] ; then
+        dodoc "${DOCS[@]}"
+    else
+        dodoc ${DOCS}
+    fi
+}
+.fi
 .TP
 .B pkg_preinst pkg_postinst
 All modifications required on the live\-filesystem before and after the
@@ -663,6 +763,14 @@ default_src_test
 \fBdie\fR \fI[reason]\fR
 Causes the current emerge process to be aborted. The final display will
 include \fIreason\fR.
+
+Beginning with \fBEAPI 4\fR, all helpers automatically call \fBdie\fR
+whenever some sort of error occurs. Helper calls may be prefixed with
+the \fBnonfatal\fR helper in order to prevent errors from being fatal.
+.TP
+\fBnonfatal\fR \fI<helper>\fR
+Execute \fIhelper\fR and \fIdo not\fR call die if it fails.
+The \fBnonfatal\fR helper is available beginning with \fBEAPI 4\fR.
 .TP
 \fBuse\fR \fI<USE item>\fR
 If \fIUSE item\fR is in the \fBUSE\fR variable, the function will silently
@@ -809,6 +917,7 @@ ${\fIECONF_SOURCE\fR:-.}/configure \\
 	\-\-mandir="${EPREFIX}"/usr/share/man \\
 	\-\-sysconfdir="${EPREFIX}"/etc \\
 	${CTARGET:+\-\-target=${CTARGET}} \\
+	\-\-disable\-dependency\-tracking \\
 	\fI${EXTRA_ECONF}\fR \\
 	\fIconfigure options\fR || die "econf failed"
 .fi
@@ -818,6 +927,8 @@ extra arguments to \fBeconf\fR. Also note that \fBeconf\fR automatically
 calls \fBdie\fR if the configure script fails.
 Beginning with \fBEAPI 3\fR, \fBeconf\fR uses the \fB${EPREFIX}\fR
 variable which is disregarded for prior \fBEAPI\fR values.
+Beginning with \fBEAPI 4\fR, \fBeconf\fR adds
+\fI\-\-disable\-dependency\-tracking\fR to the arguments.
 .TP
 \fBemake\fR \fI[make options]\fR
 This is used as a replacement for make.  Performs 'make ${MAKEOPTS}
@@ -915,7 +1026,49 @@ multiple directories.
 .RE
 .PD 1
 .TP
+\fBdocompress\fR \fI[\-x] <path> [list of more paths]\fR
+.RS
+Beginning with \fBEAPI 4\fR, the \fBdocompress\fR helper is used to
+manage lists of files to be included or excluded from optional compression.
+If the first argument is \fB\-x\fR, add each of its subsequent arguments to
+the exclusion list. Otherwise, add each argument to the inclusion list.
+The inclusion list initially contains \fI/usr/share/doc\fR,
+\fI/usr/share/info\fR, and \fI/usr/share/man\fR. The exclusion list
+initially contains \fI/usr/share/doc/${PF}/html\fR.
+
+The optional compression shall be carried out after \fBsrc_install\fR
+has completed, and before the execution of any subsequent phase
+function. For each item in the inclusion list, pretend it has the
+value of the \fBD\fR variable prepended, then:
+
+.RS
+If it is a directory, act as if every file or directory immediately
+under this directory were in the inclusion list.
+
+If the item is a file, it may be compressed unless it has been
+excluded as described below.
+
+If the item does not exist, it is ignored.
+.RE
+
+Whether an item is to be excluded is determined as follows: For each
+item in the exclusion list, pretend it has the value of the \fBD\fR
+variable prepended, then:
+
+.RS
+If it is a directory, act as if every file or directory immediately
+under this directory were in the exclusion list.
+
+If the item is a file, it shall not be compressed.
+
+If the item does not exist, it is ignored.
+.RE
+.RE
+.TP
 \fBdosed\fR \fI"s:orig:change:g" <filename>\fR
+Beginning with \fBEAPI 4\fR, the \fBdosed\fR helper no longer exists. Ebuilds
+should call \fBsed(1)\fR directly (and assume that it is GNU sed).
+
 Performs sed in place on \fIfilename\fR inside ${ED}. If no expression is
 given then \fI"s:${D}::g"\fR is used as the default expression.  Note
 that this expression does \fBNOT\fR use the offset prefix.
@@ -992,14 +1145,18 @@ in the file name will be installed in /usr/share/man/\fI<locale>\fR/man[0\-9n],
 with the locale portion of the file name removed, and the \fI\-i18n\fR option
 has no effect. For example, with \fBEAPI 2\fR, a manpage named
 foo.\fI<locale>\fR.1 will be installed as
-/usr/share/man/\fI<locale>\fR/man1/foo.1.
+/usr/share/man/\fI<locale>\fR/man1/foo.1. Beginning with \fBEAPI 4\fR,
+the \fI\-i18n\fR option takes precedence over the locale suffix of the
+file name.
 .PD 0
 .TP
 \fBdohard\fR \fI<filename> <linkname>\fR
+Beginning with \fBEAPI 4\fR, the \fBdohard\fR helper no longer exists. Ebuilds
+should call \fBln(1)\fR directly.
 .TP
 \fBdosym\fR \fI<filename> <linkname>\fR
 .PD 1
-Performs the ln command as either a hard link or symlink.
+Performs the ln command to create a symlink.
 .TP
 \fBdohtml\fR \fI [\-a filetypes] [\-r] [\-x list\-of\-dirs\-to\-ignore] [list\-of\-files\-and\-dirs]\fR
 Installs the files in the list of files (space\-separated list) into
@@ -1034,10 +1191,12 @@ The default path is /.
 Can be used to define options for the install function used in
 \fBdoins\fR.  The default is \fI\-m0644\fR.
 .TP
-\fBdoins\fR \fI[-r] <file> [list of more files]\fR
+\fBdoins\fR \fI[\-r] <file> [list of more files]\fR
 Installs files into the path controlled by \fBinsinto\fR.  This function
 uses \fBinstall\fR(1).  Creates all necessary dirs.
-Setting -r sets recursive.
+Setting \-r sets recursive. Beginning with \fBEAPI 4\fR, both
+\fBdoins\fR and \fBnewins\fR preserve symlinks. In \fBEAPI 3\fR and
+earlier, symlinks are dereferenced rather than preserved.
 .TP
 \fBexeinto\fR \fI[path]\fR
 Sets the destination path for the \fBdoexe\fR function.
@@ -1057,9 +1216,11 @@ Sets the subdir used by \fBdodoc\fR and \fBdohtml\fR
 when installing into the document tree
 (based in /usr/share/doc/${PF}/).  Default is no subdir, or just "".
 .TP
-\fBdodoc\fR \fI<document> [list of more documents]\fR
+\fBdodoc\fR \fI[-r] <document> [list of more documents]\fR
 Installs a document or a list of documents into /usr/share/doc/${PF}/\fI<docinto path>\fR.
 Documents are marked for compression.  Creates all necessary dirs.
+Beginning with \fBEAPI 4\fR, there is support for recursion, enabled by the
+new \fI\-r\fR option.
 
 .PD 0
 .TP
