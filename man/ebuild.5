@@ -1042,7 +1042,9 @@ in the file name will be installed in /usr/share/man/\fI<locale>\fR/man[0\-9n],
 with the locale portion of the file name removed, and the \fI\-i18n\fR option
 has no effect. For example, with \fBEAPI 2\fR, a manpage named
 foo.\fI<locale>\fR.1 will be installed as
-/usr/share/man/\fI<locale>\fR/man1/foo.1.
+/usr/share/man/\fI<locale>\fR/man1/foo.1. Beginning with \fBEAPI 4\fR,
+the \fI\-i18n\fR option takes precedence over the locale suffix of the
+file name.
 .PD 0
 .TP
 \fBdohard\fR \fI<filename> <linkname>\fR
