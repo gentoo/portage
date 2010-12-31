@@ -13,7 +13,13 @@ portage-2.2
   is provided by multiple repositories but with different masking status, and
   support for repository constraints on atoms (atom::repo) in configuration
   files.
-* Add EAPI 4_pre1 support, for testing purposes.
+
+portage-2.1.9.27
+-------------
+
+* Add support for EAPI 4. Refer to the PMS EAPI Cheat Sheet, portage's html
+  docs installed with USE=doc, or `man 5 ebuild` for more info about EAPI 4.
+  Bug #273620 tracks EAPI 4 implementation in portage.
 
 portage-2.1.9
 -------------
