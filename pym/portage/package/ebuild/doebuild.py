@@ -1237,6 +1237,10 @@ def _check_build_log(mysettings, out=None):
 	configure_opts_warn = []
 	configure_opts_warn_re = re.compile(
 		r'^configure: WARNING: [Uu]nrecognized options: ')
+	# --disable-dependency-tracking is passed by default in EAPI 4;
+	# filter the warning if this is the only unrecognized option.
+	configure_opts_warn_exclude_re = re.compile(
+		r': --disable-dependency-tracking$')
 
 	# Exclude output from dev-libs/yaz-3.0.47 which looks like this:
 	#
@@ -1268,7 +1272,8 @@ def _check_build_log(mysettings, out=None):
 			if helper_missing_file_re.match(line) is not None:
 				helper_missing_file.append(line.rstrip("\n"))
 
-			if configure_opts_warn_re.match(line) is not None:
+			if configure_opts_warn_re.match(line) is not None and \
+				configure_opts_warn_exclude_re.search(line) is None:
 				configure_opts_warn.append(line.rstrip("\n"))
 
 			if make_jobserver_re.match(line) is not None:
