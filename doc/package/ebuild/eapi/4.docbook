@@ -95,6 +95,14 @@ The econf helper now adds --disable-dependency-tracking to the
 configure arguments.
 </para>
 </section>
+<section id='package-ebuild-eapi-4-helpers-use-with-enable-empty-third-arg'>
+<title>use_with and use_enable support empty third argument</title>
+<para>
+Beginning with EAPI 4, an empty third argument
+is recognized. In EAPI 3 and earlier, an empty third
+argument is treated as if it weren't provided.
+</para>
+</section>
 </section>
 <section id='package-ebuild-eapi-4-metadata'>
 <title>Metadata</title>

@@ -802,7 +802,9 @@ If \fIconfigure opt\fR is not specified, then just \fI\-\-with\-[configure
 name]\fR will be echoed.  If \fIUSE item\fR is not in the \fBUSE\fR variable,
 then the string \fI\-\-without\-[configure name]\fR will be echoed. If
 \fIconfigure name\fR is not specified, then \fIUSE item\fR will be used in
-its place.
+its place. Beginning with \fBEAPI 4\fR, an empty \fIconfigure opt\fR argument
+is recognized. In \fBEAPI 3\fR and earlier, an empty \fIconfigure opt\fR
+argument is treated as if it weren't provided.
 .RS
 .TP
 .I Examples:
@@ -828,7 +830,9 @@ myconf=$(use_with sdl SDL all\-plugins)
 \fBuse_enable\fR \fI<USE item>\fR \fI[configure name]\fR \fI[configure opt]\fR
 Same as \fBuse_with\fR above, except that the configure options are
 \fI\-\-enable\-\fR instead of \fI\-\-with\-\fR and \fI\-\-disable\-\fR instead of
-\fI\-\-without\-\fR.
+\fI\-\-without\-\fR. Beginning with \fBEAPI 4\fR, an empty \fIconfigure opt\fR
+argument is recognized. In \fBEAPI 3\fR and earlier, an empty
+\fIconfigure opt\fR argument is treated as if it weren't provided.
 .TP
 \fBhas\fR \fI<item>\fR \fI<item list>\fR
 If \fIitem\fR is in \fIitem list\fR, then \fIitem\fR is echoed and \fBhas\fR
