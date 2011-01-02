@@ -306,7 +306,7 @@ class MetaDataXML(object):
 
 		if self._upstream is None:
 			if self._xml_tree is None:
-				self._useflags = tuple()
+				self._upstream = tuple()
 			else:
 				self._upstream = tuple(_Upstream(node) \
 					for node in self._xml_tree.findall('upstream'))
