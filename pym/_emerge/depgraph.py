@@ -3013,6 +3013,7 @@ class depgraph(object):
 							del e
 							continue
 						if not required_use_is_sat:
+							packages_with_invalid_use_config.append(pkg)
 							continue
 
 					if pkg.cp == atom_cp:
