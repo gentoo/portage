@@ -5361,7 +5361,12 @@ class _dep_check_composite_db(dbapi):
 				arg = None
 			if arg:
 				return False
-		if pkg.installed and not self._depgraph._pkg_visibility_check(pkg):
+		if pkg.installed and \
+			(pkg.masks or not self._depgraph._pkg_visibility_check(pkg)):
+			# Account for packages with masks (like KEYWORDS masks)
+			# that are usually ignored in visibility checks for
+			# installed packages, in order to handle cases like
+			# bug #350285.
 			return False
 		in_graph = self._depgraph._dynamic_config._slot_pkg_map[
 			self._root].get(pkg.slot_atom)
