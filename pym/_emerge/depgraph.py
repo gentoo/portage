@@ -3210,6 +3210,20 @@ class depgraph(object):
 		matches = vardb.match_pkgs(atom)
 		if not matches:
 			return None, None
+		if len(matches) > 1:
+			unmasked = [pkg for pkg in matches if \
+				self._pkg_visibility_check(pkg)]
+			if unmasked:
+				if len(unmasked) == 1:
+					matches = unmasked
+				else:
+					# Account for packages with masks (like KEYWORDS masks)
+					# that are usually ignored in visibility checks for
+					# installed packages, in order to handle cases like
+					# bug #350285.
+					unmasked = [pkg for pkg in matches if not pkg.masks]
+					if unmasked:
+						matches = unmasked
 		pkg = matches[-1] # highest match
 		in_graph = self._dynamic_config._slot_pkg_map[root].get(pkg.slot_atom)
 		return pkg, in_graph
