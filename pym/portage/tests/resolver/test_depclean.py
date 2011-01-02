@@ -88,13 +88,13 @@ class DepcleanWithInstalledMaskedTestCase(TestCase):
 		"""
 		ebuilds = {
 			"dev-libs/A-1": { "RDEPEND": "|| ( dev-libs/B dev-libs/C )" },
-			"dev-libs/B-1": { "LICENSE": "TEST" },
-			"dev-libs/C-1": {},
+			"dev-libs/B-1": { "LICENSE": "TEST", "KEYWORDS": "x86" },
+			"dev-libs/C-1": { "KEYWORDS": "x86" },
 			}
 		installed = {
 			"dev-libs/A-1": { "RDEPEND": "|| ( dev-libs/B dev-libs/C )" },
-			"dev-libs/B-1": { "LICENSE": "TEST" },
-			"dev-libs/C-1": {},
+			"dev-libs/B-1": { "LICENSE": "TEST", "KEYWORDS": "x86" },
+			"dev-libs/C-1": { "KEYWORDS": "x86" },
 			}
 
 		world = (
