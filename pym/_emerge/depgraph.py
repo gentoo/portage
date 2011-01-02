@@ -2598,8 +2598,8 @@ class depgraph(object):
 		pkg, existing = ret
 		if pkg is not None:
 			settings = pkg.root_config.settings
-			if self._pkg_visibility_check(pkg) and not (pkg.installed and \
-				settings._getMissingKeywords(pkg.cpv, pkg.metadata)):
+			if self._pkg_visibility_check(pkg) and \
+				not (pkg.installed and pkg.masks):
 				self._dynamic_config._visible_pkgs[pkg.root].cpv_inject(pkg)
 		return ret
 
@@ -2933,9 +2933,7 @@ class depgraph(object):
 								# If --usepkgonly is enabled, assume that
 								# the ebuild status should be ignored.
 								if not use_ebuild_visibility and usepkgonly:
-									if installed and \
-										pkgsettings._getMissingKeywords(
-										pkg.cpv, pkg.metadata):
+									if pkg.installed and pkg.masks:
 										continue
 								else:
 									try:
