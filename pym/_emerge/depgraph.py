@@ -2871,7 +2871,8 @@ class depgraph(object):
 							modified_use=self._pkg_use_enabled(pkg)):
 						continue
 
-					if dont_miss_updates:
+					if packages_with_invalid_use_config and \
+						(not pkg.installed or dont_miss_updates):
 						# Check if a higher version was rejected due to user
 						# USE configuration. The packages_with_invalid_use_config
 						# list only contains unbuilt ebuilds since USE can't

@@ -28,6 +28,9 @@ class MultirepoTestCase(TestCase):
 
 			"dev-libs/F-1::repo1": { "SLOT": "1" },
 			"dev-libs/F-1::repo2": { "SLOT": "1" },
+
+			"dev-libs/G-1::repo1": { "EAPI" : "4", "IUSE":"+x +y", "REQUIRED_USE" : "" },
+			"dev-libs/G-1::repo2": { "EAPI" : "4", "IUSE":"+x +y", "REQUIRED_USE" : "^^ ( x y )" },
 			}
 		
 		sets = {
@@ -113,6 +116,14 @@ class MultirepoTestCase(TestCase):
 				success = True,
 				check_repo_names = True,
 				mergelist = ["dev-libs/F-1::repo1"]),
+
+			# Check interaction between repo priority and unsatsisfied
+			# REQUIRED_USE, for bug #350254.
+			ResolverPlaygroundTestCase(
+				["=dev-libs/G-1"],
+				check_repo_names = True,
+				success = False),
+
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, sets=sets)
@@ -206,9 +217,8 @@ class MultirepoTestCase(TestCase):
 				mergelist = ["dev-libs/A-2::repo1", "dev-libs/B-2"]),
 			ResolverPlaygroundTestCase(
 				["=dev-libs/B-3"],
-				success = True,
-				check_repo_names = True,
-				mergelist = ["dev-libs/A-1", "dev-libs/B-3"]),
+				success = False,
+				check_repo_names = True),
 
 			#package.keywords test
 			ResolverPlaygroundTestCase(
