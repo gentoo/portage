@@ -352,6 +352,13 @@ class Package(Task):
 		return self.metadata['repository']
 
 	@property
+	def repo_priority(self):
+		repo_info = self.root_config.settings.repositories.prepos.get(self.repo)
+		if repo_info is None:
+			return None
+		return repo_info.priority
+
+	@property
 	def use(self):
 		if self._use is None:
 			self.metadata._init_use()
