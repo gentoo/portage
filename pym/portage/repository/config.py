@@ -157,7 +157,7 @@ class RepoConfig(object):
 			repo_msg.append(indent + "sync: " + self.sync)
 		if self.masters:
 			repo_msg.append(indent + "masters: " + " ".join(master.name for master in self.masters))
-		if self.priority:
+		if self.priority is not None:
 			repo_msg.append(indent + "priority: " + str(self.priority))
 		if self.aliases:
 			repo_msg.append(indent + "aliases: " + " ".join(self.aliases))
@@ -219,7 +219,7 @@ class RepoConfigLoader(object):
 					' '.join(prepos['DEFAULT'].masters)
 			if overlays:
 				#overlay priority is negative because we want them to be looked before any other repo
-				base_priority = -1
+				base_priority = 0
 				for ov in overlays:
 					if os.path.isdir(ov):
 						repo_opts = default_repo_opts.copy()
@@ -249,10 +249,10 @@ class RepoConfigLoader(object):
 						repo = prepos[repo.name]
 						if repo.priority is None:
 							if ov == portdir and portdir not in port_ov:
-								repo.priority = 1000
+								repo.priority = -1000
 							else:
 								repo.priority = base_priority
-								base_priority -= 1
+								base_priority += 1
 
 					else:
 						writemsg(_("!!! Invalid PORTDIR_OVERLAY"
@@ -334,7 +334,7 @@ class RepoConfigLoader(object):
 		# items where repo.name == key
 		prepos_order = [repo.name for key, repo in prepos.items() \
 			if repo.name == key and repo.location is not None]
-		prepos_order.sort(key=repo_priority, reverse=True)
+		prepos_order.sort(key=repo_priority)
 
 		if portdir in location_map:
 			portdir_repo = prepos[location_map[portdir]]
