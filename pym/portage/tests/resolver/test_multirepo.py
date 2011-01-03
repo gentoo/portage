@@ -117,7 +117,7 @@ class MultirepoTestCase(TestCase):
 				check_repo_names = True,
 				mergelist = ["dev-libs/F-1::repo1"]),
 
-			# Check interaction between repo priority and unsatsisfied
+			# Check interaction between repo priority and unsatisfied
 			# REQUIRED_USE, for bug #350254.
 			ResolverPlaygroundTestCase(
 				["=dev-libs/G-1"],
