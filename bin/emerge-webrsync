@@ -383,7 +383,7 @@ do_latest_snapshot() {
 				"use the --revert option or remove" \
 				"the timestamp file located at" \
 				"'${PORTDIR}/metadata/timestamp.x'." | fmt -w 70 | \
-				while read line ; do
+				while read -r line ; do
 					ewarn "${line}"
 				done
 			r=0

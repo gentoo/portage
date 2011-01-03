@@ -12,7 +12,7 @@ ret=0
 [[ -d ${ED} ]] || exit ${ret}
 
 find "${ED}" -type d -name man > "${T}"/prepallman.filelist
-while read mandir ; do
+while read -r mandir ; do
 	mandir=${mandir#${ED}}
 	prepman "${mandir%/man}"
 	((ret|=$?))

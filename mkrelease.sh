@@ -71,6 +71,11 @@ cp "${SOURCE_DIR}/"{DEVELOPING,LICENSE,NEWS,RELEASE-NOTES,TEST-NOTES} \
 
 rm -rf "$SOURCE_DIR" || die "directory cleanup failed"
 
+echo ">>> Setting portage.VERSION"
+sed -e "s/^VERSION=.*/VERSION=\"${VERSION}\"/" \
+	-i "${RELEASE_DIR}/pym/portage/__init__.py" || \
+	die "Failed to patch portage.VERSION"
+
 echo ">>> Creating Changelog"
 git_log_opts=""
 if [ -n "$CHANGELOG_REVISION" ] ; then
@@ -79,7 +84,7 @@ else
 	git_log_opts+=" $TREE_ISH"
 fi
 skip_next=false
-git log $git_log_opts | fmt -w 80 -p "    " | while read ; do
+git log $git_log_opts | fmt -w 80 -p "    " | while read -r ; do
 	if [[ $skip_next = true ]] ; then
 		skip_next=false
 	elif [[ $REPLY = "    svn path="* ]] ; then

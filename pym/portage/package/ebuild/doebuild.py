@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
@@ -61,7 +61,9 @@ from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.EbuildSpawnProcess import EbuildSpawnProcess
+from _emerge.Package import Package
 from _emerge.PollScheduler import PollScheduler
+from _emerge.RootConfig import RootConfig
 
 _unsandboxed_phases = frozenset([
 	"clean", "cleanrm", "config",
@@ -596,7 +598,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# data are never installed via the ebuild command. Don't bother when
 		# returnpid == True since there's no need to do this every time emerge
 		# executes a phase.
-		if not returnpid:
+		if tree == "porttree":
 			rval = _validate_deps(mysettings, myroot, mydo, mydbapi)
 			if rval != os.EX_OK:
 				return rval
@@ -1012,38 +1014,27 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 
 	invalid_dep_exempt_phases = \
 		set(["clean", "cleanrm", "help", "prerm", "postrm"])
-	dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
-	misc_keys = ["LICENSE", "PROPERTIES", "PROVIDE", "RESTRICT", "SRC_URI"]
-	other_keys = ["SLOT", "EAPI"]
-	all_keys = dep_keys + misc_keys + other_keys
+	all_keys = set(Package.metadata_keys)
+	all_keys.add("SRC_URI")
+	all_keys = tuple(all_keys)
 	metadata = dict(zip(all_keys,
 		mydbapi.aux_get(mysettings.mycpv, all_keys)))
 
 	class FakeTree(object):
 		def __init__(self, mydb):
 			self.dbapi = mydb
-	dep_check_trees = {myroot:{}}
-	dep_check_trees[myroot]["porttree"] = \
-		FakeTree(fakedbapi(settings=mysettings))
+
+	root_config = RootConfig(mysettings, {"porttree":FakeTree(mydbapi)}, None)
+
+	pkg = Package(built=False, cpv=mysettings.mycpv,
+		metadata=metadata, root_config=root_config,
+		type_name="ebuild")
 
 	msgs = []
-	for dep_type in dep_keys:
-		mycheck = dep_check(metadata[dep_type], None, mysettings,
-			myuse="all", myroot=myroot, trees=dep_check_trees)
-		if not mycheck[0]:
-			msgs.append("  %s: %s\n    %s\n" % (
-				dep_type, metadata[dep_type], mycheck[1]))
-
-	eapi = metadata["EAPI"]
-	for k in misc_keys:
-		try:
-			use_reduce(metadata[k], is_src_uri=(k=="SRC_URI"), eapi=eapi)
-		except InvalidDependString as e:
-			msgs.append("  %s: %s\n    %s\n" % (
-				k, metadata[k], str(e)))
-
-	if not metadata["SLOT"]:
-		msgs.append(_("  SLOT is undefined\n"))
+	if pkg.invalid:
+		for k, v in pkg.invalid.items():
+			for msg in v:
+				msgs.append("  %s\n" % (msg,))
 
 	if msgs:
 		portage.util.writemsg_level(_("Error(s) in metadata for '%s':\n") % \
@@ -1289,6 +1280,10 @@ def _check_build_log(mysettings, out=None):
 	configure_opts_warn = []
 	configure_opts_warn_re = re.compile(
 		r'^configure: WARNING: [Uu]nrecognized options: ')
+	# --disable-dependency-tracking is passed by default in EAPI 4;
+	# filter the warning if this is the only unrecognized option.
+	configure_opts_warn_exclude_re = re.compile(
+		r': --disable-dependency-tracking$')
 
 	# Exclude output from dev-libs/yaz-3.0.47 which looks like this:
 	#
@@ -1320,7 +1315,8 @@ def _check_build_log(mysettings, out=None):
 			if helper_missing_file_re.match(line) is not None:
 				helper_missing_file.append(line.rstrip("\n"))
 
-			if configure_opts_warn_re.match(line) is not None:
+			if configure_opts_warn_re.match(line) is not None and \
+				configure_opts_warn_exclude_re.search(line) is None:
 				configure_opts_warn.append(line.rstrip("\n"))
 
 			if make_jobserver_re.match(line) is not None:

@@ -10,20 +10,40 @@ class RequiredUSETestCase(TestCase):
 		"""
 		Only simple REQUIRED_USE values here. The parser is tested under in dep/testCheckRequiredUse
 		"""
-		EAPI_4 = '4_pre1'
 
 		ebuilds = {
-			"dev-libs/A-1": {"EAPI": EAPI_4, "IUSE": "foo bar", "REQUIRED_USE": "|| ( foo bar )"},
-			"dev-libs/A-2": {"EAPI": EAPI_4, "IUSE": "foo +bar", "REQUIRED_USE": "|| ( foo bar )"},
-			"dev-libs/A-3": {"EAPI": EAPI_4, "IUSE": "+foo bar", "REQUIRED_USE": "|| ( foo bar )"},
-			"dev-libs/A-4": {"EAPI": EAPI_4, "IUSE": "+foo +bar", "REQUIRED_USE": "|| ( foo bar )"},
-			"dev-libs/A-5": {"EAPI": EAPI_4, "IUSE": "+foo +bar", "REQUIRED_USE": "|| ( )"},
+			"dev-libs/A-1" : {"EAPI": "4", "IUSE": "foo bar",   "REQUIRED_USE": "|| ( foo bar )"},
+			"dev-libs/A-2" : {"EAPI": "4", "IUSE": "foo +bar",  "REQUIRED_USE": "|| ( foo bar )"},
+			"dev-libs/A-3" : {"EAPI": "4", "IUSE": "+foo bar",  "REQUIRED_USE": "|| ( foo bar )"},
+			"dev-libs/A-4" : {"EAPI": "4", "IUSE": "+foo +bar", "REQUIRED_USE": "|| ( foo bar )"},
+			"dev-libs/A-5" : {"EAPI": "4", "IUSE": "+foo +bar", "REQUIRED_USE": "|| ( )"},
 
-			"dev-libs/B-1": {"EAPI": EAPI_4, "IUSE": "foo bar", "REQUIRED_USE": "^^ ( foo bar )"},
-			"dev-libs/B-2": {"EAPI": EAPI_4, "IUSE": "foo +bar", "REQUIRED_USE": "^^ ( foo bar )"},
-			"dev-libs/B-3": {"EAPI": EAPI_4, "IUSE": "+foo bar", "REQUIRED_USE": "^^ ( foo bar )"},
-			"dev-libs/B-4": {"EAPI": EAPI_4, "IUSE": "+foo +bar", "REQUIRED_USE": "^^ ( foo bar )"},
-			"dev-libs/B-5": {"EAPI": EAPI_4, "IUSE": "+foo +bar", "REQUIRED_USE": "^^ ( )"},
+			"dev-libs/B-1" : {"EAPI": "4", "IUSE": "foo bar",   "REQUIRED_USE": "^^ ( foo bar )"},
+			"dev-libs/B-2" : {"EAPI": "4", "IUSE": "foo +bar",  "REQUIRED_USE": "^^ ( foo bar )"},
+			"dev-libs/B-3" : {"EAPI": "4", "IUSE": "+foo bar",  "REQUIRED_USE": "^^ ( foo bar )"},
+			"dev-libs/B-4" : {"EAPI": "4", "IUSE": "+foo +bar", "REQUIRED_USE": "^^ ( foo bar )"},
+			"dev-libs/B-5" : {"EAPI": "4", "IUSE": "+foo +bar", "REQUIRED_USE": "^^ ( )"},
+
+			"dev-libs/C-1" : {"EAPI": "4", "IUSE": "+foo bar",  "REQUIRED_USE": "foo? ( !bar )"},
+			"dev-libs/C-2" : {"EAPI": "4", "IUSE": "+foo +bar", "REQUIRED_USE": "foo? ( !bar )"},
+			"dev-libs/C-3" : {"EAPI": "4", "IUSE": "+foo +bar", "REQUIRED_USE": "foo? ( bar )"},
+			"dev-libs/C-4" : {"EAPI": "4", "IUSE": "+foo bar",  "REQUIRED_USE": "foo? ( bar )"},
+			"dev-libs/C-5" : {"EAPI": "4", "IUSE": "foo bar",   "REQUIRED_USE": "foo? ( bar )"},
+			"dev-libs/C-6" : {"EAPI": "4", "IUSE": "foo +bar",  "REQUIRED_USE": "foo? ( bar )"},
+			"dev-libs/C-7" : {"EAPI": "4", "IUSE": "foo +bar",  "REQUIRED_USE": "!foo? ( bar )"},
+			"dev-libs/C-8" : {"EAPI": "4", "IUSE": "+foo +bar", "REQUIRED_USE": "!foo? ( bar )"},
+			"dev-libs/C-9" : {"EAPI": "4", "IUSE": "+foo bar",  "REQUIRED_USE": "!foo? ( bar )"},
+			"dev-libs/C-10": {"EAPI": "4", "IUSE": "foo bar",   "REQUIRED_USE": "!foo? ( bar )"},
+			"dev-libs/C-11": {"EAPI": "4", "IUSE": "foo bar",   "REQUIRED_USE": "!foo? ( !bar )"},
+			"dev-libs/C-12": {"EAPI": "4", "IUSE": "foo +bar",  "REQUIRED_USE": "!foo? ( !bar )"},
+			"dev-libs/C-13": {"EAPI": "4", "IUSE": "+foo +bar", "REQUIRED_USE": "!foo? ( !bar )"},
+			"dev-libs/C-14": {"EAPI": "4", "IUSE": "+foo bar",  "REQUIRED_USE": "!foo? ( !bar )"},
+
+			"dev-libs/D-1" : {"EAPI": "4", "IUSE": "+w +x +y z",    "REQUIRED_USE": "w? ( x || ( y z ) )"},
+			"dev-libs/D-2" : {"EAPI": "4", "IUSE": "+w +x +y +z",   "REQUIRED_USE": "w? ( x || ( y z ) )"},
+			"dev-libs/D-3" : {"EAPI": "4", "IUSE": "+w +x y z",     "REQUIRED_USE": "w? ( x || ( y z ) )"},
+			"dev-libs/D-4" : {"EAPI": "4", "IUSE": "+w x +y +z",    "REQUIRED_USE": "w? ( x || ( y z ) )"},
+			"dev-libs/D-5" : {"EAPI": "4", "IUSE": "w x y z",       "REQUIRED_USE": "w? ( x || ( y z ) )"},
 			}
 
 		test_cases = (
@@ -38,6 +58,27 @@ class RequiredUSETestCase(TestCase):
 			ResolverPlaygroundTestCase(["=dev-libs/B-3"], success = True, mergelist=["dev-libs/B-3"]),
 			ResolverPlaygroundTestCase(["=dev-libs/B-4"], success = False),
 			ResolverPlaygroundTestCase(["=dev-libs/B-5"], success = True, mergelist=["dev-libs/B-5"]),
+
+			ResolverPlaygroundTestCase(["=dev-libs/C-1"],  success = True, mergelist=["dev-libs/C-1"]),
+			ResolverPlaygroundTestCase(["=dev-libs/C-2"],  success = False),
+			ResolverPlaygroundTestCase(["=dev-libs/C-3"],  success = True, mergelist=["dev-libs/C-3"]),
+			ResolverPlaygroundTestCase(["=dev-libs/C-4"],  success = False),
+			ResolverPlaygroundTestCase(["=dev-libs/C-5"],  success = True, mergelist=["dev-libs/C-5"]),
+			ResolverPlaygroundTestCase(["=dev-libs/C-6"],  success = True, mergelist=["dev-libs/C-6"]),
+			ResolverPlaygroundTestCase(["=dev-libs/C-7"],  success = True, mergelist=["dev-libs/C-7"]),
+			ResolverPlaygroundTestCase(["=dev-libs/C-8"],  success = True, mergelist=["dev-libs/C-8"]),
+			ResolverPlaygroundTestCase(["=dev-libs/C-9"],  success = True, mergelist=["dev-libs/C-9"]),
+			ResolverPlaygroundTestCase(["=dev-libs/C-10"], success = False),
+			ResolverPlaygroundTestCase(["=dev-libs/C-11"], success = True, mergelist=["dev-libs/C-11"]),
+			ResolverPlaygroundTestCase(["=dev-libs/C-12"], success = False),
+			ResolverPlaygroundTestCase(["=dev-libs/C-13"], success = True, mergelist=["dev-libs/C-13"]),
+			ResolverPlaygroundTestCase(["=dev-libs/C-14"], success = True, mergelist=["dev-libs/C-14"]),
+
+			ResolverPlaygroundTestCase(["=dev-libs/D-1"],  success = True, mergelist=["dev-libs/D-1"]),
+			ResolverPlaygroundTestCase(["=dev-libs/D-2"],  success = True, mergelist=["dev-libs/D-2"]),
+			ResolverPlaygroundTestCase(["=dev-libs/D-3"],  success = False),
+			ResolverPlaygroundTestCase(["=dev-libs/D-4"],  success = False),
+			ResolverPlaygroundTestCase(["=dev-libs/D-5"],  success = True, mergelist=["dev-libs/D-5"]),
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds)

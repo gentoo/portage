@@ -22,10 +22,11 @@ def process(mysettings, key, logentries, fulltext):
 			continue
 		for msgtype,msgcontent in logentries[phase]:
 			msgtext = "".join(msgcontent)
-			msgtext = "%s: %s: %s" % (key, phase, msgtext)
-			if sys.hexversion < 0x3000000 and isinstance(msgtext, unicode):
-				# Avoid TypeError from syslog.syslog()
-				msgtext = msgtext.encode(_encodings['content'], 
-					'backslashreplace')
-			syslog.syslog(_pri[msgtype], msgtext)
+			for line in msgtext.splitlines():
+				line = "%s: %s: %s" % (key, phase, line)
+				if sys.hexversion < 0x3000000 and isinstance(msgtext, unicode):
+					# Avoid TypeError from syslog.syslog()
+					line = line.encode(_encodings['content'], 
+						'backslashreplace')
+				syslog.syslog(_pri[msgtype], line)
 	syslog.closelog()

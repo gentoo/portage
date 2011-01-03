@@ -23,7 +23,7 @@ from portage.cache.mappings import slot_dict_class
 from portage.const import CACHE_PATH
 from portage.dbapi.virtual import fakedbapi
 from portage.dep import Atom, use_reduce, paren_enclose
-from portage.exception import InvalidPackageName, \
+from portage.exception import AlarmSignal, InvalidPackageName, \
 	PermissionDenied, PortageException
 from portage.const import EAPI
 from portage.localization import _
@@ -734,6 +734,14 @@ class binarytree(object):
 			parsed_url = urlparse(base_url)
 			host = parsed_url.netloc
 			port = parsed_url.port
+			user = None
+			passwd = None
+			user_passwd = ""
+			if "@" in host:
+				user, host = host.split("@", 1)
+				user_passwd = user + "@"
+				if ":" in user:
+					user, passwd = user.split(":", 1)
 			port_args = []
 			if port is not None:
 				port_str = ":%s" % (port,)
@@ -776,7 +784,7 @@ class binarytree(object):
 						if port is not None:
 							port_args = ['-P', "%s" % (port,)]
 						proc = subprocess.Popen(['sftp'] + port_args + \
-							[host + ":" + path, tmp_filename])
+							[user_passwd + host + ":" + path, tmp_filename])
 						if proc.wait() != os.EX_OK:
 							raise
 						f = open(tmp_filename, 'rb')
@@ -784,7 +792,8 @@ class binarytree(object):
 						if port is not None:
 							port_args = ['-p', "%s" % (port,)]
 						proc = subprocess.Popen(['ssh'] + port_args + \
-							[host, '--', 'cat', path], stdout=subprocess.PIPE)
+							[user_passwd + host, '--', 'cat', path],
+							stdout=subprocess.PIPE)
 						f = proc.stdout
 					else:
 						raise
@@ -807,7 +816,18 @@ class binarytree(object):
 							rmt_idx.readBody(f_dec)
 							pkgindex = rmt_idx
 				finally:
-					f.close()
+					# Timeout after 5 seconds, in case close() blocks
+					# indefinitely (see bug #350139).
+					try:
+						try:
+							AlarmSignal.register(5)
+							f.close()
+						finally:
+							AlarmSignal.unregister()
+					except AlarmSignal:
+						writemsg("\n\n!!! %s\n" % \
+							_("Timed out while closing connection to binhost"),
+							noiselevel=-1)
 			except EnvironmentError as e:
 				writemsg(_("\n\n!!! Error fetching binhost package" \
 					" info from '%s'\n") % base_url)

@@ -55,7 +55,7 @@ from _emerge.UnmergeDepPriority import UnmergeDepPriority
 from _emerge.resolver.backtracking import Backtracker, BacktrackParameter
 from _emerge.resolver.slot_collision import slot_conflict_handler
 from _emerge.resolver.circular_dependency import circular_dependency_handler
-from _emerge.resolver.output import display, filter_iuse_defaults
+from _emerge.resolver.output import Display
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -1024,10 +1024,10 @@ class depgraph(object):
 				self._add_parent_atom(pkg, parent_atom)
 
 		""" This section determines whether we go deeper into dependencies or not.
-		    We want to go deeper on a few occasions:
-		    Installing package A, we need to make sure package A's deps are met.
-		    emerge --deep <pkgspec>; we need to recursively check dependencies of pkgspec
-		    If we are in --nodeps (no recursion) mode, we obviously only check 1 level of dependencies.
+			We want to go deeper on a few occasions:
+			Installing package A, we need to make sure package A's deps are met.
+			emerge --deep <pkgspec>; we need to recursively check dependencies of pkgspec
+			If we are in --nodeps (no recursion) mode, we obviously only check 1 level of dependencies.
 		"""
 		if arg_atoms:
 			depth = 0
@@ -2598,8 +2598,8 @@ class depgraph(object):
 		pkg, existing = ret
 		if pkg is not None:
 			settings = pkg.root_config.settings
-			if self._pkg_visibility_check(pkg) and not (pkg.installed and \
-				settings._getMissingKeywords(pkg.cpv, pkg.metadata)):
+			if self._pkg_visibility_check(pkg) and \
+				not (pkg.installed and pkg.masks):
 				self._dynamic_config._visible_pkgs[pkg.root].cpv_inject(pkg)
 		return ret
 
@@ -2871,18 +2871,29 @@ class depgraph(object):
 							modified_use=self._pkg_use_enabled(pkg)):
 						continue
 
-					if dont_miss_updates:
+					if packages_with_invalid_use_config and \
+						(not pkg.installed or dont_miss_updates):
 						# Check if a higher version was rejected due to user
 						# USE configuration. The packages_with_invalid_use_config
 						# list only contains unbuilt ebuilds since USE can't
 						# be changed for built packages.
 						higher_version_rejected = False
+						repo_priority = pkg.repo_priority
 						for rejected in packages_with_invalid_use_config:
 							if rejected.cp != pkg.cp:
 								continue
 							if rejected > pkg:
 								higher_version_rejected = True
 								break
+							if portage.dep.cpvequal(rejected.cpv, pkg.cpv):
+								# If version is identical then compare
+								# repo priority (see bug #350254).
+								rej_repo_priority = rejected.repo_priority
+								if rej_repo_priority is not None and \
+									(repo_priority is None or
+									rej_repo_priority > repo_priority):
+									higher_version_rejected = True
+									break
 						if higher_version_rejected:
 							continue
 
@@ -2933,9 +2944,7 @@ class depgraph(object):
 								# If --usepkgonly is enabled, assume that
 								# the ebuild status should be ignored.
 								if not use_ebuild_visibility and usepkgonly:
-									if installed and \
-										pkgsettings._getMissingKeywords(
-										pkg.cpv, pkg.metadata):
+									if pkg.installed and pkg.masks:
 										continue
 								else:
 									try:
@@ -3045,6 +3054,7 @@ class depgraph(object):
 							del e
 							continue
 						if not required_use_is_sat:
+							packages_with_invalid_use_config.append(pkg)
 							continue
 
 					if pkg.cp == atom_cp:
@@ -3108,9 +3118,9 @@ class depgraph(object):
 						forced_flags = set()
 						forced_flags.update(pkg.use.force)
 						forced_flags.update(pkg.use.mask)
-						old_use = vardb.aux_get(cpv, ["USE"])[0].split()
-						old_iuse = set(filter_iuse_defaults(
-							vardb.aux_get(cpv, ["IUSE"])[0].split()))
+						inst_pkg = vardb.match_pkgs('=' + pkg.cpv)[0]
+						old_use = inst_pkg.use.enabled
+						old_iuse = inst_pkg.iuse.all
 						cur_use = self._pkg_use_enabled(pkg)
 						cur_iuse = pkg.iuse.all
 						reinstall_for_flags = \
@@ -3240,6 +3250,20 @@ class depgraph(object):
 		matches = vardb.match_pkgs(atom)
 		if not matches:
 			return None, None
+		if len(matches) > 1:
+			unmasked = [pkg for pkg in matches if \
+				self._pkg_visibility_check(pkg)]
+			if unmasked:
+				if len(unmasked) == 1:
+					matches = unmasked
+				else:
+					# Account for packages with masks (like KEYWORDS masks)
+					# that are usually ignored in visibility checks for
+					# installed packages, in order to handle cases like
+					# bug #350285.
+					unmasked = [pkg for pkg in matches if not pkg.masks]
+					if unmasked:
+						matches = unmasked
 		pkg = matches[-1] # highest match
 		in_graph = self._dynamic_config._slot_pkg_map[root].get(pkg.slot_atom)
 		return pkg, in_graph
@@ -4718,6 +4742,7 @@ class depgraph(object):
 		# redundantly displaying this exact same merge list
 		# again via _show_merge_list().
 		self._dynamic_config._displayed_list = mylist
+		display = Display()
 
 		return display(self, mylist, favorites, verbosity)
 
@@ -5413,7 +5438,12 @@ class _dep_check_composite_db(dbapi):
 				arg = None
 			if arg:
 				return False
-		if pkg.installed and not self._depgraph._pkg_visibility_check(pkg):
+		if pkg.installed and \
+			(pkg.masks or not self._depgraph._pkg_visibility_check(pkg)):
+			# Account for packages with masks (like KEYWORDS masks)
+			# that are usually ignored in visibility checks for
+			# installed packages, in order to handle cases like
+			# bug #350285.
 			return False
 		in_graph = self._depgraph._dynamic_config._slot_pkg_map[
 			self._root].get(pkg.slot_atom)

@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
@@ -22,8 +22,10 @@ case "$EAPI" in
 	*)
 		cp -P "$1" "$T/$2"
 		ret=$?
-		[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
-		exit $ret
+		if [[ $ret -ne 0 ]] ; then
+			helpers_die "${0##*/} failed"
+			exit $ret
+		fi
 		;;
 esac
 doins "${T}/${2}"

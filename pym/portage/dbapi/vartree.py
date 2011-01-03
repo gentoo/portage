@@ -1781,7 +1781,8 @@ class dblink(object):
 			ignored_rmdir_errnos = (
 				errno.EEXIST, errno.ENOTEMPTY,
 				errno.EBUSY, errno.ENOENT,
-				errno.ENOTDIR, errno.EISDIR)
+				errno.ENOTDIR, errno.EISDIR,
+				errno.EPERM)
 			modprotect = os.path.join(self._eroot, "lib/modules/")
 
 			def unlink(file_name, lstatobj):

@@ -74,6 +74,11 @@ class Package(Task):
 		self._validate_deps()
 		self.masks = self._masks()
 		self.visible = self._visible(self.masks)
+		if self.operation is None:
+			if self.onlydeps or self.installed:
+				self.operation = "nomerge"
+			else:
+				self.operation = "merge"
 
 	def _validate_deps(self):
 		"""
@@ -284,11 +289,6 @@ class Package(Task):
 		msgs.append(msg)
 
 	def __str__(self):
-		if self.operation is None:
-			self.operation = "merge"
-			if self.onlydeps or self.installed:
-				self.operation = "nomerge"
-
 		if self.operation == "merge":
 			if self.type_name == "binary":
 				cpv_color = "PKG_BINARY_MERGE"
@@ -363,6 +363,13 @@ class Package(Task):
 		return self.metadata['repository']
 
 	@property
+	def repo_priority(self):
+		repo_info = self.root_config.settings.repositories.prepos.get(self.repo)
+		if repo_info is None:
+			return None
+		return repo_info.priority
+
+	@property
 	def use(self):
 		if self._use is None:
 			self.metadata._init_use()
@@ -427,10 +434,6 @@ class Package(Task):
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
 		if hash_key is None:
-			if self.operation is None:
-				self.operation = "merge"
-				if self.onlydeps or self.installed:
-					self.operation = "nomerge"
 			# For installed (and binary) packages we don't care for the repo
 			# when it comes to hashing, because there can only be one cpv.
 			# So overwrite the repo_key with type_name.

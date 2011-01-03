@@ -72,7 +72,7 @@ _doins() {
 
 _xdoins() {
 	local -i failed=0
-	while read -d $'\0' x ; do
+	while read -r -d $'\0' x ; do
 		_doins "$x" "${x%/*}"
 		((failed|=$?))
 	done

@@ -4,6 +4,7 @@
 import traceback
 
 from _emerge.SpawnProcess import SpawnProcess
+import copy
 import sys
 import portage
 from portage import os
@@ -18,7 +19,7 @@ from portage.util._pty import _create_pty_or_pipe
 class EbuildFetcher(SpawnProcess):
 
 	__slots__ = ("config_pool", "fetchonly", "fetchall", "pkg", "prefetch") + \
-		("_settings", "_uri_map")
+		("_digests", "_settings", "_uri_map")
 
 	def _start(self):
 
@@ -45,6 +46,9 @@ class EbuildFetcher(SpawnProcess):
 			self._set_returncode((self.pid, os.EX_OK))
 			self.wait()
 			return
+
+		self._digests = portage.Manifest(
+			os.path.dirname(ebuild_path), None).getTypeDigests("DIST")
 
 		settings = self.config_pool.allocate()
 		settings.setcpv(self.pkg)
@@ -98,7 +102,9 @@ class EbuildFetcher(SpawnProcess):
 
 		rval = 1
 		try:
-			if fetch(self._uri_map, self._settings, fetchonly=self.fetchonly):
+			if fetch(self._uri_map, self._settings, fetchonly=self.fetchonly,
+				digests=copy.deepcopy(self._digests),
+				allow_missing_digests=False):
 				rval = os.EX_OK
 		except SystemExit:
 			raise
@@ -121,7 +127,6 @@ class EbuildFetcher(SpawnProcess):
 		return portdb.getFetchMap(self.pkg.cpv, useflags=use, mytree=mytree)
 
 	def _prefetch_size_ok(self, uri_map, settings, ebuild_path):
-		pkgdir = os.path.dirname(ebuild_path)
 		distdir = settings["DISTDIR"]
 
 		sizes = {}
@@ -136,7 +141,7 @@ class EbuildFetcher(SpawnProcess):
 				return False
 			sizes[filename] = st.st_size
 
-		digests = portage.Manifest(pkgdir, distdir).getTypeDigests("DIST")
+		digests = self._digests
 		for filename, actual_size in sizes.items():
 			size = digests.get(filename, {}).get('size')
 			if size is None:

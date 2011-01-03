@@ -393,7 +393,7 @@ unpack() {
 			ZIP|zip|jar)
 				# unzip will interactively prompt under some error conditions,
 				# as reported in bug #336285
-				( while true ; do echo n ; done ) | \
+				( while true ; do echo n || break ; done ) | \
 				unzip -qo "${srcdir}${x}" || die "$myfail"
 				;;
 			gz|Z|z)
@@ -510,7 +510,7 @@ econf() {
 		if [ -e "${EPREFIX}"/usr/share/gnuconfig/ ]; then
 			find "${WORKDIR}" -type f '(' \
 			-name config.guess -o -name config.sub ')' -print0 | \
-			while read -d $'\0' x ; do
+			while read -r -d $'\0' x ; do
 				vecho " * econf: updating ${x/${WORKDIR}\/} with ${EPREFIX}/usr/share/gnuconfig/${x##*/}"
 				cp -f "${EPREFIX}"/usr/share/gnuconfig/"${x##*/}" "${x}"
 			done
@@ -789,7 +789,7 @@ dyn_clean() {
 	fi
 
 	if [[ $EMERGE_FROM = binary ]] || ! hasq keepwork $FEATURES; then
-		rm -f "$PORTAGE_BUILDDIR"/.{ebuild_changed,logid,setuped,unpacked,prepared} \
+		rm -f "$PORTAGE_BUILDDIR"/.{ebuild_changed,logid,pretended,setuped,unpacked,prepared} \
 			"$PORTAGE_BUILDDIR"/.{configured,compiled,tested,packaged} \
 			"$PORTAGE_BUILDDIR"/.die_hooks \
 			"$PORTAGE_BUILDDIR"/.ipc_{in,out,lock} \
@@ -1334,7 +1334,7 @@ inherit() {
 		echo "QA Notice: EXPORT_FUNCTIONS is called before inherit in" \
 			"$ECLASS.eclass. For compatibility with <=portage-2.1.6.7," \
 			"only call EXPORT_FUNCTIONS after inherit(s)." \
-			| fmt -w 75 | while read ; do eqawarn "$REPLY" ; done
+			| fmt -w 75 | while read -r ; do eqawarn "$REPLY" ; done
 	fi
 
 	local location
