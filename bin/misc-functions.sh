@@ -68,9 +68,9 @@ prepcompress() {
 	local f g i real_f real_d
 
 	# Canonicalize path names and check for their existence.
-	real_d=$(canonicalize "${D}")
+	real_d=$(canonicalize "${ED}")
 	for (( i = 0; i < ${#PORTAGE_DOCOMPRESS[@]}; i++ )); do
-		real_f=$(canonicalize "${D}${PORTAGE_DOCOMPRESS[i]}")
+		real_f=$(canonicalize "${ED}${PORTAGE_DOCOMPRESS[i]}")
 		f=${real_f#"${real_d}"}
 		if [[ ${real_f} != "${f}" ]] && [[ -d ${real_f} || -f ${real_f} ]]
 		then
@@ -81,7 +81,7 @@ prepcompress() {
 		fi
 	done
 	for (( i = 0; i < ${#PORTAGE_DOCOMPRESS_SKIP[@]}; i++ )); do
-		real_f=$(canonicalize "${D}${PORTAGE_DOCOMPRESS_SKIP[i]}")
+		real_f=$(canonicalize "${ED}${PORTAGE_DOCOMPRESS_SKIP[i]}")
 		f=${real_f#"${real_d}"}
 		if [[ ${real_f} != "${f}" ]] && [[ -d ${real_f} || -f ${real_f} ]]
 		then
@@ -130,7 +130,7 @@ prepcompress() {
 
 	# Split the include list into directories and files
 	for f in "${include[@]}"; do
-		if [[ -d ${D}${f} ]]; then
+		if [[ -d ${ED}${f} ]]; then
 			incl_d[${#incl_d[@]}]=${f}
 		else
 			incl_f[${#incl_f[@]}]=${f}
@@ -140,7 +140,7 @@ prepcompress() {
 	# Queue up for compression.
 	# ecompress{,dir} doesn't like to be called with empty argument lists.
 	[[ ${#incl_d[@]} -gt 0 ]] && ecompressdir --queue "${incl_d[@]}"
-	[[ ${#incl_f[@]} -gt 0 ]] && ecompress --queue "${incl_f[@]/#/${D}}"
+	[[ ${#incl_f[@]} -gt 0 ]] && ecompress --queue "${incl_f[@]/#/${ED}}"
 	[[ ${#exclude[@]} -gt 0 ]] && ecompressdir --ignore "${exclude[@]}"
 	return 0
 }
