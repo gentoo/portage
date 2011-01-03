@@ -118,6 +118,44 @@ class DepcleanWithInstalledMaskedTestCase(TestCase):
 		finally:
 			playground.cleanup()
 
+class DepcleanInstalledKeywordMaskedSlotTestCase(TestCase):
+
+	def testDepcleanInstalledKeywordMaskedSlot(self):
+		"""
+		Verify that depclean removes newer slot
+		masked by KEYWORDS (see bug #350285).
+		"""
+		ebuilds = {
+			"dev-libs/A-1": { "RDEPEND": "|| ( =dev-libs/B-2.7* =dev-libs/B-2.6* )" },
+			"dev-libs/B-2.6": { "SLOT":"2.6", "KEYWORDS": "x86" },
+			"dev-libs/B-2.7": { "SLOT":"2.7", "KEYWORDS": "~x86" },
+			}
+		installed = {
+			"dev-libs/A-1": { "EAPI" : "3", "RDEPEND": "|| ( dev-libs/B:2.7 dev-libs/B:2.6 )" },
+			"dev-libs/B-2.6": { "SLOT":"2.6", "KEYWORDS": "x86" },
+			"dev-libs/B-2.7": { "SLOT":"2.7", "KEYWORDS": "~x86" },
+			}
+
+		world = (
+			"dev-libs/A",
+			)
+
+		test_cases = (
+			ResolverPlaygroundTestCase(
+				[],
+				options = {"--depclean": True},
+				success = True,
+				cleanlist = ["dev-libs/B-2.7"]),
+			)
+
+		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed, world=world)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
+
 class DepcleanWithExcludeTestCase(TestCase):
 
 	def testDepcleanWithExclude(self):
