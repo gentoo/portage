@@ -517,7 +517,8 @@ def create_trees(config_root=None, target_root=None, trees=None):
 		# environment to apply to the config that's associated
 		# with ROOT != "/", so pass a nearly empty dict for the env parameter.
 		clean_env = {}
-		for k in ('PATH', 'PORTAGE_GRPNAME', 'PORTAGE_USERNAME', 'TERM',
+		for k in ('PATH', 'PORTAGE_GRPNAME', 'PORTAGE_USERNAME',
+			'SSH_AGENT_PID', 'SSH_AUTH_SOCK', 'TERM',
 			'ftp_proxy', 'http_proxy', 'no_proxy'):
 			v = settings.get(k)
 			if v is not None:
