@@ -2275,7 +2275,7 @@ class depgraph(object):
 							self._pkg_use_enabled(pkg),
 							pkg.iuse.is_valid_flag):
 							required_use_unsatisfied.append(pkg)
-						continue
+							continue
 					if pkg.built and not mreasons:
 						mreasons = ["use flag configuration mismatch"]
 				masked_packages.append(
