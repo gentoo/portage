@@ -2207,6 +2207,8 @@ class depgraph(object):
 			xinfo = "%s for %s" % (xinfo, root)
 		masked_packages = []
 		missing_use = []
+		missing_use_adjustable = set()
+		required_use_unsatisfied = []
 		masked_pkg_instances = set()
 		missing_licenses = []
 		have_eapi_mask = False
@@ -2264,6 +2266,16 @@ class depgraph(object):
 								"InvalidAtom: '%s' parent: %s" % \
 								(atom, myparent), noiselevel=-1)
 							raise
+					if not mreasons and \
+						not pkg.built and \
+						pkg.metadata["REQUIRED_USE"] and \
+						eapi_has_required_use(pkg.metadata["EAPI"]):
+						if not check_required_use(
+							pkg.metadata["REQUIRED_USE"],
+							self._pkg_use_enabled(pkg),
+							pkg.iuse.is_valid_flag):
+							required_use_unsatisfied.append(pkg)
+						continue
 					if pkg.built and not mreasons:
 						mreasons = ["use flag configuration mismatch"]
 				masked_packages.append(
@@ -2299,6 +2311,7 @@ class depgraph(object):
 					chain(need_enable, need_disable)):
 					continue
 
+				missing_use_adjustable.add(pkg)
 				required_use = pkg.metadata["REQUIRED_USE"]
 				required_use_warning = ""
 				if required_use:
@@ -2412,9 +2425,38 @@ class depgraph(object):
 			if not masked_with_iuse:
 				show_missing_use = unmasked_iuse_reasons
 
+		if required_use_unsatisfied:
+			# If there's a higher unmasked version in missing_use_adjustable
+			# then we want to show that instead.
+			for pkg in missing_use_adjustable:
+				if pkg not in masked_pkg_instances and \
+					pkg > required_use_unsatisfied[0]:
+					required_use_unsatisfied = False
+					break
+
 		mask_docs = False
 
-		if show_missing_use:
+		if required_use_unsatisfied:
+			# We have an unmasked package that only requires USE adjustment
+			# in order to satisfy REQUIRED_USE, and nothing more. We assume
+			# that the user wants the latest version, so only the first
+			# instance is displayed.
+			pkg = required_use_unsatisfied[0]
+			output_cpv = pkg.cpv
+			writemsg_stdout("\n!!! " + \
+				colorize("BAD", "The ebuild selected to satisfy ") + \
+				colorize("INFORM", xinfo) + \
+				colorize("BAD", " has unmet requirements.") + "\n",
+				noiselevel=-1)
+			writemsg_stdout("- %s (REQUIRED_USE unsatisifed)\n" % \
+				(output_cpv,), noiselevel=-1)
+			writemsg_stdout("\n  The following use flag constraints " + \
+				"are unsatisfied:\n", noiselevel=-1)
+			writemsg_stdout("    %s\n" % \
+				human_readable_required_use(pkg.metadata["REQUIRED_USE"]),
+				noiselevel=-1)
+
+		elif show_missing_use:
 			writemsg_stdout("\nemerge: there are no ebuilds built with USE flags to satisfy "+green(xinfo)+".\n", noiselevel=-1)
 			writemsg_stdout("!!! One of the following packages is required to complete your request:\n", noiselevel=-1)
 			for pkg, mreasons in show_missing_use:
@@ -5744,21 +5786,6 @@ def _get_masking_status(pkg, pkgsettings, root_config, use=None):
 		if not pkgsettings._accept_chost(pkg.cpv, pkg.metadata):
 			mreasons.append(_MaskReason("CHOST", "CHOST: %s" % \
 				pkg.metadata["CHOST"]))
-
-		if pkg.metadata["REQUIRED_USE"] and \
-			eapi_has_required_use(pkg.metadata["EAPI"]):
-			required_use = pkg.metadata["REQUIRED_USE"]
-			if use is None:
-				use = pkg.use.enabled
-			try:
-				required_use_is_sat = check_required_use(
-					required_use, use, pkg.iuse.is_valid_flag)
-			except portage.exception.InvalidDependString:
-				mreasons.append(_MaskReason("invalid", "invalid: REQUIRED_USE"))
-			else:
-				if not required_use_is_sat:
-					msg = "violated use flag constraints: '%s'" % required_use
-					mreasons.append(_MaskReason("REQUIRED_USE", "REQUIRED_USE violated"))
 
 	if pkg.invalid:
 		for msg_type, msgs in pkg.invalid.items():
