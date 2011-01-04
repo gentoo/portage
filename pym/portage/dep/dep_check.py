@@ -257,6 +257,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	unsat_use_installed = []
 	unsat_use_non_installed = []
 	other_installed = []
+	other_installed_some = []
 	other = []
 
 	# unsat_use_* must come after preferred_non_installed
@@ -270,6 +271,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		unsat_use_installed,
 		unsat_use_non_installed,
 		other_installed,
+		other_installed_some,
 		other,
 	)
 
@@ -427,12 +429,18 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 							unsat_use_non_installed.append(this_choice)
 		else:
 			all_installed = True
+			some_installed = False
 			for atom in atoms:
-				if not atom.blocker and not vardb.match(atom):
-					all_installed = False
-					break
+				if not atom.blocker:
+					if vardb.match(atom):
+						some_installed = True
+					else:
+						all_installed = False
+
 			if all_installed:
 				other_installed.append(this_choice)
+			elif some_installed:
+				other_installed_some.append(this_choice)
 			else:
 				other.append(this_choice)
 
