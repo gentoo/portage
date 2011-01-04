@@ -2448,7 +2448,7 @@ class depgraph(object):
 				colorize("INFORM", xinfo) + \
 				colorize("BAD", " has unmet requirements.") + "\n",
 				noiselevel=-1)
-			writemsg_stdout("- %s (REQUIRED_USE unsatisifed)\n" % \
+			writemsg_stdout("- %s (REQUIRED_USE unsatisfied)\n" % \
 				(output_cpv,), noiselevel=-1)
 			writemsg_stdout("\n  The following use flag constraints " + \
 				"are unsatisfied:\n", noiselevel=-1)
