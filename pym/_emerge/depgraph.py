@@ -51,6 +51,7 @@ from _emerge.search import search
 from _emerge.SetArg import SetArg
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
 from _emerge.UnmergeDepPriority import UnmergeDepPriority
+from _emerge.UseFlagDisplay import pkg_use_display
 
 from _emerge.resolver.slot_collision import slot_conflict_handler
 from _emerge.resolver.circular_dependency import circular_dependency_handler
@@ -2448,9 +2449,10 @@ class depgraph(object):
 				colorize("INFORM", xinfo) + \
 				colorize("BAD", " has unmet requirements.") + "\n",
 				noiselevel=-1)
-			writemsg_stdout("- %s (REQUIRED_USE unsatisfied)\n" % \
-				(output_cpv,), noiselevel=-1)
-			writemsg_stdout("\n  The following use flag constraints " + \
+			use_display = pkg_use_display(pkg, self._frozen_config.myopts)
+			writemsg_stdout("- %s %s\n" % (output_cpv, use_display),
+				noiselevel=-1)
+			writemsg_stdout("\n  The following REQUIRED_USE flag constraints " + \
 				"are unsatisfied:\n", noiselevel=-1)
 			writemsg_stdout("    %s\n" % \
 				human_readable_required_use(pkg.metadata["REQUIRED_USE"]),
