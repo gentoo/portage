@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2008 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # Author: Karl Trygve Kalleberg <karltk@gentoo.org>
 # Rewritten from the old, Perl-based emerge-webrsync script
@@ -204,7 +204,7 @@ sync_local() {
 		cd ..
 
 		vecho "Cleaning up ..."
-		rm -fr portage 
+		rm -fr portage
 	fi
 
 	if hasq metadata-transfer ${FEATURES} ; then
@@ -240,7 +240,7 @@ do_snapshot() {
 		exit 1
 	fi
 
-	for mirror in ${GENTOO_MIRRORS} ; do 
+	for mirror in ${GENTOO_MIRRORS} ; do
 
 		vecho "Trying to retrieve ${date} snapshot from ${mirror} ..."
 
