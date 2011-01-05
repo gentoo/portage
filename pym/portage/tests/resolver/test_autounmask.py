@@ -47,6 +47,7 @@ class AutounmaskTestCase(TestCase):
 			"app-portage/A-2": { "DEPEND": "app-portage/B[foo=]", "IUSE": "+foo", "REQUIRED_USE": "foo", "EAPI": "4" }, 
 
 			"app-portage/B-1": { "IUSE": "foo +bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": "4" }, 
+			"app-portage/C-1": { "IUSE": "+foo +bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": "4" },
 			}
 
 		test_cases = (
@@ -176,6 +177,11 @@ class AutounmaskTestCase(TestCase):
 					success = False),
 				ResolverPlaygroundTestCase(
 					["=app-portage/A-2"],
+					options = { "--autounmask": True },
+					use_changes = None,
+					success = False),
+				ResolverPlaygroundTestCase(
+					["=app-portage/C-1"],
 					options = { "--autounmask": True },
 					use_changes = None,
 					success = False),
