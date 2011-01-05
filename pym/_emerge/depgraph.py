@@ -5411,7 +5411,22 @@ class _dep_check_composite_db(dbapi):
 			# that are usually ignored in visibility checks for
 			# installed packages, in order to handle cases like
 			# bug #350285.
-			return False
+			myopts = self._depgraph._frozen_config.myopts
+			use_ebuild_visibility = myopts.get(
+				'--use-ebuild-visibility', 'n') != 'n'
+			usepkgonly = "--usepkgonly" in myopts
+			if not use_ebuild_visibility and usepkgonly:
+				return False
+			else:
+				try:
+					pkg_eb = self._depgraph._pkg(
+						pkg.cpv, "ebuild", pkg.root_config)
+				except portage.exception.PackageNotFound:
+					return False
+				else:
+					if not self._depgraph._pkg_visibility_check(pkg_eb):
+						return False
+
 		in_graph = self._depgraph._dynamic_config._slot_pkg_map[
 			self._root].get(pkg.slot_atom)
 		if in_graph is None:

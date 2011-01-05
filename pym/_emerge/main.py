@@ -937,7 +937,8 @@ def parse_opts(tmpcmdline, silent=False):
 	if myoptions.use_ebuild_visibility in true_y:
 		myoptions.use_ebuild_visibility = True
 	else:
-		myoptions.use_ebuild_visibility = None
+		# None or "n"
+		pass
 
 	if myoptions.usepkg in true_y:
 		myoptions.usepkg = True
