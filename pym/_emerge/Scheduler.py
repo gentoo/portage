@@ -1745,6 +1745,9 @@ class Scheduler(PollScheduler):
 		if pkg.operation != "uninstall":
 			vardb = pkg.root_config.trees["vartree"].dbapi
 			previous_cpv = vardb.match(pkg.slot_atom)
+			if not previous_cpv and vardb.cpv_exists(pkg.cpv):
+				# same cpv, different SLOT
+				previous_cpv = [pkg.cpv]
 			if previous_cpv:
 				previous_cpv = previous_cpv.pop()
 				pkg_to_replace = self._pkg(previous_cpv,
