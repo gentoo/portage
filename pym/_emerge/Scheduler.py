@@ -433,12 +433,14 @@ class Scheduler(PollScheduler):
 
 		if graph_config is None:
 			self._graph_config = None
+			self._pkg_cache = {}
 			self._digraph = None
 			self._mergelist = []
 			self._deep_system_deps.clear()
 			return
 
 		self._graph_config = graph_config
+		self._pkg_cache = graph_config.pkg_cache
 		self._digraph = graph_config.graph
 		self._mergelist = graph_config.mergelist
 
@@ -1988,18 +1990,19 @@ class Scheduler(PollScheduler):
 		if installed:
 			operation = "nomerge"
 
-		if self._digraph is not None:
-			# Reuse existing instance when available.
-			pkg = self._digraph.get(
-				(type_name, root_config.root, cpv, operation))
-			if pkg is not None:
-				return pkg
+		# Reuse existing instance when available.
+		pkg = self._pkg_cache.get(
+			(type_name, root_config.root, cpv, operation))
+		if pkg is not None:
+			return pkg
 
 		tree_type = depgraph.pkg_tree_map[type_name]
 		db = root_config.trees[tree_type].dbapi
 		db_keys = list(self.trees[root_config.root][
 			tree_type].dbapi._aux_cache_keys)
 		metadata = zip(db_keys, db.aux_get(cpv, db_keys))
-		return Package(built=(type_name != 'ebuild'),
-			cpv=cpv, metadata=metadata,
-			root_config=root_config, installed=installed)
+		pkg = Package(built=(type_name != "ebuild"),
+			cpv=cpv, installed=installed, metadata=metadata,
+			root_config=root_config, type_name=type_name)
+		self._pkg_cache[pkg] = pkg
+		return pkg
