@@ -699,7 +699,6 @@ class Scheduler(PollScheduler):
 
 		scheduler = self._sched_iface
 		settings = pkg_dblink.settings
-		pkg = self._dblink_pkg(pkg_dblink)
 		background = self._background
 		log_path = settings.get("PORTAGE_LOG_FILE")
 
