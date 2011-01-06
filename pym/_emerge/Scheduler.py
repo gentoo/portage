@@ -1408,9 +1408,7 @@ class Scheduler(PollScheduler):
 		if pkg_to_replace is not None:
 			# When a package is replaced, mark it's uninstall
 			# task complete (if any).
-			uninst_hash_key = \
-				("installed", pkg.root, pkg_to_replace.cpv, "uninstall")
-			self._task_complete(uninst_hash_key)
+			self._task_complete(pkg_to_replace)
 
 		if pkg.installed:
 			return
@@ -1750,7 +1748,8 @@ class Scheduler(PollScheduler):
 			if previous_cpv:
 				previous_cpv = previous_cpv.pop()
 				pkg_to_replace = self._pkg(previous_cpv,
-					"installed", pkg.root_config, installed=True)
+					"installed", pkg.root_config, installed=True,
+					operation="uninstall")
 
 		task = MergeListItem(args_set=self._args_set,
 			background=self._background, binpkg_opts=self._binpkg_opts,
@@ -1981,16 +1980,19 @@ class Scheduler(PollScheduler):
 			if world_locked:
 				world_set.unlock()
 
-	def _pkg(self, cpv, type_name, root_config, installed=False):
+	def _pkg(self, cpv, type_name, root_config, installed=False,
+		operation=None):
 		"""
 		Get a package instance from the cache, or create a new
 		one if necessary. Raises KeyError from aux_get if it
 		failures for some reason (package does not exist or is
 		corrupt).
 		"""
-		operation = "merge"
-		if installed:
-			operation = "nomerge"
+		if operation is None:
+			if installed:
+				operation = "nomerge"
+			else:
+				operation = "merge"
 
 		# Reuse existing instance when available.
 		pkg = self._pkg_cache.get(
