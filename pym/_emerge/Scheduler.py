@@ -451,6 +451,8 @@ class Scheduler(PollScheduler):
 			graph_config.graph = None
 			graph_config.pkg_cache.clear()
 			self._deep_system_deps.clear()
+			for pkg in self._mergelist:
+				self._pkg_cache[pkg] = pkg
 			return
 
 		self._find_system_deps()
