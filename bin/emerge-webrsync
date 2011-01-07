@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2008 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # Author: Karl Trygve Kalleberg <karltk@gentoo.org>
 # Rewritten from the old, Perl-based emerge-webrsync script
@@ -68,6 +68,7 @@ do_tar() {
 	local file=$1; shift
 	local decompressor
 	case ${file} in
+		*.xz)   decompressor="xzcat" ;;
 		*.lzma) decompressor="lzcat" ;;
 		*.bz2)  decompressor="bzcat" ;;
 		*.gz)   decompressor="zcat"  ;;
@@ -208,7 +209,7 @@ sync_local() {
 		cd ..
 
 		vecho "Cleaning up ..."
-		rm -fr portage 
+		rm -fr portage
 	fi
 
 	if hasq metadata-transfer ${FEATURES} ; then
@@ -234,6 +235,7 @@ do_snapshot() {
 	# lzma is not supported in app-arch/tarsync, so use
 	# bz2 format if we have tarsync.
 	if ! type -P tarsync > /dev/null ; then
+		type -P xzcat > /dev/null && compressions="${compressions} xz"
 		type -P lzcat > /dev/null && compressions="${compressions} lzma"
 	fi
 	type -P bzcat > /dev/null && compressions="${compressions} bz2"
@@ -243,7 +245,7 @@ do_snapshot() {
 		exit 1
 	fi
 
-	for mirror in ${GENTOO_MIRRORS} ; do 
+	for mirror in ${GENTOO_MIRRORS} ; do
 
 		vecho "Trying to retrieve ${date} snapshot from ${mirror} ..."
 

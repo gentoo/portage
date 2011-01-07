@@ -305,7 +305,8 @@ class Scheduler(PollScheduler):
 		self._blocker_db = {}
 		for root in self.trees:
 			if graph_config is None:
-				fake_vartree = FakeVartree(self.trees[root]["root_config"])
+				fake_vartree = FakeVartree(self.trees[root]["root_config"],
+					pkg_cache=self._pkg_cache)
 			else:
 				fake_vartree = graph_config.trees[root]['vartree']
 			self._blocker_db[root] = BlockerDB(fake_vartree)
@@ -433,12 +434,14 @@ class Scheduler(PollScheduler):
 
 		if graph_config is None:
 			self._graph_config = None
+			self._pkg_cache = {}
 			self._digraph = None
 			self._mergelist = []
 			self._deep_system_deps.clear()
 			return
 
 		self._graph_config = graph_config
+		self._pkg_cache = graph_config.pkg_cache
 		self._digraph = graph_config.graph
 		self._mergelist = graph_config.mergelist
 
@@ -449,6 +452,8 @@ class Scheduler(PollScheduler):
 			graph_config.graph = None
 			graph_config.pkg_cache.clear()
 			self._deep_system_deps.clear()
+			for pkg in self._mergelist:
+				self._pkg_cache[pkg] = pkg
 			return
 
 		self._find_system_deps()
@@ -697,7 +702,6 @@ class Scheduler(PollScheduler):
 
 		scheduler = self._sched_iface
 		settings = pkg_dblink.settings
-		pkg = self._dblink_pkg(pkg_dblink)
 		background = self._background
 		log_path = settings.get("PORTAGE_LOG_FILE")
 
@@ -1406,9 +1410,11 @@ class Scheduler(PollScheduler):
 		if pkg_to_replace is not None:
 			# When a package is replaced, mark it's uninstall
 			# task complete (if any).
-			uninst_hash_key = \
-				("installed", pkg.root, pkg_to_replace.cpv, "uninstall")
-			self._task_complete(uninst_hash_key)
+			if self._digraph is not None and \
+				pkg_to_replace in self._digraph:
+				self._task_complete(pkg_to_replace)
+			else:
+				self._pkg_cache.pop(pkg_to_replace, None)
 
 		if pkg.installed:
 			return
@@ -1745,10 +1751,14 @@ class Scheduler(PollScheduler):
 		if pkg.operation != "uninstall":
 			vardb = pkg.root_config.trees["vartree"].dbapi
 			previous_cpv = vardb.match(pkg.slot_atom)
+			if not previous_cpv and vardb.cpv_exists(pkg.cpv):
+				# same cpv, different SLOT
+				previous_cpv = [pkg.cpv]
 			if previous_cpv:
 				previous_cpv = previous_cpv.pop()
 				pkg_to_replace = self._pkg(previous_cpv,
-					"installed", pkg.root_config, installed=True)
+					"installed", pkg.root_config, installed=True,
+					operation="uninstall")
 
 		task = MergeListItem(args_set=self._args_set,
 			background=self._background, binpkg_opts=self._binpkg_opts,
@@ -1979,7 +1989,8 @@ class Scheduler(PollScheduler):
 			if world_locked:
 				world_set.unlock()
 
-	def _pkg(self, cpv, type_name, root_config, installed=False, myrepo=None):
+	def _pkg(self, cpv, type_name, root_config, installed=False,
+		operation=None, myrepo=None):
 		"""
 		Get a package instance from the cache, or create a new
 		one if necessary. Raises KeyError from aux_get if it
@@ -1999,22 +2010,25 @@ class Scheduler(PollScheduler):
 		else:
 			repo_key = myrepo
 
-		operation = "merge"
-		if installed:
-			operation = "nomerge"
+		if operation is None:
+			if installed:
+				operation = "nomerge"
+			else:
+				operation = "merge"
 
-		if self._graph_config is not None:
-			# Reuse existing instance when available.
-			pkg = self._graph_config.pkg_cache.get(
-				(type_name, root_config.root, cpv, operation, repo_key))
-			if pkg is not None:
-				return pkg
+		# Reuse existing instance when available.
+		pkg = self._pkg_cache.get(
+			(type_name, root_config.root, cpv, operation, repo_key))
+		if pkg is not None:
+			return pkg
 
 		tree_type = depgraph.pkg_tree_map[type_name]
 		db = root_config.trees[tree_type].dbapi
 		db_keys = list(self.trees[root_config.root][
 			tree_type].dbapi._aux_cache_keys)
 		metadata = zip(db_keys, db.aux_get(cpv, db_keys, myrepo=myrepo))
-		return Package(built=(type_name != 'ebuild'),
-			cpv=cpv, metadata=metadata,
-			root_config=root_config, installed=installed)
+		pkg = Package(built=(type_name != "ebuild"),
+			cpv=cpv, installed=installed, metadata=metadata,
+			root_config=root_config, type_name=type_name)
+		self._pkg_cache[pkg] = pkg
+		return pkg

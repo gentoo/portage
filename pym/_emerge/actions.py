@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -63,7 +63,7 @@ from _emerge.sync.getaddrinfo_validate import getaddrinfo_validate
 from _emerge.sync.old_tree_timestamp import old_tree_timestamp_warn
 from _emerge.unmerge import unmerge
 from _emerge.UnmergeDepPriority import UnmergeDepPriority
-from _emerge.UseFlagDisplay import UseFlagDisplay
+from _emerge.UseFlagDisplay import pkg_use_display
 from _emerge.userquery import userquery
 
 if sys.hexversion >= 0x3000000:
@@ -1528,60 +1528,8 @@ def action_info(settings, trees, myopts, myfiles):
 				print("\n%s (non-installed binary) was built with the following:" % \
 					colorize("INFORM", str(pkg.cpv)))
 
-			pkgsettings.setcpv(pkg)
-			forced_flags = set(chain(pkgsettings.useforce,
-				pkgsettings.usemask))
-			use = set(pkg.use.enabled)
-			use.discard(pkgsettings.get('ARCH'))
-			use_expand_flags = set()
-			use_enabled = {}
-			use_disabled = {}
-			for varname in use_expand:
-				flag_prefix = varname.lower() + "_"
-				for f in use:
-					if f.startswith(flag_prefix):
-						use_expand_flags.add(f)
-						use_enabled.setdefault(
-							varname.upper(), []).append(f[len(flag_prefix):])
-
-				for f in pkg.iuse.all:
-					if f.startswith(flag_prefix):
-						use_expand_flags.add(f)
-						if f not in use:
-							use_disabled.setdefault(
-								varname.upper(), []).append(f[len(flag_prefix):])
-
-			var_order = set(use_enabled)
-			var_order.update(use_disabled)
-			var_order = sorted(var_order)
-			var_order.insert(0, 'USE')
-			use.difference_update(use_expand_flags)
-			use_enabled['USE'] = list(use)
-			use_disabled['USE'] = []
-
-			for f in pkg.iuse.all:
-				if f not in use and \
-					f not in use_expand_flags:
-					use_disabled['USE'].append(f)
-
-			flag_displays = []
-			for varname in var_order:
-				if varname in use_expand_hidden:
-					continue
-				flags = []
-				for f in use_enabled.get(varname, []):
-					flags.append(UseFlagDisplay(f, True, f in forced_flags))
-				for f in use_disabled.get(varname, []):
-					flags.append(UseFlagDisplay(f, False, f in forced_flags))
-				if alphabetical_use:
-					flags.sort(key=UseFlagDisplay.sort_combined)
-				else:
-					flags.sort(key=UseFlagDisplay.sort_separated)
-				# Use _unicode_decode() to force unicode format string so
-				# that UseFlagDisplay.__unicode__() is called in python2.
-				flag_displays.append('%s="%s"' % (varname,
-					' '.join(_unicode_decode("%s") % (f,) for f in flags)))
-			writemsg_stdout('%s\n' % ' '.join(flag_displays), noiselevel=-1)
+			writemsg_stdout('%s\n' % pkg_use_display(pkg, myopts),
+				noiselevel=-1)
 			if pkg_type == "installed":
 				for myvar in mydesiredvars:
 					if metadata[myvar].split() != settings.get(myvar, '').split():
