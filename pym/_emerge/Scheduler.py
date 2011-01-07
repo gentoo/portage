@@ -1408,7 +1408,11 @@ class Scheduler(PollScheduler):
 		if pkg_to_replace is not None:
 			# When a package is replaced, mark it's uninstall
 			# task complete (if any).
-			self._task_complete(pkg_to_replace)
+			if self._digraph is not None and \
+				pkg_to_replace in self._digraph:
+				self._task_complete(pkg_to_replace)
+			else:
+				self._pkg_cache.pop(pkg_to_replace, None)
 
 		if pkg.installed:
 			return
