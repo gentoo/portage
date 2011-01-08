@@ -100,6 +100,8 @@ PORTAGE_RSYNC_OPTS="--recursive --links --safe-links --perms --times --compress 
 PORTAGE_SYNC_STALE="30"
 
 # Minimal CONFIG_PROTECT
+# NOTE: in Prefix, these are NOT prefixed on purpose, because the
+# profiles define them too
 CONFIG_PROTECT="/etc"
 CONFIG_PROTECT_MASK="/etc/env.d"
 
