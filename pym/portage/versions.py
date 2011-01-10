@@ -4,13 +4,17 @@
 
 __all__ = [
 	'best', 'catpkgsplit', 'catsplit',
-	'cpv_getkey', 'cpv_getversion', 'pkgcmp',  'pkgsplit',
+	'cpv_getkey', 'cpv_getversion', 'cpv_sort_key', 'pkgcmp',  'pkgsplit',
 	'ververify', 'vercmp'
 ]
 
 import re
 import warnings
 
+import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.util:cmp_sort_key'
+)
 from portage.localization import _
 
 # \w is [a-zA-Z0-9_]
@@ -341,6 +345,44 @@ def cpv_getversion(mycpv):
 	if cp is None:
 		return None
 	return mycpv[len(cp+"-"):]
+
+def cpv_sort_key():
+	"""
+	Create an object for sorting cpvs, to be used as the 'key' parameter
+	in places like list.sort() or sorted(). This calls catpkgsplit() once for
+	each cpv and caches the result. If a given cpv is invalid or two cpvs
+	have different category/package names, then plain string (> and <)
+	comparison is used.
+
+	@rtype: key object for sorting
+	@return: object for use as the 'key' parameter in places like
+		list.sort() or sorted()
+	"""
+
+	split_cache = {}
+
+	def cmp_cpv(cpv1, cpv2):
+
+		split1 = split_cache.get(cpv1, False)
+		if split1 is False:
+			split1 = catpkgsplit(cpv1)
+			if split1 is not None:
+				split1 = (split1[:2], '-'.join(split1[2:]))
+			split_cache[cpv1] = split1
+
+		split2 = split_cache.get(cpv2, False)
+		if split2 is False:
+			split2 = catpkgsplit(cpv2)
+			if split2 is not None:
+				split2 = (split2[:2], '-'.join(split2[2:]))
+			split_cache[cpv2] = split2
+
+		if split1 is None or split2 is None or split1[0] != split2[0]:
+			return (cpv1 > cpv2) - (cpv1 < cpv2)
+
+		return vercmp(split1[1], split2[1])
+
+	return cmp_sort_key(cmp_cpv)
 
 def catsplit(mydep):
         return mydep.split("/", 1)

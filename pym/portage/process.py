@@ -352,6 +352,10 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	# Quiet killing of subprocesses by SIGPIPE (see bug #309001).
 	signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
+	# Avoid issues triggered by inheritance of SIGQUIT handler from
+	# the parent process (see bug #289486).
+	signal.signal(signal.SIGQUIT, signal.SIG_DFL)
+
 	_setup_pipes(fd_pipes)
 
 	# Set requested process permissions.

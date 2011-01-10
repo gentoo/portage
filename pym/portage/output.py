@@ -268,7 +268,7 @@ default_xterm_title = None
 def xtermTitleReset():
 	global default_xterm_title
 	if default_xterm_title is None:
-		prompt_command = os.environ.get('PROMPT_COMMAND', '')
+		prompt_command = os.environ.get('PROMPT_COMMAND')
 		if prompt_command == "":
 			default_xterm_title = ""
 		elif prompt_command is not None:

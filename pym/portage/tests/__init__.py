@@ -1,5 +1,5 @@
 # tests/__init__.py -- Portage Unit Test functionality
-# Copyright 2006 Gentoo Foundation
+# Copyright 2006-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -13,15 +13,12 @@ except ImportError:
 
 from portage import os
 from portage import _encodings
-from portage import _unicode_encode
 from portage import _unicode_decode
 
 def main():
 
-	TEST_FILE = _unicode_encode('__test__',
-		encoding=_encodings['fs'], errors='strict')
-	svn_dirname = _unicode_encode('.svn',
-		encoding=_encodings['fs'], errors='strict')
+	TEST_FILE = b'__test__'
+	svn_dirname = b'.svn'
 	suite = unittest.TestSuite()
 	basedir = os.path.dirname(os.path.realpath(__file__))
 	testDirs = []

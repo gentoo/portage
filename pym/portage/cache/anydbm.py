@@ -9,6 +9,20 @@ try:
 except ImportError:
 	# python 3.x
 	import dbm as anydbm_module
+
+try:
+	import dbm.gnu as gdbm
+except ImportError:
+	try:
+		import gdbm
+	except ImportError:
+		gdbm = None
+
+try:
+	from dbm import whichdb
+except ImportError:
+	from whichdb import whichdb
+
 try:
 	import cPickle as pickle
 except ImportError:
@@ -35,11 +49,15 @@ class database(fs_template.FsBased):
 
 		self._db_path = os.path.join(self.location, fs_template.gen_label(self.location, self.label)+default_db)
 		self.__db = None
+		mode = "w"
+		if whichdb(self._db_path) in ("dbm.gnu", "gdbm"):
+			# Allow multiple concurrent writers (see bug #53607).
+			mode += "u"
 		try:
 			# dbm.open() will not work with bytes in python-3.1:
 			#   TypeError: can't concat bytes to str
 			self.__db = anydbm_module.open(self._db_path,
-				'w', self._perms)
+				mode, self._perms)
 		except anydbm_module.error:
 			# XXX handle this at some point
 			try:
@@ -53,14 +71,22 @@ class database(fs_template.FsBased):
 				if self.__db == None:
 					# dbm.open() will not work with bytes in python-3.1:
 					#   TypeError: can't concat bytes to str
-					self.__db = anydbm_module.open(self._db_path,
-						'c', self._perms)
+					if gdbm is None:
+						self.__db = anydbm_module.open(self._db_path,
+							"c", self._perms)
+					else:
+						# Prefer gdbm type if available, since it allows
+						# multiple concurrent writers (see bug #53607).
+						self.__db = gdbm.open(self._db_path,
+							"cu", self._perms)
 			except anydbm_module.error as e:
 				raise cache_errors.InitializationError(self.__class__, e)
 		self._ensure_access(self._db_path)
 
 	def iteritems(self):
-		return iter(self.__db.items())
+		# dbm doesn't implement items()
+		for k in self.__db.keys():
+			yield (k, self[k])
 
 	def _getitem(self, cpv):
 		# we override getitem because it's just a cpickling of the data handed in.

@@ -1,14 +1,14 @@
-<section id='package-ebuild-eapi-4_pre1'>
-<title>EAPI 4_pre1</title>
-<section id='package-ebuild-eapi-4_pre1-helpers'>
+<section id='package-ebuild-eapi-4'>
+<title>EAPI 4</title>
+<section id='package-ebuild-eapi-4-helpers'>
 <title>Helpers</title>
-<section id='package-ebuild-eapi-4_pre1-helpers-removed-dohard-dosed'>
+<section id='package-ebuild-eapi-4-helpers-removed-dohard-dosed'>
 <title>Removed dohard and dosed</title>
 <para>
 The dohard and dosed helpers from previous EAPIs are no longer available.
 </para>
 </section>
-<section id='package-ebuild-eapi-4_pre1-helpers-die-nonfatal'>
+<section id='package-ebuild-eapi-4-helpers-die-nonfatal'>
 <title>All helpers die on failure</title>
 <para>
 All helpers now die automatically whenever some sort of error occurs.
@@ -16,7 +16,7 @@ Helper calls may be prefixed with the 'nonfatal' helper in order
 to prevent errors from being fatal.
 </para>
 </section>
-<section id='package-ebuild-eapi-4_pre1-helpers-docompress'>
+<section id='package-ebuild-eapi-4-helpers-docompress'>
 <title>Controllable Compression</title>
 <para>
 In EAPI 4, the package manager may optionally compress
@@ -60,7 +60,7 @@ multiple times, if an item is a symlink, or if a file is already compressed.
 The following commands may be used in src_install to alter these lists. It is
 an error to call any of these functions from any other phase.
 </para>
-<section id='package-ebuild-eapi-4_pre1-helpers-docompress-command'>
+<section id='package-ebuild-eapi-4-helpers-docompress-command'>
 <title>docompress helper</title>
 <para>
 If the first argument is -x, add each of its subsequent arguments to the
@@ -68,39 +68,47 @@ exclusion list. Otherwise, add each argument to the inclusion list.
 </para>
 </section>
 </section>
-<section id='package-ebuild-eapi-4_pre1-helpers-dodoc-r'>
+<section id='package-ebuild-eapi-4-helpers-dodoc-r'>
 <title>dodoc -r</title>
 <para>
 The dodoc helper now has a -r option which enables recursion.
 </para>
 </section>
-<section id='package-ebuild-eapi-4_pre1-helpers-doins-newins-symlinks'>
+<section id='package-ebuild-eapi-4-helpers-doins-newins-symlinks'>
 <title>doins and newins preserve symlinks</title>
 <para>
 The doins and newins helpers now preserve symlinks. In earlier EAPIs
 symlinks are dereferenced rather than preserved.
 </para>
 </section>
-<section id='package-ebuild-eapi-4_pre1-helpers-doman-i18n-precedence'>
+<section id='package-ebuild-eapi-4-helpers-doman-i18n-precedence'>
 <title>doman -i18n option takes precedence over filename language suffix</title>
 <para>
 When the doman helper is called with the -i18n option, this takes precedence
 over the filename language suffix.
 </para>
 </section>
-<section id='package-ebuild-eapi-4_pre1-helpers-econf-disable-dependency-tracking'>
+<section id='package-ebuild-eapi-4-helpers-econf-disable-dependency-tracking'>
 <title>econf adds --disable-dependency-tracking</title>
 <para>
 The econf helper now adds --disable-dependency-tracking to the
 configure arguments.
 </para>
 </section>
+<section id='package-ebuild-eapi-4-helpers-use-with-enable-empty-third-arg'>
+<title>use_with and use_enable support empty third argument</title>
+<para>
+Beginning with EAPI 4, an empty third argument
+is recognized. In EAPI 3 and earlier, an empty third
+argument is treated as if it weren't provided.
+</para>
 </section>
-<section id='package-ebuild-eapi-4_pre1-metadata'>
+</section>
+<section id='package-ebuild-eapi-4-metadata'>
 <title>Metadata</title>
-	<section id='package-ebuild-eapi-4_pre1-metadata-dependencies'>
+	<section id='package-ebuild-eapi-4-metadata-dependencies'>
 	<title>Dependencies</title>
-		<section id='package-ebuild-eapi-4_pre1-metadata-dependencies-rdepend-implicit-removed'>
+		<section id='package-ebuild-eapi-4-metadata-dependencies-rdepend-implicit-removed'>
 		<title>unset RDEPEND no longer triggers implicit setting</title>
 		<para>
 		When the RDEPEND variable is unset within an ebuild, it will remain
@@ -108,7 +116,7 @@ configure arguments.
 		implicitly set to the value of DEPEND.
 		</para>
 		</section>
-		<section id='package-ebuild-eapi-4_pre1-metadata-dependencies-use-defaults'>
+		<section id='package-ebuild-eapi-4-metadata-dependencies-use-defaults'>
 		<title>USE Dependency Defaults</title>
 		<para>
 		In a 3-style use dependency, the flag name may immediately be followed by a
@@ -133,12 +141,12 @@ configure arguments.
 		</para>
 		</section>
 	</section>
-<section id='package-ebuild-eapi-4_pre1-metadata-required-use'>
+<section id='package-ebuild-eapi-4-metadata-required-use'>
 <title>REQUIRED_USE</title>
 <para>
 This new REQUIRED_USE metadata key is used to specify what USE flag combinations are disallowed for a specific pkg.
 </para>
-<section id='package-ebuild-eapi-4_pre1-metadata-required-use-motivation'>
+<section id='package-ebuild-eapi-4-metadata-required-use-motivation'>
 <title>Motivation</title>
 <para>
 It's a semi common occurence that an ebuild may need to state that they disallow USE flags in specific combinations- either mysql or sqlite for example, but not both.
@@ -176,7 +184,7 @@ More importantly if the manager cannot know what the allowed USE states are for 
 Just as .sh scripts are considered a poor archival form due to their opaqueness, pkg_setup and pkg_pretend aren't a proper solution for this. pkg_pretend in particular makes the situation slightly worse due to ebuild devs being expected to convert their ebuilds to the pkg_pretend form when using EAPI4. In doing so they'll have to do work w/out the gains REQUIRED_USE provides and have to repeat the same conversion work when REQUIRED_USE lands in a later EAPI.
 </para>
 </section>
-<section id='package-ebuild-eapi-4_pre1-metadata-required-use-specification'>
+<section id='package-ebuild-eapi-4-metadata-required-use-specification'>
 <title>Specification</title>
 <para>
 Essentially REQUIRED_USE is proposed to be an analog of DEPENDS style syntax- a list of assertions that must be met for this USE configuration to be valid for this ebuild. For example, to state "if build is set, python must be unset":
@@ -225,9 +233,9 @@ Finally, please note that this new metadata key can be set by eclasses, and the 
 </section>
 </section>
 </section>
-	<section id='package-ebuild-eapi-4_pre1-phases'>
+	<section id='package-ebuild-eapi-4-phases'>
 		<title>Phases</title>
-		<section id='package-ebuild-eapi-4_pre1-phases-pkg-pretend'>
+		<section id='package-ebuild-eapi-4-phases-pkg-pretend'>
 			<title>New pkg_pretend Phase Function</title>
 			<para>
 			The pkg_pretend function may be used to carry out sanity checks early on in the
@@ -246,7 +254,7 @@ Finally, please note that this new metadata key can be set by eclasses, and the 
 			pkg_pretend must not write to the filesystem.
 			</para>
 		</section>
-		<section id='package-ebuild-eapi-4_pre1-phases-src-install'>
+		<section id='package-ebuild-eapi-4-phases-src-install'>
 			<title>Default src_install no longer a no-op</title>
 			<programlisting>
 src_install() {
@@ -268,7 +276,7 @@ src_install() {
 }
 			</programlisting>
 		</section>
-		<section id='package-ebuild-eapi-4_pre1-phases-s-workdir-fallback'>
+		<section id='package-ebuild-eapi-4-phases-s-workdir-fallback'>
 			<title>S to WORKDIR fallback restricted</title>
 			<para>
 			For any of the src_* phases that executes after src_unpack,
@@ -282,15 +290,23 @@ src_install() {
 			</para>
 		</section>
 	</section>
-	<section id='package-ebuild-eapi-4_pre1-variables'>
+	<section id='package-ebuild-eapi-4-variables'>
 		<title>Variables</title>
-		<section id='package-ebuild-eapi-4_pre1-variables-aa-kv-removed'>
+		<section id='package-ebuild-eapi-4-variables-aa-kv-removed'>
 			<title>AA and KV variables are no longer exported</title>
 			<para>
 			The AA and KV variables are no longer exported to the ebuild environment.
 			</para>
 		</section>
-		<section id='package-ebuild-eapi-4_pre1-variables-replaced-versions'>
+		<section id='package-ebuild-eapi-4-variables-merge-type'>
+			<title>MERGE_TYPE</title>
+			<para>
+			The type of package that is being merged. Possible values are:
+			"source" if building and installing a package from source, "binary" if installing a binary
+			package, and "buildonly" if building a binary package without installing it.
+			</para>
+		</section>
+		<section id='package-ebuild-eapi-4-variables-replaced-versions'>
 			<title>REPLACING_VERSIONS and REPLACED_BY_VERSION</title>
 			<para>
 			The REPLACING_VERSIONS variable

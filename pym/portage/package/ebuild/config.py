@@ -27,7 +27,8 @@ from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
 from portage.dbapi.vartree import vartree
 from portage.dep import Atom, isvalidatom, match_from_list, use_reduce, _repo_separator, _slot_separator
-from portage.eapi import eapi_exports_AA, eapi_supports_prefix, eapi_exports_replace_vars
+from portage.eapi import eapi_exports_AA, eapi_exports_merge_type, \
+	eapi_supports_prefix, eapi_exports_replace_vars
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.exception import InvalidDependString, PortageException
 from portage.localization import _
@@ -881,6 +882,7 @@ class config(object):
 		self.modifiedkeys = []
 		if not keeping_pkg:
 			self.mycpv = None
+			self._setcpv_args_hash = None
 			self.puse = ""
 			del self._penv[:]
 			self.configdict["pkg"].clear()
@@ -913,7 +915,7 @@ class config(object):
 				use = frozenset(settings['PORTAGE_USE'].split())
 
 			values['ACCEPT_LICENSE'] = settings._license_manager.get_prunned_accept_license( \
-				settings.mycpv, use, settings['LICENSE'], settings['SLOT'], settings['repository'])
+				settings.mycpv, use, settings['LICENSE'], settings['SLOT'], settings.get('PORTAGE_REPO_NAME'))
 			values['PORTAGE_RESTRICT'] = self._restrict(use, settings)
 			return values
 
@@ -2060,6 +2062,9 @@ class config(object):
 		# Don't export AA to the ebuild environment in EAPIs that forbid it
 		if not eapi_exports_AA(eapi):
 			mydict.pop("AA", None)
+
+		if not eapi_exports_merge_type(eapi):
+			mydict.pop("MERGE_TYPE", None)
 
 		# Prefix variables are supported starting with EAPI 3.
 		if phase == 'depend' or eapi is None or not eapi_supports_prefix(eapi):

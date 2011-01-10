@@ -8,12 +8,10 @@ class UseDepDefaultsTestCase(TestCase):
 
 	def testUseDepDefaultse(self):
 
-		EAPI_4 = '4_pre1'
-
 		ebuilds = {
 			"dev-libs/A-1": { "DEPEND": "dev-libs/B[foo]", "RDEPEND": "dev-libs/B[foo]", "EAPI": "2" },
-			"dev-libs/A-2": { "DEPEND": "dev-libs/B[foo(+)]", "RDEPEND": "dev-libs/B[foo(+)]", "EAPI": EAPI_4 },
-			"dev-libs/A-3": { "DEPEND": "dev-libs/B[foo(-)]", "RDEPEND": "dev-libs/B[foo(-)]", "EAPI": EAPI_4 },
+			"dev-libs/A-2": { "DEPEND": "dev-libs/B[foo(+)]", "RDEPEND": "dev-libs/B[foo(+)]", "EAPI": "4" },
+			"dev-libs/A-3": { "DEPEND": "dev-libs/B[foo(-)]", "RDEPEND": "dev-libs/B[foo(-)]", "EAPI": "4" },
 			"dev-libs/B-1": { "IUSE": "+foo", "EAPI": "1" },
 			"dev-libs/B-2": {},
 			}

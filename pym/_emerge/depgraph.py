@@ -51,11 +51,12 @@ from _emerge.search import search
 from _emerge.SetArg import SetArg
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
 from _emerge.UnmergeDepPriority import UnmergeDepPriority
+from _emerge.UseFlagDisplay import pkg_use_display
 
 from _emerge.resolver.backtracking import Backtracker, BacktrackParameter
 from _emerge.resolver.slot_collision import slot_conflict_handler
 from _emerge.resolver.circular_dependency import circular_dependency_handler
-from _emerge.resolver.output import display, filter_iuse_defaults
+from _emerge.resolver.output import Display
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -1024,10 +1025,10 @@ class depgraph(object):
 				self._add_parent_atom(pkg, parent_atom)
 
 		""" This section determines whether we go deeper into dependencies or not.
-		    We want to go deeper on a few occasions:
-		    Installing package A, we need to make sure package A's deps are met.
-		    emerge --deep <pkgspec>; we need to recursively check dependencies of pkgspec
-		    If we are in --nodeps (no recursion) mode, we obviously only check 1 level of dependencies.
+			We want to go deeper on a few occasions:
+			Installing package A, we need to make sure package A's deps are met.
+			emerge --deep <pkgspec>; we need to recursively check dependencies of pkgspec
+			If we are in --nodeps (no recursion) mode, we obviously only check 1 level of dependencies.
 		"""
 		if arg_atoms:
 			depth = 0
@@ -1188,7 +1189,8 @@ class depgraph(object):
 				if not dep_string:
 					continue
 
-				dep_string = portage.dep.paren_enclose(dep_string)
+				dep_string = portage.dep.paren_enclose(dep_string,
+					unevaluated_atom=True)
 
 				if not self._add_pkg_dep_string(
 					pkg, dep_root, dep_priority, dep_string,
@@ -1465,7 +1467,8 @@ class depgraph(object):
 		"""
 		pkg, dep_root, dep_priority, dep_struct = \
 			self._dynamic_config._dep_disjunctive_stack.pop()
-		dep_string = portage.dep.paren_enclose(dep_struct)
+		dep_string = portage.dep.paren_enclose(dep_struct,
+			unevaluated_atom=True)
 		if not self._add_pkg_dep_string(
 			pkg, dep_root, dep_priority, dep_string, allow_unsatisfied):
 			return 0
@@ -2193,6 +2196,8 @@ class depgraph(object):
 			xinfo = "%s for %s" % (xinfo, root)
 		masked_packages = []
 		missing_use = []
+		missing_use_adjustable = set()
+		required_use_unsatisfied = []
 		masked_pkg_instances = set()
 		missing_licenses = []
 		have_eapi_mask = False
@@ -2258,6 +2263,16 @@ class depgraph(object):
 									"InvalidAtom: '%s' parent: %s" % \
 									(atom, myparent), noiselevel=-1)
 								raise
+						if not mreasons and \
+							not pkg.built and \
+							pkg.metadata["REQUIRED_USE"] and \
+							eapi_has_required_use(pkg.metadata["EAPI"]):
+							if not check_required_use(
+								pkg.metadata["REQUIRED_USE"],
+								self._pkg_use_enabled(pkg),
+								pkg.iuse.is_valid_flag):
+								required_use_unsatisfied.append(pkg)
+								continue
 						if pkg.built and not mreasons:
 							mreasons = ["use flag configuration mismatch"]
 					masked_packages.append(
@@ -2293,6 +2308,7 @@ class depgraph(object):
 					chain(need_enable, need_disable)):
 					continue
 
+				missing_use_adjustable.add(pkg)
 				required_use = pkg.metadata["REQUIRED_USE"]
 				required_use_warning = ""
 				if required_use:
@@ -2406,9 +2422,39 @@ class depgraph(object):
 			if not masked_with_iuse:
 				show_missing_use = unmasked_iuse_reasons
 
+		if required_use_unsatisfied:
+			# If there's a higher unmasked version in missing_use_adjustable
+			# then we want to show that instead.
+			for pkg in missing_use_adjustable:
+				if pkg not in masked_pkg_instances and \
+					pkg > required_use_unsatisfied[0]:
+					required_use_unsatisfied = False
+					break
+
 		mask_docs = False
 
-		if show_missing_use:
+		if required_use_unsatisfied:
+			# We have an unmasked package that only requires USE adjustment
+			# in order to satisfy REQUIRED_USE, and nothing more. We assume
+			# that the user wants the latest version, so only the first
+			# instance is displayed.
+			pkg = required_use_unsatisfied[0]
+			output_cpv = pkg.cpv + _repo_separator + pkg.repo
+			writemsg_stdout("\n!!! " + \
+				colorize("BAD", "The ebuild selected to satisfy ") + \
+				colorize("INFORM", xinfo) + \
+				colorize("BAD", " has unmet requirements.") + "\n",
+				noiselevel=-1)
+			use_display = pkg_use_display(pkg, self._frozen_config.myopts)
+			writemsg_stdout("- %s %s\n" % (output_cpv, use_display),
+				noiselevel=-1)
+			writemsg_stdout("\n  The following REQUIRED_USE flag constraints " + \
+				"are unsatisfied:\n", noiselevel=-1)
+			writemsg_stdout("    %s\n" % \
+				human_readable_required_use(pkg.metadata["REQUIRED_USE"]),
+				noiselevel=-1)
+
+		elif show_missing_use:
 			writemsg_stdout("\nemerge: there are no ebuilds built with USE flags to satisfy "+green(xinfo)+".\n", noiselevel=-1)
 			writemsg_stdout("!!! One of the following packages is required to complete your request:\n", noiselevel=-1)
 			for pkg, mreasons in show_missing_use:
@@ -2596,8 +2642,8 @@ class depgraph(object):
 		pkg, existing = ret
 		if pkg is not None:
 			settings = pkg.root_config.settings
-			if self._pkg_visibility_check(pkg) and not (pkg.installed and \
-				settings._getMissingKeywords(pkg.cpv, pkg.metadata)):
+			if self._pkg_visibility_check(pkg) and \
+				not (pkg.installed and pkg.masks):
 				self._dynamic_config._visible_pkgs[pkg.root].cpv_inject(pkg)
 		return ret
 
@@ -2869,18 +2915,29 @@ class depgraph(object):
 							modified_use=self._pkg_use_enabled(pkg)):
 						continue
 
-					if dont_miss_updates:
+					if packages_with_invalid_use_config and \
+						(not pkg.installed or dont_miss_updates):
 						# Check if a higher version was rejected due to user
 						# USE configuration. The packages_with_invalid_use_config
 						# list only contains unbuilt ebuilds since USE can't
 						# be changed for built packages.
 						higher_version_rejected = False
+						repo_priority = pkg.repo_priority
 						for rejected in packages_with_invalid_use_config:
 							if rejected.cp != pkg.cp:
 								continue
 							if rejected > pkg:
 								higher_version_rejected = True
 								break
+							if portage.dep.cpvequal(rejected.cpv, pkg.cpv):
+								# If version is identical then compare
+								# repo priority (see bug #350254).
+								rej_repo_priority = rejected.repo_priority
+								if rej_repo_priority is not None and \
+									(repo_priority is None or
+									rej_repo_priority > repo_priority):
+									higher_version_rejected = True
+									break
 						if higher_version_rejected:
 							continue
 
@@ -2931,9 +2988,7 @@ class depgraph(object):
 								# If --usepkgonly is enabled, assume that
 								# the ebuild status should be ignored.
 								if not use_ebuild_visibility and usepkgonly:
-									if installed and \
-										pkgsettings._getMissingKeywords(
-										pkg.cpv, pkg.metadata):
+									if pkg.installed and pkg.masks:
 										continue
 								else:
 									try:
@@ -2972,10 +3027,6 @@ class depgraph(object):
 							continue
 
 					if atom.use:
-						if pkg.iuse.get_missing_iuse(atom.use.required):
-							# Don't add this to packages_with_invalid_use_config
-							# since IUSE cannot be adjusted by the user.
-							continue
 
 						matched_pkgs_ignore_use.append(pkg)
 						if allow_use_changes:
@@ -2994,6 +3045,9 @@ class depgraph(object):
 						missing_disabled = atom.use.missing_disabled.difference(pkg.iuse.all)
 
 						if atom.use.enabled:
+							if atom.use.enabled.intersection(missing_disabled):
+								use_match = False
+								can_adjust_use = False
 							need_enabled = atom.use.enabled.difference(use)
 							if need_enabled:
 								need_enabled = need_enabled.difference(missing_enabled)
@@ -3002,11 +3056,11 @@ class depgraph(object):
 									if can_adjust_use:
 										if pkg.use.mask.intersection(need_enabled):
 											can_adjust_use = False
-										if can_adjust_use:
-											if missing_disabled.intersection(need_enabled):
-												can_adjust_use = False
 
 						if atom.use.disabled:
+							if atom.use.disabled.intersection(missing_enabled):
+								use_match = False
+								can_adjust_use = False
 							need_disabled = atom.use.disabled.intersection(use)
 							if need_disabled:
 								need_disabled = need_disabled.difference(missing_disabled)
@@ -3016,9 +3070,6 @@ class depgraph(object):
 										if pkg.use.force.difference(
 											pkg.use.mask).intersection(need_disabled):
 											can_adjust_use = False
-										if can_adjust_use:
-											if missing_enabled.intersection(need_disabled):
-												can_adjust_use = False
 
 						if not use_match:
 							if can_adjust_use:
@@ -3047,6 +3098,7 @@ class depgraph(object):
 							del e
 							continue
 						if not required_use_is_sat:
+							packages_with_invalid_use_config.append(pkg)
 							continue
 
 					if pkg.cp == atom_cp:
@@ -3110,9 +3162,9 @@ class depgraph(object):
 						forced_flags = set()
 						forced_flags.update(pkg.use.force)
 						forced_flags.update(pkg.use.mask)
-						old_use = vardb.aux_get(cpv, ["USE"])[0].split()
-						old_iuse = set(filter_iuse_defaults(
-							vardb.aux_get(cpv, ["IUSE"])[0].split()))
+						inst_pkg = vardb.match_pkgs('=' + pkg.cpv)[0]
+						old_use = inst_pkg.use.enabled
+						old_iuse = inst_pkg.iuse.all
 						cur_use = self._pkg_use_enabled(pkg)
 						cur_iuse = pkg.iuse.all
 						reinstall_for_flags = \
@@ -3242,6 +3294,20 @@ class depgraph(object):
 		matches = vardb.match_pkgs(atom)
 		if not matches:
 			return None, None
+		if len(matches) > 1:
+			unmasked = [pkg for pkg in matches if \
+				self._pkg_visibility_check(pkg)]
+			if unmasked:
+				if len(unmasked) == 1:
+					matches = unmasked
+				else:
+					# Account for packages with masks (like KEYWORDS masks)
+					# that are usually ignored in visibility checks for
+					# installed packages, in order to handle cases like
+					# bug #350285.
+					unmasked = [pkg for pkg in matches if not pkg.masks]
+					if unmasked:
+						matches = unmasked
 		pkg = matches[-1] # highest match
 		in_graph = self._dynamic_config._slot_pkg_map[root].get(pkg.slot_atom)
 		return pkg, in_graph
@@ -4720,6 +4786,7 @@ class depgraph(object):
 		# redundantly displaying this exact same merge list
 		# again via _show_merge_list().
 		self._dynamic_config._displayed_list = mylist
+		display = Display()
 
 		return display(self, mylist, favorites, verbosity)
 
@@ -5031,12 +5098,10 @@ class depgraph(object):
 		portdb = self._frozen_config.trees[self._frozen_config.target_root]["porttree"].dbapi
 		added_favorites = set()
 		for x in self._dynamic_config._set_nodes:
-			pkg_type = x.type_name
-			root = x.root
-			pkg_key = x.cpv
-			pkg_status = x.operation
-			pkg_repo = x.repo
-			if pkg_status != "nomerge":
+			if x.operation != "nomerge":
+				continue
+
+			if x.root != root_config.root:
 				continue
 
 			try:
@@ -5047,13 +5112,15 @@ class depgraph(object):
 					added_favorites.add(myfavkey)
 			except portage.exception.InvalidDependString as e:
 				writemsg("\n\n!!! '%s' has invalid PROVIDE: %s\n" % \
-					(pkg_key, str(e)), noiselevel=-1)
+					(x.cpv, e), noiselevel=-1)
 				writemsg("!!! see '%s'\n\n" % os.path.join(
-					root, portage.VDB_PATH, pkg_key, "PROVIDE"), noiselevel=-1)
+					x.root, portage.VDB_PATH, x.cpv, "PROVIDE"), noiselevel=-1)
 				del e
 		all_added = []
 		for arg in self._dynamic_config._initial_arg_list:
 			if not isinstance(arg, SetArg):
+				continue
+			if arg.root_config.root != root_config.root:
 				continue
 			k = arg.name
 			if k in ("selected", "world") or \
@@ -5136,6 +5203,7 @@ class depgraph(object):
 					self._frozen_config.excluded_pkgs.findAtomForPackage(pkg,
 						modified_use=self._pkg_use_enabled(pkg)):
 					continue
+				break
 
 			if pkg is None:
 				# It does no exist or it is corrupt.
@@ -5414,8 +5482,28 @@ class _dep_check_composite_db(dbapi):
 				arg = None
 			if arg:
 				return False
-		if pkg.installed and not self._depgraph._pkg_visibility_check(pkg):
-			return False
+		if pkg.installed and \
+			(pkg.masks or not self._depgraph._pkg_visibility_check(pkg)):
+			# Account for packages with masks (like KEYWORDS masks)
+			# that are usually ignored in visibility checks for
+			# installed packages, in order to handle cases like
+			# bug #350285.
+			myopts = self._depgraph._frozen_config.myopts
+			use_ebuild_visibility = myopts.get(
+				'--use-ebuild-visibility', 'n') != 'n'
+			usepkgonly = "--usepkgonly" in myopts
+			if not use_ebuild_visibility and usepkgonly:
+				return False
+			else:
+				try:
+					pkg_eb = self._depgraph._pkg(
+						pkg.cpv, "ebuild", pkg.root_config, myrepo=pkg.repo)
+				except portage.exception.PackageNotFound:
+					return False
+				else:
+					if not self._depgraph._pkg_visibility_check(pkg_eb):
+						return False
+
 		in_graph = self._depgraph._dynamic_config._slot_pkg_map[
 			self._root].get(pkg.slot_atom)
 		if in_graph is None:
@@ -5805,21 +5893,6 @@ def _get_masking_status(pkg, pkgsettings, root_config, myrepo=None, use=None):
 		if not pkgsettings._accept_chost(pkg.cpv, pkg.metadata):
 			mreasons.append(_MaskReason("CHOST", "CHOST: %s" % \
 				pkg.metadata["CHOST"]))
-
-		if pkg.metadata["REQUIRED_USE"] and \
-			eapi_has_required_use(pkg.metadata["EAPI"]):
-			required_use = pkg.metadata["REQUIRED_USE"]
-			if use is None:
-				use = pkg.use.enabled
-			try:
-				required_use_is_sat = check_required_use(
-					required_use, use, pkg.iuse.is_valid_flag)
-			except portage.exception.InvalidDependString:
-				mreasons.append(_MaskReason("invalid", "invalid: REQUIRED_USE"))
-			else:
-				if not required_use_is_sat:
-					msg = "violated use flag constraints: '%s'" % required_use
-					mreasons.append(_MaskReason("REQUIRED_USE", "REQUIRED_USE violated"))
 
 	if pkg.invalid:
 		for msg_type, msgs in pkg.invalid.items():

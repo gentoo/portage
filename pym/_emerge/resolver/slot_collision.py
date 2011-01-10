@@ -231,14 +231,23 @@ class slot_conflict_handler(object):
 								collision_reasons[("version", sub_type)] = atoms
 							elif not atom_set.findAtomForPackage(other_pkg, \
 								modified_use=_pkg_use_enabled(other_pkg)):
-								#Use conditionals not met.
-								violated_atom = atom.violated_conditionals(_pkg_use_enabled(other_pkg), \
-									other_pkg.iuse.is_valid_flag)
-								for flag in violated_atom.use.enabled.union(violated_atom.use.disabled):
-									atoms = collision_reasons.get(("use", flag), set())
-									atoms.add((ppkg, atom, other_pkg))
-									collision_reasons[("use", flag)] = atoms
-								num_all_specific_atoms += 1
+								missing_iuse = other_pkg.iuse.get_missing_iuse(
+									atom.unevaluated_atom.use.required)
+								if missing_iuse:
+									for flag in missing_iuse:
+										atoms = collision_reasons.get(("use", flag), set())
+										atoms.add((ppkg, atom, other_pkg))
+										collision_reasons[("use", flag)] = atoms
+									num_all_specific_atoms += 1
+								else:
+									#Use conditionals not met.
+									violated_atom = atom.violated_conditionals(_pkg_use_enabled(other_pkg), \
+										other_pkg.iuse.is_valid_flag)
+									for flag in violated_atom.use.enabled.union(violated_atom.use.disabled):
+										atoms = collision_reasons.get(("use", flag), set())
+										atoms.add((ppkg, atom, other_pkg))
+										collision_reasons[("use", flag)] = atoms
+									num_all_specific_atoms += 1
 
 					msg.append(" pulled in by\n")
 
@@ -296,20 +305,24 @@ class slot_conflict_handler(object):
 						atom_str = str(atom)
 						if version:
 							op = atom.operator
-							ver = cpv_getversion(atom.cpv)
+							ver = None
+							if atom.cp != atom.cpv:
+								ver = cpv_getversion(atom.cpv)
 							slot = atom.slot
 
 							if op == "=*":
 								op = "="
 								ver += "*"
 
-							atom_str = atom_str.replace(op, colorize("BAD", op), 1)
-							
-							start = atom_str.rfind(ver)
-							end = start + len(ver)
-							atom_str = atom_str[:start] + \
-								colorize("BAD", ver) + \
-								atom_str[end:]
+							if op is not None:
+								atom_str = atom_str.replace(op, colorize("BAD", op), 1)
+
+							if ver is not None:
+								start = atom_str.rfind(ver)
+								end = start + len(ver)
+								atom_str = atom_str[:start] + \
+									colorize("BAD", ver) + \
+									atom_str[end:]
 							if slot:
 								atom_str = atom_str.replace(":" + slot, colorize("BAD", ":" + slot))
 						

@@ -326,11 +326,14 @@ keepdir() {
 	if [ "$1" == "-R" ] || [ "$1" == "-r" ]; then
 		shift
 		find "$@" -type d -printf "${D}%p/.keep_${CATEGORY}_${PN}-${SLOT}\n" \
-			| tr "\n" "\0" | ${XARGS} -0 -n100 touch || \
-			die "Failed to recursively create .keep files"
+			| tr "\n" "\0" | \
+			while read -r -d $'\0' ; do
+				>> "$REPLY" || \
+					die "Failed to recursively create .keep files"
+			done
 	else
 		for x in "$@"; do
-			touch "${D}${x}/.keep_${CATEGORY}_${PN}-${SLOT}" || \
+			>> "${D}${x}/.keep_${CATEGORY}_${PN}-${SLOT}" || \
 				die "Failed to create .keep in ${D}${x}"
 		done
 	fi
@@ -384,7 +387,7 @@ unpack() {
 			ZIP|zip|jar)
 				# unzip will interactively prompt under some error conditions,
 				# as reported in bug #336285
-				( while true ; do echo n ; done ) | \
+				( while true ; do echo n || break ; done ) | \
 				unzip -qo "${srcdir}${x}" || die "$myfail"
 				;;
 			gz|Z|z)
@@ -501,7 +504,7 @@ econf() {
 		if [ -e /usr/share/gnuconfig/ ]; then
 			find "${WORKDIR}" -type f '(' \
 			-name config.guess -o -name config.sub ')' -print0 | \
-			while read -d $'\0' x ; do
+			while read -r -d $'\0' x ; do
 				vecho " * econf: updating ${x/${WORKDIR}\/} with /usr/share/gnuconfig/${x##*/}"
 				cp -f /usr/share/gnuconfig/"${x##*/}" "${x}"
 			done
@@ -685,7 +688,16 @@ ebuild_phase_with_hooks() {
 }
 
 dyn_pretend() {
-	ebuild_phase_with_hooks pkg_pretend
+	if [[ -e $PORTAGE_BUILDDIR/.pretended ]] ; then
+		vecho ">>> It appears that '$PF' is already pretended; skipping."
+		vecho ">>> Remove '$PORTAGE_BUILDDIR/.pretended' to force pretend."
+		return 0
+	fi
+	ebuild_phase pre_pkg_pretend
+	ebuild_phase pkg_pretend
+	>> "$PORTAGE_BUILDDIR/.pretended" || \
+		die "Failed to create $PORTAGE_BUILDDIR/.pretended"
+	ebuild_phase post_pkg_pretend
 }
 
 dyn_setup() {
@@ -696,7 +708,8 @@ dyn_setup() {
 	fi
 	ebuild_phase pre_pkg_setup
 	ebuild_phase pkg_setup
-	> "$PORTAGE_BUILDDIR"/.setuped
+	>> "$PORTAGE_BUILDDIR/.setuped" || \
+		die "Failed to create $PORTAGE_BUILDDIR/.setuped"
 	ebuild_phase post_pkg_setup
 }
 
@@ -743,7 +756,8 @@ dyn_unpack() {
 	ebuild_phase pre_src_unpack
 	vecho ">>> Unpacking source..."
 	ebuild_phase src_unpack
-	touch "${PORTAGE_BUILDDIR}/.unpacked" || die "IO Failure -- Failed 'touch .unpacked' in ${PORTAGE_BUILDDIR}"
+	>> "$PORTAGE_BUILDDIR/.unpacked" || \
+		die "Failed to create $PORTAGE_BUILDDIR/.unpacked"
 	vecho ">>> Source unpacked in ${WORKDIR}"
 	ebuild_phase post_src_unpack
 }
@@ -769,7 +783,7 @@ dyn_clean() {
 	fi
 
 	if [[ $EMERGE_FROM = binary ]] || ! hasq keepwork $FEATURES; then
-		rm -f "$PORTAGE_BUILDDIR"/.{ebuild_changed,logid,setuped,unpacked,prepared} \
+		rm -f "$PORTAGE_BUILDDIR"/.{ebuild_changed,logid,pretended,setuped,unpacked,prepared} \
 			"$PORTAGE_BUILDDIR"/.{configured,compiled,tested,packaged} \
 			"$PORTAGE_BUILDDIR"/.die_hooks \
 			"$PORTAGE_BUILDDIR"/.ipc_{in,out,lock} \
@@ -988,7 +1002,8 @@ dyn_prepare() {
 	ebuild_phase pre_src_prepare
 	vecho ">>> Preparing source in $PWD ..."
 	ebuild_phase src_prepare
-	touch "$PORTAGE_BUILDDIR"/.prepared
+	>> "$PORTAGE_BUILDDIR/.prepared" || \
+		die "Failed to create $PORTAGE_BUILDDIR/.prepared"
 	vecho ">>> Source prepared."
 	ebuild_phase post_src_prepare
 
@@ -1019,7 +1034,8 @@ dyn_configure() {
 
 	vecho ">>> Configuring source in $PWD ..."
 	ebuild_phase src_configure
-	touch "$PORTAGE_BUILDDIR"/.configured
+	>> "$PORTAGE_BUILDDIR/.configured" || \
+		die "Failed to create $PORTAGE_BUILDDIR/.configured"
 	vecho ">>> Source configured."
 
 	ebuild_phase post_src_configure
@@ -1051,7 +1067,8 @@ dyn_compile() {
 
 	vecho ">>> Compiling source in $PWD ..."
 	ebuild_phase src_compile
-	touch "$PORTAGE_BUILDDIR"/.compiled
+	>> "$PORTAGE_BUILDDIR/.compiled" || \
+		die "Failed to create $PORTAGE_BUILDDIR/.compiled"
 	vecho ">>> Source compiled."
 
 	ebuild_phase post_src_compile
@@ -1090,8 +1107,8 @@ dyn_test() {
 		addpredict /
 		ebuild_phase pre_src_test
 		ebuild_phase src_test
-		touch "$PORTAGE_BUILDDIR/.tested" || \
-			die "Failed to 'touch .tested' in $PORTAGE_BUILDDIR"
+		>> "$PORTAGE_BUILDDIR/.tested" || \
+			die "Failed to create $PORTAGE_BUILDDIR/.tested"
 		ebuild_phase post_src_test
 		SANDBOX_PREDICT=${save_sp}
 	fi
@@ -1140,7 +1157,8 @@ dyn_install() {
 	export _E_DOCDESTTREE_=""
 
 	ebuild_phase src_install
-	touch "${PORTAGE_BUILDDIR}/.installed"
+	>> "$PORTAGE_BUILDDIR/.installed" || \
+		die "Failed to create $PORTAGE_BUILDDIR/.installed"
 	vecho ">>> Completed installing ${PF} into ${D}"
 	vecho
 	ebuild_phase post_src_install
@@ -1179,7 +1197,7 @@ dyn_install() {
 	[ -n "${PORTAGE_REPO_NAME}" ]  && echo "${PORTAGE_REPO_NAME}" > repository
 	if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT}
 	then
-		touch DEBUGBUILD
+		>> DEBUGBUILD
 	fi
 	trap - SIGINT SIGQUIT
 }
@@ -1306,7 +1324,7 @@ inherit() {
 		echo "QA Notice: EXPORT_FUNCTIONS is called before inherit in" \
 			"$ECLASS.eclass. For compatibility with <=portage-2.1.6.7," \
 			"only call EXPORT_FUNCTIONS after inherit(s)." \
-			| fmt -w 75 | while read ; do eqawarn "$REPLY" ; done
+			| fmt -w 75 | while read -r ; do eqawarn "$REPLY" ; done
 	fi
 
 	local location
@@ -1678,7 +1696,8 @@ PORTAGE_READONLY_METADATA="DEFINED_PHASES DEPEND DESCRIPTION
 	PDEPEND PROVIDE RDEPEND RESTRICT SLOT SRC_URI"
 
 PORTAGE_READONLY_VARS="D EBUILD EBUILD_PHASE \
-	EBUILD_SH_ARGS ECLASSDIR EMERGE_FROM FILESDIR PM_EBUILD_HOOK_DIR \
+	EBUILD_SH_ARGS ECLASSDIR EMERGE_FROM FILESDIR MERGE_TYPE \
+	PM_EBUILD_HOOK_DIR \
 	PORTAGE_ACTUAL_DISTDIR PORTAGE_ARCHLIST PORTAGE_BASHRC  \
 	PORTAGE_BINPKG_FILE PORTAGE_BINPKG_TAR_OPTS PORTAGE_BINPKG_TMPFILE \
 	PORTAGE_BIN_PATH PORTAGE_BUILDDIR PORTAGE_BUNZIP2_COMMAND \
@@ -1811,7 +1830,7 @@ preprocess_ebuild_env() {
 		_portage_filter_opts+=" --filter-features --filter-locale --filter-path --filter-sandbox"
 	fi
 	filter_readonly_variables $_portage_filter_opts < "${T}"/environment \
-		> "${T}"/environment.filtered || return $?
+		>> "$T/environment.filtered" || return $?
 	unset _portage_filter_opts
 	mv "${T}"/environment.filtered "${T}"/environment || return $?
 	rm -f "${T}/environment.success" || return $?
@@ -1837,7 +1856,7 @@ preprocess_ebuild_env() {
 		# Rely on save_ebuild_env() to filter out any remaining variables
 		# and functions that could interfere with the current environment.
 		save_ebuild_env || exit $?
-		touch "${T}/environment.success" || exit $?
+		>> "$T/environment.success" || exit $?
 	) > "${T}/environment.filtered"
 	local retval
 	if [ -e "${T}/environment.success" ] ; then
@@ -2059,31 +2078,32 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
 
 				[[ -n $CCACHE_SIZE ]] && ccache -M $CCACHE_SIZE &> /dev/null
 			fi
+
+			if [[ -n $QA_PREBUILT ]] ; then
+
+				# these ones support fnmatch patterns
+				QA_EXECSTACK+=" $QA_PREBUILT"
+				QA_TEXTRELS+=" $QA_PREBUILT"
+				QA_WX_LOAD+=" $QA_PREBUILT"
+
+				# these ones support regular expressions, so translate
+				# fnmatch patterns to regular expressions
+				for x in QA_DT_HASH QA_DT_NEEDED QA_PRESTRIPPED QA_SONAME ; do
+					if [[ $(declare -p $x 2>/dev/null) = declare\ -a* ]] ; then
+						eval "$x=(\"\${$x[@]}\" ${QA_PREBUILT//\*/.*})"
+					else
+						eval "$x+=\" ${QA_PREBUILT//\*/.*}\""
+					fi
+				done
+
+				unset x
+			fi
+
+			# This needs to be exported since prepstrip is a separate shell script.
+			[[ -n $QA_PRESTRIPPED ]] && export QA_PRESTRIPPED
+			eval "[[ -n \$QA_PRESTRIPPED_${ARCH/-/_} ]] && \
+				export QA_PRESTRIPPED_${ARCH/-/_}"
 		fi
-
-		if [[ -n $QA_PREBUILT ]] ; then
-
-			# these ones support fnmatch patterns
-			QA_EXECSTAC+=" $QA_PREBUILT"
-			QA_TEXTRELS+=" $QA_PREBUILT"
-			QA_WX_LOAD+=" $QA_PREBUILT"
-
-			# these ones support regular expressions, so translate
-			# fnmatch patterns to regular expressions
-			for x in QA_DT_HASH QA_DT_NEEDED QA_PRESTRIPPED QA_SONAME ; do
-				if [[ $(declare -p $x 2>/dev/null) = declare\ -a* ]] ; then
-					eval "$x=(\"\${$x[@]}\" ${QA_PREBUILT//\*/.*})"
-				else
-					eval "$x+=\" ${QA_PREBUILT//\*/.*}\""
-				fi
-			done
-
-			unset x
-		fi
-
-		# This needs to be exported since prepstrip is a separate shell script.
-		[[ -n $QA_PRESTRIPPED ]] && export QA_PRESTRIPPED
-		eval "[[ -n \$QA_PRESTRIPPED_${ARCH/-/_} ]] && export QA_PRESTRIPPED_${ARCH/-/_}"
 	fi
 fi
 

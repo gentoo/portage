@@ -28,6 +28,9 @@ def eapi_exports_AA(eapi):
 def eapi_exports_KV(eapi):
 	return eapi in ("0", "1", "2", "3")
 
+def eapi_exports_merge_type(eapi):
+	return eapi not in ("0", "1", "2", "3")
+
 def eapi_exports_replace_vars(eapi):
 	return eapi not in ("0", "1", "2", "3")
 

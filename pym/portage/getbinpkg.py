@@ -16,7 +16,7 @@ import time
 import tempfile
 import base64
 
-_all_errors = [ValueError, socket.error]
+_all_errors = [NotImplementedError, ValueError, socket.error]
 
 try:
 	from html.parser import HTMLParser as html_parser_HTMLParser
@@ -43,13 +43,11 @@ else:
 try:
 	try:
 		from http.client import HTTPConnection as http_client_HTTPConnection
-		from http.client import HTTPSConnection as http_client_HTTPSConnection
 		from http.client import BadStatusLine as http_client_BadStatusLine
 		from http.client import ResponseNotReady as http_client_ResponseNotReady
 		from http.client import error as http_client_error
 	except ImportError:
 		from httplib import HTTPConnection as http_client_HTTPConnection
-		from httplib import HTTPSConnection as http_client_HTTPSConnection
 		from httplib import BadStatusLine as http_client_BadStatusLine
 		from httplib import ResponseNotReady as http_client_ResponseNotReady
 		from httplib import error as http_client_error
@@ -161,6 +159,18 @@ def create_conn(baseurl,conn=None):
 
 	if not conn:
 		if protocol == "https":
+			# Use local import since https typically isn't needed, and
+			# this way we can usually avoid triggering the global scope
+			# http.client ImportError handler (like during stage1 -> stage2
+			# builds where USE=ssl is disabled for python).
+			try:
+				try:
+					from http.client import HTTPSConnection as http_client_HTTPSConnection
+				except ImportError:
+					from httplib import HTTPSConnection as http_client_HTTPSConnection
+			except ImportError:
+				raise NotImplementedError(
+					_("python must have ssl enabled for https support"))
 			conn = http_client_HTTPSConnection(host)
 		elif protocol == "http":
 			conn = http_client_HTTPConnection(host)

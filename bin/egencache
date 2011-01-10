@@ -45,12 +45,16 @@ from portage.dep import Atom, isjustname
 from portage.versions import pkgcmp, pkgsplit, vercmp
 
 try:
-	import xml.etree.ElementTree
+	from xml.etree import ElementTree
 except ImportError:
 	pass
 else:
-	from repoman.utilities import parse_metadata_use
-	from xml.parsers.expat import ExpatError
+	try:
+		from xml.parsers.expat import ExpatError
+	except ImportError:
+		pass
+	else:
+		from repoman.utilities import parse_metadata_use
 
 from repoman.utilities import FindVCS
 
@@ -171,7 +175,8 @@ def parse_args(args):
 
 	if options.update_use_local_desc:
 		try:
-			xml.etree.ElementTree
+			ElementTree
+			ExpatError
 		except NameError:
 			parser.error('--update-use-local-desc requires python with USE=xml!')
 
@@ -406,7 +411,7 @@ class GenUseLocalDesc(object):
 		for cp in self._portdb.cp_all():
 			metadata_path = os.path.join(repo_path, cp, 'metadata.xml')
 			try:
-				metadata = xml.etree.ElementTree.parse(metadata_path)
+				metadata = ElementTree.parse(metadata_path)
 			except IOError:
 				pass
 			except (ExpatError, EnvironmentError) as e:

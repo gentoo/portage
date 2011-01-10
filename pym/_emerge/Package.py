@@ -73,6 +73,11 @@ class Package(Task):
 		self._validate_deps()
 		self.masks = self._masks()
 		self.visible = self._visible(self.masks)
+		if self.operation is None:
+			if self.onlydeps or self.installed:
+				self.operation = "nomerge"
+			else:
+				self.operation = "merge"
 
 	def _validate_deps(self):
 		"""
@@ -273,11 +278,6 @@ class Package(Task):
 		msgs.append(msg)
 
 	def __str__(self):
-		if self.operation is None:
-			self.operation = "merge"
-			if self.onlydeps or self.installed:
-				self.operation = "nomerge"
-
 		if self.operation == "merge":
 			if self.type_name == "binary":
 				cpv_color = "PKG_BINARY_MERGE"
@@ -321,6 +321,14 @@ class Package(Task):
 			self._force = None
 			self._mask = None
 			self.enabled = frozenset(use_str.split())
+			if pkg.built:
+				# Use IUSE to validate USE settings for built packages,
+				# in case the package manager that built this package
+				# failed to do that for some reason (or in case of
+				# data corruption).
+				missing_iuse = pkg.iuse.get_missing_iuse(self.enabled)
+				if missing_iuse:
+					self.enabled = self.enabled.difference(missing_iuse)
 
 		def _init_force_mask(self):
 			pkgsettings = self._pkg._get_pkgsettings()
@@ -342,6 +350,13 @@ class Package(Task):
 	@property
 	def repo(self):
 		return self.metadata['repository']
+
+	@property
+	def repo_priority(self):
+		repo_info = self.root_config.settings.repositories.prepos.get(self.repo)
+		if repo_info is None:
+			return None
+		return repo_info.priority
 
 	@property
 	def use(self):
@@ -408,10 +423,6 @@ class Package(Task):
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
 		if hash_key is None:
-			if self.operation is None:
-				self.operation = "merge"
-				if self.onlydeps or self.installed:
-					self.operation = "nomerge"
 			# For installed (and binary) packages we don't care for the repo
 			# when it comes to hashing, because there can only be one cpv.
 			# So overwrite the repo_key with type_name.

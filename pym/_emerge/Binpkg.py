@@ -9,6 +9,7 @@ from _emerge.CompositeTask import CompositeTask
 from _emerge.BinpkgVerifier import BinpkgVerifier
 from _emerge.EbuildMerge import EbuildMerge
 from _emerge.EbuildBuildDir import EbuildBuildDir
+from portage.eapi import eapi_exports_replace_vars
 from portage.util import writemsg
 import portage
 from portage import os
@@ -54,7 +55,15 @@ class Binpkg(CompositeTask):
 				(dir_path, self.settings['PORTAGE_BUILDDIR']))
 		self._build_dir = EbuildBuildDir(
 			scheduler=self.scheduler, settings=settings)
-		settings.configdict["pkg"]["EMERGE_FROM"] = pkg.type_name
+		settings.configdict["pkg"]["EMERGE_FROM"] = "binary"
+		settings.configdict["pkg"]["MERGE_TYPE"] = "binary"
+
+		if eapi_exports_replace_vars(settings["EAPI"]):
+			vardb = self.pkg.root_config.trees["vartree"].dbapi
+			settings["REPLACING_VERSIONS"] = " ".join(
+				set(portage.versions.cpv_getversion(x) \
+					for x in vardb.match(self.pkg.slot_atom) + \
+					vardb.match('='+self.pkg.cpv)))
 
 		# The prefetcher has already completed or it
 		# could be running now. If it's running now,

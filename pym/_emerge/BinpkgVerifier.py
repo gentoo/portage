@@ -51,13 +51,7 @@ class BinpkgVerifier(AsynchronousTask):
 					noiselevel=-1)
 				rval = 1
 			if rval == os.EX_OK:
-				# If this was successful, discard the log here since otherwise
-				# we'll get multiple logs for the same package.
-				if self.logfile is not None:
-					try:
-						os.unlink(self.logfile)
-					except OSError:
-						pass
+				pass
 			elif file_exists:
 				pkg_path = bintree.getname(pkg.cpv)
 				head, tail = os.path.split(pkg_path)

@@ -14,7 +14,7 @@ case $1 in
 		shift
 		for skip in "$@" ; do
 			[[ -d ${D}${skip} || -f ${D}${skip} ]] \
-				&& touch "${D}${skip}.ecompress.skip"
+				&& >> "${D}${skip}.ecompress.skip"
 		done
 		exit 0
 		;;
@@ -22,8 +22,11 @@ case $1 in
 		shift
 		set -- "${@/%/.ecompress.dir}"
 		set -- "${@/#/${D}}"
-		touch "$@"
-		ret=$?
+		ret=0
+		for x in "$@" ; do
+			>> "$x"
+			((ret|=$?))
+		done
 		[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
 		exit $ret
 		;;
@@ -60,7 +63,7 @@ funk_up_dir() {
 	((ret|=$?))
 
 	find "${dir}" -type l -print0 | \
-	while read -d $'\0' brokenlink ; do
+	while read -r -d $'\0' brokenlink ; do
 		[[ -e ${brokenlink} ]] && continue
 		olddest=$(readlink "${brokenlink}")
 		[[ ${act} == "compress" ]] \
@@ -83,7 +86,7 @@ _relocate_skip_dirs() {
 	[[ -d ${srctree} ]] || return 0
 
 	find "${srctree}" -name '*.ecompress.skip' -print0 | \
-	while read -d $'\0' src ; do
+	while read -r -d $'\0' src ; do
 		src=${src%.ecompress.skip}
 		dst="${dsttree}${src#${srctree}}"
 		parent=${dst%/*}

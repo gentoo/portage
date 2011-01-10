@@ -424,8 +424,8 @@ def abssymlink(symlink):
 
 _doebuild_manifest_exempt_depend = 0
 
-_testing_eapis = frozenset(["4_pre1"])
-_deprecated_eapis = frozenset(["3_pre2", "3_pre1", "2_pre3", "2_pre2", "2_pre1"])
+_testing_eapis = frozenset([])
+_deprecated_eapis = frozenset(["4_pre1", "3_pre2", "3_pre1"])
 
 def _eapi_is_deprecated(eapi):
 	return eapi in _deprecated_eapis
@@ -517,7 +517,8 @@ def create_trees(config_root=None, target_root=None, trees=None):
 		# environment to apply to the config that's associated
 		# with ROOT != "/", so pass a nearly empty dict for the env parameter.
 		clean_env = {}
-		for k in ('PATH', 'PORTAGE_GRPNAME', 'PORTAGE_USERNAME', 'TERM',
+		for k in ('PATH', 'PORTAGE_GRPNAME', 'PORTAGE_USERNAME',
+			'SSH_AGENT_PID', 'SSH_AUTH_SOCK', 'TERM',
 			'ftp_proxy', 'http_proxy', 'no_proxy'):
 			v = settings.get(k)
 			if v is not None:

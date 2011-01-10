@@ -17,8 +17,6 @@ class CircularDependencyTestCase(TestCase):
 
 	def testCircularDependency(self):
 
-		EAPI_4 = '4_pre1'
-
 		ebuilds = {
 			"dev-libs/Z-1": { "DEPEND": "foo? ( !bar? ( dev-libs/Y ) )", "IUSE": "+foo bar", "EAPI": 1 }, 
 			"dev-libs/Z-2": { "DEPEND": "foo? ( dev-libs/Y ) !bar? ( dev-libs/Y )", "IUSE": "+foo bar", "EAPI": 1 }, 
@@ -28,8 +26,8 @@ class CircularDependencyTestCase(TestCase):
 			"dev-libs/W-2": { "DEPEND": "dev-libs/Z[foo=] dev-libs/Y", "IUSE": "+foo", "EAPI": 2 },
 			"dev-libs/W-3": { "DEPEND": "dev-libs/Z[bar] dev-libs/Y", "EAPI": 2 },
 
-			"app-misc/A-1": { "DEPEND": "foo? ( =app-misc/B-1 )", "IUSE": "+foo bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": EAPI_4 },
-			"app-misc/A-2": { "DEPEND": "foo? ( =app-misc/B-2 ) bar? ( =app-misc/B-2 )", "IUSE": "+foo bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": EAPI_4 },
+			"app-misc/A-1": { "DEPEND": "foo? ( =app-misc/B-1 )", "IUSE": "+foo bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": "4" },
+			"app-misc/A-2": { "DEPEND": "foo? ( =app-misc/B-2 ) bar? ( =app-misc/B-2 )", "IUSE": "+foo bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": "4" },
 			"app-misc/B-1": { "DEPEND": "=app-misc/A-1" },
 			"app-misc/B-2": { "DEPEND": "=app-misc/A-2" },
 			}

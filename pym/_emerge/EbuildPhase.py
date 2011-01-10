@@ -29,6 +29,13 @@ class EbuildPhase(CompositeTask):
 
 	__slots__ = ("actionmap", "phase", "settings")
 
+	# FEATURES displayed prior to setup phase
+	_features_display = ("ccache", "distcc", "fakeroot",
+		"installsources", "keeptemp", "keepwork", "nostrip",
+		"preserve-libs", "sandbox", "selinux", "sesandbox",
+		"splitdebug", "suidctl", "test", "userpriv",
+		"usersandbox")
+
 	def _start(self):
 
 		need_builddir = self.phase not in EbuildProcess._phases_without_builddir
@@ -54,6 +61,7 @@ class EbuildPhase(CompositeTask):
 				use = self.settings['PORTAGE_USE']
 
 			maint_str = ""
+			upstr_str = ""
 			metadata_xml_path = os.path.join(os.path.dirname(self.settings['EBUILD']), "metadata.xml")
 			if os.path.isfile(metadata_xml_path):
 				herds_path = os.path.join(self.settings['PORTDIR'],
@@ -61,6 +69,7 @@ class EbuildPhase(CompositeTask):
 				try:
 					metadata_xml = MetaDataXML(metadata_xml_path, herds_path)
 					maint_str = metadata_xml.format_maintainer_string()
+					upstr_str = metadata_xml.format_upstream_string()
 				except SyntaxError:
 					maint_str = "<invalid metadata.xml>"
 
@@ -70,7 +79,17 @@ class EbuildPhase(CompositeTask):
 				msg.append("Repository: %s" % self.settings['PORTAGE_REPO_NAME'])
 			if maint_str:
 				msg.append("Maintainer: %s" % maint_str)
-			msg.append("USE:  %s" % use)
+			if upstr_str:
+				msg.append("Upstream:   %s" % upstr_str)
+
+			msg.append("USE:        %s" % use)
+			relevant_features = []
+			enabled_features = self.settings.features
+			for x in self._features_display:
+				if x in enabled_features:
+					relevant_features.append(x)
+			if relevant_features:
+				msg.append("FEATURES:   %s" % " ".join(relevant_features))
 			self._elog('einfo', msg)
 
 		if self.phase == 'package':

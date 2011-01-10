@@ -989,6 +989,9 @@ def apply_recursive_permissions(top, uid=-1, gid=-1,
 	Returns True if all permissions are applied and False if some are left
 	unapplied."""
 
+	# Avoid issues with circular symbolic links, as in bug #339670.
+	follow_links = False
+
 	if onerror is None:
 		# Default behavior is to dump errors to stderr so they won't
 		# go unnoticed.  Callers can pass in a quiet instance.
@@ -1005,7 +1008,8 @@ def apply_recursive_permissions(top, uid=-1, gid=-1,
 	for dirpath, dirnames, filenames in os.walk(top):
 		try:
 			applied = apply_secpass_permissions(dirpath,
-				uid=uid, gid=gid, mode=dirmode, mask=dirmask)
+				uid=uid, gid=gid, mode=dirmode, mask=dirmask,
+				follow_links=follow_links)
 			if not applied:
 				all_applied = False
 		except PortageException as e:
@@ -1015,7 +1019,8 @@ def apply_recursive_permissions(top, uid=-1, gid=-1,
 		for name in filenames:
 			try:
 				applied = apply_secpass_permissions(os.path.join(dirpath, name),
-					uid=uid, gid=gid, mode=filemode, mask=filemask)
+					uid=uid, gid=gid, mode=filemode, mask=filemask,
+					follow_links=follow_links)
 				if not applied:
 					all_applied = False
 			except PortageException as e:

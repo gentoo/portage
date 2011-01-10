@@ -306,7 +306,7 @@ class MetaDataXML(object):
 
 		if self._upstream is None:
 			if self._xml_tree is None:
-				self._useflags = tuple()
+				self._upstream = tuple()
 			else:
 				self._upstream = tuple(_Upstream(node) \
 					for node in self._xml_tree.findall('upstream'))
@@ -347,4 +347,30 @@ class MetaDataXML(object):
 		if maintainers:
 			maint_str += " " + ",".join(maintainers)
 
+		return maint_str
+
+	def format_upstream_string(self):
+		"""Format string containing upstream maintainers and bugtrackers.
+		Used by emerge to display upstream information.
+
+		@rtype: String
+		@return: a string containing upstream maintainers and bugtrackers
+		"""
+		maintainers = []
+		for upstream in self.upstream():
+			for maintainer in upstream.maintainers:
+				if maintainer.email is None or not maintainer.email.strip():
+					if maintainer.name and maintainer.name.strip():
+						maintainers.append(maintainer.name)
+				else:
+					maintainers.append(maintainer.email)
+
+			for bugtracker in upstream.bugtrackers:
+				if bugtracker.startswith("mailto:"):
+					bugtracker = bugtracker[7:]
+				maintainers.append(bugtracker)
+
+
+		maintainers = list(unique_everseen(maintainers))
+		maint_str = " ".join(maintainers)
 		return maint_str

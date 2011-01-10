@@ -206,7 +206,7 @@ user_special() {
 			echo "ERROR: user_special() called without arguments"
 			return 1
 		fi
-		while read pat; do
+		while read -r pat; do
 			echo ${1} | grep "${pat}" > /dev/null && return 0
 		done < ${PORTAGE_CONFIGROOT}etc/etc-update.special
 	fi
@@ -339,6 +339,7 @@ do_cfg() {
 2) Delete update, keeping original as is
 3) Interactively merge original with update
 4) Show differences again
+5) Save update as example config
 Please select from the menu above (-1 to ignore this update): "
 			my_input=$(read_int)
 		fi
@@ -360,6 +361,8 @@ Please select from the menu above (-1 to ignore this update): "
 			   continue
 			   ;;
 			4) continue
+			   ;;
+			5) do_distconf "${file}" "${ofile}"
 			   ;;
 			*) continue
 			   ;;
@@ -442,6 +445,35 @@ Please select from the menu above (-1 to exit, losing this merge): "
 	done
 	rm ${rm_opts} "${mfile}"
 	return 255
+}
+
+do_distconf() {
+	# search for any previously saved distribution config
+	# files and number the current one accordingly
+
+	local file="${1}"
+	local ofile="${2}"
+	local -i count
+	local -i fill
+	local suffix
+	local efile
+
+	for ((count = 0; count <= 9999; count++)); do
+		suffix=".dist_"
+		for ((fill = 4 - ${#count}; fill > 0; fill--)); do
+			suffix+="0"
+		done
+		suffix+="${count}"
+		efile="${ofile}${suffix}"
+		if [[ ! -f ${efile} ]]; then
+			mv ${mv_opts} "${file}" "${efile}"
+			break
+		elif diff_command "${file}" "${efile}" &> /dev/null; then
+			# replace identical copy
+			mv "${file}" "${efile}"
+			break
+		fi
+	done
 }
 
 die() {
