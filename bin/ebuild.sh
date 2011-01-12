@@ -511,7 +511,9 @@ econf() {
 		fi
 
 		# EAPI=4 adds --disable-dependency-tracking to econf
-		if ! hasq "$EAPI" 0 1 2 3 3_pre2 ; then
+		if ! hasq "$EAPI" 0 1 2 3 3_pre2 && \
+			"${ECONF_SOURCE}/configure" --help 2>/dev/null | \
+			grep -q disable-dependency-tracking ; then
 			set -- --disable-dependency-tracking "$@"
 		fi
 
