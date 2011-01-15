@@ -1,5 +1,5 @@
 #!/usr/bin/python -O
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # Next to do: dep syntax checking in mask files
@@ -113,8 +113,10 @@ def err(txt):
 
 def exithandler(signum=None, frame=None):
 	logging.fatal("Interrupted; exiting...")
-	sys.exit(1)
-	os.kill(0, signal.SIGKILL)
+	if signum is None:
+		sys.exit(1)
+	else:
+		sys.exit(128 + signum)
 
 signal.signal(signal.SIGINT,exithandler)
 

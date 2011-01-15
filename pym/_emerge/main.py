@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -1586,7 +1586,7 @@ def emerge_main():
 		signal.signal(signal.SIGINT, signal.SIG_IGN)
 		signal.signal(signal.SIGTERM, signal.SIG_IGN)
 		portage.util.writemsg("\n\nExiting on signal %(signal)s\n" % {"signal":signum})
-		sys.exit(100+signum)
+		sys.exit(128 + signum)
 	signal.signal(signal.SIGINT, emergeexitsig)
 	signal.signal(signal.SIGTERM, emergeexitsig)
 
