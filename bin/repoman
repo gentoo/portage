@@ -578,6 +578,8 @@ portdir_overlay = os.path.realpath(portdir_overlay)
 repo_info = portdb._repo_info[portdir_overlay]
 portdb.porttrees = list(repo_info.eclass_db.porttrees)
 portdir = portdb.porttrees[0]
+repoman_settings['PORTDIR'] = portdir
+repoman_settings.backup_changes('PORTDIR')
 
 # Generate an appropriate PORTDIR_OVERLAY value for passing into the
 # profile-specific config constructor calls.
