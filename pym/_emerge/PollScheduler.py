@@ -1,10 +1,15 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import gzip
 import logging
 import select
 import time
+
+try:
+	import threading
+except ImportError:
+	import dummy_threading as threading
 
 from portage import _encodings
 from portage import _unicode_encode
@@ -21,6 +26,8 @@ class PollScheduler(object):
 		__slots__ = ("output", "register", "schedule", "unregister")
 
 	def __init__(self):
+		self._terminated = threading.Event()
+		self._terminated_tasks = False
 		self._max_jobs = 1
 		self._max_load = None
 		self._jobs = 0
@@ -37,6 +44,24 @@ class PollScheduler(object):
 			register=self._register,
 			schedule=self._schedule_wait,
 			unregister=self._unregister)
+
+	def terminate(self):
+		"""
+		Schedules asynchronous, graceful termination of the scheduler
+		at the earliest opportunity.
+
+		This method is thread-safe (and safe for signal handlers).
+		"""
+		self._terminated.set()
+
+	def _terminate_tasks(self):
+		"""
+		Send signals to terminate all tasks. This is called once
+		from the event dispatching thread. All task should be
+		cleaned up at the earliest opportunity, but not necessarily
+		before this method returns.
+		"""
+		raise NotImplementedError()
 
 	def _schedule(self):
 		"""
@@ -120,6 +145,10 @@ class PollScheduler(object):
 		raises StopIteration if timeout is None and there are
 		no file descriptors to poll.
 		"""
+		if self._terminated.is_set() and \
+			not self._terminated_tasks:
+			self._terminated_tasks = True
+			self._terminate_tasks()
 		if not self._poll_event_queue:
 			self._poll(timeout)
 			if not self._poll_event_queue:
