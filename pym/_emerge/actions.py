@@ -147,7 +147,6 @@ def action_build(settings, trees, mtimedb,
 
 	ldpath_mtimes = mtimedb["ldpath"]
 	favorites=[]
-	merge_count = 0
 	buildpkgonly = "--buildpkgonly" in myopts
 	pretend = "--pretend" in myopts
 	fetchonly = "--fetchonly" in myopts or "--fetch-all-uri" in myopts
@@ -435,32 +434,7 @@ def action_build(settings, trees, mtimedb,
 		del mydepgraph
 		clear_caches(trees)
 
-		received_signal = []
-
-		def emergeexitsig(signum, frame):
-			signal.signal(signal.SIGINT, signal.SIG_IGN)
-			signal.signal(signal.SIGTERM, signal.SIG_IGN)
-			portage.util.writemsg("\n\nExiting on signal %(signal)s\n" % \
-				{"signal":signum})
-			mergetask.terminate()
-			received_signal.append(128 + signum)
-
-		earlier_sigint_handler = signal.signal(signal.SIGINT, emergeexitsig)
-		earlier_sigterm_handler = signal.signal(signal.SIGTERM, emergeexitsig)
-
-		try:
-			retval = mergetask.merge()
-
-			if received_signal:
-				sys.exit(received_signal[0])
-		finally:
-			# Restore previous handlers
-			if earlier_sigint_handler is not None:
-				signal.signal(signal.SIGINT, earlier_sigint_handler)
-			if earlier_sigterm_handler is not None:
-				signal.signal(signal.SIGTERM, earlier_sigterm_handler)
-
-		merge_count = mergetask.curval
+		retval = mergetask.merge()
 
 		if retval == os.EX_OK and not (buildpkgonly or fetchonly or pretend):
 			if "yes" == settings.get("AUTOCLEAN"):
@@ -1853,15 +1827,19 @@ def action_regen(settings, portdb, max_jobs, max_load):
 
 	try:
 		regen.run()
-
-		if received_signal:
-			sys.exit(received_signal[0])
 	finally:
 		# Restore previous handlers
 		if earlier_sigint_handler is not None:
 			signal.signal(signal.SIGINT, earlier_sigint_handler)
+		else:
+			signal.signal(signal.SIGINT, signal.SIG_DFL)
 		if earlier_sigterm_handler is not None:
 			signal.signal(signal.SIGTERM, earlier_sigterm_handler)
+		else:
+			signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+	if received_signal:
+		sys.exit(received_signal[0])
 
 	portage.writemsg_stdout("done!\n")
 	return regen.returncode

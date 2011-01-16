@@ -272,15 +272,19 @@ class GenCache(object):
 
 		try:
 			self._regen.run()
-
-			if received_signal:
-				sys.exit(received_signal[0])
 		finally:
 			# Restore previous handlers
 			if earlier_sigint_handler is not None:
 				signal.signal(signal.SIGINT, earlier_sigint_handler)
+			else:
+				signal.signal(signal.SIGINT, signal.SIG_DFL)
 			if earlier_sigterm_handler is not None:
 				signal.signal(signal.SIGTERM, earlier_sigterm_handler)
+			else:
+				signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+		if received_signal:
+			sys.exit(received_signal[0])
 
 		self.returncode |= self._regen.returncode
 		cp_missing = self._cp_missing
