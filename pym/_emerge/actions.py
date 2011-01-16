@@ -417,9 +417,6 @@ def action_build(settings, trees, mtimedb,
 
 		if ("--resume" in myopts):
 			favorites=mtimedb["resume"]["favorites"]
-			mergetask = Scheduler(settings, trees, mtimedb, myopts,
-				spinner, favorites=favorites,
-				graph_config=mydepgraph.schedulerGraph())
 
 		else:
 			if "resume" in mtimedb and \
