@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -291,6 +291,11 @@ class Scheduler(PollScheduler):
 			cpv = portage_match.pop()
 			self._running_portage = self._pkg(cpv, "installed",
 				self._running_root, installed=True)
+
+	def _terminate_tasks(self):
+		self._status_display.quiet = True
+		for q in self._task_queues.values():
+			q.clear()
 
 	def _init_graph(self, graph_config):
 		"""
@@ -1160,6 +1165,10 @@ class Scheduler(PollScheduler):
 
 		while True:
 			rval = self._merge()
+
+			if self._terminated.is_set():
+				return 1
+
 			if rval == os.EX_OK or fetchonly or not keep_going:
 				break
 			if "resume" not in mtimedb:
@@ -1398,9 +1407,9 @@ class Scheduler(PollScheduler):
 				build_dir=build_dir, build_log=build_log,
 				pkg=pkg,
 				returncode=merge.returncode))
-			self._failed_pkg_msg(self._failed_pkgs[-1], "install", "to")
-
-			self._status_display.failed = len(self._failed_pkgs)
+			if not self._terminated.is_set():
+				self._failed_pkg_msg(self._failed_pkgs[-1], "install", "to")
+				self._status_display.failed = len(self._failed_pkgs)
 			return
 
 		self._task_complete(pkg)
@@ -1452,9 +1461,9 @@ class Scheduler(PollScheduler):
 				build_dir=build_dir, build_log=build_log,
 				pkg=build.pkg,
 				returncode=build.returncode))
-			self._failed_pkg_msg(self._failed_pkgs[-1], "emerge", "for")
-
-			self._status_display.failed = len(self._failed_pkgs)
+			if not self._terminated.is_set():
+				self._failed_pkg_msg(self._failed_pkgs[-1], "emerge", "for")
+				self._status_display.failed = len(self._failed_pkgs)
 			self._deallocate_config(build.settings)
 		self._jobs -= 1
 		self._status_display.running = self._jobs
@@ -1631,7 +1640,7 @@ class Scheduler(PollScheduler):
 				self._poll_loop()
 
 	def _keep_scheduling(self):
-		return bool(self._pkg_queue and \
+		return bool(not self._terminated.is_set() and self._pkg_queue and \
 			not (self._failed_pkgs and not self._build_opts.fetchonly))
 
 	def _is_work_scheduled(self):

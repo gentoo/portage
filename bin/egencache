@@ -258,7 +258,30 @@ class GenCache(object):
 					level=logging.ERROR, noiselevel=-1)
 
 	def run(self):
-		self._regen.run()
+
+		received_signal = []
+
+		def sighandler(signum, frame):
+			signal.signal(signal.SIGINT, signal.SIG_IGN)
+			signal.signal(signal.SIGTERM, signal.SIG_IGN)
+			self._regen.terminate()
+			received_signal.append(128 + signum)
+
+		earlier_sigint_handler = signal.signal(signal.SIGINT, sighandler)
+		earlier_sigterm_handler = signal.signal(signal.SIGTERM, sighandler)
+
+		try:
+			self._regen.run()
+
+			if received_signal:
+				sys.exit(received_signal[0])
+		finally:
+			# Restore previous handlers
+			if earlier_sigint_handler is not None:
+				signal.signal(signal.SIGINT, earlier_sigint_handler)
+			if earlier_sigterm_handler is not None:
+				signal.signal(signal.SIGTERM, earlier_sigterm_handler)
+
 		self.returncode |= self._regen.returncode
 		cp_missing = self._cp_missing
 
