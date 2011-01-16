@@ -21,7 +21,7 @@ from portage.cache.cache_errors import CacheError
 from portage.cache.mappings import Mapping
 from portage.dbapi import dbapi
 from portage.exception import PortageException, \
-	FileNotFound, InvalidDependString, InvalidPackageName
+	FileNotFound, InvalidAtom, InvalidDependString, InvalidPackageName
 from portage.localization import _
 from portage.manifest import Manifest
 
