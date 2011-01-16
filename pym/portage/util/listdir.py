@@ -125,8 +125,7 @@ def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelis
 	if recursive:
 		x=0
 		while x<len(ftype):
-			if ftype[x] == 1 and not \
-				(ignorecvs and os.path.basename(list[x]) in _ignorecvs_dirs):
+			if ftype[x] == 1:
 				l,f = cacheddir(mypath+"/"+list[x], ignorecvs, ignorelist, EmptyOnError,
 					followSymlinks)
 
