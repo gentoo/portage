@@ -10,7 +10,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum',
 	'portage.data:portage_gid,secpass',
 	'portage.dbapi.dep_expand:dep_expand',
-	'portage.dep:dep_getkey,match_from_list,use_reduce',
+	'portage.dep:Atom,dep_getkey,match_from_list,use_reduce',
 	'portage.package.ebuild.doebuild:doebuild',
 	'portage.util:ensure_dirs,shlex_split,writemsg,writemsg_level',
 	'portage.util.listdir:listdir',
@@ -684,10 +684,13 @@ class portdbapi(dbapi):
 		for x in categories:
 			for oroot in trees:
 				for y in listdir(oroot+"/"+x, EmptyOnError=1, ignorecvs=1, dirsonly=1):
-					if not self._pkg_dir_name_re.match(y) or \
-						y == "CVS":
+					try:
+						atom = Atom("%s/%s" % (x, y))
+					except InvalidAtom:
 						continue
-					d[x+"/"+y] = None
+					if atom != atom.cp:
+						continue
+					d[atom.cp] = None
 		l = list(d)
 		l.sort()
 		return l
