@@ -1197,7 +1197,7 @@ class dblink(object):
 		r'(?P<dir>(dev|dir|fif) (.+))|' + \
 		r'(?P<obj>(obj) (.+) (\S+) (\d+))|' + \
 		r'(?P<sym>(sym) (.+) -> (.+) ((\d+)|(?P<oldsym>(' + \
-		'\(\d+, \d+L, \d+L, \d+, \d+, \d+, \d+L, \d+, (\d+), \d+\)))))' + \
+		r'\(\d+, \d+L, \d+L, \d+, \d+, \d+, \d+L, \d+, (\d+), \d+\)))))' + \
 		r')$'
 	)
 
