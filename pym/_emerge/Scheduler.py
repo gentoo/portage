@@ -1445,6 +1445,10 @@ class Scheduler(PollScheduler):
 			# task complete (if any).
 			if self._digraph is not None and \
 				pkg_to_replace in self._digraph:
+				try:
+					self._pkg_queue.remove(pkg_to_replace)
+				except ValueError:
+					pass
 				self._task_complete(pkg_to_replace)
 			else:
 				self._pkg_cache.pop(pkg_to_replace, None)
