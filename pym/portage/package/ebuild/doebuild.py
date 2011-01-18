@@ -241,8 +241,9 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			# can't do anything with this.
 			raise UnsupportedAPIException(mycpv, eapi)
 
-		if "A" not in mysettings.configdict["pkg"] or \
-			"AA" not in mysettings.configdict["pkg"]:
+		if hasattr(mydbapi, "getFetchMap") and \
+			("A" not in mysettings.configdict["pkg"] or \
+			"AA" not in mysettings.configdict["pkg"]):
 			src_uri, = mydbapi.aux_get(mysettings.mycpv,
 				["SRC_URI"], mytree=mytree)
 			metadata = {
@@ -257,8 +258,6 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			else:
 				mysettings.configdict["pkg"]["A"] = " ".join(uri_map)
 
-			# NOTE: We initialize AA here, regardless of EAPI, since
-			# it's used by doebuild() for fetchall support.
 			try:
 				uri_map = _parse_uri_map(mysettings.mycpv, metadata)
 			except InvalidDependString:
@@ -713,6 +712,32 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		alist = set(mysettings.configdict["pkg"].get("A", "").split())
 		aalist = set(mysettings.configdict["pkg"].get("AA", "").split())
 		if need_distfiles:
+
+			src_uri, = mydbapi.aux_get(mysettings.mycpv,
+				["SRC_URI"], mytree=os.path.dirname(os.path.dirname(
+				os.path.dirname(myebuild))))
+			metadata = {
+				"EAPI"    : mysettings["EAPI"],
+				"SRC_URI" : src_uri,
+			}
+			use = frozenset(mysettings["PORTAGE_USE"].split())
+			try:
+				alist = _parse_uri_map(mysettings.mycpv, metadata, use=use)
+			except InvalidDependString as e:
+				writemsg("!!! %s\n" % str(e), noiselevel=-1)
+				writemsg(_("!!! Invalid SRC_URI for '%s'.\n") % mycpv,
+					noiselevel=-1)
+				del e
+				return 1
+
+			try:
+				aalist = _parse_uri_map(mysettings.mycpv, metadata)
+			except InvalidDependString as e:
+				writemsg("!!! %s\n" % str(e), noiselevel=-1)
+				writemsg(_("!!! Invalid SRC_URI for '%s'.\n") % mycpv,
+					noiselevel=-1)
+				del e
+				return 1
 
 			if "mirror" in features or fetchall:
 				fetchme = aalist
