@@ -231,7 +231,7 @@ class EbuildBuild(CompositeTask):
 				os.path.dirname(self._ebuild_path)))
 			portdb = self.pkg.root_config.trees[self._tree].dbapi
 			fetch_map = portdb.getFetchMap(self.pkg.cpv,
-				useflags=self.pkg.use, mytree=mytree)
+				useflags=self.pkg.use.enabled, mytree=mytree)
 			self.settings.configdict["pkg"]["A"] = " ".join(fetch_map)
 		nofetch_phase = EbuildPhase(background=self.background,
 			phase='nofetch', scheduler=self.scheduler, settings=self.settings)
