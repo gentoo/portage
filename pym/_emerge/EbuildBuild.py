@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.EbuildExecuter import EbuildExecuter
@@ -226,6 +226,13 @@ class EbuildBuild(CompositeTask):
 			return
 
 		self.returncode = None
+		if "A" not in self.settings.configdict["pkg"]:
+			mytree = os.path.dirname(os.path.dirname(
+				os.path.dirname(self._ebuild_path)))
+			portdb = self.pkg.root_config.trees[self._tree].dbapi
+			fetch_map = portdb.getFetchMap(self.pkg.cpv,
+				useflags=self.pkg.use, mytree=mytree)
+			self.settings.configdict["pkg"]["A"] = " ".join(fetch_map)
 		nofetch_phase = EbuildPhase(background=self.background,
 			phase='nofetch', scheduler=self.scheduler, settings=self.settings)
 		self._start_task(nofetch_phase, self._nofetch_exit)
