@@ -37,6 +37,7 @@ from portage.const import EBUILD_SH_ENV_FILE, EBUILD_SH_ENV_DIR, \
 	EBUILD_SH_BINARY, INVALID_ENV_FILE, MISC_SH_BINARY
 from portage.data import portage_gid, portage_uid, secpass, \
 	uid, userpriv_groups
+from portage.dbapi.porttree import _parse_uri_map
 from portage.dbapi.virtual import fakedbapi
 from portage.dep import Atom, paren_enclose, use_reduce
 from portage.eapi import eapi_exports_KV, eapi_exports_merge_type, \
@@ -132,6 +133,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	mydbapi = db
 	ebuild_path = os.path.abspath(myebuild)
 	pkg_dir     = os.path.dirname(ebuild_path)
+	mytree = os.path.dirname(os.path.dirname(pkg_dir))
 
 	if "CATEGORY" in mysettings.configdict["pkg"]:
 		cat = mysettings.configdict["pkg"]["CATEGORY"]
@@ -199,7 +201,6 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	mysettings["PF"]       = mypv
 
 	if hasattr(mydbapi, '_repo_info'):
-		mytree = os.path.dirname(os.path.dirname(pkg_dir))
 		repo_info = mydbapi._repo_info[mytree]
 		mysettings['PORTDIR'] = repo_info.portdir
 		mysettings['PORTDIR_OVERLAY'] = repo_info.portdir_overlay
@@ -239,6 +240,31 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 		if not eapi_is_supported(eapi):
 			# can't do anything with this.
 			raise UnsupportedAPIException(mycpv, eapi)
+
+		if "A" not in mysettings.configdict["pkg"] or \
+			"AA" not in mysettings.configdict["pkg"]:
+			src_uri, = mydbapi.aux_get(mysettings.mycpv,
+				["SRC_URI"], mytree=mytree)
+			metadata = {
+				"EAPI"    : eapi,
+				"SRC_URI" : src_uri,
+			}
+			use = frozenset(mysettings["PORTAGE_USE"].split())
+			try:
+				uri_map = _parse_uri_map(mysettings.mycpv, metadata, use=use)
+			except InvalidDependString:
+				mysettings.configdict["pkg"]["A"] = ""
+			else:
+				mysettings.configdict["pkg"]["A"] = " ".join(uri_map)
+
+			# NOTE: We initialize AA here, regardless of EAPI, since
+			# it's used by doebuild() for fetchall support.
+			try:
+				uri_map = _parse_uri_map(mysettings.mycpv, metadata)
+			except InvalidDependString:
+				mysettings.configdict["pkg"]["AA"] = ""
+			else:
+				mysettings.configdict["pkg"]["AA"] = " ".join(uri_map)
 
 	if mysplit[2] == "r0":
 		mysettings["PVR"]=mysplit[1]
@@ -681,50 +707,21 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# Only try and fetch the files if we are going to need them ...
 		# otherwise, if user has FEATURES=noauto and they run `ebuild clean
 		# unpack compile install`, we will try and fetch 4 times :/
-		need_distfiles = \
+		need_distfiles = tree == "porttree" and \
 			(mydo in ("fetch", "unpack") or \
 			mydo not in ("digest", "manifest") and "noauto" not in features)
-		alist = mysettings.configdict["pkg"].get("A")
-		aalist = mysettings.configdict["pkg"].get("AA")
-		if not hasattr(mydbapi, 'getFetchMap'):
-			if alist is None:
-				alist = ""
-			if aalist is None:
-				aalist = ""
-			alist = set(alist.split())
-			aalist = set(aalist.split())
-		elif alist is None or aalist is None or \
-			need_distfiles:
-			# Make sure we get the correct tree in case there are overlays.
-			mytree = os.path.realpath(
-				os.path.dirname(os.path.dirname(mysettings["O"])))
-			useflags = mysettings["PORTAGE_USE"].split()
-			try:
-				alist = mydbapi.getFetchMap(mycpv, useflags=useflags,
-					mytree=mytree)
-				aalist = mydbapi.getFetchMap(mycpv, mytree=mytree)
-			except InvalidDependString as e:
-				writemsg("!!! %s\n" % str(e), noiselevel=-1)
-				writemsg(_("!!! Invalid SRC_URI for '%s'.\n") % mycpv,
-					noiselevel=-1)
-				del e
+		alist = set(mysettings.configdict["pkg"].get("A", "").split())
+		aalist = set(mysettings.configdict["pkg"].get("AA", "").split())
+		if need_distfiles:
+
+			if "mirror" in features or fetchall:
+				fetchme = aalist
+			else:
+				fetchme = alist
+			if not fetch(fetchme, mysettings, listonly=listonly,
+				fetchonly=fetchonly):
+				spawn_nofetch(mydbapi, myebuild, settings=mysettings)
 				return 1
-			mysettings.configdict["pkg"]["A"] = " ".join(alist)
-			mysettings.configdict["pkg"]["AA"] = " ".join(aalist)
-
-			if need_distfiles:
-				if "mirror" in features or fetchall:
-					fetchme = aalist
-				else:
-					fetchme = alist
-				if not fetch(fetchme, mysettings, listonly=listonly,
-					fetchonly=fetchonly):
-					spawn_nofetch(mydbapi, myebuild, settings=mysettings)
-					return 1
-
-		else:
-			alist = set(alist.split())
-			aalist = set(aalist.split())
 
 		if mydo == "fetch":
 			# Files are already checked inside fetch(),
