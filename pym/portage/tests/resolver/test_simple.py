@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -8,7 +8,7 @@ class SimpleResolverTestCase(TestCase):
 
 	def testSimple(self):
 		ebuilds = {
-			"dev-libs/A-1": {}, 
+			"dev-libs/A-1": { "KEYWORDS": "x86" }, 
 			"dev-libs/A-2": { "KEYWORDS": "~x86" },
 			"dev-libs/B-1.2": {},
 
@@ -18,17 +18,27 @@ class SimpleResolverTestCase(TestCase):
 			"app-misc/W-1": {},
 			}
 		installed = {
+			"dev-libs/A-1": {},
 			"dev-libs/B-1.1": {},
 			}
 
 		test_cases = (
 			ResolverPlaygroundTestCase(["dev-libs/A"], success = True, mergelist = ["dev-libs/A-1"]),
 			ResolverPlaygroundTestCase(["=dev-libs/A-2"], success = False),
+
+			ResolverPlaygroundTestCase(
+				["dev-libs/A"],
+				options = {"--noreplace": True},
+				success = True,
+				mergelist = []),
+
+			# This triggers a replacement since the dev-libs/B-1.1 ebuild
+			# is not available in the portage tree (see bug #351828).
 			ResolverPlaygroundTestCase(
 				["dev-libs/B"],
 				options = {"--noreplace": True},
 				success = True,
-				mergelist = []),
+				mergelist = ["dev-libs/B-1.2"]),
 			ResolverPlaygroundTestCase(
 				["dev-libs/B"],
 				options = {"--update": True},
