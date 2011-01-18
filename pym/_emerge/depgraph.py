@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -2954,14 +2954,16 @@ class depgraph(object):
 							continue
 					reinstall_for_flags = None
 
-					if not pkg.installed or \
-						(matched_packages and not avoid_update):
+					if not pkg.installed or matched_packages:
 						# Only enforce visibility on installed packages
 						# if there is at least one other visible package
 						# available. By filtering installed masked packages
 						# here, packages that have been masked since they
 						# were installed can be automatically downgraded
-						# to an unmasked version.
+						# to an unmasked version. NOTE: This code needs to
+						# be consistent with masking behavior inside
+						# _dep_check_composite_db, in order to prevent
+						# incorrect choices in || deps like bug #351828.
 
 						if not self._pkg_visibility_check(pkg, \
 							allow_unstable_keywords=allow_unstable_keywords,
@@ -2973,15 +2975,8 @@ class depgraph(object):
 						# version is masked by KEYWORDS, but never
 						# reinstall the same exact version only due
 						# to a KEYWORDS mask. See bug #252167.
-						if matched_packages:
 
-							different_version = None
-							for avail_pkg in matched_packages:
-								if not portage.dep.cpvequal(
-									pkg.cpv, avail_pkg.cpv):
-									different_version = avail_pkg
-									break
-							if different_version is not None:
+						if matched_packages:
 								# If the ebuild no longer exists or it's
 								# keywords have been dropped, reject built
 								# instances (installed or binary).
