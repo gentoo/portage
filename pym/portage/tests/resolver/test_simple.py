@@ -31,14 +31,11 @@ class SimpleResolverTestCase(TestCase):
 				options = {"--noreplace": True},
 				success = True,
 				mergelist = []),
-
-			# This triggers a replacement since the dev-libs/B-1.1 ebuild
-			# is not available in the portage tree (see bug #351828).
 			ResolverPlaygroundTestCase(
 				["dev-libs/B"],
 				options = {"--noreplace": True},
 				success = True,
-				mergelist = ["dev-libs/B-1.2"]),
+				mergelist = []),
 			ResolverPlaygroundTestCase(
 				["dev-libs/B"],
 				options = {"--update": True},

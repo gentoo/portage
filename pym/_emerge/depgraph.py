@@ -2914,7 +2914,8 @@ class depgraph(object):
 							continue
 					reinstall_for_flags = None
 
-					if not pkg.installed or matched_packages:
+					if not pkg.installed or \
+						(matched_packages and not avoid_update):
 						# Only enforce visibility on installed packages
 						# if there is at least one other visible package
 						# available. By filtering installed masked packages
@@ -5411,18 +5412,21 @@ class _dep_check_composite_db(dbapi):
 			myopts = self._depgraph._frozen_config.myopts
 			use_ebuild_visibility = myopts.get(
 				'--use-ebuild-visibility', 'n') != 'n'
+			avoid_update = "--update" not in myopts and \
+				"remove" not in self._depgraph._dynamic_config.myparams
 			usepkgonly = "--usepkgonly" in myopts
-			if not use_ebuild_visibility and usepkgonly:
-				return False
-			else:
-				try:
-					pkg_eb = self._depgraph._pkg(
-						pkg.cpv, "ebuild", pkg.root_config)
-				except portage.exception.PackageNotFound:
+			if not avoid_update:
+				if not use_ebuild_visibility and usepkgonly:
 					return False
 				else:
-					if not self._depgraph._pkg_visibility_check(pkg_eb):
+					try:
+						pkg_eb = self._depgraph._pkg(
+							pkg.cpv, "ebuild", pkg.root_config)
+					except portage.exception.PackageNotFound:
 						return False
+					else:
+						if not self._depgraph._pkg_visibility_check(pkg_eb):
+							return False
 
 		in_graph = self._depgraph._dynamic_config._slot_pkg_map[
 			self._root].get(pkg.slot_atom)
