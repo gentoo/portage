@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import shutil
@@ -54,10 +54,18 @@ def spawn_nofetch(portdb, ebuild_path, settings=None):
 	private_tmpdir = tempfile.mkdtemp(dir=portage_tmpdir)
 	settings['PORTAGE_TMPDIR'] = private_tmpdir
 	settings.backup_changes('PORTAGE_TMPDIR')
+	# private temp dir was just created, so it's not locked yet
+	settings.pop('PORTAGE_BUILDIR_LOCKED', None)
 
 	try:
 		doebuild_environment(ebuild_path, 'nofetch',
 			settings=settings, db=portdb)
+		if "A" not in settings.configdict["pkg"]:
+			mytree = os.path.dirname(os.path.dirname(
+				os.path.dirname(ebuild_path)))
+			fetch_map = portdb.getFetchMap(settings.mycpv,
+				useflags=settings["PORTAGE_USE"].split(), mytree=mytree)
+			settings.configdict["pkg"]["A"] = " ".join(fetch_map)
 		restrict = settings['PORTAGE_RESTRICT'].split()
 		defined_phases = settings['DEFINED_PHASES'].split()
 		if not defined_phases:

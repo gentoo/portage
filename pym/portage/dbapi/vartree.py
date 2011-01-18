@@ -1,4 +1,4 @@
-# Copyright 1998-2010 Gentoo Foundation
+# Copyright 1998-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -1210,7 +1210,8 @@ class dblink(object):
 	_contents_re = re.compile(r'^(' + \
 		r'(?P<dir>(dev|dir|fif) (.+))|' + \
 		r'(?P<obj>(obj) (.+) (\S+) (\d+))|' + \
-		r'(?P<sym>(sym) (.+) -> (.+) (\d+))' + \
+		r'(?P<sym>(sym) (.+) -> (.+) ((\d+)|(?P<oldsym>(' + \
+		r'\(\d+, \d+L, \d+L, \d+, \d+, \d+, \d+L, \d+, (\d+), \d+\)))))' + \
 		r')$'
 	)
 
@@ -1393,6 +1394,9 @@ class dblink(object):
 		obj_index = contents_re.groupindex['obj']
 		dir_index = contents_re.groupindex['dir']
 		sym_index = contents_re.groupindex['sym']
+		# The old symlink format may exist on systems that have packages
+		# which were installed many years ago (see bug #351814).
+		oldsym_index = contents_re.groupindex['oldsym']
 		# CONTENTS files already contain EPREFIX
 		myroot = self.settings['ROOT']
 		if myroot == os.path.sep:
@@ -1420,8 +1424,12 @@ class dblink(object):
 				data = (m.group(base+1),)
 			elif m.group(sym_index) is not None:
 				base = sym_index
+				if m.group(oldsym_index) is None:
+					mtime = m.group(base+5)
+				else:
+					mtime = m.group(base+8)
 				#format: type, mtime, dest
-				data = (m.group(base+1), m.group(base+4), m.group(base+3))
+				data = (m.group(base+1), mtime, m.group(base+3))
 			else:
 				# This won't happen as long the regular expression
 				# is written to only match valid entries.

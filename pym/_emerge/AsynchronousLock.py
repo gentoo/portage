@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import dummy_threading
@@ -23,11 +23,18 @@ class AsynchronousLock(AsynchronousTask):
 	"""
 	This uses the portage.locks module to acquire a lock asynchronously,
 	using either a thread (if available) or a subprocess.
+
+	The default behavior is to use a process instead of a thread, since
+	there is currently no way to interrupt a thread that is waiting for
+	a lock (notably, SIGINT doesn't work because python delivers all
+	signals to the main thread).
 	"""
 
 	__slots__ = ('path', 'scheduler',) + \
 		('_imp', '_force_async', '_force_dummy', '_force_process', \
 		'_force_thread', '_waiting')
+
+	_use_process_by_default = True
 
 	def _start(self):
 
@@ -43,7 +50,8 @@ class AsynchronousLock(AsynchronousTask):
 				return
 
 		if self._force_process or \
-			(not self._force_thread and threading is dummy_threading):
+			(not self._force_thread and \
+			(self._use_process_by_default or threading is dummy_threading)):
 			self._imp = _LockProcess(path=self.path, scheduler=self.scheduler)
 		else:
 			self._imp = _LockThread(path=self.path,

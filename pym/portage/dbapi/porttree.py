@@ -1,4 +1,4 @@
-# Copyright 1998-2010 Gentoo Foundation
+# Copyright 1998-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -10,7 +10,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum',
 	'portage.data:portage_gid,secpass',
 	'portage.dbapi.dep_expand:dep_expand',
-	'portage.dep:dep_getkey,match_from_list,use_reduce',
+	'portage.dep:Atom,dep_getkey,match_from_list,use_reduce',
 	'portage.package.ebuild.doebuild:doebuild',
 	'portage.util:ensure_dirs,shlex_split,writemsg,writemsg_level',
 	'portage.util.listdir:listdir',
@@ -21,7 +21,7 @@ from portage.cache.cache_errors import CacheError
 from portage.cache.mappings import Mapping
 from portage.dbapi import dbapi
 from portage.exception import PortageException, \
-	FileNotFound, InvalidDependString, InvalidPackageName
+	FileNotFound, InvalidAtom, InvalidDependString, InvalidPackageName
 from portage.localization import _
 from portage.manifest import Manifest
 
@@ -684,10 +684,13 @@ class portdbapi(dbapi):
 		for x in categories:
 			for oroot in trees:
 				for y in listdir(oroot+"/"+x, EmptyOnError=1, ignorecvs=1, dirsonly=1):
-					if not self._pkg_dir_name_re.match(y) or \
-						y == "CVS":
+					try:
+						atom = Atom("%s/%s" % (x, y))
+					except InvalidAtom:
 						continue
-					d[x+"/"+y] = None
+					if atom != atom.cp:
+						continue
+					d[atom.cp] = None
 		l = list(d)
 		l.sort()
 		return l

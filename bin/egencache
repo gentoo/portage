@@ -1,24 +1,24 @@
 #!@PREFIX_PORTAGE_PYTHON@
-# Copyright 2009-2010 Gentoo Foundation
+# Copyright 2009-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
 
+import signal
 import sys
 # This block ensures that ^C interrupts are handled quietly.
 try:
-	import signal
 
 	def exithandler(signum,frame):
 		signal.signal(signal.SIGINT, signal.SIG_IGN)
 		signal.signal(signal.SIGTERM, signal.SIG_IGN)
-		sys.exit(1)
+		sys.exit(128 + signum)
 
 	signal.signal(signal.SIGINT, exithandler)
 	signal.signal(signal.SIGTERM, exithandler)
 
 except KeyboardInterrupt:
-	sys.exit(1)
+	sys.exit(128 + signal.SIGINT)
 
 import codecs
 import logging
@@ -258,7 +258,34 @@ class GenCache(object):
 					level=logging.ERROR, noiselevel=-1)
 
 	def run(self):
-		self._regen.run()
+
+		received_signal = []
+
+		def sighandler(signum, frame):
+			signal.signal(signal.SIGINT, signal.SIG_IGN)
+			signal.signal(signal.SIGTERM, signal.SIG_IGN)
+			self._regen.terminate()
+			received_signal.append(128 + signum)
+
+		earlier_sigint_handler = signal.signal(signal.SIGINT, sighandler)
+		earlier_sigterm_handler = signal.signal(signal.SIGTERM, sighandler)
+
+		try:
+			self._regen.run()
+		finally:
+			# Restore previous handlers
+			if earlier_sigint_handler is not None:
+				signal.signal(signal.SIGINT, earlier_sigint_handler)
+			else:
+				signal.signal(signal.SIGINT, signal.SIG_DFL)
+			if earlier_sigterm_handler is not None:
+				signal.signal(signal.SIGTERM, earlier_sigterm_handler)
+			else:
+				signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+		if received_signal:
+			sys.exit(received_signal[0])
+
 		self.returncode |= self._regen.returncode
 		cp_missing = self._cp_missing
 

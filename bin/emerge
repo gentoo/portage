@@ -1,18 +1,18 @@
 #!@PREFIX_PORTAGE_PYTHON@
-# Copyright 2006-2009 Gentoo Foundation
+# Copyright 2006-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
 
+import signal
 import sys
 # This block ensures that ^C interrupts are handled quietly.
 try:
-	import signal
 
 	def exithandler(signum,frame):
 		signal.signal(signal.SIGINT, signal.SIG_IGN)
 		signal.signal(signal.SIGTERM, signal.SIG_IGN)
-		sys.exit(1)
+		sys.exit(128 + signum)
 
 	signal.signal(signal.SIGINT, exithandler)
 	signal.signal(signal.SIGTERM, exithandler)
@@ -21,7 +21,7 @@ try:
 	signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 except KeyboardInterrupt:
-	sys.exit(1)
+	sys.exit(128 + signal.SIGINT)
 
 def debug_signal(signum, frame):
 	import pdb

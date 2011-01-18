@@ -1,4 +1,4 @@
-# Copyright 1998-2009 Gentoo Foundation
+# Copyright 1998-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["dbapi"]
@@ -20,7 +20,6 @@ from portage.localization import _
 
 class dbapi(object):
 	_category_re = re.compile(r'^\w[-.+\w]*$')
-	_pkg_dir_name_re = re.compile(r'^\w[-+\w]*$')
 	_categories = None
 	_use_mutable = False
 	_known_keys = frozenset(x for x in auxdbkeys

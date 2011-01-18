@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -32,6 +32,11 @@ class MetadataRegen(PollScheduler):
 		self._process_iter = self._iter_metadata_processes()
 		self.returncode = os.EX_OK
 		self._error_count = 0
+		self._running_tasks = set()
+
+	def _terminate_tasks(self):
+		while self._running_tasks:
+			self._running_tasks.pop().cancel()
 
 	def _iter_every_cp(self):
 		portage.writemsg_stdout("Listing available packages...\n")
@@ -39,7 +44,7 @@ class MetadataRegen(PollScheduler):
 		portage.writemsg_stdout("Regenerating cache entries...\n")
 		every_cp.sort(reverse=True)
 		try:
-			while True:
+			while not self._terminated.is_set():
 				yield every_cp.pop()
 		except IndexError:
 			pass
@@ -51,10 +56,14 @@ class MetadataRegen(PollScheduler):
 		consumer = self._consumer
 
 		for cp in self._cp_iter:
+			if self._terminated.is_set():
+				break
 			cp_set.add(cp)
 			portage.writemsg_stdout("Processing %s\n" % cp)
 			cpv_list = portdb.cp_list(cp)
 			for cpv in cpv_list:
+				if self._terminated.is_set():
+					break
 				valid_pkgs.add(cpv)
 				ebuild_path, repo_path = portdb.findname2(cpv)
 				if ebuild_path is None:
@@ -84,6 +93,10 @@ class MetadataRegen(PollScheduler):
 
 		while self._jobs:
 			self._poll_loop()
+
+		if self._terminated.is_set():
+			self.returncode = 1
+			return
 
 		if self._global_cleanse:
 			for mytree in portdb.porttrees:
@@ -133,12 +146,15 @@ class MetadataRegen(PollScheduler):
 			False otherwise.
 		"""
 		while self._can_add_job():
+			if self._terminated.is_set():
+				return False
 			try:
 				metadata_process = next(self._process_iter)
 			except StopIteration:
 				return False
 
 			self._jobs += 1
+			self._running_tasks.add(metadata_process)
 			metadata_process.scheduler = self.sched_iface
 			metadata_process.addExitListener(self._metadata_exit)
 			metadata_process.start()
@@ -146,12 +162,14 @@ class MetadataRegen(PollScheduler):
 
 	def _metadata_exit(self, metadata_process):
 		self._jobs -= 1
+		self._running_tasks.discard(metadata_process)
 		if metadata_process.returncode != os.EX_OK:
 			self.returncode = 1
 			self._error_count += 1
 			self._valid_pkgs.discard(metadata_process.cpv)
-			portage.writemsg("Error processing %s, continuing...\n" % \
-				(metadata_process.cpv,), noiselevel=-1)
+			if not self._terminated.is_set():
+				portage.writemsg("Error processing %s, continuing...\n" % \
+					(metadata_process.cpv,), noiselevel=-1)
 
 		if self._consumer is not None:
 			# On failure, still notify the consumer (in this case the metadata

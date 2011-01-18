@@ -932,7 +932,9 @@ calls \fBdie\fR if the configure script fails.
 Beginning with \fBEAPI 3\fR, \fBeconf\fR uses the \fB${EPREFIX}\fR
 variable which is disregarded for prior \fBEAPI\fR values.
 Beginning with \fBEAPI 4\fR, \fBeconf\fR adds
-\fI\-\-disable\-dependency\-tracking\fR to the arguments.
+\fI\-\-disable\-dependency\-tracking\fR to the arguments if the
+string \fIdisable\-dependency\-tracking\fR occurs in the output
+of \fIconfigure \-\-help\fR.
 .TP
 \fBemake\fR \fI[make options]\fR
 This is used as a replacement for make.  Performs 'make ${MAKEOPTS}

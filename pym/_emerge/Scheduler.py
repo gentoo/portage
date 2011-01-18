@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -7,6 +7,7 @@ import gc
 import gzip
 import logging
 import shutil
+import signal
 import sys
 import tempfile
 import textwrap
@@ -291,6 +292,11 @@ class Scheduler(PollScheduler):
 			cpv = portage_match.pop()
 			self._running_portage = self._pkg(cpv, "installed",
 				self._running_root, installed=True)
+
+	def _terminate_tasks(self):
+		self._status_display.quiet = True
+		for q in self._task_queues.values():
+			q.clear()
 
 	def _init_graph(self, graph_config):
 		"""
@@ -1161,7 +1167,36 @@ class Scheduler(PollScheduler):
 			return rval
 
 		while True:
-			rval = self._merge()
+
+			received_signal = []
+
+			def sighandler(signum, frame):
+				signal.signal(signal.SIGINT, signal.SIG_IGN)
+				signal.signal(signal.SIGTERM, signal.SIG_IGN)
+				portage.util.writemsg("\n\nExiting on signal %(signal)s\n" % \
+					{"signal":signum})
+				self.terminate()
+				received_signal.append(128 + signum)
+
+			earlier_sigint_handler = signal.signal(signal.SIGINT, sighandler)
+			earlier_sigterm_handler = signal.signal(signal.SIGTERM, sighandler)
+
+			try:
+				rval = self._merge()
+			finally:
+				# Restore previous handlers
+				if earlier_sigint_handler is not None:
+					signal.signal(signal.SIGINT, earlier_sigint_handler)
+				else:
+					signal.signal(signal.SIGINT, signal.SIG_DFL)
+				if earlier_sigterm_handler is not None:
+					signal.signal(signal.SIGTERM, earlier_sigterm_handler)
+				else:
+					signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+			if received_signal:
+				sys.exit(received_signal[0])
+
 			if rval == os.EX_OK or fetchonly or not keep_going:
 				break
 			if "resume" not in mtimedb:
@@ -1400,9 +1435,9 @@ class Scheduler(PollScheduler):
 				build_dir=build_dir, build_log=build_log,
 				pkg=pkg,
 				returncode=merge.returncode))
-			self._failed_pkg_msg(self._failed_pkgs[-1], "install", "to")
-
-			self._status_display.failed = len(self._failed_pkgs)
+			if not self._terminated.is_set():
+				self._failed_pkg_msg(self._failed_pkgs[-1], "install", "to")
+				self._status_display.failed = len(self._failed_pkgs)
 			return
 
 		self._task_complete(pkg)
@@ -1412,6 +1447,10 @@ class Scheduler(PollScheduler):
 			# task complete (if any).
 			if self._digraph is not None and \
 				pkg_to_replace in self._digraph:
+				try:
+					self._pkg_queue.remove(pkg_to_replace)
+				except ValueError:
+					pass
 				self._task_complete(pkg_to_replace)
 			else:
 				self._pkg_cache.pop(pkg_to_replace, None)
@@ -1454,9 +1493,9 @@ class Scheduler(PollScheduler):
 				build_dir=build_dir, build_log=build_log,
 				pkg=build.pkg,
 				returncode=build.returncode))
-			self._failed_pkg_msg(self._failed_pkgs[-1], "emerge", "for")
-
-			self._status_display.failed = len(self._failed_pkgs)
+			if not self._terminated.is_set():
+				self._failed_pkg_msg(self._failed_pkgs[-1], "emerge", "for")
+				self._status_display.failed = len(self._failed_pkgs)
 			self._deallocate_config(build.settings)
 		self._jobs -= 1
 		self._status_display.running = self._jobs
@@ -1633,7 +1672,7 @@ class Scheduler(PollScheduler):
 				self._poll_loop()
 
 	def _keep_scheduling(self):
-		return bool(self._pkg_queue and \
+		return bool(not self._terminated.is_set() and self._pkg_queue and \
 			not (self._failed_pkgs and not self._build_opts.fetchonly))
 
 	def _is_work_scheduled(self):
