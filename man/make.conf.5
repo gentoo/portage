@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Oct 2010" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Jan 2011" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -508,6 +508,16 @@ the internet.  It must contain the full path to the executable as well as the
 place\-holders \\${DISTDIR}, \\${FILE} and \\${URI}.  The command should be
 written to place the fetched file at \\${DISTDIR}/\\${FILE}.
 Also see \fBRESUMECOMMAND\fR.
+.TP
+.B FFLAGS FCFLAGS
+Use these variables to set the desired optimization/CPU instruction settings
+for applications that you compile with a FORTRAN compiler. FFLAGS is usually
+passed to the FORTRAN 77 compiler, and FCFLAGS to any FORTRAN compiler in
+more modern build systems.
+
+For more information, see the \fIInvoking GCC\fR section of the gcc manual:
+.br
+http://gcc.gnu.org/onlinedocs/
 .TP
 \fBGENTOO_MIRRORS\fR = \fI[URIs]\fR
 Insert your space\-seperated list of local mirrors here.  These
