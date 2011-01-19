@@ -2991,7 +2991,16 @@ class depgraph(object):
 										pkg_eb = self._pkg(
 											pkg.cpv, "ebuild", root_config, myrepo=pkg.repo)
 									except portage.exception.PackageNotFound:
-										continue
+										pkg_eb_visible = False
+										for pkg_eb in self._iter_match_pkgs(pkg.root_config,
+											"ebuild", Atom("=%s" % (pkg.cpv,))):
+											if self._pkg_visibility_check(pkg_eb, \
+												allow_unstable_keywords=allow_unstable_keywords,
+												allow_license_changes=allow_license_changes):
+												pkg_eb_visible = True
+												break
+										if not pkg_eb_visible:
+											continue
 									else:
 										if not self._pkg_visibility_check(pkg_eb, \
 											allow_unstable_keywords=allow_unstable_keywords,
@@ -5499,7 +5508,15 @@ class _dep_check_composite_db(dbapi):
 							pkg.cpv, "ebuild", pkg.root_config,
 							myrepo=pkg.repo)
 					except portage.exception.PackageNotFound:
-						return False
+						pkg_eb_visible = False
+						for pkg_eb in self._depgraph._iter_match_pkgs(
+							pkg.root_config, "ebuild",
+							Atom("=%s" % (pkg.cpv,))):
+							if self._depgraph._pkg_visibility_check(pkg_eb):
+								pkg_eb_visible = True
+								break
+						if not pkg_eb_visible:
+							return False
 					else:
 						if not self._depgraph._pkg_visibility_check(pkg_eb):
 							return False
