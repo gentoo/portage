@@ -710,7 +710,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			(mydo in ("fetch", "unpack") or \
 			mydo not in ("digest", "manifest") and "noauto" not in features)
 		alist = set(mysettings.configdict["pkg"].get("A", "").split())
-		aalist = set(mysettings.configdict["pkg"].get("AA", "").split())
 		if need_distfiles:
 
 			src_uri, = mydbapi.aux_get(mysettings.mycpv,
@@ -723,14 +722,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			use = frozenset(mysettings["PORTAGE_USE"].split())
 			try:
 				alist = _parse_uri_map(mysettings.mycpv, metadata, use=use)
-			except InvalidDependString as e:
-				writemsg("!!! %s\n" % str(e), noiselevel=-1)
-				writemsg(_("!!! Invalid SRC_URI for '%s'.\n") % mycpv,
-					noiselevel=-1)
-				del e
-				return 1
-
-			try:
 				aalist = _parse_uri_map(mysettings.mycpv, metadata)
 			except InvalidDependString as e:
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
