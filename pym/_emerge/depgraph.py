@@ -2937,7 +2937,7 @@ class depgraph(object):
 						# reinstall the same exact version only due
 						# to a KEYWORDS mask. See bug #252167.
 
-						if matched_packages:
+						if pkg.type_name != "ebuild" and matched_packages:
 								# If the ebuild no longer exists or it's
 								# keywords have been dropped, reject built
 								# instances (installed or binary).
