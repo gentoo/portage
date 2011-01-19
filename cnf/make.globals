@@ -16,6 +16,8 @@
 CFLAGS=""
 CXXFLAGS=""
 LDFLAGS=""
+FFLAGS=""
+FCFLAGS=""
 
 # Default rsync mirror
 SYNC="rsync://rsync.gentoo.org/gentoo-portage"
