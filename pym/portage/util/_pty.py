@@ -36,7 +36,7 @@ def _test_pty_eof(fdopen_buffered=False):
 
 	NOTE: This issue is only problematic when array.fromfile()
 	is used, rather than os.read(). However, array.fromfile()
-	is preferred since it is approximatly 10% faster.
+	is preferred since it is approximately 10% faster.
 
 	New development: It appears that array.fromfile() is usable
 	with python3 as long as fdopen is called with a bufsize
