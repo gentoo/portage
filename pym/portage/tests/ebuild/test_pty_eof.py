@@ -4,7 +4,7 @@
 from portage.tests import TestCase
 from portage.util._pty import _can_test_pty_eof, _test_pty_eof
 
-class PtyEofTestCase(TestCase):
+class PtyEofFdopenBufferedTestCase(TestCase):
 
 	def testPtyEofFdopenBuffered(self):
 		# This tests if the following python issue is fixed yet:
@@ -18,6 +18,7 @@ class PtyEofTestCase(TestCase):
 			except EnvironmentError:
 				pass
 
+class PtyEofFdopenUnBufferedTestCase(TestCase):
 	def testPtyEofFdopenUnBuffered(self):
 		# New development: It appears that array.fromfile() is usable
 		# with python3 as long as fdopen is called with a bufsize
