@@ -14,7 +14,7 @@ class PtyEofTestCase(TestCase):
 		# The result is only valid if openpty does not raise EnvironmentError.
 		if _can_test_pty_eof():
 			try:
-				self.assertEqual(_test_pty_eof(), True)
+				self.assertEqual(_test_pty_eof(fdopen_buffered=True), True)
 			except EnvironmentError:
 				pass
 
@@ -26,6 +26,6 @@ class PtyEofTestCase(TestCase):
 		# The result is only valid if openpty does not raise EnvironmentError.
 		if _can_test_pty_eof():
 			try:
-				self.assertEqual(_test_pty_eof(fdopen_buffered=False), True)
+				self.assertEqual(_test_pty_eof(), True)
 			except EnvironmentError:
 				pass

@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import array
@@ -28,7 +28,7 @@ def _can_test_pty_eof():
 	"""
 	return platform.system() in ("Linux",)
 
-def _test_pty_eof(fdopen_buffered=True):
+def _test_pty_eof(fdopen_buffered=False):
 	"""
 	Returns True if this issues is fixed for the currently
 	running version of python: http://bugs.python.org/issue5380

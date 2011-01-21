@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.SubProcess import SubProcess
@@ -72,7 +72,9 @@ class SpawnProcess(SubProcess):
 		else:
 			fd_pipes[0] = fd_pipes_orig[0]
 
-		files.process = os.fdopen(master_fd, 'rb')
+		# WARNING: It is very important to use unbuffered mode here,
+		# in order to avoid issue 5380 with python3.
+		files.process = os.fdopen(master_fd, 'rb', 0)
 		if logfile is not None:
 
 			fd_pipes[1] = slave_fd
