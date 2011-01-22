@@ -587,7 +587,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mypids = _spawn_phase(mydo, mysettings, returnpid=True,
 					fd_pipes=fd_pipes)
 				os.close(pw) # belongs exclusively to the child process now
-				f = os.fdopen(pr, 'rb')
+				f = os.fdopen(pr, 'rb', 0)
 				for k, v in zip(auxdbkeys,
 					(_unicode_decode(line).rstrip('\n') for line in f)):
 					dbkey[k] = v

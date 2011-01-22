@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import re
@@ -53,7 +53,7 @@ sys.stdout.write(" ".join(k for k in sys.modules
 
 		scheduler = PollScheduler().sched_iface
 		master_fd, slave_fd = os.pipe()
-		master_file = os.fdopen(master_fd, 'rb')
+		master_file = os.fdopen(master_fd, 'rb', 0)
 		slave_file = os.fdopen(slave_fd, 'wb')
 		producer = SpawnProcess(
 			args=self._baseline_import_cmd,
