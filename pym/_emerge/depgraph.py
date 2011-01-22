@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -2961,7 +2961,10 @@ class depgraph(object):
 						# available. By filtering installed masked packages
 						# here, packages that have been masked since they
 						# were installed can be automatically downgraded
-						# to an unmasked version.
+						# to an unmasked version. NOTE: This code needs to
+						# be consistent with masking behavior inside
+						# _dep_check_composite_db, in order to prevent
+						# incorrect choices in || deps like bug #351828.
 
 						if not self._pkg_visibility_check(pkg, \
 							allow_unstable_keywords=allow_unstable_keywords,
@@ -2973,15 +2976,8 @@ class depgraph(object):
 						# version is masked by KEYWORDS, but never
 						# reinstall the same exact version only due
 						# to a KEYWORDS mask. See bug #252167.
-						if matched_packages:
 
-							different_version = None
-							for avail_pkg in matched_packages:
-								if not portage.dep.cpvequal(
-									pkg.cpv, avail_pkg.cpv):
-									different_version = avail_pkg
-									break
-							if different_version is not None:
+						if pkg.type_name != "ebuild" and matched_packages:
 								# If the ebuild no longer exists or it's
 								# keywords have been dropped, reject built
 								# instances (installed or binary).
@@ -2995,7 +2991,16 @@ class depgraph(object):
 										pkg_eb = self._pkg(
 											pkg.cpv, "ebuild", root_config, myrepo=pkg.repo)
 									except portage.exception.PackageNotFound:
-										continue
+										pkg_eb_visible = False
+										for pkg_eb in self._iter_match_pkgs(pkg.root_config,
+											"ebuild", Atom("=%s" % (pkg.cpv,))):
+											if self._pkg_visibility_check(pkg_eb, \
+												allow_unstable_keywords=allow_unstable_keywords,
+												allow_license_changes=allow_license_changes):
+												pkg_eb_visible = True
+												break
+										if not pkg_eb_visible:
+											continue
 									else:
 										if not self._pkg_visibility_check(pkg_eb, \
 											allow_unstable_keywords=allow_unstable_keywords,
@@ -5491,18 +5496,30 @@ class _dep_check_composite_db(dbapi):
 			myopts = self._depgraph._frozen_config.myopts
 			use_ebuild_visibility = myopts.get(
 				'--use-ebuild-visibility', 'n') != 'n'
+			avoid_update = "--update" not in myopts and \
+				"remove" not in self._depgraph._dynamic_config.myparams
 			usepkgonly = "--usepkgonly" in myopts
-			if not use_ebuild_visibility and usepkgonly:
-				return False
-			else:
-				try:
-					pkg_eb = self._depgraph._pkg(
-						pkg.cpv, "ebuild", pkg.root_config, myrepo=pkg.repo)
-				except portage.exception.PackageNotFound:
+			if not avoid_update:
+				if not use_ebuild_visibility and usepkgonly:
 					return False
 				else:
-					if not self._depgraph._pkg_visibility_check(pkg_eb):
-						return False
+					try:
+						pkg_eb = self._depgraph._pkg(
+							pkg.cpv, "ebuild", pkg.root_config,
+							myrepo=pkg.repo)
+					except portage.exception.PackageNotFound:
+						pkg_eb_visible = False
+						for pkg_eb in self._depgraph._iter_match_pkgs(
+							pkg.root_config, "ebuild",
+							Atom("=%s" % (pkg.cpv,))):
+							if self._depgraph._pkg_visibility_check(pkg_eb):
+								pkg_eb_visible = True
+								break
+						if not pkg_eb_visible:
+							return False
+					else:
+						if not self._depgraph._pkg_visibility_check(pkg_eb):
+							return False
 
 		in_graph = self._depgraph._dynamic_config._slot_pkg_map[
 			self._root].get(pkg.slot_atom)

@@ -35,13 +35,7 @@ class EbuildExecuter(CompositeTask):
 
 		portdb = pkg.root_config.trees['porttree'].dbapi
 		ebuild_path = settings['EBUILD']
-		mytree = os.path.dirname(os.path.dirname(
-			os.path.dirname(ebuild_path)))
-		alist = portdb.getFetchMap(pkg.cpv,
-			useflags=pkg.use.enabled, mytree=mytree)
-		aalist = portdb.getFetchMap(pkg.cpv, mytree=mytree)
-		settings.configdict["pkg"]["A"] = " ".join(alist)
-		settings.configdict["pkg"]["AA"] = " ".join(aalist)
+		alist = settings.configdict["pkg"].get("A", "").split()
 		_prepare_fake_distdir(settings, alist)
 
 		if eapi_exports_replace_vars(settings['EAPI']):

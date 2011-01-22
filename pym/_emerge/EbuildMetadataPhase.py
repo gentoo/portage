@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.SubProcess import SubProcess
@@ -83,7 +83,7 @@ class EbuildMetadataPhase(SubProcess):
 		fd_pipes[self._metadata_fd] = slave_fd
 
 		self._raw_metadata = []
-		files.ebuild = os.fdopen(master_fd, 'rb')
+		files.ebuild = os.fdopen(master_fd, 'rb', 0)
 		self._reg_id = self.scheduler.register(files.ebuild.fileno(),
 			self._registered_events, self._output_handler)
 		self._registered = True

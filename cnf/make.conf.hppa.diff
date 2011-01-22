@@ -39,27 +39,27 @@
 -#CFLAGS="-O2 -pipe"
 +# Decent examples:
  #
-+
++#
 +# Use this one if you have a hppa1.1
 +#CFLAGS="-march=1.1 -O2 -pipe -mschedule=7100LC"
-+
++#
 +# Or this one if you have a hppa2.0
 +# Note that -march=2.0 was unstable on some stations.
 +# -march=1.0 will create problems too.
 +#CFLAGS="-O2 -pipe -mschedule=8000"
-+
-+
++#
++#
  # If you set a CFLAGS above, then this line will set your default C++ flags to
  # the same settings.
  #CXXFLAGS="${CFLAGS}"
- 
+ #
 +# Btw it's recommended to use this setting for stability.
 +# There are still many bugs with higher level of optimisation.
 +#CXXFLAGS="-O1 -pipe"
-+
- # Advanced Masking
- # ================
- #
++#
+ # If you set a CFLAGS above, then this line will set your default FORTRAN 77
+ # flags to the same settings.
+ #FFLAGS="${CFLAGS}"
 @@ -61,7 +97,7 @@
  # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
  # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
