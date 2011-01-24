@@ -31,6 +31,8 @@ from portage.cache.cache_errors import CacheError
 from portage.const import GLOBAL_CONFIG_PATH, NEWS_LIB_PATH
 from portage.const import _ENABLE_DYN_LINK_MAP
 from portage.dbapi.dep_expand import dep_expand
+from portage.dep import Atom, extended_cp_match
+from portage.exception import InvalidAtom
 from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 	red, yellow
 good = create_color_func("GOOD")
@@ -2443,7 +2445,6 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 def action_uninstall(settings, trees, ldpath_mtimes,
 	opts, action, files, spinner):
-
 	# For backward compat, some actions do not require leading '='.
 	ignore_missing_eq = action in ('clean', 'unmerge')
 	root = settings['ROOT']
@@ -2485,6 +2486,28 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 
 		elif x.startswith(SETPREFIX) and action == "deselect":
 			valid_atoms.append(x)
+
+		elif "*" in x:
+			try:
+				ext_atom = Atom(x, allow_repo=True, allow_wildcard=True)
+			except InvalidAtom:
+				msg = []
+				msg.append("'%s' is not a valid package atom." % (x,))
+				msg.append("Please check ebuild(5) for full details.")
+				writemsg_level("".join("!!! %s\n" % line for line in msg),
+					level=logging.ERROR, noiselevel=-1)
+				return 1
+
+			for cp in vardb.cp_all():
+				if extended_cp_match(ext_atom.cp, cp):
+					atom = cp
+					if ext_atom.slot:
+						atom += ":" + ext_atom.slot
+					if ext_atom.repo:
+						atom += "::" + ext_atom.repo
+
+					if vardb.match(atom):
+						valid_atoms.append(Atom(atom))
 
 		else:
 			msg = []
