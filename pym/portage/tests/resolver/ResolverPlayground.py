@@ -432,7 +432,7 @@ class ResolverPlayground(object):
 			if options.get("--depclean"):
 				rval, cleanlist, ordered, req_pkg_count = \
 					calc_depclean(self.settings, self.trees, None,
-					options, "depclean", InternalPackageSet(initial_atoms=atoms), None)
+					options, "depclean", InternalPackageSet(initial_atoms=atoms, allow_wildcard=True), None)
 				result = ResolverPlaygroundDepcleanResult( \
 					atoms, rval, cleanlist, ordered, req_pkg_count)
 			else:

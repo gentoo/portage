@@ -243,3 +243,43 @@ class DepcleanWithExcludeAndSlotsTestCase(TestCase):
 				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
 		finally:
 			playground.cleanup()
+
+class DepcleanAndWildcardsTestCase(TestCase):
+
+	def testDepcleanAndWildcards(self):
+
+		installed = {
+			"dev-libs/A-1": { "RDEPEND": "dev-libs/B" },
+			"dev-libs/B-1": {},
+			}
+
+		test_cases = (
+			ResolverPlaygroundTestCase(
+				["*/*"],
+				options = {"--depclean": True},
+				success = True,
+				cleanlist = ["dev-libs/A-1", "dev-libs/B-1"]),
+			ResolverPlaygroundTestCase(
+				["dev-libs/*"],
+				options = {"--depclean": True},
+				success = True,
+				cleanlist = ["dev-libs/A-1", "dev-libs/B-1"]),
+			ResolverPlaygroundTestCase(
+				["*/A"],
+				options = {"--depclean": True},
+				success = True,
+				cleanlist = ["dev-libs/A-1"]),
+			ResolverPlaygroundTestCase(
+				["*/B"],
+				options = {"--depclean": True},
+				success = True,
+				cleanlist = []),
+			)
+
+		playground = ResolverPlayground(installed=installed)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
