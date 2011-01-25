@@ -43,6 +43,7 @@ from portage.util import cmp_sort_key, writemsg_level
 from portage import cpv_getkey
 from portage.dep import Atom, isjustname
 from portage.versions import pkgcmp, pkgsplit, vercmp
+from portage.const import EPREFIX
 
 try:
 	from xml.etree import ElementTree
@@ -736,7 +737,7 @@ def egencache_main(args):
 	if options.portdir is not None:
 		env['PORTDIR'] = options.portdir
 
-	settings = portage.config(config_root=config_root,
+	settings = portage.config(config_root=config_root, _eprefix=EPREFIX,
 		target_root='/', local_config=False, env=env)
 
 	default_opts = None
@@ -752,7 +753,7 @@ def egencache_main(args):
 		if options.cache_dir is not None:
 			env['PORTAGE_DEPCACHEDIR'] = options.cache_dir
 
-		settings = portage.config(config_root=config_root,
+		settings = portage.config(config_root=config_root, _eprefix=EPREFIX,
 			target_root='/', local_config=False, env=env)
 
 	if not options.update and not options.update_use_local_desc \
