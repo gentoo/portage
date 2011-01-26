@@ -24,6 +24,13 @@ if [[ ${INSDESTTREE#${D}} != "${INSDESTTREE}" ]]; then
 	helpers_die "${0##*/} used with \${D}"
 	exit 1
 fi
+if [[ ${INSDESTTREE#${EPREFIX}} != "${INSDESTTREE}" ]]; then
+	vecho "-------------------------------------------------------" 1>&2
+	vecho "You should not use \${EPREFIX} with helpers." 1>&2
+	vecho "  --> ${INSDESTTREE}" 1>&2
+	vecho "-------------------------------------------------------" 1>&2
+	exit 1
+fi
 
 case "$EAPI" in
 	0|1|2|3|3_pre2)
@@ -37,14 +44,6 @@ esac
 export TMP=$T/.doins_tmp
 # Use separate directories to avoid potential name collisions.
 mkdir -p "$TMP"/{1,2}
-
-if [[ ${INSDESTTREE#${EPREFIX}} != "${INSDESTTREE}" ]]; then
-	vecho "-------------------------------------------------------" 1>&2
-	vecho "You should not use \${EPREFIX} with helpers." 1>&2
-	vecho "  --> ${INSDESTTREE}" 1>&2
-	vecho "-------------------------------------------------------" 1>&2
-	exit 1
-fi
 
 [[ ! -d ${ED}${INSDESTTREE} ]] && dodir "${INSDESTTREE}"
 
