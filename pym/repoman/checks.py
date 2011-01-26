@@ -328,7 +328,7 @@ class EprefixifyDefined(LineCheck):
 			self._prefix_inherited = True
 
 class EprefixWithHelpers(LineCheck):
-	""" Check that ED, EROOT and EPREFIX aren't used with helpers (doins) """
+	""" Check that ED, EROOT and EPREFIX aren't used with helpers """
 
 	repoman_check_name = 'prefix.usedwithhelpers'
 	re = re.compile(r'.*\b(dodir|dohard|exeinto|insinto|into)\s+"?\$\{?(ED|EROOT|EPREFIX)\}?.*')

@@ -296,7 +296,7 @@ qahelp={
 	"inherit.autotools":"Ebuild inherits autotools but does not call eautomake, eautoconf or eautoreconf",
 	"inherit.deprecated":"Ebuild inherits a deprecated eclass",
 	"java.eclassesnotused":"With virtual/jdk in DEPEND you must inherit a java eclass",
-	"prefix.usedwithhelpers":"Ebuild uses ED or EPREFIX with helpers (doins)",
+	"prefix.usedwithhelpers":"Ebuild uses ED, EROOT or EPREFIX with helpers",
 	"wxwidgets.eclassnotused":"Ebuild DEPENDs on x11-libs/wxGTK without inheriting wxwidgets.eclass",
 	"KEYWORDS.dropped":"Ebuilds that appear to have dropped KEYWORDS for some arch",
 	"KEYWORDS.missing":"Ebuilds that have a missing or empty KEYWORDS variable",
