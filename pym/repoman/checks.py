@@ -327,6 +327,13 @@ class EprefixifyDefined(LineCheck):
 		elif self._inherit_prefix_re.search(line) is not None:
 			self._prefix_inherited = True
 
+class EprefixWithHelpers(LineCheck):
+	""" Check that ED, EROOT and EPREFIX aren't used with helpers (doins) """
+
+	repoman_check_name = 'prefix.usedwithhelpers'
+	re = re.compile(r'.*\b(dodir|dohard|exeinto|insinto|into)\s+"?\$\{?(ED|EROOT|EPREFIX)\}?.*')
+	error = errors.EPREFIX_WITH_HELPERS
+
 class ImplicitRuntimeDeps(LineCheck):
 	"""
 	Detect the case where DEPEND is set and RDEPEND is unset in the ebuild,
@@ -622,7 +629,7 @@ _constant_checks = tuple((c() for c in (
 	ImplicitRuntimeDeps, InheritAutotools, InheritDeprecated, IUseUndefined,
 	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS, NoAsNeeded,
 	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
-	SrcCompileEconf, Eapi3DeprecatedFuncs,
+	SrcCompileEconf, Eapi3DeprecatedFuncs, EprefixWithHelpers,
 	Eapi4IncompatibleFuncs, Eapi4GoneVars, BuiltWithUse,
 	PreserveOldLib, SandboxAddpredict)))
 
