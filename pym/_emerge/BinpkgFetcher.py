@@ -57,8 +57,8 @@ class BinpkgFetcher(SpawnProcess):
 			rel_uri = bintree._remotepkgs[pkg.cpv].get("PATH")
 			if not rel_uri:
 				rel_uri = pkg.cpv + ".tbz2"
-			uri = bintree._remote_base_uri.rstrip("/") + \
-				"/" + rel_uri.lstrip("/")
+			remote_base_uri = bintree._remotepkgs[pkg.cpv]["BASE_URI"]
+			uri = remote_base_uri.rstrip("/") + "/" + rel_uri.lstrip("/")
 		else:
 			uri = settings["PORTAGE_BINHOST"].rstrip("/") + \
 				"/" + pkg.pf + ".tbz2"

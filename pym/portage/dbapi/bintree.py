@@ -224,7 +224,6 @@ class binarytree(object):
 			self.populated = 0
 			self.tree = {}
 			self._remote_has_index = False
-			self._remote_base_uri = None
 			self._remotepkgs = None # remote metadata indexed by cpv
 			self.__remotepkgs = {}  # indexed by tbz2 name (deprecated)
 			self.invalids = []
@@ -242,7 +241,7 @@ class binarytree(object):
 				["BUILD_TIME", "CHOST", "DEPEND", "DESCRIPTION", "EAPI",
 				"IUSE", "KEYWORDS", "LICENSE", "PDEPEND", "PROPERTIES",
 				"PROVIDE", "RDEPEND", "repository", "SLOT", "USE", "DEFINED_PHASES",
-				"REQUIRED_USE"]
+				"REQUIRED_USE", "BASE_URI"]
 			self._pkgindex_aux_keys = list(self._pkgindex_aux_keys)
 			self._pkgindex_use_evaluated_keys = \
 				("LICENSE", "RDEPEND", "DEPEND",
@@ -728,8 +727,12 @@ class binarytree(object):
 			writemsg(_("!!! PORTAGE_BINHOST unset, but use is requested.\n"),
 				noiselevel=-1)
 
-		if getbinpkgs and 'PORTAGE_BINHOST' in self.settings:
-			base_url = self.settings["PORTAGE_BINHOST"]
+		if not getbinpkgs or 'PORTAGE_BINHOST' not in self.settings:
+			self.populated=1
+			return
+		self._remotepkgs = {}
+		self.__remotepkgs = {}
+		for base_url in self.settings["PORTAGE_BINHOST"].split():
 			parsed_url = urlparse(base_url)
 			host = parsed_url.netloc
 			port = parsed_url.port
@@ -857,13 +860,12 @@ class binarytree(object):
 					# file, but that's alright.
 			if pkgindex:
 				# Organize remote package list as a cpv -> metadata map.
-				self._remotepkgs = _pkgindex_cpv_map_latest_build(pkgindex)
+				remotepkgs = _pkgindex_cpv_map_latest_build(pkgindex)
+				self._remotepkgs.update(remotepkgs)
 				self._remote_has_index = True
-				self._remote_base_uri = pkgindex.header.get("URI", base_url)
-				self.__remotepkgs = {}
-				for cpv in self._remotepkgs:
+				remote_base_uri = pkgindex.header.get("URI", base_url)
+				for cpv in remotepkgs:
 					self.dbapi.cpv_inject(cpv)
-				self.populated = 1
 				if True:
 					# Remote package instances override local package
 					# if they are not identical.
@@ -872,6 +874,7 @@ class binarytree(object):
 						remote_metadata = self._remotepkgs.get(cpv)
 						if remote_metadata is None:
 							continue
+						remote_metadata["BASE_URI"] = remote_base_uri
 						# Use digests to compare identity.
 						identical = True
 						for hash_name in hash_names:
@@ -893,8 +896,7 @@ class binarytree(object):
 					# Local package instances override remote instances.
 					for cpv in metadata:
 						self._remotepkgs.pop(cpv, None)
-				return
-			self._remotepkgs = {}
+				continue
 			try:
 				chunk_size = long(self.settings["PORTAGE_BINHOST_CHUNKSIZE"])
 				if chunk_size < 8:
@@ -905,11 +907,12 @@ class binarytree(object):
 			writemsg_stdout(
 				colorize("GOOD", _("Fetching bininfo from ")) + \
 				re.sub(r'//(.+):.+@(.+)/', r'//\1:*password*@\2/', base_url) + "\n")
-			self.__remotepkgs = portage.getbinpkg.dir_get_metadata(
-				self.settings["PORTAGE_BINHOST"], chunk_size=chunk_size)
+			remotepkgs = portage.getbinpkg.dir_get_metadata(
+				base_url, chunk_size=chunk_size)
+			self.__remotepkgs.update(remotepkgs)
 			#writemsg(green("  -- DONE!\n\n"))
 
-			for mypkg in list(self.__remotepkgs):
+			for mypkg in list(remotepkgs):
 				if "CATEGORY" not in self.__remotepkgs[mypkg]:
 					#old-style or corrupt package
 					writemsg(_("!!! Invalid remote binary package: %s\n") % mypkg,
@@ -1233,7 +1236,8 @@ class binarytree(object):
 			rel_url = self._remotepkgs[pkgname].get("PATH")
 			if not rel_url:
 				rel_url = pkgname+".tbz2"
-			url = self._remote_base_uri.rstrip("/") + "/" + rel_url.lstrip("/")
+			remote_base_uri = self._remotepkgs[pkgname]["BASE_URI"]
+			url = remote_base_uri.rstrip("/") + "/" + rel_url.lstrip("/")
 		else:
 			url = self.settings["PORTAGE_BINHOST"].rstrip("/") + "/" + tbz2name
 		protocol = urlparse(url)[0]
