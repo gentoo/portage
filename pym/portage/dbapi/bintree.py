@@ -945,6 +945,7 @@ class binarytree(object):
 					remote_metadata = self.__remotepkgs[mypkg]
 					for k, v in remote_metadata.items():
 						remote_metadata[k] = v.strip()
+					remote_metadata["BASE_URI"] = base_url
 
 					# Eliminate metadata values with names that digestCheck
 					# uses, since they are not valid when using the old
