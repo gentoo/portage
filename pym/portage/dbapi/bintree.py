@@ -861,9 +861,11 @@ class binarytree(object):
 			if pkgindex:
 				# Organize remote package list as a cpv -> metadata map.
 				remotepkgs = _pkgindex_cpv_map_latest_build(pkgindex)
+				remote_base_uri = pkgindex.header.get("URI", base_url)
+				for remote_metadata in remotepkgs.values():
+					remote_metadata["BASE_URI"] = remote_base_uri
 				self._remotepkgs.update(remotepkgs)
 				self._remote_has_index = True
-				remote_base_uri = pkgindex.header.get("URI", base_url)
 				for cpv in remotepkgs:
 					self.dbapi.cpv_inject(cpv)
 				if True:
@@ -874,7 +876,6 @@ class binarytree(object):
 						remote_metadata = self._remotepkgs.get(cpv)
 						if remote_metadata is None:
 							continue
-						remote_metadata["BASE_URI"] = remote_base_uri
 						# Use digests to compare identity.
 						identical = True
 						for hash_name in hash_names:
