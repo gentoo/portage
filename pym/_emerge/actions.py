@@ -29,7 +29,7 @@ from portage import digraph
 from portage import _unicode_decode
 from portage.cache.cache_errors import CacheError
 from portage.const import GLOBAL_CONFIG_PATH, NEWS_LIB_PATH
-from portage.const import _ENABLE_DYN_LINK_MAP
+from portage.const import _ENABLE_DYN_LINK_MAP, _ENABLE_SET_CONFIG
 from portage.dbapi.dep_expand import dep_expand
 from portage.dep import Atom, extended_cp_match
 from portage.exception import InvalidAtom
@@ -1389,11 +1389,13 @@ def action_info(settings, trees, myopts, myfiles):
 		writemsg_stdout("Repositories: %s\n" % \
 			" ".join(repo.name for repo in repos))
 
-	world_set = root_config.sets['selected']
-	sets_line = "Installed sets: "
-	sets_line += ", ".join(s for s in sorted(world_set) if s.startswith(SETPREFIX))
-	sets_line += "\n"
-	writemsg_stdout(sets_line)
+	if _ENABLE_SET_CONFIG:
+		sets_line = "Installed sets: "
+		sets_line += ", ".join(s for s in \
+			sorted(root_config.sets['selected'].getNonAtoms()) \
+			if s.startswith(SETPREFIX))
+		sets_line += "\n"
+		writemsg_stdout(sets_line)
 
 	if "--verbose" in myopts:
 		myvars = list(settings)
