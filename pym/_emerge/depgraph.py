@@ -2175,11 +2175,14 @@ class depgraph(object):
 
 		return selected_atoms
 
-	def _get_dep_chain(self, pkg, atom=None):
+	def _get_dep_chain(self, pkg, target_atom=None, unsatisfied_dependency=False):
 		"""
 		Returns a list of (atom, node_type) pairs that represent a dep chain.
-		If atom is None, the first package shown is pkg's paretn.
-		If atom is not None the first package shown is pkg.
+		If target_atom is None, the first package shown is pkg's paretn.
+		If target_atom is not None the first package shown is pkg.
+		If unsatisfied_dependency is True, the first parent is select who's
+		dependency is not satisfied by 'pkg'. This is need for USE changes.
+		(Does not support target_atom.)
 		"""
 		traversed_nodes = set()
 		dep_chain = []
@@ -2187,11 +2190,11 @@ class depgraph(object):
 		first = True
 		child = None
 		all_parents = self._dynamic_config._parent_atoms
-		
-		if atom is not None:
+
+		if target_atom is not None:
 			affecting_use = set()
 			for dep_str in "DEPEND", "RDEPEND", "PDEPEND":
-				affecting_use.update(extract_affecting_use(pkg.metadata[dep_str], atom))
+				affecting_use.update(extract_affecting_use(pkg.metadata[dep_str], target_atom))
 			affecting_use.difference_update(pkg.use.mask, node.use.force)
 			pkg_name = pkg.cpv
 			if affecting_use:
@@ -2203,9 +2206,8 @@ class depgraph(object):
 						usedep.append("-"+flag)
 				pkg_name += "[%s]" % ",".join(usedep)
 
-			
 			dep_chain.append(( _unicode_decode(pkg_name),  _unicode_decode(pkg.type_name)))
-	
+
 		while node is not None:
 			traversed_nodes.add(node)
 
@@ -2226,7 +2228,7 @@ class depgraph(object):
 						dep_strings.add(node.metadata["RDEPEND"])
 					if priority.runtime_post:
 						dep_strings.add(node.metadata["PDEPEND"])
-				
+
 				affecting_use = set()
 				for dep_str in dep_strings:
 					affecting_use.update(extract_affecting_use(dep_str, atom))
@@ -2245,7 +2247,6 @@ class depgraph(object):
 							usedep.append("-"+flag)
 					pkg_name += "[%s]" % ",".join(usedep)
 
-				
 				dep_chain.append(( _unicode_decode(pkg_name),  _unicode_decode(node.type_name)))
 
 			if node not in self._dynamic_config.digraph:
@@ -2268,13 +2269,25 @@ class depgraph(object):
 						selected_parent = None
 					break
 				else:
-					selected_parent = parent
-					child = node
+					if unsatisfied_dependency and node is pkg:
+						# Make sure that pkg doesn't satisfy parent's dependency.
+						# This ensures that we select the correct parent for use
+						# flag changes.
+						for ppkg, atom in all_parents[pkg]:
+							if parent is ppkg:
+								atom_set = InternalPackageSet(initial_atoms=(atom,))
+								if not atom_set.findAtomForPackage(pkg):
+									selected_parent = parent
+									child = node
+								break
+					else:
+						selected_parent = parent
+						child = node
 			node = selected_parent
 		return dep_chain
 
-	def _get_dep_chain_as_comment(self, pkg):
-		dep_chain = self._get_dep_chain(pkg)
+	def _get_dep_chain_as_comment(self, pkg, unsatisfied_dependency=False):
+		dep_chain = self._get_dep_chain(pkg, unsatisfied_dependency=unsatisfied_dependency)
 		display_list = []
 		for node, node_type in dep_chain:
 			if node_type == "argument":
@@ -2284,7 +2297,7 @@ class depgraph(object):
 
 		msg = "#" + ", ".join(display_list) + "\n"
 		return msg
-				
+
 
 	def _show_unsatisfied_dep(self, root, atom, myparent=None, arg=None,
 		check_backtrack=False):
@@ -4951,7 +4964,7 @@ class depgraph(object):
 						adjustments.append(flag)
 					else:
 						adjustments.append("-" + flag)
-				use_changes_msg.append(self._get_dep_chain_as_comment(pkg))
+				use_changes_msg.append(self._get_dep_chain_as_comment(pkg, unsatisfied_dependency=True))
 				use_changes_msg.append("=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
 
 		license_msg = []
