@@ -1295,9 +1295,13 @@ class _info_pkgs_ver(object):
 		return self.ver + self.repo_suffix + self.provide_suffix
 
 def action_info(settings, trees, myopts, myfiles):
+
+	root_config = trees[settings['ROOT']]['root_config']
+
 	print(getportageversion(settings["PORTDIR"], settings["ROOT"],
 		settings.profile_path, settings["CHOST"],
 		trees[settings["ROOT"]]["vartree"].dbapi))
+
 	header_width = 65
 	header_title = "System Settings"
 	if myfiles:
@@ -1385,6 +1389,12 @@ def action_info(settings, trees, myopts, myfiles):
 		writemsg_stdout("Repositories: %s\n" % \
 			" ".join(repo.name for repo in repos))
 
+	world_set = root_config.sets['selected']
+	sets_line = "Installed sets: "
+	sets_line += ", ".join(s for s in sorted(world_set) if s.startswith(SETPREFIX))
+	sets_line += "\n"
+	writemsg_stdout(sets_line)
+
 	if "--verbose" in myopts:
 		myvars = list(settings)
 	else:
@@ -1408,7 +1418,6 @@ def action_info(settings, trees, myopts, myfiles):
 	use_expand_hidden = set(
 		settings.get('USE_EXPAND_HIDDEN', '').upper().split())
 	alphabetical_use = '--alphabetical' in myopts
-	root_config = trees[settings["ROOT"]]['root_config']
 	unset_vars = []
 	myvars.sort()
 	for x in myvars:
