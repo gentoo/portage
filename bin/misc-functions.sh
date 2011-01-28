@@ -838,7 +838,7 @@ install_qa_check_prefix() {
 				continue
 			else
 				# this is definitely wrong: script in $PATH and invalid shebang
-				echo "${fn#${D}}:${line[0]} (in PATH but target not found)" \
+				echo "${fn#${D}}:${line[0]} (script ${fn##*/} installed in PATH but interpreter ${line[0]} not found)" \
 					>> "${T}"/non-prefix-shebangs-errs
 			fi
 		else
