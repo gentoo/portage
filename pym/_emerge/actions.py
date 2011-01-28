@@ -1382,12 +1382,12 @@ def action_info(settings, trees, myopts, myfiles):
 
 	repos = portdb.settings.repositories
 	if "--verbose" in myopts:
-		writemsg_stdout("Repositories:\n\n")
+		writemsg_stdout("Repositories:\n\n", noiselevel=-1)
 		for repo in repos:
-			writemsg_stdout(repo.info_string())
+			writemsg_stdout(repo.info_string(), noiselevel=-1)
 	else:
 		writemsg_stdout("Repositories: %s\n" % \
-			" ".join(repo.name for repo in repos))
+			" ".join(repo.name for repo in repos), noiselevel=-1)
 
 	if _ENABLE_SET_CONFIG:
 		sets_line = "Installed sets: "
@@ -1395,7 +1395,7 @@ def action_info(settings, trees, myopts, myfiles):
 			sorted(root_config.sets['selected'].getNonAtoms()) \
 			if s.startswith(SETPREFIX))
 		sets_line += "\n"
-		writemsg_stdout(sets_line)
+		writemsg_stdout(sets_line, noiselevel=-1)
 
 	if "--verbose" in myopts:
 		myvars = list(settings)
