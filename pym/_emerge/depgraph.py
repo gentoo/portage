@@ -2188,6 +2188,117 @@ class depgraph(object):
 
 		return selected_atoms
 
+	def _get_dep_chain(self, pkg, atom=None):
+		"""
+		Returns a list of (atom, node_type) pairs that represent a dep chain.
+		If atom is None, the first package shown is pkg's paretn.
+		If atom is not None the first package shown is pkg.
+		"""
+		traversed_nodes = set()
+		dep_chain = []
+		node = pkg
+		first = True
+		child = None
+		all_parents = self._dynamic_config._parent_atoms
+		
+		if atom is not None:
+			affecting_use = set()
+			for dep_str in "DEPEND", "RDEPEND", "PDEPEND":
+				affecting_use.update(extract_affecting_use(pkg.metadata[dep_str], atom))
+			affecting_use.difference_update(pkg.use.mask, node.use.force)
+			pkg_name = pkg.cpv
+			if affecting_use:
+				usedep = []
+				for flag in affecting_use:
+					if flag in self._pkg_use_enabled(node):
+						usedep.append(flag)
+					else:
+						usedep.append("-"+flag)
+				pkg_name += "[%s]" % ",".join(usedep)
+
+			
+			dep_chain.append(( _unicode_decode(pkg_name),  _unicode_decode(pkg.type_name)))
+	
+		while node is not None:
+			traversed_nodes.add(node)
+
+			if isinstance(node, DependencyArg):
+				dep_chain.append((_unicode_decode(node), "argument"))
+
+			elif node is not pkg:
+				for ppkg, patom in all_parents[child]:
+					if ppkg == node:
+						atom = patom.unevaluated_atom
+						break
+
+				dep_strings = set()
+				for priority in self._dynamic_config.digraph.nodes[node][0][child]:
+					if priority.buildtime:
+						dep_strings.add(node.metadata["DEPEND"])
+					if priority.runtime:
+						dep_strings.add(node.metadata["RDEPEND"])
+					if priority.runtime_post:
+						dep_strings.add(node.metadata["PDEPEND"])
+				
+				affecting_use = set()
+				for dep_str in dep_strings:
+					affecting_use.update(extract_affecting_use(dep_str, atom))
+
+				#Don't show flags as 'affecting' if the user can't change them,
+				affecting_use.difference_update(node.use.mask, \
+					node.use.force)
+
+				pkg_name = node.cpv
+				if affecting_use:
+					usedep = []
+					for flag in affecting_use:
+						if flag in self._pkg_use_enabled(node):
+							usedep.append(flag)
+						else:
+							usedep.append("-"+flag)
+					pkg_name += "[%s]" % ",".join(usedep)
+
+				
+				dep_chain.append(( _unicode_decode(pkg_name),  _unicode_decode(node.type_name)))
+
+			if node not in self._dynamic_config.digraph:
+				# The parent is not in the graph due to backtracking.
+				break
+
+			# When traversing to parents, prefer arguments over packages
+			# since arguments are root nodes. Never traverse the same
+			# package twice, in order to prevent an infinite loop.
+			selected_parent = None
+			for parent in self._dynamic_config.digraph.parent_nodes(node):
+				if parent in traversed_nodes:
+					continue
+				if isinstance(parent, DependencyArg):
+					if self._dynamic_config.digraph.parent_nodes(parent):
+						selected_parent = parent
+						child = node
+					else:
+						dep_chain.append(( _unicode_decode(parent), "argument"))
+						selected_parent = None
+					break
+				else:
+					selected_parent = parent
+					child = node
+			node = selected_parent
+		return dep_chain
+
+	def _get_dep_chain_as_comment(self, pkg):
+		dep_chain = self._get_dep_chain(pkg)
+		display_list = []
+		for node, node_type in dep_chain:
+			if node_type == "argument":
+				display_list.append("required by %s (argument)" % node)
+			else:
+				display_list.append("required by %s" % node)
+
+		msg = "#" + ", ".join(display_list) + "\n"
+		return msg
+				
+
 	def _show_unsatisfied_dep(self, root, atom, myparent=None, arg=None,
 		check_backtrack=False):
 		"""
@@ -2483,48 +2594,17 @@ class depgraph(object):
 		else:
 			writemsg_stdout("\nemerge: there are no ebuilds to satisfy "+green(xinfo)+".\n", noiselevel=-1)
 
-		# Show parent nodes and the argument that pulled them in.
-		traversed_nodes = set()
-		node = myparent
-		if isinstance(myparent, AtomArg):
+		msg = []
+		if not isinstance(myparent, AtomArg):
 			# It's redundant to show parent for AtomArg since
 			# it's the same as 'xinfo' displayed above.
-			node = None
-		else:
-			node = myparent
-		msg = []
-		while node is not None:
-			traversed_nodes.add(node)
-			if isinstance(node, DependencyArg):
-				msg.append('(dependency required by "%s")' % \
-					colorize('INFORM', _unicode_decode("%s") % (node,)))
-			else:
+			dep_chain = self._get_dep_chain(myparent, atom)
+	
+			for node, node_type in dep_chain:
 				msg.append('(dependency required by "%s" [%s])' % \
-					(colorize('INFORM', _unicode_decode("%s") % \
-					(node.cpv,)), node.type_name))
+						(colorize('INFORM', _unicode_decode("%s") % \
+						(node)), node_type))
 
-			if node not in self._dynamic_config.digraph:
-				# The parent is not in the graph due to backtracking.
-				break
-
-			# When traversing to parents, prefer arguments over packages
-			# since arguments are root nodes. Never traverse the same
-			# package twice, in order to prevent an infinite loop.
-			selected_parent = None
-			for parent in self._dynamic_config.digraph.parent_nodes(node):
-				if parent in traversed_nodes:
-					continue
-				if isinstance(parent, DependencyArg):
-					if self._dynamic_config.digraph.parent_nodes(parent):
-						selected_parent = parent
-					else:
-						msg.append('(dependency required by "%s" [argument])' % \
-							colorize('INFORM', _unicode_decode("%s") % (parent,)))
-						selected_parent = None
-					break
-				else:
-					selected_parent = parent
-			node = selected_parent
 		if msg:
 			writemsg_stdout("\n".join(msg), noiselevel=-1)
 			writemsg_stdout("\n", noiselevel=-1)
@@ -4780,91 +4860,6 @@ class depgraph(object):
 		else:
 			self._show_missed_update()
 
-		def get_dep_chain(pkg):
-			traversed_nodes = set()
-			msg = "#"
-			node = pkg
-			first = True
-			child = None
-			all_parents = self._dynamic_config._parent_atoms
-			while node is not None:
-				traversed_nodes.add(node)
-				if isinstance(node, DependencyArg):
-					if first:
-						first = False
-					else:
-						msg += ", "
-					msg += _unicode_decode('required by %s') % (node,)
-				elif node is not pkg:
-					for ppkg, patom in all_parents[child]:
-						if ppkg == node:
-							atom = patom.unevaluated_atom
-							break
-
-					dep_strings = set()
-					for priority in self._dynamic_config.digraph.nodes[node][0][child]:
-						if priority.buildtime:
-							dep_strings.add(node.metadata["DEPEND"])
-						if priority.runtime:
-							dep_strings.add(node.metadata["RDEPEND"])
-						if priority.runtime_post:
-							dep_strings.add(node.metadata["PDEPEND"])
-					
-					affecting_use = set()
-					for dep_str in dep_strings:
-						affecting_use.update(extract_affecting_use(dep_str, atom))
-					
-					#Don't show flags as 'affecting' if the user can't change them,
-					affecting_use.difference_update(node.use.mask, \
-						node.use.force)
-
-					pkg_name = node.cpv
-					if affecting_use:
-						usedep = []
-						for flag in affecting_use:
-							if flag in self._pkg_use_enabled(node):
-								usedep.append(flag)
-							else:
-								usedep.append("-"+flag)
-						pkg_name += "[%s]" % ",".join(usedep)
-
-					if first:
-						first = False
-					else:
-						msg += ", "
-					msg += 'required by =%s' % pkg_name
-	
-				if node not in self._dynamic_config.digraph:
-					# The parent is not in the graph due to backtracking.
-					break
-	
-				# When traversing to parents, prefer arguments over packages
-				# since arguments are root nodes. Never traverse the same
-				# package twice, in order to prevent an infinite loop.
-				selected_parent = None
-				for parent in self._dynamic_config.digraph.parent_nodes(node):
-					if parent in traversed_nodes:
-						continue
-					if isinstance(parent, DependencyArg):
-						if self._dynamic_config.digraph.parent_nodes(parent):
-							selected_parent = parent
-							child = node
-						else:
-							if first:
-								first = False
-							else:
-								msg += ", "
-							msg += _unicode_decode(
-								'required by %s (argument)') % (parent,)
-							selected_parent = None
-						break
-					else:
-						selected_parent = parent
-						child = node
-				node = selected_parent
-			msg += "\n"
-			return msg
-
 		unstable_keyword_msg = []
 		for pkg in self._dynamic_config._needed_unstable_keywords:
 			self._show_merge_list()
@@ -4877,7 +4872,7 @@ class depgraph(object):
 						reason.unmask_hint.key == 'unstable keyword':
 						keyword = reason.unmask_hint.value
 
-						unstable_keyword_msg.append(get_dep_chain(pkg))
+						unstable_keyword_msg.append(self._get_dep_chain_as_comment(pkg))
 						unstable_keyword_msg.append("=%s %s\n" % (pkg.cpv, keyword))
 
 		use_changes_msg = []
@@ -4891,14 +4886,14 @@ class depgraph(object):
 						adjustments.append(flag)
 					else:
 						adjustments.append("-" + flag)
-				use_changes_msg.append(get_dep_chain(pkg))
+				use_changes_msg.append(self._get_dep_chain_as_comment(pkg))
 				use_changes_msg.append("=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
 
 		license_msg = []
 		for pkg, missing_licenses in self._dynamic_config._needed_license_changes.items():
 			self._show_merge_list()
 			if pkg in self._dynamic_config.digraph:
-				license_msg.append(get_dep_chain(pkg))
+				license_msg.append(self._get_dep_chain_as_comment(pkg))
 				license_msg.append("=%s %s\n" % (pkg.cpv, " ".join(sorted(missing_licenses))))
 
 		if unstable_keyword_msg:
