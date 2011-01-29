@@ -163,38 +163,19 @@ class Display(object):
 		@param pkg: _emerge.Package instance
 		Modifies self.verboseadd
 		"""
-		accept_keywords = set(self.portdb.settings['ACCEPT_KEYWORDS'].split())
-		keywords = set(self.portdb.aux_get(pkg.cpv, ["KEYWORDS"])[0].split())
-		used_keyword = list(set.intersection(keywords, accept_keywords))
-		if used_keyword and len(used_keyword) == 1:
-			used_keyword = used_keyword[0]
-		elif len(used_keyword) > 1:
-			# you can raise an error here if you prefer, remove it, or set the correct levels
-			writemsg_level( "_emerge.output.resolver.Display(), too many keywords recieved for pkg: %s, %s"
-					% (pkg.cpv, used_keyword))
-		try:
-			pmask = self.portdb.settings.pmaskdict[pkg.cp]
-		except KeyError:
-			pmask = []
-		hardmasked = []
-		for x in pmask:
-			m = self.portdb.xmatch("match-all",x)
-			for n in m:
-				if n not in hardmasked:
-					hardmasked.append(n)
-
+		used_keyword = pkg.accepted_keyword()
+		hardmasked = pkg.isHardMasked()
 		text = ''
 		if '~' in used_keyword:
 			text = used_keyword
 		elif not used_keyword:
 			text = '**'
 		if text:
-			if pkg.cpv in hardmasked:
+			if hardmasked:
 				self.verboseadd += red('%s ' % text)
 			else:
 				self.verboseadd += yellow('%s ' % text)
 		return
-
 
 	def map_to_use_expand(self, myvals, forced_flags=False,
 		remove_hidden=True):

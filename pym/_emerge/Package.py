@@ -41,6 +41,8 @@ class Package(Task):
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
+		# the SlotObject constructor assigns self.root_config from keyword args
+		# and is an instance of a '_emerge.RootConfig.RootConfig class
 		self.root = self.root_config.root
 		self._raw_metadata = _PackageMetadataWrapperBase(self.metadata)
 		self.metadata = _PackageMetadataWrapper(self, self._raw_metadata)
@@ -234,6 +236,49 @@ class Package(Task):
 				return False
 
 		return True
+
+	def accepted_keyword(self):
+		"""returns the keyword used from the ebuild's KEYWORDS string"""
+		
+		keywords = set(self.metadata.get('KEYWORDS').split())
+		accept_keywords = set(self.root_config.settings['ACCEPT_KEYWORDS'].split())
+		used_keyword = list(set.intersection(keywords, accept_keywords))
+		if used_keyword and len(used_keyword) == 1:
+			used_keyword = used_keyword[0]
+		elif len(used_keyword) > 1:
+			# you can raise an error here if you prefer, remove it, or set the correct levels
+			writemsg_level( "_emerge.output.resolver.Display(), too many keywords recieved for pkg: %s, %s"
+					% (pkg.cpv, used_keyword))
+			used_keyword = used_keyword[0]
+		#print "pmaskdict", self.root_config.settings.pmaskdict
+		return used_keyword
+
+	def isHardMasked(self):
+		"""returns a bool if the cpv is in the list of 
+		expanded pmaskdict[cp] availble ebuilds"""
+		try:
+			# returns a list of mask atoms
+			pmask = self.root_config.settings.pmaskdict[self.cp]
+		except KeyError:
+			pmask = []
+		if pmask:
+			# narrow pmask atoms down to the relevant repo
+			n=[x for x in pmask if x.split('::')[-1] in [self.repo]]
+			# hopefully it is down to only 1 mask atom
+			#print "n =", n
+			#count = 0
+			hardmasked = set()
+			for x in n:
+				#expand the atom to matching available ebuilds
+				m = self.root_config.trees['porttree'].dbapi.xmatch("match-all",x)
+				#print "m =", m
+				for n in m:
+					hardmasked.update([n])
+				#count += 1
+			#print "for x in n: loop count =", count, hardmasked
+			return self.cpv in hardmasked
+		return False
+
 
 	def _metadata_exception(self, k, e):
 
