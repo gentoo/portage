@@ -2191,7 +2191,7 @@ class depgraph(object):
 	def _get_dep_chain(self, pkg, target_atom=None, unsatisfied_dependency=False):
 		"""
 		Returns a list of (atom, node_type) pairs that represent a dep chain.
-		If target_atom is None, the first package shown is pkg's paretn.
+		If target_atom is None, the first package shown is pkg's parent.
 		If target_atom is not None the first package shown is pkg.
 		If unsatisfied_dependency is True, the first parent is select who's
 		dependency is not satisfied by 'pkg'. This is need for USE changes.
@@ -2209,7 +2209,7 @@ class depgraph(object):
 			for dep_str in "DEPEND", "RDEPEND", "PDEPEND":
 				affecting_use.update(extract_affecting_use(pkg.metadata[dep_str], target_atom))
 			affecting_use.difference_update(pkg.use.mask, node.use.force)
-			pkg_name = pkg.cpv
+			pkg_name = _unicode_decode("%s") % (pkg.cpv,)
 			if affecting_use:
 				usedep = []
 				for flag in affecting_use:
@@ -2219,13 +2219,13 @@ class depgraph(object):
 						usedep.append("-"+flag)
 				pkg_name += "[%s]" % ",".join(usedep)
 
-			dep_chain.append(( _unicode_decode(pkg_name),  _unicode_decode(pkg.type_name)))
+			dep_chain.append((pkg_name, pkg.type_name))
 
 		while node is not None:
 			traversed_nodes.add(node)
 
 			if isinstance(node, DependencyArg):
-				dep_chain.append((_unicode_decode(node), "argument"))
+				dep_chain.append((_unicode_decode("%s") % (node,), "argument"))
 
 			elif node is not pkg:
 				for ppkg, patom in all_parents[child]:
@@ -2250,7 +2250,7 @@ class depgraph(object):
 				affecting_use.difference_update(node.use.mask, \
 					node.use.force)
 
-				pkg_name = node.cpv
+				pkg_name = _unicode_decode("%s") % (node.cpv,)
 				if affecting_use:
 					usedep = []
 					for flag in affecting_use:
@@ -2260,7 +2260,7 @@ class depgraph(object):
 							usedep.append("-"+flag)
 					pkg_name += "[%s]" % ",".join(usedep)
 
-				dep_chain.append(( _unicode_decode(pkg_name),  _unicode_decode(node.type_name)))
+				dep_chain.append((pkg_name, node.type_name))
 
 			if node not in self._dynamic_config.digraph:
 				# The parent is not in the graph due to backtracking.
@@ -2278,7 +2278,8 @@ class depgraph(object):
 						selected_parent = parent
 						child = node
 					else:
-						dep_chain.append(( _unicode_decode(parent), "argument"))
+						dep_chain.append(
+							(_unicode_decode("%s") % (parent,), "argument"))
 						selected_parent = None
 					break
 				else:
