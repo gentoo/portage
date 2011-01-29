@@ -19,7 +19,7 @@ from portage.exception import InvalidDependString
 from portage.output import ( blue, bold, colorize, create_color_func,
 	darkblue, darkgreen, green, nc_len, red, teal, turquoise, yellow )
 bad = create_color_func("BAD")
-from portage.util import writemsg_stdout
+from portage.util import writemsg_stdout, writemsg_level
 from portage.versions import best, catpkgsplit, cpv_getkey
 
 from _emerge.Blocker import Blocker
@@ -157,6 +157,44 @@ class Display(object):
 			self.pkgsettings["USE_EXPAND_HIDDEN"].lower().split()
 		return
 
+	def _display_keyword(self, pkg):
+		""" keyword display
+		
+		@param pkg: _emerge.Package instance
+		Modifies self.verboseadd
+		"""
+		accept_keywords = set(self.portdb.settings['ACCEPT_KEYWORDS'].split())
+		keywords = set(self.portdb.aux_get(pkg.cpv, ["KEYWORDS"])[0].split())
+		used_keyword = list(set.intersection(keywords, accept_keywords))
+		if used_keyword and len(used_keyword) == 1:
+			used_keyword = used_keyword[0]
+		elif len(used_keyword) > 1:
+			# you can raise an error here if you prefer, remove it, or set the correct levels
+			writemsg_level( "_emerge.output.resolver.Display(), too many keywords recieved for pkg: %s, %s"
+					% (pkg.cpv, used_keyword))
+		try:
+			pmask = self.portdb.settings.pmaskdict[pkg.cp]
+		except KeyError:
+			pmask = []
+		hardmasked = []
+		for x in pmask:
+			m = self.portdb.xmatch("match-all",x)
+			for n in m:
+				if n not in hardmasked:
+					hardmasked.append(n)
+
+		text = ''
+		if '~' in used_keyword:
+			text = used_keyword
+		elif not used_keyword:
+			text = '**'
+		if text:
+			if pkg.cpv in hardmasked:
+				self.verboseadd += red('%s ' % text)
+			else:
+				self.verboseadd += yellow('%s ' % text)
+		return
+
 
 	def map_to_use_expand(self, myvals, forced_flags=False,
 		remove_hidden=True):
@@ -271,7 +309,7 @@ class Display(object):
 
 
 	def verbose_size(self, pkg, repoadd_set, pkg_info):
-		"""Determines teh size of the downloads reqired
+		"""Determines the size of the downloads reqired
 		
 		@param pkg: _emerge.Package instance
 		@param repoadd_set: set of repos to add
@@ -770,6 +808,7 @@ class Display(object):
 					self._get_installed_best(pkg, pkg_info)
 				self.verboseadd = ""
 				self.repoadd = None
+				self._display_keyword(pkg)
 				self._display_use(pkg, pkg_info.oldbest, myinslotlist)
 				self.recheck_hidden(pkg)
 				if self.conf.verbosity == 3:
