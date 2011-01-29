@@ -309,6 +309,7 @@ shutil = _unicode_module_wrapper(_shutil, encoding=_encodings['fs'])
 
 # Imports below this point rely on the above unicode wrapper definitions.
 try:
+	__import__('selinux')
 	import portage._selinux
 	selinux = _unicode_module_wrapper(_selinux,
 		encoding=_encodings['fs'])
