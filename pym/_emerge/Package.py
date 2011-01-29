@@ -263,17 +263,14 @@ class Package(Task):
 			pmask = []
 		if pmask:
 			# narrow pmask atoms down to the relevant repo
-			n=[x for x in pmask if x.split('::')[-1] in [self.repo]]
+			n = [x for x in pmask if x.split('::')[-1] in [self.repo]]
 			# hopefully it is down to only 1 mask atom
 			#print "n =", n
 			#count = 0
 			hardmasked = set()
 			for x in n:
 				#expand the atom to matching available ebuilds
-				m = self.root_config.trees['porttree'].dbapi.xmatch("match-all",x)
-				#print "m =", m
-				for n in m:
-					hardmasked.update([n])
+				hardmasked.update(self.root_config.trees['porttree'].dbapi.xmatch("match-all",x))
 				#count += 1
 			#print "for x in n: loop count =", count, hardmasked
 			return self.cpv in hardmasked
