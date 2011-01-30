@@ -165,7 +165,7 @@ class Display(object):
 		"""
 		used_keyword = pkg.accepted_keyword()
 		hardmasked = pkg.isHardMasked()
-		if used_keyword:
+		if used_keyword not in self.pkgsettings['ACCEPT_KEYWORDS'] or hardmasked:
 			if hardmasked:
 				self.verboseadd += 'keyword=' + red('[%s] ' % used_keyword)
 			else:
