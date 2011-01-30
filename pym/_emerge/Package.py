@@ -239,7 +239,7 @@ class Package(Task):
 
 	def accepted_keyword(self):
 		"""returns the keyword used from the ebuild's KEYWORDS string"""
-		
+
 		keywords = set(self.metadata.get('KEYWORDS').split())
 		accept_keywords = set(self.root_config.settings['ACCEPT_KEYWORDS'].split())
 		used_keyword = list(set.intersection(keywords, accept_keywords))
@@ -250,31 +250,14 @@ class Package(Task):
 			writemsg_level( "_emerge.output.resolver.Display(), too many keywords recieved for pkg: %s, %s"
 					% (pkg.cpv, used_keyword))
 			used_keyword = used_keyword[0]
-		#print "pmaskdict", self.root_config.settings.pmaskdict
 		return used_keyword
 
 	def isHardMasked(self):
-		"""returns a bool if the cpv is in the list of 
+		"""returns a bool if the cpv is in the list of
 		expanded pmaskdict[cp] availble ebuilds"""
-		try:
-			# returns a list of mask atoms
-			pmask = self.root_config.settings.pmaskdict[self.cp]
-		except KeyError:
-			pmask = []
-		if pmask:
-			# narrow pmask atoms down to the relevant repo
-			n = [x for x in pmask if x.split('::')[-1] in [self.repo]]
-			# hopefully it is down to only 1 mask atom
-			#print "n =", n
-			#count = 0
-			hardmasked = set()
-			for x in n:
-				#expand the atom to matching available ebuilds
-				hardmasked.update(self.root_config.trees['porttree'].dbapi.xmatch("match-all",x))
-				#count += 1
-			#print "for x in n: loop count =", count, hardmasked
-			return self.cpv in hardmasked
-		return False
+		pmask = self.root_config.settings._getRawMaskAtom(self.cpv, self.metadata)
+		print "pmask =", pmask
+		return pmask is not None
 
 
 	def _metadata_exception(self, k, e):
@@ -448,7 +431,7 @@ class Package(Task):
 					not self._iuse_implicit_match(flag):
 					return False
 			return True
-		
+
 		def get_missing_iuse(self, flags):
 			"""
 			@returns: A list of flags missing from IUSE.

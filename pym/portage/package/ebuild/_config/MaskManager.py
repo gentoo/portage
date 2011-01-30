@@ -135,3 +135,31 @@ class MaskManager(object):
 							return None
 				return x
 		return None
+
+	def getRawMaskAtom(self, cpv, slot, repo):
+		"""
+		Take a package and return a matching package.mask atom, or None if no
+		such atom exists. It HAS NOT! been cancelled by any package.unmask.
+		PROVIDE is not checked, so atoms will not be found for old-style
+		virtuals.
+
+		@param cpv: The package name
+		@type cpv: String
+		@param slot: The package's slot
+		@type slot: String
+		@rtype: String
+		@return: A matching atom string or None if one is not found.
+		"""
+
+		cp = cpv_getkey(cpv)
+		mask_atoms = self._pmaskdict.get(cp)
+		if mask_atoms:
+			pkg = "".join((cpv, _slot_separator, slot))
+			if repo:
+				pkg = "".join((pkg, _repo_separator, repo))
+			pkg_list = [pkg]
+			for x in mask_atoms:
+				if not match_from_list(x, pkg_list):
+					continue
+				return x
+		return None
