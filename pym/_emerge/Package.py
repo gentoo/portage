@@ -240,23 +240,23 @@ class Package(Task):
 	def accepted_keyword(self):
 		"""returns the keyword used from the ebuild's KEYWORDS string"""
 
-		keywords = set(self.metadata.get('KEYWORDS').split())
-		accept_keywords = set(self.root_config.settings['ACCEPT_KEYWORDS'].split())
-		used_keyword = list(set.intersection(keywords, accept_keywords))
-		if used_keyword and len(used_keyword) == 1:
-			used_keyword = used_keyword[0]
-		elif len(used_keyword) > 1:
-			# you can raise an error here if you prefer, remove it, or set the correct levels
-			writemsg_level( "_emerge.output.resolver.Display(), too many keywords recieved for pkg: %s, %s"
-					% (pkg.cpv, used_keyword))
-			used_keyword = used_keyword[0]
-		return used_keyword
+		missing, _keywords = \
+			self.root_config.settings._getRawMissingKeywords(
+				self.cpv, self.metadata)
+		if '**' in missing:
+			return '**'
+		if missing: # keywords to evaluate
+			for keyword in _keywords:
+				used_keyword = '~' + keyword
+				if used_keyword in missing:
+					return used_keyword
+		return ''
 
 	def isHardMasked(self):
 		"""returns a bool if the cpv is in the list of
 		expanded pmaskdict[cp] availble ebuilds"""
-		pmask = self.root_config.settings._getRawMaskAtom(self.cpv, self.metadata)
-		print "pmask =", pmask
+		pmask = self.root_config.settings._getRawMaskAtom(
+			self.cpv, self.metadata)
 		return pmask is not None
 
 
