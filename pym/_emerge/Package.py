@@ -243,10 +243,15 @@ class Package(Task):
 		missing, _keywords = \
 			self.root_config.settings._getRawMissingKeywords(
 				self.cpv, self.metadata)
+		unmasks = self.root_config.settings._getPKeywords(
+				self.cpv, self.metadata)
+
 		if '**' in missing:
 			return '**'
 		if missing: # keywords to evaluate
-			for keyword in _keywords:
+			for keyword in _keywords + unmasks:
+				if keyword == '**':
+					return keyword
 				used_keyword = '~' + keyword
 				if used_keyword in missing:
 					return used_keyword
