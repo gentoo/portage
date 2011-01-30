@@ -110,10 +110,10 @@ class _iuse_implicit_match_cache(object):
 class config(object):
 	"""
 	This class encompasses the main portage configuration.  Data is pulled from
-	ROOT/PORTDIR/profiles/, from ROOT/etc/make.profile incrementally through all 
+	ROOT/PORTDIR/profiles/, from ROOT/etc/make.profile incrementally through all
 	parent profiles as well as from ROOT/PORTAGE_CONFIGROOT/* for user specified
 	overrides.
-	
+
 	Generally if you need data like USE flags, FEATURES, environment variables,
 	virtuals ...etc you look in here.
 	"""
@@ -1388,6 +1388,22 @@ class config(object):
 		"""
 		return self._mask_manager.getMaskAtom(cpv, metadata["SLOT"], metadata.get('repository'))
 
+	def _getRawMaskAtom(self, cpv, metadata):
+		"""
+		Take a package and return a matching package.mask atom, or None if no
+		such atom exists or it has been cancelled by package.unmask. PROVIDE
+		is not checked, so atoms will not be found for old-style virtuals.
+
+		@param cpv: The package name
+		@type cpv: String
+		@param metadata: A dictionary of raw package metadata
+		@type metadata: dict
+		@rtype: String
+		@return: A matching atom string or None if one is not found.
+		"""
+		return self._mask_manager.getRawMaskAtom(cpv, metadata["SLOT"], metadata.get('repository'))
+
+
 	def _getProfileMaskAtom(self, cpv, metadata):
 		"""
 		Take a package and return a matching profile atom, or None if no
@@ -1436,7 +1452,7 @@ class config(object):
 		@return: A list of KEYWORDS that have not been accepted.
 		"""
 
-		# Hack: Need to check the env directly here as otherwise stacking 
+		# Hack: Need to check the env directly here as otherwise stacking
 		# doesn't work properly as negative values are lost in the config
 		# object (bug #139600)
 		backuped_accept_keywords = self.configdict["backupenv"].get("ACCEPT_KEYWORDS", "")
@@ -1445,6 +1461,33 @@ class config(object):
 		return self._keywords_manager.getMissingKeywords(cpv, metadata["SLOT"], \
 			metadata.get("KEYWORDS", ""), metadata.get('repository'), \
 			global_accept_keywords, backuped_accept_keywords)
+
+	def _getRawMissingKeywords(self, cpv, metadata):
+		"""
+		Take a package and return a list of any KEYWORDS that the user may
+		need to accept for the given package. If the KEYWORDS are empty,
+		the returned list will contain ** alone (in order to distinguish
+		from the case of "none missing").  This DOES NOT apply any user config
+		keywording acceptance.
+
+		@param cpv: The package name (for package.keywords support)
+		@type cpv: String
+		@param metadata: A dictionary of raw package metadata
+		@type metadata: dict
+		@rtype: List
+		@return: lists of KEYWORDS that have not been accepted
+		and the keywords it looked for.
+		"""
+
+		# Hack: Need to check the env directly here as otherwise stacking
+		# doesn't work properly as negative values are lost in the config
+		# object (bug #139600)
+		backuped_accept_keywords = self.configdict["backupenv"].get("ACCEPT_KEYWORDS", "")
+
+		return self._keywords_manager.getRawMissingKeywords(cpv, metadata["SLOT"], \
+			metadata.get("KEYWORDS", ""), metadata.get('repository'), \
+			self["ARCH"], backuped_accept_keywords)
+
 
 	def _getMissingLicenses(self, cpv, metadata):
 		"""

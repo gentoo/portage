@@ -102,7 +102,7 @@ class KeywordsManager(object):
 		@return: A list of KEYWORDS that have not been accepted.
 		"""
 
-		# Hack: Need to check the env directly here as otherwise stacking 
+		# Hack: Need to check the env directly here as otherwise stacking
 		# doesn't work properly as negative values are lost in the config
 		# object (bug #139600)
 		egroups = backuped_accept_keywords.split()
@@ -182,3 +182,83 @@ class KeywordsManager(object):
 				mygroups.append("**")
 			missing = mygroups
 		return missing
+
+	def getRawMissingKeywords(self, cpv, slot, keywords, repo, global_accept_keywords, backuped_accept_keywords):
+		"""
+		Take a package and return a list of any KEYWORDS that the user may
+		need to accept for the given package. If the KEYWORDS are empty,
+		the returned list will contain ** alone (in order to distinguish
+		from the case of "none missing").  This DOES NOT apply any user config
+		keywording acceptance.
+
+		@param cpv: The package name (for package.keywords support)
+		@type cpv: String
+		@param slot: The 'SLOT' key from the raw package metadata
+		@type slot: String
+		@param keywords: The 'KEYWORDS' key from the raw package metadata
+		@type keywords: String
+		@param global_accept_keywords: The current value of ACCEPT_KEYWORDS
+		@type global_accept_keywords: String
+		@param backuped_accept_keywords: ACCEPT_KEYWORDS from the backup env
+		@type backuped_accept_keywords: String
+		@rtype: List
+		@return: lists of KEYWORDS that have not been accepted
+		and the keywords it looked for.
+		"""
+
+		# Hack: Need to check the env directly here as otherwise stacking
+		# doesn't work properly as negative values are lost in the config
+		# object (bug #139600)
+		egroups = backuped_accept_keywords.split()
+		mygroups = self.getKeywords(cpv, slot, keywords, repo)
+		# Repoman may modify this attribute as necessary.
+		pgroups = global_accept_keywords.split()
+		matches = False
+
+		## we want to use the environment keywords here,
+		## but stripped to it's base arch
+		## we want the raw keywords needed to be accepted from the ebuild
+		if egroups:
+			pgroups.extend(egroups)
+			inc_pgroups = set()
+			for x in pgroups:
+				if x.startswith("-"):
+					if x == "-*":
+						inc_pgroups.clear()
+					else:
+						inc_pgroups.discard(x[1:])
+				else:
+					inc_pgroups.add(x.lstrip('~'))
+			pgroups = inc_pgroups
+			del inc_pgroups
+
+		match = False
+		hasstable = False
+		hastesting = False
+		for gp in mygroups:
+			if gp == "*" or (gp == "-*" and len(mygroups) == 1):
+				writemsg(_("--- WARNING: Package '%(cpv)s' uses"
+					" '%(keyword)s' keyword.\n") % {"cpv": cpv, "keyword": gp}, noiselevel=-1)
+				if gp == "*":
+					match = 1
+					break
+			elif gp in pgroups:
+				match=1
+				break
+			elif gp.startswith("~"):
+				hastesting = True
+			elif not gp.startswith("-"):
+				hasstable = True
+		if not match and \
+			((hastesting and "~*" in pgroups) or \
+			(hasstable and "*" in pgroups) or "**" in pgroups):
+			match=1
+		if match:
+			missing = []
+		else:
+			if not mygroups:
+				# If KEYWORDS is empty then we still have to return something
+				# in order to distinguish from the case of "none missing".
+				mygroups.append("**")
+			missing = mygroups
+		return missing, pgroups

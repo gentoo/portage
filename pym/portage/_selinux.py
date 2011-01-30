@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # Don't use the unicode-wrapped os and shutil modules here since
@@ -11,8 +11,8 @@ from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.localization import _
-
-import selinux
+portage.proxy.lazyimport.lazyimport(globals(),
+	'selinux')
 
 def copyfile(src, dest):
 	src = _unicode_encode(src, encoding=_encodings['fs'], errors='strict')

@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -42,6 +42,8 @@ class Package(Task):
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
+		# the SlotObject constructor assigns self.root_config from keyword args
+		# and is an instance of a '_emerge.RootConfig.RootConfig class
 		self.root = self.root_config.root
 		self._raw_metadata = _PackageMetadataWrapperBase(self.metadata)
 		self.metadata = _PackageMetadataWrapper(self, self._raw_metadata)
@@ -246,6 +248,29 @@ class Package(Task):
 
 		return True
 
+	def accepted_keyword(self):
+		"""returns the keyword used from the ebuild's KEYWORDS string"""
+
+		missing, _keywords = \
+			self.root_config.settings._getRawMissingKeywords(
+				self.cpv, self.metadata)
+		if '**' in missing:
+			return '**'
+		if missing: # keywords to evaluate
+			for keyword in _keywords:
+				used_keyword = '~' + keyword
+				if used_keyword in missing:
+					return used_keyword
+		return ''
+
+	def isHardMasked(self):
+		"""returns a bool if the cpv is in the list of
+		expanded pmaskdict[cp] available ebuilds"""
+		pmask = self.root_config.settings._getRawMaskAtom(
+			self.cpv, self.metadata)
+		return pmask is not None
+
+
 	def _metadata_exception(self, k, e):
 
 		# For unicode safety with python-2.x we need to avoid
@@ -417,7 +442,7 @@ class Package(Task):
 					not self._iuse_implicit_match(flag):
 					return False
 			return True
-		
+
 		def get_missing_iuse(self, flags):
 			"""
 			@returns: A list of flags missing from IUSE.

@@ -587,10 +587,10 @@ direcory does not exist, it will be created automatically and group permissions
 will be applied to it.  If the directory already exists, portage will not
 modify it's permissions.
 .TP
-\fBPORTAGE_BINHOST\fR = \fI"ftp://login:pass@grp.mirror.site/pub/grp/i686/athlon\-xp/"\fR
-This is the host from which portage will grab prebuilt\-binary packages.  
-The list is a single entry specifying the full address of the directory 
-serving the tbz2's for your system.  This is only used when running with 
+\fBPORTAGE_BINHOST\fR = \fI[space delimited URI list]\fR
+This is a list of hosts from which portage will grab prebuilt\-binary packages.
+Each entry in the list must specify the full address of a directory
+serving tbz2's for your system. This is only used when running with
 the get binary pkg options are given to \fBemerge\fR.  Review \fBemerge\fR(1) 
 for more information.  For versions of portage less that 2.1.6, this variable
 should point to the 'All' directory on the host that creates the binary

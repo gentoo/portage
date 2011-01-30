@@ -19,6 +19,7 @@ class LazyImportPortageBaselineTestCase(TestCase):
 		'portage.const', 'portage.localization',
 		'portage.proxy', 'portage.proxy.lazyimport',
 		'portage.proxy.objectproxy', 'portage._ensure_encodings',
+		'portage._selinux',
 	])
 
 	_baseline_import_cmd = [portage._python_interpreter, '-c', '''

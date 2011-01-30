@@ -29,7 +29,7 @@ from portage import digraph
 from portage import _unicode_decode
 from portage.cache.cache_errors import CacheError
 from portage.const import GLOBAL_CONFIG_PATH, NEWS_LIB_PATH, EPREFIX
-from portage.const import _ENABLE_DYN_LINK_MAP
+from portage.const import _ENABLE_DYN_LINK_MAP, _ENABLE_SET_CONFIG
 from portage.dbapi.dep_expand import dep_expand
 from portage.dep import Atom, extended_cp_match
 from portage.exception import InvalidAtom
@@ -1295,9 +1295,13 @@ class _info_pkgs_ver(object):
 		return self.ver + self.repo_suffix + self.provide_suffix
 
 def action_info(settings, trees, myopts, myfiles):
+
+	root_config = trees[settings['ROOT']]['root_config']
+
 	print(getportageversion(settings["PORTDIR"], settings["ROOT"],
 		settings.profile_path, settings["CHOST"],
 		trees[settings["ROOT"]]["vartree"].dbapi))
+
 	header_width = 65
 	header_title = "System Settings"
 	if myfiles:
@@ -1378,12 +1382,20 @@ def action_info(settings, trees, myopts, myfiles):
 
 	repos = portdb.settings.repositories
 	if "--verbose" in myopts:
-		writemsg_stdout("Repositories:\n\n")
+		writemsg_stdout("Repositories:\n\n", noiselevel=-1)
 		for repo in repos:
-			writemsg_stdout(repo.info_string())
+			writemsg_stdout(repo.info_string(), noiselevel=-1)
 	else:
 		writemsg_stdout("Repositories: %s\n" % \
-			" ".join(repo.name for repo in repos))
+			" ".join(repo.name for repo in repos), noiselevel=-1)
+
+	if _ENABLE_SET_CONFIG:
+		sets_line = "Installed sets: "
+		sets_line += ", ".join(s for s in \
+			sorted(root_config.sets['selected'].getNonAtoms()) \
+			if s.startswith(SETPREFIX))
+		sets_line += "\n"
+		writemsg_stdout(sets_line, noiselevel=-1)
 
 	if "--verbose" in myopts:
 		myvars = list(settings)
@@ -1408,7 +1420,6 @@ def action_info(settings, trees, myopts, myfiles):
 	use_expand_hidden = set(
 		settings.get('USE_EXPAND_HIDDEN', '').upper().split())
 	alphabetical_use = '--alphabetical' in myopts
-	root_config = trees[settings["ROOT"]]['root_config']
 	unset_vars = []
 	myvars.sort()
 	for x in myvars:
