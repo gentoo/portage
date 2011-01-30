@@ -808,6 +808,8 @@ class binarytree(object):
 					if not remote_timestamp:
 						# no timestamp in the header, something's wrong
 						pkgindex = None
+						writemsg(_("\n\n!!! Binhost package index " \
+						" has no TIMESTAMP field.\n"), noiselevel=-1)
 					else:
 						if not self._pkgindex_version_supported(rmt_idx):
 							writemsg(_("\n\n!!! Binhost package index version" \
