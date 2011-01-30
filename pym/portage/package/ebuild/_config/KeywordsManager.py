@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -129,6 +129,20 @@ class KeywordsManager(object):
 		# object (bug #139600)
 		egroups = self._getEgroups(backuped_accept_keywords)
 		pgroups.extend(egroups)
+
+		if unmaskgroups or egroups:
+			inc_pgroups = set()
+			for x in pgroups:
+				if x[:1] == "-":
+					if x == "-*":
+						inc_pgroups.clear()
+					else:
+						inc_pgroups.discard(x[1:])
+				else:
+					inc_pgroups.add(x)
+			pgroups = inc_pgroups
+		else:
+			pgroups = set(pgroups)
 
 		return self._getMissingKeywords(cpv, pgroups, mygroups)
 

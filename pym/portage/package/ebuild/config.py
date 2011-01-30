@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -1476,6 +1476,11 @@ class config(object):
 			metadata.get("KEYWORDS", ""), metadata.get('repository'), \
 			self["ARCH"], backuped_accept_keywords)
 
+	def _getPKeywords(self, cpv, metadata):
+		global_accept_keywords = self.get("ACCEPT_KEYWORDS", "")
+
+		return self._keywords_manager.getPKeywords(cpv, metadata["SLOT"], \
+			metadata.get('repository'), global_accept_keywords)
 
 	def _getMissingLicenses(self, cpv, metadata):
 		"""
