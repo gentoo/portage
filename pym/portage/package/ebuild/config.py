@@ -1450,6 +1450,33 @@ class config(object):
 			metadata.get("KEYWORDS", ""), metadata.get('repository'), \
 			global_accept_keywords, backuped_accept_keywords)
 
+	def _getRawMissingKeywords(self, cpv, metadata):
+		"""
+		Take a package and return a list of any KEYWORDS that the user may
+		need to accept for the given package. If the KEYWORDS are empty,
+		the returned list will contain ** alone (in order to distinguish
+		from the case of "none missing").  This DOES NOT apply any user config
+		keywording acceptance.
+
+		@param cpv: The package name (for package.keywords support)
+		@type cpv: String
+		@param metadata: A dictionary of raw package metadata
+		@type metadata: dict
+		@rtype: List
+		@return: lists of KEYWORDS that have not been accepted
+		and the keywords it looked for.
+		"""
+
+		# Hack: Need to check the env directly here as otherwise stacking
+		# doesn't work properly as negative values are lost in the config
+		# object (bug #139600)
+		backuped_accept_keywords = self.configdict["backupenv"].get("ACCEPT_KEYWORDS", "")
+
+		return self._keywords_manager.getRawMissingKeywords(cpv, metadata["SLOT"], \
+			metadata.get("KEYWORDS", ""), metadata.get('repository'), \
+			self["ARCH"], backuped_accept_keywords)
+
+
 	def _getMissingLicenses(self, cpv, metadata):
 		"""
 		Take a LICENSE string and return a list of any licenses that the user
