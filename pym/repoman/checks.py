@@ -1,5 +1,5 @@
 # repoman: Checks
-# Copyright 2007, 2010 Gentoo Foundation
+# Copyright 2007, 2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """This module contains functions used in Repoman to ascertain the quality
@@ -327,6 +327,15 @@ class EprefixifyDefined(LineCheck):
 		elif self._inherit_prefix_re.search(line) is not None:
 			self._prefix_inherited = True
 
+class NoOffsetWithHelpers(LineCheck):
+	""" Check that the image location, the alternate root offset, and the
+	offset prefix (D, ROOT, ED, EROOT and EPREFIX) are not used with
+	helpers """
+
+	repoman_check_name = 'variable.usedwithhelpers'
+	re = re.compile(r'.*\b(dodir|dohard|exeinto|insinto|into)\s+"?\$\{?(D|ROOT|ED|EROOT|EPREFIX)\}?.*')
+	error = errors.EPREFIX_WITH_HELPERS
+
 class ImplicitRuntimeDeps(LineCheck):
 	"""
 	Detect the case where DEPEND is set and RDEPEND is unset in the ebuild,
@@ -622,7 +631,7 @@ _constant_checks = tuple((c() for c in (
 	ImplicitRuntimeDeps, InheritAutotools, InheritDeprecated, IUseUndefined,
 	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS, NoAsNeeded,
 	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
-	SrcCompileEconf, Eapi3DeprecatedFuncs,
+	SrcCompileEconf, Eapi3DeprecatedFuncs, NoOffsetWithHelpers,
 	Eapi4IncompatibleFuncs, Eapi4GoneVars, BuiltWithUse,
 	PreserveOldLib, SandboxAddpredict)))
 
