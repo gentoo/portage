@@ -327,11 +327,13 @@ class EprefixifyDefined(LineCheck):
 		elif self._inherit_prefix_re.search(line) is not None:
 			self._prefix_inherited = True
 
-class EprefixWithHelpers(LineCheck):
-	""" Check that ED, EROOT and EPREFIX aren't used with helpers """
+class NoOffsetWithHelpers(LineCheck):
+	""" Check that the image location, the alternate root offset, and the
+	offset prefix (D, ROOT, ED, EROOT and EPREFIX) are not used with
+	helpers """
 
-	repoman_check_name = 'prefix.usedwithhelpers'
-	re = re.compile(r'.*\b(dodir|dohard|exeinto|insinto|into)\s+"?\$\{?(ED|EROOT|EPREFIX)\}?.*')
+	repoman_check_name = 'variable.usedwithhelpers'
+	re = re.compile(r'.*\b(dodir|dohard|exeinto|insinto|into)\s+"?\$\{?(D|ROOT|ED|EROOT|EPREFIX)\}?.*')
 	error = errors.EPREFIX_WITH_HELPERS
 
 class ImplicitRuntimeDeps(LineCheck):
@@ -629,7 +631,7 @@ _constant_checks = tuple((c() for c in (
 	ImplicitRuntimeDeps, InheritAutotools, InheritDeprecated, IUseUndefined,
 	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS, NoAsNeeded,
 	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
-	SrcCompileEconf, Eapi3DeprecatedFuncs, EprefixWithHelpers,
+	SrcCompileEconf, Eapi3DeprecatedFuncs, NoOffsetWithHelpers,
 	Eapi4IncompatibleFuncs, Eapi4GoneVars, BuiltWithUse,
 	PreserveOldLib, SandboxAddpredict)))
 

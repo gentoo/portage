@@ -20,5 +20,5 @@ NO_AS_NEEDED = 'Upstream asneeded linking bug (no-as-needed on line: %d)'
 PRESERVE_OLD_LIB = 'Upstream ABI change workaround on line: %d'
 BUILT_WITH_USE = 'built_with_use on line: %d'
 EPREFIXIFY_MISSING_INHERIT = "prefix.eclass is not inherited, but eprefixify is used on line: %d"
-EPREFIX_WITH_HELPERS = "Helper function is used with ED, EROOT or ERPREFIX on line :%d"
+NO_OFFSET_WITH_HELPERS = "Helper function is used with D, ROOT, ED, EROOT or EPREFIX on line :%d"
 SANDBOX_ADDPREDICT = 'Ebuild calls addpredict on line: %d'
