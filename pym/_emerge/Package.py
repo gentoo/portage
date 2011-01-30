@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -254,7 +254,7 @@ class Package(Task):
 
 	def isHardMasked(self):
 		"""returns a bool if the cpv is in the list of
-		expanded pmaskdict[cp] availble ebuilds"""
+		expanded pmaskdict[cp] available ebuilds"""
 		pmask = self.root_config.settings._getRawMaskAtom(
 			self.cpv, self.metadata)
 		return pmask is not None
