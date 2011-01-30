@@ -136,7 +136,11 @@ die() {
 		(( n-- ))
 	done
 
-	eerror "ERROR: $CATEGORY/$PF failed:"
+	# When a helper binary dies automatically in EAPI 4 and later, we don't
+	# get a stack trace, so at least report the phase that failed.
+	local phase_str=
+	[[ -n $EBUILD_PHASE ]] && phase_str=" ($EBUILD_PHASE phase)"
+	eerror "ERROR: $CATEGORY/$PF failed${phase_str}:"
 	eerror "  ${*:-(no error message)}"
 	eerror
 	# dump_trace is useless when the main script is a helper binary
