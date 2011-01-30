@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """Resolver output display operation.
@@ -285,7 +285,7 @@ class Display(object):
 
 
 	def verbose_size(self, pkg, repoadd_set, pkg_info):
-		"""Determines the size of the downloads reqired
+		"""Determines the size of the downloads required
 
 		@param pkg: _emerge.Package instance
 		@param repoadd_set: set of repos to add
