@@ -2619,6 +2619,9 @@ class depgraph(object):
 				if cat == "null":
 					cat = None
 
+				writemsg_stdout("\nemerge: searching for similar names..."
+					, noiselevel=-1)
+
 				all_cp = set()
 				all_cp.update(vardb.cp_all())
 				all_cp.update(portdb.cp_all())
@@ -2638,12 +2641,17 @@ class depgraph(object):
 						matches.extend(pkg_to_cp[pkg_match])
 
 				if len(matches) == 1:
-					writemsg_stdout("emerge: Maybe you meant " + matches[0] + "?\n"
+					writemsg_stdout("\nemerge: Maybe you meant " + matches[0] + "?\n"
 						, noiselevel=-1)
 				elif len(matches) > 1:
-					writemsg_stdout("emerge: Maybe you meant any of these: " + ", ".join(matches) + "?\n"
+					writemsg_stdout(
+						"\nemerge: Maybe you meant any of these: %s?\n" % \
+						(", ".join(matches),), noiselevel=-1)
+				else:
+					# Generally, this would only happen if
+					# all dbapis are empty.
+					writemsg_stdout(" nothing similar found.\n"
 						, noiselevel=-1)
-
 		msg = []
 		if not isinstance(myparent, AtomArg):
 			# It's redundant to show parent for AtomArg since
