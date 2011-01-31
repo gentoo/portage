@@ -163,16 +163,17 @@ class Display(object):
 		"""
 		used_keyword = pkg.accepted_keyword()
 		hardmasked = pkg.isHardMasked()
+		mask_str = " "
 
 		if hardmasked:
 			mask_str = colorize("BAD", "#")
+		elif not used_keyword:
+			pass
 		elif used_keyword not in self.pkgsettings['ACCEPT_KEYWORDS'].split():
 			if used_keyword == "**":
 				mask_str = colorize("BAD", "*")
 			else:
 				mask_str = colorize("WARN", "~")
-		else:
-			mask_str = " "
 
 		return mask_str
 
