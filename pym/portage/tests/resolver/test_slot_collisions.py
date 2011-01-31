@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -94,7 +94,7 @@ class SlotCollisionTestCase(TestCase):
 				slot_collision_solutions = [{"sci-libs/K-1": {"foo": False}, "sci-libs/M-1": {"foo": False}}]
 				),
 
-			#Avoid dupliacates.
+			#Avoid duplicates.
 			ResolverPlaygroundTestCase(
 				["sci-libs/P", "sci-libs/Q:2"],
 				success = False,
