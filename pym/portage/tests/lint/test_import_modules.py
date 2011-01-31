@@ -11,7 +11,6 @@ class ImportModulesTestCase(TestCase):
 
 	def testImportModules(self):
 		expected_failures = frozenset((
-			"portage.cache.ebuild_xattr", 	#automagic dep on xattr
 		))
 
 		for mod in self._list_modules(PORTAGE_PYM_PATH):

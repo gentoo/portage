@@ -1,17 +1,19 @@
-# Copyright: 2009-2010 Gentoo Foundation
+# Copyright: 2009-2011 Gentoo Foundation
 # Author(s): Petteri R&#228;ty (betelgeuse@gentoo.org)
 # License: GPL2
 
 __all__ = ['database']
 
+import portage
 from portage.cache import fs_template
 from portage.versions import catsplit
 from portage import cpv_getkey
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
-import xattr
 from errno import ENODATA,ENOSPC,E2BIG
+portage.proxy.lazyimport.lazyimport(globals(),
+	'xattr')
 
 class NoValueException(Exception):
 	pass
