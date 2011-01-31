@@ -157,20 +157,24 @@ class Display(object):
 			self.pkgsettings["USE_EXPAND_HIDDEN"].lower().split()
 		return
 
-	def _display_keyword(self, pkg):
-		""" keyword display
-
+	def gen_mask_str(self, pkg):
+		"""
 		@param pkg: _emerge.Package instance
-		Modifies self.verboseadd
 		"""
 		used_keyword = pkg.accepted_keyword()
 		hardmasked = pkg.isHardMasked()
-		if used_keyword not in self.pkgsettings['ACCEPT_KEYWORDS'].split() or hardmasked:
-			if hardmasked:
-				self.verboseadd += 'keyword=' + red('[%s] ' % used_keyword)
+
+		if hardmasked:
+			mask_str = colorize("BAD", "#")
+		elif used_keyword not in self.pkgsettings['ACCEPT_KEYWORDS'].split():
+			if used_keyword == "**":
+				mask_str = colorize("BAD", "*")
 			else:
-				self.verboseadd += 'keyword=' + yellow('%s ' % used_keyword)
-		return
+				mask_str = colorize("WARN", "~")
+		else:
+			mask_str = " "
+
+		return mask_str
 
 	def map_to_use_expand(self, myvals, forced_flags=False,
 		remove_hidden=True):
@@ -784,8 +788,6 @@ class Display(object):
 					self._get_installed_best(pkg, pkg_info)
 				self.verboseadd = ""
 				self.repoadd = None
-				if self.conf.verbosity == 3:
-					self._display_keyword(pkg)
 				self._display_use(pkg, pkg_info.oldbest, myinslotlist)
 				self.recheck_hidden(pkg)
 				if self.conf.verbosity == 3:
@@ -800,6 +802,9 @@ class Display(object):
 				pkg_info.system, pkg_info.world = \
 					self.check_system_world(pkg)
 				addl = self.set_interactive(pkg, pkg_info.ordered, addl)
+
+				if self.conf.verbosity == 3:
+					addl += self.gen_mask_str(pkg)
 
 				if pkg.root != "/":
 					if pkg_info.oldbest:
