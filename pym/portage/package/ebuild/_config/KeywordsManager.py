@@ -118,11 +118,11 @@ class KeywordsManager(object):
 
 		mygroups = self.getKeywords(cpv, slot, keywords, repo)
 		# Repoman may modify this attribute as necessary.
-		pgroups = set(global_accept_keywords.split())
+		pgroups = global_accept_keywords.split()
 
 		unmaskgroups = self.getPKeywords(cpv, slot, repo,
 				global_accept_keywords)
-		pgroups.update(unmaskgroups)
+		pgroups.extend(unmaskgroups)
 
 		# Hack: Need to check the env directly here as otherwise stacking
 		# doesn't work properly as negative values are lost in the config
@@ -130,7 +130,9 @@ class KeywordsManager(object):
 		egroups = backuped_accept_keywords.split()
 
 		if unmaskgroups or egroups:
-			pgroups = self._getEgroups(egroups, pgroups.copy())
+			pgroups = self._getEgroups(egroups, pgroups)
+		else:
+			pgroups = set(pgroups)
 
 		return self._getMissingKeywords(cpv, pgroups, mygroups)
 
@@ -166,18 +168,16 @@ class KeywordsManager(object):
 
 		mygroups = self.getKeywords(cpv, slot, keywords, repo)
 		# Repoman may modify this attribute as necessary.
-		pgroups = set(global_accept_keywords.split())
+		pgroups = global_accept_keywords.split()
 
 		# Hack: Need to check the env directly here as otherwise stacking
 		# doesn't work properly as negative values are lost in the config
 		# object (bug #139600)
-		# we want to use the environment keywords here,
-		# but stripped to it's base arch
-		# we want the raw keywords needed to be accepted from the ebuild
 		if backuped_accept_keywords:
 			egroups = self._getEgroups(backuped_accept_keywords.split(),
-					pgroups.copy())
-			pgroups = set([x.lstrip('~') for x in egroups])
+					pgroups)
+		else:
+			pgroups = set(pgroups)
 
 		missing = self._getMissingKeywords(cpv, pgroups, mygroups)
 
@@ -193,10 +193,11 @@ class KeywordsManager(object):
 		@rtype: List
 		@return: list of KEYWORDS that have been accepted
 		"""
-		mygroups.update(egroups)
+		mygroups = list(mygroups)
+		mygroups.extend(egroups)
 		inc_pgroups = set()
 		for x in mygroups:
-			if x.startswith("-"):
+			if x[:1] == "-":
 				if x == "-*":
 					inc_pgroups.clear()
 				else:
