@@ -1474,7 +1474,7 @@ class config(object):
 
 		return self._keywords_manager.getRawMissingKeywords(cpv, metadata["SLOT"], \
 			metadata.get("KEYWORDS", ""), metadata.get('repository'), \
-			self["ARCH"], backuped_accept_keywords)
+			self.get("ACCEPT_KEYWORDS", ""), backuped_accept_keywords)
 
 	def _getPKeywords(self, cpv, metadata):
 		global_accept_keywords = self.get("ACCEPT_KEYWORDS", "")
