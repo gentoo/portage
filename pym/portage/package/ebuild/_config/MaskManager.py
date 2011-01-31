@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -16,6 +16,9 @@ class MaskManager(object):
 		user_config=True, strict_umatched_removal=False):
 		self._punmaskdict = ExtendedAtomDict(list)
 		self._pmaskdict = ExtendedAtomDict(list)
+		# Preserves atoms that are eliminated by negative
+		# incrementals in user_pkgmasklines.
+		self._pmaskdict_raw = ExtendedAtomDict(list)
 
 		#Read profile/package.mask from every repo.
 		#Repositories inherit masks from their parent profiles and
@@ -89,10 +92,15 @@ class MaskManager(object):
 
 		#Stack everything together. At this point, only user_pkgmasklines may contain -atoms.
 		#Don't warn for unmatched -atoms here, since we don't do it for any other user config file.
+		raw_pkgmasklines = stack_lists([repo_pkgmasklines, profile_pkgmasklines], \
+			incremental=1, remember_source_file=True, warn_for_unmatched_removal=False, ignore_repo=True)
 		pkgmasklines = stack_lists([repo_pkgmasklines, profile_pkgmasklines, user_pkgmasklines], \
 			incremental=1, remember_source_file=True, warn_for_unmatched_removal=False, ignore_repo=True)
 		pkgunmasklines = stack_lists([repo_pkgunmasklines, profile_pkgunmasklines, user_pkgunmasklines], \
 			incremental=1, remember_source_file=True, warn_for_unmatched_removal=False, ignore_repo=True)
+
+		for x, source_file in raw_pkgmasklines:
+			self._pmaskdict_raw.setdefault(x.cp, []).append(x)
 
 		for x, source_file in pkgmasklines:
 			self._pmaskdict.setdefault(x.cp, []).append(x)
@@ -100,7 +108,7 @@ class MaskManager(object):
 		for x, source_file in pkgunmasklines:
 			self._punmaskdict.setdefault(x.cp, []).append(x)
 
-		for d in (self._pmaskdict, self._punmaskdict):
+		for d in (self._pmaskdict_raw, self._pmaskdict, self._punmaskdict):
 			for k, v in d.items():
 				d[k] = tuple(v)
 
@@ -152,7 +160,7 @@ class MaskManager(object):
 		"""
 
 		cp = cpv_getkey(cpv)
-		mask_atoms = self._pmaskdict.get(cp)
+		mask_atoms = self._pmaskdict_raw.get(cp)
 		if mask_atoms:
 			pkg = "".join((cpv, _slot_separator, slot))
 			if repo:
