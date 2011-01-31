@@ -174,7 +174,7 @@ class KeywordsManager(object):
 		# doesn't work properly as negative values are lost in the config
 		# object (bug #139600)
 		if backuped_accept_keywords:
-			egroups = self._getEgroups(backuped_accept_keywords.split(),
+			pgroups = self._getEgroups(backuped_accept_keywords.split(),
 					pgroups)
 		else:
 			pgroups = set(pgroups)
