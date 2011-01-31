@@ -164,16 +164,17 @@ class Display(object):
 		"""
 		@param pkg: _emerge.Package instance
 		"""
-		used_keyword = pkg.accepted_keyword()
 		hardmasked = pkg.isHardMasked()
 		mask_str = " "
 
 		if hardmasked:
 			mask_str = colorize("BAD", "#")
-		elif not used_keyword:
-			pass
-		elif used_keyword not in self.pkgsettings['ACCEPT_KEYWORDS'].split():
-			if used_keyword == "**":
+		else:
+			keyword_mask = pkg.get_keyword_mask()
+
+			if keyword_mask is None:
+				pass
+			elif keyword_mask == "missing":
 				mask_str = colorize("BAD", "*")
 			else:
 				mask_str = colorize("WARN", "~")

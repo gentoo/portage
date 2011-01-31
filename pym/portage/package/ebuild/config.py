@@ -1456,7 +1456,7 @@ class config(object):
 		need to accept for the given package. If the KEYWORDS are empty,
 		the returned list will contain ** alone (in order to distinguish
 		from the case of "none missing").  This DOES NOT apply any user config
-		keywording acceptance.
+		package.accept_keywords acceptance.
 
 		@param cpv: The package name (for package.keywords support)
 		@type cpv: String
@@ -1466,15 +1466,9 @@ class config(object):
 		@return: lists of KEYWORDS that have not been accepted
 		and the keywords it looked for.
 		"""
-
-		# Hack: Need to check the env directly here as otherwise stacking
-		# doesn't work properly as negative values are lost in the config
-		# object (bug #139600)
-		backuped_accept_keywords = self.configdict["backupenv"].get("ACCEPT_KEYWORDS", "")
-
 		return self._keywords_manager.getRawMissingKeywords(cpv, metadata["SLOT"], \
 			metadata.get("KEYWORDS", ""), metadata.get('repository'), \
-			self.get("ACCEPT_KEYWORDS", ""), backuped_accept_keywords)
+			self.get("ACCEPT_KEYWORDS", ""))
 
 	def _getPKeywords(self, cpv, metadata):
 		global_accept_keywords = self.get("ACCEPT_KEYWORDS", "")

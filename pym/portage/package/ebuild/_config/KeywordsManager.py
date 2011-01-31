@@ -142,14 +142,13 @@ class KeywordsManager(object):
 							slot,
 							keywords,
 							repo,
-							global_accept_keywords,
-							backuped_accept_keywords):
+							global_accept_keywords):
 		"""
 		Take a package and return a list of any KEYWORDS that the user may
 		need to accept for the given package. If the KEYWORDS are empty,
 		the returned list will contain ** alone (in order to distinguish
 		from the case of "none missing").  This DOES NOT apply any user config
-		keywording acceptance.
+		package.accept_keywords acceptance.
 
 		@param cpv: The package name (for package.keywords support)
 		@type cpv: String
@@ -159,29 +158,15 @@ class KeywordsManager(object):
 		@type keywords: String
 		@param global_accept_keywords: The current value of ACCEPT_KEYWORDS
 		@type global_accept_keywords: String
-		@param backuped_accept_keywords: ACCEPT_KEYWORDS from the backup env
-		@type backuped_accept_keywords: String
 		@rtype: List
 		@return: lists of KEYWORDS that have not been accepted
 		and the keywords it looked for.
 		"""
 
 		mygroups = self.getKeywords(cpv, slot, keywords, repo)
-		# Repoman may modify this attribute as necessary.
 		pgroups = global_accept_keywords.split()
-
-		# Hack: Need to check the env directly here as otherwise stacking
-		# doesn't work properly as negative values are lost in the config
-		# object (bug #139600)
-		if backuped_accept_keywords:
-			pgroups = self._getEgroups(backuped_accept_keywords.split(),
-					pgroups)
-		else:
-			pgroups = set(pgroups)
-
-		missing = self._getMissingKeywords(cpv, pgroups, mygroups)
-
-		return missing, list(pgroups)
+		pgroups = set(pgroups)
+		return self._getMissingKeywords(cpv, pgroups, mygroups)
 
 
 	@staticmethod
