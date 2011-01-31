@@ -128,9 +128,12 @@ class slot_conflict_handler(object):
 
 		self._prepare_conflict_msg_and_check_for_specificity()
 
-		#a list of dicts that hold the needed USE changes to solve all conflicts
+		#a list of dicts that hold the needed USE values to solve all conflicts
 		self.solutions = []
-		
+
+		#a list of dicts that hold the needed USE changes to solve all conflicts
+		self.changes = []
+
 		#configuration = a list of packages with exactly one package from every
 		#single slot conflict
 		config_gen = _configuration_generator(conflict_pkgs)
@@ -152,6 +155,7 @@ class slot_conflict_handler(object):
 
 			if new_solutions:
 				self.solutions.extend(new_solutions)
+
 				if first_config:
 					#If the "all ebuild"-config gives a solution, use it.
 					#Otherwise enumerate all other solutions.
@@ -168,10 +172,63 @@ class slot_conflict_handler(object):
 					writemsg("\nAborting search due to excessive number of configurations.\n", noiselevel=-1)
 				break
 
+		for solution in self.solutions:
+			self._add_change(self._get_change(solution))
+
 
 	def get_conflict(self):
 		return "".join(self.conflict_msg)
-		
+
+	def _is_subset(self, change1, change2):
+		"""
+		Checks if a set of changes 'change1' is a subset of the changes 'change2'.
+		"""
+		#All pkgs of change1 have to be in change2.
+		#For every package in change1, the changes have to be a subset of
+		#the corresponding changes in change2.
+		for pkg in change1:
+			if pkg not in change2:
+				return False
+
+			for flag in change1[pkg]:
+				if flag not in change2[pkg]:
+					return False
+				if change1[pkg][flag] != change2[pkg][flag]:
+					return False
+		return True
+
+	def _add_change(self, new_change):
+		"""
+		Make sure to keep only minimal changes. If "+foo", does the job, discard "+foo -bar".
+		"""
+		changes = self.changes
+		#Make sure there is no other solution that is a subset of the new solution.
+		ignore = False
+		to_be_removed = []
+		for change in changes:
+			if self._is_subset(change, new_change):
+				ignore = True
+				break
+			elif self._is_subset(new_change, change):
+				to_be_removed.append(change)
+
+		if not ignore:
+			#Discard all existing change that are a superset of the new change.
+			for obsolete_change in to_be_removed:
+				changes.remove(obsolete_change)
+			changes.append(new_change)
+
+	def _get_change(self, solution):
+		_pkg_use_enabled = self.depgraph._pkg_use_enabled
+		new_change = {}
+		for pkg in solution:
+			for flag, state in solution[pkg].items():
+				if state == "enabled" and flag not in _pkg_use_enabled(pkg):
+					new_change.setdefault(pkg, {})[flag] = True
+				elif state == "disabled" and flag in _pkg_use_enabled(pkg):
+					new_change.setdefault(pkg, {})[flag] = False
+		return new_change
+
 	def _prepare_conflict_msg_and_check_for_specificity(self):
 		"""
 		Print all slot conflicts in a human readable way.
@@ -420,26 +477,26 @@ class slot_conflict_handler(object):
 				msg += "It might be possible to solve these slot collisions\n"
 			msg += "by applying one of the following solutions:\n"
 
-		def print_solution(solution, indent=""):
+		def print_change(change, indent=""):
 			mymsg = ""
-			for pkg in solution:
+			for pkg in change:
 				changes = []
-				for flag, state in solution[pkg].items():
-					if state == "enabled" and flag not in _pkg_use_enabled(pkg):
+				for flag, state in change[pkg].items():
+					if state:
 						changes.append(colorize("red", "+" + flag))
-					elif state == "disabled" and flag in _pkg_use_enabled(pkg):
+					else:
 						changes.append(colorize("blue", "-" + flag))
-				if changes:
-					mymsg += indent + "- " + pkg.cpv + " (Change USE: %s" % " ".join(changes) + ")\n"
+				mymsg += indent + "- " + pkg.cpv + " (Change USE: %s" % " ".join(changes) + ")\n"
 			mymsg += "\n"
 			return mymsg
 
-		if len(solutions) == 1:
-			msg += print_solution(solutions[0], "   ")
+
+		if len(self.changes) == 1:
+			msg += print_change(self.changes[0], "   ")
 		else:
-			for solution in solutions:
+			for change in self.changes:
 				msg += "  Solution: Apply all of:\n"
-				msg += print_solution(solution, "     ")
+				msg += print_change(change, "     ")
 
 		return msg
 
