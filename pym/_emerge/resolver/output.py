@@ -436,9 +436,13 @@ class Display(object):
 			self.verboseadd = None
 		else:
 			if not pkg_info.merge:
-				myprint = "[%s] %s%s" % \
+				addl = ""
+				if self.conf.verbosity == 3:
+					# add column for mask status
+					addl += " "
+				myprint = "[%s%s] %s%s" % \
 					(self.pkgprint(pkg_info.operation.ljust(13), pkg_info),
-					self.indent, self.pkgprint(pkg.cp, pkg_info))
+					addl, self.indent, self.pkgprint(pkg.cp, pkg_info))
 			else:
 				myprint = "[%s %s] %s%s" % \
 					(self.pkgprint(pkg.type_name, pkg_info), addl,
@@ -461,9 +465,13 @@ class Display(object):
 		@rtype the updated addl
 		"""
 		if not pkg_info.merge:
-			myprint = "[%s] %s%s %s" % \
+			addl = ""
+			if self.conf.verbosity == 3:
+				# add column for mask status
+				addl += " "
+			myprint = "[%s%s] %s%s %s" % \
 				(self.pkgprint(pkg_info.operation.ljust(13),
-				pkg_info),
+				pkg_info), addl,
 				self.indent, self.pkgprint(pkg.cpv, pkg_info),
 				pkg_info.oldbest)
 		else:
