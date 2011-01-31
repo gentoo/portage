@@ -3,6 +3,7 @@
 
 from __future__ import print_function
 
+import difflib
 import gc
 import logging
 import re
@@ -2336,6 +2337,8 @@ class depgraph(object):
 		pkgsettings = self._frozen_config.pkgsettings[root]
 		root_config = self._frozen_config.roots[root]
 		portdb = self._frozen_config.roots[root].trees["porttree"].dbapi
+		vardb = self._frozen_config.roots[root].trees["vartree"].dbapi
+		bindb = self._frozen_config.roots[root].trees["bintree"].dbapi
 		dbs = self._dynamic_config._filtered_trees[root]["dbs"]
 		for db, pkg_type, built, installed, db_keys in dbs:
 			if installed:
@@ -2610,6 +2613,36 @@ class depgraph(object):
 			mask_docs = True
 		else:
 			writemsg_stdout("\nemerge: there are no ebuilds to satisfy "+green(xinfo)+".\n", noiselevel=-1)
+			if isinstance(myparent, AtomArg):
+				cp = myparent.atom.cp
+				cat, pkg = cp.split("/")
+				if cat == "null":
+					cat = None
+
+				all_cp = set()
+				all_cp.update(vardb.cp_all())
+				all_cp.update(portdb.cp_all())
+				if "--usepkg" in self._frozen_config.myopts:
+					all_cp.update(bindb.cp_all())
+
+				if cat:
+					matches = difflib.get_close_matches(cp, all_cp)
+				else:
+					pkg_to_cp = {}
+					for other_cp in all_cp:
+						other_pkg = other_cp.split("/")[1]
+						pkg_to_cp.setdefault(other_pkg, set()).add(other_cp)
+					pkg_matches = difflib.get_close_matches(pkg, pkg_to_cp)
+					matches = []
+					for pkg_match in pkg_matches:
+						matches.extend(pkg_to_cp[pkg_match])
+
+				if len(matches) == 1:
+					writemsg_stdout("emerge: Maybe you meant " + matches[0] + "?\n"
+						, noiselevel=-1)
+				elif len(matches) > 1:
+					writemsg_stdout("emerge: Maybe you meant any of these: " + ", ".join(matches) + "?\n"
+						, noiselevel=-1)
 
 		msg = []
 		if not isinstance(myparent, AtomArg):
