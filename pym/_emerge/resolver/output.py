@@ -85,6 +85,9 @@ class Display(object):
 			self.blocker_style = "PKG_BLOCKER"
 			addl = "%s  %s  " % (colorize(self.blocker_style, "B"),
 				fetch_symbol)
+		if self.conf.verbosity == 3:
+			# add column for mask status
+			addl += " "
 		self.resolved = dep_expand(
 			str(pkg.atom).lstrip("!"), mydb=self.vardb,
 			settings=self.pkgsettings
@@ -815,9 +818,13 @@ class Display(object):
 							addl, pkg_info, pkg)
 					else:
 						if not pkg_info.merge:
-							myprint = "[%s] " % (
+							addl = ""
+							if self.conf.verbosity == 3:
+								 # add column for mask status
+								addl += " "
+							myprint = "[%s%s] " % (
 								self.pkgprint(pkg_info.operation.ljust(13),
-								pkg_info)
+								pkg_info), addl,
 								)
 						else:
 							myprint = "[%s %s] " % (
