@@ -118,31 +118,19 @@ class KeywordsManager(object):
 
 		mygroups = self.getKeywords(cpv, slot, keywords, repo)
 		# Repoman may modify this attribute as necessary.
-		pgroups = global_accept_keywords.split()
+		pgroups = set(global_accept_keywords.split())
 
 		unmaskgroups = self.getPKeywords(cpv, slot, repo,
 				global_accept_keywords)
-		pgroups.extend(unmaskgroups)
+		pgroups.update(unmaskgroups)
 
 		# Hack: Need to check the env directly here as otherwise stacking
 		# doesn't work properly as negative values are lost in the config
 		# object (bug #139600)
-		egroups = self._getEgroups(backuped_accept_keywords)
-		pgroups.extend(egroups)
+		egroups = backuped_accept_keywords.split()
 
 		if unmaskgroups or egroups:
-			inc_pgroups = set()
-			for x in pgroups:
-				if x[:1] == "-":
-					if x == "-*":
-						inc_pgroups.clear()
-					else:
-						inc_pgroups.discard(x[1:])
-				else:
-					inc_pgroups.add(x)
-			pgroups = inc_pgroups
-		else:
-			pgroups = set(pgroups)
+			pgroups = self._getEgroups(egroups, pgroups.copy())
 
 		return self._getMissingKeywords(cpv, pgroups, mygroups)
 
@@ -178,7 +166,7 @@ class KeywordsManager(object):
 
 		mygroups = self.getKeywords(cpv, slot, keywords, repo)
 		# Repoman may modify this attribute as necessary.
-		pgroups = global_accept_keywords.split()
+		pgroups = set(global_accept_keywords.split())
 
 		# Hack: Need to check the env directly here as otherwise stacking
 		# doesn't work properly as negative values are lost in the config
@@ -186,18 +174,18 @@ class KeywordsManager(object):
 		# we want to use the environment keywords here,
 		# but stripped to it's base arch
 		# we want the raw keywords needed to be accepted from the ebuild
-		egroups = self._getEgroups(backuped_accept_keywords)
-		egroups = [x.lstrip('~') for x in egroups]
-
-		pgroups.extend(egroups)
+		if backuped_accept_keywords:
+			egroups = self._getEgroups(backuped_accept_keywords.split(),
+					pgroups.copy())
+			pgroups = set([x.lstrip('~') for x in egroups])
 
 		missing = self._getMissingKeywords(cpv, pgroups, mygroups)
 
-		return missing, pgroups
+		return missing, list(pgroups)
 
 
 	@staticmethod
-	def _getEgroups(backuped_accept_keywords):
+	def _getEgroups(egroups, mygroups):
 		"""gets any keywords defined in the environment
 
 		@param backuped_accept_keywords: ACCEPT_KEYWORDS from the backup env
@@ -205,22 +193,17 @@ class KeywordsManager(object):
 		@rtype: List
 		@return: list of KEYWORDS that have been accepted
 		"""
-		egroups = backuped_accept_keywords.split()
-		pgroups = []
-		if egroups:
-			pgroups.extend(egroups)
-			inc_pgroups = set()
-			for x in pgroups:
-				if x.startswith("-"):
-					if x == "-*":
-						inc_pgroups.clear()
-					else:
-						inc_pgroups.discard(x[1:])
+		mygroups.update(egroups)
+		inc_pgroups = set()
+		for x in mygroups:
+			if x.startswith("-"):
+				if x == "-*":
+					inc_pgroups.clear()
 				else:
-					inc_pgroups.add(x)
-			pgroups = inc_pgroups
-			del inc_pgroups
-		return pgroups
+					inc_pgroups.discard(x[1:])
+			else:
+				inc_pgroups.add(x)
+		return inc_pgroups
 
 
 	@staticmethod
