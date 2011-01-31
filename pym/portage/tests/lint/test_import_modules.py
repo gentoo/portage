@@ -10,8 +10,17 @@ from portage import _unicode_decode
 class ImportModulesTestCase(TestCase):
 
 	def testImportModules(self):
+		expected_failures = frozenset((
+			"portage.cache.ebuild_xattr", 	#automagic dep on xattr
+		))
+
 		for mod in self._list_modules(PORTAGE_PYM_PATH):
-			__import__(mod)
+			try:
+				__import__(mod)
+			except ImportError as e:
+				if mod not in expected_failures:
+					self.assertTrue(False, "failed to import '%s': %s" % (mod, e))
+				del e
 
 	def _list_modules(self, base_dir):
 		all_modules = []
