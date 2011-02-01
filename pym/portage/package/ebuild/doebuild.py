@@ -737,6 +737,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if not fetch(fetchme, mysettings, listonly=listonly,
 				fetchonly=fetchonly):
 				spawn_nofetch(mydbapi, myebuild, settings=mysettings)
+				if listonly:
+					# The convention for listonly mode is to report
+					# success in any case, even though fetch() may
+					# return unsuccessfully in order to trigger the
+					# nofetch phase.
+					return 0
 				return 1
 
 		if mydo == "fetch":
