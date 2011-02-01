@@ -1107,6 +1107,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 					noiselevel=-1)
 
 			if listonly:
+				failed_files.add(myfile)
 				continue
 			elif fetchonly:
 				failed_files.add(myfile)
