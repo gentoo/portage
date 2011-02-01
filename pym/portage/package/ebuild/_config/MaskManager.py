@@ -112,7 +112,7 @@ class MaskManager(object):
 			for k, v in d.items():
 				d[k] = tuple(v)
 
-	def getMaskAtom(self, cpv, slot, repo):
+	def _getMaskAtom(self, cpv, slot, repo, unmask_atoms=None):
 		"""
 		Take a package and return a matching package.mask atom, or None if no
 		such atom exists or it has been cancelled by package.unmask. PROVIDE
@@ -122,6 +122,10 @@ class MaskManager(object):
 		@type cpv: String
 		@param slot: The package's slot
 		@type slot: String
+		@param repo: The package's repository [optional]
+		@type repo: String
+		@param unmask_atoms: if desired pass in self._punmaskdict.get(cp)
+		@type unmask_atoms: list
 		@rtype: String
 		@return: A matching atom string or None if one is not found.
 		"""
@@ -133,7 +137,6 @@ class MaskManager(object):
 			if repo:
 				pkg = "".join((pkg, _repo_separator, repo))
 			pkg_list = [pkg]
-			unmask_atoms = self._punmaskdict.get(cp)
 			for x in mask_atoms:
 				if not match_from_list(x, pkg_list):
 					continue
@@ -143,6 +146,27 @@ class MaskManager(object):
 							return None
 				return x
 		return None
+
+
+	def getMaskAtom(self, cpv, slot, repo):
+		"""
+		Take a package and return a matching package.mask atom, or None if no
+		such atom exists or it has been cancelled by package.unmask. PROVIDE
+		is not checked, so atoms will not be found for old-style virtuals.
+
+		@param cpv: The package name
+		@type cpv: String
+		@param slot: The package's slot
+		@type slot: String
+		@param repo: The package's repository [optional]
+		@type repo: String
+		@rtype: String
+		@return: A matching atom string or None if one is not found.
+		"""
+
+		cp = cpv_getkey(cpv)
+		return self._getMaskAtom(cpv, slot, repo, self._punmaskdict.get(cp))
+
 
 	def getRawMaskAtom(self, cpv, slot, repo):
 		"""
@@ -155,19 +179,10 @@ class MaskManager(object):
 		@type cpv: String
 		@param slot: The package's slot
 		@type slot: String
+		@param repo: The package's repository [optional]
+		@type repo: String
 		@rtype: String
 		@return: A matching atom string or None if one is not found.
 		"""
 
-		cp = cpv_getkey(cpv)
-		mask_atoms = self._pmaskdict_raw.get(cp)
-		if mask_atoms:
-			pkg = "".join((cpv, _slot_separator, slot))
-			if repo:
-				pkg = "".join((pkg, _repo_separator, repo))
-			pkg_list = [pkg]
-			for x in mask_atoms:
-				if not match_from_list(x, pkg_list):
-					continue
-				return x
-		return None
+		return self._getMaskAtom(cpv, slot, repo)
