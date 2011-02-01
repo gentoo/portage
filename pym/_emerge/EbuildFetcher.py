@@ -5,6 +5,7 @@ import traceback
 
 from _emerge.SpawnProcess import SpawnProcess
 import copy
+import signal
 import sys
 import portage
 from portage import os
@@ -94,6 +95,11 @@ class EbuildFetcher(SpawnProcess):
 			return [pid]
 
 		portage.process._setup_pipes(fd_pipes)
+
+		# Use default signal handlers in order to avoid problems
+		# killing subprocesses as reported in bug #353239.
+		signal.signal(signal.SIGINT, signal.SIG_DFL)
+		signal.signal(signal.SIGTERM, signal.SIG_DFL)
 
 		# Force consistent color output, in case we are capturing fetch
 		# output through a normal pipe due to unavailability of ptys.
