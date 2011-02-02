@@ -136,11 +136,17 @@ die() {
 		(( n-- ))
 	done
 
-	eerror "ERROR: $CATEGORY/$PF failed:"
+	# When a helper binary dies automatically in EAPI 4 and later, we don't
+	# get a stack trace, so at least report the phase that failed.
+	local phase_str=
+	[[ -n $EBUILD_PHASE ]] && phase_str=" ($EBUILD_PHASE phase)"
+	eerror "ERROR: $CATEGORY/$PF failed${phase_str}:"
 	eerror "  ${*:-(no error message)}"
 	eerror
-	# This part is useless when called by the die helper.
-	if [[ ${BASH_SOURCE[1]##*/} != die ]] ; then
+	# dump_trace is useless when the main script is a helper binary
+	local main_index
+	(( main_index = ${#BASH_SOURCE[@]} - 1 ))
+	if has ${BASH_SOURCE[$main_index]##*/} ebuild.sh misc-functions.sh ; then
 	dump_trace 2 ${filespacing} ${linespacing}
 	eerror "  $(printf "%${filespacing}s" "${BASH_SOURCE[1]##*/}"), line $(printf "%${linespacing}s" "${BASH_LINENO[0]}"):  Called die"
 	eerror "The specific snippet of code:"

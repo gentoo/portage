@@ -248,20 +248,26 @@ class Package(Task):
 
 		return True
 
-	def accepted_keyword(self):
-		"""returns the keyword used from the ebuild's KEYWORDS string"""
+	def get_keyword_mask(self):
+		"""returns None, 'missing', or 'unstable'."""
 
-		missing, _keywords = \
-			self.root_config.settings._getRawMissingKeywords(
+		missing = self.root_config.settings._getRawMissingKeywords(
 				self.cpv, self.metadata)
+
+		if not missing:
+			return None
+
 		if '**' in missing:
-			return '**'
-		if missing: # keywords to evaluate
-			for keyword in _keywords:
-				used_keyword = '~' + keyword
-				if used_keyword in missing:
-					return used_keyword
-		return ''
+			return 'missing'
+
+		global_accept_keywords = frozenset(
+			self.root_config.settings.get("ACCEPT_KEYWORDS", "").split())
+
+		for keyword in missing:
+			if keyword.lstrip("~") in global_accept_keywords:
+				return 'unstable'
+
+		return 'missing'
 
 	def isHardMasked(self):
 		"""returns a bool if the cpv is in the list of

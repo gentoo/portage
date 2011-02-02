@@ -85,6 +85,9 @@ class Display(object):
 			self.blocker_style = "PKG_BLOCKER"
 			addl = "%s  %s  " % (colorize(self.blocker_style, "B"),
 				fetch_symbol)
+		if self.conf.verbosity == 3:
+			# add column for mask status
+			addl += " "
 		self.resolved = dep_expand(
 			str(pkg.atom).lstrip("!"), mydb=self.vardb,
 			settings=self.pkgsettings
@@ -157,20 +160,26 @@ class Display(object):
 			self.pkgsettings["USE_EXPAND_HIDDEN"].lower().split()
 		return
 
-	def _display_keyword(self, pkg):
-		""" keyword display
-
-		@param pkg: _emerge.Package instance
-		Modifies self.verboseadd
+	def gen_mask_str(self, pkg):
 		"""
-		used_keyword = pkg.accepted_keyword()
+		@param pkg: _emerge.Package instance
+		"""
 		hardmasked = pkg.isHardMasked()
-		if used_keyword not in self.pkgsettings['ACCEPT_KEYWORDS'] or hardmasked:
-			if hardmasked:
-				self.verboseadd += 'keyword=' + red('[%s] ' % used_keyword)
+		mask_str = " "
+
+		if hardmasked:
+			mask_str = colorize("BAD", "#")
+		else:
+			keyword_mask = pkg.get_keyword_mask()
+
+			if keyword_mask is None:
+				pass
+			elif keyword_mask == "missing":
+				mask_str = colorize("BAD", "*")
 			else:
-				self.verboseadd += 'keyword=' + yellow('%s ' % used_keyword)
-		return
+				mask_str = colorize("WARN", "~")
+
+		return mask_str
 
 	def map_to_use_expand(self, myvals, forced_flags=False,
 		remove_hidden=True):
@@ -428,9 +437,13 @@ class Display(object):
 			self.verboseadd = None
 		else:
 			if not pkg_info.merge:
-				myprint = "[%s] %s%s" % \
+				addl = ""
+				if self.conf.verbosity == 3:
+					# add column for mask status
+					addl += " "
+				myprint = "[%s%s] %s%s" % \
 					(self.pkgprint(pkg_info.operation.ljust(13), pkg_info),
-					self.indent, self.pkgprint(pkg.cp, pkg_info))
+					addl, self.indent, self.pkgprint(pkg.cp, pkg_info))
 			else:
 				myprint = "[%s %s] %s%s" % \
 					(self.pkgprint(pkg.type_name, pkg_info), addl,
@@ -453,9 +466,13 @@ class Display(object):
 		@rtype the updated addl
 		"""
 		if not pkg_info.merge:
-			myprint = "[%s] %s%s %s" % \
+			addl = ""
+			if self.conf.verbosity == 3:
+				# add column for mask status
+				addl += " "
+			myprint = "[%s%s] %s%s %s" % \
 				(self.pkgprint(pkg_info.operation.ljust(13),
-				pkg_info),
+				pkg_info), addl,
 				self.indent, self.pkgprint(pkg.cpv, pkg_info),
 				pkg_info.oldbest)
 		else:
@@ -784,8 +801,6 @@ class Display(object):
 					self._get_installed_best(pkg, pkg_info)
 				self.verboseadd = ""
 				self.repoadd = None
-				if self.conf.verbosity == 3:
-					self._display_keyword(pkg)
 				self._display_use(pkg, pkg_info.oldbest, myinslotlist)
 				self.recheck_hidden(pkg)
 				if self.conf.verbosity == 3:
@@ -801,6 +816,9 @@ class Display(object):
 					self.check_system_world(pkg)
 				addl = self.set_interactive(pkg, pkg_info.ordered, addl)
 
+				if self.conf.verbosity == 3:
+					addl += self.gen_mask_str(pkg)
+
 				if pkg.root != "/":
 					if pkg_info.oldbest:
 						pkg_info.oldbest += " "
@@ -809,9 +827,13 @@ class Display(object):
 							addl, pkg_info, pkg)
 					else:
 						if not pkg_info.merge:
-							myprint = "[%s] " % (
+							addl = ""
+							if self.conf.verbosity == 3:
+								 # add column for mask status
+								addl += " "
+							myprint = "[%s%s] " % (
 								self.pkgprint(pkg_info.operation.ljust(13),
-								pkg_info)
+								pkg_info), addl,
 								)
 						else:
 							myprint = "[%s %s] " % (

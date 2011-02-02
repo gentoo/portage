@@ -365,6 +365,11 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	myargs = [opt_name]
 	myargs.extend(mycommand[1:])
 
+	# Use default signal handlers in order to avoid problems
+	# killing subprocesses as reported in bug #353239.
+	signal.signal(signal.SIGINT, signal.SIG_DFL)
+	signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
 	# Quiet killing of subprocesses by SIGPIPE (see bug #309001).
 	signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 

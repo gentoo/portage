@@ -581,17 +581,11 @@ class ResolverPlaygroundResult(object):
 			self.slot_collision_solutions  = []
 			handler = self.depgraph._dynamic_config._slot_conflict_handler
 
-			for solution in handler.solutions:
-				s = {}
-				for pkg in solution:
-					changes = {}
-					for flag, state in solution[pkg].items():
-						if state == "enabled":
-							changes[flag] = True
-						else:
-							changes[flag] = False
-					s[pkg.cpv] = changes
-				self.slot_collision_solutions.append(s)
+			for change in handler.changes:
+				new_change = {}
+				for pkg in change:
+					new_change[pkg.cpv] = change[pkg]
+				self.slot_collision_solutions.append(new_change)
 
 		if self.depgraph._dynamic_config._circular_dependency_handler is not None:
 			handler = self.depgraph._dynamic_config._circular_dependency_handler

@@ -3,6 +3,7 @@
 
 from __future__ import print_function
 
+import difflib
 import gc
 import logging
 import re
@@ -197,6 +198,9 @@ class _dynamic_depgraph_config(object):
 		self._ignored_deps = []
 		self._highest_pkg_cache = {}
 
+		self._unsat_req_use = {}
+		self._pkg_config_issues = {}
+
 		self._needed_unstable_keywords = backtrack_parameters.needed_unstable_keywords
 		self._needed_license_changes = backtrack_parameters.needed_license_changes
 		self._needed_use_config_changes = backtrack_parameters.needed_use_config_changes
@@ -349,15 +353,12 @@ class depgraph(object):
 
 	def _show_missed_update(self):
 
-		if '--quiet' in self._frozen_config.myopts and \
-			'--debug' not in self._frozen_config.myopts:
-			return
-
 		# In order to minimize noise, show only the highest
 		# missed update from each SLOT.
 		missed_updates = {}
 		for pkg, mask_reasons in \
-			self._dynamic_config._runtime_pkg_mask.items():
+			chain(self._dynamic_config._runtime_pkg_mask.items(),
+			self._dynamic_config._pkg_config_issues.items()):
 			if pkg.installed:
 				# Exclude installed here since we only
 				# want to show available updates.
@@ -380,6 +381,18 @@ class depgraph(object):
 		for pkg, mask_type, parent_atoms in missed_updates.values():
 			missed_update_types.setdefault(mask_type,
 				[]).append((pkg, parent_atoms))
+
+		if '--quiet' in self._frozen_config.myopts and \
+			'--debug' not in self._frozen_config.myopts:
+			missed_update_types.pop("slot conflict", None)
+			missed_update_types.pop("missing dependency", None)
+
+		required_use = missed_update_types.pop("required use", None)
+		if required_use is not None:
+			# For display purposes, unsatisfied REQUIRED_USE
+			# can be treated like a missing dependency.
+			missed_update_types.setdefault("missing dependency",
+				[]).extend(required_use)
 
 		self._show_missed_update_slot_conflicts(
 			missed_update_types.get("slot conflict"))
@@ -1634,6 +1647,13 @@ class depgraph(object):
 				# Queue these up since it's most efficient to handle
 				# multiple files in a single iter_owners() call.
 				lookup_owners.append(x)
+			elif x.startswith("." + os.path.sep):
+				f = os.path.abspath(x)
+				if not f.startswith(myroot):
+					portage.writemsg(("\n\n!!! '%s' (resolved from '%s') does not start with" + \
+						" $ROOT.\n") % (f, x), noiselevel=-1)
+					return 0, []
+				lookup_owners.append(f)
 			else:
 				if x in ("system", "world"):
 					x = SETPREFIX + x
@@ -1882,7 +1902,14 @@ class depgraph(object):
 							self._dynamic_config._unsatisfied_deps_for_display.append(
 								((myroot, atom), {"myparent" : arg}))
 							return 0, myfavorites
-						self._dynamic_config._missing_args.append((arg, atom))
+						pkg = self._dynamic_config._unsat_req_use.get((myroot, atom))
+						if pkg is not None:
+							config_issues = \
+								self._dynamic_config._pkg_config_issues.setdefault(pkg, {})
+							parent_atoms = config_issues.setdefault("required use", set())
+							parent_atoms.add((arg, myroot, atom))
+						else:
+							self._dynamic_config._missing_args.append((arg, atom))
 						continue
 					if atom.cp != pkg.cp:
 						# For old-style virtuals, we need to repeat the
@@ -2175,7 +2202,8 @@ class depgraph(object):
 
 		return selected_atoms
 
-	def _get_dep_chain(self, pkg, target_atom=None, unsatisfied_dependency=False):
+	def _get_dep_chain(self, start_node, target_atom=None,
+		unsatisfied_dependency=False):
 		"""
 		Returns a list of (atom, node_type) pairs that represent a dep chain.
 		If target_atom is None, the first package shown is pkg's parent.
@@ -2186,17 +2214,17 @@ class depgraph(object):
 		"""
 		traversed_nodes = set()
 		dep_chain = []
-		node = pkg
-		first = True
+		node = start_node
 		child = None
 		all_parents = self._dynamic_config._parent_atoms
 
-		if target_atom is not None:
+		if target_atom is not None and isinstance(node, Package):
 			affecting_use = set()
 			for dep_str in "DEPEND", "RDEPEND", "PDEPEND":
-				affecting_use.update(extract_affecting_use(pkg.metadata[dep_str], target_atom))
-			affecting_use.difference_update(pkg.use.mask, node.use.force)
-			pkg_name = _unicode_decode("%s") % (pkg.cpv,)
+				affecting_use.update(extract_affecting_use(
+					node.metadata[dep_str], target_atom))
+			affecting_use.difference_update(node.use.mask, node.use.force)
+			pkg_name = _unicode_decode("%s") % (node.cpv,)
 			if affecting_use:
 				usedep = []
 				for flag in affecting_use:
@@ -2206,7 +2234,7 @@ class depgraph(object):
 						usedep.append("-"+flag)
 				pkg_name += "[%s]" % ",".join(usedep)
 
-			dep_chain.append((pkg_name, pkg.type_name))
+			dep_chain.append((pkg_name, node.type_name))
 
 		while node is not None:
 			traversed_nodes.add(node)
@@ -2214,7 +2242,7 @@ class depgraph(object):
 			if isinstance(node, DependencyArg):
 				dep_chain.append((_unicode_decode("%s") % (node,), "argument"))
 
-			elif node is not pkg:
+			elif node is not start_node:
 				for ppkg, patom in all_parents[child]:
 					if ppkg == node:
 						atom = patom.unevaluated_atom
@@ -2270,14 +2298,14 @@ class depgraph(object):
 						selected_parent = None
 					break
 				else:
-					if unsatisfied_dependency and node is pkg:
+					if unsatisfied_dependency and node is start_node:
 						# Make sure that pkg doesn't satisfy parent's dependency.
 						# This ensures that we select the correct parent for use
 						# flag changes.
-						for ppkg, atom in all_parents[pkg]:
+						for ppkg, atom in all_parents[start_node]:
 							if parent is ppkg:
 								atom_set = InternalPackageSet(initial_atoms=(atom,))
-								if not atom_set.findAtomForPackage(pkg):
+								if not atom_set.findAtomForPackage(start_node):
 									selected_parent = parent
 									child = node
 								break
@@ -2329,6 +2357,8 @@ class depgraph(object):
 		pkgsettings = self._frozen_config.pkgsettings[root]
 		root_config = self._frozen_config.roots[root]
 		portdb = self._frozen_config.roots[root].trees["porttree"].dbapi
+		vardb = self._frozen_config.roots[root].trees["vartree"].dbapi
+		bindb = self._frozen_config.roots[root].trees["bintree"].dbapi
 		dbs = self._dynamic_config._filtered_trees[root]["dbs"]
 		for db, pkg_type, built, installed, db_keys in dbs:
 			if installed:
@@ -2603,13 +2633,51 @@ class depgraph(object):
 			mask_docs = True
 		else:
 			writemsg_stdout("\nemerge: there are no ebuilds to satisfy "+green(xinfo)+".\n", noiselevel=-1)
+			if isinstance(myparent, AtomArg):
+				cp = myparent.atom.cp
+				cat, pkg = cp.split("/")
+				if cat == "null":
+					cat = None
 
+				writemsg_stdout("\nemerge: searching for similar names..."
+					, noiselevel=-1)
+
+				all_cp = set()
+				all_cp.update(vardb.cp_all())
+				all_cp.update(portdb.cp_all())
+				if "--usepkg" in self._frozen_config.myopts:
+					all_cp.update(bindb.cp_all())
+
+				if cat:
+					matches = difflib.get_close_matches(cp, all_cp)
+				else:
+					pkg_to_cp = {}
+					for other_cp in all_cp:
+						other_pkg = other_cp.split("/")[1]
+						pkg_to_cp.setdefault(other_pkg, set()).add(other_cp)
+					pkg_matches = difflib.get_close_matches(pkg, pkg_to_cp)
+					matches = []
+					for pkg_match in pkg_matches:
+						matches.extend(pkg_to_cp[pkg_match])
+
+				if len(matches) == 1:
+					writemsg_stdout("\nemerge: Maybe you meant " + matches[0] + "?\n"
+						, noiselevel=-1)
+				elif len(matches) > 1:
+					writemsg_stdout(
+						"\nemerge: Maybe you meant any of these: %s?\n" % \
+						(", ".join(matches),), noiselevel=-1)
+				else:
+					# Generally, this would only happen if
+					# all dbapis are empty.
+					writemsg_stdout(" nothing similar found.\n"
+						, noiselevel=-1)
 		msg = []
 		if not isinstance(myparent, AtomArg):
 			# It's redundant to show parent for AtomArg since
 			# it's the same as 'xinfo' displayed above.
 			dep_chain = self._get_dep_chain(myparent, atom)
-	
+
 			for node, node_type in dep_chain:
 				msg.append('(dependency required by "%s" [%s])' % \
 						(colorize('INFORM', _unicode_decode("%s") % \
@@ -2983,6 +3051,7 @@ class depgraph(object):
 		# represented by the found_available_arg flag.
 		found_available_arg = False
 		packages_with_invalid_use_config = []
+		pkgs_with_unsat_req_use = []
 		for find_existing_node in True, False:
 			if existing_node:
 				break
@@ -3198,6 +3267,7 @@ class depgraph(object):
 							continue
 						if not required_use_is_sat:
 							packages_with_invalid_use_config.append(pkg)
+							pkgs_with_unsat_req_use.append(pkg)
 							continue
 
 					if pkg.cp == atom_cp:
@@ -3281,6 +3351,9 @@ class depgraph(object):
 					break
 
 		if not matched_packages:
+			if pkgs_with_unsat_req_use:
+				self._dynamic_config._unsat_req_use[(root, atom)] = \
+					pkgs_with_unsat_req_use[0]
 			return None, None
 
 		if "--debug" in self._frozen_config.myopts:

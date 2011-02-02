@@ -17,6 +17,7 @@ from portage.output import colorize
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.doebuild import _check_temp_dir
 from portage.const import EPREFIX
+from portage.package.ebuild._spawn_nofetch import spawn_nofetch
 
 class EbuildBuild(CompositeTask):
 
@@ -119,6 +120,8 @@ class EbuildBuild(CompositeTask):
 					settings=settings)
 				retval = fetcher.execute()
 				self.returncode = retval
+				self.wait()
+				return
 			else:
 				fetcher = EbuildFetcher(
 					config_pool=self.config_pool,
@@ -128,11 +131,8 @@ class EbuildBuild(CompositeTask):
 					logfile=None,
 					pkg=self.pkg,
 					scheduler=self.scheduler)
-				fetcher.start()
-				self.returncode = fetcher.wait()
-
-			self.wait()
-			return
+				self._start_task(fetcher, self._fetchonly_exit)
+				return
 
 		self._build_dir = EbuildBuildDir(
 			scheduler=self.scheduler, settings=settings)
@@ -150,6 +150,13 @@ class EbuildBuild(CompositeTask):
 		pre_clean_phase = EbuildPhase(background=self.background,
 			phase='clean', scheduler=self.scheduler, settings=self.settings)
 		self._start_task(pre_clean_phase, self._pre_clean_exit)
+
+	def _fetchonly_exit(self, fetcher):
+		self._final_exit(fetcher)
+		if self.returncode != os.EX_OK:
+			portdb = self.pkg.root_config.trees[self._tree].dbapi
+			spawn_nofetch(portdb, self._ebuild_path, settings=self.settings)
+		self.wait()
 
 	def _pre_clean_exit(self, pre_clean_phase):
 		if self._default_exit(pre_clean_phase) != os.EX_OK:
