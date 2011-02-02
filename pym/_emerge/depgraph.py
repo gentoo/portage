@@ -2634,6 +2634,7 @@ class depgraph(object):
 			writemsg_stdout("    %s\n" % \
 				human_readable_required_use(pkg.metadata["REQUIRED_USE"]),
 				noiselevel=-1)
+			writemsg_stdout("\n", noiselevel=-1)
 
 		elif show_missing_use:
 			writemsg_stdout("\nemerge: there are no ebuilds built with USE flags to satisfy "+green(xinfo)+".\n", noiselevel=-1)
