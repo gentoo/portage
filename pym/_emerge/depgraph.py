@@ -2216,7 +2216,8 @@ class depgraph(object):
 
 		return selected_atoms
 
-	def _get_dep_chain(self, pkg, target_atom=None, unsatisfied_dependency=False):
+	def _get_dep_chain(self, start_node, target_atom=None,
+		unsatisfied_dependency=False):
 		"""
 		Returns a list of (atom, node_type) pairs that represent a dep chain.
 		If target_atom is None, the first package shown is pkg's parent.
@@ -2227,17 +2228,17 @@ class depgraph(object):
 		"""
 		traversed_nodes = set()
 		dep_chain = []
-		node = pkg
-		first = True
+		node = start_node
 		child = None
 		all_parents = self._dynamic_config._parent_atoms
 
-		if target_atom is not None:
+		if target_atom is not None and isinstance(node, Package):
 			affecting_use = set()
 			for dep_str in "DEPEND", "RDEPEND", "PDEPEND":
-				affecting_use.update(extract_affecting_use(pkg.metadata[dep_str], target_atom))
-			affecting_use.difference_update(pkg.use.mask, node.use.force)
-			pkg_name = _unicode_decode("%s") % (pkg.cpv,)
+				affecting_use.update(extract_affecting_use(
+					node.metadata[dep_str], target_atom))
+			affecting_use.difference_update(node.use.mask, node.use.force)
+			pkg_name = _unicode_decode("%s") % (node.cpv,)
 			if affecting_use:
 				usedep = []
 				for flag in affecting_use:
@@ -2247,7 +2248,7 @@ class depgraph(object):
 						usedep.append("-"+flag)
 				pkg_name += "[%s]" % ",".join(usedep)
 
-			dep_chain.append((pkg_name, pkg.type_name))
+			dep_chain.append((pkg_name, node.type_name))
 
 		while node is not None:
 			traversed_nodes.add(node)
@@ -2255,7 +2256,7 @@ class depgraph(object):
 			if isinstance(node, DependencyArg):
 				dep_chain.append((_unicode_decode("%s") % (node,), "argument"))
 
-			elif node is not pkg:
+			elif node is not start_node:
 				for ppkg, patom in all_parents[child]:
 					if ppkg == node:
 						atom = patom.unevaluated_atom
@@ -2311,14 +2312,14 @@ class depgraph(object):
 						selected_parent = None
 					break
 				else:
-					if unsatisfied_dependency and node is pkg:
+					if unsatisfied_dependency and node is start_node:
 						# Make sure that pkg doesn't satisfy parent's dependency.
 						# This ensures that we select the correct parent for use
 						# flag changes.
-						for ppkg, atom in all_parents[pkg]:
+						for ppkg, atom in all_parents[start_node]:
 							if parent is ppkg:
 								atom_set = InternalPackageSet(initial_atoms=(atom,))
-								if not atom_set.findAtomForPackage(pkg):
+								if not atom_set.findAtomForPackage(start_node):
 									selected_parent = parent
 									child = node
 								break
@@ -2677,11 +2678,11 @@ class depgraph(object):
 					writemsg_stdout(" nothing similar found.\n"
 						, noiselevel=-1)
 		msg = []
-		if not isinstance(myparent, DependencyArg):
+		if not isinstance(myparent, AtomArg):
 			# It's redundant to show parent for AtomArg since
 			# it's the same as 'xinfo' displayed above.
 			dep_chain = self._get_dep_chain(myparent, atom)
-	
+
 			for node, node_type in dep_chain:
 				msg.append('(dependency required by "%s" [%s])' % \
 						(colorize('INFORM', _unicode_decode("%s") % \
