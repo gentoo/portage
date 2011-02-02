@@ -197,7 +197,6 @@ class _dynamic_depgraph_config(object):
 		self._initially_unsatisfied_deps = []
 		self._ignored_deps = []
 		self._highest_pkg_cache = {}
-		self._pkg_config_issues = {}
 
 		if runtime_pkg_mask is None:
 			runtime_pkg_mask = {}
@@ -375,8 +374,7 @@ class depgraph(object):
 		# missed update from each SLOT.
 		missed_updates = {}
 		for pkg, mask_reasons in \
-			chain(self._dynamic_config._runtime_pkg_mask.items(),
-			self._dynamic_config._pkg_config_issues.items()):
+			self._dynamic_config._runtime_pkg_mask.items():
 			if pkg.installed:
 				# Exclude installed here since we only
 				# want to show available updates.
@@ -404,13 +402,6 @@ class depgraph(object):
 			'--debug' not in self._frozen_config.myopts:
 			missed_update_types.pop("slot conflict", None)
 			missed_update_types.pop("missing dependency", None)
-
-		required_use = missed_update_types.pop("required use", None)
-		if required_use is not None:
-			# For display purposes, unsatisfied REQUIRED_USE
-			# can be treated like a missing dependency.
-			missed_update_types.setdefault("missing dependency",
-				[]).extend(required_use)
 
 		self._show_missed_update_slot_conflicts(
 			missed_update_types.get("slot conflict"))
@@ -866,13 +857,11 @@ class depgraph(object):
 						parent, atom = parent_atom
 						self._add_parent_atom(pkg, parent_atom)
 
-				config_issues = \
-					self._dynamic_config._pkg_config_issues.setdefault(pkg, {})
-				parent_atoms = config_issues.setdefault("required use", set())
-				all_parent_atoms = self._dynamic_config._parent_atoms.get(pkg)
-				if all_parent_atoms is not None:
-					for parent, atom in all_parent_atoms:
-						parent_atoms.add((parent, pkg.root, atom))
+				atom = dep.atom
+				if atom is None:
+					atom = Atom("=" + pkg.cpv)
+				self._dynamic_config._unsatisfied_deps_for_display.append(
+					((pkg.root, atom), {"myparent":dep.parent}))
 				return 0
 
 		if not pkg.onlydeps:
