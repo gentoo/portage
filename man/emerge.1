@@ -713,6 +713,28 @@ it was last installed.  For information about all \fBUSE\fR symbols, see the
 displayed when you use the \fB\-\-pretend\fR and \fB\-\-verbose\fR options.
 Using the \fB\-\-quiet\fR option will prevent all information from being
 displayed.
+.TP
+.B [ebuild     U *] sys\-apps/portage\-2.2.0_alpha6 [2.1.9.25]
+Portage 2.1.9.25 is installed, but if you run the command, then
+portage will upgrade to version 2.2.0_alpha6. In this case,
+\fB\-\-verbose\fR causes the \fB*\fR symbol to be displayed, in
+order to indicate that version 2.2.0_alpha6 is masked by missing
+keyword. The following symbols are used to indicate various types
+of masking:
+
+.TS
+l l
+__
+c l.
+Symbol	Mask Type
+
+#	package.mask
+*	missing keyword
+~	unstable keyword
+.TE
+.TP
+
+
 .SH "NOTES"
 You should almost always precede any package install or update attempt with a 
 \fB\-\-pretend\fR install or update.  This lets you see how much will be 
