@@ -197,8 +197,6 @@ class _dynamic_depgraph_config(object):
 		self._initially_unsatisfied_deps = []
 		self._ignored_deps = []
 		self._highest_pkg_cache = {}
-
-		self._unsat_req_use = {}
 		self._pkg_config_issues = {}
 
 		self._needed_unstable_keywords = backtrack_parameters.needed_unstable_keywords
@@ -826,6 +824,34 @@ class depgraph(object):
 					# should have been masked before it was selected
 					raise
 				del e
+
+		# NOTE: REQUIRED_USE checks are delayed until after
+		# package selection, since want to prompt the user
+		# for USE adjustment rather than have REQUIRED_USE
+		# affect package selection and || dep choices.
+		if not pkg.built and pkg.metadata["REQUIRED_USE"] and \
+			eapi_has_required_use(pkg.metadata["EAPI"]):
+			required_use_is_sat = check_required_use(
+				pkg.metadata["REQUIRED_USE"],
+				self._pkg_use_enabled(pkg),
+				pkg.iuse.is_valid_flag)
+			if not required_use_is_sat:
+				if dep.atom is not None and dep.parent is not None:
+					self._add_parent_atom(pkg, (dep.parent, dep.atom))
+
+				if arg_atoms:
+					for parent_atom in arg_atoms:
+						parent, atom = parent_atom
+						self._add_parent_atom(pkg, parent_atom)
+
+				config_issues = \
+					self._dynamic_config._pkg_config_issues.setdefault(pkg, {})
+				parent_atoms = config_issues.setdefault("required use", set())
+				all_parent_atoms = self._dynamic_config._parent_atoms.get(pkg)
+				if all_parent_atoms is not None:
+					for parent, atom in all_parent_atoms:
+						parent_atoms.add((parent, pkg.root, atom))
+				return 0
 
 		if not pkg.onlydeps:
 			if not pkg.installed and \
@@ -1902,14 +1928,8 @@ class depgraph(object):
 							self._dynamic_config._unsatisfied_deps_for_display.append(
 								((myroot, atom), {"myparent" : arg}))
 							return 0, myfavorites
-						pkg = self._dynamic_config._unsat_req_use.get((myroot, atom))
-						if pkg is not None:
-							config_issues = \
-								self._dynamic_config._pkg_config_issues.setdefault(pkg, {})
-							parent_atoms = config_issues.setdefault("required use", set())
-							parent_atoms.add((arg, myroot, atom))
-						else:
-							self._dynamic_config._missing_args.append((arg, atom))
+
+						self._dynamic_config._missing_args.append((arg, atom))
 						continue
 					if atom.cp != pkg.cp:
 						# For old-style virtuals, we need to repeat the
@@ -1942,12 +1962,13 @@ class depgraph(object):
 						if self._dynamic_config._need_restart:
 							pass
 						elif isinstance(arg, SetArg):
-							sys.stderr.write(("\n\n!!! Problem resolving " + \
+							writemsg(("\n\n!!! Problem resolving " + \
 								"dependencies for %s from %s\n") % \
-								(atom, arg.arg))
+								(atom, arg.arg), noiselevel=-1)
 						else:
-							sys.stderr.write(("\n\n!!! Problem resolving " + \
-								"dependencies for %s\n") % atom)
+							writemsg(("\n\n!!! Problem resolving " + \
+								"dependencies for %s\n") % \
+								(atom,), noiselevel=-1)
 						return 0, myfavorites
 
 				except portage.exception.MissingSignature as e:
@@ -3051,7 +3072,6 @@ class depgraph(object):
 		# represented by the found_available_arg flag.
 		found_available_arg = False
 		packages_with_invalid_use_config = []
-		pkgs_with_unsat_req_use = []
 		for find_existing_node in True, False:
 			if existing_node:
 				break
@@ -3252,24 +3272,6 @@ class depgraph(object):
 								packages_with_invalid_use_config.append(pkg)
 							continue
 
-					#check REQUIRED_USE constraints
-					if not pkg.built and pkg.metadata["REQUIRED_USE"] and \
-						eapi_has_required_use(pkg.metadata["EAPI"]):
-						required_use = pkg.metadata["REQUIRED_USE"]
-						use = self._pkg_use_enabled(pkg)
-						try:
-							required_use_is_sat = check_required_use(
-								pkg.metadata["REQUIRED_USE"], use, pkg.iuse.is_valid_flag)
-						except portage.exception.InvalidDependString as e:
-							portage.writemsg("!!! Invalid REQUIRED_USE specified by " + \
-								"'%s': %s\n" % (pkg.cpv, str(e)), noiselevel=-1)
-							del e
-							continue
-						if not required_use_is_sat:
-							packages_with_invalid_use_config.append(pkg)
-							pkgs_with_unsat_req_use.append(pkg)
-							continue
-
 					if pkg.cp == atom_cp:
 						if highest_version is None:
 							highest_version = pkg
@@ -3351,9 +3353,6 @@ class depgraph(object):
 					break
 
 		if not matched_packages:
-			if pkgs_with_unsat_req_use:
-				self._dynamic_config._unsat_req_use[(root, atom)] = \
-					pkgs_with_unsat_req_use[0]
 			return None, None
 
 		if "--debug" in self._frozen_config.myopts:
