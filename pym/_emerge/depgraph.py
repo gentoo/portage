@@ -197,6 +197,10 @@ class _dynamic_depgraph_config(object):
 		self._initially_unsatisfied_deps = []
 		self._ignored_deps = []
 		self._highest_pkg_cache = {}
+
+		self._unsat_req_use = {}
+		self._pkg_config_issues = {}
+
 		if runtime_pkg_mask is None:
 			runtime_pkg_mask = {}
 		else:
@@ -369,15 +373,12 @@ class depgraph(object):
 
 	def _show_missed_update(self):
 
-		if '--quiet' in self._frozen_config.myopts and \
-			'--debug' not in self._frozen_config.myopts:
-			return
-
 		# In order to minimize noise, show only the highest
 		# missed update from each SLOT.
 		missed_updates = {}
 		for pkg, mask_reasons in \
-			self._dynamic_config._runtime_pkg_mask.items():
+			chain(self._dynamic_config._runtime_pkg_mask.items(),
+			self._dynamic_config._pkg_config_issues.items()):
 			if pkg.installed:
 				# Exclude installed here since we only
 				# want to show available updates.
@@ -400,6 +401,18 @@ class depgraph(object):
 		for pkg, mask_type, parent_atoms in missed_updates.values():
 			missed_update_types.setdefault(mask_type,
 				[]).append((pkg, parent_atoms))
+
+		if '--quiet' in self._frozen_config.myopts and \
+			'--debug' not in self._frozen_config.myopts:
+			missed_update_types.pop("slot conflict", None)
+			missed_update_types.pop("missing dependency", None)
+
+		required_use = missed_update_types.pop("required use", None)
+		if required_use is not None:
+			# For display purposes, unsatisfied REQUIRED_USE
+			# can be treated like a missing dependency.
+			missed_update_types.setdefault("missing dependency",
+				[]).extend(required_use)
 
 		self._show_missed_update_slot_conflicts(
 			missed_update_types.get("slot conflict"))
@@ -1904,7 +1917,14 @@ class depgraph(object):
 							self._dynamic_config._unsatisfied_deps_for_display.append(
 								((myroot, atom), {"myparent" : arg}))
 							return 0, myfavorites
-						self._dynamic_config._missing_args.append((arg, atom))
+						pkg = self._dynamic_config._unsat_req_use.get((myroot, atom))
+						if pkg is not None:
+							config_issues = \
+								self._dynamic_config._pkg_config_issues.setdefault(pkg, {})
+							parent_atoms = config_issues.setdefault("required use", set())
+							parent_atoms.add((arg, myroot, atom))
+						else:
+							self._dynamic_config._missing_args.append((arg, atom))
 						continue
 					if atom.cp != pkg.cp:
 						# For old-style virtuals, we need to repeat the
@@ -2657,7 +2677,7 @@ class depgraph(object):
 					writemsg_stdout(" nothing similar found.\n"
 						, noiselevel=-1)
 		msg = []
-		if not isinstance(myparent, AtomArg):
+		if not isinstance(myparent, DependencyArg):
 			# It's redundant to show parent for AtomArg since
 			# it's the same as 'xinfo' displayed above.
 			dep_chain = self._get_dep_chain(myparent, atom)
@@ -3001,6 +3021,7 @@ class depgraph(object):
 		# represented by the found_available_arg flag.
 		found_available_arg = False
 		packages_with_invalid_use_config = []
+		pkgs_with_unsat_req_use = []
 		for find_existing_node in True, False:
 			if existing_node:
 				break
@@ -3197,6 +3218,7 @@ class depgraph(object):
 							continue
 						if not required_use_is_sat:
 							packages_with_invalid_use_config.append(pkg)
+							pkgs_with_unsat_req_use.append(pkg)
 							continue
 
 					if pkg.cp == atom_cp:
@@ -3280,6 +3302,9 @@ class depgraph(object):
 					break
 
 		if not matched_packages:
+			if pkgs_with_unsat_req_use:
+				self._dynamic_config._unsat_req_use[(root, atom)] = \
+					pkgs_with_unsat_req_use[0]
 			return None, None
 
 		if "--debug" in self._frozen_config.myopts:
