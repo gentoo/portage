@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -79,6 +79,30 @@ class RequiredUSETestCase(TestCase):
 			ResolverPlaygroundTestCase(["=dev-libs/D-3"],  success = False),
 			ResolverPlaygroundTestCase(["=dev-libs/D-4"],  success = False),
 			ResolverPlaygroundTestCase(["=dev-libs/D-5"],  success = True, mergelist=["dev-libs/D-5"]),
+			)
+
+		playground = ResolverPlayground(ebuilds=ebuilds)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
+
+	def testRequiredUseOrDeps(self):
+		
+		ebuilds = {
+			"dev-libs/A-1": { "IUSE": "+x +y", "REQUIRED_USE": "^^ ( x y )", "EAPI": "4" },
+			"dev-libs/B-1": { "IUSE": "+x +y", "REQUIRED_USE": "",           "EAPI": "4" },
+			"app-misc/p-1": { "RDEPEND": "|| ( =dev-libs/A-1 =dev-libs/B-1 )" },
+			}
+
+		test_cases = (
+				# This should fail and show a REQUIRED_USE error for
+				# dev-libs/A-1, since this choice it preferred.
+				ResolverPlaygroundTestCase(
+					["=app-misc/p-1"],
+					success = False),
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds)
