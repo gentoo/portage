@@ -848,7 +848,7 @@ class depgraph(object):
 				del e
 
 		# NOTE: REQUIRED_USE checks are delayed until after
-		# package selection, since want to prompt the user
+		# package selection, since we want to prompt the user
 		# for USE adjustment rather than have REQUIRED_USE
 		# affect package selection and || dep choices.
 		if not pkg.built and pkg.metadata["REQUIRED_USE"] and \
