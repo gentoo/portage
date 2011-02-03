@@ -2629,7 +2629,7 @@ class depgraph(object):
 			writemsg_stdout("\nemerge: there are no ebuilds to satisfy "+green(xinfo)+".\n", noiselevel=-1)
 			if isinstance(myparent, AtomArg):
 				cp = myparent.atom.cp
-				cat, pkg = cp.split("/")
+				cat, pkg = portage.catsplit(cp)
 				if cat == "null":
 					cat = None
 
@@ -2647,7 +2647,7 @@ class depgraph(object):
 				else:
 					pkg_to_cp = {}
 					for other_cp in all_cp:
-						other_pkg = other_cp.split("/")[1]
+						other_pkg = portage.catsplit(other_cp)[1]
 						pkg_to_cp.setdefault(other_pkg, set()).add(other_cp)
 					pkg_matches = difflib.get_close_matches(pkg, pkg_to_cp)
 					matches = []
