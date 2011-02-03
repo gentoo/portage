@@ -2507,7 +2507,7 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 						atom += "::" + ext_atom.repo
 
 					if vardb.match(atom):
-						valid_atoms.append(Atom(atom))
+						valid_atoms.append(Atom(atom, allow_repo=True))
 
 		else:
 			msg = []
