@@ -1,4 +1,4 @@
-# Copyright 1998-2010 Gentoo Foundation
+# Copyright 1998-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["bindbapi", "binarytree"]
@@ -911,13 +911,12 @@ class binarytree(object):
 			remotepkgs = portage.getbinpkg.dir_get_metadata(
 				base_url, chunk_size=chunk_size)
 
-			for mypkg, remote_metadata in list(remotepkgs.items()):
+			for mypkg, remote_metadata in remotepkgs.items():
 				mycat = remote_metadata.get("CATEGORY")
 				if mycat is None:
 					#old-style or corrupt package
 					writemsg(_("!!! Invalid remote binary package: %s\n") % mypkg,
 						noiselevel=-1)
-					del remotepkgs[mypkg]
 					continue
 				mycat = mycat.strip()
 				fullpkg = mycat+"/"+mypkg[:-5]
@@ -961,7 +960,6 @@ class binarytree(object):
 				except:
 					writemsg(_("!!! Failed to inject remote binary package: %s\n") % fullpkg,
 						noiselevel=-1)
-					del remotepkgs[mypkg]
 					continue
 		self.populated=1
 
