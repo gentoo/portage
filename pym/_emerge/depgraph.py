@@ -1193,8 +1193,8 @@ class depgraph(object):
 
 		debug = "--debug" in self._frozen_config.myopts
 		strict = mytype != "installed"
-		try:
-			for dep_root, dep_string, dep_priority, ignore_blockers in deps:
+
+		for dep_root, dep_string, dep_priority, ignore_blockers in deps:
 				if not dep_string:
 					continue
 				if debug:
@@ -1248,25 +1248,6 @@ class depgraph(object):
 					allow_unsatisfied, ignore_blockers=ignore_blockers):
 					return 0
 
-		except portage.exception.AmbiguousPackageName as e:
-			pkgs = e.args[0]
-			portage.writemsg("\n\n!!! An atom in the dependencies " + \
-				"is not fully-qualified. Multiple matches:\n\n", noiselevel=-1)
-			for cpv in pkgs:
-				portage.writemsg("    %s\n" % cpv, noiselevel=-1)
-			portage.writemsg("\n", noiselevel=-1)
-			if mytype == "binary":
-				portage.writemsg(
-					"!!! This binary package cannot be installed: '%s'\n" % \
-					mykey, noiselevel=-1)
-			elif mytype == "ebuild":
-				portdb = self._frozen_config.roots[myroot].trees["porttree"].dbapi
-				myebuild, mylocation = portdb.findname2(mykey)
-				portage.writemsg("!!! This ebuild cannot be installed: " + \
-					"'%s'\n" % myebuild, noiselevel=-1)
-			portage.writemsg("!!! Please notify the package maintainer " + \
-				"that atoms must be fully-qualified.\n", noiselevel=-1)
-			return 0
 		self._dynamic_config._traversed_pkg_deps.add(pkg)
 		return 1
 
