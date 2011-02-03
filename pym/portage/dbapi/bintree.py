@@ -225,7 +225,6 @@ class binarytree(object):
 			self.tree = {}
 			self._remote_has_index = False
 			self._remotepkgs = None # remote metadata indexed by cpv
-			self.__remotepkgs = {}  # indexed by tbz2 name (deprecated)
 			self.invalids = []
 			self.settings = settings
 			self._pkg_paths = {}
@@ -731,7 +730,6 @@ class binarytree(object):
 			self.populated=1
 			return
 		self._remotepkgs = {}
-		self.__remotepkgs = {}
 		for base_url in self.settings["PORTAGE_BINHOST"].split():
 			parsed_url = urlparse(base_url)
 			host = parsed_url.netloc
@@ -912,17 +910,15 @@ class binarytree(object):
 				re.sub(r'//(.+):.+@(.+)/', r'//\1:*password*@\2/', base_url) + "\n")
 			remotepkgs = portage.getbinpkg.dir_get_metadata(
 				base_url, chunk_size=chunk_size)
-			self.__remotepkgs.update(remotepkgs)
-			#writemsg(green("  -- DONE!\n\n"))
 
-			for mypkg in list(remotepkgs):
-				if "CATEGORY" not in self.__remotepkgs[mypkg]:
+			for mypkg, remote_metadata in list(remotepkgs.items()):
+				if "CATEGORY" not in remote_metadata:
 					#old-style or corrupt package
 					writemsg(_("!!! Invalid remote binary package: %s\n") % mypkg,
 						noiselevel=-1)
-					del self.__remotepkgs[mypkg]
+					del remotepkgs[mypkg]
 					continue
-				mycat = self.__remotepkgs[mypkg]["CATEGORY"].strip()
+				mycat = remotepkgs[mypkg]["CATEGORY"].strip()
 				fullpkg = mycat+"/"+mypkg[:-5]
 
 				if fullpkg in metadata:
@@ -944,7 +940,6 @@ class binarytree(object):
 				try:
 					# invalid tbz2's can hurt things.
 					self.dbapi.cpv_inject(fullpkg)
-					remote_metadata = self.__remotepkgs[mypkg]
 					for k, v in remote_metadata.items():
 						remote_metadata[k] = v.strip()
 					remote_metadata["BASE_URI"] = base_url
@@ -965,7 +960,7 @@ class binarytree(object):
 				except:
 					writemsg(_("!!! Failed to inject remote binary package: %s\n") % fullpkg,
 						noiselevel=-1)
-					del self.__remotepkgs[mypkg]
+					remotepkgs[mypkg]
 					continue
 		self.populated=1
 
