@@ -2593,9 +2593,22 @@ class depgraph(object):
 				noiselevel=-1)
 			writemsg_stdout("\n  The following REQUIRED_USE flag constraints " + \
 				"are unsatisfied:\n", noiselevel=-1)
+			reduced_noise = check_required_use(
+				pkg.metadata["REQUIRED_USE"],
+				self._pkg_use_enabled(pkg),
+				pkg.iuse.is_valid_flag).tounicode()
 			writemsg_stdout("    %s\n" % \
-				human_readable_required_use(pkg.metadata["REQUIRED_USE"]),
+				human_readable_required_use(reduced_noise),
 				noiselevel=-1)
+			normalized_required_use = \
+				" ".join(pkg.metadata["REQUIRED_USE"].split())
+			if reduced_noise != normalized_required_use:
+				writemsg_stdout("\n  The above constraints " + \
+					"are a subset of the following complete expression:\n",
+					noiselevel=-1)
+				writemsg_stdout("    %s\n" % \
+					human_readable_required_use(normalized_required_use),
+					noiselevel=-1)
 			writemsg_stdout("\n", noiselevel=-1)
 
 		elif show_missing_use:
