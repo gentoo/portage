@@ -912,13 +912,14 @@ class binarytree(object):
 				base_url, chunk_size=chunk_size)
 
 			for mypkg, remote_metadata in list(remotepkgs.items()):
-				if "CATEGORY" not in remote_metadata:
+				mycat = remote_metadata.get("CATEGORY")
+				if mycat is None:
 					#old-style or corrupt package
 					writemsg(_("!!! Invalid remote binary package: %s\n") % mypkg,
 						noiselevel=-1)
 					del remotepkgs[mypkg]
 					continue
-				mycat = remotepkgs[mypkg]["CATEGORY"].strip()
+				mycat = mycat.strip()
 				fullpkg = mycat+"/"+mypkg[:-5]
 
 				if fullpkg in metadata:
