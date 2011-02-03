@@ -157,7 +157,8 @@ def parse_metadata_use(xml_tree):
 				uselist[pkg_flag] = {}
 
 			# (flag_restrict can be None)
-			uselist[pkg_flag][flag_restrict] = " ".join("".join(inner_text).split())
+			uselist[pkg_flag][flag_restrict] = " ".join( \
+					[x for x in "".join(inner_text).split() if x])
 
 	return uselist
 
