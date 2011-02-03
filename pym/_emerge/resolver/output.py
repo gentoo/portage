@@ -85,9 +85,7 @@ class Display(object):
 			self.blocker_style = "PKG_BLOCKER"
 			addl = "%s  %s  " % (colorize(self.blocker_style, "B"),
 				fetch_symbol)
-		if self.conf.verbosity == 3:
-			# add column for mask status
-			addl += " "
+		addl += self.empty_space_in_brackets()
 		self.resolved = dep_expand(
 			str(pkg.atom).lstrip("!"), mydb=self.vardb,
 			settings=self.pkgsettings
@@ -180,6 +178,13 @@ class Display(object):
 				mask_str = colorize("WARN", "~")
 
 		return mask_str
+
+	def empty_space_in_brackets(self):
+		space = ""
+		if self.conf.verbosity == 3:
+			# add column for mask status
+			space += " "
+		return space
 
 	def map_to_use_expand(self, myvals, forced_flags=False,
 		remove_hidden=True):
@@ -437,10 +442,7 @@ class Display(object):
 			self.verboseadd = None
 		else:
 			if not pkg_info.merge:
-				addl = ""
-				if self.conf.verbosity == 3:
-					# add column for mask status
-					addl += " "
+				addl = self.empty_space_in_brackets()
 				myprint = "[%s%s] %s%s" % \
 					(self.pkgprint(pkg_info.operation.ljust(13), pkg_info),
 					addl, self.indent, self.pkgprint(pkg.cp, pkg_info))
@@ -466,10 +468,7 @@ class Display(object):
 		@rtype the updated addl
 		"""
 		if not pkg_info.merge:
-			addl = ""
-			if self.conf.verbosity == 3:
-				# add column for mask status
-				addl += " "
+			addl = self.empty_space_in_brackets()
 			myprint = "[%s%s] %s%s %s" % \
 				(self.pkgprint(pkg_info.operation.ljust(13),
 				pkg_info), addl,
@@ -827,10 +826,7 @@ class Display(object):
 							addl, pkg_info, pkg)
 					else:
 						if not pkg_info.merge:
-							addl = ""
-							if self.conf.verbosity == 3:
-								 # add column for mask status
-								addl += " "
+							addl = self.empty_space_in_brackets()
 							myprint = "[%s%s] " % (
 								self.pkgprint(pkg_info.operation.ljust(13),
 								pkg_info), addl,
