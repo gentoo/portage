@@ -225,6 +225,9 @@ class _dynamic_depgraph_config(object):
 
 		self._runtime_pkg_mask = runtime_pkg_mask
 		self._need_restart = False
+		# For conditions that always require user intervention, such as
+		# unsatisfied REQUIRED_USE (currently has no autounmask support).
+		self._skip_restart = False
 
 		for myroot in depgraph._frozen_config.trees:
 			self.sets[myroot] = _depgraph_sets()
@@ -862,6 +865,7 @@ class depgraph(object):
 					atom = Atom("=" + pkg.cpv)
 				self._dynamic_config._unsatisfied_deps_for_display.append(
 					((pkg.root, atom), {"myparent":dep.parent}))
+				self._dynamic_config._skip_restart = True
 				return 0
 
 		if not pkg.onlydeps:
@@ -1900,7 +1904,7 @@ class depgraph(object):
 					if isinstance(arg, PackageArg):
 						if not self._add_pkg(arg.package, dep) or \
 							not self._create_graph():
-							if not self._dynamic_config._need_restart:
+							if not self.need_restart():
 								sys.stderr.write(("\n\n!!! Problem " + \
 									"resolving dependencies for %s\n") % \
 									arg.arg)
@@ -1963,7 +1967,7 @@ class depgraph(object):
 					# so that later dep_check() calls can use it as feedback
 					# for making more consistent atom selections.
 					if not self._add_pkg(pkg, dep):
-						if self._dynamic_config._need_restart:
+						if self.need_restart():
 							pass
 						elif isinstance(arg, SetArg):
 							writemsg(("\n\n!!! Problem resolving " + \
@@ -5384,7 +5388,8 @@ class depgraph(object):
 		"""
 
 	def need_restart(self):
-		return self._dynamic_config._need_restart
+		return self._dynamic_config._need_restart and \
+			not self._dynamic_config._skip_restart
 
 	def get_backtrack_parameters(self):
 		return {
