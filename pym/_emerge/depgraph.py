@@ -1952,20 +1952,6 @@ class depgraph(object):
 								(atom,), noiselevel=-1)
 						return 0, myfavorites
 
-				except portage.exception.MissingSignature as e:
-					portage.writemsg("\n\n!!! A missing gpg signature is preventing portage from calculating the\n")
-					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
-					portage.writemsg("!!! to aid in the detection of malicious intent.\n\n")
-					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF TAMPERED FILES -- CHECK CAREFULLY.\n")
-					portage.writemsg("!!! Affected file: %s\n" % (e), noiselevel=-1)
-					return 0, myfavorites
-				except portage.exception.InvalidSignature as e:
-					portage.writemsg("\n\n!!! An invalid gpg signature is preventing portage from calculating the\n")
-					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
-					portage.writemsg("!!! to aid in the detection of malicious intent.\n\n")
-					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF TAMPERED FILES -- CHECK CAREFULLY.\n")
-					portage.writemsg("!!! Affected file: %s\n" % (e), noiselevel=-1)
-					return 0, myfavorites
 				except SystemExit as e:
 					raise # Needed else can't exit
 				except Exception as e:
