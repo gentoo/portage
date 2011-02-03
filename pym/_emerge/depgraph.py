@@ -1598,6 +1598,7 @@ class depgraph(object):
 				if os.path.realpath(x) != \
 					os.path.realpath(self._frozen_config.trees[myroot]["bintree"].getname(mykey)):
 					writemsg(colorize("BAD", "\n*** You need to adjust PKGDIR to emerge this package.\n\n"), noiselevel=-1)
+					self._dynamic_config._skip_restart = True
 					return 0, myfavorites
 
 				pkg = self._pkg(mykey, "binary", root_config,
@@ -1623,6 +1624,7 @@ class depgraph(object):
 					if ebuild_path != os.path.join(os.path.realpath(tree_root),
 						cp, os.path.basename(ebuild_path)):
 						writemsg(colorize("BAD", "\n*** You need to adjust PORTDIR or PORTDIR_OVERLAY to emerge this package.\n\n"), noiselevel=-1)
+						self._dynamic_config._skip_restart = True
 						return 0, myfavorites
 					if mykey not in portdb.xmatch(
 						"match-visible", portage.cpv_getkey(mykey)):
@@ -1643,6 +1645,7 @@ class depgraph(object):
 				if not x.startswith(myroot):
 					portage.writemsg(("\n\n!!! '%s' does not start with" + \
 						" $ROOT.\n") % x, noiselevel=-1)
+					self._dynamic_config._skip_restart = True
 					return 0, []
 				# Queue these up since it's most efficient to handle
 				# multiple files in a single iter_owners() call.
@@ -1652,6 +1655,7 @@ class depgraph(object):
 				if not f.startswith(myroot):
 					portage.writemsg(("\n\n!!! '%s' (resolved from '%s') does not start with" + \
 						" $ROOT.\n") % (f, x), noiselevel=-1)
+					self._dynamic_config._skip_restart = True
 					return 0, []
 				lookup_owners.append(f)
 			else:
@@ -1673,6 +1677,7 @@ class depgraph(object):
 						noiselevel=-1)
 					portage.writemsg("!!! Please check ebuild(5) for full details.\n")
 					portage.writemsg("!!! (Did you specify a version but forget to prefix with '='?)\n")
+					self._dynamic_config._skip_restart = True
 					return (0,[])
 				# Don't expand categories or old-style virtuals here unless
 				# necessary. Expansion of old-style virtuals here causes at
@@ -1730,6 +1735,7 @@ class depgraph(object):
 					writemsg("\n\n", noiselevel=-1)
 					ambiguous_package_name(x, expanded_atoms, root_config,
 						self._frozen_config.spinner, self._frozen_config.myopts)
+					self._dynamic_config._skip_restart = True
 					return False, myfavorites
 				if expanded_atoms:
 					atom = expanded_atoms[0]
@@ -1769,6 +1775,7 @@ class depgraph(object):
 			if not owners:
 				portage.writemsg(("\n\n!!! '%s' is not claimed " + \
 					"by any package.\n") % lookup_owners[0], noiselevel=-1)
+				self._dynamic_config._skip_restart = True
 				return 0, []
 
 			for cpv in owners:
@@ -4074,6 +4081,7 @@ class depgraph(object):
 			raise self._unknown_internal_error()
 
 		if not self._validate_blockers():
+			self._dynamic_config._skip_restart = True
 			raise self._unknown_internal_error()
 
 		if self._dynamic_config._slot_collision_info:
@@ -4656,6 +4664,7 @@ class depgraph(object):
 
 			if not selected_nodes:
 				self._dynamic_config._circular_deps_for_display = mygraph
+				self._dynamic_config._skip_restart = True
 				raise self._unknown_internal_error()
 
 			# At this point, we've succeeded in selecting one or more nodes, so
@@ -4764,6 +4773,7 @@ class depgraph(object):
 			self._dynamic_config._unsatisfied_blockers_for_display = unsolvable_blockers
 			self._dynamic_config._serialized_tasks_cache = retlist[:]
 			self._dynamic_config._scheduler_graph = scheduler_graph
+			self._dynamic_config._skip_restart = True
 			raise self._unknown_internal_error()
 
 		if self._dynamic_config._slot_collision_info and \
