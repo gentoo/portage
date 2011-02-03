@@ -960,7 +960,7 @@ class binarytree(object):
 				except:
 					writemsg(_("!!! Failed to inject remote binary package: %s\n") % fullpkg,
 						noiselevel=-1)
-					remotepkgs[mypkg]
+					del remotepkgs[mypkg]
 					continue
 		self.populated=1
 
