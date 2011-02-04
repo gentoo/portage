@@ -1057,7 +1057,9 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 		if mydo not in invalid_dep_exempt_phases:
 			return 1
 
-	if not pkg.built and pkg.metadata["REQUIRED_USE"] and \
+	if not pkg.built and \
+		mydo not in ("digest", "help", "manifest") and \
+		pkg.metadata["REQUIRED_USE"] and \
 		eapi_has_required_use(pkg.metadata["EAPI"]):
 		result = check_required_use(pkg.metadata["REQUIRED_USE"],
 			pkg.use.enabled, pkg.iuse.is_valid_flag)
