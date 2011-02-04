@@ -2187,10 +2187,9 @@ def check_required_use(required_use, use, iuse_match):
 			if level > 0:
 				level -= 1
 				l = stack.pop()
-				ignore = False
+				op = None
 				if stack[level]:
 					if stack[level][-1] in ("||", "^^"):
-						ignore = True
 						op = stack[level].pop()
 						satisfied = is_satisfied(op, l)
 						stack[level].append(satisfied)
@@ -2198,13 +2197,12 @@ def check_required_use(required_use, use, iuse_match):
 
 					elif not isinstance(stack[level][-1], bool) and \
 						stack[level][-1][-1] == "?":
-						if is_active(stack[level][-1][:-1]):
-							op = stack[level].pop()
+						op = stack[level].pop()
+						if is_active(op[:-1]):
 							satisfied = is_satisfied(op, l)
 							stack[level].append(satisfied)
 							node._satisfied = satisfied
 						else:
-							stack[level].pop()
 							node._satisfied = True
 							last_node = node._parent._children.pop()
 							if last_node is not node:
@@ -2212,12 +2210,13 @@ def check_required_use(required_use, use, iuse_match):
 									"node is not last child of parent")
 							node = node._parent
 							continue
-						ignore = True
 
-				if l and not ignore:
+				if op is None:
 					satisfied = False not in l
-					stack[level].append(satisfied)
 					node._satisfied = satisfied
+					if l:
+						stack[level].append(satisfied)
+
 					if node._parent._operator not in ("||", "^^"):
 						last_node = node._parent._children.pop()
 						if last_node is not node:

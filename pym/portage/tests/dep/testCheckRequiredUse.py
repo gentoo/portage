@@ -195,6 +195,11 @@ class TestCheckRequiredUse(TestCase):
 				"|| ( ( ( ( a ) ) ( ( ( b c ) ) ) ) )",
 				[""],
 				"a b c"
+			),
+			(
+				"|| ( ( a ( ( ) ( ) ) ( ( ) ) ( b ( ) c ) ) )",
+				[""],
+				"a b c"
 			)
 		)
 		for required_use, use, expected in test_cases:
