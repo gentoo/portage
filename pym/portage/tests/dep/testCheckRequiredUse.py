@@ -180,6 +180,16 @@ class TestCheckRequiredUse(TestCase):
 				"^^ ( ( a b c ) ( b c d ) )",
 				["a", "b", "c", "d"],
 				"^^ ( ( a b c ) ( b c d ) )"
+			),
+			(
+				"^^ ( ( a b c ) ( b c !d ) )",
+				["a", "b", "c"],
+				"^^ ( ( a b c ) ( b c !d ) )"
+			),
+			(
+				"^^ ( ( a b c ) ( b c !d ) )",
+				["a", "b", "c", "d"],
+				""
 			)
 		)
 		for required_use, use, expected in test_cases:
