@@ -2088,9 +2088,7 @@ class _RequiredUseBranch(object):
 
 	def tounicode(self):
 
-		include_parens = self._parent is not None and \
-			(self._operator is not None or \
-			self._parent._operator is None)
+		include_parens = self._parent is not None
 		tokens = []
 		if self._operator is not None:
 			tokens.append(self._operator)
@@ -2197,6 +2195,7 @@ def check_required_use(required_use, use, iuse_match):
 						satisfied = is_satisfied(op, l)
 						stack[level].append(satisfied)
 						node._satisfied = satisfied
+
 					elif not isinstance(stack[level][-1], bool) and \
 						stack[level][-1][-1] == "?":
 						if is_active(stack[level][-1][:-1]):
@@ -2207,12 +2206,42 @@ def check_required_use(required_use, use, iuse_match):
 						else:
 							stack[level].pop()
 							node._satisfied = True
+							node._parent._children.remove(node)
+							node = node._parent
+							continue
 						ignore = True
 
 				if l and not ignore:
 					satisfied = False not in l
 					stack[level].append(satisfied)
 					node._satisfied = satisfied
+					if node._parent._operator not in ("||", "^^"):
+						offset = node._parent._children.index(node)
+						node._parent._children.remove(node)
+						for i, child in enumerate(node._children):
+							node._parent._children.insert(offset + i, child)
+							if isinstance(child, _RequiredUseBranch):
+								child._parent = node._parent
+					node = node._parent
+					continue
+
+				if not node._children:
+					node._parent._children.remove(node)
+				elif len(node._children) == 1:
+					index = node._parent._children.index(node)
+					node._parent._children[index] = node._children[0]
+					if isinstance(node._children[0], _RequiredUseBranch):
+						node._children[0]._parent = node._parent
+						node = node._children[0]
+				else:
+					for index, child in enumerate(node._children):
+						if isinstance(child, _RequiredUseBranch) and \
+							child._operator is None and \
+							len(child._children) == 1:
+							node._children[index] = child._children[0]
+							if isinstance(node._children[index],
+								_RequiredUseBranch):
+								node._children[index]._parent = node
 
 				node = node._parent
 			else:
