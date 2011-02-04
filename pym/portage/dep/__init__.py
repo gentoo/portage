@@ -1,5 +1,5 @@
 # deps.py -- Portage dependency resolution functions
-# Copyright 2003-2010 Gentoo Foundation
+# Copyright 2003-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -2206,7 +2206,10 @@ def check_required_use(required_use, use, iuse_match):
 						else:
 							stack[level].pop()
 							node._satisfied = True
-							node._parent._children.remove(node)
+							last_node = node._parent._children.pop()
+							if last_node is not node:
+								raise AssertionError(
+									"node is not last child of parent")
 							node = node._parent
 							continue
 						ignore = True
@@ -2216,20 +2219,28 @@ def check_required_use(required_use, use, iuse_match):
 					stack[level].append(satisfied)
 					node._satisfied = satisfied
 					if node._parent._operator not in ("||", "^^"):
-						offset = node._parent._children.index(node)
-						node._parent._children.pop(offset)
-						for i, child in enumerate(node._children):
-							node._parent._children.insert(offset + i, child)
+						last_node = node._parent._children.pop()
+						if last_node is not node:
+							raise AssertionError(
+								"node is not last child of parent")
+						for child in node._children:
+							node._parent._children.append(child)
 							if isinstance(child, _RequiredUseBranch):
 								child._parent = node._parent
 					node = node._parent
 					continue
 
 				if not node._children:
-					node._parent._children.remove(node)
+					last_node = node._parent._children.pop()
+					if last_node is not node:
+						raise AssertionError(
+							"node is not last child of parent")
 				elif len(node._children) == 1:
-					index = node._parent._children.index(node)
-					node._parent._children[index] = node._children[0]
+					last_node = node._parent._children.pop()
+					if last_node is not node:
+						raise AssertionError(
+							"node is not last child of parent")
+					node._parent._children.append(node._children[0])
 					if isinstance(node._children[0], _RequiredUseBranch):
 						node._children[0]._parent = node._parent
 						node = node._children[0]
@@ -2238,10 +2249,10 @@ def check_required_use(required_use, use, iuse_match):
 						if isinstance(child, _RequiredUseBranch) and \
 							child._operator is None and \
 							len(child._children) == 1:
-							node._children[index] = child._children[0]
-							if isinstance(node._children[index],
-								_RequiredUseBranch):
-								node._children[index]._parent = node
+							child = child._children[0]
+							node._children[index] = child
+							if isinstance(child, _RequiredUseBranch):
+								child._parent = node
 
 				node = node._parent
 			else:
@@ -2276,6 +2287,13 @@ def check_required_use(required_use, use, iuse_match):
 	if level != 0 or need_bracket:
 		raise InvalidDependString(
 			_("malformed syntax: '%s'") % required_use)
+
+	if len(tree._children) == 1:
+		child = tree._children[0]
+		if isinstance(child, _RequiredUseBranch) and \
+			child._operator is None:
+			tree = child
+			tree._parent = None
 
 	tree._satisfied = False not in stack[0]
 	return tree
