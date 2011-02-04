@@ -703,8 +703,6 @@ class depgraph(object):
 			dep_pkg = dep.child
 			existing_node = self._dynamic_config._slot_pkg_map[
 				dep.root].get(dep_pkg.slot_atom)
-			if existing_node is not dep_pkg:
-				existing_node = None 
 
 		if not dep_pkg:
 			if dep.priority.optional:
@@ -753,33 +751,6 @@ class depgraph(object):
 								noiselevel=-1, level=logging.DEBUG)
 
 			return 0
-		# In some cases, dep_check will return deps that shouldn't
-		# be proccessed any further, so they are identified and
-		# discarded here. Try to discard as few as possible since
-		# discarded dependencies reduce the amount of information
-		# available for optimization of merge order.
-		if dep.priority.satisfied and \
-			dep.priority.satisfied.visible and \
-			not dep_pkg.installed and \
-			not (existing_node or recurse):
-			myarg = None
-			if dep.root == self._frozen_config.target_root:
-				try:
-					myarg = next(self._iter_atoms_for_pkg(dep_pkg))
-				except StopIteration:
-					pass
-				except portage.exception.InvalidDependString:
-					if not dep_pkg.installed:
-						# This shouldn't happen since the package
-						# should have been masked.
-						raise
-			if not myarg:
-				# Existing child selection may not be valid unless
-				# it's added to the graph immediately, since "complete"
-				# mode may select a different child later.
-				dep.child = None
-				self._dynamic_config._ignored_deps.append(dep)
-				return 1
 
 		if not self._add_pkg(dep_pkg, dep):
 			return 0
