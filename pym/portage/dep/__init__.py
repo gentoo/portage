@@ -2088,11 +2088,14 @@ class _RequiredUseBranch(object):
 
 	def tounicode(self):
 
+		include_parens = self._parent is not None and \
+			(self._operator is not None or \
+			self._parent._operator is None)
 		tokens = []
 		if self._operator is not None:
 			tokens.append(self._operator)
 
-		if self._parent is not None:
+		if include_parens:
 			tokens.append("(")
 
 		complex_nesting = False
@@ -2111,7 +2114,7 @@ class _RequiredUseBranch(object):
 				if not child._satisfied:
 					tokens.append(child.tounicode())
 
-		if self._parent is not None:
+		if include_parens:
 			tokens.append(")")
 
 		return " ".join(tokens)

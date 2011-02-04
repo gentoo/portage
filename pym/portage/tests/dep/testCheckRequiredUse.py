@@ -134,7 +134,37 @@ class TestCheckRequiredUse(TestCase):
 			(
 				"^^ ( || ( ( a b ) ) ( c ) )",
 				("a", "b", "c"),
-				"^^ ( || ( ( a b ) ) ( c ) )"
+				"^^ ( || ( a b ) c )"
+			),
+			(
+				"a? ( ( c e ) ( b d ) )",
+				("a", "c", "e"),
+				"a? ( b d )"
+			),
+			(
+				"a? ( ( c e ) ( b d ) )",
+				("a", "b", "c", "e"),
+				"a? ( d )"
+			),
+			(
+				"^^ ( || ( a b ) ^^ ( b c ) )",
+				("a", "b"),
+				"^^ ( || ( a b ) ^^ ( b c ) )"
+			),
+			(
+				"^^ ( || ( a b ) ^^ ( b c ) )",
+				["a", "c"],
+				"^^ ( || ( a b ) ^^ ( b c ) )"
+			),
+			(
+				"^^ ( || ( a b ) ^^ ( b c ) )",
+				["b", "c"],
+				""
+			),
+			(
+				"^^ ( || ( a b ) ^^ ( b c ) )",
+				["a", "b", "c"],
+				""
 			)
 		)
 		for required_use, use, expected in test_cases:
