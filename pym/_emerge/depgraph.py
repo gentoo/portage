@@ -3456,8 +3456,27 @@ class depgraph(object):
 			return 1
 
 		if "complete" not in self._dynamic_config.myparams:
-			# Skip this to avoid consuming enough time to disturb users.
-			return 1
+			# Automatically enable complete mode if there are any
+			# downgrades, since they often break dependencies
+			# (like in bug #353613).
+			have_downgrade = False
+			for node in self._dynamic_config.digraph:
+				if not isinstance(node, Package) or \
+					node.operation != "merge":
+					continue
+				vardb = self._frozen_config.roots[
+					node.root].trees["vartree"].dbapi
+				inst_pkg = vardb.match_pkgs(node.slot_atom)
+				if inst_pkg and inst_pkg[0] > node:
+					have_downgrade = True
+					break
+
+			if have_downgrade:
+				self._dynamic_config.myparams["complete"] = True
+			else:
+				# Skip complete graph mode, in order to avoid consuming
+				# enough time to disturb users.
+				return 1
 
 		self._load_vdb()
 
