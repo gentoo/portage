@@ -2226,15 +2226,14 @@ def check_required_use(required_use, use, iuse_match):
 							node._parent._children.append(child)
 							if isinstance(child, _RequiredUseBranch):
 								child._parent = node._parent
-					node = node._parent
-					continue
 
-				if not node._children:
+				elif not node._children:
 					last_node = node._parent._children.pop()
 					if last_node is not node:
 						raise AssertionError(
 							"node is not last child of parent")
-				elif len(node._children) == 1:
+
+				elif len(node._children) == 1 and op in ("||", "^^"):
 					last_node = node._parent._children.pop()
 					if last_node is not node:
 						raise AssertionError(
@@ -2243,6 +2242,7 @@ def check_required_use(required_use, use, iuse_match):
 					if isinstance(node._children[0], _RequiredUseBranch):
 						node._children[0]._parent = node._parent
 						node = node._children[0]
+
 				else:
 					for index, child in enumerate(node._children):
 						if isinstance(child, _RequiredUseBranch) and \
