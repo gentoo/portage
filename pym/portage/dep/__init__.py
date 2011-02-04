@@ -2217,7 +2217,7 @@ def check_required_use(required_use, use, iuse_match):
 					node._satisfied = satisfied
 					if node._parent._operator not in ("||", "^^"):
 						offset = node._parent._children.index(node)
-						node._parent._children.remove(node)
+						node._parent._children.pop(offset)
 						for i, child in enumerate(node._children):
 							node._parent._children.insert(offset + i, child)
 							if isinstance(child, _RequiredUseBranch):
