@@ -683,8 +683,6 @@ class depgraph(object):
 			dep_pkg = dep.child
 			existing_node = self._dynamic_config._slot_pkg_map[
 				dep.root].get(dep_pkg.slot_atom)
-			if existing_node is not dep_pkg:
-				existing_node = None 
 
 		if not dep_pkg:
 			if dep.priority.optional:
@@ -731,33 +729,6 @@ class depgraph(object):
 								noiselevel=-1, level=logging.DEBUG)
 
 			return 0
-		# In some cases, dep_check will return deps that shouldn't
-		# be proccessed any further, so they are identified and
-		# discarded here. Try to discard as few as possible since
-		# discarded dependencies reduce the amount of information
-		# available for optimization of merge order.
-		if dep.priority.satisfied and \
-			dep.priority.satisfied.visible and \
-			not dep_pkg.installed and \
-			not (existing_node or recurse):
-			myarg = None
-			if dep.root == self._frozen_config.target_root:
-				try:
-					myarg = next(self._iter_atoms_for_pkg(dep_pkg))
-				except StopIteration:
-					pass
-				except portage.exception.InvalidDependString:
-					if not dep_pkg.installed:
-						# This shouldn't happen since the package
-						# should have been masked.
-						raise
-			if not myarg:
-				# Existing child selection may not be valid unless
-				# it's added to the graph immediately, since "complete"
-				# mode may select a different child later.
-				dep.child = None
-				self._dynamic_config._ignored_deps.append(dep)
-				return 1
 
 		if not self._add_pkg(dep_pkg, dep):
 			return 0
@@ -2228,7 +2199,11 @@ class depgraph(object):
 			traversed_nodes.add(node)
 
 			if isinstance(node, DependencyArg):
-				dep_chain.append((_unicode_decode("%s") % (node,), "argument"))
+				if self._dynamic_config.digraph.parent_nodes(node):
+					node_type = "set"
+				else:
+					node_type = "argument"
+				dep_chain.append((_unicode_decode("%s") % (node,), node_type))
 
 			elif node is not start_node:
 				for ppkg, patom in all_parents[child]:
@@ -2593,9 +2568,22 @@ class depgraph(object):
 				noiselevel=-1)
 			writemsg_stdout("\n  The following REQUIRED_USE flag constraints " + \
 				"are unsatisfied:\n", noiselevel=-1)
+			reduced_noise = check_required_use(
+				pkg.metadata["REQUIRED_USE"],
+				self._pkg_use_enabled(pkg),
+				pkg.iuse.is_valid_flag).tounicode()
 			writemsg_stdout("    %s\n" % \
-				human_readable_required_use(pkg.metadata["REQUIRED_USE"]),
+				human_readable_required_use(reduced_noise),
 				noiselevel=-1)
+			normalized_required_use = \
+				" ".join(pkg.metadata["REQUIRED_USE"].split())
+			if reduced_noise != normalized_required_use:
+				writemsg_stdout("\n  The above constraints " + \
+					"are a subset of the following complete expression:\n",
+					noiselevel=-1)
+				writemsg_stdout("    %s\n" % \
+					human_readable_required_use(normalized_required_use),
+					noiselevel=-1)
 			writemsg_stdout("\n", noiselevel=-1)
 
 		elif show_missing_use:
@@ -2666,7 +2654,6 @@ class depgraph(object):
 			# It's redundant to show parent for AtomArg since
 			# it's the same as 'xinfo' displayed above.
 			dep_chain = self._get_dep_chain(myparent, atom)
-
 			for node, node_type in dep_chain:
 				msg.append('(dependency required by "%s" [%s])' % \
 						(colorize('INFORM', _unicode_decode("%s") % \
@@ -3472,8 +3459,27 @@ class depgraph(object):
 			return 1
 
 		if "complete" not in self._dynamic_config.myparams:
-			# Skip this to avoid consuming enough time to disturb users.
-			return 1
+			# Automatically enable complete mode if there are any
+			# downgrades, since they often break dependencies
+			# (like in bug #353613).
+			have_downgrade = False
+			for node in self._dynamic_config.digraph:
+				if not isinstance(node, Package) or \
+					node.operation != "merge":
+					continue
+				vardb = self._frozen_config.roots[
+					node.root].trees["vartree"].dbapi
+				inst_pkg = vardb.match_pkgs(node.slot_atom)
+				if inst_pkg and inst_pkg[0] > node:
+					have_downgrade = True
+					break
+
+			if have_downgrade:
+				self._dynamic_config.myparams["complete"] = True
+			else:
+				# Skip complete graph mode, in order to avoid consuming
+				# enough time to disturb users.
+				return 1
 
 		self._load_vdb()
 
@@ -5765,7 +5771,8 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
 
 		mydepgraph = depgraph(settings, trees, myopts, myparams, spinner,
 			frozen_config=frozen_config,
-			allow_backtracking=False)
+			allow_backtracking=False,
+			backtrack_parameters=backtracker.get_best_run())
 		success, favorites = mydepgraph.select_files(myfiles)
 
 	return (success, mydepgraph, favorites)

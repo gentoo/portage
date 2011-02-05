@@ -40,9 +40,10 @@ from portage.data import portage_gid, portage_uid, secpass, \
 	uid, userpriv_groups
 from portage.dbapi.porttree import _parse_uri_map
 from portage.dbapi.virtual import fakedbapi
-from portage.dep import Atom, paren_enclose, use_reduce
+from portage.dep import Atom, check_required_use, \
+	human_readable_required_use, paren_enclose, use_reduce
 from portage.eapi import eapi_exports_KV, eapi_exports_merge_type, \
-	eapi_exports_replace_vars, \
+	eapi_exports_replace_vars, eapi_has_required_use, \
 	eapi_has_src_prepare_and_src_configure, eapi_has_pkg_pretend
 from portage.elog import elog_process
 from portage.elog.messages import eerror, eqawarn
@@ -1062,6 +1063,30 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 			portage.util.writemsg_level(x,
 				level=logging.ERROR, noiselevel=-1)
 		if mydo not in invalid_dep_exempt_phases:
+			return 1
+
+	if not pkg.built and \
+		mydo not in ("digest", "help", "manifest") and \
+		pkg.metadata["REQUIRED_USE"] and \
+		eapi_has_required_use(pkg.metadata["EAPI"]):
+		result = check_required_use(pkg.metadata["REQUIRED_USE"],
+			pkg.use.enabled, pkg.iuse.is_valid_flag)
+		if not result:
+			reduced_noise = result.tounicode()
+			writemsg("\n  %s\n" % _("The following REQUIRED_USE flag" + \
+				" constraints are unsatisfied:"), noiselevel=-1)
+			writemsg("    %s\n" % reduced_noise,
+				noiselevel=-1)
+			normalized_required_use = \
+				" ".join(pkg.metadata["REQUIRED_USE"].split())
+			if reduced_noise != normalized_required_use:
+				writemsg("\n  %s\n" % _("The above constraints " + \
+					"are a subset of the following complete expression:"),
+					noiselevel=-1)
+				writemsg("    %s\n" % \
+					human_readable_required_use(normalized_required_use),
+					noiselevel=-1)
+			writemsg("\n", noiselevel=-1)
 			return 1
 
 	return os.EX_OK
