@@ -2213,7 +2213,11 @@ class depgraph(object):
 			traversed_nodes.add(node)
 
 			if isinstance(node, DependencyArg):
-				dep_chain.append((_unicode_decode("%s") % (node,), "argument"))
+				if self._dynamic_config.digraph.parent_nodes(node):
+					node_type = "set"
+				else:
+					node_type = "argument"
+				dep_chain.append((_unicode_decode("%s") % (node,), node_type))
 
 			elif node is not start_node:
 				for ppkg, patom in all_parents[child]:
@@ -2655,7 +2659,6 @@ class depgraph(object):
 			# It's redundant to show parent for AtomArg since
 			# it's the same as 'xinfo' displayed above.
 			dep_chain = self._get_dep_chain(myparent, atom)
-
 			for node, node_type in dep_chain:
 				msg.append('(dependency required by "%s" [%s])' % \
 						(colorize('INFORM', _unicode_decode("%s") % \
