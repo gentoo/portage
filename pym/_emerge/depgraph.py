@@ -5965,7 +5965,7 @@ def _get_masking_status(pkg, pkgsettings, root_config, myrepo=None, use=None):
 				pkg.metadata["CHOST"]))
 
 	if pkg.built and not pkg.installed:
-		if not "EPREFIX" in pkg.metadata or not pkg.metadata["EPREFIX"]:
+		if not "EPREFIX" in pkg.metadata:
 			mreasons.append(_MaskReason("EPREFIX", "missing EPREFIX"))
 		elif len(pkg.metadata["EPREFIX"].strip()) < len(pkgsettings["EPREFIX"]):
 			mreasons.append(_MaskReason("EPREFIX", "EPREFIX: '%s' too small" % pkg.metadata["EPREFIX"]))

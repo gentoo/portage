@@ -184,7 +184,7 @@ class Package(Task):
 
 		if self.built and not self.installed:
 			# we can have an old binary which has no EPREFIX information
-			if "EPREFIX" not in self.metadata or not self.metadata["EPREFIX"]:
+			if "EPREFIX" not in self.metadata:
 				masks['EPREFIX.missing'] = ''
 			if len(self.metadata["EPREFIX"].strip()) < len(EPREFIX):
 				masks['EPREFIX.tooshort'] = self.metadata["EPREFIX"].strip()
