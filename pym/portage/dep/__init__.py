@@ -2253,15 +2253,6 @@ def check_required_use(required_use, use, iuse_match):
 								node._parent._children.append(child)
 								if isinstance(child, _RequiredUseBranch):
 									child._parent = node._parent
-				else:
-					for index, child in enumerate(node._children):
-						if isinstance(child, _RequiredUseBranch) and \
-							child._operator is None and \
-							len(child._children) == 1:
-							child = child._children[0]
-							node._children[index] = child
-							if isinstance(child, _RequiredUseBranch):
-								child._parent = node
 
 				node = node._parent
 			else:
