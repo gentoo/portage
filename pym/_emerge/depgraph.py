@@ -5771,7 +5771,8 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
 
 		mydepgraph = depgraph(settings, trees, myopts, myparams, spinner,
 			frozen_config=frozen_config,
-			allow_backtracking=False)
+			allow_backtracking=False,
+			backtrack_parameters=backtracker.get_best_run())
 		success, favorites = mydepgraph.select_files(myfiles)
 
 	return (success, mydepgraph, favorites)
