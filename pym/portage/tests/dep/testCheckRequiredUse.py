@@ -192,6 +192,11 @@ class TestCheckRequiredUse(TestCase):
 				""
 			),
 			(
+				"( ( ( a ) ) ( ( ( b c ) ) ) )",
+				[""],
+				"a b c"
+			),
+			(
 				"|| ( ( ( ( a ) ) ( ( ( b c ) ) ) ) )",
 				[""],
 				"a b c"
@@ -200,7 +205,12 @@ class TestCheckRequiredUse(TestCase):
 				"|| ( ( a ( ( ) ( ) ) ( ( ) ) ( b ( ) c ) ) )",
 				[""],
 				"a b c"
-			)
+			),
+			(
+				"|| ( ( a b c ) ) || ( ( d e f ) )",
+				[""],
+				"a b c d e f"
+			),
 		)
 		for required_use, use, expected in test_cases:
 			result = check_required_use(required_use, use, lambda k: True).tounicode()

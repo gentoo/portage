@@ -2217,7 +2217,8 @@ def check_required_use(required_use, use, iuse_match):
 					if l:
 						stack[level].append(satisfied)
 
-					if node._parent._operator not in ("||", "^^"):
+					if len(node._children) <= 1 or \
+						node._parent._operator not in ("||", "^^"):
 						last_node = node._parent._children.pop()
 						if last_node is not node:
 							raise AssertionError(
@@ -2242,7 +2243,16 @@ def check_required_use(required_use, use, iuse_match):
 					if isinstance(node._children[0], _RequiredUseBranch):
 						node._children[0]._parent = node._parent
 						node = node._children[0]
-
+						if node._operator is None and \
+							node._parent._operator not in ("||", "^^"):
+							last_node = node._parent._children.pop()
+							if last_node is not node:
+								raise AssertionError(
+									"node is not last child of parent")
+							for child in node._children:
+								node._parent._children.append(child)
+								if isinstance(child, _RequiredUseBranch):
+									child._parent = node._parent
 				else:
 					for index, child in enumerate(node._children):
 						if isinstance(child, _RequiredUseBranch) and \
@@ -2286,13 +2296,6 @@ def check_required_use(required_use, use, iuse_match):
 	if level != 0 or need_bracket:
 		raise InvalidDependString(
 			_("malformed syntax: '%s'") % required_use)
-
-	if len(tree._children) == 1:
-		child = tree._children[0]
-		if isinstance(child, _RequiredUseBranch) and \
-			child._operator is None:
-			tree = child
-			tree._parent = None
 
 	tree._satisfied = False not in stack[0]
 	return tree
