@@ -131,9 +131,12 @@ else:
 	# Disable the use of openpty on Solaris as it seems Python's openpty
 	# implementation doesn't play nice on Solaris with Portage's
 	# behaviour causing hangs/deadlocks.
+	# Similarly, on FreeMiNT, reading just always fails, causing Portage
+	# to think the system is malfunctioning, and returning that as error
+	# message.
 	# Additional note for the future: on Interix, pipes do NOT work, so
 	# _disable_openpty on Interix must *never* be True
-	_disable_openpty = platform.system() in ("SunOS",)
+	_disable_openpty = platform.system() in ("SunOS", "FreeMiNT",)
 _tested_pty = False
 
 if not _can_test_pty_eof():
