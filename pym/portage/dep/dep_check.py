@@ -123,7 +123,11 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			virt_atom = '=' + pkg.cpv
 			if x.unevaluated_atom.use:
 				virt_atom += str(x.unevaluated_atom.use)
-			virt_atom = Atom(virt_atom)
+				virt_atom = Atom(virt_atom)
+				virt_atom = virt_atom.evaluate_conditionals(
+					pkg_use_enabled(graph_parent))
+			else:
+				virt_atom = Atom(virt_atom)
 			# According to GLEP 37, RDEPEND is the only dependency
 			# type that is valid for new-style virtuals. Repoman
 			# should enforce this.
