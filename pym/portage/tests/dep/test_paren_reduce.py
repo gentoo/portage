@@ -30,6 +30,8 @@ class TestParenReduce(TestCase):
 
 			( "|| ( ( A B ) C )", [ "||", [ ["A", "B"], "C"] ]),
 			( "|| ( ( A B ) ( C ) )", [ "||", [ ["A", "B"], "C"] ]),
+			# test USE dep defaults for bug #354003
+			( ">=dev-lang/php-5.2[pcre(+)]", [ ">=dev-lang/php-5.2[pcre(+)]" ]),
 		)
 		
 		test_cases_xfail = (
