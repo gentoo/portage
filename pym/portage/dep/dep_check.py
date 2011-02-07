@@ -121,8 +121,8 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 		a = []
 		for pkg in pkgs:
 			virt_atom = '=' + pkg.cpv
-			if x.use:
-				virt_atom += str(x.use)
+			if x.unevaluated_atom.use:
+				virt_atom += str(x.unevaluated_atom.use)
 			virt_atom = Atom(virt_atom)
 			# According to GLEP 37, RDEPEND is the only dependency
 			# type that is valid for new-style virtuals. Repoman
