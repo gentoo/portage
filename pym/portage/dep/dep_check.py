@@ -124,8 +124,11 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			if x.unevaluated_atom.use:
 				virt_atom += str(x.unevaluated_atom.use)
 				virt_atom = Atom(virt_atom)
-				virt_atom = virt_atom.evaluate_conditionals(
-					pkg_use_enabled(graph_parent))
+				if graph_parent is None:
+					virt_atom = virt_atom.evaluate_conditionals(myuse)
+				else:
+					virt_atom = virt_atom.evaluate_conditionals(
+						pkg_use_enabled(graph_parent))
 			else:
 				virt_atom = Atom(virt_atom)
 			# According to GLEP 37, RDEPEND is the only dependency
