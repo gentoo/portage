@@ -28,8 +28,9 @@ and binary packages, and it can be used to create binary packages for
 distribution.
 .SH "EBUILDS, TBZ2S, SETS AND ATOMS"
 \fBemerge\fR primarily installs packages.  You can specify
-packages to install in one of four main ways: an \fIebuild\fR,
-a \fItbz2file\fR, a \fIset\fR, or an \fIatom\fR.
+packages to install in five possible ways: an \fIatom\fR,
+a \fIset\fR, an installed \fIfile\fR, an \fIebuild\fR, or
+a \fItbz2file\fR.
 .LP
 .TP
 .BR ebuild
@@ -52,8 +53,9 @@ A \fItbz2file\fR must be a valid .tbz2 created with \fBebuild
 .TP
 .BR file
 A \fIfile\fR must be a file or directory that has been installed by one or
-more packages. For directories that are owned by multiple packages, all
-owning packages to be selected. See the portageq(1) owners command if you
+more packages. If an absolute path is not used, then it must begin with
+either "./" or "../". For directories that are owned by multiple packages, all
+owning packages will be selected. See the portageq(1) owners command if you
 would like to query the owners of one or more files or directories.
 .TP
 .BR set
