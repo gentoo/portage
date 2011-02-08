@@ -11,6 +11,7 @@ class ImportModulesTestCase(TestCase):
 
 	def testImportModules(self):
 		expected_failures = frozenset((
+			'repoman.herdbase', # requires python with xml support
 		))
 
 		for mod in self._iter_modules(PORTAGE_PYM_PATH):
