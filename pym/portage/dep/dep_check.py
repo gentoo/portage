@@ -36,10 +36,10 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	if parent is not None:
 		if virt_parent is not None:
 			graph_parent = virt_parent
-			eapi = virt_parent[0].metadata['EAPI']
+			parent = virt_parent[0]
 		else:
 			graph_parent = parent
-			eapi = parent.metadata["EAPI"]
+		eapi = parent.metadata["EAPI"]
 	repoman = not mysettings.local_config
 	if kwargs["use_binaries"]:
 		portdb = trees[myroot]["bintree"].dbapi
@@ -124,7 +124,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			if x.unevaluated_atom.use:
 				virt_atom += str(x.unevaluated_atom.use)
 				virt_atom = Atom(virt_atom)
-				if graph_parent is None:
+				if parent is None:
 					if myuse is None:
 						virt_atom = virt_atom.evaluate_conditionals(
 							mysettings.get("PORTAGE_USE", "").split())
@@ -132,7 +132,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 						virt_atom = virt_atom.evaluate_conditionals(myuse)
 				else:
 					virt_atom = virt_atom.evaluate_conditionals(
-						pkg_use_enabled(graph_parent))
+						pkg_use_enabled(parent))
 			else:
 				virt_atom = Atom(virt_atom)
 			# According to GLEP 37, RDEPEND is the only dependency
