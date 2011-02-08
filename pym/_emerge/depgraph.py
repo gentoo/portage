@@ -1638,7 +1638,8 @@ class depgraph(object):
 				# Queue these up since it's most efficient to handle
 				# multiple files in a single iter_owners() call.
 				lookup_owners.append(x)
-			elif x.startswith("." + os.path.sep):
+			elif x.startswith("." + os.sep) or \
+				x.startswith(".." + os.sep):
 				f = os.path.abspath(x)
 				if not f.startswith(myroot):
 					portage.writemsg(("\n\n!!! '%s' (resolved from '%s') does not start with" + \
