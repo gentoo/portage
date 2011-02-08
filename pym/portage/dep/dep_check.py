@@ -125,7 +125,11 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				virt_atom += str(x.unevaluated_atom.use)
 				virt_atom = Atom(virt_atom)
 				if graph_parent is None:
-					virt_atom = virt_atom.evaluate_conditionals(myuse)
+					if myuse is None:
+						virt_atom = virt_atom.evaluate_conditionals(
+							mysettings.get("PORTAGE_USE", "").split())
+					else:
+						virt_atom = virt_atom.evaluate_conditionals(myuse)
 				else:
 					virt_atom = virt_atom.evaluate_conditionals(
 						pkg_use_enabled(graph_parent))
