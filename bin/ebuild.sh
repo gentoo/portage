@@ -632,15 +632,21 @@ _eapi0_src_compile() {
 }
 
 _eapi0_src_test() {
-	if emake -j1 check -n &> /dev/null; then
+	# Since we don't want emake's automatic die
+	# support (EAPI 4 and later), and we also don't
+	# want the warning messages that it produces if
+	# we call it in 'nonfatal' mode, we use emake_cmd
+	# to emulate the desired parts of emake behavior.
+	local emake_cmd="${MAKE:-make} ${MAKEOPTS} ${EXTRA_EMAKE}"
+	if $emake_cmd -j1 check -n &> /dev/null; then
 		vecho ">>> Test phase [check]: ${CATEGORY}/${PF}"
-		if ! emake -j1 check; then
+		if ! $emake_cmd -j1 check; then
 			hasq test $FEATURES && die "Make check failed. See above for details."
 			hasq test $FEATURES || eerror "Make check failed. See above for details."
 		fi
-	elif emake -j1 test -n &> /dev/null; then
+	elif $emake_cmd -j1 test -n &> /dev/null; then
 		vecho ">>> Test phase [test]: ${CATEGORY}/${PF}"
-		if ! emake -j1 test; then
+		if ! $emake_cmd -j1 test; then
 			hasq test $FEATURES && die "Make test failed. See above for details."
 			hasq test $FEATURES || eerror "Make test failed. See above for details."
 		fi

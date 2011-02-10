@@ -178,7 +178,7 @@ def paren_reduce(mystr):
 			need_bracket = True
 			stack[level].append(token)
 		else:
-			if need_bracket or "(" in token or ")" in token or "|" in token:
+			if need_bracket:
 				raise InvalidDependString(
 					_("malformed syntax: '%s'") % mystr)
 
