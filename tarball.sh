@@ -27,7 +27,8 @@ fi
 install -d -m0755 ${DEST}
 rsync -a --exclude='.git' --exclude='.hg' . ${DEST}
 sed -i -e '/^VERSION=/s/^.*$/VERSION="'${V}-prefix'"/' ${DEST}/pym/portage/__init__.py
-sed -i -e "s/VERSION/${V}-prefix/g" ${DEST}/man/emerge.1
+sed -i -e "1s/VERSION/${V}-prefix/" ${DEST}/doc/fragment/version
+sed -i -e "1s/VERSION/${V}-prefix/" ${DEST}/ man/*
 sed -i -e "s/@version@/${V}/" ${DEST}/configure.in
 
 cd ${DEST}
