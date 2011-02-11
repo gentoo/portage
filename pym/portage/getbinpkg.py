@@ -431,17 +431,19 @@ def file_get_metadata(baseurl,conn=None, chunk_size=3000):
 	return myid
 
 
-def file_get(baseurl,dest,conn=None,fcmd=None):
+def file_get(baseurl,dest,conn=None,fcmd=None,filename=None):
 	"""(baseurl,dest,fcmd=) -- Takes a base url to connect to and read from.
 	URI should be in the form <proto>://[user[:pass]@]<site>[:port]<path>"""
 
 	if not fcmd:
 		return file_get_lib(baseurl,dest,conn)
+	if not filename:
+		filename = os.path.basename(baseurl)
 
 	variables = {
 		"DISTDIR": dest,
 		"URI":     baseurl,
-		"FILE":    os.path.basename(baseurl)
+		"FILE":    filename
 	}
 
 	from portage.util import varexpand
