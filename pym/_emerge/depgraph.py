@@ -2977,6 +2977,7 @@ class depgraph(object):
 		existing_node = None
 		myeb = None
 		rebuilt_binaries = 'rebuilt_binaries' in self._dynamic_config.myparams
+		usepkg = "--usepkg" in self._frozen_config.myopts
 		usepkgonly = "--usepkgonly" in self._frozen_config.myopts
 		empty = "empty" in self._dynamic_config.myparams
 		selective = "selective" in self._dynamic_config.myparams
@@ -3078,6 +3079,20 @@ class depgraph(object):
 						# to a KEYWORDS mask. See bug #252167.
 
 						if pkg.type_name != "ebuild" and matched_packages:
+							# Don't re-install a binary package that is
+							# identical to the currently installed package
+							# (see bug #354441).
+							identical_binary = False
+							if usepkg and pkg.installed:
+								for selected_pkg in matched_packages:
+									if selected_pkg.type_name == "binary" and \
+										selected_pkg.cpv == pkg.cpv and \
+										selected_pkg.metadata.get('BUILD_TIME') == \
+										pkg.metadata.get('BUILD_TIME'):
+										identical_binary = True
+										break
+
+							if not identical_binary:
 								# If the ebuild no longer exists or it's
 								# keywords have been dropped, reject built
 								# instances (installed or binary).
