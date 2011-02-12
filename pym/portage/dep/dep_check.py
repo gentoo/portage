@@ -135,6 +135,12 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 						pkg_use_enabled(parent))
 			else:
 				virt_atom = Atom(virt_atom)
+
+			# Allow the depgraph to map this atom back to the
+			# original, in order to avoid distortion in places
+			# like display or conflict resolution code.
+			virt_atom.__dict__['_orig_atom'] = x
+
 			# According to GLEP 37, RDEPEND is the only dependency
 			# type that is valid for new-style virtuals. Repoman
 			# should enforce this.

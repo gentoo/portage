@@ -1240,6 +1240,12 @@ class depgraph(object):
 		for atom, child in self._minimize_children(
 			pkg, dep_priority, root_config, selected_atoms[pkg]):
 
+			# If this was a specially generated virtual atom
+			# from dep_check, map it back to the original, in
+			# order to avoid distortion in places like display
+			# or conflict resolution code.
+			atom = getattr(atom, '_orig_atom', atom)
+
 			if ignore_blockers and atom.blocker:
 				# For --with-bdeps, ignore build-time only blockers
 				# that originate from built packages.
@@ -1290,6 +1296,13 @@ class depgraph(object):
 
 			for atom, child in self._minimize_children(
 				pkg, self._priority(runtime=True), root_config, atoms):
+
+				# If this was a specially generated virtual atom
+				# from dep_check, map it back to the original, in
+				# order to avoid distortion in places like display
+				# or conflict resolution code.
+				atom = getattr(atom, '_orig_atom', atom)
+
 				# This is a GLEP 37 virtual, so its deps are all runtime.
 				mypriority = self._priority(runtime=True)
 				if not atom.blocker:
