@@ -1277,21 +1277,31 @@ class depgraph(object):
 		# by dep_zapdeps. We preserve actual parent/child relationships
 		# here in order to avoid distorting the dependency graph like
 		# <=portage-2.1.6.x did.
-		for virt_pkg, atoms in selected_atoms.items():
+		while selected_atoms:
+
+			# Since _select_atoms currently doesn't return parent
+			# info for recursively traversed virtuals, the parent
+			# is not known here. However, this package may have
+			# already been added to graph above, so we add packages
+			# with parents first. This way, parents are already
+			# recorded before a given package is added, which allows
+			# us to avoid triggering a slot conflict before the
+			# parent is known.
+			for virt_pkg, atoms in selected_atoms.items():
+				try:
+					if self._dynamic_config.digraph.parent_nodes(virt_pkg):
+						break
+				except KeyError:
+					pass
+
+			selected_atoms.pop(virt_pkg)
 
 			if debug:
 				writemsg_level("Candidates: %s: %s\n" % \
 					(virt_pkg.cpv, [str(x) for x in atoms]),
 					noiselevel=-1, level=logging.DEBUG)
 
-			# Just assume depth + 1 here for now, though it's not entirely
-			# accurate since multilple levels of indirect virtual deps may
-			# have been traversed. The _add_pkg call will reset the depth to
-			# 0 if this package happens to match an argument.
-			if not self._add_pkg(virt_pkg,
-				Dependency(atom=Atom('=' + virt_pkg.cpv),
-				depth=(depth + 1), parent=pkg, priority=dep_priority.copy(),
-				root=dep_root)):
+			if not self._add_pkg(virt_pkg, None):
 				return 0
 
 			for atom, child in self._minimize_children(
