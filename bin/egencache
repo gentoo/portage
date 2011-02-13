@@ -396,11 +396,33 @@ class GenUseLocalDesc(object):
 						mode='w', encoding=_encodings['repo.content'],
 						errors='replace')
 			except IOError as e:
+				if not self._preserve_comments or \
+					os.path.isfile(desc_path):
+					writemsg_level(
+						"ERROR: failed to open output file %s: %s\n" \
+						% (desc_path, e), level=logging.ERROR, noiselevel=-1)
+					self.returncode |= 2
+					return
+
+				# Open in r+b mode failed because the file doesn't
+				# exist yet. We can probably recover if we disable
+				# preserve_comments mode now.
 				writemsg_level(
-					"ERROR: failed to open output file %s: %s\n" % (desc_path,e,),
-					level=logging.ERROR, noiselevel=-1)
-				self.returncode |= 2
-				return
+					"WARNING: --preserve-comments enabled, but " + \
+					"output file not found: %s\n" % (desc_path,),
+					level=logging.WARNING, noiselevel=-1)
+				self._preserve_comments = False
+				try:
+					output = codecs.open(_unicode_encode(desc_path,
+						encoding=_encodings['fs'], errors='strict'),
+						mode='w', encoding=_encodings['repo.content'],
+						errors='replace')
+				except IOError as e:
+					writemsg_level(
+						"ERROR: failed to open output file %s: %s\n" \
+						% (desc_path, e), level=logging.ERROR, noiselevel=-1)
+					self.returncode |= 2
+					return
 		else:
 			output = sys.stdout
 
