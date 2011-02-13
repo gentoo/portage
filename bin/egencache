@@ -791,7 +791,10 @@ def egencache_main(args):
 			max_load=options.load_average,
 			rsync=options.rsync)
 		gen_cache.run()
-		ret.append(gen_cache.returncode)
+		if options.tolerant:
+			ret.append(os.EX_OK)
+		else:
+			ret.append(gen_cache.returncode)
 
 	if options.update_use_local_desc:
 		gen_desc = GenUseLocalDesc(portdb,
@@ -805,8 +808,6 @@ def egencache_main(args):
 		gen_clogs.run()
 		ret.append(gen_clogs.returncode)
 
-	if options.tolerant:
-		return ret[0]
 	return max(ret)
 
 if __name__ == "__main__":
