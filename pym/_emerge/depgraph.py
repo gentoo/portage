@@ -1238,6 +1238,7 @@ class depgraph(object):
 
 		root_config = self._frozen_config.roots[dep_root]
 		vardb = root_config.trees["vartree"].dbapi
+		traversed_virt_pkgs = set()
 
 		for atom, child in self._minimize_children(
 			pkg, dep_priority, root_config, selected_atoms[pkg]):
@@ -1278,7 +1279,6 @@ class depgraph(object):
 			# available for optimization of merge order.
 			ignored = False
 			if not atom.blocker and \
-				not is_virt and \
 				not recurse_satisfied and \
 				mypriority.satisfied and \
 				mypriority.satisfied.visible and \
@@ -1304,9 +1304,12 @@ class depgraph(object):
 					dep.child = None
 					self._dynamic_config._ignored_deps.append(dep)
 
-			if not ignored and not self._add_dep(dep,
-				allow_unsatisfied=allow_unsatisfied):
-				return 0
+			if not ignored:
+				if not self._add_dep(dep,
+					allow_unsatisfied=allow_unsatisfied):
+					return 0
+				if is_virt:
+					traversed_virt_pkgs.add(dep.child)
 
 		selected_atoms.pop(pkg)
 
@@ -1318,6 +1321,8 @@ class depgraph(object):
 		for virt_dep, atoms in selected_atoms.items():
 
 			virt_pkg = virt_dep.child
+			if virt_pkg not in traversed_virt_pkgs:
+				continue
 
 			if debug:
 				writemsg_level("Candidates: %s: %s\n" % \
@@ -1334,6 +1339,7 @@ class depgraph(object):
 				# from dep_check, map it back to the original, in
 				# order to avoid distortion in places like display
 				# or conflict resolution code.
+				is_virt = hasattr(atom, '_orig_atom')
 				atom = getattr(atom, '_orig_atom', atom)
 
 				# This is a GLEP 37 virtual, so its deps are all runtime.
@@ -1352,11 +1358,39 @@ class depgraph(object):
 
 				# Dependencies of virtuals are considered to have the
 				# same depth as the virtual itself.
-				if not self._add_dep(Dependency(atom=atom,
+				dep = Dependency(atom=atom,
 					blocker=atom.blocker, child=child, depth=virt_dep.depth,
-					parent=virt_pkg, priority=mypriority, root=dep_root),
-					allow_unsatisfied=allow_unsatisfied):
-					return 0
+					parent=virt_pkg, priority=mypriority, root=dep_root)
+
+				ignored = False
+				if not atom.blocker and \
+					not recurse_satisfied and \
+					mypriority.satisfied and \
+					mypriority.satisfied.visible and \
+					dep.child is not None and \
+					not dep.child.installed:
+					myarg = None
+					if dep.root == self._frozen_config.target_root:
+						try:
+								myarg = next(
+									self._iter_atoms_for_pkg(dep.child))
+						except StopIteration:
+								pass
+						except InvalidDependString:
+							if not dep.child.installed:
+								raise
+
+					if myarg is None:
+						ignored = True
+						dep.child = None
+						self._dynamic_config._ignored_deps.append(dep)
+
+				if not ignored:
+					if not self._add_dep(dep,
+						allow_unsatisfied=allow_unsatisfied):
+						return 0
+					if is_virt:
+						traversed_virt_pkgs.add(dep.child)
 
 		if debug:
 			writemsg_level("Exiting... %s\n" % (pkg,),
