@@ -1369,8 +1369,10 @@ class depgraph(object):
 							# none visible, so use highest
 							mypriority.satisfied = inst_pkgs[0]
 
+				# Dependencies of virtuals are considered to have the
+				# same depth as the virtual itself.
 				if not self._add_dep(Dependency(atom=atom,
-					blocker=atom.blocker, child=child, depth=virt_pkg.depth,
+					blocker=atom.blocker, child=child, depth=virt_dep.depth,
 					parent=virt_pkg, priority=mypriority, root=dep_root),
 					allow_unsatisfied=allow_unsatisfied):
 					return 0
@@ -2198,6 +2200,13 @@ class depgraph(object):
 		if parent is None:
 			selected_atoms = mycheck[1]
 		else:
+			# Recursively traversed virtual dependencies, and their
+			# direct dependencies, are considered to have the same
+			# depth as direct dependencies.
+			if parent.depth is None:
+				virt_depth = None
+			else:
+				virt_depth = parent.depth + 1
 			chosen_atom_ids = frozenset(id(atom) for atom in mycheck[1])
 			selected_atoms = OrderedDict()
 			node_stack = [(parent, None, None)]
@@ -2216,9 +2225,10 @@ class depgraph(object):
 					else:
 						# virtuals only have runtime deps
 						node_priority = self._priority(runtime=True)
+
 					k = Dependency(atom=parent_atom,
 						blocker=parent_atom.blocker, child=node,
-						depth=node.depth, parent=node_parent,
+						depth=virt_depth, parent=node_parent,
 						priority=node_priority, root=node.root)
 
 				child_atoms = []
@@ -2239,7 +2249,6 @@ class depgraph(object):
 							# record this as an unsatisfied dependency
 							# when necessary.
 							continue
-						child_node.depth = node.depth + 1
 						node_stack.append((child_node, node, child_atom))
 
 		return selected_atoms
