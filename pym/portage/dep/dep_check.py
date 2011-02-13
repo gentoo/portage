@@ -36,7 +36,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	if parent is not None:
 		if virt_parent is not None:
 			graph_parent = virt_parent
-			parent = virt_parent[0]
+			parent = virt_parent
 		else:
 			graph_parent = parent
 		eapi = parent.metadata["EAPI"]
@@ -154,7 +154,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					% (depstring,), noiselevel=-1, level=logging.DEBUG)
 
 			# Set EAPI used for validation in dep_check() recursion.
-			mytrees["virt_parent"] = (pkg, virt_atom)
+			mytrees["virt_parent"] = pkg
 
 			try:
 				mycheck = dep_check(depstring, mydbapi, mysettings,
@@ -175,6 +175,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			a.append(mycheck[1])
 			if atom_graph is not None:
 				atom_graph.add(virt_atom, graph_parent)
+				atom_graph.add(pkg, virt_atom)
 		# Plain old-style virtuals.  New-style virtuals are preferred.
 		if not pkgs:
 				for y in mychoices:
@@ -560,7 +561,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	eapi = None
 	if parent is not None:
 		if virt_parent is not None:
-			current_parent = virt_parent[0]
+			current_parent = virt_parent
 		else:
 			current_parent = parent
 

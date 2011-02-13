@@ -12,7 +12,7 @@ import textwrap
 from itertools import chain
 
 import portage
-from portage import os
+from portage import os, OrderedDict
 from portage import _unicode_decode
 from portage.const import PORTAGE_PACKAGE_ATOM
 from portage.dbapi import dbapi
@@ -1296,31 +1296,16 @@ class depgraph(object):
 		# by dep_zapdeps. We preserve actual parent/child relationships
 		# here in order to avoid distorting the dependency graph like
 		# <=portage-2.1.6.x did.
-		while selected_atoms:
+		for virt_dep, atoms in selected_atoms.items():
 
-			# Since _select_atoms currently doesn't return parent
-			# info for recursively traversed virtuals, the parent
-			# is not known here. However, this package may have
-			# already been added to graph above, so we add packages
-			# with parents first. This way, parents are already
-			# recorded before a given package is added, which allows
-			# us to avoid triggering a slot conflict before the
-			# parent is known.
-			for virt_pkg, atoms in selected_atoms.items():
-				try:
-					if self._dynamic_config.digraph.parent_nodes(virt_pkg):
-						break
-				except KeyError:
-					pass
-
-			selected_atoms.pop(virt_pkg)
+			virt_pkg = virt_dep.child
 
 			if debug:
 				writemsg_level("Candidates: %s: %s\n" % \
 					(virt_pkg.cpv, [str(x) for x in atoms]),
 					noiselevel=-1, level=logging.DEBUG)
 
-			if not self._add_pkg(virt_pkg, None):
+			if not self._add_pkg(virt_pkg, virt_dep):
 				return 0
 
 			for atom, child in self._minimize_children(
@@ -2176,26 +2161,47 @@ class depgraph(object):
 			selected_atoms = mycheck[1]
 		else:
 			chosen_atoms = frozenset(mycheck[1])
-			selected_atoms = {parent : []}
-			for node in atom_graph:
-				if isinstance(node, Atom):
-					continue
+			selected_atoms = OrderedDict()
+			node_stack = [(parent, None, None)]
+			traversed_nodes = set()
+			while node_stack:
+				node, node_parent, parent_atom = node_stack.pop()
+				traversed_nodes.add(node)
 				if node is parent:
-					pkg = parent
+					k = parent
 				else:
-					pkg, virt_atom = node
-					if virt_atom not in chosen_atoms:
-						continue
-					if not portage.match_from_list(virt_atom, [pkg]):
-						# Typically this means that the atom
-						# specifies USE deps that are unsatisfied
-						# by the selected package. The caller will
-						# record this as an unsatisfied dependency
-						# when necessary.
-						continue
+					if node_parent is parent:
+						if priority is None:
+							node_priority = None
+						else:
+							node_priority = priority.copy()
+					else:
+						# virtuals only have runtime deps
+						node_priority = self._priority(runtime=True)
+					k = Dependency(atom=parent_atom,
+						blocker=parent_atom.blocker, child=node,
+						depth=node.depth, parent=node_parent,
+						priority=node_priority, root=node.root)
 
-				selected_atoms[pkg] = [atom for atom in \
-					atom_graph.child_nodes(node) if atom in chosen_atoms]
+				child_atoms = atom_graph.child_nodes(node)
+				selected_atoms[k] = [atom for atom in \
+					child_atoms if atom in chosen_atoms]
+				for child_atom in child_atoms:
+					if child_atom not in chosen_atoms:
+						continue
+					for child_node in atom_graph.child_nodes(child_atom):
+						if child_node in traversed_nodes:
+							continue
+						if not portage.match_from_list(
+							child_atom, [child_node]):
+							# Typically this means that the atom
+							# specifies USE deps that are unsatisfied
+							# by the selected package. The caller will
+							# record this as an unsatisfied dependency
+							# when necessary.
+							continue
+						child_node.depth = node.depth + 1
+						node_stack.append((child_node, node, child_atom))
 
 		return selected_atoms
 
