@@ -123,19 +123,28 @@ class ResolverDepthTestCase(TestCase):
 				["virtual/jre"],
 				options = {"--update" : True},
 				success = True,
+				mergelist = ['virtual/jre-1.6.0-r1', 'virtual/jre-1.5.0-r1']),
+
+			# Recursively traversed virtual dependencies, and their
+			# direct dependencies, are considered to have the same
+			# depth as direct dependencies.
+			ResolverPlaygroundTestCase(
+				["virtual/jre"],
+				options = {"--update" : True, "--deep" : 1},
+				success = True,
 				mergelist = ['dev-java/icedtea-6.1-r1', 'dev-java/gcj-jdk-4.5-r1', 'virtual/jdk-1.6.0-r1', 'virtual/jdk-1.5.0-r1', 'virtual/jre-1.6.0-r1', 'virtual/jre-1.5.0-r1']),
 
 			ResolverPlaygroundTestCase(
 				["virtual/jre:1.5"],
 				options = {"--update" : True},
 				success = True,
-				mergelist = ['dev-java/gcj-jdk-4.5-r1', 'virtual/jdk-1.5.0-r1', 'virtual/jre-1.5.0-r1']),
+				mergelist = ['virtual/jre-1.5.0-r1']),
 
 			ResolverPlaygroundTestCase(
 				["virtual/jre:1.6"],
 				options = {"--update" : True},
 				success = True,
-				mergelist = ['dev-java/icedtea-6.1-r1', 'virtual/jdk-1.6.0-r1', 'virtual/jre-1.6.0-r1']),
+				mergelist = ['virtual/jre-1.6.0-r1']),
 
 			# Test that we don't pull in any unnecessary updates
 			# when --update is not specified, even though we
@@ -146,12 +155,20 @@ class ResolverDepthTestCase(TestCase):
 				success = True,
 				mergelist = ["dev-java/ant-core-1.8"]),
 
-			# FIXME: pulls in unwanted updates without --deep: ['dev-java/icedtea-6.1-r1', 'virtual/jdk-1.6.0-r1', 'dev-java/ant-core-1.8']
-			#ResolverPlaygroundTestCase(
-			#	["dev-java/ant-core"],
-			#	options = {"--update" : True},
-			#	success = True,
-			#	mergelist = ["dev-java/ant-core-1.8"]),
+			ResolverPlaygroundTestCase(
+				["dev-java/ant-core"],
+				options = {"--update" : True},
+				success = True,
+				mergelist = ["dev-java/ant-core-1.8"]),
+
+			# Recursively traversed virtual dependencies, and their
+			# direct dependencies, are considered to have the same
+			# depth as direct dependencies.
+			ResolverPlaygroundTestCase(
+				["dev-java/ant-core"],
+				options = {"--update" : True, "--deep" : 1},
+				success = True,
+				mergelist = ['dev-java/icedtea-6.1-r1', 'virtual/jdk-1.6.0-r1', 'dev-java/ant-core-1.8']),
 
 			ResolverPlaygroundTestCase(
 				["dev-db/hsqldb"],
