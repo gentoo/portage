@@ -24,6 +24,8 @@ class ResolverDepthTestCase(TestCase):
 			"dev-libs/C-1": {},
 			}
 
+		world = ["dev-libs/A"]
+
 		test_cases = (
 			ResolverPlaygroundTestCase(
 				["dev-libs/A"],
@@ -39,12 +41,37 @@ class ResolverDepthTestCase(TestCase):
 
 			ResolverPlaygroundTestCase(
 				["dev-libs/A"],
-				options = {"--update": True, "--deep": 3},
+				options = {"--update": True, "--deep": 2},
 				success = True,
 				mergelist = ["dev-libs/C-2", "dev-libs/B-2", "dev-libs/A-2"]),
+
+			ResolverPlaygroundTestCase(
+				["@world"],
+				options = {"--update": True, "--deep": True},
+				success = True,
+				mergelist = ["dev-libs/C-2", "dev-libs/B-2", "dev-libs/A-2"]),
+
+			ResolverPlaygroundTestCase(
+				["@world"],
+				options = {"--emptytree": True},
+				success = True,
+				mergelist = ["dev-libs/C-2", "dev-libs/B-2", "dev-libs/A-2"]),
+
+			ResolverPlaygroundTestCase(
+				["@world"],
+				options = {"--selective": True, "--deep": True},
+				success = True,
+				mergelist = []),
+
+			ResolverPlaygroundTestCase(
+				["dev-libs/A"],
+				options = {"--deep": 2},
+				success = True,
+				mergelist = ["dev-libs/A-2"]),
 			)
 
-		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)
+		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed,
+			world=world)
 		try:
 			for test_case in test_cases:
 				playground.run_TestCase(test_case)
