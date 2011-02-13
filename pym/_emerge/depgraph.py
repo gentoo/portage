@@ -18,7 +18,7 @@ from portage.const import PORTAGE_PACKAGE_ATOM
 from portage.dbapi import dbapi
 from portage.dep import Atom, extract_affecting_use, check_required_use, human_readable_required_use, _repo_separator
 from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use
-from portage.exception import InvalidAtom
+from portage.exception import InvalidAtom, InvalidDependString
 from portage.output import colorize, create_color_func, \
 	darkgreen, green
 bad = create_color_func("BAD")
@@ -1206,6 +1206,8 @@ class depgraph(object):
 	def _add_pkg_dep_string(self, pkg, dep_root, dep_priority, dep_string,
 		allow_unsatisfied, ignore_blockers=False):
 		depth = pkg.depth + 1
+		deep = self._dynamic_config.myparams.get("deep", 0)
+		recurse_satisfied = deep is True or depth <= deep
 		debug = "--debug" in self._frozen_config.myopts
 		strict = pkg.type_name != "installed"
 
@@ -1244,6 +1246,7 @@ class depgraph(object):
 			# from dep_check, map it back to the original, in
 			# order to avoid distortion in places like display
 			# or conflict resolution code.
+			is_virt = hasattr(atom, '_orig_atom')
 			atom = getattr(atom, '_orig_atom', atom)
 
 			if ignore_blockers and atom.blocker:
@@ -1264,9 +1267,44 @@ class depgraph(object):
 						# none visible, so use highest
 						mypriority.satisfied = inst_pkgs[0]
 
-			if not self._add_dep(Dependency(atom=atom,
+			dep = Dependency(atom=atom,
 				blocker=atom.blocker, child=child, depth=depth, parent=pkg,
-				priority=mypriority, root=dep_root),
+				priority=mypriority, root=dep_root)
+
+			# In some cases, dep_check will return deps that shouldn't
+			# be proccessed any further, so they are identified and
+			# discarded here. Try to discard as few as possible since
+			# discarded dependencies reduce the amount of information
+			# available for optimization of merge order.
+			ignored = False
+			if not atom.blocker and \
+				not is_virt and \
+				not recurse_satisfied and \
+				mypriority.satisfied and \
+				mypriority.satisfied.visible and \
+				dep.child is not None and \
+				not dep.child.installed:
+				myarg = None
+				if dep.root == self._frozen_config.target_root:
+					try:
+							myarg = next(self._iter_atoms_for_pkg(dep.child))
+					except StopIteration:
+							pass
+					except InvalidDependString:
+						if not dep.child.installed:
+							# This shouldn't happen since the package
+							# should have been masked.
+							raise
+
+				if myarg is None:
+					# Existing child selection may not be valid unless
+					# it's added to the graph immediately, since "complete"
+					# mode may select a different child later.
+					ignored = True
+					dep.child = None
+					self._dynamic_config._ignored_deps.append(dep)
+
+			if not ignored and not self._add_dep(dep,
 				allow_unsatisfied=allow_unsatisfied):
 				return 0
 
