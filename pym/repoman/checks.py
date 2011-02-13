@@ -333,7 +333,7 @@ class NoOffsetWithHelpers(LineCheck):
 	helpers """
 
 	repoman_check_name = 'variable.usedwithhelpers'
-	re = re.compile(r'.*\b(dodir|dohard|exeinto|insinto|into)\s+"?\$\{?(D|ROOT|ED|EROOT|EPREFIX)\}?.*')
+	re = re.compile(r'^[^#]*\b(dodir|dohard|exeinto|insinto|into)\s+"?\$\{?(D|ROOT|ED|EROOT|EPREFIX)\}?.*')
 	error = errors.NO_OFFSET_WITH_HELPERS
 
 class ImplicitRuntimeDeps(LineCheck):
