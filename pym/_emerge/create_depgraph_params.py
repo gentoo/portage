@@ -29,15 +29,16 @@ def create_depgraph_params(myopts, myaction):
 		"--noreplace" in myopts or \
 		myopts.get("--selective", "n") != "n":
 		myparams["selective"] = True
-	if "--emptytree" in myopts:
-		myparams["empty"] = True
-		myparams.pop("selective", None)
 	if "--nodeps" in myopts:
 		myparams.pop("recurse", None)
 	if "--deep" in myopts:
 		myparams["deep"] = myopts["--deep"]
 	if "--complete-graph" in myopts:
 		myparams["complete"] = True
+	if "--emptytree" in myopts:
+		myparams["empty"] = True
+		myparams["deep"] = True
+		myparams.pop("selective", None)
 
 	rebuilt_binaries = myopts.get('--rebuilt-binaries')
 	if rebuilt_binaries is True or \
