@@ -2146,7 +2146,7 @@ class depgraph(object):
 		if parent is None:
 			selected_atoms = mycheck[1]
 		else:
-			chosen_atoms = frozenset(mycheck[1])
+			chosen_atom_ids = frozenset(id(atom) for atom in mycheck[1])
 			selected_atoms = OrderedDict()
 			node_stack = [(parent, None, None)]
 			traversed_nodes = set()
@@ -2169,13 +2169,14 @@ class depgraph(object):
 						depth=node.depth, parent=node_parent,
 						priority=node_priority, root=node.root)
 
-				child_atoms = atom_graph.child_nodes(node)
-				selected_atoms[k] = [atom for atom in \
-					child_atoms if atom in chosen_atoms]
-				for child_atom in child_atoms:
-					if child_atom not in chosen_atoms:
+				child_atoms = []
+				selected_atoms[k] = child_atoms
+				for atom_node in atom_graph.child_nodes(node):
+					child_atom = atom_node[0]
+					if id(child_atom) not in chosen_atom_ids:
 						continue
-					for child_node in atom_graph.child_nodes(child_atom):
+					child_atoms.append(child_atom)
+					for child_node in atom_graph.child_nodes(atom_node):
 						if child_node in traversed_nodes:
 							continue
 						if not portage.match_from_list(
