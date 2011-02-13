@@ -17,6 +17,15 @@ class ResolverDepthTestCase(TestCase):
 			"dev-libs/C-1": {},
 			"dev-libs/C-2": {},
 
+			"virtual/libusb-0"         : {"EAPI" :"2", "SLOT" : "0", "RDEPEND" : "|| ( >=dev-libs/libusb-0.1.12-r1:0 dev-libs/libusb-compat >=sys-freebsd/freebsd-lib-8.0[usb] )"},
+			"virtual/libusb-1"         : {"EAPI" :"2", "SLOT" : "1", "RDEPEND" : ">=dev-libs/libusb-1.0.4:1"},
+			"dev-libs/libusb-0.1.13"   : {},
+			"dev-libs/libusb-1.0.5"    : {"SLOT":"1"},
+			"dev-libs/libusb-compat-1" : {},
+			"sys-freebsd/freebsd-lib-8": {"IUSE" : "+usb"},
+
+			"sys-fs/udev-164"          : {"EAPI" : "1", "RDEPEND" : "virtual/libusb:0"},
+
 			"virtual/jre-1.5.0"        : {"SLOT" : "1.5", "RDEPEND" : "|| ( =dev-java/sun-jre-bin-1.5.0* =virtual/jdk-1.5.0* )"},
 			"virtual/jre-1.5.0-r1"     : {"SLOT" : "1.5", "RDEPEND" : "|| ( =dev-java/sun-jre-bin-1.5.0* =virtual/jdk-1.5.0* )"},
 			"virtual/jre-1.6.0"        : {"SLOT" : "1.6", "RDEPEND" : "|| ( =dev-java/sun-jre-bin-1.6.0* =virtual/jdk-1.6.0* )"},
@@ -49,6 +58,8 @@ class ResolverDepthTestCase(TestCase):
 			"virtual/jdk-1.6.0"       : {"SLOT" : "1.6", "RDEPEND" : "|| ( =dev-java/icedtea-6* =dev-java/sun-jdk-1.6.0* )"},
 			"dev-java/gcj-jdk-4.5"    : {},
 			"dev-java/icedtea-6.1"    : {},
+
+			"virtual/libusb-0"         : {"EAPI" :"2", "SLOT" : "0", "RDEPEND" : "|| ( >=dev-libs/libusb-0.1.12-r1:0 dev-libs/libusb-compat >=sys-freebsd/freebsd-lib-8.0[usb] )"},
 			}
 
 		world = ["dev-libs/A"]
@@ -175,6 +186,41 @@ class ResolverDepthTestCase(TestCase):
 				options = {"--deep" : True},
 				success = True,
 				mergelist = ["dev-db/hsqldb-1.8"]),
+
+			# Pull in direct dep of virtual, even with --deep=0.
+			ResolverPlaygroundTestCase(
+				["sys-fs/udev"],
+				options = {"--deep" : 0},
+				success = True,
+				mergelist = ['dev-libs/libusb-0.1.13', 'sys-fs/udev-164']),
+
+			# Test --nodeps with direct virtual deps.
+			ResolverPlaygroundTestCase(
+				["sys-fs/udev"],
+				options = {"--nodeps" : True},
+				success = True,
+				mergelist = ["sys-fs/udev-164"]),
+
+			# Test that --nodeps overrides --deep.
+			ResolverPlaygroundTestCase(
+				["sys-fs/udev"],
+				options = {"--nodeps" : True, "--deep" : True},
+				success = True,
+				mergelist = ["sys-fs/udev-164"]),
+
+			# Test that --nodeps overrides --emptytree.
+			ResolverPlaygroundTestCase(
+				["sys-fs/udev"],
+				options = {"--nodeps" : True, "--emptytree" : True},
+				success = True,
+				mergelist = ["sys-fs/udev-164"]),
+
+			# Test --emptytree with virtuals.
+			ResolverPlaygroundTestCase(
+				["sys-fs/udev"],
+				options = {"--emptytree" : True},
+				success = True,
+				mergelist = ['dev-libs/libusb-0.1.13', 'virtual/libusb-0', 'sys-fs/udev-164']),
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed,
