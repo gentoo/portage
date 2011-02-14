@@ -42,6 +42,7 @@ def create_depgraph_params(myopts, myaction):
 	if "--nodeps" in myopts:
 		myparams.pop("recurse", None)
 		myparams.pop("deep", None)
+		myparams.pop("complete", None)
 
 	rebuilt_binaries = myopts.get('--rebuilt-binaries')
 	if rebuilt_binaries is True or \
