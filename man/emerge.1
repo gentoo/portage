@@ -721,11 +721,12 @@ displayed.
 .B [ebuild     U *] sys\-apps/portage\-2.2.0_alpha6 [2.1.9.25]
 Portage 2.1.9.25 is installed, but if you run the command, then
 portage will upgrade to version 2.2.0_alpha6. In this case,
-\fB\-\-verbose\fR causes the \fB*\fR symbol to be displayed, in
-order to indicate that version 2.2.0_alpha6 is masked by missing
-keyword. The following symbols are used to indicate various types
+the \fB*\fR symbol is displayed, in order to indicate that version
+2.2.0_alpha6 is masked by missing keyword. This type of masking
+display is disabled by the \fB\-\-quiet\fR option if the
+\fB\-\-verbose\fR option is not enabled simultaneously.
+The following symbols are used to indicate various types
 of masking:
-
 .TS
 l l
 __
@@ -736,6 +737,10 @@ Symbol	Mask Type
 *	missing keyword
 ~	unstable keyword
 .TE
+
+\fBNOTE:\fR The unstable keyword symbol (~) will not be shown in cases
+in which the corresponding unstable keywords have been accepted
+globally via \fBACCEPT_KEYWORDS\fR.
 .TP
 
 

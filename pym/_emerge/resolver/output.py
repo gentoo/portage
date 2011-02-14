@@ -158,6 +158,9 @@ class Display(object):
 			self.pkgsettings["USE_EXPAND_HIDDEN"].lower().split()
 		return
 
+	def include_mask_str(self):
+		return self.conf.verbosity > 1
+
 	def gen_mask_str(self, pkg):
 		"""
 		@param pkg: _emerge.Package instance
@@ -181,7 +184,7 @@ class Display(object):
 
 	def empty_space_in_brackets(self):
 		space = ""
-		if self.conf.verbosity == 3:
+		if self.include_mask_str():
 			# add column for mask status
 			space += " "
 		return space
@@ -815,7 +818,7 @@ class Display(object):
 					self.check_system_world(pkg)
 				addl = self.set_interactive(pkg, pkg_info.ordered, addl)
 
-				if self.conf.verbosity == 3:
+				if self.include_mask_str():
 					addl += self.gen_mask_str(pkg)
 
 				if pkg.root != "/":
