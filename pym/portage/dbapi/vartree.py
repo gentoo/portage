@@ -3826,11 +3826,17 @@ class dblink(object):
 		myroot = None
 		if self.vartree.dbapi._categories is not None:
 			self.vartree.dbapi._categories = None
+		reinstall_self = False
 		if self.myroot == "/" and \
-			match_from_list(PORTAGE_PACKAGE_ATOM, [self.mycpv]) and \
-			(not self.vartree.dbapi.cpv_exists(self.mycpv) or \
-			'9999' in self.mycpv or \
-			'git' in self.settings.get('INHERITED', '').split()):
+			match_from_list(PORTAGE_PACKAGE_ATOM, [self.mycpv]):
+			inherited = frozenset(self.settings.get('INHERITED', '').split())
+			if not self.vartree.dbapi.cpv_exists(self.mycpv) or \
+				'9999' in self.mycpv or \
+				'git' in inherited or \
+				'git-2' in inherited:
+				reinstall_self = True
+
+		if reinstall_self:
 			# Load lazily referenced portage submodules into memory,
 			# so imports won't fail during portage upgrade/downgrade.
 			portage.proxy.lazyimport._preload_portage_submodules()

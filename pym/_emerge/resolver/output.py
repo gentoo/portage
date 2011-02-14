@@ -860,7 +860,8 @@ class Display(object):
 
 					if not self.vardb.cpv_exists(pkg.cpv) or \
 						'9999' in pkg.cpv or \
-						'git' in pkg.inherited:
+						'git' in pkg.inherited or \
+						'git-2' in pkg.inherited:
 						if mylist_index < len(mylist) - 1:
 							self.print_msg.append(
 								colorize(
