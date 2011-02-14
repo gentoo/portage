@@ -1299,7 +1299,9 @@ class depgraph(object):
 				mypriority.satisfied and \
 				mypriority.satisfied.visible and \
 				dep.child is not None and \
-				not dep.child.installed:
+				not dep.child.installed and \
+				self._dynamic_config._slot_pkg_map[dep.child.root].get(
+				dep.child.slot_atom) is None:
 				myarg = None
 				if dep.root == self._frozen_config.target_root:
 					try:
@@ -1384,7 +1386,9 @@ class depgraph(object):
 					mypriority.satisfied and \
 					mypriority.satisfied.visible and \
 					dep.child is not None and \
-					not dep.child.installed:
+					not dep.child.installed and \
+					self._dynamic_config._slot_pkg_map[dep.child.root].get(
+					dep.child.slot_atom) is None:
 					myarg = None
 					if dep.root == self._frozen_config.target_root:
 						try:
