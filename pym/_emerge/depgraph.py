@@ -2219,6 +2219,8 @@ class depgraph(object):
 				raise portage.exception.InvalidDependString(mycheck[1])
 		if parent is None:
 			selected_atoms = mycheck[1]
+		elif parent not in atom_graph:
+			selected_atoms = {parent : mycheck[1]}
 		else:
 			# Recursively traversed virtual dependencies, and their
 			# direct dependencies, are considered to have the same
