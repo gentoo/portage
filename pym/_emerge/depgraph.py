@@ -655,9 +655,8 @@ class depgraph(object):
 		debug = "--debug" in self._frozen_config.myopts
 		buildpkgonly = "--buildpkgonly" in self._frozen_config.myopts
 		nodeps = "--nodeps" in self._frozen_config.myopts
-		empty = "empty" in self._dynamic_config.myparams
 		deep = self._dynamic_config.myparams.get("deep", 0)
-		recurse = empty or deep is True or dep.depth <= deep
+		recurse = deep is True or dep.depth <= deep
 		if dep.blocker:
 			if not buildpkgonly and \
 				not nodeps and \
@@ -1037,8 +1036,7 @@ class depgraph(object):
 			depth = 0
 		pkg.depth = depth
 		deep = self._dynamic_config.myparams.get("deep", 0)
-		empty = "empty" in self._dynamic_config.myparams
-		recurse = empty or deep is True or depth + 1 <= deep
+		recurse = deep is True or depth + 1 <= deep
 		dep_stack = self._dynamic_config._dep_stack
 		if "recurse" not in self._dynamic_config.myparams:
 			return 1
@@ -1097,8 +1095,7 @@ class depgraph(object):
 
 		if not pkg.built and \
 			"--buildpkgonly" in self._frozen_config.myopts and \
-			"deep" not in self._dynamic_config.myparams and \
-			"empty" not in self._dynamic_config.myparams:
+			"deep" not in self._dynamic_config.myparams:
 			edepend["RDEPEND"] = ""
 			edepend["PDEPEND"] = ""
 
@@ -3663,7 +3660,7 @@ class depgraph(object):
 				depgraph_sets.sets.update(required_sets[root])
 			if "remove" not in self._dynamic_config.myparams and \
 				root == self._frozen_config.target_root and \
-				(already_deep or "empty" in self._dynamic_config.myparams):
+				already_deep:
 				remaining_args.difference_update(depgraph_sets.sets)
 			if not remaining_args and \
 				not self._dynamic_config._ignored_deps and \
