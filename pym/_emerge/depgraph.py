@@ -2359,20 +2359,20 @@ class depgraph(object):
 			# When traversing to parents, prefer arguments over packages
 			# since arguments are root nodes. Never traverse the same
 			# package twice, in order to prevent an infinite loop.
+			child = node
 			selected_parent = None
+			parent_arg = None
+			parent_merge = None
+
 			for parent in self._dynamic_config.digraph.parent_nodes(node):
 				if parent in traversed_nodes:
 					continue
 				if isinstance(parent, DependencyArg):
-					if self._dynamic_config.digraph.parent_nodes(parent):
-						selected_parent = parent
-						child = node
-					else:
-						dep_chain.append(
-							(_unicode_decode("%s") % (parent,), "argument"))
-						selected_parent = None
-					break
+					parent_arg = parent
 				else:
+					if isinstance(parent, Package) and \
+						parent.operation == "merge":
+						parent_merge = parent
 					if unsatisfied_dependency and node is start_node:
 						# Make sure that pkg doesn't satisfy parent's dependency.
 						# This ensures that we select the correct parent for use
@@ -2382,11 +2382,21 @@ class depgraph(object):
 								atom_set = InternalPackageSet(initial_atoms=(atom,))
 								if not atom_set.findAtomForPackage(start_node):
 									selected_parent = parent
-									child = node
 								break
 					else:
 						selected_parent = parent
-						child = node
+
+			if parent_merge is not None:
+				# Prefer parent in the merge list (bug #354747).
+				selected_parent = parent_merge
+			elif parent_arg is not None:
+				if self._dynamic_config.digraph.parent_nodes(parent_arg):
+					selected_parent = parent_arg
+				else:
+					dep_chain.append(
+						(_unicode_decode("%s") % (parent,), "argument"))
+					selected_parent = None
+
 			node = selected_parent
 		return dep_chain
 
