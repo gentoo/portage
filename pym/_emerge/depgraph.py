@@ -4271,7 +4271,8 @@ class depgraph(object):
 			(running_portage is None or \
 			running_portage.cpv != replacement_portage.cpv or \
 			'9999' in replacement_portage.cpv or \
-			'git' in replacement_portage.inherited):
+			'git' in replacement_portage.inherited or \
+			'git-2' in replacement_portage.inherited):
 			# update from running_portage to replacement_portage asap
 			asap_nodes.append(replacement_portage)
 

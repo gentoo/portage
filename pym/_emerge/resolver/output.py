@@ -732,7 +732,8 @@ def display(depgraph, mylist, favorites=[], verbosity=None):
 				not conf.quiet:
 				if not vardb.cpv_exists(pkg.cpv) or \
 					'9999' in pkg.cpv or \
-					'git' in pkg.inherited:
+					'git' in pkg.inherited or \
+					'git-2' in pkg.inherited:
 					if mylist_index < len(mylist) - 1:
 						p.append(colorize("WARN", "*** Portage will stop merging at this point and reload itself,"))
 						p.append(colorize("WARN", "    then resume the merge."))
