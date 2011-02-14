@@ -807,7 +807,7 @@ class binarytree(object):
 						success = portage.getbinpkg.file_get(url,
 						     tmp_dirname, fcmd=fcmd, filename=tmp_basename)
 						if not success:
-							raise portage.exception.FileNotFound(url)
+							raise EnvironmentError("%s failed" % (setting,))
 						f = open(tmp_filename, 'rb')
 
 				f_dec = codecs.iterdecode(f,
