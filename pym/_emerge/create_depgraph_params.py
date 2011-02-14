@@ -30,8 +30,9 @@ def create_depgraph_params(myopts, myaction):
 		myopts.get("--selective", "n") != "n":
 		myparams["selective"] = True
 
-	if "--deep" in myopts:
-		myparams["deep"] = myopts["--deep"]
+	deep = myopts.get("--deep")
+	if deep is not None and deep != 0:
+		myparams["deep"] = deep
 	if "--complete-graph" in myopts:
 		myparams["complete"] = True
 	if "--emptytree" in myopts:
