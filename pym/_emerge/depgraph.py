@@ -2411,7 +2411,7 @@ class depgraph(object):
 					selected_parent = parent_arg
 				else:
 					dep_chain.append(
-						(_unicode_decode("%s") % (parent,), "argument"))
+						(_unicode_decode("%s") % (parent_arg,), "argument"))
 					selected_parent = None
 
 			node = selected_parent
