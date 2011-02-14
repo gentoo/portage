@@ -21,6 +21,7 @@ class EbuildExecuter(CompositeTask):
 		"cvs",
 		"darcs",
 		"git",
+		"git-2",
 		"mercurial",
 		"subversion",
 		"tla",
