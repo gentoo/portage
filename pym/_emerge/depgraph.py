@@ -1286,9 +1286,9 @@ class depgraph(object):
 				myarg = None
 				if dep.root == self._frozen_config.target_root:
 					try:
-							myarg = next(self._iter_atoms_for_pkg(dep.child))
+						myarg = next(self._iter_atoms_for_pkg(dep.child))
 					except StopIteration:
-							pass
+						pass
 					except InvalidDependString:
 						if not dep.child.installed:
 							# This shouldn't happen since the package
@@ -1373,10 +1373,9 @@ class depgraph(object):
 					myarg = None
 					if dep.root == self._frozen_config.target_root:
 						try:
-								myarg = next(
-									self._iter_atoms_for_pkg(dep.child))
+							myarg = next(self._iter_atoms_for_pkg(dep.child))
 						except StopIteration:
-								pass
+							pass
 						except InvalidDependString:
 							if not dep.child.installed:
 								raise
