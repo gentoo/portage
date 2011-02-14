@@ -1307,7 +1307,7 @@ class depgraph(object):
 				if not self._add_dep(dep,
 					allow_unsatisfied=allow_unsatisfied):
 					return 0
-				if is_virt:
+				if is_virt and dep.child is not None:
 					traversed_virt_pkgs.add(dep.child)
 
 		selected_atoms.pop(pkg)
@@ -1389,7 +1389,7 @@ class depgraph(object):
 					if not self._add_dep(dep,
 						allow_unsatisfied=allow_unsatisfied):
 						return 0
-					if is_virt:
+					if is_virt and dep.child is not None:
 						traversed_virt_pkgs.add(dep.child)
 
 		if debug:
