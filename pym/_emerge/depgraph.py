@@ -2377,6 +2377,7 @@ class depgraph(object):
 			selected_parent = None
 			parent_arg = None
 			parent_merge = None
+			parent_unsatisfied = None
 
 			for parent in self._dynamic_config.digraph.parent_nodes(node):
 				if parent in traversed_nodes:
@@ -2395,12 +2396,14 @@ class depgraph(object):
 							if parent is ppkg:
 								atom_set = InternalPackageSet(initial_atoms=(atom,))
 								if not atom_set.findAtomForPackage(start_node):
-									selected_parent = parent
+									parent_unsatisfied = parent
 								break
 					else:
 						selected_parent = parent
 
-			if parent_merge is not None:
+			if parent_unsatisfied is not None:
+				selected_parent = parent_unsatisfied
+			elif parent_merge is not None:
 				# Prefer parent in the merge list (bug #354747).
 				selected_parent = parent_merge
 			elif parent_arg is not None:
