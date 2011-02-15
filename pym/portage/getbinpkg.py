@@ -1,5 +1,5 @@
 # getbinpkg.py -- Portage binary-package helper functions
-# Copyright 2003-2004 Gentoo Foundation
+# Copyright 2003-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.output import colorize
