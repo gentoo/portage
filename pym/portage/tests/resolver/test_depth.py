@@ -187,6 +187,21 @@ class ResolverDepthTestCase(TestCase):
 				success = True,
 				mergelist = ["dev-db/hsqldb-1.8"]),
 
+			# Don't traverse deps of an installed package with --deep=0,
+			# even if it's a virtual.
+			ResolverPlaygroundTestCase(
+				["virtual/libusb:0"],
+				options = {"--selective" : True, "--deep" : 0},
+				success = True,
+				mergelist = []),
+
+			# Satisfy unsatisfied dep of installed package with --deep=1.
+			ResolverPlaygroundTestCase(
+				["virtual/libusb:0"],
+				options = {"--selective" : True, "--deep" : 1},
+				success = True,
+				mergelist = ['dev-libs/libusb-0.1.13']),
+
 			# Pull in direct dep of virtual, even with --deep=0.
 			ResolverPlaygroundTestCase(
 				["sys-fs/udev"],
