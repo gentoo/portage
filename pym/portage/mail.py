@@ -67,9 +67,19 @@ def create_message(sender, recipient, subject, body, attachments=None):
 	mymessage.set_unixfrom(sender)
 	mymessage["To"] = recipient
 	mymessage["From"] = sender
-	# Use Header as a workaround so that long subject lines are wrapped
-	# correctly by <=python-2.6 (gentoo bug #263370, python issue #1974).
-	mymessage["Subject"] = Header(subject)
+
+	if sys.hexversion >= 0x3000000:
+		# Avoid UnicodeEncodeError in python3 with non-ascii characters.
+		#  File "/usr/lib/python3.1/email/header.py", line 189, in __init__
+		#    self.append(s, charset, errors)
+		#  File "/usr/lib/python3.1/email/header.py", line 262, in append
+		#    input_bytes = s.encode(input_charset, errors)
+		#UnicodeEncodeError: 'ascii' codec can't encode characters in position 0-9: ordinal not in range(128)
+		mymessage["Subject"] = subject
+	else:
+		# Use Header as a workaround so that long subject lines are wrapped
+		# correctly by <=python-2.6 (gentoo bug #263370, python issue #1974).
+		mymessage["Subject"] = Header(subject)
 	mymessage["Date"] = time.strftime("%a, %d %b %Y %H:%M:%S %z")
 	
 	return mymessage
