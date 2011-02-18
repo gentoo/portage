@@ -103,7 +103,7 @@ prepcompress() {
 			fi
 		done
 		for g in "${exclude[@]}"; do
-			if [[ ${f} = ${g} || ${f} == "${g%/}"/* ]]; then
+			if [[ ${f} = "${g}" || ${f} == "${g%/}"/* ]]; then
 				unset include[i]
 				continue 2
 			fi
