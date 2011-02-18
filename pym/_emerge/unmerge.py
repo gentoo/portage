@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -186,7 +186,7 @@ def unmerge(root_config, myopts, unmerge_action,
 				mymatch = localtree.dep_match(x)
 			if not mymatch:
 				portage.writemsg("\n--- Couldn't find '%s' to %s.\n" % \
-					(x, unmerge_action), noiselevel=-1)
+					(x.replace("null/", ""), unmerge_action), noiselevel=-1)
 				continue
 
 			pkgmap.append(
