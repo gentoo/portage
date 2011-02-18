@@ -24,6 +24,20 @@ import portage
 if sys.hexversion >= 0x3000000:
 	basestring = str
 
+	def _force_ascii_if_necessary(s):
+		# Force ascii encoding in order to avoid UnicodeEncodeError
+		# from smtplib.sendmail with python3 (bug #291331).
+		s = _unicode_encode(s,
+			encoding='ascii', errors='backslashreplace')
+		s = _unicode_decode(s,
+			encoding='ascii', errors='replace')
+		return s
+
+else:
+
+	def _force_ascii_if_necessary(s):
+		return s
+
 def TextMessage(_text):
 	from email.mime.text import MIMEText
 	mimetext = MIMEText(_text)
@@ -68,18 +82,16 @@ def create_message(sender, recipient, subject, body, attachments=None):
 	mymessage["To"] = recipient
 	mymessage["From"] = sender
 
-	if sys.hexversion >= 0x3000000:
-		# Avoid UnicodeEncodeError in python3 with non-ascii characters.
-		#  File "/usr/lib/python3.1/email/header.py", line 189, in __init__
-		#    self.append(s, charset, errors)
-		#  File "/usr/lib/python3.1/email/header.py", line 262, in append
-		#    input_bytes = s.encode(input_charset, errors)
-		#UnicodeEncodeError: 'ascii' codec can't encode characters in position 0-9: ordinal not in range(128)
-		mymessage["Subject"] = subject
-	else:
-		# Use Header as a workaround so that long subject lines are wrapped
-		# correctly by <=python-2.6 (gentoo bug #263370, python issue #1974).
-		mymessage["Subject"] = Header(subject)
+	# Use Header as a workaround so that long subject lines are wrapped
+	# correctly by <=python-2.6 (gentoo bug #263370, python issue #1974).
+	# Also, need to force ascii for python3, in order to avoid
+	# UnicodeEncodeError with non-ascii characters:
+	#  File "/usr/lib/python3.1/email/header.py", line 189, in __init__
+	#    self.append(s, charset, errors)
+	#  File "/usr/lib/python3.1/email/header.py", line 262, in append
+	#    input_bytes = s.encode(input_charset, errors)
+	#UnicodeEncodeError: 'ascii' codec can't encode characters in position 0-9: ordinal not in range(128)
+	mymessage["Subject"] = Header(_force_ascii_if_necessary(subject))
 	mymessage["Date"] = time.strftime("%a, %d %b %Y %H:%M:%S %z")
 	
 	return mymessage
@@ -138,7 +150,7 @@ def send_mail(mysettings, message):
 	# user wants to use a sendmail binary instead of smtp
 	if mymailhost[0] == os.sep and os.path.exists(mymailhost):
 		fd = os.popen(mymailhost+" -f "+myfrom+" "+myrecipient, "w")
-		fd.write(message.as_string())
+		fd.write(_force_ascii_if_necessary(message.as_string()))
 		if fd.close() != None:
 			sys.stderr.write(_("!!! %s returned with a non-zero exit code. This generally indicates an error.\n") % mymailhost)
 	else:
@@ -155,15 +167,7 @@ def send_mail(mysettings, message):
 			if mymailuser != "" and mymailpasswd != "":
 				myconn.login(mymailuser, mymailpasswd)
 
-			message_str = message.as_string()
-			if sys.hexversion >= 0x3000000:
-				# Force ascii encoding in order to avoid UnicodeEncodeError
-				# from smtplib.sendmail with python3 (bug #291331).
-				message_str = _unicode_encode(message_str,
-					encoding='ascii', errors='backslashreplace')
-				message_str = _unicode_decode(message_str,
-					encoding='ascii', errors='replace')
-
+			message_str = _force_ascii_if_necessary(message.as_string())
 			myconn.sendmail(myfrom, myrecipient, message_str)
 			myconn.quit()
 		except smtplib.SMTPException as e:
