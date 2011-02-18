@@ -367,14 +367,15 @@ def post_emerge(root_config, myopts, mtimedb, retval):
 	if retval in (None, os.EX_OK) or (not "--pretend" in myopts):
 		display_preserved_libs(vardbapi, myopts)	
 
-	from portage.output import red, bold
 	postemerge = os.path.join(settings["PORTAGE_CONFIGROOT"],
-				portage.USER_CONFIG_PATH, "bin", "post_emerge")
+		portage.USER_CONFIG_PATH, "bin", "post_emerge")
 	if os.access(postemerge, os.X_OK):
-		retval = portage.process.spawn(
+		hook_retval = portage.process.spawn(
 						[postemerge], env=settings.environ())
-		if retval != os.EX_OK:
-			print(red(" * ") + bold("spawn failed of " + postemerge))
+		if hook_retval != os.EX_OK:
+			writemsg_level(
+				" %s spawn failed of %s\n" % (bad("*"), postemerge,),
+				level=logging.ERROR, noiselevel=-1)
 	sys.exit(retval)
 
 def multiple_actions(action1, action2):
