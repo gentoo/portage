@@ -2432,7 +2432,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			retval = portage.process.spawn(
 				[postsync, dosyncuri], env=settings.environ())
 			if retval != os.EX_OK:
-				print(red(" * ") + bold("spawn failed of " + postsync))
+				writemsg_level(
+					" %s spawn failed of %s\n" % (bad("*"), postsync,),
+					level=logging.ERROR, noiselevel=-1)
 
 	if(mybestpv != mypvs) and not "--quiet" in myopts:
 		print()
