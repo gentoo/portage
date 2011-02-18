@@ -2379,9 +2379,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			retval = portage.process.spawn_bash(
 				"cd %s; exec cvs -z0 -q update -dP" % \
 				(portage._shell_quote(myportdir),), **spawn_kwargs)
-			writemsg_level("!!! cvs update error; exiting.\n",
-				noiselevel=-1, level=logging.ERROR)
 			if retval != os.EX_OK:
+				writemsg_level("!!! cvs update error; exiting.\n",
+					noiselevel=-1, level=logging.ERROR)
 				sys.exit(retval)
 		dosyncuri = syncuri
 	else:
