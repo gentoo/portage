@@ -2145,8 +2145,10 @@ def check_required_use(required_use, use, iuse_match):
 			is_negated = False
 
 		if not flag or not iuse_match(flag):
-			raise InvalidDependString(
-				_("malformed syntax: '%s'") % required_use)
+			msg = _("USE flag '%s' is not in IUSE") \
+				% (flag,)
+			e = InvalidData(msg, category='IUSE.missing')
+			raise InvalidDependString(msg, errors=(e,))
 
 		return (flag in use and not is_negated) or \
 			(flag not in use and is_negated)
