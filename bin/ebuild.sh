@@ -671,7 +671,7 @@ _eapi4_src_install() {
 		emake DESTDIR="${D}" install
 	fi
 
-	if [[ -z $DOCS ]] ; then
+	if ! declare -p DOCS &>/dev/null ; then
 		local d
 		for d in README* ChangeLog AUTHORS NEWS TODO CHANGES \
 				THANKS BUGS FAQ CREDITS CHANGELOG ; do
