@@ -38,6 +38,7 @@ class SubProcess(AbstractPollTask):
 		if retval[0] == 0:
 			return None
 		self._set_returncode(retval)
+		self.wait()
 		return self.returncode
 
 	def cancel(self):
