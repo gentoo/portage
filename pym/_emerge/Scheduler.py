@@ -1540,6 +1540,7 @@ class Scheduler(PollScheduler):
 		self._status_display.reset()
 		self._digraph = None
 		self._task_queues.fetch.clear()
+		self._prefetchers.clear()
 
 	def _choose_pkg(self):
 		"""
