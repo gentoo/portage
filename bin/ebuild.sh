@@ -1152,9 +1152,6 @@ dyn_install() {
 	#our custom version of libtool uses $S and $D to fix
 	#invalid paths in .la files
 	export S D
-	#some packages uses an alternative to $S to build in, cause
-	#our libtool to create problematic .la files
-	export PWORKDIR="$WORKDIR"
 
 	# Reset exeinto(), docinto(), insinto(), and into() state variables
 	# in case the user is running the install phase multiple times
@@ -2244,9 +2241,6 @@ ebuild_main() {
 			#our custom version of libtool uses $S and $D to fix
 			#invalid paths in .la files
 			export S D
-			#some packages use an alternative to $S to build in, cause
-			#our libtool to create problematic .la files
-			export PWORKDIR=$WORKDIR
 
 			;;
 		esac
