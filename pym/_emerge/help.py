@@ -94,11 +94,16 @@ def help(myopts, havecolor=1):
 		"listed in package.provided (see portage(5)) may be removed by " + \
 		"depclean, even if they are part of the world set."
 
-		if not _ENABLE_DYN_LINK_MAP:
-			paragraph += " Also note that " + \
-				"depclean may break link level dependencies. Thus, it is " + \
-				"recommended to use a tool such as revdep-rebuild(1) " + \
-				"in order to detect such breakage."
+		paragraph += " Also note that " + \
+			"depclean may break link level dependencies"
+
+		if _ENABLE_DYN_LINK_MAP:
+			paragraph += ", especially when the " + \
+				"--depclean-lib-check option is disabled"
+
+		paragraph += ". Thus, it is " + \
+			"recommended to use a tool such as revdep-rebuild(1) " + \
+			"in order to detect such breakage."
 
 		for line in wrap(paragraph, desc_width):
 			print(desc_indent + line)
