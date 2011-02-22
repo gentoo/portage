@@ -384,7 +384,20 @@ def post_emerge(myaction, myopts, myfiles,
 			writemsg_level(
 				" %s spawn failed of %s\n" % (bad("*"), postemerge,),
 				level=logging.ERROR, noiselevel=-1)
+
+	if "--quiet" not in myopts and \
+		myaction is None and "@world" in myfiles:
+		show_depclean_suggestion()
+
 	sys.exit(retval)
+
+def show_depclean_suggestion():
+	out = portage.output.EOutput()
+	msg = "After world updates, it is important to remove " + \
+		"obsolete packages with emerge --depclean. Refer " + \
+		"to `man emerge` for more information."
+	for line in textwrap.wrap(msg, 72):
+		out.einfo(line)
 
 def multiple_actions(action1, action2):
 	sys.stderr.write("\n!!! Multiple actions requested... Please choose one only.\n")
