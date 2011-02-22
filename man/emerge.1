@@ -120,7 +120,11 @@ always be kept. They can be manually added to this set with \fIemerge
 \-\-noreplace <atom>\fR. As a safety measure, depclean will not remove any
 packages unless *all* required dependencies have been resolved. As a
 consequence, it is often necessary to run \fIemerge \-\-update \-\-newuse
-\-\-deep @world\fR prior to depclean. 
+\-\-deep @world\fR prior to depclean. Also note that
+depclean may break link level dependencies, especially when the
+\fB\-\-depclean\-lib\-check\fR option is disabled. Thus, it is
+recommended to use a tool such as \fBrevdep-rebuild\fR(1)
+in order to detect such breakage.
 
 \fBWARNING:\fR
 Inexperienced users are advised to use \fB\-\-pretend\fR with this
