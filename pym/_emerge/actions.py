@@ -2923,9 +2923,15 @@ def chk_updated_cfg_files(eroot, config_protect):
 	for x in result:
 		print("\n"+colorize("WARN", " * IMPORTANT:"), end=' ')
 		if not x[1]: # it's a protected file
-			print("config file '%s' needs updating." % x[0])
+			writemsg_level("config file '%s' needs updating.\n" % x[0],
+				level=logging.INFO, noiselevel=-1)
 		else: # it's a protected dir
-			print("%d config files in '%s' need updating." % (len(x[1]), x[0]))
+			if len(x[1]) == 1:
+				writemsg_level("config file '%s' needs updating.\n" % x[1][0],
+					level=logging.INFO, noiselevel=-1)
+			else:
+				writemsg_level("%d config files in '%s' need updating.\n" % \
+					(len(x[1]), x[0]), level=logging.INFO, noiselevel=-1)
 
 	if result:
 		print(" "+yellow("*")+" See the "+colorize("INFORM","CONFIGURATION FILES")\
