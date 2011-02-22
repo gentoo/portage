@@ -397,7 +397,7 @@ def show_depclean_suggestion():
 		"obsolete packages with emerge --depclean. Refer " + \
 		"to `man emerge` for more information."
 	for line in textwrap.wrap(msg, 72):
-		out.einfo(line)
+		out.ewarn(line)
 
 def multiple_actions(action1, action2):
 	sys.stderr.write("\n!!! Multiple actions requested... Please choose one only.\n")
