@@ -2948,7 +2948,10 @@ def chk_updated_cfg_files(eroot, config_protect):
 				level=logging.INFO, noiselevel=-1)
 		else: # it's a protected dir
 			if len(x[1]) == 1:
-				writemsg_level("config file '%s' needs updating.\n" % x[1][0],
+				head, tail = os.path.split(x[1][0])
+				tail = tail[len("._cfg0000_"):]
+				fpath = os.path.join(head, tail)
+				writemsg_level("config file '%s' needs updating.\n" % fpath,
 					level=logging.INFO, noiselevel=-1)
 			else:
 				writemsg_level("%d config files in '%s' need updating.\n" % \
