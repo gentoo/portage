@@ -4,6 +4,17 @@
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
+if [[ ${0##*/} == dodoc ]] ; then
+	if [ $# -eq 0 ] ; then
+		# default_src_install may call dodoc with no arguments
+		# when DOC is defined but empty, so simply return
+		# sucessfully in this case.
+		exit 0
+	fi
+	export INSOPTIONS=-m0644
+	export INSDESTTREE=usr/share/doc/${PF}/${_E_DOCDESTTREE_}
+fi
+
 if [ $# -lt 1 ] ; then
 	helpers_die "${0##*/}: at least one argument needed"
 	exit 1
@@ -14,17 +25,6 @@ if [[ "$1" == "-r" ]] ; then
 	shift
 else
 	DOINSRECUR=n
-fi
-
-if [[ ${0##*/} == dodoc ]] ; then
-	if [ $# -eq 0 ] ; then
-		# default_src_install may call dodoc with no arguments
-		# when DOC is defined but empty, so simply return
-		# sucessfully in this case.
-		exit 0
-	fi
-	export INSOPTIONS=-m0644
-	export INSDESTTREE=usr/share/doc/${PF}/${_E_DOCDESTTREE_}
 fi
 
 if [[ ${INSDESTTREE#${D}} != "${INSDESTTREE}" ]]; then
