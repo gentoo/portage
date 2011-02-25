@@ -35,7 +35,7 @@ for x in "$@" ; do
 		find "${x}" -mindepth 1 -maxdepth 1 -exec \
 			env \
 				_E_DOCDESTTREE_="$(basename "${x}")" \
-				${0} -r {} \;
+				"${0}" -r {} \;
 
 	elif [ -s "${x}" ] ; then
 		install -m0644 "${x}" "${dir}" || ((ret|=1))
@@ -46,5 +46,5 @@ for x in "$@" ; do
 
 done
 
-[[ $ret -ne 0 ]] && die "$0 failed"
+[[ $ret -ne 0 ]] && die "${0##*/} failed"
 exit ${ret}
