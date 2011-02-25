@@ -27,6 +27,8 @@ for x in "$@" ; do
 
 	if [ -d "${x}" ] ; then
 		if [[ ${DOINSRECUR} == "n" ]] ; then
+			echo "!!! ${0##*/}: $x is a directory" 1>&2
+			((ret|=1))
 			continue
 		fi
 
@@ -36,7 +38,7 @@ for x in "$@" ; do
 				${0} -r {} \;
 
 	elif [ -s "${x}" ] ; then
-		install -m0644 "${x}" "${dir}"
+		install -m0644 "${x}" "${dir}" || ((ret|=1))
 	elif [ ! -e "${x}" ] ; then
 		echo "!!! ${0##*/}: $x does not exist" 1>&2
 		((ret|=1))
