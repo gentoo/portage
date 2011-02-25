@@ -89,6 +89,10 @@ for x in "$@" ; do
 	if [[ $PRESERVE_SYMLINKS = n && -d $x ]] || \
 		[[ $PRESERVE_SYMLINKS = y && -d $x && ! -L $x ]] ; then
 		if [ "${DOINSRECUR}" == "n" ] ; then
+			if [[ ${0##*/} == dodoc ]] ; then
+				echo "!!! ${0##*/}: $x is a directory" 1>&2
+				((failed|=1))
+			fi
 			continue
 		fi
 
