@@ -2068,7 +2068,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 		retries=0
 		proto, user_name, hostname, port = re.split(
-			"(rsync|ssh)://([^:/]+@)?([^:/]*)(:[0-9]+)?", syncuri, maxsplit=4)[1:5]
+			r"(rsync|ssh)://([^:/]+@)?(\[[:\da-fA-F]*\]|[^:/]*)(:[0-9]+)?",
+			syncuri, maxsplit=4)[1:5]
 		if port is None:
 			port=""
 		if user_name is None:
