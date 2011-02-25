@@ -2088,13 +2088,23 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			maxretries = -1 #default number of retries
 
 		retries=0
-		proto, user_name, hostname, port = re.split(
-			r"(rsync|ssh)://([^:/]+@)?(\[[:\da-fA-F]*\]|[^:/]*)(:[0-9]+)?",
-			syncuri, maxsplit=4)[1:5]
+		try:
+			proto, user_name, hostname, port = re.split(
+				r"(rsync|ssh)://([^:/]+@)?(\[[:\da-fA-F]*\]|[^:/]*)(:[0-9]+)?",
+				syncuri, maxsplit=4)[1:5]
+		except ValueError:
+			writemsg_level("!!! SYNC is invalid: %s\n" % syncuri,
+				noiselevel=-1, level=logging.ERROR)
+			return 1
 		if port is None:
 			port=""
 		if user_name is None:
 			user_name=""
+		if re.match(r"^\[[:\da-fA-F]*\]$", hostname) is None:
+			getaddrinfo_host = hostname
+		else:
+			# getaddrinfo needs the brackets stripped
+			getaddrinfo_host = hostname[1:-1]
 		updatecache_flg=True
 		all_rsync_opts = set(rsync_opts)
 		extra_rsync_opts = portage.util.shlex_split(
@@ -2113,7 +2123,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 		try:
 			addrinfos = getaddrinfo_validate(
-				socket.getaddrinfo(hostname, None,
+				socket.getaddrinfo(getaddrinfo_host, None,
 				family, socket.SOCK_STREAM))
 		except socket.error as e:
 			writemsg_level(
