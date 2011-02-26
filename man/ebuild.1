@@ -1,4 +1,4 @@
-.TH "EBUILD" "1" "Oct 2009" "Portage VERSION" "Portage"
+.TH "EBUILD" "1" "Feb 2011" "Portage VERSION" "Portage"
 .SH "NAME"
 ebuild \- a low level interface to the Portage system
 .SH "SYNOPSIS"
@@ -39,8 +39,8 @@ this particular ebuild file.  The temporary build directory normally
 contains the extracted source files as well as a possible
 "install image" (all the files that will be merged to the local
 filesystem or stored in a package).  The location of the build
-directory is set by the BUILD_PREFIX variable.  For information
-on what this variable is, run \fIemerge [\-v] info\fR, or to override
+directory is set by the PORTAGE_TMPDIR variable.  For information
+on what this variable is, run \fIemerge \-\-info\fR, or to override
 this variable, see \fBmake.conf\fR(5).
 
 Note: Portage cleans up almost everything after a package has been

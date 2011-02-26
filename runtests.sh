@@ -1,6 +1,6 @@
 #!@PORTAGE_BASH@
 
-PYTHON_VERSIONS="2.6 2.7 3.1 3.2"
+PYTHON_VERSIONS="2.6 2.7 3.1 3.2 3.3"
 
 case "${NOCOLOR:-false}" in
 	yes|true)

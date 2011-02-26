@@ -12,13 +12,13 @@ import textwrap
 from itertools import chain
 
 import portage
-from portage import os
+from portage import os, OrderedDict
 from portage import _unicode_decode
 from portage.const import PORTAGE_PACKAGE_ATOM
 from portage.dbapi import dbapi
 from portage.dep import Atom, extract_affecting_use, check_required_use, human_readable_required_use, _repo_separator
 from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use
-from portage.exception import InvalidAtom
+from portage.exception import InvalidAtom, InvalidDependString
 from portage.output import colorize, create_color_func, \
 	darkgreen, green
 bad = create_color_func("BAD")
@@ -655,9 +655,8 @@ class depgraph(object):
 		debug = "--debug" in self._frozen_config.myopts
 		buildpkgonly = "--buildpkgonly" in self._frozen_config.myopts
 		nodeps = "--nodeps" in self._frozen_config.myopts
-		empty = "empty" in self._dynamic_config.myparams
 		deep = self._dynamic_config.myparams.get("deep", 0)
-		recurse = empty or deep is True or dep.depth <= deep
+		recurse = deep is True or dep.depth <= deep
 		if dep.blocker:
 			if not buildpkgonly and \
 				not nodeps and \
@@ -1037,8 +1036,7 @@ class depgraph(object):
 			depth = 0
 		pkg.depth = depth
 		deep = self._dynamic_config.myparams.get("deep", 0)
-		empty = "empty" in self._dynamic_config.myparams
-		recurse = empty or deep is True or depth + 1 <= deep
+		recurse = deep is True or depth + 1 <= deep
 		dep_stack = self._dynamic_config._dep_stack
 		if "recurse" not in self._dynamic_config.myparams:
 			return 1
@@ -1097,8 +1095,7 @@ class depgraph(object):
 
 		if not pkg.built and \
 			"--buildpkgonly" in self._frozen_config.myopts and \
-			"deep" not in self._dynamic_config.myparams and \
-			"empty" not in self._dynamic_config.myparams:
+			"deep" not in self._dynamic_config.myparams:
 			edepend["RDEPEND"] = ""
 			edepend["PDEPEND"] = ""
 
@@ -1206,6 +1203,8 @@ class depgraph(object):
 	def _add_pkg_dep_string(self, pkg, dep_root, dep_priority, dep_string,
 		allow_unsatisfied, ignore_blockers=False):
 		depth = pkg.depth + 1
+		deep = self._dynamic_config.myparams.get("deep", 0)
+		recurse_satisfied = deep is True or depth <= deep
 		debug = "--debug" in self._frozen_config.myopts
 		strict = pkg.type_name != "installed"
 
@@ -1236,9 +1235,17 @@ class depgraph(object):
 
 		root_config = self._frozen_config.roots[dep_root]
 		vardb = root_config.trees["vartree"].dbapi
+		traversed_virt_pkgs = set()
 
 		for atom, child in self._minimize_children(
 			pkg, dep_priority, root_config, selected_atoms[pkg]):
+
+			# If this was a specially generated virtual atom
+			# from dep_check, map it back to the original, in
+			# order to avoid distortion in places like display
+			# or conflict resolution code.
+			is_virt = hasattr(atom, '_orig_atom')
+			atom = getattr(atom, '_orig_atom', atom)
 
 			if ignore_blockers and atom.blocker:
 				# For --with-bdeps, ignore build-time only blockers
@@ -1258,11 +1265,50 @@ class depgraph(object):
 						# none visible, so use highest
 						mypriority.satisfied = inst_pkgs[0]
 
-			if not self._add_dep(Dependency(atom=atom,
+			dep = Dependency(atom=atom,
 				blocker=atom.blocker, child=child, depth=depth, parent=pkg,
-				priority=mypriority, root=dep_root),
-				allow_unsatisfied=allow_unsatisfied):
-				return 0
+				priority=mypriority, root=dep_root)
+
+			# In some cases, dep_check will return deps that shouldn't
+			# be proccessed any further, so they are identified and
+			# discarded here. Try to discard as few as possible since
+			# discarded dependencies reduce the amount of information
+			# available for optimization of merge order.
+			ignored = False
+			if not atom.blocker and \
+				not recurse_satisfied and \
+				mypriority.satisfied and \
+				mypriority.satisfied.visible and \
+				dep.child is not None and \
+				not dep.child.installed and \
+				self._dynamic_config._slot_pkg_map[dep.child.root].get(
+				dep.child.slot_atom) is None:
+				myarg = None
+				if dep.root == self._frozen_config.target_root:
+					try:
+						myarg = next(self._iter_atoms_for_pkg(dep.child))
+					except StopIteration:
+						pass
+					except InvalidDependString:
+						if not dep.child.installed:
+							# This shouldn't happen since the package
+							# should have been masked.
+							raise
+
+				if myarg is None:
+					# Existing child selection may not be valid unless
+					# it's added to the graph immediately, since "complete"
+					# mode may select a different child later.
+					ignored = True
+					dep.child = None
+					self._dynamic_config._ignored_deps.append(dep)
+
+			if not ignored:
+				if not self._add_dep(dep,
+					allow_unsatisfied=allow_unsatisfied):
+					return 0
+				if is_virt and dep.child is not None:
+					traversed_virt_pkgs.add(dep.child)
 
 		selected_atoms.pop(pkg)
 
@@ -1271,25 +1317,30 @@ class depgraph(object):
 		# by dep_zapdeps. We preserve actual parent/child relationships
 		# here in order to avoid distorting the dependency graph like
 		# <=portage-2.1.6.x did.
-		for virt_pkg, atoms in selected_atoms.items():
+		for virt_dep, atoms in selected_atoms.items():
+
+			virt_pkg = virt_dep.child
+			if virt_pkg not in traversed_virt_pkgs:
+				continue
 
 			if debug:
 				writemsg_level("Candidates: %s: %s\n" % \
 					(virt_pkg.cpv, [str(x) for x in atoms]),
 					noiselevel=-1, level=logging.DEBUG)
 
-			# Just assume depth + 1 here for now, though it's not entirely
-			# accurate since multilple levels of indirect virtual deps may
-			# have been traversed. The _add_pkg call will reset the depth to
-			# 0 if this package happens to match an argument.
-			if not self._add_pkg(virt_pkg,
-				Dependency(atom=Atom('=' + virt_pkg.cpv),
-				depth=(depth + 1), parent=pkg, priority=dep_priority.copy(),
-				root=dep_root)):
+			if not self._add_pkg(virt_pkg, virt_dep):
 				return 0
 
 			for atom, child in self._minimize_children(
 				pkg, self._priority(runtime=True), root_config, atoms):
+
+				# If this was a specially generated virtual atom
+				# from dep_check, map it back to the original, in
+				# order to avoid distortion in places like display
+				# or conflict resolution code.
+				is_virt = hasattr(atom, '_orig_atom')
+				atom = getattr(atom, '_orig_atom', atom)
+
 				# This is a GLEP 37 virtual, so its deps are all runtime.
 				mypriority = self._priority(runtime=True)
 				if not atom.blocker:
@@ -1304,11 +1355,42 @@ class depgraph(object):
 							# none visible, so use highest
 							mypriority.satisfied = inst_pkgs[0]
 
-				if not self._add_dep(Dependency(atom=atom,
-					blocker=atom.blocker, child=child, depth=virt_pkg.depth,
-					parent=virt_pkg, priority=mypriority, root=dep_root),
-					allow_unsatisfied=allow_unsatisfied):
-					return 0
+				# Dependencies of virtuals are considered to have the
+				# same depth as the virtual itself.
+				dep = Dependency(atom=atom,
+					blocker=atom.blocker, child=child, depth=virt_dep.depth,
+					parent=virt_pkg, priority=mypriority, root=dep_root)
+
+				ignored = False
+				if not atom.blocker and \
+					not recurse_satisfied and \
+					mypriority.satisfied and \
+					mypriority.satisfied.visible and \
+					dep.child is not None and \
+					not dep.child.installed and \
+					self._dynamic_config._slot_pkg_map[dep.child.root].get(
+					dep.child.slot_atom) is None:
+					myarg = None
+					if dep.root == self._frozen_config.target_root:
+						try:
+							myarg = next(self._iter_atoms_for_pkg(dep.child))
+						except StopIteration:
+							pass
+						except InvalidDependString:
+							if not dep.child.installed:
+								raise
+
+					if myarg is None:
+						ignored = True
+						dep.child = None
+						self._dynamic_config._ignored_deps.append(dep)
+
+				if not ignored:
+					if not self._add_dep(dep,
+						allow_unsatisfied=allow_unsatisfied):
+						return 0
+					if is_virt and dep.child is not None:
+						traversed_virt_pkgs.add(dep.child)
 
 		if debug:
 			writemsg_level("Exiting... %s\n" % (pkg,),
@@ -2137,28 +2219,59 @@ class depgraph(object):
 				raise portage.exception.InvalidDependString(mycheck[1])
 		if parent is None:
 			selected_atoms = mycheck[1]
+		elif parent not in atom_graph:
+			selected_atoms = {parent : mycheck[1]}
 		else:
-			chosen_atoms = frozenset(mycheck[1])
-			selected_atoms = {parent : []}
-			for node in atom_graph:
-				if isinstance(node, Atom):
-					continue
+			# Recursively traversed virtual dependencies, and their
+			# direct dependencies, are considered to have the same
+			# depth as direct dependencies.
+			if parent.depth is None:
+				virt_depth = None
+			else:
+				virt_depth = parent.depth + 1
+			chosen_atom_ids = frozenset(id(atom) for atom in mycheck[1])
+			selected_atoms = OrderedDict()
+			node_stack = [(parent, None, None)]
+			traversed_nodes = set()
+			while node_stack:
+				node, node_parent, parent_atom = node_stack.pop()
+				traversed_nodes.add(node)
 				if node is parent:
-					pkg = parent
+					k = parent
 				else:
-					pkg, virt_atom = node
-					if virt_atom not in chosen_atoms:
-						continue
-					if not portage.match_from_list(virt_atom, [pkg]):
-						# Typically this means that the atom
-						# specifies USE deps that are unsatisfied
-						# by the selected package. The caller will
-						# record this as an unsatisfied dependency
-						# when necessary.
-						continue
+					if node_parent is parent:
+						if priority is None:
+							node_priority = None
+						else:
+							node_priority = priority.copy()
+					else:
+						# virtuals only have runtime deps
+						node_priority = self._priority(runtime=True)
 
-				selected_atoms[pkg] = [atom for atom in \
-					atom_graph.child_nodes(node) if atom in chosen_atoms]
+					k = Dependency(atom=parent_atom,
+						blocker=parent_atom.blocker, child=node,
+						depth=virt_depth, parent=node_parent,
+						priority=node_priority, root=node.root)
+
+				child_atoms = []
+				selected_atoms[k] = child_atoms
+				for atom_node in atom_graph.child_nodes(node):
+					child_atom = atom_node[0]
+					if id(child_atom) not in chosen_atom_ids:
+						continue
+					child_atoms.append(child_atom)
+					for child_node in atom_graph.child_nodes(atom_node):
+						if child_node in traversed_nodes:
+							continue
+						if not portage.match_from_list(
+							child_atom, [child_node]):
+							# Typically this means that the atom
+							# specifies USE deps that are unsatisfied
+							# by the selected package. The caller will
+							# record this as an unsatisfied dependency
+							# when necessary.
+							continue
+						node_stack.append((child_node, node, child_atom))
 
 		return selected_atoms
 
@@ -2248,20 +2361,21 @@ class depgraph(object):
 			# When traversing to parents, prefer arguments over packages
 			# since arguments are root nodes. Never traverse the same
 			# package twice, in order to prevent an infinite loop.
+			child = node
 			selected_parent = None
+			parent_arg = None
+			parent_merge = None
+			parent_unsatisfied = None
+
 			for parent in self._dynamic_config.digraph.parent_nodes(node):
 				if parent in traversed_nodes:
 					continue
 				if isinstance(parent, DependencyArg):
-					if self._dynamic_config.digraph.parent_nodes(parent):
-						selected_parent = parent
-						child = node
-					else:
-						dep_chain.append(
-							(_unicode_decode("%s") % (parent,), "argument"))
-						selected_parent = None
-					break
+					parent_arg = parent
 				else:
+					if isinstance(parent, Package) and \
+						parent.operation == "merge":
+						parent_merge = parent
 					if unsatisfied_dependency and node is start_node:
 						# Make sure that pkg doesn't satisfy parent's dependency.
 						# This ensures that we select the correct parent for use
@@ -2270,12 +2384,24 @@ class depgraph(object):
 							if parent is ppkg:
 								atom_set = InternalPackageSet(initial_atoms=(atom,))
 								if not atom_set.findAtomForPackage(start_node):
-									selected_parent = parent
-									child = node
+									parent_unsatisfied = parent
 								break
 					else:
 						selected_parent = parent
-						child = node
+
+			if parent_unsatisfied is not None:
+				selected_parent = parent_unsatisfied
+			elif parent_merge is not None:
+				# Prefer parent in the merge list (bug #354747).
+				selected_parent = parent_merge
+			elif parent_arg is not None:
+				if self._dynamic_config.digraph.parent_nodes(parent_arg):
+					selected_parent = parent_arg
+				else:
+					dep_chain.append(
+						(_unicode_decode("%s") % (parent_arg,), "argument"))
+					selected_parent = None
+
 			node = selected_parent
 		return dep_chain
 
@@ -3006,6 +3132,7 @@ class depgraph(object):
 		existing_node = None
 		myeb = None
 		rebuilt_binaries = 'rebuilt_binaries' in self._dynamic_config.myparams
+		usepkg = "--usepkg" in self._frozen_config.myopts
 		usepkgonly = "--usepkgonly" in self._frozen_config.myopts
 		empty = "empty" in self._dynamic_config.myparams
 		selective = "selective" in self._dynamic_config.myparams
@@ -3117,6 +3244,20 @@ class depgraph(object):
 						# to a KEYWORDS mask. See bug #252167.
 
 						if pkg.type_name != "ebuild" and matched_packages:
+							# Don't re-install a binary package that is
+							# identical to the currently installed package
+							# (see bug #354441).
+							identical_binary = False
+							if usepkg and pkg.installed:
+								for selected_pkg in matched_packages:
+									if selected_pkg.type_name == "binary" and \
+										selected_pkg.cpv == pkg.cpv and \
+										selected_pkg.metadata.get('BUILD_TIME') == \
+										pkg.metadata.get('BUILD_TIME'):
+										identical_binary = True
+										break
+
+							if not identical_binary:
 								# If the ebuild no longer exists or it's
 								# keywords have been dropped, reject built
 								# instances (installed or binary).
@@ -3524,7 +3665,7 @@ class depgraph(object):
 				depgraph_sets.sets.update(required_sets[root])
 			if "remove" not in self._dynamic_config.myparams and \
 				root == self._frozen_config.target_root and \
-				(already_deep or "empty" in self._dynamic_config.myparams):
+				already_deep:
 				remaining_args.difference_update(depgraph_sets.sets)
 			if not remaining_args and \
 				not self._dynamic_config._ignored_deps and \
@@ -4193,7 +4334,8 @@ class depgraph(object):
 			(running_portage is None or \
 			running_portage.cpv != replacement_portage.cpv or \
 			'9999' in replacement_portage.cpv or \
-			'git' in replacement_portage.inherited):
+			'git' in replacement_portage.inherited or \
+			'git-2' in replacement_portage.inherited):
 			# update from running_portage to replacement_portage asap
 			asap_nodes.append(replacement_portage)
 

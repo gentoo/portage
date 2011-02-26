@@ -771,8 +771,9 @@ class binarytree(object):
 				# urlparse.urljoin() only works correctly with recognized
 				# protocols and requires the base url to have a trailing
 				# slash, so join manually...
+				url = base_url.rstrip("/") + "/Packages"
 				try:
-					f = urllib_request_urlopen(base_url.rstrip("/") + "/Packages")
+					f = urllib_request_urlopen(url)
 				except IOError:
 					path = parsed_url.path.rstrip("/") + "/Packages"
 
@@ -797,7 +798,18 @@ class binarytree(object):
 							stdout=subprocess.PIPE)
 						f = proc.stdout
 					else:
-						raise
+						setting = 'FETCHCOMMAND_' + parsed_url.scheme.upper()
+						fcmd = self.settings.get(setting)
+						if not fcmd:
+							raise
+						fd, tmp_filename = tempfile.mkstemp()
+						tmp_dirname, tmp_basename = os.path.split(tmp_filename)
+						os.close(fd)
+						success = portage.getbinpkg.file_get(url,
+						     tmp_dirname, fcmd=fcmd, filename=tmp_basename)
+						if not success:
+							raise EnvironmentError("%s failed" % (setting,))
+						f = open(tmp_filename, 'rb')
 
 				f_dec = codecs.iterdecode(f,
 					_encodings['repo.content'], errors='replace')

@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AsynchronousTask import AsynchronousTask
@@ -26,11 +26,14 @@ class BinpkgVerifier(AsynchronousTask):
 		rval = os.EX_OK
 		stdout_orig = sys.stdout
 		stderr_orig = sys.stderr
+		global_havecolor = portage.output.havecolor
 		out = portage.StringIO()
 		file_exists = True
 		try:
 			sys.stdout = out
 			sys.stderr = out
+			if portage.output.havecolor:
+				portage.output.havecolor = not self.background
 			try:
 				bintree.digestCheck(pkg)
 			except portage.exception.FileNotFound:
@@ -61,6 +64,7 @@ class BinpkgVerifier(AsynchronousTask):
 		finally:
 			sys.stdout = stdout_orig
 			sys.stderr = stderr_orig
+			portage.output.havecolor = global_havecolor
 
 		msg = _unicode_decode(out.getvalue(),
 			encoding=_encodings['content'], errors='replace')

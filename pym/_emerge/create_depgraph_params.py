@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
@@ -29,15 +29,21 @@ def create_depgraph_params(myopts, myaction):
 		"--noreplace" in myopts or \
 		myopts.get("--selective", "n") != "n":
 		myparams["selective"] = True
-	if "--emptytree" in myopts:
-		myparams["empty"] = True
-		myparams.pop("selective", None)
-	if "--nodeps" in myopts:
-		myparams.pop("recurse", None)
-	if "--deep" in myopts:
-		myparams["deep"] = myopts["--deep"]
+
+	deep = myopts.get("--deep")
+	if deep is not None and deep != 0:
+		myparams["deep"] = deep
 	if "--complete-graph" in myopts:
 		myparams["complete"] = True
+	if "--emptytree" in myopts:
+		myparams["empty"] = True
+		myparams["deep"] = True
+		myparams.pop("selective", None)
+
+	if "--nodeps" in myopts:
+		myparams.pop("recurse", None)
+		myparams.pop("deep", None)
+		myparams.pop("complete", None)
 
 	rebuilt_binaries = myopts.get('--rebuilt-binaries')
 	if rebuilt_binaries is True or \

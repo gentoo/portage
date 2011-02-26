@@ -89,8 +89,9 @@ to get around escaping problems.
 .BR "No action"
 If no action is specified, the action is to merge in the specified
 packages, satisfying any dependencies that they may have.  The
-arguments can be \fIebuilds\fR, \fItbz2s\fR, \fIsets\fR, or
-\fIatoms\fR.  \fBNote that you need to use the \-\-usepkg 
+arguments can be \fIatoms\fR, \fIsets\fR, installed \fIfiles\fR,
+\fIebuilds\fR, or \fItbz2s\fR.
+\fBNote that you need to use the \-\-usepkg
 option if you want to install a tbz2\fR.  The packages are added
 to the \fBworld\fR file at the end, so that they are considered for
 later updating.
@@ -119,7 +120,11 @@ always be kept. They can be manually added to this set with \fIemerge
 \-\-noreplace <atom>\fR. As a safety measure, depclean will not remove any
 packages unless *all* required dependencies have been resolved. As a
 consequence, it is often necessary to run \fIemerge \-\-update \-\-newuse
-\-\-deep @world\fR prior to depclean. 
+\-\-deep @world\fR prior to depclean. Also note that
+depclean may break link level dependencies, especially when the
+\fB\-\-depclean\-lib\-check\fR option is disabled. Thus, it is
+recommended to use a tool such as \fBrevdep-rebuild\fR(1)
+in order to detect such breakage.
 
 \fBWARNING:\fR
 Inexperienced users are advised to use \fB\-\-pretend\fR with this
@@ -367,7 +372,7 @@ required.
 .TP
 .BR "\-\-depclean\-lib\-check [ y | n ]"
 Account for library link-level dependencies during
-\fB-\-depclean\fR and \fB-\-prune\fR actions. This
+\fB\-\-depclean\fR and \fB\-\-prune\fR actions. This
 option is enabled by default. In some cases this can
 be somewhat time\-consuming.
 .TP
@@ -445,7 +450,9 @@ A USE flag was turned on for a package.
 A USE flag was turned off for a package.
 
 USE flags may be toggled by your profile as well as your USE and package.use
-settings.
+settings. If you would like to skip rebuilds for which disabled flags have
+been added to or removed from IUSE, see the related
+\-\-reinstall=changed\-use option.
 .TP
 .BR "\-\-noconfmem"
 Causes portage to disregard merge records indicating that a config file
@@ -719,11 +726,12 @@ displayed.
 .B [ebuild     U *] sys\-apps/portage\-2.2.0_alpha6 [2.1.9.25]
 Portage 2.1.9.25 is installed, but if you run the command, then
 portage will upgrade to version 2.2.0_alpha6. In this case,
-\fB\-\-verbose\fR causes the \fB*\fR symbol to be displayed, in
-order to indicate that version 2.2.0_alpha6 is masked by missing
-keyword. The following symbols are used to indicate various types
+the \fB*\fR symbol is displayed, in order to indicate that version
+2.2.0_alpha6 is masked by missing keyword. This type of masking
+display is disabled by the \fB\-\-quiet\fR option if the
+\fB\-\-verbose\fR option is not enabled simultaneously.
+The following symbols are used to indicate various types
 of masking:
-
 .TS
 l l
 __
@@ -734,6 +742,10 @@ Symbol	Mask Type
 *	missing keyword
 ~	unstable keyword
 .TE
+
+\fBNOTE:\fR The unstable keyword symbol (~) will not be shown in cases
+in which the corresponding unstable keywords have been accepted
+globally via \fBACCEPT_KEYWORDS\fR.
 .TP
 
 

@@ -16,8 +16,10 @@ fi
 
 ret=0
 for x in "$@" ; do
-	if [ -s "${x}" ] ; then
-		install -m0644 "${x}" "${dir}"
+	if [ -d "${x}" ] ; then
+		eqawarn "QA Notice: dodoc argument '${x}' is a directory"
+	elif [ -s "${x}" ] ; then
+		install -m0644 "${x}" "${dir}" || { ((ret|=1)); continue; }
 		ecompress --queue "${dir}/${x##*/}"
 	elif [ ! -e "${x}" ] ; then
 		echo "!!! ${0##*/}: $x does not exist" 1>&2

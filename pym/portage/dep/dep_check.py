@@ -28,6 +28,12 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	mytrees = trees[myroot]
 	portdb = mytrees["porttree"].dbapi
 	pkg_use_enabled = mytrees.get("pkg_use_enabled")
+	# Atoms are stored in the graph as (atom, id(atom)) tuples
+	# since each atom is considered to be a unique entity. For
+	# example, atoms that appear identical may behave differently
+	# in USE matching, depending on their unevaluated form. Also,
+	# specially generated virtual atoms may appear identical while
+	# having different _orig_atom attributes.
 	atom_graph = mytrees.get("atom_graph")
 	parent = mytrees.get("parent")
 	virt_parent = mytrees.get("virt_parent")
@@ -36,7 +42,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	if parent is not None:
 		if virt_parent is not None:
 			graph_parent = virt_parent
-			parent = virt_parent[0]
+			parent = virt_parent
 		else:
 			graph_parent = parent
 		eapi = parent.metadata["EAPI"]
@@ -67,7 +73,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 		if not mykey.startswith("virtual/"):
 			newsplit.append(x)
 			if atom_graph is not None:
-				atom_graph.add(x, graph_parent)
+				atom_graph.add((x, id(x)), graph_parent)
 			continue
 		mychoices = myvirtuals.get(mykey, [])
 		if x.blocker:
@@ -76,7 +82,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			# maintaining a cache of blocker atoms.
 			newsplit.append(x)
 			if atom_graph is not None:
-				atom_graph.add(x, graph_parent)
+				atom_graph.add((x, id(x)), graph_parent)
 			continue
 
 		if repoman or not hasattr(portdb, 'match_pkgs') or \
@@ -115,7 +121,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			# dependency that needs to be satisfied.
 			newsplit.append(x)
 			if atom_graph is not None:
-				atom_graph.add(x, graph_parent)
+				atom_graph.add((x, id(x)), graph_parent)
 			continue
 
 		a = []
@@ -135,6 +141,12 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 						pkg_use_enabled(parent))
 			else:
 				virt_atom = Atom(virt_atom)
+
+			# Allow the depgraph to map this atom back to the
+			# original, in order to avoid distortion in places
+			# like display or conflict resolution code.
+			virt_atom.__dict__['_orig_atom'] = x
+
 			# According to GLEP 37, RDEPEND is the only dependency
 			# type that is valid for new-style virtuals. Repoman
 			# should enforce this.
@@ -148,7 +160,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					% (depstring,), noiselevel=-1, level=logging.DEBUG)
 
 			# Set EAPI used for validation in dep_check() recursion.
-			mytrees["virt_parent"] = (pkg, virt_atom)
+			mytrees["virt_parent"] = pkg
 
 			try:
 				mycheck = dep_check(depstring, mydbapi, mysettings,
@@ -168,7 +180,9 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			mycheck[1].append(virt_atom)
 			a.append(mycheck[1])
 			if atom_graph is not None:
-				atom_graph.add(virt_atom, graph_parent)
+				virt_atom_node = (virt_atom, id(virt_atom))
+				atom_graph.add(virt_atom_node, graph_parent)
+				atom_graph.add(pkg, virt_atom_node)
 		# Plain old-style virtuals.  New-style virtuals are preferred.
 		if not pkgs:
 				for y in mychoices:
@@ -180,7 +194,8 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 						portdb.aux_get(matches[-1], ['PROVIDE'])[0].split():
 						a.append(new_atom)
 						if atom_graph is not None:
-							atom_graph.add(new_atom, graph_parent)
+							atom_graph.add((new_atom, id(new_atom)),
+								graph_parent)
 
 		if not a and mychoices:
 			# Check for a virtual package.provided match.
@@ -190,12 +205,12 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					pprovideddict.get(new_atom.cp, [])):
 					a.append(new_atom)
 					if atom_graph is not None:
-						atom_graph.add(new_atom, graph_parent)
+						atom_graph.add((new_atom, id(new_atom)), graph_parent)
 
 		if not a:
 			newsplit.append(x)
 			if atom_graph is not None:
-				atom_graph.add(x, graph_parent)
+				atom_graph.add((x, id(x)), graph_parent)
 		elif len(a) == 1:
 			newsplit.append(a[0])
 		else:
@@ -554,7 +569,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	eapi = None
 	if parent is not None:
 		if virt_parent is not None:
-			current_parent = virt_parent[0]
+			current_parent = virt_parent
 		else:
 			current_parent = parent
 
