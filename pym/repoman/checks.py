@@ -623,6 +623,16 @@ class Eapi4GoneVars(LineCheck):
 			return ("variable '$%s'" % m.group(1)) + \
 				" is gone in EAPI=4 on line: %d"
 
+class PortageInternal(LineCheck):
+	repoman_check_name = 'portage.internal'
+	re = re.compile(r'[^#]*\b(ecompress|ecompressdir|prepalldocs)\b')
+
+	def check(self, num, line):
+		"""Run the check on line and return error if there is one"""
+		m = self.re.match(line)
+		if m is not None:
+			return ("'%s'" % m.group(1)) + " called on line: %d"
+
 _constant_checks = tuple((c() for c in (
 	EbuildHeader, EbuildWhitespace, EbuildBlankLine, EbuildQuote,
 	EbuildAssignment, Eapi3EbuildAssignment, EbuildUselessDodoc,
@@ -633,7 +643,7 @@ _constant_checks = tuple((c() for c in (
 	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
 	SrcCompileEconf, Eapi3DeprecatedFuncs, NoOffsetWithHelpers,
 	Eapi4IncompatibleFuncs, Eapi4GoneVars, BuiltWithUse,
-	PreserveOldLib, SandboxAddpredict)))
+	PreserveOldLib, SandboxAddpredict, PortageInternal)))
 
 _here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
 
