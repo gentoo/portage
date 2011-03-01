@@ -1785,7 +1785,7 @@ class dblink(object):
 			mykeys.reverse()
 
 			#process symlinks second-to-last, directories last.
-			mydirs = []
+			mydirs = set()
 			ignored_unlink_errnos = (
 				errno.EBUSY, errno.ENOENT,
 				errno.ENOTDIR, errno.EISDIR)
@@ -1847,6 +1847,7 @@ class dblink(object):
 
 			real_root = self.settings['ROOT']
 			real_root_len = len(real_root) - 1
+			eroot_split_len = len(self.settings["EROOT"].split(os.sep)) - 1
 
 			for i, objkey in enumerate(mykeys):
 
@@ -1871,6 +1872,18 @@ class dblink(object):
 						else:
 							os = portage.os
 							perf_md5 = portage.checksum.perform_md5
+
+				# Try to unmerge parent directories of everything
+				# listed in CONTENTS, since we can't necessarily
+				# assume that directories are listed in CONTENTS.
+				obj_split = obj.split(os.sep)
+				obj_split.pop()
+				while len(obj_split) > eroot_split_len:
+					parent = os.sep.join(obj_split)
+					if parent in mydirs:
+						break
+					mydirs.add(parent)
+					obj_split.pop()
 
 				file_data = pkgfiles[objkey]
 				file_type = file_data[0]
@@ -1940,7 +1953,7 @@ class dblink(object):
 					if lstatobj is None or not stat.S_ISDIR(lstatobj.st_mode):
 						show_unmerge("---", unmerge_desc["!dir"], file_type, obj)
 						continue
-					mydirs.append(obj)
+					mydirs.add(obj)
 				elif pkgfiles[objkey][0] == "sym":
 					if not islink:
 						show_unmerge("---", unmerge_desc["!sym"], file_type, obj)
@@ -1992,7 +2005,7 @@ class dblink(object):
 				elif pkgfiles[objkey][0] == "dev":
 					show_unmerge("---", "", file_type, obj)
 
-			mydirs.sort()
+			mydirs = sorted(mydirs)
 			mydirs.reverse()
 
 			for obj in mydirs:
