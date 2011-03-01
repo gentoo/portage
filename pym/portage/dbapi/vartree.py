@@ -1519,6 +1519,7 @@ class dblink(object):
 		# Now, don't assume that the name of the ebuild is the same as the
 		# name of the dir; the package may have been moved.
 		myebuildpath = None
+		failures = 0
 		ebuild_phase = "prerm"
 		log_path = None
 		mystuff = os.listdir(self.dbdir)
@@ -1538,16 +1539,18 @@ class dblink(object):
 				doebuild_environment(myebuildpath, "prerm",
 					settings=self.settings, db=self.vartree.dbapi)
 			except UnsupportedAPIException as e:
+				failures += 1
 				# Sometimes this happens due to corruption of the EAPI file.
-				writemsg(_("!!! FAILED prerm: %s\n") % \
-					os.path.join(self.dbdir, "EAPI"), noiselevel=-1)
-				writemsg("%s\n" % str(e), noiselevel=-1)
+				showMessage(_("!!! FAILED prerm: %s\n") % \
+					os.path.join(self.dbdir, "EAPI"),
+					level=logging.ERROR, noiselevel=-1)
+				showMessage("%s\n" % (e,),
+					level=logging.ERROR, noiselevel=-1)
 				myebuildpath = None
 
 		builddir_lock = None
 		scheduler = self._scheduler
 		retval = os.EX_OK
-		failures = 0
 		try:
 			if myebuildpath:
 				builddir_lock = EbuildBuildDir(
@@ -1567,7 +1570,8 @@ class dblink(object):
 				# XXX: Decide how to handle failures here.
 				if retval != os.EX_OK:
 					failures += 1
-					writemsg(_("!!! FAILED prerm: %s\n") % retval, noiselevel=-1)
+					showMessage(_("!!! FAILED prerm: %s\n") % retval,
+						level=logging.ERROR, noiselevel=-1)
 
 			self._unmerge_pkgfiles(pkgfiles, others_in_slot)
 			self._clear_contents_cache()
@@ -1592,7 +1596,8 @@ class dblink(object):
 				# XXX: Decide how to handle failures here.
 				if retval != os.EX_OK:
 					failures += 1
-					writemsg(_("!!! FAILED postrm: %s\n") % retval, noiselevel=-1)
+					showMessage(_("!!! FAILED postrm: %s\n") % retval,
+						level=logging.ERROR, noiselevel=-1)
 
 			# Skip this if another package in the same slot has just been
 			# merged on top of this package, since the other package has
