@@ -815,6 +815,8 @@ class vardbapi(dbapi):
 
 		def __init__(self, vardb):
 			self._vardb = vardb
+			self._eprefix_split_len = len(x for x in \
+				vardb.settings["EPREFIX"].split(os.sep) if x)
 
 		def add(self, cpv):
 			root_len = len(self._vardb._eroot)
@@ -834,7 +836,7 @@ class vardbapi(dbapi):
 				self._add_path(x, pkg_hash)
 				x_split = x.split(os.sep)
 				x_split.pop()
-				while x_split:
+				while len(x_split) > self._eprefix_split_len:
 					parent = os.sep.join(x_split)
 					if parent in added_paths:
 						break
