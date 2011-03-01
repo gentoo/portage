@@ -822,8 +822,25 @@ class vardbapi(dbapi):
 			if not contents:
 				# Empty path is a code used to represent empty contents.
 				self._add_path("", pkg_hash)
+
+			# When adding paths, implicitly add parent directories,
+			# since we can't necessarily assume that they are
+			# explicitly listed in CONTENTS.
+			added_paths = set()
 			for x in contents:
-				self._add_path(x[root_len:], pkg_hash)
+				x = x[root_len:]
+				added_paths.add(x)
+				self._add_path(x, pkg_hash)
+				x_split = x.split(os.sep)
+				x_split.pop()
+				while x_split:
+					parent = os.sep.join(x_split)
+					if parent in added_paths:
+						break
+					added_paths.add(parent)
+					self._add_path(parent, pkg_hash)
+					x_split.pop()
+
 			self._vardb._aux_cache["modified"].add(cpv)
 
 		def _add_path(self, path, pkg_hash):
