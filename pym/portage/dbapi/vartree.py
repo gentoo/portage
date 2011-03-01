@@ -815,11 +815,9 @@ class vardbapi(dbapi):
 
 		def __init__(self, vardb):
 			self._vardb = vardb
-			self._eprefix_split_len = len(x for x in \
-				vardb.settings["EPREFIX"].split(os.sep) if x)
 
 		def add(self, cpv):
-			root_len = len(self._vardb._eroot)
+			eroot_len = len(self._vardb._eroot)
 			contents = self._vardb._dblink(cpv).getcontents()
 			pkg_hash = self._hash_pkg(cpv)
 			if not contents:
@@ -831,12 +829,12 @@ class vardbapi(dbapi):
 			# explicitly listed in CONTENTS.
 			added_paths = set()
 			for x in contents:
-				x = x[root_len:]
+				x = x[eroot_len:]
 				added_paths.add(x)
 				self._add_path(x, pkg_hash)
 				x_split = x.split(os.sep)
 				x_split.pop()
-				while len(x_split) > self._eprefix_split_len:
+				while x_split:
 					parent = os.sep.join(x_split)
 					if parent in added_paths:
 						break
