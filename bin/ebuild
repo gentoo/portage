@@ -215,6 +215,19 @@ def discard_digests(myebuild, mysettings, mydbapi):
 		portage._doebuild_manifest_exempt_depend -= 1
 
 portage.settings.validate() # generate warning messages if necessary
+
+build_dir_phases = set(["setup", "unpack", "prepare", "configure", "compile",
+	"test", "install", "package", "rpm", "merge", "qmerge"])
+
+# If the current metadata is invalid then force the ebuild to be
+# sourced again even if $T/environment already exists.
+ebuild_changed = False
+if mytree == "porttree" and build_dir_phases.intersection(pargs):
+	metadata, st, emtime = \
+		portage.portdb._pull_valid_cache(cpv, ebuild, ebuild_portdir)
+	if metadata is None:
+		ebuild_changed = True
+
 tmpsettings = portage.config(clone=portage.settings)
 tmpsettings["PORTAGE_VERBOSE"] = "1"
 tmpsettings.backup_changes("PORTAGE_VERBOSE")
@@ -248,18 +261,6 @@ try:
 except KeyError:
 	# aux_get failure, message should have been shown on stderr.
 	sys.exit(1)
-
-build_dir_phases = set(["setup", "unpack", "prepare", "configure", "compile",
-	"test", "install", "package", "rpm", "merge", "qmerge"])
-
-# If the current metadata is invalid then force the ebuild to be
-# sourced again even if $T/environment already exists.
-ebuild_changed = False
-if mytree == "porttree" and build_dir_phases.intersection(pargs):
-	metadata, st, emtime = \
-		portage.portdb._pull_valid_cache(cpv, ebuild, ebuild_portdir)
-	if metadata is None:
-		ebuild_changed = True
 
 def stale_env_warning():
 	if "clean" not in pargs and \
