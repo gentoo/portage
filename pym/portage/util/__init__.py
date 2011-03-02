@@ -349,6 +349,13 @@ def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 		if x[0] == "#":
 			continue
 		myline=x.split()
+		mylinetemp = []
+		for item in myline:
+			if not item.startswith('#'):
+				mylinetemp.append(item)
+			else:
+				break
+		myline = mylinetemp
 		if len(myline) < 2 and empty == 0:
 			continue
 		if len(myline) < 1 and empty == 1:
