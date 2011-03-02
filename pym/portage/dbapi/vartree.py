@@ -1404,6 +1404,9 @@ class dblink(object):
 		myroot = self.settings['ROOT']
 		if myroot == os.path.sep:
 			myroot = None
+		# used to generate parent dir entries
+		dir_entry = (_unicode_decode("dir"),)
+		eroot_split_len = len(self.settings["EROOT"].split(os.sep)) - 1
 		pos = 0
 		errors = []
 		for pos, line in enumerate(mylines):
@@ -1447,6 +1450,19 @@ class dblink(object):
 
 			if myroot is not None:
 				path = os.path.join(myroot, path.lstrip(os.path.sep))
+
+			# Implicitly add parent directories, since we can't necessarily
+			# assume that they are explicitly listed in CONTENTS, and it's
+			# useful for callers if they can rely on parent directory entries
+			# being generated here (crucial for things like dblink.isowner()).
+			path_split = path.split(os.sep)
+			path_split.pop()
+			while len(path_split) > eroot_split_len:
+				parent = os.sep.join(path_split)
+				if parent in pkgfiles:
+					break
+				pkgfiles[parent] = dir_entry
+				path_split.pop()
 
 			pkgfiles[path] = data
 
