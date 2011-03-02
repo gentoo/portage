@@ -5866,10 +5866,15 @@ def _spinner_start(spinner, myopts):
 
 def _spinner_stop(spinner):
 	if spinner is None or \
-		spinner.update is spinner.update_quiet:
+		spinner.update == spinner.update_quiet:
 		return
 
-	portage.writemsg_stdout("\b\b... done!\n")
+	if spinner.update != spinner.update_basic:
+		# update_basic is used for non-tty output,
+		# so don't output backspaces in that case.
+		portage.writemsg_stdout("\b\b")
+
+	portage.writemsg_stdout("... done!\n")
 
 def backtrack_depgraph(settings, trees, myopts, myparams, 
 	myaction, myfiles, spinner):
