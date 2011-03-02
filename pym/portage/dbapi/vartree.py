@@ -823,23 +823,8 @@ class vardbapi(dbapi):
 				# Empty path is a code used to represent empty contents.
 				self._add_path("", pkg_hash)
 
-			# When adding paths, implicitly add parent directories,
-			# since we can't necessarily assume that they are
-			# explicitly listed in CONTENTS.
-			added_paths = set()
 			for x in contents:
-				x = x[eroot_len:]
-				added_paths.add(x)
-				self._add_path(x, pkg_hash)
-				x_split = x.split(os.sep)
-				x_split.pop()
-				while x_split:
-					parent = os.sep.join(x_split)
-					if parent in added_paths:
-						break
-					added_paths.add(parent)
-					self._add_path(parent, pkg_hash)
-					x_split.pop()
+				self._add_path(x[eroot_len:], pkg_hash)
 
 			self._vardb._aux_cache["modified"].add(cpv)
 
@@ -1892,18 +1877,6 @@ class dblink(object):
 						else:
 							os = portage.os
 							perf_md5 = portage.checksum.perform_md5
-
-				# Try to unmerge parent directories of everything
-				# listed in CONTENTS, since we can't necessarily
-				# assume that directories are listed in CONTENTS.
-				obj_split = obj.split(os.sep)
-				obj_split.pop()
-				while len(obj_split) > eroot_split_len:
-					parent = os.sep.join(obj_split)
-					if parent in mydirs:
-						break
-					mydirs.add(parent)
-					obj_split.pop()
 
 				file_data = pkgfiles[objkey]
 				file_type = file_data[0]
