@@ -482,27 +482,28 @@ class config(object):
 				main_repo = main_repo.user_location
 				self["PORTDIR"] = main_repo
 				self.backup_changes("PORTDIR")
+
+			# repoman controls PORTDIR_OVERLAY via the environment, so no
+			# special cases are needed here.
 			portdir_overlay = list(self.repositories.repoUserLocationList())
 			if self["PORTDIR"] in portdir_overlay:
 				portdir_overlay.remove(self["PORTDIR"])
-			self["PORTDIR_OVERLAY"] = " ".join(portdir_overlay)
-			self.backup_changes("PORTDIR_OVERLAY")
 
-			""" repoman controls PORTDIR_OVERLAY via the environment, so no
-			special cases are needed here."""
-
-			overlays = shlex_split(self.get('PORTDIR_OVERLAY', ''))
-			if overlays:
-				new_ov = []
-				for ov in overlays:
+			new_ov = []
+			if portdir_overlay:
+				whitespace_re = re.compile(r"\s")
+				for ov in portdir_overlay:
 					ov = normalize_path(ov)
 					if os.path.isdir(ov):
+						if whitespace_re.search(ov) is not None:
+							ov = portage._shell_quote(ov)
 						new_ov.append(ov)
 					else:
 						writemsg(_("!!! Invalid PORTDIR_OVERLAY"
 							" (not a dir): '%s'\n") % ov, noiselevel=-1)
-				self["PORTDIR_OVERLAY"] = " ".join(new_ov)
-				self.backup_changes("PORTDIR_OVERLAY")
+
+			self["PORTDIR_OVERLAY"] = " ".join(new_ov)
+			self.backup_changes("PORTDIR_OVERLAY")
 
 			locations_manager.set_port_dirs(self["PORTDIR"], self["PORTDIR_OVERLAY"])
 
@@ -2130,7 +2131,7 @@ class config(object):
 	def thirdpartymirrors(self):
 		if getattr(self, "_thirdpartymirrors", None) is None:
 			profileroots = [os.path.join(self["PORTDIR"], "profiles")]
-			for x in self["PORTDIR_OVERLAY"].split():
+			for x in shlex_split(self.get("PORTDIR_OVERLAY", "")):
 				profileroots.insert(0, os.path.join(x, "profiles"))
 			thirdparty_lists = [grabdict(os.path.join(x, "thirdpartymirrors")) for x in profileroots]
 			self._thirdpartymirrors = stack_dictlist(thirdparty_lists, incremental=True)
