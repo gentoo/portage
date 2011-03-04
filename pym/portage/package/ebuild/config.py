@@ -501,21 +501,24 @@ class config(object):
 			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
 			self._penvdict = portage.dep.ExtendedAtomDict(dict)
 
-			""" repoman controls PORTDIR_OVERLAY via the environment, so no
-			special cases are needed here."""
-
-			overlays = shlex_split(self.get('PORTDIR_OVERLAY', ''))
-			if overlays:
-				new_ov = []
-				for ov in overlays:
+			# repoman controls PORTDIR_OVERLAY via the environment, so no
+			# special cases are needed here.
+			portdir_overlay = shlex_split(self.get("PORTDIR_OVERLAY", ""))
+			new_ov = []
+			if portdir_overlay:
+				whitespace_re = re.compile(r"\s")
+				for ov in portdir_overlay:
 					ov = normalize_path(ov)
 					if os.path.isdir(ov):
+						if whitespace_re.search(ov) is not None:
+							ov = portage._shell_quote(ov)
 						new_ov.append(ov)
 					else:
 						writemsg(_("!!! Invalid PORTDIR_OVERLAY"
 							" (not a dir): '%s'\n") % ov, noiselevel=-1)
-				self["PORTDIR_OVERLAY"] = " ".join(new_ov)
-				self.backup_changes("PORTDIR_OVERLAY")
+
+			self["PORTDIR_OVERLAY"] = " ".join(new_ov)
+			self.backup_changes("PORTDIR_OVERLAY")
 
 			locations_manager.set_port_dirs(self["PORTDIR"], self["PORTDIR_OVERLAY"])
 
@@ -2129,7 +2132,7 @@ class config(object):
 	def thirdpartymirrors(self):
 		if getattr(self, "_thirdpartymirrors", None) is None:
 			profileroots = [os.path.join(self["PORTDIR"], "profiles")]
-			for x in self["PORTDIR_OVERLAY"].split():
+			for x in shlex_split(self.get("PORTDIR_OVERLAY", "")):
 				profileroots.insert(0, os.path.join(x, "profiles"))
 			thirdparty_lists = [grabdict(os.path.join(x, "thirdpartymirrors")) for x in profileroots]
 			self._thirdpartymirrors = stack_dictlist(thirdparty_lists, incremental=True)
