@@ -554,8 +554,6 @@ class portdbapi(dbapi):
 		if doregen:
 			if myebuild in self._broken_ebuilds:
 				raise KeyError(mycpv)
-			if not self._have_root_eclass_dir:
-				raise KeyError(mycpv)
 
 			self.doebuild_settings.setcpv(mycpv)
 			eapi = None
