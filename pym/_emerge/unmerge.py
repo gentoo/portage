@@ -7,6 +7,7 @@ import logging
 import sys
 import textwrap
 import portage
+import portage.dbapi.vartree
 from portage import os
 from portage.output import bold, colorize, darkgreen, green
 from portage._sets import SETPREFIX
@@ -314,19 +315,26 @@ def unmerge(root_config, myopts, unmerge_action,
 				# by a concurrent process.
 				continue
 
-			if unmerge_action != "clean" and \
-				root_config.root == "/" and \
-				portage.match_from_list(
-				portage.const.PORTAGE_PACKAGE_ATOM, [pkg]):
-				msg = ("Not unmerging package %s since there is no valid " + \
-				"reason for portage to unmerge itself.") % (pkg.cpv,)
-				for line in textwrap.wrap(msg, 75):
-					out.eerror(line)
-				# adjust pkgmap so the display output is correct
-				pkgmap[cp]["selected"].remove(cpv)
-				all_selected.remove(cpv)
-				pkgmap[cp]["protected"].add(cpv)
-				continue
+			if unmerge_action != "clean" and root_config.root == "/":
+				skip_pkg = False
+				if portage.match_from_list(portage.const.PORTAGE_PACKAGE_ATOM, [pkg]):
+					msg = ("Not unmerging package %s since there is no valid reason "
+						"for Portage to unmerge itself.") % (pkg.cpv,)
+					skip_pkg = True
+				elif portage.dbapi.vartree.dblink(pkg.category, pkg.pf,
+					settings=settings, treetype="vartree", vartree=vartree,
+					scheduler=scheduler).isowner(portage._python_interpreter):
+					msg = ("Not unmerging package %s since there is no valid reason "
+						"for Portage to unmerge currently used Python interpreter.") % (pkg.cpv,)
+					skip_pkg = True
+				if skip_pkg:
+					for line in textwrap.wrap(msg, 75):
+						out.eerror(line)
+					# adjust pkgmap so the display output is correct
+					pkgmap[cp]["selected"].remove(cpv)
+					all_selected.remove(cpv)
+					pkgmap[cp]["protected"].add(cpv)
+					continue
 
 			parents = []
 			for s in installed_sets:
