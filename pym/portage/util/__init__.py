@@ -126,8 +126,18 @@ def grabfile(myfilename, compat_level=0, recursive=0, remember_source_file=False
 	for x, source_file in mylines:
 		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
 		#into single spaces.
-		myline = _unicode_decode(' ').join(x.split())
-		if not len(myline):
+		myline = x.split()
+		if x and x[0] != "#":
+			mylinetemp = []
+			for item in myline:
+				if item[:1] != "#":
+					mylinetemp.append(item)
+				else:
+					break
+			myline = mylinetemp
+
+		myline = " ".join(myline)
+		if not myline:
 			continue
 		if myline[0]=="#":
 			# Check if we have a compat-level string. BC-integration data.
@@ -350,6 +360,13 @@ def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 		if x[0] == "#":
 			continue
 		myline=x.split()
+		mylinetemp = []
+		for item in myline:
+			if item[:1] != "#":
+				mylinetemp.append(item)
+			else:
+				break
+		myline = mylinetemp
 		if len(myline) < 2 and empty == 0:
 			continue
 		if len(myline) < 1 and empty == 1:

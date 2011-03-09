@@ -2738,7 +2738,7 @@ class depgraph(object):
 		else:
 			writemsg_stdout("\nemerge: there are no ebuilds to satisfy "+green(xinfo)+".\n", noiselevel=-1)
 			if isinstance(myparent, AtomArg):
-				cp = myparent.atom.cp
+				cp = myparent.atom.cp.lower()
 				cat, pkg = portage.catsplit(cp)
 				if cat == "null":
 					cat = None
@@ -2752,6 +2752,12 @@ class depgraph(object):
 				if "--usepkg" in self._frozen_config.myopts:
 					all_cp.update(bindb.cp_all())
 
+				orig_cp_map = {}
+				for cp in all_cp:
+					cp_lower = cp.lower()
+					orig_cp_map.setdefault(cp_lower, []).append(cp)
+				all_cp = set(orig_cp_map)
+
 				if cat:
 					matches = difflib.get_close_matches(cp, all_cp)
 				else:
@@ -2763,6 +2769,11 @@ class depgraph(object):
 					matches = []
 					for pkg_match in pkg_matches:
 						matches.extend(pkg_to_cp[pkg_match])
+
+				matches_orig_case = []
+				for cp in matches:
+					matches_orig_case.extend(orig_cp_map[cp])
+				matches = matches_orig_case
 
 				if len(matches) == 1:
 					writemsg_stdout("\nemerge: Maybe you meant " + matches[0] + "?\n"
@@ -5855,10 +5866,15 @@ def _spinner_start(spinner, myopts):
 
 def _spinner_stop(spinner):
 	if spinner is None or \
-		spinner.update is spinner.update_quiet:
+		spinner.update == spinner.update_quiet:
 		return
 
-	portage.writemsg_stdout("\b\b... done!\n")
+	if spinner.update != spinner.update_basic:
+		# update_basic is used for non-tty output,
+		# so don't output backspaces in that case.
+		portage.writemsg_stdout("\b\b")
+
+	portage.writemsg_stdout("... done!\n")
 
 def backtrack_depgraph(settings, trees, myopts, myparams, 
 	myaction, myfiles, spinner):

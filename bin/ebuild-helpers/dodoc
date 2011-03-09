@@ -1,5 +1,6 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2010 Gentoo Foundation
+#!/bin/bash
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh

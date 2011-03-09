@@ -831,14 +831,16 @@ class vardbapi(dbapi):
 			self._vardb = vardb
 
 		def add(self, cpv):
-			root_len = len(self._vardb._eroot)
+			eroot_len = len(self._vardb._eroot)
 			contents = self._vardb._dblink(cpv).getcontents()
 			pkg_hash = self._hash_pkg(cpv)
 			if not contents:
 				# Empty path is a code used to represent empty contents.
 				self._add_path("", pkg_hash)
+
 			for x in contents:
-				self._add_path(x[root_len:], pkg_hash)
+				self._add_path(x[eroot_len:], pkg_hash)
+
 			self._vardb._aux_cache["modified"].add(cpv)
 
 		def _add_path(self, path, pkg_hash):
@@ -1401,6 +1403,9 @@ class dblink(object):
 		myroot = self.settings['ROOT']
 		if myroot == os.path.sep:
 			myroot = None
+		# used to generate parent dir entries
+		dir_entry = (_unicode_decode("dir"),)
+		eroot_split_len = len(self.settings["EROOT"].split(os.sep)) - 1
 		pos = 0
 		errors = []
 		for pos, line in enumerate(mylines):
@@ -1444,6 +1449,19 @@ class dblink(object):
 
 			if myroot is not None:
 				path = os.path.join(myroot, path.lstrip(os.path.sep))
+
+			# Implicitly add parent directories, since we can't necessarily
+			# assume that they are explicitly listed in CONTENTS, and it's
+			# useful for callers if they can rely on parent directory entries
+			# being generated here (crucial for things like dblink.isowner()).
+			path_split = path.split(os.sep)
+			path_split.pop()
+			while len(path_split) > eroot_split_len:
+				parent = os.sep.join(path_split)
+				if parent in pkgfiles:
+					break
+				pkgfiles[parent] = dir_entry
+				path_split.pop()
 
 			pkgfiles[path] = data
 
@@ -1516,6 +1534,7 @@ class dblink(object):
 		# Now, don't assume that the name of the ebuild is the same as the
 		# name of the dir; the package may have been moved.
 		myebuildpath = None
+		failures = 0
 		ebuild_phase = "prerm"
 		log_path = None
 		mystuff = os.listdir(self.dbdir)
@@ -1535,16 +1554,18 @@ class dblink(object):
 				doebuild_environment(myebuildpath, "prerm",
 					settings=self.settings, db=self.vartree.dbapi)
 			except UnsupportedAPIException as e:
+				failures += 1
 				# Sometimes this happens due to corruption of the EAPI file.
-				writemsg(_("!!! FAILED prerm: %s\n") % \
-					os.path.join(self.dbdir, "EAPI"), noiselevel=-1)
-				writemsg("%s\n" % str(e), noiselevel=-1)
+				showMessage(_("!!! FAILED prerm: %s\n") % \
+					os.path.join(self.dbdir, "EAPI"),
+					level=logging.ERROR, noiselevel=-1)
+				showMessage("%s\n" % (e,),
+					level=logging.ERROR, noiselevel=-1)
 				myebuildpath = None
 
 		builddir_lock = None
 		scheduler = self._scheduler
 		retval = os.EX_OK
-		failures = 0
 		try:
 			if myebuildpath:
 				builddir_lock = EbuildBuildDir(
@@ -1564,7 +1585,8 @@ class dblink(object):
 				# XXX: Decide how to handle failures here.
 				if retval != os.EX_OK:
 					failures += 1
-					writemsg(_("!!! FAILED prerm: %s\n") % retval, noiselevel=-1)
+					showMessage(_("!!! FAILED prerm: %s\n") % retval,
+						level=logging.ERROR, noiselevel=-1)
 
 			self._unmerge_pkgfiles(pkgfiles, others_in_slot)
 			self._clear_contents_cache()
@@ -1589,7 +1611,8 @@ class dblink(object):
 				# XXX: Decide how to handle failures here.
 				if retval != os.EX_OK:
 					failures += 1
-					writemsg(_("!!! FAILED postrm: %s\n") % retval, noiselevel=-1)
+					showMessage(_("!!! FAILED postrm: %s\n") % retval,
+						level=logging.ERROR, noiselevel=-1)
 
 			# Skip this if another package in the same slot has just been
 			# merged on top of this package, since the other package has
@@ -1782,7 +1805,7 @@ class dblink(object):
 			mykeys.reverse()
 
 			#process symlinks second-to-last, directories last.
-			mydirs = []
+			mydirs = set()
 			ignored_unlink_errnos = (
 				errno.EBUSY, errno.ENOENT,
 				errno.ENOTDIR, errno.EISDIR)
@@ -1845,6 +1868,7 @@ class dblink(object):
 
 			real_root = self.settings['ROOT']
 			real_root_len = len(real_root) - 1
+			eroot_split_len = len(self.settings["EROOT"].split(os.sep)) - 1
 
 			for i, objkey in enumerate(mykeys):
 
@@ -1944,7 +1968,7 @@ class dblink(object):
 					if lstatobj is None or not stat.S_ISDIR(lstatobj.st_mode):
 						show_unmerge("---", unmerge_desc["!dir"], file_type, obj)
 						continue
-					mydirs.append(obj)
+					mydirs.add(obj)
 				elif pkgfiles[objkey][0] == "sym":
 					if not islink:
 						show_unmerge("---", unmerge_desc["!sym"], file_type, obj)
@@ -1996,7 +2020,7 @@ class dblink(object):
 				elif pkgfiles[objkey][0] == "dev":
 					show_unmerge("---", "", file_type, obj)
 
-			mydirs.sort()
+			mydirs = sorted(mydirs)
 			mydirs.reverse()
 
 			for obj in mydirs:

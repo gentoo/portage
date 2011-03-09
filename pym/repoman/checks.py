@@ -333,7 +333,9 @@ class NoOffsetWithHelpers(LineCheck):
 	helpers """
 
 	repoman_check_name = 'variable.usedwithhelpers'
-	re = re.compile(r'^[^#]*\b(dodir|dohard|exeinto|insinto|into)\s+"?\$\{?(D|ROOT|ED|EROOT|EPREFIX)\b.*')
+	# Ignore matches in quoted strings like this:
+	# elog "installed into ${ROOT}usr/share/php5/apc/."
+	re = re.compile(r'^[^#"\']*\b(dodir|dohard|exeinto|insinto|into)\s+"?\$\{?(D|ROOT|ED|EROOT|EPREFIX)\b.*')
 	error = errors.NO_OFFSET_WITH_HELPERS
 
 class ImplicitRuntimeDeps(LineCheck):
@@ -625,7 +627,7 @@ class Eapi4GoneVars(LineCheck):
 
 class PortageInternal(LineCheck):
 	repoman_check_name = 'portage.internal'
-	re = re.compile(r'[^#]*\b(ecompress|ecompressdir|prepalldocs)\b')
+	re = re.compile(r'[^#]*\b(ecompress|ecompressdir|prepall|prepalldocs|preplib)\b')
 
 	def check(self, num, line):
 		"""Run the check on line and return error if there is one"""
