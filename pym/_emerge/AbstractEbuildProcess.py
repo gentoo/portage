@@ -228,6 +228,11 @@ class AbstractEbuildProcess(SpawnProcess):
 			self.scheduler.output(msg,
 				log_path=self.settings.get("PORTAGE_LOG_FILE"))
 
+	def _log_poll_exception(self, event):
+		self._elog("eerror",
+			["%s received strange poll event: %s\n" % \
+			(self.__class__.__name__, event,)])
+
 	def _set_returncode(self, wait_retval):
 		SpawnProcess._set_returncode(self, wait_retval)
 
