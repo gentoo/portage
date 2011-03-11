@@ -3865,15 +3865,15 @@ class dblink(object):
 			# so imports won't fail during portage upgrade/downgrade.
 			portage.proxy.lazyimport._preload_portage_submodules()
 			settings = self.settings
-			base_path_orig = os.path.dirname(settings["PORTAGE_BIN_PATH"])
-			from tempfile import mkdtemp
 
-			# Make the temp directory inside PORTAGE_TMPDIR since, unlike
-			# /tmp, it can't be mounted with the "noexec" option.
-			base_path_tmp = mkdtemp("", "._portage_reinstall_.",
-				settings["PORTAGE_TMPDIR"])
-			from portage.process import atexit_register
-			atexit_register(shutil.rmtree, base_path_tmp)
+			# Make the temp directory inside $PORTAGE_TMPDIR/portage, since
+			# it's common for /tmp and /var/tmp to be mounted with the
+			# "noexec" option (see bug #346899).
+			build_prefix = os.path.join(settings["PORTAGE_TMPDIR"], "portage")
+			ensure_dirs(build_prefix)
+			base_path_tmp = tempfile.mkdtemp(
+				"", "._portage_reinstall_.", build_prefix)
+			portage.process.atexit_register(shutil.rmtree, base_path_tmp)
 			dir_perms = 0o755
 			for subdir in "bin", "pym":
 				var_name = "PORTAGE_%s_PATH" % subdir.upper()
