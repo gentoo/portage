@@ -57,9 +57,11 @@ class PollScheduler(object):
 	def _terminate_tasks(self):
 		"""
 		Send signals to terminate all tasks. This is called once
-		from the event dispatching thread. All task should be
-		cleaned up at the earliest opportunity, but not necessarily
-		before this method returns.
+		from self._schedule() in the event dispatching thread. This
+		prevents it from being called while the _schedule_tasks()
+		implementation is running, in order to avoid potential
+		interference. All tasks should be cleaned up at the earliest
+		opportunity, but not necessarily before this method returns.
 		"""
 		raise NotImplementedError()
 
@@ -74,6 +76,12 @@ class PollScheduler(object):
 			return False
 		self._scheduling = True
 		try:
+
+			if self._terminated.is_set() and \
+				not self._terminated_tasks:
+				self._terminated_tasks = True
+				self._terminate_tasks()
+
 			return self._schedule_tasks()
 		finally:
 			self._scheduling = False
@@ -145,10 +153,6 @@ class PollScheduler(object):
 		raises StopIteration if timeout is None and there are
 		no file descriptors to poll.
 		"""
-		if self._terminated.is_set() and \
-			not self._terminated_tasks:
-			self._terminated_tasks = True
-			self._terminate_tasks()
 		if not self._poll_event_queue:
 			self._poll(timeout)
 			if not self._poll_event_queue:
