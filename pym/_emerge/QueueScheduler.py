@@ -79,6 +79,9 @@ class QueueScheduler(PollScheduler):
 		@returns: True if there may be remaining tasks to schedule,
 			False otherwise.
 		"""
+		if self._terminated_tasks:
+			return False
+
 		while self._can_add_job():
 			n = self._max_jobs - self._running_job_count()
 			if n < 1:

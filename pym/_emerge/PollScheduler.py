@@ -65,6 +65,24 @@ class PollScheduler(object):
 		"""
 		raise NotImplementedError()
 
+	def _schedule_tasks(self):
+		"""
+		This is called from inside the _schedule() method, which
+		guarantees the following:
+
+		1) It will not be called recursively.
+		2) _terminate_tasks() will not be called while it is running.
+		3) The state of the boolean _terminated_tasks variable will
+		   not change while it is running.
+
+		Unless this method is used to perform user interface updates,
+		or something like that, the first thing it should do is check
+		the state of _terminated_tasks and if that is True then it
+		should return False immediately (since there's no need to
+		schedule anything after _terminate_tasks() has been called).
+		"""
+		raise NotImplementedError()
+
 	def _schedule(self):
 		"""
 		Calls _schedule_tasks() and automatically returns early from
@@ -90,6 +108,9 @@ class PollScheduler(object):
 		return self._jobs
 
 	def _can_add_job(self):
+		if self._terminated_tasks:
+			return False
+
 		max_jobs = self._max_jobs
 		max_load = self._max_load
 

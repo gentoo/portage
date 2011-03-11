@@ -1443,7 +1443,7 @@ class Scheduler(PollScheduler):
 				build_dir=build_dir, build_log=build_log,
 				pkg=pkg,
 				returncode=merge.returncode))
-			if not self._terminated.is_set():
+			if not self._terminated_tasks:
 				self._failed_pkg_msg(self._failed_pkgs[-1], "install", "to")
 				self._status_display.failed = len(self._failed_pkgs)
 			return
@@ -1478,7 +1478,7 @@ class Scheduler(PollScheduler):
 		mtimedb.commit()
 
 	def _build_exit(self, build):
-		if build.returncode == os.EX_OK and self._terminated.is_set():
+		if build.returncode == os.EX_OK and self._terminated_tasks:
 			# We've been interrupted, so we won't
 			# add this to the merge queue.
 			self.curval += 1
@@ -1507,7 +1507,7 @@ class Scheduler(PollScheduler):
 				build_dir=build_dir, build_log=build_log,
 				pkg=build.pkg,
 				returncode=build.returncode))
-			if not self._terminated.is_set():
+			if not self._terminated_tasks:
 				self._failed_pkg_msg(self._failed_pkgs[-1], "emerge", "for")
 				self._status_display.failed = len(self._failed_pkgs)
 			self._deallocate_config(build.settings)
@@ -1687,7 +1687,7 @@ class Scheduler(PollScheduler):
 				self._poll_loop()
 
 	def _keep_scheduling(self):
-		return bool(not self._terminated.is_set() and self._pkg_queue and \
+		return bool(not self._terminated_tasks and self._pkg_queue and \
 			not (self._failed_pkgs and not self._build_opts.fetchonly))
 
 	def _is_work_scheduled(self):
