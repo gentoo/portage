@@ -301,7 +301,10 @@ class Scheduler(PollScheduler):
 		for build in self._task_queues.jobs._task_queue:
 			self._running_tasks.remove(build.pkg)
 		for merge in self._task_queues.merge._task_queue:
-			self._running_tasks.remove(merge.merge.pkg)
+			# Setup phases may be scheduled in this queue, but
+			# we're only interested in the PackageMerge instances.
+			if isinstance(merge, PackageMerge):
+				self._running_tasks.remove(merge.merge.pkg)
 		for q in self._task_queues.values():
 			q.clear()
 
