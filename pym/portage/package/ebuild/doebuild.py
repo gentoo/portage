@@ -283,9 +283,12 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	if portage_bin_path not in mysplit:
 		mysettings["PATH"] = portage_bin_path + ":" + mysettings["PATH"]
 
+	# All temporary directories should be subdirectories of
+	# $PORTAGE_TMPDIR/portage, since it's common for /tmp and /var/tmp
+	# to be mounted with the "noexec" option (see bug #346899).
 	mysettings["BUILD_PREFIX"] = mysettings["PORTAGE_TMPDIR"]+"/portage"
-	mysettings["PKG_TMPDIR"]   = mysettings["PORTAGE_TMPDIR"]+"/binpkgs"
-	
+	mysettings["PKG_TMPDIR"]   = mysettings["BUILD_PREFIX"]+"/._unmerge_"
+
 	# Package {pre,post}inst and {pre,post}rm may overlap, so they must have separate
 	# locations in order to prevent interference.
 	if mydo in ("unmerge", "prerm", "postrm", "cleanrm"):

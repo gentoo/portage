@@ -295,6 +295,16 @@ class Scheduler(PollScheduler):
 
 	def _terminate_tasks(self):
 		self._status_display.quiet = True
+		# Remove running_tasks that have been added to queues but
+		# haven't been started yet, since we're going to discard
+		# them and their start/exit handlers won't be called.
+		for build in self._task_queues.jobs._task_queue:
+			self._running_tasks.remove(build.pkg)
+		for merge in self._task_queues.merge._task_queue:
+			# Setup phases may be scheduled in this queue, but
+			# we're only interested in the PackageMerge instances.
+			if isinstance(merge, PackageMerge):
+				self._running_tasks.remove(merge.merge.pkg)
 		for q in self._task_queues.values():
 			q.clear()
 
@@ -1436,7 +1446,7 @@ class Scheduler(PollScheduler):
 				build_dir=build_dir, build_log=build_log,
 				pkg=pkg,
 				returncode=merge.returncode))
-			if not self._terminated.is_set():
+			if not self._terminated_tasks:
 				self._failed_pkg_msg(self._failed_pkgs[-1], "install", "to")
 				self._status_display.failed = len(self._failed_pkgs)
 			return
@@ -1471,7 +1481,13 @@ class Scheduler(PollScheduler):
 		mtimedb.commit()
 
 	def _build_exit(self, build):
-		if build.returncode == os.EX_OK:
+		if build.returncode == os.EX_OK and self._terminated_tasks:
+			# We've been interrupted, so we won't
+			# add this to the merge queue.
+			self.curval += 1
+			self._running_tasks.remove(build.pkg)
+			self._deallocate_config(build.settings)
+		elif build.returncode == os.EX_OK:
 			self.curval += 1
 			merge = PackageMerge(merge=build)
 			if not build.build_opts.buildpkgonly and \
@@ -1494,7 +1510,7 @@ class Scheduler(PollScheduler):
 				build_dir=build_dir, build_log=build_log,
 				pkg=build.pkg,
 				returncode=build.returncode))
-			if not self._terminated.is_set():
+			if not self._terminated_tasks:
 				self._failed_pkg_msg(self._failed_pkgs[-1], "emerge", "for")
 				self._status_display.failed = len(self._failed_pkgs)
 			self._deallocate_config(build.settings)
@@ -1674,7 +1690,7 @@ class Scheduler(PollScheduler):
 				self._poll_loop()
 
 	def _keep_scheduling(self):
-		return bool(not self._terminated.is_set() and self._pkg_queue and \
+		return bool(not self._terminated_tasks and self._pkg_queue and \
 			not (self._failed_pkgs and not self._build_opts.fetchonly))
 
 	def _is_work_scheduled(self):

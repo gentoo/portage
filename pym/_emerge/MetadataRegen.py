@@ -44,7 +44,7 @@ class MetadataRegen(PollScheduler):
 		portage.writemsg_stdout("Regenerating cache entries...\n")
 		every_cp.sort(reverse=True)
 		try:
-			while not self._terminated.is_set():
+			while not self._terminated_tasks:
 				yield every_cp.pop()
 		except IndexError:
 			pass
@@ -56,13 +56,13 @@ class MetadataRegen(PollScheduler):
 		consumer = self._consumer
 
 		for cp in self._cp_iter:
-			if self._terminated.is_set():
+			if self._terminated_tasks:
 				break
 			cp_set.add(cp)
 			portage.writemsg_stdout("Processing %s\n" % cp)
 			cpv_list = portdb.cp_list(cp)
 			for cpv in cpv_list:
-				if self._terminated.is_set():
+				if self._terminated_tasks:
 					break
 				valid_pkgs.add(cpv)
 				ebuild_path, repo_path = portdb.findname2(cpv)
@@ -94,7 +94,7 @@ class MetadataRegen(PollScheduler):
 		while self._jobs:
 			self._poll_loop()
 
-		if self._terminated.is_set():
+		if self._terminated_tasks:
 			self.returncode = 1
 			return
 
@@ -145,9 +145,10 @@ class MetadataRegen(PollScheduler):
 		@returns: True if there may be remaining tasks to schedule,
 			False otherwise.
 		"""
+		if self._terminated_tasks:
+			return False
+
 		while self._can_add_job():
-			if self._terminated.is_set():
-				return False
 			try:
 				metadata_process = next(self._process_iter)
 			except StopIteration:
@@ -167,7 +168,7 @@ class MetadataRegen(PollScheduler):
 			self.returncode = 1
 			self._error_count += 1
 			self._valid_pkgs.discard(metadata_process.cpv)
-			if not self._terminated.is_set():
+			if not self._terminated_tasks:
 				portage.writemsg("Error processing %s, continuing...\n" % \
 					(metadata_process.cpv,), noiselevel=-1)
 

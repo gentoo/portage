@@ -1,11 +1,10 @@
 #!@PREFIX_PORTAGE_PYTHON@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 #
 # This is a helper which ebuild processes can use
 # to communicate with portage's main python process.
 
-import array
 import logging
 import os
 import pickle
@@ -141,13 +140,11 @@ class EbuildIpc(object):
 		# read and write of whole pickles.
 		input_file = open(self.ipc_out_fifo, 'rb', 0)
 
-		# For maximum portability, us an array in order to force
-		# a single atomic read of a whole pickle (bug #337465).
-		buf = array.array('B')
-
+		# For maximum portability, use a single atomic read.
+		buf = None
 		try:
-			buf.fromfile(input_file, self._BUFSIZE)
-		except (EOFError, IOError) as e:
+			buf = input_file.read(self._BUFSIZE)
+		except IOError as e:
 			if not buf:
 				portage.util.writemsg_level(
 					"ebuild-ipc: %s\n" % (e,),
@@ -167,7 +164,7 @@ class EbuildIpc(object):
 		else:
 
 			try:
-				reply = pickle.loads(buf.tostring())
+				reply = pickle.loads(buf)
 			except SystemExit:
 				raise
 			except Exception as e:
