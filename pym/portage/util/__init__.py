@@ -1,4 +1,4 @@
-# Copyright 2004-2010 Gentoo Foundation
+# Copyright 2004-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['apply_permissions', 'apply_recursive_permissions',
