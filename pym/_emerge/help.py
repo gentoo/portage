@@ -578,11 +578,14 @@ def help(myopts, havecolor=1):
 		print("              printed out accompanied by a '+' for enabled and a '-' for")
 		print("              disabled USE flags.")
 		print()
-		print("       "+green("--quiet")+" ("+green("-q")+" short option)")
+		print("       " + green("--quiet") + \
+			" [ %s | %s ] (%s short option)" % \
+			(turquoise("y"), turquoise("n"), green("-q")))
 		print("              Effects vary, but the general outcome is a reduced or condensed")
 		print("              output from portage's displays.")
 		print()
-		print("       "+green("--quiet-build"))
+		print("       " + green("--quiet-build") + \
+			" [ %s | %s ]" % (turquoise("y"), turquoise("n")))
 		desc = "Redirect all build output to logs alone, and do not " + \
 			"display it on stdout."
 		for line in wrap(desc, desc_width):

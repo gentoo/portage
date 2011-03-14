@@ -65,8 +65,6 @@ options=[
 "--nodeps",       "--noreplace",
 "--nospinner",    "--oneshot",
 "--onlydeps",     "--pretend",
-"--quiet",
-"--quiet-build",
 "--quiet-unmerge-warn",
 "--resume",
 "--searchdesc",
@@ -91,7 +89,6 @@ shortmapping={
 "n":"--noreplace", "N":"--newuse",
 "o":"--onlydeps",  "O":"--nodeps",
 "p":"--pretend",   "P":"--prune",
-"q":"--quiet",
 "r":"--resume",
 "s":"--search",    "S":"--searchdesc",
 "t":"--tree",
@@ -437,6 +434,8 @@ def insert_optional_args(args):
 		'--jobs'       : valid_integers,
 		'--keep-going'           : y_or_n,
 		'--package-moves'        : y_or_n,
+		'--quiet'                : y_or_n,
+		'--quiet-build'          : y_or_n,
 		'--rebuilt-binaries'     : y_or_n,
 		'--root-deps'  : ('rdeps',),
 		'--select'               : y_or_n,
@@ -462,6 +461,7 @@ def insert_optional_args(args):
 		'G' : y_or_n,
 		'k' : y_or_n,
 		'K' : y_or_n,
+		'q' : y_or_n,
 	}
 
 	arg_stack = args[:]
@@ -697,6 +697,19 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices"  : true_y_or_n
 		},
 
+		"--quiet": {
+			"shortopt" : "-q",
+			"help"     : "reduced or condensed output",
+			"type"     : "choice",
+			"choices"  : true_y_or_n
+		},
+
+		"--quiet-build": {
+			"help"     : "redirect build output to logs",
+			"type"     : "choice",
+			"choices"  : true_y_or_n
+		},
+
 		"--rebuilt-binaries": {
 			"help"     : "replace installed packages with binary " + \
 			             "packages that have been rebuilt",
@@ -868,6 +881,16 @@ def parse_opts(tmpcmdline, silent=False):
 
 	if myoptions.package_moves in true_y:
 		myoptions.package_moves = True
+
+	if myoptions.quiet in true_y:
+		myoptions.quiet = True
+	else:
+		myoptions.quiet = None
+
+	if myoptions.quiet_build in true_y:
+		myoptions.quiet_build = True
+	else:
+		myoptions.quiet_build = None
 
 	if myoptions.rebuilt_binaries in true_y:
 		myoptions.rebuilt_binaries = True
