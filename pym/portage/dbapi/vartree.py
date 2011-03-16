@@ -954,15 +954,7 @@ class vardbapi(dbapi):
 
 			if not isinstance(path_iter, list):
 				path_iter = list(path_iter)
-
-			if len(path_iter) > 10:
-				for x in self._iter_owners_low_mem(path_iter,
-					scheduler=scheduler):
-					yield x
-				return
-
 			owners_cache = self._populate(scheduler=scheduler)
-
 			vardb = self._vardb
 			root = vardb._eroot
 			hash_pkg = owners_cache._hash_pkg
