@@ -13,15 +13,13 @@ class CompositeTask(AsynchronousTask):
 	def isAlive(self):
 		return self._current_task is not None
 
-	def cancel(self):
-		self.cancelled = True
+	def _cancel(self):
 		if self._current_task is not None:
 			if self._current_task is self._TASK_QUEUED:
 				self.returncode = 1
 				self._current_task = None
 			else:
 				self._current_task.cancel()
-		AsynchronousTask.cancel(self)
 
 	def _poll(self):
 		"""

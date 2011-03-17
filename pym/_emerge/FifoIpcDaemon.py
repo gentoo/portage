@@ -43,12 +43,10 @@ class FifoIpcDaemon(AbstractPollTask):
 	def isAlive(self):
 		return self._registered
 
-	def cancel(self):
+	def _cancel(self):
 		if self.returncode is None:
 			self.returncode = 1
-			self.cancelled = True
 		self._unregister()
-		AbstractPollTask.cancel(self)
 
 	def _wait(self):
 		if self.returncode is not None:
