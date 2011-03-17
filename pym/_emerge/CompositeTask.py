@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AsynchronousTask import AsynchronousTask
@@ -15,6 +15,7 @@ class CompositeTask(AsynchronousTask):
 		self.cancelled = True
 		if self._current_task is not None:
 			self._current_task.cancel()
+		AsynchronousTask.cancel(self)
 
 	def _poll(self):
 		"""
