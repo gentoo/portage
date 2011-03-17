@@ -49,6 +49,11 @@ class CompositeTask(AsynchronousTask):
 				# don't wait for the same task more than once
 				break
 			if task is prev:
+				if self.returncode is not None:
+					# This is expected if we're being
+					# called from the task's exit listener
+					# after it's been cancelled.
+					break
 				# Before the task.wait() method returned, an exit
 				# listener should have set self._current_task to either
 				# a different task or None. Something is wrong.
