@@ -1819,6 +1819,14 @@ class Scheduler(PollScheduler):
 					"installed", pkg.root_config, installed=True,
 					operation="uninstall")
 
+		prefetcher = self._prefetchers.pop(pkg, None)
+		if prefetcher is not None and not prefetcher.isAlive():
+			try:
+				self._task_queues.fetch._task_queue.remove(prefetcher)
+			except ValueError:
+				pass
+			prefetcher = None
+
 		task = MergeListItem(args_set=self._args_set,
 			background=self._background, binpkg_opts=self._binpkg_opts,
 			build_opts=self._build_opts,
@@ -1828,7 +1836,7 @@ class Scheduler(PollScheduler):
 			find_blockers=self._find_blockers(pkg), logger=self._logger,
 			mtimedb=self._mtimedb, pkg=pkg, pkg_count=self._pkg_count.copy(),
 			pkg_to_replace=pkg_to_replace,
-			prefetcher=self._prefetchers.get(pkg),
+			prefetcher=prefetcher,
 			scheduler=self._sched_iface,
 			settings=self._allocate_config(pkg.root),
 			statusMessage=self._status_msg,
