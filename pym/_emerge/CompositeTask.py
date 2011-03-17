@@ -8,13 +8,19 @@ class CompositeTask(AsynchronousTask):
 
 	__slots__ = ("scheduler",) + ("_current_task",)
 
+	_TASK_QUEUED = -1
+
 	def isAlive(self):
 		return self._current_task is not None
 
 	def cancel(self):
 		self.cancelled = True
 		if self._current_task is not None:
-			self._current_task.cancel()
+			if self._current_task is self._TASK_QUEUED:
+				self.returncode = 1
+				self._current_task = None
+			else:
+				self._current_task.cancel()
 		AsynchronousTask.cancel(self)
 
 	def _poll(self):
@@ -32,7 +38,9 @@ class CompositeTask(AsynchronousTask):
 		prev = None
 		while True:
 			task = self._current_task
-			if task is None or task is prev:
+			if task is None or \
+				task is self._TASK_QUEUED or \
+				task is prev:
 				# don't poll the same task more than once
 				break
 			task.poll()
@@ -47,6 +55,10 @@ class CompositeTask(AsynchronousTask):
 			task = self._current_task
 			if task is None:
 				# don't wait for the same task more than once
+				break
+			if task is self._TASK_QUEUED:
+				self.returncode = 1
+				self._current_task = None
 				break
 			if task is prev:
 				if self.returncode is not None:
@@ -123,3 +135,9 @@ class CompositeTask(AsynchronousTask):
 		self._current_task = task
 		task.start()
 
+	def _task_queued(self, task):
+		task.addStartListener(self._task_queued_start_handler)
+		self._current_task = self._TASK_QUEUED
+
+	def _task_queued_start_handler(self, task):
+		self._current_task = task

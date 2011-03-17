@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.EbuildPhase import EbuildPhase
@@ -277,7 +277,7 @@ class Binpkg(CompositeTask):
 			settings=settings)
 
 		setup_phase.addExitListener(self._setup_exit)
-		self._current_task = setup_phase
+		self._task_queued(setup_phase)
 		self.scheduler.scheduleSetup(setup_phase)
 
 	def _setup_exit(self, setup_phase):
