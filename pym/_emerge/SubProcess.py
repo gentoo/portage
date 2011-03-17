@@ -49,11 +49,7 @@ class SubProcess(AbstractPollTask):
 				if e.errno != errno.ESRCH:
 					raise
 				del e
-
-		self.cancelled = True
-		if self.pid is not None:
-			self.wait()
-		return self.returncode
+		AbstractPollTask.cancel(self)
 
 	def isAlive(self):
 		return self.pid is not None and \
