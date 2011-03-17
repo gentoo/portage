@@ -5,6 +5,7 @@
 # This is a helper which ebuild processes can use
 # to communicate with portage's main python process.
 
+import errno
 import logging
 import os
 import pickle
