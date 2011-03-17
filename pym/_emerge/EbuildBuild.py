@@ -66,9 +66,8 @@ class EbuildBuild(CompositeTask):
 		prefetcher = self.prefetcher
 		if prefetcher is None:
 			pass
-		elif not prefetcher.isAlive():
-			prefetcher.cancel()
-		elif prefetcher.poll() is None:
+		elif prefetcher.isAlive() and \
+			prefetcher.poll() is None:
 
 			waiting_msg = "Fetching files " + \
 				"in the background. " + \

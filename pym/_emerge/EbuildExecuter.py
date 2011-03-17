@@ -51,7 +51,7 @@ class EbuildExecuter(CompositeTask):
 			settings=settings)
 
 		setup_phase.addExitListener(self._setup_exit)
-		self._current_task = setup_phase
+		self._task_queued(setup_phase)
 		self.scheduler.scheduleSetup(setup_phase)
 
 	def _setup_exit(self, setup_phase):
@@ -69,7 +69,7 @@ class EbuildExecuter(CompositeTask):
 			# otherwise they can interfere with eachother.
 
 			unpack_phase.addExitListener(self._unpack_exit)
-			self._current_task = unpack_phase
+			self._task_queued(unpack_phase)
 			self.scheduler.scheduleUnpack(unpack_phase)
 
 		else:

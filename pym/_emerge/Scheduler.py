@@ -300,6 +300,10 @@ class Scheduler(PollScheduler):
 		# them and their start/exit handlers won't be called.
 		for build in self._task_queues.jobs._task_queue:
 			self._running_tasks.remove(build.pkg)
+		if self._merge_wait_queue:
+			for merge in self._merge_wait_queue:
+				self._running_tasks.remove(merge.merge.pkg)
+			del self._merge_wait_queue[:]
 		for merge in self._task_queues.merge._task_queue:
 			# Setup phases may be scheduled in this queue, but
 			# we're only interested in the PackageMerge instances.
@@ -1679,15 +1683,13 @@ class Scheduler(PollScheduler):
 			self._set_max_jobs(1)
 
 		while self._schedule():
-			if self._poll_event_handlers:
-				self._poll_loop()
+			self._poll_loop()
 
 		while True:
 			self._schedule()
 			if not self._is_work_scheduled():
 				break
-			if self._poll_event_handlers:
-				self._poll_loop()
+			self._poll_loop()
 
 	def _keep_scheduling(self):
 		return bool(not self._terminated_tasks and self._pkg_queue and \
@@ -1817,6 +1819,14 @@ class Scheduler(PollScheduler):
 					"installed", pkg.root_config, installed=True,
 					operation="uninstall")
 
+		prefetcher = self._prefetchers.pop(pkg, None)
+		if prefetcher is not None and not prefetcher.isAlive():
+			try:
+				self._task_queues.fetch._task_queue.remove(prefetcher)
+			except ValueError:
+				pass
+			prefetcher = None
+
 		task = MergeListItem(args_set=self._args_set,
 			background=self._background, binpkg_opts=self._binpkg_opts,
 			build_opts=self._build_opts,
@@ -1826,7 +1836,7 @@ class Scheduler(PollScheduler):
 			find_blockers=self._find_blockers(pkg), logger=self._logger,
 			mtimedb=self._mtimedb, pkg=pkg, pkg_count=self._pkg_count.copy(),
 			pkg_to_replace=pkg_to_replace,
-			prefetcher=self._prefetchers.get(pkg),
+			prefetcher=prefetcher,
 			scheduler=self._sched_iface,
 			settings=self._allocate_config(pkg.root),
 			statusMessage=self._status_msg,

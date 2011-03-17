@@ -198,6 +198,10 @@ class _LockProcess(AbstractPollTask):
 			raise AssertionError('lock process failed with returncode %s' \
 				% (proc.returncode,))
 
+	def _cancel(self):
+		if self._proc is not None:
+			self._proc.cancel()
+
 	def _wait(self):
 		if self.returncode is not None:
 			return self.returncode

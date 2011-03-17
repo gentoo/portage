@@ -17,6 +17,9 @@ class AbstractPollTask(AsynchronousTask):
 	_registered_events = PollConstants.POLLIN | PollConstants.POLLHUP | \
 		_exceptional_events
 
+	def isAlive(self):
+		return bool(self._registered)
+
 	def _read_buf(self, f, event):
 		"""
 		| POLLIN | RETURN

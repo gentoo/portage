@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
@@ -43,12 +43,10 @@ class FifoIpcDaemon(AbstractPollTask):
 	def isAlive(self):
 		return self._registered
 
-	def cancel(self):
+	def _cancel(self):
 		if self.returncode is None:
 			self.returncode = 1
-			self.cancelled = True
 		self._unregister()
-		self.wait()
 
 	def _wait(self):
 		if self.returncode is not None:
