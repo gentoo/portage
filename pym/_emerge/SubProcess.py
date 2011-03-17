@@ -41,15 +41,13 @@ class SubProcess(AbstractPollTask):
 		self.wait()
 		return self.returncode
 
-	def cancel(self):
+	def _cancel(self):
 		if self.isAlive():
 			try:
 				os.kill(self.pid, signal.SIGTERM)
 			except OSError as e:
 				if e.errno != errno.ESRCH:
 					raise
-				del e
-		AbstractPollTask.cancel(self)
 
 	def isAlive(self):
 		return self.pid is not None and \
