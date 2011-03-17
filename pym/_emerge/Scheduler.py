@@ -300,6 +300,10 @@ class Scheduler(PollScheduler):
 		# them and their start/exit handlers won't be called.
 		for build in self._task_queues.jobs._task_queue:
 			self._running_tasks.remove(build.pkg)
+		if self._merge_wait_queue:
+			for merge in self._merge_wait_queue:
+				self._running_tasks.remove(merge.merge.pkg)
+			del self._merge_wait_queue[:]
 		for merge in self._task_queues.merge._task_queue:
 			# Setup phases may be scheduled in this queue, but
 			# we're only interested in the PackageMerge instances.
