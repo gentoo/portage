@@ -1683,15 +1683,13 @@ class Scheduler(PollScheduler):
 			self._set_max_jobs(1)
 
 		while self._schedule():
-			if self._poll_event_handlers:
-				self._poll_loop()
+			self._poll_loop()
 
 		while True:
 			self._schedule()
 			if not self._is_work_scheduled():
 				break
-			if self._poll_event_handlers:
-				self._poll_loop()
+			self._poll_loop()
 
 	def _keep_scheduling(self):
 		return bool(not self._terminated_tasks and self._pkg_queue and \
