@@ -6,6 +6,7 @@ __all__ = ['dep_check', 'dep_eval', 'dep_wordreduce', 'dep_zapdeps']
 import logging
 
 import portage
+from portage import _unicode_decode
 from portage.dep import Atom, match_from_list, use_reduce
 from portage.exception import InvalidDependString, ParseError
 from portage.localization import _
@@ -173,8 +174,8 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					del mytrees["virt_parent"]
 
 			if not mycheck[0]:
-				raise ParseError(
-					"%s: %s '%s'" % (pkg, mycheck[1], depstring))
+				raise ParseError(_unicode_decode("%s: %s '%s'") % \
+					(pkg, mycheck[1], depstring))
 
 			# pull in the new-style virtual
 			mycheck[1].append(virt_atom)
@@ -587,7 +588,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 			matchall=(use=="all"), excludeall=useforce, opconvert=True, \
 			token_class=Atom, eapi=eapi)
 	except InvalidDependString as e:
-		return [0, str(e)]
+		return [0, _unicode_decode("%s") % (e,)]
 
 	if mysplit == []:
 		#dependencies were reduced to nothing
@@ -601,7 +602,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 			use_force=useforce, use_mask=mymasks, use_cache=use_cache,
 			use_binaries=use_binaries, myroot=myroot, trees=trees)
 	except ParseError as e:
-		return [0, str(e)]
+		return [0, _unicode_decode("%s") % (e,)]
 
 	mysplit2=mysplit[:]
 	mysplit2=dep_wordreduce(mysplit2,mysettings,mydbapi,mode,use_cache=use_cache)
