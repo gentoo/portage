@@ -27,6 +27,7 @@ class TaskSequence(CompositeTask):
 
 	def _cancel(self):
 		self._task_queue.clear()
+		CompositeTask._cancel(self)
 
 	def _start_next_task(self):
 		self._start_task(self._task_queue.popleft(),
