@@ -1340,8 +1340,14 @@ def check_procfs():
 		level=logging.ERROR, noiselevel=-1)
 	return 1
 
-def emerge_main():
-	global portage	# NFC why this is necessary now - genone
+def emerge_main(args=None):
+	"""
+	@param args: command arguments (default: sys.argv[1:])
+	@type args: list
+	"""
+	if args is None:
+		args = sys.argv[1:]
+
 	portage._disable_legacy_globals()
 	portage.dep._internal_warnings = True
 	# Disable color until we're sure that it should be enabled (after
@@ -1351,7 +1357,7 @@ def emerge_main():
 	# possible, such as --config-root.  They will be parsed again later,
 	# together with EMERGE_DEFAULT_OPTS (which may vary depending on the
 	# the value of --config-root).
-	myaction, myopts, myfiles = parse_opts(sys.argv[1:], silent=True)
+	myaction, myopts, myfiles = parse_opts(args, silent=True)
 	if "--debug" in myopts:
 		os.environ["PORTAGE_DEBUG"] = "1"
 	if "--config-root" in myopts:
@@ -1372,7 +1378,7 @@ def emerge_main():
 	tmpcmdline = []
 	if "--ignore-default-opts" not in myopts:
 		tmpcmdline.extend(settings["EMERGE_DEFAULT_OPTS"].split())
-	tmpcmdline.extend(sys.argv[1:])
+	tmpcmdline.extend(args)
 	myaction, myopts, myfiles = parse_opts(tmpcmdline)
 
 	if myaction not in ('help', 'info', 'version') and \
@@ -1536,11 +1542,10 @@ def emerge_main():
 
 	if settings.get("PORTAGE_DEBUG", "") == "1":
 		spinner.update = spinner.update_quiet
-		portage.debug=1
 		portage.util.noiselimit = 0
 		if "python-trace" in settings.features:
-			import portage.debug
-			portage.debug.set_trace(True)
+			import portage.debug as portage_debug
+			portage_debug.set_trace(True)
 
 	if not ("--quiet" in myopts):
 		if '--nospinner' in myopts or \
