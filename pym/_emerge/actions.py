@@ -2944,7 +2944,8 @@ def chk_updated_cfg_files(eroot, config_protect):
 		portage.util.find_updated_config_files(target_root, config_protect))
 
 	for x in result:
-		print("\n"+colorize("WARN", " * IMPORTANT:"), end=' ')
+		writemsg_level("\n %s " % (colorize("WARN", "* IMPORTANT:"),),
+			level=logging.INFO, noiselevel=-1)
 		if not x[1]: # it's a protected file
 			writemsg_level("config file '%s' needs updating.\n" % x[0],
 				level=logging.INFO, noiselevel=-1)
