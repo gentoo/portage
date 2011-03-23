@@ -55,9 +55,21 @@ class CompositeTask(AsynchronousTask):
 				# don't wait for the same task more than once
 				break
 			if task is self._TASK_QUEUED:
-				self.returncode = 1
-				self._current_task = None
-				break
+				if self.cancelled:
+					self.returncode = 1
+					self._current_task = None
+					break
+				else:
+					self.scheduler.schedule(condition=self._task_queued_wait)
+					if self.returncode is not None:
+						break
+					elif self.cancelled:
+						self.returncode = 1
+						self._current_task = None
+						break
+					else:
+						# try this again with new _current_task value
+						continue
 			if task is prev:
 				if self.returncode is not None:
 					# This is expected if we're being
@@ -139,3 +151,7 @@ class CompositeTask(AsynchronousTask):
 
 	def _task_queued_start_handler(self, task):
 		self._current_task = task
+
+	def _task_queued_wait(self):
+		return self._current_task is not self._TASK_QUEUED or \
+			self.cancelled or self.returncode is not None
