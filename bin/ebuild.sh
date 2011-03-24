@@ -1826,14 +1826,14 @@ filter_readonly_variables() {
 # interfering with the current environment. This is useful when an existing
 # environment needs to be loaded from a binary or installed package.
 preprocess_ebuild_env() {
-	local _portage_filter_opts=""
-	if [ -f "${T}/environment.raw" ] ; then
-		# This is a signal from the python side, indicating that the
-		# environment may contain stale SANDBOX_{DENY,PREDICT,READ,WRITE}
-		# and FEATURES variables that should be filtered out. Between
-		# phases, these variables are normally preserved.
-		_portage_filter_opts+=" --filter-features --filter-locale --filter-path --filter-sandbox"
-	fi
+	local _portage_filter_opts="--filter-features --filter-locale --filter-path --filter-sandbox"
+
+	# If environment.raw is present, this is a signal from the python side,
+	# indicating that the environment may contain stale FEATURES and
+	# SANDBOX_{DENY,PREDICT,READ,WRITE} variables that should be filtered out.
+	# Otherwise, we don't need to filter the environment.
+	[ -f "${T}/environment.raw" ] || return 0
+
 	filter_readonly_variables $_portage_filter_opts < "${T}"/environment \
 		>> "$T/environment.filtered" || return $?
 	unset _portage_filter_opts
