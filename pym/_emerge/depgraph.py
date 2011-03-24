@@ -2294,8 +2294,12 @@ class depgraph(object):
 		if target_atom is not None and isinstance(node, Package):
 			affecting_use = set()
 			for dep_str in "DEPEND", "RDEPEND", "PDEPEND":
-				affecting_use.update(extract_affecting_use(
-					node.metadata[dep_str], target_atom))
+				try:
+					affecting_use.update(extract_affecting_use(
+						node.metadata[dep_str], target_atom))
+				except InvalidDependString:
+					if not node.installed:
+						raise
 			affecting_use.difference_update(node.use.mask, node.use.force)
 			pkg_name = _unicode_decode("%s") % (node.cpv,)
 			if affecting_use:
