@@ -280,7 +280,9 @@ def help(myopts, havecolor=1):
 		print("              With this option, output such as USE=\"dar -bar -foo\" will instead")
 		print("              be displayed as USE=\"-bar dar -foo\"")
 		print()
-		print("       "+green("--ask")+" ("+green("-a")+" short option)")
+		print("       " + green("--ask") + \
+			" [ %s | %s ] (%s short option)" % \
+			(turquoise("y"), turquoise("n"), green("-a")))
 		desc = "Before performing the action, display what will take place (server info for " + \
 			"--sync, --pretend output for merge, and so forth), then ask " + \
 			"whether to proceed with the action or abort.  Using --ask is more " + \
