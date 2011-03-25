@@ -4036,7 +4036,8 @@ def merge(mycat, mypkg, pkgloc, infloc,
 	background = (settings.get('PORTAGE_BACKGROUND') == '1')
 	merge_task = MergeProcess(
 		dblink=dblink, mycat=mycat, mypkg=mypkg, settings=settings,
-		treetype=mytree, vartree=vartree, scheduler=scheduler,
+		treetype=mytree, vartree=vartree,
+		scheduler=(scheduler or PollScheduler().sched_iface),
 		background=background, blockers=blockers, pkgloc=pkgloc,
 		infloc=infloc, myebuild=myebuild, mydbapi=mydbapi,
 		prev_mtimes=prev_mtimes, logfile=settings.get('PORTAGE_LOG_FILE'))
