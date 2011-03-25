@@ -64,6 +64,7 @@ class MergeProcess(SpawnProcess):
 
 		pid = os.fork()
 		if pid != 0:
+			os.close(elog_writer_fd)
 			self._elog_reader_fd = elog_reader_fd
 			self._buf = ""
 			portage.process.spawned_pids.append(pid)
