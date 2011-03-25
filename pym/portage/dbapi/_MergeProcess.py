@@ -92,6 +92,10 @@ class MergeProcess(SpawnProcess):
 		# already be opened by the parent process, so we set the
 		# "subprocess" value for use in conditional logging code
 		# involving PORTAGE_LOG_FILE.
+		if self.settings.get("PORTAGE_BACKGROUND") == "1":
+			# unmerge phases have separate logs
+			self.settings["PORTAGE_BACKGROUND_UNMERGE"] = "1"
+			self.settings.backup_changes("PORTAGE_BACKGROUND_UNMERGE")
 		self.settings["PORTAGE_BACKGROUND"] = "subprocess"
 		self.settings.backup_changes("PORTAGE_BACKGROUND")
 
