@@ -317,10 +317,6 @@ class Scheduler(PollScheduler):
 		Initialization structures used for dependency calculations
 		involving currently installed packages.
 		"""
-		# TODO: Replace the BlockerDB with a depgraph of installed packages
-		# that's updated incrementally with each upgrade/uninstall operation
-		# This will be useful for making quick and safe decisions with respect
-		# to aggressive parallelization discussed in bug #279623.
 		self._set_graph_config(graph_config)
 		self._blocker_db = {}
 		for root in self.trees:
@@ -329,6 +325,7 @@ class Scheduler(PollScheduler):
 					pkg_cache=self._pkg_cache)
 			else:
 				fake_vartree = graph_config.trees[root]['vartree']
+			fake_vartree.sync()
 			self._blocker_db[root] = BlockerDB(fake_vartree)
 
 	def _destroy_graph(self):
@@ -643,27 +640,20 @@ class Scheduler(PollScheduler):
 
 	def _find_blockers(self, new_pkg):
 		"""
-		Returns a callable which should be called only when
-		the vdb lock has been acquired.
+		Returns a callable.
 		"""
 		def get_blockers():
-			return self._find_blockers_with_lock(new_pkg, acquire_lock=0)
+			return self._find_blockers_impl(new_pkg)
 		return get_blockers
 
-	def _find_blockers_with_lock(self, new_pkg, acquire_lock=0):
+	def _find_blockers_impl(self, new_pkg):
 		if self._opts_ignore_blockers.intersection(self.myopts):
 			return None
-
-		# Call gc.collect() here to avoid heap overflow that
-		# triggers 'Cannot allocate memory' errors (reported
-		# with python-2.5).
-		gc.collect()
 
 		blocker_db = self._blocker_db[new_pkg.root]
 
 		blocker_dblinks = []
-		for blocking_pkg in blocker_db.findInstalledBlockers(
-			new_pkg, acquire_lock=acquire_lock):
+		for blocking_pkg in blocker_db.findInstalledBlockers(new_pkg):
 			if new_pkg.slot_atom == blocking_pkg.slot_atom:
 				continue
 			if new_pkg.cpv == blocking_pkg.cpv:
@@ -672,8 +662,6 @@ class Scheduler(PollScheduler):
 				blocking_pkg.category, blocking_pkg.pf, blocking_pkg.root,
 				self.pkgsettings[blocking_pkg.root], treetype="vartree",
 				vartree=self.trees[blocking_pkg.root]["vartree"]))
-
-		gc.collect()
 
 		return blocker_dblinks
 
@@ -1527,6 +1515,8 @@ class Scheduler(PollScheduler):
 		self._completed_tasks.add(pkg)
 		self._unsatisfied_system_deps.discard(pkg)
 		self._choose_pkg_return_early = False
+		blocker_db = self._blocker_db[pkg.root]
+		blocker_db.discardBlocker(pkg)
 
 	def _merge(self):
 

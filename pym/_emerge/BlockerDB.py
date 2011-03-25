@@ -30,12 +30,7 @@ class BlockerDB(object):
 				"vartree"     :  fake_vartree,
 		}}
 
-	def _get_fake_vartree(self, acquire_lock=0):
-		fake_vartree = self._fake_vartree
-		fake_vartree.sync(acquire_lock=acquire_lock)
-		return fake_vartree
-
-	def findInstalledBlockers(self, new_pkg, acquire_lock=0):
+	def findInstalledBlockers(self, new_pkg):
 		"""
 		Search for installed run-time blockers in the root where
 		new_pkg is planned to be installed. This ignores build-time
@@ -45,7 +40,7 @@ class BlockerDB(object):
 		dep_keys = ["RDEPEND", "PDEPEND"]
 		settings = self._vartree.settings
 		stale_cache = set(blocker_cache)
-		fake_vartree = self._get_fake_vartree(acquire_lock=acquire_lock)
+		fake_vartree = self._fake_vartree
 		dep_check_trees = self._dep_check_trees
 		vardb = fake_vartree.dbapi
 		installed_pkgs = list(vardb)
@@ -117,4 +112,8 @@ class BlockerDB(object):
 				blocking_pkgs.add(inst_pkg)
 
 		return blocking_pkgs
+
+	def discardBlocker(self, pkg):
+		"""Discard a package from the list of potential blockers."""
+		self._fake_vartree.cpv_discard(pkg)
 
