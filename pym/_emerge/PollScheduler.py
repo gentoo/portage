@@ -250,13 +250,17 @@ class PollScheduler(object):
 			# delivered to a future handler that is using a reallocated
 			# file descriptor of the same numeric value (causing
 			# extremely confusing bugs).
-			remove = set()
+			remaining_events = []
+			discarded_events = False
 			for event in self._poll_event_queue:
 				if event[0] == f:
-					remove.add(event)
-			if remove:
-				self._poll_event_queue[:] = [event for event in \
-					self._poll_event_queue if event not in remove]
+					discarded_events = True
+				else:
+					remaining_events.append(event)
+
+			if discarded_events:
+				self._poll_event_queue[:] = remaining_events
+
 		del self._poll_event_handlers[f]
 		del self._poll_event_handler_ids[reg_id]
 
