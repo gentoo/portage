@@ -1544,14 +1544,13 @@ class dblink(object):
 		scheduler = self._scheduler
 		retval = os.EX_OK
 		try:
+			builddir_lock = EbuildBuildDir(
+				scheduler=scheduler,
+				settings=self.settings)
+			builddir_lock.lock()
+			prepare_build_dirs(settings=self.settings, cleanup=True)
+			log_path = self.settings.get("PORTAGE_LOG_FILE")
 			if myebuildpath:
-				builddir_lock = EbuildBuildDir(
-					scheduler=scheduler,
-					settings=self.settings)
-				builddir_lock.lock()
-
-				prepare_build_dirs(settings=self.settings, cleanup=True)
-				log_path = self.settings.get("PORTAGE_LOG_FILE")
 				phase = EbuildPhase(background=background,
 					phase=ebuild_phase, scheduler=scheduler,
 					settings=self.settings)
@@ -2754,22 +2753,27 @@ class dblink(object):
 		return 1
 
 	def _eqawarn(self, phase, lines):
-		from portage.elog.messages import eqawarn as _eqawarn
-		if self._scheduler is None:
-			for l in lines:
-				_eqawarn(l, phase=phase, key=self.settings.mycpv)
-		else:
-			self._scheduler.dblinkElog(self,
-				phase, _eqawarn, lines)
+		self._elog("eqawarn", phase, lines)
 
 	def _eerror(self, phase, lines):
-		from portage.elog.messages import eerror as _eerror
+		self._elog("eerror", phase, lines)
+
+	def _elog(self, funcname, phase, lines):
+		func = getattr(portage.elog.messages, funcname)
 		if self._scheduler is None:
 			for l in lines:
-				_eerror(l, phase=phase, key=self.settings.mycpv)
+				func(l, phase=phase, key=self.settings.mycpv)
 		else:
-			self._scheduler.dblinkElog(self,
-				phase, _eerror, lines)
+			background = self.settings.get("PORTAGE_BACKGROUND") == "1"
+			log_path = None
+			if self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
+				log_path = self.settings.get("PORTAGE_LOG_FILE")
+			out = portage.StringIO()
+			for line in lines:
+				func(line, phase=phase, key=self.settings.mycpv, out=out)
+			msg = out.getvalue()
+			self._scheduler.output(msg,
+				background=background, log_path=log_path)
 
 	def _elog_process(self, phasefilter=None):
 		cpv = self.mycpv
