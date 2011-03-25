@@ -878,7 +878,7 @@ class vardbapi(dbapi):
 		def populate(self):
 			self._populate()
 
-		def _populate(self, scheduler=None):
+		def _populate(self):
 			owners_cache = vardbapi._owners_cache(self._vardb)
 			cached_hashes = set()
 			base_names = self._vardb._aux_cache["owners"]["base_names"]
@@ -902,10 +902,6 @@ class vardbapi(dbapi):
 
 			# Cache any missing packages.
 			for cpv in uncached_pkgs:
-
-				if scheduler is not None:
-					scheduler.scheduleYield()
-
 				owners_cache.add(cpv)
 
 			# Delete any stale cache.
@@ -919,12 +915,12 @@ class vardbapi(dbapi):
 
 			return owners_cache
 
-		def get_owners(self, path_iter, scheduler=None):
+		def get_owners(self, path_iter):
 			"""
 			@return the owners as a dblink -> set(files) mapping.
 			"""
 			owners = {}
-			for owner, f in self.iter_owners(path_iter, scheduler=scheduler):
+			for owner, f in self.iter_owners(path_iter):
 				owned_files = owners.get(owner)
 				if owned_files is None:
 					owned_files = set()
@@ -944,7 +940,7 @@ class vardbapi(dbapi):
 					owner_set.add(pkg_dblink)
 			return file_owners
 
-		def iter_owners(self, path_iter, scheduler=None):
+		def iter_owners(self, path_iter):
 			"""
 			Iterate over tuples of (dblink, path). In order to avoid
 			consuming too many resources for too much time, resources
@@ -956,7 +952,7 @@ class vardbapi(dbapi):
 
 			if not isinstance(path_iter, list):
 				path_iter = list(path_iter)
-			owners_cache = self._populate(scheduler=scheduler)
+			owners_cache = self._populate()
 			vardb = self._vardb
 			root = vardb._eroot
 			hash_pkg = owners_cache._hash_pkg
@@ -1015,23 +1011,19 @@ class vardbapi(dbapi):
 								if dblink(cpv).isowner(path):
 									owners.append((cpv, path))
 
-							if scheduler is not None:
-								scheduler.scheduleYield()
-
 					except StopIteration:
 						path_iter.append(path)
 						del owners[:]
 						dblink_cache.clear()
 						gc.collect()
-						for x in self._iter_owners_low_mem(path_iter,
-							scheduler=scheduler):
+						for x in self._iter_owners_low_mem(path_iter):
 							yield x
 						return
 					else:
 						for cpv, p in owners:
 							yield (dblink(cpv), p)
 
-		def _iter_owners_low_mem(self, path_list, scheduler=None):
+		def _iter_owners_low_mem(self, path_list):
 			"""
 			This implemention will make a short-lived dblink instance (and
 			parse CONTENTS) for every single installed package. This is
@@ -1053,10 +1045,6 @@ class vardbapi(dbapi):
 
 			root = self._vardb._eroot
 			for cpv in self._vardb.cpv_all():
-
-				if scheduler is not None:
-					scheduler.scheduleYield()
-
 				dblnk =  self._vardb._dblink(cpv)
 
 				for path, name, is_basename in path_info_list:
@@ -1196,10 +1184,6 @@ class dblink(object):
 		r'\(\d+, \d+L, \d+L, \d+, \d+, \d+, \d+L, \d+, (\d+), \d+\)))))' + \
 		r')$'
 	)
-
-	# When looping over files for merge/unmerge, temporarily yield to the
-	# scheduler each time this many files are processed.
-	_file_merge_yield_interval = 20
 
 	def __init__(self, cat, pkg, myroot=None, settings=None, treetype=None,
 		vartree=None, blockers=None, scheduler=None, pipe=None):
@@ -2586,7 +2570,6 @@ class dblink(object):
 			plib_collisions = {}
 
 			showMessage = self._display_merge
-			scheduler = self._scheduler
 			stopmerge = False
 			collisions = []
 			destroot = self.settings['ROOT']
@@ -2595,10 +2578,6 @@ class dblink(object):
 			for i, f in enumerate(mycontents):
 				if i % 1000 == 0 and i != 0:
 					showMessage(_("%d files checked ...\n") % i)
-
-				if scheduler is not None and \
-					0 == i % self._file_merge_yield_interval:
-					scheduler.scheduleYield()
 
 				dest_path = normalize_path(
 					os.path.join(destroot, f.lstrip(os.path.sep)))
@@ -2708,7 +2687,6 @@ class dblink(object):
 		os = _os_merge
 
 		showMessage = self._display_merge
-		scheduler = self._scheduler
 
 		file_paths = set()
 		for dblnk in installed_instances:
@@ -2716,10 +2694,6 @@ class dblink(object):
 		inode_map = {}
 		real_paths = set()
 		for i, path in enumerate(file_paths):
-
-			if scheduler is not None and \
-				0 == i % self._file_merge_yield_interval:
-				scheduler.scheduleYield()
 
 			if os is _os_merge:
 				try:
