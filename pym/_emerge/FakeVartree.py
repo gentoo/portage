@@ -103,6 +103,16 @@ class FakeVartree(vartree):
 				pkg, self.dbapi, self._global_updates)
 		return self._aux_get(pkg, wants)
 
+	def cpv_discard(self, pkg):
+		"""
+		Discard a package from the fake vardb if it exists.
+		"""
+		old_pkg = self.dbapi.get(pkg)
+		if old_pkg is not None:
+			self.dbapi.cpv_remove(old_pkg)
+			self._pkg_cache.pop(old_pkg, None)
+			self._aux_get_history.discard(old_pkg.cpv)
+
 	def sync(self, acquire_lock=1):
 		"""
 		Call this method to synchronize state with the real vardb
@@ -144,9 +154,7 @@ class FakeVartree(vartree):
 		# Remove any packages that have been uninstalled.
 		for pkg in list(pkg_vardb):
 			if pkg.cpv not in current_cpv_set:
-				pkg_vardb.cpv_remove(pkg)
-				pkg_cache.pop(pkg, None)
-				aux_get_history.discard(pkg.cpv)
+				self.cpv_discard(pkg)
 
 		# Validate counters and timestamps.
 		slot_counters = {}
@@ -165,9 +173,7 @@ class FakeVartree(vartree):
 
 				if counter != pkg.counter or \
 					mtime != pkg.mtime:
-					pkg_vardb.cpv_remove(pkg)
-					pkg_cache.pop(pkg, None)
-					aux_get_history.discard(pkg.cpv)
+					self.cpv_discard(pkg)
 					pkg = None
 
 			if pkg is None:
