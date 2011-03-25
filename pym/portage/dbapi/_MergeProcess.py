@@ -85,6 +85,15 @@ class MergeProcess(SpawnProcess):
 		# is triggered when mylink._scheduler is None.
 		mylink._scheduler = None
 
+		# In this subprocess we don't want PORTAGE_BACKGROUND to
+		# suppress stdout/stderr output since they are pipes. We
+		# also don't want to open PORTAGE_LOG_FILE, since it will
+		# already be opened by the parent process, so we set the
+		# "subprocess" value for use in conditional logging code
+		# involving PORTAGE_LOG_FILE.
+		self.settings["PORTAGE_BACKGROUND"] = "subprocess"
+		self.settings.backup_changes("PORTAGE_BACKGROUND")
+
 		rval = 1
 		try:
 			rval = mylink.merge(self.pkgloc, self.infloc,
