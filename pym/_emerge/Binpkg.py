@@ -304,6 +304,8 @@ class Binpkg(CompositeTask):
 	def _unlock_builddir(self):
 		if self.opts.pretend or self.opts.fetchonly:
 			return
+		portage.elog.elog_process(self.pkg.cpv, self.settings,
+			phasefilter=("prerm", "postrm"))
 		portage.elog.elog_process(self.pkg.cpv, self.settings)
 		self._build_dir.unlock()
 
