@@ -13,7 +13,8 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dbapi._MergeProcess:MergeProcess',
 	'portage.dep:dep_getkey,isjustname,match_from_list,' + \
 	 	'use_reduce,_slot_re',
-	'portage.elog:elog_process,_preload_elog_modules',
+	'portage.elog:collect_ebuild_messages,collect_messages,' + \
+		'elog_process,_merge_logentries,_preload_elog_modules',
 	'portage.locks:lockdir,unlockdir',
 	'portage.output:bold,colorize',
 	'portage.package.ebuild.doebuild:doebuild_environment,' + \
@@ -1200,7 +1201,7 @@ class dblink(object):
 	_file_merge_yield_interval = 20
 
 	def __init__(self, cat, pkg, myroot=None, settings=None, treetype=None,
-		vartree=None, blockers=None, scheduler=None):
+		vartree=None, blockers=None, scheduler=None, pipe=None):
 		"""
 		Creates a DBlink object for a given CPV.
 		The given CPV may not be present in the database already.
@@ -1259,6 +1260,7 @@ class dblink(object):
 		self._md5_merge_map = {}
 		self._hash_key = (self.myroot, self.mycpv)
 		self._protect_obj = None
+		self._pipe = pipe
 
 	def __hash__(self):
 		return hash(self._hash_key)
@@ -1502,7 +1504,7 @@ class dblink(object):
 					continue
 				others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
 					settings=self.settings, vartree=self.vartree,
-					treetype="vartree"))
+					treetype="vartree", pipe=self._pipe))
 
 			retval = self._security_check([self] + others_in_slot)
 			if retval:
@@ -1666,9 +1668,7 @@ class dblink(object):
 
 							self._eerror(ebuild_phase, msg_lines)
 
-						# process logs created during pre/postrm
-						elog_process(self.mycpv, self.settings,
-							phasefilter=('prerm', 'postrm'))
+					self._elog_process()
 
 					if retval == os.EX_OK:
 						# myebuildpath might be None, so ensure
@@ -1764,7 +1764,7 @@ class dblink(object):
 					continue
 				others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
 					settings=self.settings,
-					vartree=self.vartree, treetype="vartree"))
+					vartree=self.vartree, treetype="vartree", pipe=self._pipe))
 
 		dest_root = self._eroot
 		dest_root_len = len(dest_root) - 1
@@ -2784,19 +2784,34 @@ class dblink(object):
 			self._scheduler.dblinkElog(self,
 				phase, _eerror, lines)
 
-	def _elog_subprocess(self, funcname, phase, lines):
-		"""
-		Subprocesses call this in order to create elog messages in
-		$T, for collection by the main process.
-		"""
-		cmd = "source %s/isolated-functions.sh ; " % \
-			portage._shell_quote(self.settings["PORTAGE_BIN_PATH"])
-		for line in lines:
-			cmd += "%s %s ; " % (funcname, portage._shell_quote(line))
-		env = self.settings.environ()
-		env['EBUILD_PHASE'] = phase
-		subprocess.call([portage.const.BASH_BINARY, "-c", cmd],
-			env=env)
+	def _elog_process(self):
+		cpv = self.mycpv
+		if self._pipe is None:
+			elog_process(cpv, self.settings)
+		else:
+			logdir = os.path.join(self.settings["T"], "logging")
+			ebuild_logentries = collect_ebuild_messages(logdir)
+			py_logentries = collect_messages(key=cpv).get(cpv, {})
+			logentries = _merge_logentries(py_logentries, ebuild_logentries)
+			funcnames = {
+				"INFO": "einfo",
+				"LOG": "elog",
+				"WARN": "ewarn",
+				"QA": "eqawarn",
+				"ERROR": "eerror"
+			}
+			buffer = []
+			for phase, messages in logentries.items():
+				for key, lines in messages:
+					funcname = funcnames[key]
+					if isinstance(lines, basestring):
+						lines = [lines]
+					for line in lines:
+						fields = (funcname, phase, cpv, line.rstrip('\n'))
+						buffer.append(' '.join(fields))
+						buffer.append('\n')
+			if buffer:
+				os.write(self._pipe, ''.join(buffer))
 
 	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
@@ -2811,7 +2826,6 @@ class dblink(object):
 		unmerges old version (if required)
 		calls doebuild(mydo=pkg_postinst)
 		calls env_update
-		calls elog_process
 		
 		@param srcroot: Typically this is ${D}
 		@type srcroot: String (Path)
@@ -2921,7 +2935,7 @@ class dblink(object):
 			others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
 				settings=config(clone=self.settings),
 				vartree=self.vartree, treetype="vartree",
-				scheduler=self._scheduler))
+				scheduler=self._scheduler, pipe=self._pipe))
 
 		retval = self._security_check(others_in_slot)
 		if retval:
@@ -3069,8 +3083,6 @@ class dblink(object):
 		# check for package collisions
 		blockers = None
 		if self._blockers is not None:
-			# This is only supposed to be called when
-			# the vdb is locked, like it is here.
 			blockers = self._blockers()
 		if blockers is None:
 			blockers = []
@@ -3242,16 +3254,8 @@ class dblink(object):
 				cfgfiledict["IGNORE"] = 1
 				break
 
-		merge_task = MergeProcess(
-			background=(self.settings.get('PORTAGE_BACKGROUND') == '1'),
-			cfgfiledict=cfgfiledict, conf_mem_file=conf_mem_file, dblink=self,
-			destroot=destroot,
-			logfile=self.settings.get('PORTAGE_LOG_FILE'),
-			scheduler=(scheduler or PollScheduler().sched_iface),
-			srcroot=srcroot)
-
-		merge_task.start()
-		rval = merge_task.wait()
+		rval = self._merge_contents(srcroot, destroot, cfgfiledict,
+			conf_mem_file)
 		if rval != os.EX_OK:
 			return rval
 
@@ -3438,7 +3442,7 @@ class dblink(object):
 
 		return backup_p
 
-	def _merge_process(self, srcroot, destroot, cfgfiledict, conf_mem_file):
+	def _merge_contents(self, srcroot, destroot, cfgfiledict, conf_mem_file):
 
 		cfgfiledict_orig = cfgfiledict.copy()
 
@@ -3667,7 +3671,7 @@ class dblink(object):
 						msg.append(_("This file will be renamed to a different name:"))
 						msg.append("  '%s'" % backup_dest)
 						msg.append("")
-						self._elog_subprocess("eerror", "preinst", msg)
+						self._eerror("preinst", msg)
 						if movefile(mydest, backup_dest,
 							mysettings=self.settings,
 							encoding=_encodings['merge']) is None:
@@ -3745,7 +3749,7 @@ class dblink(object):
 						msg.append(_("This file will be merged with a different name:"))
 						msg.append("  '%s'" % newdest)
 						msg.append("")
-						self._elog_subprocess("eerror", "preinst", msg)
+						self._eerror("preinst", msg)
 						mydest = newdest
 
 					elif stat.S_ISREG(mydmode) or (stat.S_ISLNK(mydmode) and os.path.exists(mydest) and stat.S_ISREG(os.stat(mydest)[stat.ST_MODE])):
@@ -3929,7 +3933,7 @@ class dblink(object):
 					self._scheduler.dblinkEbuildPhase(
 						self, mydbapi, myebuild, phase)
 
-				elog_process(self.mycpv, self.settings)
+				self._elog_process()
 
 				if 'noclean' not in self.settings.features and \
 					(retval == os.EX_OK or \
@@ -4029,10 +4033,16 @@ def merge(mycat, mypkg, pkgloc, infloc,
 		writemsg(_("Permission denied: access('%s', W_OK)\n") % settings['EROOT'],
 			noiselevel=-1)
 		return errno.EACCES
-	mylink = dblink(mycat, mypkg, settings=settings, treetype=mytree,
-		vartree=vartree, blockers=blockers, scheduler=scheduler)
-	return mylink.merge(pkgloc, infloc, myebuild=myebuild,
-		mydbapi=mydbapi, prev_mtimes=prev_mtimes)
+	background = (settings.get('PORTAGE_BACKGROUND') == '1')
+	merge_task = MergeProcess(
+		dblink=dblink, mycat=mycat, mypkg=mypkg, settings=settings,
+		treetype=mytree, vartree=vartree, scheduler=scheduler,
+		background=background, blockers=blockers, pkgloc=pkgloc,
+		infloc=infloc, myebuild=myebuild, mydbapi=mydbapi,
+		prev_mtimes=prev_mtimes, logfile=settings.get('PORTAGE_LOG_FILE'))
+	merge_task.start()
+	retcode = merge_task.wait()
+	return retcode
 
 def unmerge(cat, pkg, myroot=None, settings=None,
 	mytrimworld=None, vartree=None,

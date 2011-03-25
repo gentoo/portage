@@ -314,7 +314,7 @@ class EbuildBuild(CompositeTask):
 			self._unlock_builddir()
 		self.wait()
 
-	def install(self):
+	def install(self, exit_handler):
 		"""
 		Install the package and then clean up and release locks.
 		Only call this after the build has completed successfully
@@ -343,10 +343,11 @@ class EbuildBuild(CompositeTask):
 			(pkg_count.curval, pkg_count.maxval, pkg.cpv)
 		logger.log(msg, short_msg=short_msg)
 
-		try:
-			rval = merge.execute()
-		finally:
-			self._unlock_builddir()
+		task = merge.create_task()
+		task.addExitListener(self._install_exit)
+		self._start_task(task, exit_handler)
 
-		return rval
+	def _install_exit(self, task):
+		self._unlock_builddir()
+		self._default_final_exit(task)
 

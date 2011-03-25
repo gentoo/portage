@@ -4,6 +4,8 @@
 from _emerge.SlotObject import SlotObject
 import portage
 from portage import os
+from portage.dbapi._MergeProcess import MergeProcess
+from portage.dbapi.vartree import dblink
 
 class EbuildMerge(SlotObject):
 
@@ -11,28 +13,35 @@ class EbuildMerge(SlotObject):
 		"pkg", "pkg_count", "pkg_path", "pretend",
 		"scheduler", "settings", "tree", "world_atom")
 
-	def execute(self):
+	def create_task(self):
 		root_config = self.pkg.root_config
 		settings = self.settings
-		retval = portage.merge(settings["CATEGORY"],
-			settings["PF"], settings["D"],
-			os.path.join(settings["PORTAGE_BUILDDIR"],
-			"build-info"), root_config.root, settings,
-			myebuild=settings["EBUILD"],
-			mytree=self.tree, mydbapi=root_config.trees[self.tree].dbapi,
-			vartree=root_config.trees["vartree"],
-			prev_mtimes=self.ldpath_mtimes,
-			scheduler=self.scheduler,
-			blockers=self.find_blockers)
+		mycat = settings["CATEGORY"]
+		mypkg = settings["PF"]
+		pkgloc = settings["D"]
+		infloc = os.path.join(settings["PORTAGE_BUILDDIR"], "build-info")
+		myroot = root_config.root
+		myebuild = settings["EBUILD"]
+		mydbapi = root_config.trees[self.tree].dbapi
+		vartree = root_config.trees["vartree"]
+		background = (settings.get('PORTAGE_BACKGROUND') == '1')
+		logfile = settings.get('PORTAGE_LOG_FILE')
 
-		if retval == os.EX_OK:
-			self.world_atom(self.pkg)
-			self._log_success()
+		merge_task = MergeProcess(
+			dblink=dblink, mycat=mycat, mypkg=mypkg, settings=settings,
+			treetype=self.tree, vartree=vartree, scheduler=self.scheduler,
+			background=background, blockers=self.find_blockers, pkgloc=pkgloc,
+			infloc=infloc, myebuild=myebuild, mydbapi=mydbapi,
+			prev_mtimes=self.ldpath_mtimes, logfile=logfile)
+		merge_task.addExitListener(self._log_exit)
+		return merge_task
 
-		return retval
+	def _log_exit(self, task):
+		if task.returncode != os.EX_OK:
+			return
 
-	def _log_success(self):
 		pkg = self.pkg
+		self.world_atom(pkg)
 		pkg_count = self.pkg_count
 		pkg_path = self.pkg_path
 		logger = self.logger

@@ -4,11 +4,6 @@
 from _emerge.AsynchronousTask import AsynchronousTask
 from portage.output import colorize
 class PackageMerge(AsynchronousTask):
-	"""
-	TODO: Implement asynchronous merge so that the scheduler can
-	run while a merge is executing.
-	"""
-
 	__slots__ = ("merge",)
 
 	def _start(self):
@@ -40,6 +35,9 @@ class PackageMerge(AsynchronousTask):
 			not self.merge.build_opts.buildpkgonly:
 			self.merge.statusMessage(msg)
 
-		self.returncode = self.merge.merge()
-		self.wait()
+		self.merge.merge(self.exit_handler)
+
+	def exit_handler(self, task):
+		self.returncode = task.returncode
+		self._wait_hook()
 
