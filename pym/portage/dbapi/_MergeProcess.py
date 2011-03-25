@@ -7,7 +7,7 @@ import traceback
 import errno
 import fcntl
 import portage
-from portage import os, StringIO
+from portage import os, StringIO, _unicode_decode
 import portage.elog.messages
 from _emerge.PollConstants import PollConstants
 from _emerge.SpawnProcess import SpawnProcess
@@ -32,7 +32,7 @@ class MergeProcess(SpawnProcess):
 				if e.errno not in (errno.EAGAIN, errno.EINTR):
 					raise
 		if output:
-			lines = output.split('\n')
+			lines = _unicode_decode(output).split('\n')
 			if len(lines) == 1:
 				self._buf += lines[0]
 			else:

@@ -2802,7 +2802,7 @@ class dblink(object):
 						buffer.append(' '.join(fields))
 						buffer.append('\n')
 			if buffer:
-				os.write(self._pipe, ''.join(buffer))
+				os.write(self._pipe, _unicode_encode(''.join(buffer)))
 
 	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
