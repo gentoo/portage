@@ -39,5 +39,4 @@ class PackageMerge(AsynchronousTask):
 
 	def exit_handler(self, task):
 		self.returncode = task.returncode
-		self._wait_hook()
-
+		self.wait()
