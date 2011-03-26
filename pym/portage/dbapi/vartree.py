@@ -14,7 +14,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dep:dep_getkey,isjustname,match_from_list,' + \
 	 	'use_reduce,_slot_re',
 	'portage.elog:collect_ebuild_messages,collect_messages,' + \
-		'elog_process,_merge_logentries,_preload_elog_modules',
+		'elog_process,_merge_logentries',
 	'portage.locks:lockdir,unlockdir',
 	'portage.output:bold,colorize',
 	'portage.package.ebuild.doebuild:doebuild_environment,' + \
@@ -3824,65 +3824,6 @@ class dblink(object):
 				showMessage(zing + " " + mydest + "\n")
 
 	def merge(self, mergeroot, inforoot, myroot=None, myebuild=None, cleanup=0,
-		mydbapi=None, prev_mtimes=None):
-		"""
-		If portage is reinstalling itself, create temporary
-		copies of PORTAGE_BIN_PATH and PORTAGE_PYM_PATH in order
-		to avoid relying on the new versions which may be
-		incompatible. Register an atexit hook to clean up the
-		temporary directories. Pre-load elog modules here since
-		we won't be able to later if they get unmerged (happens
-		when namespace changes).
-
-		@param myroot: ignored, self._eroot is used instead
-		"""
-		myroot = None
-		if self.vartree.dbapi._categories is not None:
-			self.vartree.dbapi._categories = None
-		reinstall_self = False
-		if self.myroot == "/" and \
-			match_from_list(PORTAGE_PACKAGE_ATOM, [self.mycpv]):
-			inherited = frozenset(self.settings.get('INHERITED', '').split())
-			if not self.vartree.dbapi.cpv_exists(self.mycpv) or \
-				'9999' in self.mycpv or \
-				'git' in inherited or \
-				'git-2' in inherited:
-				reinstall_self = True
-
-		if reinstall_self:
-			# Load lazily referenced portage submodules into memory,
-			# so imports won't fail during portage upgrade/downgrade.
-			portage.proxy.lazyimport._preload_portage_submodules()
-			settings = self.settings
-
-			# Make the temp directory inside $PORTAGE_TMPDIR/portage, since
-			# it's common for /tmp and /var/tmp to be mounted with the
-			# "noexec" option (see bug #346899).
-			build_prefix = os.path.join(settings["PORTAGE_TMPDIR"], "portage")
-			ensure_dirs(build_prefix)
-			base_path_tmp = tempfile.mkdtemp(
-				"", "._portage_reinstall_.", build_prefix)
-			portage.process.atexit_register(shutil.rmtree, base_path_tmp)
-			dir_perms = 0o755
-			for subdir in "bin", "pym":
-				var_name = "PORTAGE_%s_PATH" % subdir.upper()
-				var_orig = settings[var_name]
-				var_new = os.path.join(base_path_tmp, subdir)
-				settings[var_name] = var_new
-				settings.backup_changes(var_name)
-				shutil.copytree(var_orig, var_new, symlinks=True)
-				os.chmod(var_new, dir_perms)
-			portage._bin_path = settings['PORTAGE_BIN_PATH']
-			portage._pym_path = settings['PORTAGE_PYM_PATH']
-			os.chmod(base_path_tmp, dir_perms)
-			# This serves so pre-load the modules.
-			_preload_elog_modules(self.settings)
-
-		return self._merge(mergeroot, inforoot,
-				myebuild=myebuild, cleanup=cleanup,
-				mydbapi=mydbapi, prev_mtimes=prev_mtimes)
-
-	def _merge(self, mergeroot, inforoot, myroot=None, myebuild=None, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
 		"""
 		@param myroot: ignored, self._eroot is used instead
