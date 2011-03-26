@@ -114,9 +114,15 @@ class MergeProcess(SpawnProcess):
 		elog_reader_fd, elog_writer_fd = os.pipe()
 		fcntl.fcntl(elog_reader_fd, fcntl.F_SETFL,
 			fcntl.fcntl(elog_reader_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
+		blockers = None
+		if self.blockers is not None:
+			# Query blockers in the main process, since metadata cache
+			# queries may not work for some databases from within a
+			# subprocess. For example, sqlite is known to misbehave.
+			blockers = self.blockers()
 		mylink = self.dblink(self.mycat, self.mypkg, settings=self.settings,
 			treetype=self.treetype, vartree=self.vartree,
-			blockers=self.blockers, scheduler=self.scheduler,
+			blockers=blockers, scheduler=self.scheduler,
 			pipe=elog_writer_fd)
 		fd_pipes[elog_writer_fd] = elog_writer_fd
 		self._elog_reg_id = self.scheduler.register(elog_reader_fd,

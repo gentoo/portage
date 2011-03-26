@@ -3076,9 +3076,7 @@ class dblink(object):
 				return 1
 
 		# check for package collisions
-		blockers = None
-		if self._blockers is not None:
-			blockers = self._blockers()
+		blockers = self._blockers
 		if blockers is None:
 			blockers = []
 		collisions, plib_collisions = \
