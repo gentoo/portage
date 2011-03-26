@@ -1734,7 +1734,8 @@ class dblink(object):
 					writemsg_level(msg, level=level, noiselevel=noiselevel)
 			else:
 				self._scheduler.output(msg,
-					background=background, log_path=log_path)
+					log_path=log_path, background=background,
+					level=level, noiselevel=noiselevel)
 
 	def _unmerge_pkgfiles(self, pkgfiles, others_in_slot):
 		"""
