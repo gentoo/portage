@@ -67,6 +67,7 @@ class MergeProcess(SpawnProcess):
 			os.close(elog_writer_fd)
 			self._elog_reader_fd = elog_reader_fd
 			self._buf = ""
+			self.vartree.dbapi._pkgs_changed = True
 			portage.process.spawned_pids.append(pid)
 			return [pid]
 
