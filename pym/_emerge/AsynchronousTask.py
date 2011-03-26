@@ -1,6 +1,7 @@
 # Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from portage import os
 from _emerge.SlotObject import SlotObject
 class AsynchronousTask(SlotObject):
 	"""
@@ -23,7 +24,8 @@ class AsynchronousTask(SlotObject):
 		self._start()
 
 	def _start(self):
-		raise NotImplementedError(self)
+		self.returncode = os.EX_OK
+		self.wait()
 
 	def isAlive(self):
 		return self.returncode is None
