@@ -2762,7 +2762,7 @@ class dblink(object):
 		func = getattr(portage.elog.messages, funcname)
 		if self._scheduler is None:
 			for l in lines:
-				func(l, phase=phase, key=self.settings.mycpv)
+				func(l, phase=phase, key=self.mycpv)
 		else:
 			background = self.settings.get("PORTAGE_BACKGROUND") == "1"
 			log_path = None
@@ -2770,7 +2770,7 @@ class dblink(object):
 				log_path = self.settings.get("PORTAGE_LOG_FILE")
 			out = portage.StringIO()
 			for line in lines:
-				func(line, phase=phase, key=self.settings.mycpv, out=out)
+				func(line, phase=phase, key=self.mycpv, out=out)
 			msg = out.getvalue()
 			self._scheduler.output(msg,
 				background=background, log_path=log_path)
