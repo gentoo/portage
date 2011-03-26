@@ -1477,12 +1477,15 @@ class dblink(object):
 			# We create a scheduler instance and use it to
 			# log unmerge output separately from merge output.
 			self._scheduler = PollScheduler().sched_iface
-		if self.settings.get("PORTAGE_BACKGROUND_UNMERGE") == "1":
-			self.settings["PORTAGE_BACKGROUND"] = "1"
-			self.settings.backup_changes("PORTAGE_BACKGROUND")
+		if self.settings.get("PORTAGE_BACKGROUND") == "subprocess":
+			if self.settings.get("PORTAGE_BACKGROUND_UNMERGE") == "1":
+				self.settings["PORTAGE_BACKGROUND"] = "1"
+				self.settings.backup_changes("PORTAGE_BACKGROUND")
+				background = True
+			else:
+				self.settings.pop("PORTAGE_BACKGROUND", None)
+		elif self.settings.get("PORTAGE_BACKGROUND") == "1":
 			background = True
-		else:
-			self.settings.pop("PORTAGE_BACKGROUND", None)
 
 		self.vartree.dbapi._bump_mtime(self.mycpv)
 		showMessage = self._display_merge
