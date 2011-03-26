@@ -21,7 +21,7 @@ class MergeProcess(SpawnProcess):
 	__slots__ = ('dblink', 'mycat', 'mypkg', 'settings', 'treetype',
 		'vartree', 'scheduler', 'blockers', 'pkgloc', 'infloc', 'myebuild',
 		'mydbapi', 'prev_mtimes', '_elog_reader_fd', '_elog_reg_id',
-		'_buf')
+		'_buf', '_elog_keys')
 
 	def _elog_output_handler(self, fd, event):
 		output = None
@@ -41,6 +41,7 @@ class MergeProcess(SpawnProcess):
 				out = StringIO()
 				for line in lines:
 					funcname, phase, key, msg = line.split(' ', 3)
+					self._elog_keys.add(key)
 					reporter = getattr(portage.elog.messages, funcname)
 					reporter(msg, phase=phase, key=key, out=out)
 
@@ -67,6 +68,7 @@ class MergeProcess(SpawnProcess):
 			os.close(elog_writer_fd)
 			self._elog_reader_fd = elog_reader_fd
 			self._buf = ""
+			self._elog_keys = set()
 			self.vartree.dbapi._pkgs_changed = True
 			portage.process.spawned_pids.append(pid)
 			return [pid]
@@ -124,5 +126,10 @@ class MergeProcess(SpawnProcess):
 		if self._elog_reader_fd:
 			os.close(self._elog_reader_fd)
 			self._elog_reader_fd = None
+		if self._elog_keys is not None:
+			for key in self._elog_keys:
+				portage.elog.elog_process(key, self.settings,
+					phasefilter=("prerm", "postrm"))
+			self._elog_keys = None
 
 		super(MergeProcess, self)._unregister()

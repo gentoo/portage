@@ -243,8 +243,6 @@ class EbuildBuild(CompositeTask):
 		self.wait()
 
 	def _unlock_builddir(self):
-		portage.elog.elog_process(self.pkg.cpv, self.settings,
-			phasefilter=("prerm", "postrm"))
 		portage.elog.elog_process(self.pkg.cpv, self.settings)
 		self._build_dir.unlock()
 
