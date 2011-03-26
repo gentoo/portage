@@ -103,14 +103,6 @@ class MergeListItem(CompositeTask):
 			self._start_task(binpkg, self._default_final_exit)
 			return
 
-	def _poll(self):
-		self._install_task.poll()
-		return self.returncode
-
-	def _wait(self):
-		self._install_task.wait()
-		return self.returncode
-
 	def merge(self):
 
 		pkg = self.pkg
