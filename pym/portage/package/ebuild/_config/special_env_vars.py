@@ -8,12 +8,16 @@ __all__ = (
 
 import re
 
+# Blacklisted variables are internal variables that are never allowed
+# to enter the config instance from the external environment or
+# configuration files.
 env_blacklist = frozenset((
 	"A", "AA", "CATEGORY", "DEPEND", "DESCRIPTION", "EAPI",
 	"EBUILD_PHASE", "ED", "EMERGE_FROM", "EPREFIX", "EROOT",
 	"HOMEPAGE", "INHERITED", "IUSE",
 	"KEYWORDS", "LICENSE", "MERGE_TYPE",
-	"PDEPEND", "PF", "PKGUSE", "PORTAGE_BUILDIR_LOCKED",
+	"PDEPEND", "PF", "PKGUSE", "PORTAGE_BACKGROUND",
+	"PORTAGE_BACKGROUND_UNMERGE", "PORTAGE_BUILDIR_LOCKED",
 	"PORTAGE_BUILT_USE", "PORTAGE_CONFIGROOT", "PORTAGE_IUSE",
 	"PORTAGE_NONFATAL", "PORTAGE_REPO_NAME", "PORTAGE_SANDBOX_COMPAT_LEVEL",
 	"PORTAGE_USE", "PROPERTIES", "PROVIDE", "RDEPEND", "RESTRICT",
