@@ -2800,7 +2800,7 @@ class dblink(object):
 				"QA": "eqawarn",
 				"ERROR": "eerror"
 			}
-			buffer = []
+			str_buffer = []
 			for phase, messages in logentries.items():
 				for key, lines in messages:
 					funcname = funcnames[key]
@@ -2808,10 +2808,10 @@ class dblink(object):
 						lines = [lines]
 					for line in lines:
 						fields = (funcname, phase, cpv, line.rstrip('\n'))
-						buffer.append(' '.join(fields))
-						buffer.append('\n')
-			if buffer:
-				os.write(self._pipe, _unicode_encode(''.join(buffer)))
+						str_buffer.append(' '.join(fields))
+						str_buffer.append('\n')
+			if str_buffer:
+				os.write(self._pipe, _unicode_encode(''.join(str_buffer)))
 
 	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
