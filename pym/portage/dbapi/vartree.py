@@ -1544,16 +1544,21 @@ class dblink(object):
 				myebuildpath = None
 
 		builddir_lock = None
+		log_path = None
 		scheduler = self._scheduler
 		retval = os.EX_OK
 		try:
-			builddir_lock = EbuildBuildDir(
-				scheduler=scheduler,
-				settings=self.settings)
-			builddir_lock.lock()
-			prepare_build_dirs(settings=self.settings, cleanup=True)
-			log_path = self.settings.get("PORTAGE_LOG_FILE")
 			if myebuildpath:
+				# Only create builddir_lock if doebuild_environment
+				# succeeded, since that's needed to initialize
+				# PORTAGE_BUILDDIR.
+				builddir_lock = EbuildBuildDir(
+					scheduler=scheduler,
+					settings=self.settings)
+				builddir_lock.lock()
+				prepare_build_dirs(settings=self.settings, cleanup=True)
+				log_path = self.settings.get("PORTAGE_LOG_FILE")
+
 				phase = EbuildPhase(background=background,
 					phase=ebuild_phase, scheduler=scheduler,
 					settings=self.settings)
@@ -1668,7 +1673,7 @@ class dblink(object):
 
 					self._elog_process(phasefilter=("prerm", "postrm"))
 
-					if retval == os.EX_OK:
+					if retval == os.EX_OK and builddir_lock is not None:
 						# myebuildpath might be None, so ensure
 						# it has a sane value for the clean phase,
 						# even though it won't really be sourced.
