@@ -1731,11 +1731,13 @@ class dblink(object):
 		if self._scheduler is None:
 			writemsg_level(msg, level=level, noiselevel=noiselevel)
 		else:
-			log_path = self.settings.get("PORTAGE_LOG_FILE")
+			log_path = None
+			if self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
+				log_path = self.settings.get("PORTAGE_LOG_FILE")
 			background = self.settings.get("PORTAGE_BACKGROUND") == "1"
 
-			if log_path is None:
-				if not (background and level < logging.WARN):
+			if background and log_path is None:
+				if level >= logging.WARN:
 					writemsg_level(msg, level=level, noiselevel=noiselevel)
 			else:
 				self._scheduler.output(msg,
