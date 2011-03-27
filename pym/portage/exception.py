@@ -1,4 +1,4 @@
-# Copyright 1998-2004 Gentoo Foundation
+# Copyright 1998-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import signal
@@ -150,13 +150,24 @@ class UnsupportedAPIException(PortagePackageException):
 	def __init__(self, cpv, eapi):
 		self.cpv, self.eapi = cpv, eapi
 	def __str__(self):
+		eapi = self.eapi
+		if not isinstance(eapi, basestring):
+			eapi = str(eapi)
+		eapi = eapi.lstrip("-")
 		msg = _("Unable to do any operations on '%(cpv)s', since "
 		"its EAPI is higher than this portage version's. Please upgrade"
 		" to a portage version that supports EAPI '%(eapi)s'.") % \
-		{"cpv": self.cpv, "eapi": str(self.eapi).lstrip("-")}
-		return msg
+		{"cpv": self.cpv, "eapi": eapi}
+		return _unicode_decode(msg,
+			encoding=_encodings['content'], errors='replace')
 
+	if sys.hexversion < 0x3000000:
 
+		__unicode__ = __str__
+
+		def __str__(self):
+			return _unicode_encode(self.__unicode__(),
+				encoding=_encodings['content'], errors='backslashreplace')
 
 class SignatureException(PortageException):
 	"""Signature was not present in the checked file"""
