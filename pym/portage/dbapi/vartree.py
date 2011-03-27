@@ -1669,7 +1669,7 @@ class dblink(object):
 						elog_process(self.mycpv, self.settings,
 							phasefilter=('prerm', 'postrm'))
 
-					if retval == os.EX_OK:
+					if retval == os.EX_OK and builddir_lock is not None:
 						# myebuildpath might be None, so ensure
 						# it has a sane value for the clean phase,
 						# even though it won't really be sourced.
