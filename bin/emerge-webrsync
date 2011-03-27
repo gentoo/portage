@@ -64,7 +64,6 @@ do_tar() {
 	local decompressor
 	case ${file} in
 		*.xz)   decompressor="xzcat" ;;
-		*.lzma) decompressor="lzcat" ;;
 		*.bz2)  decompressor="bzcat" ;;
 		*.gz)   decompressor="zcat"  ;;
 		*)      decompressor="cat"   ;;
@@ -227,16 +226,15 @@ do_snapshot() {
 	local mirror
 
 	local compressions=""
-	# lzma is not supported in app-arch/tarsync, so use
+	# xz is not supported in app-arch/tarsync, so use
 	# bz2 format if we have tarsync.
 	if ! type -P tarsync > /dev/null ; then
 		type -P xzcat > /dev/null && compressions="${compressions} xz"
-		type -P lzcat > /dev/null && compressions="${compressions} lzma"
 	fi
 	type -P bzcat > /dev/null && compressions="${compressions} bz2"
 	type -P  zcat > /dev/null && compressions="${compressions} gz"
 	if [[ -z ${compressions} ]] ; then
-		eecho "unable to locate any decompressors (lzcat or bzcat or zcat)"
+		eecho "unable to locate any decompressors (xzcat or bzcat or zcat)"
 		exit 1
 	fi
 
