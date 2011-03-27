@@ -30,6 +30,21 @@ class MergeProcess(SpawnProcess):
 		'_buf', '_elog_keys')
 
 	def _start(self):
+		# Portage should always call setcpv prior to this
+		# point, but here we have a fallback as a convenience
+		# for external API consumers. It's important that
+		# this metadata access happens in the parent process,
+		# since closing of file descriptors in the subprocess
+		# can prevent access to open database connections such
+		# as that used by the sqlite metadata cache module.
+		cpv = "%s/%s" % (self.mycat, self.mypkg)
+		settings = self.settings
+		if cpv != settings.mycpv or \
+			"IUSE" not in settings.configdict["pkg"]:
+			settings.reload()
+			settings.reset()
+			settings.setcpv(cpv, mydb=self.mydbapi)
+
 		self._handle_self_reinstall()
 		super(MergeProcess, self)._start()
 
@@ -116,9 +131,10 @@ class MergeProcess(SpawnProcess):
 			fcntl.fcntl(elog_reader_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 		blockers = None
 		if self.blockers is not None:
-			# Query blockers in the main process, since metadata cache
-			# queries may not work for some databases from within a
-			# subprocess. For example, sqlite is known to misbehave.
+			# Query blockers in the main process, since closing
+			# of file descriptors in the subprocess can prevent
+			# access to open database connections such as that
+			# used by the sqlite metadata cache module.
 			blockers = self.blockers()
 		mylink = self.dblink(self.mycat, self.mypkg, settings=self.settings,
 			treetype=self.treetype, vartree=self.vartree,
