@@ -1536,7 +1536,7 @@ class dblink(object):
 				showMessage(_("!!! FAILED prerm: %s\n") % \
 					os.path.join(self.dbdir, "EAPI"),
 					level=logging.ERROR, noiselevel=-1)
-				showMessage("%s\n" % (e,),
+				showMessage(_unicode_decode("%s\n") % (e,),
 					level=logging.ERROR, noiselevel=-1)
 				myebuildpath = None
 
