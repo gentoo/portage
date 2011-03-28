@@ -13,7 +13,8 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dbapi._MergeProcess:MergeProcess',
 	'portage.dep:dep_getkey,isjustname,match_from_list,' + \
 	 	'use_reduce,_slot_re',
-	'portage.elog:elog_process,_preload_elog_modules',
+	'portage.elog:collect_ebuild_messages,collect_messages,' + \
+		'elog_process,_merge_logentries',
 	'portage.locks:lockdir,unlockdir',
 	'portage.output:bold,colorize',
 	'portage.package.ebuild.doebuild:doebuild_environment,' + \
@@ -58,6 +59,7 @@ from portage import _unicode_encode
 
 from _emerge.AsynchronousLock import AsynchronousLock
 from _emerge.EbuildBuildDir import EbuildBuildDir
+from _emerge.EbuildPhase import EbuildPhase
 from _emerge.PollScheduler import PollScheduler
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 
@@ -890,7 +892,7 @@ class vardbapi(dbapi):
 		def populate(self):
 			self._populate()
 
-		def _populate(self, scheduler=None):
+		def _populate(self):
 			owners_cache = vardbapi._owners_cache(self._vardb)
 			cached_hashes = set()
 			base_names = self._vardb._aux_cache["owners"]["base_names"]
@@ -914,10 +916,6 @@ class vardbapi(dbapi):
 
 			# Cache any missing packages.
 			for cpv in uncached_pkgs:
-
-				if scheduler is not None:
-					scheduler.scheduleYield()
-
 				owners_cache.add(cpv)
 
 			# Delete any stale cache.
@@ -931,12 +929,12 @@ class vardbapi(dbapi):
 
 			return owners_cache
 
-		def get_owners(self, path_iter, scheduler=None):
+		def get_owners(self, path_iter):
 			"""
 			@return the owners as a dblink -> set(files) mapping.
 			"""
 			owners = {}
-			for owner, f in self.iter_owners(path_iter, scheduler=scheduler):
+			for owner, f in self.iter_owners(path_iter):
 				owned_files = owners.get(owner)
 				if owned_files is None:
 					owned_files = set()
@@ -956,7 +954,7 @@ class vardbapi(dbapi):
 					owner_set.add(pkg_dblink)
 			return file_owners
 
-		def iter_owners(self, path_iter, scheduler=None):
+		def iter_owners(self, path_iter):
 			"""
 			Iterate over tuples of (dblink, path). In order to avoid
 			consuming too many resources for too much time, resources
@@ -968,7 +966,7 @@ class vardbapi(dbapi):
 
 			if not isinstance(path_iter, list):
 				path_iter = list(path_iter)
-			owners_cache = self._populate(scheduler=scheduler)
+			owners_cache = self._populate()
 			vardb = self._vardb
 			root = vardb._eroot
 			hash_pkg = owners_cache._hash_pkg
@@ -1027,23 +1025,19 @@ class vardbapi(dbapi):
 								if dblink(cpv).isowner(path):
 									owners.append((cpv, path))
 
-							if scheduler is not None:
-								scheduler.scheduleYield()
-
 					except StopIteration:
 						path_iter.append(path)
 						del owners[:]
 						dblink_cache.clear()
 						gc.collect()
-						for x in self._iter_owners_low_mem(path_iter,
-							scheduler=scheduler):
+						for x in self._iter_owners_low_mem(path_iter):
 							yield x
 						return
 					else:
 						for cpv, p in owners:
 							yield (dblink(cpv), p)
 
-		def _iter_owners_low_mem(self, path_list, scheduler=None):
+		def _iter_owners_low_mem(self, path_list):
 			"""
 			This implemention will make a short-lived dblink instance (and
 			parse CONTENTS) for every single installed package. This is
@@ -1065,10 +1059,6 @@ class vardbapi(dbapi):
 
 			root = self._vardb._eroot
 			for cpv in self._vardb.cpv_all():
-
-				if scheduler is not None:
-					scheduler.scheduleYield()
-
 				dblnk =  self._vardb._dblink(cpv)
 
 				for path, name, is_basename in path_info_list:
@@ -1209,12 +1199,8 @@ class dblink(object):
 		r')$'
 	)
 
-	# When looping over files for merge/unmerge, temporarily yield to the
-	# scheduler each time this many files are processed.
-	_file_merge_yield_interval = 20
-
 	def __init__(self, cat, pkg, myroot=None, settings=None, treetype=None,
-		vartree=None, blockers=None, scheduler=None):
+		vartree=None, blockers=None, scheduler=None, pipe=None):
 		"""
 		Creates a DBlink object for a given CPV.
 		The given CPV may not be present in the database already.
@@ -1273,6 +1259,7 @@ class dblink(object):
 		self._md5_merge_map = {}
 		self._hash_key = (self.myroot, self.mycpv)
 		self._protect_obj = None
+		self._pipe = pipe
 
 	def __hash__(self):
 		return hash(self._hash_key)
@@ -1499,6 +1486,21 @@ class dblink(object):
 				" method is now unused.",
 				DeprecationWarning, stacklevel=2)
 
+		background = False
+		if self._scheduler is None:
+			# We create a scheduler instance and use it to
+			# log unmerge output separately from merge output.
+			self._scheduler = PollScheduler().sched_iface
+		if self.settings.get("PORTAGE_BACKGROUND") == "subprocess":
+			if self.settings.get("PORTAGE_BACKGROUND_UNMERGE") == "1":
+				self.settings["PORTAGE_BACKGROUND"] = "1"
+				self.settings.backup_changes("PORTAGE_BACKGROUND")
+				background = True
+			else:
+				self.settings.pop("PORTAGE_BACKGROUND", None)
+		elif self.settings.get("PORTAGE_BACKGROUND") == "1":
+			background = True
+
 		self.vartree.dbapi._bump_mtime(self.mycpv)
 		showMessage = self._display_merge
 		if self.vartree.dbapi._categories is not None:
@@ -1516,7 +1518,7 @@ class dblink(object):
 					continue
 				others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
 					settings=self.settings, vartree=self.vartree,
-					treetype="vartree"))
+					treetype="vartree", pipe=self._pipe))
 
 			retval = self._security_check([self] + others_in_slot)
 			if retval:
@@ -1551,28 +1553,31 @@ class dblink(object):
 				showMessage(_("!!! FAILED prerm: %s\n") % \
 					os.path.join(self.dbdir, "EAPI"),
 					level=logging.ERROR, noiselevel=-1)
-				showMessage("%s\n" % (e,),
+				showMessage(_unicode_decode("%s\n") % (e,),
 					level=logging.ERROR, noiselevel=-1)
 				myebuildpath = None
 
 		builddir_lock = None
+		log_path = None
 		scheduler = self._scheduler
 		retval = os.EX_OK
 		try:
 			if myebuildpath:
+				# Only create builddir_lock if doebuild_environment
+				# succeeded, since that's needed to initialize
+				# PORTAGE_BUILDDIR.
 				builddir_lock = EbuildBuildDir(
-					scheduler=(scheduler or PollScheduler().sched_iface),
+					scheduler=scheduler,
 					settings=self.settings)
 				builddir_lock.lock()
-
 				prepare_build_dirs(settings=self.settings, cleanup=True)
 				log_path = self.settings.get("PORTAGE_LOG_FILE")
 
-				if scheduler is None:
-					retval = _spawn_phase('prerm', self.settings)
-				else:
-					retval = scheduler.dblinkEbuildPhase(
-						self, self.vartree.dbapi, myebuildpath, ebuild_phase)
+				phase = EbuildPhase(background=background,
+					phase=ebuild_phase, scheduler=scheduler,
+					settings=self.settings)
+				phase.start()
+				retval = phase.wait()
 
 				# XXX: Decide how to handle failures here.
 				if retval != os.EX_OK:
@@ -1594,11 +1599,11 @@ class dblink(object):
 
 			if myebuildpath:
 				ebuild_phase = "postrm"
-				if scheduler is None:
-					retval = _spawn_phase(ebuild_phase, self.settings)
-				else:
-					retval = scheduler.dblinkEbuildPhase(
-						self, self.vartree.dbapi, myebuildpath, ebuild_phase)
+				phase = EbuildPhase(background=background,
+					phase=ebuild_phase, scheduler=scheduler,
+					settings=self.settings)
+				phase.start()
+				retval = phase.wait()
 
 				# XXX: Decide how to handle failures here.
 				if retval != os.EX_OK:
@@ -1680,11 +1685,9 @@ class dblink(object):
 
 							self._eerror(ebuild_phase, msg_lines)
 
-						# process logs created during pre/postrm
-						elog_process(self.mycpv, self.settings,
-							phasefilter=('prerm', 'postrm'))
+					self._elog_process(phasefilter=("prerm", "postrm"))
 
-					if retval == os.EX_OK:
+					if retval == os.EX_OK and builddir_lock is not None:
 						# myebuildpath might be None, so ensure
 						# it has a sane value for the clean phase,
 						# even though it won't really be sourced.
@@ -1692,12 +1695,11 @@ class dblink(object):
 							self.pkg + ".ebuild")
 						doebuild_environment(myebuildpath, "cleanrm",
 							settings=self.settings, db=self.vartree.dbapi)
-						if scheduler is None:
-							_spawn_phase("cleanrm", self.settings)
-						else:
-							scheduler.dblinkEbuildPhase(
-								self, self.vartree.dbapi,
-								myebuildpath, "cleanrm")
+						phase = EbuildPhase(background=background,
+							phase="cleanrm", scheduler=scheduler,
+							settings=self.settings)
+						phase.start()
+						retval = phase.wait()
 				finally:
 					if builddir_lock is not None:
 						builddir_lock.unlock()
@@ -1740,11 +1742,21 @@ class dblink(object):
 	def _display_merge(self, msg, level=0, noiselevel=0):
 		if not self._verbose and noiselevel >= 0 and level < logging.WARN:
 			return
-		if self._scheduler is not None:
-			self._scheduler.dblinkDisplayMerge(self, msg,
-				level=level, noiselevel=noiselevel)
-			return
-		writemsg_level(msg, level=level, noiselevel=noiselevel)
+		if self._scheduler is None:
+			writemsg_level(msg, level=level, noiselevel=noiselevel)
+		else:
+			log_path = None
+			if self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
+				log_path = self.settings.get("PORTAGE_LOG_FILE")
+			background = self.settings.get("PORTAGE_BACKGROUND") == "1"
+
+			if background and log_path is None:
+				if level >= logging.WARN:
+					writemsg_level(msg, level=level, noiselevel=noiselevel)
+			else:
+				self._scheduler.output(msg,
+					log_path=log_path, background=background,
+					level=level, noiselevel=noiselevel)
 
 	def _unmerge_pkgfiles(self, pkgfiles, others_in_slot):
 		"""
@@ -1762,7 +1774,6 @@ class dblink(object):
 		os = _os_merge
 		perf_md5 = perform_md5
 		showMessage = self._display_merge
-		scheduler = self._scheduler
 
 		if not pkgfiles:
 			showMessage(_("No package files given... Grabbing a set.\n"))
@@ -1778,7 +1789,7 @@ class dblink(object):
 					continue
 				others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
 					settings=self.settings,
-					vartree=self.vartree, treetype="vartree"))
+					vartree=self.vartree, treetype="vartree", pipe=self._pipe))
 
 		dest_root = self._eroot
 		dest_root_len = len(dest_root) - 1
@@ -1863,10 +1874,6 @@ class dblink(object):
 			eroot_split_len = len(self.settings["EROOT"].split(os.sep)) - 1
 
 			for i, objkey in enumerate(mykeys):
-
-				if scheduler is not None and \
-					0 == i % self._file_merge_yield_interval:
-					scheduler.scheduleYield()
 
 				obj = normalize_path(objkey)
 				if os is _os_merge:
@@ -2602,7 +2609,6 @@ class dblink(object):
 			plib_collisions = {}
 
 			showMessage = self._display_merge
-			scheduler = self._scheduler
 			stopmerge = False
 			collisions = []
 			destroot = self.settings['ROOT']
@@ -2611,10 +2617,6 @@ class dblink(object):
 			for i, f in enumerate(mycontents):
 				if i % 1000 == 0 and i != 0:
 					showMessage(_("%d files checked ...\n") % i)
-
-				if scheduler is not None and \
-					0 == i % self._file_merge_yield_interval:
-					scheduler.scheduleYield()
 
 				dest_path = normalize_path(
 					os.path.join(destroot, f.lstrip(os.path.sep)))
@@ -2724,7 +2726,6 @@ class dblink(object):
 		os = _os_merge
 
 		showMessage = self._display_merge
-		scheduler = self._scheduler
 
 		file_paths = set()
 		for dblnk in installed_instances:
@@ -2732,10 +2733,6 @@ class dblink(object):
 		inode_map = {}
 		real_paths = set()
 		for i, path in enumerate(file_paths):
-
-			if scheduler is not None and \
-				0 == i % self._file_merge_yield_interval:
-				scheduler.scheduleYield()
 
 			if os is _os_merge:
 				try:
@@ -2796,36 +2793,56 @@ class dblink(object):
 		return 1
 
 	def _eqawarn(self, phase, lines):
-		from portage.elog.messages import eqawarn as _eqawarn
-		if self._scheduler is None:
-			for l in lines:
-				_eqawarn(l, phase=phase, key=self.settings.mycpv)
-		else:
-			self._scheduler.dblinkElog(self,
-				phase, _eqawarn, lines)
+		self._elog("eqawarn", phase, lines)
 
 	def _eerror(self, phase, lines):
-		from portage.elog.messages import eerror as _eerror
+		self._elog("eerror", phase, lines)
+
+	def _elog(self, funcname, phase, lines):
+		func = getattr(portage.elog.messages, funcname)
 		if self._scheduler is None:
 			for l in lines:
-				_eerror(l, phase=phase, key=self.settings.mycpv)
+				func(l, phase=phase, key=self.mycpv)
 		else:
-			self._scheduler.dblinkElog(self,
-				phase, _eerror, lines)
+			background = self.settings.get("PORTAGE_BACKGROUND") == "1"
+			log_path = None
+			if self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
+				log_path = self.settings.get("PORTAGE_LOG_FILE")
+			out = portage.StringIO()
+			for line in lines:
+				func(line, phase=phase, key=self.mycpv, out=out)
+			msg = out.getvalue()
+			self._scheduler.output(msg,
+				background=background, log_path=log_path)
 
-	def _elog_subprocess(self, funcname, phase, lines):
-		"""
-		Subprocesses call this in order to create elog messages in
-		$T, for collection by the main process.
-		"""
-		cmd = "source %s/isolated-functions.sh ; " % \
-			portage._shell_quote(self.settings["PORTAGE_BIN_PATH"])
-		for line in lines:
-			cmd += "%s %s ; " % (funcname, portage._shell_quote(line))
-		env = self.settings.environ()
-		env['EBUILD_PHASE'] = phase
-		subprocess.call([portage.const.BASH_BINARY, "-c", cmd],
-			env=env)
+	def _elog_process(self, phasefilter=None):
+		cpv = self.mycpv
+		if self._pipe is None:
+			elog_process(cpv, self.settings, phasefilter=phasefilter)
+		else:
+			logdir = os.path.join(self.settings["T"], "logging")
+			ebuild_logentries = collect_ebuild_messages(logdir)
+			py_logentries = collect_messages(key=cpv).get(cpv, {})
+			logentries = _merge_logentries(py_logentries, ebuild_logentries)
+			funcnames = {
+				"INFO": "einfo",
+				"LOG": "elog",
+				"WARN": "ewarn",
+				"QA": "eqawarn",
+				"ERROR": "eerror"
+			}
+			str_buffer = []
+			for phase, messages in logentries.items():
+				for key, lines in messages:
+					funcname = funcnames[key]
+					if isinstance(lines, basestring):
+						lines = [lines]
+					for line in lines:
+						fields = (funcname, phase, cpv, line.rstrip('\n'))
+						str_buffer.append(' '.join(fields))
+						str_buffer.append('\n')
+			if str_buffer:
+				os.write(self._pipe, _unicode_encode(''.join(str_buffer)))
 
 	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
@@ -2840,7 +2857,6 @@ class dblink(object):
 		unmerges old version (if required)
 		calls doebuild(mydo=pkg_postinst)
 		calls env_update
-		calls elog_process
 		
 		@param srcroot: Typically this is ${D}
 		@type srcroot: String (Path)
@@ -2950,7 +2966,7 @@ class dblink(object):
 			others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
 				settings=config(clone=self.settings),
 				vartree=self.vartree, treetype="vartree",
-				scheduler=self._scheduler))
+				scheduler=self._scheduler, pipe=self._pipe))
 
 		retval = self._security_check(others_in_slot)
 		if retval:
@@ -3096,11 +3112,7 @@ class dblink(object):
 				return 1
 
 		# check for package collisions
-		blockers = None
-		if self._blockers is not None:
-			# This is only supposed to be called when
-			# the vdb is locked, like it is here.
-			blockers = self._blockers()
+		blockers = self._blockers
 		if blockers is None:
 			blockers = []
 		collisions, plib_collisions = \
@@ -3175,8 +3187,7 @@ class dblink(object):
 					# get_owners is slow for large numbers of files, so
 					# don't look them all up.
 					collisions = collisions[:20]
-				owners = self.vartree.dbapi._owners.get_owners(collisions,
-					scheduler=self._scheduler)
+				owners = self.vartree.dbapi._owners.get_owners(collisions)
 				self.vartree.dbapi.flush_cache()
 
 				for pkg, owned_files in owners.items():
@@ -3271,16 +3282,8 @@ class dblink(object):
 				cfgfiledict["IGNORE"] = 1
 				break
 
-		merge_task = MergeProcess(
-			background=(self.settings.get('PORTAGE_BACKGROUND') == '1'),
-			cfgfiledict=cfgfiledict, conf_mem_file=conf_mem_file, dblink=self,
-			destroot=destroot,
-			logfile=self.settings.get('PORTAGE_LOG_FILE'),
-			scheduler=(scheduler or PollScheduler().sched_iface),
-			srcroot=srcroot)
-
-		merge_task.start()
-		rval = merge_task.wait()
+		rval = self._merge_contents(srcroot, destroot, cfgfiledict,
+			conf_mem_file)
 		if rval != os.EX_OK:
 			return rval
 
@@ -3467,7 +3470,7 @@ class dblink(object):
 
 		return backup_p
 
-	def _merge_process(self, srcroot, destroot, cfgfiledict, conf_mem_file):
+	def _merge_contents(self, srcroot, destroot, cfgfiledict, conf_mem_file):
 
 		cfgfiledict_orig = cfgfiledict.copy()
 
@@ -3696,7 +3699,7 @@ class dblink(object):
 						msg.append(_("This file will be renamed to a different name:"))
 						msg.append("  '%s'" % backup_dest)
 						msg.append("")
-						self._elog_subprocess("eerror", "preinst", msg)
+						self._eerror("preinst", msg)
 						if movefile(mydest, backup_dest,
 							mysettings=self.settings,
 							encoding=_encodings['merge']) is None:
@@ -3774,7 +3777,7 @@ class dblink(object):
 						msg.append(_("This file will be merged with a different name:"))
 						msg.append("  '%s'" % newdest)
 						msg.append("")
-						self._elog_subprocess("eerror", "preinst", msg)
+						self._eerror("preinst", msg)
 						mydest = newdest
 
 					elif stat.S_ISREG(mydmode) or (stat.S_ISLNK(mydmode) and os.path.exists(mydest) and stat.S_ISREG(os.stat(mydest)[stat.ST_MODE])):
@@ -3858,65 +3861,6 @@ class dblink(object):
 	def merge(self, mergeroot, inforoot, myroot=None, myebuild=None, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
 		"""
-		If portage is reinstalling itself, create temporary
-		copies of PORTAGE_BIN_PATH and PORTAGE_PYM_PATH in order
-		to avoid relying on the new versions which may be
-		incompatible. Register an atexit hook to clean up the
-		temporary directories. Pre-load elog modules here since
-		we won't be able to later if they get unmerged (happens
-		when namespace changes).
-
-		@param myroot: ignored, self._eroot is used instead
-		"""
-		myroot = None
-		if self.vartree.dbapi._categories is not None:
-			self.vartree.dbapi._categories = None
-		reinstall_self = False
-		if self.myroot == "/" and \
-			match_from_list(PORTAGE_PACKAGE_ATOM, [self.mycpv]):
-			inherited = frozenset(self.settings.get('INHERITED', '').split())
-			if not self.vartree.dbapi.cpv_exists(self.mycpv) or \
-				'9999' in self.mycpv or \
-				'git' in inherited or \
-				'git-2' in inherited:
-				reinstall_self = True
-
-		if reinstall_self:
-			# Load lazily referenced portage submodules into memory,
-			# so imports won't fail during portage upgrade/downgrade.
-			portage.proxy.lazyimport._preload_portage_submodules()
-			settings = self.settings
-
-			# Make the temp directory inside $PORTAGE_TMPDIR/portage, since
-			# it's common for /tmp and /var/tmp to be mounted with the
-			# "noexec" option (see bug #346899).
-			build_prefix = os.path.join(settings["PORTAGE_TMPDIR"], "portage")
-			ensure_dirs(build_prefix)
-			base_path_tmp = tempfile.mkdtemp(
-				"", "._portage_reinstall_.", build_prefix)
-			portage.process.atexit_register(shutil.rmtree, base_path_tmp)
-			dir_perms = 0o755
-			for subdir in "bin", "pym":
-				var_name = "PORTAGE_%s_PATH" % subdir.upper()
-				var_orig = settings[var_name]
-				var_new = os.path.join(base_path_tmp, subdir)
-				settings[var_name] = var_new
-				settings.backup_changes(var_name)
-				shutil.copytree(var_orig, var_new, symlinks=True)
-				os.chmod(var_new, dir_perms)
-			portage._bin_path = settings['PORTAGE_BIN_PATH']
-			portage._pym_path = settings['PORTAGE_PYM_PATH']
-			os.chmod(base_path_tmp, dir_perms)
-			# This serves so pre-load the modules.
-			_preload_elog_modules(self.settings)
-
-		return self._merge(mergeroot, inforoot,
-				myebuild=myebuild, cleanup=cleanup,
-				mydbapi=mydbapi, prev_mtimes=prev_mtimes)
-
-	def _merge(self, mergeroot, inforoot, myroot=None, myebuild=None, cleanup=0,
-		mydbapi=None, prev_mtimes=None):
-		"""
 		@param myroot: ignored, self._eroot is used instead
 		"""
 		myroot = None
@@ -3958,7 +3902,7 @@ class dblink(object):
 					self._scheduler.dblinkEbuildPhase(
 						self, mydbapi, myebuild, phase)
 
-				elog_process(self.mycpv, self.settings)
+				self._elog_process()
 
 				if 'noclean' not in self.settings.features and \
 					(retval == os.EX_OK or \
@@ -4058,10 +4002,17 @@ def merge(mycat, mypkg, pkgloc, infloc,
 		writemsg(_("Permission denied: access('%s', W_OK)\n") % settings['EROOT'],
 			noiselevel=-1)
 		return errno.EACCES
-	mylink = dblink(mycat, mypkg, settings=settings, treetype=mytree,
-		vartree=vartree, blockers=blockers, scheduler=scheduler)
-	return mylink.merge(pkgloc, infloc, myebuild=myebuild,
-		mydbapi=mydbapi, prev_mtimes=prev_mtimes)
+	background = (settings.get('PORTAGE_BACKGROUND') == '1')
+	merge_task = MergeProcess(
+		dblink=dblink, mycat=mycat, mypkg=mypkg, settings=settings,
+		treetype=mytree, vartree=vartree,
+		scheduler=(scheduler or PollScheduler().sched_iface),
+		background=background, blockers=blockers, pkgloc=pkgloc,
+		infloc=infloc, myebuild=myebuild, mydbapi=mydbapi,
+		prev_mtimes=prev_mtimes, logfile=settings.get('PORTAGE_LOG_FILE'))
+	merge_task.start()
+	retcode = merge_task.wait()
+	return retcode
 
 def unmerge(cat, pkg, myroot=None, settings=None,
 	mytrimworld=None, vartree=None,

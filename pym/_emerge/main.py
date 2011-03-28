@@ -51,7 +51,7 @@ if sys.hexversion >= 0x3000000:
 	long = int
 
 options=[
-"--ask",          "--alphabetical",
+"--alphabetical",
 "--ask-enter-invalid",
 "--buildpkgonly",
 "--changed-use",
@@ -78,7 +78,6 @@ options=[
 
 shortmapping={
 "1":"--oneshot",
-"a":"--ask",
 "B":"--buildpkgonly",
 "c":"--depclean",
 "C":"--unmerge",
@@ -423,6 +422,7 @@ def insert_optional_args(args):
 	new_args = []
 
 	default_arg_opts = {
+		'--ask'                  : y_or_n,
 		'--autounmask'           : y_or_n,
 		'--buildpkg'             : y_or_n,
 		'--complete-graph'       : y_or_n,
@@ -457,6 +457,7 @@ def insert_optional_args(args):
 	# Don't make things like "-kn" expand to "-k n"
 	# since existence of -n makes it too ambiguous.
 	short_arg_opts_n = {
+		'a' : y_or_n,
 		'b' : y_or_n,
 		'g' : y_or_n,
 		'G' : y_or_n,
@@ -560,6 +561,13 @@ def parse_opts(tmpcmdline, silent=False):
 	true_y_or_n = ("True", "y", "n")
 	true_y = ("True", "y")
 	argument_options = {
+
+		"--ask": {
+			"shortopt" : "-a",
+			"help"    : "prompt before performing any actions",
+			"type"    : "choice",
+			"choices" : true_y_or_n
+		},
 
 		"--autounmask": {
 			"help"    : "automatically unmask packages",
@@ -807,6 +815,11 @@ def parse_opts(tmpcmdline, silent=False):
 	tmpcmdline = insert_optional_args(tmpcmdline)
 
 	myoptions, myargs = parser.parse_args(args=tmpcmdline)
+
+	if myoptions.ask in true_y:
+		myoptions.ask = True
+	else:
+		myoptions.ask = None
 
 	if myoptions.autounmask in true_y:
 		myoptions.autounmask = True

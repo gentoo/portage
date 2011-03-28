@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
@@ -22,7 +22,8 @@ class MiscFunctionsProcess(AbstractEbuildProcess):
 			os.path.basename(portage.const.MISC_SH_BINARY))
 
 		self.args = [portage._shell_quote(misc_sh_binary)] + self.commands
-		if self.logfile is None:
+		if self.logfile is None and \
+			self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
 			self.logfile = settings.get("PORTAGE_LOG_FILE")
 
 		AbstractEbuildProcess._start(self)

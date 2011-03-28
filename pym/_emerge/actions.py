@@ -2671,6 +2671,13 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 	sched._background = sched._background_mode()
 	sched._status_display.quiet = True
 
+	if sched._background:
+		sched.settings.unlock()
+		sched.settings["PORTAGE_BACKGROUND"] = "1"
+		sched.settings.backup_changes("PORTAGE_BACKGROUND")
+		sched.settings.lock()
+		sched.pkgsettings[root] = portage.config(clone=sched.settings)
+
 	if action in ('clean', 'unmerge') or \
 		(action == 'prune' and "--nodeps" in opts):
 		# When given a list of atoms, unmerge them in the order given.

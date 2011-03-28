@@ -358,7 +358,7 @@ class Binpkg(CompositeTask):
 		portage.elog.elog_process(self.pkg.cpv, self.settings)
 		self._build_dir.unlock()
 
-	def install(self):
+	def create_install_task(self):
 
 		# This gives bashrc users an opportunity to do various things
 		# such as remove binary packages after they're installed.
@@ -371,19 +371,17 @@ class Binpkg(CompositeTask):
 			pkg=self.pkg, pkg_count=self.pkg_count,
 			pkg_path=self._pkg_path, scheduler=self.scheduler,
 			settings=settings, tree=self._tree, world_atom=self.world_atom)
+		task = merge.create_task()
+		task.addExitListener(self._install_exit)
+		return task
 
-		try:
-			retval = merge.execute()
-		finally:
-			settings.pop("PORTAGE_BINPKG_FILE", None)
-			self._unlock_builddir()
-
-		if retval == os.EX_OK and \
+	def _install_exit(self, task):
+		self.settings.pop("PORTAGE_BINPKG_FILE", None)
+		self._unlock_builddir()
+		if task.returncode == os.EX_OK and \
 			'binpkg-logs' not in self.settings.features and \
 			self.settings.get("PORTAGE_LOG_FILE"):
 			try:
 				os.unlink(self.settings["PORTAGE_LOG_FILE"])
 			except OSError:
 				pass
-		return retval
-

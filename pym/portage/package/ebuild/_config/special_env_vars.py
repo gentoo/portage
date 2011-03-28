@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -8,12 +8,16 @@ __all__ = (
 
 import re
 
+# Blacklisted variables are internal variables that are never allowed
+# to enter the config instance from the external environment or
+# configuration files.
 env_blacklist = frozenset((
 	"A", "AA", "CATEGORY", "DEPEND", "DESCRIPTION", "EAPI",
 	"EBUILD_PHASE", "ED", "EMERGE_FROM", "EPREFIX", "EROOT",
 	"HOMEPAGE", "INHERITED", "IUSE",
 	"KEYWORDS", "LICENSE", "MERGE_TYPE",
-	"PDEPEND", "PF", "PKGUSE", "PORTAGE_BUILDIR_LOCKED",
+	"PDEPEND", "PF", "PKGUSE", "PORTAGE_BACKGROUND",
+	"PORTAGE_BACKGROUND_UNMERGE", "PORTAGE_BUILDIR_LOCKED",
 	"PORTAGE_BUILT_USE", "PORTAGE_CONFIGROOT", "PORTAGE_IUSE",
 	"PORTAGE_NONFATAL", "PORTAGE_REPO_NAME", "PORTAGE_SANDBOX_COMPAT_LEVEL",
 	"PORTAGE_USE", "PROPERTIES", "PROVIDE", "RDEPEND", "RESTRICT",
@@ -145,7 +149,7 @@ environ_filter += [
 	"FETCHCOMMAND_HTTP", "FETCHCOMMAND_HTTPS",
 	"FETCHCOMMAND_RSYNC", "FETCHCOMMAND_SFTP",
 	"GENTOO_MIRRORS", "NOCONFMEM", "O",
-	"PORTAGE_BACKGROUND",
+	"PORTAGE_BACKGROUND", "PORTAGE_BACKGROUND_UNMERGE",
 	"PORTAGE_BINHOST_CHUNKSIZE", "PORTAGE_BUILDIR_LOCKED", "PORTAGE_CALLER",
 	"PORTAGE_ELOG_CLASSES",
 	"PORTAGE_ELOG_MAILFROM", "PORTAGE_ELOG_MAILSUBJECT",

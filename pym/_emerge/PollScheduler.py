@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import gzip
+import errno
 import logging
 import select
 import time
@@ -249,13 +250,17 @@ class PollScheduler(object):
 			# delivered to a future handler that is using a reallocated
 			# file descriptor of the same numeric value (causing
 			# extremely confusing bugs).
-			remove = set()
+			remaining_events = []
+			discarded_events = False
 			for event in self._poll_event_queue:
 				if event[0] == f:
-					remove.add(event)
-			if remove:
-				self._poll_event_queue[:] = [event for event in \
-					self._poll_event_queue if event not in remove]
+					discarded_events = True
+				else:
+					remaining_events.append(event)
+
+			if discarded_events:
+				self._poll_event_queue[:] = remaining_events
+
 		del self._poll_event_handlers[f]
 		del self._poll_event_handler_ids[reg_id]
 
@@ -318,22 +323,32 @@ class PollScheduler(object):
 			# (like for parallel-fetch), then use the global value.
 			background = self._background
 
+		msg_shown = False
 		if not background:
 			writemsg_level(msg, level=level, noiselevel=noiselevel)
+			msg_shown = True
 
 		if log_path is not None:
-			f = open(_unicode_encode(log_path,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='ab')
+			try:
+				f = open(_unicode_encode(log_path,
+					encoding=_encodings['fs'], errors='strict'),
+					mode='ab')
+			except IOError as e:
+				if e.errno not in (errno.ENOENT, errno.ESTALE):
+					raise
+				if not msg_shown:
+					writemsg_level(msg, level=level, noiselevel=noiselevel)
+			else:
 
-			if log_path.endswith('.gz'):
-				# NOTE: The empty filename argument prevents us from triggering
-				# a bug in python3 which causes GzipFile to raise AttributeError
-				# if fileobj.name is bytes instead of unicode.
-				f =  gzip.GzipFile(filename='', mode='ab', fileobj=f)
+				if log_path.endswith('.gz'):
+					# NOTE: The empty filename argument prevents us from
+					# triggering a bug in python3 which causes GzipFile
+					# to raise AttributeError if fileobj.name is bytes
+					# instead of unicode.
+					f =  gzip.GzipFile(filename='', mode='ab', fileobj=f)
 
-			f.write(_unicode_encode(msg))
-			f.close()
+				f.write(_unicode_encode(msg))
+				f.close()
 
 _can_poll_device = None
 
