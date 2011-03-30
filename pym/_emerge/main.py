@@ -114,10 +114,12 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 
 		if not regen_infodirs:
 			portage.writemsg_stdout("\n")
-			out.einfo("GNU info directory index is up-to-date.")
+			if portage.util.noiselimit >= 0:
+				out.einfo("GNU info directory index is up-to-date.")
 		else:
 			portage.writemsg_stdout("\n")
-			out.einfo("Regenerating GNU info directory index...")
+			if portage.util.noiselimit >= 0:
+				out.einfo("Regenerating GNU info directory index...")
 
 			dir_extensions = ("", ".gz", ".bz2")
 			icount=0
@@ -204,7 +206,7 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 					(icount, badcount))
 				writemsg_level(errmsg, level=logging.ERROR, noiselevel=-1)
 			else:
-				if icount > 0:
+				if icount > 0 and portage.util.noiselimit >= 0:
 					out.einfo("Processed %d info files." % (icount,))
 
 def display_preserved_libs(vardbapi, myopts):
