@@ -644,8 +644,8 @@ class Display(object):
 			pkg_info.fetch_symbol = red("F")
 			if pkg_info.ordered:
 				self.counters.restrict_fetch += 1
-			if self.portdb.fetch_check(pkg.cpv, pkg_info.use,
-					myrepo=pkg.repo):
+			if not self.portdb.getfetchsizes(pkg.cpv,
+				useflags=pkg_info.use, myrepo=pkg.repo):
 				pkg_info.fetch_symbol = green("f")
 				if pkg_info.ordered:
 					self.counters.restrict_fetch_satisfied += 1
