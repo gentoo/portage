@@ -356,7 +356,7 @@ def display(depgraph, mylist, favorites=[], verbosity=None):
 				fetch = red("F")
 				if ordered:
 					counters.restrict_fetch += 1
-				if portdb.fetch_check(pkg_key, pkg_use):
+				if not portdb.getfetchsizes(pkg.cpv, useflags=pkg_use):
 					fetch = green("f")
 					if ordered:
 						counters.restrict_fetch_satisfied += 1
