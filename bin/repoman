@@ -722,7 +722,7 @@ for path in portdb.porttrees:
 			elif arch[2] not in valid_profile_types:
 				err("invalid profile type: \"" + bad(arch[2]) + "\" in " + \
 					desc_path + " line %d" % (i+1, ))
-			profile_desc = ProfileDesc(arch[0], arch[2], arch[1], portdir)
+			profile_desc = ProfileDesc(arch[0], arch[2], arch[1], path)
 			if not os.path.isdir(profile_desc.abs_path):
 				logging.error(
 					"Invalid %s profile (%s) for arch %s in %s line %d",
