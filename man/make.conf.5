@@ -304,6 +304,10 @@ enabled for more than a short period of time.
 Modifies .la files to not include other .la files and some other
 fixes (order of flags, duplicated entries, ...)
 .TP
+.B force\-mirror
+Only fetch files from configured mirrors, ignoring \fBSRC_URI\fR,
+except when \fImirror\fR is in the \fBebuild\fR(5) \fBRESTRICT\fR variable.
+.TP
 .B lmirror
 When \fImirror\fR is enabled in \fBFEATURES\fR, fetch files even
 when \fImirror\fR is also in the \fBebuild\fR(5) \fBRESTRICT\fR variable.
