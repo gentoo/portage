@@ -1373,6 +1373,10 @@ class Scheduler(PollScheduler):
 	def _system_merge_started(self, merge):
 		"""
 		Add any unsatisfied runtime deps to self._unsatisfied_system_deps.
+		In general, this keeps track of installed system packages with
+		unsatisfied RDEPEND or PDEPEND (circular dependencies). It can be
+		a fragile situation, so we don't execute any unrelated builds until
+		the circular dependencies are built and intstalled.
 		"""
 		graph = self._digraph
 		if graph is None:
@@ -1552,7 +1556,9 @@ class Scheduler(PollScheduler):
 
 	def _choose_pkg(self):
 		"""
-		Choose a task that has all it's dependencies satisfied.
+		Choose a task that has all its dependencies satisfied. This is used
+		for parallel build scheduling, and ensures that we don't build
+		anything with deep dependencies that have yet to be merged.
 		"""
 
 		if self._choose_pkg_return_early:
