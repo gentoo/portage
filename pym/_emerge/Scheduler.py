@@ -1376,7 +1376,7 @@ class Scheduler(PollScheduler):
 		In general, this keeps track of installed system packages with
 		unsatisfied RDEPEND or PDEPEND (circular dependencies). It can be
 		a fragile situation, so we don't execute any unrelated builds until
-		the circular dependencies are built and intstalled.
+		the circular dependencies are built and installed.
 		"""
 		graph = self._digraph
 		if graph is None:
