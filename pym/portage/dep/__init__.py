@@ -2310,6 +2310,7 @@ def extract_affecting_use(mystr, atom):
 	@rtype: Tuple of two lists of strings
 	@return: List of use flags that need to be enabled, List of use flag that need to be disabled
 	"""
+	useflag_re = _get_useflag_re(None)
 	mysplit = mystr.split()
 	level = 0
 	stack = [[]]
@@ -2322,9 +2323,10 @@ def extract_affecting_use(mystr, atom):
 		else:
 			flag = conditional[:-1]
 
-		if not flag:
+		if useflag_re.match(flag) is None:
 			raise InvalidDependString(
-				_("malformed syntax: '%s'") % mystr)
+				_("invalid use flag '%s' in conditional '%s'") % \
+				(flag, conditional))
 
 		return flag
 
@@ -2397,7 +2399,7 @@ def extract_affecting_use(mystr, atom):
 			need_bracket = True
 			stack[level].append(token)
 		else:
-			if need_bracket or "(" in token or ")" in token or "|" in token:
+			if need_bracket:
 				raise InvalidDependString(
 					_("malformed syntax: '%s'") % mystr)
 
