@@ -55,7 +55,13 @@ _doins() {
 	local mysrc="$1" mydir="$2" cleanup="" rval
 
 	if [ -L "$mysrc" ] ; then
-		if [ $PRESERVE_SYMLINKS = y ] ; then
+		# Our fake $DISTDIR contains symlinks that should
+		# not be reproduced inside $D. In order to ensure
+		# that things like dodoc "$DISTDIR"/foo.pdf work
+		# as expected, we dereference symlinked files that
+		# are referenced by absolute paths.
+		if [ $PRESERVE_SYMLINKS = y ] && \
+			! [[ -f "$mysrc" && $(readlink "$mysrc") == /* ]] ; then
 			rm -rf "$D$INSDESTTREE/$mydir/${mysrc##*/}" || return $?
 			cp -P "$mysrc" "$D$INSDESTTREE/$mydir/${mysrc##*/}"
 			return $?
