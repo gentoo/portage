@@ -323,9 +323,9 @@ class Scheduler(PollScheduler):
 			if graph_config is None:
 				fake_vartree = FakeVartree(self.trees[root]["root_config"],
 					pkg_cache=self._pkg_cache)
+				fake_vartree.sync()
 			else:
 				fake_vartree = graph_config.trees[root]['vartree']
-			fake_vartree.sync()
 			self._blocker_db[root] = BlockerDB(fake_vartree)
 
 	def _destroy_graph(self):
