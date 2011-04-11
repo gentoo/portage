@@ -36,6 +36,9 @@ class TestExtractAffectingUSE(TestCase):
 			("a? ( A )", "B", []),
 
 			("a? ( || ( A B ) )", "B", ["a"]),
+
+			# test USE dep defaults for bug #363073
+			("a? ( >=dev-lang/php-5.2[pcre(+)] )", ">=dev-lang/php-5.2[pcre(+)]", ["a"]),
 		)
 
 		test_cases_xfail = (
