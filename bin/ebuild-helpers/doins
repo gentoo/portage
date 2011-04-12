@@ -59,9 +59,10 @@ _doins() {
 		# not be reproduced inside $D. In order to ensure
 		# that things like dodoc "$DISTDIR"/foo.pdf work
 		# as expected, we dereference symlinked files that
-		# are referenced by absolute paths.
+		# refer to absolute paths inside
+		# $PORTAGE_ACTUAL_DISTDIR/.
 		if [ $PRESERVE_SYMLINKS = y ] && \
-			! [[ -f "$mysrc" && $(readlink "$mysrc") == /* ]] ; then
+			! [[ $(readlink "$mysrc") == "$PORTAGE_ACTUAL_DISTDIR"/* ]] ; then
 			rm -rf "$D$INSDESTTREE/$mydir/${mysrc##*/}" || return $?
 			cp -P "$mysrc" "$D$INSDESTTREE/$mydir/${mysrc##*/}"
 			return $?
