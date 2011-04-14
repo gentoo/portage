@@ -66,7 +66,8 @@ import portage.checksum
 import portage.const
 from portage import cvstree, normalize_path
 from portage import util
-from portage.exception import FileNotFound, ParseError, PermissionDenied
+from portage.exception import (FileNotFound, MissingParameter,
+	ParseError, PermissionDenied)
 from portage.manifest import Manifest
 from portage.process import find_binary, spawn
 from portage.output import bold, create_color_func, \
@@ -2419,22 +2420,32 @@ else:
 
 	# Setup the GPG commands
 	def gpgsign(filename):
-		if "PORTAGE_GPG_KEY" not in repoman_settings and "${PORTAGE_GPG_KEY}" in repoman_settings["PORTAGE_GPG_SIGNING_COMMAND"]:
-			raise portage.exception.MissingParameter("PORTAGE_GPG_KEY is unset!")
-		if "PORTAGE_GPG_DIR" not in repoman_settings and "${PORTAGE_GPG_DIR}" in repoman_settings["PORTAGE_GPG_SIGNING_COMMAND"]:
-			repoman_settings["PORTAGE_GPG_DIR"] = os.path.expanduser("~/.gnupg")
-			logging.info("Automatically setting PORTAGE_GPG_DIR to '%s'" % repoman_settings["PORTAGE_GPG_DIR"])
-		if "${PORTAGE_GPG_DIR}" in repoman_settings["PORTAGE_GPG_SIGNING_COMMAND"]:
-			repoman_settings["PORTAGE_GPG_DIR"] = os.path.expanduser(repoman_settings["PORTAGE_GPG_DIR"])
+		gpgcmd = repoman_settings.get("PORTAGE_GPG_SIGNING_COMMAND")
+		if gpgcmd is None:
+			raise MissingParameter("PORTAGE_GPG_SIGNING_COMMAND is unset!" + \
+				" Is make.globals missing?")
+		if "${PORTAGE_GPG_KEY}" in gpgcmd and \
+			"PORTAGE_GPG_KEY" not in repoman_settings:
+			raise MissingParameter("PORTAGE_GPG_KEY is unset!")
+		if "${PORTAGE_GPG_DIR}" in gpgcmd:
+			if "PORTAGE_GPG_DIR" not in repoman_settings:
+				repoman_settings["PORTAGE_GPG_DIR"] = \
+					os.path.expanduser("~/.gnupg")
+				logging.info("Automatically setting PORTAGE_GPG_DIR to '%s'" \
+					% repoman_settings["PORTAGE_GPG_DIR"])
+			else:
+				repoman_settings["PORTAGE_GPG_DIR"] = \
+					os.path.expanduser(repoman_settings["PORTAGE_GPG_DIR"])
 			if not os.access(repoman_settings["PORTAGE_GPG_DIR"], os.X_OK):
 				raise portage.exception.InvalidLocation(
 					"Unable to access directory: PORTAGE_GPG_DIR='%s'" % \
 					repoman_settings["PORTAGE_GPG_DIR"])
 		gpgvars = {"FILE": filename}
-		for var in ("PORTAGE_GPG_DIR", "PORTAGE_GPG_KEY"):
-			if "${%s}" % var in repoman_settings["PORTAGE_GPG_SIGNING_COMMAND"]:
-				gpgvars[var] = repoman_settings[var]
-		gpgcmd = portage.util.varexpand(repoman_settings["PORTAGE_GPG_SIGNING_COMMAND"], mydict=gpgvars)
+		for k in ("PORTAGE_GPG_DIR", "PORTAGE_GPG_KEY"):
+			v = repoman_settings.get(k)
+			if v is not None:
+				gpgvars[k] = v
+		gpgcmd = portage.util.varexpand(gpgcmd, mydict=gpgvars)
 		if options.pretend:
 			print("("+gpgcmd+")")
 		else:
