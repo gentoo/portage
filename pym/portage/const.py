@@ -1,5 +1,5 @@
 # portage: Constants
-# Copyright 1998-2010 Gentoo Foundation
+# Copyright 1998-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # ===========================================================================
@@ -132,8 +132,8 @@ EBUILD_PHASES            = ("pretend", "setup", "unpack", "prepare", "configure"
 SUPPORTED_FEATURES       = frozenset([
                            "assume-digests", "binpkg-logs", "buildpkg", "buildsyspkg", "candy",
                            "ccache", "chflags", "collision-protect", "compress-build-logs",
-                           "digest", "distcc", "distlocks",
-                           "fakeroot", "fail-clean", "fixpackages", "getbinpkg",
+                           "digest", "distcc", "distlocks", "fakeroot",
+                           "fail-clean", "fixpackages", "force-mirror", "getbinpkg",
                            "installsources", "keeptemp", "keepwork", "fixlafiles", "lmirror",
                             "macossandbox", "macosprefixsandbox", "macosusersandbox",
                            "metadata-transfer", "mirror", "multilib-strict", "news",

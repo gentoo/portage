@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Mar 2011" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Apr 2011" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -303,6 +303,10 @@ enabled for more than a short period of time.
 .B fixlafiles
 Modifies .la files to not include other .la files and some other
 fixes (order of flags, duplicated entries, ...)
+.TP
+.B force\-mirror
+Only fetch files from configured mirrors, ignoring \fBSRC_URI\fR,
+except when \fImirror\fR is in the \fBebuild\fR(5) \fBRESTRICT\fR variable.
 .TP
 .B lmirror
 When \fImirror\fR is enabled in \fBFEATURES\fR, fetch files even
@@ -669,6 +673,10 @@ Defaults to $HOME/.gnupg.
 .B PORTAGE_GPG_KEY
 The \fBgpg\fR(1) key used by \fBrepoman\fR(1) to sign manifests
 when \fBsign\fR is in \fBFEATURES\fR.
+.TP
+.B PORTAGE_GPG_SIGNING_COMMAND
+The command used by \fBrepoman\fR(1) to sign manifests when \fBsign\fR is
+in \fBFEATURES\fR.
 .TP
 \fBPORTAGE_IONICE_COMMAND\fR = \fI[ionice command string]\fR
 This variable should contain a command for portage to call in order

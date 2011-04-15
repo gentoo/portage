@@ -615,6 +615,9 @@ class portdbapi(dbapi):
 		return filesdict
 
 	def fetch_check(self, mypkg, useflags=None, mysettings=None, all=False, myrepo=None):
+		"""
+		TODO: account for PORTAGE_RO_DISTDIRS
+		"""
 		if all:
 			useflags = None
 		elif useflags is None:

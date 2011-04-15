@@ -68,7 +68,8 @@ import portage.checksum
 import portage.const
 from portage import cvstree, normalize_path
 from portage import util
-from portage.exception import FileNotFound, ParseError, PermissionDenied
+from portage.exception import (FileNotFound, MissingParameter,
+	ParseError, PermissionDenied)
 from portage.manifest import Manifest
 from portage.process import find_binary, spawn
 from portage.output import bold, create_color_func, \
@@ -727,7 +728,7 @@ for path in portdb.porttrees:
 			elif arch[2] not in valid_profile_types:
 				err("invalid profile type: \"" + bad(arch[2]) + "\" in " + \
 					desc_path + " line %d" % (i+1, ))
-			profile_desc = ProfileDesc(arch[0], arch[2], arch[1], portdir)
+			profile_desc = ProfileDesc(arch[0], arch[2], arch[1], path)
 			if not os.path.isdir(profile_desc.abs_path):
 				logging.error(
 					"Invalid %s profile (%s) for arch %s in %s line %d",
@@ -2425,30 +2426,36 @@ else:
 
 	# Setup the GPG commands
 	def gpgsign(filename):
-		if "PORTAGE_GPG_KEY" not in repoman_settings:
-			raise portage.exception.MissingParameter("PORTAGE_GPG_KEY is unset!")
-		if "PORTAGE_GPG_DIR" not in repoman_settings:
-			if "HOME" in os.environ:
-				repoman_settings["PORTAGE_GPG_DIR"] = os.path.join(os.environ["HOME"], ".gnupg")
-				logging.info("Automatically setting PORTAGE_GPG_DIR to %s" % repoman_settings["PORTAGE_GPG_DIR"])
+		gpgcmd = repoman_settings.get("PORTAGE_GPG_SIGNING_COMMAND")
+		if gpgcmd is None:
+			raise MissingParameter("PORTAGE_GPG_SIGNING_COMMAND is unset!" + \
+				" Is make.globals missing?")
+		if "${PORTAGE_GPG_KEY}" in gpgcmd and \
+			"PORTAGE_GPG_KEY" not in repoman_settings:
+			raise MissingParameter("PORTAGE_GPG_KEY is unset!")
+		if "${PORTAGE_GPG_DIR}" in gpgcmd:
+			if "PORTAGE_GPG_DIR" not in repoman_settings:
+				repoman_settings["PORTAGE_GPG_DIR"] = \
+					os.path.expanduser("~/.gnupg")
+				logging.info("Automatically setting PORTAGE_GPG_DIR to '%s'" \
+					% repoman_settings["PORTAGE_GPG_DIR"])
 			else:
-				raise portage.exception.MissingParameter("PORTAGE_GPG_DIR is unset!")
-		gpg_dir = repoman_settings["PORTAGE_GPG_DIR"]
-		if gpg_dir.startswith("~") and "HOME" in os.environ:
-			repoman_settings["PORTAGE_GPG_DIR"] = os.path.join(
-				os.environ["HOME"], gpg_dir[1:].lstrip(os.path.sep))
-		if not os.access(repoman_settings["PORTAGE_GPG_DIR"], os.X_OK):
-			raise portage.exception.InvalidLocation(
-				"Unable to access directory: PORTAGE_GPG_DIR='%s'" % \
-				repoman_settings["PORTAGE_GPG_DIR"])
-		gpgcmd = "gpg --sign --clearsign --yes "
-		gpgcmd+= "--default-key "+repoman_settings["PORTAGE_GPG_KEY"]
-		if "PORTAGE_GPG_DIR" in repoman_settings:
-			gpgcmd += " --homedir "+repoman_settings["PORTAGE_GPG_DIR"]
+				repoman_settings["PORTAGE_GPG_DIR"] = \
+					os.path.expanduser(repoman_settings["PORTAGE_GPG_DIR"])
+			if not os.access(repoman_settings["PORTAGE_GPG_DIR"], os.X_OK):
+				raise portage.exception.InvalidLocation(
+					"Unable to access directory: PORTAGE_GPG_DIR='%s'" % \
+					repoman_settings["PORTAGE_GPG_DIR"])
+		gpgvars = {"FILE": filename}
+		for k in ("PORTAGE_GPG_DIR", "PORTAGE_GPG_KEY"):
+			v = repoman_settings.get(k)
+			if v is not None:
+				gpgvars[k] = v
+		gpgcmd = portage.util.varexpand(gpgcmd, mydict=gpgvars)
 		if options.pretend:
-			print("("+gpgcmd+" "+filename+")")
+			print("("+gpgcmd+")")
 		else:
-			rValue = os.system(gpgcmd+" "+filename)
+			rValue = os.system(gpgcmd)
 			if rValue == os.EX_OK:
 				os.rename(filename+".asc", filename)
 			else:

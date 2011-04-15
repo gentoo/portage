@@ -789,7 +789,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# remove PORTAGE_ACTUAL_DISTDIR once cvs/svn is supported via SRC_URI
 		if tree == 'porttree' and \
 			((mydo != "setup" and "noauto" not in features) \
-			or mydo == "unpack"):
+			or mydo in ("install", "unpack")):
 			_prepare_fake_distdir(mysettings, alist)
 
 		#initial dep checks complete; time to process main commands
