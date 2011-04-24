@@ -800,15 +800,18 @@ install_qa_check_prefix() {
 		IFS=${oldIFS}
 		[[ ${WHITELIST} == *" ${line[0]} "* ]] && continue
 		local fp=${fn#${D}} ; fp=/${fp%/*}
+		# line[0] can be an absolutised path, bug #342929
+		local eprefix=$(canonicalize ${EPREFIX})
 		local rf=${fn}
 		# in case we deal with a symlink, make sure we don't replace it
 		# with a real file (sed -i does that)
 		if [[ -L ${fn} ]] ; then
 			rf=$(readlink ${fn})
 			[[ ${rf} != /* ]] && rf=${fn%/*}/${rf}
+			# ignore symlinks pointing to outside prefix
+			# as seen in sys-devel/native-cctools
+			[[ ${rf} != ${EPREFIX}/* && $(canonicalize "${rf}") != ${eprefix}/* ]] && continue
 		fi
-		# line[0] can be an absolutised path, bug #342929
-		local eprefix=$(canonicalize ${EPREFIX})
 		# does the shebang start with ${EPREFIX}, and does it exist?
 		if [[ ${line[0]} == ${EPREFIX}/* || ${line[0]} == ${eprefix}/* ]] ; then
 			if [[ ! -e ${ROOT%/}${line[0]} && ! -e ${D%/}${line[0]} ]] ; then
