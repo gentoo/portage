@@ -379,6 +379,11 @@ class InheritDeprecated(LineCheck):
 	# deprecated eclass : new eclass (False if no new eclass)
 	deprecated_classes = {
 		"gems": "ruby-fakegem",
+		"git": "git-2",
+		"mozconfig-2": "mozconfig-3",
+		"mozcoreconf": "mozcoreconf-2",
+		"php-ext-pecl-r1": "php-ext-pecl-r2",
+		"php-ext-source-r1": "php-ext-source-r2",
 		"php-pear": "php-pear-r1",
 		"qt3": False,
 		"qt4": "qt4-r2",

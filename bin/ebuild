@@ -252,11 +252,9 @@ if "test" in pargs:
 	# of problems such as masked "test" USE flag.
 	tmpsettings["EBUILD_FORCE_TEST"] = "1"
 	tmpsettings.backup_changes("EBUILD_FORCE_TEST")
-	tmpsettings["FEATURES"] = tmpsettings.get("FEATURES", "") + " " + "test"
-	tmpsettings.backup_changes("FEATURES")
+	tmpsettings.features.add("test")
 
-tmpsettings["FEATURES"] = tmpsettings.get("FEATURES", "") + " " + "-fail-clean"
-tmpsettings.backup_changes("FEATURES")
+tmpsettings.features.discard("fail-clean")
 
 # Apply package.env settings. This allows per-package FEATURES and other
 # variables (possibly PORTAGE_TMPDIR) to be available as soon as possible.
