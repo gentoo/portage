@@ -1289,6 +1289,40 @@ def action_deselect(settings, trees, opts, atoms):
 			world_set.unlock()
 	return os.EX_OK
 
+def expand_new_virt(vardb, atom, _traversed=None):
+	"""
+	Iterate over the recursively expanded RDEPEND atoms of
+	s new-style virtual. If atom is not a new-style virtual
+	or it does not match an installed package then it is
+	yielded without any expansion.
+	"""
+	matches = vardb.match(atom)
+	if not (matches and portage.cpv_getkey(matches[-1]).startswith("virtual/")):
+		yield atom
+		return
+
+	virt_cpv = matches[-1]
+	rdepend, use = vardb.aux_get(virt_cpv, ["RDEPEND", "USE"])
+	use = frozenset(use.split())
+	success, atoms = portage.dep_check(rdepend,
+		None, vardb.settings, myuse=use,
+		myroot=vardb.root, trees={vardb.root:{"porttree":vardb.vartree,
+		"vartree":vardb.vartree}})
+
+	if not success:
+		yield atom
+		return
+
+	if _traversed is None:
+		_traversed = set([atom])
+
+	for child1 in atoms:
+		if child1 not in _traversed:
+			_traversed.add(child1)
+			for child2 in expand_new_virt(vardb, child1,
+				_traversed=_traversed):
+				yield child2
+
 class _info_pkgs_ver(object):
 	def __init__(self, ver, repo_suffix, provide_suffix):
 		self.ver = ver
@@ -1349,15 +1383,25 @@ def action_info(settings, trees, myopts, myfiles):
 	myvars  = ["sys-devel/autoconf", "sys-devel/automake", "virtual/os-headers",
 	           "sys-devel/binutils", "sys-devel/libtool",  "dev-lang/python"]
 	myvars += portage.util.grabfile(settings["PORTDIR"]+"/profiles/info_pkgs")
-	myvars  = portage.util.unique_array(myvars)
-	myvars.sort()
+	atoms = []
+	vardb = trees["/"]["vartree"].dbapi
+	for x in myvars:
+		try:
+			x = Atom(x)
+		except InvalidAtom:
+			writemsg_stdout("%-20s %s\n" % (x+":", "[NOT VALID]"),
+				noiselevel=-1)
+		else:
+			for atom in expand_new_virt(vardb, x):
+				if not atom.blocker:
+					atoms.append((x, atom))
+
+	myvars = sorted(set(atoms))
 
 	portdb = trees["/"]["porttree"].dbapi
-	vardb = trees["/"]["vartree"].dbapi
 	main_repo = portdb.getRepositoryName(portdb.porttree_root)
 
-	for x in myvars:
-		if portage.isvalidatom(x):
+	for orig_atom, x in myvars:
 			pkg_matches = vardb.match(x)
 
 			versions = []
@@ -1372,10 +1416,10 @@ def action_info(settings, trees, myopts, myfiles):
 					repo_suffix = "::" + repo
 				
 				matched_cp = portage.versions.cpv_getkey(cpv)
-				if matched_cp == x:
+				if matched_cp == orig_atom.cp:
 					provide_suffix = ""
 				else:
-					provide_suffix = " (%s)" % matched_cp
+					provide_suffix = " (%s)" % (orig_atom,)
 
 				versions.append(
 					_info_pkgs_ver(ver, repo_suffix, provide_suffix))
@@ -1386,9 +1430,6 @@ def action_info(settings, trees, myopts, myfiles):
 				versions = ", ".join(ver.toString() for ver in versions)
 				writemsg_stdout("%-20s %s\n" % (x+":", versions),
 					noiselevel=-1)
-		else:
-			writemsg_stdout("%-20s %s\n" % (x+":", "[NOT VALID]"),
-				noiselevel=-1)
 
 	libtool_vers = ",".join(trees["/"]["vartree"].dbapi.match("sys-devel/libtool"))
 
@@ -2788,24 +2829,22 @@ def getportageversion(portdir, target_root, profile, chost, vardb):
 	if profilever is None:
 		profilever = "unavailable"
 
-	libcver=[]
-	libclist  = vardb.match("virtual/libc")
-	libclist += vardb.match("virtual/glibc")
-	libclist  = portage.util.unique_array(libclist)
-	for x in libclist:
-		xs=portage.catpkgsplit(x)
-		if libcver:
-			libcver+=","+"-".join(xs[1:])
-		else:
-			libcver="-".join(xs[1:])
-	if libcver==[]:
-		libcver="unavailable"
+	libcver = []
+	libclist = set()
+	for atom in expand_new_virt(vardb, portage.const.LIBC_PACKAGE_ATOM):
+		if not atom.blocker:
+			libclist.update(vardb.match(atom))
+	if libclist:
+		for cpv in sorted(libclist):
+			libcver.append("-".join(portage.catpkgsplit(cpv)[1:]))
+	else:
+		libcver = ["unavailable"]
 
 	gccver = getgccversion(chost)
 	unameout=platform.release()+" "+platform.machine()
 
 	return "Portage %s (%s, %s, %s, %s)" % \
-		(portage.VERSION, profilever, gccver, libcver, unameout)
+		(portage.VERSION, profilever, gccver, ",".join(libcver), unameout)
 
 def git_sync_timestamps(settings, portdir):
 	"""
