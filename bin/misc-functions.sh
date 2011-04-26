@@ -549,23 +549,23 @@ install_qa_check() {
 			reset_debug=1
 		fi
 		local m msgs=(
-			": warning: dereferencing type-punned pointer will break strict-aliasing rules$"
-			": warning: dereferencing pointer .* does break strict-aliasing rules$"
-			": warning: implicit declaration of function "
-			": warning: incompatible implicit declaration of built-in function "
-			": warning: is used uninitialized in this function$" # we'll ignore "may" and "might"
-			": warning: comparisons like X<=Y<=Z do not have their mathematical meaning$"
-			": warning: null argument where non-null required "
-			": warning: array subscript is below array bounds$"
-			": warning: array subscript is above array bounds$"
+			": warning: dereferencing type-punned pointer will break strict-aliasing rules"
+			": warning: dereferencing pointer .* does break strict-aliasing rules"
+			": warning: implicit declaration of function"
+			": warning: incompatible implicit declaration of built-in function"
+			": warning: is used uninitialized in this function" # we'll ignore "may" and "might"
+			": warning: comparisons like X<=Y<=Z do not have their mathematical meaning"
+			": warning: null argument where non-null required"
+			": warning: array subscript is below array bounds"
+			": warning: array subscript is above array bounds"
 			": warning: attempt to free a non-heap object"
-			": warning: .* called with .*bigger.* than .* destination buffer$"
-			": warning: call to .* will always overflow destination buffer$"
-			": warning: assuming pointer wraparound does not occur when comparing "
-			": warning: hex escape sequence out of range$"
-			": warning: [^ ]*-hand operand of comma .*has no effect$"
+			": warning: .* called with .*bigger.* than .* destination buffer"
+			": warning: call to .* will always overflow destination buffer"
+			": warning: assuming pointer wraparound does not occur when comparing"
+			": warning: hex escape sequence out of range"
+			": warning: [^ ]*-hand operand of comma .*has no effect"
 			": warning: converting to non-pointer type .* from NULL"
-			": warning: NULL used in arithmetic$"
+			": warning: NULL used in arithmetic"
 			": warning: passing NULL to non-pointer argument"
 			": warning: the address of [^ ]* will always evaluate as"
 			": warning: the address of [^ ]* will never be NULL"
@@ -574,9 +574,9 @@ install_qa_check() {
 			": warning: returning reference to temporary"
 			": warning: function returns address of local variable"
 			# this may be valid code :/
-			#": warning: multi-character character constant$"
+			#": warning: multi-character character constant"
 			# need to check these two ...
-			#": warning: assuming signed overflow does not occur when "
+			#": warning: assuming signed overflow does not occur when"
 			#": warning: comparison with string literal results in unspecified behav"
 			# yacc/lex likes to trigger this one
 			#": warning: extra tokens at end of .* directive"
@@ -598,7 +598,7 @@ install_qa_check() {
 				abort="yes"
 				# for now, don't make this fatal (see bug #337031)
 				#case "$m" in
-				#	": warning: call to .* will always overflow destination buffer$") always_overflow=yes ;;
+				#	": warning: call to .* will always overflow destination buffer") always_overflow=yes ;;
 				#esac
 				if [[ $always_overflow = yes ]] ; then
 					eerror
