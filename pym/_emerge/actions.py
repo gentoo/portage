@@ -1291,7 +1291,7 @@ def action_deselect(settings, trees, opts, atoms):
 def expand_new_virt(vardb, atom, _traversed=None):
 	"""
 	Iterate over the recursively expanded RDEPEND atoms of
-	s new-style virtual. If atom is not a new-style virtual
+	a new-style virtual. If atom is not a new-style virtual
 	or it does not match an installed package then it is
 	yielded without any expansion.
 	"""
