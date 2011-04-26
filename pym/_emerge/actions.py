@@ -1288,39 +1288,40 @@ def action_deselect(settings, trees, opts, atoms):
 			world_set.unlock()
 	return os.EX_OK
 
-def expand_new_virt(vardb, atom, _traversed=None):
+def expand_new_virt(vardb, atom):
 	"""
 	Iterate over the recursively expanded RDEPEND atoms of
 	a new-style virtual. If atom is not a new-style virtual
 	or it does not match an installed package then it is
 	yielded without any expansion.
 	"""
-	matches = vardb.match(atom)
-	if not (matches and portage.cpv_getkey(matches[-1]).startswith("virtual/")):
-		yield atom
-		return
+	traversed = set()
+	stack = [atom]
 
-	virt_cpv = matches[-1]
-	rdepend, use = vardb.aux_get(virt_cpv, ["RDEPEND", "USE"])
-	use = frozenset(use.split())
-	success, atoms = portage.dep_check(rdepend,
-		None, vardb.settings, myuse=use,
-		myroot=vardb.root, trees={vardb.root:{"porttree":vardb.vartree,
-		"vartree":vardb.vartree}})
+	while stack:
+		atom = stack.pop()
+		matches = vardb.match(atom)
+		if not (matches and \
+			portage.cpv_getkey(matches[-1]).startswith("virtual/")):
+			yield atom
+			continue
 
-	if not success:
-		yield atom
-		return
+		virt_cpv = matches[-1]
+		if virt_cpv in traversed:
+			continue
 
-	if _traversed is None:
-		_traversed = set([atom])
+		traversed.add(virt_cpv)
+		rdepend, use = vardb.aux_get(virt_cpv, ["RDEPEND", "USE"])
+		use = frozenset(use.split())
+		success, atoms = portage.dep_check(rdepend,
+			None, vardb.settings, myuse=use,
+			myroot=vardb.root, trees={vardb.root:{"porttree":vardb.vartree,
+			"vartree":vardb.vartree}})
 
-	for child1 in atoms:
-		if child1 not in _traversed:
-			_traversed.add(child1)
-			for child2 in expand_new_virt(vardb, child1,
-				_traversed=_traversed):
-				yield child2
+		if success:
+			stack.extend(atoms)
+		else:
+			yield atom
 
 class _info_pkgs_ver(object):
 	def __init__(self, ver, repo_suffix, provide_suffix):
