@@ -3120,6 +3120,10 @@ class depgraph(object):
 				not check_required_use(required_use, new_use, pkg.iuse.is_valid_flag):
 				return old_use
 
+			if pkg.use.mask.intersection(new_changes) or \
+				pkg.use.force.intersection(new_changes):
+				return old_use
+
 			self._dynamic_config._needed_use_config_changes[pkg] = (new_use, new_changes)
 			backtrack_infos = self._dynamic_config._backtrack_infos
 			backtrack_infos.setdefault("config", {})
