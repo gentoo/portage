@@ -1296,11 +1296,17 @@ def expand_new_virt(vardb, atom):
 	or it does not match an installed package then it is
 	yielded without any expansion.
 	"""
+	if not isinstance(atom, Atom):
+		atom = Atom(atom)
 	traversed = set()
 	stack = [atom]
 
 	while stack:
 		atom = stack.pop()
+		if atom.blocker:
+			yield atom
+			continue
+
 		matches = vardb.match(atom)
 		if not (matches and matches[-1].startswith("virtual/")):
 			yield atom
