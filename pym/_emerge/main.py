@@ -544,6 +544,23 @@ def insert_optional_args(args):
 
 	return new_args
 
+def _find_bad_atoms(atoms):
+	bad_atoms = []
+	for x in ' '.join(atoms).split():
+		bad_atom = False
+		try:
+			atom = portage.dep.Atom(x, allow_wildcard=True)
+		except portage.exception.InvalidAtom:
+			try:
+				atom = portage.dep.Atom("*/"+x, allow_wildcard=True)
+			except portage.exception.InvalidAtom:
+				bad_atom = True
+
+		if bad_atom or atom.operator or atom.blocker or atom.use:
+			bad_atoms.append(x)
+	return bad_atoms
+
+
 def parse_opts(tmpcmdline, silent=False):
 	myaction=None
 	myopts = {}
@@ -680,6 +697,14 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices":["changed-use"]
 		},
 
+		"--reinstall-atoms": {
+			"help"   :"A space separated list of package names or slot atoms. " + \
+				"Emerge will treat matching packages as if they are not " + \
+				"installed, and reinstall them if necessary. Implies --deep.",
+
+			"action" : "append",
+		},
+
 		"--binpkg-respect-use": {
 			"help"    : "discard binary packages if their use flags \
 				don't match the current configuration",
@@ -699,6 +724,13 @@ def parse_opts(tmpcmdline, silent=False):
 			"help"     : "fetch binary packages only",
 			"type"     : "choice",
 			"choices"  : true_y_or_n
+		},
+
+		"--nousepkg-atoms": {
+			"help"   :"A space separated list of package names or slot atoms. " + \
+				"Emerge will ignore matching binary packages. ",
+
+			"action" : "append",
 		},
 
 		"--package-moves": {
@@ -762,6 +794,13 @@ def parse_opts(tmpcmdline, silent=False):
 			"help"     : "use unbuilt ebuild metadata for visibility checks on built packages",
 			"type"     : "choice",
 			"choices"  : true_y_or_n
+		},
+
+		"--useoldpkg-atoms": {
+			"help"   :"A space separated list of package names or slot atoms. " + \
+				"Emerge will prefer matching binary packages over newer unbuilt packages. ",
+
+			"action" : "append",
 		},
 
 		"--usepkg": {
@@ -852,28 +891,27 @@ def parse_opts(tmpcmdline, silent=False):
 			myoptions.depclean_lib_check = True
 
 	if myoptions.exclude:
-		exclude = []
-		bad_atoms = []
-		for x in ' '.join(myoptions.exclude).split():
-			bad_atom = False
-			try:
-				atom = portage.dep.Atom(x, allow_wildcard=True)
-			except portage.exception.InvalidAtom:
-				try:
-					atom = portage.dep.Atom("*/"+x, allow_wildcard=True)
-				except portage.exception.InvalidAtom:
-					bad_atom = True
-			
-			if bad_atom:
-				bad_atoms.append(x)
-			else:
-				if atom.operator or atom.blocker or atom.use:
-					bad_atoms.append(x)
-				else:
-					exclude.append(atom)
-
+		bad_atoms = _find_bad_atoms(myoptions.exclude)
 		if bad_atoms and not silent:
 			parser.error("Invalid Atom(s) in --exclude parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n" % \
+				(",".join(bad_atoms),))
+
+	if myoptions.reinstall_atoms:
+		bad_atoms = _find_bad_atoms(myoptions.reinstall_atoms)
+		if bad_atoms and not silent:
+			parser.error("Invalid Atom(s) in --reinstall-atoms parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n" % \
+				(",".join(bad_atoms),))
+
+	if myoptions.nousepkg_atoms:
+		bad_atoms = _find_bad_atoms(myoptions.nousepkg_atoms)
+		if bad_atoms and not silent:
+			parser.error("Invalid Atom(s) in --nousepkg-atoms parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n" % \
+				(",".join(bad_atoms),))
+
+	if myoptions.useoldpkg_atoms:
+		bad_atoms = _find_bad_atoms(myoptions.useoldpkg_atoms)
+		if bad_atoms and not silent:
+			parser.error("Invalid Atom(s) in --useoldpkg-atoms parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n" % \
 				(",".join(bad_atoms),))
 
 	if myoptions.fail_clean in true_y:

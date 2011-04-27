@@ -70,6 +70,16 @@ class _scheduler_graph_config(object):
 		self.graph = graph
 		self.mergelist = mergelist
 
+def _wildcard_set(atoms):
+	pkgs = InternalPackageSet(allow_wildcard=True)
+	for x in atoms:
+		try:
+			x = Atom(x, allow_wildcard=True)
+		except portage.exception.InvalidAtom:
+			x = Atom("*/" + x, allow_wildcard=True)
+		pkgs.add(x)
+	return pkgs
+
 class _frozen_depgraph_config(object):
 
 	def __init__(self, settings, trees, myopts, spinner):
@@ -109,13 +119,14 @@ class _frozen_depgraph_config(object):
 
 		self._required_set_names = set(["world"])
 
-		self.excluded_pkgs = InternalPackageSet(allow_wildcard=True)
-		for x in ' '.join(myopts.get("--exclude", [])).split():
-			try:
-				x = Atom(x, allow_wildcard=True)
-			except portage.exception.InvalidAtom:
-				x = Atom("*/" + x, allow_wildcard=True)
-			self.excluded_pkgs.add(x)
+		atoms = ' '.join(myopts.get("--exclude", [])).split()
+		self.excluded_pkgs = _wildcard_set(atoms)
+		atoms = ' '.join(myopts.get("--reinstall-atoms", [])).split()
+		self.reinstall_atoms = _wildcard_set(atoms)
+		atoms = ' '.join(myopts.get("--nousepkg-atoms", [])).split()
+		self.nousepkg_atoms = _wildcard_set(atoms)
+		atoms = ' '.join(myopts.get("--useoldpkg-atoms", [])).split()
+		self.useoldpkg_atoms = _wildcard_set(atoms)
 
 class _depgraph_sets(object):
 	def __init__(self):
@@ -1237,6 +1248,7 @@ class depgraph(object):
 		vardb = root_config.trees["vartree"].dbapi
 		traversed_virt_pkgs = set()
 
+		reinstall_atoms = self._frozen_config.reinstall_atoms
 		for atom, child in self._minimize_children(
 			pkg, dep_priority, root_config, selected_atoms[pkg]):
 
@@ -1254,7 +1266,9 @@ class depgraph(object):
 
 			mypriority = dep_priority.copy()
 			if not atom.blocker:
-				inst_pkgs = vardb.match_pkgs(atom)
+				inst_pkgs = [inst_pkg for inst_pkg in vardb.match_pkgs(atom)
+					if not reinstall_atoms.findAtomForPackage(inst_pkg,
+							modified_use=self._pkg_use_enabled(inst_pkg))]
 				if inst_pkgs:
 					for inst_pkg in inst_pkgs:
 						if self._pkg_visibility_check(inst_pkg):
@@ -1344,7 +1358,9 @@ class depgraph(object):
 				# This is a GLEP 37 virtual, so its deps are all runtime.
 				mypriority = self._priority(runtime=True)
 				if not atom.blocker:
-					inst_pkgs = vardb.match_pkgs(atom)
+					inst_pkgs = [inst_pkg for inst_pkg in vardb.match_pkgs(atom)
+						if not reinstall_atoms.findAtomForPackage(inst_pkg,
+								modified_use=self._pkg_use_enabled(inst_pkg))]
 					if inst_pkgs:
 						for inst_pkg in inst_pkgs:
 							if self._pkg_visibility_check(inst_pkg):
@@ -3161,6 +3177,10 @@ class depgraph(object):
 		dont_miss_updates = "--update" in self._frozen_config.myopts
 		use_ebuild_visibility = self._frozen_config.myopts.get(
 			'--use-ebuild-visibility', 'n') != 'n'
+		reinstall_atoms = self._frozen_config.reinstall_atoms
+		nousepkg_atoms = self._frozen_config.nousepkg_atoms
+		useoldpkg_atoms = self._frozen_config.useoldpkg_atoms
+		matched_oldpkg = []
 		# Behavior of the "selective" parameter depends on
 		# whether or not a package matches an argument atom.
 		# If an installed package provides an old-style
@@ -3200,7 +3220,14 @@ class depgraph(object):
 							modified_use=self._pkg_use_enabled(pkg)):
 						continue
 
-					if packages_with_invalid_use_config and \
+					if built and not installed and nousepkg_atoms.findAtomForPackage(pkg, \
+						modified_use=self._pkg_use_enabled(pkg)):
+						break
+
+					useoldpkg = useoldpkg_atoms.findAtomForPackage(pkg, \
+						modified_use=self._pkg_use_enabled(pkg))
+
+					if packages_with_invalid_use_config and (not built or not useoldpkg) and \
 						(not pkg.installed or dont_miss_updates):
 						# Check if a higher version was rejected due to user
 						# USE configuration. The packages_with_invalid_use_config
@@ -3282,7 +3309,7 @@ class depgraph(object):
 								# instances (installed or binary).
 								# If --usepkgonly is enabled, assume that
 								# the ebuild status should be ignored.
-								if not use_ebuild_visibility and usepkgonly:
+								if not use_ebuild_visibility and (usepkgonly or useoldpkg):
 									if pkg.installed and pkg.masks:
 										continue
 								else:
@@ -3419,7 +3446,7 @@ class depgraph(object):
 						break
 					# Compare built package to current config and
 					# reject the built package if necessary.
-					if built and (not installed or matched_pkgs_ignore_use) and \
+					if built and not useoldpkg and (not installed or matched_pkgs_ignore_use) and \
 						("--newuse" in self._frozen_config.myopts or \
 						"--reinstall" in self._frozen_config.myopts or \
 						"--binpkg-respect-use" in self._frozen_config.myopts):
@@ -3434,7 +3461,7 @@ class depgraph(object):
 						forced_flags.update(pkgsettings.useforce)
 						forced_flags.update(pkgsettings.usemask)
 						cur_iuse = iuses
-						if myeb and not usepkgonly:
+						if myeb and not usepkgonly and not useoldpkg:
 							cur_iuse = myeb.iuse.all
 						if self._reinstall_for_flags(forced_flags,
 							old_use, iuses,
@@ -3442,7 +3469,7 @@ class depgraph(object):
 							break
 					# Compare current config to installed package
 					# and do not reinstall if possible.
-					if not installed and \
+					if not installed and not useoldpkg and \
 						("--newuse" in self._frozen_config.myopts or \
 						"--reinstall" in self._frozen_config.myopts) and \
 						cpv in vardb.match(atom):
@@ -3460,8 +3487,13 @@ class depgraph(object):
 							cur_use, cur_iuse)
 						if reinstall_for_flags:
 							reinstall = True
+					if reinstall_atoms.findAtomForPackage(pkg, \
+							modified_use=self._pkg_use_enabled(pkg)):
+						reinstall = True
 					if not built:
 						myeb = pkg
+					elif useoldpkg:
+						matched_oldpkg.append(pkg)
 					matched_packages.append(pkg)
 					if reinstall_for_flags:
 						self._dynamic_config._reinstall_nodes[pkg] = \
@@ -3545,14 +3577,20 @@ class depgraph(object):
 						allow_license_changes=allow_license_changes):
 						return pkg, existing_node
 
-			bestmatch = portage.best(
-				[pkg.cpv for pkg in matched_packages \
+			visible_matches = []
+			if matched_oldpkg:
+				visible_matches = [pkg.cpv for pkg in matched_oldpkg \
 					if self._pkg_visibility_check(pkg, allow_unstable_keywords=allow_unstable_keywords,
-						allow_license_changes=allow_license_changes)])
-			if not bestmatch:
+						allow_license_changes=allow_license_changes)]
+			if not visible_matches:
+				visible_matches = [pkg.cpv for pkg in matched_packages \
+					if self._pkg_visibility_check(pkg, allow_unstable_keywords=allow_unstable_keywords,
+						allow_license_changes=allow_license_changes)]
+			if visible_matches:
+				bestmatch = portage.best(visible_matches)
+			else:
 				# all are masked, so ignore visibility
-				bestmatch = portage.best(
-					[pkg.cpv for pkg in matched_packages])
+				bestmatch = portage.best([pkg.cpv for pkg in matched_packages])
 			matched_packages = [pkg for pkg in matched_packages \
 				if portage.dep.cpvequal(pkg.cpv, bestmatch)]
 

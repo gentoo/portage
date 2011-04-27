@@ -479,6 +479,10 @@ may have changed.
 Disables the spinner for the session.  The spinner is active when the
 terminal device is determined to be a TTY.  This flag disables it regardless.
 .TP
+.BR "\-\-nousepkg\-atoms " ATOMS
+A space separated list of package names or slot atoms. Emerge will ignore
+matching binary packages.
+.TP
 .BR "\-\-oneshot " (\fB\-1\fR)
 Emerge as normal, but do not add the packages to the world file
 for later updating.
@@ -549,6 +553,11 @@ changed since installation.  Unlike \fB\-\-newuse\fR, this option does
 not trigger reinstallation when flags that the user has not
 enabled are added or removed.
 .TP
+.BR "\-\-reinstall\-atoms " ATOMS
+A space separated list of package names or slot atoms. Emerge will treat
+matching packages as if they are not installed, and reinstall them if
+necessary.
+.TP
 .BR \-\-root=DIR
 Set the \fBROOT\fR environment variable.
 .TP
@@ -605,6 +614,10 @@ atoms may match multiple versions of slotted packages.
 .BR "\-\-use\-ebuild\-visibility [ y | n ]"
 Use unbuilt ebuild metadata for visibility
 checks on built packages.
+.TP
+.BR "\-\-useoldpkg\-atoms " ATOMS
+A space separated list of package names or slot atoms. Emerge will prefer
+matching binary packages over newer unbuilt packages.
 .TP
 .BR "\-\-usepkg [ y | n ] (\-k short option)"
 Tells emerge to use binary packages (from $PKGDIR) if they are available, thus 
