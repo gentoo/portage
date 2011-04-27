@@ -3094,7 +3094,11 @@ class depgraph(object):
 			if required_use and check_required_use(required_use, old_use, pkg.iuse.is_valid_flag) and \
 				not check_required_use(required_use, new_use, pkg.iuse.is_valid_flag):
 				return old_use
-			
+
+			if pkg.use.mask.intersection(new_changes) or \
+				pkg.use.force.intersection(new_changes):
+				return old_use
+
 			self._dynamic_config._needed_use_config_changes[pkg] = (new_use, new_changes)
 			if want_restart_for_use_change(pkg, new_use):
 				self._dynamic_config._need_restart = True
