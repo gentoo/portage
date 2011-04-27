@@ -1302,8 +1302,7 @@ def expand_new_virt(vardb, atom):
 	while stack:
 		atom = stack.pop()
 		matches = vardb.match(atom)
-		if not (matches and \
-			portage.cpv_getkey(matches[-1]).startswith("virtual/")):
+		if not (matches and matches[-1].startswith("virtual/")):
 			yield atom
 			continue
 
