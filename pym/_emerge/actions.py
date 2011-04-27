@@ -31,7 +31,7 @@ from portage.cache.cache_errors import CacheError
 from portage.const import GLOBAL_CONFIG_PATH, NEWS_LIB_PATH
 from portage.const import _ENABLE_DYN_LINK_MAP, _ENABLE_SET_CONFIG
 from portage.dbapi.dep_expand import dep_expand
-from portage.dep import Atom, extended_cp_match
+from portage.dep import Atom, extended_cp_match, _get_useflag_re
 from portage.exception import InvalidAtom
 from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 	red, yellow
@@ -1311,10 +1311,31 @@ def expand_new_virt(vardb, atom):
 			continue
 
 		traversed.add(virt_cpv)
-		rdepend, use = vardb.aux_get(virt_cpv, ["RDEPEND", "USE"])
-		use = frozenset(use.split())
+		eapi, iuse, rdepend, use = vardb.aux_get(virt_cpv,
+			["EAPI", "IUSE", "RDEPEND", "USE"])
+		if not portage.eapi_is_supported(eapi):
+			yield atom
+			continue
+
+		# Validate IUSE and IUSE, for early detection of vardb corruption.
+		useflag_re = _get_useflag_re(eapi)
+		valid_iuse = []
+		for x in iuse.split():
+			if x[:1] in ("+", "-"):
+				x = x[1:]
+			if useflag_re.match(x) is not None:
+				valid_iuse.append(x)
+		valid_iuse = frozenset(valid_iuse)
+
+		iuse_implicit_match = vardb.settings._iuse_implicit_match
+		valid_use = []
+		for x in use.split():
+			if x in valid_iuse or iuse_implicit_match(x):
+				valid_use.append(x)
+		valid_use = frozenset(valid_use)
+
 		success, atoms = portage.dep_check(rdepend,
-			None, vardb.settings, myuse=use,
+			None, vardb.settings, myuse=valid_use,
 			myroot=vardb.root, trees={vardb.root:{"porttree":vardb.vartree,
 			"vartree":vardb.vartree}})
 
