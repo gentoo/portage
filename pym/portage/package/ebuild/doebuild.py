@@ -1406,7 +1406,7 @@ def _postinst_bsdflags(mysettings):
 	if bsd_chflags:
 		# Restore all of the flags saved above.
 		os.system("mtree -e -p %s -U -k flags < %s > /dev/null" % \
-			(_shell_quote(mysettings["D"]),
+			(_shell_quote(mysettings["ROOT"]),
 			_shell_quote(os.path.join(mysettings["T"], "bsdflags.mtree"))))
 
 def _post_src_install_uid_fix(mysettings, out):
