@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Mar 2011" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Apr 2011" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -437,6 +437,12 @@ This option is recommended for use in combination with \fB\-\-jobs\fR in
 order to avoid excess load. See \fBmake\fR(1) for information about
 analogous options that should be configured via \fBMAKEOPTS\fR in
 \fBmake.conf\fR(5).
+.TP
+.BR "\-\-misspell\-suggestions < y | n >"
+Enable or disable misspell suggestions. By default, emerge will show
+a list of packages with similar names when a package doesn't exist.
+The \fIEMERGE_DEFAULT_OPTS\fR variable may be used to disable this
+option by default.
 .TP
 .BR "\-\-newuse " (\fB\-N\fR)
 Tells emerge to include installed packages where USE

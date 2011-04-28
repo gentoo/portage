@@ -686,6 +686,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"action" : "store"
 		},
 
+		"--misspell-suggestions": {
+			"help"    : "enable package name misspell suggestions",
+			"type"    : "choice",
+			"choices" : ("y", "n")
+		},
+
 		"--with-bdeps": {
 			"help":"include unnecessary build time dependencies",
 			"type":"choice",

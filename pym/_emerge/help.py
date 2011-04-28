@@ -512,6 +512,15 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
+		print("       " + green("--misspell-suggestions") + " < %s | %s >" % \
+			(turquoise("y"), turquoise("n")))
+		desc = "Enable or disable misspell suggestions. By default, " + \
+			"emerge will show a list of packages with similar names " + \
+			"when a package doesn't exist. The EMERGE_DEFAULT_OPTS " + \
+			"variable may be used to disable this option by default"
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
 		print("       "+green("--newuse")+" ("+green("-N")+" short option)")
 		desc = "Tells emerge to include installed packages where USE " + \
 			"flags have changed since compilation. This option " + \

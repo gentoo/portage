@@ -2757,7 +2757,9 @@ class depgraph(object):
 			mask_docs = True
 		else:
 			writemsg_stdout("\nemerge: there are no ebuilds to satisfy "+green(xinfo)+".\n", noiselevel=-1)
-			if isinstance(myparent, AtomArg):
+			if isinstance(myparent, AtomArg) and \
+				self._frozen_config.myopts.get(
+				"--misspell-suggestions", "y") != "n":
 				cp = myparent.atom.cp.lower()
 				cat, pkg = portage.catsplit(cp)
 				if cat == "null":
