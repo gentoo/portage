@@ -217,7 +217,9 @@ def display_preserved_libs(vardbapi, myopts):
 		# preserve-libs is entirely disabled
 		return
 
-	# Ensure the registry is consistent with existing files.
+	# Explicitly load and prune the PreservedLibsRegistry in order
+	# to ensure that we do not display stale data.
+	vardbapi._plib_registry.load()
 	vardbapi._plib_registry.pruneNonExisting()
 
 	if vardbapi._plib_registry.hasEntries():
