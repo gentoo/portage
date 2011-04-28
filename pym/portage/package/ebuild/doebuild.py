@@ -1233,14 +1233,10 @@ _post_phase_cmds = {
 		"install_symlink_html_docs"],
 
 	"preinst" : [
-		"preinst_bsdflags",
 		"preinst_sfperms",
 		"preinst_selinux_labels",
 		"preinst_suid_scan",
-		"preinst_mask"],
-
-	"postinst" : [
-		"postinst_bsdflags"]
+		"preinst_mask"]
 }
 
 def _post_phase_userpriv_perms(mysettings):
@@ -1392,6 +1388,27 @@ _vdb_use_conditional_keys = ('DEPEND', 'LICENSE', 'PDEPEND',
 	'PROPERTIES', 'PROVIDE', 'RDEPEND', 'RESTRICT',)
 _vdb_use_conditional_atoms = frozenset(['DEPEND', 'PDEPEND', 'RDEPEND'])
 
+def _preinst_bsdflags(mysettings):
+	if bsd_chflags:
+		# Save all the file flags for restoration later.
+		os.system("mtree -c -p %s -k flags > %s" % \
+			(_shell_quote(mysettings["D"]),
+			_shell_quote(os.path.join(mysettings["T"], "bsdflags.mtree"))))
+
+		# Remove all the file flags to avoid EPERM errors.
+		os.system("chflags -R noschg,nouchg,nosappnd,nouappnd %s" % \
+			(_shell_quote(mysettings["D"]),))
+		os.system("chflags -R nosunlnk,nouunlnk %s 2>/dev/null" % \
+			(_shell_quote(mysettings["D"]),))
+
+
+def _postinst_bsdflags(mysettings):
+	if bsd_chflags:
+		# Restore all of the flags saved above.
+		os.system("mtree -e -p %s -U -k flags < %s > /dev/null" % \
+			(_shell_quote(mysettings["D"]),
+			_shell_quote(os.path.join(mysettings["T"], "bsdflags.mtree"))))
+
 def _post_src_install_uid_fix(mysettings, out):
 	"""
 	Files in $D with user and group bits that match the "portage"
@@ -1406,15 +1423,7 @@ def _post_src_install_uid_fix(mysettings, out):
 	inst_uid = int(mysettings["PORTAGE_INST_UID"])
 	inst_gid = int(mysettings["PORTAGE_INST_GID"])
 
-	if bsd_chflags:
-		# Temporarily remove all of the flags in order to avoid EPERM errors.
-		os.system("mtree -c -p %s -k flags > %s" % \
-			(_shell_quote(mysettings["D"]),
-			_shell_quote(os.path.join(mysettings["T"], "bsdflags.mtree"))))
-		os.system("chflags -R noschg,nouchg,nosappnd,nouappnd %s" % \
-			(_shell_quote(mysettings["D"]),))
-		os.system("chflags -R nosunlnk,nouunlnk %s 2>/dev/null" % \
-			(_shell_quote(mysettings["D"]),))
+	_preinst_bsdflags(mysettings)
 
 	destdir = mysettings["D"]
 	unicode_errors = []
