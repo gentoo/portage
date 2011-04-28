@@ -723,22 +723,6 @@ install_mask() {
 	set -${shopts}
 }
 
-preinst_bsdflags() {
-	hasq chflags $FEATURES || return
-	# Save all the file flags for restoration after installation.
-	mtree -c -p "${D}" -k flags > "${T}/bsdflags.mtree"
-	# Remove all the file flags so that the merge phase can do anything
-	# necessary.
-	chflags -R noschg,nouchg,nosappnd,nouappnd "${D}"
-	chflags -R nosunlnk,nouunlnk "${D}" 2>/dev/null
-}
-
-postinst_bsdflags() {
-	hasq chflags $FEATURES || return
-	# Restore all the file flags that were saved before installation.
-	mtree -e -p "${ROOT}" -U -k flags < "${T}/bsdflags.mtree" &> /dev/null
-}
-
 preinst_mask() {
 	if [ -z "${D}" ]; then
 		 eerror "${FUNCNAME}: D is unset"

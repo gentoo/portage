@@ -17,7 +17,8 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.doebuild:_check_build_log,' + \
 		'_post_phase_cmds,_post_phase_userpriv_perms,' + \
 		'_post_src_install_chost_fix,' + \
-		'_post_src_install_uid_fix'
+		'_post_src_install_uid_fix,_postinst_bsdflags,' + \
+		'_preinst_bsdflags'
 )
 from portage import os
 from portage import StringIO
@@ -175,6 +176,10 @@ class EbuildPhase(CompositeTask):
 			if msg:
 				self.scheduler.output(msg,
 					log_path=self.settings.get("PORTAGE_LOG_FILE"))
+		elif self.phase == "preinst":
+			_preinst_bsdflags(settings)
+		elif self.phase == "postinst":
+			_postinst_bsdflags(settings)
 
 		post_phase_cmds = _post_phase_cmds.get(self.phase)
 		if post_phase_cmds is not None:
