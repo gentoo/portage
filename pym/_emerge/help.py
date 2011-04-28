@@ -327,7 +327,7 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
-		print("        " + green("--binpkg-respect-use") + " [ %s | %s ]" % \
+		print("       " + green("--binpkg-respect-use") + " [ %s | %s ]" % \
 			(turquoise("y"), turquoise("n")))
 		desc = "Tells emerge to ignore binary packages if their use flags" + \
 			" don't match the current configuration. (default: 'n')"
