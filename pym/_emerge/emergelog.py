@@ -32,13 +32,15 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 		xtermTitle(short_msg)
 	try:
 		file_path = os.path.join(_emerge_log_dir, 'emerge.log')
+		existing_log = os.path.isfile(file_path)
 		mylogfile = codecs.open(_unicode_encode(file_path,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='a', encoding=_encodings['content'],
 			errors='backslashreplace')
-		portage.util.apply_secpass_permissions(file_path,
-			uid=portage.portage_uid, gid=portage.portage_gid,
-			mode=0o660)
+		if not existing_log:
+			portage.util.apply_secpass_permissions(file_path,
+				uid=portage.portage_uid, gid=portage.portage_gid,
+				mode=0o660)
 		mylock = None
 		try:
 			mylock = portage.locks.lockfile(mylogfile)
