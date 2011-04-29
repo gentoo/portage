@@ -1422,13 +1422,26 @@ def action_info(settings, trees, myopts, myfiles):
 
 	portdb = trees["/"]["porttree"].dbapi
 	main_repo = portdb.getRepositoryName(portdb.porttree_root)
+	cp_map = {}
+	cp_max_len = 0
 
 	for orig_atom, x in myvars:
 			pkg_matches = vardb.match(x)
 
 			versions = []
 			for cpv in pkg_matches:
+				matched_cp = portage.versions.cpv_getkey(cpv)
 				ver = portage.versions.cpv_getversion(cpv)
+				ver_map = cp_map.setdefault(matched_cp, {})
+				prev_match = ver_map.get(ver)
+				if prev_match is not None:
+					if prev_match.provide_suffix:
+						# prefer duplicate matches that include
+						# additional virtual provider info
+						continue
+
+				if len(matched_cp) > cp_max_len:
+					cp_max_len = len(matched_cp)
 				repo = vardb.aux_get(cpv, ["repository"])[0]
 				if repo == main_repo:
 					repo_suffix = ""
@@ -1436,22 +1449,20 @@ def action_info(settings, trees, myopts, myfiles):
 					repo_suffix = "::<unknown repository>"
 				else:
 					repo_suffix = "::" + repo
-				
-				matched_cp = portage.versions.cpv_getkey(cpv)
+
 				if matched_cp == orig_atom.cp:
 					provide_suffix = ""
 				else:
 					provide_suffix = " (%s)" % (orig_atom,)
 
-				versions.append(
-					_info_pkgs_ver(ver, repo_suffix, provide_suffix))
+				ver_map[ver] = _info_pkgs_ver(ver, repo_suffix, provide_suffix)
 
-			versions.sort()
-
-			if versions:
-				versions = ", ".join(ver.toString() for ver in versions)
-				writemsg_stdout("%-20s %s\n" % (x+":", versions),
-					noiselevel=-1)
+	for cp in sorted(cp_map):
+		versions = sorted(cp_map[cp].values())
+		versions = ", ".join(ver.toString() for ver in versions)
+		writemsg_stdout("%s %s\n" % \
+			((cp + ":").ljust(cp_max_len + 1), versions),
+			noiselevel=-1)
 
 	libtool_vers = ",".join(trees["/"]["vartree"].dbapi.match("sys-devel/libtool"))
 
