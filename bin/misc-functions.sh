@@ -184,16 +184,37 @@ install_qa_check() {
 			unset PORTAGE_QUIET
 		fi
 
-		# Make sure we disallow insecure RUNPATH/RPATHs
-		# Don't want paths that point to the tree where the package was built
-		# (older, broken libtools would do this).  Also check for null paths
-		# because the loader will search $PWD when it finds null paths.
-		f=$(scanelf -qyRF '%r %p' "${D}" | grep -E "(${PORTAGE_BUILDDIR}|: |::|^:|^ )")
+		# Make sure we disallow insecure RUNPATH/RPATHs.
+		#   1) References to PORTAGE_BUILDDIR are banned because it's a
+		#      security risk. We don't want to load files from a
+		#      temporary directory.
+		#   2) If ROOT != "/", references to ROOT are banned because
+		#      that directory won't exist on the target system.
+		#   3) Null paths are banned because the loader will search $PWD when
+		#      it finds null paths.
+		local forbidden_dirs="${PORTAGE_BUILDDIR}"
+		if [[ -n "$ROOT" ]] && [[ "$ROOT" != "/" ]]; then
+			forbidden_dirs="${forbidden_dirs} ${ROOT}"
+		fi
+		local dir="" rpath_files=$(scanelf -F '%F:%r' -qBR "${D}")
+		f=""
+		for dir in ${forbidden_dirs}; do
+			for l in $(echo "${rpath_files}" | grep -E ":${dir}|::|: "); do
+				f+="  ${l%%:*}\n"
+				if ! has stricter ${FEATURES}; then
+					vecho "Auto fixing rpaths for ${l%%:*}"
+					TMPDIR="${dir}" scanelf -BXr "${l%%:*}" -o /dev/null
+				fi
+			done
+		done
+
 		# Reject set*id binaries with $ORIGIN in RPATH #260331
 		x=$(
 			find "${D}" -type f \( -perm -u+s -o -perm -g+s \) -print0 | \
 			xargs -0 scanelf -qyRF '%r %p' | grep '$ORIGIN'
 		)
+
+		# Print QA notice.
 		if [[ -n ${f}${x} ]] ; then
 			vecho -ne '\n'
 			eqawarn "QA Notice: The following files contain insecure RUNPATHs"
@@ -203,9 +224,6 @@ install_qa_check() {
 			vecho -ne '\n'
 			if [[ -n ${x} ]] || has stricter ${FEATURES} ; then
 				insecure_rpath=1
-			else
-				vecho "Auto fixing rpaths for ${f}"
-				TMPDIR=${PORTAGE_BUILDDIR} scanelf -BXr ${f} -o /dev/null
 			fi
 		fi
 
