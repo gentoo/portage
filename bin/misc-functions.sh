@@ -193,10 +193,10 @@ install_qa_check() {
 		#   3) Null paths are banned because the loader will search $PWD when
 		#      it finds null paths.
 		local forbidden_dirs="${PORTAGE_BUILDDIR}"
-		if [[ -n "$ROOT" ]] && [[ "$ROOT" != "/" ]]; then
-			forbidden_dirs="${forbidden_dirs} ${ROOT}"
+		if [[ -n "${ROOT}" && "${ROOT}" != "/" ]]; then
+			forbidden_dirs+=" ${ROOT}"
 		fi
-		local dir="" rpath_files=$(scanelf -F '%F:%r' -qBR "${D}")
+		local dir l rpath_files=$(scanelf -F '%F:%r' -qBR "${D}")
 		f=""
 		for dir in ${forbidden_dirs}; do
 			for l in $(echo "${rpath_files}" | grep -E ":${dir}|::|: "); do
