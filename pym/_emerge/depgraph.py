@@ -4102,6 +4102,69 @@ class depgraph(object):
 			retlist.reverse()
 		return retlist
 
+	def _implicit_libc_deps(self, mergelist, graph):
+		"""
+		Create implicit dependencies on libc, in order to ensure that libc
+		is installed as early as possible (see bug #303567). If the merge
+		list contains both a new-style virtual and an old-style PROVIDE
+		virtual, the new-style virtual is used.
+		"""
+		implicit_libc_roots = set([self._frozen_config._running_root.root])
+		libc_set = InternalPackageSet([portage.const.LIBC_PACKAGE_ATOM])
+		norm_libc_pkgs = {}
+		virt_libc_pkgs = {}
+		for pkg in mergelist:
+			if not isinstance(pkg, Package):
+				# a satisfied blocker
+				continue
+			if pkg.installed:
+				continue
+			if pkg.root in implicit_libc_roots and \
+				pkg.operation == 'merge':
+				if libc_set.findAtomForPackage(pkg):
+					if pkg.category == 'virtual':
+						d = virt_libc_pkgs
+					else:
+						d = norm_libc_pkgs
+					if pkg.root in d:
+						raise AssertionError(
+							"found 2 libc matches: %s and %s" % \
+							(d[pkg.root], pkg))
+					d[pkg.root] = pkg
+
+		# Prefer new-style virtuals over old-style PROVIDE virtuals.
+		libc_pkg_map = norm_libc_pkgs.copy()
+		libc_pkg_map.update(virt_libc_pkgs)
+
+		# Only add a dep when the version changes.
+		for libc_pkg in list(libc_pkg_map.values()):
+			if libc_pkg.root_config.trees['vartree'].dbapi.cpv_exists(
+				libc_pkg.cpv):
+				del libc_pkg_map[pkg.root]
+
+		if not libc_pkg_map:
+			return
+
+		libc_pkgs = set(libc_pkg_map.values())
+		earlier_libc_pkgs = set()
+
+		for pkg in mergelist:
+			if not isinstance(pkg, Package):
+				# a satisfied blocker
+				continue
+			if pkg.installed:
+				continue
+			if pkg.root in implicit_libc_roots and \
+				pkg.operation == 'merge':
+				if pkg in libc_pkgs:
+					earlier_libc_pkgs.add(pkg)
+				else:
+					my_libc = libc_pkg_map.get(pkg.root)
+					if my_libc is not None and \
+						my_libc in earlier_libc_pkgs:
+						graph.add(my_libc, pkg,
+							priority=DepPriority(buildtime=True))
+
 	def schedulerGraph(self):
 		"""
 		The scheduler graph is identical to the normal one except that
@@ -4119,6 +4182,8 @@ class depgraph(object):
 
 		# NOTE: altlist initializes self._dynamic_config._scheduler_graph
 		mergelist = self.altlist()
+		self._implicit_libc_deps(mergelist,
+			self._dynamic_config._scheduler_graph)
 		self.break_refs(mergelist)
 		self.break_refs(self._dynamic_config._scheduler_graph.order)
 
