@@ -1639,32 +1639,39 @@ _ebuild_phase_funcs() {
 	esac
 }
 
-# Set given variable unless this variable has been already set (e.g. during emerge
-# invocation) to a value different than value set in make.conf.
+# Set given variables unless these variable have been already set (e.g. during emerge
+# invocation) to values different than values set in make.conf.
 set_unless_changed() {
-	if [[ $# -ne 2 ]]; then
-		die "${FUNCNAME}() requires 2 arguments: VARIABLE VALUE"
+	if [[ $# -lt 1 ]]; then
+		die "${FUNCNAME}() requires at least 1 argument: VARIABLE=VALUE"
 	fi
 
-	local variable="$1" value="$2"
-
-	if eval "[[ \${${variable}} == \$(env -u ${variable} portageq envvar ${variable}) ]]"; then
-		eval "${variable}=\"${value}\""
-	fi
+	local argument value variable
+	for argument in "$@"; do
+		if [[ ${argument} != *=* ]]; then
+			die "${FUNCNAME}(): Argument '${argument}' has incorrect syntax"
+		fi
+		variable="${argument%%=*}"
+		value="${argument#*=}"
+		if eval "[[ \${${variable}} == \$(env -u ${variable} portageq envvar ${variable}) ]]"; then
+			eval "${variable}=\"${value}\""
+		fi
+	done
 }
 
-# Unset given variable unless this variable has been set (e.g. during emerge
-# invocation) to a value different than value set in make.conf.
+# Unset given variables unless these variable have been set (e.g. during emerge
+# invocation) to values different than values set in make.conf.
 unset_unless_changed() {
-	if [[ $# -ne 1 ]]; then
-		die "${FUNCNAME}() requires 1 argument: VARIABLE"
+	if [[ $# -lt 1 ]]; then
+		die "${FUNCNAME}() requires at least 1 argument: VARIABLE"
 	fi
 
-	local variable="$1"
-
-	if eval "[[ \${${variable}} == \$(env -u ${variable} portageq envvar ${variable}) ]]"; then
-		unset ${variable}
-	fi
+	local variable
+	for variable in "$@"; do
+		if eval "[[ \${${variable}} == \$(env -u ${variable} portageq envvar ${variable}) ]]"; then
+			unset ${variable}
+		fi
+	done
 }
 
 PORTAGE_BASHRCS_SOURCED=0
