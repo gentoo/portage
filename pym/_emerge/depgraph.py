@@ -1477,8 +1477,9 @@ class depgraph(object):
 					(virt_pkg.cpv, [str(x) for x in atoms]),
 					noiselevel=-1, level=logging.DEBUG)
 
-			if not self._add_pkg(virt_pkg, virt_dep):
-				return 0
+			if not dep_priority.ignored:
+				if not self._add_pkg(virt_pkg, virt_dep):
+					return 0
 
 			for atom, child in self._minimize_children(
 				pkg, self._priority(runtime=True), root_config, atoms):
