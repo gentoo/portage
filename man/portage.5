@@ -678,12 +678,12 @@ set_unless_changed and unset_unless_changed functions can be used to set or
 unset given variables only if these variable have not been set to values
 different than values set in make.conf. This functionality can be useful for
 temporary overriding of these variables during emerge invocation. Variables
-set in the usual VARIABLE=VALUE style will unconditionally override variables
+set without using set_unless_changed will unconditionally override variables
 set during emerge invocation.
 
 .I Syntax:
 .nf
-set_unless_changed VARIABLE VALUE
+set_unless_changed VARIABLE=VALUE
 unset_unless_changed VALUE
 .fi
 
