@@ -366,6 +366,7 @@ qahelp={
 	"metadata.bad":"Bad metadata.xml files",
 	"metadata.warning":"Warnings in metadata.xml files",
 	"portage.internal":"The ebuild uses an internal Portage function",
+	"virtual.oldstyle":"The ebuild PROVIDEs an old-style virtual (see GLEP 37)",
 	"virtual.versioned":"PROVIDE contains virtuals with versions",
 	"virtual.exists":"PROVIDE contains existing package names",
 	"virtual.unavailable":"PROVIDE contains a virtual which contains no profile default",
@@ -1547,6 +1548,10 @@ for x in scanlist:
 			if portdb.cp_list(prov_cp):
 				stats["virtual.exists"]+=1
 				fails["virtual.exists"].append(x+"/"+y+".ebuild: "+prov_cp)
+
+		if myaux.get("PROVIDE"):
+			stats["virtual.oldstyle"]+=1
+			fails["virtual.oldstyle"].append(relative_path)
 
 		for pos, missing_var in enumerate(missingvars):
 			if not myaux.get(missing_var):
