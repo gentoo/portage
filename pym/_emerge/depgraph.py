@@ -235,16 +235,42 @@ class _rebuild_config(object):
 		runtime_deps = {}
 		leaf_nodes = deque(graph.leaf_nodes())
 
+		def ignore_non_runtime(priority):
+			return not priority.runtime
+
+		def ignore_non_buildtime(priority):
+			return not priority.buildtime
+
 		# Trigger rebuilds bottom-up (starting with the leaves) so that parents
 		# will always know which children are being rebuilt.
-		while leaf_nodes:
+		while not graph.empty():
+			if not leaf_nodes:
+				# We're interested in intersection of buildtime and runtime,
+				# so ignore edges that do not contain both.
+				leaf_nodes.extend(graph.leaf_nodes(
+					ignore_priority=ignore_non_runtime))
+				if not leaf_nodes:
+					leaf_nodes.extend(graph.leaf_nodes(
+						ignore_priority=ignore_non_buildtime))
+					if not leaf_nodes:
+						# We'll have to drop an edge that is both
+						# buildtime and runtime. This should be
+						# quite rare.
+						leaf_nodes.append(graph.order[-1])
+
 			node = leaf_nodes.popleft()
+			if node not in graph:
+				# This can be triggered by circular dependencies.
+				continue
 			slot_atom = node.slot_atom
 
 			# Remove our leaf node from the graph, keeping track of deps.
 			parents = graph.nodes[node][1].items()
 			graph.remove(node)
 			for parent, priorities in parents:
+				if parent == node:
+					# Ignore a direct cycle.
+					continue
 				for priority in priorities:
 					if priority.buildtime:
 						build_deps.setdefault(parent, {})[slot_atom] = node
