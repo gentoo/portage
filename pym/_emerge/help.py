@@ -565,6 +565,12 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
+		print("       " + green("--norebuild-atoms") + " " + turquoise("ATOMS"))
+		desc = "A space separated list of package names or slot atoms." + \
+			" Emerge will not rebuild matching packages due to --rebuild."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
 		print("       "+green("--oneshot")+" ("+green("-1")+" short option)")
 		print("              Emerge as normal, but don't add packages to the world profile.")
 		print("              This package will only be updated if it is depended upon by")
@@ -613,6 +619,13 @@ def help(myopts, havecolor=1):
 			"--unmerge actions. This option is intended " + \
 			"to be set in the make.conf(5) " + \
 			"EMERGE_DEFAULT_OPTS variable."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
+		print("       " + green("--rebuild") + " [ %s | %s ]" % \
+			(turquoise("y"), turquoise("n")))
+		desc = "Rebuild packages when dependencies that are used " + \
+			"at both build-time and run-time are upgraded."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()

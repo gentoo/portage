@@ -33,7 +33,7 @@ def create_depgraph_params(myopts, myaction):
 	deep = myopts.get("--deep")
 	if deep is not None and deep != 0:
 		myparams["deep"] = deep
-	if "--complete-graph" in myopts:
+	if "--complete-graph" in myopts or "--rebuild" in myopts:
 		myparams["complete"] = True
 	if "--emptytree" in myopts:
 		myparams["empty"] = True

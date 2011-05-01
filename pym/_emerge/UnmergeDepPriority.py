@@ -3,7 +3,7 @@
 
 from _emerge.AbstractDepPriority import AbstractDepPriority
 class UnmergeDepPriority(AbstractDepPriority):
-	__slots__ = ("optional", "satisfied",)
+	__slots__ = ("ignored", "optional", "satisfied",)
 	"""
 	Combination of properties           Priority  Category
 
@@ -32,6 +32,8 @@ class UnmergeDepPriority(AbstractDepPriority):
 		return -2
 
 	def __str__(self):
+		if self.ignored:
+			return "ignored"
 		myvalue = self.__int__()
 		if myvalue > self.SOFT:
 			return "hard"

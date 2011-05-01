@@ -9,6 +9,7 @@ import logging
 import re
 import sys
 import textwrap
+from collections import deque
 from itertools import chain
 
 import portage
@@ -127,6 +128,10 @@ class _frozen_depgraph_config(object):
 		self.nousepkg_atoms = _wildcard_set(atoms)
 		atoms = ' '.join(myopts.get("--useoldpkg-atoms", [])).split()
 		self.useoldpkg_atoms = _wildcard_set(atoms)
+		atoms = ' '.join(myopts.get("--norebuild-atoms", [])).split()
+		self.norebuild_atoms = _wildcard_set(atoms)
+
+		self.rebuild = "--rebuild" in myopts
 
 class _depgraph_sets(object):
 	def __init__(self):
@@ -138,6 +143,128 @@ class _depgraph_sets(object):
 		# atoms given as arguments
 		self.atoms = InternalPackageSet(allow_repo=True)
 		self.atom_arg_map = {}
+
+class _rebuild_config(object):
+	def __init__(self, frozen_config, backtrack_parameters):
+		self._graph = digraph()
+		self._frozen_config = frozen_config
+		self.rebuild_list = backtrack_parameters.rebuild_list.copy()
+		self.orig_rebuild_list = self.rebuild_list.copy()
+		self.reinstall_list = backtrack_parameters.reinstall_list.copy()
+
+	def add(self, dep_pkg, dep):
+		parent = dep.collapsed_parent
+		priority = dep.collapsed_priority
+		norebuild_atoms = self._frozen_config.norebuild_atoms
+		if (self._frozen_config.rebuild and isinstance(parent, Package) and
+			parent.built and (priority.buildtime or priority.runtime) and
+			isinstance(dep_pkg, Package) and
+			not norebuild_atoms.findAtomForPackage(parent)):
+			self._graph.add(dep_pkg, parent, priority)
+
+	def _trigger_rebuild(self, parent, build_deps, runtime_deps):
+		root_slot = (parent.root, parent.slot_atom)
+		if root_slot in self.rebuild_list:
+			return False
+		trees = self._frozen_config.trees
+		children = set(build_deps).intersection(runtime_deps)
+		reinstall = False
+		for slot_atom in children:
+			kids = set([build_deps[slot_atom], runtime_deps[slot_atom]])
+			for dep_pkg in kids:
+				dep_root_slot = (dep_pkg.root, slot_atom)
+				if (not dep_pkg.built and
+					dep_root_slot not in self.orig_rebuild_list):
+					# There's no binary package for dep_pkg, so any binary
+					# package for this parent would be invalid. Force rebuild.
+					self.rebuild_list.add(root_slot)
+					return True
+				elif ("--usepkg" in self._frozen_config.myopts and
+					(dep_root_slot in self.reinstall_list or
+					dep_root_slot in self.rebuild_list or
+					not dep_pkg.installed)):
+
+					# A direct rebuild dependency is being installed. We
+					# should update the parent as well to the latest binary,
+					# if that binary is valid.
+					#
+					# To validate the binary, we check whether all of the
+					# rebuild dependencies are present on the same binhost.
+					#
+					# 1) If parent is present on the binhost, but one of its
+					#    rebuild dependencies is not, then the parent should
+					#    be rebuilt from source.
+					# 2) Otherwise, the parent binary is assumed to be valid,
+					#    because all of its rebuild dependencies are
+					#    consistent.
+					bintree = trees[parent.root]["bintree"]
+					uri = bintree.get_pkgindex_uri(parent.cpv)
+					dep_uri = bintree.get_pkgindex_uri(dep_pkg.cpv)
+					bindb = bintree.dbapi
+
+					if uri and uri != dep_uri:
+						# 1) Remote binary package is invalid because it was
+						#    built without dep_pkg. Force rebuild.
+						self.rebuild_list.add(root_slot)
+						return True
+					elif (parent.installed and
+						root_slot not in self.reinstall_list):
+						inst_build_time = parent.metadata.get("BUILD_TIME")
+						try:
+							bin_build_time, = bindb.aux_get(parent.cpv,
+								["BUILD_TIME"])
+						except KeyError:
+							continue
+						if bin_build_time != inst_build_time:
+							# 2) Remote binary package is valid, and local package
+							#    is not up to date. Force reinstall.
+							reinstall = True
+		if reinstall:
+			self.reinstall_list.add(root_slot)
+		return reinstall
+
+	def trigger_rebuilds(self):
+		"""
+		Trigger rebuilds where necessary. If pkgA has been updated, and pkgB
+		depends on pkgA at both build-time and run-time, pkgB needs to be
+		rebuilt.
+		"""
+		need_restart = False
+		graph = self._graph
+		build_deps = {}
+		runtime_deps = {}
+		leaf_nodes = deque(graph.leaf_nodes())
+
+		# Trigger rebuilds bottom-up (starting with the leaves) so that parents
+		# will always know which children are being rebuilt.
+		while leaf_nodes:
+			node = leaf_nodes.popleft()
+			slot_atom = node.slot_atom
+
+			# Remove our leaf node from the graph, keeping track of deps.
+			parents = graph.nodes[node][1].items()
+			graph.remove(node)
+			for parent, priorities in parents:
+				for priority in priorities:
+					if priority.buildtime:
+						build_deps.setdefault(parent, {})[slot_atom] = node
+					if priority.runtime:
+						runtime_deps.setdefault(parent, {})[slot_atom] = node
+				if not graph.child_nodes(parent):
+					leaf_nodes.append(parent)
+
+			# Trigger rebuilds for our leaf node. Because all of our children
+			# have been processed, build_deps and runtime_deps will be
+			# completely filled in, and self.rebuild_list / self.reinstall_list
+			# will tell us whether any of our children need to be rebuilt or
+			# reinstalled.
+			node_build_deps = build_deps.get(node, {})
+			node_runtime_deps = runtime_deps.get(node, {})
+			if self._trigger_rebuild(node, node_build_deps, node_runtime_deps):
+				need_restart = True
+
+		return need_restart
+
 
 class _dynamic_depgraph_config(object):
 
@@ -306,6 +433,7 @@ class depgraph(object):
 		self._frozen_config = frozen_config
 		self._dynamic_config = _dynamic_depgraph_config(self, myparams,
 			allow_backtracking, backtrack_parameters)
+		self._rebuild = _rebuild_config(frozen_config, backtrack_parameters)
 
 		self._select_atoms = self._select_atoms_highest_available
 		self._select_package = self._select_pkg_highest_available
@@ -671,6 +799,8 @@ class depgraph(object):
 		if dep.blocker:
 			if not buildpkgonly and \
 				not nodeps and \
+				not dep.collapsed_priority.ignored and \
+				not dep.collapsed_priority.optional and \
 				dep.parent not in self._dynamic_config._slot_collision_nodes:
 				if dep.parent.onlydeps:
 					# It's safe to ignore blockers if the
@@ -695,9 +825,9 @@ class depgraph(object):
 				dep.root].get(dep_pkg.slot_atom)
 
 		if not dep_pkg:
-			if dep.priority.optional:
-				# This could be an unnecessary build-time dep
-				# pulled in by --with-bdeps=y.
+			if (dep.collapsed_priority.optional or
+				dep.collapsed_priority.ignored):
+				# This is an unnecessary build-time dep.
 				return 1
 			if allow_unsatisfied:
 				self._dynamic_config._unsatisfied_deps.append(dep)
@@ -740,7 +870,10 @@ class depgraph(object):
 
 			return 0
 
-		if not self._add_pkg(dep_pkg, dep):
+		self._rebuild.add(dep_pkg, dep)
+
+		if (not dep.collapsed_priority.ignored and
+			not self._add_pkg(dep_pkg, dep)):
 			return 0
 		return 1
 
@@ -1110,6 +1243,7 @@ class depgraph(object):
 			edepend["RDEPEND"] = ""
 			edepend["PDEPEND"] = ""
 
+		ignore_build_time_deps = False
 		if pkg.built and not removal_action:
 			if self._frozen_config.myopts.get("--with-bdeps", "n") == "y":
 				# Pull in build time deps as requested, but marked them as
@@ -1121,11 +1255,10 @@ class depgraph(object):
 				# failing.
 				pass
 			else:
-				# built packages do not have build time dependencies.
-				edepend["DEPEND"] = ""
+				ignore_build_time_deps = True
 
 		if removal_action and self._frozen_config.myopts.get("--with-bdeps", "y") == "n":
-			edepend["DEPEND"] = ""
+			ignore_build_time_deps = True
 
 		if removal_action:
 			depend_root = myroot
@@ -1136,13 +1269,14 @@ class depgraph(object):
 				if root_deps is True:
 					depend_root = myroot
 				elif root_deps == "rdeps":
-					edepend["DEPEND"] = ""
+					ignore_build_time_deps = True
 
 		deps = (
 			(depend_root, edepend["DEPEND"],
-				self._priority(buildtime=(not pkg.built),
-				optional=pkg.built),
-				pkg.built),
+				self._priority(buildtime=True,
+				optional=pkg.built,
+				ignored=ignore_build_time_deps),
+				pkg.built or ignore_build_time_deps),
 			(myroot, edepend["RDEPEND"],
 				self._priority(runtime=True),
 				False),
@@ -1266,6 +1400,7 @@ class depgraph(object):
 
 			mypriority = dep_priority.copy()
 			if not atom.blocker:
+				root_slot = (pkg.root, pkg.slot_atom)
 				inst_pkgs = [inst_pkg for inst_pkg in vardb.match_pkgs(atom)
 					if not reinstall_atoms.findAtomForPackage(inst_pkg,
 							modified_use=self._pkg_use_enabled(inst_pkg))]
@@ -1375,7 +1510,8 @@ class depgraph(object):
 				# same depth as the virtual itself.
 				dep = Dependency(atom=atom,
 					blocker=atom.blocker, child=child, depth=virt_dep.depth,
-					parent=virt_pkg, priority=mypriority, root=dep_root)
+					parent=virt_pkg, priority=mypriority, root=dep_root,
+					collapsed_parent=pkg, collapsed_priority=dep_priority)
 
 				ignored = False
 				if not atom.blocker and \
@@ -1931,9 +2067,12 @@ class depgraph(object):
 		pkgsettings = self._frozen_config.pkgsettings[myroot]
 		pprovideddict = pkgsettings.pprovideddict
 		virtuals = pkgsettings.getvirtuals()
-		for arg in self._expand_set_args(
-			self._dynamic_config._initial_arg_list,
-			add_to_digraph=True):
+		args = self._dynamic_config._initial_arg_list[:]
+		for root, atom in chain(self._rebuild.rebuild_list,
+			self._rebuild.reinstall_list):
+			args.append(AtomArg(arg=atom, atom=atom,
+				root_config=self._frozen_config.roots[root]))
+		for arg in self._expand_set_args(args, add_to_digraph=True):
 			for atom in arg.pset.getAtoms():
 				self._spinner_update()
 				dep = Dependency(atom=atom, onlydeps=onlydeps,
@@ -2047,6 +2186,14 @@ class depgraph(object):
 			self._dynamic_config._needed_license_changes) :
 			#We failed if the user needs to change the configuration
 			self._dynamic_config._success_without_autounmask = True
+			return False, myfavorites
+
+		if self._rebuild.trigger_rebuilds():
+			backtrack_infos = self._dynamic_config._backtrack_infos
+			config = backtrack_infos.setdefault("config", {})
+			config["rebuild_list"] = self._rebuild.rebuild_list
+			config["reinstall_list"] = self._rebuild.reinstall_list
+			self._dynamic_config._need_restart = True
 			return False, myfavorites
 
 		# We're true here unless we are missing binaries.
@@ -2538,7 +2685,12 @@ class depgraph(object):
 								pkg.iuse.is_valid_flag):
 								required_use_unsatisfied.append(pkg)
 								continue
-						if pkg.built and not mreasons:
+						root_slot = (pkg.root, pkg.slot_atom)
+						if pkg.built and root_slot in self._rebuild.rebuild_list:
+							mreasons = ["need to rebuild from source"]
+						elif pkg.installed and root_slot in self._rebuild.reinstall_list:
+							mreasons = ["need to rebuild from source"]
+						elif pkg.built and not mreasons:
 							mreasons = ["use flag configuration mismatch"]
 					masked_packages.append(
 						(root_config, pkgsettings, cpv, repo, metadata, mreasons))
@@ -3215,6 +3367,12 @@ class depgraph(object):
 					onlydeps=onlydeps):
 					if pkg in self._dynamic_config._runtime_pkg_mask:
 						# The package has been masked by the backtracking logic
+						continue
+					root_slot = (pkg.root, pkg.slot_atom)
+					if pkg.built and root_slot in self._rebuild.rebuild_list:
+						continue
+					if (pkg.installed and
+						root_slot in self._rebuild.reinstall_list):
 						continue
 
 					if not pkg.installed and \

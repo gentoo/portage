@@ -489,6 +489,10 @@ terminal device is determined to be a TTY.  This flag disables it regardless.
 A space separated list of package names or slot atoms. Emerge will ignore
 matching binary packages.
 .TP
+.BR "\-\-norebuild\-atoms " ATOMS
+A space separated list of package names or slot atoms. Emerge will not rebuild
+matching packages due to \fB\-\-rebuild\fR.
+.TP
 .BR "\-\-oneshot " (\fB\-1\fR)
 Emerge as normal, but do not add the packages to the world file
 for later updating.
@@ -537,6 +541,10 @@ Disable the warning message that's shown prior to
 \fB\-\-unmerge\fR actions. This option is intended
 to be set in the \fBmake.conf\fR(5)
 \fBEMERGE_DEFAULT_OPTS\fR variable.
+.TP
+.BR "\-\-rebuild [ y | n ]"
+Rebuild packages when dependencies that are used at both build\-time and
+run\-time are upgraded.
 .TP
 .BR "\-\-rebuilt\-binaries [ y | n ]"
 Replace installed packages with binary packages that have

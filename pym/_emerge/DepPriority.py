@@ -4,7 +4,7 @@
 from _emerge.AbstractDepPriority import AbstractDepPriority
 class DepPriority(AbstractDepPriority):
 
-	__slots__ = ("satisfied", "optional", "rebuild")
+	__slots__ = ("satisfied", "optional", "rebuild", "ignored")
 
 	def __int__(self):
 		"""
@@ -24,17 +24,19 @@ class DepPriority(AbstractDepPriority):
 
 		"""
 
+		if self.optional:
+			return -3
 		if self.buildtime:
 			return 0
 		if self.runtime:
 			return -1
 		if self.runtime_post:
 			return -2
-		if self.optional:
-			return -3
 		return -4
 
 	def __str__(self):
+		if self.ignored:
+			return "ignored"
 		if self.optional:
 			return "optional"
 		if self.buildtime:

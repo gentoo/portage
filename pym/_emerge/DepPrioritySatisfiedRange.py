@@ -80,6 +80,7 @@ class DepPrioritySatisfiedRange(object):
 		if priority.__class__ is not DepPriority:
 			return False
 		return bool(priority.satisfied or \
+			priority.optional or \
 			not priority.buildtime)
 
 	ignore_medium      = _ignore_runtime

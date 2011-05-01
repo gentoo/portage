@@ -440,6 +440,7 @@ def insert_optional_args(args):
 		'--package-moves'        : y_or_n,
 		'--quiet'                : y_or_n,
 		'--quiet-build'          : y_or_n,
+		'--rebuild'              : y_or_n,
 		'--rebuilt-binaries'     : y_or_n,
 		'--root-deps'  : ('rdeps',),
 		'--select'               : y_or_n,
@@ -741,6 +742,14 @@ def parse_opts(tmpcmdline, silent=False):
 			"action" : "append",
 		},
 
+		"--norebuild-atoms": {
+			"help"   :"A space separated list of package names or slot atoms. " + \
+				"Emerge will not rebuild these packages due to the " + \
+				"--rebuild flag. ",
+
+			"action" : "append",
+		},
+
 		"--package-moves": {
 			"help"     : "perform package moves when necessary",
 			"type"     : "choice",
@@ -756,6 +765,13 @@ def parse_opts(tmpcmdline, silent=False):
 
 		"--quiet-build": {
 			"help"     : "redirect build output to logs",
+			"type"     : "choice",
+			"choices"  : true_y_or_n
+		},
+
+		"--rebuild": {
+			"help"     : "Rebuild packages when dependencies that are " + \
+				"used at both build-time and run-time are upgraded.",
 			"type"     : "choice",
 			"choices"  : true_y_or_n
 		},
@@ -889,7 +905,7 @@ def parse_opts(tmpcmdline, silent=False):
 	else:
 		myoptions.binpkg_respect_use = None
 
-	if myoptions.complete_graph in true_y:
+	if myoptions.complete_graph in true_y or myoptions.rebuild in true_y:
 		myoptions.complete_graph = True
 	else:
 		myoptions.complete_graph = None
@@ -908,6 +924,12 @@ def parse_opts(tmpcmdline, silent=False):
 		bad_atoms = _find_bad_atoms(myoptions.reinstall_atoms)
 		if bad_atoms and not silent:
 			parser.error("Invalid Atom(s) in --reinstall-atoms parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n" % \
+				(",".join(bad_atoms),))
+
+	if myoptions.norebuild_atoms:
+		bad_atoms = _find_bad_atoms(myoptions.norebuild_atoms)
+		if bad_atoms and not silent:
+			parser.error("Invalid Atom(s) in --norebuild-atoms parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n" % \
 				(",".join(bad_atoms),))
 
 	if myoptions.nousepkg_atoms:
@@ -952,6 +974,11 @@ def parse_opts(tmpcmdline, silent=False):
 		myoptions.quiet_build = True
 	else:
 		myoptions.quiet_build = None
+
+	if myoptions.rebuild in true_y:
+		myoptions.rebuild = True
+	else:
+		myoptions.rebuild = None
 
 	if myoptions.rebuilt_binaries in true_y:
 		myoptions.rebuilt_binaries = True
