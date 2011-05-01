@@ -17,6 +17,10 @@ def create_depgraph_params(myopts, myaction):
 	# rebuilt_binaries: replace installed packages with rebuilt binaries
 	myparams = {"recurse" : True}
 
+	bdeps = myopts.get("--with-bdeps")
+	if bdeps is not None:
+		myparams["bdeps"] = bdeps
+
 	if myaction == "remove":
 		myparams["remove"] = True
 		myparams["complete"] = True

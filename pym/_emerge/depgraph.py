@@ -1245,7 +1245,7 @@ class depgraph(object):
 
 		ignore_build_time_deps = False
 		if pkg.built and not removal_action:
-			if self._frozen_config.myopts.get("--with-bdeps", "n") == "y":
+			if self._dynamic_config.myparams.get("bdeps", "n") == "y":
 				# Pull in build time deps as requested, but marked them as
 				# "optional" since they are not strictly required. This allows
 				# more freedom in the merge order calculation for solving
@@ -1257,7 +1257,7 @@ class depgraph(object):
 			else:
 				ignore_build_time_deps = True
 
-		if removal_action and self._frozen_config.myopts.get("--with-bdeps", "y") == "n":
+		if removal_action and self._dynamic_config.myparams.get("bdeps", "y") == "n":
 			ignore_build_time_deps = True
 
 		if removal_action:
@@ -3854,6 +3854,9 @@ class depgraph(object):
 			self._select_package = self._select_pkg_from_installed
 		else:
 			self._select_package = self._select_pkg_from_graph
+			# Make the graph as complete as possible by traversing build-time
+			# dependencies if they happen to be installed already.
+			self._dynamic_config.myparams["bdeps"] = "y"
 		already_deep = self._dynamic_config.myparams.get("deep") is True
 		if not already_deep:
 			self._dynamic_config.myparams["deep"] = True
