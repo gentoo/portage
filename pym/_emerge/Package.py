@@ -107,7 +107,8 @@ class Package(Task):
 				use_reduce(v, eapi=dep_eapi, matchall=True,
 					is_valid_flag=dep_valid_flag, token_class=Atom)
 			except InvalidDependString as e:
-				self._metadata_exception(k, e)
+				self._invalid_metadata("PROVIDE.syntax",
+					_unicode_decode("%s: %s") % (k, e))
 
 		for k in self._use_conditional_misc_keys:
 			v = self.metadata.get(k)

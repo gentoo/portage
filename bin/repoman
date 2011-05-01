@@ -367,9 +367,6 @@ qahelp={
 	"metadata.warning":"Warnings in metadata.xml files",
 	"portage.internal":"The ebuild uses an internal Portage function",
 	"virtual.oldstyle":"The ebuild PROVIDEs an old-style virtual (see GLEP 37)",
-	"virtual.versioned":"PROVIDE contains virtuals with versions",
-	"virtual.exists":"PROVIDE contains existing package names",
-	"virtual.unavailable":"PROVIDE contains a virtual which contains no profile default",
 	"usage.obsolete":"The ebuild makes use of an obsolete construct",
 	"upstream.workaround":"The ebuild works around an upstream bug, an upstream bug should be filed and tracked in bugs.gentoo.org"
 }
@@ -414,9 +411,6 @@ qawarnings = set((
 "wxwidgets.eclassnotused",
 "metadata.warning",
 "portage.internal",
-"virtual.versioned",
-"virtual.exists",
-"virtual.unavailable",
 "usage.obsolete",
 "upstream.workaround",
 "LIVEVCS.stable",
@@ -1522,32 +1516,6 @@ for x in scanlist:
 					"%s: '%s' found in thirdpartymirrors" % \
 					(relative_path, mirror))
 
-		try:
-			provide = portage.dep.use_reduce(pkg.metadata['PROVIDE'],
-				token_class=portage.dep.Atom, matchall=1, flat=True)
-		except portage.exception.InvalidDependString:
-			stats["PROVIDE.syntax"] = stats["PROVIDE.syntax"] + 1
-			fails["PROVIDE.syntax"].append("%s: %s" % \
-				(relative_path, pkg.metadata['PROVIDE']))
-			provide = []
-		provide_cps = []
-
-		# The Package class automatically evaluates USE conditionals.
-		for myprovide in provide:
-			if not isinstance(myprovide, portage.dep.Atom):
-				stats["PROVIDE.syntax"] = stats["PROVIDE.syntax"] + 1
-				fails["PROVIDE.syntax"].append("%s: %s" % \
-					(relative_path, myprovide))
-				continue
-			prov_cp = myprovide.cp
-			provide_cps.append(prov_cp)
-			if prov_cp != myprovide:
-				stats["virtual.versioned"]+=1
-				fails["virtual.versioned"].append(x+"/"+y+".ebuild: "+myprovide)
-			if portdb.cp_list(prov_cp):
-				stats["virtual.exists"]+=1
-				fails["virtual.exists"].append(x+"/"+y+".ebuild: "+prov_cp)
-
 		if myaux.get("PROVIDE"):
 			stats["virtual.oldstyle"]+=1
 			fails["virtual.oldstyle"].append(relative_path)
@@ -1901,19 +1869,6 @@ for x in scanlist:
 				dep_settings["ACCEPT_KEYWORDS"] = " ".join(groups)
 				# just in case, prevent config.reset() from nuking these.
 				dep_settings.backup_changes("ACCEPT_KEYWORDS")
-
-				if prof.sub_path:
-					# old-style virtuals currently aren't
-					# resolvable with empty profile, since
-					# mappings from 'virtuals' files are
-					# unavailable (it would be expensive to
-					# search for PROVIDE in all ebuilds)
-					for prov_cp in provide_cps:
-						if prov_cp not in dep_settings.getvirtuals():
-							stats["virtual.unavailable"] += 1
-							fails["virtual.unavailable"].append(
-								"%s: %s(%s) %s" % (relative_path, keyword,
-								prof.sub_path, prov_cp))
 
 				if not baddepsyntax:
 					ismasked = not ebuild_archs or \
