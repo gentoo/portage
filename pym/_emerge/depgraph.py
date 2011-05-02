@@ -1221,6 +1221,20 @@ class depgraph(object):
 
 	def _add_pkg_dep_string(self, pkg, dep_root, dep_priority, dep_string,
 		allow_unsatisfied, ignore_blockers=False):
+		_autounmask_backup = self._dynamic_config._autounmask
+		if dep_priority.optional:
+			# Temporarily disable autounmask for deps that
+			# don't necessarily need to be satisfied.
+			self._dynamic_config._autounmask = False
+		try:
+			return self._wrapped_add_pkg_dep_string(
+				pkg, dep_root, dep_priority, dep_string,
+				allow_unsatisfied, ignore_blockers=ignore_blockers)
+		finally:
+			self._dynamic_config._autounmask = _autounmask_backup
+
+	def _wrapped_add_pkg_dep_string(self, pkg, dep_root, dep_priority,
+		dep_string, allow_unsatisfied, ignore_blockers=False):
 		depth = pkg.depth + 1
 		deep = self._dynamic_config.myparams.get("deep", 0)
 		recurse_satisfied = deep is True or depth <= deep
