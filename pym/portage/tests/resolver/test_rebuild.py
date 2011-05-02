@@ -1,3 +1,6 @@
+# Copyright 2011 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (ResolverPlayground,
 	ResolverPlaygroundTestCase)
