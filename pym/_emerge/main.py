@@ -735,14 +735,14 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices"  : true_y_or_n
 		},
 
-		"--nousepkg-atoms": {
+		"--usepkg-exclude": {
 			"help"   :"A space separated list of package names or slot atoms. " + \
 				"Emerge will ignore matching binary packages. ",
 
 			"action" : "append",
 		},
 
-		"--norebuild-atoms": {
+		"--rebuild-exclude": {
 			"help"   :"A space separated list of package names or slot atoms. " + \
 				"Emerge will not rebuild these packages due to the " + \
 				"--rebuild flag. ",
@@ -926,16 +926,16 @@ def parse_opts(tmpcmdline, silent=False):
 			parser.error("Invalid Atom(s) in --reinstall-atoms parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n" % \
 				(",".join(bad_atoms),))
 
-	if myoptions.norebuild_atoms:
-		bad_atoms = _find_bad_atoms(myoptions.norebuild_atoms)
+	if myoptions.rebuild_exclude:
+		bad_atoms = _find_bad_atoms(myoptions.rebuild_exclude)
 		if bad_atoms and not silent:
-			parser.error("Invalid Atom(s) in --norebuild-atoms parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n" % \
+			parser.error("Invalid Atom(s) in --rebuild-exclude parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n" % \
 				(",".join(bad_atoms),))
 
-	if myoptions.nousepkg_atoms:
-		bad_atoms = _find_bad_atoms(myoptions.nousepkg_atoms)
+	if myoptions.usepkg_exclude:
+		bad_atoms = _find_bad_atoms(myoptions.usepkg_exclude)
 		if bad_atoms and not silent:
-			parser.error("Invalid Atom(s) in --nousepkg-atoms parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n" % \
+			parser.error("Invalid Atom(s) in --usepkg-exclude parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n" % \
 				(",".join(bad_atoms),))
 
 	if myoptions.useoldpkg_atoms:

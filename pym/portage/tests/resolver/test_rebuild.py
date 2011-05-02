@@ -45,7 +45,7 @@ class RebuildTestCase(TestCase):
 				ResolverPlaygroundTestCase(
 					["sys-libs/x"],
 					options = {"--rebuild" : True,
-						"--norebuild-atoms" : ["sys-apps/b"]},
+						"--rebuild-exclude" : ["sys-apps/b"]},
 					mergelist = ['sys-libs/x-2', 'sys-apps/a-2', 'sys-apps/e-2'],
 					ignore_mergelist_order = True,
 					success = True),

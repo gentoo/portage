@@ -124,12 +124,12 @@ class _frozen_depgraph_config(object):
 		self.excluded_pkgs = _wildcard_set(atoms)
 		atoms = ' '.join(myopts.get("--reinstall-atoms", [])).split()
 		self.reinstall_atoms = _wildcard_set(atoms)
-		atoms = ' '.join(myopts.get("--nousepkg-atoms", [])).split()
-		self.nousepkg_atoms = _wildcard_set(atoms)
+		atoms = ' '.join(myopts.get("--usepkg-exclude", [])).split()
+		self.usepkg_exclude = _wildcard_set(atoms)
 		atoms = ' '.join(myopts.get("--useoldpkg-atoms", [])).split()
 		self.useoldpkg_atoms = _wildcard_set(atoms)
-		atoms = ' '.join(myopts.get("--norebuild-atoms", [])).split()
-		self.norebuild_atoms = _wildcard_set(atoms)
+		atoms = ' '.join(myopts.get("--rebuild-exclude", [])).split()
+		self.rebuild_exclude = _wildcard_set(atoms)
 
 		self.rebuild = "--rebuild" in myopts
 
@@ -155,11 +155,11 @@ class _rebuild_config(object):
 	def add(self, dep_pkg, dep):
 		parent = dep.collapsed_parent
 		priority = dep.collapsed_priority
-		norebuild_atoms = self._frozen_config.norebuild_atoms
+		rebuild_exclude = self._frozen_config.rebuild_exclude
 		if (self._frozen_config.rebuild and isinstance(parent, Package) and
 			parent.built and (priority.buildtime or priority.runtime) and
 			isinstance(dep_pkg, Package) and
-			not norebuild_atoms.findAtomForPackage(parent)):
+			not rebuild_exclude.findAtomForPackage(parent)):
 			self._graph.add(dep_pkg, parent, priority)
 
 	def _trigger_rebuild(self, parent, build_deps, runtime_deps):
@@ -3406,7 +3406,7 @@ class depgraph(object):
 		use_ebuild_visibility = self._frozen_config.myopts.get(
 			'--use-ebuild-visibility', 'n') != 'n'
 		reinstall_atoms = self._frozen_config.reinstall_atoms
-		nousepkg_atoms = self._frozen_config.nousepkg_atoms
+		usepkg_exclude = self._frozen_config.usepkg_exclude
 		useoldpkg_atoms = self._frozen_config.useoldpkg_atoms
 		matched_oldpkg = []
 		# Behavior of the "selective" parameter depends on
@@ -3454,7 +3454,7 @@ class depgraph(object):
 							modified_use=self._pkg_use_enabled(pkg)):
 						continue
 
-					if built and not installed and nousepkg_atoms.findAtomForPackage(pkg, \
+					if built and not installed and usepkg_exclude.findAtomForPackage(pkg, \
 						modified_use=self._pkg_use_enabled(pkg)):
 						break
 

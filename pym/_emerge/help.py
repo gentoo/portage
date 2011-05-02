@@ -559,13 +559,13 @@ def help(myopts, havecolor=1):
 		print("       "+green("--nospinner"))
 		print("              Disables the spinner regardless of terminal type.")
 		print()
-		print("       " + green("--nousepkg-atoms") + " " + turquoise("ATOMS"))
+		print("       " + green("--usepkg-exclude") + " " + turquoise("ATOMS"))
 		desc = "A space separated list of package names or slot atoms." + \
 			" Emerge will ignore matching binary packages."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
-		print("       " + green("--norebuild-atoms") + " " + turquoise("ATOMS"))
+		print("       " + green("--rebuild-exclude") + " " + turquoise("ATOMS"))
 		desc = "A space separated list of package names or slot atoms." + \
 			" Emerge will not rebuild matching packages due to --rebuild."
 		for line in wrap(desc, desc_width):
