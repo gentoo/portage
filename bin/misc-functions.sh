@@ -220,16 +220,37 @@ install_qa_check_elf() {
 			unset PORTAGE_QUIET
 		fi
 
-		# Make sure we disallow insecure RUNPATH/RPATHs
-		# Don't want paths that point to the tree where the package was built
-		# (older, broken libtools would do this).  Also check for null paths
-		# because the loader will search $PWD when it finds null paths.
-		f=$(scanelf -qyRF '%r %p' "${D}" | grep -E "(${PORTAGE_BUILDDIR}|: |::|^:|^ )")
+		# Make sure we disallow insecure RUNPATH/RPATHs.
+		#   1) References to PORTAGE_BUILDDIR are banned because it's a
+		#      security risk. We don't want to load files from a
+		#      temporary directory.
+		#   2) If ROOT != "/", references to ROOT are banned because
+		#      that directory won't exist on the target system.
+		#   3) Null paths are banned because the loader will search $PWD when
+		#      it finds null paths.
+		local forbidden_dirs="${PORTAGE_BUILDDIR}"
+		if [[ -n "${ROOT}" && "${ROOT}" != "/" ]]; then
+			forbidden_dirs+=" ${ROOT}"
+		fi
+		local dir l rpath_files=$(scanelf -F '%F:%r' -qBR "${D}")
+		f=""
+		for dir in ${forbidden_dirs}; do
+			for l in $(echo "${rpath_files}" | grep -E ":${dir}|::|: "); do
+				f+="  ${l%%:*}\n"
+				if ! has stricter ${FEATURES}; then
+					vecho "Auto fixing rpaths for ${l%%:*}"
+					TMPDIR="${dir}" scanelf -BXr "${l%%:*}" -o /dev/null
+				fi
+			done
+		done
+
 		# Reject set*id binaries with $ORIGIN in RPATH #260331
 		x=$(
 			find "${D}" -type f \( -perm -u+s -o -perm -g+s \) -print0 | \
 			xargs -0 scanelf -qyRF '%r %p' | grep '$ORIGIN'
 		)
+
+		# Print QA notice.
 		if [[ -n ${f}${x} ]] ; then
 			vecho -ne '\n'
 			eqawarn "QA Notice: The following files contain insecure RUNPATHs"
@@ -239,9 +260,6 @@ install_qa_check_elf() {
 			vecho -ne '\n'
 			if [[ -n ${x} ]] || has stricter ${FEATURES} ; then
 				insecure_rpath=1
-			else
-				vecho "Auto fixing rpaths for ${f}"
-				TMPDIR=${PORTAGE_BUILDDIR} scanelf -BXr ${f} -o /dev/null
 			fi
 		fi
 
@@ -593,23 +611,23 @@ install_qa_check_misc() {
 			reset_debug=1
 		fi
 		local m msgs=(
-			": warning: dereferencing type-punned pointer will break strict-aliasing rules$"
-			": warning: dereferencing pointer .* does break strict-aliasing rules$"
-			": warning: implicit declaration of function "
-			": warning: incompatible implicit declaration of built-in function "
-			": warning: is used uninitialized in this function$" # we'll ignore "may" and "might"
-			": warning: comparisons like X<=Y<=Z do not have their mathematical meaning$"
-			": warning: null argument where non-null required "
-			": warning: array subscript is below array bounds$"
-			": warning: array subscript is above array bounds$"
+			": warning: dereferencing type-punned pointer will break strict-aliasing rules"
+			": warning: dereferencing pointer .* does break strict-aliasing rules"
+			": warning: implicit declaration of function"
+			": warning: incompatible implicit declaration of built-in function"
+			": warning: is used uninitialized in this function" # we'll ignore "may" and "might"
+			": warning: comparisons like X<=Y<=Z do not have their mathematical meaning"
+			": warning: null argument where non-null required"
+			": warning: array subscript is below array bounds"
+			": warning: array subscript is above array bounds"
 			": warning: attempt to free a non-heap object"
-			": warning: .* called with .*bigger.* than .* destination buffer$"
-			": warning: call to .* will always overflow destination buffer$"
-			": warning: assuming pointer wraparound does not occur when comparing "
-			": warning: hex escape sequence out of range$"
-			": warning: [^ ]*-hand operand of comma .*has no effect$"
+			": warning: .* called with .*bigger.* than .* destination buffer"
+			": warning: call to .* will always overflow destination buffer"
+			": warning: assuming pointer wraparound does not occur when comparing"
+			": warning: hex escape sequence out of range"
+			": warning: [^ ]*-hand operand of comma .*has no effect"
 			": warning: converting to non-pointer type .* from NULL"
-			": warning: NULL used in arithmetic$"
+			": warning: NULL used in arithmetic"
 			": warning: passing NULL to non-pointer argument"
 			": warning: the address of [^ ]* will always evaluate as"
 			": warning: the address of [^ ]* will never be NULL"
@@ -618,9 +636,9 @@ install_qa_check_misc() {
 			": warning: returning reference to temporary"
 			": warning: function returns address of local variable"
 			# this may be valid code :/
-			#": warning: multi-character character constant$"
+			#": warning: multi-character character constant"
 			# need to check these two ...
-			#": warning: assuming signed overflow does not occur when "
+			#": warning: assuming signed overflow does not occur when"
 			#": warning: comparison with string literal results in unspecified behav"
 			# yacc/lex likes to trigger this one
 			#": warning: extra tokens at end of .* directive"
@@ -642,7 +660,7 @@ install_qa_check_misc() {
 				abort="yes"
 				# for now, don't make this fatal (see bug #337031)
 				#case "$m" in
-				#	": warning: call to .* will always overflow destination buffer$") always_overflow=yes ;;
+				#	": warning: call to .* will always overflow destination buffer") always_overflow=yes ;;
 				#esac
 				if [[ $always_overflow = yes ]] ; then
 					eerror
@@ -1247,22 +1265,6 @@ install_mask() {
 	# set everything back the way we found it
 	set +o noglob
 	set -${shopts}
-}
-
-preinst_bsdflags() {
-	hasq chflags $FEATURES || return
-	# Save all the file flags for restoration after installation.
-	mtree -c -p "${D}" -k flags > "${T}/bsdflags.mtree"
-	# Remove all the file flags so that the merge phase can do anything
-	# necessary.
-	chflags -R noschg,nouchg,nosappnd,nouappnd "${D}"
-	chflags -R nosunlnk,nouunlnk "${D}" 2>/dev/null
-}
-
-postinst_bsdflags() {
-	hasq chflags $FEATURES || return
-	# Restore all the file flags that were saved before installation.
-	mtree -e -p "${ROOT}" -U -k flags < "${T}/bsdflags.mtree" &> /dev/null
 }
 
 preinst_aix() {

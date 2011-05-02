@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from itertools import permutations
@@ -32,7 +32,7 @@ class ResolverPlayground(object):
 	"""
 
 	config_files = frozenset(("package.use", "package.mask", "package.keywords", \
-		"package.unmask", "package.properties", "package.license"))
+		"package.unmask", "package.properties", "package.license", "use.mask", "use.force"))
 
 	def __init__(self, ebuilds={}, installed={}, profile={}, repo_configs={}, \
 		user_config={}, sets={}, world=[], debug=False):

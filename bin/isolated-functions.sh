@@ -593,8 +593,8 @@ save_ebuild_env() {
 			dyn_preinst dyn_help debug-print debug-print-function \
 			debug-print-section inherit EXPORT_FUNCTIONS remove_path_entry \
 			save_ebuild_env filter_readonly_variables preprocess_ebuild_env \
-			source_all_bashrcs ebuild_main \
-			ebuild_phase ebuild_phase_with_hooks \
+			set_unless_changed unset_unless_changed source_all_bashrcs \
+			ebuild_main ebuild_phase ebuild_phase_with_hooks \
 			_ebuild_arg_to_phase _ebuild_phase_funcs default \
 			_pipestatus \
 			${QA_INTERCEPTORS}

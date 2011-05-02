@@ -1649,6 +1649,41 @@ _ebuild_phase_funcs() {
 	esac
 }
 
+# Set given variables unless these variable have been already set (e.g. during emerge
+# invocation) to values different than values set in make.conf.
+set_unless_changed() {
+	if [[ $# -lt 1 ]]; then
+		die "${FUNCNAME}() requires at least 1 argument: VARIABLE=VALUE"
+	fi
+
+	local argument value variable
+	for argument in "$@"; do
+		if [[ ${argument} != *=* ]]; then
+			die "${FUNCNAME}(): Argument '${argument}' has incorrect syntax"
+		fi
+		variable="${argument%%=*}"
+		value="${argument#*=}"
+		if eval "[[ \${${variable}} == \$(env -u ${variable} portageq envvar ${variable}) ]]"; then
+			eval "${variable}=\"${value}\""
+		fi
+	done
+}
+
+# Unset given variables unless these variable have been set (e.g. during emerge
+# invocation) to values different than values set in make.conf.
+unset_unless_changed() {
+	if [[ $# -lt 1 ]]; then
+		die "${FUNCNAME}() requires at least 1 argument: VARIABLE"
+	fi
+
+	local variable
+	for variable in "$@"; do
+		if eval "[[ \${${variable}} == \$(env -u ${variable} portageq envvar ${variable}) ]]"; then
+			unset ${variable}
+		fi
+	done
+}
+
 PORTAGE_BASHRCS_SOURCED=0
 
 # @FUNCTION: source_all_bashrcs

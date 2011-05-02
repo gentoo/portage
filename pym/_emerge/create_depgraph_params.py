@@ -17,6 +17,10 @@ def create_depgraph_params(myopts, myaction):
 	# rebuilt_binaries: replace installed packages with rebuilt binaries
 	myparams = {"recurse" : True}
 
+	bdeps = myopts.get("--with-bdeps")
+	if bdeps is not None:
+		myparams["bdeps"] = bdeps
+
 	if myaction == "remove":
 		myparams["remove"] = True
 		myparams["complete"] = True
@@ -33,7 +37,7 @@ def create_depgraph_params(myopts, myaction):
 	deep = myopts.get("--deep")
 	if deep is not None and deep != 0:
 		myparams["deep"] = deep
-	if "--complete-graph" in myopts:
+	if "--complete-graph" in myopts or "--rebuild" in myopts:
 		myparams["complete"] = True
 	if "--emptytree" in myopts:
 		myparams["empty"] = True

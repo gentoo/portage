@@ -229,6 +229,7 @@ class binarytree(object):
 			self.invalids = []
 			self.settings = settings
 			self._pkg_paths = {}
+			self._pkgindex_uri = {}
 			self._populating = False
 			self._all_directory = os.path.isdir(
 				os.path.join(self.pkgdir, "All"))
@@ -875,8 +876,9 @@ class binarytree(object):
 				# Organize remote package list as a cpv -> metadata map.
 				remotepkgs = _pkgindex_cpv_map_latest_build(pkgindex)
 				remote_base_uri = pkgindex.header.get("URI", base_url)
-				for remote_metadata in remotepkgs.values():
+				for cpv, remote_metadata in remotepkgs.items():
 					remote_metadata["BASE_URI"] = remote_base_uri
+					self._pkgindex_uri[cpv] = url
 				self._remotepkgs.update(remotepkgs)
 				self._remote_has_index = True
 				for cpv in remotepkgs:
@@ -1225,6 +1227,10 @@ class binarytree(object):
 		# Presence in self._remotepkgs implies that it's remote. When a
 		# package is downloaded, state is updated by self.inject().
 		return True
+
+	def get_pkgindex_uri(self, pkgname):
+		"""Returns the URI to the Packages file for a given package."""
+		return self._pkgindex_uri.get(pkgname)
 
 	def gettbz2(self, pkgname):
 		"""Fetches the package from a remote site, if necessary.  Attempts to

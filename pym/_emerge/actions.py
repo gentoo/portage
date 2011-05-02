@@ -31,7 +31,7 @@ from portage.cache.cache_errors import CacheError
 from portage.const import GLOBAL_CONFIG_PATH, NEWS_LIB_PATH, EPREFIX
 from portage.const import _ENABLE_DYN_LINK_MAP, _ENABLE_SET_CONFIG
 from portage.dbapi.dep_expand import dep_expand
-from portage.dep import Atom, extended_cp_match
+from portage.dep import Atom, extended_cp_match, _get_useflag_re
 from portage.exception import InvalidAtom
 from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 	red, yellow
@@ -1289,6 +1289,67 @@ def action_deselect(settings, trees, opts, atoms):
 			world_set.unlock()
 	return os.EX_OK
 
+def expand_new_virt(vardb, atom):
+	"""
+	Iterate over the recursively expanded RDEPEND atoms of
+	a new-style virtual. If atom is not a new-style virtual
+	or it does not match an installed package then it is
+	yielded without any expansion.
+	"""
+	if not isinstance(atom, Atom):
+		atom = Atom(atom)
+	traversed = set()
+	stack = [atom]
+
+	while stack:
+		atom = stack.pop()
+		if atom.blocker:
+			yield atom
+			continue
+
+		matches = vardb.match(atom)
+		if not (matches and matches[-1].startswith("virtual/")):
+			yield atom
+			continue
+
+		virt_cpv = matches[-1]
+		if virt_cpv in traversed:
+			continue
+
+		traversed.add(virt_cpv)
+		eapi, iuse, rdepend, use = vardb.aux_get(virt_cpv,
+			["EAPI", "IUSE", "RDEPEND", "USE"])
+		if not portage.eapi_is_supported(eapi):
+			yield atom
+			continue
+
+		# Validate IUSE and IUSE, for early detection of vardb corruption.
+		useflag_re = _get_useflag_re(eapi)
+		valid_iuse = []
+		for x in iuse.split():
+			if x[:1] in ("+", "-"):
+				x = x[1:]
+			if useflag_re.match(x) is not None:
+				valid_iuse.append(x)
+		valid_iuse = frozenset(valid_iuse)
+
+		iuse_implicit_match = vardb.settings._iuse_implicit_match
+		valid_use = []
+		for x in use.split():
+			if x in valid_iuse or iuse_implicit_match(x):
+				valid_use.append(x)
+		valid_use = frozenset(valid_use)
+
+		success, atoms = portage.dep_check(rdepend,
+			None, vardb.settings, myuse=valid_use,
+			myroot=vardb.root, trees={vardb.root:{"porttree":vardb.vartree,
+			"vartree":vardb.vartree}})
+
+		if success:
+			stack.extend(atoms)
+		else:
+			yield atom
+
 class _info_pkgs_ver(object):
 	def __init__(self, ver, repo_suffix, provide_suffix):
 		self.ver = ver
@@ -1349,20 +1410,43 @@ def action_info(settings, trees, myopts, myfiles):
 	myvars  = ["sys-devel/autoconf", "sys-devel/automake", "virtual/os-headers",
 	           "sys-devel/binutils", "sys-devel/libtool",  "dev-lang/python"]
 	myvars += portage.util.grabfile(settings["PORTDIR"]+"/profiles/info_pkgs")
-	myvars  = portage.util.unique_array(myvars)
-	myvars.sort()
+	atoms = []
+	vardb = trees["/"]["vartree"].dbapi
+	for x in myvars:
+		try:
+			x = Atom(x)
+		except InvalidAtom:
+			writemsg_stdout("%-20s %s\n" % (x+":", "[NOT VALID]"),
+				noiselevel=-1)
+		else:
+			for atom in expand_new_virt(vardb, x):
+				if not atom.blocker:
+					atoms.append((x, atom))
+
+	myvars = sorted(set(atoms))
 
 	portdb = trees["/"]["porttree"].dbapi
-	vardb = trees["/"]["vartree"].dbapi
 	main_repo = portdb.getRepositoryName(portdb.porttree_root)
+	cp_map = {}
+	cp_max_len = 0
 
-	for x in myvars:
-		if portage.isvalidatom(x):
+	for orig_atom, x in myvars:
 			pkg_matches = vardb.match(x)
 
 			versions = []
 			for cpv in pkg_matches:
+				matched_cp = portage.versions.cpv_getkey(cpv)
 				ver = portage.versions.cpv_getversion(cpv)
+				ver_map = cp_map.setdefault(matched_cp, {})
+				prev_match = ver_map.get(ver)
+				if prev_match is not None:
+					if prev_match.provide_suffix:
+						# prefer duplicate matches that include
+						# additional virtual provider info
+						continue
+
+				if len(matched_cp) > cp_max_len:
+					cp_max_len = len(matched_cp)
 				repo = vardb.aux_get(cpv, ["repository"])[0]
 				if repo == main_repo:
 					repo_suffix = ""
@@ -1370,25 +1454,20 @@ def action_info(settings, trees, myopts, myfiles):
 					repo_suffix = "::<unknown repository>"
 				else:
 					repo_suffix = "::" + repo
-				
-				matched_cp = portage.versions.cpv_getkey(cpv)
-				if matched_cp == x:
+
+				if matched_cp == orig_atom.cp:
 					provide_suffix = ""
 				else:
-					provide_suffix = " (%s)" % matched_cp
+					provide_suffix = " (%s)" % (orig_atom,)
 
-				versions.append(
-					_info_pkgs_ver(ver, repo_suffix, provide_suffix))
+				ver_map[ver] = _info_pkgs_ver(ver, repo_suffix, provide_suffix)
 
-			versions.sort()
-
-			if versions:
-				versions = ", ".join(ver.toString() for ver in versions)
-				writemsg_stdout("%-20s %s\n" % (x+":", versions),
-					noiselevel=-1)
-		else:
-			writemsg_stdout("%-20s %s\n" % (x+":", "[NOT VALID]"),
-				noiselevel=-1)
+	for cp in sorted(cp_map):
+		versions = sorted(cp_map[cp].values())
+		versions = ", ".join(ver.toString() for ver in versions)
+		writemsg_stdout("%s %s\n" % \
+			((cp + ":").ljust(cp_max_len + 1), versions),
+			noiselevel=-1)
 
 	libtool_vers = ",".join(trees["/"]["vartree"].dbapi.match("sys-devel/libtool"))
 
@@ -2836,24 +2915,22 @@ def getportageversion(portdir, target_root, profile, chost, vardb):
 	if profilever is None:
 		profilever = "unavailable"
 
-	libcver=[]
-	libclist  = vardb.match("virtual/libc")
-	libclist += vardb.match("virtual/glibc")
-	libclist  = portage.util.unique_array(libclist)
-	for x in libclist:
-		xs=portage.catpkgsplit(x)
-		if libcver:
-			libcver+=","+"-".join(xs[1:])
-		else:
-			libcver="-".join(xs[1:])
-	if libcver==[]:
-		libcver="unavailable"
+	libcver = []
+	libclist = set()
+	for atom in expand_new_virt(vardb, portage.const.LIBC_PACKAGE_ATOM):
+		if not atom.blocker:
+			libclist.update(vardb.match(atom))
+	if libclist:
+		for cpv in sorted(libclist):
+			libcver.append("-".join(portage.catpkgsplit(cpv)[1:]))
+	else:
+		libcver = ["unavailable"]
 
 	gccver = getgccversion(chost)
 	unameout=platform.release()+" "+platform.machine()
 
 	return "Portage %s (%s, %s, %s, %s)" % \
-		(portage.VERSION, profilever, gccver, libcver, unameout)
+		(portage.VERSION, profilever, gccver, ",".join(libcver), unameout)
 
 def git_sync_timestamps(settings, portdir):
 	"""

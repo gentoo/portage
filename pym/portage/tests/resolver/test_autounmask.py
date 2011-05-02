@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -15,6 +15,12 @@ class AutounmaskTestCase(TestCase):
 			"dev-libs/B-1": { "DEPEND": "foo? ( dev-libs/C ) bar? ( dev-libs/D )", "IUSE": "foo bar"}, 
 			"dev-libs/C-1": {},
 			"dev-libs/D-1": {},
+
+			#ebuilds to test if we allow changing of masked or forced flags
+			"dev-libs/E-1": { "SLOT": 1, "DEPEND": "dev-libs/F[masked-flag]", "EAPI": 2},
+			"dev-libs/E-2": { "SLOT": 2, "DEPEND": "dev-libs/G[-forced-flag]", "EAPI": 2},
+			"dev-libs/F-1": { "IUSE": "masked-flag"},
+			"dev-libs/G-1": { "IUSE": "forced-flag"},
 
 			#ebuilds to test keyword changes
 			"app-misc/Z-1": { "KEYWORDS": "~x86", "DEPEND": "app-misc/Y" },
@@ -185,9 +191,32 @@ class AutounmaskTestCase(TestCase):
 					options = { "--autounmask": True },
 					use_changes = None,
 					success = False),
+
+				#Make sure we don't change masked/forced flags.
+				ResolverPlaygroundTestCase(
+					["dev-libs/E:1"],
+					options = {"--autounmask": True},
+					use_changes = None,
+					success = False),
+				ResolverPlaygroundTestCase(
+					["dev-libs/E:2"],
+					options = {"--autounmask": True},
+					use_changes = None,
+					success = False),
 			)
 
-		playground = ResolverPlayground(ebuilds=ebuilds)
+		profile = {
+			"use.mask":
+				(
+					"masked-flag",
+				),
+			"use.force":
+				(
+					"forced-flag",
+				),
+		}
+
+		playground = ResolverPlayground(ebuilds=ebuilds, profile=profile)
 		try:
 			for test_case in test_cases:
 				playground.run_TestCase(test_case)

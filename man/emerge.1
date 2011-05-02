@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Mar 2011" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "May 2011" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -438,6 +438,12 @@ order to avoid excess load. See \fBmake\fR(1) for information about
 analogous options that should be configured via \fBMAKEOPTS\fR in
 \fBmake.conf\fR(5).
 .TP
+.BR "\-\-misspell\-suggestions < y | n >"
+Enable or disable misspell suggestions. By default, emerge will show
+a list of packages with similar names when a package doesn't exist.
+The \fIEMERGE_DEFAULT_OPTS\fR variable may be used to disable this
+option by default.
+.TP
 .BR "\-\-newuse " (\fB\-N\fR)
 Tells emerge to include installed packages where USE
 flags have changed since compilation. This option
@@ -478,6 +484,14 @@ may have changed.
 .BR "\-\-nospinner"
 Disables the spinner for the session.  The spinner is active when the
 terminal device is determined to be a TTY.  This flag disables it regardless.
+.TP
+.BR "\-\-nousepkg\-atoms " ATOMS
+A space separated list of package names or slot atoms. Emerge will ignore
+matching binary packages.
+.TP
+.BR "\-\-norebuild\-atoms " ATOMS
+A space separated list of package names or slot atoms. Emerge will not rebuild
+matching packages due to \fB\-\-rebuild\fR.
 .TP
 .BR "\-\-oneshot " (\fB\-1\fR)
 Emerge as normal, but do not add the packages to the world file
@@ -528,6 +542,10 @@ Disable the warning message that's shown prior to
 to be set in the \fBmake.conf\fR(5)
 \fBEMERGE_DEFAULT_OPTS\fR variable.
 .TP
+.BR "\-\-rebuild [ y | n ]"
+Rebuild packages when dependencies that are used at both build\-time and
+run\-time are upgraded.
+.TP
 .BR "\-\-rebuilt\-binaries [ y | n ]"
 Replace installed packages with binary packages that have
 been rebuilt. Rebuilds are detected by comparison of
@@ -548,6 +566,11 @@ Tells emerge to include installed packages where USE flags have
 changed since installation.  Unlike \fB\-\-newuse\fR, this option does
 not trigger reinstallation when flags that the user has not
 enabled are added or removed.
+.TP
+.BR "\-\-reinstall\-atoms " ATOMS
+A space separated list of package names or slot atoms. Emerge will treat
+matching packages as if they are not installed, and reinstall them if
+necessary.
 .TP
 .BR \-\-root=DIR
 Set the \fBROOT\fR environment variable.
@@ -605,6 +628,10 @@ atoms may match multiple versions of slotted packages.
 .BR "\-\-use\-ebuild\-visibility [ y | n ]"
 Use unbuilt ebuild metadata for visibility
 checks on built packages.
+.TP
+.BR "\-\-useoldpkg\-atoms " ATOMS
+A space separated list of package names or slot atoms. Emerge will prefer
+matching binary packages over newer unbuilt packages.
 .TP
 .BR "\-\-usepkg [ y | n ] (\-k short option)"
 Tells emerge to use binary packages (from $PKGDIR) if they are available, thus 
