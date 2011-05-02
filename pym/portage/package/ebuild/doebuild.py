@@ -37,10 +37,12 @@ from portage.const import EBUILD_SH_ENV_FILE, EBUILD_SH_ENV_DIR, \
 	EBUILD_SH_BINARY, INVALID_ENV_FILE, MISC_SH_BINARY
 from portage.data import portage_gid, portage_uid, secpass, \
 	uid, userpriv_groups
+from portage.dbapi.porttree import _parse_uri_map
 from portage.dbapi.virtual import fakedbapi
-from portage.dep import Atom, paren_enclose, use_reduce
+from portage.dep import Atom, check_required_use, \
+	human_readable_required_use, paren_enclose, use_reduce
 from portage.eapi import eapi_exports_KV, eapi_exports_merge_type, \
-	eapi_exports_replace_vars, \
+	eapi_exports_replace_vars, eapi_has_required_use, \
 	eapi_has_src_prepare_and_src_configure, eapi_has_pkg_pretend
 from portage.elog import elog_process
 from portage.elog.messages import eerror, eqawarn
@@ -132,6 +134,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	mydbapi = db
 	ebuild_path = os.path.abspath(myebuild)
 	pkg_dir     = os.path.dirname(ebuild_path)
+	mytree = os.path.dirname(os.path.dirname(pkg_dir))
 
 	if "CATEGORY" in mysettings.configdict["pkg"]:
 		cat = mysettings.configdict["pkg"]["CATEGORY"]
@@ -199,7 +202,6 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	mysettings["PF"]       = mypv
 
 	if hasattr(mydbapi, '_repo_info'):
-		mytree = os.path.dirname(os.path.dirname(pkg_dir))
 		repo_info = mydbapi._repo_info[mytree]
 		mysettings['PORTDIR'] = repo_info.portdir
 		mysettings['PORTDIR_OVERLAY'] = repo_info.portdir_overlay
@@ -240,6 +242,30 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			# can't do anything with this.
 			raise UnsupportedAPIException(mycpv, eapi)
 
+		if hasattr(mydbapi, "getFetchMap") and \
+			("A" not in mysettings.configdict["pkg"] or \
+			"AA" not in mysettings.configdict["pkg"]):
+			src_uri, = mydbapi.aux_get(mysettings.mycpv,
+				["SRC_URI"], mytree=mytree)
+			metadata = {
+				"EAPI"    : eapi,
+				"SRC_URI" : src_uri,
+			}
+			use = frozenset(mysettings["PORTAGE_USE"].split())
+			try:
+				uri_map = _parse_uri_map(mysettings.mycpv, metadata, use=use)
+			except InvalidDependString:
+				mysettings.configdict["pkg"]["A"] = ""
+			else:
+				mysettings.configdict["pkg"]["A"] = " ".join(uri_map)
+
+			try:
+				uri_map = _parse_uri_map(mysettings.mycpv, metadata)
+			except InvalidDependString:
+				mysettings.configdict["pkg"]["AA"] = ""
+			else:
+				mysettings.configdict["pkg"]["AA"] = " ".join(uri_map)
+
 	if mysplit[2] == "r0":
 		mysettings["PVR"]=mysplit[1]
 	else:
@@ -255,9 +281,12 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	if portage_bin_path not in mysplit:
 		mysettings["PATH"] = portage_bin_path + ":" + mysettings["PATH"]
 
+	# All temporary directories should be subdirectories of
+	# $PORTAGE_TMPDIR/portage, since it's common for /tmp and /var/tmp
+	# to be mounted with the "noexec" option (see bug #346899).
 	mysettings["BUILD_PREFIX"] = mysettings["PORTAGE_TMPDIR"]+"/portage"
-	mysettings["PKG_TMPDIR"]   = mysettings["PORTAGE_TMPDIR"]+"/binpkgs"
-	
+	mysettings["PKG_TMPDIR"]   = mysettings["BUILD_PREFIX"]+"/._unmerge_"
+
 	# Package {pre,post}inst and {pre,post}rm may overlap, so they must have separate
 	# locations in order to prevent interference.
 	if mydo in ("unmerge", "prerm", "postrm", "cleanrm"):
@@ -562,7 +591,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mypids = _spawn_phase(mydo, mysettings, returnpid=True,
 					fd_pipes=fd_pipes)
 				os.close(pw) # belongs exclusively to the child process now
-				f = os.fdopen(pr, 'rb')
+				f = os.fdopen(pr, 'rb', 0)
 				for k, v in zip(auxdbkeys,
 					(_unicode_decode(line).rstrip('\n') for line in f)):
 					dbkey[k] = v
@@ -681,50 +710,44 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# Only try and fetch the files if we are going to need them ...
 		# otherwise, if user has FEATURES=noauto and they run `ebuild clean
 		# unpack compile install`, we will try and fetch 4 times :/
-		need_distfiles = \
+		need_distfiles = tree == "porttree" and \
 			(mydo in ("fetch", "unpack") or \
 			mydo not in ("digest", "manifest") and "noauto" not in features)
-		alist = mysettings.configdict["pkg"].get("A")
-		aalist = mysettings.configdict["pkg"].get("AA")
-		if not hasattr(mydbapi, 'getFetchMap'):
-			if alist is None:
-				alist = ""
-			if aalist is None:
-				aalist = ""
-			alist = set(alist.split())
-			aalist = set(aalist.split())
-		elif alist is None or aalist is None or \
-			need_distfiles:
-			# Make sure we get the correct tree in case there are overlays.
-			mytree = os.path.realpath(
-				os.path.dirname(os.path.dirname(mysettings["O"])))
-			useflags = mysettings["PORTAGE_USE"].split()
+		alist = set(mysettings.configdict["pkg"].get("A", "").split())
+		if need_distfiles:
+
+			src_uri, = mydbapi.aux_get(mysettings.mycpv,
+				["SRC_URI"], mytree=os.path.dirname(os.path.dirname(
+				os.path.dirname(myebuild))))
+			metadata = {
+				"EAPI"    : mysettings["EAPI"],
+				"SRC_URI" : src_uri,
+			}
+			use = frozenset(mysettings["PORTAGE_USE"].split())
 			try:
-				alist = mydbapi.getFetchMap(mycpv, useflags=useflags,
-					mytree=mytree)
-				aalist = mydbapi.getFetchMap(mycpv, mytree=mytree)
+				alist = _parse_uri_map(mysettings.mycpv, metadata, use=use)
+				aalist = _parse_uri_map(mysettings.mycpv, metadata)
 			except InvalidDependString as e:
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 				writemsg(_("!!! Invalid SRC_URI for '%s'.\n") % mycpv,
 					noiselevel=-1)
 				del e
 				return 1
-			mysettings.configdict["pkg"]["A"] = " ".join(alist)
-			mysettings.configdict["pkg"]["AA"] = " ".join(aalist)
 
-			if need_distfiles:
-				if "mirror" in features or fetchall:
-					fetchme = aalist
-				else:
-					fetchme = alist
-				if not fetch(fetchme, mysettings, listonly=listonly,
-					fetchonly=fetchonly):
-					spawn_nofetch(mydbapi, myebuild, settings=mysettings)
-					return 1
-
-		else:
-			alist = set(alist.split())
-			aalist = set(aalist.split())
+			if "mirror" in features or fetchall:
+				fetchme = aalist
+			else:
+				fetchme = alist
+			if not fetch(fetchme, mysettings, listonly=listonly,
+				fetchonly=fetchonly):
+				spawn_nofetch(mydbapi, myebuild, settings=mysettings)
+				if listonly:
+					# The convention for listonly mode is to report
+					# success in any case, even though fetch() may
+					# return unsuccessfully in order to trigger the
+					# nofetch phase.
+					return 0
+				return 1
 
 		if mydo == "fetch":
 			# Files are already checked inside fetch(),
@@ -763,7 +786,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# remove PORTAGE_ACTUAL_DISTDIR once cvs/svn is supported via SRC_URI
 		if tree == 'porttree' and \
 			((mydo != "setup" and "noauto" not in features) \
-			or mydo == "unpack"):
+			or mydo in ("install", "unpack")):
 			_prepare_fake_distdir(mysettings, alist)
 
 		#initial dep checks complete; time to process main commands
@@ -1037,6 +1060,30 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 		if mydo not in invalid_dep_exempt_phases:
 			return 1
 
+	if not pkg.built and \
+		mydo not in ("digest", "help", "manifest") and \
+		pkg.metadata["REQUIRED_USE"] and \
+		eapi_has_required_use(pkg.metadata["EAPI"]):
+		result = check_required_use(pkg.metadata["REQUIRED_USE"],
+			pkg.use.enabled, pkg.iuse.is_valid_flag)
+		if not result:
+			reduced_noise = result.tounicode()
+			writemsg("\n  %s\n" % _("The following REQUIRED_USE flag" + \
+				" constraints are unsatisfied:"), noiselevel=-1)
+			writemsg("    %s\n" % reduced_noise,
+				noiselevel=-1)
+			normalized_required_use = \
+				" ".join(pkg.metadata["REQUIRED_USE"].split())
+			if reduced_noise != normalized_required_use:
+				writemsg("\n  %s\n" % _("The above constraints " + \
+					"are a subset of the following complete expression:"),
+					noiselevel=-1)
+				writemsg("    %s\n" % \
+					human_readable_required_use(normalized_required_use),
+					noiselevel=-1)
+			writemsg("\n", noiselevel=-1)
+			return 1
+
 	return os.EX_OK
 
 # XXX This would be to replace getstatusoutput completely.
@@ -1186,14 +1233,10 @@ _post_phase_cmds = {
 		"install_symlink_html_docs"],
 
 	"preinst" : [
-		"preinst_bsdflags",
 		"preinst_sfperms",
 		"preinst_selinux_labels",
 		"preinst_suid_scan",
-		"preinst_mask"],
-
-	"postinst" : [
-		"postinst_bsdflags"]
+		"preinst_mask"]
 }
 
 def _post_phase_userpriv_perms(mysettings):
@@ -1237,10 +1280,6 @@ def _check_build_log(mysettings, out=None):
 	configure_opts_warn = []
 	configure_opts_warn_re = re.compile(
 		r'^configure: WARNING: [Uu]nrecognized options: ')
-	# --disable-dependency-tracking is passed by default in EAPI 4;
-	# filter the warning if this is the only unrecognized option.
-	configure_opts_warn_exclude_re = re.compile(
-		r': --disable-dependency-tracking$')
 
 	# Exclude output from dev-libs/yaz-3.0.47 which looks like this:
 	#
@@ -1272,8 +1311,7 @@ def _check_build_log(mysettings, out=None):
 			if helper_missing_file_re.match(line) is not None:
 				helper_missing_file.append(line.rstrip("\n"))
 
-			if configure_opts_warn_re.match(line) is not None and \
-				configure_opts_warn_exclude_re.search(line) is None:
+			if configure_opts_warn_re.match(line) is not None:
 				configure_opts_warn.append(line.rstrip("\n"))
 
 			if make_jobserver_re.match(line) is not None:
@@ -1350,6 +1388,27 @@ _vdb_use_conditional_keys = ('DEPEND', 'LICENSE', 'PDEPEND',
 	'PROPERTIES', 'PROVIDE', 'RDEPEND', 'RESTRICT',)
 _vdb_use_conditional_atoms = frozenset(['DEPEND', 'PDEPEND', 'RDEPEND'])
 
+def _preinst_bsdflags(mysettings):
+	if bsd_chflags:
+		# Save all the file flags for restoration later.
+		os.system("mtree -c -p %s -k flags > %s" % \
+			(_shell_quote(mysettings["D"]),
+			_shell_quote(os.path.join(mysettings["T"], "bsdflags.mtree"))))
+
+		# Remove all the file flags to avoid EPERM errors.
+		os.system("chflags -R noschg,nouchg,nosappnd,nouappnd %s" % \
+			(_shell_quote(mysettings["D"]),))
+		os.system("chflags -R nosunlnk,nouunlnk %s 2>/dev/null" % \
+			(_shell_quote(mysettings["D"]),))
+
+
+def _postinst_bsdflags(mysettings):
+	if bsd_chflags:
+		# Restore all of the flags saved above.
+		os.system("mtree -e -p %s -U -k flags < %s > /dev/null" % \
+			(_shell_quote(mysettings["ROOT"]),
+			_shell_quote(os.path.join(mysettings["T"], "bsdflags.mtree"))))
+
 def _post_src_install_uid_fix(mysettings, out):
 	"""
 	Files in $D with user and group bits that match the "portage"
@@ -1364,15 +1423,7 @@ def _post_src_install_uid_fix(mysettings, out):
 	inst_uid = int(mysettings["PORTAGE_INST_UID"])
 	inst_gid = int(mysettings["PORTAGE_INST_GID"])
 
-	if bsd_chflags:
-		# Temporarily remove all of the flags in order to avoid EPERM errors.
-		os.system("mtree -c -p %s -k flags > %s" % \
-			(_shell_quote(mysettings["D"]),
-			_shell_quote(os.path.join(mysettings["T"], "bsdflags.mtree"))))
-		os.system("chflags -R noschg,nouchg,nosappnd,nouappnd %s" % \
-			(_shell_quote(mysettings["D"]),))
-		os.system("chflags -R nosunlnk,nouunlnk %s 2>/dev/null" % \
-			(_shell_quote(mysettings["D"]),))
+	_preinst_bsdflags(mysettings)
 
 	destdir = mysettings["D"]
 	unicode_errors = []

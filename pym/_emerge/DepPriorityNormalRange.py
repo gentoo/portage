@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.DepPriority import DepPriority
@@ -33,7 +33,7 @@ class DepPriorityNormalRange(object):
 	def _ignore_runtime(cls, priority):
 		if priority.__class__ is not DepPriority:
 			return False
-		return not priority.buildtime
+		return bool(priority.optional or not priority.buildtime)
 
 	ignore_medium      = _ignore_runtime
 	ignore_medium_soft = _ignore_runtime_post

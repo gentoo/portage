@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
@@ -38,21 +38,16 @@ class SubProcess(AbstractPollTask):
 		if retval[0] == 0:
 			return None
 		self._set_returncode(retval)
+		self.wait()
 		return self.returncode
 
-	def cancel(self):
+	def _cancel(self):
 		if self.isAlive():
 			try:
 				os.kill(self.pid, signal.SIGTERM)
 			except OSError as e:
 				if e.errno != errno.ESRCH:
 					raise
-				del e
-
-		self.cancelled = True
-		if self.pid is not None:
-			self.wait()
-		return self.returncode
 
 	def isAlive(self):
 		return self.pid is not None and \

@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -27,6 +27,10 @@ class SlotCollisionTestCase(TestCase):
 			"sci-libs/L-1": { "DEPEND": "sci-libs/K[-foo]", "EAPI": 2 },
 			"sci-libs/M-1": { "DEPEND": "sci-libs/K[foo=]", "IUSE": "+foo", "EAPI": 2 },
 
+			"sci-libs/Q-1": { "SLOT": "1", "IUSE": "+bar foo", "EAPI": 1 },
+			"sci-libs/Q-2": { "SLOT": "2", "IUSE": "+bar +foo", "EAPI": 2, "PDEPEND": "sci-libs/Q:1[bar?,foo?]" },
+			"sci-libs/P-1": { "DEPEND": "sci-libs/Q:1[foo=]", "IUSE": "foo", "EAPI": 2 },
+
 			"app-misc/A-1": { "IUSE": "foo +bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": "4" },
 			"app-misc/B-1": { "DEPEND": "=app-misc/A-1[foo=]", "IUSE": "foo", "EAPI": 2 },
 			"app-misc/C-1": { "DEPEND": "=app-misc/A-1[foo]", "EAPI": 2 },
@@ -41,6 +45,9 @@ class SlotCollisionTestCase(TestCase):
 			
 			"sci-libs/K-1": { "IUSE": "foo", "USE": "" },
 			"sci-libs/L-1": { "DEPEND": "sci-libs/K[-foo]" },
+
+			"sci-libs/Q-1": { "SLOT": "1", "IUSE": "+bar +foo", "USE": "bar foo", "EAPI": 1 },
+			"sci-libs/Q-2": { "SLOT": "2", "IUSE": "+bar +foo", "USE": "bar foo", "EAPI": 2, "PDEPEND": "sci-libs/Q:1[bar?,foo?]" },
 
 			"app-misc/A-1": { "IUSE": "+foo bar", "USE": "foo", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": "4" },
 			}
@@ -85,6 +92,17 @@ class SlotCollisionTestCase(TestCase):
 				mergelist = ["sci-libs/L-1", "sci-libs/M-1", "sci-libs/K-1"],
 				ignore_mergelist_order = True,
 				slot_collision_solutions = [{"sci-libs/K-1": {"foo": False}, "sci-libs/M-1": {"foo": False}}]
+				),
+
+			#Avoid duplicates.
+			ResolverPlaygroundTestCase(
+				["sci-libs/P", "sci-libs/Q:2"],
+				success = False,
+				options = { "--update": True, "--complete-graph": True },
+				mergelist = ["sci-libs/P-1", "sci-libs/Q-1"],
+				ignore_mergelist_order = True,
+				all_permutations=True,
+				slot_collision_solutions = [{"sci-libs/Q-1": {"foo": True}, "sci-libs/P-1": {"foo": True}}]
 				),
 
 			#Conflict with REQUIRED_USE

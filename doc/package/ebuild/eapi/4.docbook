@@ -92,7 +92,8 @@ over the filename language suffix.
 <title>econf adds --disable-dependency-tracking</title>
 <para>
 The econf helper now adds --disable-dependency-tracking to the
-configure arguments.
+configure arguments if the string disable-dependency-tracking
+occurs in the output of configure --help.
 </para>
 </section>
 <section id='package-ebuild-eapi-4-helpers-use-with-enable-empty-third-arg'>
@@ -262,7 +263,7 @@ src_install() {
 		emake DESTDIR="${D}" install
 	fi
 
-	if [[ -z $DOCS ]] ; then
+	if ! declare -p DOCS &amp;>/dev/null ; then
 		local d
 		for d in README* ChangeLog AUTHORS NEWS TODO CHANGES \
 				THANKS BUGS FAQ CREDITS CHANGELOG ; do

@@ -1,4 +1,4 @@
-.TH "DISPATCH-CONF" "1" "Aug 2008" "Portage VERSION" "Portage"
+.TH "DISPATCH-CONF" "1" "Jan 2011" "Portage VERSION" "Portage"
 .SH NAME
 dispatch-conf \- Sanely update configuration files after emerging new packages
 .SH SYNOPSIS
@@ -73,6 +73,16 @@ Display a help screen.
 .B q
 Quit
 .I dispatch-conf.
+.SH FILE MODES
+\fBWARNING:\fR When \fB/etc/dispatch\-conf.conf\fR is configured
+to use \fBrcs\fR(1), read and execute permissions of archived
+files may be inherited from the first check in of a working file,
+as documented in the \fBci\fR(1) man page. This means that even
+if the permissions of the working file have since changed, the
+older permissions of the first check in may be inherited. As
+mentioned in the \fBci\fR(1) man page, users can control access
+to RCS files by setting the permissions of the directory
+containing the files.
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
 .SH AUTHORS
@@ -88,4 +98,6 @@ Grant Goodyear <g2boojum@gentoo.org>
 Configuration settings for \fIdispatch-conf\fR are stored here.
 .SH "SEE ALSO"
 .BR make.conf (5),
-.BR etc-update (1)
+.BR ci (1),
+.BR etc-update (1),
+.BR rcs (1)

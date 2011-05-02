@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from itertools import permutations
@@ -32,7 +32,7 @@ class ResolverPlayground(object):
 	"""
 
 	config_files = frozenset(("package.use", "package.mask", "package.keywords", \
-		"package.unmask", "package.properties", "package.license"))
+		"package.unmask", "package.properties", "package.license", "use.mask", "use.force"))
 
 	def __init__(self, ebuilds={}, installed={}, profile={}, repo_configs={}, \
 		user_config={}, sets={}, world=[], debug=False):
@@ -432,7 +432,7 @@ class ResolverPlayground(object):
 			if options.get("--depclean"):
 				rval, cleanlist, ordered, req_pkg_count = \
 					calc_depclean(self.settings, self.trees, None,
-					options, "depclean", InternalPackageSet(initial_atoms=atoms), None)
+					options, "depclean", InternalPackageSet(initial_atoms=atoms, allow_wildcard=True), None)
 				result = ResolverPlaygroundDepcleanResult( \
 					atoms, rval, cleanlist, ordered, req_pkg_count)
 			else:
@@ -581,17 +581,11 @@ class ResolverPlaygroundResult(object):
 			self.slot_collision_solutions  = []
 			handler = self.depgraph._dynamic_config._slot_conflict_handler
 
-			for solution in handler.solutions:
-				s = {}
-				for pkg in solution:
-					changes = {}
-					for flag, state in solution[pkg].items():
-						if state == "enabled":
-							changes[flag] = True
-						else:
-							changes[flag] = False
-					s[pkg.cpv] = changes
-				self.slot_collision_solutions.append(s)
+			for change in handler.changes:
+				new_change = {}
+				for pkg in change:
+					new_change[pkg.cpv] = change[pkg]
+				self.slot_collision_solutions.append(new_change)
 
 		if self.depgraph._dynamic_config._circular_dependency_handler is not None:
 			handler = self.depgraph._dynamic_config._circular_dependency_handler

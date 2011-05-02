@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -56,9 +56,9 @@ class PackageVirtualDbapi(dbapi):
 	def get(self, item, default=None):
 		cpv = getattr(item, "cpv", None)
 		if cpv is None:
-			if len(item) != 4:
+			if len(item) != 5:
 				return default
-			type_name, root, cpv, operation = item
+			type_name, root, cpv, operation, repo_key = item
 
 		existing = self._cpv_map.get(cpv)
 		if existing is not None and \

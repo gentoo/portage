@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
@@ -16,8 +16,10 @@ fi
 
 ret=0
 for x in "$@" ; do
-	if [ -s "${x}" ] ; then
-		install -m0644 "${x}" "${dir}"
+	if [ -d "${x}" ] ; then
+		eqawarn "QA Notice: dodoc argument '${x}' is a directory"
+	elif [ -s "${x}" ] ; then
+		install -m0644 "${x}" "${dir}" || { ((ret|=1)); continue; }
 		ecompress --queue "${dir}/${x##*/}"
 	elif [ ! -e "${x}" ] ; then
 		echo "!!! ${0##*/}: $x does not exist" 1>&2

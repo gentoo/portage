@@ -1,5 +1,5 @@
 # deps.py -- Portage dependency resolution functions
-# Copyright 2003-2010 Gentoo Foundation
+# Copyright 2003-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -178,7 +178,7 @@ def paren_reduce(mystr):
 			need_bracket = True
 			stack[level].append(token)
 		else:
-			if need_bracket or "(" in token or ")" in token or "|" in token:
+			if need_bracket:
 				raise InvalidDependString(
 					_("malformed syntax: '%s'") % mystr)
 
@@ -2062,6 +2062,64 @@ def get_required_use_flags(required_use):
 
 	return frozenset(used_flags)
 
+class _RequiredUseLeaf(object):
+
+	__slots__ = ('_satisfied', '_token')
+
+	def __init__(self, token, satisfied):
+		self._token = token
+		self._satisfied = satisfied
+
+	def tounicode(self):
+		return self._token
+
+class _RequiredUseBranch(object):
+
+	__slots__ = ('_children', '_operator', '_parent', '_satisfied')
+
+	def __init__(self, operator=None, parent=None):
+		self._children = []
+		self._operator = operator
+		self._parent = parent
+		self._satisfied = False
+
+	def __bool__(self):
+		return self._satisfied
+
+	def tounicode(self):
+
+		include_parens = self._parent is not None
+		tokens = []
+		if self._operator is not None:
+			tokens.append(self._operator)
+
+		if include_parens:
+			tokens.append("(")
+
+		complex_nesting = False
+		node = self
+		while node != None and not complex_nesting:
+			if node._operator in ("||", "^^"):
+				complex_nesting = True
+			else:
+				node = node._parent
+
+		if complex_nesting:
+			for child in self._children:
+				tokens.append(child.tounicode())
+		else:
+			for child in self._children:
+				if not child._satisfied:
+					tokens.append(child.tounicode())
+
+		if include_parens:
+			tokens.append(")")
+
+		return " ".join(tokens)
+
+	if sys.hexversion < 0x3000000:
+		__nonzero__ = __bool__
+
 def check_required_use(required_use, use, iuse_match):
 	"""
 	Checks if the use flags listed in 'use' satisfy all
@@ -2087,8 +2145,10 @@ def check_required_use(required_use, use, iuse_match):
 			is_negated = False
 
 		if not flag or not iuse_match(flag):
-			raise InvalidDependString(
-				_("malformed syntax: '%s'") % required_use)
+			msg = _("USE flag '%s' is not in IUSE") \
+				% (flag,)
+			e = InvalidData(msg, category='IUSE.missing')
+			raise InvalidDependString(msg, errors=(e,))
 
 		return (flag in use and not is_negated) or \
 			(flag not in use and is_negated)
@@ -2108,10 +2168,17 @@ def check_required_use(required_use, use, iuse_match):
 	mysplit = required_use.split()
 	level = 0
 	stack = [[]]
+	tree = _RequiredUseBranch()
+	node = tree
 	need_bracket = False
 
 	for token in mysplit:
 		if token == "(":
+			if not need_bracket:
+				child = _RequiredUseBranch(parent=node)
+				node._children.append(child)
+				node = child
+
 			need_bracket = False
 			stack.append([])
 			level += 1
@@ -2122,23 +2189,74 @@ def check_required_use(required_use, use, iuse_match):
 			if level > 0:
 				level -= 1
 				l = stack.pop()
-				ignore = False
+				op = None
 				if stack[level]:
 					if stack[level][-1] in ("||", "^^"):
-						ignore = True
 						op = stack[level].pop()
-						stack[level].append(is_satisfied(op, l))
+						satisfied = is_satisfied(op, l)
+						stack[level].append(satisfied)
+						node._satisfied = satisfied
+
 					elif not isinstance(stack[level][-1], bool) and \
 						stack[level][-1][-1] == "?":
-						if is_active(stack[level][-1][:-1]):
-							op = stack[level].pop()
-							stack[level].append(is_satisfied(op, l))
+						op = stack[level].pop()
+						if is_active(op[:-1]):
+							satisfied = is_satisfied(op, l)
+							stack[level].append(satisfied)
+							node._satisfied = satisfied
 						else:
-							stack[level].pop()
-						ignore = True
+							node._satisfied = True
+							last_node = node._parent._children.pop()
+							if last_node is not node:
+								raise AssertionError(
+									"node is not last child of parent")
+							node = node._parent
+							continue
 
-				if l and not ignore:
-					stack[level].append(all(x for x in l))
+				if op is None:
+					satisfied = False not in l
+					node._satisfied = satisfied
+					if l:
+						stack[level].append(satisfied)
+
+					if len(node._children) <= 1 or \
+						node._parent._operator not in ("||", "^^"):
+						last_node = node._parent._children.pop()
+						if last_node is not node:
+							raise AssertionError(
+								"node is not last child of parent")
+						for child in node._children:
+							node._parent._children.append(child)
+							if isinstance(child, _RequiredUseBranch):
+								child._parent = node._parent
+
+				elif not node._children:
+					last_node = node._parent._children.pop()
+					if last_node is not node:
+						raise AssertionError(
+							"node is not last child of parent")
+
+				elif len(node._children) == 1 and op in ("||", "^^"):
+					last_node = node._parent._children.pop()
+					if last_node is not node:
+						raise AssertionError(
+							"node is not last child of parent")
+					node._parent._children.append(node._children[0])
+					if isinstance(node._children[0], _RequiredUseBranch):
+						node._children[0]._parent = node._parent
+						node = node._children[0]
+						if node._operator is None and \
+							node._parent._operator not in ("||", "^^"):
+							last_node = node._parent._children.pop()
+							if last_node is not node:
+								raise AssertionError(
+									"node is not last child of parent")
+							for child in node._children:
+								node._parent._children.append(child)
+								if isinstance(child, _RequiredUseBranch):
+									child._parent = node._parent
+
+				node = node._parent
 			else:
 				raise InvalidDependString(
 					_("malformed syntax: '%s'") % required_use)
@@ -2148,6 +2266,9 @@ def check_required_use(required_use, use, iuse_match):
 					_("malformed syntax: '%s'") % required_use)
 			need_bracket = True
 			stack[level].append(token)
+			child = _RequiredUseBranch(operator=token, parent=node)
+			node._children.append(child)
+			node = child
 		else:
 			if need_bracket or "(" in token or ")" in token or \
 				"|" in token or "^" in token:
@@ -2157,14 +2278,20 @@ def check_required_use(required_use, use, iuse_match):
 			if token[-1] == "?":
 				need_bracket = True
 				stack[level].append(token)
+				child = _RequiredUseBranch(operator=token, parent=node)
+				node._children.append(child)
+				node = child
 			else:
-				stack[level].append(is_active(token))
+				satisfied = is_active(token)
+				stack[level].append(satisfied)
+				node._children.append(_RequiredUseLeaf(token, satisfied))
 
 	if level != 0 or need_bracket:
 		raise InvalidDependString(
 			_("malformed syntax: '%s'") % required_use)
 
-	return (False not in stack[0])
+	tree._satisfied = False not in stack[0]
+	return tree
 
 def extract_affecting_use(mystr, atom):
 	"""
@@ -2183,6 +2310,7 @@ def extract_affecting_use(mystr, atom):
 	@rtype: Tuple of two lists of strings
 	@return: List of use flags that need to be enabled, List of use flag that need to be disabled
 	"""
+	useflag_re = _get_useflag_re(None)
 	mysplit = mystr.split()
 	level = 0
 	stack = [[]]
@@ -2195,9 +2323,10 @@ def extract_affecting_use(mystr, atom):
 		else:
 			flag = conditional[:-1]
 
-		if not flag:
+		if useflag_re.match(flag) is None:
 			raise InvalidDependString(
-				_("malformed syntax: '%s'") % mystr)
+				_("invalid use flag '%s' in conditional '%s'") % \
+				(flag, conditional))
 
 		return flag
 
@@ -2270,7 +2399,7 @@ def extract_affecting_use(mystr, atom):
 			need_bracket = True
 			stack[level].append(token)
 		else:
-			if need_bracket or "(" in token or ")" in token or "|" in token:
+			if need_bracket:
 				raise InvalidDependString(
 					_("malformed syntax: '%s'") % mystr)
 

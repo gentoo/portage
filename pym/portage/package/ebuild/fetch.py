@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -245,8 +245,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	userpriv = secpass >= 2 and "userpriv" in features
 
 	# 'nomirror' is bad/negative logic. You Restrict mirroring, not no-mirroring.
-	if "mirror" in restrict or \
-	   "nomirror" in restrict:
+	restrict_mirror = "mirror" in restrict or "nomirror" in restrict
+	if restrict_mirror:
 		if ("mirror" in features) and ("lmirror" not in features):
 			# lmirror should allow you to bypass mirror restrictions.
 			# XXX: This is not a good thing, and is temporary at best.
@@ -344,8 +344,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	if "local" in custommirrors:
 		mymirrors += custommirrors["local"]
 
-	if "nomirror" in restrict or \
-	   "mirror" in restrict:
+	if restrict_mirror:
 		# We don't add any mirrors.
 		pass
 	else:
@@ -374,6 +373,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 			del mymirrors[x]
 
 	restrict_fetch = "fetch" in restrict
+	force_mirror = "force-mirror" in features and not restrict_mirror
 	custom_local_mirrors = custommirrors.get("local", [])
 	if restrict_fetch:
 		# With fetch restriction, a normal uri may only be fetched from
@@ -430,7 +430,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 				writemsg(_("Invalid mirror definition in SRC_URI:\n"), noiselevel=-1)
 				writemsg("  %s\n" % (myuri), noiselevel=-1)
 		else:
-			if restrict_fetch:
+			if restrict_fetch or force_mirror:
 				# Only fetch from specific mirrors is allowed.
 				continue
 			if "primaryuri" in restrict:
@@ -1107,6 +1107,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 					noiselevel=-1)
 
 			if listonly:
+				failed_files.add(myfile)
 				continue
 			elif fetchonly:
 				failed_files.add(myfile)

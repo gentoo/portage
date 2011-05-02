@@ -29,8 +29,10 @@ from portage import digraph
 from portage import _unicode_decode
 from portage.cache.cache_errors import CacheError
 from portage.const import GLOBAL_CONFIG_PATH, NEWS_LIB_PATH
-from portage.const import _ENABLE_DYN_LINK_MAP
+from portage.const import _ENABLE_DYN_LINK_MAP, _ENABLE_SET_CONFIG
 from portage.dbapi.dep_expand import dep_expand
+from portage.dep import Atom, extended_cp_match, _get_useflag_re
+from portage.exception import InvalidAtom
 from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 	red, yellow
 good = create_color_func("GOOD")
@@ -147,7 +149,6 @@ def action_build(settings, trees, mtimedb,
 
 	ldpath_mtimes = mtimedb["ldpath"]
 	favorites=[]
-	merge_count = 0
 	buildpkgonly = "--buildpkgonly" in myopts
 	pretend = "--pretend" in myopts
 	fetchonly = "--fetchonly" in myopts or "--fetch-all-uri" in myopts
@@ -417,14 +418,7 @@ def action_build(settings, trees, mtimedb,
 
 		if ("--resume" in myopts):
 			favorites=mtimedb["resume"]["favorites"]
-			mergetask = Scheduler(settings, trees, mtimedb, myopts,
-				spinner, favorites=favorites,
-				graph_config=mydepgraph.schedulerGraph())
-			del mydepgraph
-			clear_caches(trees)
 
-			retval = mergetask.merge()
-			merge_count = mergetask.curval
 		else:
 			if "resume" in mtimedb and \
 			"mergelist" in mtimedb["resume"] and \
@@ -434,14 +428,15 @@ def action_build(settings, trees, mtimedb,
 				mtimedb.commit()
 
 			mydepgraph.saveNomergeFavorites()
-			mergetask = Scheduler(settings, trees, mtimedb, myopts,
-				spinner, favorites=favorites,
-				graph_config=mydepgraph.schedulerGraph())
-			del mydepgraph
-			clear_caches(trees)
 
-			retval = mergetask.merge()
-			merge_count = mergetask.curval
+		mergetask = Scheduler(settings, trees, mtimedb, myopts,
+			spinner, favorites=favorites,
+			graph_config=mydepgraph.schedulerGraph())
+
+		del mydepgraph
+		clear_caches(trees)
+
+		retval = mergetask.merge()
 
 		if retval == os.EX_OK and not (buildpkgonly or fetchonly or pretend):
 			if "yes" == settings.get("AUTOCLEAN"):
@@ -1223,25 +1218,37 @@ def action_deselect(settings, trees, opts, atoms):
 			level=logging.ERROR, noiselevel=-1)
 		return 1
 
-	vardb = root_config.trees['vartree'].dbapi
-	expanded_atoms = set(atoms)
-	from portage.dep import Atom
-	for atom in atoms:
-		if not atom.startswith(SETPREFIX):
-			for cpv in vardb.match(atom):
-				slot, = vardb.aux_get(cpv, ['SLOT'])
-				if not slot:
-					slot = '0'
-				expanded_atoms.add(Atom('%s:%s' % (portage.cpv_getkey(cpv), slot)))
-
 	pretend = '--pretend' in opts
 	locked = False
 	if not pretend and hasattr(world_set, 'lock'):
 		world_set.lock()
 		locked = True
 	try:
-		discard_atoms = set()
 		world_set.load()
+		world_atoms = world_set.getAtoms()
+		vardb = root_config.trees["vartree"].dbapi
+		expanded_atoms = set(atoms)
+
+		for atom in atoms:
+			if not atom.startswith(SETPREFIX):
+				if atom.cp.startswith("null/"):
+					# try to expand category from world set
+					null_cat, pn = portage.catsplit(atom.cp)
+					for world_atom in world_atoms:
+						cat, world_pn = portage.catsplit(world_atom.cp)
+						if pn == world_pn:
+							expanded_atoms.add(
+								Atom(atom.replace("null", cat, 1),
+								allow_repo=True, allow_wildcard=True))
+
+				for cpv in vardb.match(atom):
+					slot, = vardb.aux_get(cpv, ["SLOT"])
+					if not slot:
+						slot = "0"
+					expanded_atoms.add(Atom("%s:%s" % \
+						(portage.cpv_getkey(cpv), slot)))
+
+		discard_atoms = set()
 		for atom in world_set:
 			for arg_atom in expanded_atoms:
 				if arg_atom.startswith(SETPREFIX):
@@ -1282,6 +1289,67 @@ def action_deselect(settings, trees, opts, atoms):
 			world_set.unlock()
 	return os.EX_OK
 
+def expand_new_virt(vardb, atom):
+	"""
+	Iterate over the recursively expanded RDEPEND atoms of
+	a new-style virtual. If atom is not a new-style virtual
+	or it does not match an installed package then it is
+	yielded without any expansion.
+	"""
+	if not isinstance(atom, Atom):
+		atom = Atom(atom)
+	traversed = set()
+	stack = [atom]
+
+	while stack:
+		atom = stack.pop()
+		if atom.blocker:
+			yield atom
+			continue
+
+		matches = vardb.match(atom)
+		if not (matches and matches[-1].startswith("virtual/")):
+			yield atom
+			continue
+
+		virt_cpv = matches[-1]
+		if virt_cpv in traversed:
+			continue
+
+		traversed.add(virt_cpv)
+		eapi, iuse, rdepend, use = vardb.aux_get(virt_cpv,
+			["EAPI", "IUSE", "RDEPEND", "USE"])
+		if not portage.eapi_is_supported(eapi):
+			yield atom
+			continue
+
+		# Validate IUSE and IUSE, for early detection of vardb corruption.
+		useflag_re = _get_useflag_re(eapi)
+		valid_iuse = []
+		for x in iuse.split():
+			if x[:1] in ("+", "-"):
+				x = x[1:]
+			if useflag_re.match(x) is not None:
+				valid_iuse.append(x)
+		valid_iuse = frozenset(valid_iuse)
+
+		iuse_implicit_match = vardb.settings._iuse_implicit_match
+		valid_use = []
+		for x in use.split():
+			if x in valid_iuse or iuse_implicit_match(x):
+				valid_use.append(x)
+		valid_use = frozenset(valid_use)
+
+		success, atoms = portage.dep_check(rdepend,
+			None, vardb.settings, myuse=valid_use,
+			myroot=vardb.root, trees={vardb.root:{"porttree":vardb.vartree,
+			"vartree":vardb.vartree}})
+
+		if success:
+			stack.extend(atoms)
+		else:
+			yield atom
+
 class _info_pkgs_ver(object):
 	def __init__(self, ver, repo_suffix, provide_suffix):
 		self.ver = ver
@@ -1300,9 +1368,13 @@ class _info_pkgs_ver(object):
 		return self.ver + self.repo_suffix + self.provide_suffix
 
 def action_info(settings, trees, myopts, myfiles):
+
+	root_config = trees[settings['ROOT']]['root_config']
+
 	print(getportageversion(settings["PORTDIR"], settings["ROOT"],
 		settings.profile_path, settings["CHOST"],
 		trees[settings["ROOT"]]["vartree"].dbapi))
+
 	header_width = 65
 	header_title = "System Settings"
 	if myfiles:
@@ -1338,20 +1410,43 @@ def action_info(settings, trees, myopts, myfiles):
 	myvars  = ["sys-devel/autoconf", "sys-devel/automake", "virtual/os-headers",
 	           "sys-devel/binutils", "sys-devel/libtool",  "dev-lang/python"]
 	myvars += portage.util.grabfile(settings["PORTDIR"]+"/profiles/info_pkgs")
-	myvars  = portage.util.unique_array(myvars)
-	myvars.sort()
+	atoms = []
+	vardb = trees["/"]["vartree"].dbapi
+	for x in myvars:
+		try:
+			x = Atom(x)
+		except InvalidAtom:
+			writemsg_stdout("%-20s %s\n" % (x+":", "[NOT VALID]"),
+				noiselevel=-1)
+		else:
+			for atom in expand_new_virt(vardb, x):
+				if not atom.blocker:
+					atoms.append((x, atom))
+
+	myvars = sorted(set(atoms))
 
 	portdb = trees["/"]["porttree"].dbapi
-	vardb = trees["/"]["vartree"].dbapi
 	main_repo = portdb.getRepositoryName(portdb.porttree_root)
+	cp_map = {}
+	cp_max_len = 0
 
-	for x in myvars:
-		if portage.isvalidatom(x):
+	for orig_atom, x in myvars:
 			pkg_matches = vardb.match(x)
 
 			versions = []
 			for cpv in pkg_matches:
+				matched_cp = portage.versions.cpv_getkey(cpv)
 				ver = portage.versions.cpv_getversion(cpv)
+				ver_map = cp_map.setdefault(matched_cp, {})
+				prev_match = ver_map.get(ver)
+				if prev_match is not None:
+					if prev_match.provide_suffix:
+						# prefer duplicate matches that include
+						# additional virtual provider info
+						continue
+
+				if len(matched_cp) > cp_max_len:
+					cp_max_len = len(matched_cp)
 				repo = vardb.aux_get(cpv, ["repository"])[0]
 				if repo == main_repo:
 					repo_suffix = ""
@@ -1359,36 +1454,39 @@ def action_info(settings, trees, myopts, myfiles):
 					repo_suffix = "::<unknown repository>"
 				else:
 					repo_suffix = "::" + repo
-				
-				matched_cp = portage.versions.cpv_getkey(cpv)
-				if matched_cp == x:
+
+				if matched_cp == orig_atom.cp:
 					provide_suffix = ""
 				else:
-					provide_suffix = " (%s)" % matched_cp
+					provide_suffix = " (%s)" % (orig_atom,)
 
-				versions.append(
-					_info_pkgs_ver(ver, repo_suffix, provide_suffix))
+				ver_map[ver] = _info_pkgs_ver(ver, repo_suffix, provide_suffix)
 
-			versions.sort()
-
-			if versions:
-				versions = ", ".join(ver.toString() for ver in versions)
-				writemsg_stdout("%-20s %s\n" % (x+":", versions),
-					noiselevel=-1)
-		else:
-			writemsg_stdout("%-20s %s\n" % (x+":", "[NOT VALID]"),
-				noiselevel=-1)
+	for cp in sorted(cp_map):
+		versions = sorted(cp_map[cp].values())
+		versions = ", ".join(ver.toString() for ver in versions)
+		writemsg_stdout("%s %s\n" % \
+			((cp + ":").ljust(cp_max_len + 1), versions),
+			noiselevel=-1)
 
 	libtool_vers = ",".join(trees["/"]["vartree"].dbapi.match("sys-devel/libtool"))
 
 	repos = portdb.settings.repositories
 	if "--verbose" in myopts:
-		writemsg_stdout("Repositories:\n\n")
+		writemsg_stdout("Repositories:\n\n", noiselevel=-1)
 		for repo in repos:
-			writemsg_stdout(repo.info_string())
+			writemsg_stdout(repo.info_string(), noiselevel=-1)
 	else:
 		writemsg_stdout("Repositories: %s\n" % \
-			" ".join(repo.name for repo in repos))
+			" ".join(repo.name for repo in repos), noiselevel=-1)
+
+	if _ENABLE_SET_CONFIG:
+		sets_line = "Installed sets: "
+		sets_line += ", ".join(s for s in \
+			sorted(root_config.sets['selected'].getNonAtoms()) \
+			if s.startswith(SETPREFIX))
+		sets_line += "\n"
+		writemsg_stdout(sets_line, noiselevel=-1)
 
 	if "--verbose" in myopts:
 		myvars = list(settings)
@@ -1413,7 +1511,6 @@ def action_info(settings, trees, myopts, myfiles):
 	use_expand_hidden = set(
 		settings.get('USE_EXPAND_HIDDEN', '').upper().split())
 	alphabetical_use = '--alphabetical' in myopts
-	root_config = trees[settings["ROOT"]]['root_config']
 	unset_vars = []
 	myvars.sort()
 	for x in myvars:
@@ -1819,7 +1916,34 @@ def action_regen(settings, portdb, max_jobs, max_load):
 	sys.stdout.flush()
 
 	regen = MetadataRegen(portdb, max_jobs=max_jobs, max_load=max_load)
-	regen.run()
+	received_signal = []
+
+	def emergeexitsig(signum, frame):
+		signal.signal(signal.SIGINT, signal.SIG_IGN)
+		signal.signal(signal.SIGTERM, signal.SIG_IGN)
+		portage.util.writemsg("\n\nExiting on signal %(signal)s\n" % \
+			{"signal":signum})
+		regen.terminate()
+		received_signal.append(128 + signum)
+
+	earlier_sigint_handler = signal.signal(signal.SIGINT, emergeexitsig)
+	earlier_sigterm_handler = signal.signal(signal.SIGTERM, emergeexitsig)
+
+	try:
+		regen.run()
+	finally:
+		# Restore previous handlers
+		if earlier_sigint_handler is not None:
+			signal.signal(signal.SIGINT, earlier_sigint_handler)
+		else:
+			signal.signal(signal.SIGINT, signal.SIG_DFL)
+		if earlier_sigterm_handler is not None:
+			signal.signal(signal.SIGTERM, earlier_sigterm_handler)
+		else:
+			signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+	if received_signal:
+		sys.exit(received_signal[0])
 
 	portage.writemsg_stdout("done!\n")
 	return regen.returncode
@@ -2055,12 +2179,23 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			maxretries = -1 #default number of retries
 
 		retries=0
-		proto, user_name, hostname, port = re.split(
-			"(rsync|ssh)://([^:/]+@)?([^:/]*)(:[0-9]+)?", syncuri, maxsplit=4)[1:5]
+		try:
+			proto, user_name, hostname, port = re.split(
+				r"(rsync|ssh)://([^:/]+@)?(\[[:\da-fA-F]*\]|[^:/]*)(:[0-9]+)?",
+				syncuri, maxsplit=4)[1:5]
+		except ValueError:
+			writemsg_level("!!! SYNC is invalid: %s\n" % syncuri,
+				noiselevel=-1, level=logging.ERROR)
+			return 1
 		if port is None:
 			port=""
 		if user_name is None:
 			user_name=""
+		if re.match(r"^\[[:\da-fA-F]*\]$", hostname) is None:
+			getaddrinfo_host = hostname
+		else:
+			# getaddrinfo needs the brackets stripped
+			getaddrinfo_host = hostname[1:-1]
 		updatecache_flg=True
 		all_rsync_opts = set(rsync_opts)
 		extra_rsync_opts = portage.util.shlex_split(
@@ -2079,7 +2214,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 		try:
 			addrinfos = getaddrinfo_validate(
-				socket.getaddrinfo(hostname, None,
+				socket.getaddrinfo(getaddrinfo_host, None,
 				family, socket.SOCK_STREAM))
 		except socket.error as e:
 			writemsg_level(
@@ -2368,6 +2503,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				"cd %s; exec cvs -z0 -q update -dP" % \
 				(portage._shell_quote(myportdir),), **spawn_kwargs)
 			if retval != os.EX_OK:
+				writemsg_level("!!! cvs update error; exiting.\n",
+					noiselevel=-1, level=logging.ERROR)
 				sys.exit(retval)
 		dosyncuri = syncuri
 	else:
@@ -2418,7 +2555,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			retval = portage.process.spawn(
 				[postsync, dosyncuri], env=settings.environ())
 			if retval != os.EX_OK:
-				print(red(" * ") + bold("spawn failed of " + postsync))
+				writemsg_level(
+					" %s spawn failed of %s\n" % (bad("*"), postsync,),
+					level=logging.ERROR, noiselevel=-1)
 
 	if(mybestpv != mypvs) and not "--quiet" in myopts:
 		print()
@@ -2433,7 +2572,6 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 def action_uninstall(settings, trees, ldpath_mtimes,
 	opts, action, files, spinner):
-
 	# For backward compat, some actions do not require leading '='.
 	ignore_missing_eq = action in ('clean', 'unmerge')
 	root = settings['ROOT']
@@ -2475,6 +2613,28 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 
 		elif x.startswith(SETPREFIX) and action == "deselect":
 			valid_atoms.append(x)
+
+		elif "*" in x:
+			try:
+				ext_atom = Atom(x, allow_repo=True, allow_wildcard=True)
+			except InvalidAtom:
+				msg = []
+				msg.append("'%s' is not a valid package atom." % (x,))
+				msg.append("Please check ebuild(5) for full details.")
+				writemsg_level("".join("!!! %s\n" % line for line in msg),
+					level=logging.ERROR, noiselevel=-1)
+				return 1
+
+			for cp in vardb.cp_all():
+				if extended_cp_match(ext_atom.cp, cp):
+					atom = cp
+					if ext_atom.slot:
+						atom += ":" + ext_atom.slot
+					if ext_atom.repo:
+						atom += "::" + ext_atom.repo
+
+					if vardb.match(atom):
+						valid_atoms.append(Atom(atom, allow_repo=True))
 
 		else:
 			msg = []
@@ -2541,6 +2701,13 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 		spinner)
 	sched._background = sched._background_mode()
 	sched._status_display.quiet = True
+
+	if sched._background:
+		sched.settings.unlock()
+		sched.settings["PORTAGE_BACKGROUND"] = "1"
+		sched.settings.backup_changes("PORTAGE_BACKGROUND")
+		sched.settings.lock()
+		sched.pkgsettings[root] = portage.config(clone=sched.settings)
 
 	if action in ('clean', 'unmerge') or \
 		(action == 'prune' and "--nodeps" in opts):
@@ -2700,24 +2867,22 @@ def getportageversion(portdir, target_root, profile, chost, vardb):
 	if profilever is None:
 		profilever = "unavailable"
 
-	libcver=[]
-	libclist  = vardb.match("virtual/libc")
-	libclist += vardb.match("virtual/glibc")
-	libclist  = portage.util.unique_array(libclist)
-	for x in libclist:
-		xs=portage.catpkgsplit(x)
-		if libcver:
-			libcver+=","+"-".join(xs[1:])
-		else:
-			libcver="-".join(xs[1:])
-	if libcver==[]:
-		libcver="unavailable"
+	libcver = []
+	libclist = set()
+	for atom in expand_new_virt(vardb, portage.const.LIBC_PACKAGE_ATOM):
+		if not atom.blocker:
+			libclist.update(vardb.match(atom))
+	if libclist:
+		for cpv in sorted(libclist):
+			libcver.append("-".join(portage.catpkgsplit(cpv)[1:]))
+	else:
+		libcver = ["unavailable"]
 
 	gccver = getgccversion(chost)
 	unameout=platform.release()+" "+platform.machine()
 
 	return "Portage %s (%s, %s, %s, %s)" % \
-		(portage.VERSION, profilever, gccver, libcver, unameout)
+		(portage.VERSION, profilever, gccver, ",".join(libcver), unameout)
 
 def git_sync_timestamps(settings, portdir):
 	"""
@@ -2884,11 +3049,21 @@ def chk_updated_cfg_files(eroot, config_protect):
 		portage.util.find_updated_config_files(target_root, config_protect))
 
 	for x in result:
-		print("\n"+colorize("WARN", " * IMPORTANT:"), end=' ')
+		writemsg_level("\n %s " % (colorize("WARN", "* IMPORTANT:"),),
+			level=logging.INFO, noiselevel=-1)
 		if not x[1]: # it's a protected file
-			print("config file '%s' needs updating." % x[0])
+			writemsg_level("config file '%s' needs updating.\n" % x[0],
+				level=logging.INFO, noiselevel=-1)
 		else: # it's a protected dir
-			print("%d config files in '%s' need updating." % (len(x[1]), x[0]))
+			if len(x[1]) == 1:
+				head, tail = os.path.split(x[1][0])
+				tail = tail[len("._cfg0000_"):]
+				fpath = os.path.join(head, tail)
+				writemsg_level("config file '%s' needs updating.\n" % fpath,
+					level=logging.INFO, noiselevel=-1)
+			else:
+				writemsg_level("%d config files in '%s' need updating.\n" % \
+					(len(x[1]), x[0]), level=logging.INFO, noiselevel=-1)
 
 	if result:
 		print(" "+yellow("*")+" See the "+colorize("INFORM","CONFIGURATION FILES")\

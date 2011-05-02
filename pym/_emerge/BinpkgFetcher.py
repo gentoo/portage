@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AsynchronousLock import AsynchronousLock
@@ -11,6 +11,7 @@ import stat
 import sys
 import portage
 from portage import os
+from portage.util._pty import _create_pty_or_pipe
 
 if sys.hexversion >= 0x3000000:
 	long = int
@@ -56,8 +57,8 @@ class BinpkgFetcher(SpawnProcess):
 			rel_uri = bintree._remotepkgs[pkg.cpv].get("PATH")
 			if not rel_uri:
 				rel_uri = pkg.cpv + ".tbz2"
-			uri = bintree._remote_base_uri.rstrip("/") + \
-				"/" + rel_uri.lstrip("/")
+			remote_base_uri = bintree._remotepkgs[pkg.cpv]["BASE_URI"]
+			uri = remote_base_uri.rstrip("/") + "/" + rel_uri.lstrip("/")
 		else:
 			uri = settings["PORTAGE_BINHOST"].rstrip("/") + \
 				"/" + pkg.pf + ".tbz2"
@@ -100,6 +101,20 @@ class BinpkgFetcher(SpawnProcess):
 		self.args = fetch_args
 		self.env = fetch_env
 		SpawnProcess._start(self)
+
+	def _pipe(self, fd_pipes):
+		"""When appropriate, use a pty so that fetcher progress bars,
+		like wget has, will work properly."""
+		if self.background or not sys.stdout.isatty():
+			# When the output only goes to a log file,
+			# there's no point in creating a pty.
+			return os.pipe()
+		stdout_pipe = None
+		if not self.background:
+			stdout_pipe = fd_pipes.get(1)
+		got_pty, master_fd, slave_fd = \
+			_create_pty_or_pipe(copy_term_size=stdout_pipe)
+		return (master_fd, slave_fd)
 
 	def _set_returncode(self, wait_retval):
 		SpawnProcess._set_returncode(self, wait_retval)

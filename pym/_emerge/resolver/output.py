@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """Resolver output display operation.
@@ -19,7 +19,7 @@ from portage.exception import InvalidDependString
 from portage.output import ( blue, bold, colorize, create_color_func,
 	darkblue, darkgreen, green, nc_len, red, teal, turquoise, yellow )
 bad = create_color_func("BAD")
-from portage.util import writemsg_stdout
+from portage.util import writemsg_stdout, writemsg_level
 from portage.versions import best, catpkgsplit, cpv_getkey
 
 from _emerge.Blocker import Blocker
@@ -33,7 +33,7 @@ if sys.hexversion >= 0x3000000:
 
 class Display(object):
 	"""Formats and outputs the depgrah supplied it for merge/re-merge, etc.
-	
+
 	__call__()
 	@param depgraph: list
 	@param favorites: defaults to []
@@ -70,7 +70,7 @@ class Display(object):
 	def _blockers(self, pkg, fetch_symbol):
 		"""Processes pkg for blockers and adds colorized strings to
 		self.print_msg and self.blockers
-		
+
 		@param pkg: _emerge.Package instance
 		@param fetch_symbol: string
 		@rtype: bool
@@ -85,8 +85,9 @@ class Display(object):
 			self.blocker_style = "PKG_BLOCKER"
 			addl = "%s  %s  " % (colorize(self.blocker_style, "B"),
 				fetch_symbol)
+		addl += self.empty_space_in_brackets()
 		self.resolved = dep_expand(
-			str(pkg.atom).lstrip("!"), mydb=self.vardb, 
+			str(pkg.atom).lstrip("!"), mydb=self.vardb,
 			settings=self.pkgsettings
 			)
 		if self.conf.columns and self.conf.quiet:
@@ -94,7 +95,7 @@ class Display(object):
 		else:
 			addl = "[%s %s] %s%s" % \
 				(colorize(self.blocker_style, "blocks"),
-				addl, self.indent, 
+				addl, self.indent,
 				colorize(self.blocker_style, str(self.resolved))
 				)
 		block_parents = self.conf.blocker_parents.parent_nodes(pkg)
@@ -118,14 +119,14 @@ class Display(object):
 
 	def _display_use(self, pkg, myoldbest, myinslotlist):
 		""" USE flag display
-		
+
 		@param pkg: _emerge.Package instance
 		@param myoldbest: list of installed versions
 		@param myinslotlist: list of installed slots
 		Modifies class globals: self.forced_flags, self.cur_iuse,
 			self.old_iuse, self.old_use, self.use_expand
 		"""
-			
+
 		self.forced_flags = set()
 		self.forced_flags.update(pkg.use.force)
 		self.forced_flags.update(pkg.use.mask)
@@ -157,15 +158,45 @@ class Display(object):
 			self.pkgsettings["USE_EXPAND_HIDDEN"].lower().split()
 		return
 
+	def include_mask_str(self):
+		return self.conf.verbosity > 1
+
+	def gen_mask_str(self, pkg):
+		"""
+		@param pkg: _emerge.Package instance
+		"""
+		hardmasked = pkg.isHardMasked()
+		mask_str = " "
+
+		if hardmasked:
+			mask_str = colorize("BAD", "#")
+		else:
+			keyword_mask = pkg.get_keyword_mask()
+
+			if keyword_mask is None:
+				pass
+			elif keyword_mask == "missing":
+				mask_str = colorize("BAD", "*")
+			else:
+				mask_str = colorize("WARN", "~")
+
+		return mask_str
+
+	def empty_space_in_brackets(self):
+		space = ""
+		if self.include_mask_str():
+			# add column for mask status
+			space += " "
+		return space
 
 	def map_to_use_expand(self, myvals, forced_flags=False,
 		remove_hidden=True):
 		"""Map use expand variables
-		
+
 		@param myvals: list
 		@param forced_flags: bool
 		@param remove_hidden: bool
-		@rtype ret dictionary 
+		@rtype ret dictionary
 			or ret dict, forced dict.
 		"""
 		ret = {}
@@ -193,7 +224,7 @@ class Display(object):
 	def recheck_hidden(self, pkg):
 		""" Prevent USE_EXPAND_HIDDEN flags from being hidden if they
 		are the only thing that triggered reinstallation.
-		
+
 		@param pkg: _emerge.Package instance
 		Modifies self.use_expand_hidden, self.use_expand, self.verboseadd
 		"""
@@ -224,7 +255,7 @@ class Display(object):
 
 		self.use_expand.sort()
 		self.use_expand.insert(0, "USE")
-		
+
 		for key in self.use_expand:
 			if key in self.use_expand_hidden:
 				continue
@@ -239,7 +270,7 @@ class Display(object):
 	@staticmethod
 	def pkgprint(pkg_str, pkg_info):
 		"""Colorizes a string acording to pkg_info settings
-		
+
 		@param pkg_str: string
 		@param pkg_info: dictionary
 		@rtype colorized string
@@ -271,8 +302,8 @@ class Display(object):
 
 
 	def verbose_size(self, pkg, repoadd_set, pkg_info):
-		"""Determines teh size of the downloads reqired
-		
+		"""Determines the size of the downloads required
+
 		@param pkg: _emerge.Package instance
 		@param repoadd_set: set of repos to add
 		@param pkg_info: dictionary
@@ -330,11 +361,11 @@ class Display(object):
 	@staticmethod
 	def convert_myoldbest(myoldbest):
 		"""converts and colorizes a version list to a string
-		
+
 		@param myoldbest: list
 		@rtype string.
 		"""
-		# Convert myoldbest from a list to a string. 
+		# Convert myoldbest from a list to a string.
 		myoldbest_str = ""
 		if myoldbest:
 			versions = []
@@ -365,7 +396,7 @@ class Display(object):
 
 	def _set_non_root_columns(self, addl, pkg_info, pkg):
 		"""sets the indent level and formats the output
-		
+
 		@param addl: already defined string to add to
 		@param pkg_info: dictionary
 		@param pkg: _emerge.Package instance
@@ -399,7 +430,7 @@ class Display(object):
 
 	def _set_root_columns(self, addl, pkg_info, pkg):
 		"""sets the indent level and formats the output
-		
+
 		@param addl: already defined string to add to
 		@param pkg_info: dictionary
 		@param pkg: _emerge.Package instance
@@ -414,9 +445,10 @@ class Display(object):
 			self.verboseadd = None
 		else:
 			if not pkg_info.merge:
-				myprint = "[%s] %s%s" % \
+				addl = self.empty_space_in_brackets()
+				myprint = "[%s%s] %s%s" % \
 					(self.pkgprint(pkg_info.operation.ljust(13), pkg_info),
-					self.indent, self.pkgprint(pkg.cp, pkg_info))
+					addl, self.indent, self.pkgprint(pkg.cp, pkg_info))
 			else:
 				myprint = "[%s %s] %s%s" % \
 					(self.pkgprint(pkg.type_name, pkg_info), addl,
@@ -439,9 +471,10 @@ class Display(object):
 		@rtype the updated addl
 		"""
 		if not pkg_info.merge:
-			myprint = "[%s] %s%s %s" % \
+			addl = self.empty_space_in_brackets()
+			myprint = "[%s%s] %s%s %s" % \
 				(self.pkgprint(pkg_info.operation.ljust(13),
-				pkg_info),
+				pkg_info), addl,
 				self.indent, self.pkgprint(pkg.cpv, pkg_info),
 				pkg_info.oldbest)
 		else:
@@ -454,7 +487,7 @@ class Display(object):
 
 	def _insert_slot(self, pkg, pkg_info, myinslotlist):
 		"""Adds slot info to the message
-		
+
 		@returns addl: formatted slot info
 		@returns myoldbest: installed version list
 		Modifies self.counters.downgrades, self.counters.upgrades,
@@ -481,7 +514,7 @@ class Display(object):
 
 	def _new_slot(self, pkg, pkg_info):
 		"""New slot, mark it new.
-		
+
 		@returns addl: formatted slot info
 		@returns myoldbest: installed version list
 		Modifies self.counters.newslot, self.counters.binary
@@ -497,7 +530,7 @@ class Display(object):
 	def print_messages(self, show_repos):
 		"""Performs the actual output printing of the pre-formatted
 		messages
-		
+
 		@param show_repos: bool.
 		"""
 		for msg in self.print_msg:
@@ -524,7 +557,7 @@ class Display(object):
 
 	def print_verbose(self, show_repos):
 		"""Prints the verbose output to std_out
-		
+
 		@param show_repos: bool.
 		"""
 		writemsg_stdout('\n%s\n' % (self.counters,), noiselevel=-1)
@@ -548,11 +581,11 @@ class Display(object):
 
 	def get_display_list(self, mylist):
 		"""Determines the display list to process
-		
+
 		@param mylist
 		@rtype list
 		Modifies self.counters.blocks, self.counters.blocks_satisfied,
-			
+
 		"""
 		unsatisfied_blockers = []
 		ordered_nodes = []
@@ -577,11 +610,11 @@ class Display(object):
 
 	def set_pkg_info(self, pkg, ordered):
 		"""Sets various pkg_info dictionary variables
-		
+
 		@param pkg: _emerge.Package instance
 		@param ordered: bool
 		@rtype pkg_info dictionary
-		Modifies self.counters.restrict_fetch, 
+		Modifies self.counters.restrict_fetch,
 			self.counters.restrict_fetch_satisfied
 		"""
 		pkg_info = PkgInfo()
@@ -611,8 +644,8 @@ class Display(object):
 			pkg_info.fetch_symbol = red("F")
 			if pkg_info.ordered:
 				self.counters.restrict_fetch += 1
-			if self.portdb.fetch_check(pkg.cpv, pkg_info.use,
-					myrepo=pkg.repo):
+			if not self.portdb.getfetchsizes(pkg.cpv,
+				useflags=pkg_info.use, myrepo=pkg.repo):
 				pkg_info.fetch_symbol = green("f")
 				if pkg_info.ordered:
 					self.counters.restrict_fetch_satisfied += 1
@@ -621,7 +654,7 @@ class Display(object):
 
 	def do_changelog(self, pkg, pkg_info):
 		"""Processes and adds the changelog text to the master text for output
-		
+
 		@param pkg: _emerge.Package instance
 		@param pkg_info: dictionay
 		Modifies self.changelogs
@@ -640,7 +673,7 @@ class Display(object):
 
 	def check_system_world(self, pkg):
 		"""Checks for any occurances of the package in the system or world sets
-		
+
 		@param pkg: _emerge.Package instance
 		@rtype system and world booleans
 		"""
@@ -665,7 +698,7 @@ class Display(object):
 		except InvalidDependString:
 			# This is reported elsewhere if relevant.
 			pass
-		return system, world 
+		return system, world
 
 
 	@staticmethod
@@ -687,12 +720,12 @@ class Display(object):
 		"empty" param testing because "empty"
 		param is used for -u, where you still *do* want to see when
 		something is being upgraded.
-		
+
 		@param pkg: _emerge.Package instance
 		@param pkg_info: dictionay
 		@rtype addl, myoldbest: list, myinslotlist: list
 		Modifies self.counters.reinst, self.counters.binary, self.counters.new
-			
+
 		"""
 		myoldbest = []
 		myinslotlist = None
@@ -734,14 +767,14 @@ class Display(object):
 
 	def __call__(self, depgraph, mylist, favorites=None, verbosity=None):
 		"""The main operation to format and display the resolver output.
-		
+
 		@param depgraph: dependency grah
 		@param mylist: list of packages being processed
 		@param favorites: list, defaults to []
 		@param verbosity: verbose level, defaults to None
 		Modifies self.conf, self.myfetchlist, self.portdb, self.vardb,
-			self.pkgsettings, self.verboseadd, self.oldlp, self.newlp, 
-			self.print_msg, 
+			self.pkgsettings, self.verboseadd, self.oldlp, self.newlp,
+			self.print_msg,
 		"""
 		if favorites is None:
 			favorites = []
@@ -785,6 +818,9 @@ class Display(object):
 					self.check_system_world(pkg)
 				addl = self.set_interactive(pkg, pkg_info.ordered, addl)
 
+				if self.include_mask_str():
+					addl += self.gen_mask_str(pkg)
+
 				if pkg.root != "/":
 					if pkg_info.oldbest:
 						pkg_info.oldbest += " "
@@ -793,9 +829,10 @@ class Display(object):
 							addl, pkg_info, pkg)
 					else:
 						if not pkg_info.merge:
-							myprint = "[%s] " % (
+							addl = self.empty_space_in_brackets()
+							myprint = "[%s%s] " % (
 								self.pkgprint(pkg_info.operation.ljust(13),
-								pkg_info)
+								pkg_info), addl,
 								)
 						else:
 							myprint = "[%s %s] " % (
@@ -823,7 +860,8 @@ class Display(object):
 
 					if not self.vardb.cpv_exists(pkg.cpv) or \
 						'9999' in pkg.cpv or \
-						'git' in pkg.inherited:
+						'git' in pkg.inherited or \
+						'git-2' in pkg.inherited:
 						if mylist_index < len(mylist) - 1:
 							self.print_msg.append(
 								colorize(

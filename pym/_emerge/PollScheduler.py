@@ -1,10 +1,16 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import gzip
+import errno
 import logging
 import select
 import time
+
+try:
+	import threading
+except ImportError:
+	import dummy_threading as threading
 
 from portage import _encodings
 from portage import _unicode_encode
@@ -21,6 +27,8 @@ class PollScheduler(object):
 		__slots__ = ("output", "register", "schedule", "unregister")
 
 	def __init__(self):
+		self._terminated = threading.Event()
+		self._terminated_tasks = False
 		self._max_jobs = 1
 		self._max_load = None
 		self._jobs = 0
@@ -38,6 +46,44 @@ class PollScheduler(object):
 			schedule=self._schedule_wait,
 			unregister=self._unregister)
 
+	def terminate(self):
+		"""
+		Schedules asynchronous, graceful termination of the scheduler
+		at the earliest opportunity.
+
+		This method is thread-safe (and safe for signal handlers).
+		"""
+		self._terminated.set()
+
+	def _terminate_tasks(self):
+		"""
+		Send signals to terminate all tasks. This is called once
+		from self._schedule() in the event dispatching thread. This
+		prevents it from being called while the _schedule_tasks()
+		implementation is running, in order to avoid potential
+		interference. All tasks should be cleaned up at the earliest
+		opportunity, but not necessarily before this method returns.
+		"""
+		raise NotImplementedError()
+
+	def _schedule_tasks(self):
+		"""
+		This is called from inside the _schedule() method, which
+		guarantees the following:
+
+		1) It will not be called recursively.
+		2) _terminate_tasks() will not be called while it is running.
+		3) The state of the boolean _terminated_tasks variable will
+		   not change while it is running.
+
+		Unless this method is used to perform user interface updates,
+		or something like that, the first thing it should do is check
+		the state of _terminated_tasks and if that is True then it
+		should return False immediately (since there's no need to
+		schedule anything after _terminate_tasks() has been called).
+		"""
+		raise NotImplementedError()
+
 	def _schedule(self):
 		"""
 		Calls _schedule_tasks() and automatically returns early from
@@ -49,6 +95,12 @@ class PollScheduler(object):
 			return False
 		self._scheduling = True
 		try:
+
+			if self._terminated.is_set() and \
+				not self._terminated_tasks:
+				self._terminated_tasks = True
+				self._terminate_tasks()
+
 			return self._schedule_tasks()
 		finally:
 			self._scheduling = False
@@ -57,6 +109,9 @@ class PollScheduler(object):
 		return self._jobs
 
 	def _can_add_job(self):
+		if self._terminated_tasks:
+			return False
+
 		max_jobs = self._max_jobs
 		max_load = self._max_load
 
@@ -195,13 +250,17 @@ class PollScheduler(object):
 			# delivered to a future handler that is using a reallocated
 			# file descriptor of the same numeric value (causing
 			# extremely confusing bugs).
-			remove = set()
+			remaining_events = []
+			discarded_events = False
 			for event in self._poll_event_queue:
 				if event[0] == f:
-					remove.add(event)
-			if remove:
-				self._poll_event_queue[:] = [event for event in \
-					self._poll_event_queue if event not in remove]
+					discarded_events = True
+				else:
+					remaining_events.append(event)
+
+			if discarded_events:
+				self._poll_event_queue[:] = remaining_events
+
 		del self._poll_event_handlers[f]
 		del self._poll_event_handler_ids[reg_id]
 
@@ -264,22 +323,32 @@ class PollScheduler(object):
 			# (like for parallel-fetch), then use the global value.
 			background = self._background
 
+		msg_shown = False
 		if not background:
 			writemsg_level(msg, level=level, noiselevel=noiselevel)
+			msg_shown = True
 
 		if log_path is not None:
-			f = open(_unicode_encode(log_path,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='ab')
+			try:
+				f = open(_unicode_encode(log_path,
+					encoding=_encodings['fs'], errors='strict'),
+					mode='ab')
+			except IOError as e:
+				if e.errno not in (errno.ENOENT, errno.ESTALE):
+					raise
+				if not msg_shown:
+					writemsg_level(msg, level=level, noiselevel=noiselevel)
+			else:
 
-			if log_path.endswith('.gz'):
-				# NOTE: The empty filename argument prevents us from triggering
-				# a bug in python3 which causes GzipFile to raise AttributeError
-				# if fileobj.name is bytes instead of unicode.
-				f =  gzip.GzipFile(filename='', mode='ab', fileobj=f)
+				if log_path.endswith('.gz'):
+					# NOTE: The empty filename argument prevents us from
+					# triggering a bug in python3 which causes GzipFile
+					# to raise AttributeError if fileobj.name is bytes
+					# instead of unicode.
+					f =  gzip.GzipFile(filename='', mode='ab', fileobj=f)
 
-			f.write(_unicode_encode(msg))
-			f.close()
+				f.write(_unicode_encode(msg))
+				f.close()
 
 _can_poll_device = None
 

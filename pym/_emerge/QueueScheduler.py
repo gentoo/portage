@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import time
@@ -79,6 +79,9 @@ class QueueScheduler(PollScheduler):
 		@returns: True if there may be remaining tasks to schedule,
 			False otherwise.
 		"""
+		if self._terminated_tasks:
+			return False
+
 		while self._can_add_job():
 			n = self._max_jobs - self._running_job_count()
 			if n < 1:

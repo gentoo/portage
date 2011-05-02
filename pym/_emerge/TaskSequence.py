@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
@@ -25,9 +25,9 @@ class TaskSequence(CompositeTask):
 	def _start(self):
 		self._start_next_task()
 
-	def cancel(self):
+	def _cancel(self):
 		self._task_queue.clear()
-		CompositeTask.cancel(self)
+		CompositeTask._cancel(self)
 
 	def _start_next_task(self):
 		self._start_task(self._task_queue.popleft(),

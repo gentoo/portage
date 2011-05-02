@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -16,6 +16,9 @@ class MaskManager(object):
 		user_config=True, strict_umatched_removal=False):
 		self._punmaskdict = ExtendedAtomDict(list)
 		self._pmaskdict = ExtendedAtomDict(list)
+		# Preserves atoms that are eliminated by negative
+		# incrementals in user_pkgmasklines.
+		self._pmaskdict_raw = ExtendedAtomDict(list)
 
 		#Read profile/package.mask from every repo.
 		#Repositories inherit masks from their parent profiles and
@@ -89,10 +92,15 @@ class MaskManager(object):
 
 		#Stack everything together. At this point, only user_pkgmasklines may contain -atoms.
 		#Don't warn for unmatched -atoms here, since we don't do it for any other user config file.
+		raw_pkgmasklines = stack_lists([repo_pkgmasklines, profile_pkgmasklines], \
+			incremental=1, remember_source_file=True, warn_for_unmatched_removal=False, ignore_repo=True)
 		pkgmasklines = stack_lists([repo_pkgmasklines, profile_pkgmasklines, user_pkgmasklines], \
 			incremental=1, remember_source_file=True, warn_for_unmatched_removal=False, ignore_repo=True)
 		pkgunmasklines = stack_lists([repo_pkgunmasklines, profile_pkgunmasklines, user_pkgunmasklines], \
 			incremental=1, remember_source_file=True, warn_for_unmatched_removal=False, ignore_repo=True)
+
+		for x, source_file in raw_pkgmasklines:
+			self._pmaskdict_raw.setdefault(x.cp, []).append(x)
 
 		for x, source_file in pkgmasklines:
 			self._pmaskdict.setdefault(x.cp, []).append(x)
@@ -100,11 +108,11 @@ class MaskManager(object):
 		for x, source_file in pkgunmasklines:
 			self._punmaskdict.setdefault(x.cp, []).append(x)
 
-		for d in (self._pmaskdict, self._punmaskdict):
+		for d in (self._pmaskdict_raw, self._pmaskdict, self._punmaskdict):
 			for k, v in d.items():
 				d[k] = tuple(v)
 
-	def getMaskAtom(self, cpv, slot, repo):
+	def _getMaskAtom(self, cpv, slot, repo, unmask_atoms=None):
 		"""
 		Take a package and return a matching package.mask atom, or None if no
 		such atom exists or it has been cancelled by package.unmask. PROVIDE
@@ -114,6 +122,10 @@ class MaskManager(object):
 		@type cpv: String
 		@param slot: The package's slot
 		@type slot: String
+		@param repo: The package's repository [optional]
+		@type repo: String
+		@param unmask_atoms: if desired pass in self._punmaskdict.get(cp)
+		@type unmask_atoms: list
 		@rtype: String
 		@return: A matching atom string or None if one is not found.
 		"""
@@ -125,7 +137,6 @@ class MaskManager(object):
 			if repo:
 				pkg = "".join((pkg, _repo_separator, repo))
 			pkg_list = [pkg]
-			unmask_atoms = self._punmaskdict.get(cp)
 			for x in mask_atoms:
 				if not match_from_list(x, pkg_list):
 					continue
@@ -135,3 +146,43 @@ class MaskManager(object):
 							return None
 				return x
 		return None
+
+
+	def getMaskAtom(self, cpv, slot, repo):
+		"""
+		Take a package and return a matching package.mask atom, or None if no
+		such atom exists or it has been cancelled by package.unmask. PROVIDE
+		is not checked, so atoms will not be found for old-style virtuals.
+
+		@param cpv: The package name
+		@type cpv: String
+		@param slot: The package's slot
+		@type slot: String
+		@param repo: The package's repository [optional]
+		@type repo: String
+		@rtype: String
+		@return: A matching atom string or None if one is not found.
+		"""
+
+		cp = cpv_getkey(cpv)
+		return self._getMaskAtom(cpv, slot, repo, self._punmaskdict.get(cp))
+
+
+	def getRawMaskAtom(self, cpv, slot, repo):
+		"""
+		Take a package and return a matching package.mask atom, or None if no
+		such atom exists. It HAS NOT! been cancelled by any package.unmask.
+		PROVIDE is not checked, so atoms will not be found for old-style
+		virtuals.
+
+		@param cpv: The package name
+		@type cpv: String
+		@param slot: The package's slot
+		@type slot: String
+		@param repo: The package's repository [optional]
+		@type repo: String
+		@rtype: String
+		@return: A matching atom string or None if one is not found.
+		"""
+
+		return self._getMaskAtom(cpv, slot, repo)

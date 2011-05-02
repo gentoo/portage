@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.EbuildPhase import EbuildPhase
@@ -21,6 +21,7 @@ class EbuildExecuter(CompositeTask):
 		"cvs",
 		"darcs",
 		"git",
+		"git-2",
 		"mercurial",
 		"subversion",
 		"tla",
@@ -35,13 +36,7 @@ class EbuildExecuter(CompositeTask):
 
 		portdb = pkg.root_config.trees['porttree'].dbapi
 		ebuild_path = settings['EBUILD']
-		mytree = os.path.dirname(os.path.dirname(
-			os.path.dirname(ebuild_path)))
-		alist = portdb.getFetchMap(pkg.cpv,
-			useflags=pkg.use.enabled, mytree=mytree)
-		aalist = portdb.getFetchMap(pkg.cpv, mytree=mytree)
-		settings.configdict["pkg"]["A"] = " ".join(alist)
-		settings.configdict["pkg"]["AA"] = " ".join(aalist)
+		alist = settings.configdict["pkg"].get("A", "").split()
 		_prepare_fake_distdir(settings, alist)
 
 		if eapi_exports_replace_vars(settings['EAPI']):
@@ -56,7 +51,7 @@ class EbuildExecuter(CompositeTask):
 			settings=settings)
 
 		setup_phase.addExitListener(self._setup_exit)
-		self._current_task = setup_phase
+		self._task_queued(setup_phase)
 		self.scheduler.scheduleSetup(setup_phase)
 
 	def _setup_exit(self, setup_phase):
@@ -74,7 +69,7 @@ class EbuildExecuter(CompositeTask):
 			# otherwise they can interfere with eachother.
 
 			unpack_phase.addExitListener(self._unpack_exit)
-			self._current_task = unpack_phase
+			self._task_queued(unpack_phase)
 			self.scheduler.scheduleUnpack(unpack_phase)
 
 		else:

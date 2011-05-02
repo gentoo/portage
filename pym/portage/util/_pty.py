@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import array
@@ -28,11 +28,19 @@ def _can_test_pty_eof():
 	"""
 	return platform.system() in ("Linux",)
 
-def _test_pty_eof():
+def _test_pty_eof(fdopen_buffered=False):
 	"""
 	Returns True if this issues is fixed for the currently
 	running version of python: http://bugs.python.org/issue5380
 	Raises an EnvironmentError from openpty() if it fails.
+
+	NOTE: This issue is only problematic when array.fromfile()
+	is used, rather than os.read(). However, array.fromfile()
+	is preferred since it is approximately 10% faster.
+
+	New development: It appears that array.fromfile() is usable
+	with python3 as long as fdopen is called with a bufsize
+	argument of 0.
 	"""
 
 	use_fork = False
@@ -78,7 +86,10 @@ def _test_pty_eof():
 	if pid is not None:
 		os.waitpid(pid, 0)
 
-	master_file = os.fdopen(master_fd, 'rb')
+	if fdopen_buffered:
+		master_file = os.fdopen(master_fd, 'rb')
+	else:
+		master_file = os.fdopen(master_fd, 'rb', 0)
 	eof = False
 	data = []
 	iwtd = [master_file]

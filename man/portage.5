@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Nov 2010" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "May 2011" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -48,6 +48,7 @@ virtuals
 bashrc
 categories
 color.map
+license_groups
 make.conf
 mirrors
 modules
@@ -673,8 +674,22 @@ In this directory additional package\-specific bashrc files can be created.
 Note that if package\-specific environment variable settings are all that's
 needed, then \fB/etc/portage/package.env\fR should be used instead of the
 bashrc approach that is described here.
-Portage will source all of them after \fB/etc/portage/bashrc\fR in the following
-order:
+
+set_unless_changed and unset_unless_changed functions can be used to set or
+unset given variables only if these variable have not been set to values
+different than values set in make.conf. This functionality can be useful for
+temporary overriding of these variables during emerge invocation. Variables
+set without using set_unless_changed will unconditionally override variables
+set during emerge invocation.
+
+.I Syntax:
+.nf
+set_unless_changed VARIABLE=VALUE
+unset_unless_changed VALUE
+.fi
+
+Portage will source all of these bashrc files after \fB/etc/portage/bashrc\fR
+in the following order:
 .nr step 1 1
 .IP \n[step]. 3
 /etc/portage/env/${CATEGORY}/${PN}

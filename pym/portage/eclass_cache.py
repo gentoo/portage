@@ -1,6 +1,6 @@
-# Copyright: 2005,2010 Gentoo Foundation
+# Copyright 2005-2011 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
 # Author(s): Nicholas Carpaski (carpaski@gentoo.org), Brian Harring (ferringb@gentoo.org)
-# License: GPL2
 
 __all__ = ["cache"]
 
@@ -60,19 +60,6 @@ class cache(object):
 		self.porttrees = self.porttrees + other.porttrees
 		self.eclasses.update(other.eclasses)
 		self._eclass_locations.update(other._eclass_locations)
-
-	def close_caches(self):
-		import traceback
-		traceback.print_stack()
-		print("%s close_cache is deprecated" % self.__class__)
-		self.eclasses.clear()
-
-	def flush_cache(self):
-		import traceback
-		traceback.print_stack()
-		print("%s flush_cache is deprecated" % self.__class__)
-
-		self.update_eclasses()
 
 	def update_eclasses(self):
 		self.eclasses = {}

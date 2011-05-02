@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -8,11 +8,6 @@ from portage import os
 from portage import _unicode_decode
 from portage.util import writemsg
 from portage.localization import _
-try:
-	import sqlite3 as db_module # sqlite3 is optional with >=python-2.5
-except ImportError:
-	from pysqlite2 import dbapi2 as db_module
-DBError = db_module.Error
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -25,12 +20,11 @@ class database(fs_template.FsBased):
 	# to calculate the number of pages requested, according to the following
 	# equation: cache_bytes = page_bytes * page_count
 	cache_bytes = 1024 * 1024 * 10
-	_db_module = db_module
-	_db_error = DBError
 	_db_table = None
 
 	def __init__(self, *args, **config):
 		super(database, self).__init__(*args, **config)
+		self._import_sqlite()
 		self._allowed_keys = ["_mtime_", "_eclasses_"]
 		self._allowed_keys.extend(self._known_keys)
 		self._allowed_keys.sort()
@@ -48,6 +42,19 @@ class database(fs_template.FsBased):
 		config.setdefault("timeout", 15)
 		self._db_init_connection(config)
 		self._db_init_structures()
+
+	def _import_sqlite(self):
+		# sqlite3 is optional with >=python-2.5
+		try:
+			import sqlite3 as db_module
+		except ImportError:
+			try:
+				from pysqlite2 import dbapi2 as db_module
+			except ImportError as e:
+				raise cache_errors.InitializationError(self.__class__, e)
+
+		self._db_module = db_module
+		self._db_error = db_module.Error
 
 	def _db_escape_string(self, s):
 		"""meta escaping, returns quoted string for use in sql statements"""

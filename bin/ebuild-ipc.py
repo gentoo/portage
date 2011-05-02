@@ -1,11 +1,11 @@
 #!/usr/bin/python
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 #
 # This is a helper which ebuild processes can use
 # to communicate with portage's main python process.
 
-import array
+import errno
 import logging
 import os
 import pickle
@@ -135,25 +135,43 @@ class EbuildIpc(object):
 
 		return os.WEXITSTATUS(wait_retval[1])
 
-	def _receive_reply(self):
+	def _receive_reply(self, input_fd):
 
-		# File streams are in unbuffered mode since we do atomic
-		# read and write of whole pickles.
-		input_file = open(self.ipc_out_fifo, 'rb', 0)
-
-		# For maximum portability, us an array in order to force
-		# a single atomic read of a whole pickle (bug #337465).
-		buf = array.array('B')
-
-		try:
-			buf.fromfile(input_file, self._BUFSIZE)
-		except (EOFError, IOError) as e:
-			if not buf:
+		# Timeouts are handled by the parent process, so just
+		# block until input is available. For maximum portability,
+		# use a single atomic read.
+		buf = None
+		while True:
+			try:
+				events = select.select([input_fd], [], [])
+			except select.error as e:
 				portage.util.writemsg_level(
-					"ebuild-ipc: %s\n" % (e,),
+					"ebuild-ipc: %s: %s\n" % \
+					(portage.localization._('during select for read'), e),
 					level=logging.ERROR, noiselevel=-1)
+				continue
 
-		input_file.close()
+			if events[0]:
+				# For maximum portability, use os.read() here since
+				# array.fromfile() and file.read() are both known to
+				# erroneously return an empty string from this
+				# non-blocking fifo stream on FreeBSD (bug #337465).
+				try:
+					buf = os.read(input_fd, self._BUFSIZE)
+				except OSError as e:
+					if e.errno != errno.EAGAIN:
+						portage.util.writemsg_level(
+							"ebuild-ipc: %s: %s\n" % \
+							(portage.localization._('read error'), e),
+							level=logging.ERROR, noiselevel=-1)
+						break
+					# Assume that another event will be generated
+					# if there's any relevant data.
+					continue
+
+				# Only one (atomic) read should be necessary.
+				if buf:
+					break
 
 		retval = 2
 
@@ -167,7 +185,7 @@ class EbuildIpc(object):
 		else:
 
 			try:
-				reply = pickle.loads(buf.tostring())
+				reply = pickle.loads(buf)
 			except SystemExit:
 				raise
 			except Exception as e:
@@ -194,6 +212,13 @@ class EbuildIpc(object):
 		if not self._daemon_is_alive():
 			self._no_daemon_msg()
 			return 2
+
+		# Open the input fifo before the output fifo, in order to make it
+		# possible for the daemon to send a reply without blocking. This
+		# improves performance, and also makes it possible for the daemon
+		# to do a non-blocking write without a race condition.
+		input_fd = os.open(self.ipc_out_fifo,
+			os.O_RDONLY|os.O_NONBLOCK)
 
 		# Use forks so that the child process can handle blocking IO
 		# un-interrupted, while the parent handles all timeout
@@ -234,12 +259,13 @@ class EbuildIpc(object):
 
 		if pid == 0:
 			os.close(pr)
-			retval = self._receive_reply()
+			retval = self._receive_reply(input_fd)
 			os._exit(retval)
 
 		os.close(pw)
 		retval = self._wait(pid, pr, portage.localization._('during read'))
 		os.close(pr)
+		os.close(input_fd)
 		return retval
 
 def ebuild_ipc_main(args):

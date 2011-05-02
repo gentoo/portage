@@ -1,5 +1,5 @@
 #!/usr/bin/python -O
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # Next to do: dep syntax checking in mask files
@@ -66,7 +66,8 @@ import portage.checksum
 import portage.const
 from portage import cvstree, normalize_path
 from portage import util
-from portage.exception import FileNotFound, ParseError, PermissionDenied
+from portage.exception import (FileNotFound, MissingParameter,
+	ParseError, PermissionDenied)
 from portage.manifest import Manifest
 from portage.process import find_binary, spawn
 from portage.output import bold, create_color_func, \
@@ -113,8 +114,10 @@ def err(txt):
 
 def exithandler(signum=None, frame=None):
 	logging.fatal("Interrupted; exiting...")
-	sys.exit(1)
-	os.kill(0, signal.SIGKILL)
+	if signum is None:
+		sys.exit(1)
+	else:
+		sys.exit(128 + signum)
 
 signal.signal(signal.SIGINT,exithandler)
 
@@ -338,6 +341,7 @@ qahelp={
 	"ebuild.nesteddie":"Placing 'die' inside ( ) prints an error, but doesn't stop the ebuild.",
 	"variable.invalidchar":"A variable contains an invalid character that is not part of the ASCII character set",
 	"variable.readonly":"Assigning a readonly variable",
+	"variable.usedwithhelpers":"Ebuild uses D, ROOT, ED, EROOT or EPREFIX with helpers",
 	"LIVEVCS.stable":"This ebuild is a live checkout from a VCS but has stable keywords.",
 	"LIVEVCS.unmasked":"This ebuild is a live checkout from a VCS but has keywords and is not masked in the global package.mask.",
 	"IUSE.invalid":"This ebuild has a variable in IUSE that is not in the use.desc or its metadata.xml file",
@@ -361,9 +365,8 @@ qahelp={
 	"metadata.missing":"Missing metadata.xml files",
 	"metadata.bad":"Bad metadata.xml files",
 	"metadata.warning":"Warnings in metadata.xml files",
-	"virtual.versioned":"PROVIDE contains virtuals with versions",
-	"virtual.exists":"PROVIDE contains existing package names",
-	"virtual.unavailable":"PROVIDE contains a virtual which contains no profile default",
+	"portage.internal":"The ebuild uses an internal Portage function",
+	"virtual.oldstyle":"The ebuild PROVIDEs an old-style virtual (see GLEP 37)",
 	"usage.obsolete":"The ebuild makes use of an obsolete construct",
 	"upstream.workaround":"The ebuild works around an upstream bug, an upstream bug should be filed and tracked in bugs.gentoo.org"
 }
@@ -407,9 +410,7 @@ qawarnings = set((
 "java.eclassesnotused",
 "wxwidgets.eclassnotused",
 "metadata.warning",
-"virtual.versioned",
-"virtual.exists",
-"virtual.unavailable",
+"portage.internal",
 "usage.obsolete",
 "upstream.workaround",
 "LIVEVCS.stable",
@@ -439,6 +440,7 @@ live_eclasses = frozenset([
 	"cvs",
 	"darcs",
 	"git",
+	"git-2",
 	"mercurial",
 	"subversion",
 	"tla",
@@ -716,7 +718,7 @@ for path in portdb.porttrees:
 			elif arch[2] not in valid_profile_types:
 				err("invalid profile type: \"" + bad(arch[2]) + "\" in " + \
 					desc_path + " line %d" % (i+1, ))
-			profile_desc = ProfileDesc(arch[0], arch[2], arch[1], portdir)
+			profile_desc = ProfileDesc(arch[0], arch[2], arch[1], path)
 			if not os.path.isdir(profile_desc.abs_path):
 				logging.error(
 					"Invalid %s profile (%s) for arch %s in %s line %d",
@@ -1515,31 +1517,9 @@ for x in scanlist:
 					"%s: '%s' found in thirdpartymirrors" % \
 					(relative_path, mirror))
 
-		try:
-			provide = portage.dep.use_reduce(pkg.metadata['PROVIDE'],
-				token_class=portage.dep.Atom, matchall=1, flat=True)
-		except portage.exception.InvalidDependString:
-			stats["PROVIDE.syntax"] = stats["PROVIDE.syntax"] + 1
-			fails["PROVIDE.syntax"].append("%s: %s" % \
-				(relative_path, pkg.metadata['PROVIDE']))
-			provide = []
-		provide_cps = []
-
-		# The Package class automatically evaluates USE conditionals.
-		for myprovide in provide:
-			if not isinstance(myprovide, portage.dep.Atom):
-				stats["PROVIDE.syntax"] = stats["PROVIDE.syntax"] + 1
-				fails["PROVIDE.syntax"].append("%s: %s" % \
-					(relative_path, myprovide))
-				continue
-			prov_cp = myprovide.cp
-			provide_cps.append(prov_cp)
-			if prov_cp != myprovide:
-				stats["virtual.versioned"]+=1
-				fails["virtual.versioned"].append(x+"/"+y+".ebuild: "+myprovide)
-			if portdb.cp_list(prov_cp):
-				stats["virtual.exists"]+=1
-				fails["virtual.exists"].append(x+"/"+y+".ebuild: "+prov_cp)
+		if myaux.get("PROVIDE"):
+			stats["virtual.oldstyle"]+=1
+			fails["virtual.oldstyle"].append(relative_path)
 
 		for pos, missing_var in enumerate(missingvars):
 			if not myaux.get(missing_var):
@@ -1890,19 +1870,6 @@ for x in scanlist:
 				dep_settings["ACCEPT_KEYWORDS"] = " ".join(groups)
 				# just in case, prevent config.reset() from nuking these.
 				dep_settings.backup_changes("ACCEPT_KEYWORDS")
-
-				if prof.sub_path:
-					# old-style virtuals currently aren't
-					# resolvable with empty profile, since
-					# mappings from 'virtuals' files are
-					# unavailable (it would be expensive to
-					# search for PROVIDE in all ebuilds)
-					for prov_cp in provide_cps:
-						if prov_cp not in dep_settings.getvirtuals():
-							stats["virtual.unavailable"] += 1
-							fails["virtual.unavailable"].append(
-								"%s: %s(%s) %s" % (relative_path, keyword,
-								prof.sub_path, prov_cp))
 
 				if not baddepsyntax:
 					ismasked = not ebuild_archs or \
@@ -2413,30 +2380,36 @@ else:
 
 	# Setup the GPG commands
 	def gpgsign(filename):
-		if "PORTAGE_GPG_KEY" not in repoman_settings:
-			raise portage.exception.MissingParameter("PORTAGE_GPG_KEY is unset!")
-		if "PORTAGE_GPG_DIR" not in repoman_settings:
-			if "HOME" in os.environ:
-				repoman_settings["PORTAGE_GPG_DIR"] = os.path.join(os.environ["HOME"], ".gnupg")
-				logging.info("Automatically setting PORTAGE_GPG_DIR to %s" % repoman_settings["PORTAGE_GPG_DIR"])
+		gpgcmd = repoman_settings.get("PORTAGE_GPG_SIGNING_COMMAND")
+		if gpgcmd is None:
+			raise MissingParameter("PORTAGE_GPG_SIGNING_COMMAND is unset!" + \
+				" Is make.globals missing?")
+		if "${PORTAGE_GPG_KEY}" in gpgcmd and \
+			"PORTAGE_GPG_KEY" not in repoman_settings:
+			raise MissingParameter("PORTAGE_GPG_KEY is unset!")
+		if "${PORTAGE_GPG_DIR}" in gpgcmd:
+			if "PORTAGE_GPG_DIR" not in repoman_settings:
+				repoman_settings["PORTAGE_GPG_DIR"] = \
+					os.path.expanduser("~/.gnupg")
+				logging.info("Automatically setting PORTAGE_GPG_DIR to '%s'" \
+					% repoman_settings["PORTAGE_GPG_DIR"])
 			else:
-				raise portage.exception.MissingParameter("PORTAGE_GPG_DIR is unset!")
-		gpg_dir = repoman_settings["PORTAGE_GPG_DIR"]
-		if gpg_dir.startswith("~") and "HOME" in os.environ:
-			repoman_settings["PORTAGE_GPG_DIR"] = os.path.join(
-				os.environ["HOME"], gpg_dir[1:].lstrip(os.path.sep))
-		if not os.access(repoman_settings["PORTAGE_GPG_DIR"], os.X_OK):
-			raise portage.exception.InvalidLocation(
-				"Unable to access directory: PORTAGE_GPG_DIR='%s'" % \
-				repoman_settings["PORTAGE_GPG_DIR"])
-		gpgcmd = "gpg --sign --clearsign --yes "
-		gpgcmd+= "--default-key "+repoman_settings["PORTAGE_GPG_KEY"]
-		if "PORTAGE_GPG_DIR" in repoman_settings:
-			gpgcmd += " --homedir "+repoman_settings["PORTAGE_GPG_DIR"]
+				repoman_settings["PORTAGE_GPG_DIR"] = \
+					os.path.expanduser(repoman_settings["PORTAGE_GPG_DIR"])
+			if not os.access(repoman_settings["PORTAGE_GPG_DIR"], os.X_OK):
+				raise portage.exception.InvalidLocation(
+					"Unable to access directory: PORTAGE_GPG_DIR='%s'" % \
+					repoman_settings["PORTAGE_GPG_DIR"])
+		gpgvars = {"FILE": filename}
+		for k in ("PORTAGE_GPG_DIR", "PORTAGE_GPG_KEY"):
+			v = repoman_settings.get(k)
+			if v is not None:
+				gpgvars[k] = v
+		gpgcmd = portage.util.varexpand(gpgcmd, mydict=gpgvars)
 		if options.pretend:
-			print("("+gpgcmd+" "+filename+")")
+			print("("+gpgcmd+")")
 		else:
-			rValue = os.system(gpgcmd+" "+filename)
+			rValue = os.system(gpgcmd)
 			if rValue == os.EX_OK:
 				os.rename(filename+".asc", filename)
 			else:

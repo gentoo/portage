@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -31,8 +31,19 @@ class MultirepoTestCase(TestCase):
 
 			"dev-libs/G-1::repo1": { "EAPI" : "4", "IUSE":"+x +y", "REQUIRED_USE" : "" },
 			"dev-libs/G-1::repo2": { "EAPI" : "4", "IUSE":"+x +y", "REQUIRED_USE" : "^^ ( x y )" },
+
+			"dev-libs/H-1": {	"KEYWORDS": "x86", "EAPI" : "3",
+								"RDEPEND" : "|| ( dev-libs/I:2 dev-libs/I:1 )" },
+
+			"dev-libs/I-1::repo2": { "SLOT" : "1"},
+			"dev-libs/I-2::repo2": { "SLOT" : "2"},
 			}
-		
+
+		installed = {
+			"dev-libs/H-1": { "RDEPEND" : "|| ( dev-libs/I:2 dev-libs/I:1 )"},
+			"dev-libs/I-2::repo1": {"SLOT" : "2"},
+			}
+
 		sets = {
 			"multirepotest": 
 				( "dev-libs/A::test_repo", )
@@ -117,6 +128,15 @@ class MultirepoTestCase(TestCase):
 				check_repo_names = True,
 				mergelist = ["dev-libs/F-1::repo1"]),
 
+			# Dependency on installed dev-libs/C-2 ebuild for which ebuild is
+			# not available from the same repo should not unnecessarily
+			# reinstall the same version from a different repo.
+			ResolverPlaygroundTestCase(
+				["dev-libs/H"],
+				options = {"--update": True, "--deep": True},
+				success = True,
+				mergelist = []),
+
 			# Check interaction between repo priority and unsatisfied
 			# REQUIRED_USE, for bug #350254.
 			ResolverPlaygroundTestCase(
@@ -126,7 +146,8 @@ class MultirepoTestCase(TestCase):
 
 			)
 
-		playground = ResolverPlayground(ebuilds=ebuilds, sets=sets)
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			installed=installed, sets=sets)
 		try:
 			for test_case in test_cases:
 				playground.run_TestCase(test_case)
@@ -158,6 +179,10 @@ class MultirepoTestCase(TestCase):
 			"dev-libs/E-1::repo1": { },
 			"dev-libs/H-1": { },
 			"dev-libs/H-1::repo1": { },
+			"dev-libs/I-1::repo2": { "SLOT" : "1"},
+			"dev-libs/I-2::repo2": { "SLOT" : "2"},
+			"dev-libs/J-1": {	"KEYWORDS": "x86", "EAPI" : "3",
+								"RDEPEND" : "|| ( dev-libs/I:2 dev-libs/I:1 )" },
 
 			#package.properties
 			"dev-libs/F-1": { "PROPERTIES": "bar"},
@@ -169,6 +194,11 @@ class MultirepoTestCase(TestCase):
 
 			#package.mask with wildcards
 			"dev-libs/Z-1::repo3": { },
+			}
+
+		installed = {
+			"dev-libs/J-1": { "RDEPEND" : "|| ( dev-libs/I:2 dev-libs/I:1 )"},
+			"dev-libs/I-2::repo1": {"SLOT" : "2"},
 			}
 
 		user_config = {
@@ -188,6 +218,7 @@ class MultirepoTestCase(TestCase):
 				(
 					"dev-libs/E::repo1",
 					"dev-libs/H",
+					"dev-libs/I::repo1",
 					#needed for package.unmask test
 					"dev-libs/G",
 					#wildcard test
@@ -241,6 +272,16 @@ class MultirepoTestCase(TestCase):
 				check_repo_names = True,
 				mergelist = ["dev-libs/E-1"]),
 
+			# Dependency on installed dev-libs/C-2 ebuild for which ebuild is
+			# masked from the same repo should not unnecessarily pull
+			# in a different slot. It should just pull in the same slot from
+			# a different repo (bug #351828).
+			ResolverPlaygroundTestCase(
+				["dev-libs/J"],
+				options = {"--update": True, "--deep": True},
+				success = True,
+				mergelist = ["dev-libs/I-2"]),
+
 			#package.properties test
 			ResolverPlaygroundTestCase(
 				["dev-libs/F"],
@@ -264,7 +305,8 @@ class MultirepoTestCase(TestCase):
 				success = False),
 			)
 
-		playground = ResolverPlayground(ebuilds=ebuilds, user_config=user_config)
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			installed=installed, user_config=user_config)
 		try:
 			for test_case in test_cases:
 				playground.run_TestCase(test_case)

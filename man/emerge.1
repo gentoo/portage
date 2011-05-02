@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Nov 2010" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "May 2011" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -28,8 +28,9 @@ and binary packages, and it can be used to create binary packages for
 distribution.
 .SH "EBUILDS, TBZ2S, SETS AND ATOMS"
 \fBemerge\fR primarily installs packages.  You can specify
-packages to install in one of four main ways: an \fIebuild\fR,
-a \fItbz2file\fR, a \fIset\fR, or an \fIatom\fR.
+packages to install in five possible ways: an \fIatom\fR,
+a \fIset\fR, an installed \fIfile\fR, an \fIebuild\fR, or
+a \fItbz2file\fR.
 .LP
 .TP
 .BR ebuild
@@ -52,8 +53,9 @@ A \fItbz2file\fR must be a valid .tbz2 created with \fBebuild
 .TP
 .BR file
 A \fIfile\fR must be a file or directory that has been installed by one or
-more packages. For directories that are owned by multiple packages, all
-owning packages to be selected. See the portageq(1) owners command if you
+more packages. If an absolute path is not used, then it must begin with
+either "./" or "../". For directories that are owned by multiple packages, all
+owning packages will be selected. See the portageq(1) owners command if you
 would like to query the owners of one or more files or directories.
 .TP
 .BR set
@@ -87,8 +89,9 @@ to get around escaping problems.
 .BR "No action"
 If no action is specified, the action is to merge in the specified
 packages, satisfying any dependencies that they may have.  The
-arguments can be \fIebuilds\fR, \fItbz2s\fR, \fIsets\fR, or
-\fIatoms\fR.  \fBNote that you need to use the \-\-usepkg 
+arguments can be \fIatoms\fR, \fIsets\fR, installed \fIfiles\fR,
+\fIebuilds\fR, or \fItbz2s\fR.
+\fBNote that you need to use the \-\-usepkg
 option if you want to install a tbz2\fR.  The packages are added
 to the \fBworld\fR file at the end, so that they are considered for
 later updating.
@@ -117,7 +120,11 @@ always be kept. They can be manually added to this set with \fIemerge
 \-\-noreplace <atom>\fR. As a safety measure, depclean will not remove any
 packages unless *all* required dependencies have been resolved. As a
 consequence, it is often necessary to run \fIemerge \-\-update \-\-newuse
-\-\-deep @world\fR prior to depclean. 
+\-\-deep @world\fR prior to depclean. Also note that
+depclean may break link level dependencies, especially when the
+\fB\-\-depclean\-lib\-check\fR option is disabled. Thus, it is
+recommended to use a tool such as \fBrevdep-rebuild\fR(1)
+in order to detect such breakage.
 
 \fBWARNING:\fR
 Inexperienced users are advised to use \fB\-\-pretend\fR with this
@@ -263,7 +270,7 @@ configuration, this would result in an effective
 When displaying USE and other flag output, combines the enabled and
 disabled lists into one list and sorts the whole list alphabetically.
 .TP
-.BR "\-\-ask " (\fB\-a\fR)
+.BR "\-\-ask [ y | n ] (\-a short option)"
 Before performing the action, display what will take place (server info for
 \fB\-\-sync\fR, \fB\-\-pretend\fR output for merge, and so forth), then ask
 whether to proceed with the action or abort.  Using \fB\-\-ask\fR is more
@@ -365,7 +372,7 @@ required.
 .TP
 .BR "\-\-depclean\-lib\-check [ y | n ]"
 Account for library link-level dependencies during
-\fB-\-depclean\fR and \fB-\-prune\fR actions. This
+\fB\-\-depclean\fR and \fB\-\-prune\fR actions. This
 option is enabled by default. In some cases this can
 be somewhat time\-consuming.
 .TP
@@ -431,6 +438,12 @@ order to avoid excess load. See \fBmake\fR(1) for information about
 analogous options that should be configured via \fBMAKEOPTS\fR in
 \fBmake.conf\fR(5).
 .TP
+.BR "\-\-misspell\-suggestions < y | n >"
+Enable or disable misspell suggestions. By default, emerge will show
+a list of packages with similar names when a package doesn't exist.
+The \fIEMERGE_DEFAULT_OPTS\fR variable may be used to disable this
+option by default.
+.TP
 .BR "\-\-newuse " (\fB\-N\fR)
 Tells emerge to include installed packages where USE
 flags have changed since compilation. This option
@@ -443,7 +456,9 @@ A USE flag was turned on for a package.
 A USE flag was turned off for a package.
 
 USE flags may be toggled by your profile as well as your USE and package.use
-settings.
+settings. If you would like to skip rebuilds for which disabled flags have
+been added to or removed from IUSE, see the related
+\-\-reinstall=changed\-use option.
 .TP
 .BR "\-\-noconfmem"
 Causes portage to disregard merge records indicating that a config file
@@ -469,6 +484,14 @@ may have changed.
 .BR "\-\-nospinner"
 Disables the spinner for the session.  The spinner is active when the
 terminal device is determined to be a TTY.  This flag disables it regardless.
+.TP
+.BR "\-\-nousepkg\-atoms " ATOMS
+A space separated list of package names or slot atoms. Emerge will ignore
+matching binary packages.
+.TP
+.BR "\-\-norebuild\-atoms " ATOMS
+A space separated list of package names or slot atoms. Emerge will not rebuild
+matching packages due to \fB\-\-rebuild\fR.
 .TP
 .BR "\-\-oneshot " (\fB\-1\fR)
 Emerge as normal, but do not add the packages to the world file
@@ -505,11 +528,11 @@ B	blocked by another package (unresolved conflict)
 b	blocked by another package (automatically resolved conflict)
 .TE
 .TP
-.BR "\-\-quiet " (\fB\-q\fR)
+.BR "\-\-quiet [ y | n ] (\-q short option)"
 Results may vary, but the general outcome is a reduced or condensed
 output from portage's displays.
 .TP
-.BR \-\-quiet\-build
+.BR "\-\-quiet\-build [ y | n ]"
 Redirect all build output to logs alone, and do not
 display it on stdout.
 .TP
@@ -518,6 +541,10 @@ Disable the warning message that's shown prior to
 \fB\-\-unmerge\fR actions. This option is intended
 to be set in the \fBmake.conf\fR(5)
 \fBEMERGE_DEFAULT_OPTS\fR variable.
+.TP
+.BR "\-\-rebuild [ y | n ]"
+Rebuild packages when dependencies that are used at both build\-time and
+run\-time are upgraded.
 .TP
 .BR "\-\-rebuilt\-binaries [ y | n ]"
 Replace installed packages with binary packages that have
@@ -539,6 +566,11 @@ Tells emerge to include installed packages where USE flags have
 changed since installation.  Unlike \fB\-\-newuse\fR, this option does
 not trigger reinstallation when flags that the user has not
 enabled are added or removed.
+.TP
+.BR "\-\-reinstall\-atoms " ATOMS
+A space separated list of package names or slot atoms. Emerge will treat
+matching packages as if they are not installed, and reinstall them if
+necessary.
 .TP
 .BR \-\-root=DIR
 Set the \fBROOT\fR environment variable.
@@ -596,6 +628,10 @@ atoms may match multiple versions of slotted packages.
 .BR "\-\-use\-ebuild\-visibility [ y | n ]"
 Use unbuilt ebuild metadata for visibility
 checks on built packages.
+.TP
+.BR "\-\-useoldpkg\-atoms " ATOMS
+A space separated list of package names or slot atoms. Emerge will prefer
+matching binary packages over newer unbuilt packages.
 .TP
 .BR "\-\-usepkg [ y | n ] (\-k short option)"
 Tells emerge to use binary packages (from $PKGDIR) if they are available, thus 
@@ -713,6 +749,33 @@ it was last installed.  For information about all \fBUSE\fR symbols, see the
 displayed when you use the \fB\-\-pretend\fR and \fB\-\-verbose\fR options.
 Using the \fB\-\-quiet\fR option will prevent all information from being
 displayed.
+.TP
+.B [ebuild     U *] sys\-apps/portage\-2.2.0_alpha6 [2.1.9.25]
+Portage 2.1.9.25 is installed, but if you run the command, then
+portage will upgrade to version 2.2.0_alpha6. In this case,
+the \fB*\fR symbol is displayed, in order to indicate that version
+2.2.0_alpha6 is masked by missing keyword. This type of masking
+display is disabled by the \fB\-\-quiet\fR option if the
+\fB\-\-verbose\fR option is not enabled simultaneously.
+The following symbols are used to indicate various types
+of masking:
+.TS
+l l
+__
+c l.
+Symbol	Mask Type
+
+#	package.mask
+*	missing keyword
+~	unstable keyword
+.TE
+
+\fBNOTE:\fR The unstable keyword symbol (~) will not be shown in cases
+in which the corresponding unstable keywords have been accepted
+globally via \fBACCEPT_KEYWORDS\fR.
+.TP
+
+
 .SH "NOTES"
 You should almost always precede any package install or update attempt with a 
 \fB\-\-pretend\fR install or update.  This lets you see how much will be 

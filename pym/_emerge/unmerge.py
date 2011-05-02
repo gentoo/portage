@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -186,7 +186,7 @@ def unmerge(root_config, myopts, unmerge_action,
 				mymatch = localtree.dep_match(x)
 			if not mymatch:
 				portage.writemsg("\n--- Couldn't find '%s' to %s.\n" % \
-					(x, unmerge_action), noiselevel=-1)
+					(x.replace("null/", ""), unmerge_action), noiselevel=-1)
 				continue
 
 			pkgmap.append(
@@ -314,19 +314,24 @@ def unmerge(root_config, myopts, unmerge_action,
 				# by a concurrent process.
 				continue
 
-			if unmerge_action != "clean" and \
-				root_config.root == "/" and \
-				portage.match_from_list(
-				portage.const.PORTAGE_PACKAGE_ATOM, [pkg]):
-				msg = ("Not unmerging package %s since there is no valid " + \
-				"reason for portage to unmerge itself.") % (pkg.cpv,)
-				for line in textwrap.wrap(msg, 75):
-					out.eerror(line)
-				# adjust pkgmap so the display output is correct
-				pkgmap[cp]["selected"].remove(cpv)
-				all_selected.remove(cpv)
-				pkgmap[cp]["protected"].add(cpv)
-				continue
+			if unmerge_action != "clean" and root_config.root == "/":
+				skip_pkg = False
+				if portage.match_from_list(portage.const.PORTAGE_PACKAGE_ATOM, [pkg]):
+					msg = ("Not unmerging package %s since there is no valid reason "
+						"for Portage to unmerge itself.") % (pkg.cpv,)
+					skip_pkg = True
+				elif vartree.dbapi._dblink(cpv).isowner(portage._python_interpreter):
+					msg = ("Not unmerging package %s since there is no valid reason "
+						"for Portage to unmerge currently used Python interpreter.") % (pkg.cpv,)
+					skip_pkg = True
+				if skip_pkg:
+					for line in textwrap.wrap(msg, 75):
+						out.eerror(line)
+					# adjust pkgmap so the display output is correct
+					pkgmap[cp]["selected"].remove(cpv)
+					all_selected.remove(cpv)
+					pkgmap[cp]["protected"].add(cpv)
+					continue
 
 			parents = []
 			for s in installed_sets:

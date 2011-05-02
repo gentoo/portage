@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['env_update']
@@ -181,11 +181,6 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 			newprelink.write("-b %s\n" % (x,))
 		newprelink.close()
 
-	# Portage stores mtimes with 1 second granularity but in >=python-2.5 finer
-	# granularity is possible.  In order to avoid the potential ambiguity of
-	# mtimes that differ by less than 1 second, sleep here if any of the
-	# directories have been modified during the current second.
-	sleep_for_mtime_granularity = False
 	current_time = long(time.time())
 	mtime_changed = False
 	lib_dirs = set()
@@ -205,8 +200,13 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 				continue
 			raise
 		if newldpathtime == current_time:
-			sleep_for_mtime_granularity = True
-		if x in prev_mtimes:
+			# Reset mtime to avoid the potential ambiguity of times that
+			# differ by less than 1 second.
+			newldpathtime -= 1
+			os.utime(x, (newldpathtime, newldpathtime))
+			prev_mtimes[x] = newldpathtime
+			mtime_changed = True
+		elif x in prev_mtimes:
 			if prev_mtimes[x] == newldpathtime:
 				pass
 			else:
@@ -287,7 +287,3 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 	for x in env_keys:
 		outfile.write("setenv %s '%s'\n" % (x, env[x]))
 	outfile.close()
-
-	if sleep_for_mtime_granularity:
-		while current_time == long(time.time()):
-			time.sleep(1)

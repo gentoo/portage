@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 PORTAGE_BIN_PATH="${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"
@@ -511,7 +511,9 @@ econf() {
 		fi
 
 		# EAPI=4 adds --disable-dependency-tracking to econf
-		if ! hasq "$EAPI" 0 1 2 3 3_pre2 ; then
+		if ! hasq "$EAPI" 0 1 2 3 3_pre2 && \
+			"${ECONF_SOURCE}/configure" --help 2>/dev/null | \
+			grep -q disable-dependency-tracking ; then
 			set -- --disable-dependency-tracking "$@"
 		fi
 
@@ -624,15 +626,21 @@ _eapi0_src_compile() {
 }
 
 _eapi0_src_test() {
-	if emake -j1 check -n &> /dev/null; then
+	# Since we don't want emake's automatic die
+	# support (EAPI 4 and later), and we also don't
+	# want the warning messages that it produces if
+	# we call it in 'nonfatal' mode, we use emake_cmd
+	# to emulate the desired parts of emake behavior.
+	local emake_cmd="${MAKE:-make} ${MAKEOPTS} ${EXTRA_EMAKE}"
+	if $emake_cmd -j1 check -n &> /dev/null; then
 		vecho ">>> Test phase [check]: ${CATEGORY}/${PF}"
-		if ! emake -j1 check; then
+		if ! $emake_cmd -j1 check; then
 			hasq test $FEATURES && die "Make check failed. See above for details."
 			hasq test $FEATURES || eerror "Make check failed. See above for details."
 		fi
-	elif emake -j1 test -n &> /dev/null; then
+	elif $emake_cmd -j1 test -n &> /dev/null; then
 		vecho ">>> Test phase [test]: ${CATEGORY}/${PF}"
-		if ! emake -j1 test; then
+		if ! $emake_cmd -j1 test; then
 			hasq test $FEATURES && die "Make test failed. See above for details."
 			hasq test $FEATURES || eerror "Make test failed. See above for details."
 		fi
@@ -663,7 +671,7 @@ _eapi4_src_install() {
 		emake DESTDIR="${D}" install
 	fi
 
-	if [[ -z $DOCS ]] ; then
+	if ! declare -p DOCS &>/dev/null ; then
 		local d
 		for d in README* ChangeLog AUTHORS NEWS TODO CHANGES \
 				THANKS BUGS FAQ CREDITS CHANGELOG ; do
@@ -908,7 +916,7 @@ docompress() {
 			f=$(strip_duplicate_slashes "${f}"); f=${f%/}
 			[[ ${f:0:1} = / ]] || f="/${f}"
 			for g in "${PORTAGE_DOCOMPRESS_SKIP[@]}"; do
-				[[ ${f} = ${g} ]] && continue 2
+				[[ ${f} = "${g}" ]] && continue 2
 			done
 			PORTAGE_DOCOMPRESS_SKIP[${#PORTAGE_DOCOMPRESS_SKIP[@]}]=${f}
 		done
@@ -917,7 +925,7 @@ docompress() {
 			f=$(strip_duplicate_slashes "${f}"); f=${f%/}
 			[[ ${f:0:1} = / ]] || f="/${f}"
 			for g in "${PORTAGE_DOCOMPRESS[@]}"; do
-				[[ ${f} = ${g} ]] && continue 2
+				[[ ${f} = "${g}" ]] && continue 2
 			done
 			PORTAGE_DOCOMPRESS[${#PORTAGE_DOCOMPRESS[@]}]=${f}
 		done
@@ -1144,9 +1152,6 @@ dyn_install() {
 	#our custom version of libtool uses $S and $D to fix
 	#invalid paths in .la files
 	export S D
-	#some packages uses an alternative to $S to build in, cause
-	#our libtool to create problematic .la files
-	export PWORKDIR="$WORKDIR"
 
 	# Reset exeinto(), docinto(), insinto(), and into() state variables
 	# in case the user is running the install phase multiple times
@@ -1634,6 +1639,41 @@ _ebuild_phase_funcs() {
 	esac
 }
 
+# Set given variables unless these variable have been already set (e.g. during emerge
+# invocation) to values different than values set in make.conf.
+set_unless_changed() {
+	if [[ $# -lt 1 ]]; then
+		die "${FUNCNAME}() requires at least 1 argument: VARIABLE=VALUE"
+	fi
+
+	local argument value variable
+	for argument in "$@"; do
+		if [[ ${argument} != *=* ]]; then
+			die "${FUNCNAME}(): Argument '${argument}' has incorrect syntax"
+		fi
+		variable="${argument%%=*}"
+		value="${argument#*=}"
+		if eval "[[ \${${variable}} == \$(env -u ${variable} portageq envvar ${variable}) ]]"; then
+			eval "${variable}=\"${value}\""
+		fi
+	done
+}
+
+# Unset given variables unless these variable have been set (e.g. during emerge
+# invocation) to values different than values set in make.conf.
+unset_unless_changed() {
+	if [[ $# -lt 1 ]]; then
+		die "${FUNCNAME}() requires at least 1 argument: VARIABLE"
+	fi
+
+	local variable
+	for variable in "$@"; do
+		if eval "[[ \${${variable}} == \$(env -u ${variable} portageq envvar ${variable}) ]]"; then
+			unset ${variable}
+		fi
+	done
+}
+
 PORTAGE_BASHRCS_SOURCED=0
 
 # @FUNCTION: source_all_bashrcs
@@ -1821,14 +1861,14 @@ filter_readonly_variables() {
 # interfering with the current environment. This is useful when an existing
 # environment needs to be loaded from a binary or installed package.
 preprocess_ebuild_env() {
-	local _portage_filter_opts=""
-	if [ -f "${T}/environment.raw" ] ; then
-		# This is a signal from the python side, indicating that the
-		# environment may contain stale SANDBOX_{DENY,PREDICT,READ,WRITE}
-		# and FEATURES variables that should be filtered out. Between
-		# phases, these variables are normally preserved.
-		_portage_filter_opts+=" --filter-features --filter-locale --filter-path --filter-sandbox"
-	fi
+	local _portage_filter_opts="--filter-features --filter-locale --filter-path --filter-sandbox"
+
+	# If environment.raw is present, this is a signal from the python side,
+	# indicating that the environment may contain stale FEATURES and
+	# SANDBOX_{DENY,PREDICT,READ,WRITE} variables that should be filtered out.
+	# Otherwise, we don't need to filter the environment.
+	[ -f "${T}/environment.raw" ] || return 0
+
 	filter_readonly_variables $_portage_filter_opts < "${T}"/environment \
 		>> "$T/environment.filtered" || return $?
 	unset _portage_filter_opts
@@ -2236,9 +2276,6 @@ ebuild_main() {
 			#our custom version of libtool uses $S and $D to fix
 			#invalid paths in .la files
 			export S D
-			#some packages use an alternative to $S to build in, cause
-			#our libtool to create problematic .la files
-			export PWORKDIR=$WORKDIR
 
 			;;
 		esac

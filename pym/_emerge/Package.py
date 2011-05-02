@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -41,6 +41,8 @@ class Package(Task):
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
+		# the SlotObject constructor assigns self.root_config from keyword args
+		# and is an instance of a '_emerge.RootConfig.RootConfig class
 		self.root = self.root_config.root
 		self._raw_metadata = _PackageMetadataWrapperBase(self.metadata)
 		self.metadata = _PackageMetadataWrapper(self, self._raw_metadata)
@@ -113,7 +115,8 @@ class Package(Task):
 				use_reduce(v, eapi=dep_eapi, matchall=True,
 					is_valid_flag=dep_valid_flag, token_class=Atom)
 			except InvalidDependString as e:
-				self._metadata_exception(k, e)
+				self._invalid_metadata("PROVIDE.syntax",
+					_unicode_decode("%s: %s") % (k, e))
 
 		for k in self._use_conditional_misc_keys:
 			v = self.metadata.get(k)
@@ -234,6 +237,35 @@ class Package(Task):
 				return False
 
 		return True
+
+	def get_keyword_mask(self):
+		"""returns None, 'missing', or 'unstable'."""
+
+		missing = self.root_config.settings._getRawMissingKeywords(
+				self.cpv, self.metadata)
+
+		if not missing:
+			return None
+
+		if '**' in missing:
+			return 'missing'
+
+		global_accept_keywords = frozenset(
+			self.root_config.settings.get("ACCEPT_KEYWORDS", "").split())
+
+		for keyword in missing:
+			if keyword.lstrip("~") in global_accept_keywords:
+				return 'unstable'
+
+		return 'missing'
+
+	def isHardMasked(self):
+		"""returns a bool if the cpv is in the list of
+		expanded pmaskdict[cp] available ebuilds"""
+		pmask = self.root_config.settings._getRawMaskAtom(
+			self.cpv, self.metadata)
+		return pmask is not None
+
 
 	def _metadata_exception(self, k, e):
 
@@ -406,7 +438,7 @@ class Package(Task):
 					not self._iuse_implicit_match(flag):
 					return False
 			return True
-		
+
 		def get_missing_iuse(self, flags):
 			"""
 			@returns: A list of flags missing from IUSE.

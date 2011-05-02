@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import shutil
@@ -54,6 +54,8 @@ def spawn_nofetch(portdb, ebuild_path, settings=None):
 	private_tmpdir = tempfile.mkdtemp(dir=portage_tmpdir)
 	settings['PORTAGE_TMPDIR'] = private_tmpdir
 	settings.backup_changes('PORTAGE_TMPDIR')
+	# private temp dir was just created, so it's not locked yet
+	settings.pop('PORTAGE_BUILDIR_LOCKED', None)
 
 	try:
 		doebuild_environment(ebuild_path, 'nofetch',

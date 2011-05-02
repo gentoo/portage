@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -94,11 +94,16 @@ def help(myopts, havecolor=1):
 		"listed in package.provided (see portage(5)) may be removed by " + \
 		"depclean, even if they are part of the world set."
 
-		if not _ENABLE_DYN_LINK_MAP:
-			paragraph += " Also note that " + \
-				"depclean may break link level dependencies. Thus, it is " + \
-				"recommended to use a tool such as revdep-rebuild(1) " + \
-				"in order to detect such breakage."
+		paragraph += " Also note that " + \
+			"depclean may break link level dependencies"
+
+		if _ENABLE_DYN_LINK_MAP:
+			paragraph += ", especially when the " + \
+				"--depclean-lib-check option is disabled"
+
+		paragraph += ". Thus, it is " + \
+			"recommended to use a tool such as revdep-rebuild(1) " + \
+			"in order to detect such breakage."
 
 		for line in wrap(paragraph, desc_width):
 			print(desc_indent + line)
@@ -275,7 +280,9 @@ def help(myopts, havecolor=1):
 		print("              With this option, output such as USE=\"dar -bar -foo\" will instead")
 		print("              be displayed as USE=\"-bar dar -foo\"")
 		print()
-		print("       "+green("--ask")+" ("+green("-a")+" short option)")
+		print("       " + green("--ask") + \
+			" [ %s | %s ] (%s short option)" % \
+			(turquoise("y"), turquoise("n"), green("-a")))
 		desc = "Before performing the action, display what will take place (server info for " + \
 			"--sync, --pretend output for merge, and so forth), then ask " + \
 			"whether to proceed with the action or abort.  Using --ask is more " + \
@@ -320,7 +327,7 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
-		print("        " + green("--binpkg-respect-use") + " [ %s | %s ]" % \
+		print("       " + green("--binpkg-respect-use") + " [ %s | %s ]" % \
 			(turquoise("y"), turquoise("n")))
 		desc = "Tells emerge to ignore binary packages if their use flags" + \
 			" don't match the current configuration. (default: 'n')"
@@ -505,10 +512,22 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
+		print("       " + green("--misspell-suggestions") + " < %s | %s >" % \
+			(turquoise("y"), turquoise("n")))
+		desc = "Enable or disable misspell suggestions. By default, " + \
+			"emerge will show a list of packages with similar names " + \
+			"when a package doesn't exist. The EMERGE_DEFAULT_OPTS " + \
+			"variable may be used to disable this option by default"
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
 		print("       "+green("--newuse")+" ("+green("-N")+" short option)")
 		desc = "Tells emerge to include installed packages where USE " + \
 			"flags have changed since compilation. This option " + \
-			"also implies the --selective option."
+			"also implies the --selective option. If you would " + \
+			"like to skip rebuilds for which disabled flags have " + \
+			"been added to or removed from IUSE, see the related " + \
+			"--reinstall=changed-use option."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
@@ -540,6 +559,18 @@ def help(myopts, havecolor=1):
 		print("       "+green("--nospinner"))
 		print("              Disables the spinner regardless of terminal type.")
 		print()
+		print("       " + green("--nousepkg-atoms") + " " + turquoise("ATOMS"))
+		desc = "A space separated list of package names or slot atoms." + \
+			" Emerge will ignore matching binary packages."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
+		print("       " + green("--norebuild-atoms") + " " + turquoise("ATOMS"))
+		desc = "A space separated list of package names or slot atoms." + \
+			" Emerge will not rebuild matching packages due to --rebuild."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
 		print("       "+green("--oneshot")+" ("+green("-1")+" short option)")
 		print("              Emerge as normal, but don't add packages to the world profile.")
 		print("              This package will only be updated if it is depended upon by")
@@ -570,11 +601,14 @@ def help(myopts, havecolor=1):
 		print("              printed out accompanied by a '+' for enabled and a '-' for")
 		print("              disabled USE flags.")
 		print()
-		print("       "+green("--quiet")+" ("+green("-q")+" short option)")
+		print("       " + green("--quiet") + \
+			" [ %s | %s ] (%s short option)" % \
+			(turquoise("y"), turquoise("n"), green("-q")))
 		print("              Effects vary, but the general outcome is a reduced or condensed")
 		print("              output from portage's displays.")
 		print()
-		print("       "+green("--quiet-build"))
+		print("       " + green("--quiet-build") + \
+			" [ %s | %s ]" % (turquoise("y"), turquoise("n")))
 		desc = "Redirect all build output to logs alone, and do not " + \
 			"display it on stdout."
 		for line in wrap(desc, desc_width):
@@ -585,6 +619,13 @@ def help(myopts, havecolor=1):
 			"--unmerge actions. This option is intended " + \
 			"to be set in the make.conf(5) " + \
 			"EMERGE_DEFAULT_OPTS variable."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
+		print("       " + green("--rebuild") + " [ %s | %s ]" % \
+			(turquoise("y"), turquoise("n")))
+		desc = "Rebuild packages when dependencies that are used " + \
+			"at both build-time and run-time are upgraded."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
@@ -613,6 +654,13 @@ def help(myopts, havecolor=1):
 		print("              changed since installation.  Unlike --newuse, this option does")
 		print("              not trigger reinstallation when flags that the user has not")
 		print("              enabled are added or removed.")
+		print()
+		print("       " + green("--reinstall-atoms") + " " + turquoise("ATOMS"))
+		desc = "A space separated list of package names or slot atoms. " + \
+			"Emerge will treat matching packages as if they are not " + \
+			"installed, and reinstall them if necessary."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
 		print()
 		print("       "+green("--root=DIR"))
 		desc = "Set the ROOT environment variable " + \
@@ -693,6 +741,13 @@ def help(myopts, havecolor=1):
 			(turquoise("y"), turquoise("n")))
 		desc = "Use unbuilt ebuild metadata for visibility " + \
 			"checks on built packages."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
+		print("       " + green("--useoldpkg-atoms") + " " + turquoise("ATOMS"))
+		desc = "A space separated list of package names or slot atoms." + \
+			" Emerge will prefer matching binary packages over newer" + \
+			" unbuilt packages."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()

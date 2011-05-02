@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -36,6 +36,9 @@ class TestExtractAffectingUSE(TestCase):
 			("a? ( A )", "B", []),
 
 			("a? ( || ( A B ) )", "B", ["a"]),
+
+			# test USE dep defaults for bug #363073
+			("a? ( >=dev-lang/php-5.2[pcre(+)] )", ">=dev-lang/php-5.2[pcre(+)]", ["a"]),
 		)
 
 		test_cases_xfail = (

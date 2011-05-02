@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -110,10 +110,10 @@ class _iuse_implicit_match_cache(object):
 class config(object):
 	"""
 	This class encompasses the main portage configuration.  Data is pulled from
-	ROOT/PORTDIR/profiles/, from ROOT/etc/make.profile incrementally through all 
+	ROOT/PORTDIR/profiles/, from ROOT/etc/make.profile incrementally through all
 	parent profiles as well as from ROOT/PORTAGE_CONFIGROOT/* for user specified
 	overrides.
-	
+
 	Generally if you need data like USE flags, FEATURES, environment variables,
 	virtuals ...etc you look in here.
 	"""
@@ -482,27 +482,28 @@ class config(object):
 				main_repo = main_repo.user_location
 				self["PORTDIR"] = main_repo
 				self.backup_changes("PORTDIR")
+
+			# repoman controls PORTDIR_OVERLAY via the environment, so no
+			# special cases are needed here.
 			portdir_overlay = list(self.repositories.repoUserLocationList())
 			if self["PORTDIR"] in portdir_overlay:
 				portdir_overlay.remove(self["PORTDIR"])
-			self["PORTDIR_OVERLAY"] = " ".join(portdir_overlay)
-			self.backup_changes("PORTDIR_OVERLAY")
 
-			""" repoman controls PORTDIR_OVERLAY via the environment, so no
-			special cases are needed here."""
-
-			overlays = shlex_split(self.get('PORTDIR_OVERLAY', ''))
-			if overlays:
-				new_ov = []
-				for ov in overlays:
+			new_ov = []
+			if portdir_overlay:
+				whitespace_re = re.compile(r"\s")
+				for ov in portdir_overlay:
 					ov = normalize_path(ov)
 					if os.path.isdir(ov):
+						if whitespace_re.search(ov) is not None:
+							ov = portage._shell_quote(ov)
 						new_ov.append(ov)
 					else:
 						writemsg(_("!!! Invalid PORTDIR_OVERLAY"
 							" (not a dir): '%s'\n") % ov, noiselevel=-1)
-				self["PORTDIR_OVERLAY"] = " ".join(new_ov)
-				self.backup_changes("PORTDIR_OVERLAY")
+
+			self["PORTDIR_OVERLAY"] = " ".join(new_ov)
+			self.backup_changes("PORTDIR_OVERLAY")
 
 			locations_manager.set_port_dirs(self["PORTDIR"], self["PORTDIR_OVERLAY"])
 
@@ -1376,6 +1377,22 @@ class config(object):
 		"""
 		return self._mask_manager.getMaskAtom(cpv, metadata["SLOT"], metadata.get('repository'))
 
+	def _getRawMaskAtom(self, cpv, metadata):
+		"""
+		Take a package and return a matching package.mask atom, or None if no
+		such atom exists or it has been cancelled by package.unmask. PROVIDE
+		is not checked, so atoms will not be found for old-style virtuals.
+
+		@param cpv: The package name
+		@type cpv: String
+		@param metadata: A dictionary of raw package metadata
+		@type metadata: dict
+		@rtype: String
+		@return: A matching atom string or None if one is not found.
+		"""
+		return self._mask_manager.getRawMaskAtom(cpv, metadata["SLOT"], metadata.get('repository'))
+
+
 	def _getProfileMaskAtom(self, cpv, metadata):
 		"""
 		Take a package and return a matching profile atom, or None if no
@@ -1424,7 +1441,7 @@ class config(object):
 		@return: A list of KEYWORDS that have not been accepted.
 		"""
 
-		# Hack: Need to check the env directly here as otherwise stacking 
+		# Hack: Need to check the env directly here as otherwise stacking
 		# doesn't work properly as negative values are lost in the config
 		# object (bug #139600)
 		backuped_accept_keywords = self.configdict["backupenv"].get("ACCEPT_KEYWORDS", "")
@@ -1433,6 +1450,32 @@ class config(object):
 		return self._keywords_manager.getMissingKeywords(cpv, metadata["SLOT"], \
 			metadata.get("KEYWORDS", ""), metadata.get('repository'), \
 			global_accept_keywords, backuped_accept_keywords)
+
+	def _getRawMissingKeywords(self, cpv, metadata):
+		"""
+		Take a package and return a list of any KEYWORDS that the user may
+		need to accept for the given package. If the KEYWORDS are empty,
+		the returned list will contain ** alone (in order to distinguish
+		from the case of "none missing").  This DOES NOT apply any user config
+		package.accept_keywords acceptance.
+
+		@param cpv: The package name (for package.keywords support)
+		@type cpv: String
+		@param metadata: A dictionary of raw package metadata
+		@type metadata: dict
+		@rtype: List
+		@return: lists of KEYWORDS that have not been accepted
+		and the keywords it looked for.
+		"""
+		return self._keywords_manager.getRawMissingKeywords(cpv, metadata["SLOT"], \
+			metadata.get("KEYWORDS", ""), metadata.get('repository'), \
+			self.get("ACCEPT_KEYWORDS", ""))
+
+	def _getPKeywords(self, cpv, metadata):
+		global_accept_keywords = self.get("ACCEPT_KEYWORDS", "")
+
+		return self._keywords_manager.getPKeywords(cpv, metadata["SLOT"], \
+			metadata.get('repository'), global_accept_keywords)
 
 	def _getMissingLicenses(self, cpv, metadata):
 		"""
@@ -2088,7 +2131,7 @@ class config(object):
 	def thirdpartymirrors(self):
 		if getattr(self, "_thirdpartymirrors", None) is None:
 			profileroots = [os.path.join(self["PORTDIR"], "profiles")]
-			for x in self["PORTDIR_OVERLAY"].split():
+			for x in shlex_split(self.get("PORTDIR_OVERLAY", "")):
 				profileroots.insert(0, os.path.join(x, "profiles"))
 			thirdparty_lists = [grabdict(os.path.join(x, "thirdpartymirrors")) for x in profileroots]
 			self._thirdpartymirrors = stack_dictlist(thirdparty_lists, incremental=True)

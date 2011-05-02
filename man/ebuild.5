@@ -1,4 +1,4 @@
-.TH "EBUILD" "5" "Sep 2010" "Portage VERSION" "Portage"
+.TH "EBUILD" "5" "Feb 2011" "Portage VERSION" "Portage"
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
 .SH "DESCRIPTION"
@@ -382,7 +382,7 @@ foo[!bar=]	bar? ( foo[\-bar] ) !bar? ( foo[bar] )
 .TE
 .RE
 .TP
-.B Atom USE defauts
+.B Atom USE defaults
 Beginning with \fBEAPI 4\fR, \fBUSE\fR dependencies may specify default
 assumptions about values for flags that may or may not be missing from
 the \fBIUSE\fR of the matched package. Such defaults are specified by
@@ -700,7 +700,7 @@ src_install() {
         emake DESTDIR="${D}" install
     fi
 
-    if [[ \-z $DOCS ]] ; then
+    if ! declare -p DOCS &>/dev/null ; then
         local d
         for d in README* ChangeLog AUTHORS NEWS TODO CHANGES \\
                 THANKS BUGS FAQ CREDITS CHANGELOG ; do
@@ -932,7 +932,9 @@ calls \fBdie\fR if the configure script fails.
 Beginning with \fBEAPI 3\fR, \fBeconf\fR uses the \fB${EPREFIX}\fR
 variable which is disregarded for prior \fBEAPI\fR values.
 Beginning with \fBEAPI 4\fR, \fBeconf\fR adds
-\fI\-\-disable\-dependency\-tracking\fR to the arguments.
+\fI\-\-disable\-dependency\-tracking\fR to the arguments if the
+string \fIdisable\-dependency\-tracking\fR occurs in the output
+of \fIconfigure \-\-help\fR.
 .TP
 \fBemake\fR \fI[make options]\fR
 This is used as a replacement for make.  Performs 'make ${MAKEOPTS}

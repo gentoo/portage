@@ -1,18 +1,14 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from _emerge.AsynchronousTask import AsynchronousTask
+from _emerge.CompositeTask import CompositeTask
 from portage.output import colorize
-class PackageMerge(AsynchronousTask):
-	"""
-	TODO: Implement asynchronous merge so that the scheduler can
-	run while a merge is executing.
-	"""
-
+class PackageMerge(CompositeTask):
 	__slots__ = ("merge",)
 
 	def _start(self):
 
+		self.scheduler = self.merge.scheduler
 		pkg = self.merge.pkg
 		pkg_count = self.merge.pkg_count
 
@@ -40,6 +36,5 @@ class PackageMerge(AsynchronousTask):
 			not self.merge.build_opts.buildpkgonly:
 			self.merge.statusMessage(msg)
 
-		self.returncode = self.merge.merge()
-		self.wait()
-
+		task = self.merge.create_install_task()
+		self._start_task(task, self._default_final_exit)

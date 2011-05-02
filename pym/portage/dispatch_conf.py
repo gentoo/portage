@@ -1,5 +1,5 @@
 # archive_conf.py -- functionality common to archive-conf and dispatch-conf
-# Copyright 2003-2004 Gentoo Foundation
+# Copyright 2003-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -64,6 +64,9 @@ def read_config(mandatory_opts):
 
     if not os.path.exists(opts['archive-dir']):
         os.mkdir(opts['archive-dir'])
+        # Use restrictive permissions by default, in order to protect
+        # against vulnerabilities (like bug #315603 involving rcs).
+        os.chmod(opts['archive-dir'], 0o700)
     elif not os.path.isdir(opts['archive-dir']):
         print(_('dispatch-conf: Config archive dir [%s] must exist; fatal') % (opts['archive-dir'],), file=sys.stderr)
         sys.exit(1)

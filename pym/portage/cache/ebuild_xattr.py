@@ -1,17 +1,20 @@
-# Copyright: 2009-2010 Gentoo Foundation
+# Copyright: 2009-2011 Gentoo Foundation
 # Author(s): Petteri R&#228;ty (betelgeuse@gentoo.org)
 # License: GPL2
 
 __all__ = ['database']
 
+import errno
+
+import portage
 from portage.cache import fs_template
 from portage.versions import catsplit
 from portage import cpv_getkey
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
-import xattr
-from errno import ENODATA,ENOSPC,E2BIG
+portage.proxy.lazyimport.lazyimport(globals(),
+	'xattr')
 
 class NoValueException(Exception):
 	pass
@@ -56,16 +59,16 @@ class database(fs_template.FsBased):
 		except IOError as e:
 			# ext based give wrong errno
 			# http://bugzilla.kernel.org/show_bug.cgi?id=12793
-			if e.errno in (E2BIG,ENOSPC):
+			if e.errno in (errno.E2BIG, errno.ENOSPC):
 				result = len(s)-100
 			else:
-				raise e
+				raise
 
 		try:
 			self.__remove(path,'test_max')
 		except IOError as e:
-			if e.errno is not ENODATA:
-				raise e
+			if e.errno != errno.ENODATA:
+				raise
 
 		return result
 
@@ -85,7 +88,7 @@ class database(fs_template.FsBased):
 		try:
 			return xattr.get(path,key,namespace=self.ns)
 		except IOError as e:
-			if not default is None and ENODATA == e.errno:
+			if not default is None and errno.ENODATA == e.errno:
 				return default
 			else:
 				raise NoValueException()

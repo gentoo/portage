@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import platform
@@ -225,8 +225,15 @@ class AbstractEbuildProcess(SpawnProcess):
 		msg = _unicode_decode(out.getvalue(),
 			encoding=_encodings['content'], errors='replace')
 		if msg:
-			self.scheduler.output(msg,
-				log_path=self.settings.get("PORTAGE_LOG_FILE"))
+			log_path = None
+			if self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
+				log_path = self.settings.get("PORTAGE_LOG_FILE")
+			self.scheduler.output(msg, log_path=log_path)
+
+	def _log_poll_exception(self, event):
+		self._elog("eerror",
+			["%s received strange poll event: %s\n" % \
+			(self.__class__.__name__, event,)])
 
 	def _set_returncode(self, wait_retval):
 		SpawnProcess._set_returncode(self, wait_retval)
@@ -237,11 +244,12 @@ class AbstractEbuildProcess(SpawnProcess):
 				self.returncode = self._exit_command.exitcode
 			else:
 				self.returncode = 1
-				self._unexpected_exit()
+				if not self.cancelled:
+					self._unexpected_exit()
 			if self._build_dir is not None:
 				self._build_dir.unlock()
 				self._build_dir = None
-		else:
+		elif not self.cancelled:
 			exit_file = self.settings.get('PORTAGE_EBUILD_EXIT_FILE')
 			if exit_file and not os.path.exists(exit_file):
 				self.returncode = 1

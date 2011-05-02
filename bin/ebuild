@@ -1,18 +1,18 @@
 #!/usr/bin/python -O
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
 
+import signal
 import sys
 # This block ensures that ^C interrupts are handled quietly.
 try:
-	import signal
 
 	def exithandler(signum,frame):
 		signal.signal(signal.SIGINT, signal.SIG_IGN)
 		signal.signal(signal.SIGTERM, signal.SIG_IGN)
-		sys.exit(1)
+		sys.exit(128 + signum)
 
 	signal.signal(signal.SIGINT, exithandler)
 	signal.signal(signal.SIGTERM, exithandler)
@@ -21,7 +21,7 @@ try:
 	signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 except KeyboardInterrupt:
-	sys.exit(1)
+	sys.exit(128 + signal.SIGINT)
 
 def debug_signal(signum, frame):
 	import pdb
@@ -217,23 +217,6 @@ def discard_digests(myebuild, mysettings, mydbapi):
 		portage._doebuild_manifest_exempt_depend -= 1
 
 portage.settings.validate() # generate warning messages if necessary
-tmpsettings = portage.config(clone=portage.settings)
-tmpsettings["PORTAGE_VERBOSE"] = "1"
-tmpsettings.backup_changes("PORTAGE_VERBOSE")
-if "test" in pargs:
-	# This variable is a signal to config.regenerate() to
-	# indicate that the test phase should be enabled regardless
-	# of problems such as masked "test" USE flag.
-	tmpsettings["EBUILD_FORCE_TEST"] = "1"
-	tmpsettings.backup_changes("EBUILD_FORCE_TEST")
-	tmpsettings.features.add("test")
-
-tmpsettings.features.discard('fail-clean')
-
-if opts.skip_manifest:
-	tmpsettings["EBUILD_SKIP_MANIFEST"] = "1"
-	tmpsettings.backup_changes("EBUILD_SKIP_MANIFEST")
-	portage._doebuild_manifest_exempt_depend += 1
 
 build_dir_phases = set(["setup", "unpack", "prepare", "configure", "compile",
 	"test", "install", "package", "rpm", "merge", "qmerge"])
@@ -246,6 +229,38 @@ if mytree == "porttree" and build_dir_phases.intersection(pargs):
 		portage.portdb._pull_valid_cache(cpv, ebuild, ebuild_portdir)
 	if metadata is None:
 		ebuild_changed = True
+
+tmpsettings = portage.config(clone=portage.settings)
+tmpsettings["PORTAGE_VERBOSE"] = "1"
+tmpsettings.backup_changes("PORTAGE_VERBOSE")
+
+if opts.skip_manifest:
+	tmpsettings["EBUILD_SKIP_MANIFEST"] = "1"
+	tmpsettings.backup_changes("EBUILD_SKIP_MANIFEST")
+
+if opts.skip_manifest or \
+	"digest" in tmpsettings.features or \
+	"digest" in pargs or \
+	"manifest" in pargs:
+	portage._doebuild_manifest_exempt_depend += 1
+
+if "test" in pargs:
+	# This variable is a signal to config.regenerate() to
+	# indicate that the test phase should be enabled regardless
+	# of problems such as masked "test" USE flag.
+	tmpsettings["EBUILD_FORCE_TEST"] = "1"
+	tmpsettings.backup_changes("EBUILD_FORCE_TEST")
+	tmpsettings.features.add("test")
+
+tmpsettings.features.discard("fail-clean")
+
+# Apply package.env settings. This allows per-package FEATURES and other
+# variables (possibly PORTAGE_TMPDIR) to be available as soon as possible.
+try:
+	tmpsettings.setcpv(cpv, mydb=portage.db[portage.root][mytree].dbapi)
+except KeyError:
+	# aux_get failure, message should have been shown on stderr.
+	sys.exit(1)
 
 def stale_env_warning():
 	if "clean" not in pargs and \

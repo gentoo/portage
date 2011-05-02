@@ -1,24 +1,24 @@
 #!/usr/bin/python -O
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
 
+import signal
 import sys
 # This block ensures that ^C interrupts are handled quietly.
 try:
-	import signal
 
 	def exithandler(signum, frame):
 		signal.signal(signal.SIGINT, signal.SIG_IGN)
 		signal.signal(signal.SIGTERM, signal.SIG_IGN)
-		sys.exit(1)
+		sys.exit(128 + signum)
 
 	signal.signal(signal.SIGINT, exithandler)
 	signal.signal(signal.SIGTERM, exithandler)
 
 except KeyboardInterrupt:
-	sys.exit(1)
+	sys.exit(128 + signal.SIGINT)
 
 import os
 import subprocess
@@ -255,6 +255,8 @@ def owners(argv):
 		pass
 
 	files = []
+	orphan_abs_paths = set()
+	orphan_basenames = set()
 	for f in argv[1:]:
 		f = portage.normalize_path(f)
 		is_basename = os.sep not in f
@@ -271,8 +273,10 @@ def owners(argv):
 			return 2
 		if is_basename:
 			files.append(f)
+			orphan_basenames.add(f)
 		else:
 			files.append(f[len(root)-1:])
+			orphan_abs_paths.add(f)
 
 	owners = vardb._owners.get_owners(files)
 
@@ -281,16 +285,28 @@ def owners(argv):
 		cpv = pkg.mycpv
 		msg.append("%s\n" % cpv)
 		for f in sorted(owned_files):
-			msg.append("\t%s\n" % \
-				os.path.join(root, f.lstrip(os.path.sep)))
+			f_abs = os.path.join(root, f.lstrip(os.path.sep))
+			msg.append("\t%s\n" % (f_abs,))
+			orphan_abs_paths.discard(f_abs)
+			if orphan_basenames:
+				orphan_basenames.discard(os.path.basename(f_abs))
 
 	writemsg_stdout(''.join(msg), noiselevel=-1)
 
+	if orphan_abs_paths or orphan_basenames:
+		orphans = []
+		orphans.extend(orphan_abs_paths)
+		orphans.extend(orphan_basenames)
+		orphans.sort()
+		msg = []
+		msg.append("None of the installed packages claim these files:\n")
+		for f in orphans:
+			msg.append("\t%s\n" % (f,))
+		sys.stderr.write("".join(msg))
+		sys.stderr.flush()
+
 	if owners:
 		return 0
-
-	sys.stderr.write("None of the installed packages claim the file(s).\n")
-	sys.stderr.flush()
 	return 1
 
 owners.uses_root = True

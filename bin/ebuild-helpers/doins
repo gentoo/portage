@@ -1,8 +1,19 @@
 #!/bin/bash
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+
+if [[ ${0##*/} == dodoc ]] ; then
+	if [ $# -eq 0 ] ; then
+		# default_src_install may call dodoc with no arguments
+		# when DOC is defined but empty, so simply return
+		# sucessfully in this case.
+		exit 0
+	fi
+	export INSOPTIONS=-m0644
+	export INSDESTTREE=usr/share/doc/${PF}/${_E_DOCDESTTREE_}
+fi
 
 if [ $# -lt 1 ] ; then
 	helpers_die "${0##*/}: at least one argument needed"
@@ -44,7 +55,14 @@ _doins() {
 	local mysrc="$1" mydir="$2" cleanup="" rval
 
 	if [ -L "$mysrc" ] ; then
-		if [ $PRESERVE_SYMLINKS = y ] ; then
+		# Our fake $DISTDIR contains symlinks that should
+		# not be reproduced inside $D. In order to ensure
+		# that things like dodoc "$DISTDIR"/foo.pdf work
+		# as expected, we dereference symlinked files that
+		# refer to absolute paths inside
+		# $PORTAGE_ACTUAL_DISTDIR/.
+		if [ $PRESERVE_SYMLINKS = y ] && \
+			! [[ $(readlink "$mysrc") == "$PORTAGE_ACTUAL_DISTDIR"/* ]] ; then
 			rm -rf "$D$INSDESTTREE/$mydir/${mysrc##*/}" || return $?
 			cp -P "$mysrc" "$D$INSDESTTREE/$mydir/${mysrc##*/}"
 			return $?
@@ -78,6 +96,10 @@ for x in "$@" ; do
 	if [[ $PRESERVE_SYMLINKS = n && -d $x ]] || \
 		[[ $PRESERVE_SYMLINKS = y && -d $x && ! -L $x ]] ; then
 		if [ "${DOINSRECUR}" == "n" ] ; then
+			if [[ ${0##*/} == dodoc ]] ; then
+				echo "!!! ${0##*/}: $x is a directory" 1>&2
+				((failed|=1))
+			fi
 			continue
 		fi
 
