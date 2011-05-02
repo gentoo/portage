@@ -2465,6 +2465,39 @@ class depgraph(object):
 
 		return selected_atoms
 
+	def _expand_virt_from_graph(self, root, atom):
+		if not isinstance(atom, Atom):
+			atom = Atom(atom)
+		graphdb = self._dynamic_config.mydbapi[root]
+		match = graphdb.match_pkgs(atom)
+		if not match:
+			yield atom
+			return
+		pkg = match[-1]
+		if not pkg.cpv.startswith("virtual/"):
+			yield atom
+			return
+		try:
+			rdepend = self._select_atoms_from_graph(
+				pkg.root, pkg.metadata.get("RDEPEND", ""),
+				myuse=self._pkg_use_enabled(pkg),
+				parent=pkg, strict=False)
+		except InvalidDependString as e:
+			writemsg_level("!!! Invalid RDEPEND in " + \
+				"'%svar/db/pkg/%s/RDEPEND': %s\n" % \
+				(pkg.root, pkg.cpv, e),
+				noiselevel=-1, level=logging.ERROR)
+			yield atom
+			return
+
+		for atoms in rdepend.values():
+			for atom in atoms:
+				if hasattr(atom, "_orig_atom"):
+					# Ignore virtual atoms since we're only
+					# interested in expanding the real atoms.
+					continue
+				yield atom
+
 	def _get_dep_chain(self, start_node, target_atom=None,
 		unsatisfied_dependency=False):
 		"""
@@ -4394,65 +4427,44 @@ class depgraph(object):
 	def _implicit_libc_deps(self, mergelist, graph):
 		"""
 		Create implicit dependencies on libc, in order to ensure that libc
-		is installed as early as possible (see bug #303567). If the merge
-		list contains both a new-style virtual and an old-style PROVIDE
-		virtual, the new-style virtual is used.
+		is installed as early as possible (see bug #303567).
 		"""
-		implicit_libc_roots = set([self._frozen_config._running_root.root])
-		libc_set = InternalPackageSet([portage.const.LIBC_PACKAGE_ATOM])
-		norm_libc_pkgs = {}
-		virt_libc_pkgs = {}
-		for pkg in mergelist:
-			if not isinstance(pkg, Package):
-				# a satisfied blocker
-				continue
-			if pkg.installed:
-				continue
-			if pkg.root in implicit_libc_roots and \
-				pkg.operation == 'merge':
-				if libc_set.findAtomForPackage(pkg):
-					if pkg.category == 'virtual':
-						d = virt_libc_pkgs
-					else:
-						d = norm_libc_pkgs
-					if pkg.root in d:
-						raise AssertionError(
-							"found 2 libc matches: %s and %s" % \
-							(d[pkg.root], pkg))
-					d[pkg.root] = pkg
+		libc_pkgs = {}
+		implicit_libc_roots = (self._frozen_config._running_root.root,)
+		for root in implicit_libc_roots:
+			graphdb = self._dynamic_config.mydbapi[root]
+			vardb = self._frozen_config.trees[root]["vartree"].dbapi
+			for atom in self._expand_virt_from_graph(root,
+ 				portage.const.LIBC_PACKAGE_ATOM):
+				if atom.blocker:
+					continue
+				match = graphdb.match_pkgs(atom)
+				if not match:
+					continue
+				pkg = match[-1]
+				if pkg.operation == "merge" and \
+					not vardb.cpv_exists(pkg.cpv):
+					libc_pkgs.setdefault(pkg.root, set()).add(pkg)
 
-		# Prefer new-style virtuals over old-style PROVIDE virtuals.
-		libc_pkg_map = norm_libc_pkgs.copy()
-		libc_pkg_map.update(virt_libc_pkgs)
-
-		# Only add a dep when the version changes.
-		for libc_pkg in list(libc_pkg_map.values()):
-			if libc_pkg.root_config.trees['vartree'].dbapi.cpv_exists(
-				libc_pkg.cpv):
-				del libc_pkg_map[pkg.root]
-
-		if not libc_pkg_map:
+		if not libc_pkgs:
 			return
 
-		libc_pkgs = set(libc_pkg_map.values())
 		earlier_libc_pkgs = set()
 
 		for pkg in mergelist:
 			if not isinstance(pkg, Package):
 				# a satisfied blocker
 				continue
-			if pkg.installed:
-				continue
-			if pkg.root in implicit_libc_roots and \
-				pkg.operation == 'merge':
-				if pkg in libc_pkgs:
+			root_libc_pkgs = libc_pkgs.get(pkg.root)
+			if root_libc_pkgs is not None and \
+				pkg.operation == "merge":
+				if pkg in root_libc_pkgs:
 					earlier_libc_pkgs.add(pkg)
 				else:
-					my_libc = libc_pkg_map.get(pkg.root)
-					if my_libc is not None and \
-						my_libc in earlier_libc_pkgs:
-						graph.add(my_libc, pkg,
-							priority=DepPriority(buildtime=True))
+					for libc_pkg in root_libc_pkgs:
+						if libc_pkg in earlier_libc_pkgs:
+							graph.add(libc_pkg, pkg,
+								priority=DepPriority(buildtime=True))
 
 	def schedulerGraph(self):
 		"""
@@ -4669,29 +4681,39 @@ class depgraph(object):
 
 		# Merge libc asap, in order to account for implicit
 		# dependencies. See bug #303567.
-		for root in (running_root,):
-			libc_pkg = self._dynamic_config.mydbapi[root].match_pkgs(
-				portage.const.LIBC_PACKAGE_ATOM)
-			if libc_pkg:
-				libc_pkg = libc_pkg[0]
-				if libc_pkg.operation == 'merge':
-					# Only add a dep when the version changes.
-					if not libc_pkg.root_config.trees[
-						'vartree'].dbapi.cpv_exists(libc_pkg.cpv):
+		implicit_libc_roots = (running_root,)
+		for root in implicit_libc_roots:
+			libc_pkgs = set()
+			vardb = self._frozen_config.trees[root]["vartree"].dbapi
+			graphdb = self._dynamic_config.mydbapi[root]
+			for atom in self._expand_virt_from_graph(root,
+				portage.const.LIBC_PACKAGE_ATOM):
+				if atom.blocker:
+					continue
+				match = graphdb.match_pkgs(atom)
+				if not match:
+					continue
+				pkg = match[-1]
+				if pkg.operation == "merge" and \
+					not vardb.cpv_exists(pkg.cpv):
+					libc_pkgs.add(pkg)
 
-						# If there's also an os-headers upgrade, we need to
-						# pull that in first. See bug #328317.
-						os_headers_pkg = self._dynamic_config.mydbapi[root].match_pkgs(
-							portage.const.OS_HEADERS_PACKAGE_ATOM)
-						if os_headers_pkg:
-							os_headers_pkg = os_headers_pkg[0]
-							if os_headers_pkg.operation == 'merge':
-								# Only add a dep when the version changes.
-								if not os_headers_pkg.root_config.trees[
-									'vartree'].dbapi.cpv_exists(os_headers_pkg.cpv):
-									asap_nodes.append(os_headers_pkg)
+			if libc_pkgs:
+				# If there's also an os-headers upgrade, we need to
+				# pull that in first. See bug #328317.
+				for atom in self._expand_virt_from_graph(root,
+					portage.const.OS_HEADERS_PACKAGE_ATOM):
+					if atom.blocker:
+						continue
+					match = graphdb.match_pkgs(atom)
+					if not match:
+						continue
+					pkg = match[-1]
+					if pkg.operation == "merge" and \
+						not vardb.cpv_exists(pkg.cpv):
+						asap_nodes.append(pkg)
 
-						asap_nodes.append(libc_pkg)
+				asap_nodes.extend(libc_pkgs)
 
 		def gather_deps(ignore_priority, mergeable_nodes,
 			selected_nodes, node):
