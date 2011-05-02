@@ -1359,7 +1359,7 @@ inherit() {
 			# This is disabled in the *rm phases because they frequently give
 			# false alarms due to INHERITED in /var/db/pkg being outdated
 			# in comparison the the eclasses from the portage tree.
-			if ! hasq $ECLASS $INHERITED; then
+			if ! hasq $ECLASS $INHERITED $__INHERITED_QA_CACHE ; then
 				eqawarn "QA Notice: ECLASS '$ECLASS' inherited illegally in $CATEGORY/$PF $EBUILD_PHASE"
 			fi
 		fi
@@ -2023,11 +2023,18 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
 		# during sourcing of ebuilds and eclasses.
 		source_all_bashrcs
 
+		# When EBUILD_PHASE != depend, INHERITED comes pre-initialized
+		# from cache. In order to make INHERITED content independent of
+		# EBUILD_PHASE during inherit() calls, we unset INHERITED after
+		# we make a backup copy for QA checks.
+		__INHERITED_QA_CACHE=$INHERITED
+
 		# *DEPEND and IUSE will be set during the sourcing of the ebuild.
 		# In order to ensure correct interaction between ebuilds and
 		# eclasses, they need to be unset before this process of
 		# interaction begins.
-		unset DEPEND RDEPEND PDEPEND IUSE REQUIRED_USE
+		unset DEPEND RDEPEND PDEPEND INHERITED IUSE REQUIRED_USE \
+			ECLASS E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND
 
 		if [[ $PORTAGE_DEBUG != 1 || ${-/x/} != $- ]] ; then
 			source "$EBUILD" || die "error sourcing ebuild"
@@ -2057,7 +2064,8 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
 		PDEPEND="${PDEPEND} ${E_PDEPEND}"
 		REQUIRED_USE="${REQUIRED_USE} ${E_REQUIRED_USE}"
 		
-		unset ECLASS E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND 
+		unset ECLASS E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND \
+			__INHERITED_QA_CACHE
 
 		# alphabetically ordered by $EBUILD_PHASE value
 		case "$EAPI" in
