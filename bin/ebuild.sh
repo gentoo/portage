@@ -1654,7 +1654,7 @@ set_unless_changed() {
 		variable="${argument%%=*}"
 		value="${argument#*=}"
 		if eval "[[ \${${variable}} == \$(env -u ${variable} portageq envvar ${variable}) ]]"; then
-			eval "${variable}=\"${value}\""
+			eval "${variable}=\"\${value}\""
 		fi
 	done
 }
