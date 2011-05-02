@@ -2792,8 +2792,16 @@ class depgraph(object):
 			writemsg_stdout("\n", noiselevel=-1)
 			mask_docs = True
 		else:
+			cp_exists = False
+			if not atom.cp.startswith("null/"):
+				for pkg in self._iter_match_pkgs_any(
+					root_config, Atom(atom.cp)):
+					cp_exists = True
+					break
+
 			writemsg_stdout("\nemerge: there are no ebuilds to satisfy "+green(xinfo)+".\n", noiselevel=-1)
 			if isinstance(myparent, AtomArg) and \
+				not cp_exists and \
 				self._frozen_config.myopts.get(
 				"--misspell-suggestions", "y") != "n":
 				cp = myparent.atom.cp.lower()
