@@ -374,6 +374,7 @@ class _dynamic_depgraph_config(object):
 
 		self._autounmask = depgraph._frozen_config.myopts.get('--autounmask', 'n') == True
 		self._success_without_autounmask = False
+		self._traverse_ignored_deps = False
 
 		for myroot in depgraph._frozen_config.trees:
 			self.sets[myroot] = _depgraph_sets()
@@ -898,8 +899,9 @@ class depgraph(object):
 
 		self._rebuild.add(dep_pkg, dep)
 
-		if (not dep.collapsed_priority.ignored and
-			not self._add_pkg(dep_pkg, dep)):
+		ignore = dep.collapsed_priority.ignored and \
+			not self._dynamic_config._traverse_ignored_deps
+		if not ignore and not self._add_pkg(dep_pkg, dep):
 			return 0
 		return 1
 
@@ -1300,7 +1302,7 @@ class depgraph(object):
 		deps = (
 			(depend_root, edepend["DEPEND"],
 				self._priority(buildtime=True,
-				optional=pkg.built,
+				optional=(pkg.built or ignore_build_time_deps),
 				ignored=ignore_build_time_deps),
 				pkg.built or ignore_build_time_deps),
 			(myroot, edepend["RDEPEND"],
@@ -1479,11 +1481,17 @@ class depgraph(object):
 					self._dynamic_config._ignored_deps.append(dep)
 
 			if not ignored:
-				if not self._add_dep(dep,
-					allow_unsatisfied=allow_unsatisfied):
-					return 0
-				if is_virt and dep.child is not None:
-					traversed_virt_pkgs.add(dep.child)
+				if dep_priority.ignored:
+					if is_virt and dep.child is not None:
+						traversed_virt_pkgs.add(dep.child)
+					dep.child = None
+					self._dynamic_config._ignored_deps.append(dep)
+				else:
+					if not self._add_dep(dep,
+						allow_unsatisfied=allow_unsatisfied):
+						return 0
+					if is_virt and dep.child is not None:
+						traversed_virt_pkgs.add(dep.child)
 
 		selected_atoms.pop(pkg)
 
@@ -1565,11 +1573,17 @@ class depgraph(object):
 						self._dynamic_config._ignored_deps.append(dep)
 
 				if not ignored:
-					if not self._add_dep(dep,
-						allow_unsatisfied=allow_unsatisfied):
-						return 0
-					if is_virt and dep.child is not None:
-						traversed_virt_pkgs.add(dep.child)
+					if dep_priority.ignored:
+						if is_virt and dep.child is not None:
+							traversed_virt_pkgs.add(dep.child)
+						dep.child = None
+						self._dynamic_config._ignored_deps.append(dep)
+					else:
+						if not self._add_dep(dep,
+							allow_unsatisfied=allow_unsatisfied):
+							return 0
+						if is_virt and dep.child is not None:
+							traversed_virt_pkgs.add(dep.child)
 
 		if debug:
 			writemsg_level("Exiting... %s\n" % (pkg,),
@@ -3916,6 +3930,7 @@ class depgraph(object):
 			# Make the graph as complete as possible by traversing build-time
 			# dependencies if they happen to be installed already.
 			self._dynamic_config.myparams["bdeps"] = "y"
+			self._dynamic_config._traverse_ignored_deps = True
 		already_deep = self._dynamic_config.myparams.get("deep") is True
 		if not already_deep:
 			self._dynamic_config.myparams["deep"] = True
