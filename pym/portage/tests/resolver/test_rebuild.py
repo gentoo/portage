@@ -61,6 +61,24 @@ class RebuildTestCase(TestCase):
 						'sys-apps/e-2', 'sys-apps/g-2'],
 					ignore_mergelist_order = True,
 					success = True),
+
+				ResolverPlaygroundTestCase(
+					["sys-libs/x"],
+					options = {"--rebuild" : True,
+						"--rebuild-ignore" : ["sys-libs/x"]},
+					mergelist = ['sys-libs/x-2'],
+					ignore_mergelist_order = True,
+					success = True),
+
+				ResolverPlaygroundTestCase(
+					["sys-libs/x"],
+					options = {"--rebuild" : True,
+						"--rebuild-ignore" : ["sys-apps/b"]},
+					mergelist = ['sys-libs/x-2', 'sys-apps/a-2', 'sys-apps/b-2',
+						'sys-apps/e-2'],
+					ignore_mergelist_order = True,
+					success = True),
+
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds,

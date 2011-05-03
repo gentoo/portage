@@ -750,6 +750,14 @@ def parse_opts(tmpcmdline, silent=False):
 			"action" : "append",
 		},
 
+		"--rebuild-ignore": {
+			"help"   :"A space separated list of package names or slot atoms. " + \
+				"Emerge will not rebuild packages that depend on matching " + \
+				"packages due to the --rebuild flag. ",
+
+			"action" : "append",
+		},
+
 		"--package-moves": {
 			"help"     : "perform package moves when necessary",
 			"type"     : "choice",
@@ -930,6 +938,12 @@ def parse_opts(tmpcmdline, silent=False):
 		bad_atoms = _find_bad_atoms(myoptions.rebuild_exclude)
 		if bad_atoms and not silent:
 			parser.error("Invalid Atom(s) in --rebuild-exclude parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n" % \
+				(",".join(bad_atoms),))
+
+	if myoptions.rebuild_ignore:
+		bad_atoms = _find_bad_atoms(myoptions.rebuild_ignore)
+		if bad_atoms and not silent:
+			parser.error("Invalid Atom(s) in --rebuild-ignore parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n" % \
 				(",".join(bad_atoms),))
 
 	if myoptions.usepkg_exclude:

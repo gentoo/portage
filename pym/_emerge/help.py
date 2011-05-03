@@ -571,6 +571,13 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
+		print("       " + green("--rebuild-ignore") + " " + turquoise("ATOMS"))
+		desc = "A space separated list of package names or slot atoms." + \
+			" Emerge will not rebuild packages that depend on matching " + \
+			" packages due to --rebuild."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
 		print("       "+green("--oneshot")+" ("+green("-1")+" short option)")
 		print("              Emerge as normal, but don't add packages to the world profile.")
 		print("              This package will only be updated if it is depended upon by")

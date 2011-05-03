@@ -130,6 +130,8 @@ class _frozen_depgraph_config(object):
 		self.useoldpkg_atoms = _wildcard_set(atoms)
 		atoms = ' '.join(myopts.get("--rebuild-exclude", [])).split()
 		self.rebuild_exclude = _wildcard_set(atoms)
+		atoms = ' '.join(myopts.get("--rebuild-ignore", [])).split()
+		self.rebuild_ignore = _wildcard_set(atoms)
 
 		self.rebuild = "--rebuild" in myopts
 
@@ -156,10 +158,12 @@ class _rebuild_config(object):
 		parent = dep.collapsed_parent
 		priority = dep.collapsed_priority
 		rebuild_exclude = self._frozen_config.rebuild_exclude
+		rebuild_ignore = self._frozen_config.rebuild_ignore
 		if (self._frozen_config.rebuild and isinstance(parent, Package) and
 			parent.built and (priority.buildtime or priority.runtime) and
 			isinstance(dep_pkg, Package) and
-			not rebuild_exclude.findAtomForPackage(parent)):
+			not rebuild_exclude.findAtomForPackage(parent) and
+			not rebuild_ignore.findAtomForPackage(dep_pkg)):
 			self._graph.add(dep_pkg, parent, priority)
 
 	def _trigger_rebuild(self, parent, build_deps, runtime_deps):

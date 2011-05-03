@@ -493,6 +493,10 @@ matching binary packages.
 A space separated list of package names or slot atoms. Emerge will not rebuild
 matching packages due to \fB\-\-rebuild\fR.
 .TP
+.BR "\-\-rebuild\-ignore " ATOMS
+A space separated list of package names or slot atoms. Emerge will not rebuild
+packages that depend on matching packages due to \fB\-\-rebuild\fR.
+.TP
 .BR "\-\-oneshot " (\fB\-1\fR)
 Emerge as normal, but do not add the packages to the world file
 for later updating.
