@@ -267,15 +267,21 @@ class _rebuild_config(object):
 			# Remove our leaf node from the graph, keeping track of deps.
 			parents = graph.nodes[node][1].items()
 			graph.remove(node)
+			node_build_deps = build_deps.get(node, {})
+			node_runtime_deps = runtime_deps.get(node, {})
 			for parent, priorities in parents:
 				if parent == node:
 					# Ignore a direct cycle.
 					continue
+				parent_bdeps = build_deps.setdefault(parent, {})
+				parent_rdeps = runtime_deps.setdefault(parent, {})
 				for priority in priorities:
 					if priority.buildtime:
-						build_deps.setdefault(parent, {})[slot_atom] = node
+						parent_bdeps[slot_atom] = node
 					if priority.runtime:
-						runtime_deps.setdefault(parent, {})[slot_atom] = node
+						parent_rdeps[slot_atom] = node
+				if slot_atom in parent_bdeps and slot_atom in parent_rdeps:
+					parent_rdeps.update(node_runtime_deps)
 				if not graph.child_nodes(parent):
 					leaf_nodes.append(parent)
 
@@ -284,8 +290,6 @@ class _rebuild_config(object):
 			# completely filled in, and self.rebuild_list / self.reinstall_list
 			# will tell us whether any of our children need to be rebuilt or
 			# reinstalled.
-			node_build_deps = build_deps.get(node, {})
-			node_runtime_deps = runtime_deps.get(node, {})
 			if self._trigger_rebuild(node, node_build_deps, node_runtime_deps):
 				need_restart = True
 
