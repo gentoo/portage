@@ -17,8 +17,6 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 	mysplit = _pkgsplit(myslash[-1])
 	if settings is None:
 		settings = globals()["settings"]
-	virts = settings.getvirtuals()
-	virts_p = settings.get_virts_p()
 	if len(myslash)>2:
 		# this is illegal case.
 		mysplit=[]
@@ -28,24 +26,21 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 			mykey=myslash[0]+"/"+mysplit[0]
 		else:
 			mykey=mycpv
-		if mydb and virts and mykey in virts:
-			writemsg("mydb.__class__: %s\n" % (mydb.__class__), 1)
-			if hasattr(mydb, "cp_list"):
-				if not mydb.cp_list(mykey, use_cache=use_cache):
-					writemsg("virts[%s]: %s\n" % (str(mykey),virts[mykey]), 1)
-					mykey_orig = mykey[:]
-					for vkey in virts[mykey]:
+		if hasattr(mydb, "cp_list") and \
+			not mydb.cp_list(mykey, use_cache=use_cache):
+				virts = settings.getvirtuals().get(mykey)
+				if virts:
+					mykey_orig = mykey
+					for vkey in virts:
 						# The virtuals file can contain a versioned atom, so
 						# it may be necessary to remove the operator and
 						# version from the atom before it is passed into
 						# dbapi.cp_list().
 						if mydb.cp_list(vkey.cp):
 							mykey = str(vkey)
-							writemsg(_("virts chosen: %s\n") % (mykey), 1)
 							break
 					if mykey == mykey_orig:
-						mykey = str(virts[mykey][0])
-						writemsg(_("virts defaulted: %s\n") % (mykey), 1)
+						mykey = str(virts[0])
 			#we only perform virtual expansion if we are passed a dbapi
 	else:
 		#specific cpv, no category, ie. "foo-1.0"
@@ -81,8 +76,9 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 			mykey=matches[0]
 
 		if not mykey and not isinstance(mydb, list):
-			if myp in virts_p:
-				mykey=virts_p[myp][0]
+			virts_p = settings.get_virts_p().get(myp)
+			if virts_p:
+				mykey = virts_p[0]
 			#again, we only perform virtual expansion if we have a dbapi (not a list)
 		if not mykey:
 			mykey="null/"+myp
