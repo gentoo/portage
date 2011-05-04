@@ -1334,6 +1334,9 @@ class depgraph(object):
 				ignore_build_time_deps = True
 
 		if removal_action and self._dynamic_config.myparams.get("bdeps", "y") == "n":
+			# Removal actions never traverse ignored buildtime
+			# dependencies, so it's safe to discard them early.
+			edepend["DEPEND"] = ""
 			ignore_build_time_deps = True
 
 		if removal_action:
