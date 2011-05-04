@@ -440,7 +440,9 @@ def insert_optional_args(args):
 		'--package-moves'        : y_or_n,
 		'--quiet'                : y_or_n,
 		'--quiet-build'          : y_or_n,
-		'--rebuild'              : y_or_n,
+		'--rebuild-if-new-rev'   : y_or_n,
+		'--rebuild-if-new-ver'   : y_or_n,
+		'--rebuild-if-unbuilt'   : y_or_n,
 		'--rebuilt-binaries'     : y_or_n,
 		'--root-deps'  : ('rdeps',),
 		'--select'               : y_or_n,
@@ -777,9 +779,27 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices"  : true_y_or_n
 		},
 
-		"--rebuild": {
+		"--rebuild-if-new-rev": {
 			"help"     : "Rebuild packages when dependencies that are " + \
-				"used at both build-time and run-time are upgraded.",
+				"used at both build-time and run-time are built, " + \
+				"if the dependency is not already installed with the " + \
+				"same version and revision.",
+			"type"     : "choice",
+			"choices"  : true_y_or_n
+		},
+
+		"--rebuild-if-new-ver": {
+			"help"     : "Rebuild packages when dependencies that are " + \
+				"used at both build-time and run-time are built, " + \
+				"if the dependency is not already installed with the " + \
+				"same version. Revision numbers are ignored.",
+			"type"     : "choice",
+			"choices"  : true_y_or_n
+		},
+
+		"--rebuild-if-unbuilt": {
+			"help"     : "Rebuild packages when dependencies that are " + \
+				"used at both build-time and run-time are built.",
 			"type"     : "choice",
 			"choices"  : true_y_or_n
 		},
@@ -913,7 +933,7 @@ def parse_opts(tmpcmdline, silent=False):
 	else:
 		myoptions.binpkg_respect_use = None
 
-	if myoptions.complete_graph in true_y or myoptions.rebuild in true_y:
+	if myoptions.complete_graph in true_y:
 		myoptions.complete_graph = True
 	else:
 		myoptions.complete_graph = None
@@ -989,10 +1009,23 @@ def parse_opts(tmpcmdline, silent=False):
 	else:
 		myoptions.quiet_build = None
 
-	if myoptions.rebuild in true_y:
-		myoptions.rebuild = True
+	if myoptions.rebuild_if_new_ver in true_y:
+		myoptions.rebuild_if_new_ver = True
 	else:
-		myoptions.rebuild = None
+		myoptions.rebuild_if_new_ver = None
+
+	if myoptions.rebuild_if_new_rev in true_y:
+		myoptions.rebuild_if_new_rev = True
+		myoptions.rebuild_if_new_ver = None
+	else:
+		myoptions.rebuild_if_new_rev = None
+
+	if myoptions.rebuild_if_unbuilt in true_y:
+		myoptions.rebuild_if_unbuilt = True
+		myoptions.rebuild_if_new_rev = None
+		myoptions.rebuild_if_new_ver = None
+	else:
+		myoptions.rebuild_if_unbuilt = None
 
 	if myoptions.rebuilt_binaries in true_y:
 		myoptions.rebuilt_binaries = True

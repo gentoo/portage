@@ -30,6 +30,7 @@ from portage._sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, writemsg_stdout
 from portage.util import writemsg_level
 from portage.util.digraph import digraph
+from portage.versions import catpkgsplit
 
 from _emerge.AtomArg import AtomArg
 from _emerge.Blocker import Blocker
@@ -133,7 +134,9 @@ class _frozen_depgraph_config(object):
 		atoms = ' '.join(myopts.get("--rebuild-ignore", [])).split()
 		self.rebuild_ignore = _wildcard_set(atoms)
 
-		self.rebuild = "--rebuild" in myopts
+		self.rebuild_if_new_rev = "--rebuild-if-new-rev" in myopts
+		self.rebuild_if_new_ver = "--rebuild-if-new-ver" in myopts
+		self.rebuild_if_unbuilt = "--rebuild-if-unbuilt" in myopts
 
 class _depgraph_sets(object):
 	def __init__(self):
@@ -153,18 +156,52 @@ class _rebuild_config(object):
 		self.rebuild_list = backtrack_parameters.rebuild_list.copy()
 		self.orig_rebuild_list = self.rebuild_list.copy()
 		self.reinstall_list = backtrack_parameters.reinstall_list.copy()
+		self.rebuild_if_new_rev = frozen_config.rebuild_if_new_rev
+		self.rebuild_if_new_ver = frozen_config.rebuild_if_new_ver
+		self.rebuild_if_unbuilt = frozen_config.rebuild_if_unbuilt
+		self.rebuild = (self.rebuild_if_new_rev or self.rebuild_if_new_ver or
+			self.rebuild_if_unbuilt)
 
 	def add(self, dep_pkg, dep):
 		parent = dep.collapsed_parent
 		priority = dep.collapsed_priority
 		rebuild_exclude = self._frozen_config.rebuild_exclude
 		rebuild_ignore = self._frozen_config.rebuild_ignore
-		if (self._frozen_config.rebuild and isinstance(parent, Package) and
+		if (self.rebuild and isinstance(parent, Package) and
 			parent.built and (priority.buildtime or priority.runtime) and
 			isinstance(dep_pkg, Package) and
 			not rebuild_exclude.findAtomForPackage(parent) and
 			not rebuild_ignore.findAtomForPackage(dep_pkg)):
 			self._graph.add(dep_pkg, parent, priority)
+
+	def _needs_rebuild(self, dep_pkg):
+		"""Check whether packages that depend on dep_pkg need to be rebuilt."""
+		dep_root_slot = (dep_pkg.root, dep_pkg.slot_atom)
+		if dep_pkg.built or dep_root_slot in self.orig_rebuild_list:
+			return False
+
+		if self.rebuild_if_unbuilt:
+			# dep_pkg is being installed from source, so binary
+			# packages for parents are invalid. Force rebuild
+			return True
+
+		trees = self._frozen_config.trees
+		vardb = trees[dep_pkg.root]["vartree"].dbapi
+		if self.rebuild_if_new_rev:
+			# Parent packages are valid if a package with the same
+			# cpv is already installed.
+			return dep_pkg.cpv not in vardb.match(dep_pkg.slot_atom)
+
+		# Otherwise, parent packages are valid if a package with the same
+		# version (excluding revision) is already installed.
+		assert self.rebuild_if_new_ver
+		cpv_norev = catpkgsplit(dep_pkg.cpv)[:-1]
+		for inst_cpv in vardb.match(dep_pkg.slot_atom):
+			inst_cpv_norev = catpkgsplit(inst_cpv)[:-1]
+			if inst_cpv_norev == cpv_norev:
+				return False
+
+		return True
 
 	def _trigger_rebuild(self, parent, build_deps, runtime_deps):
 		root_slot = (parent.root, parent.slot_atom)
@@ -177,10 +214,7 @@ class _rebuild_config(object):
 			kids = set([build_deps[slot_atom], runtime_deps[slot_atom]])
 			for dep_pkg in kids:
 				dep_root_slot = (dep_pkg.root, slot_atom)
-				if (not dep_pkg.built and
-					dep_root_slot not in self.orig_rebuild_list):
-					# There's no binary package for dep_pkg, so any binary
-					# package for this parent would be invalid. Force rebuild.
+				if self._needs_rebuild(dep_pkg):
 					self.rebuild_list.add(root_slot)
 					return True
 				elif ("--usepkg" in self._frozen_config.myopts and
@@ -205,7 +239,13 @@ class _rebuild_config(object):
 					uri = bintree.get_pkgindex_uri(parent.cpv)
 					dep_uri = bintree.get_pkgindex_uri(dep_pkg.cpv)
 					bindb = bintree.dbapi
-
+					if self.rebuild_if_new_ver and uri and uri != dep_uri:
+						cpv_norev = catpkgsplit(dep_pkg.cpv)[:-1]
+						for cpv in bindb.match(dep_pkg.slot_atom):
+							if cpv_norev == catpkgsplit(cpv)[:-1]:
+								dep_uri = bintree.get_pkgindex_uri(cpv)
+								if uri == dep_uri:
+									break
 					if uri and uri != dep_uri:
 						# 1) Remote binary package is invalid because it was
 						#    built without dep_pkg. Force rebuild.

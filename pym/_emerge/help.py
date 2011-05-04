@@ -629,10 +629,28 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
-		print("       " + green("--rebuild") + " [ %s | %s ]" % \
+		print("       " + green("--rebuild-if-new-rev") + " [ %s | %s ]" % \
 			(turquoise("y"), turquoise("n")))
-		desc = "Rebuild packages when dependencies that are used " + \
-			"at both build-time and run-time are upgraded."
+		desc = "Rebuild packages when dependencies that are " + \
+			"used at both build-time and run-time are built, " + \
+			"if the dependency is not already installed with the " + \
+			"same version and revision."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
+		print("       " + green("--rebuild-if-new-ver") + " [ %s | %s ]" % \
+			(turquoise("y"), turquoise("n")))
+		desc = "Rebuild packages when dependencies that are " + \
+			"used at both build-time and run-time are built, " + \
+			"if the dependency is not already installed with the " + \
+			"same version. Revision numbers are ignored."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
+		print("       " + green("--rebuild-if-unbuilt") + " [ %s | %s ]" % \
+			(turquoise("y"), turquoise("n")))
+		desc = "Rebuild packages when dependencies that are " + \
+			"used at both build-time and run-time are built."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()

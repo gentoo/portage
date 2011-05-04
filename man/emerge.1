@@ -546,9 +546,19 @@ Disable the warning message that's shown prior to
 to be set in the \fBmake.conf\fR(5)
 \fBEMERGE_DEFAULT_OPTS\fR variable.
 .TP
-.BR "\-\-rebuild [ y | n ]"
+.BR "\-\-rebuild\-if\-new\-rev [ y | n ]"
 Rebuild packages when dependencies that are used at both build\-time and
-run\-time are upgraded.
+run\-time are built, if the dependency is not already installed with the
+same version and revision.
+.TP
+.BR "\-\-rebuild\-if\-new\-ver [ y | n ]"
+Rebuild packages when dependencies that are used at both build\-time and
+run\-time are built, if the dependency is not already installed with the
+same version. Revision numbers are ignored.
+.TP
+.BR "\-\-rebuild\-if\-unbuilt [ y | n ]"
+Rebuild packages when dependencies that are used at both build\-time and
+run\-time are built.
 .TP
 .BR "\-\-rebuilt\-binaries [ y | n ]"
 Replace installed packages with binary packages that have
