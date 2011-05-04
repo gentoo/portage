@@ -1543,7 +1543,8 @@ class depgraph(object):
 					self._dynamic_config._ignored_deps.append(dep)
 
 			if not ignored:
-				if dep_priority.ignored:
+				if dep_priority.ignored and \
+					not self._dynamic_config._traverse_ignored_deps:
 					if is_virt and dep.child is not None:
 						traversed_virt_pkgs.add(dep.child)
 					dep.child = None
@@ -1573,7 +1574,8 @@ class depgraph(object):
 					(virt_pkg.cpv, [str(x) for x in atoms]),
 					noiselevel=-1, level=logging.DEBUG)
 
-			if not dep_priority.ignored:
+			if not dep_priority.ignored or \
+				self._dynamic_config._traverse_ignored_deps:
 				if not self._add_pkg(virt_pkg, virt_dep):
 					return 0
 
@@ -1635,7 +1637,8 @@ class depgraph(object):
 						self._dynamic_config._ignored_deps.append(dep)
 
 				if not ignored:
-					if dep_priority.ignored:
+					if dep_priority.ignored and \
+						not self._dynamic_config._traverse_ignored_deps:
 						if is_virt and dep.child is not None:
 							traversed_virt_pkgs.add(dep.child)
 						dep.child = None
