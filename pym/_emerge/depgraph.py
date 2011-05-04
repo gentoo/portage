@@ -1351,20 +1351,17 @@ class depgraph(object):
 			(depend_root, edepend["DEPEND"],
 				self._priority(buildtime=True,
 				optional=(pkg.built or ignore_build_time_deps),
-				ignored=ignore_build_time_deps),
-				pkg.built or ignore_build_time_deps),
+				ignored=ignore_build_time_deps)),
 			(myroot, edepend["RDEPEND"],
-				self._priority(runtime=True),
-				False),
+				self._priority(runtime=True)),
 			(myroot, edepend["PDEPEND"],
-				self._priority(runtime_post=True),
-				False)
+				self._priority(runtime_post=True))
 		)
 
 		debug = "--debug" in self._frozen_config.myopts
 		strict = mytype != "installed"
 
-		for dep_root, dep_string, dep_priority, ignore_blockers in deps:
+		for dep_root, dep_string, dep_priority in deps:
 				if not dep_string:
 					continue
 				if debug:
@@ -1415,14 +1412,14 @@ class depgraph(object):
 
 				if not self._add_pkg_dep_string(
 					pkg, dep_root, dep_priority, dep_string,
-					allow_unsatisfied, ignore_blockers=ignore_blockers):
+					allow_unsatisfied):
 					return 0
 
 		self._dynamic_config._traversed_pkg_deps.add(pkg)
 		return 1
 
 	def _add_pkg_dep_string(self, pkg, dep_root, dep_priority, dep_string,
-		allow_unsatisfied, ignore_blockers=False):
+		allow_unsatisfied):
 		_autounmask_backup = self._dynamic_config._autounmask
 		if dep_priority.optional or dep_priority.ignored:
 			# Temporarily disable autounmask for deps that
@@ -1431,12 +1428,12 @@ class depgraph(object):
 		try:
 			return self._wrapped_add_pkg_dep_string(
 				pkg, dep_root, dep_priority, dep_string,
-				allow_unsatisfied, ignore_blockers=ignore_blockers)
+				allow_unsatisfied)
 		finally:
 			self._dynamic_config._autounmask = _autounmask_backup
 
 	def _wrapped_add_pkg_dep_string(self, pkg, dep_root, dep_priority,
-		dep_string, allow_unsatisfied, ignore_blockers=False):
+		dep_string, allow_unsatisfied):
 		depth = pkg.depth + 1
 		deep = self._dynamic_config.myparams.get("deep", 0)
 		recurse_satisfied = deep is True or depth <= deep
@@ -1483,7 +1480,8 @@ class depgraph(object):
 			is_virt = hasattr(atom, '_orig_atom')
 			atom = getattr(atom, '_orig_atom', atom)
 
-			if ignore_blockers and atom.blocker:
+			if atom.blocker and \
+				(dep_priority.optional or dep_priority.ignored):
 				# For --with-bdeps, ignore build-time only blockers
 				# that originate from built packages.
 				continue
