@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright 2010-2011 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
 
 PYTHON_VERSIONS="2.6 2.7 3.1 3.2 3.3"
 
