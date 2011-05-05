@@ -4573,8 +4573,6 @@ class depgraph(object):
 		mergelist = self.altlist()
 		self._implicit_libc_deps(mergelist,
 			self._dynamic_config._scheduler_graph)
-		self.break_refs(mergelist)
-		self.break_refs(self._dynamic_config._scheduler_graph.order)
 
 		# Break DepPriority.satisfied attributes which reference
 		# installed Package instances.
@@ -4596,31 +4594,27 @@ class depgraph(object):
 
 		for root in trees:
 			trees[root]['vartree']._pkg_cache = pruned_pkg_cache
-			self.break_refs(trees[root]['vartree'].dbapi)
 
-		self.break_refs(pruned_pkg_cache.values())
+		self.break_refs()
 		sched_config = \
 			_scheduler_graph_config(trees, pruned_pkg_cache, graph, mergelist)
 
 		return sched_config
 
-	def break_refs(self, nodes):
+	def break_refs(self):
 		"""
-		Take a mergelist like that returned from self.altlist() and
-		break any references that lead back to the depgraph. This is
-		useful if you want to hold references to packages without
-		also holding the depgraph on the heap.
+		Break any references in Package instances that lead back to the depgraph.
+		This is useful if you want to hold references to packages without also
+		holding the depgraph on the heap. It should only be called after the
+		depgraph will not be used for any more calculations.
 		"""
-		for node in nodes:
-			if hasattr(node, "root_config"):
-				# The FakeVartree references the _package_cache which
-				# references the depgraph. So that Package instances don't
-				# hold the depgraph and FakeVartree on the heap, replace
-				# the RootConfig that references the FakeVartree with the
-				# original RootConfig instance which references the actual
-				# vartree.
-				node.root_config = \
-					self._frozen_config._trees_orig[node.root_config.root]["root_config"]
+		for root_config in self._frozen_config.roots.values():
+			root_config.update(self._frozen_config._trees_orig[
+				root_config.root]["root_config"])
+			# Both instances are now identical, so discard the
+			# original which should have no other references.
+			self._frozen_config._trees_orig[
+				root_config.root]["root_config"] = root_config
 
 	def _resolve_conflicts(self):
 		if not self._complete_graph():
@@ -6427,7 +6421,7 @@ def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 			# package has already been installed.
 			dropped_tasks.update(pkg for pkg in \
 				unsatisfied_parents if pkg.operation != "nomerge")
-			mydepgraph.break_refs(unsatisfied_parents)
+			mydepgraph.break_refs()
 
 			del e, graph, traversed_nodes, \
 				unsatisfied_parents, unsatisfied_stack

@@ -1,9 +1,10 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 class RootConfig(object):
 	"""This is used internally by depgraph to track information about a
 	particular $ROOT."""
+	__slots__ = ("root", "setconfig", "sets", "settings", "trees")
 
 	pkg_tree_map = {
 		"ebuild"    : "porttree",
@@ -24,3 +25,10 @@ class RootConfig(object):
 			self.sets = {}
 		else:
 			self.sets = self.setconfig.getSets()
+
+	def update(self, other):
+		"""
+		Shallow copy all attributes from another instance.
+		"""
+		for k in self.__slots__:
+			setattr(self, k, getattr(other, k))
