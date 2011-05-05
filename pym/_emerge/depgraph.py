@@ -3075,9 +3075,8 @@ class depgraph(object):
 					all_cp.update(bindb.cp_all())
 
 				orig_cp_map = {}
-				for cp in all_cp:
-					cp_lower = cp.lower()
-					orig_cp_map.setdefault(cp_lower, []).append(cp)
+				for cp_orig in all_cp:
+					orig_cp_map.setdefault(cp_orig.lower(), []).append(cp_orig)
 				all_cp = set(orig_cp_map)
 
 				if cat:
