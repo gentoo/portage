@@ -18,23 +18,29 @@ from portage.localization import _
 from portage.util import atomic_ofstream
 from portage.util import writemsg_level
 from portage.versions import cpv_getkey
+from portage.locks import lockfile, unlockfile
 
 class PreservedLibsRegistry(object):
 	""" This class handles the tracking of preserved library objects """
-	def __init__(self, root, filename, autocommit=True):
+	def __init__(self, root, filename):
 		""" 
 			@param root: root used to check existence of paths in pruneNonExisting
 		    @type root: String
 			@param filename: absolute path for saving the preserved libs records
 		    @type filename: String
-			@param autocommit: determines if the file is written after every update
-			@type autocommit: Boolean
 		"""
 		self._root = root
 		self._filename = filename
-		self._autocommit = autocommit
-		self.load()
-		self.pruneNonExisting()
+		self._data = None
+		self._lock = None
+
+	def lock(self):
+		"""Grab an exclusive lock on the preserved libs registry."""
+		self._lock = lockfile(self._filename)
+
+	def unlock(self):
+		"""Release our exclusive lock on the preserved libs registry."""
+		unlockfile(self._lock)
 
 	def load(self):
 		""" Reload the registry data from file """
@@ -56,10 +62,10 @@ class PreservedLibsRegistry(object):
 		if self._data is None:
 			self._data = {}
 		self._data_orig = self._data.copy()
+		self.pruneNonExisting()
+
 	def store(self):
-		""" Store the registry data to file. No need to call this if autocommit
-		    was enabled.
-		"""
+		""" Store the registry data to file """
 		if os.environ.get("SANDBOX_ON") == "1" or \
 			self._data == self._data_orig:
 			return
@@ -94,8 +100,6 @@ class PreservedLibsRegistry(object):
 			del self._data[cps]
 		elif len(paths) > 0:
 			self._data[cps] = (cpv, counter, paths)
-		if self._autocommit:
-			self.store()
 	
 	def unregister(self, cpv, slot, counter):
 		""" Remove a previous registration of preserved objects for the given package.
@@ -119,11 +123,11 @@ class PreservedLibsRegistry(object):
 				self._data[cps] = (cpv, counter, paths)
 			else:
 				del self._data[cps]
-		if self._autocommit:
-			self.store()
 	
 	def hasEntries(self):
 		""" Check if this registry contains any records. """
+		if self._data is None:
+			self.load()
 		return len(self._data) > 0
 	
 	def getPreservedLibs(self):
@@ -131,6 +135,8 @@ class PreservedLibsRegistry(object):
 			@returns mapping of package instances to preserved objects
 			@rtype Dict cpv->list-of-paths
 		"""
+		if self._data is None:
+			self.load()
 		rValue = {}
 		for cps in self._data:
 			rValue[self._data[cps][0]] = self._data[cps][2]
