@@ -1446,7 +1446,7 @@ class dblink(object):
 		return pkgfiles
 
 	def _prune_plib_registry(self, unmerge=False, others_in_slot=[],
-		needed=None):
+		needed=None, preserve_paths=None):
 		# remove preserved libraries that don't have any consumers left
 		plib_registry = self.vartree.dbapi._plib_registry
 		if plib_registry:
@@ -1462,7 +1462,7 @@ class dblink(object):
 					exclude_pkgs = None
 
 				self._linkmap_rebuild(exclude_pkgs=exclude_pkgs,
-					include_file=needed)
+					include_file=needed, preserve_paths=preserve_paths)
 
 				cpv_lib_map = self._find_unused_preserved_libs()
 				if cpv_lib_map:
@@ -1488,7 +1488,8 @@ class dblink(object):
 				plib_registry.unlock()
 
 	def unmerge(self, pkgfiles=None, trimworld=None, cleanup=True,
-		ldpath_mtimes=None, others_in_slot=None, needed=None):
+		ldpath_mtimes=None, others_in_slot=None, needed=None,
+		preserve_paths=None):
 		"""
 		Calls prerm
 		Unmerges a given package (CPV)
@@ -1508,6 +1509,11 @@ class dblink(object):
 		@type others_in_slot: list
 		@param needed: Filename containing libraries needed after unmerge.
 		@type needed: String
+		@param preserve_paths: Libraries preserved by a package instance that
+			is currently being merged. They need to be explicitly passed to the
+			LinkageMap, since they are not registered in the
+			PreservedLibsRegistry yet.
+		@type preserve_paths: set
 		@rtype: Integer
 		@returns:
 		1. os.EX_OK if everything went well.
@@ -1623,7 +1629,8 @@ class dblink(object):
 						level=logging.ERROR, noiselevel=-1)
 
 			self._prune_plib_registry(unmerge=True,
-				others_in_slot=others_in_slot, needed=needed)
+				others_in_slot=others_in_slot, needed=needed,
+				preserve_paths=preserve_paths)
 		finally:
 			self.vartree.dbapi._bump_mtime(self.mycpv)
 			if builddir_lock:
@@ -3317,7 +3324,8 @@ class dblink(object):
 			dblnk.settings["REPLACED_BY_VERSION"] = portage.versions.cpv_getversion(self.mycpv)
 			dblnk.settings.backup_changes("REPLACED_BY_VERSION")
 			unmerge_rval = dblnk.unmerge(ldpath_mtimes=prev_mtimes,
-				others_in_slot=others_in_slot, needed=needed)
+				others_in_slot=others_in_slot, needed=needed,
+				preserve_paths=preserve_paths)
 			dblnk.settings.pop("REPLACED_BY_VERSION", None)
 
 			if unmerge_rval == os.EX_OK:
