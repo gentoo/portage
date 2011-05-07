@@ -15,7 +15,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	 	'use_reduce,_slot_re',
 	'portage.elog:collect_ebuild_messages,collect_messages,' + \
 		'elog_process,_merge_logentries',
-	'portage.locks:lockdir,unlockdir',
+	'portage.locks:lockdir,unlockdir,lockfile,unlockfile',
 	'portage.output:bold,colorize',
 	'portage.package.ebuild.doebuild:doebuild_environment,' + \
 		'_spawn_phase',
@@ -1228,6 +1228,7 @@ class dblink(object):
 		self.dbdir = self.dbpkgdir
 
 		self._lock_vdb = None
+		self._lock_vdb_count = 0
 
 		self.settings = mysettings
 		self._verbose = self.settings.get("PORTAGE_VERBOSE") == "1"
@@ -1268,25 +1269,19 @@ class dblink(object):
 		self._get_protect_obj().updateprotect()
 
 	def lockdb(self):
-		if self._lock_vdb:
-			raise AssertionError("Lock already held.")
-		# At least the parent needs to exist for the lock file.
-		ensure_dirs(self.dbroot)
-		if self._scheduler is None:
-			self._lock_vdb = lockdir(self.dbroot)
+		if self._lock_vdb_count:
+			self._lock_vdb_count += 1
 		else:
-			async_lock = AsynchronousLock(path=self.dbroot,
-				scheduler=self._scheduler)
-			async_lock.start()
-			async_lock.wait()
-			self._lock_vdb = async_lock
+			# At least the parent needs to exist for the lock file.
+			ensure_dirs(self.dbroot)
+			self._lock_vdb = lockdir(self.dbroot)
 
 	def unlockdb(self):
-		if self._lock_vdb is not None:
-			if isinstance(self._lock_vdb, AsynchronousLock):
-				self._lock_vdb.unlock()
-			else:
-				unlockdir(self._lock_vdb)
+		if self._lock_vdb_count > 1:
+			self._lock_vdb_count -= 1
+		else:
+			self._lock_vdb_count = 0
+			unlockdir(self._lock_vdb)
 			self._lock_vdb = None
 
 	def getpath(self):
@@ -1322,8 +1317,12 @@ class dblink(object):
 		"""
 		For a given db entry (self), erase the CONTENTS values.
 		"""
-		if os.path.exists(self.dbdir+"/CONTENTS"):
-			os.unlink(self.dbdir+"/CONTENTS")
+		self.lockdb()
+		try:
+			if os.path.exists(self.dbdir+"/CONTENTS"):
+				os.unlink(self.dbdir+"/CONTENTS")
+		finally:
+			self.unlockdb()
 
 	def _clear_contents_cache(self):
 		self.contentscache = None
@@ -1506,10 +1505,6 @@ class dblink(object):
 		@returns:
 		1. os.EX_OK if everything went well.
 		2. return code of the failed phase (for prerm, postrm, cleanrm)
-		
-		Notes:
-		The caller must ensure that lockdb() and unlockdb() are called
-		before and after this method.
 		"""
 
 		if trimworld is not None:
@@ -1617,7 +1612,12 @@ class dblink(object):
 					showMessage(_("!!! FAILED prerm: %s\n") % retval,
 						level=logging.ERROR, noiselevel=-1)
 
-			self._unmerge_pkgfiles(pkgfiles, others_in_slot)
+			conf_mem_file = os.path.join(self._eroot, CONFIG_MEMORY_FILE)
+			conf_mem_lock = lockfile(conf_mem_file)
+			try:
+				self._unmerge_pkgfiles(pkgfiles, others_in_slot, conf_mem_file)
+			finally:
+				unlockfile(conf_mem_lock)
 			self._clear_contents_cache()
 
 			if myebuildpath:
@@ -1728,10 +1728,18 @@ class dblink(object):
 		else:
 			self.settings.pop("PORTAGE_LOG_FILE", None)
 
-		env_update(target_root=self.settings['ROOT'],
-			prev_mtimes=ldpath_mtimes,
-			contents=contents, env=self.settings.environ(),
-			writemsg_level=self._display_merge)
+		# Lock the config memory file to prevent symlink creation
+		# in merge_contents from overlapping with env-update.
+		conf_mem_file = os.path.join(self._eroot, CONFIG_MEMORY_FILE)
+		conf_mem_lock = lockfile(conf_mem_file)
+		try:
+			env_update(target_root=self.settings['ROOT'],
+				prev_mtimes=ldpath_mtimes,
+				contents=contents, env=self.settings.environ(),
+				writemsg_level=self._display_merge)
+		finally:
+			unlockfile(conf_mem_lock)
+
 		return os.EX_OK
 
 	def _display_merge(self, msg, level=0, noiselevel=0):
@@ -1753,7 +1761,7 @@ class dblink(object):
 					log_path=log_path, background=background,
 					level=level, noiselevel=noiselevel)
 
-	def _unmerge_pkgfiles(self, pkgfiles, others_in_slot):
+	def _unmerge_pkgfiles(self, pkgfiles, others_in_slot, conf_mem_file):
 		"""
 		
 		Unmerges the contents of a package from the liveFS
@@ -1789,7 +1797,6 @@ class dblink(object):
 		dest_root = self._eroot
 		dest_root_len = len(dest_root) - 1
 
-		conf_mem_file = os.path.join(dest_root, CONFIG_MEMORY_FILE)
 		cfgfiledict = grabdict(conf_mem_file)
 		stale_confmem = []
 
@@ -3167,8 +3174,12 @@ class dblink(object):
 					# get_owners is slow for large numbers of files, so
 					# don't look them all up.
 					collisions = collisions[:20]
-				owners = self.vartree.dbapi._owners.get_owners(collisions)
-				self.vartree.dbapi.flush_cache()
+				self.lockdb()
+				try:
+					owners = self.vartree.dbapi._owners.get_owners(collisions)
+					self.vartree.dbapi.flush_cache()
+				finally:
+					self.unlockdb()
 
 				for pkg, owned_files in owners.items():
 					cpv = pkg.mycpv
@@ -3247,25 +3258,29 @@ class dblink(object):
 
 		#if we have a file containing previously-merged config file md5sums, grab it.
 		conf_mem_file = os.path.join(self._eroot, CONFIG_MEMORY_FILE)
-		cfgfiledict = grabdict(conf_mem_file)
-		if "NOCONFMEM" in self.settings:
-			cfgfiledict["IGNORE"]=1
-		else:
-			cfgfiledict["IGNORE"]=0
+		conf_mem_lock = lockfile(conf_mem_file)
+		try:
+			cfgfiledict = grabdict(conf_mem_file)
+			if "NOCONFMEM" in self.settings:
+				cfgfiledict["IGNORE"]=1
+			else:
+				cfgfiledict["IGNORE"]=0
 
-		# Always behave like --noconfmem is enabled for downgrades
-		# so that people who don't know about this option are less
-		# likely to get confused when doing upgrade/downgrade cycles.
-		pv_split = catpkgsplit(self.mycpv)[1:]
-		for other in others_in_slot:
-			if pkgcmp(pv_split, catpkgsplit(other.mycpv)[1:]) < 0:
-				cfgfiledict["IGNORE"] = 1
-				break
+			# Always behave like --noconfmem is enabled for downgrades
+			# so that people who don't know about this option are less
+			# likely to get confused when doing upgrade/downgrade cycles.
+			pv_split = catpkgsplit(self.mycpv)[1:]
+			for other in others_in_slot:
+				if pkgcmp(pv_split, catpkgsplit(other.mycpv)[1:]) < 0:
+					cfgfiledict["IGNORE"] = 1
+					break
 
-		rval = self._merge_contents(srcroot, destroot, cfgfiledict,
-			conf_mem_file)
-		if rval != os.EX_OK:
-			return rval
+			rval = self._merge_contents(srcroot, destroot, cfgfiledict,
+				conf_mem_file)
+			if rval != os.EX_OK:
+				return rval
+		finally:
+			unlockfile(conf_mem_lock)
 
 		# These caches are populated during collision-protect and the data
 		# they contain is now invalid. It's very important to invalidate
@@ -3337,8 +3352,12 @@ class dblink(object):
 			else:
 				emerge_log(_(" !!! unmerge FAILURE: %s") % (dblnk.mycpv,))
 
-			# TODO: Check status and abort if necessary.
-			dblnk.delete()
+			self.lockdb()
+			try:
+				# TODO: Check status and abort if necessary.
+				dblnk.delete()
+			finally:
+				self.unlockdb()
 			showMessage(_(">>> Original instance of package unmerged safely.\n"))
 
 		if len(others_in_slot) > 1:
@@ -3349,8 +3368,12 @@ class dblink(object):
 
 		# We hold both directory locks.
 		self.dbdir = self.dbpkgdir
-		self.delete()
-		_movefile(self.dbtmpdir, self.dbpkgdir, mysettings=self.settings)
+		self.lockdb()
+		try:
+			self.delete()
+			_movefile(self.dbtmpdir, self.dbpkgdir, mysettings=self.settings)
+		finally:
+			self.unlockdb()
 
 		# Check for file collisions with blocking packages
 		# and remove any colliding files from their CONTENTS
@@ -3358,9 +3381,13 @@ class dblink(object):
 		self._clear_contents_cache()
 		contents = self.getcontents()
 		destroot_len = len(destroot) - 1
-		for blocker in blockers:
-			self.vartree.dbapi.removeFromContents(blocker, iter(contents),
-				relative_paths=False)
+		self.lockdb()
+		try:
+			for blocker in blockers:
+				self.vartree.dbapi.removeFromContents(blocker, iter(contents),
+					relative_paths=False)
+		finally:
+			self.lockdb()
 
 		plib_registry = self.vartree.dbapi._plib_registry
 		if plib_registry:
@@ -3423,11 +3450,18 @@ class dblink(object):
 			if pkgcmp(catpkgsplit(self.pkg)[1:], catpkgsplit(v)[1:]) < 0:
 				downgrade = True
 
-		#update environment settings, library paths. DO NOT change symlinks.
-		env_update(makelinks=(not downgrade),
-			target_root=self.settings['ROOT'], prev_mtimes=prev_mtimes,
-			contents=contents, env=self.settings.environ(),
-			writemsg_level=self._display_merge)
+		# Lock the config memory file to prevent symlink creation
+		# in merge_contents from overlapping with env-update.
+		conf_mem_file = os.path.join(self._eroot, CONFIG_MEMORY_FILE)
+		conf_mem_lock = lockfile(conf_mem_file)
+		try:
+			#update environment settings, library paths. DO NOT change symlinks.
+			env_update(makelinks=(not downgrade),
+				target_root=self.settings['ROOT'], prev_mtimes=prev_mtimes,
+				contents=contents, env=self.settings.environ(),
+				writemsg_level=self._display_merge)
+		finally:
+			unlockfile(conf_mem_lock)
 
 		# For gcc upgrades, preserved libs have to be removed after the
 		# the library path has been updated.
@@ -3850,7 +3884,6 @@ class dblink(object):
 		"""
 		myroot = None
 		retval = -1
-		self.lockdb()
 		self.vartree.dbapi._bump_mtime(self.mycpv)
 		try:
 			retval = self.treewalk(mergeroot, myroot, inforoot, myebuild,
@@ -3902,7 +3935,6 @@ class dblink(object):
 				pass
 			else:
 				self.vartree.dbapi._linkmap._clear_cache()
-			self.unlockdb()
 			self.vartree.dbapi._bump_mtime(self.mycpv)
 		return retval
 
@@ -4005,11 +4037,14 @@ def unmerge(cat, pkg, myroot=None, settings=None,
 		vartree=vartree, scheduler=scheduler)
 	vartree = mylink.vartree
 	try:
-		mylink.lockdb()
 		if mylink.exists():
 			retval = mylink.unmerge(ldpath_mtimes=ldpath_mtimes)
 			if retval == os.EX_OK:
-				mylink.delete()
+				self.lockdb()
+				try:
+					mylink.delete()
+				finally:
+					self.unlockdb()
 			return retval
 		return os.EX_OK
 	finally:
@@ -4018,7 +4053,6 @@ def unmerge(cat, pkg, myroot=None, settings=None,
 			pass
 		else:
 			vartree.dbapi._linkmap._clear_cache()
-		mylink.unlockdb()
 
 def write_contents(contents, root, f):
 	"""

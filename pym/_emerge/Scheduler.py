@@ -387,6 +387,7 @@ class Scheduler(PollScheduler):
 	def _set_max_jobs(self, max_jobs):
 		self._max_jobs = max_jobs
 		self._task_queues.jobs.max_jobs = max_jobs
+		self._task_queues.merge.max_jobs = max_jobs
 
 	def _background_mode(self):
 		"""

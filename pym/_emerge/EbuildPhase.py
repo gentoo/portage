@@ -10,6 +10,8 @@ from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.EbuildProcess import EbuildProcess
 from _emerge.CompositeTask import CompositeTask
 from portage.util import writemsg
+from portage.locks import lockdir
+from portage.locks import unlockdir
 from portage.xml.metadata import MetaDataXML
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -28,7 +30,7 @@ from portage import _unicode_encode
 
 class EbuildPhase(CompositeTask):
 
-	__slots__ = ("actionmap", "phase", "settings")
+	__slots__ = ("actionmap", "ebuild_lock", "phase", "settings")
 
 	# FEATURES displayed prior to setup phase
 	_features_display = ("ccache", "distcc", "fakeroot",
@@ -36,6 +38,9 @@ class EbuildPhase(CompositeTask):
 		"preserve-libs", "sandbox", "selinux", "sesandbox",
 		"splitdebug", "suidctl", "test", "userpriv",
 		"usersandbox")
+
+	# Locked phases
+	_locked_phases = ("setup", "preinst", "postinst", "prerm", "postrm")
 
 	def _start(self):
 
@@ -138,9 +143,17 @@ class EbuildPhase(CompositeTask):
 			phase=self.phase, scheduler=self.scheduler,
 			settings=self.settings)
 
+		if (self.phase in self._locked_phases and
+			"no-ebuild-locks" not in self.settings.features):
+			root = self.settings["ROOT"]
+			lock_path = os.path.join(root, portage.VDB_PATH + "-ebuild")
+			self.ebuild_lock = lockdir(lock_path)
 		self._start_task(ebuild_process, self._ebuild_exit)
 
 	def _ebuild_exit(self, ebuild_process):
+
+		if self.ebuild_lock:
+			unlockdir(self.ebuild_lock)
 
 		fail = False
 		if self._default_exit(ebuild_process) != os.EX_OK:

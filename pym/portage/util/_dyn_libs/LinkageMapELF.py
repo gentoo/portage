@@ -13,6 +13,8 @@ from portage import _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.exception import CommandNotFound
 from portage.localization import _
+from portage.locks import lockdir
+from portage.locks import unlockdir
 from portage.util import getlibpaths
 from portage.util import grabfile
 from portage.util import normalize_path
@@ -181,15 +183,18 @@ class LinkageMapELF(object):
 				lines.append((include_file, line))
 
 		aux_keys = [self._needed_aux_key]
-		for cpv in self._dbapi.cpv_all():
-			if exclude_pkgs is not None and cpv in exclude_pkgs:
-				continue
-			needed_file = self._dbapi.getpath(cpv,
-				filename=self._needed_aux_key)
-			for line in self._dbapi.aux_get(cpv, aux_keys)[0].splitlines():
-				lines.append((needed_file, line))
-		# Cache NEEDED.* files avoid doing excessive IO for every rebuild.
-		self._dbapi.flush_cache()
+		vdb_path = os.path.join(self._root, portage.VDB_PATH)
+		vdb_lock = lockdir(vdb_path)
+		try:
+			for cpv in self._dbapi.cpv_all():
+				if exclude_pkgs is not None and cpv in exclude_pkgs:
+					continue
+				needed_file = self._dbapi.getpath(cpv,
+					filename=self._needed_aux_key)
+				for line in self._dbapi.aux_get(cpv, aux_keys)[0].splitlines():
+					lines.append((needed_file, line))
+		finally:
+			unlockdir(vdb_lock)
 
 		# have to call scanelf for preserved libs here as they aren't 
 		# registered in NEEDED.ELF.2 files
