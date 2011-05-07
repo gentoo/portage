@@ -36,11 +36,16 @@ class PreservedLibsRegistry(object):
 
 	def lock(self):
 		"""Grab an exclusive lock on the preserved libs registry."""
+		if self._lock is not None:
+			raise AssertionError("already locked")
 		self._lock = lockfile(self._filename)
 
 	def unlock(self):
 		"""Release our exclusive lock on the preserved libs registry."""
+		if self._lock is None:
+			raise AssertionError("not locked")
 		unlockfile(self._lock)
+		self._lock = None
 
 	def load(self):
 		""" Reload the registry data from file """
@@ -65,7 +70,13 @@ class PreservedLibsRegistry(object):
 		self.pruneNonExisting()
 
 	def store(self):
-		""" Store the registry data to file """
+		"""
+		Store the registry data to the file. The existing inode will be
+		replaced atomically, so if that inode is currently being used
+		for a lock then that lock will be rendered useless. Therefore,
+		it is important not to call this method until the current lock
+		is ready to be immediately released.
+		"""
 		if os.environ.get("SANDBOX_ON") == "1" or \
 			self._data == self._data_orig:
 			return
