@@ -142,10 +142,26 @@ class LinkageMapELF(object):
 		def __str__(self):
 			return str(sorted(self.alt_paths))
 
-	def rebuild(self, exclude_pkgs=None, include_file=None):
+	def rebuild(self, exclude_pkgs=None, include_file=None,
+		preserve_paths=None):
 		"""
 		Raises CommandNotFound if there are preserved libs
 		and the scanelf binary is not available.
+
+		@param exclude_pkgs: A set of packages that should be excluded from
+			the LinkageMap, since they are being unmerged and their NEEDED
+			entries are therefore irrelevant and would only serve to corrupt
+			the LinkageMap.
+		@type exclude_pkgs: set
+		@param include_file: The path of a file containing NEEDED entries for
+			a package which does not exist in the vardbapi yet because it is
+			currently being merged.
+		@type include_file: String
+		@param preserve_paths: Libraries preserved by a package instance that
+			is currently being merged. They need to be explicitly passed to the
+			LinkageMap, since they are not registered in the
+			PreservedLibsRegistry yet.
+		@type preserve_paths: set
 		"""
 
 		os = _os_merge
@@ -178,12 +194,17 @@ class LinkageMapELF(object):
 		# have to call scanelf for preserved libs here as they aren't 
 		# registered in NEEDED.ELF.2 files
 		plibs = set()
-		if self._dbapi._plib_registry and self._dbapi._plib_registry.getPreservedLibs():
-			args = ["/usr/bin/scanelf", "-qF", "%a;%F;%S;%r;%n"]
-			for items in self._dbapi._plib_registry.getPreservedLibs().values():
+		if preserve_paths is not None:
+			plibs.update(preserve_paths)
+		if self._dbapi._plib_registry and \
+			self._dbapi._plib_registry.hasEntries():
+			for items in \
+				self._dbapi._plib_registry.getPreservedLibs().values():
 				plibs.update(items)
-				args.extend(os.path.join(root, x.lstrip("." + os.sep)) \
-					for x in items)
+		if plibs:
+			args = ["/usr/bin/scanelf", "-qF", "%a;%F;%S;%r;%n"]
+			args.extend(os.path.join(root, x.lstrip("." + os.sep)) \
+				for x in plibs)
 			try:
 				proc = subprocess.Popen(args, stdout=subprocess.PIPE)
 			except EnvironmentError as e:
