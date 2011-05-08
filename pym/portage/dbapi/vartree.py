@@ -776,17 +776,25 @@ class vardbapi(dbapi):
 		to the global file.  Returns new counter value.
 
 		@param myroot: ignored, self._eroot is used instead
+		@param mycpv: ignored
 		"""
 		myroot = None
-		counter = self.get_counter_tick_core(mycpv=mycpv) - 1
-		if incrementing:
-			#increment counter
-			counter += 1
-			# use same permissions as config._init_dirs()
-			ensure_dirs(os.path.dirname(self._counter_path),
-				gid=portage_gid, mode=0o2750, mask=0o2)
-			# update new global counter file
-			write_atomic(self._counter_path, str(counter))
+		mycpv = None
+
+		self.lock()
+		try:
+			counter = self.get_counter_tick_core() - 1
+			if incrementing:
+				#increment counter
+				counter += 1
+				# use same permissions as config._init_dirs()
+				ensure_dirs(os.path.dirname(self._counter_path),
+					gid=portage_gid, mode=0o2750, mask=0o2)
+				# update new global counter file
+				write_atomic(self._counter_path, str(counter))
+		finally:
+			self.unlock()
+
 		return counter
 
 	def _dblink(self, cpv):
