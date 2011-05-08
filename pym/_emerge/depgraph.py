@@ -4250,7 +4250,7 @@ class depgraph(object):
 		Break any references in Package instances that lead back to the depgraph.
 		This is useful if you want to hold references to packages without also
 		holding the depgraph on the heap. It should only be called after the
-		depgraph will not be used for any more calculations.
+		depgraph and _frozen_config will not be used for any more calculations.
 		"""
 		for root_config in self._frozen_config.roots.values():
 			root_config.update(self._frozen_config._trees_orig[
@@ -6023,7 +6023,6 @@ def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 			# package has already been installed.
 			dropped_tasks.update(pkg for pkg in \
 				unsatisfied_parents if pkg.operation != "nomerge")
-			mydepgraph.break_refs()
 
 			del e, graph, traversed_nodes, \
 				unsatisfied_parents, unsatisfied_stack
