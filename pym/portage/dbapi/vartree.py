@@ -3914,6 +3914,9 @@ class dblink(object):
 		"""
 		myroot = None
 		retval = -1
+		parallel_install = "parallel-install" in self.settings.features
+		if not parallel_install:
+			self.lockdb()
 		self.vartree.dbapi._bump_mtime(self.mycpv)
 		try:
 			retval = self.treewalk(mergeroot, myroot, inforoot, myebuild,
@@ -3966,6 +3969,8 @@ class dblink(object):
 			else:
 				self.vartree.dbapi._linkmap._clear_cache()
 			self.vartree.dbapi._bump_mtime(self.mycpv)
+			if not parallel_install:
+				self.unlockdb()
 		return retval
 
 	def getstring(self,name):
@@ -4066,6 +4071,9 @@ def unmerge(cat, pkg, myroot=None, settings=None,
 	mylink = dblink(cat, pkg, settings=settings, treetype="vartree",
 		vartree=vartree, scheduler=scheduler)
 	vartree = mylink.vartree
+	parallel_install = "parallel-install" in self.settings.features
+	if not parallel_install:
+		self.lockdb()
 	try:
 		if mylink.exists():
 			retval = mylink.unmerge(ldpath_mtimes=ldpath_mtimes)
@@ -4083,6 +4091,8 @@ def unmerge(cat, pkg, myroot=None, settings=None,
 			pass
 		else:
 			vartree.dbapi._linkmap._clear_cache()
+		if not parallel_install:
+			self.unlockdb()
 
 def write_contents(contents, root, f):
 	"""

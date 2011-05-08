@@ -267,7 +267,7 @@ when a problem arises (normally due to a crash or disconnect).
 .TP
 .B ebuild\-locks
 Use locks to ensure that unsandboxed ebuild phases never execute
-concurrently.
+concurrently. Also see \fIparallel\-install\fR.
 .TP
 .B fakeroot
 Enable fakeroot for the install and package phases when a non-root user runs
@@ -372,6 +372,11 @@ Disables xterm titlebar updates (which contains status info).
 Fetch in the background while compiling. Run
 `tail \-f /var/log/emerge\-fetch.log` in a
 terminal to view parallel-fetch progress.
+.TP
+.B parallel\-install
+Use finer\-grained locks when installing packages, allowing for greater
+parallelization. For additional parallelization, disable
+\fIebuild\-locks\fR.
 .TP
 .B parse\-eapi\-ebuild\-head
 Parse \fBEAPI\fR from the head of the ebuild (first 30 lines). This feature
