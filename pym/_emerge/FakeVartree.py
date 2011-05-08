@@ -116,20 +116,15 @@ class FakeVartree(vartree):
 		after one or more packages may have been installed or
 		uninstalled.
 		"""
-		vdb_path = os.path.join(self.settings['EROOT'], portage.VDB_PATH)
+		locked = False
 		try:
-			# At least the parent needs to exist for the lock file.
-			portage.util.ensure_dirs(vdb_path)
-		except portage.exception.PortageException:
-			pass
-		vdb_lock = None
-		try:
-			if acquire_lock and os.access(vdb_path, os.W_OK):
-				vdb_lock = portage.locks.lockdir(vdb_path)
+			if acquire_lock and os.access(self._real_vardb._dbroot, os.W_OK):
+				self._real_vardb.lock()
+				locked = True
 			self._sync()
 		finally:
-			if vdb_lock:
-				portage.locks.unlockdir(vdb_lock)
+			if locked:
+				self._real_vardb.unlock()
 
 		# Populate the old-style virtuals using the cached values.
 		# Skip the aux_get wrapper here, to avoid unwanted
