@@ -205,8 +205,15 @@ class LinkageMapELF(object):
 			plibs.update(preserve_paths)
 		if self._dbapi._plib_registry and \
 			self._dbapi._plib_registry.hasEntries():
-			for items in \
-				self._dbapi._plib_registry.getPreservedLibs().values():
+			for cpv, items in \
+				self._dbapi._plib_registry.getPreservedLibs().items():
+				if exclude_pkgs is not None and cpv in exclude_pkgs:
+					# These preserved libs will either be unmerged,
+					# rendering them irrelevant, or they will be
+					# preserved in the replacement package and are
+					# already represented via the preserve_paths
+					# parameter.
+					continue
 				plibs.update(items)
 		if plibs:
 			args = ["/usr/bin/scanelf", "-qF", "%a;%F;%S;%r;%n"]
