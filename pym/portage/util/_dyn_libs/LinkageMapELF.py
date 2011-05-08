@@ -1,4 +1,4 @@
-# Copyright 1998-2010 Gentoo Foundation
+# Copyright 1998-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -13,8 +13,6 @@ from portage import _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.exception import CommandNotFound
 from portage.localization import _
-from portage.locks import lockdir
-from portage.locks import unlockdir
 from portage.util import getlibpaths
 from portage.util import grabfile
 from portage.util import normalize_path
