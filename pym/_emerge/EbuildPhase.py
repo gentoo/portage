@@ -146,8 +146,8 @@ class EbuildPhase(CompositeTask):
 
 		if (self.phase in self._locked_phases and
 			"ebuild-locks" in self.settings.features):
-			root = self.settings["ROOT"]
-			lock_path = os.path.join(root, portage.VDB_PATH + "-ebuild")
+			eroot = self.settings["EROOT"]
+			lock_path = os.path.join(eroot, portage.VDB_PATH + "-ebuild")
 			if os.access(os.path.dirname(lock_path), os.W_OK):
 				self._ebuild_lock = lockdir(lock_path)
 		self._start_task(ebuild_process, self._ebuild_exit)

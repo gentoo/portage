@@ -183,8 +183,7 @@ class LinkageMapELF(object):
 				lines.append((include_file, line))
 
 		aux_keys = [self._needed_aux_key]
-		vdb_path = os.path.join(self._root, portage.VDB_PATH)
-		vdb_lock = lockdir(vdb_path)
+		self._dbapi.lock()
 		try:
 			for cpv in self._dbapi.cpv_all():
 				if exclude_pkgs is not None and cpv in exclude_pkgs:
@@ -194,7 +193,7 @@ class LinkageMapELF(object):
 				for line in self._dbapi.aux_get(cpv, aux_keys)[0].splitlines():
 					lines.append((needed_file, line))
 		finally:
-			unlockdir(vdb_lock)
+			self._dbapi.unlock()
 
 		# have to call scanelf for preserved libs here as they aren't 
 		# registered in NEEDED.ELF.2 files
