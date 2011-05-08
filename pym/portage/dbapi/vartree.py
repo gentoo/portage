@@ -128,6 +128,10 @@ class vardbapi(dbapi):
 				DeprecationWarning, stacklevel=2)
 
 		self._eroot = settings['EROOT']
+		self._dbroot = self._eroot + VDB_PATH
+		self._lock = None
+		self._lock_count = 0
+
 		if vartree is None:
 			vartree = portage.db[self.root]["vartree"]
 		self.vartree = vartree
@@ -163,6 +167,38 @@ class vardbapi(dbapi):
 			# rValue += _os.sep + filename
 			rValue = _os.path.join(rValue, filename)
 		return rValue
+
+	def lock(self):
+		"""
+		Acquire a reentrant lock, blocking, for cooperation with concurrent
+		processes. State is inherited by subprocesses, allowing subprocesses
+		to reenter a lock that was acquired by a parent process. However,
+		a lock can be released only by the same process that acquired it.
+		"""
+		if self._lock_count:
+			self._lock_count += 1
+		else:
+			if self._lock is not None:
+				raise AssertionError("already locked")
+			# At least the parent needs to exist for the lock file.
+			ensure_dirs(self._dbroot)
+			self._lock = lockdir(self._dbroot)
+			self._lock_count += 1
+
+	def unlock(self):
+		"""
+		Release a lock, decrementing the recursion level. Each unlock() call
+		must be matched with a prior lock() call, or else an AssertionError
+		will be raised if unlock() is called while not locked.
+		"""
+		if self._lock_count > 1:
+			self._lock_count -= 1
+		else:
+			if self._lock is None:
+				raise AssertionError("not locked")
+			self._lock_count = 0
+			unlockdir(self._lock)
+			self._lock = None
 
 	def _bump_mtime(self, cpv):
 		"""
@@ -1239,9 +1275,6 @@ class dblink(object):
 		self.dbpkgdir = self.dbcatdir+"/"+pkg
 		self.dbtmpdir = self.dbcatdir+"/-MERGING-"+pkg
 		self.dbdir = self.dbpkgdir
-
-		self._lock_vdb = None
-
 		self.settings = mysettings
 		self._verbose = self.settings.get("PORTAGE_VERBOSE") == "1"
 
@@ -1280,26 +1313,10 @@ class dblink(object):
 		self._get_protect_obj().updateprotect()
 
 	def lockdb(self):
-		if self._lock_vdb:
-			raise AssertionError("Lock already held.")
-		# At least the parent needs to exist for the lock file.
-		ensure_dirs(self.dbroot)
-		if self._scheduler is None:
-			self._lock_vdb = lockdir(self.dbroot)
-		else:
-			async_lock = AsynchronousLock(path=self.dbroot,
-				scheduler=self._scheduler)
-			async_lock.start()
-			async_lock.wait()
-			self._lock_vdb = async_lock
+		self.vartree.dbapi.lock()
 
 	def unlockdb(self):
-		if self._lock_vdb is not None:
-			if isinstance(self._lock_vdb, AsynchronousLock):
-				self._lock_vdb.unlock()
-			else:
-				unlockdir(self._lock_vdb)
-			self._lock_vdb = None
+		self.vartree.dbapi.unlock()
 
 	def getpath(self):
 		"return path to location of db information (for >>> informational display)"
@@ -4052,8 +4069,8 @@ def unmerge(cat, pkg, myroot=None, settings=None,
 	mylink = dblink(cat, pkg, settings=settings, treetype="vartree",
 		vartree=vartree, scheduler=scheduler)
 	vartree = mylink.vartree
+	mylink.lockdb()
 	try:
-		mylink.lockdb()
 		if mylink.exists():
 			retval = mylink.unmerge(ldpath_mtimes=ldpath_mtimes)
 			if retval == os.EX_OK:
