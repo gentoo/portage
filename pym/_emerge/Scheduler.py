@@ -3,6 +3,7 @@
 
 from __future__ import print_function
 
+from collections import deque
 import gc
 import gzip
 import logging
@@ -176,8 +177,9 @@ class Scheduler(PollScheduler):
 
 		# Holds merges that will wait to be executed when no builds are
 		# executing. This is useful for system packages since dependencies
-		# on system packages are frequently unspecified.
-		self._merge_wait_queue = []
+		# on system packages are frequently unspecified. For example, see
+		# bug #256616.
+		self._merge_wait_queue = deque()
 		# Holds merges that have been transfered from the merge_wait_queue to
 		# the actual merge queue. They are removed from this list upon
 		# completion. Other packages can start building only when this list is
@@ -1631,14 +1633,19 @@ class Scheduler(PollScheduler):
 
 		while True:
 
-			# When the number of jobs drops to zero, process all waiting merges.
-			if not self._jobs and self._merge_wait_queue:
-				for task in self._merge_wait_queue:
-					task.addExitListener(self._merge_wait_exit_handler)
-					self._task_queues.merge.add(task)
+			# When the number of jobs and merges drops to zero,
+			# process a single merge from _merge_wait_queue if
+			# it's not empty. We only process one since these are
+			# special packages and we want to ensure that
+			# parallel-install does not cause more than one of
+			# them to install at the same time.
+			if (self._merge_wait_queue and not self._jobs and
+				not self._task_queues.merge):
+				task = self._merge_wait_queue.popleft()
+				task.addExitListener(self._merge_wait_exit_handler)
+				self._task_queues.merge.add(task)
 				self._status_display.merges = len(self._task_queues.merge)
-				self._merge_wait_scheduled.extend(self._merge_wait_queue)
-				del self._merge_wait_queue[:]
+				self._merge_wait_scheduled.append(task)
 
 			self._schedule_tasks_imp()
 			self._status_display.display()
@@ -1657,7 +1664,8 @@ class Scheduler(PollScheduler):
 				state_change += 1
 
 			if not (state_change or \
-				(not self._jobs and self._merge_wait_queue)):
+				(self._merge_wait_queue and not self._jobs and
+				not self._task_queues.merge)):
 				break
 
 		return self._keep_scheduling()
