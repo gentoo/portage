@@ -4071,18 +4071,18 @@ def unmerge(cat, pkg, myroot=None, settings=None,
 	mylink = dblink(cat, pkg, settings=settings, treetype="vartree",
 		vartree=vartree, scheduler=scheduler)
 	vartree = mylink.vartree
-	parallel_install = "parallel-install" in self.settings.features
+	parallel_install = "parallel-install" in settings.features
 	if not parallel_install:
-		self.lockdb()
+		mylink.lockdb()
 	try:
 		if mylink.exists():
 			retval = mylink.unmerge(ldpath_mtimes=ldpath_mtimes)
 			if retval == os.EX_OK:
-				self.lockdb()
+				mylink.lockdb()
 				try:
 					mylink.delete()
 				finally:
-					self.unlockdb()
+					mylink.unlockdb()
 			return retval
 		return os.EX_OK
 	finally:
@@ -4092,7 +4092,7 @@ def unmerge(cat, pkg, myroot=None, settings=None,
 		else:
 			vartree.dbapi._linkmap._clear_cache()
 		if not parallel_install:
-			self.unlockdb()
+			mylink.unlockdb()
 
 def write_contents(contents, root, f):
 	"""
