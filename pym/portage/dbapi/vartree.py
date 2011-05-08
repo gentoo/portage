@@ -3292,9 +3292,9 @@ class dblink(object):
 		linkmap = self.vartree.dbapi._linkmap
 		plib_registry = self.vartree.dbapi._plib_registry
 		include_file = None
-		if linkmap is None or plib_registry is None:
-			preserve_paths = None
-		else:
+		preserve_paths = None
+		needed = None
+		if not (linkmap is None or plib_registry is None):
 			plib_registry.lock()
 			try:
 				plib_registry.load()
