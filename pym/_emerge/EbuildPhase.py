@@ -30,7 +30,8 @@ from portage import _unicode_encode
 
 class EbuildPhase(CompositeTask):
 
-	__slots__ = ("actionmap", "ebuild_lock", "phase", "settings")
+	__slots__ = ("actionmap", "phase", "settings") + \
+		("_ebuild_lock",)
 
 	# FEATURES displayed prior to setup phase
 	_features_display = ("ccache", "distcc", "fakeroot",
@@ -144,16 +145,18 @@ class EbuildPhase(CompositeTask):
 			settings=self.settings)
 
 		if (self.phase in self._locked_phases and
-			"no-ebuild-locks" not in self.settings.features):
+			"ebuild-locks" in self.settings.features):
 			root = self.settings["ROOT"]
 			lock_path = os.path.join(root, portage.VDB_PATH + "-ebuild")
-			self.ebuild_lock = lockdir(lock_path)
+			if os.access(os.path.dirname(lock_path), os.W_OK):
+				self._ebuild_lock = lockdir(lock_path)
 		self._start_task(ebuild_process, self._ebuild_exit)
 
 	def _ebuild_exit(self, ebuild_process):
 
-		if self.ebuild_lock:
-			unlockdir(self.ebuild_lock)
+		if self._ebuild_lock is not None:
+			unlockdir(self._ebuild_lock)
+			self._ebuild_lock = None
 
 		fail = False
 		if self._default_exit(ebuild_process) != os.EX_OK:

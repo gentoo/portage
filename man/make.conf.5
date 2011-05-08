@@ -265,6 +265,10 @@ strangely configured Samba server (oplocks off, NFS re\-export). A tool
 /usr/lib/portage/bin/clean_locks exists to help handle lock issues
 when a problem arises (normally due to a crash or disconnect).
 .TP
+.B ebuild\-locks
+Use locks to ensure that unsandboxed ebuild phases never execute
+concurrently.
+.TP
 .B fakeroot
 Enable fakeroot for the install and package phases when a non-root user runs
 the \fBebuild\fR(1) command.

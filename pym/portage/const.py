@@ -88,11 +88,11 @@ EBUILD_PHASES            = ("pretend", "setup", "unpack", "prepare", "configure"
 SUPPORTED_FEATURES       = frozenset([
                            "assume-digests", "binpkg-logs", "buildpkg", "buildsyspkg", "candy",
                            "ccache", "chflags", "collision-protect", "compress-build-logs",
-                           "digest", "distcc", "distlocks", "fakeroot",
+                           "digest", "distcc", "distlocks", "ebuild-locks", "fakeroot",
                            "fail-clean", "fixpackages", "force-mirror", "getbinpkg",
                            "installsources", "keeptemp", "keepwork", "fixlafiles", "lmirror",
                            "metadata-transfer", "mirror", "multilib-strict", "news",
-                           "no-ebuild-locks", "noauto", "noclean", "nodoc", "noinfo", "noman",
+                           "noauto", "noclean", "nodoc", "noinfo", "noman",
                            "nostrip", "notitles", "parallel-fetch", "parse-eapi-ebuild-head",
                            "prelink-checksums", "preserve-libs",
                            "protect-owned", "python-trace", "sandbox",
