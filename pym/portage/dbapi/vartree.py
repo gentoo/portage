@@ -1462,7 +1462,7 @@ class dblink(object):
 		self.contentscache = pkgfiles
 		return pkgfiles
 
-	def _prune_plib_registry(self, unmerge=False, others_in_slot=[],
+	def _prune_plib_registry(self, unmerge=False,
 		needed=None, preserve_paths=None):
 		# remove preserved libraries that don't have any consumers left
 		plib_registry = self.vartree.dbapi._plib_registry
@@ -1485,15 +1485,6 @@ class dblink(object):
 				if cpv_lib_map:
 					self._remove_preserved_libs(cpv_lib_map)
 					for cpv, removed in cpv_lib_map.items():
-						if not self.vartree.dbapi.cpv_exists(cpv):
-							for dblnk in others_in_slot:
-								if dblnk.mycpv == cpv:
-									# This one just got merged so it doesn't
-									# register with cpv_exists() yet.
-									self.vartree.dbapi.removeFromContents(
-										dblnk, removed)
-									break
-							continue
 						self.vartree.dbapi.removeFromContents(cpv, removed)
 
 				if unmerge:
@@ -1664,8 +1655,7 @@ class dblink(object):
 					showMessage(_("!!! FAILED postrm: %s\n") % retval,
 						level=logging.ERROR, noiselevel=-1)
 
-			self._prune_plib_registry(unmerge=True,
-				others_in_slot=others_in_slot, needed=needed,
+			self._prune_plib_registry(unmerge=True, needed=needed,
 				preserve_paths=preserve_paths)
 		finally:
 			self.vartree.dbapi._bump_mtime(self.mycpv)
