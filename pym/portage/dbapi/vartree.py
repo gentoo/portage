@@ -1485,6 +1485,8 @@ class dblink(object):
 				if cpv_lib_map:
 					self._remove_preserved_libs(cpv_lib_map)
 					for cpv, removed in cpv_lib_map.items():
+						if not self.vartree.dbapi.cpv_exists(cpv):
+							continue
 						self.vartree.dbapi.removeFromContents(cpv, removed)
 
 				if unmerge:
