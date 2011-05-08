@@ -3,6 +3,7 @@
 
 import errno
 import logging
+import sys
 
 try:
 	import cPickle as pickle
@@ -12,6 +13,7 @@ except ImportError:
 from portage import os
 from portage import _encodings
 from portage import _os_merge
+from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.exception import PermissionDenied
 from portage.localization import _
@@ -19,6 +21,9 @@ from portage.util import atomic_ofstream
 from portage.util import writemsg_level
 from portage.versions import cpv_getkey
 from portage.locks import lockfile, unlockfile
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 class PreservedLibsRegistry(object):
 	""" This class handles the tracking of preserved library objects """
@@ -91,6 +96,17 @@ class PreservedLibsRegistry(object):
 		else:
 			self._data_orig = self._data.copy()
 
+	def _normalize_counter(self, counter):
+		"""
+		For simplicity, normalize as a unicode string
+		and strip whitespace. This avoids the need for
+		int conversion and a possible ValueError resulting
+		from vardb corruption.
+		"""
+		if not isinstance(counter, basestring):
+			counter = str(counter)
+		return _unicode_decode(counter).strip()
+
 	def register(self, cpv, slot, counter, paths):
 		""" Register new objects in the registry. If there is a record with the
 			same packagename (internally derived from cpv) and slot it is 
@@ -99,19 +115,21 @@ class PreservedLibsRegistry(object):
 			@type cpv: CPV (as String)
 			@param slot: the value of SLOT of the given package instance
 			@type slot: String
-			@param counter: vdb counter value for the package instace
-			@type counter: Integer
+			@param counter: vdb counter value for the package instance
+			@type counter: String
 			@param paths: absolute paths of objects that got preserved during an update
 			@type paths: List
 		"""
 		cp = cpv_getkey(cpv)
 		cps = cp+":"+slot
+		counter = self._normalize_counter(counter)
 		if len(paths) == 0 and cps in self._data \
-				and self._data[cps][0] == cpv and int(self._data[cps][1]) == int(counter):
+				and self._data[cps][0] == cpv and \
+				self._normalize_counter(self._data[cps][1]) == counter:
 			del self._data[cps]
 		elif len(paths) > 0:
 			self._data[cps] = (cpv, counter, paths)
-	
+
 	def unregister(self, cpv, slot, counter):
 		""" Remove a previous registration of preserved objects for the given package.
 			@param cpv: package instance whose records should be removed
