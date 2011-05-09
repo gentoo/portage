@@ -1963,7 +1963,11 @@ class config(object):
 
 	def _populate_treeVirtuals_if_needed(self, vartree):
 		"""Reduce the provides into a list by CP."""
-		self._virtuals_manager.populate_treeVirtuals_if_needed(vartree)
+		if self._virtuals_manager._treeVirtuals is None:
+			if self.local_config:
+				self._virtuals_manager.populate_treeVirtuals_if_needed(vartree)
+			else:
+				self._virtuals_manager._treeVirtuals = {}
 
 	def __delitem__(self,mykey):
 		self.modifying()
