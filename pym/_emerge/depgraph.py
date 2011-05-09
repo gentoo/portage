@@ -6048,6 +6048,23 @@ class _dep_check_composite_db(dbapi):
 		self._match_cache.clear()
 		self._cpv_pkg_map.clear()
 
+	def cp_list(self, cp):
+		"""
+		Emulate cp_list just so it can be used to check for existence
+		of new-style virtuals.
+		"""
+		if isinstance(cp, Atom):
+			atom = cp
+		else:
+			atom = Atom(cp)
+		ret = []
+		for pkg in self._depgraph._iter_match_pkgs_any(
+			self._depgraph._frozen_config.roots[self._root], atom):
+			if pkg.cp == cp:
+				ret.append(pkg.cpv)
+
+		return ret
+
 	def match(self, atom):
 		ret = self._match_cache.get(atom)
 		if ret is not None:
