@@ -8,6 +8,7 @@ import sys
 import textwrap
 import portage
 from portage import os
+from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.output import bold, colorize, darkgreen, green
 from portage._sets import SETPREFIX
 from portage.util import cmp_sort_key
@@ -57,7 +58,13 @@ def unmerge(root_config, myopts, unmerge_action,
 	try:
 		if os.access(vdb_path, os.W_OK):
 			vdb_lock = portage.locks.lockdir(vdb_path)
-		realsyslist = sets["system"].getAtoms()
+
+		realsyslist = []
+		for x in sets["system"].getAtoms():
+			for atom in expand_new_virt(vartree.dbapi, x):
+				if not atom.blocker:
+					realsyslist.append(atom)
+
 		syslist = []
 		for x in realsyslist:
 			mycp = portage.dep_getkey(x)
