@@ -67,8 +67,14 @@ def unmerge(root_config, myopts, unmerge_action,
 
 		syslist = []
 		for x in realsyslist:
-			mycp = portage.dep_getkey(x)
-			if mycp in settings.getvirtuals():
+			mycp = x.cp
+			# Since Gentoo stopped using old-style virtuals in
+			# 2011, typically it's possible to avoid getvirtuals()
+			# calls entirely. It will not be triggered here by
+			# new-style virtuals since those are expanded to
+			# non-virtual atoms above by expand_new_virt().
+			if mycp.startswith("virtual/") and \
+				mycp in settings.getvirtuals():
 				providers = []
 				for provider in settings.getvirtuals()[mycp]:
 					if vartree.dbapi.match(provider):
