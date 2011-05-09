@@ -2995,10 +2995,6 @@ def display_news_notification(root_config, myopts):
 	if "news" not in settings.features:
 		return
 
-	# Populate these using our existing vartree, to avoid
-	# having a temporary one instantiated.
-	settings._populate_treeVirtuals_if_needed(trees["vartree"])
-
 	for repo in portdb.getRepositories():
 		unreadItems = checkUpdatedNewsItems(
 			portdb, vardb, NEWS_PATH, UNREAD_PATH, repo, update=update)
