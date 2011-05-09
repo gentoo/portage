@@ -1966,7 +1966,7 @@ class config(object):
 		"""Reduce the provides into a list by CP."""
 		if self._virtuals_manager._treeVirtuals is None:
 			if self.local_config:
-				self._virtuals_manager.populate_treeVirtuals_if_needed(vartree)
+				self._virtuals_manager._populate_treeVirtuals(vartree)
 			else:
 				self._virtuals_manager._treeVirtuals = {}
 
