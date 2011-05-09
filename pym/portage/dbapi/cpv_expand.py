@@ -26,7 +26,14 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 			mykey=myslash[0]+"/"+mysplit[0]
 		else:
 			mykey=mycpv
-		if hasattr(mydb, "cp_list") and \
+
+		# Since Gentoo stopped using old-style virtuals in
+		# 2011, typically it's possible to avoid getvirtuals()
+		# calls entirely. Therefore, only call getvirtuals()
+		# if the atom category is "virtual" and cp_list()
+		# returns nothing.
+		if mykey.startswith("virtual/") and \
+			hasattr(mydb, "cp_list") and \
 			not mydb.cp_list(mykey, use_cache=use_cache):
 				if hasattr(mydb, "vartree"):
 					settings._populate_treeVirtuals_if_needed(mydb.vartree)
