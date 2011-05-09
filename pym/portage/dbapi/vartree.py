@@ -108,6 +108,11 @@ class vardbapi(dbapi):
 		# have been added or removed.
 		self._pkgs_changed = False
 
+		# The _aux_cache_threshold doesn't work as designed
+		# if the cache is flushed from a subprocess, so we
+		# use this to avoid waste vdb cache updates.
+		self._flush_cache_enabled = True
+
 		#cache for category directory mtimes
 		self.mtdircache = {}
 
@@ -467,7 +472,8 @@ class vardbapi(dbapi):
 		superuser privileges (since that's required to obtain a lock), but all
 		users have read access and benefit from faster metadata lookups (as
 		long as at least part of the cache is still valid)."""
-		if self._aux_cache is not None and \
+		if self._flush_cache_enabled and \
+			self._aux_cache is not None and \
 			len(self._aux_cache["modified"]) >= self._aux_cache_threshold and \
 			secpass >= 2:
 			self._owners.populate() # index any unindexed contents

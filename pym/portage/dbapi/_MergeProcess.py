@@ -176,6 +176,9 @@ class MergeProcess(SpawnProcess):
 		# is triggered when mylink._scheduler is None.
 		mylink._scheduler = None
 
+		# Avoid wastful updates of the vdb cache.
+		self.vartree.dbapi._flush_cache_enabled = False
+
 		# In this subprocess we don't want PORTAGE_BACKGROUND to
 		# suppress stdout/stderr output since they are pipes. We
 		# also don't want to open PORTAGE_LOG_FILE, since it will
