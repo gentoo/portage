@@ -28,6 +28,8 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 			mykey=mycpv
 		if hasattr(mydb, "cp_list") and \
 			not mydb.cp_list(mykey, use_cache=use_cache):
+				if hasattr(mydb, "vartree"):
+					settings._populate_treeVirtuals_if_needed(mydb.vartree)
 				virts = settings.getvirtuals().get(mykey)
 				if virts:
 					mykey_orig = mykey
@@ -76,6 +78,8 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 			mykey=matches[0]
 
 		if not mykey and not isinstance(mydb, list):
+			if hasattr(mydb, "vartree"):
+				settings._populate_treeVirtuals_if_needed(mydb.vartree)
 			virts_p = settings.get_virts_p().get(myp)
 			if virts_p:
 				mykey = virts_p[0]
