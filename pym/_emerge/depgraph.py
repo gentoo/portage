@@ -1342,6 +1342,11 @@ class depgraph(object):
 				elif root_deps == "rdeps":
 					ignore_build_time_deps = True
 
+		# If rebuild mode is not enabled, it's safe to discard ignored
+		# build-time dependencies.
+		if ignore_build_time_deps and not self._rebuild.rebuild:
+			edepend["DEPEND"] = ""
+
 		deps = (
 			(depend_root, edepend["DEPEND"],
 				self._priority(buildtime=True,
