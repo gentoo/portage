@@ -1343,8 +1343,11 @@ class depgraph(object):
 					ignore_build_time_deps = True
 
 		# If rebuild mode is not enabled, it's safe to discard ignored
-		# build-time dependencies.
-		if ignore_build_time_deps and not self._rebuild.rebuild:
+		# build-time dependencies. However, keep them if "complete" mode
+		# is enabled, since they make the graph more complete.
+		if ignore_build_time_deps and \
+			not self._rebuild.rebuild and \
+			"complete" not in self._dynamic_config.myparams:
 			edepend["DEPEND"] = ""
 
 		deps = (
