@@ -158,6 +158,8 @@ class vardbapi(dbapi):
 			self._linkmap = LinkageMap(self)
 		self._owners = self._owners_db(self)
 
+		self._cached_counter = None
+
 	def getpath(self, mykey, filename=None):
 		# This is an optimized hotspot, so don't use unicode-wrapped
 		# os module and don't use os.path.join().
@@ -715,17 +717,6 @@ class vardbapi(dbapi):
 		@param myroot: ignored, self._eroot is used instead
 		"""
 		myroot = None
-		cp_list = self.cp_list
-		max_counter = 0
-		for cp in self.cp_all():
-			for cpv in cp_list(cp):
-				try:
-					counter = int(self.aux_get(cpv, ["COUNTER"])[0])
-				except (KeyError, OverflowError, ValueError):
-					continue
-				if counter > max_counter:
-					max_counter = counter
-
 		new_vdb = False
 		counter = -1
 		try:
@@ -753,16 +744,27 @@ class vardbapi(dbapi):
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 				del e
 
-		# We must ensure that we return a counter
-		# value that is at least as large as the
-		# highest one from the installed packages,
-		# since having a corrupt value that is too low
-		# can trigger incorrect AUTOCLEAN behavior due
-		# to newly installed packages having lower
-		# COUNTERs than the previous version in the
-		# same slot.
-		if counter > max_counter:
+		if self._cached_counter == counter:
 			max_counter = counter
+		else:
+			# We must ensure that we return a counter
+			# value that is at least as large as the
+			# highest one from the installed packages,
+			# since having a corrupt value that is too low
+			# can trigger incorrect AUTOCLEAN behavior due
+			# to newly installed packages having lower
+			# COUNTERs than the previous version in the
+			# same slot.
+			cp_list = self.cp_list
+			max_counter = counter
+			for cp in self.cp_all():
+				for cpv in cp_list(cp):
+					try:
+						pkg_counter = int(self.aux_get(cpv, ["COUNTER"])[0])
+					except (KeyError, OverflowError, ValueError):
+						continue
+					if pkg_counter > max_counter:
+						max_counter = pkg_counter
 
 		if counter < 0 and not new_vdb:
 			writemsg(_("!!! Initializing COUNTER to " \
@@ -780,18 +782,19 @@ class vardbapi(dbapi):
 		"""
 		myroot = None
 		mycpv = None
-
 		self.lock()
 		try:
 			counter = self.get_counter_tick_core() - 1
-			if incrementing:
-				#increment counter
-				counter += 1
-				# use same permissions as config._init_dirs()
-				ensure_dirs(os.path.dirname(self._counter_path),
-					gid=portage_gid, mode=0o2750, mask=0o2)
-				# update new global counter file
-				write_atomic(self._counter_path, str(counter))
+			if self._cached_counter != counter:
+				if incrementing:
+					#increment counter
+					counter += 1
+					# use same permissions as config._init_dirs()
+					ensure_dirs(os.path.dirname(self._counter_path),
+						gid=portage_gid, mode=0o2750, mask=0o2)
+					# update new global counter file
+					write_atomic(self._counter_path, str(counter))
+				self._cached_counter = counter
 		finally:
 			self.unlock()
 
@@ -2824,7 +2827,7 @@ class dblink(object):
 			env=env)
 
 	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
-		mydbapi=None, prev_mtimes=None):
+		mydbapi=None, prev_mtimes=None, counter=None):
 		"""
 		
 		This function does the following:
@@ -3242,7 +3245,8 @@ class dblink(object):
 			self.copyfile(inforoot+"/"+x)
 
 		# write local package counter for recording
-		counter = self.vartree.dbapi.counter_tick(mycpv=self.mycpv)
+		if counter is not None:
+			counter = self.vartree.dbapi.counter_tick(mycpv=self.mycpv)
 		codecs.open(_unicode_encode(os.path.join(self.dbtmpdir, 'COUNTER'),
 			encoding=_encodings['fs'], errors='strict'),
 			'w', encoding=_encodings['repo.content'], errors='backslashreplace'
@@ -3857,7 +3861,7 @@ class dblink(object):
 				showMessage(zing + " " + mydest + "\n")
 
 	def merge(self, mergeroot, inforoot, myroot=None, myebuild=None, cleanup=0,
-		mydbapi=None, prev_mtimes=None):
+		mydbapi=None, prev_mtimes=None, counter=None):
 		"""
 		If portage is reinstalling itself, create temporary
 		copies of PORTAGE_BIN_PATH and PORTAGE_PYM_PATH in order
@@ -3926,7 +3930,8 @@ class dblink(object):
 		self.vartree.dbapi._bump_mtime(self.mycpv)
 		try:
 			retval = self.treewalk(mergeroot, myroot, inforoot, myebuild,
-				cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes)
+				cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes,
+				counter=counter)
 
 			# If PORTAGE_BUILDDIR doesn't exist, then it probably means
 			# fail-clean is enabled, and the success/die hooks have
