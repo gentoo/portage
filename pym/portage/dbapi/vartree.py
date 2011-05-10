@@ -764,16 +764,14 @@ class vardbapi(dbapi):
 			# to newly installed packages having lower
 			# COUNTERs than the previous version in the
 			# same slot.
-			cp_list = self.cp_list
 			max_counter = counter
-			for cp in self.cp_all():
-				for cpv in cp_list(cp):
-					try:
-						pkg_counter = int(self.aux_get(cpv, ["COUNTER"])[0])
-					except (KeyError, OverflowError, ValueError):
-						continue
-					if pkg_counter > max_counter:
-						max_counter = pkg_counter
+			for cpv in self.cpv_all():
+				try:
+					pkg_counter = int(self.aux_get(cpv, ["COUNTER"])[0])
+				except (KeyError, OverflowError, ValueError):
+					continue
+				if pkg_counter > max_counter:
+					max_counter = pkg_counter
 
 		if counter < 0 and not new_vdb:
 			writemsg(_("!!! Initializing COUNTER to " \
