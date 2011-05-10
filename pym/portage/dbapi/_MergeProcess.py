@@ -143,6 +143,7 @@ class MergeProcess(SpawnProcess):
 		fd_pipes[elog_writer_fd] = elog_writer_fd
 		self._elog_reg_id = self.scheduler.register(elog_reader_fd,
 			self._registered_events, self._elog_output_handler)
+		counter = self.vartree.dbapi.counter_tick()
 
 		pid = os.fork()
 		if pid != 0:
@@ -196,7 +197,7 @@ class MergeProcess(SpawnProcess):
 		try:
 			rval = mylink.merge(self.pkgloc, self.infloc,
 				myebuild=self.myebuild, mydbapi=self.mydbapi,
-				prev_mtimes=self.prev_mtimes)
+				prev_mtimes=self.prev_mtimes, counter=counter)
 		except SystemExit:
 			raise
 		except:
