@@ -27,7 +27,7 @@ class MergeProcess(SpawnProcess):
 	__slots__ = ('dblink', 'mycat', 'mypkg', 'settings', 'treetype',
 		'vartree', 'scheduler', 'blockers', 'pkgloc', 'infloc', 'myebuild',
 		'mydbapi', 'prev_mtimes', '_elog_reader_fd', '_elog_reg_id',
-		'_buf', '_elog_keys')
+		'_buf', '_elog_keys', '_locked_vdb')
 
 	def _start(self):
 		# Portage should always call setcpv prior to this
@@ -47,6 +47,25 @@ class MergeProcess(SpawnProcess):
 
 		self._handle_self_reinstall()
 		super(MergeProcess, self)._start()
+
+	def _lock_vdb(self):
+		"""
+		Lock the vdb if FEATURES=parallel-install is NOT enabled,
+		otherwise do nothing. This is implemented with
+		vardbapi.lock(), which supports reentrance by the
+		subprocess that we spawn.
+		"""
+		if "parallel-install" not in self.settings.features:
+			self.vartree.dbapi.lock()
+			self._locked_vdb = True
+
+	def _unlock_vdb(self):
+		"""
+		Unlock the vdb if we hold a lock, otherwise do nothing.
+		"""
+		if self._locked_vdb:
+			self.vartree.dbapi.unlock()
+			self._locked_vdb = False
 
 	def _handle_self_reinstall(self):
 		"""
@@ -143,6 +162,14 @@ class MergeProcess(SpawnProcess):
 		fd_pipes[elog_writer_fd] = elog_writer_fd
 		self._elog_reg_id = self.scheduler.register(elog_reader_fd,
 			self._registered_events, self._elog_output_handler)
+
+		# If a concurrent emerge process tries to install a package
+		# in the same SLOT as this one at the same time, there is an
+		# extremely unlikely chance that the COUNTER values will not be
+		# ordered correctly unless we lock the vdb here.
+		# FEATURES=parallel-install skips this lock in order to
+		# improve performance, and the risk is practically negligible.
+		self._lock_vdb()
 		counter = self.vartree.dbapi.counter_tick()
 
 		pid = os.fork()
@@ -211,6 +238,7 @@ class MergeProcess(SpawnProcess):
 		"""
 		Unregister from the scheduler and close open files.
 		"""
+		self._unlock_vdb()
 		if self._elog_reg_id is not None:
 			self.scheduler.unregister(self._elog_reg_id)
 			self._elog_reg_id = None
