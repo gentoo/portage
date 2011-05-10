@@ -5693,9 +5693,6 @@ class _dep_check_composite_db(dbapi):
 		ret = self._match_cache.get(atom)
 		if ret is not None:
 			return ret[:]
-		orig_atom = atom
-		if "/" not in atom:
-			atom = self._dep_expand(atom)
 		pkg, existing = self._depgraph._select_package(self._root, atom)
 		if not pkg:
 			ret = []
@@ -5735,7 +5732,7 @@ class _dep_check_composite_db(dbapi):
 				ret.append(pkg.cpv)
 			if ret:
 				self._cpv_sort_ascending(ret)
-		self._match_cache[orig_atom] = ret
+		self._match_cache[atom] = ret
 		return ret[:]
 
 	def _visible(self, pkg):
@@ -5789,43 +5786,6 @@ class _dep_check_composite_db(dbapi):
 			# conflict with a previously selected package.
 			return False
 		return True
-
-	def _dep_expand(self, atom):
-		"""
-		This is only needed for old installed packages that may
-		contain atoms that are not fully qualified with a specific
-		category. Emulate the cpv_expand() function that's used by
-		dbapi.match() in cases like this. If there are multiple
-		matches, it's often due to a new-style virtual that has
-		been added, so try to filter those out to avoid raising
-		a ValueError.
-		"""
-		root_config = self._depgraph.roots[self._root]
-		orig_atom = atom
-		expanded_atoms = self._depgraph._dep_expand(root_config, atom)
-		if len(expanded_atoms) > 1:
-			non_virtual_atoms = []
-			for x in expanded_atoms:
-				if not x.cp.startswith("virtual/"):
-					non_virtual_atoms.append(x)
-			if len(non_virtual_atoms) == 1:
-				expanded_atoms = non_virtual_atoms
-		if len(expanded_atoms) > 1:
-			# compatible with portage.cpv_expand()
-			raise portage.exception.AmbiguousPackageName(
-				[x.cp for x in expanded_atoms])
-		if expanded_atoms:
-			atom = expanded_atoms[0]
-		else:
-			null_atom = Atom(insert_category_into_atom(atom, "null"))
-			cat, atom_pn = portage.catsplit(null_atom.cp)
-			virts_p = root_config.settings.get_virts_p().get(atom_pn)
-			if virts_p:
-				# Allow the resolver to choose which virtual.
-				atom = Atom(null_atom.replace('null/', 'virtual/', 1))
-			else:
-				atom = null_atom
-		return atom
 
 	def aux_get(self, cpv, wants):
 		metadata = self._cpv_pkg_map[cpv].metadata
