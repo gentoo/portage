@@ -1343,11 +1343,10 @@ class depgraph(object):
 					ignore_build_time_deps = True
 
 		# If rebuild mode is not enabled, it's safe to discard ignored
-		# build-time dependencies. However, keep them if "complete" mode
-		# is enabled, since they make the graph more complete.
+		# build-time dependencies. If you want these deps to be traversed
+		# in "complete" mode then you need to specify --with-bdeps=y.
 		if ignore_build_time_deps and \
-			not self._rebuild.rebuild and \
-			"complete" not in self._dynamic_config.myparams:
+			not self._rebuild.rebuild:
 			edepend["DEPEND"] = ""
 
 		deps = (
@@ -4000,9 +3999,6 @@ class depgraph(object):
 			self._select_package = self._select_pkg_from_installed
 		else:
 			self._select_package = self._select_pkg_from_graph
-			# Make the graph as complete as possible by traversing build-time
-			# dependencies if they happen to be installed already.
-			self._dynamic_config.myparams["bdeps"] = "y"
 			self._dynamic_config._traverse_ignored_deps = True
 		already_deep = self._dynamic_config.myparams.get("deep") is True
 		if not already_deep:

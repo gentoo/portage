@@ -383,7 +383,10 @@ def help(myopts, havecolor=1):
 			" option will significantly increase the time taken for dependency" + \
 			" calculations. Note that, unlike the --deep option, the" + \
 			" --complete-graph option does not cause any more packages to" + \
-			" be updated than would have otherwise been updated with the option disabled."
+			" be updated than would have otherwise " + \
+			"been updated with the option disabled. " + \
+			"Using --with-bdeps=y together with --complete-graph makes " + \
+			"the graph as complete as possible."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
