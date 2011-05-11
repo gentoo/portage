@@ -83,6 +83,7 @@ def unmerge(root_config, myopts, unmerge_action,
 					syslist.extend(providers)
 			else:
 				syslist.append(mycp)
+		syslist = frozenset(syslist)
 	
 		mysettings = portage.config(clone=settings)
 	
