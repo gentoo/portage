@@ -99,7 +99,7 @@ class EbuildPhase(CompositeTask):
 					os.path.join(self.settings['PKGDIR'],
 					self.settings['CATEGORY'], self.settings['PF']) + '.tbz2'
 
-		if self.phase == 'prerm':
+		if self.phase in ("pretend", "prerm"):
 			env_extractor = BinpkgEnvExtractor(background=self.background,
 				scheduler=self.scheduler, settings=self.settings)
 			if env_extractor.saved_env_exists():
