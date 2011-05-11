@@ -5667,7 +5667,9 @@ class _dep_check_composite_db(dbapi):
 	def cp_list(self, cp):
 		"""
 		Emulate cp_list just so it can be used to check for existence
-		of new-style virtuals.
+		of new-style virtuals. Since it's a waste of time to return
+		more than one cpv for this use case, a maximum of one cpv will
+		be returned.
 		"""
 		if isinstance(cp, Atom):
 			atom = cp
@@ -5678,6 +5680,7 @@ class _dep_check_composite_db(dbapi):
 			self._depgraph._frozen_config.roots[self._root], atom):
 			if pkg.cp == cp:
 				ret.append(pkg.cpv)
+				break
 
 		return ret
 
