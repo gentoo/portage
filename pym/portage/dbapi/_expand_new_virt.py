@@ -13,6 +13,11 @@ def expand_new_virt(vardb, atom):
 	"""
 	if not isinstance(atom, Atom):
 		atom = Atom(atom)
+
+	if not atom.cp.startswith("virtual/"):
+		yield atom
+		return
+
 	traversed = set()
 	stack = [atom]
 
