@@ -286,12 +286,18 @@ class portdbapi(dbapi):
 		# to the cache entries/directories.
 		if secpass < 1 or not depcachedir_w_ok:
 			for x in self.porttrees:
-				db_ro = self.auxdbmodule(self.depcachedir, x,
-					filtered_auxdbkeys, gid=portage_gid, readonly=True)
-				self.auxdb[x] = metadata_overlay.database(
-					self.depcachedir, x, filtered_auxdbkeys,
-					gid=portage_gid, db_rw=volatile.database,
-					db_ro=db_ro)
+				try:
+					db_ro = self.auxdbmodule(self.depcachedir, x,
+						filtered_auxdbkeys, readonly=True, **cache_kwargs)
+				except CacheError:
+					self.auxdb[x] = volatile.database(
+						self.depcachedir, x, filtered_auxdbkeys,
+						**cache_kwargs)
+				else:
+					self.auxdb[x] = metadata_overlay.database(
+						self.depcachedir, x, filtered_auxdbkeys,
+						db_rw=volatile.database, db_ro=db_ro,
+						**cache_kwargs)
 		else:
 			for x in self.porttrees:
 				if x in self.auxdb:
