@@ -3915,10 +3915,10 @@ class dblink(object):
 
 		return self._merge(mergeroot, inforoot,
 				myebuild=myebuild, cleanup=cleanup,
-				mydbapi=mydbapi, prev_mtimes=prev_mtimes)
+				mydbapi=mydbapi, prev_mtimes=prev_mtimes, counter=counter)
 
 	def _merge(self, mergeroot, inforoot, myroot=None, myebuild=None, cleanup=0,
-		mydbapi=None, prev_mtimes=None):
+		mydbapi=None, prev_mtimes=None, counter=None):
 		"""
 		@param myroot: ignored, self._eroot is used instead
 		"""
