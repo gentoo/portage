@@ -18,7 +18,8 @@ def expand_new_virt(vardb, atom):
 
 	while stack:
 		atom = stack.pop()
-		if atom.blocker:
+		if atom.blocker or \
+			not atom.cp.startswith("virtual/"):
 			yield atom
 			continue
 
