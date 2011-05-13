@@ -8,6 +8,7 @@ import sys
 import textwrap
 import portage
 from portage import os
+from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.output import bold, colorize, darkgreen, green
 from portage._sets import SETPREFIX
 from portage.util import cmp_sort_key
@@ -57,11 +58,23 @@ def unmerge(root_config, myopts, unmerge_action,
 	try:
 		if os.access(vdb_path, os.W_OK):
 			vdb_lock = portage.locks.lockdir(vdb_path)
-		realsyslist = sets["system"].getAtoms()
+
+		realsyslist = []
+		for x in sets["system"].getAtoms():
+			for atom in expand_new_virt(vartree.dbapi, x):
+				if not atom.blocker:
+					realsyslist.append(atom)
+
 		syslist = []
 		for x in realsyslist:
-			mycp = portage.dep_getkey(x)
-			if mycp in settings.getvirtuals():
+			mycp = x.cp
+			# Since Gentoo stopped using old-style virtuals in
+			# 2011, typically it's possible to avoid getvirtuals()
+			# calls entirely. It will not be triggered here by
+			# new-style virtuals since those are expanded to
+			# non-virtual atoms above by expand_new_virt().
+			if mycp.startswith("virtual/") and \
+				mycp in settings.getvirtuals():
 				providers = []
 				for provider in settings.getvirtuals()[mycp]:
 					if vartree.dbapi.match(provider):
@@ -70,6 +83,7 @@ def unmerge(root_config, myopts, unmerge_action,
 					syslist.extend(providers)
 			else:
 				syslist.append(mycp)
+		syslist = frozenset(syslist)
 	
 		mysettings = portage.config(clone=settings)
 	

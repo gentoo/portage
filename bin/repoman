@@ -413,6 +413,7 @@ qawarnings = set((
 "portage.internal",
 "usage.obsolete",
 "upstream.workaround",
+"virtual.oldstyle",
 "LIVEVCS.stable",
 "LIVEVCS.unmasked",
 ))

@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import copy
@@ -11,6 +11,7 @@ class database(template.database):
 
 	def __init__(self, *args, **config):
 		config.pop("gid", None)
+		config.pop("perms", None)
 		super(database, self).__init__(*args, **config)
 		self._data = {}
 		self.__iter__ = self._data.__iter__

@@ -17,6 +17,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.versions:best,catpkgsplit,_pkgsplit@pkgsplit,ver_regexp',
 )
 
+from portage.cache import metadata_overlay, volatile
 from portage.cache.cache_errors import CacheError
 from portage.cache.mappings import Mapping
 from portage.dbapi import dbapi
@@ -40,6 +41,7 @@ import codecs
 import logging
 import stat
 import sys
+import traceback
 import warnings
 
 if sys.hexversion >= 0x3000000:
@@ -159,24 +161,27 @@ class portdbapi(dbapi):
 			'perms'   : 0o664
 		}
 
-		if secpass < 1:
-			# portage_gid is irrelevant, so just obey umask
-			cache_kwargs['gid']   = -1
-			cache_kwargs['perms'] = -1
-
 		# XXX: REMOVE THIS ONCE UNUSED_0 IS YANKED FROM auxdbkeys
 		# ~harring
 		filtered_auxdbkeys = [x for x in auxdbkeys if not x.startswith("UNUSED_0")]
 		filtered_auxdbkeys.sort()
-		from portage.cache import metadata_overlay, volatile
-		if not depcachedir_w_ok:
+		# If secpass < 1, we don't want to write to the cache
+		# since then we won't be able to apply group permissions
+		# to the cache entries/directories.
+		if secpass < 1 or not depcachedir_w_ok:
 			for x in self.porttrees:
-				db_ro = self.auxdbmodule(self.depcachedir, x,
-					filtered_auxdbkeys, gid=portage_gid, readonly=True)
-				self.auxdb[x] = metadata_overlay.database(
-					self.depcachedir, x, filtered_auxdbkeys,
-					gid=portage_gid, db_rw=volatile.database,
-					db_ro=db_ro)
+				try:
+					db_ro = self.auxdbmodule(self.depcachedir, x,
+						filtered_auxdbkeys, readonly=True, **cache_kwargs)
+				except CacheError:
+					self.auxdb[x] = volatile.database(
+						self.depcachedir, x, filtered_auxdbkeys,
+						**cache_kwargs)
+				else:
+					self.auxdb[x] = metadata_overlay.database(
+						self.depcachedir, x, filtered_auxdbkeys,
+						db_rw=volatile.database, db_ro=db_ro,
+						**cache_kwargs)
 		else:
 			for x in self.porttrees:
 				if x in self.auxdb:
@@ -370,7 +375,12 @@ class portdbapi(dbapi):
 				metadata[k] = ""
 			metadata["EAPI"] = "-" + eapi.lstrip("-")
 
-		self.auxdb[repo_path][cpv] = metadata
+		try:
+			self.auxdb[repo_path][cpv] = metadata
+		except CacheError:
+			# Normally this shouldn't happen, so we'll show
+			# a traceback for debugging purposes.
+			traceback.print_exc()
 		return metadata
 
 	def _pull_valid_cache(self, cpv, ebuild_path, repo_path):

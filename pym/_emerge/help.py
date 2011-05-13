@@ -383,7 +383,10 @@ def help(myopts, havecolor=1):
 			" option will significantly increase the time taken for dependency" + \
 			" calculations. Note that, unlike the --deep option, the" + \
 			" --complete-graph option does not cause any more packages to" + \
-			" be updated than would have otherwise been updated with the option disabled."
+			" be updated than would have otherwise " + \
+			"been updated with the option disabled. " + \
+			"Using --with-bdeps=y together with --complete-graph makes " + \
+			"the graph as complete as possible."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
@@ -559,15 +562,22 @@ def help(myopts, havecolor=1):
 		print("       "+green("--nospinner"))
 		print("              Disables the spinner regardless of terminal type.")
 		print()
-		print("       " + green("--nousepkg-atoms") + " " + turquoise("ATOMS"))
+		print("       " + green("--usepkg-exclude") + " " + turquoise("ATOMS"))
 		desc = "A space separated list of package names or slot atoms." + \
 			" Emerge will ignore matching binary packages."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
-		print("       " + green("--norebuild-atoms") + " " + turquoise("ATOMS"))
+		print("       " + green("--rebuild-exclude") + " " + turquoise("ATOMS"))
 		desc = "A space separated list of package names or slot atoms." + \
 			" Emerge will not rebuild matching packages due to --rebuild."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
+		print("       " + green("--rebuild-ignore") + " " + turquoise("ATOMS"))
+		desc = "A space separated list of package names or slot atoms." + \
+			" Emerge will not rebuild packages that depend on matching " + \
+			" packages due to --rebuild."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
@@ -622,10 +632,28 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
-		print("       " + green("--rebuild") + " [ %s | %s ]" % \
+		print("       " + green("--rebuild-if-new-rev") + " [ %s | %s ]" % \
 			(turquoise("y"), turquoise("n")))
-		desc = "Rebuild packages when dependencies that are used " + \
-			"at both build-time and run-time are upgraded."
+		desc = "Rebuild packages when dependencies that are " + \
+			"used at both build-time and run-time are built, " + \
+			"if the dependency is not already installed with the " + \
+			"same version and revision."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
+		print("       " + green("--rebuild-if-new-ver") + " [ %s | %s ]" % \
+			(turquoise("y"), turquoise("n")))
+		desc = "Rebuild packages when dependencies that are " + \
+			"used at both build-time and run-time are built, " + \
+			"if the dependency is not already installed with the " + \
+			"same version. Revision numbers are ignored."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
+		print("       " + green("--rebuild-if-unbuilt") + " [ %s | %s ]" % \
+			(turquoise("y"), turquoise("n")))
+		desc = "Rebuild packages when dependencies that are " + \
+			"used at both build-time and run-time are built."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
