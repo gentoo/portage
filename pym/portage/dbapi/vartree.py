@@ -3468,14 +3468,20 @@ class dblink(object):
 				for cpv, paths in plib_collisions.items():
 					if cpv not in plib_dict:
 						continue
-					if cpv == self.mycpv:
-						continue
-					has_vdb_entry = True
-					try:
-						slot, counter = self.vartree.dbapi.aux_get(
-							cpv, ["SLOT", "COUNTER"])
-					except KeyError:
-						has_vdb_entry = False
+					has_vdb_entry = False
+					if cpv != self.mycpv:
+						# If we've replaced another instance with the
+						# same cpv then the vdb entry no longer belongs
+						# to it, so we'll have to get the slot and couter
+						# from plib_registry._data instead.
+						try:
+							slot, counter = self.vartree.dbapi.aux_get(
+								cpv, ["SLOT", "COUNTER"])
+							has_vdb_entry = True
+						except KeyError:
+							pass
+
+					if not has_vdb_entry:
 						# It's possible for previously unmerged packages
 						# to have preserved libs in the registry, so try
 						# to retrieve the slot and counter from there.
