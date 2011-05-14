@@ -1478,15 +1478,24 @@ class dblink(object):
 			try:
 				plib_registry.load()
 
-				if unmerge:
-					# self.mycpv is about to be unmerged, so we shouldn't pay
-					# attention to its needs in the linkmap.
+				unmerge_with_replacement = \
+					unmerge and preserve_paths is not None
+				if unmerge_with_replacement:
+					# If self.mycpv is about to be unmerged and we
+					# have a replacement package, we want to exclude
+					# the irrelevant NEEDED data that belongs to
+					# files which are being unmerged now.
 					exclude_pkgs = (self.mycpv,)
 				else:
 					exclude_pkgs = None
 
 				self._linkmap_rebuild(exclude_pkgs=exclude_pkgs,
 					include_file=needed, preserve_paths=preserve_paths)
+
+				unmerge_preserve = None
+				if unmerge and not unmerge_with_replacement:
+					unmerge_preserve = \
+						self._find_libs_to_preserve(unmerge=True)
 
 				cpv_lib_map = self._find_unused_preserved_libs()
 				if cpv_lib_map:
@@ -1497,8 +1506,16 @@ class dblink(object):
 						self.vartree.dbapi.removeFromContents(cpv, removed)
 
 				if unmerge:
-					plib_registry.unregister(self.mycpv, self.settings["SLOT"],
-						self.vartree.dbapi.cpv_counter(self.mycpv))
+					counter = self.vartree.dbapi.cpv_counter(self.mycpv)
+					plib_registry.unregister(self.mycpv,
+						self.settings["SLOT"], counter)
+					if unmerge_preserve:
+						plib_registry.register(self.mycpv,
+							self.settings["SLOT"], counter, unmerge_preserve)
+						# Remove the preserved files from our contents
+						# so that they won't be unmerged.
+						self.vartree.dbapi.removeFromContents(self,
+							unmerge_preserve)
 
 				plib_registry.store()
 			finally:
@@ -1614,6 +1631,9 @@ class dblink(object):
 					level=logging.ERROR, noiselevel=-1)
 				myebuildpath = None
 
+		self._prune_plib_registry(unmerge=True, needed=needed,
+			preserve_paths=preserve_paths)
+
 		builddir_lock = None
 		log_path = None
 		scheduler = self._scheduler
@@ -1664,8 +1684,6 @@ class dblink(object):
 					showMessage(_("!!! FAILED postrm: %s\n") % retval,
 						level=logging.ERROR, noiselevel=-1)
 
-			self._prune_plib_registry(unmerge=True, needed=needed,
-				preserve_paths=preserve_paths)
 		finally:
 			self.vartree.dbapi._bump_mtime(self.mycpv)
 			if builddir_lock:
@@ -2279,21 +2297,26 @@ class dblink(object):
 				"due to error: Command Not Found: %s\n") % (e,),
 				level=logging.ERROR, noiselevel=-1)
 
-	def _find_libs_to_preserve(self):
+	def _find_libs_to_preserve(self, unmerge=False):
 		"""
-		Get set of relative paths for libraries to be preserved. The file
-		paths are selected from self._installed_instance.getcontents().
+		Get set of relative paths for libraries to be preserved. When
+		unmerge is False, file paths to preserver are selected from
+		self._installed_instance. Otherwise, paths are selected from
+		self.
 		"""
 		if self._linkmap_broken or \
 			self.vartree.dbapi._linkmap is None or \
 			self.vartree.dbapi._plib_registry is None or \
-			self._installed_instance is None or \
+			(not unmerge and self._installed_instance is None) or \
 			"preserve-libs" not in self.settings.features:
 			return None
 
 		os = _os_merge
 		linkmap = self.vartree.dbapi._linkmap
-		installed_instance = self._installed_instance
+		if unmerge:
+			installed_instance = self
+		else:
+			installed_instance = self._installed_instance
 		old_contents = installed_instance.getcontents()
 		root = self.settings['ROOT']
 		root_len = len(root) - 1
@@ -2333,7 +2356,9 @@ class dblink(object):
 						os = portage.os
 
 			f = f_abs[root_len:]
-			if self.isowner(f):
+			if not unmerge and self.isowner(f):
+				# We have an indentically named replacement file,
+				# so we don't try to preserve the old copy.
 				continue
 			try:
 				consumers = linkmap.findConsumers(f)
@@ -2350,8 +2375,6 @@ class dblink(object):
 		# Note that consumers can also be providers.
 		for provider_node, consumers in consumer_map.items():
 			for c in consumers:
-				if self.isowner(c):
-					continue
 				consumer_node = path_to_node(c)
 				if installed_instance.isowner(c) and \
 					consumer_node not in provider_nodes:
@@ -3323,8 +3346,13 @@ class dblink(object):
 
 		linkmap = self.vartree.dbapi._linkmap
 		plib_registry = self.vartree.dbapi._plib_registry
-		include_file = None
-		preserve_paths = None
+		# We initialize preserve_paths to an empty set rather
+		# than None here because it plays an important role
+		# in prune_plib_registry logic by serving to indicate
+		# that we have a replacement for a package that's
+		# being unmerged.
+
+		preserve_paths = set()
 		needed = None
 		if not (linkmap is None or plib_registry is None):
 			plib_registry.lock()
@@ -3334,6 +3362,10 @@ class dblink(object):
 				self._linkmap_rebuild(include_file=needed)
 
 				# Preserve old libs if they are still in use
+				# TODO: Handle cases where the previous instance
+				# has already been uninstalled but it still has some
+				# preserved libraries in the registry that we may
+				# want to preserve here.
 				preserve_paths = self._find_libs_to_preserve()
 			finally:
 				plib_registry.unlock()
@@ -3438,14 +3470,35 @@ class dblink(object):
 						continue
 					if cpv == self.mycpv:
 						continue
+					has_vdb_entry = True
 					try:
 						slot, counter = self.vartree.dbapi.aux_get(
 							cpv, ["SLOT", "COUNTER"])
 					except KeyError:
-						continue
+						has_vdb_entry = False
+						# It's possible for previously unmerged packages
+						# to have preserved libs in the registry, so try
+						# to retrieve the slot and counter from there.
+						has_registry_entry = False
+						for plib_cps, (plib_cpv, plib_counter, plib_paths) in \
+							plib_registry._data.items():
+							if plib_cpv != cpv:
+								continue
+							try:
+								cp, slot = plib_cps.split(":", 1)
+							except ValueError:
+								continue
+							counter = plib_counter
+							has_registry_entry = True
+							break
+
+						if not has_registry_entry:
+							continue
+
 					remaining = [f for f in plib_dict[cpv] if f not in paths]
 					plib_registry.register(cpv, slot, counter, remaining)
-					self.vartree.dbapi.removeFromContents(cpv, paths)
+					if has_vdb_entry:
+						self.vartree.dbapi.removeFromContents(cpv, paths)
 
 				plib_registry.store()
 			finally:

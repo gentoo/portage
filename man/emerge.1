@@ -376,7 +376,10 @@ required.
 Account for library link-level dependencies during
 \fB\-\-depclean\fR and \fB\-\-prune\fR actions. This
 option is enabled by default. In some cases this can
-be somewhat time\-consuming.
+be somewhat time\-consuming. This option is ignored
+when FEATURES="preserve\-libs" is enabled in
+\fBmake.conf\fR(5), since any libraries that have
+consumers will simply be preserved.
 .TP
 .BR "\-\-emptytree " (\fB\-e\fR)
 Reinstalls target atoms and their entire deep
