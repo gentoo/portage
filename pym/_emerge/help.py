@@ -416,7 +416,10 @@ def help(myopts, havecolor=1):
 			desc = "Account for library link-level dependencies during " + \
 				"--depclean and --prune actions. This " + \
 				"option is enabled by default. In some cases this can " + \
-				"be somewhat time-consuming."
+				"be somewhat time-consuming. This option is ignored " + \
+				"when FEATURES=\"preserve-libs\" is enabled in " + \
+				"make.conf(5), since any libraries that have " + \
+				"consumers will simply be preserved."
 			for line in wrap(desc, desc_width):
 				print(desc_indent + line)
 			print()

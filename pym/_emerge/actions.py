@@ -907,7 +907,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 	if cleanlist and \
 		real_vardb._linkmap is not None and \
-		myopts.get('--depclean-lib-check') != 'n':
+		myopts.get("--depclean-lib-check") != "n" and \
+		"preserve-libs" not in settings.features:
 
 		# Check if any of these packages are the sole providers of libraries
 		# with consumers that have not been selected for removal. If so, these
