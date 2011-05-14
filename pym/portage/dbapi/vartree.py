@@ -3495,7 +3495,7 @@ class dblink(object):
 					if cpv != self.mycpv:
 						# If we've replaced another instance with the
 						# same cpv then the vdb entry no longer belongs
-						# to it, so we'll have to get the slot and couter
+						# to it, so we'll have to get the slot and counter
 						# from plib_registry._data instead.
 						try:
 							slot, counter = self.vartree.dbapi.aux_get(
