@@ -1,4 +1,4 @@
-# Copyright 1998-2010 Gentoo Foundation
+# Copyright 1998-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -96,10 +96,26 @@ class LinkageMapXCoff(LinkageMapELF):
 		def __str__(self):
 			return str(sorted(self.alt_paths))
 
-	def rebuild(self, exclude_pkgs=None, include_file=None):
+	def rebuild(self, exclude_pkgs=None, include_file=None,
+		preserve_paths=None):
 		"""
 		Raises CommandNotFound if there are preserved libs
 		and the scanelf binary is not available.
+
+		@param exclude_pkgs: A set of packages that should be excluded from
+			the LinkageMap, since they are being unmerged and their NEEDED
+			entries are therefore irrelevant and would only serve to corrupt
+			the LinkageMap.
+		@type exclude_pkgs: set
+		@param include_file: The path of a file containing NEEDED entries for
+			a package which does not exist in the vardbapi yet because it is
+			currently being merged.
+		@type include_file: String
+		@param preserve_paths: Libraries preserved by a package instance that
+			is currently being merged. They need to be explicitly passed to the
+			LinkageMap, since they are not registered in the
+			PreservedLibsRegistry yet.
+		@type preserve_paths: set
 		"""
 
 		os = _os_merge
@@ -108,7 +124,6 @@ class LinkageMapXCoff(LinkageMapELF):
 		self._clear_cache()
 		self._defpath.update(getlibpaths(self._root))
 		libs = self._libs
-		obj_key_cache = self._obj_key_cache
 		obj_properties = self._obj_properties
 
 		lines = []
@@ -116,75 +131,96 @@ class LinkageMapXCoff(LinkageMapELF):
 		# Data from include_file is processed first so that it
 		# overrides any data from previously installed files.
 		if include_file is not None:
-			lines += grabfile(include_file)
+			for line in grabfile(include_file):
+				lines.append((include_file, line))
 
 		aux_keys = [self._needed_aux_key]
-		for cpv in self._dbapi.cpv_all():
-			if exclude_pkgs is not None and cpv in exclude_pkgs:
-				continue
-			lines += self._dbapi.aux_get(cpv, aux_keys)[0].split('\n')
-		# Cache NEEDED.* files avoid doing excessive IO for every rebuild.
-		self._dbapi.flush_cache()
+		can_lock = os.access(os.path.dirname(self._dbapi._dbroot), os.W_OK)
+		if can_lock:
+			self._dbapi.lock()
+		try:
+			for cpv in self._dbapi.cpv_all():
+				if exclude_pkgs is not None and cpv in exclude_pkgs:
+					continue
+				needed_file = self._dbapi.getpath(cpv,
+					filename=self._needed_aux_key)
+				for line in self._dbapi.aux_get(cpv, aux_keys)[0].splitlines():
+					lines.append((needed_file, line))
+		finally:
+			if can_lock:
+				self._dbapi.unlock()
 
 		# have to call scanelf for preserved libs here as they aren't 
 		# registered in NEEDED.XCOFF.1 files
 		plibs = set()
-		if self._dbapi._plib_registry and self._dbapi._plib_registry.getPreservedLibs():
-			for items in self._dbapi._plib_registry.getPreservedLibs().values():
+		if preserve_paths is not None:
+			plibs.update(preserve_paths)
+		if self._dbapi._plib_registry and \
+			self._dbapi._plib_registry.hasEntries():
+			for cpv, items in \
+				self._dbapi._plib_registry.getPreservedLibs().items():
+				if exclude_pkgs is not None and cpv in exclude_pkgs:
+					# These preserved libs will either be unmerged,
+					# rendering them irrelevant, or they will be
+					# preserved in the replacement package and are
+					# already represented via the preserve_paths
+					# parameter.
+					continue
 				plibs.update(items)
-				for x in items:
-					args = [BASH_BINARY, "-c", ':'
-						+ '; member="' + x + '"'
-						+ '; archive=${member}'
-						+ '; if [[ ${member##*/} == .*"["*"]" ]]'
-						+ '; then member=${member%/.*}/${member##*/.}'
-							 + '; archive=${member%[*}'
-						+ '; fi'
-						+ '; member=${member#${archive}}'
-						+ '; [[ -r ${archive} ]] || chmod a+r "${archive}"'
-						+ '; eval $(aixdll-query "${archive}${member}" FILE MEMBER FLAGS FORMAT RUNPATH DEPLIBS)'
-						+ '; [[ -n ${member} ]] && needed=${FILE##*/} || needed='
-						+ '; for deplib in ${DEPLIBS}'
-						+ '; do eval deplib=${deplib}'
-						   + '; if [[ ${deplib} != "." && ${deplib} != ".." ]]'
-						   + '; then needed="${needed}${needed:+,}${deplib}"'
-						   + '; fi'
-						+ '; done'
-						+ '; [[ -n ${MEMBER} ]] && MEMBER="[${MEMBER}]"'
-						+ '; [[ " ${FLAGS} " == *" SHROBJ "* ]] && soname=${FILE##*/}${MEMBER} || soname='
-						+ '; echo "${FORMAT##* }${FORMAT%%-*};${FILE#${ROOT%/}}${MEMBER};${soname};${RUNPATH};${needed}"'
-						+ '; [[ -z ${member} && -n ${MEMBER} ]] && echo "${FORMAT##* }${FORMAT%%-*};${FILE#${ROOT%/}};${FILE##*/};;"'
-					]
+		if plibs:
+			for x in plibs:
+				args = [BASH_BINARY, "-c", ':'
+					+ '; member="' + x + '"'
+					+ '; archive=${member}'
+					+ '; if [[ ${member##*/} == .*"["*"]" ]]'
+					+ '; then member=${member%/.*}/${member##*/.}'
+						 + '; archive=${member%[*}'
+					+ '; fi'
+					+ '; member=${member#${archive}}'
+					+ '; [[ -r ${archive} ]] || chmod a+r "${archive}"'
+					+ '; eval $(aixdll-query "${archive}${member}" FILE MEMBER FLAGS FORMAT RUNPATH DEPLIBS)'
+					+ '; [[ -n ${member} ]] && needed=${FILE##*/} || needed='
+					+ '; for deplib in ${DEPLIBS}'
+					+ '; do eval deplib=${deplib}'
+					   + '; if [[ ${deplib} != "." && ${deplib} != ".." ]]'
+					   + '; then needed="${needed}${needed:+,}${deplib}"'
+					   + '; fi'
+					+ '; done'
+					+ '; [[ -n ${MEMBER} ]] && MEMBER="[${MEMBER}]"'
+					+ '; [[ " ${FLAGS} " == *" SHROBJ "* ]] && soname=${FILE##*/}${MEMBER} || soname='
+					+ '; echo "${FORMAT##* }${FORMAT%%-*};${FILE#${ROOT%/}}${MEMBER};${soname};${RUNPATH};${needed}"'
+					+ '; [[ -z ${member} && -n ${MEMBER} ]] && echo "${FORMAT##* }${FORMAT%%-*};${FILE#${ROOT%/}};${FILE##*/};;"'
+				]
+			try:
+				proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+			except EnvironmentError as e:
+				if e.errno != errno.ENOENT:
+					raise
+				raise CommandNotFound(args[0])
+			else:
+				for l in proc.stdout:
 					try:
-						proc = subprocess.Popen(args, stdout=subprocess.PIPE)
-					except EnvironmentError as e:
-						if e.errno != errno.ENOENT:
-							raise
-						raise CommandNotFound("aixdll-query via " + argv[0])
-					else:
-						for l in proc.stdout:
-							try:
-								l = _unicode_decode(l,
-									encoding=_encodings['content'], errors='strict')
-							except UnicodeDecodeError:
-								l = _unicode_decode(l,
-									encoding=_encodings['content'], errors='replace')
-								writemsg_level(_("\nError decoding characters " \
-									"returned from aixdll-query: %s\n\n") % (l,),
-									level=logging.ERROR, noiselevel=-1)
-							l = l.rstrip("\n")
-							if not l:
-								continue
-							fields = l.split(";")
-							if len(fields) < 5:
-								writemsg_level(_("\nWrong number of fields " \
-									"returned from aixdll-query: %s\n\n") % (l,),
-									level=logging.ERROR, noiselevel=-1)
-								continue
-							fields[1] = fields[1][root_len:]
-							plibs.discard(fields[1])
-							lines.append(";".join(fields))
-						proc.wait()
+						l = _unicode_decode(l,
+							encoding=_encodings['content'], errors='strict')
+					except UnicodeDecodeError:
+						l = _unicode_decode(l,
+							encoding=_encodings['content'], errors='replace')
+						writemsg_level(_("\nError decoding characters " \
+							"returned from aixdll-query: %s\n\n") % (l,),
+							level=logging.ERROR, noiselevel=-1)
+					l = l.rstrip("\n")
+					if not l:
+						continue
+					fields = l.split(";")
+					if len(fields) < 5:
+						writemsg_level(_("\nWrong number of fields " \
+							"returned from aixdll-query: %s\n\n") % (l,),
+							level=logging.ERROR, noiselevel=-1)
+						continue
+					fields[1] = fields[1][root_len:]
+					plibs.discard(fields[1])
+					lines.append(("aixdll-query", ";".join(fields)))
+				proc.wait()
 
 		if plibs:
 			# Preserved libraries that did not appear in the bash
@@ -195,16 +231,16 @@ class LinkageMapXCoff(LinkageMapELF):
 			# order to prevent findConsumers from raising an unwanted
 			# KeyError.
 			for x in plibs:
-				lines.append(";".join(['', x, '', '', '']))
+				lines.append(("plibs", ";".join(['', x, '', '', ''])))
 
-		for l in lines:
+		for location, l in lines:
 			l = l.rstrip("\n")
 			if not l:
 				continue
 			fields = l.split(";")
 			if len(fields) < 5:
 				writemsg_level(_("\nWrong number of fields " \
-					"in %s: %s\n\n") % (self._needed_aux_key, l),
+					"in %s: %s\n\n") % (location, l),
 					level=logging.ERROR, noiselevel=-1)
 				continue
 			arch = fields[0]

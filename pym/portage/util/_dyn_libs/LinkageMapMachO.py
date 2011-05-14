@@ -1,4 +1,4 @@
-# Copyright 1998-2010 Gentoo Foundation
+# Copyright 1998-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -29,7 +29,7 @@ class LinkageMapMachO(object):
 
 	def __init__(self, vardbapi):
 		self._dbapi = vardbapi
-		self._root = self._dbapi.root
+		self._root = self._dbapi.settings['ROOT']
 		self._libs = {}
 		self._obj_properties = {}
 		self._obj_key_cache = {}
@@ -109,7 +109,7 @@ class LinkageMapMachO(object):
 				else:
 					os = portage.os
 
-			abs_path = os.path.join(root, obj.lstrip(os.path.sep))
+			abs_path = os.path.join(root, obj.lstrip(os.sep))
 			try:
 				object_stat = os.stat(abs_path)
 			except OSError:
@@ -141,55 +141,98 @@ class LinkageMapMachO(object):
 		def __str__(self):
 			return str(sorted(self.alt_paths))
 
-	def rebuild(self, exclude_pkgs=None, include_file=None):
+	def rebuild(self, exclude_pkgs=None, include_file=None,
+		preserve_paths=None):
 		"""
 		Raises CommandNotFound if there are preserved libs
 		and the scanmacho binary is not available.
+
+		@param exclude_pkgs: A set of packages that should be excluded from
+			the LinkageMap, since they are being unmerged and their NEEDED
+			entries are therefore irrelevant and would only serve to corrupt
+			the LinkageMap.
+		@type exclude_pkgs: set
+		@param include_file: The path of a file containing NEEDED entries for
+			a package which does not exist in the vardbapi yet because it is
+			currently being merged.
+		@type include_file: String
+		@param preserve_paths: Libraries preserved by a package instance that
+			is currently being merged. They need to be explicitly passed to the
+			LinkageMap, since they are not registered in the
+			PreservedLibsRegistry yet.
+		@type preserve_paths: set
 		"""
+
+		os = _os_merge
 		root = self._root
 		root_len = len(root) - 1
 		self._clear_cache()
 		libs = self._libs
-		obj_key_cache = self._obj_key_cache
 		obj_properties = self._obj_properties
-
-		os = _os_merge
 
 		lines = []
 
 		# Data from include_file is processed first so that it
 		# overrides any data from previously installed files.
 		if include_file is not None:
-			lines += grabfile(include_file)
+			for line in grabfile(include_file):
+				lines.append((include_file, line))
 
 		aux_keys = [self._needed_aux_key]
-		for cpv in self._dbapi.cpv_all():
-			if exclude_pkgs is not None and cpv in exclude_pkgs:
-				continue
-			lines += self._dbapi.aux_get(cpv, aux_keys)[0].split('\n')
-		# Cache NEEDED.* files avoid doing excessive IO for every rebuild.
-		self._dbapi.flush_cache()
+		can_lock = os.access(os.path.dirname(self._dbapi._dbroot), os.W_OK)
+		if can_lock:
+			self._dbapi.lock()
+		try:
+			for cpv in self._dbapi.cpv_all():
+				if exclude_pkgs is not None and cpv in exclude_pkgs:
+					continue
+				needed_file = self._dbapi.getpath(cpv,
+					filename=self._needed_aux_key)
+				for line in self._dbapi.aux_get(cpv, aux_keys)[0].splitlines():
+					lines.append((needed_file, line))
+		finally:
+			if can_lock:
+				self._dbapi.unlock()
 
 		# have to call scanmacho for preserved libs here as they aren't 
 		# registered in NEEDED.MACHO.3 files
 		plibs = set()
-		if self._dbapi._plib_registry and self._dbapi._plib_registry.getPreservedLibs():
-			args = [EPREFIX+"/usr/bin/scanmacho", "-qF", "%a;%F;%S;%n"]
-			for items in self._dbapi._plib_registry.getPreservedLibs().values():
+		if preserve_paths is not None:
+			plibs.update(preserve_paths)
+		if self._dbapi._plib_registry and \
+			self._dbapi._plib_registry.hasEntries():
+			for cpv, items in \
+				self._dbapi._plib_registry.getPreservedLibs().items():
+				if exclude_pkgs is not None and cpv in exclude_pkgs:
+					# These preserved libs will either be unmerged,
+					# rendering them irrelevant, or they will be
+					# preserved in the replacement package and are
+					# already represented via the preserve_paths
+					# parameter.
+					continue
 				plibs.update(items)
-				args.extend(os.path.join(root, x.lstrip("." + os.sep)) \
-						for x in items)
+		if plibs:
+			args = [EPREFIX+"/usr/bin/scanmacho", "-qF", "%a;%F;%S;%n"]
+			args.extend(os.path.join(root, x.lstrip("." + os.sep)) \
+				for x in plibs)
 			try:
 				proc = subprocess.Popen(args, stdout=subprocess.PIPE)
-			except EnvironmentError, e:
+			except EnvironmentError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				raise CommandNotFound(args[0])
 			else:
 				for l in proc.stdout:
-					if not isinstance(l, unicode):
-						l = unicode(l, encoding='utf_8', errors='replace')
-					l = l.rstrip("\n")
+					try:
+						l = _unicode_decode(l,
+							encoding=_encodings['content'], errors='strict')
+					except UnicodeDecodeError:
+						l = _unicode_decode(l,
+							encoding=_encodings['content'], errors='replace')
+						writemsg_level(_("\nError decoding characters " \
+							"returned from scanmacho: %s\n\n") % (l,),
+							level=logging.ERROR, noiselevel=-1)
+					l = l[3:].rstrip("\n")
 					if not l:
 						continue
 					fields = l.split(";")
@@ -200,7 +243,7 @@ class LinkageMapMachO(object):
 						continue
 					fields[1] = fields[1][root_len:]
 					plibs.discard(fields[1])
-					lines.append(";".join(fields))
+					lines.append(("scanmacho", ";".join(fields)))
 				proc.wait()
 
 		if plibs:
@@ -211,16 +254,16 @@ class LinkageMapMachO(object):
 			# self._obj_properties.  This is important in order to
 			# prevent findConsumers from raising an unwanted KeyError.
 			for x in plibs:
-				lines.append(";".join(['', x, '', '']))
+				lines.append(("plibs", ";".join(['', x, '', '', ''])))
 
-		for l in lines:
+		for location, l in lines:
 			l = l.rstrip("\n")
 			if not l:
 				continue
 			fields = l.split(";")
 			if len(fields) < 4:
 				writemsg_level("\nWrong number of fields " + \
-					"in %s: %s\n\n" % (self._needed_aux_key, l),
+					"in %s: %s\n\n") % (location, l),
 					level=logging.ERROR, noiselevel=-1)
 				continue
 			arch = fields[0]
@@ -263,7 +306,7 @@ class LinkageMapMachO(object):
 						providers=set(), consumers=set())
 					arch_map[needed_installname] = installname_map
 				installname_map.consumers.add(obj_key)
-		
+
 	def listBrokenBinaries(self, debug=False):
 		"""
 		Find binaries and their needed install_names, which have no providers.
@@ -277,6 +320,7 @@ class LinkageMapMachO(object):
 			corresponding libraries to fulfill the dependency.
 
 		"""
+
 		os = _os_merge
 
 		class _LibraryCache(object):
@@ -377,10 +421,14 @@ class LinkageMapMachO(object):
 						rValue.setdefault(lib, set()).add(install_name)
 						if debug:
 							if not os.path.isfile(lib):
-								print(_("Missing library:"), lib)
+								writemsg_level(_("Missing library:") + " %s\n" % (lib,),
+									level=logging.DEBUG,
+									noiselevel=-1)
 							else:
-								print(_("Possibly missing symlink:"), \
-										install_name)
+								writemsg_level(_("Possibly missing symlink:") + \
+									"%s\n" % (os.path.join(os.path.dirname(lib), soname)),
+									level=logging.DEBUG,
+									noiselevel=-1)
 		return rValue
 
 	def listProviders(self):
@@ -397,7 +445,7 @@ class LinkageMapMachO(object):
 		rValue = {}
 		if not self._libs:
 			self.rebuild()
-		# Iterate over all binaries within LinkageMapMachO.
+		# Iterate over all object keys within LinkageMapMachO.
 		for obj_key in self._obj_properties:
 			rValue.setdefault(obj_key, self.findProviders(obj_key))
 		return rValue
@@ -440,7 +488,7 @@ class LinkageMapMachO(object):
 				for obj_key in soname_map.providers:
 					rValue.extend(self._obj_properties[obj_key][3])
 		return rValue
-	
+
 	def getSoname(self, obj):
 		"""
 		Return the soname associated with an object.
@@ -482,6 +530,7 @@ class LinkageMapMachO(object):
 		set-of-library-paths satisfy install_name.
 
 		"""
+
 		os = _os_merge
 
 		rValue = {}
@@ -531,6 +580,11 @@ class LinkageMapMachO(object):
 		fail to preserve binutils libs that are needed by these unrecognized
 		consumers.
 
+		Note that library consumption via dlopen (common for kde plugins) is
+		currently undetected. However, it is possible to use the
+		corresponding libtool archive (*.la) files to detect such consumers
+		(revdep-rebuild is able to detect them).
+
 		@param obj: absolute path to an object or a key from _obj_properties
 		@type obj: string (example: '/usr/bin/bar') or _ObjectKey
 		@rtype: set of strings (example: set(['/bin/foo', '/usr/bin/bar']))
@@ -538,6 +592,7 @@ class LinkageMapMachO(object):
 		set-of-library-paths satisfy install_name.
 
 		"""
+
 		os = _os_merge
 
 		rValue = set()
