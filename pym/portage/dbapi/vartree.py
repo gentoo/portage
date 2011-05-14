@@ -1512,6 +1512,13 @@ class dblink(object):
 					plib_registry.unregister(self.mycpv,
 						self.settings["SLOT"], counter)
 					if unmerge_preserve:
+						for path in sorted(unmerge_preserve):
+							contents_key = self._match_contents(path)
+							if contents_key is None:
+								continue
+							obj_type = self.getcontents()[contents_key][0]
+							self._display_merge(_(">>> needed   %s %s\n") % \
+								(obj_type, contents_key), noiselevel=-1)
 						plib_registry.register(self.mycpv,
 							self.settings["SLOT"], counter, unmerge_preserve)
 						# Remove the preserved files from our contents
