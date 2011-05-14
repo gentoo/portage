@@ -5543,10 +5543,38 @@ class depgraph(object):
 		else:
 			self._show_missed_update()
 
+		def check_if_latest(pkg):
+			is_latest = True
+			is_latest_in_slot = True
+			dbs = self._dynamic_config._filtered_trees[pkg.root]["dbs"]
+			root_config = self._frozen_config.roots[pkg.root]
+
+			all_cpv_by_slot = {}
+			for db, pkg_type, built, installed, db_keys in dbs:
+				for other_pkg in self._iter_match_pkgs(root_config, pkg_type, Atom(pkg.cp)):
+					slot = other_pkg.metadata["SLOT"]
+					all_cpv_by_slot.setdefault(slot, set())
+					all_cpv_by_slot[slot].add(other_pkg.cpv)
+
+			all_cpv = []
+			for cpvs in all_cpv_by_slot.values():
+				all_cpv.extend(cpvs)
+			all_cpv.sort(key=portage.versions.cpv_sort_key())
+
+			if all_cpv[-1] != pkg.cpv:
+				is_latest = False
+				slot_cpvs = sorted(all_cpv_by_slot[pkg.metadata["SLOT"]], key=portage.versions.cpv_sort_key())
+				if slot_cpvs[-1] != pkg.cpv:
+					is_latest_in_slot = False
+
+			return is_latest, is_latest_in_slot
+
+
 		unstable_keyword_msg = []
 		for pkg in self._dynamic_config._needed_unstable_keywords:
 			self._show_merge_list()
 			if pkg in self._dynamic_config.digraph:
+				is_latest, is_latest_in_slot = check_if_latest(pkg)
 				pkgsettings = self._frozen_config.pkgsettings[pkg.root]
 				mreasons = _get_masking_status(pkg, pkgsettings, pkg.root_config,
 					use=self._pkg_use_enabled(pkg))
@@ -5556,12 +5584,18 @@ class depgraph(object):
 						keyword = reason.unmask_hint.value
 
 						unstable_keyword_msg.append(self._get_dep_chain_as_comment(pkg))
-						unstable_keyword_msg.append("=%s %s\n" % (pkg.cpv, keyword))
+						if is_latest:
+							unstable_keyword_msg.append(">=%s %s\n" % (pkg.cpv, keyword))
+						elif is_latest_in_slot:
+							unstable_keyword_msg.append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], keyword))
+						else:
+							unstable_keyword_msg.append("=%s %s\n" % (pkg.cpv, keyword))
 
 		use_changes_msg = []
 		for pkg, needed_use_config_change in self._dynamic_config._needed_use_config_changes.items():
 			self._show_merge_list()
 			if pkg in self._dynamic_config.digraph:
+				is_latest, is_latest_in_slot = check_if_latest(pkg)
 				changes = needed_use_config_change[1]
 				adjustments = []
 				for flag, state in changes.items():
@@ -5570,14 +5604,26 @@ class depgraph(object):
 					else:
 						adjustments.append("-" + flag)
 				use_changes_msg.append(self._get_dep_chain_as_comment(pkg, unsatisfied_dependency=True))
-				use_changes_msg.append("=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
+				if is_latest:
+					use_changes_msg.append(">=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
+				elif is_latest_in_slot:
+					use_changes_msg.append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], " ".join(adjustments)))
+				else:
+					use_changes_msg.append("=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
 
 		license_msg = []
 		for pkg, missing_licenses in self._dynamic_config._needed_license_changes.items():
 			self._show_merge_list()
 			if pkg in self._dynamic_config.digraph:
+				is_latest, is_latest_in_slot = check_if_latest(pkg)
+
 				license_msg.append(self._get_dep_chain_as_comment(pkg))
-				license_msg.append("=%s %s\n" % (pkg.cpv, " ".join(sorted(missing_licenses))))
+				if is_latest:
+					license_msg.append(">=%s %s\n" % (pkg.cpv, " ".join(sorted(missing_licenses))))
+				elif is_latest_in_slot:
+					license_msg.append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], " ".join(sorted(missing_licenses))))
+				else:
+					license_msg.append("=%s %s\n" % (pkg.cpv, " ".join(sorted(missing_licenses))))
 
 		if unstable_keyword_msg:
 			writemsg_stdout("\nThe following " + colorize("BAD", "keyword changes") + \
