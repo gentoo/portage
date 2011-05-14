@@ -1492,20 +1492,11 @@ class dblink(object):
 				self._linkmap_rebuild(exclude_pkgs=exclude_pkgs,
 					include_file=needed, preserve_paths=preserve_paths)
 
-				unmerge_preserve = None
-				if unmerge and not unmerge_with_replacement:
-					unmerge_preserve = \
-						self._find_libs_to_preserve(unmerge=True)
-
-				cpv_lib_map = self._find_unused_preserved_libs()
-				if cpv_lib_map:
-					self._remove_preserved_libs(cpv_lib_map)
-					for cpv, removed in cpv_lib_map.items():
-						if not self.vartree.dbapi.cpv_exists(cpv):
-							continue
-						self.vartree.dbapi.removeFromContents(cpv, removed)
-
 				if unmerge:
+					unmerge_preserve = None
+					if not unmerge_with_replacement:
+						unmerge_preserve = \
+							self._find_libs_to_preserve(unmerge=True)
 					counter = self.vartree.dbapi.cpv_counter(self.mycpv)
 					plib_registry.unregister(self.mycpv,
 						self.settings["SLOT"], counter)
@@ -1523,6 +1514,17 @@ class dblink(object):
 						# so that they won't be unmerged.
 						self.vartree.dbapi.removeFromContents(self,
 							unmerge_preserve)
+
+				unmerge_no_replacement = \
+					unmerge and not unmerge_with_replacement
+				cpv_lib_map = self._find_unused_preserved_libs(
+					unmerge_no_replacement)
+				if cpv_lib_map:
+					self._remove_preserved_libs(cpv_lib_map)
+					for cpv, removed in cpv_lib_map.items():
+						if not self.vartree.dbapi.cpv_exists(cpv):
+							continue
+						self.vartree.dbapi.removeFromContents(cpv, removed)
 
 				plib_registry.store()
 			finally:
@@ -2307,7 +2309,7 @@ class dblink(object):
 	def _find_libs_to_preserve(self, unmerge=False):
 		"""
 		Get set of relative paths for libraries to be preserved. When
-		unmerge is False, file paths to preserver are selected from
+		unmerge is False, file paths to preserve are selected from
 		self._installed_instance. Otherwise, paths are selected from
 		self.
 		"""
@@ -2474,7 +2476,7 @@ class dblink(object):
 		outfile.close()
 		self._clear_contents_cache()
 
-	def _find_unused_preserved_libs(self):
+	def _find_unused_preserved_libs(self, unmerge_no_replacement):
 		"""
 		Find preserved libraries that don't have any consumers left.
 		"""
@@ -2527,12 +2529,26 @@ class dblink(object):
 		# installed library that is not preserved. This eliminates
 		# libraries that are erroneously preserved due to a move from one
 		# directory to another.
+		# Also eliminate consumers that are going to be unmerged if
+		# unmerge_no_replacement is True.
 		provider_cache = {}
 		for preserved_node in preserved_nodes:
 			soname = linkmap.getSoname(preserved_node)
 			for consumer_node in lib_graph.parent_nodes(preserved_node):
 				if consumer_node in preserved_nodes:
 					continue
+				if unmerge_no_replacement:
+					will_be_unmerged = True
+					for path in consumer_node.alt_paths:
+						if not self.isowner(path):
+							will_be_unmerged = False
+							break
+					if will_be_unmerged:
+						# This consumer is not preserved and it is
+						# being unmerged, so drop this edge.
+						lib_graph.remove_edge(preserved_node, consumer_node)
+						continue
+
 				providers = provider_cache.get(consumer_node)
 				if providers is None:
 					providers = linkmap.findProviders(consumer_node)
