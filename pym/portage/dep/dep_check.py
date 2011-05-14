@@ -50,7 +50,6 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	repoman = not mysettings.local_config
 	if kwargs["use_binaries"]:
 		portdb = trees[myroot]["bintree"].dbapi
-	myvirtuals = mysettings.getvirtuals()
 	pprovideddict = mysettings.pprovideddict
 	myuse = kwargs["myuse"]
 	for x in mysplit:
@@ -76,7 +75,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			if atom_graph is not None:
 				atom_graph.add((x, id(x)), graph_parent)
 			continue
-		mychoices = myvirtuals.get(mykey, [])
+
 		if x.blocker:
 			# Virtual blockers are no longer expanded here since
 			# the un-expanded virtual atom is more useful for
@@ -93,6 +92,10 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			else:
 				# TODO: Add PROVIDE check for repoman.
 				a = []
+				myvartree = mytrees.get("vartree")
+				if myvartree is not None:
+					mysettings._populate_treeVirtuals_if_needed(myvartree)
+				mychoices = mysettings.getvirtuals().get(mykey, [])
 				for y in mychoices:
 					a.append(Atom(x.replace(x.cp, y.cp, 1)))
 				if not a:
@@ -114,6 +117,14 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			# only use new-style matches
 			if pkg.cp.startswith("virtual/"):
 				pkgs.append(pkg)
+
+		mychoices = []
+		if not pkgs and not portdb.cp_list(x.cp):
+			myvartree = mytrees.get("vartree")
+			if myvartree is not None:
+				mysettings._populate_treeVirtuals_if_needed(myvartree)
+			mychoices = mysettings.getvirtuals().get(mykey, [])
+
 		if not (pkgs or mychoices):
 			# This one couldn't be expanded as a new-style virtual.  Old-style
 			# virtuals have already been expanded by dep_virtual, so this one

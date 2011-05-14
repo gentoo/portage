@@ -569,8 +569,19 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			use_cache, mydbapi)
 
 		if mydo in clean_phases:
-			return _spawn_phase(mydo, mysettings,
-				fd_pipes=fd_pipes, returnpid=returnpid)
+			builddir_lock = None
+			if not returnpid and \
+				'PORTAGE_BUILDIR_LOCKED' not in mysettings:
+				builddir_lock = EbuildBuildDir(
+					scheduler=PollScheduler().sched_iface,
+					settings=mysettings)
+				builddir_lock.lock()
+			try:
+				return _spawn_phase(mydo, mysettings,
+					fd_pipes=fd_pipes, returnpid=returnpid)
+			finally:
+				if builddir_lock is not None:
+					builddir_lock.unlock()
 
 		restrict = set(mysettings.get('PORTAGE_RESTRICT', '').split())
 		# get possible slot information from the deps file

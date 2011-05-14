@@ -10,6 +10,8 @@ from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.EbuildProcess import EbuildProcess
 from _emerge.CompositeTask import CompositeTask
 from portage.util import writemsg
+from portage.locks import lockdir
+from portage.locks import unlockdir
 from portage.xml.metadata import MetaDataXML
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -28,7 +30,8 @@ from portage import _unicode_encode
 
 class EbuildPhase(CompositeTask):
 
-	__slots__ = ("actionmap", "phase", "settings")
+	__slots__ = ("actionmap", "phase", "settings") + \
+		("_ebuild_lock",)
 
 	# FEATURES displayed prior to setup phase
 	_features_display = ("ccache", "distcc", "fakeroot",
@@ -36,6 +39,9 @@ class EbuildPhase(CompositeTask):
 		"preserve-libs", "sandbox", "selinux", "sesandbox",
 		"splitdebug", "suidctl", "test", "userpriv",
 		"usersandbox")
+
+	# Locked phases
+	_locked_phases = ("setup", "preinst", "postinst", "prerm", "postrm")
 
 	def _start(self):
 
@@ -99,7 +105,7 @@ class EbuildPhase(CompositeTask):
 					os.path.join(self.settings['PKGDIR'],
 					self.settings['CATEGORY'], self.settings['PF']) + '.tbz2'
 
-		if self.phase == 'prerm':
+		if self.phase in ("pretend", "prerm"):
 			env_extractor = BinpkgEnvExtractor(background=self.background,
 				scheduler=self.scheduler, settings=self.settings)
 			if env_extractor.saved_env_exists():
@@ -138,9 +144,19 @@ class EbuildPhase(CompositeTask):
 			phase=self.phase, scheduler=self.scheduler,
 			settings=self.settings)
 
+		if (self.phase in self._locked_phases and
+			"ebuild-locks" in self.settings.features):
+			eroot = self.settings["EROOT"]
+			lock_path = os.path.join(eroot, portage.VDB_PATH + "-ebuild")
+			if os.access(os.path.dirname(lock_path), os.W_OK):
+				self._ebuild_lock = lockdir(lock_path)
 		self._start_task(ebuild_process, self._ebuild_exit)
 
 	def _ebuild_exit(self, ebuild_process):
+
+		if self._ebuild_lock is not None:
+			unlockdir(self._ebuild_lock)
+			self._ebuild_lock = None
 
 		fail = False
 		if self._default_exit(ebuild_process) != os.EX_OK:

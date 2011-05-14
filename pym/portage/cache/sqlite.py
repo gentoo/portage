@@ -31,7 +31,7 @@ class database(fs_template.FsBased):
 		self.location = os.path.join(self.location, 
 			self.label.lstrip(os.path.sep).rstrip(os.path.sep))
 
-		if not os.path.exists(self.location):
+		if not self.readonly and not os.path.exists(self.location):
 			self._ensure_dirs()
 
 		config.setdefault("autocommit", self.autocommits)
@@ -72,12 +72,13 @@ class database(fs_template.FsBased):
 		connection_kwargs = {}
 		connection_kwargs["timeout"] = config["timeout"]
 		try:
-			self._ensure_dirs()
+			if not self.readonly:
+				self._ensure_dirs()
 			self._db_connection = self._db_module.connect(
 				database=_unicode_decode(self._dbpath), **connection_kwargs)
 			self._db_cursor = self._db_connection.cursor()
 			self._db_cursor.execute("PRAGMA encoding = %s" % self._db_escape_string("UTF-8"))
-			if not self._ensure_access(self._dbpath):
+			if not self.readonly and not self._ensure_access(self._dbpath):
 				raise cache_errors.InitializationError(self.__class__, "can't ensure perms on %s" % self._dbpath)
 			self._db_init_cache_size(config["cache_bytes"])
 			self._db_init_synchronous(config["synchronous"])

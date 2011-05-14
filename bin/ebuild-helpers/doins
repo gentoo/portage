@@ -121,7 +121,10 @@ for x in "$@" ; do
 		x=${x##*/}
 		x_orig=$x
 		# Follow any symlinks recursively until we've got
-		# a normal directory for 'find' to traverse.
+		# a normal directory for 'find' to traverse. The
+		# name of the symlink will be used for the name
+		# of the installed directory, as discussed in
+		# bug #239529.
 		while [ -L "$x" ] ; do
 			pushd "$(readlink "$x")" >/dev/null
 			x=${PWD##*/}

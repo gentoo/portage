@@ -1,8 +1,9 @@
-# Copyright 1998-2010 Gentoo Foundation
+# Copyright 1998-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
 import logging
+import sys
 
 try:
 	import cPickle as pickle
@@ -12,29 +13,44 @@ except ImportError:
 from portage import os
 from portage import _encodings
 from portage import _os_merge
+from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.exception import PermissionDenied
 from portage.localization import _
 from portage.util import atomic_ofstream
 from portage.util import writemsg_level
 from portage.versions import cpv_getkey
+from portage.locks import lockfile, unlockfile
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 class PreservedLibsRegistry(object):
 	""" This class handles the tracking of preserved library objects """
-	def __init__(self, root, filename, autocommit=True):
+	def __init__(self, root, filename):
 		""" 
 			@param root: root used to check existence of paths in pruneNonExisting
 		    @type root: String
 			@param filename: absolute path for saving the preserved libs records
 		    @type filename: String
-			@param autocommit: determines if the file is written after every update
-			@type autocommit: Boolean
 		"""
 		self._root = root
 		self._filename = filename
-		self._autocommit = autocommit
-		self.load()
-		self.pruneNonExisting()
+		self._data = None
+		self._lock = None
+
+	def lock(self):
+		"""Grab an exclusive lock on the preserved libs registry."""
+		if self._lock is not None:
+			raise AssertionError("already locked")
+		self._lock = lockfile(self._filename)
+
+	def unlock(self):
+		"""Release our exclusive lock on the preserved libs registry."""
+		if self._lock is None:
+			raise AssertionError("not locked")
+		unlockfile(self._lock)
+		self._lock = None
 
 	def load(self):
 		""" Reload the registry data from file """
@@ -56,9 +72,15 @@ class PreservedLibsRegistry(object):
 		if self._data is None:
 			self._data = {}
 		self._data_orig = self._data.copy()
+		self.pruneNonExisting()
+
 	def store(self):
-		""" Store the registry data to file. No need to call this if autocommit
-		    was enabled.
+		"""
+		Store the registry data to the file. The existing inode will be
+		replaced atomically, so if that inode is currently being used
+		for a lock then that lock will be rendered useless. Therefore,
+		it is important not to call this method until the current lock
+		is ready to be immediately released.
 		"""
 		if os.environ.get("SANDBOX_ON") == "1" or \
 			self._data == self._data_orig:
@@ -74,6 +96,17 @@ class PreservedLibsRegistry(object):
 		else:
 			self._data_orig = self._data.copy()
 
+	def _normalize_counter(self, counter):
+		"""
+		For simplicity, normalize as a unicode string
+		and strip whitespace. This avoids the need for
+		int conversion and a possible ValueError resulting
+		from vardb corruption.
+		"""
+		if not isinstance(counter, basestring):
+			counter = str(counter)
+		return _unicode_decode(counter).strip()
+
 	def register(self, cpv, slot, counter, paths):
 		""" Register new objects in the registry. If there is a record with the
 			same packagename (internally derived from cpv) and slot it is 
@@ -82,21 +115,21 @@ class PreservedLibsRegistry(object):
 			@type cpv: CPV (as String)
 			@param slot: the value of SLOT of the given package instance
 			@type slot: String
-			@param counter: vdb counter value for the package instace
-			@type counter: Integer
+			@param counter: vdb counter value for the package instance
+			@type counter: String
 			@param paths: absolute paths of objects that got preserved during an update
 			@type paths: List
 		"""
 		cp = cpv_getkey(cpv)
 		cps = cp+":"+slot
+		counter = self._normalize_counter(counter)
 		if len(paths) == 0 and cps in self._data \
-				and self._data[cps][0] == cpv and int(self._data[cps][1]) == int(counter):
+				and self._data[cps][0] == cpv and \
+				self._normalize_counter(self._data[cps][1]) == counter:
 			del self._data[cps]
 		elif len(paths) > 0:
 			self._data[cps] = (cpv, counter, paths)
-		if self._autocommit:
-			self.store()
-	
+
 	def unregister(self, cpv, slot, counter):
 		""" Remove a previous registration of preserved objects for the given package.
 			@param cpv: package instance whose records should be removed
@@ -119,11 +152,11 @@ class PreservedLibsRegistry(object):
 				self._data[cps] = (cpv, counter, paths)
 			else:
 				del self._data[cps]
-		if self._autocommit:
-			self.store()
 	
 	def hasEntries(self):
 		""" Check if this registry contains any records. """
+		if self._data is None:
+			self.load()
 		return len(self._data) > 0
 	
 	def getPreservedLibs(self):
@@ -131,6 +164,8 @@ class PreservedLibsRegistry(object):
 			@returns mapping of package instances to preserved objects
 			@rtype Dict cpv->list-of-paths
 		"""
+		if self._data is None:
+			self.load()
 		rValue = {}
 		for cps in self._data:
 			rValue[self._data[cps][0]] = self._data[cps][2]
