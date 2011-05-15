@@ -77,7 +77,7 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 
 	# package.mask checking
 	if settings._getMaskAtom(mycpv, metadata):
-		rValue.append(_MaskReason("package.mask", "package.mask"))
+		rValue.append(_MaskReason("package.mask", "package.mask", _UnmaskHint("p_mask", None)))
 
 	# keywords checking
 	eapi = metadata["EAPI"]

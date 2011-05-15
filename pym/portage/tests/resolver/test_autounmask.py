@@ -29,6 +29,10 @@ class AutounmaskTestCase(TestCase):
 			"app-misc/W-2": { "KEYWORDS": "~x86" },
 			"app-misc/V-1": { "KEYWORDS": "~x86", "DEPEND": ">=app-misc/W-2"},
 
+			#ebuilds to test mask and keyword changes
+			"app-text/A-1": {},
+			"app-text/B-1": { "KEYWORDS": "~x86" },
+
 			#ebuilds for mixed test for || dep handling
 			"sci-libs/K-1": { "DEPEND": " || ( sci-libs/L[bar] || ( sci-libs/M sci-libs/P ) )", "EAPI": 2},
 			"sci-libs/K-2": { "DEPEND": " || ( sci-libs/L[bar] || ( sci-libs/P sci-libs/M ) )", "EAPI": 2},
@@ -203,6 +207,21 @@ class AutounmaskTestCase(TestCase):
 					options = {"--autounmask": True},
 					use_changes = None,
 					success = False),
+
+				#Test mask and keyword changes.
+				ResolverPlaygroundTestCase(
+					["app-text/A"],
+					options = {"--autounmask": True},
+					success = False,
+					mergelist = ["app-text/A-1"],
+					needed_p_mask_changes = ["app-text/A-1"]),
+				ResolverPlaygroundTestCase(
+					["app-text/B"],
+					options = {"--autounmask": True},
+					success = False,
+					mergelist = ["app-text/B-1"],
+					unstable_keywords = ["app-text/B-1"],
+					needed_p_mask_changes = ["app-text/B-1"]),
 			)
 
 		profile = {
@@ -213,6 +232,11 @@ class AutounmaskTestCase(TestCase):
 			"use.force":
 				(
 					"forced-flag",
+				),
+			"package.mask":
+				(
+					"app-text/A",
+					"app-text/B",
 				),
 		}
 

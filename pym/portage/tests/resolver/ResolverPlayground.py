@@ -516,7 +516,7 @@ class ResolverPlaygroundTestCase(object):
 				if self.ignore_mergelist_order and got is not None:
 					got = set(got)
 					expected = set(expected)
-			elif key == "unstable_keywords" and expected is not None:
+			elif key in ("unstable_keywords", "needed_p_mask_changes") and expected is not None:
 				expected = set(expected)
 
 			if got != expected:
@@ -532,7 +532,7 @@ class ResolverPlaygroundResult(object):
 
 	checks = (
 		"success", "mergelist", "use_changes", "license_changes", "unstable_keywords", "slot_collision_solutions",
-		"circular_dependency_solutions",
+		"circular_dependency_solutions", "needed_p_mask_changes",
 		)
 	optional_checks = (
 		)
@@ -546,6 +546,7 @@ class ResolverPlaygroundResult(object):
 		self.use_changes = None
 		self.license_changes = None
 		self.unstable_keywords = None
+		self.needed_p_mask_changes = None
 		self.slot_collision_solutions = None
 		self.circular_dependency_solutions = None
 
@@ -571,6 +572,11 @@ class ResolverPlaygroundResult(object):
 			self.unstable_keywords = set()
 			for pkg in self.depgraph._dynamic_config._needed_unstable_keywords:
 				self.unstable_keywords.add(pkg.cpv)
+
+		if self.depgraph._dynamic_config._needed_p_mask_changes:
+			self.needed_p_mask_changes = set()
+			for pkg in self.depgraph._dynamic_config._needed_p_mask_changes:
+				self.needed_p_mask_changes.add(pkg.cpv)
 
 		if self.depgraph._dynamic_config._needed_license_changes:
 			self.license_changes = {}

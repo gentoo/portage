@@ -413,6 +413,7 @@ class _dynamic_depgraph_config(object):
 		self._highest_pkg_cache = {}
 
 		self._needed_unstable_keywords = backtrack_parameters.needed_unstable_keywords
+		self._needed_p_mask_changes = backtrack_parameters.needed_p_mask_changes
 		self._needed_license_changes = backtrack_parameters.needed_license_changes
 		self._needed_use_config_changes = backtrack_parameters.needed_use_config_changes
 		self._runtime_pkg_mask = backtrack_parameters.runtime_pkg_mask
@@ -2289,6 +2290,8 @@ class depgraph(object):
 		if set(self._dynamic_config.digraph).intersection( \
 			self._dynamic_config._needed_unstable_keywords) or \
 			set(self._dynamic_config.digraph).intersection( \
+			self._dynamic_config._needed_p_mask_changes) or \
+			set(self._dynamic_config.digraph).intersection( \
 			self._dynamic_config._needed_use_config_changes) or \
 			set(self._dynamic_config.digraph).intersection( \
 			self._dynamic_config._needed_license_changes) :
@@ -3278,17 +3281,22 @@ class depgraph(object):
 				if pkg is not None:
 					break
 
-				pkg, existing = \
-					self._wrapped_select_pkg_highest_available_imp(
-						root, atom, onlydeps=onlydeps,
-						allow_use_changes=True,
-						allow_unstable_keywords=(not only_use_changes),
-						allow_license_changes=(not only_use_changes))
+				for allow_unmasks in (False, True):
+					if only_use_changes and allow_unmasks:
+						continue
 
-				if pkg is not None and \
-					pkg.installed and \
-					not self._want_installed_pkg(pkg):
-					pkg = None
+					pkg, existing = \
+						self._wrapped_select_pkg_highest_available_imp(
+							root, atom, onlydeps=onlydeps,
+							allow_use_changes=True,
+							allow_unstable_keywords=(not only_use_changes),
+							allow_license_changes=(not only_use_changes),
+							allow_unmasks=allow_unmasks)
+
+					if pkg is not None and \
+						pkg.installed and \
+						not self._want_installed_pkg(pkg):
+						pkg = None
 			
 			if self._dynamic_config._need_restart:
 				return None, None
@@ -3300,7 +3308,7 @@ class depgraph(object):
 
 		return pkg, existing
 
-	def _pkg_visibility_check(self, pkg, allow_unstable_keywords=False, allow_license_changes=False):
+	def _pkg_visibility_check(self, pkg, allow_unstable_keywords=False, allow_license_changes=False, allow_unmasks=False):
 
 		if pkg.visible:
 			return True
@@ -3315,6 +3323,7 @@ class depgraph(object):
 		masked_by_unstable_keywords = False
 		missing_licenses = None
 		masked_by_something_else = False
+		masked_by_p_mask = False
 
 		for reason in mreasons:
 			hint = reason.unmask_hint
@@ -3323,6 +3332,8 @@ class depgraph(object):
 				masked_by_something_else = True
 			elif hint.key == "unstable keyword":
 				masked_by_unstable_keywords = True
+			elif hint.key == "p_mask":
+				masked_by_p_mask = True
 			elif hint.key == "license":
 				missing_licenses = hint.value
 			else:
@@ -3335,15 +3346,20 @@ class depgraph(object):
 			#If the package is already keyworded, remove the mask.
 			masked_by_unstable_keywords = False
 
+		if pkg in self._dynamic_config._needed_p_mask_changes:
+			#If the package is already keyworded, remove the mask.
+			masked_by_p_mask = False
+
 		if missing_licenses:
 			#If the needed licenses are already unmasked, remove the mask.
 			missing_licenses.difference_update(self._dynamic_config._needed_license_changes.get(pkg, set()))
 
-		if not (masked_by_unstable_keywords or missing_licenses):
+		if not (masked_by_unstable_keywords or masked_by_p_mask or missing_licenses):
 			#Package has already been unmasked.
 			return True
 
 		if (masked_by_unstable_keywords and not allow_unstable_keywords) or \
+			(masked_by_p_mask and not allow_unmasks) or \
 			(missing_licenses and not allow_license_changes):
 			#We are not allowed to do the needed changes.
 			return False
@@ -3354,7 +3370,13 @@ class depgraph(object):
 			backtrack_infos.setdefault("config", {})
 			backtrack_infos["config"].setdefault("needed_unstable_keywords", set())
 			backtrack_infos["config"]["needed_unstable_keywords"].add(pkg)
-			
+
+		if masked_by_p_mask:
+			self._dynamic_config._needed_p_mask_changes.add(pkg)
+			backtrack_infos = self._dynamic_config._backtrack_infos
+			backtrack_infos.setdefault("config", {})
+			backtrack_infos["config"].setdefault("needed_p_mask_changes", set())
+			backtrack_infos["config"]["needed_p_mask_changes"].add(pkg)
 
 		if missing_licenses:
 			self._dynamic_config._needed_license_changes.setdefault(pkg, set()).update(missing_licenses)
@@ -3452,7 +3474,7 @@ class depgraph(object):
 		return new_use
 
 	def _wrapped_select_pkg_highest_available_imp(self, root, atom, onlydeps=False, \
-		allow_use_changes=False, allow_unstable_keywords=False, allow_license_changes=False):
+		allow_use_changes=False, allow_unstable_keywords=False, allow_license_changes=False, allow_unmasks=False):
 		root_config = self._frozen_config.roots[root]
 		pkgsettings = self._frozen_config.pkgsettings[root]
 		dbs = self._dynamic_config._filtered_trees[root]["dbs"]
@@ -3588,7 +3610,8 @@ class depgraph(object):
 
 						if not self._pkg_visibility_check(pkg, \
 							allow_unstable_keywords=allow_unstable_keywords,
-							allow_license_changes=allow_license_changes):
+							allow_license_changes=allow_license_changes,
+							allow_unmasks=allow_unmasks):
 							continue
 
 						# Enable upgrade or downgrade to a version
@@ -3630,7 +3653,8 @@ class depgraph(object):
 											"ebuild", Atom("=%s" % (pkg.cpv,))):
 											if self._pkg_visibility_check(pkg_eb, \
 												allow_unstable_keywords=allow_unstable_keywords,
-												allow_license_changes=allow_license_changes):
+												allow_license_changes=allow_license_changes,
+												allow_unmasks=allow_unmasks):
 												pkg_eb_visible = True
 												break
 										if not pkg_eb_visible:
@@ -3638,7 +3662,8 @@ class depgraph(object):
 									else:
 										if not self._pkg_visibility_check(pkg_eb, \
 											allow_unstable_keywords=allow_unstable_keywords,
-											allow_license_changes=allow_license_changes):
+											allow_license_changes=allow_license_changes,
+											allow_unmasks=allow_unmasks):
 											continue
 
 					# Calculation of USE for unbuilt ebuilds is relatively
@@ -3882,18 +3907,19 @@ class depgraph(object):
 				for pkg in matched_packages:
 					if pkg.installed and self._pkg_visibility_check(pkg, \
 						allow_unstable_keywords=allow_unstable_keywords,
-						allow_license_changes=allow_license_changes):
+						allow_license_changes=allow_license_changes,
+						allow_unmasks=allow_unmasks):
 						return pkg, existing_node
 
 			visible_matches = []
 			if matched_oldpkg:
 				visible_matches = [pkg.cpv for pkg in matched_oldpkg \
 					if self._pkg_visibility_check(pkg, allow_unstable_keywords=allow_unstable_keywords,
-						allow_license_changes=allow_license_changes)]
+						allow_license_changes=allow_license_changes, allow_unmasks=allow_unmasks)]
 			if not visible_matches:
 				visible_matches = [pkg.cpv for pkg in matched_packages \
 					if self._pkg_visibility_check(pkg, allow_unstable_keywords=allow_unstable_keywords,
-						allow_license_changes=allow_license_changes)]
+						allow_license_changes=allow_license_changes, allow_unmasks=allow_unmasks)]
 			if visible_matches:
 				bestmatch = portage.best(visible_matches)
 			else:
@@ -5557,6 +5583,30 @@ class depgraph(object):
 						else:
 							unstable_keyword_msg[root].append("=%s %s\n" % (pkg.cpv, keyword))
 
+		p_mask_change_msg = {}
+		for pkg in self._dynamic_config._needed_p_mask_changes:
+			self._show_merge_list()
+			if pkg in self._dynamic_config.digraph:
+				root = pkg.root
+				roots.add(root)
+				p_mask_change_msg.setdefault(root, [])
+				is_latest, is_latest_in_slot = check_if_latest(pkg)
+				pkgsettings = self._frozen_config.pkgsettings[pkg.root]
+				mreasons = _get_masking_status(pkg, pkgsettings, pkg.root_config,
+					use=self._pkg_use_enabled(pkg))
+				for reason in mreasons:
+					if reason.unmask_hint and \
+						reason.unmask_hint.key == 'p_mask':
+						keyword = reason.unmask_hint.value
+
+						p_mask_change_msg[root].append(self._get_dep_chain_as_comment(pkg))
+						if is_latest:
+							p_mask_change_msg[root].append(">=%s\n" % pkg.cpv)
+						elif is_latest_in_slot:
+							p_mask_change_msg[root].append(">=%s:%s\n" % (pkg.cpv, pkg.metadata["SLOT"]))
+						else:
+							p_mask_change_msg[root].append("=%s\n" % pkg.cpv)
+
 		use_changes_msg = {}
 		for pkg, needed_use_config_change in self._dynamic_config._needed_use_config_changes.items():
 			self._show_merge_list()
@@ -5633,6 +5683,10 @@ class depgraph(object):
 					file_to_write_to[(abs_user_config, "package.keywords")] = \
 						find_config_file(abs_user_config, "package.keywords")
 
+				if root in p_mask_change_msg:
+					file_to_write_to[(abs_user_config, "package.unmask")] = \
+						find_config_file(abs_user_config, "package.unmask")
+
 				if root in use_changes_msg:
 					file_to_write_to[(abs_user_config, "package.use")] = \
 						find_config_file(abs_user_config, "package.use")
@@ -5686,6 +5740,10 @@ class depgraph(object):
 			if root in unstable_keyword_msg:
 				write_changes(root, "keyword", unstable_keyword_msg[root],
 					file_to_write_to.get((abs_user_config, "package.keywords")))
+
+			if root in p_mask_change_msg:
+				write_changes(root, "mask", p_mask_change_msg[root],
+					file_to_write_to.get((abs_user_config, "package.unmask")))
 
 			if root in use_changes_msg:
 				write_changes(root, "USE", use_changes_msg[root],
