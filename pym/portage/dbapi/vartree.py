@@ -2344,7 +2344,7 @@ class dblink(object):
 		def path_to_node(path):
 			node = path_node_map.get(path)
 			if node is None:
-				node = LinkageMap._LibGraphNode(path, root)
+				node = LinkageMap._LibGraphNode(linkmap._obj_key(path))
 				alt_path_node = lib_graph.get(node)
 				if alt_path_node is not None:
 					node = alt_path_node
@@ -2499,6 +2499,7 @@ class dblink(object):
 		# Since preserved libraries can be consumers of other preserved
 		# libraries, use a graph to track consumer relationships.
 		plib_dict = self.vartree.dbapi._plib_registry.getPreservedLibs()
+		linkmap = self.vartree.dbapi._linkmap
 		lib_graph = digraph()
 		preserved_nodes = set()
 		preserved_paths = set()
@@ -2509,7 +2510,7 @@ class dblink(object):
 		def path_to_node(path):
 			node = path_node_map.get(path)
 			if node is None:
-				node = LinkageMap._LibGraphNode(path, root)
+				node = LinkageMap._LibGraphNode(linkmap._obj_key(path))
 				alt_path_node = lib_graph.get(node)
 				if alt_path_node is not None:
 					node = alt_path_node
@@ -2517,7 +2518,6 @@ class dblink(object):
 				path_node_map[path] = node
 			return node
 
-		linkmap = self.vartree.dbapi._linkmap
 		for cpv, plibs in plib_dict.items():
 			for f in plibs:
 				path_cpv_map[f] = cpv
