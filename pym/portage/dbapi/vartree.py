@@ -140,6 +140,10 @@ class vardbapi(dbapi):
 		self._lock = None
 		self._lock_count = 0
 
+		self._conf_mem_file = self._eroot + CONFIG_MEMORY_FILE
+		self._fs_lock_obj = None
+		self._fs_lock_count = 0
+
 		if vartree is None:
 			vartree = portage.db[self.root]["vartree"]
 		self.vartree = vartree
@@ -209,6 +213,28 @@ class vardbapi(dbapi):
 			self._lock_count = 0
 			unlockdir(self._lock)
 			self._lock = None
+
+	def _fs_lock(self):
+		"""
+		Acquire a reentrant lock, blocking, for cooperation with concurrent
+		processes.
+		"""
+		if self._fs_lock_count < 1:
+			if self._fs_lock_obj is not None:
+				raise AssertionError("already locked")
+			self._fs_lock_obj = lockfile(self._conf_mem_file)
+		self._fs_lock_count += 1
+
+	def _fs_unlock(self):
+		"""
+		Release a lock, decrementing the recursion level.
+		"""
+		if self._fs_lock_count <= 1:
+			if self._fs_lock_obj is None:
+				raise AssertionError("not locked")
+			unlockfile(self._fs_lock_obj)
+			self._fs_lock_obj = None
+		self._fs_lock_count -= 1
 
 	def _bump_mtime(self, cpv):
 		"""
@@ -1680,12 +1706,11 @@ class dblink(object):
 					showMessage(_("!!! FAILED prerm: %s\n") % retval,
 						level=logging.ERROR, noiselevel=-1)
 
-			conf_mem_file = os.path.join(self._eroot, CONFIG_MEMORY_FILE)
-			conf_mem_lock = lockfile(conf_mem_file)
+			self.vartree.dbapi._fs_lock()
 			try:
-				self._unmerge_pkgfiles(pkgfiles, others_in_slot, conf_mem_file)
+				self._unmerge_pkgfiles(pkgfiles, others_in_slot)
 			finally:
-				unlockfile(conf_mem_lock)
+				self.vartree.dbapi._fs_unlock()
 			self._clear_contents_cache()
 
 			if myebuildpath:
@@ -1795,15 +1820,14 @@ class dblink(object):
 
 		# Lock the config memory file to prevent symlink creation
 		# in merge_contents from overlapping with env-update.
-		conf_mem_file = os.path.join(self._eroot, CONFIG_MEMORY_FILE)
-		conf_mem_lock = lockfile(conf_mem_file)
+		self.vartree.dbapi._fs_lock()
 		try:
 			env_update(target_root=self.settings['ROOT'],
 				prev_mtimes=ldpath_mtimes,
 				contents=contents, env=self.settings.environ(),
 				writemsg_level=self._display_merge)
 		finally:
-			unlockfile(conf_mem_lock)
+			self.vartree.dbapi._fs_unlock()
 
 		return os.EX_OK
 
@@ -1826,7 +1850,7 @@ class dblink(object):
 					log_path=log_path, background=background,
 					level=level, noiselevel=noiselevel)
 
-	def _unmerge_pkgfiles(self, pkgfiles, others_in_slot, conf_mem_file):
+	def _unmerge_pkgfiles(self, pkgfiles, others_in_slot):
 		"""
 		
 		Unmerges the contents of a package from the liveFS
@@ -1862,7 +1886,7 @@ class dblink(object):
 		dest_root = self._eroot
 		dest_root_len = len(dest_root) - 1
 
-		cfgfiledict = grabdict(conf_mem_file)
+		cfgfiledict = grabdict(self.vartree.dbapi._conf_mem_file)
 		stale_confmem = []
 
 		unmerge_orphans = "unmerge-orphans" in self.settings.features
@@ -2112,7 +2136,7 @@ class dblink(object):
 		if stale_confmem:
 			for filename in stale_confmem:
 				del cfgfiledict[filename]
-			writedict(cfgfiledict, conf_mem_file)
+			writedict(cfgfiledict, self.vartree.dbapi._conf_mem_file)
 
 		#remove self from vartree database so that our own virtual gets zapped if we're the last node
 		self.vartree.zap(self.mycpv)
@@ -3342,10 +3366,9 @@ class dblink(object):
 		self.updateprotect()
 
 		#if we have a file containing previously-merged config file md5sums, grab it.
-		conf_mem_file = os.path.join(self._eroot, CONFIG_MEMORY_FILE)
-		conf_mem_lock = lockfile(conf_mem_file)
+		self.vartree.dbapi._fs_lock()
 		try:
-			cfgfiledict = grabdict(conf_mem_file)
+			cfgfiledict = grabdict(self.vartree.dbapi._conf_mem_file)
 			if "NOCONFMEM" in self.settings:
 				cfgfiledict["IGNORE"]=1
 			else:
@@ -3360,12 +3383,11 @@ class dblink(object):
 					cfgfiledict["IGNORE"] = 1
 					break
 
-			rval = self._merge_contents(srcroot, destroot, cfgfiledict,
-				conf_mem_file)
+			rval = self._merge_contents(srcroot, destroot, cfgfiledict)
 			if rval != os.EX_OK:
 				return rval
 		finally:
-			unlockfile(conf_mem_lock)
+			self.vartree.dbapi._fs_unlock()
 
 		# These caches are populated during collision-protect and the data
 		# they contain is now invalid. It's very important to invalidate
@@ -3573,8 +3595,7 @@ class dblink(object):
 
 		# Lock the config memory file to prevent symlink creation
 		# in merge_contents from overlapping with env-update.
-		conf_mem_file = os.path.join(self._eroot, CONFIG_MEMORY_FILE)
-		conf_mem_lock = lockfile(conf_mem_file)
+		self.vartree.dbapi._fs_lock()
 		try:
 			#update environment settings, library paths. DO NOT change symlinks.
 			env_update(makelinks=(not downgrade),
@@ -3582,7 +3603,7 @@ class dblink(object):
 				contents=contents, env=self.settings.environ(),
 				writemsg_level=self._display_merge)
 		finally:
-			unlockfile(conf_mem_lock)
+			self.vartree.dbapi._fs_unlock()
 
 		# For gcc upgrades, preserved libs have to be removed after the
 		# the library path has been updated.
@@ -3610,7 +3631,7 @@ class dblink(object):
 
 		return backup_p
 
-	def _merge_contents(self, srcroot, destroot, cfgfiledict, conf_mem_file):
+	def _merge_contents(self, srcroot, destroot, cfgfiledict):
 
 		cfgfiledict_orig = cfgfiledict.copy()
 
@@ -3672,9 +3693,9 @@ class dblink(object):
 		# write out our collection of md5sums
 		if cfgfiledict != cfgfiledict_orig:
 			cfgfiledict.pop("IGNORE", None)
-			ensure_dirs(os.path.dirname(conf_mem_file),
+			ensure_dirs(os.path.dirname(self.vartree.dbapi._conf_mem_file),
 				gid=portage_gid, mode=0o2750, mask=0o2)
-			writedict(cfgfiledict, conf_mem_file)
+			writedict(cfgfiledict, self.vartree.dbapi._conf_mem_file)
 
 		return os.EX_OK
 
