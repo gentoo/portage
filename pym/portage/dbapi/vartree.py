@@ -815,7 +815,18 @@ class vardbapi(dbapi):
 		"""
 		myroot = None
 		mycpv = None
-		self.lock()
+		locked_vdb = False
+		if "parallel-install" not in self.settings.features:
+			# If parallel-install is enabled, it's unsafe to
+			# lock the vdb here because it can deadlock the
+			# Scheduler by preventing it from servicing its
+			# poll loop which is essential for at least a
+			# couple of reasons:
+			# 1) releasing locks held by the scheduler
+			# 2) handling output of subprocesses so that they
+			#    don't deadlock due to blocking on stdout
+			self.lock()
+			locked_vdb = True
 		try:
 			counter = self.get_counter_tick_core() - 1
 			if self._cached_counter != counter:
@@ -829,7 +840,8 @@ class vardbapi(dbapi):
 					write_atomic(self._counter_path, str(counter))
 				self._cached_counter = counter
 		finally:
-			self.unlock()
+			if locked_vdb:
+				self.unlock()
 
 		return counter
 
