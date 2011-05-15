@@ -1,26 +1,24 @@
 # Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from _emerge.SlotObject import SlotObject
-import portage
+from _emerge.CompositeTask import CompositeTask
 from portage import os
 from portage.dbapi._MergeProcess import MergeProcess
 from portage.dbapi.vartree import dblink
 
-class EbuildMerge(SlotObject):
+class EbuildMerge(CompositeTask):
 
 	__slots__ = ("find_blockers", "logger", "ldpath_mtimes",
 		"pkg", "pkg_count", "pkg_path", "pretend",
-		"scheduler", "settings", "tree", "world_atom")
+		"settings", "tree", "world_atom")
 
-	def create_task(self):
+	def _start(self):
 		root_config = self.pkg.root_config
 		settings = self.settings
 		mycat = settings["CATEGORY"]
 		mypkg = settings["PF"]
 		pkgloc = settings["D"]
 		infloc = os.path.join(settings["PORTAGE_BUILDDIR"], "build-info")
-		myroot = root_config.root
 		myebuild = settings["EBUILD"]
 		mydbapi = root_config.trees[self.tree].dbapi
 		vartree = root_config.trees["vartree"]
@@ -33,11 +31,12 @@ class EbuildMerge(SlotObject):
 			background=background, blockers=self.find_blockers, pkgloc=pkgloc,
 			infloc=infloc, myebuild=myebuild, mydbapi=mydbapi,
 			prev_mtimes=self.ldpath_mtimes, logfile=logfile)
-		merge_task.addExitListener(self._log_exit)
-		return merge_task
 
-	def _log_exit(self, task):
-		if task.returncode != os.EX_OK:
+		self._start_task(merge_task, self._merge_exit)
+
+	def _merge_exit(self, merge_task):
+		if self._final_exit(merge_task) != os.EX_OK:
+			self.wait()
 			return
 
 		pkg = self.pkg
@@ -55,3 +54,4 @@ class EbuildMerge(SlotObject):
 		logger.log(" ::: completed emerge (%s of %s) %s to %s" % \
 			(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg.root))
 
+		self.wait()
