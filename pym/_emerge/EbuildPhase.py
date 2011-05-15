@@ -113,7 +113,7 @@ class EbuildPhase(CompositeTask):
 			# If the environment.bz2 doesn't exist, then ebuild.sh will
 			# source the ebuild as a fallback.
 
-		self._start_ebuild()
+		self._start_lock()
 
 	def _env_extractor_exit(self, env_extractor):
 		if self._default_exit(env_extractor) != os.EX_OK:
