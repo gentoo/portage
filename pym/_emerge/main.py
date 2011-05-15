@@ -356,7 +356,8 @@ def post_emerge(myaction, myopts, myfiles,
 	portage.util.ensure_dirs(vdb_path)
 	vdb_lock = None
 	if os.access(vdb_path, os.W_OK) and not "--pretend" in myopts:
-		vdb_lock = portage.locks.lockdir(vdb_path)
+		vardbapi.lock()
+		vdb_lock = True
 
 	if vdb_lock:
 		try:
@@ -366,7 +367,7 @@ def post_emerge(myaction, myopts, myfiles,
 			mtimedb.commit()
 		finally:
 			if vdb_lock:
-				portage.locks.unlockdir(vdb_lock)
+				vardbapi.unlock()
 
 	chk_updated_cfg_files(settings['EROOT'], config_protect)
 

@@ -11,6 +11,7 @@ from portage import os
 from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.output import bold, colorize, darkgreen, green
 from portage._sets import SETPREFIX
+from portage._sets.base import EditablePackageSet
 from portage.util import cmp_sort_key
 
 from _emerge.emergelog import emergelog
@@ -57,7 +58,8 @@ def unmerge(root_config, myopts, unmerge_action,
 	vdb_lock = None
 	try:
 		if os.access(vdb_path, os.W_OK):
-			vdb_lock = portage.locks.lockdir(vdb_path)
+			vartree.dbapi.lock()
+			vdb_lock = True
 
 		realsyslist = []
 		for x in sets["system"].getAtoms():
@@ -293,10 +295,8 @@ def unmerge(root_config, myopts, unmerge_action,
 	finally:
 		if vdb_lock:
 			vartree.dbapi.flush_cache()
-			portage.locks.unlockdir(vdb_lock)
-	
-	from portage._sets.base import EditablePackageSet
-	
+			vartree.dbapi.unlock()
+
 	# generate a list of package sets that are directly or indirectly listed in "selected",
 	# as there is no persistent list of "installed" sets
 	installed_sets = ["selected"]
