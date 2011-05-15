@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """Provides an easy-to-use python interface to Gentoo's metadata.xml file.
@@ -79,7 +79,7 @@ class _Useflag(object):
 	@type name: str or None
 	@ivar name: USE flag
 	@type restrict: str or None
-	@ivar restrict: e.g. &gt;=portage-2.2 means flag is only avaiable in
+	@ivar restrict: e.g. &gt;=portage-2.2 means flag is only available in
 		versions greater than 2.2
 	@type description: str
 	@ivar description: description of the USE flag

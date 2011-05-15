@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright 2008-2009 Gentoo Foundation
+# Copyright 2008-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -94,7 +94,7 @@ elif mode != "list" and not params:
 	parser.print_help()
 	sys.exit(1)
 elif mode in ["fix", "inject"] and os.geteuid() != 0:
-	# we need root priviledges for write access
+	# we need root privileges for write access
 	sys.stderr.write("\nThis tool needs root access to "+options.mode+" this GLSA\n\n")
 	sys.exit(2)
 elif mode == "list" and not params:

@@ -1227,7 +1227,7 @@ def expand_set_arguments(myfiles, myaction, root_config):
 
 	sets = setconfig.getSets()
 
-	# display errors that occured while loading the SetConfig instance
+	# display errors that occurred while loading the SetConfig instance
 	for e in setconfig.errors:
 		print(colorize("BAD", "Error during set creation: %s" % e))
 

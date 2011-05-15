@@ -5144,7 +5144,7 @@ class depgraph(object):
 		go to stdout for parsing by programs such as autounmask.
 		"""
 
-		# Note that show_masked_packages() sends it's output to
+		# Note that show_masked_packages() sends its output to
 		# stdout, and some programs such as autounmask parse the
 		# output in cases when emerge bails out. However, when
 		# show_masked_packages() is called for installed packages

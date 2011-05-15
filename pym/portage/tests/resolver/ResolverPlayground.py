@@ -26,9 +26,9 @@ from _emerge.RootConfig import RootConfig
 
 class ResolverPlayground(object):
 	"""
-	This class help to create the necessary files on disk and
+	This class helps to create the necessary files on disk and
 	the needed settings instances, etc. for the resolver to do
-	it's work.
+	its work.
 	"""
 
 	config_files = frozenset(("package.use", "package.mask", "package.keywords", \
@@ -37,7 +37,7 @@ class ResolverPlayground(object):
 	def __init__(self, ebuilds={}, installed={}, profile={}, repo_configs={}, \
 		user_config={}, sets={}, world=[], debug=False):
 		"""
-		ebuilds: cpv -> metadata mapping simulating avaiable ebuilds. 
+		ebuilds: cpv -> metadata mapping simulating available ebuilds. 
 		installed: cpv -> metadata mapping simulating installed packages.
 			If a metadata key is missing, it gets a default value.
 		profile: settings defined by the profile.
@@ -480,7 +480,7 @@ class ResolverPlaygroundTestCase(object):
 		checks = dict.fromkeys(result.checks)
 		for key, value in self._checks.items():
 			if not key in checks:
-				raise KeyError("Not an avaiable check: '%s'" % key)
+				raise KeyError("Not an available check: '%s'" % key)
 			checks[key] = value
 
 		fail_msgs = []
