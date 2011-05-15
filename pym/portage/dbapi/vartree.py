@@ -1509,6 +1509,7 @@ class dblink(object):
 		# remove preserved libraries that don't have any consumers left
 		plib_registry = self.vartree.dbapi._plib_registry
 		if plib_registry:
+			self.vartree.dbapi._fs_lock()
 			plib_registry.lock()
 			try:
 				plib_registry.load()
@@ -1564,6 +1565,7 @@ class dblink(object):
 				plib_registry.store()
 			finally:
 				plib_registry.unlock()
+				self.vartree.dbapi._fs_unlock()
 
 	def unmerge(self, pkgfiles=None, trimworld=None, cleanup=True,
 		ldpath_mtimes=None, others_in_slot=None, needed=None,
@@ -3409,6 +3411,7 @@ class dblink(object):
 		preserve_paths = set()
 		needed = None
 		if not (linkmap is None or plib_registry is None):
+			self.vartree.dbapi._fs_lock()
 			plib_registry.lock()
 			try:
 				plib_registry.load()
@@ -3423,6 +3426,7 @@ class dblink(object):
 				preserve_paths = self._find_libs_to_preserve()
 			finally:
 				plib_registry.unlock()
+				self.vartree.dbapi._fs_unlock()
 
 			if preserve_paths:
 				self._add_preserve_libs_to_contents(preserve_paths)
@@ -3507,6 +3511,7 @@ class dblink(object):
 
 		plib_registry = self.vartree.dbapi._plib_registry
 		if plib_registry:
+			self.vartree.dbapi._fs_lock()
 			plib_registry.lock()
 			try:
 				plib_registry.load()
@@ -3563,6 +3568,7 @@ class dblink(object):
 				plib_registry.store()
 			finally:
 				plib_registry.unlock()
+				self.vartree.dbapi._fs_unlock()
 
 		self.vartree.dbapi._add(self)
 		contents = self.getcontents()
