@@ -3,6 +3,7 @@
 
 from __future__ import print_function
 
+import codecs
 import difflib
 import gc
 import logging
@@ -14,12 +15,12 @@ from itertools import chain
 
 import portage
 from portage import os, OrderedDict
-from portage import _unicode_decode
-from portage.const import PORTAGE_PACKAGE_ATOM
+from portage import _unicode_decode, _unicode_encode, _encodings
+from portage.const import PORTAGE_PACKAGE_ATOM, USER_CONFIG_PATH
 from portage.dbapi import dbapi
 from portage.dep import Atom, extract_affecting_use, check_required_use, human_readable_required_use, _repo_separator
 from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use
-from portage.exception import InvalidAtom, InvalidDependString
+from portage.exception import InvalidAtom, InvalidDependString, PortageException
 from portage.output import colorize, create_color_func, \
 	darkgreen, green
 bad = create_color_func("BAD")
@@ -27,8 +28,9 @@ from portage.package.ebuild.getmaskingstatus import \
 	_getmaskingstatus, _MaskReason
 from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
+from portage.util import ConfigProtect, shlex_split, new_protect_filename
 from portage.util import cmp_sort_key, writemsg, writemsg_stdout
-from portage.util import writemsg_level
+from portage.util import writemsg_level, write_atomic
 from portage.util.digraph import digraph
 from portage.versions import catpkgsplit
 
@@ -5493,6 +5495,218 @@ class depgraph(object):
 
 		return display(self, mylist, favorites, verbosity)
 
+	def _display_autounmask(self):
+		"""
+		Display --autounmask message and optionally write them to config files
+		(using CONFIG_PROTECT). The message includes the comments and the changes.
+		"""
+
+		autounmask_write = self._frozen_config.myopts.get("--autounmask-write", "n") == True
+		pretend = "--pretend" in self._frozen_config.myopts
+
+		def check_if_latest(pkg):
+			is_latest = True
+			is_latest_in_slot = True
+			dbs = self._dynamic_config._filtered_trees[pkg.root]["dbs"]
+			root_config = self._frozen_config.roots[pkg.root]
+
+			all_cpv_by_slot = {}
+			for db, pkg_type, built, installed, db_keys in dbs:
+				for other_pkg in self._iter_match_pkgs(root_config, pkg_type, Atom(pkg.cp)):
+					slot = other_pkg.metadata["SLOT"]
+					all_cpv_by_slot.setdefault(slot, set())
+					all_cpv_by_slot[slot].add(other_pkg.cpv)
+
+			all_cpv = []
+			for cpvs in all_cpv_by_slot.values():
+				all_cpv.extend(cpvs)
+			all_cpv.sort(key=portage.versions.cpv_sort_key())
+
+			if all_cpv[-1] != pkg.cpv:
+				is_latest = False
+				slot_cpvs = sorted(all_cpv_by_slot[pkg.metadata["SLOT"]], key=portage.versions.cpv_sort_key())
+				if slot_cpvs[-1] != pkg.cpv:
+					is_latest_in_slot = False
+
+			return is_latest, is_latest_in_slot
+
+		#Set of roots we have autounmask changes for.
+		roots = set()
+
+		unstable_keyword_msg = {}
+		for pkg in self._dynamic_config._needed_unstable_keywords:
+			self._show_merge_list()
+			if pkg in self._dynamic_config.digraph:
+				root = pkg.root
+				roots.add(root)
+				unstable_keyword_msg.setdefault(root, [])
+				is_latest, is_latest_in_slot = check_if_latest(pkg)
+				pkgsettings = self._frozen_config.pkgsettings[pkg.root]
+				mreasons = _get_masking_status(pkg, pkgsettings, pkg.root_config,
+					use=self._pkg_use_enabled(pkg))
+				for reason in mreasons:
+					if reason.unmask_hint and \
+						reason.unmask_hint.key == 'unstable keyword':
+						keyword = reason.unmask_hint.value
+
+						unstable_keyword_msg[root].append(self._get_dep_chain_as_comment(pkg))
+						if is_latest:
+							unstable_keyword_msg[root].append(">=%s %s\n" % (pkg.cpv, keyword))
+						elif is_latest_in_slot:
+							unstable_keyword_msg[root].append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], keyword))
+						else:
+							unstable_keyword_msg[root].append("=%s %s\n" % (pkg.cpv, keyword))
+
+		use_changes_msg = {}
+		for pkg, needed_use_config_change in self._dynamic_config._needed_use_config_changes.items():
+			self._show_merge_list()
+			if pkg in self._dynamic_config.digraph:
+				root = pkg.root
+				roots.add(root)
+				use_changes_msg.setdefault(root, [])
+				is_latest, is_latest_in_slot = check_if_latest(pkg)
+				changes = needed_use_config_change[1]
+				adjustments = []
+				for flag, state in changes.items():
+					if state:
+						adjustments.append(flag)
+					else:
+						adjustments.append("-" + flag)
+				use_changes_msg[root].append(self._get_dep_chain_as_comment(pkg, unsatisfied_dependency=True))
+				if is_latest:
+					use_changes_msg[root].append(">=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
+				elif is_latest_in_slot:
+					use_changes_msg[root].append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], " ".join(adjustments)))
+				else:
+					use_changes_msg[root].append("=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
+
+		license_msg = {}
+		for pkg, missing_licenses in self._dynamic_config._needed_license_changes.items():
+			self._show_merge_list()
+			if pkg in self._dynamic_config.digraph:
+				root = pkg.root
+				roots.add(root)
+				license_msg.setdefault(root, [])
+				is_latest, is_latest_in_slot = check_if_latest(pkg)
+
+				license_msg[root].append(self._get_dep_chain_as_comment(pkg))
+				if is_latest:
+					license_msg[root].append(">=%s %s\n" % (pkg.cpv, " ".join(sorted(missing_licenses))))
+				elif is_latest_in_slot:
+					license_msg[root].append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], " ".join(sorted(missing_licenses))))
+				else:
+					license_msg[root].append("=%s %s\n" % (pkg.cpv, " ".join(sorted(missing_licenses))))
+
+		def find_config_file(abs_user_config, file_name):
+			"""
+			Searches /etc/portage for an appropiate file to append changes to.
+			If the file_name is a file it is returned, if it is a directoy, the
+			last file in it is returned.
+
+			file_name - String containg a file name like "package.use"
+			return value - String. Absolte path of file to write to. None if
+			no suitable file exists.
+			"""
+			file_path = os.path.join(abs_user_config, file_name)
+			if os.path.exists(file_path):
+				if os.path.isfile(file_path):
+					return file_path
+				elif os.path.isdir(file_path):
+					try:
+						files = sorted(f for f in os.listdir(file_path) \
+							if os.path.isfile(os.path.join(file_path, f)))
+						if len(files) != 0:
+							return  os.path.join(file_path, files[-1])
+					except OSError:
+						pass
+
+
+		write_to_file = autounmask_write and not pretend
+		#Make sure we have a file to write to before doing any write.
+		file_to_write_to = {}
+		problems = []
+		if write_to_file:
+			for root in roots:
+				abs_user_config = os.path.join(root, USER_CONFIG_PATH)
+
+				if root in unstable_keyword_msg:
+					file_to_write_to[(abs_user_config, "package.keywords")] = \
+						find_config_file(abs_user_config, "package.keywords")
+
+				if root in use_changes_msg:
+					file_to_write_to[(abs_user_config, "package.use")] = \
+						find_config_file(abs_user_config, "package.use")
+
+				if root in license_msg:
+					file_to_write_to[(abs_user_config, "package.license")] = \
+						find_config_file(abs_user_config, "package.license")
+
+			for (abs_user_config, f), path in file_to_write_to.items():
+				if path is None:
+					problems.append("!!! No file to write for '%s'\n" % os.path.join(abs_user_config, f))
+
+			write_to_file = not problems
+
+
+		protect_obj = {}
+		if write_to_file:
+			for root in roots:
+				settings = self._frozen_config.pkgsettings[root]
+				protect_obj[root] = ConfigProtect(root, \
+					shlex_split(settings.get("CONFIG_PROTECT", "")),
+					shlex_split(settings.get("CONFIG_PROTECT_MASK", "")))
+
+		def write_changes(root, change_type, changes, file_to_write_to):
+			writemsg_stdout("\nThe following " + colorize("BAD", "%s changes" % change_type) + \
+				" are necessary to proceed:\n", noiselevel=-1)
+			writemsg_stdout("".join(changes), noiselevel=-1)
+			if write_to_file:
+				try:
+					file_contents = codecs.open(
+						_unicode_encode(file_to_write_to,
+						encoding=_encodings['fs'], errors='strict'),
+						mode='r', encoding=_encodings['content'],
+						errors='replace').readlines()
+				except IOError as e:
+					problems.append("!!! Failed to read '%s': %s\n" % (file_to_write_to, e))
+				else:
+					file_contents.extend(changes)
+					if protect_obj[root].isprotected(file_to_write_to):
+						file_to_write_to = new_protect_filename(file_to_write_to)
+					try:
+						write_atomic(file_to_write_to, "".join(file_contents))
+					except PortageException:
+						problems.append("!!! Failed to write '%s'\n" % file_to_write_to)
+
+		for root in roots:
+			abs_user_config = os.path.join(root, USER_CONFIG_PATH)
+			if len(roots) > 1:
+				writemsg_stdout("\nFor %s:\n" % abs_user_config, noiselevel=-1)
+
+			if root in unstable_keyword_msg:
+				write_changes(root, "keyword", unstable_keyword_msg[root],
+					file_to_write_to.get((abs_user_config, "package.keywords")))
+
+			if root in use_changes_msg:
+				write_changes(root, "USE", use_changes_msg[root],
+					file_to_write_to.get((abs_user_config, "package.use")))
+
+			if root in license_msg:
+				write_changes(root, "license", license_msg[root],
+					file_to_write_to.get((abs_user_config, "package.license")))
+
+		if problems:
+			writemsg_stdout("\nThe following problems occured while writing autounmask changes:\n", \
+				noiselevel=-1)
+			writemsg_stdout("".join(problems), noiselevel=-1)
+		elif write_to_file and roots:
+			writemsg_stdout("\nAutounmask changes successfully written. Remeber to run etc-update.\n", \
+				noiselevel=-1)
+		elif not pretend and not autounmask_write and roots:
+			writemsg_stdout("\nUse --autounmask-write to write changes to config files (honoring CONFIG_PROTECT).\n", \
+				noiselevel=-1)
+
+
 	def display_problems(self):
 		"""
 		Display problems with the dependency graph such as slot collisions.
@@ -5543,102 +5757,7 @@ class depgraph(object):
 		else:
 			self._show_missed_update()
 
-		def check_if_latest(pkg):
-			is_latest = True
-			is_latest_in_slot = True
-			dbs = self._dynamic_config._filtered_trees[pkg.root]["dbs"]
-			root_config = self._frozen_config.roots[pkg.root]
-
-			all_cpv_by_slot = {}
-			for db, pkg_type, built, installed, db_keys in dbs:
-				for other_pkg in self._iter_match_pkgs(root_config, pkg_type, Atom(pkg.cp)):
-					slot = other_pkg.metadata["SLOT"]
-					all_cpv_by_slot.setdefault(slot, set())
-					all_cpv_by_slot[slot].add(other_pkg.cpv)
-
-			all_cpv = []
-			for cpvs in all_cpv_by_slot.values():
-				all_cpv.extend(cpvs)
-			all_cpv.sort(key=portage.versions.cpv_sort_key())
-
-			if all_cpv[-1] != pkg.cpv:
-				is_latest = False
-				slot_cpvs = sorted(all_cpv_by_slot[pkg.metadata["SLOT"]], key=portage.versions.cpv_sort_key())
-				if slot_cpvs[-1] != pkg.cpv:
-					is_latest_in_slot = False
-
-			return is_latest, is_latest_in_slot
-
-
-		unstable_keyword_msg = []
-		for pkg in self._dynamic_config._needed_unstable_keywords:
-			self._show_merge_list()
-			if pkg in self._dynamic_config.digraph:
-				is_latest, is_latest_in_slot = check_if_latest(pkg)
-				pkgsettings = self._frozen_config.pkgsettings[pkg.root]
-				mreasons = _get_masking_status(pkg, pkgsettings, pkg.root_config,
-					use=self._pkg_use_enabled(pkg))
-				for reason in mreasons:
-					if reason.unmask_hint and \
-						reason.unmask_hint.key == 'unstable keyword':
-						keyword = reason.unmask_hint.value
-
-						unstable_keyword_msg.append(self._get_dep_chain_as_comment(pkg))
-						if is_latest:
-							unstable_keyword_msg.append(">=%s %s\n" % (pkg.cpv, keyword))
-						elif is_latest_in_slot:
-							unstable_keyword_msg.append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], keyword))
-						else:
-							unstable_keyword_msg.append("=%s %s\n" % (pkg.cpv, keyword))
-
-		use_changes_msg = []
-		for pkg, needed_use_config_change in self._dynamic_config._needed_use_config_changes.items():
-			self._show_merge_list()
-			if pkg in self._dynamic_config.digraph:
-				is_latest, is_latest_in_slot = check_if_latest(pkg)
-				changes = needed_use_config_change[1]
-				adjustments = []
-				for flag, state in changes.items():
-					if state:
-						adjustments.append(flag)
-					else:
-						adjustments.append("-" + flag)
-				use_changes_msg.append(self._get_dep_chain_as_comment(pkg, unsatisfied_dependency=True))
-				if is_latest:
-					use_changes_msg.append(">=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
-				elif is_latest_in_slot:
-					use_changes_msg.append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], " ".join(adjustments)))
-				else:
-					use_changes_msg.append("=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
-
-		license_msg = []
-		for pkg, missing_licenses in self._dynamic_config._needed_license_changes.items():
-			self._show_merge_list()
-			if pkg in self._dynamic_config.digraph:
-				is_latest, is_latest_in_slot = check_if_latest(pkg)
-
-				license_msg.append(self._get_dep_chain_as_comment(pkg))
-				if is_latest:
-					license_msg.append(">=%s %s\n" % (pkg.cpv, " ".join(sorted(missing_licenses))))
-				elif is_latest_in_slot:
-					license_msg.append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], " ".join(sorted(missing_licenses))))
-				else:
-					license_msg.append("=%s %s\n" % (pkg.cpv, " ".join(sorted(missing_licenses))))
-
-		if unstable_keyword_msg:
-			writemsg_stdout("\nThe following " + colorize("BAD", "keyword changes") + \
-				" are necessary to proceed:\n", noiselevel=-1)
-			writemsg_stdout("".join(unstable_keyword_msg), noiselevel=-1)
-
-		if use_changes_msg:
-			writemsg_stdout("\nThe following " + colorize("BAD", "USE changes") + \
-				" are necessary to proceed:\n", noiselevel=-1)
-			writemsg_stdout("".join(use_changes_msg), noiselevel=-1)
-
-		if license_msg:
-			writemsg_stdout("\nThe following " + colorize("BAD", "license changes") + \
-				" are necessary to proceed:\n", noiselevel=-1)
-			writemsg_stdout("".join(license_msg), noiselevel=-1)
+		self._display_autounmask()
 
 		# TODO: Add generic support for "set problem" handlers so that
 		# the below warnings aren't special cases for world only.

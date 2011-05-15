@@ -427,6 +427,7 @@ def insert_optional_args(args):
 	default_arg_opts = {
 		'--ask'                  : y_or_n,
 		'--autounmask'           : y_or_n,
+		'--autounmask-write'     : y_or_n,
 		'--buildpkg'             : y_or_n,
 		'--complete-graph'       : y_or_n,
 		'--deep'       : valid_integers,
@@ -594,6 +595,12 @@ def parse_opts(tmpcmdline, silent=False):
 
 		"--autounmask": {
 			"help"    : "automatically unmask packages",
+			"type"    : "choice",
+			"choices" : true_y_or_n
+		},
+
+		"--autounmask-write": {
+			"help"    : "write changes made by --autounmask to disk",
 			"type"    : "choice",
 			"choices" : true_y_or_n
 		},
@@ -915,6 +922,9 @@ def parse_opts(tmpcmdline, silent=False):
 
 	if myoptions.autounmask in true_y:
 		myoptions.autounmask = True
+
+	if myoptions.autounmask_write in true_y:
+		myoptions.autounmask_write = True
 
 	if myoptions.buildpkg in true_y:
 		myoptions.buildpkg = True

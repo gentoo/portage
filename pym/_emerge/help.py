@@ -320,6 +320,13 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
+		print("       " + green("--autounmask-write") + " [ %s | %s ]" % \
+			(turquoise("y"), turquoise("n")))
+		desc = "If --autounmask is enabled, changes are written " + \
+			"to config files, respecting CONFIG_PROTECT."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
 		print("       " + green("--backtrack") + " " + turquoise("COUNT"))
 		desc = "Specifies an integer number of times to backtrack if " + \
 			"dependency calculation fails due to a conflict or an " + \

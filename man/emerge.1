@@ -301,6 +301,10 @@ the specified configuration file(s). Currently,
 this only works for unstable KEYWORDS masks,
 LICENSE masks, and package.use settings.
 .TP
+.BR "\-\-autounmask\-write [ y | n ]"
+If \-\-autounmask is enabled, changes are written
+to config files, respecting \fBCONFIG_PROTECT\fR.
+.TP
 .BR \-\-backtrack=COUNT
 Specifies an integer number of times to backtrack if
 dependency calculation fails due to a conflict or an
