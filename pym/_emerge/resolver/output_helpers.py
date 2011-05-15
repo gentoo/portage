@@ -1,7 +1,7 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-"""Contains private suport functions for the Display class
+"""Contains private support functions for the Display class
 in output.py
 """
 __all__ = (

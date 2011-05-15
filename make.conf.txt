@@ -316,7 +316,7 @@ GENTOO_MIRRORS
 :default: http://distfiles.gentoo.org http://distro.ibiblio.org/pub/linux/distributions/gentoo
 :valdesc: space separated list of mirror locations
 
-Insert your space-seperated list of local mirrors here. These locations are 
+Insert your space-separated list of local mirrors here. These locations are 
 used to download files before the ones listed in the ebuild scripts. Merging 
 'app-portage/mirrorselect' can help to select an appropriate mirror.
 

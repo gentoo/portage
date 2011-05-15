@@ -1,5 +1,5 @@
 # cvstree.py -- cvs tree utilities
-# Copyright 1998-2004 Gentoo Foundation
+# Copyright 1998-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -199,8 +199,8 @@ def apply_cvsignore_filter(list):
 	
 def getentries(mydir,recursive=0):
 	"""(basedir,recursive=0)
-	Scans the given directory and returns an datadict of all the entries in
-	the directory seperated as a dirs dict and a files dict."""
+	Scans the given directory and returns a datadict of all the entries in
+	the directory separated as a dirs dict and a files dict."""
 	myfn=mydir+"/CVS/Entries"
 	# entries=[dirs, files]
 	entries={"dirs":{},"files":{}}

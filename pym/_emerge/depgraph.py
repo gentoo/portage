@@ -5532,7 +5532,7 @@ class depgraph(object):
 
 	def _display_autounmask(self):
 		"""
-		Display --autounmask message and optionally write them to config files
+		Display --autounmask message and optionally write it to config files
 		(using CONFIG_PROTECT). The message includes the comments and the changes.
 		"""
 
@@ -5658,12 +5658,12 @@ class depgraph(object):
 
 		def find_config_file(abs_user_config, file_name):
 			"""
-			Searches /etc/portage for an appropiate file to append changes to.
-			If the file_name is a file it is returned, if it is a directoy, the
+			Searches /etc/portage for an appropriate file to append changes to.
+			If the file_name is a file it is returned, if it is a directory, the
 			last file in it is returned.
 
-			file_name - String containg a file name like "package.use"
-			return value - String. Absolte path of file to write to. None if
+			file_name - String containing a file name like "package.use"
+			return value - String. Absolute path of file to write to. None if
 			no suitable file exists.
 			"""
 			file_path = os.path.join(abs_user_config, file_name)
@@ -5675,7 +5675,7 @@ class depgraph(object):
 						files = sorted(f for f in os.listdir(file_path) \
 							if os.path.isfile(os.path.join(file_path, f)))
 						if len(files) != 0:
-							return  os.path.join(file_path, files[-1])
+							return os.path.join(file_path, files[-1])
 					except OSError:
 						pass
 
@@ -5763,11 +5763,11 @@ class depgraph(object):
 					file_to_write_to.get((abs_user_config, "package.license")))
 
 		if problems:
-			writemsg_stdout("\nThe following problems occured while writing autounmask changes:\n", \
+			writemsg_stdout("\nThe following problems occurred while writing autounmask changes:\n", \
 				noiselevel=-1)
 			writemsg_stdout("".join(problems), noiselevel=-1)
 		elif write_to_file and roots:
-			writemsg_stdout("\nAutounmask changes successfully written. Remeber to run etc-update.\n", \
+			writemsg_stdout("\nAutounmask changes successfully written. Remember to run etc-update.\n", \
 				noiselevel=-1)
 		elif not pretend and not autounmask_write and roots:
 			writemsg_stdout("\nUse --autounmask-write to write changes to config files (honoring CONFIG_PROTECT).\n", \
@@ -5786,7 +5786,7 @@ class depgraph(object):
 		go to stdout for parsing by programs such as autounmask.
 		"""
 
-		# Note that show_masked_packages() sends it's output to
+		# Note that show_masked_packages() sends its output to
 		# stdout, and some programs such as autounmask parse the
 		# output in cases when emerge bails out. However, when
 		# show_masked_packages() is called for installed packages

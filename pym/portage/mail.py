@@ -107,8 +107,8 @@ def send_mail(mysettings, message):
 	myrecipient = "root@localhost"
 	
 	# Syntax for PORTAGE_ELOG_MAILURI (if defined):
-	# adress [[user:passwd@]mailserver[:port]]
-	# where adress:     recipient adress
+	# address [[user:passwd@]mailserver[:port]]
+	# where address:    recipient address
 	#       user:       username for smtp auth (defaults to none)
 	#       passwd:     password for smtp auth (defaults to none)
 	#       mailserver: smtp server that should be used to deliver the mail (defaults to localhost)
@@ -159,7 +159,7 @@ def send_mail(mysettings, message):
 				myconn = smtplib.SMTP(mymailhost, int(mymailport) - 100000)
 				myconn.ehlo()
 				if not myconn.has_extn("STARTTLS"):
-					raise portage.exception.PortageException(_("!!! TLS support requested for logmail but not suported by server"))
+					raise portage.exception.PortageException(_("!!! TLS support requested for logmail but not supported by server"))
 				myconn.starttls()
 				myconn.ehlo()
 			else:
@@ -171,8 +171,8 @@ def send_mail(mysettings, message):
 			myconn.sendmail(myfrom, myrecipient, message_str)
 			myconn.quit()
 		except smtplib.SMTPException as e:
-			raise portage.exception.PortageException(_("!!! An error occured while trying to send logmail:\n")+str(e))
+			raise portage.exception.PortageException(_("!!! An error occurred while trying to send logmail:\n")+str(e))
 		except socket.error as e:
-			raise portage.exception.PortageException(_("!!! A network error occured while trying to send logmail:\n%s\nSure you configured PORTAGE_ELOG_MAILURI correctly?") % str(e))
+			raise portage.exception.PortageException(_("!!! A network error occurred while trying to send logmail:\n%s\nSure you configured PORTAGE_ELOG_MAILURI correctly?") % str(e))
 	return
 	
