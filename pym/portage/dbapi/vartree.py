@@ -3510,7 +3510,7 @@ class dblink(object):
 				self.vartree.dbapi.removeFromContents(blocker, iter(contents),
 					relative_paths=False)
 		finally:
-			self.lockdb()
+			self.unlockdb()
 
 		plib_registry = self.vartree.dbapi._plib_registry
 		if plib_registry:
