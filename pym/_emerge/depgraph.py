@@ -3285,6 +3285,9 @@ class depgraph(object):
 					if only_use_changes and allow_unmasks:
 						continue
 
+					if pkg is not None:
+						break
+
 					pkg, existing = \
 						self._wrapped_select_pkg_highest_available_imp(
 							root, atom, onlydeps=onlydeps,
@@ -3321,6 +3324,7 @@ class depgraph(object):
 		mreasons = _get_masking_status(pkg, pkgsettings, root_config, use=self._pkg_use_enabled(pkg))
 
 		masked_by_unstable_keywords = False
+		masked_by_missing_keywords = False
 		missing_licenses = None
 		masked_by_something_else = False
 		masked_by_p_mask = False
@@ -3332,6 +3336,8 @@ class depgraph(object):
 				masked_by_something_else = True
 			elif hint.key == "unstable keyword":
 				masked_by_unstable_keywords = True
+				if hint.value == "**":
+					masked_by_missing_keywords = True
 			elif hint.key == "p_mask":
 				masked_by_p_mask = True
 			elif hint.key == "license":
@@ -3345,6 +3351,7 @@ class depgraph(object):
 		if pkg in self._dynamic_config._needed_unstable_keywords:
 			#If the package is already keyworded, remove the mask.
 			masked_by_unstable_keywords = False
+			masked_by_missing_keywords = False
 
 		if pkg in self._dynamic_config._needed_p_mask_changes:
 			#If the package is already keyworded, remove the mask.
@@ -3358,7 +3365,9 @@ class depgraph(object):
 			#Package has already been unmasked.
 			return True
 
+		#We treat missing keywords in the same way as masks.
 		if (masked_by_unstable_keywords and not allow_unstable_keywords) or \
+			(masked_by_missing_keywords and not allow_unmasks) or \
 			(masked_by_p_mask and not allow_unmasks) or \
 			(missing_licenses and not allow_license_changes):
 			#We are not allowed to do the needed changes.

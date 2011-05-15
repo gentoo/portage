@@ -149,6 +149,9 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 				kmask_hint = _UnmaskHint("unstable keyword", kmask)
 				break
 
+	if kmask == "missing":
+		kmask_hint = _UnmaskHint("unstable keyword", "**")
+
 	try:
 		missing_licenses = settings._getMissingLicenses(mycpv, metadata)
 		if missing_licenses:
