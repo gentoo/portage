@@ -815,15 +815,7 @@ class vardbapi(dbapi):
 		"""
 		myroot = None
 		mycpv = None
-		locked_vdb = False
-		if "parallel-install" not in self.settings.features:
-			# If parallel-install is enabled, it's unsafe to
-			# lock the vdb here since the portage.locks module
-			# does not behave as desired if we try to lock the
-			# same file multiple times concurrently from the
-			# same process.
-			self.lock()
-			locked_vdb = True
+		self.lock()
 		try:
 			counter = self.get_counter_tick_core() - 1
 			if self._cached_counter != counter:
@@ -837,8 +829,7 @@ class vardbapi(dbapi):
 					write_atomic(self._counter_path, str(counter))
 				self._cached_counter = counter
 		finally:
-			if locked_vdb:
-				self.unlock()
+			self.unlock()
 
 		return counter
 
