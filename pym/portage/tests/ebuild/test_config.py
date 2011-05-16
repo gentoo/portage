@@ -168,6 +168,7 @@ class ConfigTestCase(TestCase):
 		test_cases = (
 				ResolverPlaygroundTestCase(
 					["dev-libs/A"],
+					options = { "--autounmask": 'n' },
 					success = False),
 				ResolverPlaygroundTestCase(
 					["dev-libs/B"],
@@ -183,6 +184,7 @@ class ConfigTestCase(TestCase):
 					mergelist = ["dev-libs/D-1"]),
 				ResolverPlaygroundTestCase(
 					["dev-libs/E"],
+					options = { "--autounmask": 'n' },
 					success = False),
 		)
 

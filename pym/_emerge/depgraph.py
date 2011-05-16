@@ -424,7 +424,7 @@ class _dynamic_depgraph_config(object):
 		self._skip_restart = False
 		self._backtrack_infos = {}
 
-		self._autounmask = depgraph._frozen_config.myopts.get('--autounmask', 'n') == True
+		self._autounmask = depgraph._frozen_config.myopts.get('--autounmask') != 'n'
 		self._success_without_autounmask = False
 		self._traverse_ignored_deps = False
 
@@ -3317,7 +3317,7 @@ class depgraph(object):
 		if pkg.visible:
 			return True
 
-		if self._frozen_config.myopts.get('--autounmask', 'n') is not True:
+		if not self._dynamic_config._autounmask:
 			return False
 
 		pkgsettings = self._frozen_config.pkgsettings[pkg.root]

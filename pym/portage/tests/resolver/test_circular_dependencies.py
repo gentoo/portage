@@ -60,7 +60,6 @@ class CircularDependencyTestCase(TestCase):
 			#Conflict with autounmask
 			ResolverPlaygroundTestCase(
 				["=dev-libs/W-3"],
-				options = { "--autounmask": True },
 				circular_dependency_solutions = { "dev-libs/Y-1": frozenset([frozenset([("foo", False)])])},
 				use_changes = { "dev-libs/Z-3": {"bar": True}},
 				success = False),

@@ -281,7 +281,7 @@ class AutounmaskTestCase(TestCase):
 		test_cases = (
 				ResolverPlaygroundTestCase(
 					["=dev-libs/A-1"],
-					options = {"--autounmask": False},
+					options = {"--autounmask": 'n'},
 					success = False),
 				ResolverPlaygroundTestCase(
 					["=dev-libs/A-1"],
