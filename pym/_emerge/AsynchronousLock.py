@@ -176,7 +176,7 @@ class _LockProcess(AbstractPollTask):
 	"""
 
 	__slots__ = ('path', 'scheduler',) + \
-		('_proc', '_files', '_reg_id')
+		('_proc', '_files', '_reg_id', '_unlocked')
 
 	def _start(self):
 		in_pr, in_pw = os.pipe()
@@ -201,8 +201,14 @@ class _LockProcess(AbstractPollTask):
 		os.close(in_pw)
 
 	def _proc_exit(self, proc):
-		if proc.returncode != os.EX_OK:
-			# There's no good reason for locks to fail.
+		if proc.returncode != os.EX_OK and \
+			not self.cancelled and \
+			not self._unlocked:
+			# Typically, lock process failure should only happen
+			# if it's killed by a signal. We don't want lost
+			# locks going unnoticed, so it's only safe to ignore
+			# if either the cancel() or unlock() methods have
+			# been previously called.
 			raise AssertionError('lock process failed with returncode %s' \
 				% (proc.returncode,))
 
@@ -244,6 +250,7 @@ class _LockProcess(AbstractPollTask):
 			raise AssertionError('not locked')
 		if self.returncode is None:
 			raise AssertionError('lock not acquired yet')
+		self._unlocked = True
 		self._files['pipe_out'].write(b'\0')
 		self._files['pipe_out'].close()
 		self._files = None
