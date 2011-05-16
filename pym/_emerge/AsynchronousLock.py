@@ -3,6 +3,7 @@
 
 import dummy_threading
 import fcntl
+import logging
 import sys
 
 try:
@@ -13,7 +14,9 @@ except ImportError:
 import portage
 from portage import os
 from portage.exception import TryAgain
+from portage.localization import _
 from portage.locks import lockfile, unlockfile
+from portage.util import writemsg_level
 from _emerge.AbstractPollTask import AbstractPollTask
 from _emerge.AsynchronousTask import AsynchronousTask
 from _emerge.PollConstants import PollConstants
@@ -176,7 +179,7 @@ class _LockProcess(AbstractPollTask):
 	"""
 
 	__slots__ = ('path', 'scheduler',) + \
-		('_proc', '_files', '_reg_id', '_unlocked')
+		('_acquired', '_proc', '_files', '_reg_id', '_unlocked')
 
 	def _start(self):
 		in_pr, in_pw = os.pipe()
@@ -201,16 +204,29 @@ class _LockProcess(AbstractPollTask):
 		os.close(in_pw)
 
 	def _proc_exit(self, proc):
-		if proc.returncode != os.EX_OK and \
-			not self.cancelled and \
-			not self._unlocked:
-			# Typically, lock process failure should only happen
-			# if it's killed by a signal. We don't want lost
-			# locks going unnoticed, so it's only safe to ignore
-			# if either the cancel() or unlock() methods have
-			# been previously called.
-			raise AssertionError('lock process failed with returncode %s' \
-				% (proc.returncode,))
+		if proc.returncode != os.EX_OK:
+			# Typically, this will happen due to the
+			# process being killed by a signal.
+			if not self._acquired:
+				# If the lock hasn't been aquired yet, the
+				# caller can check the returncode and handle
+				# this failure appropriately.
+				if not self.cancelled:
+					writemsg_level("_LockProcess: %s\n" % \
+						_("failed to acquire lock on '%s'") % (self.path,),
+						level=logging.ERROR, noiselevel=-1)
+				self._unregister()
+				self.returncode = proc.returncode
+				self.wait()
+				return
+
+			if not self.cancelled and \
+				not self._unlocked:
+				# We don't want lost locks going unnoticed, so it's
+				# only safe to ignore if either the cancel() or
+				# unlock() methods have been previously called.
+				raise AssertionError("lock process failed with returncode %s" \
+					% (proc.returncode,))
 
 	def _cancel(self):
 		if self._proc is not None:
@@ -226,6 +242,7 @@ class _LockProcess(AbstractPollTask):
 	def _output_handler(self, f, event):
 		buf = self._read_buf(self._files['pipe_in'], event)
 		if buf:
+			self._acquired = True
 			self._unregister()
 			self.returncode = os.EX_OK
 			self.wait()
