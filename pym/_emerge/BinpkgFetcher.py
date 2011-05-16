@@ -158,7 +158,12 @@ class BinpkgFetcher(SpawnProcess):
 		async_lock = AsynchronousLock(path=self.pkg_path,
 			scheduler=self.scheduler)
 		async_lock.start()
-		async_lock.wait()
+
+		if async_lock.wait() != os.EX_OK:
+			# TODO: Use CompositeTask for better handling, like in EbuildPhase.
+			raise AssertionError("AsynchronousLock failed with returncode %s" \
+				% (async_lock.returncode,))
+
 		self._lock_obj = async_lock
 		self.locked = True
 
