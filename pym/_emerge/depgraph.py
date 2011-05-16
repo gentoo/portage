@@ -57,6 +57,7 @@ from _emerge.SetArg import SetArg
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
 from _emerge.UnmergeDepPriority import UnmergeDepPriority
 from _emerge.UseFlagDisplay import pkg_use_display
+from _emerge.userquery import userquery
 
 from _emerge.resolver.backtracking import Backtracker, BacktrackParameter
 from _emerge.resolver.slot_collision import slot_conflict_handler
@@ -5538,6 +5539,8 @@ class depgraph(object):
 
 		autounmask_write = self._frozen_config.myopts.get("--autounmask-write", "n") == True
 		pretend = "--pretend" in self._frozen_config.myopts
+		ask = "--ask" in self._frozen_config.myopts
+		enter_invalid = '--ask-enter-invalid' in self._frozen_config.myopts
 
 		def check_if_latest(pkg):
 			is_latest = True
@@ -5710,6 +5713,30 @@ class depgraph(object):
 
 			write_to_file = not problems
 
+		for root in roots:
+			abs_user_config = os.path.join(root, USER_CONFIG_PATH)
+			if len(roots) > 1:
+				writemsg_stdout("\nFor %s:\n" % abs_user_config, noiselevel=-1)
+
+			if root in unstable_keyword_msg:
+				writemsg_stdout("\nThe following " + colorize("BAD", "keyword changes") + \
+					" are necessary to proceed:\n", noiselevel=-1)
+				writemsg_stdout("".join(unstable_keyword_msg[root]), noiselevel=-1)
+
+			if root in p_mask_change_msg:
+				writemsg_stdout("\nThe following " + colorize("BAD", "mask changes") + \
+					" are necessary to proceed:\n", noiselevel=-1)
+				writemsg_stdout("".join(p_mask_change_msg[root]), noiselevel=-1)
+
+			if root in use_changes_msg:
+				writemsg_stdout("\nThe following " + colorize("BAD", "USE changes") + \
+					" are necessary to proceed:\n", noiselevel=-1)
+				writemsg_stdout("".join(use_changes_msg[root]), noiselevel=-1)
+
+			if root in license_msg:
+				writemsg_stdout("\nThe following " + colorize("BAD", "license changes") + \
+					" are necessary to proceed:\n", noiselevel=-1)
+				writemsg_stdout("".join(license_msg[root]), noiselevel=-1)
 
 		protect_obj = {}
 		if write_to_file:
@@ -5719,48 +5746,49 @@ class depgraph(object):
 					shlex_split(settings.get("CONFIG_PROTECT", "")),
 					shlex_split(settings.get("CONFIG_PROTECT_MASK", "")))
 
-		def write_changes(root, change_type, changes, file_to_write_to):
-			writemsg_stdout("\nThe following " + colorize("BAD", "%s changes" % change_type) + \
-				" are necessary to proceed:\n", noiselevel=-1)
-			writemsg_stdout("".join(changes), noiselevel=-1)
-			if write_to_file:
+		def write_changes(root, changes, file_to_write_to):
+			try:
+				file_contents = codecs.open(
+					_unicode_encode(file_to_write_to,
+					encoding=_encodings['fs'], errors='strict'),
+					mode='r', encoding=_encodings['content'],
+					errors='replace').readlines()
+			except IOError as e:
+				problems.append("!!! Failed to read '%s': %s\n" % (file_to_write_to, e))
+			else:
+				file_contents.extend(changes)
+				if protect_obj[root].isprotected(file_to_write_to):
+					file_to_write_to = new_protect_filename(file_to_write_to)
 				try:
-					file_contents = codecs.open(
-						_unicode_encode(file_to_write_to,
-						encoding=_encodings['fs'], errors='strict'),
-						mode='r', encoding=_encodings['content'],
-						errors='replace').readlines()
-				except IOError as e:
-					problems.append("!!! Failed to read '%s': %s\n" % (file_to_write_to, e))
-				else:
-					file_contents.extend(changes)
-					if protect_obj[root].isprotected(file_to_write_to):
-						file_to_write_to = new_protect_filename(file_to_write_to)
-					try:
-						write_atomic(file_to_write_to, "".join(file_contents))
-					except PortageException:
-						problems.append("!!! Failed to write '%s'\n" % file_to_write_to)
+					write_atomic(file_to_write_to, "".join(file_contents))
+				except PortageException:
+					problems.append("!!! Failed to write '%s'\n" % file_to_write_to)
 
-		for root in roots:
-			abs_user_config = os.path.join(root, USER_CONFIG_PATH)
-			if len(roots) > 1:
-				writemsg_stdout("\nFor %s:\n" % abs_user_config, noiselevel=-1)
+		if write_to_file and ask:
+			prompt = "\nWould you like to add these " + \
+				"changes to your config files?"
+			if userquery(prompt, enter_invalid) == 'No':
+				write_to_file = False
 
-			if root in unstable_keyword_msg:
-				write_changes(root, "keyword", unstable_keyword_msg[root],
-					file_to_write_to.get((abs_user_config, "package.keywords")))
+		if write_to_file:
+			for root in roots:
+				abs_user_config = os.path.join(root, USER_CONFIG_PATH)
 
-			if root in p_mask_change_msg:
-				write_changes(root, "mask", p_mask_change_msg[root],
-					file_to_write_to.get((abs_user_config, "package.unmask")))
+				if root in unstable_keyword_msg:
+					write_changes(root, unstable_keyword_msg[root],
+						file_to_write_to.get((abs_user_config, "package.keywords")))
 
-			if root in use_changes_msg:
-				write_changes(root, "USE", use_changes_msg[root],
-					file_to_write_to.get((abs_user_config, "package.use")))
+				if root in p_mask_change_msg:
+					write_changes(root, p_mask_change_msg[root],
+						file_to_write_to.get((abs_user_config, "package.unmask")))
 
-			if root in license_msg:
-				write_changes(root, "license", license_msg[root],
-					file_to_write_to.get((abs_user_config, "package.license")))
+				if root in use_changes_msg:
+					write_changes(root, use_changes_msg[root],
+						file_to_write_to.get((abs_user_config, "package.use")))
+
+				if root in license_msg:
+					write_changes(root, license_msg[root],
+						file_to_write_to.get((abs_user_config, "package.license")))
 
 		if problems:
 			writemsg_stdout("\nThe following problems occurred while writing autounmask changes:\n", \
