@@ -43,6 +43,8 @@ class EbuildBuildDir(SlotObject):
 		catdir_lock = AsynchronousLock(path=catdir, scheduler=self.scheduler)
 		catdir_lock.start()
 		catdir_lock.wait()
+		self._assert_lock(catdir_lock)
+
 		try:
 			try:
 				portage.util.ensure_dirs(catdir,
@@ -55,11 +57,18 @@ class EbuildBuildDir(SlotObject):
 				scheduler=self.scheduler)
 			builddir_lock.start()
 			builddir_lock.wait()
+			self._assert_lock(builddir_lock)
 			self._lock_obj = builddir_lock
 			self.settings['PORTAGE_BUILDIR_LOCKED'] = '1'
 		finally:
 			self.locked = self._lock_obj is not None
 			catdir_lock.unlock()
+
+	def _assert_lock(self, async_lock):
+		if async_lock.returncode != os.EX_OK:
+			# TODO: create a better way to propagate this error to the caller
+			raise AssertionError("AsynchronousLock failed with returncode %s" \
+				% (async_lock.returncode,))
 
 	def clean_log(self):
 		"""Discard existing log. The log will not be be discarded
@@ -85,15 +94,15 @@ class EbuildBuildDir(SlotObject):
 		self.settings.pop('PORTAGE_BUILDIR_LOCKED', None)
 		catdir_lock = AsynchronousLock(path=self._catdir, scheduler=self.scheduler)
 		catdir_lock.start()
-		catdir_lock.wait()
-		try:
-			os.rmdir(self._catdir)
-		except OSError as e:
-			if e.errno not in (errno.ENOENT,
-				errno.ENOTEMPTY, errno.EEXIST, errno.EPERM):
-				raise
-		finally:
-			catdir_lock.unlock()
+		if catdir_lock.wait() == os.EX_OK:
+			try:
+				os.rmdir(self._catdir)
+			except OSError as e:
+				if e.errno not in (errno.ENOENT,
+					errno.ENOTEMPTY, errno.EEXIST, errno.EPERM):
+					raise
+			finally:
+				catdir_lock.unlock()
 
 	class AlreadyLocked(portage.exception.PortageException):
 		pass
