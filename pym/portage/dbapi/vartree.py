@@ -1548,10 +1548,14 @@ class dblink(object):
 					unmerge_no_replacement)
 				if cpv_lib_map:
 					self._remove_preserved_libs(cpv_lib_map)
-					for cpv, removed in cpv_lib_map.items():
-						if not self.vartree.dbapi.cpv_exists(cpv):
-							continue
-						self.vartree.dbapi.removeFromContents(cpv, removed)
+					self.vartree.dbapi.lock()
+					try:
+						for cpv, removed in cpv_lib_map.items():
+							if not self.vartree.dbapi.cpv_exists(cpv):
+								continue
+							self.vartree.dbapi.removeFromContents(cpv, removed)
+					finally:
+						self.vartree.dbapi.unlock()
 
 				plib_registry.store()
 			finally:
@@ -3524,12 +3528,19 @@ class dblink(object):
 						# same cpv then the vdb entry no longer belongs
 						# to it, so we'll have to get the slot and counter
 						# from plib_registry._data instead.
+						self.vartree.dbapi.lock()
 						try:
-							slot, counter = self.vartree.dbapi.aux_get(
-								cpv, ["SLOT", "COUNTER"])
-							has_vdb_entry = True
-						except KeyError:
-							pass
+							try:
+								slot, counter = self.vartree.dbapi.aux_get(
+									cpv, ["SLOT", "COUNTER"])
+							except KeyError:
+								pass
+							else:
+								has_vdb_entry = True
+								self.vartree.dbapi.removeFromContents(
+									cpv, paths)
+						finally:
+							self.vartree.dbapi.unlock()
 
 					if not has_vdb_entry:
 						# It's possible for previously unmerged packages
@@ -3553,8 +3564,6 @@ class dblink(object):
 
 					remaining = [f for f in plib_dict[cpv] if f not in paths]
 					plib_registry.register(cpv, slot, counter, remaining)
-					if has_vdb_entry:
-						self.vartree.dbapi.removeFromContents(cpv, paths)
 
 				plib_registry.store()
 			finally:
