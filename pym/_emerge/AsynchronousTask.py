@@ -29,10 +29,11 @@ class AsynchronousTask(SlotObject):
 		return self.returncode is None
 
 	def poll(self):
-		self._wait_hook()
 		if self.returncode is not None:
 			return self.returncode
-		return self._poll()
+		self._poll()
+		self._wait_hook()
+		return self.returncode
 
 	def _poll(self):
 		return self.returncode
