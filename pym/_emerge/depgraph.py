@@ -5714,7 +5714,9 @@ class depgraph(object):
 		problems = []
 		if write_to_file:
 			for root in roots:
-				abs_user_config = os.path.join(root, USER_CONFIG_PATH)
+				settings = self._frozen_config.roots[root].settings
+				abs_user_config = os.path.join(
+					settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH)
 
 				if root in unstable_keyword_msg:
 					file_to_write_to[(abs_user_config, "package.keywords")] = \
@@ -5739,7 +5741,10 @@ class depgraph(object):
 			write_to_file = not problems
 
 		for root in roots:
-			abs_user_config = os.path.join(root, USER_CONFIG_PATH)
+			settings = self._frozen_config.roots[root].settings
+			abs_user_config = os.path.join(
+				settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH)
+
 			if len(roots) > 1:
 				writemsg_stdout("\nFor %s:\n" % abs_user_config, noiselevel=-1)
 
@@ -5766,8 +5771,8 @@ class depgraph(object):
 		protect_obj = {}
 		if write_to_file:
 			for root in roots:
-				settings = self._frozen_config.pkgsettings[root]
-				protect_obj[root] = ConfigProtect(root, \
+				settings = self._frozen_config.roots[root].settings
+				protect_obj[root] = ConfigProtect(settings["EROOT"], \
 					shlex_split(settings.get("CONFIG_PROTECT", "")),
 					shlex_split(settings.get("CONFIG_PROTECT_MASK", "")))
 
