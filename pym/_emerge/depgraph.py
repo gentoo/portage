@@ -5776,7 +5776,7 @@ class depgraph(object):
 				except PortageException:
 					problems.append("!!! Failed to write '%s'\n" % file_to_write_to)
 
-		if write_to_file and ask:
+		if ask and write_to_file and file_to_write_to:
 			prompt = "\nWould you like to add these " + \
 				"changes to your config files?"
 			if userquery(prompt, enter_invalid) == 'No':
