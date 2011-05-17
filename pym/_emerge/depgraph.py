@@ -5,6 +5,7 @@ from __future__ import print_function
 
 import codecs
 import difflib
+import errno
 import gc
 import logging
 import re
@@ -5672,6 +5673,18 @@ class depgraph(object):
 			no suitable file exists.
 			"""
 			file_path = os.path.join(abs_user_config, file_name)
+
+			try:
+				os.lstat(file_path)
+			except OSError as e:
+				if e.errno == errno.ENOENT:
+					# The file doesn't exist, so we'll
+					# simply create it.
+					return file_path
+
+				# Disk or file system trouble?
+				return None
+
 			last_file_path = None
 			stack = [file_path]
 			while stack:
@@ -5759,6 +5772,7 @@ class depgraph(object):
 					shlex_split(settings.get("CONFIG_PROTECT_MASK", "")))
 
 		def write_changes(root, changes, file_to_write_to):
+			file_contents = None
 			try:
 				file_contents = codecs.open(
 					_unicode_encode(file_to_write_to,
@@ -5766,8 +5780,12 @@ class depgraph(object):
 					mode='r', encoding=_encodings['content'],
 					errors='replace').readlines()
 			except IOError as e:
-				problems.append("!!! Failed to read '%s': %s\n" % (file_to_write_to, e))
-			else:
+				if e.errno == errno.ENOENT:
+					file_contents = []
+				else:
+					problems.append("!!! Failed to read '%s': %s\n" % \
+						(file_to_write_to, e))
+			if file_contents is not None:
 				file_contents.extend(changes)
 				if protect_obj[root].isprotected(file_to_write_to):
 					file_to_write_to = new_protect_filename(file_to_write_to)
