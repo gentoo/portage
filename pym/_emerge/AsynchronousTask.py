@@ -30,6 +30,8 @@ class AsynchronousTask(SlotObject):
 
 	def poll(self):
 		self._wait_hook()
+		if self.returncode is not None:
+			return self.returncode
 		return self._poll()
 
 	def _poll(self):
