@@ -232,12 +232,20 @@ class AutounmaskTestCase(TestCase):
 					mergelist = ["app-text/C-1"],
 					unstable_keywords = ["app-text/C-1"],
 					needed_p_mask_changes = ["app-text/C-1"]),
+				#Make sure unstable keyword is preferred over missing keyword
 				ResolverPlaygroundTestCase(
 					["app-text/D"],
 					options = {"--autounmask": True},
 					success = False,
 					mergelist = ["app-text/D-1"],
-					unstable_keywords = ["app-text/D-1"])
+					unstable_keywords = ["app-text/D-1"]),
+				#Test missing keyword
+				ResolverPlaygroundTestCase(
+					["=app-text/D-2"],
+					options = {"--autounmask": True},
+					success = False,
+					mergelist = ["app-text/D-2"],
+					unstable_keywords = ["app-text/D-2"])
 			)
 
 		profile = {
