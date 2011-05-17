@@ -292,14 +292,15 @@ intended to be set in the \fBmake.conf\fR(5)
 \fBEMERGE_DEFAULT_OPTS\fR variable.
 .TP
 .BR "\-\-autounmask [ y | n ]"
-Automatically unmask packages. If any configuration
+Automatically unmask packages and generate package.use
+settings as necessary to satisfy dependencies. This
+option is enabled by default. If any configuration
 changes are required, then they will be displayed
 after the merge list and emerge will immediately
 abort. If the displayed configuration changes are
 satisfactory, you should copy and paste them into
-the specified configuration file(s). Currently,
-this only works for unstable KEYWORDS masks,
-LICENSE masks, and package.use settings.
+the specified configuration file(s), or enable the
+\fB\-\-autounmask\-write\fR option.
 .TP
 .BR "\-\-autounmask\-write [ y | n ]"
 If \-\-autounmask is enabled, changes are written
