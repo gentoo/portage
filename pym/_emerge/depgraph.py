@@ -34,6 +34,7 @@ from portage.util import ConfigProtect, shlex_split, new_protect_filename
 from portage.util import cmp_sort_key, writemsg, writemsg_stdout
 from portage.util import writemsg_level, write_atomic
 from portage.util.digraph import digraph
+from portage.util.listdir import _ignorecvs_dirs
 from portage.versions import catpkgsplit
 
 from _emerge.AtomArg import AtomArg
@@ -5697,6 +5698,8 @@ class depgraph(object):
 					if stat.S_ISREG(st.st_mode):
 						last_file_path = p
 					elif stat.S_ISDIR(st.st_mode):
+						if os.path.basename(p) in _ignorecvs_dirs:
+							continue
 						try:
 							contents = os.listdir(p)
 						except OSError:
@@ -5704,6 +5707,9 @@ class depgraph(object):
 						else:
 							contents.sort(reverse=True)
 							for child in contents:
+								if child.startswith(".") or \
+									child.endswith("~"):
+									continue
 								stack.append(os.path.join(p, child))
 
 			return last_file_path
