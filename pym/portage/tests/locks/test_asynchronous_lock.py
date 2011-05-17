@@ -23,17 +23,17 @@ class AsynchronousLockTestCase(TestCase):
 						_force_thread=True,
 						_force_dummy=force_dummy)
 					async_lock.start()
-					async_lock.wait()
-					async_lock.unlock()
+					self.assertEqual(async_lock.wait(), os.EX_OK)
 					self.assertEqual(async_lock.returncode, os.EX_OK)
+					async_lock.unlock()
 
 				async_lock = AsynchronousLock(path=path,
 					scheduler=scheduler, _force_async=force_async,
 					_force_process=True)
 				async_lock.start()
-				async_lock.wait()
-				async_lock.unlock()
+				self.assertEqual(async_lock.wait(), os.EX_OK)
 				self.assertEqual(async_lock.returncode, os.EX_OK)
+				async_lock.unlock()
 
 		finally:
 			shutil.rmtree(tempdir)
@@ -46,6 +46,7 @@ class AsynchronousLockTestCase(TestCase):
 			lock1 = AsynchronousLock(path=path, scheduler=scheduler)
 			lock1.start()
 			self.assertEqual(lock1.wait(), os.EX_OK)
+			self.assertEqual(lock1.returncode, os.EX_OK)
 
 			# lock2 requires _force_async=True since the portage.locks
 			# module is not designed to work as intended here if the
@@ -59,6 +60,7 @@ class AsynchronousLockTestCase(TestCase):
 
 			lock1.unlock()
 			self.assertEqual(lock2.wait(), os.EX_OK)
+			self.assertEqual(lock2.returncode, os.EX_OK)
 			lock2.unlock()
 		finally:
 			shutil.rmtree(tempdir)
@@ -71,6 +73,7 @@ class AsynchronousLockTestCase(TestCase):
 			lock1 = AsynchronousLock(path=path, scheduler=scheduler)
 			lock1.start()
 			self.assertEqual(lock1.wait(), os.EX_OK)
+			self.assertEqual(lock1.returncode, os.EX_OK)
 			lock2 = AsynchronousLock(path=path, scheduler=scheduler,
 				_force_async=True, _force_process=True)
 			lock2.start()
@@ -81,6 +84,7 @@ class AsynchronousLockTestCase(TestCase):
 			lock2.cancel()
 			self.assertEqual(lock2.wait() == os.EX_OK, False)
 			self.assertEqual(lock2.returncode == os.EX_OK, False)
+			self.assertEqual(lock2.returncode is None, False)
 			lock1.unlock()
 		finally:
 			shutil.rmtree(tempdir)
