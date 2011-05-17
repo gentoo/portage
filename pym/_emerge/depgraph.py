@@ -8,6 +8,7 @@ import difflib
 import gc
 import logging
 import re
+import stat
 import sys
 import textwrap
 from collections import deque
@@ -5663,25 +5664,36 @@ class depgraph(object):
 			"""
 			Searches /etc/portage for an appropriate file to append changes to.
 			If the file_name is a file it is returned, if it is a directory, the
-			last file in it is returned.
+			last file in it is returned. Order of traversal is the identical to
+			portage.util.grablines(recursive=True).
 
 			file_name - String containing a file name like "package.use"
 			return value - String. Absolute path of file to write to. None if
 			no suitable file exists.
 			"""
 			file_path = os.path.join(abs_user_config, file_name)
-			if os.path.exists(file_path):
-				if os.path.isfile(file_path):
-					return file_path
-				elif os.path.isdir(file_path):
-					try:
-						files = sorted(f for f in os.listdir(file_path) \
-							if os.path.isfile(os.path.join(file_path, f)))
-						if len(files) != 0:
-							return os.path.join(file_path, files[-1])
-					except OSError:
-						pass
+			last_file_path = None
+			stack = [file_path]
+			while stack:
+				p = stack.pop()
+				try:
+					st = os.stat(p)
+				except OSError:
+					pass
+				else:
+					if stat.S_ISREG(st.st_mode):
+						last_file_path = p
+					elif stat.S_ISDIR(st.st_mode):
+						try:
+							contents = os.listdir(p)
+						except OSError:
+							pass
+						else:
+							contents.sort(reverse=True)
+							for child in contents:
+								stack.append(os.path.join(p, child))
 
+			return last_file_path
 
 		write_to_file = autounmask_write and not pretend
 		#Make sure we have a file to write to before doing any write.
