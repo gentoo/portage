@@ -73,6 +73,11 @@ class AsynchronousLock(AsynchronousTask):
 		if self._imp is not None:
 			self._imp.cancel()
 
+	def _poll(self):
+		if self._imp is not None:
+			return self._imp.poll()
+		return self.returncode
+
 	def _wait(self):
 		if self.returncode is not None:
 			return self.returncode
@@ -231,6 +236,11 @@ class _LockProcess(AbstractPollTask):
 	def _cancel(self):
 		if self._proc is not None:
 			self._proc.cancel()
+
+	def _poll(self):
+		if self._proc is not None:
+			return self._proc.poll()
+		return self.returncode
 
 	def _wait(self):
 		if self.returncode is not None:

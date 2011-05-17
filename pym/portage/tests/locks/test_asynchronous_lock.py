@@ -56,6 +56,7 @@ class AsynchronousLockTestCase(TestCase):
 				_force_async=True, _force_process=True)
 			lock2.start()
 			# lock2 should we waiting for lock1 to release
+			self.assertEqual(lock2.poll(), None)
 			self.assertEqual(lock2.returncode, None)
 
 			lock1.unlock()
@@ -78,6 +79,7 @@ class AsynchronousLockTestCase(TestCase):
 				_force_async=True, _force_process=True)
 			lock2.start()
 			# lock2 should we waiting for lock1 to release
+			self.assertEqual(lock2.poll(), None)
 			self.assertEqual(lock2.returncode, None)
 
 			# Cancel lock2 and then check wait() and returncode results.
