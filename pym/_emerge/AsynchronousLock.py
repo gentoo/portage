@@ -184,7 +184,7 @@ class _LockProcess(AbstractPollTask):
 	"""
 
 	__slots__ = ('path', 'scheduler',) + \
-		('_acquired', '_proc', '_files', '_reg_id', '_unlocked')
+		('_acquired', '_kill_test', '_proc', '_files', '_reg_id', '_unlocked')
 
 	def _start(self):
 		in_pr, in_pw = os.pipe()
@@ -216,7 +216,7 @@ class _LockProcess(AbstractPollTask):
 				# If the lock hasn't been aquired yet, the
 				# caller can check the returncode and handle
 				# this failure appropriately.
-				if not self.cancelled:
+				if not (self.cancelled or self._kill_test):
 					writemsg_level("_LockProcess: %s\n" % \
 						_("failed to acquire lock on '%s'") % (self.path,),
 						level=logging.ERROR, noiselevel=-1)
