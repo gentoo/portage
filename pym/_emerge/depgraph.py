@@ -5188,23 +5188,24 @@ class depgraph(object):
 			dbs = self._dynamic_config._filtered_trees[pkg.root]["dbs"]
 			root_config = self._frozen_config.roots[pkg.root]
 
-			all_cpv_by_slot = {}
 			for db, pkg_type, built, installed, db_keys in dbs:
 				for other_pkg in self._iter_match_pkgs(root_config, pkg_type, Atom(pkg.cp)):
-					slot = other_pkg.metadata["SLOT"]
-					all_cpv_by_slot.setdefault(slot, set())
-					all_cpv_by_slot[slot].add(other_pkg.cpv)
+					if other_pkg.cp != pkg.cp:
+						# old-style PROVIDE virtual means there are no
+						# normal matches for this pkg_type
+						break
+					if other_pkg > pkg:
+						is_latest = False
+						if other_pkg.slot_atom == pkg.slot_atom:
+							is_latest_in_slot = False
+							break
+					else:
+						# iter_match_pkgs yields highest verion first, so
+						# there's no need to search this pkg_type any further
+						break
 
-			all_cpv = []
-			for cpvs in all_cpv_by_slot.values():
-				all_cpv.extend(cpvs)
-			all_cpv.sort(key=portage.versions.cpv_sort_key())
-
-			if all_cpv[-1] != pkg.cpv:
-				is_latest = False
-				slot_cpvs = sorted(all_cpv_by_slot[pkg.metadata["SLOT"]], key=portage.versions.cpv_sort_key())
-				if slot_cpvs[-1] != pkg.cpv:
-					is_latest_in_slot = False
+				if not is_latest_in_slot:
+					break
 
 			return is_latest, is_latest_in_slot
 
