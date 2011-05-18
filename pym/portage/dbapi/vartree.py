@@ -1498,9 +1498,11 @@ class dblink(object):
 	def _prune_plib_registry(self, unmerge=False,
 		needed=None, preserve_paths=None):
 		# remove preserved libraries that don't have any consumers left
-		plib_registry = self.vartree.dbapi._plib_registry
-		if plib_registry:
+		if not (self._linkmap_broken or
+			self.vartree.dbapi._linkmap is None or
+			self.vartree.dbapi._plib_registry is None):
 			self.vartree.dbapi._fs_lock()
+			plib_registry = self.vartree.dbapi._plib_registry
 			plib_registry.lock()
 			try:
 				plib_registry.load()
@@ -3405,7 +3407,8 @@ class dblink(object):
 
 		preserve_paths = set()
 		needed = None
-		if not (linkmap is None or plib_registry is None):
+		if not (self._linkmap_broken or linkmap is None or
+			plib_registry is None):
 			self.vartree.dbapi._fs_lock()
 			plib_registry.lock()
 			try:
