@@ -2044,14 +2044,18 @@ class depgraph(object):
 		except self._unknown_internal_error:
 			return False, myfavorites
 
-		if set(self._dynamic_config.digraph).intersection( \
+		digraph_set = frozenset(self._dynamic_config.digraph)
+
+		if digraph_set.intersection(
 			self._dynamic_config._needed_unstable_keywords) or \
-			set(self._dynamic_config.digraph).intersection( \
+			digraph_set.intersection(
 			self._dynamic_config._needed_use_config_changes) or \
-			set(self._dynamic_config.digraph).intersection( \
+			digraph_set.intersection(
 			self._dynamic_config._needed_license_changes) :
 			#We failed if the user needs to change the configuration
 			return False, myfavorites
+
+		digraph_set = None
 
 		# We're true here unless we are missing binaries.
 		return (True, myfavorites)
