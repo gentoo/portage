@@ -5567,7 +5567,7 @@ class depgraph(object):
 							is_latest_in_slot = False
 							break
 					else:
-						# iter_match_pkgs yields highest verion first, so
+						# iter_match_pkgs yields highest version first, so
 						# there's no need to search this pkg_type any further
 						break
 
