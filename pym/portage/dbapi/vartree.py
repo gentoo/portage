@@ -2298,7 +2298,7 @@ class dblink(object):
 			self.vartree.dbapi._plib_registry is None or \
 			(not unmerge and self._installed_instance is None) or \
 			"preserve-libs" not in self.settings.features:
-			return None
+			return set()
 
 		os = _os_merge
 		linkmap = self.vartree.dbapi._linkmap
