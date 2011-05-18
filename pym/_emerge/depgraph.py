@@ -5818,7 +5818,9 @@ class depgraph(object):
 
 		if write_to_file:
 			for root in roots:
-				abs_user_config = os.path.join(root, USER_CONFIG_PATH)
+				settings = self._frozen_config.roots[root].settings
+				abs_user_config = os.path.join(
+					settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH)
 
 				if root in unstable_keyword_msg:
 					write_changes(root, unstable_keyword_msg[root],
