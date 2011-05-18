@@ -277,6 +277,9 @@ class _LockProcess(AbstractPollTask):
 			raise AssertionError('not locked')
 		if self.returncode is None:
 			raise AssertionError('lock not acquired yet')
+		if self.returncode != os.EX_OK:
+			raise AssertionError("lock process failed with returncode %s" \
+				% (self.returncode,))
 		self._unlocked = True
 		self._files['pipe_out'].write(b'\0')
 		self._files['pipe_out'].close()
