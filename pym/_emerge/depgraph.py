@@ -3324,6 +3324,15 @@ class depgraph(object):
 		if pkg.visible:
 			return True
 
+		if pkg in self._dynamic_config.digraph:
+			# Sometimes we need to temporarily disable
+			# dynamic_config._autounmask, but for overall
+			# consistency in dependency resolution, in any
+			# case we want to respect autounmask visibity
+			# for packages that have already been added to
+			# the dependency graph.
+			return True
+
 		if not self._dynamic_config._autounmask:
 			return False
 
