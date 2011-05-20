@@ -1071,6 +1071,13 @@ dyn_compile() {
 
 	trap abort_compile SIGINT SIGQUIT
 
+	if hasq distcc $FEATURES && hasq distcc-pump $FEATURES ; then
+		if [[ -z $INCLUDE_SERVER_PORT ]] || [[ ! -w $INCLUDE_SERVER_PORT ]] ; then
+			eval $(/usr/bin/pump --startup)
+			trap "/usr/bin/pump --shutdown" EXIT
+		fi
+	fi
+
 	ebuild_phase pre_src_compile
 
 	vecho ">>> Compiling source in $PWD ..."
