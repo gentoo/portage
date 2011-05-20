@@ -6,10 +6,16 @@ class Task(SlotObject):
 	__slots__ = ("_hash_key", "_hash_value")
 
 	def __eq__(self, other):
-		return self._hash_key == other
+		try:
+			return self._hash_key == other._hash_key
+		except AttributeError:
+			return False
 
 	def __ne__(self, other):
-		return self._hash_key != other
+		try:
+			return self._hash_key != other._hash_key
+		except AttributeError:
+			return True
 
 	def __hash__(self):
 		return self._hash_value
