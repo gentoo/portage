@@ -73,6 +73,9 @@ class Package(Task):
 			else:
 				self.operation = "merge"
 
+		self._hash_key = \
+			(self.type_name, self.root, self.cpv, self.operation)
+
 	def _validate_deps(self):
 		"""
 		Validate deps. This does not trigger USE calculation since that
@@ -405,10 +408,6 @@ class Package(Task):
 			return missing_iuse
 
 	def _get_hash_key(self):
-		hash_key = getattr(self, "_hash_key", None)
-		if hash_key is None:
-			self._hash_key = \
-				(self.type_name, self.root, self.cpv, self.operation)
 		return self._hash_key
 
 	def __lt__(self, other):
