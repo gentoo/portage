@@ -75,6 +75,7 @@ class Package(Task):
 
 		self._hash_key = \
 			(self.type_name, self.root, self.cpv, self.operation)
+		self._hash_value = hash(self._hash_key)
 
 	def _validate_deps(self):
 		"""
