@@ -788,7 +788,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				msg.append("")
 			msg.extend(textwrap.wrap(
 				"Have you forgotten to do a complete update prior " + \
-				"depclean? The most comprehensive command for this " + \
+				"to depclean? The most comprehensive command for this " + \
 				"purpose is as follows:", 65
 			))
 			msg.append("")
