@@ -33,7 +33,7 @@ class EbuildPhase(CompositeTask):
 		("_ebuild_lock",)
 
 	# FEATURES displayed prior to setup phase
-	_features_display = ("ccache", "distcc", "fakeroot",
+	_features_display = ("ccache", "distcc", "distcc-pump", "fakeroot",
 		"installsources", "keeptemp", "keepwork", "nostrip",
 		"preserve-libs", "sandbox", "selinux", "sesandbox",
 		"splitdebug", "suidctl", "test", "userpriv",
