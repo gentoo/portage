@@ -81,6 +81,15 @@ class Package(Task):
 			else:
 				self.operation = "merge"
 
+		# For installed (and binary) packages we don't care for the repo
+		# when it comes to hashing, because there can only be one cpv.
+		# So overwrite the repo_key with type_name.
+		repo_key = self.metadata.get('repository')
+		if self.type_name != 'ebuild':
+			repo_key = self.type_name
+		self._hash_key = \
+			(self.type_name, self.root, self.cpv, self.operation, repo_key)
+
 	def _validate_deps(self):
 		"""
 		Validate deps. This does not trigger USE calculation since that
@@ -265,7 +274,6 @@ class Package(Task):
 		pmask = self.root_config.settings._getRawMaskAtom(
 			self.cpv, self.metadata)
 		return pmask is not None
-
 
 	def _metadata_exception(self, k, e):
 
@@ -453,16 +461,6 @@ class Package(Task):
 			return missing_iuse
 
 	def _get_hash_key(self):
-		hash_key = getattr(self, "_hash_key", None)
-		if hash_key is None:
-			# For installed (and binary) packages we don't care for the repo
-			# when it comes to hashing, because there can only be one cpv.
-			# So overwrite the repo_key with type_name.
-			repo_key = self.metadata.get('repository')
-			if self.type_name != 'ebuild':
-				repo_key = self.type_name
-			self._hash_key = \
-				(self.type_name, self.root, self.cpv, self.operation, repo_key)
 		return self._hash_key
 
 	def __len__(self):
