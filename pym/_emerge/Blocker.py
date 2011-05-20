@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.Task import Task
@@ -11,11 +11,4 @@ class Blocker(Task):
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
 		self.cp = self.atom.cp
-
-	def _get_hash_key(self):
-		hash_key = getattr(self, "_hash_key", None)
-		if hash_key is None:
-			self._hash_key = \
-				("blocks", self.root, self.atom, self.eapi)
-		return self._hash_key
-
+		self._hash_key = ("blocks", self.root, self.atom, self.eapi)
