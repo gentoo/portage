@@ -407,9 +407,6 @@ class Package(Task):
 					missing_iuse.append(flag)
 			return missing_iuse
 
-	def _get_hash_key(self):
-		return self._hash_key
-
 	def __lt__(self, other):
 		if other.cp != self.cp:
 			return False
