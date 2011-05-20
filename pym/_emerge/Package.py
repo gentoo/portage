@@ -89,6 +89,7 @@ class Package(Task):
 			repo_key = self.type_name
 		self._hash_key = \
 			(self.type_name, self.root, self.cpv, self.operation, repo_key)
+		self._hash_value = hash(self._hash_key)
 
 	def _validate_deps(self):
 		"""

@@ -12,9 +12,6 @@ class Task(SlotObject):
 		return self._hash_key != other
 
 	def __hash__(self):
-		hash_value = getattr(self, "_hash_value", None)
-		if hash_value is None:
-			self._hash_value = hash(self._hash_key)
 		return self._hash_value
 
 	def __len__(self):
