@@ -3,6 +3,7 @@
 
 from itertools import permutations
 import shutil
+import sys
 import tempfile
 import portage
 from portage import os
@@ -23,6 +24,9 @@ from _emerge.Blocker import Blocker
 from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.depgraph import backtrack_depgraph
 from _emerge.RootConfig import RootConfig
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 class ResolverPlayground(object):
 	"""
@@ -463,6 +467,7 @@ class ResolverPlaygroundTestCase(object):
 	def __init__(self, request, **kwargs):
 		self.all_permutations = kwargs.pop("all_permutations", False)
 		self.ignore_mergelist_order = kwargs.pop("ignore_mergelist_order", False)
+		self.ambigous_merge_order = kwargs.pop("ambigous_merge_order", False)
 		self.check_repo_names = kwargs.pop("check_repo_names", False)
 
 		if self.all_permutations:
@@ -502,13 +507,51 @@ class ResolverPlaygroundTestCase(object):
 						got = new_got
 					if expected:
 						new_expected = []
-						for cpv in expected:
-							a = Atom("="+cpv, allow_repo=True)
-							new_expected.append(a.cpv)
+						for obj in expected:
+							if isinstance(obj, basestring):
+								a = Atom("="+obj, allow_repo=True)
+								new_expected.append(a.cpv)
+								continue
+							new_expected.append(set())
+							for cpv in obj:
+								a = Atom("="+cpv, allow_repo=True)
+								new_expected[-1].add(a.cpv)
 						expected = new_expected
 				if self.ignore_mergelist_order and got is not None:
 					got = set(got)
 					expected = set(expected)
+
+				if self.ambigous_merge_order and got:
+					expected_stack = list(reversed(expected))
+					got_stack = list(reversed(got))
+					new_expected = []
+					while got_stack and expected_stack:
+						got_token = got_stack.pop()
+						expected_obj = expected_stack.pop()
+						if isinstance(expected_obj, basestring):
+							new_expected.append(got_token)
+							continue
+						expected_obj = set(expected_obj)
+						try:
+							expected_obj.remove(got_token)
+						except KeyError:
+							# result doesn't match, so stop early
+							break
+						new_expected.append(got_token)
+						match = True
+						while got_stack and expected_obj:
+							got_token = got_stack.pop()
+							try:
+								expected_obj.remove(got_token)
+							except KeyError:
+								match = False
+								break
+							new_expected.append(got_token)
+						if not match:
+							# result doesn't match, so stop early
+							break
+					expected = new_expected
+
 			elif key == "unstable_keywords" and expected is not None:
 				expected = set(expected)
 
