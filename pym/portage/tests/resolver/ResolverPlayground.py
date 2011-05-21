@@ -536,8 +536,11 @@ class ResolverPlaygroundTestCase(object):
 						got_token = got_stack.pop()
 						expected_obj = expected_stack.pop()
 						if isinstance(expected_obj, basestring):
-							new_expected.append(got_token)
-							continue
+							new_expected.append(expected_obj)
+							if got_token == expected_obj:
+								continue
+							# result doesn't match, so stop early
+							break
 						expected_obj = set(expected_obj)
 						try:
 							expected_obj.remove(got_token)

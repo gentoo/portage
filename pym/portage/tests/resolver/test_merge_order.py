@@ -46,7 +46,7 @@ class MergeOrderTestCase(TestCase):
 			# Test optimal merge order for a circular dep that is
 			# RDEPEND in one direction and PDEPEND in the other.
 			ResolverPlaygroundTestCase(
-				["app-misc/some-app-a"],
+				["app-misc/some-app-b"],
 				success = True,
 				ambigous_merge_order = True,
 				mergelist = ["app-misc/circ-post-runtime-a-1", "app-misc/circ-post-runtime-b-1", "app-misc/some-app-b-1"]),
