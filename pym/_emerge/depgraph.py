@@ -5130,8 +5130,7 @@ class depgraph(object):
 
 				msg.append("\n")
 
-			sys.stderr.write("".join(msg))
-			sys.stderr.flush()
+			writemsg("".join(msg), noiselevel=-1)
 
 		if "--quiet" not in self._frozen_config.myopts:
 			show_blocker_docs_link()
