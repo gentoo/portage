@@ -578,7 +578,8 @@ class ResolverPlaygroundTestCase(object):
 								fail_msgs.append("atoms: (" + \
 									", ".join(result.atoms) + "), key: " + \
 									("merge_order_assertions, expected: %s" % \
-									(node1, node2)) + ", got: " + str(got))
+									str((node1, node2))) + \
+									", got: " + str(got))
 
 			elif key == "unstable_keywords" and expected is not None:
 				expected = set(expected)
