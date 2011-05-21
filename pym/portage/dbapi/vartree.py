@@ -3443,7 +3443,12 @@ class dblink(object):
 		else:
 			emerge_log = scheduler.dblinkEmergeLog
 
-		autoclean = self.settings.get("AUTOCLEAN", "yes") == "yes"
+		# If we have any preserved libraries then autoclean
+		# is forced so that preserve-libs logic doesn't have
+		# to account for the additional complexity of the
+		# AUTOCLEAN=no mode.
+		autoclean = self.settings.get("AUTOCLEAN", "yes") == "yes" \
+			or preserve_paths
 
 		if autoclean:
 			emerge_log(_(" >>> AUTOCLEAN: %s") % (slot_atom,))
