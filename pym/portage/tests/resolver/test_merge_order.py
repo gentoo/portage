@@ -48,7 +48,6 @@ class MergeOrderTestCase(TestCase):
 			ResolverPlaygroundTestCase(
 				["app-misc/some-app-b"],
 				success = True,
-				ambigous_merge_order = True,
 				mergelist = ["app-misc/circ-post-runtime-a-1", "app-misc/circ-post-runtime-b-1", "app-misc/some-app-b-1"]),
 		)
 
