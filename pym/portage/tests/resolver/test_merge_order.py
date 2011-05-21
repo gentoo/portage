@@ -9,6 +9,8 @@ class MergeOrderTestCase(TestCase):
 
 	def testMergeOrder(self):
 		ebuilds = {
+			"app-misc/blocker-buildtime-a-1" : {},
+			"app-misc/blocker-runtime-a-1" : {},
 			"app-misc/circ-post-runtime-a-1": {
 				"PDEPEND": "app-misc/circ-post-runtime-b",
 			},
@@ -21,6 +23,10 @@ class MergeOrderTestCase(TestCase):
 			"app-misc/circ-runtime-b-1": {
 				"RDEPEND": "app-misc/circ-runtime-a",
 			},
+			"app-misc/installed-blocker-a-1" : {
+				"DEPEND" : "!app-misc/blocker-buildtime-a",
+				"RDEPEND" : "!app-misc/blocker-runtime-a",
+			},
 			"app-misc/some-app-a-1": {
 				"RDEPEND": "app-misc/circ-runtime-a app-misc/circ-runtime-b",
 			},
@@ -30,6 +36,10 @@ class MergeOrderTestCase(TestCase):
 		}
 
 		installed = {
+			"app-misc/installed-blocker-a-1" : {
+				"DEPEND" : "!app-misc/blocker-buildtime-a",
+				"RDEPEND" : "!app-misc/blocker-runtime-a",
+			}
 		}
 
 		test_cases = (
@@ -49,6 +59,19 @@ class MergeOrderTestCase(TestCase):
 				["app-misc/some-app-b"],
 				success = True,
 				mergelist = ["app-misc/circ-post-runtime-a-1", "app-misc/circ-post-runtime-b-1", "app-misc/some-app-b-1"]),
+			# installed package has buildtime-only blocker
+			# that should be ignored
+			ResolverPlaygroundTestCase(
+				["app-misc/blocker-buildtime-a"],
+				success = True,
+				mergelist = ["app-misc/blocker-buildtime-a-1"]),
+			# installed package has runtime blocker that
+			# should cause it to be uninstalled
+			# TODO: distinguish between install/uninstall tasks in mergelist
+			ResolverPlaygroundTestCase(
+				["app-misc/blocker-runtime-a"],
+				success = True,
+				mergelist = ["app-misc/blocker-runtime-a-1", "app-misc/installed-blocker-a-1", "!app-misc/blocker-runtime-a"]),
 		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)
