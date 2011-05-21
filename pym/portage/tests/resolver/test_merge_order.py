@@ -19,6 +19,16 @@ class MergeOrderTestCase(TestCase):
 			},
 			"app-misc/blocker-runtime-a-1" : {},
 			"app-misc/blocker-runtime-hard-a-1" : {},
+			"app-misc/circ-buildtime-a-0": {},
+			"app-misc/circ-buildtime-a-1": {
+				"RDEPEND": "app-misc/circ-buildtime-b",
+			},
+			"app-misc/circ-buildtime-b-1": {
+				"RDEPEND": "app-misc/circ-buildtime-c",
+			},
+			"app-misc/circ-buildtime-c-1": {
+				"DEPEND": "app-misc/circ-buildtime-a",
+			},
 			"app-misc/circ-post-runtime-a-1": {
 				"PDEPEND": "app-misc/circ-post-runtime-b",
 			},
@@ -48,9 +58,13 @@ class MergeOrderTestCase(TestCase):
 			"app-misc/some-app-b-1": {
 				"RDEPEND": "app-misc/circ-post-runtime-a app-misc/circ-post-runtime-b",
 			},
+			"app-misc/some-app-c-1": {
+				"RDEPEND": "app-misc/circ-buildtime-a app-misc/circ-buildtime-b",
+			},
 		}
 
 		installed = {
+			"app-misc/circ-buildtime-a-0": {},
 			"app-misc/installed-blocker-a-1" : {
 				"EAPI"   : "2",
 				"DEPEND" : "!app-misc/blocker-buildtime-a",
@@ -69,6 +83,15 @@ class MergeOrderTestCase(TestCase):
 				success = True,
 				ambigous_merge_order = True,
 				mergelist = [("app-misc/circ-runtime-c-1", "app-misc/circ-runtime-b-1", "app-misc/circ-runtime-a-1"), "app-misc/some-app-a-1"]),
+			# Test optimal merge order for a circular dep that is
+			# RDEPEND in one direction and DEPEND in the other.
+			# This requires an installed instance of the DEPEND
+			# package in order to be solvable.
+			ResolverPlaygroundTestCase(
+				["app-misc/some-app-c", "app-misc/circ-buildtime-a"],
+				success = True,
+				ambigous_merge_order = True,
+				mergelist = [("app-misc/circ-buildtime-b-1", "app-misc/circ-buildtime-c-1"), "app-misc/circ-buildtime-a-1", "app-misc/some-app-c-1"]),
 			# Test optimal merge order for a circular dep that is
 			# RDEPEND in one direction and PDEPEND in the other.
 			ResolverPlaygroundTestCase(
