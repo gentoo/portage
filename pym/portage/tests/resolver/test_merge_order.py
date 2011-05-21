@@ -9,6 +9,12 @@ class MergeOrderTestCase(TestCase):
 
 	def testMergeOrder(self):
 		ebuilds = {
+			"app-misc/circ-post-runtime-a-1": {
+				"PDEPEND": "app-misc/circ-post-runtime-b",
+			},
+			"app-misc/circ-post-runtime-b-1": {
+				"RDEPEND": "app-misc/circ-post-runtime-a",
+			},
 			"app-misc/circ-runtime-a-1": {
 				"RDEPEND": "app-misc/circ-runtime-b",
 			},
@@ -17,6 +23,9 @@ class MergeOrderTestCase(TestCase):
 			},
 			"app-misc/some-app-a-1": {
 				"RDEPEND": "app-misc/circ-runtime-a app-misc/circ-runtime-b",
+			},
+			"app-misc/some-app-b-1": {
+				"RDEPEND": "app-misc/circ-post-runtime-a app-misc/circ-post-runtime-b",
 			},
 		}
 
@@ -34,6 +43,13 @@ class MergeOrderTestCase(TestCase):
 				success = True,
 				ambigous_merge_order = True,
 				mergelist = [("app-misc/circ-runtime-b-1", "app-misc/circ-runtime-a-1"), "app-misc/some-app-a-1"]),
+			# Test optimal merge order for a circular dep that is
+			# RDEPEND in one direction and PDEPEND in the other.
+			ResolverPlaygroundTestCase(
+				["app-misc/some-app-a"],
+				success = True,
+				ambigous_merge_order = True,
+				mergelist = ["app-misc/circ-post-runtime-a-1", "app-misc/circ-post-runtime-b-1", "app-misc/some-app-b-1"]),
 		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)
