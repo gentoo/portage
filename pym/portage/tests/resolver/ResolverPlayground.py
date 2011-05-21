@@ -502,6 +502,9 @@ class ResolverPlaygroundTestCase(object):
 					if got:
 						new_got = []
 						for cpv in got:
+							if cpv[:1] == "!":
+								new_got.append(cpv)
+								continue
 							a = Atom("="+cpv, allow_repo=True)
 							new_got.append(a.cpv)
 						got = new_got
@@ -509,6 +512,9 @@ class ResolverPlaygroundTestCase(object):
 						new_expected = []
 						for obj in expected:
 							if isinstance(obj, basestring):
+								if obj[:1] == "!":
+									new_expected.append(obj)
+									continue
 								a = Atom("="+obj, allow_repo=True)
 								new_expected.append(a.cpv)
 								continue
