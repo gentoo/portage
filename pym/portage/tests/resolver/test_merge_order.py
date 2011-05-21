@@ -29,6 +29,15 @@ class MergeOrderTestCase(TestCase):
 			"app-misc/circ-buildtime-c-1": {
 				"DEPEND": "app-misc/circ-buildtime-a",
 			},
+			"app-misc/circ-buildtime-unsolvable-a-1": {
+				"RDEPEND": "app-misc/circ-buildtime-unsolvable-b",
+			},
+			"app-misc/circ-buildtime-unsolvable-b-1": {
+				"RDEPEND": "app-misc/circ-buildtime-unsolvable-c",
+			},
+			"app-misc/circ-buildtime-unsolvable-c-1": {
+				"DEPEND": "app-misc/circ-buildtime-unsolvable-a",
+			},
 			"app-misc/circ-post-runtime-a-1": {
 				"PDEPEND": "app-misc/circ-post-runtime-b",
 			},
@@ -83,6 +92,12 @@ class MergeOrderTestCase(TestCase):
 				success = True,
 				ambigous_merge_order = True,
 				mergelist = [("app-misc/circ-runtime-c-1", "app-misc/circ-runtime-b-1", "app-misc/circ-runtime-a-1"), "app-misc/some-app-a-1"]),
+			# Test unsolvable circular dep that is RDEPEND in one
+			# direction and DEPEND in the other.
+			ResolverPlaygroundTestCase(
+				["app-misc/circ-buildtime-unsolvable-a"],
+				success = False,
+				circular_dependency_solutions = {}),
 			# Test optimal merge order for a circular dep that is
 			# RDEPEND in one direction and DEPEND in the other.
 			# This requires an installed instance of the DEPEND
