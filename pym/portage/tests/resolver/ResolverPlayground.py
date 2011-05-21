@@ -566,6 +566,14 @@ class ResolverPlaygroundTestCase(object):
 						if not match:
 							# result doesn't match, so stop early
 							break
+						if expected_obj:
+							# result does not match, so stop early
+							new_expected.append(tuple(expected_obj))
+							break
+					if expected_stack:
+						# result does not match, add leftovers to new_expected
+						expected_stack.reverse()
+						new_expected.extend(expected_stack)
 					expected = new_expected
 
 			elif key in ("unstable_keywords", "needed_p_mask_changes") and expected is not None:
