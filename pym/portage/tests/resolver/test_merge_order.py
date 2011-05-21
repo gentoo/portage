@@ -11,6 +11,7 @@ class MergeOrderTestCase(TestCase):
 		ebuilds = {
 			"app-misc/blocker-buildtime-a-1" : {},
 			"app-misc/blocker-runtime-a-1" : {},
+			"app-misc/blocker-runtime-hard-a-1" : {},
 			"app-misc/circ-post-runtime-a-1": {
 				"PDEPEND": "app-misc/circ-post-runtime-b",
 			},
@@ -24,8 +25,9 @@ class MergeOrderTestCase(TestCase):
 				"RDEPEND": "app-misc/circ-runtime-a",
 			},
 			"app-misc/installed-blocker-a-1" : {
+				"EAPI"   : "2",
 				"DEPEND" : "!app-misc/blocker-buildtime-a",
-				"RDEPEND" : "!app-misc/blocker-runtime-a",
+				"RDEPEND" : "!app-misc/blocker-runtime-a !!app-misc/blocker-runtime-hard-a",
 			},
 			"app-misc/some-app-a-1": {
 				"RDEPEND": "app-misc/circ-runtime-a app-misc/circ-runtime-b",
@@ -37,9 +39,10 @@ class MergeOrderTestCase(TestCase):
 
 		installed = {
 			"app-misc/installed-blocker-a-1" : {
+				"EAPI"   : "2",
 				"DEPEND" : "!app-misc/blocker-buildtime-a",
-				"RDEPEND" : "!app-misc/blocker-runtime-a",
-			}
+				"RDEPEND" : "!app-misc/blocker-runtime-a !!app-misc/blocker-runtime-hard-a",
+			},
 		}
 
 		test_cases = (
@@ -72,6 +75,13 @@ class MergeOrderTestCase(TestCase):
 				["app-misc/blocker-runtime-a"],
 				success = True,
 				mergelist = ["app-misc/blocker-runtime-a-1", "app-misc/installed-blocker-a-1", "!app-misc/blocker-runtime-a"]),
+			# An installed package has a hard runtime blocker that
+			# will not resolve automatically (unless the option
+			# requested in bug 250286 is implemented).
+			ResolverPlaygroundTestCase(
+				["app-misc/blocker-runtime-hard-a"],
+				success = False,
+				mergelist = ['app-misc/blocker-runtime-hard-a-1', '!!app-misc/blocker-runtime-hard-a']),
 		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)
