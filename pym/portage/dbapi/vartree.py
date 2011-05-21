@@ -1507,7 +1507,7 @@ class dblink(object):
 					if unmerge_preserve:
 						for path in sorted(unmerge_preserve):
 							contents_key = self._match_contents(path)
-							if contents_key is None:
+							if not contents_key:
 								continue
 							obj_type = self.getcontents()[contents_key][0]
 							self._display_merge(_(">>> needed   %s %s\n") % \
