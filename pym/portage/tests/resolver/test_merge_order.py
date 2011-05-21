@@ -17,9 +17,7 @@ class MergeOrderTestCase(TestCase):
 				"EAPI"   : "2",
 				"DEPEND" : "!!app-misc/installed-blocker-a",
 			},
-			"app-misc/blocker-update-order-a-1" : {
-				"RDEPEND" : ">=app-misc/installed-old-version-blocks-a-2"
-			},
+			"app-misc/blocker-update-order-a-1" : {},
 			"app-misc/blocker-runtime-a-1" : {},
 			"app-misc/blocker-runtime-hard-a-1" : {},
 			"app-misc/circ-buildtime-a-0": {},
@@ -85,7 +83,7 @@ class MergeOrderTestCase(TestCase):
 				"RDEPEND" : "!app-misc/blocker-runtime-a !!app-misc/blocker-runtime-hard-a",
 			},
 			"app-misc/installed-old-version-blocks-a-1" : {
-				"RDEPEND" : "!app-misc/installed-old-version-blocks-a",
+				"RDEPEND" : "!app-misc/blocker-update-order-a",
 			},
 			"app-misc/installed-old-version-blocks-a-2" : {},
 			"app-misc/some-app-a-1": {
@@ -117,7 +115,7 @@ class MergeOrderTestCase(TestCase):
 				"RDEPEND" : "!app-misc/blocker-runtime-a !!app-misc/blocker-runtime-hard-a",
 			},
 			"app-misc/installed-old-version-blocks-a-1" : {
-				"RDEPEND" : "!app-misc/installed-old-version-blocks-a",
+				"RDEPEND" : "!app-misc/blocker-update-order-a",
 			},
 		}
 
@@ -179,8 +177,9 @@ class MergeOrderTestCase(TestCase):
 			# be updated first, in order to solve the blocker without
 			# any need for blocking packages to temporarily overlap.
 			ResolverPlaygroundTestCase(
-				["app-misc/blocker-update-order-a"],
+				["app-misc/blocker-update-order-a", "app-misc/installed-old-version-blocks-a"],
 				success = True,
+				all_permutations = True,
 				mergelist = ["app-misc/installed-old-version-blocks-a-2", "app-misc/blocker-update-order-a-1"]),
 			# installed package has runtime blocker that
 			# should cause it to be uninstalled
