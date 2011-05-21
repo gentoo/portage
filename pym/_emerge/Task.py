@@ -9,7 +9,9 @@ class Task(SlotObject):
 		try:
 			return self._hash_key == other._hash_key
 		except AttributeError:
-			return False
+			# depgraph._pkg() generates _hash_key
+			# for lookups here, so handle that
+			return self._hash_key == other
 
 	def __ne__(self, other):
 		try:
