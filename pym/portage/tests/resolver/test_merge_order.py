@@ -17,6 +17,9 @@ class MergeOrderTestCase(TestCase):
 				"EAPI"   : "2",
 				"DEPEND" : "!!app-misc/installed-blocker-a",
 			},
+			"app-misc/blocker-update-order-a-1" : {
+				"RDEPEND" : ">=app-misc/installed-old-version-blocks-a-2"
+			},
 			"app-misc/blocker-runtime-a-1" : {},
 			"app-misc/blocker-runtime-hard-a-1" : {},
 			"app-misc/circ-buildtime-a-0": {},
@@ -81,6 +84,10 @@ class MergeOrderTestCase(TestCase):
 				"DEPEND" : "!app-misc/blocker-buildtime-a",
 				"RDEPEND" : "!app-misc/blocker-runtime-a !!app-misc/blocker-runtime-hard-a",
 			},
+			"app-misc/installed-old-version-blocks-a-1" : {
+				"RDEPEND" : "!app-misc/installed-old-version-blocks-a",
+			},
+			"app-misc/installed-old-version-blocks-a-2" : {},
 			"app-misc/some-app-a-1": {
 				"RDEPEND": "app-misc/circ-runtime-a app-misc/circ-runtime-b",
 			},
@@ -108,6 +115,9 @@ class MergeOrderTestCase(TestCase):
 				"EAPI"   : "2",
 				"DEPEND" : "!app-misc/blocker-buildtime-a",
 				"RDEPEND" : "!app-misc/blocker-runtime-a !!app-misc/blocker-runtime-hard-a",
+			},
+			"app-misc/installed-old-version-blocks-a-1" : {
+				"RDEPEND" : "!app-misc/installed-old-version-blocks-a",
 			},
 		}
 
@@ -163,6 +173,15 @@ class MergeOrderTestCase(TestCase):
 				["app-misc/blocker-buildtime-a"],
 				success = True,
 				mergelist = ["app-misc/blocker-buildtime-a-1"]),
+			# We're installing a package that an old version of
+			# an installed package blocks. However, an update is
+			# available to the old package. The old package should
+			# be updated first, in order to solve the blocker without
+			# any need for blocking packages to temporarily overlap.
+			ResolverPlaygroundTestCase(
+				["app-misc/blocker-update-order-a"],
+				success = True,
+				mergelist = ["app-misc/installed-old-version-blocks-a-2", "app-misc/blocker-update-order-a-1"]),
 			# installed package has runtime blocker that
 			# should cause it to be uninstalled
 			# TODO: distinguish between install/uninstall tasks in mergelist
@@ -171,7 +190,10 @@ class MergeOrderTestCase(TestCase):
 				success = True,
 				mergelist = ["app-misc/blocker-runtime-a-1", "app-misc/installed-blocker-a-1", "!app-misc/blocker-runtime-a"]),
 			# We have a soft buildtime blocker against an installed
-			# package that should cause it to be uninstalled.
+			# package that should cause it to be uninstalled. Note that with
+			# soft blockers, the blocking packages are allowed to temporarily
+			# overlap. This allows any essential programs/libraries provided
+			# by both packages to be available at all times.
 			# TODO: distinguish between install/uninstall tasks in mergelist
 			ResolverPlaygroundTestCase(
 				["app-misc/blocker-buildtime-unbuilt-a"],
