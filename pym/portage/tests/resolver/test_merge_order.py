@@ -10,6 +10,13 @@ class MergeOrderTestCase(TestCase):
 	def testMergeOrder(self):
 		ebuilds = {
 			"app-misc/blocker-buildtime-a-1" : {},
+			"app-misc/blocker-buildtime-unbuilt-a-1" : {
+				"DEPEND" : "!app-misc/installed-blocker-a",
+			},
+			"app-misc/blocker-buildtime-unbuilt-hard-a-1" : {
+				"EAPI"   : "2",
+				"DEPEND" : "!!app-misc/installed-blocker-a",
+			},
 			"app-misc/blocker-runtime-a-1" : {},
 			"app-misc/blocker-runtime-hard-a-1" : {},
 			"app-misc/circ-post-runtime-a-1": {
@@ -75,6 +82,20 @@ class MergeOrderTestCase(TestCase):
 				["app-misc/blocker-runtime-a"],
 				success = True,
 				mergelist = ["app-misc/blocker-runtime-a-1", "app-misc/installed-blocker-a-1", "!app-misc/blocker-runtime-a"]),
+			# We have a soft buildtime blocker against an installed
+			# package that should cause it to be uninstalled.
+			# TODO: distinguish between install/uninstall tasks in mergelist
+			ResolverPlaygroundTestCase(
+				["app-misc/blocker-buildtime-unbuilt-a"],
+				success = True,
+				mergelist = ["app-misc/blocker-buildtime-unbuilt-a-1", "app-misc/installed-blocker-a-1", "!app-misc/installed-blocker-a"]),
+			# We have a hard buildtime blocker against an installed
+			# package that will not resolve automatically (unless
+			# the option requested in bug 250286 is implemented).
+			ResolverPlaygroundTestCase(
+				["app-misc/blocker-buildtime-unbuilt-hard-a"],
+				success = False,
+				mergelist = ['app-misc/blocker-buildtime-unbuilt-hard-a-1', '!!app-misc/installed-blocker-a']),
 			# An installed package has a hard runtime blocker that
 			# will not resolve automatically (unless the option
 			# requested in bug 250286 is implemented).
