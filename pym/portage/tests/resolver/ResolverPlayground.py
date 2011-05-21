@@ -476,6 +476,7 @@ class ResolverPlaygroundTestCase(object):
 		self.ignore_mergelist_order = kwargs.pop("ignore_mergelist_order", False)
 		self.ambigous_merge_order = kwargs.pop("ambigous_merge_order", False)
 		self.check_repo_names = kwargs.pop("check_repo_names", False)
+		self.merge_order_assertions = kwargs.pop("merge_order_assertions", False)
 
 		if self.all_permutations:
 			self.requests = list(permutations(request))
@@ -538,6 +539,7 @@ class ResolverPlaygroundTestCase(object):
 					expected_stack = list(reversed(expected))
 					got_stack = list(reversed(got))
 					new_expected = []
+					match = True
 					while got_stack and expected_stack:
 						got_token = got_stack.pop()
 						expected_obj = expected_stack.pop()
@@ -554,7 +556,6 @@ class ResolverPlaygroundTestCase(object):
 							# result doesn't match, so stop early
 							break
 						new_expected.append(got_token)
-						match = True
 						while got_stack and expected_obj:
 							got_token = got_stack.pop()
 							try:
@@ -568,13 +569,23 @@ class ResolverPlaygroundTestCase(object):
 							break
 						if expected_obj:
 							# result does not match, so stop early
+							match = False
 							new_expected.append(tuple(expected_obj))
 							break
 					if expected_stack:
 						# result does not match, add leftovers to new_expected
+						match = False
 						expected_stack.reverse()
 						new_expected.extend(expected_stack)
 					expected = new_expected
+
+					if match and self.merge_order_assertions:
+						for node1, node2 in self.merge_order_assertions:
+							if not (got.index(node1) < got.index(node2)):
+								fail_msgs.append("atoms: (" + \
+									", ".join(result.atoms) + "), key: " + \
+									("merge_order_assertions, expected: %s" % \
+									(node1, node2)) + ", got: " + str(got))
 
 			elif key in ("unstable_keywords", "needed_p_mask_changes") and expected is not None:
 				expected = set(expected)

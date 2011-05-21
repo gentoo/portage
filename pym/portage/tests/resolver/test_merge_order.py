@@ -56,6 +56,26 @@ class MergeOrderTestCase(TestCase):
 			"app-misc/circ-runtime-c-1": {
 				"RDEPEND": "app-misc/circ-runtime-a",
 			},
+			"app-misc/circ-satisfied-a-0": {
+				"RDEPEND": "app-misc/circ-satisfied-b",
+			},
+			"app-misc/circ-satisfied-a-1": {
+				"RDEPEND": "app-misc/circ-satisfied-b",
+			},
+			"app-misc/circ-satisfied-b-0": {
+				"RDEPEND": "app-misc/circ-satisfied-c",
+			},
+			"app-misc/circ-satisfied-b-1": {
+				"RDEPEND": "app-misc/circ-satisfied-c",
+			},
+			"app-misc/circ-satisfied-c-0": {
+				"DEPEND": "app-misc/circ-satisfied-a",
+				"RDEPEND": "app-misc/circ-satisfied-a",
+			},
+			"app-misc/circ-satisfied-c-1": {
+				"DEPEND": "app-misc/circ-satisfied-a",
+				"RDEPEND": "app-misc/circ-satisfied-a",
+			},
 			"app-misc/installed-blocker-a-1" : {
 				"EAPI"   : "2",
 				"DEPEND" : "!app-misc/blocker-buildtime-a",
@@ -74,6 +94,16 @@ class MergeOrderTestCase(TestCase):
 
 		installed = {
 			"app-misc/circ-buildtime-a-0": {},
+			"app-misc/circ-satisfied-a-0": {
+				"RDEPEND": "app-misc/circ-satisfied-b",
+			},
+			"app-misc/circ-satisfied-b-0": {
+				"RDEPEND": "app-misc/circ-satisfied-c",
+			},
+			"app-misc/circ-satisfied-c-0": {
+				"DEPEND": "app-misc/circ-satisfied-a",
+				"RDEPEND": "app-misc/circ-satisfied-a",
+			},
 			"app-misc/installed-blocker-a-1" : {
 				"EAPI"   : "2",
 				"DEPEND" : "!app-misc/blocker-buildtime-a",
@@ -114,6 +144,19 @@ class MergeOrderTestCase(TestCase):
 				success = True,
 				ambigous_merge_order = True,
 				mergelist = ["app-misc/circ-post-runtime-a-1", ("app-misc/circ-post-runtime-b-1", "app-misc/circ-post-runtime-c-1"), "app-misc/some-app-b-1"]),
+			# Test optimal merge order for a circular dep that is
+			# RDEPEND in one direction and DEPEND in the other,
+			# with all dependencies initially satisfied. Optimally,
+			# the DEPEND/buildtime dep should be updated before the
+			# package that depends on it, even though it's feasible
+			# to update it later since it is already satisfied.
+			ResolverPlaygroundTestCase(
+				["app-misc/circ-satisfied-a", "app-misc/circ-satisfied-b", "app-misc/circ-satisfied-c"],
+				success = True,
+				all_permutations = True,
+				ambigous_merge_order = True,
+				merge_order_assertions = (("app-misc/circ-satisfied-a-1", "app-misc/circ-satisfied-c-1"),),
+				mergelist = [("app-misc/circ-satisfied-a-1", "app-misc/circ-satisfied-b-1", "app-misc/circ-satisfied-c-1")]),
 			# installed package has buildtime-only blocker
 			# that should be ignored
 			ResolverPlaygroundTestCase(
