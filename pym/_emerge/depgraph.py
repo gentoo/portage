@@ -1571,6 +1571,20 @@ class depgraph(object):
 
 			if not dep_priority.ignored or \
 				self._dynamic_config._traverse_ignored_deps:
+
+				inst_pkgs = [inst_pkg for inst_pkg in vardb.match_pkgs(virt_dep.atom)
+					if not reinstall_atoms.findAtomForPackage(inst_pkg,
+							modified_use=self._pkg_use_enabled(inst_pkg))]
+				if inst_pkgs:
+					for inst_pkg in inst_pkgs:
+						if self._pkg_visibility_check(inst_pkg):
+							# highest visible
+							virt_dep.priority.satisfied = inst_pkg
+							break
+					if not virt_dep.priority.satisfied:
+						# none visible, so use highest
+						virt_dep.priority.satisfied = inst_pkgs[0]
+
 				if not self._add_pkg(virt_pkg, virt_dep):
 					return 0
 
