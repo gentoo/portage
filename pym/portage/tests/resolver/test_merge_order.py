@@ -1,6 +1,7 @@
 # Copyright 2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import portage
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (ResolverPlayground,
 	ResolverPlaygroundTestCase)
@@ -111,6 +112,16 @@ class MergeOrderTestCase(TestCase):
 			"app-misc/some-app-c-1": {
 				"RDEPEND": "app-misc/circ-buildtime-a app-misc/circ-buildtime-b",
 			},
+			"sys-apps/portage-2.1.9.42" : {
+				"DEPEND"  : "dev-lang/python",
+				"RDEPEND" : "dev-lang/python",
+			},
+			"sys-apps/portage-2.1.9.49" : {
+				"DEPEND"  : "dev-lang/python",
+				"RDEPEND" : "dev-lang/python",
+			},
+			"dev-lang/python-3.1" : {},
+			"dev-lang/python-3.2" : {},
 		}
 
 		installed = {
@@ -141,6 +152,11 @@ class MergeOrderTestCase(TestCase):
 				"EAPI"    : "2",
 				"RDEPEND" : "!!app-misc/blocker-update-order-hard-unsolvable-a",
 			},
+			"sys-apps/portage-2.1.9.42" : {
+				"DEPEND"  : "dev-lang/python",
+				"RDEPEND" : "dev-lang/python",
+			},
+			"dev-lang/python-3.1" : {},
 		}
 
 		test_cases = (
@@ -263,6 +279,12 @@ class MergeOrderTestCase(TestCase):
 				["app-misc/blocker-runtime-hard-a"],
 				success = False,
 				mergelist = ['app-misc/blocker-runtime-hard-a-1', '!!app-misc/blocker-runtime-hard-a']),
+			# Test that PORTAGE_PACKAGE_ATOM is merged asap.
+			ResolverPlaygroundTestCase(
+				["dev-lang/python", portage.const.PORTAGE_PACKAGE_ATOM],
+				success = True,
+				all_permutations = True,
+				mergelist = ['sys-apps/portage-2.1.9.49', 'dev-lang/python-3.2']),
 		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)
