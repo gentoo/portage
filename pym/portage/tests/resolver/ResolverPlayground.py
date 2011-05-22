@@ -474,7 +474,7 @@ class ResolverPlaygroundTestCase(object):
 	def __init__(self, request, **kwargs):
 		self.all_permutations = kwargs.pop("all_permutations", False)
 		self.ignore_mergelist_order = kwargs.pop("ignore_mergelist_order", False)
-		self.ambigous_merge_order = kwargs.pop("ambigous_merge_order", False)
+		self.ambiguous_merge_order = kwargs.pop("ambiguous_merge_order", False)
 		self.check_repo_names = kwargs.pop("check_repo_names", False)
 		self.merge_order_assertions = kwargs.pop("merge_order_assertions", False)
 
@@ -535,7 +535,7 @@ class ResolverPlaygroundTestCase(object):
 					got = set(got)
 					expected = set(expected)
 
-				if self.ambigous_merge_order and got:
+				if self.ambiguous_merge_order and got:
 					expected_stack = list(reversed(expected))
 					got_stack = list(reversed(got))
 					new_expected = []
