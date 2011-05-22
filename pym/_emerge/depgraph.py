@@ -4130,30 +4130,20 @@ class depgraph(object):
 		failures for some reason (package does not exist or is
 		corrupt).
 		"""
-		if type_name != "ebuild":
-			# For installed (and binary) packages we don't care for the repo
-			# when it comes to hashing, because there can only be one cpv.
-			# So overwrite the repo_key with type_name.
-			repo_key = type_name
-			myrepo = None
-		elif myrepo is None:
-			raise AssertionError(
-				"depgraph._pkg() called without 'myrepo' argument")
-		else:
-			repo_key = myrepo
 
-		operation = "merge"
-		if installed or onlydeps:
-			operation = "nomerge"
 		# Ensure that we use the specially optimized RootConfig instance
 		# that refers to FakeVartree instead of the real vartree.
 		root_config = self._frozen_config.roots[root_config.root]
 		pkg = self._frozen_config._pkg_cache.get(
-			(type_name, root_config.root, cpv, operation, repo_key))
+			Package._gen_hash_key(cpv=cpv, type_name=type_name,
+			repo_name=myrepo, root_config=root_config,
+			installed=installed, onlydeps=onlydeps))
 		if pkg is None and onlydeps and not installed:
 			# Maybe it already got pulled in as a "merge" node.
 			pkg = self._dynamic_config.mydbapi[root_config.root].get(
-				(type_name, root_config.root, cpv, 'merge', repo_key))
+				Package._gen_hash_key(cpv=cpv, type_name=type_name,
+				repo_name=myrepo, root_config=root_config,
+				installed=installed, onlydeps=False))
 
 		if pkg is None:
 			tree_type = self.pkg_tree_map[type_name]
