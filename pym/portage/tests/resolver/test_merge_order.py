@@ -123,12 +123,12 @@ class MergeOrderTestCase(TestCase):
 			ResolverPlaygroundTestCase(
 				["app-misc/some-app-a"],
 				success = True,
-				ambigous_merge_order = True,
+				ambiguous_merge_order = True,
 				mergelist = [("app-misc/circ-runtime-a-1", "app-misc/circ-runtime-b-1", "app-misc/circ-runtime-c-1"), "app-misc/some-app-a-1"]),
 			ResolverPlaygroundTestCase(
 				["app-misc/some-app-a"],
 				success = True,
-				ambigous_merge_order = True,
+				ambiguous_merge_order = True,
 				mergelist = [("app-misc/circ-runtime-c-1", "app-misc/circ-runtime-b-1", "app-misc/circ-runtime-a-1"), "app-misc/some-app-a-1"]),
 			# Test unsolvable circular dep that is RDEPEND in one
 			# direction and DEPEND in the other.
@@ -143,14 +143,14 @@ class MergeOrderTestCase(TestCase):
 			ResolverPlaygroundTestCase(
 				["app-misc/some-app-c", "app-misc/circ-buildtime-a"],
 				success = True,
-				ambigous_merge_order = True,
+				ambiguous_merge_order = True,
 				mergelist = [("app-misc/circ-buildtime-b-1", "app-misc/circ-buildtime-c-1"), "app-misc/circ-buildtime-a-1", "app-misc/some-app-c-1"]),
 			# Test optimal merge order for a circular dep that is
 			# RDEPEND in one direction and PDEPEND in the other.
 			ResolverPlaygroundTestCase(
 				["app-misc/some-app-b"],
 				success = True,
-				ambigous_merge_order = True,
+				ambiguous_merge_order = True,
 				mergelist = ["app-misc/circ-post-runtime-a-1", ("app-misc/circ-post-runtime-b-1", "app-misc/circ-post-runtime-c-1"), "app-misc/some-app-b-1"]),
 			# Test optimal merge order for a circular dep that is
 			# RDEPEND in one direction and DEPEND in the other,
@@ -162,7 +162,7 @@ class MergeOrderTestCase(TestCase):
 				["app-misc/circ-satisfied-a", "app-misc/circ-satisfied-b", "app-misc/circ-satisfied-c"],
 				success = True,
 				all_permutations = True,
-				ambigous_merge_order = True,
+				ambiguous_merge_order = True,
 				merge_order_assertions = (("app-misc/circ-satisfied-a-1", "app-misc/circ-satisfied-c-1"),),
 				mergelist = [("app-misc/circ-satisfied-a-1", "app-misc/circ-satisfied-b-1", "app-misc/circ-satisfied-c-1")]),
 			# installed package has buildtime-only blocker
