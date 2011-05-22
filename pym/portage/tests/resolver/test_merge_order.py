@@ -18,6 +18,7 @@ class MergeOrderTestCase(TestCase):
 				"DEPEND" : "!!app-misc/installed-blocker-a",
 			},
 			"app-misc/blocker-update-order-a-1" : {},
+			"app-misc/blocker-update-order-hard-a-1" : {},
 			"app-misc/blocker-runtime-a-1" : {},
 			"app-misc/blocker-runtime-b-1" : {},
 			"app-misc/blocker-runtime-hard-a-1" : {},
@@ -87,6 +88,11 @@ class MergeOrderTestCase(TestCase):
 				"RDEPEND" : "!app-misc/blocker-update-order-a",
 			},
 			"app-misc/installed-old-version-blocks-a-2" : {},
+			"app-misc/installed-old-version-blocks-hard-a-1" : {
+				"EAPI"    : "2",
+				"RDEPEND" : "!!app-misc/blocker-update-order-hard-a",
+			},
+			"app-misc/installed-old-version-blocks-hard-a-2" : {},
 			"app-misc/some-app-a-1": {
 				"RDEPEND": "app-misc/circ-runtime-a app-misc/circ-runtime-b",
 			},
@@ -117,6 +123,10 @@ class MergeOrderTestCase(TestCase):
 			},
 			"app-misc/installed-old-version-blocks-a-1" : {
 				"RDEPEND" : "!app-misc/blocker-update-order-a",
+			},
+			"app-misc/installed-old-version-blocks-hard-a-1" : {
+				"EAPI"    : "2",
+				"RDEPEND" : "!!app-misc/blocker-update-order-hard-a",
 			},
 		}
 
@@ -182,6 +192,14 @@ class MergeOrderTestCase(TestCase):
 				success = True,
 				all_permutations = True,
 				mergelist = ["app-misc/installed-old-version-blocks-a-2", "app-misc/blocker-update-order-a-1"]),
+			# This is the same as above but with a hard blocker. The hard
+			# blocker is solved automatically since the update makes it
+			# irrelevant.
+			ResolverPlaygroundTestCase(
+				["app-misc/blocker-update-order-hard-a", "app-misc/installed-old-version-blocks-hard-a"],
+				success = True,
+				all_permutations = True,
+				mergelist = ["app-misc/installed-old-version-blocks-hard-a-2", "app-misc/blocker-update-order-hard-a-1"]),
 			# The installed package has runtime blockers that
 			# should cause it to be uninstalled. The uninstall
 			# task is executed only after blocking packages have
