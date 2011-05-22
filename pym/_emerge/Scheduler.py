@@ -2002,15 +2002,12 @@ class Scheduler(PollScheduler):
 		failures for some reason (package does not exist or is
 		corrupt).
 		"""
-		if operation is None:
-			if installed:
-				operation = "nomerge"
-			else:
-				operation = "merge"
 
 		# Reuse existing instance when available.
-		pkg = self._pkg_cache.get(
-			(type_name, root_config.root, cpv, operation))
+		pkg = self._pkg_cache.get(Package._gen_hash_key(cpv=cpv,
+			type_name=type_name, root_config=root_config,
+			installed=installed, operation=operation))
+
 		if pkg is not None:
 			return pkg
 

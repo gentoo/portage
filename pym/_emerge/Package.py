@@ -73,9 +73,31 @@ class Package(Task):
 			else:
 				self.operation = "merge"
 
-		self._hash_key = \
-			(self.type_name, self.root, self.cpv, self.operation)
+		self._hash_key = Package._gen_hash_key(cpv=self.cpv,
+			installed=self.installed, onlydeps=self.onlydeps,
+			operation=self.operation,
+			root_config=self.root_config,
+			type_name=self.type_name)
 		self._hash_value = hash(self._hash_key)
+
+	@classmethod
+	def _gen_hash_key(cls, cpv=None, installed=None, onlydeps=None,
+		operation=None, repo_name=None, root_config=None,
+		type_name=None, **kwargs):
+
+		if operation is None:
+			if installed or onlydeps:
+				operation = "nomerge"
+			else:
+				operation = "merge"
+
+		root = None
+		if root_config is not None:
+			root = root_config.root
+		else:
+			raise TypeError("root_config argument is required")
+
+		return (type_name, root, cpv, operation)
 
 	def _validate_deps(self):
 		"""

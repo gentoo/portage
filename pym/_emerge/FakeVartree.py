@@ -150,11 +150,13 @@ class FakeVartree(vartree):
 
 		# Validate counters and timestamps.
 		slot_counters = {}
-		root = self.root
+		root_config = self._pkg_root_config
 		validation_keys = ["COUNTER", "_mtime_"]
 		for cpv in current_cpv_set:
 
-			pkg_hash_key = ("installed", root, cpv, "nomerge")
+			pkg_hash_key = Package._gen_hash_key(cpv=cpv,
+				installed=True, root_config=root_config,
+				type_name="installed")
 			pkg = pkg_vardb.get(pkg_hash_key)
 			if pkg is not None:
 				counter, mtime = real_vardb.aux_get(cpv, validation_keys)
