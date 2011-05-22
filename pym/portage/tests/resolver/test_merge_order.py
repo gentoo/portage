@@ -19,6 +19,7 @@ class MergeOrderTestCase(TestCase):
 			},
 			"app-misc/blocker-update-order-a-1" : {},
 			"app-misc/blocker-runtime-a-1" : {},
+			"app-misc/blocker-runtime-b-1" : {},
 			"app-misc/blocker-runtime-hard-a-1" : {},
 			"app-misc/circ-buildtime-a-0": {},
 			"app-misc/circ-buildtime-a-1": {
@@ -80,7 +81,7 @@ class MergeOrderTestCase(TestCase):
 			"app-misc/installed-blocker-a-1" : {
 				"EAPI"   : "2",
 				"DEPEND" : "!app-misc/blocker-buildtime-a",
-				"RDEPEND" : "!app-misc/blocker-runtime-a !!app-misc/blocker-runtime-hard-a",
+				"RDEPEND" : "!app-misc/blocker-runtime-a !app-misc/blocker-runtime-b !!app-misc/blocker-runtime-hard-a",
 			},
 			"app-misc/installed-old-version-blocks-a-1" : {
 				"RDEPEND" : "!app-misc/blocker-update-order-a",
@@ -112,7 +113,7 @@ class MergeOrderTestCase(TestCase):
 			"app-misc/installed-blocker-a-1" : {
 				"EAPI"   : "2",
 				"DEPEND" : "!app-misc/blocker-buildtime-a",
-				"RDEPEND" : "!app-misc/blocker-runtime-a !!app-misc/blocker-runtime-hard-a",
+				"RDEPEND" : "!app-misc/blocker-runtime-a !app-misc/blocker-runtime-b !!app-misc/blocker-runtime-hard-a",
 			},
 			"app-misc/installed-old-version-blocks-a-1" : {
 				"RDEPEND" : "!app-misc/blocker-update-order-a",
@@ -181,13 +182,17 @@ class MergeOrderTestCase(TestCase):
 				success = True,
 				all_permutations = True,
 				mergelist = ["app-misc/installed-old-version-blocks-a-2", "app-misc/blocker-update-order-a-1"]),
-			# installed package has runtime blocker that
-			# should cause it to be uninstalled
+			# The installed package has runtime blockers that
+			# should cause it to be uninstalled. The uninstall
+			# task is executed only after blocking packages have
+			# been merged.
 			# TODO: distinguish between install/uninstall tasks in mergelist
 			ResolverPlaygroundTestCase(
-				["app-misc/blocker-runtime-a"],
+				["app-misc/blocker-runtime-a", "app-misc/blocker-runtime-b"],
 				success = True,
-				mergelist = ["app-misc/blocker-runtime-a-1", "app-misc/installed-blocker-a-1", "!app-misc/blocker-runtime-a"]),
+				all_permutations = True,
+				ambiguous_merge_order = True,
+				mergelist = [("app-misc/blocker-runtime-a-1", "app-misc/blocker-runtime-b-1"), "app-misc/installed-blocker-a-1", ("!app-misc/blocker-runtime-a", "!app-misc/blocker-runtime-b")]),
 			# We have a soft buildtime blocker against an installed
 			# package that should cause it to be uninstalled. Note that with
 			# soft blockers, the blocking packages are allowed to temporarily
