@@ -541,12 +541,14 @@ class ResolverPlaygroundTestCase(object):
 							if got_token == expected_obj:
 								continue
 							# result doesn't match, so stop early
+							match = False
 							break
 						expected_obj = set(expected_obj)
 						try:
 							expected_obj.remove(got_token)
 						except KeyError:
 							# result doesn't match, so stop early
+							match = False
 							break
 						new_expected.append(got_token)
 						while got_stack and expected_obj:
