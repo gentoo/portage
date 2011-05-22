@@ -1341,6 +1341,17 @@ class depgraph(object):
 					(virt_pkg.cpv, [str(x) for x in atoms]),
 					noiselevel=-1, level=logging.DEBUG)
 
+			inst_pkgs = vardb.match_pkgs(atom)
+			if inst_pkgs:
+				for inst_pkg in inst_pkgs:
+					if self._pkg_visibility_check(inst_pkg):
+						# highest visible
+						virt_dep.priority.satisfied = inst_pkg
+						break
+				if not virt_dep.priority.satisfied:
+					# none visible, so use highest
+					virt_dep.priority.satisfied = inst_pkgs[0]
+
 			if not self._add_pkg(virt_pkg, virt_dep):
 				return 0
 
