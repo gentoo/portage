@@ -4175,7 +4175,8 @@ class depgraph(object):
 		"""Remove any blockers from the digraph that do not match any of the
 		packages within the graph.  If necessary, create hard deps to ensure
 		correct merge order such that mutually blocking packages are never
-		installed simultaneously."""
+		installed simultaneously. Also add runtime blockers from all installed
+		packages if any of them haven't been added already (bug 128809)."""
 
 		if "--buildpkgonly" in self._frozen_config.myopts or \
 			"--nodeps" in self._frozen_config.myopts:
@@ -4186,9 +4187,11 @@ class depgraph(object):
 
 		if True:
 			# Pull in blockers from all installed packages that haven't already
-			# been pulled into the depgraph.  This is not enabled by default
-			# due to the performance penalty that is incurred by all the
-			# additional dep_check calls that are required.
+			# been pulled into the depgraph, in order to ensure that the are
+			# respected (bug 128809). Due to the performance penalty that is
+			# incurred by all the additional dep_check calls that are required,
+			# blockers returned from dep_check are cached on disk by the
+			# BlockerCache class.
 
 			# For installed packages, always ignore blockers from DEPEND since
 			# only runtime dependencies should be relevant for packages that
