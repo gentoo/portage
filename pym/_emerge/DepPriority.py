@@ -4,7 +4,7 @@
 from _emerge.AbstractDepPriority import AbstractDepPriority
 class DepPriority(AbstractDepPriority):
 
-	__slots__ = ("satisfied", "optional", "rebuild")
+	__slots__ = ("satisfied", "optional")
 
 	def __int__(self):
 		"""

@@ -831,18 +831,6 @@ class depgraph(object):
 				return 0
 
 		if not pkg.onlydeps:
-			if not pkg.installed and \
-				"empty" not in self._dynamic_config.myparams and \
-				vardbapi.match(pkg.slot_atom):
-				# Increase the priority of dependencies on packages that
-				# are being rebuilt. This optimizes merge order so that
-				# dependencies are rebuilt/updated as soon as possible,
-				# which is needed especially when emerge is called by
-				# revdep-rebuild since dependencies may be affected by ABI
-				# breakage that has rendered them useless. Don't adjust
-				# priority here when in "empty" mode since all packages
-				# are being merged in that case.
-				priority.rebuild = True
 
 			existing_node, existing_node_matches = \
 				self._check_slot_conflict(pkg, dep.atom)
