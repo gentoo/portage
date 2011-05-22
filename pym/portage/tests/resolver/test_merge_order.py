@@ -19,6 +19,7 @@ class MergeOrderTestCase(TestCase):
 			},
 			"app-misc/blocker-update-order-a-1" : {},
 			"app-misc/blocker-update-order-hard-a-1" : {},
+			"app-misc/blocker-update-order-hard-unsolvable-a-1" : {},
 			"app-misc/blocker-runtime-a-1" : {},
 			"app-misc/blocker-runtime-b-1" : {},
 			"app-misc/blocker-runtime-hard-a-1" : {},
@@ -93,6 +94,14 @@ class MergeOrderTestCase(TestCase):
 				"RDEPEND" : "!!app-misc/blocker-update-order-hard-a",
 			},
 			"app-misc/installed-old-version-blocks-hard-a-2" : {},
+			"app-misc/installed-old-version-blocks-hard-unsolvable-a-1" : {
+				"EAPI"    : "2",
+				"RDEPEND" : "!!app-misc/blocker-update-order-hard-unsolvable-a",
+			},
+			"app-misc/installed-old-version-blocks-hard-unsolvable-a-2" : {
+				"DEPEND"  : "app-misc/blocker-update-order-hard-unsolvable-a",
+				"RDEPEND" : "",
+			},
 			"app-misc/some-app-a-1": {
 				"RDEPEND": "app-misc/circ-runtime-a app-misc/circ-runtime-b",
 			},
@@ -127,6 +136,10 @@ class MergeOrderTestCase(TestCase):
 			"app-misc/installed-old-version-blocks-hard-a-1" : {
 				"EAPI"    : "2",
 				"RDEPEND" : "!!app-misc/blocker-update-order-hard-a",
+			},
+			"app-misc/installed-old-version-blocks-hard-unsolvable-a-1" : {
+				"EAPI"    : "2",
+				"RDEPEND" : "!!app-misc/blocker-update-order-hard-unsolvable-a",
 			},
 		}
 
@@ -200,6 +213,21 @@ class MergeOrderTestCase(TestCase):
 				success = True,
 				all_permutations = True,
 				mergelist = ["app-misc/installed-old-version-blocks-hard-a-2", "app-misc/blocker-update-order-hard-a-1"]),
+			# This is similar to the above case except that it's unsolvable
+			# due to merge order, unless bug 250286 is implemented so that
+			# the installed blocker will be unmerged before installation
+			# of the package it blocks (rather than after like a soft blocker
+			# would be handled). The "unmerge before" behavior requested
+			# in bug 250286 must be optional since essential programs or
+			# libraries may be temporarily unavailable during a
+			# non-overlapping update like this.
+			ResolverPlaygroundTestCase(
+				["app-misc/blocker-update-order-hard-unsolvable-a", "app-misc/installed-old-version-blocks-hard-unsolvable-a"],
+				success = False,
+				all_permutations = True,
+				ambiguous_merge_order = True,
+				merge_order_assertions = (('app-misc/blocker-update-order-hard-unsolvable-a-1', 'app-misc/installed-old-version-blocks-hard-unsolvable-a-2'),),
+				mergelist = [('app-misc/blocker-update-order-hard-unsolvable-a-1', 'app-misc/installed-old-version-blocks-hard-unsolvable-a-2', '!!app-misc/blocker-update-order-hard-unsolvable-a')]),
 			# The installed package has runtime blockers that
 			# should cause it to be uninstalled. The uninstall
 			# task is executed only after blocking packages have
