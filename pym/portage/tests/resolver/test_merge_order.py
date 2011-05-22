@@ -122,6 +122,26 @@ class MergeOrderTestCase(TestCase):
 			},
 			"dev-lang/python-3.1" : {},
 			"dev-lang/python-3.2" : {},
+			"virtual/libc-0" : {
+				"RDEPEND" : "sys-libs/glibc",
+			},
+			"sys-libs/glibc-2.11" : {
+				"DEPEND" : "virtual/os-headers",
+			},
+			"sys-libs/glibc-2.13" : {
+				"DEPEND" : "virtual/os-headers",
+			},
+			"virtual/os-headers-0" : {
+				"RDEPEND" : "sys-kernel/linux-headers",
+			},
+			"sys-kernel/linux-headers-2.6.38": {
+				"DEPEND" : "app-arch/xz-utils",
+			},
+			"sys-kernel/linux-headers-2.6.39": {
+				"DEPEND" : "app-arch/xz-utils",
+			},
+			"app-arch/xz-utils-5.0.1" : {},
+			"app-arch/xz-utils-5.0.2" : {},
 		}
 
 		installed = {
@@ -157,6 +177,19 @@ class MergeOrderTestCase(TestCase):
 				"RDEPEND" : "dev-lang/python",
 			},
 			"dev-lang/python-3.1" : {},
+			"virtual/libc-0" : {
+				"RDEPEND" : "sys-libs/glibc",
+			},
+			"sys-libs/glibc-2.11" : {
+				"DEPEND" : "virtual/os-headers",
+			},
+			"virtual/os-headers-0" : {
+				"RDEPEND" : "sys-kernel/linux-headers",
+			},
+			"sys-kernel/linux-headers-2.6.38": {
+				"DEPEND" : "app-arch/xz-utils",
+			},
+			"app-arch/xz-utils-5.0.1" : {},
 		}
 
 		test_cases = (
@@ -285,6 +318,17 @@ class MergeOrderTestCase(TestCase):
 				success = True,
 				all_permutations = True,
 				mergelist = ['sys-apps/portage-2.1.9.49', 'dev-lang/python-3.2']),
+			# Test that OS_HEADERS_PACKAGE_ATOM and LIBC_PACKAGE_ATOM
+			# are merged asap, in order to account for implicit
+			# dependencies. See bug #303567.
+			# TODO: optimize this to ensure that glibc comes before xz-utils
+			ResolverPlaygroundTestCase(
+				["app-arch/xz-utils", "sys-kernel/linux-headers", "sys-libs/glibc"],
+				options = {"--complete-graph" : True},
+				success = True,
+				all_permutations = True,
+				ambiguous_merge_order = True,
+				mergelist = ['sys-kernel/linux-headers-2.6.39', ('app-arch/xz-utils-5.0.2', 'sys-libs/glibc-2.13')]),
 		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)
