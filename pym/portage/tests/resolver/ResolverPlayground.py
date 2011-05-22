@@ -528,8 +528,9 @@ class ResolverPlaygroundTestCase(object):
 								continue
 							new_expected.append(set())
 							for cpv in obj:
-								a = Atom("="+cpv, allow_repo=True)
-								new_expected[-1].add(a.cpv)
+								if cpv[:1] != "!":
+									cpv = Atom("="+cpv, allow_repo=True).cpv
+								new_expected[-1].add(cpv)
 						expected = new_expected
 				if self.ignore_mergelist_order and got is not None:
 					got = set(got)
