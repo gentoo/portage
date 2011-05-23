@@ -4931,6 +4931,7 @@ class depgraph(object):
 					if nodes:
 						# If there is a mixture of merges and uninstalls,
 						# do the uninstalls first.
+						good_uninstalls = None
 						if len(nodes) > 1:
 							good_uninstalls = []
 							for node in nodes:
@@ -4942,7 +4943,9 @@ class depgraph(object):
 							else:
 								nodes = nodes
 
-						if ignore_priority is None and not tree_mode:
+						if good_uninstalls or len(nodes) == 1 or \
+							(ignore_priority is None and \
+							not asap_nodes and not tree_mode):
 							# Greedily pop all of these nodes since no
 							# relationship has been ignored. This optimization
 							# destroys --tree output, so it's disabled in tree
@@ -4955,12 +4958,25 @@ class depgraph(object):
 							#    will not produce a leaf node, so avoid it.
 							#  * It's normal for a selected uninstall to be a
 							#    root node, so don't check them for parents.
-							for node in nodes:
-								if node.operation == "uninstall" or \
-									mygraph.parent_nodes(node):
-									selected_nodes = [node]
+							if asap_nodes:
+								prefer_asap_parents = (True, False)
+							else:
+								prefer_asap_parents = (False,)
+							for check_asap_parent in prefer_asap_parents:
+								if check_asap_parent:
+									for node in nodes:
+										parents = mygraph.parent_nodes(node,
+											ignore_priority=DepPrioritySatisfiedRange.ignore_soft)
+										if parents and set(parents).intersection(asap_nodes):
+											selected_nodes = [node]
+											break
+								else:
+									for node in nodes:
+										if mygraph.parent_nodes(node):
+											selected_nodes = [node]
+											break
+								if selected_nodes:
 									break
-
 						if selected_nodes:
 							break
 

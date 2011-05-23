@@ -112,12 +112,13 @@ class MergeOrderTestCase(TestCase):
 			"app-misc/some-app-c-1": {
 				"RDEPEND": "app-misc/circ-buildtime-a app-misc/circ-buildtime-b",
 			},
+			"app-admin/eselect-python-20100321" : {},
 			"sys-apps/portage-2.1.9.42" : {
 				"DEPEND"  : "dev-lang/python",
 				"RDEPEND" : "dev-lang/python",
 			},
 			"sys-apps/portage-2.1.9.49" : {
-				"DEPEND"  : "dev-lang/python",
+				"DEPEND"  : "dev-lang/python >=app-admin/eselect-python-20091230",
 				"RDEPEND" : "dev-lang/python",
 			},
 			"dev-lang/python-3.1" : {},
@@ -318,12 +319,14 @@ class MergeOrderTestCase(TestCase):
 				["app-misc/blocker-runtime-hard-a"],
 				success = False,
 				mergelist = ['app-misc/blocker-runtime-hard-a-1', '!!app-misc/blocker-runtime-hard-a']),
-			# Test that PORTAGE_PACKAGE_ATOM is merged asap.
+			# Test that PORTAGE_PACKAGE_ATOM is merged asap. Optimally,
+			# satisfied deps are always merged after the asap nodes that
+			# depend on them.
 			ResolverPlaygroundTestCase(
 				["dev-lang/python", portage.const.PORTAGE_PACKAGE_ATOM],
 				success = True,
 				all_permutations = True,
-				mergelist = ['sys-apps/portage-2.1.9.49', 'dev-lang/python-3.2']),
+				mergelist = ['app-admin/eselect-python-20100321', 'sys-apps/portage-2.1.9.49', 'dev-lang/python-3.2']),
 			# Test that OS_HEADERS_PACKAGE_ATOM and LIBC_PACKAGE_ATOM
 			# are merged asap, in order to account for implicit
 			# dependencies. See bug #303567.
