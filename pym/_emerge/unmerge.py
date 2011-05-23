@@ -20,21 +20,20 @@ from _emerge.UninstallFailure import UninstallFailure
 from _emerge.userquery import userquery
 from _emerge.countdown import countdown
 
-def unmerge(root_config, myopts, unmerge_action,
-	unmerge_files, ldpath_mtimes, autoclean=0,
-	clean_world=1, clean_delay=1, ordered=0, raise_on_error=0,
-	scheduler=None, writemsg_level=portage.util.writemsg_level):
+def _unmerge_display(root_config, myopts, unmerge_action,
+	unmerge_files, clean_delay=1, ordered=0,
+	writemsg_level=portage.util.writemsg_level):
+	"""
+	Returns a tuple of (returncode, pkgmap) where returncode is
+	os.EX_OK is no errors occur, and 1 otherwise.
+	"""
 
-	if clean_world:
-		clean_world = myopts.get('--deselect') != 'n'
 	quiet = "--quiet" in myopts
-	enter_invalid = '--ask-enter-invalid' in myopts
 	settings = root_config.settings
 	sets = root_config.sets
 	vartree = root_config.trees["vartree"]
 	candidate_catpkgs=[]
 	global_unmerge=0
-	xterm_titles = "notitles" not in settings.features
 	out = portage.output.EOutput()
 	pkg_cache = {}
 	db_keys = list(vartree.dbapi._aux_cache_keys)
@@ -87,14 +86,12 @@ def unmerge(root_config, myopts, unmerge_action,
 				syslist.append(mycp)
 		syslist = frozenset(syslist)
 	
-		mysettings = portage.config(clone=settings)
-	
 		if not unmerge_files:
 			if unmerge_action == "unmerge":
 				print()
 				print(bold("emerge unmerge") + " can only be used with specific package names")
 				print()
-				return 0
+				return 1, {}
 			else:
 				global_unmerge = 1
 	
@@ -108,7 +105,7 @@ def unmerge(root_config, myopts, unmerge_action,
 			#we've got command-line arguments
 			if not unmerge_files:
 				print("\nNo packages to unmerge have been provided.\n")
-				return 0
+				return 1, {}
 			for x in unmerge_files:
 				arg_parts = x.split('/')
 				if x[0] not in [".","/"] and \
@@ -124,7 +121,7 @@ def unmerge(root_config, myopts, unmerge_action,
 					# ebuild and we're in "unmerge" mode, so it's ok.
 					if not os.path.exists(x):
 						print("\n!!! The path '"+x+"' doesn't exist.\n")
-						return 0
+						return 1, {}
 	
 					absx   = os.path.abspath(x)
 					sp_absx = absx.split("/")
@@ -135,14 +132,13 @@ def unmerge(root_config, myopts, unmerge_action,
 					sp_absx_len = len(sp_absx)
 	
 					vdb_path = os.path.join(settings["EROOT"], portage.VDB_PATH)
-					vdb_len  = len(vdb_path)
 	
 					sp_vdb     = vdb_path.split("/")
 					sp_vdb_len = len(sp_vdb)
 	
 					if not os.path.exists(absx+"/CONTENTS"):
 						print("!!! Not a valid db dir: "+str(absx))
-						return 0
+						return 1, {}
 	
 					if sp_absx_len <= sp_vdb_len:
 						# The Path is shorter... so it can't be inside the vdb.
@@ -150,7 +146,7 @@ def unmerge(root_config, myopts, unmerge_action,
 						print(absx)
 						print("\n!!!",x,"cannot be inside "+ \
 							vdb_path+"; aborting.\n")
-						return 0
+						return 1, {}
 	
 					for idx in range(0,sp_vdb_len):
 						if idx >= sp_absx_len or sp_vdb[idx] != sp_absx[idx]:
@@ -158,7 +154,7 @@ def unmerge(root_config, myopts, unmerge_action,
 							print(absx)
 							print("\n!!!", x, "is not inside "+\
 								vdb_path+"; aborting.\n")
-							return 0
+							return 1, {}
 	
 					print("="+"/".join(sp_absx[sp_vdb_len:]))
 					candidate_catpkgs.append(
@@ -285,13 +281,13 @@ def unmerge(root_config, myopts, unmerge_action,
 		numselected = len(all_selected)
 		if global_unmerge and not numselected:
 			portage.writemsg_stdout("\n>>> No outdated packages were found on your system.\n")
-			return 0
+			return 1, {}
 	
 		if not numselected:
 			portage.writemsg_stdout(
 				"\n>>> No packages selected for removal by " + \
 				unmerge_action + "\n")
-			return 0
+			return 1, {}
 	finally:
 		if vdb_lock:
 			vartree.dbapi.flush_cache()
@@ -407,7 +403,7 @@ def unmerge(root_config, myopts, unmerge_action,
 		writemsg_level(
 			"\n>>> No packages selected for removal by " + \
 			unmerge_action + "\n")
-		return 0
+		return 1, {}
 
 	# Unmerge order only matters in some cases
 	if not ordered:
@@ -491,6 +487,34 @@ def unmerge(root_config, myopts, unmerge_action,
 	writemsg_level(">>> " + colorize("GOOD", "'Protected'") + \
 			" and " + colorize("GOOD", "'omitted'") + \
 			" packages will not be removed.\n\n")
+
+	return os.EX_OK, pkgmap
+
+def unmerge(root_config, myopts, unmerge_action,
+	unmerge_files, ldpath_mtimes, autoclean=0,
+	clean_world=1, clean_delay=1, ordered=0, raise_on_error=0,
+	scheduler=None, writemsg_level=portage.util.writemsg_level):
+	"""
+	Returns 1 if successful, otherwise 0.
+	"""
+
+	if clean_world:
+		clean_world = myopts.get('--deselect') != 'n'
+
+	rval, pkgmap = _unmerge_display(root_config, myopts,
+		unmerge_action, unmerge_files,
+		clean_delay=clean_delay, ordered=ordered,
+		writemsg_level=portage.util.writemsg_level)
+
+	if rval != os.EX_OK:
+		return 0
+
+	enter_invalid = '--ask-enter-invalid' in myopts
+	vartree = root_config.trees["vartree"]
+	sets = root_config.sets
+	settings = root_config.settings
+	mysettings = portage.config(clone=settings)
+	xterm_titles = "notitles" not in settings.features
 
 	if "--pretend" in myopts:
 		#we're done... return
