@@ -1167,7 +1167,7 @@ for x in scanlist:
 				fails["EAPI.unsupported"].append(os.path.join(x, y))
 				continue
 			pkgs[pf] = Package(cpv=cpv, metadata=myaux,
-				root_config=root_config)
+				root_config=root_config, type_name="ebuild")
 
 	# Sort ebuilds in ascending order for the KEYWORDS.dropped check.
 	pkgsplits = {}
