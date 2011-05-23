@@ -145,7 +145,9 @@ class ResolverDepthTestCase(TestCase):
 				options = {"--update" : True, "--deep" : 1},
 				success = True,
 				ambiguous_merge_order = True,
-				mergelist = [('dev-java/icedtea-6.1-r1', 'dev-java/gcj-jdk-4.5-r1'), ('virtual/jdk-1.6.0-r1', 'virtual/jdk-1.5.0-r1', 'virtual/jre-1.6.0-r1', 'virtual/jre-1.5.0-r1')]),
+				merge_order_assertions=(('dev-java/icedtea-6.1-r1', 'virtual/jdk-1.6.0-r1'), ('virtual/jdk-1.6.0-r1', 'virtual/jre-1.6.0-r1'),
+					('dev-java/gcj-jdk-4.5-r1', 'virtual/jdk-1.5.0-r1'), ('virtual/jdk-1.5.0-r1', 'virtual/jre-1.5.0-r1')),
+				mergelist = [('dev-java/icedtea-6.1-r1', 'dev-java/gcj-jdk-4.5-r1', 'virtual/jdk-1.6.0-r1', 'virtual/jdk-1.5.0-r1', 'virtual/jre-1.6.0-r1', 'virtual/jre-1.5.0-r1')]),
 
 			ResolverPlaygroundTestCase(
 				["virtual/jre:1.5"],
