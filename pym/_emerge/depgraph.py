@@ -5025,6 +5025,7 @@ class depgraph(object):
 							continue
 						if child in asap_nodes:
 							continue
+						# Merge PDEPEND asap for bug #180045.
 						asap_nodes.append(child)
 
 			if selected_nodes and len(selected_nodes) > 1:
