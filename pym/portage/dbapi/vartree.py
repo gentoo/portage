@@ -3063,8 +3063,10 @@ class dblink(object):
 		for cur_cpv in slot_matches:
 			# Clone the config in case one of these has to be unmerged since
 			# we need it to have private ${T} etc... for things like elog.
+			settings_clone = config(clone=self.settings)
+			settings_clone.pop("PORTAGE_BUILDIR_LOCKED", None)
 			others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
-				settings=config(clone=self.settings),
+				settings=settings_clone,
 				vartree=self.vartree, treetype="vartree",
 				scheduler=self._scheduler, pipe=self._pipe))
 
