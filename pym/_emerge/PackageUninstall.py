@@ -43,11 +43,21 @@ class PackageUninstall(CompositeTask):
 			# and pkg_postrm phases from executing.
 			pass
 
+		self._builddir_lock = EbuildBuildDir(
+			scheduler=self.scheduler, settings=self.settings)
+		self._builddir_lock.lock()
+
+		portage.prepare_build_dirs(
+			settings=self.settings, cleanup=True)
+
+		# Output only gets logged if it comes after prepare_build_dirs()
+		# which initializes PORTAGE_LOG_FILE.
 		retval, pkgmap = _unmerge_display(self.pkg.root_config,
 			self.opts, "unmerge", [self.pkg.cpv], clean_delay=0,
 			writemsg_level=self._writemsg_level)
 
 		if retval != os.EX_OK:
+			self._builddir_lock.unlock()
 			self.returncode = retval
 			self.wait()
 			return
@@ -57,14 +67,6 @@ class PackageUninstall(CompositeTask):
 		self._emergelog("=== Unmerging... (%s)" % (self.pkg.cpv,))
 
 		cat, pf = portage.catsplit(self.pkg.cpv)
-
-		self._builddir_lock = EbuildBuildDir(
-			scheduler=self.scheduler, settings=self.settings)
-		self._builddir_lock.lock()
-
-		portage.prepare_build_dirs(
-			settings=self.settings, cleanup=True)
-
 		unmerge_task = MergeProcess(
 			mycat=cat, mypkg=pf, settings=self.settings,
 			treetype="vartree", vartree=self.pkg.root_config.trees["vartree"],
@@ -97,4 +99,5 @@ class PackageUninstall(CompositeTask):
 				portage.util.writemsg_level(msg,
 					level=level, noiselevel=noiselevel)
 		else:
-			self.scheduler.output(msg, level=level, noiselevel=noiselevel)
+			self.scheduler.output(msg, log_path=log_path,
+				level=level, noiselevel=noiselevel)
