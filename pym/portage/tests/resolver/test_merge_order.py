@@ -150,6 +150,26 @@ class MergeOrderTestCase(TestCase):
 			},
 			"app-arch/xz-utils-5.0.1" : {},
 			"app-arch/xz-utils-5.0.2" : {},
+			"dev-util/pkgconfig-0.25-r2" : {},
+			"kde-base/kdelibs-3.5.7" : {
+				"PDEPEND" : "kde-misc/kdnssd-avahi",
+			},
+			"kde-misc/kdnssd-avahi-0.1.2" : {
+				"DEPEND"  : "kde-base/kdelibs app-arch/xz-utils dev-util/pkgconfig",
+				"RDEPEND" : "kde-base/kdelibs",
+			},
+			"kde-base/kdnssd-3.5.7" : {
+				"DEPEND"  : "kde-base/kdelibs",
+				"RDEPEND" : "kde-base/kdelibs",
+			},
+			"kde-base/libkdegames-3.5.7" : {
+				"DEPEND"  : "kde-base/kdelibs",
+				"RDEPEND" : "kde-base/kdelibs",
+			},
+			"kde-base/kmines-3.5.7" : {
+				"DEPEND"  : "kde-base/libkdegames",
+				"RDEPEND" : "kde-base/libkdegames",
+			}
 		}
 
 		installed = {
@@ -342,6 +362,19 @@ class MergeOrderTestCase(TestCase):
 				all_permutations = True,
 				ambiguous_merge_order = True,
 				mergelist = ['sys-kernel/linux-headers-2.6.39', 'sys-devel/gcc-4.5.2', 'sys-libs/glibc-2.13', ('app-arch/xz-utils-5.0.2', 'sys-devel/binutils-2.20.1')]),
+			# Test asap install of PDEPEND for bug #180045.
+			ResolverPlaygroundTestCase(
+				["kde-base/kmines", "kde-base/kdnssd", "kde-base/kdelibs", "app-arch/xz-utils"],
+				success = True,
+				all_permutations = True,
+				ambiguous_merge_order = True,
+				merge_order_assertions = (
+					('dev-util/pkgconfig-0.25-r2', 'kde-misc/kdnssd-avahi-0.1.2'),
+					('kde-misc/kdnssd-avahi-0.1.2', 'kde-base/libkdegames-3.5.7'),
+					('kde-misc/kdnssd-avahi-0.1.2', 'kde-base/kdnssd-3.5.7'),
+					('kde-base/libkdegames-3.5.7', 'kde-base/kmines-3.5.7'),
+				),
+				mergelist = [('kde-base/kdelibs-3.5.7', 'dev-util/pkgconfig-0.25-r2', 'kde-misc/kdnssd-avahi-0.1.2', 'app-arch/xz-utils-5.0.2', 'kde-base/libkdegames-3.5.7', 'kde-base/kdnssd-3.5.7', 'kde-base/kmines-3.5.7')]),
 		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)
