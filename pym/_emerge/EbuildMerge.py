@@ -4,7 +4,6 @@
 from _emerge.CompositeTask import CompositeTask
 from portage import os
 from portage.dbapi._MergeProcess import MergeProcess
-from portage.dbapi.vartree import dblink
 
 class EbuildMerge(CompositeTask):
 
@@ -26,7 +25,7 @@ class EbuildMerge(CompositeTask):
 		logfile = settings.get('PORTAGE_LOG_FILE')
 
 		merge_task = MergeProcess(
-			dblink=dblink, mycat=mycat, mypkg=mypkg, settings=settings,
+			mycat=mycat, mypkg=mypkg, settings=settings,
 			treetype=self.tree, vartree=vartree, scheduler=self.scheduler,
 			background=background, blockers=self.find_blockers, pkgloc=pkgloc,
 			infloc=infloc, myebuild=myebuild, mydbapi=mydbapi,

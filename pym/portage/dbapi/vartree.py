@@ -4175,7 +4175,7 @@ def merge(mycat, mypkg, pkgloc, infloc,
 		return errno.EACCES
 	background = (settings.get('PORTAGE_BACKGROUND') == '1')
 	merge_task = MergeProcess(
-		dblink=dblink, mycat=mycat, mypkg=mypkg, settings=settings,
+		mycat=mycat, mypkg=mypkg, settings=settings,
 		treetype=mytree, vartree=vartree,
 		scheduler=(scheduler or PollScheduler().sched_iface),
 		background=background, blockers=blockers, pkgloc=pkgloc,

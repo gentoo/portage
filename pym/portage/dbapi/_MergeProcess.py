@@ -24,7 +24,7 @@ class MergeProcess(SpawnProcess):
 	thread while files are moved or copied asynchronously.
 	"""
 
-	__slots__ = ('dblink', 'mycat', 'mypkg', 'settings', 'treetype',
+	__slots__ = ('mycat', 'mypkg', 'settings', 'treetype',
 		'vartree', 'scheduler', 'blockers', 'pkgloc', 'infloc', 'myebuild',
 		'mydbapi', 'prev_mtimes', '_elog_reader_fd', '_elog_reg_id',
 		'_buf', '_elog_keys', '_locked_vdb')
@@ -155,7 +155,7 @@ class MergeProcess(SpawnProcess):
 			# access to open database connections such as that
 			# used by the sqlite metadata cache module.
 			blockers = self.blockers()
-		mylink = self.dblink(self.mycat, self.mypkg, settings=self.settings,
+		mylink = portage.dblink(self.mycat, self.mypkg, settings=self.settings,
 			treetype=self.treetype, vartree=self.vartree,
 			blockers=blockers, scheduler=self.scheduler,
 			pipe=elog_writer_fd)
