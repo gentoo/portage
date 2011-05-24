@@ -1604,6 +1604,7 @@ class dblink(object):
 				DeprecationWarning, stacklevel=2)
 
 		background = False
+		log_path = None
 		if self._scheduler is None:
 			# We create a scheduler instance and use it to
 			# log unmerge output separately from merge output.
@@ -1614,7 +1615,8 @@ class dblink(object):
 				self.settings.backup_changes("PORTAGE_BACKGROUND")
 				background = True
 			else:
-				self.settings.pop("PORTAGE_BACKGROUND", None)
+				# Our output is redirected and logged by the parent process.
+				log_path = self.settings.pop("PORTAGE_LOG_FILE", None)
 		elif self.settings.get("PORTAGE_BACKGROUND") == "1":
 			background = True
 
@@ -1647,7 +1649,6 @@ class dblink(object):
 		myebuildpath = None
 		failures = 0
 		ebuild_phase = "prerm"
-		log_path = None
 		mystuff = os.listdir(self.dbdir)
 		for x in mystuff:
 			if x.endswith(".ebuild"):
@@ -1659,7 +1660,11 @@ class dblink(object):
 					write_atomic(os.path.join(self.dbdir, "PF"), self.pkg+"\n")
 				break
 
-		self.settings.setcpv(self.mycpv, mydb=self.vartree.dbapi)
+		if self.mycpv != self.settings.mycpv or \
+			"SLOT" not in self.settings.configdict["pkg"]:
+			# We avoid a redundant setcpv call here when
+			# the caller has already taken care of it.
+			self.settings.setcpv(self.mycpv, mydb=self.vartree.dbapi)
 		if myebuildpath:
 			try:
 				doebuild_environment(myebuildpath, "prerm",
@@ -1677,21 +1682,22 @@ class dblink(object):
 		self._prune_plib_registry(unmerge=True, needed=needed,
 			preserve_paths=preserve_paths)
 
+		builddir_locked = "PORTAGE_BUILDIR_LOCKED" in self.settings
 		builddir_lock = None
-		log_path = None
 		scheduler = self._scheduler
 		retval = os.EX_OK
 		try:
 			if myebuildpath:
-				# Only create builddir_lock if doebuild_environment
-				# succeeded, since that's needed to initialize
-				# PORTAGE_BUILDDIR.
-				builddir_lock = EbuildBuildDir(
-					scheduler=scheduler,
-					settings=self.settings)
-				builddir_lock.lock()
-				prepare_build_dirs(settings=self.settings, cleanup=True)
-				log_path = self.settings.get("PORTAGE_LOG_FILE")
+				# Only create builddir_lock if the caller
+				# has not already acquired the lock.
+				if not builddir_locked:
+					builddir_lock = EbuildBuildDir(
+						scheduler=scheduler,
+						settings=self.settings)
+					builddir_lock.lock()
+					builddir_locked = True
+					prepare_build_dirs(settings=self.settings, cleanup=True)
+					log_path = self.settings.get("PORTAGE_LOG_FILE")
 
 				phase = EbuildPhase(background=background,
 					phase=ebuild_phase, scheduler=scheduler,
@@ -1728,7 +1734,7 @@ class dblink(object):
 
 		finally:
 			self.vartree.dbapi._bump_mtime(self.mycpv)
-			if builddir_lock:
+			if builddir_locked:
 				try:
 					if myebuildpath:
 						if retval != os.EX_OK:
@@ -1771,7 +1777,7 @@ class dblink(object):
 
 					self._elog_process(phasefilter=("prerm", "postrm"))
 
-					if retval == os.EX_OK and builddir_lock is not None:
+					if retval == os.EX_OK and builddir_locked:
 						# myebuildpath might be None, so ensure
 						# it has a sane value for the clean phase,
 						# even though it won't really be sourced.

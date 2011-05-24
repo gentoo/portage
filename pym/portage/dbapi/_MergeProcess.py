@@ -3,6 +3,7 @@
 
 import shutil
 import signal
+import sys
 import tempfile
 import traceback
 
@@ -26,7 +27,7 @@ class MergeProcess(SpawnProcess):
 
 	__slots__ = ('mycat', 'mypkg', 'settings', 'treetype',
 		'vartree', 'scheduler', 'blockers', 'pkgloc', 'infloc', 'myebuild',
-		'mydbapi', 'prev_mtimes', '_elog_reader_fd', '_elog_reg_id',
+		'mydbapi', 'prev_mtimes', 'unmerge', '_elog_reader_fd', '_elog_reg_id',
 		'_buf', '_elog_keys', '_locked_vdb')
 
 	def _start(self):
@@ -45,7 +46,8 @@ class MergeProcess(SpawnProcess):
 			settings.reset()
 			settings.setcpv(cpv, mydb=self.mydbapi)
 
-		self._handle_self_reinstall()
+		if not self.unmerge:
+			self._handle_self_reinstall()
 		super(MergeProcess, self)._start()
 
 	def _lock_vdb(self):
@@ -170,7 +172,9 @@ class MergeProcess(SpawnProcess):
 		# FEATURES=parallel-install skips this lock in order to
 		# improve performance, and the risk is practically negligible.
 		self._lock_vdb()
-		counter = self.vartree.dbapi.counter_tick()
+		counter = None
+		if not self.unmerge:
+			counter = self.vartree.dbapi.counter_tick()
 
 		pid = os.fork()
 		if pid != 0:
@@ -213,7 +217,7 @@ class MergeProcess(SpawnProcess):
 		# already be opened by the parent process, so we set the
 		# "subprocess" value for use in conditional logging code
 		# involving PORTAGE_LOG_FILE.
-		if self.settings.get("PORTAGE_BACKGROUND") == "1":
+		if not self.unmerge and self.settings.get("PORTAGE_BACKGROUND") == "1":
 			# unmerge phases have separate logs
 			self.settings["PORTAGE_BACKGROUND_UNMERGE"] = "1"
 			self.settings.backup_changes("PORTAGE_BACKGROUND_UNMERGE")
@@ -222,9 +226,21 @@ class MergeProcess(SpawnProcess):
 
 		rval = 1
 		try:
-			rval = mylink.merge(self.pkgloc, self.infloc,
-				myebuild=self.myebuild, mydbapi=self.mydbapi,
-				prev_mtimes=self.prev_mtimes, counter=counter)
+			if self.unmerge:
+				if not mylink.exists():
+					rval = os.EX_OK
+				elif mylink.unmerge(
+					ldpath_mtimes=self.prev_mtimes) == os.EX_OK:
+					mylink.lockdb()
+					try:
+						mylink.delete()
+					finally:
+						mylink.unlockdb()
+					rval = os.EX_OK
+			else:
+				rval = mylink.merge(self.pkgloc, self.infloc,
+					myebuild=self.myebuild, mydbapi=self.mydbapi,
+					prev_mtimes=self.prev_mtimes, counter=counter)
 		except SystemExit:
 			raise
 		except:
