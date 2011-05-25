@@ -3637,9 +3637,13 @@ class dblink(object):
 		# write out our collection of md5sums
 		if cfgfiledict != cfgfiledict_orig:
 			cfgfiledict.pop("IGNORE", None)
-			ensure_dirs(os.path.dirname(conf_mem_file),
-				gid=portage_gid, mode=0o2750, mask=0o2)
-			writedict(cfgfiledict, conf_mem_file)
+			try:
+				writedict(cfgfiledict, conf_mem_file)
+			except IOError as e:
+				if e.errno != errno.ENOENT:
+					raise
+				self.settings._init_dirs()
+				writedict(cfgfiledict, conf_mem_file)
 
 		return os.EX_OK
 
