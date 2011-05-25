@@ -492,20 +492,14 @@ def grablines(myfilename, recursive=0, remember_source_file=False):
 def writedict(mydict,myfilename,writekey=True):
 	"""Writes out a dict to a file; writekey=0 mode doesn't write out
 	the key and assumes all values are strings, not lists."""
-	myfile = None
-	try:
-		myfile = atomic_ofstream(myfilename)
-		if not writekey:
-			for x in mydict.values():
-				myfile.write(x+"\n")
-		else:
-			for x in mydict:
-				myfile.write("%s %s\n" % (x, " ".join(mydict[x])))
-		myfile.close()
-	except IOError:
-		if myfile is not None:
-			myfile.abort()
-		raise
+	lines = []
+	if not writekey:
+		for v in mydict.values():
+			lines.append(v + "\n")
+	else:
+		for k, v in mydict.items():
+			lines.append("%s %s\n" % (k, " ".join(v)))
+	write_atomic(myfilename, "".join(lines))
 
 def shlex_split(s):
 	"""
