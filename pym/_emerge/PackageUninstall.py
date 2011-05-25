@@ -18,7 +18,8 @@ class PackageUninstall(CompositeTask):
 	it is essential for the ebuild-locks code to execute in a
 	subprocess, since the portage.locks module does not behave
 	as desired if we try to lock the same file multiple times
-	concurrently from the same process.
+	concurrently from the same process for ebuild-locks phases
+	such as pkg_setup, pkg_prerm, and pkg_postrm.
 	"""
 
 	__slots__ = ("world_atom", "ldpath_mtimes", "opts",
@@ -66,7 +67,6 @@ class PackageUninstall(CompositeTask):
 			noiselevel=-1)
 		self._emergelog("=== Unmerging... (%s)" % (self.pkg.cpv,))
 
-		cat, pf = portage.catsplit(self.pkg.cpv)
 		unmerge_task = MergeProcess(
 			mycat=cat, mypkg=pf, settings=self.settings,
 			treetype="vartree", vartree=self.pkg.root_config.trees["vartree"],
