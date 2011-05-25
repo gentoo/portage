@@ -505,8 +505,7 @@ def writedict(mydict,myfilename,writekey=True):
 	except IOError:
 		if myfile is not None:
 			myfile.abort()
-		return 0
-	return 1
+		raise
 
 def shlex_split(s):
 	"""
