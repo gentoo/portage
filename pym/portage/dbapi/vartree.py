@@ -39,7 +39,7 @@ from portage.const import _ENABLE_DYN_LINK_MAP, _ENABLE_PRESERVE_LIBS
 from portage.dbapi import dbapi
 from portage.dep import _slot_separator
 from portage.exception import CommandNotFound, \
-	InvalidData, InvalidPackageName, \
+	InvalidData, InvalidLocation, InvalidPackageName, \
 	FileNotFound, PermissionDenied, UnsupportedAPIException
 from portage.localization import _
 from portage.util.movefile import movefile
@@ -222,7 +222,11 @@ class vardbapi(dbapi):
 		if self._fs_lock_count < 1:
 			if self._fs_lock_obj is not None:
 				raise AssertionError("already locked")
-			self._fs_lock_obj = lockfile(self._conf_mem_file)
+			try:
+				self._fs_lock_obj = lockfile(self._conf_mem_file)
+			except InvalidLocation:
+				self.settings._init_dirs()
+				self._fs_lock_obj = lockfile(self._conf_mem_file)
 		self._fs_lock_count += 1
 
 	def _fs_unlock(self):
@@ -822,11 +826,12 @@ class vardbapi(dbapi):
 				if incrementing:
 					#increment counter
 					counter += 1
-					# use same permissions as config._init_dirs()
-					ensure_dirs(os.path.dirname(self._counter_path),
-						gid=portage_gid, mode=0o2750, mask=0o2)
 					# update new global counter file
-					write_atomic(self._counter_path, str(counter))
+					try:
+						write_atomic(self._counter_path, str(counter))
+					except InvalidLocation:
+						self.settings._init_dirs()
+						write_atomic(self._counter_path, str(counter))
 				self._cached_counter = counter
 		finally:
 			self.unlock()
