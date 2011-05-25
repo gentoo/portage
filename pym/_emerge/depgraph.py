@@ -2740,14 +2740,17 @@ class depgraph(object):
 
 
 	def _show_unsatisfied_dep(self, root, atom, myparent=None, arg=None,
-		check_backtrack=False):
+		check_backtrack=False, check_autounmask_breakage=False):
 		"""
 		When check_backtrack=True, no output is produced and
 		the method either returns or raises _backtrack_mask if
 		a matching package has been masked by backtracking.
 		"""
 		backtrack_mask = False
+		autounmask_broke_use_dep = False
 		atom_set = InternalPackageSet(initial_atoms=(atom.without_use,),
+			allow_repo=True)
+		atom_set_with_use = InternalPackageSet(initial_atoms=(atom,),
 			allow_repo=True)
 		xinfo = '"%s"' % atom.unevaluated_atom
 		if arg:
@@ -2823,6 +2826,8 @@ class depgraph(object):
 									or atom.violated_conditionals(self._pkg_use_enabled(pkg), pkg.iuse.is_valid_flag).use:
 									missing_use.append(pkg)
 									if not mreasons:
+										if atom_set_with_use.findAtomForPackage(pkg):
+											autounmask_broke_use_dep = True
 										continue
 							except InvalidAtom:
 								writemsg("violated_conditionals raised " + \
@@ -2852,6 +2857,12 @@ class depgraph(object):
 		if check_backtrack:
 			if backtrack_mask:
 				raise self._backtrack_mask()
+			else:
+				return
+
+		if check_autounmask_breakage:
+			if autounmask_broke_use_dep:
+				raise self._autounmask_breakage()
 			else:
 				return
 
@@ -6342,12 +6353,28 @@ class depgraph(object):
 		backtracking.
 		"""
 
+	class _autounmask_breakage(_internal_exception):
+		"""
+		This is raised by _show_unsatisfied_dep() when it's called with
+		check_autounmask_breakage=True and a matching package has been
+		been disqualified due to autounmask changes.
+		"""
+
 	def need_restart(self):
 		return self._dynamic_config._need_restart and \
 			not self._dynamic_config._skip_restart
 
 	def success_without_autounmask(self):
 		return self._dynamic_config._success_without_autounmask
+
+	def autounmask_breakage_detected(self):
+		try:
+			for pargs, kwargs in self._dynamic_config._unsatisfied_deps_for_display:
+				self._show_unsatisfied_dep(
+					*pargs, check_autounmask_breakage=True, **kwargs)
+		except self._autounmask_breakage:
+			return True
+		return False
 
 	def get_backtrack_infos(self):
 		return self._dynamic_config._backtrack_infos
@@ -6640,6 +6667,15 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
 			allow_backtracking=False,
 			backtrack_parameters=backtracker.get_best_run())
 		success, favorites = mydepgraph.select_files(myfiles)
+		if not success and mydepgraph.autounmask_breakage_detected():
+			if "--debug" in myopts:
+				writemsg_level(
+					"\n\nautounmask breakage detectedn\n",
+					noiselevel=-1, level=logging.DEBUG)
+			myopts["--autounmask"] = "n"
+			mydepgraph = depgraph(settings, trees, myopts, myparams, spinner,
+				frozen_config=frozen_config, allow_backtracking=False)
+			success, favorites = mydepgraph.select_files(myfiles)
 
 	return (success, mydepgraph, favorites)
 
