@@ -3640,9 +3640,7 @@ class dblink(object):
 			cfgfiledict.pop("IGNORE", None)
 			try:
 				writedict(cfgfiledict, conf_mem_file)
-			except IOError as e:
-				if e.errno != errno.ENOENT:
-					raise
+			except InvalidLocation:
 				self.settings._init_dirs()
 				writedict(cfgfiledict, conf_mem_file)
 
