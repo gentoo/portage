@@ -6670,7 +6670,7 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
 		if not success and mydepgraph.autounmask_breakage_detected():
 			if "--debug" in myopts:
 				writemsg_level(
-					"\n\nautounmask breakage detectedn\n",
+					"\n\nautounmask breakage detected\n\n",
 					noiselevel=-1, level=logging.DEBUG)
 			myopts["--autounmask"] = "n"
 			mydepgraph = depgraph(settings, trees, myopts, myparams, spinner,
