@@ -3002,6 +3002,7 @@ class dblink(object):
 			# we need it to have private ${T} etc... for things like elog.
 			settings_clone = config(clone=self.settings)
 			settings_clone.pop("PORTAGE_BUILDIR_LOCKED", None)
+			settings_clone.reset()
 			others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
 				settings=settings_clone,
 				vartree=self.vartree, treetype="vartree",
