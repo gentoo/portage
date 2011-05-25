@@ -1125,9 +1125,9 @@ class atomic_ofstream(ObjectProxy):
 			except IOError as e:
 				if canonical_path == filename:
 					raise
-				writemsg(_("!!! Failed to open file: '%s'\n") % tmp_name,
-					noiselevel=-1)
-				writemsg("!!! %s\n" % str(e), noiselevel=-1)
+				# Ignore this error, since it's irrelevant
+				# and the below open call will produce a
+				# new error if necessary.
 
 		object.__setattr__(self, '_real_name', filename)
 		tmp_name = "%s.%i" % (filename, os.getpid())
