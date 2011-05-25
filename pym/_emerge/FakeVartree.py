@@ -88,10 +88,9 @@ class FakeVartree(vartree):
 		self._aux_get_history.add(pkg)
 		# We need to check the EAPI, and this also raises
 		# a KeyError to the caller if appropriate.
-		installed_eapi, = self._aux_get(pkg, ["EAPI"])
+		installed_eapi, repo = self._aux_get(pkg, ["EAPI", "repository"])
 		try:
 			# Use the live ebuild metadata if possible.
-			repo = self._aux_get(pkg, ["repository"])[0]
 			repo = _gen_valid_repo(repo)
 			live_metadata = dict(zip(self._portdb_keys,
 				self._portdb.aux_get(pkg, self._portdb_keys, myrepo=repo)))
