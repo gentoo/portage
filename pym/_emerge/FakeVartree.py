@@ -86,6 +86,9 @@ class FakeVartree(vartree):
 		if pkg in self._aux_get_history:
 			return self._aux_get(pkg, wants)
 		self._aux_get_history.add(pkg)
+		# We need to check the EAPI, and this also raises
+		# a KeyError to the caller if appropriate.
+		installed_eapi, = self._aux_get(pkg, ["EAPI"])
 		try:
 			# Use the live ebuild metadata if possible.
 			repo = self._aux_get(pkg, ["repository"])[0]
@@ -93,7 +96,7 @@ class FakeVartree(vartree):
 			live_metadata = dict(zip(self._portdb_keys,
 				self._portdb.aux_get(pkg, self._portdb_keys, myrepo=repo)))
 			if not portage.eapi_is_supported(live_metadata["EAPI"]) or \
-				self._aux_get(pkg, ["EAPI"])[0] != live_metadata["EAPI"]:
+				installed_eapi != live_metadata["EAPI"]:
 				raise KeyError(pkg)
 			self.dbapi.aux_update(pkg, live_metadata)
 		except (KeyError, portage.exception.PortageException):
