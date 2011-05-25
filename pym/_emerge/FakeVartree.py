@@ -92,7 +92,8 @@ class FakeVartree(vartree):
 			repo = _gen_valid_repo(repo)
 			live_metadata = dict(zip(self._portdb_keys,
 				self._portdb.aux_get(pkg, self._portdb_keys, myrepo=repo)))
-			if not portage.eapi_is_supported(live_metadata["EAPI"]):
+			if not portage.eapi_is_supported(live_metadata["EAPI"]) or \
+				self._aux_get(pkg, ["EAPI"])[0] != live_metadata["EAPI"]:
 				raise KeyError(pkg)
 			self.dbapi.aux_update(pkg, live_metadata)
 		except (KeyError, portage.exception.PortageException):
