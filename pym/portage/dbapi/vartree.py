@@ -1735,8 +1735,11 @@ class dblink(object):
 						# even though it won't really be sourced.
 						myebuildpath = os.path.join(self.dbdir,
 							self.pkg + ".ebuild")
-						doebuild_environment(myebuildpath, "cleanrm",
-							settings=self.settings, db=self.vartree.dbapi)
+						try:
+							doebuild_environment(myebuildpath, "cleanrm",
+								settings=self.settings, db=self.vartree.dbapi)
+						except UnsupportedAPIException:
+							pass
 						if scheduler is None:
 							_spawn_phase("cleanrm", self.settings)
 						else:
