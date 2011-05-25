@@ -15,6 +15,16 @@ class PackageUninstall(CompositeTask):
 
 	def _start(self):
 
+		vardb = self.pkg.root_config.trees["vartree"].dbapi
+		dbdir = vardb.getpath(self.pkg.cpv)
+		if not os.path.exists(dbdir):
+			# Apparently the package got uninstalled
+			# already, so we can safely return early.
+			self.returncode = os.EX_OK
+			self.wait()
+			return
+
+		self.settings.setcpv(self.pkg)
 		retval, pkgmap = _unmerge_display(self.pkg.root_config,
 			self.opts, "unmerge", [self.pkg.cpv], clean_delay=0,
 			writemsg_level=self._writemsg_level)
