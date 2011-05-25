@@ -27,9 +27,16 @@ class PackageUninstall(CompositeTask):
 
 	def _start(self):
 
-		self.settings.setcpv(self.pkg)
 		vardb = self.pkg.root_config.trees["vartree"].dbapi
 		dbdir = vardb.getpath(self.pkg.cpv)
+		if not os.path.exists(dbdir):
+			# Apparently the package got uninstalled
+			# already, so we can safely return early.
+			self.returncode = os.EX_OK
+			self.wait()
+			return
+
+		self.settings.setcpv(self.pkg)
 		cat, pf = portage.catsplit(self.pkg.cpv)
 		myebuildpath = os.path.join(dbdir, pf + ".ebuild")
 
