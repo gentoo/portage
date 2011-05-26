@@ -3902,11 +3902,15 @@ class depgraph(object):
 			if rebuilt_binaries:
 				inst_pkg = None
 				built_pkg = None
+				unbuilt_pkg = None
 				for pkg in matched_packages:
 					if pkg.installed:
 						inst_pkg = pkg
 					elif pkg.built:
 						built_pkg = pkg
+					else:
+						if unbuilt_pkg is None or pkg > unbuilt_pkg:
+							unbuilt_pkg = pkg
 				if built_pkg is not None and inst_pkg is not None:
 					# Only reinstall if binary package BUILD_TIME is
 					# non-empty, in order to avoid cases like to
@@ -3922,7 +3926,9 @@ class depgraph(object):
 					except (KeyError, ValueError):
 						installed_timestamp = 0
 
-					if "--rebuilt-binaries-timestamp" in self._frozen_config.myopts:
+					if unbuilt_pkg is not None and unbuilt_pkg > built_pkg:
+						pass
+					elif "--rebuilt-binaries-timestamp" in self._frozen_config.myopts:
 						minimal_timestamp = self._frozen_config.myopts["--rebuilt-binaries-timestamp"]
 						if built_timestamp and \
 							built_timestamp > installed_timestamp and \
