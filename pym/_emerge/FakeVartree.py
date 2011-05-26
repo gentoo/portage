@@ -94,8 +94,16 @@ class FakeVartree(vartree):
 			repo = _gen_valid_repo(repo)
 			live_metadata = dict(zip(self._portdb_keys,
 				self._portdb.aux_get(pkg, self._portdb_keys, myrepo=repo)))
-			if not portage.eapi_is_supported(live_metadata["EAPI"]) or \
-				installed_eapi != live_metadata["EAPI"]:
+			# Use the metadata from the installed instance if the EAPI
+			# of either instance is unsupported, since if the installed
+			# instance has an unsupported or corrupt EAPI then we don't
+			# want to attempt to do complex operations such as execute
+			# pkg_config, pkg_prerm or pkg_postrm phases. If both EAPIs
+			# are supported then go ahead and use the live_metadata, in
+			# order to respect dep updates without revision bump or EAPI
+			# bump, as in bug #368725.
+			if not (portage.eapi_is_supported(live_metadata["EAPI"]) and \
+				portage.eapi_is_supported(installed_eapi)):
 				raise KeyError(pkg)
 			self.dbapi.aux_update(pkg, live_metadata)
 		except (KeyError, portage.exception.PortageException):
