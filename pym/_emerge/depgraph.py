@@ -1341,7 +1341,7 @@ class depgraph(object):
 					(virt_pkg.cpv, [str(x) for x in atoms]),
 					noiselevel=-1, level=logging.DEBUG)
 
-			inst_pkgs = vardb.match_pkgs(atom)
+			inst_pkgs = vardb.match_pkgs(virt_dep.atom)
 			if inst_pkgs:
 				for inst_pkg in inst_pkgs:
 					if self._pkg_visibility_check(inst_pkg):
