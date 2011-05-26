@@ -1655,13 +1655,12 @@ class dblink(object):
 		contents = self.getcontents()
 		# Now, don't assume that the name of the ebuild is the same as the
 		# name of the dir; the package may have been moved.
-		myebuildpath = None
+		myebuildpath = os.path.join(self.dbdir, self.pkg + ".ebuild")
 		failures = 0
 		ebuild_phase = "prerm"
 		mystuff = os.listdir(self.dbdir)
 		for x in mystuff:
 			if x.endswith(".ebuild"):
-				myebuildpath = os.path.join(self.dbdir, self.pkg + ".ebuild")
 				if x[:-7] != self.pkg:
 					# Clean up after vardbapi.move_ent() breakage in
 					# portage versions before 2.1.2
@@ -1697,6 +1696,7 @@ class dblink(object):
 					scheduler=scheduler,
 					settings=self.settings)
 				builddir_lock.lock()
+				builddir_locked = True
 				prepare_build_dirs(settings=self.settings, cleanup=True)
 				log_path = self.settings.get("PORTAGE_LOG_FILE")
 
@@ -1710,7 +1710,7 @@ class dblink(object):
 					level=logging.ERROR, noiselevel=-1)
 				showMessage(_unicode_decode("%s\n") % (eapi_unsupported,),
 					level=logging.ERROR, noiselevel=-1)
-			elif myebuildpath:
+			elif os.path.isfile(myebuildpath):
 				phase = EbuildPhase(background=background,
 					phase=ebuild_phase, scheduler=scheduler,
 					settings=self.settings)
@@ -1730,7 +1730,7 @@ class dblink(object):
 				self.vartree.dbapi._fs_unlock()
 			self._clear_contents_cache()
 
-			if myebuildpath and not eapi_unsupported:
+			if not eapi_unsupported and os.path.isfile(myebuildpath):
 				ebuild_phase = "postrm"
 				phase = EbuildPhase(background=background,
 					phase=ebuild_phase, scheduler=scheduler,
@@ -1748,7 +1748,7 @@ class dblink(object):
 			self.vartree.dbapi._bump_mtime(self.mycpv)
 			if builddir_locked:
 				try:
-					if myebuildpath and not eapi_unsupported:
+					if not eapi_unsupported and os.path.isfile(myebuildpath):
 						if retval != os.EX_OK:
 							msg_lines = []
 							msg = _("The '%(ebuild_phase)s' "
@@ -1790,11 +1790,6 @@ class dblink(object):
 					self._elog_process(phasefilter=("prerm", "postrm"))
 
 					if retval == os.EX_OK and builddir_locked:
-						# myebuildpath might be None, so ensure
-						# it has a sane value for the clean phase,
-						# even though it won't really be sourced.
-						myebuildpath = os.path.join(self.dbdir,
-							self.pkg + ".ebuild")
 						try:
 							doebuild_environment(myebuildpath, "cleanrm",
 								settings=self.settings, db=self.vartree.dbapi)
