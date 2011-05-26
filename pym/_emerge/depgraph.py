@@ -6673,15 +6673,16 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
 			allow_backtracking=False,
 			backtrack_parameters=backtracker.get_best_run())
 		success, favorites = mydepgraph.select_files(myfiles)
-		if not success and mydepgraph.autounmask_breakage_detected():
-			if "--debug" in myopts:
-				writemsg_level(
-					"\n\nautounmask breakage detected\n\n",
-					noiselevel=-1, level=logging.DEBUG)
-			myopts["--autounmask"] = "n"
-			mydepgraph = depgraph(settings, trees, myopts, myparams, spinner,
-				frozen_config=frozen_config, allow_backtracking=False)
-			success, favorites = mydepgraph.select_files(myfiles)
+
+	if not success and mydepgraph.autounmask_breakage_detected():
+		if "--debug" in myopts:
+			writemsg_level(
+				"\n\nautounmask breakage detected\n\n",
+				noiselevel=-1, level=logging.DEBUG)
+		myopts["--autounmask"] = "n"
+		mydepgraph = depgraph(settings, trees, myopts, myparams, spinner,
+			frozen_config=frozen_config, allow_backtracking=False)
+		success, favorites = mydepgraph.select_files(myfiles)
 
 	return (success, mydepgraph, favorites)
 
