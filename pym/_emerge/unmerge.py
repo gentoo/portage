@@ -504,7 +504,7 @@ def unmerge(root_config, myopts, unmerge_action,
 	rval, pkgmap = _unmerge_display(root_config, myopts,
 		unmerge_action, unmerge_files,
 		clean_delay=clean_delay, ordered=ordered,
-		writemsg_level=portage.util.writemsg_level)
+		writemsg_level=writemsg_level)
 
 	if rval != os.EX_OK:
 		return 0
