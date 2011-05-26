@@ -6036,7 +6036,7 @@ def _backtrack_depgraph(settings, trees, myopts, myparams,
 		myopts["--autounmask"] = "n"
 		mydepgraph = depgraph(settings, trees, myopts, myparams, spinner,
 			frozen_config=frozen_config,
-			allow_backtracking=allow_backtracking)
+			allow_backtracking=False)
 		success, favorites = mydepgraph.select_files(myfiles)
 
 	return (success, mydepgraph, favorites)
