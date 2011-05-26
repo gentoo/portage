@@ -773,27 +773,31 @@ class vardbapi(dbapi):
 	def counter_tick_core(self, myroot=None, incrementing=1, mycpv=None):
 		"""
 		This method will grab the next COUNTER value and record it back
-		to the global file.  Returns new counter value.
+		to the global file. Note that every package install must have
+		a unique counter, since a slotmove update can move two packages
+		into the same SLOT and in that case it's important that both
+		packages have different COUNTER metadata.
 
 		@param myroot: ignored, self._eroot is used instead
 		@param mycpv: ignored
+		@rtype: int
+		@returns: new counter value
 		"""
 		myroot = None
 		mycpv = None
 		self.lock()
 		try:
 			counter = self.get_counter_tick_core() - 1
-			if self._cached_counter != counter:
-				if incrementing:
-					#increment counter
-					counter += 1
-					# update new global counter file
-					try:
-						write_atomic(self._counter_path, str(counter))
-					except InvalidLocation:
-						self.settings._init_dirs()
-						write_atomic(self._counter_path, str(counter))
-				self._cached_counter = counter
+			if incrementing:
+				#increment counter
+				counter += 1
+				# update new global counter file
+				try:
+					write_atomic(self._counter_path, str(counter))
+				except InvalidLocation:
+					self.settings._init_dirs()
+					write_atomic(self._counter_path, str(counter))
+			self._cached_counter = counter
 		finally:
 			self.unlock()
 
