@@ -1670,19 +1670,13 @@ class dblink(object):
 			# We avoid a redundant setcpv call here when
 			# the caller has already taken care of it.
 			self.settings.setcpv(self.mycpv, mydb=self.vartree.dbapi)
-		if myebuildpath:
-			try:
-				doebuild_environment(myebuildpath, "prerm",
-					settings=self.settings, db=self.vartree.dbapi)
-			except UnsupportedAPIException as e:
-				failures += 1
-				# Sometimes this happens due to corruption of the EAPI file.
-				showMessage(_("!!! FAILED prerm: %s\n") % \
-					os.path.join(self.dbdir, "EAPI"),
-					level=logging.ERROR, noiselevel=-1)
-				showMessage(_unicode_decode("%s\n") % (e,),
-					level=logging.ERROR, noiselevel=-1)
-				myebuildpath = None
+
+		eapi_unsupported = False
+		try:
+			doebuild_environment(myebuildpath, "prerm",
+				settings=self.settings, db=self.vartree.dbapi)
+		except UnsupportedAPIException as e:
+			eapi_unsupported = e
 
 		self._prune_plib_registry(unmerge=True, needed=needed,
 			preserve_paths=preserve_paths)
@@ -1692,18 +1686,27 @@ class dblink(object):
 		scheduler = self._scheduler
 		retval = os.EX_OK
 		try:
-			if myebuildpath:
-				# Only create builddir_lock if the caller
-				# has not already acquired the lock.
-				if not builddir_locked:
-					builddir_lock = EbuildBuildDir(
-						scheduler=scheduler,
-						settings=self.settings)
-					builddir_lock.lock()
-					builddir_locked = True
-					prepare_build_dirs(settings=self.settings, cleanup=True)
-					log_path = self.settings.get("PORTAGE_LOG_FILE")
+			# Only create builddir_lock if the caller
+			# has not already acquired the lock.
+			if not builddir_locked:
+				builddir_lock = EbuildBuildDir(
+					scheduler=scheduler,
+					settings=self.settings)
+				builddir_lock.lock()
+				prepare_build_dirs(settings=self.settings, cleanup=True)
+				log_path = self.settings.get("PORTAGE_LOG_FILE")
 
+			# Log the error after PORTAGE_LOG_FILE is initialized
+			# by prepare_build_dirs above.
+			if eapi_unsupported:
+				# Sometimes this happens due to corruption of the EAPI file.
+				failures += 1
+				showMessage(_("!!! FAILED prerm: %s\n") % \
+					os.path.join(self.dbdir, "EAPI"),
+					level=logging.ERROR, noiselevel=-1)
+				showMessage(_unicode_decode("%s\n") % (eapi_unsupported,),
+					level=logging.ERROR, noiselevel=-1)
+			elif myebuildpath:
 				phase = EbuildPhase(background=background,
 					phase=ebuild_phase, scheduler=scheduler,
 					settings=self.settings)
@@ -1723,7 +1726,7 @@ class dblink(object):
 				self.vartree.dbapi._fs_unlock()
 			self._clear_contents_cache()
 
-			if myebuildpath:
+			if myebuildpath and not eapi_unsupported:
 				ebuild_phase = "postrm"
 				phase = EbuildPhase(background=background,
 					phase=ebuild_phase, scheduler=scheduler,
@@ -1741,7 +1744,7 @@ class dblink(object):
 			self.vartree.dbapi._bump_mtime(self.mycpv)
 			if builddir_locked:
 				try:
-					if myebuildpath:
+					if myebuildpath and not eapi_unsupported:
 						if retval != os.EX_OK:
 							msg_lines = []
 							msg = _("The '%(ebuild_phase)s' "
