@@ -2825,9 +2825,9 @@ class depgraph(object):
 								if not pkg.iuse.is_valid_flag(atom.unevaluated_atom.use.required) \
 									or atom.violated_conditionals(self._pkg_use_enabled(pkg), pkg.iuse.is_valid_flag).use:
 									missing_use.append(pkg)
+									if atom_set_with_use.findAtomForPackage(pkg):
+										autounmask_broke_use_dep = True
 									if not mreasons:
-										if atom_set_with_use.findAtomForPackage(pkg):
-											autounmask_broke_use_dep = True
 										continue
 							except InvalidAtom:
 								writemsg("violated_conditionals raised " + \
