@@ -183,7 +183,7 @@ class _LockProcess(AbstractPollTask):
 	lock and exit.
 	"""
 
-	__slots__ = ('path', 'scheduler',) + \
+	__slots__ = ('path',) + \
 		('_acquired', '_kill_test', '_proc', '_files', '_reg_id', '_unlocked')
 
 	def _start(self):
