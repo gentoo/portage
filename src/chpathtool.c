@@ -4,11 +4,14 @@
  * chpathtool replaces a given string (magic) into another (value),
  * thereby paying attention to the original size of magic in order not
  * to change offsets in the file changed.  To achieve this goal, value
- * is not greater in size than magic, and the difference in size between
- * the two is compensated by adding NULL-bytes at the end of a modified
- * string.  The end of a string is considered to be at the first
- * NULL-byte encountered after magic.  If no such NULL-byte is found, as
- * in a plain text file, the padding NULL-bytes are silently dropped.
+ * may not be greater in size than magic, and for binary files, the
+ * difference in size between the two is compensated by prepending
+ * '/'-characters to value uptil it matches the size of magic.  For text
+ * files magic is just replaced with value, with the additional logic
+ * that the end of a string is considered to be at the first NULL-byte
+ * encountered after magic.  If no such NULL-byte is found, the padding
+ * NULL-bytes are silently dropped.  Since this is done on text files,
+ * this is likely the case.
  */
 
 #include <stdio.h>
@@ -141,7 +144,7 @@ static int chpath(const char *fi, const char *fo) {
 			firstblock = 0;
 			/* examine the bytes we read to judge if they are binary or
 			 * text; in case of the latter we can avoid writing ugly
-			 * paths with zilions of backslashes */
+			 * paths with zilions of slashes */
 			for (pos = 0; pos < len; pos++) {
 				/* this is a very stupid assumption, but I don't know
 				 * anything better: if we find a byte that's out of
