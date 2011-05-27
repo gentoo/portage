@@ -4092,6 +4092,14 @@ class dblink(object):
 							self, mydbapi, myebuild, "clean")
 
 		finally:
+
+			# Populate the vardbapi cache for the new package
+			# while its inodes are still hot.
+			try:
+				self.vartree.dbapi.aux_get(self.mycpv, ["EAPI"])
+			except KeyError:
+				pass
+
 			self.settings.pop('REPLACING_VERSIONS', None)
 			if self.vartree.dbapi._linkmap is None:
 				# preserve-libs is entirely disabled
