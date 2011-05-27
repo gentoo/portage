@@ -239,7 +239,7 @@ class _LockProcess(AbstractPollTask):
 
 	def _poll(self):
 		if self._proc is not None:
-			return self._proc.poll()
+			self._proc.poll()
 		return self.returncode
 
 	def _wait(self):
