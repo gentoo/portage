@@ -563,7 +563,10 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		for x in args_set:
 			if vardb.match(x):
 				matched_packages = True
-				break
+			else:
+				writemsg_level("--- Couldn't find '%s' to %s.\n" % \
+					(x.replace("null/", ""), action),
+					level=logging.WARN, noiselevel=-1)
 		if not matched_packages:
 			writemsg_level(">>> No packages selected for removal by %s\n" % \
 				action)
