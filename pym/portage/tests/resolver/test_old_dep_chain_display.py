@@ -18,9 +18,11 @@ class OldDepChainDisplayTestCase(TestCase):
 		test_cases = (
 			ResolverPlaygroundTestCase(
 				["=dev-libs/A-1"],
+				options = { "--autounmask": 'n' },
 				success = False),
 			ResolverPlaygroundTestCase(
 				["=dev-libs/A-2"],
+				options = { "--autounmask": 'n' },
 				success = False),
 			)
 

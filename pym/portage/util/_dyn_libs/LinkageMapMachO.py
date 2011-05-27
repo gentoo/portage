@@ -59,7 +59,7 @@ class LinkageMapMachO(object):
 
 		"""Helper class used as _obj_properties keys for objects."""
 
-		__slots__ = ("__weakref__", "_key")
+		__slots__ = ("_key")
 
 		def __init__(self, obj, root):
 			"""
@@ -134,8 +134,15 @@ class LinkageMapMachO(object):
 	class _LibGraphNode(_ObjectKey):
 		__slots__ = ("alt_paths",)
 
-		def __init__(self, obj, root):
-			LinkageMapMachO._ObjectKey.__init__(self, obj, root)
+		def __init__(self, key):
+			"""
+			Create a _LibGraphNode from an existing _ObjectKey.
+			This re-uses the _key attribute in order to avoid repeating
+			any previous stat calls, which helps to avoid potential race
+			conditions due to inconsistent stat results when the
+			file system is being modified concurrently.
+			"""
+			self._key = key._key
 			self.alt_paths = set()
 
 		def __str__(self):

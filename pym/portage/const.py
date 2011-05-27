@@ -132,7 +132,7 @@ EBUILD_PHASES            = ("pretend", "setup", "unpack", "prepare", "configure"
 SUPPORTED_FEATURES       = frozenset([
                            "assume-digests", "binpkg-logs", "buildpkg", "buildsyspkg", "candy",
                            "ccache", "chflags", "collision-protect", "compress-build-logs",
-                           "digest", "distcc", "distlocks", "ebuild-locks", "fakeroot",
+                           "digest", "distcc", "distcc-pump", "distlocks", "ebuild-locks", "fakeroot",
                            "fail-clean", "fixpackages", "force-mirror", "getbinpkg",
                            "installsources", "keeptemp", "keepwork", "fixlafiles", "lmirror",
                             "macossandbox", "macosprefixsandbox", "macosusersandbox",

@@ -357,7 +357,8 @@ def post_emerge(myaction, myopts, myfiles,
 	portage.util.ensure_dirs(vdb_path)
 	vdb_lock = None
 	if os.access(vdb_path, os.W_OK) and not "--pretend" in myopts:
-		vdb_lock = portage.locks.lockdir(vdb_path)
+		vardbapi.lock()
+		vdb_lock = True
 
 	if vdb_lock:
 		try:
@@ -367,7 +368,7 @@ def post_emerge(myaction, myopts, myfiles,
 			mtimedb.commit()
 		finally:
 			if vdb_lock:
-				portage.locks.unlockdir(vdb_lock)
+				vardbapi.unlock()
 
 	chk_updated_cfg_files(settings['EROOT'], config_protect)
 
@@ -427,6 +428,7 @@ def insert_optional_args(args):
 	default_arg_opts = {
 		'--ask'                  : y_or_n,
 		'--autounmask'           : y_or_n,
+		'--autounmask-write'     : y_or_n,
 		'--buildpkg'             : y_or_n,
 		'--complete-graph'       : y_or_n,
 		'--deep'       : valid_integers,
@@ -594,6 +596,12 @@ def parse_opts(tmpcmdline, silent=False):
 
 		"--autounmask": {
 			"help"    : "automatically unmask packages",
+			"type"    : "choice",
+			"choices" : true_y_or_n
+		},
+
+		"--autounmask-write": {
+			"help"    : "write changes made by --autounmask to disk",
 			"type"    : "choice",
 			"choices" : true_y_or_n
 		},
@@ -915,6 +923,9 @@ def parse_opts(tmpcmdline, silent=False):
 
 	if myoptions.autounmask in true_y:
 		myoptions.autounmask = True
+
+	if myoptions.autounmask_write in true_y:
+		myoptions.autounmask_write = True
 
 	if myoptions.buildpkg in true_y:
 		myoptions.buildpkg = True
@@ -1339,7 +1350,7 @@ def expand_set_arguments(myfiles, myaction, root_config):
 
 	sets = setconfig.getSets()
 
-	# display errors that occured while loading the SetConfig instance
+	# display errors that occurred while loading the SetConfig instance
 	for e in setconfig.errors:
 		print(colorize("BAD", "Error during set creation: %s" % e))
 

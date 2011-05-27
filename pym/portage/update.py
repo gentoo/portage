@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import codecs
@@ -310,7 +310,7 @@ def update_config_files(config_root, protect, protect_mask, update_iter, match_c
 			write_atomic(updating_file, "".join(file_contents[x]))
 		except PortageException as e:
 			writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
-			writemsg(_("!!! An error occured while updating a config file:") + \
+			writemsg(_("!!! An error occurred while updating a config file:") + \
 				" '%s'\n" % updating_file, noiselevel=-1)
 			continue
 

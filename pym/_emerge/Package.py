@@ -82,6 +82,49 @@ class Package(Task):
 			else:
 				self.operation = "merge"
 
+		self._hash_key = Package._gen_hash_key(cpv=self.cpv,
+			installed=self.installed, onlydeps=self.onlydeps,
+			operation=self.operation, repo_name=repo,
+			root_config=self.root_config,
+			type_name=self.type_name)
+		self._hash_value = hash(self._hash_key)
+
+	@classmethod
+	def _gen_hash_key(cls, cpv=None, installed=None, onlydeps=None,
+		operation=None, repo_name=None, root_config=None,
+		type_name=None, **kwargs):
+
+		if operation is None:
+			if installed or onlydeps:
+				operation = "nomerge"
+			else:
+				operation = "merge"
+
+		root = None
+		if root_config is not None:
+			root = root_config.root
+		else:
+			raise TypeError("root_config argument is required")
+
+		# For installed (and binary) packages we don't care for the repo
+		# when it comes to hashing, because there can only be one cpv.
+		# So overwrite the repo_key with type_name.
+		if type_name is None:
+			raise TypeError("type_name argument is required")
+		elif type_name == "ebuild":
+			if repo_name is None:
+				raise AssertionError(
+					"Package._gen_hash_key() " + \
+					"called without 'repo_name' argument")
+			repo_key = repo_name
+		else:
+			# For installed (and binary) packages we don't care for the repo
+			# when it comes to hashing, because there can only be one cpv.
+			# So overwrite the repo_key with type_name.
+			repo_key = type_name
+
+		return (type_name, root, cpv, operation, repo_key)
+
 	def _validate_deps(self):
 		"""
 		Validate deps. This does not trigger USE calculation since that
@@ -277,7 +320,6 @@ class Package(Task):
 			self.cpv, self.metadata)
 		return pmask is not None
 
-
 	def _metadata_exception(self, k, e):
 
 		# For unicode safety with python-2.x we need to avoid
@@ -463,19 +505,6 @@ class Package(Task):
 					missing_iuse.append(flag)
 			return missing_iuse
 
-	def _get_hash_key(self):
-		hash_key = getattr(self, "_hash_key", None)
-		if hash_key is None:
-			# For installed (and binary) packages we don't care for the repo
-			# when it comes to hashing, because there can only be one cpv.
-			# So overwrite the repo_key with type_name.
-			repo_key = self.metadata.get('repository')
-			if self.type_name != 'ebuild':
-				repo_key = self.type_name
-			self._hash_key = \
-				(self.type_name, self.root, self.cpv, self.operation, repo_key)
-		return self._hash_key
-
 	def __len__(self):
 		return 4
 
@@ -484,7 +513,7 @@ class Package(Task):
 		This is used to generate mtimedb resume mergelist entries, so we
 		limit it to 4 items for backward compatibility.
 		"""
-		return iter(self._get_hash_key()[:4])
+		return iter(self._hash_key[:4])
 
 	def __lt__(self, other):
 		if other.cp != self.cp:

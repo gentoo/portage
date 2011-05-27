@@ -493,21 +493,14 @@ def grablines(myfilename, recursive=0, remember_source_file=False):
 def writedict(mydict,myfilename,writekey=True):
 	"""Writes out a dict to a file; writekey=0 mode doesn't write out
 	the key and assumes all values are strings, not lists."""
-	myfile = None
-	try:
-		myfile = atomic_ofstream(myfilename)
-		if not writekey:
-			for x in mydict.values():
-				myfile.write(x+"\n")
-		else:
-			for x in mydict:
-				myfile.write("%s %s\n" % (x, " ".join(mydict[x])))
-		myfile.close()
-	except IOError:
-		if myfile is not None:
-			myfile.abort()
-		return 0
-	return 1
+	lines = []
+	if not writekey:
+		for v in mydict.values():
+			lines.append(v + "\n")
+	else:
+		for k, v in mydict.items():
+			lines.append("%s %s\n" % (k, " ".join(v)))
+	write_atomic(myfilename, "".join(lines))
 
 def shlex_split(s):
 	"""
@@ -1126,9 +1119,9 @@ class atomic_ofstream(ObjectProxy):
 			except IOError as e:
 				if canonical_path == filename:
 					raise
-				writemsg(_("!!! Failed to open file: '%s'\n") % tmp_name,
-					noiselevel=-1)
-				writemsg("!!! %s\n" % str(e), noiselevel=-1)
+				# Ignore this error, since it's irrelevant
+				# and the below open call will produce a
+				# new error if necessary.
 
 		object.__setattr__(self, '_real_name', filename)
 		tmp_name = "%s.%i" % (filename, os.getpid())

@@ -1,4 +1,4 @@
-# Copyright 1998-2009 Gentoo Foundation
+# Copyright 1998-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __docformat__ = "epytext"
@@ -181,7 +181,7 @@ def _parse_color_map(config_root='/', onerror=None):
 			
 			split_line = line.split("=")
 			if len(split_line) != 2:
-				e = ParseError(_("'%s', line %s: expected exactly one occurence of '=' operator") % \
+				e = ParseError(_("'%s', line %s: expected exactly one occurrence of '=' operator") % \
 					(myfile, lineno))
 				raise e
 				if onerror:

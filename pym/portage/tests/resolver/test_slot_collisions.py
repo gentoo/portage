@@ -56,6 +56,7 @@ class SlotCollisionTestCase(TestCase):
 			#A qt-*[qt3support] like mess.
 			ResolverPlaygroundTestCase(
 				["dev-libs/A", "dev-libs/B", "dev-libs/C", "dev-libs/D"],
+				options = { "--autounmask": 'n' },
 				success = False,
 				mergelist = ["dev-libs/A-1", "dev-libs/B-1", "dev-libs/C-1", "dev-libs/D-1"],
 				ignore_mergelist_order = True,
@@ -98,7 +99,7 @@ class SlotCollisionTestCase(TestCase):
 			ResolverPlaygroundTestCase(
 				["sci-libs/P", "sci-libs/Q:2"],
 				success = False,
-				options = { "--update": True, "--complete-graph": True },
+				options = { "--update": True, "--complete-graph": True, "--autounmask": 'n' },
 				mergelist = ["sci-libs/P-1", "sci-libs/Q-1"],
 				ignore_mergelist_order = True,
 				all_permutations=True,

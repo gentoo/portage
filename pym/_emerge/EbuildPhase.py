@@ -5,13 +5,12 @@ import gzip
 import sys
 import tempfile
 
+from _emerge.AsynchronousLock import AsynchronousLock
 from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.EbuildProcess import EbuildProcess
 from _emerge.CompositeTask import CompositeTask
 from portage.util import writemsg
-from portage.locks import lockdir
-from portage.locks import unlockdir
 from portage.xml.metadata import MetaDataXML
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -34,7 +33,7 @@ class EbuildPhase(CompositeTask):
 		("_ebuild_lock",)
 
 	# FEATURES displayed prior to setup phase
-	_features_display = ("ccache", "distcc", "fakeroot",
+	_features_display = ("ccache", "distcc", "distcc-pump", "fakeroot",
 		"installsources", "keeptemp", "keepwork", "nostrip",
 		"preserve-libs", "sandbox", "selinux", "sesandbox",
 		"splitdebug", "suidctl", "test", "userpriv",
@@ -114,13 +113,32 @@ class EbuildPhase(CompositeTask):
 			# If the environment.bz2 doesn't exist, then ebuild.sh will
 			# source the ebuild as a fallback.
 
-		self._start_ebuild()
+		self._start_lock()
 
 	def _env_extractor_exit(self, env_extractor):
 		if self._default_exit(env_extractor) != os.EX_OK:
 			self.wait()
 			return
 
+		self._start_lock()
+
+	def _start_lock(self):
+		if (self.phase in self._locked_phases and
+			"ebuild-locks" in self.settings.features):
+			eroot = self.settings["EROOT"]
+			lock_path = os.path.join(eroot, portage.VDB_PATH + "-ebuild")
+			if os.access(os.path.dirname(lock_path), os.W_OK):
+				self._ebuild_lock = AsynchronousLock(path=lock_path,
+					scheduler=self.scheduler)
+				self._start_task(self._ebuild_lock, self._lock_exit)
+				return
+
+		self._start_ebuild()
+
+	def _lock_exit(self, ebuild_lock):
+		if self._default_exit(ebuild_lock) != os.EX_OK:
+			self.wait()
+			return
 		self._start_ebuild()
 
 	def _start_ebuild(self):
@@ -144,18 +162,12 @@ class EbuildPhase(CompositeTask):
 			phase=self.phase, scheduler=self.scheduler,
 			settings=self.settings)
 
-		if (self.phase in self._locked_phases and
-			"ebuild-locks" in self.settings.features):
-			eroot = self.settings["EROOT"]
-			lock_path = os.path.join(eroot, portage.VDB_PATH + "-ebuild")
-			if os.access(os.path.dirname(lock_path), os.W_OK):
-				self._ebuild_lock = lockdir(lock_path)
 		self._start_task(ebuild_process, self._ebuild_exit)
 
 	def _ebuild_exit(self, ebuild_process):
 
 		if self._ebuild_lock is not None:
-			unlockdir(self._ebuild_lock)
+			self._ebuild_lock.unlock()
 			self._ebuild_lock = None
 
 		fail = False

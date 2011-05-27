@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['movefile']
@@ -90,7 +90,8 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 				# to tolerate these links being recreated during the merge
 				# process. In any case, if the link is pointing at the right
 				# place, we're in good shape.
-				if e.errno != errno.ENOENT or target != os.readlink(dest):
+				if e.errno not in (errno.ENOENT, errno.EEXIST) or \
+					target != os.readlink(dest):
 					raise
 			lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
 			# utime() only works on the target of a symlink, so it's not

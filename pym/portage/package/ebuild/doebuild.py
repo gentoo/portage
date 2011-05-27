@@ -120,6 +120,14 @@ def _spawn_phase(phase, settings, actionmap=None, **kwargs):
 def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	debug=False, use_cache=None, db=None):
 	"""
+	Create and store environment variable in the config instance
+	that's passed in as the "settings" parameter. This will raise
+	UnsupportedAPIException if the given ebuild has an unsupported
+	EAPI. All EAPI dependent code comes last, so that essential
+	variables like PORTAGE_BUILDDIR are still initialized even in
+	cases when UnsupportedAPIException needs to be raised, which
+	can be useful when uninstalling a package that has corrupt
+	EAPI metadata.
 	The myroot and use_cache parameters are unused.
 	"""
 	myroot = None
@@ -142,7 +150,6 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	else:
 		cat = os.path.basename(normalize_path(os.path.join(pkg_dir, "..")))
 
-	eapi = None
 	mypv = os.path.basename(ebuild_path)[:-7]
 
 	mycpv = cat+"/"+mypv
@@ -224,50 +231,6 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	if noiselimit < 0:
 		mysettings["PORTAGE_QUIET"] = "1"
 
-	if mydo == 'depend' and 'EAPI' not in mysettings.configdict['pkg']:
-		if eapi is None and 'parse-eapi-ebuild-head' in mysettings.features:
-			eapi = _parse_eapi_ebuild_head(
-				codecs.open(_unicode_encode(ebuild_path,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='r', encoding=_encodings['content'], errors='replace'))
-
-		if eapi is not None:
-			if not eapi_is_supported(eapi):
-				raise UnsupportedAPIException(mycpv, eapi)
-			mysettings.configdict['pkg']['EAPI'] = eapi
-
-	if mydo != "depend":
-		# Metadata vars such as EAPI and RESTRICT are
-		# set by the above config.setcpv() call.
-		eapi = mysettings["EAPI"]
-		if not eapi_is_supported(eapi):
-			# can't do anything with this.
-			raise UnsupportedAPIException(mycpv, eapi)
-
-		if hasattr(mydbapi, "getFetchMap") and \
-			("A" not in mysettings.configdict["pkg"] or \
-			"AA" not in mysettings.configdict["pkg"]):
-			src_uri, = mydbapi.aux_get(mysettings.mycpv,
-				["SRC_URI"], mytree=mytree)
-			metadata = {
-				"EAPI"    : eapi,
-				"SRC_URI" : src_uri,
-			}
-			use = frozenset(mysettings["PORTAGE_USE"].split())
-			try:
-				uri_map = _parse_uri_map(mysettings.mycpv, metadata, use=use)
-			except InvalidDependString:
-				mysettings.configdict["pkg"]["A"] = ""
-			else:
-				mysettings.configdict["pkg"]["A"] = " ".join(uri_map)
-
-			try:
-				uri_map = _parse_uri_map(mysettings.mycpv, metadata)
-			except InvalidDependString:
-				mysettings.configdict["pkg"]["AA"] = ""
-			else:
-				mysettings.configdict["pkg"]["AA"] = " ".join(uri_map)
-
 	if mysplit[2] == "r0":
 		mysettings["PVR"]=mysplit[1]
 	else:
@@ -314,7 +277,62 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	mysettings["PM_EBUILD_HOOK_DIR"] = os.path.join(
 		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_DIR)
 
-	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistent.
+	# Allow color.map to control colors associated with einfo, ewarn, etc...
+	mycolors = []
+	for c in ("GOOD", "WARN", "BAD", "HILITE", "BRACKET"):
+		mycolors.append("%s=$'%s'" % \
+			(c, style_to_ansi_code(c)))
+	mysettings["PORTAGE_COLORMAP"] = "\n".join(mycolors)
+
+	# All EAPI dependent code comes last, so that essential variables
+	# like PORTAGE_BUILDDIR are still initialized even in cases when
+	# UnsupportedAPIException needs to be raised, which can be useful
+	# when uninstalling a package that has corrupt EAPI metadata.
+	eapi = None
+	if mydo == 'depend' and 'EAPI' not in mysettings.configdict['pkg']:
+		if eapi is None and 'parse-eapi-ebuild-head' in mysettings.features:
+			eapi = _parse_eapi_ebuild_head(
+				codecs.open(_unicode_encode(ebuild_path,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['content'], errors='replace'))
+
+		if eapi is not None:
+			if not eapi_is_supported(eapi):
+				raise UnsupportedAPIException(mycpv, eapi)
+			mysettings.configdict['pkg']['EAPI'] = eapi
+
+	if mydo != "depend":
+		# Metadata vars such as EAPI and RESTRICT are
+		# set by the above config.setcpv() call.
+		eapi = mysettings["EAPI"]
+		if not eapi_is_supported(eapi):
+			# can't do anything with this.
+			raise UnsupportedAPIException(mycpv, eapi)
+
+		if hasattr(mydbapi, "getFetchMap") and \
+			("A" not in mysettings.configdict["pkg"] or \
+			"AA" not in mysettings.configdict["pkg"]):
+			src_uri, = mydbapi.aux_get(mysettings.mycpv,
+				["SRC_URI"], mytree=mytree)
+			metadata = {
+				"EAPI"    : eapi,
+				"SRC_URI" : src_uri,
+			}
+			use = frozenset(mysettings["PORTAGE_USE"].split())
+			try:
+				uri_map = _parse_uri_map(mysettings.mycpv, metadata, use=use)
+			except InvalidDependString:
+				mysettings.configdict["pkg"]["A"] = ""
+			else:
+				mysettings.configdict["pkg"]["A"] = " ".join(uri_map)
+
+			try:
+				uri_map = _parse_uri_map(mysettings.mycpv, metadata)
+			except InvalidDependString:
+				mysettings.configdict["pkg"]["AA"] = ""
+			else:
+				mysettings.configdict["pkg"]["AA"] = " ".join(uri_map)
+
 	if not eapi_exports_KV(eapi):
 		# Discard KV for EAPIs that don't support it. Cache KV is restored
 		# from the backupenv whenever config.reset() is called.
@@ -327,17 +345,10 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			os.path.join(mysettings['EROOT'], "usr/src/linux"))
 		if mykv:
 			# Regular source tree
-			mysettings["KV"]=mykv
+			mysettings["KV"] = mykv
 		else:
-			mysettings["KV"]=""
+			mysettings["KV"] = ""
 		mysettings.backup_changes("KV")
-
-	# Allow color.map to control colors associated with einfo, ewarn, etc...
-	mycolors = []
-	for c in ("GOOD", "WARN", "BAD", "HILITE", "BRACKET"):
-		mycolors.append("%s=$'%s'" % \
-			(c, style_to_ansi_code(c)))
-	mysettings["PORTAGE_COLORMAP"] = "\n".join(mycolors)
 
 _doebuild_manifest_cache = None
 _doebuild_broken_ebuilds = set()

@@ -1,5 +1,5 @@
 #!@PREFIX_PORTAGE_PYTHON@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -92,10 +92,10 @@ for mykey in biglist:
 			print("* ignoring broken log entry for %s (likely injected)" % mykey)
 	except ValueError as e:
 		try:
-			print("* %s is an ambigous package name, candidates are:\n%s" % (mykey, e))
+			print("* %s is an ambiguous package name, candidates are:\n%s" % (mykey, e))
 		except AttributeError:
 			# FIXME: Find out what causes this (bug #344845).
-			print("* %s is an ambigous package name" % (mykey,))
+			print("* %s is an ambiguous package name" % (mykey,))
 		continue
 	if mylist:
 		#print "mylist:",mylist
