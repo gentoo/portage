@@ -837,6 +837,12 @@ class vardbapi(dbapi):
 					self.settings._init_dirs()
 					write_atomic(self._counter_path, str(counter))
 			self._cached_counter = counter
+
+			# Since we hold a lock, this is a good opportunity
+			# to flush the cache. Note that this will only
+			# flush the cache periodically in the main process
+			# when _aux_cache_threshold is exceeded.
+			self.flush_cache()
 		finally:
 			self.unlock()
 
