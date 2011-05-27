@@ -254,6 +254,15 @@ class MergeProcess(SpawnProcess):
 		"""
 		Unregister from the scheduler and close open files.
 		"""
+
+		if not self.unmerge:
+			# Populate the vardbapi cache for the new package
+			# while its inodes are still hot.
+			try:
+				self.vartree.dbapi.aux_get(self.settings.mycpv, ["EAPI"])
+			except KeyError:
+				pass
+
 		self._unlock_vdb()
 		if self._elog_reg_id is not None:
 			self.scheduler.unregister(self._elog_reg_id)
