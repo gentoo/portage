@@ -1642,19 +1642,17 @@ class dblink(object):
 		self._prune_plib_registry(unmerge=True, needed=needed,
 			preserve_paths=preserve_paths)
 
-		builddir_locked = "PORTAGE_BUILDIR_LOCKED" in self.settings
 		builddir_lock = None
 		scheduler = self._scheduler
 		retval = os.EX_OK
 		try:
 			# Only create builddir_lock if the caller
 			# has not already acquired the lock.
-			if not builddir_locked:
+			if "PORTAGE_BUILDIR_LOCKED" not in self.settings:
 				builddir_lock = EbuildBuildDir(
 					scheduler=(scheduler or PollScheduler().sched_iface),
 					settings=self.settings)
 				builddir_lock.lock()
-				builddir_locked = True
 				prepare_build_dirs(settings=self.settings, cleanup=True)
 				log_path = self.settings.get("PORTAGE_LOG_FILE")
 
@@ -1700,8 +1698,7 @@ class dblink(object):
 
 		finally:
 			self.vartree.dbapi._bump_mtime(self.mycpv)
-			if builddir_locked:
-				try:
+			try:
 					if not eapi_unsupported and os.path.isfile(myebuildpath):
 						if retval != os.EX_OK:
 							msg_lines = []
@@ -1745,7 +1742,7 @@ class dblink(object):
 						elog_process(self.mycpv, self.settings,
 							phasefilter=('prerm', 'postrm'))
 
-					if retval == os.EX_OK and builddir_locked:
+					if retval == os.EX_OK:
 						try:
 							doebuild_environment(myebuildpath, "cleanrm",
 								settings=self.settings, db=self.vartree.dbapi)
@@ -1757,7 +1754,7 @@ class dblink(object):
 							scheduler.dblinkEbuildPhase(
 								self, self.vartree.dbapi,
 								myebuildpath, "cleanrm")
-				finally:
+			finally:
 					if builddir_lock is not None:
 						builddir_lock.unlock()
 
