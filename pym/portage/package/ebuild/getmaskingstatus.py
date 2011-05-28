@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['getmaskingstatus']
@@ -77,7 +77,7 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 
 	# package.mask checking
 	if settings._getMaskAtom(mycpv, metadata):
-		rValue.append(_MaskReason("package.mask", "package.mask"))
+		rValue.append(_MaskReason("package.mask", "package.mask", _UnmaskHint("p_mask", None)))
 
 	# keywords checking
 	eapi = metadata["EAPI"]
@@ -148,6 +148,9 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 				kmask="~"+myarch
 				kmask_hint = _UnmaskHint("unstable keyword", kmask)
 				break
+
+	if kmask == "missing":
+		kmask_hint = _UnmaskHint("unstable keyword", "**")
 
 	try:
 		missing_licenses = settings._getMissingLicenses(mycpv, metadata)

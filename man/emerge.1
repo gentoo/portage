@@ -77,7 +77,7 @@ available package sets.
 .TP
 .BR atom
 An \fIatom\fR describes bounds on a package that you wish to install.  
-\fISee portage(5) for the details on atom syntax.\fR  For example, 
+\fISee ebuild(5) for the details on atom syntax.\fR  For example,
 \fB>=dev\-lang/python\-2.2.1\-r2\fR matches the latest available version of 
 Python greater than or equal to 2.2.1\-r2.  Similarly, 
 \fB<dev\-lang/python\-2.0\fR matches the latest available version of Python 
@@ -292,14 +292,19 @@ intended to be set in the \fBmake.conf\fR(5)
 \fBEMERGE_DEFAULT_OPTS\fR variable.
 .TP
 .BR "\-\-autounmask [ y | n ]"
-Automatically unmask packages. If any configuration
+Automatically unmask packages and generate package.use
+settings as necessary to satisfy dependencies. This
+option is enabled by default. If any configuration
 changes are required, then they will be displayed
 after the merge list and emerge will immediately
 abort. If the displayed configuration changes are
 satisfactory, you should copy and paste them into
-the specified configuration file(s). Currently,
-this only works for unstable KEYWORDS masks,
-LICENSE masks, and package.use settings.
+the specified configuration file(s), or enable the
+\fB\-\-autounmask\-write\fR option.
+.TP
+.BR "\-\-autounmask\-write [ y | n ]"
+If \-\-autounmask is enabled, changes are written
+to config files, respecting \fBCONFIG_PROTECT\fR.
 .TP
 .BR \-\-backtrack=COUNT
 Specifies an integer number of times to backtrack if
@@ -376,7 +381,10 @@ required.
 Account for library link-level dependencies during
 \fB\-\-depclean\fR and \fB\-\-prune\fR actions. This
 option is enabled by default. In some cases this can
-be somewhat time\-consuming.
+be somewhat time\-consuming. This option is ignored
+when FEATURES="preserve\-libs" is enabled in
+\fBmake.conf\fR(5), since any libraries that have
+consumers will simply be preserved.
 .TP
 .BR "\-\-emptytree " (\fB\-e\fR)
 Reinstalls target atoms and their entire deep

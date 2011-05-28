@@ -248,6 +248,7 @@ class MultirepoTestCase(TestCase):
 				mergelist = ["dev-libs/A-2::repo1", "dev-libs/B-2"]),
 			ResolverPlaygroundTestCase(
 				["=dev-libs/B-3"],
+				options = { "--autounmask": 'n' },
 				success = False,
 				check_repo_names = True),
 
@@ -297,11 +298,13 @@ class MultirepoTestCase(TestCase):
 				mergelist = ["dev-libs/G-1"]),
 			ResolverPlaygroundTestCase(
 				["dev-libs/H"],
+				options = { "--autounmask": 'n' },
 				success = False),
 
 			#package.mask with wildcards
 			ResolverPlaygroundTestCase(
 				["dev-libs/Z"],
+				options = { "--autounmask": 'n' },
 				success = False),
 			)
 

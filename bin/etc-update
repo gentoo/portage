@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2007 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # Author Brandon Low <lostlogic@gentoo.org>
@@ -149,6 +149,7 @@ sel_file() {
 		elif [ "${DELETE_ALL}" == "yes" ]; then
 			input=0
 		else
+			clear
 			if [[ ${mode} == 0 ]] ; then
 				echo "The following is the list of files which need updating, each
 configuration file is followed by a list of possible replacement files."
@@ -316,6 +317,7 @@ do_cfg() {
 		elif [[ "${DELETE_ALL}" == "yes" ]] && ! user_special "${ofile}"; then
 			my_input=2
 		else
+			clear
 			if [ "${using_editor}" == 0 ]; then
 				(
 					echo "Showing differences between ${ofile} and ${file}"
@@ -418,7 +420,9 @@ Please select from the menu above (-1 to exit, losing this merge): "
 				   rm ${rm_opts} "${file}"
 				   return 255
 				   ;;
-				2)	if [ "${using_editor}" == 0 ]; then
+				2)
+					clear
+					if [ "${using_editor}" == 0 ]; then
 						(
 							echo "Showing differences between ${ofile} and ${mfile}"
 							diff_command "${ofile}" "${mfile}"

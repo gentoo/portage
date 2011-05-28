@@ -563,7 +563,10 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		for x in args_set:
 			if vardb.match(x):
 				matched_packages = True
-				break
+			else:
+				writemsg_level("--- Couldn't find '%s' to %s.\n" % \
+					(x.replace("null/", ""), action),
+					level=logging.WARN, noiselevel=-1)
 		if not matched_packages:
 			writemsg_level(">>> No packages selected for removal by %s\n" % \
 				action)
@@ -786,15 +789,27 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				msg.append("  %s pulled in by:" % (atom,))
 				msg.append("    %s" % (parent,))
 				msg.append("")
-			msg.append("Have you forgotten to run " + \
-				good("`emerge --update --newuse --deep @world`") + " prior")
-			msg.append(("to %s? It may be necessary to manually " + \
-				"uninstall packages that no longer") % action)
-			msg.append("exist in the portage tree since " + \
-				"it may not be possible to satisfy their")
-			msg.append("dependencies.  Also, be aware of " + \
-				"the --with-bdeps option that is documented")
-			msg.append("in " + good("`man emerge`") + ".")
+			msg.extend(textwrap.wrap(
+				"Have you forgotten to do a complete update prior " + \
+				"to depclean? The most comprehensive command for this " + \
+				"purpose is as follows:", 65
+			))
+			msg.append("")
+			msg.append("  " + \
+				good("emerge --update --newuse --deep --with-bdeps=y @world"))
+			msg.append("")
+			msg.extend(textwrap.wrap(
+				"Note that the --with-bdeps=y option is not required in " + \
+				"many situations. Refer to the emerge manual page " + \
+				"(run `man emerge`) for more information about " + \
+				"--with-bdeps.", 65
+			))
+			msg.append("")
+			msg.extend(textwrap.wrap(
+				"Also, note that it may be necessary to manually uninstall " + \
+				"packages that no longer exist in the portage tree, since " + \
+				"it may not be possible to satisfy their dependencies.", 65
+			))
 			if action == "prune":
 				msg.append("")
 				msg.append("If you would like to ignore " + \
@@ -907,7 +922,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 	if cleanlist and \
 		real_vardb._linkmap is not None and \
-		myopts.get('--depclean-lib-check') != 'n':
+		myopts.get("--depclean-lib-check") != "n" and \
+		"preserve-libs" not in settings.features:
 
 		# Check if any of these packages are the sole providers of libraries
 		# with consumers that have not been selected for removal. If so, these

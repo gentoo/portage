@@ -7,18 +7,17 @@ class DepPrioritySatisfiedRange(object):
 	DepPriority                         Index      Category
 
 	not satisfied and buildtime                    HARD
-	not satisfied and runtime              7       MEDIUM
-	not satisfied and runtime_post         6       MEDIUM_SOFT
-	satisfied and buildtime and rebuild    5       SOFT
+	not satisfied and runtime              6       MEDIUM
+	not satisfied and runtime_post         5       MEDIUM_SOFT
 	satisfied and buildtime                4       SOFT
 	satisfied and runtime                  3       SOFT
 	satisfied and runtime_post             2       SOFT
 	optional                               1       SOFT
 	(none of the above)                    0       NONE
 	"""
-	MEDIUM      = 7
-	MEDIUM_SOFT = 6
-	SOFT        = 5
+	MEDIUM      = 6
+	MEDIUM_SOFT = 5
+	SOFT        = 4
 	NONE        = 0
 
 	@classmethod
@@ -51,21 +50,8 @@ class DepPrioritySatisfiedRange(object):
 	def _ignore_satisfied_buildtime(cls, priority):
 		if priority.__class__ is not DepPriority:
 			return False
-		if priority.optional:
-			return True
-		if not priority.satisfied:
-			return False
-		if priority.buildtime:
-			return not priority.rebuild
-		return True
-
-	@classmethod
-	def _ignore_satisfied_buildtime_rebuild(cls, priority):
-		if priority.__class__ is not DepPriority:
-			return False
-		if priority.optional:
-			return True
-		return bool(priority.satisfied)
+		return bool(priority.optional or \
+			priority.satisfied)
 
 	@classmethod
 	def _ignore_runtime_post(cls, priority):
@@ -85,7 +71,7 @@ class DepPrioritySatisfiedRange(object):
 
 	ignore_medium      = _ignore_runtime
 	ignore_medium_soft = _ignore_runtime_post
-	ignore_soft        = _ignore_satisfied_buildtime_rebuild
+	ignore_soft        = _ignore_satisfied_buildtime
 
 
 DepPrioritySatisfiedRange.ignore_priority = (
@@ -94,7 +80,6 @@ DepPrioritySatisfiedRange.ignore_priority = (
 	DepPrioritySatisfiedRange._ignore_satisfied_runtime_post,
 	DepPrioritySatisfiedRange._ignore_satisfied_runtime,
 	DepPrioritySatisfiedRange._ignore_satisfied_buildtime,
-	DepPrioritySatisfiedRange._ignore_satisfied_buildtime_rebuild,
 	DepPrioritySatisfiedRange._ignore_runtime_post,
 	DepPrioritySatisfiedRange._ignore_runtime
 )

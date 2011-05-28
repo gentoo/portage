@@ -309,14 +309,22 @@ def help(myopts, havecolor=1):
 		print() 
 		print("       " + green("--autounmask") + " [ %s | %s ]" % \
 			(turquoise("y"), turquoise("n")))
-		desc = "Automatically unmask packages. If any configuration " + \
+		desc = "Automatically unmask packages and generate package.use " + \
+			"settings as necessary to satisfy dependencies. This " + \
+			"option is enabled by default. If any configuration " + \
 			"changes are required, then they will be displayed " + \
 			"after the merge list and emerge will immediately " + \
 			"abort. If the displayed configuration changes are " + \
 			"satisfactory, you should copy and paste them into " + \
-			"the specified configuration file(s). Currently, " + \
-			"this only works for unstable KEYWORDS masks, " + \
-			"LICENSE masks, and package.use settings."
+			"the specified configuration file(s), or enable the " + \
+			"--autounmask-write option."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
+		print("       " + green("--autounmask-write") + " [ %s | %s ]" % \
+			(turquoise("y"), turquoise("n")))
+		desc = "If --autounmask is enabled, changes are written " + \
+			"to config files, respecting CONFIG_PROTECT."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
@@ -419,7 +427,10 @@ def help(myopts, havecolor=1):
 			desc = "Account for library link-level dependencies during " + \
 				"--depclean and --prune actions. This " + \
 				"option is enabled by default. In some cases this can " + \
-				"be somewhat time-consuming."
+				"be somewhat time-consuming. This option is ignored " + \
+				"when FEATURES=\"preserve-libs\" is enabled in " + \
+				"make.conf(5), since any libraries that have " + \
+				"consumers will simply be preserved."
 			for line in wrap(desc, desc_width):
 				print(desc_indent + line)
 			print()

@@ -8,7 +8,7 @@
 +# ============
 +# This should be left to the default value of sparc-unknown-linux-gnu unless
 +# you are absolutely certain of the consequences.  In addition to potentially
-+# destroying your system, you will recieve no support and your bugs will be 
++# destroying your system, you will receive no support and your bugs will be 
 +# marked INVALID if you change this.
 +#
 +# CHOST="sparc-unknown-linux-gnu"

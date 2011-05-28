@@ -3,6 +3,7 @@
 
 from itertools import permutations
 import shutil
+import sys
 import tempfile
 import portage
 from portage import os
@@ -24,11 +25,14 @@ from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.depgraph import backtrack_depgraph
 from _emerge.RootConfig import RootConfig
 
+if sys.hexversion >= 0x3000000:
+	basestring = str
+
 class ResolverPlayground(object):
 	"""
-	This class help to create the necessary files on disk and
+	This class helps to create the necessary files on disk and
 	the needed settings instances, etc. for the resolver to do
-	it's work.
+	its work.
 	"""
 
 	config_files = frozenset(("package.use", "package.mask", "package.keywords", \
@@ -37,7 +41,7 @@ class ResolverPlayground(object):
 	def __init__(self, ebuilds={}, installed={}, profile={}, repo_configs={}, \
 		user_config={}, sets={}, world=[], debug=False):
 		"""
-		ebuilds: cpv -> metadata mapping simulating avaiable ebuilds. 
+		ebuilds: cpv -> metadata mapping simulating available ebuilds. 
 		installed: cpv -> metadata mapping simulating installed packages.
 			If a metadata key is missing, it gets a default value.
 		profile: settings defined by the profile.
@@ -470,7 +474,9 @@ class ResolverPlaygroundTestCase(object):
 	def __init__(self, request, **kwargs):
 		self.all_permutations = kwargs.pop("all_permutations", False)
 		self.ignore_mergelist_order = kwargs.pop("ignore_mergelist_order", False)
+		self.ambiguous_merge_order = kwargs.pop("ambiguous_merge_order", False)
 		self.check_repo_names = kwargs.pop("check_repo_names", False)
+		self.merge_order_assertions = kwargs.pop("merge_order_assertions", False)
 
 		if self.all_permutations:
 			self.requests = list(permutations(request))
@@ -487,7 +493,7 @@ class ResolverPlaygroundTestCase(object):
 		checks = dict.fromkeys(result.checks)
 		for key, value in self._checks.items():
 			if not key in checks:
-				raise KeyError("Not an avaiable check: '%s'" % key)
+				raise KeyError("Not an available check: '%s'" % key)
 			checks[key] = value
 
 		fail_msgs = []
@@ -504,19 +510,88 @@ class ResolverPlaygroundTestCase(object):
 					if got:
 						new_got = []
 						for cpv in got:
+							if cpv[:1] == "!":
+								new_got.append(cpv)
+								continue
 							a = Atom("="+cpv, allow_repo=True)
 							new_got.append(a.cpv)
 						got = new_got
 					if expected:
 						new_expected = []
-						for cpv in expected:
-							a = Atom("="+cpv, allow_repo=True)
-							new_expected.append(a.cpv)
+						for obj in expected:
+							if isinstance(obj, basestring):
+								if obj[:1] == "!":
+									new_expected.append(obj)
+									continue
+								a = Atom("="+obj, allow_repo=True)
+								new_expected.append(a.cpv)
+								continue
+							new_expected.append(set())
+							for cpv in obj:
+								if cpv[:1] != "!":
+									cpv = Atom("="+cpv, allow_repo=True).cpv
+								new_expected[-1].add(cpv)
 						expected = new_expected
 				if self.ignore_mergelist_order and got is not None:
 					got = set(got)
 					expected = set(expected)
-			elif key == "unstable_keywords" and expected is not None:
+
+				if self.ambiguous_merge_order and got:
+					expected_stack = list(reversed(expected))
+					got_stack = list(reversed(got))
+					new_expected = []
+					match = True
+					while got_stack and expected_stack:
+						got_token = got_stack.pop()
+						expected_obj = expected_stack.pop()
+						if isinstance(expected_obj, basestring):
+							new_expected.append(expected_obj)
+							if got_token == expected_obj:
+								continue
+							# result doesn't match, so stop early
+							match = False
+							break
+						expected_obj = set(expected_obj)
+						try:
+							expected_obj.remove(got_token)
+						except KeyError:
+							# result doesn't match, so stop early
+							match = False
+							break
+						new_expected.append(got_token)
+						while got_stack and expected_obj:
+							got_token = got_stack.pop()
+							try:
+								expected_obj.remove(got_token)
+							except KeyError:
+								match = False
+								break
+							new_expected.append(got_token)
+						if not match:
+							# result doesn't match, so stop early
+							break
+						if expected_obj:
+							# result does not match, so stop early
+							match = False
+							new_expected.append(tuple(expected_obj))
+							break
+					if expected_stack:
+						# result does not match, add leftovers to new_expected
+						match = False
+						expected_stack.reverse()
+						new_expected.extend(expected_stack)
+					expected = new_expected
+
+					if match and self.merge_order_assertions:
+						for node1, node2 in self.merge_order_assertions:
+							if not (got.index(node1) < got.index(node2)):
+								fail_msgs.append("atoms: (" + \
+									", ".join(result.atoms) + "), key: " + \
+									("merge_order_assertions, expected: %s" % \
+									str((node1, node2))) + \
+									", got: " + str(got))
+
+			elif key in ("unstable_keywords", "needed_p_mask_changes") and expected is not None:
 				expected = set(expected)
 
 			if got != expected:
@@ -532,7 +607,7 @@ class ResolverPlaygroundResult(object):
 
 	checks = (
 		"success", "mergelist", "use_changes", "license_changes", "unstable_keywords", "slot_collision_solutions",
-		"circular_dependency_solutions",
+		"circular_dependency_solutions", "needed_p_mask_changes",
 		)
 	optional_checks = (
 		)
@@ -546,6 +621,7 @@ class ResolverPlaygroundResult(object):
 		self.use_changes = None
 		self.license_changes = None
 		self.unstable_keywords = None
+		self.needed_p_mask_changes = None
 		self.slot_collision_solutions = None
 		self.circular_dependency_solutions = None
 
@@ -571,6 +647,11 @@ class ResolverPlaygroundResult(object):
 			self.unstable_keywords = set()
 			for pkg in self.depgraph._dynamic_config._needed_unstable_keywords:
 				self.unstable_keywords.add(pkg.cpv)
+
+		if self.depgraph._dynamic_config._needed_p_mask_changes:
+			self.needed_p_mask_changes = set()
+			for pkg in self.depgraph._dynamic_config._needed_p_mask_changes:
+				self.needed_p_mask_changes.add(pkg.cpv)
 
 		if self.depgraph._dynamic_config._needed_license_changes:
 			self.license_changes = {}

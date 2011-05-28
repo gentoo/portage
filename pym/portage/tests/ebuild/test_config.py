@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -168,6 +168,7 @@ class ConfigTestCase(TestCase):
 		test_cases = (
 				ResolverPlaygroundTestCase(
 					["dev-libs/A"],
+					options = { "--autounmask": 'n' },
 					success = False),
 				ResolverPlaygroundTestCase(
 					["dev-libs/B"],
@@ -183,6 +184,7 @@ class ConfigTestCase(TestCase):
 					mergelist = ["dev-libs/D-1"]),
 				ResolverPlaygroundTestCase(
 					["dev-libs/E"],
+					options = { "--autounmask": 'n' },
 					success = False),
 		)
 

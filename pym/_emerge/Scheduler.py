@@ -2016,27 +2016,11 @@ class Scheduler(PollScheduler):
 		corrupt).
 		"""
 
-		if type_name != "ebuild":
-			# For installed (and binary) packages we don't care for the repo
-			# when it comes to hashing, because there can only be one cpv.
-			# So overwrite the repo_key with type_name.
-			repo_key = type_name
-			myrepo = None
-		elif myrepo is None:
-			raise AssertionError(
-				"Scheduler._pkg() called without 'myrepo' argument")
-		else:
-			repo_key = myrepo
-
-		if operation is None:
-			if installed:
-				operation = "nomerge"
-			else:
-				operation = "merge"
-
 		# Reuse existing instance when available.
-		pkg = self._pkg_cache.get(
-			(type_name, root_config.root, cpv, operation, repo_key))
+		pkg = self._pkg_cache.get(Package._gen_hash_key(cpv=cpv,
+			type_name=type_name, repo_name=myrepo, root_config=root_config,
+			installed=installed, operation=operation))
+
 		if pkg is not None:
 			return pkg
 

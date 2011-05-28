@@ -150,7 +150,7 @@ This new REQUIRED_USE metadata key is used to specify what USE flag combinations
 <section id='package-ebuild-eapi-4-metadata-required-use-motivation'>
 <title>Motivation</title>
 <para>
-It's a semi common occurence that an ebuild may need to state that they disallow USE flags in specific combinations- either mysql or sqlite for example, but not both.
+It's a semi common occurrence that an ebuild may need to state that they disallow USE flags in specific combinations- either mysql or sqlite for example, but not both.
 </para>
 <para>
 Existing solutions rely on checking the the USE configuration in pkg_setup which is non-optimal due to pkg_setup being ran potentially hours after the initial emerge -p invocation.
@@ -166,7 +166,7 @@ The only way to find out if the USE state is disallowed is to run the code
 </listitem>
 <listitem>
 <para>
-The common implementation of this can result in an iterative process where the user hits a USE constraint, fixs it, reruns the emerge invocation only to find that there is another constraint still violated for the ebuild, thus requiring them to fix it, rerun emerge, etc.
+The common implementation of this can result in an iterative process where the user hits a USE constraint, fixes it, reruns the emerge invocation only to find that there is another constraint still violated for the ebuild, thus requiring them to fix it, rerun emerge, etc.
 </para>
 </listitem>
 <listitem>

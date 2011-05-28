@@ -315,12 +315,11 @@ class Binpkg(CompositeTask):
 		settings["PORTAGE_BINPKG_FILE"] = self._pkg_path
 		settings.backup_changes("PORTAGE_BINPKG_FILE")
 
-		merge = EbuildMerge(find_blockers=self.find_blockers,
+		task = EbuildMerge(find_blockers=self.find_blockers,
 			ldpath_mtimes=self.ldpath_mtimes, logger=self.logger,
 			pkg=self.pkg, pkg_count=self.pkg_count,
 			pkg_path=self._pkg_path, scheduler=self.scheduler,
 			settings=settings, tree=self._tree, world_atom=self.world_atom)
-		task = merge.create_task()
 		task.addExitListener(self._install_exit)
 		return task
 

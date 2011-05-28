@@ -257,6 +257,9 @@ will be reused whenever they are available.
 .B distcc
 Enable portage support for the distcc package.
 .TP
+.B distcc\-pump
+Enable portage support for the distcc package with pump mode.
+.TP
 .B distlocks
 Portage uses lockfiles to ensure competing instances don't clobber
 each other's files. This feature is enabled by default but may cause
@@ -533,7 +536,7 @@ For more information, see the \fIInvoking GCC\fR section of the gcc manual:
 http://gcc.gnu.org/onlinedocs/
 .TP
 \fBGENTOO_MIRRORS\fR = \fI[URIs]\fR
-Insert your space\-seperated list of local mirrors here.  These
+Insert your space\-separated list of local mirrors here.  These
 locations are used to download files before the ones listed in
 the \fIebuild scripts\fR. Merging 'mirrorselect' can help.  Entries in this
 variable that have no protocol and simply start with a '/' path separator may

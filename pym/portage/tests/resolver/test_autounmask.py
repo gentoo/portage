@@ -29,6 +29,13 @@ class AutounmaskTestCase(TestCase):
 			"app-misc/W-2": { "KEYWORDS": "~x86" },
 			"app-misc/V-1": { "KEYWORDS": "~x86", "DEPEND": ">=app-misc/W-2"},
 
+			#ebuilds to test mask and keyword changes
+			"app-text/A-1": {},
+			"app-text/B-1": { "KEYWORDS": "~x86" },
+			"app-text/C-1": { "KEYWORDS": "" },
+			"app-text/D-1": { "KEYWORDS": "~x86" },
+			"app-text/D-2": { "KEYWORDS": "" },
+
 			#ebuilds for mixed test for || dep handling
 			"sci-libs/K-1": { "DEPEND": " || ( sci-libs/L[bar] || ( sci-libs/M sci-libs/P ) )", "EAPI": 2},
 			"sci-libs/K-2": { "DEPEND": " || ( sci-libs/L[bar] || ( sci-libs/P sci-libs/M ) )", "EAPI": 2},
@@ -203,6 +210,42 @@ class AutounmaskTestCase(TestCase):
 					options = {"--autounmask": True},
 					use_changes = None,
 					success = False),
+
+				#Test mask and keyword changes.
+				ResolverPlaygroundTestCase(
+					["app-text/A"],
+					options = {"--autounmask": True},
+					success = False,
+					mergelist = ["app-text/A-1"],
+					needed_p_mask_changes = ["app-text/A-1"]),
+				ResolverPlaygroundTestCase(
+					["app-text/B"],
+					options = {"--autounmask": True},
+					success = False,
+					mergelist = ["app-text/B-1"],
+					unstable_keywords = ["app-text/B-1"],
+					needed_p_mask_changes = ["app-text/B-1"]),
+				ResolverPlaygroundTestCase(
+					["app-text/C"],
+					options = {"--autounmask": True},
+					success = False,
+					mergelist = ["app-text/C-1"],
+					unstable_keywords = ["app-text/C-1"],
+					needed_p_mask_changes = ["app-text/C-1"]),
+				#Make sure unstable keyword is preferred over missing keyword
+				ResolverPlaygroundTestCase(
+					["app-text/D"],
+					options = {"--autounmask": True},
+					success = False,
+					mergelist = ["app-text/D-1"],
+					unstable_keywords = ["app-text/D-1"]),
+				#Test missing keyword
+				ResolverPlaygroundTestCase(
+					["=app-text/D-2"],
+					options = {"--autounmask": True},
+					success = False,
+					mergelist = ["app-text/D-2"],
+					unstable_keywords = ["app-text/D-2"])
 			)
 
 		profile = {
@@ -213,6 +256,12 @@ class AutounmaskTestCase(TestCase):
 			"use.force":
 				(
 					"forced-flag",
+				),
+			"package.mask":
+				(
+					"app-text/A",
+					"app-text/B",
+					"app-text/C",
 				),
 		}
 
@@ -240,7 +289,7 @@ class AutounmaskTestCase(TestCase):
 		test_cases = (
 				ResolverPlaygroundTestCase(
 					["=dev-libs/A-1"],
-					options = {"--autounmask": False},
+					options = {"--autounmask": 'n'},
 					success = False),
 				ResolverPlaygroundTestCase(
 					["=dev-libs/A-1"],

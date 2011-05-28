@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -60,7 +60,6 @@ class CircularDependencyTestCase(TestCase):
 			#Conflict with autounmask
 			ResolverPlaygroundTestCase(
 				["=dev-libs/W-3"],
-				options = { "--autounmask": True },
 				circular_dependency_solutions = { "dev-libs/Y-1": frozenset([frozenset([("foo", False)])])},
 				use_changes = { "dev-libs/Z-3": {"bar": True}},
 				success = False),

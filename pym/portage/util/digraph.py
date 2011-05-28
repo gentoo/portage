@@ -1,9 +1,11 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['digraph']
 
 from collections import deque
+import sys
+
 from portage import _unicode_decode
 from portage.util import writemsg
 
@@ -221,6 +223,9 @@ class digraph(object):
 					root_nodes.append(node)
 		return root_nodes
 
+	def __bool__(self):
+		return bool(self.nodes)
+
 	def is_empty(self):
 		"""Checks if the digraph is empty"""
 		return len(self.nodes) == 0
@@ -332,3 +337,6 @@ class digraph(object):
 	__contains__ = contains
 	empty = is_empty
 	copy = clone
+
+	if sys.hexversion < 0x3000000:
+		__nonzero__ = __bool__
