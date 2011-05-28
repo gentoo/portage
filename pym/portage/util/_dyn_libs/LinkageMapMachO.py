@@ -270,7 +270,8 @@ class LinkageMapMachO(object):
 			fields = l.split(";")
 			if len(fields) < 4:
 				writemsg_level("\nWrong number of fields " + \
-					"in %s: %s\n\n") % (location, l), level=logging.ERROR, noiselevel=-1)
+					"in %s: %s\n\n" % (location, l),
+					level=logging.ERROR, noiselevel=-1)
 				continue
 			arch = fields[0]
 			obj = fields[1]
