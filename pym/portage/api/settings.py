@@ -21,6 +21,14 @@ class PortageSettings:
 		# declare some globals
 		self.portdir = None
 		self.portdir_overlay = None
+		self.portdb = None
+		self.vardb = None
+		self.trees = None
+		self.root_config = None
+		self.bindb = None
+		self.configured_roots = None
+		self.arch = None
+		self.mtimedb = None
 		self.ACCEPT_KEYWORDS = None
 		self.user_config_dir = None
 		self._world = None
@@ -28,6 +36,7 @@ class PortageSettings:
 		self.virtuals =  None
 		self.keys =  None
 		self.UseFlagDict = None
+		self.settings = None
 		if config_root is None:
 			self.reset()
 		else:
@@ -67,38 +76,6 @@ class PortageSettings:
 		return
 
 
-	def _load_config(trees=None, config_root=None):
-		kwargs = {}
-		if config_root:
-			env_fetch = (("target_root", "ROOT"))
-			kwargs['config_root'] = config_root
-		else:
-			env_fetch = (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT"))
-		for k, envvar in env_fetch:
-			v = os.environ.get(envvar, None)
-			if v and v.strip():
-				kwargs[k] = v
-		trees = portage.create_trees(trees=trees, **kwargs)
-
-		for root, root_trees in trees.items():
-			settings = root_trees["vartree"].settings
-			settings._init_dirs()
-			setconfig = load_default_config(settings, root_trees)
-			root_trees["root_config"] = RootConfig(settings, root_trees, setconfig)
-
-		settings = trees["/"]["vartree"].settings
-
-		for myroot in trees:
-			if myroot != "/":
-				settings = trees[myroot]["vartree"].settings
-				break
-
-		mtimedbfile = os.path.join(settings['EROOT'], portage.CACHE_PATH, "mtimedb")
-		mtimedb = portage.MtimeDB(mtimedbfile)
-		portage.output._init(config_root=settings['PORTAGE_CONFIGROOT'])
-		return settings, trees, mtimedb
-
-
 	def _load_dbapis(self):
 		"""handles loading all the trees dbapi's"""
 		self.portdb, self.vardb, self.bindb = {}, {}, {}
@@ -121,11 +98,12 @@ class PortageSettings:
 		#print("SETTINGS: reset_world();")
 		world = []
 		try:
-			file = open(os.path.join(portage.root, portage.WORLD_FILE), "r")
-			world = file.read().split()
-			file.close()
+			_file = open(os.path.join(portage.root, portage.WORLD_FILE), "r")
+			world = _file.read().split()
+			_file.close()
 		except:
-			print("SETTINGS: get_world(); Failure to locate file: '%s'" %portage.WORLD_FILE)
+			print("SETTINGS: get_world(); Failure to locate file: '%s'"
+				%portage.WORLD_FILE)
 			return False
 		self._world = world
 		return True
@@ -156,7 +134,7 @@ class PortageSettings:
 default_settings = PortageSettings()
 
 
-def reload_portage():
+def reload_portage(settings=None):
 	"""Convienence function to re-import portage after a portage update.
 	Caution, it may not always work correctly due to python caching if
 	program files are added/deleted between versions. In those cases the
@@ -168,5 +146,8 @@ def reload_portage():
 	except ImportError:
 		return False
 	#print("SETTINGS: new portage version = " + portage.VERSION)
-	settings.reset()
+	if settings is None:
+		default_settings.reset()
+	else:
+		settings.reset()
 	return True

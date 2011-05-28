@@ -19,7 +19,7 @@ __all__ = (
 )
 
 
-import sys
+#import sys
 
 from portage.api.settings import default_settings
 
@@ -64,7 +64,7 @@ def get_installed_use(cpv, use="USE", root=None, settings=default_settings):
 	"""
 	if root is None:
 		root = settings.settings["ROOT"]
-	return settings.vardb[root].aux_get(cpv,[use])[0].split()
+	return settings.vardb[root].aux_get(cpv, [use])[0].split()
 
 
 def reduce_flag(flag):
@@ -89,13 +89,14 @@ def reduce_flags(the_list):
 	@rtype: list
 	@return absolute USE flags
 	"""
-	r=[]
+	reduced = []
 	for member in the_list:
-		r.append(reduce_flag(member))
-	return r
+		reduced.append(reduce_flag(member))
+	return reduced
 
 
-def filter_flags(use, use_expand_hidden, usemasked, useforced, settings=default_settings):
+def filter_flags(use, use_expand_hidden, usemasked,
+		useforced, settings=default_settings):
 	"""Filter function to remove hidden or otherwise not normally
 	visible USE flags from a list.
 
@@ -114,21 +115,21 @@ def filter_flags(use, use_expand_hidden, usemasked, useforced, settings=default_
 	"""
 	# clean out some environment flags, since they will most probably
 	# be confusing for the user
-	for f in use_expand_hidden:
-		f=f.lower() + "_"
-		for x in use:
-			if f in x:
-				use.remove(x)
+	for flag in use_expand_hidden:
+		flag = flag.lower() + "_"
+		for expander in use:
+			if flag in expander:
+				use.remove(expander)
 	# clean out any arch's
 	archlist = settings.settings["PORTAGE_ARCHLIST"].split()
-	for a in use[:]:
-		if a in archlist:
-			use.remove(a)
+	for key in use[:]:
+		if key in archlist:
+			use.remove(key)
 	# dbl check if any from usemasked  or useforced are still there
 	masked = usemasked + useforced
-	for a in use[:]:
-		if a in masked:
-			use.remove(a)
+	for flag in use[:]:
+		if flag in masked:
+			use.remove(flag)
 	return use
 
 
@@ -181,11 +182,15 @@ def get_flags(cpv, final_setting=False, root=None, settings=default_settings):
 	@rtype: list or list, list
 	@return IUSE or IUSE, final_flags
 	"""
-	final_use, use_expand_hidden, usemasked, useforced = get_all_cpv_use(cpv, root, settings)
-	iuse_flags = filter_flags(get_iuse(cpv), use_expand_hidden, usemasked, useforced, settings)
-	#flags = filter_flags(use_flags, use_expand_hidden, usemasked, useforced, settings)
+	(final_use, use_expand_hidden, usemasked, useforced) = \
+		get_all_cpv_use(cpv, root, settings)
+	iuse_flags = filter_flags(get_iuse(cpv), use_expand_hidden,
+		usemasked, useforced, settings)
+	#flags = filter_flags(use_flags, use_expand_hidden,
+		#usemasked, useforced, settings)
 	if final_setting:
-		final_flags = filter_flags(final_use,  use_expand_hidden, usemasked, useforced, settings)
+		final_flags = filter_flags(final_use,  use_expand_hidden,
+			usemasked, useforced, settings)
 		return iuse_flags, final_flags
 	return iuse_flags
 
@@ -204,22 +209,23 @@ def get_use_flag_dict(portdir):
 
 	# process standard use flags
 
-	List = portage.grabfile(portdir + '/profiles/use.desc')
-	for item in List:
+	_list = portage.grabfile(portdir + '/profiles/use.desc')
+	for item in _list:
 		index = item.find(' - ')
 		use_dict[item[:index].strip().lower()] = ['global', '', item[index+3:]]
 
 	# process local (package specific) use flags
 
-	List = portage.grabfile(portdir + '/profiles/use.local.desc')
-	for item in List:
+	_list = portage.grabfile(portdir + '/profiles/use.local.desc')
+	for item in _list:
 		index = item.find(' - ')
 		data = item[:index].lower().split(':')
-		try: # got an error once starting porthole==> added code to catch it, but it works again???
+		try: 
 			use_dict[data[1].strip()] = ['local', data[0].strip(), item[index+3:]]
 		except:
 			pass
-			#debug.dprint("FLAG: get_use_flag_dict(); error in index??? data[0].strip, item[index:]")
+			#debug.dprint("FLAG: get_use_flag_dict();"
+				#"error in index??? data[0].strip, item[index:]")
 			#debug.dprint(data[0].strip())
 			#debug.dprint(item[index:])
 	return use_dict

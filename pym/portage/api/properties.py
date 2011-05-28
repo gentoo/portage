@@ -20,8 +20,10 @@ class Properties(object):
 		self._dict = _dict
 
 	def __getattr__(self, name):
-		try: return self._dict[name]
-		except: return ''
+		try:
+			return self._dict[name]
+		except:
+			return ''
 
 	def __str__(self):
 		txt = []
@@ -30,9 +32,11 @@ class Properties(object):
 		return '\n'.join(txt)
 
 	def keys(self):
+		"""Returns  the availabel dictionary keys"""
 		return self.__slots__[:-3]
 
 	def get(self, name):
+		"""Returns the value for the dictionary key"""
 		return getattr(self, name)
 
 	def get_slot(self):
