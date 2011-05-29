@@ -4,6 +4,11 @@
 
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 
+if hasq prefix ${USE} && [[ $EUID != 0 ]] ; then
+	ewarn "fowners ignored in Prefix with non-privileged user"
+	exit 0
+fi
+
 # we can't prefix all arguments because
 # chown takes random options
 slash="/"
