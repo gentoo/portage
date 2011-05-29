@@ -4,6 +4,8 @@
 
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 
+[[ -d ${ED} ]] || exit 0
+
 if hasq chflags $FEATURES ; then
 	# Save all the file flags for restoration at the end of prepall.
 	mtree -c -p "${ED}" -k flags > "${T}/bsdflags.mtree"
