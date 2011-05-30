@@ -170,12 +170,19 @@ class MergeOrderTestCase(TestCase):
 				"DEPEND"  : "kde-base/libkdegames",
 				"RDEPEND" : "kde-base/libkdegames",
 			},
-			"media-video/ffmpeg-0.7_rc1" : {},
 			"media-video/libav-0.7_pre20110327" : {
+				"EAPI" : "2",
+				"IUSE" : "X +encode",
 				"RDEPEND" : "!media-video/ffmpeg",
 			},
+			"media-video/ffmpeg-0.7_rc1" : {
+				"EAPI" : "2",
+				"IUSE" : "X +encode",
+			},
 			"virtual/ffmpeg-0.6.90" : {
-				"RDEPEND" : "|| ( >=media-video/ffmpeg-0.6.90_rc0-r2 >=media-video/libav-0.6.90_rc )",
+				"EAPI" : "2",
+				"IUSE" : "X +encode",
+				"RDEPEND" : "|| ( >=media-video/ffmpeg-0.6.90_rc0-r2[X=,encode=] >=media-video/libav-0.6.90_rc[X=,encode=] )",
 			},
 		}
 
@@ -228,9 +235,16 @@ class MergeOrderTestCase(TestCase):
 				"RDEPEND": "",
 			},
 			"app-arch/xz-utils-5.0.1" : {},
-			"media-video/ffmpeg-0.7_rc1" : {},
+			"media-video/ffmpeg-0.7_rc1" : {
+				"EAPI" : "2",
+				"IUSE" : "X +encode",
+				"USE" : "encode",
+			},
 			"virtual/ffmpeg-0.6.90" : {
-				"RDEPEND" : "|| ( >=media-video/ffmpeg-0.6.90_rc0-r2 >=media-video/libav-0.6.90_rc )",
+				"EAPI" : "2",
+				"IUSE" : "X +encode",
+				"USE" : "encode",
+				"RDEPEND" : "|| ( >=media-video/ffmpeg-0.6.90_rc0-r2[X=,encode=] >=media-video/libav-0.6.90_rc[X=,encode=] )",
 			},
 		}
 
