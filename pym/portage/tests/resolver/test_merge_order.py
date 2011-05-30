@@ -169,7 +169,14 @@ class MergeOrderTestCase(TestCase):
 			"kde-base/kmines-3.5.7" : {
 				"DEPEND"  : "kde-base/libkdegames",
 				"RDEPEND" : "kde-base/libkdegames",
-			}
+			},
+			"media-video/ffmpeg-0.7_rc1" : {},
+			"media-video/libav-0.7_pre20110327" : {
+				"RDEPEND" : "!media-video/ffmpeg",
+			},
+			"virtual/ffmpeg-0.6.90" : {
+				"RDEPEND" : "|| ( >=media-video/ffmpeg-0.6.90_rc0-r2 >=media-video/libav-0.6.90_rc )",
+			},
 		}
 
 		installed = {
@@ -221,6 +228,10 @@ class MergeOrderTestCase(TestCase):
 				"RDEPEND": "",
 			},
 			"app-arch/xz-utils-5.0.1" : {},
+			"media-video/ffmpeg-0.7_rc1" : {},
+			"virtual/ffmpeg-0.6.90" : {
+				"RDEPEND" : "|| ( >=media-video/ffmpeg-0.6.90_rc0-r2 >=media-video/libav-0.6.90_rc )",
+			},
 		}
 
 		test_cases = (
@@ -343,6 +354,15 @@ class MergeOrderTestCase(TestCase):
 				["app-misc/blocker-runtime-hard-a"],
 				success = False,
 				mergelist = ['app-misc/blocker-runtime-hard-a-1', '!!app-misc/blocker-runtime-hard-a']),
+			# Test swapping of providers for a new-style virtual package,
+			# which relies on delayed evaluation of disjunctive (virtual
+			# and ||) deps as required to solve bug #264434. Note that
+			# this behavior is not suppored for old-style PROVIDE virtuals,
+			# as reported in bug #339164.
+			ResolverPlaygroundTestCase(
+				["media-video/libav"],
+				success=True,
+				mergelist = ['media-video/libav-0.7_pre20110327', 'media-video/ffmpeg-0.7_rc1', '!media-video/ffmpeg']),
 			# Test that PORTAGE_PACKAGE_ATOM is merged asap. Optimally,
 			# satisfied deps are always merged after the asap nodes that
 			# depend on them.
