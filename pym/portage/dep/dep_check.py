@@ -317,6 +317,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	parent   = trees[myroot].get("parent")
 	priority = trees[myroot].get("priority")
 	graph_db = trees[myroot].get("graph_db")
+	graph    = trees[myroot].get("graph")
 	vardb = None
 	if "vartree" in trees[myroot]:
 		vardb = trees[myroot]["vartree"].dbapi
@@ -417,8 +418,14 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				all_in_graph = True
 				for slot_atom in slot_map:
 					# New-style virtuals have zero cost to install.
-					if not graph_db.match(slot_atom) and \
-						not slot_atom.startswith("virtual/"):
+					if slot_atom.startswith("virtual/"):
+						continue
+					# We check if the matched package has actually been
+					# added to the digraph, in order to distinguish between
+					# those packages and installed packages that may need
+					# to be uninstalled in order to resolve blockers.
+					graph_matches = graph_db.match_pkgs(slot_atom)
+					if not graph_matches or graph_matches[-1] not in graph:
 						all_in_graph = False
 						break
 				circular_atom = None

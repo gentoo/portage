@@ -450,6 +450,8 @@ class _dynamic_depgraph_config(object):
 			# have already been made.
 			self._graph_trees[myroot]["porttree"]   = graph_tree
 			self._graph_trees[myroot]["vartree"]    = graph_tree
+			self._graph_trees[myroot]["graph_db"]   = graph_tree.dbapi
+			self._graph_trees[myroot]["graph"]      = self.digraph
 			def filtered_tree():
 				pass
 			filtered_tree.dbapi = _dep_check_composite_db(depgraph, myroot)
@@ -473,6 +475,7 @@ class _dynamic_depgraph_config(object):
 			# unresolvable direct circular dependencies can be detected and
 			# avoided when possible.
 			self._filtered_trees[myroot]["graph_db"] = graph_tree.dbapi
+			self._filtered_trees[myroot]["graph"]    = self.digraph
 			self._filtered_trees[myroot]["vartree"] = \
 				depgraph._frozen_config.trees[myroot]["vartree"]
 
