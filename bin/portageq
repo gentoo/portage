@@ -21,7 +21,6 @@ except KeyboardInterrupt:
 	sys.exit(128 + signal.SIGINT)
 
 import os
-import subprocess
 import types
 
 # Avoid sandbox violations after python upgrade.
@@ -43,8 +42,11 @@ except ImportError:
 del pym_path
 
 from portage import os
-from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.util import writemsg, writemsg_stdout
+portage.proxy.lazyimport.lazyimport(globals(),
+	'subprocess',
+	'portage.dbapi._expand_new_virt:expand_new_virt',
+)
 
 def eval_atom_use(atom):
 	if 'USE' in os.environ:
@@ -656,10 +658,11 @@ list_preserved_libs.uses_root = True
 if not portage.const._ENABLE_PRESERVE_LIBS:
 	del list_preserved_libs
 
-non_commands = frozenset(['elog', 'eval_atom_use', 'exithandler', 'main',
+non_commands = frozenset(['elog', 'eval_atom_use',
+	'exithandler', 'expand_new_virt', 'main',
 	'usage', 'writemsg', 'writemsg_stdout'])
 commands = sorted(k for k, v in globals().items() \
-	if type(v) is types.FunctionType and k not in non_commands)
+	if k not in non_commands and isinstance(v, types.FunctionType))
 
 def usage(argv):
 	print(">>> Portage information query tool")
