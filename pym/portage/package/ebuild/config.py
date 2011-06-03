@@ -486,8 +486,8 @@ class config(object):
 			# repoman controls PORTDIR_OVERLAY via the environment, so no
 			# special cases are needed here.
 			portdir_overlay = list(self.repositories.repoUserLocationList())
-			if self["PORTDIR"] in portdir_overlay:
-				portdir_overlay.remove(self["PORTDIR"])
+			if portdir_overlay and portdir_overlay[0] == self["PORTDIR"]:
+				portdir_overlay = portdir_overlay[1:]
 
 			new_ov = []
 			if portdir_overlay:
