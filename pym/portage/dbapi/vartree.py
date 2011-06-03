@@ -1629,6 +1629,9 @@ class dblink(object):
 				self.settings["PORTAGE_BACKGROUND"] = "1"
 				self.settings.backup_changes("PORTAGE_BACKGROUND")
 				background = True
+			elif self.settings.get("PORTAGE_BACKGROUND_UNMERGE") == "0":
+				self.settings["PORTAGE_BACKGROUND"] = "0"
+				self.settings.backup_changes("PORTAGE_BACKGROUND")
 		elif self.settings.get("PORTAGE_BACKGROUND") == "1":
 			background = True
 
