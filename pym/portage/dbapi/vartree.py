@@ -57,6 +57,7 @@ from portage import _unicode_encode
 from _emerge.AsynchronousLock import AsynchronousLock
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildPhase import EbuildPhase
+from _emerge.emergelog import emergelog
 from _emerge.PollScheduler import PollScheduler
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 
@@ -2957,6 +2958,9 @@ class dblink(object):
 			if str_buffer:
 				os.write(self._pipe, _unicode_encode(''.join(str_buffer)))
 
+	def _emerge_log(self, msg):
+		emergelog(False, msg)
+
 	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
 		mydbapi=None, prev_mtimes=None, counter=None):
 		"""
@@ -3003,8 +3007,6 @@ class dblink(object):
 			encoding=_encodings['content'], errors='strict')
 
 		showMessage = self._display_merge
-		scheduler = self._scheduler
-
 		srcroot = normalize_path(srcroot).rstrip(os.path.sep) + os.path.sep
 
 		if not os.path.isdir(srcroot):
@@ -3359,12 +3361,12 @@ class dblink(object):
 		ensure_dirs(self.dbtmpdir)
 
 		# run preinst script
-		if scheduler is None:
-			showMessage(_(">>> Merging %(cpv)s to %(destroot)s\n") % {"cpv":self.mycpv, "destroot":destroot})
-			a = _spawn_phase("preinst", self.settings)
-		else:
-			a = scheduler.dblinkEbuildPhase(
-				self, mydbapi, myebuild, "preinst")
+		showMessage(_(">>> Merging %(cpv)s to %(destroot)s\n") % \
+			{"cpv":self.mycpv, "destroot":destroot})
+		phase = EbuildPhase(background=False, phase="preinst",
+			scheduler=self._scheduler, settings=self.settings)
+		phase.start()
+		a = phase.wait()
 
 		# XXX: Decide how to handle failures here.
 		if a != os.EX_OK:
@@ -3459,11 +3461,7 @@ class dblink(object):
 			match_from_list(PORTAGE_PACKAGE_ATOM, [self.mycpv]):
 			reinstall_self = True
 
-		if scheduler is None:
-			def emerge_log(msg):
-				pass
-		else:
-			emerge_log = scheduler.dblinkEmergeLog
+		emerge_log = self._emerge_log
 
 		# If we have any preserved libraries then autoclean
 		# is forced so that preserve-libs logic doesn't have
@@ -3608,13 +3606,12 @@ class dblink(object):
 			os.path.join(self.dbpkgdir, "environment.bz2")
 		self.settings.backup_changes("PORTAGE_UPDATE_ENV")
 		try:
-			if scheduler is None:
-				a = _spawn_phase("postinst", self.settings)
-				if a == os.EX_OK:
-					showMessage(_(">>> %s merged.\n") % self.mycpv)
-			else:
-				a = scheduler.dblinkEbuildPhase(
-					self, mydbapi, myebuild, "postinst")
+			phase = EbuildPhase(background=False, phase="postinst",
+				scheduler=self._scheduler, settings=self.settings)
+			phase.start()
+			a = phase.wait()
+			if a == os.EX_OK:
+				showMessage(_(">>> %s merged.\n") % self.mycpv)
 		finally:
 			self.settings.pop("PORTAGE_UPDATE_ENV", None)
 
@@ -4068,6 +4065,8 @@ class dblink(object):
 		if not parallel_install:
 			self.lockdb()
 		self.vartree.dbapi._bump_mtime(self.mycpv)
+		if self._scheduler is None:
+			self._scheduler = PollScheduler().sched_iface
 		try:
 			retval = self.treewalk(mergeroot, myroot, inforoot, myebuild,
 				cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes,
@@ -4075,8 +4074,7 @@ class dblink(object):
 
 			# If PORTAGE_BUILDDIR doesn't exist, then it probably means
 			# fail-clean is enabled, and the success/die hooks have
-			# already been called by _emerge.EbuildPhase (via
-			# self._scheduler.dblinkEbuildPhase) prior to cleaning.
+			# already been called by EbuildPhase.
 			if os.path.isdir(self.settings['PORTAGE_BUILDDIR']):
 
 				if retval == os.EX_OK:
@@ -4084,18 +4082,11 @@ class dblink(object):
 				else:
 					phase = 'die_hooks'
 
-				if self._scheduler is None:
-					ebuild_phase = MiscFunctionsProcess(
-						background=False,
-						commands=[phase],
-						scheduler=PollScheduler().sched_iface,
-						settings=self.settings)
-					ebuild_phase.start()
-					ebuild_phase.wait()
-				else:
-					self._scheduler.dblinkEbuildPhase(
-						self, mydbapi, myebuild, phase)
-
+				ebuild_phase = MiscFunctionsProcess(
+					background=False, commands=[phase],
+					scheduler=self._scheduler, settings=self.settings)
+				ebuild_phase.start()
+				ebuild_phase.wait()
 				self._elog_process()
 
 				if 'noclean' not in self.settings.features and \
@@ -4106,12 +4097,10 @@ class dblink(object):
 
 					doebuild_environment(myebuild, "clean",
 						settings=self.settings, db=mydbapi)
-					if self._scheduler is None:
-						_spawn_phase("clean", self.settings)
-					else:
-						self._scheduler.dblinkEbuildPhase(
-							self, mydbapi, myebuild, "clean")
-
+					phase = EbuildPhase(background=False, phase="clean",
+						scheduler=self._scheduler, settings=self.settings)
+					phase.start()
+					phase.wait()
 		finally:
 			self.settings.pop('REPLACING_VERSIONS', None)
 			if self.vartree.dbapi._linkmap is None:
