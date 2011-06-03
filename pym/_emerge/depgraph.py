@@ -1488,7 +1488,8 @@ class depgraph(object):
 
 			mypriority = dep_priority.copy()
 			if not atom.blocker:
-				inst_pkgs = [inst_pkg for inst_pkg in vardb.match_pkgs(atom)
+				inst_pkgs = [inst_pkg for inst_pkg in
+					reversed(vardb.match_pkgs(atom))
 					if not reinstall_atoms.findAtomForPackage(inst_pkg,
 							modified_use=self._pkg_use_enabled(inst_pkg))]
 				if inst_pkgs:
@@ -1574,7 +1575,8 @@ class depgraph(object):
 			if not dep_priority.ignored or \
 				self._dynamic_config._traverse_ignored_deps:
 
-				inst_pkgs = [inst_pkg for inst_pkg in vardb.match_pkgs(virt_dep.atom)
+				inst_pkgs = [inst_pkg for inst_pkg in
+					reversed(vardb.match_pkgs(virt_dep.atom))
 					if not reinstall_atoms.findAtomForPackage(inst_pkg,
 							modified_use=self._pkg_use_enabled(inst_pkg))]
 				if inst_pkgs:
@@ -1603,7 +1605,8 @@ class depgraph(object):
 				# This is a GLEP 37 virtual, so its deps are all runtime.
 				mypriority = self._priority(runtime=True)
 				if not atom.blocker:
-					inst_pkgs = [inst_pkg for inst_pkg in vardb.match_pkgs(atom)
+					inst_pkgs = [inst_pkg for inst_pkg in
+						reversed(vardb.match_pkgs(atom))
 						if not reinstall_atoms.findAtomForPackage(inst_pkg,
 								modified_use=self._pkg_use_enabled(inst_pkg))]
 					if inst_pkgs:
