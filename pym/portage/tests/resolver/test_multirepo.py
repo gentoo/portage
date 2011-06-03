@@ -71,11 +71,11 @@ class MultirepoTestCase(TestCase):
 				success = True,
 				check_repo_names = True,
 				mergelist = ["dev-libs/A-1::repo1"]),
-			ResolverPlaygroundTestCase(
-				["@multirepotest"],
-				success = True,
-				check_repo_names = True,
-				mergelist = ["dev-libs/A-1"]),
+			#ResolverPlaygroundTestCase(
+			#	["@multirepotest"],
+			#	success = True,
+			#	check_repo_names = True,
+			#	mergelist = ["dev-libs/A-1"]),
 
 			#Packages in exactly one repo
 			ResolverPlaygroundTestCase(
