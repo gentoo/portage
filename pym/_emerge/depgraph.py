@@ -5587,6 +5587,7 @@ class depgraph(object):
 		"""
 
 		autounmask_write = self._frozen_config.myopts.get("--autounmask-write", "n") == True
+		quiet = "--quiet" in self._frozen_config.myopts
 		pretend = "--pretend" in self._frozen_config.myopts
 		ask = "--ask" in self._frozen_config.myopts
 		enter_invalid = '--ask-enter-invalid' in self._frozen_config.myopts
@@ -5856,6 +5857,21 @@ class depgraph(object):
 					write_atomic(file_to_write_to, "".join(file_contents))
 				except PortageException:
 					problems.append("!!! Failed to write '%s'\n" % file_to_write_to)
+
+		if not quiet and \
+			(unstable_keyword_msg or \
+			p_mask_change_msg or \
+			use_changes_msg or \
+			license_msg):
+			msg = [
+				"",
+				"NOTE: This --autounmask behavior can be disabled by setting",
+				"      EMERGE_DEFAULT_OPTS=\"--autounmask=n\" in make.conf."
+			]
+			for line in msg:
+				if line:
+					line = colorize("INFORM", line)
+				writemsg_stdout(line + "\n", noiselevel=-1)
 
 		if ask and write_to_file and file_to_write_to:
 			prompt = "\nWould you like to add these " + \
