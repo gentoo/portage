@@ -67,7 +67,7 @@ COLLISION_IGNORE="/lib/modules/* *.py[co]"
 
 # Enable preserve-libs for testing with portage versions that support it.
 # This setting is commented out for portage versions that don't support it.
-FEATURES="${FEATURES} preserve-libs"
+#FEATURES="${FEATURES} preserve-libs"
 
 # Default chunksize for binhost comms
 PORTAGE_BINHOST_CHUNKSIZE="3000"
