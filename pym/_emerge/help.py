@@ -324,7 +324,7 @@ def help(myopts, havecolor=1):
 		print("       " + green("--autounmask-write") + " [ %s | %s ]" % \
 			(turquoise("y"), turquoise("n")))
 		desc = "If --autounmask is enabled, changes are written " + \
-			"to config files, respecting CONFIG_PROTECT."
+			"to config files, respecting CONFIG_PROTECT and --ask."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
