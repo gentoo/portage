@@ -146,11 +146,11 @@ MANIFEST2_IDENTIFIERS    = ("AUX", "MISC", "DIST", "EBUILD")
 
 # Private constants for use in conditional code in order to minimize the diff
 # between branches.
-_ENABLE_DYN_LINK_MAP    = True
-_ENABLE_PRESERVE_LIBS   = True
-_ENABLE_REPO_NAME_WARN  = True
-_ENABLE_SET_CONFIG      = True
-_SANDBOX_COMPAT_LEVEL   = "22"
+_ENABLE_DYN_LINK_MAP    = False
+_ENABLE_PRESERVE_LIBS   = False
+_ENABLE_REPO_NAME_WARN  = False
+_ENABLE_SET_CONFIG      = False
+_SANDBOX_COMPAT_LEVEL   = "16"
 
 
 # The definitions above will differ between branches, so it's useful to have
