@@ -45,6 +45,7 @@ from _emerge.emergelog import emergelog
 from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
 from _emerge.is_valid_package_atom import is_valid_package_atom
 from _emerge.stdout_spinner import stdout_spinner
+from _emerge.userquery import userquery
 
 if sys.hexversion >= 0x3000000:
 	long = int
@@ -1729,10 +1730,13 @@ def emerge_main(args=None):
 				# access is required but the user is not in the portage group.
 				from portage.data import portage_group_warning
 				if "--ask" in myopts:
+					writemsg_stdout("This action requires %s access...\n" % \
+						(access_desc,), noiselevel=-1)
+					if userquery("Would you like to add --pretend to options?",
+						"--ask-enter-invalid" in myopts) == "No":
+						return 1
 					myopts["--pretend"] = True
 					del myopts["--ask"]
-					print(("%s access is required... " + \
-						"adding --pretend to options\n") % access_desc)
 					if portage.secpass < 1 and not need_superuser:
 						portage_group_warning()
 				else:
