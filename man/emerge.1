@@ -62,14 +62,11 @@ would like to query the owners of one or more files or directories.
 A \fIset\fR is a convenient shorthand for a large group of
 packages. Three sets are currently always available: \fBselected\fR,
 \fBsystem\fR and \fBworld\fR. \fBselected\fR contains the user-selected
-"world" packages that are listed in \fB/var/lib/portage/world\fR,
-and nested sets that may be listed
-in \fB/var/lib/portage/world_sets\fR. \fBsystem\fR refers to a set of
+"world" packages that are listed in \fB/var/lib/portage/world\fR.
+\fBsystem\fR refers to a set of
 packages deemed necessary for your system to run properly. \fBworld\fR
 encompasses both the \fBselected\fR and \fBsystem\fR sets. [See
-\fBFILES\fR below for more information.] Other sets can exist depending
-on the current configuration. The default set configuration is located
-in the \fB/usr/share/portage/config/sets\fR directory. Note that a \fIset\fR
+\fBFILES\fR below for more information.] Note that a \fIset\fR
 is generally used in conjunction with \fB\-\-update\fR. When used as 
 arguments to \fBemerge\fR sets have to be prefixed with \fB@\fR to be
 recognized. Use the \fB\-\-list\-sets\fR action to display a list of
@@ -982,9 +979,6 @@ Zac Medico <zmedico@gentoo.org>
 .SH "FILES"
 Here is a common list of files you will probably be interested in.  For a 
 complete listing, please refer to the \fBportage\fR(5) man page.
-.TP
-.B /usr/share/portage/config/sets/
-Contains the default set configuration.
 .TP
 .B /var/lib/portage/world
 Contains a list of all user\-specified packages.  You can safely edit
