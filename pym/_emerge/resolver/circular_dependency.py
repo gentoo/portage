@@ -42,7 +42,7 @@ class circular_dependency_handler(object):
 		"""
 		display_order = []
 		tempgraph = self.graph.copy()
-		while not tempgraph.empty():
+		while tempgraph:
 			nodes = tempgraph.leaf_nodes()
 			if not nodes:
 				node = tempgraph.order[0]

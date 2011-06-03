@@ -2618,7 +2618,7 @@ class dblink(object):
 					break
 
 		cpv_lib_map = {}
-		while not lib_graph.empty():
+		while lib_graph:
 			root_nodes = preserved_nodes.intersection(lib_graph.root_nodes())
 			if not root_nodes:
 				break

@@ -1200,7 +1200,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			ignore_priority_range = [None]
 			ignore_priority_range.extend(
 				range(UnmergeDepPriority.MIN, UnmergeDepPriority.MAX + 1))
-			while not graph.empty():
+			while graph:
 				for ignore_priority in ignore_priority_range:
 					nodes = graph.root_nodes(ignore_priority=ignore_priority)
 					if nodes:

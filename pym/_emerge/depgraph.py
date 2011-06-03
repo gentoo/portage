@@ -293,7 +293,7 @@ class _rebuild_config(object):
 
 		# Trigger rebuilds bottom-up (starting with the leaves) so that parents
 		# will always know which children are being rebuilt.
-		while not graph.empty():
+		while graph:
 			if not leaf_nodes:
 				# We're interested in intersection of buildtime and runtime,
 				# so ignore edges that do not contain both.
@@ -4922,7 +4922,7 @@ class depgraph(object):
 		# If no nodes are selected on the last iteration, it is due to
 		# unresolved blockers or circular dependencies.
 
-		while not mygraph.empty():
+		while mygraph:
 			self._spinner_update()
 			selected_nodes = None
 			ignore_priority = None
@@ -5053,7 +5053,7 @@ class depgraph(object):
 					selected_nodes = list(selected_nodes)
 				selected_nodes.sort(key=cmp_sort_key(cmp_circular_bias))
 
-			if not selected_nodes and not myblocker_uninstalls.is_empty():
+			if not selected_nodes and myblocker_uninstalls:
 				# An Uninstall task needs to be executed in order to
 				# avoid conflict if possible.
 
@@ -5273,7 +5273,7 @@ class depgraph(object):
 				drop_satisfied = True
 				continue
 
-			if not selected_nodes and not myblocker_uninstalls.is_empty():
+			if not selected_nodes and myblocker_uninstalls:
 				# If possible, drop an uninstall task here in order to avoid
 				# the circular deps code path. The corresponding blocker will
 				# still be counted as an unresolved conflict.
