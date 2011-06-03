@@ -1619,7 +1619,7 @@ class dblink(object):
 				DeprecationWarning, stacklevel=2)
 
 		background = False
-		log_path = None
+		log_path = self.settings.get("PORTAGE_LOG_FILE")
 		if self._scheduler is None:
 			# We create a scheduler instance and use it to
 			# log unmerge output separately from merge output.
@@ -1629,9 +1629,6 @@ class dblink(object):
 				self.settings["PORTAGE_BACKGROUND"] = "1"
 				self.settings.backup_changes("PORTAGE_BACKGROUND")
 				background = True
-			else:
-				# Our output is redirected and logged by the parent process.
-				log_path = self.settings.pop("PORTAGE_LOG_FILE", None)
 		elif self.settings.get("PORTAGE_BACKGROUND") == "1":
 			background = True
 
