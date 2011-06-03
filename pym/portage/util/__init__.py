@@ -1473,9 +1473,11 @@ class ConfigProtect(object):
 						masked = len(pmpath)
 		return protected > masked
 
-def new_protect_filename(mydest, newmd5=None):
+def new_protect_filename(mydest, newmd5=None, force=False):
 	"""Resolves a config-protect filename for merging, optionally
-	using the last filename if the md5 matches.
+	using the last filename if the md5 matches. If force is True,
+	then a new filename will be generated even if mydest does not
+	exist yet.
 	(dest,md5) ==> 'string'            --- path_to_target_filename
 	(dest)     ==> ('next', 'highest') --- next_target and most-recent_target
 	"""
@@ -1489,7 +1491,8 @@ def new_protect_filename(mydest, newmd5=None):
 	prot_num = -1
 	last_pfile = ""
 
-	if not os.path.exists(mydest):
+	if not force and \
+		not os.path.exists(mydest):
 		return mydest
 
 	real_filename = os.path.basename(mydest)

@@ -5846,7 +5846,12 @@ class depgraph(object):
 			if file_contents is not None:
 				file_contents.extend(changes)
 				if protect_obj[root].isprotected(file_to_write_to):
-					file_to_write_to = new_protect_filename(file_to_write_to)
+					# We want to force new_protect_filename to ensure
+					# that the user will see all our changes via
+					# etc-update, even if file_to_write_to doesn't
+					# exist yet, so we specify force=True.
+					file_to_write_to = new_protect_filename(file_to_write_to,
+						force=True)
 				try:
 					write_atomic(file_to_write_to, "".join(file_contents))
 				except PortageException:
