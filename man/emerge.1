@@ -68,8 +68,7 @@ in \fB/var/lib/portage/world_sets\fR. \fBsystem\fR refers to a set of
 packages deemed necessary for your system to run properly. \fBworld\fR
 encompasses both the \fBselected\fR and \fBsystem\fR sets. [See
 \fBFILES\fR below for more information.] Other sets can exist depending
-on the current configuration. The default set configuration is located
-in the \fB/usr/share/portage/config/sets\fR directory.
+on the current configuration.
 User sets may be created by placing files in the \fB/etc/portage/sets/\fR
 directory (see \fBportage\fR(5)). Note that a \fIset\fR
 is generally used in conjunction with \fB\-\-update\fR. When used as 
@@ -1069,9 +1068,6 @@ Zac Medico <zmedico@gentoo.org>
 .SH "FILES"
 Here is a common list of files you will probably be interested in.  For a 
 complete listing, please refer to the \fBportage\fR(5) man page.
-.TP
-.B /usr/share/portage/config/sets/
-Contains the default set configuration.
 .TP
 .B /var/lib/portage/world
 Contains a list of all user\-specified packages.  You can safely edit
