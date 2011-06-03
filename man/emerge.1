@@ -120,11 +120,7 @@ always be kept. They can be manually added to this set with \fIemerge
 \-\-noreplace <atom>\fR. As a safety measure, depclean will not remove any
 packages unless *all* required dependencies have been resolved. As a
 consequence, it is often necessary to run \fIemerge \-\-update \-\-newuse
-\-\-deep @world\fR prior to depclean. Also note that
-depclean may break link level dependencies, especially when the
-\fB\-\-depclean\-lib\-check\fR option is disabled. Thus, it is
-recommended to use a tool such as \fBrevdep-rebuild\fR(1)
-in order to detect such breakage.
+\-\-deep @world\fR prior to depclean.
 
 \fBWARNING:\fR
 Inexperienced users are advised to use \fB\-\-pretend\fR with this
@@ -132,7 +128,10 @@ option in order to see a preview of which packages
 will be uninstalled. Always study the list of packages
 to be cleaned for any obvious mistakes. Note that packages listed in
 package.provided (see \fBportage\fR(5)) may be removed by
-depclean, even if they are part of the world set.
+depclean, even if they are part of the world set. Also note that
+depclean may break link level dependencies. Thus, it is
+recommended to use a tool such as \fBrevdep-rebuild\fR(1)
+in order to detect such breakage.
 
 Depclean serves as a dependency aware
 version of \fB\-\-unmerge\fR. When given one or more atoms, it will
@@ -404,15 +403,6 @@ As an example, this catches updates in libraries that are not directly
 listed in the dependencies of a package.  Also see \fB\-\-with\-bdeps\fR for
 behavior with respect to build time dependencies that are not strictly
 required.
-.TP
-.BR "\-\-depclean\-lib\-check [ y | n ]"
-Account for library link-level dependencies during
-\fB\-\-depclean\fR and \fB\-\-prune\fR actions. This
-option is enabled by default. In some cases this can
-be somewhat time\-consuming. This option is ignored
-when FEATURES="preserve\-libs" is enabled in
-\fBmake.conf\fR(5), since any libraries that have
-consumers will simply be preserved.
 .TP
 .BR "\-\-dynamic\-deps < y | n >"
 In dependency calculations, substitute the dependencies of installed
