@@ -1488,7 +1488,6 @@ class depgraph(object):
 
 			mypriority = dep_priority.copy()
 			if not atom.blocker:
-				root_slot = (pkg.root, pkg.slot_atom)
 				inst_pkgs = [inst_pkg for inst_pkg in vardb.match_pkgs(atom)
 					if not reinstall_atoms.findAtomForPackage(inst_pkg,
 							modified_use=self._pkg_use_enabled(inst_pkg))]
