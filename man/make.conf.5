@@ -397,10 +397,6 @@ useful only if \fBprelink\fR(8) is installed and accurate checksums (despite
 prelinking) are needed for some reason such as for checking the integrity of
 installed files or because the \fIunmerge\-orphans\fR feature is disabled.
 .TP
-.B preserve\-libs
-Preserve libraries when the sonames change during upgrade or downgrade.
-Libraries are preserved only if consumers of those libraries are detected.
-.TP
 .B protect\-owned
 This is identical to the \fIcollision\-protect\fR feature except that files
 may be overwritten if they are not explicitly listed in the contents of a
