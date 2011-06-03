@@ -416,10 +416,6 @@ feature isn't required either. Undoing prelinking while merging is
 only required when using tools like \fBquickpkg\fR(1) which can cause
 already prelinked files to be merged.
 .TP
-.B preserve\-libs
-Preserve libraries when the sonames change during upgrade or downgrade.
-Libraries are preserved only if consumers of those libraries are detected.
-.TP
 .B protect\-owned
 This is identical to the \fIcollision\-protect\fR feature except that files
 may be overwritten if they are not explicitly listed in the contents of a
