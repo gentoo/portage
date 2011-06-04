@@ -4,9 +4,13 @@
 __all__ = ['MtimeDB']
 
 import copy
+try:
+	import cPickle as pickle
+except ImportError:
+	import pickle
 
 import portage
-from portage import pickle, _unicode_encode
+from portage import _unicode_encode
 from portage.data import portage_gid, uid
 from portage.localization import _
 from portage.util import apply_secpass_permissions, atomic_ofstream, writemsg

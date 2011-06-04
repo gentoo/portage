@@ -28,12 +28,12 @@ import traceback
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
+	'pickle',
 	'portage.dep:Atom',
 	'portage.util.listdir:_ignorecvs_dirs'
 )
 from portage import StringIO
 from portage import os
-from portage import pickle
 from portage import subprocess_getstatusoutput
 from portage import _encodings
 from portage import _os_merge

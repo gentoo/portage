@@ -17,10 +17,6 @@ try:
 		errno.ESTALE = -1
 	import re
 	import types
-	try:
-		import cPickle as pickle
-	except ImportError:
-		import pickle
 
 	try:
 		from subprocess import getstatusoutput as subprocess_getstatusoutput
