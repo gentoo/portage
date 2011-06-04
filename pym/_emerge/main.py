@@ -1746,6 +1746,9 @@ def emerge_main(args=None):
 						portage_group_warning()
 					return 1
 
+	# Disable emergelog for everything except build or unmerge operations.
+	# This helps minimize parallel emerge.log entries that can confuse log
+	# parsers like genlop.
 	disable_emergelog = False
 	for x in ("--pretend", "--fetchonly", "--fetch-all-uri"):
 		if x in myopts:
@@ -1753,14 +1756,10 @@ def emerge_main(args=None):
 			break
 	if myaction in ("search", "info"):
 		disable_emergelog = True
-	if disable_emergelog:
-		""" Disable emergelog for everything except build or unmerge
-		operations.  This helps minimize parallel emerge.log entries that can
-		confuse log parsers.  We especially want it disabled during
-		parallel-fetch, which uses --resume --fetchonly."""
-		_emerge.emergelog._disable = True
 
-	else:
+	_emerge.emergelog._disable = disable_emergelog
+
+	if not disable_emergelog:
 		if 'EMERGE_LOG_DIR' in settings:
 			try:
 				# At least the parent needs to exist for the lock file.
@@ -1771,8 +1770,7 @@ def emerge_main(args=None):
 					(settings['EMERGE_LOG_DIR'], e),
 					noiselevel=-1, level=logging.ERROR)
 			else:
-				global _emerge_log_dir
-				_emerge_log_dir = settings['EMERGE_LOG_DIR']
+				_emerge.emergelog._emerge_log_dir = settings["EMERGE_LOG_DIR"]
 
 	if not "--pretend" in myopts:
 		emergelog(xterm_titles, "Started emerge on: "+\
