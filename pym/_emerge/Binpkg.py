@@ -114,6 +114,9 @@ class Binpkg(CompositeTask):
 			pretend=self.opts.pretend, scheduler=self.scheduler)
 		pkg_path = fetcher.pkg_path
 		self._pkg_path = pkg_path
+		# This gives bashrc users an opportunity to do various things
+		# such as remove binary packages after they're installed.
+		self.settings["PORTAGE_BINPKG_FILE"] = pkg_path
 
 		if self.opts.getbinpkg and self._bintree.isremote(pkg.cpv):
 
@@ -264,16 +267,9 @@ class Binpkg(CompositeTask):
 			self.wait()
 			return
 
-		# This gives bashrc users an opportunity to do various things
-		# such as remove binary packages after they're installed.
-		settings = self.settings
-		settings.setcpv(self.pkg)
-		settings["PORTAGE_BINPKG_FILE"] = self._pkg_path
-		settings.backup_changes("PORTAGE_BINPKG_FILE")
-
 		setup_phase = EbuildPhase(background=self.background,
 			phase="setup", scheduler=self.scheduler,
-			settings=settings)
+			settings=self.settings)
 
 		setup_phase.addExitListener(self._setup_exit)
 		self._task_queued(setup_phase)
@@ -308,18 +304,12 @@ class Binpkg(CompositeTask):
 		self._build_dir.unlock()
 
 	def create_install_task(self):
-
-		# This gives bashrc users an opportunity to do various things
-		# such as remove binary packages after they're installed.
-		settings = self.settings
-		settings["PORTAGE_BINPKG_FILE"] = self._pkg_path
-		settings.backup_changes("PORTAGE_BINPKG_FILE")
-
 		task = EbuildMerge(find_blockers=self.find_blockers,
 			ldpath_mtimes=self.ldpath_mtimes, logger=self.logger,
 			pkg=self.pkg, pkg_count=self.pkg_count,
 			pkg_path=self._pkg_path, scheduler=self.scheduler,
-			settings=settings, tree=self._tree, world_atom=self.world_atom)
+			settings=self.settings, tree=self._tree,
+			world_atom=self.world_atom)
 		task.addExitListener(self._install_exit)
 		return task
 
