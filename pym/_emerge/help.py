@@ -317,7 +317,9 @@ def help(myopts, havecolor=1):
 			"abort. If the displayed configuration changes are " + \
 			"satisfactory, you should copy and paste them into " + \
 			"the specified configuration file(s), or enable the " + \
-			"--autounmask-write option."
+			"--autounmask-write option. The " + \
+			"EMERGE_DEFAULT_OPTS variable may be used to " + \
+			"disable this option by default in make.conf(5)."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()

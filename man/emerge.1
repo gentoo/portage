@@ -300,7 +300,9 @@ after the merge list and emerge will immediately
 abort. If the displayed configuration changes are
 satisfactory, you should copy and paste them into
 the specified configuration file(s), or enable the
-\fB\-\-autounmask\-write\fR option.
+\fB\-\-autounmask\-write\fR option. The
+\fBEMERGE_DEFAULT_OPTS\fR variable may be used to
+disable this option by default in \fBmake.conf\fR(5).
 .TP
 .BR "\-\-autounmask\-write [ y | n ]"
 If \-\-autounmask is enabled, changes are written
