@@ -57,6 +57,7 @@ from portage import _unicode_encode
 from _emerge.AsynchronousLock import AsynchronousLock
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildPhase import EbuildPhase
+from _emerge.emergelog import emergelog
 from _emerge.PollScheduler import PollScheduler
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 
@@ -2957,6 +2958,9 @@ class dblink(object):
 			if str_buffer:
 				os.write(self._pipe, _unicode_encode(''.join(str_buffer)))
 
+	def _emerge_log(self, msg):
+		emergelog(False, msg)
+
 	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
 		mydbapi=None, prev_mtimes=None, counter=None):
 		"""
@@ -3457,12 +3461,17 @@ class dblink(object):
 			match_from_list(PORTAGE_PACKAGE_ATOM, [self.mycpv]):
 			reinstall_self = True
 
+		emerge_log = self._emerge_log
+
 		# If we have any preserved libraries then autoclean
 		# is forced so that preserve-libs logic doesn't have
 		# to account for the additional complexity of the
 		# AUTOCLEAN=no mode.
 		autoclean = self.settings.get("AUTOCLEAN", "yes") == "yes" \
 			or preserve_paths
+
+		if autoclean:
+			emerge_log(_(" >>> AUTOCLEAN: %s") % (slot_atom,))
 
 		others_in_slot.append(self)  # self has just been merged
 		for dblnk in list(others_in_slot):
@@ -3471,6 +3480,7 @@ class dblink(object):
 			if not (autoclean or dblnk.mycpv == self.mycpv or reinstall_self):
 				continue
 			showMessage(_(">>> Safely unmerging already-installed instance...\n"))
+			emerge_log(_(" === Unmerging... (%s)") % (dblnk.mycpv,))
 			others_in_slot.remove(dblnk) # dblnk will unmerge itself now
 			dblnk._linkmap_broken = self._linkmap_broken
 			dblnk.settings["REPLACED_BY_VERSION"] = portage.versions.cpv_getversion(self.mycpv)
@@ -3479,6 +3489,11 @@ class dblink(object):
 				others_in_slot=others_in_slot, needed=needed,
 				preserve_paths=preserve_paths)
 			dblnk.settings.pop("REPLACED_BY_VERSION", None)
+
+			if unmerge_rval == os.EX_OK:
+				emerge_log(_(" >>> unmerge success: %s") % (dblnk.mycpv,))
+			else:
+				emerge_log(_(" !!! unmerge FAILURE: %s") % (dblnk.mycpv,))
 
 			self.lockdb()
 			try:
