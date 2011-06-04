@@ -371,7 +371,7 @@ class MergeOrderTestCase(TestCase):
 			# Test swapping of providers for a new-style virtual package,
 			# which relies on delayed evaluation of disjunctive (virtual
 			# and ||) deps as required to solve bug #264434. Note that
-			# this behavior is not suppored for old-style PROVIDE virtuals,
+			# this behavior is not supported for old-style PROVIDE virtuals,
 			# as reported in bug #339164.
 			ResolverPlaygroundTestCase(
 				["media-video/libav"],
