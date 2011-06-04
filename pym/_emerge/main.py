@@ -1732,13 +1732,13 @@ def emerge_main(args=None):
 				if "--ask" in myopts:
 					writemsg_stdout("This action requires %s access...\n" % \
 						(access_desc,), noiselevel=-1)
+					if portage.secpass < 1 and not need_superuser:
+						portage_group_warning()
 					if userquery("Would you like to add --pretend to options?",
 						"--ask-enter-invalid" in myopts) == "No":
 						return 1
 					myopts["--pretend"] = True
 					del myopts["--ask"]
-					if portage.secpass < 1 and not need_superuser:
-						portage_group_warning()
 				else:
 					sys.stderr.write(("emerge: %s access is required\n") \
 						% access_desc)
