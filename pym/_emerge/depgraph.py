@@ -5662,7 +5662,20 @@ class depgraph(object):
 						reason.unmask_hint.key == 'p_mask':
 						keyword = reason.unmask_hint.value
 
+						comment, filename = portage.getmaskingreason(
+							pkg.cpv, metadata=pkg.metadata,
+							settings=pkgsettings,
+							portdb=pkg.root_config.trees["porttree"].dbapi,
+							return_location=True)
+
 						p_mask_change_msg[root].append(self._get_dep_chain_as_comment(pkg))
+						if filename:
+							p_mask_change_msg[root].append("# %s:\n" % filename)
+						if comment:
+							comment = [line for line in
+								comment.splitlines() if line]
+							for line in comment:
+								p_mask_change_msg[root].append("%s\n" % line)
 						if is_latest:
 							p_mask_change_msg[root].append(">=%s\n" % pkg.cpv)
 						elif is_latest_in_slot:
