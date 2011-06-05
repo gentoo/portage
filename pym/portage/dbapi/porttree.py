@@ -813,13 +813,11 @@ class portdbapi(dbapi):
 			# match *all* packages, only against the cpv, in order
 			# to bypass unnecessary cache access for things like IUSE
 			# and SLOT.
-
-			if myval is None:
-				if mydep == mykey:
-					myval = self.cp_list(mykey, mytree=mytree)
-				else:
-					myval = match_from_list(mydep,
-						self.cp_list(mykey, mytree=mytree))
+			if mydep == mykey:
+				myval = self.cp_list(mykey, mytree=mytree)
+			else:
+				myval = match_from_list(mydep,
+					self.cp_list(mykey, mytree=mytree))
 
 		elif level == "list-visible":
 			#a list of all visible packages, not called directly (just by xmatch())
