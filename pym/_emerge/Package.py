@@ -38,6 +38,7 @@ class Package(Task):
 
 	_dep_keys = ('DEPEND', 'PDEPEND', 'RDEPEND',)
 	_use_conditional_misc_keys = ('LICENSE', 'PROPERTIES', 'RESTRICT')
+	UNKNOWN_REPO = "__unknown__"
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
@@ -69,7 +70,7 @@ class Package(Task):
 			self.inherited = frozenset()
 		repo = _gen_valid_repo(self.metadata.get('repository', ''))
 		if not repo:
-			repo = '__unknown__'
+			repo = self.UNKNOWN_REPO
 		self.metadata['repository'] = repo
 
 		self._validate_deps()
