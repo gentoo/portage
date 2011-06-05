@@ -814,6 +814,10 @@ class portdbapi(dbapi):
 			# to bypass unnecessary cache access for things like IUSE
 			# and SLOT.
 			if mydep == mykey:
+				# Share cache with match-all/cp_list when the result is the
+				# same. Note that this requires that mydep.repo is None and
+				# thus mytree is also None.
+				level = "match-all"
 				myval = self.cp_list(mykey, mytree=mytree)
 			else:
 				myval = match_from_list(mydep,
