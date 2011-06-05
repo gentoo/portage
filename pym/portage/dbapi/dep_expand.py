@@ -22,7 +22,7 @@ def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
 			return mydep
 		if mydep[0] == "*":
 			mydep = mydep[1:]
-		mydep = orig_dep
+			orig_dep = mydep
 		has_cat = '/' in orig_dep
 		if not has_cat:
 			alphanum = re.search(r'\w', orig_dep)
