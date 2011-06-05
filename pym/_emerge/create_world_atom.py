@@ -1,5 +1,7 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from portage.dep import _repo_separator
 
 def create_world_atom(pkg, args_set, root_config):
 	"""Create a new atom for the world file if one does not exist.  If the
@@ -14,6 +16,8 @@ def create_world_atom(pkg, args_set, root_config):
 		return None
 	cp = arg_atom.cp
 	new_world_atom = cp
+	if arg_atom.repo:
+		new_world_atom += _repo_separator + arg_atom.repo
 	sets = root_config.sets
 	portdb = root_config.trees["porttree"].dbapi
 	vardb = root_config.trees["vartree"].dbapi
@@ -64,11 +68,13 @@ def create_world_atom(pkg, args_set, root_config):
 				matched_slots.add(mydb.aux_get(cpv, ["SLOT"])[0])
 			if len(matched_slots) == 1:
 				new_world_atom = slot_atom
+				if arg_atom.repo:
+					new_world_atom += _repo_separator + arg_atom.repo
 
 	if new_world_atom == sets["selected"].findAtomForPackage(pkg):
 		# Both atoms would be identical, so there's nothing to add.
 		return None
-	if not slotted:
+	if not slotted and not arg_atom.repo:
 		# Unlike world atoms, system atoms are not greedy for slots, so they
 		# can't be safely excluded from world if they are slotted.
 		system_atom = sets["system"].findAtomForPackage(pkg)
