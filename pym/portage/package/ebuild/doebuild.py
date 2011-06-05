@@ -167,12 +167,12 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			# call would lead to infinite 'depend' phase recursion.
 			mysettings.setcpv(mycpv)
 	else:
-		# If IUSE isn't in configdict['pkg'], it means that setcpv()
+		# If EAPI isn't in configdict["pkg"], it means that setcpv()
 		# hasn't been called with the mydb argument, so we have to
 		# call it here (portage code always calls setcpv properly,
 		# but api consumers might not).
 		if mycpv != mysettings.mycpv or \
-			'IUSE' not in mysettings.configdict['pkg']:
+			"EAPI" not in mysettings.configdict["pkg"]:
 			# Reload env.d variables and reset any previous settings.
 			mysettings.reload()
 			mysettings.reset()

@@ -41,7 +41,7 @@ class MergeProcess(SpawnProcess):
 		cpv = "%s/%s" % (self.mycat, self.mypkg)
 		settings = self.settings
 		if cpv != settings.mycpv or \
-			"IUSE" not in settings.configdict["pkg"]:
+			"EAPI" not in settings.configdict["pkg"]:
 			settings.reload()
 			settings.reset()
 			settings.setcpv(cpv, mydb=self.mydbapi)

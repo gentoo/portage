@@ -1676,7 +1676,7 @@ class dblink(object):
 				break
 
 		if self.mycpv != self.settings.mycpv or \
-			"SLOT" not in self.settings.configdict["pkg"]:
+			"EAPI" not in self.settings.configdict["pkg"]:
 			# We avoid a redundant setcpv call here when
 			# the caller has already taken care of it.
 			self.settings.setcpv(self.mycpv, mydb=self.vartree.dbapi)
