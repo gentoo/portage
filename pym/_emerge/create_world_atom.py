@@ -31,7 +31,7 @@ def create_world_atom(pkg, args_set, root_config):
 			for cpv in vardb.match(cp))
 		slotted = len(available_slots) > 1 or \
 			(len(available_slots) == 1 and "0" not in available_slots)
-	if slotted and arg_atom != cp:
+	if slotted and arg_atom.without_repo != cp:
 		# If the user gave a specific atom, store it as a
 		# slot atom in the world file.
 		slot_atom = pkg.slot_atom
