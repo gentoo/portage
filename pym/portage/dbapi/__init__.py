@@ -123,33 +123,33 @@ class dbapi(object):
 		return list(self._iter_match(mydep,
 			self.cp_list(mydep.cp, use_cache=use_cache)))
 
-	def _iter_match(self, atom, cpv_iter, myrepo=None):
+	def _iter_match(self, atom, cpv_iter):
 		cpv_iter = iter(match_from_list(atom, cpv_iter))
 		if atom.slot:
-			cpv_iter = self._iter_match_slot(atom, cpv_iter, myrepo)
+			cpv_iter = self._iter_match_slot(atom, cpv_iter)
 		if atom.unevaluated_atom.use:
-			cpv_iter = self._iter_match_use(atom, cpv_iter, myrepo)
+			cpv_iter = self._iter_match_use(atom, cpv_iter)
 		if atom.repo:
-			cpv_iter = self._iter_match_repo(atom, cpv_iter, myrepo)
+			cpv_iter = self._iter_match_repo(atom, cpv_iter)
 		return cpv_iter
 
-	def _iter_match_repo(self, atom, cpv_iter, myrepo=None):
+	def _iter_match_repo(self, atom, cpv_iter):
 		for cpv in cpv_iter:
 			try:
-				if self.aux_get(cpv, ["repository"], myrepo=myrepo)[0] == atom.repo:
+				if self.aux_get(cpv, ["repository"], myrepo=atom.repo)[0] == atom.repo:
 					yield cpv
 			except KeyError:
 				continue
 
-	def _iter_match_slot(self, atom, cpv_iter, myrepo=None):
+	def _iter_match_slot(self, atom, cpv_iter):
 		for cpv in cpv_iter:
 			try:
-				if self.aux_get(cpv, ["SLOT"], myrepo=myrepo)[0] == atom.slot:
+				if self.aux_get(cpv, ["SLOT"], myrepo=atom.repo)[0] == atom.slot:
 					yield cpv
 			except KeyError:
 				continue
 
-	def _iter_match_use(self, atom, cpv_iter, myrepo = None):
+	def _iter_match_use(self, atom, cpv_iter):
 		"""
 		1) Check for required IUSE intersection (need implicit IUSE here).
 		2) Check enabled/disabled flag states.
@@ -158,7 +158,7 @@ class dbapi(object):
 		iuse_implicit_match = self.settings._iuse_implicit_match
 		for cpv in cpv_iter:
 			try:
-				iuse, slot, use = self.aux_get(cpv, ["IUSE", "SLOT", "USE"], myrepo=myrepo)
+				iuse, slot, use = self.aux_get(cpv, ["IUSE", "SLOT", "USE"], myrepo=atom.repo)
 			except KeyError:
 				continue
 			iuse = frozenset(x.lstrip('+-') for x in iuse.split())

@@ -904,13 +904,13 @@ class portdbapi(dbapi):
 			#dep match -- find all visible matches
 			#get all visible packages, then get the matching ones
 			myval = list(self._iter_match(mydep,
-				self.xmatch("list-visible", mykey, mydep=mykey, mykey=mykey), myrepo=mydep.repo))
+				self.xmatch("list-visible", mykey, mydep=mykey, mykey=mykey)))
 		elif level == "match-all":
 			#match *all* visible *and* masked packages
 			if mydep == mykey:
 				myval = self.cp_list(mykey)
 			else:
-				myval = list(self._iter_match(mydep, self.cp_list(mykey), myrepo = mydep.repo))
+				myval = list(self._iter_match(mydep, self.cp_list(mykey)))
 		else:
 			raise AssertionError(
 				"Invalid level argument: '%s'" % level)
