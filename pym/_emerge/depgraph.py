@@ -293,7 +293,7 @@ class _rebuild_config(object):
 
 		# Trigger rebuilds bottom-up (starting with the leaves) so that parents
 		# will always know which children are being rebuilt.
-		while not graph.empty():
+		while graph:
 			if not leaf_nodes:
 				# We're interested in intersection of buildtime and runtime,
 				# so ignore edges that do not contain both.
@@ -450,6 +450,8 @@ class _dynamic_depgraph_config(object):
 			# have already been made.
 			self._graph_trees[myroot]["porttree"]   = graph_tree
 			self._graph_trees[myroot]["vartree"]    = graph_tree
+			self._graph_trees[myroot]["graph_db"]   = graph_tree.dbapi
+			self._graph_trees[myroot]["graph"]      = self.digraph
 			def filtered_tree():
 				pass
 			filtered_tree.dbapi = _dep_check_composite_db(depgraph, myroot)
@@ -473,6 +475,7 @@ class _dynamic_depgraph_config(object):
 			# unresolvable direct circular dependencies can be detected and
 			# avoided when possible.
 			self._filtered_trees[myroot]["graph_db"] = graph_tree.dbapi
+			self._filtered_trees[myroot]["graph"]    = self.digraph
 			self._filtered_trees[myroot]["vartree"] = \
 				depgraph._frozen_config.trees[myroot]["vartree"]
 
@@ -1485,8 +1488,8 @@ class depgraph(object):
 
 			mypriority = dep_priority.copy()
 			if not atom.blocker:
-				root_slot = (pkg.root, pkg.slot_atom)
-				inst_pkgs = [inst_pkg for inst_pkg in vardb.match_pkgs(atom)
+				inst_pkgs = [inst_pkg for inst_pkg in
+					reversed(vardb.match_pkgs(atom))
 					if not reinstall_atoms.findAtomForPackage(inst_pkg,
 							modified_use=self._pkg_use_enabled(inst_pkg))]
 				if inst_pkgs:
@@ -1572,7 +1575,8 @@ class depgraph(object):
 			if not dep_priority.ignored or \
 				self._dynamic_config._traverse_ignored_deps:
 
-				inst_pkgs = [inst_pkg for inst_pkg in vardb.match_pkgs(virt_dep.atom)
+				inst_pkgs = [inst_pkg for inst_pkg in
+					reversed(vardb.match_pkgs(virt_dep.atom))
 					if not reinstall_atoms.findAtomForPackage(inst_pkg,
 							modified_use=self._pkg_use_enabled(inst_pkg))]
 				if inst_pkgs:
@@ -1601,7 +1605,8 @@ class depgraph(object):
 				# This is a GLEP 37 virtual, so its deps are all runtime.
 				mypriority = self._priority(runtime=True)
 				if not atom.blocker:
-					inst_pkgs = [inst_pkg for inst_pkg in vardb.match_pkgs(atom)
+					inst_pkgs = [inst_pkg for inst_pkg in
+						reversed(vardb.match_pkgs(atom))
 						if not reinstall_atoms.findAtomForPackage(inst_pkg,
 								modified_use=self._pkg_use_enabled(inst_pkg))]
 					if inst_pkgs:
@@ -4218,7 +4223,7 @@ class depgraph(object):
 
 		if True:
 			# Pull in blockers from all installed packages that haven't already
-			# been pulled into the depgraph, in order to ensure that the are
+			# been pulled into the depgraph, in order to ensure that they are
 			# respected (bug 128809). Due to the performance penalty that is
 			# incurred by all the additional dep_check calls that are required,
 			# blockers returned from dep_check are cached on disk by the
@@ -4919,7 +4924,7 @@ class depgraph(object):
 		# If no nodes are selected on the last iteration, it is due to
 		# unresolved blockers or circular dependencies.
 
-		while not mygraph.empty():
+		while mygraph:
 			self._spinner_update()
 			selected_nodes = None
 			ignore_priority = None
@@ -5050,7 +5055,7 @@ class depgraph(object):
 					selected_nodes = list(selected_nodes)
 				selected_nodes.sort(key=cmp_sort_key(cmp_circular_bias))
 
-			if not selected_nodes and not myblocker_uninstalls.is_empty():
+			if not selected_nodes and myblocker_uninstalls:
 				# An Uninstall task needs to be executed in order to
 				# avoid conflict if possible.
 
@@ -5270,7 +5275,7 @@ class depgraph(object):
 				drop_satisfied = True
 				continue
 
-			if not selected_nodes and not myblocker_uninstalls.is_empty():
+			if not selected_nodes and myblocker_uninstalls:
 				# If possible, drop an uninstall task here in order to avoid
 				# the circular deps code path. The corresponding blocker will
 				# still be counted as an unresolved conflict.
@@ -5582,6 +5587,7 @@ class depgraph(object):
 		"""
 
 		autounmask_write = self._frozen_config.myopts.get("--autounmask-write", "n") == True
+		quiet = "--quiet" in self._frozen_config.myopts
 		pretend = "--pretend" in self._frozen_config.myopts
 		ask = "--ask" in self._frozen_config.myopts
 		enter_invalid = '--ask-enter-invalid' in self._frozen_config.myopts
@@ -5656,7 +5662,20 @@ class depgraph(object):
 						reason.unmask_hint.key == 'p_mask':
 						keyword = reason.unmask_hint.value
 
+						comment, filename = portage.getmaskingreason(
+							pkg.cpv, metadata=pkg.metadata,
+							settings=pkgsettings,
+							portdb=pkg.root_config.trees["porttree"].dbapi,
+							return_location=True)
+
 						p_mask_change_msg[root].append(self._get_dep_chain_as_comment(pkg))
+						if filename:
+							p_mask_change_msg[root].append("# %s:\n" % filename)
+						if comment:
+							comment = [line for line in
+								comment.splitlines() if line]
+							for line in comment:
+								p_mask_change_msg[root].append("%s\n" % line)
 						if is_latest:
 							p_mask_change_msg[root].append(">=%s\n" % pkg.cpv)
 						elif is_latest_in_slot:
@@ -5841,11 +5860,31 @@ class depgraph(object):
 			if file_contents is not None:
 				file_contents.extend(changes)
 				if protect_obj[root].isprotected(file_to_write_to):
-					file_to_write_to = new_protect_filename(file_to_write_to)
+					# We want to force new_protect_filename to ensure
+					# that the user will see all our changes via
+					# etc-update, even if file_to_write_to doesn't
+					# exist yet, so we specify force=True.
+					file_to_write_to = new_protect_filename(file_to_write_to,
+						force=True)
 				try:
 					write_atomic(file_to_write_to, "".join(file_contents))
 				except PortageException:
 					problems.append("!!! Failed to write '%s'\n" % file_to_write_to)
+
+		if not quiet and \
+			(unstable_keyword_msg or \
+			p_mask_change_msg or \
+			use_changes_msg or \
+			license_msg):
+			msg = [
+				"",
+				"NOTE: This --autounmask behavior can be disabled by setting",
+				"      EMERGE_DEFAULT_OPTS=\"--autounmask=n\" in make.conf."
+			]
+			for line in msg:
+				if line:
+					line = colorize("INFORM", line)
+				writemsg_stdout(line + "\n", noiselevel=-1)
 
 		if ask and write_to_file and file_to_write_to:
 			prompt = "\nWould you like to add these " + \

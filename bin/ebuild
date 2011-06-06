@@ -149,7 +149,6 @@ if ebuild_portdir != vdb_path and \
 			encoding=_encodings['content'], errors='strict')
 
 	print("Appending %s to PORTDIR_OVERLAY..." % ebuild_portdir)
-	portage.close_portdbapi_caches()
 	imp.reload(portage)
 
 # Constrain eclass resolution to the master(s)

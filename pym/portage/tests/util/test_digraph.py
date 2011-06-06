@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -13,7 +13,7 @@ class DigraphTest(TestCase):
 		f = g.copy()
 		g.addnode("A", None)
 		self.assertEqual("A" in g, True)
-		self.assertEqual(g.empty(), False)
+		self.assertEqual(bool(g), True)
 		self.assertEqual(g.allnodes(), ["A"])
 		self.assertEqual(g.allzeros(), ["A"])
 		self.assertEqual(g.hasnode("A"), True)
@@ -22,7 +22,7 @@ class DigraphTest(TestCase):
 		g = digraph()
 		f = g.clone()
 		for x in g, f:
-			self.assertEqual(x.is_empty(), True)
+			self.assertEqual(bool(x), False)
 			self.assertEqual(x.contains("A"), False)
 			self.assertEqual(x.firstzero(), None)
 			self.assertRaises(KeyError, x.remove, "A")
@@ -54,7 +54,7 @@ class DigraphTest(TestCase):
 
 		f = g.clone()
 		for x in g, f:
-			self.assertEqual(x.is_empty(), False)
+			self.assertEqual(bool(x), True)
 			self.assertEqual(x.contains("A"), True)
 			self.assertEqual(x.firstzero(), None)
 			self.assertRaises(KeyError, x.remove, "Z")
@@ -96,7 +96,7 @@ class DigraphTest(TestCase):
 
 		f = g.clone()
 		for x in g, f:
-			self.assertEqual(x.is_empty(), False)
+			self.assertEqual(bool(x), True)
 			self.assertEqual(x.contains("A"), True)
 			self.assertEqual(x.firstzero(), "B")
 			self.assertRaises(KeyError, x.remove, "Z")
@@ -141,7 +141,7 @@ class DigraphTest(TestCase):
 
 		f = g.clone()
 		for x in g, f:
-			self.assertEqual(x.is_empty(), False)
+			self.assertEqual(bool(x), True)
 			self.assertEqual(x.contains("A"), True)
 			self.assertEqual(x.firstzero(), None)
 			self.assertRaises(KeyError, x.remove, "Z")

@@ -11,6 +11,7 @@ import re
 import sys
 import warnings
 
+from _emerge.Package import Package
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.data:portage_gid',
@@ -486,8 +487,8 @@ class config(object):
 			# repoman controls PORTDIR_OVERLAY via the environment, so no
 			# special cases are needed here.
 			portdir_overlay = list(self.repositories.repoUserLocationList())
-			if self["PORTDIR"] in portdir_overlay:
-				portdir_overlay.remove(self["PORTDIR"])
+			if portdir_overlay and portdir_overlay[0] == self["PORTDIR"]:
+				portdir_overlay = portdir_overlay[1:]
 
 			new_ov = []
 			if portdir_overlay:
@@ -1424,8 +1425,9 @@ class config(object):
 		profile_atoms = self.prevmaskdict.get(cp)
 		if profile_atoms:
 			pkg = "".join((cpv, _slot_separator, metadata["SLOT"]))
-			if 'repository' in metadata:
-				pkg = "".join((pkg, _repo_separator, metadata['repository']))
+			repo = metadata.get("repository")
+			if repo and repo != Package.UNKNOWN_REPO:
+				pkg = "".join((pkg, _repo_separator, repo))
 			pkg_list = [pkg]
 			for x in profile_atoms:
 				if match_from_list(x, pkg_list):

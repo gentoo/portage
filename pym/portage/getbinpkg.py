@@ -262,7 +262,7 @@ def make_http_request(conn, address, params={}, headers={}, dest=None):
 		try:
 			if (rc != 0):
 				conn,ignore,ignore,ignore,ignore = create_conn(address)
-			conn.request("GET", address, params, headers)
+			conn.request("GET", address, body=None, headers=headers)
 		except SystemExit as e:
 			raise
 		except Exception as e:

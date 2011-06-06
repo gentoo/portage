@@ -34,6 +34,7 @@ from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
 
+import _emerge
 from _emerge.BinpkgFetcher import BinpkgFetcher
 from _emerge.BinpkgPrefetcher import BinpkgPrefetcher
 from _emerge.BinpkgVerifier import BinpkgVerifier
@@ -46,7 +47,7 @@ from _emerge.DepPriority import DepPriority
 from _emerge.depgraph import depgraph, resume_depgraph
 from _emerge.EbuildFetcher import EbuildFetcher
 from _emerge.EbuildPhase import EbuildPhase
-from _emerge.emergelog import emergelog, _emerge_log_dir
+from _emerge.emergelog import emergelog
 from _emerge.FakeVartree import FakeVartree
 from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
 from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
@@ -83,11 +84,8 @@ class Scheduler(PollScheduler):
 	_bad_resume_opts = set(["--ask", "--changelog",
 		"--resume", "--skipfirst"])
 
-	_fetch_log = os.path.join(_emerge_log_dir, 'emerge-fetch.log')
-
 	class _iface_class(SlotObject):
-		__slots__ = ("dblinkEbuildPhase", "dblinkDisplayMerge",
-			"dblinkElog", "dblinkEmergeLog", "fetch",
+		__slots__ = ("fetch",
 			"output", "register", "schedule",
 			"scheduleSetup", "scheduleUnpack", "scheduleYield",
 			"unregister")
@@ -217,13 +215,11 @@ class Scheduler(PollScheduler):
 		for root in self.trees:
 			self._config_pool[root] = []
 
+		self._fetch_log = os.path.join(_emerge.emergelog._emerge_log_dir,
+			'emerge-fetch.log')
 		fetch_iface = self._fetch_iface_class(log_file=self._fetch_log,
 			schedule=self._schedule_fetch)
 		self._sched_iface = self._iface_class(
-			dblinkEbuildPhase=self._dblink_ebuild_phase,
-			dblinkDisplayMerge=self._dblink_display_merge,
-			dblinkElog=self._dblink_elog,
-			dblinkEmergeLog=self._dblink_emerge_log,
 			fetch=fetch_iface, output=self._task_output,
 			register=self._register,
 			schedule=self._schedule_wait,
@@ -612,67 +608,6 @@ class Scheduler(PollScheduler):
 				vartree=self.trees[blocking_pkg.root]["vartree"]))
 
 		return blocker_dblinks
-
-	def _dblink_pkg(self, pkg_dblink):
-		cpv = pkg_dblink.mycpv
-		type_name = RootConfig.tree_pkg_map[pkg_dblink.treetype]
-		root_config = self.trees[pkg_dblink.myroot]["root_config"]
-		installed = type_name == "installed"
-		repo = pkg_dblink.settings.get("PORTAGE_REPO_NAME")
-		return self._pkg(cpv, type_name, root_config,
-			installed=installed, myrepo=repo)
-
-	def _dblink_elog(self, pkg_dblink, phase, func, msgs):
-
-		log_path = pkg_dblink.settings.get("PORTAGE_LOG_FILE")
-		out = StringIO()
-
-		for msg in msgs:
-			func(msg, phase=phase, key=pkg_dblink.mycpv, out=out)
-
-		out_str = out.getvalue()
-
-		self._task_output(out_str, log_path=log_path)
-
-	def _dblink_emerge_log(self, msg):
-		self._logger.log(msg)
-
-	def _dblink_display_merge(self, pkg_dblink, msg, level=0, noiselevel=0):
-		log_path = pkg_dblink.settings.get("PORTAGE_LOG_FILE")
-		background = self._background
-
-		if log_path is None:
-			if not (background and level < logging.WARN):
-				portage.util.writemsg_level(msg,
-					level=level, noiselevel=noiselevel)
-		else:
-			self._task_output(msg, log_path=log_path)
-
-	def _dblink_ebuild_phase(self,
-		pkg_dblink, pkg_dbapi, ebuild_path, phase):
-		"""
-		Using this callback for merge phases allows the scheduler
-		to run while these phases execute asynchronously, and allows
-		the scheduler control output handling.
-		"""
-
-		scheduler = self._sched_iface
-		settings = pkg_dblink.settings
-		background = self._background
-		log_path = settings.get("PORTAGE_LOG_FILE")
-
-		if phase in ('die_hooks', 'success_hooks'):
-			ebuild_phase = MiscFunctionsProcess(background=background,
-				commands=[phase], phase=phase,
-				scheduler=scheduler, settings=settings)
-		else:
-			ebuild_phase = EbuildPhase(background=background,
-				phase=phase, scheduler=scheduler,
-				settings=settings)
-		ebuild_phase.start()
-		ebuild_phase.wait()
-
-		return ebuild_phase.returncode
 
 	def _generate_digests(self):
 		"""

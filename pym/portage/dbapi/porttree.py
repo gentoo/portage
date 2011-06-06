@@ -793,45 +793,51 @@ class portdbapi(dbapi):
 			except KeyError:
 				pass
 
-		if not mydep:
+		if mydep is None:
 			#this stuff only runs on first call of xmatch()
 			#create mydep, mykey from origdep
 			mydep = dep_expand(origdep, mydb=self, settings=self.settings)
 			mykey = mydep.cp
 
-		if level == "match-all-cpv-only":
+		myval = None
+		mytree = None
+		if mydep.repo is not None:
+			mytree = self.treemap.get(mydep.repo)
+			if mytree is None:
+				myval = []
+
+		if myval is not None:
+			# Unknown repo, empty result.
+			pass
+		elif level == "match-all-cpv-only":
 			# match *all* packages, only against the cpv, in order
 			# to bypass unnecessary cache access for things like IUSE
 			# and SLOT.
-			myval = None
-			mytree = None
-			if mydep.repo is not None:
-				mytree = self.treemap.get(mydep.repo)
-				if mytree is None:
-					myval = []
-
-			if myval is None:
-				if mydep == mykey:
-					# Share cache with match-all/cp_list
-					# when the result is the same.
-					level = "match-all"
-					myval = self.cp_list(mykey, mytree=mytree)
-				else:
-					myval = match_from_list(mydep,
-						self.cp_list(mykey, mytree=mytree))
+			if mydep == mykey:
+				# Share cache with match-all/cp_list when the result is the
+				# same. Note that this requires that mydep.repo is None and
+				# thus mytree is also None.
+				level = "match-all"
+				myval = self.cp_list(mykey, mytree=mytree)
+			else:
+				myval = match_from_list(mydep,
+					self.cp_list(mykey, mytree=mytree))
 
 		elif level == "list-visible":
 			#a list of all visible packages, not called directly (just by xmatch())
 			#myval = self.visible(self.cp_list(mykey))
 
-			myval = self.gvisible(self.visible(self.cp_list(mykey)))
+			myval = self.gvisible(self.visible(
+				self.cp_list(mykey, mytree=mytree)))
 		elif level == "minimum-all":
 			# Find the minimum matching version. This is optimized to
 			# minimize the number of metadata accesses (improves performance
 			# especially in cases where metadata needs to be generated).
-			cpv_iter = iter(self.cp_list(mykey))
-			if mydep != mykey:
-				cpv_iter = self._iter_match(mydep, cpv_iter)
+			if mydep == mykey:
+				cpv_iter = iter(self.cp_list(mykey, mytree=mytree))
+			else:
+				cpv_iter = self._iter_match(mydep,
+					self.cp_list(mykey, mytree=mytree))
 			try:
 				myval = next(cpv_iter)
 			except StopIteration:
@@ -842,10 +848,10 @@ class portdbapi(dbapi):
 			# minimize the number of metadata accesses (improves performance
 			# especially in cases where metadata needs to be generated).
 			if mydep == mykey:
-				mylist = self.cp_list(mykey)
+				mylist = self.cp_list(mykey, mytree=mytree)
 			else:
-				mylist = match_from_list(mydep, self.cp_list(mykey,
-					mytree=self.repositories.get_location_for_name(mydep.repo)))
+				mylist = match_from_list(mydep,
+					self.cp_list(mykey, mytree=mytree))
 			myval = ""
 			settings = self.settings
 			local_config = settings.local_config
@@ -904,13 +910,14 @@ class portdbapi(dbapi):
 			#dep match -- find all visible matches
 			#get all visible packages, then get the matching ones
 			myval = list(self._iter_match(mydep,
-				self.xmatch("list-visible", mykey, mydep=mykey, mykey=mykey), myrepo=mydep.repo))
+				self.xmatch("list-visible", mykey, mydep=Atom(mykey), mykey=mykey)))
 		elif level == "match-all":
 			#match *all* visible *and* masked packages
 			if mydep == mykey:
-				myval = self.cp_list(mykey)
+				myval = self.cp_list(mykey, mytree=mytree)
 			else:
-				myval = list(self._iter_match(mydep, self.cp_list(mykey), myrepo = mydep.repo))
+				myval = list(self._iter_match(mydep,
+					self.cp_list(mykey, mytree=mytree)))
 		else:
 			raise AssertionError(
 				"Invalid level argument: '%s'" % level)

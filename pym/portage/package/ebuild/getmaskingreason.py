@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['getmaskingreason']
@@ -9,10 +9,19 @@ from portage.const import USER_CONFIG_PATH
 from portage.dep import Atom, match_from_list, _slot_separator, _repo_separator
 from portage.exception import InvalidAtom
 from portage.localization import _
+from portage.repository.config import _gen_valid_repo
 from portage.util import grablines, normalize_path
 from portage.versions import catpkgsplit
+from _emerge.Package import Package
 
-def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_location=False):
+def getmaskingreason(mycpv, metadata=None, settings=None,
+	portdb=None, return_location=False, myrepo=None):
+	"""
+	If specified, the myrepo argument is assumed to be valid. This
+	should be a safe assumption since portdbapi methods always
+	return valid repo names and valid "repository" metadata from
+	aux_get.
+	"""
 	if settings is None:
 		settings = portage.settings
 	if portdb is None:
@@ -20,21 +29,34 @@ def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_lo
 	mysplit = catpkgsplit(mycpv)
 	if not mysplit:
 		raise ValueError(_("invalid CPV: %s") % mycpv)
+
 	if metadata is None:
 		db_keys = list(portdb._aux_cache_keys)
 		try:
-			metadata = dict(zip(db_keys, portdb.aux_get(mycpv, db_keys)))
+			metadata = dict(zip(db_keys,
+				portdb.aux_get(mycpv, db_keys, myrepo=myrepo)))
 		except KeyError:
 			if not portdb.cpv_exists(mycpv):
 				raise
-	if metadata is None:
-		# Can't access SLOT due to corruption.
-		cpv_slot_list = [mycpv]
-	else:
+		else:
+			if myrepo is None:
+				myrepo = _gen_valid_repo(metadata["repository"])
+
+	elif myrepo is None:
+		myrepo = metadata.get("repository")
+		if myrepo is not None:
+			myrepo = _gen_valid_repo(metadata["repository"])
+
+	# Sometimes we can't access SLOT or repository due to corruption.
+	pkg = mycpv
+	if metadata is not None:
 		pkg = "".join((mycpv, _slot_separator, metadata["SLOT"]))
-		if 'repository' in metadata:
-			pkg = "".join((pkg, _repo_separator, metadata['repository']))
-		cpv_slot_list = [pkg]
+	# At this point myrepo should be None, a valid name, or
+	# Package.UNKNOWN_REPO which we ignore.
+	if myrepo is not None and myrepo != Package.UNKNOWN_REPO:
+		pkg = "".join((pkg, _repo_separator, myrepo))
+	cpv_slot_list = [pkg]
+
 	mycp=mysplit[0]+"/"+mysplit[1]
 
 	# XXX- This is a temporary duplicate of code from the config constructor.

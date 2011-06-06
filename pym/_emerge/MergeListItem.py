@@ -64,7 +64,7 @@ class MergeListItem(CompositeTask):
 		if portdir_repo_name:
 			pkg_repo_name = pkg.repo
 			if pkg_repo_name != portdir_repo_name:
-				if not pkg_repo_name:
+				if pkg_repo_name == pkg.UNKNOWN_REPO:
 					pkg_repo_name = "unknown repo"
 				msg += " from %s" % pkg_repo_name
 

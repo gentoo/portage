@@ -1,10 +1,11 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
 	'ordered_by_atom_specificity', 'prune_incremental',
 )
 
+from _emerge.Package import Package
 from portage.dep import best_match_to_list, _repo_separator
 
 def ordered_by_atom_specificity(cpdict, pkg, repo=None):
@@ -23,7 +24,7 @@ def ordered_by_atom_specificity(cpdict, pkg, repo=None):
 	order to achieve desired results (and thus corrupting
 	the ChangeLog like ordering of the file).
 	"""
-	if repo is not None:
+	if repo and repo != Package.UNKNOWN_REPO:
 		pkg = pkg + _repo_separator + repo
 
 	results = []

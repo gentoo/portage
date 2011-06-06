@@ -1281,7 +1281,14 @@ class binarytree(object):
 				mode='r', encoding=_encodings['repo.content'],
 				errors='replace')
 		except EnvironmentError:
-			pass
+			# We're creating a new file, so populate the header
+			# with appropriate defaults. This is especially
+			# important for keys like REPO that save space when
+			# entries can inherit them from the header.
+			pkgindex.header["VERSION"] = str(self._pkgindex_version)
+			main_repo = self.settings.repositories.mainRepo()
+			if main_repo is not None:
+				pkgindex.header["REPO"] = main_repo.name
 		else:
 			try:
 				pkgindex.read(f)

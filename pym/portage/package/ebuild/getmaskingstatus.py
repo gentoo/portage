@@ -11,6 +11,7 @@ from portage.dep import match_from_list, _slot_separator, _repo_separator
 from portage.localization import _
 from portage.package.ebuild.config import config
 from portage.versions import catpkgsplit, cpv_getkey
+from _emerge.Package import Package
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -104,8 +105,10 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 	matches = False
 	if pkgdict:
 		pkg = "".join((mycpv, _slot_separator, metadata["SLOT"]))
-		if 'repository' in metadata:
-			pkg = "".join((pkg, _repo_separator, metadata['repository']))
+		if myrepo is None:
+			myrepo = metadata.get("repository")
+		if myrepo is not None and myrepo != Package.UNKNOWN_REPO:
+			pkg = "".join((pkg, _repo_separator, myrepo))
 		cpv_slot_list = [pkg]
 		for atom, pkgkeywords in pkgdict.items():
 			if match_from_list(atom, cpv_slot_list):

@@ -14,8 +14,11 @@ from portage.data import secpass
 from portage.output import xtermTitle
 from portage.const import EPREFIX
 
+# We disable emergelog by default, since it's called from
+# dblink.merge() and we don't want that to trigger log writes
+# unless it's really called via emerge.
+_disable = True
 _emerge_log_dir = EPREFIX + '/var/log'
-_disable = False
 
 def emergelog(xterm_titles, mystr, short_msg=None):
 

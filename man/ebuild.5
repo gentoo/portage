@@ -552,6 +552,12 @@ This variable should only be used when a package provides a virtual target.
 For example, blackdown\-jdk and sun\-jdk provide \fIvirtual/jdk\fR.  This
 allows for packages to depend on \fIvirtual/jdk\fR rather than on blackdown
 or sun specifically.
+.TP
+\fBDOCS\fR
+Beginning with \fBEAPI 4\fR, an array or space\-delimited list of documentation
+files for the default src_install function to install using dodoc. If
+undefined, a reasonable default list is used. See the documentation for
+src_install below.
 .SH "QA CONTROL VARIABLES"
 .TP
 .B USAGE NOTES

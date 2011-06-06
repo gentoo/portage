@@ -28,12 +28,12 @@ import traceback
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
+	'pickle',
 	'portage.dep:Atom',
 	'portage.util.listdir:_ignorecvs_dirs'
 )
 from portage import StringIO
 from portage import os
-from portage import pickle
 from portage import subprocess_getstatusoutput
 from portage import _encodings
 from portage import _os_merge
@@ -1474,9 +1474,11 @@ class ConfigProtect(object):
 						masked = len(pmpath)
 		return protected > masked
 
-def new_protect_filename(mydest, newmd5=None):
+def new_protect_filename(mydest, newmd5=None, force=False):
 	"""Resolves a config-protect filename for merging, optionally
-	using the last filename if the md5 matches.
+	using the last filename if the md5 matches. If force is True,
+	then a new filename will be generated even if mydest does not
+	exist yet.
 	(dest,md5) ==> 'string'            --- path_to_target_filename
 	(dest)     ==> ('next', 'highest') --- next_target and most-recent_target
 	"""
@@ -1490,7 +1492,8 @@ def new_protect_filename(mydest, newmd5=None):
 	prot_num = -1
 	last_pfile = ""
 
-	if not os.path.exists(mydest):
+	if not force and \
+		not os.path.exists(mydest):
 		return mydest
 
 	real_filename = os.path.basename(mydest)

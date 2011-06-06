@@ -619,10 +619,11 @@ class Eapi4IncompatibleFuncs(LineCheck):
 class Eapi4GoneVars(LineCheck):
 	repoman_check_name = 'EAPI.incompatible'
 	ignore_line = re.compile(r'(^\s*#)')
-	undefined_vars_re = re.compile(r'.*\$(\{(AA|KV)\}|(AA|KV))')
+	undefined_vars_re = re.compile(r'.*\$(\{(AA|KV|EMERGE_FROM)\}|(AA|KV|EMERGE_FROM))')
 
 	def check_eapi(self, eapi):
-		return not eapi_exports_AA(eapi) or not eapi_exports_KV(eapi)
+		# AA, KV, and EMERGE_FROM should not be referenced in EAPI 4 or later.
+		return not eapi_exports_AA(eapi)
 
 	def check(self, num, line):
 		m = self.undefined_vars_re.match(line)

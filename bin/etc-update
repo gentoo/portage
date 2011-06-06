@@ -149,7 +149,7 @@ sel_file() {
 		elif [ "${DELETE_ALL}" == "yes" ]; then
 			input=0
 		else
-			clear
+			[[ $CLEAR_TERM == yes ]] && clear
 			if [[ ${mode} == 0 ]] ; then
 				echo "The following is the list of files which need updating, each
 configuration file is followed by a list of possible replacement files."
@@ -317,7 +317,7 @@ do_cfg() {
 		elif [[ "${DELETE_ALL}" == "yes" ]] && ! user_special "${ofile}"; then
 			my_input=2
 		else
-			clear
+			[[ $CLEAR_TERM == yes ]] && clear
 			if [ "${using_editor}" == 0 ]; then
 				(
 					echo "Showing differences between ${ofile} and ${file}"
@@ -421,7 +421,7 @@ Please select from the menu above (-1 to exit, losing this merge): "
 				   return 255
 				   ;;
 				2)
-					clear
+					[[ $CLEAR_TERM == yes ]] && clear
 					if [ "${using_editor}" == 0 ]; then
 						(
 							echo "Showing differences between ${ofile} and ${mfile}"
@@ -561,6 +561,7 @@ fi
 #CONFIG_PROTECT_MASK=$(@PORTAGE_BASE@/bin/portageq envvar CONFIG_PROTECT_MASK)
 
 # load etc-config's configuration
+CLEAR_TERM=$(get_config clear_term)
 EU_AUTOMERGE=$(get_config eu_automerge)
 rm_opts=$(get_config rm_opts)
 mv_opts=$(get_config mv_opts)

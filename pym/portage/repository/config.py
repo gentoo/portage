@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import codecs
@@ -242,21 +242,25 @@ class RepoConfigLoader(object):
 							if old_location is not None and old_location != repo.location:
 								ignored_map.setdefault(repo.name, []).append(old_location)
 								ignored_location_map[old_location] = repo.name
+								if old_location == portdir:
+									portdir = repo.user_location
 							prepos[repo.name].update(repo)
+							repo = prepos[repo.name]
 						else:
 							prepos[repo.name] = repo
 
-						repo = prepos[repo.name]
-						if repo.priority is None:
-							if ov == portdir and portdir not in port_ov:
-								repo.priority = -1000
-							else:
-								repo.priority = base_priority
-								base_priority += 1
+						if ov == portdir and portdir not in port_ov:
+							repo.priority = -1000
+						else:
+							repo.priority = base_priority
+							base_priority += 1
 
 					else:
 						writemsg(_("!!! Invalid PORTDIR_OVERLAY"
 							" (not a dir): '%s'\n") % ov, noiselevel=-1)
+
+			return portdir
+
 		def repo_priority(r):
 			"""
 			Key funtion for comparing repositories by priority.
@@ -274,11 +278,15 @@ class RepoConfigLoader(object):
 		ignored_location_map = {}
 
 		portdir = settings.get('PORTDIR', '')
-		if portdir and portdir.strip():
-			portdir = os.path.realpath(portdir)
 		portdir_overlay = settings.get('PORTDIR_OVERLAY', '')
 		parse(paths, prepos, ignored_map, ignored_location_map)
-		add_overlays(portdir, portdir_overlay, prepos, ignored_map, ignored_location_map)
+		# If PORTDIR_OVERLAY contains a repo with the same repo_name as
+		# PORTDIR, then PORTDIR is overridden.
+		portdir = add_overlays(portdir, portdir_overlay, prepos,
+			ignored_map, ignored_location_map)
+		if portdir and portdir.strip():
+			portdir = os.path.realpath(portdir)
+
 		ignored_repos = tuple((repo_name, tuple(paths)) \
 			for repo_name, paths in ignored_map.items())
 

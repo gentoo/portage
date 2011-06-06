@@ -1,5 +1,5 @@
 # portage.py -- core Portage functionality
-# Copyright 1998-2010 Gentoo Foundation
+# Copyright 1998-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 VERSION="HEAD"
@@ -17,10 +17,6 @@ try:
 		errno.ESTALE = -1
 	import re
 	import types
-	try:
-		import cPickle as pickle
-	except ImportError:
-		import pickle
 
 	try:
 		from subprocess import getstatusoutput as subprocess_getstatusoutput
@@ -580,6 +576,35 @@ if VERSION == 'HEAD':
 			VERSION = 'HEAD'
 			return VERSION
 	VERSION = _LazyVersion()
+
+if "_legacy_globals_constructed" in globals():
+	# The module has been reloaded, so perform any relevant cleanup
+	# and prevent memory leaks.
+	if "db" in _legacy_globals_constructed:
+		try:
+			db
+		except NameError:
+			pass
+		else:
+			if isinstance(db, dict) and db:
+				for _x in db.values():
+					try:
+						if "porttree" in _x.lazy_items:
+							continue
+					except (AttributeError, TypeError):
+						continue
+					try:
+						_x = _x["porttree"].dbapi
+					except (AttributeError, KeyError):
+						continue
+					if not isinstance(_x, portdbapi):
+						continue
+					_x.close_caches()
+					try:
+						portdbapi.portdbapi_instances.remove(_x)
+					except ValueError:
+						pass
+				del _x
 
 class _LegacyGlobalProxy(proxy.objectproxy.ObjectProxy):
 
