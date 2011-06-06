@@ -1412,8 +1412,9 @@ class config(object):
 		profile_atoms = self.prevmaskdict.get(cp)
 		if profile_atoms:
 			pkg = "".join((cpv, _slot_separator, metadata["SLOT"]))
-			if 'repository' in metadata:
-				pkg = "".join((pkg, _repo_separator, metadata['repository']))
+			repo = metadata.get("repository")
+			if repo and repo != Package.UNKNOWN_REPO:
+				pkg = "".join((pkg, _repo_separator, repo))
 			pkg_list = [pkg]
 			for x in profile_atoms:
 				if match_from_list(x, pkg_list):

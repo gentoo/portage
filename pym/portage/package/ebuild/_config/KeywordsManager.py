@@ -5,6 +5,7 @@ __all__ = (
 	'KeywordsManager',
 )
 
+from _emerge.Package import Package
 from portage import os
 from portage.dep import ExtendedAtomDict, _repo_separator, _slot_separator
 from portage.localization import _
@@ -76,7 +77,7 @@ class KeywordsManager(object):
 	def getKeywords(self, cpv, slot, keywords, repo):
 		cp = cpv_getkey(cpv)
 		pkg = "".join((cpv, _slot_separator, slot))
-		if repo:
+		if repo and repo != Package.UNKNOWN_REPO:
 			pkg = "".join((pkg, _repo_separator, repo))
 		keywords = [[x for x in keywords.split() if x != "-*"]]
 		for pkeywords_dict in self._pkeywords_list:
