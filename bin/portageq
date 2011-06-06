@@ -719,12 +719,17 @@ def main():
 	if nocolor in ('yes', 'true'):
 		portage.output.nocolor()
 
-	if "-h" in sys.argv or "--help" in sys.argv:
-		usage(sys.argv)
-		sys.exit(os.EX_OK)
-	elif len(sys.argv) < 2:
+	if len(sys.argv) < 2:
 		usage(sys.argv)
 		sys.exit(os.EX_USAGE)
+
+	for x in sys.argv:
+		if x in ("-h", "--help"):
+			usage(sys.argv)
+			sys.exit(os.EX_OK)
+		elif x == "--version":
+			print("Portage", portage.VERSION)
+			sys.exit(os.EX_OK)
 
 	cmd = sys.argv[1]
 	function = globals().get(cmd)
