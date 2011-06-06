@@ -16,6 +16,12 @@ from _emerge.Package import Package
 
 def getmaskingreason(mycpv, metadata=None, settings=None,
 	portdb=None, return_location=False, myrepo=None):
+	"""
+	If specified, the myrepo argument is assumed it be valid. This
+	should be a safe assumption since portdbapi methods always
+	return valid repo names and valid "repository" metadata from
+	aux_get.
+	"""
 	if settings is None:
 		settings = portage.settings
 	if portdb is None:
@@ -23,9 +29,6 @@ def getmaskingreason(mycpv, metadata=None, settings=None,
 	mysplit = catpkgsplit(mycpv)
 	if not mysplit:
 		raise ValueError(_("invalid CPV: %s") % mycpv)
-
-	if myrepo:
-		myrepo = _gen_valid_repo(myrepo)
 
 	if metadata is None:
 		db_keys = list(portdb._aux_cache_keys)
@@ -36,10 +39,10 @@ def getmaskingreason(mycpv, metadata=None, settings=None,
 			if not portdb.cpv_exists(mycpv):
 				raise
 		else:
-			if not myrepo:
+			if myrepo is None:
 				myrepo = _gen_valid_repo(metadata["repository"])
 
-	elif not myrepo:
+	elif myrepo is None:
 		myrepo = metadata.get("repository")
 		if myrepo is not None:
 			myrepo = _gen_valid_repo(metadata["repository"])
