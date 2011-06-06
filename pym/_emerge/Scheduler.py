@@ -34,6 +34,7 @@ from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
 
+import _emerge
 from _emerge.BinpkgFetcher import BinpkgFetcher
 from _emerge.BinpkgPrefetcher import BinpkgPrefetcher
 from _emerge.BinpkgVerifier import BinpkgVerifier
@@ -46,7 +47,7 @@ from _emerge.DepPriority import DepPriority
 from _emerge.depgraph import depgraph, resume_depgraph
 from _emerge.EbuildFetcher import EbuildFetcher
 from _emerge.EbuildPhase import EbuildPhase
-from _emerge.emergelog import emergelog, _emerge_log_dir
+from _emerge.emergelog import emergelog
 from _emerge.FakeVartree import FakeVartree
 from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
 from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
@@ -82,8 +83,6 @@ class Scheduler(PollScheduler):
 
 	_bad_resume_opts = set(["--ask", "--changelog",
 		"--resume", "--skipfirst"])
-
-	_fetch_log = os.path.join(_emerge_log_dir, 'emerge-fetch.log')
 
 	class _iface_class(SlotObject):
 		__slots__ = ("fetch",
@@ -216,6 +215,8 @@ class Scheduler(PollScheduler):
 		for root in self.trees:
 			self._config_pool[root] = []
 
+		self._fetch_log = os.path.join(_emerge.emergelog._emerge_log_dir,
+			'emerge-fetch.log')
 		fetch_iface = self._fetch_iface_class(log_file=self._fetch_log,
 			schedule=self._schedule_fetch)
 		self._sched_iface = self._iface_class(
