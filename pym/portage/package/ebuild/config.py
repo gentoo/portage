@@ -11,6 +11,7 @@ import re
 import sys
 import warnings
 
+from _emerge.Package import Package
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.data:portage_gid',
