@@ -17,7 +17,7 @@ from _emerge.Package import Package
 def getmaskingreason(mycpv, metadata=None, settings=None,
 	portdb=None, return_location=False, myrepo=None):
 	"""
-	If specified, the myrepo argument is assumed it be valid. This
+	If specified, the myrepo argument is assumed to be valid. This
 	should be a safe assumption since portdbapi methods always
 	return valid repo names and valid "repository" metadata from
 	aux_get.

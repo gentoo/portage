@@ -25,7 +25,7 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 	writemsg_level=portage.util.writemsg_level):
 	"""
 	Returns a tuple of (returncode, pkgmap) where returncode is
-	os.EX_OK is no errors occur, and 1 otherwise.
+	os.EX_OK if no errors occur, and 1 otherwise.
 	"""
 
 	quiet = "--quiet" in myopts

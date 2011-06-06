@@ -4223,7 +4223,7 @@ class depgraph(object):
 
 		if True:
 			# Pull in blockers from all installed packages that haven't already
-			# been pulled into the depgraph, in order to ensure that the are
+			# been pulled into the depgraph, in order to ensure that they are
 			# respected (bug 128809). Due to the performance penalty that is
 			# incurred by all the additional dep_check calls that are required,
 			# blockers returned from dep_check are cached on disk by the
