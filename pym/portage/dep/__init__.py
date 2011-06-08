@@ -633,7 +633,7 @@ def flatten(mylist):
 
 _usedep_re = {
 	"0": re.compile("^(?P<prefix>[!-]?)(?P<flag>[A-Za-z0-9][A-Za-z0-9+_@-]*)(?P<default>(\(\+\)|\(\-\))?)(?P<suffix>[?=]?)$"),
-#	"5": re.compile("^(?P<prefix>[!-]?)(?P<flag>[A-Za-z0-9][A-Za-z0-9+_@.-]*)(?P<default>(\(\+\)|\(\-\))?)(?P<suffix>[?=]?)$"),
+	"4-python": re.compile("^(?P<prefix>[!-]?)(?P<flag>[A-Za-z0-9][A-Za-z0-9+_@.-]*)(?P<default>(\(\+\)|\(\-\))?)(?P<suffix>[?=]?)$"),
 }
 
 def _get_usedep_re(eapi):
@@ -644,11 +644,10 @@ def _get_usedep_re(eapi):
 	@return: A regular expression object that matches valid USE flags for the
 		given eapi. If eapi is None then the latest supported EAPI is assumed.
 	"""
-	return _usedep_re["0"]
-#	if eapi in ("0", "1", "2", "3_pre1", "3_pre2", "3", "4_pre1", "4"):
-#		return _usedep_re["0"]
-#	else:
-#		return _usedep_re["5"]
+	if eapi in ("4-python",):
+		return _usedep_re["4-python"]
+	else:
+		return _usedep_re["0"]
 
 class _use_dep(object):
 
@@ -1615,15 +1614,14 @@ _atom_wildcard_re = re.compile('(?P<simple>(' + _extended_cat + ')/(' + _extende
 
 _useflag_re = {
 	"0": re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@-]*$'),
-#	"5": re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@.-]*$'),
+	"4-python": re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@.-]*$'),
 }
 
 def _get_useflag_re(eapi):
-	return _useflag_re["0"]
-#	if eapi in ("0", "1", "2", "3_pre1", "3_pre2", "3", "4_pre1", "4"):
-#		return _useflag_re["0"]
-#	else:
-#		return _useflag_re["5"]
+	if eapi in ("4-python",):
+		return _useflag_re["4-python"]
+	else:
+		return _useflag_re["0"]
 
 def isvalidatom(atom, allow_blockers=False, allow_wildcard=False, allow_repo=False):
 	"""
