@@ -5788,8 +5788,8 @@ class depgraph(object):
 					settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH)
 
 				if root in unstable_keyword_msg:
-					if os.path.exists(os.path.join(abs_user_config,
-						"package.accept_keywords")):
+					if not os.path.exists(os.path.join(abs_user_config,
+						"package.keywords")):
 						filename = "package.accept_keywords"
 					else:
 						filename = "package.keywords"
