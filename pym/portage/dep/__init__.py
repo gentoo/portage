@@ -30,7 +30,7 @@ __all__ = [
 import re, sys
 import warnings
 from itertools import chain
-import portage.exception
+from portage import _unicode_decode
 from portage.eapi import eapi_has_slot_deps, eapi_has_src_uri_arrows, \
 	eapi_has_use_deps, eapi_has_strong_blocks, eapi_has_use_dep_defaults
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString
@@ -1056,6 +1056,10 @@ class Atom(_atom_base):
 			# constructor is not called redundantly.
 			raise TypeError(_("Expected %s, got %s") % \
 				(_atom_base, type(s)))
+
+		if not isinstance(s, _atom_base):
+			# Avoid TypeError with from _atom_base.__init__ with PyPy.
+			s = _unicode_decode(s)
 
 		_atom_base.__init__(s)
 
