@@ -2291,7 +2291,7 @@ def check_required_use(required_use, use, iuse_match):
 	tree._satisfied = False not in stack[0]
 	return tree
 
-def extract_affecting_use(mystr, atom):
+def extract_affecting_use(mystr, atom, eapi=None):
 	"""
 	Take a dep string and an atom and return the use flags
 	that decide if the given atom is in effect.
@@ -2308,7 +2308,7 @@ def extract_affecting_use(mystr, atom):
 	@rtype: Tuple of two lists of strings
 	@return: List of use flags that need to be enabled, List of use flag that need to be disabled
 	"""
-	useflag_re = _get_useflag_re(None)
+	useflag_re = _get_useflag_re(eapi)
 	mysplit = mystr.split()
 	level = 0
 	stack = [[]]

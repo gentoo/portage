@@ -112,7 +112,8 @@ class circular_dependency_handler(object):
 					parent_atom = atom.unevaluated_atom
 					break
 
-			affecting_use = extract_affecting_use(dep, parent_atom)
+			affecting_use = extract_affecting_use(dep, parent_atom,
+				eapi=parent.metadata["EAPI"])
 
 			# Make sure we don't want to change a flag that is 
 			#	a) in use.mask or use.force
