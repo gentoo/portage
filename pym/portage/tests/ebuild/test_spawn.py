@@ -30,8 +30,8 @@ class SpawnTestCase(TestCase):
 				scheduler=scheduler,
 				logfile=logfile)
 			proc.start()
-			proc.wait()
 			os.close(null_fd)
+			self.assertEqual(proc.wait(), os.EX_OK)
 			f = codecs.open(_unicode_encode(logfile,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['content'], errors='strict')
