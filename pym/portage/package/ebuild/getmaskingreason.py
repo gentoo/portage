@@ -47,6 +47,17 @@ def getmaskingreason(mycpv, metadata=None, settings=None,
 		if myrepo is not None:
 			myrepo = _gen_valid_repo(metadata["repository"])
 
+	if metadata is not None and \
+		not portage.eapi_is_supported(metadata["EAPI"]):
+		# Return early since otherwise we might produce invalid
+		# results given that the EAPI is not supported. Also,
+		# metadata is mostly useless in this case since it doesn't
+		# contain essential things like SLOT.
+		if return_location:
+			return (None, None)
+		else:
+			return None
+
 	# Sometimes we can't access SLOT or repository due to corruption.
 	pkg = mycpv
 	if metadata is not None:
