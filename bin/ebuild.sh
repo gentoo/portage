@@ -1073,8 +1073,8 @@ dyn_compile() {
 
 	if hasq distcc $FEATURES && hasq distcc-pump $FEATURES ; then
 		if [[ -z $INCLUDE_SERVER_PORT ]] || [[ ! -w $INCLUDE_SERVER_PORT ]] ; then
-			eval $(/usr/bin/pump --startup)
-			trap "/usr/bin/pump --shutdown" EXIT
+			eval $(pump --startup)
+			trap "pump --shutdown" EXIT
 		fi
 	fi
 
