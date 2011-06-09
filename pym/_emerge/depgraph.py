@@ -6879,6 +6879,9 @@ def show_masked_packages(masked_packages):
 			not portage.eapi_is_supported(metadata["EAPI"])
 		if eapi_masked:
 			have_eapi_mask = True
+			# When masked by EAPI, metadata is mostly useless since
+			# it doesn't contain essential things like SLOT.
+			metadata = None
 		comment, filename = None, None
 		if not eapi_masked and \
 			"package.mask" in mreasons:
