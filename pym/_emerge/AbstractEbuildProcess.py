@@ -181,6 +181,11 @@ class AbstractEbuildProcess(SpawnProcess):
 		return not ('sesandbox' in self.settings.features \
 			and self.settings.selinux_enabled()) or os.isatty(slave_fd)
 
+	def _killed_by_signal(self, signum):
+		msg = _("The ebuild phase '%s' has been "
+		"killed by signal %s.") % (self.phase, signum)
+		self._eerror(textwrap.wrap(msg, 72))
+
 	def _unexpected_exit(self):
 
 		phase = self.phase
@@ -243,14 +248,23 @@ class AbstractEbuildProcess(SpawnProcess):
 			if self._exit_command.exitcode is not None:
 				self.returncode = self._exit_command.exitcode
 			else:
-				self.returncode = 1
-				if not self.cancelled:
-					self._unexpected_exit()
+				if self.returncode < 0:
+					if not self.cancelled:
+						self._killed_by_signal(-self.returncode)
+				else:
+					self.returncode = 1
+					if not self.cancelled:
+						self._unexpected_exit()
 			if self._build_dir is not None:
 				self._build_dir.unlock()
 				self._build_dir = None
 		elif not self.cancelled:
 			exit_file = self.settings.get('PORTAGE_EBUILD_EXIT_FILE')
 			if exit_file and not os.path.exists(exit_file):
-				self.returncode = 1
-				self._unexpected_exit()
+				if self.returncode < 0:
+					if not self.cancelled:
+						self._killed_by_signal(-self.returncode)
+				else:
+					self.returncode = 1
+					if not self.cancelled:
+						self._unexpected_exit()
