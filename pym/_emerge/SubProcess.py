@@ -87,7 +87,7 @@ class SubProcess(AbstractPollTask):
 			if e.errno != errno.ECHILD:
 				raise
 			del e
-			self._set_returncode((self.pid, 1))
+			self._set_returncode((self.pid, 1 << 8))
 		else:
 			if wait_retval[0] != 0:
 				self._set_returncode(wait_retval)
@@ -98,7 +98,7 @@ class SubProcess(AbstractPollTask):
 					if e.errno != errno.ECHILD:
 						raise
 					del e
-					self._set_returncode((self.pid, 1))
+					self._set_returncode((self.pid, 1 << 8))
 				else:
 					self._set_returncode(wait_retval)
 

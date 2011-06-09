@@ -57,7 +57,7 @@ class AbstractEbuildProcess(SpawnProcess):
 			"since PORTAGE_BUILDIR does not exist: '%s'") % \
 			(self.phase, self.settings['PORTAGE_BUILDDIR'])
 			self._eerror(textwrap.wrap(msg, 72))
-			self._set_returncode((self.pid, 1))
+			self._set_returncode((self.pid, 1 << 8))
 			self.wait()
 			return
 

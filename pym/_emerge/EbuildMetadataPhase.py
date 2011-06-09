@@ -46,7 +46,7 @@ class EbuildMetadataPhase(SubProcess):
 			if not portage.eapi_is_supported(eapi):
 				self.metadata_callback(self.cpv, self.ebuild_path,
 					self.repo_path, {'EAPI' : eapi}, self.ebuild_mtime)
-				self._set_returncode((self.pid, os.EX_OK))
+				self._set_returncode((self.pid, os.EX_OK << 8))
 				self.wait()
 				return
 
@@ -98,7 +98,7 @@ class EbuildMetadataPhase(SubProcess):
 		if isinstance(retval, int):
 			# doebuild failed before spawning
 			self._unregister()
-			self._set_returncode((self.pid, retval))
+			self._set_returncode((self.pid, retval << 8))
 			self.wait()
 			return
 
