@@ -124,14 +124,18 @@ class SubProcess(AbstractPollTask):
 			self._files = None
 
 	def _set_returncode(self, wait_retval):
+		"""
+		Set the returncode in a manner compatible with
+		subprocess.Popen.returncode: A negative value -N indicates
+		that the child was terminated by signal N (Unix only).
+		"""
 
-		retval = wait_retval[1]
+		pid, status = wait_retval
 
-		if retval != os.EX_OK:
-			if retval & 0xff:
-				retval = (retval & 0xff) << 8
-			else:
-				retval = retval >> 8
+		if os.WIFSIGNALED(status):
+			retval = - os.WTERMSIG(status)
+		else:
+			retval = os.WEXITSTATUS(status)
 
 		self.returncode = retval
 
