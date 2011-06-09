@@ -114,7 +114,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 	try:
 		locking_method(myfd, fcntl.LOCK_EX|fcntl.LOCK_NB)
 	except IOError as e:
-		if "errno" not in dir(e):
+		if not hasattr(e, "errno"):
 			raise
 		if e.errno in (errno.EACCES, errno.EAGAIN):
 			# resource temp unavailable; eg, someone beat us to the lock.
