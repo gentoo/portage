@@ -369,6 +369,9 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 			if need_simple_token:
 				raise InvalidDependString(
 					_("expected: file name, got: '%s', token %s") % (token, pos+1))
+			if len(mysplit) >= pos+2 and mysplit[pos+1] == ")":
+				raise InvalidDependString(
+					_("expected: dependency string, got: ')', token %s") % (pos+1,))
 			need_bracket = False
 			stack.append([])
 			level += 1
