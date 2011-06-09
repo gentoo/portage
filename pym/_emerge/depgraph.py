@@ -2804,8 +2804,8 @@ class depgraph(object):
 
 					metadata, mreasons  = get_mask_info(root_config, cpv, pkgsettings, db, pkg_type, \
 						built, installed, db_keys, myrepo=repo, _pkg_use_enabled=self._pkg_use_enabled)
-
-					if metadata is not None:
+					if metadata is not None and \
+						portage.eapi_is_supported(metadata["EAPI"]):
 						if not repo:
 							repo = metadata.get('repository')
 						pkg = self._pkg(cpv, pkg_type, root_config,
@@ -6875,8 +6875,13 @@ def show_masked_packages(masked_packages):
 		if output_cpv in shown_cpvs:
 			continue
 		shown_cpvs.add(output_cpv)
+		eapi_masked = metadata is not None and \
+			not portage.eapi_is_supported(metadata["EAPI"])
+		if eapi_masked:
+			have_eapi_mask = True
 		comment, filename = None, None
-		if "package.mask" in mreasons:
+		if not eapi_masked and \
+			"package.mask" in mreasons:
 			comment, filename = \
 				portage.getmaskingreason(
 				cpv, metadata=metadata,
@@ -6884,9 +6889,7 @@ def show_masked_packages(masked_packages):
 				portdb=root_config.trees["porttree"].dbapi,
 				return_location=True)
 		missing_licenses = []
-		if metadata:
-			if not portage.eapi_is_supported(metadata["EAPI"]):
-				have_eapi_mask = True
+		if not eapi_masked and metadata is not None:
 			try:
 				missing_licenses = \
 					pkgsettings._getMissingLicenses(
