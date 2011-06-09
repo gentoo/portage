@@ -641,13 +641,15 @@ _usedep_re = {
 
 def _get_usedep_re(eapi):
 	"""
+	When eapi is None then validation is not as strict, since we want the
+	same to work for multiple EAPIs that may have slightly different rules.
 	@param eapi: The EAPI
 	@type eapi: String or None
 	@rtype: regular expression object
-	@return: A regular expression object that matches valid USE flags for the
-		given eapi. If eapi is None then the latest supported EAPI is assumed.
+	@return: A regular expression object that matches valid USE deps for the
+		given eapi.
 	"""
-	if eapi in ("4-python",):
+	if eapi in (None, "4-python",):
 		return _usedep_re["4-python"]
 	else:
 		return _usedep_re["0"]
@@ -1625,7 +1627,16 @@ _useflag_re = {
 }
 
 def _get_useflag_re(eapi):
-	if eapi in ("4-python",):
+	"""
+	When eapi is None then validation is not as strict, since we want the
+	same to work for multiple EAPIs that may have slightly different rules.
+	@param eapi: The EAPI
+	@type eapi: String or None
+	@rtype: regular expression object
+	@return: A regular expression object that matches valid USE flags for the
+		given eapi.
+	"""
+	if eapi in (None, "4-python",):
 		return _useflag_re["4-python"]
 	else:
 		return _useflag_re["0"]
