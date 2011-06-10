@@ -249,7 +249,7 @@ class binarytree(object):
 			self._pkgindex_header_keys = set([
 				"ACCEPT_KEYWORDS", "ACCEPT_LICENSE",
 				"ACCEPT_PROPERTIES", "CBUILD",
-				"CHOST", "CONFIG_PROTECT", "CONFIG_PROTECT_MASK", "FEATURES",
+				"CONFIG_PROTECT", "CONFIG_PROTECT_MASK", "FEATURES",
 				"GENTOO_MIRRORS", "INSTALL_MASK", "SYNC", "USE"])
 			self._pkgindex_default_pkg_data = {
 				"BUILD_TIME"         : "",
@@ -274,6 +274,7 @@ class binarytree(object):
 			# Populate the header with appropriate defaults.
 			self._pkgindex_default_header_data = {
 				"VERSION"      : str(self._pkgindex_version),
+				"CHOST"        : self.settings.get("CHOST", ""),
 				"repository"   : "",
 			}
 
