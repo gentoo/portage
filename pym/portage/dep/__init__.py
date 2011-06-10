@@ -1063,7 +1063,7 @@ class Atom(_atom_base):
 				(_atom_base, type(s)))
 
 		if not isinstance(s, _atom_base):
-			# Avoid TypeError with from _atom_base.__init__ with PyPy.
+			# Avoid TypeError from _atom_base.__init__ with PyPy.
 			s = _unicode_decode(s)
 
 		_atom_base.__init__(s)
