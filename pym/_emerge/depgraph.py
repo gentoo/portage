@@ -5025,11 +5025,23 @@ class depgraph(object):
 						if selected_nodes:
 							break
 
-					if prefer_asap and asap_nodes and not selected_nodes:
-						# We failed to find any asap nodes to merge, so ignore
-						# them for the next iteration.
-						prefer_asap = False
-						continue
+					if prefer_asap and asap_nodes:
+						if not selected_nodes:
+							# We failed to find any asap nodes to merge,
+							# so ignore them for the next iteration.
+							prefer_asap = False
+							continue
+						# Make sure that we haven't selected a large runtime
+						# cycle that is obviously sub-optimal. This will be
+						# obvious if any of selected_nodes is a leaf node
+						# when medium_soft deps are ignored.
+						for node in selected_nodes:
+							if not mygraph.child_nodes(node, ignore_priority =
+								DepPriorityNormalRange.ignore_medium_soft):
+								prefer_asap = False
+								break
+						if not prefer_asap:
+							continue
 
 			if selected_nodes and ignore_priority is not None:
 				# Try to merge ignored medium_soft deps as soon as possible
