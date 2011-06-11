@@ -5010,36 +5010,36 @@ class depgraph(object):
 					mergeable_nodes = set(nodes)
 					if prefer_asap and asap_nodes:
 						nodes = asap_nodes
-					for i in range(priority_range.SOFT,
-						priority_range.MEDIUM_SOFT + 1):
-						ignore_priority = priority_range.ignore_priority[i]
-						for node in nodes:
-							if not mygraph.parent_nodes(node):
-								continue
-							selected_nodes = set()
-							if gather_deps(ignore_priority,
-								mergeable_nodes, selected_nodes, node):
-								# When selecting asap_nodes, we need to ensure
-								# that we don't selected a large runtime cycle
-								# that is obviously sub-optimal. This will be
-								# obvious if any of the non-asap selected_nodes
-								# is a leaf node when medium_soft deps are
-								# ignored.
-								if prefer_asap and asap_nodes and \
-									len(selected_nodes) > 1:
-									for node in selected_nodes.difference(
-										asap_nodes):
-										if not mygraph.child_nodes(node,
-											ignore_priority =
-											DepPriorityNormalRange.ignore_medium_soft):
-											selected_nodes = None
-											break
-								if selected_nodes:
-									break
-							else:
-								selected_nodes = None
-						if selected_nodes:
-							break
+					# When gathering the nodes belonging to a runtime cycle,
+					# we want to minimize the number of nodes gathered, since
+					# this tends to produce a more optimal merge order.
+					# Ignoring all medium_soft deps serves this purpose.
+					ignore_priority = priority_range.ignore_medium_soft
+					for node in nodes:
+						if not mygraph.parent_nodes(node):
+							continue
+						selected_nodes = set()
+						if gather_deps(ignore_priority,
+							mergeable_nodes, selected_nodes, node):
+							# When selecting asap_nodes, we need to ensure
+							# that we don't selected a large runtime cycle
+							# that is obviously sub-optimal. This will be
+							# obvious if any of the non-asap selected_nodes
+							# is a leaf node when medium_soft deps are
+							# ignored.
+							if prefer_asap and asap_nodes and \
+								len(selected_nodes) > 1:
+								for node in selected_nodes.difference(
+									asap_nodes):
+									if not mygraph.child_nodes(node,
+										ignore_priority =
+										DepPriorityNormalRange.ignore_medium_soft):
+										selected_nodes = None
+										break
+							if selected_nodes:
+								break
+						else:
+							selected_nodes = None
 
 					if prefer_asap and asap_nodes and not selected_nodes:
 						# We failed to find any asap nodes to merge, so ignore
