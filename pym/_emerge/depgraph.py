@@ -4698,7 +4698,9 @@ class depgraph(object):
 
 	def _serialize_tasks(self):
 
-		if "--debug" in self._frozen_config.myopts:
+		debug = "--debug" in self._frozen_config.myopts
+
+		if debug:
 			writemsg("\ndigraph:\n\n", noiselevel=-1)
 			self._dynamic_config.digraph.debug_print()
 			writemsg("\n", noiselevel=-1)
@@ -5049,6 +5051,15 @@ class depgraph(object):
 									smallest_cycle = selected_nodes
 
 					selected_nodes = smallest_cycle
+
+					if selected_nodes and debug:
+						writemsg("\nruntime cycle digraph (%s nodes):\n\n" %
+							(len(selected_nodes),), noiselevel=-1)
+						cycle_digraph = mygraph.copy()
+						cycle_digraph.difference_update([x for x in
+							cycle_digraph if x not in selected_nodes])
+						cycle_digraph.debug_print()
+						writemsg("\n", noiselevel=-1)
 
 					if prefer_asap and asap_nodes and not selected_nodes:
 						# We failed to find any asap nodes to merge, so ignore
