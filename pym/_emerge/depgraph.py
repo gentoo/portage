@@ -5537,29 +5537,26 @@ class depgraph(object):
 			msg = []
 			msg.append("\n")
 			indent = "  "
-			# Max number of parents shown, to avoid flooding the display.
-			max_parents = 3
 			for pkg, parent_atoms in conflict_pkgs.items():
 
-				pruned_list = set()
-
 				# Prefer packages that are not directly involved in a conflict.
+				# It can be essential to see all the packages here, so don't
+				# omit any. If the list is long, people can simply use a pager.
+				preferred_parents = set()
 				for parent_atom in parent_atoms:
-					if len(pruned_list) >= max_parents:
-						break
 					parent, atom = parent_atom
 					if parent not in conflict_pkgs:
-						pruned_list.add(parent_atom)
+						preferred_parents.add(parent_atom)
 
-				for parent_atom in parent_atoms:
-					if len(pruned_list) >= max_parents:
-						break
-					pruned_list.add(parent_atom)
+				ordered_list = list(preferred_parents)
+				if len(parent_atoms) > len(ordered_list):
+					for parent_atom in parent_atoms:
+						if parent_atom not in preferred_parents:
+							ordered_list.append(parent_atom)
 
-				omitted_parents = len(parent_atoms) - len(pruned_list)
 				msg.append(indent + "%s pulled in by\n" % pkg)
 
-				for parent_atom in pruned_list:
+				for parent_atom in ordered_list:
 					parent, atom = parent_atom
 					msg.append(2*indent)
 					if isinstance(parent,
@@ -5572,10 +5569,6 @@ class depgraph(object):
 						# Package types.
 						msg.append("%s required by %s" % (atom, parent))
 					msg.append("\n")
-
-				if omitted_parents:
-					msg.append(2*indent)
-					msg.append("(and %d more)\n" % omitted_parents)
 
 				msg.append("\n")
 
