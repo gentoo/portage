@@ -4940,12 +4940,18 @@ class depgraph(object):
 				# the parent to have been removed from the graph already.
 				asap_nodes = [node for node in asap_nodes \
 					if mygraph.contains(node)]
-				for node in asap_nodes:
-					if not mygraph.child_nodes(node,
-						ignore_priority=priority_range.ignore_soft):
-						selected_nodes = [node]
-						asap_nodes.remove(node)
+				for i in range(priority_range.SOFT,
+					priority_range.MEDIUM_SOFT + 1):
+					ignore_priority = priority_range.ignore_priority[i]
+					for node in asap_nodes:
+						if not mygraph.child_nodes(node,
+							ignore_priority=ignore_priority):
+							selected_nodes = [node]
+							asap_nodes.remove(node)
+							break
+					if selected_nodes:
 						break
+
 			if not selected_nodes and \
 				not (prefer_asap and asap_nodes):
 				for i in range(priority_range.NONE,
