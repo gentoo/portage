@@ -5015,6 +5015,7 @@ class depgraph(object):
 					# this tends to produce a more optimal merge order.
 					# Ignoring all medium_soft deps serves this purpose.
 					ignore_priority = priority_range.ignore_medium_soft
+					smallest_cycle = None
 					for node in nodes:
 						if not mygraph.parent_nodes(node):
 							continue
@@ -5037,9 +5038,11 @@ class depgraph(object):
 										selected_nodes = None
 										break
 							if selected_nodes:
-								break
-						else:
-							selected_nodes = None
+								if smallest_cycle is None or \
+									len(selected_nodes) < len(smallest_cycle):
+									smallest_cycle = selected_nodes
+
+					selected_nodes = smallest_cycle
 
 					if prefer_asap and asap_nodes and not selected_nodes:
 						# We failed to find any asap nodes to merge, so ignore
