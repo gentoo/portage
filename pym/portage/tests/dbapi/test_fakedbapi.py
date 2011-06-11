@@ -1,6 +1,9 @@
 # Copyright 2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import shutil
+import tempfile
+
 from portage.dbapi.virtual import fakedbapi
 from portage.package.ebuild.config import config
 from portage.tests import TestCase
@@ -33,10 +36,14 @@ class TestFakedbapi(TestCase):
 			("virtual/package-manager",             ["virtual/package-manager-0"]),
 		)
 
-		fakedb = fakedbapi(settings=config(config_profile_path=""))
-		for cpv, metadata in packages:
-			fakedb.cpv_inject(cpv, metadata=metadata)
+		tempdir = tempfile.mkdtemp()
+		try:
+			fakedb = fakedbapi(settings=config(config_profile_path="",
+				config_root=tempdir, target_root=tempdir))
+			for cpv, metadata in packages:
+				fakedb.cpv_inject(cpv, metadata=metadata)
 
-		for atom, expected_result in match_tests:
-			result = []
-			self.assertEqual( fakedb.match(atom), expected_result )
+			for atom, expected_result in match_tests:
+				self.assertEqual( fakedb.match(atom), expected_result )
+		finally:
+			shutil.rmtree(tempdir)
