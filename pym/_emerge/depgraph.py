@@ -5035,13 +5035,15 @@ class depgraph(object):
 						# cycle that is obviously sub-optimal. This will be
 						# obvious if any of selected_nodes is a leaf node
 						# when medium_soft deps are ignored.
-						for node in selected_nodes:
-							if not mygraph.child_nodes(node, ignore_priority =
-								DepPriorityNormalRange.ignore_medium_soft):
-								prefer_asap = False
-								break
-						if not prefer_asap:
-							continue
+						if len(selected_nodes) > 1:
+							for node in selected_nodes:
+								if not mygraph.child_nodes(node,
+									ignore_priority =
+									DepPriorityNormalRange.ignore_medium_soft):
+									prefer_asap = False
+									break
+							if not prefer_asap:
+								continue
 
 			if selected_nodes and ignore_priority is not None:
 				# Try to merge ignored medium_soft deps as soon as possible
