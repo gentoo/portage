@@ -5031,7 +5031,7 @@ class depgraph(object):
 						if gather_deps(ignore_priority,
 							mergeable_nodes, selected_nodes, node):
 							# When selecting asap_nodes, we need to ensure
-							# that we don't selected a large runtime cycle
+							# that we haven't selected a large runtime cycle
 							# that is obviously sub-optimal. This will be
 							# obvious if any of the non-asap selected_nodes
 							# is a leaf node when medium_soft deps are
