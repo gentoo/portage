@@ -4,6 +4,7 @@
 import shutil
 import tempfile
 
+from portage import os
 from portage.dbapi.virtual import fakedbapi
 from portage.package.ebuild.config import config
 from portage.tests import TestCase
@@ -17,7 +18,7 @@ class TestFakedbapi(TestCase):
 				"IUSE"         : "ipc doc",
 				"repository"   : "gentoo",
 				"SLOT"         : "0",
-				"USE"          : "ipc",
+				"USE"          : "ipc missing-iuse",
 			}),
 			("virtual/package-manager-0", {
 				"EAPI"         : "0",
@@ -31,6 +32,9 @@ class TestFakedbapi(TestCase):
 			("sys-apps/portage:0[-ipc]",            []),
 			("sys-apps/portage:0[doc]",             []),
 			("sys-apps/portage:0[-doc]",            ["sys-apps/portage-2.1.10"]),
+			("sys-apps/portage:0",                  ["sys-apps/portage-2.1.10"]),
+			("sys-apps/portage:0[missing-iuse]",    []),
+			("sys-apps/portage:0[-missing-iuse]",   []),
 			("sys-apps/portage:0::gentoo[ipc]",     ["sys-apps/portage-2.1.10"]),
 			("sys-apps/portage:0::multilib[ipc]",   []),
 			("virtual/package-manager",             ["virtual/package-manager-0"]),
@@ -38,8 +42,13 @@ class TestFakedbapi(TestCase):
 
 		tempdir = tempfile.mkdtemp()
 		try:
+			portdir = os.path.join(tempdir, "usr/portage")
+			os.makedirs(portdir)
+			env = {
+				"PORTDIR": portdir,
+			}
 			fakedb = fakedbapi(settings=config(config_profile_path="",
-				config_root=tempdir, target_root=tempdir))
+				env=env, _eprefix=tempdir))
 			for cpv, metadata in packages:
 				fakedb.cpv_inject(cpv, metadata=metadata)
 
