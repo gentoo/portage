@@ -284,7 +284,7 @@ class binarytree(object):
 			# pkgindex header already defines these keys, then
 			# they will appropriately override our defaults.
 			main_repo = self.settings.repositories.mainRepo()
-			if main_repo is not None:
+			if main_repo is not None and not main_repo.missing_repo_name:
 				self._pkgindex_default_header_data["repository"] = \
 					main_repo.name
 
