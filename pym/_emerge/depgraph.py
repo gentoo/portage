@@ -5033,10 +5033,10 @@ class depgraph(object):
 							continue
 						# Make sure that we haven't selected a large runtime
 						# cycle that is obviously sub-optimal. This will be
-						# obvious if any of selected_nodes is a leaf node
-						# when medium_soft deps are ignored.
+						# obvious if any of the non-asap selected_nodes is
+						# a leaf node when medium_soft deps are ignored.
 						if len(selected_nodes) > 1:
-							for node in selected_nodes:
+							for node in selected_nodes.difference(asap_nodes):
 								if not mygraph.child_nodes(node,
 									ignore_priority =
 									DepPriorityNormalRange.ignore_medium_soft):
