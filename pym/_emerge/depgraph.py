@@ -5041,12 +5041,11 @@ class depgraph(object):
 						if selected_nodes:
 							break
 
-					if prefer_asap and asap_nodes:
-						if not selected_nodes:
-							# We failed to find any asap nodes to merge,
-							# so ignore them for the next iteration.
-							prefer_asap = False
-							continue
+					if prefer_asap and asap_nodes and not selected_nodes:
+						# We failed to find any asap nodes to merge, so ignore
+						# them for the next iteration.
+						prefer_asap = False
+						continue
 
 			if selected_nodes and ignore_priority is not None:
 				# Try to merge ignored medium_soft deps as soon as possible
