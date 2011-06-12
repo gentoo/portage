@@ -81,6 +81,27 @@ class MergeOrderTestCase(TestCase):
 				"DEPEND": "app-misc/circ-satisfied-a",
 				"RDEPEND": "app-misc/circ-satisfied-a",
 			},
+			"app-misc/circ-smallest-a-1": {
+				"RDEPEND": "app-misc/circ-smallest-b",
+			},
+			"app-misc/circ-smallest-b-1": {
+				"RDEPEND": "app-misc/circ-smallest-a",
+			},
+			"app-misc/circ-smallest-c-1": {
+				"RDEPEND": "app-misc/circ-smallest-d",
+			},
+			"app-misc/circ-smallest-d-1": {
+				"RDEPEND": "app-misc/circ-smallest-e",
+			},
+			"app-misc/circ-smallest-e-1": {
+				"RDEPEND": "app-misc/circ-smallest-c",
+			},
+			"app-misc/circ-smallest-f-1": {
+				"RDEPEND": "app-misc/circ-smallest-g app-misc/circ-smallest-a app-misc/circ-smallest-c",
+			},
+			"app-misc/circ-smallest-g-1": {
+				"RDEPEND": "app-misc/circ-smallest-f",
+			},
 			"app-misc/installed-blocker-a-1" : {
 				"EAPI"   : "2",
 				"DEPEND" : "!app-misc/blocker-buildtime-a",
@@ -294,6 +315,18 @@ class MergeOrderTestCase(TestCase):
 				ambiguous_merge_order = True,
 				merge_order_assertions = (("app-misc/circ-satisfied-a-1", "app-misc/circ-satisfied-c-1"),),
 				mergelist = [("app-misc/circ-satisfied-a-1", "app-misc/circ-satisfied-b-1", "app-misc/circ-satisfied-c-1")]),
+			# In the case of multiple runtime cycles, where some cycles
+			# may depend on smaller independent cycles, it's optimal
+			# to merge smaller independent cycles before other cycles
+			# that depend on them.
+			ResolverPlaygroundTestCase(
+				["app-misc/circ-smallest-a", "app-misc/circ-smallest-c", "app-misc/circ-smallest-f"],
+				success = True,
+				ambiguous_merge_order = True,
+				all_permutations = True,
+				mergelist = [('app-misc/circ-smallest-a-1', 'app-misc/circ-smallest-b-1'),
+				('app-misc/circ-smallest-c-1', 'app-misc/circ-smallest-d-1', 'app-misc/circ-smallest-e-1'),
+				('app-misc/circ-smallest-f-1', 'app-misc/circ-smallest-g-1')]),
 			# installed package has buildtime-only blocker
 			# that should be ignored
 			ResolverPlaygroundTestCase(

@@ -5022,6 +5022,12 @@ class depgraph(object):
 					# we want to minimize the number of nodes gathered, since
 					# this tends to produce a more optimal merge order.
 					# Ignoring all medium_soft deps serves this purpose.
+					# In the case of multiple runtime cycles, where some cycles
+					# may depend on smaller independent cycles, it's optimal
+					# to merge smaller independent cycles before other cycles
+					# that depend on them. Therefore, we search for the
+					# smallest cycle in order to try and identify and prefer
+					# these smaller independent cycles.
 					ignore_priority = priority_range.ignore_medium_soft
 					smallest_cycle = None
 					for node in nodes:
