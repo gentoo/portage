@@ -1048,9 +1048,10 @@ class Scheduler(PollScheduler):
 		if rval != os.EX_OK and not keep_going:
 			return rval
 
-		rval = self._run_pkg_pretend()
-		if rval != os.EX_OK:
-			return rval
+		if not fetchonly:
+			rval = self._run_pkg_pretend()
+			if rval != os.EX_OK:
+				return rval
 
 		while True:
 
