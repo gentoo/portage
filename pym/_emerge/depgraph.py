@@ -3440,6 +3440,8 @@ class depgraph(object):
 		Example: target_use = { "foo": True, "bar": False }
 		The flags target_use must be in the pkg's IUSE.
 		"""
+		if pkg.built:
+			return pkg.use.enabled
 		needed_use_config_change = self._dynamic_config._needed_use_config_changes.get(pkg)
 
 		if target_use is None:
@@ -3739,7 +3741,7 @@ class depgraph(object):
 					if atom.use:
 
 						matched_pkgs_ignore_use.append(pkg)
-						if allow_use_changes:
+						if allow_use_changes and not pkg.built:
 							target_use = {}
 							for flag in atom.use.enabled:
 								target_use[flag] = True
