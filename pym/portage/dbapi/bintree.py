@@ -273,7 +273,6 @@ class binarytree(object):
 
 			# Populate the header with appropriate defaults.
 			self._pkgindex_default_header_data = {
-				"VERSION"      : str(self._pkgindex_version),
 				"CHOST"        : self.settings.get("CHOST", ""),
 				"repository"   : "",
 			}
