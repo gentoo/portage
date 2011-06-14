@@ -65,7 +65,7 @@ class BinpkgFetcher(SpawnProcess):
 
 		if pretend:
 			portage.writemsg_stdout("\n%s\n" % uri, noiselevel=-1)
-			self._set_returncode((self.pid, os.EX_OK))
+			self._set_returncode((self.pid, os.EX_OK << 8))
 			self.wait()
 			return
 

@@ -309,6 +309,7 @@ class slot_conflict_handler(object):
 					msg.append(" pulled in by\n")
 
 					selected_for_display = set()
+					unconditional_use_deps = set()
 
 					for (type, sub_type), parents in collision_reasons.items():
 						#From each (type, sub_type) pair select at least one atom.
@@ -335,8 +336,6 @@ class slot_conflict_handler(object):
 							#not possible to change them on the parent, which means there
 							#are fewer possible solutions.
 							use = sub_type
-							hard_matches = set()
-							conditional_matches = set()
 							for ppkg, atom, other_pkg in parents:
 								parent_use = None
 								if isinstance(ppkg, Package):
@@ -345,17 +344,13 @@ class slot_conflict_handler(object):
 									_pkg_use_enabled(other_pkg), other_pkg.iuse.is_valid_flag,
 									parent_use=parent_use)
 								if use in violated_atom.use.enabled.union(violated_atom.use.disabled):
-									hard_matches.add((ppkg, atom))
-								else:
-									conditional_matches.add((ppkg, atom))
-
-							if hard_matches:
-								matches = hard_matches
-							else:
-								matches = conditional_matches
-							
-							if not selected_for_display.intersection(matches):
-								selected_for_display.add(matches.pop())
+									unconditional_use_deps.add((ppkg, atom))
+								# When USE flags are removed, it can be
+								# essential to see all broken reverse
+								# dependencies here, so don't omit any.
+								# If the list is long, people can simply
+								# use a pager.
+								selected_for_display.add((ppkg, atom))
 
 					def highlight_violations(atom, version, use=[]):
 						"""Colorize parts of an atom"""
@@ -400,7 +395,14 @@ class slot_conflict_handler(object):
 						
 						return atom_str
 
-					for parent_atom in selected_for_display:
+					# Show unconditional use deps first, since those
+					# are more problematic than the conditional kind.
+					ordered_list = list(unconditional_use_deps)
+					if len(selected_for_display) > len(unconditional_use_deps):
+						for parent_atom in selected_for_display:
+							if parent_atom not in unconditional_use_deps:
+								ordered_list.append(parent_atom)
+					for parent_atom in ordered_list:
 						parent, atom = parent_atom
 						msg.append(2*indent)
 						if isinstance(parent,

@@ -25,6 +25,7 @@ if sys.hexversion >= 0x3000000:
 	basestring = str
 
 HARDLINK_FD = -2
+_default_lock_fn = fcntl.lockf
 
 # Used by emerge in order to disable the "waiting for lock" message
 # so that it doesn't interfere with the status display.
@@ -109,11 +110,11 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 
 	# try for a non-blocking lock, if it's held, throw a message
 	# we're waiting on lockfile and use a blocking attempt.
-	locking_method = fcntl.lockf
+	locking_method = _default_lock_fn
 	try:
-		fcntl.lockf(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+		locking_method(myfd, fcntl.LOCK_EX|fcntl.LOCK_NB)
 	except IOError as e:
-		if "errno" not in dir(e):
+		if not hasattr(e, "errno"):
 			raise
 		if e.errno in (errno.EACCES, errno.EAGAIN):
 			# resource temp unavailable; eg, someone beat us to the lock.
@@ -135,7 +136,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 				out.ebegin(waiting_msg)
 			# try for the exclusive lock now.
 			try:
-				fcntl.lockf(myfd, fcntl.LOCK_EX)
+				locking_method(myfd, fcntl.LOCK_EX)
 			except EnvironmentError as e:
 				if out is not None:
 					out.eend(1, str(e))

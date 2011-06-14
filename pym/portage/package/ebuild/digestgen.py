@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['digestgen']
@@ -106,6 +106,7 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 					os.path.dirname(mysettings["O"])))
 				for myfile in missing_files:
 					uris = set()
+					all_restrict = set()
 					for cpv in distfiles_map[myfile]:
 						uris.update(myportdb.getFetchMap(
 							cpv, mytree=mytree)[myfile])
@@ -115,9 +116,19 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 						# they don't apply unconditionally. Assume such
 						# conditionals only apply on the client side where
 						# digestgen() does not need to be called.
-						restrict = use_reduce(restrict,
-							flat=True, matchnone=True)
-						restrict_fetch = 'fetch' in restrict
+						all_restrict.update(use_reduce(restrict,
+							flat=True, matchnone=True))
+
+						# fetch() uses CATEGORY and PF to display a message
+						# when fetch restriction is triggered.
+						cat, pf = catsplit(cpv)
+						mysettings["CATEGORY"] = cat
+						mysettings["PF"] = pf
+
+					# fetch() uses PORTAGE_RESTRICT to control fetch
+					# restriction, which is only applied to files that
+					# are not fetchable via a mirror:// URI.
+					mysettings["PORTAGE_RESTRICT"] = " ".join(all_restrict)
 
 					try:
 						st = os.stat(os.path.join(
@@ -125,8 +136,7 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 					except OSError:
 						st = None
 
-					if restrict_fetch or \
-						not fetch({myfile : uris}, mysettings):
+					if not fetch({myfile : uris}, mysettings):
 						myebuild = os.path.join(mysettings["O"],
 							catsplit(cpv)[1] + ".ebuild")
 						spawn_nofetch(myportdb, myebuild,

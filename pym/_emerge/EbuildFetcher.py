@@ -38,13 +38,13 @@ class EbuildFetcher(SpawnProcess):
 				(self.pkg.cpv, e)
 			msg_lines.append(msg)
 			self._eerror(msg_lines)
-			self._set_returncode((self.pid, 1))
+			self._set_returncode((self.pid, 1 << 8))
 			self.wait()
 			return
 
 		if not uri_map:
 			# Nothing to fetch.
-			self._set_returncode((self.pid, os.EX_OK))
+			self._set_returncode((self.pid, os.EX_OK << 8))
 			self.wait()
 			return
 
@@ -59,7 +59,7 @@ class EbuildFetcher(SpawnProcess):
 		if self.prefetch and \
 			self._prefetch_size_ok(uri_map, settings, ebuild_path):
 			self.config_pool.deallocate(settings)
-			self._set_returncode((self.pid, os.EX_OK))
+			self._set_returncode((self.pid, os.EX_OK << 8))
 			self.wait()
 			return
 

@@ -115,14 +115,55 @@ more detailed explanations.
 .B DEPEND atom
 An atom is either of the form category/package or consists of an operator
 followed by category/package followed by a hyphen and a version specification.
-An atom might be prefixed by a slot specification.
-The extended atom syntax allows atoms of the form category/package, where an
-arbitrary number of characters has been replaced by a '*'. An extended atom may contain
-more than one '*', but not two next to each other. The extend atom syntax is only
-available in user configuration files and for some command line options.
+An atom might be suffixed by a slot specification.
 .br
 More reading: 
 .BR ebuild (5)
+
+.B Extended Atom Syntax
+.br
+The following atom syntax extensions are only supported in user
+configuration files and command line arguments for programs such as
+\fBemerge(1)\fR:
+.RS
+.TP
+.B Repository Constraints
+Atoms with repository constraints have a '::' separator appended to the
+right side, followed by a repository name. Each repository name should
+correspond to the value of a \fBrepo_name\fR entry from one of the
+repositories that is configured via the \fBPORTDIR\fR or
+\fBPORTDIR_OVERLAY\fR variables (see \fBmake.conf\fR(5)).
+
+.I Examples:
+.nf
+# match sed from the 'gentoo' repository
+sys\-apps/sed::gentoo
+# match kdelibs from the 'kde\-testing' repository
+kde\-base/kdelibs::kde\-testing
+# match empathy from the 'gnome' repository
+net\-im/empathy::gnome
+.fi
+.TP
+.B Wildcard Patterns
+Atoms containing wildcard patterns are of the form category/package, where
+the special '*' wildcard character substitutes for an arbitrary number
+of normal characters. More than one '*' character is allowed, but not two
+next to each other.
+
+.I Examples:
+.nf
+# match anything from the 'sys\-apps' category
+sys\-apps/*
+# match packages named 'zlib' from any category
+*/zlib
+# match any package from a category that begins with 'net\-'
+net\-*/*
+# match any package name from any category
+*/*
+# match any package from the 'gentoo' repository
+*/*::gentoo
+.fi
+.RE
 .TP
 .B KEYWORD
 Each architecture has a unique KEYWORD.

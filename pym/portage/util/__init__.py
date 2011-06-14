@@ -536,8 +536,8 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 		expand_map = {}
 	mykeys = {}
 	try:
-		# NOTE: shex doesn't seem to support unicode objects
-		# (produces spurious \0 characters with python-2.6.2)
+		# NOTE: shlex doesn't support unicode objects with Python 2
+		# (produces spurious \0 characters).
 		if sys.hexversion < 0x3000000:
 			content = open(_unicode_encode(mycfg,
 				encoding=_encodings['fs'], errors='strict'), 'rb').read()

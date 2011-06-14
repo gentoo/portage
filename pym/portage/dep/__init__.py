@@ -30,7 +30,7 @@ __all__ = [
 import re, sys
 import warnings
 from itertools import chain
-import portage.exception
+from portage import _unicode_decode
 from portage.eapi import eapi_has_slot_deps, eapi_has_src_uri_arrows, \
 	eapi_has_use_deps, eapi_has_strong_blocks, eapi_has_use_dep_defaults
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString
@@ -369,6 +369,9 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 			if need_simple_token:
 				raise InvalidDependString(
 					_("expected: file name, got: '%s', token %s") % (token, pos+1))
+			if len(mysplit) >= pos+2 and mysplit[pos+1] == ")":
+				raise InvalidDependString(
+					_("expected: dependency string, got: ')', token %s") % (pos+1,))
 			need_bracket = False
 			stack.append([])
 			level += 1
@@ -633,22 +636,23 @@ def flatten(mylist):
 
 _usedep_re = {
 	"0": re.compile("^(?P<prefix>[!-]?)(?P<flag>[A-Za-z0-9][A-Za-z0-9+_@-]*)(?P<default>(\(\+\)|\(\-\))?)(?P<suffix>[?=]?)$"),
-#	"5": re.compile("^(?P<prefix>[!-]?)(?P<flag>[A-Za-z0-9][A-Za-z0-9+_@.-]*)(?P<default>(\(\+\)|\(\-\))?)(?P<suffix>[?=]?)$"),
+	"4-python": re.compile("^(?P<prefix>[!-]?)(?P<flag>[A-Za-z0-9][A-Za-z0-9+_@.-]*)(?P<default>(\(\+\)|\(\-\))?)(?P<suffix>[?=]?)$"),
 }
 
 def _get_usedep_re(eapi):
 	"""
+	When eapi is None then validation is not as strict, since we want the
+	same to work for multiple EAPIs that may have slightly different rules.
 	@param eapi: The EAPI
 	@type eapi: String or None
 	@rtype: regular expression object
-	@return: A regular expression object that matches valid USE flags for the
-		given eapi. If eapi is None then the latest supported EAPI is assumed.
+	@return: A regular expression object that matches valid USE deps for the
+		given eapi.
 	"""
-	return _usedep_re["0"]
-#	if eapi in ("0", "1", "2", "3_pre1", "3_pre2", "3", "4_pre1", "4"):
-#		return _usedep_re["0"]
-#	else:
-#		return _usedep_re["5"]
+	if eapi in (None, "4-python",):
+		return _usedep_re["4-python"]
+	else:
+		return _usedep_re["0"]
 
 class _use_dep(object):
 
@@ -1057,6 +1061,10 @@ class Atom(_atom_base):
 			# constructor is not called redundantly.
 			raise TypeError(_("Expected %s, got %s") % \
 				(_atom_base, type(s)))
+
+		if not isinstance(s, _atom_base):
+			# Avoid TypeError from _atom_base.__init__ with PyPy.
+			s = _unicode_decode(s)
 
 		_atom_base.__init__(s)
 
@@ -1615,15 +1623,23 @@ _atom_wildcard_re = re.compile('(?P<simple>(' + _extended_cat + ')/(' + _extende
 
 _useflag_re = {
 	"0": re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@-]*$'),
-#	"5": re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@.-]*$'),
+	"4-python": re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@.-]*$'),
 }
 
 def _get_useflag_re(eapi):
-	return _useflag_re["0"]
-#	if eapi in ("0", "1", "2", "3_pre1", "3_pre2", "3", "4_pre1", "4"):
-#		return _useflag_re["0"]
-#	else:
-#		return _useflag_re["5"]
+	"""
+	When eapi is None then validation is not as strict, since we want the
+	same to work for multiple EAPIs that may have slightly different rules.
+	@param eapi: The EAPI
+	@type eapi: String or None
+	@rtype: regular expression object
+	@return: A regular expression object that matches valid USE flags for the
+		given eapi.
+	"""
+	if eapi in (None, "4-python",):
+		return _useflag_re["4-python"]
+	else:
+		return _useflag_re["0"]
 
 def isvalidatom(atom, allow_blockers=False, allow_wildcard=False, allow_repo=False):
 	"""
@@ -2293,7 +2309,7 @@ def check_required_use(required_use, use, iuse_match):
 	tree._satisfied = False not in stack[0]
 	return tree
 
-def extract_affecting_use(mystr, atom):
+def extract_affecting_use(mystr, atom, eapi=None):
 	"""
 	Take a dep string and an atom and return the use flags
 	that decide if the given atom is in effect.
@@ -2310,7 +2326,7 @@ def extract_affecting_use(mystr, atom):
 	@rtype: Tuple of two lists of strings
 	@return: List of use flags that need to be enabled, List of use flag that need to be disabled
 	"""
-	useflag_re = _get_useflag_re(None)
+	useflag_re = _get_useflag_re(eapi)
 	mysplit = mystr.split()
 	level = 0
 	stack = [[]]

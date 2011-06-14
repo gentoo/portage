@@ -880,7 +880,7 @@ class config(object):
 	def reset(self, keeping_pkg=0, use_cache=None):
 		"""
 		Restore environment from self.backupenv, call self.regenerate()
-		@param keeping_pkg: Should we keep the set_cpv() data or delete it.
+		@param keeping_pkg: Should we keep the setcpv() data or delete it.
 		@type keeping_pkg: Boolean
 		@rype: None
 		"""

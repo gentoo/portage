@@ -93,40 +93,22 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 		return [_MaskReason("EAPI", "EAPI %s" % eapi)]
 	egroups = settings.configdict["backupenv"].get(
 		"ACCEPT_KEYWORDS", "").split()
-	pgroups = settings["ACCEPT_KEYWORDS"].split()
+	global_accept_keywords = settings.get("ACCEPT_KEYWORDS", "")
+	pgroups = global_accept_keywords.split()
 	myarch = settings["ARCH"]
 	if pgroups and myarch not in pgroups:
 		"""For operating systems other than Linux, ARCH is not necessarily a
 		valid keyword."""
 		myarch = pgroups[0].lstrip("~")
 
-	cp = cpv_getkey(mycpv)
-	pkgdict = settings._keywords_manager.pkeywordsdict.get(cp)
-	matches = False
-	if pkgdict:
-		pkg = "".join((mycpv, _slot_separator, metadata["SLOT"]))
-		if myrepo is None:
-			myrepo = metadata.get("repository")
-		if myrepo is not None and myrepo != Package.UNKNOWN_REPO:
-			pkg = "".join((pkg, _repo_separator, myrepo))
-		cpv_slot_list = [pkg]
-		for atom, pkgkeywords in pkgdict.items():
-			if match_from_list(atom, cpv_slot_list):
-				matches = True
-				pgroups.extend(pkgkeywords)
-	if matches or egroups:
-		pgroups.extend(egroups)
-		inc_pgroups = set()
-		for x in pgroups:
-			if x.startswith("-"):
-				if x == "-*":
-					inc_pgroups.clear()
-				else:
-					inc_pgroups.discard(x[1:])
-			else:
-				inc_pgroups.add(x)
-		pgroups = inc_pgroups
-		del inc_pgroups
+	# NOTE: This logic is copied from KeywordsManager.getMissingKeywords().
+	unmaskgroups = settings._keywords_manager.getPKeywords(mycpv,
+		metadata["SLOT"], metadata["repository"], global_accept_keywords)
+	pgroups.extend(unmaskgroups)
+	if unmaskgroups or egroups:
+		pgroups = settings._keywords_manager._getEgroups(egroups, pgroups)
+	else:
+		pgroups = set(pgroups)
 
 	kmask = "missing"
 	kmask_hint = None

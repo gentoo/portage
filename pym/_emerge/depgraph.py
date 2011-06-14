@@ -2618,7 +2618,8 @@ class depgraph(object):
 			for dep_str in "DEPEND", "RDEPEND", "PDEPEND":
 				try:
 					affecting_use.update(extract_affecting_use(
-						node.metadata[dep_str], target_atom))
+						node.metadata[dep_str], target_atom,
+						eapi=node.metadata["EAPI"]))
 				except InvalidDependString:
 					if not node.installed:
 						raise
@@ -2662,7 +2663,8 @@ class depgraph(object):
 
 				affecting_use = set()
 				for dep_str in dep_strings:
-					affecting_use.update(extract_affecting_use(dep_str, atom))
+					affecting_use.update(extract_affecting_use(dep_str, atom,
+						eapi=node.metadata["EAPI"]))
 
 				#Don't show flags as 'affecting' if the user can't change them,
 				affecting_use.difference_update(node.use.mask, \
@@ -2802,8 +2804,8 @@ class depgraph(object):
 
 					metadata, mreasons  = get_mask_info(root_config, cpv, pkgsettings, db, pkg_type, \
 						built, installed, db_keys, myrepo=repo, _pkg_use_enabled=self._pkg_use_enabled)
-
-					if metadata is not None:
+					if metadata is not None and \
+						portage.eapi_is_supported(metadata["EAPI"]):
 						if not repo:
 							repo = metadata.get('repository')
 						pkg = self._pkg(cpv, pkg_type, root_config,
@@ -3438,6 +3440,8 @@ class depgraph(object):
 		Example: target_use = { "foo": True, "bar": False }
 		The flags target_use must be in the pkg's IUSE.
 		"""
+		if pkg.built:
+			return pkg.use.enabled
 		needed_use_config_change = self._dynamic_config._needed_use_config_changes.get(pkg)
 
 		if target_use is None:
@@ -3737,7 +3741,7 @@ class depgraph(object):
 					if atom.use:
 
 						matched_pkgs_ignore_use.append(pkg)
-						if allow_use_changes:
+						if allow_use_changes and not pkg.built:
 							target_use = {}
 							for flag in atom.use.enabled:
 								target_use[flag] = True
@@ -4696,7 +4700,9 @@ class depgraph(object):
 
 	def _serialize_tasks(self):
 
-		if "--debug" in self._frozen_config.myopts:
+		debug = "--debug" in self._frozen_config.myopts
+
+		if debug:
 			writemsg("\ndigraph:\n\n", noiselevel=-1)
 			self._dynamic_config.digraph.debug_print()
 			writemsg("\n", noiselevel=-1)
@@ -4938,12 +4944,18 @@ class depgraph(object):
 				# the parent to have been removed from the graph already.
 				asap_nodes = [node for node in asap_nodes \
 					if mygraph.contains(node)]
-				for node in asap_nodes:
-					if not mygraph.child_nodes(node,
-						ignore_priority=priority_range.ignore_soft):
-						selected_nodes = [node]
-						asap_nodes.remove(node)
+				for i in range(priority_range.SOFT,
+					priority_range.MEDIUM_SOFT + 1):
+					ignore_priority = priority_range.ignore_priority[i]
+					for node in asap_nodes:
+						if not mygraph.child_nodes(node,
+							ignore_priority=ignore_priority):
+							selected_nodes = [node]
+							asap_nodes.remove(node)
+							break
+					if selected_nodes:
 						break
+
 			if not selected_nodes and \
 				not (prefer_asap and asap_nodes):
 				for i in range(priority_range.NONE,
@@ -5008,20 +5020,54 @@ class depgraph(object):
 					mergeable_nodes = set(nodes)
 					if prefer_asap and asap_nodes:
 						nodes = asap_nodes
-					for i in range(priority_range.SOFT,
-						priority_range.MEDIUM_SOFT + 1):
-						ignore_priority = priority_range.ignore_priority[i]
-						for node in nodes:
-							if not mygraph.parent_nodes(node):
-								continue
-							selected_nodes = set()
-							if gather_deps(ignore_priority,
-								mergeable_nodes, selected_nodes, node):
-								break
-							else:
-								selected_nodes = None
-						if selected_nodes:
-							break
+					# When gathering the nodes belonging to a runtime cycle,
+					# we want to minimize the number of nodes gathered, since
+					# this tends to produce a more optimal merge order.
+					# Ignoring all medium_soft deps serves this purpose.
+					# In the case of multiple runtime cycles, where some cycles
+					# may depend on smaller independent cycles, it's optimal
+					# to merge smaller independent cycles before other cycles
+					# that depend on them. Therefore, we search for the
+					# smallest cycle in order to try and identify and prefer
+					# these smaller independent cycles.
+					ignore_priority = priority_range.ignore_medium_soft
+					smallest_cycle = None
+					for node in nodes:
+						if not mygraph.parent_nodes(node):
+							continue
+						selected_nodes = set()
+						if gather_deps(ignore_priority,
+							mergeable_nodes, selected_nodes, node):
+							# When selecting asap_nodes, we need to ensure
+							# that we haven't selected a large runtime cycle
+							# that is obviously sub-optimal. This will be
+							# obvious if any of the non-asap selected_nodes
+							# is a leaf node when medium_soft deps are
+							# ignored.
+							if prefer_asap and asap_nodes and \
+								len(selected_nodes) > 1:
+								for node in selected_nodes.difference(
+									asap_nodes):
+									if not mygraph.child_nodes(node,
+										ignore_priority =
+										DepPriorityNormalRange.ignore_medium_soft):
+										selected_nodes = None
+										break
+							if selected_nodes:
+								if smallest_cycle is None or \
+									len(selected_nodes) < len(smallest_cycle):
+									smallest_cycle = selected_nodes
+
+					selected_nodes = smallest_cycle
+
+					if selected_nodes and debug:
+						writemsg("\nruntime cycle digraph (%s nodes):\n\n" %
+							(len(selected_nodes),), noiselevel=-1)
+						cycle_digraph = mygraph.copy()
+						cycle_digraph.difference_update([x for x in
+							cycle_digraph if x not in selected_nodes])
+						cycle_digraph.debug_print()
+						writemsg("\n", noiselevel=-1)
 
 					if prefer_asap and asap_nodes and not selected_nodes:
 						# We failed to find any asap nodes to merge, so ignore
@@ -5523,29 +5569,26 @@ class depgraph(object):
 			msg = []
 			msg.append("\n")
 			indent = "  "
-			# Max number of parents shown, to avoid flooding the display.
-			max_parents = 3
 			for pkg, parent_atoms in conflict_pkgs.items():
 
-				pruned_list = set()
-
 				# Prefer packages that are not directly involved in a conflict.
+				# It can be essential to see all the packages here, so don't
+				# omit any. If the list is long, people can simply use a pager.
+				preferred_parents = set()
 				for parent_atom in parent_atoms:
-					if len(pruned_list) >= max_parents:
-						break
 					parent, atom = parent_atom
 					if parent not in conflict_pkgs:
-						pruned_list.add(parent_atom)
+						preferred_parents.add(parent_atom)
 
-				for parent_atom in parent_atoms:
-					if len(pruned_list) >= max_parents:
-						break
-					pruned_list.add(parent_atom)
+				ordered_list = list(preferred_parents)
+				if len(parent_atoms) > len(ordered_list):
+					for parent_atom in parent_atoms:
+						if parent_atom not in preferred_parents:
+							ordered_list.append(parent_atom)
 
-				omitted_parents = len(parent_atoms) - len(pruned_list)
 				msg.append(indent + "%s pulled in by\n" % pkg)
 
-				for parent_atom in pruned_list:
+				for parent_atom in ordered_list:
 					parent, atom = parent_atom
 					msg.append(2*indent)
 					if isinstance(parent,
@@ -5558,10 +5601,6 @@ class depgraph(object):
 						# Package types.
 						msg.append("%s required by %s" % (atom, parent))
 					msg.append("\n")
-
-				if omitted_parents:
-					msg.append(2*indent)
-					msg.append("(and %d more)\n" % omitted_parents)
 
 				msg.append("\n")
 
@@ -5786,8 +5825,13 @@ class depgraph(object):
 					settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH)
 
 				if root in unstable_keyword_msg:
+					if not os.path.exists(os.path.join(abs_user_config,
+						"package.keywords")):
+						filename = "package.accept_keywords"
+					else:
+						filename = "package.keywords"
 					file_to_write_to[(abs_user_config, "package.keywords")] = \
-						find_config_file(abs_user_config, "package.keywords")
+						find_config_file(abs_user_config, filename)
 
 				if root in p_mask_change_msg:
 					file_to_write_to[(abs_user_config, "package.unmask")] = \
@@ -6868,8 +6912,16 @@ def show_masked_packages(masked_packages):
 		if output_cpv in shown_cpvs:
 			continue
 		shown_cpvs.add(output_cpv)
+		eapi_masked = metadata is not None and \
+			not portage.eapi_is_supported(metadata["EAPI"])
+		if eapi_masked:
+			have_eapi_mask = True
+			# When masked by EAPI, metadata is mostly useless since
+			# it doesn't contain essential things like SLOT.
+			metadata = None
 		comment, filename = None, None
-		if "package.mask" in mreasons:
+		if not eapi_masked and \
+			"package.mask" in mreasons:
 			comment, filename = \
 				portage.getmaskingreason(
 				cpv, metadata=metadata,
@@ -6877,9 +6929,7 @@ def show_masked_packages(masked_packages):
 				portdb=root_config.trees["porttree"].dbapi,
 				return_location=True)
 		missing_licenses = []
-		if metadata:
-			if not portage.eapi_is_supported(metadata["EAPI"]):
-				have_eapi_mask = True
+		if not eapi_masked and metadata is not None:
 			try:
 				missing_licenses = \
 					pkgsettings._getMissingLicenses(
