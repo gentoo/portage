@@ -105,7 +105,7 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
 			pass
 
 	_prepare_workdir(mysettings)
-	if mysettings.get('EBUILD_PHASE') != 'fetch':
+	if mysettings.get("EBUILD_PHASE") not in ("info", "fetch", "pretend"):
 		# Avoid spurious permissions adjustments when fetching with
 		# a temporary PORTAGE_TMPDIR setting (for fetchonly).
 		_prepare_features_dirs(mysettings)
