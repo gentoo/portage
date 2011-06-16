@@ -846,6 +846,11 @@ class depgraph(object):
 				if arg in traversed_set_args:
 					continue
 				traversed_set_args.add(arg)
+
+				if add_to_digraph:
+					self._dynamic_config.digraph.add(arg, None,
+						priority=BlockerDepPriority.instance)
+
 				yield arg
 
 				# Traverse nested sets and add them to the stack
