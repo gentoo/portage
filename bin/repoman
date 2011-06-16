@@ -1942,7 +1942,7 @@ for x in scanlist:
 	#if not portage.portdb.xmatch("bestmatch-visible",x):
 	#    stats["ebuild.nostable"]+=1
 	#    fails["ebuild.nostable"].append(x)
-	if allmasked and repolevel == 3:
+	if ebuildlist and allmasked and repolevel == 3:
 		stats["ebuild.allmasked"]+=1
 		fails["ebuild.allmasked"].append(x)
 
