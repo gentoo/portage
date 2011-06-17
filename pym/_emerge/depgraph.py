@@ -3110,6 +3110,8 @@ class depgraph(object):
 				all_cp.update(portdb.cp_all())
 				if "--usepkg" in self._frozen_config.myopts:
 					all_cp.update(bindb.cp_all())
+				# discard dir containing no ebuilds
+				all_cp.discard(cp)
 
 				orig_cp_map = {}
 				for cp_orig in all_cp:
@@ -3120,8 +3122,12 @@ class depgraph(object):
 					matches = difflib.get_close_matches(cp, all_cp)
 				else:
 					pkg_to_cp = {}
-					for other_cp in all_cp:
+					for other_cp in list(all_cp):
 						other_pkg = portage.catsplit(other_cp)[1]
+						if other_pkg == pkg:
+							# discard dir containing no ebuilds
+							all_cp.discard(other_cp)
+							continue
 						pkg_to_cp.setdefault(other_pkg, set()).add(other_cp)
 					pkg_matches = difflib.get_close_matches(pkg, pkg_to_cp)
 					matches = []
