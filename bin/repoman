@@ -1095,8 +1095,13 @@ for x in scanlist:
 				portage._doebuild_manifest_exempt_depend -= 1
 
 		repoman_settings["O"] = checkdir
-		generated_manifest = digestgen(
-			mysettings=repoman_settings, myportdb=portdb)
+		try:
+			generated_manifest = digestgen(
+				mysettings=repoman_settings, myportdb=portdb)
+		except portage.exception.PermissionDenied as e:
+			generated_manifest = False
+			writemsg_level("!!! Permission denied: '%s'\n" % (e,),
+				level=logging.ERROR, noiselevel=-1)
 
 		if not generated_manifest:
 			print("Unable to generate manifest.")
