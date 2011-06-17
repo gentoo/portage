@@ -701,8 +701,13 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mysettings.configdict["pkg"]["EMERGE_FROM"] = "binary"
 				mysettings.configdict["pkg"]["MERGE_TYPE"] = "binary"
 
+		# NOTE: It's not possible to set REPLACED_BY_VERSION for prerm
+		#       and postrm here, since we don't necessarily know what
+		#       versions are being installed. This could be a problem
+		#       for API consumers if they don't use dblink.treewalk()
+		#       to execute prerm and postrm.
 		if eapi_exports_replace_vars(mysettings["EAPI"]) and \
-			(mydo in ("postinst", "postrm", "preinst", "prerm", "pretend", "setup") or \
+			(mydo in ("postinst", "preinst", "pretend", "setup") or \
 			("noauto" not in features and not returnpid and \
 			(mydo in actionmap_deps or mydo in ("merge", "package", "qmerge")))):
 			if not vartree:
@@ -718,7 +723,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					set(portage.versions.cpv_getversion(match) \
 						for match in vardb.match(cpv_slot) + \
 						vardb.match('='+cpv)))
-				mysettings.backup_changes("REPLACING_VERSIONS")
 
 		# if any of these are being called, handle them -- running them out of
 		# the sandbox -- and stop now.
