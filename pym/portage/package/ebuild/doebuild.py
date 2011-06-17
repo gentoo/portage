@@ -702,7 +702,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mysettings.configdict["pkg"]["MERGE_TYPE"] = "binary"
 
 		if eapi_exports_replace_vars(mysettings["EAPI"]) and \
-			(mydo in ("pretend", "setup") or \
+			(mydo in ("postinst", "postrm", "preinst", "prerm", "pretend", "setup") or \
 			("noauto" not in features and not returnpid and \
 			(mydo in actionmap_deps or mydo in ("merge", "package", "qmerge")))):
 			if not vartree:
