@@ -3090,10 +3090,6 @@ class dblink(object):
 		if retval:
 			return retval
 
-		self.settings["REPLACING_VERSIONS"] = " ".join( 
-			[portage.versions.cpv_getversion(other.mycpv) for other in others_in_slot] )
-		self.settings.backup_changes("REPLACING_VERSIONS")
-
 		if slot_matches:
 			# Used by self.isprotected().
 			max_dblnk = None
@@ -3243,6 +3239,9 @@ class dblink(object):
 			myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
 		doebuild_environment(myebuild, "preinst",
 			settings=self.settings, db=mydbapi)
+		self.settings["REPLACING_VERSIONS"] = " ".join(
+			[portage.versions.cpv_getversion(other.mycpv)
+			for other in others_in_slot])
 		prepare_build_dirs(settings=self.settings, cleanup=cleanup)
 
 		if collisions:
