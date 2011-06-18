@@ -5,6 +5,7 @@ from __future__ import print_function
 
 import re
 import signal
+import stat
 import sys
 import textwrap
 import time
@@ -18,6 +19,9 @@ except ImportError:
 	import portage
 
 from portage import os
+
+if sys.hexversion >= 0x3000000:
+	long = int
 
 class WorldHandler(object):
 
@@ -185,7 +189,23 @@ class BinhostHandler(object):
 				del missing[:]
 				for i, cpv in enumerate(cpv_all):
 					d = metadata.get(cpv)
-					if not d or "MD5" not in d:
+					if not d or \
+						"MD5" not in d or \
+						"SIZE" not in d or \
+						"MTIME" not in d:
+						missing.append(cpv)
+						continue
+
+					pkg_path = bintree.getname(cpv)
+					s = os.lstat(pkg_path)
+					try:
+						if long(d["MTIME"]) != s[stat.ST_MTIME]:
+							missing.append(cpv)
+							continue
+						if long(d["SIZE"]) != long(s.st_size):
+							missing.append(cpv)
+							continue
+					except ValueError:
 						missing.append(cpv)
 
 				maxval = len(missing)
