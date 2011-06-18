@@ -461,9 +461,11 @@ def all_best_visible(argv):
 	"""<root>
 	Returns all best_visible packages (without .ebuild).
 	"""
-	if (len(argv) < 1):
-		print("ERROR: insufficient parameters!")
-	
+	if len(argv) < 1:
+		sys.stderr.write("ERROR: insufficient parameters!\n")
+		sys.stderr.flush()
+		return 2
+
 	#print portage.db[argv[0]]["porttree"].dbapi.cp_all()
 	for pkg in portage.db[argv[0]]["porttree"].dbapi.cp_all():
 		mybest=portage.best(portage.db[argv[0]]["porttree"].dbapi.match(pkg))
