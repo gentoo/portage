@@ -3,6 +3,7 @@
 
 from __future__ import print_function
 
+import errno
 import re
 import signal
 import stat
@@ -19,6 +20,7 @@ except ImportError:
 	import portage
 
 from portage import os
+from portage.util import writemsg
 
 if sys.hexversion >= 0x3000000:
 	long = int
@@ -124,6 +126,39 @@ class BinhostHandler(object):
 		self._pkgindex_file = self._bintree._pkgindex_file
 		self._pkgindex = self._bintree._load_pkgindex()
 
+	def _need_update(self, cpv, data):
+
+		if "MD5" not in data:
+			return True
+
+		size = data.get("SIZE")
+		if size is None:
+			return True
+
+		mtime = data.get("MTIME")
+		if mtime is None:
+			return True
+
+		pkg_path = self._bintree.getname(cpv)
+		try:
+			s = os.lstat(pkg_path)
+		except OSError as e:
+			if e.errno not in (errno.ENOENT, errno.ESTALE):
+				raise
+			# We can't update the index for this one because
+			# it disappeared.
+			return False
+
+		try:
+			if long(mtime) != s[stat.ST_MTIME]:
+				return True
+			if long(size) != long(s.st_size):
+				return True
+		except ValueError:
+			return True
+
+		return False
+
 	def check(self, onProgress=None):
 		missing = []
 		cpv_all = self._bintree.dbapi.cpv_all()
@@ -138,7 +173,7 @@ class BinhostHandler(object):
 			metadata[d["CPV"]] = d
 		for i, cpv in enumerate(cpv_all):
 			d = metadata.get(cpv)
-			if not d or "MD5" not in d:
+			if not d or self._need_update(cpv, d):
 				missing.append(cpv)
 			if onProgress:
 				onProgress(maxval, i+1)
@@ -164,7 +199,7 @@ class BinhostHandler(object):
 
 		for i, cpv in enumerate(cpv_all):
 			d = metadata.get(cpv)
-			if not d or "MD5" not in d:
+			if not d or self._need_update(cpv, d):
 				missing.append(cpv)
 
 		stale = set(metadata).difference(cpv_all)
@@ -189,23 +224,7 @@ class BinhostHandler(object):
 				del missing[:]
 				for i, cpv in enumerate(cpv_all):
 					d = metadata.get(cpv)
-					if not d or \
-						"MD5" not in d or \
-						"SIZE" not in d or \
-						"MTIME" not in d:
-						missing.append(cpv)
-						continue
-
-					pkg_path = bintree.getname(cpv)
-					s = os.lstat(pkg_path)
-					try:
-						if long(d["MTIME"]) != s[stat.ST_MTIME]:
-							missing.append(cpv)
-							continue
-						if long(d["SIZE"]) != long(s.st_size):
-							missing.append(cpv)
-							continue
-					except ValueError:
+					if not d or self._need_update(cpv, d):
 						missing.append(cpv)
 
 				maxval = len(missing)
