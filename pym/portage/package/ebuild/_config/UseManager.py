@@ -61,6 +61,8 @@ class UseManager(object):
 		self._puseforce_list = self._parse_profile_files_to_tuple_of_dicts("package.use.force", profiles)
 
 		self._pusedict = self._parse_user_files_to_extatomdict("package.use", abs_user_config, user_config)
+
+		self.repositories = repositories
 	
 	def _parse_file_to_tuple(self, file_name):
 		ret = []
@@ -119,17 +121,12 @@ class UseManager(object):
 	def _parse_repository_files_to_dict_of_tuples(self, file_name, repositories):
 		ret = {}
 		for repo in repositories.repos_with_profiles():
-			lines = []
-			for master in repo.masters:
-				lines.extend(self._parse_file_to_tuple(os.path.join(master.location, "profiles", file_name)))
-			lines.extend(self._parse_file_to_tuple(os.path.join(repo.location, "profiles", file_name)))
-			ret[repo.name] = tuple(lines)
+			ret[repo.name] = self._parse_file_to_tuple(os.path.join(repo.location, "profiles", file_name))
 		return ret
 
 	def _parse_repository_files_to_dict_of_dicts(self, file_name, repositories):
 		ret = {}
 		for repo in repositories.repos_with_profiles():
-			# TODO: Handle master repositories.
 			ret[repo.name] = self._parse_file_to_dict(os.path.join(repo.location, "profiles", file_name))
 		return ret
 
@@ -149,12 +146,13 @@ class UseManager(object):
 			cp = cpv_getkey(remove_slot(pkg))
 		usemask = []
 		if hasattr(pkg, "repo") and pkg.repo != Package.UNKNOWN_REPO:
-			usemask.append(self._repo_usemask_dict[pkg.repo])
-			cpdict = self._repo_pusemask_dict[pkg.repo].get(cp)
-			if cpdict:
-				pkg_usemask = ordered_by_atom_specificity(cpdict, pkg)
-				if pkg_usemask:
-					usemask.extend(pkg_usemask)
+			for repo in [repo.name for repo in self.repositories[pkg.repo].masters] + [pkg.repo]:
+				usemask.append(self._repo_usemask_dict[repo])
+				cpdict = self._repo_pusemask_dict[repo].get(cp)
+				if cpdict:
+					pkg_usemask = ordered_by_atom_specificity(cpdict, pkg)
+					if pkg_usemask:
+						usemask.extend(pkg_usemask)
 		for i, pusemask_dict in enumerate(self._pusemask_list):
 			if self._usemask_list[i]:
 				usemask.append(self._usemask_list[i])
@@ -175,12 +173,13 @@ class UseManager(object):
 			cp = cpv_getkey(remove_slot(pkg))
 		useforce = []
 		if hasattr(pkg, "repo") and pkg.repo != Package.UNKNOWN_REPO:
-			useforce.append(self._repo_useforce_dict[pkg.repo])
-			cpdict = self._repo_puseforce_dict[pkg.repo].get(cp)
-			if cpdict:
-				pkg_useforce = ordered_by_atom_specificity(cpdict, pkg)
-				if pkg_useforce:
-					useforce.extend(pkg_useforce)
+			for repo in [repo.name for repo in self.repositories[pkg.repo].masters] + [pkg.repo]:
+				useforce.append(self._repo_useforce_dict[repo])
+				cpdict = self._repo_puseforce_dict[repo].get(cp)
+				if cpdict:
+					pkg_useforce = ordered_by_atom_specificity(cpdict, pkg)
+					if pkg_useforce:
+						useforce.extend(pkg_useforce)
 		for i, puseforce_dict in enumerate(self._puseforce_list):
 			if self._useforce_list[i]:
 				useforce.append(self._useforce_list[i])

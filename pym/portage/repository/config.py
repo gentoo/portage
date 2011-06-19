@@ -486,6 +486,9 @@ class RepoConfigLoader(object):
 			return None
 		return self.treemap[repo_name]
 
+	def __getitem__(self, repo_name):
+		return self.prepos[repo_name]
+
 	def __iter__(self):
 		for repo_name in self.prepos_order:
 			yield self.prepos[repo_name]
