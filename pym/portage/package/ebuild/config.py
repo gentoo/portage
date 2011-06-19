@@ -513,7 +513,7 @@ class config(object):
 				local_config, global_accept_keywords=self.configdict["defaults"].get("ACCEPT_KEYWORDS", ""))
 
 			#Read all USE related files from profiles and optionally from user config.
-			self._use_manager = UseManager(self.profiles, abs_user_config, user_config=local_config)
+			self._use_manager = UseManager(self.repositories, self.profiles, abs_user_config, user_config=local_config)
 			#Initialize all USE related variables we track ourselves.
 			self.usemask = self._use_manager.getUseMask()
 			self.useforce = self._use_manager.getUseForce()
