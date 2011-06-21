@@ -203,6 +203,7 @@ class config(object):
 			self.profile_path = clone.profile_path
 			self.profiles = clone.profiles
 			self.packages = clone.packages
+			self.repositories = clone.repositories
 			self._iuse_implicit_match = clone._iuse_implicit_match
 			self._non_user_variables = clone._non_user_variables
 			self.usemask = clone.usemask
