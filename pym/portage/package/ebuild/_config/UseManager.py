@@ -148,8 +148,8 @@ class UseManager(object):
 		usemask = []
 		if hasattr(pkg, "repo") and pkg.repo != Package.UNKNOWN_REPO:
 			for repo in [repo.name for repo in self.repositories[pkg.repo].masters] + [pkg.repo]:
-				usemask.append(self._repo_usemask_dict[repo])
-				cpdict = self._repo_pusemask_dict[repo].get(cp)
+				usemask.append(self._repo_usemask_dict.get(repo, {}))
+				cpdict = self._repo_pusemask_dict.get(repo, {}).get(cp)
 				if cpdict:
 					pkg_usemask = ordered_by_atom_specificity(cpdict, pkg)
 					if pkg_usemask:
@@ -175,8 +175,8 @@ class UseManager(object):
 		useforce = []
 		if hasattr(pkg, "repo") and pkg.repo != Package.UNKNOWN_REPO:
 			for repo in [repo.name for repo in self.repositories[pkg.repo].masters] + [pkg.repo]:
-				useforce.append(self._repo_useforce_dict[repo])
-				cpdict = self._repo_puseforce_dict[repo].get(cp)
+				useforce.append(self._repo_useforce_dict.get(repo, {}))
+				cpdict = self._repo_puseforce_dict.get(repo, {}).get(cp)
 				if cpdict:
 					pkg_useforce = ordered_by_atom_specificity(cpdict, pkg)
 					if pkg_useforce:
