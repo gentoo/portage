@@ -6,6 +6,7 @@ from __future__ import print_function
 from itertools import chain
 
 from portage.dep import use_reduce, extract_affecting_use, check_required_use, get_required_use_flags
+from portage.exception import InvalidDependString
 from portage.output import colorize
 from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
 
@@ -112,8 +113,13 @@ class circular_dependency_handler(object):
 					parent_atom = atom.unevaluated_atom
 					break
 
-			affecting_use = extract_affecting_use(dep, parent_atom,
-				eapi=parent.metadata["EAPI"])
+			try:
+				affecting_use = extract_affecting_use(dep, parent_atom,
+					eapi=parent.metadata["EAPI"])
+			except InvalidDependString:
+				if not parent.installed:
+					raise
+				affecting_use = set()
 
 			# Make sure we don't want to change a flag that is 
 			#	a) in use.mask or use.force

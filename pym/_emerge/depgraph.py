@@ -2668,8 +2668,12 @@ class depgraph(object):
 
 				affecting_use = set()
 				for dep_str in dep_strings:
-					affecting_use.update(extract_affecting_use(dep_str, atom,
-						eapi=node.metadata["EAPI"]))
+					try:
+						affecting_use.update(extract_affecting_use(
+							dep_str, atom, eapi=node.metadata["EAPI"]))
+					except InvalidDependString:
+						if not node.installed:
+							raise
 
 				#Don't show flags as 'affecting' if the user can't change them,
 				affecting_use.difference_update(node.use.mask, \
