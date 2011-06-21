@@ -246,8 +246,9 @@ is possible to prefix flags with + or - in order to create default settings
 that respectively enable or disable the corresponding \fBUSE\fR flags. For
 details about \fBUSE\fR flag stacking order, refer to the \fBUSE_ORDER\fR
 variable in \fBmake.conf\fR(5). Given the default \fBUSE_ORDER\fR setting,
-negative IUSE default settings are ineffective since profile and user
-configuration settings override them.
+negative IUSE default settings are effective only for negation of
+repo\-level USE settings, since profile and user configuration settings
+override them.
 .TP
 \fBDEPEND\fR
 This should contain a list of all packages that are required for the

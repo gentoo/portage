@@ -53,6 +53,7 @@ class UseManager(object):
 		self._repo_useforce_dict = self._parse_repository_files_to_dict_of_tuples("use.force", repositories)
 		self._repo_pusemask_dict = self._parse_repository_files_to_dict_of_dicts("package.use.mask", repositories)
 		self._repo_puseforce_dict = self._parse_repository_files_to_dict_of_dicts("package.use.force", repositories)
+		self._repo_puse_dict = self._parse_repository_files_to_dict_of_dicts("package.use", repositories)
 
 		self._usemask_list = self._parse_profile_files_to_tuple_of_tuples("use.mask", profiles)
 		self._useforce_list = self._parse_profile_files_to_tuple_of_tuples("use.force", profiles)

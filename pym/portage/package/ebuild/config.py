@@ -206,6 +206,7 @@ class config(object):
 			self.repositories = clone.repositories
 			self._iuse_implicit_match = clone._iuse_implicit_match
 			self._non_user_variables = clone._non_user_variables
+			self._repo_make_defaults = clone._repo_make_defaults
 			self.usemask = clone.usemask
 			self.useforce = clone.useforce
 			self.puse = clone.puse
@@ -229,6 +230,7 @@ class config(object):
 			self.configdict = copy.deepcopy(clone.configdict)
 			self.configlist = [
 				self.configdict['env.d'],
+				self.configdict['repo'],
 				self.configdict['pkginternal'],
 				self.configdict['globals'],
 				self.configdict['defaults'],
@@ -317,6 +319,9 @@ class config(object):
 			# configlist will contain: [ env.d, globals, defaults, conf, pkg, backupenv, env ]
 			self.configlist.append({})
 			self.configdict["env.d"] = self.configlist[-1]
+
+			self.configlist.append({})
+			self.configdict["repo"] = self.configlist[-1]
 
 			self.configlist.append({})
 			self.configdict["pkginternal"] = self.configlist[-1]
@@ -509,6 +514,14 @@ class config(object):
 
 			locations_manager.set_port_dirs(self["PORTDIR"], self["PORTDIR_OVERLAY"])
 
+			self._repo_make_defaults = {}
+			for repo in self.repositories.repos_with_profiles():
+				d = getconfig(os.path.join(repo.location, "profiles", "make.defaults"),
+					expand=self.configdict["globals"].copy()) or {}
+				for blacklisted in self._env_blacklist:
+					d.pop(blacklisted, None)
+				self._repo_make_defaults[repo.name] = d
+
 			#Read package.keywords and package.accept_keywords.
 			self._keywords_manager = KeywordsManager(self.profiles, abs_user_config, \
 				local_config, global_accept_keywords=self.configdict["defaults"].get("ACCEPT_KEYWORDS", ""))
@@ -629,7 +642,7 @@ class config(object):
 			# reasonable defaults; this is important as without USE_ORDER,
 			# USE will always be "" (nothing set)!
 			if "USE_ORDER" not in self:
-				self.backupenv["USE_ORDER"] = "env:pkg:conf:defaults:pkginternal:env.d"
+				self.backupenv["USE_ORDER"] = "env:pkg:conf:defaults:pkginternal:repo:env.d"
 
 			self["PORTAGE_GID"] = str(portage_gid)
 			self.backup_changes("PORTAGE_GID")
@@ -890,6 +903,7 @@ class config(object):
 			del self._penv[:]
 			self.configdict["pkg"].clear()
 			self.configdict["pkginternal"].clear()
+			self.configdict["repo"].clear()
 			self.configdict["defaults"]["USE"] = \
 				" ".join(self.make_defaults_use)
 			self.usemask = self._use_manager.getUseMask()
@@ -1065,6 +1079,7 @@ class config(object):
 
 		pkg_configdict["CATEGORY"] = cat
 		pkg_configdict["PF"] = pf
+		repository = None
 		if mydb:
 			if not hasattr(mydb, "aux_get"):
 				for k in aux_keys:
@@ -1107,6 +1122,34 @@ class config(object):
 			pkginternaluse = " ".join(pkginternaluse)
 		if pkginternaluse != self.configdict["pkginternal"].get("USE", ""):
 			self.configdict["pkginternal"]["USE"] = pkginternaluse
+			has_changed = True
+
+		repo_env = []
+		repo_env_empty = True
+		if repository and repository != Package.UNKNOWN_REPO:
+			for repo in [repo.name for
+				repo in self.repositories[repository].masters] + [repository]:
+				d = self._repo_make_defaults.get(repo)
+				if d is None:
+					d = {}
+				else:
+					# make a copy, since we might modify it with
+					# package.use settings
+					d = d.copy()
+				repo_env.append(d)
+				cpdict = self._use_manager._repo_puse_dict.get(repo, {}).get(cp)
+				if cpdict:
+					repo_puse = ordered_by_atom_specificity(cpdict, pkg)
+					if repo_puse:
+						for x in repo_puse:
+							d["USE"] = d.get("USE", "") + " " + " ".join(x)
+				if d:
+					repo_env_empty = False
+
+		if not repo_env_empty or self.configdict["repo"]:
+			self.configdict["repo"].clear()
+			self.configdict["repo"].update(stack_dicts(repo_env,
+				incrementals=self.incrementals))
 			has_changed = True
 
 		defaults = []
