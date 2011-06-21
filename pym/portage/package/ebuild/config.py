@@ -1127,8 +1127,14 @@ class config(object):
 		repo_env = []
 		repo_env_empty = True
 		if repository and repository != Package.UNKNOWN_REPO:
-			for repo in [repo.name for
-				repo in self.repositories[repository].masters] + [repository]:
+			repos = []
+			try:
+				repos.extend(repo.name for repo in
+					self.repositories[repository].masters)
+			except KeyError:
+				pass
+			repos.append(repository)
+			for repo in repos:
 				d = self._repo_make_defaults.get(repo)
 				if d is None:
 					d = {}

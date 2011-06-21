@@ -147,7 +147,14 @@ class UseManager(object):
 			cp = cpv_getkey(remove_slot(pkg))
 		usemask = []
 		if hasattr(pkg, "repo") and pkg.repo != Package.UNKNOWN_REPO:
-			for repo in [repo.name for repo in self.repositories[pkg.repo].masters] + [pkg.repo]:
+			repos = []
+			try:
+				repos.extend(repo.name for repo in
+					self.repositories[pkg.repo].masters)
+			except KeyError:
+				pass
+			repos.append(pkg.repo)
+			for repo in repos:
 				usemask.append(self._repo_usemask_dict.get(repo, {}))
 				cpdict = self._repo_pusemask_dict.get(repo, {}).get(cp)
 				if cpdict:
@@ -174,7 +181,14 @@ class UseManager(object):
 			cp = cpv_getkey(remove_slot(pkg))
 		useforce = []
 		if hasattr(pkg, "repo") and pkg.repo != Package.UNKNOWN_REPO:
-			for repo in [repo.name for repo in self.repositories[pkg.repo].masters] + [pkg.repo]:
+			repos = []
+			try:
+				repos.extend(repo.name for repo in
+					self.repositories[pkg.repo].masters)
+			except KeyError:
+				pass
+			repos.append(pkg.repo)
+			for repo in repos:
 				useforce.append(self._repo_useforce_dict.get(repo, {}))
 				cpdict = self._repo_puseforce_dict.get(repo, {}).get(cp)
 				if cpdict:
