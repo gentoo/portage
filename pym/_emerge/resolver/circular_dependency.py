@@ -174,10 +174,16 @@ class circular_dependency_handler(object):
 						current_use.add(flag)
 					else:
 						current_use.discard(flag)
-				reduced_dep = use_reduce(dep,
-					uselist=current_use, flat=True)
+				try:
+					reduced_dep = use_reduce(dep,
+						uselist=current_use, flat=True)
+				except InvalidDependString:
+					if not parent.installed:
+						raise
+					reduced_dep = None
 
-				if parent_atom not in reduced_dep:
+				if reduced_dep is not None and \
+					parent_atom not in reduced_dep:
 					#We found an assignment that removes the atom from 'dep'.
 					#Make sure it doesn't conflict with REQUIRED_USE.
 					required_use = parent.metadata["REQUIRED_USE"]
