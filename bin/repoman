@@ -1958,7 +1958,8 @@ for x in scanlist:
 								prof, repr(atoms)))
 
 		if not baddepsyntax and unknown_pkgs:
-			all_unknown = set(*unknown_pkgs.values())
+			all_unknown = set()
+			all_unknown.update(*unknown_pkgs.values())
 			type_map = {}
 			for mytype, atom in all_unknown:
 				type_map.setdefault(mytype, set()).add(atom)
