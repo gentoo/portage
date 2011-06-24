@@ -286,6 +286,7 @@ qahelp={
 	"ebuild.notadded":"Ebuilds that exist but have not been added to cvs",
 	"ebuild.patches":"PATCHES variable should be a bash array to ensure white space safety",
 	"changelog.notadded":"ChangeLogs that exist but have not been added to cvs",
+	"dependency.unknown" : "Ebuild has a dependency that refers to an unknown package (which may be provided by an overlay)",
 	"file.executable":"Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do note need the executable bit",
 	"file.size":"Files in the files directory must be under 20 KiB",
 	"file.size.fatal":"Files in the files directory must be under 60 KiB",
@@ -377,6 +378,7 @@ qacats.sort()
 qawarnings = set((
 "changelog.missing",
 "changelog.notadded",
+"dependency.unknown",
 "digest.assumed",
 "digest.unused",
 "ebuild.notadded",
@@ -1634,6 +1636,7 @@ for x in scanlist:
 				# packages that have empty KEYWORDS.
 				arches.append(['**', '**', ['**']])
 
+		unknown_pkgs = {}
 		baddepsyntax = False
 		badlicsyntax = False
 		badprovsyntax = False
@@ -1669,6 +1672,12 @@ for x in scanlist:
 				for atom in atoms:
 					if atom == "||":
 						continue
+
+					if not atom.blocker and \
+						not portdb.cp_list(atom.cp) and \
+						not atom.cp.startswith("virtual/"):
+						unknown_pkgs.setdefault(atom.cp, set()).add(
+							(mytype, atom.unevaluated_atom))
 
 					is_blocker = atom.blocker
 
@@ -1913,6 +1922,12 @@ for x in scanlist:
 
 						if success:
 							if atoms:
+								for atom in atoms:
+									if not atom.blocker:
+										# Don't bother with dependency.unknown
+										# for cases in which *DEPEND.bad is
+										# triggered.
+										unknown_pkgs.pop(atom.cp, None)
 
 								if not prof.sub_path:
 									# old-style virtuals currently aren't
@@ -1941,6 +1956,16 @@ for x in scanlist:
 							fails[mykey].append("%s: %s(%s) %s" % \
 								(relative_path, keyword,
 								prof, repr(atoms)))
+
+		if not baddepsyntax and unknown_pkgs:
+			all_unknown = set(*unknown_pkgs.values())
+			type_map = {}
+			for mytype, atom in all_unknown:
+				type_map.setdefault(mytype, set()).add(atom)
+			for mytype, atoms in type_map.items():
+				stats["dependency.unknown"] += 1
+				fails["dependency.unknown"].append("%s: %s: %s" %
+					(relative_path, mytype, ", ".join(sorted(atoms))))
 
 	# Check for 'all unstable' or 'all masked' -- ACCEPT_KEYWORDS is stripped
 	# XXX -- Needs to be implemented in dep code. Can't determine ~arch nicely.
