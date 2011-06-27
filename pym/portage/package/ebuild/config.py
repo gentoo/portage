@@ -434,6 +434,7 @@ class config(object):
 			non_user_variables = set()
 			non_user_variables.update(profile_only_variables)
 			non_user_variables.update(self._env_blacklist)
+			non_user_variables.update(self._global_only_vars)
 			non_user_variables = frozenset(non_user_variables)
 			self._non_user_variables = non_user_variables
 
@@ -1209,7 +1210,6 @@ class config(object):
 
 		protected_pkg_keys = set(pkg_configdict)
 		protected_pkg_keys.discard('USE')
-		protected_pkg_keys.update(self._global_only_vars)
 
 		# If there are _any_ package.env settings for this package
 		# then it automatically triggers config.reset(), in order
