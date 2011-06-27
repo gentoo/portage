@@ -130,6 +130,7 @@ class config(object):
 	_environ_filter = special_env_vars.environ_filter
 	_environ_whitelist = special_env_vars.environ_whitelist
 	_environ_whitelist_re = special_env_vars.environ_whitelist_re
+	_global_only_vars = special_env_vars.global_only_vars
 
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
@@ -1142,6 +1143,8 @@ class config(object):
 					# make a copy, since we might modify it with
 					# package.use settings
 					d = d.copy()
+					for k in self._global_only_vars:
+						d.pop(k, None)
 				repo_env.append(d)
 				cpdict = self._use_manager._repo_puse_dict.get(repo, {}).get(cp)
 				if cpdict:
@@ -1206,6 +1209,7 @@ class config(object):
 
 		protected_pkg_keys = set(pkg_configdict)
 		protected_pkg_keys.discard('USE')
+		protected_pkg_keys.update(self._global_only_vars)
 
 		# If there are _any_ package.env settings for this package
 		# then it automatically triggers config.reset(), in order
