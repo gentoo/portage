@@ -151,11 +151,8 @@ class Display(object):
 
 		self.old_use = [flag for flag in self.old_use if flag in self.old_iuse]
 
-		self.use_expand = self.pkgsettings["USE_EXPAND"].lower().split()
-		self.use_expand.sort()
-		self.use_expand.reverse()
-		self.use_expand_hidden = \
-			self.pkgsettings["USE_EXPAND_HIDDEN"].lower().split()
+		self.use_expand = pkg.use.expand
+		self.use_expand_hidden = pkg.use.expand_hidden
 		return
 
 	def include_mask_str(self):
@@ -253,10 +250,10 @@ class Display(object):
 		old_iuse_map = self.map_to_use_expand(self.old_iuse)
 		old_use_map = self.map_to_use_expand(self.old_use)
 
-		self.use_expand.sort()
-		self.use_expand.insert(0, "USE")
+		use_expand = sorted(self.use_expand)
+		use_expand.insert(0, "USE")
 
-		for key in self.use_expand:
+		for key in use_expand:
 			if key in self.use_expand_hidden:
 				continue
 			self.verboseadd += _create_use_string(self.conf, key.upper(),
