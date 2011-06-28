@@ -390,7 +390,7 @@ def read_corresponding_eapi_file(filename):
 		f = open(eapi_file, "r")
 		lines = f.readlines()
 		if len(lines) == 1:
-			eapi = lines[0]
+			eapi = lines[0].rstrip("\n")
 		else:
 			writemsg(_("--- Invalid 'eapi' file (doesn't contain exactly one line): %s\n") % (eapi_file),
 				noiselevel=-1)
