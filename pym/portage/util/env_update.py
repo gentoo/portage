@@ -248,10 +248,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 			# we can safely create links.
 			writemsg_level(_(">>> Regenerating %setc/ld.so.cache...\n") % \
 				(target_root,))
-			if makelinks:
-				os.system("cd / ; %s -r '%s'" % (ldconfig, target_root))
-			else:
-				os.system("cd / ; %s -X -r '%s'" % (ldconfig, target_root))
+			os.system("cd / ; %s -X -r '%s'" % (ldconfig, target_root))
 		elif ostype in ("FreeBSD","DragonFly"):
 			writemsg_level(_(">>> Regenerating %svar/run/ld-elf.so.hints...\n") % \
 				target_root)
