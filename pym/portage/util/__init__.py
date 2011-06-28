@@ -683,37 +683,24 @@ def varexpand(mystring, mydict=None):
 				newstring=newstring+" "
 				pos=pos+1
 			elif (mystring[pos]=="\\"):
-				#backslash expansion time
+				# For backslash expansion, this function used to behave like
+				# echo -e, but that's not needed for our purposes. We want to
+				# behave like bash does when expanding a variable assignment
+				# in a sourced file, in which case it performs backslash
+				# removal for \\ and \$ but nothing more. Note that we don't
+				# handle escaped quotes here, since genconfig() uses shlex
+				# to handle that earlier.
 				if (pos+1>=len(mystring)):
 					newstring=newstring+mystring[pos]
 					break
 				else:
-					a=mystring[pos+1]
-					pos=pos+2
-					if a=='a':
-						newstring=newstring+chr(0o07)
-					elif a=='b':
-						newstring=newstring+chr(0o10)
-					elif a=='e':
-						newstring=newstring+chr(0o33)
-					elif (a=='f') or (a=='n'):
-						newstring=newstring+chr(0o12)
-					elif a=='r':
-						newstring=newstring+chr(0o15)
-					elif a=='t':
-						newstring=newstring+chr(0o11)
-					elif a=='v':
-						newstring=newstring+chr(0o13)
-					elif a in ('\'', '"'):
-						# Quote removal is handled by shlex.
+					a = mystring[pos + 1]
+					pos = pos + 2
+					if a in ("\\", "$"):
+						newstring = newstring + a
+					else:
 						newstring = newstring + mystring[pos-2:pos]
-						continue
-					elif a!='\n':
-						# Remove backslash only, as bash does. This takes care
-						# of \\. Note that we don't handle quotes here since
-						# quote removal is handled by shlex.
-						newstring=newstring+mystring[pos-1:pos]
-						continue
+					continue
 			elif (mystring[pos]=="$") and (mystring[pos-1]!="\\"):
 				pos=pos+1
 				if mystring[pos]=="{":

@@ -1,5 +1,5 @@
 # test_varExpand.py -- Portage Unit Testing Functionality
-# Copyright 2006 Gentoo Foundation
+# Copyright 2006-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -20,6 +20,37 @@ class VarExpandTestCase(TestCase):
 			self.assertFalse( result != varDict[key],
 				msg="Got %s != %s, from varexpand( %s, %s )" % \
 					( result, varDict[key], "${%s}" % key, varDict ) )
+
+	def testVarExpandBackslashes(self):
+		"""
+		We want to behave like bash does when expanding a variable
+		assignment in a sourced file, in which case it performs
+		backslash removal for \\ and \$ but nothing more. Note that
+		we don't handle escaped quotes here, since genconfig() uses
+		shlex to handle that earlier.
+		"""
+
+		varDict = {}
+		tests = [
+			("\\", "\\"),
+			("\\\\", "\\"),
+			("\\\\\\", "\\\\"),
+			("\\\\\\\\", "\\\\"),
+			("\\$", "$"),
+			("\\\\$", "\\$"),
+			("\\a", "\\a"),
+			("\\b", "\\b"),
+			("\\n", "\\n"),
+			("\\r", "\\r"),
+			("\\t", "\\t"),
+			("\\\"", "\\\""),
+			("\\'", "\\'"),
+		]
+		for test in tests:
+			result = varexpand( test[0], varDict )
+			self.assertFalse( result != test[1],
+				msg="Got %s != %s from varexpand( %s, %s )" \
+				% ( result, test[1], test[0], varDict ) )
 
 	def testVarExpandDoubleQuotes(self):
 		
