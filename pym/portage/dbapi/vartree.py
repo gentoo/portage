@@ -2476,7 +2476,10 @@ class dblink(object):
 					continue
 
 			if have_lib:
-				preserve_paths.update(preserve_node.alt_paths)
+				# There's no point in preserving the "master" symlink, since
+				# the soname symlink is all that's strictly required.
+				preserve_paths.update(f for f in preserve_node.alt_paths
+					if not linkmap.isMasterLink(f))
 
 		return preserve_paths
 
