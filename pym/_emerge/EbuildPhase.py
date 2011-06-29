@@ -18,6 +18,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.doebuild:_check_build_log,' + \
 		'_post_phase_cmds,_post_phase_userpriv_perms,' + \
 		'_post_src_install_chost_fix,' + \
+		'_post_src_install_soname_symlinks,' + \
 		'_post_src_install_uid_fix,_postinst_bsdflags,' + \
 		'_preinst_bsdflags'
 )
@@ -254,6 +255,15 @@ class EbuildPhase(CompositeTask):
 				noiselevel=-1)
 			self._die_hooks()
 			return
+
+		if self.phase == "install":
+			out = portage.StringIO()
+			_post_src_install_soname_symlinks(self.settings, out)
+			msg = _unicode_decode(out.getvalue(),
+				encoding=_encodings['content'], errors='replace')
+			if msg:
+				self.scheduler.output(msg, log_path=log_path)
+
 		self._current_task = None
 		self.wait()
 		return

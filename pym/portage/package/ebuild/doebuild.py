@@ -5,6 +5,7 @@ __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
 
 import codecs
 import gzip
+import errno
 from itertools import chain
 import logging
 import os as _os
@@ -1612,11 +1613,89 @@ def _post_src_install_uid_fix(mysettings, out):
 			mode='w', encoding=_encodings['repo.content'],
 			errors='strict').write(v + '\n')
 
+	_reapply_bsdflags_to_image(mysettings)
+
+def _reapply_bsdflags_to_image(mysettings):
+	"""
+	Reapply flags saved and removed by _preinst_bsdflags.
+	"""
 	if bsd_chflags:
-		# Restore all of the flags saved above.
 		os.system("mtree -e -p %s -U -k flags < %s > /dev/null" % \
 			(_shell_quote(mysettings["D"]),
 			_shell_quote(os.path.join(mysettings["T"], "bsdflags.mtree"))))
+
+def _post_src_install_soname_symlinks(mysettings, out):
+	"""
+	Check that libraries in $D have corresponding soname symlinks.
+	If symlinks are missing then create them and trigger a QA Notice.
+	This requires $PORTAGE_BUILDDIR/build-info/NEEDED.ELF.2 for
+	operation.
+	"""
+
+	image_dir = mysettings["D"]
+	needed_filename = os.path.join(mysettings["PORTAGE_BUILDDIR"],
+		"build-info", "NEEDED.ELF.2")
+
+	try:
+		lines = codecs.open(_unicode_encode(needed_filename,
+			encoding=_encodings['fs'], errors='strict'),
+			'r', encoding=_encodings['repo.content'],
+			errors='replace').readlines()
+	except IOError as e:
+		if e.errno not in (errno.ENOENT, errno.ESTALE):
+			raise
+		return
+
+	missing_symlinks = []
+
+	# Parse NEEDED.ELF.2 like LinkageMapELF.rebuild() does.
+	for l in lines:
+		l = l.rstrip("\n")
+		if not l:
+			continue
+		fields = l.split(";")
+		if len(fields) < 5:
+			portage.util.writemsg_level(_("\nWrong number of fields " \
+				"in %s: %s\n\n") % (needed_filename, l),
+				level=logging.ERROR, noiselevel=-1)
+			continue
+
+		obj, soname = fields[1:3]
+		if not soname:
+			continue
+
+		obj_file_path = os.path.join(image_dir, obj.lstrip(os.sep))
+		sym_file_path = os.path.join(os.path.dirname(obj_file_path), soname)
+		try:
+			os.lstat(sym_file_path)
+		except OSError as e:
+			if e.errno not in (errno.ENOENT, errno.ESTALE):
+				raise
+		else:
+			continue
+
+		missing_symlinks.append((obj, soname))
+
+	if not missing_symlinks:
+		return
+
+	qa_msg = ["QA Notice: Missing soname symlink(s) " + \
+		"will be automatically created:"]
+	qa_msg.append("")
+	qa_msg.extend("\t%s -> %s" % (os.path.join(
+		os.path.dirname(obj).lstrip(os.sep), soname),
+		os.path.basename(obj))
+		for obj, soname in missing_symlinks)
+	qa_msg.append("")
+	for line in qa_msg:
+		eqawarn(line, key=mysettings.mycpv, out=out)
+
+	_preinst_bsdflags(mysettings)
+	for obj, soname in missing_symlinks:
+		obj_file_path = os.path.join(image_dir, obj.lstrip(os.sep))
+		sym_file_path = os.path.join(os.path.dirname(obj_file_path), soname)
+		os.symlink(os.path.basename(obj_file_path), sym_file_path)
+	_reapply_bsdflags_to_image(mysettings)
 
 def _merge_unicode_error(errors):
 	lines = []
