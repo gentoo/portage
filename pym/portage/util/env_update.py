@@ -27,7 +27,14 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 	env=None, writemsg_level=None):
 	"""
 	Parse /etc/env.d and use it to generate /etc/profile.env, csh.env,
-	ld.so.conf, and prelink.conf. Finally, run ldconfig.
+	ld.so.conf, and prelink.conf. Finally, run ldconfig. When ldconfig is
+	called, its -X option will be used in order to avoid potential
+	interference with installed soname symlinks that are required for
+	correct operation of FEATURES=preserve-libs for downgrade operations.
+	It's not necessary for ldconfig to create soname symlinks, since
+	portage will use NEEDED.ELF.2 data to automatically create them
+	after src_install if they happen to be missing.
+	@param makelinks: True if ldconfig should be called, False otherwise
 	@param target_root: root that is passed to the ldconfig -r option,
 		defaults to portage.settings["ROOT"].
 	@type target_root: String (Path)
