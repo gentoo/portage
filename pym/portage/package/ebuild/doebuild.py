@@ -826,14 +826,18 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				actionmap[x]["dep"] = ' '.join(actionmap_deps[x])
 
 		if mydo in actionmap:
+			bintree = None
 			if mydo == "package":
 				# Make sure the package directory exists before executing
 				# this phase. This can raise PermissionDenied if
 				# the current user doesn't have write access to $PKGDIR.
 				if hasattr(portage, 'db'):
 					bintree = portage.db[mysettings["ROOT"]]["bintree"]
-					bintree._ensure_dir(os.path.join(
-						bintree.pkgdir, mysettings["CATEGORY"]))
+					mysettings["PORTAGE_BINPKG_TMPFILE"] = \
+						bintree.getname(mysettings.mycpv) + \
+						".%s" % (os.getpid(),)
+					bintree._ensure_dir(os.path.dirname(
+						mysettings["PORTAGE_BINPKG_TMPFILE"]))
 				else:
 					parent_dir = os.path.join(mysettings["PKGDIR"],
 						mysettings["CATEGORY"])
@@ -844,6 +848,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			retval = spawnebuild(mydo,
 				actionmap, mysettings, debug, logfile=logfile,
 				fd_pipes=fd_pipes, returnpid=returnpid)
+
+			if retval == os.EX_OK:
+				if mydo == "package" and bintree is not None:
+					bintree.inject(mysettings.mycpv,
+						filename=mysettings["PORTAGE_BINPKG_TMPFILE"])
 		elif mydo=="qmerge":
 			# check to ensure install was run.  this *only* pops up when users
 			# forget it and are using ebuild
