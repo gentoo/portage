@@ -24,7 +24,7 @@ portage-2.1.10
 ==================================
 * The emerge --autounmask option is now enabled by default. The
   --autounmask-write option can be used to have config changes automatically
-  written to the appropriate files (repecting --ask and CONFIG_PROTECT). If
+  written to the appropriate files (respecting --ask and CONFIG_PROTECT). If
   --autounmask behavior is not desired as the default behavior, then it can
   be disabled by adding --autounmask=n to the EMERGE_DEFAULT_OPTS variable in
   make.conf. Refer to the emerge(1) man page for more information.
