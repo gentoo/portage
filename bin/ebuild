@@ -269,6 +269,7 @@ root_config = RootConfig(portage.settings,
 	portage.db[portage.settings["ROOT"]], None)
 
 pkg = Package(built=(pkg_type != "ebuild"), cpv=cpv,
+	installed=(pkg_type=="installed"),
 	metadata=metadata, root_config=root_config,
 	type_name=pkg_type)
 
