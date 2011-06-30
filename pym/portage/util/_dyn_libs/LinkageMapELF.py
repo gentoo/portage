@@ -481,7 +481,9 @@ class LinkageMapELF(object):
 
 	def isMasterLink(self, obj):
 		"""
-		Determine whether an object is a master link.
+		Determine whether an object is a "master" symlink, which means
+		that its basename is that same as the beginning part of the
+		soname and it lacks the soname's version component.
 
 		@param obj: absolute path to an object
 		@type obj: string (example: '/usr/bin/foo')
@@ -492,12 +494,12 @@ class LinkageMapELF(object):
 
 		"""
 		os = _os_merge
-		basename = os.path.basename(obj)
 		obj_key = self._obj_key(obj)
 		if obj_key not in self._obj_properties:
 			raise KeyError("%s (%s) not in object list" % (obj_key, obj))
+		basename = os.path.basename(obj)
 		soname = self._obj_properties[obj_key][3]
-		return (len(basename) < len(soname))
+		return len(basename) < len(soname) and soname.startswith(basename)
 
 	def listLibraryObjects(self):
 		"""
