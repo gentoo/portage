@@ -83,7 +83,8 @@ case $1 in
 			# If PORTAGE_COMPRESS_FLAGS contains -k then we need to avoid
 			# having our glob match the uncompressed file here.
 			suffix=$(echo compressme.*)
-			[[ -z $suffix ]] && suffix=$(echo compressme*)
+			[[ -z $suffix || "$suffix" == "compressme.*" ]] && \
+				suffix=$(echo compressme*)
 			suffix=${suffix#compressme}
 			cd /
 			rm -rf "${tmpdir}"
