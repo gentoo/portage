@@ -1127,7 +1127,6 @@ class config(object):
 			has_changed = True
 
 		repo_env = []
-		repo_env_empty = True
 		if repository and repository != Package.UNKNOWN_REPO:
 			repos = []
 			try:
@@ -1146,7 +1145,6 @@ class config(object):
 					d = d.copy()
 					for k in self._global_only_vars:
 						d.pop(k, None)
-				repo_env.append(d)
 				cpdict = self._use_manager._repo_puse_dict.get(repo, {}).get(cp)
 				if cpdict:
 					repo_puse = ordered_by_atom_specificity(cpdict, pkg)
@@ -1154,9 +1152,9 @@ class config(object):
 						for x in repo_puse:
 							d["USE"] = d.get("USE", "") + " " + " ".join(x)
 				if d:
-					repo_env_empty = False
+					repo_env.append(d)
 
-		if not repo_env_empty or self.configdict["repo"]:
+		if repo_env or self.configdict["repo"]:
 			self.configdict["repo"].clear()
 			self.configdict["repo"].update(stack_dicts(repo_env,
 				incrementals=self.incrementals))
