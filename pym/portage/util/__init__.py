@@ -688,7 +688,7 @@ def varexpand(mystring, mydict=None):
 				# behave like bash does when expanding a variable assignment
 				# in a sourced file, in which case it performs backslash
 				# removal for \\ and \$ but nothing more. Note that we don't
-				# handle escaped quotes here, since genconfig() uses shlex
+				# handle escaped quotes here, since getconfig() uses shlex
 				# to handle that earlier.
 				if (pos+1>=len(mystring)):
 					newstring=newstring+mystring[pos]
