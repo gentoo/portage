@@ -260,7 +260,7 @@ tmpsettings.features.discard("fail-clean")
 try:
 	metadata = dict(zip(Package.metadata_keys,
 		portage.db[portage.settings["ROOT"]][mytree].dbapi.aux_get(
-		cpv, Package.metadata_keys)))
+		cpv, Package.metadata_keys, myrepo=myrepo)))
 except KeyError:
 	# aux_get failure, message should have been shown on stderr.
 	sys.exit(1)
