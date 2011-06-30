@@ -482,7 +482,7 @@ class LinkageMapELF(object):
 	def isMasterLink(self, obj):
 		"""
 		Determine whether an object is a "master" symlink, which means
-		that its basename is that same as the beginning part of the
+		that its basename is the same as the beginning part of the
 		soname and it lacks the soname's version component.
 
 		@param obj: absolute path to an object
