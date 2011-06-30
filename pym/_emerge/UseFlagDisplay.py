@@ -100,7 +100,7 @@ def pkg_use_display(pkg, opts):
 
 	flag_displays = []
 	for varname in var_order:
-		if varname in use_expand_hidden:
+		if varname.lower() in use_expand_hidden:
 			continue
 		flags = []
 		for f in use_enabled.get(varname, []):
