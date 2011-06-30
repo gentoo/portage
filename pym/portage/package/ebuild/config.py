@@ -6,6 +6,7 @@ __all__ = [
 ]
 
 import copy
+from itertools import chain
 import logging
 import re
 import sys
@@ -520,8 +521,10 @@ class config(object):
 			for repo in self.repositories.repos_with_profiles():
 				d = getconfig(os.path.join(repo.location, "profiles", "make.defaults"),
 					expand=self.configdict["globals"].copy()) or {}
-				for blacklisted in self._env_blacklist:
-					d.pop(blacklisted, None)
+				if d:
+					for k in chain(self._env_blacklist,
+						profile_only_variables, self._global_only_vars):
+						d.pop(k, None)
 				self._repo_make_defaults[repo.name] = d
 
 			#Read package.keywords and package.accept_keywords.
@@ -1143,8 +1146,6 @@ class config(object):
 					# make a copy, since we might modify it with
 					# package.use settings
 					d = d.copy()
-					for k in self._global_only_vars:
-						d.pop(k, None)
 				cpdict = self._use_manager._repo_puse_dict.get(repo, {}).get(cp)
 				if cpdict:
 					repo_puse = ordered_by_atom_specificity(cpdict, pkg)
