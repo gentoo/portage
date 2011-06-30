@@ -175,7 +175,7 @@ class LinkageMapELF(object):
 		root = self._root
 		root_len = len(root) - 1
 		self._clear_cache()
-		self._defpath.update(getlibpaths(self._root))
+		self._defpath.update(getlibpaths(self._root, env=self._dbapi.settings))
 		libs = self._libs
 		obj_properties = self._obj_properties
 

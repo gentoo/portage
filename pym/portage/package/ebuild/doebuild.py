@@ -1646,6 +1646,43 @@ def _post_src_install_soname_symlinks(mysettings, out):
 			raise
 		return
 
+	libpaths = set(portage.util.getlibpaths(
+		mysettings["ROOT"], env=mysettings))
+	libpath_inodes = set()
+	for libpath in libpaths:
+		libdir = os.path.join(mysettings["ROOT"], libpath.lstrip(os.sep))
+		try:
+			s = os.stat(libdir)
+		except OSError:
+			continue
+		else:
+			libpath_inodes.add((s.st_dev, s.st_ino))
+
+	is_libdir_cache = {}
+
+	def is_libdir(obj_parent):
+		try:
+			return is_libdir_cache[obj_parent]
+		except KeyError:
+			pass
+
+		rval = False
+		if obj_parent in libpaths:
+			rval = True
+		else:
+			parent_path = os.path.join(mysettings["ROOT"],
+				obj_parent.lstrip(os.sep))
+			try:
+				s = os.stat(parent_path)
+			except OSError:
+				pass
+			else:
+				if (s.st_dev, s.st_ino) in libpath_inodes:
+					rval = True
+
+		is_libdir_cache[obj_parent] = rval
+		return rval
+
 	missing_symlinks = []
 
 	# Parse NEEDED.ELF.2 like LinkageMapELF.rebuild() does.
@@ -1662,6 +1699,8 @@ def _post_src_install_soname_symlinks(mysettings, out):
 
 		obj, soname = fields[1:3]
 		if not soname:
+			continue
+		if not is_libdir(os.path.dirname(obj)):
 			continue
 
 		obj_file_path = os.path.join(image_dir, obj.lstrip(os.sep))

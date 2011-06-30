@@ -1567,11 +1567,12 @@ def find_updated_config_files(target_root, config_protect):
 					else:
 						yield (x, None)
 
-def getlibpaths(root):
+def getlibpaths(root, env=None):
 	""" Return a list of paths that are used for library lookups """
-
+	if env is None:
+		env = os.environ
 	# the following is based on the information from ld.so(8)
-	rval = os.environ.get("LD_LIBRARY_PATH", "").split(":")
+	rval = env.get("LD_LIBRARY_PATH", "").split(":")
 	rval.extend(grabfile(os.path.join(root, "etc", "ld.so.conf")))
 	rval.append("/usr/lib")
 	rval.append("/lib")
