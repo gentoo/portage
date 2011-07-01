@@ -661,9 +661,10 @@ class LinkageMapELF(object):
 			soname = self._obj_properties[obj_key][3]
 			soname_link = os.path.join(self._root,
 				os.path.dirname(obj).lstrip(os.path.sep), soname)
+			obj_path = os.path.join(self._root, obj.lstrip(os.sep))
 			try:
 				soname_st = os.stat(soname_link)
-				obj_st = os.stat(obj)
+				obj_st = os.stat(obj_path)
 			except OSError:
 				pass
 			else:
