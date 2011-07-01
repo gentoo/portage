@@ -255,7 +255,11 @@ class LinkageMapXCoff(LinkageMapELF):
 			def as_contentmember(obj):
 				if obj.endswith("]"):
 					if obj.find("/") >= 0:
+						if obj[obj.rfind("/")+1] == ".":
+							return obj
 						return obj[:obj.rfind("/")] + "/." + obj[obj.rfind("/")+1:]
+					if obj[0] == ".":
+						return obj
 					return "." + obj
 				return obj
 

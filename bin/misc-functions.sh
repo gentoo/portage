@@ -1189,7 +1189,9 @@ install_qa_check_xcoff() {
 			fi
 			prev_FILE=${FILE}
 
-			[[ " ${FLAGS} " == *" SHROBJ "* ]] || continue
+			# shared objects have both EXEC and SHROBJ flags,
+			# while executables have EXEC flag only.
+			[[ " ${FLAGS} " == *" EXEC "* ]] || continue
 
 			# Make sure we disallow insecure RUNPATH's
 			# Don't want paths that point to the tree where the package was built
