@@ -2461,25 +2461,25 @@ class dblink(object):
 
 		preserve_paths = set()
 		for preserve_node in preserve_nodes:
-			# Make sure that at least one of the paths is not a symlink.
-			# This prevents symlinks from being erroneously preserved by
-			# themselves when the old instance installed symlinks that
-			# the new instance does not install.
-			have_lib = False
+			# Preserve the library itself, and also preserve the
+			# soname symlink which is the only symlink that is
+			# strictly required.
+			hardlinks = set()
+			soname_symlinks = set()
+			soname = linkmap.getSoname(next(iter(preserve_node.alt_paths)))
 			for f in preserve_node.alt_paths:
 				f_abs = os.path.join(root, f.lstrip(os.sep))
 				try:
 					if stat.S_ISREG(os.lstat(f_abs).st_mode):
-						have_lib = True
-						break
+						hardlinks.add(f)
+					elif os.path.basename(f) == soname:
+						soname_symlinks.add(f)
 				except OSError:
-					continue
+					pass
 
-			if have_lib:
-				# There's no point in preserving the "master" symlink, since
-				# the soname symlink is all that's strictly required.
-				preserve_paths.update(f for f in preserve_node.alt_paths
-					if not linkmap.isMasterLink(f))
+			if hardlinks:
+				preserve_paths.update(hardlinks)
+				preserve_paths.update(soname_symlinks)
 
 		return preserve_paths
 
