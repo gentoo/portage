@@ -654,21 +654,21 @@ class LinkageMapELF(object):
 				raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 
 		# If there is another version of this lib with the
-		# same soname and the master link points to that
+		# same soname and the soname symlink points to that
 		# other version, this lib will be shadowed and won't
 		# have any consumers.
 		if not isinstance(obj, self._ObjectKey):
 			soname = self._obj_properties[obj_key][3]
-			master_link = os.path.join(self._root,
+			soname_link = os.path.join(self._root,
 				os.path.dirname(obj).lstrip(os.path.sep), soname)
 			try:
-				master_st = os.stat(master_link)
+				soname_st = os.stat(soname_link)
 				obj_st = os.stat(obj)
 			except OSError:
 				pass
 			else:
 				if (obj_st.st_dev, obj_st.st_ino) != \
-					(master_st.st_dev, master_st.st_ino):
+					(soname_st.st_dev, soname_st.st_ino):
 					return set()
 
 		# Determine the directory(ies) from the set of objects.
