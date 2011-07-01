@@ -485,6 +485,13 @@ class LinkageMapELF(object):
 		that its basename is the same as the beginning part of the
 		soname and it lacks the soname's version component.
 
+		Examples:
+
+		soname                 | master symlink name
+		--------------------------------------------
+		libarchive.so.2.8.4    | libarchive.so
+		libproc-3.2.8.so       | libproc.so
+
 		@param obj: absolute path to an object
 		@type obj: string (example: '/usr/bin/foo')
 		@rtype: Boolean
@@ -499,7 +506,9 @@ class LinkageMapELF(object):
 			raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 		basename = os.path.basename(obj)
 		soname = self._obj_properties[obj_key][3]
-		return len(basename) < len(soname) and soname.startswith(basename)
+		return len(basename) < len(soname) and \
+			basename.endswith(".so") and \
+			soname.startswith(basename[:-3])
 
 	def listLibraryObjects(self):
 		"""
