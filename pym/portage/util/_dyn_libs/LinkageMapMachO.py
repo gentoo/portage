@@ -59,7 +59,7 @@ class LinkageMapMachO(object):
 
 		"""Helper class used as _obj_properties keys for objects."""
 
-		__slots__ = ("_key")
+		__slots__ = ("_key",)
 
 		def __init__(self, obj, root):
 			"""
@@ -459,7 +459,16 @@ class LinkageMapMachO(object):
 
 	def isMasterLink(self, obj):
 		"""
-		Determine whether an object is a master link.
+		Determine whether an object is a "master" symlink, which means
+		that its basename is the same as the beginning part of the
+		soname and it lacks the soname's version component.
+
+		Examples:
+
+		install_name              | master symlink name
+		-----------------------------------------------
+		libarchive.2.8.4.dylib    | libarchive.dylib
+		(typically the install_name is libarchive.2.dylib)
 
 		@param obj: absolute path to an object
 		@type obj: string (example: '/usr/bin/foo')
@@ -470,12 +479,14 @@ class LinkageMapMachO(object):
 
 		"""
 		os = _os_merge
-		basename = os.path.basename(obj)
 		obj_key = self._obj_key(obj)
 		if obj_key not in self._obj_properties:
 			raise KeyError("%s (%s) not in object list" % (obj_key, obj))
+		basename = os.path.basename(obj)
 		install_name = self._obj_properties[obj_key][2]
-		return (len(basename) < len(os.path.basename(install_name)))
+		return (len(basename) < len(os.path.basename(install_name)) and \
+			basename.endswith(".dylib") and \
+			os.path.basename(install_name).startswith(basename[:-6])
 
 	def listLibraryObjects(self):
 		"""
@@ -490,8 +501,8 @@ class LinkageMapMachO(object):
 		rValue = []
 		if not self._libs:
 			self.rebuild()
-		for arch_map in self._libs.itervalues():
-			for soname_map in arch_map.itervalues():
+		for arch_map in self._libs.values():
+			for soname_map in arch_map.values():
 				for obj_key in soname_map.providers:
 					rValue.extend(self._obj_properties[obj_key][3])
 		return rValue
@@ -620,7 +631,7 @@ class LinkageMapMachO(object):
 				raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 
 		# If there is another version of this lib with the
-		# same soname and the master link points to that
+		# same soname and the install_name symlink points to that
 		# other version, this lib will be shadowed and won't
 		# have any consumers.
 		if not isinstance(obj, self._ObjectKey):
