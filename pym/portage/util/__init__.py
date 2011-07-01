@@ -687,8 +687,9 @@ def varexpand(mystring, mydict=None):
 				# echo -e, but that's not needed for our purposes. We want to
 				# behave like bash does when expanding a variable assignment
 				# in a sourced file, in which case it performs backslash
-				# removal for \\ and \$ but nothing more. Note that we don't
-				# handle escaped quotes here, since getconfig() uses shlex
+				# removal for \\ and \$ but nothing more. It also removes
+				# escaped newline characters. Note that we don't handle
+				# escaped quotes here, since getconfig() uses shlex
 				# to handle that earlier.
 				if (pos+1>=len(mystring)):
 					newstring=newstring+mystring[pos]
@@ -698,6 +699,8 @@ def varexpand(mystring, mydict=None):
 					pos = pos + 2
 					if a in ("\\", "$"):
 						newstring = newstring + a
+					elif a == "\n":
+						pass
 					else:
 						newstring = newstring + mystring[pos-2:pos]
 					continue

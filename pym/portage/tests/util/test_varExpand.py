@@ -25,9 +25,10 @@ class VarExpandTestCase(TestCase):
 		"""
 		We want to behave like bash does when expanding a variable
 		assignment in a sourced file, in which case it performs
-		backslash removal for \\ and \$ but nothing more. Note that
-		we don't handle escaped quotes here, since genconfig() uses
-		shlex to handle that earlier.
+		backslash removal for \\ and \$ but nothing more. It also
+		removes escaped newline characters. Note that we don't
+		handle escaped quotes here, since genconfig() uses shlex
+		to handle that earlier.
 		"""
 
 		varDict = {}
@@ -43,6 +44,7 @@ class VarExpandTestCase(TestCase):
 			("\\n", "\\n"),
 			("\\r", "\\r"),
 			("\\t", "\\t"),
+			("\\\n", ""),
 			("\\\"", "\\\""),
 			("\\'", "\\'"),
 		]
