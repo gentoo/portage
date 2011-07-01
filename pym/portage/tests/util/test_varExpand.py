@@ -27,7 +27,7 @@ class VarExpandTestCase(TestCase):
 		assignment in a sourced file, in which case it performs
 		backslash removal for \\ and \$ but nothing more. It also
 		removes escaped newline characters. Note that we don't
-		handle escaped quotes here, since genconfig() uses shlex
+		handle escaped quotes here, since getconfig() uses shlex
 		to handle that earlier.
 		"""
 
