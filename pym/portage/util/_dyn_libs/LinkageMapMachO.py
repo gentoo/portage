@@ -486,7 +486,7 @@ class LinkageMapMachO(object):
 		install_name = self._obj_properties[obj_key][2]
 		return (len(basename) < len(os.path.basename(install_name)) and \
 			basename.endswith(".dylib") and \
-			os.path.basename(install_name).startswith(basename[:-6])
+			os.path.basename(install_name).startswith(basename[:-6]))
 
 	def listLibraryObjects(self):
 		"""
