@@ -846,6 +846,11 @@ class depgraph(object):
 				if arg in traversed_set_args:
 					continue
 				traversed_set_args.add(arg)
+
+				if add_to_digraph:
+					self._dynamic_config.digraph.add(arg, None,
+						priority=BlockerDepPriority.instance)
+
 				yield arg
 
 				# Traverse nested sets and add them to the stack
@@ -2663,8 +2668,12 @@ class depgraph(object):
 
 				affecting_use = set()
 				for dep_str in dep_strings:
-					affecting_use.update(extract_affecting_use(dep_str, atom,
-						eapi=node.metadata["EAPI"]))
+					try:
+						affecting_use.update(extract_affecting_use(
+							dep_str, atom, eapi=node.metadata["EAPI"]))
+					except InvalidDependString:
+						if not node.installed:
+							raise
 
 				#Don't show flags as 'affecting' if the user can't change them,
 				affecting_use.difference_update(node.use.mask, \
@@ -3105,6 +3114,8 @@ class depgraph(object):
 				all_cp.update(portdb.cp_all())
 				if "--usepkg" in self._frozen_config.myopts:
 					all_cp.update(bindb.cp_all())
+				# discard dir containing no ebuilds
+				all_cp.discard(cp)
 
 				orig_cp_map = {}
 				for cp_orig in all_cp:
@@ -3115,8 +3126,12 @@ class depgraph(object):
 					matches = difflib.get_close_matches(cp, all_cp)
 				else:
 					pkg_to_cp = {}
-					for other_cp in all_cp:
+					for other_cp in list(all_cp):
 						other_pkg = portage.catsplit(other_cp)[1]
+						if other_pkg == pkg:
+							# discard dir containing no ebuilds
+							all_cp.discard(other_cp)
+							continue
 						pkg_to_cp.setdefault(other_pkg, set()).add(other_cp)
 					pkg_matches = difflib.get_close_matches(pkg, pkg_to_cp)
 					matches = []

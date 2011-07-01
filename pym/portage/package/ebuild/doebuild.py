@@ -5,6 +5,7 @@ __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
 
 import codecs
 import gzip
+import errno
 from itertools import chain
 import logging
 import os as _os
@@ -704,8 +705,13 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mysettings.configdict["pkg"]["EMERGE_FROM"] = "binary"
 				mysettings.configdict["pkg"]["MERGE_TYPE"] = "binary"
 
+		# NOTE: It's not possible to set REPLACED_BY_VERSION for prerm
+		#       and postrm here, since we don't necessarily know what
+		#       versions are being installed. This could be a problem
+		#       for API consumers if they don't use dblink.treewalk()
+		#       to execute prerm and postrm.
 		if eapi_exports_replace_vars(mysettings["EAPI"]) and \
-			(mydo in ("pretend", "setup") or \
+			(mydo in ("postinst", "preinst", "pretend", "setup") or \
 			("noauto" not in features and not returnpid and \
 			(mydo in actionmap_deps or mydo in ("merge", "package", "qmerge")))):
 			if not vartree:
@@ -721,7 +727,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					set(portage.versions.cpv_getversion(match) \
 						for match in vardb.match(cpv_slot) + \
 						vardb.match('='+cpv)))
-				mysettings.backup_changes("REPLACING_VERSIONS")
 
 		# if any of these are being called, handle them -- running them out of
 		# the sandbox -- and stop now.
@@ -824,14 +829,18 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				actionmap[x]["dep"] = ' '.join(actionmap_deps[x])
 
 		if mydo in actionmap:
+			bintree = None
 			if mydo == "package":
 				# Make sure the package directory exists before executing
 				# this phase. This can raise PermissionDenied if
 				# the current user doesn't have write access to $PKGDIR.
 				if hasattr(portage, 'db'):
 					bintree = portage.db[mysettings["ROOT"]]["bintree"]
-					bintree._ensure_dir(os.path.join(
-						bintree.pkgdir, mysettings["CATEGORY"]))
+					mysettings["PORTAGE_BINPKG_TMPFILE"] = \
+						bintree.getname(mysettings.mycpv) + \
+						".%s" % (os.getpid(),)
+					bintree._ensure_dir(os.path.dirname(
+						mysettings["PORTAGE_BINPKG_TMPFILE"]))
 				else:
 					parent_dir = os.path.join(mysettings["PKGDIR"],
 						mysettings["CATEGORY"])
@@ -842,6 +851,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			retval = spawnebuild(mydo,
 				actionmap, mysettings, debug, logfile=logfile,
 				fd_pipes=fd_pipes, returnpid=returnpid)
+
+			if retval == os.EX_OK:
+				if mydo == "package" and bintree is not None:
+					bintree.inject(mysettings.mycpv,
+						filename=mysettings["PORTAGE_BINPKG_TMPFILE"])
 		elif mydo=="qmerge":
 			# check to ensure install was run.  this *only* pops up when users
 			# forget it and are using ebuild
@@ -1653,11 +1667,128 @@ def _post_src_install_uid_fix(mysettings, out):
 			mode='w', encoding=_encodings['repo.content'],
 			errors='strict').write(v + '\n')
 
+	_reapply_bsdflags_to_image(mysettings)
+
+def _reapply_bsdflags_to_image(mysettings):
+	"""
+	Reapply flags saved and removed by _preinst_bsdflags.
+	"""
 	if bsd_chflags:
-		# Restore all of the flags saved above.
 		os.system("mtree -e -p %s -U -k flags < %s > /dev/null" % \
 			(_shell_quote(mysettings["D"]),
 			_shell_quote(os.path.join(mysettings["T"], "bsdflags.mtree"))))
+
+def _post_src_install_soname_symlinks(mysettings, out):
+	"""
+	Check that libraries in $D have corresponding soname symlinks.
+	If symlinks are missing then create them and trigger a QA Notice.
+	This requires $PORTAGE_BUILDDIR/build-info/NEEDED.ELF.2 for
+	operation.
+	"""
+
+	image_dir = mysettings["D"]
+	needed_filename = os.path.join(mysettings["PORTAGE_BUILDDIR"],
+		"build-info", "NEEDED.ELF.2")
+
+	try:
+		lines = codecs.open(_unicode_encode(needed_filename,
+			encoding=_encodings['fs'], errors='strict'),
+			'r', encoding=_encodings['repo.content'],
+			errors='replace').readlines()
+	except IOError as e:
+		if e.errno not in (errno.ENOENT, errno.ESTALE):
+			raise
+		return
+
+	libpaths = set(portage.util.getlibpaths(
+		mysettings["ROOT"], env=mysettings))
+	libpath_inodes = set()
+	for libpath in libpaths:
+		libdir = os.path.join(mysettings["ROOT"], libpath.lstrip(os.sep))
+		try:
+			s = os.stat(libdir)
+		except OSError:
+			continue
+		else:
+			libpath_inodes.add((s.st_dev, s.st_ino))
+
+	is_libdir_cache = {}
+
+	def is_libdir(obj_parent):
+		try:
+			return is_libdir_cache[obj_parent]
+		except KeyError:
+			pass
+
+		rval = False
+		if obj_parent in libpaths:
+			rval = True
+		else:
+			parent_path = os.path.join(mysettings["ROOT"],
+				obj_parent.lstrip(os.sep))
+			try:
+				s = os.stat(parent_path)
+			except OSError:
+				pass
+			else:
+				if (s.st_dev, s.st_ino) in libpath_inodes:
+					rval = True
+
+		is_libdir_cache[obj_parent] = rval
+		return rval
+
+	missing_symlinks = []
+
+	# Parse NEEDED.ELF.2 like LinkageMapELF.rebuild() does.
+	for l in lines:
+		l = l.rstrip("\n")
+		if not l:
+			continue
+		fields = l.split(";")
+		if len(fields) < 5:
+			portage.util.writemsg_level(_("\nWrong number of fields " \
+				"in %s: %s\n\n") % (needed_filename, l),
+				level=logging.ERROR, noiselevel=-1)
+			continue
+
+		obj, soname = fields[1:3]
+		if not soname:
+			continue
+		if not is_libdir(os.path.dirname(obj)):
+			continue
+
+		obj_file_path = os.path.join(image_dir, obj.lstrip(os.sep))
+		sym_file_path = os.path.join(os.path.dirname(obj_file_path), soname)
+		try:
+			os.lstat(sym_file_path)
+		except OSError as e:
+			if e.errno not in (errno.ENOENT, errno.ESTALE):
+				raise
+		else:
+			continue
+
+		missing_symlinks.append((obj, soname))
+
+	if not missing_symlinks:
+		return
+
+	qa_msg = ["QA Notice: Missing soname symlink(s) " + \
+		"will be automatically created:"]
+	qa_msg.append("")
+	qa_msg.extend("\t%s -> %s" % (os.path.join(
+		os.path.dirname(obj).lstrip(os.sep), soname),
+		os.path.basename(obj))
+		for obj, soname in missing_symlinks)
+	qa_msg.append("")
+	for line in qa_msg:
+		eqawarn(line, key=mysettings.mycpv, out=out)
+
+	_preinst_bsdflags(mysettings)
+	for obj, soname in missing_symlinks:
+		obj_file_path = os.path.join(image_dir, obj.lstrip(os.sep))
+		sym_file_path = os.path.join(os.path.dirname(obj_file_path), soname)
+		os.symlink(os.path.basename(obj_file_path), sym_file_path)
+	_reapply_bsdflags_to_image(mysettings)
 
 def _merge_unicode_error(errors):
 	lines = []

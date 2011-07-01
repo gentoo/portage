@@ -173,6 +173,12 @@ environ_filter += [
 
 environ_filter = frozenset(environ_filter)
 
+# Variables that are not allowed to have per-repo or per-package
+# settings.
+global_only_vars = frozenset([
+	"CONFIG_PROTECT",
+])
+
 default_globals = {
 	'ACCEPT_LICENSE':           '* -@EULA',
 	'ACCEPT_PROPERTIES':        '*',

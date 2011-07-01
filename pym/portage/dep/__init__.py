@@ -635,7 +635,7 @@ def flatten(mylist):
 
 
 _usedep_re = {
-	"0": re.compile("^(?P<prefix>[!-]?)(?P<flag>[A-Za-z0-9][A-Za-z0-9+_@-]*)(?P<default>(\(\+\)|\(\-\))?)(?P<suffix>[?=]?)$"),
+	"0":        re.compile("^(?P<prefix>[!-]?)(?P<flag>[A-Za-z0-9][A-Za-z0-9+_@-]*)(?P<default>(\(\+\)|\(\-\))?)(?P<suffix>[?=]?)$"),
 	"4-python": re.compile("^(?P<prefix>[!-]?)(?P<flag>[A-Za-z0-9][A-Za-z0-9+_@.-]*)(?P<default>(\(\+\)|\(\-\))?)(?P<suffix>[?=]?)$"),
 }
 
@@ -1622,7 +1622,7 @@ _extended_pkg = r'[\w+*][\w+*-]*?'
 _atom_wildcard_re = re.compile('(?P<simple>(' + _extended_cat + ')/(' + _extended_pkg + '))(:(?P<slot>' + _slot + '))?(' + _repo_separator + '(?P<repo>' + _repo_name + '))?$')
 
 _useflag_re = {
-	"0": re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@-]*$'),
+	"0":        re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@-]*$'),
 	"4-python": re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@.-]*$'),
 }
 

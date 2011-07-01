@@ -29,8 +29,19 @@ def _generate_hash_function(hashtype, hashobject, origin="unknown"):
 		@type filename: String
 		@return: The hash and size of the data
 		"""
-		f = open(_unicode_encode(filename,
-			encoding=_encodings['fs'], errors='strict'), 'rb')
+		try:
+			f = open(_unicode_encode(filename,
+				encoding=_encodings['fs'], errors='strict'), 'rb')
+		except IOError as e:
+			func_call = "open('%s')" % filename
+			if e.errno == errno.EPERM:
+				raise portage.exception.OperationNotPermitted(func_call)
+			elif e.errno == errno.EACCES:
+				raise portage.exception.PermissionDenied(func_call)
+			elif e.errno == errno.ENOENT:
+				raise portage.exception.FileNotFound(filename)
+			else:
+				raise
 		blocksize = HASHING_BLOCKSIZE
 		data = f.read(blocksize)
 		size = 0

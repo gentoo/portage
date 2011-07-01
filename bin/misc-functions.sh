@@ -378,6 +378,7 @@ install_qa_check_elf() {
 		fi
 
 		# Save NEEDED information after removing self-contained providers
+		rm -f "$PORTAGE_BUILDDIR"/build-info/NEEDED{,.ELF.2}
 		scanelf -qyRF '%a;%p;%S;%r;%n' "${D}" | { while IFS= read -r l; do
 			arch=${l%%;*}; l=${l#*;}
 			obj="/${l%%;*}"; l=${l#*;}
@@ -757,6 +758,16 @@ install_qa_check_misc() {
 			done
 		done
 		[[ ${abort} == yes ]] && die "multilib-strict check failed!"
+	fi
+
+	# ensure packages don't install systemd units automagically
+	if ! hasq systemd ${INHERITED} && \
+		[[ -d "${D}"/lib/systemd/system ]]
+	then
+		eqawarn "QA Notice: package installs systemd unit files (/lib/systemd/system)"
+		eqawarn "           but does not inherit systemd.eclass."
+		hasq stricter ${FEATURES} \
+			&& die "install aborted due to missing inherit of systemd.eclass"
 	fi
 }
 

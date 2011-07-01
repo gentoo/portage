@@ -391,7 +391,7 @@ def read_corresponding_eapi_file(filename):
 		f = open(eapi_file, "r")
 		lines = f.readlines()
 		if len(lines) == 1:
-			eapi = lines[0]
+			eapi = lines[0].rstrip("\n")
 		else:
 			writemsg(_("--- Invalid 'eapi' file (doesn't contain exactly one line): %s\n") % (eapi_file),
 				noiselevel=-1)
@@ -684,37 +684,27 @@ def varexpand(mystring, mydict=None):
 				newstring=newstring+" "
 				pos=pos+1
 			elif (mystring[pos]=="\\"):
-				#backslash expansion time
+				# For backslash expansion, this function used to behave like
+				# echo -e, but that's not needed for our purposes. We want to
+				# behave like bash does when expanding a variable assignment
+				# in a sourced file, in which case it performs backslash
+				# removal for \\ and \$ but nothing more. It also removes
+				# escaped newline characters. Note that we don't handle
+				# escaped quotes here, since getconfig() uses shlex
+				# to handle that earlier.
 				if (pos+1>=len(mystring)):
 					newstring=newstring+mystring[pos]
 					break
 				else:
-					a=mystring[pos+1]
-					pos=pos+2
-					if a=='a':
-						newstring=newstring+chr(0o07)
-					elif a=='b':
-						newstring=newstring+chr(0o10)
-					elif a=='e':
-						newstring=newstring+chr(0o33)
-					elif (a=='f') or (a=='n'):
-						newstring=newstring+chr(0o12)
-					elif a=='r':
-						newstring=newstring+chr(0o15)
-					elif a=='t':
-						newstring=newstring+chr(0o11)
-					elif a=='v':
-						newstring=newstring+chr(0o13)
-					elif a in ('\'', '"'):
-						# Quote removal is handled by shlex.
+					a = mystring[pos + 1]
+					pos = pos + 2
+					if a in ("\\", "$"):
+						newstring = newstring + a
+					elif a == "\n":
+						pass
+					else:
 						newstring = newstring + mystring[pos-2:pos]
-						continue
-					elif a!='\n':
-						# Remove backslash only, as bash does. This takes care
-						# of \\. Note that we don't handle quotes here since
-						# quote removal is handled by shlex.
-						newstring=newstring+mystring[pos-1:pos]
-						continue
+					continue
 			elif (mystring[pos]=="$") and (mystring[pos-1]!="\\"):
 				pos=pos+1
 				if mystring[pos]=="{":
@@ -1581,8 +1571,10 @@ def find_updated_config_files(target_root, config_protect):
 					else:
 						yield (x, None)
 
-def getlibpaths(root):
+def getlibpaths(root, env=None):
 	""" Return a list of paths that are used for library lookups """
+	if env is None:
+		env = os.environ
 
 	# PREFIX HACK: LD_LIBRARY_PATH isn't portable, and considered
 	# harmfull, so better not use it.  We don't need any host OS lib
@@ -1595,8 +1587,8 @@ def getlibpaths(root):
 		# where GCC's and ld's libs are.  Though, GCC's libs should be
 		# in lib and usr/lib, binutils' libs rarely used
 	else:
-		# the following is based on the information from ld.so(8)
-		rval = os.environ.get("LD_LIBRARY_PATH", "").split(":")
+	# the following is based on the information from ld.so(8)
+		rval = env.get("LD_LIBRARY_PATH", "").split(":")
 		rval.extend(grabfile(os.path.join(root, "etc", "ld.so.conf")))
 		rval.append("/usr/lib")
 		rval.append("/lib")

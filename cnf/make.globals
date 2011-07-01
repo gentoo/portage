@@ -108,7 +108,7 @@ CONFIG_PROTECT="/etc"
 CONFIG_PROTECT_MASK="/etc/env.d"
 
 # Disable auto-use
-USE_ORDER="env:pkg:conf:defaults:pkginternal:env.d"
+USE_ORDER="env:pkg:conf:defaults:pkginternal:repo:env.d"
 
 # Default portage user/group
 PORTAGE_USER='@portageuser@'

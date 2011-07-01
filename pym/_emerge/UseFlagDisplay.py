@@ -60,10 +60,8 @@ class UseFlagDisplay(object):
 
 def pkg_use_display(pkg, opts):
 	settings = pkg.root_config.settings
-	use_expand = settings.get('USE_EXPAND', '').split()
-	use_expand.sort()
-	use_expand_hidden = set(
-		settings.get('USE_EXPAND_HIDDEN', '').upper().split())
+	use_expand = pkg.use.expand
+	use_expand_hidden = pkg.use.expand_hidden
 	alphabetical_use = '--alphabetical' in opts
 	forced_flags = set(chain(pkg.use.force,
 		pkg.use.mask))
@@ -102,7 +100,7 @@ def pkg_use_display(pkg, opts):
 
 	flag_displays = []
 	for varname in var_order:
-		if varname in use_expand_hidden:
+		if varname.lower() in use_expand_hidden:
 			continue
 		flags = []
 		for f in use_enabled.get(varname, []):

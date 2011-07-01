@@ -421,10 +421,6 @@ Enable sandbox\-ing when running \fBemerge\fR(1) and \fBebuild\fR(1).
 .B sesandbox
 Enable SELinux sandbox\-ing.  Do not toggle this \fBFEATURE\fR yourself.
 .TP
-.B severe
-When checking Manifests, only accept ones that have been signed by a
-key which you trust.
-.TP
 .B sfperms
 Stands for Smart Filesystem Permissions.  Before merging packages to the 
 live filesystem, automatically search for and set permissions on setuid 
@@ -838,7 +834,7 @@ in USE="foo_bar foo_bla".
 Names of \fBUSE_EXPAND\fR variables that should not be shown in the verbose merge
 list output of the \fBemerge\fR(1) command.
 .TP
-\fBUSE_ORDER\fR = \fI"env:pkg:conf:defaults:pkginternal:env.d"\fR
+\fBUSE_ORDER\fR = \fI"env:pkg:conf:defaults:pkginternal:repo:env.d"\fR
 Determines the precedence of layers in the incremental stacking of the USE
 variable. Precedence decreases from left to right such that env overrides
 pkg, pkg overrides conf, and so forth.
@@ -865,6 +861,9 @@ USE from make.defaults and package.use in the profile (see \fBportage\fR(5))
 .TP
 .B pkginternal
 USE from \fBebuild\fR(5) IUSE defaults
+.TP
+.B repo
+USE from make.defaults and package.use in the repo (see \fBportage\fR(5))
 .TP
 .B env.d
 USE from the environment variables defined by files in \fI/etc/env.d/\fR

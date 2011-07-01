@@ -106,7 +106,7 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
 			pass
 
 	_prepare_workdir(mysettings)
-	if mysettings.get('EBUILD_PHASE') != 'fetch':
+	if mysettings.get("EBUILD_PHASE") not in ("info", "fetch", "pretend"):
 		# Avoid spurious permissions adjustments when fetching with
 		# a temporary PORTAGE_TMPDIR setting (for fetchonly).
 		_prepare_features_dirs(mysettings)
@@ -143,14 +143,22 @@ def _adjust_perms_msg(settings, msg):
 
 def _prepare_features_dirs(mysettings):
 
+	# Use default ABI libdir in accordance with bug #355283.
+	libdir = None
+	default_abi = mysettings.get("DEFAULT_ABI")
+	if default_abi:
+		libdir = mysettings.get("LIBDIR_" + default_abi)
+	if not libdir:
+		libdir = "lib"
+
 	features_dirs = {
 		"ccache":{
-			"path_dir": EPREFIX+"/usr/lib/ccache/bin",
+			"path_dir": EPREFIX+"/usr/%s/ccache/bin" % (libdir,),
 			"basedir_var":"CCACHE_DIR",
 			"default_dir":os.path.join(mysettings["PORTAGE_TMPDIR"], "ccache"),
 			"always_recurse":False},
 		"distcc":{
-			"path_dir": EPREFIX+"/usr/lib/distcc/bin",
+			"path_dir": EPREFIX+"/usr/%s/distcc/bin" % (libdir,),
 			"basedir_var":"DISTCC_DIR",
 			"default_dir":os.path.join(mysettings["BUILD_PREFIX"], ".distcc"),
 			"subdirs":("lock", "state"),

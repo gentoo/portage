@@ -2482,22 +2482,25 @@ class dblink(object):
 
 		preserve_paths = set()
 		for preserve_node in preserve_nodes:
-			# Make sure that at least one of the paths is not a symlink.
-			# This prevents symlinks from being erroneously preserved by
-			# themselves when the old instance installed symlinks that
-			# the new instance does not install.
-			have_lib = False
+			# Preserve the library itself, and also preserve the
+			# soname symlink which is the only symlink that is
+			# strictly required.
+			hardlinks = set()
+			soname_symlinks = set()
+			soname = linkmap.getSoname(next(iter(preserve_node.alt_paths)))
 			for f in preserve_node.alt_paths:
 				f_abs = os.path.join(root, f.lstrip(os.sep))
 				try:
 					if stat.S_ISREG(os.lstat(f_abs).st_mode):
-						have_lib = True
-						break
+						hardlinks.add(f)
+					elif os.path.basename(f) == soname:
+						soname_symlinks.add(f)
 				except OSError:
-					continue
+					pass
 
-			if have_lib:
-				preserve_paths.update(preserve_node.alt_paths)
+			if hardlinks:
+				preserve_paths.update(hardlinks)
+				preserve_paths.update(soname_symlinks)
 
 		return preserve_paths
 
@@ -3119,10 +3122,6 @@ class dblink(object):
 		if retval:
 			return retval
 
-		self.settings["REPLACING_VERSIONS"] = " ".join( 
-			[portage.versions.cpv_getversion(other.mycpv) for other in others_in_slot] )
-		self.settings.backup_changes("REPLACING_VERSIONS")
-
 		if slot_matches:
 			# Used by self.isprotected().
 			max_dblnk = None
@@ -3272,6 +3271,9 @@ class dblink(object):
 			myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
 		doebuild_environment(myebuild, "preinst",
 			settings=self.settings, db=mydbapi)
+		self.settings["REPLACING_VERSIONS"] = " ".join(
+			[portage.versions.cpv_getversion(other.mycpv)
+			for other in others_in_slot])
 		prepare_build_dirs(settings=self.settings, cleanup=cleanup)
 
 		if collisions:

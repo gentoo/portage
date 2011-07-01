@@ -176,7 +176,7 @@ class LinkageMapELF(object):
 		root = self._root
 		root_len = len(root) - 1
 		self._clear_cache()
-		self._defpath.update(getlibpaths(self._root))
+		self._defpath.update(getlibpaths(self._root, env=self._dbapi.settings))
 		libs = self._libs
 		obj_properties = self._obj_properties
 
@@ -482,7 +482,16 @@ class LinkageMapELF(object):
 
 	def isMasterLink(self, obj):
 		"""
-		Determine whether an object is a master link.
+		Determine whether an object is a "master" symlink, which means
+		that its basename is the same as the beginning part of the
+		soname and it lacks the soname's version component.
+
+		Examples:
+
+		soname                 | master symlink name
+		--------------------------------------------
+		libarchive.so.2.8.4    | libarchive.so
+		libproc-3.2.8.so       | libproc.so
 
 		@param obj: absolute path to an object
 		@type obj: string (example: '/usr/bin/foo')
@@ -493,12 +502,14 @@ class LinkageMapELF(object):
 
 		"""
 		os = _os_merge
-		basename = os.path.basename(obj)
 		obj_key = self._obj_key(obj)
 		if obj_key not in self._obj_properties:
 			raise KeyError("%s (%s) not in object list" % (obj_key, obj))
+		basename = os.path.basename(obj)
 		soname = self._obj_properties[obj_key][3]
-		return (len(basename) < len(soname))
+		return len(basename) < len(soname) and \
+			basename.endswith(".so") and \
+			soname.startswith(basename[:-3])
 
 	def listLibraryObjects(self):
 		"""
@@ -644,21 +655,22 @@ class LinkageMapELF(object):
 				raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 
 		# If there is another version of this lib with the
-		# same soname and the master link points to that
+		# same soname and the soname symlink points to that
 		# other version, this lib will be shadowed and won't
 		# have any consumers.
 		if not isinstance(obj, self._ObjectKey):
 			soname = self._obj_properties[obj_key][3]
-			master_link = os.path.join(self._root,
+			soname_link = os.path.join(self._root,
 				os.path.dirname(obj).lstrip(os.path.sep), soname)
+			obj_path = os.path.join(self._root, obj.lstrip(os.sep))
 			try:
-				master_st = os.stat(master_link)
-				obj_st = os.stat(obj)
+				soname_st = os.stat(soname_link)
+				obj_st = os.stat(obj_path)
 			except OSError:
 				pass
 			else:
 				if (obj_st.st_dev, obj_st.st_ino) != \
-					(master_st.st_dev, master_st.st_ino):
+					(soname_st.st_dev, soname_st.st_ino):
 					return set()
 
 		# Determine the directory(ies) from the set of objects.

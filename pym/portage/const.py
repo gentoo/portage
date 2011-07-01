@@ -142,7 +142,7 @@ SUPPORTED_FEATURES       = frozenset([
                            "parse-eapi-ebuild-head",
                            "prelink-checksums", "preserve-libs",
                            "protect-owned", "python-trace", "sandbox",
-                           "selinux", "sesandbox", "severe", "sfperms",
+                           "selinux", "sesandbox", "sfperms",
                            "sign", "skiprocheck", "split-elog", "split-log", "splitdebug",
                            "strict", "stricter", "suidctl", "test", "test-fail-continue",
                            "unknown-features-filter", "unknown-features-warn",

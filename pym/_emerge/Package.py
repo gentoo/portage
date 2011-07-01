@@ -400,10 +400,16 @@ class Package(Task):
 
 	class _use_class(object):
 
-		__slots__ = ("enabled", "_force", "_pkg", "_mask")
+		__slots__ = ("enabled", "_expand", "_expand_hidden",
+			"_force", "_pkg", "_mask")
+
+		# Share identical frozenset instances when available.
+		_frozensets = {}
 
 		def __init__(self, pkg, use_str):
 			self._pkg = pkg
+			self._expand = None
+			self._expand_hidden = None
 			self._force = None
 			self._mask = None
 			self.enabled = frozenset(use_str.split())
@@ -418,8 +424,29 @@ class Package(Task):
 
 		def _init_force_mask(self):
 			pkgsettings = self._pkg._get_pkgsettings()
-			self._force = pkgsettings.useforce
-			self._mask = pkgsettings.usemask
+			frozensets = self._frozensets
+			s = frozenset(
+				pkgsettings.get("USE_EXPAND", "").lower().split())
+			self._expand = frozensets.setdefault(s, s)
+			s = frozenset(
+				pkgsettings.get("USE_EXPAND_HIDDEN", "").lower().split())
+			self._expand_hidden = frozensets.setdefault(s, s)
+			s = pkgsettings.useforce
+			self._force = frozensets.setdefault(s, s)
+			s = pkgsettings.usemask
+			self._mask = frozensets.setdefault(s, s)
+
+		@property
+		def expand(self):
+			if self._expand is None:
+				self._init_force_mask()
+			return self._expand
+
+		@property
+		def expand_hidden(self):
+			if self._expand_hidden is None:
+				self._init_force_mask()
+			return self._expand_hidden
 
 		@property
 		def force(self):
