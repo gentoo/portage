@@ -1404,7 +1404,7 @@ for x in scanlist:
 				os.path.join(checkdir, "metadata.xml"),
 				parser=xml.etree.ElementTree.XMLParser(
 					target=_MetadataTreeBuilder()))
-		except (xml.etree.ElementTree.ParseError, ExpatError, EnvironmentError) as e:
+		except (ExpatError, SyntaxError, EnvironmentError) as e:
 			metadata_bad = True
 			stats["metadata.bad"] += 1
 			fails["metadata.bad"].append("%s/metadata.xml: %s" % (x, e))
