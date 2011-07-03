@@ -3070,7 +3070,7 @@ class depgraph(object):
 			writemsg_stdout("\nemerge: there are no ebuilds built with USE flags to satisfy "+green(xinfo)+".\n", noiselevel=-1)
 			writemsg_stdout("!!! One of the following packages is required to complete your request:\n", noiselevel=-1)
 			for pkg, mreasons in show_missing_use:
-				writemsg_stdout("- "+pkg.cpv+" ("+", ".join(mreasons)+")\n", noiselevel=-1)
+				writemsg_stdout("- "+pkg.cpv+_repo_separator+pkg.repo+" ("+", ".join(mreasons)+")\n", noiselevel=-1)
 
 		elif masked_packages:
 			writemsg_stdout("\n!!! " + \
