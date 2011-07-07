@@ -107,10 +107,11 @@ class EbuildFetcher(SpawnProcess):
 			not in ('yes', 'true')
 
 		rval = 1
+		allow_missing = 'allow-missing-manifests' in self._settings.features
 		try:
 			if fetch(self._uri_map, self._settings, fetchonly=self.fetchonly,
 				digests=copy.deepcopy(self._digests),
-				allow_missing_digests=False):
+				allow_missing_digests=allow_missing):
 				rval = os.EX_OK
 		except SystemExit:
 			raise
