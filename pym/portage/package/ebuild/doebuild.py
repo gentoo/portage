@@ -765,8 +765,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				fetchme = aalist
 			else:
 				fetchme = alist
+			allow_missing_manifests = \
+				"allow-missing-manifests" in mysettings.features
 			if not fetch(fetchme, mysettings, listonly=listonly,
-				fetchonly=fetchonly):
+				fetchonly=fetchonly,
+				allow_missing_digests=allow_missing_manifests):
 				spawn_nofetch(mydbapi, myebuild, settings=mysettings)
 				if listonly:
 					# The convention for listonly mode is to report
