@@ -327,30 +327,6 @@ _python_interpreter = os.path.realpath(sys.executable)
 _bin_path = PORTAGE_BIN_PATH
 _pym_path = PORTAGE_PYM_PATH
 
-def _ensure_default_encoding():
-
-	default_encoding = sys.getdefaultencoding().lower().replace('-', '_')
-	filesystem_encoding = _encodings['merge'].lower().replace('-', '_')
-	required_encodings = set(['ascii', 'utf_8'])
-	required_encodings.add(default_encoding)
-	required_encodings.add(filesystem_encoding)
-	missing_encodings = set()
-	for codec_name in required_encodings:
-		try:
-			codecs.lookup(codec_name)
-		except LookupError:
-			missing_encodings.add(codec_name)
-
-	if not missing_encodings:
-		return
-
-	from portage import _ensure_encodings
-	_ensure_encodings._setup_encodings(default_encoding,
-		filesystem_encoding, missing_encodings)
-
-# Do this ASAP since writemsg() might not work without it.
-_ensure_default_encoding()
-
 def _shell_quote(s):
 	"""
 	Quote a string in double-quotes and use backslashes to
