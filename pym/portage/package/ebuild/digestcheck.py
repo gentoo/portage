@@ -32,6 +32,8 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None):
 	pkgdir = mysettings["O"]
 	manifest_path = os.path.join(pkgdir, "Manifest")
 	if not os.path.exists(manifest_path):
+		if allow_missing:
+			return 1
 		writemsg(_("!!! Manifest file not found: '%s'\n") % manifest_path,
 			noiselevel=-1)
 		if strict:
