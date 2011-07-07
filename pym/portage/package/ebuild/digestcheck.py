@@ -28,6 +28,7 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None):
 
 	if mysettings.get("EBUILD_SKIP_MANIFEST") == "1":
 		return 1
+	allow_missing = "allow-missing-manifests" in mysettings.features
 	pkgdir = mysettings["O"]
 	manifest_path = os.path.join(pkgdir, "Manifest")
 	if not os.path.exists(manifest_path):
@@ -86,6 +87,10 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None):
 		writemsg(_("!!! Got: %s\n") % e.value[2], noiselevel=-1)
 		writemsg(_("!!! Expected: %s\n") % e.value[3], noiselevel=-1)
 		return 0
+	if allow_missing:
+		# In this case we ignore any missing digests that
+		# would otherwise be detected below.
+		return 1
 	# Make sure that all of the ebuilds are actually listed in the Manifest.
 	for f in os.listdir(pkgdir):
 		pf = None
@@ -96,8 +101,8 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None):
 				os.path.join(pkgdir, f), noiselevel=-1)
 			if strict:
 				return 0
-	""" epatch will just grab all the patches out of a directory, so we have to
-	make sure there aren't any foreign files that it might grab."""
+	# epatch will just grab all the patches out of a directory, so we have to
+	# make sure there aren't any foreign files that it might grab.
 	filesdir = os.path.join(pkgdir, "files")
 
 	for parent, dirs, files in os.walk(filesdir):
