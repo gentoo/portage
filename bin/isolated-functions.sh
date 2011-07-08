@@ -512,6 +512,7 @@ if [[ -z ${XARGS} ]] ; then
 fi
 
 hasq() {
+	eqawarn "QA Notice: The 'hasq' function is deprecated (replaced by 'has')"
 	has "$@"
 }
 
