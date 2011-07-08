@@ -154,7 +154,7 @@ use() {
 		# any number of phase hooks, so that global scope eclass
 		# initialization can by migrated to phase hooks in new EAPIs.
 		# Example: add_phase_hook before pkg_setup $ECLASS_pre_pkg_setup
-		#if [[ -n $EAPI ]] && ! hasq "$EAPI" 0 1 2 3 ; then
+		#if [[ -n $EAPI ]] && ! has "$EAPI" 0 1 2 3 ; then
 		#	die "use() called during invalid phase: $EBUILD_PHASE"
 		#fi
 		true
@@ -166,7 +166,7 @@ use() {
 				"in IUSE for ${CATEGORY}/${PF}"
 	fi
 
-	if hasq ${u} ${USE} ; then
+	if has ${u} ${USE} ; then
 		return ${found}
 	else
 		return $((!found))
@@ -250,7 +250,7 @@ use_with() {
 	fi
 	local UWORD=${2:-$1}
 
-	if useq $1; then
+	if use $1; then
 		echo "--with-${UWORD}${UW_SUFFIX}"
 	else
 		echo "--without-${UWORD}"
@@ -272,7 +272,7 @@ use_enable() {
 	fi
 	local UWORD=${2:-$1}
 
-	if useq $1; then
+	if use $1; then
 		echo "--enable-${UWORD}${UE_SUFFIX}"
 	else
 		echo "--disable-${UWORD}"
@@ -283,7 +283,7 @@ use_enable() {
 register_die_hook() {
 	local x
 	for x in $* ; do
-		hasq $x $EBUILD_DEATH_HOOKS || \
+		has $x $EBUILD_DEATH_HOOKS || \
 			export EBUILD_DEATH_HOOKS="$EBUILD_DEATH_HOOKS $x"
 	done
 }
@@ -291,7 +291,7 @@ register_die_hook() {
 register_success_hook() {
 	local x
 	for x in $* ; do
-		hasq $x $EBUILD_SUCCESS_HOOKS || \
+		has $x $EBUILD_SUCCESS_HOOKS || \
 			export EBUILD_SUCCESS_HOOKS="$EBUILD_SUCCESS_HOOKS $x"
 	done
 }
@@ -299,7 +299,7 @@ register_success_hook() {
 # Ensure that $PWD is sane whenever possible, to protect against
 # exploitation of insecure search path for python -c in ebuilds.
 # See bug #239560.
-if ! hasq "$EBUILD_PHASE" clean cleanrm depend help ; then
+if ! has "$EBUILD_PHASE" clean cleanrm depend help ; then
 	cd "$PORTAGE_BUILDDIR" || \
 		die "PORTAGE_BUILDDIR does not exist: '$PORTAGE_BUILDDIR'"
 fi
@@ -444,7 +444,7 @@ unpack() {
 				_unpack_tar "lzma -d"
 				;;
 			xz)
-				if hasq $eapi 0 1 2 ; then
+				if has $eapi 0 1 2 ; then
 					vecho "unpack ${x}: file format not recognized. Ignoring."
 				else
 					_unpack_tar "xz -d"
@@ -483,7 +483,7 @@ econf() {
 
 	local phase_func=$(_ebuild_arg_to_phase "$EAPI" "$EBUILD_PHASE")
 	if [[ -n $phase_func ]] ; then
-		if hasq "$EAPI" 0 1 ; then
+		if has "$EAPI" 0 1 ; then
 			[[ $phase_func != src_compile ]] && \
 				eqawarn "QA Notice: econf called in" \
 					"$phase_func instead of src_compile"
@@ -511,7 +511,7 @@ econf() {
 		fi
 
 		# EAPI=4 adds --disable-dependency-tracking to econf
-		if ! hasq "$EAPI" 0 1 2 3 3_pre2 && \
+		if ! has "$EAPI" 0 1 2 3 3_pre2 && \
 			"${ECONF_SOURCE}/configure" --help 2>/dev/null | \
 			grep -q disable-dependency-tracking ; then
 			set -- --disable-dependency-tracking "$@"
@@ -635,14 +635,14 @@ _eapi0_src_test() {
 	if $emake_cmd -j1 check -n &> /dev/null; then
 		vecho ">>> Test phase [check]: ${CATEGORY}/${PF}"
 		if ! $emake_cmd -j1 check; then
-			hasq test $FEATURES && die "Make check failed. See above for details."
-			hasq test $FEATURES || eerror "Make check failed. See above for details."
+			has test $FEATURES && die "Make check failed. See above for details."
+			has test $FEATURES || eerror "Make check failed. See above for details."
 		fi
 	elif $emake_cmd -j1 test -n &> /dev/null; then
 		vecho ">>> Test phase [test]: ${CATEGORY}/${PF}"
 		if ! $emake_cmd -j1 test; then
-			hasq test $FEATURES && die "Make test failed. See above for details."
-			hasq test $FEATURES || eerror "Make test failed. See above for details."
+			has test $FEATURES && die "Make test failed. See above for details."
+			has test $FEATURES || eerror "Make test failed. See above for details."
 		fi
 	else
 		vecho ">>> Test phase [none]: ${CATEGORY}/${PF}"
@@ -742,11 +742,11 @@ dyn_unpack() {
 	if [ "${newstuff}" == "yes" ]; then
 		# We don't necessarily have privileges to do a full dyn_clean here.
 		rm -rf "${PORTAGE_BUILDDIR}"/{.setuped,.unpacked,.prepared,.configured,.compiled,.tested,.installed,.packaged,build-info}
-		if ! hasq keepwork $FEATURES ; then
+		if ! has keepwork $FEATURES ; then
 			rm -rf "${WORKDIR}"
 		fi
 		if [ -d "${T}" ] && \
-			! hasq keeptemp $FEATURES ; then
+			! has keeptemp $FEATURES ; then
 			rm -rf "${T}" && mkdir "${T}"
 		fi
 	fi
@@ -777,7 +777,7 @@ dyn_clean() {
 	elif [ ! -d "${PORTAGE_BUILDDIR}" ] ; then
 		return 0
 	fi
-	if hasq chflags $FEATURES ; then
+	if has chflags $FEATURES ; then
 		chflags -R noschg,nouchg,nosappnd,nouappnd "${PORTAGE_BUILDDIR}"
 		chflags -R nosunlnk,nouunlnk "${PORTAGE_BUILDDIR}" 2>/dev/null
 	fi
@@ -786,11 +786,11 @@ dyn_clean() {
 	rm -f "${PORTAGE_BUILDDIR}/.installed"
 
 	if [[ $EMERGE_FROM = binary ]] || \
-		! hasq keeptemp $FEATURES && ! hasq keepwork $FEATURES ; then
+		! has keeptemp $FEATURES && ! has keepwork $FEATURES ; then
 		rm -rf "${T}"
 	fi
 
-	if [[ $EMERGE_FROM = binary ]] || ! hasq keepwork $FEATURES; then
+	if [[ $EMERGE_FROM = binary ]] || ! has keepwork $FEATURES; then
 		rm -f "$PORTAGE_BUILDDIR"/.{ebuild_changed,logid,pretended,setuped,unpacked,prepared} \
 			"$PORTAGE_BUILDDIR"/.{configured,compiled,tested,packaged} \
 			"$PORTAGE_BUILDDIR"/.die_hooks \
@@ -885,7 +885,7 @@ insopts() {
 	export INSOPTIONS="$@"
 
 	# `install` should never be called with '-s' ...
-	hasq -s ${INSOPTIONS} && die "Never call insopts() with -s"
+	has -s ${INSOPTIONS} && die "Never call insopts() with -s"
 }
 
 diropts() {
@@ -896,18 +896,18 @@ exeopts() {
 	export EXEOPTIONS="$@"
 
 	# `install` should never be called with '-s' ...
-	hasq -s ${EXEOPTIONS} && die "Never call exeopts() with -s"
+	has -s ${EXEOPTIONS} && die "Never call exeopts() with -s"
 }
 
 libopts() {
 	export LIBOPTIONS="$@"
 
 	# `install` should never be called with '-s' ...
-	hasq -s ${LIBOPTIONS} && die "Never call libopts() with -s"
+	has -s ${LIBOPTIONS} && die "Never call libopts() with -s"
 }
 
 docompress() {
-	hasq "${EAPI}" 0 1 2 3 && die "'docompress' not supported in this EAPI"
+	has "${EAPI}" 0 1 2 3 && die "'docompress' not supported in this EAPI"
 
 	local f g
 	if [[ $1 = "-x" ]]; then
@@ -997,7 +997,7 @@ dyn_prepare() {
 
 	if [[ -d $S ]] ; then
 		cd "${S}"
-	elif hasq $EAPI 0 1 2 3 3_pre2 ; then
+	elif has $EAPI 0 1 2 3 3_pre2 ; then
 		cd "${WORKDIR}"
 	elif [[ -z ${A} ]] && ! has_phase_defined_up_to prepare; then
 		cd "${WORKDIR}"
@@ -1028,7 +1028,7 @@ dyn_configure() {
 
 	if [[ -d $S ]] ; then
 		cd "${S}"
-	elif hasq $EAPI 0 1 2 3 3_pre2 ; then
+	elif has $EAPI 0 1 2 3 3_pre2 ; then
 		cd "${WORKDIR}"
 	elif [[ -z ${A} ]] && ! has_phase_defined_up_to configure; then
 		cd "${WORKDIR}"
@@ -1061,7 +1061,7 @@ dyn_compile() {
 
 	if [[ -d $S ]] ; then
 		cd "${S}"
-	elif hasq $EAPI 0 1 2 3 3_pre2 ; then
+	elif has $EAPI 0 1 2 3 3_pre2 ; then
 		cd "${WORKDIR}"
 	elif [[ -z ${A} ]] && ! has_phase_defined_up_to compile; then
 		cd "${WORKDIR}"
@@ -1071,7 +1071,7 @@ dyn_compile() {
 
 	trap abort_compile SIGINT SIGQUIT
 
-	if hasq distcc $FEATURES && hasq distcc-pump $FEATURES ; then
+	if has distcc $FEATURES && has distcc-pump $FEATURES ; then
 		if [[ -z $INCLUDE_SERVER_PORT ]] || [[ ! -w $INCLUDE_SERVER_PORT ]] ; then
 			eval $(pump --startup)
 			trap "pump --shutdown" EXIT
@@ -1102,7 +1102,7 @@ dyn_test() {
 	if [ "${EBUILD_FORCE_TEST}" == "1" ] ; then
 		# If USE came from ${T}/environment then it might not have USE=test
 		# like it's supposed to here.
-		! hasq test ${USE} && export USE="${USE} test"
+		! has test ${USE} && export USE="${USE} test"
 	fi
 
 	trap "abort_test" SIGINT SIGQUIT
@@ -1112,9 +1112,9 @@ dyn_test() {
 		cd "${WORKDIR}"
 	fi
 
-	if ! hasq test $FEATURES && [ "${EBUILD_FORCE_TEST}" != "1" ]; then
+	if ! has test $FEATURES && [ "${EBUILD_FORCE_TEST}" != "1" ]; then
 		vecho ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
-	elif hasq test $RESTRICT; then
+	elif has test $RESTRICT; then
 		einfo "Skipping make test/check due to ebuild restriction."
 		vecho ">>> Test phase [explicitly disabled]: ${CATEGORY}/${PF}"
 	else
@@ -1133,7 +1133,7 @@ dyn_test() {
 
 dyn_install() {
 	[ -z "$PORTAGE_BUILDDIR" ] && die "${FUNCNAME}: PORTAGE_BUILDDIR is unset"
-	if hasq noauto $FEATURES ; then
+	if has noauto $FEATURES ; then
 		rm -f "${PORTAGE_BUILDDIR}/.installed"
 	elif [[ -e $PORTAGE_BUILDDIR/.installed ]] ; then
 		vecho ">>> It appears that '${PF}' is already installed; skipping."
@@ -1146,7 +1146,7 @@ dyn_install() {
 	mkdir "${PORTAGE_BUILDDIR}/image"
 	if [[ -d $S ]] ; then
 		cd "${S}"
-	elif hasq $EAPI 0 1 2 3 3_pre2 ; then
+	elif has $EAPI 0 1 2 3 3_pre2 ; then
 		cd "${WORKDIR}"
 	elif [[ -z ${A} ]] && ! has_phase_defined_up_to install; then
 		cd "${WORKDIR}"
@@ -1207,7 +1207,7 @@ dyn_install() {
 
 	cp "${EBUILD}" "${PF}.ebuild"
 	[ -n "${PORTAGE_REPO_NAME}" ]  && echo "${PORTAGE_REPO_NAME}" > repository
-	if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT}
+	if has nostrip ${FEATURES} ${RESTRICT} || has strip ${RESTRICT}
 	then
 		>> DEBUGBUILD
 	fi
@@ -1269,7 +1269,7 @@ dyn_help() {
 	echo "  c++ flags   : ${CXXFLAGS}"
 	echo "  make flags  : ${MAKEOPTS}"
 	echo -n "  build mode  : "
-	if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT} ;
+	if has nostrip ${FEATURES} ${RESTRICT} || has strip ${RESTRICT} ;
 	then
 		echo "debug (large)"
 	else
@@ -1366,7 +1366,7 @@ inherit() {
 			# This is disabled in the *rm phases because they frequently give
 			# false alarms due to INHERITED in /var/db/pkg being outdated
 			# in comparison the the eclasses from the portage tree.
-			if ! hasq $ECLASS $INHERITED $__INHERITED_QA_CACHE ; then
+			if ! has $ECLASS $INHERITED $__INHERITED_QA_CACHE ; then
 				eqawarn "QA Notice: ECLASS '$ECLASS' inherited illegally in $CATEGORY/$PF $EBUILD_PHASE"
 			fi
 		fi
@@ -1386,7 +1386,7 @@ inherit() {
 		[ ! -e "$location" ] && die "${1}.eclass could not be found by inherit()"
 
 		if [ "${location}" == "${olocation}" ] && \
-			! hasq "${location}" ${EBUILD_OVERLAY_ECLASSES} ; then
+			! has "${location}" ${EBUILD_OVERLAY_ECLASSES} ; then
 				EBUILD_OVERLAY_ECLASSES="${EBUILD_OVERLAY_ECLASSES} ${location}"
 		fi
 
@@ -1448,7 +1448,7 @@ inherit() {
 		fi
 		unset $__export_funcs_var
 
-		hasq $1 $INHERITED || export INHERITED="$INHERITED $1"
+		has $1 $INHERITED || export INHERITED="$INHERITED $1"
 
 		shift
 	done
@@ -1505,7 +1505,7 @@ _ebuild_arg_to_phase() {
 
 	case "$arg" in
 		pretend)
-			! hasq $eapi 0 1 2 3 3_pre2 && \
+			! has $eapi 0 1 2 3 3_pre2 && \
 				phase_func=pkg_pretend
 			;;
 		setup)
@@ -1518,11 +1518,11 @@ _ebuild_arg_to_phase() {
 			phase_func=src_unpack
 			;;
 		prepare)
-			! hasq $eapi 0 1 && \
+			! has $eapi 0 1 && \
 				phase_func=src_prepare
 			;;
 		configure)
-			! hasq $eapi 0 1 && \
+			! has $eapi 0 1 && \
 				phase_func=src_configure
 			;;
 		compile)
@@ -1604,7 +1604,7 @@ _ebuild_phase_funcs() {
 			has $eapi 2 3 3_pre2 || declare -F src_install >/dev/null || \
 				src_install() { _eapi4_src_install "$@" ; }
 
-			if hasq $phase_func $default_phases ; then
+			if has $phase_func $default_phases ; then
 
 				_eapi2_pkg_nofetch   () { _eapi0_pkg_nofetch          "$@" ; }
 				_eapi2_src_unpack    () { _eapi0_src_unpack           "$@" ; }
@@ -1833,23 +1833,23 @@ filter_readonly_variables() {
 			;;
 	esac
 
-	if hasq --filter-sandbox $* ; then
+	if has --filter-sandbox $* ; then
 		filtered_vars="${filtered_vars} SANDBOX_.*"
 	else
 		filtered_vars="${filtered_vars} ${filtered_sandbox_vars}"
 	fi
-	if hasq --filter-features $* ; then
+	if has --filter-features $* ; then
 		filtered_vars="${filtered_vars} FEATURES PORTAGE_FEATURES"
 	fi
-	if hasq --filter-path $* ; then
+	if has --filter-path $* ; then
 		filtered_vars+=" PATH"
 	fi
-	if hasq --filter-locale $* ; then
+	if has --filter-locale $* ; then
 		filtered_vars+=" LANG LC_ALL LC_COLLATE
 			LC_CTYPE LC_MESSAGES LC_MONETARY
 			LC_NUMERIC LC_PAPER LC_TIME"
 	fi
-	if ! hasq --allow-extra-vars $* ; then
+	if ! has --allow-extra-vars $* ; then
 		filtered_vars="
 			${filtered_vars}
 			${PORTAGE_SAVED_READONLY_VARS}
@@ -1958,9 +1958,9 @@ if [[ -n ${QA_INTERCEPTORS} ]] ; then
 				fi
 			${BODY}
 			}"
-		elif hasq ${BIN} autoconf automake aclocal libtoolize ; then
+		elif has ${BIN} autoconf automake aclocal libtoolize ; then
 			FUNC_SRC="${BIN}() {
-				if ! hasq \${FUNCNAME[1]} eautoreconf eaclocal _elibtoolize \\
+				if ! has \${FUNCNAME[1]} eautoreconf eaclocal _elibtoolize \\
 					eautoheader eautoconf eautomake autotools_run_tool \\
 					autotools_check_macro autotools_get_subdirs \\
 					autotools_get_auxdir ; then
@@ -1984,7 +1984,7 @@ fi
 export EBUILD_MASTER_PID=$BASHPID
 trap 'exit 1' SIGTERM
 
-if ! hasq "$EBUILD_PHASE" clean cleanrm depend && \
+if ! has "$EBUILD_PHASE" clean cleanrm depend && \
 	[ -f "${T}"/environment ] ; then
 	# The environment may have been extracted from environment.bz2 or
 	# may have come from another version of ebuild.sh or something.
@@ -2022,10 +2022,10 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm depend && \
 	[[ -n $EAPI ]] || EAPI=0
 fi
 
-if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
+if ! has "$EBUILD_PHASE" clean cleanrm ; then
 	if [[ $EBUILD_PHASE = depend || ! -f $T/environment || \
 		-f $PORTAGE_BUILDDIR/.ebuild_changed ]] || \
-		hasq noauto $FEATURES ; then
+		has noauto $FEATURES ; then
 		# The bashrcs get an opportunity here to set aliases that will be expanded
 		# during sourcing of ebuilds and eclasses.
 		source_all_bashrcs
@@ -2122,12 +2122,12 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
 			x=LIBDIR_${DEFAULT_ABI}
 			[[ -n $DEFAULT_ABI && -n ${!x} ]] && x=${!x} || x=lib
 
-			if hasq distcc $FEATURES ; then
+			if has distcc $FEATURES ; then
 				PATH="/usr/$x/distcc/bin:$PATH"
 				[[ -n $DISTCC_LOG ]] && addwrite "${DISTCC_LOG%/*}"
 			fi
 
-			if hasq ccache $FEATURES ; then
+			if has ccache $FEATURES ; then
 				PATH="/usr/$x/ccache/bin:$PATH"
 
 				if [[ -n $CCACHE_DIR ]] ; then
@@ -2174,7 +2174,7 @@ for x in ${USE_EXPAND} ; do
 done
 unset x
 
-if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT}
+if has nostrip ${FEATURES} ${RESTRICT} || has strip ${RESTRICT}
 then
 	export DEBUGBUILD=1
 fi
@@ -2208,7 +2208,7 @@ ebuild_main() {
 	if [[ $EBUILD_PHASE != depend ]] ; then
 		# Force configure scripts that automatically detect ccache to
 		# respect FEATURES="-ccache".
-		hasq ccache $FEATURES || export CCACHE_DISABLE=1
+		has ccache $FEATURES || export CCACHE_DISABLE=1
 
 		local phase_func=$(_ebuild_arg_to_phase "$EAPI" "$EBUILD_PHASE")
 		[[ -n $phase_func ]] && _ebuild_phase_funcs "$EAPI" "$phase_func"
@@ -2222,7 +2222,7 @@ ebuild_main() {
 		ebuild_phase_with_hooks pkg_nofetch
 		;;
 	prerm|postrm|postinst|config|info)
-		if hasq "$EBUILD_SH_ARGS" config info && \
+		if has "$EBUILD_SH_ARGS" config info && \
 			! declare -F "pkg_$EBUILD_SH_ARGS" >/dev/null ; then
 			ewarn  "pkg_${EBUILD_SH_ARGS}() is not defined: '${EBUILD##*/}'"
 		fi
@@ -2261,7 +2261,7 @@ ebuild_main() {
 			done
 			unset x
 
-			hasq distcc $FEATURES && [[ -n $DISTCC_DIR ]] && \
+			has distcc $FEATURES && [[ -n $DISTCC_DIR ]] && \
 				[[ ${SANDBOX_WRITE/$DISTCC_DIR} = $SANDBOX_WRITE ]] && \
 				addwrite "$DISTCC_DIR"
 
@@ -2269,7 +2269,7 @@ ebuild_main() {
 			[ -z "$PKG_CONFIG_PATH" -a -n "$ABI" -a -n "${!x}" ] && \
 				export PKG_CONFIG_PATH=/usr/${!x}/pkgconfig
 
-			if hasq noauto $FEATURES && \
+			if has noauto $FEATURES && \
 				[[ ! -f $PORTAGE_BUILDDIR/.unpacked ]] ; then
 				echo
 				echo "!!! We apparently haven't unpacked..." \
@@ -2398,7 +2398,7 @@ elif [[ -n $EBUILD_SH_ARGS ]] ; then
 		ebuild_main
 
 		# Save the env only for relevant phases.
-		if ! hasq "$EBUILD_SH_ARGS" clean help info nofetch ; then
+		if ! has "$EBUILD_SH_ARGS" clean help info nofetch ; then
 			umask 002
 			save_ebuild_env | filter_readonly_variables \
 				--filter-features > "$T/environment"

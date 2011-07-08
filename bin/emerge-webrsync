@@ -49,7 +49,7 @@ source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 do_verbose=0
 do_debug=0
 
-if hasq webrsync-gpg ${FEATURES} ; then
+if has webrsync-gpg ${FEATURES} ; then
 	WEBSYNC_VERIFY_SIGNATURE=1
 else
 	WEBSYNC_VERIFY_SIGNATURE=0
@@ -206,7 +206,7 @@ sync_local() {
 		rm -fr portage
 	fi
 
-	if hasq metadata-transfer ${FEATURES} ; then
+	if has metadata-transfer ${FEATURES} ; then
 		vecho "Updating cache ..."
 		emerge --metadata
 	fi

@@ -16,7 +16,7 @@ if [[ ! -d ${mandir} ]] ; then
 fi
 
 # replaced by controllable compression in EAPI 4
-hasq "${EAPI}" 0 1 2 3 || exit 0
+has "${EAPI}" 0 1 2 3 || exit 0
 
 shopt -s nullglob
 

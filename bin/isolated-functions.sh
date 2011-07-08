@@ -183,7 +183,7 @@ die() {
 		done
 	fi
 	if [ "${EMERGE_FROM}" != "binary" ] && \
-		! hasq ${EBUILD_PHASE} prerm postrm && \
+		! has ${EBUILD_PHASE} prerm postrm && \
 		[ "${EBUILD#${PORTDIR}/}" == "${EBUILD}" ] ; then
 		local overlay=${EBUILD%/*}
 		overlay=${overlay%/*}
@@ -538,7 +538,7 @@ has() {
 save_ebuild_env() {
 	(
 
-		if hasq --exclude-init-phases $* ; then
+		if has --exclude-init-phases $* ; then
 			unset S _E_DOCDESTTREE_ _E_EXEDESTTREE_
 			if [[ -n $PYTHONPATH ]] ; then
 				export PYTHONPATH=${PYTHONPATH/${PORTAGE_PYM_PATH}:}
