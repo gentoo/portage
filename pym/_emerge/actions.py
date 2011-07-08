@@ -2823,7 +2823,10 @@ def getportageversion(portdir, target_root, profile, chost, vardb):
 			libclist.update(vardb.match(atom))
 	if libclist:
 		for cpv in sorted(libclist):
-			libcver.append("-".join(portage.catpkgsplit(cpv)[1:]))
+			libc_split = portage.catpkgsplit(cpv)[1:]
+			if libc_split[-1] == "r0":
+				libc_split[:-1]
+			libcver.append("-".join(libc_split))
 	else:
 		libcver = ["unavailable"]
 
