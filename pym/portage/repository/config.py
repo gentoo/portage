@@ -290,7 +290,9 @@ class RepoConfigLoader(object):
 		ignored_repos = tuple((repo_name, tuple(paths)) \
 			for repo_name, paths in ignored_map.items())
 
-		self.missing_repo_names = frozenset(repo.location for repo in prepos.values() if repo.missing_repo_name)
+		self.missing_repo_names = frozenset(repo.location
+			for repo in prepos.values()
+			if repo.location is not None and repo.missing_repo_name)
 
 		#Parse layout.conf and read masters key.
 		for repo in prepos.values():
