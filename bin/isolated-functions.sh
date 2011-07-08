@@ -511,19 +511,19 @@ if [[ -z ${XARGS} ]] ; then
 	esac
 fi
 
-has() {
-	hasq "$@"
+hasq() {
+	has "$@"
 }
 
 hasv() {
-	if hasq "$@" ; then
+	if has "$@" ; then
 		echo "$1"
 		return 0
 	fi
 	return 1
 }
 
-hasq() {
+has() {
 	[[ " ${*:2} " == *" $1 "* ]]
 }
 

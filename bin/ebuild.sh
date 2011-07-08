@@ -127,19 +127,19 @@ esyslog() {
 	return 0
 }
 
-use() {
-	useq ${1}
+useq() {
+	use ${1}
 }
 
 usev() {
-	if useq ${1}; then
+	if use ${1}; then
 		echo "${1#!}"
 		return 0
 	fi
 	return 1
 }
 
-useq() {
+use() {
 	local u=$1
 	local found=0
 
