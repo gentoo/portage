@@ -656,8 +656,8 @@ class depgraph(object):
 			return
 
 		msg = []
-		msg.append("\n!!! One or more updates have been skipped due to " + \
-			"a dependency conflict:\n\n")
+		msg.append("\nWARNING: One or more updates have been " + \
+			"skipped due to a dependency conflict:\n\n")
 
 		indent = "  "
 		for pkg, parent_atoms in missed_updates:
