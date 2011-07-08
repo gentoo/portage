@@ -586,6 +586,18 @@ class BuiltWithUse(LineCheck):
 	re = re.compile('^.*built_with_use')
 	error = errors.BUILT_WITH_USE
 
+class DeprecatedUseq(LineCheck):
+	"""Checks for use of the deprecated useq function"""
+	repoman_check_name = 'ebuild.minorsyn'
+	re = re.compile('^.*useq')
+	error = errors.USEQ_ERROR
+
+class DeprecatedHasq(LineCheck):
+	"""Checks for use of the deprecated hasq function"""
+	repoman_check_name = 'ebuild.minorsyn'
+	re = re.compile('^.*hasq')
+	error = errors.HASQ_ERROR
+
 # EAPI-3 checks
 class Eapi3DeprecatedFuncs(LineCheck):
 	repoman_check_name = 'EAPI.deprecated'
@@ -651,7 +663,8 @@ _constant_checks = tuple((c() for c in (
 	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
 	SrcCompileEconf, Eapi3DeprecatedFuncs, NoOffsetWithHelpers,
 	Eapi4IncompatibleFuncs, Eapi4GoneVars, BuiltWithUse,
-	PreserveOldLib, SandboxAddpredict, PortageInternal)))
+	PreserveOldLib, SandboxAddpredict, PortageInternal,
+	DeprecatedUseq, DeprecatedHasq)))
 
 _here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
 
