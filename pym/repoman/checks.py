@@ -587,19 +587,19 @@ class SrcUnpackPatches(PhaseCheck):
 
 class BuiltWithUse(LineCheck):
 	repoman_check_name = 'ebuild.minorsyn'
-	re = re.compile('^.*built_with_use')
+	re = re.compile(r'(^|.*\b)built_with_use\b')
 	error = errors.BUILT_WITH_USE
 
 class DeprecatedUseq(LineCheck):
 	"""Checks for use of the deprecated useq function"""
 	repoman_check_name = 'ebuild.minorsyn'
-	re = re.compile('^.*useq')
+	re = re.compile(r'(^|.*\b)useq\b')
 	error = errors.USEQ_ERROR
 
 class DeprecatedHasq(LineCheck):
 	"""Checks for use of the deprecated hasq function"""
 	repoman_check_name = 'ebuild.minorsyn'
-	re = re.compile('^.*hasq')
+	re = re.compile(r'(^|.*\b)hasq\b')
 	error = errors.HASQ_ERROR
 
 # EAPI-3 checks
