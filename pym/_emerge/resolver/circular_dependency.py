@@ -3,7 +3,7 @@
 
 from __future__ import print_function
 
-from itertools import chain
+from itertools import chain, product
 
 from portage.dep import use_reduce, extract_affecting_use, check_required_use, get_required_use_flags
 from portage.exception import InvalidDependString
@@ -147,27 +147,9 @@ class circular_dependency_handler(object):
 			#We iterate over all possible settings of these use flags and gather
 			#a set of possible changes
 			#TODO: Use the information encoded in REQUIRED_USE
-			use_state = []
-			for flag in affecting_use:
-				use_state.append("disabled")
-
-			def _next_use_state(state, id=None):
-				if id is None:
-					id = len(state)-1
-
-				if id == 0 and state[0] == "enabled":
-					return False
-
-				if state[id] == "disabled":
-					state[id] = "enabled"
-					for i in range(id+1,len(state)):
-						state[i] = "disabled"
-					return True
-				else:
-					return _next_use_state(state, id-1)
-
 			solutions = set()
-			while(True):
+			for use_state in product(("disabled", "enabled"),
+				repeat=len(affecting_use)):
 				current_use = set(self.depgraph._pkg_use_enabled(parent))
 				for flag, state in zip(affecting_use, use_state):
 					if state == "enabled":
@@ -199,9 +181,6 @@ class circular_dependency_handler(object):
 								flag in use:
 								solution.add((flag, False))
 						solutions.add(frozenset(solution))
-
-				if not _next_use_state(use_state):
-					break
 
 			for solution in solutions:
 				ignore_solution = False
