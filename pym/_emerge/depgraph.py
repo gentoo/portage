@@ -3901,8 +3901,9 @@ class depgraph(object):
 
 		if "--debug" in self._frozen_config.myopts:
 			for pkg in matched_packages:
-				portage.writemsg("%s %s\n" % \
-					((pkg.type_name + ":").rjust(10), pkg.cpv), noiselevel=-1)
+				portage.writemsg("%s %s%s%s\n" % \
+					((pkg.type_name + ":").rjust(10),
+					pkg.cpv, _repo_separator, pkg.repo), noiselevel=-1)
 
 		# Filter out any old-style virtual matches if they are
 		# mixed with new-style virtual matches.
