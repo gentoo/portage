@@ -5497,8 +5497,7 @@ class depgraph(object):
 			noiselevel=-1)
 		portage.writemsg("\n", noiselevel=-1)
 
-		if handler.circular_dep_message is None or \
-			"--debug" in self._frozen_config.myopts:
+		if handler.circular_dep_message is None:
 			handler.debug_print()
 			portage.writemsg("\n", noiselevel=-1)
 

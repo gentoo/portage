@@ -4,10 +4,12 @@
 from __future__ import print_function
 
 from itertools import chain, product
+import logging
 
 from portage.dep import use_reduce, extract_affecting_use, check_required_use, get_required_use_flags
 from portage.exception import InvalidDependString
 from portage.output import colorize
+from portage.util import writemsg_level
 from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
 
 class circular_dependency_handler(object):
@@ -16,6 +18,14 @@ class circular_dependency_handler(object):
 		self.depgraph = depgraph
 		self.graph = graph
 		self.all_parent_atoms = depgraph._dynamic_config._parent_atoms
+
+		if "--debug" in depgraph._frozen_config.myopts:
+			# Show this debug output before doing the calculations
+			# that follow, so at least we have this debug info
+			# if we happen to hit a bug later.
+			writemsg_level("\n\ncircular dependency graph:\n\n",
+				level=logging.DEBUG, noiselevel=-1)
+			self.debug_print()
 
 		self.cycles, self.shortest_cycle = self._find_cycles()
 		#Guess if it is a large cluster of cycles. This usually requires
