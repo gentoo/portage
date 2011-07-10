@@ -588,6 +588,15 @@ class slot_conflict_handler(object):
 				else:
 					violated_atom = atom.unevaluated_atom.violated_conditionals(_pkg_use_enabled(pkg), \
 						pkg.iuse.is_valid_flag, parent_use=_pkg_use_enabled(ppkg))
+					if violated_atom.use is None:
+						# It's possible for autounmask to change
+						# parent_use such that the unevaluated form
+						# of the atom now matches, even though the
+						# earlier evaluated form (from before
+						# autounmask changed parent_use) does not.
+						# In this case (see bug #374423), it's
+						# expected that violated_atom.use is None.
+						continue
 
 				if pkg.installed and (violated_atom.use.enabled or violated_atom.use.disabled):
 					#We can't change USE of an installed package (only of an ebuild, but that is already
