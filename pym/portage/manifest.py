@@ -482,7 +482,8 @@ class Manifest(object):
 	def updateAllHashes(self, checkExisting=False, ignoreMissingFiles=True):
 		""" Regenerate all hashes for all files in this Manifest. """
 		for idtype in portage.const.MANIFEST2_IDENTIFIERS:
-			self.updateTypeHashes(idtype, fname, checkExisting)
+			self.updateTypeHashes(idtype, checkExisting=checkExisting,
+				ignoreMissingFiles=ignoreMissingFiles)
 
 	def updateCpvHashes(self, cpv, ignoreMissingFiles=True):
 		""" Regenerate all hashes associated to the given cpv (includes all AUX and MISC
