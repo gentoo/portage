@@ -152,9 +152,9 @@ class circular_dependency_handler(object):
 				# exponentially related (see bug #374397).
 				total_flags = set()
 				total_flags.update(affecting_use, required_use_flags)
+				total_flags.difference_update(untouchable_flags)
 				if len(total_flags) <= 10:
-					affecting_use.update(required_use_flags)
-					affecting_use.difference_update(untouchable_flags)
+					affecting_use = total_flags
 
 			affecting_use = tuple(affecting_use)
 
