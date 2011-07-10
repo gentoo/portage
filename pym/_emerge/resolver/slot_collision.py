@@ -349,6 +349,20 @@ class slot_conflict_handler(object):
 										_pkg_use_enabled(other_pkg),
 										other_pkg.iuse.is_valid_flag,
 										parent_use=parent_use)
+									# It's possible for autounmask to change
+									# parent_use such that the unevaluated form
+									# of the atom now matches, even though the
+									# earlier evaluated form (from before
+									# autounmask changed parent_use) does not.
+									# In this case (see bug #374423), it's
+									# expected that violated_atom.use is None.
+									# Since the atom now matches, we don't want
+									# to display it in the slot conflict
+									# message, so we simply ignore it and rely
+									# on the autounmask display to communicate
+									# the necessary USE change to the user.
+									if violated_atom.use is None:
+										continue
 									if use in violated_atom.use.enabled or \
 										use in violated_atom.use.disabled:
 										unconditional_use_deps.add((ppkg, atom))
