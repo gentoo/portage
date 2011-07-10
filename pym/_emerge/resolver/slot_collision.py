@@ -337,14 +337,21 @@ class slot_conflict_handler(object):
 							#are fewer possible solutions.
 							use = sub_type
 							for ppkg, atom, other_pkg in parents:
-								parent_use = None
-								if isinstance(ppkg, Package):
-									parent_use = _pkg_use_enabled(ppkg)
-								violated_atom = atom.unevaluated_atom.violated_conditionals( \
-									_pkg_use_enabled(other_pkg), other_pkg.iuse.is_valid_flag,
-									parent_use=parent_use)
-								if use in violated_atom.use.enabled.union(violated_atom.use.disabled):
+								missing_iuse = other_pkg.iuse.get_missing_iuse(
+									atom.unevaluated_atom.use.required)
+								if missing_iuse:
 									unconditional_use_deps.add((ppkg, atom))
+								else:
+									parent_use = None
+									if isinstance(ppkg, Package):
+										parent_use = _pkg_use_enabled(ppkg)
+									violated_atom = atom.unevaluated_atom.violated_conditionals(
+										_pkg_use_enabled(other_pkg),
+										other_pkg.iuse.is_valid_flag,
+										parent_use=parent_use)
+									if use in violated_atom.use.enabled or \
+										use in violated_atom.use.disabled:
+										unconditional_use_deps.add((ppkg, atom))
 								# When USE flags are removed, it can be
 								# essential to see all broken reverse
 								# dependencies here, so don't omit any.
