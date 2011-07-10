@@ -976,6 +976,11 @@ class depgraph(object):
 		return (existing_node, matches)
 
 	def _add_pkg(self, pkg, dep):
+		"""
+		Adds a package to the depgraph, queues dependencies, and handles
+		slot conflicts.
+		"""
+		debug = "--debug" in self._frozen_config.myopts
 		myparent = None
 		priority = None
 		depth = 0
@@ -987,17 +992,28 @@ class depgraph(object):
 			depth = dep.depth
 		if priority is None:
 			priority = DepPriority()
-		"""
-		Fills the digraph with nodes comprised of packages to merge.
-		mybigkey is the package spec of the package to merge.
-		myparent is the package depending on mybigkey ( or None )
-		addme = Should we add this package to the digraph or are we just looking at it's deps?
-			Think --onlydeps, we need to ignore packages in that case.
-		#stuff to add:
-		#SLOT-aware emerge
-		#IUSE-aware emerge -> USE DEP aware depgraph
-		#"no downgrade" emerge
-		"""
+
+		if debug:
+			writemsg_level(
+				"\n%s%s %s\n" % ("Child:".ljust(15), pkg,
+				pkg_use_display(pkg, self._frozen_config.myopts,
+				modified_use=self._pkg_use_enabled(pkg))),
+				level=logging.DEBUG, noiselevel=-1)
+			if isinstance(myparent,
+				(PackageArg, AtomArg)):
+				# For PackageArg and AtomArg types, it's
+				# redundant to display the atom attribute.
+				writemsg_level(
+					"%s%s\n" % ("Parent Dep:".ljust(15), myparent),
+					level=logging.DEBUG, noiselevel=-1)
+			else:
+				# Display the specific atom from SetArg or
+				# Package types.
+				writemsg_level(
+					"%s%s required by %s\n" %
+					("Parent Dep:".ljust(15), dep.atom, myparent),
+					level=logging.DEBUG, noiselevel=-1)
+
 		# Ensure that the dependencies of the same package
 		# are never processed more than once.
 		previously_added = pkg in self._dynamic_config.digraph
@@ -1189,6 +1205,14 @@ class depgraph(object):
 					# shown later if there are no unresolvable blockers.
 					self._add_slot_conflict(pkg)
 					slot_collision = True
+
+					if debug:
+						writemsg_level(
+							"%s%s %s\n" % ("Slot Conflict:".ljust(15),
+							existing_node, pkg_use_display(existing_node,
+							self._frozen_config.myopts,
+							modified_use=self._pkg_use_enabled(existing_node))),
+							level=logging.DEBUG, noiselevel=-1)
 
 			if slot_collision:
 				# Now add this node to the graph so that self.display()
@@ -1573,7 +1597,7 @@ class depgraph(object):
 				continue
 
 			if debug:
-				writemsg_level("Candidates: %s: %s\n" % \
+				writemsg_level("\nCandidates: %s: %s\n" % \
 					(virt_pkg.cpv, [str(x) for x in atoms]),
 					noiselevel=-1, level=logging.DEBUG)
 
@@ -1670,7 +1694,7 @@ class depgraph(object):
 							traversed_virt_pkgs.add(dep.child)
 
 		if debug:
-			writemsg_level("Exiting... %s\n" % (pkg,),
+			writemsg_level("\nExiting... %s\n" % (pkg,),
 				noiselevel=-1, level=logging.DEBUG)
 
 		return 1
@@ -2226,8 +2250,8 @@ class depgraph(object):
 							return 0, myfavorites
 						continue
 					if debug:
-						portage.writemsg("      Arg: %s\n     Atom: %s\n" % \
-							(arg, atom), noiselevel=-1)
+						writemsg_level("\n      Arg: %s\n     Atom: %s\n" %
+							(arg, atom), noiselevel=-1, level=logging.DEBUG)
 					pkg, existing_node = self._select_package(
 						myroot, atom, onlydeps=onlydeps)
 					if not pkg:
