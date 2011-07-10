@@ -1,12 +1,12 @@
 # portage: news management code
-# Copyright 2006-2010 Gentoo Foundation
+# Copyright 2006-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["NewsManager", "NewsItem", "DisplayRestriction",
 	"DisplayProfileRestriction", "DisplayKeywordRestriction",
 	"DisplayInstalledRestriction"]
 
-import codecs
+import io
 import logging
 import os as _os
 import re
@@ -250,7 +250,7 @@ class NewsItem(object):
 		return self._valid
 
 	def parse(self):
-		lines = codecs.open(_unicode_encode(self.path,
+		lines = io.open(_unicode_encode(self.path,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['content'], errors='replace'
 			).readlines()

@@ -1,9 +1,9 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['ExtractKernelVersion']
 
-import codecs
+import io
 
 from portage import os, _encodings, _unicode_encode
 from portage.util import getconfig, grabfile
@@ -22,7 +22,7 @@ def ExtractKernelVersion(base_dir):
 	lines = []
 	pathname = os.path.join(base_dir, 'Makefile')
 	try:
-		f = codecs.open(_unicode_encode(pathname,
+		f = io.open(_unicode_encode(pathname,
 			encoding=_encodings['fs'], errors='strict'), mode='r',
 			encoding=_encodings['content'], errors='replace')
 	except OSError as details:

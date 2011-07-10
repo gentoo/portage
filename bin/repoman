@@ -9,10 +9,10 @@
 from __future__ import print_function
 
 import calendar
-import codecs
 import copy
 import errno
 import formatter
+import io
 import logging
 import optparse
 import re
@@ -700,7 +700,7 @@ for path in portdb.porttrees:
 
 	desc_path = os.path.join(path, 'profiles', 'profiles.desc')
 	try:
-		desc_file = codecs.open(_unicode_encode(desc_path,
+		desc_file = io.open(_unicode_encode(desc_path,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['repo.content'], errors='replace')
 	except EnvironmentError:
@@ -1209,7 +1209,7 @@ for x in scanlist:
 			continue
 		try:
 			line = 1
-			for l in codecs.open(_unicode_encode(os.path.join(checkdir, y),
+			for l in io.open(_unicode_encode(os.path.join(checkdir, y),
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content']):
 				line +=1
@@ -1822,7 +1822,7 @@ for x in scanlist:
 				pkg.mtime = None
 		try:
 			# All ebuilds should have utf_8 encoding.
-			f = codecs.open(_unicode_encode(full_path,
+			f = io.open(_unicode_encode(full_path,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'])
 			try:
@@ -2319,7 +2319,7 @@ else:
 	commitmessage = options.commitmsg
 	if options.commitmsgfile:
 		try:
-			f = codecs.open(_unicode_encode(options.commitmsgfile,
+			f = io.open(_unicode_encode(options.commitmsgfile,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['content'], errors='replace')
 			commitmessage = f.read()

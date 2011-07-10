@@ -3,10 +3,9 @@
 
 from __future__ import print_function
 
-import codecs
 import difflib
 import errno
-import gc
+import io
 import logging
 import re
 import stat
@@ -5937,7 +5936,7 @@ class depgraph(object):
 		def write_changes(root, changes, file_to_write_to):
 			file_contents = None
 			try:
-				file_contents = codecs.open(
+				file_contents = io.open(
 					_unicode_encode(file_to_write_to,
 					encoding=_encodings['fs'], errors='strict'),
 					mode='r', encoding=_encodings['content'],

@@ -1,8 +1,8 @@
 #!/usr/bin/python
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import codecs
+import io
 import optparse
 import os
 import sys
@@ -109,7 +109,7 @@ def main(argv):
 	if not (os.WIFEXITED(ret) and os.WEXITSTATUS(ret) == os.EX_OK):
 		return 1
 
-	infile = codecs.open(portage._unicode_encode(src_pkgs_index,
+	infile = io.open(portage._unicode_encode(src_pkgs_index,
 		encoding=portage._encodings['fs'], errors='strict'),
 		mode='r', encoding=portage._encodings['repo.content'],
 		errors='strict')

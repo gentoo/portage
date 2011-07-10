@@ -3,12 +3,13 @@
 
 from __future__ import print_function
 
-import codecs
+import io
 import sys
 import time
 import portage
 from portage import os
 from portage import _encodings
+from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.data import secpass
 from portage.output import xtermTitle
@@ -36,7 +37,7 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 	try:
 		file_path = os.path.join(_emerge_log_dir, 'emerge.log')
 		existing_log = os.path.isfile(file_path)
-		mylogfile = codecs.open(_unicode_encode(file_path,
+		mylogfile = io.open(_unicode_encode(file_path,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='a', encoding=_encodings['content'],
 			errors='backslashreplace')
@@ -50,7 +51,8 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 			# seek because we may have gotten held up by the lock.
 			# if so, we may not be positioned at the end of the file.
 			mylogfile.seek(0, 2)
-			mylogfile.write(str(time.time())[:10]+": "+mystr+"\n")
+			mylogfile.write(_unicode_decode(
+				str(time.time())[:10]+": "+mystr+"\n"))
 			mylogfile.flush()
 		finally:
 			if mylock:

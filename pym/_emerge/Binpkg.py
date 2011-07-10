@@ -14,8 +14,9 @@ from portage.util import writemsg
 import portage
 from portage import os
 from portage import _encodings
+from portage import _unicode_decode
 from portage import _unicode_encode
-import codecs
+import io
 import logging
 from portage.output import colorize
 
@@ -239,20 +240,22 @@ class Binpkg(CompositeTask):
 			else:
 				continue
 
-			f = codecs.open(_unicode_encode(os.path.join(infloc, k),
+			f = io.open(_unicode_encode(os.path.join(infloc, k),
 				encoding=_encodings['fs'], errors='strict'),
-				mode='w', encoding=_encodings['content'], errors='replace')
+				mode='w', encoding=_encodings['content'],
+				errors='backslashreplace')
 			try:
-				f.write(v + "\n")
+				f.write(_unicode_decode(v + "\n"))
 			finally:
 				f.close()
 
 		# Store the md5sum in the vdb.
-		f = codecs.open(_unicode_encode(os.path.join(infloc, 'BINPKGMD5'),
+		f = io.open(_unicode_encode(os.path.join(infloc, 'BINPKGMD5'),
 			encoding=_encodings['fs'], errors='strict'),
 			mode='w', encoding=_encodings['content'], errors='strict')
 		try:
-			f.write(str(portage.checksum.perform_md5(pkg_path)) + "\n")
+			f.write(_unicode_decode(
+				str(portage.checksum.perform_md5(pkg_path)) + "\n"))
 		finally:
 			f.close()
 

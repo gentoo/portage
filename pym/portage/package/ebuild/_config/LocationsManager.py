@@ -1,11 +1,11 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
 	'LocationsManager',
 )
 
-import codecs
+import io
 from portage import os, eapi_is_supported, _encodings, _unicode_encode
 from portage.const import CUSTOM_PROFILE_PATH, GLOBAL_CONFIG_PATH, \
 	PROFILE_PATH, USER_CONFIG_PATH
@@ -90,7 +90,7 @@ class LocationsManager(object):
 		parentsFile = os.path.join(currentPath, "parent")
 		eapi_file = os.path.join(currentPath, "eapi")
 		try:
-			eapi = codecs.open(_unicode_encode(eapi_file,
+			eapi = io.open(_unicode_encode(eapi_file,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['content'], errors='replace'
 				).readline().strip()

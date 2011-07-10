@@ -5,8 +5,8 @@ from __future__ import print_function
 
 __all__ = ['fetch']
 
-import codecs
 import errno
+import io
 import logging
 import random
 import re
@@ -31,7 +31,7 @@ from portage.const import BASH_BINARY, CUSTOM_MIRRORS_FILE, \
 	GLOBAL_CONFIG_PATH
 from portage.data import portage_gid, portage_uid, secpass, userpriv_groups
 from portage.exception import FileNotFound, OperationNotPermitted, \
-	PermissionDenied, PortageException, TryAgain
+	PortageException, TryAgain
 from portage.localization import _
 from portage.locks import lockfile, unlockfile
 from portage.manifest import Manifest
@@ -1008,7 +1008,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 								# Fetch failed... Try the next one... Kill 404 files though.
 								if (mystat[stat.ST_SIZE]<100000) and (len(myfile)>4) and not ((myfile[-5:]==".html") or (myfile[-4:]==".htm")):
 									html404=re.compile("<title>.*(not found|404).*</title>",re.I|re.M)
-									if html404.search(codecs.open(
+									if html404.search(io.open(
 										_unicode_encode(myfile_path,
 										encoding=_encodings['fs'], errors='strict'),
 										mode='r', encoding=_encodings['content'], errors='replace'

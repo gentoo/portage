@@ -3,9 +3,9 @@
 
 __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
 
-import codecs
 import gzip
 import errno
+import io
 from itertools import chain
 import logging
 import os as _os
@@ -30,7 +30,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.ExtractKernelVersion:ExtractKernelVersion'
 )
 
-from portage import auxdbkeys, bsd_chflags, dep_check, \
+from portage import auxdbkeys, bsd_chflags, \
 	eapi_is_supported, merge, os, selinux, \
 	unmerge, _encodings, _parse_eapi_ebuild_head, _os_merge, \
 	_shell_quote, _unicode_decode, _unicode_encode
@@ -39,7 +39,6 @@ from portage.const import EBUILD_SH_ENV_FILE, EBUILD_SH_ENV_DIR, \
 from portage.data import portage_gid, portage_uid, secpass, \
 	uid, userpriv_groups
 from portage.dbapi.porttree import _parse_uri_map
-from portage.dbapi.virtual import fakedbapi
 from portage.dep import Atom, check_required_use, \
 	human_readable_required_use, paren_enclose, use_reduce
 from portage.eapi import eapi_exports_KV, eapi_exports_merge_type, \
@@ -290,7 +289,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	if mydo == 'depend' and 'EAPI' not in mysettings.configdict['pkg']:
 		if eapi is None and 'parse-eapi-ebuild-head' in mysettings.features:
 			eapi = _parse_eapi_ebuild_head(
-				codecs.open(_unicode_encode(ebuild_path,
+				io.open(_unicode_encode(ebuild_path,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['content'], errors='replace'))
 
@@ -1586,15 +1585,15 @@ def _post_src_install_uid_fix(mysettings, out):
 	build_info_dir = os.path.join(mysettings['PORTAGE_BUILDDIR'],
 		'build-info')
 
-	codecs.open(_unicode_encode(os.path.join(build_info_dir,
+	io.open(_unicode_encode(os.path.join(build_info_dir,
 		'SIZE'), encoding=_encodings['fs'], errors='strict'),
 		'w', encoding=_encodings['repo.content'],
-		errors='strict').write(str(size) + '\n')
+		errors='strict').write(_unicode_decode(str(size) + '\n'))
 
-	codecs.open(_unicode_encode(os.path.join(build_info_dir,
+	io.open(_unicode_encode(os.path.join(build_info_dir,
 		'BUILD_TIME'), encoding=_encodings['fs'], errors='strict'),
 		'w', encoding=_encodings['repo.content'],
-		errors='strict').write(str(int(time.time())) + '\n')
+		errors='strict').write(_unicode_decode(str(int(time.time())) + '\n'))
 
 	use = frozenset(mysettings['PORTAGE_USE'].split())
 	for k in _vdb_use_conditional_keys:
@@ -1620,10 +1619,10 @@ def _post_src_install_uid_fix(mysettings, out):
 			except OSError:
 				pass
 			continue
-		codecs.open(_unicode_encode(os.path.join(build_info_dir,
+		io.open(_unicode_encode(os.path.join(build_info_dir,
 			k), encoding=_encodings['fs'], errors='strict'),
 			mode='w', encoding=_encodings['repo.content'],
-			errors='strict').write(v + '\n')
+			errors='strict').write(_unicode_decode(v + '\n'))
 
 	_reapply_bsdflags_to_image(mysettings)
 
@@ -1649,7 +1648,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
 		"build-info", "NEEDED.ELF.2")
 
 	try:
-		lines = codecs.open(_unicode_encode(needed_filename,
+		lines = io.open(_unicode_encode(needed_filename,
 			encoding=_encodings['fs'], errors='strict'),
 			'r', encoding=_encodings['repo.content'],
 			errors='replace').readlines()

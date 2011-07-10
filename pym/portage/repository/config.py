@@ -1,7 +1,7 @@
 # Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import codecs
+import io
 import logging
 import re
 
@@ -10,7 +10,7 @@ try:
 except ImportError:
 	from ConfigParser import SafeConfigParser, ParsingError
 from portage import os
-from portage.const import USER_CONFIG_PATH, GLOBAL_CONFIG_PATH, REPO_NAME_LOC
+from portage.const import USER_CONFIG_PATH, REPO_NAME_LOC
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.util import normalize_path, writemsg, writemsg_level, shlex_split
 from portage.localization import _
@@ -133,7 +133,7 @@ class RepoConfig(object):
 		"""
 		repo_name_path = os.path.join(repo_path, REPO_NAME_LOC)
 		try:
-			return codecs.open(
+			return io.open(
 				_unicode_encode(repo_name_path,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],

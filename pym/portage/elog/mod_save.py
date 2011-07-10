@@ -1,8 +1,8 @@
 # elog/mod_save.py - elog dispatch module
-# Copyright 2006-2007 Gentoo Foundation
+# Copyright 2006-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import codecs
+import io
 import time
 from portage import os
 from portage import _encodings
@@ -34,10 +34,10 @@ def process(mysettings, key, logentries, fulltext):
 	ensure_dirs(os.path.dirname(elogfilename),
 		uid=portage_uid, gid=portage_gid, mode=0o2770)
 
-	elogfile = codecs.open(_unicode_encode(elogfilename,
+	elogfile = io.open(_unicode_encode(elogfilename,
 		encoding=_encodings['fs'], errors='strict'),
 		mode='w', encoding=_encodings['content'], errors='backslashreplace')
-	elogfile.write(fulltext)
+	elogfile.write(_unicode_decode(fulltext))
 	elogfile.close()
 
 	return elogfilename

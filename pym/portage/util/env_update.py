@@ -3,8 +3,8 @@
 
 __all__ = ['env_update']
 
-import codecs
 import errno
+import io
 import stat
 import sys
 import time
@@ -125,7 +125,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 
 	ldsoconf_path = os.path.join(target_root, "etc", "ld.so.conf")
 	try:
-		myld = codecs.open(_unicode_encode(ldsoconf_path,
+		myld = io.open(_unicode_encode(ldsoconf_path,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['content'], errors='replace')
 		myldlines=myld.readlines()

@@ -20,7 +20,7 @@ try:
 except KeyboardInterrupt:
 	sys.exit(128 + signal.SIGINT)
 
-import codecs
+import io
 import logging
 import optparse
 import subprocess
@@ -391,10 +391,10 @@ class GenUseLocalDesc(object):
 					output = open(_unicode_encode(desc_path,
 						encoding=_encodings['fs'], errors='strict'), 'r+b')
 				else:
-					output = codecs.open(_unicode_encode(desc_path,
+					output = io.open(_unicode_encode(desc_path,
 						encoding=_encodings['fs'], errors='strict'),
 						mode='w', encoding=_encodings['repo.content'],
-						errors='replace')
+						errors='backslashreplace')
 			except IOError as e:
 				if not self._preserve_comments or \
 					os.path.isfile(desc_path):
@@ -413,10 +413,10 @@ class GenUseLocalDesc(object):
 					level=logging.WARNING, noiselevel=-1)
 				self._preserve_comments = False
 				try:
-					output = codecs.open(_unicode_encode(desc_path,
+					output = io.open(_unicode_encode(desc_path,
 						encoding=_encodings['fs'], errors='strict'),
 						mode='w', encoding=_encodings['repo.content'],
-						errors='replace')
+						errors='backslashreplace')
 				except IOError as e:
 					writemsg_level(
 						"ERROR: failed to open output file %s: %s\n" \
@@ -437,18 +437,18 @@ class GenUseLocalDesc(object):
 
 			# Finished probing comments in binary mode, now append
 			# in text mode.
-			output = codecs.open(_unicode_encode(desc_path,
+			output = io.open(_unicode_encode(desc_path,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='a', encoding=_encodings['repo.content'],
-				errors='replace')
-			output.write('\n')
+				errors='backslashreplace')
+			output.write(_unicode_decode('\n'))
 		else:
-			output.write('''
+			output.write(_unicode_decode('''
 # This file is deprecated as per GLEP 56 in favor of metadata.xml. Please add
 # your descriptions to your package's metadata.xml ONLY.
 # * generated automatically using egencache *
 
-'''.lstrip())
+'''.lstrip()))
 
 		# The cmp function no longer exists in python3, so we'll
 		# implement our own here under a slightly different name
@@ -522,7 +522,8 @@ class GenUseLocalDesc(object):
 								resatoms = sorted(reskeys, key=cmp_sort_key(atomcmp))
 								resdesc = resdict[reskeys[resatoms[-1]]]
 
-						output.write('%s:%s - %s\n' % (cp, flag, resdesc))
+						output.write(_unicode_decode(
+							'%s:%s - %s\n' % (cp, flag, resdesc)))
 
 		output.close()
 
@@ -609,9 +610,9 @@ class GenChangeLogs(object):
 
 	def generate_changelog(self, cp):
 		try:
-			output = codecs.open('ChangeLog',
+			output = io.open('ChangeLog',
 				mode='w', encoding=_encodings['repo.content'],
-				errors='replace')
+				errors='backslashreplace')
 		except IOError as e:
 			writemsg_level(
 				"ERROR: failed to open ChangeLog for %s: %s\n" % (cp,e,),
@@ -619,7 +620,7 @@ class GenChangeLogs(object):
 			self.returncode |= 2
 			return
 
-		output.write(('''
+		output.write(_unicode_decode('''
 # ChangeLog for %s
 # Copyright 1999-%s Gentoo Foundation; Distributed under the GPL v2
 # $Header: $
@@ -688,10 +689,11 @@ class GenChangeLogs(object):
 			# Reverse the sort order for headers.
 			for c in reversed(changed):
 				if c.startswith('+') and c.endswith('.ebuild'):
-					output.write('*%s (%s)\n' % (c[1:-7], date))
+					output.write(_unicode_decode(
+						'*%s (%s)\n' % (c[1:-7], date)))
 					wroteheader = True
 			if wroteheader:
-				output.write('\n')
+				output.write(_unicode_decode('\n'))
 
 			# strip '<cp>: ', '[<cp>] ', and similar
 			body[0] = re.sub(r'^\W*' + re.escape(cp) + r'\W+', '', body[0])
@@ -711,10 +713,13 @@ class GenChangeLogs(object):
 
 			# don't break filenames on hyphens
 			self._wrapper.break_on_hyphens = False
-			output.write(self._wrapper.fill('%s; %s %s:' % (date, author, ', '.join(changed))))
+			output.write(_unicode_decode(
+				self._wrapper.fill(
+				'%s; %s %s:' % (date, author, ', '.join(changed)))))
 			# but feel free to break commit messages there
 			self._wrapper.break_on_hyphens = True
-			output.write('\n%s\n\n' % '\n'.join([self._wrapper.fill(x) for x in body]))
+			output.write(_unicode_decode(
+				'\n%s\n\n' % '\n'.join(self._wrapper.fill(x) for x in body)))
 
 		output.close()
 
