@@ -2082,6 +2082,14 @@ class depgraph(object):
 					else:
 						atom = null_atom
 
+				if atom.use and atom.use.conditional:
+					writemsg(
+						("\n\n!!! '%s' contains a conditional " + \
+						"which is not allowed.\n") % (x,), noiselevel=-1)
+					writemsg("!!! Please check ebuild(5) for full details.\n")
+					self._dynamic_config._skip_restart = True
+					return (0,[])
+
 				args.append(AtomArg(arg=x, atom=atom,
 					root_config=root_config))
 
