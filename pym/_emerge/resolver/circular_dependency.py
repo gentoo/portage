@@ -138,17 +138,7 @@ class circular_dependency_handler(object):
 			usemask, useforce = self._get_use_mask_and_force(parent)
 			autounmask_changes = self._get_autounmask_changes(parent)
 			untouchable_flags = frozenset(chain(usemask, useforce, autounmask_changes))
-
 			affecting_use.difference_update(untouchable_flags)
-
-			#If any of the flags we're going to touch is in REQUIRED_USE, add all
-			#other flags in REQUIRED_USE to affecting_use, to not lose any solution.
-			required_use_flags = get_required_use_flags(parent.metadata["REQUIRED_USE"])
-
-			if affecting_use.intersection(required_use_flags):
-				affecting_use.update(required_use_flags)
-				affecting_use.difference_update(untouchable_flags)
-
 			affecting_use = tuple(affecting_use)
 
 			if not affecting_use:
