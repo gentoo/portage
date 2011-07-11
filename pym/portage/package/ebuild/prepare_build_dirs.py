@@ -16,7 +16,7 @@ from portage.exception import DirectoryNotFound, FileNotFound, \
 from portage.localization import _
 from portage.output import colorize
 from portage.util import apply_recursive_permissions, \
-	apply_secpass_permissions, ensure_dirs, writemsg
+	apply_secpass_permissions, ensure_dirs, normalize_path, writemsg
 
 def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
 	"""
@@ -303,6 +303,7 @@ def _prepare_workdir(mysettings):
 	logdir_subdir_ok = False
 	if "PORT_LOGDIR" in mysettings and \
 		os.access(mysettings["PORT_LOGDIR"], os.W_OK):
+		logdir = normalize_path(mysettings["PORT_LOGDIR"])
 		logid_path = os.path.join(mysettings["PORTAGE_BUILDDIR"], ".logid")
 		if not os.path.exists(logid_path):
 			open(_unicode_encode(logid_path), 'w')
@@ -311,22 +312,25 @@ def _prepare_workdir(mysettings):
 			encoding=_encodings['content'], errors='replace')
 
 		if "split-log" in mysettings.features:
+			log_subdir = os.path.join(logdir, "build", mysettings["CATEGORY"])
 			mysettings["PORTAGE_LOG_FILE"] = os.path.join(
-				mysettings["PORT_LOGDIR"], "build", "%s/%s:%s.log%s" % \
-				(mysettings["CATEGORY"], mysettings["PF"], logid_time,
-				compress_log_ext))
+				log_subdir, "%s:%s.log%s" %
+				(mysettings["PF"], logid_time, compress_log_ext))
 		else:
+			log_subdir = logdir
 			mysettings["PORTAGE_LOG_FILE"] = os.path.join(
-				mysettings["PORT_LOGDIR"], "%s:%s:%s.log%s" % \
+				logdir, "%s:%s:%s.log%s" % \
 				(mysettings["CATEGORY"], mysettings["PF"], logid_time,
 				compress_log_ext))
 
-		log_subdir = os.path.dirname(mysettings["PORTAGE_LOG_FILE"])
-		try:
-			ensure_dirs(log_subdir)
-		except PortageException as e:
-			writemsg(_unicode_decode("!!! %s\n") % (e,), noiselevel=-1)
+		if log_subdir is logdir:
+			logdir_subdir_ok = True
 		else:
+			try:
+				_ensure_log_subdirs(logdir, log_subdir)
+			except PortageException as e:
+				writemsg(_unicode_decode("!!! %s\n") % (e,), noiselevel=-1)
+
 			if os.access(log_subdir, os.W_OK):
 				logdir_subdir_ok = True
 			else:
@@ -340,3 +344,22 @@ def _prepare_workdir(mysettings):
 		# not through a normal pipe. See bug #162404.
 		mysettings["PORTAGE_LOG_FILE"] = os.path.join(
 			mysettings["T"], "build.log%s" % compress_log_ext)
+
+def _ensure_log_subdirs(logdir, subdir):
+	"""
+	This assumes that logdir exists, and creates subdirectories down
+	to subdir as necessary. The gid of logdir is copied to all
+	subdirectories, along with 0x2070 mode bits if present. Both logdir
+	and subdir are assumed to be normalized absolute paths.
+	"""
+	st = os.stat(logdir)
+	gid = st.st_gid
+	grp_mode = 0o2070 & st.st_mode
+
+	logdir_split_len = len(logdir.split(os.sep))
+	subdir_split = subdir.split(os.sep)[logdir_split_len:]
+	subdir_split.reverse()
+	current = logdir
+	while subdir_split:
+		current = os.path.join(current, subdir_split.pop())
+		ensure_dirs(current, gid=gid, mode=grp_mode, mask=0)
