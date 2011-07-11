@@ -7,7 +7,6 @@ import difflib
 import errno
 import io
 import logging
-import re
 import stat
 import sys
 import textwrap
@@ -49,7 +48,8 @@ from _emerge.DepPriorityNormalRange import DepPriorityNormalRange
 from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
 from _emerge.FakeVartree import FakeVartree
 from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
-from _emerge.is_valid_package_atom import is_valid_package_atom
+from _emerge.is_valid_package_atom import insert_category_into_atom, \
+	is_valid_package_atom
 from _emerge.Package import Package
 from _emerge.PackageArg import PackageArg
 from _emerge.PackageVirtualDbapi import PackageVirtualDbapi
@@ -6689,15 +6689,6 @@ def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
 	s.output()
 	writemsg("!!! The short ebuild name \"%s\" is ambiguous. Please specify\n" % arg, noiselevel=-1)
 	writemsg("!!! one of the above fully-qualified ebuild names instead.\n\n", noiselevel=-1)
-
-def insert_category_into_atom(atom, category):
-	alphanum = re.search(r'\w', atom)
-	if alphanum:
-		ret = atom[:alphanum.start()] + "%s/" % category + \
-			atom[alphanum.start():]
-	else:
-		ret = None
-	return ret
 
 def _spinner_start(spinner, myopts):
 	if spinner is None:
