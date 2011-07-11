@@ -30,6 +30,7 @@ from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import ConfigProtect, shlex_split, new_protect_filename
 from portage.util import cmp_sort_key, writemsg, writemsg_stdout
+from portage.util import ensure_dirs
 from portage.util import writemsg_level, write_atomic
 from portage.util.digraph import digraph
 from portage.util.listdir import _ignorecvs_dirs
@@ -5982,11 +5983,12 @@ class depgraph(object):
 			if userquery(prompt, enter_invalid) == 'No':
 				write_to_file = False
 
-		if write_to_file:
+		if write_to_file and file_to_write_to:
 			for root in roots:
 				settings = self._frozen_config.roots[root].settings
 				abs_user_config = os.path.join(
 					settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH)
+				ensure_dirs(abs_user_config)
 
 				if root in unstable_keyword_msg:
 					write_changes(root, unstable_keyword_msg[root],
