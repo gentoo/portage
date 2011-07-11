@@ -300,6 +300,7 @@ def _prepare_workdir(mysettings):
 	if 'compress-build-logs' in mysettings.features:
 		compress_log_ext = '.gz'
 
+	logdir_subdir_ok = False
 	if "PORT_LOGDIR" in mysettings and \
 		os.access(mysettings["PORT_LOGDIR"], os.W_OK):
 		logid_path = os.path.join(mysettings["PORTAGE_BUILDDIR"], ".logid")
@@ -320,9 +321,19 @@ def _prepare_workdir(mysettings):
 				(mysettings["CATEGORY"], mysettings["PF"], logid_time,
 				compress_log_ext))
 
-		ensure_dirs(os.path.dirname(mysettings["PORTAGE_LOG_FILE"]))
+		log_subdir = os.path.dirname(mysettings["PORTAGE_LOG_FILE"])
+		try:
+			ensure_dirs(log_subdir)
+		except PortageException as e:
+			writemsg(_unicode_decode("!!! %s\n") % (e,), noiselevel=-1)
+		else:
+			if os.access(log_subdir, os.W_OK):
+				logdir_subdir_ok = True
+			else:
+				writemsg(_unicode_decode("!!! %s: %s\n") %
+					(_("Permission Denied"), log_subdir), noiselevel=-1)
 
-	else:
+	if not logdir_subdir_ok:
 		# NOTE: When sesandbox is enabled, the local SELinux security policies
 		# may not allow output to be piped out of the sesandbox domain. The
 		# current policy will allow it to work when a pty is available, but
