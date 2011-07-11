@@ -6879,10 +6879,12 @@ def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 						unsatisfied_parents[parent_node] = parent_node
 						unsatisfied_stack.append(parent_node)
 
+			unsatisfied_tuples = set(tuple(pkg)
+				for pkg in unsatisfied_parents)
 			pruned_mergelist = []
 			for x in mergelist:
 				if isinstance(x, list) and \
-					tuple(x) not in unsatisfied_parents:
+					tuple(x) not in unsatisfied_tuples:
 					pruned_mergelist.append(x)
 
 			# If the mergelist doesn't shrink then this loop is infinite.
