@@ -10,7 +10,6 @@ VERSION="HEAD"
 
 try:
 	import sys
-	import codecs
 	import errno
 	if not hasattr(errno, 'ESTALE'):
 		# ESTALE may not be defined on some systems, such as interix.
