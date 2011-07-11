@@ -8,8 +8,9 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
+from portage.data import portage_gid
 from portage.package.ebuild.prepare_build_dirs import _ensure_log_subdirs
-from portage.util import normalize_path
+from portage.util import ensure_dirs, normalize_path
 
 def process(mysettings, key, logentries, fulltext):
 
@@ -17,6 +18,12 @@ def process(mysettings, key, logentries, fulltext):
 		logdir = normalize_path(mysettings["PORT_LOGDIR"])
 	else:
 		logdir = os.path.join(os.sep, "var", "log", "portage")
+
+	if not os.path.isdir(logdir):
+		# Only initialize group/mode if the directory doesn't
+		# exist, so that we don't override permissions if they
+		# were previously set by the administrator.
+		ensure_dirs(logdir, gid=portage_gid, mode=0o2770)
 
 	cat = mysettings['CATEGORY']
 	pf = mysettings['PF']
