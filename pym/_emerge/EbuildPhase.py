@@ -61,7 +61,7 @@ class EbuildPhase(CompositeTask):
 				except OSError:
 					pass
 
-		if self.phase == 'setup':
+		if self.phase in ('nofetch', 'pretend', 'setup'):
 
 			use = self.settings.get('PORTAGE_BUILT_USE')
 			if use is None:
@@ -97,7 +97,11 @@ class EbuildPhase(CompositeTask):
 					relevant_features.append(x)
 			if relevant_features:
 				msg.append("FEATURES:   %s" % " ".join(relevant_features))
-			self._elog('einfo', msg)
+
+			# Force background=True for this header since it's intended
+			# for the log and it doesn't necessarily need to be visible
+			# elsewhere.
+			self._elog('einfo', msg, background=True)
 
 		if self.phase == 'package':
 			if 'PORTAGE_BINPKG_TMPFILE' not in self.settings:
@@ -326,7 +330,9 @@ class EbuildPhase(CompositeTask):
 		self.returncode = 1
 		self.wait()
 
-	def _elog(self, elog_funcname, lines):
+	def _elog(self, elog_funcname, lines, background=None):
+		if background is None:
+			background = self.background
 		out = StringIO()
 		phase = self.phase
 		elog_func = getattr(elog_messages, elog_funcname)
@@ -344,4 +350,5 @@ class EbuildPhase(CompositeTask):
 			log_path = None
 			if self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
 				log_path = self.settings.get("PORTAGE_LOG_FILE")
-			self.scheduler.output(msg, log_path=log_path)
+			self.scheduler.output(msg, log_path=log_path,
+				background=background)
