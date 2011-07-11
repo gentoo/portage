@@ -525,7 +525,14 @@ hasv() {
 }
 
 has() {
-	[[ " ${*:2} " == *" $1 "* ]]
+	local needle=$1
+	shift
+
+	local x
+	for x in "$@"; do
+		[ "${x}" = "${needle}" ] && return 0
+	done
+	return 1
 }
 
 # @FUNCTION: save_ebuild_env
