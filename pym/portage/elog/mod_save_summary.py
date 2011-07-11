@@ -8,23 +8,32 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
-from portage.data import portage_uid, portage_gid
 from portage.localization import _
-from portage.util import ensure_dirs, apply_permissions
+from portage.package.ebuild.prepare_build_dirs import _ensure_log_subdirs
+from portage.util import apply_permissions, normalize_path
 
 def process(mysettings, key, logentries, fulltext):
-	if mysettings["PORT_LOGDIR"] != "":
-		elogdir = os.path.join(mysettings["PORT_LOGDIR"], "elog")
+	if mysettings.get("PORT_LOGDIR"):
+		logdir = normalize_path(mysettings["PORT_LOGDIR"])
 	else:
-		elogdir = os.path.join(os.sep, "var", "log", "portage", "elog")
-	ensure_dirs(elogdir, uid=portage_uid, gid=portage_gid, mode=0o2770)
+		logdir = os.path.join(os.sep, "var", "log", "portage")
+
+	elogdir = os.path.join(logdir, "elog")
+	_ensure_log_subdirs(logdir, elogdir)
 
 	# TODO: Locking
 	elogfilename = elogdir+"/summary.log"
 	elogfile = io.open(_unicode_encode(elogfilename,
 		encoding=_encodings['fs'], errors='strict'),
 		mode='a', encoding=_encodings['content'], errors='backslashreplace')
-	apply_permissions(elogfilename, mode=0o60, mask=0)
+
+	# Copy group permission bits from parent directory.
+	elogdir_st = os.stat(elogdir)
+	elogdir_gid = elogdir_st.st_gid
+	elogdir_grp_mode = 0o060 & elogdir_st.st_mode
+	apply_permissions(elogfilename, gid=elogdir_gid,
+		mode=elogdir_grp_mode, mask=0)
+
 	time_str = time.strftime("%Y-%m-%d %H:%M:%S %Z",
 		time.localtime(time.time()))
 	# Avoid potential UnicodeDecodeError later.

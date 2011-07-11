@@ -8,17 +8,15 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
-from portage.data import portage_uid, portage_gid
-from portage.util import ensure_dirs
+from portage.package.ebuild.prepare_build_dirs import _ensure_log_subdirs
+from portage.util import normalize_path
 
 def process(mysettings, key, logentries, fulltext):
-	path = key.replace("/", ":")
 
-	if mysettings["PORT_LOGDIR"] != "":
-		elogdir = os.path.join(mysettings["PORT_LOGDIR"], "elog")
+	if mysettings.get("PORT_LOGDIR"):
+		logdir = normalize_path(mysettings["PORT_LOGDIR"])
 	else:
-		elogdir = os.path.join(os.sep, "var", "log", "portage", "elog")
-	ensure_dirs(elogdir, uid=portage_uid, gid=portage_gid, mode=0o2770)
+		logdir = os.path.join(os.sep, "var", "log", "portage")
 
 	cat = mysettings['CATEGORY']
 	pf = mysettings['PF']
@@ -28,11 +26,12 @@ def process(mysettings, key, logentries, fulltext):
 		encoding=_encodings['content'], errors='replace') + ".log"
 
 	if "split-elog" in mysettings.features:
-		elogfilename = os.path.join(elogdir, cat, elogfilename)
+		log_subdir = os.path.join(logdir, "elog", cat)
+		elogfilename = os.path.join(log_subdir, elogfilename)
 	else:
-		elogfilename = os.path.join(elogdir, cat + ':' + elogfilename)
-	ensure_dirs(os.path.dirname(elogfilename),
-		uid=portage_uid, gid=portage_gid, mode=0o2770)
+		log_subdir = os.path.join(logdir, "elog")
+		elogfilename = os.path.join(log_subdir, cat + ':' + elogfilename)
+	_ensure_log_subdirs(logdir, log_subdir)
 
 	elogfile = io.open(_unicode_encode(elogfilename,
 		encoding=_encodings['fs'], errors='strict'),
