@@ -286,6 +286,11 @@ def _prepare_workdir(mysettings):
 		try:
 			modified = ensure_dirs(mysettings["PORT_LOGDIR"])
 			if modified:
+				# Only initialize group/mode if the directory doesn't
+				# exist, so that we don't override permissions if they
+				# were previously set by the administrator.
+				# NOTE: These permissions should be compatible with our
+				# default logrotate config as discussed in bug 374287.
 				apply_secpass_permissions(mysettings["PORT_LOGDIR"],
 					uid=portage_uid, gid=portage_gid, mode=0o2770)
 		except PortageException as e:
