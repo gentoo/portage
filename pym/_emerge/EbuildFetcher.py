@@ -186,7 +186,7 @@ class EbuildFetcher(SpawnProcess):
 		return (master_fd, slave_fd)
 
 	def _eerror(self, lines):
-		out = portage.StringIO()
+		out = io.StringIO()
 		for line in lines:
 			eerror(line, phase="unpack", key=self.pkg.cpv, out=out)
 		msg = _unicode_decode(out.getvalue(),

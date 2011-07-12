@@ -1,7 +1,7 @@
 # Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import platform
+import io
 import stat
 import textwrap
 from _emerge.SpawnProcess import SpawnProcess
@@ -13,7 +13,6 @@ from portage.localization import _
 from portage.package.ebuild._ipc.ExitCommand import ExitCommand
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage import os
-from portage import StringIO
 from portage import _encodings
 from portage import _unicode_decode
 from portage.util._pty import _create_pty_or_pipe
@@ -216,7 +215,7 @@ class AbstractEbuildProcess(SpawnProcess):
 		self._elog('eerror', lines)
 
 	def _elog(self, elog_funcname, lines):
-		out = StringIO()
+		out = io.StringIO()
 		phase = self.phase
 		elog_func = getattr(elog_messages, elog_funcname)
 		global_havecolor = portage.output.havecolor

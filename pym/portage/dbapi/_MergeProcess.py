@@ -1,16 +1,16 @@
 # Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import io
 import shutil
 import signal
-import sys
 import tempfile
 import traceback
 
 import errno
 import fcntl
 import portage
-from portage import os, StringIO, _unicode_decode
+from portage import os, _unicode_decode
 from portage.const import PORTAGE_PACKAGE_ATOM
 from portage.dep import match_from_list
 import portage.elog.messages
@@ -134,7 +134,7 @@ class MergeProcess(SpawnProcess):
 			else:
 				lines[0] = self._buf + lines[0]
 				self._buf = lines.pop()
-				out = StringIO()
+				out = io.StringIO()
 				for line in lines:
 					funcname, phase, key, msg = line.split(' ', 3)
 					self._elog_keys.add(key)

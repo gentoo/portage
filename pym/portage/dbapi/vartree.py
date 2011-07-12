@@ -2925,7 +2925,7 @@ class dblink(object):
 			log_path = None
 			if self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
 				log_path = self.settings.get("PORTAGE_LOG_FILE")
-			out = portage.StringIO()
+			out = io.StringIO()
 			for line in lines:
 				func(line, phase=phase, key=self.mycpv, out=out)
 			msg = out.getvalue()

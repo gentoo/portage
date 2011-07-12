@@ -1,9 +1,10 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+import io
 
 import portage
 from portage import os
-from portage import StringIO
 from portage import _encodings
 from portage import _unicode_decode
 from portage.dep import Atom
@@ -83,7 +84,7 @@ class QueryCommand(IpcCommand):
 		don't want to corrupt it, especially if it is being written with
 		compression.
 		"""
-		out = StringIO()
+		out = io.StringIO()
 		phase = self.phase
 		elog_func = getattr(elog_messages, elog_funcname)
 		global_havecolor = portage.output.havecolor

@@ -18,7 +18,6 @@ import weakref
 import zlib
 
 import portage
-from portage import StringIO
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode, _unicode_encode

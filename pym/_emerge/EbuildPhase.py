@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import gzip
+import io
 import sys
 import tempfile
 
@@ -23,7 +24,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 		'_preinst_bsdflags'
 )
 from portage import os
-from portage import StringIO
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
@@ -191,7 +191,7 @@ class EbuildPhase(CompositeTask):
 			logfile = self.settings.get("PORTAGE_LOG_FILE")
 
 		if self.phase == "install":
-			out = portage.StringIO()
+			out = io.StringIO()
 			_check_build_log(self.settings, out=out)
 			msg = _unicode_decode(out.getvalue(),
 				encoding=_encodings['content'], errors='replace')
@@ -205,7 +205,7 @@ class EbuildPhase(CompositeTask):
 		_post_phase_userpriv_perms(settings)
 
 		if self.phase == "install":
-			out = portage.StringIO()
+			out = io.StringIO()
 			_post_src_install_chost_fix(settings)
 			_post_src_install_uid_fix(settings, out)
 			msg = _unicode_decode(out.getvalue(),
@@ -261,7 +261,7 @@ class EbuildPhase(CompositeTask):
 			return
 
 		if self.phase == "install":
-			out = portage.StringIO()
+			out = io.StringIO()
 			_post_src_install_soname_symlinks(self.settings, out)
 			msg = _unicode_decode(out.getvalue(),
 				encoding=_encodings['content'], errors='replace')
@@ -333,7 +333,7 @@ class EbuildPhase(CompositeTask):
 	def _elog(self, elog_funcname, lines, background=None):
 		if background is None:
 			background = self.background
-		out = StringIO()
+		out = io.StringIO()
 		phase = self.phase
 		elog_func = getattr(elog_messages, elog_funcname)
 		global_havecolor = portage.output.havecolor

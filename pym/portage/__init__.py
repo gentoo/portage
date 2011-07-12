@@ -22,14 +22,6 @@ try:
 	except ImportError:
 		from commands import getstatusoutput as subprocess_getstatusoutput
 
-	try:
-		from io import StringIO
-	except ImportError:
-		# Needed for python-2.6 with USE=build since
-		# io imports threading which imports thread
-		# which is unavailable.
-		from StringIO import StringIO
-
 	import platform
 
 	# Temporarily delete these imports, to ensure that only the

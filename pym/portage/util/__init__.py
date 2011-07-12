@@ -32,7 +32,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dep:Atom',
 	'portage.util.listdir:_ignorecvs_dirs'
 )
-from portage import StringIO
+
 from portage import os
 from portage import subprocess_getstatusoutput
 from portage import _encodings
@@ -63,7 +63,7 @@ def writemsg(mystr,noiselevel=0,fd=None):
 		fd = sys.stderr
 	if noiselevel <= noiselimit:
 		# avoid potential UnicodeEncodeError
-		if isinstance(fd, StringIO):
+		if isinstance(fd, io.StringIO):
 			mystr = _unicode_decode(mystr,
 				encoding=_encodings['content'], errors='replace')
 		else:
@@ -521,7 +521,7 @@ class _tolerant_shlex(shlex.shlex):
 		except EnvironmentError as e:
 			writemsg(_("!!! Parse error in '%s': source command failed: %s\n") % \
 				(self.infile, str(e)), noiselevel=-1)
-			return (newfile, StringIO())
+			return (newfile, io.StringIO())
 
 _invalid_var_name_re = re.compile(r'^\d|\W')
 

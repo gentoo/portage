@@ -55,7 +55,6 @@ from portage import os
 from portage import subprocess_getstatusoutput
 from portage import _encodings
 from portage import _unicode_encode
-from portage import StringIO
 from repoman.checks import run_checks
 from repoman import utilities
 from repoman.herdbase import make_herd_base
@@ -2011,7 +2010,7 @@ if dofail or \
 # in $EDITOR while the user creates a commit message.
 # Otherwise, the user would not be able to see this output
 # once the editor has taken over the screen.
-qa_output = StringIO()
+qa_output = io.StringIO()
 style_file = ConsoleStyleFile(sys.stdout)
 if options.mode == 'commit' and \
 	(not commitmessage or not commitmessage.strip()):

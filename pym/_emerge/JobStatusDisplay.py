@@ -1,12 +1,12 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import formatter
+import io
 import sys
 import time
 
 import portage
-from portage import StringIO
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
@@ -237,8 +237,8 @@ class JobStatusDisplay(object):
 		failed_str = str(self.failed)
 		load_avg_str = self._load_avg_str()
 
-		color_output = StringIO()
-		plain_output = StringIO()
+		color_output = io.StringIO()
+		plain_output = io.StringIO()
 		style_file = portage.output.ConsoleStyleFile(color_output)
 		style_file.write_listener = plain_output
 		style_writer = portage.output.StyleWriter(file=style_file, maxcol=9999)

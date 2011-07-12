@@ -3,6 +3,7 @@
 
 from _emerge.AsynchronousTask import AsynchronousTask
 from portage.util import writemsg
+import io
 import sys
 import portage
 from portage import os
@@ -27,7 +28,7 @@ class BinpkgVerifier(AsynchronousTask):
 		stdout_orig = sys.stdout
 		stderr_orig = sys.stderr
 		global_havecolor = portage.output.havecolor
-		out = portage.StringIO()
+		out = io.StringIO()
 		file_exists = True
 		try:
 			sys.stdout = out
