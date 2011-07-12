@@ -20,15 +20,19 @@ from portage.output import xtermTitle
 _disable = True
 _emerge_log_dir = '/var/log'
 
+# Coerce to unicode, in order to prevent TypeError when writing
+# raw bytes to TextIOWrapper with python2.
+_log_fmt = _unicode_decode("%.0f: %s\n")
+
 def emergelog(xterm_titles, mystr, short_msg=None):
 
 	if _disable:
 		return
 
-	mystr = portage._unicode_decode(mystr)
+	mystr = _unicode_decode(mystr)
 
 	if short_msg is not None:
-		short_msg = portage._unicode_decode(short_msg)
+		short_msg = _unicode_decode(short_msg)
 
 	if xterm_titles and short_msg:
 		if "HOSTNAME" in os.environ:
@@ -48,8 +52,7 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 		mylock = None
 		try:
 			mylock = portage.locks.lockfile(mylogfile)
-			mylogfile.write(_unicode_decode(
-				str(time.time())[:10]+": "+mystr+"\n"))
+			mylogfile.write(_log_fmt % (time.time(), mystr))
 			mylogfile.flush()
 		finally:
 			if mylock:
