@@ -17,10 +17,12 @@ try:
 	import re
 	import types
 
+	# Try the commands module first, since this allows us to eliminate
+	# the subprocess module from the baseline imports under python2.
 	try:
-		from subprocess import getstatusoutput as subprocess_getstatusoutput
-	except ImportError:
 		from commands import getstatusoutput as subprocess_getstatusoutput
+	except ImportError:
+		from subprocess import getstatusoutput as subprocess_getstatusoutput
 
 	import platform
 
