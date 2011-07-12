@@ -6881,8 +6881,9 @@ def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 						unsatisfied_parents[parent_node] = parent_node
 						unsatisfied_stack.append(parent_node)
 
-			unsatisfied_tuples = set(tuple(pkg)
-				for pkg in unsatisfied_parents)
+			unsatisfied_tuples = frozenset(tuple(parent_node)
+				for parent_node in unsatisfied_parents
+				if isinstance(parent_node, Package))
 			pruned_mergelist = []
 			for x in mergelist:
 				if isinstance(x, list) and \
