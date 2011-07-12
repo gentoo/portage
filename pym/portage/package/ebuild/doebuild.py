@@ -1593,7 +1593,7 @@ def _post_src_install_uid_fix(mysettings, out):
 	io.open(_unicode_encode(os.path.join(build_info_dir,
 		'BUILD_TIME'), encoding=_encodings['fs'], errors='strict'),
 		mode='w', encoding=_encodings['repo.content'],
-		errors='strict').write(_unicode_decode(str(int(time.time())) + '\n'))
+		errors='strict').write(_unicode_decode("%.0f\n" % (time.time(),)))
 
 	use = frozenset(mysettings['PORTAGE_USE'].split())
 	for k in _vdb_use_conditional_keys:
