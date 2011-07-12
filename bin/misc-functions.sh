@@ -773,7 +773,7 @@ preinst_mask() {
 	install_mask "${D}" "${INSTALL_MASK}"
 
 	# remove share dir if unnessesary
-	if has nodoc $FEATURES -o has noman $FEATURES -o has noinfo $FEATURES; then
+	if has nodoc $FEATURES || has noman $FEATURES || has noinfo $FEATURES; then
 		rmdir "${D}usr/share" &> /dev/null
 	fi
 }
