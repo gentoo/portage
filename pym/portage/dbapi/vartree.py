@@ -3385,8 +3385,8 @@ class dblink(object):
 			counter = self.vartree.dbapi.counter_tick(mycpv=self.mycpv)
 		io.open(_unicode_encode(os.path.join(self.dbtmpdir, 'COUNTER'),
 			encoding=_encodings['fs'], errors='strict'),
-			'w', encoding=_encodings['repo.content'], errors='backslashreplace'
-			).write(_unicode_decode(str(counter)))
+			mode='w', encoding=_encodings['repo.content'],
+			errors='backslashreplace').write(_unicode_decode(str(counter)))
 
 		self.updateprotect()
 
