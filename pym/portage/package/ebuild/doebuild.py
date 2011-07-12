@@ -1587,12 +1587,12 @@ def _post_src_install_uid_fix(mysettings, out):
 
 	io.open(_unicode_encode(os.path.join(build_info_dir,
 		'SIZE'), encoding=_encodings['fs'], errors='strict'),
-		'w', encoding=_encodings['repo.content'],
+		mode='w', encoding=_encodings['repo.content'],
 		errors='strict').write(_unicode_decode(str(size) + '\n'))
 
 	io.open(_unicode_encode(os.path.join(build_info_dir,
 		'BUILD_TIME'), encoding=_encodings['fs'], errors='strict'),
-		'w', encoding=_encodings['repo.content'],
+		mode='w', encoding=_encodings['repo.content'],
 		errors='strict').write(_unicode_decode(str(int(time.time())) + '\n'))
 
 	use = frozenset(mysettings['PORTAGE_USE'].split())
@@ -1650,7 +1650,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
 	try:
 		lines = io.open(_unicode_encode(needed_filename,
 			encoding=_encodings['fs'], errors='strict'),
-			'r', encoding=_encodings['repo.content'],
+			mode='r', encoding=_encodings['repo.content'],
 			errors='replace').readlines()
 	except IOError as e:
 		if e.errno not in (errno.ENOENT, errno.ESTALE):
