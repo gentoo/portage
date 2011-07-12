@@ -2535,8 +2535,7 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 			(ignore_missing_eq and is_valid_package_atom('=' + x)):
 
 			try:
-				valid_atoms.append(
-					dep_expand(x, mydb=vardb, settings=settings))
+				atom = dep_expand(x, mydb=vardb, settings=settings)
 			except portage.exception.AmbiguousPackageName as e:
 				msg = "The short ebuild name \"" + x + \
 					"\" is ambiguous.  Please specify " + \
@@ -2550,6 +2549,17 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 						level=logging.ERROR, noiselevel=-1)
 				writemsg_level("\n", level=logging.ERROR, noiselevel=-1)
 				return 1
+			else:
+				if atom.use and atom.use.conditional:
+					writemsg_level(
+						("\n\n!!! '%s' contains a conditional " + \
+						"which is not allowed.\n") % (x,),
+						level=logging.ERROR, noiselevel=-1)
+					writemsg_level(
+						"!!! Please check ebuild(5) for full details.\n",
+						level=logging.ERROR)
+					return 1
+				valid_atoms.append(atom)
 
 		elif x.startswith(os.sep):
 			if not x.startswith(root):
