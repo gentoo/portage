@@ -48,9 +48,6 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 		mylock = None
 		try:
 			mylock = portage.locks.lockfile(mylogfile)
-			# seek because we may have gotten held up by the lock.
-			# if so, we may not be positioned at the end of the file.
-			mylogfile.seek(0, 2)
 			mylogfile.write(_unicode_decode(
 				str(time.time())[:10]+": "+mystr+"\n"))
 			mylogfile.flush()
