@@ -3,10 +3,6 @@
 
 from __future__ import print_function
 
-try:
-	from subprocess import getstatusoutput as subprocess_getstatusoutput
-except ImportError:
-	from commands import getstatusoutput as subprocess_getstatusoutput
 import errno
 import logging
 import platform
@@ -25,7 +21,7 @@ from itertools import chain
 
 import portage
 from portage import os
-from portage import digraph
+from portage import subprocess_getstatusoutput
 from portage import _unicode_decode
 from portage.cache.cache_errors import CacheError
 from portage.const import GLOBAL_CONFIG_PATH, NEWS_LIB_PATH
@@ -44,6 +40,7 @@ from portage._sets import load_default_config, SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, \
 	writemsg_level, writemsg_stdout
+from portage.util.digraph import digraph
 from portage._global_updates import _global_updates
 
 from _emerge.clear_caches import clear_caches

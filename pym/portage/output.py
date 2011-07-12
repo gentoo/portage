@@ -3,10 +3,6 @@
 
 __docformat__ = "epytext"
 
-try:
-	from subprocess import getstatusoutput as subprocess_getstatusoutput
-except ImportError:
-	from commands import getstatusoutput as subprocess_getstatusoutput
 import errno
 import io
 import formatter
@@ -435,7 +431,7 @@ def get_term_size():
 			pass
 	except ImportError:
 		pass
-	st, out = subprocess_getstatusoutput('stty size')
+	st, out = portage.subprocess_getstatusoutput('stty size')
 	if st == os.EX_OK:
 		out = out.split()
 		if len(out) == 2:

@@ -1,5 +1,5 @@
 # checksum.py -- core Portage functionality
-# Copyright 1998-2010 Gentoo Foundation
+# Copyright 1998-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -11,10 +11,6 @@ from portage import _unicode_encode
 import errno
 import stat
 import tempfile
-try:
-	from subprocess import getstatusoutput as subprocess_getstatusoutput
-except ImportError:
-	from commands import getstatusoutput as subprocess_getstatusoutput
 
 #dict of all available hash functions
 hashfunc_map = {}
@@ -125,7 +121,8 @@ hashfunc_map["size"] = getsize
 
 prelink_capable = False
 if os.path.exists(PRELINK_BINARY):
-	results = subprocess_getstatusoutput(PRELINK_BINARY+" --version > /dev/null 2>&1")
+	results = portage.subprocess_getstatusoutput(
+		"%s --version > /dev/null 2>&1" % (PRELINK_BINARY,))
 	if (results[0] >> 8) == 0:
 		prelink_capable=1
 	del results
