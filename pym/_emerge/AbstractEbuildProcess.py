@@ -13,8 +13,6 @@ from portage.localization import _
 from portage.package.ebuild._ipc.ExitCommand import ExitCommand
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage import os
-from portage import _encodings
-from portage import _unicode_decode
 from portage.util._pty import _create_pty_or_pipe
 from portage.util import apply_secpass_permissions
 
@@ -226,8 +224,7 @@ class AbstractEbuildProcess(SpawnProcess):
 				elog_func(line, phase=phase, key=self.settings.mycpv, out=out)
 		finally:
 			portage.output.havecolor = global_havecolor
-		msg = _unicode_decode(out.getvalue(),
-			encoding=_encodings['content'], errors='replace')
+		msg = out.getvalue()
 		if msg:
 			log_path = None
 			if self.settings.get("PORTAGE_BACKGROUND") != "subprocess":

@@ -189,8 +189,7 @@ class EbuildFetcher(SpawnProcess):
 		out = io.StringIO()
 		for line in lines:
 			eerror(line, phase="unpack", key=self.pkg.cpv, out=out)
-		msg = _unicode_decode(out.getvalue(),
-			encoding=_encodings['content'], errors='replace')
+		msg = out.getvalue()
 		if msg:
 			self.scheduler.output(msg, log_path=self.logfile)
 

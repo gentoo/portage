@@ -5,7 +5,6 @@ import io
 
 import portage
 from portage import os
-from portage import _encodings
 from portage import _unicode_decode
 from portage.dep import Atom
 from portage.elog import messages as elog_messages
@@ -95,6 +94,5 @@ class QueryCommand(IpcCommand):
 				elog_func(line, phase=phase, key=self.settings.mycpv, out=out)
 		finally:
 			portage.output.havecolor = global_havecolor
-		msg = _unicode_decode(out.getvalue(),
-			encoding=_encodings['content'], errors='replace')
+		msg = out.getvalue()
 		return msg

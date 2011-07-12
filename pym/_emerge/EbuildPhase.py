@@ -25,7 +25,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 from portage import os
 from portage import _encodings
-from portage import _unicode_decode
 from portage import _unicode_encode
 
 class EbuildPhase(CompositeTask):
@@ -193,8 +192,7 @@ class EbuildPhase(CompositeTask):
 		if self.phase == "install":
 			out = io.StringIO()
 			_check_build_log(self.settings, out=out)
-			msg = _unicode_decode(out.getvalue(),
-				encoding=_encodings['content'], errors='replace')
+			msg = out.getvalue()
 			self.scheduler.output(msg, log_path=logfile)
 
 		if fail:
@@ -208,8 +206,7 @@ class EbuildPhase(CompositeTask):
 			out = io.StringIO()
 			_post_src_install_chost_fix(settings)
 			_post_src_install_uid_fix(settings, out)
-			msg = _unicode_decode(out.getvalue(),
-				encoding=_encodings['content'], errors='replace')
+			msg = out.getvalue()
 			if msg:
 				self.scheduler.output(msg, log_path=logfile)
 		elif self.phase == "preinst":
@@ -263,8 +260,7 @@ class EbuildPhase(CompositeTask):
 		if self.phase == "install":
 			out = io.StringIO()
 			_post_src_install_soname_symlinks(self.settings, out)
-			msg = _unicode_decode(out.getvalue(),
-				encoding=_encodings['content'], errors='replace')
+			msg = out.getvalue()
 			if msg:
 				self.scheduler.output(msg, log_path=log_path)
 
@@ -344,8 +340,7 @@ class EbuildPhase(CompositeTask):
 				elog_func(line, phase=phase, key=self.settings.mycpv, out=out)
 		finally:
 			portage.output.havecolor = global_havecolor
-		msg = _unicode_decode(out.getvalue(),
-			encoding=_encodings['content'], errors='replace')
+		msg = out.getvalue()
 		if msg:
 			log_path = None
 			if self.settings.get("PORTAGE_BACKGROUND") != "subprocess":

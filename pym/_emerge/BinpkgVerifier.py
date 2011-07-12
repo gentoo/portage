@@ -7,8 +7,6 @@ import io
 import sys
 import portage
 from portage import os
-from portage import _encodings
-from portage import _unicode_decode
 from portage.package.ebuild.fetch import _checksum_failure_temp_file
 
 class BinpkgVerifier(AsynchronousTask):
@@ -67,8 +65,7 @@ class BinpkgVerifier(AsynchronousTask):
 			sys.stderr = stderr_orig
 			portage.output.havecolor = global_havecolor
 
-		msg = _unicode_decode(out.getvalue(),
-			encoding=_encodings['content'], errors='replace')
+		msg = out.getvalue()
 		if msg:
 			self.scheduler.output(msg, log_path=self.logfile,
 				background=self.background)
