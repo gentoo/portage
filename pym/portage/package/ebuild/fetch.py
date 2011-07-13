@@ -352,6 +352,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 			mymirrors += [x.rstrip("/") for x in mysettings["GENTOO_MIRRORS"].split() if x]
 
 	skip_manifest = mysettings.get("EBUILD_SKIP_MANIFEST") == "1"
+	if skip_manifest:
+		allow_missing_digests = True
 	pkgdir = mysettings.get("O")
 	if digests is None and not (pkgdir is None or skip_manifest):
 		mydigests = Manifest(
