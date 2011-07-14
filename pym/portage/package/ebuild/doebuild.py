@@ -478,6 +478,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			noiselevel=-1)
 		return 1
 
+	global _doebuild_manifest_cache
 	mf = None
 	if "strict" in features and \
 		"digest" not in features and \
@@ -485,7 +486,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		mydo not in ("digest", "manifest", "help") and \
 		not portage._doebuild_manifest_exempt_depend:
 		# Always verify the ebuild checksums before executing it.
-		global _doebuild_manifest_cache, _doebuild_broken_ebuilds
+		global _doebuild_broken_ebuilds
 
 		if myebuild in _doebuild_broken_ebuilds:
 			return 1
@@ -793,14 +794,20 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		try:
 			if mydo == "manifest":
+				mf = None
+				_doebuild_manifest_cache = None
 				return not digestgen(mysettings=mysettings, myportdb=mydbapi)
 			elif mydo == "digest":
+				mf = None
+				_doebuild_manifest_cache = None
 				return not digestgen(mysettings=mysettings, myportdb=mydbapi)
 			elif mydo != 'fetch' and \
 				"digest" in mysettings.features:
 				# Don't do this when called by emerge or when called just
 				# for fetch (especially parallel-fetch) since it's not needed
 				# and it can interfere with parallel tasks.
+				mf = None
+				_doebuild_manifest_cache = None
 				digestgen(mysettings=mysettings, myportdb=mydbapi)
 		except PermissionDenied as e:
 			writemsg(_("!!! Permission Denied: %s\n") % (e,), noiselevel=-1)
