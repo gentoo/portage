@@ -358,7 +358,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	if digests is None and not (pkgdir is None or skip_manifest):
 		mydigests = Manifest(
 			pkgdir, mysettings["DISTDIR"]).getTypeDigests("DIST")
-	elif digests is None:
+	elif digests is None or skip_manifest:
 		# no digests because fetch was not called for a specific package
 		mydigests = {}
 	else:

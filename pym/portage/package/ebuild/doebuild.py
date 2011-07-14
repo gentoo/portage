@@ -478,6 +478,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			noiselevel=-1)
 		return 1
 
+	mf = None
 	if "strict" in features and \
 		"digest" not in features and \
 		tree == "porttree" and \
@@ -765,8 +766,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			else:
 				fetchme = alist
 
+			dist_digests = None
+			if mf is not None:
+				dist_digests = mf.getTypeDigests("DIST")
 			if not fetch(fetchme, mysettings, listonly=listonly,
-				fetchonly=fetchonly, allow_missing_digests=True):
+				fetchonly=fetchonly, allow_missing_digests=True,
+				digests=dist_digests):
 				spawn_nofetch(mydbapi, myebuild, settings=mysettings)
 				if listonly:
 					# The convention for listonly mode is to report
