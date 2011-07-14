@@ -12,7 +12,7 @@ from portage.manifest import Manifest
 from portage.output import EOutput
 from portage.util import writemsg
 
-def digestcheck(myfiles, mysettings, strict=False, justmanifest=None):
+def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
 	"""
 	Verifies checksums. Assumes all files have been downloaded.
 	@rtype: int
@@ -40,7 +40,8 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None):
 			return 0
 		else:
 			return 1
-	mf = Manifest(pkgdir, mysettings["DISTDIR"])
+	if mf is None:
+		mf = Manifest(pkgdir, mysettings["DISTDIR"])
 	manifest_empty = True
 	for d in mf.fhashdict.values():
 		if d:

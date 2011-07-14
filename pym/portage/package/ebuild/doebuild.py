@@ -816,7 +816,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		# See above comment about fetching only when needed
 		if tree == 'porttree' and \
-			not digestcheck(checkme, mysettings, "strict" in features):
+			not digestcheck(checkme, mysettings, "strict" in features, mf=mf):
 			return 1
 
 		if mydo == "fetch":
