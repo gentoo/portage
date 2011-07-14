@@ -500,7 +500,8 @@ match.uses_root = True
 def expand_virtual(argv):
 	"""<root> <atom>
 	Returns a \\n separated list of atoms expanded from a
-	given virtual atom, excluding blocker atoms. Satisfied
+	given virtual atom (GLEP 37 virtuals only),
+	excluding blocker atoms. Satisfied
 	virtual atoms are not included in the output, since
 	they are expanded to real atoms which are displayed.
 	Unsatisfied virtual atoms are displayed without
