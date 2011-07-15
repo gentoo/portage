@@ -128,7 +128,8 @@ esyslog() {
 }
 
 useq() {
-	eqawarn "QA Notice: The 'useq' function is deprecated (replaced by 'use')"
+	has $EBUILD_PHASE prerm postrm || eqawarn \
+		"QA Notice: The 'useq' function is deprecated (replaced by 'use')"
 	use ${1}
 }
 
