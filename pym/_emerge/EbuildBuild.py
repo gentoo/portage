@@ -166,11 +166,33 @@ class EbuildBuild(CompositeTask):
 		portage.prepare_build_dirs(self.pkg.root, self.settings, 1)
 
 		fetcher = EbuildFetcher(config_pool=self.config_pool,
+			ebuild_path=self._ebuild_path,
 			fetchall=self.opts.fetch_all_uri,
 			fetchonly=self.opts.fetchonly,
 			background=self.background,
 			logfile=self.settings.get('PORTAGE_LOG_FILE'),
 			pkg=self.pkg, scheduler=self.scheduler)
+
+		try:
+			already_fetched = fetcher.already_fetched(self.settings)
+		except portage.exception.InvalidDependString as e:
+			msg_lines = []
+			msg = "Fetch failed for '%s' due to invalid SRC_URI: %s" % \
+				(self.pkg.cpv, e)
+			msg_lines.append(msg)
+			fetcher._eerror(msg_lines)
+			portage.elog.elog_process(self.pkg.cpv, self.settings)
+			self.returncode = 1
+			self._current_task = None
+			self._unlock_builddir()
+			self.wait()
+			return
+
+		if already_fetched:
+			# This case is optimized to skip the fetch queue.
+			fetcher = None
+			self._fetch_exit(fetcher)
+			return
 
 		# Allow the Scheduler's fetch queue to control the
 		# number of concurrent fetchers.
@@ -180,7 +202,8 @@ class EbuildBuild(CompositeTask):
 
 	def _fetch_exit(self, fetcher):
 
-		if self._default_exit(fetcher) != os.EX_OK:
+		if fetcher is not None and \
+			self._default_exit(fetcher) != os.EX_OK:
 			self._fetch_failed()
 			return
 
