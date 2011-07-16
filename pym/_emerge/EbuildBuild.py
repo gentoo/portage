@@ -172,7 +172,11 @@ class EbuildBuild(CompositeTask):
 			logfile=self.settings.get('PORTAGE_LOG_FILE'),
 			pkg=self.pkg, scheduler=self.scheduler)
 
-		self._start_task(fetcher, self._fetch_exit)
+		# Allow the Scheduler's fetch queue to control the
+		# number of concurrent fetchers.
+		fetcher.addExitListener(self._fetch_exit)
+		self._task_queued(fetcher)
+		self.scheduler.fetch.schedule(fetcher)
 
 	def _fetch_exit(self, fetcher):
 
