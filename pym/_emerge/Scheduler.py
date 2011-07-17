@@ -552,10 +552,19 @@ class Scheduler(PollScheduler):
 
 	def _schedule_fetch(self, fetcher):
 		"""
-		Schedule a fetcher on the fetch queue, in order to
-		serialize access to the fetch log.
+		Schedule a fetcher, in order to control the number of concurrent
+		fetchers. If self._max_jobs is greater than 1 then the fetch
+		queue is bypassed and the fetcher is started immediately,
+		otherwise it is added to the front of the parallel-fetch queue.
+		NOTE: The parallel-fetch queue is currently used to serialize
+		access to the parallel-fetch log, so changes in the log handling
+		would be required before it would be possible to enable
+		concurrent fetching within the parallel-fetch queue.
 		"""
-		self._task_queues.fetch.addFront(fetcher)
+		if self._max_jobs > 1:
+			fetcher.start()
+		else:
+			self._task_queues.fetch.addFront(fetcher)
 
 	def _schedule_setup(self, setup_phase):
 		"""
