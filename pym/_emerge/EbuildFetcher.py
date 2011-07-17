@@ -82,6 +82,9 @@ class EbuildFetcher(SpawnProcess):
 				if not ok:
 					success = False
 					break
+		except portage.exception.FileNotFound:
+			# A file disappeared unexpectedly.
+			return False
 		finally:
 			sys.stdout = stdout_orig
 			sys.stderr = stderr_orig
