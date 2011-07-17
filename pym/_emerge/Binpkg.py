@@ -126,7 +126,12 @@ class Binpkg(CompositeTask):
 			short_msg = "emerge: (%s of %s) %s Fetch" % \
 				(pkg_count.curval, pkg_count.maxval, pkg.cpv)
 			self.logger.log(msg, short_msg=short_msg)
-			self._start_task(fetcher, self._fetcher_exit)
+
+			# Allow the Scheduler's fetch queue to control the
+			# number of concurrent fetchers.
+			fetcher.addExitListener(self._fetcher_exit)
+			self._task_queued(fetcher)
+			self.scheduler.fetch.schedule(fetcher)
 			return
 
 		self._fetcher_exit(fetcher)
