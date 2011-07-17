@@ -88,7 +88,7 @@ class EbuildFetcher(SpawnProcess):
 			portage.output.havecolor = global_havecolor
 
 		if success:
-			# When returning uncessessfully, no messages are produced, since
+			# When returning unsuccessfully, no messages are produced, since
 			# we assume that a fetcher process will later be executed in order
 			# to produce such messages.
 			msg = out.getvalue()
