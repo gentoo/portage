@@ -3,12 +3,10 @@
 
 from __future__ import print_function
 
-import codecs
 import difflib
 import errno
-import gc
+import io
 import logging
-import re
 import stat
 import sys
 import textwrap
@@ -32,6 +30,7 @@ from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import ConfigProtect, shlex_split, new_protect_filename
 from portage.util import cmp_sort_key, writemsg, writemsg_stdout
+from portage.util import ensure_dirs
 from portage.util import writemsg_level, write_atomic
 from portage.util.digraph import digraph
 from portage.util.listdir import _ignorecvs_dirs
@@ -50,7 +49,8 @@ from _emerge.DepPriorityNormalRange import DepPriorityNormalRange
 from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
 from _emerge.FakeVartree import FakeVartree
 from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
-from _emerge.is_valid_package_atom import is_valid_package_atom
+from _emerge.is_valid_package_atom import insert_category_into_atom, \
+	is_valid_package_atom
 from _emerge.Package import Package
 from _emerge.PackageArg import PackageArg
 from _emerge.PackageVirtualDbapi import PackageVirtualDbapi
@@ -656,8 +656,8 @@ class depgraph(object):
 			return
 
 		msg = []
-		msg.append("\n!!! One or more updates have been skipped due to " + \
-			"a dependency conflict:\n\n")
+		msg.append("\nWARNING: One or more updates have been " + \
+			"skipped due to a dependency conflict:\n\n")
 
 		indent = "  "
 		for pkg, parent_atoms in missed_updates:
@@ -976,6 +976,11 @@ class depgraph(object):
 		return (existing_node, matches)
 
 	def _add_pkg(self, pkg, dep):
+		"""
+		Adds a package to the depgraph, queues dependencies, and handles
+		slot conflicts.
+		"""
+		debug = "--debug" in self._frozen_config.myopts
 		myparent = None
 		priority = None
 		depth = 0
@@ -987,17 +992,28 @@ class depgraph(object):
 			depth = dep.depth
 		if priority is None:
 			priority = DepPriority()
-		"""
-		Fills the digraph with nodes comprised of packages to merge.
-		mybigkey is the package spec of the package to merge.
-		myparent is the package depending on mybigkey ( or None )
-		addme = Should we add this package to the digraph or are we just looking at it's deps?
-			Think --onlydeps, we need to ignore packages in that case.
-		#stuff to add:
-		#SLOT-aware emerge
-		#IUSE-aware emerge -> USE DEP aware depgraph
-		#"no downgrade" emerge
-		"""
+
+		if debug:
+			writemsg_level(
+				"\n%s%s %s\n" % ("Child:".ljust(15), pkg,
+				pkg_use_display(pkg, self._frozen_config.myopts,
+				modified_use=self._pkg_use_enabled(pkg))),
+				level=logging.DEBUG, noiselevel=-1)
+			if isinstance(myparent,
+				(PackageArg, AtomArg)):
+				# For PackageArg and AtomArg types, it's
+				# redundant to display the atom attribute.
+				writemsg_level(
+					"%s%s\n" % ("Parent Dep:".ljust(15), myparent),
+					level=logging.DEBUG, noiselevel=-1)
+			else:
+				# Display the specific atom from SetArg or
+				# Package types.
+				writemsg_level(
+					"%s%s required by %s\n" %
+					("Parent Dep:".ljust(15), dep.atom, myparent),
+					level=logging.DEBUG, noiselevel=-1)
+
 		# Ensure that the dependencies of the same package
 		# are never processed more than once.
 		previously_added = pkg in self._dynamic_config.digraph
@@ -1189,6 +1205,14 @@ class depgraph(object):
 					# shown later if there are no unresolvable blockers.
 					self._add_slot_conflict(pkg)
 					slot_collision = True
+
+					if debug:
+						writemsg_level(
+							"%s%s %s\n" % ("Slot Conflict:".ljust(15),
+							existing_node, pkg_use_display(existing_node,
+							self._frozen_config.myopts,
+							modified_use=self._pkg_use_enabled(existing_node))),
+							level=logging.DEBUG, noiselevel=-1)
 
 			if slot_collision:
 				# Now add this node to the graph so that self.display()
@@ -1573,7 +1597,7 @@ class depgraph(object):
 				continue
 
 			if debug:
-				writemsg_level("Candidates: %s: %s\n" % \
+				writemsg_level("\nCandidates: %s: %s\n" % \
 					(virt_pkg.cpv, [str(x) for x in atoms]),
 					noiselevel=-1, level=logging.DEBUG)
 
@@ -1670,7 +1694,7 @@ class depgraph(object):
 							traversed_virt_pkgs.add(dep.child)
 
 		if debug:
-			writemsg_level("Exiting... %s\n" % (pkg,),
+			writemsg_level("\nExiting... %s\n" % (pkg,),
 				noiselevel=-1, level=logging.DEBUG)
 
 		return 1
@@ -2082,6 +2106,14 @@ class depgraph(object):
 					else:
 						atom = null_atom
 
+				if atom.use and atom.use.conditional:
+					writemsg(
+						("\n\n!!! '%s' contains a conditional " + \
+						"which is not allowed.\n") % (x,), noiselevel=-1)
+					writemsg("!!! Please check ebuild(5) for full details.\n")
+					self._dynamic_config._skip_restart = True
+					return (0,[])
+
 				args.append(AtomArg(arg=x, atom=atom,
 					root_config=root_config))
 
@@ -2218,8 +2250,8 @@ class depgraph(object):
 							return 0, myfavorites
 						continue
 					if debug:
-						portage.writemsg("      Arg: %s\n     Atom: %s\n" % \
-							(arg, atom), noiselevel=-1)
+						writemsg_level("\n      Arg: %s\n     Atom: %s\n" %
+							(arg, atom), noiselevel=-1, level=logging.DEBUG)
 					pkg, existing_node = self._select_package(
 						myroot, atom, onlydeps=onlydeps)
 					if not pkg:
@@ -3070,7 +3102,7 @@ class depgraph(object):
 			writemsg_stdout("\nemerge: there are no ebuilds built with USE flags to satisfy "+green(xinfo)+".\n", noiselevel=-1)
 			writemsg_stdout("!!! One of the following packages is required to complete your request:\n", noiselevel=-1)
 			for pkg, mreasons in show_missing_use:
-				writemsg_stdout("- "+pkg.cpv+" ("+", ".join(mreasons)+")\n", noiselevel=-1)
+				writemsg_stdout("- "+pkg.cpv+_repo_separator+pkg.repo+" ("+", ".join(mreasons)+")\n", noiselevel=-1)
 
 		elif masked_packages:
 			writemsg_stdout("\n!!! " + \
@@ -3901,8 +3933,9 @@ class depgraph(object):
 
 		if "--debug" in self._frozen_config.myopts:
 			for pkg in matched_packages:
-				portage.writemsg("%s %s\n" % \
-					((pkg.type_name + ":").rjust(10), pkg.cpv), noiselevel=-1)
+				portage.writemsg("%s %s%s%s\n" % \
+					((pkg.type_name + ":").rjust(10),
+					pkg.cpv, _repo_separator, pkg.repo), noiselevel=-1)
 
 		# Filter out any old-style virtual matches if they are
 		# mixed with new-style virtual matches.
@@ -5496,8 +5529,7 @@ class depgraph(object):
 			noiselevel=-1)
 		portage.writemsg("\n", noiselevel=-1)
 
-		if handler.circular_dep_message is None or \
-			"--debug" in self._frozen_config.myopts:
+		if handler.circular_dep_message is None:
 			handler.debug_print()
 			portage.writemsg("\n", noiselevel=-1)
 
@@ -5905,7 +5937,7 @@ class depgraph(object):
 		def write_changes(root, changes, file_to_write_to):
 			file_contents = None
 			try:
-				file_contents = codecs.open(
+				file_contents = io.open(
 					_unicode_encode(file_to_write_to,
 					encoding=_encodings['fs'], errors='strict'),
 					mode='r', encoding=_encodings['content'],
@@ -5951,11 +5983,12 @@ class depgraph(object):
 			if userquery(prompt, enter_invalid) == 'No':
 				write_to_file = False
 
-		if write_to_file:
+		if write_to_file and file_to_write_to:
 			for root in roots:
 				settings = self._frozen_config.roots[root].settings
 				abs_user_config = os.path.join(
 					settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH)
+				ensure_dirs(abs_user_config)
 
 				if root in unstable_keyword_msg:
 					write_changes(root, unstable_keyword_msg[root],
@@ -6659,15 +6692,6 @@ def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
 	writemsg("!!! The short ebuild name \"%s\" is ambiguous. Please specify\n" % arg, noiselevel=-1)
 	writemsg("!!! one of the above fully-qualified ebuild names instead.\n\n", noiselevel=-1)
 
-def insert_category_into_atom(atom, category):
-	alphanum = re.search(r'\w', atom)
-	if alphanum:
-		ret = atom[:alphanum.start()] + "%s/" % category + \
-			atom[alphanum.start():]
-	else:
-		ret = None
-	return ret
-
 def _spinner_start(spinner, myopts):
 	if spinner is None:
 		return
@@ -6857,10 +6881,13 @@ def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 						unsatisfied_parents[parent_node] = parent_node
 						unsatisfied_stack.append(parent_node)
 
+			unsatisfied_tuples = frozenset(tuple(parent_node)
+				for parent_node in unsatisfied_parents
+				if isinstance(parent_node, Package))
 			pruned_mergelist = []
 			for x in mergelist:
 				if isinstance(x, list) and \
-					tuple(x) not in unsatisfied_parents:
+					tuple(x) not in unsatisfied_tuples:
 					pruned_mergelist.append(x)
 
 			# If the mergelist doesn't shrink then this loop is infinite.

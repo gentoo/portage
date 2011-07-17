@@ -1,9 +1,9 @@
 # config.py -- Portage Config
-# Copyright 2007 Gentoo Foundation
+# Copyright 2007-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import codecs
 import errno
+import io
 import stat
 from portage import os
 from portage import _encodings
@@ -149,7 +149,7 @@ class FileLoader(DataLoader):
 		func = self.lineParser
 		for fn in RecursiveFileLoader(self.fname):
 			try:
-				f = codecs.open(_unicode_encode(fn,
+				f = io.open(_unicode_encode(fn,
 					encoding=_encodings['fs'], errors='strict'), mode='r',
 					encoding=_encodings['content'], errors='replace')
 			except EnvironmentError as e:

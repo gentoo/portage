@@ -3,6 +3,7 @@
 
 __all__ = ["cpv_expand"]
 
+import portage
 from portage.exception import AmbiguousPackageName
 from portage.localization import _
 from portage.util import writemsg
@@ -16,7 +17,10 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 	myslash=mycpv.split("/")
 	mysplit = _pkgsplit(myslash[-1])
 	if settings is None:
-		settings = globals()["settings"]
+		try:
+			settings = mydb.settings
+		except AttributeError:
+			settings = portage.settings
 	if len(myslash)>2:
 		# this is illegal case.
 		mysplit=[]

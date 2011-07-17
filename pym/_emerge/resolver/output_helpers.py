@@ -7,7 +7,7 @@ in output.py
 __all__ = (
 	)
 
-import codecs
+import io
 import re
 import sys
 
@@ -502,7 +502,7 @@ def _calc_changelog(ebuildpath,current,next):
 		next = next[:-3]
 	changelogpath = os.path.join(os.path.split(ebuildpath)[0],'ChangeLog')
 	try:
-		changelog = codecs.open(_unicode_encode(changelogpath,
+		changelog = io.open(_unicode_encode(changelogpath,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['repo.content'], errors='replace'
 		).read()

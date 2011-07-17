@@ -4,7 +4,7 @@
 
 from __future__ import print_function
 
-import codecs
+import io
 import re
 import stat
 import sys
@@ -53,7 +53,7 @@ def isadded(entries, path):
 	filename=os.path.basename(path)
 
 	try:
-		myfile = codecs.open(
+		myfile = io.open(
 			_unicode_encode(os.path.join(basedir, 'CVS', 'Entries'),
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['content'], errors='strict')
@@ -207,7 +207,7 @@ def getentries(mydir,recursive=0):
 	if not os.path.exists(mydir):
 		return entries
 	try:
-		myfile = codecs.open(_unicode_encode(myfn,
+		myfile = io.open(_unicode_encode(myfn,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['content'], errors='strict')
 		mylines=myfile.readlines()

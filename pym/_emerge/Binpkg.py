@@ -15,14 +15,9 @@ from portage.util import writemsg
 import portage
 from portage import os
 from portage import _encodings
+from portage import _unicode_decode
 from portage import _unicode_encode
-import codecs
-import sys
-if os.environ.__contains__("PORTAGE_PYTHONPATH"):
-	sys.path.insert(0, os.environ["PORTAGE_PYTHONPATH"])
-else:
-	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
-import portage
+import io
 import logging
 from portage.output import colorize
 from portage.const import EPREFIX
@@ -134,7 +129,12 @@ class Binpkg(CompositeTask):
 			short_msg = "emerge: (%s of %s) %s Fetch" % \
 				(pkg_count.curval, pkg_count.maxval, pkg.cpv)
 			self.logger.log(msg, short_msg=short_msg)
-			self._start_task(fetcher, self._fetcher_exit)
+
+			# Allow the Scheduler's fetch queue to control the
+			# number of concurrent fetchers.
+			fetcher.addExitListener(self._fetcher_exit)
+			self._task_queued(fetcher)
+			self.scheduler.fetch.schedule(fetcher)
 			return
 
 		self._fetcher_exit(fetcher)
@@ -248,20 +248,22 @@ class Binpkg(CompositeTask):
 			else:
 				continue
 
-			f = codecs.open(_unicode_encode(os.path.join(infloc, k),
+			f = io.open(_unicode_encode(os.path.join(infloc, k),
 				encoding=_encodings['fs'], errors='strict'),
-				mode='w', encoding=_encodings['content'], errors='replace')
+				mode='w', encoding=_encodings['content'],
+				errors='backslashreplace')
 			try:
-				f.write(v + "\n")
+				f.write(_unicode_decode(v + "\n"))
 			finally:
 				f.close()
 
 		# Store the md5sum in the vdb.
-		f = codecs.open(_unicode_encode(os.path.join(infloc, 'BINPKGMD5'),
+		f = io.open(_unicode_encode(os.path.join(infloc, 'BINPKGMD5'),
 			encoding=_encodings['fs'], errors='strict'),
 			mode='w', encoding=_encodings['content'], errors='strict')
 		try:
-			f.write(str(portage.checksum.perform_md5(pkg_path)) + "\n")
+			f.write(_unicode_decode(
+				str(portage.checksum.perform_md5(pkg_path)) + "\n"))
 		finally:
 			f.close()
 

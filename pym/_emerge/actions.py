@@ -3,10 +3,6 @@
 
 from __future__ import print_function
 
-try:
-	from subprocess import getstatusoutput as subprocess_getstatusoutput
-except ImportError:
-	from commands import getstatusoutput as subprocess_getstatusoutput
 import errno
 import logging
 import platform
@@ -25,7 +21,7 @@ from itertools import chain
 
 import portage
 from portage import os
-from portage import digraph
+from portage import subprocess_getstatusoutput
 from portage import _unicode_decode
 from portage.cache.cache_errors import CacheError
 from portage.const import GLOBAL_CONFIG_PATH, NEWS_LIB_PATH, EPREFIX
@@ -44,6 +40,7 @@ from portage._sets import load_default_config, SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, \
 	writemsg_level, writemsg_stdout
+from portage.util.digraph import digraph
 from portage._global_updates import _global_updates
 
 from _emerge.clear_caches import clear_caches
@@ -2583,8 +2580,7 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 			(ignore_missing_eq and is_valid_package_atom('=' + x)):
 
 			try:
-				valid_atoms.append(
-					dep_expand(x, mydb=vardb, settings=settings))
+				atom = dep_expand(x, mydb=vardb, settings=settings)
 			except portage.exception.AmbiguousPackageName as e:
 				msg = "The short ebuild name \"" + x + \
 					"\" is ambiguous.  Please specify " + \
@@ -2598,6 +2594,17 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 						level=logging.ERROR, noiselevel=-1)
 				writemsg_level("\n", level=logging.ERROR, noiselevel=-1)
 				return 1
+			else:
+				if atom.use and atom.use.conditional:
+					writemsg_level(
+						("\n\n!!! '%s' contains a conditional " + \
+						"which is not allowed.\n") % (x,),
+						level=logging.ERROR, noiselevel=-1)
+					writemsg_level(
+						"!!! Please check ebuild(5) for full details.\n",
+						level=logging.ERROR)
+					return 1
+				valid_atoms.append(atom)
 
 		elif x.startswith(os.sep):
 			if not x.startswith(root):
@@ -2871,7 +2878,10 @@ def getportageversion(portdir, target_root, profile, chost, vardb):
 			libclist.update(vardb.match(atom))
 	if libclist:
 		for cpv in sorted(libclist):
-			libcver.append("-".join(portage.catpkgsplit(cpv)[1:]))
+			libc_split = portage.catpkgsplit(cpv)[1:]
+			if libc_split[-1] == "r0":
+				libc_split[:-1]
+			libcver.append("-".join(libc_split))
 	else:
 		libcver = ["unavailable"]
 

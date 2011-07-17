@@ -5,8 +5,8 @@ from __future__ import print_function
 
 __all__ = ['fetch']
 
-import codecs
 import errno
+import io
 import logging
 import random
 import re
@@ -32,7 +32,7 @@ from portage.const import BASH_BINARY, CUSTOM_MIRRORS_FILE, \
 from portage.const import rootgid
 from portage.data import portage_gid, portage_uid, secpass, userpriv_groups
 from portage.exception import FileNotFound, OperationNotPermitted, \
-	PermissionDenied, PortageException, TryAgain
+	PortageException, TryAgain
 from portage.localization import _
 from portage.locks import lockfile, unlockfile
 from portage.manifest import Manifest
@@ -353,11 +353,13 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 			mymirrors += [x.rstrip("/") for x in mysettings["GENTOO_MIRRORS"].split() if x]
 
 	skip_manifest = mysettings.get("EBUILD_SKIP_MANIFEST") == "1"
+	if skip_manifest:
+		allow_missing_digests = True
 	pkgdir = mysettings.get("O")
 	if digests is None and not (pkgdir is None or skip_manifest):
 		mydigests = Manifest(
 			pkgdir, mysettings["DISTDIR"]).getTypeDigests("DIST")
-	elif digests is None:
+	elif digests is None or skip_manifest:
 		# no digests because fetch was not called for a specific package
 		mydigests = {}
 	else:
@@ -1009,7 +1011,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 								# Fetch failed... Try the next one... Kill 404 files though.
 								if (mystat[stat.ST_SIZE]<100000) and (len(myfile)>4) and not ((myfile[-5:]==".html") or (myfile[-4:]==".htm")):
 									html404=re.compile("<title>.*(not found|404).*</title>",re.I|re.M)
-									if html404.search(codecs.open(
+									if html404.search(io.open(
 										_unicode_encode(myfile_path,
 										encoding=_encodings['fs'], errors='strict'),
 										mode='r', encoding=_encodings['content'], errors='replace'

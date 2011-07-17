@@ -9,10 +9,6 @@
 from __future__ import print_function
 
 import os, sys, shutil
-try:
-    from subprocess import getstatusoutput as subprocess_getstatusoutput
-except ImportError:
-    from commands import getstatusoutput as subprocess_getstatusoutput
 
 import portage
 from portage.env.loaders import KeyValuePairFileLoader
@@ -37,7 +33,7 @@ def diffstatusoutput_len(cmd):
     UnicodeDecodeError when necessary.
     """
     try:
-        status, output = subprocess_getstatusoutput(cmd)
+        status, output = portage.subprocess_getstatusoutput(cmd)
         return (status, len(output))
     except UnicodeDecodeError:
         return (1, 1)

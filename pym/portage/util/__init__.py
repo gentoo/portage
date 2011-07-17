@@ -11,9 +11,9 @@ __all__ = ['apply_permissions', 'apply_recursive_permissions',
 	'stack_dicts', 'stack_lists', 'unique_array', 'unique_everseen', 'varexpand',
 	'write_atomic', 'writedict', 'writemsg', 'writemsg_level', 'writemsg_stdout']
 
-import codecs
 from copy import deepcopy
 import errno
+import io
 try:
 	from itertools import filterfalse
 except ImportError:
@@ -32,7 +32,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dep:Atom',
 	'portage.util.listdir:_ignorecvs_dirs'
 )
-from portage import StringIO
+
 from portage import os
 from portage import subprocess_getstatusoutput
 from portage import _encodings
@@ -64,7 +64,7 @@ def writemsg(mystr,noiselevel=0,fd=None):
 		fd = sys.stderr
 	if noiselevel <= noiselimit:
 		# avoid potential UnicodeEncodeError
-		if isinstance(fd, StringIO):
+		if isinstance(fd, io.StringIO):
 			mystr = _unicode_decode(mystr,
 				encoding=_encodings['content'], errors='replace')
 		else:
@@ -476,7 +476,7 @@ def grablines(myfilename, recursive=0, remember_source_file=False):
 					os.path.join(myfilename, f), recursive, remember_source_file))
 	else:
 		try:
-			myfile = codecs.open(_unicode_encode(myfilename,
+			myfile = io.open(_unicode_encode(myfilename,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['content'], errors='replace')
 			if remember_source_file:
@@ -522,7 +522,7 @@ class _tolerant_shlex(shlex.shlex):
 		except EnvironmentError as e:
 			writemsg(_("!!! Parse error in '%s': source command failed: %s\n") % \
 				(self.infile, str(e)), noiselevel=-1)
-			return (newfile, StringIO())
+			return (newfile, io.StringIO())
 
 _invalid_var_name_re = re.compile(r'^\d|\W')
 
@@ -1092,7 +1092,7 @@ class atomic_ofstream(ObjectProxy):
 		if 'b' in mode:
 			open_func = open
 		else:
-			open_func = codecs.open
+			open_func = io.open
 			kargs.setdefault('encoding', _encodings['content'])
 			kargs.setdefault('errors', 'backslashreplace')
 
@@ -1123,10 +1123,29 @@ class atomic_ofstream(ObjectProxy):
 	def _get_target(self):
 		return object.__getattribute__(self, '_file')
 
-	def __getattribute__(self, attr):
-		if attr in ('close', 'abort', '__del__'):
-			return object.__getattribute__(self, attr)
-		return getattr(object.__getattribute__(self, '_file'), attr)
+	if sys.hexversion >= 0x3000000:
+
+		def __getattribute__(self, attr):
+			if attr in ('close', 'abort', '__del__'):
+				return object.__getattribute__(self, attr)
+			return getattr(object.__getattribute__(self, '_file'), attr)
+
+	else:
+
+		# For TextIOWrapper, automatically coerce write calls to
+		# unicode, in order to avoid TypeError when writing raw
+		# bytes with python2.
+
+		def __getattribute__(self, attr):
+			if attr in ('close', 'abort', 'write', '__del__'):
+				return object.__getattribute__(self, attr)
+			return getattr(object.__getattribute__(self, '_file'), attr)
+
+		def write(self, s):
+			f = object.__getattribute__(self, '_file')
+			if isinstance(f, io.TextIOWrapper):
+				s = _unicode_decode(s)
+			return f.write(s)
 
 	def close(self):
 		"""Closes the temporary file, copies permissions (if possible),

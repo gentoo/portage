@@ -1,11 +1,11 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 
 # replaced by controllable compression in EAPI 4
-hasq "${EAPI}" 0 1 2 3 || exit 0
+has "${EAPI}" 0 1 2 3 || exit 0
 
 ret=0
 

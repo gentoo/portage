@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "May 2011" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Jul 2011" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -197,6 +197,10 @@ Most of these settings are for developer use, but some are available to
 non-developers as well. The \fBsandbox\fR feature is very important and
 should not be disabled by default.
 .RS
+.TP
+.B allow\-missing\-manifests
+Allow missing manifest entries. This is primarily useful for temporary
+trees or instances where manifests aren't used.
 .TP
 .B assume\-digests
 When commiting work to cvs with \fBrepoman\fR(1), assume that all existing 

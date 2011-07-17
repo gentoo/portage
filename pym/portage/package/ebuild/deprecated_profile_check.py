@@ -1,9 +1,9 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['deprecated_profile_check']
 
-import codecs
+import io
 
 from portage import os, _encodings, _unicode_encode
 from portage.const import DEPRECATED_PROFILE_FILE
@@ -19,7 +19,7 @@ def deprecated_profile_check(settings=None):
 		DEPRECATED_PROFILE_FILE)
 	if not os.access(deprecated_profile_file, os.R_OK):
 		return False
-	dcontent = codecs.open(_unicode_encode(deprecated_profile_file,
+	dcontent = io.open(_unicode_encode(deprecated_profile_file,
 		encoding=_encodings['fs'], errors='strict'), 
 		mode='r', encoding=_encodings['content'], errors='replace').readlines()
 	writemsg(colorize("BAD", _("\n!!! Your current profile is "

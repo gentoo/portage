@@ -3,9 +3,9 @@
 
 __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
 
-import codecs
 import gzip
 import errno
+import io
 from itertools import chain
 import logging
 import os as _os
@@ -30,7 +30,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.ExtractKernelVersion:ExtractKernelVersion'
 )
 
-from portage import auxdbkeys, bsd_chflags, dep_check, \
+from portage import auxdbkeys, bsd_chflags, \
 	eapi_is_supported, merge, os, selinux, \
 	unmerge, _encodings, _parse_eapi_ebuild_head, _os_merge, \
 	_shell_quote, _unicode_decode, _unicode_encode
@@ -40,7 +40,6 @@ from portage.const import EBUILD_SH_ENV_FILE, EBUILD_SH_ENV_DIR, \
 from portage.data import portage_gid, portage_uid, secpass, \
 	uid, userpriv_groups
 from portage.dbapi.porttree import _parse_uri_map
-from portage.dbapi.virtual import fakedbapi
 from portage.dep import Atom, check_required_use, \
 	human_readable_required_use, paren_enclose, use_reduce
 from portage.eapi import eapi_exports_KV, eapi_exports_merge_type, \
@@ -215,6 +214,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 		repo_info = mydbapi._repo_info[mytree]
 		mysettings['PORTDIR'] = repo_info.portdir
 		mysettings['PORTDIR_OVERLAY'] = repo_info.portdir_overlay
+		mysettings.configdict["pkg"]["PORTAGE_REPO_NAME"] = repo_info.name
 
 	mysettings["PORTDIR"] = os.path.realpath(mysettings["PORTDIR"])
 	mysettings["DISTDIR"] = os.path.realpath(mysettings["DISTDIR"])
@@ -293,7 +293,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	if mydo == 'depend' and 'EAPI' not in mysettings.configdict['pkg']:
 		if eapi is None and 'parse-eapi-ebuild-head' in mysettings.features:
 			eapi = _parse_eapi_ebuild_head(
-				codecs.open(_unicode_encode(ebuild_path,
+				io.open(_unicode_encode(ebuild_path,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['content'], errors='replace'))
 
@@ -482,13 +482,15 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			noiselevel=-1)
 		return 1
 
+	global _doebuild_manifest_cache
+	mf = None
 	if "strict" in features and \
 		"digest" not in features and \
 		tree == "porttree" and \
 		mydo not in ("digest", "manifest", "help") and \
 		not portage._doebuild_manifest_exempt_depend:
 		# Always verify the ebuild checksums before executing it.
-		global _doebuild_manifest_cache, _doebuild_broken_ebuilds
+		global _doebuild_broken_ebuilds
 
 		if myebuild in _doebuild_broken_ebuilds:
 			return 1
@@ -768,8 +770,13 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				fetchme = aalist
 			else:
 				fetchme = alist
+
+			dist_digests = None
+			if mf is not None:
+				dist_digests = mf.getTypeDigests("DIST")
 			if not fetch(fetchme, mysettings, listonly=listonly,
-				fetchonly=fetchonly):
+				fetchonly=fetchonly, allow_missing_digests=True,
+				digests=dist_digests):
 				spawn_nofetch(mydbapi, myebuild, settings=mysettings)
 				if listonly:
 					# The convention for listonly mode is to report
@@ -791,14 +798,20 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		try:
 			if mydo == "manifest":
+				mf = None
+				_doebuild_manifest_cache = None
 				return not digestgen(mysettings=mysettings, myportdb=mydbapi)
 			elif mydo == "digest":
+				mf = None
+				_doebuild_manifest_cache = None
 				return not digestgen(mysettings=mysettings, myportdb=mydbapi)
 			elif mydo != 'fetch' and \
 				"digest" in mysettings.features:
 				# Don't do this when called by emerge or when called just
 				# for fetch (especially parallel-fetch) since it's not needed
 				# and it can interfere with parallel tasks.
+				mf = None
+				_doebuild_manifest_cache = None
 				digestgen(mysettings=mysettings, myportdb=mydbapi)
 		except PermissionDenied as e:
 			writemsg(_("!!! Permission Denied: %s\n") % (e,), noiselevel=-1)
@@ -807,7 +820,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		# See above comment about fetching only when needed
 		if tree == 'porttree' and \
-			not digestcheck(checkme, mysettings, "strict" in features):
+			not digestcheck(checkme, mysettings, "strict" in features, mf=mf):
 			return 1
 
 		if mydo == "fetch":
@@ -1628,15 +1641,15 @@ def _post_src_install_uid_fix(mysettings, out):
 	build_info_dir = os.path.join(mysettings['PORTAGE_BUILDDIR'],
 		'build-info')
 
-	codecs.open(_unicode_encode(os.path.join(build_info_dir,
+	io.open(_unicode_encode(os.path.join(build_info_dir,
 		'SIZE'), encoding=_encodings['fs'], errors='strict'),
-		'w', encoding=_encodings['repo.content'],
-		errors='strict').write(str(size) + '\n')
+		mode='w', encoding=_encodings['repo.content'],
+		errors='strict').write(_unicode_decode(str(size) + '\n'))
 
-	codecs.open(_unicode_encode(os.path.join(build_info_dir,
+	io.open(_unicode_encode(os.path.join(build_info_dir,
 		'BUILD_TIME'), encoding=_encodings['fs'], errors='strict'),
-		'w', encoding=_encodings['repo.content'],
-		errors='strict').write(str(int(time.time())) + '\n')
+		mode='w', encoding=_encodings['repo.content'],
+		errors='strict').write(_unicode_decode("%.0f\n" % (time.time(),)))
 
 	use = frozenset(mysettings['PORTAGE_USE'].split())
 	for k in _vdb_use_conditional_keys:
@@ -1662,10 +1675,10 @@ def _post_src_install_uid_fix(mysettings, out):
 			except OSError:
 				pass
 			continue
-		codecs.open(_unicode_encode(os.path.join(build_info_dir,
+		io.open(_unicode_encode(os.path.join(build_info_dir,
 			k), encoding=_encodings['fs'], errors='strict'),
 			mode='w', encoding=_encodings['repo.content'],
-			errors='strict').write(v + '\n')
+			errors='strict').write(_unicode_decode(v + '\n'))
 
 	_reapply_bsdflags_to_image(mysettings)
 
@@ -1691,9 +1704,9 @@ def _post_src_install_soname_symlinks(mysettings, out):
 		"build-info", "NEEDED.ELF.2")
 
 	try:
-		lines = codecs.open(_unicode_encode(needed_filename,
+		lines = io.open(_unicode_encode(needed_filename,
 			encoding=_encodings['fs'], errors='strict'),
-			'r', encoding=_encodings['repo.content'],
+			mode='r', encoding=_encodings['repo.content'],
 			errors='replace').readlines()
 	except IOError as e:
 		if e.errno not in (errno.ENOENT, errno.ESTALE):

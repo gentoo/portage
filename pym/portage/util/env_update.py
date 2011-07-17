@@ -3,8 +3,8 @@
 
 __all__ = ['env_update']
 
-import codecs
 import errno
+import io
 import stat
 import sys
 import time
@@ -136,7 +136,7 @@ def dolinkingstuff(target_root, specials, prelink_capable, makelinks,
 	# here since this code should never be triggered on an offset install
 	ldsoconf_path = os.path.join(target_root, "etc", "ld.so.conf")
 	try:
-		myld = codecs.open(_unicode_encode(ldsoconf_path,
+		myld = io.open(_unicode_encode(ldsoconf_path,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['content'], errors='replace')
 		myldlines=myld.readlines()

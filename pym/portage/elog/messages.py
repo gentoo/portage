@@ -1,5 +1,5 @@
 # elog/messages.py - elog core functions
-# Copyright 2006-2009 Gentoo Foundation
+# Copyright 2006-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -15,7 +15,7 @@ from portage import _encodings
 from portage import _unicode_encode
 from portage import _unicode_decode
 
-import codecs
+import io
 import sys
 
 def collect_ebuild_messages(path):
@@ -43,7 +43,7 @@ def collect_ebuild_messages(path):
 			logentries[msgfunction] = []
 		lastmsgtype = None
 		msgcontent = []
-		for l in codecs.open(_unicode_encode(filename,
+		for l in io.open(_unicode_encode(filename,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['repo.content'], errors='replace'):
 			if not l:
@@ -167,7 +167,6 @@ def _make_msgfunction(level, color):
 		_elog_base(level, msg,  phase=phase, key=key, color=color, out=out)
 	return _elog
 
-import sys
 for f in _functions:
 	setattr(sys.modules[__name__], f, _make_msgfunction(_functions[f][0], _functions[f][1]))
 del f, _functions

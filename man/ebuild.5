@@ -1,4 +1,4 @@
-.TH "EBUILD" "5" "May 2011" "Portage VERSION" "Portage"
+.TH "EBUILD" "5" "Jul 2011" "Portage VERSION" "Portage"
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
 .SH "DESCRIPTION"
@@ -841,10 +841,10 @@ Same as \fBuse_with\fR above, except that the configure options are
 argument is recognized. In \fBEAPI 3\fR and earlier, an empty
 \fIconfigure opt\fR argument is treated as if it weren't provided.
 .TP
-\fBhas\fR \fI<item>\fR \fI<item list>\fR
-If \fIitem\fR is in \fIitem list\fR, then \fIitem\fR is echoed and \fBhas\fR
+\fBhasv\fR \fI<item>\fR \fI<item list>\fR
+If \fIitem\fR is in \fIitem list\fR, then \fIitem\fR is echoed and \fBhasv\fR
 returns 0.  Otherwise, nothing is echoed and 1 is returned. As indicated with
-use, there is a non\-echoing version \fBhasq\fR. Please use \fBhasq\fR in all
+use, there is a non\-echoing version \fBhas\fR. Please use \fBhas\fR in all
 places where output is to be disregarded. Never use the output for calculation.
 .br
 The \fIitem list\fR is delimited by the \fIIFS\fR variable.  This variable

@@ -40,7 +40,6 @@ from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, \
 	PORTAGE_PACKAGE_ATOM, PRIVATE_PATH, VDB_PATH, EPREFIX, EPREFIX_LSTRIP, BASH_BINARY
 from portage.const import _ENABLE_DYN_LINK_MAP, _ENABLE_PRESERVE_LIBS
 from portage.dbapi import dbapi
-from portage.dep import _slot_separator
 from portage.exception import CommandNotFound, \
 	InvalidData, InvalidLocation, InvalidPackageName, \
 	FileNotFound, PermissionDenied, UnsupportedAPIException
@@ -57,18 +56,19 @@ from portage import _selinux_merge
 from portage import _unicode_decode
 from portage import _unicode_encode
 
-from _emerge.AsynchronousLock import AsynchronousLock
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.emergelog import emergelog
 from _emerge.PollScheduler import PollScheduler
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 
-import codecs
+import errno
 import gc
-import re, shutil, stat, errno, subprocess
+import io
 import logging
 import os as _os
+import re
+import shutil
 import stat
 import sys
 import tempfile
@@ -706,7 +706,7 @@ class vardbapi(dbapi):
 				results.append(st[stat.ST_MTIME])
 				continue
 			try:
-				myf = codecs.open(
+				myf = io.open(
 					_unicode_encode(os.path.join(mydir, x),
 					encoding=_encodings['fs'], errors='strict'),
 					mode='r', encoding=_encodings['repo.content'],
@@ -774,7 +774,7 @@ class vardbapi(dbapi):
 		new_vdb = False
 		counter = -1
 		try:
-			cfile = codecs.open(
+			cfile = io.open(
 				_unicode_encode(self._counter_path,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],
@@ -1431,7 +1431,7 @@ class dblink(object):
 			return self.contentscache
 		pkgfiles = {}
 		try:
-			myc = codecs.open(_unicode_encode(contents_file,
+			myc = io.open(_unicode_encode(contents_file,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],
 				errors='replace')
@@ -2954,7 +2954,7 @@ class dblink(object):
 			log_path = None
 			if self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
 				log_path = self.settings.get("PORTAGE_LOG_FILE")
-			out = portage.StringIO()
+			out = io.StringIO()
 			for line in lines:
 				func(line, phase=phase, key=self.mycpv, out=out)
 			msg = out.getvalue()
@@ -3056,7 +3056,7 @@ class dblink(object):
 				continue
 
 			try:
-				val = codecs.open(_unicode_encode(
+				val = io.open(_unicode_encode(
 					os.path.join(inforoot, var_name),
 					encoding=_encodings['fs'], errors='strict'),
 					mode='r', encoding=_encodings['repo.content'],
@@ -3412,10 +3412,10 @@ class dblink(object):
 		# write local package counter for recording
 		if counter is None:
 			counter = self.vartree.dbapi.counter_tick(mycpv=self.mycpv)
-		codecs.open(_unicode_encode(os.path.join(self.dbtmpdir, 'COUNTER'),
+		io.open(_unicode_encode(os.path.join(self.dbtmpdir, 'COUNTER'),
 			encoding=_encodings['fs'], errors='strict'),
-			'w', encoding=_encodings['repo.content'], errors='backslashreplace'
-			).write(str(counter))
+			mode='w', encoding=_encodings['repo.content'],
+			errors='backslashreplace').write(_unicode_decode(str(counter)))
 
 		self.updateprotect()
 
@@ -3700,7 +3700,10 @@ class dblink(object):
 		cfgfiledict_orig = cfgfiledict.copy()
 
 		# open CONTENTS file (possibly overwriting old one) for recording
-		outfile = codecs.open(_unicode_encode(
+		# Use atomic_ofstream for automatic coercion of raw bytes to
+		# unicode, in order to prevent TypeError when writing raw bytes
+		# to TextIOWrapper with python2.
+		outfile = atomic_ofstream(_unicode_encode(
 			os.path.join(self.dbtmpdir, 'CONTENTS'),
 			encoding=_encodings['fs'], errors='strict'),
 			mode='w', encoding=_encodings['repo.content'],
@@ -4148,7 +4151,7 @@ class dblink(object):
 		"returns contents of a file with whitespace converted to spaces"
 		if not os.path.exists(self.dbdir+"/"+name):
 			return ""
-		mydata = codecs.open(
+		mydata = io.open(
 			_unicode_encode(os.path.join(self.dbdir, name),
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['repo.content'], errors='replace'
@@ -4161,7 +4164,7 @@ class dblink(object):
 	def getfile(self,fname):
 		if not os.path.exists(self.dbdir+"/"+fname):
 			return ""
-		return codecs.open(_unicode_encode(os.path.join(self.dbdir, fname),
+		return io.open(_unicode_encode(os.path.join(self.dbdir, fname),
 			encoding=_encodings['fs'], errors='strict'), 
 			mode='r', encoding=_encodings['repo.content'], errors='replace'
 			).read()
@@ -4178,7 +4181,7 @@ class dblink(object):
 	def getelements(self,ename):
 		if not os.path.exists(self.dbdir+"/"+ename):
 			return []
-		mylines = codecs.open(_unicode_encode(
+		mylines = io.open(_unicode_encode(
 			os.path.join(self.dbdir, ename),
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['repo.content'], errors='replace'
@@ -4190,13 +4193,13 @@ class dblink(object):
 		return myreturn
 
 	def setelements(self,mylist,ename):
-		myelement = codecs.open(_unicode_encode(
+		myelement = io.open(_unicode_encode(
 			os.path.join(self.dbdir, ename),
 			encoding=_encodings['fs'], errors='strict'),
 			mode='w', encoding=_encodings['repo.content'],
 			errors='backslashreplace')
 		for x in mylist:
-			myelement.write(x+"\n")
+			myelement.write(_unicode_decode(x+"\n"))
 		myelement.close()
 
 	def isregular(self):

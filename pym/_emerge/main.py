@@ -9,10 +9,6 @@ import stat
 import sys
 import textwrap
 import platform
-try:
-	from subprocess import getstatusoutput as subprocess_getstatusoutput
-except ImportError:
-	from commands import getstatusoutput as subprocess_getstatusoutput
 import portage
 from portage import os
 from portage import _encodings
@@ -163,7 +159,9 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 									raise
 								del e
 					processed_count += 1
-					myso=subprocess_getstatusoutput("LANG=C LANGUAGE=C "+EPREFIX+"/usr/bin/install-info --dir-file="+inforoot+"/dir "+inforoot+"/"+x)[1]
+					myso = portage.subprocess_getstatusoutput(
+						"LANG=C LANGUAGE=C %s/usr/bin/install-info " +
+						"--dir-file=%s/dir %s/%s" % (EPREFIX, inforoot, inforoot, x))[1]
 					existsstr="already exists, for file `"
 					if myso!="":
 						if re.search(existsstr,myso):

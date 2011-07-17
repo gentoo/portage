@@ -37,8 +37,7 @@ from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 from _emerge.PollScheduler import PollScheduler
 
 import os as _os
-import codecs
-import logging
+import io
 import stat
 import sys
 import traceback
@@ -480,7 +479,7 @@ class portdbapi(dbapi):
 
 			if eapi is None and \
 				'parse-eapi-ebuild-head' in self.doebuild_settings.features:
-				eapi = portage._parse_eapi_ebuild_head(codecs.open(
+				eapi = portage._parse_eapi_ebuild_head(io.open(
 					_unicode_encode(myebuild,
 					encoding=_encodings['fs'], errors='strict'),
 					mode='r', encoding=_encodings['repo.content'],

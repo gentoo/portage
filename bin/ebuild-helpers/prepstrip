@@ -1,17 +1,17 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2007 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 
 banner=false
 SKIP_STRIP=false
-if hasq nostrip ${FEATURES} || \
-   hasq strip ${RESTRICT}
+if has nostrip ${FEATURES} || \
+   has strip ${RESTRICT}
 then
 	SKIP_STRIP=true
 	banner=true
-	hasq installsources ${FEATURES} || exit 0
+	has installsources ${FEATURES} || exit 0
 fi
 
 STRIP=${STRIP:-${CHOST}-strip}
@@ -25,7 +25,7 @@ export SAFE_STRIP_FLAGS="--strip-unneeded"
 export PORTAGE_STRIP_FLAGS=${PORTAGE_STRIP_FLAGS-${SAFE_STRIP_FLAGS} -R .comment}
 prepstrip_sources_dir="${EPREFIX}"/usr/src/debug/${CATEGORY}/${PF}
 
-if hasq installsources ${FEATURES} && ! type -P debugedit >/dev/null ; then
+if has installsources ${FEATURES} && ! type -P debugedit >/dev/null ; then
 	ewarn "FEATURES=installsources is enabled but the debugedit binary could not"
 	ewarn "be found. This feature will not work unless debugedit is installed!"
 fi
@@ -41,8 +41,8 @@ inode_var_name() {
 }
 
 save_elf_sources() {
-	hasq installsources ${FEATURES} || return 0
-	hasq installsources ${RESTRICT} && return 0
+	has installsources ${FEATURES} || return 0
+	has installsources ${RESTRICT} && return 0
 	type -P debugedit >/dev/null || return 0
 
 	local x=$1
@@ -53,7 +53,7 @@ save_elf_sources() {
 }
 
 save_elf_debug() {
-	hasq splitdebug ${FEATURES} || return 0
+	has splitdebug ${FEATURES} || return 0
 
 	local x=$1
 	local y="${ED}usr/lib/debug/${x:${#D}}.debug"
@@ -90,8 +90,8 @@ save_elf_debug() {
 # The existance of the section .symtab tells us that a binary is stripped.
 # We want to log already stripped binaries, as this may be a QA violation.
 # They prevent us from getting the splitdebug data.
-if ! hasq binchecks ${RESTRICT} && \
-	! hasq strip ${RESTRICT} ; then
+if ! has binchecks ${RESTRICT} && \
+	! has strip ${RESTRICT} ; then
 	log=$T/scanelf-already-stripped.log
 	qa_var="QA_PRESTRIPPED_${ARCH/-/_}"
 	[[ -n ${!qa_var} ]] && QA_PRESTRIPPED="${!qa_var}"
@@ -186,8 +186,8 @@ do
 done
 
 if [[ -s ${T}/debug.sources ]] && \
-        hasq installsources ${FEATURES} && \
-        ! hasq installsources ${RESTRICT} && \
+        has installsources ${FEATURES} && \
+        ! has installsources ${RESTRICT} && \
         type -P debugedit >/dev/null
 then
 	vecho "installsources: rsyncing source files"

@@ -35,6 +35,7 @@ from portage import _unicode_encode
 
 import codecs
 import errno
+import io
 import re
 import stat
 import subprocess
@@ -766,7 +767,7 @@ class binarytree(object):
 				host, parsed_url.path.lstrip("/"), "Packages")
 			pkgindex = self._new_pkgindex()
 			try:
-				f = codecs.open(_unicode_encode(pkgindex_file,
+				f = io.open(_unicode_encode(pkgindex_file,
 					encoding=_encodings['fs'], errors='strict'),
 					mode='r', encoding=_encodings['repo.content'],
 					errors='replace')
@@ -1289,7 +1290,7 @@ class binarytree(object):
 	def _load_pkgindex(self):
 		pkgindex = self._new_pkgindex()
 		try:
-			f = codecs.open(_unicode_encode(self._pkgindex_file,
+			f = io.open(_unicode_encode(self._pkgindex_file,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],
 				errors='replace')

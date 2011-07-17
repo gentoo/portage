@@ -1,9 +1,9 @@
-# Copyright 2003-2010 Gentoo Foundation
+# Copyright 2003-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import absolute_import
 
-import codecs
+import io
 import sys
 try:
 	from urllib.request import urlopen as urllib_request_urlopen
@@ -668,12 +668,12 @@ class Glsa:
 		@returns:	None
 		"""
 		if not self.isApplied():
-			checkfile = codecs.open(
+			checkfile = io.open(
 				_unicode_encode(os.path.join(self.config["EROOT"],
 				CACHE_PATH, "glsa"),
 				encoding=_encodings['fs'], errors='strict'), 
 				mode='a+', encoding=_encodings['content'], errors='strict')
-			checkfile.write(self.nr+"\n")
+			checkfile.write(_unicode_decode(self.nr + "\n"))
 			checkfile.close()
 		return None
 	

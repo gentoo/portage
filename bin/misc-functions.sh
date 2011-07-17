@@ -152,7 +152,7 @@ install_qa_check() {
 
 	export STRIP_MASK
 	prepall
-	hasq "${EAPI}" 0 1 2 3 || prepcompress
+	has "${EAPI}" 0 1 2 3 || prepcompress
 	ecompressdir --dequeue
 	ecompress --dequeue
 
@@ -211,7 +211,7 @@ install_qa_check() {
 }
 
 install_qa_check_elf() {
-	if type -P scanelf > /dev/null && ! hasq binchecks ${RESTRICT}; then
+	if type -P scanelf > /dev/null && ! has binchecks ${RESTRICT}; then
 		local qa_var insecure_rpath=0 tmp_quiet=${PORTAGE_QUIET}
 		local x
 
@@ -729,7 +729,7 @@ install_qa_check_misc() {
 				"developers of this software." | fmt -w 70 | \
 				while read -r line ; do eqawarn "${line}" ; done
 				eqawarn "Homepage: ${HOMEPAGE}"
-				hasq stricter ${FEATURES} && die "install aborted due to" \
+				has stricter ${FEATURES} && die "install aborted due to" \
 					"poor programming practices shown above"
 			fi
 		fi
@@ -738,7 +738,7 @@ install_qa_check_misc() {
 	# Portage regenerates this on the installed system.
 	rm -f "${ED}"/usr/share/info/dir{,.gz,.bz2}
 
-	if hasq multilib-strict ${FEATURES} && \
+	if has multilib-strict ${FEATURES} && \
 	   [[ -x ${EPREFIX}/usr/bin/file && -x ${EPREFIX}/usr/bin/find ]] && \
 	   [[ -n ${MULTILIB_STRICT_DIRS} && -n ${MULTILIB_STRICT_DENY} ]]
 	then
@@ -761,12 +761,12 @@ install_qa_check_misc() {
 	fi
 
 	# ensure packages don't install systemd units automagically
-	if ! hasq systemd ${INHERITED} && \
+	if ! has systemd ${INHERITED} && \
 		[[ -d "${D}"/lib/systemd/system ]]
 	then
 		eqawarn "QA Notice: package installs systemd unit files (/lib/systemd/system)"
 		eqawarn "           but does not inherit systemd.eclass."
-		hasq stricter ${FEATURES} \
+		has stricter ${FEATURES} \
 			&& die "install aborted due to missing inherit of systemd.eclass"
 	fi
 }
@@ -876,7 +876,7 @@ install_qa_check_prefix() {
 		else
 			# unprefixed/invalid shebang, but outside $PATH, this may be
 			# intended (e.g. config.guess) so remain silent by default
-			hasq stricter ${FEATURES} && \
+			has stricter ${FEATURES} && \
 				eqawarn "invalid shebang in ${fn#${D}}: ${line[0]}"
 		fi
 	done
@@ -891,7 +891,7 @@ install_qa_check_prefix() {
 }
 
 install_qa_check_macho() {
-	if ! hasq binchecks ${RESTRICT} ; then
+	if ! has binchecks ${RESTRICT} ; then
 		# on Darwin, dynamic libraries are called .dylibs instead of
 		# .sos.  In addition the version component is before the
 		# extension, not after it.  Check for this, and *only* warn
@@ -993,7 +993,7 @@ install_qa_check_macho() {
 	if [[ -f ${T}/.install_name_check_failed ]] ; then
 		# secret switch "allow_broken_install_names" to get
 		# around this and install broken crap (not a good idea)
-		hasq allow_broken_install_names ${FEATURES} || \
+		has allow_broken_install_names ${FEATURES} || \
 			die "invalid install_name found, your application or library will crash at runtime"
 	fi
 }
@@ -1004,7 +1004,7 @@ install_qa_check_pecoff() {
 	# this one uses readpecoff, which supports multiple prefix platforms!
 	# this is absolutely _not_ optimized for speed, and there may be plenty
 	# of possibilities by introducing one or the other cache!
-	if ! hasq binchecks ${RESTRICT}; then
+	if ! has binchecks ${RESTRICT}; then
 		# copied and adapted from the above scanelf code.
 		local qa_var insecure_rpath=0 tmp_quiet=${PORTAGE_QUIET}
 		local f x
@@ -1123,7 +1123,7 @@ install_qa_check_pecoff() {
 }
 
 install_qa_check_xcoff() {
-	if ! hasq binchecks ${RESTRICT}; then
+	if ! has binchecks ${RESTRICT}; then
 		local tmp_quiet=${PORTAGE_QUIET}
 		local queryline deplib
 		local insecure_rpath_list= undefined_symbols_list=
@@ -1281,7 +1281,7 @@ install_mask() {
 }
 
 preinst_aix() {
-	if [[ ${CHOST} != *-aix* ]] || hasq binchecks ${RESTRICT}; then
+	if [[ ${CHOST} != *-aix* ]] || has binchecks ${RESTRICT}; then
 		return 0
 	fi
 	local ar strip
@@ -1364,7 +1364,7 @@ preinst_aix() {
 }
 
 postinst_aix() {
-	if [[ ${CHOST} != *-aix* ]] || hasq binchecks ${RESTRICT}; then
+	if [[ ${CHOST} != *-aix* ]] || has binchecks ${RESTRICT}; then
 		return 0
 	fi
 	local MY_PR=${PR%r0}
@@ -1491,7 +1491,7 @@ preinst_mask() {
 	# remove man pages, info pages, docs if requested
 	local f
 	for f in man info doc; do
-		if hasq no${f} $FEATURES; then
+		if has no${f} $FEATURES; then
 			INSTALL_MASK="${INSTALL_MASK} ${EPREFIX}/usr/share/${f}"
 		fi
 	done
@@ -1499,7 +1499,7 @@ preinst_mask() {
 	install_mask "${D}" "${INSTALL_MASK}"
 
 	# remove share dir if unnessesary
-	if hasq nodoc $FEATURES -o hasq noman $FEATURES -o hasq noinfo $FEATURES; then
+	if has nodoc $FEATURES || has noman $FEATURES || has noinfo $FEATURES; then
 		rmdir "${D}usr/share" &> /dev/null
 	fi
 }
@@ -1510,7 +1510,7 @@ preinst_sfperms() {
 		 return 1
 	fi
 	# Smart FileSystem Permissions
-	if hasq sfperms $FEATURES; then
+	if has sfperms $FEATURES; then
 		local i
 		find "${D}" -type f -perm -4000 -print0 | \
 		while read -r -d $'\0' i ; do
@@ -1545,7 +1545,7 @@ preinst_suid_scan() {
 		 return 1
 	fi
 	# total suid control.
-	if hasq suidctl $FEATURES; then
+	if has suidctl $FEATURES; then
 		local i sfconf x
 		sfconf=${PORTAGE_CONFIGROOT}${EPREFIX#/}/etc/portage/suidctl.conf
 		# sandbox prevents us from writing directly
@@ -1583,7 +1583,7 @@ preinst_selinux_labels() {
 		 eerror "${FUNCNAME}: D is unset"
 		 return 1
 	fi
-	if hasq selinux ${FEATURES}; then
+	if has selinux ${FEATURES}; then
 		# SELinux file labeling (needs to always be last in dyn_preinst)
 		# only attempt to label if setfiles is executable
 		# and 'context' is available on selinuxfs.

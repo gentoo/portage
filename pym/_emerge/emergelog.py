@@ -3,12 +3,13 @@
 
 from __future__ import print_function
 
-import codecs
+import io
 import sys
 import time
 import portage
 from portage import os
 from portage import _encodings
+from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.data import secpass
 from portage.output import xtermTitle
@@ -20,15 +21,19 @@ from portage.const import EPREFIX
 _disable = True
 _emerge_log_dir = EPREFIX + '/var/log'
 
+# Coerce to unicode, in order to prevent TypeError when writing
+# raw bytes to TextIOWrapper with python2.
+_log_fmt = _unicode_decode("%.0f: %s\n")
+
 def emergelog(xterm_titles, mystr, short_msg=None):
 
 	if _disable:
 		return
 
-	mystr = portage._unicode_decode(mystr)
+	mystr = _unicode_decode(mystr)
 
 	if short_msg is not None:
-		short_msg = portage._unicode_decode(short_msg)
+		short_msg = _unicode_decode(short_msg)
 
 	if xterm_titles and short_msg:
 		if "HOSTNAME" in os.environ:
@@ -37,7 +42,7 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 	try:
 		file_path = os.path.join(_emerge_log_dir, 'emerge.log')
 		existing_log = os.path.isfile(file_path)
-		mylogfile = codecs.open(_unicode_encode(file_path,
+		mylogfile = io.open(_unicode_encode(file_path,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='a', encoding=_encodings['content'],
 			errors='backslashreplace')
@@ -48,10 +53,7 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 		mylock = None
 		try:
 			mylock = portage.locks.lockfile(mylogfile)
-			# seek because we may have gotten held up by the lock.
-			# if so, we may not be positioned at the end of the file.
-			mylogfile.seek(0, 2)
-			mylogfile.write(str(time.time())[:10]+": "+mystr+"\n")
+			mylogfile.write(_log_fmt % (time.time(), mystr))
 			mylogfile.flush()
 		finally:
 			if mylock:

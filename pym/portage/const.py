@@ -130,6 +130,7 @@ EBUILD_PHASES            = ("pretend", "setup", "unpack", "prepare", "configure"
                            "package", "preinst", "postinst","prerm", "postrm",
                            "nofetch", "config", "info", "other")
 SUPPORTED_FEATURES       = frozenset([
+                           "allow-missing-manifests",
                            "assume-digests", "binpkg-logs", "buildpkg", "buildsyspkg", "candy",
                            "ccache", "chflags", "collision-protect", "compress-build-logs",
                            "digest", "distcc", "distcc-pump", "distlocks", "ebuild-locks", "fakeroot",

@@ -58,14 +58,17 @@ class UseFlagDisplay(object):
 	sort_separated = cmp_sort_key(_cmp_separated)
 	del _cmp_separated
 
-def pkg_use_display(pkg, opts):
+def pkg_use_display(pkg, opts, modified_use=None):
 	settings = pkg.root_config.settings
 	use_expand = pkg.use.expand
 	use_expand_hidden = pkg.use.expand_hidden
 	alphabetical_use = '--alphabetical' in opts
 	forced_flags = set(chain(pkg.use.force,
 		pkg.use.mask))
-	use = set(pkg.use.enabled)
+	if modified_use is None:
+		use = set(pkg.use.enabled)
+	else:
+		use = set(modified_use)
 	use.discard(settings.get('ARCH'))
 	use_expand_flags = set()
 	use_enabled = {}

@@ -1,8 +1,8 @@
 # Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import codecs
 import errno
+import io
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -141,7 +141,7 @@ class Manifest(object):
 		"""Parse a manifest.  If myhashdict is given then data will be added too it.
 		   Otherwise, a new dict will be created and returned."""
 		try:
-			fd = codecs.open(_unicode_encode(file_path,
+			fd = io.open(_unicode_encode(file_path,
 				encoding=_encodings['fs'], errors='strict'), mode='r',
 				encoding=_encodings['repo.content'], errors='replace')
 			if myhashdict is None:
@@ -229,7 +229,7 @@ class Manifest(object):
 			update_manifest = True
 			if not force:
 				try:
-					f = codecs.open(_unicode_encode(self.getFullname(),
+					f = io.open(_unicode_encode(self.getFullname(),
 						encoding=_encodings['fs'], errors='strict'),
 						mode='r', encoding=_encodings['repo.content'],
 						errors='replace')
@@ -482,7 +482,8 @@ class Manifest(object):
 	def updateAllHashes(self, checkExisting=False, ignoreMissingFiles=True):
 		""" Regenerate all hashes for all files in this Manifest. """
 		for idtype in portage.const.MANIFEST2_IDENTIFIERS:
-			self.updateTypeHashes(idtype, fname, checkExisting)
+			self.updateTypeHashes(idtype, checkExisting=checkExisting,
+				ignoreMissingFiles=ignoreMissingFiles)
 
 	def updateCpvHashes(self, cpv, ignoreMissingFiles=True):
 		""" Regenerate all hashes associated to the given cpv (includes all AUX and MISC
@@ -518,7 +519,7 @@ class Manifest(object):
 		mfname = self.getFullname()
 		if not os.path.exists(mfname):
 			return rVal
-		myfile = codecs.open(_unicode_encode(mfname,
+		myfile = io.open(_unicode_encode(mfname,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['repo.content'], errors='replace')
 		lines = myfile.readlines()

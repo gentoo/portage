@@ -16,6 +16,9 @@ class LineCheck(object):
 	"""Run a check on a line of an ebuild."""
 	"""A regular expression to determine whether to ignore the line"""
 	ignore_line = False
+	"""True if lines containing nothing more than comments with optional
+	leading whitespace should be ignored"""
+	ignore_comment = True
 
 	def new(self, pkg):
 		pass
@@ -35,7 +38,6 @@ class LineCheck(object):
 class PhaseCheck(LineCheck):
 	""" basic class for function detection """
 
-	ignore_line = re.compile(r'(^\s*#)')
 	func_end_re = re.compile(r'^\}$')
 	phases_re = re.compile('(%s)' % '|'.join((
 		'pkg_pretend', 'pkg_setup', 'src_unpack', 'src_prepare',
@@ -103,6 +105,7 @@ class EbuildWhitespace(LineCheck):
 	repoman_check_name = 'ebuild.minorsyn'
 
 	ignore_line = re.compile(r'(^$)|(^(\t)*#)')
+	ignore_comment = False
 	leading_spaces = re.compile(r'^[\S\t]')
 	trailing_whitespace = re.compile(r'.*([\S]$)')	
 
@@ -114,6 +117,7 @@ class EbuildWhitespace(LineCheck):
 
 class EbuildBlankLine(LineCheck):
 	repoman_check_name = 'ebuild.minorsyn'
+	ignore_comment = False
 	blank_line = re.compile(r'^$')
 
 	def new(self, pkg):
@@ -142,6 +146,7 @@ class EbuildQuote(LineCheck):
 	_ignored_commands = ["local", "export"] + _message_commands
 	ignore_line = re.compile(r'(^$)|(^\s*#.*)|(^\s*\w+=.*)' + \
 		r'|(^\s*(' + "|".join(_ignored_commands) + r')\s+)')
+	ignore_comment = False
 	var_names = ["D", "DISTDIR", "FILESDIR", "S", "T", "ROOT", "WORKDIR"]
 
 	# EAPI=3/Prefix vars
@@ -215,6 +220,7 @@ class EbuildAssignment(LineCheck):
 	readonly_assignment = re.compile(r'^\s*(export\s+)?(A|CATEGORY|P|PV|PN|PR|PVR|PF|D|WORKDIR|FILESDIR|FEATURES|USE)=')
 	line_continuation = re.compile(r'([^#]*\S)(\s+|\t)\\$')
 	ignore_line = re.compile(r'(^$)|(^(\t)*#)')
+	ignore_comment = False
 
 	def __init__(self):
 		self.previous_line = None
@@ -448,7 +454,6 @@ class InheritAutotools(LineCheck):
 	"""
 
 	repoman_check_name = 'inherit.autotools'
-	ignore_line = re.compile(r'(^|\s*)#')
 	_inherit_autotools_re = re.compile(r'^\s*inherit\s(.*\s)?autotools(\s|$)')
 	_autotools_funcs = (
 		"eaclocal", "eautoconf", "eautoheader",
@@ -582,14 +587,24 @@ class SrcUnpackPatches(PhaseCheck):
 
 class BuiltWithUse(LineCheck):
 	repoman_check_name = 'ebuild.minorsyn'
-	ignore_line = re.compile(r'^\s*#')
-	re = re.compile('^.*built_with_use')
+	re = re.compile(r'(^|.*\b)built_with_use\b')
 	error = errors.BUILT_WITH_USE
+
+class DeprecatedUseq(LineCheck):
+	"""Checks for use of the deprecated useq function"""
+	repoman_check_name = 'ebuild.minorsyn'
+	re = re.compile(r'(^|.*\b)useq\b')
+	error = errors.USEQ_ERROR
+
+class DeprecatedHasq(LineCheck):
+	"""Checks for use of the deprecated hasq function"""
+	repoman_check_name = 'ebuild.minorsyn'
+	re = re.compile(r'(^|.*\b)hasq\b')
+	error = errors.HASQ_ERROR
 
 # EAPI-3 checks
 class Eapi3DeprecatedFuncs(LineCheck):
 	repoman_check_name = 'EAPI.deprecated'
-	ignore_line = re.compile(r'(^\s*#)')
 	deprecated_commands_re = re.compile(r'^\s*(check_license)\b')
 
 	def check_eapi(self, eapi):
@@ -604,7 +619,6 @@ class Eapi3DeprecatedFuncs(LineCheck):
 # EAPI-4 checks
 class Eapi4IncompatibleFuncs(LineCheck):
 	repoman_check_name = 'EAPI.incompatible'
-	ignore_line = re.compile(r'(^\s*#)')
 	banned_commands_re = re.compile(r'^\s*(dosed|dohard)')
 
 	def check_eapi(self, eapi):
@@ -618,7 +632,6 @@ class Eapi4IncompatibleFuncs(LineCheck):
 
 class Eapi4GoneVars(LineCheck):
 	repoman_check_name = 'EAPI.incompatible'
-	ignore_line = re.compile(r'(^\s*#)')
 	undefined_vars_re = re.compile(r'.*\$(\{(AA|KV|EMERGE_FROM)\}|(AA|KV|EMERGE_FROM))')
 
 	def check_eapi(self, eapi):
@@ -651,9 +664,11 @@ _constant_checks = tuple((c() for c in (
 	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
 	SrcCompileEconf, Eapi3DeprecatedFuncs, NoOffsetWithHelpers,
 	Eapi4IncompatibleFuncs, Eapi4GoneVars, BuiltWithUse,
-	PreserveOldLib, SandboxAddpredict, PortageInternal)))
+	PreserveOldLib, SandboxAddpredict, PortageInternal,
+	DeprecatedUseq, DeprecatedHasq)))
 
 _here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
+_ignore_comment_re = re.compile(r'^\s*#')
 
 def run_checks(contents, pkg):
 	checks = _constant_checks
@@ -674,7 +689,10 @@ def run_checks(contents, pkg):
 
 		if here_doc_delim is None:
 			# We're not in a here-document.
+			is_comment = _ignore_comment_re.match(line) is not None
 			for lc in checks:
+				if is_comment and lc.ignore_comment:
+					continue
 				if lc.check_eapi(pkg.metadata['EAPI']):
 					ignore = lc.ignore_line
 					if not ignore or not ignore.match(line):

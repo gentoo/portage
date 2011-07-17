@@ -3,11 +3,13 @@
 
 from __future__ import print_function
 
-from itertools import chain
+from itertools import chain, product
+import logging
 
 from portage.dep import use_reduce, extract_affecting_use, check_required_use, get_required_use_flags
 from portage.exception import InvalidDependString
 from portage.output import colorize
+from portage.util import writemsg_level
 from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
 
 class circular_dependency_handler(object):
@@ -16,6 +18,14 @@ class circular_dependency_handler(object):
 		self.depgraph = depgraph
 		self.graph = graph
 		self.all_parent_atoms = depgraph._dynamic_config._parent_atoms
+
+		if "--debug" in depgraph._frozen_config.myopts:
+			# Show this debug output before doing the calculations
+			# that follow, so at least we have this debug info
+			# if we happen to hit a bug later.
+			writemsg_level("\n\ncircular dependency graph:\n\n",
+				level=logging.DEBUG, noiselevel=-1)
+			self.debug_print()
 
 		self.cycles, self.shortest_cycle = self._find_cycles()
 		#Guess if it is a large cluster of cycles. This usually requires
@@ -136,8 +146,15 @@ class circular_dependency_handler(object):
 			required_use_flags = get_required_use_flags(parent.metadata["REQUIRED_USE"])
 
 			if affecting_use.intersection(required_use_flags):
-				affecting_use.update(required_use_flags)
-				affecting_use.difference_update(untouchable_flags)
+				# TODO: Find out exactly which REQUIRED_USE flags are
+				# entangled with affecting_use. We have to limit the
+				# number of flags since the number of loops is
+				# exponentially related (see bug #374397).
+				total_flags = set()
+				total_flags.update(affecting_use, required_use_flags)
+				total_flags.difference_update(untouchable_flags)
+				if len(total_flags) <= 10:
+					affecting_use = total_flags
 
 			affecting_use = tuple(affecting_use)
 
@@ -147,27 +164,9 @@ class circular_dependency_handler(object):
 			#We iterate over all possible settings of these use flags and gather
 			#a set of possible changes
 			#TODO: Use the information encoded in REQUIRED_USE
-			use_state = []
-			for flag in affecting_use:
-				use_state.append("disabled")
-
-			def _next_use_state(state, id=None):
-				if id is None:
-					id = len(state)-1
-
-				if id == 0 and state[0] == "enabled":
-					return False
-
-				if state[id] == "disabled":
-					state[id] = "enabled"
-					for i in range(id+1,len(state)):
-						state[i] = "disabled"
-					return True
-				else:
-					return _next_use_state(state, id-1)
-
 			solutions = set()
-			while(True):
+			for use_state in product(("disabled", "enabled"),
+				repeat=len(affecting_use)):
 				current_use = set(self.depgraph._pkg_use_enabled(parent))
 				for flag, state in zip(affecting_use, use_state):
 					if state == "enabled":
@@ -199,9 +198,6 @@ class circular_dependency_handler(object):
 								flag in use:
 								solution.add((flag, False))
 						solutions.add(frozenset(solution))
-
-				if not _next_use_state(use_state):
-					break
 
 			for solution in solutions:
 				ignore_solution = False

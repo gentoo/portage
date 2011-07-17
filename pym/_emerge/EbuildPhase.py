@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import gzip
+import io
 import sys
 import tempfile
 
@@ -23,9 +24,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 		'_preinst_bsdflags'
 )
 from portage import os
-from portage import StringIO
 from portage import _encodings
-from portage import _unicode_decode
 from portage import _unicode_encode
 
 class EbuildPhase(CompositeTask):
@@ -61,7 +60,7 @@ class EbuildPhase(CompositeTask):
 				except OSError:
 					pass
 
-		if self.phase == 'setup':
+		if self.phase in ('nofetch', 'pretend', 'setup'):
 
 			use = self.settings.get('PORTAGE_BUILT_USE')
 			if use is None:
@@ -97,7 +96,11 @@ class EbuildPhase(CompositeTask):
 					relevant_features.append(x)
 			if relevant_features:
 				msg.append("FEATURES:   %s" % " ".join(relevant_features))
-			self._elog('einfo', msg)
+
+			# Force background=True for this header since it's intended
+			# for the log and it doesn't necessarily need to be visible
+			# elsewhere.
+			self._elog('einfo', msg, background=True)
 
 		if self.phase == 'package':
 			if 'PORTAGE_BINPKG_TMPFILE' not in self.settings:
@@ -187,10 +190,9 @@ class EbuildPhase(CompositeTask):
 			logfile = self.settings.get("PORTAGE_LOG_FILE")
 
 		if self.phase == "install":
-			out = portage.StringIO()
+			out = io.StringIO()
 			_check_build_log(self.settings, out=out)
-			msg = _unicode_decode(out.getvalue(),
-				encoding=_encodings['content'], errors='replace')
+			msg = out.getvalue()
 			self.scheduler.output(msg, log_path=logfile)
 
 		if fail:
@@ -201,11 +203,10 @@ class EbuildPhase(CompositeTask):
 		_post_phase_userpriv_perms(settings)
 
 		if self.phase == "install":
-			out = portage.StringIO()
+			out = io.StringIO()
 			_post_src_install_chost_fix(settings)
 			_post_src_install_uid_fix(settings, out)
-			msg = _unicode_decode(out.getvalue(),
-				encoding=_encodings['content'], errors='replace')
+			msg = out.getvalue()
 			if msg:
 				self.scheduler.output(msg, log_path=logfile)
 		elif self.phase == "preinst":
@@ -257,10 +258,9 @@ class EbuildPhase(CompositeTask):
 			return
 
 		if self.phase == "install":
-			out = portage.StringIO()
+			out = io.StringIO()
 			_post_src_install_soname_symlinks(self.settings, out)
-			msg = _unicode_decode(out.getvalue(),
-				encoding=_encodings['content'], errors='replace')
+			msg = out.getvalue()
 			if msg:
 				self.scheduler.output(msg, log_path=log_path)
 
@@ -326,8 +326,10 @@ class EbuildPhase(CompositeTask):
 		self.returncode = 1
 		self.wait()
 
-	def _elog(self, elog_funcname, lines):
-		out = StringIO()
+	def _elog(self, elog_funcname, lines, background=None):
+		if background is None:
+			background = self.background
+		out = io.StringIO()
 		phase = self.phase
 		elog_func = getattr(elog_messages, elog_funcname)
 		global_havecolor = portage.output.havecolor
@@ -338,10 +340,10 @@ class EbuildPhase(CompositeTask):
 				elog_func(line, phase=phase, key=self.settings.mycpv, out=out)
 		finally:
 			portage.output.havecolor = global_havecolor
-		msg = _unicode_decode(out.getvalue(),
-			encoding=_encodings['content'], errors='replace')
+		msg = out.getvalue()
 		if msg:
 			log_path = None
 			if self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
 				log_path = self.settings.get("PORTAGE_LOG_FILE")
-			self.scheduler.output(msg, log_path=log_path)
+			self.scheduler.output(msg, log_path=log_path,
+				background=background)

@@ -183,7 +183,7 @@ die() {
 		done
 	fi
 	if [ "${EMERGE_FROM}" != "binary" ] && \
-		! hasq ${EBUILD_PHASE} prerm postrm && \
+		! has ${EBUILD_PHASE} prerm postrm && \
 		[ "${EBUILD#${PORTDIR}/}" == "${EBUILD}" ] ; then
 		local overlay=${EBUILD%/*}
 		overlay=${overlay%/*}
@@ -519,20 +519,29 @@ if [[ -z ${XARGS} ]] ; then
 	esac
 fi
 
-has() {
-	hasq "$@"
+hasq() {
+	has $EBUILD_PHASE prerm postrm || eqawarn \
+		"QA Notice: The 'hasq' function is deprecated (replaced by 'has')"
+	has "$@"
 }
 
 hasv() {
-	if hasq "$@" ; then
+	if has "$@" ; then
 		echo "$1"
 		return 0
 	fi
 	return 1
 }
 
-hasq() {
-	[[ " ${*:2} " == *" $1 "* ]]
+has() {
+	local needle=$1
+	shift
+
+	local x
+	for x in "$@"; do
+		[ "${x}" = "${needle}" ] && return 0
+	done
+	return 1
 }
 
 # @FUNCTION: save_ebuild_env
@@ -546,7 +555,7 @@ hasq() {
 save_ebuild_env() {
 	(
 
-		if hasq --exclude-init-phases $* ; then
+		if has --exclude-init-phases $* ; then
 			unset S _E_DOCDESTTREE_ _E_EXEDESTTREE_
 			if [[ -n $PYTHONPATH ]] ; then
 				export PYTHONPATH=${PYTHONPATH/${PORTAGE_PYM_PATH}:}

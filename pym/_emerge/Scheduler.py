@@ -18,7 +18,6 @@ import weakref
 import zlib
 
 import portage
-from portage import StringIO
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode, _unicode_encode
@@ -746,10 +745,7 @@ class Scheduler(PollScheduler):
 			prefetchers = self._prefetchers
 			getbinpkg = "--getbinpkg" in self.myopts
 
-			# In order to avoid "waiting for lock" messages
-			# at the beginning, which annoy users, never
-			# spawn a prefetcher for the first package.
-			for pkg in self._mergelist[1:]:
+			for pkg in self._mergelist:
 				# mergelist can contain solved Blocker instances
 				if not isinstance(pkg, Package) or pkg.operation == "uninstall":
 					continue

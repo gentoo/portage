@@ -3,12 +3,8 @@
 
 __docformat__ = "epytext"
 
-import codecs
-try:
-	from subprocess import getstatusoutput as subprocess_getstatusoutput
-except ImportError:
-	from commands import getstatusoutput as subprocess_getstatusoutput
 import errno
+import io
 import formatter
 import re
 import sys
@@ -168,7 +164,7 @@ def _parse_color_map(config_root='/', onerror=None):
 		return token
 	try:
 		lineno=0
-		for line in codecs.open(_unicode_encode(myfile,
+		for line in io.open(_unicode_encode(myfile,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['content'], errors='replace'):
 			lineno += 1
@@ -435,7 +431,7 @@ def get_term_size():
 			pass
 	except ImportError:
 		pass
-	st, out = subprocess_getstatusoutput('stty size')
+	st, out = portage.subprocess_getstatusoutput('stty size')
 	if st == os.EX_OK:
 		out = out.split()
 		if len(out) == 2:
