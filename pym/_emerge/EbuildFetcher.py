@@ -25,7 +25,7 @@ class EbuildFetcher(SpawnProcess):
 
 	def already_fetched(self, settings):
 		"""
-		Returns True if all files are already exist locally and have correct
+		Returns True if all files already exist locally and have correct
 		digests, otherwise return False. When returning True, appropriate
 		digest checking messages are produced for display and/or logging.
 		When returning False, no messages are produced, since we assume
