@@ -2422,7 +2422,8 @@ class dblink(object):
 				# so we don't try to preserve the old copy.
 				continue
 			try:
-				consumers = linkmap.findConsumers(f)
+				consumers = linkmap.findConsumers(f,
+					exclude_providers=(installed_instance.isowner,))
 			except KeyError:
 				continue
 			if not consumers:

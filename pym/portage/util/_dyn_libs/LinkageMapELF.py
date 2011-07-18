@@ -603,7 +603,7 @@ class LinkageMapELF(object):
 						rValue[soname].add(provider)
 		return rValue
 
-	def findConsumers(self, obj):
+	def findConsumers(self, obj, exclude_providers=None):
 		"""
 		Find consumers of an object or object key.
 
@@ -626,8 +626,20 @@ class LinkageMapELF(object):
 		corresponding libtool archive (*.la) files to detect such consumers
 		(revdep-rebuild is able to detect them).
 
+		The exclude_providers argument is useful for determining whether
+		removal of one or more packages will create unsatisfied consumers. When
+		this option is given, consumers are excluded from the results if there
+		is an alternative provider (which is not excluded) of the required
+		soname such that the consumers will remain satisfied if the files
+		owned by exclude_providers are removed.
+
 		@param obj: absolute path to an object or a key from _obj_properties
 		@type obj: string (example: '/usr/bin/bar') or _ObjectKey
+		@param exclude_providers: A collection of callables that each take a
+			single argument referring to the path of a library (example:
+			'/usr/lib/libssl.so.0.9.8'), and return True if the library is
+			owned by a provider which is planned for removal.
+		@type exclude_providers: collection
 		@rtype: set of strings (example: set(['/bin/foo', '/usr/bin/bar']))
 		@return: The return value is a soname -> set-of-library-paths, where
 		set-of-library-paths satisfy soname.
@@ -635,8 +647,6 @@ class LinkageMapELF(object):
 		"""
 
 		os = _os_merge
-
-		rValue = set()
 
 		if not self._libs:
 			self.rebuild()
@@ -672,15 +682,47 @@ class LinkageMapELF(object):
 					(soname_st.st_dev, soname_st.st_ino):
 					return set()
 
-		# Determine the directory(ies) from the set of objects.
-		objs_dir_keys = set(self._path_key(os.path.dirname(x)) for x in objs)
-		defpath_keys = set(self._path_key(x) for x in self._defpath)
-
 		arch, _needed, _path, soname, _objs = self._obj_properties[obj_key]
-		if arch in self._libs and soname in self._libs[arch]:
+
+		soname_node = None
+		arch_map = self._libs.get(arch)
+		if arch_map is not None:
+			soname_node = arch_map.get(soname)
+
+		defpath_keys = set(self._path_key(x) for x in self._defpath)
+		satisfied_consumer_keys = set()
+		if soname_node is not None:
+			if exclude_providers is not None:
+				relevant_dir_keys = set()
+				for provider_key in soname_node.providers:
+					provider_objs = self._obj_properties[provider_key][4]
+					for p in provider_objs:
+						for excluded in exclude_providers:
+							if not excluded(p):
+								# This provider is not excluded. It will
+								# satisfy a consumer of this soname if it
+								# is in the default ld.so path or the
+								# consumer's runpath.
+								relevant_dir_keys.add(
+									self._path_key(os.path.dirname(p)))
+
+				for consumer_key in soname_node.consumers:
+					_arch, _needed, path, _soname, _consumer_objs = \
+						self._obj_properties[consumer_key]
+					path_keys = defpath_keys.copy()
+					path_keys.update(self._path_key(x) for x in path)
+					if relevant_dir_keys.intersection(path_keys):
+						satisfied_consumer_keys.add(consumer_key)
+
+		rValue = set()
+		if soname_node is not None:
 			# For each potential consumer, add it to rValue if an object from the
 			# arguments resides in the consumer's runpath.
-			for consumer_key in self._libs[arch][soname].consumers:
+			objs_dir_keys = set(self._path_key(os.path.dirname(x))
+				for x in objs)
+			for consumer_key in soname_node.consumers:
+				if consumer_key in satisfied_consumer_keys:
+					continue
 				_arch, _needed, path, _soname, consumer_objs = \
 						self._obj_properties[consumer_key]
 				path_keys = defpath_keys.union(self._path_key(x) for x in path)
