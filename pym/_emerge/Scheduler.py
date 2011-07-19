@@ -1661,10 +1661,10 @@ class Scheduler(PollScheduler):
 				self._pkg_count.curval += 1
 
 			task = self._task(pkg)
-			self._running_tasks[id(task)] = task
 
 			if pkg.installed:
 				merge = PackageMerge(merge=task)
+				self._running_tasks[id(merge)] = merge
 				merge.addExitListener(self._merge_exit)
 				self._task_queues.merge.addFront(merge)
 
@@ -1672,6 +1672,7 @@ class Scheduler(PollScheduler):
 				self._jobs += 1
 				self._previous_job_start_time = time.time()
 				self._status_display.running = self._jobs
+				self._running_tasks[id(task)] = task
 				task.addExitListener(self._extract_exit)
 				self._task_queues.jobs.add(task)
 
@@ -1679,6 +1680,7 @@ class Scheduler(PollScheduler):
 				self._jobs += 1
 				self._previous_job_start_time = time.time()
 				self._status_display.running = self._jobs
+				self._running_tasks[id(task)] = task
 				task.addExitListener(self._build_exit)
 				self._task_queues.jobs.add(task)
 
