@@ -842,8 +842,7 @@ def parse_opts(tmpcmdline, silent=False):
 		},
 
 		"--selective": {
-			"help"    : "similar to the --noreplace but does not take " + \
-			            "precedence over options such as --newuse",
+			"help"    : "identical to --noreplace",
 			"type"    : "choice",
 			"choices" : true_y_or_n
 		},
