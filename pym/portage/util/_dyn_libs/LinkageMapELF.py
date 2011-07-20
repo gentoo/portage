@@ -697,14 +697,18 @@ class LinkageMapELF(object):
 				for provider_key in soname_node.providers:
 					provider_objs = self._obj_properties[provider_key][4]
 					for p in provider_objs:
-						for excluded in exclude_providers:
-							if not excluded(p):
-								# This provider is not excluded. It will
-								# satisfy a consumer of this soname if it
-								# is in the default ld.so path or the
-								# consumer's runpath.
-								relevant_dir_keys.add(
-									self._path_key(os.path.dirname(p)))
+						provider_excluded = False
+						for excluded_provider_isowner in exclude_providers:
+							if excluded_provider_isowner(p):
+								provider_excluded = True
+								break
+						if not provider_excluded:
+							# This provider is not excluded. It will
+							# satisfy a consumer of this soname if it
+							# is in the default ld.so path or the
+							# consumer's runpath.
+							relevant_dir_keys.add(
+								self._path_key(os.path.dirname(p)))
 
 				for consumer_key in soname_node.consumers:
 					_arch, _needed, path, _soname, _consumer_objs = \
