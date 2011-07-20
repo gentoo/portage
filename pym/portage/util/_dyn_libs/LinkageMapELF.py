@@ -710,13 +710,14 @@ class LinkageMapELF(object):
 							relevant_dir_keys.add(
 								self._path_key(os.path.dirname(p)))
 
-				for consumer_key in soname_node.consumers:
-					_arch, _needed, path, _soname, _consumer_objs = \
-						self._obj_properties[consumer_key]
-					path_keys = defpath_keys.copy()
-					path_keys.update(self._path_key(x) for x in path)
-					if relevant_dir_keys.intersection(path_keys):
-						satisfied_consumer_keys.add(consumer_key)
+				if relevant_dir_keys:
+					for consumer_key in soname_node.consumers:
+						_arch, _needed, path, _soname, _consumer_objs = \
+							self._obj_properties[consumer_key]
+						path_keys = defpath_keys.copy()
+						path_keys.update(self._path_key(x) for x in path)
+						if relevant_dir_keys.intersection(path_keys):
+							satisfied_consumer_keys.add(consumer_key)
 
 		rValue = set()
 		if soname_node is not None:
