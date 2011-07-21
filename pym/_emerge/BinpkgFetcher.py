@@ -100,6 +100,8 @@ class BinpkgFetcher(SpawnProcess):
 
 		self.args = fetch_args
 		self.env = fetch_env
+		if settings.selinux_enabled():
+			self._selinux_type = settings["PORTAGE_FETCH_T"]
 		SpawnProcess._start(self)
 
 	def _pipe(self, fd_pipes):
