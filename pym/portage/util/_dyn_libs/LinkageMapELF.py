@@ -26,6 +26,25 @@ class LinkageMapELF(object):
 	_soname_map_class = slot_dict_class(
 		("consumers", "providers"), prefix="")
 
+	class _obj_properies_class(object):
+
+		__slots__ = ("arch", "needed", "runpaths", "soname", "alt_paths",)
+
+		def __init__(self, arch, needed, runpaths, soname, alt_paths):
+			self.arch = arch
+			self.needed = needed
+			self.runpaths = runpaths
+			self.soname = soname
+			self.alt_paths = alt_paths
+
+		def __iter__(self):
+			"""Backward compatibility with 5-tuples."""
+			yield self.arch
+			yield self.needed
+			yield self.runpaths
+			yield self.soname
+			yield self.alt_paths
+
 	def __init__(self, vardbapi):
 		self._dbapi = vardbapi
 		self._root = self._dbapi.settings['ROOT']
@@ -295,10 +314,11 @@ class LinkageMapELF(object):
 			myprops = obj_properties.get(obj_key)
 			if myprops is None:
 				indexed = False
-				myprops = (arch, needed, path, soname, [])
+				myprops = self._obj_properies_class(
+					arch, needed, path, soname, [])
 				obj_properties[obj_key] = myprops
 			# All object paths are added into the obj_properties tuple.
-			myprops[4].append(obj)
+			myprops.alt_paths.append(obj)
 
 			# Don't index the same file more that once since only one
 			# set of data can be correct and therefore mixing data
@@ -430,7 +450,7 @@ class LinkageMapELF(object):
 							writemsg_level(
 								_("Found provider outside of findProviders:") + \
 								(" %s -> %s %s\n" % (os.path.join(directory, soname),
-								self._obj_properties[cachedKey][4], libraries)),
+								self._obj_properties[cachedKey].alt_paths, libraries)),
 								level=logging.DEBUG,
 								noiselevel=-1)
 						# A valid library has been found, so there is no need to
@@ -516,7 +536,7 @@ class LinkageMapELF(object):
 		if obj_key not in self._obj_properties:
 			raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 		basename = os.path.basename(obj)
-		soname = self._obj_properties[obj_key][3]
+		soname = self._obj_properties[obj_key].soname
 		return len(basename) < len(soname) and \
 			basename.endswith(".so") and \
 			soname.startswith(basename[:-3])
@@ -537,7 +557,7 @@ class LinkageMapELF(object):
 		for arch_map in self._libs.values():
 			for soname_map in arch_map.values():
 				for obj_key in soname_map.providers:
-					rValue.extend(self._obj_properties[obj_key][4])
+					rValue.extend(self._obj_properties[obj_key].alt_paths)
 		return rValue
 
 	def getSoname(self, obj):
@@ -556,10 +576,10 @@ class LinkageMapELF(object):
 			obj_key = obj
 			if obj_key not in self._obj_properties:
 				raise KeyError("%s not in object list" % obj_key)
-			return self._obj_properties[obj_key][3]
+			return self._obj_properties[obj_key].soname
 		if obj not in self._obj_key_cache:
 			raise KeyError("%s not in object list" % obj)
-		return self._obj_properties[self._obj_key_cache[obj]][3]
+		return self._obj_properties[self._obj_key_cache[obj]].soname
 
 	def findProviders(self, obj):
 		"""
@@ -608,7 +628,7 @@ class LinkageMapELF(object):
 			# For each potential provider of the soname, add it to rValue if it
 			# resides in the obj's runpath.
 			for provider_key in self._libs[arch][soname].providers:
-				providers = self._obj_properties[provider_key][4]
+				providers = self._obj_properties[provider_key].alt_paths
 				for provider in providers:
 					if self._path_key(os.path.dirname(provider)) in path_keys:
 						rValue[soname].add(provider)
@@ -667,7 +687,7 @@ class LinkageMapELF(object):
 			obj_key = obj
 			if obj_key not in self._obj_properties:
 				raise KeyError("%s not in object list" % obj_key)
-			objs = self._obj_properties[obj_key][4]
+			objs = self._obj_properties[obj_key].alt_paths
 		else:
 			objs = set([obj])
 			obj_key = self._obj_key(obj)
@@ -679,7 +699,7 @@ class LinkageMapELF(object):
 		# other version, this lib will be shadowed and won't
 		# have any consumers.
 		if not isinstance(obj, self._ObjectKey):
-			soname = self._obj_properties[obj_key][3]
+			soname = self._obj_properties[obj_key].soname
 			soname_link = os.path.join(self._root,
 				os.path.dirname(obj).lstrip(os.path.sep), soname)
 			obj_path = os.path.join(self._root, obj.lstrip(os.sep))
@@ -706,7 +726,7 @@ class LinkageMapELF(object):
 			if exclude_providers is not None:
 				relevant_dir_keys = set()
 				for provider_key in soname_node.providers:
-					provider_objs = self._obj_properties[provider_key][4]
+					provider_objs = self._obj_properties[provider_key].alt_paths
 					for p in provider_objs:
 						provider_excluded = False
 						for excluded_provider_isowner in exclude_providers:
