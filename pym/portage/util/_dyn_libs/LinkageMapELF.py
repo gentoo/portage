@@ -265,6 +265,10 @@ class LinkageMapELF(object):
 			for x in plibs:
 				lines.append(("plibs", ";".join(['', x, '', '', ''])))
 
+		# Share identical frozenset instances when available,
+		# in order to conserve memory.
+		frozensets = {}
+
 		for location, l in lines:
 			l = l.rstrip("\n")
 			if not l:
@@ -278,21 +282,23 @@ class LinkageMapELF(object):
 			arch = fields[0]
 			obj = fields[1]
 			soname = fields[2]
-			path = set([normalize_path(x) \
+			path = frozenset(normalize_path(x) \
 				for x in filter(None, fields[3].replace(
 				"${ORIGIN}", os.path.dirname(obj)).replace(
-				"$ORIGIN", os.path.dirname(obj)).split(":"))])
-			needed = [x for x in fields[4].split(",") if x]
+				"$ORIGIN", os.path.dirname(obj)).split(":")))
+			path = frozensets.setdefault(path, path)
+			needed = frozenset(x for x in fields[4].split(",") if x)
+			needed = frozensets.setdefault(needed, needed)
 
 			obj_key = self._obj_key(obj)
 			indexed = True
 			myprops = obj_properties.get(obj_key)
 			if myprops is None:
 				indexed = False
-				myprops = (arch, needed, path, soname, set())
+				myprops = (arch, needed, path, soname, [])
 				obj_properties[obj_key] = myprops
 			# All object paths are added into the obj_properties tuple.
-			myprops[4].add(obj)
+			myprops[4].append(obj)
 
 			# Don't index the same file more that once since only one
 			# set of data can be correct and therefore mixing data
@@ -309,16 +315,21 @@ class LinkageMapELF(object):
 				soname_map = arch_map.get(soname)
 				if soname_map is None:
 					soname_map = self._soname_map_class(
-						providers=set(), consumers=set())
+						providers=[], consumers=[])
 					arch_map[soname] = soname_map
-				soname_map.providers.add(obj_key)
+				soname_map.providers.append(obj_key)
 			for needed_soname in needed:
 				soname_map = arch_map.get(needed_soname)
 				if soname_map is None:
 					soname_map = self._soname_map_class(
-						providers=set(), consumers=set())
+						providers=[], consumers=[])
 					arch_map[needed_soname] = soname_map
-				soname_map.consumers.add(obj_key)
+				soname_map.consumers.append(obj_key)
+
+		for arch, sonames in libs.items():
+			for soname_node in sonames.values():
+				soname_node.providers = tuple(set(soname_node.providers))
+				soname_node.consumers = tuple(set(soname_node.consumers))
 
 	def listBrokenBinaries(self, debug=False):
 		"""
