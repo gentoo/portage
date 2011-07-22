@@ -260,7 +260,15 @@ def display_preserved_libs(vardbapi, myopts):
 					consumer_map[f] = consumers
 					search_for_owners.update(consumers[:MAX_DISPLAY+1])
 
-			owners = vardbapi._owners.getFileOwnerMap(search_for_owners)
+			owners = {}
+			for f in search_for_owners:
+				owner_set = set()
+				for owner in linkmap.getOwners(f):
+					owner_dblink = vardbapi._dblink(owner)
+					if owner_dblink.exists():
+						owner_set.add(owner_dblink)
+				if owner_set:
+					owners[f] = owner_set
 
 		for cpv in plibdata:
 			print(colorize("WARN", ">>>") + " package: %s" % cpv)

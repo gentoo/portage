@@ -28,14 +28,16 @@ class LinkageMapELF(object):
 
 	class _obj_properies_class(object):
 
-		__slots__ = ("arch", "needed", "runpaths", "soname", "alt_paths",)
+		__slots__ = ("arch", "needed", "runpaths", "soname", "alt_paths",
+			"owner",)
 
-		def __init__(self, arch, needed, runpaths, soname, alt_paths):
+		def __init__(self, arch, needed, runpaths, soname, alt_paths, owner):
 			self.arch = arch
 			self.needed = needed
 			self.runpaths = runpaths
 			self.soname = soname
 			self.alt_paths = alt_paths
+			self.owner = owner
 
 		def __iter__(self):
 			"""Backward compatibility with 5-tuples."""
@@ -204,7 +206,7 @@ class LinkageMapELF(object):
 		# overrides any data from previously installed files.
 		if include_file is not None:
 			for line in grabfile(include_file):
-				lines.append((include_file, line))
+				lines.append((None, include_file, line))
 
 		aux_keys = [self._needed_aux_key]
 		can_lock = os.access(os.path.dirname(self._dbapi._dbroot), os.W_OK)
@@ -217,16 +219,16 @@ class LinkageMapELF(object):
 				needed_file = self._dbapi.getpath(cpv,
 					filename=self._needed_aux_key)
 				for line in self._dbapi.aux_get(cpv, aux_keys)[0].splitlines():
-					lines.append((needed_file, line))
+					lines.append((cpv, needed_file, line))
 		finally:
 			if can_lock:
 				self._dbapi.unlock()
 
 		# have to call scanelf for preserved libs here as they aren't 
 		# registered in NEEDED.ELF.2 files
-		plibs = set()
+		plibs = {}
 		if preserve_paths is not None:
-			plibs.update(preserve_paths)
+			plibs.update((x, None) for x in preserve_paths)
 		if self._dbapi._plib_registry and \
 			self._dbapi._plib_registry.hasEntries():
 			for cpv, items in \
@@ -238,7 +240,7 @@ class LinkageMapELF(object):
 					# already represented via the preserve_paths
 					# parameter.
 					continue
-				plibs.update(items)
+				plibs.update((x, cpv) for x in items)
 		if plibs:
 			args = ["/usr/bin/scanelf", "-qF", "%a;%F;%S;%r;%n"]
 			args.extend(os.path.join(root, x.lstrip("." + os.sep)) \
@@ -270,8 +272,8 @@ class LinkageMapELF(object):
 							level=logging.ERROR, noiselevel=-1)
 						continue
 					fields[1] = fields[1][root_len:]
-					plibs.discard(fields[1])
-					lines.append(("scanelf", ";".join(fields)))
+					owner = plibs.pop(fields[1], None)
+					lines.append((owner, "scanelf", ";".join(fields)))
 				proc.wait()
 
 		if plibs:
@@ -281,14 +283,14 @@ class LinkageMapELF(object):
 			# preserved library has an entry in self._obj_properties. This
 			# is important in order to prevent findConsumers from raising
 			# an unwanted KeyError.
-			for x in plibs:
-				lines.append(("plibs", ";".join(['', x, '', '', ''])))
+			for cpv, x in plibs.items():
+				lines.append((cpv, "plibs", ";".join(['', x, '', '', ''])))
 
 		# Share identical frozenset instances when available,
 		# in order to conserve memory.
 		frozensets = {}
 
-		for location, l in lines:
+		for owner, location, l in lines:
 			l = l.rstrip("\n")
 			if not l:
 				continue
@@ -315,7 +317,7 @@ class LinkageMapELF(object):
 			if myprops is None:
 				indexed = False
 				myprops = self._obj_properies_class(
-					arch, needed, path, soname, [])
+					arch, needed, path, soname, [], owner)
 				obj_properties[obj_key] = myprops
 			# All object paths are added into the obj_properties tuple.
 			myprops.alt_paths.append(obj)
@@ -559,6 +561,32 @@ class LinkageMapELF(object):
 				for obj_key in soname_map.providers:
 					rValue.extend(self._obj_properties[obj_key].alt_paths)
 		return rValue
+
+	def getOwners(self, obj):
+		"""
+		Return the package(s) associated with an object. Raises KeyError
+		if the object is unknown. Returns an empty tuple if the owner(s)
+		are unknown.
+
+		@param obj: absolute path to an object
+		@type obj: string (example: '/usr/bin/bar')
+		@rtype: tuple
+		@return: a tuple of cpv
+		"""
+		if not self._libs:
+			self.rebuild()
+		if isinstance(obj, self._ObjectKey):
+			obj_key = obj
+		else:
+			obj_key = self._obj_key_cache.get(obj)
+			if obj_key is None:
+				raise KeyError("%s not in object list" % obj)
+		obj_props = self._obj_properties.get(obj_key)
+		if obj_props is None:
+			raise KeyError("%s not in object list" % obj_key)
+		if obj_props.owner is None:
+			return ()
+		return (obj_props.owner,)
 
 	def getSoname(self, obj):
 		"""

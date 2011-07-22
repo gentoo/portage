@@ -992,7 +992,15 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 						search_files.update(providers)
 
 			writemsg_level(">>> Assigning files to packages...\n")
-			file_owners = real_vardb._owners.getFileOwnerMap(search_files)
+			file_owners = {}
+			for f in search_files:
+				owner_set = set()
+				for owner in linkmap.getOwners(f):
+					owner_dblink = real_vardb._dblink(owner)
+					if owner_dblink.exists():
+						owner_set.add(owner_dblink)
+				if owner_set:
+					file_owners[f] = owner_set
 
 			for pkg, consumers in list(consumer_map.items()):
 				for lib, consumer_providers in list(consumers.items()):
