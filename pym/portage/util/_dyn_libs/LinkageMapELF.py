@@ -39,14 +39,6 @@ class LinkageMapELF(object):
 			self.alt_paths = alt_paths
 			self.owner = owner
 
-		def __iter__(self):
-			"""Backward compatibility with 5-tuples."""
-			yield self.arch
-			yield self.needed
-			yield self.runpaths
-			yield self.soname
-			yield self.alt_paths
-
 	def __init__(self, vardbapi):
 		self._dbapi = vardbapi
 		self._root = self._dbapi.settings['ROOT']
@@ -405,8 +397,13 @@ class LinkageMapELF(object):
 					if obj_key.file_exists():
 						# Get the arch and soname from LinkageMap._obj_properties if
 						# it exists. Otherwise, None.
-						arch, _needed, _path, soname, _objs = \
-								self._obj_properties.get(obj_key, (None,)*5)
+						obj_props = self._obj_properties.get(obj_key)
+						if obj_props is None:
+							arch = None
+							soname = None
+						else:
+							arch = obj_props.arch
+							soname = obj_props.soname
 						return cache_self.cache.setdefault(obj, \
 								(arch, soname, obj_key, True))
 					else:
@@ -419,7 +416,10 @@ class LinkageMapELF(object):
 
 		# Iterate over all obj_keys and their providers.
 		for obj_key, sonames in providers.items():
-			arch, _needed, path, _soname, objs = self._obj_properties[obj_key]
+			obj_props = self._obj_properties[obj_key]
+			arch = obj_props.arch
+			path = obj_props.runpaths
+			objs = obj_props.alt_paths
 			path = path.union(self._defpath)
 			# Iterate over each needed soname and the set of library paths that
 			# fulfill the soname to determine if the dependency is broken.
@@ -647,7 +647,10 @@ class LinkageMapELF(object):
 			if obj_key not in self._obj_properties:
 				raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 
-		arch, needed, path, _soname, _objs = self._obj_properties[obj_key]
+		obj_props = self._obj_properties[obj_key]
+		arch = obj_props.arch
+		needed = obj_props.needed
+		path = obj_props.runpaths
 		path_keys = set(self._path_key(x) for x in path.union(self._defpath))
 		for soname in needed:
 			rValue[soname] = set()
@@ -741,7 +744,9 @@ class LinkageMapELF(object):
 					(soname_st.st_dev, soname_st.st_ino):
 					return set()
 
-		arch, _needed, _path, soname, _objs = self._obj_properties[obj_key]
+		obj_props = self._obj_properties[obj_key]
+		arch = obj_props.arch
+		soname = obj_props.soname
 
 		soname_node = None
 		arch_map = self._libs.get(arch)
@@ -771,8 +776,7 @@ class LinkageMapELF(object):
 
 				if relevant_dir_keys:
 					for consumer_key in soname_node.consumers:
-						_arch, _needed, path, _soname, _consumer_objs = \
-							self._obj_properties[consumer_key]
+						path = self._obj_properties[consumer_key].runpaths
 						path_keys = defpath_keys.copy()
 						path_keys.update(self._path_key(x) for x in path)
 						if relevant_dir_keys.intersection(path_keys):
@@ -787,8 +791,9 @@ class LinkageMapELF(object):
 			for consumer_key in soname_node.consumers:
 				if consumer_key in satisfied_consumer_keys:
 					continue
-				_arch, _needed, path, _soname, consumer_objs = \
-						self._obj_properties[consumer_key]
+				consumer_props = self._obj_properties[consumer_key]
+				path = consumer_props.runpaths
+				consumer_objs = consumer_props.alt_paths
 				path_keys = defpath_keys.union(self._path_key(x) for x in path)
 				if objs_dir_keys.intersection(path_keys):
 					rValue.update(consumer_objs)
