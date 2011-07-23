@@ -3824,12 +3824,20 @@ class dblink(object):
 				myrealto = normalize_path(os.path.join(destroot, myabsto))
 				if mydmode!=None:
 					#destination exists
-					if not stat.S_ISLNK(mydmode):
-						if stat.S_ISDIR(mydmode):
-							# directory in the way: we can't merge a symlink over a directory
-							# we won't merge this, continue with next file...
-							continue
+					if stat.S_ISDIR(mydmode):
+						# we can't merge a symlink over a directory
+						newdest = self._new_backup_path(mydest)
+						msg = []
+						msg.append("")
+						msg.append(_("Installation of a symlink is blocked by a directory:"))
+						msg.append("  '%s'" % mydest)
+						msg.append(_("This symlink will be merged with a different name:"))
+						msg.append("  '%s'" % newdest)
+						msg.append("")
+						self._eerror("preinst", msg)
+						mydest = newdest
 
+					elif not stat.S_ISLNK(mydmode):
 						if os.path.exists(mysrc) and stat.S_ISDIR(os.stat(mysrc)[stat.ST_MODE]):
 							# Kill file blocking installation of symlink to dir #71787
 							pass
