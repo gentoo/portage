@@ -568,6 +568,11 @@ class LinkageMapELF(object):
 		if the object is unknown. Returns an empty tuple if the owner(s)
 		are unknown.
 
+		NOTE: For preserved libraries, the owner(s) may have been been
+		previously uninstalled, but these uninstalled owners can be
+		returned by this method since they are registered in the
+		PreservedLibsRegistry.
+
 		@param obj: absolute path to an object
 		@type obj: string (example: '/usr/bin/bar')
 		@rtype: tuple
