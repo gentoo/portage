@@ -275,7 +275,7 @@ class LinkageMapELF(object):
 			# preserved library has an entry in self._obj_properties. This
 			# is important in order to prevent findConsumers from raising
 			# an unwanted KeyError.
-			for cpv, x in plibs.items():
+			for x, cpv in plibs.items():
 				lines.append((cpv, "plibs", ";".join(['', x, '', '', ''])))
 
 		# Share identical frozenset instances when available,
