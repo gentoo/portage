@@ -2289,7 +2289,10 @@ class depgraph(object):
 							# specified on the command line.
 							self._dynamic_config._pprovided_args.append((arg, atom))
 							continue
-					if pkg.installed and "selective" not in self._dynamic_config.myparams:
+					if pkg.installed and \
+						"selective" not in self._dynamic_config.myparams and \
+						not self._frozen_config.excluded_pkgs.findAtomForPackage(
+						pkg, modified_use=self._pkg_use_enabled(pkg)):
 						self._dynamic_config._unsatisfied_deps_for_display.append(
 							((myroot, atom), {"myparent" : arg}))
 						# Previous behavior was to bail out in this case, but
@@ -3331,6 +3334,9 @@ class depgraph(object):
 		"""
 		if "selective" not in self._dynamic_config.myparams and \
 			pkg.root == self._frozen_config.target_root:
+			if self._frozen_config.excluded_pkgs.findAtomForPackage(pkg,
+				modified_use=self._pkg_use_enabled(pkg)):
+				return True
 			try:
 				next(self._iter_atoms_for_pkg(pkg))
 			except StopIteration:
