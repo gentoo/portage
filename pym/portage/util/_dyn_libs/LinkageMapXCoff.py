@@ -129,7 +129,7 @@ class LinkageMapXCoff(LinkageMapELF):
 		root = self._root
 		root_len = len(root) - 1
 		self._clear_cache()
-		self._defpath.update(getlibpaths(self._root))
+		self._defpath.update(getlibpaths(self._root, env=self._dbapi.settings))
 		libs = self._libs
 		obj_properties = self._obj_properties
 
@@ -139,7 +139,7 @@ class LinkageMapXCoff(LinkageMapELF):
 		# overrides any data from previously installed files.
 		if include_file is not None:
 			for line in grabfile(include_file):
-				lines.append((include_file, line))
+				lines.append((None, include_file, line))
 
 		aux_keys = [self._needed_aux_key]
 		can_lock = os.access(os.path.dirname(self._dbapi._dbroot), os.W_OK)
@@ -152,16 +152,16 @@ class LinkageMapXCoff(LinkageMapELF):
 				needed_file = self._dbapi.getpath(cpv,
 					filename=self._needed_aux_key)
 				for line in self._dbapi.aux_get(cpv, aux_keys)[0].splitlines():
-					lines.append((needed_file, line))
+					lines.append((cpv, needed_file, line))
 		finally:
 			if can_lock:
 				self._dbapi.unlock()
 
 		# have to call scanelf for preserved libs here as they aren't 
 		# registered in NEEDED.XCOFF.1 files
-		plibs = set()
+		plibs = {}
 		if preserve_paths is not None:
-			plibs.update(preserve_paths)
+			plibs.update((x, None) for x in preserve_paths)
 		if self._dbapi._plib_registry and \
 			self._dbapi._plib_registry.hasEntries():
 			for cpv, items in \
@@ -173,7 +173,7 @@ class LinkageMapXCoff(LinkageMapELF):
 					# already represented via the preserve_paths
 					# parameter.
 					continue
-				plibs.update(items)
+				plibs.update((x, cpv) for x in items)
 		if plibs:
 			for x in plibs:
 				args = [BASH_BINARY, "-c", ':'
@@ -225,8 +225,8 @@ class LinkageMapXCoff(LinkageMapELF):
 							level=logging.ERROR, noiselevel=-1)
 						continue
 					fields[1] = fields[1][root_len:]
-					plibs.discard(fields[1])
-					lines.append(("aixdll-query", ";".join(fields)))
+					owner = plibs.pop(fields[1], None)
+					lines.append((owner, "aixdll-query", ";".join(fields)))
 				proc.wait()
 
 		if plibs:
@@ -237,10 +237,13 @@ class LinkageMapXCoff(LinkageMapELF):
 			# an entry in self._obj_properties.  This is important in
 			# order to prevent findConsumers from raising an unwanted
 			# KeyError.
-			for x in plibs:
-				lines.append(("plibs", ";".join(['', x, '', '', ''])))
+			for x, cpv in plibs.items():
+				lines.append((cpv, "plibs", ";".join(['', x, '', '', ''])))
+		# Share identical frozenset instances when available,
+		# in order to conserve memory.
+		frozensets = {}
 
-		for location, l in lines:
+		for owner, location, l in lines:
 			l = l.rstrip("\n")
 			if not l:
 				continue
@@ -265,21 +268,24 @@ class LinkageMapXCoff(LinkageMapELF):
 
 			obj = as_contentmember(fields[1])
 			soname = as_contentmember(fields[2])
-			path = set([normalize_path(x) \
+			path = frozenset(normalize_path(x) \
 				for x in filter(None, fields[3].replace(
 				"${ORIGIN}", os.path.dirname(obj)).replace(
-				"$ORIGIN", os.path.dirname(obj)).split(":"))])
-			needed = [as_contentmember(x) for x in fields[4].split(",") if x]
+				"$ORIGIN", os.path.dirname(obj)).split(":")))
+			path = frozensets.setdefault(path, path)
+			needed = frozenset(as_contentmember(x) for x in fields[4].split(",") if x)
+			needed = frozensets.setdefault(needed, needed)
 
 			obj_key = self._obj_key(obj)
 			indexed = True
 			myprops = obj_properties.get(obj_key)
 			if myprops is None:
 				indexed = False
-				myprops = (arch, needed, path, soname, set())
+				myprops = self._obj_properies_class(
+					arch, needed, path, soname, [], owner)
 				obj_properties[obj_key] = myprops
 			# All object paths are added into the obj_properties tuple.
-			myprops[4].add(obj)
+			myprops.alt_paths.append(obj)
 
 			# Don't index the same file more that once since only one
 			# set of data can be correct and therefore mixing data
@@ -296,16 +302,21 @@ class LinkageMapXCoff(LinkageMapELF):
 				soname_map = arch_map.get(soname)
 				if soname_map is None:
 					soname_map = self._soname_map_class(
-						providers=set(), consumers=set())
+						providers=[], consumers=[])
 					arch_map[soname] = soname_map
-				soname_map.providers.add(obj_key)
+				soname_map.providers.append(obj_key)
 			for needed_soname in needed:
 				soname_map = arch_map.get(needed_soname)
 				if soname_map is None:
 					soname_map = self._soname_map_class(
-						providers=set(), consumers=set())
+						providers=[], consumers=[])
 					arch_map[needed_soname] = soname_map
-				soname_map.consumers.add(obj_key)
+				soname_map.consumers.append(obj_key)
+
+		for arch, sonames in libs.items():
+			for soname_node in sonames.values():
+				soname_node.providers = tuple(set(soname_node.providers))
+				soname_node.consumers = tuple(set(soname_node.consumers))
 
 	def getSoname(self, obj):
 		"""
@@ -323,8 +334,7 @@ class LinkageMapXCoff(LinkageMapELF):
 			obj_key = obj
 			if obj_key not in self._obj_properties:
 				raise KeyError("%s not in object list" % obj_key)
-			return self._obj_properties[obj_key][3]
+			return self._obj_properties[obj_key].soname
 		if obj not in self._obj_key_cache:
 			raise KeyError("%s not in object list" % obj)
-		return self._obj_properties[self._obj_key_cache[obj]][3]
-
+		return self._obj_properties[self._obj_key_cache[obj]].soname
