@@ -276,7 +276,7 @@ class Binpkg(CompositeTask):
 			self._buildprefix = self._buildprefix.strip()
 		# We want to install in "our" prefix, not the binary one
 		self.settings["EPREFIX"] = EPREFIX
-		f = codecs.open(_unicode_encode(os.path.join(infloc, 'EPREFIX'),
+		f = io.open(_unicode_encode(os.path.join(infloc, 'EPREFIX'),
 			encoding=_encodings['fs'], errors='strict'),
 			mode='w', encoding=_encodings['content'], errors='strict')
 		try:
