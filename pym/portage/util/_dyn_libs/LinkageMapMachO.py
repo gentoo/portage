@@ -323,14 +323,14 @@ class LinkageMapMachO(object):
 					installname_map = self._installname_map_class(
 						providers=[], consumers=[])
 					arch_map[install_name] = installname_map
-				installname_map.providers.add(obj_key)
+				installname_map.providers.append(obj_key)
 			for needed_installname in needed:
 				installname_map = arch_map.get(needed_installname)
 				if installname_map is None:
 					installname_map = self._installname_map_class(
 						providers=[], consumers=[])
 					arch_map[needed_installname] = installname_map
-				installname_map.consumers.add(obj_key)
+				installname_map.consumers.append(obj_key)
 
 		for arch, install_names in libs.items():
 			for install_name_node in install_names.values():
