@@ -49,6 +49,12 @@ portage-2.1.8
   many smaller python modules, making the code easier to navigate and allowing
   small parts of the portage api to be imported with less overhead.
 
+portage-2.1.7.17
+-------------
+* Add support for EAPI 3. This adds support for installation prefix, including
+  new EPREFIX, ED, and EROOT variables which are used by econf and einstall
+  helpers. Also, EAPI 3 adds xz extension support to the unpack helper.
+
 portage-2.1.7
 -------------
 
