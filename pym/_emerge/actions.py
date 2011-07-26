@@ -163,6 +163,8 @@ def action_build(settings, trees, mtimedb,
 	debug = "--debug" in myopts
 	verbose = "--verbose" in myopts
 	quiet = "--quiet" in myopts
+	myparams = create_depgraph_params(myopts, myaction)
+
 	if pretend or fetchonly:
 		# make the mtimedb readonly
 		mtimedb.filename = None
@@ -187,7 +189,6 @@ def action_build(settings, trees, mtimedb,
 		favorites = mtimedb["resume"].get("favorites")
 		if not isinstance(favorites, list):
 			favorites = []
-		myparams = create_depgraph_params(myopts, myaction)
 
 		resume_data = mtimedb["resume"]
 		mergelist = resume_data["mergelist"]
@@ -286,7 +287,6 @@ def action_build(settings, trees, mtimedb,
 			print(darkgreen("emerge: It seems we have nothing to resume..."))
 			return os.EX_OK
 
-		myparams = create_depgraph_params(myopts, myaction)
 		try:
 			success, mydepgraph, favorites = backtrack_depgraph(
 				settings, trees, myopts, myparams, myaction, myfiles, spinner)
@@ -331,7 +331,7 @@ def action_build(settings, trees, mtimedb,
 			if mergecount==0:
 				sets = trees[settings["ROOT"]]["root_config"].sets
 				world_candidates = None
-				if "--noreplace" in myopts and \
+				if "selective" in myparams and \
 					not oneshot and favorites:
 					# Sets that are not world candidates are filtered
 					# out here since the favorites list needs to be
@@ -340,7 +340,7 @@ def action_build(settings, trees, mtimedb,
 					world_candidates = [x for x in favorites \
 						if not (x.startswith(SETPREFIX) and \
 						not sets[x[1:]].world_candidate)]
-				if "--noreplace" in myopts and \
+				if "selective" in myparams and \
 					not oneshot and world_candidates:
 					print()
 					for x in world_candidates:
@@ -992,7 +992,15 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 						search_files.update(providers)
 
 			writemsg_level(">>> Assigning files to packages...\n")
-			file_owners = real_vardb._owners.getFileOwnerMap(search_files)
+			file_owners = {}
+			for f in search_files:
+				owner_set = set()
+				for owner in linkmap.getOwners(f):
+					owner_dblink = real_vardb._dblink(owner)
+					if owner_dblink.exists():
+						owner_set.add(owner_dblink)
+				if owner_set:
+					file_owners[f] = owner_set
 
 			for pkg, consumers in list(consumer_map.items()):
 				for lib, consumer_providers in list(consumers.items()):

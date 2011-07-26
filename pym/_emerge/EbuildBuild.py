@@ -124,6 +124,7 @@ class EbuildBuild(CompositeTask):
 			else:
 				fetcher = EbuildFetcher(
 					config_pool=self.config_pool,
+					ebuild_path=self._ebuild_path,
 					fetchall=self.opts.fetch_all_uri,
 					fetchonly=self.opts.fetchonly,
 					background=False,

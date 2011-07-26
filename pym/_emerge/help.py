@@ -565,12 +565,6 @@ def help(myopts, havecolor=1):
 		print("              ebuilds, or deps you specify on the command-line *will* cause")
 		print("              Portage to remerge the package, even if it is already installed.")
 		print("              Note that Portage won't remerge dependencies by default.")
-		desc = "Also note that this option takes " + \
-			"precedence over options such as --newuse, preventing a package " + \
-			"from being reinstalled even though the corresponding USE flag settings " + \
-			"may have changed."
-		for line in wrap(desc, desc_width):
-			print(desc_indent + line)
 		print() 
 		print("       "+green("--nospinner"))
 		print("              Disables the spinner regardless of terminal type.")
@@ -733,8 +727,7 @@ def help(myopts, havecolor=1):
 		print()
 		print("       " + green("--selective") + " [ %s | %s ]" % \
 			(turquoise("y"), turquoise("n")))
-		desc = "This is similar to the --noreplace option, except that it " + \
-			"does not take precedence over options such as --newuse. " + \
+		desc = "This identical to the --noreplace option. " + \
 			"Some options, such as --update, imply --selective. " + \
 			"Use --selective=n if you want to forcefully disable " + \
 			"--selective, regardless of options like --update."

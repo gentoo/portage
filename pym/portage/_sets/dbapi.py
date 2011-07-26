@@ -31,20 +31,12 @@ class EverythingSet(PackageSet):
 		cp_list = self._db.cp_list
 
 		for cp in self._db.cp_all():
-			cpv_list = cp_list(cp)
-
-			if len(cpv_list) > 1:
-				for cpv in cpv_list:
-					slot, = aux_get(cpv, db_keys)
-					atom = Atom("%s:%s" % (cp, slot))
-					if self._filter:
-						if self._filter(atom):
-							myatoms.append(atom)
-					else:
-						myatoms.append(atom)
-
-			else:
-				atom = Atom(cp)
+			for cpv in cp_list(cp):
+				# NOTE: Create SLOT atoms even when there is only one
+				# SLOT installed, in order to avoid the possibility
+				# of unwanted upgrades as reported in bug #338959.
+				slot, = aux_get(cpv, db_keys)
+				atom = Atom("%s:%s" % (cp, slot))
 				if self._filter:
 					if self._filter(atom):
 						myatoms.append(atom)

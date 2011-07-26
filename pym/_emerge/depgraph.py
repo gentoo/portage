@@ -2289,7 +2289,10 @@ class depgraph(object):
 							# specified on the command line.
 							self._dynamic_config._pprovided_args.append((arg, atom))
 							continue
-					if pkg.installed and "selective" not in self._dynamic_config.myparams:
+					if pkg.installed and \
+						"selective" not in self._dynamic_config.myparams and \
+						not self._frozen_config.excluded_pkgs.findAtomForPackage(
+						pkg, modified_use=self._pkg_use_enabled(pkg)):
 						self._dynamic_config._unsatisfied_deps_for_display.append(
 							((myroot, atom), {"myparent" : arg}))
 						# Previous behavior was to bail out in this case, but
@@ -3331,6 +3334,9 @@ class depgraph(object):
 		"""
 		if "selective" not in self._dynamic_config.myparams and \
 			pkg.root == self._frozen_config.target_root:
+			if self._frozen_config.excluded_pkgs.findAtomForPackage(pkg,
+				modified_use=self._pkg_use_enabled(pkg)):
+				return True
 			try:
 				next(self._iter_atoms_for_pkg(pkg))
 			except StopIteration:
@@ -3591,7 +3597,6 @@ class depgraph(object):
 		empty = "empty" in self._dynamic_config.myparams
 		selective = "selective" in self._dynamic_config.myparams
 		reinstall = False
-		noreplace = "--noreplace" in self._frozen_config.myopts
 		avoid_update = "--update" not in self._frozen_config.myopts
 		dont_miss_updates = "--update" in self._frozen_config.myopts
 		use_ebuild_visibility = self._frozen_config.myopts.get(
@@ -3679,16 +3684,6 @@ class depgraph(object):
 							continue
 
 					cpv = pkg.cpv
-					# Make --noreplace take precedence over --newuse.
-					if not pkg.installed and noreplace and \
-						cpv in vardb.match(atom):
-						inst_pkg = self._pkg(pkg.cpv, "installed",
-							root_config, installed=True)
-						if inst_pkg.visible:
-							# If the installed version is masked, it may
-							# be necessary to look at lower versions,
-							# in case there is a visible downgrade.
-							continue
 					reinstall_for_flags = None
 
 					if not pkg.installed or \

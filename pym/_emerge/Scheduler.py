@@ -229,7 +229,7 @@ class Scheduler(PollScheduler):
 
 		self._prefetchers = weakref.WeakValueDictionary()
 		self._pkg_queue = []
-		self._running_tasks = set()
+		self._running_tasks = {}
 		self._completed_tasks = set()
 
 		self._failed_pkgs = []
@@ -291,20 +291,9 @@ class Scheduler(PollScheduler):
 
 	def _terminate_tasks(self):
 		self._status_display.quiet = True
-		# Remove running_tasks that have been added to queues but
-		# haven't been started yet, since we're going to discard
-		# them and their start/exit handlers won't be called.
-		for build in self._task_queues.jobs._task_queue:
-			self._running_tasks.remove(build.pkg)
-		if self._merge_wait_queue:
-			for merge in self._merge_wait_queue:
-				self._running_tasks.remove(merge.merge.pkg)
-			self._merge_wait_queue.clear()
-		for merge in self._task_queues.merge._task_queue:
-			# Setup phases may be scheduled in this queue, but
-			# we're only interested in the PackageMerge instances.
-			if isinstance(merge, PackageMerge):
-				self._running_tasks.remove(merge.merge.pkg)
+		while self._running_tasks:
+			task_id, task = self._running_tasks.popitem()
+			task.cancel()
 		for q in self._task_queues.values():
 			q.clear()
 
@@ -552,10 +541,19 @@ class Scheduler(PollScheduler):
 
 	def _schedule_fetch(self, fetcher):
 		"""
-		Schedule a fetcher on the fetch queue, in order to
-		serialize access to the fetch log.
+		Schedule a fetcher, in order to control the number of concurrent
+		fetchers. If self._max_jobs is greater than 1 then the fetch
+		queue is bypassed and the fetcher is started immediately,
+		otherwise it is added to the front of the parallel-fetch queue.
+		NOTE: The parallel-fetch queue is currently used to serialize
+		access to the parallel-fetch log, so changes in the log handling
+		would be required before it would be possible to enable
+		concurrent fetching within the parallel-fetch queue.
 		"""
-		self._task_queues.fetch.addFront(fetcher)
+		if self._max_jobs > 1:
+			fetcher.start()
+		else:
+			self._task_queues.fetch.addFront(fetcher)
 
 	def _schedule_setup(self, setup_phase):
 		"""
@@ -1302,6 +1300,7 @@ class Scheduler(PollScheduler):
 		self._merge_exit(task)
 
 	def _merge_exit(self, merge):
+		self._running_tasks.pop(id(merge), None)
 		self._do_merge_exit(merge)
 		self._deallocate_config(merge.merge.settings)
 		if merge.returncode == os.EX_OK and \
@@ -1312,7 +1311,6 @@ class Scheduler(PollScheduler):
 
 	def _do_merge_exit(self, merge):
 		pkg = merge.merge.pkg
-		self._running_tasks.remove(pkg)
 		if merge.returncode != os.EX_OK:
 			settings = merge.merge.settings
 			build_dir = settings.get("PORTAGE_BUILDDIR")
@@ -1357,15 +1355,16 @@ class Scheduler(PollScheduler):
 		mtimedb.commit()
 
 	def _build_exit(self, build):
+		self._running_tasks.pop(id(build), None)
 		if build.returncode == os.EX_OK and self._terminated_tasks:
 			# We've been interrupted, so we won't
 			# add this to the merge queue.
 			self.curval += 1
-			self._running_tasks.remove(build.pkg)
 			self._deallocate_config(build.settings)
 		elif build.returncode == os.EX_OK:
 			self.curval += 1
 			merge = PackageMerge(merge=build)
+			self._running_tasks[id(merge)] = merge
 			if not build.build_opts.buildpkgonly and \
 				build.pkg in self._deep_system_deps:
 				# Since dependencies on system packages are frequently
@@ -1377,7 +1376,6 @@ class Scheduler(PollScheduler):
 				self._task_queues.merge.add(merge)
 				self._status_display.merges = len(self._task_queues.merge)
 		else:
-			self._running_tasks.remove(build.pkg)
 			settings = build.settings
 			build_dir = settings.get("PORTAGE_BUILDDIR")
 			build_log = settings.get("PORTAGE_LOG_FILE")
@@ -1663,10 +1661,10 @@ class Scheduler(PollScheduler):
 				self._pkg_count.curval += 1
 
 			task = self._task(pkg)
-			self._running_tasks.add(pkg)
 
 			if pkg.installed:
 				merge = PackageMerge(merge=task)
+				self._running_tasks[id(merge)] = merge
 				merge.addExitListener(self._merge_exit)
 				self._task_queues.merge.addFront(merge)
 
@@ -1674,6 +1672,7 @@ class Scheduler(PollScheduler):
 				self._jobs += 1
 				self._previous_job_start_time = time.time()
 				self._status_display.running = self._jobs
+				self._running_tasks[id(task)] = task
 				task.addExitListener(self._extract_exit)
 				self._task_queues.jobs.add(task)
 
@@ -1681,6 +1680,7 @@ class Scheduler(PollScheduler):
 				self._jobs += 1
 				self._previous_job_start_time = time.time()
 				self._status_display.running = self._jobs
+				self._running_tasks[id(task)] = task
 				task.addExitListener(self._build_exit)
 				self._task_queues.jobs.add(task)
 
