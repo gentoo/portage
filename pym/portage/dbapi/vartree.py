@@ -62,6 +62,7 @@ from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 import errno
 import gc
 import io
+from itertools import chain
 import logging
 import os as _os
 import re
@@ -2699,7 +2700,8 @@ class dblink(object):
 
 		self.vartree.dbapi._plib_registry.pruneNonExisting()
 
-	def _collision_protect(self, srcroot, destroot, mypkglist, mycontents):
+	def _collision_protect(self, srcroot, destroot, mypkglist,
+		file_list, symlink_list):
 
 			os = _os_merge
 
@@ -2729,10 +2731,13 @@ class dblink(object):
 			showMessage = self._display_merge
 			stopmerge = False
 			collisions = []
+			symlink_collisions = []
 			destroot = self.settings['ROOT']
 			showMessage(_(" %s checking %d files for package collisions\n") % \
-				(colorize("GOOD", "*"), len(mycontents)))
-			for i, f in enumerate(mycontents):
+				(colorize("GOOD", "*"), len(file_list) + len(symlink_list)))
+			for i, (f, f_type) in enumerate(chain(
+				((f, "reg") for f in file_list),
+				((f, "sym") for f in symlink_list))):
 				if i % 1000 == 0 and i != 0:
 					showMessage(_("%d files checked ...\n") % i)
 
@@ -2772,6 +2777,14 @@ class dblink(object):
 				if f[0] != "/":
 					f="/"+f
 
+				if stat.S_ISDIR(dest_lstat.st_mode):
+					if f_type == "sym":
+						# This case is explicitly banned
+						# by PMS (see bug #326685).
+						symlink_collisions.append(f)
+						collisions.append(f)
+						continue
+
 				plibs = plib_inodes.get((dest_lstat.st_dev, dest_lstat.st_ino))
 				if plibs:
 					for path in plibs:
@@ -2806,7 +2819,7 @@ class dblink(object):
 									break
 					if stopmerge:
 						collisions.append(f)
-			return collisions, plib_collisions
+			return collisions, symlink_collisions, plib_collisions
 
 	def _lstat_inode_map(self, path_iter):
 		"""
@@ -3233,9 +3246,9 @@ class dblink(object):
 		blockers = self._blockers
 		if blockers is None:
 			blockers = []
-		collisions, plib_collisions = \
+		collisions, symlink_collisions, plib_collisions = \
 			self._collision_protect(srcroot, destroot,
-			others_in_slot + blockers, myfilelist + mylinklist)
+			others_in_slot + blockers, myfilelist, mylinklist)
 
 		# Make sure the ebuild environment is initialized and that ${T}/elog
 		# exists for logging of collision-protect eerror messages.
@@ -3294,7 +3307,7 @@ class dblink(object):
 			eerror(msg)
 
 			owners = None
-			if collision_protect or protect_owned:
+			if collision_protect or protect_owned or symlink_collisions:
 				msg = []
 				msg.append("")
 				msg.append(_("Searching all installed"
@@ -3333,12 +3346,21 @@ class dblink(object):
 			# it may not be visible via a scrollback buffer, especially
 			# if the number of file collisions is large. Therefore,
 			# show a summary at the end.
+			abort = False
 			if collision_protect:
+				abort = True
 				msg = _("Package '%s' NOT merged due to file collisions.") % \
 					self.settings.mycpv
 			elif protect_owned and owners:
+				abort = True
 				msg = _("Package '%s' NOT merged due to file collisions.") % \
 					self.settings.mycpv
+			elif symlink_collisions:
+				abort = True
+				msg = _("Package '%s' NOT merged due to collision " + \
+				"between a symlink and a directory which is explicitly " + \
+				"forbidden by PMS (see bug #326685).") % \
+				(self.settings.mycpv,)
 			else:
 				msg = _("Package '%s' merged despite file collisions.") % \
 					self.settings.mycpv
@@ -3346,7 +3368,7 @@ class dblink(object):
 				"messages for the whole content of the above message.")
 			eerror(wrap(msg, 70))
 
-			if collision_protect or (protect_owned and owners):
+			if abort:
 				return 1
 
 		# The merge process may move files out of the image directory,
