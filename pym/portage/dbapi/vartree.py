@@ -70,6 +70,7 @@ import shutil
 import stat
 import sys
 import tempfile
+import textwrap
 import time
 import warnings
 
@@ -1908,6 +1909,7 @@ class dblink(object):
 
 		cfgfiledict = grabdict(self.vartree.dbapi._conf_mem_file)
 		stale_confmem = []
+		protected_symlinks = []
 
 		unmerge_orphans = "unmerge-orphans" in self.settings.features
 		calc_prelink = "prelink-checksums" in self.settings.features
@@ -2027,9 +2029,34 @@ class dblink(object):
 						if dblnk.isowner(relative_path):
 							is_owned = True
 							break
-					if is_owned:
+
+					if is_owned and \
+						(islink and statobj and stat.S_ISDIR(statobj.st_mode)):
 						# A new instance of this package claims the file, so
-						# don't unmerge it.
+						# don't unmerge it. If the file is symlink to a
+						# directory and the unmerging package installed it as
+						# a symlink, but the new owner has it listed as a
+						# directory, then we'll produce a warning since the
+						# symlink is a sort of orphan in this case (see
+						# bug #326685).
+						symlink_orphan = False
+						for dblnk in others_in_slot:
+							parent_contents_key = \
+								dblnk._match_contents(relative_path)
+							if not parent_contents_key:
+								continue
+							if not parent_contents_key.startswith(
+								real_root):
+								continue
+							if dblnk.getcontents()[
+								parent_contents_key][0] == "dir":
+								symlink_orphan = True
+								break
+
+						if symlink_orphan:
+							protected_symlinks.append(relative_path)
+
+					if is_owned:
 						show_unmerge("---", unmerge_desc["replaced"], file_type, obj)
 						continue
 					elif relative_path in cfgfiledict:
@@ -2076,6 +2103,52 @@ class dblink(object):
 					if not islink:
 						show_unmerge("---", unmerge_desc["!sym"], file_type, obj)
 						continue
+
+					# If this symlink points to a direcory then we don't want
+					# to unmerge it if there are any other packages that
+					# installed files into the directory via this symlink
+					# (see bug #326685).
+					# TODO: Resolving a symlink to a directory will require
+					# simulation if $ROOT != / and the link is not relative.
+					if islink and statobj and stat.S_ISDIR(statobj.st_mode) \
+						and obj.startswith(real_root):
+
+						relative_path = obj[real_root_len:]
+						try:
+							target_dir_contents = os.listdir(obj)
+						except OSError:
+							pass
+						else:
+							if target_dir_contents:
+								# If all the children are regular files owned
+								# by this package, then the symlink should be
+								# safe to unmerge.
+								all_owned = True
+								for child in target_dir_contents:
+									child = os.path.join(relative_path, child)
+									if not self.isowner(child):
+										all_owned = False
+										break
+									try:
+										child_lstat = os.lstat(os.path.join(
+											real_root, child.lstrip(os.sep)))
+									except OSError:
+										continue
+
+									if not stat.S_ISREG(child_lstat.st_mode):
+										# Nested symlinks or directories make
+										# the issue very complex, so just
+										# preserve the symlink in order to be
+										# on the safe side.
+										all_owned = False
+										break
+
+								if not all_owned:
+									protected_symlinks.append(relative_path)
+									show_unmerge("---", unmerge_desc["!empty"],
+										file_type, obj)
+									continue
+
 					# Go ahead and unlink symlinks to directories here when
 					# they're actually recorded as symlinks in the contents.
 					# Normally, symlinks such as /lib -> lib64 are not recorded
@@ -2151,6 +2224,19 @@ class dblink(object):
 					if e.errno != errno.ENOENT:
 						show_unmerge("---", unmerge_desc["!empty"], "dir", obj)
 					del e
+
+		if protected_symlinks:
+			msg = "One or more symlinks to directories have been " + \
+				"preserved in order to ensure that files installed " + \
+				"via these symlinks remain accessible:"
+			lines = textwrap.wrap(msg, 72)
+			lines.append("")
+			protected_symlinks.reverse()
+			for f in protected_symlinks:
+				lines.append("\t%s" % (os.path.join(real_root,
+					f.lstrip(os.sep))))
+			lines.append("")
+			self._elog("eerror", "postrm", lines)
 
 		# Remove stale entries from config memory.
 		if stale_confmem:
