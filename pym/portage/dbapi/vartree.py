@@ -2030,7 +2030,7 @@ class dblink(object):
 							is_owned = True
 							break
 
-					if is_owned and \
+					if file_type == "sym" and is_owned and \
 						(islink and statobj and stat.S_ISDIR(statobj.st_mode)):
 						# A new instance of this package claims the file, so
 						# don't unmerge it. If the file is symlink to a
