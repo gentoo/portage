@@ -2104,7 +2104,7 @@ class dblink(object):
 						show_unmerge("---", unmerge_desc["!sym"], file_type, obj)
 						continue
 
-					# If this symlink points to a direcory then we don't want
+					# If this symlink points to a directory then we don't want
 					# to unmerge it if there are any other packages that
 					# installed files into the directory via this symlink
 					# (see bug #326685).
