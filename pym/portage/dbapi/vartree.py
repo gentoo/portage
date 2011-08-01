@@ -1909,7 +1909,7 @@ class dblink(object):
 
 		cfgfiledict = grabdict(self.vartree.dbapi._conf_mem_file)
 		stale_confmem = []
-		protected_symlinks = []
+		protected_symlinks = {}
 
 		unmerge_orphans = "unmerge-orphans" in self.settings.features
 		calc_prelink = "prelink-checksums" in self.settings.features
@@ -2054,7 +2054,9 @@ class dblink(object):
 								break
 
 						if symlink_orphan:
-							protected_symlinks.append(relative_path)
+							protected_symlinks.setdefault(
+								(statobj.st_dev, statobj.st_ino),
+								[]).append(relative_path)
 
 					if is_owned:
 						show_unmerge("---", unmerge_desc["replaced"], file_type, obj)
@@ -2098,7 +2100,7 @@ class dblink(object):
 					if lstatobj is None or not stat.S_ISDIR(lstatobj.st_mode):
 						show_unmerge("---", unmerge_desc["!dir"], file_type, obj)
 						continue
-					mydirs.add(obj)
+					mydirs.add((obj, (lstatobj.st_dev, lstatobj.st_ino)))
 				elif pkgfiles[objkey][0] == "sym":
 					if not islink:
 						show_unmerge("---", unmerge_desc["!sym"], file_type, obj)
@@ -2144,7 +2146,9 @@ class dblink(object):
 										break
 
 								if not all_owned:
-									protected_symlinks.append(relative_path)
+									protected_symlinks.setdefault(
+										(statobj.st_dev, statobj.st_ino),
+										[]).append(relative_path)
 									show_unmerge("---", unmerge_desc["!empty"],
 										file_type, obj)
 									continue
@@ -2199,7 +2203,7 @@ class dblink(object):
 			mydirs = sorted(mydirs)
 			mydirs.reverse()
 
-			for obj in mydirs:
+			for obj, inode_key in mydirs:
 				try:
 					if bsd_chflags:
 						lstatobj = os.lstat(obj)
@@ -2224,6 +2228,22 @@ class dblink(object):
 					if e.errno != errno.ENOENT:
 						show_unmerge("---", unmerge_desc["!empty"], "dir", obj)
 					del e
+				else:
+					# When a directory is successfully removed, there's
+					# no need to protect symlinks that point to it.
+					unmerge_syms = protected_symlinks.pop(inode_key, None)
+					if unmerge_syms is not None:
+						for relative_path in unmerge_syms:
+							obj = os.path.join(real_root,
+								relative_path.lstrip(os.sep))
+							try:
+								unlink(obj, os.lstat(obj))
+								show_unmerge("<<<", "", "sym", obj)
+							except (OSError, IOError) as e:
+								if e.errno not in ignored_unlink_errnos:
+									raise
+								del e
+								show_unmerge("!!!", "", "sym", obj)
 
 		if protected_symlinks:
 			msg = "One or more symlinks to directories have been " + \
@@ -2231,8 +2251,10 @@ class dblink(object):
 				"via these symlinks remain accessible:"
 			lines = textwrap.wrap(msg, 72)
 			lines.append("")
-			protected_symlinks.reverse()
-			for f in protected_symlinks:
+			flat_list = set()
+			flat_list.update(*protected_symlinks.values())
+			flat_list = sorted(flat_list, reverse=True)
+			for f in flat_list:
 				lines.append("\t%s" % (os.path.join(real_root,
 					f.lstrip(os.sep))))
 			lines.append("")
