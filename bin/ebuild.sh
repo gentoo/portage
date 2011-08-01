@@ -370,7 +370,21 @@ unpack() {
 				$1 -c -- "$srcdir$x" | tar xof -
 				assert_sigpipe_ok "$myfail"
 			else
-				$1 -c -- "${srcdir}${x}" > ${x%.*} || die "$myfail"
+				local cwd_dest=${x##*/}
+				cwd_dest=${cwd_dest%.*}
+				$1 -c -- "${srcdir}${x}" > "${cwd_dest}" || die "$myfail"
+				case "$EAPI" in
+					0|1|2|3|4|4-python)
+						# If the source file is in a writable directory then
+						# create a symlink for backward-compatible emulation
+						# of tools like gunzip and bunzip2 (see bug #376741).
+						if [[ ! -e ${x%.*} && -w ${x%/*} ]] && \
+							[[ ${x} == "${PORTAGE_BUILDDIR}/"* ||
+							${x} == ./* || ${x} != /* ]] ; then
+							ln -snf "${PWD}/${cwd_dest}" "${x%.*}"
+						fi
+						;;
+				esac
 			fi
 		}
 
