@@ -5555,7 +5555,7 @@ class depgraph(object):
 
 	def _show_merge_list(self):
 		if self._dynamic_config._serialized_tasks_cache is not None and \
-			not (self._dynamic_config._displayed_list and \
+			not (self._dynamic_config._displayed_list is not None and \
 			(self._dynamic_config._displayed_list == self._dynamic_config._serialized_tasks_cache or \
 			self._dynamic_config._displayed_list == \
 				list(reversed(self._dynamic_config._serialized_tasks_cache)))):
