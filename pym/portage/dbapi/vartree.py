@@ -2253,7 +2253,7 @@ class dblink(object):
 			lines.append("")
 			flat_list = set()
 			flat_list.update(*protected_symlinks.values())
-			flat_list = sorted(flat_list, reverse=True)
+			flat_list = sorted(flat_list)
 			for f in flat_list:
 				lines.append("\t%s" % (os.path.join(real_root,
 					f.lstrip(os.sep))))
