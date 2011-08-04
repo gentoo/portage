@@ -45,6 +45,8 @@ from portage import os
 from portage.util import writemsg, writemsg_stdout
 portage.proxy.lazyimport.lazyimport(globals(),
 	'subprocess',
+	'_emerge.Package:Package',
+	'_emerge.RootConfig:RootConfig',
 	'portage.dbapi._expand_new_virt:expand_new_virt',
 )
 
@@ -422,22 +424,58 @@ def filter_protected(argv):
 filter_protected.uses_root = True
 
 def best_visible(argv):
-	"""<root> [<category/package>]+
+	"""<root> [pkgtype] <atom>
 	Returns category/package-version (without .ebuild).
+	The pkgtype argument defaults to "ebuild" if unspecified,
+	otherwise it must be one of ebuild, binary, or installed.
 	"""
 	if (len(argv) < 2):
-		print("ERROR: insufficient parameters!")
-		sys.exit(2)
+		writemsg("ERROR: insufficient parameters!\n", noiselevel=-1)
+		return 2
+
+	pkgtype = "ebuild"
+	if len(argv) > 2:
+		pkgtype = argv[1]
+		atom = argv[2]
+	else:
+		atom = argv[1]
+
+	type_map = {
+		"ebuild":"porttree",
+		"binary":"bintree",
+		"installed":"vartree"}
+
+	if pkgtype not in type_map:
+		writemsg("Unrecognized package type: '%s'\n" % pkgtype,
+			noiselevel=-1)
+		return 2
+
+	db = portage.db[portage.settings["ROOT"]][type_map[pkgtype]].dbapi
+
 	try:
-		mylist=portage.db[argv[0]]["porttree"].dbapi.match(argv[1])
-		visible=portage.best(mylist)
-		if visible:
-			print(visible)
-			sys.exit(0)
-		else:
-			sys.exit(1)
+		atom = portage.dep_expand(atom, mydb=db, settings=portage.settings)
+	except portage.exception.InvalidAtom:
+		writemsg("ERROR: Invalid atom: '%s'\n" % atom,
+			noiselevel=-1)
+		return 2
+
+	root_config = RootConfig(portage.settings,
+		portage.db[portage.settings["ROOT"]], None)
+
+	try:
+		# reversed, for descending order
+		for cpv in reversed(db.match(atom)):
+			metadata = dict(zip(Package.metadata_keys,
+				db.aux_get(cpv, Package.metadata_keys, myrepo=atom.repo)))
+			pkg = Package(built=(pkgtype != "ebuild"), cpv=cpv,
+				installed=(pkgtype=="installed"), metadata=metadata,
+				root_config=root_config, type_name=pkgtype)
+			if pkg.visible:
+				writemsg_stdout("%s\n" % (pkg.cpv,), noiselevel=-1)
+				return os.EX_OK
 	except KeyError:
-		sys.exit(1)
+		pass
+	return 1
 best_visible.uses_root = True
 
 
