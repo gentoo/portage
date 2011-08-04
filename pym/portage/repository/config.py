@@ -165,7 +165,7 @@ class RepoConfig(object):
 			repo_msg.append(indent + "eclass_overrides: " + \
 				" ".join(self.eclass_overrides))
 		repo_msg.append("")
-		return "\n".join(repo_msg) + "\n"
+		return "\n".join(repo_msg)
 
 class RepoConfigLoader(object):
 	"""Loads and store config of several repositories, loaded from PORTDIR_OVERLAY or repos.conf"""
