@@ -731,7 +731,7 @@ def usage(argv):
 			print("")
 			continue
 
-		lines = doc.split("\n")
+		lines = doc.lstrip("\n").split("\n")
 		print("   " + name + " " + lines[0].strip())
 		if (len(sys.argv) > 1):
 			if (not help_mode):
