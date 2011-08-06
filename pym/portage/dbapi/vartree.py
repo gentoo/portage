@@ -2220,7 +2220,11 @@ class dblink(object):
 			mydirs.reverse()
 
 			for obj, inode_key in mydirs:
-				if inode_key in infodirs_inodes:
+				# Treat any directory named "info" as a candidate here,
+				# since it might have been in INFOPATH previously even
+				# though it may not be there now.
+				if inode_key in infodirs_inodes or \
+					os.path.basename(obj) == "info":
 					try:
 						remaining = os.listdir(obj)
 					except OSError:
