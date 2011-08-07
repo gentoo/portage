@@ -580,8 +580,17 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 		else:
 			# check if there is enough space in DISTDIR to completely store myfile
 			# overestimate the filesize so we aren't bitten by FS overhead
+			vfs_stat = None
 			if size is not None and hasattr(os, "statvfs"):
-				vfs_stat = os.statvfs(mysettings["DISTDIR"])
+				try:
+					vfs_stat = os.statvfs(mysettings["DISTDIR"])
+				except OSError as e:
+					writemsg_level("!!! statvfs('%s'): %s\n" %
+						(mysettings["DISTDIR"], e),
+						noiselevel=-1, level=logging.ERROR)
+					del e
+
+			if vfs_stat is not None:
 				try:
 					mysize = os.stat(myfile_path).st_size
 				except OSError as e:
