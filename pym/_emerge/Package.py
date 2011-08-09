@@ -271,7 +271,6 @@ class Package(Task):
 				return False
 
 			if 'package.mask' in masks or \
-				'profile.system' in masks or \
 				'LICENSE' in masks:
 				return False
 
