@@ -874,8 +874,6 @@ class portdbapi(dbapi):
 					continue
 				if settings._getMaskAtom(cpv, metadata):
 					continue
-				if settings._getProfileMaskAtom(cpv, metadata):
-					continue
 				if local_config:
 					metadata["USE"] = ""
 					if "?" in metadata["LICENSE"] or "?" in metadata["PROPERTIES"]:
@@ -940,7 +938,6 @@ class portdbapi(dbapi):
 		db_keys = ["SLOT"]
 		visible = []
 		getMaskAtom = self.settings._getMaskAtom
-		getProfileMaskAtom = self.settings._getProfileMaskAtom
 		for cpv in mylist:
 			try:
 				metadata = dict(zip(db_keys, self.aux_get(cpv, db_keys)))
@@ -950,8 +947,6 @@ class portdbapi(dbapi):
 			if not metadata["SLOT"]:
 				continue
 			if getMaskAtom(cpv, metadata):
-				continue
-			if getProfileMaskAtom(cpv, metadata):
 				continue
 			visible.append(cpv)
 		return visible
