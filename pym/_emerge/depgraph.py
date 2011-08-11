@@ -6869,12 +6869,12 @@ def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 					if not isinstance(parent_node, Package) \
 						or parent_node.operation not in ("merge", "nomerge"):
 						continue
-					unsatisfied = \
-						graph.child_nodes(parent_node,
-						ignore_priority=DepPrioritySatisfiedRange.ignore_soft)
-					if pkg in unsatisfied:
-						unsatisfied_parents[parent_node] = parent_node
-						unsatisfied_stack.append(parent_node)
+					# We need to traverse all priorities here, in order to
+					# ensure that a package with an unsatisfied depenedency
+					# won't get pulled in, even indirectly via a soft
+					# dependency.
+					unsatisfied_parents[parent_node] = parent_node
+					unsatisfied_stack.append(parent_node)
 
 			unsatisfied_tuples = frozenset(tuple(parent_node)
 				for parent_node in unsatisfied_parents
