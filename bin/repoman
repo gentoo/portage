@@ -209,6 +209,10 @@ def ParseArgs(argv, qahelp):
 	parser.add_option('-x', '--xmlparse', dest='xml_parse', action='store_true',
 		default=False, help='forces the metadata.xml parse check to be carried out')
 
+	parser.add_option(
+		'--if-modified', type='choice', choices=('y', 'n'), default='n',
+		help='only check packages that have uncommitted modifications')
+
 	parser.add_option('-i', '--ignore-arches', dest='ignore_arches', action='store_true',
 		default=False, help='ignore arch-specific failures (where arch != host)')
 
@@ -1068,6 +1072,17 @@ for x in scanlist:
 	if repolevel < 2:
 		checkdir_relative = os.path.join(catdir, checkdir_relative)
 	checkdir_relative = os.path.join(".", checkdir_relative)
+
+	if vcs and options.if_modified == "y":
+		checkdir_modified = False
+		checkdir_pattern = checkdir_relative.rstrip(os.sep) + os.sep
+		for f in chain(mychanged, mynew):
+			if f.startswith(checkdir_pattern):
+				checkdir_modified = True
+				break
+		if not checkdir_modified:
+			continue
+
 	generated_manifest = False
 
 	if options.mode == "manifest" or \
