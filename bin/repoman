@@ -211,6 +211,7 @@ def ParseArgs(argv, qahelp):
 
 	parser.add_option(
 		'--if-modified', type='choice', choices=('y', 'n'), default='n',
+		metavar="<y|n>",
 		help='only check packages that have uncommitted modifications')
 
 	parser.add_option('-i', '--ignore-arches', dest='ignore_arches', action='store_true',
