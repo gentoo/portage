@@ -1060,6 +1060,11 @@ except FileNotFound:
 	# disable for non-gentoo repoman users who may not have herds.
 	herd_base = None
 
+modified_pkgs = 0
+if options.if_modified == "y" and not vcs:
+	logging.info("Not in a version controlled repository; disabling --if-modified.")
+	options.if_modified = "n"
+
 for x in scanlist:
 	#ebuilds and digests added to cvs respectively.
 	logging.info("checking package %s" % x)
@@ -1073,12 +1078,13 @@ for x in scanlist:
 		checkdir_relative = os.path.join(catdir, checkdir_relative)
 	checkdir_relative = os.path.join(".", checkdir_relative)
 
-	if vcs and options.if_modified == "y":
+	if options.if_modified == "y":
 		checkdir_modified = False
 		checkdir_pattern = checkdir_relative.rstrip(os.sep) + os.sep
 		for f in chain(mychanged, mynew):
 			if f.startswith(checkdir_pattern):
 				checkdir_modified = True
+				modified_pkgs += 1
 				break
 		if not checkdir_modified:
 			continue
@@ -1999,6 +2005,9 @@ for x in scanlist:
 			fails["metadata.warning"].append(
 				"%s/metadata.xml: unused local USE-description: '%s'" % \
 				(x, myflag))
+
+if options.if_modified == "y" and modified_pkgs < 1:
+	logging.warn("--if-modified is enabled, but no modified packages were found!")
 
 if options.mode == "manifest":
 	sys.exit(dofail)
