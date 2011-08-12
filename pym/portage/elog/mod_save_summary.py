@@ -4,6 +4,7 @@
 
 import io
 import time
+import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
@@ -25,7 +26,10 @@ def process(mysettings, key, logentries, fulltext):
 		# were previously set by the administrator.
 		# NOTE: These permissions should be compatible with our
 		# default logrotate config as discussed in bug 374287.
-		ensure_dirs(logdir, uid=portage_uid, gid=portage_gid, mode=0o2770)
+		logdir_uid = -1
+		if portage.data.secpass >= 2:
+			logdir_uid = portage_uid
+		ensure_dirs(logdir, uid=logdir_uid, gid=portage_gid, mode=0o2770)
 
 	elogdir = os.path.join(logdir, "elog")
 	_ensure_log_subdirs(logdir, elogdir)
@@ -40,7 +44,17 @@ def process(mysettings, key, logentries, fulltext):
 	elogdir_st = os.stat(elogdir)
 	elogdir_gid = elogdir_st.st_gid
 	elogdir_grp_mode = 0o060 & elogdir_st.st_mode
-	apply_permissions(elogfilename, gid=elogdir_gid,
+
+	# Copy the uid from the parent directory if we have privileges
+	# to do so, for compatibility with our default logrotate
+	# config (see bug 378451). With the "su portage portage"
+	# directive and logrotate-3.8.0, logrotate's chown call during
+	# the compression phase will only succeed if the log file's uid
+	# is portage_uid.
+	logfile_uid = -1
+	if portage.data.secpass >= 2:
+		logfile_uid = elogdir_st.st_uid
+	apply_permissions(elogfilename, uid=logfile_uid, gid=elogdir_gid,
 		mode=elogdir_grp_mode, mask=0)
 
 	time_str = time.strftime("%Y-%m-%d %H:%M:%S %Z",

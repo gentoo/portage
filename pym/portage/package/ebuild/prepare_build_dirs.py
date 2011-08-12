@@ -9,6 +9,7 @@ import shutil
 import stat
 import time
 
+import portage
 from portage import os, _encodings, _unicode_encode, _unicode_decode
 from portage.data import portage_gid, portage_uid, secpass
 from portage.exception import DirectoryNotFound, FileNotFound, \
@@ -358,8 +359,22 @@ def _ensure_log_subdirs(logdir, subdir):
 	and subdir are assumed to be normalized absolute paths.
 	"""
 	st = os.stat(logdir)
+	uid = -1
 	gid = st.st_gid
 	grp_mode = 0o2070 & st.st_mode
+
+	# If logdir is writable by the portage group but its uid
+	# is not portage_uid, then set the uid to portage_uid if
+	# we have privileges to do so, for compatibility with our
+	# default logrotate config (see bug 378451). With the
+	# "su portage portage" directive and logrotate-3.8.0,
+	# logrotate's chown call during the compression phase will
+	# only succeed if the log file's uid is portage_uid.
+	if grp_mode and gid == portage_gid and \
+		portage.data.secpass >= 2:
+		uid = portage_uid
+		if st.st_uid != portage_uid:
+			ensure_dirs(logdir, uid=uid)
 
 	logdir_split_len = len(logdir.split(os.sep))
 	subdir_split = subdir.split(os.sep)[logdir_split_len:]
@@ -367,4 +382,4 @@ def _ensure_log_subdirs(logdir, subdir):
 	current = logdir
 	while subdir_split:
 		current = os.path.join(current, subdir_split.pop())
-		ensure_dirs(current, gid=gid, mode=grp_mode, mask=0)
+		ensure_dirs(current, uid=uid, gid=gid, mode=grp_mode, mask=0)
