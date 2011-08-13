@@ -87,6 +87,9 @@ def parse_args(args):
 	common.add_option("--portdir",
 		help="override the portage tree location",
 		dest="portdir")
+	common.add_option("--portdir-overlay",
+		help="override the PORTDIR_OVERLAY variable (requires that --repo is also specified)",
+		dest="portdir_overlay")
 	common.add_option("--tolerant",
 		action="store_true",
 		help="exit successfully if only minor errors occurred")
@@ -163,6 +166,10 @@ def parse_args(args):
 	if options.cache_dir is not None and not os.path.isdir(options.cache_dir):
 		parser.error("Not a directory: --cache-dir='%s'" % \
 			(options.cache_dir,))
+
+	if options.portdir_overlay is not None and \
+		options.repo is None:
+		parser.error("--portdir-overlay option requires --repo option")
 
 	for atom in args:
 		try:
@@ -764,6 +771,8 @@ def egencache_main(args):
 
 	if options.repo is None:
 		env['PORTDIR_OVERLAY'] = ''
+	elif options.portdir_overlay:
+		env['PORTDIR_OVERLAY'] = options.portdir_overlay
 
 	if options.cache_dir is not None:
 		env['PORTAGE_DEPCACHEDIR'] = options.cache_dir
