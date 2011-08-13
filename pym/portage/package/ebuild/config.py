@@ -208,6 +208,7 @@ class config(object):
 			self.repositories = clone.repositories
 			self._iuse_implicit_match = clone._iuse_implicit_match
 			self._non_user_variables = clone._non_user_variables
+			self._env_d_blacklist = clone._env_d_blacklist
 			self._repo_make_defaults = clone._repo_make_defaults
 			self.usemask = clone.usemask
 			self.useforce = clone.useforce
@@ -438,6 +439,14 @@ class config(object):
 			non_user_variables.update(self._global_only_vars)
 			non_user_variables = frozenset(non_user_variables)
 			self._non_user_variables = non_user_variables
+
+			self._env_d_blacklist = frozenset(chain(
+				profile_only_variables,
+				self._env_blacklist,
+			))
+			env_d = self.configdict["env.d"]
+			for k in self._env_d_blacklist:
+				env_d.pop(k, None)
 
 			for k in profile_only_variables:
 				self.mygcfg.pop(k, None)
@@ -1702,6 +1711,8 @@ class config(object):
 		env_d = getconfig(env_d_filename, expand=False)
 		if env_d:
 			# env_d will be None if profile.env doesn't exist.
+			for k in self._env_d_blacklist:
+				env_d.pop(k, None)
 			self.configdict["env.d"].update(env_d)
 
 	def regenerate(self, useonly=0, use_cache=None):
