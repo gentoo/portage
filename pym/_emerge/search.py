@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -6,6 +6,8 @@ from __future__ import print_function
 import re
 import portage
 from portage import os
+from portage.dbapi.porttree import _parse_uri_map
+from portage.manifest import Manifest
 from portage.output import  bold, bold as white, darkgreen, green, red
 from portage.util import writemsg_stdout
 
@@ -261,11 +263,13 @@ class search(object):
 		msg.append("[ Applications found : " + \
 			bold(str(self.mlen)) + " ]\n\n")
 		vardb = self.vartree.dbapi
+		metadata_keys = set(Package.metadata_keys)
+		metadata_keys.update(["DESCRIPTION", "HOMEPAGE", "LICENSE", "SRC_URI"])
+		metadata_keys = tuple(metadata_keys)
 		for mtype in self.matches:
 			for match,masked in self.matches[mtype]:
 				full_package = None
 				if mtype == "pkg":
-					catpack = match
 					full_package = self._xmatch(
 						"bestmatch-visible", match)
 					if not full_package:
@@ -285,11 +289,16 @@ class search(object):
 							+ "\n\n")
 				if full_package:
 					try:
-						desc, homepage, license = self._aux_get(
-							full_package, ["DESCRIPTION","HOMEPAGE","LICENSE"])
+						metadata = dict(zip(metadata_keys,
+							self._aux_get(full_package, metadata_keys)))
 					except KeyError:
 						msg.append("emerge: search: aux_get() failed, skipping\n")
 						continue
+
+					desc = metadata["DESCRIPTION"]
+					homepage = metadata["HOMEPAGE"]
+					license = metadata["LICENSE"]
+
 					if masked:
 						msg.append(green("*") + "  " + \
 							white(match) + " " + red("[ Masked ]") + "\n")
@@ -304,12 +313,15 @@ class search(object):
 					mycpv = match + "-" + myversion
 					myebuild = self._findname(mycpv)
 					if myebuild:
+						pkg = Package(built=False, cpv=mycpv,
+							installed=False, metadata=metadata,
+							root_config=self.root_config, type_name="ebuild")
 						pkgdir = os.path.dirname(myebuild)
-						from portage import manifest
-						mf = manifest.Manifest(
+						mf = Manifest(
 							pkgdir, self.settings["DISTDIR"])
 						try:
-							uri_map = self._getFetchMap(mycpv)
+							uri_map = _parse_uri_map(mycpv, metadata,
+								use=pkg.use.enabled)
 						except portage.exception.InvalidDependString as e:
 							file_size_str = "Unknown (%s)" % (e,)
 							del e
