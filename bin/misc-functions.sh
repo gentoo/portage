@@ -839,7 +839,7 @@ install_qa_check_prefix() {
 			[[ ${rf} != /* ]] && rf=${fn%/*}/${rf}
 			# ignore symlinks pointing to outside prefix
 			# as seen in sys-devel/native-cctools
-			[[ ${rf} != ${EPREFIX}/* && $(canonicalize "${rf}") != ${eprefix}/* ]] && continue
+			[[ $(canonicalize "/${rf#${D}}") != ${eprefix}/* ]] && continue
 		fi
 		# does the shebang start with ${EPREFIX}, and does it exist?
 		if [[ ${line[0]} == ${EPREFIX}/* || ${line[0]} == ${eprefix}/* ]] ; then
