@@ -26,6 +26,7 @@ from _emerge.Blocker import Blocker
 from _emerge.create_world_atom import create_world_atom
 from _emerge.resolver.output_helpers import ( _DisplayConfig, _tree_display,
 	_PackageCounters, _create_use_string, _format_size, _calc_changelog, PkgInfo)
+from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -312,8 +313,12 @@ class Display(object):
 			try:
 				myfilesdict = self.portdb.getfetchsizes(pkg.cpv,
 					useflags=pkg_info.use, myrepo=pkg.repo)
-			except InvalidDependString:
-				# should have been masked before it was selected
+			except InvalidDependString as e:
+				# FIXME: validate SRC_URI earlier
+				depstr, = self.portdb.aux_get(pkg.cpv,
+					["SRC_URI"], myrepo=pkg.repo)
+				show_invalid_depstring_notice(
+					pkg, depstr, str(e))
 				raise
 			if myfilesdict is None:
 				myfilesdict = "[empty/missing/bad digest]"

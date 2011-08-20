@@ -1323,43 +1323,47 @@ class _info_pkgs_ver(object):
 
 def action_info(settings, trees, myopts, myfiles):
 
+	output_buffer = []
+	append = output_buffer.append
 	root_config = trees[settings['ROOT']]['root_config']
 
-	print(getportageversion(settings["PORTDIR"], settings["ROOT"],
+	append(getportageversion(settings["PORTDIR"], settings["ROOT"],
 		settings.profile_path, settings["CHOST"],
 		trees[settings["ROOT"]]["vartree"].dbapi))
 
 	header_width = 65
 	header_title = "System Settings"
 	if myfiles:
-		print(header_width * "=")
-		print(header_title.rjust(int(header_width/2 + len(header_title)/2)))
-	print(header_width * "=")
-	print("System uname: "+platform.platform(aliased=1))
+		append(header_width * "=")
+		append(header_title.rjust(int(header_width/2 + len(header_title)/2)))
+	append(header_width * "=")
+	append("System uname: %s" % (platform.platform(aliased=1),))
 
 	lastSync = portage.grabfile(os.path.join(
 		settings["PORTDIR"], "metadata", "timestamp.chk"))
-	print("Timestamp of tree:", end=' ')
 	if lastSync:
-		print(lastSync[0])
+		lastSync = lastSync[0]
 	else:
-		print("Unknown")
+		lastSync = "Unknown"
+	append("Timestamp of tree: %s" % (lastSync,))
 
 	output=subprocess_getstatusoutput("distcc --version")
-	if not output[0]:
-		print(str(output[1].split("\n",1)[0]), end=' ')
+	if output[0] == os.EX_OK:
+		distcc_str = output[1].split("\n", 1)[0]
 		if "distcc" in settings.features:
-			print("[enabled]")
+			distcc_str += " [enabled]"
 		else:
-			print("[disabled]")
+			distcc_str += " [disabled]"
+		append(distcc_str)
 
 	output=subprocess_getstatusoutput("ccache -V")
-	if not output[0]:
-		print(str(output[1].split("\n",1)[0]), end=' ')
+	if output[0] == os.EX_OK:
+		ccache_str = output[1].split("\n", 1)[0]
 		if "ccache" in settings.features:
-			print("[enabled]")
+			ccache_str += " [enabled]"
 		else:
-			print("[disabled]")
+			ccache_str += " [disabled]"
+		append(ccache_str)
 
 	myvars  = ["sys-devel/autoconf", "sys-devel/automake", "virtual/os-headers",
 	           "sys-devel/binutils", "sys-devel/libtool",  "dev-lang/python"]
@@ -1370,8 +1374,7 @@ def action_info(settings, trees, myopts, myfiles):
 		try:
 			x = Atom(x)
 		except InvalidAtom:
-			writemsg_stdout("%-20s %s\n" % (x+":", "[NOT VALID]"),
-				noiselevel=-1)
+			append("%-20s %s" % (x+":", "[NOT VALID]"))
 		else:
 			for atom in expand_new_virt(vardb, x):
 				if not atom.blocker:
@@ -1419,28 +1422,26 @@ def action_info(settings, trees, myopts, myfiles):
 	for cp in sorted(cp_map):
 		versions = sorted(cp_map[cp].values())
 		versions = ", ".join(ver.toString() for ver in versions)
-		writemsg_stdout("%s %s\n" % \
-			((cp + ":").ljust(cp_max_len + 1), versions),
-			noiselevel=-1)
+		append("%s %s" % \
+			((cp + ":").ljust(cp_max_len + 1), versions))
 
 	libtool_vers = ",".join(trees["/"]["vartree"].dbapi.match("sys-devel/libtool"))
 
 	repos = portdb.settings.repositories
 	if "--verbose" in myopts:
-		writemsg_stdout("Repositories:\n\n", noiselevel=-1)
+		append("Repositories:\n")
 		for repo in repos:
-			writemsg_stdout(repo.info_string(), noiselevel=-1)
+			append(repo.info_string())
 	else:
-		writemsg_stdout("Repositories: %s\n" % \
-			" ".join(repo.name for repo in repos), noiselevel=-1)
+		append("Repositories: %s" % \
+			" ".join(repo.name for repo in repos))
 
 	if _ENABLE_SET_CONFIG:
 		sets_line = "Installed sets: "
 		sets_line += ", ".join(s for s in \
 			sorted(root_config.sets['selected'].getNonAtoms()) \
 			if s.startswith(SETPREFIX))
-		sets_line += "\n"
-		writemsg_stdout(sets_line, noiselevel=-1)
+		append(sets_line)
 
 	if "--verbose" in myopts:
 		myvars = list(settings)
@@ -1467,16 +1468,17 @@ def action_info(settings, trees, myopts, myfiles):
 	alphabetical_use = '--alphabetical' in myopts
 	unset_vars = []
 	myvars.sort()
-	for x in myvars:
-		if x in settings:
-			if x != "USE":
-				default = myvars_ignore_defaults.get(x)
+	for k in myvars:
+		v = settings.get(k)
+		if v is not None:
+			if k != "USE":
+				default = myvars_ignore_defaults.get(k)
 				if default is not None and \
-					default == settings[x]:
+					default == v:
 					continue
-				writemsg_stdout('%s="%s"\n' % (x, settings[x]), noiselevel=-1)
+				append('%s="%s"' % (k, v))
 			else:
-				use = set(settings["USE"].split())
+				use = set(v.split())
 				for varname in use_expand:
 					flag_prefix = varname.lower() + "_"
 					for f in list(use):
@@ -1484,23 +1486,20 @@ def action_info(settings, trees, myopts, myfiles):
 							use.remove(f)
 				use = list(use)
 				use.sort()
-				print('USE="%s"' % " ".join(use), end=' ')
+				use = ['USE="%s"' % " ".join(use)]
 				for varname in use_expand:
 					myval = settings.get(varname)
 					if myval:
-						print('%s="%s"' % (varname, myval), end=' ')
-				print()
+						use.append('%s="%s"' % (varname, myval))
+				append(" ".join(use))
 		else:
-			unset_vars.append(x)
+			unset_vars.append(k)
 	if unset_vars:
-		print("Unset:  "+", ".join(unset_vars))
-	print()
-
-	if "--debug" in myopts:
-		for x in dir(portage):
-			module = getattr(portage, x)
-			if "cvs_id_string" in dir(module):
-				print("%s: %s" % (str(x), str(module.cvs_id_string)))
+		append("Unset:  "+", ".join(unset_vars))
+	append("")
+	append("")
+	writemsg_stdout("\n".join(output_buffer),
+		noiselevel=-1)
 
 	# See if we can find any packages installed matching the strings
 	# passed on the command line

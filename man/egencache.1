@@ -47,6 +47,10 @@ Specifies that maximum load allowed when spawning multiple jobs.
 .BR "\-\-portdir=PORTDIR"
 Override the portage tree location.
 .TP
+.BR "\-\-portdir\-overlay=PORTDIR_OVERLAY"
+Override the PORTDIR_OVERLAY variable (requires that
+\-\-repo is also specified).
+.TP
 .BR "\-\-preserve\-comments"
 Preserve the comments found in the output use.local.desc file. This requires
 the output file to exist before egencache is called.

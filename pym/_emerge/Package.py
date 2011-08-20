@@ -247,11 +247,6 @@ class Package(Task):
 		if mask_atom is not None:
 			masks['package.mask'] = mask_atom
 
-		system_mask = settings._getProfileMaskAtom(
-			self.cpv, self.metadata)
-		if system_mask is not None:
-			masks['profile.system'] = system_mask
-
 		try:
 			missing_licenses = settings._getMissingLicenses(
 				self.cpv, self.metadata)
@@ -287,7 +282,6 @@ class Package(Task):
 				return False
 
 			if 'package.mask' in masks or \
-				'profile.system' in masks or \
 				'LICENSE' in masks:
 				return False
 

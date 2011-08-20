@@ -4,13 +4,14 @@
 
 import io
 import time
+import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.data import portage_gid, portage_uid
 from portage.package.ebuild.prepare_build_dirs import _ensure_log_subdirs
-from portage.util import ensure_dirs, normalize_path
+from portage.util import apply_permissions, ensure_dirs, normalize_path
 from portage.const import EPREFIX_LSTRIP
 
 def process(mysettings, key, logentries, fulltext):
@@ -26,7 +27,10 @@ def process(mysettings, key, logentries, fulltext):
 		# were previously set by the administrator.
 		# NOTE: These permissions should be compatible with our
 		# default logrotate config as discussed in bug 374287.
-		ensure_dirs(logdir, uid=portage_uid, gid=portage_gid, mode=0o2770)
+		uid = -1
+		if portage.data.secpass >= 2:
+			uid = portage_uid
+		ensure_dirs(logdir, uid=uid, gid=portage_gid, mode=0o2770)
 
 	cat = mysettings['CATEGORY']
 	pf = mysettings['PF']
@@ -48,5 +52,22 @@ def process(mysettings, key, logentries, fulltext):
 		mode='w', encoding=_encodings['content'], errors='backslashreplace')
 	elogfile.write(_unicode_decode(fulltext))
 	elogfile.close()
+
+	# Copy group permission bits from parent directory.
+	elogdir_st = os.stat(log_subdir)
+	elogdir_gid = elogdir_st.st_gid
+	elogdir_grp_mode = 0o060 & elogdir_st.st_mode
+
+	# Copy the uid from the parent directory if we have privileges
+	# to do so, for compatibility with our default logrotate
+	# config (see bug 378451). With the "su portage portage"
+	# directive and logrotate-3.8.0, logrotate's chown call during
+	# the compression phase will only succeed if the log file's uid
+	# is portage_uid.
+	logfile_uid = -1
+	if portage.data.secpass >= 2:
+		logfile_uid = elogdir_st.st_uid
+	apply_permissions(elogfilename, uid=logfile_uid, gid=elogdir_gid,
+		mode=elogdir_grp_mode, mask=0)
 
 	return elogfilename

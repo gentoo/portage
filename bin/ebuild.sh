@@ -376,7 +376,9 @@ unpack() {
 				$1 -c -- "$srcdir$x" | tar xof -
 				assert_sigpipe_ok "$myfail"
 			else
-				$1 -c -- "${srcdir}${x}" > ${x%.*} || die "$myfail"
+				local cwd_dest=${x##*/}
+				cwd_dest=${cwd_dest%.*}
+				$1 -c -- "${srcdir}${x}" > "${cwd_dest}" || die "$myfail"
 			fi
 		}
 

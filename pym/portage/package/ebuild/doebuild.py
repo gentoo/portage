@@ -947,10 +947,31 @@ def _check_temp_dir(settings):
 	# as some people use a separate PORTAGE_TMPDIR mount
 	# we prefer that as the checks below would otherwise be pointless
 	# for those people.
-	if os.path.exists(os.path.join(settings["PORTAGE_TMPDIR"], "portage")):
-		checkdir = os.path.join(settings["PORTAGE_TMPDIR"], "portage")
+	tmpdir = os.path.realpath(settings["PORTAGE_TMPDIR"])
+	if os.path.exists(os.path.join(tmpdir, "portage")):
+		checkdir = os.path.realpath(os.path.join(tmpdir, "portage"))
+		if ("sandbox" in settings.features or
+			"usersandox" in settings.features) and \
+			not checkdir.startswith(tmpdir + os.sep):
+			msg = _("The 'portage' subdirectory of the directory "
+			"referenced by the PORTAGE_TMPDIR variable appears to be "
+			"a symlink. In order to avoid sandbox violations (see bug "
+			"#378379), you must adjust PORTAGE_TMPDIR instead of using "
+			"the symlink located at '%s'. A suitable PORTAGE_TMPDIR "
+			"setting would be '%s'.") % \
+			(os.path.join(tmpdir, "portage"), checkdir)
+			lines = []
+			lines.append("")
+			lines.append("")
+			lines.extend(wrap(msg, 72))
+			lines.append("")
+			for line in lines:
+				if line:
+					line = "!!! %s" % (line,)
+				writemsg("%s\n" % (line,), noiselevel=-1)
+			return 1
 	else:
-		checkdir = settings["PORTAGE_TMPDIR"]
+		checkdir = tmpdir
 
 	if not os.access(checkdir, os.W_OK):
 		writemsg(_("%s is not writable.\n"

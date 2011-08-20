@@ -341,7 +341,7 @@ class NoOffsetWithHelpers(LineCheck):
 	repoman_check_name = 'variable.usedwithhelpers'
 	# Ignore matches in quoted strings like this:
 	# elog "installed into ${ROOT}usr/share/php5/apc/."
-	re = re.compile(r'^[^#"\']*\b(dodir|dohard|exeinto|insinto|into)\s+"?\$\{?(D|ROOT|ED|EROOT|EPREFIX)\b.*')
+	re = re.compile(r'^[^#"\']*\b(docinto|docompress|dodir|dohard|exeinto|fowners|fperms|insinto|into)\s+"?\$\{?(D|ROOT|ED|EROOT|EPREFIX)\b.*')
 	error = errors.NO_OFFSET_WITH_HELPERS
 
 class ImplicitRuntimeDeps(LineCheck):

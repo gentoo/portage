@@ -72,10 +72,6 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 
 	rValue = []
 
-	# profile checking
-	if settings._getProfileMaskAtom(mycpv, metadata):
-		rValue.append(_MaskReason("profile", "profile"))
-
 	# package.mask checking
 	if settings._getMaskAtom(mycpv, metadata):
 		rValue.append(_MaskReason("package.mask", "package.mask", _UnmaskHint("p_mask", None)))
