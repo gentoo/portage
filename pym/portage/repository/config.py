@@ -3,10 +3,15 @@
 
 import io
 import logging
+import sys
 import re
 
 try:
-	from configparser import SafeConfigParser, ParsingError
+	from configparser import ParsingError
+	if sys.hexversion >= 0x3020000:
+		from configparser import ConfigParser as SafeConfigParser
+	else:
+		from configparser import SafeConfigParser
 except ImportError:
 	from ConfigParser import SafeConfigParser, ParsingError
 from portage import os
