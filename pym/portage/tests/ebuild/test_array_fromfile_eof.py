@@ -1,4 +1,4 @@
-# Copyright 2009 Gentoo Foundation
+# Copyright 2009-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import array
@@ -35,9 +35,12 @@ class ArrayFromfileEofTestCase(TestCase):
 			if not a:
 				eof = True
 			else:
-				data.append(_unicode_decode(a.tostring(),
-					encoding='utf_8', errors='strict'))
+				try:
+					data.append(a.tobytes())
+				except AttributeError:
+					data.append(a.tostring())
 
 		f.close()
 
-		self.assertEqual(input_data, ''.join(data))
+		self.assertEqual(input_data, _unicode_decode(b''.join(data),
+			encoding='utf_8', errors='strict'))

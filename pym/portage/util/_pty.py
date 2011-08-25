@@ -112,12 +112,14 @@ def _test_pty_eof(fdopen_buffered=False):
 		if not buf:
 			eof = True
 		else:
-			data.append(_unicode_decode(buf.tostring(),
-				encoding='utf_8', errors='strict'))
+			try:
+				data.append(buf.tobytes())
+			except AttributeError:
+				data.append(buf.tostring())
 
 	master_file.close()
 
-	return test_string == ''.join(data)
+	return test_string == _unicode_decode(b''.join(data), encoding='utf_8', errors='strict')
 
 # If _test_pty_eof() can't be used for runtime detection of
 # http://bugs.python.org/issue5380, openpty can't safely be used
