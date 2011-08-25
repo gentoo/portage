@@ -1,5 +1,5 @@
 #!/usr/bin/python -O
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 #
@@ -100,7 +100,9 @@ class dispatch:
                 path, basename = os.path.split(path)
                 find_opts = "-maxdepth 1"
 
-            confs += self.massage(os.popen(FIND_EXTANT_CONFIGS % (path, find_opts, basename)).readlines())
+            with os.popen(FIND_EXTANT_CONFIGS %
+                (path, find_opts, basename)) as proc:
+                confs += self.massage(proc.readlines())
 
         if self.options['use-rcs'] == 'yes':
             for rcs_util in ("rcs", "ci", "co", "rcsmerge"):
