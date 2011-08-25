@@ -207,6 +207,7 @@ class SpawnProcess(SubProcess):
 				except TypeError:
 					# array.tofile() doesn't work with GzipFile
 					try:
+						# Python >=3.2
 						data = buf.tobytes()
 					except AttributeError:
 						data = buf.tostring()

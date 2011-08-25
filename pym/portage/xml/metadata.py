@@ -218,6 +218,7 @@ class MetaDataXML(object):
 			return None
 
 		try:
+			# Python 2.7 or >=3.2
 			iterate = self._herdstree.iter
 		except AttributeError:
 			iterate = self._herdstree.getiterator
@@ -298,6 +299,7 @@ class MetaDataXML(object):
 				self._useflags = tuple()
 			else:
 				try:
+					# Python 2.7 or >=3.2
 					iterate = self._xml_tree.iter
 				except AttributeError:
 					iterate = self._xml_tree.getiterator

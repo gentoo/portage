@@ -67,6 +67,7 @@ def encodeint(myint):
 	a.append((myint >> 8 ) & 0xff)
 	a.append(myint & 0xff)
 	try:
+		# Python >=3.2
 		return a.tobytes()
 	except AttributeError:
 		return a.tostring()

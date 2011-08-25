@@ -113,6 +113,7 @@ def _test_pty_eof(fdopen_buffered=False):
 			eof = True
 		else:
 			try:
+				# Python >=3.2
 				data.append(buf.tobytes())
 			except AttributeError:
 				data.append(buf.tostring())
