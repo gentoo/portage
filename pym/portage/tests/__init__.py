@@ -1,5 +1,5 @@
 # tests/__init__.py -- Portage Unit Test functionality
-# Copyright 2006-2010 Gentoo Foundation
+# Copyright 2006-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -131,15 +131,11 @@ class TestCase(unittest.TestCase):
 	and then fix the code later.  This may not be a great approach
 	(broken code!!??!11oneone) but it does happen at times.
 	"""
-	
-	def __init__(self, methodName='runTest'):
-		# This method exists because unittest.py in python 2.4 stores
-		# the methodName as __testMethodName while 2.5 uses
-		# _testMethodName.
-		self._testMethodName = methodName
-		unittest.TestCase.__init__(self, methodName)
+
+	def __init__(self, *pargs, **kwargs):
+		unittest.TestCase.__init__(self, *pargs, **kwargs)
 		self.todo = False
-		
+
 	def defaultTestResult(self):
 		return TextTestResult()
 
