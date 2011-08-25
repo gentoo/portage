@@ -1335,7 +1335,9 @@ def _check_build_log(mysettings, out=None):
 	except EnvironmentError:
 		return
 
+	f_real = None
 	if logfile.endswith('.gz'):
+		f_real = f
 		f =  gzip.GzipFile(filename='', mode='rb', fileobj=f)
 
 	am_maintainer_mode = []
@@ -1439,6 +1441,10 @@ def _check_build_log(mysettings, out=None):
 		msg.append("")
 		msg.extend("\t" + line for line in make_jobserver)
 		_eqawarn(msg)
+
+	f.close()
+	if f_real is not None:
+		f_real.close()
 
 def _post_src_install_chost_fix(settings):
 	"""
@@ -1617,15 +1623,19 @@ def _post_src_install_uid_fix(mysettings, out):
 	build_info_dir = os.path.join(mysettings['PORTAGE_BUILDDIR'],
 		'build-info')
 
-	io.open(_unicode_encode(os.path.join(build_info_dir,
+	f = io.open(_unicode_encode(os.path.join(build_info_dir,
 		'SIZE'), encoding=_encodings['fs'], errors='strict'),
 		mode='w', encoding=_encodings['repo.content'],
-		errors='strict').write(_unicode_decode(str(size) + '\n'))
+		errors='strict')
+	f.write(_unicode_decode(str(size) + '\n'))
+	f.close()
 
-	io.open(_unicode_encode(os.path.join(build_info_dir,
+	f = io.open(_unicode_encode(os.path.join(build_info_dir,
 		'BUILD_TIME'), encoding=_encodings['fs'], errors='strict'),
 		mode='w', encoding=_encodings['repo.content'],
-		errors='strict').write(_unicode_decode("%.0f\n" % (time.time(),)))
+		errors='strict')
+	f.write(_unicode_decode("%.0f\n" % (time.time(),)))
+	f.close()
 
 	use = frozenset(mysettings['PORTAGE_USE'].split())
 	for k in _vdb_use_conditional_keys:
@@ -1651,10 +1661,12 @@ def _post_src_install_uid_fix(mysettings, out):
 			except OSError:
 				pass
 			continue
-		io.open(_unicode_encode(os.path.join(build_info_dir,
+		f = io.open(_unicode_encode(os.path.join(build_info_dir,
 			k), encoding=_encodings['fs'], errors='strict'),
 			mode='w', encoding=_encodings['repo.content'],
-			errors='strict').write(_unicode_decode(v + '\n'))
+			errors='strict')
+		f.write(_unicode_decode(v + '\n'))
+		f.close()
 
 	_reapply_bsdflags_to_image(mysettings)
 

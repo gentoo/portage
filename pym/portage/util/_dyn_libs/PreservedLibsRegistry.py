@@ -55,10 +55,11 @@ class PreservedLibsRegistry(object):
 	def load(self):
 		""" Reload the registry data from file """
 		self._data = None
+		f = None
 		try:
-			self._data = pickle.load(
-				open(_unicode_encode(self._filename,
-					encoding=_encodings['fs'], errors='strict'), 'rb'))
+			f = open(_unicode_encode(self._filename,
+					encoding=_encodings['fs'], errors='strict'), 'rb')
+			self._data = pickle.load(f)
 		except (ValueError, pickle.UnpicklingError) as e:
 			writemsg_level(_("!!! Error loading '%s': %s\n") % \
 				(self._filename, e), level=logging.ERROR, noiselevel=-1)
@@ -69,6 +70,9 @@ class PreservedLibsRegistry(object):
 				raise PermissionDenied(self._filename)
 			else:
 				raise
+		finally:
+			if f is not None:
+				f.close()
 		if self._data is None:
 			self._data = {}
 		self._data_orig = self._data.copy()
