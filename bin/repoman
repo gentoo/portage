@@ -1228,11 +1228,13 @@ for x in scanlist:
 
 		if not (y in ("ChangeLog", "metadata.xml") or y.endswith(".ebuild")):
 			continue
+		f = None
 		try:
 			line = 1
-			for l in io.open(_unicode_encode(os.path.join(checkdir, y),
+			f = io.open(_unicode_encode(os.path.join(checkdir, y),
 				encoding=_encodings['fs'], errors='strict'),
-				mode='r', encoding=_encodings['repo.content']):
+				mode='r', encoding=_encodings['repo.content'])
+			for l in f:
 				line +=1
 		except UnicodeDecodeError as ue:
 			stats["file.UTF8"] += 1
@@ -1242,6 +1244,9 @@ for x in scanlist:
 			if l2 != 0:
 				s = s[s.rfind("\n") + 1:]
 			fails["file.UTF8"].append("%s/%s: line %i, just after: '%s'" % (checkdir, y, line, s))
+		finally:
+			if f is not None:
+				f.close()
 
 	if vcs in ("git", "hg") and check_ebuild_notadded:
 		if vcs == "git":

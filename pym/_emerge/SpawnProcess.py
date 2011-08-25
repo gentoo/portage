@@ -26,7 +26,7 @@ class SpawnProcess(SubProcess):
 		"path_lookup", "pre_exec")
 
 	__slots__ = ("args",) + \
-		_spawn_kwarg_names + ("_selinux_type",)
+		_spawn_kwarg_names + ("_log_file_real", "_selinux_type",)
 
 	_file_names = ("log", "process", "stdout")
 	_files_dict = slot_dict_class(_file_names, prefix="")
@@ -84,6 +84,7 @@ class SpawnProcess(SubProcess):
 			files.log = open(_unicode_encode(logfile,
 				encoding=_encodings['fs'], errors='strict'), mode='ab')
 			if logfile.endswith('.gz'):
+				self._log_file_real = files.log
 				files.log = gzip.GzipFile(filename='', mode='ab',
 					fileobj=files.log)
 
@@ -238,3 +239,9 @@ class SpawnProcess(SubProcess):
 
 		self._unregister_if_appropriate(event)
 
+	def _unregister(self):
+		super(SpawnProcess, self)._unregister()
+		if self._log_file_real is not None:
+			# Avoid "ResourceWarning: unclosed file" since python 3.2.
+			self._log_file_real.close()
+			self._log_file_real = None
