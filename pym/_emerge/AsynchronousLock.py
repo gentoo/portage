@@ -209,9 +209,22 @@ class _LockProcess(AbstractPollTask):
 		os.close(in_pw)
 
 	def _proc_exit(self, proc):
+
+		if self._files is not None:
+			# Close pipe_out if it's still open, since it's useless
+			# after the process has exited. This helps to avoid
+			# "ResourceWarning: unclosed file" since Python 3.2.
+			try:
+				pipe_out = self._files.pop('pipe_out')
+			except KeyError:
+				pass
+			else:
+				pipe_out.close()
+
 		if proc.returncode != os.EX_OK:
 			# Typically, this will happen due to the
 			# process being killed by a signal.
+
 			if not self._acquired:
 				# If the lock hasn't been aquired yet, the
 				# caller can check the returncode and handle
