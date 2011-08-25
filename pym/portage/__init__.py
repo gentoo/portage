@@ -215,7 +215,7 @@ class _unicode_func_wrapper(object):
 		rval = self._func(*wrapped_args, **wrapped_kwargs)
 
 		# Don't use isinstance() since we don't want to convert subclasses
-		# of tuple such as posix.stat_result in python-3.2.
+		# of tuple such as posix.stat_result in Python >=3.2.
 		if rval.__class__ in (list, tuple):
 			decoded_rval = []
 			for x in rval:
