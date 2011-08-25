@@ -280,7 +280,7 @@ class Binpkg(CompositeTask):
 			encoding=_encodings['fs'], errors='strict'),
 			mode='w', encoding=_encodings['content'], errors='strict')
 		try:
-			f.write(EPREFIX + "\n")
+			f.write(_unicode_decode(EPREFIX + "\n"))
 		finally:
 			f.close()
 
