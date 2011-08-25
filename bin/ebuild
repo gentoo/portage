@@ -57,10 +57,6 @@ opts, pargs = parser.parse_args(args=sys.argv[1:])
 if len(pargs) < 2:
 	parser.error("missing required args")
 
-if "merge" in pargs:
-	print("Disabling noauto in features... merge disables it. (qmerge doesn't)")
-	os.environ["FEATURES"] = os.environ.get("FEATURES", "") + " -noauto"
-
 os.environ["PORTAGE_CALLER"]="ebuild"
 # for an explanation on this logic, see pym/_emerge/__init__.py
 from os import environ as ose
@@ -258,6 +254,10 @@ if "test" in pargs:
 	tmpsettings.features.add("test")
 
 tmpsettings.features.discard("fail-clean")
+
+if "merge" in pargs and "noauto" in tmpsettings.features:
+	print("Disabling noauto in features... merge disables it. (qmerge doesn't)")
+	tmpsettings.features.discard("noauto")
 
 try:
 	metadata = dict(zip(Package.metadata_keys,

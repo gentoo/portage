@@ -203,7 +203,12 @@ die() {
 		fi
 	fi
 
-	if [[ "${EBUILD_PHASE/depend}" == "${EBUILD_PHASE}" ]] ; then
+	# Only call die hooks here if we are executed via ebuild.sh or
+	# misc-functions.sh, since those are the only cases where the environment
+	# contains the hook functions. When necessary (like for helpers_die), die
+	# hooks are automatically called later by a misc-functions.sh invocation.
+	if has ${BASH_SOURCE[$main_index]##*/} ebuild.sh misc-functions.sh && \
+		[[ ${EBUILD_PHASE} != depend ]] ; then
 		local x
 		for x in $EBUILD_DEATH_HOOKS; do
 			${x} "$@" >&2 1>&2

@@ -217,7 +217,12 @@ class MetaDataXML(object):
 		if herd in ('no-herd', 'maintainer-wanted', 'maintainer-needed'):
 			return None
 
-		for node in self._herdstree.getiterator('herd'):
+		try:
+			iterate = self._herdstree.iter
+		except AttributeError:
+			iterate = self._herdstree.getiterator
+
+		for node in iterate('herd'):
 			if node.findtext('name') == herd:
 				return node.findtext('email')
 
@@ -292,8 +297,12 @@ class MetaDataXML(object):
 			if self._xml_tree is None:
 				self._useflags = tuple()
 			else:
+				try:
+					iterate = self._xml_tree.iter
+				except AttributeError:
+					iterate = self._xml_tree.getiterator
 				self._useflags = tuple(_Useflag(node) \
-					for node in self._xml_tree.getiterator('flag'))
+					for node in iterate('flag'))
 
 		return self._useflags
 

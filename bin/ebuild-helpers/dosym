@@ -9,13 +9,18 @@ if [[ $# -ne 2 ]] ; then
 	exit 1
 fi
 
-target="${1}"
-linkname="${2}"
-[[ ${target:0:1} == "/" ]] && target="${EPREFIX}${target}"
-destdir=${linkname%/*}
+if [[ ${2} == */ ]] || \
+	[[ -d ${ED}${2} && ! -L ${ED}${2} ]] ; then
+	# implicit basename not allowed by PMS (bug #379899)
+	eqawarn "QA Notice: dosym target omits basename: '${2}'"
+fi
+
+destdir=${2%/*}
 [[ ! -d ${ED}${destdir} ]] && dodir "${destdir}"
 
-ln -snf "${target}" "${ED}/${linkname}"
+target="${1}"
+[[ ${target:0:1} == "/" ]] && target="${EPREFIX}${target}"
+ln -snf "${target}" "${ED}/${2}"
 ret=$?
 [[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
 exit $ret

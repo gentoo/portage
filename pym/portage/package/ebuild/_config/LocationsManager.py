@@ -89,11 +89,12 @@ class LocationsManager(object):
 	def _addProfile(self, currentPath):
 		parentsFile = os.path.join(currentPath, "parent")
 		eapi_file = os.path.join(currentPath, "eapi")
+		f = None
 		try:
-			eapi = io.open(_unicode_encode(eapi_file,
+			f = io.open(_unicode_encode(eapi_file,
 				encoding=_encodings['fs'], errors='strict'),
-				mode='r', encoding=_encodings['content'], errors='replace'
-				).readline().strip()
+				mode='r', encoding=_encodings['content'], errors='replace')
+			eapi = f.readline().strip()
 		except IOError:
 			pass
 		else:
@@ -102,6 +103,9 @@ class LocationsManager(object):
 					"Profile contains unsupported "
 					"EAPI '%s': '%s'") % \
 					(eapi, os.path.realpath(eapi_file),))
+		finally:
+			if f is not None:
+				f.close()
 		if os.path.exists(parentsFile):
 			parents = grabfile(parentsFile)
 			if not parents:

@@ -535,16 +535,18 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 	else:
 		expand_map = {}
 	mykeys = {}
+	f = None
 	try:
 		# NOTE: shlex doesn't support unicode objects with Python 2
 		# (produces spurious \0 characters).
 		if sys.hexversion < 0x3000000:
-			content = open(_unicode_encode(mycfg,
-				encoding=_encodings['fs'], errors='strict'), 'rb').read()
+			f = open(_unicode_encode(mycfg,
+				encoding=_encodings['fs'], errors='strict'), 'rb')
 		else:
-			content = open(_unicode_encode(mycfg,
+			f = open(_unicode_encode(mycfg,
 				encoding=_encodings['fs'], errors='strict'), mode='r',
-				encoding=_encodings['content'], errors='replace').read()
+				encoding=_encodings['content'], errors='replace')
+		content = f.read()
 	except IOError as e:
 		if e.errno == PermissionDenied.errno:
 			raise PermissionDenied(mycfg)
@@ -553,6 +555,9 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 			if e.errno not in (errno.EISDIR,):
 				raise
 		return None
+	finally:
+		if f is not None:
+			f.close()
 
 	# Workaround for avoiding a silent error in shlex that is
 	# triggered by a source statement at the end of the file

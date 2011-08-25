@@ -1,4 +1,4 @@
-# Copyright 2001-2010 Gentoo Foundation
+# Copyright 2001-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -66,7 +66,10 @@ def encodeint(myint):
 	a.append((myint >> 16 ) & 0xff)
 	a.append((myint >> 8 ) & 0xff)
 	a.append(myint & 0xff)
-	return a.tostring()
+	try:
+		return a.tobytes()
+	except AttributeError:
+		return a.tostring()
 
 def decodeint(mystring):
 	"""Takes a 4 byte string and converts it into a 4 byte integer.

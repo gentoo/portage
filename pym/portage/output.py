@@ -162,11 +162,14 @@ def _parse_color_map(config_root='/', onerror=None):
 		if token[0] in quotes and token[0] == token[-1]:
 			token = token[1:-1]
 		return token
+
+	f = None
 	try:
-		lineno=0
-		for line in io.open(_unicode_encode(myfile,
+		f = io.open(_unicode_encode(myfile,
 			encoding=_encodings['fs'], errors='strict'),
-			mode='r', encoding=_encodings['content'], errors='replace'):
+			mode='r', encoding=_encodings['content'], errors='replace')
+		lineno = 0
+		for line in f:
 			lineno += 1
 
 			commenter_pos = line.find("#")
@@ -226,6 +229,9 @@ def _parse_color_map(config_root='/', onerror=None):
 		elif e.errno == errno.EACCES:
 			raise PermissionDenied(myfile)
 		raise
+	finally:
+		if f is not None:
+			f.close()
 
 def nc_len(mystr):
 	tmp = re.sub(esc_seq + "^m]+m", "", mystr);

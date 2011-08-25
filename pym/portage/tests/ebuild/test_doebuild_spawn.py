@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
@@ -50,7 +50,7 @@ class DoebuildSpawnTestCase(TestCase):
 				os.makedirs(settings[x])
 			# Create a fake environment, to pretend as if the ebuild
 			# has been sourced already.
-			open(os.path.join(settings['T'], 'environment'), 'wb')
+			open(os.path.join(settings['T'], 'environment'), 'wb').close()
 
 			scheduler = PollScheduler().sched_iface
 			for phase in ('_internal_test',):

@@ -132,10 +132,11 @@ def grab_updates(updpath, prev_mtimes=None):
 		if update_data or \
 			file_path not in prev_mtimes or \
 			long(prev_mtimes[file_path]) != mystat[stat.ST_MTIME]:
-			content = io.open(_unicode_encode(file_path,
+			f = io.open(_unicode_encode(file_path,
 				encoding=_encodings['fs'], errors='strict'),
-				mode='r', encoding=_encodings['repo.content'], errors='replace'
-				).read()
+				mode='r', encoding=_encodings['repo.content'], errors='replace')
+			content = f.read()
+			f.close()
 			update_data.append((file_path, mystat, content))
 	return update_data
 

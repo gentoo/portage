@@ -206,7 +206,11 @@ class SpawnProcess(SubProcess):
 					buf.tofile(files.log)
 				except TypeError:
 					# array.tofile() doesn't work with GzipFile
-					files.log.write(buf.tostring())
+					try:
+						data = buf.tobytes()
+					except AttributeError:
+						data = buf.tostring()
+					files.log.write(data)
 				files.log.flush()
 			else:
 				self._unregister()

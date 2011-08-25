@@ -182,6 +182,12 @@ Controls the location of emerge.log and emerge-fetch.log.
 .br
 Defaults to /var/log.
 .TP
+\fBEMERGE_WARNING_DELAY\fR = \fIinteger\fR
+Determines how long the countdown delay will be after running
+`emerge --unmerge` for a system package.
+.br
+Defaults to 10 seconds.
+.TP
 .B EPAUSE_IGNORE
 Defines whether or not to ignore short pauses that occur when displaying
 important informational messages.  This variable is unset by default.

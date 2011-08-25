@@ -250,10 +250,11 @@ class NewsItem(object):
 		return self._valid
 
 	def parse(self):
-		lines = io.open(_unicode_encode(self.path,
+		f = io.open(_unicode_encode(self.path,
 			encoding=_encodings['fs'], errors='strict'),
-			mode='r', encoding=_encodings['content'], errors='replace'
-			).readlines()
+			mode='r', encoding=_encodings['content'], errors='replace')
+		lines = f.readlines()
+		f.close()
 		self.restrictions = {}
 		invalids = []
 		for i, line in enumerate(lines):

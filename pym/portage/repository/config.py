@@ -3,10 +3,15 @@
 
 import io
 import logging
+import sys
 import re
 
 try:
-	from configparser import SafeConfigParser, ParsingError
+	from configparser import ParsingError
+	if sys.hexversion >= 0x3020000:
+		from configparser import ConfigParser as SafeConfigParser
+	else:
+		from configparser import SafeConfigParser
 except ImportError:
 	from ConfigParser import SafeConfigParser, ParsingError
 from portage import os
@@ -132,14 +137,19 @@ class RepoConfig(object):
 		Returns repo_name, missing.
 		"""
 		repo_name_path = os.path.join(repo_path, REPO_NAME_LOC)
+		f = None
 		try:
-			return io.open(
+			f = io.open(
 				_unicode_encode(repo_name_path,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],
-				errors='replace').readline().strip(), False
+				errors='replace')
+			return f.readline().strip(), False
 		except EnvironmentError:
 			return "x-" + os.path.basename(repo_path), True
+		finally:
+			if f is not None:
+				f.close()
 
 	def info_string(self):
 		"""
