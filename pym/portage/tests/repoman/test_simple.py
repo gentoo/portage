@@ -154,7 +154,9 @@ class SimpleRepomanTestCase(TestCase):
 					os.path.join(PORTAGE_BIN_PATH, "repoman"), "full"],
 					cwd=cwd, env=env, stdout=subprocess.PIPE)
 				output = proc.stdout.readlines()
-				if proc.wait() != os.EX_OK:
+				proc.wait()
+				proc.stdout.close()
+				if proc.returncode != os.EX_OK:
 					for line in output:
 						sys.stderr.write(_unicode_decode(line))
 
