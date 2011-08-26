@@ -109,11 +109,19 @@ class TextTestResult(_TextTestResult):
 	def __init__(self, stream, descriptions, verbosity):
 		super(TextTestResult, self).__init__(stream, descriptions, verbosity)
 		self.todoed = []
+		self.portage_skipped = []
 
 	def addTodo(self, test, info):
 		self.todoed.append((test,info))
 		if self.showAll:
 			self.stream.writeln("TODO")
+		elif self.dots:
+			self.stream.write(".")
+
+	def addPortageSkip(self, test, info):
+		self.portage_skipped.append((test,info))
+		if self.showAll:
+			self.stream.writeln("SKIP")
 		elif self.dots:
 			self.stream.write(".")
 
@@ -123,6 +131,7 @@ class TextTestResult(_TextTestResult):
 			self.printErrorList('ERROR', self.errors)
 			self.printErrorList('FAIL', self.failures)
 			self.printErrorList('TODO', self.todoed)
+			self.printErrorList('SKIP', self.portage_skipped)
 
 class TestCase(unittest.TestCase):
 	"""
@@ -135,6 +144,7 @@ class TestCase(unittest.TestCase):
 	def __init__(self, *pargs, **kwargs):
 		unittest.TestCase.__init__(self, *pargs, **kwargs)
 		self.todo = False
+		self.portage_skip = None
 
 	def defaultTestResult(self):
 		return TextTestResult()
@@ -158,7 +168,13 @@ class TestCase(unittest.TestCase):
 				testMethod()
 				ok = True
 			except self.failureException:
-				if self.todo:
+				if self.portage_skip is not None:
+					if self.portage_skip is True:
+						result.addPortageSkip(self, "%s: SKIP" % testMethod)
+					else:
+						result.addPortageSkip(self, "%s: SKIP: %s" %
+							(testMethod, self.portage_skip))
+				elif self.todo:
 					result.addTodo(self,"%s: TODO" % testMethod)
 				else:
 					result.addFailure(self, sys.exc_info())
