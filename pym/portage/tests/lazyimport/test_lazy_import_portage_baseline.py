@@ -45,7 +45,7 @@ sys.stdout.write(" ".join(k for k in sys.modules
 		else:
 			pythonpath = ':' + pythonpath
 		pythonpath = PORTAGE_PYM_PATH + pythonpath
-		env[pythonpath] = pythonpath
+		env['PYTHONPATH'] = pythonpath
 
 		# If python is patched to insert the path of the
 		# currently installed portage module into sys.path,
