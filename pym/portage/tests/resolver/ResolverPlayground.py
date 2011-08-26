@@ -106,11 +106,14 @@ class ResolverPlayground(object):
 				repo = "test_repo"
 
 			metadata = ebuilds[cpv].copy()
+			copyright_header = metadata.pop("COPYRIGHT_HEADER", None)
+			desc = metadata.pop("DESCRIPTION", None)
 			eapi = metadata.pop("EAPI", 0)
 			lic = metadata.pop("LICENSE", "")
 			properties = metadata.pop("PROPERTIES", "")
 			slot = metadata.pop("SLOT", 0)
 			keywords = metadata.pop("KEYWORDS", "x86")
+			homepage = metadata.pop("HOMEPAGE", None)
 			iuse = metadata.pop("IUSE", "")
 			depend = metadata.pop("DEPEND", "")
 			rdepend = metadata.pop("RDEPEND", None)
@@ -129,7 +132,13 @@ class ResolverPlayground(object):
 				pass
 
 			f = open(ebuild_path, "w")
+			if copyright_header is not None:
+				f.write(copyright_header)
 			f.write('EAPI="' + str(eapi) + '"\n')
+			if desc is not None:
+				f.write('DESCRIPTION="%s"\n' % desc)
+			if homepage is not None:
+				f.write('HOMEPAGE="%s"\n' % homepage)
 			f.write('LICENSE="' + str(lic) + '"\n')
 			f.write('PROPERTIES="' + str(properties) + '"\n')
 			f.write('SLOT="' + str(slot) + '"\n')
