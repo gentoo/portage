@@ -3192,17 +3192,22 @@ class dblink(object):
 					pass
 				continue
 
+			f = None
 			try:
-				val = io.open(_unicode_encode(
+				f = io.open(_unicode_encode(
 					os.path.join(inforoot, var_name),
 					encoding=_encodings['fs'], errors='strict'),
 					mode='r', encoding=_encodings['repo.content'],
-					errors='replace').readline().strip()
+					errors='replace')
+				val = f.readline().strip()
 			except EnvironmentError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
 				val = ''
+			finally:
+				if f is not None:
+					f.close()
 
 			if var_name == 'SLOT':
 				slot = val
@@ -3558,10 +3563,12 @@ class dblink(object):
 		# write local package counter for recording
 		if counter is None:
 			counter = self.vartree.dbapi.counter_tick(mycpv=self.mycpv)
-		io.open(_unicode_encode(os.path.join(self.dbtmpdir, 'COUNTER'),
+		f = io.open(_unicode_encode(os.path.join(self.dbtmpdir, 'COUNTER'),
 			encoding=_encodings['fs'], errors='strict'),
 			mode='w', encoding=_encodings['repo.content'],
-			errors='backslashreplace').write(_unicode_decode(str(counter)))
+			errors='backslashreplace')
+		f.write(_unicode_decode(str(counter)))
+		f.close()
 
 		self.updateprotect()
 

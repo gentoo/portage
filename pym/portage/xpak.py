@@ -99,7 +99,8 @@ def xpak(rootdir,outfile=None):
 			# CONTENTS is generated during the merge process.
 			continue
 		x = _unicode_encode(x, encoding=_encodings['fs'], errors='strict')
-		mydata[x] = open(os.path.join(rootdir, x), 'rb').read()
+		with open(os.path.join(rootdir, x), 'rb') as f:
+			mydata[x] = f.read()
 
 	xpak_segment = xpak_mem(mydata)
 	if outfile:
