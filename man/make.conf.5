@@ -138,6 +138,9 @@ Defaults to /lib/modules.
 All files and/or directories that are defined here will have "config file protection"
 enabled for them. See the \fBCONFIGURATION FILES\fR section
 of \fBemerge\fR(1) for more information.
+Note that if an offset prefix (\fBEPREFIX\fR) is activated, all paths defined
+in \fBCONFIG_PROTECT\fR are prefixed by Portage with the offset before
+they are used.
 .TP
 \fBCONFIG_PROTECT_MASK\fR = \fI[space delimited list of files and/or directories]\fR
 All files and/or directories that are defined here will have "config file protection"

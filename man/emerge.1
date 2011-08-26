@@ -931,6 +931,12 @@ add this to /etc/make.conf:
 Tools such as dispatch\-conf, cfg\-update, and etc\-update are also available to
 aid in the merging of these files. They provide interactive merging and can
 auto\-merge trivial changes.
+.LP
+When an offset prefix (\fBEPREFIX\fR) is active, all paths in
+\fBCONFIG_PROTECT\fR and \fBCONFIG_PROTECT_MASK\fR are prefixed with the
+offset by Portage before they are considered.  Hence, these paths never
+contain the offset prefix, and the variables can be defined in
+offset-unaware locations, such as the profiles. 
 .SH "REPORTING BUGS"
 Please report any bugs you encounter through our website:
 .LP
