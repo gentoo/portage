@@ -107,7 +107,7 @@ class SimpleRepomanTestCase(TestCase):
 
 		playground = ResolverPlayground(ebuilds=ebuilds)
 		settings = playground.settings
-		eprefix = settings["EROOT"]
+		eprefix = settings["EPREFIX"]
 		distdir = os.path.join(eprefix, "distdir")
 		portdir = settings["PORTDIR"]
 		profiles_dir = os.path.join(portdir, "profiles")
