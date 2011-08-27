@@ -368,6 +368,14 @@ class GenCache(object):
 					"committing target: %s\n" % (ce,),
 					level=logging.ERROR, noiselevel=-1)
 
+class _MetadataTreeBuilder(ElementTree.TreeBuilder):
+	"""
+	Implements doctype() as required to avoid deprecation warnings with
+	>=python-2.7.
+	"""
+	def doctype(self, name, pubid, system):
+		pass
+
 class GenUseLocalDesc(object):
 	def __init__(self, portdb, output=None,
 			preserve_comments=False):
@@ -475,7 +483,9 @@ class GenUseLocalDesc(object):
 		for cp in self._portdb.cp_all():
 			metadata_path = os.path.join(repo_path, cp, 'metadata.xml')
 			try:
-				metadata = ElementTree.parse(metadata_path)
+				metadata = ElementTree.parse(metadata_path,
+					parser=ElementTree.XMLParser(
+					target=_MetadataTreeBuilder()))
 			except IOError:
 				pass
 			except (ExpatError, EnvironmentError) as e:
