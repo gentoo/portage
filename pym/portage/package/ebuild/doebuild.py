@@ -1692,14 +1692,17 @@ def _post_src_install_soname_symlinks(mysettings, out):
 		"build-info", "NEEDED.ELF.2")
 
 	try:
-		lines = io.open(_unicode_encode(needed_filename,
+		f = io.open(_unicode_encode(needed_filename,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['repo.content'],
-			errors='replace').readlines()
+			errors='replace')
+		lines = f.readlines()
 	except IOError as e:
 		if e.errno not in (errno.ENOENT, errno.ESTALE):
 			raise
 		return
+	finally:
+		f.close()
 
 	libpaths = set(portage.util.getlibpaths(
 		mysettings["ROOT"], env=mysettings))
