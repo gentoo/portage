@@ -1691,6 +1691,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
 	needed_filename = os.path.join(mysettings["PORTAGE_BUILDDIR"],
 		"build-info", "NEEDED.ELF.2")
 
+	f = None
 	try:
 		f = io.open(_unicode_encode(needed_filename,
 			encoding=_encodings['fs'], errors='strict'),
@@ -1702,7 +1703,8 @@ def _post_src_install_soname_symlinks(mysettings, out):
 			raise
 		return
 	finally:
-		f.close()
+		if f is not None:
+			f.close()
 
 	libpaths = set(portage.util.getlibpaths(
 		mysettings["ROOT"], env=mysettings))
