@@ -472,8 +472,9 @@ def create_trees(config_root=None, target_root=None, trees=None):
 			portdbapi.portdbapi_instances.remove(portdb)
 			del trees[myroot]["porttree"], myroot, portdb
 
+	eprefix = os.environ.get("__PORTAGE_TEST_EPREFIX")
 	settings = config(config_root=config_root, target_root=target_root,
-		config_incrementals=portage.const.INCREMENTALS)
+		config_incrementals=portage.const.INCREMENTALS, _eprefix=eprefix)
 	settings.lock()
 
 	myroots = [(settings["ROOT"], settings)]
@@ -489,7 +490,8 @@ def create_trees(config_root=None, target_root=None, trees=None):
 			v = settings.get(k)
 			if v is not None:
 				clean_env[k] = v
-		settings = config(config_root=None, target_root="/", env=clean_env)
+		settings = config(config_root=None, target_root="/",
+			env=clean_env, _eprefix=eprefix)
 		settings.lock()
 		myroots.append((settings["ROOT"], settings))
 
