@@ -42,6 +42,7 @@ def main():
 		if TEST_FILE in files:
 			testDirs.append(root)
 
+	testDirs.sort()
 	for mydir in testDirs:
 		suite.addTests(getTests(os.path.join(basedir, mydir), basedir) )
 	return TextTestRunner(verbosity=2).run(suite)
@@ -86,6 +87,7 @@ def getTests(path, base_path):
 	"""
 	files = os.listdir(path)
 	files = [ f[:-3] for f in files if f.startswith("test") and f.endswith(".py") ]
+	files.sort()
 	parent_path = path[len(base_path)+1:]
 	parent_module = ".".join(("portage", "tests", parent_path))
 	parent_module = parent_module.replace('/', '.')
