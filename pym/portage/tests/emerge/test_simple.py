@@ -72,6 +72,7 @@ class SimpleEmergeTestCase(TestCase):
 		distdir = os.path.join(eprefix, "distdir")
 		fake_bin = os.path.join(eprefix, "bin")
 		portage_tmpdir = os.path.join(eprefix, "var", "tmp", "portage")
+		portdir = settings["PORTDIR"]
 		profile_path = settings.profile_path
 		var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
 
@@ -106,6 +107,7 @@ class SimpleEmergeTestCase(TestCase):
 			"PORTAGE_GRPNAME" : os.environ["PORTAGE_GRPNAME"],
 			"PORTAGE_TMPDIR" : portage_tmpdir,
 			"PORTAGE_USERNAME" : os.environ["PORTAGE_USERNAME"],
+			"PORTDIR" : portdir,
 			"PYTHONPATH" : pythonpath,
 		}
 
