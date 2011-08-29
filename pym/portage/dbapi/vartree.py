@@ -1845,7 +1845,7 @@ class dblink(object):
 		try:
 			env_update(target_root=self.settings['ROOT'],
 				prev_mtimes=ldpath_mtimes,
-				contents=contents, env=self.settings.environ(),
+				contents=contents, env=self.settings,
 				writemsg_level=self._display_merge)
 		finally:
 			self.vartree.dbapi._fs_unlock()
@@ -3817,7 +3817,7 @@ class dblink(object):
 			#update environment settings, library paths. DO NOT change symlinks.
 			env_update(makelinks=(not downgrade),
 				target_root=self.settings['ROOT'], prev_mtimes=prev_mtimes,
-				contents=contents, env=self.settings.environ(),
+				contents=contents, env=self.settings,
 				writemsg_level=self._display_merge)
 		finally:
 			self.vartree.dbapi._fs_unlock()
