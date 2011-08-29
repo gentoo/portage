@@ -46,7 +46,9 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 	if prev_mtimes is None:
 		prev_mtimes = portage.mtimedb["ldpath"]
 	if env is None:
-		env = os.environ
+		settings = os.environ
+	else:
+		settings = env
 
 	eprefix = env.get("EPREFIX", "")
 	eprefix_lstrip = eprefix.lstrip(os.sep)
@@ -245,9 +247,9 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 			makelinks = False
 
 	ldconfig = "/sbin/ldconfig"
-	if "CHOST" in env and "CBUILD" in env and \
-		env["CHOST"] != env["CBUILD"]:
-		ldconfig = find_binary("%s-ldconfig" % env["CHOST"])
+	if "CHOST" in settings and "CBUILD" in settings and \
+		settings["CHOST"] != settings["CBUILD"]:
+		ldconfig = find_binary("%s-ldconfig" % settings["CHOST"])
 
 	# Only run ldconfig as needed
 	if (ld_cache_update or makelinks) and ldconfig and not eprefix:
