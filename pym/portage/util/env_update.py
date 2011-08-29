@@ -147,7 +147,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 			raise
 		oldld = None
 
-	ld_cache_update=False
+	ldsoconf_update = False
 
 	newld = specials["LDPATH"]
 	if (oldld != newld):
@@ -158,7 +158,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 		for x in specials["LDPATH"]:
 			myfd.write(x + "\n")
 		myfd.close()
-		ld_cache_update=True
+		ldsoconf_update = True
 
 	# Update prelink.conf if we are prelink-enabled
 	if prelink_capable:
@@ -229,11 +229,8 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 			prev_mtimes[x] = newldpathtime
 			mtime_changed = True
 
-	if mtime_changed:
-		ld_cache_update = True
-
 	if makelinks and \
-		not ld_cache_update and \
+		not mtime_changed and \
 		contents is not None:
 		libdir_contents_changed = False
 		for mypath, mydata in contents.items():
@@ -252,7 +249,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 		ldconfig = find_binary("%s-ldconfig" % settings["CHOST"])
 
 	# Only run ldconfig as needed
-	if (ld_cache_update or makelinks) and ldconfig and not eprefix:
+	if makelinks and ldconfig and not eprefix:
 		# ldconfig has very different behaviour between FreeBSD and Linux
 		if ostype == "Linux" or ostype.lower().endswith("gnu"):
 			# We can't update links if we haven't cleaned other versions first, as

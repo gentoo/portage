@@ -3815,7 +3815,7 @@ class dblink(object):
 		self.vartree.dbapi._fs_lock()
 		try:
 			#update environment settings, library paths. DO NOT change symlinks.
-			env_update(makelinks=(not downgrade),
+			env_update(
 				target_root=self.settings['ROOT'], prev_mtimes=prev_mtimes,
 				contents=contents, env=self.settings,
 				writemsg_level=self._display_merge)
