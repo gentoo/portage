@@ -13,6 +13,7 @@ import shutil
 import signal
 import socket
 import stat
+import subprocess
 import sys
 import tempfile
 import textwrap
@@ -2931,10 +2932,10 @@ def git_sync_timestamps(settings, portdir):
 	args = [portage.const.BASH_BINARY, "-c",
 		"cd %s && git diff-index --name-only --diff-filter=M HEAD" % \
 		portage._shell_quote(portdir)]
-	import subprocess
 	proc = subprocess.Popen(args, stdout=subprocess.PIPE)
 	modified_files = set(_unicode_decode(l).rstrip("\n") for l in proc.stdout)
 	rval = proc.wait()
+	proc.stdout.close()
 	if rval != os.EX_OK:
 		return rval
 

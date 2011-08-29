@@ -120,11 +120,13 @@ def _adjust_perms_msg(settings, msg):
 	background = settings.get("PORTAGE_BACKGROUND") == "1"
 	log_path = settings.get("PORTAGE_LOG_FILE")
 	log_file = None
+	log_file_real = None
 
 	if background and log_path is not None:
 		try:
 			log_file = open(_unicode_encode(log_path,
 				encoding=_encodings['fs'], errors='strict'), mode='ab')
+			log_file_real = log_file
 		except IOError:
 			def write(msg):
 				pass
@@ -141,6 +143,8 @@ def _adjust_perms_msg(settings, msg):
 	finally:
 		if log_file is not None:
 			log_file.close()
+			if log_file_real is not log_file:
+				log_file_real.close()
 
 def _prepare_features_dirs(mysettings):
 

@@ -641,26 +641,24 @@ def help(myopts, havecolor=1):
 		print()
 		print("       " + green("--rebuild-if-new-rev") + " [ %s | %s ]" % \
 			(turquoise("y"), turquoise("n")))
-		desc = "Rebuild packages when dependencies that are " + \
-			"used at both build-time and run-time are built, " + \
-			"if the dependency is not already installed with the " + \
-			"same version and revision."
+		desc = "Rebuild packages when build-time dependencies are built " + \
+			"from source, if the dependency is not already installed with " + \
+			"the same version and revision."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
 		print("       " + green("--rebuild-if-new-ver") + " [ %s | %s ]" % \
 			(turquoise("y"), turquoise("n")))
-		desc = "Rebuild packages when dependencies that are " + \
-			"used at both build-time and run-time are built, " + \
-			"if the dependency is not already installed with the " + \
-			"same version. Revision numbers are ignored."
+		desc = "Rebuild packages when build-time dependencies are built " + \
+			"from source, if the dependency is not already installed with " + \
+			"the same version. Revision numbers are ignored."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
 		print("       " + green("--rebuild-if-unbuilt") + " [ %s | %s ]" % \
 			(turquoise("y"), turquoise("n")))
-		desc = "Rebuild packages when dependencies that are " + \
-			"used at both build-time and run-time are built."
+		desc = "Rebuild packages when build-time dependencies are built " + \
+			"from source"
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()

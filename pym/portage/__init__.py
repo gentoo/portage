@@ -216,7 +216,7 @@ class _unicode_func_wrapper(object):
 		rval = self._func(*wrapped_args, **wrapped_kwargs)
 
 		# Don't use isinstance() since we don't want to convert subclasses
-		# of tuple such as posix.stat_result in python-3.2.
+		# of tuple such as posix.stat_result in Python >=3.2.
 		if rval.__class__ in (list, tuple):
 			decoded_rval = []
 			for x in rval:
@@ -473,8 +473,11 @@ def create_trees(config_root=None, target_root=None, trees=None):
 			portdbapi.portdbapi_instances.remove(portdb)
 			del trees[myroot]["porttree"], myroot, portdb
 
+	eprefix = os.environ.get("__PORTAGE_TEST_EPREFIX")
+	if not eprefix:
+		eprefix = EPREFIX
 	settings = config(config_root=config_root, target_root=target_root,
-		config_incrementals=portage.const.INCREMENTALS, _eprefix=EPREFIX)
+		config_incrementals=portage.const.INCREMENTALS, _eprefix=eprefix)
 	settings.lock()
 
 	myroots = [(settings["ROOT"], settings)]
@@ -490,7 +493,8 @@ def create_trees(config_root=None, target_root=None, trees=None):
 			v = settings.get(k)
 			if v is not None:
 				clean_env[k] = v
-		settings = config(config_root=None, target_root="/", env=clean_env)
+		settings = config(config_root=None, target_root="/",
+			env=clean_env, _eprefix=eprefix)
 		settings.lock()
 		myroots.append((settings["ROOT"], settings))
 

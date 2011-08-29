@@ -174,7 +174,7 @@ class _rebuild_config(object):
 		rebuild_exclude = self._frozen_config.rebuild_exclude
 		rebuild_ignore = self._frozen_config.rebuild_ignore
 		if (self.rebuild and isinstance(parent, Package) and
-			parent.built and (priority.buildtime or priority.runtime) and
+			parent.built and priority.buildtime and
 			isinstance(dep_pkg, Package) and
 			not rebuild_exclude.findAtomForPackage(parent) and
 			not rebuild_ignore.findAtomForPackage(dep_pkg)):
@@ -209,66 +209,63 @@ class _rebuild_config(object):
 
 		return True
 
-	def _trigger_rebuild(self, parent, build_deps, runtime_deps):
+	def _trigger_rebuild(self, parent, build_deps):
 		root_slot = (parent.root, parent.slot_atom)
 		if root_slot in self.rebuild_list:
 			return False
 		trees = self._frozen_config.trees
-		children = set(build_deps).intersection(runtime_deps)
 		reinstall = False
-		for slot_atom in children:
-			kids = set([build_deps[slot_atom], runtime_deps[slot_atom]])
-			for dep_pkg in kids:
-				dep_root_slot = (dep_pkg.root, slot_atom)
-				if self._needs_rebuild(dep_pkg):
+		for slot_atom, dep_pkg in build_deps.items():
+			dep_root_slot = (dep_pkg.root, slot_atom)
+			if self._needs_rebuild(dep_pkg):
+				self.rebuild_list.add(root_slot)
+				return True
+			elif ("--usepkg" in self._frozen_config.myopts and
+				(dep_root_slot in self.reinstall_list or
+				dep_root_slot in self.rebuild_list or
+				not dep_pkg.installed)):
+
+				# A direct rebuild dependency is being installed. We
+				# should update the parent as well to the latest binary,
+				# if that binary is valid.
+				#
+				# To validate the binary, we check whether all of the
+				# rebuild dependencies are present on the same binhost.
+				#
+				# 1) If parent is present on the binhost, but one of its
+				#    rebuild dependencies is not, then the parent should
+				#    be rebuilt from source.
+				# 2) Otherwise, the parent binary is assumed to be valid,
+				#    because all of its rebuild dependencies are
+				#    consistent.
+				bintree = trees[parent.root]["bintree"]
+				uri = bintree.get_pkgindex_uri(parent.cpv)
+				dep_uri = bintree.get_pkgindex_uri(dep_pkg.cpv)
+				bindb = bintree.dbapi
+				if self.rebuild_if_new_ver and uri and uri != dep_uri:
+					cpv_norev = catpkgsplit(dep_pkg.cpv)[:-1]
+					for cpv in bindb.match(dep_pkg.slot_atom):
+						if cpv_norev == catpkgsplit(cpv)[:-1]:
+							dep_uri = bintree.get_pkgindex_uri(cpv)
+							if uri == dep_uri:
+								break
+				if uri and uri != dep_uri:
+					# 1) Remote binary package is invalid because it was
+					#    built without dep_pkg. Force rebuild.
 					self.rebuild_list.add(root_slot)
 					return True
-				elif ("--usepkg" in self._frozen_config.myopts and
-					(dep_root_slot in self.reinstall_list or
-					dep_root_slot in self.rebuild_list or
-					not dep_pkg.installed)):
-
-					# A direct rebuild dependency is being installed. We
-					# should update the parent as well to the latest binary,
-					# if that binary is valid.
-					#
-					# To validate the binary, we check whether all of the
-					# rebuild dependencies are present on the same binhost.
-					#
-					# 1) If parent is present on the binhost, but one of its
-					#    rebuild dependencies is not, then the parent should
-					#    be rebuilt from source.
-					# 2) Otherwise, the parent binary is assumed to be valid,
-					#    because all of its rebuild dependencies are
-					#    consistent.
-					bintree = trees[parent.root]["bintree"]
-					uri = bintree.get_pkgindex_uri(parent.cpv)
-					dep_uri = bintree.get_pkgindex_uri(dep_pkg.cpv)
-					bindb = bintree.dbapi
-					if self.rebuild_if_new_ver and uri and uri != dep_uri:
-						cpv_norev = catpkgsplit(dep_pkg.cpv)[:-1]
-						for cpv in bindb.match(dep_pkg.slot_atom):
-							if cpv_norev == catpkgsplit(cpv)[:-1]:
-								dep_uri = bintree.get_pkgindex_uri(cpv)
-								if uri == dep_uri:
-									break
-					if uri and uri != dep_uri:
-						# 1) Remote binary package is invalid because it was
-						#    built without dep_pkg. Force rebuild.
-						self.rebuild_list.add(root_slot)
-						return True
-					elif (parent.installed and
-						root_slot not in self.reinstall_list):
-						inst_build_time = parent.metadata.get("BUILD_TIME")
-						try:
-							bin_build_time, = bindb.aux_get(parent.cpv,
-								["BUILD_TIME"])
-						except KeyError:
-							continue
-						if bin_build_time != inst_build_time:
-							# 2) Remote binary package is valid, and local package
-							#    is not up to date. Force reinstall.
-							reinstall = True
+				elif (parent.installed and
+					root_slot not in self.reinstall_list):
+					inst_build_time = parent.metadata.get("BUILD_TIME")
+					try:
+						bin_build_time, = bindb.aux_get(parent.cpv,
+							["BUILD_TIME"])
+					except KeyError:
+						continue
+					if bin_build_time != inst_build_time:
+						# 2) Remote binary package is valid, and local package
+						#    is not up to date. Force reinstall.
+						reinstall = True
 		if reinstall:
 			self.reinstall_list.add(root_slot)
 		return reinstall
@@ -282,31 +279,15 @@ class _rebuild_config(object):
 		need_restart = False
 		graph = self._graph
 		build_deps = {}
-		runtime_deps = {}
+
 		leaf_nodes = deque(graph.leaf_nodes())
-
-		def ignore_non_runtime(priority):
-			return not priority.runtime
-
-		def ignore_non_buildtime(priority):
-			return not priority.buildtime
 
 		# Trigger rebuilds bottom-up (starting with the leaves) so that parents
 		# will always know which children are being rebuilt.
 		while graph:
 			if not leaf_nodes:
-				# We're interested in intersection of buildtime and runtime,
-				# so ignore edges that do not contain both.
-				leaf_nodes.extend(graph.leaf_nodes(
-					ignore_priority=ignore_non_runtime))
-				if not leaf_nodes:
-					leaf_nodes.extend(graph.leaf_nodes(
-						ignore_priority=ignore_non_buildtime))
-					if not leaf_nodes:
-						# We'll have to drop an edge that is both
-						# buildtime and runtime. This should be
-						# quite rare.
-						leaf_nodes.append(graph.order[-1])
+				# We'll have to drop an edge. This should be quite rare.
+				leaf_nodes.append(graph.order[-1])
 
 			node = leaf_nodes.popleft()
 			if node not in graph:
@@ -315,32 +296,23 @@ class _rebuild_config(object):
 			slot_atom = node.slot_atom
 
 			# Remove our leaf node from the graph, keeping track of deps.
-			parents = graph.nodes[node][1].items()
+			parents = graph.parent_nodes(node)
 			graph.remove(node)
 			node_build_deps = build_deps.get(node, {})
-			node_runtime_deps = runtime_deps.get(node, {})
-			for parent, priorities in parents:
+			for parent in parents:
 				if parent == node:
 					# Ignore a direct cycle.
 					continue
 				parent_bdeps = build_deps.setdefault(parent, {})
-				parent_rdeps = runtime_deps.setdefault(parent, {})
-				for priority in priorities:
-					if priority.buildtime:
-						parent_bdeps[slot_atom] = node
-					if priority.runtime:
-						parent_rdeps[slot_atom] = node
-				if slot_atom in parent_bdeps and slot_atom in parent_rdeps:
-					parent_rdeps.update(node_runtime_deps)
+				parent_bdeps[slot_atom] = node
 				if not graph.child_nodes(parent):
 					leaf_nodes.append(parent)
 
 			# Trigger rebuilds for our leaf node. Because all of our children
-			# have been processed, build_deps and runtime_deps will be
-			# completely filled in, and self.rebuild_list / self.reinstall_list
-			# will tell us whether any of our children need to be rebuilt or
-			# reinstalled.
-			if self._trigger_rebuild(node, node_build_deps, node_runtime_deps):
+			# have been processed, the build_deps will be completely filled in,
+			# and self.rebuild_list / self.reinstall_list will tell us whether
+			# any of our children need to be rebuilt or reinstalled.
+			if self._trigger_rebuild(node, node_build_deps):
 				need_restart = True
 
 		return need_restart
@@ -6222,7 +6194,8 @@ class depgraph(object):
 		all_added.extend(added_favorites)
 		all_added.sort()
 		for a in all_added:
-			writemsg(">>> Recording %s in \"world\" favorites file...\n" % \
+			writemsg_stdout(
+				">>> Recording %s in \"world\" favorites file...\n" % \
 				colorize("INFORM", str(a)), noiselevel=-1)
 		if all_added:
 			world_set.update(all_added)

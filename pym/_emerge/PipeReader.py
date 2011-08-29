@@ -71,6 +71,7 @@ class PipeReader(AbstractPollTask):
 
 			if buf:
 				try:
+					# Python >=3.2
 					data = buf.tobytes()
 				except AttributeError:
 					data = buf.tostring()

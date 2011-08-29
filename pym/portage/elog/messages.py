@@ -43,9 +43,10 @@ def collect_ebuild_messages(path):
 			logentries[msgfunction] = []
 		lastmsgtype = None
 		msgcontent = []
-		for l in io.open(_unicode_encode(filename,
+		f = io.open(_unicode_encode(filename,
 			encoding=_encodings['fs'], errors='strict'),
-			mode='r', encoding=_encodings['repo.content'], errors='replace'):
+			mode='r', encoding=_encodings['repo.content'], errors='replace')
+		for l in f:
 			if not l:
 				continue
 			try:
@@ -65,6 +66,7 @@ def collect_ebuild_messages(path):
 					logentries[msgfunction].append((lastmsgtype, msgcontent))
 				msgcontent = [msg]
 			lastmsgtype = msgtype
+		f.close()
 		if msgcontent:
 			logentries[msgfunction].append((lastmsgtype, msgcontent))
 

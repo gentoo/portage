@@ -268,6 +268,7 @@ class LinkageMapELF(object):
 					owner = plibs.pop(fields[1], None)
 					lines.append((owner, "scanelf", ";".join(fields)))
 				proc.wait()
+				proc.stdout.close()
 
 		if plibs:
 			# Preserved libraries that did not appear in the scanelf output.

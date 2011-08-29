@@ -273,13 +273,15 @@ class EbuildPhase(CompositeTask):
 		temp_file = open(_unicode_encode(temp_log,
 			encoding=_encodings['fs'], errors='strict'), 'rb')
 
-		log_file = self._open_log(log_path)
+		log_file, log_file_real = self._open_log(log_path)
 
 		for line in temp_file:
 			log_file.write(line)
 
 		temp_file.close()
 		log_file.close()
+		if log_file_real is not log_file:
+			log_file_real.close()
 		os.unlink(temp_log)
 
 	def _open_log(self, log_path):
@@ -287,11 +289,12 @@ class EbuildPhase(CompositeTask):
 		f = open(_unicode_encode(log_path,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='ab')
+		f_real = f
 
 		if log_path.endswith('.gz'):
 			f =  gzip.GzipFile(filename='', mode='ab', fileobj=f)
 
-		return f
+		return (f, f_real)
 
 	def _die_hooks(self):
 		self.returncode = None

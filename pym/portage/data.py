@@ -69,6 +69,9 @@ wheelgid=0
 
 if uid==rootuid:
 	secpass=2
+elif "__PORTAGE_TEST_EPREFIX" in os.environ:
+	secpass = 2
+
 try:
 	wheelgid=grp.getgrnam("wheel")[2]
 except KeyError:

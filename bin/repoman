@@ -99,7 +99,10 @@ os.umask(0o22)
 # behave incrementally.
 repoman_incrementals = tuple(x for x in \
 	portage.const.INCREMENTALS if x != 'ACCEPT_KEYWORDS')
-repoman_settings = portage.config(local_config=False, _eprefix=EPREFIX)
+eprefix = os.environ.get("__REPOMAN_TEST_EPREFIX")
+if not eprefix:
+	eprefix = EPREFIX
+repoman_settings = portage.config(local_config=False, _eprefix=eprefix)
 repoman_settings.lock()
 
 if repoman_settings.get("NOCOLOR", "").lower() in ("yes", "true") or \
@@ -575,13 +578,13 @@ if options.mode == 'commit' and not options.pretend and not vcs:
 	options.pretend = True
 
 # Ensure that PORTDIR_OVERLAY contains the repository corresponding to $PWD.
-repoman_settings = portage.config(local_config=False, _eprefix=EPREFIX)
+repoman_settings = portage.config(local_config=False, _eprefix=eprefix)
 repoman_settings['PORTDIR_OVERLAY'] = "%s %s" % \
 	(repoman_settings.get('PORTDIR_OVERLAY', ''), portdir_overlay)
 # We have to call the config constructor again so
 # that config.repositories is initialized correctly.
-repoman_settings = portage.config(local_config=False, _eprefix=EPREFIX, env=dict(os.environ,
-	PORTDIR_OVERLAY=repoman_settings['PORTDIR_OVERLAY']))
+repoman_settings = portage.config(local_config=False, _eprefix=eprefix,
+	env=dict(os.environ, PORTDIR_OVERLAY=repoman_settings['PORTDIR_OVERLAY']))
 
 root = '/'
 trees = {
@@ -1233,11 +1236,13 @@ for x in scanlist:
 
 		if not (y in ("ChangeLog", "metadata.xml") or y.endswith(".ebuild")):
 			continue
+		f = None
 		try:
 			line = 1
-			for l in io.open(_unicode_encode(os.path.join(checkdir, y),
+			f = io.open(_unicode_encode(os.path.join(checkdir, y),
 				encoding=_encodings['fs'], errors='strict'),
-				mode='r', encoding=_encodings['repo.content']):
+				mode='r', encoding=_encodings['repo.content'])
+			for l in f:
 				line +=1
 		except UnicodeDecodeError as ue:
 			stats["file.UTF8"] += 1
@@ -1247,6 +1252,9 @@ for x in scanlist:
 			if l2 != 0:
 				s = s[s.rfind("\n") + 1:]
 			fails["file.UTF8"].append("%s/%s: line %i, just after: '%s'" % (checkdir, y, line, s))
+		finally:
+			if f is not None:
+				f.close()
 
 	if vcs in ("git", "hg") and check_ebuild_notadded:
 		if vcs == "git":
@@ -1887,8 +1895,7 @@ for x in scanlist:
 						config_incrementals=repoman_incrementals,
 						local_config=False,
 						_unmatched_removal=options.unmatched_removal,
-						env=env,
-						_eprefix=EPREFIX)
+						env=env, _eprefix=eprefix)
 					if options.without_mask:
 						dep_settings._mask_manager = \
 							copy.deepcopy(dep_settings._mask_manager)

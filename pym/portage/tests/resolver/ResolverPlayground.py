@@ -7,7 +7,7 @@ import sys
 import tempfile
 import portage
 from portage import os
-from portage.const import PORTAGE_BASE_PATH
+from portage.const import GLOBAL_CONFIG_PATH, PORTAGE_BASE_PATH
 from portage.dbapi.vartree import vartree
 from portage.dbapi.porttree import portagetree
 from portage.dbapi.bintree import binarytree
@@ -16,6 +16,7 @@ from portage.package.ebuild.config import config
 from portage.package.ebuild.digestgen import digestgen
 from portage._sets import load_default_config
 from portage._sets.base import InternalPackageSet
+from portage.util import ensure_dirs
 from portage.versions import catsplit
 
 import _emerge
@@ -106,11 +107,14 @@ class ResolverPlayground(object):
 				repo = "test_repo"
 
 			metadata = ebuilds[cpv].copy()
+			copyright_header = metadata.pop("COPYRIGHT_HEADER", None)
+			desc = metadata.pop("DESCRIPTION", None)
 			eapi = metadata.pop("EAPI", 0)
 			lic = metadata.pop("LICENSE", "")
 			properties = metadata.pop("PROPERTIES", "")
 			slot = metadata.pop("SLOT", 0)
 			keywords = metadata.pop("KEYWORDS", "x86")
+			homepage = metadata.pop("HOMEPAGE", None)
 			iuse = metadata.pop("IUSE", "")
 			depend = metadata.pop("DEPEND", "")
 			rdepend = metadata.pop("RDEPEND", None)
@@ -129,7 +133,13 @@ class ResolverPlayground(object):
 				pass
 
 			f = open(ebuild_path, "w")
+			if copyright_header is not None:
+				f.write(copyright_header)
 			f.write('EAPI="' + str(eapi) + '"\n')
+			if desc is not None:
+				f.write('DESCRIPTION="%s"\n' % desc)
+			if homepage is not None:
+				f.write('HOMEPAGE="%s"\n' % homepage)
 			f.write('LICENSE="' + str(lic) + '"\n')
 			f.write('PROPERTIES="' + str(properties) + '"\n')
 			f.write('SLOT="' + str(slot) + '"\n')
@@ -197,6 +207,7 @@ class ResolverPlayground(object):
 				f.close()
 			
 			write_key("EAPI", eapi)
+			write_key("COUNTER", "0")
 			write_key("LICENSE", lic)
 			write_key("PROPERTIES", properties)
 			write_key("SLOT", slot)
@@ -277,6 +288,11 @@ class ResolverPlayground(object):
 				f.write("x86\n")
 				f.close()
 
+				parent_file = os.path.join(sub_profile_dir, "parent")
+				f = open(parent_file, "w")
+				f.write("..\n")
+				f.close()
+
 				if profile:
 					for config_file, lines in profile.items():
 						if config_file not in self.config_files:
@@ -321,6 +337,13 @@ class ResolverPlayground(object):
 			for line in lines:
 				f.write("%s\n" % line)
 			f.close()
+
+		#Create /usr/share/portage/config/make.globals
+		make_globals_path = os.path.join(self.eroot,
+			GLOBAL_CONFIG_PATH.lstrip(os.sep), "make.globals")
+		ensure_dirs(os.path.dirname(make_globals_path))
+		os.symlink(os.path.join(PORTAGE_BASE_PATH, "cnf", "make.globals"),
+			make_globals_path)
 
 		#Create /usr/share/portage/config/sets/portage.conf
 		default_sets_conf_dir = os.path.join(self.eroot, "usr/share/portage/config/sets")

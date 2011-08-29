@@ -37,6 +37,8 @@ def ExtractKernelVersion(base_dir):
 		return (None, str(details))
 	except IOError as details:
 		return (None, str(details))
+	finally:
+		f.close()
 
 	lines = [l.strip() for l in lines]
 

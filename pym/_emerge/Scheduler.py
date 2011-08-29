@@ -277,7 +277,7 @@ class Scheduler(PollScheduler):
 		if self._parallel_fetch:
 				# clear out existing fetch log if it exists
 				try:
-					open(self._fetch_log, 'w')
+					open(self._fetch_log, 'w').close()
 				except EnvironmentError:
 					pass
 

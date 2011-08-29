@@ -253,14 +253,19 @@ def update_config_files(config_root, protect, protect_mask, update_iter, match_c
 			recursivefiles.append(x)
 	myxfiles = recursivefiles
 	for x in myxfiles:
+		f = None
 		try:
-			file_contents[x] = io.open(
+			f = io.open(
 				_unicode_encode(os.path.join(abs_user_config, x),
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['content'],
-				errors='replace').readlines()
+				errors='replace')
+			file_contents[x] = f.readlines()
 		except IOError:
 			continue
+		finally:
+			if f is not None:
+				f.close()
 
 	# update /etc/portage/packages.*
 	ignore_line_re = re.compile(r'^#|^\s*$')

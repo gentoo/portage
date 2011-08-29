@@ -732,41 +732,10 @@ dyn_setup() {
 }
 
 dyn_unpack() {
-	local newstuff="no"
-	if [ -e "${WORKDIR}" ]; then
-		local x
-		local checkme
-		for x in $A ; do
-			vecho ">>> Checking ${x}'s mtime..."
-			if [ "${PORTAGE_ACTUAL_DISTDIR:-${DISTDIR}}/${x}" -nt "${WORKDIR}" ]; then
-				vecho ">>> ${x} has been updated; recreating WORKDIR..."
-				newstuff="yes"
-				break
-			fi
-		done
-		if [ ! -f "${PORTAGE_BUILDDIR}/.unpacked" ] ; then
-			vecho ">>> Not marked as unpacked; recreating WORKDIR..."
-			newstuff="yes"
-		fi
+	if [[ -f ${PORTAGE_BUILDDIR}/.unpacked ]] ; then
+		vecho ">>> WORKDIR is up-to-date, keeping..."
+		return 0
 	fi
-	if [ "${newstuff}" == "yes" ]; then
-		# We don't necessarily have privileges to do a full dyn_clean here.
-		rm -rf "${PORTAGE_BUILDDIR}"/{.setuped,.unpacked,.prepared,.configured,.compiled,.tested,.installed,.packaged,build-info}
-		if ! has keepwork $FEATURES ; then
-			rm -rf "${WORKDIR}"
-		fi
-		if [ -d "${T}" ] && \
-			! has keeptemp $FEATURES ; then
-			rm -rf "${T}" && mkdir "${T}"
-		fi
-	fi
-	if [ -e "${WORKDIR}" ]; then
-		if [ "$newstuff" == "no" ]; then
-			vecho ">>> WORKDIR is up-to-date, keeping..."
-			return 0
-		fi
-	fi
-
 	if [ ! -d "${WORKDIR}" ]; then
 		install -m${PORTAGE_WORKDIR_MODE:-0700} -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
 	fi

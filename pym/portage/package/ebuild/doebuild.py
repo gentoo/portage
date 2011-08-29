@@ -435,6 +435,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	"install":["test"],
 	"rpm":    ["install"],
 	"package":["install"],
+	"merge"  :["install"],
 	}
 	
 	if mydbapi is None:
@@ -669,6 +670,68 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			return unmerge(mysettings["CATEGORY"],
 				mysettings["PF"], myroot, mysettings, vartree=vartree)
 
+		phases_to_run = set()
+		if "noauto" in mysettings.features or \
+			mydo not in actionmap_deps:
+			phases_to_run.add(mydo)
+		else:
+			phase_stack = [mydo]
+			while phase_stack:
+				x = phase_stack.pop()
+				if x in phases_to_run:
+					continue
+				phases_to_run.add(x)
+				phase_stack.extend(actionmap_deps.get(x, []))
+			del phase_stack
+
+		alist = set(mysettings.configdict["pkg"].get("A", "").split())
+
+		unpacked = False
+		if "unpack" in phases_to_run:
+			try:
+				workdir_st = os.stat(mysettings["WORKDIR"])
+			except OSError:
+				pass
+			else:
+				newstuff = False
+				if not os.path.exists(os.path.join(
+					mysettings["PORTAGE_BUILDDIR"], ".unpacked")):
+					writemsg_stdout(_(
+						">>> Not marked as unpacked; recreating WORKDIR...\n"))
+					newstuff = True
+				else:
+					for x in alist:
+						writemsg_stdout(">>> Checking %s's mtime...\n" % x)
+						try:
+							x_st = os.stat(os.path.join(
+								mysettings["DISTDIR"], x))
+						except OSError:
+							# file not fetched yet
+							x_st = None
+
+						if x_st is None or x_st.st_mtime > workdir_st.st_mtime:
+							writemsg_stdout(_(">>> Timestamp of "
+								"%s has changed; recreating WORKDIR...\n") % x)
+							newstuff = True
+							break
+
+				if newstuff:
+					if builddir_lock is None and \
+						'PORTAGE_BUILDIR_LOCKED' not in mysettings:
+						builddir_lock = EbuildBuildDir(
+							scheduler=PollScheduler().sched_iface,
+							settings=mysettings)
+						builddir_lock.lock()
+					try:
+						_spawn_phase("clean", mysettings)
+					finally:
+						if builddir_lock is not None:
+							builddir_lock.unlock()
+							builddir_lock = None
+				else:
+					writemsg_stdout(_(">>> WORKDIR is up-to-date, keeping...\n"))
+					unpacked = True
+
 		# Build directory creation isn't required for any of these.
 		# In the fetch phase, the directory is needed only for RESTRICT=fetch
 		# in order to satisfy the sane $PWD requirement (from bug #239560)
@@ -742,10 +805,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# Only try and fetch the files if we are going to need them ...
 		# otherwise, if user has FEATURES=noauto and they run `ebuild clean
 		# unpack compile install`, we will try and fetch 4 times :/
-		need_distfiles = tree == "porttree" and \
+		need_distfiles = tree == "porttree" and not unpacked and \
 			(mydo in ("fetch", "unpack") or \
 			mydo not in ("digest", "manifest") and "noauto" not in features)
-		alist = set(mysettings.configdict["pkg"].get("A", "").split())
 		if need_distfiles:
 
 			src_uri, = mydbapi.aux_get(mysettings.mycpv,
@@ -789,6 +851,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		if mydo == "fetch":
 			# Files are already checked inside fetch(),
 			# so do not check them again.
+			checkme = []
+		elif unpacked:
+			# The unpack phase is marked as complete, so it
+			# would be wasteful to check distfiles again.
 			checkme = []
 		else:
 			checkme = alist
@@ -1333,6 +1399,17 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 	if mydo == "pretend" and not eapi_has_pkg_pretend(eapi):
 		return os.EX_OK
 
+	if not (mydo == "install" and "noauto" in mysettings.features):
+		check_file = os.path.join(
+			mysettings["PORTAGE_BUILDDIR"], ".%sed" % mydo.rstrip('e'))
+		if os.path.exists(check_file):
+			writemsg_stdout(_(">>> It appears that "
+				"'%(action)s' has already executed for '%(pkg)s'; skipping.\n") %
+				{"action":mydo, "pkg":mysettings["PF"]})
+			writemsg_stdout(_(">>> Remove '%(file)s' to force %(action)s.\n") %
+				{"file":check_file, "action":mydo})
+			return os.EX_OK
+
 	return _spawn_phase(mydo, mysettings,
 		actionmap=actionmap, logfile=logfile,
 		fd_pipes=fd_pipes, returnpid=returnpid)
@@ -1736,15 +1813,20 @@ def _post_src_install_soname_symlinks(mysettings, out):
 	needed_filename = os.path.join(mysettings["PORTAGE_BUILDDIR"],
 		"build-info", "NEEDED.ELF.2")
 
+	f = None
 	try:
-		lines = io.open(_unicode_encode(needed_filename,
+		f = io.open(_unicode_encode(needed_filename,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['repo.content'],
-			errors='replace').readlines()
+			errors='replace')
+		lines = f.readlines()
 	except IOError as e:
 		if e.errno not in (errno.ENOENT, errno.ESTALE):
 			raise
 		return
+	finally:
+		if f is not None:
+			f.close()
 
 	libpaths = set(portage.util.getlibpaths(
 		mysettings["ROOT"], env=mysettings))

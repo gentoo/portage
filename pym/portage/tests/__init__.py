@@ -1,5 +1,5 @@
 # tests/__init__.py -- Portage Unit Test functionality
-# Copyright 2006-2010 Gentoo Foundation
+# Copyright 2006-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -42,6 +42,7 @@ def main():
 		if TEST_FILE in files:
 			testDirs.append(root)
 
+	testDirs.sort()
 	for mydir in testDirs:
 		suite.addTests(getTests(os.path.join(basedir, mydir), basedir) )
 	return TextTestRunner(verbosity=2).run(suite)
@@ -86,6 +87,7 @@ def getTests(path, base_path):
 	"""
 	files = os.listdir(path)
 	files = [ f[:-3] for f in files if f.startswith("test") and f.endswith(".py") ]
+	files.sort()
 	parent_path = path[len(base_path)+1:]
 	parent_module = ".".join(("portage", "tests", parent_path))
 	parent_module = parent_module.replace('/', '.')
@@ -109,11 +111,19 @@ class TextTestResult(_TextTestResult):
 	def __init__(self, stream, descriptions, verbosity):
 		super(TextTestResult, self).__init__(stream, descriptions, verbosity)
 		self.todoed = []
+		self.portage_skipped = []
 
 	def addTodo(self, test, info):
 		self.todoed.append((test,info))
 		if self.showAll:
 			self.stream.writeln("TODO")
+		elif self.dots:
+			self.stream.write(".")
+
+	def addPortageSkip(self, test, info):
+		self.portage_skipped.append((test,info))
+		if self.showAll:
+			self.stream.writeln("SKIP")
 		elif self.dots:
 			self.stream.write(".")
 
@@ -123,6 +133,7 @@ class TextTestResult(_TextTestResult):
 			self.printErrorList('ERROR', self.errors)
 			self.printErrorList('FAIL', self.failures)
 			self.printErrorList('TODO', self.todoed)
+			self.printErrorList('SKIP', self.portage_skipped)
 
 class TestCase(unittest.TestCase):
 	"""
@@ -131,15 +142,12 @@ class TestCase(unittest.TestCase):
 	and then fix the code later.  This may not be a great approach
 	(broken code!!??!11oneone) but it does happen at times.
 	"""
-	
-	def __init__(self, methodName='runTest'):
-		# This method exists because unittest.py in python 2.4 stores
-		# the methodName as __testMethodName while 2.5 uses
-		# _testMethodName.
-		self._testMethodName = methodName
-		unittest.TestCase.__init__(self, methodName)
+
+	def __init__(self, *pargs, **kwargs):
+		unittest.TestCase.__init__(self, *pargs, **kwargs)
 		self.todo = False
-		
+		self.portage_skip = None
+
 	def defaultTestResult(self):
 		return TextTestResult()
 
@@ -162,7 +170,13 @@ class TestCase(unittest.TestCase):
 				testMethod()
 				ok = True
 			except self.failureException:
-				if self.todo:
+				if self.portage_skip is not None:
+					if self.portage_skip is True:
+						result.addPortageSkip(self, "%s: SKIP" % testMethod)
+					else:
+						result.addPortageSkip(self, "%s: SKIP: %s" %
+							(testMethod, self.portage_skip))
+				elif self.todo:
 					result.addTodo(self,"%s: TODO" % testMethod)
 				else:
 					result.addFailure(self, sys.exc_info())

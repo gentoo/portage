@@ -473,10 +473,20 @@ class GenUseLocalDesc(object):
 					return 1
 			return (a > b) - (a < b)
 
+		class _MetadataTreeBuilder(ElementTree.TreeBuilder):
+			"""
+			Implements doctype() as required to avoid deprecation warnings
+			since Python >=2.7
+			"""
+			def doctype(self, name, pubid, system):
+				pass
+
 		for cp in self._portdb.cp_all():
 			metadata_path = os.path.join(repo_path, cp, 'metadata.xml')
 			try:
-				metadata = ElementTree.parse(metadata_path)
+				metadata = ElementTree.parse(metadata_path,
+					parser=ElementTree.XMLParser(
+					target=_MetadataTreeBuilder()))
 			except IOError:
 				pass
 			except (ExpatError, EnvironmentError) as e:
