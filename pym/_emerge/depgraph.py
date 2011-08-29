@@ -6194,7 +6194,8 @@ class depgraph(object):
 		all_added.extend(added_favorites)
 		all_added.sort()
 		for a in all_added:
-			writemsg(">>> Recording %s in \"world\" favorites file...\n" % \
+			writemsg_stdout(
+				">>> Recording %s in \"world\" favorites file...\n" % \
 				colorize("INFORM", str(a)), noiselevel=-1)
 		if all_added:
 			world_set.update(all_added)
