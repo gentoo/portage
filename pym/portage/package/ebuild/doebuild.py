@@ -1358,6 +1358,17 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 	if mydo == "pretend" and not eapi_has_pkg_pretend(eapi):
 		return os.EX_OK
 
+	if not (mydo == "install" and "noauto" in mysettings.features):
+		check_file = os.path.join(
+			mysettings["PORTAGE_BUILDDIR"], ".%sed" % mydo.rstrip('e'))
+		if os.path.exists(check_file):
+			writemsg_stdout(">>> It appears that "
+				"'%s' has already executed for '%s'; skipping.\n" %
+				(mydo, mysettings["PF"]))
+			writemsg_stdout(">>> Remove '%s' to force %s.\n" %
+				(check_file, mydo))
+			return os.EX_OK
+
 	return _spawn_phase(mydo, mysettings,
 		actionmap=actionmap, logfile=logfile,
 		fd_pipes=fd_pipes, returnpid=returnpid)
