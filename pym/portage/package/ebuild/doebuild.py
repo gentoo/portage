@@ -693,8 +693,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				newstuff = False
 				if not os.path.exists(os.path.join(
 					mysettings["PORTAGE_BUILDDIR"], ".unpacked")):
-					writemsg_stdout(
-						">>> Not marked as unpacked; recreating WORKDIR...\n")
+					writemsg_stdout(_(
+						">>> Not marked as unpacked; recreating WORKDIR...\n"))
 					newstuff = True
 				else:
 					for x in alist:
@@ -707,8 +707,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 							x_st = None
 
 						if x_st is None or x_st.st_mtime > workdir_st.st_mtime:
-							writemsg_stdout(">>> Timestamp of "
-								"%s has changed; recreating WORKDIR...\n" % x)
+							writemsg_stdout(_(">>> Timestamp of "
+								"%s has changed; recreating WORKDIR...\n") % x)
 							newstuff = True
 							break
 
@@ -726,7 +726,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 							builddir_lock.unlock()
 							builddir_lock = None
 				else:
-					writemsg_stdout(">>> WORKDIR is up-to-date, keeping...\n")
+					writemsg_stdout(_(">>> WORKDIR is up-to-date, keeping...\n"))
 					unpacked = True
 
 		# Build directory creation isn't required for any of these.
@@ -1362,11 +1362,11 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 		check_file = os.path.join(
 			mysettings["PORTAGE_BUILDDIR"], ".%sed" % mydo.rstrip('e'))
 		if os.path.exists(check_file):
-			writemsg_stdout(">>> It appears that "
-				"'%s' has already executed for '%s'; skipping.\n" %
-				(mydo, mysettings["PF"]))
-			writemsg_stdout(">>> Remove '%s' to force %s.\n" %
-				(check_file, mydo))
+			writemsg_stdout(_(">>> It appears that "
+				"'%(action)s' has already executed for '%(pkg)s'; skipping.\n") %
+				{"action":mydo, "pkg":mysettings["PF"]})
+			writemsg_stdout(_(">>> Remove '%(file)s' to force %(action)s.\n") %
+				{"file":check_file, "action":mydo})
 			return os.EX_OK
 
 	return _spawn_phase(mydo, mysettings,
