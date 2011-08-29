@@ -50,7 +50,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 	else:
 		settings = env
 
-	eprefix = env.get("EPREFIX", "")
+	eprefix = settings.get("EPREFIX", "")
 	eprefix_lstrip = eprefix.lstrip(os.sep)
 	envd_dir = os.path.join(target_root, eprefix_lstrip, "etc", "env.d")
 	ensure_dirs(envd_dir, mode=0o755)
