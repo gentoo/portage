@@ -74,9 +74,8 @@ class SimpleEmergeTestCase(TestCase):
 		portage_tmpdir = os.path.join(eprefix, "var", "tmp", "portage")
 		profile_path = settings.profile_path
 		var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
-		env = os.environ.copy()
 
-		path = env.get("PATH")
+		path =  os.environ.get("PATH")
 		if path is not None and not path.strip():
 			path = None
 		if path is None:
@@ -85,7 +84,7 @@ class SimpleEmergeTestCase(TestCase):
 			path = ":" + path
 		path = fake_bin + path
 
-		pythonpath = env.get("PYTHONPATH")
+		pythonpath =  os.environ.get("PYTHONPATH")
 		if pythonpath is not None and not pythonpath.strip():
 			pythonpath = None
 		if pythonpath is not None and \
@@ -98,15 +97,18 @@ class SimpleEmergeTestCase(TestCase):
 				pythonpath = ":" + pythonpath
 			pythonpath = PORTAGE_PYM_PATH + pythonpath
 
-		env['PYTHONPATH'] = pythonpath
-		env.update({
+		env = {
 			"__PORTAGE_TEST_EPREFIX" : eprefix,
 			"DISTDIR" : distdir,
 			"INFODIR" : "",
 			"INFOPATH" : "",
 			"PATH" : path,
+			"PORTAGE_GRPNAME" : os.environ["PORTAGE_GRPNAME"],
 			"PORTAGE_TMPDIR" : portage_tmpdir,
-		})
+			"PORTAGE_USERNAME" : os.environ["PORTAGE_USERNAME"],
+			"PYTHONPATH" : pythonpath,
+		}
+
 		dirs = [distdir, fake_bin, portage_tmpdir, var_cache_edb]
 		true_symlinks = ["chown", "chgrp"]
 		true_binary = find_binary("true")

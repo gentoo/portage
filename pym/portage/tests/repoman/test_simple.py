@@ -112,21 +112,30 @@ class SimpleRepomanTestCase(TestCase):
 		portdir = settings["PORTDIR"]
 		profiles_dir = os.path.join(portdir, "profiles")
 		license_dir = os.path.join(portdir, "licenses")
-		env = os.environ.copy()
-		pythonpath = env.get("PYTHONPATH")
+
+		pythonpath =  os.environ.get("PYTHONPATH")
 		if pythonpath is not None and not pythonpath.strip():
 			pythonpath = None
-		if pythonpath is None:
-			pythonpath = ""
+		if pythonpath is not None and \
+			pythonpath.startswith(PORTAGE_PYM_PATH + ":"):
+			pass
 		else:
-			pythonpath = ":" + pythonpath
-		pythonpath = PORTAGE_PYM_PATH + pythonpath
-		env['PYTHONPATH'] = pythonpath
-		env.update({
+			if pythonpath is None:
+				pythonpath = ""
+			else:
+				pythonpath = ":" + pythonpath
+			pythonpath = PORTAGE_PYM_PATH + pythonpath
+
+		env = {
 			"__REPOMAN_TEST_EPREFIX" : eprefix,
 			"DISTDIR" : distdir,
+			"PATH" : os.environ["PATH"],
+			"PORTAGE_GRPNAME" : os.environ["PORTAGE_GRPNAME"],
+			"PORTAGE_USERNAME" : os.environ["PORTAGE_USERNAME"],
 			"PORTDIR" : portdir,
-		})
+			"PYTHONPATH" : pythonpath,
+		}
+
 		dirs = [license_dir, profiles_dir, distdir]
 		try:
 			for d in dirs:
