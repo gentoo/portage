@@ -70,8 +70,8 @@ _doins() {
 		# $PORTAGE_ACTUAL_DISTDIR/.
 		if [ $PRESERVE_SYMLINKS = y ] && \
 			! [[ $(readlink "$mysrc") == "$PORTAGE_ACTUAL_DISTDIR"/* ]] ; then
-			rm -rf "$D$INSDESTTREE/$mydir/${mysrc##*/}" || return $?
-			cp -P "$mysrc" "$D$INSDESTTREE/$mydir/${mysrc##*/}"
+			rm -rf "$ED$INSDESTTREE/$mydir/${mysrc##*/}" || return $?
+			cp -P "$mysrc" "$ED$INSDESTTREE/$mydir/${mysrc##*/}"
 			return $?
 		else
 			cp "$mysrc" "$TMP/2/${mysrc##*/}" || return $?
