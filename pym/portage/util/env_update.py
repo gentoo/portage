@@ -231,6 +231,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 
 	if makelinks and \
 		not mtime_changed and \
+		and not ldsoconf_update and \
 		contents is not None:
 		libdir_contents_changed = False
 		for mypath, mydata in contents.items():
