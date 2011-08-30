@@ -117,7 +117,7 @@ class SimpleRepomanTestCase(TestCase):
 		if pythonpath is not None and not pythonpath.strip():
 			pythonpath = None
 		if pythonpath is not None and \
-			pythonpath.startswith(PORTAGE_PYM_PATH + ":"):
+			pythonpath.split(":")[0] == PORTAGE_PYM_PATH:
 			pass
 		else:
 			if pythonpath is None:
