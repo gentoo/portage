@@ -60,7 +60,7 @@ def detect_vcs_conflicts(options, vcs):
 	if vcs == 'cvs':
 		logging.info("Performing a " + output.green("cvs -n up") + \
 			" with a little magic grep to check for updates.")
-		retval = subprocess_getstatusoutput("cvs -n up 2>&1 | " + \
+		retval = subprocess_getstatusoutput("cvs -n up 2>/dev/null | " + \
 			"egrep '^[^\?] .*' | " + \
 			"egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
 	if vcs == 'svn':

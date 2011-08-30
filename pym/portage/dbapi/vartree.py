@@ -3260,10 +3260,6 @@ class dblink(object):
 		if not os.path.exists(self.dbcatdir):
 			ensure_dirs(self.dbcatdir)
 
-		otherversions = []
-		for v in self.vartree.dbapi.cp_list(self.mysplit[0]):
-			otherversions.append(v.split("/")[1])
-
 		cp = self.mysplit[0]
 		slot_atom = "%s:%s" % (cp, slot)
 
@@ -3833,11 +3829,6 @@ class dblink(object):
 			# phase return code.
 			showMessage(_("!!! FAILED postinst: ")+str(a)+"\n",
 				level=logging.ERROR, noiselevel=-1)
-
-		downgrade = False
-		for v in otherversions:
-			if pkgcmp(catpkgsplit(self.pkg)[1:], catpkgsplit(v)[1:]) < 0:
-				downgrade = True
 
 		# Lock the config memory file to prevent symlink creation
 		# in merge_contents from overlapping with env-update.

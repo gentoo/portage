@@ -40,12 +40,14 @@ class SimpleEmergeTestCase(TestCase):
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
 				"RDEPEND": "flag? ( dev-libs/B[flag] )",
+				"USE": "flag",
 			},
 			"dev-libs/B-1": {
 				"EAPI" : "4",
 				"IUSE" : "+flag",
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
+				"USE": "flag",
 			},
 		}
 
@@ -89,7 +91,7 @@ class SimpleEmergeTestCase(TestCase):
 		if pythonpath is not None and not pythonpath.strip():
 			pythonpath = None
 		if pythonpath is not None and \
-			pythonpath.startswith(PORTAGE_PYM_PATH + ":"):
+			pythonpath.split(":")[0] == PORTAGE_PYM_PATH:
 			pass
 		else:
 			if pythonpath is None:
