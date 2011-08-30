@@ -51,7 +51,6 @@ class SimpleEmergeTestCase(TestCase):
 			},
 		}
 
-		default_args = ("--package-moves=n",)
 		test_args = (
 			("--version",),
 			("--info",),
@@ -130,8 +129,7 @@ class SimpleEmergeTestCase(TestCase):
 				f.write("*dev-libs/token-system-pkg")
 			for args in test_args:
 				proc = subprocess.Popen([portage._python_interpreter, "-Wd",
-					os.path.join(PORTAGE_BIN_PATH, "emerge")] + \
-					list(default_args) + list(args),
+					os.path.join(PORTAGE_BIN_PATH, "emerge")] + list(args),
 					env=env, stdout=subprocess.PIPE)
 				output = proc.stdout.readlines()
 				proc.wait()
