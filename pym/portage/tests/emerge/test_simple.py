@@ -40,12 +40,14 @@ class SimpleEmergeTestCase(TestCase):
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
 				"RDEPEND": "flag? ( dev-libs/B[flag] )",
+				"USE": "flag",
 			},
 			"dev-libs/B-1": {
 				"EAPI" : "4",
 				"IUSE" : "+flag",
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
+				"USE": "flag",
 			},
 		}
 
