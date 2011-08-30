@@ -140,6 +140,7 @@ class SimpleEmergeTestCase(TestCase):
 					for line in output:
 						sys.stderr.write(_unicode_decode(line))
 
-				self.assertEqual(os.EX_OK, proc.returncode, "emerge failed")
+				self.assertEqual(os.EX_OK, proc.returncode,
+					"emerge failed with args %s" % (args,))
 		finally:
 			playground.cleanup()
