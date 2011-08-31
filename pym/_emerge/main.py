@@ -1545,6 +1545,11 @@ def emerge_main(args=None):
 		settings, trees, mtimedb = load_emerge_config(trees=trees)
 		portdb = trees[settings["ROOT"]]["porttree"].dbapi
 
+	# NOTE: adjust_configs() can map options to FEATURES, so any relevant
+	# options adjustments should be made prior to calling adjust_configs().
+	if "--buildpkgonly" in myopts:
+		myopts["--buildpkg"] = True
+
 	adjust_configs(myopts, trees)
 	apply_priorities(settings)
 
@@ -1586,9 +1591,6 @@ def emerge_main(args=None):
 
 	if "--usepkgonly" in myopts:
 		myopts["--usepkg"] = True
-
-	if "buildpkg" in settings.features or "--buildpkgonly" in myopts:
-		myopts["--buildpkg"] = True
 
 	if "--buildpkgonly" in myopts:
 		# --buildpkgonly will not merge anything, so

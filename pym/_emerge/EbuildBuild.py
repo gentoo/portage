@@ -225,7 +225,7 @@ class EbuildBuild(CompositeTask):
 				system_set.findAtomForPackage(pkg) and \
 				not opts.buildpkg
 
-		if opts.buildpkg or self._issyspkg:
+		if opts.buildpkg or "buildpkg" in features or self._issyspkg:
 
 			self._buildpkg = True
 
