@@ -291,7 +291,7 @@ qahelp={
 	"ebuild.notadded":"Ebuilds that exist but have not been added to cvs",
 	"ebuild.patches":"PATCHES variable should be a bash array to ensure white space safety",
 	"changelog.notadded":"ChangeLogs that exist but have not been added to cvs",
-	"dependency.unknown" : "Ebuild has a dependency that refers to an unknown package (which may be provided by an overlay)",
+	"dependency.unknown" : "Ebuild has a dependency that refers to an unknown package (which may be valid if it is a blocker for a renamed/removed package, or is an alternative choice provided by an overlay)",
 	"file.executable":"Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do note need the executable bit",
 	"file.size":"Files in the files directory must be under 20 KiB",
 	"file.size.fatal":"Files in the files directory must be under 60 KiB",
@@ -1700,8 +1700,7 @@ for x in scanlist:
 					if atom == "||":
 						continue
 
-					if not atom.blocker and \
-						not portdb.cp_list(atom.cp) and \
+					if not portdb.cp_list(atom.cp) and \
 						not atom.cp.startswith("virtual/"):
 						unknown_pkgs.setdefault(atom.cp, set()).add(
 							(mytype, atom.unevaluated_atom))

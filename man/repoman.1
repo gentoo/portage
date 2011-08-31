@@ -252,7 +252,8 @@ ChangeLogs that exist but have not been added to cvs
 .TP
 .B dependency.unknown
 Ebuild has a dependency that refers to an unknown package (which may be
-provided by an overlay)
+valid if it is a blocker for a renamed/removed package, or is an
+alternative choice provided by an overlay)
 .TP
 .B digest.assumed
 Existing digest must be assumed correct (Package level only)
