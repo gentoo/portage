@@ -161,8 +161,8 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 								del e
 					processed_count += 1
 					myso = portage.subprocess_getstatusoutput(
-						"LANG=C LANGUAGE=C %s/usr/bin/install-info " +
-						"--dir-file=%s/dir %s/%s" % (_unicode_decode(EPREFIX), inforoot, inforoot, x))[1]
+						"LANG=C LANGUAGE=C %s/usr/bin/install-info " \
+						"--dir-file=%s/dir %s/%s" % (EPREFIX, inforoot, inforoot, x))[1]
 					existsstr="already exists, for file `"
 					if myso!="":
 						if re.search(existsstr,myso):
