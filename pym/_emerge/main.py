@@ -29,7 +29,8 @@ from portage.const import EPREFIX, BPREFIX, EPREFIX_LSTRIP
 from portage.data import secpass
 from portage.dbapi.dep_expand import dep_expand
 from portage.util import normalize_path as normpath
-from portage.util import shlex_split, writemsg_level, writemsg_stdout
+from portage.util import (shlex_split, varexpand,
+	writemsg_level, writemsg_stdout)
 from portage._sets import SETPREFIX
 from portage._global_updates import _global_updates
 
@@ -388,6 +389,8 @@ def post_emerge(myaction, myopts, myfiles,
 			writemsg_level(
 				" %s spawn failed of %s\n" % (bad("*"), postemerge,),
 				level=logging.ERROR, noiselevel=-1)
+
+	clean_logs(settings)
 
 	if "--quiet" not in myopts and \
 		myaction is None and "@world" in myfiles:
@@ -1223,7 +1226,6 @@ def ionice(settings):
 	if not ionice_cmd:
 		return
 
-	from portage.util import varexpand
 	variables = {"PID" : str(os.getpid())}
 	cmd = [varexpand(x, mydict=variables) for x in ionice_cmd]
 
@@ -1238,6 +1240,35 @@ def ionice(settings):
 		out = portage.output.EOutput()
 		out.eerror("PORTAGE_IONICE_COMMAND returned %d" % (rval,))
 		out.eerror("See the make.conf(5) man page for PORTAGE_IONICE_COMMAND usage instructions.")
+
+def clean_logs(settings):
+
+	if "clean-logs" not in settings.features:
+		return
+
+	clean_cmd = settings.get("PORT_LOGDIR_CLEAN")
+	if clean_cmd:
+		clean_cmd = shlex_split(clean_cmd)
+	if not clean_cmd:
+		return
+
+	logdir = settings.get("PORT_LOGDIR")
+	if logdir is None or not os.path.isdir(logdir):
+		return
+
+	variables = {"PORT_LOGDIR" : logdir}
+	cmd = [varexpand(x, mydict=variables) for x in clean_cmd]
+
+	try:
+		rval = portage.process.spawn(cmd, env=os.environ)
+	except portage.exception.CommandNotFound:
+		rval = 127
+
+	if rval != os.EX_OK:
+		out = portage.output.EOutput()
+		out.eerror("PORT_LOGDIR_CLEAN returned %d" % (rval,))
+		out.eerror("See the make.conf(5) man page for "
+			"PORT_LOGDIR_CLEAN usage instructions.")
 
 def setconfig_fallback(root_config):
 	from portage._sets.base import DummyPackageSet
@@ -1546,6 +1577,11 @@ def emerge_main(args=None):
 		settings, trees, mtimedb = load_emerge_config(trees=trees)
 		portdb = trees[settings["ROOT"]]["porttree"].dbapi
 
+	# NOTE: adjust_configs() can map options to FEATURES, so any relevant
+	# options adjustments should be made prior to calling adjust_configs().
+	if "--buildpkgonly" in myopts:
+		myopts["--buildpkg"] = True
+
 	adjust_configs(myopts, trees)
 	apply_priorities(settings)
 
@@ -1587,9 +1623,6 @@ def emerge_main(args=None):
 
 	if "--usepkgonly" in myopts:
 		myopts["--usepkg"] = True
-
-	if "buildpkg" in settings.features or "--buildpkgonly" in myopts:
-		myopts["--buildpkg"] = True
 
 	if "--buildpkgonly" in myopts:
 		# --buildpkgonly will not merge anything, so

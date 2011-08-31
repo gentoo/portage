@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Jul 2011" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "August 2011" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -249,6 +249,12 @@ lead to packages that cannot be emerged. If this happens (if you receive errors
 like "File not recognized: File truncated"), try recompiling the application
 with ccache disabled before reporting a bug. Unless you are doing development
 work, do not enable ccache.
+.TP
+.B clean\-logs
+Enable automatic execution of the command specified by the
+PORT_LOGDIR_CLEAN variable. The default PORT_LOGDIR_CLEAN setting will
+remove all files from PORT_LOGDIR that were last modified at least 7
+days ago.
 .TP
 .B collision\-protect
 A QA\-feature to ensure that a package doesn't overwrite files it doesn't own.
@@ -611,6 +617,13 @@ ${CATEGORY}:${PF}:YYYYMMDD\-HHMMSS.log in the directory specified. If the
 directory does not exist, it will be created automatically and group permissions
 will be applied to it.  If the directory already exists, portage will not
 modify it's permissions.
+.TP
+.B PORT_LOGDIR_CLEAN
+This variable should contain a command for portage to call in order
+to clean PORT_LOGDIR. The command string should contain a
+\\${PORT_LOGDIR} place\-holder that will be substituted
+with the value of that variable. This variable will have no effect
+unless \fBclean\-logs\fR is enabled in \fBFEATURES\fR.
 .TP
 \fBPORTAGE_BINHOST\fR = \fI[space delimited URI list]\fR
 This is a list of hosts from which portage will grab prebuilt\-binary packages.

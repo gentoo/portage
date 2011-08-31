@@ -687,7 +687,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		alist = set(mysettings.configdict["pkg"].get("A", "").split())
 
 		unpacked = False
-		if "unpack" not in phases_to_run:
+		if tree != "porttree":
+			pass
+		elif "unpack" not in phases_to_run:
 			unpacked = os.path.exists(os.path.join(
 				mysettings["PORTAGE_BUILDDIR"], ".unpacked"))
 		else:

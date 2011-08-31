@@ -101,6 +101,9 @@ PORTAGE_RSYNC_OPTS="--recursive --links --safe-links --perms --times --compress 
 # message should be produced.
 PORTAGE_SYNC_STALE="30"
 
+# Executed before emerge exit if FEATURES=clean-logs is enabled.
+PORT_LOGDIR_CLEAN="find \"\${PORT_LOGDIR}\" -type f ! -name \"summary.log*\" -mtime +7 -delete"
+
 # Minimal CONFIG_PROTECT
 # NOTE: in Prefix, these are NOT prefixed on purpose, because the
 # profiles define them too

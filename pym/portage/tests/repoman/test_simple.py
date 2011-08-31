@@ -158,10 +158,10 @@ class SimpleRepomanTestCase(TestCase):
 			# order to ensure that the CTIME is current
 			shutil.copyfile(metadata_dtd, os.path.join(distdir, "metadata.dtd"))
 			for cwd in ("", "dev-libs", "dev-libs/A", "dev-libs/B"):
-				cwd = os.path.join(portdir, cwd)
+				abs_cwd = os.path.join(portdir, cwd)
 				proc = subprocess.Popen([portage._python_interpreter, "-Wd",
 					os.path.join(PORTAGE_BIN_PATH, "repoman"), "full"],
-					cwd=cwd, env=env, stdout=subprocess.PIPE)
+					cwd=abs_cwd, env=env, stdout=subprocess.PIPE)
 				output = proc.stdout.readlines()
 				proc.wait()
 				proc.stdout.close()
@@ -169,6 +169,7 @@ class SimpleRepomanTestCase(TestCase):
 					for line in output:
 						sys.stderr.write(_unicode_decode(line))
 
-				self.assertEqual(os.EX_OK, proc.returncode, "repoman failed")
+				self.assertEqual(os.EX_OK, proc.returncode,
+					"repoman failed in %s" % (cwd,))
 		finally:
 			playground.cleanup()
