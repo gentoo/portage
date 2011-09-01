@@ -49,6 +49,21 @@ class SimpleEmergeTestCase(TestCase):
 				"LICENSE": "GPL-2",
 				"USE": "flag",
 			},
+			"dev-libs/depclean-me-1": {
+				"EAPI" : "4",
+				"IUSE" : "",
+				"KEYWORDS": "x86",
+				"LICENSE": "GPL-2",
+				"USE": "",
+			},
+			"app-misc/depclean-me-1": {
+				"EAPI" : "4",
+				"IUSE" : "",
+				"KEYWORDS": "x86",
+				"LICENSE": "GPL-2",
+				"RDEPEND": "dev-libs/depclean-me",
+				"USE": "",
+			},
 		}
 
 		test_args = (
@@ -58,6 +73,7 @@ class SimpleEmergeTestCase(TestCase):
 			("--pretend", "dev-libs/A"),
 			("--pretend", "--tree", "--complete-graph", "dev-libs/A"),
 			("-p", "dev-libs/B"),
+			("--oneshot", "dev-libs/B",),
 			("--oneshot", "dev-libs/A",),
 			("--noreplace", "dev-libs/A",),
 			("--pretend", "--depclean", "--verbose", "dev-libs/B"),
