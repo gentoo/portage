@@ -200,8 +200,9 @@ def discard_digests(myebuild, mysettings, mydbapi):
 		portage._doebuild_manifest_exempt_depend += 1
 		pkgdir = os.path.dirname(myebuild)
 		fetchlist_dict = portage.FetchlistDict(pkgdir, mysettings, mydbapi)
-		from portage.manifest import Manifest
-		mf = Manifest(pkgdir, mysettings["DISTDIR"],
+		mf = mysettings.repositories.get_repo_for_location(
+			os.path.dirname(os.path.dirname(pkgdir)))
+		mf = mf.load_manifest(pkgdir, mysettings["DISTDIR"],
 			fetchlist_dict=fetchlist_dict, manifest1_compat=False)
 		mf.create(requiredDistfiles=None,
 			assumeDistHashesSometimes=True, assumeDistHashesAlways=True)

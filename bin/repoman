@@ -1104,7 +1104,9 @@ for x in scanlist:
 			portage._doebuild_manifest_exempt_depend += 1
 			try:
 				distdir = repoman_settings['DISTDIR']
-				mf = portage.manifest.Manifest(checkdir, distdir,
+				mf = repoman_settings.repositories.get_repo_for_location(
+					os.path.dirname(os.path.dirname(checkdir)))
+				mf = mf.load_manifest(checkdir, distdir,
 					fetchlist_dict=fetchlist_dict)
 				mf.create(requiredDistfiles=None,
 					assumeDistHashesAlways=True)
@@ -1314,7 +1316,9 @@ for x in scanlist:
 				raise
 			continue
 
-	mf = Manifest(checkdir, repoman_settings["DISTDIR"])
+	mf = repoman_settings.repositories.get_repo_for_location(
+		os.path.dirname(os.path.dirname(checkdir)))
+	mf = mf.load_manifest(checkdir, repoman_settings["DISTDIR"])
 	mydigests=mf.getTypeDigests("DIST")
 
 	fetchlist_dict = portage.FetchlistDict(checkdir, repoman_settings, portdb)

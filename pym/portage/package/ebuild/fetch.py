@@ -356,7 +356,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 		allow_missing_digests = True
 	pkgdir = mysettings.get("O")
 	if digests is None and not (pkgdir is None or skip_manifest):
-		mydigests = Manifest(
+		mydigests = mysettings.repositories.get_repo_for_location(
+			os.path.dirname(os.path.dirname(pkgdir))).load_manifest(
 			pkgdir, mysettings["DISTDIR"]).getTypeDigests("DIST")
 	elif digests is None or skip_manifest:
 		# no digests because fetch was not called for a specific package

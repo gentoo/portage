@@ -317,7 +317,9 @@ class search(object):
 							installed=False, metadata=metadata,
 							root_config=self.root_config, type_name="ebuild")
 						pkgdir = os.path.dirname(myebuild)
-						mf = Manifest(
+						mf = self.settings.repositories.get_repo_for_location(
+							os.path.dirname(os.path.dirname(pkgdir)))
+						mf = mf.load_manifest(
 							pkgdir, self.settings["DISTDIR"])
 						try:
 							uri_map = _parse_uri_map(mycpv, metadata,

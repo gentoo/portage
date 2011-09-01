@@ -508,7 +508,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				out.eerror(_("Manifest not found for '%s'") % (myebuild,))
 				_doebuild_broken_ebuilds.add(myebuild)
 				return 1
-			mf = Manifest(pkgdir, mysettings["DISTDIR"])
+			mf = mysettings.repositories.get_repo_for_location(
+				os.path.dirname(os.path.dirname(pkgdir)))
+			mf = mf.load_manifest(pkgdir, mysettings["DISTDIR"])
 
 		else:
 			mf = _doebuild_manifest_cache
