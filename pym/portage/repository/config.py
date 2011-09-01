@@ -42,7 +42,7 @@ class RepoConfig(object):
 	"""Stores config of one repository"""
 
 	__slots__ = ['aliases', 'eclass_overrides', 'eclass_locations', 'location', 'user_location', 'masters', 'main_repo',
-		'missing_repo_name', 'name', 'priority', 'sync', 'format', 'load_manifest']
+		'missing_repo_name', 'name', 'priority', 'sync', 'format', 'thin_manifest']
 
 	def __init__(self, name, repo_opts):
 		"""Build a RepoConfig with options in repo_opts
@@ -111,7 +111,11 @@ class RepoConfig(object):
 			missing = False
 		self.name = name
 		self.missing_repo_name = missing
-		self.load_manifest = manifest.Manifest
+		self.thin_manifest = False
+
+	def load_manifest(self, *args, **kwds):
+		kwds['thin'] = self.thin_manifest
+		return manifest.Manifest(*args, **kwds)
 
 	def update(self, new_repo):
 		"""Update repository with options in another RepoConfig"""
@@ -326,6 +330,9 @@ class RepoConfigLoader(object):
 				if repo.aliases:
 					aliases.extend(repo.aliases)
 				repo.aliases = tuple(sorted(set(aliases)))
+
+			if layout_data.get('thin-manifests', '').lower() == 'true':
+				repo.thin_manifest = True
 
 		#Take aliases into account.
 		new_prepos = {}
