@@ -3872,7 +3872,8 @@ class dblink(object):
 
 		# we do a first merge; this will recurse through all files in our srcroot but also build up a
 		# "second hand" of symlinks to merge later
-		if self.mergeme(srcroot, destroot, outfile, secondhand, "", cfgfiledict, mymtime):
+		if self.mergeme(srcroot, destroot, outfile, secondhand,
+			self.settings["EPREFIX"].lstrip(os.sep), cfgfiledict, mymtime):
 			return 1
 
 		# now, it's time for dealing our second hand; we'll loop until we can't merge anymore.	The rest are
