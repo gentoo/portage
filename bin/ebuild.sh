@@ -325,11 +325,9 @@ declare -a PORTAGE_DOCOMPRESS_SKIP=( /usr/share/doc/${PF}/html )
 keepdir() {
 	dodir "$@"
 	local x
-	local ed=${ED}
-	case "$EAPI" in 0|1|2) ed=${D} ;; esac
 	if [ "$1" == "-R" ] || [ "$1" == "-r" ]; then
 		shift
-		find "$@" -type d -printf "${ed}%p/.keep_${CATEGORY}_${PN}-${SLOT}\n" \
+		find "$@" -type d -printf "${D}%p/.keep_${CATEGORY}_${PN}-${SLOT}\n" \
 			| tr "\n" "\0" | \
 			while read -r -d $'\0' ; do
 				>> "$REPLY" || \
@@ -337,8 +335,8 @@ keepdir() {
 			done
 	else
 		for x in "$@"; do
-			>> "${ed}${x}/.keep_${CATEGORY}_${PN}-${SLOT}" || \
-				die "Failed to create .keep in ${ed}${x}"
+			>> "${D}${x}/.keep_${CATEGORY}_${PN}-${SLOT}" || \
+				die "Failed to create .keep in ${D}${x}"
 		done
 	fi
 }
@@ -486,8 +484,6 @@ hasg() {
 hasgq() { hasg "$@" >/dev/null ; }
 econf() {
 	local x
-	local eprefix=${EPREFIX}
-	case "$EAPI" in 0|1|2) eprefix= ;; esac
 
 	local phase_func=$(_ebuild_arg_to_phase "$EAPI" "$EBUILD_PHASE")
 	if [[ -n $phase_func ]] ; then
@@ -509,12 +505,12 @@ econf() {
 			sed -e "1s:^#![[:space:]]*/bin/sh:#!$CONFIG_SHELL:" -i "$ECONF_SOURCE/configure" || \
 				die "Substition of shebang in '$ECONF_SOURCE/configure' failed"
 		fi
-		if [ -e "${eprefix}"/usr/share/gnuconfig/ ]; then
+		if [ -e /usr/share/gnuconfig/ ]; then
 			find "${WORKDIR}" -type f '(' \
 			-name config.guess -o -name config.sub ')' -print0 | \
 			while read -r -d $'\0' x ; do
-				vecho " * econf: updating ${x/${WORKDIR}\/} with ${eprefix}/usr/share/gnuconfig/${x##*/}"
-				cp -f "${eprefix}"/usr/share/gnuconfig/"${x##*/}" "${x}"
+				vecho " * econf: updating ${x/${WORKDIR}\/} with /usr/share/gnuconfig/${x##*/}"
+				cp -f /usr/share/gnuconfig/"${x##*/}" "${x}"
 			done
 		fi
 
@@ -534,7 +530,7 @@ econf() {
 		if [[ -n ${CONF_LIBDIR} ]] && ! hasgq --libdir=\* "$@" ; then
 			export CONF_PREFIX=$(hasg --exec-prefix=\* "$@")
 			[[ -z ${CONF_PREFIX} ]] && CONF_PREFIX=$(hasg --prefix=\* "$@")
-			: ${CONF_PREFIX:=${eprefix}/usr}
+			: ${CONF_PREFIX:=/usr}
 			CONF_PREFIX=${CONF_PREFIX#*=}
 			[[ ${CONF_PREFIX} != /* ]] && CONF_PREFIX="/${CONF_PREFIX}"
 			[[ ${CONF_LIBDIR} != /* ]] && CONF_LIBDIR="/${CONF_LIBDIR}"
@@ -542,15 +538,15 @@ econf() {
 		fi
 
 		set -- \
-			--prefix="${eprefix}"/usr \
+			--prefix=/usr \
 			${CBUILD:+--build=${CBUILD}} \
 			--host=${CHOST} \
 			${CTARGET:+--target=${CTARGET}} \
-			--mandir="${eprefix}"/usr/share/man \
-			--infodir="${eprefix}"/usr/share/info \
-			--datadir="${eprefix}"/usr/share \
-			--sysconfdir="${eprefix}"/etc \
-			--localstatedir="${eprefix}"/var/lib \
+			--mandir=/usr/share/man \
+			--infodir=/usr/share/info \
+			--datadir=/usr/share \
+			--sysconfdir=/etc \
+			--localstatedir=/var/lib \
 			"$@" \
 			${EXTRA_ECONF}
 		vecho "${ECONF_SOURCE}/configure" "$@"
@@ -574,8 +570,6 @@ econf() {
 einstall() {
 	# CONF_PREFIX is only set if they didn't pass in libdir above.
 	local LOCAL_EXTRA_EINSTALL="${EXTRA_EINSTALL}"
-	local ed=${ED}
-	case "$EAPI" in 0|1|2) ed=${D} ;; esac
 	LIBDIR_VAR="LIBDIR_${ABI}"
 	if [ -n "${ABI}" -a -n "${!LIBDIR_VAR}" ]; then
 		CONF_LIBDIR="${!LIBDIR_VAR}"
@@ -590,22 +584,22 @@ einstall() {
 
 	if [ -f ./[mM]akefile -o -f ./GNUmakefile ] ; then
 		if [ "${PORTAGE_DEBUG}" == "1" ]; then
-			${MAKE:-make} -n prefix="${ed}usr" \
-				datadir="${ed}usr/share" \
-				infodir="${ed}usr/share/info" \
-				localstatedir="${ed}var/lib" \
-				mandir="${ed}usr/share/man" \
-				sysconfdir="${ed}etc" \
+			${MAKE:-make} -n prefix="${D}usr" \
+				datadir="${D}usr/share" \
+				infodir="${D}usr/share/info" \
+				localstatedir="${D}var/lib" \
+				mandir="${D}usr/share/man" \
+				sysconfdir="${D}etc" \
 				${LOCAL_EXTRA_EINSTALL} \
 				${MAKEOPTS} ${EXTRA_EMAKE} -j1 \
 				"$@" install
 		fi
-		${MAKE:-make} prefix="${ed}usr" \
-			datadir="${ed}usr/share" \
-			infodir="${ed}usr/share/info" \
-			localstatedir="${ed}var/lib" \
-			mandir="${ed}usr/share/man" \
-			sysconfdir="${ed}etc" \
+		${MAKE:-make} prefix="${D}usr" \
+			datadir="${D}usr/share" \
+			infodir="${D}usr/share/info" \
+			localstatedir="${D}var/lib" \
+			mandir="${D}usr/share/man" \
+			sysconfdir="${D}etc" \
 			${LOCAL_EXTRA_EINSTALL} \
 			${MAKEOPTS} ${EXTRA_EMAKE} -j1 \
 			"$@" install || die "einstall failed"
@@ -801,10 +795,8 @@ into() {
 		export DESTTREE=""
 	else
 		export DESTTREE=$1
-		local ed=${ED}
-		case "$EAPI" in 0|1|2) ed=${D} ;; esac
-		if [ ! -d "${ed}${DESTTREE}" ]; then
-			install -d "${ed}${DESTTREE}"
+		if [ ! -d "${D}${DESTTREE}" ]; then
+			install -d "${D}${DESTTREE}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
 				helpers_die "${FUNCNAME[0]} failed"
@@ -819,10 +811,8 @@ insinto() {
 		export INSDESTTREE=""
 	else
 		export INSDESTTREE=$1
-		local ed=${ED}
-		case "$EAPI" in 0|1|2) d=${D} ;; esac
-		if [ ! -d "${ed}${INSDESTTREE}" ]; then
-			install -d "${ed}${INSDESTTREE}"
+		if [ ! -d "${D}${INSDESTTREE}" ]; then
+			install -d "${D}${INSDESTTREE}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
 				helpers_die "${FUNCNAME[0]} failed"
@@ -837,10 +827,8 @@ exeinto() {
 		export _E_EXEDESTTREE_=""
 	else
 		export _E_EXEDESTTREE_="$1"
-		local ed=${ED}
-		case "$EAPI" in 0|1|2) d=${D} ;; esac
-		if [ ! -d "${ed}${_E_EXEDESTTREE_}" ]; then
-			install -d "${ed}${_E_EXEDESTTREE_}"
+		if [ ! -d "${D}${_E_EXEDESTTREE_}" ]; then
+			install -d "${D}${_E_EXEDESTTREE_}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
 				helpers_die "${FUNCNAME[0]} failed"
@@ -855,10 +843,8 @@ docinto() {
 		export _E_DOCDESTTREE_=""
 	else
 		export _E_DOCDESTTREE_="$1"
-		local ed=${ED}
-		case "$EAPI" in 0|1|2) d=${D} ;; esac
-		if [ ! -d "${ed}usr/share/doc/${PF}/${_E_DOCDESTTREE_}" ]; then
-			install -d "${ed}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
+		if [ ! -d "${D}usr/share/doc/${PF}/${_E_DOCDESTTREE_}" ]; then
+			install -d "${D}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
 				helpers_die "${FUNCNAME[0]} failed"
@@ -2105,19 +2091,17 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 			PATH=$_ebuild_helpers_path:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${ROOTPATH:+:}$ROOTPATH
 			unset _ebuild_helpers_path
 
-			_eprefix=${EPREFIX}
-			case "$EAPI" in 0|1|2) _eprefix= ;; esac
 			# Use default ABI libdir in accordance with bug #355283.
 			x=LIBDIR_${DEFAULT_ABI}
 			[[ -n $DEFAULT_ABI && -n ${!x} ]] && x=${!x} || x=lib
 
 			if has distcc $FEATURES ; then
-				PATH="${_eprefix}/usr/$x/distcc/bin:$PATH"
+				PATH="/usr/$x/distcc/bin:$PATH"
 				[[ -n $DISTCC_LOG ]] && addwrite "${DISTCC_LOG%/*}"
 			fi
 
 			if has ccache $FEATURES ; then
-				PATH="${_eprefix}/usr/$x/ccache/bin:$PATH"
+				PATH="/usr/$x/ccache/bin:$PATH"
 
 				if [[ -n $CCACHE_DIR ]] ; then
 					addread "$CCACHE_DIR"
@@ -2127,7 +2111,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 				[[ -n $CCACHE_SIZE ]] && ccache -M $CCACHE_SIZE &> /dev/null
 			fi
 
-			unset x _eprefix
+			unset x
 
 			if [[ -n $QA_PREBUILT ]] ; then
 

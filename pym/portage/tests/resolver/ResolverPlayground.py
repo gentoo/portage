@@ -120,7 +120,6 @@ class ResolverPlayground(object):
 			rdepend = metadata.pop("RDEPEND", None)
 			pdepend = metadata.pop("PDEPEND", None)
 			required_use = metadata.pop("REQUIRED_USE", None)
-			misc_content = metadata.pop("MISC_CONTENT", None)
 
 			if metadata:
 				raise ValueError("metadata of ebuild '%s' contains unknown keys: %s" % (cpv, metadata.keys()))
@@ -153,8 +152,6 @@ class ResolverPlayground(object):
 				f.write('PDEPEND="' + str(pdepend) + '"\n')
 			if required_use is not None:
 				f.write('REQUIRED_USE="' + str(required_use) + '"\n')
-			if misc_content is not None:
-				f.write(misc_content)
 			f.close()
 
 	def _create_ebuild_manifests(self, ebuilds):

@@ -9,10 +9,8 @@ if [[ $# -lt 1 ]] ; then
 	exit 1
 fi
 
-case "$EAPI" in 0|1|2) ED=${D} ;; esac
-
-if [[ ! -d ${ED}${_E_EXEDESTTREE_} ]] ; then
-	install -d "${ED}${_E_EXEDESTTREE_}"
+if [[ ! -d ${D}${_E_EXEDESTTREE_} ]] ; then
+	install -d "${D}${_E_EXEDESTTREE_}"
 fi
 
 TMP=$T/.doexe_tmp
@@ -31,7 +29,7 @@ for x in "$@" ; do
 		mysrc="${x}"
 	fi
 	if [ -e "$mysrc" ] ; then
-		install $EXEOPTIONS "$mysrc" "$ED$_E_EXEDESTTREE_"
+		install $EXEOPTIONS "$mysrc" "$D$_E_EXEDESTTREE_"
 	else
 		echo "!!! ${0##*/}: $mysrc does not exist" 1>&2
 		false

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 if [[ $# -lt 1 ]] ; then
@@ -7,14 +7,12 @@ if [[ $# -lt 1 ]] ; then
 	exit 1
 fi
 
-case "$EAPI" in 0|1|2) ED=${D} ;; esac
-
 ret=0
 file_found=0
-mysed="s:${ED}::g"
+mysed="s:${D}::g"
 
 for x in "$@" ; do
-	y=$ED${x#/}
+	y=$D${x#/}
 	if [ -e "${y}" ] ; then
 		if [ -f "${y}" ] ; then
 			file_found=1
