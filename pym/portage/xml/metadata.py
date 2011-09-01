@@ -63,8 +63,7 @@ class _Maintainer(object):
 		self.description = None
 		self.restrict = node.get('restrict')
 		self.status = node.get('status')
-		maint_attrs = node.getchildren()
-		for attr in maint_attrs:
+		for attr in node:
 			setattr(self, attr.tag, attr.text)
 
 	def __repr__(self):
