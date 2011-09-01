@@ -17,12 +17,23 @@ class SimpleEmergeTestCase(TestCase):
 
 	def testSimple(self):
 
+		install_something = """
+S="${WORKDIR}"
+src_install() {
+	einfo "installing something..."
+	insinto /usr/lib/${P}
+	echo "blah blah blah" > "${T}"/regular-file
+	doins "${T}"/regular-file
+}
+"""
+
 		ebuilds = {
 			"dev-libs/A-1": {
 				"EAPI" : "4",
 				"IUSE" : "+flag",
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
+				"MISC_CONTENT": install_something,
 				"RDEPEND": "flag? ( dev-libs/B[flag] )",
 			},
 			"dev-libs/B-1": {
@@ -30,6 +41,7 @@ class SimpleEmergeTestCase(TestCase):
 				"IUSE" : "+flag",
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
+				"MISC_CONTENT": install_something,
 			},
 		}
 
@@ -49,6 +61,21 @@ class SimpleEmergeTestCase(TestCase):
 				"LICENSE": "GPL-2",
 				"USE": "flag",
 			},
+			"dev-libs/depclean-me-1": {
+				"EAPI" : "4",
+				"IUSE" : "",
+				"KEYWORDS": "x86",
+				"LICENSE": "GPL-2",
+				"USE": "",
+			},
+			"app-misc/depclean-me-1": {
+				"EAPI" : "4",
+				"IUSE" : "",
+				"KEYWORDS": "x86",
+				"LICENSE": "GPL-2",
+				"RDEPEND": "dev-libs/depclean-me",
+				"USE": "",
+			},
 		}
 
 		test_args = (
@@ -58,6 +85,7 @@ class SimpleEmergeTestCase(TestCase):
 			("--pretend", "dev-libs/A"),
 			("--pretend", "--tree", "--complete-graph", "dev-libs/A"),
 			("-p", "dev-libs/B"),
+			("--oneshot", "dev-libs/B",),
 			("--oneshot", "dev-libs/A",),
 			("--noreplace", "dev-libs/A",),
 			("--pretend", "--depclean", "--verbose", "dev-libs/B"),
@@ -106,6 +134,8 @@ class SimpleEmergeTestCase(TestCase):
 			"INFOPATH" : "",
 			"PATH" : path,
 			"PORTAGE_GRPNAME" : os.environ["PORTAGE_GRPNAME"],
+			"PORTAGE_INST_GID" : str(portage.data.portage_gid),
+			"PORTAGE_INST_UID" : str(portage.data.portage_uid),
 			"PORTAGE_TMPDIR" : portage_tmpdir,
 			"PORTAGE_USERNAME" : os.environ["PORTAGE_USERNAME"],
 			"PORTDIR" : portdir,
@@ -130,15 +160,16 @@ class SimpleEmergeTestCase(TestCase):
 			for args in test_args:
 				proc = subprocess.Popen([portage._python_interpreter, "-Wd",
 					os.path.join(PORTAGE_BIN_PATH, "emerge")] + list(args),
-					env=env, stdout=subprocess.PIPE)
-				output = proc.stdout.readlines()
+					env=env)
+				#output = proc.stdout.readlines()
 				proc.wait()
-				proc.stdout.close()
-				if proc.returncode != os.EX_OK:
-					for line in output:
-						sys.stderr.write(_unicode_decode(line))
+				#proc.stdout.close()
+				#if proc.returncode != os.EX_OK:
+				#	for line in output:
+				#		sys.stderr.write(_unicode_decode(line))
 
 				self.assertEqual(os.EX_OK, proc.returncode,
 					"emerge failed with args %s" % (args,))
 		finally:
-			playground.cleanup()
+			pass
+			##playground.cleanup()

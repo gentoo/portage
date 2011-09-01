@@ -268,7 +268,9 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	mysettings["T"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "temp")
 
 	# Prefix forward compatability
-	mysettings["ED"] = mysettings["D"]
+	eprefix_lstrip = mysettings["EPREFIX"].lstrip(os.sep)
+	mysettings["ED"] = os.path.join(
+		mysettings["D"], eprefix_lstrip).rstrip(os.sep) + os.sep
 
 	mysettings["PORTAGE_BASHRC"] = os.path.join(
 		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_FILE)
