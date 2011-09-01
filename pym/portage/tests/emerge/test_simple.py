@@ -17,12 +17,24 @@ class SimpleEmergeTestCase(TestCase):
 
 	def testSimple(self):
 
+		install_something = """
+S="${WORKDIR}"
+src_install() {
+	einfo "installing something..."
+	# TODO: Add prefix support to shell code/helpers, so we
+	#       can use things like dodir and doins here.
+	mkdir -p "${ED}"/usr/lib/${P}
+	echo "blah blah blah" > "${ED}"/usr/lib/${P}/regular-file
+}
+"""
+
 		ebuilds = {
 			"dev-libs/A-1": {
 				"EAPI" : "4",
 				"IUSE" : "+flag",
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
+				"MISC_CONTENT": install_something,
 				"RDEPEND": "flag? ( dev-libs/B[flag] )",
 			},
 			"dev-libs/B-1": {
@@ -30,6 +42,7 @@ class SimpleEmergeTestCase(TestCase):
 				"IUSE" : "+flag",
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
+				"MISC_CONTENT": install_something,
 			},
 		}
 
@@ -122,6 +135,8 @@ class SimpleEmergeTestCase(TestCase):
 			"INFOPATH" : "",
 			"PATH" : path,
 			"PORTAGE_GRPNAME" : os.environ["PORTAGE_GRPNAME"],
+			"PORTAGE_INST_GID" : str(portage.data.portage_gid),
+			"PORTAGE_INST_UID" : str(portage.data.portage_uid),
 			"PORTAGE_TMPDIR" : portage_tmpdir,
 			"PORTAGE_USERNAME" : os.environ["PORTAGE_USERNAME"],
 			"PORTDIR" : portdir,
