@@ -585,6 +585,7 @@ class depgraph(object):
 		if not missed_updates:
 			return
 
+		self._show_merge_list()
 		backtrack_masked = []
 
 		for pkg, parent_atoms in missed_updates:
@@ -627,6 +628,7 @@ class depgraph(object):
 		if not missed_updates:
 			return
 
+		self._show_merge_list()
 		msg = []
 		msg.append("\nWARNING: One or more updates have been " + \
 			"skipped due to a dependency conflict:\n\n")
