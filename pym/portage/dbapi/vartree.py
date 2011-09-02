@@ -18,7 +18,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.locks:lockdir,unlockdir,lockfile,unlockfile',
 	'portage.output:bold,colorize',
 	'portage.package.ebuild.doebuild:doebuild_environment,' + \
-		'_spawn_phase',
+		'_merge_unicode_error', '_spawn_phase',
 	'portage.package.ebuild.prepare_build_dirs:prepare_build_dirs',
 	'portage.update:fixdbentries',
 	'portage.util:apply_secpass_permissions,ConfigProtect,ensure_dirs,' + \
@@ -3352,7 +3352,7 @@ class dblink(object):
 				break
 
 		if unicode_errors:
-			eerror(portage._merge_unicode_error(unicode_errors))
+			eerror(_merge_unicode_error(unicode_errors))
 
 		if paths_with_newlines:
 			msg = []
