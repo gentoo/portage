@@ -79,21 +79,25 @@ src_install() {
 			},
 		}
 
-		test_args = (
-			("--version",),
-			("--info",),
-			("--info", "--verbose"),
-			("--pretend", "dev-libs/A"),
-			("--pretend", "--tree", "--complete-graph", "dev-libs/A"),
-			("-p", "dev-libs/B"),
-			("--oneshot", "dev-libs/B",),
-			("--oneshot", "dev-libs/A",),
-			("--noreplace", "dev-libs/A",),
-			("--pretend", "--depclean", "--verbose", "dev-libs/B"),
-			("--pretend", "--depclean",),
-			("--depclean",),
-			("--unmerge", "--quiet", "dev-libs/A"),
-			("-C", "--quiet", "dev-libs/B"),
+		portage_python = portage._python_interpreter
+		emerge_cmd = (portage_python, "-Wd",
+			os.path.join(PORTAGE_BIN_PATH, "emerge"))
+
+		test_commands = (
+			emerge_cmd + ("--version",),
+			emerge_cmd + ("--info",),
+			emerge_cmd + ("--info", "--verbose"),
+			emerge_cmd + ("--pretend", "dev-libs/A"),
+			emerge_cmd + ("--pretend", "--tree", "--complete-graph", "dev-libs/A"),
+			emerge_cmd + ("-p", "dev-libs/B"),
+			emerge_cmd + ("--oneshot", "dev-libs/B",),
+			emerge_cmd + ("--oneshot", "dev-libs/A",),
+			emerge_cmd + ("--noreplace", "dev-libs/A",),
+			emerge_cmd + ("--pretend", "--depclean", "--verbose", "dev-libs/B"),
+			emerge_cmd + ("--pretend", "--depclean",),
+			emerge_cmd + ("--depclean",),
+			emerge_cmd + ("--unmerge", "--quiet", "dev-libs/A"),
+			emerge_cmd + ("-C", "--quiet", "dev-libs/B"),
 		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)
@@ -137,6 +141,7 @@ src_install() {
 			"PORTAGE_GRPNAME" : os.environ["PORTAGE_GRPNAME"],
 			"PORTAGE_INST_GID" : str(portage.data.portage_gid),
 			"PORTAGE_INST_UID" : str(portage.data.portage_uid),
+			"PORTAGE_PYTHON" : portage_python,
 			"PORTAGE_TMPDIR" : portage_tmpdir,
 			"PORTAGE_USERNAME" : os.environ["PORTAGE_USERNAME"],
 			"PORTDIR" : portdir,
@@ -158,9 +163,8 @@ src_install() {
 			# non-empty system set keeps --depclean quiet
 			with open(os.path.join(profile_path, "packages"), 'w') as f:
 				f.write("*dev-libs/token-system-pkg")
-			for args in test_args:
-				proc = subprocess.Popen([portage._python_interpreter, "-Wd",
-					os.path.join(PORTAGE_BIN_PATH, "emerge")] + list(args),
+			for args in test_commands:
+				proc = subprocess.Popen(args,
 					env=env, stdout=subprocess.PIPE)
 				output = proc.stdout.readlines()
 				proc.wait()
