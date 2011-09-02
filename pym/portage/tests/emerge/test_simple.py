@@ -82,6 +82,10 @@ src_install() {
 		portage_python = portage._python_interpreter
 		emerge_cmd = (portage_python, "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "emerge"))
+		emaint_cmd = (portage_python, "-Wd",
+			os.path.join(PORTAGE_BIN_PATH, "emaint"))
+		quickpkg_cmd = (portage_python, "-Wd",
+			os.path.join(PORTAGE_BIN_PATH, "quickpkg"))
 
 		test_commands = (
 			emerge_cmd + ("--version",),
@@ -90,12 +94,17 @@ src_install() {
 			emerge_cmd + ("--pretend", "dev-libs/A"),
 			emerge_cmd + ("--pretend", "--tree", "--complete-graph", "dev-libs/A"),
 			emerge_cmd + ("-p", "dev-libs/B"),
-			emerge_cmd + ("--oneshot", "dev-libs/B",),
+			emerge_cmd + ("-B", "dev-libs/B",),
+			emerge_cmd + ("--oneshot", "--usepkg", "dev-libs/B",),
 			emerge_cmd + ("--oneshot", "dev-libs/A",),
 			emerge_cmd + ("--noreplace", "dev-libs/A",),
 			emerge_cmd + ("--pretend", "--depclean", "--verbose", "dev-libs/B"),
 			emerge_cmd + ("--pretend", "--depclean",),
 			emerge_cmd + ("--depclean",),
+			quickpkg_cmd + ("dev-libs/A",),
+			emerge_cmd + ("--usepkgonly", "dev-libs/A"),
+			emaint_cmd + ("--check", "all"),
+			emaint_cmd + ("--fix", "all"),
 			emerge_cmd + ("--unmerge", "--quiet", "dev-libs/A"),
 			emerge_cmd + ("-C", "--quiet", "dev-libs/B"),
 		)
@@ -104,6 +113,7 @@ src_install() {
 		settings = playground.settings
 		eprefix = settings["EPREFIX"]
 		distdir = os.path.join(eprefix, "distdir")
+		pkgdir = os.path.join(eprefix, "pkgdir")
 		fake_bin = os.path.join(eprefix, "bin")
 		portage_tmpdir = os.path.join(eprefix, "var", "tmp", "portage")
 		portdir = settings["PORTDIR"]
@@ -138,6 +148,7 @@ src_install() {
 			"INFODIR" : "",
 			"INFOPATH" : "",
 			"PATH" : path,
+			"PKGDIR" : pkgdir,
 			"PORTAGE_GRPNAME" : os.environ["PORTAGE_GRPNAME"],
 			"PORTAGE_INST_GID" : str(portage.data.portage_gid),
 			"PORTAGE_INST_UID" : str(portage.data.portage_uid),
