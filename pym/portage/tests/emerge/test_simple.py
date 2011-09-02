@@ -144,7 +144,9 @@ src_install() {
 
 		env = {
 			"__PORTAGE_TEST_EPREFIX" : eprefix,
+			"CLEAN_DELAY" : "0",
 			"DISTDIR" : distdir,
+			"EMERGE_WARNING_DELAY" : "0",
 			"INFODIR" : "",
 			"INFOPATH" : "",
 			"PATH" : path,
