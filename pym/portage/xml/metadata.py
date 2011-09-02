@@ -36,7 +36,7 @@ if sys.hexversion < 0x2070000:
 	# Our _MetadataTreeBuilder usage is incompatible with
 	# cElementTree in Python 2.6:
 	#  File "/usr/lib/python2.6/xml/etree/ElementTree.py", line 644, in findall
-    #    assert self._root is not None
+	#    assert self._root is not None
 	import xml.etree.ElementTree as etree
 else:
 	try:
