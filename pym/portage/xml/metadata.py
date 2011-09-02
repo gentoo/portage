@@ -30,10 +30,19 @@
 
 __all__ = ('MetaDataXML',)
 
-try:
-	import xml.etree.cElementTree as etree
-except ImportError:
+import sys
+
+if sys.hexversion < 0x2070000:
+	# Our _MetadataTreeBuilder usage is incompatible with
+	# cElementTree in Python 2.6:
+	#  File "/usr/lib/python2.6/xml/etree/ElementTree.py", line 644, in findall
+    #    assert self._root is not None
 	import xml.etree.ElementTree as etree
+else:
+	try:
+		import xml.etree.cElementTree as etree
+	except ImportError:
+		import xml.etree.ElementTree as etree
 
 import re
 import xml.etree.ElementTree
