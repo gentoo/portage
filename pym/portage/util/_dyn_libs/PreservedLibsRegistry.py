@@ -60,7 +60,7 @@ class PreservedLibsRegistry(object):
 			f = open(_unicode_encode(self._filename,
 					encoding=_encodings['fs'], errors='strict'), 'rb')
 			self._data = pickle.load(f)
-		except (ValueError, pickle.UnpicklingError) as e:
+		except (AttributeError, ValueError, pickle.UnpicklingError) as e:
 			writemsg_level(_("!!! Error loading '%s': %s\n") % \
 				(self._filename, e), level=logging.ERROR, noiselevel=-1)
 		except (EOFError, IOError) as e:

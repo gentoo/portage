@@ -555,8 +555,11 @@ class vardbapi(dbapi):
 			aux_cache = mypickle.load()
 			f.close()
 			del f
-		except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError) as e:
-			if isinstance(e, pickle.UnpicklingError):
+		except (AttributeError, EnvironmentError, ValueError, pickle.UnpicklingError) as e:
+			if isinstance(e, EnvironmentError) and \
+				getattr(e, 'errno', None) in (errno.ENOENT, errno.EACCES):
+				pass
+			else:
 				writemsg(_unicode_decode(_("!!! Error loading '%s': %s\n")) % \
 					(self._aux_cache_filename, e), noiselevel=-1)
 			del e
