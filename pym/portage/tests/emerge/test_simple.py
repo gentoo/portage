@@ -79,6 +79,23 @@ src_install() {
 			},
 		}
 
+		metadata_xml_files = (
+			(
+				"dev-libs/A",
+				{
+					"herd" : "base-system",
+					"flags" : "<flag name='flag'>Description of how USE='flag' affects this package</flag>",
+				},
+			),
+			(
+				"dev-libs/B",
+				{
+					"herd" : "no-herd",
+					"flags" : "<flag name='flag'>Description of how USE='flag' affects this package</flag>",
+				},
+			),
+		)
+
 		portage_python = portage._python_interpreter
 		emerge_cmd = (portage_python, "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "emerge"))
@@ -176,6 +193,9 @@ src_install() {
 			# non-empty system set keeps --depclean quiet
 			with open(os.path.join(profile_path, "packages"), 'w') as f:
 				f.write("*dev-libs/token-system-pkg")
+			for cp, xml_data in metadata_xml_files:
+				with open(os.path.join(portdir, cp, "metadata.xml"), 'w') as f:
+					f.write(playground.metadata_xml_template % xml_data)
 			for args in test_commands:
 				proc = subprocess.Popen(args,
 					env=env, stdout=subprocess.PIPE)
