@@ -555,7 +555,7 @@ class vardbapi(dbapi):
 			aux_cache = mypickle.load()
 			f.close()
 			del f
-		except (AttributeError, EnvironmentError, ValueError, pickle.UnpicklingError) as e:
+		except (AttributeError, EOFError, EnvironmentError, ValueError, pickle.UnpicklingError) as e:
 			if isinstance(e, EnvironmentError) and \
 				getattr(e, 'errno', None) in (errno.ENOENT, errno.EACCES):
 				pass
