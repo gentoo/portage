@@ -32,9 +32,10 @@ __all__ = ('MetaDataXML',)
 
 import sys
 
-if sys.hexversion < 0x2070000:
+if sys.hexversion < 0x2070000 or \
+	(sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000):
 	# Our _MetadataTreeBuilder usage is incompatible with
-	# cElementTree in Python 2.6:
+	# cElementTree in Python 2.6, 3.0, and 3.1:
 	#  File "/usr/lib/python2.6/xml/etree/ElementTree.py", line 644, in findall
 	#    assert self._root is not None
 	import xml.etree.ElementTree as etree
