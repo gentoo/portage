@@ -1604,7 +1604,7 @@ def _post_src_install_uid_fix(mysettings, out):
 				new_parent = _unicode_decode(parent,
 					encoding=_encodings['merge'], errors='replace')
 				new_parent = _unicode_encode(new_parent,
-					encoding=_encodings['merge'], errors='backslashreplace')
+					encoding='ascii', errors='backslashreplace')
 				new_parent = _unicode_decode(new_parent,
 					encoding=_encodings['merge'], errors='replace')
 				os.rename(parent, new_parent)
@@ -1622,7 +1622,7 @@ def _post_src_install_uid_fix(mysettings, out):
 					new_fname = _unicode_decode(fname,
 						encoding=_encodings['merge'], errors='replace')
 					new_fname = _unicode_encode(new_fname,
-						encoding=_encodings['merge'], errors='backslashreplace')
+						encoding='ascii', errors='backslashreplace')
 					new_fname = _unicode_decode(new_fname,
 						encoding=_encodings['merge'], errors='replace')
 					new_fpath = os.path.join(parent, new_fname)

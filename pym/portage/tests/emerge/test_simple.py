@@ -23,8 +23,18 @@ src_install() {
 	einfo "installing something..."
 	# TODO: Add prefix support to shell code/helpers, so we
 	#       can use things like dodir and doins here.
-	mkdir -p "${ED}"/usr/lib/${P}
-	echo "blah blah blah" > "${ED}"/usr/lib/${P}/regular-file
+	mkdir -p "${ED}"/usr/lib/${P} || die
+	echo "blah blah blah" > "${ED}"/usr/lib/${P}/regular-file || die
+	ln -s regular-file "${ED}"/usr/lib/${P}/symlink || die
+
+	# Test code for bug #381629, using a copyright symbol encoded with latin-1.
+	# We use $(printf "\\xa9") rather than $'\\xa9', since printf apparently
+	# works in any case, while $'\\xa9' transforms to \\xef\\xbf\\xbd under
+	# some conditions. TODO: Find out why it transforms to \\xef\\xbf\\xbd when
+	# running tests for Python 3.2 (even though it's bash that is ultimately
+	# responsible for performing the transformation).
+	echo "blah blah blah" > "${ED}"/usr/lib/${P}/latin-1-$(printf "\\xa9")-regular-file || die
+	ln -s latin-1-$(printf "\\xa9")-regular-file "${ED}"/usr/lib/${P}/latin-1-$(printf "\\xa9")-symlink || die
 }
 """
 

@@ -3304,7 +3304,7 @@ class dblink(object):
 					new_parent = _unicode_decode(parent,
 						encoding=_encodings['merge'], errors='replace')
 					new_parent = _unicode_encode(new_parent,
-						encoding=_encodings['merge'], errors='backslashreplace')
+						encoding='ascii', errors='backslashreplace')
 					new_parent = _unicode_decode(new_parent,
 						encoding=_encodings['merge'], errors='replace')
 					os.rename(parent, new_parent)
@@ -3322,7 +3322,7 @@ class dblink(object):
 						new_fname = _unicode_decode(fname,
 							encoding=_encodings['merge'], errors='replace')
 						new_fname = _unicode_encode(new_fname,
-							encoding=_encodings['merge'], errors='backslashreplace')
+							encoding='ascii', errors='backslashreplace')
 						new_fname = _unicode_decode(new_fname,
 							encoding=_encodings['merge'], errors='replace')
 						new_fpath = os.path.join(parent, new_fname)
@@ -3994,11 +3994,29 @@ class dblink(object):
 
 			if stat.S_ISLNK(mymode):
 				# we are merging a symbolic link
+				# The file name of mysrc and the actual file that it points to
+				# will have earlier been forcefully converted to the 'merge'
+				# encoding if necessary, but the content of the symbolic link
+				# may need to be forcefully converted here.
+				myto = _os.readlink(_unicode_encode(mysrc,
+					encoding=_encodings['merge'], errors='strict'))
+				try:
+					myto = _unicode_decode(myto,
+						encoding=_encodings['merge'], errors='strict')
+				except UnicodeDecodeError:
+					myto = _unicode_decode(myto, encoding=_encodings['merge'],
+						errors='replace')
+					myto = _unicode_encode(myto, encoding='ascii',
+						errors='backslashreplace')
+					myto = _unicode_decode(myto, encoding=_encodings['merge'],
+						errors='replace')
+					os.unlink(mysrc)
+					os.symlink(myto, mysrc)
+
 				myabsto = abssymlink(mysrc)
 				if myabsto.startswith(srcroot):
 					myabsto = myabsto[len(srcroot):]
 				myabsto = myabsto.lstrip(sep)
-				myto = os.readlink(mysrc)
 				if self.settings and self.settings["D"]:
 					if myto.startswith(self.settings["D"]):
 						myto = myto[len(self.settings["D"]):]
@@ -4454,6 +4472,7 @@ def write_contents(contents, root, f):
 
 def tar_contents(contents, root, tar, protect=None, onProgress=None):
 	os = _os_merge
+	encoding = _encodings['merge']
 
 	try:
 		for x in contents:
@@ -4473,6 +4492,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 			pass
 		else:
 			os = portage.os
+			encoding = _encodings['fs']
 
 	root = normalize_path(root).rstrip(os.path.sep) + os.path.sep
 	id_strings = {}
@@ -4524,7 +4544,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 				f.close()
 			else:
 				f = open(_unicode_encode(path,
-					encoding=object.__getattribute__(os, '_encoding'),
+					encoding=encoding,
 					errors='strict'), 'rb')
 				try:
 					tar.addfile(tarinfo, f)
