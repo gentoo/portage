@@ -188,6 +188,12 @@ src_install() {
 			"PYTHONPATH" : pythonpath,
 		}
 
+		features = []
+		if not portage.process.sandbox_capable:
+			features.append("-sandbox")
+		if features:
+			env["FEATURES"] = " ".join(features)
+
 		dirs = [distdir, fake_bin, portage_tmpdir, var_cache_edb]
 		true_symlinks = ["chown", "chgrp"]
 		true_binary = find_binary("true")
