@@ -1663,7 +1663,7 @@ for x in scanlist:
 				# packages that have empty KEYWORDS.
 				arches.append(['**', '**', ['**']])
 
-		unknown_pkgs = {}
+		unknown_pkgs = set()
 		baddepsyntax = False
 		badlicsyntax = False
 		badprovsyntax = False
@@ -1700,10 +1700,9 @@ for x in scanlist:
 					if atom == "||":
 						continue
 
-					if not portdb.cp_list(atom.cp) and \
+					if not portdb.xmatch("match-all", atom) and \
 						not atom.cp.startswith("virtual/"):
-						unknown_pkgs.setdefault(atom.cp, set()).add(
-							(mytype, atom.unevaluated_atom))
+						unknown_pkgs.add((mytype, atom.unevaluated_atom))
 
 					is_blocker = atom.blocker
 
@@ -1948,12 +1947,16 @@ for x in scanlist:
 
 						if success:
 							if atoms:
+
+								# Don't bother with dependency.unknown for
+								# cases in which *DEPEND.bad is triggered.
 								for atom in atoms:
+									# dep_check returns all blockers and they
+									# aren't counted for *DEPEND.bad, so we
+									# ignore them here.
 									if not atom.blocker:
-										# Don't bother with dependency.unknown
-										# for cases in which *DEPEND.bad is
-										# triggered.
-										unknown_pkgs.pop(atom.cp, None)
+										unknown_pkgs.discard(
+											(mytype, atom.unevaluated_atom))
 
 								if not prof.sub_path:
 									# old-style virtuals currently aren't
@@ -1984,10 +1987,8 @@ for x in scanlist:
 								prof, repr(atoms)))
 
 		if not baddepsyntax and unknown_pkgs:
-			all_unknown = set()
-			all_unknown.update(*unknown_pkgs.values())
 			type_map = {}
-			for mytype, atom in all_unknown:
+			for mytype, atom in unknown_pkgs:
 				type_map.setdefault(mytype, set()).add(atom)
 			for mytype, atoms in type_map.items():
 				stats["dependency.unknown"] += 1
