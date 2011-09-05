@@ -118,6 +118,12 @@ src_install() {
 			),
 		)
 
+		playground = ResolverPlayground(
+			ebuilds=ebuilds, installed=installed, debug=debug)
+		settings = playground.settings
+		eprefix = settings["EPREFIX"]
+		eroot = settings["EROOT"]
+
 		portage_python = portage._python_interpreter
 		egencache_cmd = (portage_python, "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "egencache"))
@@ -125,6 +131,8 @@ src_install() {
 			os.path.join(PORTAGE_BIN_PATH, "emerge"))
 		emaint_cmd = (portage_python, "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "emaint"))
+		portageq_cmd = (portage_python, "-Wd",
+			os.path.join(PORTAGE_BIN_PATH, "portageq"))
 		quickpkg_cmd = (portage_python, "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "quickpkg"))
 
@@ -151,13 +159,18 @@ src_install() {
 			emerge_cmd + ("--usepkgonly", "dev-libs/A"),
 			emaint_cmd + ("--check", "all"),
 			emaint_cmd + ("--fix", "all"),
+			portageq_cmd + ("match", "/", "dev-libs/A"),
+			portageq_cmd + ("best_visible", "/", "dev-libs/A"),
+			portageq_cmd + ("best_visible", "/", "binary", "dev-libs/A"),
+			portageq_cmd + ("contents", "/", "dev-libs/A-1"),
+			portageq_cmd + ("metadata", "/", "ebuild", "dev-libs/A-1", "EAPI", "IUSE", "RDEPEND"),
+			portageq_cmd + ("metadata", "/", "binary", "dev-libs/A-1", "EAPI", "USE", "RDEPEND"),
+			portageq_cmd + ("metadata", "/", "installed", "dev-libs/A-1", "EAPI", "USE", "RDEPEND"),
+			portageq_cmd + ("owners", "/", eroot + "usr"),
 			emerge_cmd + ("--unmerge", "--quiet", "dev-libs/A"),
 			emerge_cmd + ("-C", "--quiet", "dev-libs/B"),
 		)
 
-		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)
-		settings = playground.settings
-		eprefix = settings["EPREFIX"]
 		distdir = os.path.join(eprefix, "distdir")
 		pkgdir = os.path.join(eprefix, "pkgdir")
 		fake_bin = os.path.join(eprefix, "bin")
