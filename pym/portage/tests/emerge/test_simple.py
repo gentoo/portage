@@ -139,6 +139,8 @@ src_install() {
 			os.path.join(PORTAGE_BIN_PATH, "portageq"))
 		quickpkg_cmd = (portage_python, "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "quickpkg"))
+		regenworld_cmd = (portage_python, "-Wd",
+			os.path.join(PORTAGE_BIN_PATH, "regenworld"))
 
 		egencache_extra_args = []
 		if self._have_python_xml():
@@ -165,6 +167,7 @@ src_install() {
 			emaint_cmd + ("--check", "all"),
 			emaint_cmd + ("--fix", "all"),
 			fixpackages_cmd,
+			regenworld_cmd,
 			portageq_cmd + ("match", "/", "dev-libs/A"),
 			portageq_cmd + ("best_visible", "/", "dev-libs/A"),
 			portageq_cmd + ("best_visible", "/", "binary", "dev-libs/A"),
