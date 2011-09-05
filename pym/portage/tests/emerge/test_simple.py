@@ -33,8 +33,10 @@ src_install() {
 	# some conditions. TODO: Find out why it transforms to \\xef\\xbf\\xbd when
 	# running tests for Python 3.2 (even though it's bash that is ultimately
 	# responsible for performing the transformation).
-	echo "blah blah blah" > "${ED}"/usr/lib/${P}/latin-1-$(printf "\\xa9")-regular-file || die
-	ln -s latin-1-$(printf "\\xa9")-regular-file "${ED}"/usr/lib/${P}/latin-1-$(printf "\\xa9")-symlink || die
+	local latin_1_dir=${ED}/usr/lib/${P}/latin-1-$(printf "\\xa9")-directory
+	mkdir "${latin_1_dir}"
+	echo "blah blah blah" > ${latin_1_dir}/latin-1-$(printf "\\xa9")-regular-file || die
+	ln -s latin-1-$(printf "\\xa9")-regular-file ${latin_1_dir}/latin-1-$(printf "\\xa9")-symlink || die
 }
 """
 
