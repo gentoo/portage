@@ -7,7 +7,8 @@ import sys
 import tempfile
 import portage
 from portage import os
-from portage.const import GLOBAL_CONFIG_PATH, PORTAGE_BASE_PATH
+from portage.const import (GLOBAL_CONFIG_PATH, PORTAGE_BASE_PATH,
+	USER_CONFIG_PATH)
 from portage.dbapi.vartree import vartree
 from portage.dbapi.porttree import portagetree
 from portage.dbapi.bintree import binarytree
@@ -245,6 +246,13 @@ class ResolverPlayground(object):
 
 	def _create_profile(self, ebuilds, installed, profile, repo_configs, user_config, sets):
 
+		user_config_dir = os.path.join(self.eroot, USER_CONFIG_PATH)
+
+		try:
+			os.makedirs(user_config_dir)
+		except os.error:
+			pass
+
 		for repo in self.repo_dirs:
 			repo_dir = self._get_repo_dir(repo)
 			profile_dir = os.path.join(self._get_repo_dir(repo), "profiles")
@@ -323,8 +331,7 @@ class ResolverPlayground(object):
 						f.close()
 
 				#Create profile symlink
-				os.makedirs(os.path.join(self.eroot, "etc"))
-				os.symlink(sub_profile_dir, os.path.join(self.eroot, "etc", "make.profile"))
+				os.symlink(sub_profile_dir, os.path.join(user_config_dir, "make.profile"))
 
 				#Create minimal herds.xml
 				metadata_dir = os.path.join(repo_dir, "metadata")
@@ -348,13 +355,6 @@ class ResolverPlayground(object):
 """
 				with open(os.path.join(metadata_dir, "metadata.xml"), 'w') as f:
 					f.write(herds_xml)
-
-		user_config_dir = os.path.join(self.eroot, "etc", "portage")
-
-		try:
-			os.makedirs(user_config_dir)
-		except os.error:
-			pass
 
 		repos_conf_file = os.path.join(user_config_dir, "repos.conf")		
 		f = open(repos_conf_file, "w")
