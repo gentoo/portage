@@ -46,7 +46,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 	if prev_mtimes is None:
 		prev_mtimes = portage.mtimedb["ldpath"]
 	if env is None:
-		settings = os.environ
+		settings = portage.settings
 	else:
 		settings = env
 

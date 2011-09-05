@@ -131,6 +131,8 @@ src_install() {
 			os.path.join(PORTAGE_BIN_PATH, "emerge"))
 		emaint_cmd = (portage_python, "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "emaint"))
+		env_update_cmd = (portage_python, "-Wd",
+			os.path.join(PORTAGE_BIN_PATH, "env-update"))
 		portageq_cmd = (portage_python, "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "portageq"))
 		quickpkg_cmd = (portage_python, "-Wd",
@@ -141,6 +143,7 @@ src_install() {
 			egencache_extra_args.append("--update-use-local-desc")
 
 		test_commands = (
+			env_update_cmd,
 			egencache_cmd + ("--update",) + tuple(egencache_extra_args),
 			emerge_cmd + ("--version",),
 			emerge_cmd + ("--info",),
