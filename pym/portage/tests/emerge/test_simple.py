@@ -133,6 +133,8 @@ src_install() {
 			os.path.join(PORTAGE_BIN_PATH, "emaint"))
 		env_update_cmd = (portage_python, "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "env-update"))
+		fixpackages_cmd = (portage_python, "-Wd",
+			os.path.join(PORTAGE_BIN_PATH, "fixpackages"))
 		portageq_cmd = (portage_python, "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "portageq"))
 		quickpkg_cmd = (portage_python, "-Wd",
@@ -162,6 +164,7 @@ src_install() {
 			emerge_cmd + ("--usepkgonly", "dev-libs/A"),
 			emaint_cmd + ("--check", "all"),
 			emaint_cmd + ("--fix", "all"),
+			fixpackages_cmd,
 			portageq_cmd + ("match", "/", "dev-libs/A"),
 			portageq_cmd + ("best_visible", "/", "dev-libs/A"),
 			portageq_cmd + ("best_visible", "/", "binary", "dev-libs/A"),
