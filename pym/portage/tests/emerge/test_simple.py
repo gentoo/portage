@@ -7,13 +7,21 @@ import sys
 import portage
 from portage import os
 from portage import _unicode_decode
-from portage.const import PORTAGE_BIN_PATH, PORTAGE_PYM_PATH
+from portage.const import PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, USER_CONFIG_PATH
 from portage.process import find_binary
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util import ensure_dirs
 
 class SimpleEmergeTestCase(TestCase):
+
+	def _have_python_xml(self):
+		try:
+			__import__("xml.etree.ElementTree")
+			__import__("xml.parsers.expat").parsers.expat.ExpatError
+		except (AttributeError, ImportError):
+			return False
+		return True
 
 	def testSimple(self):
 
@@ -111,6 +119,8 @@ src_install() {
 		)
 
 		portage_python = portage._python_interpreter
+		egencache_cmd = (portage_python, "-Wd",
+			os.path.join(PORTAGE_BIN_PATH, "egencache"))
 		emerge_cmd = (portage_python, "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "emerge"))
 		emaint_cmd = (portage_python, "-Wd",
@@ -118,7 +128,12 @@ src_install() {
 		quickpkg_cmd = (portage_python, "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "quickpkg"))
 
+		egencache_extra_args = []
+		if self._have_python_xml():
+			egencache_extra_args.append("--update-use-local-desc")
+
 		test_commands = (
+			egencache_cmd + ("--update",) + tuple(egencache_extra_args),
 			emerge_cmd + ("--version",),
 			emerge_cmd + ("--info",),
 			emerge_cmd + ("--info", "--verbose"),
@@ -149,7 +164,20 @@ src_install() {
 		portage_tmpdir = os.path.join(eprefix, "var", "tmp", "portage")
 		portdir = settings["PORTDIR"]
 		profile_path = settings.profile_path
+		user_config_dir = os.path.join(os.sep, eprefix, USER_CONFIG_PATH)
 		var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
+
+		features = []
+		features.append("metadata-transfer")
+		if not portage.process.sandbox_capable:
+			features.append("-sandbox")
+
+		# Since egencache ignores settings from the calling environment,
+		# configure it via make.conf.
+		make_conf = (
+			"FEATURES=\"%s\"\n" % (" ".join(features),),
+			"PORTDIR=\"%s\"\n" % (portdir,),
+		)
 
 		path =  os.environ.get("PATH")
 		if path is not None and not path.strip():
@@ -188,17 +216,11 @@ src_install() {
 			"PORTAGE_PYTHON" : portage_python,
 			"PORTAGE_TMPDIR" : portage_tmpdir,
 			"PORTAGE_USERNAME" : os.environ["PORTAGE_USERNAME"],
-			"PORTDIR" : portdir,
 			"PYTHONPATH" : pythonpath,
 		}
 
-		features = []
-		if not portage.process.sandbox_capable:
-			features.append("-sandbox")
-		if features:
-			env["FEATURES"] = " ".join(features)
-
-		dirs = [distdir, fake_bin, portage_tmpdir, var_cache_edb]
+		dirs = [distdir, fake_bin, portage_tmpdir,
+			user_config_dir, var_cache_edb]
 		true_symlinks = ["chown", "chgrp"]
 		true_binary = find_binary("true")
 		self.assertEqual(true_binary is None, False,
@@ -206,6 +228,9 @@ src_install() {
 		try:
 			for d in dirs:
 				ensure_dirs(d)
+			with open(os.path.join(user_config_dir, "make.conf"), 'w') as f:
+				for line in make_conf:
+					f.write(line)
 			for x in true_symlinks:
 				os.symlink(true_binary, os.path.join(fake_bin, x))
 			with open(os.path.join(var_cache_edb, "counter"), 'wb') as f:

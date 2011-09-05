@@ -772,8 +772,6 @@ def egencache_main(args):
 	parser, options, atoms = parse_args(args)
 
 	config_root = options.config_root
-	if config_root is None:
-		config_root = '/'
 
 	# The calling environment is ignored, so the program is
 	# completely controlled by commandline arguments.
@@ -790,8 +788,10 @@ def egencache_main(args):
 	if options.portdir is not None:
 		env['PORTDIR'] = options.portdir
 
+	eprefix = os.environ.get("__PORTAGE_TEST_EPREFIX")
+
 	settings = portage.config(config_root=config_root,
-		target_root='/', local_config=False, env=env)
+		local_config=False, env=env, _eprefix=eprefix)
 
 	default_opts = None
 	if not options.ignore_default_opts:
@@ -800,14 +800,11 @@ def egencache_main(args):
 	if default_opts:
 		parser, options, args = parse_args(default_opts + args)
 
-		if options.config_root is not None:
-			config_root = options.config_root
-
 		if options.cache_dir is not None:
 			env['PORTAGE_DEPCACHEDIR'] = options.cache_dir
 
 		settings = portage.config(config_root=config_root,
-			target_root='/', local_config=False, env=env)
+			local_config=False, env=env, _eprefix=eprefix)
 
 	if not options.update and not options.update_use_local_desc \
 			and not options.update_changelogs:
