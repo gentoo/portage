@@ -17,6 +17,8 @@ class SimpleEmergeTestCase(TestCase):
 
 	def testSimple(self):
 
+		debug = False
+
 		install_something = """
 S="${WORKDIR}"
 src_install() {
@@ -214,15 +216,30 @@ src_install() {
 			for cp, xml_data in metadata_xml_files:
 				with open(os.path.join(portdir, cp, "metadata.xml"), 'w') as f:
 					f.write(playground.metadata_xml_template % xml_data)
+
+			if debug:
+				# The subprocess inherits both stdout and stderr, for
+				# debugging purposes.
+				stdout = None
+			else:
+				# The subprocess inherits stderr so that any warnings
+				# triggered by python -Wd will be visible.
+				stdout = subprocess.PIPE
+
 			for args in test_commands:
+
 				proc = subprocess.Popen(args,
-					env=env, stdout=subprocess.PIPE)
-				output = proc.stdout.readlines()
-				proc.wait()
-				proc.stdout.close()
-				if proc.returncode != os.EX_OK:
-					for line in output:
-						sys.stderr.write(_unicode_decode(line))
+					env=env, stdout=stdout)
+
+				if debug:
+					proc.wait()
+				else:
+					output = proc.stdout.readlines()
+					proc.wait()
+					proc.stdout.close()
+					if proc.returncode != os.EX_OK:
+						for line in output:
+							sys.stderr.write(_unicode_decode(line))
 
 				self.assertEqual(os.EX_OK, proc.returncode,
 					"emerge failed with args %s" % (args,))
