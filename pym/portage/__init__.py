@@ -393,7 +393,7 @@ getcwd()
 
 def abssymlink(symlink, target=None):
 	"This reads symlinks, resolving the relative symlinks, and returning the absolute."
-	if target is None:
+	if target is not None:
 		mylink = target
 	else:
 		mylink = os.readlink(symlink)
