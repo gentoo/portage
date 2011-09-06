@@ -4013,7 +4013,12 @@ class dblink(object):
 					os.unlink(mysrc)
 					os.symlink(myto, mysrc)
 
-				myabsto = abssymlink(mysrc)
+				# Pass in the symlink target in order to bypass the
+				# os.readlink() call inside abssymlink(), since that
+				# call is unsafe if the merge encoding is not ascii
+				# or utf_8 (see bug #382021).
+				myabsto = abssymlink(mysrc, target=myto)
+
 				if myabsto.startswith(srcroot):
 					myabsto = myabsto[len(srcroot):]
 				myabsto = myabsto.lstrip(sep)

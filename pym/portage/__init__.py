@@ -391,9 +391,12 @@ def getcwd():
 		return "/"
 getcwd()
 
-def abssymlink(symlink):
+def abssymlink(symlink, target=None):
 	"This reads symlinks, resolving the relative symlinks, and returning the absolute."
-	mylink=os.readlink(symlink)
+	if target is None:
+		mylink = target
+	else:
+		mylink = os.readlink(symlink)
 	if mylink[0] != '/':
 		mydir=os.path.dirname(symlink)
 		mylink=mydir+"/"+mylink
