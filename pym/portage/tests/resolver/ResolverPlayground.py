@@ -38,7 +38,8 @@ class ResolverPlayground(object):
 	"""
 
 	config_files = frozenset(("package.use", "package.mask", "package.keywords", \
-		"package.unmask", "package.properties", "package.license", "use.mask", "use.force"))
+		"package.unmask", "package.properties", "package.license", "use.mask", "use.force",
+		"layout.conf",))
 
 	metadata_xml_template = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
@@ -256,6 +257,8 @@ class ResolverPlayground(object):
 		for repo in self.repo_dirs:
 			repo_dir = self._get_repo_dir(repo)
 			profile_dir = os.path.join(self._get_repo_dir(repo), "profiles")
+			metadata_dir = os.path.join(repo_dir, "metadata")
+			os.makedirs(metadata_dir)
 
 			#Create $REPO/profiles/categories
 			categories = set()
@@ -283,8 +286,11 @@ class ResolverPlayground(object):
 				for config_file, lines in repo_config.items():
 					if config_file not in self.config_files:
 						raise ValueError("Unknown config file: '%s'" % config_file)
-		
-					file_name = os.path.join(profile_dir, config_file)
+
+					if config_file in ("layout.conf",):
+						file_name = os.path.join(repo_dir, "metadata", config_file)
+					else:
+						file_name = os.path.join(profile_dir, config_file)
 					f = open(file_name, "w")
 					for line in lines:
 						f.write("%s\n" % line)
@@ -334,8 +340,6 @@ class ResolverPlayground(object):
 				os.symlink(sub_profile_dir, os.path.join(user_config_dir, "make.profile"))
 
 				#Create minimal herds.xml
-				metadata_dir = os.path.join(repo_dir, "metadata")
-				os.makedirs(metadata_dir)
 				herds_xml = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE herds SYSTEM "http://www.gentoo.org/dtd/herds.dtd">
 <?xml-stylesheet href="/xsl/herds.xsl" type="text/xsl" ?>
