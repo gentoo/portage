@@ -163,9 +163,13 @@ def parse_args(args):
 		parser.error("Not a directory: --config-root='%s'" % \
 			(options.config_root,))
 
-	if options.cache_dir is not None and not os.path.isdir(options.cache_dir):
-		parser.error("Not a directory: --cache-dir='%s'" % \
-			(options.cache_dir,))
+	if options.cache_dir is not None:
+		if not os.path.isdir(options.cache_dir):
+			parser.error("Not a directory: --cache-dir='%s'" % \
+				(options.cache_dir,))
+		if not os.access(options.cache_dir, os.W_OK):
+			parser.error("Write access denied: --cache-dir='%s'" % \
+				(options.cache_dir,))
 
 	if options.portdir_overlay is not None and \
 		options.repo is None:
@@ -816,6 +820,18 @@ def egencache_main(args):
 			"automatically enabling FEATURES=metadata-transfer\n",
 			level=logging.WARNING, noiselevel=-1)
 		settings.features.add('metadata-transfer')
+
+	if options.update:
+		if options.cache_dir is not None:
+			# already validated earlier
+			pass
+		else:
+			if os.path.isdir(settings["PORTAGE_DEPCACHEDIR"]) and \
+				not os.access(settings["PORTAGE_DEPCACHEDIR"], os.W_OK):
+				writemsg_level("ecachegen: error: " + \
+					"write access denied: %s\n" % (settings["PORTAGE_DEPCACHEDIR"],),
+					level=logging.ERROR, noiselevel=-1)
+				return 1
 
 	settings.lock()
 
