@@ -190,7 +190,6 @@ src_install() {
 		var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
 
 		features = []
-		features.append("metadata-transfer")
 		if not portage.process.sandbox_capable:
 			features.append("-sandbox")
 
