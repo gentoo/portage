@@ -154,11 +154,32 @@ class portdbapi(dbapi):
 		self.auxdb = {}
 		self._pregen_auxdb = {}
 		self._init_cache_dirs()
-		depcachedir_w_ok = os.access(self.depcachedir, os.W_OK)
-		cache_kwargs = {
-			'gid'     : portage_gid,
-			'perms'   : 0o664
-		}
+		try:
+			depcachedir_st = os.stat(self.depcachedir)
+			depcachedir_w_ok = os.access(self.depcachedir, os.W_OK)
+		except OSError:
+			depcachedir_st = None
+			depcachedir_w_ok = False
+
+		cache_kwargs = {}
+
+		depcachedir_unshared = False
+		if portage.data.secpass < 1 and \
+			depcachedir_w_ok and \
+			depcachedir_st is not None and \
+			os.getuid() == depcachedir_st.st_uid and \
+			os.getgid() == depcachedir_st.st_gid:
+			# If this user owns depcachedir and is not in the
+			# portage group, then don't bother to set permissions
+			# on cache entries. This makes it possible to run
+			# egencache without any need to be a member of the
+			# portage group.
+			depcachedir_unshared = True
+		else:
+			cache_kwargs.update({
+				'gid'     : portage_gid,
+				'perms'   : 0o664
+			})
 
 		# XXX: REMOVE THIS ONCE UNUSED_0 IS YANKED FROM auxdbkeys
 		# ~harring
@@ -167,7 +188,7 @@ class portdbapi(dbapi):
 		# If secpass < 1, we don't want to write to the cache
 		# since then we won't be able to apply group permissions
 		# to the cache entries/directories.
-		if secpass < 1 or not depcachedir_w_ok:
+		if (secpass < 1 and not depcachedir_unshared) or not depcachedir_w_ok:
 			for x in self.porttrees:
 				try:
 					db_ro = self.auxdbmodule(self.depcachedir, x,
