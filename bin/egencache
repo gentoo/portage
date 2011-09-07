@@ -818,21 +818,25 @@ def egencache_main(args):
 	if options.update and 'metadata-transfer' not in settings.features:
 		settings.features.add('metadata-transfer')
 
+	settings.lock()
+
+	portdb = portage.portdbapi(mysettings=settings)
+
 	if options.update:
 		if options.cache_dir is not None:
 			# already validated earlier
 			pass
 		else:
-			if os.path.isdir(settings["PORTAGE_DEPCACHEDIR"]) and \
-				not os.access(settings["PORTAGE_DEPCACHEDIR"], os.W_OK):
+			# We check write access after the portdbapi constructor
+			# has had an opportunity to create it. This ensures that
+			# we don't use the cache in the "volatile" mode which is
+			# undesirable for egencache.
+			if not os.access(settings["PORTAGE_DEPCACHEDIR"], os.W_OK):
 				writemsg_level("ecachegen: error: " + \
 					"write access denied: %s\n" % (settings["PORTAGE_DEPCACHEDIR"],),
 					level=logging.ERROR, noiselevel=-1)
 				return 1
 
-	settings.lock()
-
-	portdb = portage.portdbapi(mysettings=settings)
 	if options.repo is not None:
 		repo_path = portdb.getRepositoryPath(options.repo)
 		if repo_path is None:
