@@ -6567,8 +6567,14 @@ class _dep_check_composite_db(dbapi):
 					continue
 				self._cpv_pkg_map[pkg.cpv] = pkg
 				ret.append(pkg.cpv)
-			if ret:
+
+			if len(ret) > 1:
 				self._cpv_sort_ascending(ret)
+				if "--update" in self._depgraph._frozen_config.myopts:
+					# With --update, we want to force selection of
+					# the highest available version.
+					ret = [ret[-1]]
+
 		self._match_cache[atom] = ret
 		return ret[:]
 
