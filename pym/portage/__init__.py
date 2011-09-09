@@ -148,30 +148,34 @@ if sys.hexversion >= 0x3000000:
 	basestring = str
 	long = int
 
-# Assume utf_8 fs encoding everywhere except in merge code, where the
-# user's locale is respected.
+# We use utf_8 encoding everywhere. Previously, we used
+# sys.getfilesystemencoding() for the 'merge' encoding, but that had
+# various problems:
+#
+#   1) If the locale is ever changed then it can cause orphan files due
+#      to changed character set translation.
+#
+#   2) Ebuilds typically install files with utf_8 encoded file names,
+#      and then portage would be forced to rename those files to match
+#      sys.getfilesystemencoding(), possibly breaking things.
+#
+#   3) Automatic translation between encodings can lead to nonsensical
+#      file names when the source encoding is unknown by portage.
+#
+#   4) It's inconvenient for ebuilds to convert the encodings of file
+#      names to match the current locale, and upstreams typically encode
+#      file names with utf_8 encoding.
+#
+# So, instead of relying on sys.getfilesystemencoding(), we avoid the above
+# problems by using a constant utf_8 'merge' encoding for all locales, as
+# discussed in bug #382199 and bug #381509.
 _encodings = {
 	'content'                : 'utf_8',
 	'fs'                     : 'utf_8',
-	'merge'                  : sys.getfilesystemencoding(),
+	'merge'                  : 'utf_8',
 	'repo.content'           : 'utf_8',
 	'stdio'                  : 'utf_8',
 }
-
-# sys.getfilesystemencoding() can return None if python is built with
-# USE=build (stage 1). If the filesystem encoding is undefined or is a
-# subset of utf_8, then we default to utf_8 encoding for merges, since
-# it probably won't hurt, and forced conversion to ascii encoding is
-# known to break some packages that install file names with utf_8
-# encoding (see bug #381509). The ascii aliases are borrowed from
-# python's encodings.aliases.aliases dict.
-if _encodings['merge'] is None or \
-	_encodings['merge'].lower().replace('-', '_') in \
-	('ascii', '646', 'ansi_x3.4_1968', 'ansi_x3_4_1968',
-	'ansi_x3.4_1986', 'cp367', 'csascii', 'ibm367', 'iso646_us',
-	'iso_646.irv_1991', 'iso_ir_6', 'us', 'us_ascii'):
-
-	_encodings['merge'] = 'utf_8'
 
 if sys.hexversion >= 0x3000000:
 	def _unicode_encode(s, encoding=_encodings['content'], errors='backslashreplace'):
