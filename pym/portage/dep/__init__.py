@@ -1216,6 +1216,14 @@ class Atom(_atom_base):
 		return Atom(self.replace(_slot_separator + self.slot, '', 1),
 			allow_repo=True, allow_wildcard=True)
 
+	def with_slot(self, slot):
+		atom = remove_slot(self) + _slot_separator + slot
+		if self.repo is not None:
+			atom += _repo_separator + self.repo
+		if self.use is not None:
+			atom += str(self.use)
+		return Atom(atom, allow_repo=True, allow_wildcard=True)
+
 	def __setattr__(self, name, value):
 		raise AttributeError("Atom instances are immutable",
 			self.__class__, name, value)
