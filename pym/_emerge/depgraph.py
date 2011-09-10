@@ -6530,32 +6530,34 @@ class _dep_check_composite_db(dbapi):
 		ret = self._match_cache.get(atom)
 		if ret is not None:
 			return ret[:]
+
+		ret = []
 		pkg, existing = self._depgraph._select_package(self._root, atom)
-		if not pkg:
-			ret = []
-		else:
-			# Return the highest available from select_package() as well as
-			# any matching slots in the graph db.
+
+		if pkg is not None and self._visible(pkg):
+			self._cpv_pkg_map[pkg.cpv] = pkg
+			ret.append(pkg.cpv)
+
+		if pkg is not None and \
+			atom.slot is None and \
+			"--update" not in self._depgraph._frozen_config.myopts and \
+			pkg.cp.startswith("virtual/"):
+			# For new-style virtual lookahead that occurs inside dep_check()
+			# for bug #141118, examine all slots. This is needed so that newer
+			# slots will not unnecessarily be pulled in when a satisfying lower
+			# slot is already installed. For example, if virtual/jdk-1.5 is
+			# satisfied via gcj-jdk then there's no need to pull in a newer
+			# slot to satisfy a virtual/jdk dependency, unless --update is
+			# enabled.
 			slots = set()
-			slots.add(pkg.metadata["SLOT"])
-			if pkg.cp.startswith("virtual/"):
-				# For new-style virtual lookahead that occurs inside
-				# dep_check(), examine all slots. This is needed
-				# so that newer slots will not unnecessarily be pulled in
-				# when a satisfying lower slot is already installed. For
-				# example, if virtual/jdk-1.4 is satisfied via kaffe then
-				# there's no need to pull in a newer slot to satisfy a
-				# virtual/jdk dependency.
-				for virt_pkg in self._depgraph._iter_match_pkgs_any(
-					self._depgraph._frozen_config.roots[self._root], atom):
-					if virt_pkg.cp != pkg.cp:
-						continue
-					slots.add(virt_pkg.slot)
-			ret = []
-			if self._visible(pkg):
-				self._cpv_pkg_map[pkg.cpv] = pkg
-				ret.append(pkg.cpv)
-			slots.remove(pkg.metadata["SLOT"])
+			slots.add(pkg.slot)
+			for virt_pkg in self._depgraph._iter_match_pkgs_any(
+				self._depgraph._frozen_config.roots[self._root], atom):
+				if virt_pkg.cp != pkg.cp:
+					continue
+				slots.add(virt_pkg.slot)
+
+			slots.remove(pkg.slot)
 			while slots:
 				slot_atom = atom.with_slot(slots.pop())
 				pkg, existing = self._depgraph._select_package(
@@ -6569,10 +6571,6 @@ class _dep_check_composite_db(dbapi):
 
 			if len(ret) > 1:
 				self._cpv_sort_ascending(ret)
-				if "--update" in self._depgraph._frozen_config.myopts:
-					# With --update, we want to force selection of
-					# the highest available version.
-					ret = [ret[-1]]
 
 		self._match_cache[atom] = ret
 		return ret[:]
