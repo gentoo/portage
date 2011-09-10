@@ -292,7 +292,7 @@ qahelp={
 	"ebuild.patches":"PATCHES variable should be a bash array to ensure white space safety",
 	"changelog.notadded":"ChangeLogs that exist but have not been added to cvs",
 	"dependency.unknown" : "Ebuild has a dependency that refers to an unknown package (which may be valid if it is a blocker for a renamed/removed package, or is an alternative choice provided by an overlay)",
-	"file.executable":"Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do note need the executable bit",
+	"file.executable":"Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do not need the executable bit",
 	"file.size":"Files in the files directory must be under 20 KiB",
 	"file.size.fatal":"Files in the files directory must be under 60 KiB",
 	"file.name":"File/dir name must be composed of only the following chars: %s " % allowed_filename_chars,
