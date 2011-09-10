@@ -6546,12 +6546,11 @@ class _dep_check_composite_db(dbapi):
 				# example, if virtual/jdk-1.4 is satisfied via kaffe then
 				# there's no need to pull in a newer slot to satisfy a
 				# virtual/jdk dependency.
-				for db, pkg_type, built, installed, db_keys in \
-					self._depgraph._dynamic_config._filtered_trees[self._root]["dbs"]:
-					for cpv in db.match(atom):
-						if portage.cpv_getkey(cpv) != pkg.cp:
-							continue
-						slots.add(db.aux_get(cpv, ["SLOT"])[0])
+				for virt_pkg in self._depgraph._iter_match_pkgs_any(
+					self._depgraph._frozen_config.roots[self._root], atom):
+					if virt_pkg.cp != pkg.cp:
+						continue
+					slots.add(virt_pkg.slot)
 			ret = []
 			if self._visible(pkg):
 				self._cpv_pkg_map[pkg.cpv] = pkg
