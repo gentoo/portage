@@ -6557,7 +6557,7 @@ class _dep_check_composite_db(dbapi):
 				ret.append(pkg.cpv)
 			slots.remove(pkg.metadata["SLOT"])
 			while slots:
-				slot_atom = Atom("%s:%s" % (atom.cp, slots.pop()))
+				slot_atom = atom.with_slot(slots.pop())
 				pkg, existing = self._depgraph._select_package(
 					self._root, slot_atom)
 				if not pkg:
