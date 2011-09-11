@@ -609,3 +609,178 @@ _ebuild_phase_funcs() {
 			;;
 	esac
 }
+
+ebuild_main() {
+
+	# Subshell/helper die support (must export for the die helper).
+	# Since this function is typically executed in a subshell,
+	# setup EBUILD_MASTER_PID to refer to the current $BASHPID,
+	# which seems to give the best results when further
+	# nested subshells call die.
+	export EBUILD_MASTER_PID=$BASHPID
+	trap 'exit 1' SIGTERM
+
+	#a reasonable default for $S
+	[[ -z ${S} ]] && export S=${WORKDIR}/${P}
+
+	if [[ -s $SANDBOX_LOG ]] ; then
+		# We use SANDBOX_LOG to check for sandbox violations,
+		# so we ensure that there can't be a stale log to
+		# interfere with our logic.
+		local x=
+		if [[ -n SANDBOX_ON ]] ; then
+			x=$SANDBOX_ON
+			export SANDBOX_ON=0
+		fi
+
+		rm -f "$SANDBOX_LOG" || \
+			die "failed to remove stale sandbox log: '$SANDBOX_LOG'"
+
+		if [[ -n $x ]] ; then
+			export SANDBOX_ON=$x
+		fi
+		unset x
+	fi
+
+	# Force configure scripts that automatically detect ccache to
+	# respect FEATURES="-ccache".
+	has ccache $FEATURES || export CCACHE_DISABLE=1
+
+	local phase_func=$(_ebuild_arg_to_phase "$EAPI" "$EBUILD_PHASE")
+	[[ -n $phase_func ]] && _ebuild_phase_funcs "$EAPI" "$phase_func"
+	unset phase_func
+
+	source_all_bashrcs
+
+	case ${1} in
+	nofetch)
+		ebuild_phase_with_hooks pkg_nofetch
+		;;
+	prerm|postrm|postinst|config|info)
+		if has "${1}" config info && \
+			! declare -F "pkg_${1}" >/dev/null ; then
+			ewarn  "pkg_${1}() is not defined: '${EBUILD##*/}'"
+		fi
+		export SANDBOX_ON="0"
+		if [ "${PORTAGE_DEBUG}" != "1" ] || [ "${-/x/}" != "$-" ]; then
+			ebuild_phase_with_hooks pkg_${1}
+		else
+			set -x
+			ebuild_phase_with_hooks pkg_${1}
+			set +x
+		fi
+		if [[ $EBUILD_PHASE == postinst ]] && [[ -n $PORTAGE_UPDATE_ENV ]]; then
+			# Update environment.bz2 in case installation phases
+			# need to pass some variables to uninstallation phases.
+			save_ebuild_env --exclude-init-phases | \
+				filter_readonly_variables --filter-path \
+				--filter-sandbox --allow-extra-vars \
+				| ${PORTAGE_BZIP2_COMMAND} -c -f9 > "$PORTAGE_UPDATE_ENV"
+			assert "save_ebuild_env failed"
+		fi
+		;;
+	unpack|prepare|configure|compile|test|clean|install)
+		if [[ ${SANDBOX_DISABLED:-0} = 0 ]] ; then
+			export SANDBOX_ON="1"
+		else
+			export SANDBOX_ON="0"
+		fi
+
+		case "${1}" in
+		configure|compile)
+
+			local x
+			for x in ASFLAGS CCACHE_DIR CCACHE_SIZE \
+				CFLAGS CXXFLAGS LDFLAGS LIBCFLAGS LIBCXXFLAGS ; do
+				[[ ${!x+set} = set ]] && export $x
+			done
+			unset x
+
+			has distcc $FEATURES && [[ -n $DISTCC_DIR ]] && \
+				[[ ${SANDBOX_WRITE/$DISTCC_DIR} = $SANDBOX_WRITE ]] && \
+				addwrite "$DISTCC_DIR"
+
+			x=LIBDIR_$ABI
+			[ -z "$PKG_CONFIG_PATH" -a -n "$ABI" -a -n "${!x}" ] && \
+				export PKG_CONFIG_PATH=/usr/${!x}/pkgconfig
+
+			if has noauto $FEATURES && \
+				[[ ! -f $PORTAGE_BUILDDIR/.unpacked ]] ; then
+				echo
+				echo "!!! We apparently haven't unpacked..." \
+					"This is probably not what you"
+				echo "!!! want to be doing... You are using" \
+					"FEATURES=noauto so I'll assume"
+				echo "!!! that you know what you are doing..." \
+					"You have 5 seconds to abort..."
+				echo
+
+				local x
+				for x in 1 2 3 4 5 6 7 8; do
+					LC_ALL=C sleep 0.25
+				done
+
+				sleep 3
+			fi
+
+			cd "$PORTAGE_BUILDDIR"
+			if [ ! -d build-info ] ; then
+				mkdir build-info
+				cp "$EBUILD" "build-info/$PF.ebuild"
+			fi
+
+			#our custom version of libtool uses $S and $D to fix
+			#invalid paths in .la files
+			export S D
+
+			;;
+		esac
+
+		if [ "${PORTAGE_DEBUG}" != "1" ] || [ "${-/x/}" != "$-" ]; then
+			dyn_${1}
+		else
+			set -x
+			dyn_${1}
+			set +x
+		fi
+		export SANDBOX_ON="0"
+		;;
+	help|pretend|setup|preinst)
+		#pkg_setup needs to be out of the sandbox for tmp file creation;
+		#for example, awking and piping a file in /tmp requires a temp file to be created
+		#in /etc.  If pkg_setup is in the sandbox, both our lilo and apache ebuilds break.
+		export SANDBOX_ON="0"
+		if [ "${PORTAGE_DEBUG}" != "1" ] || [ "${-/x/}" != "$-" ]; then
+			dyn_${1}
+		else
+			set -x
+			dyn_${1}
+			set +x
+		fi
+		;;
+	_internal_test)
+		;;
+	*)
+		export SANDBOX_ON="1"
+		echo "Unrecognized arg '${1}'"
+		echo
+		dyn_help
+		exit 1
+		;;
+	esac
+
+	# Save the env only for relevant phases.
+	if ! has "${1}" clean help info nofetch ; then
+		umask 002
+		save_ebuild_env | filter_readonly_variables \
+			--filter-features > "$T/environment"
+		assert "save_ebuild_env failed"
+		chown portage:portage "$T/environment" &>/dev/null
+		chmod g+w "$T/environment" &>/dev/null
+	fi
+	[[ -n $PORTAGE_EBUILD_EXIT_FILE ]] && > "$PORTAGE_EBUILD_EXIT_FILE"
+	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
+		[[ ! -s $SANDBOX_LOG ]]
+		"$PORTAGE_BIN_PATH"/ebuild-ipc exit $?
+	fi
+}

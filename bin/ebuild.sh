@@ -991,12 +991,41 @@ then
 	export DEBUGBUILD=1
 fi
 
-#a reasonable default for $S
-[[ -z ${S} ]] && export S=${WORKDIR}/${P}
+if [[ $EBUILD_PHASE = depend ]] ; then
+	export SANDBOX_ON="0"
+	set -f
 
-# Note: readonly variables interfere with preprocess_ebuild_env(), so
-# declare them only after it has already run.
-if [ "${EBUILD_PHASE}" != "depend" ] ; then
+	if [ -n "${dbkey}" ] ; then
+		if [ ! -d "${dbkey%/*}" ]; then
+			install -d -g ${PORTAGE_GID} -m2775 "${dbkey%/*}"
+		fi
+		# Make it group writable. 666&~002==664
+		umask 002
+	fi
+
+	auxdbkeys="DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE
+		DESCRIPTION KEYWORDS INHERITED IUSE REQUIRED_USE PDEPEND PROVIDE EAPI
+		PROPERTIES DEFINED_PHASES UNUSED_05 UNUSED_04
+		UNUSED_03 UNUSED_02 UNUSED_01"
+
+	#the extra $(echo) commands remove newlines
+	[ -n "${EAPI}" ] || EAPI=0
+
+	if [ -n "${dbkey}" ] ; then
+		> "${dbkey}"
+		for f in ${auxdbkeys} ; do
+			echo $(echo ${!f}) >> "${dbkey}" || exit $?
+		done
+	else
+		for f in ${auxdbkeys} ; do
+			echo $(echo ${!f}) 1>&9 || exit $?
+		done
+		exec 9>&-
+	fi
+	set +f
+else
+	# Note: readonly variables interfere with preprocess_ebuild_env(), so
+	# declare them only after it has already run.
 	declare -r $PORTAGE_READONLY_METADATA $PORTAGE_READONLY_VARS
 	case "$EAPI" in
 		0|1|2)
@@ -1005,227 +1034,17 @@ if [ "${EBUILD_PHASE}" != "depend" ] ; then
 			declare -r ED EPREFIX EROOT
 			;;
 	esac
-fi
 
-ebuild_main() {
-
-	# Subshell/helper die support (must export for the die helper).
-	# Since this function is typically executed in a subshell,
-	# setup EBUILD_MASTER_PID to refer to the current $BASHPID,
-	# which seems to give the best results when further
-	# nested subshells call die.
-	export EBUILD_MASTER_PID=$BASHPID
-	trap 'exit 1' SIGTERM
-
-	if [[ $EBUILD_PHASE != depend ]] ; then
-		# Force configure scripts that automatically detect ccache to
-		# respect FEATURES="-ccache".
-		has ccache $FEATURES || export CCACHE_DISABLE=1
-
-		local phase_func=$(_ebuild_arg_to_phase "$EAPI" "$EBUILD_PHASE")
-		[[ -n $phase_func ]] && _ebuild_phase_funcs "$EAPI" "$phase_func"
-		unset phase_func
-	fi
-
-	source_all_bashrcs
-
-	case ${EBUILD_SH_ARGS} in
-	nofetch)
-		ebuild_phase_with_hooks pkg_nofetch
-		;;
-	prerm|postrm|postinst|config|info)
-		if has "$EBUILD_SH_ARGS" config info && \
-			! declare -F "pkg_$EBUILD_SH_ARGS" >/dev/null ; then
-			ewarn  "pkg_${EBUILD_SH_ARGS}() is not defined: '${EBUILD##*/}'"
-		fi
-		export SANDBOX_ON="0"
-		if [ "${PORTAGE_DEBUG}" != "1" ] || [ "${-/x/}" != "$-" ]; then
-			ebuild_phase_with_hooks pkg_${EBUILD_SH_ARGS}
-		else
-			set -x
-			ebuild_phase_with_hooks pkg_${EBUILD_SH_ARGS}
-			set +x
-		fi
-		if [[ $EBUILD_PHASE == postinst ]] && [[ -n $PORTAGE_UPDATE_ENV ]]; then
-			# Update environment.bz2 in case installation phases
-			# need to pass some variables to uninstallation phases.
-			save_ebuild_env --exclude-init-phases | \
-				filter_readonly_variables --filter-path \
-				--filter-sandbox --allow-extra-vars \
-				| ${PORTAGE_BZIP2_COMMAND} -c -f9 > "$PORTAGE_UPDATE_ENV"
-			assert "save_ebuild_env failed"
-		fi
-		;;
-	unpack|prepare|configure|compile|test|clean|install)
-		if [[ ${SANDBOX_DISABLED:-0} = 0 ]] ; then
-			export SANDBOX_ON="1"
-		else
-			export SANDBOX_ON="0"
-		fi
-
-		case "$EBUILD_SH_ARGS" in
-		configure|compile)
-
-			local x
-			for x in ASFLAGS CCACHE_DIR CCACHE_SIZE \
-				CFLAGS CXXFLAGS LDFLAGS LIBCFLAGS LIBCXXFLAGS ; do
-				[[ ${!x+set} = set ]] && export $x
-			done
-			unset x
-
-			has distcc $FEATURES && [[ -n $DISTCC_DIR ]] && \
-				[[ ${SANDBOX_WRITE/$DISTCC_DIR} = $SANDBOX_WRITE ]] && \
-				addwrite "$DISTCC_DIR"
-
-			x=LIBDIR_$ABI
-			[ -z "$PKG_CONFIG_PATH" -a -n "$ABI" -a -n "${!x}" ] && \
-				export PKG_CONFIG_PATH=/usr/${!x}/pkgconfig
-
-			if has noauto $FEATURES && \
-				[[ ! -f $PORTAGE_BUILDDIR/.unpacked ]] ; then
-				echo
-				echo "!!! We apparently haven't unpacked..." \
-					"This is probably not what you"
-				echo "!!! want to be doing... You are using" \
-					"FEATURES=noauto so I'll assume"
-				echo "!!! that you know what you are doing..." \
-					"You have 5 seconds to abort..."
-				echo
-
-				local x
-				for x in 1 2 3 4 5 6 7 8; do
-					LC_ALL=C sleep 0.25
-				done
-
-				sleep 3
-			fi
-
-			cd "$PORTAGE_BUILDDIR"
-			if [ ! -d build-info ] ; then
-				mkdir build-info
-				cp "$EBUILD" "build-info/$PF.ebuild"
-			fi
-
-			#our custom version of libtool uses $S and $D to fix
-			#invalid paths in .la files
-			export S D
-
-			;;
-		esac
-
-		if [ "${PORTAGE_DEBUG}" != "1" ] || [ "${-/x/}" != "$-" ]; then
-			dyn_${EBUILD_SH_ARGS}
-		else
-			set -x
-			dyn_${EBUILD_SH_ARGS}
-			set +x
-		fi
-		export SANDBOX_ON="0"
-		;;
-	help|pretend|setup|preinst)
-		#pkg_setup needs to be out of the sandbox for tmp file creation;
-		#for example, awking and piping a file in /tmp requires a temp file to be created
-		#in /etc.  If pkg_setup is in the sandbox, both our lilo and apache ebuilds break.
-		export SANDBOX_ON="0"
-		if [ "${PORTAGE_DEBUG}" != "1" ] || [ "${-/x/}" != "$-" ]; then
-			dyn_${EBUILD_SH_ARGS}
-		else
-			set -x
-			dyn_${EBUILD_SH_ARGS}
-			set +x
-		fi
-		;;
-	depend)
-		export SANDBOX_ON="0"
-		set -f
-
-		if [ -n "${dbkey}" ] ; then
-			if [ ! -d "${dbkey%/*}" ]; then
-				install -d -g ${PORTAGE_GID} -m2775 "${dbkey%/*}"
-			fi
-			# Make it group writable. 666&~002==664
-			umask 002
-		fi
-
-		auxdbkeys="DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE
-			DESCRIPTION KEYWORDS INHERITED IUSE REQUIRED_USE PDEPEND PROVIDE EAPI
-			PROPERTIES DEFINED_PHASES UNUSED_05 UNUSED_04
-			UNUSED_03 UNUSED_02 UNUSED_01"
-
-		#the extra $(echo) commands remove newlines
-		[ -n "${EAPI}" ] || EAPI=0
-
-		if [ -n "${dbkey}" ] ; then
-			> "${dbkey}"
-			for f in ${auxdbkeys} ; do
-				echo $(echo ${!f}) >> "${dbkey}" || exit $?
-			done
-		else
-			for f in ${auxdbkeys} ; do
-				echo $(echo ${!f}) 1>&9 || exit $?
-			done
+	if [[ -n $EBUILD_SH_ARGS ]] ; then
+		(
+			# Don't allow subprocesses to inherit the pipe which
+			# emerge uses to monitor ebuild.sh.
 			exec 9>&-
-		fi
-		set +f
-		;;
-	_internal_test)
-		;;
-	*)
-		export SANDBOX_ON="1"
-		echo "Unrecognized EBUILD_SH_ARGS: '${EBUILD_SH_ARGS}'"
-		echo
-		dyn_help
-		exit 1
-		;;
-	esac
-}
-
-if [[ -s $SANDBOX_LOG ]] ; then
-	# We use SANDBOX_LOG to check for sandbox violations,
-	# so we ensure that there can't be a stale log to
-	# interfere with our logic.
-	x=
-	if [[ -n SANDBOX_ON ]] ; then
-		x=$SANDBOX_ON
-		export SANDBOX_ON=0
+			ebuild_main ${EBUILD_SH_ARGS}
+			exit 0
+		)
+		exit $?
 	fi
-
-	rm -f "$SANDBOX_LOG" || \
-		die "failed to remove stale sandbox log: '$SANDBOX_LOG'"
-
-	if [[ -n $x ]] ; then
-		export SANDBOX_ON=$x
-	fi
-	unset x
-fi
-
-if [[ $EBUILD_PHASE = depend ]] ; then
-	ebuild_main
-elif [[ -n $EBUILD_SH_ARGS ]] ; then
-	(
-		# Don't allow subprocesses to inherit the pipe which
-		# emerge uses to monitor ebuild.sh.
-		exec 9>&-
-
-		ebuild_main
-
-		# Save the env only for relevant phases.
-		if ! has "$EBUILD_SH_ARGS" clean help info nofetch ; then
-			umask 002
-			save_ebuild_env | filter_readonly_variables \
-				--filter-features > "$T/environment"
-			assert "save_ebuild_env failed"
-			chown portage:portage "$T/environment" &>/dev/null
-			chmod g+w "$T/environment" &>/dev/null
-		fi
-		[[ -n $PORTAGE_EBUILD_EXIT_FILE ]] && > "$PORTAGE_EBUILD_EXIT_FILE"
-		if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
-			[[ ! -s $SANDBOX_LOG ]]
-			"$PORTAGE_BIN_PATH"/ebuild-ipc exit $?
-		fi
-		exit 0
-	)
-	exit $?
 fi
 
 # Do not exit when ebuild.sh is sourced by other scripts.
