@@ -113,14 +113,6 @@ fi
 # the sandbox is disabled by default except when overridden in the relevant stages
 export SANDBOX_ON=0
 
-lchown() {
-	chown -h "$@"
-}
-
-lchgrp() {
-	chgrp -h "$@"
-}
-
 esyslog() {
 	# Custom version of esyslog() to take care of the "Red Star" bug.
 	# MUST follow functions.sh to override the "" parameter problem.
