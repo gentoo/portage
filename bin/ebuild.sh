@@ -119,31 +119,6 @@ esyslog() {
 	return 0
 }
 
-portageq() {
-	if [ "${EBUILD_PHASE}" == "depend" ]; then
-		die "portageq calls are not allowed in the global scope"
-	fi
-
-	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-	"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" "$@"
-}
-
-register_die_hook() {
-	local x
-	for x in $* ; do
-		has $x $EBUILD_DEATH_HOOKS || \
-			export EBUILD_DEATH_HOOKS="$EBUILD_DEATH_HOOKS $x"
-	done
-}
-
-register_success_hook() {
-	local x
-	for x in $* ; do
-		has $x $EBUILD_SUCCESS_HOOKS || \
-			export EBUILD_SUCCESS_HOOKS="$EBUILD_SUCCESS_HOOKS $x"
-	done
-}
-
 # Ensure that $PWD is sane whenever possible, to protect against
 # exploitation of insecure search path for python -c in ebuilds.
 # See bug #239560.
@@ -155,16 +130,6 @@ fi
 #if no perms are specified, dirs/files will have decent defaults
 #(not secretive, but not stupid)
 umask 022
-
-strip_duplicate_slashes() {
-	if [[ -n $1 ]] ; then
-		local removed=$1
-		while [[ ${removed} == *//* ]] ; do
-			removed=${removed//\/\///}
-		done
-		echo ${removed}
-	fi
-}
 
 # debug-print() gets called from many places with verbose status information useful
 # for tracking down problems. The output is in $T/eclass-debug.log.
@@ -352,61 +317,6 @@ EXPORT_FUNCTIONS() {
 		die "EXPORT_FUNCTIONS without a defined ECLASS"
 	fi
 	eval $__export_funcs_var+=\" $*\"
-}
-
-# this is a function for removing any directory matching a passed in pattern from
-# PATH
-remove_path_entry() {
-	save_IFS
-	IFS=":"
-	stripped_path="${PATH}"
-	while [ -n "$1" ]; do
-		cur_path=""
-		for p in ${stripped_path}; do
-			if [ "${p/${1}}" == "${p}" ]; then
-				cur_path="${cur_path}:${p}"
-			fi
-		done
-		stripped_path="${cur_path#:*}"
-		shift
-	done
-	restore_IFS
-	PATH="${stripped_path}"
-}
-
-# Set given variables unless these variable have been already set (e.g. during emerge
-# invocation) to values different than values set in make.conf.
-set_unless_changed() {
-	if [[ $# -lt 1 ]]; then
-		die "${FUNCNAME}() requires at least 1 argument: VARIABLE=VALUE"
-	fi
-
-	local argument value variable
-	for argument in "$@"; do
-		if [[ ${argument} != *=* ]]; then
-			die "${FUNCNAME}(): Argument '${argument}' has incorrect syntax"
-		fi
-		variable="${argument%%=*}"
-		value="${argument#*=}"
-		if eval "[[ \${${variable}} == \$(env -u ${variable} portageq envvar ${variable}) ]]"; then
-			eval "${variable}=\"\${value}\""
-		fi
-	done
-}
-
-# Unset given variables unless these variable have been set (e.g. during emerge
-# invocation) to values different than values set in make.conf.
-unset_unless_changed() {
-	if [[ $# -lt 1 ]]; then
-		die "${FUNCNAME}() requires at least 1 argument: VARIABLE"
-	fi
-
-	local variable
-	for variable in "$@"; do
-		if eval "[[ \${${variable}} == \$(env -u ${variable} portageq envvar ${variable}) ]]"; then
-			unset ${variable}
-		fi
-	done
 }
 
 PORTAGE_BASHRCS_SOURCED=0
@@ -715,17 +625,20 @@ trap 'exit 1' SIGTERM
 if [[ $EBUILD_PHASE != depend ]] ; then
 	source "${PORTAGE_BIN_PATH}/phase-functions.sh"
 	source "${PORTAGE_BIN_PATH}/phase-helpers.sh"
+	source "${PORTAGE_BIN_PATH}/bashrc-functions.sh"
 else
 	# These dummy functions are for things that are likely to be called
 	# in global scope, even though they are completely useless during
 	# the "depend" phase.
 	for x in diropts docompress exeopts insopts \
-		keepdir libopts use useq usev use_with use_enable ; do
+		keepdir libopts register_die_hook register_success_hook \
+		remove_path_entry set_unless_changed strip_duplicate_slashes \
+		unset_unless_changed use useq usev use_with use_enable ; do
 		eval "${x}() { : ; }"
 	done
 	# These functions die because calls to them during the "depend" phase
 	# are considered to be severe QA violations.
-	for x in best_version has_version ; do
+	for x in best_version has_version portageq ; do
 		eval "${x}() { die \"\${FUNCNAME} calls are not allowed in global scope\"; }"
 	done
 	unset x
