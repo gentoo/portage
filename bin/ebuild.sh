@@ -166,14 +166,6 @@ strip_duplicate_slashes() {
 	fi
 }
 
-hasg() {
-    local x s=$1
-    shift
-    for x ; do [[ ${x} == ${s} ]] && echo "${x}" && return 0 ; done
-    return 1
-}
-hasgq() { hasg "$@" >/dev/null ; }
-
 # debug-print() gets called from many places with verbose status information useful
 # for tracking down problems. The output is in $T/eclass-debug.log.
 # You can set ECLASS_DEBUG_OUTPUT to redirect the output somewhere else as well.

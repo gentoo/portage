@@ -369,6 +369,15 @@ unpack() {
 econf() {
 	local x
 
+	_hasg() {
+		local x s=$1
+		shift
+		for x ; do [[ ${x} == ${s} ]] && echo "${x}" && return 0 ; done
+		return 1
+	}
+
+	_hasgq() { _hasg "$@" >/dev/null ; }
+
 	local phase_func=$(_ebuild_arg_to_phase "$EAPI" "$EBUILD_PHASE")
 	if [[ -n $phase_func ]] ; then
 		if has "$EAPI" 0 1 ; then
@@ -411,9 +420,9 @@ econf() {
 		if [[ -n ${ABI} && -n ${!LIBDIR_VAR} ]] ; then
 			CONF_LIBDIR=${!LIBDIR_VAR}
 		fi
-		if [[ -n ${CONF_LIBDIR} ]] && ! hasgq --libdir=\* "$@" ; then
-			export CONF_PREFIX=$(hasg --exec-prefix=\* "$@")
-			[[ -z ${CONF_PREFIX} ]] && CONF_PREFIX=$(hasg --prefix=\* "$@")
+		if [[ -n ${CONF_LIBDIR} ]] && ! _hasgq --libdir=\* "$@" ; then
+			export CONF_PREFIX=$(_hasg --exec-prefix=\* "$@")
+			[[ -z ${CONF_PREFIX} ]] && CONF_PREFIX=$(_hasg --prefix=\* "$@")
 			: ${CONF_PREFIX:=/usr}
 			CONF_PREFIX=${CONF_PREFIX#*=}
 			[[ ${CONF_PREFIX} != /* ]] && CONF_PREFIX="/${CONF_PREFIX}"

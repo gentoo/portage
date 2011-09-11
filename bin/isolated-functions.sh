@@ -586,7 +586,7 @@ save_ebuild_env() {
 			esyslog einfo einfon ewarn eerror ebegin _eend eend KV_major \
 			KV_minor KV_micro KV_to_int get_KV unset_colors set_colors has \
 			has_phase_defined_up_to \
-			hasg hasgq hasv hasq qa_source qa_call \
+			hasv hasq qa_source qa_call \
 			addread addwrite adddeny addpredict _sb_append_var \
 			use usev useq has_version portageq \
 			best_version use_with use_enable register_die_hook \
@@ -602,7 +602,7 @@ save_ebuild_env() {
 			set_unless_changed unset_unless_changed source_all_bashrcs \
 			ebuild_main ebuild_phase ebuild_phase_with_hooks \
 			_ebuild_arg_to_phase _ebuild_phase_funcs default \
-			_pipestatus \
+			_hasg _hasgq _unpack_tar \
 			${QA_INTERCEPTORS}
 
 		# portage config variables and variables set directly by portage
