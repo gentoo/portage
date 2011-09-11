@@ -571,3 +571,45 @@ _eapi4_src_install() {
 		dodoc ${DOCS}
 	fi
 }
+
+# Return true if given package is installed. Otherwise return false.
+# Takes single depend-type atoms.
+has_version() {
+
+	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
+		"$PORTAGE_BIN_PATH"/ebuild-ipc has_version "$ROOT" "$1"
+	else
+		PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
+		"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" has_version "${ROOT}" "$1"
+	fi
+	local retval=$?
+	case "${retval}" in
+		0|1)
+			return ${retval}
+			;;
+		*)
+			die "unexpected portageq exit code: ${retval}"
+			;;
+	esac
+}
+
+# Returns the best/most-current match.
+# Takes single depend-type atoms.
+best_version() {
+
+	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
+		"$PORTAGE_BIN_PATH"/ebuild-ipc best_version "$ROOT" "$1"
+	else
+		PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
+		"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" best_version "${ROOT}" "$1"
+	fi
+	local retval=$?
+	case "${retval}" in
+		0|1)
+			return ${retval}
+			;;
+		*)
+			die "unexpected portageq exit code: ${retval}"
+			;;
+	esac
+}

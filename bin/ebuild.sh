@@ -127,30 +127,6 @@ esyslog() {
 	return 0
 }
 
-# Return true if given package is installed. Otherwise return false.
-# Takes single depend-type atoms.
-has_version() {
-	if [ "${EBUILD_PHASE}" == "depend" ]; then
-		die "portageq calls (has_version calls portageq) are not allowed in the global scope"
-	fi
-
-	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
-		"$PORTAGE_BIN_PATH"/ebuild-ipc has_version "$ROOT" "$1"
-	else
-		PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-		"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" has_version "${ROOT}" "$1"
-	fi
-	local retval=$?
-	case "${retval}" in
-		0|1)
-			return ${retval}
-			;;
-		*)
-			die "unexpected portageq exit code: ${retval}"
-			;;
-	esac
-}
-
 portageq() {
 	if [ "${EBUILD_PHASE}" == "depend" ]; then
 		die "portageq calls are not allowed in the global scope"
@@ -158,36 +134,6 @@ portageq() {
 
 	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
 	"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" "$@"
-}
-
-
-# ----------------------------------------------------------------------------
-# ----------------------------------------------------------------------------
-# ----------------------------------------------------------------------------
-
-
-# Returns the best/most-current match.
-# Takes single depend-type atoms.
-best_version() {
-	if [ "${EBUILD_PHASE}" == "depend" ]; then
-		die "portageq calls (best_version calls portageq) are not allowed in the global scope"
-	fi
-
-	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
-		"$PORTAGE_BIN_PATH"/ebuild-ipc best_version "$ROOT" "$1"
-	else
-		PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-		"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" 'best_version' "${ROOT}" "$1"
-	fi
-	local retval=$?
-	case "${retval}" in
-		0|1)
-			return ${retval}
-			;;
-		*)
-			die "unexpected portageq exit code: ${retval}"
-			;;
-	esac
 }
 
 register_die_hook() {
@@ -792,6 +738,11 @@ else
 	for x in diropts docompress exeopts insopts \
 		keepdir libopts use useq usev use_with use_enable ; do
 		eval "${x}() { : ; }"
+	done
+	# These functions die because calls to them during the "depend" phase
+	# are considered to be severe QA violations.
+	for x in best_version has_version ; do
+		eval "${x}() { die \"\${FUNCNAME} calls are not allowed in global scope\"; }"
 	done
 	unset x
 fi
