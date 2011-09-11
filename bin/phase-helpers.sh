@@ -149,6 +149,55 @@ keepdir() {
 	fi
 }
 
+
+useq() {
+	has $EBUILD_PHASE prerm postrm || eqawarn \
+		"QA Notice: The 'useq' function is deprecated (replaced by 'use')"
+	use ${1}
+}
+
+usev() {
+	if use ${1}; then
+		echo "${1#!}"
+		return 0
+	fi
+	return 1
+}
+
+use() {
+	local u=$1
+	local found=0
+
+	# if we got something like '!flag', then invert the return value
+	if [[ ${u:0:1} == "!" ]] ; then
+		u=${u:1}
+		found=1
+	fi
+
+	if [[ $EBUILD_PHASE = depend ]] ; then
+		# TODO: Add a registration interface for eclasses to register
+		# any number of phase hooks, so that global scope eclass
+		# initialization can by migrated to phase hooks in new EAPIs.
+		# Example: add_phase_hook before pkg_setup $ECLASS_pre_pkg_setup
+		#if [[ -n $EAPI ]] && ! has "$EAPI" 0 1 2 3 ; then
+		#	die "use() called during invalid phase: $EBUILD_PHASE"
+		#fi
+		true
+
+	# Make sure we have this USE flag in IUSE
+	elif [[ -n $PORTAGE_IUSE && -n $EBUILD_PHASE ]] ; then
+		[[ $u =~ $PORTAGE_IUSE ]] || \
+			eqawarn "QA Notice: USE Flag '${u}' not" \
+				"in IUSE for ${CATEGORY}/${PF}"
+	fi
+
+	if has ${u} ${USE} ; then
+		return ${found}
+	else
+		return $((!found))
+	fi
+}
+
 use_with() {
 	if [ -z "$1" ]; then
 		echo "!!! use_with() called without a parameter." >&2
