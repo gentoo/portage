@@ -6540,7 +6540,6 @@ class _dep_check_composite_db(dbapi):
 
 		if pkg is not None and \
 			atom.slot is None and \
-			"--update" not in self._depgraph._frozen_config.myopts and \
 			pkg.cp.startswith("virtual/"):
 			# For new-style virtual lookahead that occurs inside dep_check()
 			# for bug #141118, examine all slots. This is needed so that newer
