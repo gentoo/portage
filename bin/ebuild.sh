@@ -833,6 +833,15 @@ trap 'exit 1' SIGTERM
 if [[ $EBUILD_PHASE != depend ]] ; then
 	source "${PORTAGE_BIN_PATH}/phase-functions.sh"
 	source "${PORTAGE_BIN_PATH}/phase-helpers.sh"
+else
+	# These dummy functions are for things that are likely to be called
+	# in global scope, even though they are completely useless during
+	# the "depend" phase.
+	for x in diropts docompress exeopts insopts \
+		keepdir libopts use_with use_enable ; do
+		eval "${x}() { : ; }"
+	done
+	unset x
 fi
 
 if ! has "$EBUILD_PHASE" clean cleanrm depend && \
