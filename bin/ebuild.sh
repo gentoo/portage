@@ -5,6 +5,34 @@
 PORTAGE_BIN_PATH="${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"
 PORTAGE_PYM_PATH="${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}"
 
+# Prevent aliases from causing portage to act inappropriately.
+# Make sure it's before everything so we don't mess aliases that follow.
+unalias -a
+
+source "${PORTAGE_BIN_PATH}/isolated-functions.sh" || exit 1
+
+if [[ $EBUILD_PHASE != depend ]] ; then
+	source "${PORTAGE_BIN_PATH}/phase-functions.sh" || die
+	source "${PORTAGE_BIN_PATH}/phase-helpers.sh" || die
+	source "${PORTAGE_BIN_PATH}/bashrc-functions.sh" || die
+else
+	# These dummy functions are for things that are likely to be called
+	# in global scope, even though they are completely useless during
+	# the "depend" phase.
+	for x in diropts docompress exeopts insopts \
+		keepdir libopts register_die_hook register_success_hook \
+		remove_path_entry set_unless_changed strip_duplicate_slashes \
+		unset_unless_changed use useq usev use_with use_enable ; do
+		eval "${x}() { : ; }"
+	done
+	# These functions die because calls to them during the "depend" phase
+	# are considered to be severe QA violations.
+	for x in best_version has_version portageq ; do
+		eval "${x}() { die \"\${FUNCNAME} calls are not allowed in global scope\"; }"
+	done
+	unset x
+fi
+
 if [[ $PORTAGE_SANDBOX_COMPAT_LEVEL -lt 22 ]] ; then
 	# Ensure that /dev/std* streams have appropriate sandbox permission for
 	# bug #288863. This can be removed after sandbox is fixed and portage
@@ -67,14 +95,8 @@ EBUILD_SH_ARGS="$*"
 
 shift $#
 
-# Prevent aliases from causing portage to act inappropriately.
-# Make sure it's before everything so we don't mess aliases that follow.
-unalias -a
-
 # Unset some variables that break things.
 unset GZIP BZIP BZIP2 CDPATH GREP_OPTIONS GREP_COLOR GLOBIGNORE
-
-source "${PORTAGE_BIN_PATH}/isolated-functions.sh"  &>/dev/null
 
 [[ $PORTAGE_QUIET != "" ]] && export PORTAGE_QUIET
 
@@ -433,28 +455,6 @@ fi
 # Subshell/helper die support (must export for the die helper).
 export EBUILD_MASTER_PID=$BASHPID
 trap 'exit 1' SIGTERM
-
-if [[ $EBUILD_PHASE != depend ]] ; then
-	source "${PORTAGE_BIN_PATH}/phase-functions.sh"
-	source "${PORTAGE_BIN_PATH}/phase-helpers.sh"
-	source "${PORTAGE_BIN_PATH}/bashrc-functions.sh"
-else
-	# These dummy functions are for things that are likely to be called
-	# in global scope, even though they are completely useless during
-	# the "depend" phase.
-	for x in diropts docompress exeopts insopts \
-		keepdir libopts register_die_hook register_success_hook \
-		remove_path_entry set_unless_changed strip_duplicate_slashes \
-		unset_unless_changed use useq usev use_with use_enable ; do
-		eval "${x}() { : ; }"
-	done
-	# These functions die because calls to them during the "depend" phase
-	# are considered to be severe QA violations.
-	for x in best_version has_version portageq ; do
-		eval "${x}() { die \"\${FUNCNAME} calls are not allowed in global scope\"; }"
-	done
-	unset x
-fi
 
 if ! has "$EBUILD_PHASE" clean cleanrm depend && \
 	[ -f "${T}"/environment ] ; then
