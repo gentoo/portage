@@ -20,6 +20,7 @@ source "${PORTAGE_BIN_PATH}/isolated-functions.sh" || exit 1
 
 if [[ $EBUILD_PHASE != depend ]] ; then
 	source "${PORTAGE_BIN_PATH}/phase-functions.sh" || die
+	source "${PORTAGE_BIN_PATH}/save-ebuild-env.sh" || die
 	source "${PORTAGE_BIN_PATH}/phase-helpers.sh" || die
 	source "${PORTAGE_BIN_PATH}/bashrc-functions.sh" || die
 else

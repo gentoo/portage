@@ -167,7 +167,7 @@ preprocess_ebuild_env() {
 		# by the above source command. To protect ourselves, we override it
 		# here with our own version. ${PORTAGE_BIN_PATH} is safe to use here
 		# because it's already filtered above.
-		source "${PORTAGE_BIN_PATH}/isolated-functions.sh" || exit $?
+		source "${PORTAGE_BIN_PATH}/save-ebuild-env.sh" || exit $?
 
 		# Rely on save_ebuild_env() to filter out any remaining variables
 		# and functions that could interfere with the current environment.
