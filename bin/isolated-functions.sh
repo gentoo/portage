@@ -434,14 +434,19 @@ RC_INDENTATION=''
 RC_DEFAULT_INDENT=2
 RC_DOT_PATTERN=''
 
-case "${NOCOLOR:-false}" in
-	yes|true)
-		unset_colors
-		;;
-	no|false)
-		set_colors
-		;;
-esac
+if [[ $EBUILD_PHASE == depend ]] ; then
+	# avoid unneeded stty call in set_colors during "depend" phase
+	unset_colors
+else
+	case "${NOCOLOR:-false}" in
+		yes|true)
+			unset_colors
+			;;
+		no|false)
+			set_colors
+			;;
+	esac
+fi
 
 if [[ -z ${USERLAND} ]] ; then
 	case $(uname -s) in
