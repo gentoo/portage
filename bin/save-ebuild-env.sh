@@ -14,9 +14,13 @@ save_ebuild_env() {
 	(
 	if has --exclude-init-phases $* ; then
 		unset S _E_DOCDESTTREE_ _E_EXEDESTTREE_
-		if [[ -n $PYTHONPATH ]] ; then
-			export PYTHONPATH=${PYTHONPATH/${PORTAGE_PYM_PATH}:}
-			[[ -z $PYTHONPATH ]] && unset PYTHONPATH
+		if [[ -n $PYTHONPATH &&
+			${PYTHONPATH%%:*} -ef $PORTAGE_PYM_PATH ]] ; then
+			if [[ $PYTHONPATH == *:* ]] ; then
+				export PYTHONPATH=${PYTHONPATH#*:}
+			else
+				unset PYTHONPATH
+			fi
 		fi
 	fi
 
