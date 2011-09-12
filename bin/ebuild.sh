@@ -27,8 +27,9 @@ else
 	# These dummy functions are for things that are likely to be called
 	# in global scope, even though they are completely useless during
 	# the "depend" phase.
-	for x in diropts docompress exeopts insopts \
-		keepdir libopts register_die_hook register_success_hook \
+	for x in diropts docompress exeopts get_KV insopts \
+		keepdir KV_major KV_micro KV_minor KV_to_int \
+		libopts register_die_hook register_success_hook \
 		remove_path_entry set_unless_changed strip_duplicate_slashes \
 		unset_unless_changed use useq usev use_with use_enable ; do
 		eval "${x}() { : ; }"
