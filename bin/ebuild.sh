@@ -5,6 +5,13 @@
 PORTAGE_BIN_PATH="${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"
 PORTAGE_PYM_PATH="${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}"
 
+ROOTPATH=${ROOTPATH##:}
+ROOTPATH=${ROOTPATH%%:}
+PREROOTPATH=${PREROOTPATH##:}
+PREROOTPATH=${PREROOTPATH%%:}
+PATH=$PORTAGE_BIN_PATH/ebuild-helpers:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${ROOTPATH:+:}$ROOTPATH
+export PATH
+
 # Prevent aliases from causing portage to act inappropriately.
 # Make sure it's before everything so we don't mess aliases that follow.
 unalias -a
@@ -46,13 +53,6 @@ fi
 # 'source /etc/profile' which can interfere with the build
 # environment by modifying our PATH.
 unset BASH_ENV
-
-ROOTPATH=${ROOTPATH##:}
-ROOTPATH=${ROOTPATH%%:}
-PREROOTPATH=${PREROOTPATH##:}
-PREROOTPATH=${PREROOTPATH%%:}
-PATH=$PORTAGE_BIN_PATH/ebuild-helpers:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${ROOTPATH:+:}$ROOTPATH
-export PATH
 
 # This is just a temporary workaround for portage-9999 users since
 # earlier portage versions do not detect a version change in this case
