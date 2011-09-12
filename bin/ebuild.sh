@@ -31,8 +31,13 @@ else
 		keepdir KV_major KV_micro KV_minor KV_to_int \
 		libopts register_die_hook register_success_hook \
 		remove_path_entry set_unless_changed strip_duplicate_slashes \
-		unset_unless_changed use useq usev use_with use_enable ; do
+		unset_unless_changed use_with use_enable ; do
 		eval "${x}() { : ; }"
+	done
+	# These dummy functions return false, in order to ensure that
+	# `use multislot` is false for the "depend" phase.
+	for x in use useq usev ; do
+		eval "${x}() { return 1; }"
 	done
 	# These functions die because calls to them during the "depend" phase
 	# are considered to be severe QA violations.
