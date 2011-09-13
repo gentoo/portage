@@ -592,6 +592,12 @@ repo_info = portdb._repo_info[portdir_overlay]
 portdb.porttrees = list(repo_info.eclass_db.porttrees)
 portdir = portdb.porttrees[0]
 
+# Thin manifests imply reliance on the VCS for file integrity,
+# which implies that manifest signatures are not needed.
+sign_manifests = "sign" in repoman_settings.features and not \
+	repoman_settings.repositories.get_repo_for_location(
+	portdir_overlay).thin_manifest
+
 # Generate an appropriate PORTDIR_OVERLAY value for passing into the
 # profile-specific config constructor calls.
 env = os.environ.copy()
@@ -2402,7 +2408,7 @@ else:
 
 	if vcs in ('cvs', 'svn') and (myupdates or myremoved):
 		myfiles = myupdates + myremoved
-		if not myheaders and "sign" not in repoman_settings.features:
+		if not myheaders and not sign_manifests:
 			myfiles += mymanifests
 		fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
 		mymsg = os.fdopen(fd, "wb")
@@ -2548,7 +2554,7 @@ else:
 			sys.exit(1)
 
 		# Force an unsigned commit when more than one Manifest needs to be signed.
-		if repolevel < 3 and "sign" in repoman_settings.features:
+		if repolevel < 3 and sign_manifests:
 
 			fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
 			mymsg = os.fdopen(fd, "wb")
@@ -2581,7 +2587,7 @@ else:
 			manifest_commit_required = False
 
 	signed = False
-	if "sign" in repoman_settings.features:
+	if sign_manifests:
 		signed = True
 		myfiles = myupdates + myremoved + mymanifests
 		try:
