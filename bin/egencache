@@ -164,9 +164,13 @@ def parse_args(args):
 		parser.error("Not a directory: --config-root='%s'" % \
 			(options.config_root,))
 
-	if options.cache_dir is not None and not os.path.isdir(options.cache_dir):
-		parser.error("Not a directory: --cache-dir='%s'" % \
-			(options.cache_dir,))
+	if options.cache_dir is not None:
+		if not os.path.isdir(options.cache_dir):
+			parser.error("Not a directory: --cache-dir='%s'" % \
+				(options.cache_dir,))
+		if not os.access(options.cache_dir, os.W_OK):
+			parser.error("Write access denied: --cache-dir='%s'" % \
+				(options.cache_dir,))
 
 	if options.portdir_overlay is not None and \
 		options.repo is None:
@@ -773,8 +777,6 @@ def egencache_main(args):
 	parser, options, atoms = parse_args(args)
 
 	config_root = options.config_root
-	if config_root is None:
-		config_root = '/'
 
 	# The calling environment is ignored, so the program is
 	# completely controlled by commandline arguments.
@@ -791,8 +793,12 @@ def egencache_main(args):
 	if options.portdir is not None:
 		env['PORTDIR'] = options.portdir
 
-	settings = portage.config(config_root=config_root, _eprefix=EPREFIX,
-		target_root='/', local_config=False, env=env)
+	eprefix = os.environ.get("__PORTAGE_TEST_EPREFIX")
+	if not eprefix:
+		eprefix = EPREFIX
+
+	settings = portage.config(config_root=config_root,
+		local_config=False, env=env, _eprefix=eprefix)
 
 	default_opts = None
 	if not options.ignore_default_opts:
@@ -801,14 +807,11 @@ def egencache_main(args):
 	if default_opts:
 		parser, options, args = parse_args(default_opts + args)
 
-		if options.config_root is not None:
-			config_root = options.config_root
-
 		if options.cache_dir is not None:
 			env['PORTAGE_DEPCACHEDIR'] = options.cache_dir
 
-		settings = portage.config(config_root=config_root, _eprefix=EPREFIX,
-			target_root='/', local_config=False, env=env)
+		settings = portage.config(config_root=config_root,
+			local_config=False, env=env, _eprefix=eprefix)
 
 	if not options.update and not options.update_use_local_desc \
 			and not options.update_changelogs:
@@ -816,14 +819,27 @@ def egencache_main(args):
 		return 1
 
 	if options.update and 'metadata-transfer' not in settings.features:
-		writemsg_level("ecachegen: warning: " + \
-			"automatically enabling FEATURES=metadata-transfer\n",
-			level=logging.WARNING, noiselevel=-1)
 		settings.features.add('metadata-transfer')
 
 	settings.lock()
 
 	portdb = portage.portdbapi(mysettings=settings)
+
+	if options.update:
+		if options.cache_dir is not None:
+			# already validated earlier
+			pass
+		else:
+			# We check write access after the portdbapi constructor
+			# has had an opportunity to create it. This ensures that
+			# we don't use the cache in the "volatile" mode which is
+			# undesirable for egencache.
+			if not os.access(settings["PORTAGE_DEPCACHEDIR"], os.W_OK):
+				writemsg_level("ecachegen: error: " + \
+					"write access denied: %s\n" % (settings["PORTAGE_DEPCACHEDIR"],),
+					level=logging.ERROR, noiselevel=-1)
+				return 1
+
 	if options.repo is not None:
 		repo_path = portdb.getRepositoryPath(options.repo)
 		if repo_path is None:

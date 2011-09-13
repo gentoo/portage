@@ -59,12 +59,18 @@ class PreservedLibsRegistry(object):
 		try:
 			f = open(_unicode_encode(self._filename,
 					encoding=_encodings['fs'], errors='strict'), 'rb')
-			self._data = pickle.load(f)
-		except (ValueError, pickle.UnpicklingError) as e:
+			if os.fstat(f.fileno()).st_size == 0:
+				# ignore empty lock file
+				pass
+			else:
+				self._data = pickle.load(f)
+		except (AttributeError, EOFError, ValueError, pickle.UnpicklingError) as e:
 			writemsg_level(_("!!! Error loading '%s': %s\n") % \
 				(self._filename, e), level=logging.ERROR, noiselevel=-1)
-		except (EOFError, IOError) as e:
-			if isinstance(e, EOFError) or e.errno == errno.ENOENT:
+		except EnvironmentError as e:
+			if not hasattr(e, 'errno'):
+				raise
+			elif e.errno == errno.ENOENT:
 				pass
 			elif e.errno == PermissionDenied.errno:
 				raise PermissionDenied(self._filename)

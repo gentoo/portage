@@ -1,6 +1,7 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import errno
 import sys
 from portage.util import writemsg
 from portage.data import secpass
@@ -58,8 +59,11 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 			self._cache_data = mypickle.load()
 			f.close()
 			del f
-		except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError) as e:
-			if isinstance(e, pickle.UnpicklingError):
+		except (AttributeError, EOFError, EnvironmentError, ValueError, pickle.UnpicklingError) as e:
+			if isinstance(e, EnvironmentError) and \
+				getattr(e, 'errno', None) in (errno.ENOENT, errno.EACCES):
+				pass
+			else:
 				writemsg("!!! Error loading '%s': %s\n" % \
 					(self._cache_filename, str(e)), noiselevel=-1)
 			del e

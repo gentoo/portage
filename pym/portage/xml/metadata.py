@@ -30,15 +30,34 @@
 
 __all__ = ('MetaDataXML',)
 
-try:
-	import xml.etree.cElementTree as etree
-except ImportError:
+import sys
+
+if sys.hexversion < 0x2070000 or \
+	(sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000):
+	# Our _MetadataTreeBuilder usage is incompatible with
+	# cElementTree in Python 2.6, 3.0, and 3.1:
+	#  File "/usr/lib/python2.6/xml/etree/ElementTree.py", line 644, in findall
+	#    assert self._root is not None
 	import xml.etree.ElementTree as etree
+else:
+	try:
+		import xml.etree.cElementTree as etree
+	except ImportError:
+		import xml.etree.ElementTree as etree
 
 import re
+import xml.etree.ElementTree
 import portage
 from portage import os
 from portage.util import unique_everseen
+
+class _MetadataTreeBuilder(xml.etree.ElementTree.TreeBuilder):
+	"""
+	Implements doctype() as required to avoid deprecation warnings with
+	Python >=2.7.
+	"""
+	def doctype(self, name, pubid, system):
+		pass
 
 class _Maintainer(object):
 	"""An object for representing one maintainer.
@@ -63,8 +82,7 @@ class _Maintainer(object):
 		self.description = None
 		self.restrict = node.get('restrict')
 		self.status = node.get('status')
-		maint_attrs = node.getchildren()
-		for attr in maint_attrs:
+		for attr in node:
 			setattr(self, attr.tag, attr.text)
 
 	def __repr__(self):
@@ -174,7 +192,8 @@ class MetaDataXML(object):
 		self._xml_tree = None
 
 		try:
-			self._xml_tree = etree.parse(metadata_xml_path)
+			self._xml_tree = etree.parse(metadata_xml_path,
+				parser=etree.XMLParser(target=_MetadataTreeBuilder()))
 		except ImportError:
 			pass
 
@@ -209,7 +228,8 @@ class MetaDataXML(object):
 
 		if self._herdstree is None:
 			try:
-				self._herdstree = etree.parse(self._herds_path)
+				self._herdstree = etree.parse(self._herds_path,
+					parser=etree.XMLParser(target=_MetadataTreeBuilder()))
 			except (ImportError, IOError, SyntaxError):
 				return None
 

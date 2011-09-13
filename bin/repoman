@@ -297,7 +297,7 @@ qahelp={
 	"ebuild.patches":"PATCHES variable should be a bash array to ensure white space safety",
 	"changelog.notadded":"ChangeLogs that exist but have not been added to cvs",
 	"dependency.unknown" : "Ebuild has a dependency that refers to an unknown package (which may be valid if it is a blocker for a renamed/removed package, or is an alternative choice provided by an overlay)",
-	"file.executable":"Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do note need the executable bit",
+	"file.executable":"Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do not need the executable bit",
 	"file.size":"Files in the files directory must be under 20 KiB",
 	"file.size.fatal":"Files in the files directory must be under 60 KiB",
 	"file.name":"File/dir name must be composed of only the following chars: %s " % allowed_filename_chars,
@@ -598,6 +598,14 @@ portdir_overlay = os.path.realpath(portdir_overlay)
 repo_info = portdb._repo_info[portdir_overlay]
 portdb.porttrees = list(repo_info.eclass_db.porttrees)
 portdir = portdb.porttrees[0]
+
+# In order to disable manifest signatures, repos may set
+# "sign-manifests = false" in metadata/layout.conf. This
+# can be used to prevent merge conflicts like those that
+# thin-manifests is designed to prevent.
+sign_manifests = "sign" in repoman_settings.features and \
+	repoman_settings.repositories.get_repo_for_location(
+	portdir_overlay).sign_manifest
 
 # Generate an appropriate PORTDIR_OVERLAY value for passing into the
 # profile-specific config constructor calls.
@@ -1111,7 +1119,9 @@ for x in scanlist:
 			portage._doebuild_manifest_exempt_depend += 1
 			try:
 				distdir = repoman_settings['DISTDIR']
-				mf = portage.manifest.Manifest(checkdir, distdir,
+				mf = repoman_settings.repositories.get_repo_for_location(
+					os.path.dirname(os.path.dirname(checkdir)))
+				mf = mf.load_manifest(checkdir, distdir,
 					fetchlist_dict=fetchlist_dict)
 				mf.create(requiredDistfiles=None,
 					assumeDistHashesAlways=True)
@@ -1321,7 +1331,9 @@ for x in scanlist:
 				raise
 			continue
 
-	mf = Manifest(checkdir, repoman_settings["DISTDIR"])
+	mf = repoman_settings.repositories.get_repo_for_location(
+		os.path.dirname(os.path.dirname(checkdir)))
+	mf = mf.load_manifest(checkdir, repoman_settings["DISTDIR"])
 	mydigests=mf.getTypeDigests("DIST")
 
 	fetchlist_dict = portage.FetchlistDict(checkdir, repoman_settings, portdb)
@@ -1670,7 +1682,7 @@ for x in scanlist:
 				# packages that have empty KEYWORDS.
 				arches.append(['**', '**', ['**']])
 
-		unknown_pkgs = {}
+		unknown_pkgs = set()
 		baddepsyntax = False
 		badlicsyntax = False
 		badprovsyntax = False
@@ -1707,10 +1719,9 @@ for x in scanlist:
 					if atom == "||":
 						continue
 
-					if not portdb.cp_list(atom.cp) and \
+					if not portdb.xmatch("match-all", atom) and \
 						not atom.cp.startswith("virtual/"):
-						unknown_pkgs.setdefault(atom.cp, set()).add(
-							(mytype, atom.unevaluated_atom))
+						unknown_pkgs.add((mytype, atom.unevaluated_atom))
 
 					is_blocker = atom.blocker
 
@@ -1955,12 +1966,16 @@ for x in scanlist:
 
 						if success:
 							if atoms:
+
+								# Don't bother with dependency.unknown for
+								# cases in which *DEPEND.bad is triggered.
 								for atom in atoms:
+									# dep_check returns all blockers and they
+									# aren't counted for *DEPEND.bad, so we
+									# ignore them here.
 									if not atom.blocker:
-										# Don't bother with dependency.unknown
-										# for cases in which *DEPEND.bad is
-										# triggered.
-										unknown_pkgs.pop(atom.cp, None)
+										unknown_pkgs.discard(
+											(mytype, atom.unevaluated_atom))
 
 								if not prof.sub_path:
 									# old-style virtuals currently aren't
@@ -1991,10 +2006,8 @@ for x in scanlist:
 								prof, repr(atoms)))
 
 		if not baddepsyntax and unknown_pkgs:
-			all_unknown = set()
-			all_unknown.update(*unknown_pkgs.values())
 			type_map = {}
-			for mytype, atom in all_unknown:
+			for mytype, atom in unknown_pkgs:
 				type_map.setdefault(mytype, set()).add(atom)
 			for mytype, atoms in type_map.items():
 				stats["dependency.unknown"] += 1
@@ -2404,7 +2417,7 @@ else:
 
 	if vcs in ('cvs', 'svn') and (myupdates or myremoved):
 		myfiles = myupdates + myremoved
-		if not myheaders and "sign" not in repoman_settings.features:
+		if not myheaders and not sign_manifests:
 			myfiles += mymanifests
 		fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
 		mymsg = os.fdopen(fd, "wb")
@@ -2550,7 +2563,7 @@ else:
 			sys.exit(1)
 
 		# Force an unsigned commit when more than one Manifest needs to be signed.
-		if repolevel < 3 and "sign" in repoman_settings.features:
+		if repolevel < 3 and sign_manifests:
 
 			fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
 			mymsg = os.fdopen(fd, "wb")
@@ -2583,7 +2596,7 @@ else:
 			manifest_commit_required = False
 
 	signed = False
-	if "sign" in repoman_settings.features:
+	if sign_manifests:
 		signed = True
 		myfiles = myupdates + myremoved + mymanifests
 		try:

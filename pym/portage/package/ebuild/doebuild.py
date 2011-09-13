@@ -36,7 +36,7 @@ from portage import auxdbkeys, bsd_chflags, \
 	_shell_quote, _unicode_decode, _unicode_encode
 from portage.const import EBUILD_SH_ENV_FILE, EBUILD_SH_ENV_DIR, \
 	EBUILD_SH_BINARY, INVALID_ENV_FILE, MISC_SH_BINARY, \
-	EPREFIX, EPREFIX_LSTRIP, MACOSSANDBOX_PROFILE
+	EPREFIX, MACOSSANDBOX_PROFILE
 from portage.data import portage_gid, portage_uid, secpass, \
 	uid, userpriv_groups
 from portage.dbapi.porttree import _parse_uri_map
@@ -51,7 +51,6 @@ from portage.exception import DigestException, FileNotFound, \
 	IncorrectParameter, InvalidDependString, PermissionDenied, \
 	UnsupportedAPIException
 from portage.localization import _
-from portage.manifest import Manifest
 from portage.output import style_to_ansi_code
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
 from portage.util import apply_recursive_permissions, \
@@ -269,9 +268,10 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	mysettings["D"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image") + os.sep
 	mysettings["T"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "temp")
 
-	## Prefix forward compatability
-	#mysettings["ED"] = mysettings["D"]
-	mysettings["ED"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image" + mysettings["EPREFIX"]) + os.sep
+	# Prefix forward compatability
+	eprefix_lstrip = mysettings["EPREFIX"].lstrip(os.sep)
+	mysettings["ED"] = os.path.join(
+		mysettings["D"], eprefix_lstrip).rstrip(os.sep) + os.sep
 
 	mysettings["PORTAGE_BASHRC"] = os.path.join(
 		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_FILE)
@@ -484,20 +484,27 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		return 1
 
 	global _doebuild_manifest_cache
+	pkgdir = os.path.dirname(myebuild)
+	manifest_path = os.path.join(pkgdir, "Manifest")
+	allow_missing_manifests = "allow-missing-manifests" in mysettings.features
+	if tree == "porttree":
+		repo_config = mysettings.repositories.get_repo_for_location(
+			os.path.dirname(os.path.dirname(pkgdir)))
+	else:
+		repo_config = None
 	mf = None
 	if "strict" in features and \
 		"digest" not in features and \
 		tree == "porttree" and \
+		not repo_config.thin_manifest and \
 		mydo not in ("digest", "manifest", "help") and \
-		not portage._doebuild_manifest_exempt_depend:
+		not portage._doebuild_manifest_exempt_depend and \
+		not (allow_missing_manifests and not os.path.exists(manifest_path)):
 		# Always verify the ebuild checksums before executing it.
 		global _doebuild_broken_ebuilds
 
 		if myebuild in _doebuild_broken_ebuilds:
 			return 1
-
-		pkgdir = os.path.dirname(myebuild)
-		manifest_path = os.path.join(pkgdir, "Manifest")
 
 		# Avoid checking the same Manifest several times in a row during a
 		# regen with an empty cache.
@@ -509,7 +516,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				out.eerror(_("Manifest not found for '%s'") % (myebuild,))
 				_doebuild_broken_ebuilds.add(myebuild)
 				return 1
-			mf = Manifest(pkgdir, mysettings["DISTDIR"])
+			mf = repo_config.load_manifest(pkgdir, mysettings["DISTDIR"])
 
 		else:
 			mf = _doebuild_manifest_cache
@@ -517,10 +524,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		try:
 			mf.checkFileHashes("EBUILD", os.path.basename(myebuild))
 		except KeyError:
-			out = portage.output.EOutput()
-			out.eerror(_("Missing digest for '%s'") % (myebuild,))
-			_doebuild_broken_ebuilds.add(myebuild)
-			return 1
+			if not (allow_missing_manifests and
+				os.path.basename(myebuild) not in mf.fhashdict["EBUILD"]):
+				out = portage.output.EOutput()
+				out.eerror(_("Missing digest for '%s'") % (myebuild,))
+				_doebuild_broken_ebuilds.add(myebuild)
+				return 1
 		except FileNotFound:
 			out = portage.output.EOutput()
 			out.eerror(_("A file listed in the Manifest "
@@ -540,7 +549,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		if mf.getFullname() in _doebuild_broken_manifests:
 			return 1
 
-		if mf is not _doebuild_manifest_cache:
+		if mf is not _doebuild_manifest_cache and not allow_missing_manifests:
 
 			# Make sure that all of the ebuilds are
 			# actually listed in the Manifest.
@@ -557,8 +566,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					_doebuild_broken_manifests.add(manifest_path)
 					return 1
 
-			# Only cache it if the above stray files test succeeds.
-			_doebuild_manifest_cache = mf
+		# We cache it only after all above checks succeed.
+		_doebuild_manifest_cache = mf
 
 	logfile=None
 	builddir_lock = None
@@ -1182,7 +1191,8 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 	all_keys.add("SRC_URI")
 	all_keys = tuple(all_keys)
 	metadata = dict(zip(all_keys,
-		mydbapi.aux_get(mysettings.mycpv, all_keys)))
+		mydbapi.aux_get(mysettings.mycpv, all_keys,
+		myrepo=mysettings.get("PORTAGE_REPO_NAME"))))
 
 	class FakeTree(object):
 		def __init__(self, mydb):
@@ -1647,7 +1657,7 @@ def _post_src_install_uid_fix(mysettings, out):
 				new_parent = _unicode_decode(parent,
 					encoding=_encodings['merge'], errors='replace')
 				new_parent = _unicode_encode(new_parent,
-					encoding=_encodings['merge'], errors='backslashreplace')
+					encoding='ascii', errors='backslashreplace')
 				new_parent = _unicode_decode(new_parent,
 					encoding=_encodings['merge'], errors='replace')
 				os.rename(parent, new_parent)
@@ -1665,7 +1675,7 @@ def _post_src_install_uid_fix(mysettings, out):
 					new_fname = _unicode_decode(fname,
 						encoding=_encodings['merge'], errors='replace')
 					new_fname = _unicode_encode(new_fname,
-						encoding=_encodings['merge'], errors='backslashreplace')
+						encoding='ascii', errors='backslashreplace')
 					new_fname = _unicode_decode(new_fname,
 						encoding=_encodings['merge'], errors='replace')
 					new_fpath = os.path.join(parent, new_fname)

@@ -136,27 +136,28 @@ vdb_path = os.path.realpath(os.path.join(portage.settings['EROOT'], VDB_PATH))
 # Make sure that portdb.findname() returns the correct ebuild.
 if ebuild_portdir != vdb_path and \
 	ebuild_portdir not in portage.portdb.porttrees:
+	portdir_overlay = os.environ.get("PORTDIR_OVERLAY")
+	if portdir_overlay is None:
+		portdir_overlay = portage.settings.get("PORTDIR_OVERLAY")
+	if portdir_overlay is None:
+		portdir_overlay = ""
 	if sys.hexversion >= 0x3000000:
 		os.environ["PORTDIR_OVERLAY"] = \
-			os.environ.get("PORTDIR_OVERLAY","") + \
+			portdir_overlay + \
 			" " + _shell_quote(ebuild_portdir)
 	else:
 		os.environ["PORTDIR_OVERLAY"] = \
-			os.environ.get("PORTDIR_OVERLAY","") + \
+			_unicode_encode(portdir_overlay,
+			encoding=_encodings['content'], errors='strict') + \
 			" " + _unicode_encode(_shell_quote(ebuild_portdir),
 			encoding=_encodings['content'], errors='strict')
 
 	print("Appending %s to PORTDIR_OVERLAY..." % ebuild_portdir)
 	imp.reload(portage)
 
-# Constrain eclass resolution to the master(s)
-# that are specified in layout.conf (using an
-# approach similar to repoman's).
 myrepo = None
 if ebuild_portdir != vdb_path:
 	myrepo = portage.portdb.getRepositoryName(ebuild_portdir)
-	repo_info = portage.portdb._repo_info[ebuild_portdir]
-	portage.portdb.porttrees = list(repo_info.eclass_db.porttrees)
 
 if not os.path.exists(ebuild):
 	print("'%s' does not exist." % ebuild)
@@ -202,8 +203,9 @@ def discard_digests(myebuild, mysettings, mydbapi):
 		portage._doebuild_manifest_exempt_depend += 1
 		pkgdir = os.path.dirname(myebuild)
 		fetchlist_dict = portage.FetchlistDict(pkgdir, mysettings, mydbapi)
-		from portage.manifest import Manifest
-		mf = Manifest(pkgdir, mysettings["DISTDIR"],
+		mf = mysettings.repositories.get_repo_for_location(
+			os.path.dirname(os.path.dirname(pkgdir)))
+		mf = mf.load_manifest(pkgdir, mysettings["DISTDIR"],
 			fetchlist_dict=fetchlist_dict, manifest1_compat=False)
 		mf.create(requiredDistfiles=None,
 			assumeDistHashesSometimes=True, assumeDistHashesAlways=True)
@@ -277,7 +279,10 @@ pkg = Package(built=(pkg_type != "ebuild"), cpv=cpv,
 
 # Apply package.env and repo-level settings. This allows per-package
 # FEATURES and other variables (possibly PORTAGE_TMPDIR) to be
-# available as soon as possible.
+# available as soon as possible. Also, note that the only way to ensure
+# that setcpv gets metadata from the correct repository is to pass in
+# a Package instance, as we do here (previously we had to modify
+# portdb.porttrees in order to accomplish this).
 tmpsettings.setcpv(pkg)
 
 def stale_env_warning():

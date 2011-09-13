@@ -149,19 +149,34 @@ if sys.hexversion >= 0x3000000:
 	basestring = str
 	long = int
 
-# Assume utf_8 fs encoding everywhere except in merge code, where the
-# user's locale is respected.
+# We use utf_8 encoding everywhere. Previously, we used
+# sys.getfilesystemencoding() for the 'merge' encoding, but that had
+# various problems:
+#
+#   1) If the locale is ever changed then it can cause orphan files due
+#      to changed character set translation.
+#
+#   2) Ebuilds typically install files with utf_8 encoded file names,
+#      and then portage would be forced to rename those files to match
+#      sys.getfilesystemencoding(), possibly breaking things.
+#
+#   3) Automatic translation between encodings can lead to nonsensical
+#      file names when the source encoding is unknown by portage.
+#
+#   4) It's inconvenient for ebuilds to convert the encodings of file
+#      names to match the current locale, and upstreams typically encode
+#      file names with utf_8 encoding.
+#
+# So, instead of relying on sys.getfilesystemencoding(), we avoid the above
+# problems by using a constant utf_8 'merge' encoding for all locales, as
+# discussed in bug #382199 and bug #381509.
 _encodings = {
 	'content'                : 'utf_8',
 	'fs'                     : 'utf_8',
-	'merge'                  : sys.getfilesystemencoding(),
+	'merge'                  : 'utf_8',
 	'repo.content'           : 'utf_8',
 	'stdio'                  : 'utf_8',
 }
-
-# This can happen if python is built with USE=build (stage 1).
-if _encodings['merge'] is None:
-	_encodings['merge'] = 'ascii'
 
 if sys.hexversion >= 0x3000000:
 	def _unicode_encode(s, encoding=_encodings['content'], errors='backslashreplace'):
@@ -381,9 +396,12 @@ def getcwd():
 		return "/"
 getcwd()
 
-def abssymlink(symlink):
+def abssymlink(symlink, target=None):
 	"This reads symlinks, resolving the relative symlinks, and returning the absolute."
-	mylink=os.readlink(symlink)
+	if target is not None:
+		mylink = target
+	else:
+		mylink = os.readlink(symlink)
 	if mylink[0] != '/':
 		mydir=os.path.dirname(symlink)
 		mylink=mydir+"/"+mylink

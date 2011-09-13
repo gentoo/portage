@@ -777,6 +777,10 @@ precedence over settings in \fBlayout.conf\fR, except tools such as
 masters = gentoo java-overlay
 # indicate that this repo can be used as a substitute for foo-overlay
 aliases = foo-overlay
+# do not sign manifests in this repo
+sign\-manifests = false
+# thin\-manifests only contain DIST entries
+thin\-manifests = true
 .fi
 .RE
 .TP

@@ -21,6 +21,7 @@ from portage.util import normalize_path, writemsg, writemsg_level, shlex_split
 from portage.localization import _
 from portage import _unicode_encode
 from portage import _encodings
+from portage import manifest
 
 _repo_name_sub_re = re.compile(r'[^\w-]')
 
@@ -41,7 +42,7 @@ class RepoConfig(object):
 	"""Stores config of one repository"""
 
 	__slots__ = ['aliases', 'eclass_overrides', 'eclass_locations', 'location', 'user_location', 'masters', 'main_repo',
-		'missing_repo_name', 'name', 'priority', 'sync', 'format']
+		'missing_repo_name', 'name', 'priority', 'sync', 'format', 'sign_manifest', 'thin_manifest']
 
 	def __init__(self, name, repo_opts):
 		"""Build a RepoConfig with options in repo_opts
@@ -110,6 +111,12 @@ class RepoConfig(object):
 			missing = False
 		self.name = name
 		self.missing_repo_name = missing
+		self.sign_manifest = True
+		self.thin_manifest = False
+
+	def load_manifest(self, *args, **kwds):
+		kwds['thin'] = self.thin_manifest
+		return manifest.Manifest(*args, **kwds)
 
 	def update(self, new_repo):
 		"""Update repository with options in another RepoConfig"""
@@ -179,107 +186,101 @@ class RepoConfig(object):
 
 class RepoConfigLoader(object):
 	"""Loads and store config of several repositories, loaded from PORTDIR_OVERLAY or repos.conf"""
+
+	@staticmethod
+	def _add_overlays(portdir, portdir_overlay, prepos, ignored_map, ignored_location_map):
+		"""Add overlays in PORTDIR_OVERLAY as repositories"""
+		overlays = []
+		if portdir:
+			portdir = normalize_path(portdir)
+			overlays.append(portdir)
+		port_ov = [normalize_path(i) for i in shlex_split(portdir_overlay)]
+		overlays.extend(port_ov)
+		default_repo_opts = {}
+		if prepos['DEFAULT'].aliases is not None:
+			default_repo_opts['aliases'] = \
+				' '.join(prepos['DEFAULT'].aliases)
+		if prepos['DEFAULT'].eclass_overrides is not None:
+			default_repo_opts['eclass-overrides'] = \
+				' '.join(prepos['DEFAULT'].eclass_overrides)
+		if prepos['DEFAULT'].masters is not None:
+			default_repo_opts['masters'] = \
+				' '.join(prepos['DEFAULT'].masters)
+		if overlays:
+			#overlay priority is negative because we want them to be looked before any other repo
+			base_priority = 0
+			for ov in overlays:
+				if os.path.isdir(ov):
+					repo_opts = default_repo_opts.copy()
+					repo_opts['location'] = ov
+					repo = RepoConfig(None, repo_opts)
+					repo_conf_opts = prepos.get(repo.name)
+					if repo_conf_opts is not None:
+						if repo_conf_opts.aliases is not None:
+							repo_opts['aliases'] = \
+								' '.join(repo_conf_opts.aliases)
+						if repo_conf_opts.eclass_overrides is not None:
+							repo_opts['eclass-overrides'] = \
+								' '.join(repo_conf_opts.eclass_overrides)
+						if repo_conf_opts.masters is not None:
+							repo_opts['masters'] = \
+								' '.join(repo_conf_opts.masters)
+					repo = RepoConfig(repo.name, repo_opts)
+					if repo.name in prepos:
+						old_location = prepos[repo.name].location
+						if old_location is not None and old_location != repo.location:
+							ignored_map.setdefault(repo.name, []).append(old_location)
+							ignored_location_map[old_location] = repo.name
+							if old_location == portdir:
+								portdir = repo.user_location
+						prepos[repo.name].update(repo)
+						repo = prepos[repo.name]
+					else:
+						prepos[repo.name] = repo
+
+					if ov == portdir and portdir not in port_ov:
+						repo.priority = -1000
+					else:
+						repo.priority = base_priority
+						base_priority += 1
+
+				else:
+					writemsg(_("!!! Invalid PORTDIR_OVERLAY"
+						" (not a dir): '%s'\n") % ov, noiselevel=-1)
+
+		return portdir
+
+	@staticmethod
+	def _parse(paths, prepos, ignored_map, ignored_location_map):
+		"""Parse files in paths to load config"""
+		parser = SafeConfigParser()
+		try:
+			parser.read(paths)
+		except ParsingError as e:
+			writemsg(_("!!! Error while reading repo config file: %s\n") % e, noiselevel=-1)
+		prepos['DEFAULT'] = RepoConfig("DEFAULT", parser.defaults())
+		for sname in parser.sections():
+			optdict = {}
+			for oname in parser.options(sname):
+				optdict[oname] = parser.get(sname, oname)
+
+			repo = RepoConfig(sname, optdict)
+			if repo.location and not os.path.exists(repo.location):
+				writemsg(_("!!! Invalid repos.conf entry '%s'"
+					" (not a dir): '%s'\n") % (sname, repo.location), noiselevel=-1)
+				continue
+
+			if repo.name in prepos:
+				old_location = prepos[repo.name].location
+				if old_location is not None and repo.location is not None and old_location != repo.location:
+					ignored_map.setdefault(repo.name, []).append(old_location)
+					ignored_location_map[old_location] = repo.name
+				prepos[repo.name].update(repo)
+			else:
+				prepos[repo.name] = repo
+
 	def __init__(self, paths, settings):
 		"""Load config from files in paths"""
-		def parse(paths, prepos, ignored_map, ignored_location_map):
-			"""Parse files in paths to load config"""
-			parser = SafeConfigParser()
-			try:
-				parser.read(paths)
-			except ParsingError as e:
-				writemsg(_("!!! Error while reading repo config file: %s\n") % e, noiselevel=-1)
-			prepos['DEFAULT'] = RepoConfig("DEFAULT", parser.defaults())
-			for sname in parser.sections():
-				optdict = {}
-				for oname in parser.options(sname):
-					optdict[oname] = parser.get(sname, oname)
-
-				repo = RepoConfig(sname, optdict)
-				if repo.location and not os.path.exists(repo.location):
-					writemsg(_("!!! Invalid repos.conf entry '%s'"
-						" (not a dir): '%s'\n") % (sname, repo.location), noiselevel=-1)
-					continue
-
-				if repo.name in prepos:
-					old_location = prepos[repo.name].location
-					if old_location is not None and repo.location is not None and old_location != repo.location:
-						ignored_map.setdefault(repo.name, []).append(old_location)
-						ignored_location_map[old_location] = repo.name
-					prepos[repo.name].update(repo)
-				else:
-					prepos[repo.name] = repo
-
-		def add_overlays(portdir, portdir_overlay, prepos, ignored_map, ignored_location_map):
-			"""Add overlays in PORTDIR_OVERLAY as repositories"""
-			overlays = []
-			if portdir:
-				portdir = normalize_path(portdir)
-				overlays.append(portdir)
-			port_ov = [normalize_path(i) for i in shlex_split(portdir_overlay)]
-			overlays.extend(port_ov)
-			default_repo_opts = {}
-			if prepos['DEFAULT'].aliases is not None:
-				default_repo_opts['aliases'] = \
-					' '.join(prepos['DEFAULT'].aliases)
-			if prepos['DEFAULT'].eclass_overrides is not None:
-				default_repo_opts['eclass-overrides'] = \
-					' '.join(prepos['DEFAULT'].eclass_overrides)
-			if prepos['DEFAULT'].masters is not None:
-				default_repo_opts['masters'] = \
-					' '.join(prepos['DEFAULT'].masters)
-			if overlays:
-				#overlay priority is negative because we want them to be looked before any other repo
-				base_priority = 0
-				for ov in overlays:
-					if os.path.isdir(ov):
-						repo_opts = default_repo_opts.copy()
-						repo_opts['location'] = ov
-						repo = RepoConfig(None, repo_opts)
-						repo_conf_opts = prepos.get(repo.name)
-						if repo_conf_opts is not None:
-							if repo_conf_opts.aliases is not None:
-								repo_opts['aliases'] = \
-									' '.join(repo_conf_opts.aliases)
-							if repo_conf_opts.eclass_overrides is not None:
-								repo_opts['eclass-overrides'] = \
-									' '.join(repo_conf_opts.eclass_overrides)
-							if repo_conf_opts.masters is not None:
-								repo_opts['masters'] = \
-									' '.join(repo_conf_opts.masters)
-						repo = RepoConfig(repo.name, repo_opts)
-						if repo.name in prepos:
-							old_location = prepos[repo.name].location
-							if old_location is not None and old_location != repo.location:
-								ignored_map.setdefault(repo.name, []).append(old_location)
-								ignored_location_map[old_location] = repo.name
-								if old_location == portdir:
-									portdir = repo.user_location
-							prepos[repo.name].update(repo)
-							repo = prepos[repo.name]
-						else:
-							prepos[repo.name] = repo
-
-						if ov == portdir and portdir not in port_ov:
-							repo.priority = -1000
-						else:
-							repo.priority = base_priority
-							base_priority += 1
-
-					else:
-						writemsg(_("!!! Invalid PORTDIR_OVERLAY"
-							" (not a dir): '%s'\n") % ov, noiselevel=-1)
-
-			return portdir
-
-		def repo_priority(r):
-			"""
-			Key funtion for comparing repositories by priority.
-			None is equal priority zero.
-			"""
-			x = prepos[r].priority
-			if x is None:
-				return 0
-			return x
 
 		prepos = {}
 		location_map = {}
@@ -289,10 +290,12 @@ class RepoConfigLoader(object):
 
 		portdir = settings.get('PORTDIR', '')
 		portdir_overlay = settings.get('PORTDIR_OVERLAY', '')
-		parse(paths, prepos, ignored_map, ignored_location_map)
+
+		self._parse(paths, prepos, ignored_map, ignored_location_map)
+
 		# If PORTDIR_OVERLAY contains a repo with the same repo_name as
 		# PORTDIR, then PORTDIR is overridden.
-		portdir = add_overlays(portdir, portdir_overlay, prepos,
+		portdir = self._add_overlays(portdir, portdir_overlay, prepos,
 			ignored_map, ignored_location_map)
 		if portdir and portdir.strip():
 			portdir = os.path.realpath(portdir)
@@ -329,6 +332,12 @@ class RepoConfigLoader(object):
 					aliases.extend(repo.aliases)
 				repo.aliases = tuple(sorted(set(aliases)))
 
+			if layout_data.get('sign-manifests', '').lower() == 'false':
+				repo.sign_manifest = False
+
+			if layout_data.get('thin-manifests', '').lower() == 'true':
+				repo.thin_manifest = True
+
 		#Take aliases into account.
 		new_prepos = {}
 		for repo_name, repo in prepos.items():
@@ -352,9 +361,11 @@ class RepoConfigLoader(object):
 
 		# filter duplicates from aliases, by only including
 		# items where repo.name == key
-		prepos_order = [repo.name for key, repo in prepos.items() \
+
+		prepos_order = sorted(prepos.items(), key=lambda r:r[1].priority or 0)
+
+		prepos_order = [repo.name for (key, repo) in prepos_order
 			if repo.name == key and repo.location is not None]
-		prepos_order.sort(key=repo_priority)
 
 		if portdir in location_map:
 			portdir_repo = prepos[location_map[portdir]]
@@ -497,6 +508,9 @@ class RepoConfigLoader(object):
 			# even if it is None.
 			return None
 		return self.treemap[repo_name]
+
+	def get_repo_for_location(self, location):
+		return self.prepos[self.get_name_for_location(location)]
 
 	def __getitem__(self, repo_name):
 		return self.prepos[repo_name]

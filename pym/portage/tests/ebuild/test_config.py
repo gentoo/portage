@@ -196,3 +196,51 @@ class ConfigTestCase(TestCase):
 				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
 		finally:
 			playground.cleanup()
+
+
+	def testManifest(self):
+
+		ebuilds = {
+			"dev-libs/A-1::old_repo": { },
+			"dev-libs/A-2::new_repo": { },
+		}
+
+		repo_configs = {
+			"new_repo": {
+				"layout.conf":
+					(
+						"thin-manifests = true",
+					),
+			}
+		}
+
+		test_cases = (
+				ResolverPlaygroundTestCase(
+					["=dev-libs/A-1"],
+					mergelist= ["dev-libs/A-1"],
+					success = True),
+
+				ResolverPlaygroundTestCase(
+					["=dev-libs/A-2"],
+					mergelist= ["dev-libs/A-2"],
+					success = True),
+		)
+
+		playground = ResolverPlayground(ebuilds=ebuilds, repo_configs=repo_configs)
+
+		new_manifest_file = os.path.join(playground.repo_dirs["new_repo"], "dev-libs", "A", "Manifest")
+		f = open(new_manifest_file)
+		self.assertEqual(len(list(f)), 0)
+		f.close()
+
+		old_manifest_file = os.path.join(playground.repo_dirs["old_repo"], "dev-libs", "A", "Manifest")
+		f = open(old_manifest_file)
+		self.assertEqual(len(list(f)), 1)
+		f.close()
+
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()

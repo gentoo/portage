@@ -1787,7 +1787,11 @@ def emerge_main(args=None):
 		if x in myopts:
 			disable_emergelog = True
 			break
-	if myaction in ("search", "info"):
+	if disable_emergelog:
+		pass
+	elif myaction in ("search", "info"):
+		disable_emergelog = True
+	elif portage.data.secpass < 1:
 		disable_emergelog = True
 
 	_emerge.emergelog._disable = disable_emergelog
@@ -1802,8 +1806,13 @@ def emerge_main(args=None):
 					"EMERGE_LOG_DIR='%s':\n!!! %s\n" % \
 					(settings['EMERGE_LOG_DIR'], e),
 					noiselevel=-1, level=logging.ERROR)
+				portage.util.ensure_dirs(_emerge.emergelog._emerge_log_dir)
 			else:
 				_emerge.emergelog._emerge_log_dir = settings["EMERGE_LOG_DIR"]
+		else:
+			_emerge.emergelog._emerge_log_dir = os.path.join(os.sep,
+				settings["EPREFIX"].lstrip(os.sep), "var", "log")
+			portage.util.ensure_dirs(_emerge.emergelog._emerge_log_dir)
 
 	if not "--pretend" in myopts:
 		emergelog(xterm_titles, "Started emerge on: "+\

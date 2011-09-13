@@ -9,6 +9,7 @@ try:
 except ImportError:
 	import pickle
 
+import errno
 import portage
 from portage import _unicode_encode
 from portage.data import portage_gid, uid
@@ -33,8 +34,11 @@ class MtimeDB(dict):
 			d = mypickle.load()
 			f.close()
 			del f
-		except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError) as e:
-			if isinstance(e, pickle.UnpicklingError):
+		except (AttributeError, EOFError, EnvironmentError, ValueError, pickle.UnpicklingError) as e:
+			if isinstance(e, EnvironmentError) and \
+				getattr(e, 'errno', None) in (errno.ENOENT, errno.EACCES):
+				pass
+			else:
 				writemsg(_("!!! Error loading '%s': %s\n") % \
 					(filename, str(e)), noiselevel=-1)
 			del e

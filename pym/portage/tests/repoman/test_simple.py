@@ -69,26 +69,11 @@ class SimpleRepomanTestCase(TestCase):
 		licenses = ["GPL-2"]
 		arch_list = ["x86"]
 		metadata_dtd = os.path.join(PORTAGE_BASE_PATH, "cnf/metadata.dtd")
-		metadata_xml_template = """<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
-<pkgmetadata>
-<herd>%(herd)s</herd>
-<maintainer>
-<email>maintainer-needed@gentoo.org</email>
-<description>Description of the maintainership</description>
-</maintainer>
-<longdescription>Long description of the package</longdescription>
-<use>
-%(flags)s
-</use>
-</pkgmetadata>
-"""
-
 		metadata_xml_files = (
 			(
 				"dev-libs/A",
 				{
-					"herd" : "no-herd",
+					"herd" : "base-system",
 					"flags" : "<flag name='flag'>Description of how USE='flag' affects this package</flag>",
 				},
 			),
@@ -153,7 +138,7 @@ class SimpleRepomanTestCase(TestCase):
 					f.write("%s - %s\n" % (k, v))
 			for cp, xml_data in metadata_xml_files:
 				with open(os.path.join(portdir, cp, "metadata.xml"), 'w') as f:
-					f.write(metadata_xml_template % xml_data)
+					f.write(playground.metadata_xml_template % xml_data)
 			# repoman checks metadata.dtd for recent CTIME, so copy the file in
 			# order to ensure that the CTIME is current
 			shutil.copyfile(metadata_dtd, os.path.join(distdir, "metadata.dtd"))

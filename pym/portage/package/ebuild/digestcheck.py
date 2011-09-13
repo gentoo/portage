@@ -41,7 +41,9 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
 		else:
 			return 1
 	if mf is None:
-		mf = Manifest(pkgdir, mysettings["DISTDIR"])
+		mf = mysettings.repositories.get_repo_for_location(
+			os.path.dirname(os.path.dirname(pkgdir)))
+		mf = mf.load_manifest(pkgdir, mysettings["DISTDIR"])
 	manifest_empty = True
 	for d in mf.fhashdict.values():
 		if d:
@@ -90,7 +92,7 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
 		writemsg(_("!!! Got: %s\n") % e.value[2], noiselevel=-1)
 		writemsg(_("!!! Expected: %s\n") % e.value[3], noiselevel=-1)
 		return 0
-	if allow_missing:
+	if allow_missing or mf.thin:
 		# In this case we ignore any missing digests that
 		# would otherwise be detected below.
 		return 1

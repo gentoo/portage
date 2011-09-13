@@ -19,7 +19,8 @@ def process(mysettings, key, logentries, fulltext):
 	if mysettings.get("PORT_LOGDIR"):
 		logdir = normalize_path(mysettings["PORT_LOGDIR"])
 	else:
-		logdir = os.path.join(os.sep, EPREFIX_LSTRIP, "var", "log", "portage")
+		logdir = os.path.join(os.sep, mysettings["EPREFIX"].lstrip(os.sep),
+			"var", "log", "portage")
 
 	if not os.path.isdir(logdir):
 		# Only initialize group/mode if the directory doesn't

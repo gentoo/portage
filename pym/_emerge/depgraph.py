@@ -585,6 +585,7 @@ class depgraph(object):
 		if not missed_updates:
 			return
 
+		self._show_merge_list()
 		backtrack_masked = []
 
 		for pkg, parent_atoms in missed_updates:
@@ -627,6 +628,7 @@ class depgraph(object):
 		if not missed_updates:
 			return
 
+		self._show_merge_list()
 		msg = []
 		msg.append("\nWARNING: One or more updates have been " + \
 			"skipped due to a dependency conflict:\n\n")
@@ -2498,24 +2500,36 @@ class depgraph(object):
 			# account for masking and USE settings.
 			_autounmask_backup = self._dynamic_config._autounmask
 			self._dynamic_config._autounmask = False
-			mytrees["pkg_use_enabled"] = self._pkg_use_enabled
+			# backup state for restoration, in case of recursive
+			# calls to this method
+			backup_state = mytrees.copy()
 			try:
+				# clear state from previous call, in case this
+				# call is recursive (we have a backup, that we
+				# will use to restore it later)
+				mytrees.pop("pkg_use_enabled", None)
+				mytrees.pop("parent", None)
+				mytrees.pop("atom_graph", None)
+				mytrees.pop("priority", None)
+
+				mytrees["pkg_use_enabled"] = self._pkg_use_enabled
 				if parent is not None:
-					trees[root]["parent"] = parent
-					trees[root]["atom_graph"] = atom_graph
+					mytrees["parent"] = parent
+					mytrees["atom_graph"] = atom_graph
 				if priority is not None:
-					trees[root]["priority"] = priority
+					mytrees["priority"] = priority
+
 				mycheck = portage.dep_check(depstring, None,
 					pkgsettings, myuse=myuse,
 					myroot=root, trees=trees)
 			finally:
+				# restore state
 				self._dynamic_config._autounmask = _autounmask_backup
-				del mytrees["pkg_use_enabled"]
-				if parent is not None:
-					trees[root].pop("parent")
-					trees[root].pop("atom_graph")
-				if priority is not None:
-					trees[root].pop("priority")
+				mytrees.pop("pkg_use_enabled", None)
+				mytrees.pop("parent", None)
+				mytrees.pop("atom_graph", None)
+				mytrees.pop("priority", None)
+				mytrees.update(backup_state)
 			if not mycheck[0]:
 				raise portage.exception.InvalidDependString(mycheck[1])
 		if parent is None:
@@ -2608,6 +2622,38 @@ class depgraph(object):
 					# interested in expanding the real atoms.
 					continue
 				yield atom
+
+	def _virt_deps_visible(self, pkg, ignore_use=False):
+		"""
+		Assumes pkg is a virtual package. Traverses virtual deps recursively
+		and returns True if all deps are visible, False otherwise. This is
+		useful for checking if it will be necessary to expand virtual slots,
+		for cases like bug #382557.
+		"""
+		try:
+			rdepend = self._select_atoms(
+				pkg.root, pkg.metadata.get("RDEPEND", ""),
+				myuse=self._pkg_use_enabled(pkg),
+				parent=pkg, priority=self._priority(runtime=True))
+		except InvalidDependString as e:
+			if not pkg.installed:
+				raise
+			writemsg_level("!!! Invalid RDEPEND in " + \
+				"'%svar/db/pkg/%s/RDEPEND': %s\n" % \
+				(pkg.root, pkg.cpv, e),
+				noiselevel=-1, level=logging.ERROR)
+			return False
+
+		for atoms in rdepend.values():
+			for atom in atoms:
+				if ignore_use:
+					atom = atom.without_use
+				pkg, existing = self._select_package(
+					pkg.root, atom)
+				if pkg is None or not self._pkg_visibility_check(pkg):
+					return False
+
+		return True
 
 	def _get_dep_chain(self, start_node, target_atom=None,
 		unsatisfied_dependency=False):
@@ -6528,35 +6574,38 @@ class _dep_check_composite_db(dbapi):
 		ret = self._match_cache.get(atom)
 		if ret is not None:
 			return ret[:]
+
+		ret = []
 		pkg, existing = self._depgraph._select_package(self._root, atom)
-		if not pkg:
-			ret = []
-		else:
-			# Return the highest available from select_package() as well as
-			# any matching slots in the graph db.
+
+		if pkg is not None and self._visible(pkg):
+			self._cpv_pkg_map[pkg.cpv] = pkg
+			ret.append(pkg.cpv)
+
+		if pkg is not None and \
+			atom.slot is None and \
+			pkg.cp.startswith("virtual/") and \
+			("--update" not in self._depgraph._frozen_config.myopts or
+			not ret or
+			not self._depgraph._virt_deps_visible(pkg, ignore_use=True)):
+			# For new-style virtual lookahead that occurs inside dep_check()
+			# for bug #141118, examine all slots. This is needed so that newer
+			# slots will not unnecessarily be pulled in when a satisfying lower
+			# slot is already installed. For example, if virtual/jdk-1.5 is
+			# satisfied via gcj-jdk then there's no need to pull in a newer
+			# slot to satisfy a virtual/jdk dependency, unless --update is
+			# enabled.
 			slots = set()
-			slots.add(pkg.metadata["SLOT"])
-			if pkg.cp.startswith("virtual/"):
-				# For new-style virtual lookahead that occurs inside
-				# dep_check(), examine all slots. This is needed
-				# so that newer slots will not unnecessarily be pulled in
-				# when a satisfying lower slot is already installed. For
-				# example, if virtual/jdk-1.4 is satisfied via kaffe then
-				# there's no need to pull in a newer slot to satisfy a
-				# virtual/jdk dependency.
-				for db, pkg_type, built, installed, db_keys in \
-					self._depgraph._dynamic_config._filtered_trees[self._root]["dbs"]:
-					for cpv in db.match(atom):
-						if portage.cpv_getkey(cpv) != pkg.cp:
-							continue
-						slots.add(db.aux_get(cpv, ["SLOT"])[0])
-			ret = []
-			if self._visible(pkg):
-				self._cpv_pkg_map[pkg.cpv] = pkg
-				ret.append(pkg.cpv)
-			slots.remove(pkg.metadata["SLOT"])
+			slots.add(pkg.slot)
+			for virt_pkg in self._depgraph._iter_match_pkgs_any(
+				self._depgraph._frozen_config.roots[self._root], atom):
+				if virt_pkg.cp != pkg.cp:
+					continue
+				slots.add(virt_pkg.slot)
+
+			slots.remove(pkg.slot)
 			while slots:
-				slot_atom = Atom("%s:%s" % (atom.cp, slots.pop()))
+				slot_atom = atom.with_slot(slots.pop())
 				pkg, existing = self._depgraph._select_package(
 					self._root, slot_atom)
 				if not pkg:
@@ -6565,8 +6614,10 @@ class _dep_check_composite_db(dbapi):
 					continue
 				self._cpv_pkg_map[pkg.cpv] = pkg
 				ret.append(pkg.cpv)
-			if ret:
+
+			if len(ret) > 1:
 				self._cpv_sort_ascending(ret)
+
 		self._match_cache[atom] = ret
 		return ret[:]
 

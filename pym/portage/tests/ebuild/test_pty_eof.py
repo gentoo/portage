@@ -7,6 +7,13 @@ from portage.util._pty import _can_test_pty_eof, _test_pty_eof
 class PtyEofFdopenBufferedTestCase(TestCase):
 
 	def testPtyEofFdopenBuffered(self):
+
+		if not _can_test_pty_eof():
+			skip_reason = "unsupported on this platform"
+			self.portage_skip = skip_reason
+			self.fail(skip_reason)
+			return
+
 		# This tests if the following python issue is fixed yet:
 		#   http://bugs.python.org/issue5380
 		# Since it might not be fixed, mark as todo.
@@ -23,6 +30,12 @@ class PtyEofFdopenUnBufferedTestCase(TestCase):
 		# New development: It appears that array.fromfile() is usable
 		# with python3 as long as fdopen is called with a bufsize
 		# argument of 0.
+
+		if not _can_test_pty_eof():
+			skip_reason = "unsupported on this platform"
+			self.portage_skip = skip_reason
+			self.fail(skip_reason)
+			return
 
 		# The result is only valid if openpty does not raise EnvironmentError.
 		if _can_test_pty_eof():

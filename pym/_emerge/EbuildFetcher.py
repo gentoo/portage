@@ -206,8 +206,10 @@ class EbuildFetcher(SpawnProcess):
 	def _get_digests(self):
 		if self._digests is not None:
 			return self._digests
-		self._digests = portage.Manifest(os.path.dirname(
-			self._get_ebuild_path()), None).getTypeDigests("DIST")
+		pkgdir = os.path.dirname(self._get_ebuild_path())
+		mf = self.pkg.root_config.settings.repositories.get_repo_for_location(
+			os.path.dirname(os.path.dirname(pkgdir)))
+		self._digests = mf.load_manifest(pkgdir, None).getTypeDigests("DIST")
 		return self._digests
 
 	def _get_uri_map(self):

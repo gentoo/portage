@@ -7,7 +7,8 @@ import sys
 import tempfile
 import portage
 from portage import os
-from portage.const import GLOBAL_CONFIG_PATH, PORTAGE_BASE_PATH
+from portage.const import (GLOBAL_CONFIG_PATH, PORTAGE_BASE_PATH,
+	USER_CONFIG_PATH)
 from portage.dbapi.vartree import vartree
 from portage.dbapi.porttree import portagetree
 from portage.dbapi.bintree import binarytree
@@ -37,7 +38,23 @@ class ResolverPlayground(object):
 	"""
 
 	config_files = frozenset(("package.use", "package.mask", "package.keywords", \
-		"package.unmask", "package.properties", "package.license", "use.mask", "use.force"))
+		"package.unmask", "package.properties", "package.license", "use.mask", "use.force",
+		"layout.conf",))
+
+	metadata_xml_template = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+<herd>%(herd)s</herd>
+<maintainer>
+<email>maintainer-needed@gentoo.org</email>
+<description>Description of the maintainership</description>
+</maintainer>
+<longdescription>Long description of the package</longdescription>
+<use>
+%(flags)s
+</use>
+</pkgmetadata>
+"""
 
 	def __init__(self, ebuilds={}, installed={}, profile={}, repo_configs={}, \
 		user_config={}, sets={}, world=[], debug=False):
@@ -120,6 +137,7 @@ class ResolverPlayground(object):
 			rdepend = metadata.pop("RDEPEND", None)
 			pdepend = metadata.pop("PDEPEND", None)
 			required_use = metadata.pop("REQUIRED_USE", None)
+			misc_content = metadata.pop("MISC_CONTENT", None)
 
 			if metadata:
 				raise ValueError("metadata of ebuild '%s' contains unknown keys: %s" % (cpv, metadata.keys()))
@@ -152,6 +170,8 @@ class ResolverPlayground(object):
 				f.write('PDEPEND="' + str(pdepend) + '"\n')
 			if required_use is not None:
 				f.write('REQUIRED_USE="' + str(required_use) + '"\n')
+			if misc_content is not None:
+				f.write(misc_content)
 			f.close()
 
 	def _create_ebuild_manifests(self, ebuilds):
@@ -227,9 +247,18 @@ class ResolverPlayground(object):
 
 	def _create_profile(self, ebuilds, installed, profile, repo_configs, user_config, sets):
 
+		user_config_dir = os.path.join(self.eroot, USER_CONFIG_PATH)
+
+		try:
+			os.makedirs(user_config_dir)
+		except os.error:
+			pass
+
 		for repo in self.repo_dirs:
 			repo_dir = self._get_repo_dir(repo)
 			profile_dir = os.path.join(self._get_repo_dir(repo), "profiles")
+			metadata_dir = os.path.join(repo_dir, "metadata")
+			os.makedirs(metadata_dir)
 
 			#Create $REPO/profiles/categories
 			categories = set()
@@ -257,8 +286,11 @@ class ResolverPlayground(object):
 				for config_file, lines in repo_config.items():
 					if config_file not in self.config_files:
 						raise ValueError("Unknown config file: '%s'" % config_file)
-		
-					file_name = os.path.join(profile_dir, config_file)
+
+					if config_file in ("layout.conf",):
+						file_name = os.path.join(repo_dir, "metadata", config_file)
+					else:
+						file_name = os.path.join(profile_dir, config_file)
 					f = open(file_name, "w")
 					for line in lines:
 						f.write("%s\n" % line)
@@ -305,15 +337,28 @@ class ResolverPlayground(object):
 						f.close()
 
 				#Create profile symlink
-				os.makedirs(os.path.join(self.eroot, "etc"))
-				os.symlink(sub_profile_dir, os.path.join(self.eroot, "etc", "make.profile"))
+				os.symlink(sub_profile_dir, os.path.join(user_config_dir, "make.profile"))
 
-		user_config_dir = os.path.join(self.eroot, "etc", "portage")
-
-		try:
-			os.makedirs(user_config_dir)
-		except os.error:
-			pass
+				#Create minimal herds.xml
+				herds_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE herds SYSTEM "http://www.gentoo.org/dtd/herds.dtd">
+<?xml-stylesheet href="/xsl/herds.xsl" type="text/xsl" ?>
+<?xml-stylesheet href="/xsl/guide.xsl" type="text/xsl" ?>
+<herds>
+<herd>
+  <name>base-system</name>
+  <email>base-system@gentoo.org</email>
+  <description>Core system utilities and libraries.</description>
+  <maintainer>
+    <email>base-system@gentoo.orgg</email>
+    <name>Base System</name>
+    <role>Base System Maintainer</role>
+  </maintainer>
+</herd>
+</herds>
+"""
+				with open(os.path.join(metadata_dir, "metadata.xml"), 'w') as f:
+					f.write(herds_xml)
 
 		repos_conf_file = os.path.join(user_config_dir, "repos.conf")		
 		f = open(repos_conf_file, "w")

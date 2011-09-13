@@ -8,6 +8,7 @@ __all__ = [
 import copy
 from itertools import chain
 import logging
+import platform
 import re
 import sys
 import warnings
@@ -686,6 +687,18 @@ class config(object):
 			if "CBUILD" not in self and "CHOST" in self:
 				self["CBUILD"] = self["CHOST"]
 				self.backup_changes("CBUILD")
+
+			if "USERLAND" not in self:
+				# Set default USERLAND so that our test cases can assume that
+				# it's always set. This allows isolated-functions.sh to avoid
+				# calling uname -s when sourced.
+				system = platform.system()
+				if system is not None and \
+					(system.endswith("BSD") or system == "DragonFly"):
+					self["USERLAND"] = "BSD"
+				else:
+					self["USERLAND"] = "GNU"
+				self.backup_changes("USERLAND")
 
 			self["PORTAGE_BIN_PATH"] = PORTAGE_BIN_PATH
 			self.backup_changes("PORTAGE_BIN_PATH")
