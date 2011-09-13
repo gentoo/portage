@@ -1184,7 +1184,8 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 	all_keys.add("SRC_URI")
 	all_keys = tuple(all_keys)
 	metadata = dict(zip(all_keys,
-		mydbapi.aux_get(mysettings.mycpv, all_keys)))
+		mydbapi.aux_get(mysettings.mycpv, all_keys,
+		myrepo=mysettings.get("PORTAGE_REPO_NAME"))))
 
 	class FakeTree(object):
 		def __init__(self, mydb):
