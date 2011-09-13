@@ -50,7 +50,6 @@ from portage.exception import DigestException, FileNotFound, \
 	IncorrectParameter, InvalidDependString, PermissionDenied, \
 	UnsupportedAPIException
 from portage.localization import _
-from portage.manifest import Manifest
 from portage.output import style_to_ansi_code
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
 from portage.util import apply_recursive_permissions, \
@@ -483,20 +482,27 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		return 1
 
 	global _doebuild_manifest_cache
+	pkgdir = os.path.dirname(myebuild)
+	manifest_path = os.path.join(pkgdir, "Manifest")
+	allow_missing_manifests = "allow-missing-manifests" in mysettings.features
+	if tree == "porttree":
+		repo_config = mysettings.repositories.get_repo_for_location(
+			os.path.dirname(os.path.dirname(pkgdir)))
+	else:
+		repo_config = None
 	mf = None
 	if "strict" in features and \
 		"digest" not in features and \
 		tree == "porttree" and \
+		not repo_config.thin_manifest and \
 		mydo not in ("digest", "manifest", "help") and \
-		not portage._doebuild_manifest_exempt_depend:
+		not portage._doebuild_manifest_exempt_depend and \
+		not (allow_missing_manifests and not os.path.exists(manifest_path)):
 		# Always verify the ebuild checksums before executing it.
 		global _doebuild_broken_ebuilds
 
 		if myebuild in _doebuild_broken_ebuilds:
 			return 1
-
-		pkgdir = os.path.dirname(myebuild)
-		manifest_path = os.path.join(pkgdir, "Manifest")
 
 		# Avoid checking the same Manifest several times in a row during a
 		# regen with an empty cache.
@@ -508,9 +514,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				out.eerror(_("Manifest not found for '%s'") % (myebuild,))
 				_doebuild_broken_ebuilds.add(myebuild)
 				return 1
-			mf = mysettings.repositories.get_repo_for_location(
-				os.path.dirname(os.path.dirname(pkgdir)))
-			mf = mf.load_manifest(pkgdir, mysettings["DISTDIR"])
+			mf = repo_config.load_manifest(pkgdir, mysettings["DISTDIR"])
 
 		else:
 			mf = _doebuild_manifest_cache
@@ -518,10 +522,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		try:
 			mf.checkFileHashes("EBUILD", os.path.basename(myebuild))
 		except KeyError:
-			out = portage.output.EOutput()
-			out.eerror(_("Missing digest for '%s'") % (myebuild,))
-			_doebuild_broken_ebuilds.add(myebuild)
-			return 1
+			if not (allow_missing_manifests and
+				os.path.basename(myebuild) not in mf.fhashdict["EBUILD"]):
+				out = portage.output.EOutput()
+				out.eerror(_("Missing digest for '%s'") % (myebuild,))
+				_doebuild_broken_ebuilds.add(myebuild)
+				return 1
 		except FileNotFound:
 			out = portage.output.EOutput()
 			out.eerror(_("A file listed in the Manifest "
@@ -541,7 +547,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		if mf.getFullname() in _doebuild_broken_manifests:
 			return 1
 
-		if mf is not _doebuild_manifest_cache:
+		if mf is not _doebuild_manifest_cache and not allow_missing_manifests:
 
 			# Make sure that all of the ebuilds are
 			# actually listed in the Manifest.
@@ -558,8 +564,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					_doebuild_broken_manifests.add(manifest_path)
 					return 1
 
-			# Only cache it if the above stray files test succeeds.
-			_doebuild_manifest_cache = mf
+		# We cache it only after all above checks succeed.
+		_doebuild_manifest_cache = mf
 
 	logfile=None
 	builddir_lock = None
