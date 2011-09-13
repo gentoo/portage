@@ -1,4 +1,4 @@
-#!/bin/bash
+#!@PREFIX_PORTAGE_BASH@
 # Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
@@ -19,8 +19,8 @@ into() {
 		export DESTTREE=""
 	else
 		export DESTTREE=$1
-		if [ ! -d "${D}${DESTTREE}" ]; then
-			install -d "${D}${DESTTREE}"
+		if [ ! -d "${ED}${DESTTREE}" ]; then
+			install -d "${ED}${DESTTREE}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
 				helpers_die "${FUNCNAME[0]} failed"
@@ -35,8 +35,8 @@ insinto() {
 		export INSDESTTREE=""
 	else
 		export INSDESTTREE=$1
-		if [ ! -d "${D}${INSDESTTREE}" ]; then
-			install -d "${D}${INSDESTTREE}"
+		if [ ! -d "${ED}${INSDESTTREE}" ]; then
+			install -d "${ED}${INSDESTTREE}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
 				helpers_die "${FUNCNAME[0]} failed"
@@ -51,8 +51,8 @@ exeinto() {
 		export _E_EXEDESTTREE_=""
 	else
 		export _E_EXEDESTTREE_="$1"
-		if [ ! -d "${D}${_E_EXEDESTTREE_}" ]; then
-			install -d "${D}${_E_EXEDESTTREE_}"
+		if [ ! -d "${ED}${_E_EXEDESTTREE_}" ]; then
+			install -d "${ED}${_E_EXEDESTTREE_}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
 				helpers_die "${FUNCNAME[0]} failed"
@@ -67,8 +67,8 @@ docinto() {
 		export _E_DOCDESTTREE_=""
 	else
 		export _E_DOCDESTTREE_="$1"
-		if [ ! -d "${D}usr/share/doc/${PF}/${_E_DOCDESTTREE_}" ]; then
-			install -d "${D}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
+		if [ ! -d "${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}" ]; then
+			install -d "${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
 				helpers_die "${FUNCNAME[0]} failed"
@@ -135,7 +135,7 @@ keepdir() {
 	local x
 	if [ "$1" == "-R" ] || [ "$1" == "-r" ]; then
 		shift
-		find "$@" -type d -printf "${D}%p/.keep_${CATEGORY}_${PN}-${SLOT}\n" \
+		find "$@" -type d -printf "${ED}%p/.keep_${CATEGORY}_${PN}-${SLOT}\n" \
 			| tr "\n" "\0" | \
 			while read -r -d $'\0' ; do
 				>> "$REPLY" || \
@@ -143,7 +143,7 @@ keepdir() {
 			done
 	else
 		for x in "$@"; do
-			>> "${D}${x}/.keep_${CATEGORY}_${PN}-${SLOT}" || \
+			>> "${ED}${x}/.keep_${CATEGORY}_${PN}-${SLOT}" || \
 				die "Failed to create .keep in ${D}${x}"
 		done
 	fi
@@ -398,12 +398,12 @@ econf() {
 			sed -e "1s:^#![[:space:]]*/bin/sh:#!$CONFIG_SHELL:" -i "$ECONF_SOURCE/configure" || \
 				die "Substition of shebang in '$ECONF_SOURCE/configure' failed"
 		fi
-		if [ -e /usr/share/gnuconfig/ ]; then
+		if [ -e "${EPREFIX}"/usr/share/gnuconfig/ ]; then
 			find "${WORKDIR}" -type f '(' \
 			-name config.guess -o -name config.sub ')' -print0 | \
 			while read -r -d $'\0' x ; do
-				vecho " * econf: updating ${x/${WORKDIR}\/} with /usr/share/gnuconfig/${x##*/}"
-				cp -f /usr/share/gnuconfig/"${x##*/}" "${x}"
+				vecho " * econf: updating ${x/${WORKDIR}\/} with ${EPREFIX}/usr/share/gnuconfig/${x##*/}"
+				cp -f "${EPREFIX}"/usr/share/gnuconfig/"${x##*/}" "${x}"
 			done
 		fi
 
@@ -423,7 +423,7 @@ econf() {
 		if [[ -n ${CONF_LIBDIR} ]] && ! _hasgq --libdir=\* "$@" ; then
 			export CONF_PREFIX=$(_hasg --exec-prefix=\* "$@")
 			[[ -z ${CONF_PREFIX} ]] && CONF_PREFIX=$(_hasg --prefix=\* "$@")
-			: ${CONF_PREFIX:=/usr}
+			: ${CONF_PREFIX:=${EPREFIX}/usr}
 			CONF_PREFIX=${CONF_PREFIX#*=}
 			[[ ${CONF_PREFIX} != /* ]] && CONF_PREFIX="/${CONF_PREFIX}"
 			[[ ${CONF_LIBDIR} != /* ]] && CONF_LIBDIR="/${CONF_LIBDIR}"
@@ -431,15 +431,15 @@ econf() {
 		fi
 
 		set -- \
-			--prefix=/usr \
+			--prefix="${EPREFIX}"/usr \
 			${CBUILD:+--build=${CBUILD}} \
 			--host=${CHOST} \
 			${CTARGET:+--target=${CTARGET}} \
-			--mandir=/usr/share/man \
-			--infodir=/usr/share/info \
-			--datadir=/usr/share \
-			--sysconfdir=/etc \
-			--localstatedir=/var/lib \
+			--mandir="${EPREFIX}"/usr/share/man \
+			--infodir="${EPREFIX}"/usr/share/info \
+			--datadir="${EPREFIX}"/usr/share \
+			--sysconfdir="${EPREFIX}"/etc \
+			--localstatedir="${EPREFIX}"/var/lib \
 			"$@" \
 			${EXTRA_ECONF}
 		vecho "${ECONF_SOURCE}/configure" "$@"
@@ -477,22 +477,22 @@ einstall() {
 
 	if [ -f ./[mM]akefile -o -f ./GNUmakefile ] ; then
 		if [ "${PORTAGE_DEBUG}" == "1" ]; then
-			${MAKE:-make} -n prefix="${D}usr" \
-				datadir="${D}usr/share" \
-				infodir="${D}usr/share/info" \
-				localstatedir="${D}var/lib" \
-				mandir="${D}usr/share/man" \
-				sysconfdir="${D}etc" \
+			${MAKE:-make} -n prefix="${ED}usr" \
+				datadir="${ED}usr/share" \
+				infodir="${ED}usr/share/info" \
+				localstatedir="${ED}var/lib" \
+				mandir="${ED}usr/share/man" \
+				sysconfdir="${ED}etc" \
 				${LOCAL_EXTRA_EINSTALL} \
 				${MAKEOPTS} ${EXTRA_EMAKE} -j1 \
 				"$@" install
 		fi
-		${MAKE:-make} prefix="${D}usr" \
-			datadir="${D}usr/share" \
-			infodir="${D}usr/share/info" \
-			localstatedir="${D}var/lib" \
-			mandir="${D}usr/share/man" \
-			sysconfdir="${D}etc" \
+		${MAKE:-make} prefix="${ED}usr" \
+			datadir="${ED}usr/share" \
+			infodir="${ED}usr/share/info" \
+			localstatedir="${ED}var/lib" \
+			mandir="${ED}usr/share/man" \
+			sysconfdir="${ED}etc" \
 			${LOCAL_EXTRA_EINSTALL} \
 			${MAKEOPTS} ${EXTRA_EMAKE} -j1 \
 			"$@" install || die "einstall failed"
@@ -589,7 +589,7 @@ has_version() {
 		"$PORTAGE_BIN_PATH"/ebuild-ipc has_version "$ROOT" "$1"
 	else
 		PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-		"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" has_version "${ROOT}" "$1"
+		"${PORTAGE_PYTHON:-@PORTAGE_PREFIX_PYTHON@}" "${PORTAGE_BIN_PATH}/portageq" has_version "${ROOT}" "$1"
 	fi
 	local retval=$?
 	case "${retval}" in
@@ -610,7 +610,7 @@ best_version() {
 		"$PORTAGE_BIN_PATH"/ebuild-ipc best_version "$ROOT" "$1"
 	else
 		PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-		"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" best_version "${ROOT}" "$1"
+		"${PORTAGE_PYTHON:-@PORTAGE_PREFIX_PYTHON@}" "${PORTAGE_BIN_PATH}/portageq" best_version "${ROOT}" "$1"
 	fi
 	local retval=$?
 	case "${retval}" in

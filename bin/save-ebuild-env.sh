@@ -1,4 +1,4 @@
-#!/bin/bash
+#!@PORTAGE_PREFIX_BASH@
 # Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
@@ -87,6 +87,9 @@ save_ebuild_env() {
 
 	# user config variables
 	unset DOC_SYMLINKS_DIR INSTALL_MASK PKG_INSTALL_MASK
+
+	# Prefix additions
+	unset BPREFIX DEFAULT_PATH EPREFIX EXTRA_PATH PORTAGE_GROUP PORTAGE_USER
 
 	declare -p
 	declare -fp

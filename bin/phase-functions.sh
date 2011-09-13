@@ -1,4 +1,4 @@
-#!/bin/bash
+#!@PREFIX_PORTAGE_BASH@
 # Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
@@ -27,7 +27,8 @@ PORTAGE_READONLY_VARS="D EBUILD EBUILD_PHASE \
 	PORTAGE_SAVED_READONLY_VARS PORTAGE_SIGPIPE_STATUS \
 	PORTAGE_TMPDIR PORTAGE_UPDATE_ENV PORTAGE_USERNAME \
 	PORTAGE_VERBOSE PORTAGE_WORKDIR_MODE PORTDIR PORTDIR_OVERLAY \
-	PROFILE_PATHS REPLACING_VERSIONS REPLACED_BY_VERSION T WORKDIR"
+	PROFILE_PATHS REPLACING_VERSIONS REPLACED_BY_VERSION T WORKDIR \
+	ED EROOT"
 
 PORTAGE_SAVED_READONLY_VARS="A CATEGORY P PF PN PR PV PVR"
 
@@ -98,7 +99,9 @@ filter_readonly_variables() {
 		0|1|2)
 			;;
 		*)
-			filtered_vars+=" ED EPREFIX EROOT"
+			# PREFIX LOCAL: always respect these
+			#filtered_vars+=" ED EPREFIX EROOT"
+			# PREFIX LOCAL
 			;;
 	esac
 
@@ -126,7 +129,7 @@ filter_readonly_variables() {
 		"
 	fi
 
-	"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars}" || die "filter-bash-environment.py failed"
+	"${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" "${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars}" || die "filter-bash-environment.py failed"
 }
 
 # @FUNCTION: preprocess_ebuild_env
@@ -550,6 +553,7 @@ dyn_install() {
 	fi
 	echo "${USE}"       > USE
 	echo "${EAPI:-0}"   > EAPI
+	echo "${EPREFIX}"   > EPREFIX
 	set +f
 
 	# local variables can leak into the saved environment.
@@ -632,6 +636,7 @@ dyn_help() {
 		echo "production (stripped)"
 	fi
 	echo "  merge to    : ${ROOT}"
+	echo "  offset      : ${EPREFIX}"
 	echo
 	if [ -n "$USE" ]; then
 		echo "Additionally, support for the following optional features will be enabled:"
