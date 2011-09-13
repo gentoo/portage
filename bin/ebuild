@@ -153,14 +153,9 @@ if ebuild_portdir != vdb_path and \
 	print("Appending %s to PORTDIR_OVERLAY..." % ebuild_portdir)
 	imp.reload(portage)
 
-# Constrain eclass resolution to the master(s)
-# that are specified in layout.conf (using an
-# approach similar to repoman's).
 myrepo = None
 if ebuild_portdir != vdb_path:
 	myrepo = portage.portdb.getRepositoryName(ebuild_portdir)
-	repo_info = portage.portdb._repo_info[ebuild_portdir]
-	portage.portdb.porttrees = list(repo_info.eclass_db.porttrees)
 
 if not os.path.exists(ebuild):
 	print("'%s' does not exist." % ebuild)
@@ -282,7 +277,10 @@ pkg = Package(built=(pkg_type != "ebuild"), cpv=cpv,
 
 # Apply package.env and repo-level settings. This allows per-package
 # FEATURES and other variables (possibly PORTAGE_TMPDIR) to be
-# available as soon as possible.
+# available as soon as possible. Also, note that the only way to ensure
+# that setcpv gets metadata from the correct repository is to pass in
+# a Package instance, as we do here (previously we had to modify
+# portdb.porttrees in order to accomplish this).
 tmpsettings.setcpv(pkg)
 
 def stale_env_warning():
