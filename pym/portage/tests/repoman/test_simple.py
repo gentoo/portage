@@ -93,6 +93,7 @@ class SimpleRepomanTestCase(TestCase):
 		playground = ResolverPlayground(ebuilds=ebuilds)
 		settings = playground.settings
 		eprefix = settings["EPREFIX"]
+		eroot = settings["EROOT"]
 		distdir = os.path.join(eprefix, "distdir")
 		portdir = settings["PORTDIR"]
 		profiles_dir = os.path.join(portdir, "profiles")
@@ -139,11 +140,15 @@ class SimpleRepomanTestCase(TestCase):
 			for cp, xml_data in metadata_xml_files:
 				with open(os.path.join(portdir, cp, "metadata.xml"), 'w') as f:
 					f.write(playground.metadata_xml_template % xml_data)
+			# Use a symlink to portdir, in order to trigger bugs
+			# involving cannonical vs. non-canonical paths.
+			portdir_symlink = os.path.join(eroot, "portdir_symlink")
+			os.symlink(portdir, portdir_symlink)
 			# repoman checks metadata.dtd for recent CTIME, so copy the file in
 			# order to ensure that the CTIME is current
 			shutil.copyfile(metadata_dtd, os.path.join(distdir, "metadata.dtd"))
 			for cwd in ("", "dev-libs", "dev-libs/A", "dev-libs/B"):
-				abs_cwd = os.path.join(portdir, cwd)
+				abs_cwd = os.path.join(portdir_symlink, cwd)
 				proc = subprocess.Popen([portage._python_interpreter, "-Wd",
 					os.path.join(PORTAGE_BIN_PATH, "repoman"), "full"],
 					cwd=abs_cwd, env=env, stdout=subprocess.PIPE)
