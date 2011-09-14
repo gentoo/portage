@@ -3,6 +3,7 @@
 
 import errno
 import io
+import warnings
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -99,25 +100,26 @@ class Manifest2Entry(ManifestEntry):
 class Manifest(object):
 	parsers = (parseManifest2,)
 	def __init__(self, pkgdir, distdir, fetchlist_dict=None,
-		manifest1_compat=False, from_scratch=False, thin=False):
-		""" create new Manifest instance for package in pkgdir
-		    and add compability entries for old portage versions if manifest1_compat == True.
+		manifest1_compat=DeprecationWarning, from_scratch=False, thin=False):
+		""" Create new Manifest instance for package in pkgdir.
 		    Do not parse Manifest file if from_scratch == True (only for internal use)
 			The fetchlist_dict parameter is required only for generation of
 			a Manifest (not needed for parsing and checking sums).
 			If thin is specified, then the manifest carries only info for
 			distfiles."""
+
+		if manifest1_compat is not DeprecationWarning:
+			warnings.warn("The manifest1_compat parameter of the "
+				"portage.manifest.Manifest constructor is deprecated.",
+				DeprecationWarning, stacklevel=2)
+
 		self.pkgdir = _unicode_decode(pkgdir).rstrip(os.sep) + os.sep
 		self.fhashdict = {}
 		self.hashes = set()
 		self.hashes.update(portage.const.MANIFEST2_HASH_FUNCTIONS)
-		if manifest1_compat:
-			raise NotImplementedError("manifest1 support has been removed")
 		self.hashes.difference_update(hashname for hashname in \
 			list(self.hashes) if hashname not in hashfunc_map)
 		self.hashes.add("size")
-		if manifest1_compat:
-			raise NotImplementedError("manifest1 support has been removed")
 		self.hashes.add(portage.const.MANIFEST2_REQUIRED_HASH)
 		for t in portage.const.MANIFEST2_IDENTIFIERS:
 			self.fhashdict[t] = {}
@@ -325,7 +327,7 @@ class Manifest(object):
 			distfilehashes = {}
 		self.__init__(self.pkgdir, self.distdir,
 			fetchlist_dict=self.fetchlist_dict, from_scratch=True,
-			manifest1_compat=False, thin=self.thin)
+			thin=self.thin)
 		pn = os.path.basename(self.pkgdir.rstrip(os.path.sep))
 		cat = self._pkgdir_category()
 

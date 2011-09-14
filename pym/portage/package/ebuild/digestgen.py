@@ -52,10 +52,9 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 				del e
 				return 0
 		mytree = os.path.dirname(os.path.dirname(mysettings["O"]))
-		manifest1_compat = False
 		mf = mysettings.repositories.get_repo_for_location(mytree)
 		mf = mf.load_manifest(mysettings["O"], mysettings["DISTDIR"],
-			fetchlist_dict=fetchlist_dict, manifest1_compat=manifest1_compat)
+			fetchlist_dict=fetchlist_dict)
 		# Don't require all hashes since that can trigger excessive
 		# fetches when sufficient digests already exist.  To ease transition
 		# while Manifest 1 is being removed, only require hashes that will
