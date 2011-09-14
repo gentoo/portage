@@ -594,8 +594,8 @@ portdb = trees[root]['porttree'].dbapi
 
 # Constrain dependency resolution to the master(s)
 # that are specified in layout.conf.
-portdir_overlay = os.path.realpath(portdir_overlay)
-repo_info = portdb._repo_info[portdir_overlay]
+repodir = os.path.realpath(portdir_overlay)
+repo_info = portdb._repo_info[repodir]
 portdb.porttrees = list(repo_info.eclass_db.porttrees)
 portdir = portdb.porttrees[0]
 
@@ -605,7 +605,7 @@ portdir = portdb.porttrees[0]
 # thin-manifests is designed to prevent.
 sign_manifests = "sign" in repoman_settings.features and \
 	repoman_settings.repositories.get_repo_for_location(
-	portdir_overlay).sign_manifest
+	repodir).sign_manifest
 
 # Generate an appropriate PORTDIR_OVERLAY value for passing into the
 # profile-specific config constructor calls.
@@ -649,17 +649,12 @@ if options.mode == 'commit' and repolevel not in [1,2,3]:
 	print(red("***"))
 	err("Unable to identify level we're commiting from for %s" % '/'.join(reposplit))
 
-startdir = normalize_path(mydir)
-repodir = startdir
-for x in range(0, repolevel - 1):
-	repodir = os.path.dirname(repodir)
-repodir = os.path.realpath(repodir)
-
 # Make startdir relative to the cannonical repodir, so that we can pass
 # it to digestgen and it won't have to be cannonicalized again.
 if repolevel == 1:
 	startdir = repodir
 else:
+	startdir = normalize_path(mydir)
 	startdir = os.path.join(repodir, *startdir.split(os.sep)[-2-repolevel+3:])
 
 def caterror(mycat):
