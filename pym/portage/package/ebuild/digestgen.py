@@ -52,7 +52,13 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 				del e
 				return 0
 		mytree = os.path.dirname(os.path.dirname(mysettings["O"]))
-		mf = mysettings.repositories.get_repo_for_location(mytree)
+		try:
+			mf = mysettings.repositories.get_repo_for_location(mytree)
+		except KeyError:
+			# backward compatibility
+			mytree = os.path.realpath(mytree)
+			mf = mysettings.repositories.get_repo_for_location(mytree)
+
 		mf = mf.load_manifest(mysettings["O"], mysettings["DISTDIR"],
 			fetchlist_dict=fetchlist_dict)
 		# Don't require all hashes since that can trigger excessive
