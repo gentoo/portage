@@ -642,8 +642,8 @@ if options.mode == 'commit' and repolevel not in [1,2,3]:
 	print(red("***"))
 	err("Unable to identify level we're commiting from for %s" % '/'.join(reposplit))
 
-# Make startdir relative to the cannonical repodir, so that we can pass
-# it to digestgen and it won't have to be cannonicalized again.
+# Make startdir relative to the canonical repodir, so that we can pass
+# it to digestgen and it won't have to be canonicalized again.
 if repolevel == 1:
 	startdir = repodir
 else:

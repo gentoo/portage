@@ -141,7 +141,7 @@ class SimpleRepomanTestCase(TestCase):
 				with open(os.path.join(portdir, cp, "metadata.xml"), 'w') as f:
 					f.write(playground.metadata_xml_template % xml_data)
 			# Use a symlink to portdir, in order to trigger bugs
-			# involving cannonical vs. non-canonical paths.
+			# involving canonical vs. non-canonical paths.
 			portdir_symlink = os.path.join(eroot, "portdir_symlink")
 			os.symlink(portdir, portdir_symlink)
 			# repoman checks metadata.dtd for recent CTIME, so copy the file in
