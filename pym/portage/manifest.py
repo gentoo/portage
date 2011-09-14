@@ -376,8 +376,6 @@ class Manifest(object):
 		if not filename.endswith(".ebuild"):
 			return None
 		pf = filename[:-7]
-		if pf is None:
-			return None
 		ps = portage.versions._pkgsplit(pf)
 		cpv = "%s/%s" % (cat, pf)
 		if not ps:
