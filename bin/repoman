@@ -615,7 +615,7 @@ logging.info('PORTDIR_OVERLAY = "%s"' % env['PORTDIR_OVERLAY'])
 env['FEATURES'] = env.get('FEATURES', '') + ' -unknown-features-warn'
 
 categories = []
-for path in set([portdir, portdir_overlay]):
+for path in set([portdir, repodir]):
 	categories.extend(portage.util.grabfile(
 		os.path.join(path, 'profiles', 'categories')))
 repoman_settings.categories = tuple(sorted(
