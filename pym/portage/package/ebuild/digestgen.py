@@ -17,7 +17,6 @@ from portage.dep import use_reduce
 from portage.exception import InvalidDependString, FileNotFound, \
 	PermissionDenied, PortagePackageException
 from portage.localization import _
-from portage.manifest import Manifest
 from portage.output import colorize
 from portage.package.ebuild.fetch import fetch
 from portage.util import writemsg, writemsg_stdout
@@ -108,8 +107,6 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 					continue
 
 		if missing_files:
-				mytree = os.path.realpath(os.path.dirname(
-					os.path.dirname(mysettings["O"])))
 				for myfile in missing_files:
 					uris = set()
 					all_restrict = set()
@@ -189,8 +186,6 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 					os.path.join(mysettings["DISTDIR"], filename)):
 					auto_assumed.append(filename)
 			if auto_assumed:
-				mytree = os.path.realpath(
-					os.path.dirname(os.path.dirname(mysettings["O"])))
 				cp = os.path.sep.join(mysettings["O"].split(os.path.sep)[-2:])
 				pkgs = myportdb.cp_list(cp, mytree=mytree)
 				pkgs.sort()
