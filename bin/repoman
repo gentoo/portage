@@ -655,6 +655,13 @@ for x in range(0, repolevel - 1):
 	repodir = os.path.dirname(repodir)
 repodir = os.path.realpath(repodir)
 
+# Make startdir relative to the cannonical repodir, so that we can pass
+# it to digestgen and it won't have to be cannonicalized again.
+if repolevel == 1:
+	startdir = repodir
+else:
+	startdir = os.path.join(repodir, *startdir.split(os.sep)[-2-repolevel+3:])
+
 def caterror(mycat):
 	err(mycat+" is not an official category.  Skipping QA checks in this directory.\nPlease ensure that you add "+catdir+" to "+repodir+"/profiles/categories\nif it is a new category.")
 

@@ -206,7 +206,7 @@ def discard_digests(myebuild, mysettings, mydbapi):
 		mf = mysettings.repositories.get_repo_for_location(
 			os.path.dirname(os.path.dirname(pkgdir)))
 		mf = mf.load_manifest(pkgdir, mysettings["DISTDIR"],
-			fetchlist_dict=fetchlist_dict, manifest1_compat=False)
+			fetchlist_dict=fetchlist_dict)
 		mf.create(requiredDistfiles=None,
 			assumeDistHashesSometimes=True, assumeDistHashesAlways=True)
 		distfiles = fetchlist_dict[cpv]
