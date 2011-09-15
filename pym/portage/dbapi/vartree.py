@@ -1842,16 +1842,10 @@ class dblink(object):
 		else:
 			self.settings.pop("PORTAGE_LOG_FILE", None)
 
-		# Lock the config memory file to prevent symlink creation
-		# in merge_contents from overlapping with env-update.
-		self.vartree.dbapi._fs_lock()
-		try:
-			env_update(target_root=self.settings['ROOT'],
-				prev_mtimes=ldpath_mtimes,
-				contents=contents, env=self.settings,
-				writemsg_level=self._display_merge)
-		finally:
-			self.vartree.dbapi._fs_unlock()
+		env_update(target_root=self.settings['ROOT'],
+			prev_mtimes=ldpath_mtimes,
+			contents=contents, env=self.settings,
+			writemsg_level=self._display_merge, vardbapi=self.vartree.dbapi)
 
 		return os.EX_OK
 
@@ -3811,17 +3805,11 @@ class dblink(object):
 			showMessage(_("!!! FAILED postinst: ")+str(a)+"\n",
 				level=logging.ERROR, noiselevel=-1)
 
-		# Lock the config memory file to prevent symlink creation
-		# in merge_contents from overlapping with env-update.
-		self.vartree.dbapi._fs_lock()
-		try:
-			#update environment settings, library paths. DO NOT change symlinks.
-			env_update(
-				target_root=self.settings['ROOT'], prev_mtimes=prev_mtimes,
-				contents=contents, env=self.settings,
-				writemsg_level=self._display_merge)
-		finally:
-			self.vartree.dbapi._fs_unlock()
+		#update environment settings, library paths. DO NOT change symlinks.
+		env_update(
+			target_root=self.settings['ROOT'], prev_mtimes=prev_mtimes,
+			contents=contents, env=self.settings,
+			writemsg_level=self._display_merge, vardbapi=self.vartree.dbapi)
 
 		# For gcc upgrades, preserved libs have to be removed after the
 		# the library path has been updated.
