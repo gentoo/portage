@@ -860,7 +860,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					return 0
 				return 1
 
-		if mydo == "fetch":
+		if need_distfiles:
 			# Files are already checked inside fetch(),
 			# so do not check them again.
 			checkme = []
