@@ -241,7 +241,7 @@ class Manifest(object):
 		try:
 			myentries = list(self._createManifestEntries())
 			update_manifest = True
-			if not force:
+			if myentries and not force:
 				try:
 					f = io.open(_unicode_encode(self.getFullname(),
 						encoding=_encodings['fs'], errors='strict'),
@@ -257,15 +257,23 @@ class Manifest(object):
 								break
 				except (IOError, OSError) as e:
 					if e.errno == errno.ENOENT:
-						if not myentries:
-							# With thin manifest, there's no need to have
-							# a Manifest file if there are no DIST entries.
-							update_manifest = False
+						pass
 					else:
 						raise
+
 			if update_manifest:
-				write_atomic(self.getFullname(),
-					"".join("%s\n" % str(myentry) for myentry in myentries))
+				if myentries:
+					write_atomic(self.getFullname(), "".join("%s\n" %
+						str(myentry) for myentry in myentries))
+				else:
+					# With thin manifest, there's no need to have
+					# a Manifest file if there are no DIST entries.
+					try:
+						os.unlink(self.getFullname())
+					except OSError as e:
+						if e.errno != errno.ENOENT:
+							raise
+
 			if sign:
 				self.sign()
 		except (IOError, OSError) as e:
