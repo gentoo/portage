@@ -229,9 +229,7 @@ class ConfigTestCase(TestCase):
 		playground = ResolverPlayground(ebuilds=ebuilds, repo_configs=repo_configs)
 
 		new_manifest_file = os.path.join(playground.repo_dirs["new_repo"], "dev-libs", "A", "Manifest")
-		f = open(new_manifest_file)
-		self.assertEqual(len(list(f)), 0)
-		f.close()
+		self.assertEqual(os.path.exists(new_manifest_file), False)
 
 		old_manifest_file = os.path.join(playground.repo_dirs["old_repo"], "dev-libs", "A", "Manifest")
 		f = open(old_manifest_file)
