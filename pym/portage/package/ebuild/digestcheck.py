@@ -30,32 +30,10 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
 		return 1
 	allow_missing = "allow-missing-manifests" in mysettings.features
 	pkgdir = mysettings["O"]
-	manifest_path = os.path.join(pkgdir, "Manifest")
-	if not os.path.exists(manifest_path):
-		if allow_missing:
-			return 1
-		writemsg(_("!!! Manifest file not found: '%s'\n") % manifest_path,
-			noiselevel=-1)
-		if strict:
-			return 0
-		else:
-			return 1
 	if mf is None:
 		mf = mysettings.repositories.get_repo_for_location(
 			os.path.dirname(os.path.dirname(pkgdir)))
 		mf = mf.load_manifest(pkgdir, mysettings["DISTDIR"])
-	manifest_empty = True
-	for d in mf.fhashdict.values():
-		if d:
-			manifest_empty = False
-			break
-	if manifest_empty:
-		writemsg(_("!!! Manifest is empty: '%s'\n") % manifest_path,
-			noiselevel=-1)
-		if strict:
-			return 0
-		else:
-			return 1
 	eout = EOutput()
 	eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
 	try:
