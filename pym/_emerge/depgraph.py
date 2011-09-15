@@ -3263,11 +3263,20 @@ class depgraph(object):
 		# satisfied rather than forcing a rebuild.
 		installed = pkg_type == 'installed'
 		if installed and not cpv_list and atom.slot:
+
+			if "remove" in self._dynamic_config.myparams:
+				# We need to search the portdbapi, which is not in our
+				# normal dbs list, in order to find the real SLOT.
+				portdb = self._frozen_config.trees[root_config.root]["porttree"].dbapi
+				db_keys = list(portdb._aux_cache_keys)
+				dbs = [(portdb, "ebuild", False, False, db_keys)]
+			else:
+				dbs = self._dynamic_config._filtered_trees[root_config.root]["dbs"]
+
 			for cpv in db.match(atom.cp):
 				slot_available = False
 				for other_db, other_type, other_built, \
-					other_installed, other_keys in \
-					self._dynamic_config._filtered_trees[root_config.root]["dbs"]:
+					other_installed, other_keys in dbs:
 					try:
 						if atom.slot == \
 							other_db.aux_get(cpv, ["SLOT"])[0]:
@@ -4064,11 +4073,12 @@ class depgraph(object):
 		"""
 		Select packages that are installed.
 		"""
-		vardb = self._dynamic_config._graph_trees[root]["vartree"].dbapi
-		matches = vardb.match_pkgs(atom)
+		matches = list(self._iter_match_pkgs(self._frozen_config.roots[root],
+			"installed", atom))
 		if not matches:
 			return None, None
 		if len(matches) > 1:
+			matches.reverse() # ascending order
 			unmasked = [pkg for pkg in matches if \
 				self._pkg_visibility_check(pkg)]
 			if unmasked:
