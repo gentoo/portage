@@ -257,7 +257,10 @@ class Manifest(object):
 								break
 				except (IOError, OSError) as e:
 					if e.errno == errno.ENOENT:
-						pass
+						if not myentries:
+							# With thin manifest, there's no need to have
+							# a Manifest file if there are no DIST entries.
+							update_manifest = False
 					else:
 						raise
 			if update_manifest:
