@@ -8,7 +8,6 @@ import warnings
 from portage import os, _encodings, _unicode_decode
 from portage.exception import DigestException, FileNotFound
 from portage.localization import _
-from portage.manifest import Manifest
 from portage.output import EOutput
 from portage.util import writemsg
 

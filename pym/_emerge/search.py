@@ -7,7 +7,6 @@ import re
 import portage
 from portage import os
 from portage.dbapi.porttree import _parse_uri_map
-from portage.manifest import Manifest
 from portage.output import  bold, bold as white, darkgreen, green, red
 from portage.util import writemsg_stdout
 
