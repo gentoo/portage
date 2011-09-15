@@ -38,15 +38,18 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
 	eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
 	try:
 		if strict and "PORTAGE_PARALLEL_FETCHONLY" not in mysettings:
-			eout.ebegin(_("checking ebuild checksums ;-)"))
-			mf.checkTypeHashes("EBUILD")
-			eout.eend(0)
-			eout.ebegin(_("checking auxfile checksums ;-)"))
-			mf.checkTypeHashes("AUX")
-			eout.eend(0)
-			eout.ebegin(_("checking miscfile checksums ;-)"))
-			mf.checkTypeHashes("MISC", ignoreMissingFiles=True)
-			eout.eend(0)
+			if mf.fhashdict.get("EBUILD"):
+				eout.ebegin(_("checking ebuild checksums ;-)"))
+				mf.checkTypeHashes("EBUILD")
+				eout.eend(0)
+			if mf.fhashdict.get("AUX"):
+				eout.ebegin(_("checking auxfile checksums ;-)"))
+				mf.checkTypeHashes("AUX")
+				eout.eend(0)
+			if mf.fhashdict.get("MISC"):
+				eout.ebegin(_("checking miscfile checksums ;-)"))
+				mf.checkTypeHashes("MISC", ignoreMissingFiles=True)
+				eout.eend(0)
 		for f in myfiles:
 			eout.ebegin(_("checking %s ;-)") % f)
 			ftype = mf.findFile(f)
