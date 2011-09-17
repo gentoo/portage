@@ -511,11 +511,11 @@ class config(object):
 
 			new_ov = []
 			if portdir_overlay:
-				whitespace_re = re.compile(r"\s")
+				shell_quote_re = re.compile(r"[\s\\\"'$`]")
 				for ov in portdir_overlay:
 					ov = normalize_path(ov)
 					if os.path.isdir(ov):
-						if whitespace_re.search(ov) is not None:
+						if shell_quote_re.search(ov) is not None:
 							ov = portage._shell_quote(ov)
 						new_ov.append(ov)
 					else:
