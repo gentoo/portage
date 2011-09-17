@@ -572,7 +572,8 @@ if options.mode == 'commit' and not options.pretend and not vcs:
 # Ensure that PORTDIR_OVERLAY contains the repository corresponding to $PWD.
 repoman_settings = portage.config(local_config=False, _eprefix=eprefix)
 repoman_settings['PORTDIR_OVERLAY'] = "%s %s" % \
-	(repoman_settings.get('PORTDIR_OVERLAY', ''), portdir_overlay)
+	(repoman_settings.get('PORTDIR_OVERLAY', ''),
+	portage._shell_quote(portdir_overlay))
 # We have to call the config constructor again so
 # that config.repositories is initialized correctly.
 repoman_settings = portage.config(local_config=False, _eprefix=eprefix,
