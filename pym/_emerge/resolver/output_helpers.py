@@ -17,7 +17,7 @@ from portage._sets.base import InternalPackageSet
 from portage.output import blue, colorize, create_color_func, green, red, \
 	teal, yellow
 bad = create_color_func("BAD")
-from portage.util import writemsg
+from portage.util import shlex_split, writemsg
 from portage.versions import catpkgsplit
 
 from _emerge.Blocker import Blocker
@@ -39,7 +39,7 @@ class _RepoDisplay(object):
 				repo_paths.add(portdir)
 			overlays = root_config.settings.get("PORTDIR_OVERLAY")
 			if overlays:
-				repo_paths.update(overlays.split())
+				repo_paths.update(shlex_split(overlays))
 		repo_paths = list(repo_paths)
 		self._repo_paths = repo_paths
 		self._repo_paths_real = [ os.path.realpath(repo_path) \
