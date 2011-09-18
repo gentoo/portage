@@ -18,7 +18,8 @@ from portage import os, OrderedDict
 from portage import _unicode_decode, _unicode_encode, _encodings
 from portage.const import PORTAGE_PACKAGE_ATOM, USER_CONFIG_PATH
 from portage.dbapi import dbapi
-from portage.dep import Atom, extract_affecting_use, check_required_use, human_readable_required_use, _repo_separator
+from portage.dep import Atom, best_match_to_list, extract_affecting_use, \
+	check_required_use, human_readable_required_use, _repo_separator
 from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use
 from portage.exception import InvalidAtom, InvalidDependString, PortageException
 from portage.output import colorize, create_color_func, \
@@ -2693,6 +2694,37 @@ class depgraph(object):
 				pkg_name += "[%s]" % ",".join(usedep)
 
 			dep_chain.append((pkg_name, node.type_name))
+
+
+		# To build a dep chain for the given package we take
+		# "random" parents form the digraph, except for the
+		# first package, because we want a parent that forced
+		# the corresponding change (i.e '>=foo-2', instead 'foo').
+
+		traversed_nodes.add(start_node)
+
+		start_node_parent_atoms = {}
+		for ppkg, patom in all_parents[node]:
+			# Get a list of suitable atoms. For use deps
+			# (aka unsatisfied_dependency is not None) we
+			# need that the start_node doesn't match the atom.
+			if not unsatisfied_dependency or \
+				not InternalPackageSet(initial_atoms=(patom,)).findAtomForPackage(start_node):
+				start_node_parent_atoms.setdefault(patom, []).append(ppkg)
+
+		if start_node_parent_atoms:
+			# If there are parents in all_parents then use one of them.
+			# If not, then this package got pulled in by an Arg and
+			# will be correctly handled by the code that handles later
+			# packages in the dep chain.
+			best_match = best_match_to_list(node.cpv, start_node_parent_atoms)
+
+			child = node
+			for ppkg in start_node_parent_atoms[best_match]:
+				node = ppkg
+				if ppkg in self._dynamic_config._initial_arg_list:
+					# Stop if reached the top level of the dep chain.
+					break
 
 		while node is not None:
 			traversed_nodes.add(node)
