@@ -57,7 +57,7 @@ class ResolverPlayground(object):
 """
 
 	def __init__(self, ebuilds={}, installed={}, profile={}, repo_configs={}, \
-		user_config={}, sets={}, world=[], distfiles={}, debug=False):
+		user_config={}, sets={}, world=[], world_sets=[], distfiles={}, debug=False):
 		"""
 		ebuilds: cpv -> metadata mapping simulating available ebuilds. 
 		installed: cpv -> metadata mapping simulating installed packages.
@@ -85,7 +85,7 @@ class ResolverPlayground(object):
 		self._create_ebuilds(ebuilds)
 		self._create_installed(installed)
 		self._create_profile(ebuilds, installed, profile, repo_configs, user_config, sets)
-		self._create_world(world)
+		self._create_world(world, world_sets)
 
 		self.settings, self.trees = self._load_config()
 
@@ -444,15 +444,21 @@ class ResolverPlayground(object):
 				f.write("%s\n" % line)
 			f.close()
 
-	def _create_world(self, world):
+	def _create_world(self, world, world_sets):
 		#Create /var/lib/portage/world
 		var_lib_portage = os.path.join(self.eroot, "var", "lib", "portage")
 		os.makedirs(var_lib_portage)
 
 		world_file = os.path.join(var_lib_portage, "world")
+		world_set_file = os.path.join(var_lib_portage, "world_sets")
 
 		f = open(world_file, "w")
 		for atom in world:
+			f.write("%s\n" % atom)
+		f.close()
+
+		f = open(world_set_file, "w")
+		for atom in world_sets:
 			f.write("%s\n" % atom)
 		f.close()
 
