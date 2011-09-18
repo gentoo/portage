@@ -2704,7 +2704,7 @@ class depgraph(object):
 		traversed_nodes.add(start_node)
 
 		start_node_parent_atoms = {}
-		for ppkg, patom in all_parents[node]:
+		for ppkg, patom in all_parents.get(node, []):
 			# Get a list of suitable atoms. For use deps
 			# (aka unsatisfied_dependency is not None) we
 			# need that the start_node doesn't match the atom.
