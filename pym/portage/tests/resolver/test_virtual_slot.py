@@ -91,3 +91,45 @@ class VirtualSlotResolverTestCase(TestCase):
 				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
 		finally:
 			playground.cleanup()
+
+	def testVirtualSlotDepclean(self):
+
+		ebuilds = {
+			"dev-java/oracle-jdk-bin-1.7.0" : {"SLOT": "1.7", "LICENSE": "TEST"},
+			"dev-java/sun-jdk-1.6.0" : {"SLOT": "1.6", "LICENSE": "TEST"},
+			"dev-java/icedtea-6.1.10.3" : {"SLOT": "6"},
+			"dev-java/icedtea-7" : {"SLOT": "7"},
+			"app-misc/java-app-1": {"RDEPEND": ">=virtual/jdk-1.6.0"},
+			"virtual/jdk-1.6.0": {"SLOT": "1.6", "RDEPEND": "|| ( =dev-java/icedtea-6* =dev-java/sun-jdk-1.6.0* )"},
+			"virtual/jdk-1.7.0": {"SLOT": "1.7", "RDEPEND": "|| ( =dev-java/icedtea-7* =dev-java/oracle-jdk-bin-1.7.0* )"},
+		}
+
+		installed = {
+			"app-misc/java-app-1": {"RDEPEND": ">=virtual/jdk-1.6.0"},
+			"dev-java/icedtea-6.1.10.3" : {"SLOT": "6"},
+			"dev-java/icedtea-7" : {"SLOT": "7"},
+			"virtual/jdk-1.6.0": {"SLOT" : "1.6", "RDEPEND": "|| ( =dev-java/icedtea-6* =dev-java/sun-jdk-1.6.0* )"},
+			"virtual/jdk-1.7.0": {"SLOT": "1.7", "RDEPEND": "|| ( =dev-java/icedtea-7* =dev-java/oracle-jdk-bin-1.7.0* )"},
+		}
+
+		world = ("virtual/jdk:1.6", "app-misc/java-app",)
+
+		test_cases = (
+			# Make sure that depclean doesn't remove a new slot even though
+			# it is redundant in the sense that the older slot will satisfy
+			# all dependencies.
+			ResolverPlaygroundTestCase(
+				[],
+				options = {"--depclean" : True},
+				success = True,
+				cleanlist = []),
+		)
+
+		playground = ResolverPlayground(
+			ebuilds=ebuilds, installed=installed, world=world)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()

@@ -6595,7 +6595,8 @@ class _dep_check_composite_db(dbapi):
 		if pkg is not None and \
 			atom.slot is None and \
 			pkg.cp.startswith("virtual/") and \
-			("--update" not in self._depgraph._frozen_config.myopts or
+			(("remove" not in self._depgraph._dynamic_config.myparams and
+			"--update" not in self._depgraph._frozen_config.myopts) or
 			not ret or
 			not self._depgraph._virt_deps_visible(pkg, ignore_use=True)):
 			# For new-style virtual lookahead that occurs inside dep_check()
