@@ -20,6 +20,7 @@ from portage.util import atomic_ofstream, ensure_dirs, getconfig, \
 	normalize_path, writemsg
 from portage.util.listdir import listdir
 from portage.dbapi.vartree import vartree
+from portage.package.ebuild.config import config
 
 if sys.hexversion >= 0x3000000:
 	long = int
@@ -41,7 +42,12 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 	@type target_root: String (Path)
 	"""
 	if vardbapi is None:
-		vardbapi = vartree(settings=portage.settings).dbapi
+		if isinstance(env, config):
+			vardbapi = vartree(settings=env).dbapi
+		else:
+			if target_root is None:
+				target_root = portage.settings["ROOT"]
+			vardbapi = portage.db[target_root]["vartree"].dbapi
 
 	# Lock the config memory file to prevent symlink creation
 	# in merge_contents from overlapping with env-update.
