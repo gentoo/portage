@@ -47,7 +47,15 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 		else:
 			if target_root is None:
 				target_root = portage.settings["ROOT"]
-			vardbapi = portage.db[target_root]["vartree"].dbapi
+			if hasattr(portage, "db") and target_root in portage.db:
+				vardbapi = portage.db[target_root]["vartree"].dbapi
+			else:
+				settings = config(config_root=target_root,
+					target_root=target_root)
+				target_root = settings["ROOT"]
+				if env is None:
+					env = settings
+				vardbapi = vartree(settings=settings).dbapi
 
 	# Lock the config memory file to prevent symlink creation
 	# in merge_contents from overlapping with env-update.
