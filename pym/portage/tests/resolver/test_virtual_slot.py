@@ -123,6 +123,13 @@ class VirtualSlotResolverTestCase(TestCase):
 				options = {"--depclean" : True},
 				success = True,
 				cleanlist = []),
+
+			# Prune redundant lower slots, even if they are in world.
+			ResolverPlaygroundTestCase(
+				[],
+				options = {"--prune" : True},
+				success = True,
+				cleanlist = ['virtual/jdk-1.6.0', 'dev-java/icedtea-6.1.10.3']),
 		)
 
 		playground = ResolverPlayground(

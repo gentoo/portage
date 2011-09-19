@@ -511,6 +511,12 @@ class ResolverPlayground(object):
 		if self.debug:
 			options["--debug"] = True
 
+		if action is None:
+			if options.get("--depclean"):
+				action = "depclean"
+			elif options.get("--prune"):
+				action = "prune"
+
 		global_noiselimit = portage.util.noiselimit
 		global_emergelog_disable = _emerge.emergelog._disable
 		try:
@@ -519,10 +525,10 @@ class ResolverPlayground(object):
 				portage.util.noiselimit = -2
 			_emerge.emergelog._disable = True
 
-			if options.get("--depclean"):
+			if action in ("depclean", "prune"):
 				rval, cleanlist, ordered, req_pkg_count = \
 					calc_depclean(self.settings, self.trees, None,
-					options, "depclean", InternalPackageSet(initial_atoms=atoms, allow_wildcard=True), None)
+					options, action, InternalPackageSet(initial_atoms=atoms, allow_wildcard=True), None)
 				result = ResolverPlaygroundDepcleanResult( \
 					atoms, rval, cleanlist, ordered, req_pkg_count)
 			else:
