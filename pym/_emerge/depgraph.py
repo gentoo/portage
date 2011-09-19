@@ -5767,6 +5767,7 @@ class depgraph(object):
 		#Set of roots we have autounmask changes for.
 		roots = set()
 
+		masked_by_missing_keywords = False
 		unstable_keyword_msg = {}
 		for pkg in self._dynamic_config._needed_unstable_keywords:
 			self._show_merge_list()
@@ -5782,6 +5783,8 @@ class depgraph(object):
 					if reason.unmask_hint and \
 						reason.unmask_hint.key == 'unstable keyword':
 						keyword = reason.unmask_hint.value
+						if keyword == "**":
+							masked_by_missing_keywords = True
 
 						unstable_keyword_msg[root].append(self._get_dep_chain_as_comment(pkg))
 						if autounmask_unrestricted_atoms:
@@ -6033,11 +6036,11 @@ class depgraph(object):
 				except PortageException:
 					problems.append("!!! Failed to write '%s'\n" % file_to_write_to)
 
-		if not quiet and p_mask_change_msg:
+		if not quiet and (p_mask_change_msg or masked_by_missing_keywords):
 			msg = [
 				"",
 				"NOTE: The --autounmask-keep-masks option will prevent emerge",
-				"      from creating mask changes."
+				"      from creating package.unmask or ** keyword changes."
 			]
 			for line in msg:
 				if line:
