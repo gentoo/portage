@@ -6033,15 +6033,11 @@ class depgraph(object):
 				except PortageException:
 					problems.append("!!! Failed to write '%s'\n" % file_to_write_to)
 
-		if not quiet and \
-			(unstable_keyword_msg or \
-			p_mask_change_msg or \
-			use_changes_msg or \
-			license_msg):
+		if not quiet and p_mask_change_msg:
 			msg = [
 				"",
-				"NOTE: This --autounmask behavior can be disabled by setting",
-				"      EMERGE_DEFAULT_OPTS=\"--autounmask=n\" in make.conf."
+				"NOTE: The --autounmask-keep-masks option will prevent emerge",
+				"      from creating mask changes."
 			]
 			for line in msg:
 				if line:
