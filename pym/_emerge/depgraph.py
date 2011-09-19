@@ -3411,6 +3411,8 @@ class depgraph(object):
 
 		default_selection = (pkg, existing)
 
+		autounmask_keep_masks = self._frozen_config.myopts.get("--autounmask-keep-masks", "n") != "n"
+
 		if self._dynamic_config._autounmask is True:
 			if pkg is not None and \
 				pkg.installed and \
@@ -3422,7 +3424,7 @@ class depgraph(object):
 					break
 
 				for allow_unmasks in (False, True):
-					if only_use_changes and allow_unmasks:
+					if allow_unmasks and (only_use_changes or autounmask_keep_masks):
 						continue
 
 					if pkg is not None:

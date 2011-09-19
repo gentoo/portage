@@ -309,6 +309,11 @@ If \-\-autounmask is enabled, changes using the \'=\' operator
 will be written. With this option, \'>=\' operators will be used
 whenever possible.
 .TP
+.BR "\-\-autounmask\-keep\-masks [ y | n ]"
+If \-\-autounmask is enabled, no changes to package.unmask
+will be created. This leads to unsatisfied dependencies if
+no other solution exists.
+.TP
 .BR "\-\-autounmask\-write [ y | n ]"
 If \-\-autounmask is enabled, changes are written
 to config files, respecting \fBCONFIG_PROTECT\fR and \fB\-\-ask\fR.

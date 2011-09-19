@@ -388,3 +388,42 @@ class AutounmaskTestCase(TestCase):
 				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
 		finally:
 			playground.cleanup()
+
+
+	def testAutounmaskKeepMasks(self):
+
+		ebuilds = {
+			"app-text/A-1": {},
+			}
+
+		test_cases = (
+				#Test mask and keyword changes.
+				ResolverPlaygroundTestCase(
+					["app-text/A"],
+					options = {"--autounmask": True,
+								"--autounmask-keep-masks": "y"},
+					success = False),
+				ResolverPlaygroundTestCase(
+					["app-text/A"],
+					options = {"--autounmask": True,
+								"--autounmask-keep-masks": "n"},
+					success = False,
+					mergelist = ["app-text/A-1"],
+					needed_p_mask_changes = ["app-text/A-1"]),
+			)
+
+		profile = {
+			"package.mask":
+				(
+					"app-text/A",
+				),
+		}
+
+		playground = ResolverPlayground(ebuilds=ebuilds, profile=profile)
+
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()

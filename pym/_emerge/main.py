@@ -431,6 +431,7 @@ def insert_optional_args(args):
 	default_arg_opts = {
 		'--ask'                  : y_or_n,
 		'--autounmask'           : y_or_n,
+		'--autounmask-keep-masks': y_or_n,
 		'--autounmask-unrestricted-atoms' : y_or_n,
 		'--autounmask-write'     : y_or_n,
 		'--buildpkg'             : y_or_n,
@@ -606,6 +607,12 @@ def parse_opts(tmpcmdline, silent=False):
 
 		"--autounmask-unrestricted-atoms": {
 			"help"    : "write autounmask changes with >= atoms if possible",
+			"type"    : "choice",
+			"choices" : true_y_or_n
+		},
+
+		"--autounmask-keep-masks": {
+			"help"    : "don't add package.unmask entries",
 			"type"    : "choice",
 			"choices" : true_y_or_n
 		},
@@ -935,6 +942,9 @@ def parse_opts(tmpcmdline, silent=False):
 
 	if myoptions.autounmask_unrestricted_atoms in true_y:
 		myoptions.autounmask_unrestricted_atoms = True
+
+	if myoptions.autounmask_keep_masks in true_y:
+		myoptions.autounmask_keep_masks = True
 
 	if myoptions.autounmask_write in true_y:
 		myoptions.autounmask_write = True
