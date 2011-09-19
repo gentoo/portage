@@ -323,6 +323,14 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
+		print("       " + green("--autounmask-unrestricted-atoms") + " [ %s | %s ]" % \
+			(turquoise("y"), turquoise("n")))
+		desc = "If --autounmask is enabled, changes using the '=' operator " + \
+			"will be written. With this option, '>=' operators will be used " + \
+			"whenever possible."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
 		print("       " + green("--autounmask-write") + " [ %s | %s ]" % \
 			(turquoise("y"), turquoise("n")))
 		desc = "If --autounmask is enabled, changes are written " + \

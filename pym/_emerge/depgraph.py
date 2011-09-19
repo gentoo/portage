@@ -5728,6 +5728,8 @@ class depgraph(object):
 		"""
 
 		autounmask_write = self._frozen_config.myopts.get("--autounmask-write", "n") == True
+		autounmask_unrestricted_atoms = \
+			self._frozen_config.myopts.get("--autounmask-unrestricted-atoms", "n") == True
 		quiet = "--quiet" in self._frozen_config.myopts
 		pretend = "--pretend" in self._frozen_config.myopts
 		ask = "--ask" in self._frozen_config.myopts
@@ -5780,10 +5782,13 @@ class depgraph(object):
 						keyword = reason.unmask_hint.value
 
 						unstable_keyword_msg[root].append(self._get_dep_chain_as_comment(pkg))
-						if is_latest:
-							unstable_keyword_msg[root].append(">=%s %s\n" % (pkg.cpv, keyword))
-						elif is_latest_in_slot:
-							unstable_keyword_msg[root].append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], keyword))
+						if autounmask_unrestricted_atoms:
+							if is_latest:
+								unstable_keyword_msg[root].append(">=%s %s\n" % (pkg.cpv, keyword))
+							elif is_latest_in_slot:
+								unstable_keyword_msg[root].append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], keyword))
+							else:
+								unstable_keyword_msg[root].append("=%s %s\n" % (pkg.cpv, keyword))
 						else:
 							unstable_keyword_msg[root].append("=%s %s\n" % (pkg.cpv, keyword))
 
@@ -5817,10 +5822,13 @@ class depgraph(object):
 								comment.splitlines() if line]
 							for line in comment:
 								p_mask_change_msg[root].append("%s\n" % line)
-						if is_latest:
-							p_mask_change_msg[root].append(">=%s\n" % pkg.cpv)
-						elif is_latest_in_slot:
-							p_mask_change_msg[root].append(">=%s:%s\n" % (pkg.cpv, pkg.metadata["SLOT"]))
+						if autounmask_unrestricted_atoms:
+							if is_latest:
+								p_mask_change_msg[root].append(">=%s\n" % pkg.cpv)
+							elif is_latest_in_slot:
+								p_mask_change_msg[root].append(">=%s:%s\n" % (pkg.cpv, pkg.metadata["SLOT"]))
+							else:
+								p_mask_change_msg[root].append("=%s\n" % pkg.cpv)
 						else:
 							p_mask_change_msg[root].append("=%s\n" % pkg.cpv)
 
@@ -5840,10 +5848,13 @@ class depgraph(object):
 					else:
 						adjustments.append("-" + flag)
 				use_changes_msg[root].append(self._get_dep_chain_as_comment(pkg, unsatisfied_dependency=True))
-				if is_latest:
-					use_changes_msg[root].append(">=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
-				elif is_latest_in_slot:
-					use_changes_msg[root].append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], " ".join(adjustments)))
+				if autounmask_unrestricted_atoms:
+					if is_latest:
+						use_changes_msg[root].append(">=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
+					elif is_latest_in_slot:
+						use_changes_msg[root].append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], " ".join(adjustments)))
+					else:
+						use_changes_msg[root].append("=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
 				else:
 					use_changes_msg[root].append("=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
 
@@ -5857,10 +5868,13 @@ class depgraph(object):
 				is_latest, is_latest_in_slot = check_if_latest(pkg)
 
 				license_msg[root].append(self._get_dep_chain_as_comment(pkg))
-				if is_latest:
-					license_msg[root].append(">=%s %s\n" % (pkg.cpv, " ".join(sorted(missing_licenses))))
-				elif is_latest_in_slot:
-					license_msg[root].append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], " ".join(sorted(missing_licenses))))
+				if autounmask_unrestricted_atoms:
+					if is_latest:
+						license_msg[root].append(">=%s %s\n" % (pkg.cpv, " ".join(sorted(missing_licenses))))
+					elif is_latest_in_slot:
+						license_msg[root].append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], " ".join(sorted(missing_licenses))))
+					else:
+						license_msg[root].append("=%s %s\n" % (pkg.cpv, " ".join(sorted(missing_licenses))))
 				else:
 					license_msg[root].append("=%s %s\n" % (pkg.cpv, " ".join(sorted(missing_licenses))))
 

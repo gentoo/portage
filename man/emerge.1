@@ -304,6 +304,11 @@ the specified configuration file(s), or enable the
 \fBEMERGE_DEFAULT_OPTS\fR variable may be used to
 disable this option by default in \fBmake.conf\fR(5).
 .TP
+.BR "\-\-autounmask\-unrestricted\-atoms [ y | n ]"
+If \-\-autounmask is enabled, changes using the \'=\' operator
+will be written. With this option, \'>=\' operators will be used
+whenever possible.
+.TP
 .BR "\-\-autounmask\-write [ y | n ]"
 If \-\-autounmask is enabled, changes are written
 to config files, respecting \fBCONFIG_PROTECT\fR and \fB\-\-ask\fR.
