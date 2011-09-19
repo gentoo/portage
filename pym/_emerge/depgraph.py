@@ -1121,11 +1121,6 @@ class depgraph(object):
 									all_match = False
 									break
 
-							if to_be_selected >= to_be_masked:
-								# We only care about the parent atoms
-								# when they trigger a downgrade.
-								parent_atoms = set()
-
 							fallback_data.append((to_be_masked, parent_atoms))
 
 							if all_match:
