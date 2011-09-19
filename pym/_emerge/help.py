@@ -333,8 +333,8 @@ def help(myopts, havecolor=1):
 		print()
 		print("       " + green("--autounmask-keep-masks") + " [ %s | %s ]" % \
 			(turquoise("y"), turquoise("n")))
-		desc = "If --autounmask is enabled, no changes to " + \
-			"package.unmask will be created. This leads to unsatisfied " + \
+		desc = "If --autounmask is enabled, no package.unmask or ** keyword " + \
+			"changes will be created. This leads to unsatisfied " + \
 			"dependencies if no other solution exists."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
