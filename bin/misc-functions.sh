@@ -1297,7 +1297,7 @@ preinst_aix() {
 	else
 		die "cannot find where to use 'ar' and 'strip' from"
 	fi
-	local archives_members= archives=() chmod400files=()
+	local archives_members= archives=() helperfiles=()
 	local archive_member soname runpath needed archive contentmember
 	while read archive_member; do
 		archive_member=${archive_member#*;${EPREFIX}/} # drop "^type;EPREFIX/"
@@ -1321,13 +1321,24 @@ preinst_aix() {
 		# portage does os.lstat() on merged files every now
 		# and then, so keep stamp-files for archive members
 		# around to get the preserve-libs feature working.
-		{	echo "Please leave this file alone, it is an important helper"
-			echo "for portage to implement the 'preserve-libs' feature on AIX." 
-		} > "${ED}${contentmember}" || die "cannot create ${contentmember}"
-		chmod400files[${#chmod400files[@]}]=${ED}${contentmember}
+		helperfiles[${#helperfiles[@]}]=${ED}${contentmember}
 	done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED.XCOFF.1
-	[[ ${#chmod400files[@]} == 0 ]] ||
-	chmod 0400 "${chmod400files[@]}" || die "cannot chmod ${chmod400files[@]}"
+	if [[ ${#helperfiles[@]} > 0 ]]; then
+		rm -f "${helperfiles[@]}" || die "cannot prune ${helperfiles[@]}"
+		local f prev=
+		for f in "${helperfiles[@]}"
+		do
+			if [[ -z ${prev} ]]; then
+				{	echo "Please leave this file alone, it is an important helper"
+					echo "for portage to implement the 'preserve-libs' feature on AIX." 
+				} > "${f}" || die "cannot create ${f}"
+				chmod 0400 "${f}" || die "cannot chmod ${f}"
+				prev=${f}
+			else
+				ln "${prev}" "${f}" || die "cannot create hardlink ${f}"
+			fi
+		done
+	fi
 
 	local preservemembers libmetadir prunedirs=()
 	local FILE MEMBER FLAGS
