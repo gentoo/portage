@@ -24,7 +24,6 @@ from portage.dbapi import dbapi
 from portage.exception import PortageException, \
 	FileNotFound, InvalidAtom, InvalidDependString, InvalidPackageName
 from portage.localization import _
-from portage.manifest import Manifest
 
 from portage import eclass_cache, auxdbkeys, \
 	eapi_is_supported, dep_check, \

@@ -69,7 +69,6 @@ from portage import cvstree, normalize_path
 from portage import util
 from portage.exception import (FileNotFound, MissingParameter,
 	ParseError, PermissionDenied)
-from portage.manifest import Manifest
 from portage.process import find_binary, spawn
 from portage.output import bold, create_color_func, \
 	green, nocolor, red
@@ -580,7 +579,8 @@ if options.mode == 'commit' and not options.pretend and not vcs:
 # Ensure that PORTDIR_OVERLAY contains the repository corresponding to $PWD.
 repoman_settings = portage.config(local_config=False, _eprefix=eprefix)
 repoman_settings['PORTDIR_OVERLAY'] = "%s %s" % \
-	(repoman_settings.get('PORTDIR_OVERLAY', ''), portdir_overlay)
+	(repoman_settings.get('PORTDIR_OVERLAY', ''),
+	portage._shell_quote(portdir_overlay))
 # We have to call the config constructor again so
 # that config.repositories is initialized correctly.
 repoman_settings = portage.config(local_config=False, _eprefix=eprefix,
@@ -622,7 +622,7 @@ logging.info('PORTDIR_OVERLAY = "%s"' % env['PORTDIR_OVERLAY'])
 env['FEATURES'] = env.get('FEATURES', '') + ' -unknown-features-warn'
 
 categories = []
-for path in set([portdir, portdir_overlay]):
+for path in set([portdir, repodir]):
 	categories.extend(portage.util.grabfile(
 		os.path.join(path, 'profiles', 'categories')))
 repoman_settings.categories = tuple(sorted(
@@ -649,8 +649,8 @@ if options.mode == 'commit' and repolevel not in [1,2,3]:
 	print(red("***"))
 	err("Unable to identify level we're commiting from for %s" % '/'.join(reposplit))
 
-# Make startdir relative to the cannonical repodir, so that we can pass
-# it to digestgen and it won't have to be cannonicalized again.
+# Make startdir relative to the canonical repodir, so that we can pass
+# it to digestgen and it won't have to be canonicalized again.
 if repolevel == 1:
 	startdir = repodir
 else:

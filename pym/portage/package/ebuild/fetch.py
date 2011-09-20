@@ -35,7 +35,6 @@ from portage.exception import FileNotFound, OperationNotPermitted, \
 	PortageException, TryAgain
 from portage.localization import _
 from portage.locks import lockfile, unlockfile
-from portage.manifest import Manifest
 from portage.output import colorize, EOutput
 from portage.util import apply_recursive_permissions, \
 	apply_secpass_permissions, ensure_dirs, grabdict, shlex_split, \

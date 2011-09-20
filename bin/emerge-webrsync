@@ -162,6 +162,7 @@ check_file_signature() {
 			gpg --homedir "${PORTAGE_GPG_DIR}" --verify "$signature" "$file" && r=0
 		else
 			eecho "cannot check signature: gpg binary not found"
+			exit 1
 		fi
 	else
 		r=0

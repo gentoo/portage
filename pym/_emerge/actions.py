@@ -706,7 +706,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		# that are also matched by argument atoms, but do not remove
 		# them if they match the highest installed version.
 		for pkg in vardb:
-			spinner.update()
+			if spinner is not None:
+				spinner.update()
 			pkgs_for_cp = vardb.match_pkgs(pkg.cp)
 			if not pkgs_for_cp or pkg not in pkgs_for_cp:
 				raise AssertionError("package expected in matches: " + \

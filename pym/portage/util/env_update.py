@@ -19,12 +19,14 @@ from portage.process import find_binary
 from portage.util import atomic_ofstream, ensure_dirs, getconfig, \
 	normalize_path, writemsg
 from portage.util.listdir import listdir
+from portage.dbapi.vartree import vartree
+from portage.package.ebuild.config import config
 
 if sys.hexversion >= 0x3000000:
 	long = int
 
 def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
-	env=None, writemsg_level=None):
+	env=None, writemsg_level=None, vardbapi=None):
 	"""
 	Parse /etc/env.d and use it to generate /etc/profile.env, csh.env,
 	ld.so.conf, and prelink.conf. Finally, run ldconfig. When ldconfig is
@@ -39,6 +41,33 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 		defaults to portage.settings["ROOT"].
 	@type target_root: String (Path)
 	"""
+	if vardbapi is None:
+		if isinstance(env, config):
+			vardbapi = vartree(settings=env).dbapi
+		else:
+			if target_root is None:
+				target_root = portage.settings["ROOT"]
+			if hasattr(portage, "db") and target_root in portage.db:
+				vardbapi = portage.db[target_root]["vartree"].dbapi
+			else:
+				settings = config(config_root=target_root,
+					target_root=target_root)
+				target_root = settings["ROOT"]
+				if env is None:
+					env = settings
+				vardbapi = vartree(settings=settings).dbapi
+
+	# Lock the config memory file to prevent symlink creation
+	# in merge_contents from overlapping with env-update.
+	vardbapi._fs_lock()
+	try:
+		return _env_update(makelinks, target_root, prev_mtimes, contents,
+			env, writemsg_level)
+	finally:
+		vardbapi._fs_unlock()
+
+def _env_update(makelinks, target_root, prev_mtimes, contents, env,
+	writemsg_level):
 	if writemsg_level is None:
 		writemsg_level = portage.util.writemsg_level
 	if target_root is None:

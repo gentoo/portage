@@ -8,7 +8,6 @@ import warnings
 from portage import os, _encodings, _unicode_decode
 from portage.exception import DigestException, FileNotFound
 from portage.localization import _
-from portage.manifest import Manifest
 from portage.output import EOutput
 from portage.util import writemsg
 
@@ -30,45 +29,26 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
 		return 1
 	allow_missing = "allow-missing-manifests" in mysettings.features
 	pkgdir = mysettings["O"]
-	manifest_path = os.path.join(pkgdir, "Manifest")
-	if not os.path.exists(manifest_path):
-		if allow_missing:
-			return 1
-		writemsg(_("!!! Manifest file not found: '%s'\n") % manifest_path,
-			noiselevel=-1)
-		if strict:
-			return 0
-		else:
-			return 1
 	if mf is None:
 		mf = mysettings.repositories.get_repo_for_location(
 			os.path.dirname(os.path.dirname(pkgdir)))
 		mf = mf.load_manifest(pkgdir, mysettings["DISTDIR"])
-	manifest_empty = True
-	for d in mf.fhashdict.values():
-		if d:
-			manifest_empty = False
-			break
-	if manifest_empty:
-		writemsg(_("!!! Manifest is empty: '%s'\n") % manifest_path,
-			noiselevel=-1)
-		if strict:
-			return 0
-		else:
-			return 1
 	eout = EOutput()
 	eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
 	try:
 		if strict and "PORTAGE_PARALLEL_FETCHONLY" not in mysettings:
-			eout.ebegin(_("checking ebuild checksums ;-)"))
-			mf.checkTypeHashes("EBUILD")
-			eout.eend(0)
-			eout.ebegin(_("checking auxfile checksums ;-)"))
-			mf.checkTypeHashes("AUX")
-			eout.eend(0)
-			eout.ebegin(_("checking miscfile checksums ;-)"))
-			mf.checkTypeHashes("MISC", ignoreMissingFiles=True)
-			eout.eend(0)
+			if mf.fhashdict.get("EBUILD"):
+				eout.ebegin(_("checking ebuild checksums ;-)"))
+				mf.checkTypeHashes("EBUILD")
+				eout.eend(0)
+			if mf.fhashdict.get("AUX"):
+				eout.ebegin(_("checking auxfile checksums ;-)"))
+				mf.checkTypeHashes("AUX")
+				eout.eend(0)
+			if mf.fhashdict.get("MISC"):
+				eout.ebegin(_("checking miscfile checksums ;-)"))
+				mf.checkTypeHashes("MISC", ignoreMissingFiles=True)
+				eout.eend(0)
 		for f in myfiles:
 			eout.ebegin(_("checking %s ;-)") % f)
 			ftype = mf.findFile(f)

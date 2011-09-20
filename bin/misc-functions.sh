@@ -665,8 +665,8 @@ install_qa_check_misc() {
 				#esac
 				if [[ $always_overflow = yes ]] ; then
 					eerror
-					eerror "QA Notice: Package has poor programming practices which may compile"
-					eerror "           fine but exhibit random runtime failures."
+					eerror "QA Notice: Package triggers severe warnings which indicate that it"
+					eerror "           may exhibit random runtime failures."
 					eerror
 					eerror "${f}"
 					eerror
@@ -675,8 +675,8 @@ install_qa_check_misc() {
 					eerror
 				else
 					vecho -ne '\n'
-					eqawarn "QA Notice: Package has poor programming practices which may compile"
-					eqawarn "           fine but exhibit random runtime failures."
+					eqawarn "QA Notice: Package triggers severe warnings which indicate that it"
+					eqawarn "           may exhibit random runtime failures."
 					eqawarn "${f}"
 					vecho -ne '\n'
 				fi
@@ -702,8 +702,8 @@ install_qa_check_misc() {
 
 			if [[ $gentoo_bug = yes ]] ; then
 				eerror
-				eerror "QA Notice: Package has poor programming practices which may compile"
-				eerror "           but will almost certainly crash on 64bit architectures."
+				eerror "QA Notice: Package triggers severe warnings which indicate that it"
+				eerror "           will almost certainly crash on 64bit architectures."
 				eerror
 				eerror "${f}"
 				eerror
@@ -712,8 +712,8 @@ install_qa_check_misc() {
 				eerror
 			else
 				vecho -ne '\n'
-				eqawarn "QA Notice: Package has poor programming practices which may compile"
-				eqawarn "           but will almost certainly crash on 64bit architectures."
+				eqawarn "QA Notice: Package triggers severe warnings which indicate that it"
+				eqawarn "           will almost certainly crash on 64bit architectures."
 				eqawarn "${f}"
 				vecho -ne '\n'
 			fi
@@ -722,7 +722,7 @@ install_qa_check_misc() {
 		if [[ ${abort} == "yes" ]] ; then
 			if [[ $gentoo_bug = yes || $always_overflow = yes ]] ; then
 				die "install aborted due to" \
-					"poor programming practices shown above"
+					"severe warnings shown above"
 			else
 				echo "Please do not file a Gentoo bug and instead" \
 				"report the above QA issues directly to the upstream" \
@@ -730,7 +730,7 @@ install_qa_check_misc() {
 				while read -r line ; do eqawarn "${line}" ; done
 				eqawarn "Homepage: ${HOMEPAGE}"
 				has stricter ${FEATURES} && die "install aborted due to" \
-					"poor programming practices shown above"
+					"severe warnings shown above"
 			fi
 		fi
 	fi

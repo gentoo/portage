@@ -167,3 +167,46 @@ class BacktrackingTestCase(TestCase):
 				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
 		finally:
 			playground.cleanup()
+
+
+	def testBacktrackNoWrongRebuilds(self):
+		"""
+		Ensure we remove backtrack masks if the reason for the mask gets masked itself.
+		"""
+
+		ebuilds = {
+			"dev-libs/A-1": { },
+			"dev-libs/A-2": { },
+			"dev-libs/B-1": { "RDEPEND": "dev-libs/D"},
+			"dev-libs/C-1": { },
+			"dev-libs/C-2": { "RDEPEND": ">=dev-libs/A-2" },
+			"dev-libs/D-1": { "RDEPEND": "<dev-libs/A-2" },
+			}
+
+		installed = {
+			"dev-libs/A-1": { },
+			"dev-libs/B-1": { "RDEPEND": "dev-libs/D" },
+			"dev-libs/C-1": { },
+			"dev-libs/D-1": { "RDEPEND": "<dev-libs/A-2" },
+			}
+
+		world = [ "dev-libs/B", "dev-libs/C" ]
+
+		options = {'--update' : True, '--deep' : True, '--selective' : True}
+
+		test_cases = (
+				ResolverPlaygroundTestCase(
+					["@world"],
+					options = options,
+					mergelist = [],
+					success = True),
+			)
+
+		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed, world=world)
+
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()

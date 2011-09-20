@@ -136,11 +136,7 @@ vdb_path = os.path.realpath(os.path.join(portage.settings['EROOT'], VDB_PATH))
 # Make sure that portdb.findname() returns the correct ebuild.
 if ebuild_portdir != vdb_path and \
 	ebuild_portdir not in portage.portdb.porttrees:
-	portdir_overlay = os.environ.get("PORTDIR_OVERLAY")
-	if portdir_overlay is None:
-		portdir_overlay = portage.settings.get("PORTDIR_OVERLAY")
-	if portdir_overlay is None:
-		portdir_overlay = ""
+	portdir_overlay = portage.settings.get("PORTDIR_OVERLAY", "")
 	if sys.hexversion >= 0x3000000:
 		os.environ["PORTDIR_OVERLAY"] = \
 			portdir_overlay + \

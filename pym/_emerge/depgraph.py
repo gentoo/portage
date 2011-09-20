@@ -18,7 +18,8 @@ from portage import os, OrderedDict
 from portage import _unicode_decode, _unicode_encode, _encodings
 from portage.const import PORTAGE_PACKAGE_ATOM, USER_CONFIG_PATH
 from portage.dbapi import dbapi
-from portage.dep import Atom, extract_affecting_use, check_required_use, human_readable_required_use, _repo_separator
+from portage.dep import Atom, best_match_to_list, extract_affecting_use, \
+	check_required_use, human_readable_required_use, _repo_separator
 from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use
 from portage.exception import InvalidAtom, InvalidDependString, PortageException
 from portage.output import colorize, create_color_func, \
@@ -1119,11 +1120,6 @@ class depgraph(object):
 								if not i.findAtomForPackage(to_be_masked):
 									all_match = False
 									break
-
-							if to_be_selected >= to_be_masked:
-								# We only care about the parent atoms
-								# when they trigger a downgrade.
-								parent_atoms = set()
 
 							fallback_data.append((to_be_masked, parent_atoms))
 
@@ -2694,6 +2690,37 @@ class depgraph(object):
 
 			dep_chain.append((pkg_name, node.type_name))
 
+
+		# To build a dep chain for the given package we take
+		# "random" parents form the digraph, except for the
+		# first package, because we want a parent that forced
+		# the corresponding change (i.e '>=foo-2', instead 'foo').
+
+		traversed_nodes.add(start_node)
+
+		start_node_parent_atoms = {}
+		for ppkg, patom in all_parents.get(node, []):
+			# Get a list of suitable atoms. For use deps
+			# (aka unsatisfied_dependency is not None) we
+			# need that the start_node doesn't match the atom.
+			if not unsatisfied_dependency or \
+				not InternalPackageSet(initial_atoms=(patom,)).findAtomForPackage(start_node):
+				start_node_parent_atoms.setdefault(patom, []).append(ppkg)
+
+		if start_node_parent_atoms:
+			# If there are parents in all_parents then use one of them.
+			# If not, then this package got pulled in by an Arg and
+			# will be correctly handled by the code that handles later
+			# packages in the dep chain.
+			best_match = best_match_to_list(node.cpv, start_node_parent_atoms)
+
+			child = node
+			for ppkg in start_node_parent_atoms[best_match]:
+				node = ppkg
+				if ppkg in self._dynamic_config._initial_arg_list:
+					# Stop if reached the top level of the dep chain.
+					break
+
 		while node is not None:
 			traversed_nodes.add(node)
 
@@ -3263,11 +3290,20 @@ class depgraph(object):
 		# satisfied rather than forcing a rebuild.
 		installed = pkg_type == 'installed'
 		if installed and not cpv_list and atom.slot:
+
+			if "remove" in self._dynamic_config.myparams:
+				# We need to search the portdbapi, which is not in our
+				# normal dbs list, in order to find the real SLOT.
+				portdb = self._frozen_config.trees[root_config.root]["porttree"].dbapi
+				db_keys = list(portdb._aux_cache_keys)
+				dbs = [(portdb, "ebuild", False, False, db_keys)]
+			else:
+				dbs = self._dynamic_config._filtered_trees[root_config.root]["dbs"]
+
 			for cpv in db.match(atom.cp):
 				slot_available = False
 				for other_db, other_type, other_built, \
-					other_installed, other_keys in \
-					self._dynamic_config._filtered_trees[root_config.root]["dbs"]:
+					other_installed, other_keys in dbs:
 					try:
 						if atom.slot == \
 							other_db.aux_get(cpv, ["SLOT"])[0]:
@@ -3370,6 +3406,8 @@ class depgraph(object):
 
 		default_selection = (pkg, existing)
 
+		autounmask_keep_masks = self._frozen_config.myopts.get("--autounmask-keep-masks", "n") != "n"
+
 		if self._dynamic_config._autounmask is True:
 			if pkg is not None and \
 				pkg.installed and \
@@ -3381,7 +3419,7 @@ class depgraph(object):
 					break
 
 				for allow_unmasks in (False, True):
-					if only_use_changes and allow_unmasks:
+					if allow_unmasks and (only_use_changes or autounmask_keep_masks):
 						continue
 
 					if pkg is not None:
@@ -4064,11 +4102,12 @@ class depgraph(object):
 		"""
 		Select packages that are installed.
 		"""
-		vardb = self._dynamic_config._graph_trees[root]["vartree"].dbapi
-		matches = vardb.match_pkgs(atom)
+		matches = list(self._iter_match_pkgs(self._frozen_config.roots[root],
+			"installed", atom))
 		if not matches:
 			return None, None
 		if len(matches) > 1:
+			matches.reverse() # ascending order
 			unmasked = [pkg for pkg in matches if \
 				self._pkg_visibility_check(pkg)]
 			if unmasked:
@@ -5686,6 +5725,8 @@ class depgraph(object):
 		"""
 
 		autounmask_write = self._frozen_config.myopts.get("--autounmask-write", "n") == True
+		autounmask_unrestricted_atoms = \
+			self._frozen_config.myopts.get("--autounmask-unrestricted-atoms", "n") == True
 		quiet = "--quiet" in self._frozen_config.myopts
 		pretend = "--pretend" in self._frozen_config.myopts
 		ask = "--ask" in self._frozen_config.myopts
@@ -5721,6 +5762,7 @@ class depgraph(object):
 		#Set of roots we have autounmask changes for.
 		roots = set()
 
+		masked_by_missing_keywords = False
 		unstable_keyword_msg = {}
 		for pkg in self._dynamic_config._needed_unstable_keywords:
 			self._show_merge_list()
@@ -5736,12 +5778,17 @@ class depgraph(object):
 					if reason.unmask_hint and \
 						reason.unmask_hint.key == 'unstable keyword':
 						keyword = reason.unmask_hint.value
+						if keyword == "**":
+							masked_by_missing_keywords = True
 
 						unstable_keyword_msg[root].append(self._get_dep_chain_as_comment(pkg))
-						if is_latest:
-							unstable_keyword_msg[root].append(">=%s %s\n" % (pkg.cpv, keyword))
-						elif is_latest_in_slot:
-							unstable_keyword_msg[root].append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], keyword))
+						if autounmask_unrestricted_atoms:
+							if is_latest:
+								unstable_keyword_msg[root].append(">=%s %s\n" % (pkg.cpv, keyword))
+							elif is_latest_in_slot:
+								unstable_keyword_msg[root].append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], keyword))
+							else:
+								unstable_keyword_msg[root].append("=%s %s\n" % (pkg.cpv, keyword))
 						else:
 							unstable_keyword_msg[root].append("=%s %s\n" % (pkg.cpv, keyword))
 
@@ -5775,10 +5822,13 @@ class depgraph(object):
 								comment.splitlines() if line]
 							for line in comment:
 								p_mask_change_msg[root].append("%s\n" % line)
-						if is_latest:
-							p_mask_change_msg[root].append(">=%s\n" % pkg.cpv)
-						elif is_latest_in_slot:
-							p_mask_change_msg[root].append(">=%s:%s\n" % (pkg.cpv, pkg.metadata["SLOT"]))
+						if autounmask_unrestricted_atoms:
+							if is_latest:
+								p_mask_change_msg[root].append(">=%s\n" % pkg.cpv)
+							elif is_latest_in_slot:
+								p_mask_change_msg[root].append(">=%s:%s\n" % (pkg.cpv, pkg.metadata["SLOT"]))
+							else:
+								p_mask_change_msg[root].append("=%s\n" % pkg.cpv)
 						else:
 							p_mask_change_msg[root].append("=%s\n" % pkg.cpv)
 
@@ -5798,10 +5848,13 @@ class depgraph(object):
 					else:
 						adjustments.append("-" + flag)
 				use_changes_msg[root].append(self._get_dep_chain_as_comment(pkg, unsatisfied_dependency=True))
-				if is_latest:
-					use_changes_msg[root].append(">=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
-				elif is_latest_in_slot:
-					use_changes_msg[root].append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], " ".join(adjustments)))
+				if autounmask_unrestricted_atoms:
+					if is_latest:
+						use_changes_msg[root].append(">=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
+					elif is_latest_in_slot:
+						use_changes_msg[root].append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], " ".join(adjustments)))
+					else:
+						use_changes_msg[root].append("=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
 				else:
 					use_changes_msg[root].append("=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
 
@@ -5815,10 +5868,13 @@ class depgraph(object):
 				is_latest, is_latest_in_slot = check_if_latest(pkg)
 
 				license_msg[root].append(self._get_dep_chain_as_comment(pkg))
-				if is_latest:
-					license_msg[root].append(">=%s %s\n" % (pkg.cpv, " ".join(sorted(missing_licenses))))
-				elif is_latest_in_slot:
-					license_msg[root].append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], " ".join(sorted(missing_licenses))))
+				if autounmask_unrestricted_atoms:
+					if is_latest:
+						license_msg[root].append(">=%s %s\n" % (pkg.cpv, " ".join(sorted(missing_licenses))))
+					elif is_latest_in_slot:
+						license_msg[root].append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], " ".join(sorted(missing_licenses))))
+					else:
+						license_msg[root].append("=%s %s\n" % (pkg.cpv, " ".join(sorted(missing_licenses))))
 				else:
 					license_msg[root].append("=%s %s\n" % (pkg.cpv, " ".join(sorted(missing_licenses))))
 
@@ -5975,15 +6031,11 @@ class depgraph(object):
 				except PortageException:
 					problems.append("!!! Failed to write '%s'\n" % file_to_write_to)
 
-		if not quiet and \
-			(unstable_keyword_msg or \
-			p_mask_change_msg or \
-			use_changes_msg or \
-			license_msg):
+		if not quiet and (p_mask_change_msg or masked_by_missing_keywords):
 			msg = [
 				"",
-				"NOTE: This --autounmask behavior can be disabled by setting",
-				"      EMERGE_DEFAULT_OPTS=\"--autounmask=n\" in make.conf."
+				"NOTE: The --autounmask-keep-masks option will prevent emerge",
+				"      from creating package.unmask or ** keyword changes."
 			]
 			for line in msg:
 				if line:
@@ -6585,7 +6637,8 @@ class _dep_check_composite_db(dbapi):
 		if pkg is not None and \
 			atom.slot is None and \
 			pkg.cp.startswith("virtual/") and \
-			("--update" not in self._depgraph._frozen_config.myopts or
+			(("remove" not in self._depgraph._dynamic_config.myparams and
+			"--update" not in self._depgraph._frozen_config.myopts) or
 			not ret or
 			not self._depgraph._virt_deps_visible(pkg, ignore_use=True)):
 			# For new-style virtual lookahead that occurs inside dep_check()

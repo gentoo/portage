@@ -1,6 +1,7 @@
 # Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from portage.const import _ENABLE_SET_CONFIG
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground, ResolverPlaygroundTestCase
 
@@ -318,6 +319,108 @@ class AutounmaskTestCase(TestCase):
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
+
+
+	def testAutounmaskAndSets(self):
+
+		if not _ENABLE_SET_CONFIG:
+			return
+
+		ebuilds = {
+			#ebuilds to test use changes
+			"dev-libs/A-1": { },
+			"dev-libs/A-2": { "KEYWORDS": "~x86" },
+			"dev-libs/B-1": { "DEPEND": "dev-libs/A" },
+			"dev-libs/C-1": { "DEPEND": ">=dev-libs/A-2" },
+			"dev-libs/D-1": { "DEPEND": "dev-libs/A" },
+			}
+
+		world_sets = [ "@test-set" ]
+		sets = {
+			"test-set": (
+					"dev-libs/A", "dev-libs/B", "dev-libs/C", "dev-libs/D",
+				),
+			}
+
+		test_cases = (
+				#Test USE changes.
+				#The simple case.
+
+				ResolverPlaygroundTestCase(
+					["dev-libs/B", "dev-libs/C", "dev-libs/D"],
+					all_permutations=True,
+					options = {"--autounmask": "y"},
+					mergelist=["dev-libs/A-2", "dev-libs/B-1", "dev-libs/C-1", "dev-libs/D-1"],
+					ignore_mergelist_order=True,
+					unstable_keywords = ["dev-libs/A-2"],
+					success = False),
+
+				ResolverPlaygroundTestCase(
+					["@test-set"],
+					all_permutations=True,
+					options = {"--autounmask": "y"},
+					mergelist=["dev-libs/A-2", "dev-libs/B-1", "dev-libs/C-1", "dev-libs/D-1"],
+					ignore_mergelist_order=True,
+					unstable_keywords = ["dev-libs/A-2"],
+					success = False),
+
+				ResolverPlaygroundTestCase(
+					["@world"],
+					all_permutations=True,
+					options = {"--autounmask": "y"},
+					mergelist=["dev-libs/A-2", "dev-libs/B-1", "dev-libs/C-1", "dev-libs/D-1"],
+					ignore_mergelist_order=True,
+					unstable_keywords = ["dev-libs/A-2"],
+					success = False),
+			)
+
+
+		playground = ResolverPlayground(ebuilds=ebuilds, world_sets=world_sets, sets=sets)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
+
+
+	def testAutounmaskKeepMasks(self):
+
+		ebuilds = {
+			"app-text/A-1": {},
+			}
+
+		test_cases = (
+				#Test mask and keyword changes.
+				ResolverPlaygroundTestCase(
+					["app-text/A"],
+					options = {"--autounmask": True,
+								"--autounmask-keep-masks": "y"},
+					success = False),
+				ResolverPlaygroundTestCase(
+					["app-text/A"],
+					options = {"--autounmask": True,
+								"--autounmask-keep-masks": "n"},
+					success = False,
+					mergelist = ["app-text/A-1"],
+					needed_p_mask_changes = ["app-text/A-1"]),
+			)
+
+		profile = {
+			"package.mask":
+				(
+					"app-text/A",
+				),
+		}
+
+		playground = ResolverPlayground(ebuilds=ebuilds, profile=profile)
+
 		try:
 			for test_case in test_cases:
 				playground.run_TestCase(test_case)

@@ -194,7 +194,14 @@ class RepoConfigLoader(object):
 		if portdir:
 			portdir = normalize_path(portdir)
 			overlays.append(portdir)
-		port_ov = [normalize_path(i) for i in shlex_split(portdir_overlay)]
+		try:
+			port_ov = [normalize_path(i) for i in shlex_split(portdir_overlay)]
+		except ValueError as e:
+			#File "/usr/lib/python3.2/shlex.py", line 168, in read_token
+			#	raise ValueError("No closing quotation")
+			writemsg(_("!!! Invalid PORTDIR_OVERLAY:"
+				" %s: %s\n") % (e, portdir_overlay), noiselevel=-1)
+			port_ov = []
 		overlays.extend(port_ov)
 		default_repo_opts = {}
 		if prepos['DEFAULT'].aliases is not None:

@@ -57,7 +57,7 @@ class ResolverPlayground(object):
 """
 
 	def __init__(self, ebuilds={}, installed={}, profile={}, repo_configs={}, \
-		user_config={}, sets={}, world=[], debug=False):
+		user_config={}, sets={}, world=[], world_sets=[], distfiles={}, debug=False):
 		"""
 		ebuilds: cpv -> metadata mapping simulating available ebuilds. 
 		installed: cpv -> metadata mapping simulating installed packages.
@@ -68,6 +68,7 @@ class ResolverPlayground(object):
 		self.root = "/"
 		self.eprefix = tempfile.mkdtemp()
 		self.eroot = self.root + self.eprefix.lstrip(os.sep) + os.sep
+		self.distdir = os.path.join(self.eroot, "var", "portage", "distfiles")
 		self.portdir = os.path.join(self.eroot, "usr/portage")
 		self.vdbdir = os.path.join(self.eroot, "var/db/pkg")
 		os.makedirs(self.portdir)
@@ -80,10 +81,11 @@ class ResolverPlayground(object):
 		#Make sure the main repo is always created
 		self._get_repo_dir("test_repo")
 
+		self._create_distfiles(distfiles)
 		self._create_ebuilds(ebuilds)
 		self._create_installed(installed)
 		self._create_profile(ebuilds, installed, profile, repo_configs, user_config, sets)
-		self._create_world(world)
+		self._create_world(world, world_sets)
 
 		self.settings, self.trees = self._load_config()
 
@@ -116,6 +118,12 @@ class ResolverPlayground(object):
 
 		return self.repo_dirs[repo]
 
+	def _create_distfiles(self, distfiles):
+		os.makedirs(self.distdir)
+		for k, v in distfiles.items():
+			with open(os.path.join(self.distdir, k), 'wb') as f:
+				f.write(v)
+
 	def _create_ebuilds(self, ebuilds):
 		for cpv in ebuilds:
 			a = Atom("=" + cpv, allow_repo=True)
@@ -132,6 +140,7 @@ class ResolverPlayground(object):
 			slot = metadata.pop("SLOT", 0)
 			keywords = metadata.pop("KEYWORDS", "x86")
 			homepage = metadata.pop("HOMEPAGE", None)
+			src_uri = metadata.pop("SRC_URI", None)
 			iuse = metadata.pop("IUSE", "")
 			depend = metadata.pop("DEPEND", "")
 			rdepend = metadata.pop("RDEPEND", None)
@@ -158,6 +167,8 @@ class ResolverPlayground(object):
 				f.write('DESCRIPTION="%s"\n' % desc)
 			if homepage is not None:
 				f.write('HOMEPAGE="%s"\n' % homepage)
+			if src_uri is not None:
+				f.write('SRC_URI="%s"\n' % src_uri)
 			f.write('LICENSE="' + str(lic) + '"\n')
 			f.write('PROPERTIES="' + str(properties) + '"\n')
 			f.write('SLOT="' + str(slot) + '"\n')
@@ -433,15 +444,21 @@ class ResolverPlayground(object):
 				f.write("%s\n" % line)
 			f.close()
 
-	def _create_world(self, world):
+	def _create_world(self, world, world_sets):
 		#Create /var/lib/portage/world
 		var_lib_portage = os.path.join(self.eroot, "var", "lib", "portage")
 		os.makedirs(var_lib_portage)
 
 		world_file = os.path.join(var_lib_portage, "world")
+		world_set_file = os.path.join(var_lib_portage, "world_sets")
 
 		f = open(world_file, "w")
 		for atom in world:
+			f.write("%s\n" % atom)
+		f.close()
+
+		f = open(world_set_file, "w")
+		for atom in world_sets:
 			f.write("%s\n" % atom)
 		f.close()
 
@@ -454,6 +471,7 @@ class ResolverPlayground(object):
 
 		env = {
 			"ACCEPT_KEYWORDS": "x86",
+			"DISTDIR" : self.distdir,
 			"PORTDIR": self.portdir,
 			"PORTDIR_OVERLAY": " ".join(portdir_overlay),
 			'PORTAGE_TMPDIR'       : os.path.join(self.eroot, 'var/tmp'),
@@ -493,6 +511,12 @@ class ResolverPlayground(object):
 		if self.debug:
 			options["--debug"] = True
 
+		if action is None:
+			if options.get("--depclean"):
+				action = "depclean"
+			elif options.get("--prune"):
+				action = "prune"
+
 		global_noiselimit = portage.util.noiselimit
 		global_emergelog_disable = _emerge.emergelog._disable
 		try:
@@ -501,10 +525,10 @@ class ResolverPlayground(object):
 				portage.util.noiselimit = -2
 			_emerge.emergelog._disable = True
 
-			if options.get("--depclean"):
+			if action in ("depclean", "prune"):
 				rval, cleanlist, ordered, req_pkg_count = \
 					calc_depclean(self.settings, self.trees, None,
-					options, "depclean", InternalPackageSet(initial_atoms=atoms, allow_wildcard=True), None)
+					options, action, InternalPackageSet(initial_atoms=atoms, allow_wildcard=True), None)
 				result = ResolverPlaygroundDepcleanResult( \
 					atoms, rval, cleanlist, ordered, req_pkg_count)
 			else:

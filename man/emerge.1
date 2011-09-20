@@ -304,9 +304,23 @@ the specified configuration file(s), or enable the
 \fBEMERGE_DEFAULT_OPTS\fR variable may be used to
 disable this option by default in \fBmake.conf\fR(5).
 .TP
+.BR "\-\-autounmask\-unrestricted\-atoms [ y | n ]"
+If \-\-autounmask is enabled, changes using the \'=\' operator
+will be written. With this option, \'>=\' operators will be used
+whenever possible.
+.TP
+.BR "\-\-autounmask\-keep\-masks [ y | n ]"
+If \-\-autounmask is enabled, no package.unmask or ** keyword changes
+will be created. This leads to unsatisfied dependencies if
+no other solution exists.
+.TP
 .BR "\-\-autounmask\-write [ y | n ]"
 If \-\-autounmask is enabled, changes are written
 to config files, respecting \fBCONFIG_PROTECT\fR and \fB\-\-ask\fR.
+If the corresponding package.* is a file, the changes are appended to
+it, if it is a directory, changes are written to the lexicographically
+last file. This way it is always ensured that the new changes take
+precedence over existing changes.
 .TP
 .BR \-\-backtrack=COUNT
 Specifies an integer number of times to backtrack if

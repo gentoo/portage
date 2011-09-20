@@ -323,10 +323,30 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
+		print("       " + green("--autounmask-unrestricted-atoms") + " [ %s | %s ]" % \
+			(turquoise("y"), turquoise("n")))
+		desc = "If --autounmask is enabled, changes using the '=' operator " + \
+			"will be written. With this option, '>=' operators will be used " + \
+			"whenever possible."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
+		print("       " + green("--autounmask-keep-masks") + " [ %s | %s ]" % \
+			(turquoise("y"), turquoise("n")))
+		desc = "If --autounmask is enabled, no package.unmask or ** keyword " + \
+			"changes will be created. This leads to unsatisfied " + \
+			"dependencies if no other solution exists."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
 		print("       " + green("--autounmask-write") + " [ %s | %s ]" % \
 			(turquoise("y"), turquoise("n")))
 		desc = "If --autounmask is enabled, changes are written " + \
-			"to config files, respecting CONFIG_PROTECT and --ask."
+			"to config files, respecting CONFIG_PROTECT and --ask. " + \
+			"If the corresponding package.* is a file, the changes are " + \
+			"appended to it, if it is a directory, changes are written to " + \
+			"the lexicographically last file. This way it is always ensured " + \
+			"that the new changes take precedence over existing changes."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
