@@ -231,7 +231,7 @@ class LinkageMapMachO(object):
 					continue
 				plibs.update((x, cpv) for x in items)
 		if plibs:
-			args = [EPREFIX+"/usr/bin/scanmacho", "-qF", "%a;%F;%S;%n"]
+			args = [EPREFIX + "/usr/bin/scanmacho", "-qF", "%a;%F;%S;%n"]
 			args.extend(os.path.join(root, x.lstrip("." + os.sep)) \
 				for x in plibs)
 			try:
@@ -266,12 +266,12 @@ class LinkageMapMachO(object):
 				proc.wait()
 
 		if plibs:
-			# Preserved libraries that did not appear in the scanmacho
-			# output.  This is known to happen with statically linked
-			# libraries.  Generate dummy lines for these, so we can
-			# assume that every preserved library has an entry in
-			# self._obj_properties.  This is important in order to
-			# prevent findConsumers from raising an unwanted KeyError.
+			# Preserved libraries that did not appear in the scanmacho output.
+			# This is known to happen with statically linked libraries.
+			# Generate dummy lines for these, so we can assume that every
+			# preserved library has an entry in self._obj_properties. This
+			# is important in order to prevent findConsumers from raising
+			# an unwanted KeyError.
 			for x, cpv in plibs.items():
 				lines.append((cpv, "plibs", ";".join(['', x, '', '', ''])))
 
@@ -344,10 +344,9 @@ class LinkageMapMachO(object):
 		@param debug: Boolean to enable debug output
 		@type debug: Boolean
 		@rtype: dict (example: {'/usr/bin/foo': set(['/usr/lib/libbar.dylib'])})
-		@return: The return value is an object -> set-of-install_names
-			mapping, where object is a broken binary and the set
-			consists of install_names needed by object that have no
-			corresponding libraries to fulfill the dependency.
+		@return: The return value is an object -> set-of-install_names mapping, where
+			object is a broken binary and the set consists of install_names needed by
+			object that have no corresponding libraries to fulfill the dependency.
 
 		"""
 
@@ -474,14 +473,14 @@ class LinkageMapMachO(object):
 		@rtype: dict (example:
 			{(123L, 456L): {'libbar.dylib': set(['/lib/libbar.1.5.dylib'])}})
 		@return: The return value is an object -> providers mapping, where
-			providers is a mapping of install_name ->
-			set-of-library-paths returned from the findProviders method.
+			providers is a mapping of install_name -> set-of-library-paths returned
+			from the findProviders method.
 
 		"""
 		rValue = {}
 		if not self._libs:
 			self.rebuild()
-		# Iterate over all object keys within LinkageMapMachO.
+		# Iterate over all object keys within LinkageMap.
 		for obj_key in self._obj_properties:
 			rValue.setdefault(obj_key, self.findProviders(obj_key))
 		return rValue
