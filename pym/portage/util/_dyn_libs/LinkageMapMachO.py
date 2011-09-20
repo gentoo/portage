@@ -264,6 +264,7 @@ class LinkageMapMachO(object):
 					owner = plibs.pop(fields[1], None)
 					lines.append((owner, "scanmacho", ";".join(fields)))
 				proc.wait()
+				proc.stdout.close()
 
 		if plibs:
 			# Preserved libraries that did not appear in the scanmacho output.
@@ -665,15 +666,19 @@ class LinkageMapMachO(object):
 		corresponding libtool archive (*.la) files to detect such consumers
 		(revdep-rebuild is able to detect them).
 
-		The exclude_providers argument is only useful on platforms where
-		references to libraries are not full paths, e.g. they are being
-		searched for in a path, like ELF.  On Mach-O, these references
-		are full paths, and hence this argument is ignored, since there
-		never will be alternative providers.
+		The exclude_providers argument is useful for determining whether
+		removal of one or more packages will create unsatisfied consumers. When
+		this option is given, consumers are excluded from the results if there
+		is an alternative provider (which is not excluded) of the required
+		soname such that the consumers will remain satisfied if the files
+		owned by exclude_providers are removed.
 
 		@param obj: absolute path to an object or a key from _obj_properties
 		@type obj: string (example: '/usr/bin/bar') or _ObjectKey
-		@param exclude_providers: ignored in LinkageMapMachO
+		@param exclude_providers: A collection of callables that each take a
+			single argument referring to the path of a library (example:
+			'/usr/lib/libssl.0.9.8.dylib'), and return True if the library is
+			owned by a provider which is planned for removal.
 		@type exclude_providers: collection
 		@rtype: set of strings (example: set(['/bin/foo', '/usr/bin/bar']))
 		@return: The return value is a install_name -> set-of-library-paths, where
@@ -699,16 +704,17 @@ class LinkageMapMachO(object):
 				raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 
 		# If there is another version of this lib with the
-		# same soname and the install_name symlink points to that
+		# same install_name and the install_name symlink points to that
 		# other version, this lib will be shadowed and won't
 		# have any consumers.
 		if not isinstance(obj, self._ObjectKey):
 			install_name = self._obj_properties[obj_key].install_name
 			master_link = os.path.join(self._root,
 					install_name.lstrip(os.path.sep))
+			obj_path = os.path.join(self._root, obj.lstrip(os.sep))
 			try:
 				master_st = os.stat(master_link)
-				obj_st = os.stat(obj)
+				obj_st = os.stat(obj_path)
 			except OSError:
 				pass
 			else:
@@ -725,12 +731,33 @@ class LinkageMapMachO(object):
 		if arch_map is not None:
 			install_name_node = arch_map.get(install_name)
 
+		satisfied_consumer_keys = set()
+		if install_name_node is not None:
+			if exclude_providers is not None:
+				relevant_dir_keys = set()
+				for provider_key in install_name_node.providers:
+					provider_objs = self._obj_properties[provider_key].alt_paths
+					for p in provider_objs:
+						provider_excluded = False
+						for excluded_provider_isowner in exclude_providers:
+							if excluded_provider_isowner(p):
+								provider_excluded = True
+								break
+						if not provider_excluded:
+							# This provider is not excluded. It will
+							# satisfy a consumer of this install_name.
+							relevant_dir_keys.add(self._path_key(p))
+
+				if relevant_dir_keys:
+					for consumer_key in install_name_node.consumers:
+							satisfied_consumer_keys.add(consumer_key)
 
 		rValue = set()
 		if install_name_node is not None:
-			# For each potential consumer, add it to rValue if an object from the
-			# arguments resides in the consumer's runpath.
+			# For each potential consumer, add it to rValue.
 			for consumer_key in install_name_node.consumers:
+				if consumer_key in satisfied_consumer_keys:
+					continue
 				consumer_props = self._obj_properties[consumer_key]
 				consumer_objs = consumer_props.alt_paths
 				rValue.update(consumer_objs)
