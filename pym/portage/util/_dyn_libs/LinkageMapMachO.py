@@ -251,7 +251,7 @@ class LinkageMapMachO(object):
 						writemsg_level(_("\nError decoding characters " \
 							"returned from scanmacho: %s\n\n") % (l,),
 							level=logging.ERROR, noiselevel=-1)
-					l = l[3:].rstrip("\n")
+					l = l.rstrip("\n")
 					if not l:
 						continue
 					fields = l.split(";")
