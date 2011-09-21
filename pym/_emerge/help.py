@@ -325,9 +325,10 @@ def help(myopts, havecolor=1):
 		print()
 		print("       " + green("--autounmask-unrestricted-atoms") + " [ %s | %s ]" % \
 			(turquoise("y"), turquoise("n")))
-		desc = "If --autounmask is enabled, changes using the '=' operator " + \
-			"will be written. With this option, '>=' operators will be used " + \
-			"whenever possible."
+		desc = "If --autounmask is enabled, keyword and mask changes" + \
+			"using the '=' operator will be written. With this option, " + \
+			"'>=' operators will be used whenever possible. USE and " + \
+			"license changes always use the latter behvior."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()

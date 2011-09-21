@@ -305,9 +305,10 @@ the specified configuration file(s), or enable the
 disable this option by default in \fBmake.conf\fR(5).
 .TP
 .BR "\-\-autounmask\-unrestricted\-atoms [ y | n ]"
-If \-\-autounmask is enabled, changes using the \'=\' operator
-will be written. With this option, \'>=\' operators will be used
-whenever possible.
+If \-\-autounmask is enabled, keyword and mask changes
+using the \'=\' operator will be written. With this
+option, \'>=\' operators will be used whenever possible.
+USE and license changes always use the latter behvior.
 .TP
 .BR "\-\-autounmask\-keep\-masks [ y | n ]"
 If \-\-autounmask is enabled, no package.unmask or ** keyword changes
