@@ -588,6 +588,7 @@ def parse_opts(tmpcmdline, silent=False):
 	])
 
 	longopt_aliases = {"--cols":"--columns", "--skip-first":"--skipfirst"}
+	y_or_n = ("y", "n")
 	true_y_or_n = ("True", "y", "n")
 	true_y = ("True", "y")
 	argument_options = {
@@ -657,6 +658,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"help"    : "completely account for all known dependencies",
 			"type"    : "choice",
 			"choices" : true_y_or_n
+		},
+
+		"--complete-graph-if-new-ver": {
+			"help"    : "trigger --complete-graph behavior if an installed package version will change (upgrade or downgrade)",
+			"type"    : "choice",
+			"choices" : y_or_n
 		},
 
 		"--deep": {

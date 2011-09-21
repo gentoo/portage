@@ -4145,11 +4145,10 @@ class depgraph(object):
 			"recurse" not in self._dynamic_config.myparams:
 			return 1
 
-		if "complete" not in self._dynamic_config.myparams:
-			# Automatically enable complete mode if there are any
-			# downgrades, since they often break dependencies
-			# (like in bug #353613).
-			have_downgrade = False
+		if "complete" not in self._dynamic_config.myparams and \
+			self._dynamic_config.myparams.get("complete_if_new_ver", "y") == "y":
+			# Enable complete mode if an installed package version will change.
+			version_change = False
 			for node in self._dynamic_config.digraph:
 				if not isinstance(node, Package) or \
 					node.operation != "merge":
@@ -4157,16 +4156,15 @@ class depgraph(object):
 				vardb = self._frozen_config.roots[
 					node.root].trees["vartree"].dbapi
 				inst_pkg = vardb.match_pkgs(node.slot_atom)
-				if inst_pkg and inst_pkg[0] > node:
-					have_downgrade = True
+				if inst_pkg and (inst_pkg[0] > node or inst_pkg[0] < node):
+					version_change = True
 					break
 
-			if have_downgrade:
+			if version_change:
 				self._dynamic_config.myparams["complete"] = True
-			else:
-				# Skip complete graph mode, in order to avoid consuming
-				# enough time to disturb users.
-				return 1
+
+		if "complete" not in self._dynamic_config.myparams:
+			return 1
 
 		self._load_vdb()
 
