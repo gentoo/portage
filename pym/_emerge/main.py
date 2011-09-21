@@ -1611,7 +1611,7 @@ def emerge_main(args=None):
 			trees[settings["ROOT"]]["vartree"].dbapi) + '\n', noiselevel=-1)
 		return 0
 	elif myaction == 'help':
-		_emerge.help.help(myopts, portage.output.havecolor)
+		_emerge.help.help()
 		return 0
 
 	spinner = stdout_spinner()
@@ -1756,7 +1756,7 @@ def emerge_main(args=None):
 		print("myopts", myopts)
 
 	if not myaction and not myfiles and "--resume" not in myopts:
-		_emerge.help.help(myopts, portage.output.havecolor)
+		_emerge.help.help()
 		return 1
 
 	pretend = "--pretend" in myopts
