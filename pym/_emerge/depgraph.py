@@ -552,7 +552,8 @@ class depgraph(object):
 		"""
 		if not self._dynamic_config.ignored_binaries \
 			or '--quiet' in self._frozen_config.myopts \
-			or "--binpkg-respect-use" in self._frozen_config.myopts:
+			or self._dynamic_config.myparams.get(
+			"binpkg_respect_use") in ("y", "n"):
 			return
 
 		self._show_merge_list()
@@ -796,7 +797,8 @@ class depgraph(object):
 		"""Return a set of flags that trigger reinstallation, or None if there
 		are no such flags."""
 		if "--newuse" in self._frozen_config.myopts or \
-			self._frozen_config.myopts.get("--binpkg-respect-use", True) == True:
+			self._dynamic_config.myparams.get(
+			"binpkg_respect_use") in ("y", "auto"):
 			flags = set(orig_iuse.symmetric_difference(
 				cur_iuse).difference(forced_flags))
 			flags.update(orig_iuse.intersection(orig_use).symmetric_difference(
@@ -3967,7 +3969,8 @@ class depgraph(object):
 					if built and not useoldpkg and (not installed or matched_pkgs_ignore_use) and \
 						("--newuse" in self._frozen_config.myopts or \
 						"--reinstall" in self._frozen_config.myopts or \
-						self._frozen_config.myopts.get("--binpkg-respect-use", True) == True):
+						(not installed and self._dynamic_config.myparams.get(
+						"binpkg_respect_use") in ("y", "auto"))):
 						iuses = pkg.iuse.all
 						old_use = self._pkg_use_enabled(pkg)
 						if myeb:

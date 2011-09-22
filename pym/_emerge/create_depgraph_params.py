@@ -64,6 +64,17 @@ def create_depgraph_params(myopts, myaction):
 		'--update' in myopts:
 		myparams['rebuilt_binaries'] = True
 
+	binpkg_respect_use = myopts.get('--binpkg-respect-use')
+	if binpkg_respect_use is not None:
+		myparams['binpkg_respect_use'] = binpkg_respect_use
+	elif '--usepkgonly' not in myopts and \
+		myopts.get('--rebuilt-binaries') is not True:
+		# If --binpkg-respect-use is not explicitly specified, we enable
+		# the behavior automatically (like requested in bug #297549), as
+		# long as it doesn't strongly conflict with other options that
+		# have been specified.
+		myparams['binpkg_respect_use'] = 'auto'
+
 	if myopts.get("--selective") == "n":
 		# --selective=n can be used to remove selective
 		# behavior that may have been implied by some

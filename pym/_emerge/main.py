@@ -968,10 +968,11 @@ def parse_opts(tmpcmdline, silent=False):
 	if myoptions.deselect in true_y:
 		myoptions.deselect = True
 
-	if myoptions.binpkg_respect_use in true_y:
-		myoptions.binpkg_respect_use = True
-	else:
-		myoptions.binpkg_respect_use = None
+	if myoptions.binpkg_respect_use is not None:
+		if myoptions.binpkg_respect_use in true_y:
+			myoptions.binpkg_respect_use = 'y'
+		else:
+			myoptions.binpkg_respect_use = 'n'
 
 	if myoptions.complete_graph in true_y:
 		myoptions.complete_graph = True
