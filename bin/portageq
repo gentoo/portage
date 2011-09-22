@@ -48,6 +48,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'_emerge.Package:Package',
 	'_emerge.RootConfig:RootConfig',
 	'portage.dbapi._expand_new_virt:expand_new_virt',
+	'portage._sets.base:InternalPackageSet',
 )
 
 def eval_atom_use(atom):
@@ -462,19 +463,40 @@ def best_visible(argv):
 	root_config = RootConfig(portage.settings,
 		portage.db[portage.settings["ROOT"]], None)
 
-	try:
+	if hasattr(db, "xmatch"):
+		cpv_list = db.xmatch("match-all", atom)
+	else:
+		cpv_list = db.match(atom)
+
+	if cpv_list:
 		# reversed, for descending order
-		for cpv in reversed(db.match(atom)):
-			metadata = dict(zip(Package.metadata_keys,
-				db.aux_get(cpv, Package.metadata_keys, myrepo=atom.repo)))
-			pkg = Package(built=(pkgtype != "ebuild"), cpv=cpv,
-				installed=(pkgtype=="installed"), metadata=metadata,
-				root_config=root_config, type_name=pkgtype)
-			if pkg.visible:
-				writemsg_stdout("%s\n" % (pkg.cpv,), noiselevel=-1)
-				return os.EX_OK
-	except KeyError:
-		pass
+		cpv_list.reverse()
+		# verify match, since the atom may match the package
+		# for a given cpv from one repo but not another
+		atom_set = InternalPackageSet(initial_atoms=(atom,))
+
+		if atom.repo is None and hasattr(db, "getRepositories"):
+			repo_list = db.getRepositories()
+		else:
+			repo_list = [atom.repo]
+
+		for cpv in cpv_list:
+			for repo in repo_list:
+				try:
+					metadata = dict(zip(Package.metadata_keys,
+						db.aux_get(cpv, Package.metadata_keys, myrepo=repo)))
+				except KeyError:
+					continue
+				pkg = Package(built=(pkgtype != "ebuild"), cpv=cpv,
+					installed=(pkgtype=="installed"), metadata=metadata,
+					root_config=root_config, type_name=pkgtype)
+				if not atom_set.findAtomForPackage(pkg):
+					continue
+
+				if pkg.visible:
+					writemsg_stdout("%s\n" % (pkg.cpv,), noiselevel=-1)
+					return os.EX_OK
+
 	return 1
 best_visible.uses_root = True
 
