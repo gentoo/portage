@@ -389,6 +389,11 @@ class _dynamic_depgraph_config(object):
 		self._ignored_deps = []
 		self._highest_pkg_cache = {}
 
+		# Binary packages that have been rejected because their USE
+		# didn't match the user's config. It maps packages to a set
+		# of flags causing the rejection.
+		self.ignored_binaries = {}
+
 		self._needed_unstable_keywords = backtrack_parameters.needed_unstable_keywords
 		self._needed_p_mask_changes = backtrack_parameters.needed_p_mask_changes
 		self._needed_license_changes = backtrack_parameters.needed_license_changes
@@ -539,6 +544,38 @@ class depgraph(object):
 	def _spinner_update(self):
 		if self._frozen_config.spinner:
 			self._frozen_config.spinner.update()
+
+	def _show_ignored_binaries(self):
+		"""
+		Show binaries that have been ignored becaue their USE didn't
+		match the user's config.
+		"""
+		if not self._dynamic_config.ignored_binaries \
+			or '--quiet' in self._frozen_config.myopts:
+			return
+
+		self._show_merge_list()
+
+		writemsg("\n!!! The following binary packages have been ignored " + \
+				"due to non matching USE:\n\n", noiselevel=-1)
+
+		for pkg, flags in self._dynamic_config.ignored_binaries.items():
+			writemsg("    =%s" % pkg.cpv, noiselevel=-1)
+			if pkg.root != '/':
+				writemsg(" for %s" % (pkg.root,), noiselevel=-1)
+			writemsg("\n        use flag(s): %s\n" % ", ".join(sorted(flags)),
+				noiselevel=-1)
+
+		msg = [
+			"",
+			"NOTE: The --binpkg-respect-use=n option will prevent emerge",
+			"      from ignoring these binary packages if possible."
+		]
+
+		for line in msg:
+			if line:
+				line = colorize("INFORM", line)
+			writemsg_stdout(line + "\n", noiselevel=-1)
 
 	def _show_missed_update(self):
 
@@ -3942,9 +3979,11 @@ class depgraph(object):
 						cur_iuse = iuses
 						if myeb and not usepkgonly and not useoldpkg:
 							cur_iuse = myeb.iuse.all
-						if self._reinstall_for_flags(forced_flags,
-							old_use, iuses,
-							now_use, cur_iuse):
+						reinstall_for_flags = self._reinstall_for_flags(forced_flags,
+							old_use, iuses, now_use, cur_iuse)
+						if reinstall_for_flags:
+							if not pkg.installed:
+								self._dynamic_config.ignored_binaries.setdefault(pkg, set()).update(reinstall_for_flags)
 							break
 					# Compare current config to installed package
 					# and do not reinstall if possible.
@@ -6124,6 +6163,8 @@ class depgraph(object):
 			self._show_slot_collision_notice()
 		else:
 			self._show_missed_update()
+
+		self._show_ignored_binaries()
 
 		self._display_autounmask()
 
