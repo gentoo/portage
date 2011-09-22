@@ -67,8 +67,7 @@ def create_depgraph_params(myopts, myaction):
 	binpkg_respect_use = myopts.get('--binpkg-respect-use')
 	if binpkg_respect_use is not None:
 		myparams['binpkg_respect_use'] = binpkg_respect_use
-	elif '--usepkgonly' not in myopts and \
-		myopts.get('--rebuilt-binaries') is not True:
+	elif '--usepkgonly' not in myopts:
 		# If --binpkg-respect-use is not explicitly specified, we enable
 		# the behavior automatically (like requested in bug #297549), as
 		# long as it doesn't strongly conflict with other options that
