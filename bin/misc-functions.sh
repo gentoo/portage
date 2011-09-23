@@ -996,7 +996,7 @@ install_hooks() {
 			ret=$(( $ret | $? ))
 		fi
 	done
-	shopt +s nullglob
+	shopt -u nullglob
 	return $ret
 }
 
