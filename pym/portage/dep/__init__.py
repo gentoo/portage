@@ -1217,12 +1217,9 @@ class Atom(_atom_base):
 			allow_repo=True, allow_wildcard=True)
 
 	def with_repo(self, repo):
-		if self.slot is None:
-			atom = self
-		else:
-			atom = remove_slot(self)
+		atom = remove_slot(self)
 		if self.slot is not None:
-			atom += _slot_separator + slot
+			atom += _slot_separator + self.slot
 		atom += _repo_separator + repo
 		if self.use is not None:
 			atom += str(self.use)
