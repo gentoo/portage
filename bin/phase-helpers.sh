@@ -340,11 +340,7 @@ unpack() {
 						# doesn't inadvertently install it.
 						rm -f "$y"
 					fi
-					local tarfile
-					for tarfile in "${y%.deb}".tar.* ; do
-						mv -f "${tarfile}" data.tar.${tarfile##*.} || \
-							die "$myfail"
-					done
+					mv -f "${y%.deb}".tar.gz data.tar.gz || die "$myfail"
 				else
 					ar x "$srcdir$x" || die "$myfail"
 				fi
