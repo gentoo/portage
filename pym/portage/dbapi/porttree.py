@@ -867,7 +867,7 @@ class portdbapi(dbapi):
 				for tree in self.porttrees:
 					repo = self.repositories.get_name_for_location(tree)
 					myval.update(self._iter_match(mydep.with_repo(repo),
-					self.cp_list(mykey, mytree=mytree)))
+					self.cp_list(mykey, mytree=tree)))
 				myval = list(myval)
 				if len(myval) > 1:
 					self._cpv_sort_ascending(myval)
