@@ -21,7 +21,7 @@ class EbuildFetcher(SpawnProcess):
 
 	__slots__ = ("config_pool", "ebuild_path", "fetchonly", "fetchall",
 		"pkg", "prefetch") + \
-		("_digests", "_settings", "_uri_map")
+		("_digests", "_manifest", "_settings", "_uri_map")
 
 	def already_fetched(self, settings):
 		"""
@@ -40,7 +40,7 @@ class EbuildFetcher(SpawnProcess):
 
 		digests = self._get_digests()
 		distdir = settings["DISTDIR"]
-		allow_missing = "allow-missing-manifests" in settings.features
+		allow_missing = self._get_manifest().allow_missing
 
 		for filename in uri_map:
 			# Use stat rather than lstat since fetch() creates
@@ -179,7 +179,7 @@ class EbuildFetcher(SpawnProcess):
 			not in ('yes', 'true')
 
 		rval = 1
-		allow_missing = 'allow-missing-manifests' in self._settings.features
+		allow_missing = self._get_manifest().allow_missing
 		try:
 			if fetch(self._uri_map, self._settings, fetchonly=self.fetchonly,
 				digests=copy.deepcopy(self._get_digests()),
@@ -203,13 +203,16 @@ class EbuildFetcher(SpawnProcess):
 			raise AssertionError("ebuild not found for '%s'" % self.pkg.cpv)
 		return self.ebuild_path
 
+	def _get_manifest(self):
+		if self._manifest is None:
+			pkgdir = os.path.dirname(self._get_ebuild_path())
+			self._manifest = self.pkg.root_config.settings.repositories.get_repo_for_location(
+				os.path.dirname(os.path.dirname(pkgdir))).load_manifest(pkgdir, None)
+		return self._manifest
+
 	def _get_digests(self):
-		if self._digests is not None:
-			return self._digests
-		pkgdir = os.path.dirname(self._get_ebuild_path())
-		mf = self.pkg.root_config.settings.repositories.get_repo_for_location(
-			os.path.dirname(os.path.dirname(pkgdir)))
-		self._digests = mf.load_manifest(pkgdir, None).getTypeDigests("DIST")
+		if self._digests is None:
+			self._digests = self._get_manifest().getTypeDigests("DIST")
 		return self._digests
 
 	def _get_uri_map(self):

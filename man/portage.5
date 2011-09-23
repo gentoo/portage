@@ -781,6 +781,9 @@ aliases = foo-overlay
 sign\-manifests = false
 # thin\-manifests only contain DIST entries
 thin\-manifests = true
+# indicate that this repo requires manifests for each package, and is
+# considered a failure if a manifest file is missing/incorrect
+use\-manifests = strict
 .fi
 .RE
 .TP

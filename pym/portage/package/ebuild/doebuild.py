@@ -484,7 +484,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	global _doebuild_manifest_cache
 	pkgdir = os.path.dirname(myebuild)
 	manifest_path = os.path.join(pkgdir, "Manifest")
-	allow_missing_manifests = "allow-missing-manifests" in mysettings.features
 	if tree == "porttree":
 		repo_config = mysettings.repositories.get_repo_for_location(
 			os.path.dirname(os.path.dirname(pkgdir)))
@@ -497,7 +496,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		not repo_config.thin_manifest and \
 		mydo not in ("digest", "manifest", "help") and \
 		not portage._doebuild_manifest_exempt_depend and \
-		not (allow_missing_manifests and not os.path.exists(manifest_path)):
+		not (repo_config.allow_missing_manifests and not os.path.exists(manifest_path)):
 		# Always verify the ebuild checksums before executing it.
 		global _doebuild_broken_ebuilds
 
@@ -522,7 +521,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		try:
 			mf.checkFileHashes("EBUILD", os.path.basename(myebuild))
 		except KeyError:
-			if not (allow_missing_manifests and
+			if not (mf.allow_missing and
 				os.path.basename(myebuild) not in mf.fhashdict["EBUILD"]):
 				out = portage.output.EOutput()
 				out.eerror(_("Missing digest for '%s'") % (myebuild,))
@@ -547,7 +546,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		if mf.getFullname() in _doebuild_broken_manifests:
 			return 1
 
-		if mf is not _doebuild_manifest_cache and not allow_missing_manifests:
+		if mf is not _doebuild_manifest_cache and not mf.allow_missing:
 
 			# Make sure that all of the ebuilds are
 			# actually listed in the Manifest.

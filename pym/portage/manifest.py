@@ -100,7 +100,8 @@ class Manifest2Entry(ManifestEntry):
 class Manifest(object):
 	parsers = (parseManifest2,)
 	def __init__(self, pkgdir, distdir, fetchlist_dict=None,
-		manifest1_compat=DeprecationWarning, from_scratch=False, thin=False):
+		manifest1_compat=DeprecationWarning, from_scratch=False, thin=False,
+			allow_missing=False, allow_create=True):
 		""" Create new Manifest instance for package in pkgdir.
 		    Do not parse Manifest file if from_scratch == True (only for internal use)
 			The fetchlist_dict parameter is required only for generation of
@@ -135,6 +136,8 @@ class Manifest(object):
 			self.guessType = guessThinManifestFileType
 		else:
 			self.guessType = guessManifestFileType
+		self.allow_missing = allow_missing
+		self.allow_create = allow_create
 
 	def getFullname(self):
 		""" Returns the absolute path to the Manifest file for this instance """
@@ -237,6 +240,8 @@ class Manifest(object):
 
 	def write(self, sign=False, force=False):
 		""" Write Manifest instance to disk, optionally signing it """
+		if not self.allow_create:
+			return
 		self.checkIntegrity()
 		try:
 			myentries = list(self._createManifestEntries())
@@ -265,7 +270,7 @@ class Manifest(object):
 				if myentries:
 					write_atomic(self.getFullname(), "".join("%s\n" %
 						str(myentry) for myentry in myentries))
-				else:
+				elif self.thin:
 					# With thin manifest, there's no need to have
 					# a Manifest file if there are no DIST entries.
 					try:
@@ -330,6 +335,8 @@ class Manifest(object):
 		distfiles to raise a FileNotFound exception for (if no file or existing
 		checksums are available), and defaults to all distfiles when not
 		specified."""
+		if not self.allow_create:
+			return
 		if checkExisting:
 			self.checkAllHashes()
 		if assumeDistHashesSometimes or assumeDistHashesAlways:

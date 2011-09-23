@@ -60,6 +60,12 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 
 		mf = mf.load_manifest(mysettings["O"], mysettings["DISTDIR"],
 			fetchlist_dict=fetchlist_dict)
+
+		if not mf.allow_create:
+			writemsg_stdout(_(">>> Skipping creating Manifest for %s; "
+				"repository is configured to not use them\n") % mysettings["O"])
+			return 1
+
 		# Don't require all hashes since that can trigger excessive
 		# fetches when sufficient digests already exist.  To ease transition
 		# while Manifest 1 is being removed, only require hashes that will
