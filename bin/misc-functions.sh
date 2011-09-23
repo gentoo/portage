@@ -1723,7 +1723,7 @@ success_hooks() {
 }
 
 install_hooks() {
-	local hooks_dir="${PORTAGE_CONFIG_ROOT}/etc/portage/hooks/install"
+	local hooks_dir="${PORTAGE_CONFIGROOT}etc/portage/hooks/install"
 	local fp
 	local ret=0
 	shopt -s nullglob
