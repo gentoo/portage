@@ -1558,7 +1558,7 @@ preinst_suid_scan() {
 	# total suid control.
 	if has suidctl $FEATURES; then
 		local i sfconf x
-		sfconf=${PORTAGE_CONFIGROOT}${EPREFIX#/}/etc/portage/suidctl.conf
+		sfconf=${PORTAGE_CONFIGROOT}etc/portage/suidctl.conf
 		# sandbox prevents us from writing directly
 		# to files outside of the sandbox, but this
 		# can easly be bypassed using the addwrite() function
