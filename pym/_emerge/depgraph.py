@@ -389,6 +389,11 @@ class _dynamic_depgraph_config(object):
 		self._ignored_deps = []
 		self._highest_pkg_cache = {}
 
+		# Binary packages that have been rejected because their USE
+		# didn't match the user's config. It maps packages to a set
+		# of flags causing the rejection.
+		self.ignored_binaries = {}
+
 		self._needed_unstable_keywords = backtrack_parameters.needed_unstable_keywords
 		self._needed_p_mask_changes = backtrack_parameters.needed_p_mask_changes
 		self._needed_license_changes = backtrack_parameters.needed_license_changes
@@ -539,6 +544,41 @@ class depgraph(object):
 	def _spinner_update(self):
 		if self._frozen_config.spinner:
 			self._frozen_config.spinner.update()
+
+	def _show_ignored_binaries(self):
+		"""
+		Show binaries that have been ignored because their USE didn't
+		match the user's config.
+		"""
+		if not self._dynamic_config.ignored_binaries \
+			or '--quiet' in self._frozen_config.myopts \
+			or self._dynamic_config.myparams.get(
+			"binpkg_respect_use") in ("y", "n"):
+			return
+
+		self._show_merge_list()
+
+		writemsg("\n!!! The following binary packages have been ignored " + \
+				"due to non matching USE:\n\n", noiselevel=-1)
+
+		for pkg, flags in self._dynamic_config.ignored_binaries.items():
+			writemsg("    =%s" % pkg.cpv, noiselevel=-1)
+			if pkg.root != '/':
+				writemsg(" for %s" % (pkg.root,), noiselevel=-1)
+			writemsg("\n        use flag(s): %s\n" % ", ".join(sorted(flags)),
+				noiselevel=-1)
+
+		msg = [
+			"",
+			"NOTE: The --binpkg-respect-use=n option will prevent emerge",
+			"      from ignoring these binary packages if possible.",
+			"      Using --binpkg-respect-use=y will silence this warning."
+		]
+
+		for line in msg:
+			if line:
+				line = colorize("INFORM", line)
+			writemsg_stdout(line + "\n", noiselevel=-1)
 
 	def _show_missed_update(self):
 
@@ -757,7 +797,8 @@ class depgraph(object):
 		"""Return a set of flags that trigger reinstallation, or None if there
 		are no such flags."""
 		if "--newuse" in self._frozen_config.myopts or \
-			"--binpkg-respect-use" in self._frozen_config.myopts:
+			self._dynamic_config.myparams.get(
+			"binpkg_respect_use") in ("y", "auto"):
 			flags = set(orig_iuse.symmetric_difference(
 				cur_iuse).difference(forced_flags))
 			flags.update(orig_iuse.intersection(orig_use).symmetric_difference(
@@ -3928,7 +3969,8 @@ class depgraph(object):
 					if built and not useoldpkg and (not installed or matched_pkgs_ignore_use) and \
 						("--newuse" in self._frozen_config.myopts or \
 						"--reinstall" in self._frozen_config.myopts or \
-						"--binpkg-respect-use" in self._frozen_config.myopts):
+						(not installed and self._dynamic_config.myparams.get(
+						"binpkg_respect_use") in ("y", "auto"))):
 						iuses = pkg.iuse.all
 						old_use = self._pkg_use_enabled(pkg)
 						if myeb:
@@ -3942,9 +3984,11 @@ class depgraph(object):
 						cur_iuse = iuses
 						if myeb and not usepkgonly and not useoldpkg:
 							cur_iuse = myeb.iuse.all
-						if self._reinstall_for_flags(forced_flags,
-							old_use, iuses,
-							now_use, cur_iuse):
+						reinstall_for_flags = self._reinstall_for_flags(forced_flags,
+							old_use, iuses, now_use, cur_iuse)
+						if reinstall_for_flags:
+							if not pkg.installed:
+								self._dynamic_config.ignored_binaries.setdefault(pkg, set()).update(reinstall_for_flags)
 							break
 					# Compare current config to installed package
 					# and do not reinstall if possible.
@@ -4145,11 +4189,10 @@ class depgraph(object):
 			"recurse" not in self._dynamic_config.myparams:
 			return 1
 
-		if "complete" not in self._dynamic_config.myparams:
-			# Automatically enable complete mode if there are any
-			# downgrades, since they often break dependencies
-			# (like in bug #353613).
-			have_downgrade = False
+		if "complete" not in self._dynamic_config.myparams and \
+			self._dynamic_config.myparams.get("complete_if_new_ver", "y") == "y":
+			# Enable complete mode if an installed package version will change.
+			version_change = False
 			for node in self._dynamic_config.digraph:
 				if not isinstance(node, Package) or \
 					node.operation != "merge":
@@ -4157,16 +4200,15 @@ class depgraph(object):
 				vardb = self._frozen_config.roots[
 					node.root].trees["vartree"].dbapi
 				inst_pkg = vardb.match_pkgs(node.slot_atom)
-				if inst_pkg and inst_pkg[0] > node:
-					have_downgrade = True
+				if inst_pkg and (inst_pkg[0] > node or inst_pkg[0] < node):
+					version_change = True
 					break
 
-			if have_downgrade:
+			if version_change:
 				self._dynamic_config.myparams["complete"] = True
-			else:
-				# Skip complete graph mode, in order to avoid consuming
-				# enough time to disturb users.
-				return 1
+
+		if "complete" not in self._dynamic_config.myparams:
+			return 1
 
 		self._load_vdb()
 
@@ -5848,13 +5890,10 @@ class depgraph(object):
 					else:
 						adjustments.append("-" + flag)
 				use_changes_msg[root].append(self._get_dep_chain_as_comment(pkg, unsatisfied_dependency=True))
-				if autounmask_unrestricted_atoms:
-					if is_latest:
-						use_changes_msg[root].append(">=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
-					elif is_latest_in_slot:
-						use_changes_msg[root].append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], " ".join(adjustments)))
-					else:
-						use_changes_msg[root].append("=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
+				if is_latest:
+					use_changes_msg[root].append(">=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
+				elif is_latest_in_slot:
+					use_changes_msg[root].append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], " ".join(adjustments)))
 				else:
 					use_changes_msg[root].append("=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
 
@@ -5868,13 +5907,10 @@ class depgraph(object):
 				is_latest, is_latest_in_slot = check_if_latest(pkg)
 
 				license_msg[root].append(self._get_dep_chain_as_comment(pkg))
-				if autounmask_unrestricted_atoms:
-					if is_latest:
-						license_msg[root].append(">=%s %s\n" % (pkg.cpv, " ".join(sorted(missing_licenses))))
-					elif is_latest_in_slot:
-						license_msg[root].append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], " ".join(sorted(missing_licenses))))
-					else:
-						license_msg[root].append("=%s %s\n" % (pkg.cpv, " ".join(sorted(missing_licenses))))
+				if is_latest:
+					license_msg[root].append(">=%s %s\n" % (pkg.cpv, " ".join(sorted(missing_licenses))))
+				elif is_latest_in_slot:
+					license_msg[root].append(">=%s:%s %s\n" % (pkg.cpv, pkg.metadata["SLOT"], " ".join(sorted(missing_licenses))))
 				else:
 					license_msg[root].append("=%s %s\n" % (pkg.cpv, " ".join(sorted(missing_licenses))))
 
@@ -6132,6 +6168,8 @@ class depgraph(object):
 			self._show_slot_collision_notice()
 		else:
 			self._show_missed_update()
+
+		self._show_ignored_binaries()
 
 		self._display_autounmask()
 

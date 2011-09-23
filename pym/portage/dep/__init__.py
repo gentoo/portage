@@ -1216,6 +1216,15 @@ class Atom(_atom_base):
 		return Atom(self.replace(_slot_separator + self.slot, '', 1),
 			allow_repo=True, allow_wildcard=True)
 
+	def with_repo(self, repo):
+		atom = remove_slot(self)
+		if self.slot is not None:
+			atom += _slot_separator + self.slot
+		atom += _repo_separator + repo
+		if self.use is not None:
+			atom += str(self.use)
+		return Atom(atom, allow_repo=True, allow_wildcard=True)
+
 	def with_slot(self, slot):
 		atom = remove_slot(self) + _slot_separator + slot
 		if self.repo is not None:

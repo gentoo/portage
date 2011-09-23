@@ -1433,7 +1433,8 @@ _post_phase_cmds = {
 
 	"install" : [
 		"install_qa_check",
-		"install_symlink_html_docs"],
+		"install_symlink_html_docs",
+		"install_hooks"],
 
 	"preinst" : [
 		"preinst_aix",

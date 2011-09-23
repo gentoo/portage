@@ -1722,6 +1722,21 @@ success_hooks() {
 	done
 }
 
+install_hooks() {
+	local hooks_dir="${PORTAGE_CONFIG_ROOT}/etc/portage/hooks/install"
+	local fp
+	local ret=0
+	shopt -s nullglob
+	for fp in "${hooks_dir}"/*; do
+		if [ -x "$fp" ]; then
+			"$fp"
+			ret=$(( $ret | $? ))
+		fi
+	done
+	shopt -u nullglob
+	return $ret
+}
+
 if [ -n "${MISC_FUNCTIONS_ARGS}" ]; then
 	source_all_bashrcs
 	[ "$PORTAGE_DEBUG" == "1" ] && set -x

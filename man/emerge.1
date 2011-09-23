@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "May 2011" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Sept 2011" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -305,9 +305,10 @@ the specified configuration file(s), or enable the
 disable this option by default in \fBmake.conf\fR(5).
 .TP
 .BR "\-\-autounmask\-unrestricted\-atoms [ y | n ]"
-If \-\-autounmask is enabled, changes using the \'=\' operator
-will be written. With this option, \'>=\' operators will be used
-whenever possible.
+If \-\-autounmask is enabled, keyword and mask changes
+using the \'=\' operator will be written. With this
+option, \'>=\' operators will be used whenever possible.
+USE and license changes always use the latter behavior.
 .TP
 .BR "\-\-autounmask\-keep\-masks [ y | n ]"
 If \-\-autounmask is enabled, no package.unmask or ** keyword changes
@@ -374,6 +375,10 @@ calculations. Note that, unlike the \fB\-\-deep\fR option, the
 be updated than would have otherwise been updated with the option disabled.
 Using \fB\-\-with\-bdeps=y\fR together with \fB\-\-complete\-graph\fR makes
 the graph as complete as possible.
+.TP
+.BR "\-\-complete\-graph\-if\-new\-ver < y | n >"
+Trigger the \fB\-\-complete\-graph\fR behavior if an installed package
+version will change (upgrade or downgrade). This option is enabled by default.
 .TP
 .BR \-\-config\-root=DIR
 Set the \fBPORTAGE_CONFIGROOT\fR environment variable.

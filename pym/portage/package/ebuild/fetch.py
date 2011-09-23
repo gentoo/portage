@@ -1041,7 +1041,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 								# from another mirror...
 								verified_ok,reason = verify_all(mysettings["DISTDIR"]+"/"+myfile, mydigests[myfile])
 								if not verified_ok:
-									print(reason)
 									writemsg(_("!!! Fetched file: %s VERIFY FAILED!\n") % myfile,
 										noiselevel=-1)
 									writemsg(_("!!! Reason: %s\n") % reason[0],
