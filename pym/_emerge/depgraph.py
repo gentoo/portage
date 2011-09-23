@@ -547,7 +547,7 @@ class depgraph(object):
 
 	def _show_ignored_binaries(self):
 		"""
-		Show binaries that have been ignored becaue their USE didn't
+		Show binaries that have been ignored because their USE didn't
 		match the user's config.
 		"""
 		if not self._dynamic_config.ignored_binaries \
