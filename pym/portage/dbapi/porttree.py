@@ -797,7 +797,7 @@ class portdbapi(dbapi):
 		return mylist
 
 	def freeze(self):
-		for x in "bestmatch-visible", "cp-list", "list-visible", "match-all", \
+		for x in "bestmatch-visible", "cp-list", "match-all", \
 			"match-all-cpv-only", "match-visible", "minimum-all", \
 			"minimum-visible":
 			self.xcache[x]={}
@@ -809,6 +809,8 @@ class portdbapi(dbapi):
 
 	def xmatch(self,level,origdep,mydep=None,mykey=None,mylist=None):
 		"caching match function; very trick stuff"
+		if level == "list-visible":
+			level = "match-visible"
 		#if no updates are being made to the tree, we can consult our xcache...
 		if self.frozen:
 			try:
@@ -846,12 +848,25 @@ class portdbapi(dbapi):
 				myval = match_from_list(mydep,
 					self.cp_list(mykey, mytree=mytree))
 
-		elif level == "list-visible":
-			#a list of all visible packages, not called directly (just by xmatch())
-			#myval = self.visible(self.cp_list(mykey))
+		elif level == "match-visible":
+			# find all visible matches
+			if mydep.repo is not None or len(self.porttrees) == 1:
+				myval = self.gvisible(self.visible(
+					self.xmatch("match-all", mydep),
+					mytree=mytree), mytree=mytree)
+			else:
+				myval = set()
+				# We iterate over self.porttrees, since it's common to
+				# tweak this attribute in order to adjust match behavior.
+				for tree in self.porttrees:
+					repo = self.repositories.get_name_for_location(tree)
+					myval.update(self.gvisible(self.visible(
+						self.xmatch("match-all", mydep.with_repo(repo)),
+						mytree=tree), mytree=tree))
+				myval = list(myval)
+				if len(myval) > 1:
+					self._cpv_sort_ascending(myval)
 
-			myval = self.gvisible(self.visible(
-				self.cp_list(mykey, mytree=mytree)))
 		elif level == "minimum-all":
 			# Find the minimum matching version. This is optimized to
 			# minimize the number of metadata accesses (improves performance
@@ -927,11 +942,7 @@ class portdbapi(dbapi):
 			#dep match -- find all matches but restrict search to sublist (used in 2nd half of visible())
 
 			myval = list(self._iter_match(mydep, mylist))
-		elif level == "match-visible":
-			#dep match -- find all visible matches
-			#get all visible packages, then get the matching ones
-			myval = list(self._iter_match(mydep,
-				self.xmatch("list-visible", mykey, mydep=Atom(mykey), mykey=mykey)))
+
 		elif level == "match-all":
 			#match *all* visible *and* masked packages
 			if mydep == mykey:
@@ -952,19 +963,20 @@ class portdbapi(dbapi):
 	def match(self, mydep, use_cache=1):
 		return self.xmatch("match-visible", mydep)
 
-	def visible(self, mylist):
+	def visible(self, mylist, mytree=None):
 		"""two functions in one.  Accepts a list of cpv values and uses the package.mask *and*
 		packages file to remove invisible entries, returning remaining items.  This function assumes
 		that all entries in mylist have the same category and package name."""
 		if not mylist:
 			return []
 
-		db_keys = ["SLOT"]
+		db_keys = ["repository", "SLOT"]
 		visible = []
 		getMaskAtom = self.settings._getMaskAtom
 		for cpv in mylist:
 			try:
-				metadata = dict(zip(db_keys, self.aux_get(cpv, db_keys)))
+				metadata = dict(zip(db_keys,
+					self.aux_get(cpv, db_keys, mytree=mytree)))
 			except KeyError:
 				# masked by corruption
 				continue
@@ -975,7 +987,7 @@ class portdbapi(dbapi):
 			visible.append(cpv)
 		return visible
 
-	def gvisible(self,mylist):
+	def gvisible(self, mylist, mytree=None):
 		"strip out group-masked (not in current group) entries"
 
 		if mylist is None:
@@ -989,7 +1001,8 @@ class portdbapi(dbapi):
 		for mycpv in mylist:
 			metadata.clear()
 			try:
-				metadata.update(zip(aux_keys, self.aux_get(mycpv, aux_keys)))
+				metadata.update(zip(aux_keys,
+					self.aux_get(mycpv, aux_keys, mytree=mytree)))
 			except KeyError:
 				continue
 			except PortageException as e:
