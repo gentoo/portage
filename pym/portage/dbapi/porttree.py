@@ -853,6 +853,25 @@ class portdbapi(dbapi):
 				myval = match_from_list(mydep,
 					self.cp_list(mykey, mytree=mytree))
 
+		elif level == "match-all":
+			# match *all* visible *and* masked packages
+			if mydep == mykey:
+				myval = self.cp_list(mykey, mytree=mytree)
+			elif mydep.repo is not None or len(self.porttrees) == 1:
+				myval = list(self._iter_match(mydep,
+					self.cp_list(mykey, mytree=mytree)))
+			else:
+				myval = set()
+				# We iterate over self.porttrees, since it's common to
+				# tweak this attribute in order to adjust match behavior.
+				for tree in self.porttrees:
+					repo = self.repositories.get_name_for_location(tree)
+					myval.update(self._iter_match(mydep.with_repo(repo),
+					self.cp_list(mykey, mytree=mytree)))
+				myval = list(myval)
+				if len(myval) > 1:
+					self._cpv_sort_ascending(myval)
+
 		elif level == "match-visible":
 			# find all visible matches
 			if mydep.repo is not None or len(self.porttrees) == 1:
@@ -969,13 +988,6 @@ class portdbapi(dbapi):
 
 			myval = list(self._iter_match(mydep, mylist))
 
-		elif level == "match-all":
-			#match *all* visible *and* masked packages
-			if mydep == mykey:
-				myval = self.cp_list(mykey, mytree=mytree)
-			else:
-				myval = list(self._iter_match(mydep,
-					self.cp_list(mykey, mytree=mytree)))
 		else:
 			raise AssertionError(
 				"Invalid level argument: '%s'" % level)
