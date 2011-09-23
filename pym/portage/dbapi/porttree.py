@@ -811,6 +811,11 @@ class portdbapi(dbapi):
 		"caching match function; very trick stuff"
 		if level == "list-visible":
 			level = "match-visible"
+			warnings.warn("The 'list-visible' mode of "
+				"portage.dbapi.porttree.portdbapi.xmatch "
+				"has been renamed to match-visible",
+				DeprecationWarning, stacklevel=2)
+
 		#if no updates are being made to the tree, we can consult our xcache...
 		if self.frozen:
 			try:
