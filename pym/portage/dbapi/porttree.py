@@ -895,15 +895,24 @@ class portdbapi(dbapi):
 			# Find the minimum matching version. This is optimized to
 			# minimize the number of metadata accesses (improves performance
 			# especially in cases where metadata needs to be generated).
+			myval = ""
 			if mydep == mykey:
-				cpv_iter = iter(self.cp_list(mykey, mytree=mytree))
+				for myval in self.cp_list(mykey, mytree=mytree):
+					break
+			elif mydep.repo is not None or len(self.porttrees) == 1:
+				for myval in self._iter_match(mydep,
+					self.cp_list(mykey, mytree=mytree)):
+					break
 			else:
-				cpv_iter = self._iter_match(mydep,
-					self.cp_list(mykey, mytree=mytree))
-			try:
-				myval = next(cpv_iter)
-			except StopIteration:
-				myval = ""
+				# We iterate over self.porttrees, since it's common to
+				# tweak this attribute in order to adjust match behavior.
+				for tree in self.porttrees:
+					repo = self.repositories.get_name_for_location(tree)
+					for myval in self._iter_match(mydep.with_repo(repo),
+						self.cp_list(mykey, mytree=tree)):
+						break
+					if myval:
+						break
 
 		elif level in ("minimum-visible", "bestmatch-visible"):
 			# Find the minimum matching visible version. This is optimized to
