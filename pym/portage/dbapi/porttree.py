@@ -898,41 +898,62 @@ class portdbapi(dbapi):
 				iterfunc = iter
 			else:
 				iterfunc = reversed
+
+			if mydep.repo is not None or len(self.porttrees) == 1:
+				repos = [mydep.repo]
+			else:
+				# We iterate over self.porttrees, since it's common to
+				# tweak this attribute in order to adjust match behavior.
+				repos = []
+				for tree in reversed(self.porttrees):
+					repos.append(self.repositories.get_name_for_location(tree))
+
 			for cpv in iterfunc(mylist):
-				try:
-					metadata = dict(zip(aux_keys,
-						self.aux_get(cpv, aux_keys)))
-				except KeyError:
-					# ebuild masked by corruption
-					continue
-				if not eapi_is_supported(metadata["EAPI"]):
-					continue
-				if mydep.slot and mydep.slot != metadata["SLOT"]:
-					continue
-				if settings._getMissingKeywords(cpv, metadata):
-					continue
-				if settings._getMaskAtom(cpv, metadata):
-					continue
-				if local_config:
-					metadata["USE"] = ""
-					if "?" in metadata["LICENSE"] or "?" in metadata["PROPERTIES"]:
-						self.doebuild_settings.setcpv(cpv, mydb=metadata)
-						metadata["USE"] = self.doebuild_settings.get("USE", "")
+				for repo in repos:
 					try:
-						if settings._getMissingLicenses(cpv, metadata):
-							continue
-						if settings._getMissingProperties(cpv, metadata):
-							continue
-					except InvalidDependString:
+						metadata = dict(zip(aux_keys,
+							self.aux_get(cpv, aux_keys, myrepo=repo)))
+					except KeyError:
+						# ebuild not in this repo, or masked by corruption
 						continue
-				if mydep.use:
-					has_iuse = False
-					for has_iuse in self._iter_match_use(mydep, [cpv]):
-						break
-					if not has_iuse:
+					if not eapi_is_supported(metadata["EAPI"]):
 						continue
-				myval = cpv
-				break
+					if mydep.slot is not None and \
+						mydep.slot != metadata["SLOT"]:
+						continue
+					if settings._getMissingKeywords(cpv, metadata):
+						continue
+					if settings._getMaskAtom(cpv, metadata):
+						continue
+					if local_config:
+						metadata["USE"] = ""
+						if "?" in metadata["LICENSE"] or \
+							"?" in metadata["PROPERTIES"]:
+							self.doebuild_settings.setcpv(cpv, mydb=metadata)
+							metadata["USE"] = \
+								self.doebuild_settings.get("PORTAGE_USE", "")
+						try:
+							if settings._getMissingLicenses(cpv, metadata):
+								continue
+							if settings._getMissingProperties(cpv, metadata):
+								continue
+						except InvalidDependString:
+							continue
+					if mydep.use is not None:
+						mydep_with_repo = mydep
+						if repo is not None and mydep.repo is None:
+							mydep_with_repo = mydep.with_repo(repo)
+						has_iuse = False
+						for has_iuse in self._iter_match_use(
+							mydep_with_repo, [cpv]):
+							break
+						if has_iuse is False:
+							continue
+					myval = cpv
+					break
+				if myval:
+					break
+
 		elif level == "bestmatch-list":
 			#dep match -- find best match but restrict search to sublist
 			#no point in calling xmatch again since we're not caching list deps
