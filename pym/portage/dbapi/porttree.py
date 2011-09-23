@@ -989,23 +989,29 @@ class portdbapi(dbapi):
 
 		elif level == "bestmatch-list":
 			#dep match -- find best match but restrict search to sublist
-			#no point in calling xmatch again since we're not caching list deps
-
+			warnings.warn("The 'bestmatch-list' mode of "
+				"portage.dbapi.porttree.portdbapi.xmatch is deprecated",
+				DeprecationWarning, stacklevel=2)
 			myval = best(list(self._iter_match(mydep, mylist)))
 		elif level == "match-list":
 			#dep match -- find all matches but restrict search to sublist (used in 2nd half of visible())
-
+			warnings.warn("The 'match-list' mode of "
+				"portage.dbapi.porttree.portdbapi.xmatch is deprecated",
+				DeprecationWarning, stacklevel=2)
 			myval = list(self._iter_match(mydep, mylist))
-
 		else:
 			raise AssertionError(
 				"Invalid level argument: '%s'" % level)
 
-		if self.frozen and (level not in ["match-list", "bestmatch-list"]):
-			self.xcache[level][mydep] = myval
-			if origdep and origdep != mydep:
-				self.xcache[level][origdep] = myval
-		return myval[:]
+		if self.frozen:
+			xcache_this_level = self.xcache.get(level)
+			if xcache_this_level is not None:
+				xcache_this_level[mydep] = myval
+				if origdep and origdep != mydep:
+					xcache_this_level[origdep] = myval
+				myval = myval[:]
+
+		return myval
 
 	def match(self, mydep, use_cache=1):
 		return self.xmatch("match-visible", mydep)
