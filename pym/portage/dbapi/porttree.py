@@ -887,12 +887,6 @@ class portdbapi(dbapi):
 				if len(myval) > 1:
 					self._cpv_sort_ascending(myval)
 
-		elif level == "match-visible":
-			# find all visible matches
-			myval = self.xmatch("match-all", mydep)
-			if myval:
-				myval = list(self._iter_visible(myval, myrepo=mydep.repo))
-
 		elif level == "minimum-all":
 			# Find the minimum matching version. This is optimized to
 			# minimize the number of metadata accesses (improves performance
@@ -916,7 +910,7 @@ class portdbapi(dbapi):
 					if myval:
 						break
 
-		elif level in ("minimum-visible", "bestmatch-visible"):
+		elif level in ("match-visible", "minimum-visible", "bestmatch-visible"):
 			# Find the minimum matching visible version. This is optimized to
 			# minimize the number of metadata accesses (improves performance
 			# especially in cases where metadata needs to be generated).
@@ -925,12 +919,14 @@ class portdbapi(dbapi):
 			else:
 				mylist = match_from_list(mydep,
 					self.cp_list(mykey, mytree=mytree))
-			myval = ""
+
+			single_match = level != "match-visible"
+			myval = []
 			aux_keys = list(self._aux_cache_keys)
-			if level == "minimum-visible":
-				iterfunc = iter
-			else:
+			if level == "bestmatch-visible":
 				iterfunc = reversed
+			else:
+				iterfunc = iter
 
 			if mydep.repo is not None:
 				repos = [mydep.repo]
@@ -961,10 +957,18 @@ class portdbapi(dbapi):
 						not self._match_use(mydep, cpv, metadata):
 						continue
 
-					myval = cpv
+					myval.append(cpv)
+					# only yield a given cpv once
 					break
+
+				if myval and single_match:
+					break
+
+			if single_match:
 				if myval:
-					break
+					myval = myval[0]
+				else:
+					myval = ""
 
 		elif level == "bestmatch-list":
 			#dep match -- find best match but restrict search to sublist
