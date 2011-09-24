@@ -911,8 +911,6 @@ class portdbapi(dbapi):
 				mylist = match_from_list(mydep,
 					self.cp_list(mykey, mytree=mytree))
 			myval = ""
-			settings = self.settings
-			local_config = settings.local_config
 			aux_keys = list(self._aux_cache_keys)
 			if level == "minimum-visible":
 				iterfunc = iter
@@ -936,29 +934,14 @@ class portdbapi(dbapi):
 					except KeyError:
 						# ebuild not in this repo, or masked by corruption
 						continue
-					if not eapi_is_supported(metadata["EAPI"]):
+
+					if not self._visible(cpv, metadata):
 						continue
+
 					if mydep.slot is not None and \
 						mydep.slot != metadata["SLOT"]:
 						continue
-					if settings._getMissingKeywords(cpv, metadata):
-						continue
-					if settings._getMaskAtom(cpv, metadata):
-						continue
-					if local_config:
-						metadata["USE"] = ""
-						if "?" in metadata["LICENSE"] or \
-							"?" in metadata["PROPERTIES"]:
-							self.doebuild_settings.setcpv(cpv, mydb=metadata)
-							metadata["USE"] = \
-								self.doebuild_settings.get("PORTAGE_USE", "")
-						try:
-							if settings._getMissingLicenses(cpv, metadata):
-								continue
-							if settings._getMissingProperties(cpv, metadata):
-								continue
-						except InvalidDependString:
-							continue
+
 					if mydep.use is not None:
 						mydep_with_repo = mydep
 						if repo is not None and mydep.repo is None:
