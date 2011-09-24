@@ -875,16 +875,16 @@ class portdbapi(dbapi):
 		elif level == "match-visible":
 			# find all visible matches
 			if mydep.repo is not None or len(self.porttrees) == 1:
-				myval = self.visible(
+				myval = list(self._iter_visible(
 					self.xmatch("match-all", mydep),
-					mytree=mytree)
+					mytree=mytree))
 			else:
 				myval = set()
 				# We iterate over self.porttrees, since it's common to
 				# tweak this attribute in order to adjust match behavior.
 				for tree in self.porttrees:
 					repo = self.repositories.get_name_for_location(tree)
-					myval.update(self.visible(
+					myval.update(self._iter_visible(
 						self.xmatch("match-all", mydep.with_repo(repo)),
 						mytree=tree))
 				myval = list(myval)
@@ -1024,21 +1024,26 @@ class portdbapi(dbapi):
 			DeprecationWarning, stacklevel=2)
 		return self.visible(mylist, mytree=mytree)
 
-	def visible(self, mylist, mytree=None):
+	def visible(self, cpv_iter, mytree=None):
+		"""
+		Return a list containing only visible packages.
+		"""
+		if mylist is None:
+			return []
+
+		return list(self._iter_visible(iter(cpv_iter), mytree=mytree))
+
+	def _iter_visible(self, cpv_iter, mytree=None):
 		"""
 		Return a new list containing only visible packages.
 		"""
-
-		if mylist is None:
-			return []
-		newlist=[]
 		aux_keys = list(self._aux_cache_keys)
 		metadata = {}
 		local_config = self.settings.local_config
 		chost = self.settings.get('CHOST', '')
 		accept_chost = self.settings._accept_chost
 		getMaskAtom = self.settings._getMaskAtom
-		for mycpv in mylist:
+		for mycpv in cpv_iter:
 			metadata.clear()
 			try:
 				metadata.update(zip(aux_keys,
@@ -1077,8 +1082,7 @@ class portdbapi(dbapi):
 						continue
 				except InvalidDependString:
 					continue
-			newlist.append(mycpv)
-		return newlist
+			yield mycpv
 
 def close_portdbapi_caches():
 	for i in portdbapi.portdbapi_instances:
