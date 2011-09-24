@@ -957,16 +957,10 @@ class portdbapi(dbapi):
 						mydep.slot != metadata["SLOT"]:
 						continue
 
-					if mydep.use is not None:
-						mydep_with_repo = mydep
-						if repo is not None and mydep.repo is None:
-							mydep_with_repo = mydep.with_repo(repo)
-						has_iuse = False
-						for has_iuse in self._iter_match_use(
-							mydep_with_repo, [cpv]):
-							break
-						if has_iuse is False:
-							continue
+					if mydep.unevaluated_atom.use is not None and \
+						not self._match_use(mydep, cpv, metadata):
+						continue
+
 					myval = cpv
 					break
 				if myval:
