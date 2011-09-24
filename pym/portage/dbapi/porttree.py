@@ -875,18 +875,18 @@ class portdbapi(dbapi):
 		elif level == "match-visible":
 			# find all visible matches
 			if mydep.repo is not None or len(self.porttrees) == 1:
-				myval = self.gvisible(self.visible(
+				myval = self.visible(
 					self.xmatch("match-all", mydep),
-					mytree=mytree), mytree=mytree)
+					mytree=mytree)
 			else:
 				myval = set()
 				# We iterate over self.porttrees, since it's common to
 				# tweak this attribute in order to adjust match behavior.
 				for tree in self.porttrees:
 					repo = self.repositories.get_name_for_location(tree)
-					myval.update(self.gvisible(self.visible(
+					myval.update(self.visible(
 						self.xmatch("match-all", mydep.with_repo(repo)),
-						mytree=tree), mytree=tree))
+						mytree=tree))
 				myval = list(myval)
 				if len(myval) > 1:
 					self._cpv_sort_ascending(myval)
@@ -1016,32 +1016,18 @@ class portdbapi(dbapi):
 	def match(self, mydep, use_cache=1):
 		return self.xmatch("match-visible", mydep)
 
-	def visible(self, mylist, mytree=None):
-		"""two functions in one.  Accepts a list of cpv values and uses the package.mask *and*
-		packages file to remove invisible entries, returning remaining items.  This function assumes
-		that all entries in mylist have the same category and package name."""
-		if not mylist:
-			return []
-
-		db_keys = ["repository", "SLOT"]
-		visible = []
-		getMaskAtom = self.settings._getMaskAtom
-		for cpv in mylist:
-			try:
-				metadata = dict(zip(db_keys,
-					self.aux_get(cpv, db_keys, mytree=mytree)))
-			except KeyError:
-				# masked by corruption
-				continue
-			if not metadata["SLOT"]:
-				continue
-			if getMaskAtom(cpv, metadata):
-				continue
-			visible.append(cpv)
-		return visible
-
 	def gvisible(self, mylist, mytree=None):
-		"strip out group-masked (not in current group) entries"
+		warnings.warn("The 'gvisible' method of "
+			"portage.dbapi.porttree.portdbapi "
+			"is deprecated, and the functionality "
+			"has been combined into the 'visible' method",
+			DeprecationWarning, stacklevel=2)
+		return self.visible(mylist, mytree=mytree)
+
+	def visible(self, mylist, mytree=None):
+		"""
+		Return a new list containing only visible packages.
+		"""
 
 		if mylist is None:
 			return []
@@ -1051,6 +1037,7 @@ class portdbapi(dbapi):
 		local_config = self.settings.local_config
 		chost = self.settings.get('CHOST', '')
 		accept_chost = self.settings._accept_chost
+		getMaskAtom = self.settings._getMaskAtom
 		for mycpv in mylist:
 			metadata.clear()
 			try:
@@ -1068,6 +1055,10 @@ class portdbapi(dbapi):
 			if not eapi_is_supported(eapi):
 				continue
 			if _eapi_is_deprecated(eapi):
+				continue
+			if not metadata["SLOT"]:
+				continue
+			if getMaskAtom(mycpv, metadata):
 				continue
 			if self.settings._getMissingKeywords(mycpv, metadata):
 				continue
