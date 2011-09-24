@@ -887,30 +887,8 @@ class portdbapi(dbapi):
 				if len(myval) > 1:
 					self._cpv_sort_ascending(myval)
 
-		elif level == "minimum-all":
-			# Find the minimum matching version. This is optimized to
-			# minimize the number of metadata accesses (improves performance
-			# especially in cases where metadata needs to be generated).
-			myval = ""
-			if mydep == mykey:
-				for myval in self.cp_list(mykey, mytree=mytree):
-					break
-			elif mydep.repo is not None:
-				for myval in self._iter_match(mydep,
-					self.cp_list(mykey, mytree=mytree)):
-					break
-			else:
-				# We iterate over self.porttrees, since it's common to
-				# tweak this attribute in order to adjust match behavior.
-				for tree in self.porttrees:
-					repo = self.repositories.get_name_for_location(tree)
-					for myval in self._iter_match(mydep.with_repo(repo),
-						self.cp_list(mykey, mytree=tree)):
-						break
-					if myval:
-						break
-
-		elif level in ("match-visible", "minimum-visible", "bestmatch-visible"):
+		elif level in ("bestmatch-visible", "match-visible",
+			"minimum-all", "minimum-visible"):
 			# Find the minimum matching visible version. This is optimized to
 			# minimize the number of metadata accesses (improves performance
 			# especially in cases where metadata needs to be generated).
@@ -920,6 +898,7 @@ class portdbapi(dbapi):
 				mylist = match_from_list(mydep,
 					self.cp_list(mykey, mytree=mytree))
 
+			visibility_filter = level != "minimum-all"
 			single_match = level != "match-visible"
 			myval = []
 			aux_keys = list(self._aux_cache_keys)
@@ -946,7 +925,7 @@ class portdbapi(dbapi):
 						# ebuild not in this repo, or masked by corruption
 						continue
 
-					if not self._visible(cpv, metadata):
+					if visibility_filter and not self._visible(cpv, metadata):
 						continue
 
 					if mydep.slot is not None and \
