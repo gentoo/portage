@@ -849,7 +849,10 @@ class portdbapi(dbapi):
 		if mydep.repo is not None:
 			mytree = self.treemap.get(mydep.repo)
 			if mytree is None:
-				myval = []
+				if level.startswith("match-"):
+					myval = []
+				else:
+					myval = ""
 
 		if myval is not None:
 			# Unknown repo, empty result.
