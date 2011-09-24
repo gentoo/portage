@@ -465,9 +465,16 @@ class portdbapi(dbapi):
 			if mytree is None:
 				raise KeyError(myrepo)
 
-		if not mytree:
+		if mytree is not None and len(self.porttrees) == 1 \
+			and mytree == self.porttrees[0]:
+			# mytree matches our only tree, so it's safe to
+			# ignore mytree and cache the result
+			mytree = None
+			myrepo = None
+
+		if mytree is None:
 			cache_me = True
-		if not mytree and not self._known_keys.intersection(
+		if mytree is None and not self._known_keys.intersection(
 			mylist).difference(self._aux_cache_keys):
 			aux_cache = self._aux_cache.get(mycpv)
 			if aux_cache is not None:
@@ -730,6 +737,14 @@ class portdbapi(dbapi):
 		return l
 
 	def cp_list(self, mycp, use_cache=1, mytree=None):
+
+		if self.frozen and mytree is not None \
+			and len(self.porttrees) == 1 \
+			and mytree == self.porttrees[0]:
+			# mytree matches our only tree, so it's safe to
+			# ignore mytree and cache the result
+			mytree = None
+
 		if self.frozen and mytree is None:
 			cachelist = self.xcache["cp-list"].get(mycp)
 			if cachelist is not None:
@@ -857,7 +872,7 @@ class portdbapi(dbapi):
 			# match *all* visible *and* masked packages
 			if mydep == mykey:
 				myval = self.cp_list(mykey, mytree=mytree)
-			elif mydep.repo is not None or len(self.porttrees) == 1:
+			elif mydep.repo is not None:
 				myval = list(self._iter_match(mydep,
 					self.cp_list(mykey, mytree=mytree)))
 			else:
@@ -886,7 +901,7 @@ class portdbapi(dbapi):
 			if mydep == mykey:
 				for myval in self.cp_list(mykey, mytree=mytree):
 					break
-			elif mydep.repo is not None or len(self.porttrees) == 1:
+			elif mydep.repo is not None:
 				for myval in self._iter_match(mydep,
 					self.cp_list(mykey, mytree=mytree)):
 					break
@@ -917,7 +932,7 @@ class portdbapi(dbapi):
 			else:
 				iterfunc = reversed
 
-			if mydep.repo is not None or len(self.porttrees) == 1:
+			if mydep.repo is not None:
 				repos = [mydep.repo]
 			else:
 				# We iterate over self.porttrees, since it's common to
@@ -1010,9 +1025,7 @@ class portdbapi(dbapi):
 		aux_keys = list(self._aux_cache_keys)
 		metadata = {}
 
-		if len(self.porttrees) == 1:
-			repos = [None]
-		elif myrepo is not None:
+		if myrepo is not None:
 			repos = [myrepo]
 		else:
 			# We iterate over self.porttrees, since it's common to
