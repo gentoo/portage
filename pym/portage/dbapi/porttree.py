@@ -1026,10 +1026,6 @@ class portdbapi(dbapi):
 		"""
 		aux_keys = list(self._aux_cache_keys)
 		metadata = {}
-		local_config = self.settings.local_config
-		chost = self.settings.get('CHOST', '')
-		accept_chost = self.settings._accept_chost
-		getMaskAtom = self.settings._getMaskAtom
 
 		if len(self.porttrees) == 1:
 			repos = [None]
@@ -1056,40 +1052,46 @@ class portdbapi(dbapi):
 					writemsg("!!! %s\n" % (e,), noiselevel=-1)
 					del e
 					continue
-				eapi = metadata["EAPI"]
-				if not eapi_is_supported(eapi):
+
+				if not self._visible(mycpv, metadata):
 					continue
-				if _eapi_is_deprecated(eapi):
-					continue
-				if not metadata["SLOT"]:
-					continue
-				if getMaskAtom(mycpv, metadata):
-					continue
-				if self.settings._getMissingKeywords(mycpv, metadata):
-					continue
-				if local_config:
-					metadata['CHOST'] = chost
-					if not accept_chost(mycpv, metadata):
-						continue
-					metadata["USE"] = ""
-					if "?" in metadata["LICENSE"] or \
-						"?" in metadata["PROPERTIES"]:
-						self.doebuild_settings.setcpv(mycpv, mydb=metadata)
-						metadata['USE'] = \
-							self.doebuild_settings['PORTAGE_USE']
-					try:
-						if self.settings._getMissingLicenses(
-							mycpv, metadata):
-							continue
-						if self.settings._getMissingProperties(
-							mycpv, metadata):
-							continue
-					except InvalidDependString:
-						continue
 
 				yield mycpv
 				# only yield a given cpv once
 				break
+
+	def _visible(self, cpv, metadata):
+		eapi = metadata["EAPI"]
+		if not eapi_is_supported(eapi):
+			return False
+		if _eapi_is_deprecated(eapi):
+			return False
+		if not metadata["SLOT"]:
+			return False
+
+		settings = self.settings
+		if settings._getMaskAtom(cpv, metadata):
+			return False
+		if settings._getMissingKeywords(cpv, metadata):
+			return False
+		if settings.local_config:
+			metadata['CHOST'] = settings.get('CHOST', '')
+			if not settings._accept_chost(cpv, metadata):
+				return False
+			metadata["USE"] = ""
+			if "?" in metadata["LICENSE"] or \
+				"?" in metadata["PROPERTIES"]:
+				self.doebuild_settings.setcpv(cpv, mydb=metadata)
+				metadata['USE'] = self.doebuild_settings['PORTAGE_USE']
+			try:
+				if settings._getMissingLicenses(cpv, metadata):
+					return False
+				if settings._getMissingProperties(cpv, metadata):
+					return False
+			except InvalidDependString:
+				return False
+
+		return True
 
 def close_portdbapi_caches():
 	for i in portdbapi.portdbapi_instances:
