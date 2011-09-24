@@ -962,18 +962,17 @@ class portdbapi(dbapi):
 	def gvisible(self, mylist):
 		warnings.warn("The 'gvisible' method of "
 			"portage.dbapi.porttree.portdbapi "
-			"is deprecated, and the functionality "
-			"has been combined into the 'visible' method",
+			"is deprecated",
 			DeprecationWarning, stacklevel=2)
-		return self.visible(mylist)
+		return list(self._iter_visible(iter(mylist)))
 
 	def visible(self, cpv_iter):
-		"""
-		Return a list containing only visible packages.
-		"""
+		warnings.warn("The 'visible' method of "
+			"portage.dbapi.porttree.portdbapi "
+			"is deprecated",
+			DeprecationWarning, stacklevel=2)
 		if cpv_iter is None:
 			return []
-
 		return list(self._iter_visible(iter(cpv_iter)))
 
 	def _iter_visible(self, cpv_iter, myrepo=None):
