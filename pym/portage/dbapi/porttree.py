@@ -868,26 +868,7 @@ class portdbapi(dbapi):
 				myval = match_from_list(mydep,
 					self.cp_list(mykey, mytree=mytree))
 
-		elif level == "match-all":
-			# match *all* visible *and* masked packages
-			if mydep == mykey:
-				myval = self.cp_list(mykey, mytree=mytree)
-			elif mydep.repo is not None:
-				myval = list(self._iter_match(mydep,
-					self.cp_list(mykey, mytree=mytree)))
-			else:
-				myval = set()
-				# We iterate over self.porttrees, since it's common to
-				# tweak this attribute in order to adjust match behavior.
-				for tree in self.porttrees:
-					repo = self.repositories.get_name_for_location(tree)
-					myval.update(self._iter_match(mydep.with_repo(repo),
-					self.cp_list(mykey, mytree=tree)))
-				myval = list(myval)
-				if len(myval) > 1:
-					self._cpv_sort_ascending(myval)
-
-		elif level in ("bestmatch-visible", "match-visible",
+		elif level in ("bestmatch-visible", "match-all", "match-visible",
 			"minimum-all", "minimum-visible"):
 			# Find the minimum matching visible version. This is optimized to
 			# minimize the number of metadata accesses (improves performance
@@ -898,8 +879,8 @@ class portdbapi(dbapi):
 				mylist = match_from_list(mydep,
 					self.cp_list(mykey, mytree=mytree))
 
-			visibility_filter = level != "minimum-all"
-			single_match = level != "match-visible"
+			visibility_filter = level not in ("match-all", "minimum-all")
+			single_match = level not in ("match-all", "match-visible")
 			myval = []
 			aux_keys = list(self._aux_cache_keys)
 			if level == "bestmatch-visible":
