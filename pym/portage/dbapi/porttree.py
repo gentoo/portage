@@ -874,22 +874,9 @@ class portdbapi(dbapi):
 
 		elif level == "match-visible":
 			# find all visible matches
-			if mydep.repo is not None or len(self.porttrees) == 1:
-				myval = list(self._iter_visible(
-					self.xmatch("match-all", mydep),
-					mytree=mytree))
-			else:
-				myval = set()
-				# We iterate over self.porttrees, since it's common to
-				# tweak this attribute in order to adjust match behavior.
-				for tree in self.porttrees:
-					repo = self.repositories.get_name_for_location(tree)
-					myval.update(self._iter_visible(
-						self.xmatch("match-all", mydep.with_repo(repo)),
-						mytree=tree))
-				myval = list(myval)
-				if len(myval) > 1:
-					self._cpv_sort_ascending(myval)
+			myval = self.xmatch("match-all", mydep)
+			if myval:
+				myval = list(self._iter_visible(myval, myrepo=mydep.repo))
 
 		elif level == "minimum-all":
 			# Find the minimum matching version. This is optimized to
@@ -1016,24 +1003,24 @@ class portdbapi(dbapi):
 	def match(self, mydep, use_cache=1):
 		return self.xmatch("match-visible", mydep)
 
-	def gvisible(self, mylist, mytree=None):
+	def gvisible(self, mylist):
 		warnings.warn("The 'gvisible' method of "
 			"portage.dbapi.porttree.portdbapi "
 			"is deprecated, and the functionality "
 			"has been combined into the 'visible' method",
 			DeprecationWarning, stacklevel=2)
-		return self.visible(mylist, mytree=mytree)
+		return self.visible(mylist)
 
-	def visible(self, cpv_iter, mytree=None):
+	def visible(self, cpv_iter):
 		"""
 		Return a list containing only visible packages.
 		"""
-		if mylist is None:
+		if cpv_iter is None:
 			return []
 
-		return list(self._iter_visible(iter(cpv_iter), mytree=mytree))
+		return list(self._iter_visible(iter(cpv_iter)))
 
-	def _iter_visible(self, cpv_iter, mytree=None):
+	def _iter_visible(self, cpv_iter, myrepo=None):
 		"""
 		Return a new list containing only visible packages.
 		"""
@@ -1043,46 +1030,66 @@ class portdbapi(dbapi):
 		chost = self.settings.get('CHOST', '')
 		accept_chost = self.settings._accept_chost
 		getMaskAtom = self.settings._getMaskAtom
+
+		if len(self.porttrees) == 1:
+			repos = [None]
+		elif myrepo is not None:
+			repos = [myrepo]
+		else:
+			# We iterate over self.porttrees, since it's common to
+			# tweak this attribute in order to adjust match behavior.
+			repos = []
+			for tree in reversed(self.porttrees):
+				repos.append(self.repositories.get_name_for_location(tree))
+
 		for mycpv in cpv_iter:
-			metadata.clear()
-			try:
-				metadata.update(zip(aux_keys,
-					self.aux_get(mycpv, aux_keys, mytree=mytree)))
-			except KeyError:
-				continue
-			except PortageException as e:
-				writemsg("!!! Error: aux_get('%s', %s)\n" % (mycpv, aux_keys),
-					noiselevel=-1)
-				writemsg("!!! %s\n" % (e,), noiselevel=-1)
-				del e
-				continue
-			eapi = metadata["EAPI"]
-			if not eapi_is_supported(eapi):
-				continue
-			if _eapi_is_deprecated(eapi):
-				continue
-			if not metadata["SLOT"]:
-				continue
-			if getMaskAtom(mycpv, metadata):
-				continue
-			if self.settings._getMissingKeywords(mycpv, metadata):
-				continue
-			if local_config:
-				metadata['CHOST'] = chost
-				if not accept_chost(mycpv, metadata):
-					continue
-				metadata["USE"] = ""
-				if "?" in metadata["LICENSE"] or "?" in metadata["PROPERTIES"]:
-					self.doebuild_settings.setcpv(mycpv, mydb=metadata)
-					metadata['USE'] = self.doebuild_settings['PORTAGE_USE']
+			for repo in repos:
+				metadata.clear()
 				try:
-					if self.settings._getMissingLicenses(mycpv, metadata):
-						continue
-					if self.settings._getMissingProperties(mycpv, metadata):
-						continue
-				except InvalidDependString:
+					metadata.update(zip(aux_keys,
+						self.aux_get(mycpv, aux_keys, myrepo=repo)))
+				except KeyError:
 					continue
-			yield mycpv
+				except PortageException as e:
+					writemsg("!!! Error: aux_get('%s', %s)\n" %
+						(mycpv, aux_keys), noiselevel=-1)
+					writemsg("!!! %s\n" % (e,), noiselevel=-1)
+					del e
+					continue
+				eapi = metadata["EAPI"]
+				if not eapi_is_supported(eapi):
+					continue
+				if _eapi_is_deprecated(eapi):
+					continue
+				if not metadata["SLOT"]:
+					continue
+				if getMaskAtom(mycpv, metadata):
+					continue
+				if self.settings._getMissingKeywords(mycpv, metadata):
+					continue
+				if local_config:
+					metadata['CHOST'] = chost
+					if not accept_chost(mycpv, metadata):
+						continue
+					metadata["USE"] = ""
+					if "?" in metadata["LICENSE"] or \
+						"?" in metadata["PROPERTIES"]:
+						self.doebuild_settings.setcpv(mycpv, mydb=metadata)
+						metadata['USE'] = \
+							self.doebuild_settings['PORTAGE_USE']
+					try:
+						if self.settings._getMissingLicenses(
+							mycpv, metadata):
+							continue
+						if self.settings._getMissingProperties(
+							mycpv, metadata):
+							continue
+					except InvalidDependString:
+						continue
+
+				yield mycpv
+				# only yield a given cpv once
+				break
 
 def close_portdbapi_caches():
 	for i in portdbapi.portdbapi_instances:
