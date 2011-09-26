@@ -123,8 +123,13 @@ src_install() {
 		settings = playground.settings
 		eprefix = settings["EPREFIX"]
 		eroot = settings["EROOT"]
+		trees = playground.trees
+		root = playground.root
+		portdb = trees[root]["porttree"].dbapi
 
 		portage_python = portage._python_interpreter
+		ebuild_cmd = (portage_python, "-Wd",
+			os.path.join(PORTAGE_BIN_PATH, "ebuild"))
 		egencache_cmd = (portage_python, "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "egencache"))
 		emerge_cmd = (portage_python, "-Wd",
@@ -146,6 +151,9 @@ src_install() {
 		if self._have_python_xml():
 			egencache_extra_args.append("--update-use-local-desc")
 
+		test_ebuild = portdb.findname("dev-libs/A-1")
+		self.assertFalse(test_ebuild is None)
+
 		test_commands = (
 			env_update_cmd,
 			egencache_cmd + ("--update",) + tuple(egencache_extra_args),
@@ -153,6 +161,7 @@ src_install() {
 			emerge_cmd + ("--info",),
 			emerge_cmd + ("--info", "--verbose"),
 			emerge_cmd + ("--pretend", "dev-libs/A"),
+			ebuild_cmd + (test_ebuild, "manifest", "clean", "package", "merge"),
 			emerge_cmd + ("--pretend", "--tree", "--complete-graph", "dev-libs/A"),
 			emerge_cmd + ("-p", "dev-libs/B"),
 			emerge_cmd + ("-B", "dev-libs/B",),
