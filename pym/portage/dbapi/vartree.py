@@ -3279,6 +3279,7 @@ class dblink(object):
 		# the check must be repeated here for binary packages (it's
 		# inexpensive since we call os.walk() here anyway).
 		unicode_errors = []
+		line_ending_re = re.compile('[\n\r]')
 
 		while True:
 
@@ -3330,7 +3331,7 @@ class dblink(object):
 
 					relative_path = fpath[srcroot_len:]
 
-					if "\n" in relative_path:
+					if line_ending_re.search(relative_path) is not None:
 						paths_with_newlines.append(relative_path)
 
 					file_mode = os.lstat(fpath).st_mode
@@ -3353,11 +3354,11 @@ class dblink(object):
 
 		if paths_with_newlines:
 			msg = []
-			msg.append(_("This package installs one or more files containing a newline (\\n) character:"))
+			msg.append(_("This package installs one or more files containing line ending characters:"))
 			msg.append("")
 			paths_with_newlines.sort()
 			for f in paths_with_newlines:
-				msg.append("\t/%s" % (f.replace("\n", "\\n")))
+				msg.append("\t/%s" % (f.replace("\n", "\\n").replace("\r", "\\r")))
 			msg.append("")
 			msg.append(_("package %s NOT merged") % self.mycpv)
 			msg.append("")
