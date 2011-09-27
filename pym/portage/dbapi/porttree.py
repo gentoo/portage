@@ -235,13 +235,12 @@ class portdbapi(dbapi):
 		group."""
 
 		dirmode  = 0o2070
-		filemode =   0o60
 		modemask =    0o2
 
 		try:
 			ensure_dirs(self.depcachedir, gid=portage_gid,
 				mode=dirmode, mask=modemask)
-		except PortageException as e:
+		except PortageException:
 			pass
 
 	def close_caches(self):
@@ -626,7 +625,7 @@ class portdbapi(dbapi):
 			mystat = None
 			try:
 				mystat = os.stat(file_path)
-			except OSError as e:
+			except OSError:
 				pass
 			if mystat is None:
 				existing_size = 0
@@ -1130,9 +1129,9 @@ class portagetree(object):
 		myslot = ""
 		try:
 			myslot = self.dbapi.aux_get(mycatpkg, ["SLOT"])[0]
-		except SystemExit as e:
+		except SystemExit:
 			raise
-		except Exception as e:
+		except Exception:
 			pass
 		return myslot
 
@@ -1193,7 +1192,7 @@ def _parse_uri_map(cpv, metadata, use=None):
 	while myuris:
 		uri = myuris.pop()
 		if myuris and myuris[-1] == "->":
-			operator = myuris.pop()
+			myuris.pop()
 			distfile = myuris.pop()
 		else:
 			distfile = os.path.basename(uri)
@@ -1208,6 +1207,5 @@ def _parse_uri_map(cpv, metadata, use=None):
 			uri_map[distfile] = uri_set
 		uri_set.add(uri)
 		uri = None
-		operator = None
 
 	return uri_map
