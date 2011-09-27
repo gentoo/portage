@@ -605,7 +605,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				if builddir_lock is not None:
 					builddir_lock.unlock()
 
-		restrict = set(mysettings.get('PORTAGE_RESTRICT', '').split())
 		# get possible slot information from the deps file
 		if mydo == "depend":
 			writemsg("!!! DEBUG: dbkey: %s\n" % str(dbkey), 2)
