@@ -267,10 +267,14 @@ class Manifest(object):
 						raise
 
 			if update_manifest:
-				if myentries:
+				if myentries or not (self.thin or self.allow_missing):
+					# If myentries is empty, don't write an empty manifest
+					# when thin or allow_missing is enabled. Except for
+					# thin manifests with no DIST entries, myentries is
+					# non-empty for all currently known use cases.
 					write_atomic(self.getFullname(), "".join("%s\n" %
 						str(myentry) for myentry in myentries))
-				elif self.thin:
+				else:
 					# With thin manifest, there's no need to have
 					# a Manifest file if there are no DIST entries.
 					try:
