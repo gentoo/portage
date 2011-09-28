@@ -33,6 +33,12 @@ get_config() {
 		"${PORTAGE_CONFIGROOT}"etc/etc-update.conf)
 }
 
+cmd_var_is_valid() {
+	# return true if the first whitespace-separated token contained
+	# in "${1}" is an executable file, false otherwise
+	[[ -x $(type -P ${1%%[[:space:]]*}) ]]
+}
+
 diff_command() {
 	local cmd=${diff_command//%file1/$1}
 	${cmd//%file2/$2}
@@ -566,7 +572,10 @@ using_editor=$(get_config using_editor)
 merge_command=$(get_config merge_command)
 declare -i mode=$(get_config mode)
 [[ -z ${mode} ]] && mode=0
-[[ -z ${pager} ]] && pager="cat"
+if ! cmd_var_is_valid "${pager}" ; then
+	pager=${PAGER}
+	cmd_var_is_valid "${pager}" || pager=cat
+fi
 
 if [ "${using_editor}" == 0 ]; then
 	# Sanity check to make sure diff exists and works
