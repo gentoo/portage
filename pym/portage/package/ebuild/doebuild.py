@@ -496,7 +496,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		not repo_config.thin_manifest and \
 		mydo not in ("digest", "manifest", "help") and \
 		not portage._doebuild_manifest_exempt_depend and \
-		not (repo_config.allow_missing_manifests and not os.path.exists(manifest_path)):
+		not (repo_config.allow_missing_manifest and not os.path.exists(manifest_path)):
 		# Always verify the ebuild checksums before executing it.
 		global _doebuild_broken_ebuilds
 
