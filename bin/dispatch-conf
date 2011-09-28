@@ -64,6 +64,20 @@ atexit.register(cleanup)
 
 MANDATORY_OPTS  = [ 'archive-dir', 'diff', 'replace-cvs', 'replace-wscomments', 'merge' ]
 
+def cmd_var_is_valid(cmd):
+    """
+    Return true if the first whitespace-separated token contained
+    in cmd is an executable file, false otherwise.
+    """
+    cmd = portage.util.shlex_split(cmd)
+    if not cmd:
+        return False
+
+    if os.path.isabs(cmd[0]):
+        return os.access(cmd[0], os.EX_OK)
+
+    return find_binary(cmd[0]) is not None
+
 class dispatch:
     options = {}
 
@@ -83,6 +97,22 @@ class dispatch:
                 os.chmod(self.options["log-file"], 0o600)
         else:
             self.options["log-file"] = "/dev/null"
+
+        pager = self.options.get("pager")
+        if pager is None or not cmd_var_is_valid(pager):
+            pager = os.environ.get("PAGER")
+            if pager is None or not cmd_var_is_valid(pager):
+                pager = "cat"
+
+        if os.path.basename(pager) == "less":
+            less_opts = self.options.get("less-opts")
+            if less_opts is not None and less_opts.strip():
+                pager += " " + less_opts
+
+        if os.path.basename(portage.util.shlex_split(pager)[0]) == "cat":
+            pager = ""
+        else:
+            pager = " | " + pager
 
         #
         # Build list of extant configs
@@ -226,10 +256,12 @@ class dispatch:
                 clear_screen()
                 if show_new_diff:
                     cmd = self.options['diff'] % (conf['new'], mrgconf)
+                    cmd += pager
                     spawn_shell(cmd)
                     show_new_diff = 0
                 else:
                     cmd = self.options['diff'] % (conf['current'], newconf)
+                    cmd += pager
                     spawn_shell(cmd)
 
                 print()
