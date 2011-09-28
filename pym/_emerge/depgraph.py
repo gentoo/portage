@@ -4480,7 +4480,7 @@ class depgraph(object):
 							# matches (this can happen if an atom lacks a
 							# category).
 							show_invalid_depstring_notice(
-								pkg, depstr, str(e))
+								pkg, depstr, _unicode_decode("%s") % (e,))
 							del e
 							raise
 						if not success:
@@ -4511,7 +4511,8 @@ class depgraph(object):
 						except portage.exception.InvalidAtom as e:
 							depstr = " ".join(vardb.aux_get(pkg.cpv, dep_keys))
 							show_invalid_depstring_notice(
-								pkg, depstr, "Invalid Atom: %s" % (e,))
+								pkg, depstr,
+								_unicode_decode("Invalid Atom: %s") % (e,))
 							return False
 				for cpv in stale_cache:
 					del blocker_cache[cpv]
