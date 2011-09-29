@@ -104,12 +104,13 @@ class dispatch:
             if pager is None or not cmd_var_is_valid(pager):
                 pager = "cat"
 
-        if os.path.basename(pager) == "less":
+        pager_basename = os.path.basename(portage.util.shlex_split(pager)[0])
+        if pager_basename == "less":
             less_opts = self.options.get("less-opts")
             if less_opts is not None and less_opts.strip():
                 pager += " " + less_opts
 
-        if os.path.basename(portage.util.shlex_split(pager)[0]) == "cat":
+        if pager_basename == "cat":
             pager = ""
         else:
             pager = " | " + pager
