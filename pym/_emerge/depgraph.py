@@ -591,9 +591,9 @@ class depgraph(object):
 				# Exclude installed here since we only
 				# want to show available updates.
 				continue
-			chosen_pkg, existing_node = \
-				self._select_package(pkg.root, pkg.slot_atom)
-			if chosen_pkg >= pkg:
+			chosen_pkg = self._dynamic_config.mydbapi[pkg.root
+				].match_pkgs(pkg.slot_atom)
+			if not chosen_pkg or chosen_pkg[-1] >= pkg:
 				continue
 			k = (pkg.root, pkg.slot_atom)
 			if k in missed_updates:
