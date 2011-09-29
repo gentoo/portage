@@ -2557,39 +2557,6 @@ else:
 			print(red("I'm confused... I don't know where I am!"))
 			sys.exit(1)
 
-		# Force an unsigned commit when more than one Manifest needs to be signed.
-		if repolevel < 3 and sign_manifests:
-
-			fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
-			mymsg = os.fdopen(fd, "wb")
-			mymsg.write(_unicode_encode(commitmessage))
-			mymsg.write(b"\n (Unsigned Manifest commit)")
-			mymsg.close()
-
-			commit_cmd = [vcs]
-			commit_cmd.extend(vcs_global_opts)
-			commit_cmd.append("commit")
-			commit_cmd.extend(vcs_local_opts)
-			commit_cmd.extend(["-F", commitmessagefile])
-			commit_cmd.extend(f.lstrip("./") for f in mymanifests)
-
-			try:
-				if options.pretend:
-					print("(%s)" % (" ".join(commit_cmd),))
-				else:
-					retval = spawn(commit_cmd, env=os.environ)
-					if retval:
-						writemsg_level(("!!! Exiting on %s (shell) " + \
-							"error code: %s\n") % (vcs, retval),
-							level=logging.ERROR, noiselevel=-1)
-						sys.exit(retval)
-			finally:
-				try:
-					os.unlink(commitmessagefile)
-				except OSError:
-					pass
-			manifest_commit_required = False
-
 	signed = False
 	if sign_manifests:
 		signed = True
