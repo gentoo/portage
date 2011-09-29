@@ -591,6 +591,10 @@ class depgraph(object):
 				# Exclude installed here since we only
 				# want to show available updates.
 				continue
+			chosen_pkg, existing_node = \
+				self._select_package(pkg.root, pkg.slot_atom)
+			if chosen_pkg >= pkg:
+				continue
 			k = (pkg.root, pkg.slot_atom)
 			if k in missed_updates:
 				other_pkg, mask_type, parent_atoms = missed_updates[k]
