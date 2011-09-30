@@ -43,7 +43,7 @@ class RepoConfig(object):
 
 	__slots__ = ['aliases', 'eclass_overrides', 'eclass_locations', 'location', 'user_location', 'masters', 'main_repo',
 		'missing_repo_name', 'name', 'priority', 'sync', 'format', 'sign_manifest', 'thin_manifest',
-		'allow_missing_manifest', 'create_manifest', 'disable_manifest']
+		'allow_missing_manifest', 'create_manifest', 'disable_manifest', 'cache_is_authorative']
 
 	def __init__(self, name, repo_opts):
 		"""Build a RepoConfig with options in repo_opts
@@ -117,6 +117,7 @@ class RepoConfig(object):
 		self.allow_missing_manifest = False
 		self.create_manifest = True
 		self.disable_manifest = False
+		self.cache_is_authorative = False
 
 	def load_manifest(self, *args, **kwds):
 		kwds['thin'] = self.thin_manifest
@@ -357,6 +358,7 @@ class RepoConfigLoader(object):
 			repo.allow_missing_manifest = manifest_policy != 'strict'
 			repo.create_manifest = manifest_policy != 'false'
 			repo.disable_manifest = manifest_policy == 'false'
+			repo.cache_is_authorative = layout_data.get('authorative-cache', 'false').lower() == 'true'
 
 		#Take aliases into account.
 		new_prepos = {}

@@ -215,10 +215,12 @@ class portdbapi(dbapi):
 				if x in self._pregen_auxdb:
 					continue
 				if os.path.isdir(os.path.join(x, "metadata", "cache")):
-					self._pregen_auxdb[x] = self.metadbmodule(
+					conf = self.repositories.get_repo_for_location(x)
+					cache = self._pregen_auxdb[x] = self.metadbmodule(
 						x, "metadata/cache", filtered_auxdbkeys, readonly=True)
+					cache.is_authorative = conf.cache_is_authorative
 					try:
-						self._pregen_auxdb[x].ec = self._repo_info[x].eclass_db
+						cache.ec = self._repo_info[x].eclass_db
 					except AttributeError:
 						pass
 		# Selectively cache metadata in order to optimize dep matching.
@@ -441,10 +443,11 @@ class portdbapi(dbapi):
 				eapi = metadata.get('EAPI', '').strip()
 				if not eapi:
 					eapi = '0'
-				if not (eapi[:1] == '-' and eapi_is_supported(eapi[1:])) and \
-					emtime == metadata['_mtime_'] and \
-					eclass_db.is_eclass_data_valid(metadata['_eclasses_']):
-					doregen = False
+				if not (eapi[:1] == '-' and eapi_is_supported(eapi[1:])):
+					if auxdb.is_authorative or ( \
+						emtime == metadata['_mtime_'] and \
+						eclass_db.is_eclass_data_valid(metadata['_eclasses_'])):
+						doregen = False
 
 			if not doregen:
 				break
