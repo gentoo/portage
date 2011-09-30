@@ -3689,6 +3689,8 @@ class depgraph(object):
 		if not isinstance(atom, portage.dep.Atom):
 			atom = portage.dep.Atom(atom)
 		atom_cp = atom.cp
+		have_new_virt = atom_cp.startswith("virtual/") and \
+			self._have_new_virt(root, atom_cp)
 		atom_set = InternalPackageSet(initial_atoms=(atom,), allow_repo=True)
 		existing_node = None
 		myeb = None
@@ -3736,6 +3738,9 @@ class depgraph(object):
 				# USE configuration.
 				for pkg in self._iter_match_pkgs(root_config, pkg_type, atom.without_use, 
 					onlydeps=onlydeps):
+					if pkg.cp != atom_cp and have_new_virt:
+						# pull in a new-style virtual instead
+						continue
 					if pkg in self._dynamic_config._runtime_pkg_mask:
 						# The package has been masked by the backtracking logic
 						continue
@@ -3952,11 +3957,6 @@ class depgraph(object):
 					if find_existing_node:
 						e_pkg = self._dynamic_config._slot_pkg_map[root].get(pkg.slot_atom)
 						if not e_pkg:
-							break
-
-						if e_pkg.cp != atom_cp and \
-							self._have_new_virt(root, atom_cp):
-							# pull in a new-style virtual instead
 							break
 
 						# Use PackageSet.findAtomForPackage()
