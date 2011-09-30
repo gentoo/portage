@@ -30,7 +30,7 @@ class database(object):
 		self.readonly = readonly
 		self.sync_rate = 0
 		self.updates = 0
-		self.is_authorative = False
+		self.is_authoritative = False
 	
 	def __getitem__(self, cpv):
 		"""set a cpv to values

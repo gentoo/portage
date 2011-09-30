@@ -218,7 +218,7 @@ class portdbapi(dbapi):
 					conf = self.repositories.get_repo_for_location(x)
 					cache = self._pregen_auxdb[x] = self.metadbmodule(
 						x, "metadata/cache", filtered_auxdbkeys, readonly=True)
-					cache.is_authorative = conf.cache_is_authorative
+					cache.is_authoritative = conf.cache_is_authoritative
 					try:
 						cache.ec = self._repo_info[x].eclass_db
 					except AttributeError:
@@ -444,7 +444,7 @@ class portdbapi(dbapi):
 				if not eapi:
 					eapi = '0'
 				if not (eapi[:1] == '-' and eapi_is_supported(eapi[1:])):
-					if auxdb.is_authorative or ( \
+					if auxdb.is_authoritative or ( \
 						emtime == metadata['_mtime_'] and \
 						eclass_db.is_eclass_data_valid(metadata['_eclasses_'])):
 						doregen = False
