@@ -3953,6 +3953,12 @@ class depgraph(object):
 						e_pkg = self._dynamic_config._slot_pkg_map[root].get(pkg.slot_atom)
 						if not e_pkg:
 							break
+
+						if e_pkg.cp != atom_cp and \
+							self._have_new_virt(root, atom_cp):
+							# pull in a new-style virtual instead
+							break
+
 						# Use PackageSet.findAtomForPackage()
 						# for PROVIDE support.
 						if atom_set.findAtomForPackage(e_pkg, modified_use=self._pkg_use_enabled(e_pkg)):
