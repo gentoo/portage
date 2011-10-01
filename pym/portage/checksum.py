@@ -87,19 +87,22 @@ except ImportError as e:
 # Use hashlib from python-2.5 if available and prefer it over pycrypto and internal fallbacks.
 # Need special handling for RMD160 as it may not always be provided by hashlib.
 try:
-	import hashlib
+	import hashlib, functools
 	
 	md5hash = _generate_hash_function("MD5", hashlib.md5, origin="hashlib")
 	sha1hash = _generate_hash_function("SHA1", hashlib.sha1, origin="hashlib")
 	sha256hash = _generate_hash_function("SHA256", hashlib.sha256, origin="hashlib")
-	try:
-		hashlib.new('ripemd160')
-	except ValueError:
-		pass
-	else:
-		def rmd160():
-			return hashlib.new('ripemd160')
-		rmd160hash = _generate_hash_function("RMD160", rmd160, origin="hashlib")
+	for local_name, hash_name in (("rmd160", "ripemd160"), ):
+		try:
+			hashlib.new(hash_name)
+		except ValueError:
+			pass
+		else:
+			globals()['%shash' % local_name] = \
+				_generate_hash_function(local_name.upper(), \
+				functools.partial(hashlib.new, hash_name), \
+				origin='hashlib')
+
 except ImportError as e:
 	pass
 	
