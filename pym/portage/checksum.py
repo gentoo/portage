@@ -76,6 +76,10 @@ except ImportError:
 
 sha1hash = _generate_hash_function("SHA1", _new_sha1, origin="internal")
 
+# Bundled WHIRLPOOL implementation
+from portage.util.whirlpool import new as _new_whirlpool
+whirlpoolhash = _generate_hash_function("WHIRLPOOL", _new_whirlpool, origin="bundled")
+
 # Use pycrypto when available, prefer it over the internal fallbacks
 try:
 	from Crypto.Hash import SHA256, RIPEMD
@@ -85,14 +89,14 @@ except ImportError as e:
 	pass
 
 # Use hashlib from python-2.5 if available and prefer it over pycrypto and internal fallbacks.
-# Need special handling for RMD160 as it may not always be provided by hashlib.
+# Need special handling for RMD160/WHIRLPOOL as they may not always be provided by hashlib.
 try:
 	import hashlib, functools
 	
 	md5hash = _generate_hash_function("MD5", hashlib.md5, origin="hashlib")
 	sha1hash = _generate_hash_function("SHA1", hashlib.sha1, origin="hashlib")
 	sha256hash = _generate_hash_function("SHA256", hashlib.sha256, origin="hashlib")
-	for local_name, hash_name in (("rmd160", "ripemd160"), ):
+	for local_name, hash_name in (("rmd160", "ripemd160"), ("whirlpool", "whirlpool")):
 		try:
 			hashlib.new(hash_name)
 		except ValueError:
