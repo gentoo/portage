@@ -96,6 +96,7 @@ try:
 	md5hash = _generate_hash_function("MD5", hashlib.md5, origin="hashlib")
 	sha1hash = _generate_hash_function("SHA1", hashlib.sha1, origin="hashlib")
 	sha256hash = _generate_hash_function("SHA256", hashlib.sha256, origin="hashlib")
+	sha512hash = _generate_hash_function("SHA512", hashlib.sha512, origin="hashlib")
 	for local_name, hash_name in (("rmd160", "ripemd160"), ("whirlpool", "whirlpool")):
 		try:
 			hashlib.new(hash_name)
