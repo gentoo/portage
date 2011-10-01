@@ -80,6 +80,25 @@ sha1hash = _generate_hash_function("SHA1", _new_sha1, origin="internal")
 from portage.util.whirlpool import new as _new_whirlpool
 whirlpoolhash = _generate_hash_function("WHIRLPOOL", _new_whirlpool, origin="bundled")
 
+# Try to use mhash if available
+# mhash causes GIL presently, so it gets less priority than hashlib and
+# pycrypto. However, it might be the only accelerated implementation of
+# WHIRLPOOL available.
+try:
+	import mhash, functools
+	md5hash = _generate_hash_function("MD5", functools.partial(mhash.MHASH, mhash.MHASH_MD5), origin="mhash")
+	sha1hash = _generate_hash_function("SHA1", functools.partial(mhash.MHASH, mhash.MHASH_SHA1), origin="mhash")
+	sha256hash = _generate_hash_function("SHA256", functools.partial(mhash.MHASH, mhash.MHASH_SHA256), origin="mhash")
+	sha512hash = _generate_hash_function("SHA512", functools.partial(mhash.MHASH, mhash.MHASH_SHA512), origin="mhash")
+	for local_name, hash_name in (("rmd160", "ripemd160"), ("whirlpool", "whirlpool")):
+		if hasattr(mhash, 'MHASH_%s' % local_name.upper()):
+			globals()['%shash' % local_name] = \
+				_generate_hash_function(local_name.upper(), \
+				functools.partial(mhash.MHASH, getattr(mhash, 'MHASH_%s' % hash_name.upper())), \
+				origin='mhash')
+except ImportError:
+	pass
+
 # Use pycrypto when available, prefer it over the internal fallbacks
 try:
 	from Crypto.Hash import SHA256, RIPEMD
