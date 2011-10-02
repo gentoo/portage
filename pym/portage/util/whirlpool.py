@@ -25,6 +25,10 @@
 ##
 ## This Python implementation is therefore also placed in the public domain.
 
+import sys
+if sys.hexversion >= 0x3000000:
+    xrange = range
+
 #block_size = 64
 digest_size = 64
 digestsize = 64
