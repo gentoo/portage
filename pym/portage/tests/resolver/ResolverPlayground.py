@@ -37,7 +37,7 @@ class ResolverPlayground(object):
 	its work.
 	"""
 
-	config_files = frozenset(("package.use", "package.mask", "package.keywords", \
+	config_files = frozenset(("package.accept_keywords", "package.use", "package.mask", "package.keywords", \
 		"package.unmask", "package.properties", "package.license", "use.mask", "use.force",
 		"layout.conf",))
 
