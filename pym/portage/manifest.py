@@ -387,7 +387,7 @@ class Manifest(object):
 				((assumeDistHashesSometimes and mystat is None) or \
 				(assumeDistHashesAlways and mystat is None) or \
 				(assumeDistHashesAlways and mystat is not None and \
-				len(distfilehashes[f]) == len(self.hashes) and \
+				set(distfilehashes[f]) == set(self.hashes) and \
 				distfilehashes[f]["size"] == mystat.st_size)):
 				self.fhashdict["DIST"][f] = distfilehashes[f]
 			else:
