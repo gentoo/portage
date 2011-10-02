@@ -3125,9 +3125,12 @@ class dblink(object):
 					if isinstance(lines, basestring):
 						lines = [lines]
 					for line in lines:
-						fields = (funcname, phase, cpv, line.rstrip('\n'))
-						str_buffer.append(' '.join(fields))
-						str_buffer.append('\n')
+						for line in line.split('\n'):
+							if not line:
+								continue
+							fields = (funcname, phase, cpv, line)
+							str_buffer.append(' '.join(fields))
+							str_buffer.append('\n')
 			if str_buffer:
 				os.write(self._pipe, _unicode_encode(''.join(str_buffer)))
 
