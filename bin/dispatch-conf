@@ -33,7 +33,7 @@ from portage.process import find_binary
 FIND_EXTANT_CONFIGS  = "find '%s' %s -name '._cfg????_%s' ! -name '.*~' ! -iname '.*.bak' -print"
 DIFF_CONTENTS        = "diff -Nu '%s' '%s'"
 DIFF_CVS_INTERP      = "diff -Nu '%s' '%s' | grep '^[+-][^+-]' | grep -v '# .Header:.*'"
-DIFF_WSCOMMENTS      = "diff -Nu '%s' '%s' | grep '^[+-][^+-]' | grep -v '^[-+]#' | grep -v '^[-+][:space:]*$'"
+DIFF_WSCOMMENTS      = "diff -Nu '%s' '%s' | grep '^[+-][^+-]' | grep -v '^[-+]#' | grep -v '^[-+][[:space:]]*$'"
 
 # We need a secure scratch dir and python does silly verbose errors on the use of tempnam
 oldmask = os.umask(0o077)
