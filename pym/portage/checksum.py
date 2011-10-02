@@ -76,10 +76,6 @@ except ImportError:
 
 sha1hash = _generate_hash_function("SHA1", _new_sha1, origin="internal")
 
-# Bundled WHIRLPOOL implementation
-from portage.util.whirlpool import new as _new_whirlpool
-whirlpoolhash = _generate_hash_function("WHIRLPOOL", _new_whirlpool, origin="bundled")
-
 # Try to use mhash if available
 # mhash causes GIL presently, so it gets less priority than hashlib and
 # pycrypto. However, it might be the only accelerated implementation of
@@ -104,7 +100,7 @@ try:
 	from Crypto.Hash import SHA256, RIPEMD
 	sha256hash = _generate_hash_function("SHA256", SHA256.new, origin="pycrypto")
 	rmd160hash = _generate_hash_function("RMD160", RIPEMD.new, origin="pycrypto")
-except ImportError as e:
+except ImportError:
 	pass
 
 # Use hashlib from python-2.5 if available and prefer it over pycrypto and internal fallbacks.
@@ -127,9 +123,13 @@ try:
 				functools.partial(hashlib.new, hash_name), \
 				origin='hashlib')
 
-except ImportError as e:
+except ImportError:
 	pass
-	
+
+if "WHIRLPOOL" not in hashfunc_map:
+	# Bundled WHIRLPOOL implementation
+	from portage.util.whirlpool import new as _new_whirlpool
+	whirlpoolhash = _generate_hash_function("WHIRLPOOL", _new_whirlpool, origin="bundled")
 
 # Use python-fchksum if available, prefer it over all other MD5 implementations
 try:
