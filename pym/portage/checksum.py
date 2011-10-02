@@ -133,10 +133,7 @@ if "WHIRLPOOL" not in hashfunc_map:
 
 # Use python-fchksum if available, prefer it over all other MD5 implementations
 try:
-	import fchksum
-	
-	def md5hash(filename):
-		return fchksum.fmd5t(filename)
+	from fchksum import fmd5t as md5hash
 	hashfunc_map["MD5"] = md5hash
 	hashorigin_map["MD5"] = "python-fchksum"
 
