@@ -6170,13 +6170,14 @@ class depgraph(object):
 			self._show_circular_deps(
 				self._dynamic_config._circular_deps_for_display)
 
-		# The user is only notified of a slot conflict if
-		# there are no unresolvable blocker conflicts.
-		if self._dynamic_config._unsatisfied_blockers_for_display is not None:
+		# The slot conflict display has better noise reduction than
+		# the unsatisfied blockers display, so skip unsatisfied blockers
+		# display if there are slot conflicts (see bug #385391).
+		if self._dynamic_config._slot_collision_info:
+			self._show_slot_collision_notice()
+		elif self._dynamic_config._unsatisfied_blockers_for_display is not None:
 			self._show_unsatisfied_blockers(
 				self._dynamic_config._unsatisfied_blockers_for_display)
-		elif self._dynamic_config._slot_collision_info:
-			self._show_slot_collision_notice()
 		else:
 			self._show_missed_update()
 
