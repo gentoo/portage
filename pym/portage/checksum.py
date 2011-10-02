@@ -16,8 +16,16 @@ import tempfile
 hashfunc_map = {}
 hashorigin_map = {}
 
-def _generate_hash_function(hashtype, hashobject, origin="unknown"):
-	def pyhash(filename):
+class _generate_hash_function(object):
+
+	__slots__ = ("_hashobject",)
+
+	def __init__(self, hashtype, hashobject, origin="unknown"):
+		self._hashobject = hashobject
+		hashfunc_map[hashtype] = self
+		hashorigin_map[hashtype] = origin
+
+	def __call__(self, filename):
 		"""
 		Run a checksum against a file.
 	
@@ -41,7 +49,7 @@ def _generate_hash_function(hashtype, hashobject, origin="unknown"):
 		blocksize = HASHING_BLOCKSIZE
 		data = f.read(blocksize)
 		size = 0
-		checksum = hashobject()
+		checksum = self._hashobject()
 		while data:
 			checksum.update(data)
 			size = size + len(data)
@@ -49,9 +57,6 @@ def _generate_hash_function(hashtype, hashobject, origin="unknown"):
 		f.close()
 
 		return (checksum.hexdigest(), size)
-	hashfunc_map[hashtype] = pyhash
-	hashorigin_map[hashtype] = origin
-	return pyhash
 
 # Define hash functions, try to use the best module available. Later definitions
 # override earlier ones
