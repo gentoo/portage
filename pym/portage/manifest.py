@@ -349,7 +349,8 @@ class Manifest(object):
 			distfilehashes = {}
 		self.__init__(self.pkgdir, self.distdir,
 			fetchlist_dict=self.fetchlist_dict, from_scratch=True,
-			thin=self.thin)
+			thin=self.thin, allow_missing=self.allow_missing,
+			allow_create=self.allow_create)
 		pn = os.path.basename(self.pkgdir.rstrip(os.path.sep))
 		cat = self._pkgdir_category()
 
