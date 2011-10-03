@@ -3,6 +3,7 @@
 
 import io
 import logging
+import warnings
 import sys
 import re
 
@@ -15,7 +16,8 @@ try:
 except ImportError:
 	from ConfigParser import SafeConfigParser, ParsingError
 from portage import os
-from portage.const import USER_CONFIG_PATH, REPO_NAME_LOC
+from portage.const import (MANIFEST2_HASH_FUNCTIONS, MANIFEST2_REQUIRED_HASH,
+	REPO_NAME_LOC, USER_CONFIG_PATH)
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.util import normalize_path, writemsg, writemsg_level, shlex_split
 from portage.localization import _
@@ -385,6 +387,26 @@ class RepoConfigLoader(object):
 			manifest_hashes = layout_data.get('manifest-hashes')
 			if manifest_hashes is not None:
 				manifest_hashes = frozenset(manifest_hashes.upper().split())
+				if MANIFEST2_REQUIRED_HASH not in manifest_hashes:
+					warnings.warn(("Repository named '%s' has a "
+						"'manifest-hashes' setting that does not contain "
+						"the '%s' hash which is required by this "
+						"portage version. You will have to upgrade portage "
+						"if you want to generate valid manifests for this "
+						"repository: %s" % (repo.name,
+						MANIFEST2_REQUIRED_HASH,
+						layout_filename)))
+				unsupported_hashes = manifest_hashes.difference(
+					MANIFEST2_HASH_FUNCTIONS)
+				if unsupported_hashes:
+					warnings.warn(("Repository named '%s' has a "
+						"'manifest-hashes' setting that contains one "
+						"or more hash types '%s' which are not supported by "
+						"this portage version. You will have to upgrade "
+						"portage if you want to generate valid manifests for "
+						"this repository: %s" % (repo.name,
+						" ".join(sorted(unsupported_hashes)),
+						layout_filename)))
 			repo.manifest_hashes = manifest_hashes
 
 			repo.cache_is_authoritative = layout_data.get('authoritative-cache', 'false').lower() == 'true'
