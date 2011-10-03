@@ -109,10 +109,32 @@ EAPI                     = 4
 
 HASHING_BLOCKSIZE        = 32768
 MANIFEST1_HASH_FUNCTIONS = ("MD5", "SHA256", "RMD160")
-MANIFEST2_HASH_FUNCTIONS = ("SHA1", "SHA256", "RMD160")
-
 MANIFEST1_REQUIRED_HASH  = "MD5"
-MANIFEST2_REQUIRED_HASH  = "SHA1"
+
+# Future events:
+#
+# After WHIRLPOOL is supported in stable portage:
+# - Add WHIRLPOOL to MANIFEST2_HASH_DEFAULTS.
+# - Remove SHA1 and RMD160 from MANIFEST2_HASH_*.
+# - Toggle gentoo-x86/metadata/layout.conf settings to match.
+#
+# After WHIRLPOOL is supported in stable portage for at least 1 year:
+# - Change MANIFEST2_REQUIRED_HASH to WHIRLPOOL.
+# - Remove SHA256 from MANIFEST2_HASH_*.
+# - Toggle gentoo-x86/metadata/layout.conf settings to match.
+#
+# After SHA-3 is approved:
+# - Add new hashes to MANIFEST2_HASH_*.
+#
+# After SHA-3 is supported in stable portage:
+# - Toggle gentoo-x86/metadata/layout.conf settings to match.
+#
+# After layout.conf settings correspond to defaults in stable portage:
+# - Remove redundant settings from gentoo-x86/metadata/layout.conf.
+
+MANIFEST2_HASH_FUNCTIONS = ("RMD160", "SHA1", "SHA256", "SHA512", "WHIRLPOOL")
+MANIFEST2_HASH_DEFAULTS = frozenset(["SHA1", "SHA256", "RMD160"])
+MANIFEST2_REQUIRED_HASH  = "SHA256"
 
 MANIFEST2_IDENTIFIERS    = ("AUX", "MISC", "DIST", "EBUILD")
 # ===========================================================================
