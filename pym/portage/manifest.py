@@ -103,7 +103,7 @@ class Manifest(object):
 	parsers = (parseManifest2,)
 	def __init__(self, pkgdir, distdir, fetchlist_dict=None,
 		manifest1_compat=DeprecationWarning, from_scratch=False, thin=False,
-			allow_missing=False, allow_create=True, hash_flags=None):
+			allow_missing=False, allow_create=True, hashes=None):
 		""" Create new Manifest instance for package in pkgdir.
 		    Do not parse Manifest file if from_scratch == True (only for internal use)
 			The fetchlist_dict parameter is required only for generation of
@@ -120,14 +120,10 @@ class Manifest(object):
 		self.fhashdict = {}
 		self.hashes = set()
 
-		if hash_flags is None:
-			hash_flags = {}
-		self.hash_flags = hash_flags
-		for hash_type in MANIFEST2_HASH_FUNCTIONS:
-			default_state = hash_type in MANIFEST2_HASH_DEFAULTS
-			if hash_flags.get(hash_type, default_state):
-				self.hashes.add(hash_type)
+		if hashes is None:
+			hashes = MANIFEST2_HASH_DEFAULTS
 
+		self.hashes.update(hashes.intersection(MANIFEST2_HASH_FUNCTIONS))
 		self.hashes.difference_update(hashname for hashname in \
 			list(self.hashes) if hashname not in hashfunc_map)
 		self.hashes.add("size")
@@ -360,7 +356,7 @@ class Manifest(object):
 		self.__init__(self.pkgdir, self.distdir,
 			fetchlist_dict=self.fetchlist_dict, from_scratch=True,
 			thin=self.thin, allow_missing=self.allow_missing,
-			allow_create=self.allow_create, hash_flags=self.hash_flags)
+			allow_create=self.allow_create, hashes=self.hashes)
 		pn = os.path.basename(self.pkgdir.rstrip(os.path.sep))
 		cat = self._pkgdir_category()
 

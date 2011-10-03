@@ -44,7 +44,7 @@ class RepoConfig(object):
 	__slots__ = ['aliases', 'eclass_overrides', 'eclass_locations', 'location', 'user_location', 'masters', 'main_repo',
 		'missing_repo_name', 'name', 'priority', 'sync', 'format', 'sign_manifest', 'thin_manifest',
 		'allow_missing_manifest', 'create_manifest', 'disable_manifest', 'cache_is_authoritative',
-		'trust_authoritative_cache', 'manifest_hash_flags']
+		'trust_authoritative_cache', 'manifest_hashes']
 
 	def __init__(self, name, repo_opts):
 		"""Build a RepoConfig with options in repo_opts
@@ -118,7 +118,7 @@ class RepoConfig(object):
 		self.allow_missing_manifest = False
 		self.create_manifest = True
 		self.disable_manifest = False
-		self.manifest_hash_flags = {}
+		self.manifest_hashes = None
 
 		self.cache_is_authoritative = False
 
@@ -131,7 +131,7 @@ class RepoConfig(object):
 		kwds['thin'] = self.thin_manifest
 		kwds['allow_missing'] = self.allow_missing_manifest
 		kwds['allow_create'] = self.create_manifest
-		kwds['hash_flags'] = self.manifest_hash_flags
+		kwds['hashes'] = self.manifest_hashes
 		if self.disable_manifest:
 			kwds['from_scratch'] = True
 		return manifest.Manifest(*args, **kwds)
@@ -382,21 +382,10 @@ class RepoConfigLoader(object):
 			repo.create_manifest = manifest_policy != 'false'
 			repo.disable_manifest = manifest_policy == 'false'
 
-			if 'manifest-rmd160' in layout_data:
-				repo.manifest_hash_flags["RMD160"] = \
-					layout_data['manifest-rmd160'].lower() == 'true'
-
-			if 'manifest-sha1' in layout_data:
-				repo.manifest_hash_flags["SHA1"] = \
-					layout_data['manifest-sha1'].lower() == 'true'
-
-			if 'manifest-sha256' in layout_data:
-				repo.manifest_hash_flags["SHA256"] = \
-					layout_data['manifest-sha256'].lower() == 'true'
-
-			if 'manifest-whirlpool' in layout_data:
-				repo.manifest_hash_flags["WHIRLPOOL"] = \
-					layout_data['manifest-whirlpool'].lower() == 'true'
+			manifest_hashes = layout_data.get('manifest-hashes')
+			if manifest_hashes is not None:
+				manifest_hashes = frozenset(manifest_hashes.upper().split())
+			repo.manifest_hashes = manifest_hashes
 
 			repo.cache_is_authoritative = layout_data.get('authoritative-cache', 'false').lower() == 'true'
 			if not repo.trust_authoritative_cache:
