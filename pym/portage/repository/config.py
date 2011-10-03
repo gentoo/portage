@@ -395,7 +395,7 @@ class RepoConfigLoader(object):
 						"if you want to generate valid manifests for this "
 						"repository: %s" % (repo.name,
 						MANIFEST2_REQUIRED_HASH,
-						layout_filename)))
+						layout_filename)), DeprecationWarning)
 				unsupported_hashes = manifest_hashes.difference(
 					MANIFEST2_HASH_FUNCTIONS)
 				if unsupported_hashes:
@@ -406,7 +406,7 @@ class RepoConfigLoader(object):
 						"portage if you want to generate valid manifests for "
 						"this repository: %s" % (repo.name,
 						" ".join(sorted(unsupported_hashes)),
-						layout_filename)))
+						layout_filename)), DeprecationWarning)
 			repo.manifest_hashes = manifest_hashes
 
 			repo.cache_is_authoritative = layout_data.get('authoritative-cache', 'false').lower() == 'true'
