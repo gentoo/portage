@@ -30,13 +30,19 @@ __all__ = [
 import re, sys
 import warnings
 from itertools import chain
+
+import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.util:cmp_sort_key',
+)
+
 from portage import _unicode_decode
 from portage.eapi import eapi_has_slot_deps, eapi_has_src_uri_arrows, \
 	eapi_has_use_deps, eapi_has_strong_blocks, eapi_has_use_dep_defaults
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString
 from portage.localization import _
 from portage.versions import catpkgsplit, catsplit, \
-	pkgcmp, ververify, _cp, _cpv
+	pkgcmp, vercmp, ververify, _cp, _cpv
 import portage.cache.mappings
 
 if sys.hexversion >= 0x3000000:
@@ -1798,6 +1804,7 @@ def best_match_to_list(mypkg, mylist):
 		'>':2, '<':2, '>=':2, '<=':2, None:1}
 	maxvalue = -2
 	bestm  = None
+	mypkg_cpv = None
 	for x in match_to_list(mypkg, mylist):
 		if x.extended_syntax:
 			if dep_getslot(x) is not None:
@@ -1817,6 +1824,33 @@ def best_match_to_list(mypkg, mylist):
 		if op_val > maxvalue:
 			maxvalue = op_val
 			bestm  = x
+		elif op_val == maxvalue and op_val == 2:
+			# For >, <, >=, and <=, the one with the version
+			# closest to mypkg is the best match.
+			if mypkg_cpv is None:
+				mypkg_cpv = getattr(mypkg, "cpv", None)
+				if mypkg_cpv is None:
+					mypkg_cpv = remove_slot(mypkg)
+			if bestm.cpv == mypkg_cpv or bestm.cpv == x.cpv:
+				pass
+			elif x.cpv == mypkg_cpv:
+				bestm = x
+			else:
+				# Sort the cpvs to find the one closest to mypkg_cpv
+				cpv_list = [bestm.cpv, mypkg_cpv, x.cpv]
+				ver_map = {}
+				for cpv in cpv_list:
+					ver_map[cpv] = '-'.join(catpkgsplit(cpv)[2:])
+				def cmp_cpv(cpv1, cpv2):
+					return vercmp(ver_map[cpv1], ver_map[cpv2])
+				cpv_list.sort(key=cmp_sort_key(cmp_cpv))
+				if cpv_list[0] is mypkg_cpv or cpv_list[-1] is mypkg_cpv:
+					if cpv_list[1] is x.cpv:
+						bestm = x
+				else:
+					# TODO: handle the case where mypkg_cpv is in the middle
+					pass
+
 	return bestm
 
 def match_from_list(mydep, candidate_list):

@@ -25,6 +25,10 @@ class Test_best_match_to_list(TestCase):
 
 	def testBest_match_to_list(self):
 		tests = [
+					("dev-libs/A-4", [Atom(">=dev-libs/A-3"), Atom(">=dev-libs/A-2")], \
+						[Atom(">=dev-libs/A-3"), Atom(">=dev-libs/A-2")]),
+					("dev-libs/A-4", [Atom("<=dev-libs/A-5"), Atom("<=dev-libs/A-6")], \
+						[Atom("<=dev-libs/A-5"), Atom("<=dev-libs/A-6")]),
 					("dev-libs/A-1", [Atom("dev-libs/A"), Atom("=dev-libs/A-1")], \
 						[Atom("=dev-libs/A-1"), Atom("dev-libs/A")]),
 					("dev-libs/A-1", [Atom("dev-libs/B"), Atom("=dev-libs/A-1:0")], \
