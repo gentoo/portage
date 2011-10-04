@@ -1,4 +1,4 @@
-# Copyright 2007-2010 Gentoo Foundation
+# Copyright 2007-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -228,7 +228,13 @@ class EditablePackageSet(PackageSet):
 		raise NotImplementedError()
 
 class InternalPackageSet(EditablePackageSet):
-	def __init__(self, initial_atoms=None, allow_wildcard=False, allow_repo=False):
+	def __init__(self, initial_atoms=None, allow_wildcard=False, allow_repo=True):
+		"""
+		Repo atoms are allowed more often than not, so it makes sense for this
+		class to allow them by default. The Atom constructor and isvalidatom()
+		functions default to allow_repo=False, which is sufficient to ensure
+		that repo atoms are prohibited when necessary.
+		"""
 		super(InternalPackageSet, self).__init__(allow_wildcard=allow_wildcard, allow_repo=allow_repo)
 		if initial_atoms != None:
 			self.update(initial_atoms)

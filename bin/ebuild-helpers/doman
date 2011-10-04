@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
@@ -25,13 +25,13 @@ for x in "$@" ; do
 	suffix=${x##*.}
 
 	# These will be automatically decompressed by ecompressdir.
-	if hasq ${suffix} Z gz bz2 ; then
+	if has ${suffix} Z gz bz2 ; then
 		realname=${x%.*}
 		suffix=${realname##*.}
 	fi
 
-	if hasq "${EAPI:-0}" 2 3 || [[ -z ${i18n} ]] \
-		&& ! hasq "${EAPI:-0}" 0 1 \
+	if has "${EAPI:-0}" 2 3 || [[ -z ${i18n} ]] \
+		&& ! has "${EAPI:-0}" 0 1 \
 		&& [[ $x =~ (.*)\.([a-z][a-z](_[A-Z][A-Z])?)\.(.*) ]]
 	then
 		name=${BASH_REMATCH[1]##*/}.${BASH_REMATCH[4]}

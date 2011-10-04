@@ -25,7 +25,7 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 	writemsg_level=portage.util.writemsg_level):
 	"""
 	Returns a tuple of (returncode, pkgmap) where returncode is
-	os.EX_OK is no errors occur, and 1 otherwise.
+	os.EX_OK if no errors occur, and 1 otherwise.
 	"""
 
 	quiet = "--quiet" in myopts
@@ -61,10 +61,13 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 			vdb_lock = True
 
 		realsyslist = []
+		sys_virt_map = {}
 		for x in sets["system"].getAtoms():
 			for atom in expand_new_virt(vartree.dbapi, x):
 				if not atom.blocker:
 					realsyslist.append(atom)
+					if atom.cp != x.cp:
+						sys_virt_map[atom.cp] = x.cp
 
 		syslist = []
 		for x in realsyslist:
@@ -442,8 +445,13 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 			#avoid cluttering the preview printout with stuff that isn't getting unmerged
 			continue
 		if not (pkgmap[x]["protected"] or pkgmap[x]["omitted"]) and cp in syslist:
+			virt_cp = sys_virt_map.get(cp)
+			if virt_cp is None:
+				cp_info = "'%s'" % (cp,)
+			else:
+				cp_info = "'%s' (%s)" % (cp, virt_cp)
 			writemsg_level(colorize("BAD","\n\n!!! " + \
-				"'%s' is part of your system profile.\n" % cp),
+				"%s is part of your system profile.\n" % (cp_info,)),
 				level=logging.WARNING, noiselevel=-1)
 			writemsg_level(colorize("WARN","!!! Unmerging it may " + \
 				"be damaging to your system.\n\n"),

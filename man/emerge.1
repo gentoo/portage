@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "May 2011" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Sept 2011" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -300,11 +300,28 @@ after the merge list and emerge will immediately
 abort. If the displayed configuration changes are
 satisfactory, you should copy and paste them into
 the specified configuration file(s), or enable the
-\fB\-\-autounmask\-write\fR option.
+\fB\-\-autounmask\-write\fR option. The
+\fBEMERGE_DEFAULT_OPTS\fR variable may be used to
+disable this option by default in \fBmake.conf\fR(5).
+.TP
+.BR "\-\-autounmask\-unrestricted\-atoms [ y | n ]"
+If \-\-autounmask is enabled, keyword and mask changes
+using the \'=\' operator will be written. With this
+option, \'>=\' operators will be used whenever possible.
+USE and license changes always use the latter behavior.
+.TP
+.BR "\-\-autounmask\-keep\-masks [ y | n ]"
+If \-\-autounmask is enabled, no package.unmask or ** keyword changes
+will be created. This leads to unsatisfied dependencies if
+no other solution exists.
 .TP
 .BR "\-\-autounmask\-write [ y | n ]"
 If \-\-autounmask is enabled, changes are written
-to config files, respecting \fBCONFIG_PROTECT\fR.
+to config files, respecting \fBCONFIG_PROTECT\fR and \fB\-\-ask\fR.
+If the corresponding package.* is a file, the changes are appended to
+it, if it is a directory, changes are written to the lexicographically
+last file. This way it is always ensured that the new changes take
+precedence over existing changes.
 .TP
 .BR \-\-backtrack=COUNT
 Specifies an integer number of times to backtrack if
@@ -358,6 +375,10 @@ calculations. Note that, unlike the \fB\-\-deep\fR option, the
 be updated than would have otherwise been updated with the option disabled.
 Using \fB\-\-with\-bdeps=y\fR together with \fB\-\-complete\-graph\fR makes
 the graph as complete as possible.
+.TP
+.BR "\-\-complete\-graph\-if\-new\-ver < y | n >"
+Trigger the \fB\-\-complete\-graph\fR behavior if an installed package
+version will change (upgrade or downgrade). This option is enabled by default.
 .TP
 .BR \-\-config\-root=DIR
 Set the \fBPORTAGE_CONFIGROOT\fR environment variable.
@@ -486,10 +507,7 @@ Skips the packages specified on the command\-line that have already
 been installed.  Without this option, any packages, ebuilds, or deps
 you specify on the command\-line \fBwill\fR cause Portage to remerge
 the package, even if it is already installed.  Note that Portage will
-not remerge dependencies by default. Also note that this option takes
-precedence over options such as \fB\-\-newuse\fR, preventing a package
-from being reinstalled even though the corresponding USE flag settings
-may have changed.
+not remerge dependencies by default.
 .TP
 .BR "\-\-nospinner"
 Disables the spinner for the session.  The spinner is active when the
@@ -557,18 +575,16 @@ to be set in the \fBmake.conf\fR(5)
 \fBEMERGE_DEFAULT_OPTS\fR variable.
 .TP
 .BR "\-\-rebuild\-if\-new\-rev [ y | n ]"
-Rebuild packages when dependencies that are used at both build\-time and
-run\-time are built, if the dependency is not already installed with the
-same version and revision.
+Rebuild packages when build\-time dependencies are built from source, if the
+dependency is not already installed with the same version and revision.
 .TP
 .BR "\-\-rebuild\-if\-new\-ver [ y | n ]"
-Rebuild packages when dependencies that are used at both build\-time and
-run\-time are built, if the dependency is not already installed with the
-same version. Revision numbers are ignored.
+Rebuild packages when build\-time dependencies are built from source, if the
+dependency is not already installed with the same version. Revision numbers
+are ignored.
 .TP
 .BR "\-\-rebuild\-if\-unbuilt [ y | n ]"
-Rebuild packages when dependencies that are used at both build\-time and
-run\-time are built.
+Rebuild packages when build\-time dependencies are built from source.
 .TP
 .BR "\-\-rebuilt\-binaries [ y | n ]"
 Replace installed packages with binary packages that have
@@ -617,8 +633,7 @@ use \fBEMERGE_DEFAULT_OPTS\fR to make
 \fB\-\-oneshot\fR behavior default.
 .TP
 .BR "\-\-selective [ y | n ]"
-This is similar to the \fB\-\-noreplace\fR option, except that it
-does not take precedence over options such as \fB\-\-newuse\fR.
+This is identical to the \fB\-\-noreplace\fR option.
 Some options, such as \fB\-\-update\fR, imply \fB\-\-selective\fR.
 Use \fB\-\-selective=n\fR if you want to forcefully disable
 \fB\-\-selective\fR, regardless of options like \fB\-\-update\fR.

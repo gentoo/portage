@@ -123,96 +123,102 @@ class dbapi(object):
 		return list(self._iter_match(mydep,
 			self.cp_list(mydep.cp, use_cache=use_cache)))
 
-	def _iter_match(self, atom, cpv_iter, myrepo=None):
+	def _iter_match(self, atom, cpv_iter):
 		cpv_iter = iter(match_from_list(atom, cpv_iter))
 		if atom.slot:
-			cpv_iter = self._iter_match_slot(atom, cpv_iter, myrepo)
+			cpv_iter = self._iter_match_slot(atom, cpv_iter)
 		if atom.unevaluated_atom.use:
-			cpv_iter = self._iter_match_use(atom, cpv_iter, myrepo)
+			cpv_iter = self._iter_match_use(atom, cpv_iter)
 		if atom.repo:
-			cpv_iter = self._iter_match_repo(atom, cpv_iter, myrepo)
+			cpv_iter = self._iter_match_repo(atom, cpv_iter)
 		return cpv_iter
 
-	def _iter_match_repo(self, atom, cpv_iter, myrepo=None):
+	def _iter_match_repo(self, atom, cpv_iter):
 		for cpv in cpv_iter:
 			try:
-				if self.aux_get(cpv, ["repository"], myrepo=myrepo)[0] == atom.repo:
+				if self.aux_get(cpv, ["repository"], myrepo=atom.repo)[0] == atom.repo:
 					yield cpv
 			except KeyError:
 				continue
 
-	def _iter_match_slot(self, atom, cpv_iter, myrepo=None):
+	def _iter_match_slot(self, atom, cpv_iter):
 		for cpv in cpv_iter:
 			try:
-				if self.aux_get(cpv, ["SLOT"], myrepo=myrepo)[0] == atom.slot:
+				if self.aux_get(cpv, ["SLOT"], myrepo=atom.repo)[0] == atom.slot:
 					yield cpv
 			except KeyError:
 				continue
 
-	def _iter_match_use(self, atom, cpv_iter, myrepo = None):
+	def _iter_match_use(self, atom, cpv_iter):
 		"""
 		1) Check for required IUSE intersection (need implicit IUSE here).
 		2) Check enabled/disabled flag states.
 		"""
 
-		iuse_implicit_match = self.settings._iuse_implicit_match
+		aux_keys = ["IUSE", "SLOT", "USE"]
 		for cpv in cpv_iter:
 			try:
-				iuse, slot, use = self.aux_get(cpv, ["IUSE", "SLOT", "USE"], myrepo=myrepo)
+				metadata = dict(zip(aux_keys,
+					self.aux_get(cpv, aux_keys, myrepo=atom.repo)))
 			except KeyError:
 				continue
-			iuse = frozenset(x.lstrip('+-') for x in iuse.split())
-			missing_iuse = False
-			for x in atom.unevaluated_atom.use.required:
-				if x not in iuse and not iuse_implicit_match(x):
-					missing_iuse = True
-					break
-			if missing_iuse:
+
+			if not self._match_use(atom, cpv, metadata):
 				continue
-			if not atom.use:
-				pass
-			elif not self._use_mutable:
-				# Use IUSE to validate USE settings for built packages,
-				# in case the package manager that built this package
-				# failed to do that for some reason (or in case of
-				# data corruption).
-				use = frozenset(x for x in use.split() if x in iuse or \
-					iuse_implicit_match(x))
-				missing_enabled = atom.use.missing_enabled.difference(iuse)
-				missing_disabled = atom.use.missing_disabled.difference(iuse)
-
-				if atom.use.enabled:
-					if atom.use.enabled.intersection(missing_disabled):
-						continue
-					need_enabled = atom.use.enabled.difference(use)
-					if need_enabled:
-						need_enabled = need_enabled.difference(missing_enabled)
-						if need_enabled:
-							continue
-
-				if atom.use.disabled:
-					if atom.use.disabled.intersection(missing_enabled):
-						continue
-					need_disabled = atom.use.disabled.intersection(use)
-					if need_disabled:
-						need_disabled = need_disabled.difference(missing_disabled)
-						if need_disabled:
-							continue
-			else:
-				# Check masked and forced flags for repoman.
-				mysettings = getattr(self, 'settings', None)
-				if mysettings is not None and not mysettings.local_config:
-
-					pkg = "%s:%s" % (cpv, slot)
-					usemask = mysettings._getUseMask(pkg)
-					if usemask.intersection(atom.use.enabled):
-						continue
-
-					useforce = mysettings._getUseForce(pkg).difference(usemask)
-					if useforce.intersection(atom.use.disabled):
-						continue
 
 			yield cpv
+
+	def _match_use(self, atom, cpv, metadata):
+		iuse_implicit_match = self.settings._iuse_implicit_match
+		iuse = frozenset(x.lstrip('+-') for x in metadata["IUSE"].split())
+
+		for x in atom.unevaluated_atom.use.required:
+			if x not in iuse and not iuse_implicit_match(x):
+				return False
+
+		if atom.use is None:
+			pass
+
+		elif not self._use_mutable:
+			# Use IUSE to validate USE settings for built packages,
+			# in case the package manager that built this package
+			# failed to do that for some reason (or in case of
+			# data corruption).
+			use = frozenset(x for x in metadata["USE"].split()
+				if x in iuse or iuse_implicit_match(x))
+			missing_enabled = atom.use.missing_enabled.difference(iuse)
+			missing_disabled = atom.use.missing_disabled.difference(iuse)
+
+			if atom.use.enabled:
+				if atom.use.enabled.intersection(missing_disabled):
+					return False
+				need_enabled = atom.use.enabled.difference(use)
+				if need_enabled:
+					need_enabled = need_enabled.difference(missing_enabled)
+					if need_enabled:
+						return False
+
+			if atom.use.disabled:
+				if atom.use.disabled.intersection(missing_enabled):
+					return False
+				need_disabled = atom.use.disabled.intersection(use)
+				if need_disabled:
+					need_disabled = need_disabled.difference(missing_disabled)
+					if need_disabled:
+						return False
+
+		elif not self.settings.local_config:
+			# Check masked and forced flags for repoman.
+			pkg = "%s:%s" % (cpv, metadata["SLOT"])
+			usemask = self.settings._getUseMask(pkg)
+			if usemask.intersection(atom.use.enabled):
+				return False
+
+			useforce = self.settings._getUseForce(pkg).difference(usemask)
+			if useforce.intersection(atom.use.disabled):
+				return False
+
+		return True
 
 	def invalidentry(self, mypath):
 		if '/-MERGING-' in mypath:

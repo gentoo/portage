@@ -1,5 +1,5 @@
 # portage.py -- core Portage functionality
-# Copyright 1998-2010 Gentoo Foundation
+# Copyright 1998-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 VERSION="HEAD"
@@ -10,30 +10,19 @@ VERSION="HEAD"
 
 try:
 	import sys
-	import codecs
 	import errno
 	if not hasattr(errno, 'ESTALE'):
 		# ESTALE may not be defined on some systems, such as interix.
 		errno.ESTALE = -1
 	import re
 	import types
-	try:
-		import cPickle as pickle
-	except ImportError:
-		import pickle
 
+	# Try the commands module first, since this allows us to eliminate
+	# the subprocess module from the baseline imports under python2.
 	try:
-		from subprocess import getstatusoutput as subprocess_getstatusoutput
-	except ImportError:
 		from commands import getstatusoutput as subprocess_getstatusoutput
-
-	try:
-		from io import StringIO
 	except ImportError:
-		# Needed for python-2.6 with USE=build since
-		# io imports threading which imports thread
-		# which is unavailable.
-		from StringIO import StringIO
+		from subprocess import getstatusoutput as subprocess_getstatusoutput
 
 	import platform
 
@@ -159,19 +148,34 @@ if sys.hexversion >= 0x3000000:
 	basestring = str
 	long = int
 
-# Assume utf_8 fs encoding everywhere except in merge code, where the
-# user's locale is respected.
+# We use utf_8 encoding everywhere. Previously, we used
+# sys.getfilesystemencoding() for the 'merge' encoding, but that had
+# various problems:
+#
+#   1) If the locale is ever changed then it can cause orphan files due
+#      to changed character set translation.
+#
+#   2) Ebuilds typically install files with utf_8 encoded file names,
+#      and then portage would be forced to rename those files to match
+#      sys.getfilesystemencoding(), possibly breaking things.
+#
+#   3) Automatic translation between encodings can lead to nonsensical
+#      file names when the source encoding is unknown by portage.
+#
+#   4) It's inconvenient for ebuilds to convert the encodings of file
+#      names to match the current locale, and upstreams typically encode
+#      file names with utf_8 encoding.
+#
+# So, instead of relying on sys.getfilesystemencoding(), we avoid the above
+# problems by using a constant utf_8 'merge' encoding for all locales, as
+# discussed in bug #382199 and bug #381509.
 _encodings = {
 	'content'                : 'utf_8',
 	'fs'                     : 'utf_8',
-	'merge'                  : sys.getfilesystemencoding(),
+	'merge'                  : 'utf_8',
 	'repo.content'           : 'utf_8',
 	'stdio'                  : 'utf_8',
 }
-
-# This can happen if python is built with USE=build (stage 1).
-if _encodings['merge'] is None:
-	_encodings['merge'] = 'ascii'
 
 if sys.hexversion >= 0x3000000:
 	def _unicode_encode(s, encoding=_encodings['content'], errors='backslashreplace'):
@@ -226,7 +230,7 @@ class _unicode_func_wrapper(object):
 		rval = self._func(*wrapped_args, **wrapped_kwargs)
 
 		# Don't use isinstance() since we don't want to convert subclasses
-		# of tuple such as posix.stat_result in python-3.2.
+		# of tuple such as posix.stat_result in Python >=3.2.
 		if rval.__class__ in (list, tuple):
 			decoded_rval = []
 			for x in rval:
@@ -331,30 +335,6 @@ _python_interpreter = os.path.realpath(sys.executable)
 _bin_path = PORTAGE_BIN_PATH
 _pym_path = PORTAGE_PYM_PATH
 
-def _ensure_default_encoding():
-
-	default_encoding = sys.getdefaultencoding().lower().replace('-', '_')
-	filesystem_encoding = _encodings['merge'].lower().replace('-', '_')
-	required_encodings = set(['ascii', 'utf_8'])
-	required_encodings.add(default_encoding)
-	required_encodings.add(filesystem_encoding)
-	missing_encodings = set()
-	for codec_name in required_encodings:
-		try:
-			codecs.lookup(codec_name)
-		except LookupError:
-			missing_encodings.add(codec_name)
-
-	if not missing_encodings:
-		return
-
-	from portage import _ensure_encodings
-	_ensure_encodings._setup_encodings(default_encoding,
-		filesystem_encoding, missing_encodings)
-
-# Do this ASAP since writemsg() might not work without it.
-_ensure_default_encoding()
-
 def _shell_quote(s):
 	"""
 	Quote a string in double-quotes and use backslashes to
@@ -415,9 +395,12 @@ def getcwd():
 		return "/"
 getcwd()
 
-def abssymlink(symlink):
+def abssymlink(symlink, target=None):
 	"This reads symlinks, resolving the relative symlinks, and returning the absolute."
-	mylink=os.readlink(symlink)
+	if target is not None:
+		mylink = target
+	else:
+		mylink = os.readlink(symlink)
 	if mylink[0] != '/':
 		mydir=os.path.dirname(symlink)
 		mylink=mydir+"/"+mylink
@@ -425,7 +408,7 @@ def abssymlink(symlink):
 
 _doebuild_manifest_exempt_depend = 0
 
-_testing_eapis = frozenset([])
+_testing_eapis = frozenset(["4-python"])
 _deprecated_eapis = frozenset(["4_pre1", "3_pre2", "3_pre1"])
 
 def _eapi_is_deprecated(eapi):
@@ -507,8 +490,9 @@ def create_trees(config_root=None, target_root=None, trees=None):
 			portdbapi.portdbapi_instances.remove(portdb)
 			del trees[myroot]["porttree"], myroot, portdb
 
+	eprefix = os.environ.get("__PORTAGE_TEST_EPREFIX")
 	settings = config(config_root=config_root, target_root=target_root,
-		config_incrementals=portage.const.INCREMENTALS)
+		config_incrementals=portage.const.INCREMENTALS, _eprefix=eprefix)
 	settings.lock()
 
 	myroots = [(settings["ROOT"], settings)]
@@ -524,7 +508,8 @@ def create_trees(config_root=None, target_root=None, trees=None):
 			v = settings.get(k)
 			if v is not None:
 				clean_env[k] = v
-		settings = config(config_root=None, target_root="/", env=clean_env)
+		settings = config(config_root=None, target_root="/",
+			env=clean_env, _eprefix=eprefix)
 		settings.lock()
 		myroots.append((settings["ROOT"], settings))
 
@@ -579,6 +564,35 @@ if VERSION == 'HEAD':
 			VERSION = 'HEAD'
 			return VERSION
 	VERSION = _LazyVersion()
+
+if "_legacy_globals_constructed" in globals():
+	# The module has been reloaded, so perform any relevant cleanup
+	# and prevent memory leaks.
+	if "db" in _legacy_globals_constructed:
+		try:
+			db
+		except NameError:
+			pass
+		else:
+			if isinstance(db, dict) and db:
+				for _x in db.values():
+					try:
+						if "porttree" in _x.lazy_items:
+							continue
+					except (AttributeError, TypeError):
+						continue
+					try:
+						_x = _x["porttree"].dbapi
+					except (AttributeError, KeyError):
+						continue
+					if not isinstance(_x, portdbapi):
+						continue
+					_x.close_caches()
+					try:
+						portdbapi.portdbapi_instances.remove(_x)
+					except ValueError:
+						pass
+				del _x
 
 class _LegacyGlobalProxy(proxy.objectproxy.ObjectProxy):
 

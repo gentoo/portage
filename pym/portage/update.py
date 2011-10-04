@@ -1,8 +1,8 @@
 # Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import codecs
 import errno
+import io
 import re
 import stat
 import sys
@@ -13,9 +13,9 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.dep:Atom,dep_getkey,get_operator,isjustname,isvalidatom,' + \
+	'portage.dep:Atom,dep_getkey,isvalidatom,' + \
 	'remove_slot',
-	'portage.util:ConfigProtect,grabfile,new_protect_filename,' + \
+	'portage.util:ConfigProtect,new_protect_filename,' + \
 		'normalize_path,write_atomic,writemsg',
 	'portage.util.listdir:_ignorecvs_dirs',
 	'portage.versions:ververify'
@@ -86,7 +86,7 @@ def fixdbentries(update_iter, dbdir):
 	mydata = {}
 	for myfile in [f for f in os.listdir(dbdir) if f not in ignored_dbentries]:
 		file_path = os.path.join(dbdir, myfile)
-		mydata[myfile] = codecs.open(_unicode_encode(file_path,
+		mydata[myfile] = io.open(_unicode_encode(file_path,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['repo.content'],
 			errors='replace').read()
@@ -132,10 +132,11 @@ def grab_updates(updpath, prev_mtimes=None):
 		if update_data or \
 			file_path not in prev_mtimes or \
 			long(prev_mtimes[file_path]) != mystat[stat.ST_MTIME]:
-			content = codecs.open(_unicode_encode(file_path,
+			f = io.open(_unicode_encode(file_path,
 				encoding=_encodings['fs'], errors='strict'),
-				mode='r', encoding=_encodings['repo.content'], errors='replace'
-				).read()
+				mode='r', encoding=_encodings['repo.content'], errors='replace')
+			content = f.read()
+			f.close()
 			update_data.append((file_path, mystat, content))
 	return update_data
 
@@ -252,14 +253,19 @@ def update_config_files(config_root, protect, protect_mask, update_iter, match_c
 			recursivefiles.append(x)
 	myxfiles = recursivefiles
 	for x in myxfiles:
+		f = None
 		try:
-			file_contents[x] = codecs.open(
+			f = io.open(
 				_unicode_encode(os.path.join(abs_user_config, x),
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['content'],
-				errors='replace').readlines()
+				errors='replace')
+			file_contents[x] = f.readlines()
 		except IOError:
 			continue
+		finally:
+			if f is not None:
+				f.close()
 
 	# update /etc/portage/packages.*
 	ignore_line_re = re.compile(r'^#|^\s*$')

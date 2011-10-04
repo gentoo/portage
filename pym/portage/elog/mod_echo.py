@@ -18,6 +18,19 @@ def process(mysettings, key, logentries, fulltext):
 	_items.append((mysettings["ROOT"], key, logentries))
 
 def finalize():
+	# For consistency, send all message types to stdout.
+	sys.stdout.flush()
+	sys.stderr.flush()
+	stderr = sys.stderr
+	try:
+		sys.stderr = sys.stdout
+		_finalize()
+	finally:
+		sys.stderr = stderr
+		sys.stdout.flush()
+		sys.stderr.flush()
+
+def _finalize():
 	global _items
 	printer = EOutput()
 	for root, key, logentries in _items:

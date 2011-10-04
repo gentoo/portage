@@ -1,24 +1,36 @@
 # elog/mod_save.py - elog dispatch module
-# Copyright 2006-2007 Gentoo Foundation
+# Copyright 2006-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import codecs
+import io
 import time
+import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
-from portage.data import portage_uid, portage_gid
-from portage.util import ensure_dirs
+from portage.data import portage_gid, portage_uid
+from portage.package.ebuild.prepare_build_dirs import _ensure_log_subdirs
+from portage.util import apply_permissions, ensure_dirs, normalize_path
 
 def process(mysettings, key, logentries, fulltext):
-	path = key.replace("/", ":")
 
-	if mysettings["PORT_LOGDIR"] != "":
-		elogdir = os.path.join(mysettings["PORT_LOGDIR"], "elog")
+	if mysettings.get("PORT_LOGDIR"):
+		logdir = normalize_path(mysettings["PORT_LOGDIR"])
 	else:
-		elogdir = os.path.join(os.sep, "var", "log", "portage", "elog")
-	ensure_dirs(elogdir, uid=portage_uid, gid=portage_gid, mode=0o2770)
+		logdir = os.path.join(os.sep, mysettings["EPREFIX"].lstrip(os.sep),
+			"var", "log", "portage")
+
+	if not os.path.isdir(logdir):
+		# Only initialize group/mode if the directory doesn't
+		# exist, so that we don't override permissions if they
+		# were previously set by the administrator.
+		# NOTE: These permissions should be compatible with our
+		# default logrotate config as discussed in bug 374287.
+		uid = -1
+		if portage.data.secpass >= 2:
+			uid = portage_uid
+		ensure_dirs(logdir, uid=uid, gid=portage_gid, mode=0o2770)
 
 	cat = mysettings['CATEGORY']
 	pf = mysettings['PF']
@@ -28,16 +40,34 @@ def process(mysettings, key, logentries, fulltext):
 		encoding=_encodings['content'], errors='replace') + ".log"
 
 	if "split-elog" in mysettings.features:
-		elogfilename = os.path.join(elogdir, cat, elogfilename)
+		log_subdir = os.path.join(logdir, "elog", cat)
+		elogfilename = os.path.join(log_subdir, elogfilename)
 	else:
-		elogfilename = os.path.join(elogdir, cat + ':' + elogfilename)
-	ensure_dirs(os.path.dirname(elogfilename),
-		uid=portage_uid, gid=portage_gid, mode=0o2770)
+		log_subdir = os.path.join(logdir, "elog")
+		elogfilename = os.path.join(log_subdir, cat + ':' + elogfilename)
+	_ensure_log_subdirs(logdir, log_subdir)
 
-	elogfile = codecs.open(_unicode_encode(elogfilename,
+	elogfile = io.open(_unicode_encode(elogfilename,
 		encoding=_encodings['fs'], errors='strict'),
 		mode='w', encoding=_encodings['content'], errors='backslashreplace')
-	elogfile.write(fulltext)
+	elogfile.write(_unicode_decode(fulltext))
 	elogfile.close()
+
+	# Copy group permission bits from parent directory.
+	elogdir_st = os.stat(log_subdir)
+	elogdir_gid = elogdir_st.st_gid
+	elogdir_grp_mode = 0o060 & elogdir_st.st_mode
+
+	# Copy the uid from the parent directory if we have privileges
+	# to do so, for compatibility with our default logrotate
+	# config (see bug 378451). With the "su portage portage"
+	# directive and logrotate-3.8.0, logrotate's chown call during
+	# the compression phase will only succeed if the log file's uid
+	# is portage_uid.
+	logfile_uid = -1
+	if portage.data.secpass >= 2:
+		logfile_uid = elogdir_st.st_uid
+	apply_permissions(elogfilename, uid=logfile_uid, gid=elogdir_gid,
+		mode=elogdir_grp_mode, mask=0)
 
 	return elogfilename

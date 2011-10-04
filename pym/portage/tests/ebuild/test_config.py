@@ -196,3 +196,69 @@ class ConfigTestCase(TestCase):
 				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
 		finally:
 			playground.cleanup()
+
+
+	def testManifest(self):
+
+		distfiles = {
+			'B-2.tar.bz2': b'binary\0content',
+			'C-2.zip': b'binary\0content',
+			'C-2.tar.bz2': b'binary\0content',
+		}
+
+		ebuilds = {
+			"dev-libs/A-1::old_repo": { },
+			"dev-libs/A-2::new_repo": { },
+			"dev-libs/B-2::new_repo": {"SRC_URI" : "B-2.tar.bz2"},
+			"dev-libs/C-2::new_repo": {"SRC_URI" : "C-2.zip C-2.tar.bz2"},
+		}
+
+		repo_configs = {
+			"new_repo": {
+				"layout.conf":
+					(
+						"thin-manifests = true",
+						"manifest-hashes = RMD160 SHA1 SHA256 SHA512 WHIRLPOOL",
+					),
+			}
+		}
+
+		test_cases = (
+				ResolverPlaygroundTestCase(
+					["=dev-libs/A-1"],
+					mergelist= ["dev-libs/A-1"],
+					success = True),
+
+				ResolverPlaygroundTestCase(
+					["=dev-libs/A-2"],
+					mergelist= ["dev-libs/A-2"],
+					success = True),
+		)
+
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			repo_configs=repo_configs, distfiles=distfiles)
+
+		new_manifest_file = os.path.join(playground.repo_dirs["new_repo"], "dev-libs", "A", "Manifest")
+		self.assertEqual(os.path.exists(new_manifest_file), False)
+
+		new_manifest_file = os.path.join(playground.repo_dirs["new_repo"], "dev-libs", "B", "Manifest")
+		f = open(new_manifest_file)
+		self.assertEqual(len(list(f)), 1)
+		f.close()
+
+		new_manifest_file = os.path.join(playground.repo_dirs["new_repo"], "dev-libs", "C", "Manifest")
+		f = open(new_manifest_file)
+		self.assertEqual(len(list(f)), 2)
+		f.close()
+
+		old_manifest_file = os.path.join(playground.repo_dirs["old_repo"], "dev-libs", "A", "Manifest")
+		f = open(old_manifest_file)
+		self.assertEqual(len(list(f)), 1)
+		f.close()
+
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()

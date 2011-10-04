@@ -80,7 +80,11 @@ case $1 in
 			# if it cannot actually compress the file
 			echo {0..1000} > compressme
 			${PORTAGE_COMPRESS} ${PORTAGE_COMPRESS_FLAGS} compressme > /dev/null
-			suffix=$(ls compressme*)
+			# If PORTAGE_COMPRESS_FLAGS contains -k then we need to avoid
+			# having our glob match the uncompressed file here.
+			suffix=$(echo compressme.*)
+			[[ -z $suffix || "$suffix" == "compressme.*" ]] && \
+				suffix=$(echo compressme*)
 			suffix=${suffix#compressme}
 			cd /
 			rm -rf "${tmpdir}"

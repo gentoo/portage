@@ -1,8 +1,8 @@
-# Copyright 1998-2007 Gentoo Foundation
+# Copyright 1998-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import codecs
 import errno
+import io
 import sys
 import tempfile
 from portage import os
@@ -30,9 +30,9 @@ class SpawnTestCase(TestCase):
 				scheduler=scheduler,
 				logfile=logfile)
 			proc.start()
-			proc.wait()
 			os.close(null_fd)
-			f = codecs.open(_unicode_encode(logfile,
+			self.assertEqual(proc.wait(), os.EX_OK)
+			f = io.open(_unicode_encode(logfile,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['content'], errors='strict')
 			log_content = f.read()

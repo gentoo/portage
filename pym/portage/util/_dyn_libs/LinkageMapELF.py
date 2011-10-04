@@ -26,6 +26,19 @@ class LinkageMapELF(object):
 	_soname_map_class = slot_dict_class(
 		("consumers", "providers"), prefix="")
 
+	class _obj_properies_class(object):
+
+		__slots__ = ("arch", "needed", "runpaths", "soname", "alt_paths",
+			"owner",)
+
+		def __init__(self, arch, needed, runpaths, soname, alt_paths, owner):
+			self.arch = arch
+			self.needed = needed
+			self.runpaths = runpaths
+			self.soname = soname
+			self.alt_paths = alt_paths
+			self.owner = owner
+
 	def __init__(self, vardbapi):
 		self._dbapi = vardbapi
 		self._root = self._dbapi.settings['ROOT']
@@ -175,7 +188,7 @@ class LinkageMapELF(object):
 		root = self._root
 		root_len = len(root) - 1
 		self._clear_cache()
-		self._defpath.update(getlibpaths(self._root))
+		self._defpath.update(getlibpaths(self._root, env=self._dbapi.settings))
 		libs = self._libs
 		obj_properties = self._obj_properties
 
@@ -185,7 +198,7 @@ class LinkageMapELF(object):
 		# overrides any data from previously installed files.
 		if include_file is not None:
 			for line in grabfile(include_file):
-				lines.append((include_file, line))
+				lines.append((None, include_file, line))
 
 		aux_keys = [self._needed_aux_key]
 		can_lock = os.access(os.path.dirname(self._dbapi._dbroot), os.W_OK)
@@ -198,16 +211,16 @@ class LinkageMapELF(object):
 				needed_file = self._dbapi.getpath(cpv,
 					filename=self._needed_aux_key)
 				for line in self._dbapi.aux_get(cpv, aux_keys)[0].splitlines():
-					lines.append((needed_file, line))
+					lines.append((cpv, needed_file, line))
 		finally:
 			if can_lock:
 				self._dbapi.unlock()
 
 		# have to call scanelf for preserved libs here as they aren't 
 		# registered in NEEDED.ELF.2 files
-		plibs = set()
+		plibs = {}
 		if preserve_paths is not None:
-			plibs.update(preserve_paths)
+			plibs.update((x, None) for x in preserve_paths)
 		if self._dbapi._plib_registry and \
 			self._dbapi._plib_registry.hasEntries():
 			for cpv, items in \
@@ -219,7 +232,7 @@ class LinkageMapELF(object):
 					# already represented via the preserve_paths
 					# parameter.
 					continue
-				plibs.update(items)
+				plibs.update((x, cpv) for x in items)
 		if plibs:
 			args = ["/usr/bin/scanelf", "-qF", "%a;%F;%S;%r;%n"]
 			args.extend(os.path.join(root, x.lstrip("." + os.sep)) \
@@ -251,9 +264,10 @@ class LinkageMapELF(object):
 							level=logging.ERROR, noiselevel=-1)
 						continue
 					fields[1] = fields[1][root_len:]
-					plibs.discard(fields[1])
-					lines.append(("scanelf", ";".join(fields)))
+					owner = plibs.pop(fields[1], None)
+					lines.append((owner, "scanelf", ";".join(fields)))
 				proc.wait()
+				proc.stdout.close()
 
 		if plibs:
 			# Preserved libraries that did not appear in the scanelf output.
@@ -262,10 +276,14 @@ class LinkageMapELF(object):
 			# preserved library has an entry in self._obj_properties. This
 			# is important in order to prevent findConsumers from raising
 			# an unwanted KeyError.
-			for x in plibs:
-				lines.append(("plibs", ";".join(['', x, '', '', ''])))
+			for x, cpv in plibs.items():
+				lines.append((cpv, "plibs", ";".join(['', x, '', '', ''])))
 
-		for location, l in lines:
+		# Share identical frozenset instances when available,
+		# in order to conserve memory.
+		frozensets = {}
+
+		for owner, location, l in lines:
 			l = l.rstrip("\n")
 			if not l:
 				continue
@@ -278,21 +296,24 @@ class LinkageMapELF(object):
 			arch = fields[0]
 			obj = fields[1]
 			soname = fields[2]
-			path = set([normalize_path(x) \
+			path = frozenset(normalize_path(x) \
 				for x in filter(None, fields[3].replace(
 				"${ORIGIN}", os.path.dirname(obj)).replace(
-				"$ORIGIN", os.path.dirname(obj)).split(":"))])
-			needed = [x for x in fields[4].split(",") if x]
+				"$ORIGIN", os.path.dirname(obj)).split(":")))
+			path = frozensets.setdefault(path, path)
+			needed = frozenset(x for x in fields[4].split(",") if x)
+			needed = frozensets.setdefault(needed, needed)
 
 			obj_key = self._obj_key(obj)
 			indexed = True
 			myprops = obj_properties.get(obj_key)
 			if myprops is None:
 				indexed = False
-				myprops = (arch, needed, path, soname, set())
+				myprops = self._obj_properies_class(
+					arch, needed, path, soname, [], owner)
 				obj_properties[obj_key] = myprops
 			# All object paths are added into the obj_properties tuple.
-			myprops[4].add(obj)
+			myprops.alt_paths.append(obj)
 
 			# Don't index the same file more that once since only one
 			# set of data can be correct and therefore mixing data
@@ -309,16 +330,21 @@ class LinkageMapELF(object):
 				soname_map = arch_map.get(soname)
 				if soname_map is None:
 					soname_map = self._soname_map_class(
-						providers=set(), consumers=set())
+						providers=[], consumers=[])
 					arch_map[soname] = soname_map
-				soname_map.providers.add(obj_key)
+				soname_map.providers.append(obj_key)
 			for needed_soname in needed:
 				soname_map = arch_map.get(needed_soname)
 				if soname_map is None:
 					soname_map = self._soname_map_class(
-						providers=set(), consumers=set())
+						providers=[], consumers=[])
 					arch_map[needed_soname] = soname_map
-				soname_map.consumers.add(obj_key)
+				soname_map.consumers.append(obj_key)
+
+		for arch, sonames in libs.items():
+			for soname_node in sonames.values():
+				soname_node.providers = tuple(set(soname_node.providers))
+				soname_node.consumers = tuple(set(soname_node.consumers))
 
 	def listBrokenBinaries(self, debug=False):
 		"""
@@ -372,8 +398,13 @@ class LinkageMapELF(object):
 					if obj_key.file_exists():
 						# Get the arch and soname from LinkageMap._obj_properties if
 						# it exists. Otherwise, None.
-						arch, _needed, _path, soname, _objs = \
-								self._obj_properties.get(obj_key, (None,)*5)
+						obj_props = self._obj_properties.get(obj_key)
+						if obj_props is None:
+							arch = None
+							soname = None
+						else:
+							arch = obj_props.arch
+							soname = obj_props.soname
 						return cache_self.cache.setdefault(obj, \
 								(arch, soname, obj_key, True))
 					else:
@@ -386,7 +417,10 @@ class LinkageMapELF(object):
 
 		# Iterate over all obj_keys and their providers.
 		for obj_key, sonames in providers.items():
-			arch, _needed, path, _soname, objs = self._obj_properties[obj_key]
+			obj_props = self._obj_properties[obj_key]
+			arch = obj_props.arch
+			path = obj_props.runpaths
+			objs = obj_props.alt_paths
 			path = path.union(self._defpath)
 			# Iterate over each needed soname and the set of library paths that
 			# fulfill the soname to determine if the dependency is broken.
@@ -419,7 +453,7 @@ class LinkageMapELF(object):
 							writemsg_level(
 								_("Found provider outside of findProviders:") + \
 								(" %s -> %s %s\n" % (os.path.join(directory, soname),
-								self._obj_properties[cachedKey][4], libraries)),
+								self._obj_properties[cachedKey].alt_paths, libraries)),
 								level=logging.DEBUG,
 								noiselevel=-1)
 						# A valid library has been found, so there is no need to
@@ -481,7 +515,16 @@ class LinkageMapELF(object):
 
 	def isMasterLink(self, obj):
 		"""
-		Determine whether an object is a master link.
+		Determine whether an object is a "master" symlink, which means
+		that its basename is the same as the beginning part of the
+		soname and it lacks the soname's version component.
+
+		Examples:
+
+		soname                 | master symlink name
+		--------------------------------------------
+		libarchive.so.2.8.4    | libarchive.so
+		libproc-3.2.8.so       | libproc.so
 
 		@param obj: absolute path to an object
 		@type obj: string (example: '/usr/bin/foo')
@@ -492,12 +535,14 @@ class LinkageMapELF(object):
 
 		"""
 		os = _os_merge
-		basename = os.path.basename(obj)
 		obj_key = self._obj_key(obj)
 		if obj_key not in self._obj_properties:
 			raise KeyError("%s (%s) not in object list" % (obj_key, obj))
-		soname = self._obj_properties[obj_key][3]
-		return (len(basename) < len(soname))
+		basename = os.path.basename(obj)
+		soname = self._obj_properties[obj_key].soname
+		return len(basename) < len(soname) and \
+			basename.endswith(".so") and \
+			soname.startswith(basename[:-3])
 
 	def listLibraryObjects(self):
 		"""
@@ -515,8 +560,39 @@ class LinkageMapELF(object):
 		for arch_map in self._libs.values():
 			for soname_map in arch_map.values():
 				for obj_key in soname_map.providers:
-					rValue.extend(self._obj_properties[obj_key][4])
+					rValue.extend(self._obj_properties[obj_key].alt_paths)
 		return rValue
+
+	def getOwners(self, obj):
+		"""
+		Return the package(s) associated with an object. Raises KeyError
+		if the object is unknown. Returns an empty tuple if the owner(s)
+		are unknown.
+
+		NOTE: For preserved libraries, the owner(s) may have been
+		previously uninstalled, but these uninstalled owners can be
+		returned by this method since they are registered in the
+		PreservedLibsRegistry.
+
+		@param obj: absolute path to an object
+		@type obj: string (example: '/usr/bin/bar')
+		@rtype: tuple
+		@return: a tuple of cpv
+		"""
+		if not self._libs:
+			self.rebuild()
+		if isinstance(obj, self._ObjectKey):
+			obj_key = obj
+		else:
+			obj_key = self._obj_key_cache.get(obj)
+			if obj_key is None:
+				raise KeyError("%s not in object list" % obj)
+		obj_props = self._obj_properties.get(obj_key)
+		if obj_props is None:
+			raise KeyError("%s not in object list" % obj_key)
+		if obj_props.owner is None:
+			return ()
+		return (obj_props.owner,)
 
 	def getSoname(self, obj):
 		"""
@@ -534,10 +610,10 @@ class LinkageMapELF(object):
 			obj_key = obj
 			if obj_key not in self._obj_properties:
 				raise KeyError("%s not in object list" % obj_key)
-			return self._obj_properties[obj_key][3]
+			return self._obj_properties[obj_key].soname
 		if obj not in self._obj_key_cache:
 			raise KeyError("%s not in object list" % obj)
-		return self._obj_properties[self._obj_key_cache[obj]][3]
+		return self._obj_properties[self._obj_key_cache[obj]].soname
 
 	def findProviders(self, obj):
 		"""
@@ -577,7 +653,10 @@ class LinkageMapELF(object):
 			if obj_key not in self._obj_properties:
 				raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 
-		arch, needed, path, _soname, _objs = self._obj_properties[obj_key]
+		obj_props = self._obj_properties[obj_key]
+		arch = obj_props.arch
+		needed = obj_props.needed
+		path = obj_props.runpaths
 		path_keys = set(self._path_key(x) for x in path.union(self._defpath))
 		for soname in needed:
 			rValue[soname] = set()
@@ -586,13 +665,13 @@ class LinkageMapELF(object):
 			# For each potential provider of the soname, add it to rValue if it
 			# resides in the obj's runpath.
 			for provider_key in self._libs[arch][soname].providers:
-				providers = self._obj_properties[provider_key][4]
+				providers = self._obj_properties[provider_key].alt_paths
 				for provider in providers:
 					if self._path_key(os.path.dirname(provider)) in path_keys:
 						rValue[soname].add(provider)
 		return rValue
 
-	def findConsumers(self, obj):
+	def findConsumers(self, obj, exclude_providers=None):
 		"""
 		Find consumers of an object or object key.
 
@@ -615,8 +694,20 @@ class LinkageMapELF(object):
 		corresponding libtool archive (*.la) files to detect such consumers
 		(revdep-rebuild is able to detect them).
 
+		The exclude_providers argument is useful for determining whether
+		removal of one or more packages will create unsatisfied consumers. When
+		this option is given, consumers are excluded from the results if there
+		is an alternative provider (which is not excluded) of the required
+		soname such that the consumers will remain satisfied if the files
+		owned by exclude_providers are removed.
+
 		@param obj: absolute path to an object or a key from _obj_properties
 		@type obj: string (example: '/usr/bin/bar') or _ObjectKey
+		@param exclude_providers: A collection of callables that each take a
+			single argument referring to the path of a library (example:
+			'/usr/lib/libssl.so.0.9.8'), and return True if the library is
+			owned by a provider which is planned for removal.
+		@type exclude_providers: collection
 		@rtype: set of strings (example: set(['/bin/foo', '/usr/bin/bar']))
 		@return: The return value is a soname -> set-of-library-paths, where
 		set-of-library-paths satisfy soname.
@@ -624,8 +715,6 @@ class LinkageMapELF(object):
 		"""
 
 		os = _os_merge
-
-		rValue = set()
 
 		if not self._libs:
 			self.rebuild()
@@ -635,7 +724,7 @@ class LinkageMapELF(object):
 			obj_key = obj
 			if obj_key not in self._obj_properties:
 				raise KeyError("%s not in object list" % obj_key)
-			objs = self._obj_properties[obj_key][4]
+			objs = self._obj_properties[obj_key].alt_paths
 		else:
 			objs = set([obj])
 			obj_key = self._obj_key(obj)
@@ -643,34 +732,74 @@ class LinkageMapELF(object):
 				raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 
 		# If there is another version of this lib with the
-		# same soname and the master link points to that
+		# same soname and the soname symlink points to that
 		# other version, this lib will be shadowed and won't
 		# have any consumers.
 		if not isinstance(obj, self._ObjectKey):
-			soname = self._obj_properties[obj_key][3]
-			master_link = os.path.join(self._root,
+			soname = self._obj_properties[obj_key].soname
+			soname_link = os.path.join(self._root,
 				os.path.dirname(obj).lstrip(os.path.sep), soname)
+			obj_path = os.path.join(self._root, obj.lstrip(os.sep))
 			try:
-				master_st = os.stat(master_link)
-				obj_st = os.stat(obj)
+				soname_st = os.stat(soname_link)
+				obj_st = os.stat(obj_path)
 			except OSError:
 				pass
 			else:
 				if (obj_st.st_dev, obj_st.st_ino) != \
-					(master_st.st_dev, master_st.st_ino):
+					(soname_st.st_dev, soname_st.st_ino):
 					return set()
 
-		# Determine the directory(ies) from the set of objects.
-		objs_dir_keys = set(self._path_key(os.path.dirname(x)) for x in objs)
-		defpath_keys = set(self._path_key(x) for x in self._defpath)
+		obj_props = self._obj_properties[obj_key]
+		arch = obj_props.arch
+		soname = obj_props.soname
 
-		arch, _needed, _path, soname, _objs = self._obj_properties[obj_key]
-		if arch in self._libs and soname in self._libs[arch]:
+		soname_node = None
+		arch_map = self._libs.get(arch)
+		if arch_map is not None:
+			soname_node = arch_map.get(soname)
+
+		defpath_keys = set(self._path_key(x) for x in self._defpath)
+		satisfied_consumer_keys = set()
+		if soname_node is not None:
+			if exclude_providers is not None:
+				relevant_dir_keys = set()
+				for provider_key in soname_node.providers:
+					provider_objs = self._obj_properties[provider_key].alt_paths
+					for p in provider_objs:
+						provider_excluded = False
+						for excluded_provider_isowner in exclude_providers:
+							if excluded_provider_isowner(p):
+								provider_excluded = True
+								break
+						if not provider_excluded:
+							# This provider is not excluded. It will
+							# satisfy a consumer of this soname if it
+							# is in the default ld.so path or the
+							# consumer's runpath.
+							relevant_dir_keys.add(
+								self._path_key(os.path.dirname(p)))
+
+				if relevant_dir_keys:
+					for consumer_key in soname_node.consumers:
+						path = self._obj_properties[consumer_key].runpaths
+						path_keys = defpath_keys.copy()
+						path_keys.update(self._path_key(x) for x in path)
+						if relevant_dir_keys.intersection(path_keys):
+							satisfied_consumer_keys.add(consumer_key)
+
+		rValue = set()
+		if soname_node is not None:
 			# For each potential consumer, add it to rValue if an object from the
 			# arguments resides in the consumer's runpath.
-			for consumer_key in self._libs[arch][soname].consumers:
-				_arch, _needed, path, _soname, consumer_objs = \
-						self._obj_properties[consumer_key]
+			objs_dir_keys = set(self._path_key(os.path.dirname(x))
+				for x in objs)
+			for consumer_key in soname_node.consumers:
+				if consumer_key in satisfied_consumer_keys:
+					continue
+				consumer_props = self._obj_properties[consumer_key]
+				path = consumer_props.runpaths
+				consumer_objs = consumer_props.alt_paths
 				path_keys = defpath_keys.union(self._path_key(x) for x in path)
 				if objs_dir_keys.intersection(path_keys):
 					rValue.update(consumer_objs)

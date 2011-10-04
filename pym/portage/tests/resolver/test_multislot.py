@@ -14,11 +14,17 @@ class MultSlotTestCase(TestCase):
 
 		ebuilds = {
 			"sys-devel/gcc-4.4.4": { "SLOT": "4.4" },
+			"dev-util/nvidia-cuda-toolkit-4.0" : { "RDEPEND": "sys-devel/gcc:4.4"},
 			}
 
 		installed = {
 			"sys-devel/gcc-4.4.4": { "SLOT": "i686-pc-linux-gnu-4.4.4" },
+			"dev-util/nvidia-cuda-toolkit-4.0" : { "RDEPEND": "sys-devel/gcc:4.4"},
 			}
+
+		world = (
+			"dev-util/nvidia-cuda-toolkit",
+		)
 
 		options = {'--update' : True, '--deep' : True, '--selective' : True}
 
@@ -28,9 +34,17 @@ class MultSlotTestCase(TestCase):
 					options = options,
 					mergelist = [],
 					success = True),
+
+				# depclean test for bug #382823
+				ResolverPlaygroundTestCase(
+					[],
+					options = {"--depclean": True},
+					success = True,
+					cleanlist = []),
 			)
 
-		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)
+		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed,
+			world=world)
 
 		try:
 			for test_case in test_cases:

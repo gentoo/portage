@@ -84,6 +84,9 @@ class Backtracker(object):
 		Adds a newly computed backtrack parameter. Makes sure that it doesn't already exist and
 		that we don't backtrack deeper than we are allowed by --backtrack.
 		"""
+		if not self._check_runtime_pkg_mask(node.parameter.runtime_pkg_mask):
+			return
+
 		if node.mask_steps <= self._max_depth and node not in self._nodes:
 			if explore:
 				self._unexplored_nodes.append(node)
@@ -105,6 +108,28 @@ class Backtracker(object):
 	def __len__(self):
 		return len(self._unexplored_nodes)
 
+	def _check_runtime_pkg_mask(self, runtime_pkg_mask):
+		"""
+		If a package gets masked that caused other packages to be masked
+		before, we revert the mask for other packages (bug 375573).
+		"""
+
+		for pkg in runtime_pkg_mask:
+
+			if "missing dependency" in runtime_pkg_mask[pkg]:
+				continue
+
+			entry_is_valid = False
+
+			for ppkg, patom in runtime_pkg_mask[pkg].get("slot conflict", set()):
+				if ppkg not in runtime_pkg_mask:
+					entry_is_valid = True
+					break
+
+			if not entry_is_valid:
+				return False
+
+		return True
 
 	def _feedback_slot_conflict(self, conflict_data):
 		for pkg, parent_atoms in conflict_data:

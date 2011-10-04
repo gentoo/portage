@@ -333,6 +333,7 @@ class PollScheduler(object):
 				f = open(_unicode_encode(log_path,
 					encoding=_encodings['fs'], errors='strict'),
 					mode='ab')
+				f_real = f
 			except IOError as e:
 				if e.errno not in (errno.ENOENT, errno.ESTALE):
 					raise
@@ -349,6 +350,8 @@ class PollScheduler(object):
 
 				f.write(_unicode_encode(msg))
 				f.close()
+				if f_real is not f:
+					f_real.close()
 
 _can_poll_device = None
 

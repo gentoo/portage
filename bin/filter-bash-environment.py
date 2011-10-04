@@ -1,9 +1,13 @@
 #!/usr/bin/python
-# Copyright 1999-2007 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import codecs
-import os, re, sys
+import io
+import optparse
+import os
+import re
+import sys
 
 here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
 func_start_re = re.compile(r'^[-\w]+\s*\(\)\s*$')
@@ -122,8 +126,7 @@ if __name__ == "__main__":
 		"intact. The PATTERN is a space separated list of variable names" + \
 		" and it supports python regular expression syntax."
 	usage = "usage: %s PATTERN" % os.path.basename(sys.argv[0])
-	from optparse import OptionParser
-	parser = OptionParser(description=description, usage=usage)
+	parser = optparse.OptionParser(description=description, usage=usage)
 	options, args = parser.parse_args(sys.argv[1:])
 	if len(args) != 1:
 		parser.error("Missing required PATTERN argument.")
@@ -132,7 +135,6 @@ if __name__ == "__main__":
 	if sys.hexversion >= 0x3000000:
 		file_in = codecs.iterdecode(sys.stdin.buffer.raw,
 			'utf_8', errors='replace')
-		import io
 		file_out = io.TextIOWrapper(sys.stdout.buffer,
 			'utf_8', errors='backslashreplace')
 

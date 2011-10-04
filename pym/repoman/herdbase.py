@@ -19,8 +19,6 @@ __all__ = [
 	"make_herd_base"
 ]
 
-_SPECIAL_HERDS = set(('no-herd',))
-
 def _make_email(nick_name):
 	if not nick_name.endswith('@gentoo.org'):
 		nick_name = nick_name + '@gentoo.org'
@@ -33,8 +31,6 @@ class HerdBase(object):
 		self.all_emails = all_emails
 
 	def known_herd(self, herd_name):
-		if herd_name in _SPECIAL_HERDS:
-			return True
 		return herd_name in self.herd_to_emails
 
 	def known_maintainer(self, nick_name):

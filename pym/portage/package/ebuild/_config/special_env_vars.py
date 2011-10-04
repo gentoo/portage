@@ -13,8 +13,9 @@ import re
 # configuration files.
 env_blacklist = frozenset((
 	"A", "AA", "CATEGORY", "DEPEND", "DESCRIPTION", "EAPI",
-	"EBUILD_PHASE", "ED", "EMERGE_FROM", "EPREFIX", "EROOT",
-	"HOMEPAGE", "INHERITED", "IUSE",
+	"EBUILD_FORCE_TEST", "EBUILD_PHASE", "EBUILD_SKIP_MANIFEST",
+	"ED", "EMERGE_FROM", "EPREFIX", "EROOT",
+	"GREP_OPTIONS", "HOMEPAGE", "INHERITED", "IUSE",
 	"KEYWORDS", "LICENSE", "MERGE_TYPE",
 	"PDEPEND", "PF", "PKGUSE", "PORTAGE_BACKGROUND",
 	"PORTAGE_BACKGROUND_UNMERGE", "PORTAGE_BUILDIR_LOCKED",
@@ -155,7 +156,7 @@ environ_filter += [
 	"PORTAGE_RO_DISTDIRS",
 	"PORTAGE_RSYNC_EXTRA_OPTS", "PORTAGE_RSYNC_OPTS",
 	"PORTAGE_RSYNC_RETRIES", "PORTAGE_SYNC_STALE",
-	"PORTAGE_USE", "PORT_LOGDIR",
+	"PORTAGE_USE", "PORT_LOGDIR", "PORT_LOGDIR_CLEAN",
 	"QUICKPKG_DEFAULT_OPTS",
 	"RESUMECOMMAND", "RESUMECOMMAND_FTP",
 	"RESUMECOMMAND_HTTP", "RESUMECOMMAND_HTTPS",
@@ -164,6 +165,12 @@ environ_filter += [
 ]
 
 environ_filter = frozenset(environ_filter)
+
+# Variables that are not allowed to have per-repo or per-package
+# settings.
+global_only_vars = frozenset([
+	"CONFIG_PROTECT",
+])
 
 default_globals = {
 	'ACCEPT_LICENSE':           '* -@EULA',

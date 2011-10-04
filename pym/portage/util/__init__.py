@@ -11,9 +11,9 @@ __all__ = ['apply_permissions', 'apply_recursive_permissions',
 	'stack_dicts', 'stack_lists', 'unique_array', 'unique_everseen', 'varexpand',
 	'write_atomic', 'writedict', 'writemsg', 'writemsg_level', 'writemsg_stdout']
 
-import codecs
 from copy import deepcopy
 import errno
+import io
 try:
 	from itertools import filterfalse
 except ImportError:
@@ -28,12 +28,12 @@ import traceback
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
+	'pickle',
 	'portage.dep:Atom',
 	'portage.util.listdir:_ignorecvs_dirs'
 )
-from portage import StringIO
+
 from portage import os
-from portage import pickle
 from portage import subprocess_getstatusoutput
 from portage import _encodings
 from portage import _os_merge
@@ -63,7 +63,7 @@ def writemsg(mystr,noiselevel=0,fd=None):
 		fd = sys.stderr
 	if noiselevel <= noiselimit:
 		# avoid potential UnicodeEncodeError
-		if isinstance(fd, StringIO):
+		if isinstance(fd, io.StringIO):
 			mystr = _unicode_decode(mystr,
 				encoding=_encodings['content'], errors='replace')
 		else:
@@ -318,11 +318,11 @@ def stack_lists(lists, incremental=1, remember_source_file=False,
 		for source_file, tokens in unmatched_removals.items():
 			if len(tokens) > 3:
 				selected = [tokens.pop(), tokens.pop(), tokens.pop()]
-				writemsg(_("--- Unmatch removal atoms in %s: %s and %s more\n") % \
+				writemsg(_("--- Unmatched removal atoms in %s: %s and %s more\n") % \
 					(source_file, ", ".join(selected), len(tokens)),
 					noiselevel=-1)
 			else:
-				writemsg(_("--- Unmatch removal atom(s) in %s: %s\n") % (source_file, ", ".join(tokens)),
+				writemsg(_("--- Unmatched removal atom(s) in %s: %s\n") % (source_file, ", ".join(tokens)),
 					noiselevel=-1)
 
 	if remember_source_file:
@@ -390,7 +390,7 @@ def read_corresponding_eapi_file(filename):
 		f = open(eapi_file, "r")
 		lines = f.readlines()
 		if len(lines) == 1:
-			eapi = lines[0]
+			eapi = lines[0].rstrip("\n")
 		else:
 			writemsg(_("--- Invalid 'eapi' file (doesn't contain exactly one line): %s\n") % (eapi_file),
 				noiselevel=-1)
@@ -475,7 +475,7 @@ def grablines(myfilename, recursive=0, remember_source_file=False):
 					os.path.join(myfilename, f), recursive, remember_source_file))
 	else:
 		try:
-			myfile = codecs.open(_unicode_encode(myfilename,
+			myfile = io.open(_unicode_encode(myfilename,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['content'], errors='replace')
 			if remember_source_file:
@@ -521,7 +521,7 @@ class _tolerant_shlex(shlex.shlex):
 		except EnvironmentError as e:
 			writemsg(_("!!! Parse error in '%s': source command failed: %s\n") % \
 				(self.infile, str(e)), noiselevel=-1)
-			return (newfile, StringIO())
+			return (newfile, io.StringIO())
 
 _invalid_var_name_re = re.compile(r'^\d|\W')
 
@@ -534,16 +534,18 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 	else:
 		expand_map = {}
 	mykeys = {}
+	f = None
 	try:
-		# NOTE: shex doesn't seem to support unicode objects
-		# (produces spurious \0 characters with python-2.6.2)
+		# NOTE: shlex doesn't support unicode objects with Python 2
+		# (produces spurious \0 characters).
 		if sys.hexversion < 0x3000000:
-			content = open(_unicode_encode(mycfg,
-				encoding=_encodings['fs'], errors='strict'), 'rb').read()
+			f = open(_unicode_encode(mycfg,
+				encoding=_encodings['fs'], errors='strict'), 'rb')
 		else:
-			content = open(_unicode_encode(mycfg,
+			f = open(_unicode_encode(mycfg,
 				encoding=_encodings['fs'], errors='strict'), mode='r',
-				encoding=_encodings['content'], errors='replace').read()
+				encoding=_encodings['content'], errors='replace')
+		content = f.read()
 	except IOError as e:
 		if e.errno == PermissionDenied.errno:
 			raise PermissionDenied(mycfg)
@@ -552,6 +554,9 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 			if e.errno not in (errno.EISDIR,):
 				raise
 		return None
+	finally:
+		if f is not None:
+			f.close()
 
 	# Workaround for avoiding a silent error in shlex that is
 	# triggered by a source statement at the end of the file
@@ -683,37 +688,27 @@ def varexpand(mystring, mydict=None):
 				newstring=newstring+" "
 				pos=pos+1
 			elif (mystring[pos]=="\\"):
-				#backslash expansion time
+				# For backslash expansion, this function used to behave like
+				# echo -e, but that's not needed for our purposes. We want to
+				# behave like bash does when expanding a variable assignment
+				# in a sourced file, in which case it performs backslash
+				# removal for \\ and \$ but nothing more. It also removes
+				# escaped newline characters. Note that we don't handle
+				# escaped quotes here, since getconfig() uses shlex
+				# to handle that earlier.
 				if (pos+1>=len(mystring)):
 					newstring=newstring+mystring[pos]
 					break
 				else:
-					a=mystring[pos+1]
-					pos=pos+2
-					if a=='a':
-						newstring=newstring+chr(0o07)
-					elif a=='b':
-						newstring=newstring+chr(0o10)
-					elif a=='e':
-						newstring=newstring+chr(0o33)
-					elif (a=='f') or (a=='n'):
-						newstring=newstring+chr(0o12)
-					elif a=='r':
-						newstring=newstring+chr(0o15)
-					elif a=='t':
-						newstring=newstring+chr(0o11)
-					elif a=='v':
-						newstring=newstring+chr(0o13)
-					elif a in ('\'', '"'):
-						# Quote removal is handled by shlex.
+					a = mystring[pos + 1]
+					pos = pos + 2
+					if a in ("\\", "$"):
+						newstring = newstring + a
+					elif a == "\n":
+						pass
+					else:
 						newstring = newstring + mystring[pos-2:pos]
-						continue
-					elif a!='\n':
-						# Remove backslash only, as bash does. This takes care
-						# of \\. Note that we don't handle quotes here since
-						# quote removal is handled by shlex.
-						newstring=newstring+mystring[pos-1:pos]
-						continue
+					continue
 			elif (mystring[pos]=="$") and (mystring[pos-1]!="\\"):
 				pos=pos+1
 				if mystring[pos]=="{":
@@ -1101,7 +1096,7 @@ class atomic_ofstream(ObjectProxy):
 		if 'b' in mode:
 			open_func = open
 		else:
-			open_func = codecs.open
+			open_func = io.open
 			kargs.setdefault('encoding', _encodings['content'])
 			kargs.setdefault('errors', 'backslashreplace')
 
@@ -1132,10 +1127,29 @@ class atomic_ofstream(ObjectProxy):
 	def _get_target(self):
 		return object.__getattribute__(self, '_file')
 
-	def __getattribute__(self, attr):
-		if attr in ('close', 'abort', '__del__'):
-			return object.__getattribute__(self, attr)
-		return getattr(object.__getattribute__(self, '_file'), attr)
+	if sys.hexversion >= 0x3000000:
+
+		def __getattribute__(self, attr):
+			if attr in ('close', 'abort', '__del__'):
+				return object.__getattribute__(self, attr)
+			return getattr(object.__getattribute__(self, '_file'), attr)
+
+	else:
+
+		# For TextIOWrapper, automatically coerce write calls to
+		# unicode, in order to avoid TypeError when writing raw
+		# bytes with python2.
+
+		def __getattribute__(self, attr):
+			if attr in ('close', 'abort', 'write', '__del__'):
+				return object.__getattribute__(self, attr)
+			return getattr(object.__getattribute__(self, '_file'), attr)
+
+		def write(self, s):
+			f = object.__getattribute__(self, '_file')
+			if isinstance(f, io.TextIOWrapper):
+				s = _unicode_decode(s)
+			return f.write(s)
 
 	def close(self):
 		"""Closes the temporary file, copies permissions (if possible),
@@ -1473,9 +1487,11 @@ class ConfigProtect(object):
 						masked = len(pmpath)
 		return protected > masked
 
-def new_protect_filename(mydest, newmd5=None):
+def new_protect_filename(mydest, newmd5=None, force=False):
 	"""Resolves a config-protect filename for merging, optionally
-	using the last filename if the md5 matches.
+	using the last filename if the md5 matches. If force is True,
+	then a new filename will be generated even if mydest does not
+	exist yet.
 	(dest,md5) ==> 'string'            --- path_to_target_filename
 	(dest)     ==> ('next', 'highest') --- next_target and most-recent_target
 	"""
@@ -1489,7 +1505,8 @@ def new_protect_filename(mydest, newmd5=None):
 	prot_num = -1
 	last_pfile = ""
 
-	if not os.path.exists(mydest):
+	if not force and \
+		not os.path.exists(mydest):
 		return mydest
 
 	real_filename = os.path.basename(mydest)
@@ -1577,11 +1594,12 @@ def find_updated_config_files(target_root, config_protect):
 					else:
 						yield (x, None)
 
-def getlibpaths(root):
+def getlibpaths(root, env=None):
 	""" Return a list of paths that are used for library lookups """
-
+	if env is None:
+		env = os.environ
 	# the following is based on the information from ld.so(8)
-	rval = os.environ.get("LD_LIBRARY_PATH", "").split(":")
+	rval = env.get("LD_LIBRARY_PATH", "").split(":")
 	rval.extend(grabfile(os.path.join(root, "etc", "ld.so.conf")))
 	rval.append("/usr/lib")
 	rval.append("/lib")

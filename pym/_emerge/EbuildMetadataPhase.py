@@ -11,7 +11,7 @@ from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 import fcntl
-import codecs
+import io
 
 class EbuildMetadataPhase(SubProcess):
 
@@ -37,7 +37,7 @@ class EbuildMetadataPhase(SubProcess):
 		if eapi is None and \
 			'parse-eapi-ebuild-head' in settings.features:
 			eapi = portage._parse_eapi_ebuild_head(
-				codecs.open(_unicode_encode(ebuild_path,
+				io.open(_unicode_encode(ebuild_path,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],
 				errors='replace'))
@@ -46,7 +46,7 @@ class EbuildMetadataPhase(SubProcess):
 			if not portage.eapi_is_supported(eapi):
 				self.metadata_callback(self.cpv, self.ebuild_path,
 					self.repo_path, {'EAPI' : eapi}, self.ebuild_mtime)
-				self._set_returncode((self.pid, os.EX_OK))
+				self._set_returncode((self.pid, os.EX_OK << 8))
 				self.wait()
 				return
 
@@ -98,7 +98,7 @@ class EbuildMetadataPhase(SubProcess):
 		if isinstance(retval, int):
 			# doebuild failed before spawning
 			self._unregister()
-			self._set_returncode((self.pid, retval))
+			self._set_returncode((self.pid, retval << 8))
 			self.wait()
 			return
 

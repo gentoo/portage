@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['digestcheck']
@@ -8,11 +8,10 @@ import warnings
 from portage import os, _encodings, _unicode_decode
 from portage.exception import DigestException, FileNotFound
 from portage.localization import _
-from portage.manifest import Manifest
 from portage.output import EOutput
 from portage.util import writemsg
 
-def digestcheck(myfiles, mysettings, strict=False, justmanifest=None):
+def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
 	"""
 	Verifies checksums. Assumes all files have been downloaded.
 	@rtype: int
@@ -29,40 +28,26 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None):
 	if mysettings.get("EBUILD_SKIP_MANIFEST") == "1":
 		return 1
 	pkgdir = mysettings["O"]
-	manifest_path = os.path.join(pkgdir, "Manifest")
-	if not os.path.exists(manifest_path):
-		writemsg(_("!!! Manifest file not found: '%s'\n") % manifest_path,
-			noiselevel=-1)
-		if strict:
-			return 0
-		else:
-			return 1
-	mf = Manifest(pkgdir, mysettings["DISTDIR"])
-	manifest_empty = True
-	for d in mf.fhashdict.values():
-		if d:
-			manifest_empty = False
-			break
-	if manifest_empty:
-		writemsg(_("!!! Manifest is empty: '%s'\n") % manifest_path,
-			noiselevel=-1)
-		if strict:
-			return 0
-		else:
-			return 1
+	if mf is None:
+		mf = mysettings.repositories.get_repo_for_location(
+			os.path.dirname(os.path.dirname(pkgdir)))
+		mf = mf.load_manifest(pkgdir, mysettings["DISTDIR"])
 	eout = EOutput()
 	eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
 	try:
 		if strict and "PORTAGE_PARALLEL_FETCHONLY" not in mysettings:
-			eout.ebegin(_("checking ebuild checksums ;-)"))
-			mf.checkTypeHashes("EBUILD")
-			eout.eend(0)
-			eout.ebegin(_("checking auxfile checksums ;-)"))
-			mf.checkTypeHashes("AUX")
-			eout.eend(0)
-			eout.ebegin(_("checking miscfile checksums ;-)"))
-			mf.checkTypeHashes("MISC", ignoreMissingFiles=True)
-			eout.eend(0)
+			if mf.fhashdict.get("EBUILD"):
+				eout.ebegin(_("checking ebuild checksums ;-)"))
+				mf.checkTypeHashes("EBUILD")
+				eout.eend(0)
+			if mf.fhashdict.get("AUX"):
+				eout.ebegin(_("checking auxfile checksums ;-)"))
+				mf.checkTypeHashes("AUX")
+				eout.eend(0)
+			if mf.fhashdict.get("MISC"):
+				eout.ebegin(_("checking miscfile checksums ;-)"))
+				mf.checkTypeHashes("MISC", ignoreMissingFiles=True)
+				eout.eend(0)
 		for f in myfiles:
 			eout.ebegin(_("checking %s ;-)") % f)
 			ftype = mf.findFile(f)
@@ -86,6 +71,10 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None):
 		writemsg(_("!!! Got: %s\n") % e.value[2], noiselevel=-1)
 		writemsg(_("!!! Expected: %s\n") % e.value[3], noiselevel=-1)
 		return 0
+	if mf.thin or mf.allow_missing:
+		# In this case we ignore any missing digests that
+		# would otherwise be detected below.
+		return 1
 	# Make sure that all of the ebuilds are actually listed in the Manifest.
 	for f in os.listdir(pkgdir):
 		pf = None
@@ -96,8 +85,8 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None):
 				os.path.join(pkgdir, f), noiselevel=-1)
 			if strict:
 				return 0
-	""" epatch will just grab all the patches out of a directory, so we have to
-	make sure there aren't any foreign files that it might grab."""
+	# epatch will just grab all the patches out of a directory, so we have to
+	# make sure there aren't any foreign files that it might grab.
 	filesdir = os.path.join(pkgdir, "files")
 
 	for parent, dirs, files in os.walk(filesdir):

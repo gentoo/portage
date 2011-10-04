@@ -1,12 +1,12 @@
-# Copyright 2007 Gentoo Foundation
+# Copyright 2007-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
 
 from portage.localization import _
 from portage._sets.base import PackageSet
-from portage._sets import get_boolean
-from portage.versions import catpkgsplit
+from portage._sets import get_boolean, SetConfigError
+from portage.versions import cpv_getkey
 import portage
 
 class LibraryConsumerSet(PackageSet):
@@ -19,10 +19,17 @@ class LibraryConsumerSet(PackageSet):
 
 	def mapPathsToAtoms(self, paths):
 		rValue = set()
-		for link, p in self.dbapi._owners.iter_owners(paths):
-			cat, pn = catpkgsplit(link.mycpv)[:2]
-			slot = self.dbapi.aux_get(link.mycpv, ["SLOT"])[0]
-			rValue.add("%s/%s:%s" % (cat, pn, slot))
+		for p in paths:
+			for cpv in self.dbapi._linkmap.getOwners(p):
+				try:
+					slot, = self.dbapi.aux_get(cpv, ["SLOT"])
+				except KeyError:
+					# This is expected for preserved libraries
+					# of packages that have been uninstalled
+					# without replacement.
+					pass
+				else:
+					rValue.add("%s:%s" % (cpv_getkey(cpv), slot))
 		return rValue
 
 class LibraryFileConsumerSet(LibraryConsumerSet):

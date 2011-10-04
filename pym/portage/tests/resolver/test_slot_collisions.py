@@ -31,6 +31,15 @@ class SlotCollisionTestCase(TestCase):
 			"sci-libs/Q-2": { "SLOT": "2", "IUSE": "+bar +foo", "EAPI": 2, "PDEPEND": "sci-libs/Q:1[bar?,foo?]" },
 			"sci-libs/P-1": { "DEPEND": "sci-libs/Q:1[foo=]", "IUSE": "foo", "EAPI": 2 },
 
+			"sys-libs/A-1": { "RDEPEND": "foo? ( sys-libs/J[foo=] )", "IUSE": "+foo", "EAPI": "4" },
+			"sys-libs/B-1": { "RDEPEND": "bar? ( sys-libs/J[bar=] )", "IUSE": "+bar", "EAPI": "4" },
+			"sys-libs/C-1": { "RDEPEND": "sys-libs/J[bar]", "EAPI": "4" },
+			"sys-libs/D-1": { "RDEPEND": "sys-libs/J[bar?]", "IUSE": "bar", "EAPI": "4" },
+			"sys-libs/E-1": { "RDEPEND": "sys-libs/J[foo(+)?]", "IUSE": "+foo", "EAPI": "4" },
+			"sys-libs/F-1": { "RDEPEND": "sys-libs/J[foo(+)]", "EAPI": "4" },
+			"sys-libs/J-1": { "IUSE": "+foo", "EAPI": "4" },
+			"sys-libs/J-2": { "IUSE": "+bar", "EAPI": "4" },
+
 			"app-misc/A-1": { "IUSE": "foo +bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": "4" },
 			"app-misc/B-1": { "DEPEND": "=app-misc/A-1[foo=]", "IUSE": "foo", "EAPI": 2 },
 			"app-misc/C-1": { "DEPEND": "=app-misc/A-1[foo]", "EAPI": 2 },
@@ -61,6 +70,15 @@ class SlotCollisionTestCase(TestCase):
 				mergelist = ["dev-libs/A-1", "dev-libs/B-1", "dev-libs/C-1", "dev-libs/D-1"],
 				ignore_mergelist_order = True,
 				slot_collision_solutions = [ {"dev-libs/A-1": {"foo": True}, "dev-libs/D-1": {"foo": True}} ]),
+
+			ResolverPlaygroundTestCase(
+				["sys-libs/A", "sys-libs/B", "sys-libs/C", "sys-libs/D", "sys-libs/E", "sys-libs/F"],
+				options = { "--autounmask": 'n' },
+				success = False,
+				ignore_mergelist_order = True,
+				slot_collision_solutions = [],
+				mergelist = ['sys-libs/J-2', 'sys-libs/J-1', 'sys-libs/A-1', 'sys-libs/B-1', 'sys-libs/C-1', 'sys-libs/D-1', 'sys-libs/E-1', 'sys-libs/F-1'],
+				),
 
 			#A version based conflicts, nothing we can do.
 			ResolverPlaygroundTestCase(

@@ -9,10 +9,10 @@
 from __future__ import print_function
 
 import calendar
-import codecs
 import copy
 import errno
 import formatter
+import io
 import logging
 import optparse
 import re
@@ -20,6 +20,7 @@ import signal
 import stat
 import sys
 import tempfile
+import textwrap
 import time
 import platform
 
@@ -55,7 +56,6 @@ from portage import os
 from portage import subprocess_getstatusoutput
 from portage import _encodings
 from portage import _unicode_encode
-from portage import StringIO
 from repoman.checks import run_checks
 from repoman import utilities
 from repoman.herdbase import make_herd_base
@@ -68,7 +68,6 @@ from portage import cvstree, normalize_path
 from portage import util
 from portage.exception import (FileNotFound, MissingParameter,
 	ParseError, PermissionDenied)
-from portage.manifest import Manifest
 from portage.process import find_binary, spawn
 from portage.output import bold, create_color_func, \
 	green, nocolor, red
@@ -97,7 +96,8 @@ os.umask(0o22)
 # behave incrementally.
 repoman_incrementals = tuple(x for x in \
 	portage.const.INCREMENTALS if x != 'ACCEPT_KEYWORDS')
-repoman_settings = portage.config(local_config=False)
+eprefix = os.environ.get("__REPOMAN_TEST_EPREFIX")
+repoman_settings = portage.config(local_config=False, _eprefix=eprefix)
 repoman_settings.lock()
 
 if repoman_settings.get("NOCOLOR", "").lower() in ("yes", "true") or \
@@ -210,6 +210,11 @@ def ParseArgs(argv, qahelp):
 	parser.add_option('-x', '--xmlparse', dest='xml_parse', action='store_true',
 		default=False, help='forces the metadata.xml parse check to be carried out')
 
+	parser.add_option(
+		'--if-modified', type='choice', choices=('y', 'n'), default='n',
+		metavar="<y|n>",
+		help='only check packages that have uncommitted modifications')
+
 	parser.add_option('-i', '--ignore-arches', dest='ignore_arches', action='store_true',
 		default=False, help='ignore arch-specific failures (where arch != host)')
 
@@ -286,7 +291,8 @@ qahelp={
 	"ebuild.notadded":"Ebuilds that exist but have not been added to cvs",
 	"ebuild.patches":"PATCHES variable should be a bash array to ensure white space safety",
 	"changelog.notadded":"ChangeLogs that exist but have not been added to cvs",
-	"file.executable":"Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do note need the executable bit",
+	"dependency.unknown" : "Ebuild has a dependency that refers to an unknown package (which may be valid if it is a blocker for a renamed/removed package, or is an alternative choice provided by an overlay)",
+	"file.executable":"Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do not need the executable bit",
 	"file.size":"Files in the files directory must be under 20 KiB",
 	"file.size.fatal":"Files in the files directory must be under 60 KiB",
 	"file.name":"File/dir name must be composed of only the following chars: %s " % allowed_filename_chars,
@@ -377,6 +383,7 @@ qacats.sort()
 qawarnings = set((
 "changelog.missing",
 "changelog.notadded",
+"dependency.unknown",
 "digest.assumed",
 "digest.unused",
 "ebuild.notadded",
@@ -541,36 +548,19 @@ if vcs_global_opts is None:
 		vcs_global_opts = ""
 vcs_global_opts = vcs_global_opts.split()
 
-if vcs == "cvs" and \
-	"commit" == options.mode and \
-	"RMD160" not in portage.checksum.hashorigin_map:
-	from portage.util import grablines
-	repo_lines = grablines("./CVS/Repository")
-	if repo_lines and \
-		"gentoo-x86" == repo_lines[0].strip().split(os.path.sep)[0]:
-		msg = "Please install " \
-		"pycrypto or enable python's ssl USE flag in order " \
-		"to enable RMD160 hash support. See bug #198398 for " \
-		"more information."
-		prefix = bad(" * ")
-		from textwrap import wrap
-		for line in wrap(msg, 70):
-			print(prefix + line)
-		sys.exit(1)
-	del repo_lines
-
 if options.mode == 'commit' and not options.pretend and not vcs:
 	logging.info("Not in a version controlled repository; enabling pretend mode.")
 	options.pretend = True
 
 # Ensure that PORTDIR_OVERLAY contains the repository corresponding to $PWD.
-repoman_settings = portage.config(local_config=False)
+repoman_settings = portage.config(local_config=False, _eprefix=eprefix)
 repoman_settings['PORTDIR_OVERLAY'] = "%s %s" % \
-	(repoman_settings.get('PORTDIR_OVERLAY', ''), portdir_overlay)
+	(repoman_settings.get('PORTDIR_OVERLAY', ''),
+	portage._shell_quote(portdir_overlay))
 # We have to call the config constructor again so
 # that config.repositories is initialized correctly.
-repoman_settings = portage.config(local_config=False, env=dict(os.environ,
-	PORTDIR_OVERLAY=repoman_settings['PORTDIR_OVERLAY']))
+repoman_settings = portage.config(local_config=False, _eprefix=eprefix,
+	env=dict(os.environ, PORTDIR_OVERLAY=repoman_settings['PORTDIR_OVERLAY']))
 
 root = '/'
 trees = {
@@ -580,10 +570,60 @@ portdb = trees[root]['porttree'].dbapi
 
 # Constrain dependency resolution to the master(s)
 # that are specified in layout.conf.
-portdir_overlay = os.path.realpath(portdir_overlay)
-repo_info = portdb._repo_info[portdir_overlay]
+repodir = os.path.realpath(portdir_overlay)
+repo_config = repoman_settings.repositories.get_repo_for_location(repodir)
+repo_info = portdb._repo_info[repodir]
 portdb.porttrees = list(repo_info.eclass_db.porttrees)
 portdir = portdb.porttrees[0]
+
+# In order to disable manifest signatures, repos may set
+# "sign-manifests = false" in metadata/layout.conf. This
+# can be used to prevent merge conflicts like those that
+# thin-manifests is designed to prevent.
+sign_manifests = "sign" in repoman_settings.features and \
+	repo_config.sign_manifest
+
+manifest_hashes = repo_config.manifest_hashes
+if manifest_hashes is None:
+	manifest_hashes = portage.const.MANIFEST2_HASH_DEFAULTS
+
+if options.mode in ("commit", "fix", "manifest"):
+	if portage.const.MANIFEST2_REQUIRED_HASH not in manifest_hashes:
+		msg = ("The 'manifest-hashes' setting in the '%s' repository's "
+		"metadata/layout.conf does not contain the '%s' hash which "
+		"is required by this portage version. You will have to "
+		"upgrade portage if you want to generate valid manifests for "
+		"this repository.") % \
+		(repo_config.name, portage.const.MANIFEST2_REQUIRED_HASH)
+		for line in textwrap.wrap(msg, 70):
+			logging.error(line)
+		sys.exit(1)
+
+	unsupported_hashes = manifest_hashes.difference(
+		portage.const.MANIFEST2_HASH_FUNCTIONS)
+	if unsupported_hashes:
+		msg = ("The 'manifest-hashes' setting in the '%s' repository's "
+		"metadata/layout.conf contains one or more hash types '%s' "
+		"which are not supported by this portage version. You will "
+		"have to upgrade portage if you want to generate valid "
+		"manifests for this repository.") % \
+		(repo_config.name, " ".join(sorted(unsupported_hashes)))
+		for line in textwrap.wrap(msg, 70):
+			logging.error(line)
+		sys.exit(1)
+
+if "commit" == options.mode and \
+	repo_config.name == "gentoo" and \
+	"RMD160" in manifest_hashes and \
+	"RMD160" not in portage.checksum.hashorigin_map:
+	msg = "Please install " \
+	"pycrypto or enable python's ssl USE flag in order " \
+	"to enable RMD160 hash support. See bug #198398 for " \
+	"more information."
+	prefix = bad(" * ")
+	for line in textwrap.wrap(msg, 70):
+		print(prefix + line)
+	sys.exit(1)
 
 # Generate an appropriate PORTDIR_OVERLAY value for passing into the
 # profile-specific config constructor calls.
@@ -600,7 +640,7 @@ logging.info('PORTDIR_OVERLAY = "%s"' % env['PORTDIR_OVERLAY'])
 env['FEATURES'] = env.get('FEATURES', '') + ' -unknown-features-warn'
 
 categories = []
-for path in set([portdir, portdir_overlay]):
+for path in set([portdir, repodir]):
 	categories.extend(portage.util.grabfile(
 		os.path.join(path, 'profiles', 'categories')))
 repoman_settings.categories = tuple(sorted(
@@ -612,7 +652,7 @@ root_config = RootConfig(repoman_settings, trees[root], None)
 # We really only need to cache the metadata that's necessary for visibility
 # filtering. Anything else can be discarded to reduce memory consumption.
 portdb._aux_cache_keys.clear()
-portdb._aux_cache_keys.update(["EAPI", "KEYWORDS", "SLOT"])
+portdb._aux_cache_keys.update(["EAPI", "IUSE", "KEYWORDS", "SLOT"])
 
 reposplit = myreporoot.split(os.path.sep)
 repolevel = len(reposplit)
@@ -627,11 +667,13 @@ if options.mode == 'commit' and repolevel not in [1,2,3]:
 	print(red("***"))
 	err("Unable to identify level we're commiting from for %s" % '/'.join(reposplit))
 
-startdir = normalize_path(mydir)
-repodir = startdir
-for x in range(0, repolevel - 1):
-	repodir = os.path.dirname(repodir)
-repodir = os.path.realpath(repodir)
+# Make startdir relative to the canonical repodir, so that we can pass
+# it to digestgen and it won't have to be canonicalized again.
+if repolevel == 1:
+	startdir = repodir
+else:
+	startdir = normalize_path(mydir)
+	startdir = os.path.join(repodir, *startdir.split(os.sep)[-2-repolevel+3:])
 
 def caterror(mycat):
 	err(mycat+" is not an official category.  Skipping QA checks in this directory.\nPlease ensure that you add "+catdir+" to "+repodir+"/profiles/categories\nif it is a new category.")
@@ -698,7 +740,7 @@ for path in portdb.porttrees:
 
 	desc_path = os.path.join(path, 'profiles', 'profiles.desc')
 	try:
-		desc_file = codecs.open(_unicode_encode(desc_path,
+		desc_file = io.open(_unicode_encode(desc_path,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['repo.content'], errors='replace')
 	except EnvironmentError:
@@ -1055,6 +1097,11 @@ except FileNotFound:
 	# disable for non-gentoo repoman users who may not have herds.
 	herd_base = None
 
+modified_pkgs = 0
+if options.if_modified == "y" and not vcs:
+	logging.info("Not in a version controlled repository; disabling --if-modified.")
+	options.if_modified = "n"
+
 for x in scanlist:
 	#ebuilds and digests added to cvs respectively.
 	logging.info("checking package %s" % x)
@@ -1067,6 +1114,18 @@ for x in scanlist:
 	if repolevel < 2:
 		checkdir_relative = os.path.join(catdir, checkdir_relative)
 	checkdir_relative = os.path.join(".", checkdir_relative)
+
+	if options.if_modified == "y":
+		checkdir_modified = False
+		checkdir_pattern = checkdir_relative.rstrip(os.sep) + os.sep
+		for f in chain(mychanged, mynew):
+			if f.startswith(checkdir_pattern):
+				checkdir_modified = True
+				modified_pkgs += 1
+				break
+		if not checkdir_modified:
+			continue
+
 	generated_manifest = False
 
 	if options.mode == "manifest" or \
@@ -1080,7 +1139,9 @@ for x in scanlist:
 			portage._doebuild_manifest_exempt_depend += 1
 			try:
 				distdir = repoman_settings['DISTDIR']
-				mf = portage.manifest.Manifest(checkdir, distdir,
+				mf = repoman_settings.repositories.get_repo_for_location(
+					os.path.dirname(os.path.dirname(checkdir)))
+				mf = mf.load_manifest(checkdir, distdir,
 					fetchlist_dict=fetchlist_dict)
 				mf.create(requiredDistfiles=None,
 					assumeDistHashesAlways=True)
@@ -1095,8 +1156,13 @@ for x in scanlist:
 				portage._doebuild_manifest_exempt_depend -= 1
 
 		repoman_settings["O"] = checkdir
-		generated_manifest = digestgen(
-			mysettings=repoman_settings, myportdb=portdb)
+		try:
+			generated_manifest = digestgen(
+				mysettings=repoman_settings, myportdb=portdb)
+		except portage.exception.PermissionDenied as e:
+			generated_manifest = False
+			writemsg_level("!!! Permission denied: '%s'\n" % (e,),
+				level=logging.ERROR, noiselevel=-1)
 
 		if not generated_manifest:
 			print("Unable to generate manifest.")
@@ -1200,11 +1266,13 @@ for x in scanlist:
 
 		if not (y in ("ChangeLog", "metadata.xml") or y.endswith(".ebuild")):
 			continue
+		f = None
 		try:
 			line = 1
-			for l in codecs.open(_unicode_encode(os.path.join(checkdir, y),
+			f = io.open(_unicode_encode(os.path.join(checkdir, y),
 				encoding=_encodings['fs'], errors='strict'),
-				mode='r', encoding=_encodings['repo.content']):
+				mode='r', encoding=_encodings['repo.content'])
+			for l in f:
 				line +=1
 		except UnicodeDecodeError as ue:
 			stats["file.UTF8"] += 1
@@ -1214,6 +1282,9 @@ for x in scanlist:
 			if l2 != 0:
 				s = s[s.rfind("\n") + 1:]
 			fails["file.UTF8"].append("%s/%s: line %i, just after: '%s'" % (checkdir, y, line, s))
+		finally:
+			if f is not None:
+				f.close()
 
 	if vcs in ("git", "hg") and check_ebuild_notadded:
 		if vcs == "git":
@@ -1280,7 +1351,9 @@ for x in scanlist:
 				raise
 			continue
 
-	mf = Manifest(checkdir, repoman_settings["DISTDIR"])
+	mf = repoman_settings.repositories.get_repo_for_location(
+		os.path.dirname(os.path.dirname(checkdir)))
+	mf = mf.load_manifest(checkdir, repoman_settings["DISTDIR"])
 	mydigests=mf.getTypeDigests("DIST")
 
 	fetchlist_dict = portage.FetchlistDict(checkdir, repoman_settings, portdb)
@@ -1397,7 +1470,7 @@ for x in scanlist:
 				os.path.join(checkdir, "metadata.xml"),
 				parser=xml.etree.ElementTree.XMLParser(
 					target=_MetadataTreeBuilder()))
-		except (xml.etree.ElementTree.ParseError, ExpatError, EnvironmentError) as e:
+		except (ExpatError, SyntaxError, EnvironmentError) as e:
 			metadata_bad = True
 			stats["metadata.bad"] += 1
 			fails["metadata.bad"].append("%s/metadata.xml: %s" % (x, e))
@@ -1629,6 +1702,7 @@ for x in scanlist:
 				# packages that have empty KEYWORDS.
 				arches.append(['**', '**', ['**']])
 
+		unknown_pkgs = set()
 		baddepsyntax = False
 		badlicsyntax = False
 		badprovsyntax = False
@@ -1664,6 +1738,10 @@ for x in scanlist:
 				for atom in atoms:
 					if atom == "||":
 						continue
+
+					if not portdb.xmatch("match-all", atom) and \
+						not atom.cp.startswith("virtual/"):
+						unknown_pkgs.add((mytype, atom.unevaluated_atom))
 
 					is_blocker = atom.blocker
 
@@ -1808,7 +1886,7 @@ for x in scanlist:
 				pkg.mtime = None
 		try:
 			# All ebuilds should have utf_8 encoding.
-			f = codecs.open(_unicode_encode(full_path,
+			f = io.open(_unicode_encode(full_path,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'])
 			try:
@@ -1847,7 +1925,7 @@ for x in scanlist:
 						config_incrementals=repoman_incrementals,
 						local_config=False,
 						_unmatched_removal=options.unmatched_removal,
-						env=env)
+						env=env, _eprefix=eprefix)
 					if options.without_mask:
 						dep_settings._mask_manager = \
 							copy.deepcopy(dep_settings._mask_manager)
@@ -1874,7 +1952,7 @@ for x in scanlist:
 
 				if not baddepsyntax:
 					ismasked = not ebuild_archs or \
-						pkg.cpv not in portdb.xmatch("list-visible", pkg.cp)
+						pkg.cpv not in portdb.xmatch("match-visible", pkg.cp)
 					if ismasked:
 						if not have_pmasked:
 							have_pmasked = bool(dep_settings._getMaskAtom(
@@ -1909,6 +1987,16 @@ for x in scanlist:
 						if success:
 							if atoms:
 
+								# Don't bother with dependency.unknown for
+								# cases in which *DEPEND.bad is triggered.
+								for atom in atoms:
+									# dep_check returns all blockers and they
+									# aren't counted for *DEPEND.bad, so we
+									# ignore them here.
+									if not atom.blocker:
+										unknown_pkgs.discard(
+											(mytype, atom.unevaluated_atom))
+
 								if not prof.sub_path:
 									# old-style virtuals currently aren't
 									# resolvable with empty profile, since
@@ -1937,12 +2025,21 @@ for x in scanlist:
 								(relative_path, keyword,
 								prof, repr(atoms)))
 
+		if not baddepsyntax and unknown_pkgs:
+			type_map = {}
+			for mytype, atom in unknown_pkgs:
+				type_map.setdefault(mytype, set()).add(atom)
+			for mytype, atoms in type_map.items():
+				stats["dependency.unknown"] += 1
+				fails["dependency.unknown"].append("%s: %s: %s" %
+					(relative_path, mytype, ", ".join(sorted(atoms))))
+
 	# Check for 'all unstable' or 'all masked' -- ACCEPT_KEYWORDS is stripped
 	# XXX -- Needs to be implemented in dep code. Can't determine ~arch nicely.
 	#if not portage.portdb.xmatch("bestmatch-visible",x):
 	#    stats["ebuild.nostable"]+=1
 	#    fails["ebuild.nostable"].append(x)
-	if allmasked and repolevel == 3:
+	if ebuildlist and allmasked and repolevel == 3:
 		stats["ebuild.allmasked"]+=1
 		fails["ebuild.allmasked"].append(x)
 
@@ -1954,6 +2051,9 @@ for x in scanlist:
 			fails["metadata.warning"].append(
 				"%s/metadata.xml: unused local USE-description: '%s'" % \
 				(x, myflag))
+
+if options.if_modified == "y" and modified_pkgs < 1:
+	logging.warn("--if-modified is enabled, but no modified packages were found!")
 
 if options.mode == "manifest":
 	sys.exit(dofail)
@@ -1980,7 +2080,7 @@ if dofail or \
 # in $EDITOR while the user creates a commit message.
 # Otherwise, the user would not be able to see this output
 # once the editor has taken over the screen.
-qa_output = StringIO()
+qa_output = io.StringIO()
 style_file = ConsoleStyleFile(sys.stdout)
 if options.mode == 'commit' and \
 	(not commitmessage or not commitmessage.strip()):
@@ -2288,7 +2388,7 @@ else:
 	commitmessage = options.commitmsg
 	if options.commitmsgfile:
 		try:
-			f = codecs.open(_unicode_encode(options.commitmsgfile,
+			f = io.open(_unicode_encode(options.commitmsgfile,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['content'], errors='replace')
 			commitmessage = f.read()
@@ -2337,7 +2437,7 @@ else:
 
 	if vcs in ('cvs', 'svn') and (myupdates or myremoved):
 		myfiles = myupdates + myremoved
-		if not myheaders and "sign" not in repoman_settings.features:
+		if not myheaders and not sign_manifests:
 			myfiles += mymanifests
 		fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
 		mymsg = os.fdopen(fd, "wb")
@@ -2482,41 +2582,8 @@ else:
 			print(red("I'm confused... I don't know where I am!"))
 			sys.exit(1)
 
-		# Force an unsigned commit when more than one Manifest needs to be signed.
-		if repolevel < 3 and "sign" in repoman_settings.features:
-
-			fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
-			mymsg = os.fdopen(fd, "wb")
-			mymsg.write(_unicode_encode(commitmessage))
-			mymsg.write(b"\n (Unsigned Manifest commit)")
-			mymsg.close()
-
-			commit_cmd = [vcs]
-			commit_cmd.extend(vcs_global_opts)
-			commit_cmd.append("commit")
-			commit_cmd.extend(vcs_local_opts)
-			commit_cmd.extend(["-F", commitmessagefile])
-			commit_cmd.extend(f.lstrip("./") for f in mymanifests)
-
-			try:
-				if options.pretend:
-					print("(%s)" % (" ".join(commit_cmd),))
-				else:
-					retval = spawn(commit_cmd, env=os.environ)
-					if retval:
-						writemsg_level(("!!! Exiting on %s (shell) " + \
-							"error code: %s\n") % (vcs, retval),
-							level=logging.ERROR, noiselevel=-1)
-						sys.exit(retval)
-			finally:
-				try:
-					os.unlink(commitmessagefile)
-				except OSError:
-					pass
-			manifest_commit_required = False
-
 	signed = False
-	if "sign" in repoman_settings.features:
+	if sign_manifests:
 		signed = True
 		myfiles = myupdates + myremoved + mymanifests
 		try:

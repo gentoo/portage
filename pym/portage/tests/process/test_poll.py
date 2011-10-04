@@ -34,6 +34,14 @@ class PipeReaderTestCase(TestCase):
 			scheduler=scheduler)
 
 		consumer.start()
-		consumer.wait()
+
+		# This will ensure that both tasks have exited, which
+		# is necessary to avoid "ResourceWarning: unclosed file"
+		# warnings since Python 3.2 (and also ensures that we
+		# don't leave any zombie child processes).
+		scheduler.schedule()
+		self.assertEqual(producer.returncode, os.EX_OK)
+		self.assertEqual(consumer.returncode, os.EX_OK)
+
 		output = consumer.getvalue().decode('ascii', 'replace')
 		self.assertEqual(test_string, output)

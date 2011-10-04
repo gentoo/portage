@@ -70,7 +70,12 @@ class PipeReader(AbstractPollTask):
 				pass
 
 			if buf:
-				self._read_data.append(buf.tostring())
+				try:
+					# Python >=3.2
+					data = buf.tobytes()
+				except AttributeError:
+					data = buf.tostring()
+				self._read_data.append(data)
 			else:
 				self._unregister()
 				self.wait()

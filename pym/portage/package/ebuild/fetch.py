@@ -5,8 +5,8 @@ from __future__ import print_function
 
 __all__ = ['fetch']
 
-import codecs
 import errno
+import io
 import logging
 import random
 import re
@@ -31,10 +31,9 @@ from portage.const import BASH_BINARY, CUSTOM_MIRRORS_FILE, \
 	GLOBAL_CONFIG_PATH
 from portage.data import portage_gid, portage_uid, secpass, userpriv_groups
 from portage.exception import FileNotFound, OperationNotPermitted, \
-	PermissionDenied, PortageException, TryAgain
+	PortageException, TryAgain
 from portage.localization import _
 from portage.locks import lockfile, unlockfile
-from portage.manifest import Manifest
 from portage.output import colorize, EOutput
 from portage.util import apply_recursive_permissions, \
 	apply_secpass_permissions, ensure_dirs, grabdict, shlex_split, \
@@ -352,11 +351,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 			mymirrors += [x.rstrip("/") for x in mysettings["GENTOO_MIRRORS"].split() if x]
 
 	skip_manifest = mysettings.get("EBUILD_SKIP_MANIFEST") == "1"
+	if skip_manifest:
+		allow_missing_digests = True
 	pkgdir = mysettings.get("O")
 	if digests is None and not (pkgdir is None or skip_manifest):
-		mydigests = Manifest(
+		mydigests = mysettings.repositories.get_repo_for_location(
+			os.path.dirname(os.path.dirname(pkgdir))).load_manifest(
 			pkgdir, mysettings["DISTDIR"]).getTypeDigests("DIST")
-	elif digests is None:
+	elif digests is None or skip_manifest:
 		# no digests because fetch was not called for a specific package
 		mydigests = {}
 	else:
@@ -578,8 +580,17 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 		else:
 			# check if there is enough space in DISTDIR to completely store myfile
 			# overestimate the filesize so we aren't bitten by FS overhead
+			vfs_stat = None
 			if size is not None and hasattr(os, "statvfs"):
-				vfs_stat = os.statvfs(mysettings["DISTDIR"])
+				try:
+					vfs_stat = os.statvfs(mysettings["DISTDIR"])
+				except OSError as e:
+					writemsg_level("!!! statvfs('%s'): %s\n" %
+						(mysettings["DISTDIR"], e),
+						noiselevel=-1, level=logging.ERROR)
+					del e
+
+			if vfs_stat is not None:
 				try:
 					mysize = os.stat(myfile_path).st_size
 				except OSError as e:
@@ -1008,7 +1019,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 								# Fetch failed... Try the next one... Kill 404 files though.
 								if (mystat[stat.ST_SIZE]<100000) and (len(myfile)>4) and not ((myfile[-5:]==".html") or (myfile[-4:]==".htm")):
 									html404=re.compile("<title>.*(not found|404).*</title>",re.I|re.M)
-									if html404.search(codecs.open(
+									if html404.search(io.open(
 										_unicode_encode(myfile_path,
 										encoding=_encodings['fs'], errors='strict'),
 										mode='r', encoding=_encodings['content'], errors='replace'
@@ -1029,7 +1040,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 								# from another mirror...
 								verified_ok,reason = verify_all(mysettings["DISTDIR"]+"/"+myfile, mydigests[myfile])
 								if not verified_ok:
-									print(reason)
 									writemsg(_("!!! Fetched file: %s VERIFY FAILED!\n") % myfile,
 										noiselevel=-1)
 									writemsg(_("!!! Reason: %s\n") % reason[0],

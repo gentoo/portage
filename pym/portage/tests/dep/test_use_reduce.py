@@ -8,7 +8,7 @@ from portage.dep import Atom, use_reduce
 class UseReduceTestCase(object):
 	def __init__(self, deparray, uselist=[], masklist=[], \
 		matchall=0, excludeall=[], is_src_uri=False, \
-		eapi=None, opconvert=False, flat=False, expected_result=None, \
+		eapi="0", opconvert=False, flat=False, expected_result=None, \
 			is_valid_flag=None, token_class=None):
 		self.deparray = deparray
 		self.uselist = uselist
@@ -217,7 +217,7 @@ class UseReduce(TestCase):
 				uselist = ["foo", "bar"],
 				expected_result = [ "||", [ "A", "B" ] ]),
 			UseReduceTestCase(
-				"A || ( ) foo? ( ) B",
+				"A || ( bar? ( C ) ) foo? ( bar? ( C ) ) B",
 				expected_result = ["A", "B"]),
 			UseReduceTestCase(
 				"|| ( A ) || ( B )",
@@ -350,7 +350,7 @@ class UseReduce(TestCase):
 				opconvert = True,
 				expected_result = [['||', 'A', 'B']]),
 			UseReduceTestCase(
-				"A || ( ) foo? ( ) B",
+				"A || ( bar? ( C ) ) foo? ( bar? ( C ) ) B",
 				opconvert = True,
 				expected_result = ["A", "B"]),
 			UseReduceTestCase(
@@ -509,7 +509,7 @@ class UseReduce(TestCase):
 				flat = True,
 				expected_result = [ "||", "||", "A", "||", "B" ]),
 			UseReduceTestCase(
-				"A || ( ) foo? ( ) B",
+				"A || ( bar? ( C ) ) foo? ( bar? ( C ) ) B",
 				flat = True,
 				expected_result = ["A", "||", "B"]),
 			UseReduceTestCase(
@@ -568,7 +568,9 @@ class UseReduce(TestCase):
 			UseReduceTestCase("( || ( || bar? ( A ) foo? ( B ) ) )"),
 			UseReduceTestCase("foo?"),
 			UseReduceTestCase("foo? || ( A )"),
-			
+			UseReduceTestCase("|| ( )"),
+			UseReduceTestCase("foo? ( )"),
+
 			#SRC_URI stuff
 			UseReduceTestCase("http://foo/bar -> blah.tbz2", is_src_uri = True, eapi = EAPI_WITHOUT_SRC_URI_ARROWS),
 			UseReduceTestCase("|| ( http://foo/bar -> blah.tbz2 )", is_src_uri = True, eapi = EAPI_WITH_SRC_URI_ARROWS),

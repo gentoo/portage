@@ -34,6 +34,7 @@ from portage import _unicode_encode
 
 import codecs
 import errno
+import io
 import re
 import stat
 import subprocess
@@ -249,7 +250,7 @@ class binarytree(object):
 			self._pkgindex_header_keys = set([
 				"ACCEPT_KEYWORDS", "ACCEPT_LICENSE",
 				"ACCEPT_PROPERTIES", "CBUILD",
-				"CHOST", "CONFIG_PROTECT", "CONFIG_PROTECT_MASK", "FEATURES",
+				"CONFIG_PROTECT", "CONFIG_PROTECT_MASK", "FEATURES",
 				"GENTOO_MIRRORS", "INSTALL_MASK", "SYNC", "USE"])
 			self._pkgindex_default_pkg_data = {
 				"BUILD_TIME"         : "",
@@ -270,9 +271,23 @@ class binarytree(object):
 				"REQUIRED_USE" : ""
 			}
 			self._pkgindex_inherited_keys = ["CHOST", "repository"]
+
+			# Populate the header with appropriate defaults.
 			self._pkgindex_default_header_data = {
-				"repository":""
+				"CHOST"        : self.settings.get("CHOST", ""),
+				"repository"   : "",
 			}
+
+			# It is especially important to populate keys like
+			# "repository" that save space when entries can
+			# inherit them from the header. If an existing
+			# pkgindex header already defines these keys, then
+			# they will appropriately override our defaults.
+			main_repo = self.settings.repositories.mainRepo()
+			if main_repo is not None and not main_repo.missing_repo_name:
+				self._pkgindex_default_header_data["repository"] = \
+					main_repo.name
+
 			self._pkgindex_translated_keys = (
 				("DESCRIPTION"   ,   "DESC"),
 				("repository"    ,   "REPO"),
@@ -284,7 +299,6 @@ class binarytree(object):
 				self._pkgindex_hashes,
 				self._pkgindex_default_pkg_data,
 				self._pkgindex_inherited_keys,
-				self._pkgindex_default_header_data,
 				chain(*self._pkgindex_translated_keys)
 			))
 
@@ -752,7 +766,7 @@ class binarytree(object):
 				host, parsed_url.path.lstrip("/"), "Packages")
 			pkgindex = self._new_pkgindex()
 			try:
-				f = codecs.open(_unicode_encode(pkgindex_file,
+				f = io.open(_unicode_encode(pkgindex_file,
 					encoding=_encodings['fs'], errors='strict'),
 					mode='r', encoding=_encodings['repo.content'],
 					errors='replace')
@@ -1275,7 +1289,7 @@ class binarytree(object):
 	def _load_pkgindex(self):
 		pkgindex = self._new_pkgindex()
 		try:
-			f = codecs.open(_unicode_encode(self._pkgindex_file,
+			f = io.open(_unicode_encode(self._pkgindex_file,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],
 				errors='replace')

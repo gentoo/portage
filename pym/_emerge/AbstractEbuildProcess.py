@@ -1,7 +1,7 @@
 # Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import platform
+import io
 import stat
 import textwrap
 from _emerge.SpawnProcess import SpawnProcess
@@ -13,9 +13,6 @@ from portage.localization import _
 from portage.package.ebuild._ipc.ExitCommand import ExitCommand
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage import os
-from portage import StringIO
-from portage import _encodings
-from portage import _unicode_decode
 from portage.util._pty import _create_pty_or_pipe
 from portage.util import apply_secpass_permissions
 
@@ -57,7 +54,7 @@ class AbstractEbuildProcess(SpawnProcess):
 			"since PORTAGE_BUILDIR does not exist: '%s'") % \
 			(self.phase, self.settings['PORTAGE_BUILDDIR'])
 			self._eerror(textwrap.wrap(msg, 72))
-			self._set_returncode((self.pid, 1))
+			self._set_returncode((self.pid, 1 << 8))
 			self.wait()
 			return
 
@@ -181,6 +178,11 @@ class AbstractEbuildProcess(SpawnProcess):
 		return not ('sesandbox' in self.settings.features \
 			and self.settings.selinux_enabled()) or os.isatty(slave_fd)
 
+	def _killed_by_signal(self, signum):
+		msg = _("The ebuild phase '%s' has been "
+		"killed by signal %s.") % (self.phase, signum)
+		self._eerror(textwrap.wrap(msg, 72))
+
 	def _unexpected_exit(self):
 
 		phase = self.phase
@@ -211,7 +213,7 @@ class AbstractEbuildProcess(SpawnProcess):
 		self._elog('eerror', lines)
 
 	def _elog(self, elog_funcname, lines):
-		out = StringIO()
+		out = io.StringIO()
 		phase = self.phase
 		elog_func = getattr(elog_messages, elog_funcname)
 		global_havecolor = portage.output.havecolor
@@ -222,8 +224,7 @@ class AbstractEbuildProcess(SpawnProcess):
 				elog_func(line, phase=phase, key=self.settings.mycpv, out=out)
 		finally:
 			portage.output.havecolor = global_havecolor
-		msg = _unicode_decode(out.getvalue(),
-			encoding=_encodings['content'], errors='replace')
+		msg = out.getvalue()
 		if msg:
 			log_path = None
 			if self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
@@ -243,14 +244,23 @@ class AbstractEbuildProcess(SpawnProcess):
 			if self._exit_command.exitcode is not None:
 				self.returncode = self._exit_command.exitcode
 			else:
-				self.returncode = 1
-				if not self.cancelled:
-					self._unexpected_exit()
+				if self.returncode < 0:
+					if not self.cancelled:
+						self._killed_by_signal(-self.returncode)
+				else:
+					self.returncode = 1
+					if not self.cancelled:
+						self._unexpected_exit()
 			if self._build_dir is not None:
 				self._build_dir.unlock()
 				self._build_dir = None
 		elif not self.cancelled:
 			exit_file = self.settings.get('PORTAGE_EBUILD_EXIT_FILE')
 			if exit_file and not os.path.exists(exit_file):
-				self.returncode = 1
-				self._unexpected_exit()
+				if self.returncode < 0:
+					if not self.cancelled:
+						self._killed_by_signal(-self.returncode)
+				else:
+					self.returncode = 1
+					if not self.cancelled:
+						self._unexpected_exit()

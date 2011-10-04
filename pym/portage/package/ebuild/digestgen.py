@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['digestgen']
@@ -17,7 +17,6 @@ from portage.dep import use_reduce
 from portage.exception import InvalidDependString, FileNotFound, \
 	PermissionDenied, PortagePackageException
 from portage.localization import _
-from portage.manifest import Manifest
 from portage.output import colorize
 from portage.package.ebuild.fetch import fetch
 from portage.util import writemsg, writemsg_stdout
@@ -52,9 +51,21 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 				del e
 				return 0
 		mytree = os.path.dirname(os.path.dirname(mysettings["O"]))
-		manifest1_compat = False
-		mf = Manifest(mysettings["O"], mysettings["DISTDIR"],
-			fetchlist_dict=fetchlist_dict, manifest1_compat=manifest1_compat)
+		try:
+			mf = mysettings.repositories.get_repo_for_location(mytree)
+		except KeyError:
+			# backward compatibility
+			mytree = os.path.realpath(mytree)
+			mf = mysettings.repositories.get_repo_for_location(mytree)
+
+		mf = mf.load_manifest(mysettings["O"], mysettings["DISTDIR"],
+			fetchlist_dict=fetchlist_dict)
+
+		if not mf.allow_create:
+			writemsg_stdout(_(">>> Skipping creating Manifest for %s; "
+				"repository is configured to not use them\n") % mysettings["O"])
+			return 1
+
 		# Don't require all hashes since that can trigger excessive
 		# fetches when sufficient digests already exist.  To ease transition
 		# while Manifest 1 is being removed, only require hashes that will
@@ -102,10 +113,9 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 					continue
 
 		if missing_files:
-				mytree = os.path.realpath(os.path.dirname(
-					os.path.dirname(mysettings["O"])))
 				for myfile in missing_files:
 					uris = set()
+					all_restrict = set()
 					for cpv in distfiles_map[myfile]:
 						uris.update(myportdb.getFetchMap(
 							cpv, mytree=mytree)[myfile])
@@ -115,9 +125,19 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 						# they don't apply unconditionally. Assume such
 						# conditionals only apply on the client side where
 						# digestgen() does not need to be called.
-						restrict = use_reduce(restrict,
-							flat=True, matchnone=True)
-						restrict_fetch = 'fetch' in restrict
+						all_restrict.update(use_reduce(restrict,
+							flat=True, matchnone=True))
+
+						# fetch() uses CATEGORY and PF to display a message
+						# when fetch restriction is triggered.
+						cat, pf = catsplit(cpv)
+						mysettings["CATEGORY"] = cat
+						mysettings["PF"] = pf
+
+					# fetch() uses PORTAGE_RESTRICT to control fetch
+					# restriction, which is only applied to files that
+					# are not fetchable via a mirror:// URI.
+					mysettings["PORTAGE_RESTRICT"] = " ".join(all_restrict)
 
 					try:
 						st = os.stat(os.path.join(
@@ -125,8 +145,7 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 					except OSError:
 						st = None
 
-					if restrict_fetch or \
-						not fetch({myfile : uris}, mysettings):
+					if not fetch({myfile : uris}, mysettings):
 						myebuild = os.path.join(mysettings["O"],
 							catsplit(cpv)[1] + ".ebuild")
 						spawn_nofetch(myportdb, myebuild,
@@ -173,8 +192,6 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 					os.path.join(mysettings["DISTDIR"], filename)):
 					auto_assumed.append(filename)
 			if auto_assumed:
-				mytree = os.path.realpath(
-					os.path.dirname(os.path.dirname(mysettings["O"])))
 				cp = os.path.sep.join(mysettings["O"].split(os.path.sep)[-2:])
 				pkgs = myportdb.cp_list(cp, mytree=mytree)
 				pkgs.sort()

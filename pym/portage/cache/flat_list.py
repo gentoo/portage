@@ -1,15 +1,23 @@
+# Copyright 2005-2011 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+
 from portage.cache import fs_template
 from portage.cache import cache_errors
 from portage import os
 from portage import _encodings
+from portage import _unicode_decode
 from portage import _unicode_encode
-import codecs
 import errno
+import io
 import stat
 import sys
 
 if sys.hexversion >= 0x3000000:
 	long = int
+
+# Coerce to unicode, in order to prevent TypeError when writing
+# raw bytes to TextIOWrapper with python2.
+_setitem_fmt = _unicode_decode("%s\n")
 
 # store the current key order *here*.
 class database(fs_template.FsBased):
@@ -36,7 +44,7 @@ class database(fs_template.FsBased):
 	def _getitem(self, cpv):
 		d = {}
 		try:
-			myf = codecs.open(_unicode_encode(os.path.join(self.location, cpv),
+			myf = io.open(_unicode_encode(os.path.join(self.location, cpv),
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],
 				errors='replace')
@@ -60,7 +68,7 @@ class database(fs_template.FsBased):
 		s = cpv.rfind("/")
 		fp=os.path.join(self.location,cpv[:s],".update.%i.%s" % (os.getpid(), cpv[s+1:]))
 		try:
-			myf = codecs.open(_unicode_encode(fp,
+			myf = io.open(_unicode_encode(fp,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='w', encoding=_encodings['repo.content'],
 				errors='backslashreplace')
@@ -68,7 +76,7 @@ class database(fs_template.FsBased):
 			if errno.ENOENT == e.errno:
 				try:
 					self._ensure_dirs(cpv)
-					myf = codecs.open(_unicode_encode(fp,
+					myf = io.open(_unicode_encode(fp,
 						encoding=_encodings['fs'], errors='strict'),
 						mode='w', encoding=_encodings['repo.content'],
 						errors='backslashreplace')
@@ -79,7 +87,7 @@ class database(fs_template.FsBased):
 		
 
 		for x in self.auxdbkey_order:
-			myf.write(values.get(x,"")+"\n")
+			myf.write(_setitem_fmt % (values.get(x, ""),))
 
 		myf.close()
 		self._ensure_access(fp, mtime=values["_mtime_"])

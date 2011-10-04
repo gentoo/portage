@@ -3,11 +3,10 @@
 
 from _emerge.AsynchronousTask import AsynchronousTask
 from portage.util import writemsg
+import io
 import sys
 import portage
 from portage import os
-from portage import _encodings
-from portage import _unicode_decode
 from portage.package.ebuild.fetch import _checksum_failure_temp_file
 
 class BinpkgVerifier(AsynchronousTask):
@@ -27,7 +26,7 @@ class BinpkgVerifier(AsynchronousTask):
 		stdout_orig = sys.stdout
 		stderr_orig = sys.stderr
 		global_havecolor = portage.output.havecolor
-		out = portage.StringIO()
+		out = io.StringIO()
 		file_exists = True
 		try:
 			sys.stdout = out
@@ -66,8 +65,7 @@ class BinpkgVerifier(AsynchronousTask):
 			sys.stderr = stderr_orig
 			portage.output.havecolor = global_havecolor
 
-		msg = _unicode_decode(out.getvalue(),
-			encoding=_encodings['content'], errors='replace')
+		msg = out.getvalue()
 		if msg:
 			self.scheduler.output(msg, log_path=self.logfile,
 				background=self.background)

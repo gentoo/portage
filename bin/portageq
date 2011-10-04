@@ -21,7 +21,6 @@ except KeyboardInterrupt:
 	sys.exit(128 + signal.SIGINT)
 
 import os
-import subprocess
 import types
 
 # Avoid sandbox violations after python upgrade.
@@ -44,6 +43,13 @@ del pym_path
 
 from portage import os
 from portage.util import writemsg, writemsg_stdout
+portage.proxy.lazyimport.lazyimport(globals(),
+	'subprocess',
+	'_emerge.Package:Package',
+	'_emerge.RootConfig:RootConfig',
+	'portage.dbapi._expand_new_virt:expand_new_virt',
+	'portage._sets.base:InternalPackageSet',
+)
 
 def eval_atom_use(atom):
 	if 'USE' in os.environ:
@@ -419,22 +425,81 @@ def filter_protected(argv):
 filter_protected.uses_root = True
 
 def best_visible(argv):
-	"""<root> [<category/package>]+
+	"""<root> [pkgtype] <atom>
 	Returns category/package-version (without .ebuild).
+	The pkgtype argument defaults to "ebuild" if unspecified,
+	otherwise it must be one of ebuild, binary, or installed.
 	"""
 	if (len(argv) < 2):
-		print("ERROR: insufficient parameters!")
-		sys.exit(2)
+		writemsg("ERROR: insufficient parameters!\n", noiselevel=-1)
+		return 2
+
+	pkgtype = "ebuild"
+	if len(argv) > 2:
+		pkgtype = argv[1]
+		atom = argv[2]
+	else:
+		atom = argv[1]
+
+	type_map = {
+		"ebuild":"porttree",
+		"binary":"bintree",
+		"installed":"vartree"}
+
+	if pkgtype not in type_map:
+		writemsg("Unrecognized package type: '%s'\n" % pkgtype,
+			noiselevel=-1)
+		return 2
+
+	db = portage.db[portage.settings["ROOT"]][type_map[pkgtype]].dbapi
+
 	try:
-		mylist=portage.db[argv[0]]["porttree"].dbapi.match(argv[1])
-		visible=portage.best(mylist)
-		if visible:
-			print(visible)
-			sys.exit(0)
+		atom = portage.dep_expand(atom, mydb=db, settings=portage.settings)
+	except portage.exception.InvalidAtom:
+		writemsg("ERROR: Invalid atom: '%s'\n" % atom,
+			noiselevel=-1)
+		return 2
+
+	root_config = RootConfig(portage.settings,
+		portage.db[portage.settings["ROOT"]], None)
+
+	if hasattr(db, "xmatch"):
+		cpv_list = db.xmatch("match-all-cpv-only", atom)
+	else:
+		cpv_list = db.match(atom)
+
+	if cpv_list:
+		# reversed, for descending order
+		cpv_list.reverse()
+		# verify match, since the atom may match the package
+		# for a given cpv from one repo but not another, and
+		# we can use match-all-cpv-only to avoid redundant
+		# metadata access.
+		atom_set = InternalPackageSet(initial_atoms=(atom,))
+
+		if atom.repo is None and hasattr(db, "getRepositories"):
+			repo_list = db.getRepositories()
 		else:
-			sys.exit(1)
-	except KeyError:
-		sys.exit(1)
+			repo_list = [atom.repo]
+
+		for cpv in cpv_list:
+			for repo in repo_list:
+				try:
+					metadata = dict(zip(Package.metadata_keys,
+						db.aux_get(cpv, Package.metadata_keys, myrepo=repo)))
+				except KeyError:
+					continue
+				pkg = Package(built=(pkgtype != "ebuild"), cpv=cpv,
+					installed=(pkgtype=="installed"), metadata=metadata,
+					root_config=root_config, type_name=pkgtype)
+				if not atom_set.findAtomForPackage(pkg):
+					continue
+
+				if pkg.visible:
+					writemsg_stdout("%s\n" % (pkg.cpv,), noiselevel=-1)
+					return os.EX_OK
+
+	return 1
 best_visible.uses_root = True
 
 
@@ -458,9 +523,11 @@ def all_best_visible(argv):
 	"""<root>
 	Returns all best_visible packages (without .ebuild).
 	"""
-	if (len(argv) < 1):
-		print("ERROR: insufficient parameters!")
-	
+	if len(argv) < 1:
+		sys.stderr.write("ERROR: insufficient parameters!\n")
+		sys.stderr.flush()
+		return 2
+
 	#print portage.db[argv[0]]["porttree"].dbapi.cp_all()
 	for pkg in portage.db[argv[0]]["porttree"].dbapi.cp_all():
 		mybest=portage.best(portage.db[argv[0]]["porttree"].dbapi.match(pkg))
@@ -492,6 +559,41 @@ def match(argv):
 		print(cpv)
 match.uses_root = True
 
+def expand_virtual(argv):
+	"""<root> <atom>
+	Returns a \\n separated list of atoms expanded from a
+	given virtual atom (GLEP 37 virtuals only),
+	excluding blocker atoms. Satisfied
+	virtual atoms are not included in the output, since
+	they are expanded to real atoms which are displayed.
+	Unsatisfied virtual atoms are displayed without
+	any expansion. The "match" command can be used to
+	resolve the returned atoms to specific installed
+	packages.
+	"""
+	if len(argv) != 2:
+		writemsg("ERROR: expected 2 parameters, got %d!\n" % len(argv),
+			noiselevel=-1)
+		return 2
+
+	root, atom = argv
+
+	try:
+		results = list(expand_new_virt(
+			portage.db[root]["vartree"].dbapi, atom))
+	except portage.exception.InvalidAtom:
+		writemsg("ERROR: Invalid atom: '%s'\n" % atom,
+			noiselevel=-1)
+		return 2
+
+	results.sort()
+	for x in results:
+		if not x.blocker:
+			writemsg_stdout("%s\n" % (x,))
+
+	return os.EX_OK
+
+expand_virtual.uses_root = True
 
 def vdb_path(argv):
 	"""
@@ -588,7 +690,10 @@ def get_repo_path(argv):
 		print("ERROR: insufficient parameters!")
 		sys.exit(2)
 	for arg in argv[1:]:
-		print(portage.db[argv[0]]["porttree"].dbapi.getRepositoryPath(arg))
+		path = portage.db[argv[0]]["porttree"].dbapi.getRepositoryPath(arg)
+		if path is None:
+			path = ""
+		print(path)
 
 def list_preserved_libs(argv):
 	"""<root>
@@ -621,10 +726,11 @@ list_preserved_libs.uses_root = True
 if not portage.const._ENABLE_PRESERVE_LIBS:
 	del list_preserved_libs
 
-non_commands = frozenset(['elog', 'eval_atom_use', 'exithandler', 'main',
+non_commands = frozenset(['elog', 'eval_atom_use',
+	'exithandler', 'expand_new_virt', 'main',
 	'usage', 'writemsg', 'writemsg_stdout'])
 commands = sorted(k for k, v in globals().items() \
-	if type(v) is types.FunctionType and k not in non_commands)
+	if k not in non_commands and isinstance(v, types.FunctionType))
 
 def usage(argv):
 	print(">>> Portage information query tool")
@@ -649,7 +755,7 @@ def usage(argv):
 			print("")
 			continue
 
-		lines = doc.split("\n")
+		lines = doc.lstrip("\n").split("\n")
 		print("   " + name + " " + lines[0].strip())
 		if (len(sys.argv) > 1):
 			if (not help_mode):
@@ -681,12 +787,17 @@ def main():
 	if nocolor in ('yes', 'true'):
 		portage.output.nocolor()
 
-	if "-h" in sys.argv or "--help" in sys.argv:
-		usage(sys.argv)
-		sys.exit(os.EX_OK)
-	elif len(sys.argv) < 2:
+	if len(sys.argv) < 2:
 		usage(sys.argv)
 		sys.exit(os.EX_USAGE)
+
+	for x in sys.argv:
+		if x in ("-h", "--help"):
+			usage(sys.argv)
+			sys.exit(os.EX_OK)
+		elif x == "--version":
+			print("Portage", portage.VERSION)
+			sys.exit(os.EX_OK)
 
 	cmd = sys.argv[1]
 	function = globals().get(cmd)

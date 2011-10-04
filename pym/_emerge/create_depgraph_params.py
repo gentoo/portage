@@ -37,6 +37,12 @@ def create_depgraph_params(myopts, myaction):
 	deep = myopts.get("--deep")
 	if deep is not None and deep != 0:
 		myparams["deep"] = deep
+
+	complete_if_new_ver = \
+		myopts.get("--complete-graph-if-new-ver")
+	if complete_if_new_ver is not None:
+		myparams["complete_if_new_ver"] = complete_if_new_ver
+
 	if ("--complete-graph" in myopts or "--rebuild-if-new-rev" in myopts or
 		"--rebuild-if-new-ver" in myopts or "--rebuild-if-unbuilt" in myopts):
 		myparams["complete"] = True
@@ -57,6 +63,16 @@ def create_depgraph_params(myopts, myaction):
 		myopts.get('--deep') is True and \
 		'--update' in myopts:
 		myparams['rebuilt_binaries'] = True
+
+	binpkg_respect_use = myopts.get('--binpkg-respect-use')
+	if binpkg_respect_use is not None:
+		myparams['binpkg_respect_use'] = binpkg_respect_use
+	elif '--usepkgonly' not in myopts:
+		# If --binpkg-respect-use is not explicitly specified, we enable
+		# the behavior automatically (like requested in bug #297549), as
+		# long as it doesn't strongly conflict with other options that
+		# have been specified.
+		myparams['binpkg_respect_use'] = 'auto'
 
 	if myopts.get("--selective") == "n":
 		# --selective=n can be used to remove selective

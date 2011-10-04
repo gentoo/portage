@@ -1,12 +1,17 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['MtimeDB']
 
 import copy
+try:
+	import cPickle as pickle
+except ImportError:
+	import pickle
 
+import errno
 import portage
-from portage import pickle, _unicode_encode
+from portage import _unicode_encode
 from portage.data import portage_gid, uid
 from portage.localization import _
 from portage.util import apply_secpass_permissions, atomic_ofstream, writemsg
@@ -29,8 +34,11 @@ class MtimeDB(dict):
 			d = mypickle.load()
 			f.close()
 			del f
-		except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError) as e:
-			if isinstance(e, pickle.UnpicklingError):
+		except (AttributeError, EOFError, EnvironmentError, ValueError, pickle.UnpicklingError) as e:
+			if isinstance(e, EnvironmentError) and \
+				getattr(e, 'errno', None) in (errno.ENOENT, errno.EACCES):
+				pass
+			else:
 				writemsg(_("!!! Error loading '%s': %s\n") % \
 					(filename, str(e)), noiselevel=-1)
 			del e

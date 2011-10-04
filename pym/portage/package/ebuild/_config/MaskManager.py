@@ -9,6 +9,7 @@ from portage import os
 from portage.dep import ExtendedAtomDict, match_from_list, _repo_separator, _slot_separator
 from portage.util import append_repo, grabfile_package, stack_lists
 from portage.versions import cpv_getkey
+from _emerge.Package import Package
 
 class MaskManager(object):
 
@@ -134,7 +135,7 @@ class MaskManager(object):
 		mask_atoms = self._pmaskdict.get(cp)
 		if mask_atoms:
 			pkg = "".join((cpv, _slot_separator, slot))
-			if repo:
+			if repo and repo != Package.UNKNOWN_REPO:
 				pkg = "".join((pkg, _repo_separator, repo))
 			pkg_list = [pkg]
 			for x in mask_atoms:

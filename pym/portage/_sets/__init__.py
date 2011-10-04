@@ -1,4 +1,4 @@
-# Copyright 2007 Gentoo Foundation
+# Copyright 2007-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -6,8 +6,13 @@ from __future__ import print_function
 __all__ = ["SETPREFIX", "get_boolean", "SetConfigError",
 	"SetConfig", "load_default_config"]
 
+import sys
 try:
-	from configparser import SafeConfigParser, NoOptionError
+	from configparser import NoOptionError
+	if sys.hexversion >= 0x3020000:
+		from configparser import ConfigParser as SafeConfigParser
+	else:
+		from configparser import SafeConfigParser
 except ImportError:
 	from ConfigParser import SafeConfigParser, NoOptionError
 from portage import os

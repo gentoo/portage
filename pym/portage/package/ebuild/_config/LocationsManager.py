@@ -1,11 +1,11 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
 	'LocationsManager',
 )
 
-import codecs
+import io
 from portage import os, eapi_is_supported, _encodings, _unicode_encode
 from portage.const import CUSTOM_PROFILE_PATH, GLOBAL_CONFIG_PATH, \
 	PROFILE_PATH, USER_CONFIG_PATH
@@ -89,11 +89,12 @@ class LocationsManager(object):
 	def _addProfile(self, currentPath):
 		parentsFile = os.path.join(currentPath, "parent")
 		eapi_file = os.path.join(currentPath, "eapi")
+		f = None
 		try:
-			eapi = codecs.open(_unicode_encode(eapi_file,
+			f = io.open(_unicode_encode(eapi_file,
 				encoding=_encodings['fs'], errors='strict'),
-				mode='r', encoding=_encodings['content'], errors='replace'
-				).readline().strip()
+				mode='r', encoding=_encodings['content'], errors='replace')
+			eapi = f.readline().strip()
 		except IOError:
 			pass
 		else:
@@ -102,6 +103,9 @@ class LocationsManager(object):
 					"Profile contains unsupported "
 					"EAPI '%s': '%s'") % \
 					(eapi, os.path.realpath(eapi_file),))
+		finally:
+			if f is not None:
+				f.close()
 		if os.path.exists(parentsFile):
 			parents = grabfile(parentsFile)
 			if not parents:

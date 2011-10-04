@@ -20,7 +20,7 @@ try:
 except KeyboardInterrupt:
 	sys.exit(128 + signal.SIGINT)
 
-import codecs
+import io
 import logging
 import optparse
 import subprocess
@@ -87,6 +87,9 @@ def parse_args(args):
 	common.add_option("--portdir",
 		help="override the portage tree location",
 		dest="portdir")
+	common.add_option("--portdir-overlay",
+		help="override the PORTDIR_OVERLAY variable (requires that --repo is also specified)",
+		dest="portdir_overlay")
 	common.add_option("--tolerant",
 		action="store_true",
 		help="exit successfully if only minor errors occurred")
@@ -160,9 +163,17 @@ def parse_args(args):
 		parser.error("Not a directory: --config-root='%s'" % \
 			(options.config_root,))
 
-	if options.cache_dir is not None and not os.path.isdir(options.cache_dir):
-		parser.error("Not a directory: --cache-dir='%s'" % \
-			(options.cache_dir,))
+	if options.cache_dir is not None:
+		if not os.path.isdir(options.cache_dir):
+			parser.error("Not a directory: --cache-dir='%s'" % \
+				(options.cache_dir,))
+		if not os.access(options.cache_dir, os.W_OK):
+			parser.error("Write access denied: --cache-dir='%s'" % \
+				(options.cache_dir,))
+
+	if options.portdir_overlay is not None and \
+		options.repo is None:
+		parser.error("--portdir-overlay option requires --repo option")
 
 	for atom in args:
 		try:
@@ -391,10 +402,10 @@ class GenUseLocalDesc(object):
 					output = open(_unicode_encode(desc_path,
 						encoding=_encodings['fs'], errors='strict'), 'r+b')
 				else:
-					output = codecs.open(_unicode_encode(desc_path,
+					output = io.open(_unicode_encode(desc_path,
 						encoding=_encodings['fs'], errors='strict'),
 						mode='w', encoding=_encodings['repo.content'],
-						errors='replace')
+						errors='backslashreplace')
 			except IOError as e:
 				if not self._preserve_comments or \
 					os.path.isfile(desc_path):
@@ -413,10 +424,10 @@ class GenUseLocalDesc(object):
 					level=logging.WARNING, noiselevel=-1)
 				self._preserve_comments = False
 				try:
-					output = codecs.open(_unicode_encode(desc_path,
+					output = io.open(_unicode_encode(desc_path,
 						encoding=_encodings['fs'], errors='strict'),
 						mode='w', encoding=_encodings['repo.content'],
-						errors='replace')
+						errors='backslashreplace')
 				except IOError as e:
 					writemsg_level(
 						"ERROR: failed to open output file %s: %s\n" \
@@ -437,18 +448,18 @@ class GenUseLocalDesc(object):
 
 			# Finished probing comments in binary mode, now append
 			# in text mode.
-			output = codecs.open(_unicode_encode(desc_path,
+			output = io.open(_unicode_encode(desc_path,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='a', encoding=_encodings['repo.content'],
-				errors='replace')
-			output.write('\n')
+				errors='backslashreplace')
+			output.write(_unicode_decode('\n'))
 		else:
-			output.write('''
+			output.write(_unicode_decode('''
 # This file is deprecated as per GLEP 56 in favor of metadata.xml. Please add
 # your descriptions to your package's metadata.xml ONLY.
 # * generated automatically using egencache *
 
-'''.lstrip())
+'''.lstrip()))
 
 		# The cmp function no longer exists in python3, so we'll
 		# implement our own here under a slightly different name
@@ -465,10 +476,20 @@ class GenUseLocalDesc(object):
 					return 1
 			return (a > b) - (a < b)
 
+		class _MetadataTreeBuilder(ElementTree.TreeBuilder):
+			"""
+			Implements doctype() as required to avoid deprecation warnings
+			since Python >=2.7
+			"""
+			def doctype(self, name, pubid, system):
+				pass
+
 		for cp in self._portdb.cp_all():
 			metadata_path = os.path.join(repo_path, cp, 'metadata.xml')
 			try:
-				metadata = ElementTree.parse(metadata_path)
+				metadata = ElementTree.parse(metadata_path,
+					parser=ElementTree.XMLParser(
+					target=_MetadataTreeBuilder()))
 			except IOError:
 				pass
 			except (ExpatError, EnvironmentError) as e:
@@ -522,7 +543,8 @@ class GenUseLocalDesc(object):
 								resatoms = sorted(reskeys, key=cmp_sort_key(atomcmp))
 								resdesc = resdict[reskeys[resatoms[-1]]]
 
-						output.write('%s:%s - %s\n' % (cp, flag, resdesc))
+						output.write(_unicode_decode(
+							'%s:%s - %s\n' % (cp, flag, resdesc)))
 
 		output.close()
 
@@ -609,9 +631,9 @@ class GenChangeLogs(object):
 
 	def generate_changelog(self, cp):
 		try:
-			output = codecs.open('ChangeLog',
+			output = io.open('ChangeLog',
 				mode='w', encoding=_encodings['repo.content'],
-				errors='replace')
+				errors='backslashreplace')
 		except IOError as e:
 			writemsg_level(
 				"ERROR: failed to open ChangeLog for %s: %s\n" % (cp,e,),
@@ -619,7 +641,7 @@ class GenChangeLogs(object):
 			self.returncode |= 2
 			return
 
-		output.write(('''
+		output.write(_unicode_decode('''
 # ChangeLog for %s
 # Copyright 1999-%s Gentoo Foundation; Distributed under the GPL v2
 # $Header: $
@@ -688,10 +710,11 @@ class GenChangeLogs(object):
 			# Reverse the sort order for headers.
 			for c in reversed(changed):
 				if c.startswith('+') and c.endswith('.ebuild'):
-					output.write('*%s (%s)\n' % (c[1:-7], date))
+					output.write(_unicode_decode(
+						'*%s (%s)\n' % (c[1:-7], date)))
 					wroteheader = True
 			if wroteheader:
-				output.write('\n')
+				output.write(_unicode_decode('\n'))
 
 			# strip '<cp>: ', '[<cp>] ', and similar
 			body[0] = re.sub(r'^\W*' + re.escape(cp) + r'\W+', '', body[0])
@@ -711,10 +734,13 @@ class GenChangeLogs(object):
 
 			# don't break filenames on hyphens
 			self._wrapper.break_on_hyphens = False
-			output.write(self._wrapper.fill('%s; %s %s:' % (date, author, ', '.join(changed))))
+			output.write(_unicode_decode(
+				self._wrapper.fill(
+				'%s; %s %s:' % (date, author, ', '.join(changed)))))
 			# but feel free to break commit messages there
 			self._wrapper.break_on_hyphens = True
-			output.write('\n%s\n\n' % '\n'.join([self._wrapper.fill(x) for x in body]))
+			output.write(_unicode_decode(
+				'\n%s\n\n' % '\n'.join(self._wrapper.fill(x) for x in body)))
 
 		output.close()
 
@@ -750,8 +776,6 @@ def egencache_main(args):
 	parser, options, atoms = parse_args(args)
 
 	config_root = options.config_root
-	if config_root is None:
-		config_root = '/'
 
 	# The calling environment is ignored, so the program is
 	# completely controlled by commandline arguments.
@@ -759,6 +783,8 @@ def egencache_main(args):
 
 	if options.repo is None:
 		env['PORTDIR_OVERLAY'] = ''
+	elif options.portdir_overlay:
+		env['PORTDIR_OVERLAY'] = options.portdir_overlay
 
 	if options.cache_dir is not None:
 		env['PORTAGE_DEPCACHEDIR'] = options.cache_dir
@@ -766,8 +792,10 @@ def egencache_main(args):
 	if options.portdir is not None:
 		env['PORTDIR'] = options.portdir
 
+	eprefix = os.environ.get("__PORTAGE_TEST_EPREFIX")
+
 	settings = portage.config(config_root=config_root,
-		target_root='/', local_config=False, env=env)
+		local_config=False, env=env, _eprefix=eprefix)
 
 	default_opts = None
 	if not options.ignore_default_opts:
@@ -776,14 +804,11 @@ def egencache_main(args):
 	if default_opts:
 		parser, options, args = parse_args(default_opts + args)
 
-		if options.config_root is not None:
-			config_root = options.config_root
-
 		if options.cache_dir is not None:
 			env['PORTAGE_DEPCACHEDIR'] = options.cache_dir
 
 		settings = portage.config(config_root=config_root,
-			target_root='/', local_config=False, env=env)
+			local_config=False, env=env, _eprefix=eprefix)
 
 	if not options.update and not options.update_use_local_desc \
 			and not options.update_changelogs:
@@ -791,14 +816,27 @@ def egencache_main(args):
 		return 1
 
 	if options.update and 'metadata-transfer' not in settings.features:
-		writemsg_level("ecachegen: warning: " + \
-			"automatically enabling FEATURES=metadata-transfer\n",
-			level=logging.WARNING, noiselevel=-1)
 		settings.features.add('metadata-transfer')
 
 	settings.lock()
 
 	portdb = portage.portdbapi(mysettings=settings)
+
+	if options.update:
+		if options.cache_dir is not None:
+			# already validated earlier
+			pass
+		else:
+			# We check write access after the portdbapi constructor
+			# has had an opportunity to create it. This ensures that
+			# we don't use the cache in the "volatile" mode which is
+			# undesirable for egencache.
+			if not os.access(settings["PORTAGE_DEPCACHEDIR"], os.W_OK):
+				writemsg_level("ecachegen: error: " + \
+					"write access denied: %s\n" % (settings["PORTAGE_DEPCACHEDIR"],),
+					level=logging.ERROR, noiselevel=-1)
+				return 1
+
 	if options.repo is not None:
 		repo_path = portdb.getRepositoryPath(options.repo)
 		if repo_path is None:

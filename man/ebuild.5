@@ -1,4 +1,4 @@
-.TH "EBUILD" "5" "May 2011" "Portage VERSION" "Portage"
+.TH "EBUILD" "5" "Jul 2011" "Portage VERSION" "Portage"
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
 .SH "DESCRIPTION"
@@ -246,8 +246,9 @@ is possible to prefix flags with + or - in order to create default settings
 that respectively enable or disable the corresponding \fBUSE\fR flags. For
 details about \fBUSE\fR flag stacking order, refer to the \fBUSE_ORDER\fR
 variable in \fBmake.conf\fR(5). Given the default \fBUSE_ORDER\fR setting,
-negative IUSE default settings are ineffective since profile and user
-configuration settings override them.
+negative IUSE default settings are effective only for negation of
+repo\-level USE settings, since profile and user configuration settings
+override them.
 .TP
 \fBDEPEND\fR
 This should contain a list of all packages that are required for the
@@ -552,6 +553,12 @@ This variable should only be used when a package provides a virtual target.
 For example, blackdown\-jdk and sun\-jdk provide \fIvirtual/jdk\fR.  This
 allows for packages to depend on \fIvirtual/jdk\fR rather than on blackdown
 or sun specifically.
+.TP
+\fBDOCS\fR
+Beginning with \fBEAPI 4\fR, an array or space\-delimited list of documentation
+files for the default src_install function to install using dodoc. If
+undefined, a reasonable default list is used. See the documentation for
+src_install below.
 .SH "QA CONTROL VARIABLES"
 .TP
 .B USAGE NOTES
@@ -834,10 +841,10 @@ Same as \fBuse_with\fR above, except that the configure options are
 argument is recognized. In \fBEAPI 3\fR and earlier, an empty
 \fIconfigure opt\fR argument is treated as if it weren't provided.
 .TP
-\fBhas\fR \fI<item>\fR \fI<item list>\fR
-If \fIitem\fR is in \fIitem list\fR, then \fIitem\fR is echoed and \fBhas\fR
+\fBhasv\fR \fI<item>\fR \fI<item list>\fR
+If \fIitem\fR is in \fIitem list\fR, then \fIitem\fR is echoed and \fBhasv\fR
 returns 0.  Otherwise, nothing is echoed and 1 is returned. As indicated with
-use, there is a non\-echoing version \fBhasq\fR. Please use \fBhasq\fR in all
+use, there is a non\-echoing version \fBhas\fR. Please use \fBhas\fR in all
 places where output is to be disregarded. Never use the output for calculation.
 .br
 The \fIitem list\fR is delimited by the \fIIFS\fR variable.  This variable

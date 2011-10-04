@@ -33,6 +33,12 @@ get_config() {
 		"${PORTAGE_CONFIGROOT}"etc/etc-update.conf)
 }
 
+cmd_var_is_valid() {
+	# return true if the first whitespace-separated token contained
+	# in "${1}" is an executable file, false otherwise
+	[[ -x $(type -P ${1%%[[:space:]]*}) ]]
+}
+
 diff_command() {
 	local cmd=${diff_command//%file1/$1}
 	${cmd//%file2/$2}
@@ -149,7 +155,7 @@ sel_file() {
 		elif [ "${DELETE_ALL}" == "yes" ]; then
 			input=0
 		else
-			clear
+			[[ $CLEAR_TERM == yes ]] && clear
 			if [[ ${mode} == 0 ]] ; then
 				echo "The following is the list of files which need updating, each
 configuration file is followed by a list of possible replacement files."
@@ -317,7 +323,7 @@ do_cfg() {
 		elif [[ "${DELETE_ALL}" == "yes" ]] && ! user_special "${ofile}"; then
 			my_input=2
 		else
-			clear
+			[[ $CLEAR_TERM == yes ]] && clear
 			if [ "${using_editor}" == 0 ]; then
 				(
 					echo "Showing differences between ${ofile} and ${file}"
@@ -421,7 +427,7 @@ Please select from the menu above (-1 to exit, losing this merge): "
 				   return 255
 				   ;;
 				2)
-					clear
+					[[ $CLEAR_TERM == yes ]] && clear
 					if [ "${using_editor}" == 0 ]; then
 						(
 							echo "Showing differences between ${ofile} and ${mfile}"
@@ -555,6 +561,7 @@ chown ${UID:-0}:${GID:-0} "${TMP}" || die "failed to set ownership on temp dir" 
 #CONFIG_PROTECT_MASK=$(/usr/lib/portage/bin/portageq envvar CONFIG_PROTECT_MASK)
 
 # load etc-config's configuration
+CLEAR_TERM=$(get_config clear_term)
 EU_AUTOMERGE=$(get_config eu_automerge)
 rm_opts=$(get_config rm_opts)
 mv_opts=$(get_config mv_opts)
@@ -565,7 +572,10 @@ using_editor=$(get_config using_editor)
 merge_command=$(get_config merge_command)
 declare -i mode=$(get_config mode)
 [[ -z ${mode} ]] && mode=0
-[[ -z ${pager} ]] && pager="cat"
+if ! cmd_var_is_valid "${pager}" ; then
+	pager=${PAGER}
+	cmd_var_is_valid "${pager}" || pager=cat
+fi
 
 if [ "${using_editor}" == 0 ]; then
 	# Sanity check to make sure diff exists and works

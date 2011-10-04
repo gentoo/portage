@@ -1,8 +1,9 @@
 # Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import codecs
 import errno
+import io
+import warnings
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -17,6 +18,8 @@ from portage import _unicode_encode
 from portage.exception import DigestException, FileNotFound, \
 	InvalidDataType, MissingParameter, PermissionDenied, \
 	PortageException, PortagePackageException
+from portage.const import (MANIFEST1_HASH_FUNCTIONS, MANIFEST2_HASH_DEFAULTS,
+	MANIFEST2_HASH_FUNCTIONS, MANIFEST2_IDENTIFIERS, MANIFEST2_REQUIRED_HASH)
 from portage.localization import _
 
 class FileNotInManifestException(PortageException):
@@ -49,9 +52,15 @@ def guessManifestFileType(filename):
 	else:
 		return "DIST"
 
+def guessThinManifestFileType(filename):
+	type = guessManifestFileType(filename)
+	if type != "DIST":
+		return None
+	return "DIST"
+
 def parseManifest2(mysplit):
 	myentry = None
-	if len(mysplit) > 4 and mysplit[0] in portage.const.MANIFEST2_IDENTIFIERS:
+	if len(mysplit) > 4 and mysplit[0] in MANIFEST2_IDENTIFIERS:
 		mytype = mysplit[0]
 		myname = mysplit[1]
 		try:
@@ -93,25 +102,33 @@ class Manifest2Entry(ManifestEntry):
 class Manifest(object):
 	parsers = (parseManifest2,)
 	def __init__(self, pkgdir, distdir, fetchlist_dict=None,
-		manifest1_compat=False, from_scratch=False):
-		""" create new Manifest instance for package in pkgdir
-		    and add compability entries for old portage versions if manifest1_compat == True.
+		manifest1_compat=DeprecationWarning, from_scratch=False, thin=False,
+			allow_missing=False, allow_create=True, hashes=None):
+		""" Create new Manifest instance for package in pkgdir.
 		    Do not parse Manifest file if from_scratch == True (only for internal use)
 			The fetchlist_dict parameter is required only for generation of
-			a Manifest (not needed for parsing and checking sums)."""
+			a Manifest (not needed for parsing and checking sums).
+			If thin is specified, then the manifest carries only info for
+			distfiles."""
+
+		if manifest1_compat is not DeprecationWarning:
+			warnings.warn("The manifest1_compat parameter of the "
+				"portage.manifest.Manifest constructor is deprecated.",
+				DeprecationWarning, stacklevel=2)
+
 		self.pkgdir = _unicode_decode(pkgdir).rstrip(os.sep) + os.sep
 		self.fhashdict = {}
 		self.hashes = set()
-		self.hashes.update(portage.const.MANIFEST2_HASH_FUNCTIONS)
-		if manifest1_compat:
-			raise NotImplementedError("manifest1 support has been removed")
+
+		if hashes is None:
+			hashes = MANIFEST2_HASH_DEFAULTS
+
+		self.hashes.update(hashes.intersection(MANIFEST2_HASH_FUNCTIONS))
 		self.hashes.difference_update(hashname for hashname in \
 			list(self.hashes) if hashname not in hashfunc_map)
 		self.hashes.add("size")
-		if manifest1_compat:
-			raise NotImplementedError("manifest1 support has been removed")
-		self.hashes.add(portage.const.MANIFEST2_REQUIRED_HASH)
-		for t in portage.const.MANIFEST2_IDENTIFIERS:
+		self.hashes.add(MANIFEST2_REQUIRED_HASH)
+		for t in MANIFEST2_IDENTIFIERS:
 			self.fhashdict[t] = {}
 		if not from_scratch:
 			self._read()
@@ -120,7 +137,13 @@ class Manifest(object):
 		else:
 			self.fetchlist_dict = {}
 		self.distdir = distdir
-		self.guessType = guessManifestFileType
+		self.thin = thin
+		if thin:
+			self.guessType = guessThinManifestFileType
+		else:
+			self.guessType = guessManifestFileType
+		self.allow_missing = allow_missing
+		self.allow_create = allow_create
 
 	def getFullname(self):
 		""" Returns the absolute path to the Manifest file for this instance """
@@ -129,7 +152,7 @@ class Manifest(object):
 	def getDigests(self):
 		""" Compability function for old digest/manifest code, returns dict of filename:{hashfunction:hashvalue} """
 		rval = {}
-		for t in portage.const.MANIFEST2_IDENTIFIERS:
+		for t in MANIFEST2_IDENTIFIERS:
 			rval.update(self.fhashdict[t])
 		return rval
 	
@@ -141,7 +164,7 @@ class Manifest(object):
 		"""Parse a manifest.  If myhashdict is given then data will be added too it.
 		   Otherwise, a new dict will be created and returned."""
 		try:
-			fd = codecs.open(_unicode_encode(file_path,
+			fd = io.open(_unicode_encode(file_path,
 				encoding=_encodings['fs'], errors='strict'), mode='r',
 				encoding=_encodings['repo.content'], errors='replace')
 			if myhashdict is None:
@@ -200,7 +223,7 @@ class Manifest(object):
 		return myhashdict
 
 	def _createManifestEntries(self):
-		valid_hashes = set(portage.const.MANIFEST2_HASH_FUNCTIONS)
+		valid_hashes = set(MANIFEST2_HASH_FUNCTIONS)
 		valid_hashes.add('size')
 		mytypes = list(self.fhashdict)
 		mytypes.sort()
@@ -218,18 +241,21 @@ class Manifest(object):
 	def checkIntegrity(self):
 		for t in self.fhashdict:
 			for f in self.fhashdict[t]:
-				if portage.const.MANIFEST2_REQUIRED_HASH not in self.fhashdict[t][f]:
-					raise MissingParameter(_("Missing %s checksum: %s %s") % (portage.const.MANIFEST2_REQUIRED_HASH, t, f))
+				if MANIFEST2_REQUIRED_HASH not in self.fhashdict[t][f]:
+					raise MissingParameter(_("Missing %s checksum: %s %s") %
+						(MANIFEST2_REQUIRED_HASH, t, f))
 
 	def write(self, sign=False, force=False):
 		""" Write Manifest instance to disk, optionally signing it """
+		if not self.allow_create:
+			return
 		self.checkIntegrity()
 		try:
 			myentries = list(self._createManifestEntries())
 			update_manifest = True
-			if not force:
+			if myentries and not force:
 				try:
-					f = codecs.open(_unicode_encode(self.getFullname(),
+					f = io.open(_unicode_encode(self.getFullname(),
 						encoding=_encodings['fs'], errors='strict'),
 						mode='r', encoding=_encodings['repo.content'],
 						errors='replace')
@@ -246,9 +272,24 @@ class Manifest(object):
 						pass
 					else:
 						raise
+
 			if update_manifest:
-				write_atomic(self.getFullname(),
-					"".join("%s\n" % str(myentry) for myentry in myentries))
+				if myentries or not (self.thin or self.allow_missing):
+					# If myentries is empty, don't write an empty manifest
+					# when thin or allow_missing is enabled. Except for
+					# thin manifests with no DIST entries, myentries is
+					# non-empty for all currently known use cases.
+					write_atomic(self.getFullname(), "".join("%s\n" %
+						str(myentry) for myentry in myentries))
+				else:
+					# With thin manifest, there's no need to have
+					# a Manifest file if there are no DIST entries.
+					try:
+						os.unlink(self.getFullname())
+					except OSError as e:
+						if e.errno != errno.ENOENT:
+							raise
+
 			if sign:
 				self.sign()
 		except (IOError, OSError) as e:
@@ -270,14 +311,14 @@ class Manifest(object):
 			fname = os.path.join("files", fname)
 		if not os.path.exists(self.pkgdir+fname) and not ignoreMissing:
 			raise FileNotFound(fname)
-		if not ftype in portage.const.MANIFEST2_IDENTIFIERS:
+		if not ftype in MANIFEST2_IDENTIFIERS:
 			raise InvalidDataType(ftype)
 		if ftype == "AUX" and fname.startswith("files"):
 			fname = fname[6:]
 		self.fhashdict[ftype][fname] = {}
 		if hashdict != None:
 			self.fhashdict[ftype][fname].update(hashdict)
-		if not portage.const.MANIFEST2_REQUIRED_HASH in self.fhashdict[ftype][fname]:
+		if not MANIFEST2_REQUIRED_HASH in self.fhashdict[ftype][fname]:
 			self.updateFileHashes(ftype, fname, checkExisting=False, ignoreMissing=ignoreMissing)
 	
 	def removeFile(self, ftype, fname):
@@ -290,7 +331,7 @@ class Manifest(object):
 	
 	def findFile(self, fname):
 		""" Return entrytype of the given file if present in Manifest or None if not present """
-		for t in portage.const.MANIFEST2_IDENTIFIERS:
+		for t in MANIFEST2_IDENTIFIERS:
 			if fname in self.fhashdict[t]:
 				return t
 		return None
@@ -305,6 +346,8 @@ class Manifest(object):
 		distfiles to raise a FileNotFound exception for (if no file or existing
 		checksums are available), and defaults to all distfiles when not
 		specified."""
+		if not self.allow_create:
+			return
 		if checkExisting:
 			self.checkAllHashes()
 		if assumeDistHashesSometimes or assumeDistHashesAlways:
@@ -313,13 +356,88 @@ class Manifest(object):
 			distfilehashes = {}
 		self.__init__(self.pkgdir, self.distdir,
 			fetchlist_dict=self.fetchlist_dict, from_scratch=True,
-			manifest1_compat=False)
-		cpvlist = []
+			thin=self.thin, allow_missing=self.allow_missing,
+			allow_create=self.allow_create, hashes=self.hashes)
 		pn = os.path.basename(self.pkgdir.rstrip(os.path.sep))
 		cat = self._pkgdir_category()
 
 		pkgdir = self.pkgdir
+		if self.thin:
+			cpvlist = self._update_thin_pkgdir(cat, pn, pkgdir)
+		else:
+			cpvlist = self._update_thick_pkgdir(cat, pn, pkgdir)
 
+		distlist = set()
+		for cpv in cpvlist:
+			distlist.update(self._getCpvDistfiles(cpv))
+
+		if requiredDistfiles is None:
+			# This allows us to force removal of stale digests for the
+			# ebuild --force digest option (no distfiles are required).
+			requiredDistfiles = set()
+		elif len(requiredDistfiles) == 0:
+			# repoman passes in an empty list, which implies that all distfiles
+			# are required.
+			requiredDistfiles = distlist.copy()
+		required_hash_types = set()
+		required_hash_types.add("size")
+		required_hash_types.add(MANIFEST2_REQUIRED_HASH)
+		for f in distlist:
+			fname = os.path.join(self.distdir, f)
+			mystat = None
+			try:
+				mystat = os.stat(fname)
+			except OSError:
+				pass
+			if f in distfilehashes and \
+				not required_hash_types.difference(distfilehashes[f]) and \
+				((assumeDistHashesSometimes and mystat is None) or \
+				(assumeDistHashesAlways and mystat is None) or \
+				(assumeDistHashesAlways and mystat is not None and \
+				set(distfilehashes[f]) == set(self.hashes) and \
+				distfilehashes[f]["size"] == mystat.st_size)):
+				self.fhashdict["DIST"][f] = distfilehashes[f]
+			else:
+				try:
+					self.fhashdict["DIST"][f] = perform_multiple_checksums(fname, self.hashes)
+				except FileNotFound:
+					if f in requiredDistfiles:
+						raise
+
+	def _is_cpv(self, cat, pn, filename):
+		if not filename.endswith(".ebuild"):
+			return None
+		pf = filename[:-7]
+		ps = portage.versions._pkgsplit(pf)
+		cpv = "%s/%s" % (cat, pf)
+		if not ps:
+			raise PortagePackageException(
+				_("Invalid package name: '%s'") % cpv)
+		if ps[0] != pn:
+			raise PortagePackageException(
+				_("Package name does not "
+				"match directory name: '%s'") % cpv)
+		return cpv
+
+	def _update_thin_pkgdir(self, cat, pn, pkgdir):
+		for pkgdir, pkgdir_dirs, pkgdir_files in os.walk(pkgdir):
+			break
+		cpvlist = []
+		for f in pkgdir_files:
+			try:
+				f = _unicode_decode(f,
+					encoding=_encodings['fs'], errors='strict')
+			except UnicodeDecodeError:
+				continue
+			if f[:1] == '.':
+				continue
+			pf = self._is_cpv(cat, pn, f)
+			if pf is not None:
+				cpvlist.append(pf)
+		return cpvlist
+
+	def _update_thick_pkgdir(self, cat, pn, pkgdir):
+		cpvlist = []
 		for pkgdir, pkgdir_dirs, pkgdir_files in os.walk(pkgdir):
 			break
 		for f in pkgdir_files:
@@ -330,21 +448,10 @@ class Manifest(object):
 				continue
 			if f[:1] == ".":
 				continue
-			pf = None
-			if f[-7:] == '.ebuild':
-				pf = f[:-7]
+			pf = self._is_cpv(cat, pn, f)
 			if pf is not None:
 				mytype = "EBUILD"
-				ps = portage.versions._pkgsplit(pf)
-				cpv = "%s/%s" % (cat, pf)
-				if not ps:
-					raise PortagePackageException(
-						_("Invalid package name: '%s'") % cpv)
-				if ps[0] != pn:
-					raise PortagePackageException(
-						_("Package name does not "
-						"match directory name: '%s'") % cpv)
-				cpvlist.append(cpv)
+				cpvlist.append(pf)
 			elif manifest2MiscfileFilter(f):
 				mytype = "MISC"
 			else:
@@ -368,41 +475,7 @@ class Manifest(object):
 				continue
 			self.fhashdict["AUX"][f] = perform_multiple_checksums(
 				os.path.join(self.pkgdir, "files", f.lstrip(os.sep)), self.hashes)
-		distlist = set()
-		for cpv in cpvlist:
-			distlist.update(self._getCpvDistfiles(cpv))
-		if requiredDistfiles is None:
-			# This allows us to force removal of stale digests for the
-			# ebuild --force digest option (no distfiles are required).
-			requiredDistfiles = set()
-		elif len(requiredDistfiles) == 0:
-			# repoman passes in an empty list, which implies that all distfiles
-			# are required.
-			requiredDistfiles = distlist.copy()
-		required_hash_types = set()
-		required_hash_types.add("size")
-		required_hash_types.add(portage.const.MANIFEST2_REQUIRED_HASH)
-		for f in distlist:
-			fname = os.path.join(self.distdir, f)
-			mystat = None
-			try:
-				mystat = os.stat(fname)
-			except OSError:
-				pass
-			if f in distfilehashes and \
-				not required_hash_types.difference(distfilehashes[f]) and \
-				((assumeDistHashesSometimes and mystat is None) or \
-				(assumeDistHashesAlways and mystat is None) or \
-				(assumeDistHashesAlways and mystat is not None and \
-				len(distfilehashes[f]) == len(self.hashes) and \
-				distfilehashes[f]["size"] == mystat.st_size)):
-				self.fhashdict["DIST"][f] = distfilehashes[f]
-			else:
-				try:
-					self.fhashdict["DIST"][f] = perform_multiple_checksums(fname, self.hashes)
-				except FileNotFound:
-					if f in requiredDistfiles:
-						raise
+		return cpvlist
 
 	def _pkgdir_category(self):
 		return self.pkgdir.rstrip(os.sep).split(os.sep)[-2]
@@ -417,7 +490,7 @@ class Manifest(object):
 		return absname	
 	
 	def checkAllHashes(self, ignoreMissingFiles=False):
-		for t in portage.const.MANIFEST2_IDENTIFIERS:
+		for t in MANIFEST2_IDENTIFIERS:
 			self.checkTypeHashes(t, ignoreMissingFiles=ignoreMissingFiles)
 	
 	def checkTypeHashes(self, idtype, ignoreMissingFiles=False):
@@ -481,8 +554,9 @@ class Manifest(object):
 	
 	def updateAllHashes(self, checkExisting=False, ignoreMissingFiles=True):
 		""" Regenerate all hashes for all files in this Manifest. """
-		for idtype in portage.const.MANIFEST2_IDENTIFIERS:
-			self.updateTypeHashes(idtype, fname, checkExisting)
+		for idtype in MANIFEST2_IDENTIFIERS:
+			self.updateTypeHashes(idtype, checkExisting=checkExisting,
+				ignoreMissingFiles=ignoreMissingFiles)
 
 	def updateCpvHashes(self, cpv, ignoreMissingFiles=True):
 		""" Regenerate all hashes associated to the given cpv (includes all AUX and MISC
@@ -518,16 +592,18 @@ class Manifest(object):
 		mfname = self.getFullname()
 		if not os.path.exists(mfname):
 			return rVal
-		myfile = codecs.open(_unicode_encode(mfname,
+		myfile = io.open(_unicode_encode(mfname,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['repo.content'], errors='replace')
 		lines = myfile.readlines()
 		myfile.close()
 		for l in lines:
 			mysplit = l.split()
-			if len(mysplit) == 4 and mysplit[0] in portage.const.MANIFEST1_HASH_FUNCTIONS and not 1 in rVal:
+			if len(mysplit) == 4 and mysplit[0] in MANIFEST1_HASH_FUNCTIONS \
+				and 1 not in rVal:
 				rVal.append(1)
-			elif len(mysplit) > 4 and mysplit[0] in portage.const.MANIFEST2_IDENTIFIERS and ((len(mysplit) - 3) % 2) == 0 and not 2 in rVal:
+			elif len(mysplit) > 4 and mysplit[0] in MANIFEST2_IDENTIFIERS \
+				and ((len(mysplit) - 3) % 2) == 0 and not 2 in rVal:
 				rVal.append(2)
 		return rVal
 

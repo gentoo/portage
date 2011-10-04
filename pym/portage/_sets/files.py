@@ -1,4 +1,4 @@
-# Copyright 2007 Gentoo Foundation
+# Copyright 2007-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -209,7 +209,7 @@ class WorldSelectedSet(EditablePackageSet):
 	description = "Set of packages that were directly installed by the user"
 	
 	def __init__(self, eroot):
-		super(WorldSelectedSet, self).__init__()
+		super(WorldSelectedSet, self).__init__(allow_repo=True)
 		# most attributes exist twice as atoms and non-atoms are stored in 
 		# separate files
 		self._lock = None
@@ -222,7 +222,7 @@ class WorldSelectedSet(EditablePackageSet):
 		self._mtime2 = None
 		
 	def _validate(self, atom):
-		return ValidAtomValidator(atom)
+		return ValidAtomValidator(atom, allow_repo=True)
 
 	def _validate2(self, setname):
 		return setname.startswith(SETPREFIX)

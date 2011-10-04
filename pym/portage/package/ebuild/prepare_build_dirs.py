@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['prepare_build_dirs']
@@ -9,6 +9,7 @@ import shutil
 import stat
 import time
 
+import portage
 from portage import os, _encodings, _unicode_encode, _unicode_decode
 from portage.data import portage_gid, portage_uid, secpass
 from portage.exception import DirectoryNotFound, FileNotFound, \
@@ -16,7 +17,7 @@ from portage.exception import DirectoryNotFound, FileNotFound, \
 from portage.localization import _
 from portage.output import colorize
 from portage.util import apply_recursive_permissions, \
-	apply_secpass_permissions, ensure_dirs, writemsg
+	apply_secpass_permissions, ensure_dirs, normalize_path, writemsg
 
 def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
 	"""
@@ -105,7 +106,7 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
 			pass
 
 	_prepare_workdir(mysettings)
-	if mysettings.get('EBUILD_PHASE') != 'fetch':
+	if mysettings.get("EBUILD_PHASE") not in ("info", "fetch", "pretend"):
 		# Avoid spurious permissions adjustments when fetching with
 		# a temporary PORTAGE_TMPDIR setting (for fetchonly).
 		_prepare_features_dirs(mysettings)
@@ -118,11 +119,13 @@ def _adjust_perms_msg(settings, msg):
 	background = settings.get("PORTAGE_BACKGROUND") == "1"
 	log_path = settings.get("PORTAGE_LOG_FILE")
 	log_file = None
+	log_file_real = None
 
 	if background and log_path is not None:
 		try:
 			log_file = open(_unicode_encode(log_path,
 				encoding=_encodings['fs'], errors='strict'), mode='ab')
+			log_file_real = log_file
 		except IOError:
 			def write(msg):
 				pass
@@ -139,17 +142,27 @@ def _adjust_perms_msg(settings, msg):
 	finally:
 		if log_file is not None:
 			log_file.close()
+			if log_file_real is not log_file:
+				log_file_real.close()
 
 def _prepare_features_dirs(mysettings):
 
+	# Use default ABI libdir in accordance with bug #355283.
+	libdir = None
+	default_abi = mysettings.get("DEFAULT_ABI")
+	if default_abi:
+		libdir = mysettings.get("LIBDIR_" + default_abi)
+	if not libdir:
+		libdir = "lib"
+
 	features_dirs = {
 		"ccache":{
-			"path_dir": "/usr/lib/ccache/bin",
+			"path_dir": "/usr/%s/ccache/bin" % (libdir,),
 			"basedir_var":"CCACHE_DIR",
 			"default_dir":os.path.join(mysettings["PORTAGE_TMPDIR"], "ccache"),
 			"always_recurse":False},
 		"distcc":{
-			"path_dir": "/usr/lib/distcc/bin",
+			"path_dir": "/usr/%s/distcc/bin" % (libdir,),
 			"basedir_var":"DISTCC_DIR",
 			"default_dir":os.path.join(mysettings["BUILD_PREFIX"], ".distcc"),
 			"subdirs":("lock", "state"),
@@ -278,6 +291,11 @@ def _prepare_workdir(mysettings):
 		try:
 			modified = ensure_dirs(mysettings["PORT_LOGDIR"])
 			if modified:
+				# Only initialize group/mode if the directory doesn't
+				# exist, so that we don't override permissions if they
+				# were previously set by the administrator.
+				# NOTE: These permissions should be compatible with our
+				# default logrotate config as discussed in bug 374287.
 				apply_secpass_permissions(mysettings["PORT_LOGDIR"],
 					uid=portage_uid, gid=portage_gid, mode=0o2770)
 		except PortageException as e:
@@ -292,32 +310,80 @@ def _prepare_workdir(mysettings):
 	if 'compress-build-logs' in mysettings.features:
 		compress_log_ext = '.gz'
 
+	logdir_subdir_ok = False
 	if "PORT_LOGDIR" in mysettings and \
 		os.access(mysettings["PORT_LOGDIR"], os.W_OK):
+		logdir = normalize_path(mysettings["PORT_LOGDIR"])
 		logid_path = os.path.join(mysettings["PORTAGE_BUILDDIR"], ".logid")
 		if not os.path.exists(logid_path):
-			open(_unicode_encode(logid_path), 'w')
+			open(_unicode_encode(logid_path), 'w').close()
 		logid_time = _unicode_decode(time.strftime("%Y%m%d-%H%M%S",
 			time.gmtime(os.stat(logid_path).st_mtime)),
 			encoding=_encodings['content'], errors='replace')
 
 		if "split-log" in mysettings.features:
+			log_subdir = os.path.join(logdir, "build", mysettings["CATEGORY"])
 			mysettings["PORTAGE_LOG_FILE"] = os.path.join(
-				mysettings["PORT_LOGDIR"], "build", "%s/%s:%s.log%s" % \
-				(mysettings["CATEGORY"], mysettings["PF"], logid_time,
-				compress_log_ext))
+				log_subdir, "%s:%s.log%s" %
+				(mysettings["PF"], logid_time, compress_log_ext))
 		else:
+			log_subdir = logdir
 			mysettings["PORTAGE_LOG_FILE"] = os.path.join(
-				mysettings["PORT_LOGDIR"], "%s:%s:%s.log%s" % \
+				logdir, "%s:%s:%s.log%s" % \
 				(mysettings["CATEGORY"], mysettings["PF"], logid_time,
 				compress_log_ext))
 
-		ensure_dirs(os.path.dirname(mysettings["PORTAGE_LOG_FILE"]))
+		if log_subdir is logdir:
+			logdir_subdir_ok = True
+		else:
+			try:
+				_ensure_log_subdirs(logdir, log_subdir)
+			except PortageException as e:
+				writemsg(_unicode_decode("!!! %s\n") % (e,), noiselevel=-1)
 
-	else:
+			if os.access(log_subdir, os.W_OK):
+				logdir_subdir_ok = True
+			else:
+				writemsg(_unicode_decode("!!! %s: %s\n") %
+					(_("Permission Denied"), log_subdir), noiselevel=-1)
+
+	if not logdir_subdir_ok:
 		# NOTE: When sesandbox is enabled, the local SELinux security policies
 		# may not allow output to be piped out of the sesandbox domain. The
 		# current policy will allow it to work when a pty is available, but
 		# not through a normal pipe. See bug #162404.
 		mysettings["PORTAGE_LOG_FILE"] = os.path.join(
 			mysettings["T"], "build.log%s" % compress_log_ext)
+
+def _ensure_log_subdirs(logdir, subdir):
+	"""
+	This assumes that logdir exists, and creates subdirectories down
+	to subdir as necessary. The gid of logdir is copied to all
+	subdirectories, along with 0x2070 mode bits if present. Both logdir
+	and subdir are assumed to be normalized absolute paths.
+	"""
+	st = os.stat(logdir)
+	uid = -1
+	gid = st.st_gid
+	grp_mode = 0o2070 & st.st_mode
+
+	# If logdir is writable by the portage group but its uid
+	# is not portage_uid, then set the uid to portage_uid if
+	# we have privileges to do so, for compatibility with our
+	# default logrotate config (see bug 378451). With the
+	# "su portage portage" directive and logrotate-3.8.0,
+	# logrotate's chown call during the compression phase will
+	# only succeed if the log file's uid is portage_uid.
+	if grp_mode and gid == portage_gid and \
+		portage.data.secpass >= 2:
+		uid = portage_uid
+		if st.st_uid != portage_uid:
+			ensure_dirs(logdir, uid=uid)
+
+	logdir_split_len = len(logdir.split(os.sep))
+	subdir_split = subdir.split(os.sep)[logdir_split_len:]
+	subdir_split.reverse()
+	current = logdir
+	while subdir_split:
+		current = os.path.join(current, subdir_split.pop())
+		ensure_dirs(current, uid=uid, gid=gid, mode=grp_mode, mask=0)

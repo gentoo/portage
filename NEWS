@@ -9,10 +9,21 @@ portage-2.2
 * Add support for FEATURES=preserve-libs which preserves libraries when the
   sonames change during upgrade or downgrade, and the @preserved-rebuild
   package set which rebuilds consumers of preserved libraries.
+
+portage-2.1.10
+-------------
 * Improve handling of repositories/overlays for cases in which the same ebuild
   is provided by multiple repositories but with different masking status, and
   support for repository constraints on atoms (atom::repo) in configuration
   files.
+* Add emerge --rebuild-if-* options that trigger rebuilds of reverse
+  dependencies when packages are rebuilt or updated. Related --rebuild-exclude
+  and --rebuild-ignore options can be used to avoid rebuilds for specific
+  packages.
+* Add emerge --reinstall-atoms, --useoldpkg-atoms, and --usepkg-exclude options
+  which can be used to alter selection rules for specific packages.
+* Add FEATURES=parallel-install and ebuild-locks, allowing for greater
+  parallelization when installing packages (by using finer-grained locks).
 
 portage-2.1.9.27
 -------------
@@ -37,6 +48,12 @@ portage-2.1.8
 * The top-level __init__.py for the portage python package has been split into
   many smaller python modules, making the code easier to navigate and allowing
   small parts of the portage api to be imported with less overhead.
+
+portage-2.1.7.17
+-------------
+* Add support for EAPI 3. This adds support for installation prefix, including
+  new EPREFIX, ED, and EROOT variables which are used by econf and einstall
+  helpers. Also, EAPI 3 adds xz extension support to the unpack helper.
 
 portage-2.1.7
 -------------

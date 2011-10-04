@@ -9,6 +9,12 @@ if [[ $# -ne 2 ]] ; then
 	exit 1
 fi
 
+if [[ ${2} == */ ]] || \
+	[[ -d ${D}${2} && ! -L ${D}${2} ]] ; then
+	# implicit basename not allowed by PMS (bug #379899)
+	eqawarn "QA Notice: dosym target omits basename: '${2}'"
+fi
+
 destdir=${2%/*}
 [[ ! -d ${D}${destdir} ]] && dodir "${destdir}"
 

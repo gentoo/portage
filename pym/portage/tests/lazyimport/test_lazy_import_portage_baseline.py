@@ -18,7 +18,7 @@ class LazyImportPortageBaselineTestCase(TestCase):
 	_baseline_imports = frozenset([
 		'portage.const', 'portage.localization',
 		'portage.proxy', 'portage.proxy.lazyimport',
-		'portage.proxy.objectproxy', 'portage._ensure_encodings',
+		'portage.proxy.objectproxy',
 		'portage._selinux',
 	])
 
@@ -45,7 +45,7 @@ sys.stdout.write(" ".join(k for k in sys.modules
 		else:
 			pythonpath = ':' + pythonpath
 		pythonpath = PORTAGE_PYM_PATH + pythonpath
-		env[pythonpath] = pythonpath
+		env['PYTHONPATH'] = pythonpath
 
 		# If python is patched to insert the path of the
 		# currently installed portage module into sys.path,

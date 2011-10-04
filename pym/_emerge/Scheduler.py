@@ -18,7 +18,6 @@ import weakref
 import zlib
 
 import portage
-from portage import StringIO
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode, _unicode_encode
@@ -34,6 +33,7 @@ from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
 
+import _emerge
 from _emerge.BinpkgFetcher import BinpkgFetcher
 from _emerge.BinpkgPrefetcher import BinpkgPrefetcher
 from _emerge.BinpkgVerifier import BinpkgVerifier
@@ -46,7 +46,7 @@ from _emerge.DepPriority import DepPriority
 from _emerge.depgraph import depgraph, resume_depgraph
 from _emerge.EbuildFetcher import EbuildFetcher
 from _emerge.EbuildPhase import EbuildPhase
-from _emerge.emergelog import emergelog, _emerge_log_dir
+from _emerge.emergelog import emergelog
 from _emerge.FakeVartree import FakeVartree
 from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
 from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
@@ -83,11 +83,8 @@ class Scheduler(PollScheduler):
 	_bad_resume_opts = set(["--ask", "--changelog",
 		"--resume", "--skipfirst"])
 
-	_fetch_log = os.path.join(_emerge_log_dir, 'emerge-fetch.log')
-
 	class _iface_class(SlotObject):
-		__slots__ = ("dblinkEbuildPhase", "dblinkDisplayMerge",
-			"dblinkElog", "dblinkEmergeLog", "fetch",
+		__slots__ = ("fetch",
 			"output", "register", "schedule",
 			"scheduleSetup", "scheduleUnpack", "scheduleYield",
 			"unregister")
@@ -217,13 +214,11 @@ class Scheduler(PollScheduler):
 		for root in self.trees:
 			self._config_pool[root] = []
 
+		self._fetch_log = os.path.join(_emerge.emergelog._emerge_log_dir,
+			'emerge-fetch.log')
 		fetch_iface = self._fetch_iface_class(log_file=self._fetch_log,
 			schedule=self._schedule_fetch)
 		self._sched_iface = self._iface_class(
-			dblinkEbuildPhase=self._dblink_ebuild_phase,
-			dblinkDisplayMerge=self._dblink_display_merge,
-			dblinkElog=self._dblink_elog,
-			dblinkEmergeLog=self._dblink_emerge_log,
 			fetch=fetch_iface, output=self._task_output,
 			register=self._register,
 			schedule=self._schedule_wait,
@@ -234,7 +229,7 @@ class Scheduler(PollScheduler):
 
 		self._prefetchers = weakref.WeakValueDictionary()
 		self._pkg_queue = []
-		self._running_tasks = set()
+		self._running_tasks = {}
 		self._completed_tasks = set()
 
 		self._failed_pkgs = []
@@ -282,7 +277,7 @@ class Scheduler(PollScheduler):
 		if self._parallel_fetch:
 				# clear out existing fetch log if it exists
 				try:
-					open(self._fetch_log, 'w')
+					open(self._fetch_log, 'w').close()
 				except EnvironmentError:
 					pass
 
@@ -296,20 +291,9 @@ class Scheduler(PollScheduler):
 
 	def _terminate_tasks(self):
 		self._status_display.quiet = True
-		# Remove running_tasks that have been added to queues but
-		# haven't been started yet, since we're going to discard
-		# them and their start/exit handlers won't be called.
-		for build in self._task_queues.jobs._task_queue:
-			self._running_tasks.remove(build.pkg)
-		if self._merge_wait_queue:
-			for merge in self._merge_wait_queue:
-				self._running_tasks.remove(merge.merge.pkg)
-			self._merge_wait_queue.clear()
-		for merge in self._task_queues.merge._task_queue:
-			# Setup phases may be scheduled in this queue, but
-			# we're only interested in the PackageMerge instances.
-			if isinstance(merge, PackageMerge):
-				self._running_tasks.remove(merge.merge.pkg)
+		while self._running_tasks:
+			task_id, task = self._running_tasks.popitem()
+			task.cancel()
 		for q in self._task_queues.values():
 			q.clear()
 
@@ -557,10 +541,19 @@ class Scheduler(PollScheduler):
 
 	def _schedule_fetch(self, fetcher):
 		"""
-		Schedule a fetcher on the fetch queue, in order to
-		serialize access to the fetch log.
+		Schedule a fetcher, in order to control the number of concurrent
+		fetchers. If self._max_jobs is greater than 1 then the fetch
+		queue is bypassed and the fetcher is started immediately,
+		otherwise it is added to the front of the parallel-fetch queue.
+		NOTE: The parallel-fetch queue is currently used to serialize
+		access to the parallel-fetch log, so changes in the log handling
+		would be required before it would be possible to enable
+		concurrent fetching within the parallel-fetch queue.
 		"""
-		self._task_queues.fetch.addFront(fetcher)
+		if self._max_jobs > 1:
+			fetcher.start()
+		else:
+			self._task_queues.fetch.addFront(fetcher)
 
 	def _schedule_setup(self, setup_phase):
 		"""
@@ -612,67 +605,6 @@ class Scheduler(PollScheduler):
 				vartree=self.trees[blocking_pkg.root]["vartree"]))
 
 		return blocker_dblinks
-
-	def _dblink_pkg(self, pkg_dblink):
-		cpv = pkg_dblink.mycpv
-		type_name = RootConfig.tree_pkg_map[pkg_dblink.treetype]
-		root_config = self.trees[pkg_dblink.myroot]["root_config"]
-		installed = type_name == "installed"
-		repo = pkg_dblink.settings.get("PORTAGE_REPO_NAME")
-		return self._pkg(cpv, type_name, root_config,
-			installed=installed, myrepo=repo)
-
-	def _dblink_elog(self, pkg_dblink, phase, func, msgs):
-
-		log_path = pkg_dblink.settings.get("PORTAGE_LOG_FILE")
-		out = StringIO()
-
-		for msg in msgs:
-			func(msg, phase=phase, key=pkg_dblink.mycpv, out=out)
-
-		out_str = out.getvalue()
-
-		self._task_output(out_str, log_path=log_path)
-
-	def _dblink_emerge_log(self, msg):
-		self._logger.log(msg)
-
-	def _dblink_display_merge(self, pkg_dblink, msg, level=0, noiselevel=0):
-		log_path = pkg_dblink.settings.get("PORTAGE_LOG_FILE")
-		background = self._background
-
-		if log_path is None:
-			if not (background and level < logging.WARN):
-				portage.util.writemsg_level(msg,
-					level=level, noiselevel=noiselevel)
-		else:
-			self._task_output(msg, log_path=log_path)
-
-	def _dblink_ebuild_phase(self,
-		pkg_dblink, pkg_dbapi, ebuild_path, phase):
-		"""
-		Using this callback for merge phases allows the scheduler
-		to run while these phases execute asynchronously, and allows
-		the scheduler control output handling.
-		"""
-
-		scheduler = self._sched_iface
-		settings = pkg_dblink.settings
-		background = self._background
-		log_path = settings.get("PORTAGE_LOG_FILE")
-
-		if phase in ('die_hooks', 'success_hooks'):
-			ebuild_phase = MiscFunctionsProcess(background=background,
-				commands=[phase], phase=phase,
-				scheduler=scheduler, settings=settings)
-		else:
-			ebuild_phase = EbuildPhase(background=background,
-				phase=phase, scheduler=scheduler,
-				settings=settings)
-		ebuild_phase.start()
-		ebuild_phase.wait()
-
-		return ebuild_phase.returncode
 
 	def _generate_digests(self):
 		"""
@@ -811,10 +743,7 @@ class Scheduler(PollScheduler):
 			prefetchers = self._prefetchers
 			getbinpkg = "--getbinpkg" in self.myopts
 
-			# In order to avoid "waiting for lock" messages
-			# at the beginning, which annoy users, never
-			# spawn a prefetcher for the first package.
-			for pkg in self._mergelist[1:]:
+			for pkg in self._mergelist:
 				# mergelist can contain solved Blocker instances
 				if not isinstance(pkg, Package) or pkg.operation == "uninstall":
 					continue
@@ -822,6 +751,13 @@ class Scheduler(PollScheduler):
 				if prefetcher is not None:
 					self._task_queues.fetch.add(prefetcher)
 					prefetchers[pkg] = prefetcher
+
+			# Start the first prefetcher immediately so that self._task()
+			# won't discard it. This avoids a case where the first
+			# prefetcher is discarded, causing the second prefetcher to
+			# occupy the fetch queue before the first fetcher has an
+			# opportunity to execute.
+			self._task_queues.fetch.schedule()
 
 	def _create_prefetcher(self, pkg):
 		"""
@@ -1113,9 +1049,10 @@ class Scheduler(PollScheduler):
 		if rval != os.EX_OK and not keep_going:
 			return rval
 
-		rval = self._run_pkg_pretend()
-		if rval != os.EX_OK:
-			return rval
+		if not fetchonly:
+			rval = self._run_pkg_pretend()
+			if rval != os.EX_OK:
+				return rval
 
 		while True:
 
@@ -1196,6 +1133,7 @@ class Scheduler(PollScheduler):
 			failed_pkg = self._failed_pkgs_all[-1]
 			build_dir = failed_pkg.build_dir
 			log_file = None
+			log_file_real = None
 
 			log_paths = [failed_pkg.build_log]
 
@@ -1208,6 +1146,7 @@ class Scheduler(PollScheduler):
 					pass
 				else:
 					if log_path.endswith('.gz'):
+						log_file_real = log_file
 						log_file =  gzip.GzipFile(filename='',
 							mode='rb', fileobj=log_file)
 
@@ -1220,6 +1159,8 @@ class Scheduler(PollScheduler):
 						noiselevel=-1)
 				finally:
 					log_file.close()
+					if log_file_real is not None:
+						log_file_real.close()
 				failure_log_shown = True
 
 		# Dump mod_echo output now since it tends to flood the terminal.
@@ -1370,6 +1311,7 @@ class Scheduler(PollScheduler):
 		self._merge_exit(task)
 
 	def _merge_exit(self, merge):
+		self._running_tasks.pop(id(merge), None)
 		self._do_merge_exit(merge)
 		self._deallocate_config(merge.merge.settings)
 		if merge.returncode == os.EX_OK and \
@@ -1380,7 +1322,6 @@ class Scheduler(PollScheduler):
 
 	def _do_merge_exit(self, merge):
 		pkg = merge.merge.pkg
-		self._running_tasks.remove(pkg)
 		if merge.returncode != os.EX_OK:
 			settings = merge.merge.settings
 			build_dir = settings.get("PORTAGE_BUILDDIR")
@@ -1425,15 +1366,16 @@ class Scheduler(PollScheduler):
 		mtimedb.commit()
 
 	def _build_exit(self, build):
+		self._running_tasks.pop(id(build), None)
 		if build.returncode == os.EX_OK and self._terminated_tasks:
 			# We've been interrupted, so we won't
 			# add this to the merge queue.
 			self.curval += 1
-			self._running_tasks.remove(build.pkg)
 			self._deallocate_config(build.settings)
 		elif build.returncode == os.EX_OK:
 			self.curval += 1
 			merge = PackageMerge(merge=build)
+			self._running_tasks[id(merge)] = merge
 			if not build.build_opts.buildpkgonly and \
 				build.pkg in self._deep_system_deps:
 				# Since dependencies on system packages are frequently
@@ -1445,7 +1387,6 @@ class Scheduler(PollScheduler):
 				self._task_queues.merge.add(merge)
 				self._status_display.merges = len(self._task_queues.merge)
 		else:
-			self._running_tasks.remove(build.pkg)
 			settings = build.settings
 			build_dir = settings.get("PORTAGE_BUILDDIR")
 			build_log = settings.get("PORTAGE_LOG_FILE")
@@ -1731,10 +1672,10 @@ class Scheduler(PollScheduler):
 				self._pkg_count.curval += 1
 
 			task = self._task(pkg)
-			self._running_tasks.add(pkg)
 
 			if pkg.installed:
 				merge = PackageMerge(merge=task)
+				self._running_tasks[id(merge)] = merge
 				merge.addExitListener(self._merge_exit)
 				self._task_queues.merge.addFront(merge)
 
@@ -1742,6 +1683,7 @@ class Scheduler(PollScheduler):
 				self._jobs += 1
 				self._previous_job_start_time = time.time()
 				self._status_display.running = self._jobs
+				self._running_tasks[id(task)] = task
 				task.addExitListener(self._extract_exit)
 				self._task_queues.jobs.add(task)
 
@@ -1749,6 +1691,7 @@ class Scheduler(PollScheduler):
 				self._jobs += 1
 				self._previous_job_start_time = time.time()
 				self._status_display.running = self._jobs
+				self._running_tasks[id(task)] = task
 				task.addExitListener(self._build_exit)
 				self._task_queues.jobs.add(task)
 

@@ -7,7 +7,8 @@ import sys
 import tempfile
 import portage
 from portage import os
-from portage.const import PORTAGE_BASE_PATH
+from portage.const import (GLOBAL_CONFIG_PATH, PORTAGE_BASE_PATH,
+	USER_CONFIG_PATH)
 from portage.dbapi.vartree import vartree
 from portage.dbapi.porttree import portagetree
 from portage.dbapi.bintree import binarytree
@@ -16,6 +17,7 @@ from portage.package.ebuild.config import config
 from portage.package.ebuild.digestgen import digestgen
 from portage._sets import load_default_config
 from portage._sets.base import InternalPackageSet
+from portage.util import ensure_dirs
 from portage.versions import catsplit
 
 import _emerge
@@ -35,11 +37,27 @@ class ResolverPlayground(object):
 	its work.
 	"""
 
-	config_files = frozenset(("package.use", "package.mask", "package.keywords", \
-		"package.unmask", "package.properties", "package.license", "use.mask", "use.force"))
+	config_files = frozenset(("package.accept_keywords", "package.use", "package.mask", "package.keywords", \
+		"package.unmask", "package.properties", "package.license", "use.mask", "use.force",
+		"layout.conf",))
+
+	metadata_xml_template = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+<herd>%(herd)s</herd>
+<maintainer>
+<email>maintainer-needed@gentoo.org</email>
+<description>Description of the maintainership</description>
+</maintainer>
+<longdescription>Long description of the package</longdescription>
+<use>
+%(flags)s
+</use>
+</pkgmetadata>
+"""
 
 	def __init__(self, ebuilds={}, installed={}, profile={}, repo_configs={}, \
-		user_config={}, sets={}, world=[], debug=False):
+		user_config={}, sets={}, world=[], world_sets=[], distfiles={}, debug=False):
 		"""
 		ebuilds: cpv -> metadata mapping simulating available ebuilds. 
 		installed: cpv -> metadata mapping simulating installed packages.
@@ -50,6 +68,7 @@ class ResolverPlayground(object):
 		self.root = "/"
 		self.eprefix = tempfile.mkdtemp()
 		self.eroot = self.root + self.eprefix.lstrip(os.sep) + os.sep
+		self.distdir = os.path.join(self.eroot, "var", "portage", "distfiles")
 		self.portdir = os.path.join(self.eroot, "usr/portage")
 		self.vdbdir = os.path.join(self.eroot, "var/db/pkg")
 		os.makedirs(self.portdir)
@@ -62,10 +81,11 @@ class ResolverPlayground(object):
 		#Make sure the main repo is always created
 		self._get_repo_dir("test_repo")
 
+		self._create_distfiles(distfiles)
 		self._create_ebuilds(ebuilds)
 		self._create_installed(installed)
 		self._create_profile(ebuilds, installed, profile, repo_configs, user_config, sets)
-		self._create_world(world)
+		self._create_world(world, world_sets)
 
 		self.settings, self.trees = self._load_config()
 
@@ -98,6 +118,12 @@ class ResolverPlayground(object):
 
 		return self.repo_dirs[repo]
 
+	def _create_distfiles(self, distfiles):
+		os.makedirs(self.distdir)
+		for k, v in distfiles.items():
+			with open(os.path.join(self.distdir, k), 'wb') as f:
+				f.write(v)
+
 	def _create_ebuilds(self, ebuilds):
 		for cpv in ebuilds:
 			a = Atom("=" + cpv, allow_repo=True)
@@ -106,16 +132,22 @@ class ResolverPlayground(object):
 				repo = "test_repo"
 
 			metadata = ebuilds[cpv].copy()
+			copyright_header = metadata.pop("COPYRIGHT_HEADER", None)
+			desc = metadata.pop("DESCRIPTION", None)
 			eapi = metadata.pop("EAPI", 0)
 			lic = metadata.pop("LICENSE", "")
 			properties = metadata.pop("PROPERTIES", "")
 			slot = metadata.pop("SLOT", 0)
 			keywords = metadata.pop("KEYWORDS", "x86")
+			homepage = metadata.pop("HOMEPAGE", None)
+			src_uri = metadata.pop("SRC_URI", None)
 			iuse = metadata.pop("IUSE", "")
+			provide = metadata.pop("PROVIDE", None)
 			depend = metadata.pop("DEPEND", "")
 			rdepend = metadata.pop("RDEPEND", None)
 			pdepend = metadata.pop("PDEPEND", None)
 			required_use = metadata.pop("REQUIRED_USE", None)
+			misc_content = metadata.pop("MISC_CONTENT", None)
 
 			if metadata:
 				raise ValueError("metadata of ebuild '%s' contains unknown keys: %s" % (cpv, metadata.keys()))
@@ -129,12 +161,22 @@ class ResolverPlayground(object):
 				pass
 
 			f = open(ebuild_path, "w")
+			if copyright_header is not None:
+				f.write(copyright_header)
 			f.write('EAPI="' + str(eapi) + '"\n')
+			if desc is not None:
+				f.write('DESCRIPTION="%s"\n' % desc)
+			if homepage is not None:
+				f.write('HOMEPAGE="%s"\n' % homepage)
+			if src_uri is not None:
+				f.write('SRC_URI="%s"\n' % src_uri)
 			f.write('LICENSE="' + str(lic) + '"\n')
 			f.write('PROPERTIES="' + str(properties) + '"\n')
 			f.write('SLOT="' + str(slot) + '"\n')
 			f.write('KEYWORDS="' + str(keywords) + '"\n')
 			f.write('IUSE="' + str(iuse) + '"\n')
+			if provide is not None:
+				f.write('PROVIDE="%s"\n' % provide)
 			f.write('DEPEND="' + str(depend) + '"\n')
 			if rdepend is not None:
 				f.write('RDEPEND="' + str(rdepend) + '"\n')
@@ -142,6 +184,8 @@ class ResolverPlayground(object):
 				f.write('PDEPEND="' + str(pdepend) + '"\n')
 			if required_use is not None:
 				f.write('REQUIRED_USE="' + str(required_use) + '"\n')
+			if misc_content is not None:
+				f.write(misc_content)
 			f.close()
 
 	def _create_ebuild_manifests(self, ebuilds):
@@ -183,6 +227,7 @@ class ResolverPlayground(object):
 			keywords = metadata.pop("KEYWORDS", "~x86")
 			iuse = metadata.pop("IUSE", "")
 			use = metadata.pop("USE", "")
+			provide = metadata.pop("PROVIDE", None)
 			depend = metadata.pop("DEPEND", "")
 			rdepend = metadata.pop("RDEPEND", None)
 			pdepend = metadata.pop("PDEPEND", None)
@@ -197,6 +242,7 @@ class ResolverPlayground(object):
 				f.close()
 			
 			write_key("EAPI", eapi)
+			write_key("COUNTER", "0")
 			write_key("LICENSE", lic)
 			write_key("PROPERTIES", properties)
 			write_key("SLOT", slot)
@@ -206,6 +252,8 @@ class ResolverPlayground(object):
 			write_key("KEYWORDS", keywords)
 			write_key("IUSE", iuse)
 			write_key("USE", use)
+			if provide is not None:
+				write_key("PROVIDE", provide)
 			write_key("DEPEND", depend)
 			if rdepend is not None:
 				write_key("RDEPEND", rdepend)
@@ -216,9 +264,18 @@ class ResolverPlayground(object):
 
 	def _create_profile(self, ebuilds, installed, profile, repo_configs, user_config, sets):
 
+		user_config_dir = os.path.join(self.eroot, USER_CONFIG_PATH)
+
+		try:
+			os.makedirs(user_config_dir)
+		except os.error:
+			pass
+
 		for repo in self.repo_dirs:
 			repo_dir = self._get_repo_dir(repo)
 			profile_dir = os.path.join(self._get_repo_dir(repo), "profiles")
+			metadata_dir = os.path.join(repo_dir, "metadata")
+			os.makedirs(metadata_dir)
 
 			#Create $REPO/profiles/categories
 			categories = set()
@@ -246,8 +303,11 @@ class ResolverPlayground(object):
 				for config_file, lines in repo_config.items():
 					if config_file not in self.config_files:
 						raise ValueError("Unknown config file: '%s'" % config_file)
-		
-					file_name = os.path.join(profile_dir, config_file)
+
+					if config_file in ("layout.conf",):
+						file_name = os.path.join(repo_dir, "metadata", config_file)
+					else:
+						file_name = os.path.join(profile_dir, config_file)
 					f = open(file_name, "w")
 					for line in lines:
 						f.write("%s\n" % line)
@@ -277,6 +337,11 @@ class ResolverPlayground(object):
 				f.write("x86\n")
 				f.close()
 
+				parent_file = os.path.join(sub_profile_dir, "parent")
+				f = open(parent_file, "w")
+				f.write("..\n")
+				f.close()
+
 				if profile:
 					for config_file, lines in profile.items():
 						if config_file not in self.config_files:
@@ -289,15 +354,28 @@ class ResolverPlayground(object):
 						f.close()
 
 				#Create profile symlink
-				os.makedirs(os.path.join(self.eroot, "etc"))
-				os.symlink(sub_profile_dir, os.path.join(self.eroot, "etc", "make.profile"))
+				os.symlink(sub_profile_dir, os.path.join(user_config_dir, "make.profile"))
 
-		user_config_dir = os.path.join(self.eroot, "etc", "portage")
-
-		try:
-			os.makedirs(user_config_dir)
-		except os.error:
-			pass
+				#Create minimal herds.xml
+				herds_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE herds SYSTEM "http://www.gentoo.org/dtd/herds.dtd">
+<?xml-stylesheet href="/xsl/herds.xsl" type="text/xsl" ?>
+<?xml-stylesheet href="/xsl/guide.xsl" type="text/xsl" ?>
+<herds>
+<herd>
+  <name>base-system</name>
+  <email>base-system@gentoo.org</email>
+  <description>Core system utilities and libraries.</description>
+  <maintainer>
+    <email>base-system@gentoo.orgg</email>
+    <name>Base System</name>
+    <role>Base System Maintainer</role>
+  </maintainer>
+</herd>
+</herds>
+"""
+				with open(os.path.join(metadata_dir, "metadata.xml"), 'w') as f:
+					f.write(herds_xml)
 
 		repos_conf_file = os.path.join(user_config_dir, "repos.conf")		
 		f = open(repos_conf_file, "w")
@@ -321,6 +399,13 @@ class ResolverPlayground(object):
 			for line in lines:
 				f.write("%s\n" % line)
 			f.close()
+
+		#Create /usr/share/portage/config/make.globals
+		make_globals_path = os.path.join(self.eroot,
+			GLOBAL_CONFIG_PATH.lstrip(os.sep), "make.globals")
+		ensure_dirs(os.path.dirname(make_globals_path))
+		os.symlink(os.path.join(PORTAGE_BASE_PATH, "cnf", "make.globals"),
+			make_globals_path)
 
 		#Create /usr/share/portage/config/sets/portage.conf
 		default_sets_conf_dir = os.path.join(self.eroot, "usr/share/portage/config/sets")
@@ -365,15 +450,21 @@ class ResolverPlayground(object):
 				f.write("%s\n" % line)
 			f.close()
 
-	def _create_world(self, world):
+	def _create_world(self, world, world_sets):
 		#Create /var/lib/portage/world
 		var_lib_portage = os.path.join(self.eroot, "var", "lib", "portage")
 		os.makedirs(var_lib_portage)
 
 		world_file = os.path.join(var_lib_portage, "world")
+		world_set_file = os.path.join(var_lib_portage, "world_sets")
 
 		f = open(world_file, "w")
 		for atom in world:
+			f.write("%s\n" % atom)
+		f.close()
+
+		f = open(world_set_file, "w")
+		for atom in world_sets:
 			f.write("%s\n" % atom)
 		f.close()
 
@@ -386,6 +477,7 @@ class ResolverPlayground(object):
 
 		env = {
 			"ACCEPT_KEYWORDS": "x86",
+			"DISTDIR" : self.distdir,
 			"PORTDIR": self.portdir,
 			"PORTDIR_OVERLAY": " ".join(portdir_overlay),
 			'PORTAGE_TMPDIR'       : os.path.join(self.eroot, 'var/tmp'),
@@ -425,6 +517,12 @@ class ResolverPlayground(object):
 		if self.debug:
 			options["--debug"] = True
 
+		if action is None:
+			if options.get("--depclean"):
+				action = "depclean"
+			elif options.get("--prune"):
+				action = "prune"
+
 		global_noiselimit = portage.util.noiselimit
 		global_emergelog_disable = _emerge.emergelog._disable
 		try:
@@ -433,10 +531,10 @@ class ResolverPlayground(object):
 				portage.util.noiselimit = -2
 			_emerge.emergelog._disable = True
 
-			if options.get("--depclean"):
+			if action in ("depclean", "prune"):
 				rval, cleanlist, ordered, req_pkg_count = \
 					calc_depclean(self.settings, self.trees, None,
-					options, "depclean", InternalPackageSet(initial_atoms=atoms, allow_wildcard=True), None)
+					options, action, InternalPackageSet(initial_atoms=atoms, allow_wildcard=True), None)
 				result = ResolverPlaygroundDepcleanResult( \
 					atoms, rval, cleanlist, ordered, req_pkg_count)
 			else:

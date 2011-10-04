@@ -14,12 +14,16 @@ class database(template.database):
 		config.pop("perms", None)
 		super(database, self).__init__(*args, **config)
 		self._data = {}
-		self.__iter__ = self._data.__iter__
 		self._delitem = self._data.__delitem__
-		self.__contains__ = self._data.__contains__
 
 	def _setitem(self, name, values):
 		self._data[name] = copy.deepcopy(values)
 
 	def _getitem(self, cpv):
 		return copy.deepcopy(self._data[cpv])
+
+	def __iter__(self):
+		return iter(self._data)
+
+	def __contains__(self, key):
+		return key in self._data

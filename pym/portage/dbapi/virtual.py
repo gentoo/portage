@@ -38,10 +38,10 @@ class fakedbapi(dbapi):
 		self._match_cache[origdep] = result
 		return result[:]
 
-	def cpv_exists(self, mycpv):
+	def cpv_exists(self, mycpv, myrepo=None):
 		return mycpv in self.cpvdict
 
-	def cp_list(self, mycp, use_cache=1):
+	def cp_list(self, mycp, use_cache=1, myrepo=None):
 		cachelist = self._match_cache.get(mycp)
 		# cp_list() doesn't expand old-style virtuals
 		if cachelist and cachelist[0].startswith(mycp):
@@ -102,7 +102,7 @@ class fakedbapi(dbapi):
 		if not len(self.cpdict[mycp]):
 			del self.cpdict[mycp]
 
-	def aux_get(self, mycpv, wants):
+	def aux_get(self, mycpv, wants, myrepo=None):
 		if not self.cpv_exists(mycpv):
 			raise KeyError(mycpv)
 		metadata = self.cpvdict[mycpv]

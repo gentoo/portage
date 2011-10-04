@@ -1,5 +1,5 @@
 #!/usr/bin/python -O
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 #
@@ -33,7 +33,7 @@ from portage.process import find_binary
 FIND_EXTANT_CONFIGS  = "find '%s' %s -name '._cfg????_%s' ! -name '.*~' ! -iname '.*.bak' -print"
 DIFF_CONTENTS        = "diff -Nu '%s' '%s'"
 DIFF_CVS_INTERP      = "diff -Nu '%s' '%s' | grep '^[+-][^+-]' | grep -v '# .Header:.*'"
-DIFF_WSCOMMENTS      = "diff -Nu '%s' '%s' | grep '^[+-][^+-]' | grep -v '^[-+]#' | grep -v '^[-+][:space:]*$'"
+DIFF_WSCOMMENTS      = "diff -Nu '%s' '%s' | grep '^[+-][^+-]' | grep -v '^[-+]#' | grep -v '^[-+][[:space:]]*$'"
 
 # We need a secure scratch dir and python does silly verbose errors on the use of tempnam
 oldmask = os.umask(0o077)
@@ -64,6 +64,20 @@ atexit.register(cleanup)
 
 MANDATORY_OPTS  = [ 'archive-dir', 'diff', 'replace-cvs', 'replace-wscomments', 'merge' ]
 
+def cmd_var_is_valid(cmd):
+    """
+    Return true if the first whitespace-separated token contained
+    in cmd is an executable file, false otherwise.
+    """
+    cmd = portage.util.shlex_split(cmd)
+    if not cmd:
+        return False
+
+    if os.path.isabs(cmd[0]):
+        return os.access(cmd[0], os.EX_OK)
+
+    return find_binary(cmd[0]) is not None
+
 class dispatch:
     options = {}
 
@@ -84,6 +98,23 @@ class dispatch:
         else:
             self.options["log-file"] = "/dev/null"
 
+        pager = self.options.get("pager")
+        if pager is None or not cmd_var_is_valid(pager):
+            pager = os.environ.get("PAGER")
+            if pager is None or not cmd_var_is_valid(pager):
+                pager = "cat"
+
+        pager_basename = os.path.basename(portage.util.shlex_split(pager)[0])
+        if pager_basename == "less":
+            less_opts = self.options.get("less-opts")
+            if less_opts is not None and less_opts.strip():
+                pager += " " + less_opts
+
+        if pager_basename == "cat":
+            pager = ""
+        else:
+            pager = " | " + pager
+
         #
         # Build list of extant configs
         #
@@ -100,7 +131,9 @@ class dispatch:
                 path, basename = os.path.split(path)
                 find_opts = "-maxdepth 1"
 
-            confs += self.massage(os.popen(FIND_EXTANT_CONFIGS % (path, find_opts, basename)).readlines())
+            with os.popen(FIND_EXTANT_CONFIGS %
+                (path, find_opts, basename)) as proc:
+                confs += self.massage(proc.readlines())
 
         if self.options['use-rcs'] == 'yes':
             for rcs_util in ("rcs", "ci", "co", "rcsmerge"):
@@ -224,10 +257,12 @@ class dispatch:
                 clear_screen()
                 if show_new_diff:
                     cmd = self.options['diff'] % (conf['new'], mrgconf)
+                    cmd += pager
                     spawn_shell(cmd)
                     show_new_diff = 0
                 else:
                     cmd = self.options['diff'] % (conf['current'], newconf)
+                    cmd += pager
                     spawn_shell(cmd)
 
                 print()

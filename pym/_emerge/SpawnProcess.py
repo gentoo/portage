@@ -8,6 +8,7 @@ import portage
 from portage import _encodings
 from portage import _unicode_encode
 from portage import os
+from portage.const import BASH_BINARY
 import fcntl
 import errno
 import gzip
@@ -25,7 +26,7 @@ class SpawnProcess(SubProcess):
 		"path_lookup", "pre_exec")
 
 	__slots__ = ("args",) + \
-		_spawn_kwarg_names
+		_spawn_kwarg_names + ("_log_file_real", "_selinux_type",)
 
 	_file_names = ("log", "process", "stdout")
 	_files_dict = slot_dict_class(_file_names, prefix="")
@@ -83,6 +84,7 @@ class SpawnProcess(SubProcess):
 			files.log = open(_unicode_encode(logfile,
 				encoding=_encodings['fs'], errors='strict'), mode='ab')
 			if logfile.endswith('.gz'):
+				self._log_file_real = files.log
 				files.log = gzip.GzipFile(filename='', mode='ab',
 					fileobj=files.log)
 
@@ -146,7 +148,16 @@ class SpawnProcess(SubProcess):
 		return os.pipe()
 
 	def _spawn(self, args, **kwargs):
-		return portage.process.spawn(args, **kwargs)
+		spawn_func = portage.process.spawn
+
+		if self._selinux_type is not None:
+			spawn_func = portage.selinux.spawn_wrapper(spawn_func,
+				self._selinux_type)
+			# bash is an allowed entrypoint, while most binaries are not
+			if args[0] != BASH_BINARY:
+				args = [BASH_BINARY, "-c", "exec \"$@\"", args[0]] + args
+
+		return spawn_func(args, **kwargs)
 
 	def _output_handler(self, fd, event):
 
@@ -196,7 +207,12 @@ class SpawnProcess(SubProcess):
 					buf.tofile(files.log)
 				except TypeError:
 					# array.tofile() doesn't work with GzipFile
-					files.log.write(buf.tostring())
+					try:
+						# Python >=3.2
+						data = buf.tobytes()
+					except AttributeError:
+						data = buf.tostring()
+					files.log.write(data)
 				files.log.flush()
 			else:
 				self._unregister()
@@ -223,3 +239,9 @@ class SpawnProcess(SubProcess):
 
 		self._unregister_if_appropriate(event)
 
+	def _unregister(self):
+		super(SpawnProcess, self)._unregister()
+		if self._log_file_real is not None:
+			# Avoid "ResourceWarning: unclosed file" since python 3.2.
+			self._log_file_real.close()
+			self._log_file_real = None

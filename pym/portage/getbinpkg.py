@@ -8,7 +8,9 @@ from portage.localization import _
 import portage
 from portage import os
 from portage import _encodings
+from portage import _unicode_decode
 from portage import _unicode_encode
+from _emerge.Package import _all_metadata_keys
 
 import sys
 import socket
@@ -65,8 +67,15 @@ def make_metadata_dict(data):
 	myid,myglob = data
 	
 	mydict = {}
-	for x in portage.xpak.getindex_mem(myid):
-		mydict[x] = portage.xpak.getitem(data,x)
+	for k_bytes in portage.xpak.getindex_mem(myid):
+		k = _unicode_decode(k_bytes,
+			encoding=_encodings['repo.content'], errors='replace')
+		if k not in _all_metadata_keys and \
+			k != "CATEGORY":
+			continue
+		v = _unicode_decode(portage.xpak.getitem(data, k_bytes),
+			encoding=_encodings['repo.content'], errors='replace')
+		mydict[k] = v
 
 	return mydict
 
@@ -261,7 +270,7 @@ def make_http_request(conn, address, params={}, headers={}, dest=None):
 		try:
 			if (rc != 0):
 				conn,ignore,ignore,ignore,ignore = create_conn(address)
-			conn.request("GET", address, params, headers)
+			conn.request("GET", address, body=None, headers=headers)
 		except SystemExit as e:
 			raise
 		except Exception as e:
@@ -354,7 +363,7 @@ def dir_get_list(baseurl,conn=None):
 		
 		if page:
 			parser = ParseLinks()
-			parser.feed(page)
+			parser.feed(_unicode_decode(page))
 			del page
 			listing = parser.get_anchors()
 		else:
@@ -542,7 +551,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 		out.write(_("Loaded metadata pickle.\n"))
 		out.flush()
 		metadatafile.close()
-	except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError):
+	except (AttributeError, EOFError, EnvironmentError, ValueError, pickle.UnpicklingError):
 		metadata = {}
 	if baseurl not in metadata:
 		metadata[baseurl]={}

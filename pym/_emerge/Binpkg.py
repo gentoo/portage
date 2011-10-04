@@ -14,8 +14,9 @@ from portage.util import writemsg
 import portage
 from portage import os
 from portage import _encodings
+from portage import _unicode_decode
 from portage import _unicode_encode
-import codecs
+import io
 import logging
 from portage.output import colorize
 
@@ -114,6 +115,9 @@ class Binpkg(CompositeTask):
 			pretend=self.opts.pretend, scheduler=self.scheduler)
 		pkg_path = fetcher.pkg_path
 		self._pkg_path = pkg_path
+		# This gives bashrc users an opportunity to do various things
+		# such as remove binary packages after they're installed.
+		self.settings["PORTAGE_BINPKG_FILE"] = pkg_path
 
 		if self.opts.getbinpkg and self._bintree.isremote(pkg.cpv):
 
@@ -122,7 +126,12 @@ class Binpkg(CompositeTask):
 			short_msg = "emerge: (%s of %s) %s Fetch" % \
 				(pkg_count.curval, pkg_count.maxval, pkg.cpv)
 			self.logger.log(msg, short_msg=short_msg)
-			self._start_task(fetcher, self._fetcher_exit)
+
+			# Allow the Scheduler's fetch queue to control the
+			# number of concurrent fetchers.
+			fetcher.addExitListener(self._fetcher_exit)
+			self._task_queued(fetcher)
+			self.scheduler.fetch.schedule(fetcher)
 			return
 
 		self._fetcher_exit(fetcher)
@@ -236,20 +245,22 @@ class Binpkg(CompositeTask):
 			else:
 				continue
 
-			f = codecs.open(_unicode_encode(os.path.join(infloc, k),
+			f = io.open(_unicode_encode(os.path.join(infloc, k),
 				encoding=_encodings['fs'], errors='strict'),
-				mode='w', encoding=_encodings['content'], errors='replace')
+				mode='w', encoding=_encodings['content'],
+				errors='backslashreplace')
 			try:
-				f.write(v + "\n")
+				f.write(_unicode_decode(v + "\n"))
 			finally:
 				f.close()
 
 		# Store the md5sum in the vdb.
-		f = codecs.open(_unicode_encode(os.path.join(infloc, 'BINPKGMD5'),
+		f = io.open(_unicode_encode(os.path.join(infloc, 'BINPKGMD5'),
 			encoding=_encodings['fs'], errors='strict'),
 			mode='w', encoding=_encodings['content'], errors='strict')
 		try:
-			f.write(str(portage.checksum.perform_md5(pkg_path)) + "\n")
+			f.write(_unicode_decode(
+				str(portage.checksum.perform_md5(pkg_path)) + "\n"))
 		finally:
 			f.close()
 
@@ -264,16 +275,9 @@ class Binpkg(CompositeTask):
 			self.wait()
 			return
 
-		# This gives bashrc users an opportunity to do various things
-		# such as remove binary packages after they're installed.
-		settings = self.settings
-		settings.setcpv(self.pkg)
-		settings["PORTAGE_BINPKG_FILE"] = self._pkg_path
-		settings.backup_changes("PORTAGE_BINPKG_FILE")
-
 		setup_phase = EbuildPhase(background=self.background,
 			phase="setup", scheduler=self.scheduler,
-			settings=settings)
+			settings=self.settings)
 
 		setup_phase.addExitListener(self._setup_exit)
 		self._task_queued(setup_phase)
@@ -308,18 +312,12 @@ class Binpkg(CompositeTask):
 		self._build_dir.unlock()
 
 	def create_install_task(self):
-
-		# This gives bashrc users an opportunity to do various things
-		# such as remove binary packages after they're installed.
-		settings = self.settings
-		settings["PORTAGE_BINPKG_FILE"] = self._pkg_path
-		settings.backup_changes("PORTAGE_BINPKG_FILE")
-
 		task = EbuildMerge(find_blockers=self.find_blockers,
 			ldpath_mtimes=self.ldpath_mtimes, logger=self.logger,
 			pkg=self.pkg, pkg_count=self.pkg_count,
 			pkg_path=self._pkg_path, scheduler=self.scheduler,
-			settings=settings, tree=self._tree, world_atom=self.world_atom)
+			settings=self.settings, tree=self._tree,
+			world_atom=self.world_atom)
 		task.addExitListener(self._install_exit)
 		return task
 

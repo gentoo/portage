@@ -59,7 +59,7 @@ class BinpkgEnvExtractor(CompositeTask):
 		# This is a signal to ebuild.sh, so that it knows to filter
 		# out things like SANDBOX_{DENY,PREDICT,READ,WRITE} that
 		# would be preserved between normal phases.
-		open(_unicode_encode(self._get_dest_env_path() + '.raw'), 'w')
+		open(_unicode_encode(self._get_dest_env_path() + '.raw'), 'wb').close()
 
 		self._current_task = None
 		self.returncode = os.EX_OK

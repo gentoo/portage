@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
@@ -30,5 +30,5 @@ find "${D}${infodir}" -type d -print0 | while read -r -d $'\0' x ; do
 	rm -f "${x}"/dir{,.info}{,.gz,.bz2}
 done
 
-hasq "${EAPI}" 0 1 2 3 || exit 0
+has "${EAPI}" 0 1 2 3 || exit 0
 exec ecompressdir --queue "${infodir}"

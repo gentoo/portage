@@ -1,10 +1,11 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import traceback
 
 from _emerge.SpawnProcess import SpawnProcess
 import copy
+import io
 import signal
 import sys
 import portage
@@ -12,44 +13,116 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_encode
 from portage import _unicode_decode
-import codecs
 from portage.elog.messages import eerror
-from portage.package.ebuild.fetch import fetch
+from portage.package.ebuild.fetch import _check_distfile, fetch
 from portage.util._pty import _create_pty_or_pipe
 
 class EbuildFetcher(SpawnProcess):
 
-	__slots__ = ("config_pool", "fetchonly", "fetchall", "pkg", "prefetch") + \
-		("_digests", "_settings", "_uri_map")
+	__slots__ = ("config_pool", "ebuild_path", "fetchonly", "fetchall",
+		"pkg", "prefetch") + \
+		("_digests", "_manifest", "_settings", "_uri_map")
+
+	def already_fetched(self, settings):
+		"""
+		Returns True if all files already exist locally and have correct
+		digests, otherwise return False. When returning True, appropriate
+		digest checking messages are produced for display and/or logging.
+		When returning False, no messages are produced, since we assume
+		that a fetcher process will later be executed in order to produce
+		such messages. This will raise InvalidDependString if SRC_URI is
+		invalid.
+		"""
+
+		uri_map = self._get_uri_map()
+		if not uri_map:
+			return True
+
+		digests = self._get_digests()
+		distdir = settings["DISTDIR"]
+		allow_missing = self._get_manifest().allow_missing
+
+		for filename in uri_map:
+			# Use stat rather than lstat since fetch() creates
+			# symlinks when PORTAGE_RO_DISTDIRS is used.
+			try:
+				st = os.stat(os.path.join(distdir, filename))
+			except OSError:
+				return False
+			if st.st_size == 0:
+				return False
+			expected_size = digests.get(filename, {}).get('size')
+			if expected_size is None:
+				continue
+			if st.st_size != expected_size:
+				return False
+
+		stdout_orig = sys.stdout
+		stderr_orig = sys.stderr
+		global_havecolor = portage.output.havecolor
+		out = io.StringIO()
+		eout = portage.output.EOutput()
+		eout.quiet = settings.get("PORTAGE_QUIET") == "1"
+		success = True
+		try:
+			sys.stdout = out
+			sys.stderr = out
+			if portage.output.havecolor:
+				portage.output.havecolor = not self.background
+
+			for filename in uri_map:
+				mydigests = digests.get(filename)
+				if mydigests is None:
+					if not allow_missing:
+						success = False
+						break
+					continue
+				ok, st = _check_distfile(os.path.join(distdir, filename),
+					mydigests, eout, show_errors=False)
+				if not ok:
+					success = False
+					break
+		except portage.exception.FileNotFound:
+			# A file disappeared unexpectedly.
+			return False
+		finally:
+			sys.stdout = stdout_orig
+			sys.stderr = stderr_orig
+			portage.output.havecolor = global_havecolor
+
+		if success:
+			# When returning unsuccessfully, no messages are produced, since
+			# we assume that a fetcher process will later be executed in order
+			# to produce such messages.
+			msg = out.getvalue()
+			if msg:
+				self.scheduler.output(msg, log_path=self.logfile)
+
+		return success
 
 	def _start(self):
 
 		root_config = self.pkg.root_config
 		portdb = root_config.trees["porttree"].dbapi
-		ebuild_path = portdb.findname(self.pkg.cpv, myrepo=self.pkg.repo)
-		if ebuild_path is None:
-			raise AssertionError("ebuild not found for '%s'" % self.pkg.cpv)
+		ebuild_path = self._get_ebuild_path()
 
 		try:
-			uri_map = self._get_uri_map(portdb, ebuild_path)
+			uri_map = self._get_uri_map()
 		except portage.exception.InvalidDependString as e:
 			msg_lines = []
 			msg = "Fetch failed for '%s' due to invalid SRC_URI: %s" % \
 				(self.pkg.cpv, e)
 			msg_lines.append(msg)
 			self._eerror(msg_lines)
-			self._set_returncode((self.pid, 1))
+			self._set_returncode((self.pid, 1 << 8))
 			self.wait()
 			return
 
 		if not uri_map:
 			# Nothing to fetch.
-			self._set_returncode((self.pid, os.EX_OK))
+			self._set_returncode((self.pid, os.EX_OK << 8))
 			self.wait()
 			return
-
-		self._digests = portage.Manifest(
-			os.path.dirname(ebuild_path), None).getTypeDigests("DIST")
 
 		settings = self.config_pool.allocate()
 		settings.setcpv(self.pkg)
@@ -59,7 +132,7 @@ class EbuildFetcher(SpawnProcess):
 		if self.prefetch and \
 			self._prefetch_size_ok(uri_map, settings, ebuild_path):
 			self.config_pool.deallocate(settings)
-			self._set_returncode((self.pid, os.EX_OK))
+			self._set_returncode((self.pid, os.EX_OK << 8))
 			self.wait()
 			return
 
@@ -75,7 +148,6 @@ class EbuildFetcher(SpawnProcess):
 			settings["NOCOLOR"] = nocolor
 
 		self._settings = settings
-		self._uri_map = uri_map
 		SpawnProcess._start(self)
 
 		# Free settings now since it's no longer needed in
@@ -107,10 +179,11 @@ class EbuildFetcher(SpawnProcess):
 			not in ('yes', 'true')
 
 		rval = 1
+		allow_missing = self._get_manifest().allow_missing
 		try:
 			if fetch(self._uri_map, self._settings, fetchonly=self.fetchonly,
-				digests=copy.deepcopy(self._digests),
-				allow_missing_digests=False):
+				digests=copy.deepcopy(self._get_digests()),
+				allow_missing_digests=allow_missing):
 				rval = os.EX_OK
 		except SystemExit:
 			raise
@@ -121,16 +194,42 @@ class EbuildFetcher(SpawnProcess):
 			# finally blocks from earlier in the call stack. See bug #345289.
 			os._exit(rval)
 
-	def _get_uri_map(self, portdb, ebuild_path):
+	def _get_ebuild_path(self):
+		if self.ebuild_path is not None:
+			return self.ebuild_path
+		portdb = self.pkg.root_config.trees["porttree"].dbapi
+		self.ebuild_path = portdb.findname(self.pkg.cpv, myrepo=self.pkg.repo)
+		if self.ebuild_path is None:
+			raise AssertionError("ebuild not found for '%s'" % self.pkg.cpv)
+		return self.ebuild_path
+
+	def _get_manifest(self):
+		if self._manifest is None:
+			pkgdir = os.path.dirname(self._get_ebuild_path())
+			self._manifest = self.pkg.root_config.settings.repositories.get_repo_for_location(
+				os.path.dirname(os.path.dirname(pkgdir))).load_manifest(pkgdir, None)
+		return self._manifest
+
+	def _get_digests(self):
+		if self._digests is None:
+			self._digests = self._get_manifest().getTypeDigests("DIST")
+		return self._digests
+
+	def _get_uri_map(self):
 		"""
 		This can raise InvalidDependString from portdbapi.getFetchMap().
 		"""
-		pkgdir = os.path.dirname(ebuild_path)
+		if self._uri_map is not None:
+			return self._uri_map
+		pkgdir = os.path.dirname(self._get_ebuild_path())
 		mytree = os.path.dirname(os.path.dirname(pkgdir))
 		use = None
 		if not self.fetchall:
 			use = self.pkg.use.enabled
-		return portdb.getFetchMap(self.pkg.cpv, useflags=use, mytree=mytree)
+		portdb = self.pkg.root_config.trees["porttree"].dbapi
+		self._uri_map = portdb.getFetchMap(self.pkg.cpv,
+			useflags=use, mytree=mytree)
+		return self._uri_map
 
 	def _prefetch_size_ok(self, uri_map, settings, ebuild_path):
 		distdir = settings["DISTDIR"]
@@ -147,7 +246,7 @@ class EbuildFetcher(SpawnProcess):
 				return False
 			sizes[filename] = st.st_size
 
-		digests = self._digests
+		digests = self._get_digests()
 		for filename, actual_size in sizes.items():
 			size = digests.get(filename, {}).get('size')
 			if size is None:
@@ -159,12 +258,13 @@ class EbuildFetcher(SpawnProcess):
 		# fetch code will be skipped, so we need to generate equivalent
 		# output here.
 		if self.logfile is not None:
-			f = codecs.open(_unicode_encode(self.logfile,
+			f = io.open(_unicode_encode(self.logfile,
 				encoding=_encodings['fs'], errors='strict'),
-				mode='a', encoding=_encodings['content'], errors='replace')
+				mode='a', encoding=_encodings['content'],
+				errors='backslashreplace')
 			for filename in uri_map:
-				f.write((' * %s size ;-) ...' % \
-					filename).ljust(73) + '[ ok ]\n')
+				f.write(_unicode_decode((' * %s size ;-) ...' % \
+					filename).ljust(73) + '[ ok ]\n'))
 			f.close()
 
 		return True
@@ -184,11 +284,10 @@ class EbuildFetcher(SpawnProcess):
 		return (master_fd, slave_fd)
 
 	def _eerror(self, lines):
-		out = portage.StringIO()
+		out = io.StringIO()
 		for line in lines:
 			eerror(line, phase="unpack", key=self.pkg.cpv, out=out)
-		msg = _unicode_decode(out.getvalue(),
-			encoding=_encodings['content'], errors='replace')
+		msg = out.getvalue()
 		if msg:
 			self.scheduler.output(msg, log_path=self.logfile)
 

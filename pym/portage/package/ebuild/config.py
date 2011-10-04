@@ -6,11 +6,14 @@ __all__ = [
 ]
 
 import copy
+from itertools import chain
 import logging
+import platform
 import re
 import sys
 import warnings
 
+from _emerge.Package import Package
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.data:portage_gid',
@@ -129,6 +132,7 @@ class config(object):
 	_environ_filter = special_env_vars.environ_filter
 	_environ_whitelist = special_env_vars.environ_whitelist
 	_environ_whitelist_re = special_env_vars.environ_whitelist_re
+	_global_only_vars = special_env_vars.global_only_vars
 
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
@@ -202,8 +206,11 @@ class config(object):
 			self.profile_path = clone.profile_path
 			self.profiles = clone.profiles
 			self.packages = clone.packages
+			self.repositories = clone.repositories
 			self._iuse_implicit_match = clone._iuse_implicit_match
 			self._non_user_variables = clone._non_user_variables
+			self._env_d_blacklist = clone._env_d_blacklist
+			self._repo_make_defaults = clone._repo_make_defaults
 			self.usemask = clone.usemask
 			self.useforce = clone.useforce
 			self.puse = clone.puse
@@ -227,6 +234,7 @@ class config(object):
 			self.configdict = copy.deepcopy(clone.configdict)
 			self.configlist = [
 				self.configdict['env.d'],
+				self.configdict['repo'],
 				self.configdict['pkginternal'],
 				self.configdict['globals'],
 				self.configdict['defaults'],
@@ -315,6 +323,9 @@ class config(object):
 			# configlist will contain: [ env.d, globals, defaults, conf, pkg, backupenv, env ]
 			self.configlist.append({})
 			self.configdict["env.d"] = self.configlist[-1]
+
+			self.configlist.append({})
+			self.configdict["repo"] = self.configlist[-1]
 
 			self.configlist.append({})
 			self.configdict["pkginternal"] = self.configlist[-1]
@@ -426,8 +437,17 @@ class config(object):
 			non_user_variables = set()
 			non_user_variables.update(profile_only_variables)
 			non_user_variables.update(self._env_blacklist)
+			non_user_variables.update(self._global_only_vars)
 			non_user_variables = frozenset(non_user_variables)
 			self._non_user_variables = non_user_variables
+
+			self._env_d_blacklist = frozenset(chain(
+				profile_only_variables,
+				self._env_blacklist,
+			))
+			env_d = self.configdict["env.d"]
+			for k in self._env_d_blacklist:
+				env_d.pop(k, None)
 
 			for k in profile_only_variables:
 				self.mygcfg.pop(k, None)
@@ -486,16 +506,16 @@ class config(object):
 			# repoman controls PORTDIR_OVERLAY via the environment, so no
 			# special cases are needed here.
 			portdir_overlay = list(self.repositories.repoUserLocationList())
-			if self["PORTDIR"] in portdir_overlay:
-				portdir_overlay.remove(self["PORTDIR"])
+			if portdir_overlay and portdir_overlay[0] == self["PORTDIR"]:
+				portdir_overlay = portdir_overlay[1:]
 
 			new_ov = []
 			if portdir_overlay:
-				whitespace_re = re.compile(r"\s")
+				shell_quote_re = re.compile(r"[\s\\\"'$`]")
 				for ov in portdir_overlay:
 					ov = normalize_path(ov)
 					if os.path.isdir(ov):
-						if whitespace_re.search(ov) is not None:
+						if shell_quote_re.search(ov) is not None:
 							ov = portage._shell_quote(ov)
 						new_ov.append(ov)
 					else:
@@ -507,12 +527,22 @@ class config(object):
 
 			locations_manager.set_port_dirs(self["PORTDIR"], self["PORTDIR_OVERLAY"])
 
+			self._repo_make_defaults = {}
+			for repo in self.repositories.repos_with_profiles():
+				d = getconfig(os.path.join(repo.location, "profiles", "make.defaults"),
+					expand=self.configdict["globals"].copy()) or {}
+				if d:
+					for k in chain(self._env_blacklist,
+						profile_only_variables, self._global_only_vars):
+						d.pop(k, None)
+				self._repo_make_defaults[repo.name] = d
+
 			#Read package.keywords and package.accept_keywords.
 			self._keywords_manager = KeywordsManager(self.profiles, abs_user_config, \
 				local_config, global_accept_keywords=self.configdict["defaults"].get("ACCEPT_KEYWORDS", ""))
 
 			#Read all USE related files from profiles and optionally from user config.
-			self._use_manager = UseManager(self.profiles, abs_user_config, user_config=local_config)
+			self._use_manager = UseManager(self.repositories, self.profiles, abs_user_config, user_config=local_config)
 			#Initialize all USE related variables we track ourselves.
 			self.usemask = self._use_manager.getUseMask()
 			self.useforce = self._use_manager.getUseForce()
@@ -627,7 +657,7 @@ class config(object):
 			# reasonable defaults; this is important as without USE_ORDER,
 			# USE will always be "" (nothing set)!
 			if "USE_ORDER" not in self:
-				self.backupenv["USE_ORDER"] = "env:pkg:conf:defaults:pkginternal:env.d"
+				self.backupenv["USE_ORDER"] = "env:pkg:conf:defaults:pkginternal:repo:env.d"
 
 			self["PORTAGE_GID"] = str(portage_gid)
 			self.backup_changes("PORTAGE_GID")
@@ -657,6 +687,18 @@ class config(object):
 			if "CBUILD" not in self and "CHOST" in self:
 				self["CBUILD"] = self["CHOST"]
 				self.backup_changes("CBUILD")
+
+			if "USERLAND" not in self:
+				# Set default USERLAND so that our test cases can assume that
+				# it's always set. This allows isolated-functions.sh to avoid
+				# calling uname -s when sourced.
+				system = platform.system()
+				if system is not None and \
+					(system.endswith("BSD") or system == "DragonFly"):
+					self["USERLAND"] = "BSD"
+				else:
+					self["USERLAND"] = "GNU"
+				self.backup_changes("USERLAND")
 
 			self["PORTAGE_BIN_PATH"] = PORTAGE_BIN_PATH
 			self.backup_changes("PORTAGE_BIN_PATH")
@@ -867,7 +909,7 @@ class config(object):
 	def reset(self, keeping_pkg=0, use_cache=None):
 		"""
 		Restore environment from self.backupenv, call self.regenerate()
-		@param keeping_pkg: Should we keep the set_cpv() data or delete it.
+		@param keeping_pkg: Should we keep the setcpv() data or delete it.
 		@type keeping_pkg: Boolean
 		@rype: None
 		"""
@@ -888,6 +930,7 @@ class config(object):
 			del self._penv[:]
 			self.configdict["pkg"].clear()
 			self.configdict["pkginternal"].clear()
+			self.configdict["repo"].clear()
 			self.configdict["defaults"]["USE"] = \
 				" ".join(self.make_defaults_use)
 			self.usemask = self._use_manager.getUseMask()
@@ -1063,6 +1106,7 @@ class config(object):
 
 		pkg_configdict["CATEGORY"] = cat
 		pkg_configdict["PF"] = pf
+		repository = None
 		if mydb:
 			if not hasattr(mydb, "aux_get"):
 				for k in aux_keys:
@@ -1105,6 +1149,38 @@ class config(object):
 			pkginternaluse = " ".join(pkginternaluse)
 		if pkginternaluse != self.configdict["pkginternal"].get("USE", ""):
 			self.configdict["pkginternal"]["USE"] = pkginternaluse
+			has_changed = True
+
+		repo_env = []
+		if repository and repository != Package.UNKNOWN_REPO:
+			repos = []
+			try:
+				repos.extend(repo.name for repo in
+					self.repositories[repository].masters)
+			except KeyError:
+				pass
+			repos.append(repository)
+			for repo in repos:
+				d = self._repo_make_defaults.get(repo)
+				if d is None:
+					d = {}
+				else:
+					# make a copy, since we might modify it with
+					# package.use settings
+					d = d.copy()
+				cpdict = self._use_manager._repo_puse_dict.get(repo, {}).get(cp)
+				if cpdict:
+					repo_puse = ordered_by_atom_specificity(cpdict, cpv_slot)
+					if repo_puse:
+						for x in repo_puse:
+							d["USE"] = d.get("USE", "") + " " + " ".join(x)
+				if d:
+					repo_env.append(d)
+
+		if repo_env or self.configdict["repo"]:
+			self.configdict["repo"].clear()
+			self.configdict["repo"].update(stack_dicts(repo_env,
+				incrementals=self.incrementals))
 			has_changed = True
 
 		defaults = []
@@ -1408,12 +1484,16 @@ class config(object):
 		@return: A matching profile atom string or None if one is not found.
 		"""
 
+		warnings.warn("The config._getProfileMaskAtom() method is deprecated.",
+			DeprecationWarning, stacklevel=2)
+
 		cp = cpv_getkey(cpv)
 		profile_atoms = self.prevmaskdict.get(cp)
 		if profile_atoms:
 			pkg = "".join((cpv, _slot_separator, metadata["SLOT"]))
-			if 'repository' in metadata:
-				pkg = "".join((pkg, _repo_separator, metadata['repository']))
+			repo = metadata.get("repository")
+			if repo and repo != Package.UNKNOWN_REPO:
+				pkg = "".join((pkg, _repo_separator, repo))
 			pkg_list = [pkg]
 			for x in profile_atoms:
 				if match_from_list(x, pkg_list):
@@ -1644,6 +1724,8 @@ class config(object):
 		env_d = getconfig(env_d_filename, expand=False)
 		if env_d:
 			# env_d will be None if profile.env doesn't exist.
+			for k in self._env_d_blacklist:
+				env_d.pop(k, None)
 			self.configdict["env.d"].update(env_d)
 
 	def regenerate(self, useonly=0, use_cache=None):

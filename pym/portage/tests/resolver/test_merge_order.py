@@ -81,6 +81,27 @@ class MergeOrderTestCase(TestCase):
 				"DEPEND": "app-misc/circ-satisfied-a",
 				"RDEPEND": "app-misc/circ-satisfied-a",
 			},
+			"app-misc/circ-smallest-a-1": {
+				"RDEPEND": "app-misc/circ-smallest-b",
+			},
+			"app-misc/circ-smallest-b-1": {
+				"RDEPEND": "app-misc/circ-smallest-a",
+			},
+			"app-misc/circ-smallest-c-1": {
+				"RDEPEND": "app-misc/circ-smallest-d",
+			},
+			"app-misc/circ-smallest-d-1": {
+				"RDEPEND": "app-misc/circ-smallest-e",
+			},
+			"app-misc/circ-smallest-e-1": {
+				"RDEPEND": "app-misc/circ-smallest-c",
+			},
+			"app-misc/circ-smallest-f-1": {
+				"RDEPEND": "app-misc/circ-smallest-g app-misc/circ-smallest-a app-misc/circ-smallest-c",
+			},
+			"app-misc/circ-smallest-g-1": {
+				"RDEPEND": "app-misc/circ-smallest-f",
+			},
 			"app-misc/installed-blocker-a-1" : {
 				"EAPI"   : "2",
 				"DEPEND" : "!app-misc/blocker-buildtime-a",
@@ -169,7 +190,21 @@ class MergeOrderTestCase(TestCase):
 			"kde-base/kmines-3.5.7" : {
 				"DEPEND"  : "kde-base/libkdegames",
 				"RDEPEND" : "kde-base/libkdegames",
-			}
+			},
+			"media-video/libav-0.7_pre20110327" : {
+				"EAPI" : "2",
+				"IUSE" : "X +encode",
+				"RDEPEND" : "!media-video/ffmpeg",
+			},
+			"media-video/ffmpeg-0.7_rc1" : {
+				"EAPI" : "2",
+				"IUSE" : "X +encode",
+			},
+			"virtual/ffmpeg-0.6.90" : {
+				"EAPI" : "2",
+				"IUSE" : "X +encode",
+				"RDEPEND" : "|| ( >=media-video/ffmpeg-0.6.90_rc0-r2[X=,encode=] >=media-video/libav-0.6.90_rc[X=,encode=] )",
+			},
 		}
 
 		installed = {
@@ -221,6 +256,17 @@ class MergeOrderTestCase(TestCase):
 				"RDEPEND": "",
 			},
 			"app-arch/xz-utils-5.0.1" : {},
+			"media-video/ffmpeg-0.7_rc1" : {
+				"EAPI" : "2",
+				"IUSE" : "X +encode",
+				"USE" : "encode",
+			},
+			"virtual/ffmpeg-0.6.90" : {
+				"EAPI" : "2",
+				"IUSE" : "X +encode",
+				"USE" : "encode",
+				"RDEPEND" : "|| ( >=media-video/ffmpeg-0.6.90_rc0-r2[X=,encode=] >=media-video/libav-0.6.90_rc[X=,encode=] )",
+			},
 		}
 
 		test_cases = (
@@ -269,6 +315,18 @@ class MergeOrderTestCase(TestCase):
 				ambiguous_merge_order = True,
 				merge_order_assertions = (("app-misc/circ-satisfied-a-1", "app-misc/circ-satisfied-c-1"),),
 				mergelist = [("app-misc/circ-satisfied-a-1", "app-misc/circ-satisfied-b-1", "app-misc/circ-satisfied-c-1")]),
+			# In the case of multiple runtime cycles, where some cycles
+			# may depend on smaller independent cycles, it's optimal
+			# to merge smaller independent cycles before other cycles
+			# that depend on them.
+			ResolverPlaygroundTestCase(
+				["app-misc/circ-smallest-a", "app-misc/circ-smallest-c", "app-misc/circ-smallest-f"],
+				success = True,
+				ambiguous_merge_order = True,
+				all_permutations = True,
+				mergelist = [('app-misc/circ-smallest-a-1', 'app-misc/circ-smallest-b-1'),
+				('app-misc/circ-smallest-c-1', 'app-misc/circ-smallest-d-1', 'app-misc/circ-smallest-e-1'),
+				('app-misc/circ-smallest-f-1', 'app-misc/circ-smallest-g-1')]),
 			# installed package has buildtime-only blocker
 			# that should be ignored
 			ResolverPlaygroundTestCase(
@@ -343,6 +401,15 @@ class MergeOrderTestCase(TestCase):
 				["app-misc/blocker-runtime-hard-a"],
 				success = False,
 				mergelist = ['app-misc/blocker-runtime-hard-a-1', '!!app-misc/blocker-runtime-hard-a']),
+			# Test swapping of providers for a new-style virtual package,
+			# which relies on delayed evaluation of disjunctive (virtual
+			# and ||) deps as required to solve bug #264434. Note that
+			# this behavior is not supported for old-style PROVIDE virtuals,
+			# as reported in bug #339164.
+			ResolverPlaygroundTestCase(
+				["media-video/libav"],
+				success=True,
+				mergelist = ['media-video/libav-0.7_pre20110327', 'media-video/ffmpeg-0.7_rc1', '!media-video/ffmpeg']),
 			# Test that PORTAGE_PACKAGE_ATOM is merged asap. Optimally,
 			# satisfied deps are always merged after the asap nodes that
 			# depend on them.

@@ -1,5 +1,5 @@
 # repoman: Utilities
-# Copyright 2007-2010 Gentoo Foundation
+# Copyright 2007-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """This module contains utility functions to help repoman find ebuilds to
@@ -20,8 +20,8 @@ __all__ = [
 	"check_metadata"
 ]
 
-import codecs
 import errno
+import io
 import logging
 import sys
 from portage import os
@@ -60,7 +60,7 @@ def detect_vcs_conflicts(options, vcs):
 	if vcs == 'cvs':
 		logging.info("Performing a " + output.green("cvs -n up") + \
 			" with a little magic grep to check for updates.")
-		retval = subprocess_getstatusoutput("cvs -n up 2>&1 | " + \
+		retval = subprocess_getstatusoutput("cvs -n up 2>/dev/null | " + \
 			"egrep '^[^\?] .*' | " + \
 			"egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
 	if vcs == 'svn':
@@ -326,7 +326,7 @@ def get_commit_message_with_editor(editor, message=None):
 		if not (os.WIFEXITED(retval) and os.WEXITSTATUS(retval) == os.EX_OK):
 			return None
 		try:
-			mylines = codecs.open(_unicode_encode(filename,
+			mylines = io.open(_unicode_encode(filename,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['content'], errors='replace'
 				).readlines()

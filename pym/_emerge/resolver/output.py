@@ -26,6 +26,7 @@ from _emerge.Blocker import Blocker
 from _emerge.create_world_atom import create_world_atom
 from _emerge.resolver.output_helpers import ( _DisplayConfig, _tree_display,
 	_PackageCounters, _create_use_string, _format_size, _calc_changelog, PkgInfo)
+from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -151,11 +152,8 @@ class Display(object):
 
 		self.old_use = [flag for flag in self.old_use if flag in self.old_iuse]
 
-		self.use_expand = self.pkgsettings["USE_EXPAND"].lower().split()
-		self.use_expand.sort()
-		self.use_expand.reverse()
-		self.use_expand_hidden = \
-			self.pkgsettings["USE_EXPAND_HIDDEN"].lower().split()
+		self.use_expand = pkg.use.expand
+		self.use_expand_hidden = pkg.use.expand_hidden
 		return
 
 	def include_mask_str(self):
@@ -253,10 +251,10 @@ class Display(object):
 		old_iuse_map = self.map_to_use_expand(self.old_iuse)
 		old_use_map = self.map_to_use_expand(self.old_use)
 
-		self.use_expand.sort()
-		self.use_expand.insert(0, "USE")
+		use_expand = sorted(self.use_expand)
+		use_expand.insert(0, "USE")
 
-		for key in self.use_expand:
+		for key in use_expand:
 			if key in self.use_expand_hidden:
 				continue
 			self.verboseadd += _create_use_string(self.conf, key.upper(),
@@ -315,8 +313,12 @@ class Display(object):
 			try:
 				myfilesdict = self.portdb.getfetchsizes(pkg.cpv,
 					useflags=pkg_info.use, myrepo=pkg.repo)
-			except InvalidDependString:
-				# should have been masked before it was selected
+			except InvalidDependString as e:
+				# FIXME: validate SRC_URI earlier
+				depstr, = self.portdb.aux_get(pkg.cpv,
+					["SRC_URI"], myrepo=pkg.repo)
+				show_invalid_depstring_notice(
+					pkg, depstr, str(e))
 				raise
 			if myfilesdict is None:
 				myfilesdict = "[empty/missing/bad digest]"
@@ -572,6 +574,8 @@ class Display(object):
 	def print_changelog(self):
 		"""Prints the changelog text to std_out
 		"""
+		if not self.changelogs:
+			return
 		writemsg_stdout('\n', noiselevel=-1)
 		for revision, text in self.changelogs:
 			writemsg_stdout(bold('*'+revision) + '\n' + text,

@@ -65,7 +65,7 @@ class BinpkgFetcher(SpawnProcess):
 
 		if pretend:
 			portage.writemsg_stdout("\n%s\n" % uri, noiselevel=-1)
-			self._set_returncode((self.pid, os.EX_OK))
+			self._set_returncode((self.pid, os.EX_OK << 8))
 			self.wait()
 			return
 
@@ -100,6 +100,8 @@ class BinpkgFetcher(SpawnProcess):
 
 		self.args = fetch_args
 		self.env = fetch_env
+		if settings.selinux_enabled():
+			self._selinux_type = settings["PORTAGE_FETCH_T"]
 		SpawnProcess._start(self)
 
 	def _pipe(self, fd_pipes):
