@@ -218,6 +218,7 @@ class ConfigTestCase(TestCase):
 				"layout.conf":
 					(
 						"thin-manifests = true",
+						"manifest-hashes = RMD160 SHA1 SHA256 SHA512 WHIRLPOOL",
 					),
 			}
 		}
