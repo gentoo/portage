@@ -43,10 +43,12 @@ def _gen_valid_repo(name):
 class RepoConfig(object):
 	"""Stores config of one repository"""
 
-	__slots__ = ['aliases', 'eclass_overrides', 'eclass_locations', 'location', 'user_location', 'masters', 'main_repo',
-		'missing_repo_name', 'name', 'priority', 'sync', 'format', 'sign_manifest', 'thin_manifest',
-		'allow_missing_manifest', 'create_manifest', 'disable_manifest', 'cache_is_authoritative',
-		'trust_authoritative_cache', 'manifest_hashes']
+	__slots__ = ('aliases', 'allow_missing_manifest',
+		'cache_is_authoritative', 'create_manifest', 'disable_manifest',
+		'eclass_overrides', 'eclass_locations', 'format', 'location',
+		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
+		'name', 'priority', 'sign_manifest', 'sync', 'thin_manifest',
+		'trust_authoritative_cache', 'user_location')
 
 	def __init__(self, name, repo_opts):
 		"""Build a RepoConfig with options in repo_opts
