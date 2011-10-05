@@ -3126,8 +3126,6 @@ class dblink(object):
 						lines = [lines]
 					for line in lines:
 						for line in line.split('\n'):
-							if not line:
-								continue
 							fields = (funcname, phase, cpv, line)
 							str_buffer.append(' '.join(fields))
 							str_buffer.append('\n')
