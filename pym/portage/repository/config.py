@@ -390,25 +390,29 @@ class RepoConfigLoader(object):
 			if manifest_hashes is not None:
 				manifest_hashes = frozenset(manifest_hashes.upper().split())
 				if MANIFEST2_REQUIRED_HASH not in manifest_hashes:
-					warnings.warn(("Repository named '%s' has a "
+					warnings.warn((_("Repository named '%(repo_name)s' has a "
 						"'manifest-hashes' setting that does not contain "
-						"the '%s' hash which is required by this "
+						"the '%(hash)s' hash which is required by this "
 						"portage version. You will have to upgrade portage "
 						"if you want to generate valid manifests for this "
-						"repository: %s" % (repo.name,
-						MANIFEST2_REQUIRED_HASH,
-						layout_filename)), DeprecationWarning)
+						"repository: %(layout_filename)s") %
+						{"repo_name":repo.name,
+						"hash":MANIFEST2_REQUIRED_HASH,
+						"layout_filename":layout_filename}),
+						DeprecationWarning)
 				unsupported_hashes = manifest_hashes.difference(
 					MANIFEST2_HASH_FUNCTIONS)
 				if unsupported_hashes:
-					warnings.warn(("Repository named '%s' has a "
+					warnings.warn((_("Repository named '%(repo_name)s' has a "
 						"'manifest-hashes' setting that contains one "
-						"or more hash types '%s' which are not supported by "
+						"or more hash types '%(hashes)s' which are not supported by "
 						"this portage version. You will have to upgrade "
 						"portage if you want to generate valid manifests for "
-						"this repository: %s" % (repo.name,
-						" ".join(sorted(unsupported_hashes)),
-						layout_filename)), DeprecationWarning)
+						"this repository: %(layout_filename)s") %
+						{"repo_name":repo.name,
+						"hashes":" ".join(sorted(unsupported_hashes)),
+						"layout_filename":layout_filename}),
+						DeprecationWarning)
 			repo.manifest_hashes = manifest_hashes
 
 			repo.cache_is_authoritative = layout_data.get('authoritative-cache', 'false').lower() == 'true'
