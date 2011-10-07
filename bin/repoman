@@ -2336,7 +2336,7 @@ else:
 		# there's no need to regenerate manifests and all files will be
 		# committed in one big commit at the end.
 		print()
-	else:
+	elif not repo_config.thin_manifest:
 		if vcs == 'cvs':
 			headerstring = "'\$(Header|Id).*\$'"
 		elif vcs == "svn":
