@@ -2435,10 +2435,11 @@ else:
 		print("* aborting commit.")
 		sys.exit(1)
 
-	if vcs in ('cvs', 'svn') and (myupdates or myremoved):
+	# Handle the case where committed files have keywords which
+	# will change and need a priming commit before the Manifest
+	# can be committed.
+	if (myupdates or myremoved) and myheaders:
 		myfiles = myupdates + myremoved
-		if not myheaders and not sign_manifests:
-			myfiles += mymanifests
 		fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
 		mymsg = os.fdopen(fd, "wb")
 		mymsg.write(_unicode_encode(commitmessage))
@@ -2539,7 +2540,6 @@ else:
 			portage.util.write_atomic(x, b''.join(mylines),
 				mode='wb')
 
-	manifest_commit_required = True
 	if vcs in ('cvs', 'svn') and (myupdates or myremoved):
 		myfiles = myupdates + myremoved
 		for x in range(len(myfiles)-1, -1, -1):
@@ -2647,10 +2647,13 @@ else:
 					level=logging.ERROR, noiselevel=-1)
 				sys.exit(retval)
 
-	if vcs in ['git', 'bzr', 'hg'] or manifest_commit_required or signed:
+	if True:
 
 		myfiles = mymanifests[:]
-		if vcs in ['git', 'bzr', 'hg']:
+		# If there are no header (SVN/CVS keywords) changes in
+		# the files, this Manifest commit must include the
+		# other (yet uncommitted) files.
+		if not myheaders:
 			myfiles += myupdates
 			myfiles += myremoved
 		myfiles.sort()
