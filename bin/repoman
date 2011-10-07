@@ -2323,8 +2323,7 @@ else:
 			mymanifests.add(f)
 		else:
 			myupdates.add(f)
-	if vcs in ('git', 'hg'):
-		myupdates.difference_update(myremoved)
+	myupdates.difference_update(myremoved)
 	myupdates = list(myupdates)
 	mymanifests = list(mymanifests)
 	myheaders = []
