@@ -714,6 +714,13 @@ aliases = foo bar
 [kde-testing]
 # override the metadata/layout.conf masters setting from the kde-testing repo
 masters = gentoo kde
+
+[python]
+# override the metadata/layout.conf masters setting from the python repo,
+# so that settings won't be inherited from those masters, and so that
+# those master repos won't be required as dependencies (the user must
+# ensure that any required dependencies such as eclasses are satisfied)
+masters =
 .fi
 .RE
 .TP

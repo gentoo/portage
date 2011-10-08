@@ -66,8 +66,11 @@ class RepoConfig(object):
 		#Locations are computed later.
 		self.eclass_locations = None
 
-		#Masters are only read from layout.conf.
-		self.masters = None
+		# Masters from repos.conf override layout.conf.
+		masters = repo_opts.get('masters')
+		if masters is not None:
+			masters = tuple(masters.split())
+		self.masters = masters
 
 		#The main-repo key makes only sense for the 'DEFAULT' section.
 		self.main_repo = repo_opts.get('main-repo')
@@ -358,12 +361,19 @@ class RepoConfigLoader(object):
 			layout_file = KeyValuePairFileLoader(layout_filename, None, None)
 			layout_data, layout_errors = layout_file.load()
 
-			masters = layout_data.get('masters')
-			if masters and masters.strip():
-				masters = masters.split()
-			else:
-				masters = None
-			repo.masters = masters
+			# Only set masters here if is None, so that repos.conf settings
+			# will override those from layout.conf. This gives the
+			# user control over inherited repositories and their settings
+			# (the user must ensure that any required dependencies such as
+			# eclasses are satisfied).
+			if repo.masters is None:
+				masters = layout_data.get('masters')
+				if masters is not None:
+					# We support empty masters settings here, in case a
+					# repo wants to avoid implicit inheritance of PORTDIR
+					# settings like package.mask.
+					masters = tuple(masters.split())
+				repo.masters = masters
 
 			aliases = layout_data.get('aliases')
 			if aliases and aliases.strip():
