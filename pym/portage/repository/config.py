@@ -474,32 +474,38 @@ class RepoConfigLoader(object):
 		self._prepos_changed = True
 		self._repo_location_list = []
 
+		def get_masters(repo_name, repo, recurse=True):
+			master_repos = []
+			if repo.masters is None:
+				if self.mainRepo() and repo_name != self.mainRepo().name:
+					master_repos = [self.mainRepo()]
+				else:
+					master_repos = []
+			else:
+				for master in repo.masters:
+					if isinstance(master, RepoConfig):
+						master_repos.append(master)
+					else:
+						if master not in prepos:
+							layout_filename = os.path.join(repo.user_location,
+								"metadata", "layout.conf")
+							writemsg_level(_("Unavailable repository '%s' " \
+								"referenced by masters entry in '%s'\n") % \
+								(master_name, layout_filename),
+								level=logging.ERROR, noiselevel=-1)
+						else:
+							master = prepos[master]
+							if recurse:
+								master_repos.extend(get_masters(master.name, master) + [master])
+							else:
+								master_repos.append(master)
+			return master_repos
+
 		#The 'masters' key currently contains repo names. Replace them with the matching RepoConfig.
 		for repo_name, repo in prepos.items():
 			if repo_name == "DEFAULT":
 				continue
-			if repo.masters is None:
-				if self.mainRepo() and repo_name != self.mainRepo().name:
-					repo.masters = self.mainRepo(),
-				else:
-					repo.masters = ()
-			else:
-				if repo.masters and isinstance(repo.masters[0], RepoConfig):
-					# This one has already been processed
-					# because it has an alias.
-					continue
-				master_repos = []
-				for master_name in repo.masters:
-					if master_name not in prepos:
-						layout_filename = os.path.join(repo.user_location,
-							"metadata", "layout.conf")
-						writemsg_level(_("Unavailable repository '%s' " \
-							"referenced by masters entry in '%s'\n") % \
-							(master_name, layout_filename),
-							level=logging.ERROR, noiselevel=-1)
-					else:
-						master_repos.append(prepos[master_name])
-				repo.masters = tuple(master_repos)
+			repo.masters = tuple(get_masters(repo_name, repo))
 
 		#The 'eclass_overrides' key currently contains repo names. Replace them with the matching repo paths.
 		for repo_name, repo in prepos.items():
