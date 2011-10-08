@@ -27,7 +27,7 @@ def main():
 		suite.addTests(getTestFromCommandLine(sys.argv[1:], basedir))
 		return TextTestRunner(verbosity=2).run(suite)
 
-  # the os.walk help mentions relative paths as being quirky
+	# the os.walk help mentions relative paths as being quirky
 	# I was tired of adding dirs to the list, so now we add __test__
 	# to each dir we want tested.
 	for root, dirs, files in os.walk(basedir):
@@ -206,21 +206,21 @@ class TestCase(unittest.TestCase):
 		   unexpected exception.
 		"""
 		try:
-		    callableObj(*args, **kwargs)
+			callableObj(*args, **kwargs)
 		except excClass:
-		    return
+			return
 		else:
-		    if hasattr(excClass,'__name__'): excName = excClass.__name__
-		    else: excName = str(excClass)
-		    raise self.failureException("%s not raised: %s" % (excName, msg))
-			
+			if hasattr(excClass,'__name__'): excName = excClass.__name__
+			else: excName = str(excClass)
+			raise self.failureException("%s not raised: %s" % (excName, msg))
+
 class TextTestRunner(unittest.TextTestRunner):
 	"""
 	We subclass unittest.TextTestRunner to output SKIP for tests that fail but are skippable
 	"""
-	
+
 	def _makeResult(self):
-	        return TextTestResult(self.stream, self.descriptions, self.verbosity)
+		return TextTestResult(self.stream, self.descriptions, self.verbosity)
 
 	def run(self, test):
 		"""
@@ -250,7 +250,7 @@ class TextTestRunner(unittest.TextTestRunner):
 		else:
 			self.stream.writeln("OK")
 		return result
-	
+
 test_cps = ['sys-apps/portage','virtual/portage']
 test_versions = ['1.0', '1.0-r1','2.3_p4','1.0_alpha57']
 test_slots = [ None, '1','gentoo-sources-2.6.17','spankywashere']
