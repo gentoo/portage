@@ -652,7 +652,7 @@ root_config = RootConfig(repoman_settings, trees[root], None)
 # We really only need to cache the metadata that's necessary for visibility
 # filtering. Anything else can be discarded to reduce memory consumption.
 portdb._aux_cache_keys.clear()
-portdb._aux_cache_keys.update(["EAPI", "IUSE", "KEYWORDS", "SLOT"])
+portdb._aux_cache_keys.update(["EAPI", "IUSE", "KEYWORDS", "repository", "SLOT"])
 
 reposplit = myreporoot.split(os.path.sep)
 repolevel = len(reposplit)
