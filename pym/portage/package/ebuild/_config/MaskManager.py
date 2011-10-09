@@ -43,12 +43,11 @@ class MaskManager(object):
 		for repo in repositories.repos_with_profiles():
 			lines = []
 			repo_lines = grab_pmask(repo.location)
-			master_lines = []
 			for master in repo.masters:
-				master_lines.extend(grab_pmask(master.location))
-			lines.append(stack_lists([master_lines, repo_lines], incremental=1,
-				remember_source_file=True, warn_for_unmatched_removal=True,
-				strict_warn_for_unmatched_removal=strict_umatched_removal))
+				master_lines = grab_pmask(master.location)
+				lines.append(stack_lists([master_lines, repo_lines], incremental=1,
+					remember_source_file=True, warn_for_unmatched_removal=True,
+					strict_warn_for_unmatched_removal=strict_umatched_removal))
 			if not repo.masters:
 				lines.append(stack_lists([repo_lines], incremental=1,
 					remember_source_file=True, warn_for_unmatched_removal=True,
