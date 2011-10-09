@@ -10,6 +10,8 @@ class DoDir(BinTestCase):
 		try:
 			dodir("usr /usr")
 			exists_in_D("/usr")
+			dodir("boot")
+			exists_in_D("/boot")
 			dodir("/var/lib/moocow")
 			exists_in_D("/var/lib/moocow")
 		finally:
