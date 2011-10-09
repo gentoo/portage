@@ -73,9 +73,9 @@ save_elf_debug() {
 		eval $inode=\$x
 		${OBJCOPY} --only-keep-debug "${x}" "${y}"
 		${OBJCOPY} --add-gnu-debuglink="${y}" "${x}"
-		[[ -g ${x} ]] && chmod go-r "${y}"
-		[[ -u ${x} ]] && chmod go-r "${y}"
-		chmod a-x,o-w "${y}"
+		local args="a-x,o-w"
+		[[ -g ${x} || -u ${x} ]] && args+=",go-r"
+		chmod ${args} "${y}"
 	fi
 
 	if [[ -n ${buildid} ]] ; then
