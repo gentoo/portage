@@ -17,38 +17,28 @@ from portage import _encodings
 from portage import _unicode_decode
 
 def main():
-
-	TEST_FILE = b'__test__'
-	svn_dirname = b'.svn'
 	suite = unittest.TestSuite()
 	basedir = os.path.dirname(os.path.realpath(__file__))
-	testDirs = []
 
 	usage = "usage: %s [options] [tests to run]" % os.path.basename(sys.argv[0])
 	parser = OptionParser(usage=usage)
+	parser.add_option("-l", "--list", help="list all tests",
+		action="store_true", dest="list_tests")
 	(options, args) = parser.parse_args(args=sys.argv)
+
+	if options.list_tests:
+		testdir = os.path.dirname(sys.argv[0])
+		for mydir in getTestDirs(basedir):
+			testsubdir = os.path.basename(mydir)
+			for name in getTestNames(mydir):
+				print("%s/%s/%s.py" % (testdir, testsubdir, name))
+		sys.exit(0)
 
 	if len(args) > 1:
 		suite.addTests(getTestFromCommandLine(args[1:], basedir))
 		return TextTestRunner(verbosity=2).run(suite)
 
-	# the os.walk help mentions relative paths as being quirky
-	# I was tired of adding dirs to the list, so now we add __test__
-	# to each dir we want tested.
-	for root, dirs, files in os.walk(basedir):
-		if svn_dirname in dirs:
-			dirs.remove(svn_dirname)
-		try:
-			root = _unicode_decode(root,
-				encoding=_encodings['fs'], errors='strict')
-		except UnicodeDecodeError:
-			continue
-
-		if TEST_FILE in files:
-			testDirs.append(root)
-
-	testDirs.sort()
-	for mydir in testDirs:
+	for mydir in getTestDirs(basedir):
 		suite.addTests(getTests(os.path.join(basedir, mydir), basedir) )
 	return TextTestRunner(verbosity=2).run(suite)
 
@@ -72,6 +62,29 @@ def getTestFromCommandLine(args, base_path):
 		mymodule = f[:-3]
 		result.extend(getTestsFromFiles(path, base_path, [mymodule]))
 	return result
+
+def getTestDirs(base_path):
+	TEST_FILE = b'__test__'
+	svn_dirname = b'.svn'
+	testDirs = []
+
+	# the os.walk help mentions relative paths as being quirky
+	# I was tired of adding dirs to the list, so now we add __test__
+	# to each dir we want tested.
+	for root, dirs, files in os.walk(base_path):
+		if svn_dirname in dirs:
+			dirs.remove(svn_dirname)
+		try:
+			root = _unicode_decode(root,
+				encoding=_encodings['fs'], errors='strict')
+		except UnicodeDecodeError:
+			continue
+
+		if TEST_FILE in files:
+			testDirs.append(root)
+
+	testDirs.sort()
+	return testDirs
 
 def getTestNames(path):
 	files = os.listdir(path)
