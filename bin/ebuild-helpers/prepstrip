@@ -25,11 +25,6 @@ export SAFE_STRIP_FLAGS="--strip-unneeded"
 export PORTAGE_STRIP_FLAGS=${PORTAGE_STRIP_FLAGS-${SAFE_STRIP_FLAGS} -R .comment}
 prepstrip_sources_dir=/usr/src/debug/${CATEGORY}/${PF}
 
-if has installsources ${FEATURES} && ! type -P debugedit >/dev/null ; then
-	ewarn "FEATURES=installsources is enabled but the debugedit binary could not"
-	ewarn "be found. This feature will not work unless debugedit is installed!"
-fi
-
 unset ${!INODE_*}
 
 inode_var_name() {
@@ -43,7 +38,11 @@ inode_var_name() {
 save_elf_sources() {
 	has installsources ${FEATURES} || return 0
 	has installsources ${RESTRICT} && return 0
-	type -P debugedit >/dev/null || return 0
+	if ! type -P debugedit >/dev/null ; then
+		ewarn "FEATURES=installsources is enabled but the debugedit binary could not"
+		ewarn "be found. This feature will not work unless debugedit is installed!"
+		return 0
+	fi
 
 	local x=$1
 	local inode=$(inode_var_name "$x")
