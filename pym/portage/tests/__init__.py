@@ -5,6 +5,7 @@
 import sys
 import time
 import unittest
+from optparse import OptionParser, OptionValueError
 
 try:
 	from unittest.runner import _TextTestResult # new in python-2.7
@@ -23,8 +24,12 @@ def main():
 	basedir = os.path.dirname(os.path.realpath(__file__))
 	testDirs = []
 
-	if len(sys.argv) > 1:
-		suite.addTests(getTestFromCommandLine(sys.argv[1:], basedir))
+	usage = "usage: %s [options] [tests to run]" % os.path.basename(sys.argv[0])
+	parser = OptionParser(usage=usage)
+	(options, args) = parser.parse_args(args=sys.argv)
+
+	if len(args) > 1:
+		suite.addTests(getTestFromCommandLine(args[1:], basedir))
 		return TextTestRunner(verbosity=2).run(suite)
 
 	# the os.walk help mentions relative paths as being quirky
