@@ -37,6 +37,9 @@ def binTestsInit():
 	env["PATH"] = bindir + ":" + env["PATH"]
 	env["PORTAGE_BIN_PATH"] = bindir
 	env["PORTAGE_PYM_PATH"] = pymdir
+	env["PORTAGE_INST_UID"] = str(os.getuid())
+	env["PORTAGE_INST_GID"] = str(os.getgid())
+	env["DESTTREE"] = "/usr"
 	os.mkdir(env["D"])
 	os.mkdir(env["T"])
 	os.mkdir(env["S"])
