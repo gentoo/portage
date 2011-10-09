@@ -55,7 +55,7 @@ def my_import(name):
 	return mod
 
 def getTestFromCommandLine(args, base_path):
-	ret = []
+	result = []
 	for arg in args:
 		realpath = os.path.realpath(arg)
 		path = os.path.dirname(realpath)
@@ -65,29 +65,16 @@ def getTestFromCommandLine(args, base_path):
 			raise Exception("Invalid argument: '%s'" % arg)
 
 		mymodule = f[:-3]
+		result.extend(getTestsFromFiles(path, base_path, [mymodule]))
+	return result
 
-		parent_path = path[len(base_path)+1:]
-		parent_module = ".".join(("portage", "tests", parent_path))
-		parent_module = parent_module.replace('/', '.')
-		result = []
-
-		# Make the trailing / a . for module importing
-		modname = ".".join((parent_module, mymodule))
-		mod = my_import(modname)
-		ret.append(unittest.TestLoader().loadTestsFromModule(mod))
-	return ret
-
-def getTests(path, base_path):
-	"""
-
-	path is the path to a given subdir ( 'portage/' for example)
-	This does a simple filter on files in that dir to give us modules
-	to import
-
-	"""
+def getTestNames(path):
 	files = os.listdir(path)
 	files = [ f[:-3] for f in files if f.startswith("test") and f.endswith(".py") ]
 	files.sort()
+	return files
+
+def getTestsFromFiles(path, base_path, files):
 	parent_path = path[len(base_path)+1:]
 	parent_module = ".".join(("portage", "tests", parent_path))
 	parent_module = parent_module.replace('/', '.')
@@ -98,6 +85,16 @@ def getTests(path, base_path):
 		mod = my_import(modname)
 		result.append(unittest.TestLoader().loadTestsFromModule(mod))
 	return result
+
+def getTests(path, base_path):
+	"""
+
+	path is the path to a given subdir ( 'portage/' for example)
+	This does a simple filter on files in that dir to give us modules
+	to import
+
+	"""
+	return getTestsFromFiles(path, base_path, getTestNames(path))
 
 class TextTestResult(_TextTestResult):
 	"""
