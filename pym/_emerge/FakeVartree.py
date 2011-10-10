@@ -150,7 +150,7 @@ class FakeVartree(vartree):
 			self.dbapi.aux_get = self._aux_get
 			self.settings._populate_treeVirtuals_if_needed(self)
 		finally:
-			if dynamic_deps:
+			if self._dynamic_deps:
 				self.dbapi.aux_get = self._aux_get_wrapper
 
 	def _sync(self):
