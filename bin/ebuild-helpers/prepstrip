@@ -4,14 +4,26 @@
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
+# avoid multiple calls to `has`.  this creates things like:
+#   FEATURES_foo=false
+# if "foo" is not in $FEATURES
+tf() { "$@" && echo true || echo false ; }
+exp_tf() {
+	local flag var=$1
+	shift
+	for flag in "$@" ; do
+		eval ${var}_${flag}=$(tf has ${flag} ${!var})
+	done
+}
+exp_tf FEATURES installsources nostrip splitdebug
+exp_tf RESTRICT binchecks installsources strip
+
 banner=false
 SKIP_STRIP=false
-if has nostrip ${FEATURES} || \
-   has strip ${RESTRICT}
-then
+if ${RESTRICT_strip} || ${FEATURES_nostrip} ; then
 	SKIP_STRIP=true
 	banner=true
-	has installsources ${FEATURES} || exit 0
+	${FEATURES_installsources} || exit 0
 fi
 
 STRIP=${STRIP:-${CHOST}-strip}
@@ -36,8 +48,8 @@ inode_var_name() {
 }
 
 save_elf_sources() {
-	has installsources ${FEATURES} || return 0
-	has installsources ${RESTRICT} && return 0
+	${FEATURES_installsources} || return 0
+	${RESTRICT_installsources} && return 0
 	if ! type -P debugedit >/dev/null ; then
 		ewarn "FEATURES=installsources is enabled but the debugedit binary could not"
 		ewarn "be found. This feature will not work unless debugedit is installed!"
@@ -52,7 +64,7 @@ save_elf_sources() {
 }
 
 save_elf_debug() {
-	has splitdebug ${FEATURES} || return 0
+	${FEATURES_splitdebug} || return 0
 
 	local x=$1
 	local y="${D}usr/lib/debug/${x:${#D}}.debug"
@@ -89,8 +101,7 @@ save_elf_debug() {
 # The existance of the section .symtab tells us that a binary is stripped.
 # We want to log already stripped binaries, as this may be a QA violation.
 # They prevent us from getting the splitdebug data.
-if ! has binchecks ${RESTRICT} && \
-	! has strip ${RESTRICT} ; then
+if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
 	log=$T/scanelf-already-stripped.log
 	qa_var="QA_PRESTRIPPED_${ARCH/-/_}"
 	[[ -n ${!qa_var} ]] && QA_PRESTRIPPED="${!qa_var}"
@@ -172,9 +183,9 @@ do
 done
 
 if [[ -s ${T}/debug.sources ]] && \
-        has installsources ${FEATURES} && \
-        ! has installsources ${RESTRICT} && \
-        type -P debugedit >/dev/null
+   ${FEATURES_installsources} && \
+   ! ${RESTRICT_installsources} && \
+   type -P debugedit >/dev/null
 then
 	vecho "installsources: rsyncing source files"
 	[[ -d ${D}${prepstrip_sources_dir} ]] || mkdir -p "${D}${prepstrip_sources_dir}"
