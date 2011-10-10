@@ -556,6 +556,32 @@ class depgraph(object):
 			"binpkg_respect_use") in ("y", "n"):
 			return
 
+		for pkg in list(self._dynamic_config.ignored_binaries):
+
+			selected_pkg = self._dynamic_config.mydbapi[pkg.root
+				].match_pkgs(pkg.slot_atom)
+
+			if not selected_pkg:
+				continue
+
+			selected_pkg = selected_pkg[-1]
+			if selected_pkg > pkg:
+				self._dynamic_config.ignored_binaries.pop(pkg)
+				continue
+
+			if selected_pkg.installed and \
+				selected_pkg.cpv == pkg.cpv and \
+				selected_pkg.metadata.get('BUILD_TIME') == \
+				pkg.metadata.get('BUILD_TIME'):
+				# We don't care about ignored binaries when an
+				# identical installed instance is selected to
+				# fill the slot.
+				self._dynamic_config.ignored_binaries.pop(pkg)
+				continue
+
+		if not self._dynamic_config.ignored_binaries:
+			return
+
 		self._show_merge_list()
 
 		writemsg("\n!!! The following binary packages have been ignored " + \
