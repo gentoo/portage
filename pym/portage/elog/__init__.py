@@ -52,11 +52,11 @@ def _combine_logentries(logentries):
 		for msgtype, msgcontent in logentries[phase]:
 			if previous_type != msgtype:
 				previous_type = msgtype
-				rValue.append("%s: %s\n" % (msgtype, phase))
+				rValue.append("%s: %s" % (msgtype, phase))
 			for line in msgcontent:
-				rValue.append(line)
-			rValue.append("\n")
-	return "".join(rValue)
+				rValue.append(line.rstrip("\n"))
+			rValue.append("")
+	return "\n".join(rValue)
 
 _elog_mod_imports = {}
 def _load_mod(name):
