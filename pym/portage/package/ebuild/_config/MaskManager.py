@@ -7,7 +7,8 @@ __all__ = (
 
 from portage import os
 from portage.dep import ExtendedAtomDict, match_from_list, _repo_separator, _slot_separator
-from portage.util import append_repo, grabfile_package, stack_lists
+from portage.localization import _
+from portage.util import append_repo, grabfile_package, stack_lists, writemsg
 from portage.versions import cpv_getkey
 from _emerge.Package import Package
 
@@ -43,14 +44,48 @@ class MaskManager(object):
 		for repo in repositories.repos_with_profiles():
 			lines = []
 			repo_lines = grab_pmask(repo.location)
+			removals = frozenset(line[0][1:] for line in repo_lines
+				if line[0][:1] == "-")
+			matched_removals = set()
 			for master in repo.masters:
 				master_lines = grab_pmask(master.location)
+				for line in master_lines:
+					if line[0] in removals:
+						matched_removals.add(line[0])
+				# Since we don't stack masters recursively, there aren't any
+				# atoms earlier in the stack to be matched by negative atoms in
+				# master_lines. Also, repo_lines may contain negative atoms
+				# that are intended to negate atoms from a different master
+				# than the one with which we are currently stacking. Therefore,
+				# we disable warn_for_unmatched_removal here (see bug #386569).
 				lines.append(stack_lists([master_lines, repo_lines], incremental=1,
-					remember_source_file=True, warn_for_unmatched_removal=True,
-					strict_warn_for_unmatched_removal=strict_umatched_removal))
-			if not repo.masters:
+					remember_source_file=True, warn_for_unmatched_removal=False))
+
+			# It's safe to warn for unmatched removal if masters have not
+			# been overridden by the user, which is guaranteed when
+			# user_config is false (when called by repoman).
+			if repo.masters:
+				unmatched_removals = removals.difference(matched_removals)
+				if unmatched_removals and not user_config:
+					source_file = os.path.join(repo.location,
+						"profiles", "package.mask")
+					unmatched_removals = list(unmatched_removals)
+					if len(unmatched_removals) > 3:
+						writemsg(
+							_("--- Unmatched removal atoms in %s: %s and %s more\n") %
+							(source_file,
+							", ".join("-" + x for x in unmatched_removals[:3]),
+							len(unmatched_removals) - 3), noiselevel=-1)
+					else:
+						writemsg(
+							_("--- Unmatched removal atom(s) in %s: %s\n") %
+							(source_file,
+							", ".join("-" + x for x in unmatched_removals)),
+							noiselevel=-1)
+
+			else:
 				lines.append(stack_lists([repo_lines], incremental=1,
-					remember_source_file=True, warn_for_unmatched_removal=True,
+					remember_source_file=True, warn_for_unmatched_removal=not user_config,
 					strict_warn_for_unmatched_removal=strict_umatched_removal))
 			repo_pkgmasklines.extend(append_repo(stack_lists(lines), repo.name, remember_source_file=True))
 
