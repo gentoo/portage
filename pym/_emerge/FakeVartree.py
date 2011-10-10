@@ -62,10 +62,10 @@ class FakeVartree(vartree):
 		# metadata.  This ensures that the vardb lock is released ASAP, without
 		# being delayed in case cache generation is triggered.
 		self._aux_get = self.dbapi.aux_get
+		self._match = self.dbapi.match
 		if dynamic_deps:
 			self.dbapi.aux_get = self._aux_get_wrapper
-		self._match = self.dbapi.match
-		self.dbapi.match = self._match_wrapper
+			self.dbapi.match = self._match_wrapper
 		self._aux_get_history = set()
 		self._portdb_keys = ["EAPI", "DEPEND", "RDEPEND", "PDEPEND"]
 		self._portdb = portdb
