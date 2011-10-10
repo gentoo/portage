@@ -34,15 +34,18 @@ def main():
 			testsubdir = os.path.basename(mydir)
 			for name in getTestNames(mydir):
 				print("%s/%s/%s.py" % (testdir, testsubdir, name))
-		sys.exit(0)
+		return os.EX_OK
 
 	if len(args) > 1:
 		suite.addTests(getTestFromCommandLine(args[1:], basedir))
-		return TextTestRunner(verbosity=2).run(suite)
+	else:
+		for mydir in getTestDirs(basedir):
+			suite.addTests(getTests(os.path.join(basedir, mydir), basedir))
 
-	for mydir in getTestDirs(basedir):
-		suite.addTests(getTests(os.path.join(basedir, mydir), basedir) )
-	return TextTestRunner(verbosity=2).run(suite)
+	result = TextTestRunner(verbosity=2).run(suite)
+	if not result.wasSuccessful():
+		return 1
+	return os.EX_OK
 
 def my_import(name):
 	mod = __import__(name)
