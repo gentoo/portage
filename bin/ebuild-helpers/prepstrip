@@ -36,9 +36,9 @@ type -P -- ${OBJCOPY} > /dev/null || OBJCOPY=objcopy
 export SAFE_STRIP_FLAGS="--strip-unneeded"
 export PORTAGE_STRIP_FLAGS=${PORTAGE_STRIP_FLAGS-${SAFE_STRIP_FLAGS} -R .comment}
 prepstrip_sources_dir=/usr/src/debug/${CATEGORY}/${PF}
-type -P debugedit >/dev/null
-debugedit_found=$?
-debugedit_warned=
+
+type -P debugedit >/dev/null && debugedit_found=true || debugedit_found=false
+debugedit_warned=false
 
 unset ${!INODE_*}
 
@@ -53,9 +53,9 @@ inode_var_name() {
 save_elf_sources() {
 	${FEATURES_installsources} || return 0
 	${RESTRICT_installsources} && return 0
-	if [ ${debugedit_found} -ne 0 ] ; then
-		if [ -z ${debugedit_warned} ] ; then
-			debugedit_warned=1
+	if ! ${debugedit_found} ; then
+		if ! ${debugedit_warned} ; then
+			debugedit_warned=true
 			ewarn "FEATURES=installsources is enabled but the debugedit binary could not"
 			ewarn "be found. This feature will not work unless debugedit is installed!"
 		fi
@@ -79,7 +79,7 @@ save_elf_debug() {
 	[[ ${x} == *".debug" ]] && return 0
 
 	# this will recompute the build-id, but for now that's ok
-	local buildid="$( [ ${debugedit_found} -eq 0 ] && debugedit -i "${x}" )"
+	local buildid="$( ${debugedit_found} && debugedit -i "${x}" )"
 
 	mkdir -p $(dirname "${y}")
 
@@ -191,7 +191,7 @@ done
 if [[ -s ${T}/debug.sources ]] && \
    ${FEATURES_installsources} && \
    ! ${RESTRICT_installsources} && \
-   [ ${debugedit_found} -eq 0 ]
+   ${debugedit_found}
 then
 	vecho "installsources: rsyncing source files"
 	[[ -d ${D}${prepstrip_sources_dir} ]] || mkdir -p "${D}${prepstrip_sources_dir}"
