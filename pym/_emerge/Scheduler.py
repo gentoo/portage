@@ -304,10 +304,11 @@ class Scheduler(PollScheduler):
 		"""
 		self._set_graph_config(graph_config)
 		self._blocker_db = {}
+		dynamic_deps = myopts.get("--dynamic-deps", "y") != "n"
 		for root in self.trees:
 			if graph_config is None:
 				fake_vartree = FakeVartree(self.trees[root]["root_config"],
-					pkg_cache=self._pkg_cache)
+					pkg_cache=self._pkg_cache, dynamic_deps=dynamic_deps)
 				fake_vartree.sync()
 			else:
 				fake_vartree = graph_config.trees[root]['vartree']

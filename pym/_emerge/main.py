@@ -684,6 +684,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices" : true_y_or_n
 		},
 
+		"--dynamic-deps": {
+			"help": "substitute the dependencies of installed packages with the dependencies of unbuilt ebuilds",
+			"type": "choice",
+			"choices": y_or_n
+		},
+
 		"--exclude": {
 			"help"   :"A space separated list of package names or slot atoms. " + \
 				"Emerge won't  install any ebuild or binary package that " + \

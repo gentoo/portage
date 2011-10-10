@@ -21,6 +21,10 @@ def create_depgraph_params(myopts, myaction):
 	if bdeps is not None:
 		myparams["bdeps"] = bdeps
 
+	dynamic_deps = myopts.get("--dynamic-deps")
+	if dynamic_deps is not None:
+		myparams["dynamic_deps"] = dynamic_deps
+
 	if myaction == "remove":
 		myparams["remove"] = True
 		myparams["complete"] = True

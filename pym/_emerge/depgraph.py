@@ -109,6 +109,7 @@ class _frozen_depgraph_config(object):
 		# All Package instances
 		self._pkg_cache = {}
 		self._highest_license_masked = {}
+		dynamic_deps = myopts.get("--dynamic-deps", "y") != "n"
 		for myroot in trees:
 			self.trees[myroot] = {}
 			# Create a RootConfig instance that references
@@ -122,7 +123,8 @@ class _frozen_depgraph_config(object):
 			self.trees[myroot]["vartree"] = \
 				FakeVartree(trees[myroot]["root_config"],
 					pkg_cache=self._pkg_cache,
-					pkg_root_config=self.roots[myroot])
+					pkg_root_config=self.roots[myroot],
+					dynamic_deps=dynamic_deps)
 			self.pkgsettings[myroot] = portage.config(
 				clone=self.trees[myroot]["vartree"].settings)
 
@@ -514,6 +516,8 @@ class depgraph(object):
 
 		for myroot in self._frozen_config.trees:
 
+			dynamic_deps = self._dynamic_config.myparams.get(
+				"dynamic_deps", "y") != "n"
 			preload_installed_pkgs = \
 				"--nodeps" not in self._frozen_config.myopts
 
@@ -535,8 +539,11 @@ class depgraph(object):
 
 				for pkg in vardb:
 					self._spinner_update()
-					# This triggers metadata updates via FakeVartree.
-					vardb.aux_get(pkg.cpv, [])
+					if dynamic_deps:
+						# This causes FakeVartree to update the
+						# Package instance dependencies via
+						# PackageVirtualDbapi.aux_update()
+						vardb.aux_get(pkg.cpv, [])
 					fakedb.cpv_inject(pkg)
 
 		self._dynamic_config._vdb_loaded = True

@@ -37,8 +37,10 @@ class FakeVartree(vartree):
 	global updates are necessary (updates are performed when necessary if there
 	is not a matching ebuild in the tree). Instances of this class are not
 	populated until the sync() method is called."""
-	def __init__(self, root_config, pkg_cache=None, pkg_root_config=None):
+	def __init__(self, root_config, pkg_cache=None, pkg_root_config=None,
+		dynamic_deps=True):
 		self._root_config = root_config
+		self._dynamic_deps = dynamic_deps
 		if pkg_root_config is None:
 			pkg_root_config = self._root_config
 		self._pkg_root_config = pkg_root_config
@@ -60,7 +62,8 @@ class FakeVartree(vartree):
 		# metadata.  This ensures that the vardb lock is released ASAP, without
 		# being delayed in case cache generation is triggered.
 		self._aux_get = self.dbapi.aux_get
-		self.dbapi.aux_get = self._aux_get_wrapper
+		if dynamic_deps:
+			self.dbapi.aux_get = self._aux_get_wrapper
 		self._match = self.dbapi.match
 		self.dbapi.match = self._match_wrapper
 		self._aux_get_history = set()
