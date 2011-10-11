@@ -1542,15 +1542,24 @@ def _post_src_install_chost_fix(settings):
 	"""
 	It's possible that the ebuild has changed the
 	CHOST variable, so revert it to the initial
-	setting.
+	setting. Also, revert IUSE in case it's corrupted
+	due to local environment settings like in bug #386829.
 	"""
-	if settings.get('CATEGORY') == 'virtual':
-		return
 
-	chost = settings.get('CHOST')
-	if chost:
-		write_atomic(os.path.join(settings['PORTAGE_BUILDDIR'],
-			'build-info', 'CHOST'), chost + '\n')
+	build_info_dir = os.path.join(settings['PORTAGE_BUILDDIR'], 'build-info')
+
+	for k in ('IUSE',):
+		v = settings.get(k)
+		if v is not None:
+			write_atomic(os.path.join(build_info_dir, k), v + '\n')
+
+	# The following variables are irrelevant for virtual packages.
+	if settings.get('CATEGORY') != 'virtual':
+
+		for k in ('CHOST',):
+			v = settings.get(k)
+			if v is not None:
+				write_atomic(os.path.join(build_info_dir, k), v + '\n')
 
 _vdb_use_conditional_keys = ('DEPEND', 'LICENSE', 'PDEPEND',
 	'PROPERTIES', 'PROVIDE', 'RDEPEND', 'RESTRICT',)
