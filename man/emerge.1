@@ -415,13 +415,11 @@ installed packages to vary dynamically when source ebuild dependencies
 are modified. This option is enabled by default.
 
 \fBWARNING:\fR
-If \-\-dynamic\-deps is disabled, then it is necessary to ensure that
-an alternative method is used to handle package moves in dependencies
-of installed packages. Normally, this is handled by
-FEATURES="fixpackages", which is enabled by default and may be
-disabled via \fBmake.conf\fR(5). Alternatively, in order to manually
-apply package moves, run `emaint \-\-fix moveinst` after each
-emerge \-\-sync operation (see \fBemaint\fR(1)).
+If you want to disable \-\-dynamic\-deps, then it may be necessary to
+first run \fBfixpackages\fR in order to get the best results. The
+\fBfixpackages\fR command performs two different operations that can
+also be performed separately by the `emaint \-\-fix moveinst` and
+`emaint \-\-fix movebin` commands (see \fBemaint\fR(1)).
 .TP
 .BR "\-\-emptytree " (\fB\-e\fR)
 Reinstalls target atoms and their entire deep
