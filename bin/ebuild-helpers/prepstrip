@@ -81,7 +81,7 @@ save_elf_debug() {
 	# this will recompute the build-id, but for now that's ok
 	local buildid="$( ${debugedit_found} && debugedit -i "${x}" )"
 
-	mkdir -p $(dirname "${y}")
+	mkdir -p "${y%/*}"
 
 	local inode=$(inode_var_name "$x")
 	if [[ -n ${!inode} ]] ; then
