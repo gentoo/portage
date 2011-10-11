@@ -26,10 +26,13 @@ if ${RESTRICT_strip} || ${FEATURES_nostrip} ; then
 	${FEATURES_installsources} || exit 0
 fi
 
-STRIP=${STRIP:-${CHOST}-strip}
-type -P -- ${STRIP} > /dev/null || STRIP=strip
-OBJCOPY=${OBJCOPY:-${CHOST}-objcopy}
-type -P -- ${OBJCOPY} > /dev/null || OBJCOPY=objcopy
+# look up the tools we might be using
+for t in STRIP:strip OBJCOPY:objcopy READELF:readelf ; do
+	v=${t%:*} # STRIP
+	t=${t#*:} # strip
+	eval ${v}=\"${!v:-${CHOST}-${t}}\"
+	type -P -- ${!v} >/dev/null || eval ${v}=${t}
+done
 
 # We'll leave out -R .note for now until we can check out the relevance
 # of the section when it has the ALLOC flag set on it ...
@@ -65,8 +68,15 @@ save_elf_sources() {
 	local x=$1
 	local inode=$(inode_var_name "$x")
 	[[ -n ${!inode} ]] && return 0
-	debugedit -b "${WORKDIR}" -d "${prepstrip_sources_dir}" \
-		-l "${T}"/debug.sources "${x}"
+
+	# since we're editing the ELF here, we should recompute the build-id
+	# (the -i flag below).  save that output so we don't need to recompute
+	# it later on in the save_elf_debug step.
+	buildid=$(debugedit -i \
+		-b "${WORKDIR}" \
+		-d "${prepstrip_sources_dir}" \
+		-l "${T}"/debug.sources \
+		"${x}")
 }
 
 save_elf_debug() {
@@ -77,9 +87,6 @@ save_elf_debug() {
 
 	# dont save debug info twice
 	[[ ${x} == *".debug" ]] && return 0
-
-	# this will recompute the build-id, but for now that's ok
-	local buildid="$( ${debugedit_found} && debugedit -i "${x}" )"
 
 	mkdir -p "${y%/*}"
 
@@ -95,6 +102,12 @@ save_elf_debug() {
 		chmod ${args} "${y}"
 	fi
 
+	# if we don't already have build-id from debugedit, look it up
+	if [[ -z ${buildid} ]] ; then
+		# convert the readelf output to something useful
+		buildid=$(${READELF} -x .note.gnu.build-id "${x}" 2>/dev/null \
+			| awk '$NF ~ /GNU/ { getline; printf $2$3$4$5; getline; print $2 }')
+	fi
 	if [[ -n ${buildid} ]] ; then
 		local buildid_dir="${D}usr/lib/debug/.build-id/${buildid:0:2}"
 		local buildid_file="${buildid_dir}/${buildid:2}"
@@ -165,6 +178,7 @@ do
 	# actually causes problems.  install sources for all
 	# elf types though cause that stuff is good.
 
+	buildid=
 	if [[ ${f} == *"current ar archive"* ]] ; then
 		vecho "   ${x:${#D}}"
 		if ${strip_this} ; then
