@@ -1,193 +1,150 @@
-.TH XPAK 5 "Apr 2009" "Portage VERSION" "Portage"
+.TH XPAK 5 "Oct 2011" "Portage VERSION" "Portage"
 .SH NAME
-xpak \- The XPAK Data Format
+xpak \- The XPAK Data Format used with Portage binary packages
+.SH DESCRIPTION
+Every Gentoo binary package has a xpak attached to it which contains build
+time information like the USE flags it was built with, the ebuild it was
+built from, the environmental variables, CFLAGS, CXXFLAGS, etc...
 .SH NOTES
 .SS Data Types
+The following conventions cover all occurrences in this documentation
 .IP Integer
-every offset or length(len) value in this documentation will be an unsigned
-32bit integer in big endian byte order(32bit unsigned big int or uint32(big)
-).
+All offsets/lengths are big endian unsigned 32bit integers
 .IP String
-All strings, mentioned in this documentation are ASCII encoded, and not
-nullterminated
+All strings are ASCII encoded, and not NUL terminated (quotes are for illustration only)
 .IP Values
-The actual values of the individual xpak entries are stored as Strings.
+The actual values of the individual xpak entries are stored as Strings
 .P
 .SS Vertical Bars
-The vertical bars '|' are not part of the file format, they are merely used to
+The vertical bars '|' are not part of the file format; they are merely used to
 illustrate how the offset values apply to the data.
-
 .SH SYNOPSIS
-
-.IP tarball
-     |<-xpak_offset->|
-.br
-<tar>|<    xpak     >|<xpak_offset>"STOP"
-
+.IP "binpkg (tbz2)"
+      |<-xpak_offset->|
+ <tar>|<    xpak     >|<xpak_offset>"STOP"
 .IP xpak
-"XPAKPACK"<index_len><data_len><index><data>"XPAKSTOP"
-
+ "XPAKPACK"<index_len><data_len><index><data>"XPAKSTOP"
 .IP index
-|<-------------index_len------------->|
-.br
-|<index1><index2><index3><index4><...>|
-
+ |<-------------index_len------------->|
+ |<index1><index2><index3><index4><...>|
 .IP indexN
-          |<-name_len->|
-.br
-<name_len>|<   name   >|<data_offset><data_len>
-
+           |<-name_len->|
+ <name_len>|<   name   >|<data_offset><data_len>
 .IP data
-|<--------------data_len------------->|
-.br
-|<-dataN_offset->|<-dataN_len->|
-.br
-|<     data     >|<  data_N   >|<data>|
-
-.SH DETAILED
-Every gentoo binary package has a xpak attached to it which contains build
-time information like the use flags it was built with, the ebuild it was
-built from, the environmental variables, CFLAGs, CXXFLAGs, ....
-
+ |<--------------data_len------------->|
+ |<-dataN_offset->|<-dataN_len->|
+ |<     data     >|<  data_N   >|<data>|
+.SH DETAILS
 .SS xpak
 
-If you look at a gentoo binary package (binpkg) with a hex-editor you'll
-notice the behinf the data, which belongs to the tarball you find a binary
-blob - the
-.I xpak
-, an offset which holds the bytes from the start of the
-.I xpak
-to the end of the file - 
-.I xpak_offset
-and finally the String
-.I "STOP".
+If you look at a Gentoo binary package (binpkg) with a hex-editor you'll
+notice that after the tarball of files, you find a binary blob - the
+\fIxpak\fR, an offset which holds the bytes from the start of the
+\fIxpak\fR to the end of the file - \fIxpak_offset\fR and finally the
+String \fI"STOP"\fR.
 
-       |<xpak_offset>|
- <tbz2>|<---xpak---->|<xpak_offset>"STOP"|
+      |<xpak_offset>|
+ <tar>|<---xpak---->|<xpak_offset>"STOP"
 
-Here you see the 
-.I tbz2
-archive, and the attached 
-.I xpak
-blob, the 
-.I xpak-offset
-and
-the string
-.I "STOP"
-at the end.
+Here you see the \fItar\fR archive, the attached \fIxpak\fR blob, the 
+\fIxpak_offset\fR and the string \fI"STOP"\fR at the end.  This metadata
+is not considered "part" of the \fIxpak\fR, but rather part of the binpkg.
 
-If we read the offset value and count
-.I offset
-bytes backwards from the start of
-.I xpak_offset
-, we have found the start of the
-.I xpak
-Block which starts with the String
-.I "XPAKPACK".
-This xpak block consists of the string
-.I "XPAKPACK"
-, the length of the 
-.I index
-block - 
-.I index-len
-, the length of the data block -
-.I data-len
-, an 
-.I index-len
-bytes long binary blob with the 
-.I index
-, a 
-.I data-len
-bytes long binary blob with the
-.I data
-and the string 
-.I "XPAKSTOP"
-at the end:
+If we read the offset value and count \fIoffset\fR bytes backwards from
+the start of \fIxpak_offset\fR, we have found the start of the \fIxpak\fR
+block which starts with the String \fI"XPAKPACK"\fR.
+
+This xpak block consists of the string \fI"XPAKPACK"\fR, the length of the
+\fIindex\fR block (\fIindex_len\fR), the length of the \fIdata\fR block
+(\fIdata_len\fR), an \fIindex_len\fR bytes long binary blob with the
+\fIindex\fR, a \fIdata_len\fR bytes long binary blob with the \fIdata\fR,
+and the string \fI"XPAKSTOP"\fR at the end:
 
                                 |<index_len>|<data_len>|
  "XPAKPACK"<index_len><data_len>|<--index-->|<--data-->|"XPAKSTOP"
 
-To actually get the 
-.I index
-and the
-.I data
-, we cut out
-.I index_len
-bytes after the end of 
-.I data_len
- for the index block and then cut out the next 
-.I data_len
-bytes for the data block. If we have done everything right up to this point,
-the following bytes would be the ASCII formatted string
-.I "XPAKSTOP"
-.
+To actually get the \fIindex\fR and the \fIdata\fR, we cut out \fIindex_len\fR
+bytes after the end of \fIdata_len\fR for the \fIindex\fR block, and then cut
+out the next \fIdata_len\fR bytes for the \fIdata\fR block.  If we have done
+everything right up to this point, the following bytes would be the ASCII
+formatted string \fI"XPAKSTOP"\fR.
 
-The actual data is truncated into one big block - so if we want to read it we
-need the actual positions of each information in this big data block, this
+The actual \fIdata\fR is merged into one big block; so if we want to read it,
+we need the actual positions of each information in this big data block.  This
 information can be obtained using the indices which are stored in the
-.I index
-block.
+\fIindex\fR block.
 
 .SS Index block
-The index block consists of several truncated index blocks:
+The \fIindex\fR block consists of several indices:
 
  |<-----------------------index_len---------------------->|
  |<index1><index2><index3><index4><index5><index6><index7>|
 
-The
-.I index
-block holds all information we need to find the data we want in the 
-.I data
-block. It consists of truncated index elements with a length
-.I index_len.
-Each of those index elements stands for one information in the data block and
-consists of the length of its name (
-.I name_len>
-), a 
-.I name_len
- bytes long string (the Name of the data block), this index belongs to, the
-offset of the 
-.I data
-block (
-.I data_offset
-) and the length of that data block (
-.I data_len
-):
+The \fIindex\fR block holds all the information we need to find the data we
+want in the \fIdata\fR block.  It consists of multiple index elements, all of
+which add up to the total length \fIindex_len\fR.  It is not zero delimited
+or anything else.
+
+Each of those elements corresponds to one chunk of data in the \fIdata\fR
+block: the length of that block's name (\fIname_len\fR), a \fIname_len\fR
+bytes long string, the offset of that block (\fIdataN_offset\fR) and the
+length of that block (\fIdataN_len\fR):
 
            |<name_len>|
  <name_len>|<--name-->|<dataN_offset><dataN_len>
 
 .SS Data block
-the data block contains truncated data blocks with a total length of
-.I data_len
-:
+The \fIdata\fR block contains multiple chunks of data with a total length of
+\fIdata_len\fR:
 
  |<------------------------data_len------------------------>|
  |<data1><data2><data3><data4><data5><data6><data7><data...>|
 
-This binary block is
-.I data_len
-bytes long and consists of truncated data.
-
-To select one data element, we need the
-.I data_offset
-and the
-.I data_len
-from
-the
-.I index
-, if we have those we can count
-.I data_offset
-bytes from the start of the
-.I data
-block, and then cut out the next
-.I data_len
-bytes. there we got our data block:
+To select one data element, we need the \fIdata_offset\fR and the
+\fIdata_len\fR from the \fIindex\fR.  With those, we can count
+\fIdata_offset\fR bytes from the start of the \fIdata\fR block,
+and then cut out the next \fIdata_len\fR bytes.  Then we got our
+data block:
 
  |<-----dataN_offset----->|<--dataN_len->|
  |<data1data2data3data...>|<data-we-want>|
+.SH EXAMPLES
+Let's say we have an xpak with two chunks of data.  The first has the name
+"file1" with the contents "ddDddDdd" and the second has the name "file2" with
+the contents "jjJjjJjj".  There is no \fI"STOP"\fR or \fIxpak_offset\fR as
+this xpak is not part of a binpkg.
+
+Here is the hexdump output (we will break it down line by line below):
+ 00  58 50 41 4b 50 41 43 4b  00 00 00 20 00 00 00 10  |XPAKPACK... ....|
+ 10  00 00 00 04 66 69 6c 31  00 00 00 00 00 00 00 08  |....fil1........|
+ 20  00 00 00 04 66 69 6c 32  00 00 00 08 00 00 00 08  |....fil2........|
+ 30  64 64 44 64 64 44 64 64  6a 6a 4a 6a 6a 4a 6a 6a  |ddDddDddjjJjjJjj|
+ 40  58 50 41 4b 53 54 4f 50                           |XPAKSTOP|
+
+The \fIindex_len\fR is 32 and the \fIdata_len\fR 16 (as there are 16 bytes:
+"ddDddDdd" and "jjJjjJjj").
+    |<------"XPAKPACK"----->||    32     |    16     |
+ 00  58 50 41 4b 50 41 43 4b  00 00 00 20 00 00 00 10
+
+Now we have the first index element with a \fIname_len\fR of 4, followed
+by the name string "fil1", followed by the data1 offset of 0 and a data1
+len of 8 (since data1 has 8 bytes: "ddDddDdd").
+    |     4     |<--"fil1"->||data1_off:0|data1_len:8|
+ 10  00 00 00 04 66 69 6c 31  00 00 00 00 00 00 00 08
+
+Now we have the second index element with a \fIname_len\fR of 4, followed
+by the name string "fil2", followed by the data2 offset of 8 and a data2
+len of 8 (since data2 has 8 bytes: "jjJjjJjj").
+    |     4     |<--"fil2"->||data2_off:8|data2_len:8|
+ 20  00 00 00 04 66 69 6c 32  00 00 00 08 00 00 00 08
+
+    |<------"XPAKSTOP"----->|
+ 40  58 50 41 4b 53 54 4f 50
 .SH AUTHORS
+.nf
 Lars Hartmann <lars@chaotika.org>
+Mike Frysinger <vapier@gentoo.org>
+.fi
 .SH "SEE ALSO"
 .BR qtbz2 (1),
 .BR quickpkg (1),
