@@ -46,6 +46,8 @@ parser.add_option("--color", help="enable or disable color output",
 	type="choice", choices=("y", "n"))
 parser.add_option("--debug", help="show debug output",
 	action="store_true", dest="debug")
+parser.add_option("--version", help="show version and exit",
+	action="store_true", dest="version")
 parser.add_option("--ignore-default-opts",
 	action="store_true",
 	help="do not use the EBUILD_DEFAULT_OPTS environment variable")
@@ -53,9 +55,6 @@ parser.add_option("--skip-manifest", help="skip all manifest checks",
 	action="store_true", dest="skip_manifest")
 
 opts, pargs = parser.parse_args(args=sys.argv[1:])
-
-if len(pargs) < 2:
-	parser.error("missing required args")
 
 os.environ["PORTAGE_CALLER"]="ebuild"
 # for an explanation on this logic, see pym/_emerge/__init__.py
@@ -76,6 +75,13 @@ from portage import _unicode_encode
 from portage.const import VDB_PATH
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
+
+if opts.version:
+	print("Portage", portage.VERSION)
+	sys.exit(os.EX_OK)
+
+if len(pargs) < 2:
+	parser.error("missing required args")
 
 if not opts.ignore_default_opts:
 	default_opts = portage.settings.get("EBUILD_DEFAULT_OPTS", "").split()

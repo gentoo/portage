@@ -1,5 +1,5 @@
 # elog/mod_syslog.py - elog dispatch module
-# Copyright 2006-2007 Gentoo Foundation
+# Copyright 2006-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -21,12 +21,11 @@ def process(mysettings, key, logentries, fulltext):
 		if not phase in logentries:
 			continue
 		for msgtype,msgcontent in logentries[phase]:
-			msgtext = "".join(msgcontent)
-			for line in msgtext.splitlines():
+			for line in msgcontent:
 				line = "%s: %s: %s" % (key, phase, line)
-				if sys.hexversion < 0x3000000 and isinstance(msgtext, unicode):
+				if sys.hexversion < 0x3000000 and isinstance(line, unicode):
 					# Avoid TypeError from syslog.syslog()
 					line = line.encode(_encodings['content'], 
 						'backslashreplace')
-				syslog.syslog(_pri[msgtype], line)
+				syslog.syslog(_pri[msgtype], line.rstrip("\n"))
 	syslog.closelog()

@@ -217,8 +217,7 @@ def _global_updates(trees, prev_mtimes, quiet=False):
 
 			do_upgrade_packagesmessage = False
 			# We gotta do the brute force updates for these now.
-			if mysettings.get("PORTAGE_CALLER") == "fixpackages" or \
-			"fixpackages" in mysettings.features:
+			if True:
 				def onUpdate(maxval, curval):
 					if curval > 0:
 						writemsg_stdout("#")

@@ -109,6 +109,7 @@ class _frozen_depgraph_config(object):
 		# All Package instances
 		self._pkg_cache = {}
 		self._highest_license_masked = {}
+		dynamic_deps = myopts.get("--dynamic-deps", "y") != "n"
 		for myroot in trees:
 			self.trees[myroot] = {}
 			# Create a RootConfig instance that references
@@ -122,7 +123,8 @@ class _frozen_depgraph_config(object):
 			self.trees[myroot]["vartree"] = \
 				FakeVartree(trees[myroot]["root_config"],
 					pkg_cache=self._pkg_cache,
-					pkg_root_config=self.roots[myroot])
+					pkg_root_config=self.roots[myroot],
+					dynamic_deps=dynamic_deps)
 			self.pkgsettings[myroot] = portage.config(
 				clone=self.trees[myroot]["vartree"].settings)
 
@@ -514,6 +516,8 @@ class depgraph(object):
 
 		for myroot in self._frozen_config.trees:
 
+			dynamic_deps = self._dynamic_config.myparams.get(
+				"dynamic_deps", "y") != "n"
 			preload_installed_pkgs = \
 				"--nodeps" not in self._frozen_config.myopts
 
@@ -535,8 +539,11 @@ class depgraph(object):
 
 				for pkg in vardb:
 					self._spinner_update()
-					# This triggers metadata updates via FakeVartree.
-					vardb.aux_get(pkg.cpv, [])
+					if dynamic_deps:
+						# This causes FakeVartree to update the
+						# Package instance dependencies via
+						# PackageVirtualDbapi.aux_update()
+						vardb.aux_get(pkg.cpv, [])
 					fakedb.cpv_inject(pkg)
 
 		self._dynamic_config._vdb_loaded = True
@@ -554,6 +561,32 @@ class depgraph(object):
 			or '--quiet' in self._frozen_config.myopts \
 			or self._dynamic_config.myparams.get(
 			"binpkg_respect_use") in ("y", "n"):
+			return
+
+		for pkg in list(self._dynamic_config.ignored_binaries):
+
+			selected_pkg = self._dynamic_config.mydbapi[pkg.root
+				].match_pkgs(pkg.slot_atom)
+
+			if not selected_pkg:
+				continue
+
+			selected_pkg = selected_pkg[-1]
+			if selected_pkg > pkg:
+				self._dynamic_config.ignored_binaries.pop(pkg)
+				continue
+
+			if selected_pkg.installed and \
+				selected_pkg.cpv == pkg.cpv and \
+				selected_pkg.metadata.get('BUILD_TIME') == \
+				pkg.metadata.get('BUILD_TIME'):
+				# We don't care about ignored binaries when an
+				# identical installed instance is selected to
+				# fill the slot.
+				self._dynamic_config.ignored_binaries.pop(pkg)
+				continue
+
+		if not self._dynamic_config.ignored_binaries:
 			return
 
 		self._show_merge_list()
@@ -590,6 +623,10 @@ class depgraph(object):
 			if pkg.installed:
 				# Exclude installed here since we only
 				# want to show available updates.
+				continue
+			chosen_pkg = self._dynamic_config.mydbapi[pkg.root
+				].match_pkgs(pkg.slot_atom)
+			if not chosen_pkg or chosen_pkg[-1] >= pkg:
 				continue
 			k = (pkg.root, pkg.slot_atom)
 			if k in missed_updates:
@@ -3685,6 +3722,8 @@ class depgraph(object):
 		if not isinstance(atom, portage.dep.Atom):
 			atom = portage.dep.Atom(atom)
 		atom_cp = atom.cp
+		have_new_virt = atom_cp.startswith("virtual/") and \
+			self._have_new_virt(root, atom_cp)
 		atom_set = InternalPackageSet(initial_atoms=(atom,), allow_repo=True)
 		existing_node = None
 		myeb = None
@@ -3732,6 +3771,9 @@ class depgraph(object):
 				# USE configuration.
 				for pkg in self._iter_match_pkgs(root_config, pkg_type, atom.without_use, 
 					onlydeps=onlydeps):
+					if pkg.cp != atom_cp and have_new_virt:
+						# pull in a new-style virtual instead
+						continue
 					if pkg in self._dynamic_config._runtime_pkg_mask:
 						# The package has been masked by the backtracking logic
 						continue
@@ -3949,6 +3991,7 @@ class depgraph(object):
 						e_pkg = self._dynamic_config._slot_pkg_map[root].get(pkg.slot_atom)
 						if not e_pkg:
 							break
+
 						# Use PackageSet.findAtomForPackage()
 						# for PROVIDE support.
 						if atom_set.findAtomForPackage(e_pkg, modified_use=self._pkg_use_enabled(e_pkg)):
@@ -4480,7 +4523,7 @@ class depgraph(object):
 							# matches (this can happen if an atom lacks a
 							# category).
 							show_invalid_depstring_notice(
-								pkg, depstr, str(e))
+								pkg, depstr, _unicode_decode("%s") % (e,))
 							del e
 							raise
 						if not success:
@@ -4511,7 +4554,8 @@ class depgraph(object):
 						except portage.exception.InvalidAtom as e:
 							depstr = " ".join(vardb.aux_get(pkg.cpv, dep_keys))
 							show_invalid_depstring_notice(
-								pkg, depstr, "Invalid Atom: %s" % (e,))
+								pkg, depstr,
+								_unicode_decode("Invalid Atom: %s") % (e,))
 							return False
 				for cpv in stale_cache:
 					del blocker_cache[cpv]
@@ -6159,13 +6203,14 @@ class depgraph(object):
 			self._show_circular_deps(
 				self._dynamic_config._circular_deps_for_display)
 
-		# The user is only notified of a slot conflict if
-		# there are no unresolvable blocker conflicts.
-		if self._dynamic_config._unsatisfied_blockers_for_display is not None:
+		# The slot conflict display has better noise reduction than
+		# the unsatisfied blockers display, so skip unsatisfied blockers
+		# display if there are slot conflicts (see bug #385391).
+		if self._dynamic_config._slot_collision_info:
+			self._show_slot_collision_notice()
+		elif self._dynamic_config._unsatisfied_blockers_for_display is not None:
 			self._show_unsatisfied_blockers(
 				self._dynamic_config._unsatisfied_blockers_for_display)
-		elif self._dynamic_config._slot_collision_info:
-			self._show_slot_collision_notice()
 		else:
 			self._show_missed_update()
 

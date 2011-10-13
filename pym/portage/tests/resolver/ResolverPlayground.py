@@ -37,7 +37,7 @@ class ResolverPlayground(object):
 	its work.
 	"""
 
-	config_files = frozenset(("package.use", "package.mask", "package.keywords", \
+	config_files = frozenset(("package.accept_keywords", "package.use", "package.mask", "package.keywords", \
 		"package.unmask", "package.properties", "package.license", "use.mask", "use.force",
 		"layout.conf",))
 
@@ -142,6 +142,7 @@ class ResolverPlayground(object):
 			homepage = metadata.pop("HOMEPAGE", None)
 			src_uri = metadata.pop("SRC_URI", None)
 			iuse = metadata.pop("IUSE", "")
+			provide = metadata.pop("PROVIDE", None)
 			depend = metadata.pop("DEPEND", "")
 			rdepend = metadata.pop("RDEPEND", None)
 			pdepend = metadata.pop("PDEPEND", None)
@@ -174,6 +175,8 @@ class ResolverPlayground(object):
 			f.write('SLOT="' + str(slot) + '"\n')
 			f.write('KEYWORDS="' + str(keywords) + '"\n')
 			f.write('IUSE="' + str(iuse) + '"\n')
+			if provide is not None:
+				f.write('PROVIDE="%s"\n' % provide)
 			f.write('DEPEND="' + str(depend) + '"\n')
 			if rdepend is not None:
 				f.write('RDEPEND="' + str(rdepend) + '"\n')
@@ -224,6 +227,7 @@ class ResolverPlayground(object):
 			keywords = metadata.pop("KEYWORDS", "~x86")
 			iuse = metadata.pop("IUSE", "")
 			use = metadata.pop("USE", "")
+			provide = metadata.pop("PROVIDE", None)
 			depend = metadata.pop("DEPEND", "")
 			rdepend = metadata.pop("RDEPEND", None)
 			pdepend = metadata.pop("PDEPEND", None)
@@ -248,6 +252,8 @@ class ResolverPlayground(object):
 			write_key("KEYWORDS", keywords)
 			write_key("IUSE", iuse)
 			write_key("USE", use)
+			if provide is not None:
+				write_key("PROVIDE", provide)
 			write_key("DEPEND", depend)
 			if rdepend is not None:
 				write_key("RDEPEND", rdepend)

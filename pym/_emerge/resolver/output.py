@@ -574,6 +574,8 @@ class Display(object):
 	def print_changelog(self):
 		"""Prints the changelog text to std_out
 		"""
+		if not self.changelogs:
+			return
 		writemsg_stdout('\n', noiselevel=-1)
 		for revision, text in self.changelogs:
 			writemsg_stdout(bold('*'+revision) + '\n' + text,

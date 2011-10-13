@@ -2,9 +2,12 @@
 # Copyright 2006-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from __future__ import print_function
+
 import sys
 import time
 import unittest
+from optparse import OptionParser, OptionValueError
 
 try:
 	from unittest.runner import _TextTestResult # new in python-2.7
@@ -16,21 +19,64 @@ from portage import _encodings
 from portage import _unicode_decode
 
 def main():
-
-	TEST_FILE = b'__test__'
-	svn_dirname = b'.svn'
 	suite = unittest.TestSuite()
 	basedir = os.path.dirname(os.path.realpath(__file__))
+
+	usage = "usage: %s [options] [tests to run]" % os.path.basename(sys.argv[0])
+	parser = OptionParser(usage=usage)
+	parser.add_option("-l", "--list", help="list all tests",
+		action="store_true", dest="list_tests")
+	(options, args) = parser.parse_args(args=sys.argv)
+
+	if options.list_tests:
+		testdir = os.path.dirname(sys.argv[0])
+		for mydir in getTestDirs(basedir):
+			testsubdir = os.path.basename(mydir)
+			for name in getTestNames(mydir):
+				print("%s/%s/%s.py" % (testdir, testsubdir, name))
+		return os.EX_OK
+
+	if len(args) > 1:
+		suite.addTests(getTestFromCommandLine(args[1:], basedir))
+	else:
+		for mydir in getTestDirs(basedir):
+			suite.addTests(getTests(os.path.join(basedir, mydir), basedir))
+
+	result = TextTestRunner(verbosity=2).run(suite)
+	if not result.wasSuccessful():
+		return 1
+	return os.EX_OK
+
+def my_import(name):
+	mod = __import__(name)
+	components = name.split('.')
+	for comp in components[1:]:
+		mod = getattr(mod, comp)
+	return mod
+
+def getTestFromCommandLine(args, base_path):
+	result = []
+	for arg in args:
+		realpath = os.path.realpath(arg)
+		path = os.path.dirname(realpath)
+		f = realpath[len(path)+1:]
+
+		if not f.startswith("test") or not f.endswith(".py"):
+			raise Exception("Invalid argument: '%s'" % arg)
+
+		mymodule = f[:-3]
+		result.extend(getTestsFromFiles(path, base_path, [mymodule]))
+	return result
+
+def getTestDirs(base_path):
+	TEST_FILE = b'__test__'
+	svn_dirname = b'.svn'
 	testDirs = []
 
-	if len(sys.argv) > 1:
-		suite.addTests(getTestFromCommandLine(sys.argv[1:], basedir))
-		return TextTestRunner(verbosity=2).run(suite)
-
-  # the os.walk help mentions relative paths as being quirky
+	# the os.walk help mentions relative paths as being quirky
 	# I was tired of adding dirs to the list, so now we add __test__
 	# to each dir we want tested.
-	for root, dirs, files in os.walk(basedir):
+	for root, dirs, files in os.walk(base_path):
 		if svn_dirname in dirs:
 			dirs.remove(svn_dirname)
 		try:
@@ -43,51 +89,15 @@ def main():
 			testDirs.append(root)
 
 	testDirs.sort()
-	for mydir in testDirs:
-		suite.addTests(getTests(os.path.join(basedir, mydir), basedir) )
-	return TextTestRunner(verbosity=2).run(suite)
+	return testDirs
 
-def my_import(name):
-	mod = __import__(name)
-	components = name.split('.')
-	for comp in components[1:]:
-		mod = getattr(mod, comp)
-	return mod
-
-def getTestFromCommandLine(args, base_path):
-	ret = []
-	for arg in args:
-		realpath = os.path.realpath(arg)
-		path = os.path.dirname(realpath)
-		f = realpath[len(path)+1:]
-
-		if not f.startswith("test") or not f.endswith(".py"):
-			raise Exception("Invalid argument: '%s'" % arg)
-
-		mymodule = f[:-3]
-
-		parent_path = path[len(base_path)+1:]
-		parent_module = ".".join(("portage", "tests", parent_path))
-		parent_module = parent_module.replace('/', '.')
-		result = []
-
-		# Make the trailing / a . for module importing
-		modname = ".".join((parent_module, mymodule))
-		mod = my_import(modname)
-		ret.append(unittest.TestLoader().loadTestsFromModule(mod))
-	return ret
-
-def getTests(path, base_path):
-	"""
-
-	path is the path to a given subdir ( 'portage/' for example)
-	This does a simple filter on files in that dir to give us modules
-	to import
-
-	"""
+def getTestNames(path):
 	files = os.listdir(path)
 	files = [ f[:-3] for f in files if f.startswith("test") and f.endswith(".py") ]
 	files.sort()
+	return files
+
+def getTestsFromFiles(path, base_path, files):
 	parent_path = path[len(base_path)+1:]
 	parent_module = ".".join(("portage", "tests", parent_path))
 	parent_module = parent_module.replace('/', '.')
@@ -98,6 +108,16 @@ def getTests(path, base_path):
 		mod = my_import(modname)
 		result.append(unittest.TestLoader().loadTestsFromModule(mod))
 	return result
+
+def getTests(path, base_path):
+	"""
+
+	path is the path to a given subdir ( 'portage/' for example)
+	This does a simple filter on files in that dir to give us modules
+	to import
+
+	"""
+	return getTestsFromFiles(path, base_path, getTestNames(path))
 
 class TextTestResult(_TextTestResult):
 	"""
@@ -206,21 +226,21 @@ class TestCase(unittest.TestCase):
 		   unexpected exception.
 		"""
 		try:
-		    callableObj(*args, **kwargs)
+			callableObj(*args, **kwargs)
 		except excClass:
-		    return
+			return
 		else:
-		    if hasattr(excClass,'__name__'): excName = excClass.__name__
-		    else: excName = str(excClass)
-		    raise self.failureException("%s not raised: %s" % (excName, msg))
-			
+			if hasattr(excClass,'__name__'): excName = excClass.__name__
+			else: excName = str(excClass)
+			raise self.failureException("%s not raised: %s" % (excName, msg))
+
 class TextTestRunner(unittest.TextTestRunner):
 	"""
 	We subclass unittest.TextTestRunner to output SKIP for tests that fail but are skippable
 	"""
-	
+
 	def _makeResult(self):
-	        return TextTestResult(self.stream, self.descriptions, self.verbosity)
+		return TextTestResult(self.stream, self.descriptions, self.verbosity)
 
 	def run(self, test):
 		"""
@@ -250,7 +270,7 @@ class TextTestRunner(unittest.TextTestRunner):
 		else:
 			self.stream.writeln("OK")
 		return result
-	
+
 test_cps = ['sys-apps/portage','virtual/portage']
 test_versions = ['1.0', '1.0-r1','2.3_p4','1.0_alpha57']
 test_slots = [ None, '1','gentoo-sources-2.6.17','spankywashere']

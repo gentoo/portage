@@ -14,7 +14,7 @@ from __future__ import print_function
 import sys
 
 from portage import os
-import dispatch_conf
+from portage import dispatch_conf
 
 FIND_EXTANT_CONTENTS  = "find %s -name CONTENTS"
 

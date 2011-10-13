@@ -7,11 +7,9 @@ import sys
 
 import portage
 from portage import eapi_is_supported, _eapi_is_deprecated
-from portage.dep import match_from_list, _slot_separator, _repo_separator
 from portage.localization import _
 from portage.package.ebuild.config import config
-from portage.versions import catpkgsplit, cpv_getkey
-from _emerge.Package import Package
+from portage.versions import catpkgsplit
 
 if sys.hexversion >= 0x3000000:
 	basestring = str

@@ -41,6 +41,4 @@ del path
 
 
 if __name__ == "__main__":
-	result = tests.main()
-	if not result.wasSuccessful():
-		sys.exit(1)
+	sys.exit(tests.main())

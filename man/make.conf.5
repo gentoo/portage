@@ -207,10 +207,6 @@ non-developers as well. The \fBsandbox\fR feature is very important and
 should not be disabled by default.
 .RS
 .TP
-.B allow\-missing\-manifests
-Allow missing manifest entries. This is primarily useful for temporary
-trees or instances where manifests aren't used.
-.TP
 .B assume\-digests
 When commiting work to cvs with \fBrepoman\fR(1), assume that all existing 
 SRC_URI digests are correct.  This feature also affects digest generation via
@@ -301,11 +297,6 @@ if you have \fBPORTAGE_TMPDIR\fR on tmpfs. If this feature is enabled, you
 probably also want to enable \fBPORT_LOGDIR\fR in order to save the build log.
 Both the \fBebuild\fR(1) command and the \fInoclean\fR feature cause the
 \fIfail\-clean\fR feature to be automatically disabled.
-.TP
-.B fixpackages
-Runs the script that will fix the dependencies in all binary packages.  This is 
-run whenever packages are moved around in the portage tree.  Please note that this 
-can take a lot of time.
 .TP
 .B getbinpkg
 Force emerges to always try to fetch files from the \fIPORTAGE_BINHOST\fR.  See 

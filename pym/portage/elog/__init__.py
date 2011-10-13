@@ -1,6 +1,10 @@
 # elog/__init__.py - elog core functions
-# Copyright 2006-2009 Gentoo Foundation
+# Copyright 2006-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+import sys
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -52,11 +56,15 @@ def _combine_logentries(logentries):
 		for msgtype, msgcontent in logentries[phase]:
 			if previous_type != msgtype:
 				previous_type = msgtype
-				rValue.append("%s: %s\n" % (msgtype, phase))
-			for line in msgcontent:
-				rValue.append(line)
-			rValue.append("\n")
-	return "".join(rValue)
+				rValue.append("%s: %s" % (msgtype, phase))
+			if isinstance(msgcontent, basestring):
+				rValue.append(msgcontent.rstrip("\n"))
+			else:
+				for line in msgcontent:
+					rValue.append(line.rstrip("\n"))
+	if rValue:
+		rValue.append("")
+	return "\n".join(rValue)
 
 _elog_mod_imports = {}
 def _load_mod(name):

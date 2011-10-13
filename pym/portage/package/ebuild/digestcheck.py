@@ -27,7 +27,6 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
 
 	if mysettings.get("EBUILD_SKIP_MANIFEST") == "1":
 		return 1
-	allow_missing = "allow-missing-manifests" in mysettings.features
 	pkgdir = mysettings["O"]
 	if mf is None:
 		mf = mysettings.repositories.get_repo_for_location(
@@ -72,7 +71,7 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
 		writemsg(_("!!! Got: %s\n") % e.value[2], noiselevel=-1)
 		writemsg(_("!!! Expected: %s\n") % e.value[3], noiselevel=-1)
 		return 0
-	if allow_missing or mf.thin:
+	if mf.thin or mf.allow_missing:
 		# In this case we ignore any missing digests that
 		# would otherwise be detected below.
 		return 1

@@ -407,6 +407,20 @@ when FEATURES="preserve\-libs" is enabled in
 \fBmake.conf\fR(5), since any libraries that have
 consumers will simply be preserved.
 .TP
+.BR "\-\-dynamic\-deps < y | n >"
+In dependency calculations, substitute the dependencies of installed
+packages with the dependencies of corresponding unbuilt ebuilds from
+source repositories. This causes the effective dependencies of
+installed packages to vary dynamically when source ebuild dependencies
+are modified. This option is enabled by default.
+
+\fBWARNING:\fR
+If you want to disable \-\-dynamic\-deps, then it may be necessary to
+first run \fBfixpackages\fR in order to get the best results. The
+\fBfixpackages\fR command performs two different operations that can
+also be performed separately by the `emaint \-\-fix moveinst` and
+`emaint \-\-fix movebin` commands (see \fBemaint\fR(1)).
+.TP
 .BR "\-\-emptytree " (\fB\-e\fR)
 Reinstalls target atoms and their entire deep
 dependency tree, as though no packages are currently

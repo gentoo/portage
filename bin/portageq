@@ -468,7 +468,7 @@ def best_visible(argv):
 		portage.db[portage.settings["ROOT"]], None)
 
 	if hasattr(db, "xmatch"):
-		cpv_list = db.xmatch("match-all", atom)
+		cpv_list = db.xmatch("match-all-cpv-only", atom)
 	else:
 		cpv_list = db.match(atom)
 
@@ -476,7 +476,9 @@ def best_visible(argv):
 		# reversed, for descending order
 		cpv_list.reverse()
 		# verify match, since the atom may match the package
-		# for a given cpv from one repo but not another
+		# for a given cpv from one repo but not another, and
+		# we can use match-all-cpv-only to avoid redundant
+		# metadata access.
 		atom_set = InternalPackageSet(initial_atoms=(atom,))
 
 		if atom.repo is None and hasattr(db, "getRepositories"):

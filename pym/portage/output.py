@@ -341,12 +341,12 @@ compat_functions_colors = ["bold","white","teal","turquoise","darkteal",
 	"fuchsia","purple","blue","darkblue","green","darkgreen","yellow",
 	"brown","darkyellow","red","darkred"]
 
-def create_color_func(color_key):
-	def derived_func(*args):
-		newargs = list(args)
-		newargs.insert(0, color_key)
-		return colorize(*newargs)
-	return derived_func
+class create_color_func(object):
+	__slots__ = ("_color_key",)
+	def __init__(self, color_key):
+		self._color_key = color_key
+	def __call__(self, text):
+		return colorize(self._color_key, text)
 
 for c in compat_functions_colors:
 	globals()[c] = create_color_func(c)

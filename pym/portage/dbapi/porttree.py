@@ -215,10 +215,12 @@ class portdbapi(dbapi):
 				if x in self._pregen_auxdb:
 					continue
 				if os.path.isdir(os.path.join(x, "metadata", "cache")):
-					self._pregen_auxdb[x] = self.metadbmodule(
+					conf = self.repositories.get_repo_for_location(x)
+					cache = self._pregen_auxdb[x] = self.metadbmodule(
 						x, "metadata/cache", filtered_auxdbkeys, readonly=True)
+					cache.is_authoritative = conf.cache_is_authoritative
 					try:
-						self._pregen_auxdb[x].ec = self._repo_info[x].eclass_db
+						cache.ec = self._repo_info[x].eclass_db
 					except AttributeError:
 						pass
 		# Selectively cache metadata in order to optimize dep matching.
@@ -235,13 +237,12 @@ class portdbapi(dbapi):
 		group."""
 
 		dirmode  = 0o2070
-		filemode =   0o60
 		modemask =    0o2
 
 		try:
 			ensure_dirs(self.depcachedir, gid=portage_gid,
 				mode=dirmode, mask=modemask)
-		except PortageException as e:
+		except PortageException:
 			pass
 
 	def close_caches(self):
@@ -442,10 +443,11 @@ class portdbapi(dbapi):
 				eapi = metadata.get('EAPI', '').strip()
 				if not eapi:
 					eapi = '0'
-				if not (eapi[:1] == '-' and eapi_is_supported(eapi[1:])) and \
-					emtime == metadata['_mtime_'] and \
-					eclass_db.is_eclass_data_valid(metadata['_eclasses_']):
-					doregen = False
+				if not (eapi[:1] == '-' and eapi_is_supported(eapi[1:])):
+					if auxdb.is_authoritative or ( \
+						emtime == metadata['_mtime_'] and \
+						eclass_db.is_eclass_data_valid(metadata['_eclasses_'])):
+						doregen = False
 
 			if not doregen:
 				break
@@ -465,9 +467,16 @@ class portdbapi(dbapi):
 			if mytree is None:
 				raise KeyError(myrepo)
 
-		if not mytree:
+		if mytree is not None and len(self.porttrees) == 1 \
+			and mytree == self.porttrees[0]:
+			# mytree matches our only tree, so it's safe to
+			# ignore mytree and cache the result
+			mytree = None
+			myrepo = None
+
+		if mytree is None:
 			cache_me = True
-		if not mytree and not self._known_keys.intersection(
+		if mytree is None and not self._known_keys.intersection(
 			mylist).difference(self._aux_cache_keys):
 			aux_cache = self._aux_cache.get(mycpv)
 			if aux_cache is not None:
@@ -619,7 +628,7 @@ class portdbapi(dbapi):
 			mystat = None
 			try:
 				mystat = os.stat(file_path)
-			except OSError as e:
+			except OSError:
 				pass
 			if mystat is None:
 				existing_size = 0
@@ -730,6 +739,14 @@ class portdbapi(dbapi):
 		return l
 
 	def cp_list(self, mycp, use_cache=1, mytree=None):
+
+		if self.frozen and mytree is not None \
+			and len(self.porttrees) == 1 \
+			and mytree == self.porttrees[0]:
+			# mytree matches our only tree, so it's safe to
+			# ignore mytree and cache the result
+			mytree = None
+
 		if self.frozen and mytree is None:
 			cachelist = self.xcache["cp-list"].get(mycp)
 			if cachelist is not None:
@@ -834,7 +851,10 @@ class portdbapi(dbapi):
 		if mydep.repo is not None:
 			mytree = self.treemap.get(mydep.repo)
 			if mytree is None:
-				myval = []
+				if level.startswith("match-"):
+					myval = []
+				else:
+					myval = ""
 
 		if myval is not None:
 			# Unknown repo, empty result.
@@ -853,59 +873,8 @@ class portdbapi(dbapi):
 				myval = match_from_list(mydep,
 					self.cp_list(mykey, mytree=mytree))
 
-		elif level == "match-all":
-			# match *all* visible *and* masked packages
-			if mydep == mykey:
-				myval = self.cp_list(mykey, mytree=mytree)
-			elif mydep.repo is not None or len(self.porttrees) == 1:
-				myval = list(self._iter_match(mydep,
-					self.cp_list(mykey, mytree=mytree)))
-			else:
-				myval = set()
-				# We iterate over self.porttrees, since it's common to
-				# tweak this attribute in order to adjust match behavior.
-				for tree in self.porttrees:
-					repo = self.repositories.get_name_for_location(tree)
-					myval.update(self._iter_match(mydep.with_repo(repo),
-					self.cp_list(mykey, mytree=mytree)))
-				myval = list(myval)
-				if len(myval) > 1:
-					self._cpv_sort_ascending(myval)
-
-		elif level == "match-visible":
-			# find all visible matches
-			if mydep.repo is not None or len(self.porttrees) == 1:
-				myval = self.gvisible(self.visible(
-					self.xmatch("match-all", mydep),
-					mytree=mytree), mytree=mytree)
-			else:
-				myval = set()
-				# We iterate over self.porttrees, since it's common to
-				# tweak this attribute in order to adjust match behavior.
-				for tree in self.porttrees:
-					repo = self.repositories.get_name_for_location(tree)
-					myval.update(self.gvisible(self.visible(
-						self.xmatch("match-all", mydep.with_repo(repo)),
-						mytree=tree), mytree=tree))
-				myval = list(myval)
-				if len(myval) > 1:
-					self._cpv_sort_ascending(myval)
-
-		elif level == "minimum-all":
-			# Find the minimum matching version. This is optimized to
-			# minimize the number of metadata accesses (improves performance
-			# especially in cases where metadata needs to be generated).
-			if mydep == mykey:
-				cpv_iter = iter(self.cp_list(mykey, mytree=mytree))
-			else:
-				cpv_iter = self._iter_match(mydep,
-					self.cp_list(mykey, mytree=mytree))
-			try:
-				myval = next(cpv_iter)
-			except StopIteration:
-				myval = ""
-
-		elif level in ("minimum-visible", "bestmatch-visible"):
+		elif level in ("bestmatch-visible", "match-all", "match-visible",
+			"minimum-all", "minimum-visible"):
 			# Find the minimum matching visible version. This is optimized to
 			# minimize the number of metadata accesses (improves performance
 			# especially in cases where metadata needs to be generated).
@@ -914,16 +883,17 @@ class portdbapi(dbapi):
 			else:
 				mylist = match_from_list(mydep,
 					self.cp_list(mykey, mytree=mytree))
-			myval = ""
-			settings = self.settings
-			local_config = settings.local_config
-			aux_keys = list(self._aux_cache_keys)
-			if level == "minimum-visible":
-				iterfunc = iter
-			else:
-				iterfunc = reversed
 
-			if mydep.repo is not None or len(self.porttrees) == 1:
+			visibility_filter = level not in ("match-all", "minimum-all")
+			single_match = level not in ("match-all", "match-visible")
+			myval = []
+			aux_keys = list(self._aux_cache_keys)
+			if level == "bestmatch-visible":
+				iterfunc = reversed
+			else:
+				iterfunc = iter
+
+			if mydep.repo is not None:
 				repos = [mydep.repo]
 			else:
 				# We iterate over self.porttrees, since it's common to
@@ -940,139 +910,146 @@ class portdbapi(dbapi):
 					except KeyError:
 						# ebuild not in this repo, or masked by corruption
 						continue
-					if not eapi_is_supported(metadata["EAPI"]):
+
+					if visibility_filter and not self._visible(cpv, metadata):
 						continue
+
 					if mydep.slot is not None and \
 						mydep.slot != metadata["SLOT"]:
 						continue
-					if settings._getMissingKeywords(cpv, metadata):
+
+					if mydep.unevaluated_atom.use is not None and \
+						not self._match_use(mydep, cpv, metadata):
 						continue
-					if settings._getMaskAtom(cpv, metadata):
-						continue
-					if local_config:
-						metadata["USE"] = ""
-						if "?" in metadata["LICENSE"] or \
-							"?" in metadata["PROPERTIES"]:
-							self.doebuild_settings.setcpv(cpv, mydb=metadata)
-							metadata["USE"] = \
-								self.doebuild_settings.get("PORTAGE_USE", "")
-						try:
-							if settings._getMissingLicenses(cpv, metadata):
-								continue
-							if settings._getMissingProperties(cpv, metadata):
-								continue
-						except InvalidDependString:
-							continue
-					if mydep.use is not None:
-						mydep_with_repo = mydep
-						if repo is not None and mydep.repo is None:
-							mydep_with_repo = mydep.with_repo(repo)
-						has_iuse = False
-						for has_iuse in self._iter_match_use(
-							mydep_with_repo, [cpv]):
-							break
-						if has_iuse is False:
-							continue
-					myval = cpv
+
+					myval.append(cpv)
+					# only yield a given cpv once
 					break
+
+				if myval and single_match:
+					break
+
+			if single_match:
 				if myval:
-					break
+					myval = myval[0]
+				else:
+					myval = ""
 
 		elif level == "bestmatch-list":
 			#dep match -- find best match but restrict search to sublist
-			#no point in calling xmatch again since we're not caching list deps
-
+			warnings.warn("The 'bestmatch-list' mode of "
+				"portage.dbapi.porttree.portdbapi.xmatch is deprecated",
+				DeprecationWarning, stacklevel=2)
 			myval = best(list(self._iter_match(mydep, mylist)))
 		elif level == "match-list":
 			#dep match -- find all matches but restrict search to sublist (used in 2nd half of visible())
-
+			warnings.warn("The 'match-list' mode of "
+				"portage.dbapi.porttree.portdbapi.xmatch is deprecated",
+				DeprecationWarning, stacklevel=2)
 			myval = list(self._iter_match(mydep, mylist))
-
 		else:
 			raise AssertionError(
 				"Invalid level argument: '%s'" % level)
 
-		if self.frozen and (level not in ["match-list", "bestmatch-list"]):
-			self.xcache[level][mydep] = myval
-			if origdep and origdep != mydep:
-				self.xcache[level][origdep] = myval
-		return myval[:]
+		if self.frozen:
+			xcache_this_level = self.xcache.get(level)
+			if xcache_this_level is not None:
+				xcache_this_level[mydep] = myval
+				if origdep and origdep != mydep:
+					xcache_this_level[origdep] = myval
+				myval = myval[:]
+
+		return myval
 
 	def match(self, mydep, use_cache=1):
 		return self.xmatch("match-visible", mydep)
 
-	def visible(self, mylist, mytree=None):
-		"""two functions in one.  Accepts a list of cpv values and uses the package.mask *and*
-		packages file to remove invisible entries, returning remaining items.  This function assumes
-		that all entries in mylist have the same category and package name."""
-		if not mylist:
+	def gvisible(self, mylist):
+		warnings.warn("The 'gvisible' method of "
+			"portage.dbapi.porttree.portdbapi "
+			"is deprecated",
+			DeprecationWarning, stacklevel=2)
+		return list(self._iter_visible(iter(mylist)))
+
+	def visible(self, cpv_iter):
+		warnings.warn("The 'visible' method of "
+			"portage.dbapi.porttree.portdbapi "
+			"is deprecated",
+			DeprecationWarning, stacklevel=2)
+		if cpv_iter is None:
 			return []
+		return list(self._iter_visible(iter(cpv_iter)))
 
-		db_keys = ["repository", "SLOT"]
-		visible = []
-		getMaskAtom = self.settings._getMaskAtom
-		for cpv in mylist:
-			try:
-				metadata = dict(zip(db_keys,
-					self.aux_get(cpv, db_keys, mytree=mytree)))
-			except KeyError:
-				# masked by corruption
-				continue
-			if not metadata["SLOT"]:
-				continue
-			if getMaskAtom(cpv, metadata):
-				continue
-			visible.append(cpv)
-		return visible
-
-	def gvisible(self, mylist, mytree=None):
-		"strip out group-masked (not in current group) entries"
-
-		if mylist is None:
-			return []
-		newlist=[]
+	def _iter_visible(self, cpv_iter, myrepo=None):
+		"""
+		Return a new list containing only visible packages.
+		"""
 		aux_keys = list(self._aux_cache_keys)
 		metadata = {}
-		local_config = self.settings.local_config
-		chost = self.settings.get('CHOST', '')
-		accept_chost = self.settings._accept_chost
-		for mycpv in mylist:
-			metadata.clear()
-			try:
-				metadata.update(zip(aux_keys,
-					self.aux_get(mycpv, aux_keys, mytree=mytree)))
-			except KeyError:
-				continue
-			except PortageException as e:
-				writemsg("!!! Error: aux_get('%s', %s)\n" % (mycpv, aux_keys),
-					noiselevel=-1)
-				writemsg("!!! %s\n" % (e,), noiselevel=-1)
-				del e
-				continue
-			eapi = metadata["EAPI"]
-			if not eapi_is_supported(eapi):
-				continue
-			if _eapi_is_deprecated(eapi):
-				continue
-			if self.settings._getMissingKeywords(mycpv, metadata):
-				continue
-			if local_config:
-				metadata['CHOST'] = chost
-				if not accept_chost(mycpv, metadata):
-					continue
-				metadata["USE"] = ""
-				if "?" in metadata["LICENSE"] or "?" in metadata["PROPERTIES"]:
-					self.doebuild_settings.setcpv(mycpv, mydb=metadata)
-					metadata['USE'] = self.doebuild_settings['PORTAGE_USE']
+
+		if myrepo is not None:
+			repos = [myrepo]
+		else:
+			# We iterate over self.porttrees, since it's common to
+			# tweak this attribute in order to adjust match behavior.
+			repos = []
+			for tree in reversed(self.porttrees):
+				repos.append(self.repositories.get_name_for_location(tree))
+
+		for mycpv in cpv_iter:
+			for repo in repos:
+				metadata.clear()
 				try:
-					if self.settings._getMissingLicenses(mycpv, metadata):
-						continue
-					if self.settings._getMissingProperties(mycpv, metadata):
-						continue
-				except InvalidDependString:
+					metadata.update(zip(aux_keys,
+						self.aux_get(mycpv, aux_keys, myrepo=repo)))
+				except KeyError:
 					continue
-			newlist.append(mycpv)
-		return newlist
+				except PortageException as e:
+					writemsg("!!! Error: aux_get('%s', %s)\n" %
+						(mycpv, aux_keys), noiselevel=-1)
+					writemsg("!!! %s\n" % (e,), noiselevel=-1)
+					del e
+					continue
+
+				if not self._visible(mycpv, metadata):
+					continue
+
+				yield mycpv
+				# only yield a given cpv once
+				break
+
+	def _visible(self, cpv, metadata):
+		eapi = metadata["EAPI"]
+		if not eapi_is_supported(eapi):
+			return False
+		if _eapi_is_deprecated(eapi):
+			return False
+		if not metadata["SLOT"]:
+			return False
+
+		settings = self.settings
+		if settings._getMaskAtom(cpv, metadata):
+			return False
+		if settings._getMissingKeywords(cpv, metadata):
+			return False
+		if settings.local_config:
+			metadata['CHOST'] = settings.get('CHOST', '')
+			if not settings._accept_chost(cpv, metadata):
+				return False
+			metadata["USE"] = ""
+			if "?" in metadata["LICENSE"] or \
+				"?" in metadata["PROPERTIES"]:
+				self.doebuild_settings.setcpv(cpv, mydb=metadata)
+				metadata['USE'] = self.doebuild_settings['PORTAGE_USE']
+			try:
+				if settings._getMissingLicenses(cpv, metadata):
+					return False
+				if settings._getMissingProperties(cpv, metadata):
+					return False
+			except InvalidDependString:
+				return False
+
+		return True
 
 def close_portdbapi_caches():
 	for i in portdbapi.portdbapi_instances:
@@ -1155,9 +1132,9 @@ class portagetree(object):
 		myslot = ""
 		try:
 			myslot = self.dbapi.aux_get(mycatpkg, ["SLOT"])[0]
-		except SystemExit as e:
+		except SystemExit:
 			raise
-		except Exception as e:
+		except Exception:
 			pass
 		return myslot
 
@@ -1218,7 +1195,7 @@ def _parse_uri_map(cpv, metadata, use=None):
 	while myuris:
 		uri = myuris.pop()
 		if myuris and myuris[-1] == "->":
-			operator = myuris.pop()
+			myuris.pop()
 			distfile = myuris.pop()
 		else:
 			distfile = os.path.basename(uri)
@@ -1233,6 +1210,5 @@ def _parse_uri_map(cpv, metadata, use=None):
 			uri_map[distfile] = uri_set
 		uri_set.add(uri)
 		uri = None
-		operator = None
 
 	return uri_map

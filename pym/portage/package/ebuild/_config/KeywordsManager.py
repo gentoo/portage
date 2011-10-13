@@ -206,12 +206,16 @@ class KeywordsManager(object):
 		hasstable = False
 		hastesting = False
 		for gp in mygroups:
-			if gp == "*" or (gp == "-*" and len(mygroups) == 1):
-				writemsg(_("--- WARNING: Package '%(cpv)s' uses"
-					" '%(keyword)s' keyword.\n") % {"cpv": cpv, "keyword": gp},
-					 noiselevel=-1)
-				if gp == "*":
-					match = True
+			if gp == "*":
+				match = True
+				break
+			elif gp == "~*":
+				hastesting = True
+				for x in pgroups:
+					if x[:1] == "~":
+						match = True
+						break
+				if match:
 					break
 			elif gp in pgroups:
 				match = True

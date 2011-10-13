@@ -486,7 +486,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	global _doebuild_manifest_cache
 	pkgdir = os.path.dirname(myebuild)
 	manifest_path = os.path.join(pkgdir, "Manifest")
-	allow_missing_manifests = "allow-missing-manifests" in mysettings.features
 	if tree == "porttree":
 		repo_config = mysettings.repositories.get_repo_for_location(
 			os.path.dirname(os.path.dirname(pkgdir)))
@@ -499,7 +498,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		not repo_config.thin_manifest and \
 		mydo not in ("digest", "manifest", "help") and \
 		not portage._doebuild_manifest_exempt_depend and \
-		not (allow_missing_manifests and not os.path.exists(manifest_path)):
+		not (repo_config.allow_missing_manifest and not os.path.exists(manifest_path)):
 		# Always verify the ebuild checksums before executing it.
 		global _doebuild_broken_ebuilds
 
@@ -524,7 +523,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		try:
 			mf.checkFileHashes("EBUILD", os.path.basename(myebuild))
 		except KeyError:
-			if not (allow_missing_manifests and
+			if not (mf.allow_missing and
 				os.path.basename(myebuild) not in mf.fhashdict["EBUILD"]):
 				out = portage.output.EOutput()
 				out.eerror(_("Missing digest for '%s'") % (myebuild,))
@@ -549,7 +548,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		if mf.getFullname() in _doebuild_broken_manifests:
 			return 1
 
-		if mf is not _doebuild_manifest_cache and not allow_missing_manifests:
+		if mf is not _doebuild_manifest_cache and not mf.allow_missing:
 
 			# Make sure that all of the ebuilds are
 			# actually listed in the Manifest.
@@ -607,7 +606,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				if builddir_lock is not None:
 					builddir_lock.unlock()
 
-		restrict = set(mysettings.get('PORTAGE_RESTRICT', '').split())
 		# get possible slot information from the deps file
 		if mydo == "depend":
 			writemsg("!!! DEBUG: dbkey: %s\n" % str(dbkey), 2)
@@ -1588,15 +1586,24 @@ def _post_src_install_chost_fix(settings):
 	"""
 	It's possible that the ebuild has changed the
 	CHOST variable, so revert it to the initial
-	setting.
+	setting. Also, revert IUSE in case it's corrupted
+	due to local environment settings like in bug #386829.
 	"""
-	if settings.get('CATEGORY') == 'virtual':
-		return
 
-	chost = settings.get('CHOST')
-	if chost:
-		write_atomic(os.path.join(settings['PORTAGE_BUILDDIR'],
-			'build-info', 'CHOST'), chost + '\n')
+	build_info_dir = os.path.join(settings['PORTAGE_BUILDDIR'], 'build-info')
+
+	for k in ('IUSE',):
+		v = settings.get(k)
+		if v is not None:
+			write_atomic(os.path.join(build_info_dir, k), v + '\n')
+
+	# The following variables are irrelevant for virtual packages.
+	if settings.get('CATEGORY') != 'virtual':
+
+		for k in ('CHOST',):
+			v = settings.get(k)
+			if v is not None:
+				write_atomic(os.path.join(build_info_dir, k), v + '\n')
 
 _vdb_use_conditional_keys = ('DEPEND', 'LICENSE', 'PDEPEND',
 	'PROPERTIES', 'PROVIDE', 'RDEPEND', 'RESTRICT',)
