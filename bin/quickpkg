@@ -188,23 +188,11 @@ def quickpkg_set(options, infos, arg, eout):
 		quickpkg_atom(options, infos, atom, eout)
 
 
-def quickpkg_extended_atom(options, infos, arg, eout):
+def quickpkg_extended_atom(options, infos, atom, eout):
 	root = portage.settings["ROOT"]
 	trees = portage.db[root]
 	vartree = trees["vartree"]
 	vardb = vartree.dbapi
-
-	try:
-		atom = Atom(arg, allow_wildcard=True, allow_repo=True)
-	except (InvalidAtom, InvalidData):
-		eout.eerror("Invalid atom: %s" % (arg,))
-		infos["missing"].append(arg)
-		return
-
-	if not atom.extended_syntax:
-		# =* operator
-		quickpkg_atom(options, infos, atom, eout)
-		return
 
 	require_metadata = atom.slot or atom.repo
 	atoms = []
@@ -248,10 +236,17 @@ def quickpkg_main(options, args, eout):
 	for arg in args:
 		if arg[0] == SETPREFIX:
 			quickpkg_set(options, infos, arg, eout)
-		elif '*' in arg:
-			quickpkg_extended_atom(options, infos, arg, eout)
-		else:
+			continue
+		try:
+			atom = Atom(arg, allow_wildcard=True, allow_repo=True)
+		except (InvalidAtom, InvalidData):
+			# maybe it's valid but missing category (requires dep_expand)
 			quickpkg_atom(options, infos, arg, eout)
+		else:
+			if atom.extended_syntax:
+				quickpkg_extended_atom(options, infos, atom, eout)
+			else:
+				quickpkg_atom(options, infos, atom, eout)
 
 	if not infos["successes"]:
 		eout.eerror("No packages found")
