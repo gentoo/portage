@@ -201,6 +201,11 @@ def quickpkg_extended_atom(options, infos, arg, eout):
 		infos["missing"].append(arg)
 		return
 
+	if not atom.extended_syntax:
+		# =* operator
+		quickpkg_atom(options, infos, atom, eout)
+		return
+
 	require_metadata = atom.slot or atom.repo
 	atoms = []
 	for cpv in vardb.cpv_all():
