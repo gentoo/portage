@@ -52,6 +52,8 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
 			eout.ebegin(_("checking %s ;-)") % f)
 			ftype = mf.findFile(f)
 			if ftype is None:
+				if mf.allow_missing:
+					continue
 				eout.eend(1)
 				writemsg(_("\n!!! Missing digest for '%s'\n") % (f,),
 					noiselevel=-1)
