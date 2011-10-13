@@ -311,7 +311,6 @@ class config(object):
 			if self.modules["user"] is None:
 				self.modules["user"] = {}
 			self.modules["default"] = {
-				"portdbapi.metadbmodule": "portage.cache.metadata.database",
 				"portdbapi.auxdbmodule":  "portage.cache.flat_hash.database",
 			}
 

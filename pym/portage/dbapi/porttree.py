@@ -120,8 +120,6 @@ class portdbapi(dbapi):
 		self._have_root_eclass_dir = os.path.isdir(
 			os.path.join(self.settings.repositories.mainRepoLocation(), "eclass"))
 
-		self.metadbmodule = self.settings.load_best_module("portdbapi.metadbmodule")
-
 		#if the portdbapi is "frozen", then we assume that we can cache everything (that no updates to it are happening)
 		self.xcache = {}
 		self.frozen = 0
@@ -214,10 +212,10 @@ class portdbapi(dbapi):
 			for x in self.porttrees:
 				if x in self._pregen_auxdb:
 					continue
-				if os.path.isdir(os.path.join(x, "metadata", "cache")):
-					conf = self.repositories.get_repo_for_location(x)
-					cache = self._pregen_auxdb[x] = self.metadbmodule(
-						x, "metadata/cache", filtered_auxdbkeys, readonly=True)
+				conf = self.repositories.get_repo_for_location(x)
+				cache = conf.get_pregenerated_cache(filtered_auxdbkeys, readonly=True)
+				if cache is not None:
+					self._pregen_auxdb[x] = cache
 					try:
 						cache.ec = self._repo_info[x].eclass_db
 					except AttributeError:

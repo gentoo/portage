@@ -1660,14 +1660,6 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 	porttrees_data = []
 	for path in porttrees:
 		src_db = portdb._pregen_auxdb.get(path)
-		if src_db is None and \
-			os.path.isdir(os.path.join(path, 'metadata', 'cache')):
-			src_db = portdb.metadbmodule(
-				path, 'metadata/cache', auxdbkeys, readonly=True)
-			try:
-				src_db.ec = portdb._repo_info[path].eclass_db
-			except AttributeError:
-				pass
 
 		if src_db is not None:
 			porttrees_data.append(TreeData(portdb.auxdb[path],

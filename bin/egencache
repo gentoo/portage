@@ -38,6 +38,7 @@ except ImportError:
 from portage import os, _encodings, _unicode_encode, _unicode_decode
 from _emerge.MetadataRegen import MetadataRegen
 from portage.cache.cache_errors import CacheError, StatCollision
+from portage.cache import metadata
 from portage.manifest import guessManifestFileType
 from portage.util import cmp_sort_key, writemsg_level
 from portage import cpv_getkey
@@ -214,8 +215,7 @@ class GenCache(object):
 			consumer=self._metadata_callback,
 			max_jobs=max_jobs, max_load=max_load)
 		self.returncode = os.EX_OK
-		metadbmodule = portdb.settings.load_best_module("portdbapi.metadbmodule")
-		self._trg_cache = metadbmodule(portdb.porttrees[0],
+		self._trg_cache = metadata.database(portdb.porttrees[0],
 			"metadata/cache", portage.auxdbkeys[:])
 		if rsync:
 			self._trg_cache.raise_stat_collision = True
