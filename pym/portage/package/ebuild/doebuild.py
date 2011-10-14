@@ -1889,7 +1889,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
 			continue
 		if not is_libdir(os.path.dirname(obj)):
 			continue
-		if qa_no_symlink and qa_no_symlink.match(obj.strip(os.sep)) is None:
+		if qa_no_symlink and qa_no_symlink.match(obj.strip(os.sep)) is not None:
 			continue
 
 		obj_file_path = os.path.join(image_dir, obj.lstrip(os.sep))
