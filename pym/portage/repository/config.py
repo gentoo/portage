@@ -136,9 +136,13 @@ class RepoConfig(object):
 			format = 'pms'
 		if format == 'pms':
 			from portage.cache.metadata import database
+			name = 'metadata/cache'
+		elif format == 'md5-dict':
+			from portage.cache.flat_hash import md5_database as database
+			name = 'metadata/md5-cache'
 		else:
 			return None
-		return database(self.location, 'metadata/cache',
+		return database(self.location, name,
 			auxdbkeys, readonly=readonly)
 
 	def load_manifest(self, *args, **kwds):
