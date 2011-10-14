@@ -128,14 +128,18 @@ class RepoConfig(object):
 		self.manifest_hashes = None
 		self.cache_format = None
 
-	def get_pregenerated_cache(self, auxdbkeys, readonly=True):
-		if self.cache_format is None:
-			return None
-		elif self.cache_format == 'pms':
+	def get_pregenerated_cache(self, auxdbkeys, readonly=True, force=False):
+		format = self.cache_format
+		if format is None:
+			if not force:
+				return None
+			format = 'pms'
+		if format == 'pms':
 			from portage.cache.metadata import database
-			return database(self.location, 'metadata/cache',
-				auxdbkeys, readonly=readonly)
-		return None
+		else:
+			return None
+		return database(self.location, 'metadata/cache',
+			auxdbkeys, readonly=readonly)
 
 	def load_manifest(self, *args, **kwds):
 		kwds['thin'] = self.thin_manifest

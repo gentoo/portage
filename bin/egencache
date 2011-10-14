@@ -215,8 +215,11 @@ class GenCache(object):
 			consumer=self._metadata_callback,
 			max_jobs=max_jobs, max_load=max_load)
 		self.returncode = os.EX_OK
-		self._trg_cache = metadata.database(portdb.porttrees[0],
-			"metadata/cache", portage.auxdbkeys[:])
+		conf = portdb.repositories.get_repo_for_location(portdb.porttrees[0])
+		self._trg_cache = conf.get_pregenerated_cache(portage.auxdbkeys[:],
+			force=True, readonly=False)
+		if self._trg_cache is None:
+			raise Exception("cache format %s isn't supported" % (conf.cache_format,))
 		if rsync:
 			self._trg_cache.raise_stat_collision = True
 		try:
@@ -226,13 +229,16 @@ class GenCache(object):
 			pass
 		self._existing_nodes = set()
 
-	def _metadata_callback(self, cpv, ebuild_path, repo_path, metadata):
+	def _metadata_callback(self, cpv, repo_path, metadata, ebuild_hash):
 		self._existing_nodes.add(cpv)
 		self._cp_missing.discard(cpv_getkey(cpv))
 		if metadata is not None:
 			if metadata.get('EAPI') == '0':
 				del metadata['EAPI']
 			try:
+				chf = self._trg_cache.validation_chf
+				if chf != 'mtime':
+					metadata['_%s_' % chf] = getattr(ebuild_hash, chf)
 				try:
 					self._trg_cache[cpv] = metadata
 				except StatCollision as sc:
@@ -251,7 +257,7 @@ class GenCache(object):
 						max_mtime += 1
 					max_mtime = long(max_mtime)
 					try:
-						os.utime(ebuild_path, (max_mtime, max_mtime))
+						os.utime(ebuild_hash.location, (max_mtime, max_mtime))
 					except OSError as e:
 						self.returncode |= 1
 						writemsg_level(

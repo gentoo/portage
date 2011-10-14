@@ -6,13 +6,42 @@ __all__ = ["cache"]
 
 import stat
 import sys
+import operator
 from portage.util import normalize_path
 import errno
 from portage.exception import PermissionDenied
 from portage import os
+from portage import checksum
 
 if sys.hexversion >= 0x3000000:
 	long = int
+
+
+class hashed_path(object):
+
+	def __init__(self, location):
+		self.location = location
+
+	def __getattr__(self, attr):
+		if attr == 'mtime':
+			# use stat.ST_MTIME; accessing .st_mtime gets you a float
+			# depending on the python version, and long(float) introduces
+			# some rounding issues that aren't present for people using
+			# the straight c api.
+			# thus use the defacto python compatibility work around;
+			# access via index, which gurantees you get the raw long.
+			self.mtime = obj = os.stat(self.location)[stat.ST_MTIME]
+			return obj
+		if not attr.islower():
+			# we don't care to allow .mD5 as an alias for .md5
+			raise AttributeError(attr)
+		try:
+			val = checksum.perform_checksum(self.location, attr.upper())[0]
+		except KeyError:
+			raise AttributeError(attr)
+		setattr(self, attr, val)
+		return val
+
 
 class cache(object):
 	"""
@@ -20,7 +49,7 @@ class cache(object):
 	"""
 	def __init__(self, porttree_root, overlays=[]):
 
-		self.eclasses = {} # {"Name": ("location","_mtime_")}
+		self.eclasses = {} # {"Name": hashed_path}
 		self._eclass_locations = {}
 
 		# screw with the porttree ordering, w/out having bash inherit match it, and I'll hurt you.
@@ -80,14 +109,16 @@ class cache(object):
 			for y in eclass_filenames:
 				if not y.endswith(".eclass"):
 					continue
+				obj = hashed_path(os.path.join(x, y))
+				obj.eclass_dir = x
 				try:
-					mtime = os.stat(os.path.join(x, y))[stat.ST_MTIME]
+					mtime = obj.mtime
 				except OSError:
 					continue
 				ys=y[:-eclass_len]
 				if x == self._master_eclass_root:
 					master_eclasses[ys] = mtime
-					self.eclasses[ys] = (x, mtime)
+					self.eclasses[ys] = obj
 					self._eclass_locations[ys] = x
 					continue
 
@@ -98,22 +129,25 @@ class cache(object):
 						# so prefer the master entry.
 						continue
 
-				self.eclasses[ys] = (x, mtime)
+				self.eclasses[ys] = obj
 				self._eclass_locations[ys] = x
 
-	def is_eclass_data_valid(self, ec_dict):
+	def validate_and_rewrite_cache(self, ec_dict, chf_type, stores_paths):
 		if not isinstance(ec_dict, dict):
-			return False
-		for eclass, tup in ec_dict.items():
-			cached_data = self.eclasses.get(eclass, None)
-			""" Only use the mtime for validation since the probability of a
-			collision is small and, depending on the cache implementation, the
-			path may not be specified (cache from rsync mirrors, for example).
-			"""
-			if cached_data is None or tup[1] != cached_data[1]:
-				return False
-
-		return True
+			return None
+		our_getter = operator.attrgetter(chf_type)
+		cache_getter = lambda x:x
+		if stores_paths:
+			key_getter = operator.itemgetter(1)
+		d = {}
+		for eclass, ec_data in ec_dict.items():
+			cached_data = self.eclasses.get(eclass)
+			if cached_data is None:
+				return None
+			if cache_getter(ec_data) != our_getter(cached_data):
+				return None
+			d[eclass] = cached_data
+		return d
 
 	def get_eclass_data(self, inherits):
 		ec_dict = {}

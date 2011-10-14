@@ -358,16 +358,16 @@ class portdbapi(dbapi):
 		@returns: A new EbuildMetadataPhase instance, or None if the
 			metadata cache is already valid.
 		"""
-		metadata, st, emtime = self._pull_valid_cache(cpv, ebuild_path, repo_path)
+		metadata, ebuild_hash = self._pull_valid_cache(cpv, ebuild_path, repo_path)
 		if metadata is not None:
 			return None
 
-		process = EbuildMetadataPhase(cpv=cpv, ebuild_path=ebuild_path,
-			ebuild_mtime=emtime, metadata_callback=self._metadata_callback,
+		process = EbuildMetadataPhase(cpv=cpv,
+			ebuild_hash=ebuild_hash, metadata_callback=self._metadata_callback,
 			portdb=self, repo_path=repo_path, settings=self.doebuild_settings)
 		return process
 
-	def _metadata_callback(self, cpv, ebuild_path, repo_path, metadata, mtime):
+	def _metadata_callback(self, cpv, repo_path, metadata, ebuild_hash):
 
 		i = metadata
 		if hasattr(metadata, "items"):
@@ -380,8 +380,17 @@ class portdbapi(dbapi):
 		else:
 			metadata["_eclasses_"] = {}
 
+		try:
+			cache = self.auxdb[repo_path]
+			chf = cache.validation_chf
+			metadata['_%s_' % chf] = getattr(ebuild_hash, chf)
+		except CacheError:
+			# Normally this shouldn't happen, so we'll show
+			# a traceback for debugging purposes.
+			traceback.print_exc()
+			cache = None
+
 		metadata.pop("INHERITED", None)
-		metadata["_mtime_"] = mtime
 
 		eapi = metadata.get("EAPI")
 		if not eapi or not eapi.strip():
@@ -392,20 +401,24 @@ class portdbapi(dbapi):
 				metadata[k] = ""
 			metadata["EAPI"] = "-" + eapi.lstrip("-")
 
-		try:
-			self.auxdb[repo_path][cpv] = metadata
-		except CacheError:
-			# Normally this shouldn't happen, so we'll show
-			# a traceback for debugging purposes.
-			traceback.print_exc()
+		if cache is not None:
+			try:
+				cache[cpv] = metadata
+			except CacheError:
+				# Normally this shouldn't happen, so we'll show
+				# a traceback for debugging purposes.
+				traceback.print_exc()
 		return metadata
 
 	def _pull_valid_cache(self, cpv, ebuild_path, repo_path):
 		try:
 			# Don't use unicode-wrapped os module, for better performance.
-			st = _os.stat(_unicode_encode(ebuild_path,
-				encoding=_encodings['fs'], errors='strict'))
-			emtime = st[stat.ST_MTIME]
+			path = _unicode_encode(ebuild_path,
+				encoding=_encodings['fs'], errors='strict')
+			ebuild_hash = eclass_cache.hashed_path(path)
+			# snag mtime since we use it later, and to trigger stat failure
+			# if it doesn't exist
+			ebuild_hash.mtime
 		except OSError:
 			writemsg(_("!!! aux_get(): ebuild for " \
 				"'%s' does not exist at:\n") % (cpv,), noiselevel=-1)
@@ -422,36 +435,29 @@ class portdbapi(dbapi):
 		auxdbs.append(self.auxdb[repo_path])
 		eclass_db = self._repo_info[repo_path].eclass_db
 
-		doregen = True
 		for auxdb in auxdbs:
 			try:
 				metadata = auxdb[cpv]
 			except KeyError:
-				pass
+				continue
 			except CacheError:
 				if not auxdb.readonly:
 					try:
 						del auxdb[cpv]
-					except KeyError:
+					except (KeyError, CacheError):
 						pass
-					except CacheError:
-						pass
-			else:
-				eapi = metadata.get('EAPI', '').strip()
-				if not eapi:
-					eapi = '0'
-				if not (eapi[:1] == '-' and eapi_is_supported(eapi[1:])) and \
-					emtime == metadata['_mtime_'] and \
-					eclass_db.is_eclass_data_valid(metadata['_eclasses_']):
-					doregen = False
-
-			if not doregen:
+				continue
+			eapi = metadata.get('EAPI', '').strip()
+			if not eapi:
+				eapi = '0'
+			if eapi[:1] == '-' and eapi_is_supported(eapi[1:]):
+				continue
+			if auxdb.validate_entry(metadata, ebuild_hash, eclass_db):
 				break
-
-		if doregen:
+		else:
 			metadata = None
 
-		return (metadata, st, emtime)
+		return (metadata, ebuild_hash)
 
 	def aux_get(self, mycpv, mylist, mytree=None, myrepo=None):
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
@@ -492,7 +498,7 @@ class portdbapi(dbapi):
 				_("ebuild not found for '%s'") % mycpv, noiselevel=1)
 			raise KeyError(mycpv)
 
-		mydata, st, emtime = self._pull_valid_cache(mycpv, myebuild, mylocation)
+		mydata, ebuild_hash = self._pull_valid_cache(mycpv, myebuild, mylocation)
 		doregen = mydata is None
 
 		if doregen:
@@ -515,10 +521,10 @@ class portdbapi(dbapi):
 
 			if eapi is not None and not portage.eapi_is_supported(eapi):
 				mydata = self._metadata_callback(
-					mycpv, myebuild, mylocation, {'EAPI':eapi}, emtime)
+					mycpv, ebuild_hash, mylocation, {'EAPI':eapi}, emtime)
 			else:
-				proc = EbuildMetadataPhase(cpv=mycpv, ebuild_path=myebuild,
-					ebuild_mtime=emtime,
+				proc = EbuildMetadataPhase(cpv=mycpv,
+					ebuild_hash=ebuild_hash,
 					metadata_callback=self._metadata_callback, portdb=self,
 					repo_path=mylocation,
 					scheduler=PollScheduler().sched_iface,
@@ -536,15 +542,17 @@ class portdbapi(dbapi):
 		# do we have a origin repository name for the current package
 		mydata["repository"] = self.repositories.get_name_for_location(mylocation)
 		mydata["INHERITED"] = ' '.join(mydata.get("_eclasses_", []))
-		mydata["_mtime_"] = st[stat.ST_MTIME]
+		mydata["_mtime_"] = ebuild_hash.mtime
 
 		eapi = mydata.get("EAPI")
 		if not eapi:
 			eapi = "0"
 			mydata["EAPI"] = eapi
 		if not eapi_is_supported(eapi):
-			for k in set(mydata).difference(("_mtime_", "_eclasses_")):
-				mydata[k] = ""
+			keys = set(mydata)
+			keys.discard("_eclasses_")
+			keys.discard("_mtime_")
+			mydata.update((k, '') for k in keys)
 			mydata["EAPI"] = "-" + eapi.lstrip("-")
 
 		#finally, we look at our internal cache entry and return the requested data.

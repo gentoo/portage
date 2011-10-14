@@ -20,8 +20,8 @@ class EbuildMetadataPhase(SubProcess):
 	used to extract metadata from the ebuild.
 	"""
 
-	__slots__ = ("cpv", "ebuild_path", "fd_pipes", "metadata_callback",
-		"ebuild_mtime", "metadata", "portdb", "repo_path", "settings") + \
+	__slots__ = ("cpv", "ebuild_hash", "fd_pipes", "metadata_callback",
+		"metadata", "portdb", "repo_path", "settings") + \
 		("_raw_metadata",)
 
 	_file_names = ("ebuild",)
@@ -31,7 +31,7 @@ class EbuildMetadataPhase(SubProcess):
 	def _start(self):
 		settings = self.settings
 		settings.setcpv(self.cpv)
-		ebuild_path = self.ebuild_path
+		ebuild_path = self.ebuild_hash.location
 
 		eapi = None
 		if eapi is None and \
@@ -44,8 +44,8 @@ class EbuildMetadataPhase(SubProcess):
 
 		if eapi is not None:
 			if not portage.eapi_is_supported(eapi):
-				self.metadata_callback(self.cpv, self.ebuild_path,
-					self.repo_path, {'EAPI' : eapi}, self.ebuild_mtime)
+				self.metadata_callback(self.cpv, ebuild_path,
+					self.repo_path, {'EAPI' : eapi}, self.ebuild_hash.mtime)
 				self._set_returncode((self.pid, os.EX_OK << 8))
 				self.wait()
 				return
@@ -128,6 +128,5 @@ class EbuildMetadataPhase(SubProcess):
 			else:
 				metadata = zip(portage.auxdbkeys, metadata_lines)
 				self.metadata = self.metadata_callback(self.cpv,
-					self.ebuild_path, self.repo_path, metadata,
-					self.ebuild_mtime)
+					self.repo_path, metadata, self.ebuild_hash)
 
