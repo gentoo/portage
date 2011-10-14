@@ -218,6 +218,10 @@ def ParseArgs(argv, qahelp):
 	parser.add_option('-i', '--ignore-arches', dest='ignore_arches', action='store_true',
 		default=False, help='ignore arch-specific failures (where arch != host)')
 
+	parser.add_option("--ignore-default-opts",
+		action="store_true",
+		help="do not use the REPOMAN_DEFAULT_OPTS environment variable")
+
 	parser.add_option('-I', '--ignore-masked', dest='ignore_masked', action='store_true',
 		default=False, help='ignore masked packages (not allowed with commit mode)')
 
@@ -246,6 +250,11 @@ def ParseArgs(argv, qahelp):
 		parser.on_tail(" %s %s\n" % (k.ljust(20), qahelp[k]))
 
 	opts, args = parser.parse_args(argv[1:])
+
+	if not opts.ignore_default_opts:
+		default_opts = repoman_settings.get("REPOMAN_DEFAULT_OPTS", "").split()
+		if default_opts:
+			opts, args = parser.parse_args(default_opts + sys.argv[1:])
 
 	if opts.mode == 'help':
 		parser.print_help(short=False)
