@@ -198,6 +198,11 @@ def quickpkg_extended_atom(options, infos, atom, eout):
 	atoms = []
 	for cpv in vardb.cpv_all():
 		cpv_atom = Atom("=%s" % cpv)
+
+		if atom == "*/*":
+			atoms.append(cpv_atom)
+			continue
+
 		if not extended_cp_match(atom.cp, cpv_atom.cp):
 			continue
 
