@@ -18,6 +18,7 @@ import optparse
 import re
 import signal
 import stat
+import subprocess
 import sys
 import tempfile
 import textwrap
@@ -194,6 +195,10 @@ def ParseArgs(argv, qahelp):
 	
 	parser.add_option('-q', '--quiet', dest="quiet", action="count", default=0,
 		help='do not print unnecessary messages')
+
+	parser.add_option(
+		'--echangelog', type='choice', choices=('y', 'n'), metavar="<y|n>",
+		help='for commit mode, call echangelog if ChangeLog is unmodified')
 
 	parser.add_option('-f', '--force', dest='force', default=False, action='store_true',
 		help='Commit with QA violations')
@@ -539,12 +544,6 @@ else:
 	else:
 		vcs = None
 
-# Note: We don't use ChangeLogs in distributed SCMs.
-# It will be generated on server side from scm log,
-# before package moves to the rsync server.
-# This is needed because we try to avoid merge collisions.
-check_changelog = vcs in ('cvs', 'svn')
-
 # Disable copyright/mtime check if vcs does not preserve mtime (bug #324075).
 vcs_preserves_mtime = vcs not in ('git',)
 
@@ -633,6 +632,30 @@ if "commit" == options.mode and \
 	for line in textwrap.wrap(msg, 70):
 		print(prefix + line)
 	sys.exit(1)
+
+if options.echangelog is None and \
+	repo_config.name == "gentoo":
+	# Bug #337853 - gentoo's council says to enable
+	# --echangelog by default for the "gentoo" repo
+	options.echangelog = 'y'
+
+if vcs is None:
+	options.echangelog = 'n'
+
+if 'commit' == options.mode and \
+	options.echangelog == 'y' and \
+	find_binary('echangelog') is None:
+	logging.error("echangelog not found, and --echangelog is enabled")
+	sys.exit(1)
+
+# The --echangelog option causes automatic ChangeLog generation,
+# which invalidates changelog.ebuildadded and changelog.missing
+# checks.
+# Note: We don't use ChangeLogs in distributed SCMs.
+# It will be generated on server side from scm log,
+# before package moves to the rsync server.
+# This is needed because we try to avoid merge collisions.
+check_changelog = options.echangelog != 'y' and vcs in ('cvs', 'svn')
 
 # Generate an appropriate PORTDIR_OVERLAY value for passing into the
 # profile-specific config constructor calls.
@@ -2339,6 +2362,95 @@ else:
 	mydirty = []
 
 	print("* %s files being committed..." % green(str(len(myupdates))), end=' ')
+
+	commitmessage = options.commitmsg
+	if options.commitmsgfile:
+		try:
+			f = io.open(_unicode_encode(options.commitmsgfile,
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['content'], errors='replace')
+			commitmessage = f.read()
+			f.close()
+			del f
+		except (IOError, OSError) as e:
+			if e.errno == errno.ENOENT:
+				portage.writemsg("!!! File Not Found: --commitmsgfile='%s'\n" % options.commitmsgfile)
+			else:
+				raise
+		# We've read the content so the file is no longer needed.
+		commitmessagefile = None
+	if not commitmessage or not commitmessage.strip():
+		try:
+			editor = os.environ.get("EDITOR")
+			if editor and utilities.editor_is_executable(editor):
+				commitmessage = utilities.get_commit_message_with_editor(
+					editor, message=qa_output)
+			else:
+				commitmessage = utilities.get_commit_message_with_stdin()
+		except KeyboardInterrupt:
+			exithandler()
+		if not commitmessage or not commitmessage.strip():
+			print("* no commit message?  aborting commit.")
+			sys.exit(1)
+	commitmessage = commitmessage.rstrip()
+	changelog_msg = commitmessage
+	portage_version = getattr(portage, "VERSION", None)
+	if portage_version is None:
+		sys.stderr.write("Failed to insert portage version in message!\n")
+		sys.stderr.flush()
+		portage_version = "Unknown"
+	unameout = platform.system() + " "
+	if platform.system() in ["Darwin", "SunOS"]:
+		unameout += platform.processor()
+	else:
+		unameout += platform.machine()
+	commitmessage += "\n\n(Portage version: %s/%s/%s" % \
+		(portage_version, vcs, unameout)
+	if options.force:
+		commitmessage += ", RepoMan options: --force"
+	commitmessage += ")"
+
+	if options.ask and userquery('Commit changes?', True) != 'Yes':
+		print("* aborting commit.")
+		sys.exit(1)
+
+	if options.echangelog == 'y':
+		logging.info("checking for unmodified ChangeLog files")
+		for x in scanlist:
+			catdir, pkgdir = x.split("/")
+			checkdir = repodir + "/" + x
+			checkdir_relative = ""
+			if repolevel < 3:
+				checkdir_relative = os.path.join(pkgdir, checkdir_relative)
+			if repolevel < 2:
+				checkdir_relative = os.path.join(catdir, checkdir_relative)
+			checkdir_relative = os.path.join(".", checkdir_relative)
+
+			changelog_path = os.path.join(checkdir_relative, "ChangeLog")
+			changelog_modified = changelog_path in modified_changelogs
+			if changelog_modified:
+				continue
+
+			checkdir_modified = False
+			checkdir_pattern = checkdir_relative.rstrip(os.sep) + os.sep
+			for f in chain(myupdates, myremoved):
+				if f.startswith(checkdir_pattern):
+					checkdir_modified = True
+					break
+			if not checkdir_modified:
+				continue
+
+			myupdates.append(changelog_path)
+			logging.info("calling echangelog for package %s" % x)
+			echangelog_args = ["echangelog", "--vcs", vcs, changelog_msg]
+			if options.pretend:
+				print("(%s)" % (" ".join(echangelog_args),))
+				continue
+			retcode = subprocess.call(echangelog_args, cwd=checkdir)
+			if retcode != os.EX_OK:
+				logging.error("echangelog exited with '%s' status" % retcode)
+				sys.exit(retcode)
+
 	if vcs not in ('cvs', 'svn'):
 		# With git, bzr and hg, there's never any keyword expansion, so
 		# there's no need to regenerate manifests and all files will be
@@ -2392,56 +2504,6 @@ else:
 
 	logging.info("myupdates: %s", myupdates)
 	logging.info("myheaders: %s", myheaders)
-
-	commitmessage = options.commitmsg
-	if options.commitmsgfile:
-		try:
-			f = io.open(_unicode_encode(options.commitmsgfile,
-			encoding=_encodings['fs'], errors='strict'),
-			mode='r', encoding=_encodings['content'], errors='replace')
-			commitmessage = f.read()
-			f.close()
-			del f
-		except (IOError, OSError) as e:
-			if e.errno == errno.ENOENT:
-				portage.writemsg("!!! File Not Found: --commitmsgfile='%s'\n" % options.commitmsgfile)
-			else:
-				raise
-		# We've read the content so the file is no longer needed.
-		commitmessagefile = None
-	if not commitmessage or not commitmessage.strip():
-		try:
-			editor = os.environ.get("EDITOR")
-			if editor and utilities.editor_is_executable(editor):
-				commitmessage = utilities.get_commit_message_with_editor(
-					editor, message=qa_output)
-			else:
-				commitmessage = utilities.get_commit_message_with_stdin()
-		except KeyboardInterrupt:
-			exithandler()
-		if not commitmessage or not commitmessage.strip():
-			print("* no commit message?  aborting commit.")
-			sys.exit(1)
-	commitmessage = commitmessage.rstrip()
-	portage_version = getattr(portage, "VERSION", None)
-	if portage_version is None:
-		sys.stderr.write("Failed to insert portage version in message!\n")
-		sys.stderr.flush()
-		portage_version = "Unknown"
-	unameout = platform.system() + " "
-	if platform.system() in ["Darwin", "SunOS"]:
-		unameout += platform.processor()
-	else:
-		unameout += platform.machine()
-	commitmessage += "\n\n(Portage version: %s/%s/%s" % \
-		(portage_version, vcs, unameout)
-	if options.force:
-		commitmessage += ", RepoMan options: --force"
-	commitmessage += ")"
-
-	if options.ask and userquery('Commit changes?', True) != 'Yes':
-		print("* aborting commit.")
-		sys.exit(1)
 
 	# Handle the case where committed files have keywords which
 	# will change and need a priming commit before the Manifest
