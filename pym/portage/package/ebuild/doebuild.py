@@ -1907,8 +1907,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
 	if not missing_symlinks:
 		return
 
-	qa_msg = ["QA Notice: Missing soname symlink(s) " + \
-		"will be automatically created:"]
+	qa_msg = ["QA Notice: Missing soname symlink(s):"]
 	qa_msg.append("")
 	qa_msg.extend("\t%s -> %s" % (os.path.join(
 		os.path.dirname(obj).lstrip(os.sep), soname),
@@ -1917,13 +1916,6 @@ def _post_src_install_soname_symlinks(mysettings, out):
 	qa_msg.append("")
 	for line in qa_msg:
 		eqawarn(line, key=mysettings.mycpv, out=out)
-
-	_preinst_bsdflags(mysettings)
-	for obj, soname in missing_symlinks:
-		obj_file_path = os.path.join(image_dir, obj.lstrip(os.sep))
-		sym_file_path = os.path.join(os.path.dirname(obj_file_path), soname)
-		os.symlink(os.path.basename(obj_file_path), sym_file_path)
-	_reapply_bsdflags_to_image(mysettings)
 
 def _merge_unicode_error(errors):
 	lines = []
