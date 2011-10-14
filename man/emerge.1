@@ -174,10 +174,12 @@ In versions of portage >=2.1.5 the \-\-metadata action is totally unnecessary
 unless the user has enabled FEATURES="metadata-transfer" in \fBmake.conf\fR(5).
 .TP
 .BR "\-\-prune " (\fB\-P\fR)
-\fBWARNING: This action can remove important packages!\fR  Removes all but the
-highest installed version of a package from your system. Use \fB\-\-prune\fR
-together with \fB\-\-verbose\fR to show reverse dependencies or with
-\fB\-\-nodeps\fR to ignore all dependencies.
+Removes all but the highest installed version of a package from your
+system. Use \fB\-\-prune\fR together with \fB\-\-verbose\fR to show
+reverse dependencies or with \fB\-\-nodeps\fR to ignore all dependencies.
+\fBWARNING: This action can remove packages from your world file! Check
+the emerge output of the next \-\-depclean run carefully! Use
+\-\-depclean to avoid this issue.\fR
 .TP
 .BR \-\-regen
 Causes portage to check and update the dependency cache of all ebuilds in the 
