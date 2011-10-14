@@ -1,5 +1,6 @@
+# -*- coding: UTF8 -*-
 # Copyright: 2009-2011 Gentoo Foundation
-# Author(s): Petteri R&#228;ty (betelgeuse@gentoo.org)
+# Author(s): Petteri Räty (betelgeuse@gentoo.org)
 # License: GPL2
 
 __all__ = ['database']
