@@ -1807,6 +1807,32 @@ def _post_src_install_soname_symlinks(mysettings, out):
 		if f is not None:
 			f.close()
 
+	qa_no_symlink = ""
+	f = None
+	try:
+		f = io.open(_unicode_encode(os.path.join(
+			mysettings["PORTAGE_BUILDDIR"],
+			"build-info", "QA_SONAME_NO_SYMLINK"),
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['repo.content'],
+			errors='replace')
+		qa_no_symlink = f.read()
+	except IOError as e:
+		if e.errno not in (errno.ENOENT, errno.ESTALE):
+			raise
+	finally:
+		if f is not None:
+			f.close()
+
+	qa_no_symlink = qa_no_symlink.split()
+	if qa_no_symlink:
+		if len(qa_no_symlink) > 1:
+			qa_no_symlink = "|".join("(%s)" % x for x in qa_no_symlink)
+			qa_no_symlink = "^(%s)$" % qa_no_symlink
+		else:
+			qa_no_symlink = "^%s$" % qa_no_symlink[0]
+		qa_no_symlink = re.compile(qa_no_symlink)
+
 	libpaths = set(portage.util.getlibpaths(
 		mysettings["ROOT"], env=mysettings))
 	libpath_inodes = set()
@@ -1862,6 +1888,8 @@ def _post_src_install_soname_symlinks(mysettings, out):
 		if not soname:
 			continue
 		if not is_libdir(os.path.dirname(obj)):
+			continue
+		if qa_no_symlink and qa_no_symlink.match(obj.strip(os.sep)) is None:
 			continue
 
 		obj_file_path = os.path.join(image_dir, obj.lstrip(os.sep))
