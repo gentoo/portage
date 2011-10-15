@@ -906,6 +906,37 @@ scanlist.sort()
 
 logging.debug("Found the following packages to scan:\n%s" % '\n'.join(scanlist))
 
+def vcs_files_to_cps(vcs_file_iter):
+	"""
+	Iterate over the given modified file paths returned from the vcs,
+	and return a frozenset containing category/pn strings for each
+	modified package.
+	"""
+
+	modified_cps = []
+
+	if repolevel == 3:
+		if next(vcs_file_iter, None) is not None:
+			modified_cps.append("/".join(reposplit[-2:]))
+
+	elif repolevel == 2:
+		category = reposplit[-1]
+		for filename in vcs_file_iter:
+			f_split = filename.split(os.sep)
+			# ['.', pn,...]
+			if len(f_split) > 2:
+				modified_cps.append(category + "/" + f_split[1])
+
+	else:
+		# repolevel == 1
+		for filename in vcs_file_iter:
+			f_split = filename.split(os.sep)
+			# ['.', category, pn,...]
+			if len(f_split) > 3:
+				modified_cps.append("/".join(f_split[1:3]))
+
+	return frozenset(modified_cps)
+
 def dev_keywords(profiles):
 	"""
 	Create a set of KEYWORDS values that exist in 'dev'
@@ -1150,9 +1181,12 @@ except FileNotFound:
 	# disable for non-gentoo repoman users who may not have herds.
 	herd_base = None
 
-modified_pkgs = 0
+effective_scanlist = scanlist
+if options.if_modified == "y":
+	effective_scanlist = sorted(vcs_files_to_cps(
+		chain(mychanged, mynew, myremoved)))
 
-for x in scanlist:
+for x in effective_scanlist:
 	#ebuilds and digests added to cvs respectively.
 	logging.info("checking package %s" % x)
 	eadded=[]
@@ -1164,18 +1198,6 @@ for x in scanlist:
 	if repolevel < 2:
 		checkdir_relative = os.path.join(catdir, checkdir_relative)
 	checkdir_relative = os.path.join(".", checkdir_relative)
-
-	if options.if_modified == "y":
-		checkdir_modified = False
-		checkdir_pattern = checkdir_relative.rstrip(os.sep) + os.sep
-		for f in chain(mychanged, mynew, myremoved):
-			if f.startswith(checkdir_pattern):
-				checkdir_modified = True
-				modified_pkgs += 1
-				break
-		if not checkdir_modified:
-			continue
-
 	generated_manifest = False
 
 	if options.mode == "manifest" or \
@@ -2102,7 +2124,7 @@ for x in scanlist:
 				"%s/metadata.xml: unused local USE-description: '%s'" % \
 				(x, myflag))
 
-if options.if_modified == "y" and modified_pkgs < 1:
+if options.if_modified == "y" and len(effective_scanlist) < 1:
 	logging.warn("--if-modified is enabled, but no modified packages were found!")
 
 if options.mode == "manifest":
@@ -2434,7 +2456,8 @@ else:
 
 	if options.echangelog == 'y':
 		logging.info("checking for unmodified ChangeLog files")
-		for x in scanlist:
+		for x in sorted(vcs_files_to_cps(
+			chain(myupdates, mymanifests, myremoved))):
 			catdir, pkgdir = x.split("/")
 			checkdir = repodir + "/" + x
 			checkdir_relative = ""
@@ -2447,15 +2470,6 @@ else:
 			changelog_path = os.path.join(checkdir_relative, "ChangeLog")
 			changelog_modified = changelog_path in modified_changelogs
 			if changelog_modified:
-				continue
-
-			checkdir_modified = False
-			checkdir_pattern = checkdir_relative.rstrip(os.sep) + os.sep
-			for f in chain(myupdates, mymanifests, myremoved):
-				if f.startswith(checkdir_pattern):
-					checkdir_modified = True
-					break
-			if not checkdir_modified:
 				continue
 
 			myupdates.append(changelog_path)
