@@ -472,7 +472,7 @@ def FindVCS():
 	outvcs = []
 
 	def seek(depth = None):
-		""" Seek for distributed VCSes. """
+		""" Seek for VCSes that have a top-level data directory only. """
 		retvcs = []
 		pathprep = ''
 
@@ -483,6 +483,8 @@ def FindVCS():
 				retvcs.append('bzr')
 			if os.path.isdir(os.path.join(pathprep, '.hg')):
 				retvcs.append('hg')
+			if os.path.isdir(os.path.join(pathprep, '.svn')):  # >=1.7
+				retvcs.append('svn')
 
 			if retvcs:
 				break
@@ -497,7 +499,7 @@ def FindVCS():
 	# Level zero VCS-es.
 	if os.path.isdir('CVS'):
 		outvcs.append('cvs')
-	if os.path.isdir('.svn'):
+	if os.path.isdir('.svn'):  # <1.7
 		outvcs.append('svn')
 
 	# If we already found one of 'level zeros', just take a quick look
