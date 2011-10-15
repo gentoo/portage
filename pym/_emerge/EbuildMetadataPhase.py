@@ -44,9 +44,8 @@ class EbuildMetadataPhase(SubProcess):
 
 		if eapi is not None:
 			if not portage.eapi_is_supported(eapi):
-				self.metadata = {'EAPI' : eapi}
-				self.metadata_callback(self.cpv,
-					self.repo_path, self.metadata, self.ebuild_hash)
+				self.metadata = self.metadata_callback(self.cpv,
+					self.repo_path, {'EAPI' : eapi}, self.ebuild_hash)
 				self._set_returncode((self.pid, os.EX_OK << 8))
 				self.wait()
 				return
