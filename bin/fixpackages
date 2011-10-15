@@ -1,11 +1,12 @@
 #!/usr/bin/python
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
 
-import os,sys
-os.environ["PORTAGE_CALLER"]="fixpackages"
+import os
+import sys
+
 try:
 	import portage
 except ImportError:
@@ -38,7 +39,7 @@ except (OSError, ValueError) as e:
 	portage.writemsg("!!! %s\n" % str(e))
 	del e
 
-_global_updates(mytrees, mtimedb["updates"])
+_global_updates(mytrees, mtimedb["updates"], if_mtime_changed=False)
 
 print()
 print("Done.")

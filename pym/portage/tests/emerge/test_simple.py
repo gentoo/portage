@@ -249,7 +249,8 @@ src_install() {
 			"PYTHONPATH" : pythonpath,
 		}
 
-		dirs = [distdir, fake_bin, portage_tmpdir,
+		updates_dir = os.path.join(portdir, "profiles", "updates")
+		dirs = [distdir, fake_bin, portage_tmpdir, updates_dir,
 			user_config_dir, var_cache_edb]
 		true_symlinks = ["chown", "chgrp"]
 		true_binary = find_binary("true")
@@ -271,6 +272,11 @@ src_install() {
 			for cp, xml_data in metadata_xml_files:
 				with open(os.path.join(portdir, cp, "metadata.xml"), 'w') as f:
 					f.write(playground.metadata_xml_template % xml_data)
+			with open(os.path.join(updates_dir, "1Q-2010"), 'w') as f:
+				f.write("""
+slotmove =app-doc/pms-3 2 3
+move dev-util/git dev-vcs/git
+""")
 
 			if debug:
 				# The subprocess inherits both stdout and stderr, for
