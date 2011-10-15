@@ -56,7 +56,6 @@ parser.add_option("--skip-manifest", help="skip all manifest checks",
 
 opts, pargs = parser.parse_args(args=sys.argv[1:])
 
-os.environ["PORTAGE_CALLER"]="ebuild"
 try:
 	import portage
 except ImportError:
