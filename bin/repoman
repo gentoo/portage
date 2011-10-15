@@ -2451,7 +2451,7 @@ else:
 
 			checkdir_modified = False
 			checkdir_pattern = checkdir_relative.rstrip(os.sep) + os.sep
-			for f in chain(myupdates, myremoved):
+			for f in chain(myupdates, mymanifests, myremoved):
 				if f.startswith(checkdir_pattern):
 					checkdir_modified = True
 					break
@@ -2460,7 +2460,9 @@ else:
 
 			myupdates.append(changelog_path)
 			logging.info("calling echangelog for package %s" % x)
-			echangelog_args = ["echangelog", "--vcs", vcs, changelog_msg]
+			# --no-strict is required if only manifest(s) have changed
+			echangelog_args = ["echangelog", "--no-strict",
+				"--vcs", vcs, changelog_msg]
 			if options.pretend:
 				writemsg_stdout("(%s)\n" % (" ".join(echangelog_args),),
 					noiselevel=-1)
