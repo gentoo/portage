@@ -1660,6 +1660,10 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 	porttrees_data = []
 	for path in porttrees:
 		src_db = portdb._pregen_auxdb.get(path)
+		if src_db is None:
+			# portdbapi does not populate _pregen_auxdb
+			# when FEATURES=metadata-transfer is enabled
+			src_db = portdb._create_pregen_cache(path)
 
 		if src_db is not None:
 			porttrees_data.append(TreeData(portdb.auxdb[path],

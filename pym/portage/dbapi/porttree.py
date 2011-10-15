@@ -182,6 +182,8 @@ class portdbapi(dbapi):
 		# ~harring
 		filtered_auxdbkeys = [x for x in auxdbkeys if not x.startswith("UNUSED_0")]
 		filtered_auxdbkeys.sort()
+		filtered_auxdbkeys = tuple(filtered_auxdbkeys)
+		self._filtered_auxdbkeys = filtered_auxdbkeys
 		# If secpass < 1, we don't want to write to the cache
 		# since then we won't be able to apply group permissions
 		# to the cache entries/directories.
@@ -212,14 +214,9 @@ class portdbapi(dbapi):
 			for x in self.porttrees:
 				if x in self._pregen_auxdb:
 					continue
-				conf = self.repositories.get_repo_for_location(x)
-				cache = conf.get_pregenerated_cache(filtered_auxdbkeys, readonly=True)
+				cache = self._create_pregen_cache(x)
 				if cache is not None:
 					self._pregen_auxdb[x] = cache
-					try:
-						cache.ec = self._repo_info[x].eclass_db
-					except AttributeError:
-						pass
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(
 			["DEPEND", "EAPI", "INHERITED", "IUSE", "KEYWORDS", "LICENSE",
@@ -228,6 +225,17 @@ class portdbapi(dbapi):
 
 		self._aux_cache = {}
 		self._broken_ebuilds = set()
+
+	def _create_pregen_cache(self, tree):
+		conf = self.repositories.get_repo_for_location(tree)
+		cache = conf.get_pregenerated_cache(
+			self._filtered_auxdbkeys, readonly=True)
+		if cache is not None:
+			try:
+				cache.ec = self._repo_info[tree].eclass_db
+			except AttributeError:
+				pass
+		return cache
 
 	def _init_cache_dirs(self):
 		"""Create /var/cache/edb/dep and adjust permissions for the portage
