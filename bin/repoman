@@ -680,9 +680,9 @@ categories = []
 for path in set([portdir, repodir]):
 	categories.extend(portage.util.grabfile(
 		os.path.join(path, 'profiles', 'categories')))
-repoman_settings.categories = tuple(sorted(
-	portage.util.stack_lists([categories], incremental=1)))
-categories = frozenset(repoman_settings.categories)
+repoman_settings.categories = frozenset(
+	portage.util.stack_lists([categories], incremental=1))
+categories = repoman_settings.categories
 
 portdb.settings = repoman_settings
 root_config = RootConfig(repoman_settings, trees[root], None)
