@@ -237,8 +237,7 @@ class GenCache(object):
 				del metadata['EAPI']
 			try:
 				chf = self._trg_cache.validation_chf
-				if chf != 'mtime':
-					metadata['_%s_' % chf] = getattr(ebuild_hash, chf)
+				metadata['_%s_' % chf] = getattr(ebuild_hash, chf)
 				try:
 					self._trg_cache[cpv] = metadata
 				except StatCollision as sc:
