@@ -138,7 +138,7 @@ class cache(object):
 		our_getter = operator.attrgetter(chf_type)
 		cache_getter = lambda x:x
 		if stores_paths:
-			key_getter = operator.itemgetter(1)
+			cache_getter = operator.itemgetter(1)
 		d = {}
 		for eclass, ec_data in ec_dict.items():
 			cached_data = self.eclasses.get(eclass)
