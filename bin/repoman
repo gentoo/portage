@@ -544,6 +544,11 @@ else:
 	else:
 		vcs = None
 
+if options.if_modified == "y" and vcs is None:
+	logging.info("Not in a version controlled repository; "
+		"disabling --if-modified.")
+	options.if_modified = "n"
+
 # Disable copyright/mtime check if vcs does not preserve mtime (bug #324075).
 vcs_preserves_mtime = vcs not in ('git',)
 
@@ -1068,25 +1073,41 @@ if vcs == "cvs":
 	mycvstree = cvstree.getentries("./", recursive=1)
 	mychanged = cvstree.findchanged(mycvstree, recursive=1, basedir="./")
 	mynew = cvstree.findnew(mycvstree, recursive=1, basedir="./")
+	if options.if_modified == "y":
+		myremoved = cvstree.findremoved(mycvstree, recursive=1, basedir="./")
+
 if vcs == "svn":
 	svnstatus = os.popen("svn status").readlines()
 	mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem and elem[:1] in "MR" ]
 	mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A") ]
+	if options.if_modified == "y":
+		myremoved = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("D")]
+
 elif vcs == "git":
 	mychanged = os.popen("git diff-index --name-only --relative --diff-filter=M HEAD").readlines()
 	mychanged = ["./" + elem[:-1] for elem in mychanged]
 
 	mynew = os.popen("git diff-index --name-only --relative --diff-filter=A HEAD").readlines()
 	mynew = ["./" + elem[:-1] for elem in mynew]
+	if options.if_modified == "y":
+		myremoved = os.popen("git diff-index --name-only --relative --diff-filter=D HEAD").readlines()
+		myremoved = ["./" + elem[:-1] for elem in myremoved]
+
 elif vcs == "bzr":
 	bzrstatus = os.popen("bzr status -S .").readlines()
 	mychanged = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and elem[1:2] == "M" ]
 	mynew     = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and ( elem[1:2] == "NK" or elem[0:1] == "R" ) ]
+	if options.if_modified == "y":
+		myremoved = [ "./" + elem.split()[-3:-2][0].split('/')[-1:][0] for elem in bzrstatus if elem and ( elem[1:2] == "K" or elem[0:1] == "R" ) ]
+
 elif vcs == "hg":
 	mychanged = os.popen("hg status --no-status --modified .").readlines()
 	mychanged = ["./" + elem.rstrip() for elem in mychanged]
 	mynew = os.popen("hg status --no-status --added .").readlines()
 	mynew = ["./" + elem.rstrip() for elem in mynew]
+	if options.if_modified == "y":
+		myremoved = os.popen("hg status --no-status --removed .").readlines()
+		myremoved = ["./" + elem.rstrip() for elem in myremoved]
 
 if vcs:
 	new_ebuilds.update(x for x in mynew if x.endswith(".ebuild"))
@@ -1130,9 +1151,6 @@ except FileNotFound:
 	herd_base = None
 
 modified_pkgs = 0
-if options.if_modified == "y" and not vcs:
-	logging.info("Not in a version controlled repository; disabling --if-modified.")
-	options.if_modified = "n"
 
 for x in scanlist:
 	#ebuilds and digests added to cvs respectively.
@@ -1150,7 +1168,7 @@ for x in scanlist:
 	if options.if_modified == "y":
 		checkdir_modified = False
 		checkdir_pattern = checkdir_relative.rstrip(os.sep) + os.sep
-		for f in chain(mychanged, mynew):
+		for f in chain(mychanged, mynew, myremoved):
 			if f.startswith(checkdir_pattern):
 				checkdir_modified = True
 				modified_pkgs += 1
