@@ -1743,7 +1743,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 					if not (dest['_mtime_'] == src['_mtime_'] and \
 						tree_data.eclass_db.validate_and_rewrite_cache(
 							dest['_eclasses_'], tree_data.dest_db.validation_chf,
-							tree_data.dest_db.store_eclass_paths) and \
+							tree_data.dest_db.store_eclass_paths) is not None and \
 						set(dest['_eclasses_']) == set(src['_eclasses_'])):
 						dest = None
 					else:
@@ -1768,9 +1768,9 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 					continue
 
 				if eclasses is not None:
-					if not tree_data.eclass_db.validate_and_rewrite_cache(
+					if tree_data.eclass_db.validate_and_rewrite_cache(
 						src['_eclasses_'], tree_data.src_db.validation_chf,
-						tree_data.src_db.store_eclass_paths):
+						tree_data.src_db.store_eclass_paths) is None:
 						continue
 					inherited = eclasses
 				else:

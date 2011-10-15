@@ -133,6 +133,11 @@ class cache(object):
 				self._eclass_locations[ys] = x
 
 	def validate_and_rewrite_cache(self, ec_dict, chf_type, stores_paths):
+		"""
+		This will return an empty dict if the ec_dict parameter happens
+		to be empty, therefore callers must take care to distinguish
+		between empty dict and None return values.
+		"""
 		if not isinstance(ec_dict, dict):
 			return None
 		our_getter = operator.attrgetter(chf_type)
