@@ -44,11 +44,11 @@ class RepoConfig(object):
 	"""Stores config of one repository"""
 
 	__slots__ = ('aliases', 'allow_missing_manifest',
-		'cache_is_authoritative', 'create_manifest', 'disable_manifest',
+		'create_manifest', 'disable_manifest',
 		'eclass_overrides', 'eclass_locations', 'format', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'priority', 'sign_manifest', 'sync', 'thin_manifest',
-		'trust_authoritative_cache', 'user_location')
+		'user_location', 'cache_format')
 
 	def __init__(self, name, repo_opts):
 		"""Build a RepoConfig with options in repo_opts
@@ -126,13 +126,24 @@ class RepoConfig(object):
 		self.create_manifest = True
 		self.disable_manifest = False
 		self.manifest_hashes = None
+		self.cache_format = None
 
-		self.cache_is_authoritative = False
-
-		trust_authoritative_cache = repo_opts.get('trust-authoritative-cache')
-		if trust_authoritative_cache is not None:
-			trust_authoritative_cache = trust_authoritative_cache.lower() == 'true'
-		self.trust_authoritative_cache = trust_authoritative_cache
+	def get_pregenerated_cache(self, auxdbkeys, readonly=True, force=False):
+		format = self.cache_format
+		if format is None:
+			if not force:
+				return None
+			format = 'pms'
+		if format == 'pms':
+			from portage.cache.metadata import database
+			name = 'metadata/cache'
+		elif format == 'md5-dict':
+			from portage.cache.flat_hash import md5_database as database
+			name = 'metadata/md5-cache'
+		else:
+			return None
+		return database(self.location, name,
+			auxdbkeys, readonly=readonly)
 
 	def load_manifest(self, *args, **kwds):
 		kwds['thin'] = self.thin_manifest
@@ -151,8 +162,6 @@ class RepoConfig(object):
 			self.eclass_overrides = new_repo.eclass_overrides
 		if new_repo.masters is not None:
 			self.masters = new_repo.masters
-		if new_repo.trust_authoritative_cache is not None:
-			self.trust_authoritative_cache = new_repo.trust_authoritative_cache
 		if new_repo.name is not None:
 			self.name = new_repo.name
 			self.missing_repo_name = new_repo.missing_repo_name
@@ -240,11 +249,6 @@ class RepoConfigLoader(object):
 		if prepos['DEFAULT'].masters is not None:
 			default_repo_opts['masters'] = \
 				' '.join(prepos['DEFAULT'].masters)
-		if prepos['DEFAULT'].trust_authoritative_cache is not None:
-			if prepos['DEFAULT'].trust_authoritative_cache:
-				default_repo_opts['trust-authoritative-cache'] = 'true'
-			else:
-				default_repo_opts['trust-authoritative-cache'] = 'false'
 
 		if overlays:
 			#overlay priority is negative because we want them to be looked before any other repo
@@ -265,11 +269,6 @@ class RepoConfigLoader(object):
 						if repo_conf_opts.masters is not None:
 							repo_opts['masters'] = \
 								' '.join(repo_conf_opts.masters)
-						if repo_conf_opts.trust_authoritative_cache is not None:
-							if repo_conf_opts.trust_authoritative_cache:
-								repo_opts['trust-authoritative-cache'] = 'true'
-							else:
-								repo_opts['trust-authoritative-cache'] = 'false'
 
 					repo = RepoConfig(repo.name, repo_opts)
 					if repo.name in prepos:
@@ -396,6 +395,13 @@ class RepoConfigLoader(object):
 			repo.create_manifest = manifest_policy != 'false'
 			repo.disable_manifest = manifest_policy == 'false'
 
+			# for compatibility w/ PMS, fallback to pms; but also check if the
+			# cache exists or not.
+			repo.cache_format = layout_data.get('cache-format', 'pms').lower()
+			if repo.cache_format == 'pms' and not os.path.isdir(
+				os.path.join(repo.location, 'metadata', 'cache')):
+				repo.cache_format = None
+
 			manifest_hashes = layout_data.get('manifest-hashes')
 			if manifest_hashes is not None:
 				manifest_hashes = frozenset(manifest_hashes.upper().split())
@@ -424,10 +430,6 @@ class RepoConfigLoader(object):
 						"layout_filename":layout_filename}),
 						DeprecationWarning)
 			repo.manifest_hashes = manifest_hashes
-
-			repo.cache_is_authoritative = layout_data.get('authoritative-cache', 'false').lower() == 'true'
-			if not repo.trust_authoritative_cache:
-				repo.cache_is_authoritative = False
 
 		#Take aliases into account.
 		new_prepos = {}

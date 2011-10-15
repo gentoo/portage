@@ -18,6 +18,7 @@ import optparse
 import re
 import signal
 import stat
+import subprocess
 import sys
 import tempfile
 import textwrap
@@ -74,7 +75,7 @@ from portage.process import find_binary, spawn
 from portage.output import bold, create_color_func, \
 	green, nocolor, red
 from portage.output import ConsoleStyleFile, StyleWriter
-from portage.util import cmp_sort_key, writemsg_level
+from portage.util import cmp_sort_key, writemsg_level, writemsg_stdout
 from portage.package.ebuild.digestgen import digestgen
 from portage.eapi import eapi_has_slot_deps, \
 	eapi_has_use_deps, eapi_has_strong_blocks, eapi_has_iuse_defaults, \
@@ -200,6 +201,10 @@ def ParseArgs(argv, qahelp):
 	parser.add_option('-q', '--quiet', dest="quiet", action="count", default=0,
 		help='do not print unnecessary messages')
 
+	parser.add_option(
+		'--echangelog', type='choice', choices=('y', 'n'), metavar="<y|n>",
+		help='for commit mode, call echangelog if ChangeLog is unmodified')
+
 	parser.add_option('-f', '--force', dest='force', default=False, action='store_true',
 		help='Commit with QA violations')
 
@@ -222,6 +227,10 @@ def ParseArgs(argv, qahelp):
 
 	parser.add_option('-i', '--ignore-arches', dest='ignore_arches', action='store_true',
 		default=False, help='ignore arch-specific failures (where arch != host)')
+
+	parser.add_option("--ignore-default-opts",
+		action="store_true",
+		help="do not use the REPOMAN_DEFAULT_OPTS environment variable")
 
 	parser.add_option('-I', '--ignore-masked', dest='ignore_masked', action='store_true',
 		default=False, help='ignore masked packages (not allowed with commit mode)')
@@ -251,6 +260,11 @@ def ParseArgs(argv, qahelp):
 		parser.on_tail(" %s %s\n" % (k.ljust(20), qahelp[k]))
 
 	opts, args = parser.parse_args(argv[1:])
+
+	if not opts.ignore_default_opts:
+		default_opts = repoman_settings.get("REPOMAN_DEFAULT_OPTS", "").split()
+		if default_opts:
+			opts, args = parser.parse_args(default_opts + sys.argv[1:])
 
 	if opts.mode == 'help':
 		parser.print_help(short=False)
@@ -537,11 +551,10 @@ else:
 	else:
 		vcs = None
 
-# Note: We don't use ChangeLogs in distributed SCMs.
-# It will be generated on server side from scm log,
-# before package moves to the rsync server.
-# This is needed because we try to avoid merge collisions.
-check_changelog = vcs in ('cvs', 'svn')
+if options.if_modified == "y" and vcs is None:
+	logging.info("Not in a version controlled repository; "
+		"disabling --if-modified.")
+	options.if_modified = "n"
 
 # Disable copyright/mtime check if vcs does not preserve mtime (bug #324075).
 vcs_preserves_mtime = vcs not in ('git',)
@@ -632,6 +645,30 @@ if "commit" == options.mode and \
 		print(prefix + line)
 	sys.exit(1)
 
+if options.echangelog is None and \
+	repo_config.name == "gentoo":
+	# Bug #337853 - gentoo's council says to enable
+	# --echangelog by default for the "gentoo" repo
+	options.echangelog = 'y'
+
+if vcs is None:
+	options.echangelog = 'n'
+
+if 'commit' == options.mode and \
+	options.echangelog == 'y' and \
+	find_binary('echangelog') is None:
+	logging.error("echangelog not found, and --echangelog is enabled")
+	sys.exit(1)
+
+# The --echangelog option causes automatic ChangeLog generation,
+# which invalidates changelog.ebuildadded and changelog.missing
+# checks.
+# Note: We don't use ChangeLogs in distributed SCMs.
+# It will be generated on server side from scm log,
+# before package moves to the rsync server.
+# This is needed because we try to avoid merge collisions.
+check_changelog = options.echangelog != 'y' and vcs in ('cvs', 'svn')
+
 # Generate an appropriate PORTDIR_OVERLAY value for passing into the
 # profile-specific config constructor calls.
 env = os.environ.copy()
@@ -652,7 +689,7 @@ for path in set([portdir, repodir]):
 		os.path.join(path, 'profiles', 'categories')))
 repoman_settings.categories = tuple(sorted(
 	portage.util.stack_lists([categories], incremental=1)))
-del categories
+categories = frozenset(repoman_settings.categories)
 
 portdb.settings = repoman_settings
 root_config = RootConfig(repoman_settings, trees[root], None)
@@ -840,7 +877,7 @@ scanlist=[]
 if repolevel==2:
 	#we are inside a category directory
 	catdir=reposplit[-1]
-	if catdir not in repoman_settings.categories:
+	if catdir not in categories:
 		caterror(catdir)
 	mydirlist=os.listdir(startdir)
 	for x in mydirlist:
@@ -850,7 +887,7 @@ if repolevel==2:
 			scanlist.append(catdir+"/"+x)
 	repo_subdir = catdir + os.sep
 elif repolevel==1:
-	for x in repoman_settings.categories:
+	for x in categories:
 		if not os.path.isdir(startdir+"/"+x):
 			continue
 		for y in os.listdir(startdir+"/"+x):
@@ -861,7 +898,7 @@ elif repolevel==1:
 	repo_subdir = ""
 elif repolevel==3:
 	catdir = reposplit[-2]
-	if catdir not in repoman_settings.categories:
+	if catdir not in categories:
 		caterror(catdir)
 	scanlist.append(catdir+"/"+reposplit[-1])
 	repo_subdir = scanlist[-1] + os.sep
@@ -875,6 +912,39 @@ repo_subdir_len = len(repo_subdir)
 scanlist.sort()
 
 logging.debug("Found the following packages to scan:\n%s" % '\n'.join(scanlist))
+
+def vcs_files_to_cps(vcs_file_iter):
+	"""
+	Iterate over the given modified file paths returned from the vcs,
+	and return a frozenset containing category/pn strings for each
+	modified package.
+	"""
+
+	modified_cps = []
+
+	if repolevel == 3:
+		if reposplit[-2] in categories and \
+			next(vcs_file_iter, None) is not None:
+			modified_cps.append("/".join(reposplit[-2:]))
+
+	elif repolevel == 2:
+		category = reposplit[-1]
+		if category in categories:
+			for filename in vcs_file_iter:
+				f_split = filename.split(os.sep)
+				# ['.', pn,...]
+				if len(f_split) > 2:
+					modified_cps.append(category + "/" + f_split[1])
+
+	else:
+		# repolevel == 1
+		for filename in vcs_file_iter:
+			f_split = filename.split(os.sep)
+			# ['.', category, pn,...]
+			if len(f_split) > 3 and f_split[1] in categories:
+				modified_cps.append("/".join(f_split[1:3]))
+
+	return frozenset(modified_cps)
 
 def dev_keywords(profiles):
 	"""
@@ -1043,25 +1113,41 @@ if vcs == "cvs":
 	mycvstree = cvstree.getentries("./", recursive=1)
 	mychanged = cvstree.findchanged(mycvstree, recursive=1, basedir="./")
 	mynew = cvstree.findnew(mycvstree, recursive=1, basedir="./")
+	if options.if_modified == "y":
+		myremoved = cvstree.findremoved(mycvstree, recursive=1, basedir="./")
+
 if vcs == "svn":
 	svnstatus = os.popen("svn status").readlines()
 	mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem and elem[:1] in "MR" ]
 	mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A") ]
+	if options.if_modified == "y":
+		myremoved = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("D")]
+
 elif vcs == "git":
 	mychanged = os.popen("git diff-index --name-only --relative --diff-filter=M HEAD").readlines()
 	mychanged = ["./" + elem[:-1] for elem in mychanged]
 
 	mynew = os.popen("git diff-index --name-only --relative --diff-filter=A HEAD").readlines()
 	mynew = ["./" + elem[:-1] for elem in mynew]
+	if options.if_modified == "y":
+		myremoved = os.popen("git diff-index --name-only --relative --diff-filter=D HEAD").readlines()
+		myremoved = ["./" + elem[:-1] for elem in myremoved]
+
 elif vcs == "bzr":
 	bzrstatus = os.popen("bzr status -S .").readlines()
 	mychanged = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and elem[1:2] == "M" ]
 	mynew     = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and ( elem[1:2] == "NK" or elem[0:1] == "R" ) ]
+	if options.if_modified == "y":
+		myremoved = [ "./" + elem.split()[-3:-2][0].split('/')[-1:][0] for elem in bzrstatus if elem and ( elem[1:2] == "K" or elem[0:1] == "R" ) ]
+
 elif vcs == "hg":
 	mychanged = os.popen("hg status --no-status --modified .").readlines()
 	mychanged = ["./" + elem.rstrip() for elem in mychanged]
 	mynew = os.popen("hg status --no-status --added .").readlines()
 	mynew = ["./" + elem.rstrip() for elem in mynew]
+	if options.if_modified == "y":
+		myremoved = os.popen("hg status --no-status --removed .").readlines()
+		myremoved = ["./" + elem.rstrip() for elem in myremoved]
 
 if vcs:
 	new_ebuilds.update(x for x in mynew if x.endswith(".ebuild"))
@@ -1104,12 +1190,12 @@ except FileNotFound:
 	# disable for non-gentoo repoman users who may not have herds.
 	herd_base = None
 
-modified_pkgs = 0
-if options.if_modified == "y" and not vcs:
-	logging.info("Not in a version controlled repository; disabling --if-modified.")
-	options.if_modified = "n"
+effective_scanlist = scanlist
+if options.if_modified == "y":
+	effective_scanlist = sorted(vcs_files_to_cps(
+		chain(mychanged, mynew, myremoved)))
 
-for x in scanlist:
+for x in effective_scanlist:
 	#ebuilds and digests added to cvs respectively.
 	logging.info("checking package %s" % x)
 	eadded=[]
@@ -1121,18 +1207,6 @@ for x in scanlist:
 	if repolevel < 2:
 		checkdir_relative = os.path.join(catdir, checkdir_relative)
 	checkdir_relative = os.path.join(".", checkdir_relative)
-
-	if options.if_modified == "y":
-		checkdir_modified = False
-		checkdir_pattern = checkdir_relative.rstrip(os.sep) + os.sep
-		for f in chain(mychanged, mynew):
-			if f.startswith(checkdir_pattern):
-				checkdir_modified = True
-				modified_pkgs += 1
-				break
-		if not checkdir_modified:
-			continue
-
 	generated_manifest = False
 
 	if options.mode == "manifest" or \
@@ -2059,7 +2133,7 @@ for x in scanlist:
 				"%s/metadata.xml: unused local USE-description: '%s'" % \
 				(x, myflag))
 
-if options.if_modified == "y" and modified_pkgs < 1:
+if options.if_modified == "y" and len(effective_scanlist) < 1:
 	logging.warn("--if-modified is enabled, but no modified packages were found!")
 
 if options.mode == "manifest":
@@ -2337,6 +2411,93 @@ else:
 	mydirty = []
 
 	print("* %s files being committed..." % green(str(len(myupdates))), end=' ')
+
+	commitmessage = options.commitmsg
+	if options.commitmsgfile:
+		try:
+			f = io.open(_unicode_encode(options.commitmsgfile,
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['content'], errors='replace')
+			commitmessage = f.read()
+			f.close()
+			del f
+		except (IOError, OSError) as e:
+			if e.errno == errno.ENOENT:
+				portage.writemsg("!!! File Not Found: --commitmsgfile='%s'\n" % options.commitmsgfile)
+			else:
+				raise
+		# We've read the content so the file is no longer needed.
+		commitmessagefile = None
+	if not commitmessage or not commitmessage.strip():
+		try:
+			editor = os.environ.get("EDITOR")
+			if editor and utilities.editor_is_executable(editor):
+				commitmessage = utilities.get_commit_message_with_editor(
+					editor, message=qa_output)
+			else:
+				commitmessage = utilities.get_commit_message_with_stdin()
+		except KeyboardInterrupt:
+			exithandler()
+		if not commitmessage or not commitmessage.strip():
+			print("* no commit message?  aborting commit.")
+			sys.exit(1)
+	commitmessage = commitmessage.rstrip()
+	changelog_msg = commitmessage
+	portage_version = getattr(portage, "VERSION", None)
+	if portage_version is None:
+		sys.stderr.write("Failed to insert portage version in message!\n")
+		sys.stderr.flush()
+		portage_version = "Unknown"
+	unameout = platform.system() + " "
+	if platform.system() in ["Darwin", "SunOS"]:
+		unameout += platform.processor()
+	else:
+		unameout += platform.machine()
+	commitmessage += "\n\n(Portage version: %s/%s/%s" % \
+		(portage_version, vcs, unameout)
+	if options.force:
+		commitmessage += ", RepoMan options: --force"
+	commitmessage += ")"
+
+	if options.ask and userquery('Commit changes?', True) != 'Yes':
+		print("* aborting commit.")
+		sys.exit(1)
+
+	if options.echangelog == 'y':
+		logging.info("checking for unmodified ChangeLog files")
+		for x in sorted(vcs_files_to_cps(
+			chain(myupdates, mymanifests, myremoved))):
+			catdir, pkgdir = x.split("/")
+			checkdir = repodir + "/" + x
+			checkdir_relative = ""
+			if repolevel < 3:
+				checkdir_relative = os.path.join(pkgdir, checkdir_relative)
+			if repolevel < 2:
+				checkdir_relative = os.path.join(catdir, checkdir_relative)
+			checkdir_relative = os.path.join(".", checkdir_relative)
+
+			changelog_path = os.path.join(checkdir_relative, "ChangeLog")
+			changelog_modified = changelog_path in modified_changelogs
+			if changelog_modified:
+				continue
+
+			myupdates.append(changelog_path)
+			logging.info("calling echangelog for package %s" % x)
+			# --no-strict is required if only manifest(s) have changed
+			echangelog_args = ["echangelog", "--no-strict",
+				"--vcs", vcs, changelog_msg]
+			if options.pretend:
+				writemsg_stdout("(%s)\n" % (" ".join(echangelog_args),),
+					noiselevel=-1)
+				continue
+			echangelog_args = [_unicode_encode(arg) for arg in echangelog_args]
+			echangelog_cwd = _unicode_encode(checkdir,
+				encoding=_encodings['fs'], errors='strict')
+			retcode = subprocess.call(echangelog_args, cwd=echangelog_cwd)
+			if retcode != os.EX_OK:
+				logging.error("echangelog exited with '%s' status" % retcode)
+				sys.exit(retcode)
+
 	if vcs not in ('cvs', 'svn'):
 		# With git, bzr and hg, there's never any keyword expansion, so
 		# there's no need to regenerate manifests and all files will be
@@ -2390,56 +2551,6 @@ else:
 
 	logging.info("myupdates: %s", myupdates)
 	logging.info("myheaders: %s", myheaders)
-
-	commitmessage = options.commitmsg
-	if options.commitmsgfile:
-		try:
-			f = io.open(_unicode_encode(options.commitmsgfile,
-			encoding=_encodings['fs'], errors='strict'),
-			mode='r', encoding=_encodings['content'], errors='replace')
-			commitmessage = f.read()
-			f.close()
-			del f
-		except (IOError, OSError) as e:
-			if e.errno == errno.ENOENT:
-				portage.writemsg("!!! File Not Found: --commitmsgfile='%s'\n" % options.commitmsgfile)
-			else:
-				raise
-		# We've read the content so the file is no longer needed.
-		commitmessagefile = None
-	if not commitmessage or not commitmessage.strip():
-		try:
-			editor = os.environ.get("EDITOR")
-			if editor and utilities.editor_is_executable(editor):
-				commitmessage = utilities.get_commit_message_with_editor(
-					editor, message=qa_output)
-			else:
-				commitmessage = utilities.get_commit_message_with_stdin()
-		except KeyboardInterrupt:
-			exithandler()
-		if not commitmessage or not commitmessage.strip():
-			print("* no commit message?  aborting commit.")
-			sys.exit(1)
-	commitmessage = commitmessage.rstrip()
-	portage_version = getattr(portage, "VERSION", None)
-	if portage_version is None:
-		sys.stderr.write("Failed to insert portage version in message!\n")
-		sys.stderr.flush()
-		portage_version = "Unknown"
-	unameout = platform.system() + " "
-	if platform.system() in ["Darwin", "SunOS"]:
-		unameout += platform.processor()
-	else:
-		unameout += platform.machine()
-	commitmessage += "\n\n(Portage version: %s/%s/%s" % \
-		(portage_version, vcs, unameout)
-	if options.force:
-		commitmessage += ", RepoMan options: --force"
-	commitmessage += ")"
-
-	if options.ask and userquery('Commit changes?', True) != 'Yes':
-		print("* aborting commit.")
-		sys.exit(1)
 
 	# Handle the case where committed files have keywords which
 	# will change and need a priming commit before the Manifest
@@ -2546,87 +2657,25 @@ else:
 			portage.util.write_atomic(x, b''.join(mylines),
 				mode='wb')
 
+	if repolevel == 1:
+		print(green("RepoMan sez:"), "\"You're rather crazy... "
+			"doing the entire repository.\"\n")
+
 	if vcs in ('cvs', 'svn') and (myupdates or myremoved):
-		myfiles = myupdates + myremoved
-		for x in range(len(myfiles)-1, -1, -1):
-			if myfiles[x].count("/") < 4-repolevel:
-				del myfiles[x]
-		mydone=[]
-		if repolevel==3:   # In a package dir
-			repoman_settings["O"] = startdir
+
+		for x in sorted(vcs_files_to_cps(
+			chain(myupdates, myremoved, mymanifests))):
+			repoman_settings["O"] = os.path.join(repodir, x)
 			digestgen(mysettings=repoman_settings, myportdb=portdb)
-		elif repolevel==2: # In a category dir
-			for x in myfiles:
-				xs=x.split("/")
-				if len(xs) < 4-repolevel:
-					continue
-				if xs[0]==".":
-					xs=xs[1:]
-				if xs[0] in mydone:
-					continue
-				mydone.append(xs[0])
-				repoman_settings["O"] = os.path.join(startdir, xs[0])
-				if not os.path.isdir(repoman_settings["O"]):
-					continue
-				digestgen(mysettings=repoman_settings, myportdb=portdb)
-		elif repolevel==1: # repo-cvsroot
-			print(green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n")
-			for x in myfiles:
-				xs=x.split("/")
-				if len(xs) < 4-repolevel:
-					continue
-				if xs[0]==".":
-					xs=xs[1:]
-				if "/".join(xs[:2]) in mydone:
-					continue
-				mydone.append("/".join(xs[:2]))
-				repoman_settings["O"] = os.path.join(startdir, xs[0], xs[1])
-				if not os.path.isdir(repoman_settings["O"]):
-					continue
-				digestgen(mysettings=repoman_settings, myportdb=portdb)
-		else:
-			print(red("I'm confused... I don't know where I am!"))
-			sys.exit(1)
 
 	signed = False
 	if sign_manifests:
 		signed = True
-		myfiles = myupdates + myremoved + mymanifests
 		try:
-			if repolevel==3:   # In a package dir
-				repoman_settings["O"] = "."
+			for x in sorted(vcs_files_to_cps(
+				chain(myupdates, myremoved, mymanifests))):
+				repoman_settings["O"] = os.path.join(repodir, x)
 				gpgsign(os.path.join(repoman_settings["O"], "Manifest"))
-			elif repolevel==2: # In a category dir
-				mydone=[]
-				for x in myfiles:
-					xs=x.split("/")
-					if len(xs) < 4-repolevel:
-						continue
-					if xs[0]==".":
-						xs=xs[1:]
-					if xs[0] in mydone:
-						continue
-					mydone.append(xs[0])
-					repoman_settings["O"] = os.path.join(".", xs[0])
-					if not os.path.isdir(repoman_settings["O"]):
-						continue
-					gpgsign(os.path.join(repoman_settings["O"], "Manifest"))
-			elif repolevel==1: # repo-cvsroot
-				print(green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n")
-				mydone=[]
-				for x in myfiles:
-					xs=x.split("/")
-					if len(xs) < 4-repolevel:
-						continue
-					if xs[0]==".":
-						xs=xs[1:]
-					if "/".join(xs[:2]) in mydone:
-						continue
-					mydone.append("/".join(xs[:2]))
-					repoman_settings["O"] = os.path.join(".", xs[0], xs[1])
-					if not os.path.isdir(repoman_settings["O"]):
-						continue
-					gpgsign(os.path.join(repoman_settings["O"], "Manifest"))
 		except portage.exception.PortageException as e:
 			portage.writemsg("!!! %s\n" % str(e))
 			portage.writemsg("!!! Disabled FEATURES='sign'\n")

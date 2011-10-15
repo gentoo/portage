@@ -31,7 +31,7 @@ class database(fs_template.FsBased):
 			self.label.lstrip(os.path.sep).rstrip(os.path.sep))
 		write_keys = set(self._known_keys)
 		write_keys.add("_eclasses_")
-		write_keys.add("_mtime_")
+		write_keys.add("_%s_" % (self.validation_chf,))
 		self._write_keys = sorted(write_keys)
 		if not self.readonly and not os.path.exists(self.location):
 			self._ensure_dirs()
@@ -69,7 +69,6 @@ class database(fs_template.FsBased):
 			raise cache_errors.CacheCorruption(cpv, e)
 
 	def _setitem(self, cpv, values):
-#		import pdb;pdb.set_trace()
 		s = cpv.rfind("/")
 		fp = os.path.join(self.location,cpv[:s],".update.%i.%s" % (os.getpid(), cpv[s+1:]))
 		try:
@@ -153,3 +152,9 @@ class database(fs_template.FsBased):
 						dirs.append((depth+1, p))
 					continue
 				yield p[len_base+1:]
+
+
+class md5_database(database):
+
+	validation_chf = 'md5'
+	store_eclass_paths = False

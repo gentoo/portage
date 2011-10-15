@@ -550,15 +550,42 @@ def match(argv):
 		print("ERROR: expected 2 parameters, got %d!" % len(argv))
 		sys.exit(2)
 	root, atom = argv
-	if atom:
-		if atom_validate_strict and not portage.isvalidatom(atom):
-			portage.writemsg("ERROR: Invalid atom: '%s'\n" % atom,
-				noiselevel=-1)
-			return 2
-		results = portage.db[root]["vartree"].dbapi.match(atom)
-	else:
-		results = portage.db[root]["vartree"].dbapi.cpv_all()
+	if not atom:
+		atom = "*/*"
+
+	vardb = portage.db[root]["vartree"].dbapi
+	try:
+		atom = portage.dep.Atom(atom, allow_wildcard=True, allow_repo=True)
+	except portage.exception.InvalidAtom:
+		# maybe it's valid but missing category
+		atom = portage.dep_expand(atom, mydb=vardb, settings=vardb.settings)
+
+	if atom.extended_syntax:
+		if atom == "*/*":
+			results = vardb.cpv_all()
+		else:
+			results = []
+			require_metadata = atom.slot or atom.repo
+			for cpv in vardb.cpv_all():
+
+				if not portage.dep.extended_cp_match(
+					atom.cp, portage.cpv_getkey(cpv)):
+					continue
+
+				if require_metadata:
+					slot, repo = vardb.aux_get(cpv, ["SLOT", "repository"])
+
+					if atom.slot is not None and atom.slot != slot:
+						continue
+
+					if atom.repo is not None and atom.repo != repo:
+						continue
+
+				results.append(cpv)
+
 		results.sort()
+	else:
+		results = vardb.match(atom)
 	for cpv in results:
 		print(cpv)
 match.uses_root = True

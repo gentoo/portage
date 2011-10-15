@@ -1851,6 +1851,32 @@ def _post_src_install_soname_symlinks(mysettings, out):
 		if f is not None:
 			f.close()
 
+	qa_no_symlink = ""
+	f = None
+	try:
+		f = io.open(_unicode_encode(os.path.join(
+			mysettings["PORTAGE_BUILDDIR"],
+			"build-info", "QA_SONAME_NO_SYMLINK"),
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['repo.content'],
+			errors='replace')
+		qa_no_symlink = f.read()
+	except IOError as e:
+		if e.errno not in (errno.ENOENT, errno.ESTALE):
+			raise
+	finally:
+		if f is not None:
+			f.close()
+
+	qa_no_symlink = qa_no_symlink.split()
+	if qa_no_symlink:
+		if len(qa_no_symlink) > 1:
+			qa_no_symlink = "|".join("(%s)" % x for x in qa_no_symlink)
+			qa_no_symlink = "^(%s)$" % qa_no_symlink
+		else:
+			qa_no_symlink = "^%s$" % qa_no_symlink[0]
+		qa_no_symlink = re.compile(qa_no_symlink)
+
 	libpaths = set(portage.util.getlibpaths(
 		mysettings["ROOT"], env=mysettings))
 	libpath_inodes = set()
@@ -1907,6 +1933,8 @@ def _post_src_install_soname_symlinks(mysettings, out):
 			continue
 		if not is_libdir(os.path.dirname(obj)):
 			continue
+		if qa_no_symlink and qa_no_symlink.match(obj.strip(os.sep)) is not None:
+			continue
 
 		obj_file_path = os.path.join(image_dir, obj.lstrip(os.sep))
 		sym_file_path = os.path.join(os.path.dirname(obj_file_path), soname)
@@ -1923,8 +1951,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
 	if not missing_symlinks:
 		return
 
-	qa_msg = ["QA Notice: Missing soname symlink(s) " + \
-		"will be automatically created:"]
+	qa_msg = ["QA Notice: Missing soname symlink(s):"]
 	qa_msg.append("")
 	qa_msg.extend("\t%s -> %s" % (os.path.join(
 		os.path.dirname(obj).lstrip(os.sep), soname),
@@ -1933,13 +1960,6 @@ def _post_src_install_soname_symlinks(mysettings, out):
 	qa_msg.append("")
 	for line in qa_msg:
 		eqawarn(line, key=mysettings.mycpv, out=out)
-
-	_preinst_bsdflags(mysettings)
-	for obj, soname in missing_symlinks:
-		obj_file_path = os.path.join(image_dir, obj.lstrip(os.sep))
-		sym_file_path = os.path.join(os.path.dirname(obj_file_path), soname)
-		os.symlink(os.path.basename(obj_file_path), sym_file_path)
-	_reapply_bsdflags_to_image(mysettings)
 
 def _merge_unicode_error(errors):
 	lines = []

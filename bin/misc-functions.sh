@@ -410,6 +410,10 @@ install_qa_check_elf() {
 			fi
 		done }
 
+		[ -n "${QA_SONAME_NO_SYMLINK}" ] && \
+			echo "${QA_SONAME_NO_SYMLINK}" > \
+			"${PORTAGE_BUILDDIR}"/build-info/QA_SONAME_NO_SYMLINK
+
 		if [[ ${insecure_rpath} -eq 1 ]] ; then
 			die "Aborting due to serious QA concerns with RUNPATH/RPATH"
 		elif [[ -n ${die_msg} ]] && has stricter ${FEATURES} ; then

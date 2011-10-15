@@ -3,6 +3,7 @@
 
 import portage
 from portage import os
+from portage.eclass_cache import hashed_path
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 from _emerge.PollScheduler import PollScheduler
 
@@ -68,16 +69,15 @@ class MetadataRegen(PollScheduler):
 				ebuild_path, repo_path = portdb.findname2(cpv)
 				if ebuild_path is None:
 					raise AssertionError("ebuild not found for '%s'" % cpv)
-				metadata, st, emtime = portdb._pull_valid_cache(
+				metadata, ebuild_hash = portdb._pull_valid_cache(
 					cpv, ebuild_path, repo_path)
 				if metadata is not None:
 					if consumer is not None:
-						consumer(cpv, ebuild_path,
-							repo_path, metadata)
+						consumer(cpv, repo_path, metadata, ebuild_hash)
 					continue
 
-				yield EbuildMetadataPhase(cpv=cpv, ebuild_path=ebuild_path,
-					ebuild_mtime=emtime,
+				yield EbuildMetadataPhase(cpv=cpv,
+					ebuild_hash=ebuild_hash,
 					metadata_callback=portdb._metadata_callback,
 					portdb=portdb, repo_path=repo_path,
 					settings=portdb.doebuild_settings)
@@ -176,9 +176,9 @@ class MetadataRegen(PollScheduler):
 			# On failure, still notify the consumer (in this case the metadata
 			# argument is None).
 			self._consumer(metadata_process.cpv,
-				metadata_process.ebuild_path,
 				metadata_process.repo_path,
-				metadata_process.metadata)
+				metadata_process.metadata,
+				metadata_process.ebuild_hash)
 
 		self._schedule()
 

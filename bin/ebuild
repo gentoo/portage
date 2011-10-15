@@ -230,10 +230,8 @@ build_dir_phases = set(["setup", "unpack", "prepare", "configure", "compile",
 # sourced again even if $T/environment already exists.
 ebuild_changed = False
 if mytree == "porttree" and build_dir_phases.intersection(pargs):
-	metadata, st, emtime = \
-		portage.portdb._pull_valid_cache(cpv, ebuild, ebuild_portdir)
-	if metadata is None:
-		ebuild_changed = True
+	ebuild_changed = \
+		portage.portdb._pull_valid_cache(cpv, ebuild, ebuild_portdir)[0] is None
 
 tmpsettings = portage.config(clone=portage.settings)
 tmpsettings["PORTAGE_VERBOSE"] = "1"

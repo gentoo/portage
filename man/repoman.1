@@ -41,11 +41,17 @@ Forces the metadata.xml parse check to be carried out
 \fB-v\fR, \fB--verbose\fR
 Displays every package name while checking
 .TP
+\fB\-\-echangelog=<y|n>\fR
+For commit mode, call echangelog if ChangeLog is unmodified
+.TP
 \fB\-\-if\-modified=<y|n>\fR
 Only check packages that have uncommitted modifications
 .TP
 \fB\-i\fR, \fB\-\-ignore\-arches\fR
 Ignore arch-specific failures (where arch != host)
+.TP
+\fB\-\-ignore\-default\-opts\fR
+Do not use the \fIREPOMAN_DEFAULT_OPTS\fR environment variable.
 .TP
 \fB\-I\fR, \fB\-\-ignore\-masked\fR
 Ignore masked packages (not allowed with commit mode)
