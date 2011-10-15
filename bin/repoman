@@ -682,7 +682,7 @@ for path in set([portdir, repodir]):
 		os.path.join(path, 'profiles', 'categories')))
 repoman_settings.categories = tuple(sorted(
 	portage.util.stack_lists([categories], incremental=1)))
-del categories
+categories = frozenset(repoman_settings.categories)
 
 portdb.settings = repoman_settings
 root_config = RootConfig(repoman_settings, trees[root], None)
@@ -870,7 +870,7 @@ scanlist=[]
 if repolevel==2:
 	#we are inside a category directory
 	catdir=reposplit[-1]
-	if catdir not in repoman_settings.categories:
+	if catdir not in categories:
 		caterror(catdir)
 	mydirlist=os.listdir(startdir)
 	for x in mydirlist:
@@ -880,7 +880,7 @@ if repolevel==2:
 			scanlist.append(catdir+"/"+x)
 	repo_subdir = catdir + os.sep
 elif repolevel==1:
-	for x in repoman_settings.categories:
+	for x in categories:
 		if not os.path.isdir(startdir+"/"+x):
 			continue
 		for y in os.listdir(startdir+"/"+x):
@@ -891,7 +891,7 @@ elif repolevel==1:
 	repo_subdir = ""
 elif repolevel==3:
 	catdir = reposplit[-2]
-	if catdir not in repoman_settings.categories:
+	if catdir not in categories:
 		caterror(catdir)
 	scanlist.append(catdir+"/"+reposplit[-1])
 	repo_subdir = scanlist[-1] + os.sep
@@ -916,23 +916,25 @@ def vcs_files_to_cps(vcs_file_iter):
 	modified_cps = []
 
 	if repolevel == 3:
-		if next(vcs_file_iter, None) is not None:
+		if reposplit[-2] in categories and \
+			next(vcs_file_iter, None) is not None:
 			modified_cps.append("/".join(reposplit[-2:]))
 
 	elif repolevel == 2:
 		category = reposplit[-1]
-		for filename in vcs_file_iter:
-			f_split = filename.split(os.sep)
-			# ['.', pn,...]
-			if len(f_split) > 2:
-				modified_cps.append(category + "/" + f_split[1])
+		if category in categories:
+			for filename in vcs_file_iter:
+				f_split = filename.split(os.sep)
+				# ['.', pn,...]
+				if len(f_split) > 2:
+					modified_cps.append(category + "/" + f_split[1])
 
 	else:
 		# repolevel == 1
 		for filename in vcs_file_iter:
 			f_split = filename.split(os.sep)
 			# ['.', category, pn,...]
-			if len(f_split) > 3:
+			if len(f_split) > 3 and f_split[1] in categories:
 				modified_cps.append("/".join(f_split[1:3]))
 
 	return frozenset(modified_cps)
