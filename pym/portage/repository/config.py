@@ -44,11 +44,11 @@ class RepoConfig(object):
 	"""Stores config of one repository"""
 
 	__slots__ = ('aliases', 'allow_missing_manifest',
-		'create_manifest', 'disable_manifest',
+		'cache_format', 'create_manifest', 'disable_manifest',
 		'eclass_overrides', 'eclass_locations', 'format', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'priority', 'sign_manifest', 'sync', 'thin_manifest',
-		'user_location', 'cache_format')
+		'user_location')
 
 	def __init__(self, name, repo_opts):
 		"""Build a RepoConfig with options in repo_opts
