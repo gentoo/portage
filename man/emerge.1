@@ -344,6 +344,11 @@ An alternative for already\-merged
 packages is to use \fBquickpkg\fR(1) which creates a tbz2 from the
 live filesystem.
 .TP
+.BR "\-\-buildpkg\-exclude " ATOMS
+A space separated list of package atoms for which
+no binary packages should be built. This option overrides all
+possible ways to enable building of binary packages.
+.TP
 .BR "\-\-buildpkgonly " (\fB\-B\fR)
 Creates binary packages for all ebuilds processed without actually
 merging the packages.  This comes with the caveat that all build-time 
