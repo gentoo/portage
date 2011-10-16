@@ -29,7 +29,7 @@ class hashed_path(object):
 			# some rounding issues that aren't present for people using
 			# the straight c api.
 			# thus use the defacto python compatibility work around;
-			# access via index, which gurantees you get the raw long.
+			# access via index, which guarantees you get the raw long.
 			self.mtime = obj = os.stat(self.location)[stat.ST_MTIME]
 			return obj
 		if not attr.islower():
