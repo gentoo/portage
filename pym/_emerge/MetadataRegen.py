@@ -3,7 +3,6 @@
 
 import portage
 from portage import os
-from portage.eclass_cache import hashed_path
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 from _emerge.PollScheduler import PollScheduler
 
