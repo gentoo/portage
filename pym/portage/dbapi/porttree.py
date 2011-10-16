@@ -528,7 +528,7 @@ class portdbapi(dbapi):
 				mydata = self._metadata_callback(
 					mycpv, mylocation, {'EAPI':eapi}, ebuild_hash)
 			else:
-				proc = EbuildMetadataPhase(cpv=mycpv,
+				proc = EbuildMetadataPhase(cpv=mycpv, eapi=eapi,
 					ebuild_hash=ebuild_hash,
 					metadata_callback=self._metadata_callback, portdb=self,
 					repo_path=mylocation,
