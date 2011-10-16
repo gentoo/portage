@@ -606,9 +606,11 @@ class config(object):
 			self.categories = [grabfile(os.path.join(x, "categories")) \
 				for x in locations_manager.profile_and_user_locations]
 			category_re = dbapi._category_re
-			self.categories = tuple(sorted(
+			# categories used to be a tuple, but now we use a frozenset
+			# for hashed category validation in pordbapi.cp_list()
+			self.categories = frozenset(
 				x for x in stack_lists(self.categories, incremental=1)
-				if category_re.match(x) is not None))
+				if category_re.match(x) is not None)
 
 			archlist = [grabfile(os.path.join(x, "arch.list")) \
 				for x in locations_manager.profile_and_user_locations]

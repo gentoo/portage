@@ -15,7 +15,7 @@ from portage.update import grab_updates, parse_updates, update_config_files, upd
 from portage.util import grabfile, shlex_split, \
 	writemsg, writemsg_stdout, write_atomic
 
-def _global_updates(trees, prev_mtimes, quiet=False):
+def _global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 	"""
 	Perform new global updates if they exist in 'profiles/updates/'
 	subdirectories of all active repositories (PORTDIR + PORTDIR_OVERLAY).
@@ -73,10 +73,10 @@ def _global_updates(trees, prev_mtimes, quiet=False):
 			continue
 
 		try:
-			if mysettings.get("PORTAGE_CALLER") == "fixpackages":
-				update_data = grab_updates(updpath)
+			if if_mtime_changed:
+				update_data = grab_updates(updpath, prev_mtimes=prev_mtimes)
 			else:
-				update_data = grab_updates(updpath, prev_mtimes)
+				update_data = grab_updates(updpath)
 		except DirectoryNotFound:
 			continue
 		myupd = []

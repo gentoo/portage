@@ -420,10 +420,7 @@ class portdbapi(dbapi):
 
 	def _pull_valid_cache(self, cpv, ebuild_path, repo_path):
 		try:
-			# Don't use unicode-wrapped os module, for better performance.
-			path = _unicode_encode(ebuild_path,
-				encoding=_encodings['fs'], errors='strict')
-			ebuild_hash = eclass_cache.hashed_path(path)
+			ebuild_hash = eclass_cache.hashed_path(ebuild_path)
 			# snag mtime since we use it later, and to trigger stat failure
 			# if it doesn't exist
 			ebuild_hash.mtime
@@ -529,7 +526,7 @@ class portdbapi(dbapi):
 
 			if eapi is not None and not portage.eapi_is_supported(eapi):
 				mydata = self._metadata_callback(
-					mycpv, ebuild_hash, mylocation, {'EAPI':eapi}, emtime)
+					mycpv, mylocation, {'EAPI':eapi}, ebuild_hash)
 			else:
 				proc = EbuildMetadataPhase(cpv=mycpv,
 					ebuild_hash=ebuild_hash,

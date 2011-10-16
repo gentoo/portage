@@ -77,9 +77,7 @@ from portage.output import bold, create_color_func, \
 from portage.output import ConsoleStyleFile, StyleWriter
 from portage.util import cmp_sort_key, writemsg_level, writemsg_stdout
 from portage.package.ebuild.digestgen import digestgen
-from portage.eapi import eapi_has_slot_deps, \
-	eapi_has_use_deps, eapi_has_strong_blocks, eapi_has_iuse_defaults, \
-	eapi_has_required_use, eapi_has_use_dep_defaults
+from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 from portage.const import EPREFIX
 
 if sys.hexversion >= 0x3000000:
@@ -684,12 +682,12 @@ logging.info('PORTDIR_OVERLAY = "%s"' % env['PORTDIR_OVERLAY'])
 env['FEATURES'] = env.get('FEATURES', '') + ' -unknown-features-warn'
 
 categories = []
-for path in set([portdir, repodir]):
+for path in repo_info.eclass_db.porttrees:
 	categories.extend(portage.util.grabfile(
 		os.path.join(path, 'profiles', 'categories')))
-repoman_settings.categories = tuple(sorted(
-	portage.util.stack_lists([categories], incremental=1)))
-categories = frozenset(repoman_settings.categories)
+repoman_settings.categories = frozenset(
+	portage.util.stack_lists([categories], incremental=1))
+categories = repoman_settings.categories
 
 portdb.settings = repoman_settings
 root_config = RootConfig(repoman_settings, trees[root], None)
@@ -2007,6 +2005,7 @@ for x in effective_scanlist:
 						local_config=False,
 						_unmatched_removal=options.unmatched_removal,
 						env=env, _eprefix=eprefix)
+					dep_settings.categories = repoman_settings.categories
 					if options.without_mask:
 						dep_settings._mask_manager = \
 							copy.deepcopy(dep_settings._mask_manager)

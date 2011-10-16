@@ -38,7 +38,6 @@ except ImportError:
 from portage import os, _encodings, _unicode_encode, _unicode_decode
 from _emerge.MetadataRegen import MetadataRegen
 from portage.cache.cache_errors import CacheError, StatCollision
-from portage.cache import metadata
 from portage.manifest import guessManifestFileType
 from portage.util import cmp_sort_key, writemsg_level
 from portage import cpv_getkey
@@ -238,8 +237,7 @@ class GenCache(object):
 				del metadata['EAPI']
 			try:
 				chf = self._trg_cache.validation_chf
-				if chf != 'mtime':
-					metadata['_%s_' % chf] = getattr(ebuild_hash, chf)
+				metadata['_%s_' % chf] = getattr(ebuild_hash, chf)
 				try:
 					self._trg_cache[cpv] = metadata
 				except StatCollision as sc:

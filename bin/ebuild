@@ -56,14 +56,13 @@ parser.add_option("--skip-manifest", help="skip all manifest checks",
 
 opts, pargs = parser.parse_args(args=sys.argv[1:])
 
-os.environ["PORTAGE_CALLER"]="ebuild"
 # for an explanation on this logic, see pym/_emerge/__init__.py
 from os import environ as ose
 from os import path as osp
 if ose.__contains__("PORTAGE_PYTHONPATH"):
     sys.path.insert(0, ose["PORTAGE_PYTHONPATH"])
 else:
-    sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.                    realpath(__file__))), "pym"))
+    sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 import portage
 
 portage.dep._internal_warnings = True

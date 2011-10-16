@@ -44,8 +44,8 @@ class EbuildMetadataPhase(SubProcess):
 
 		if eapi is not None:
 			if not portage.eapi_is_supported(eapi):
-				self.metadata_callback(self.cpv, ebuild_path,
-					self.repo_path, {'EAPI' : eapi}, self.ebuild_hash.mtime)
+				self.metadata = self.metadata_callback(self.cpv,
+					self.repo_path, {'EAPI' : eapi}, self.ebuild_hash)
 				self._set_returncode((self.pid, os.EX_OK << 8))
 				self.wait()
 				return
@@ -117,10 +117,14 @@ class EbuildMetadataPhase(SubProcess):
 
 	def _set_returncode(self, wait_retval):
 		SubProcess._set_returncode(self, wait_retval)
-		if self.returncode == os.EX_OK:
-			metadata_lines = ''.join(_unicode_decode(chunk,
-				encoding=_encodings['repo.content'], errors='replace')
-				for chunk in self._raw_metadata).splitlines()
+		# self._raw_metadata is None when _start returns
+		# early due to an unsupported EAPI detected with
+		# FEATURES=parse-eapi-ebuild-head
+		if self.returncode == os.EX_OK and \
+			self._raw_metadata is not None:
+			metadata_lines = _unicode_decode(b''.join(self._raw_metadata),
+				encoding=_encodings['repo.content'],
+				errors='replace').splitlines()
 			if len(portage.auxdbkeys) != len(metadata_lines):
 				# Don't trust bash's returncode if the
 				# number of lines is incorrect.
