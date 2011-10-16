@@ -424,7 +424,7 @@ class portdbapi(dbapi):
 			# snag mtime since we use it later, and to trigger stat failure
 			# if it doesn't exist
 			ebuild_hash.mtime
-		except OSError:
+		except FileNotFound:
 			writemsg(_("!!! aux_get(): ebuild for " \
 				"'%s' does not exist at:\n") % (cpv,), noiselevel=-1)
 			writemsg("!!!            %s\n" % ebuild_path, noiselevel=-1)
