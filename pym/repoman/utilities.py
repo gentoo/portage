@@ -5,6 +5,8 @@
 """This module contains utility functions to help repoman find ebuilds to
 scan"""
 
+from __future__ import print_function
+
 __all__ = [
 	"detect_vcs_conflicts",
 	"editor_is_executable",
@@ -17,13 +19,22 @@ __all__ = [
 	"have_profile_dir",
 	"parse_metadata_use",
 	"UnknownHerdsError",
-	"check_metadata"
+	"check_metadata",
+	"UpdateChangeLog"
 ]
 
 import errno
 import io
+from itertools import chain
 import logging
+import pwd
 import sys
+import time
+import textwrap
+import difflib
+import shutil
+from tempfile import mkstemp
+
 from portage import os
 from portage import subprocess_getstatusoutput
 from portage import _encodings
@@ -308,7 +319,6 @@ def get_commit_message_with_editor(editor, message=None):
 	@rtype: string or None
 	@returns: A string on success or None if an error occurs.
 	"""
-	from tempfile import mkstemp
 	fd, filename = mkstemp()
 	try:
 		os.write(fd, _unicode_encode(_(
@@ -511,3 +521,111 @@ def FindVCS():
 		outvcs = seek()
 
 	return outvcs
+
+def UpdateChangeLog(pkgdir, category, package, new, removed, changed, msg, pretend):
+	""" Write an entry to an existing ChangeLog, or create a new one. """
+
+	# figure out who to write as
+	if 'GENTOO_COMMITTER_NAME' in os.environ and \
+			'GENTOO_COMMITTER_EMAIL' in os.environ:
+		user = '%s <%s>' % (os.environ['GENTOO_COMMITTER_NAME'], \
+				os.environ['GENTOO_COMMITTER_EMAIL'])
+	elif 'GENTOO_AUTHOR_NAME' in os.environ and \
+			'GENTOO_AUTHOR_EMAIL' in os.environ:
+		user = '%s <%s>' % (os.environ['GENTOO_AUTHOR_NAME'], \
+				os.environ['GENTOO_AUTHOR_EMAIL'])
+	elif 'ECHANGELOG_USER' in os.environ:
+		user = os.environ['ECHANGELOG_USER']
+	else:
+		(login, _, _, _, gecos, _, _) = pwd.getpwuid(os.getuid())
+		gecos = gecos.split(',')[0]  # bug #80011
+		user = '%s <%s@gentoo.org>' % (gecos, login)
+
+	if '<root@' in user:
+		err = 'Please set ECHANGELOG_USER or run as non-root'
+		logging.critical(err)
+		return None
+
+	cl_path = os.path.join(pkgdir, 'ChangeLog')
+	f, clnew_path = mkstemp()
+
+	# create an empty ChangeLog.new with correct header first
+	try:
+		f = os.fdopen(f, 'w+')
+		f.write('# ChangeLog for %s/%s\n' % (category, package))
+		year = time.strftime('%Y')
+		f.write('# Copyright 1999-%s Gentoo Foundation; Distributed under the GPL v2\n' % year)
+		f.write('# $Header: $\n')
+		f.write('\n')
+
+		# write new ChangeLog entry
+		date = time.strftime('%d %b %Y')
+		newebuild = False
+		for fn in new:
+			if not fn.endswith('.ebuild'):
+				continue
+			ebuild = fn.split(os.sep)[-1][0:-7] 
+			f.write('*%s (%s)\n' % (ebuild, date))
+			newebuild = True
+		if newebuild:
+			f.write('\n')
+		new = ['+' + elem for elem in new if elem not in ['ChangeLog', 'Manifest']]
+		removed = ['-' + elem for elem in removed]
+		changed = [elem for elem in changed if elem not in ['ChangeLog', 'Manifest']]
+		mesg = '%s; %s %s:' % (date, user, \
+				', '.join(chain(new,removed,changed)))
+		for line in textwrap.wrap(mesg, 80, \
+				initial_indent='  ', subsequent_indent='  ', \
+				break_on_hyphens=False):
+			f.write('%s\n' % line)
+		for line in textwrap.wrap(msg, 80, \
+				initial_indent='  ', subsequent_indent='  '):
+			f.write('%s\n' % line)
+
+		# append stuff from old ChangeLog
+		cl_lines = []
+		if os.path.exists(cl_path):
+			c = open(cl_path, 'r')
+			cl_lines = c.readlines()
+			for index, line in enumerate(cl_lines):
+				# skip the headers
+				if line.startswith('#'):
+					# normalise to $Header: $ to avoid pointless diff line
+					if line.startswith('# $Header:'):
+						cl_lines[index] = '# $Header: $\n'
+					continue
+				f.write(line)
+			c.close()
+
+		# show diff (do we want to keep on doing this, or only when
+		# pretend?)
+		f.seek(0)
+		clnew_lines = f.readlines()
+		for line in difflib.unified_diff(cl_lines, clnew_lines, \
+				fromfile=cl_path, tofile=cl_path + '.new', n=0):
+			print(line.rstrip())
+		print()
+
+		f.close()
+
+		if pretend:
+			# remove what we've done
+			os.remove(clnew_path)
+		else:
+			# rename ChangeLog.new to ChangeLog
+			shutil.move(clnew_path, cl_path)
+
+		if cl_lines == []:
+			return True
+		else:
+			return False
+	except IOError as e:
+		err = 'Repoman is unable to create/write to Changelog.new file: %s' % (e,)
+		logging.critical(err)
+		# try to remove if possible
+		try:
+			os.remove(clnew_path)
+		except OSError:
+			pass
+		return None
+

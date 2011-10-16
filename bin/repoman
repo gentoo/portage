@@ -18,7 +18,6 @@ import optparse
 import re
 import signal
 import stat
-import subprocess
 import sys
 import tempfile
 import textwrap
@@ -73,7 +72,7 @@ from portage.process import find_binary, spawn
 from portage.output import bold, create_color_func, \
 	green, nocolor, red
 from portage.output import ConsoleStyleFile, StyleWriter
-from portage.util import cmp_sort_key, writemsg_level, writemsg_stdout
+from portage.util import cmp_sort_key, writemsg_level
 from portage.package.ebuild.digestgen import digestgen
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 
@@ -645,19 +644,15 @@ if options.echangelog is None and \
 if vcs is None:
 	options.echangelog = 'n'
 
-if 'commit' == options.mode and \
-	options.echangelog == 'y' and \
-	find_binary('echangelog') is None:
-	logging.error("echangelog not found, and --echangelog is enabled")
-	sys.exit(1)
-
 # The --echangelog option causes automatic ChangeLog generation,
 # which invalidates changelog.ebuildadded and changelog.missing
 # checks.
-# Note: We don't use ChangeLogs in distributed SCMs.
+# Note: Some don't use ChangeLogs in distributed SCMs.
 # It will be generated on server side from scm log,
 # before package moves to the rsync server.
-# This is needed because we try to avoid merge collisions.
+# This is needed because they try to avoid merge collisions.
+# Gentoo's Council decided to always use the ChangeLog file.
+# TODO: shouldn't this just be switched on the repo, iso the VCS?
 check_changelog = options.echangelog != 'y' and vcs in ('cvs', 'svn')
 
 # Generate an appropriate PORTDIR_OVERLAY value for passing into the
@@ -2284,36 +2279,6 @@ else:
 				myautoadd+=[myunadded[x]]
 				del myunadded[x]
 
-	if myautoadd:
-		print(">>> Auto-Adding missing Manifest(s)...")
-		if options.pretend:
-			if vcs == "cvs":
-				print("(cvs add "+" ".join(myautoadd)+")")
-			elif vcs == "svn":
-				print("(svn add "+" ".join(myautoadd)+")")
-			elif vcs == "git":
-				print("(git add "+" ".join(myautoadd)+")")
-			elif vcs == "bzr":
-				print("(bzr add "+" ".join(myautoadd)+")")
-			elif vcs == "hg":
-				print("(hg add "+" ".join(myautoadd)+")")
-			retval=0
-		else:
-			if vcs == "cvs":
-				retval=os.system("cvs add "+" ".join(myautoadd))
-			elif vcs == "svn":
-				retval=os.system("svn add "+" ".join(myautoadd))
-			elif vcs == "git":
-				retval=os.system("git add "+" ".join(myautoadd))
-			elif vcs == "bzr":
-				retval=os.system("bzr add "+" ".join(myautoadd))
-			elif vcs == "hg":
-				retval=os.system("hg add "+" ".join(myautoadd))
-		if retval:
-			writemsg_level("!!! Exiting on %s (shell) error code: %s\n" % \
-				(vcs, retval), level=logging.ERROR, noiselevel=-1)
-			sys.exit(retval)
-
 	if myunadded:
 		print(red("!!! The following files are in your local tree but are not added to the master"))
 		print(red("!!! tree. Please remove them from the local tree or add them to the master tree."))
@@ -2402,8 +2367,6 @@ else:
 	myheaders = []
 	mydirty = []
 
-	print("* %s files being committed..." % green(str(len(myupdates))), end=' ')
-
 	commitmessage = options.commitmsg
 	if options.commitmsgfile:
 		try:
@@ -2473,22 +2436,60 @@ else:
 			if changelog_modified:
 				continue
 
-			myupdates.append(changelog_path)
-			logging.info("calling echangelog for package %s" % x)
-			# --no-strict is required if only manifest(s) have changed
-			echangelog_args = ["echangelog", "--no-strict",
-				"--vcs", vcs, changelog_msg]
-			if options.pretend:
-				writemsg_stdout("(%s)\n" % (" ".join(echangelog_args),),
-					noiselevel=-1)
-				continue
-			echangelog_args = [_unicode_encode(arg) for arg in echangelog_args]
-			echangelog_cwd = _unicode_encode(checkdir,
-				encoding=_encodings['fs'], errors='strict')
-			retcode = subprocess.call(echangelog_args, cwd=echangelog_cwd)
-			if retcode != os.EX_OK:
-				logging.error("echangelog exited with '%s' status" % retcode)
-				sys.exit(retcode)
+			# get changes for this package
+			cdrlen = len(checkdir_relative)
+			clnew = [elem[cdrlen:] for elem in mynew if elem.startswith(checkdir_relative)]
+			clremoved = [elem[cdrlen:] for elem in myremoved if elem.startswith(checkdir_relative)]
+			clchanged = [elem[cdrlen:] for elem in mychanged if elem.startswith(checkdir_relative)]
+			new_changelog = utilities.UpdateChangeLog(checkdir_relative, \
+				catdir, pkgdir, \
+				clnew, clremoved, clchanged, \
+				changelog_msg, options.pretend)
+			if new_changelog is None:
+				writemsg_level("!!! Updating the ChangeLog failed\n", \
+					level=logging.ERROR, noiselevel=-1)
+				sys.exit(1)
+
+			# if the ChangeLog was just created, add it to vcs
+			if new_changelog:
+				myautoadd.append(changelog_path)
+				# myautoadd is appended to myupdates below
+			else:
+				myupdates.append(changelog_path)
+
+	if myautoadd:
+		print(">>> Auto-Adding missing Manifest/ChangeLog file(s)...")
+		if options.pretend:
+			if vcs == "cvs":
+				print("(cvs add "+" ".join(myautoadd)+")")
+			elif vcs == "svn":
+				print("(svn add "+" ".join(myautoadd)+")")
+			elif vcs == "git":
+				print("(git add "+" ".join(myautoadd)+")")
+			elif vcs == "bzr":
+				print("(bzr add "+" ".join(myautoadd)+")")
+			elif vcs == "hg":
+				print("(hg add "+" ".join(myautoadd)+")")
+			retval = os.EX_OK
+		else:
+			if vcs == "cvs":
+				retval = os.system("cvs add "+" ".join(myautoadd))
+			elif vcs == "svn":
+				retval = os.system("svn add "+" ".join(myautoadd))
+			elif vcs == "git":
+				retval = os.system("git add "+" ".join(myautoadd))
+			elif vcs == "bzr":
+				retval = os.system("bzr add "+" ".join(myautoadd))
+			elif vcs == "hg":
+				retval = os.system("hg add "+" ".join(myautoadd))
+		if retval != os.EX_OK:
+			writemsg_level("!!! Exiting on %s (shell) error code: %s\n" % \
+				(vcs, retval), level=logging.ERROR, noiselevel=-1)
+			sys.exit(retval)
+
+		myupdates += myautoadd
+
+	print("* %s files being committed..." % green(str(len(myupdates))), end=' ')
 
 	if vcs not in ('cvs', 'svn'):
 		# With git, bzr and hg, there's never any keyword expansion, so
