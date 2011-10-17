@@ -195,8 +195,9 @@ def ParseArgs(argv, qahelp):
 		help='do not print unnecessary messages')
 
 	parser.add_option(
-		'--echangelog', type='choice', choices=('y', 'n'), metavar="<y|n>",
-		help='for commit mode, call echangelog if ChangeLog is unmodified')
+		'--echangelog', type='choice', choices=('y', 'n', 'force'), metavar="<y|n|force>",
+		help='for commit mode, call echangelog if ChangeLog is unmodified (or '
+		'regardless of modification if \'force\' is specified)')
 
 	parser.add_option('-f', '--force', dest='force', default=False, action='store_true',
 		help='Commit with QA violations')
@@ -654,7 +655,7 @@ if vcs is None:
 # This is needed because they try to avoid merge collisions.
 # Gentoo's Council decided to always use the ChangeLog file.
 # TODO: shouldn't this just be switched on the repo, iso the VCS?
-check_changelog = options.echangelog != 'y' and vcs in ('cvs', 'svn')
+check_changelog = options.echangelog not in ('y', 'force') and vcs in ('cvs', 'svn')
 
 # Generate an appropriate PORTDIR_OVERLAY value for passing into the
 # profile-specific config constructor calls.
@@ -2419,7 +2420,7 @@ else:
 		print("* aborting commit.")
 		sys.exit(1)
 
-	if options.echangelog == 'y':
+	if options.echangelog in ('y', 'force'):
 		logging.info("checking for unmodified ChangeLog files")
 		for x in sorted(vcs_files_to_cps(
 			chain(myupdates, mymanifests, myremoved))):
@@ -2434,7 +2435,7 @@ else:
 
 			changelog_path = os.path.join(checkdir_relative, "ChangeLog")
 			changelog_modified = changelog_path in modified_changelogs
-			if changelog_modified:
+			if changelog_modified and options.echangelog != 'force':
 				continue
 
 			# get changes for this package
