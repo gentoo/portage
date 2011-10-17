@@ -29,6 +29,7 @@ class SimpleRepomanTestCase(TestCase):
 			return "python is missing xml support"
 
 	def testSimple(self):
+		debug = False
 
 		skip_reason = self._must_skip()
 		if skip_reason:
@@ -52,7 +53,7 @@ class SimpleRepomanTestCase(TestCase):
 				"EAPI" : "4",
 				"HOMEPAGE" : "http://example.com",
 				"IUSE" : "flag",
-				"KEYWORDS": "x86",
+				"KEYWORDS": "~x86",
 				"LICENSE": "GPL-2",
 				"RDEPEND": "flag? ( dev-libs/B[flag] )",
 			},
@@ -62,7 +63,7 @@ class SimpleRepomanTestCase(TestCase):
 				"EAPI" : "4",
 				"HOMEPAGE" : "http://example.com",
 				"IUSE" : "flag",
-				"KEYWORDS": "x86",
+				"KEYWORDS": "~x86",
 				"LICENSE": "GPL-2",
 			},
 		}
@@ -90,14 +91,50 @@ class SimpleRepomanTestCase(TestCase):
 			("flag", "Description of how USE='flag' affects packages"),
 		)
 
-		playground = ResolverPlayground(ebuilds=ebuilds)
+		playground = ResolverPlayground(ebuilds=ebuilds, debug=debug)
 		settings = playground.settings
 		eprefix = settings["EPREFIX"]
 		eroot = settings["EROOT"]
+		portdb = playground.trees[playground.root]["porttree"].dbapi
+		homedir = os.path.join(eroot, "home")
 		distdir = os.path.join(eprefix, "distdir")
 		portdir = settings["PORTDIR"]
 		profiles_dir = os.path.join(portdir, "profiles")
 		license_dir = os.path.join(portdir, "licenses")
+
+		repoman_cmd = (portage._python_interpreter, "-Wd",
+			os.path.join(PORTAGE_BIN_PATH, "repoman"))
+
+		git_binary = find_binary("git")
+		git_cmd = (git_binary,)
+
+		cp_binary = find_binary("cp")
+		self.assertEqual(cp_binary is None, False,
+			"cp command not found")
+		cp_cmd = (cp_binary,)
+
+		test_ebuild = portdb.findname("dev-libs/A-1")
+		self.assertFalse(test_ebuild is None)
+
+		committer_name = "Gentoo Dev"
+		committer_email = "gentoo-dev@gentoo.org"
+		
+		git_test = (
+			("", git_cmd + ("config", "--global", "user.name", committer_name,)),
+			("", git_cmd + ("config", "--global", "user.email", committer_email,)),
+			("", git_cmd + ("init-db",)),
+			("", git_cmd + ("add", ".")),
+			("", git_cmd + ("commit", "-a", "-m", "add whole repo")),
+			("", cp_cmd + (test_ebuild, test_ebuild[:-8] + "2.ebuild")),
+			("", git_cmd + ("add", test_ebuild[:-8] + "2.ebuild")),
+			("", repoman_cmd + ("commit", "--echangelog=y", "-m", "bump to version 2")),
+			("", cp_cmd + (test_ebuild, test_ebuild[:-8] + "3.ebuild")),
+			("", git_cmd + ("add", test_ebuild[:-8] + "3.ebuild")),
+			("dev-libs", repoman_cmd + ("commit", "--echangelog=y", "-m", "bump to version 3")),
+			("", cp_cmd + (test_ebuild, test_ebuild[:-8] + "4.ebuild")),
+			("", git_cmd + ("add", test_ebuild[:-8] + "4.ebuild")),
+			("dev-libs/A", repoman_cmd + ("commit", "--echangelog=y", "-m", "bump to version 4")),
+		)
 
 		pythonpath =  os.environ.get("PYTHONPATH")
 		if pythonpath is not None and not pythonpath.strip():
@@ -115,6 +152,9 @@ class SimpleRepomanTestCase(TestCase):
 		env = {
 			"__REPOMAN_TEST_EPREFIX" : eprefix,
 			"DISTDIR" : distdir,
+			"GENTOO_COMMITTER_NAME" : committer_name,
+			"GENTOO_COMMITTER_EMAIL" : committer_email,
+			"HOME" : homedir,
 			"PATH" : os.environ["PATH"],
 			"PORTAGE_GRPNAME" : os.environ["PORTAGE_GRPNAME"],
 			"PORTAGE_USERNAME" : os.environ["PORTAGE_USERNAME"],
@@ -122,7 +162,7 @@ class SimpleRepomanTestCase(TestCase):
 			"PYTHONPATH" : pythonpath,
 		}
 
-		dirs = [license_dir, profiles_dir, distdir]
+		dirs = [homedir, license_dir, profiles_dir, distdir]
 		try:
 			for d in dirs:
 				ensure_dirs(d)
@@ -147,19 +187,52 @@ class SimpleRepomanTestCase(TestCase):
 			# repoman checks metadata.dtd for recent CTIME, so copy the file in
 			# order to ensure that the CTIME is current
 			shutil.copyfile(metadata_dtd, os.path.join(distdir, "metadata.dtd"))
+
+			if debug:
+				# The subprocess inherits both stdout and stderr, for
+				# debugging purposes.
+				stdout = None
+			else:
+				# The subprocess inherits stderr so that any warnings
+				# triggered by python -Wd will be visible.
+				stdout = subprocess.PIPE
+
 			for cwd in ("", "dev-libs", "dev-libs/A", "dev-libs/B"):
 				abs_cwd = os.path.join(portdir_symlink, cwd)
 				proc = subprocess.Popen([portage._python_interpreter, "-Wd",
 					os.path.join(PORTAGE_BIN_PATH, "repoman"), "full"],
-					cwd=abs_cwd, env=env, stdout=subprocess.PIPE)
-				output = proc.stdout.readlines()
-				proc.wait()
-				proc.stdout.close()
-				if proc.returncode != os.EX_OK:
-					for line in output:
-						sys.stderr.write(_unicode_decode(line))
+					cwd=abs_cwd, env=env, stdout=stdout)
+
+				if debug:
+					proc.wait()
+				else:
+					output = proc.stdout.readlines()
+					proc.wait()
+					proc.stdout.close()
+					if proc.returncode != os.EX_OK:
+						for line in output:
+							sys.stderr.write(_unicode_decode(line))
 
 				self.assertEqual(os.EX_OK, proc.returncode,
 					"repoman failed in %s" % (cwd,))
+
+			if git_binary is not None:
+				for cwd, cmd in git_test:
+					abs_cwd = os.path.join(portdir_symlink, cwd)
+					proc = subprocess.Popen(cmd,
+						cwd=abs_cwd, env=env, stdout=stdout)
+
+					if debug:
+						proc.wait()
+					else:
+						output = proc.stdout.readlines()
+						proc.wait()
+						proc.stdout.close()
+						if proc.returncode != os.EX_OK:
+							for line in output:
+								sys.stderr.write(_unicode_decode(line))
+
+					self.assertEqual(os.EX_OK, proc.returncode,
+						"%s failed in %s" % (cmd, cwd,))
 		finally:
 			playground.cleanup()
