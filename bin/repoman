@@ -2466,7 +2466,15 @@ else:
 			portage.writemsg_stdout("(%s)\n" % " ".join(add_cmd),
 				noiselevel=-1)
 		else:
-			add_cmd = [_unicode_encode(arg) for arg in add_cmd]
+			if not (sys.hexversion >= 0x3000000 and sys.hexversion < 0x3020000):
+				# Python 3.1 produces the following TypeError if raw bytes are
+				# passed to subprocess.call():
+				#   File "/usr/lib/python3.1/subprocess.py", line 646, in __init__
+				#     errread, errwrite)
+				#   File "/usr/lib/python3.1/subprocess.py", line 1157, in _execute_child
+				#     raise child_exception
+				# TypeError: expected an object with the buffer interface
+				add_cmd = [_unicode_encode(arg) for arg in add_cmd]
 			retcode = subprocess.call(add_cmd)
 			if retcode != os.EX_OK:
 				logging.error(
