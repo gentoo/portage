@@ -603,11 +603,26 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, msg, prete
 			newebuild = True
 		if newebuild:
 			clnew_lines.append(_unicode_decode('\n'))
-		new = ['+' + elem for elem in new if elem not in ['ChangeLog', 'Manifest']]
-		removed = ['-' + elem for elem in removed]
-		changed = [elem for elem in changed if elem not in ['ChangeLog', 'Manifest']]
-		mesg = '%s; %s %s:' % (date, user, \
-				', '.join(chain(new,removed,changed)))
+		trivial_files = ('ChangeLog', 'Manifest')
+		display_new = ['+' + elem for elem in new
+			if elem not in trivial_files]
+		display_removed = ['-' + elem for elem in removed]
+		display_changed = [elem for elem in changed
+			if elem not in trivial_files]
+		if not (display_new or display_removed or display_changed):
+			# If there's nothing else to display, show one of the
+			# trivial files.
+			if 'ChangeLog' in new:
+				display_new = ['+ChangeLog']
+			elif 'ChangeLog' in changed:
+				display_changed = ['ChangeLog']
+			elif 'Manifest' in new:
+				display_new = ['+Manifest']
+			elif 'Manifest' in changed:
+				display_changed = ['Manifest']
+
+		mesg = '%s; %s %s:' % (date, user, ', '.join(chain(
+			display_new, display_removed, display_changed)))
 		for line in textwrap.wrap(mesg, 80, \
 				initial_indent='  ', subsequent_indent='  ', \
 				break_on_hyphens=False):
