@@ -123,6 +123,7 @@ class SimpleRepomanTestCase(TestCase):
 			("", git_cmd + ("config", "--global", "user.name", committer_name,)),
 			("", git_cmd + ("config", "--global", "user.email", committer_email,)),
 			("", git_cmd + ("init-db",)),
+			("", repoman_cmd + ("manifest",)),
 			("", git_cmd + ("add", ".")),
 			("", git_cmd + ("commit", "-a", "-m", "add whole repo")),
 			("", cp_cmd + (test_ebuild, test_ebuild[:-8] + "2.ebuild")),
