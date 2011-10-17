@@ -284,8 +284,10 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 					" hash function not available (needs dev-python/pycrypto)")
 			myhash, mysize = hashfunc_map[hashname](myfilename)
 		except (OSError, IOError) as e:
-			if e.errno == errno.ENOENT:
+			if e.errno in (errno.ENOENT, errno.ESTALE):
 				raise portage.exception.FileNotFound(myfilename)
+			elif e.errno == portage.exception.PermissionDenied.errno:
+				raise portage.exception.PermissionDenied(myfilename)
 			raise
 		return myhash, mysize
 	finally:
