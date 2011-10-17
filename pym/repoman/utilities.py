@@ -538,9 +538,9 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, msg, prete
 	elif 'ECHANGELOG_USER' in os.environ:
 		user = os.environ['ECHANGELOG_USER']
 	else:
-		(login, _, _, _, gecos, _, _) = pwd.getpwuid(os.getuid())
-		gecos = gecos.split(',')[0]  # bug #80011
-		user = '%s <%s@gentoo.org>' % (gecos, login)
+		pwd_struct = pwd.getpwuid(os.getuid())
+		gecos = pwd_struct.pw_gecos.split(',')[0]  # bug #80011
+		user = '%s <%s@gentoo.org>' % (gecos, pwd_struct.pw_name)
 
 	if '<root@' in user:
 		err = 'Please set ECHANGELOG_USER or run as non-root'
