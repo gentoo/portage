@@ -18,6 +18,7 @@ import optparse
 import re
 import signal
 import stat
+import subprocess
 import sys
 import tempfile
 import textwrap
@@ -2459,33 +2460,18 @@ else:
 
 	if myautoadd:
 		print(">>> Auto-Adding missing Manifest/ChangeLog file(s)...")
+		add_cmd = [vcs, "add"]
+		add_cmd += myautoadd
 		if options.pretend:
-			if vcs == "cvs":
-				print("(cvs add "+" ".join(myautoadd)+")")
-			elif vcs == "svn":
-				print("(svn add "+" ".join(myautoadd)+")")
-			elif vcs == "git":
-				print("(git add "+" ".join(myautoadd)+")")
-			elif vcs == "bzr":
-				print("(bzr add "+" ".join(myautoadd)+")")
-			elif vcs == "hg":
-				print("(hg add "+" ".join(myautoadd)+")")
-			retval = os.EX_OK
+			portage.writemsg_stdout("(%s)\n" % " ".join(add_cmd),
+				noiselevel=-1)
 		else:
-			if vcs == "cvs":
-				retval = os.system("cvs add "+" ".join(myautoadd))
-			elif vcs == "svn":
-				retval = os.system("svn add "+" ".join(myautoadd))
-			elif vcs == "git":
-				retval = os.system("git add "+" ".join(myautoadd))
-			elif vcs == "bzr":
-				retval = os.system("bzr add "+" ".join(myautoadd))
-			elif vcs == "hg":
-				retval = os.system("hg add "+" ".join(myautoadd))
-		if retval != os.EX_OK:
-			writemsg_level("!!! Exiting on %s (shell) error code: %s\n" % \
-				(vcs, retval), level=logging.ERROR, noiselevel=-1)
-			sys.exit(retval)
+			add_cmd = [_unicode_encode(arg) for arg in add_cmd]
+			retcode = subprocess.call(add_cmd)
+			if retcode != os.EX_OK:
+				logging.error(
+					"Exiting on %s error code: %s\n" % (vcs, retcode))
+				sys.exit(retcode)
 
 		myupdates += myautoadd
 
