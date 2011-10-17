@@ -35,6 +35,8 @@ class hashed_path(object):
 			except OSError as e:
 				if e.errno in (errno.ENOENT, errno.ESTALE):
 					raise FileNotFound(self.location)
+				elif e.errno == PermissionDenied.errno:
+					raise PermissionDenied(self.location)
 				raise
 			return obj
 		if not attr.islower():
