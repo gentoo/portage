@@ -28,6 +28,7 @@ import io
 from itertools import chain
 import logging
 import pwd
+import re
 import sys
 import time
 import textwrap
@@ -549,6 +550,7 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, msg, prete
 	cl_path = os.path.join(pkgdir, 'ChangeLog')
 	clold_lines = []
 	clnew_lines = []
+	old_header_lines = []
 	header_lines = []
 
 	try:
@@ -582,6 +584,12 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, msg, prete
 				header_lines.append(line)
 				if not line_strip:
 					break
+
+			# update the copyright year
+			old_header_lines = header_lines[:]
+			if len(header_lines) >= 2:
+				header_lines[1] = re.sub(r'^(# Copyright \d\d\d\d)-\d\d\d\d ',
+					r'\1-%s ' % time.strftime('%Y'), header_lines[1])
 
 		# write new ChangeLog entry
 		clnew_lines.extend(header_lines)
@@ -620,9 +628,9 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, msg, prete
 			for line in clold_lines:
 				f.write(line)
 
-			# Now prepend header_lines to clold_lines, for use
+			# Now prepend old_header_lines to clold_lines, for use
 			# in the unified_diff call below.
-			clold_lines = header_lines + clold_lines
+			clold_lines = old_header_lines + clold_lines
 
 			for line in clold_file:
 				f.write(line)
