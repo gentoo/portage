@@ -405,8 +405,11 @@ class portdbapi(dbapi):
 			eapi = "0"
 			metadata["EAPI"] = eapi
 		if not eapi_is_supported(eapi):
-			for k in set(metadata).difference(("_mtime_", "_eclasses_")):
-				metadata[k] = ""
+			keys = set(metadata)
+			keys.discard('_eclasses_')
+			keys.discard('_mtime_')
+			keys.discard('_%s_' % chf)
+			metadata.update((k, '') for k in keys)
 			metadata["EAPI"] = "-" + eapi.lstrip("-")
 
 		if cache is not None:
@@ -424,7 +427,7 @@ class portdbapi(dbapi):
 			# snag mtime since we use it later, and to trigger stat failure
 			# if it doesn't exist
 			ebuild_hash.mtime
-		except OSError:
+		except FileNotFound:
 			writemsg(_("!!! aux_get(): ebuild for " \
 				"'%s' does not exist at:\n") % (cpv,), noiselevel=-1)
 			writemsg("!!!            %s\n" % ebuild_path, noiselevel=-1)
@@ -455,6 +458,7 @@ class portdbapi(dbapi):
 			eapi = metadata.get('EAPI', '').strip()
 			if not eapi:
 				eapi = '0'
+				metadata['EAPI'] = eapi
 			if eapi[:1] == '-' and eapi_is_supported(eapi[1:]):
 				continue
 			if auxdb.validate_entry(metadata, ebuild_hash, eclass_db):
@@ -528,7 +532,7 @@ class portdbapi(dbapi):
 				mydata = self._metadata_callback(
 					mycpv, mylocation, {'EAPI':eapi}, ebuild_hash)
 			else:
-				proc = EbuildMetadataPhase(cpv=mycpv,
+				proc = EbuildMetadataPhase(cpv=mycpv, eapi=eapi,
 					ebuild_hash=ebuild_hash,
 					metadata_callback=self._metadata_callback, portdb=self,
 					repo_path=mylocation,
@@ -544,21 +548,14 @@ class portdbapi(dbapi):
 
 				mydata = proc.metadata
 
-		# do we have a origin repository name for the current package
 		mydata["repository"] = self.repositories.get_name_for_location(mylocation)
-		mydata["INHERITED"] = ' '.join(mydata.get("_eclasses_", []))
 		mydata["_mtime_"] = ebuild_hash.mtime
-
 		eapi = mydata.get("EAPI")
 		if not eapi:
 			eapi = "0"
 			mydata["EAPI"] = eapi
-		if not eapi_is_supported(eapi):
-			keys = set(mydata)
-			keys.discard("_eclasses_")
-			keys.discard("_mtime_")
-			mydata.update((k, '') for k in keys)
-			mydata["EAPI"] = "-" + eapi.lstrip("-")
+		if eapi_is_supported(eapi):
+			mydata["INHERITED"] = " ".join(mydata.get("_eclasses_", []))
 
 		#finally, we look at our internal cache entry and return the requested data.
 		returnme = [mydata.get(x, "") for x in mylist]

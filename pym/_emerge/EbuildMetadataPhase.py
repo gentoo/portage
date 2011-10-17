@@ -20,7 +20,7 @@ class EbuildMetadataPhase(SubProcess):
 	used to extract metadata from the ebuild.
 	"""
 
-	__slots__ = ("cpv", "ebuild_hash", "fd_pipes", "metadata_callback",
+	__slots__ = ("cpv", "eapi", "ebuild_hash", "fd_pipes", "metadata_callback",
 		"metadata", "portdb", "repo_path", "settings") + \
 		("_raw_metadata",)
 
@@ -33,7 +33,9 @@ class EbuildMetadataPhase(SubProcess):
 		settings.setcpv(self.cpv)
 		ebuild_path = self.ebuild_hash.location
 
-		eapi = None
+		# the caller can pass in eapi in order to avoid
+		# redundant _parse_eapi_ebuild_head calls
+		eapi = self.eapi
 		if eapi is None and \
 			'parse-eapi-ebuild-head' in settings.features:
 			eapi = portage._parse_eapi_ebuild_head(

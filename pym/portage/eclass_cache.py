@@ -9,7 +9,7 @@ import sys
 import operator
 from portage.util import normalize_path
 import errno
-from portage.exception import PermissionDenied
+from portage.exception import FileNotFound, PermissionDenied
 from portage import os
 from portage import checksum
 
@@ -30,7 +30,14 @@ class hashed_path(object):
 			# the straight c api.
 			# thus use the defacto python compatibility work around;
 			# access via index, which guarantees you get the raw long.
-			self.mtime = obj = os.stat(self.location)[stat.ST_MTIME]
+			try:
+				self.mtime = obj = os.stat(self.location)[stat.ST_MTIME]
+			except OSError as e:
+				if e.errno in (errno.ENOENT, errno.ESTALE):
+					raise FileNotFound(self.location)
+				elif e.errno == PermissionDenied.errno:
+					raise PermissionDenied(self.location)
+				raise
 			return obj
 		if not attr.islower():
 			# we don't care to allow .mD5 as an alias for .md5
@@ -113,7 +120,7 @@ class cache(object):
 				obj.eclass_dir = x
 				try:
 					mtime = obj.mtime
-				except OSError:
+				except FileNotFound:
 					continue
 				ys=y[:-eclass_len]
 				if x == self._master_eclass_root:
