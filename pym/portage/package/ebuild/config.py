@@ -887,7 +887,11 @@ class config(object):
 				try:
 					mod = load_mod(best_mod)
 				except ImportError:
-					raise
+					if best_mod == "portage.cache.metadata_overlay.database":
+						best_mod = "portage.cache.flat_hash.database"
+						mod = load_mod(best_mod)
+					else:
+						raise
 		return mod
 
 	def lock(self):
