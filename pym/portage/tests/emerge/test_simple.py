@@ -126,6 +126,10 @@ src_install() {
 		trees = playground.trees
 		root = playground.root
 		portdb = trees[root]["porttree"].dbapi
+		portdir = settings["PORTDIR"]
+		var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
+		cachedir = os.path.join(var_cache_edb, "dep")
+		cachedir_pregen = os.path.join(portdir, "metadata", "cache")
 
 		portage_python = portage._python_interpreter
 		ebuild_cmd = (portage_python, "-Wd",
@@ -147,6 +151,11 @@ src_install() {
 		regenworld_cmd = (portage_python, "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "regenworld"))
 
+		rm_binary = find_binary("rm")
+		self.assertEqual(rm_binary is None, False,
+			"rm command not found")
+		rm_cmd = (rm_binary,)
+
 		egencache_extra_args = []
 		if self._have_python_xml():
 			egencache_extra_args.append("--update-use-local-desc")
@@ -156,10 +165,27 @@ src_install() {
 
 		test_commands = (
 			env_update_cmd,
-			egencache_cmd + ("--update",) + tuple(egencache_extra_args),
 			emerge_cmd + ("--version",),
 			emerge_cmd + ("--info",),
 			emerge_cmd + ("--info", "--verbose"),
+			rm_cmd + ("-rf", cachedir),
+			rm_cmd + ("-rf", cachedir_pregen),
+			emerge_cmd + ("--regen",),
+			rm_cmd + ("-rf", cachedir),
+			({"FEATURES" : "metadata-transfer"},) + \
+				emerge_cmd + ("--regen",),
+			rm_cmd + ("-rf", cachedir),
+			({"FEATURES" : "metadata-transfer parse-eapi-ebuild-head"},) + \
+				emerge_cmd + ("--regen",),
+			rm_cmd + ("-rf", cachedir),
+			egencache_cmd + ("--update",) + tuple(egencache_extra_args),
+			({"FEATURES" : "metadata-transfer"},) + \
+				emerge_cmd + ("--metadata",),
+			rm_cmd + ("-rf", cachedir),
+			({"FEATURES" : "metadata-transfer"},) + \
+				emerge_cmd + ("--metadata",),
+			emerge_cmd + ("--metadata",),
+			rm_cmd + ("-rf", cachedir),
 			emerge_cmd + ("--pretend", "dev-libs/A"),
 			ebuild_cmd + (test_ebuild, "manifest", "clean", "package", "merge"),
 			emerge_cmd + ("--pretend", "--tree", "--complete-graph", "dev-libs/A"),
@@ -193,10 +219,8 @@ src_install() {
 		pkgdir = os.path.join(eprefix, "pkgdir")
 		fake_bin = os.path.join(eprefix, "bin")
 		portage_tmpdir = os.path.join(eprefix, "var", "tmp", "portage")
-		portdir = settings["PORTDIR"]
 		profile_path = settings.profile_path
 		user_config_dir = os.path.join(os.sep, eprefix, USER_CONFIG_PATH)
-		var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
 
 		features = []
 		if not portage.process.sandbox_capable:
@@ -250,7 +274,8 @@ src_install() {
 		}
 
 		updates_dir = os.path.join(portdir, "profiles", "updates")
-		dirs = [distdir, fake_bin, portage_tmpdir, updates_dir,
+		dirs = [cachedir, cachedir_pregen, distdir, fake_bin,
+			portage_tmpdir, updates_dir,
 			user_config_dir, var_cache_edb]
 		true_symlinks = ["chown", "chgrp"]
 		true_binary = find_binary("true")
@@ -289,8 +314,15 @@ move dev-util/git dev-vcs/git
 
 			for args in test_commands:
 
+				if isinstance(args[0], dict):
+					local_env = env.copy()
+					local_env.update(args[0])
+					args = args[1:]
+				else:
+					local_env = env
+
 				proc = subprocess.Popen(args,
-					env=env, stdout=stdout)
+					env=local_env, stdout=stdout)
 
 				if debug:
 					proc.wait()
