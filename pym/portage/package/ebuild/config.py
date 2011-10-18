@@ -309,12 +309,19 @@ class config(object):
 
 			self.module_priority    = ("user", "default")
 			self.modules            = {}
-			modules_loader = KeyValuePairFileLoader(
-				os.path.join(config_root, MODULES_FILE_PATH), None, None)
+			modules_file = os.path.join(config_root, MODULES_FILE_PATH)
+			modules_loader = KeyValuePairFileLoader(modules_file, None, None)
 			modules_dict, modules_errors = modules_loader.load()
 			self.modules["user"] = modules_dict
 			if self.modules["user"] is None:
 				self.modules["user"] = {}
+			user_auxdbmodule = \
+				self.modules["user"].get("portdbapi.auxdbmodule")
+			if user_auxdbmodule is not None and \
+				user_auxdbmodule in self._module_aliases:
+				warnings.warn("'%s' is deprecated: %s" %
+				(user_auxdbmodule, modules_file))
+
 			self.modules["default"] = {
 				"portdbapi.auxdbmodule":  "portage.cache.flat_hash.database",
 			}
