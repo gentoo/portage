@@ -519,11 +519,11 @@ class portdbapi(dbapi):
 
 			if eapi is None and \
 				'parse-eapi-ebuild-head' in self.doebuild_settings.features:
-				eapi = portage._parse_eapi_ebuild_head(io.open(
-					_unicode_encode(myebuild,
+				with io.open(_unicode_encode(myebuild,
 					encoding=_encodings['fs'], errors='strict'),
 					mode='r', encoding=_encodings['repo.content'],
-					errors='replace'))
+					errors='replace') as f:
+					eapi = portage._parse_eapi_ebuild_head(f)
 
 			if eapi is not None:
 				self.doebuild_settings.configdict['pkg']['EAPI'] = eapi

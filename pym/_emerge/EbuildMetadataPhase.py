@@ -38,11 +38,11 @@ class EbuildMetadataPhase(SubProcess):
 		eapi = self.eapi
 		if eapi is None and \
 			'parse-eapi-ebuild-head' in settings.features:
-			eapi = portage._parse_eapi_ebuild_head(
-				io.open(_unicode_encode(ebuild_path,
+			with io.open(_unicode_encode(ebuild_path,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],
-				errors='replace'))
+				errors='replace') as f:
+				eapi = portage._parse_eapi_ebuild_head(f)
 
 		if eapi is not None:
 			if not portage.eapi_is_supported(eapi):
