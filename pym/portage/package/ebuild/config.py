@@ -126,6 +126,11 @@ class config(object):
 		'PROPERTIES', 'PROVIDE', 'RDEPEND', 'SLOT',
 		'repository', 'RESTRICT', 'LICENSE',)
 
+	_module_aliases = {
+		"cache.metadata_overlay.database" : "portage.cache.flat_hash.database",
+		"portage.cache.metadata_overlay.database" : "portage.cache.flat_hash.database",
+	}
+
 	_case_insensitive_vars = special_env_vars.case_insensitive_vars
 	_default_globals = special_env_vars.default_globals
 	_env_blacklist = special_env_vars.env_blacklist
@@ -880,18 +885,16 @@ class config(object):
 		try:
 			mod = load_mod(best_mod)
 		except ImportError:
-			if not best_mod.startswith("cache."):
+			if best_mod in self._module_aliases:
+				mod = load_mod(self._module_aliases[best_mod])
+			elif not best_mod.startswith("cache."):
 				raise
 			else:
 				best_mod = "portage." + best_mod
 				try:
 					mod = load_mod(best_mod)
 				except ImportError:
-					if best_mod == "portage.cache.metadata_overlay.database":
-						best_mod = "portage.cache.flat_hash.database"
-						mod = load_mod(best_mod)
-					else:
-						raise
+					raise
 		return mod
 
 	def lock(self):
