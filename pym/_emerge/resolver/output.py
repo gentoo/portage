@@ -15,7 +15,7 @@ from portage import _unicode_decode
 from portage.dbapi.dep_expand import dep_expand
 from portage.const import PORTAGE_PACKAGE_ATOM
 from portage.dep import cpvequal, match_from_list
-from portage.exception import InvalidDependString
+from portage.exception import InvalidDependString, SignatureException
 from portage.output import ( blue, bold, colorize, create_color_func,
 	darkblue, darkgreen, green, nc_len, red, teal, turquoise, yellow )
 bad = create_color_func("BAD")
@@ -309,17 +309,26 @@ class Display(object):
 			self.verboseadd, repoadd_set.
 		"""
 		mysize = 0
-		if pkg.type_name == "ebuild" and pkg_info.merge:
+		if pkg.type_name in ("binary", "ebuild") and pkg_info.merge:
+			db = pkg.root_config.trees[
+				pkg.root_config.pkg_tree_map[pkg.type_name]].dbapi
+			kwargs = {}
+			if pkg.type_name == "ebuild":
+				kwargs["useflags"] = pkg_info.use
+				kwargs["myrepo"] = pkg.repo
+			myfilesdict = None
 			try:
-				myfilesdict = self.portdb.getfetchsizes(pkg.cpv,
-					useflags=pkg_info.use, myrepo=pkg.repo)
+				myfilesdict = db.getfetchsizes(pkg.cpv, **kwargs)
 			except InvalidDependString as e:
 				# FIXME: validate SRC_URI earlier
-				depstr, = self.portdb.aux_get(pkg.cpv,
+				depstr, = db.aux_get(pkg.cpv,
 					["SRC_URI"], myrepo=pkg.repo)
 				show_invalid_depstring_notice(
 					pkg, depstr, str(e))
 				raise
+			except SignatureException:
+				# missing/invalid binary package SIZE signature
+				pass
 			if myfilesdict is None:
 				myfilesdict = "[empty/missing/bad digest]"
 			else:
