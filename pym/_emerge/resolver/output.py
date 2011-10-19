@@ -335,7 +335,7 @@ class Display(object):
 				for myfetchfile in myfilesdict:
 					if myfetchfile not in self.myfetchlist:
 						mysize += myfilesdict[myfetchfile]
-						self.myfetchlist.append(myfetchfile)
+						self.myfetchlist.add(myfetchfile)
 				if pkg_info.ordered:
 					self.counters.totalsize += mysize
 			self.verboseadd += _format_size(mysize)
@@ -795,7 +795,7 @@ class Display(object):
 		mylist = self.get_display_list(self.conf.mylist)
 		# files to fetch list - avoids counting a same file twice
 		# in size display (verbose mode)
-		self.myfetchlist = []
+		self.myfetchlist = set()
 		# Use this set to detect when all the "repoadd" strings are "[0]"
 		# and disable the entire repo display in this case.
 		repoadd_set = set()
