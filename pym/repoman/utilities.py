@@ -665,8 +665,8 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, \
 				clold_lines.append(line)
 				if line_strip[:1] != '#':
 					break
-				line = re.sub(r'^(# Copyright) \d\d\d\d-\d\d\d\d',
-					r'\1 1999-%s' % year, line)
+				line = re.sub(r'^(# Copyright \d\d\d\d)-\d\d\d\d',
+					r'\1-%s' % year, line)
 				clnew_lines.append(line)
 				if not line_strip:
 					break
