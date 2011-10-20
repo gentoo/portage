@@ -616,8 +616,8 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, \
 		logging.critical(err)
 		return None
 
-	# ChangeLog times are in UTC                                            
-	gmtime = time.gmtime()    
+	# ChangeLog times are in UTC
+	gmtime = time.gmtime()
 	year = time.strftime('%Y', gmtime)
 	date = time.strftime('%d %b %Y', gmtime)
 
