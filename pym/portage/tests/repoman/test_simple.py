@@ -177,6 +177,8 @@ class SimpleRepomanTestCase(TestCase):
 		try:
 			for d in dirs:
 				ensure_dirs(d)
+			with open(os.path.join(portdir, "skel.ChangeLog"), 'w') as f:
+				f.write(copyright_header)
 			with open(os.path.join(profiles_dir, "profiles.desc"), 'w') as f:
 				for x in profiles:
 					f.write("%s %s %s\n" % x)
