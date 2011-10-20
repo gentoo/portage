@@ -571,7 +571,7 @@ def update_copyright(fn_path, year, pretend):
 		f = io.open(f, mode='w', encoding=_encodings['repo.content'],
 			errors='backslashreplace')
 		for line in new_header:
-			f.write(line);
+			f.write(line)
 		for line in fn_hdl:
 			f.write(line)
 		f.close()
