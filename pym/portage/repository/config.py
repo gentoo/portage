@@ -48,7 +48,7 @@ class RepoConfig(object):
 		'eclass_overrides', 'eclass_locations', 'format', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'priority', 'sign_manifest', 'sync', 'thin_manifest',
-		'user_location')
+		'update_changelog', 'user_location')
 
 	def __init__(self, name, repo_opts):
 		"""Build a RepoConfig with options in repo_opts
@@ -126,6 +126,7 @@ class RepoConfig(object):
 		self.create_manifest = True
 		self.disable_manifest = False
 		self.manifest_hashes = None
+		self.update_changelog = False
 		self.cache_format = None
 
 	def get_pregenerated_cache(self, auxdbkeys, readonly=True, force=False):
@@ -430,6 +431,9 @@ class RepoConfigLoader(object):
 						"layout_filename":layout_filename}),
 						DeprecationWarning)
 			repo.manifest_hashes = manifest_hashes
+
+			if layout_data.get('update-changelog', '').lower() == 'true':
+				repo.update_changelog = True
 
 		#Take aliases into account.
 		new_prepos = {}
