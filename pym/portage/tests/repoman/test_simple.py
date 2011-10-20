@@ -42,6 +42,15 @@ class SimpleRepomanTestCase(TestCase):
 # $Header: $
 """ % time.gmtime().tm_year
 
+		repo_configs = {
+			"test_repo": {
+				"layout.conf":
+					(
+						"update-changelog = true",
+					),
+			}
+		}
+
 		profiles = (
 			("x86", "default/linux/x86/test_profile", "stable"),
 		)
@@ -91,7 +100,8 @@ class SimpleRepomanTestCase(TestCase):
 			("flag", "Description of how USE='flag' affects packages"),
 		)
 
-		playground = ResolverPlayground(ebuilds=ebuilds, debug=debug)
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			repo_configs=repo_configs, debug=debug)
 		settings = playground.settings
 		eprefix = settings["EPREFIX"]
 		eroot = settings["EROOT"]
@@ -128,13 +138,13 @@ class SimpleRepomanTestCase(TestCase):
 			("", git_cmd + ("commit", "-a", "-m", "add whole repo")),
 			("", cp_cmd + (test_ebuild, test_ebuild[:-8] + "2.ebuild")),
 			("", git_cmd + ("add", test_ebuild[:-8] + "2.ebuild")),
-			("", repoman_cmd + ("commit", "--echangelog=y", "-m", "bump to version 2")),
+			("", repoman_cmd + ("commit", "-m", "bump to version 2")),
 			("", cp_cmd + (test_ebuild, test_ebuild[:-8] + "3.ebuild")),
 			("", git_cmd + ("add", test_ebuild[:-8] + "3.ebuild")),
-			("dev-libs", repoman_cmd + ("commit", "--echangelog=y", "-m", "bump to version 3")),
+			("dev-libs", repoman_cmd + ("commit", "-m", "bump to version 3")),
 			("", cp_cmd + (test_ebuild, test_ebuild[:-8] + "4.ebuild")),
 			("", git_cmd + ("add", test_ebuild[:-8] + "4.ebuild")),
-			("dev-libs/A", repoman_cmd + ("commit", "--echangelog=y", "-m", "bump to version 4")),
+			("dev-libs/A", repoman_cmd + ("commit", "-m", "bump to version 4")),
 		)
 
 		pythonpath =  os.environ.get("PYTHONPATH")
