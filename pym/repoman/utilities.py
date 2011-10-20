@@ -548,12 +548,13 @@ def update_copyright(fn_path, year, pretend):
 			new_header.append(line)
 			break
 
-		# these two regexes are taken from
-		# echangelog update_copyright()
+		# These two regexes are taken from echangelog
+		# update_copyright(), except that we don't hardcode
+		# 1999 here (in order to be more generic).
 		line = re.sub(r'^(# Copyright \d+) ',
 			r'\1-%s ' % year, line)
-		line = re.sub(r'^(# Copyright) \d\d\d\d-\d\d\d\d',
-			r'\1 1999-%s' % year, line)
+		line = re.sub(r'^(# Copyright \d\d\d\d)-\d\d\d\d',
+			r'\1-%s' % year, line)
 		new_header.append(line)
 
 	difflines = 0
