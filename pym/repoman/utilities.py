@@ -523,7 +523,8 @@ def FindVCS():
 
 	return outvcs
 
-def UpdateChangeLog(pkgdir, category, package, new, removed, changed, msg, pretend):
+def UpdateChangeLog(pkgdir, category, package, new, removed, changed, \
+		msg, pretend, repodir):
 	""" Write an entry to an existing ChangeLog, or create a new one. """
 
 	# figure out who to write as
@@ -550,7 +551,6 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, msg, prete
 	cl_path = os.path.join(pkgdir, 'ChangeLog')
 	clold_lines = []
 	clnew_lines = []
-	old_header_lines = []
 	header_lines = []
 
 	try:
@@ -560,42 +560,51 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, msg, prete
 	except EnvironmentError:
 		clold_file = None
 
+	clskel_file = None
+	if clold_file is None:
+		# we will only need the ChangeLog skeleton if there is no
+		# ChangeLog yet
+		try:
+			clskel_path = os.path.join(repodir, 'skel.ChangeLog')
+			clskel_file = io.open(_unicode_encode(clskel_path,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['repo.content'],
+				errors='replace')
+		except EnvironmentError:
+			pass
+
 	# ChangeLog times are in UTC
 	gmtime = time.gmtime()
 	f, clnew_path = mkstemp()
 
-	# create an empty ChangeLog.new with correct header first
+	# construct correct header first
 	try:
-		f = io.open(f, mode='w', encoding=_encodings['repo.content'],
-			errors='backslashreplace')
-
-		if clold_file is None:
-			header_lines.append(_unicode_decode('# ChangeLog for %s/%s\n' %
-				(category, package)))
-			year = time.strftime('%Y', gmtime)
-			header_lines.append(_unicode_decode('# Copyright 1999-'
-				'%s Gentoo Foundation; Distributed under the GPL v2\n' % year))
-			header_lines.append(_unicode_decode('# $Header: $\n'))
-			header_lines.append(_unicode_decode('\n'))
-		else:
+		if clold_file is not None:
+			# retain header from old ChangeLog
 			for line in clold_file:
-				line_strip =  line.strip()
-				if line_strip and line[:1] != "#":
-					clold_lines.append(line)
+				line_strip = line.strip()
+				clold_lines.append(line)
+				if line_strip[:1] != '#':
 					break
-				header_lines.append(line)
+				if clskel_file is None:
+					clnew_lines.append(line)
 				if not line_strip:
 					break
-
-			# update the copyright year
-			old_header_lines = header_lines[:]
-			if len(header_lines) >= 2:
-				header_lines[1] = re.sub(r'^(# Copyright \d\d\d\d)-\d\d\d\d ',
-					r'\1-%s ' % time.strftime('%Y', gmtime), header_lines[1])
+		elif clskel_file is not None:
+			# read skel.ChangeLog up to first empty line
+			for line in clskel_file:
+				line_strip = line.strip()
+				if not line_strip:
+					break
+				line = line.replace('<CATEGORY>', category)
+				line = line.replace('<PACKAGE_NAME>', package)
+				line = re.sub(r'^(# Copyright \d\d\d\d)-\d\d\d\d ',
+					r'\1-%s ' % time.strftime('%Y', gmtime), line)
+				clnew_lines.append(line)
+			clnew_lines.append(_unicode_decode('\n'))
+			clskel_file.close()
 
 		# write new ChangeLog entry
-		clnew_lines.extend(header_lines)
-		date = time.strftime('%d %b %Y', gmtime)
 		newebuild = False
 		for fn in new:
 			if not fn.endswith('.ebuild'):
@@ -634,20 +643,18 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, msg, prete
 			clnew_lines.append(_unicode_decode('%s\n' % line))
 		clnew_lines.append(_unicode_decode('\n'))
 
+		f = io.open(f, mode='w', encoding=_encodings['repo.content'],
+			errors='backslashreplace')
+
 		for line in clnew_lines:
 			f.write(line)
 
 		# append stuff from old ChangeLog
 		if clold_file is not None:
-			# If the old ChangeLog didn't have a header, then
 			# clold_lines may contain a saved non-header line
 			# that we want to write first.
-			for line in clold_lines:
-				f.write(line)
-
-			# Now prepend old_header_lines to clold_lines, for use
-			# in the unified_diff call below.
-			clold_lines = old_header_lines + clold_lines
+			if clold_lines and clold_lines[-1].strip():
+				f.write(clold_lines[-1])
 
 			for line in clold_file:
 				f.write(line)
@@ -657,7 +664,7 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, msg, prete
 		# show diff (do we want to keep on doing this, or only when
 		# pretend?)
 		for line in difflib.unified_diff(clold_lines, clnew_lines,
-			fromfile=cl_path, tofile=cl_path + '.new', n=0):
+			fromfile=cl_path, tofile=cl_path, n=0):
 			util.writemsg_stdout(line, noiselevel=-1)
 		util.writemsg_stdout("\n", noiselevel=-1)
 
@@ -665,7 +672,7 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, msg, prete
 			# remove what we've done
 			os.remove(clnew_path)
 		else:
-			# rename ChangeLog.new to ChangeLog, and set permissions
+			# rename to ChangeLog, and set permissions
 			try:
 				clold_stat = os.stat(cl_path)
 			except OSError:

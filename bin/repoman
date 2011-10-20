@@ -2471,7 +2471,7 @@ else:
 			new_changelog = utilities.UpdateChangeLog(checkdir_relative, \
 				catdir, pkgdir, \
 				clnew, clremoved, clchanged, \
-				changelog_msg, options.pretend)
+				changelog_msg, options.pretend, repodir)
 			if new_changelog is None:
 				writemsg_level("!!! Updating the ChangeLog failed\n", \
 					level=logging.ERROR, noiselevel=-1)
