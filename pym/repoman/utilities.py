@@ -523,9 +523,77 @@ def FindVCS():
 
 	return outvcs
 
+def update_copyright(fn_path, year, pretend):
+	"""
+	Check file for a Copyright statement, and update its year.  The
+	patterns used for replacing copyrights are taken from echangelog.
+	Only the first lines of each file that start with a hash ('#') are
+	considered, until a line is found that doesn't start with a hash.
+	"""
+
+	try:
+		fn_hdl = io.open(_unicode_encode(fn_path,
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['repo.content'], errors='replace')
+	except EnvironmentError:
+		return
+
+	orig_header = []
+	new_header = []
+
+	for line in fn_hdl:
+		line_strip = line.strip()
+		orig_header.append(line)
+		if not line_strip or line_strip[:1] != '#':
+			new_header.append(line)
+			break
+
+		# these two regexes are taken from
+		# echangelog update_copyright()
+		line = re.sub(r'^(# Copyright \d+) ',
+			r'\1-%s ' % year, line)
+		line = re.sub(r'^(# Copyright) \d\d\d\d-\d\d\d\d',
+			r'\1 1999-%s' % year, line)
+		new_header.append(line)
+
+	difflines = 0
+	for line in difflib.unified_diff(orig_header, new_header,
+			fromfile=fn_path, tofile=fn_path, n=0):
+		util.writemsg_stdout(line, noiselevel=-1)
+		difflines += 1
+	util.writemsg_stdout("\n", noiselevel=-1)
+
+	# unified diff has three lines to start with
+	if difflines > 3 and not pretend:
+		# write new file with changed header
+		f, fnnew_path = mkstemp()
+		f = io.open(f, mode='w', encoding=_encodings['repo.content'],
+			errors='backslashreplace')
+		for line in new_header:
+			f.write(line);
+		for line in fn_hdl:
+			f.write(line)
+		f.close()
+		try:
+			fn_stat = os.stat(fn_path)
+		except OSError:
+			fn_stat = None
+
+		shutil.move(fnnew_path, fn_path)
+
+		if fn_stat is None:
+			util.apply_permissions(fn_path, mode=0o644)
+		else:
+			util.apply_stat_permissions(fn_path, fn_stat)
+	fn_hdl.close()
+
 def UpdateChangeLog(pkgdir, category, package, new, removed, changed, \
 		msg, pretend, repodir):
-	""" Write an entry to an existing ChangeLog, or create a new one. """
+	"""
+	Write an entry to an existing ChangeLog, or create a new one.
+	Updates copyright year on changed files, and updates the header of
+	ChangeLog with the contents of skel.ChangeLog.
+	"""
 
 	# figure out who to write as
 	if 'GENTOO_COMMITTER_NAME' in os.environ and \
@@ -547,6 +615,18 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, \
 		err = 'Please set ECHANGELOG_USER or run as non-root'
 		logging.critical(err)
 		return None
+
+	# ChangeLog times are in UTC                                            
+	gmtime = time.gmtime()    
+	year = time.strftime('%Y', gmtime)
+	date = time.strftime('%d %b %Y', gmtime)
+
+	# check modified files and the ChangeLog for copyright updates
+	# patches and diffs (identified by .patch and .diff) are excluded
+	for fn in new + changed:
+		if fn.endswith('.diff') or fn.endswith('.patch'):
+			continue
+		update_copyright(os.path.join(pkgdir, fn), year, pretend)
 
 	cl_path = os.path.join(pkgdir, 'ChangeLog')
 	clold_lines = []
@@ -573,8 +653,6 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, \
 		except EnvironmentError:
 			pass
 
-	# ChangeLog times are in UTC
-	gmtime = time.gmtime()
 	f, clnew_path = mkstemp()
 
 	# construct correct header first
@@ -586,8 +664,9 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, \
 				clold_lines.append(line)
 				if line_strip[:1] != '#':
 					break
-				if clskel_file is None:
-					clnew_lines.append(line)
+				line = re.sub(r'^(# Copyright) \d\d\d\d-\d\d\d\d',
+					r'\1 1999-%s' % year, line)
+				clnew_lines.append(line)
 				if not line_strip:
 					break
 		elif clskel_file is not None:
@@ -599,7 +678,7 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, \
 				line = line.replace('<CATEGORY>', category)
 				line = line.replace('<PACKAGE_NAME>', package)
 				line = re.sub(r'^(# Copyright \d\d\d\d)-\d\d\d\d ',
-					r'\1-%s ' % time.strftime('%Y', gmtime), line)
+					r'\1-%s ' % year, line)
 				clnew_lines.append(line)
 			clnew_lines.append(_unicode_decode('\n'))
 			clskel_file.close()
