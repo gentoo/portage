@@ -3526,18 +3526,18 @@ class depgraph(object):
 
 		return pkg, existing
 
-	def _pkg_visibility_check(self, pkg, allow_unstable_keywords=False, allow_license_changes=False, allow_unmasks=False):
+	def _pkg_visibility_check(self, pkg, allow_unstable_keywords=False,
+		allow_license_changes=False, allow_unmasks=False, trust_graph=True):
 
 		if pkg.visible:
 			return True
 
-		if pkg in self._dynamic_config.digraph:
+		if trust_graph and pkg in self._dynamic_config.digraph:
 			# Sometimes we need to temporarily disable
 			# dynamic_config._autounmask, but for overall
-			# consistency in dependency resolution, in any
-			# case we want to respect autounmask visibity
-			# for packages that have already been added to
-			# the dependency graph.
+			# consistency in dependency resolution, in most
+			# cases we want to treat packages in the graph
+			# as though they are visible.
 			return True
 
 		if not self._dynamic_config._autounmask:
@@ -4446,7 +4446,8 @@ class depgraph(object):
 					# packages masked by license, since the user likely wants
 					# to adjust ACCEPT_LICENSE.
 					if pkg in final_db:
-						if not self._pkg_visibility_check(pkg) and \
+						if not self._pkg_visibility_check(pkg,
+							trust_graph=False) and \
 							(pkg_in_graph or 'LICENSE' in pkg.masks):
 							self._dynamic_config._masked_installed.add(pkg)
 						else:

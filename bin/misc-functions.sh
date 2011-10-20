@@ -168,14 +168,14 @@ install_qa_check() {
 	fi
 
 	# Now we look for all world writable files.
-	local i
+	local i=
 	for i in $(find "${D}/" -type f -perm -2); do
 		vecho "QA Security Notice:"
 		vecho "- ${i:${#D}:${#i}} will be a world writable file."
 		vecho "- This may or may not be a security problem, most of the time it is one."
 		vecho "- Please double check that $PF really needs a world writeable bit and file bugs accordingly."
-		sleep 1
 	done
+	[[ -n ${i} ]] && sleep 1
 
 	# anything outside the prefix should be caught by the Prefix QA
 	# check, so if there's nothing in ED, we skip searching for QA

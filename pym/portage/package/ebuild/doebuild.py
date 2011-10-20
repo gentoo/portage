@@ -292,10 +292,11 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	eapi = None
 	if mydo == 'depend' and 'EAPI' not in mysettings.configdict['pkg']:
 		if eapi is None and 'parse-eapi-ebuild-head' in mysettings.features:
-			eapi = _parse_eapi_ebuild_head(
-				io.open(_unicode_encode(ebuild_path,
+			with io.open(_unicode_encode(ebuild_path,
 				encoding=_encodings['fs'], errors='strict'),
-				mode='r', encoding=_encodings['content'], errors='replace'))
+				mode='r', encoding=_encodings['content'],
+				errors='replace') as f:
+				eapi = _parse_eapi_ebuild_head(f)
 
 		if eapi is not None:
 			if not eapi_is_supported(eapi):

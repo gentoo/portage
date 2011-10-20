@@ -1112,36 +1112,46 @@ if vcs == "cvs":
 		myremoved = cvstree.findremoved(mycvstree, recursive=1, basedir="./")
 
 if vcs == "svn":
-	svnstatus = os.popen("svn status").readlines()
+	with os.popen("svn status") as f:
+		svnstatus = f.readlines()
 	mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem and elem[:1] in "MR" ]
 	mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A") ]
 	if options.if_modified == "y":
 		myremoved = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("D")]
 
 elif vcs == "git":
-	mychanged = os.popen("git diff-index --name-only --relative --diff-filter=M HEAD").readlines()
+	with os.popen("git diff-index --name-only "
+		"--relative --diff-filter=M HEAD") as f:
+		mychanged = f.readlines()
 	mychanged = ["./" + elem[:-1] for elem in mychanged]
 
-	mynew = os.popen("git diff-index --name-only --relative --diff-filter=A HEAD").readlines()
+	with os.popen("git diff-index --name-only "
+		"--relative --diff-filter=A HEAD") as f:
+		mynew = f.readlines()
 	mynew = ["./" + elem[:-1] for elem in mynew]
 	if options.if_modified == "y":
-		myremoved = os.popen("git diff-index --name-only --relative --diff-filter=D HEAD").readlines()
+		with os.popen("git diff-index --name-only "
+			"--relative --diff-filter=D HEAD") as f:
+			myremoved = f.readlines()
 		myremoved = ["./" + elem[:-1] for elem in myremoved]
 
 elif vcs == "bzr":
-	bzrstatus = os.popen("bzr status -S .").readlines()
+	with os.popen("bzr status -S .") as f:
+		bzrstatus = f.readlines()
 	mychanged = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and elem[1:2] == "M" ]
 	mynew     = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and ( elem[1:2] == "NK" or elem[0:1] == "R" ) ]
 	if options.if_modified == "y":
 		myremoved = [ "./" + elem.split()[-3:-2][0].split('/')[-1:][0] for elem in bzrstatus if elem and ( elem[1:2] == "K" or elem[0:1] == "R" ) ]
 
 elif vcs == "hg":
-	mychanged = os.popen("hg status --no-status --modified .").readlines()
+	with os.popen("hg status --no-status --modified .") as f:
+		mychanged = f.readlines()
 	mychanged = ["./" + elem.rstrip() for elem in mychanged]
 	mynew = os.popen("hg status --no-status --added .").readlines()
 	mynew = ["./" + elem.rstrip() for elem in mynew]
 	if options.if_modified == "y":
-		myremoved = os.popen("hg status --no-status --removed .").readlines()
+		with os.popen("hg status --no-status --removed .") as f:
+			myremoved = f.readlines()
 		myremoved = ["./" + elem.rstrip() for elem in myremoved]
 
 if vcs:
@@ -2246,7 +2256,8 @@ else:
 			err("Error retrieving CVS tree; exiting.")
 	if vcs == "svn":
 		try:
-			svnstatus=os.popen("svn status --no-ignore").readlines()
+			with os.popen("svn status --no-ignore") as f:
+				svnstatus = f.readlines()
 			myunadded = [ "./"+elem.rstrip().split()[1] for elem in svnstatus if elem.startswith("?") or elem.startswith("I") ]
 		except SystemExit as e:
 			raise  # TODO propagate this
@@ -2259,20 +2270,23 @@ else:
 		myf.close()
 	if vcs == "bzr":
 		try:
-			bzrstatus=os.popen("bzr status -S .").readlines()
+			with os.popen("bzr status -S .") as f:
+				bzrstatus = f.readlines()
 			myunadded = [ "./"+elem.rstrip().split()[1].split('/')[-1:][0] for elem in bzrstatus if elem.startswith("?") or elem[0:2] == " D" ]
 		except SystemExit as e:
 			raise  # TODO propagate this
 		except:
 			err("Error retrieving bzr info; exiting.")
 	if vcs == "hg":
-		myunadded = os.popen("hg status --no-status --unknown .").readlines()
+		with os.popen("hg status --no-status --unknown .") as f:
+			myunadded = f.readlines()
 		myunadded = ["./" + elem.rstrip() for elem in myunadded]
 		
 		# Mercurial doesn't handle manually deleted files as removed from
 		# the repository, so the user need to remove them before commit,
 		# using "hg remove [FILES]"
-		mydeleted = os.popen("hg status --no-status --deleted .").readlines()
+		with os.popen("hg status --no-status --deleted .") as f:
+			mydeleted = f.readlines()
 		mydeleted = ["./" + elem.rstrip() for elem in mydeleted]
 
 
@@ -2317,28 +2331,37 @@ else:
 
 
 	if vcs == "svn":
-		svnstatus = os.popen("svn status").readlines()
+		with os.popen("svn status") as f:
+			svnstatus = f.readlines()
 		mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if (elem[:1] in "MR" or elem[1:2] in "M")]
 		mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A")]
 		myremoved = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("D")]
 
 		# Subversion expands keywords specified in svn:keywords properties.
-		props = os.popen("svn propget -R svn:keywords").readlines()
+		with os.popen("svn propget -R svn:keywords") as f:
+			props = f.readlines()
 		expansion = dict(("./" + prop.split(" - ")[0], prop.split(" - ")[1].split()) \
 			for prop in props if " - " in prop)
 
 	elif vcs == "git":
-		mychanged = os.popen("git diff-index --name-only --relative --diff-filter=M HEAD").readlines()
+		with os.popen("git diff-index --name-only "
+			"--relative --diff-filter=M HEAD") as f:
+			mychanged = f.readlines()
 		mychanged = ["./" + elem[:-1] for elem in mychanged]
 
-		mynew = os.popen("git diff-index --name-only --relative --diff-filter=A HEAD").readlines()
+		with os.popen("git diff-index --name-only "
+			"--relative --diff-filter=A HEAD") as f:
+			mynew = f.readlines()
 		mynew = ["./" + elem[:-1] for elem in mynew]
 
-		myremoved = os.popen("git diff-index --name-only --relative --diff-filter=D HEAD").readlines()
+		with os.popen("git diff-index --name-only "
+			"--relative --diff-filter=D HEAD") as f:
+			myremoved = f.readlines()
 		myremoved = ["./" + elem[:-1] for elem in myremoved]
 
 	if vcs == "bzr":
-		bzrstatus = os.popen("bzr status -S .").readlines()
+		with os.popen("bzr status -S .") as f:
+			bzrstatus = f.readlines()
 		mychanged = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and elem[1:2] == "M" ]
 		mynew     = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and ( elem[1:2] in "NK" or elem[0:1] == "R" ) ]
 		myremoved = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem.startswith("-") ]
@@ -2346,11 +2369,16 @@ else:
 		# Bazaar expands nothing.
 
 	if vcs == "hg":
-		mychanged = os.popen("hg status --no-status --modified .").readlines()
+		with os.popen("hg status --no-status --modified .") as f:
+			mychanged = f.readlines()
 		mychanged = ["./" + elem.rstrip() for elem in mychanged]
-		mynew = os.popen("hg status --no-status --added .").readlines()
+
+		with os.popen("hg status --no-status --added .") as f:
+			mynew = f.readlines()
 		mynew = ["./" + elem.rstrip() for elem in mynew]
-		myremoved = os.popen("hg status --no-status --removed .").readlines()
+
+		with os.popen("hg status --no-status --removed .") as f:
+			myremoved = f.readlines()
 		myremoved = ["./" + elem.rstrip() for elem in myremoved]
 
 	if vcs:

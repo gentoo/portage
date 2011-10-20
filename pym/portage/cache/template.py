@@ -64,24 +64,46 @@ class database(object):
 		override this in derived classess"""
 		raise NotImplementedError
 
+	@staticmethod
+	def _internal_eclasses(extern_ec_dict, chf_type, paths):
+		"""
+		When serialize_eclasses is False, we have to convert an external
+		eclass dict containing hashed_path objects into an appropriate
+		internal dict containing values of chf_type (and eclass dirs
+		if store_eclass_paths is True).
+		"""
+		if not extern_ec_dict:
+			return extern_ec_dict
+		chf_getter = operator.attrgetter(chf_type)
+		if paths:
+			intern_ec_dict = dict((k, (v.eclass_dir, chf_getter(v)))
+				for k, v in extern_ec_dict.items())
+		else:
+			intern_ec_dict = dict((k, chf_getter(v))
+				for k, v in extern_ec_dict.items())
+		return intern_ec_dict
+
 	def __setitem__(self, cpv, values):
 		"""set a cpv to values
 		This shouldn't be overriden in derived classes since it handles the readonly checks"""
 		if self.readonly:
 			raise cache_errors.ReadOnlyRestriction()
+		d = None
 		if self.cleanse_keys:
 			d=ProtectedDict(values)
 			for k, v in list(d.items()):
 				if not v:
 					del d[k]
-			if self.serialize_eclasses and "_eclasses_" in values:
+		if "_eclasses_" in values:
+			if d is None:
+				d = ProtectedDict(values)
+			if self.serialize_eclasses:
 				d["_eclasses_"] = serialize_eclasses(d["_eclasses_"],
 					self.validation_chf, paths=self.store_eclass_paths)
-		elif self.serialize_eclasses and "_eclasses_" in values:
-			d = ProtectedDict(values)
-			d["_eclasses_"] = serialize_eclasses(d["_eclasses_"],
-				self.validation_chf, paths=self.store_eclass_paths)
-		else:
+			else:
+				d["_eclasses_"] = self._internal_eclasses(d["_eclasses_"],
+					self.validation_chf, self.store_eclass_paths)
+		elif d is None:
 			d = values
 		self._setitem(cpv, d)
 		if not self.autocommits:

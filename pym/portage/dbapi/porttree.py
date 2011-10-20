@@ -17,7 +17,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.versions:best,catpkgsplit,_pkgsplit@pkgsplit,ver_regexp',
 )
 
-from portage.cache import metadata_overlay, volatile
+from portage.cache import volatile
 from portage.cache.cache_errors import CacheError
 from portage.cache.mappings import Mapping
 from portage.dbapi import dbapi
@@ -150,6 +150,9 @@ class portdbapi(dbapi):
 		self.auxdbmodule = self.settings.load_best_module("portdbapi.auxdbmodule")
 		self.auxdb = {}
 		self._pregen_auxdb = {}
+		# If the current user doesn't have depcachedir write permission,
+		# then the depcachedir cache is kept here read-only access.
+		self._ro_auxdb = {}
 		self._init_cache_dirs()
 		try:
 			depcachedir_st = os.stat(self.depcachedir)
@@ -189,18 +192,14 @@ class portdbapi(dbapi):
 		# to the cache entries/directories.
 		if (secpass < 1 and not depcachedir_unshared) or not depcachedir_w_ok:
 			for x in self.porttrees:
+				self.auxdb[x] = volatile.database(
+					self.depcachedir, x, filtered_auxdbkeys,
+					**cache_kwargs)
 				try:
-					db_ro = self.auxdbmodule(self.depcachedir, x,
+					self._ro_auxdb[x] = self.auxdbmodule(self.depcachedir, x,
 						filtered_auxdbkeys, readonly=True, **cache_kwargs)
 				except CacheError:
-					self.auxdb[x] = volatile.database(
-						self.depcachedir, x, filtered_auxdbkeys,
-						**cache_kwargs)
-				else:
-					self.auxdb[x] = metadata_overlay.database(
-						self.depcachedir, x, filtered_auxdbkeys,
-						db_rw=volatile.database, db_ro=db_ro,
-						**cache_kwargs)
+					pass
 		else:
 			for x in self.porttrees:
 				if x in self.auxdb:
@@ -208,8 +207,6 @@ class portdbapi(dbapi):
 				# location, label, auxdbkeys
 				self.auxdb[x] = self.auxdbmodule(
 					self.depcachedir, x, filtered_auxdbkeys, **cache_kwargs)
-				if self.auxdbmodule is metadata_overlay.database:
-					self.auxdb[x].db_ro.ec = self._repo_info[x].eclass_db
 		if "metadata-transfer" not in self.settings.features:
 			for x in self.porttrees:
 				if x in self._pregen_auxdb:
@@ -440,6 +437,9 @@ class portdbapi(dbapi):
 		pregen_auxdb = self._pregen_auxdb.get(repo_path)
 		if pregen_auxdb is not None:
 			auxdbs.append(pregen_auxdb)
+		ro_auxdb = self._ro_auxdb.get(repo_path)
+		if ro_auxdb is not None:
+			auxdbs.append(ro_auxdb)
 		auxdbs.append(self.auxdb[repo_path])
 		eclass_db = self._repo_info[repo_path].eclass_db
 
@@ -519,11 +519,11 @@ class portdbapi(dbapi):
 
 			if eapi is None and \
 				'parse-eapi-ebuild-head' in self.doebuild_settings.features:
-				eapi = portage._parse_eapi_ebuild_head(io.open(
-					_unicode_encode(myebuild,
+				with io.open(_unicode_encode(myebuild,
 					encoding=_encodings['fs'], errors='strict'),
 					mode='r', encoding=_encodings['repo.content'],
-					errors='replace'))
+					errors='replace') as f:
+					eapi = portage._parse_eapi_ebuild_head(f)
 
 			if eapi is not None:
 				self.doebuild_settings.configdict['pkg']['EAPI'] = eapi
