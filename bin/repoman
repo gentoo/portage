@@ -637,10 +637,7 @@ if "commit" == options.mode and \
 		print(prefix + line)
 	sys.exit(1)
 
-if options.echangelog is None and \
-	repo_config.name == "gentoo":
-	# Bug #337853 - gentoo's council says to enable
-	# --echangelog by default for the "gentoo" repo
+if options.echangelog is None and repo_config.update_changelog:
 	options.echangelog = 'y'
 
 if vcs is None:
