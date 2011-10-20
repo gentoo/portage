@@ -560,6 +560,8 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, msg, prete
 	except EnvironmentError:
 		clold_file = None
 
+	# ChangeLog times are in UTC
+	gmtime = time.gmtime()
 	f, clnew_path = mkstemp()
 
 	# create an empty ChangeLog.new with correct header first
@@ -570,7 +572,7 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, msg, prete
 		if clold_file is None:
 			header_lines.append(_unicode_decode('# ChangeLog for %s/%s\n' %
 				(category, package)))
-			year = time.strftime('%Y')
+			year = time.strftime('%Y', gmtime)
 			header_lines.append(_unicode_decode('# Copyright 1999-'
 				'%s Gentoo Foundation; Distributed under the GPL v2\n' % year))
 			header_lines.append(_unicode_decode('# $Header: $\n'))
@@ -589,11 +591,11 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, msg, prete
 			old_header_lines = header_lines[:]
 			if len(header_lines) >= 2:
 				header_lines[1] = re.sub(r'^(# Copyright \d\d\d\d)-\d\d\d\d ',
-					r'\1-%s ' % time.strftime('%Y'), header_lines[1])
+					r'\1-%s ' % time.strftime('%Y', gmtime), header_lines[1])
 
 		# write new ChangeLog entry
 		clnew_lines.extend(header_lines)
-		date = time.strftime('%d %b %Y')
+		date = time.strftime('%d %b %Y', gmtime)
 		newebuild = False
 		for fn in new:
 			if not fn.endswith('.ebuild'):
