@@ -16,6 +16,7 @@ __all__ = [
 	"format_qa_output",
 	"get_commit_message_with_editor",
 	"get_commit_message_with_stdin",
+	"get_committer_name",
 	"have_profile_dir",
 	"parse_metadata_use",
 	"UnknownHerdsError",
@@ -588,29 +589,33 @@ def update_copyright(fn_path, year, pretend):
 			util.apply_stat_permissions(fn_path, fn_stat)
 	fn_hdl.close()
 
-def UpdateChangeLog(pkgdir, category, package, new, removed, changed, \
-		msg, pretend, repodir):
+def get_committer_name(env=None):
+	"""Generate a committer string like echangelog does."""
+	if env is None:
+		env = os.environ
+	if 'GENTOO_COMMITTER_NAME' in env and \
+		'GENTOO_COMMITTER_EMAIL' in env:
+		user = '%s <%s>' % (env['GENTOO_COMMITTER_NAME'],
+			env['GENTOO_COMMITTER_EMAIL'])
+	elif 'GENTOO_AUTHOR_NAME' in env and \
+			'GENTOO_AUTHOR_EMAIL' in env:
+		user = '%s <%s>' % (env['GENTOO_AUTHOR_NAME'],
+			env['GENTOO_AUTHOR_EMAIL'])
+	elif 'ECHANGELOG_USER' in env:
+		user = env['ECHANGELOG_USER']
+	else:
+		pwd_struct = pwd.getpwuid(os.getuid())
+		gecos = pwd_struct.pw_gecos.split(',')[0]  # bug #80011
+		user = '%s <%s@gentoo.org>' % (gecos, pwd_struct.pw_name)
+	return user
+
+def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
+	new=(), removed=(), changed=(), pretend=False):
 	"""
 	Write an entry to an existing ChangeLog, or create a new one.
 	Updates copyright year on changed files, and updates the header of
 	ChangeLog with the contents of skel.ChangeLog.
 	"""
-
-	# figure out who to write as
-	if 'GENTOO_COMMITTER_NAME' in os.environ and \
-			'GENTOO_COMMITTER_EMAIL' in os.environ:
-		user = '%s <%s>' % (os.environ['GENTOO_COMMITTER_NAME'], \
-				os.environ['GENTOO_COMMITTER_EMAIL'])
-	elif 'GENTOO_AUTHOR_NAME' in os.environ and \
-			'GENTOO_AUTHOR_EMAIL' in os.environ:
-		user = '%s <%s>' % (os.environ['GENTOO_AUTHOR_NAME'], \
-				os.environ['GENTOO_AUTHOR_EMAIL'])
-	elif 'ECHANGELOG_USER' in os.environ:
-		user = os.environ['ECHANGELOG_USER']
-	else:
-		pwd_struct = pwd.getpwuid(os.getuid())
-		gecos = pwd_struct.pw_gecos.split(',')[0]  # bug #80011
-		user = '%s <%s@gentoo.org>' % (gecos, pwd_struct.pw_name)
 
 	if '<root@' in user:
 		err = 'Please set ECHANGELOG_USER or run as non-root'
@@ -647,8 +652,7 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, \
 		# we will only need the ChangeLog skeleton if there is no
 		# ChangeLog yet
 		try:
-			clskel_path = os.path.join(repodir, 'skel.ChangeLog')
-			clskel_file = io.open(_unicode_encode(clskel_path,
+			clskel_file = io.open(_unicode_encode(skel_path,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],
 				errors='replace')
