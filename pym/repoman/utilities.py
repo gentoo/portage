@@ -629,7 +629,7 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 
 	# check modified files and the ChangeLog for copyright updates
 	# patches and diffs (identified by .patch and .diff) are excluded
-	for fn in new + changed:
+	for fn in chain(new, changed):
 		if fn.endswith('.diff') or fn.endswith('.patch'):
 			continue
 		update_copyright(os.path.join(pkgdir, fn), year, pretend)
@@ -711,14 +711,13 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 		if not (display_new or display_removed or display_changed):
 			# If there's nothing else to display, show one of the
 			# trivial files.
-			if 'ChangeLog' in new:
-				display_new = ['+ChangeLog']
-			elif 'ChangeLog' in changed:
-				display_changed = ['ChangeLog']
-			elif 'Manifest' in new:
-				display_new = ['+Manifest']
-			elif 'Manifest' in changed:
-				display_changed = ['Manifest']
+			for fn in trivial_files:
+				if fn in new:
+					display_new = ['+' + fn]
+					break
+				elif fn in changed:
+					display_changed = [fn]
+					break
 
 		mesg = '%s; %s %s:' % (date, user, ', '.join(chain(
 			display_new, display_removed, display_changed)))
