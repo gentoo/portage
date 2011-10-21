@@ -562,7 +562,7 @@ def _update_copyright_year(year, line):
 		line = _unicode_decode(line)
 	return line
 
-def update_copyright(fn_path, year, pretend):
+def update_copyright(fn_path, year, pretend=False):
 	"""
 	Check file for a Copyright statement, and update its year.  The
 	patterns used for replacing copyrights are taken from echangelog.
@@ -668,7 +668,7 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 	for fn in chain(new, changed):
 		if fn.endswith('.diff') or fn.endswith('.patch'):
 			continue
-		update_copyright(os.path.join(pkgdir, fn), year, pretend)
+		update_copyright(os.path.join(pkgdir, fn), year, pretend=pretend)
 
 	cl_path = os.path.join(pkgdir, 'ChangeLog')
 	clold_lines = []
