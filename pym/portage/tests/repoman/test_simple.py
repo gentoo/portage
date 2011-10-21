@@ -14,8 +14,31 @@ from portage.process import find_binary
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util import ensure_dirs
+from repoman.utilities import _update_copyright_year
 
 class SimpleRepomanTestCase(TestCase):
+
+	def testCopyrightUpdate(self):
+		test_cases = (
+			(
+				'2011',
+				'# Copyright 1999-2008 Gentoo Foundation; Distributed under the GPL v2',
+				'# Copyright 1999-2011 Gentoo Foundation; Distributed under the GPL v2',
+			),
+			(
+				'2011',
+				'# Copyright 1999 Gentoo Foundation; Distributed under the GPL v2',
+				'# Copyright 1999-2011 Gentoo Foundation; Distributed under the GPL v2',
+			),
+			(
+				'1999',
+				'# Copyright 1999 Gentoo Foundation; Distributed under the GPL v2',
+				'# Copyright 1999 Gentoo Foundation; Distributed under the GPL v2',
+			),
+		)
+
+		for year, before, after in test_cases:
+			self.assertEqual(_update_copyright_year(year, before), after)
 
 	def _must_skip(self):
 		xmllint = find_binary("xmllint")

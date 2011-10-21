@@ -524,6 +524,31 @@ def FindVCS():
 
 	return outvcs
 
+_copyright_re1 = re.compile(r'^(# Copyright \d\d\d\d)-\d\d\d\d ')
+_copyright_re2 = re.compile(r'^(# Copyright )(\d\d\d\d) ')
+
+
+class _copyright_repl(object):
+	__slots__ = ('year',)
+	def __init__(self, year):
+		self.year = year
+	def __call__(self, matchobj):
+		if matchobj.group(2) == self.year:
+			return matchobj.group(0)
+		else:
+			return '%s%s-%s ' % \
+				(matchobj.group(1), matchobj.group(2), self.year)
+
+def _update_copyright_year(year, line):
+	"""
+	These two regexes are taken from echangelog
+	update_copyright(), except that we don't hardcode
+	1999 here (in order to be more generic).
+	"""
+	line = _copyright_re1.sub(r'\1-%s ' % year, line)
+	line = _copyright_re2.sub(_copyright_repl(year), line)
+	return line
+
 def update_copyright(fn_path, year, pretend):
 	"""
 	Check file for a Copyright statement, and update its year.  The
@@ -549,13 +574,7 @@ def update_copyright(fn_path, year, pretend):
 			new_header.append(line)
 			break
 
-		# These two regexes are taken from echangelog
-		# update_copyright(), except that we don't hardcode
-		# 1999 here (in order to be more generic).
-		line = re.sub(r'^(# Copyright \d+) ',
-			r'\1-%s ' % year, line)
-		line = re.sub(r'^(# Copyright \d\d\d\d)-\d\d\d\d',
-			r'\1-%s' % year, line)
+		line = _update_copyright_year(year, line)
 		new_header.append(line)
 
 	difflines = 0
@@ -671,9 +690,7 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 					clold_lines.append(line)
 					break
 				old_header_lines.append(line)
-				header_lines.append(
-					re.sub(r'^(# Copyright \d\d\d\d)-\d\d\d\d ',
-					r'\1-%s ' % year, line))
+				header_lines.append(_update_copyright_year(year, line))
 				if not line_strip:
 					break
 
@@ -685,8 +702,7 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 					break
 				line = line.replace('<CATEGORY>', category)
 				line = line.replace('<PACKAGE_NAME>', package)
-				line = re.sub(r'^(# Copyright \d\d\d\d)-\d\d\d\d ',
-					r'\1-%s ' % year, line)
+				line = _update_copyright_year(year, line)
 				header_lines.append(line)
 			header_lines.append(_unicode_decode('\n'))
 			clskel_file.close()
