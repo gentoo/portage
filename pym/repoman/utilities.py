@@ -771,24 +771,27 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 
 		# append stuff from old ChangeLog
 		if clold_file is not None:
-			# clold_lines may contain a saved non-header line
-			# that we want to write first.
-			# Also, append this line to clnew_lines so that the
-			# unified_diff call doesn't show it as removed.
-			for line in clold_lines:
-				f.write(line)
-				clnew_lines.append(line)
+
+			if clold_lines:
+				# clold_lines may contain a saved non-header line
+				# that we want to write first.
+				# Also, append this line to clnew_lines so that the
+				# unified_diff call doesn't show it as removed.
+				for line in clold_lines:
+					f.write(line)
+					clnew_lines.append(line)
+
+			else:
+				# ensure that there is no more than one blank
+				# line after our new entry
+				for line in clold_file:
+					if line.strip():
+						f.write(line)
+						break
 
 			# Now prepend old_header_lines to clold_lines, for use
 			# in the unified_diff call below.
 			clold_lines = old_header_lines + clold_lines
-
-			# ensure that there is no more than one blank
-			# line after our new entry
-			for line in clold_file:
-				if line.strip():
-					f.write(line)
-					break
 
 			for line in clold_file:
 				f.write(line)
