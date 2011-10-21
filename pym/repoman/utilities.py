@@ -632,6 +632,7 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, \
 	cl_path = os.path.join(pkgdir, 'ChangeLog')
 	clold_lines = []
 	clnew_lines = []
+	old_header_lines = []
 	header_lines = []
 
 	try:
@@ -661,15 +662,17 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, \
 		if clold_file is not None:
 			# retain header from old ChangeLog
 			for line in clold_file:
-				line_strip = line.strip()
-				clold_lines.append(line)
-				if line_strip[:1] != '#':
+				line_strip =  line.strip()
+				if line_strip and line[:1] != "#":
+					clold_lines.append(line)
 					break
-				line = re.sub(r'^(# Copyright \d\d\d\d)-\d\d\d\d',
-					r'\1-%s' % year, line)
-				clnew_lines.append(line)
+				old_header_lines.append(line)
+				header_lines.append(
+					re.sub(r'^(# Copyright \d\d\d\d)-\d\d\d\d ',
+					r'\1-%s ' % year, line))
 				if not line_strip:
 					break
+
 		elif clskel_file is not None:
 			# read skel.ChangeLog up to first empty line
 			for line in clskel_file:
@@ -680,11 +683,12 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, \
 				line = line.replace('<PACKAGE_NAME>', package)
 				line = re.sub(r'^(# Copyright \d\d\d\d)-\d\d\d\d ',
 					r'\1-%s ' % year, line)
-				clnew_lines.append(line)
-			clnew_lines.append(_unicode_decode('\n'))
+				header_lines.append(line)
+			header_lines.append(_unicode_decode('\n'))
 			clskel_file.close()
 
 		# write new ChangeLog entry
+		clnew_lines.extend(header_lines)
 		newebuild = False
 		for fn in new:
 			if not fn.endswith('.ebuild'):
@@ -733,8 +737,22 @@ def UpdateChangeLog(pkgdir, category, package, new, removed, changed, \
 		if clold_file is not None:
 			# clold_lines may contain a saved non-header line
 			# that we want to write first.
-			if clold_lines and clold_lines[-1].strip():
-				f.write(clold_lines[-1])
+			# Also, append this line to clnew_lines so that the
+			# unified_diff call doesn't show it as removed.
+			for line in clold_lines:
+				f.write(line)
+				clnew_lines.append(line)
+
+			# Now prepend old_header_lines to clold_lines, for use
+			# in the unified_diff call below.
+			clold_lines = old_header_lines + clold_lines
+
+			# ensure that there is no more than one blank
+			# line after our new entry
+			for line in clold_file:
+				if line.strip():
+					f.write(line)
+					break
 
 			for line in clold_file:
 				f.write(line)
