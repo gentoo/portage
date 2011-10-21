@@ -2454,6 +2454,7 @@ else:
 
 	if options.echangelog in ('y', 'force'):
 		logging.info("checking for unmodified ChangeLog files")
+		committer_name = utilities.get_committer_name(env=repoman_settings)
 		for x in sorted(vcs_files_to_cps(
 			chain(myupdates, mymanifests, myremoved))):
 			catdir, pkgdir = x.split("/")
@@ -2475,10 +2476,12 @@ else:
 			clnew = [elem[cdrlen:] for elem in mynew if elem.startswith(checkdir_relative)]
 			clremoved = [elem[cdrlen:] for elem in myremoved if elem.startswith(checkdir_relative)]
 			clchanged = [elem[cdrlen:] for elem in mychanged if elem.startswith(checkdir_relative)]
-			new_changelog = utilities.UpdateChangeLog(checkdir_relative, \
-				catdir, pkgdir, \
-				clnew, clremoved, clchanged, \
-				changelog_msg, options.pretend)
+			new_changelog = utilities.UpdateChangeLog(checkdir_relative,
+				committer_name, changelog_msg,
+				os.path.join(repodir, 'skel.ChangeLog'),
+				catdir, pkgdir,
+				new=clnew, removed=clremoved, changed=clchanged,
+				pretend=options.pretend)
 			if new_changelog is None:
 				writemsg_level("!!! Updating the ChangeLog failed\n", \
 					level=logging.ERROR, noiselevel=-1)
