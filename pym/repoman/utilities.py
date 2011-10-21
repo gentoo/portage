@@ -546,9 +546,16 @@ def _update_copyright_year(year, line):
 	1999 here (in order to be more generic).
 	"""
 	is_bytes = isinstance(line, bytes)
+	if is_bytes:
+		if not line.startswith(b'# Copyright '):
+			return line
+	else:
+		if not line.startswith('# Copyright '):
+			return line
+
 	year = _unicode_encode(year)
 	line = _unicode_encode(line)
-	
+
 	line = _copyright_re1.sub(br'\1-' + year + b' ', line)
 	line = _copyright_re2.sub(_copyright_repl(year), line)
 	if not is_bytes:
