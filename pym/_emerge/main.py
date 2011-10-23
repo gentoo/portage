@@ -1611,7 +1611,8 @@ def emerge_main(args=None):
 	tmpcmdline.extend(args)
 	myaction, myopts, myfiles = parse_opts(tmpcmdline)
 
-	if myaction not in ('help', 'info', 'version') and \
+	# skip global updates prior to sync, since it's called after sync
+	if myaction not in ('help', 'info', 'sync', 'version') and \
 		myopts.get('--package-moves') != 'n' and \
 		_global_updates(trees, mtimedb["updates"], quiet=("--quiet" in myopts)):
 		mtimedb.commit()
