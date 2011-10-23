@@ -20,13 +20,15 @@ move valid/atom1 invalid_atom2
 move invalid_atom1 valid/atom2
 move !invalid/blocker1 valid/atom2
 move valid/atom1 !invalid/blocker2
+move =invalid/operator-1* valid/atom2
+move valid/atom1 =invalid/operator-2*
 move valid/atom1 valid/atom2
 """,
 			[
 				['slotmove', Atom('=valid/atom-3*'), '0', '3'],
 				['move', Atom('valid/atom1'), Atom('valid/atom2')],
 			],
-			8,
+			10,
 		),
 
 		)
