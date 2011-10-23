@@ -43,7 +43,10 @@ Displays every package name while checking
 .TP
 \fB\-\-echangelog=<y|n|force>\fR
 For commit mode, call echangelog if ChangeLog is unmodified (or
-regardless of modification if 'force' is specified)
+regardless of modification if 'force' is specified). This option
+can be enabled by default for a particular repository by setting
+"update\-changelog = true" in metadata/layout.conf (see
+\fBportage(5)\fR).
 .TP
 \fB\-\-if\-modified=<y|n>\fR
 Only check packages that have uncommitted modifications
