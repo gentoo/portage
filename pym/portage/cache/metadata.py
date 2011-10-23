@@ -6,6 +6,7 @@ import errno
 import re
 import stat
 import sys
+from operator import attrgetter
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
@@ -63,9 +64,11 @@ class database(flat_hash.database):
 			if "INHERITED" in d:
 				if self.ec is None:
 					self.ec = portage.eclass_cache.cache(self.location[:-15])
+				getter = attrgetter(self.validation_chf)
 				try:
-					d["_eclasses_"] = self.ec.get_eclass_data(
-						d["INHERITED"].split())
+					ec_data = self.ec.get_eclass_data(d["INHERITED"].split())
+					d["_eclasses_"] = dict((k, (v.eclass_dir, getter(v)))
+						for k,v in ec_data.items())
 				except KeyError as e:
 					# INHERITED contains a non-existent eclass.
 					raise cache_errors.CacheCorruption(cpv, e)

@@ -144,7 +144,7 @@ prepcompress() {
 }
 
 install_qa_check() {
-	local f x
+	local f i x
 
 	cd "${D}" || die "cd failed"
 
@@ -166,14 +166,14 @@ install_qa_check() {
 	fi
 
 	# Now we look for all world writable files.
-	local i
-	for i in $(find "${D}/" -type f -perm -2); do
-		vecho "QA Security Notice:"
-		vecho "- ${i:${#D}:${#i}} will be a world writable file."
+	local unsafe_files=$(find "${D}" -type f -perm -2 | sed -e "s:^${D}:- :")
+	if [[ -n ${unsafe_files} ]] ; then
+		vecho "QA Security Notice: world writable file(s):"
+		vecho "${unsafe_files}"
 		vecho "- This may or may not be a security problem, most of the time it is one."
 		vecho "- Please double check that $PF really needs a world writeable bit and file bugs accordingly."
 		sleep 1
-	done
+	fi
 
 	if type -P scanelf > /dev/null && ! has binchecks ${RESTRICT}; then
 		local qa_var insecure_rpath=0 tmp_quiet=${PORTAGE_QUIET}
@@ -371,6 +371,10 @@ install_qa_check() {
 				fi
 			fi
 		done }
+
+		[ -n "${QA_SONAME_NO_SYMLINK}" ] && \
+			echo "${QA_SONAME_NO_SYMLINK}" > \
+			"${PORTAGE_BUILDDIR}"/build-info/QA_SONAME_NO_SYMLINK
 
 		if [[ ${insecure_rpath} -eq 1 ]] ; then
 			die "Aborting due to serious QA concerns with RUNPATH/RPATH"

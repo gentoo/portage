@@ -44,11 +44,11 @@ class RepoConfig(object):
 	"""Stores config of one repository"""
 
 	__slots__ = ('aliases', 'allow_missing_manifest',
-		'cache_is_authoritative', 'create_manifest', 'disable_manifest',
+		'cache_format', 'create_manifest', 'disable_manifest',
 		'eclass_overrides', 'eclass_locations', 'format', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'priority', 'sign_manifest', 'sync', 'thin_manifest',
-		'trust_authoritative_cache', 'user_location')
+		'update_changelog', 'user_location')
 
 	def __init__(self, name, repo_opts):
 		"""Build a RepoConfig with options in repo_opts
@@ -66,8 +66,11 @@ class RepoConfig(object):
 		#Locations are computed later.
 		self.eclass_locations = None
 
-		#Masters are only read from layout.conf.
-		self.masters = None
+		# Masters from repos.conf override layout.conf.
+		masters = repo_opts.get('masters')
+		if masters is not None:
+			masters = tuple(masters.split())
+		self.masters = masters
 
 		#The main-repo key makes only sense for the 'DEFAULT' section.
 		self.main_repo = repo_opts.get('main-repo')
@@ -123,13 +126,25 @@ class RepoConfig(object):
 		self.create_manifest = True
 		self.disable_manifest = False
 		self.manifest_hashes = None
+		self.update_changelog = False
+		self.cache_format = None
 
-		self.cache_is_authoritative = False
-
-		trust_authoritative_cache = repo_opts.get('trust-authoritative-cache')
-		if trust_authoritative_cache is not None:
-			trust_authoritative_cache = trust_authoritative_cache.lower() == 'true'
-		self.trust_authoritative_cache = trust_authoritative_cache
+	def get_pregenerated_cache(self, auxdbkeys, readonly=True, force=False):
+		format = self.cache_format
+		if format is None:
+			if not force:
+				return None
+			format = 'pms'
+		if format == 'pms':
+			from portage.cache.metadata import database
+			name = 'metadata/cache'
+		elif format == 'md5-dict':
+			from portage.cache.flat_hash import md5_database as database
+			name = 'metadata/md5-cache'
+		else:
+			return None
+		return database(self.location, name,
+			auxdbkeys, readonly=readonly)
 
 	def load_manifest(self, *args, **kwds):
 		kwds['thin'] = self.thin_manifest
@@ -148,8 +163,6 @@ class RepoConfig(object):
 			self.eclass_overrides = new_repo.eclass_overrides
 		if new_repo.masters is not None:
 			self.masters = new_repo.masters
-		if new_repo.trust_authoritative_cache is not None:
-			self.trust_authoritative_cache = new_repo.trust_authoritative_cache
 		if new_repo.name is not None:
 			self.name = new_repo.name
 			self.missing_repo_name = new_repo.missing_repo_name
@@ -237,11 +250,6 @@ class RepoConfigLoader(object):
 		if prepos['DEFAULT'].masters is not None:
 			default_repo_opts['masters'] = \
 				' '.join(prepos['DEFAULT'].masters)
-		if prepos['DEFAULT'].trust_authoritative_cache is not None:
-			if prepos['DEFAULT'].trust_authoritative_cache:
-				default_repo_opts['trust-authoritative-cache'] = 'true'
-			else:
-				default_repo_opts['trust-authoritative-cache'] = 'false'
 
 		if overlays:
 			#overlay priority is negative because we want them to be looked before any other repo
@@ -262,11 +270,6 @@ class RepoConfigLoader(object):
 						if repo_conf_opts.masters is not None:
 							repo_opts['masters'] = \
 								' '.join(repo_conf_opts.masters)
-						if repo_conf_opts.trust_authoritative_cache is not None:
-							if repo_conf_opts.trust_authoritative_cache:
-								repo_opts['trust-authoritative-cache'] = 'true'
-							else:
-								repo_opts['trust-authoritative-cache'] = 'false'
 
 					repo = RepoConfig(repo.name, repo_opts)
 					if repo.name in prepos:
@@ -358,12 +361,19 @@ class RepoConfigLoader(object):
 			layout_file = KeyValuePairFileLoader(layout_filename, None, None)
 			layout_data, layout_errors = layout_file.load()
 
-			masters = layout_data.get('masters')
-			if masters and masters.strip():
-				masters = masters.split()
-			else:
-				masters = None
-			repo.masters = masters
+			# Only set masters here if is None, so that repos.conf settings
+			# will override those from layout.conf. This gives the
+			# user control over inherited repositories and their settings
+			# (the user must ensure that any required dependencies such as
+			# eclasses are satisfied).
+			if repo.masters is None:
+				masters = layout_data.get('masters')
+				if masters is not None:
+					# We support empty masters settings here, in case a
+					# repo wants to avoid implicit inheritance of PORTDIR
+					# settings like package.mask.
+					masters = tuple(masters.split())
+				repo.masters = masters
 
 			aliases = layout_data.get('aliases')
 			if aliases and aliases.strip():
@@ -386,34 +396,44 @@ class RepoConfigLoader(object):
 			repo.create_manifest = manifest_policy != 'false'
 			repo.disable_manifest = manifest_policy == 'false'
 
+			# for compatibility w/ PMS, fallback to pms; but also check if the
+			# cache exists or not.
+			repo.cache_format = layout_data.get('cache-format', 'pms').lower()
+			if repo.cache_format == 'pms' and not os.path.isdir(
+				os.path.join(repo.location, 'metadata', 'cache')):
+				repo.cache_format = None
+
 			manifest_hashes = layout_data.get('manifest-hashes')
 			if manifest_hashes is not None:
 				manifest_hashes = frozenset(manifest_hashes.upper().split())
 				if MANIFEST2_REQUIRED_HASH not in manifest_hashes:
-					warnings.warn(("Repository named '%s' has a "
+					warnings.warn((_("Repository named '%(repo_name)s' has a "
 						"'manifest-hashes' setting that does not contain "
-						"the '%s' hash which is required by this "
+						"the '%(hash)s' hash which is required by this "
 						"portage version. You will have to upgrade portage "
 						"if you want to generate valid manifests for this "
-						"repository: %s" % (repo.name,
-						MANIFEST2_REQUIRED_HASH,
-						layout_filename)), DeprecationWarning)
+						"repository: %(layout_filename)s") %
+						{"repo_name":repo.name,
+						"hash":MANIFEST2_REQUIRED_HASH,
+						"layout_filename":layout_filename}),
+						DeprecationWarning)
 				unsupported_hashes = manifest_hashes.difference(
 					MANIFEST2_HASH_FUNCTIONS)
 				if unsupported_hashes:
-					warnings.warn(("Repository named '%s' has a "
+					warnings.warn((_("Repository named '%(repo_name)s' has a "
 						"'manifest-hashes' setting that contains one "
-						"or more hash types '%s' which are not supported by "
+						"or more hash types '%(hashes)s' which are not supported by "
 						"this portage version. You will have to upgrade "
 						"portage if you want to generate valid manifests for "
-						"this repository: %s" % (repo.name,
-						" ".join(sorted(unsupported_hashes)),
-						layout_filename)), DeprecationWarning)
+						"this repository: %(layout_filename)s") %
+						{"repo_name":repo.name,
+						"hashes":" ".join(sorted(unsupported_hashes)),
+						"layout_filename":layout_filename}),
+						DeprecationWarning)
 			repo.manifest_hashes = manifest_hashes
 
-			repo.cache_is_authoritative = layout_data.get('authoritative-cache', 'false').lower() == 'true'
-			if not repo.trust_authoritative_cache:
-				repo.cache_is_authoritative = False
+			if layout_data.get('update-changelog', '').lower() == 'true':
+				repo.update_changelog = True
 
 		#Take aliases into account.
 		new_prepos = {}

@@ -30,12 +30,13 @@ class EbuildBuild(CompositeTask):
 		pkg = self.pkg
 		settings = self.settings
 
-		rval = _check_temp_dir(settings)
-		if rval != os.EX_OK:
-			self.returncode = rval
-			self._current_task = None
-			self.wait()
-			return
+		if not self.opts.fetchonly:
+			rval = _check_temp_dir(settings)
+			if rval != os.EX_OK:
+				self.returncode = rval
+				self._current_task = None
+				self.wait()
+				return
 
 		root_config = pkg.root_config
 		tree = "porttree"
@@ -225,7 +226,8 @@ class EbuildBuild(CompositeTask):
 				system_set.findAtomForPackage(pkg) and \
 				not opts.buildpkg
 
-		if opts.buildpkg or "buildpkg" in features or self._issyspkg:
+		if (opts.buildpkg or "buildpkg" in features or self._issyspkg) \
+			and not self.opts.buildpkg_exclude.findAtomForPackage(pkg):
 
 			self._buildpkg = True
 

@@ -8,6 +8,7 @@ class database(template.database):
 
 	autocommits = True
 	serialize_eclasses = False
+	store_eclass_paths = False
 
 	def __init__(self, *args, **config):
 		config.pop("gid", None)
@@ -19,7 +20,7 @@ class database(template.database):
 	def _setitem(self, name, values):
 		self._data[name] = copy.deepcopy(values)
 
-	def _getitem(self, cpv):
+	def __getitem__(self, cpv):
 		return copy.deepcopy(self._data[cpv])
 
 	def __iter__(self):

@@ -96,7 +96,7 @@ class Scheduler(PollScheduler):
 		("merge", "jobs", "ebuild_locks", "fetch", "unpack"), prefix="")
 
 	class _build_opts_class(SlotObject):
-		__slots__ = ("buildpkg", "buildpkgonly",
+		__slots__ = ("buildpkg", "buildpkg_exclude", "buildpkgonly",
 			"fetch_all_uri", "fetchonly", "pretend")
 
 	class _binpkg_opts_class(SlotObject):
@@ -159,8 +159,13 @@ class Scheduler(PollScheduler):
 		self._favorites = favorites
 		self._args_set = InternalPackageSet(favorites, allow_repo=True)
 		self._build_opts = self._build_opts_class()
+
 		for k in self._build_opts.__slots__:
 			setattr(self._build_opts, k, "--" + k.replace("_", "-") in myopts)
+		self._build_opts.buildpkg_exclude = InternalPackageSet( \
+			initial_atoms=" ".join(myopts.get("--buildpkg-exclude", [])).split(), \
+			allow_wildcard=True, allow_repo=True)
+
 		self._binpkg_opts = self._binpkg_opts_class()
 		for k in self._binpkg_opts.__slots__:
 			setattr(self._binpkg_opts, k, "--" + k.replace("_", "-") in myopts)
@@ -304,10 +309,11 @@ class Scheduler(PollScheduler):
 		"""
 		self._set_graph_config(graph_config)
 		self._blocker_db = {}
+		dynamic_deps = self.myopts.get("--dynamic-deps", "y") != "n"
 		for root in self.trees:
 			if graph_config is None:
 				fake_vartree = FakeVartree(self.trees[root]["root_config"],
-					pkg_cache=self._pkg_cache)
+					pkg_cache=self._pkg_cache, dynamic_deps=dynamic_deps)
 				fake_vartree.sync()
 			else:
 				fake_vartree = graph_config.trees[root]['vartree']

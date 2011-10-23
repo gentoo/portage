@@ -47,6 +47,7 @@ def collect_ebuild_messages(path):
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['repo.content'], errors='replace')
 		for l in f:
+			l = l.rstrip('\n')
 			if not l:
 				continue
 			try:

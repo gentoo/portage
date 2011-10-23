@@ -620,6 +620,12 @@ This should contain a list of file paths, relative to the image directory, of
 shared libraries that lack SONAMEs. The paths may contain regular expressions
 with escape\-quoted special characters.
 .TP
+\fBQA_SONAME_NO_SYMLINK\fR
+This should contain a list of file paths, relative to the image directory, of
+shared libraries that have SONAMEs but should not have a corresponding SONAME
+symlink in the same directory. The paths may contain regular expressions
+with escape\-quoted special characters.
+.TP
 \fBQA_DT_NEEDED\fR
 This should contain a list of file paths, relative to the image directory, of
 shared libraries that lack NEEDED entries. The paths may contain regular

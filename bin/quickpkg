@@ -21,9 +21,9 @@ except ImportError:
 from portage import os
 from portage import xpak
 from portage.dbapi.dep_expand import dep_expand
-from portage.dep import use_reduce
-from portage.exception import InvalidAtom, InvalidData, InvalidDependString, \
-	PackageSetNotFound, PermissionDenied
+from portage.dep import Atom, extended_cp_match, use_reduce
+from portage.exception import (AmbiguousPackageName, InvalidAtom, InvalidData,
+	InvalidDependString, PackageSetNotFound, PermissionDenied)
 from portage.util import ConfigProtect, ensure_dirs, shlex_split
 from portage.dbapi.vartree import dblink, tar_contents
 from portage.checksum import perform_md5
@@ -43,7 +43,7 @@ def quickpkg_atom(options, infos, arg, eout):
 
 	try:
 		atom = dep_expand(arg, mydb=vardb, settings=vartree.settings)
-	except ValueError as e:
+	except AmbiguousPackageName as e:
 		# Multiple matches thrown from cpv_expand
 		eout.eerror("Please use a more specific atom: %s" % \
 			" ".join(e.args[0]))
@@ -187,6 +187,40 @@ def quickpkg_set(options, infos, arg, eout):
 	for atom in atoms:
 		quickpkg_atom(options, infos, atom, eout)
 
+
+def quickpkg_extended_atom(options, infos, atom, eout):
+	root = portage.settings["ROOT"]
+	trees = portage.db[root]
+	vartree = trees["vartree"]
+	vardb = vartree.dbapi
+
+	require_metadata = atom.slot or atom.repo
+	atoms = []
+	for cpv in vardb.cpv_all():
+		cpv_atom = Atom("=%s" % cpv)
+
+		if atom == "*/*":
+			atoms.append(cpv_atom)
+			continue
+
+		if not extended_cp_match(atom.cp, cpv_atom.cp):
+			continue
+
+		if require_metadata:
+			slot, repo = vardb.aux_get(cpv, ["SLOT", "repository"])
+
+			if atom.slot and atom.slot != slot:
+				continue
+
+			if atom.repo and atom.repo != repo:
+				continue
+
+		atoms.append(cpv_atom)
+
+	for atom in atoms:
+		quickpkg_atom(options, infos, atom, eout)
+
+
 def quickpkg_main(options, args, eout):
 	root = portage.settings["ROOT"]
 	trees = portage.db[root]
@@ -207,8 +241,17 @@ def quickpkg_main(options, args, eout):
 	for arg in args:
 		if arg[0] == SETPREFIX:
 			quickpkg_set(options, infos, arg, eout)
-		else:
+			continue
+		try:
+			atom = Atom(arg, allow_wildcard=True, allow_repo=True)
+		except (InvalidAtom, InvalidData):
+			# maybe it's valid but missing category (requires dep_expand)
 			quickpkg_atom(options, infos, arg, eout)
+		else:
+			if atom.extended_syntax:
+				quickpkg_extended_atom(options, infos, atom, eout)
+			else:
+				quickpkg_atom(options, infos, atom, eout)
 
 	if not infos["successes"]:
 		eout.eerror("No packages found")

@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Sept 2011" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Oct 2011" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -174,10 +174,12 @@ In versions of portage >=2.1.5 the \-\-metadata action is totally unnecessary
 unless the user has enabled FEATURES="metadata-transfer" in \fBmake.conf\fR(5).
 .TP
 .BR "\-\-prune " (\fB\-P\fR)
-\fBWARNING: This action can remove important packages!\fR  Removes all but the
-highest installed version of a package from your system. Use \fB\-\-prune\fR
-together with \fB\-\-verbose\fR to show reverse dependencies or with
-\fB\-\-nodeps\fR to ignore all dependencies.
+Removes all but the highest installed version of a package from your
+system. Use \fB\-\-prune\fR together with \fB\-\-verbose\fR to show
+reverse dependencies or with \fB\-\-nodeps\fR to ignore all dependencies.
+\fBWARNING: This action can remove packages from your world file! Check
+the emerge output of the next \-\-depclean run carefully! Use
+\-\-depclean to avoid this issue.\fR
 .TP
 .BR \-\-regen
 Causes portage to check and update the dependency cache of all ebuilds in the 
@@ -342,6 +344,11 @@ An alternative for already\-merged
 packages is to use \fBquickpkg\fR(1) which creates a tbz2 from the
 live filesystem.
 .TP
+.BR "\-\-buildpkg\-exclude " ATOMS
+A space separated list of package atoms for which
+no binary packages should be built. This option overrides all
+possible ways to enable building of binary packages.
+.TP
 .BR "\-\-buildpkgonly " (\fB\-B\fR)
 Creates binary packages for all ebuilds processed without actually
 merging the packages.  This comes with the caveat that all build-time 
@@ -406,6 +413,20 @@ be somewhat time\-consuming. This option is ignored
 when FEATURES="preserve\-libs" is enabled in
 \fBmake.conf\fR(5), since any libraries that have
 consumers will simply be preserved.
+.TP
+.BR "\-\-dynamic\-deps < y | n >"
+In dependency calculations, substitute the dependencies of installed
+packages with the dependencies of corresponding unbuilt ebuilds from
+source repositories. This causes the effective dependencies of
+installed packages to vary dynamically when source ebuild dependencies
+are modified. This option is enabled by default.
+
+\fBWARNING:\fR
+If you want to disable \-\-dynamic\-deps, then it may be necessary to
+first run \fBfixpackages\fR in order to get the best results. The
+\fBfixpackages\fR command performs two different operations that can
+also be performed separately by the `emaint \-\-fix moveinst` and
+`emaint \-\-fix movebin` commands (see \fBemaint\fR(1)).
 .TP
 .BR "\-\-emptytree " (\fB\-e\fR)
 Reinstalls target atoms and their entire deep

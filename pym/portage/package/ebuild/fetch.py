@@ -612,18 +612,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 					elif userfetch:
 						has_space = False
 
-			if not has_space:
-				writemsg(_("!!! Insufficient space to store %s in %s\n") % \
-					(myfile, mysettings["DISTDIR"]), noiselevel=-1)
-
-				if has_space_superuser:
-					writemsg(_("!!! Insufficient privileges to use "
-						"remaining space.\n"), noiselevel=-1)
-					if userfetch:
-						writemsg(_("!!! You may set FEATURES=\"-userfetch\""
-							" in /etc/make.conf in order to fetch with\n"
-							"!!! superuser privileges.\n"), noiselevel=-1)
-
 			if distdir_writable and use_locks:
 
 				lock_kwargs = {}
@@ -726,6 +714,20 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 							del e
 						os.symlink(readonly_file, myfile_path)
 						continue
+
+				# this message is shown only after we know that
+				# the file is not already fetched
+				if not has_space:
+					writemsg(_("!!! Insufficient space to store %s in %s\n") % \
+						(myfile, mysettings["DISTDIR"]), noiselevel=-1)
+
+					if has_space_superuser:
+						writemsg(_("!!! Insufficient privileges to use "
+							"remaining space.\n"), noiselevel=-1)
+						if userfetch:
+							writemsg(_("!!! You may set FEATURES=\"-userfetch\""
+								" in /etc/make.conf in order to fetch with\n"
+								"!!! superuser privileges.\n"), noiselevel=-1)
 
 				if fsmirrors and not os.path.exists(myfile_path) and has_space:
 					for mydir in fsmirrors:

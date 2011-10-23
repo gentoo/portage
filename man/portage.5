@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "May 2011" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "Oct 2011" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -714,6 +714,13 @@ aliases = foo bar
 [kde-testing]
 # override the metadata/layout.conf masters setting from the kde-testing repo
 masters = gentoo kde
+
+[python]
+# override the metadata/layout.conf masters setting from the python repo,
+# so that settings won't be inherited from those masters, and so that
+# those master repos won't be required as dependencies (the user must
+# ensure that any required dependencies such as eclasses are satisfied)
+masters =
 .fi
 .RE
 .TP
@@ -784,6 +791,8 @@ thin\-manifests = true
 # indicate that this repo requires manifests for each package, and is
 # considered a failure if a manifest file is missing/incorrect
 use\-manifests = strict
+# indicate that this repo enables repoman's --echangelog=y option automatically
+update\-changelog = true
 .fi
 .RE
 .TP

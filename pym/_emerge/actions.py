@@ -1660,14 +1660,10 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 	porttrees_data = []
 	for path in porttrees:
 		src_db = portdb._pregen_auxdb.get(path)
-		if src_db is None and \
-			os.path.isdir(os.path.join(path, 'metadata', 'cache')):
-			src_db = portdb.metadbmodule(
-				path, 'metadata/cache', auxdbkeys, readonly=True)
-			try:
-				src_db.ec = portdb._repo_info[path].eclass_db
-			except AttributeError:
-				pass
+		if src_db is None:
+			# portdbapi does not populate _pregen_auxdb
+			# when FEATURES=metadata-transfer is enabled
+			src_db = portdb._create_pregen_cache(path)
 
 		if src_db is not None:
 			porttrees_data.append(TreeData(portdb.auxdb[path],
@@ -1706,7 +1702,6 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 	if onProgress is not None:
 		onProgress(maxval, curval)
 
-	from portage.cache.util import quiet_mirroring
 	from portage import eapi_is_supported, \
 		_validate_cache_for_unsupported_eapis
 
@@ -1715,7 +1710,6 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 	#  1) erase the progress bar
 	#  2) show the error message
 	#  3) redraw the progress bar on a new line
-	noise = quiet_mirroring()
 
 	for cp in cp_all:
 		for tree_data in porttrees_data:
@@ -1723,13 +1717,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 				tree_data.valid_nodes.add(cpv)
 				try:
 					src = tree_data.src_db[cpv]
-				except KeyError as e:
-					noise.missing_entry(cpv)
-					del e
-					continue
-				except CacheError as ce:
-					noise.exception(cpv, ce)
-					del ce
+				except (CacheError, KeyError):
 					continue
 
 				eapi = src.get('EAPI')
@@ -1739,8 +1727,6 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 				eapi_supported = eapi_is_supported(eapi)
 				if not eapi_supported:
 					if not _validate_cache_for_unsupported_eapis:
-						noise.misc(cpv, "unable to validate " + \
-							"cache for EAPI='%s'" % eapi)
 						continue
 
 				dest = None
@@ -1755,8 +1741,9 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 
 				if dest is not None:
 					if not (dest['_mtime_'] == src['_mtime_'] and \
-						tree_data.eclass_db.is_eclass_data_valid(
-							dest['_eclasses_']) and \
+						tree_data.eclass_db.validate_and_rewrite_cache(
+							dest['_eclasses_'], tree_data.dest_db.validation_chf,
+							tree_data.dest_db.store_eclass_paths) is not None and \
 						set(dest['_eclasses_']) == set(src['_eclasses_'])):
 						dest = None
 					else:
@@ -1777,15 +1764,13 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 				try:
 					inherited = src.get('INHERITED', '')
 					eclasses = src.get('_eclasses_')
-				except CacheError as ce:
-					noise.exception(cpv, ce)
-					del ce
+				except CacheError:
 					continue
 
 				if eclasses is not None:
-					if not tree_data.eclass_db.is_eclass_data_valid(
-						src['_eclasses_']):
-						noise.eclass_stale(cpv)
+					if tree_data.eclass_db.validate_and_rewrite_cache(
+						src['_eclasses_'], tree_data.src_db.validation_chf,
+						tree_data.src_db.store_eclass_paths) is None:
 						continue
 					inherited = eclasses
 				else:
@@ -1793,7 +1778,6 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 
 				if tree_data.src_db.complete_eclass_entries and \
 					eclasses is None:
-					noise.corruption(cpv, "missing _eclasses_ field")
 					continue
 
 				if inherited:
@@ -1803,11 +1787,9 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 						eclasses = tree_data.eclass_db.get_eclass_data(inherited)
 					except KeyError:
 						# INHERITED contains a non-existent eclass.
-						noise.eclass_stale(cpv)
 						continue
 
 					if eclasses is None:
-						noise.eclass_stale(cpv)
 						continue
 					src['_eclasses_'] = eclasses
 				else:
@@ -1822,9 +1804,9 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 
 				try:
 					tree_data.dest_db[cpv] = src
-				except CacheError as ce:
-					noise.exception(cpv, ce)
-					del ce
+				except CacheError:
+					# ignore it; can't do anything about it.
+					pass
 
 		curval += 1
 		if onProgress is not None:

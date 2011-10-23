@@ -109,6 +109,7 @@ class _frozen_depgraph_config(object):
 		# All Package instances
 		self._pkg_cache = {}
 		self._highest_license_masked = {}
+		dynamic_deps = myopts.get("--dynamic-deps", "y") != "n"
 		for myroot in trees:
 			self.trees[myroot] = {}
 			# Create a RootConfig instance that references
@@ -122,7 +123,8 @@ class _frozen_depgraph_config(object):
 			self.trees[myroot]["vartree"] = \
 				FakeVartree(trees[myroot]["root_config"],
 					pkg_cache=self._pkg_cache,
-					pkg_root_config=self.roots[myroot])
+					pkg_root_config=self.roots[myroot],
+					dynamic_deps=dynamic_deps)
 			self.pkgsettings[myroot] = portage.config(
 				clone=self.trees[myroot]["vartree"].settings)
 
@@ -514,6 +516,8 @@ class depgraph(object):
 
 		for myroot in self._frozen_config.trees:
 
+			dynamic_deps = self._dynamic_config.myparams.get(
+				"dynamic_deps", "y") != "n"
 			preload_installed_pkgs = \
 				"--nodeps" not in self._frozen_config.myopts
 
@@ -535,8 +539,11 @@ class depgraph(object):
 
 				for pkg in vardb:
 					self._spinner_update()
-					# This triggers metadata updates via FakeVartree.
-					vardb.aux_get(pkg.cpv, [])
+					if dynamic_deps:
+						# This causes FakeVartree to update the
+						# Package instance dependencies via
+						# PackageVirtualDbapi.aux_update()
+						vardb.aux_get(pkg.cpv, [])
 					fakedb.cpv_inject(pkg)
 
 		self._dynamic_config._vdb_loaded = True
@@ -554,6 +561,32 @@ class depgraph(object):
 			or '--quiet' in self._frozen_config.myopts \
 			or self._dynamic_config.myparams.get(
 			"binpkg_respect_use") in ("y", "n"):
+			return
+
+		for pkg in list(self._dynamic_config.ignored_binaries):
+
+			selected_pkg = self._dynamic_config.mydbapi[pkg.root
+				].match_pkgs(pkg.slot_atom)
+
+			if not selected_pkg:
+				continue
+
+			selected_pkg = selected_pkg[-1]
+			if selected_pkg > pkg:
+				self._dynamic_config.ignored_binaries.pop(pkg)
+				continue
+
+			if selected_pkg.installed and \
+				selected_pkg.cpv == pkg.cpv and \
+				selected_pkg.metadata.get('BUILD_TIME') == \
+				pkg.metadata.get('BUILD_TIME'):
+				# We don't care about ignored binaries when an
+				# identical installed instance is selected to
+				# fill the slot.
+				self._dynamic_config.ignored_binaries.pop(pkg)
+				continue
+
+		if not self._dynamic_config.ignored_binaries:
 			return
 
 		self._show_merge_list()
@@ -3493,18 +3526,18 @@ class depgraph(object):
 
 		return pkg, existing
 
-	def _pkg_visibility_check(self, pkg, allow_unstable_keywords=False, allow_license_changes=False, allow_unmasks=False):
+	def _pkg_visibility_check(self, pkg, allow_unstable_keywords=False,
+		allow_license_changes=False, allow_unmasks=False, trust_graph=True):
 
 		if pkg.visible:
 			return True
 
-		if pkg in self._dynamic_config.digraph:
+		if trust_graph and pkg in self._dynamic_config.digraph:
 			# Sometimes we need to temporarily disable
 			# dynamic_config._autounmask, but for overall
-			# consistency in dependency resolution, in any
-			# case we want to respect autounmask visibity
-			# for packages that have already been added to
-			# the dependency graph.
+			# consistency in dependency resolution, in most
+			# cases we want to treat packages in the graph
+			# as though they are visible.
 			return True
 
 		if not self._dynamic_config._autounmask:
@@ -4413,7 +4446,8 @@ class depgraph(object):
 					# packages masked by license, since the user likely wants
 					# to adjust ACCEPT_LICENSE.
 					if pkg in final_db:
-						if not self._pkg_visibility_check(pkg) and \
+						if not self._pkg_visibility_check(pkg,
+							trust_graph=False) and \
 							(pkg_in_graph or 'LICENSE' in pkg.masks):
 							self._dynamic_config._masked_installed.add(pkg)
 						else:

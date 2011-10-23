@@ -90,7 +90,7 @@ SUPPORTED_FEATURES       = frozenset([
                            "ccache", "chflags", "clean-logs",
                            "collision-protect", "compress-build-logs",
                            "digest", "distcc", "distcc-pump", "distlocks", "ebuild-locks", "fakeroot",
-                           "fail-clean", "fixpackages", "force-mirror", "getbinpkg",
+                           "fail-clean", "force-mirror", "getbinpkg",
                            "installsources", "keeptemp", "keepwork", "fixlafiles", "lmirror",
                            "metadata-transfer", "mirror", "multilib-strict", "news",
                            "noauto", "noclean", "nodoc", "noinfo", "noman",

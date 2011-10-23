@@ -4,6 +4,9 @@
 
 PYTHON_VERSIONS="2.6 2.7 3.1 3.2 3.3"
 
+# has to be run from portage root dir
+cd "${0%/*}" || exit 1
+
 case "${NOCOLOR:-false}" in
 	yes|true)
 		GOOD=

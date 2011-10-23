@@ -290,10 +290,11 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	eapi = None
 	if mydo == 'depend' and 'EAPI' not in mysettings.configdict['pkg']:
 		if eapi is None and 'parse-eapi-ebuild-head' in mysettings.features:
-			eapi = _parse_eapi_ebuild_head(
-				io.open(_unicode_encode(ebuild_path,
+			with io.open(_unicode_encode(ebuild_path,
 				encoding=_encodings['fs'], errors='strict'),
-				mode='r', encoding=_encodings['content'], errors='replace'))
+				mode='r', encoding=_encodings['content'],
+				errors='replace') as f:
+				eapi = _parse_eapi_ebuild_head(f)
 
 		if eapi is not None:
 			if not eapi_is_supported(eapi):
@@ -1542,15 +1543,24 @@ def _post_src_install_chost_fix(settings):
 	"""
 	It's possible that the ebuild has changed the
 	CHOST variable, so revert it to the initial
-	setting.
+	setting. Also, revert IUSE in case it's corrupted
+	due to local environment settings like in bug #386829.
 	"""
-	if settings.get('CATEGORY') == 'virtual':
-		return
 
-	chost = settings.get('CHOST')
-	if chost:
-		write_atomic(os.path.join(settings['PORTAGE_BUILDDIR'],
-			'build-info', 'CHOST'), chost + '\n')
+	build_info_dir = os.path.join(settings['PORTAGE_BUILDDIR'], 'build-info')
+
+	for k in ('IUSE',):
+		v = settings.get(k)
+		if v is not None:
+			write_atomic(os.path.join(build_info_dir, k), v + '\n')
+
+	# The following variables are irrelevant for virtual packages.
+	if settings.get('CATEGORY') != 'virtual':
+
+		for k in ('CHOST',):
+			v = settings.get(k)
+			if v is not None:
+				write_atomic(os.path.join(build_info_dir, k), v + '\n')
 
 _vdb_use_conditional_keys = ('DEPEND', 'LICENSE', 'PDEPEND',
 	'PROPERTIES', 'PROVIDE', 'RDEPEND', 'RESTRICT',)
@@ -1798,6 +1808,32 @@ def _post_src_install_soname_symlinks(mysettings, out):
 		if f is not None:
 			f.close()
 
+	qa_no_symlink = ""
+	f = None
+	try:
+		f = io.open(_unicode_encode(os.path.join(
+			mysettings["PORTAGE_BUILDDIR"],
+			"build-info", "QA_SONAME_NO_SYMLINK"),
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['repo.content'],
+			errors='replace')
+		qa_no_symlink = f.read()
+	except IOError as e:
+		if e.errno not in (errno.ENOENT, errno.ESTALE):
+			raise
+	finally:
+		if f is not None:
+			f.close()
+
+	qa_no_symlink = qa_no_symlink.split()
+	if qa_no_symlink:
+		if len(qa_no_symlink) > 1:
+			qa_no_symlink = "|".join("(%s)" % x for x in qa_no_symlink)
+			qa_no_symlink = "^(%s)$" % qa_no_symlink
+		else:
+			qa_no_symlink = "^%s$" % qa_no_symlink[0]
+		qa_no_symlink = re.compile(qa_no_symlink)
+
 	libpaths = set(portage.util.getlibpaths(
 		mysettings["ROOT"], env=mysettings))
 	libpath_inodes = set()
@@ -1854,6 +1890,8 @@ def _post_src_install_soname_symlinks(mysettings, out):
 			continue
 		if not is_libdir(os.path.dirname(obj)):
 			continue
+		if qa_no_symlink and qa_no_symlink.match(obj.strip(os.sep)) is not None:
+			continue
 
 		obj_file_path = os.path.join(image_dir, obj.lstrip(os.sep))
 		sym_file_path = os.path.join(os.path.dirname(obj_file_path), soname)
@@ -1870,8 +1908,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
 	if not missing_symlinks:
 		return
 
-	qa_msg = ["QA Notice: Missing soname symlink(s) " + \
-		"will be automatically created:"]
+	qa_msg = ["QA Notice: Missing soname symlink(s):"]
 	qa_msg.append("")
 	qa_msg.extend("\t%s -> %s" % (os.path.join(
 		os.path.dirname(obj).lstrip(os.sep), soname),
@@ -1880,13 +1917,6 @@ def _post_src_install_soname_symlinks(mysettings, out):
 	qa_msg.append("")
 	for line in qa_msg:
 		eqawarn(line, key=mysettings.mycpv, out=out)
-
-	_preinst_bsdflags(mysettings)
-	for obj, soname in missing_symlinks:
-		obj_file_path = os.path.join(image_dir, obj.lstrip(os.sep))
-		sym_file_path = os.path.join(os.path.dirname(obj_file_path), soname)
-		os.symlink(os.path.basename(obj_file_path), sym_file_path)
-	_reapply_bsdflags_to_image(mysettings)
 
 def _merge_unicode_error(errors):
 	lines = []

@@ -556,19 +556,25 @@ def insert_optional_args(args):
 
 	return new_args
 
-def _find_bad_atoms(atoms):
+def _find_bad_atoms(atoms, less_strict=False):
+	"""
+	Declares all atoms as invalid that have an operator,
+	a use dependency, a blocker or a repo spec.
+	It accepts atoms with wildcards.
+	In less_strict mode it accepts operators and repo specs.
+	"""
 	bad_atoms = []
 	for x in ' '.join(atoms).split():
 		bad_atom = False
 		try:
-			atom = portage.dep.Atom(x, allow_wildcard=True)
+			atom = portage.dep.Atom(x, allow_wildcard=True, allow_repo=less_strict)
 		except portage.exception.InvalidAtom:
 			try:
-				atom = portage.dep.Atom("*/"+x, allow_wildcard=True)
+				atom = portage.dep.Atom("*/"+x, allow_wildcard=True, allow_repo=less_strict)
 			except portage.exception.InvalidAtom:
 				bad_atom = True
 
-		if bad_atom or atom.operator or atom.blocker or atom.use:
+		if bad_atom or (atom.operator and not less_strict) or atom.blocker or atom.use:
 			bad_atoms.append(x)
 	return bad_atoms
 
@@ -644,6 +650,14 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices"  : true_y_or_n
 		},
 
+		"--buildpkg-exclude": {
+			"help"   :"A space separated list of package atoms for which " + \
+				"no binary packages should be built. This option overrides all " + \
+				"possible ways to enable building of binary packages.",
+
+			"action" : "append"
+		},
+
 		"--config-root": {
 			"help":"specify the location for portage configuration files",
 			"action":"store"
@@ -682,6 +696,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"help"    : "remove atoms/sets from the world file",
 			"type"    : "choice",
 			"choices" : true_y_or_n
+		},
+
+		"--dynamic-deps": {
+			"help": "substitute the dependencies of installed packages with the dependencies of unbuilt ebuilds",
+			"type": "choice",
+			"choices": y_or_n
 		},
 
 		"--exclude": {
@@ -960,6 +980,12 @@ def parse_opts(tmpcmdline, silent=False):
 		myoptions.buildpkg = True
 	else:
 		myoptions.buildpkg = None
+
+	if myoptions.buildpkg_exclude:
+		bad_atoms = _find_bad_atoms(myoptions.buildpkg_exclude, less_strict=True)
+		if bad_atoms and not silent:
+			parser.error("Invalid Atom(s) in --buildpkg-exclude parameter: '%s'\n" % \
+				(",".join(bad_atoms),))
 
 	if myoptions.changed_use is not False:
 		myoptions.reinstall = "changed-use"
@@ -1585,7 +1611,8 @@ def emerge_main(args=None):
 	tmpcmdline.extend(args)
 	myaction, myopts, myfiles = parse_opts(tmpcmdline)
 
-	if myaction not in ('help', 'info', 'version') and \
+	# skip global updates prior to sync, since it's called after sync
+	if myaction not in ('help', 'info', 'sync', 'version') and \
 		myopts.get('--package-moves') != 'n' and \
 		_global_updates(trees, mtimedb["updates"], quiet=("--quiet" in myopts)):
 		mtimedb.commit()

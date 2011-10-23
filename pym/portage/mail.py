@@ -40,8 +40,7 @@ else:
 def TextMessage(_text):
 	from email.mime.text import MIMEText
 	mimetext = MIMEText(_text)
-	if sys.hexversion >= 0x3000000:
-		mimetext.set_charset("UTF-8")
+	mimetext.set_charset("UTF-8")
 	return mimetext
 
 def create_message(sender, recipient, subject, body, attachments=None):

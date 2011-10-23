@@ -177,6 +177,34 @@ class bindbapi(fakedbapi):
 			self.bintree.populate()
 		return fakedbapi.cpv_all(self)
 
+	def getfetchsizes(self, pkg):
+		"""
+		This will raise MissingSignature if SIZE signature is not available,
+		or InvalidSignature if SIZE signature is invalid.
+		"""
+
+		if not self.bintree.populated:
+			self.bintree.populate()
+
+		pkg = getattr(pkg, 'cpv', pkg)
+
+		filesdict = {}
+		if not self.bintree.isremote(pkg):
+			pass
+		else:
+			metadata = self.bintree._remotepkgs[pkg]
+			try:
+				size = int(metadata["SIZE"])
+			except KeyError:
+				raise portage.exception.MissingSignature("SIZE")
+			except ValueError:
+				raise portage.exception.InvalidSignature(
+					"SIZE: %s" % metadata["SIZE"])
+			else:
+				filesdict[os.path.basename(self.bintree.getname(pkg))] = size
+
+		return filesdict
+
 def _pkgindex_cpv_map_latest_build(pkgindex):
 	"""
 	Given a PackageIndex instance, create a dict of cpv -> metadata map.

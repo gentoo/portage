@@ -20,8 +20,8 @@ class EbuildMetadataPhase(SubProcess):
 	used to extract metadata from the ebuild.
 	"""
 
-	__slots__ = ("cpv", "ebuild_path", "fd_pipes", "metadata_callback",
-		"ebuild_mtime", "metadata", "portdb", "repo_path", "settings") + \
+	__slots__ = ("cpv", "eapi", "ebuild_hash", "fd_pipes", "metadata_callback",
+		"metadata", "portdb", "repo_path", "settings") + \
 		("_raw_metadata",)
 
 	_file_names = ("ebuild",)
@@ -31,21 +31,23 @@ class EbuildMetadataPhase(SubProcess):
 	def _start(self):
 		settings = self.settings
 		settings.setcpv(self.cpv)
-		ebuild_path = self.ebuild_path
+		ebuild_path = self.ebuild_hash.location
 
-		eapi = None
+		# the caller can pass in eapi in order to avoid
+		# redundant _parse_eapi_ebuild_head calls
+		eapi = self.eapi
 		if eapi is None and \
 			'parse-eapi-ebuild-head' in settings.features:
-			eapi = portage._parse_eapi_ebuild_head(
-				io.open(_unicode_encode(ebuild_path,
+			with io.open(_unicode_encode(ebuild_path,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],
-				errors='replace'))
+				errors='replace') as f:
+				eapi = portage._parse_eapi_ebuild_head(f)
 
 		if eapi is not None:
 			if not portage.eapi_is_supported(eapi):
-				self.metadata_callback(self.cpv, self.ebuild_path,
-					self.repo_path, {'EAPI' : eapi}, self.ebuild_mtime)
+				self.metadata = self.metadata_callback(self.cpv,
+					self.repo_path, {'EAPI' : eapi}, self.ebuild_hash)
 				self._set_returncode((self.pid, os.EX_OK << 8))
 				self.wait()
 				return
@@ -117,10 +119,14 @@ class EbuildMetadataPhase(SubProcess):
 
 	def _set_returncode(self, wait_retval):
 		SubProcess._set_returncode(self, wait_retval)
-		if self.returncode == os.EX_OK:
-			metadata_lines = ''.join(_unicode_decode(chunk,
-				encoding=_encodings['repo.content'], errors='replace')
-				for chunk in self._raw_metadata).splitlines()
+		# self._raw_metadata is None when _start returns
+		# early due to an unsupported EAPI detected with
+		# FEATURES=parse-eapi-ebuild-head
+		if self.returncode == os.EX_OK and \
+			self._raw_metadata is not None:
+			metadata_lines = _unicode_decode(b''.join(self._raw_metadata),
+				encoding=_encodings['repo.content'],
+				errors='replace').splitlines()
 			if len(portage.auxdbkeys) != len(metadata_lines):
 				# Don't trust bash's returncode if the
 				# number of lines is incorrect.
@@ -128,6 +134,5 @@ class EbuildMetadataPhase(SubProcess):
 			else:
 				metadata = zip(portage.auxdbkeys, metadata_lines)
 				self.metadata = self.metadata_callback(self.cpv,
-					self.ebuild_path, self.repo_path, metadata,
-					self.ebuild_mtime)
+					self.repo_path, metadata, self.ebuild_hash)
 

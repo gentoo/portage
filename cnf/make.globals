@@ -51,7 +51,7 @@ RESUMECOMMAND_SSH=${FETCHCOMMAND_SSH}
 FETCHCOMMAND_SFTP="bash -c \"x=\\\${2#sftp://} ; host=\\\${x%%/*} ; port=\\\${host##*:} ; host=\\\${host%:*} ; [[ \\\${host} = \\\${port} ]] && port=22 ; exec sftp -P \\\${port} \\\"\\\${host}:/\\\${x#*/}\\\" \\\"\\\$1\\\"\" sftp \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
 
 # Default user options
-FEATURES="assume-digests binpkg-logs distlocks ebuild-locks fixpackages
+FEATURES="assume-digests binpkg-logs distlocks ebuild-locks
           fixlafiles news parallel-fetch protect-owned
           sandbox sfperms strict unknown-features-warn unmerge-logs
           unmerge-orphans userfetch"
