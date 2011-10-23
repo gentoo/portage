@@ -24,7 +24,7 @@ move valid/atom1 valid/atom2
 """,
 			[
 				['slotmove', Atom('=valid/atom-3*'), '0', '3'],
-				['move', 'valid/atom1', 'valid/atom2'],
+				['move', Atom('valid/atom1'), Atom('valid/atom2')],
 			],
 			8,
 		),
