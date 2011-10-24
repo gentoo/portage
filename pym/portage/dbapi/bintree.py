@@ -41,6 +41,7 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import warnings
 from itertools import chain
 try:
 	from urllib.parse import urlparse
@@ -242,10 +243,22 @@ def _pkgindex_cpv_map_latest_build(pkgindex):
 
 class binarytree(object):
 	"this tree scans for a list of all packages available in PKGDIR"
-	def __init__(self, root, pkgdir, virtual=None, settings=None):
+	def __init__(self, _unused=None, pkgdir=None, virtual=None, settings=None):
+
+		if pkgdir is None:
+			raise TypeError("pkgdir parameter is required")
+
+		if settings is None:
+			raise TypeError("settings parameter is required")
+
+		if _unused is not None and _unused != settings['ROOT']:
+			warnings.warn("The root parameter of the "
+				"portage.dbapi.bintree.binarytree"
+				" constructor is now unused. Use "
+				"settings['ROOT'] instead.",
+				DeprecationWarning, stacklevel=2)
+
 		if True:
-			self.root = root
-			#self.pkgdir=settings["PKGDIR"]
 			self.pkgdir = normalize_path(pkgdir)
 			self.dbapi = bindbapi(self, settings=settings)
 			self.update_ents = self.dbapi.update_ents
@@ -329,6 +342,15 @@ class binarytree(object):
 				self._pkgindex_inherited_keys,
 				chain(*self._pkgindex_translated_keys)
 			))
+
+	@property
+	def root(self):
+		warnings.warn("The root attribute of "
+			"portage.dbapi.bintree.binarytree"
+			" is deprecated. Use "
+			"settings['ROOT'] instead.",
+			DeprecationWarning, stacklevel=2)
+		return self.settings['ROOT']
 
 	def move_ent(self, mylist, repo_match=None):
 		if not self.populated:

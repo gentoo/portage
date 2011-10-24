@@ -129,12 +129,11 @@ class vardbapi(dbapi):
 		if settings is None:
 			settings = portage.settings
 		self.settings = settings
-		self.root = settings['ROOT']
 
-		if _unused_param is not None and _unused_param != self.root:
-			warnings.warn("The first parameter of the " + \
-				"portage.dbapi.vartree.vardbapi" + \
-				" constructor is now unused. Use " + \
+		if _unused_param is not None and _unused_param != settings['ROOT']:
+			warnings.warn("The first parameter of the "
+				"portage.dbapi.vartree.vardbapi"
+				" constructor is now unused. Use "
 				"settings['ROOT'] instead.",
 				DeprecationWarning, stacklevel=2)
 
@@ -148,7 +147,7 @@ class vardbapi(dbapi):
 		self._fs_lock_count = 0
 
 		if vartree is None:
-			vartree = portage.db[self.root]["vartree"]
+			vartree = portage.db[settings["ROOT"]]["vartree"]
 		self.vartree = vartree
 		self._aux_cache_keys = set(
 			["BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "DESCRIPTION",
@@ -164,7 +163,7 @@ class vardbapi(dbapi):
 
 		self._plib_registry = None
 		if _ENABLE_PRESERVE_LIBS:
-			self._plib_registry = PreservedLibsRegistry(self.root,
+			self._plib_registry = PreservedLibsRegistry(settings["ROOT"],
 				os.path.join(self._eroot, PRIVATE_PATH,
 				"preserved_libs_registry"))
 
@@ -174,6 +173,15 @@ class vardbapi(dbapi):
 		self._owners = self._owners_db(self)
 
 		self._cached_counter = None
+
+	@property
+	def root(self):
+		warnings.warn("The root attribute of "
+			"portage.dbapi.vartree.vardbapi"
+			" is deprecated. Use "
+			"settings['ROOT'] instead.",
+			DeprecationWarning, stacklevel=2)
+		return self.settings['ROOT']
 
 	def getpath(self, mykey, filename=None):
 		# This is an optimized hotspot, so don't use unicode-wrapped
@@ -1157,18 +1165,26 @@ class vartree(object):
 
 		if settings is None:
 			settings = portage.settings
-		self.root = settings['ROOT']
 
-		if root is not None and root != self.root:
-			warnings.warn("The 'root' parameter of the " + \
-				"portage.dbapi.vartree.vartree" + \
-				" constructor is now unused. Use " + \
+		if root is not None and root != settings['ROOT']:
+			warnings.warn("The 'root' parameter of the "
+				"portage.dbapi.vartree.vartree"
+				" constructor is now unused. Use "
 				"settings['ROOT'] instead.",
 				DeprecationWarning, stacklevel=2)
 
 		self.settings = settings
 		self.dbapi = vardbapi(settings=settings, vartree=self)
 		self.populated = 1
+
+	@property
+	def root(self):
+		warnings.warn("The root attribute of "
+			"portage.dbapi.vartree.vartree"
+			" is deprecated. Use "
+			"settings['ROOT'] instead.",
+			DeprecationWarning, stacklevel=2)
+		return self.settings['ROOT']
 
 	def getpath(self, mykey, filename=None):
 		return self.dbapi.getpath(mykey, filename=filename)
