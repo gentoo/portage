@@ -91,7 +91,7 @@ class EbuildMetadataPhase(SubProcess):
 		self._registered = True
 
 		retval = portage.doebuild(ebuild_path, "depend",
-			settings["ROOT"], settings, debug,
+			settings=settings, debug=debug,
 			mydbapi=self.portdb, tree="porttree",
 			fd_pipes=fd_pipes, returnpid=True)
 
