@@ -238,6 +238,11 @@ class ConfigTestCase(TestCase):
 		playground = ResolverPlayground(ebuilds=ebuilds,
 			repo_configs=repo_configs, distfiles=distfiles)
 
+		new_repo_config = playground.settings.repositories.prepos['new_repo']
+		self.assertTrue(len(new_repo_config.masters) > 0, "new_repo has no default master")
+		self.assertEqual(new_repo_config.masters[0].user_location, playground.portdir,
+			"new_repo default master is not PORTDIR")
+
 		new_manifest_file = os.path.join(playground.repo_dirs["new_repo"], "dev-libs", "A", "Manifest")
 		self.assertEqual(os.path.exists(new_manifest_file), False)
 
