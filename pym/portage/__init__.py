@@ -479,9 +479,15 @@ def portageexit():
 	if data.secpass > 1 and os.environ.get("SANDBOX_ON") != "1":
 		close_portdbapi_caches()
 
+class _trees_dict(dict):
+	def __init__(self):
+		super(dict, self).__init__()
+		self._running_root = None
+		self._target_root = None
+
 def create_trees(config_root=None, target_root=None, trees=None, env=None):
 	if trees is None:
-		trees = {}
+		trees = _trees_dict()
 	else:
 		# clean up any existing portdbapi instances
 		for myroot in trees:
@@ -497,8 +503,11 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None):
 		env=env, _eprefix=eprefix)
 	settings.lock()
 
+	trees._target_root = settings['ROOT']
 	myroots = [(settings["ROOT"], settings)]
-	if settings["ROOT"] != "/":
+	if settings["ROOT"] == "/":
+		trees._running_root = trees._target_root
+	else:
 
 		# When ROOT != "/" we only want overrides from the calling
 		# environment to apply to the config that's associated
@@ -513,6 +522,7 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None):
 		settings = config(config_root=None, target_root="/",
 			env=clean_env, _eprefix=eprefix)
 		settings.lock()
+		trees._running_root = settings['ROOT']
 		myroots.append((settings["ROOT"], settings))
 
 	for myroot, mysettings in myroots:

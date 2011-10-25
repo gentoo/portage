@@ -2983,13 +2983,7 @@ def load_emerge_config(trees=None):
 		setconfig = load_default_config(settings, root_trees)
 		root_trees["root_config"] = RootConfig(settings, root_trees, setconfig)
 
-	settings = trees["/"]["vartree"].settings
-
-	for myroot in trees:
-		if myroot != "/":
-			settings = trees[myroot]["vartree"].settings
-			break
-
+	settings = trees[trees._target_root]['vartree'].settings
 	mtimedbfile = os.path.join(settings['EROOT'], portage.CACHE_PATH, "mtimedb")
 	mtimedb = portage.MtimeDB(mtimedbfile)
 	portage.output._init(config_root=settings['PORTAGE_CONFIGROOT'])

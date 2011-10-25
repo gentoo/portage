@@ -35,19 +35,13 @@ def _get_legacy_global(name):
 	constructed.add('db')
 	del portage._initializing_globals
 
-	settings = portage.db["/"]["vartree"].settings
-
-	for root in portage.db:
-		if root != "/":
-			settings = portage.db[root]["vartree"].settings
-			break
-
+	settings = portage.db[portage.db._target_root]["vartree"].settings
 	portage.output._init(config_root=settings['PORTAGE_CONFIGROOT'])
 
 	portage.settings = settings
 	constructed.add('settings')
 
-	portage.root = root
+	portage.root = portage.db._target_root
 	constructed.add('root')
 
 	# COMPATIBILITY
