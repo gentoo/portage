@@ -210,6 +210,7 @@ class config(object):
 			self.module_priority = clone.module_priority
 			self.profile_path = clone.profile_path
 			self.profiles = clone.profiles
+			self.profiles_complex = clone.profiles_complex
 			self.packages = clone.packages
 			self.repositories = clone.repositories
 			self._iuse_implicit_match = clone._iuse_implicit_match
@@ -276,13 +277,9 @@ class config(object):
 			locations_manager = LocationsManager(config_root=config_root,
 				config_profile_path=config_profile_path, eprefix=eprefix,
 				local_config=local_config, target_root=target_root)
-			locations_manager.load_profiles([])
 
 			eprefix = locations_manager.eprefix
 			config_root = locations_manager.config_root
-			self.profiles = locations_manager.profiles
-			self.profile_path = locations_manager.profile_path
-			self.user_profile_dir = locations_manager.user_profile_dir
 			abs_user_config = locations_manager.abs_user_config
 
 			make_conf = getconfig(
@@ -300,6 +297,13 @@ class config(object):
 			target_root = locations_manager.target_root
 			eroot = locations_manager.eroot
 			self.global_config_path = locations_manager.global_config_path
+
+			make_globals = getconfig(os.path.join(self.global_config_path, 'make.globals'))
+			if make_globals is None:
+				make_globals = {}
+
+			for k, v in self._default_globals.items():
+				make_globals.setdefault(k, v)
 
 			if config_incrementals is None:
 				self.incrementals = INCREMENTALS
@@ -341,19 +345,6 @@ class config(object):
 
 			self.configlist.append({})
 			self.configdict["pkginternal"] = self.configlist[-1]
-
-			self.packages_list = [grabfile_package(os.path.join(x, "packages"), verify_eapi=True) for x in self.profiles]
-			self.packages      = tuple(stack_lists(self.packages_list, incremental=1))
-			del self.packages_list
-			#self.packages = grab_stacked("packages", self.profiles, grabfile, incremental_lines=1)
-
-			# revmaskdict
-			self.prevmaskdict={}
-			for x in self.packages:
-				# Negative atoms are filtered by the above stack_lists() call.
-				if not isinstance(x, Atom):
-					x = Atom(x.lstrip('*'))
-				self.prevmaskdict.setdefault(x.cp, []).append(x)
 
 			# The expand_map is used for variable substitution
 			# in getconfig() calls, and the getconfig() calls
@@ -404,23 +395,39 @@ class config(object):
 
 			self.configdict["env"] = LazyItemsDict(self.backupenv)
 
-			for x in (self.global_config_path,):
-				self.mygcfg = getconfig(os.path.join(x, "make.globals"),
-					expand=expand_map)
-				if self.mygcfg:
-					break
-
-			if self.mygcfg is None:
-				self.mygcfg = {}
-
-			for k, v in self._default_globals.items():
-				self.mygcfg.setdefault(k, v)
-
-			self.configlist.append(self.mygcfg)
+			self.configlist.append(make_globals)
 			self.configdict["globals"]=self.configlist[-1]
 
 			self.make_defaults_use = []
 			self.mygcfg = {}
+
+			known_repos = []
+			for confs in [make_globals, make_conf, self.configdict["env"]]:
+				known_repos.extend(confs.get("PORTDIR", '').split())
+				known_repos.extend(confs.get("PORTDIR_OVERLAY", '').split())
+			known_repos = set(known_repos)
+
+			locations_manager.load_profiles(known_repos)
+
+			self.profiles = locations_manager.profiles
+			self.profiles_complex = locations_manager.profiles_complex
+			self.profile_path = locations_manager.profile_path
+			self.user_profile_dir = locations_manager.user_profile_dir
+
+			self.packages_list = [grabfile_package(os.path.join(x, "packages"), verify_eapi=True) for x in self.profiles]
+			self.packages      = tuple(stack_lists(self.packages_list, incremental=1))
+			del self.packages_list
+			#self.packages = grab_stacked("packages", self.profiles, grabfile, incremental_lines=1)
+
+			# revmaskdict
+			self.prevmaskdict={}
+			for x in self.packages:
+				# Negative atoms are filtered by the above stack_lists() call.
+				if not isinstance(x, Atom):
+					x = Atom(x.lstrip('*'))
+				self.prevmaskdict.setdefault(x.cp, []).append(x)
+
+
 			if self.profiles:
 				mygcfg_dlists = [getconfig(os.path.join(x, "make.defaults"),
 					expand=expand_map) for x in self.profiles]
@@ -550,11 +557,11 @@ class config(object):
 				self._repo_make_defaults[repo.name] = d
 
 			#Read package.keywords and package.accept_keywords.
-			self._keywords_manager = KeywordsManager(self.profiles, abs_user_config, \
+			self._keywords_manager = KeywordsManager(self.profiles_complex, abs_user_config, \
 				local_config, global_accept_keywords=self.configdict["defaults"].get("ACCEPT_KEYWORDS", ""))
 
 			#Read all USE related files from profiles and optionally from user config.
-			self._use_manager = UseManager(self.repositories, self.profiles, abs_user_config, user_config=local_config)
+			self._use_manager = UseManager(self.repositories, self.profiles_complex, abs_user_config, user_config=local_config)
 			#Initialize all USE related variables we track ourselves.
 			self.usemask = self._use_manager.getUseMask()
 			self.useforce = self._use_manager.getUseForce()
@@ -571,7 +578,7 @@ class config(object):
 					self.configdict["conf"].get("ACCEPT_LICENSE", ""))
 
 			#Read package.mask and package.unmask from profiles and optionally from user config
-			self._mask_manager = MaskManager(self.repositories, self.profiles,
+			self._mask_manager = MaskManager(self.repositories, self.profiles_complex,
 				abs_user_config, user_config=local_config,
 				strict_umatched_removal=_unmatched_removal)
 
@@ -630,7 +637,8 @@ class config(object):
 			archlist = stack_lists(archlist, incremental=1)
 			self.configdict["conf"]["PORTAGE_ARCHLIST"] = " ".join(archlist)
 
-			pkgprovidedlines = [grabfile(os.path.join(x, "package.provided"), recursive=1) for x in self.profiles]
+			pkgprovidedlines = [grabfile(os.path.join(loc, "package.provided"), recursive=recursive)
+				for loc, recursive in self.profiles_complex]
 			pkgprovidedlines = stack_lists(pkgprovidedlines, incremental=1)
 			has_invalid_data = False
 			for x in range(len(pkgprovidedlines)-1, -1, -1):

@@ -121,8 +121,8 @@ class LocationsManager(object):
 				if os.path.isdir(os.path.join(currentPath, x)))
 			if offenders:
 				writemsg((_("Profile '%(profile_path)s' in repository "
-					"'%(repo_name)s' is using 'portage-1' profile format, but "
-					"the repository is not configured for it.  This will break "
+					"'%(repo_name)s' is implicitly using 'portage-1' profile format, but "
+					"the repository profiles are not marked as that format.  This will break "
 					"in the future.  Please either convert the following paths "
 					"to files, or add\nprofile-format = portage-1\nto the "
 					"repositories layout.conf.  Files: '%(files)s'\n")

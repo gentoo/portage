@@ -33,22 +33,33 @@ class MaskManager(object):
 		# repo may be often referenced by others as the master.
 		pmask_cache = {}
 
-		def grab_pmask(loc):
+		def grab_pmask(loc, repo_config):
 			if loc not in pmask_cache:
-				pmask_cache[loc] = grabfile_package(
-						os.path.join(loc, "profiles", "package.mask"),
-						recursive=1, remember_source_file=True, verify_eapi=True)
+				path = os.path.join(loc, 'profiles', 'package.mask')
+				pmask_cache[loc] = grabfile_package(path,
+						recursive=repo_config.portage1_profiles,
+						remember_source_file=True, verify_eapi=True)
+				if repo_config.portage1_profiles_compat and os.path.isdir(path):
+					writemsg((_("Repository '%(repo_name)s' is implicitly using "
+						"'portage-1' profile format in its profiles/package.mask, but "
+						"the repository profiles are not marked as that format.  This will break "
+						"in the future.  Please either convert the following paths "
+						"to files, or add\nprofile-format = portage-1\nto the "
+						"repositories layout.conf.\n")
+						% dict(repo_name=repo.name)),
+						noiselevel=-1)
+
 			return pmask_cache[loc]
 
 		repo_pkgmasklines = []
 		for repo in repositories.repos_with_profiles():
 			lines = []
-			repo_lines = grab_pmask(repo.location)
+			repo_lines = grab_pmask(repo.location, repo)
 			removals = frozenset(line[0][1:] for line in repo_lines
 				if line[0][:1] == "-")
 			matched_removals = set()
 			for master in repo.masters:
-				master_lines = grab_pmask(master.location)
+				master_lines = grab_pmask(master.location, master)
 				for line in master_lines:
 					if line[0] in removals:
 						matched_removals.add(line[0])
@@ -91,6 +102,8 @@ class MaskManager(object):
 
 		repo_pkgunmasklines = []
 		for repo in repositories.repos_with_profiles():
+			if not repo.portage1_profiles:
+				continue
 			repo_lines = grabfile_package(os.path.join(repo.location, "profiles", "package.unmask"), \
 				recursive=1, remember_source_file=True, verify_eapi=True)
 			lines = stack_lists([repo_lines], incremental=1, \
@@ -102,11 +115,12 @@ class MaskManager(object):
 		#to allow profiles to override masks from their parent profiles.
 		profile_pkgmasklines = []
 		profile_pkgunmasklines = []
-		for x in profiles:
+		for x, portage1_mode in profiles:
 			profile_pkgmasklines.append(grabfile_package(
-				os.path.join(x, "package.mask"), recursive=1, remember_source_file=True, verify_eapi=True))
-			profile_pkgunmasklines.append(grabfile_package(
-				os.path.join(x, "package.unmask"), recursive=1, remember_source_file=True, verify_eapi=True))
+				os.path.join(x, "package.mask"), recursive=portage1_mode, remember_source_file=True, verify_eapi=True))
+			if portage1_mode:
+				profile_pkgunmasklines.append(grabfile_package(
+					os.path.join(x, "package.unmask"), recursive=1, remember_source_file=True, verify_eapi=True))
 		profile_pkgmasklines = stack_lists(profile_pkgmasklines, incremental=1, \
 			remember_source_file=True, warn_for_unmatched_removal=True,
 			strict_warn_for_unmatched_removal=strict_umatched_removal)

@@ -65,9 +65,9 @@ class UseManager(object):
 
 		self.repositories = repositories
 	
-	def _parse_file_to_tuple(self, file_name):
+	def _parse_file_to_tuple(self, file_name, recursive=True):
 		ret = []
-		lines = grabfile(file_name, recursive=1)
+		lines = grabfile(file_name, recursive=recursive)
 		eapi = read_corresponding_eapi_file(file_name)
 		useflag_re = _get_useflag_re(eapi)
 		for prefixed_useflag in lines:
@@ -82,10 +82,10 @@ class UseManager(object):
 				ret.append(prefixed_useflag)
 		return tuple(ret)
 
-	def _parse_file_to_dict(self, file_name, juststrings=False):
+	def _parse_file_to_dict(self, file_name, juststrings=False, recursive=True):
 		ret = {}
 		location_dict = {}
-		file_dict = grabdict_package(file_name, recursive=1, verify_eapi=True)
+		file_dict = grabdict_package(file_name, recursive=recursive, verify_eapi=True)
 		eapi = read_corresponding_eapi_file(file_name)
 		useflag_re = _get_useflag_re(eapi)
 		for k, v in file_dict.items():
@@ -132,10 +132,12 @@ class UseManager(object):
 		return ret
 
 	def _parse_profile_files_to_tuple_of_tuples(self, file_name, locations):
-		return tuple(self._parse_file_to_tuple(os.path.join(profile, file_name)) for profile in locations)
+		return tuple(self._parse_file_to_tuple(os.path.join(profile[0], file_name), recursive=profile[1])
+			for profile in locations)
 
 	def _parse_profile_files_to_tuple_of_dicts(self, file_name, locations, juststrings=False):
-		return tuple(self._parse_file_to_dict(os.path.join(profile, file_name), juststrings) for profile in locations)
+		return tuple(self._parse_file_to_dict(os.path.join(profile[0], file_name), juststrings, recursive=profile[1])
+			for profile in locations)
 
 	def getUseMask(self, pkg=None):
 		if pkg is None:

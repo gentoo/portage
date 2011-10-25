@@ -20,7 +20,7 @@ class KeywordsManager(object):
 				global_accept_keywords=""):
 		self._pkeywords_list = []
 		rawpkeywords = [grabdict_package(
-			os.path.join(x, "package.keywords"), recursive=1,
+			os.path.join(x[0], "package.keywords"), recursive=x[1],
 			verify_eapi=True) \
 			for x in profiles]
 		for pkeyworddict in rawpkeywords:
@@ -35,7 +35,7 @@ class KeywordsManager(object):
 
 		self._p_accept_keywords = []
 		raw_p_accept_keywords = [grabdict_package(
-			os.path.join(x, "package.accept_keywords"), recursive=1,
+			os.path.join(x[0], "package.accept_keywords"), recursive=x[1],
 			verify_eapi=True) \
 			for x in profiles]
 		for d in raw_p_accept_keywords:
