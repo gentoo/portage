@@ -35,13 +35,15 @@ def _get_legacy_global(name):
 	constructed.add('db')
 	del portage._initializing_globals
 
-	settings = portage.db[portage.db._target_root]["vartree"].settings
+	settings = portage.db[portage.db._target_eroot]["vartree"].settings
 	portage.output._init(config_root=settings['PORTAGE_CONFIGROOT'])
 
 	portage.settings = settings
 	constructed.add('settings')
 
-	portage.root = portage.db._target_root
+	# Since portage.db now uses EROOT for keys instead of ROOT, we make
+	# portage.root refer to EROOT such that it continues works as a key.
+	portage.root = portage.db._target_eroot
 	constructed.add('root')
 
 	# COMPATIBILITY

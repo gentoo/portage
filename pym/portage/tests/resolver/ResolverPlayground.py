@@ -201,7 +201,7 @@ class ResolverPlayground(object):
 			ebuild_dir = os.path.join(repo_dir, a.cp)
 			ebuild_path = os.path.join(ebuild_dir, a.cpv.split("/")[1] + ".ebuild")
 
-			portdb = self.trees[self.root]["porttree"].dbapi
+			portdb = self.trees[self.eroot]["porttree"].dbapi
 			tmpsettings['O'] = ebuild_dir
 			if not digestgen(mysettings=tmpsettings, myportdb=portdb):
 				raise AssertionError('digest creation failed for %s' % ebuild_path)
@@ -549,7 +549,7 @@ class ResolverPlayground(object):
 				return
 
 	def cleanup(self):
-		portdb = self.trees[self.root]["porttree"].dbapi
+		portdb = self.trees[self.eroot]["porttree"].dbapi
 		portdb.close_caches()
 		portage.dbapi.porttree.portdbapi.portdbapi_instances.remove(portdb)
 		if self.debug:

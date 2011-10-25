@@ -25,7 +25,7 @@ class BlockerDB(object):
 		self._dep_check_trees = None
 		self._fake_vartree = fake_vartree
 		self._dep_check_trees = {
-			self._vartree.settings["ROOT"] : {
+			self._vartree.settings["EROOT"] : {
 				"porttree"    :  fake_vartree,
 				"vartree"     :  fake_vartree,
 		}}
@@ -36,7 +36,7 @@ class BlockerDB(object):
 		new_pkg is planned to be installed. This ignores build-time
 		blockers, since new_pkg is assumed to be built already.
 		"""
-		blocker_cache = BlockerCache(self._vartree.settings["ROOT"],
+		blocker_cache = BlockerCache(None,
 			self._vartree.dbapi)
 		dep_keys = ["RDEPEND", "PDEPEND"]
 		settings = self._vartree.settings

@@ -185,7 +185,7 @@ def metadata(argv):
 		print("ERROR: insufficient parameters!", file=sys.stderr)
 		sys.exit(2)
 
-	root, pkgtype, pkgspec = argv[0:3]
+	eroot, pkgtype, pkgspec = argv[0:3]
 	metakeys = argv[3:]
 	type_map = {
 		"ebuild":"porttree",
@@ -195,10 +195,8 @@ def metadata(argv):
 		print("Unrecognized package type: '%s'" % pkgtype, file=sys.stderr)
 		sys.exit(1)
 	trees = portage.db
-	if os.path.realpath(root) == os.path.realpath(portage.settings["ROOT"]):
-		root = portage.settings["ROOT"] # contains the normalized $ROOT
 	try:
-			values = trees[root][type_map[pkgtype]].dbapi.aux_get(
+			values = trees[eroot][type_map[pkgtype]].dbapi.aux_get(
 				pkgspec, metakeys)
 			writemsg_stdout(''.join('%s\n' % x for x in values), noiselevel=-1)
 	except KeyError:
@@ -250,9 +248,9 @@ def owners(argv):
 		return 2
 
 	from portage import catsplit, dblink
-	settings = portage.settings
-	root = settings["ROOT"]
-	vardb = portage.db[root]["vartree"].dbapi
+	eroot = argv[0]
+	vardb = portage.db[eroot]["vartree"].dbapi
+	root = portage.settings['ROOT']
 
 	cwd = None
 	try:
@@ -451,7 +449,8 @@ def best_visible(argv):
 			noiselevel=-1)
 		return 2
 
-	db = portage.db[portage.settings["ROOT"]][type_map[pkgtype]].dbapi
+	eroot = argv[0]
+	db = portage.db[eroot][type_map[pkgtype]].dbapi
 
 	try:
 		atom = portage.dep_expand(atom, mydb=db, settings=portage.settings)
@@ -461,7 +460,7 @@ def best_visible(argv):
 		return 2
 
 	root_config = RootConfig(portage.settings,
-		portage.db[portage.settings["ROOT"]], None)
+		portage.db[eroot], None)
 
 	if hasattr(db, "xmatch"):
 		cpv_list = db.xmatch("match-all-cpv-only", atom)
@@ -839,7 +838,13 @@ def main():
 			sys.stderr.write("Run portageq with --help for info\n")
 			sys.stderr.flush()
 			sys.exit(os.EX_USAGE)
-		os.environ["ROOT"] = sys.argv[2]
+		eprefix = os.environ.get("__PORTAGE_TEST_EPREFIX")
+		eroot = portage.util.normalize_path(sys.argv[2])
+		if eprefix:
+			root = eroot[:1-len(eprefix)]
+		else:
+			root = eroot
+		os.environ["ROOT"] = root
 
 	args = sys.argv[2:]
 	if args and sys.hexversion < 0x3000000 and not isinstance(args[0], unicode):
@@ -848,7 +853,7 @@ def main():
 
 	try:
 		if uses_root:
-			args[0] = portage.settings["ROOT"]
+			args[0] = portage.settings['EROOT']
 		retval = function(args)
 		if retval:
 			sys.exit(retval)

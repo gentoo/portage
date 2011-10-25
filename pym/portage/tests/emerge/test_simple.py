@@ -134,7 +134,7 @@ pkg_info() {
 		eroot = settings["EROOT"]
 		trees = playground.trees
 		root = playground.root
-		portdb = trees[root]["porttree"].dbapi
+		portdb = trees[eroot]["porttree"].dbapi
 		portdir = settings["PORTDIR"]
 		var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
 		cachedir = os.path.join(var_cache_edb, "dep")
@@ -214,14 +214,14 @@ pkg_info() {
 			emaint_cmd + ("--fix", "all"),
 			fixpackages_cmd,
 			regenworld_cmd,
-			portageq_cmd + ("match", "/", "dev-libs/A"),
-			portageq_cmd + ("best_visible", "/", "dev-libs/A"),
-			portageq_cmd + ("best_visible", "/", "binary", "dev-libs/A"),
-			portageq_cmd + ("contents", "/", "dev-libs/A-1"),
-			portageq_cmd + ("metadata", "/", "ebuild", "dev-libs/A-1", "EAPI", "IUSE", "RDEPEND"),
-			portageq_cmd + ("metadata", "/", "binary", "dev-libs/A-1", "EAPI", "USE", "RDEPEND"),
-			portageq_cmd + ("metadata", "/", "installed", "dev-libs/A-1", "EAPI", "USE", "RDEPEND"),
-			portageq_cmd + ("owners", "/", eroot + "usr"),
+			portageq_cmd + ("match", eroot, "dev-libs/A"),
+			portageq_cmd + ("best_visible", eroot, "dev-libs/A"),
+			portageq_cmd + ("best_visible", eroot, "binary", "dev-libs/A"),
+			portageq_cmd + ("contents", eroot, "dev-libs/A-1"),
+			portageq_cmd + ("metadata", eroot, "ebuild", "dev-libs/A-1", "EAPI", "IUSE", "RDEPEND"),
+			portageq_cmd + ("metadata", eroot, "binary", "dev-libs/A-1", "EAPI", "USE", "RDEPEND"),
+			portageq_cmd + ("metadata", eroot, "installed", "dev-libs/A-1", "EAPI", "USE", "RDEPEND"),
+			portageq_cmd + ("owners", eroot, eroot + "usr"),
 			emerge_cmd + ("-p", eroot + "usr"),
 			emerge_cmd + ("-p", "--unmerge", "-q", eroot + "usr"),
 			emerge_cmd + ("--unmerge", "--quiet", "dev-libs/A"),

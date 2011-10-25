@@ -46,12 +46,18 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 			vardbapi = vartree(settings=env).dbapi
 		else:
 			if target_root is None:
+				eprefix = portage.settings["EPREFIX"]
 				target_root = portage.settings["ROOT"]
-			if hasattr(portage, "db") and target_root in portage.db:
-				vardbapi = portage.db[target_root]["vartree"].dbapi
+				target_eroot = portage.settings['EROOT']
+			else:
+				eprefix = os.environ.get("__PORTAGE_TEST_EPREFIX", "")
+				target_eroot = os.path.join(target_root, eprefix)
+				target_eroot = target_eroot.rstrip(os.sep) + os.sep
+			if hasattr(portage, "db") and target_eroot in portage.db:
+				vardbapi = portage.db[target_eroot]["vartree"].dbapi
 			else:
 				settings = config(config_root=target_root,
-					target_root=target_root)
+					target_root=target_root, eprefix=eprefix)
 				target_root = settings["ROOT"]
 				if env is None:
 					env = settings

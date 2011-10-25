@@ -147,7 +147,7 @@ class vardbapi(dbapi):
 		self._fs_lock_count = 0
 
 		if vartree is None:
-			vartree = portage.db[settings["ROOT"]]["vartree"]
+			vartree = portage.db[settings['EROOT']]['vartree']
 		self.vartree = vartree
 		self._aux_cache_keys = set(
 			["BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "DESCRIPTION",
@@ -1319,7 +1319,7 @@ class dblink(object):
 			raise TypeError("settings argument is required")
 
 		mysettings = settings
-		myroot = settings['ROOT']
+		self._eroot = mysettings['EROOT']
 		self.cat = cat
 		self.pkg = pkg
 		self.mycpv = self.cat + "/" + self.pkg
@@ -1327,14 +1327,10 @@ class dblink(object):
 		self.mysplit[0] = "%s/%s" % (self.cat, self.mysplit[0])
 		self.treetype = treetype
 		if vartree is None:
-			vartree = portage.db[myroot]["vartree"]
+			vartree = portage.db[self._eroot]["vartree"]
 		self.vartree = vartree
 		self._blockers = blockers
 		self._scheduler = scheduler
-
-		# WARNING: EROOT support is experimental and may be incomplete
-		# for cases in which EPREFIX is non-empty.
-		self._eroot = mysettings['EROOT']
 		self.dbroot = normalize_path(os.path.join(self._eroot, VDB_PATH))
 		self.dbcatdir = self.dbroot+"/"+cat
 		self.dbpkgdir = self.dbcatdir+"/"+pkg
@@ -1343,14 +1339,14 @@ class dblink(object):
 		self.settings = mysettings
 		self._verbose = self.settings.get("PORTAGE_VERBOSE") == "1"
 
-		self.myroot=myroot
+		self.myroot = self.settings['ROOT']
 		self._installed_instance = None
 		self.contentscache = None
 		self._contents_inodes = None
 		self._contents_basenames = None
 		self._linkmap_broken = False
 		self._md5_merge_map = {}
-		self._hash_key = (self.myroot, self.mycpv)
+		self._hash_key = (self._eroot, self.mycpv)
 		self._protect_obj = None
 		self._pipe = pipe
 

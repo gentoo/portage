@@ -39,7 +39,6 @@ class NewsManager(object):
 	def __init__(self, portdb, vardb, news_path, unread_path, language_id='en'):
 		self.news_path = news_path
 		self.unread_path = unread_path
-		self.target_root = vardb.settings["ROOT"]
 		self.language_id = language_id
 		self.config = vardb.settings
 		self.vdb = vardb

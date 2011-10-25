@@ -47,7 +47,6 @@ def isunwanted(pkgline):
 		__uniqlist__.append(pkgline)
 		return True
 
-root = portage.settings['ROOT']
 eroot = portage.settings['EROOT']
 world_file = os.path.join(eroot, portage.WORLD_FILE)
 
@@ -78,7 +77,7 @@ for mykey in syslist:
 	# drop the asterix
 	mykey = mykey[1:]
 	#print("candidate:",mykey)
-	mylist = portage.db[root]["vartree"].dbapi.match(mykey)
+	mylist = portage.db[eroot]["vartree"].dbapi.match(mykey)
 	if mylist:
 		mykey=portage.cpv_getkey(mylist[0])
 		if mykey not in realsyslist:
@@ -87,7 +86,7 @@ for mykey in syslist:
 for mykey in biglist:
 	#print("checking:",mykey)
 	try:
-		mylist = portage.db[root]["vartree"].dbapi.match(mykey)
+		mylist = portage.db[eroot]["vartree"].dbapi.match(mykey)
 	except (portage.exception.InvalidAtom, KeyError):
 		if "--debug" in sys.argv:
 			print("* ignoring broken log entry for %s (likely injected)" % mykey)

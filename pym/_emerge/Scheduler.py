@@ -151,7 +151,7 @@ class Scheduler(PollScheduler):
 				DeprecationWarning, stacklevel=2)
 
 		self.settings = settings
-		self.target_root = settings["ROOT"]
+		self.target_root = settings["EROOT"]
 		self.trees = trees
 		self.myopts = myopts
 		self._spinner = spinner
@@ -207,10 +207,7 @@ class Scheduler(PollScheduler):
 		if max_jobs is None:
 			max_jobs = 1
 		self._set_max_jobs(max_jobs)
-
-		# The root where the currently running
-		# portage instance is installed.
-		self._running_root = trees["/"]["root_config"]
+		self._running_root = trees[trees._running_eroot]["root_config"]
 		self.edebug = 0
 		if settings.get("PORTAGE_DEBUG", "") == "1":
 			self.edebug = 1
@@ -970,7 +967,7 @@ class Scheduler(PollScheduler):
 
 				portage.package.ebuild.doebuild.doebuild_environment(ebuild_path,
 					"pretend", settings=settings,
-					db=self.trees[settings["ROOT"]][tree].dbapi)
+					db=self.trees[settings['EROOT']][tree].dbapi)
 				prepare_build_dirs(root_config.root, settings, cleanup=0)
 
 				vardb = root_config.trees['vartree'].dbapi
@@ -1563,7 +1560,7 @@ class Scheduler(PollScheduler):
 		return temp_settings
 
 	def _deallocate_config(self, settings):
-		self._config_pool[settings["ROOT"]].append(settings)
+		self._config_pool[settings['EROOT']].append(settings)
 
 	def _main_loop(self):
 

@@ -420,9 +420,9 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 	if settings is None:
 		raise TypeError("settings parameter is required")
 	mysettings = settings
-	myroot = settings["ROOT"]
+	myroot = settings['EROOT']
 
-	if _unused is not None and _unused != mysettings["ROOT"]:
+	if _unused is not None and _unused != mysettings['EROOT']:
 		warnings.warn("The third parameter of the "
 			"portage.doebuild() is now unused. Use "
 			"settings['ROOT'] instead.",
@@ -936,7 +936,7 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 				# this phase. This can raise PermissionDenied if
 				# the current user doesn't have write access to $PKGDIR.
 				if hasattr(portage, 'db'):
-					bintree = portage.db[mysettings["ROOT"]]["bintree"]
+					bintree = portage.db[mysettings['EROOT']]['bintree']
 					mysettings["PORTAGE_BINPKG_TMPFILE"] = \
 						bintree.getname(mysettings.mycpv) + \
 						".%s" % (os.getpid(),)

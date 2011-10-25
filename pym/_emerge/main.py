@@ -316,7 +316,7 @@ def post_emerge(myaction, myopts, myfiles,
 	@type myopts: dict
 	@param myfiles: emerge arguments
 	@type myfiles: list
-	@param target_root: The target ROOT for myaction
+	@param target_root: The target EROOT for myaction
 	@type target_root: String
 	@param trees: A dictionary mapping each ROOT to it's package databases
 	@type trees: dict
@@ -327,7 +327,7 @@ def post_emerge(myaction, myopts, myfiles,
 	"""
 
 	root_config = trees[target_root]["root_config"]
-	vardbapi = trees[target_root]["vartree"].dbapi
+	vardbapi = trees[target_root]['vartree'].dbapi
 	settings = vardbapi.settings
 	info_mtimes = mtimedb["info"]
 
@@ -1600,7 +1600,7 @@ def emerge_main(args=None):
 	# Portage needs to ensure a sane umask for the files it creates.
 	os.umask(0o22)
 	settings, trees, mtimedb = load_emerge_config()
-	portdb = trees[settings["ROOT"]]["porttree"].dbapi
+	portdb = trees[settings['EROOT']]['porttree'].dbapi
 	rval = profile_check(trees, myaction)
 	if rval != os.EX_OK:
 		return rval
@@ -1618,7 +1618,7 @@ def emerge_main(args=None):
 		mtimedb.commit()
 		# Reload the whole config from scratch.
 		settings, trees, mtimedb = load_emerge_config(trees=trees)
-		portdb = trees[settings["ROOT"]]["porttree"].dbapi
+		portdb = trees[settings['EROOT']]['porttree'].dbapi
 
 	xterm_titles = "notitles" not in settings.features
 	if xterm_titles:
@@ -1629,7 +1629,7 @@ def emerge_main(args=None):
 		# Reload the whole config from scratch so that the portdbapi internal
 		# config is updated with new FEATURES.
 		settings, trees, mtimedb = load_emerge_config(trees=trees)
-		portdb = trees[settings["ROOT"]]["porttree"].dbapi
+		portdb = trees[settings['EROOT']]['porttree'].dbapi
 
 	# NOTE: adjust_configs() can map options to FEATURES, so any relevant
 	# options adjustments should be made prior to calling adjust_configs().
@@ -1641,9 +1641,9 @@ def emerge_main(args=None):
 
 	if myaction == 'version':
 		writemsg_stdout(getportageversion(
-			settings["PORTDIR"], settings["ROOT"],
+			settings["PORTDIR"], None,
 			settings.profile_path, settings["CHOST"],
-			trees[settings["ROOT"]]["vartree"].dbapi) + '\n', noiselevel=-1)
+			trees[settings['EROOT']]['vartree'].dbapi) + '\n', noiselevel=-1)
 		return 0
 	elif myaction == 'help':
 		_emerge.help.help()
@@ -1722,7 +1722,7 @@ def emerge_main(args=None):
 			print(colorize("BAD", "\n*** emerging by path is broken and may not always work!!!\n"))
 			break
 
-	root_config = trees[settings["ROOT"]]["root_config"]
+	root_config = trees[settings['EROOT']]['root_config']
 	if myaction == "list-sets":
 		writemsg_stdout("".join("%s\n" % s for s in sorted(root_config.sets)))
 		return os.EX_OK
@@ -1921,7 +1921,7 @@ def emerge_main(args=None):
 	# SEARCH action
 	elif "search"==myaction:
 		validate_ebuild_environment(trees)
-		action_search(trees[settings["ROOT"]]["root_config"],
+		action_search(trees[settings['EROOT']]['root_config'],
 			myopts, myfiles, spinner)
 
 	elif myaction in ('clean', 'depclean', 'deselect', 'prune', 'unmerge'):
@@ -1929,16 +1929,16 @@ def emerge_main(args=None):
 		rval = action_uninstall(settings, trees, mtimedb["ldpath"],
 			myopts, myaction, myfiles, spinner)
 		if not (myaction == 'deselect' or buildpkgonly or fetchonly or pretend):
-			post_emerge(myaction, myopts, myfiles, settings["ROOT"],
+			post_emerge(myaction, myopts, myfiles, settings['EROOT'],
 				trees, mtimedb, rval)
 		return rval
 
 	elif myaction == 'info':
 
 		# Ensure atoms are valid before calling unmerge().
-		vardb = trees[settings["ROOT"]]["vartree"].dbapi
-		portdb = trees[settings["ROOT"]]["porttree"].dbapi
-		bindb = trees[settings["ROOT"]]["bintree"].dbapi
+		vardb = trees[settings['EROOT']]['vartree'].dbapi
+		portdb = trees[settings['EROOT']]['porttree'].dbapi
+		bindb = trees[settings['EROOT']]["bintree"].dbapi
 		valid_atoms = []
 		for x in myfiles:
 			if is_valid_package_atom(x):
@@ -2001,7 +2001,7 @@ def emerge_main(args=None):
 			display_news_notification(root_config, myopts)
 		retval = action_build(settings, trees, mtimedb,
 			myopts, myaction, myfiles, spinner)
-		post_emerge(myaction, myopts, myfiles, settings["ROOT"],
+		post_emerge(myaction, myopts, myfiles, settings['EROOT'],
 			trees, mtimedb, retval)
 
 		return retval

@@ -482,8 +482,8 @@ def portageexit():
 class _trees_dict(dict):
 	def __init__(self):
 		super(dict, self).__init__()
-		self._running_root = None
-		self._target_root = None
+		self._running_eroot = None
+		self._target_eroot = None
 
 def create_trees(config_root=None, target_root=None, trees=None, env=None):
 	if trees is None:
@@ -503,10 +503,10 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None):
 		env=env, _eprefix=eprefix)
 	settings.lock()
 
-	trees._target_root = settings['ROOT']
-	myroots = [(settings["ROOT"], settings)]
+	trees._target_eroot = settings['EROOT']
+	myroots = [(settings['EROOT'], settings)]
 	if settings["ROOT"] == "/":
-		trees._running_root = trees._target_root
+		trees._running_eroot = trees._target_eroot
 	else:
 
 		# When ROOT != "/" we only want overrides from the calling
@@ -522,19 +522,19 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None):
 		settings = config(config_root=None, target_root="/",
 			env=clean_env, _eprefix=eprefix)
 		settings.lock()
-		trees._running_root = settings['ROOT']
-		myroots.append((settings["ROOT"], settings))
+		trees._running_eroot = settings['EROOT']
+		myroots.append((settings['EROOT'], settings))
 
 	for myroot, mysettings in myroots:
 		trees[myroot] = portage.util.LazyItemsDict(trees.get(myroot, {}))
 		trees[myroot].addLazySingleton("virtuals", mysettings.getvirtuals)
 		trees[myroot].addLazySingleton(
-			"vartree", vartree, myroot, categories=mysettings.categories,
+			"vartree", vartree, categories=mysettings.categories,
 				settings=mysettings)
 		trees[myroot].addLazySingleton("porttree",
-			portagetree, myroot, settings=mysettings)
+			portagetree, settings=mysettings)
 		trees[myroot].addLazySingleton("bintree",
-			binarytree, myroot, mysettings["PKGDIR"], settings=mysettings)
+			binarytree, pkgdir=mysettings["PKGDIR"], settings=mysettings)
 	return trees
 
 if VERSION == 'HEAD':
