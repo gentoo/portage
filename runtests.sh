@@ -27,6 +27,19 @@ interrupted() {
 
 trap interrupted SIGINT
 
+while [[ -n $1 ]] ; do
+	case "$1" in
+		--python-versions=*)
+			PYTHON_VERSIONS=${1#--python-versions=}
+			;;
+		--python-versions)
+			shift
+			PYTHON_VERSIONS=$1
+			;;
+	esac
+	shift
+done
+
 exit_status="0"
 for version in ${PYTHON_VERSIONS}; do
 	if [[ -x /usr/bin/python${version} ]]; then
