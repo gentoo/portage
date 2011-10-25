@@ -48,6 +48,15 @@ src_install() {
 	echo "blah blah blah" > ${latin_1_dir}/latin-1-$(printf "\\xa9")-regular-file || die
 	ln -s latin-1-$(printf "\\xa9")-regular-file ${latin_1_dir}/latin-1-$(printf "\\xa9")-symlink || die
 }
+
+pkg_config() {
+	einfo "called pkg_config for $CATEGORY/$PF"
+}
+
+pkg_info() {
+	einfo "called pkg_info for $CATEGORY/$PF"
+}
+
 """
 
 		ebuilds = {
@@ -194,6 +203,8 @@ src_install() {
 			emerge_cmd + ("--oneshot", "--usepkg", "dev-libs/B",),
 			emerge_cmd + ("--oneshot", "dev-libs/A",),
 			emerge_cmd + ("--noreplace", "dev-libs/A",),
+			emerge_cmd + ("--config", "dev-libs/A",),
+			emerge_cmd + ("--info", "dev-libs/A", "dev-libs/B"),
 			emerge_cmd + ("--pretend", "--depclean", "--verbose", "dev-libs/B"),
 			emerge_cmd + ("--pretend", "--depclean",),
 			emerge_cmd + ("--depclean",),
