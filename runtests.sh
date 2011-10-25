@@ -27,6 +27,8 @@ interrupted() {
 
 trap interrupted SIGINT
 
+unused_args=()
+
 while [[ -n $1 ]] ; do
 	case "$1" in
 		--python-versions=*)
@@ -36,9 +38,14 @@ while [[ -n $1 ]] ; do
 			shift
 			PYTHON_VERSIONS=$1
 			;;
+		*)
+			unused_args[${#unused_args[@]}]=$1
+			;;
 	esac
 	shift
 done
+
+set -- "${unused_args[@]}"
 
 exit_status="0"
 for version in ${PYTHON_VERSIONS}; do
