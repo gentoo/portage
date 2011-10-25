@@ -211,6 +211,8 @@ src_install() {
 			portageq_cmd + ("metadata", "/", "binary", "dev-libs/A-1", "EAPI", "USE", "RDEPEND"),
 			portageq_cmd + ("metadata", "/", "installed", "dev-libs/A-1", "EAPI", "USE", "RDEPEND"),
 			portageq_cmd + ("owners", "/", eroot + "usr"),
+			emerge_cmd + ("-p", eroot + "usr"),
+			emerge_cmd + ("-p", "--unmerge", "-q", eroot + "usr"),
 			emerge_cmd + ("--unmerge", "--quiet", "dev-libs/A"),
 			emerge_cmd + ("-C", "--quiet", "dev-libs/B"),
 		)
