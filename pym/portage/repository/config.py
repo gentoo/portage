@@ -44,7 +44,7 @@ class RepoConfig(object):
 	"""Stores config of one repository"""
 
 	__slots__ = ('aliases', 'allow_missing_manifest',
-		'cache_format', 'create_manifest', 'disable_manifest',
+		'cache_formats', 'create_manifest', 'disable_manifest',
 		'eclass_overrides', 'eclass_locations', 'format', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'priority', 'sign_manifest', 'sync', 'thin_manifest',
@@ -128,22 +128,32 @@ class RepoConfig(object):
 		self.disable_manifest = False
 		self.manifest_hashes = None
 		self.update_changelog = False
-		self.cache_format = None
+		self.cache_formats = None
 		self.portage1_profiles = True
 		self.portage1_profiles_compat = False
 
 	def get_pregenerated_cache(self, auxdbkeys, readonly=True, force=False):
-		format = self.cache_format
-		if format is None:
+		"""
+		Reads layout.conf cache-formats from left to right and returns a
+		cache instance for the first supported type that's found. If no
+		cache-formats are specified in layout.conf, 'pms' type is assumed
+		if the metadata/cache directory exists or force is True.
+		"""
+		formats = self.cache_formats
+		if not formats:
 			if not force:
 				return None
-			format = 'pms'
-		if format == 'pms':
-			from portage.cache.metadata import database
-			name = 'metadata/cache'
-		elif format == 'md5-dict':
-			from portage.cache.flat_hash import md5_database as database
-			name = 'metadata/md5-cache'
+			formats = ('pms',)
+
+		for fmt in formats:
+			if fmt == 'pms':
+				from portage.cache.metadata import database
+				name = 'metadata/cache'
+				break
+			elif fmt == 'md5-dict':
+				from portage.cache.flat_hash import md5_database as database
+				name = 'metadata/md5-cache'
+				break
 		else:
 			return None
 		return database(self.location, name,
@@ -379,13 +389,15 @@ class RepoConfigLoader(object):
 				repo.aliases = tuple(aliases) + layout_data['aliases']
 
 			for value in ('sign-manifest', 'thin-manifest', 'allow-missing-manifest',
-				'create-manifest', 'disable-manifest', 'cache-format', 'manifest-hashes',
+				'create-manifest', 'disable-manifest', 'cache-formats', 'manifest-hashes',
 				'update-changelog'):
 				setattr(repo, value.lower().replace("-", "_"), layout_data[value])
 
 			repo.portage1_profiles = any(x.startswith("portage-1") \
 				for x in layout_data['profile-formats'])
 			repo.portage1_profiles_compat = layout_data['profile-formats'] == ('portage-1-compat',)
+
+			repo.cache_formats = layout_data['cache-formats']
 
 		#Take aliases into account.
 		new_prepos = {}
@@ -608,11 +620,11 @@ def parse_layout_conf(repo_location, repo_name=None):
 
 	# for compatibility w/ PMS, fallback to pms; but also check if the
 	# cache exists or not.
-	cache_format = layout_data.get('cache-format', 'pms').lower()
-	if cache_format == 'pms' and not os.path.isdir(
+	cache_formats = layout_data.get('cache-formats', 'pms').lower().split()
+	if 'pms' in cache_formats and not os.path.isdir(
 		os.path.join(repo_location, 'metadata', 'cache')):
-		cache_format = None
-	data['cache-format'] = cache_format
+		cache_formats.remove('pms')
+	data['cache-formats'] = tuple(cache_formats)
 
 	manifest_hashes = layout_data.get('manifest-hashes')
 	if manifest_hashes is not None:

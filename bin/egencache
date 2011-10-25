@@ -218,7 +218,8 @@ class GenCache(object):
 		self._trg_cache = conf.get_pregenerated_cache(portage.auxdbkeys[:],
 			force=True, readonly=False)
 		if self._trg_cache is None:
-			raise Exception("cache format %s isn't supported" % (conf.cache_format,))
+			raise Exception("cache formats '%s' aren't supported" %
+				(" ".join(conf.cache_formats),))
 		if rsync:
 			self._trg_cache.raise_stat_collision = True
 		try:
