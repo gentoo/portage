@@ -479,7 +479,7 @@ def portageexit():
 	if data.secpass > 1 and os.environ.get("SANDBOX_ON") != "1":
 		close_portdbapi_caches()
 
-def create_trees(config_root=None, target_root=None, trees=None):
+def create_trees(config_root=None, target_root=None, trees=None, env=None):
 	if trees is None:
 		trees = {}
 	else:
@@ -490,9 +490,11 @@ def create_trees(config_root=None, target_root=None, trees=None):
 			portdbapi.portdbapi_instances.remove(portdb)
 			del trees[myroot]["porttree"], myroot, portdb
 
-	eprefix = os.environ.get("__PORTAGE_TEST_EPREFIX")
+	if env is None:
+		env = os.environ
+	eprefix = env.get("__PORTAGE_TEST_EPREFIX")
 	settings = config(config_root=config_root, target_root=target_root,
-		config_incrementals=portage.const.INCREMENTALS, _eprefix=eprefix)
+		env=env, _eprefix=eprefix)
 	settings.lock()
 
 	myroots = [(settings["ROOT"], settings)]
