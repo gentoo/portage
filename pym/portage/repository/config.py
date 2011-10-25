@@ -358,82 +358,27 @@ class RepoConfigLoader(object):
 			if not repo.location:
 				continue
 			layout_filename = os.path.join(repo.location, "metadata", "layout.conf")
-			layout_file = KeyValuePairFileLoader(layout_filename, None, None)
-			layout_data, layout_errors = layout_file.load()
+			layout_data, layout_errors = parse_layout_conf(repo.location, repo.name)
 
-			# Only set masters here if is None, so that repos.conf settings
-			# will override those from layout.conf. This gives the
-			# user control over inherited repositories and their settings
-			# (the user must ensure that any required dependencies such as
-			# eclasses are satisfied).
 			if repo.masters is None:
-				masters = layout_data.get('masters')
-				if masters is not None:
-					# We support empty masters settings here, in case a
-					# repo wants to avoid implicit inheritance of PORTDIR
-					# settings like package.mask.
-					masters = tuple(masters.split())
-				repo.masters = masters
+				repo.masters = layout_data['masters']
 
 			aliases = layout_data.get('aliases')
 			if aliases and aliases.strip():
 				aliases = aliases.split()
 			else:
 				aliases = None
-			if aliases:
-				if repo.aliases:
-					aliases.extend(repo.aliases)
-				repo.aliases = tuple(sorted(set(aliases)))
 
-			if layout_data.get('sign-manifests', '').lower() == 'false':
-				repo.sign_manifest = False
+			if layout_data['aliases']:
+				aliases = repo.aliases
+				if aliases is None:
+					aliases = ()
+				repo.aliases = tuple(aliases) + layout_data['aliases']
 
-			if layout_data.get('thin-manifests', '').lower() == 'true':
-				repo.thin_manifest = True
-
-			manifest_policy = layout_data.get('use-manifests', 'strict').lower()
-			repo.allow_missing_manifest = manifest_policy != 'strict'
-			repo.create_manifest = manifest_policy != 'false'
-			repo.disable_manifest = manifest_policy == 'false'
-
-			# for compatibility w/ PMS, fallback to pms; but also check if the
-			# cache exists or not.
-			repo.cache_format = layout_data.get('cache-format', 'pms').lower()
-			if repo.cache_format == 'pms' and not os.path.isdir(
-				os.path.join(repo.location, 'metadata', 'cache')):
-				repo.cache_format = None
-
-			manifest_hashes = layout_data.get('manifest-hashes')
-			if manifest_hashes is not None:
-				manifest_hashes = frozenset(manifest_hashes.upper().split())
-				if MANIFEST2_REQUIRED_HASH not in manifest_hashes:
-					warnings.warn((_("Repository named '%(repo_name)s' has a "
-						"'manifest-hashes' setting that does not contain "
-						"the '%(hash)s' hash which is required by this "
-						"portage version. You will have to upgrade portage "
-						"if you want to generate valid manifests for this "
-						"repository: %(layout_filename)s") %
-						{"repo_name":repo.name,
-						"hash":MANIFEST2_REQUIRED_HASH,
-						"layout_filename":layout_filename}),
-						DeprecationWarning)
-				unsupported_hashes = manifest_hashes.difference(
-					MANIFEST2_HASH_FUNCTIONS)
-				if unsupported_hashes:
-					warnings.warn((_("Repository named '%(repo_name)s' has a "
-						"'manifest-hashes' setting that contains one "
-						"or more hash types '%(hashes)s' which are not supported by "
-						"this portage version. You will have to upgrade "
-						"portage if you want to generate valid manifests for "
-						"this repository: %(layout_filename)s") %
-						{"repo_name":repo.name,
-						"hashes":" ".join(sorted(unsupported_hashes)),
-						"layout_filename":layout_filename}),
-						DeprecationWarning)
-			repo.manifest_hashes = manifest_hashes
-
-			if layout_data.get('update-changelog', '').lower() == 'true':
-				repo.update_changelog = True
+			for value in ('sign-manifest', 'thin-manifest', 'allow-missing-manifest',
+				'create-manifest', 'disable-manifest', 'cache-format', 'manifest-hashes',
+				'update-changelog'):
+				setattr(repo, value.lower().replace("-", "_"), layout_data[value])
 
 		#Take aliases into account.
 		new_prepos = {}
@@ -623,3 +568,75 @@ def load_repository_config(settings):
 		repoconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
 			USER_CONFIG_PATH, "repos.conf"))
 	return RepoConfigLoader(repoconfigpaths, settings)
+
+
+def parse_layout_conf(repo_location, repo_name=None):
+	if repo_name is None:
+		repo_name = "unspecified"
+
+	layout_filename = os.path.join(repo_location, "metadata", "layout.conf")
+	layout_file = KeyValuePairFileLoader(layout_filename, None, None)
+	layout_data, layout_errors = layout_file.load()
+
+	data = {}
+
+	# allow None to slip through; later code spots that as an indication
+	# that an explicit nulling of the overlaying is desired.
+	masters = layout_data.get('masters')
+	if masters is not None:
+		masters = tuple(masters.split())
+	data['masters'] = masters
+	data['aliases'] = tuple(layout_data.get('aliases', '').split())
+
+	data['sign-manifest'] = layout_data.get('sign-manifests', 'true').lower() \
+		== 'true'
+
+	data['thin-manifest'] = layout_data.get('thin-manifests', 'false').lower() \
+		== 'true'
+
+	manifest_policy = layout_data.get('use-manifests', 'strict').lower()
+	data['allow-missing-manifest'] = manifest_policy != 'strict'
+	data['create-manifest'] = manifest_policy != 'false'
+	data['disable-manifest'] = manifest_policy == 'false'
+
+	# for compatibility w/ PMS, fallback to pms; but also check if the
+	# cache exists or not.
+	cache_format = layout_data.get('cache-format', 'pms').lower()
+	if cache_format == 'pms' and not os.path.isdir(
+		os.path.join(repo_location, 'metadata', 'cache')):
+		cache_format = None
+	data['cache-format'] = cache_format
+
+	manifest_hashes = layout_data.get('manifest-hashes')
+	if manifest_hashes is not None:
+		manifest_hashes = frozenset(manifest_hashes.upper().split())
+		if MANIFEST2_REQUIRED_HASH not in manifest_hashes:
+			warnings.warn((_("Repository named '%(repo_name)s' has a "
+				"'manifest-hashes' setting that does not contain "
+				"the '%(hash)s' hash which is required by this "
+				"portage version. You will have to upgrade portage "
+				"if you want to generate valid manifests for this "
+				"repository: %(layout_filename)s") %
+				{"repo_name":repo.name,
+				"hash":MANIFEST2_REQUIRED_HASH,
+				"layout_filename":layout_filename}),
+				DeprecationWarning)
+		unsupported_hashes = manifest_hashes.difference(
+			MANIFEST2_HASH_FUNCTIONS)
+		if unsupported_hashes:
+			warnings.warn((_("Repository named '%(repo_name)s' has a "
+				"'manifest-hashes' setting that contains one "
+				"or more hash types '%(hashes)s' which are not supported by "
+				"this portage version. You will have to upgrade "
+				"portage if you want to generate valid manifests for "
+				"this repository: %(layout_filename)s") %
+				{"repo_name":repo_name,
+				"hashes":" ".join(sorted(unsupported_hashes)),
+				"layout_filename":layout_filename}),
+				DeprecationWarning)
+	data['manifest-hashes'] = manifest_hashes
+
+	data['update-changelog'] = layout_data.get('update-changelog', 'false').lower() \
+		== 'false'
+
+	return data, layout_errors
