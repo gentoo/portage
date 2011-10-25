@@ -48,7 +48,8 @@ class RepoConfig(object):
 		'eclass_overrides', 'eclass_locations', 'format', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'priority', 'sign_manifest', 'sync', 'thin_manifest',
-		'update_changelog', 'user_location')
+		'update_changelog', 'user_location', 'portage1_profiles',
+		'portage1_profiles_compat')
 
 	def __init__(self, name, repo_opts):
 		"""Build a RepoConfig with options in repo_opts
@@ -128,6 +129,8 @@ class RepoConfig(object):
 		self.manifest_hashes = None
 		self.update_changelog = False
 		self.cache_format = None
+		self.portage1_profiles = True
+		self.portage1_profiles_compat = False
 
 	def get_pregenerated_cache(self, auxdbkeys, readonly=True, force=False):
 		format = self.cache_format
@@ -379,6 +382,10 @@ class RepoConfigLoader(object):
 				'create-manifest', 'disable-manifest', 'cache-format', 'manifest-hashes',
 				'update-changelog'):
 				setattr(repo, value.lower().replace("-", "_"), layout_data[value])
+
+			repo.portage1_profiles = any(x.startswith("portage-1") \
+				for x in layout_data['profile-formats'])
+			repo.portage1_profiles_compat = layout_data['profile-formats'] == ('portage-1-compat',)
 
 		#Take aliases into account.
 		new_prepos = {}
@@ -638,5 +645,19 @@ def parse_layout_conf(repo_location, repo_name=None):
 
 	data['update-changelog'] = layout_data.get('update-changelog', 'false').lower() \
 		== 'false'
+
+	raw_formats = layout_data.get('profile-formats')
+	if raw_formats is None:
+		raw_formats = ('portage-1-compat',)
+	else:
+		raw_formats = set(raw_formats.split())
+		unknown = raw_formats.difference(['pms', 'portage-1'])
+		warnings.warn((_("Repository named '%(repo_name)s' has unsupported "
+			"profiles in use ('profile-format' setting in '%(layout_filename)s;"
+			" please upgrade portage.") %
+			dict(repo_name=repo_name, layout_filename=layout_filename)),
+			DeprecationWarning)
+		raw_formats = tuple(raw_formats.intersection(['pms', 'portage-1']))
+	data['profile-formats'] = raw_formats
 
 	return data, layout_errors
