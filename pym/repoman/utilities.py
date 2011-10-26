@@ -752,6 +752,10 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 					display_changed = [fn]
 					break
 
+		display_new.sort()
+		display_removed.sort()
+		display_changed.sort()
+
 		mesg = '%s; %s %s:' % (date, user, ', '.join(chain(
 			display_new, display_removed, display_changed)))
 		for line in textwrap.wrap(mesg, 80, \
