@@ -16,6 +16,21 @@ import tempfile
 hashfunc_map = {}
 hashorigin_map = {}
 
+def _open_file(filename):
+	try:
+		return open(_unicode_encode(filename,
+			encoding=_encodings['fs'], errors='strict'), 'rb')
+	except IOError as e:
+		func_call = "open('%s')" % filename
+		if e.errno == errno.EPERM:
+			raise portage.exception.OperationNotPermitted(func_call)
+		elif e.errno == errno.EACCES:
+			raise portage.exception.PermissionDenied(func_call)
+		elif e.errno == errno.ENOENT:
+			raise portage.exception.FileNotFound(filename)
+		else:
+			raise
+
 class _generate_hash_function(object):
 
 	__slots__ = ("_hashobject",)
@@ -33,19 +48,7 @@ class _generate_hash_function(object):
 		@type filename: String
 		@return: The hash and size of the data
 		"""
-		try:
-			f = open(_unicode_encode(filename,
-				encoding=_encodings['fs'], errors='strict'), 'rb')
-		except IOError as e:
-			func_call = "open('%s')" % filename
-			if e.errno == errno.EPERM:
-				raise portage.exception.OperationNotPermitted(func_call)
-			elif e.errno == errno.EACCES:
-				raise portage.exception.PermissionDenied(func_call)
-			elif e.errno == errno.ENOENT:
-				raise portage.exception.FileNotFound(filename)
-			else:
-				raise
+		f = _open_file(filename)
 		blocksize = HASHING_BLOCKSIZE
 		data = f.read(blocksize)
 		size = 0
@@ -156,6 +159,15 @@ if os.path.exists(PRELINK_BINARY):
 		prelink_capable=1
 	del results
 
+def is_prelinkable_elf(filename):
+	f = _open_file(filename)
+	try:
+		magic = f.read(17)
+	finally:
+		f.close()
+	return (len(magic) == 17 and magic.startswith(b'\x7fELF') and
+		magic[16] in (b'\x02', b'\x03')) # 2=ET_EXEC, 3=ET_DYN
+
 def perform_md5(x, calc_prelink=0):
 	return perform_checksum(x, "MD5", calc_prelink)[0]
 
@@ -263,7 +275,8 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 	myfilename = filename
 	prelink_tmpfile = None
 	try:
-		if calc_prelink and prelink_capable:
+		if (calc_prelink and prelink_capable and
+		    is_prelinkable_elf(filename)):
 			# Create non-prelinked temporary file to checksum.
 			# Files rejected by prelink are summed in place.
 			try:
