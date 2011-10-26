@@ -399,6 +399,12 @@ before computing checksums for merge and unmerge. This feature is
 useful only if \fBprelink\fR(8) is installed and accurate checksums (despite
 prelinking) are needed for some reason such as for checking the integrity of
 installed files or because the \fIunmerge\-orphans\fR feature is disabled.
+
+Note that normal emerging of packages from source computes the
+checksums before things will be prelinked, so in such cases, this
+feature isn't required either. Undoing prelinking while merging is
+only required when using tools like \fBquickpkg\fR(1) which can cause
+already prelinked files to be merged.
 .TP
 .B preserve\-libs
 Preserve libraries when the sonames change during upgrade or downgrade.
