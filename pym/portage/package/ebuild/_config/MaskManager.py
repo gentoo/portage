@@ -115,12 +115,16 @@ class MaskManager(object):
 		#to allow profiles to override masks from their parent profiles.
 		profile_pkgmasklines = []
 		profile_pkgunmasklines = []
-		for x, portage1_mode in profiles:
+		for x in profiles:
 			profile_pkgmasklines.append(grabfile_package(
-				os.path.join(x, "package.mask"), recursive=portage1_mode, remember_source_file=True, verify_eapi=True))
-			if portage1_mode:
+				os.path.join(x.location, "package.mask"),
+				recursive=x.portage1_directories,
+				remember_source_file=True, verify_eapi=True))
+			if x.portage1_directories:
 				profile_pkgunmasklines.append(grabfile_package(
-					os.path.join(x, "package.unmask"), recursive=1, remember_source_file=True, verify_eapi=True))
+					os.path.join(x.location, "package.unmask"),
+					recursive=x.portage1_directories,
+					remember_source_file=True, verify_eapi=True))
 		profile_pkgmasklines = stack_lists(profile_pkgmasklines, incremental=1, \
 			remember_source_file=True, warn_for_unmatched_removal=True,
 			strict_warn_for_unmatched_removal=strict_umatched_removal)

@@ -23,6 +23,18 @@ _PORTAGE1_DIRECTORIES = frozenset([
 	'package.use', 'package.use.mask', 'package.use.force',
 	'use.mask', 'use.force'])
 
+class _profile_node(object):
+
+	__slots__ = ('location', 'portage1_directories')
+
+	def __init__(self, location, portage1_directories):
+		object.__setattr__(self, 'location', location)
+		object.__setattr__(self, 'portage1_directories', portage1_directories)
+
+	def __setattr__(self, name, value):
+		raise AttributeError("_profile_node instances are immutable",
+			self.__class__, name, value)
+
 class LocationsManager(object):
 
 	def __init__(self, config_root=None, eprefix=None, config_profile_path=None, local_config=True, \
@@ -92,7 +104,7 @@ class LocationsManager(object):
 			if os.path.exists(custom_prof):
 				self.user_profile_dir = custom_prof
 				self.profiles.append(custom_prof)
-				self.profiles_complex.append((custom_prof, True))
+				self.profiles_complex.append(_profile_node(custom_prof, True))
 			del custom_prof
 
 		self.profiles = tuple(self.profiles)
@@ -177,7 +189,8 @@ class LocationsManager(object):
 						(parentPath, parentsFile))
 
 		self.profiles.append(currentPath)
-		self.profiles_complex.append((currentPath, allow_directories))
+		self.profiles_complex.append(
+			_profile_node(currentPath, allow_directories))
 
 	def set_root_override(self, root_overwrite=None):
 		# Allow ROOT setting to come from make.conf if it's not overridden

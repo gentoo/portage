@@ -132,11 +132,15 @@ class UseManager(object):
 		return ret
 
 	def _parse_profile_files_to_tuple_of_tuples(self, file_name, locations):
-		return tuple(self._parse_file_to_tuple(os.path.join(profile[0], file_name), recursive=profile[1])
+		return tuple(self._parse_file_to_tuple(
+			os.path.join(profile.location, file_name),
+			recursive=profile.portage1_directories)
 			for profile in locations)
 
 	def _parse_profile_files_to_tuple_of_dicts(self, file_name, locations, juststrings=False):
-		return tuple(self._parse_file_to_dict(os.path.join(profile[0], file_name), juststrings, recursive=profile[1])
+		return tuple(self._parse_file_to_dict(
+			os.path.join(profile.location, file_name), juststrings,
+			recursive=profile.portage1_directories)
 			for profile in locations)
 
 	def getUseMask(self, pkg=None):

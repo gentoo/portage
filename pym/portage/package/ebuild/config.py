@@ -637,8 +637,10 @@ class config(object):
 			archlist = stack_lists(archlist, incremental=1)
 			self.configdict["conf"]["PORTAGE_ARCHLIST"] = " ".join(archlist)
 
-			pkgprovidedlines = [grabfile(os.path.join(loc, "package.provided"), recursive=recursive)
-				for loc, recursive in self.profiles_complex]
+			pkgprovidedlines = [grabfile(
+				os.path.join(x.location, "package.provided"),
+				recursive=x.portage1_directories)
+				for x in self.profiles_complex]
 			pkgprovidedlines = stack_lists(pkgprovidedlines, incremental=1)
 			has_invalid_data = False
 			for x in range(len(pkgprovidedlines)-1, -1, -1):
