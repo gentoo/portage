@@ -6,6 +6,8 @@ __all__ = (
 )
 
 import io
+import warnings
+
 from portage import os, eapi_is_supported, _encodings, _unicode_encode
 from portage.const import CUSTOM_PROFILE_PATH, GLOBAL_CONFIG_PATH, \
 	PROFILE_PATH, USER_CONFIG_PATH
@@ -120,7 +122,7 @@ class LocationsManager(object):
 			offenders = sorted(x for x in offenders
 				if os.path.isdir(os.path.join(currentPath, x)))
 			if offenders:
-				writemsg((_("Profile '%(profile_path)s' in repository "
+				warnings.warn((_("Profile '%(profile_path)s' in repository "
 					"'%(repo_name)s' is implicitly using 'portage-1' profile format, but "
 					"the repository profiles are not marked as that format.  This will break "
 					"in the future.  Please either convert the following paths "
@@ -128,7 +130,7 @@ class LocationsManager(object):
 					"repositories layout.conf.  Files: '%(files)s'\n")
 					% dict(profile_path=currentPath, repo_name=repo_loc,
 						files=', '.join(offenders))),
-					noiselevel=-1)
+					)
 
 		parentsFile = os.path.join(currentPath, "parent")
 		eapi_file = os.path.join(currentPath, "eapi")
