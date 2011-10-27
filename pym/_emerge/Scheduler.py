@@ -28,7 +28,7 @@ from portage.output import colorize, create_color_func, red
 bad = create_color_func("BAD")
 from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
-from portage.util import writemsg, writemsg_level
+from portage.util import ensure_dirs, writemsg, writemsg_level
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
@@ -917,6 +917,7 @@ class Scheduler(PollScheduler):
 			settings.setcpv(x)
 			tmpdir_orig = settings["PORTAGE_TMPDIR"]
 			build_prefix_orig = os.path.join(tmpdir_orig, 'portage')
+			ensure_dirs(build_prefix_orig)
 			tmpdir = tempfile.mkdtemp(dir=build_prefix_orig)
 			settings["PORTAGE_TMPDIR"] = tmpdir
 
