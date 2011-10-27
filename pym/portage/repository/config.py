@@ -106,17 +106,7 @@ class RepoConfig(object):
 
 		missing = True
 		if self.location is not None:
-			name, missing = self._read_repo_name(self.location)
-			# We must ensure that the name conforms to PMS 3.1.5
-			# in order to avoid InvalidAtom exceptions when we
-			# use it to generate atoms.
-			name = _gen_valid_repo(name)
-			if not name:
-				# name only contains invalid characters
-				name = "x-" + os.path.basename(self.location)
-				name = _gen_valid_repo(name)
-				# If basename only contains whitespace then the
-				# end result is name = 'x-'.
+			name, missing = self._read_valid_repo_name(self.location)
 
 		elif name == "DEFAULT": 
 			missing = False
@@ -189,7 +179,23 @@ class RepoConfig(object):
 		if new_repo.sync is not None:
 			self.sync = new_repo.sync
 
-	def _read_repo_name(self, repo_path):
+	@staticmethod
+	def _read_valid_repo_name(repo_path):
+		name, missing = RepoConfig._read_repo_name(repo_path)
+		# We must ensure that the name conforms to PMS 3.1.5
+		# in order to avoid InvalidAtom exceptions when we
+		# use it to generate atoms.
+		name = _gen_valid_repo(name)
+		if not name:
+			# name only contains invalid characters
+			name = "x-" + os.path.basename(repo_path)
+			name = _gen_valid_repo(name)
+			# If basename only contains whitespace then the
+			# end result is name = 'x-'.
+		return name, missing
+
+	@staticmethod
+	def _read_repo_name(repo_path):
 		"""
 		Read repo_name from repo_path.
 		Returns repo_name, missing.
@@ -600,10 +606,15 @@ def load_repository_config(settings):
 			USER_CONFIG_PATH, "repos.conf"))
 	return RepoConfigLoader(repoconfigpaths, settings)
 
+def _get_repo_name(repo_location, cached=None):
+	if cached is not None:
+		return cached
+	name, missing = RepoConfig._read_repo_name(repo_location)
+	if missing:
+		return None
+	return name
 
 def parse_layout_conf(repo_location, repo_name=None):
-	if repo_name is None:
-		repo_name = "unspecified"
 
 	layout_filename = os.path.join(repo_location, "metadata", "layout.conf")
 	layout_file = KeyValuePairFileLoader(layout_filename, None, None)
@@ -642,26 +653,28 @@ def parse_layout_conf(repo_location, repo_name=None):
 	if manifest_hashes is not None:
 		manifest_hashes = frozenset(manifest_hashes.upper().split())
 		if MANIFEST2_REQUIRED_HASH not in manifest_hashes:
+			repo_name = _get_repo_name(repo_location, cached=repo_name)
 			warnings.warn((_("Repository named '%(repo_name)s' has a "
 				"'manifest-hashes' setting that does not contain "
 				"the '%(hash)s' hash which is required by this "
 				"portage version. You will have to upgrade portage "
 				"if you want to generate valid manifests for this "
 				"repository: %(layout_filename)s") %
-				{"repo_name":repo.name,
+				{"repo_name": repo_name or 'unspecified',
 				"hash":MANIFEST2_REQUIRED_HASH,
 				"layout_filename":layout_filename}),
 				DeprecationWarning)
 		unsupported_hashes = manifest_hashes.difference(
 			MANIFEST2_HASH_FUNCTIONS)
 		if unsupported_hashes:
+			repo_name = _get_repo_name(repo_location, cached=repo_name)
 			warnings.warn((_("Repository named '%(repo_name)s' has a "
 				"'manifest-hashes' setting that contains one "
 				"or more hash types '%(hashes)s' which are not supported by "
 				"this portage version. You will have to upgrade "
 				"portage if you want to generate valid manifests for "
 				"this repository: %(layout_filename)s") %
-				{"repo_name":repo_name,
+				{"repo_name": repo_name or 'unspecified',
 				"hashes":" ".join(sorted(unsupported_hashes)),
 				"layout_filename":layout_filename}),
 				DeprecationWarning)
@@ -677,10 +690,12 @@ def parse_layout_conf(repo_location, repo_name=None):
 		raw_formats = set(raw_formats.split())
 		unknown = raw_formats.difference(['pms', 'portage-1'])
 		if unknown:
+			repo_name = _get_repo_name(repo_location, cached=repo_name)
 			warnings.warn((_("Repository named '%(repo_name)s' has unsupported "
 				"profiles in use ('profile-formats = %(unknown_fmts)s' setting in "
 				"'%(layout_filename)s; please upgrade portage.") %
-				dict(repo_name=repo_name, layout_filename=layout_filename,
+				dict(repo_name=repo_name or 'unspecified',
+				layout_filename=layout_filename,
 				unknown_fmts=" ".join(unknown))),
 				DeprecationWarning)
 		raw_formats = tuple(raw_formats.intersection(['pms', 'portage-1']))
