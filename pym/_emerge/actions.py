@@ -21,16 +21,20 @@ import time
 from itertools import chain
 
 import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.news:count_unread_news,display_news_notifications',
+)
+
 from portage import os
 from portage import subprocess_getstatusoutput
 from portage import _unicode_decode
 from portage.cache.cache_errors import CacheError
-from portage.const import GLOBAL_CONFIG_PATH, NEWS_LIB_PATH
+from portage.const import GLOBAL_CONFIG_PATH
 from portage.const import _ENABLE_DYN_LINK_MAP, _ENABLE_SET_CONFIG
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.dep import Atom, extended_cp_match
-from portage.exception import InvalidAtom, PermissionDenied
+from portage.exception import InvalidAtom
 from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 	red, yellow
 good = create_color_func("GOOD")
@@ -3021,46 +3025,12 @@ def chk_updated_cfg_files(eroot, config_protect):
 		print(" "+yellow("*")+" man page to learn how to update config files.")
 
 def display_news_notification(root_config, myopts):
-	target_root = root_config.settings['EROOT']
-	trees = root_config.trees
-	settings = trees["vartree"].settings
-	portdb = trees["porttree"].dbapi
-	vardb = trees["vartree"].dbapi
-	NEWS_PATH = os.path.join("metadata", "news")
-	UNREAD_PATH = os.path.join(target_root, NEWS_LIB_PATH, "news")
-	newsReaderDisplay = False
-	if "news" not in settings.features:
+	if "news" not in root_config.settings.features:
 		return
-
-	permission_msgs = set()
-	for repo in portdb.getRepositories():
-		try:
-			unreadItems = checkUpdatedNewsItems(
-				portdb, vardb, NEWS_PATH, UNREAD_PATH, repo, update=True)
-		except PermissionDenied as e:
-			# NOTE: The NewsManager typically handles permission errors by
-			# returning silently, so PermissionDenied won't necessarily be
-			# raised even if we do trigger a permission error above.
-			msg = _unicode_decode("Permission denied: '%s'\n") % (e,)
-			if msg in permission_msgs:
-				pass
-			else:
-				permission_msgs.add(msg)
-				writemsg_level(msg, level=logging.ERROR, noiselevel=-1)
-			unreadItems = None
-
-		if unreadItems:
-			if not newsReaderDisplay:
-				newsReaderDisplay = True
-				print()
-			print(colorize("WARN", " * IMPORTANT:"), end=' ')
-			print("%s news items need reading for repository '%s'." % (unreadItems, repo))
-
-
-	if newsReaderDisplay:
-		print(colorize("WARN", " *"), end=' ')
-		print("Use " + colorize("GOOD", "eselect news") + " to read news items.")
-		print()
+	portdb = root_config.trees["porttree"].dbapi
+	vardb = root_config.trees["vartree"].dbapi
+	news_counts = count_unread_news(portdb, vardb)
+	display_news_notifications(news_counts)
 
 def getgccversion(chost):
 	"""
@@ -3092,29 +3062,3 @@ def getgccversion(chost):
 
 	portage.writemsg(gcc_not_found_error, noiselevel=-1)
 	return "[unavailable]"
-
-def checkUpdatedNewsItems(portdb, vardb, NEWS_PATH, UNREAD_PATH, repo_id,
-	update=False):
-	"""
-	Examines news items in repodir + '/' + NEWS_PATH and attempts to find unread items
-	Returns the number of unread (yet relevent) items.
-
-	@param portdb: a portage tree database
-	@type portdb: pordbapi
-	@param vardb: an installed package database
-	@type vardb: vardbapi
-	@param NEWS_PATH:
-	@type NEWS_PATH:
-	@param UNREAD_PATH:
-	@type UNREAD_PATH:
-	@param repo_id:
-	@type repo_id:
-	@rtype: Integer
-	@returns:
-	1.  The number of unread but relevant news items.
-
-	"""
-	from portage.news import NewsManager
-	manager = NewsManager(portdb, vardb, NEWS_PATH, UNREAD_PATH)
-	return manager.getUnreadItems( repo_id, update=update )
-
