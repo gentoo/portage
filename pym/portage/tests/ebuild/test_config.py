@@ -217,6 +217,7 @@ class ConfigTestCase(TestCase):
 			"new_repo": {
 				"layout.conf":
 					(
+						"profile-formats = pms",
 						"thin-manifests = true",
 						"manifest-hashes = RMD160 SHA1 SHA256 SHA512 WHIRLPOOL",
 					),

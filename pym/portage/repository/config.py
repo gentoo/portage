@@ -676,11 +676,13 @@ def parse_layout_conf(repo_location, repo_name=None):
 	else:
 		raw_formats = set(raw_formats.split())
 		unknown = raw_formats.difference(['pms', 'portage-1'])
-		warnings.warn((_("Repository named '%(repo_name)s' has unsupported "
-			"profiles in use ('profile-format' setting in '%(layout_filename)s;"
-			" please upgrade portage.") %
-			dict(repo_name=repo_name, layout_filename=layout_filename)),
-			DeprecationWarning)
+		if unknown:
+			warnings.warn((_("Repository named '%(repo_name)s' has unsupported "
+				"profiles in use ('profile-format = %(unknown_fmts)s' setting in "
+				"'%(layout_filename)s; please upgrade portage.") %
+				dict(repo_name=repo_name, layout_filename=layout_filename,
+				unknown_fmts=" ".join(unknown))),
+				DeprecationWarning)
 		raw_formats = tuple(raw_formats.intersection(['pms', 'portage-1']))
 	data['profile-formats'] = raw_formats
 
