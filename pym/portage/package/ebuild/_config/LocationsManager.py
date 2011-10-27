@@ -128,7 +128,7 @@ class LocationsManager(object):
 					"'%(repo_name)s' is implicitly using 'portage-1' profile format, but "
 					"the repository profiles are not marked as that format.  This will break "
 					"in the future.  Please either convert the following paths "
-					"to files, or add\nprofile-format = portage-1\nto the "
+					"to files, or add\nprofile-formats = portage-1\nto the "
 					"repositories layout.conf.  Files: '%(files)s'\n")
 					% dict(profile_path=currentPath, repo_name=repo_loc,
 						files=', '.join(offenders))),

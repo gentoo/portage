@@ -678,7 +678,7 @@ def parse_layout_conf(repo_location, repo_name=None):
 		unknown = raw_formats.difference(['pms', 'portage-1'])
 		if unknown:
 			warnings.warn((_("Repository named '%(repo_name)s' has unsupported "
-				"profiles in use ('profile-format = %(unknown_fmts)s' setting in "
+				"profiles in use ('profile-formats = %(unknown_fmts)s' setting in "
 				"'%(layout_filename)s; please upgrade portage.") %
 				dict(repo_name=repo_name, layout_filename=layout_filename,
 				unknown_fmts=" ".join(unknown))),
