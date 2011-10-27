@@ -405,7 +405,7 @@ class config(object):
 			for confs in [make_globals, make_conf, self.configdict["env"]]:
 				known_repos.extend(confs.get("PORTDIR", '').split())
 				known_repos.extend(confs.get("PORTDIR_OVERLAY", '').split())
-			known_repos = set(known_repos)
+			known_repos = frozenset(known_repos)
 
 			locations_manager.load_profiles(known_repos)
 

@@ -48,9 +48,10 @@ class LocationsManager(object):
 		self.config_profile_path = config_profile_path
 
 	def load_profiles(self, known_repository_paths):
-		known_repos = [os.path.abspath(x) for x in set(known_repository_paths)]
+		known_repos = set(os.path.realpath(x) for x in known_repository_paths)
 		# force a trailing '/' for ease of doing startswith checks
-		known_repos = [(x + '/', parse_layout_conf(x)[0]) for x in known_repos]
+		known_repos = tuple((x + '/', parse_layout_conf(x)[0])
+			for x in known_repos)
 
 		if self.config_profile_path is None:
 			self.config_profile_path = \
