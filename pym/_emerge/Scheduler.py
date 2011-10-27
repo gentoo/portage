@@ -915,8 +915,9 @@ class Scheduler(PollScheduler):
 			root_config = x.root_config
 			settings = self.pkgsettings[root_config.root]
 			settings.setcpv(x)
-			tmpdir = tempfile.mkdtemp()
 			tmpdir_orig = settings["PORTAGE_TMPDIR"]
+			build_prefix_orig = os.path.join(tmpdir_orig, 'portage')
+			tmpdir = tempfile.mkdtemp(dir=build_prefix_orig)
 			settings["PORTAGE_TMPDIR"] = tmpdir
 
 			try:

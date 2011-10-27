@@ -29,6 +29,11 @@ class SimpleEmergeTestCase(TestCase):
 
 		install_something = """
 S="${WORKDIR}"
+
+pkg_pretend() {
+	einfo "called pkg_pretend for $CATEGORY/$PF"
+}
+
 src_install() {
 	einfo "installing something..."
 	# TODO: Add prefix support to shell code/helpers, so we
