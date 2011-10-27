@@ -239,7 +239,7 @@ class RepoConfig(object):
 		d = {}
 		for k in self.__slots__:
 			d[k] = getattr(self, k, None)
-		return _unicode_decode(str(d))
+		return _unicode_decode("%s") % (d,)
 
 	if sys.hexversion < 0x3000000:
 
