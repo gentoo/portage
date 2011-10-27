@@ -654,7 +654,7 @@ def parse_layout_conf(repo_location, repo_name=None):
 	data['manifest-hashes'] = manifest_hashes
 
 	data['update-changelog'] = layout_data.get('update-changelog', 'false').lower() \
-		== 'false'
+		== 'true'
 
 	raw_formats = layout_data.get('profile-formats')
 	if raw_formats is None:
