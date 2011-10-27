@@ -108,6 +108,7 @@ class LocationsManager(object):
 	def _addProfile(self, currentPath, known_repos):
 		current_abs_path = os.path.abspath(currentPath)
 		allow_directories = True
+		repo_loc = None
 		compat_mode = False
 		intersecting_repos = [x for x in known_repos if current_abs_path.startswith(x[0])]
 		if intersecting_repos:
@@ -158,8 +159,16 @@ class LocationsManager(object):
 				raise ParseError(
 					_("Empty parent file: '%s'") % parentsFile)
 			for parentPath in parents:
+				abs_parent = parentPath[:1] == os.sep
 				parentPath = normalize_path(os.path.join(
 					currentPath, parentPath))
+
+				if abs_parent or repo_loc is None or \
+					not parentPath.startswith(repo_loc):
+					# It seems that this parent may point outside
+					# of the current repo, so realpath it.
+					parentPath = os.path.realpath(parentPath)
+
 				if os.path.exists(parentPath):
 					self._addProfile(parentPath, known_repos)
 				else:
