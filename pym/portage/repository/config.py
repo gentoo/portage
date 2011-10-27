@@ -397,8 +397,6 @@ class RepoConfigLoader(object):
 				for x in layout_data['profile-formats'])
 			repo.portage1_profiles_compat = layout_data['profile-formats'] == ('portage-1-compat',)
 
-			repo.cache_formats = layout_data['cache-formats']
-
 		#Take aliases into account.
 		new_prepos = {}
 		for repo_name, repo in prepos.items():
