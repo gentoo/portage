@@ -10,6 +10,10 @@ import sys
 import textwrap
 import platform
 import portage
+import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.news:count_unread_news,display_news_notifications',
+)
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
@@ -587,7 +591,7 @@ def parse_opts(tmpcmdline, silent=False):
 	global options, shortmapping
 
 	actions = frozenset([
-		"clean", "config", "depclean", "help",
+		"clean", "check-news", "config", "depclean", "help",
 		"info", "list-sets", "metadata",
 		"prune", "regen",  "search",
 		"sync",  "unmerge", "version",
@@ -1725,6 +1729,15 @@ def emerge_main(args=None):
 	root_config = trees[settings['EROOT']]['root_config']
 	if myaction == "list-sets":
 		writemsg_stdout("".join("%s\n" % s for s in sorted(root_config.sets)))
+		return os.EX_OK
+	elif myaction == "check-news":
+		news_counts = count_unread_news(
+			root_config.trees["porttree"].dbapi,
+			root_config.trees["vartree"].dbapi)
+		if list(filter(None, news_counts.values())):
+			display_news_notifications(news_counts)
+		elif "--quiet" not in myopts:
+			print("", colorize("GOOD", "*"), "No news items were found.")
 		return os.EX_OK
 
 	ensure_required_sets(trees)

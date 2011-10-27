@@ -177,6 +177,8 @@ pkg_info() {
 			emerge_cmd + ("--version",),
 			emerge_cmd + ("--info",),
 			emerge_cmd + ("--info", "--verbose"),
+			emerge_cmd + ("--list-sets",),
+			emerge_cmd + ("--check-news",),
 			rm_cmd + ("-rf", cachedir),
 			rm_cmd + ("-rf", cachedir_pregen),
 			emerge_cmd + ("--regen",),
