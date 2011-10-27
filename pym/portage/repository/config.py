@@ -21,6 +21,7 @@ from portage.const import (MANIFEST2_HASH_FUNCTIONS, MANIFEST2_REQUIRED_HASH,
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.util import normalize_path, writemsg, writemsg_level, shlex_split
 from portage.localization import _
+from portage import _unicode_decode
 from portage import _unicode_encode
 from portage import _encodings
 from portage import manifest
@@ -233,6 +234,19 @@ class RepoConfig(object):
 				" ".join(self.eclass_overrides))
 		repo_msg.append("")
 		return "\n".join(repo_msg)
+
+	def __str__(self):
+		d = {}
+		for k in self.__slots__:
+			d[k] = getattr(self, k, None)
+		return _unicode_decode(str(d))
+
+	if sys.hexversion < 0x3000000:
+
+		__unicode__ = __str__
+
+		def __str__(self):
+			return _unicode_encode(self.__unicode__())
 
 class RepoConfigLoader(object):
 	"""Loads and store config of several repositories, loaded from PORTDIR_OVERLAY or repos.conf"""

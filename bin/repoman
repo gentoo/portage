@@ -654,6 +654,9 @@ if vcs is None:
 # TODO: shouldn't this just be switched on the repo, iso the VCS?
 check_changelog = options.echangelog not in ('y', 'force') and vcs in ('cvs', 'svn')
 
+logging.debug("repo config: %s" % (repo_config,))
+logging.debug("options: %s" % (options,))
+
 # Generate an appropriate PORTDIR_OVERLAY value for passing into the
 # profile-specific config constructor calls.
 env = os.environ.copy()
