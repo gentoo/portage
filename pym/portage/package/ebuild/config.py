@@ -426,6 +426,7 @@ class config(object):
 				self.prevmaskdict.setdefault(x.cp, []).append(x)
 
 
+			mygcfg = {}
 			if self.profiles:
 				mygcfg_dlists = [getconfig(os.path.join(x, "make.defaults"),
 					expand=expand_map) for x in self.profiles]
