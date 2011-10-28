@@ -326,7 +326,14 @@ class RepoConfigLoader(object):
 	def _parse(paths, prepos, ignored_map, ignored_location_map):
 		"""Parse files in paths to load config"""
 		parser = SafeConfigParser()
-		# use readfp in order to control decoding of unicode
+
+		# use read_file/readfp in order to control decoding of unicode
+		try:
+			# Python >=3.2
+			read_file = parser.read_file
+		except AttributeError:
+			read_file = parser.readfp
+
 		for p in paths:
 			f = None
 			try:
@@ -338,7 +345,7 @@ class RepoConfigLoader(object):
 				pass
 			else:
 				try:
-					parser.readfp(f)
+					read_file(f)
 				except ParsingError as e:
 					writemsg(_unicode_decode(
 						_("!!! Error while reading repo config file: %s\n")
