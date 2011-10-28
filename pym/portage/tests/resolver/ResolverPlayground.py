@@ -17,7 +17,7 @@ from portage.package.ebuild.config import config
 from portage.package.ebuild.digestgen import digestgen
 from portage._sets import load_default_config
 from portage._sets.base import InternalPackageSet
-from portage.util import ensure_dirs
+from portage.util import ensure_dirs, normalize_path
 from portage.versions import catsplit
 
 import _emerge
@@ -65,9 +65,8 @@ class ResolverPlayground(object):
 		profile: settings defined by the profile.
 		"""
 		self.debug = debug
-		self.root = "/"
-		self.eprefix = tempfile.mkdtemp()
-		self.eroot = self.root + self.eprefix.lstrip(os.sep) + os.sep
+		self.eprefix = normalize_path(tempfile.mkdtemp())
+		self.eroot = self.eprefix + os.sep
 		self.distdir = os.path.join(self.eroot, "var", "portage", "distfiles")
 		self.portdir = os.path.join(self.eroot, "usr/portage")
 		self.vdbdir = os.path.join(self.eroot, "var/db/pkg")

@@ -138,7 +138,6 @@ pkg_info() {
 		eprefix = settings["EPREFIX"]
 		eroot = settings["EROOT"]
 		trees = playground.trees
-		root = playground.root
 		portdb = trees[eroot]["porttree"].dbapi
 		portdir = settings["PORTDIR"]
 		var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
