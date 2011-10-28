@@ -5,6 +5,8 @@ __all__ = (
 	'MaskManager',
 )
 
+import warnings
+
 from portage import os
 from portage.dep import ExtendedAtomDict, match_from_list, _repo_separator, _slot_separator
 from portage.localization import _
@@ -40,14 +42,13 @@ class MaskManager(object):
 						recursive=repo_config.portage1_profiles,
 						remember_source_file=True, verify_eapi=True)
 				if repo_config.portage1_profiles_compat and os.path.isdir(path):
-					writemsg((_("Repository '%(repo_name)s' is implicitly using "
+					warnings.warn(_("Repository '%(repo_name)s' is implicitly using "
 						"'portage-1' profile format in its profiles/package.mask, but "
 						"the repository profiles are not marked as that format.  This will break "
 						"in the future.  Please either convert the following paths "
 						"to files, or add\nprofile-format = portage-1\nto the "
 						"repositories layout.conf.\n")
-						% dict(repo_name=repo_config.name)),
-						noiselevel=-1)
+						% dict(repo_name=repo_config.name))
 
 			return pmask_cache[loc]
 
