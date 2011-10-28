@@ -385,6 +385,8 @@ class RepoConfigLoader(object):
 			layout_filename = os.path.join(repo.location, "metadata", "layout.conf")
 			layout_data, layout_errors = parse_layout_conf(repo.location, repo.name)
 
+			# layout.conf masters may be overridden here if we have a masters
+			# setting from the user's repos.conf
 			if repo.masters is None:
 				repo.masters = layout_data['masters']
 
