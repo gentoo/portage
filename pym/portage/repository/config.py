@@ -161,23 +161,15 @@ class RepoConfig(object):
 
 	def update(self, new_repo):
 		"""Update repository with options in another RepoConfig"""
-		if new_repo.aliases is not None:
-			self.aliases = new_repo.aliases
-		if new_repo.eclass_overrides is not None:
-			self.eclass_overrides = new_repo.eclass_overrides
-		if new_repo.masters is not None:
-			self.masters = new_repo.masters
+
+		for k in ('aliases', 'eclass_overrides', 'location', 'masters',
+			'name', 'priority', 'sync', 'user_location'):
+			v = getattr(new_repo, k, None)
+			if v is not None:
+				setattr(self, k, v)
+
 		if new_repo.name is not None:
-			self.name = new_repo.name
 			self.missing_repo_name = new_repo.missing_repo_name
-		if new_repo.user_location is not None:
-			self.user_location = new_repo.user_location
-		if new_repo.location is not None:
-			self.location = new_repo.location
-		if new_repo.priority is not None:
-			self.priority = new_repo.priority
-		if new_repo.sync is not None:
-			self.sync = new_repo.sync
 
 	@staticmethod
 	def _read_valid_repo_name(repo_path):
