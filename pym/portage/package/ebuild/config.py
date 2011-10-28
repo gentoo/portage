@@ -399,7 +399,6 @@ class config(object):
 			self.configdict["globals"]=self.configlist[-1]
 
 			self.make_defaults_use = []
-			self.mygcfg = {}
 
 			known_repos = []
 			for confs in [make_globals, make_conf, self.configdict["env"]]:
@@ -414,10 +413,9 @@ class config(object):
 			self.profile_path = locations_manager.profile_path
 			self.user_profile_dir = locations_manager.user_profile_dir
 
-			self.packages_list = [grabfile_package(os.path.join(x, "packages"), verify_eapi=True) for x in self.profiles]
-			self.packages      = tuple(stack_lists(self.packages_list, incremental=1))
-			del self.packages_list
-			#self.packages = grab_stacked("packages", self.profiles, grabfile, incremental_lines=1)
+			packages_list = [grabfile_package(os.path.join(x, "packages"),
+				verify_eapi=True) for x in self.profiles]
+			self.packages = tuple(stack_lists(packages_list, incremental=1))
 
 			# revmaskdict
 			self.prevmaskdict={}
@@ -432,19 +430,19 @@ class config(object):
 				mygcfg_dlists = [getconfig(os.path.join(x, "make.defaults"),
 					expand=expand_map) for x in self.profiles]
 				self._make_defaults = mygcfg_dlists
-				self.mygcfg = stack_dicts(mygcfg_dlists,
+				mygcfg = stack_dicts(mygcfg_dlists,
 					incrementals=self.incrementals)
-				if self.mygcfg is None:
-					self.mygcfg = {}
-			self.configlist.append(self.mygcfg)
+				if mygcfg is None:
+					mygcfg = {}
+			self.configlist.append(mygcfg)
 			self.configdict["defaults"]=self.configlist[-1]
 
-			self.mygcfg = getconfig(
+			mygcfg = getconfig(
 				os.path.join(config_root, MAKE_CONF_FILE),
 				tolerant=tolerant, allow_sourcing=True,
 				expand=expand_map) or {}
 
-			self.mygcfg.update(getconfig(
+			mygcfg.update(getconfig(
 				os.path.join(abs_user_config, 'make.conf'),
 				tolerant=tolerant, allow_sourcing=True,
 				expand=expand_map) or {})
@@ -469,9 +467,9 @@ class config(object):
 				env_d.pop(k, None)
 
 			for k in profile_only_variables:
-				self.mygcfg.pop(k, None)
+				mygcfg.pop(k, None)
 
-			self.configlist.append(self.mygcfg)
+			self.configlist.append(mygcfg)
 			self.configdict["conf"]=self.configlist[-1]
 
 			self.configlist.append(LazyItemsDict())
@@ -759,6 +757,11 @@ class config(object):
 
 		if mycpv:
 			self.setcpv(mycpv)
+
+	@property
+	def mygcfg(self):
+		warnings.warn("portage.config.mygcfg is deprecated", stacklevel=3)
+		return {}
 
 	def _validate_commands(self):
 		for k in special_env_vars.validate_commands:
