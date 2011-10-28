@@ -19,7 +19,8 @@ from portage import os
 from portage.const import (MANIFEST2_HASH_FUNCTIONS, MANIFEST2_REQUIRED_HASH,
 	REPO_NAME_LOC, USER_CONFIG_PATH)
 from portage.env.loaders import KeyValuePairFileLoader
-from portage.util import normalize_path, writemsg, writemsg_level, shlex_split
+from portage.util import (normalize_path, writemsg, writemsg_level,
+	shlex_split, stack_lists)
 from portage.localization import _
 from portage import _unicode_decode
 from portage import _unicode_encode
@@ -390,17 +391,13 @@ class RepoConfigLoader(object):
 			if repo.masters is None:
 				repo.masters = layout_data['masters']
 
-			aliases = layout_data.get('aliases')
-			if aliases and aliases.strip():
-				aliases = aliases.split()
-			else:
-				aliases = None
-
 			if layout_data['aliases']:
 				aliases = repo.aliases
 				if aliases is None:
 					aliases = ()
-				repo.aliases = tuple(aliases) + layout_data['aliases']
+				# repos.conf aliases come after layout.conf aliases, giving
+				# them the ability to do incremental overrrides
+				repo.aliases = layout_data['aliases'] + tuple(aliases)
 
 			for value in ('sign-manifest', 'thin-manifest', 'allow-missing-manifest',
 				'create-manifest', 'disable-manifest', 'cache-formats', 'manifest-hashes',
@@ -417,7 +414,8 @@ class RepoConfigLoader(object):
 			names = set()
 			names.add(repo_name)
 			if repo.aliases:
-				names.update(repo.aliases)
+				aliases = stack_lists([repo.aliases], incremental=True)
+				names.update(aliases)
 
 			for name in names:
 				if name in new_prepos:

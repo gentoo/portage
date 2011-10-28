@@ -708,8 +708,9 @@ eclass\-overrides = java\-overlay java\-experimental
 # disable all eclass overrides for ebuilds from the gentoo repository
 eclass\-overrides =
 # when processing metadata/layout.conf from other repositories, substitute
-# 'gentoo' in place of references to repositories named 'foo' and 'bar'
-aliases = foo bar
+# 'gentoo' in place of references to repositories named 'foo' and 'bar',
+# and discard the 'baz' alias contained in gentoo's layout.conf
+aliases = foo bar -baz
 
 [kde-testing]
 # override the metadata/layout.conf masters setting from the kde-testing repo
