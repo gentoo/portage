@@ -31,6 +31,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util._dyn_libs.LinkageMapELF:LinkageMapELF@LinkageMap',
 	'portage.versions:best,catpkgsplit,catsplit,cpv_getkey,pkgcmp,' + \
 		'_pkgsplit@pkgsplit',
+	'tarfile',
 )
 
 from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, \
@@ -61,10 +62,12 @@ from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 
 import errno
 import gc
+import grp
 import io
 from itertools import chain
 import logging
 import os as _os
+import pwd
 import re
 import shutil
 import stat
@@ -4501,6 +4504,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 			os = portage.os
 			encoding = _encodings['fs']
 
+	tar.encoding = encoding
 	root = normalize_path(root).rstrip(os.path.sep) + os.path.sep
 	id_strings = {}
 	maxval = len(contents)
@@ -4534,7 +4538,42 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 			# recorded as a real directory in the tar file to ensure that tar
 			# can properly extract it's children.
 			live_path = os.path.realpath(live_path)
-		tarinfo = tar.gettarinfo(live_path, arcname)
+			lst = os.lstat(live_path)
+
+		# Since os.lstat() inside TarFile.gettarinfo() can trigger a
+		# UnicodeEncodeError when python has something other than utf_8
+		# return from sys.getfilesystemencoding() (as in bug #388773),
+		# we implement the needed functionality here, using the result
+		# of our successful lstat call. An alternative to this would be
+		# to pass in the fileobj argument to TarFile.gettarinfo(), so
+		# that it could use fstat instead of lstat. However, that would
+		# have the unwanted effect of dereferencing symlinks.
+
+		tarinfo = tar.tarinfo()
+		tarinfo.name = arcname
+		tarinfo.mode = lst.st_mode
+		tarinfo.uid = lst.st_uid
+		tarinfo.gid = lst.st_gid
+		tarinfo.size = lst.st_size
+		tarinfo.mtime = lst.st_mtime
+		tarinfo.linkname = ""
+		if stat.S_ISREG(lst.st_mode):
+			tarinfo.type = tarfile.REGTYPE
+		elif stat.S_ISDIR(lst.st_mode):
+			tarinfo.type = tarfile.DIRTYPE
+		elif stat.S_ISLNK(lst.st_mode):
+			tarinfo.type = tarfile.SYMTYPE
+			tarinfo.linkname = os.readlink(live_path)
+		else:
+			continue
+		try:
+			tarinfo.uname = pwd.getpwuid(tarinfo.uid)[0]
+		except KeyError:
+			pass
+		try:
+			tarinfo.gname = grp.getgrgid(tarinfo.gid)[0]
+		except KeyError:
+			pass
 
 		if stat.S_ISREG(lst.st_mode):
 			if protect and protect(path):
