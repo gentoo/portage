@@ -210,7 +210,6 @@ class config(object):
 			self.module_priority = clone.module_priority
 			self.profile_path = clone.profile_path
 			self.profiles = clone.profiles
-			self.profiles_complex = clone.profiles_complex
 			self.packages = clone.packages
 			self.repositories = clone.repositories
 			self._iuse_implicit_match = clone._iuse_implicit_match
@@ -408,8 +407,8 @@ class config(object):
 
 			locations_manager.load_profiles(known_repos)
 
+			profiles_complex = locations_manager.profiles_complex
 			self.profiles = locations_manager.profiles
-			self.profiles_complex = locations_manager.profiles_complex
 			self.profile_path = locations_manager.profile_path
 			self.user_profile_dir = locations_manager.user_profile_dir
 
@@ -556,11 +555,11 @@ class config(object):
 				self._repo_make_defaults[repo.name] = d
 
 			#Read package.keywords and package.accept_keywords.
-			self._keywords_manager = KeywordsManager(self.profiles_complex, abs_user_config, \
+			self._keywords_manager = KeywordsManager(profiles_complex, abs_user_config, \
 				local_config, global_accept_keywords=self.configdict["defaults"].get("ACCEPT_KEYWORDS", ""))
 
 			#Read all USE related files from profiles and optionally from user config.
-			self._use_manager = UseManager(self.repositories, self.profiles_complex, abs_user_config, user_config=local_config)
+			self._use_manager = UseManager(self.repositories, profiles_complex, abs_user_config, user_config=local_config)
 			#Initialize all USE related variables we track ourselves.
 			self.usemask = self._use_manager.getUseMask()
 			self.useforce = self._use_manager.getUseForce()
@@ -577,7 +576,7 @@ class config(object):
 					self.configdict["conf"].get("ACCEPT_LICENSE", ""))
 
 			#Read package.mask and package.unmask from profiles and optionally from user config
-			self._mask_manager = MaskManager(self.repositories, self.profiles_complex,
+			self._mask_manager = MaskManager(self.repositories, profiles_complex,
 				abs_user_config, user_config=local_config,
 				strict_umatched_removal=_unmatched_removal)
 
@@ -639,7 +638,7 @@ class config(object):
 			pkgprovidedlines = [grabfile(
 				os.path.join(x.location, "package.provided"),
 				recursive=x.portage1_directories)
-				for x in self.profiles_complex]
+				for x in profiles_complex]
 			pkgprovidedlines = stack_lists(pkgprovidedlines, incremental=1)
 			has_invalid_data = False
 			for x in range(len(pkgprovidedlines)-1, -1, -1):
