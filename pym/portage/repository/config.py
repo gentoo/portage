@@ -622,8 +622,11 @@ def parse_layout_conf(repo_location, repo_name=None):
 
 	data = {}
 
-	# allow None to slip through; later code spots that as an indication
-	# that an explicit nulling of the overlaying is desired.
+	# None indicates abscence of a masters setting, which later code uses
+	# to trigger a backward compatibility fallback that sets an implicit
+	# master. In order to avoid this fallback behavior, layout.conf can
+	# explicitly set masters to an empty value, which will result in an
+	# empty tuple here instead of None.
 	masters = layout_data.get('masters')
 	if masters is not None:
 		masters = tuple(masters.split())
