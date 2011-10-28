@@ -399,9 +399,9 @@ class RepoConfigLoader(object):
 				# them the ability to do incremental overrrides
 				repo.aliases = layout_data['aliases'] + tuple(aliases)
 
-			for value in ('sign-manifest', 'thin-manifest', 'allow-missing-manifest',
-				'create-manifest', 'disable-manifest', 'cache-formats', 'manifest-hashes',
-				'update-changelog'):
+			for value in ('allow-missing-manifest', 'cache-formats',
+				'create-manifest', 'disable-manifest', 'manifest-hashes',
+				'sign-manifest', 'thin-manifest', 'update-changelog'):
 				setattr(repo, value.lower().replace("-", "_"), layout_data[value])
 
 			repo.portage1_profiles = any(x.startswith("portage-1") \
