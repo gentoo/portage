@@ -574,9 +574,9 @@ repoman_settings['PORTDIR_OVERLAY'] = "%s %s" % \
 repoman_settings = portage.config(local_config=False, _eprefix=eprefix,
 	env=dict(os.environ, PORTDIR_OVERLAY=repoman_settings['PORTDIR_OVERLAY']))
 
-root = '/'
+root = repoman_settings['EROOT']
 trees = {
-	root : {'porttree' : portage.portagetree(root, settings=repoman_settings)}
+	root : {'porttree' : portage.portagetree(settings=repoman_settings)}
 }
 portdb = trees[root]['porttree'].dbapi
 
@@ -2021,7 +2021,7 @@ for x in effective_scanlist:
 					xcache.update(shared_xmatch_caches)
 					arch_xmatch_caches[xmatch_cache_key] = xcache
 
-				trees["/"]["porttree"].settings = dep_settings
+				trees[root]["porttree"].settings = dep_settings
 				portdb.settings = dep_settings
 				portdb.xcache = xcache
 				# for package.use.mask support inside dep_check

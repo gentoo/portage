@@ -423,7 +423,7 @@ class VdbKeyHandler(object):
 	name = staticmethod(name)
 
 	def __init__(self):
-		self.list = portage.db["/"]["vartree"].dbapi.cpv_all()
+		self.list = portage.db[portage.settings["EROOT"]]["vartree"].dbapi.cpv_all()
 		self.missing = []
 		self.keys = ["HOMEPAGE", "SRC_URI", "KEYWORDS", "DESCRIPTION"]
 		
