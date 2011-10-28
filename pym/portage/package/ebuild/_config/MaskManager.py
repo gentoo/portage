@@ -46,7 +46,7 @@ class MaskManager(object):
 						"'portage-1' profile format in its profiles/package.mask, but "
 						"the repository profiles are not marked as that format.  This will break "
 						"in the future.  Please either convert the following paths "
-						"to files, or add\nprofile-format = portage-1\nto the "
+						"to files, or add\nprofile-formats = portage-1\nto the "
 						"repositories layout.conf.\n")
 						% dict(repo_name=repo_config.name))
 
