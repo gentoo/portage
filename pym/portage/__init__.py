@@ -480,21 +480,26 @@ def portageexit():
 		close_portdbapi_caches()
 
 class _trees_dict(dict):
-	def __init__(self):
-		super(dict, self).__init__()
+	def __init__(self, *pargs, **kargs):
+		dict.__init__(self, *pargs, **kargs)
 		self._running_eroot = None
 		self._target_eroot = None
 
 def create_trees(config_root=None, target_root=None, trees=None, env=None):
-	if trees is None:
-		trees = _trees_dict()
-	else:
+	if trees is not None:
 		# clean up any existing portdbapi instances
 		for myroot in trees:
 			portdb = trees[myroot]["porttree"].dbapi
 			portdb.close_caches()
 			portdbapi.portdbapi_instances.remove(portdb)
 			del trees[myroot]["porttree"], myroot, portdb
+
+	if trees is None:
+		trees = _trees_dict()
+	elif not isinstance(trees, _trees_dict):
+		# caller passed a normal dict or something,
+		# but we need a _trees_dict instance
+		trees = _trees_dict(trees)
 
 	if env is None:
 		env = os.environ
