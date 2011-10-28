@@ -46,7 +46,7 @@ class MaskManager(object):
 						"in the future.  Please either convert the following paths "
 						"to files, or add\nprofile-format = portage-1\nto the "
 						"repositories layout.conf.\n")
-						% dict(repo_name=repo.name)),
+						% dict(repo_name=repo_config.name)),
 						noiselevel=-1)
 
 			return pmask_cache[loc]
