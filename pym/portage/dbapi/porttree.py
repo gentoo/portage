@@ -1097,7 +1097,7 @@ class portagetree(object):
 			"portage.dbapi.porttree.portagetree" + \
 			" is deprecated. Use " + \
 			"settings['ROOT'] instead.",
-			DeprecationWarning, stacklevel=2)
+			DeprecationWarning, stacklevel=3)
 		return self.settings['ROOT']
 
 	def dep_bestmatch(self,mydep):

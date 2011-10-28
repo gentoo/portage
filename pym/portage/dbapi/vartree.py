@@ -180,7 +180,7 @@ class vardbapi(dbapi):
 			"portage.dbapi.vartree.vardbapi"
 			" is deprecated. Use "
 			"settings['ROOT'] instead.",
-			DeprecationWarning, stacklevel=2)
+			DeprecationWarning, stacklevel=3)
 		return self.settings['ROOT']
 
 	def getpath(self, mykey, filename=None):
@@ -1183,7 +1183,7 @@ class vartree(object):
 			"portage.dbapi.vartree.vartree"
 			" is deprecated. Use "
 			"settings['ROOT'] instead.",
-			DeprecationWarning, stacklevel=2)
+			DeprecationWarning, stacklevel=3)
 		return self.settings['ROOT']
 
 	def getpath(self, mykey, filename=None):

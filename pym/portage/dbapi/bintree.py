@@ -349,7 +349,7 @@ class binarytree(object):
 			"portage.dbapi.bintree.binarytree"
 			" is deprecated. Use "
 			"settings['ROOT'] instead.",
-			DeprecationWarning, stacklevel=2)
+			DeprecationWarning, stacklevel=3)
 		return self.settings['ROOT']
 
 	def move_ent(self, mylist, repo_match=None):
