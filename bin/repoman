@@ -156,7 +156,7 @@ def ParseArgs(argv, qahelp):
 	  (opts, args), just like a call to parser.parse_args()
 	"""
 
-	if argv and sys.hexversion < 0x3000000 and not isinstance(argv[0], unicode):
+	if argv and isinstance(argv[0], bytes):
 		argv = [portage._unicode_decode(x) for x in argv]
 
 	modes = {

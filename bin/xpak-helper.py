@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright 2009 Gentoo Foundation
+# Copyright 2009-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import optparse
@@ -36,7 +36,7 @@ def command_recompose(args):
 
 def main(argv):
 
-	if argv and sys.hexversion < 0x3000000 and not isinstance(argv[0], unicode):
+	if argv and isinstance(argv[0], bytes):
 		for i, x in enumerate(argv):
 			argv[i] = portage._unicode_decode(x, errors='strict')
 
