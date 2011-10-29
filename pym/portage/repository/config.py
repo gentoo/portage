@@ -124,32 +124,40 @@ class RepoConfig(object):
 		self.portage1_profiles = True
 		self.portage1_profiles_compat = False
 
-	def get_pregenerated_cache(self, auxdbkeys, readonly=True, force=False):
+	def iter_pregenerated_caches(self, auxdbkeys, readonly=True, force=False):
 		"""
-		Reads layout.conf cache-formats from left to right and returns a
-		cache instance for the first supported type that's found. If no
-		cache-formats are specified in layout.conf, 'pms' type is assumed
-		if the metadata/cache directory exists or force is True.
+		Reads layout.conf cache-formats from left to right and yields cache
+		instances for each supported type that's found. If no cache-formats
+		are specified in layout.conf, 'pms' type is assumed if the
+		metadata/cache directory exists or force is True.
 		"""
 		formats = self.cache_formats
 		if not formats:
 			if not force:
-				return None
+				return
 			formats = ('pms',)
 
 		for fmt in formats:
+			name = None
 			if fmt == 'pms':
 				from portage.cache.metadata import database
 				name = 'metadata/cache'
-				break
 			elif fmt == 'md5-dict':
 				from portage.cache.flat_hash import md5_database as database
 				name = 'metadata/md5-cache'
-				break
-		else:
-			return None
-		return database(self.location, name,
-			auxdbkeys, readonly=readonly)
+
+			if name is not None:
+				yield database(self.location, name,
+					auxdbkeys, readonly=readonly)
+
+	def get_pregenerated_cache(self, auxdbkeys, readonly=True, force=False):
+		"""
+		Returns the first cache instance yielded from
+		iter_pregenerated_caches(), or None if no cache is available or none
+		of the available formats are supported.
+		"""
+		return next(self.iter_pregenerated_caches(
+			auxdbkeys, readonly=readonly, force=force), None)
 
 	def load_manifest(self, *args, **kwds):
 		kwds['thin'] = self.thin_manifest
