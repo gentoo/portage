@@ -5,6 +5,7 @@ from __future__ import print_function
 
 import errno
 import logging
+import operator
 import platform
 import pwd
 import random
@@ -34,6 +35,7 @@ from portage.const import _ENABLE_DYN_LINK_MAP, _ENABLE_SET_CONFIG
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.dep import Atom, extended_cp_match
+from portage.eclass_cache import hashed_path
 from portage.exception import InvalidAtom
 from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 	red, yellow
@@ -1719,12 +1721,24 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 
 	for cp in cp_all:
 		for tree_data in porttrees_data:
+
+			src_chf = tree_data.src_db.validation_chf
+			src_chf_key = '_%s_' % src_chf
+			dest_chf = tree_data.dest_db.validation_chf
+			dest_chf_key = '_%s_' % dest_chf
+			dest_chf_getter = operator.attrgetter(dest_chf)
+
 			for cpv in portdb.cp_list(cp, mytree=tree_data.path):
 				tree_data.valid_nodes.add(cpv)
 				try:
 					src = tree_data.src_db[cpv]
 				except (CacheError, KeyError):
 					continue
+
+				ebuild_location = portdb.findname(cpv, mytree=tree_data.path)
+				if ebuild_location is None:
+					continue
+				ebuild_hash = hashed_path(ebuild_location)
 
 				eapi = src.get('EAPI')
 				if not eapi:
@@ -1745,8 +1759,17 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 					if d is not None and d.get('EAPI') in ('', '0'):
 						del d['EAPI']
 
+				if src_chf != 'mtime':
+					# src may contain an irrelevant _mtime_ which corresponds
+					# to the time that the cache entry was written
+					src.pop('_mtime_', None)
+
+				if src_chf != dest_chf:
+					# populate src entry with dest_chf_key
+					src[dest_chf_key] = dest_chf_getter(ebuild_hash)
+
 				if dest is not None:
-					if not (dest['_mtime_'] == src['_mtime_'] and \
+					if not (dest[dest_chf_key] == src[dest_chf_key] and \
 						tree_data.eclass_db.validate_and_rewrite_cache(
 							dest['_eclasses_'], tree_data.dest_db.validation_chf,
 							tree_data.dest_db.store_eclass_paths) is not None and \
@@ -1756,8 +1779,13 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 						# We don't want to skip the write unless we're really
 						# sure that the existing cache is identical, so don't
 						# trust _mtime_ and _eclasses_ alone.
-						for k in set(chain(src, dest)).difference(
-							('_mtime_', '_eclasses_')):
+						keys = set()
+						keys.update(src)
+						keys.update(dest)
+						keys.discard('_eclasses_')
+						keys.discard('_mtime_')
+						keys.discard(src_chf_key)
+						for k in keys:
 							if dest.get(k, '') != src.get(k, ''):
 								dest = None
 								break
@@ -1804,7 +1832,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 				if not eapi_supported:
 					src = {
 						'EAPI'       : '-' + eapi,
-						'_mtime_'    : src['_mtime_'],
+						dest_chf_key : src[dest_chf_key],
 						'_eclasses_' : src['_eclasses_'],
 					}
 
