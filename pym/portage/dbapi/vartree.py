@@ -4560,11 +4560,20 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 		tarinfo.mode = lst.st_mode
 		tarinfo.uid = lst.st_uid
 		tarinfo.gid = lst.st_gid
-		tarinfo.size = lst.st_size
+		tarinfo.size = 0
 		tarinfo.mtime = lst.st_mtime
 		tarinfo.linkname = ""
 		if stat.S_ISREG(lst.st_mode):
-			tarinfo.type = tarfile.REGTYPE
+			inode = (lst.st_ino, lst.st_dev)
+			if (lst.st_nlink > 1 and
+				inode in tar.inodes and
+				arcname != tar.inodes[inode]):
+				tarinfo.type = tarfile.LNKTYPE
+				tarinfo.linkname = tar.inodes[inode]
+			else:
+				tar.inodes[inode] = arcname
+				tarinfo.type = tarfile.REGTYPE
+				tarinfo.size = lst.st_size
 		elif stat.S_ISDIR(lst.st_mode):
 			tarinfo.type = tarfile.DIRTYPE
 		elif stat.S_ISLNK(lst.st_mode):
