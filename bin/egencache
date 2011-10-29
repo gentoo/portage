@@ -272,6 +272,7 @@ class GenCache(object):
 							"%s writing target: %s\n" % (cpv, e),
 							level=logging.ERROR, noiselevel=-1)
 					else:
+						ebuild_hash.mtime = max_mtime
 						metadata['_mtime_'] = max_mtime
 						trg_cache[cpv] = metadata
 						self._portdb.auxdb[repo_path][cpv] = metadata
