@@ -1163,7 +1163,7 @@ class vardbapi(dbapi):
 
 class vartree(object):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"
-	def __init__(self, root=None, virtual=None, categories=None,
+	def __init__(self, root=None, virtual=DeprecationWarning, categories=None,
 		settings=None):
 
 		if settings is None:
@@ -1174,6 +1174,12 @@ class vartree(object):
 				"portage.dbapi.vartree.vartree"
 				" constructor is now unused. Use "
 				"settings['ROOT'] instead.",
+				DeprecationWarning, stacklevel=2)
+
+		if virtual is not DeprecationWarning:
+			warnings.warn("The 'virtual' parameter of the "
+				"portage.dbapi.vartree.vartree"
+				" constructor is unused",
 				DeprecationWarning, stacklevel=2)
 
 		self.settings = settings

@@ -1064,7 +1064,7 @@ def close_portdbapi_caches():
 portage.process.atexit_register(portage.portageexit)
 
 class portagetree(object):
-	def __init__(self, root=None, virtual=None, settings=None):
+	def __init__(self, root=None, virtual=DeprecationWarning, settings=None):
 		"""
 		Constructor for a PortageTree
 		
@@ -1087,8 +1087,14 @@ class portagetree(object):
 				"settings['ROOT'] instead.",
 				DeprecationWarning, stacklevel=2)
 
+		if virtual is not DeprecationWarning:
+			warnings.warn("The 'virtual' parameter of the "
+				"portage.dbapi.porttree.portagetree"
+				" constructor is unused",
+				DeprecationWarning, stacklevel=2)
+
 		self.portroot = settings["PORTDIR"]
-		self.virtual = virtual
+		self.__virtual = virtual
 		self.dbapi = portdbapi(mysettings=settings)
 
 	@property
@@ -1099,6 +1105,14 @@ class portagetree(object):
 			"settings['ROOT'] instead.",
 			DeprecationWarning, stacklevel=3)
 		return self.settings['ROOT']
+
+	@property
+	def virtual(self):
+		warnings.warn("The 'virtual' attribute of " + \
+			"portage.dbapi.porttree.portagetree" + \
+			" is deprecated.",
+			DeprecationWarning, stacklevel=3)
+		return self.__virtual
 
 	def dep_bestmatch(self,mydep):
 		"compatibility method"
