@@ -72,7 +72,6 @@ class database(flat_hash.database):
 				except KeyError as e:
 					# INHERITED contains a non-existent eclass.
 					raise cache_errors.CacheCorruption(cpv, e)
-				del d["INHERITED"]
 			else:
 				d["_eclasses_"] = {}
 		elif isinstance(d["_eclasses_"], basestring):
