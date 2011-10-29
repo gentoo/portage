@@ -864,6 +864,8 @@ def egencache_main(args):
 
 		# Limit ebuilds to the specified repo.
 		portdb.porttrees = [repo_path]
+	else:
+		portdb.porttrees = [portdb.porttree_root]
 
 	ret = [os.EX_OK]
 
