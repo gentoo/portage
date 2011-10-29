@@ -1145,7 +1145,6 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 		for node in clean_set:
 			graph.add(node, None)
-			mydeps = []
 			for dep_type in dep_keys:
 				depstr = node.metadata[dep_type]
 				if not depstr:
@@ -1434,8 +1433,6 @@ def action_info(settings, trees, myopts, myfiles):
 		append("%s %s" % \
 			((cp + ":").ljust(cp_max_len + 1), versions))
 
-	libtool_vers = ",".join(vardb.match("sys-devel/libtool"))
-
 	repos = portdb.settings.repositories
 	if "--verbose" in myopts:
 		append("Repositories:\n")
@@ -1472,9 +1469,6 @@ def action_info(settings, trees, myopts, myfiles):
 	myvars = portage.util.unique_array(myvars)
 	use_expand = settings.get('USE_EXPAND', '').split()
 	use_expand.sort()
-	use_expand_hidden = set(
-		settings.get('USE_EXPAND_HIDDEN', '').upper().split())
-	alphabetical_use = '--alphabetical' in myopts
 	unset_vars = []
 	myvars.sort()
 	for k in myvars:
@@ -1551,7 +1545,6 @@ def action_info(settings, trees, myopts, myfiles):
 		mydesiredvars = [ 'CHOST', 'CFLAGS', 'CXXFLAGS', 'LDFLAGS' ]
 		auxkeys = mydesiredvars + list(vardb._aux_cache_keys)
 		auxkeys.append('DEFINED_PHASES')
-		global_vals = {}
 		pkgsettings = portage.config(clone=settings)
 
 		# Loop through each package
@@ -1723,7 +1716,6 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 		for tree_data in porttrees_data:
 
 			src_chf = tree_data.src_db.validation_chf
-			src_chf_key = '_%s_' % src_chf
 			dest_chf = tree_data.dest_db.validation_chf
 			dest_chf_key = '_%s_' % dest_chf
 			dest_chf_getter = operator.attrgetter(dest_chf)
@@ -1874,7 +1866,7 @@ def action_regen(settings, portdb, max_jobs, max_load):
 	#regenerate cache entries
 	try:
 		os.close(sys.stdin.fileno())
-	except SystemExit as e:
+	except SystemExit:
 		raise # Needed else can't exit
 	except:
 		pass
