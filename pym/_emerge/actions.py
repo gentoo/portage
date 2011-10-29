@@ -1779,13 +1779,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 						# We don't want to skip the write unless we're really
 						# sure that the existing cache is identical, so don't
 						# trust _mtime_ and _eclasses_ alone.
-						keys = set()
-						keys.update(src)
-						keys.update(dest)
-						keys.discard('_eclasses_')
-						keys.discard('_mtime_')
-						keys.discard(src_chf_key)
-						for k in keys:
+						for k in auxdbkeys:
 							if dest.get(k, '') != src.get(k, ''):
 								dest = None
 								break
