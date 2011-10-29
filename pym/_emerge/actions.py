@@ -1864,12 +1864,6 @@ def action_regen(settings, portdb, max_jobs, max_load):
 	xterm_titles = "notitles" not in settings.features
 	emergelog(xterm_titles, " === regen")
 	#regenerate cache entries
-	try:
-		os.close(sys.stdin.fileno())
-	except SystemExit:
-		raise # Needed else can't exit
-	except:
-		pass
 	sys.stdout.flush()
 
 	regen = MetadataRegen(portdb, max_jobs=max_jobs, max_load=max_load)
