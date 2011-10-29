@@ -480,6 +480,7 @@ def portageexit():
 		close_portdbapi_caches()
 
 class _trees_dict(dict):
+	__slots__ = ('_running_eroot', '_target_eroot',)
 	def __init__(self, *pargs, **kargs):
 		dict.__init__(self, *pargs, **kargs)
 		self._running_eroot = None
