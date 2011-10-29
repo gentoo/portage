@@ -215,18 +215,22 @@ class GenCache(object):
 			max_jobs=max_jobs, max_load=max_load)
 		self.returncode = os.EX_OK
 		conf = portdb.repositories.get_repo_for_location(portdb.porttrees[0])
-		self._trg_cache = conf.get_pregenerated_cache(portage.auxdbkeys[:],
-			force=True, readonly=False)
-		if self._trg_cache is None:
+		self._trg_caches = tuple(conf.iter_pregenerated_caches(
+			portage.auxdbkeys[:], force=True, readonly=False))
+		if not self._trg_caches:
 			raise Exception("cache formats '%s' aren't supported" %
 				(" ".join(conf.cache_formats),))
 		if rsync:
-			self._trg_cache.raise_stat_collision = True
-		try:
-			self._trg_cache.ec = \
-				portdb._repo_info[portdb.porttrees[0]].eclass_db
-		except AttributeError:
-			pass
+			from portage.cache.metadata import database as pms_database
+			for trg_cache in self._trg_caches:
+				if isinstance(trg_cache, pms_database):
+					trg_cache.raise_stat_collision = True
+					# Make _metadata_callback write this cache first, in case
+					# it raises a StatCollision and triggers mtime
+					# modification.
+					self._trg_caches = tuple([trg_cache] +
+						[x for x in self._trg_caches if x is not trg_cache])
+
 		self._existing_nodes = set()
 
 	def _metadata_callback(self, cpv, repo_path, metadata, ebuild_hash):
@@ -235,11 +239,16 @@ class GenCache(object):
 		if metadata is not None:
 			if metadata.get('EAPI') == '0':
 				del metadata['EAPI']
+			for trg_cache in self._trg_caches:
+				self._write_cache(trg_cache,
+					cpv, repo_path, metadata, ebuild_hash)
+
+	def _write_cache(self, trg_cache, cpv, repo_path, metadata, ebuild_hash):
 			try:
-				chf = self._trg_cache.validation_chf
+				chf = trg_cache.validation_chf
 				metadata['_%s_' % chf] = getattr(ebuild_hash, chf)
 				try:
-					self._trg_cache[cpv] = metadata
+					trg_cache[cpv] = metadata
 				except StatCollision as sc:
 					# If the content of a cache entry changes and neither the
 					# file mtime nor size changes, it will prevent rsync from
@@ -264,7 +273,7 @@ class GenCache(object):
 							level=logging.ERROR, noiselevel=-1)
 					else:
 						metadata['_mtime_'] = max_mtime
-						self._trg_cache[cpv] = metadata
+						trg_cache[cpv] = metadata
 						self._portdb.auxdb[repo_path][cpv] = metadata
 
 			except CacheError as ce:
@@ -303,9 +312,12 @@ class GenCache(object):
 			sys.exit(received_signal[0])
 
 		self.returncode |= self._regen.returncode
-		cp_missing = self._cp_missing
 
-		trg_cache = self._trg_cache
+		for trg_cache in self._trg_caches:
+			self._cleanse_cache(trg_cache)
+
+	def _cleanse_cache(self, trg_cache):
+		cp_missing = self._cp_missing
 		dead_nodes = set()
 		if self._global_cleanse:
 			try:
