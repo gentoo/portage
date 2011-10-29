@@ -258,9 +258,9 @@ class GenCache(object):
 					# mtime on the ebuild (and the corresponding cache entry).
 					# See bug #139134.
 					max_mtime = sc.mtime
-					for ec, (loc, ec_mtime) in metadata['_eclasses_'].items():
-						if max_mtime < ec_mtime:
-							max_mtime = ec_mtime
+					for ec, ec_hash in metadata['_eclasses_'].items():
+						if max_mtime < ec_hash.mtime:
+							max_mtime = ec_hash.mtime
 					if max_mtime == sc.mtime:
 						max_mtime += 1
 					max_mtime = long(max_mtime)
