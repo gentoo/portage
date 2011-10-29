@@ -2011,7 +2011,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		msg = ">>> Git pull in %s successful" % myportdir
 		emergelog(xterm_titles, msg)
 		writemsg_level(msg + "\n")
-		exitcode = git_sync_timestamps(settings, myportdir)
+		exitcode = git_sync_timestamps(portdb, myportdir)
 		if exitcode == os.EX_OK:
 			updatecache_flg = True
 	elif syncuri[:8]=="rsync://" or syncuri[:6]=="ssh://":
@@ -2844,26 +2844,35 @@ def getportageversion(portdir, _unused, profile, chost, vardb):
 	return "Portage %s (%s, %s, %s, %s)" % \
 		(portage.VERSION, profilever, gccver, ",".join(libcver), unameout)
 
-def git_sync_timestamps(settings, portdir):
+def git_sync_timestamps(portdb, portdir):
 	"""
 	Since git doesn't preserve timestamps, synchronize timestamps between
 	entries and ebuilds/eclasses. Assume the cache has the correct timestamp
 	for a given file as long as the file in the working tree is not modified
 	(relative to HEAD).
 	"""
-	cache_dir = os.path.join(portdir, "metadata", "cache")
-	if not os.path.isdir(cache_dir):
-		return os.EX_OK
-	writemsg_level(">>> Synchronizing timestamps...\n")
 
-	from portage.cache.cache_errors import CacheError
+	cache_db = portdb._pregen_auxdb.get(portdir)
+
 	try:
-		cache_db = settings.load_best_module("portdbapi.metadbmodule")(
-			portdir, "metadata/cache", portage.auxdbkeys[:], readonly=True)
+		if cache_db is None:
+			# portdbapi does not populate _pregen_auxdb
+			# when FEATURES=metadata-transfer is enabled
+			cache_db = portdb._create_pregen_cache(portdir)
 	except CacheError as e:
 		writemsg_level("!!! Unable to instantiate cache: %s\n" % (e,),
 			level=logging.ERROR, noiselevel=-1)
 		return 1
+
+	if cache_db is None:
+		return os.EX_OK
+
+	from portage.cache.metadata import database as pms_database
+	if not isinstance(cache_db, pms_database):
+		# newer formats like md5-dict do not require mtime sync
+		return os.EX_OK
+
+	writemsg_level(">>> Synchronizing timestamps...\n")
 
 	ec_dir = os.path.join(portdir, "eclass")
 	try:
