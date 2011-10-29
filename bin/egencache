@@ -199,7 +199,12 @@ def parse_args(args):
 class GenCache(object):
 	def __init__(self, portdb, cp_iter=None, max_jobs=None, max_load=None,
 		rsync=False):
+		# The caller must set portdb.porttrees in order to constrain
+		# findname, cp_list, and cpv_list to the desired tree.
+		tree = portdb.porttrees[0]
 		self._portdb = portdb
+		self._eclass_db = portdb._repo_info[tree].eclass_db
+		self._auxdbkeys = portage.auxdbkeys
 		# We can globally cleanse stale cache only if we
 		# iterate over every single cp.
 		self._global_cleanse = cp_iter is None
@@ -214,22 +219,25 @@ class GenCache(object):
 			consumer=self._metadata_callback,
 			max_jobs=max_jobs, max_load=max_load)
 		self.returncode = os.EX_OK
-		conf = portdb.repositories.get_repo_for_location(portdb.porttrees[0])
+		conf = portdb.repositories.get_repo_for_location(tree)
 		self._trg_caches = tuple(conf.iter_pregenerated_caches(
-			portage.auxdbkeys[:], force=True, readonly=False))
+			self._auxdbkeys, force=True, readonly=False))
 		if not self._trg_caches:
 			raise Exception("cache formats '%s' aren't supported" %
 				(" ".join(conf.cache_formats),))
-		if rsync:
-			from portage.cache.metadata import database as pms_database
-			for trg_cache in self._trg_caches:
-				if isinstance(trg_cache, pms_database):
-					trg_cache.raise_stat_collision = True
-					# Make _metadata_callback write this cache first, in case
-					# it raises a StatCollision and triggers mtime
-					# modification.
-					self._trg_caches = tuple([trg_cache] +
-						[x for x in self._trg_caches if x is not trg_cache])
+
+		self._avoid_redundant_write = set()
+		from portage.cache.metadata import database as pms_database
+		for trg_cache in self._trg_caches:
+			if not isinstance(trg_cache, pms_database):
+				self._avoid_redundant_write.add(id(trg_cache))
+			elif rsync:
+				trg_cache.raise_stat_collision = True
+				# Make _metadata_callback write this cache first, in case
+				# it raises a StatCollision and triggers mtime
+				# modification.
+				self._trg_caches = tuple([trg_cache] +
+					[x for x in self._trg_caches if x is not trg_cache])
 
 		self._existing_nodes = set()
 
@@ -244,6 +252,27 @@ class GenCache(object):
 					cpv, repo_path, metadata, ebuild_hash)
 
 	def _write_cache(self, trg_cache, cpv, repo_path, metadata, ebuild_hash):
+
+			if id(trg_cache) in self._avoid_redundant_write:
+				# This cache does not avoid redundant writes automatically,
+				# so check for an identical existing entry before writing.
+				# This prevents unecessary disk writes and can also prevent
+				# unecessary rsync transfers.
+				try:
+					dest = trg_cache[cpv]
+				except (KeyError, CacheError):
+					pass
+				else:
+					if trg_cache.validate_entry(dest,
+						ebuild_hash, self._eclass_db):
+						identical = True
+						for k in self._auxdbkeys:
+							if dest.get(k, '') != metadata.get(k, ''):
+								identical = False
+								break
+						if identical:
+							return
+
 			try:
 				chf = trg_cache.validation_chf
 				metadata['_%s_' % chf] = getattr(ebuild_hash, chf)
@@ -256,7 +285,10 @@ class GenCache(object):
 					# exception from _setitem() if they detect this type of stat
 					# collision. These exceptions are handled by bumping the
 					# mtime on the ebuild (and the corresponding cache entry).
-					# See bug #139134.
+					# This type of cache must not be included in the above
+					# _avoid_redundant_write set, since __setitem__ must be
+					# called in order to detect the StatCollision (redundant
+					# writes will be avoided internally). See bug #139134.
 					max_mtime = sc.mtime
 					for ec, ec_hash in metadata['_eclasses_'].items():
 						if max_mtime < ec_hash.mtime:
