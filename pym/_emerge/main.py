@@ -1733,7 +1733,7 @@ def emerge_main(args=None):
 		news_counts = count_unread_news(
 			root_config.trees["porttree"].dbapi,
 			root_config.trees["vartree"].dbapi)
-		if list(filter(None, news_counts.values())):
+		if any(news_counts.values()):
 			display_news_notifications(news_counts)
 		elif "--quiet" not in myopts:
 			print("", colorize("GOOD", "*"), "No news items were found.")
