@@ -26,7 +26,7 @@ from portage.exception import PortageException, \
 from portage.localization import _
 
 from portage import eclass_cache, \
-	eapi_is_supported, dep_check, \
+	eapi_is_supported, \
 	_eapi_is_deprecated
 from portage import os
 from portage import _encodings
@@ -1137,9 +1137,6 @@ class portagetree(object):
 		mysplit = pkgname.split("/")
 		psplit = pkgsplit(mysplit[1])
 		return "/".join([self.portroot, mysplit[0], psplit[0], mysplit[1]])+".ebuild"
-
-	def depcheck(self, mycheck, use="yes", myusesplit=None):
-		return dep_check(mycheck, self.dbapi, use=use, myuse=myusesplit)
 
 	def getslot(self,mycatpkg):
 		"Get a slot for a catpkg; assume it exists."
