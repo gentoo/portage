@@ -1646,8 +1646,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 	if not os.path.exists(cachedir):
 		os.makedirs(cachedir)
 
-	auxdbkeys = [x for x in portage.auxdbkeys if not x.startswith("UNUSED_0")]
-	auxdbkeys = tuple(auxdbkeys)
+	auxdbkeys = portdb._known_keys
 
 	class TreeData(object):
 		__slots__ = ('dest_db', 'eclass_db', 'path', 'src_db', 'valid_nodes')
