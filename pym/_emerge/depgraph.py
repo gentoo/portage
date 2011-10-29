@@ -2045,9 +2045,9 @@ class depgraph(object):
 				args.append(PackageArg(arg=x, package=pkg,
 					root_config=root_config))
 			elif x.startswith(os.path.sep):
-				if not x.startswith(root):
+				if not x.startswith(eroot):
 					portage.writemsg(("\n\n!!! '%s' does not start with" + \
-						" $ROOT.\n") % x, noiselevel=-1)
+						" $EROOT.\n") % x, noiselevel=-1)
 					self._dynamic_config._skip_restart = True
 					return 0, []
 				# Queue these up since it's most efficient to handle
@@ -2056,9 +2056,9 @@ class depgraph(object):
 			elif x.startswith("." + os.sep) or \
 				x.startswith(".." + os.sep):
 				f = os.path.abspath(x)
-				if not f.startswith(root):
+				if not f.startswith(eroot):
 					portage.writemsg(("\n\n!!! '%s' (resolved from '%s') does not start with" + \
-						" $ROOT.\n") % (f, x), noiselevel=-1)
+						" $EROOT.\n") % (f, x), noiselevel=-1)
 					self._dynamic_config._skip_restart = True
 					return 0, []
 				lookup_owners.append(f)

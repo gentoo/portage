@@ -2559,7 +2559,7 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 		elif x.startswith(os.sep):
 			if not x.startswith(eroot):
 				writemsg_level(("!!! '%s' does not start with" + \
-					" $ROOT.\n") % x, level=logging.ERROR, noiselevel=-1)
+					" $EROOT.\n") % x, level=logging.ERROR, noiselevel=-1)
 				return 1
 			# Queue these up since it's most efficient to handle
 			# multiple files in a single iter_owners() call.

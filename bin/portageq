@@ -271,7 +271,7 @@ def owners(argv):
 				return 2
 			f = os.path.join(cwd, f)
 			f = portage.normalize_path(f)
-		if not is_basename and not f.startswith(root):
+		if not is_basename and not f.startswith(eroot):
 			sys.stderr.write("ERROR: file paths must begin with <root>!\n")
 			sys.stderr.flush()
 			return 2
