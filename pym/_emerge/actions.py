@@ -1732,6 +1732,13 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 					continue
 				ebuild_hash = hashed_path(ebuild_location)
 
+				try:
+					if not tree_data.src_db.validate_entry(src,
+						ebuild_hash, tree_data.eclass_db):
+						continue
+				except CacheError:
+					continue
+
 				eapi = src.get('EAPI')
 				if not eapi:
 					eapi = '0'
@@ -1758,6 +1765,9 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 
 				if src_chf != dest_chf:
 					# populate src entry with dest_chf_key
+					# (the validity of the dest_chf that we generate from the
+					# ebuild here relies on the fact that we already used
+					# validate_entry to validate the ebuild with src_chf)
 					src[dest_chf_key] = dest_chf_getter(ebuild_hash)
 
 				if dest is not None:
@@ -1780,40 +1790,6 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 					# The existing data is valid and identical,
 					# so there's no need to overwrite it.
 					continue
-
-				try:
-					inherited = src.get('INHERITED', '')
-					eclasses = src.get('_eclasses_')
-				except CacheError:
-					continue
-
-				if eclasses is not None:
-					if tree_data.eclass_db.validate_and_rewrite_cache(
-						src['_eclasses_'], tree_data.src_db.validation_chf,
-						tree_data.src_db.store_eclass_paths) is None:
-						continue
-					inherited = eclasses
-				else:
-					inherited = inherited.split()
-
-				if tree_data.src_db.complete_eclass_entries and \
-					eclasses is None:
-					continue
-
-				if inherited:
-					# Even if _eclasses_ already exists, replace it with data from
-					# eclass_cache, in order to insert local eclass paths.
-					try:
-						eclasses = tree_data.eclass_db.get_eclass_data(inherited)
-					except KeyError:
-						# INHERITED contains a non-existent eclass.
-						continue
-
-					if eclasses is None:
-						continue
-					src['_eclasses_'] = eclasses
-				else:
-					src['_eclasses_'] = {}
 
 				if not eapi_supported:
 					src = {
