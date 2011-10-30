@@ -42,7 +42,7 @@ def _get_legacy_global(name):
 	constructed.add('settings')
 
 	# Since portage.db now uses EROOT for keys instead of ROOT, we make
-	# portage.root refer to EROOT such that it continues works as a key.
+	# portage.root refer to EROOT such that it continues to work as a key.
 	portage.root = portage.db._target_eroot
 	constructed.add('root')
 
