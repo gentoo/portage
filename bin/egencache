@@ -226,18 +226,15 @@ class GenCache(object):
 			raise Exception("cache formats '%s' aren't supported" %
 				(" ".join(conf.cache_formats),))
 
-		self._avoid_redundant_write = set()
-		from portage.cache.metadata import database as pms_database
-		for trg_cache in self._trg_caches:
-			if not isinstance(trg_cache, pms_database):
-				self._avoid_redundant_write.add(id(trg_cache))
-			elif rsync:
-				trg_cache.raise_stat_collision = True
-				# Make _metadata_callback write this cache first, in case
-				# it raises a StatCollision and triggers mtime
-				# modification.
-				self._trg_caches = tuple([trg_cache] +
-					[x for x in self._trg_caches if x is not trg_cache])
+		if rsync:
+			for trg_cache in self._trg_caches:
+				if hasattr(trg_cache, 'raise_stat_collision'):
+					trg_cache.raise_stat_collision = True
+					# Make _metadata_callback write this cache first, in case
+					# it raises a StatCollision and triggers mtime
+					# modification.
+					self._trg_caches = tuple([trg_cache] +
+						[x for x in self._trg_caches if x is not trg_cache])
 
 		self._existing_nodes = set()
 
@@ -253,7 +250,7 @@ class GenCache(object):
 
 	def _write_cache(self, trg_cache, cpv, repo_path, metadata, ebuild_hash):
 
-			if id(trg_cache) in self._avoid_redundant_write:
+			if not hasattr(trg_cache, 'raise_stat_collision'):
 				# This cache does not avoid redundant writes automatically,
 				# so check for an identical existing entry before writing.
 				# This prevents unecessary disk writes and can also prevent
@@ -285,10 +282,12 @@ class GenCache(object):
 					# exception from _setitem() if they detect this type of stat
 					# collision. These exceptions are handled by bumping the
 					# mtime on the ebuild (and the corresponding cache entry).
-					# This type of cache must not be included in the above
-					# _avoid_redundant_write set, since __setitem__ must be
-					# called in order to detect the StatCollision (redundant
-					# writes will be avoided internally). See bug #139134.
+					# See bug #139134. It is convenient to include checks for
+					# redundant writes along with the interal StatCollision
+					# detection code, so for caches with the
+					# raise_stat_collision attribute, we do not need to
+					# explicitly check for redundant writes like we do for the
+					# other cache types above.
 					max_mtime = sc.mtime
 					for ec, ec_hash in metadata['_eclasses_'].items():
 						if max_mtime < ec_hash.mtime:
