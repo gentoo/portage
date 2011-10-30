@@ -2850,8 +2850,7 @@ def git_sync_timestamps(portdb, portdir):
 	if cache_db is None:
 		return os.EX_OK
 
-	from portage.cache.metadata import database as pms_database
-	if not isinstance(cache_db, pms_database):
+	if cache_db.validation_chf != 'mtime':
 		# newer formats like md5-dict do not require mtime sync
 		return os.EX_OK
 
