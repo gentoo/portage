@@ -5,6 +5,7 @@ __all__ = (
 	'LocationsManager',
 )
 
+import collections
 import io
 import warnings
 
@@ -23,17 +24,8 @@ _PORTAGE1_DIRECTORIES = frozenset([
 	'package.use', 'package.use.mask', 'package.use.force',
 	'use.mask', 'use.force'])
 
-class _profile_node(object):
-
-	__slots__ = ('location', 'portage1_directories')
-
-	def __init__(self, location, portage1_directories):
-		object.__setattr__(self, 'location', location)
-		object.__setattr__(self, 'portage1_directories', portage1_directories)
-
-	def __setattr__(self, name, value):
-		raise AttributeError("_profile_node instances are immutable",
-			self.__class__, name, value)
+_profile_node = collections.namedtuple('_profile_node',
+	'location portage1_directories')
 
 class LocationsManager(object):
 
