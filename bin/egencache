@@ -253,8 +253,8 @@ class GenCache(object):
 			if not hasattr(trg_cache, 'raise_stat_collision'):
 				# This cache does not avoid redundant writes automatically,
 				# so check for an identical existing entry before writing.
-				# This prevents unecessary disk writes and can also prevent
-				# unecessary rsync transfers.
+				# This prevents unnecessary disk writes and can also prevent
+				# unnecessary rsync transfers.
 				try:
 					dest = trg_cache[cpv]
 				except (KeyError, CacheError):
@@ -283,7 +283,7 @@ class GenCache(object):
 					# collision. These exceptions are handled by bumping the
 					# mtime on the ebuild (and the corresponding cache entry).
 					# See bug #139134. It is convenient to include checks for
-					# redundant writes along with the interal StatCollision
+					# redundant writes along with the internal StatCollision
 					# detection code, so for caches with the
 					# raise_stat_collision attribute, we do not need to
 					# explicitly check for redundant writes like we do for the
