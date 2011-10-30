@@ -119,7 +119,6 @@ class NewsManager(object):
 			except PermissionDenied:
 				return
 
-			updates = []
 			for itemid in news:
 				try:
 					itemid = _unicode_decode(itemid,
