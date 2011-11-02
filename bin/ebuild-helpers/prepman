@@ -4,14 +4,16 @@
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
+case "$EAPI" in 0|1|2) ED=${D} ;; esac
+
 if [[ -z $1 ]] ; then 
-	mandir="${D}usr/share/man"
+	mandir="${ED}usr/share/man"
 else
-	mandir="${D}$1/man"
+	mandir="${ED}$1/man"
 fi
 
 if [[ ! -d ${mandir} ]] ; then
-	eqawarn "QA Notice: prepman called with non-existent dir '${mandir#${D}}'"
+	eqawarn "QA Notice: prepman called with non-existent dir '${mandir#${ED}}'"
 	exit 0
 fi
 
@@ -27,6 +29,6 @@ for subdir in "${mandir}"/man* "${mandir}"/*/man* ; do
 	[[ -d ${subdir} ]] && really_is_mandir=1 && break
 done
 
-[[ ${really_is_mandir} == 1 ]] && exec ecompressdir --queue "${mandir#${D}}"
+[[ ${really_is_mandir} == 1 ]] && exec ecompressdir --queue "${mandir#${ED}}"
 
 exit 0

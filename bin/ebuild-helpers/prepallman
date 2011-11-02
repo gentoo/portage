@@ -7,11 +7,13 @@ source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 # replaced by controllable compression in EAPI 4
 has "${EAPI}" 0 1 2 3 || exit 0
 
+case "$EAPI" in 0|1|2) ED=${D} ;; esac
+
 ret=0
 
-find "${D}" -type d -name man > "${T}"/prepallman.filelist
+find "${ED}" -type d -name man > "${T}"/prepallman.filelist
 while read -r mandir ; do
-	mandir=${mandir#${D}}
+	mandir=${mandir#${ED}}
 	prepman "${mandir%/man}"
 	((ret|=$?))
 done < "${T}"/prepallman.filelist

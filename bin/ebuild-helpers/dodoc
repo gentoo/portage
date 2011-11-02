@@ -9,7 +9,9 @@ if [ $# -lt 1 ] ; then
 	exit 1 	
 fi
 
-dir="${D}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
+case "$EAPI" in 0|1|2) ED=${D} ;; esac
+
+dir="${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
 if [ ! -d "${dir}" ] ; then
 	install -d "${dir}"
 fi

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
@@ -9,11 +9,13 @@ if [[ -z $1 ]] ; then
 	exit 1 	
 fi
 
-if [[ ! -d ${D}usr/share/info ]] ; then
-	install -d "${D}usr/share/info" || { helpers_die "${0##*/}: failed to install ${D}usr/share/info"; exit 1; }
+case "$EAPI" in 0|1|2) ED=${D} ;; esac
+
+if [[ ! -d ${ED}usr/share/info ]] ; then
+	install -d "${ED}usr/share/info" || { helpers_die "${0##*/}: failed to install ${ED}usr/share/info"; exit 1; }
 fi
 
-install -m0644 "$@" "${D}usr/share/info"
+install -m0644 "$@" "${ED}usr/share/info"
 rval=$?
 if [ $rval -ne 0 ] ; then
 	for x in "$@" ; do

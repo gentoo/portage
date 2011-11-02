@@ -498,8 +498,13 @@ dyn_install() {
 	fi
 	trap "abort_install" SIGINT SIGQUIT
 	ebuild_phase pre_src_install
-	rm -rf "${PORTAGE_BUILDDIR}/image"
-	mkdir "${PORTAGE_BUILDDIR}/image"
+
+	_x=${ED}
+	case "$EAPI" in 0|1|2) _x=${D} ;; esac
+	rm -rf "${D}"
+	mkdir -p "${_x}"
+	unset _x
+
 	if [[ -d $S ]] ; then
 		cd "${S}"
 	elif has $EAPI 0 1 2 3 3_pre2 ; then

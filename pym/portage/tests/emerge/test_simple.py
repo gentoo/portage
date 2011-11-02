@@ -36,11 +36,10 @@ pkg_pretend() {
 
 src_install() {
 	einfo "installing something..."
-	# TODO: Add prefix support to shell code/helpers, so we
-	#       can use things like dodir and doins here.
-	mkdir -p "${ED}"/usr/lib/${P} || die
-	echo "blah blah blah" > "${ED}"/usr/lib/${P}/regular-file || die
-	ln -s regular-file "${ED}"/usr/lib/${P}/symlink || die
+	insinto /usr/lib/${P}
+	echo "blah blah blah" > "${T}"/regular-file
+	doins "${T}"/regular-file
+	dosym regular-file /usr/lib/${P}/symlink || die
 
 	# Test code for bug #381629, using a copyright symbol encoded with latin-1.
 	# We use $(printf "\\xa9") rather than $'\\xa9', since printf apparently
@@ -48,10 +47,11 @@ src_install() {
 	# some conditions. TODO: Find out why it transforms to \\xef\\xbf\\xbd when
 	# running tests for Python 3.2 (even though it's bash that is ultimately
 	# responsible for performing the transformation).
-	local latin_1_dir=${ED}/usr/lib/${P}/latin-1-$(printf "\\xa9")-directory
-	mkdir "${latin_1_dir}"
-	echo "blah blah blah" > ${latin_1_dir}/latin-1-$(printf "\\xa9")-regular-file || die
-	ln -s latin-1-$(printf "\\xa9")-regular-file ${latin_1_dir}/latin-1-$(printf "\\xa9")-symlink || die
+	local latin_1_dir=/usr/lib/${P}/latin-1-$(printf "\\xa9")-directory
+	insinto "${latin_1_dir}"
+	echo "blah blah blah" > "${T}"/latin-1-$(printf "\\xa9")-regular-file || die
+	doins "${T}"/latin-1-$(printf "\\xa9")-regular-file
+	dosym latin-1-$(printf "\\xa9")-regular-file ${latin_1_dir}/latin-1-$(printf "\\xa9")-symlink || die
 }
 
 pkg_config() {
@@ -79,6 +79,11 @@ pkg_info() {
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
 				"MISC_CONTENT": install_something,
+			},
+			"virtual/foo-0": {
+				"EAPI" : "4",
+				"KEYWORDS": "x86",
+				"LICENSE": "GPL-2",
 			},
 		}
 
@@ -201,6 +206,7 @@ pkg_info() {
 				emerge_cmd + ("--metadata",),
 			emerge_cmd + ("--metadata",),
 			rm_cmd + ("-rf", cachedir),
+			emerge_cmd + ("--oneshot", "virtual/foo"),
 			emerge_cmd + ("--pretend", "dev-libs/A"),
 			ebuild_cmd + (test_ebuild, "manifest", "clean", "package", "merge"),
 			emerge_cmd + ("--pretend", "--tree", "--complete-graph", "dev-libs/A"),

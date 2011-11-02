@@ -597,17 +597,19 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 			PATH=$_ebuild_helpers_path:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${ROOTPATH:+:}$ROOTPATH
 			unset _ebuild_helpers_path
 
+			_eprefix=${EPREFIX}
+			case "$EAPI" in 0|1|2) _eprefix= ;; esac
 			# Use default ABI libdir in accordance with bug #355283.
 			x=LIBDIR_${DEFAULT_ABI}
 			[[ -n $DEFAULT_ABI && -n ${!x} ]] && x=${!x} || x=lib
 
 			if has distcc $FEATURES ; then
-				PATH="/usr/$x/distcc/bin:$PATH"
+				PATH="${_eprefix}/usr/$x/distcc/bin:$PATH"
 				[[ -n $DISTCC_LOG ]] && addwrite "${DISTCC_LOG%/*}"
 			fi
 
 			if has ccache $FEATURES ; then
-				PATH="/usr/$x/ccache/bin:$PATH"
+				PATH="${_eprefix}/usr/$x/ccache/bin:$PATH"
 
 				if [[ -n $CCACHE_DIR ]] ; then
 					addread "$CCACHE_DIR"
@@ -617,7 +619,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 				[[ -n $CCACHE_SIZE ]] && ccache -M $CCACHE_SIZE &> /dev/null
 			fi
 
-			unset x
+			unset x _eprefix
 
 			if [[ -n $QA_PREBUILT ]] ; then
 

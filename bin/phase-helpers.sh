@@ -19,8 +19,10 @@ into() {
 		export DESTTREE=""
 	else
 		export DESTTREE=$1
-		if [ ! -d "${D}${DESTTREE}" ]; then
-			install -d "${D}${DESTTREE}"
+		local ed=${ED}
+		case "$EAPI" in 0|1|2) ed=${D} ;; esac
+		if [ ! -d "${ed}${DESTTREE}" ]; then
+			install -d "${ed}${DESTTREE}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
 				helpers_die "${FUNCNAME[0]} failed"
@@ -35,8 +37,10 @@ insinto() {
 		export INSDESTTREE=""
 	else
 		export INSDESTTREE=$1
-		if [ ! -d "${D}${INSDESTTREE}" ]; then
-			install -d "${D}${INSDESTTREE}"
+		local ed=${ED}
+		case "$EAPI" in 0|1|2) ed=${D} ;; esac
+		if [ ! -d "${ed}${INSDESTTREE}" ]; then
+			install -d "${ed}${INSDESTTREE}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
 				helpers_die "${FUNCNAME[0]} failed"
@@ -51,8 +55,10 @@ exeinto() {
 		export _E_EXEDESTTREE_=""
 	else
 		export _E_EXEDESTTREE_="$1"
-		if [ ! -d "${D}${_E_EXEDESTTREE_}" ]; then
-			install -d "${D}${_E_EXEDESTTREE_}"
+		local ed=${ED}
+		case "$EAPI" in 0|1|2) ed=${D} ;; esac
+		if [ ! -d "${ed}${_E_EXEDESTTREE_}" ]; then
+			install -d "${ed}${_E_EXEDESTTREE_}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
 				helpers_die "${FUNCNAME[0]} failed"
@@ -67,8 +73,10 @@ docinto() {
 		export _E_DOCDESTTREE_=""
 	else
 		export _E_DOCDESTTREE_="$1"
-		if [ ! -d "${D}usr/share/doc/${PF}/${_E_DOCDESTTREE_}" ]; then
-			install -d "${D}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
+		local ed=${ED}
+		case "$EAPI" in 0|1|2) ed=${D} ;; esac
+		if [ ! -d "${ed}usr/share/doc/${PF}/${_E_DOCDESTTREE_}" ]; then
+			install -d "${ed}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
 				helpers_die "${FUNCNAME[0]} failed"
@@ -133,9 +141,11 @@ docompress() {
 keepdir() {
 	dodir "$@"
 	local x
+	local ed=${ED}
+	case "$EAPI" in 0|1|2) ed=${D} ;; esac
 	if [ "$1" == "-R" ] || [ "$1" == "-r" ]; then
 		shift
-		find "$@" -type d -printf "${D}%p/.keep_${CATEGORY}_${PN}-${SLOT}\n" \
+		find "$@" -type d -printf "${ed}%p/.keep_${CATEGORY}_${PN}-${SLOT}\n" \
 			| tr "\n" "\0" | \
 			while read -r -d $'\0' ; do
 				>> "$REPLY" || \
@@ -143,8 +153,8 @@ keepdir() {
 			done
 	else
 		for x in "$@"; do
-			>> "${D}${x}/.keep_${CATEGORY}_${PN}-${SLOT}" || \
-				die "Failed to create .keep in ${D}${x}"
+			>> "${ed}${x}/.keep_${CATEGORY}_${PN}-${SLOT}" || \
+				die "Failed to create .keep in ${ed}${x}"
 		done
 	fi
 }
@@ -369,6 +379,9 @@ unpack() {
 econf() {
 	local x
 
+	local eprefix=${EPREFIX}
+	case "$EAPI" in 0|1|2) eprefix= ;; esac
+
 	_hasg() {
 		local x s=$1
 		shift
@@ -398,12 +411,12 @@ econf() {
 			sed -e "1s:^#![[:space:]]*/bin/sh:#!$CONFIG_SHELL:" -i "$ECONF_SOURCE/configure" || \
 				die "Substition of shebang in '$ECONF_SOURCE/configure' failed"
 		fi
-		if [ -e /usr/share/gnuconfig/ ]; then
+		if [ -e "${eprefix}"/usr/share/gnuconfig/ ]; then
 			find "${WORKDIR}" -type f '(' \
 			-name config.guess -o -name config.sub ')' -print0 | \
 			while read -r -d $'\0' x ; do
-				vecho " * econf: updating ${x/${WORKDIR}\/} with /usr/share/gnuconfig/${x##*/}"
-				cp -f /usr/share/gnuconfig/"${x##*/}" "${x}"
+				vecho " * econf: updating ${x/${WORKDIR}\/} with ${eprefix}/usr/share/gnuconfig/${x##*/}"
+				cp -f "${eprefix}"/usr/share/gnuconfig/"${x##*/}" "${x}"
 			done
 		fi
 
@@ -423,7 +436,7 @@ econf() {
 		if [[ -n ${CONF_LIBDIR} ]] && ! _hasgq --libdir=\* "$@" ; then
 			export CONF_PREFIX=$(_hasg --exec-prefix=\* "$@")
 			[[ -z ${CONF_PREFIX} ]] && CONF_PREFIX=$(_hasg --prefix=\* "$@")
-			: ${CONF_PREFIX:=/usr}
+			: ${CONF_PREFIX:=${eprefix}/usr}
 			CONF_PREFIX=${CONF_PREFIX#*=}
 			[[ ${CONF_PREFIX} != /* ]] && CONF_PREFIX="/${CONF_PREFIX}"
 			[[ ${CONF_LIBDIR} != /* ]] && CONF_LIBDIR="/${CONF_LIBDIR}"
@@ -431,15 +444,15 @@ econf() {
 		fi
 
 		set -- \
-			--prefix=/usr \
+			--prefix="${eprefix}"/usr \
 			${CBUILD:+--build=${CBUILD}} \
 			--host=${CHOST} \
 			${CTARGET:+--target=${CTARGET}} \
-			--mandir=/usr/share/man \
-			--infodir=/usr/share/info \
-			--datadir=/usr/share \
-			--sysconfdir=/etc \
-			--localstatedir=/var/lib \
+			--mandir="${eprefix}"/usr/share/man \
+			--infodir="${eprefix}"/usr/share/info \
+			--datadir="${eprefix}"/usr/share \
+			--sysconfdir="${eprefix}"/etc \
+			--localstatedir="${eprefix}"/var/lib \
 			"$@" \
 			${EXTRA_ECONF}
 		vecho "${ECONF_SOURCE}/configure" "$@"
@@ -463,6 +476,8 @@ econf() {
 einstall() {
 	# CONF_PREFIX is only set if they didn't pass in libdir above.
 	local LOCAL_EXTRA_EINSTALL="${EXTRA_EINSTALL}"
+	local ed=${ED}
+	case "$EAPI" in 0|1|2) ed=${D} ;; esac
 	LIBDIR_VAR="LIBDIR_${ABI}"
 	if [ -n "${ABI}" -a -n "${!LIBDIR_VAR}" ]; then
 		CONF_LIBDIR="${!LIBDIR_VAR}"
@@ -477,22 +492,22 @@ einstall() {
 
 	if [ -f ./[mM]akefile -o -f ./GNUmakefile ] ; then
 		if [ "${PORTAGE_DEBUG}" == "1" ]; then
-			${MAKE:-make} -n prefix="${D}usr" \
-				datadir="${D}usr/share" \
-				infodir="${D}usr/share/info" \
-				localstatedir="${D}var/lib" \
-				mandir="${D}usr/share/man" \
-				sysconfdir="${D}etc" \
+			${MAKE:-make} -n prefix="${ed}usr" \
+				datadir="${ed}usr/share" \
+				infodir="${ed}usr/share/info" \
+				localstatedir="${ed}var/lib" \
+				mandir="${ed}usr/share/man" \
+				sysconfdir="${ed}etc" \
 				${LOCAL_EXTRA_EINSTALL} \
 				${MAKEOPTS} ${EXTRA_EMAKE} -j1 \
 				"$@" install
 		fi
-		${MAKE:-make} prefix="${D}usr" \
-			datadir="${D}usr/share" \
-			infodir="${D}usr/share/info" \
-			localstatedir="${D}var/lib" \
-			mandir="${D}usr/share/man" \
-			sysconfdir="${D}etc" \
+		${MAKE:-make} prefix="${ed}usr" \
+			datadir="${ed}usr/share" \
+			infodir="${ed}usr/share/info" \
+			localstatedir="${ed}var/lib" \
+			mandir="${ed}usr/share/man" \
+			sysconfdir="${ed}etc" \
 			${LOCAL_EXTRA_EINSTALL} \
 			${MAKEOPTS} ${EXTRA_EMAKE} -j1 \
 			"$@" install || die "einstall failed"

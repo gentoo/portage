@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
@@ -9,8 +9,11 @@ if [ ${mynum} -lt 1 ] ; then
 	helpers_die "${0}: at least one argument needed"
 	exit 1
 fi
-if [ ! -d "${D}${DESTTREE}/share/locale" ] ; then
-	install -d "${D}${DESTTREE}/share/locale/"
+
+case "$EAPI" in 0|1|2) ED=${D} ;; esac
+
+if [ ! -d "${ED}${DESTTREE}/share/locale" ] ; then
+	install -d "${ED}${DESTTREE}/share/locale/"
 fi
 
 ret=0
@@ -18,7 +21,7 @@ ret=0
 for x in "$@" ; do
 	if [ -e "${x}" ] ; then
 		mytiny="${x##*/}"
-		mydir="${D}${DESTTREE}/share/locale/${mytiny%.*}/LC_MESSAGES"
+		mydir="${ED}${DESTTREE}/share/locale/${mytiny%.*}/LC_MESSAGES"
 		if [ ! -d "${mydir}" ] ; then
 			install -d "${mydir}"
 		fi

@@ -56,9 +56,9 @@ def install(basename, dirname, options, prefix=""):
 		fullpath = dirname + "/" + fullpath
 
 	if options.DOCDESTTREE:
-		destdir = options.D + "usr/share/doc/" + options.PF + "/" + options.DOCDESTTREE + "/" + options.doc_prefix + "/" + prefix
+		destdir = options.ED + "usr/share/doc/" + options.PF + "/" + options.DOCDESTTREE + "/" + options.doc_prefix + "/" + prefix
 	else:
-		destdir = options.D + "usr/share/doc/" + options.PF + "/html/" + options.doc_prefix + "/" + prefix
+		destdir = options.ED + "usr/share/doc/" + options.PF + "/html/" + options.doc_prefix + "/" + prefix
 
 	if not os.path.exists(fullpath):
 		sys.stderr.write("!!! dohtml: %s does not exist\n" % fullpath)
@@ -86,13 +86,15 @@ def install(basename, dirname, options, prefix=""):
 class OptionsClass:
 	def __init__(self):
 		self.PF = ""
-		self.D = ""
+		self.ED = ""
 		self.DOCDESTTREE = ""
 		
 		if "PF" in os.environ:
 			self.PF = os.environ["PF"]
-		if "D" in os.environ:
-			self.D = os.environ["D"]
+		if os.environ.get("EAPI", "0") in ("0", "1", "2"):
+			self.ED = os.environ.get("D", "")
+		else:
+			self.ED = os.environ.get("ED", "")
 		if "_E_DOCDESTTREE_" in os.environ:
 			self.DOCDESTTREE = os.environ["_E_DOCDESTTREE_"]
 		

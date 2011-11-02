@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
@@ -9,16 +9,18 @@ if [[ $# -ne 2 ]] ; then
 	exit 1
 fi
 
+case "$EAPI" in 0|1|2) ED=${D} ;; esac
+
 if [[ ${2} == */ ]] || \
-	[[ -d ${D}${2} && ! -L ${D}${2} ]] ; then
+	[[ -d ${ED}${2} && ! -L ${ED}${2} ]] ; then
 	# implicit basename not allowed by PMS (bug #379899)
 	eqawarn "QA Notice: dosym target omits basename: '${2}'"
 fi
 
 destdir=${2%/*}
-[[ ! -d ${D}${destdir} ]] && dodir "${destdir}"
+[[ ! -d ${ED}${destdir} ]] && dodir "${destdir}"
 
-ln -snf "$1" "${D}$2"
+ln -snf "$1" "${ED}$2"
 ret=$?
 [[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
 exit $ret
