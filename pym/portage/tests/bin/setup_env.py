@@ -30,6 +30,7 @@ def binTestsInit():
 	global basedir, env
 	basedir = tempfile.mkdtemp()
 	env = os.environ.copy()
+	env["EAPI"] = "0"
 	env["D"] = os.path.join(basedir, "image")
 	env["T"] = os.path.join(basedir, "temp")
 	env["S"] = os.path.join(basedir, "workdir")
