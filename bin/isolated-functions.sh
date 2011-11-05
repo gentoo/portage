@@ -411,7 +411,11 @@ unset_colors() {
 
 set_colors() {
 	COLS=${COLUMNS:-0}      # bash's internal COLUMNS variable
-	(( COLS == 0 )) && COLS=$(set -- $(stty size 2>/dev/null) ; echo $2)
+	# Avoid wasteful stty calls during the "depend" phases.
+	# If stdout is a pipe, the parent process can export COLUMNS
+	# if it's relevant.
+	[[ $COLS == 0 && $EBUILD_PHASE != depend ]] && \
+		COLS=$(set -- $(stty size 2>/dev/null) ; echo $2)
 	(( COLS > 0 )) || (( COLS = 80 ))
 
 	# Now, ${ENDCOL} will move us to the end of the
@@ -434,19 +438,14 @@ RC_INDENTATION=''
 RC_DEFAULT_INDENT=2
 RC_DOT_PATTERN=''
 
-if [[ $EBUILD_PHASE == depend ]] ; then
-	# avoid unneeded stty call in set_colors during "depend" phase
-	unset_colors
-else
-	case "${NOCOLOR:-false}" in
-		yes|true)
-			unset_colors
-			;;
-		no|false)
-			set_colors
-			;;
-	esac
-fi
+case "${NOCOLOR:-false}" in
+	yes|true)
+		unset_colors
+		;;
+	no|false)
+		set_colors
+		;;
+esac
 
 if [[ -z ${USERLAND} ]] ; then
 	case $(uname -s) in

@@ -283,6 +283,19 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			(c, style_to_ansi_code(c)))
 	mysettings["PORTAGE_COLORMAP"] = "\n".join(mycolors)
 
+	if "COLUMNS" not in mysettings:
+		# Set COLUMNS, in order to prevent unnecessary stty calls
+		# inside the set_colors function of isolated-functions.sh.
+		# We cache the result in os.environ, in order to avoid
+		# multiple stty calls in cases when get_term_size() falls
+		# back to stty due to a missing or broken curses module.
+		columns = os.environ.get("COLUMNS")
+		if columns is None:
+			rows, columns = portage.output.get_term_size()
+			columns = str(columns)
+			os.environ["COLUMNS"] = columns
+		mysettings["COLUMNS"] = columns
+
 	# All EAPI dependent code comes last, so that essential variables
 	# like PORTAGE_BUILDDIR are still initialized even in cases when
 	# UnsupportedAPIException needs to be raised, which can be useful
