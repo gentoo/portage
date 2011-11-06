@@ -29,7 +29,7 @@ trap interrupted SIGINT
 
 unused_args=()
 
-while [[ -n $1 ]] ; do
+while [ $# -gt 0 ] ; do
 	case "$1" in
 		--python-versions=*)
 			PYTHON_VERSIONS=${1#--python-versions=}
