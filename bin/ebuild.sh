@@ -289,11 +289,11 @@ inherit() {
 
 		# If each var has a value, append it to the global variable E_* to
 		# be applied after everything is finished. New incremental behavior.
-		[ "${IUSE+set}"       = set ] && export E_IUSE="${E_IUSE} ${IUSE}"
-		[ "${REQUIRED_USE+set}"       = set ] && export E_REQUIRED_USE="${E_REQUIRED_USE} ${REQUIRED_USE}"
-		[ "${DEPEND+set}"     = set ] && export E_DEPEND="${E_DEPEND} ${DEPEND}"
-		[ "${RDEPEND+set}"    = set ] && export E_RDEPEND="${E_RDEPEND} ${RDEPEND}"
-		[ "${PDEPEND+set}"    = set ] && export E_PDEPEND="${E_PDEPEND} ${PDEPEND}"
+		[ "${IUSE+set}"       = set ] && export E_IUSE+="${E_IUSE:+ }${IUSE}"
+		[ "${REQUIRED_USE+set}"       = set ] && export E_REQUIRED_USE+="${E_REQUIRED_USE:+ }${REQUIRED_USE}"
+		[ "${DEPEND+set}"     = set ] && export E_DEPEND+="${E_DEPEND:+ }${DEPEND}"
+		[ "${RDEPEND+set}"    = set ] && export E_RDEPEND+="${E_RDEPEND:+ }${RDEPEND}"
+		[ "${PDEPEND+set}"    = set ] && export E_PDEPEND+="${E_PDEPEND:+ }${PDEPEND}"
 
 		[ "${B_IUSE+set}"     = set ] && IUSE="${B_IUSE}"
 		[ "${B_IUSE+set}"     = set ] || unset IUSE
@@ -544,11 +544,11 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		fi
 
 		# add in dependency info from eclasses
-		IUSE="${IUSE} ${E_IUSE}"
-		DEPEND="${DEPEND} ${E_DEPEND}"
-		RDEPEND="${RDEPEND} ${E_RDEPEND}"
-		PDEPEND="${PDEPEND} ${E_PDEPEND}"
-		REQUIRED_USE="${REQUIRED_USE} ${E_REQUIRED_USE}"
+		IUSE+="${IUSE:+ }${E_IUSE}"
+		DEPEND+="${DEPEND:+ }${E_DEPEND}"
+		RDEPEND+="${RDEPEND:+ }${E_RDEPEND}"
+		PDEPEND+="${PDEPEND:+ }${E_PDEPEND}"
+		REQUIRED_USE+="${REQUIRED_USE:+ }${E_REQUIRED_USE}"
 		
 		unset ECLASS E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND \
 			__INHERITED_QA_CACHE
