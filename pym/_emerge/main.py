@@ -97,6 +97,21 @@ shortmapping={
 "v":"--verbose",   "V":"--version"
 }
 
+COWSAY_MOO = """
+
+  Larry loves Gentoo (%s)
+
+ _______________________
+< Have you mooed today? >
+ -----------------------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\ 
+                ||----w |
+                ||     ||
+
+"""
+
 def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 
 	if os.path.exists("/usr/bin/install-info"):
@@ -592,7 +607,7 @@ def parse_opts(tmpcmdline, silent=False):
 
 	actions = frozenset([
 		"clean", "check-news", "config", "depclean", "help",
-		"info", "list-sets", "metadata",
+		"info", "list-sets", "metadata", "moo",
 		"prune", "regen",  "search",
 		"sync",  "unmerge", "version",
 	])
@@ -1704,20 +1719,11 @@ def emerge_main(args=None):
 	del mytrees, mydb
 
 	if "moo" in myfiles:
-		print("""
-
-  Larry loves Gentoo (""" + platform.system() + """)
-
- _______________________
-< Have you mooed today? >
- -----------------------
-        \   ^__^
-         \  (oo)\_______
-            (__)\       )\/\ 
-                ||----w |
-                ||     ||
-
-""")
+		print(COWSAY_MOO % platform.system())
+		msg = ("The above `emerge moo` display is deprecated. "
+			"Please use `emerge --moo` instead.")
+		for line in textwrap.wrap(msg, 50):
+			print(" %s %s" % (colorize("WARN", "*"), line))
 
 	for x in myfiles:
 		ext = os.path.splitext(x)[1]
@@ -1726,7 +1732,10 @@ def emerge_main(args=None):
 			break
 
 	root_config = trees[settings['EROOT']]['root_config']
-	if myaction == "list-sets":
+	if myaction == "moo":
+		print(COWSAY_MOO % platform.system())
+		return os.EX_OK
+	elif myaction == "list-sets":
 		writemsg_stdout("".join("%s\n" % s for s in sorted(root_config.sets)))
 		return os.EX_OK
 	elif myaction == "check-news":
