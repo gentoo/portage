@@ -3066,7 +3066,7 @@ class depgraph(object):
 					continue
 
 				missing_use_adjustable.add(pkg)
-				required_use = pkg.metadata["REQUIRED_USE"]
+				required_use = pkg.metadata.get("REQUIRED_USE")
 				required_use_warning = ""
 				if required_use:
 					old_use = self._pkg_use_enabled(pkg)

@@ -540,7 +540,7 @@ dyn_install() {
 	set -f
 	local f x
 	IFS=$' \t\n\r'
-	for f in CATEGORY DEFINED_PHASES FEATURES INHERITED IUSE REQUIRED_USE \
+	for f in CATEGORY DEFINED_PHASES FEATURES INHERITED IUSE \
 		PF PKGUSE SLOT KEYWORDS HOMEPAGE DESCRIPTION ; do
 		x=$(echo -n ${!f})
 		[[ -n $x ]] && echo "$x" > $f
