@@ -186,7 +186,7 @@ class circular_dependency_handler(object):
 					parent_atom not in reduced_dep:
 					#We found an assignment that removes the atom from 'dep'.
 					#Make sure it doesn't conflict with REQUIRED_USE.
-					required_use = parent.metadata.get("REQUIRED_USE", "")]
+					required_use = parent.metadata.get("REQUIRED_USE", "")
 
 					if check_required_use(required_use, current_use, parent.iuse.is_valid_flag):
 						use = self.depgraph._pkg_use_enabled(parent)
