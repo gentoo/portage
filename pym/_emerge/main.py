@@ -1962,7 +1962,7 @@ def emerge_main(args=None):
 		bindb = trees[settings['EROOT']]["bintree"].dbapi
 		valid_atoms = []
 		for x in myfiles:
-			if is_valid_package_atom(x):
+			if is_valid_package_atom(x, allow_repo=True):
 				try:
 					#look at the installed files first, if there is no match
 					#look at the ebuilds, since EAPI 4 allows running pkg_info
