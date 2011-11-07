@@ -3270,7 +3270,8 @@ class depgraph(object):
 
 				all_cp = set()
 				all_cp.update(vardb.cp_all())
-				all_cp.update(portdb.cp_all())
+				if "--usepkgonly" not in self._frozen_config.myopts:
+					all_cp.update(portdb.cp_all())
 				if "--usepkg" in self._frozen_config.myopts:
 					all_cp.update(bindb.cp_all())
 				# discard dir containing no ebuilds
