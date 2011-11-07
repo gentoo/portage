@@ -599,25 +599,19 @@ _eapi4_src_install() {
 # @FUNCTION: has_version
 # @USAGE: <DEPEND ATOM>
 # @DESCRIPTION:
-# Returns the best/most-current match. Callers may override the ROOT
-# variable in order match packages from an alternative ROOT. In
-# EAPI 3 and later, override EROOT instead (ROOT override is supported
-# in this case only if EPREFIX is empty).
+# Return true if given package is installed. Otherwise return false.
+# Callers may override the ROOT variable in order match packages from an
+# alternative ROOT.
 has_version() {
 
-	local eroot=${EROOT}
+	local eroot
 	case "$EAPI" in
 		0|1|2)
 			eroot=${ROOT}
 			;;
 		*)
-			if [[ -z ${EPREFIX} && ${EROOT} != ${ROOT} ]] ; then
-				# Handle ROOT environment override, which ebuilds
-				# sometimes use for stage1/cross-compiling.
-				# In order to support prefix, they'll have to
-				# override EROOT instead.
-				eroot=${ROOT}
-			fi
+			eroot=${ROOT%/}${EPREFIX#/}/
+			;;
 	esac
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
 		"$PORTAGE_BIN_PATH"/ebuild-ipc has_version "${eroot}" "$1"
@@ -639,25 +633,19 @@ has_version() {
 # @FUNCTION: best_version
 # @USAGE: <DEPEND ATOM>
 # @DESCRIPTION:
-# Returns the best/most-current match. Callers may override the ROOT
-# variable in order match packages from an alternative ROOT. In
-# EAPI 3 and later, override EROOT instead (ROOT override is supported
-# in this case only if EPREFIX is empty).
+# Returns the best/most-current match.
+# Callers may override the ROOT variable in order match packages from an
+# alternative ROOT.
 best_version() {
 
-	local eroot=${EROOT}
+	local eroot
 	case "$EAPI" in
 		0|1|2)
 			eroot=${ROOT}
 			;;
 		*)
-			if [[ -z ${EPREFIX} && ${EROOT} != ${ROOT} ]] ; then
-				# Handle ROOT environment override, which ebuilds
-				# sometimes use for stage1/cross-compiling.
-				# In order to support prefix, they'll have to
-				# override EROOT instead.
-				eroot=${ROOT}
-			fi
+			eroot=${ROOT%/}${EPREFIX#/}/
+			;;
 	esac
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
 		"$PORTAGE_BIN_PATH"/ebuild-ipc best_version "${eroot}" "$1"
