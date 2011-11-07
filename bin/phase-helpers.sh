@@ -610,7 +610,7 @@ has_version() {
 			eroot=${ROOT}
 			;;
 		*)
-			eroot=${ROOT%/}${EPREFIX#/}/
+			eroot=${ROOT%/}${EPREFIX}/
 			;;
 	esac
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
@@ -644,7 +644,7 @@ best_version() {
 			eroot=${ROOT}
 			;;
 		*)
-			eroot=${ROOT%/}${EPREFIX#/}/
+			eroot=${ROOT%/}${EPREFIX}/
 			;;
 	esac
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
