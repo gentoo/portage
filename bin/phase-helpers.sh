@@ -596,12 +596,29 @@ _eapi4_src_install() {
 	fi
 }
 
-# Return true if given package is installed. Otherwise return false.
-# Takes single depend-type atoms.
+# @FUNCTION: has_version
+# @USAGE: <DEPEND ATOM>
+# @DESCRIPTION:
+# Returns the best/most-current match. Callers may override the ROOT
+# variable in order match packages from an alternative ROOT. In
+# EAPI 3 and later, override EROOT instead (ROOT override is supported
+# in this case only if EPREFIX is empty).
 has_version() {
 
 	local eroot=${EROOT}
-	case "$EAPI" in 0|1|2) eroot=${ROOT} ;; esac
+	case "$EAPI" in
+		0|1|2)
+			eroot=${ROOT}
+			;;
+		*)
+			if [[ -z ${EPREFIX} && ${EROOT} != ${ROOT} ]] ; then
+				# Handle ROOT environment override, which ebuilds
+				# sometimes use for stage1/cross-compiling.
+				# In order to support prefix, they'll have to
+				# override EROOT instead.
+				eroot=${ROOT}
+			fi
+	esac
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
 		"$PORTAGE_BIN_PATH"/ebuild-ipc has_version "${eroot}" "$1"
 	else
@@ -619,12 +636,29 @@ has_version() {
 	esac
 }
 
-# Returns the best/most-current match.
-# Takes single depend-type atoms.
+# @FUNCTION: best_version
+# @USAGE: <DEPEND ATOM>
+# @DESCRIPTION:
+# Returns the best/most-current match. Callers may override the ROOT
+# variable in order match packages from an alternative ROOT. In
+# EAPI 3 and later, override EROOT instead (ROOT override is supported
+# in this case only if EPREFIX is empty).
 best_version() {
 
 	local eroot=${EROOT}
-	case "$EAPI" in 0|1|2) eroot=${ROOT} ;; esac
+	case "$EAPI" in
+		0|1|2)
+			eroot=${ROOT}
+			;;
+		*)
+			if [[ -z ${EPREFIX} && ${EROOT} != ${ROOT} ]] ; then
+				# Handle ROOT environment override, which ebuilds
+				# sometimes use for stage1/cross-compiling.
+				# In order to support prefix, they'll have to
+				# override EROOT instead.
+				eroot=${ROOT}
+			fi
+	esac
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
 		"$PORTAGE_BIN_PATH"/ebuild-ipc best_version "${eroot}" "$1"
 	else
