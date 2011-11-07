@@ -1855,7 +1855,7 @@ class depgraph(object):
 				i += 1
 			else:
 				try:
-					x = portage.dep.Atom(x)
+					x = portage.dep.Atom(x, eapi=pkg.metadata["EAPI"])
 				except portage.exception.InvalidAtom:
 					if not pkg.installed:
 						raise portage.exception.InvalidDependString(
