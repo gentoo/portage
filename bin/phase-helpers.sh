@@ -600,7 +600,7 @@ _eapi4_src_install() {
 # @USAGE: <DEPEND ATOM>
 # @DESCRIPTION:
 # Return true if given package is installed. Otherwise return false.
-# Callers may override the ROOT variable in order match packages from an
+# Callers may override the ROOT variable in order to match packages from an
 # alternative ROOT.
 has_version() {
 
@@ -634,7 +634,7 @@ has_version() {
 # @USAGE: <DEPEND ATOM>
 # @DESCRIPTION:
 # Returns the best/most-current match.
-# Callers may override the ROOT variable in order match packages from an
+# Callers may override the ROOT variable in order to match packages from an
 # alternative ROOT.
 best_version() {
 
