@@ -62,6 +62,21 @@ pkg_info() {
 	einfo "called pkg_info for $CATEGORY/$PF"
 }
 
+pkg_preinst() {
+	einfo "called pkg_preinst for $CATEGORY/$PF"
+
+	# Test that has_version and best_version work correctly with
+	# prefix (involves internal ROOT -> EROOT calculation in order
+	# to support ROOT override via the environment with EAPIs 3
+	# and later which support prefix).
+	if has_version $CATEGORY/$PN:$SLOT ; then
+		einfo "has_version detects an installed instance of $CATEGORY/$PN:$SLOT"
+		einfo "best_version reports that the installed instance is $(best_version $CATEGORY/$PN:$SLOT)"
+	else
+		einfo "has_version does not detect an installed instance of $CATEGORY/$PN:$SLOT"
+	fi
+}
+
 """
 
 		ebuilds = {
