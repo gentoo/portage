@@ -133,13 +133,10 @@ for dir in "$@" ; do
 		'cp -p "${file}" "${file}.ecompress.break" ; mv -f "${file}.ecompress.break" "${file}"' \;
 
 	# now lets do our work
-	if [[ -z ${suffix} ]] ; then
-		restore_skip_dirs
-		continue
+	if [[ -n ${suffix} ]] ; then
+		vecho "${0##*/}: $(ecompress --bin) /${actual_dir#${ED}}"
+		funk_up_dir "compress" "${suffix}" "ecompress"
 	fi
-
-	vecho "${0##*/}: $(ecompress --bin) /${actual_dir#${ED}}"
-	funk_up_dir "compress" "${suffix}" "ecompress"
 
 	# finally, restore the skipped stuff
 	restore_skip_dirs
