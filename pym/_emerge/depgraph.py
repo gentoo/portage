@@ -1089,7 +1089,7 @@ class depgraph(object):
 		# package selection, since we want to prompt the user
 		# for USE adjustment rather than have REQUIRED_USE
 		# affect package selection and || dep choices.
-		if not pkg.built and pkg.metadata["REQUIRED_USE"] and \
+		if not pkg.built and pkg.metadata.get("REQUIRED_USE") and \
 			eapi_has_required_use(pkg.metadata["EAPI"]):
 			required_use_is_sat = check_required_use(
 				pkg.metadata["REQUIRED_USE"],
@@ -3011,7 +3011,7 @@ class depgraph(object):
 								raise
 						if not mreasons and \
 							not pkg.built and \
-							pkg.metadata["REQUIRED_USE"] and \
+							pkg.metadata.get("REQUIRED_USE") and \
 							eapi_has_required_use(pkg.metadata["EAPI"]):
 							if not check_required_use(
 								pkg.metadata["REQUIRED_USE"],
@@ -3692,7 +3692,7 @@ class depgraph(object):
 
 		if new_changes != old_changes:
 			#Don't do the change if it violates REQUIRED_USE.
-			required_use = pkg.metadata["REQUIRED_USE"]
+			required_use = pkg.metadata.get("REQUIRED_USE")
 			if required_use and check_required_use(required_use, old_use, pkg.iuse.is_valid_flag) and \
 				not check_required_use(required_use, new_use, pkg.iuse.is_valid_flag):
 				return old_use
