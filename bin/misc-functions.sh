@@ -17,9 +17,8 @@ shift $#
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}/ebuild.sh"
 
 install_symlink_html_docs() {
-	local ed=${ED}
-	case "$EAPI" in 0|1|2) ed=${D} ;; esac
-	cd "${ed}" || die "cd failed"
+	case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+	cd "${ED}" || die "cd failed"
 	#symlink the html documentation (if DOC_SYMLINKS_DIR is set in make.conf)
 	if [ -n "${DOC_SYMLINKS_DIR}" ] ; then
 		local mydocdir docdir
@@ -66,13 +65,12 @@ canonicalize() {
 prepcompress() {
 	local -a include exclude incl_d incl_f
 	local f g i real_f real_d
-	local ed=${ED}
-	case "$EAPI" in 0|1|2) ed=${D} ;; esac
+	case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 
 	# Canonicalize path names and check for their existence.
-	real_d=$(canonicalize "${ed}")
+	real_d=$(canonicalize "${ED}")
 	for (( i = 0; i < ${#PORTAGE_DOCOMPRESS[@]}; i++ )); do
-		real_f=$(canonicalize "${ed}${PORTAGE_DOCOMPRESS[i]}")
+		real_f=$(canonicalize "${ED}${PORTAGE_DOCOMPRESS[i]}")
 		f=${real_f#"${real_d}"}
 		if [[ ${real_f} != "${f}" ]] && [[ -d ${real_f} || -f ${real_f} ]]
 		then
@@ -83,7 +81,7 @@ prepcompress() {
 		fi
 	done
 	for (( i = 0; i < ${#PORTAGE_DOCOMPRESS_SKIP[@]}; i++ )); do
-		real_f=$(canonicalize "${ed}${PORTAGE_DOCOMPRESS_SKIP[i]}")
+		real_f=$(canonicalize "${ED}${PORTAGE_DOCOMPRESS_SKIP[i]}")
 		f=${real_f#"${real_d}"}
 		if [[ ${real_f} != "${f}" ]] && [[ -d ${real_f} || -f ${real_f} ]]
 		then
@@ -132,7 +130,7 @@ prepcompress() {
 
 	# Split the include list into directories and files
 	for f in "${include[@]}"; do
-		if [[ -d ${ed}${f} ]]; then
+		if [[ -d ${ED}${f} ]]; then
 			incl_d[${#incl_d[@]}]=${f}
 		else
 			incl_f[${#incl_f[@]}]=${f}
@@ -142,17 +140,16 @@ prepcompress() {
 	# Queue up for compression.
 	# ecompress{,dir} doesn't like to be called with empty argument lists.
 	[[ ${#incl_d[@]} -gt 0 ]] && ecompressdir --queue "${incl_d[@]}"
-	[[ ${#incl_f[@]} -gt 0 ]] && ecompress --queue "${incl_f[@]/#/${ed}}"
+	[[ ${#incl_f[@]} -gt 0 ]] && ecompress --queue "${incl_f[@]/#/${ED}}"
 	[[ ${#exclude[@]} -gt 0 ]] && ecompressdir --ignore "${exclude[@]}"
 	return 0
 }
 
 install_qa_check() {
 	local f i x
-	local ed=${ED}
-	case "$EAPI" in 0|1|2) ed=${D} ;; esac
+	case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 
-	cd "${ed}" || die "cd failed"
+	cd "${ED}" || die "cd failed"
 
 	export STRIP_MASK
 	prepall
@@ -161,11 +158,11 @@ install_qa_check() {
 	ecompress --dequeue
 
 	# Prefix specific checks
-	[[ ${ed} != ${D} ]] && install_qa_check_prefix
+	[[ ${ED} != ${D} ]] && install_qa_check_prefix
 
 	f=
 	for x in etc/app-defaults usr/man usr/info usr/X11R6 usr/doc usr/locale ; do
-		[[ -d $ed/$x ]] && f+="  $x\n"
+		[[ -d ${ED}/$x ]] && f+="  $x\n"
 	done
 
 	if [[ -n $f ]] ; then
@@ -175,7 +172,7 @@ install_qa_check() {
 	fi
 
 	# Now we look for all world writable files.
-	local unsafe_files=$(find "${ed}" -type f -perm -2 | sed -e "s:^${ed}:- :")
+	local unsafe_files=$(find "${ED}" -type f -perm -2 | sed -e "s:^${ED}:- :")
 	if [[ -n ${unsafe_files} ]] ; then
 		vecho "QA Security Notice: world writable file(s):"
 		vecho "${unsafe_files}"
@@ -205,7 +202,7 @@ install_qa_check() {
 		if [[ -n "${ROOT}" && "${ROOT}" != "/" ]]; then
 			forbidden_dirs+=" ${ROOT}"
 		fi
-		local dir l rpath_files=$(scanelf -F '%F:%r' -qBR "${ed}")
+		local dir l rpath_files=$(scanelf -F '%F:%r' -qBR "${ED}")
 		f=""
 		for dir in ${forbidden_dirs}; do
 			for l in $(echo "${rpath_files}" | grep -E ":${dir}|::|: "); do
@@ -219,7 +216,7 @@ install_qa_check() {
 
 		# Reject set*id binaries with $ORIGIN in RPATH #260331
 		x=$(
-			find "${ed}" -type f \( -perm -u+s -o -perm -g+s \) -print0 | \
+			find "${ED}" -type f \( -perm -u+s -o -perm -g+s \) -print0 | \
 			xargs -0 scanelf -qyRF '%r %p' | grep '$ORIGIN'
 		)
 
@@ -245,7 +242,7 @@ install_qa_check() {
 		[[ -n ${!qa_var} ]] && QA_TEXTRELS=${!qa_var}
 		[[ -n ${QA_STRICT_TEXTRELS} ]] && QA_TEXTRELS=""
 		export QA_TEXTRELS="${QA_TEXTRELS} lib*/modules/*.ko"
-		f=$(scanelf -qyRF '%t %p' "${ed}" | grep -v 'usr/lib/debug/')
+		f=$(scanelf -qyRF '%t %p' "${ED}" | grep -v 'usr/lib/debug/')
 		if [[ -n ${f} ]] ; then
 			scanelf -qyRAF '%T %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-textrel.log
 			vecho -ne '\n'
@@ -285,7 +282,7 @@ install_qa_check() {
 					[[ -n ${QA_STRICT_WX_LOAD} ]] && QA_WX_LOAD=""
 					export QA_EXECSTACK="${QA_EXECSTACK} lib*/modules/*.ko"
 					export QA_WX_LOAD="${QA_WX_LOAD} lib*/modules/*.ko"
-					f=$(scanelf -qyRAF '%e %p' "${ed}" | grep -v 'usr/lib/debug/')
+					f=$(scanelf -qyRAF '%e %p' "${ED}" | grep -v 'usr/lib/debug/')
 					;;
 			esac
 			;;
@@ -312,7 +309,7 @@ install_qa_check() {
 		if [[ "${LDFLAGS}" == *,--hash-style=gnu* ]] && [[ "${PN}" != *-bin ]] ; then
 			qa_var="QA_DT_HASH_${ARCH/-/_}"
 			eval "[[ -n \${!qa_var} ]] && QA_DT_HASH=(\"\${${qa_var}[@]}\")"
-			f=$(scanelf -qyRF '%k %p' -k .hash "${ed}" | sed -e "s:\.hash ::")
+			f=$(scanelf -qyRF '%k %p' -k .hash "${ED}" | sed -e "s:\.hash ::")
 			if [[ -n ${f} ]] ; then
 				echo "${f}" > "${T}"/scanelf-ignored-LDFLAGS.log
 				if [ "${QA_STRICT_DT_HASH-unset}" == unset ] ; then
@@ -394,7 +391,7 @@ install_qa_check() {
 		# Check for shared libraries lacking SONAMEs
 		qa_var="QA_SONAME_${ARCH/-/_}"
 		eval "[[ -n \${!qa_var} ]] && QA_SONAME=(\"\${${qa_var}[@]}\")"
-		f=$(scanelf -ByF '%S %p' "${ed}"{,usr/}lib*/lib*.so* | gawk '$2 == "" { print }' | sed -e "s:^[[:space:]]${ed}:/:")
+		f=$(scanelf -ByF '%S %p' "${ED}"{,usr/}lib*/lib*.so* | gawk '$2 == "" { print }' | sed -e "s:^[[:space:]]${ED}:/:")
 		if [[ -n ${f} ]] ; then
 			echo "${f}" > "${T}"/scanelf-missing-SONAME.log
 			if [[ "${QA_STRICT_SONAME-unset}" == unset ]] ; then
@@ -428,7 +425,7 @@ install_qa_check() {
 		# Check for shared libraries lacking NEEDED entries
 		qa_var="QA_DT_NEEDED_${ARCH/-/_}"
 		eval "[[ -n \${!qa_var} ]] && QA_DT_NEEDED=(\"\${${qa_var}[@]}\")"
-		f=$(scanelf -ByF '%n %p' "${ed}"{,usr/}lib*/lib*.so* | gawk '$2 == "" { print }' | sed -e "s:^[[:space:]]${ed}:/:")
+		f=$(scanelf -ByF '%n %p' "${ED}"{,usr/}lib*/lib*.so* | gawk '$2 == "" { print }' | sed -e "s:^[[:space:]]${ED}:/:")
 		if [[ -n ${f} ]] ; then
 			echo "${f}" > "${T}"/scanelf-missing-NEEDED.log
 			if [[ "${QA_STRICT_DT_NEEDED-unset}" == unset ]] ; then
@@ -462,7 +459,7 @@ install_qa_check() {
 		PORTAGE_QUIET=${tmp_quiet}
 	fi
 
-	local unsafe_files=$(find "${ed}" -type f '(' -perm -2002 -o -perm -4002 ')' | sed -e "s:^${ed}:/:")
+	local unsafe_files=$(find "${ED}" -type f '(' -perm -2002 -o -perm -4002 ')' | sed -e "s:^${ED}:/:")
 	if [[ -n ${unsafe_files} ]] ; then
 		eqawarn "QA Notice: Unsafe files detected (set*id and world writable)"
 		eqawarn "${unsafe_files}"
@@ -482,8 +479,8 @@ install_qa_check() {
 	# Sanity check syntax errors in init.d scripts
 	local d
 	for d in /etc/conf.d /etc/init.d ; do
-		[[ -d ${ed}/${d} ]] || continue
-		for i in "${ed}"/${d}/* ; do
+		[[ -d ${ED}/${d} ]] || continue
+		for i in "${ED}"/${d}/* ; do
 			[[ -L ${i} ]] && continue
 			# if empty conf.d/init.d dir exists (baselayout), then i will be "/etc/conf.d/*" and not exist
 			[[ ! -e ${i} ]] && continue
@@ -494,17 +491,17 @@ install_qa_check() {
 	# this should help to ensure that all (most?) shared libraries are executable
 	# and that all libtool scripts / static libraries are not executable
 	local j
-	for i in "${ed}"opt/*/lib{,32,64} \
-	         "${ed}"lib{,32,64}       \
-	         "${ed}"usr/lib{,32,64}   \
-	         "${ed}"usr/X11R6/lib{,32,64} ; do
+	for i in "${ED}"opt/*/lib{,32,64} \
+	         "${ED}"lib{,32,64}       \
+	         "${ED}"usr/lib{,32,64}   \
+	         "${ED}"usr/X11R6/lib{,32,64} ; do
 		[[ ! -d ${i} ]] && continue
 
 		for j in "${i}"/*.so.* "${i}"/*.so ; do
 			[[ ! -e ${j} ]] && continue
 			[[ -L ${j} ]] && continue
 			[[ -x ${j} ]] && continue
-			vecho "making executable: ${j#${ed}}"
+			vecho "making executable: ${j#${ED}}"
 			chmod +x "${j}"
 		done
 
@@ -512,7 +509,7 @@ install_qa_check() {
 			[[ ! -e ${j} ]] && continue
 			[[ -L ${j} ]] && continue
 			[[ ! -x ${j} ]] && continue
-			vecho "removing executable bit: ${j#${ed}}"
+			vecho "removing executable bit: ${j#${ED}}"
 			chmod -x "${j}"
 		done
 
@@ -536,7 +533,7 @@ install_qa_check() {
 	# http://bugs.gentoo.org/4411
 	abort="no"
 	local a s
-	for a in "${ed}"usr/lib*/*.a ; do
+	for a in "${ED}"usr/lib*/*.a ; do
 		s=${a%.a}.so
 		if [[ ! -e ${s} ]] ; then
 			s=${s%usr/*}${s##*/usr/}
@@ -550,7 +547,7 @@ install_qa_check() {
 	[[ ${abort} == "yes" ]] && die "add those ldscripts"
 
 	# Make sure people don't store libtool files or static libs in /lib
-	f=$(ls "${ed}"lib*/*.{a,la} 2>/dev/null)
+	f=$(ls "${ED}"lib*/*.{a,la} 2>/dev/null)
 	if [[ -n ${f} ]] ; then
 		vecho -ne '\n'
 		eqawarn "QA Notice: Excessive files found in the / partition"
@@ -561,9 +558,9 @@ install_qa_check() {
 
 	# Verify that the libtool files don't contain bogus $D entries.
 	local abort=no gentoo_bug=no always_overflow=no
-	for a in "${ed}"usr/lib*/*.la ; do
+	for a in "${ED}"usr/lib*/*.la ; do
 		s=${a##*/}
-		if grep -qs "${ed}" "${a}" ; then
+		if grep -qs "${ED}" "${a}" ; then
 			vecho -ne '\n'
 			eqawarn "QA Notice: ${s} appears to contain PORTAGE_TMPDIR paths"
 			abort="yes"
@@ -705,7 +702,7 @@ install_qa_check() {
 	fi
 
 	# Portage regenerates this on the installed system.
-	rm -f "${ed}"/usr/share/info/dir{,.gz,.bz2}
+	rm -f "${ED}"/usr/share/info/dir{,.gz,.bz2}
 
 	if has multilib-strict ${FEATURES} && \
 	   [[ -x /usr/bin/file && -x /usr/bin/find ]] && \
@@ -714,15 +711,15 @@ install_qa_check() {
 		local abort=no dir file firstrun=yes
 		MULTILIB_STRICT_EXEMPT=$(echo ${MULTILIB_STRICT_EXEMPT} | sed -e 's:\([(|)]\):\\\1:g')
 		for dir in ${MULTILIB_STRICT_DIRS} ; do
-			[[ -d ${ed}/${dir} ]] || continue
-			for file in $(find ${ed}/${dir} -type f | grep -v "^${ed}/${dir}/${MULTILIB_STRICT_EXEMPT}"); do
+			[[ -d ${ED}/${dir} ]] || continue
+			for file in $(find ${ED}/${dir} -type f | grep -v "^${ED}/${dir}/${MULTILIB_STRICT_EXEMPT}"); do
 				if file ${file} | egrep -q "${MULTILIB_STRICT_DENY}" ; then
 					if [[ ${firstrun} == yes ]] ; then
 						echo "Files matching a file type that is not allowed:"
 						firstrun=no
 					fi
 					abort=yes
-					echo "   ${file#${ed}//}"
+					echo "   ${file#${ED}//}"
 				fi
 			done
 		done
@@ -731,7 +728,7 @@ install_qa_check() {
 
 	# ensure packages don't install systemd units automagically
 	if ! has systemd ${INHERITED} && \
-		[[ -d "${ed}"/lib/systemd/system ]]
+		[[ -d "${ED}"/lib/systemd/system ]]
 	then
 		eqawarn "QA Notice: package installs systemd unit files (/lib/systemd/system)"
 		eqawarn "           but does not inherit systemd.eclass."
@@ -889,8 +886,7 @@ preinst_mask() {
 		 return 1
 	fi
 
-	local ed=${ED}
-	case "$EAPI" in 0|1|2) ed=${D} ;; esac
+	case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 
 	# Make sure $PWD is not ${D} so that we don't leave gmon.out files
 	# in there in case any tools were built with -pg in CFLAGS.
@@ -904,11 +900,11 @@ preinst_mask() {
 		fi
 	done
 
-	install_mask "${ed}" "${INSTALL_MASK}"
+	install_mask "${ED}" "${INSTALL_MASK}"
 
 	# remove share dir if unnessesary
 	if has nodoc $FEATURES || has noman $FEATURES || has noinfo $FEATURES; then
-		rmdir "${ed}usr/share" &> /dev/null
+		rmdir "${ED}usr/share" &> /dev/null
 	fi
 }
 
@@ -918,32 +914,31 @@ preinst_sfperms() {
 		 return 1
 	fi
 
-	local ed=${ED}
-	case "$EAPI" in 0|1|2) ed=${D} ;; esac
+	case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 
 	# Smart FileSystem Permissions
 	if has sfperms $FEATURES; then
 		local i
-		find "${ed}" -type f -perm -4000 -print0 | \
+		find "${ED}" -type f -perm -4000 -print0 | \
 		while read -r -d $'\0' i ; do
 			if [ -n "$(find "$i" -perm -2000)" ] ; then
-				ebegin ">>> SetUID and SetGID: [chmod o-r] /${i#${ed}}"
+				ebegin ">>> SetUID and SetGID: [chmod o-r] /${i#${ED}}"
 				chmod o-r "$i"
 				eend $?
 			else
-				ebegin ">>> SetUID: [chmod go-r] /${i#${ed}}"
+				ebegin ">>> SetUID: [chmod go-r] /${i#${ED}}"
 				chmod go-r "$i"
 				eend $?
 			fi
 		done
-		find "${ed}" -type f -perm -2000 -print0 | \
+		find "${ED}" -type f -perm -2000 -print0 | \
 		while read -r -d $'\0' i ; do
 			if [ -n "$(find "$i" -perm -4000)" ] ; then
 				# This case is already handled
 				# by the SetUID check above.
 				true
 			else
-				ebegin ">>> SetGID: [chmod o-r] /${i#${ed}}"
+				ebegin ">>> SetGID: [chmod o-r] /${i#${ED}}"
 				chmod o-r "$i"
 				eend $?
 			fi
@@ -957,8 +952,7 @@ preinst_suid_scan() {
 		 return 1
 	fi
 
-	local ed=${ED}
-	case "$EAPI" in 0|1|2) ed=${D} ;; esac
+	case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 
 	# total suid control.
 	if has suidctl $FEATURES; then
@@ -968,10 +962,10 @@ preinst_suid_scan() {
 		# to files outside of the sandbox, but this
 		# can easly be bypassed using the addwrite() function
 		addwrite "${sfconf}"
-		vecho ">>> Performing suid scan in ${ed}"
-		for i in $(find "${ed}" -type f \( -perm -4000 -o -perm -2000 \) ); do
+		vecho ">>> Performing suid scan in ${ED}"
+		for i in $(find "${ED}" -type f \( -perm -4000 -o -perm -2000 \) ); do
 			if [ -s "${sfconf}" ]; then
-				install_path=/${i#${ed}}
+				install_path=/${i#${ED}}
 				if grep -q "^${install_path}\$" "${sfconf}" ; then
 					vecho "- ${install_path} is an approved suid file"
 				else
@@ -981,7 +975,7 @@ preinst_suid_scan() {
 					chmod ugo-s "${i}"
 					grep "^#${install_path}$" "${sfconf}" > /dev/null || {
 						vecho ">>> Appending commented out entry to ${sfconf} for ${PF}"
-						echo "## ${ls_ret%${ed}*}${install_path}" >> "${sfconf}"
+						echo "## ${ls_ret%${ED}*}${install_path}" >> "${sfconf}"
 						echo "#${install_path}" >> "${sfconf}"
 						# no delwrite() eh?
 						# delwrite ${sconf}
@@ -1023,13 +1017,12 @@ preinst_selinux_labels() {
 
 dyn_package() {
 
-	local ed=${ED}
-	case "$EAPI" in 0|1|2) ed=${D} ;; esac
+	case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 
 	# Make sure $PWD is not ${D} so that we don't leave gmon.out files
 	# in there in case any tools were built with -pg in CFLAGS.
 	cd "${T}"
-	install_mask "${ed}" "${PKG_INSTALL_MASK}"
+	install_mask "${ED}" "${PKG_INSTALL_MASK}"
 	local tar_options=""
 	[[ $PORTAGE_VERBOSE = 1 ]] && tar_options+=" -v"
 	# Sandbox is disabled in case the user wants to use a symlink
