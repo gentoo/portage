@@ -3114,7 +3114,7 @@ class depgraph(object):
 					if untouchable_flags.intersection(involved_flags):
 						continue
 
-					required_use = myparent.metadata["REQUIRED_USE"]
+					required_use = myparent.metadata.get("REQUIRED_USE")
 					required_use_warning = ""
 					if required_use:
 						old_use = self._pkg_use_enabled(myparent)
