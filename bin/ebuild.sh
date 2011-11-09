@@ -5,13 +5,6 @@
 PORTAGE_BIN_PATH="${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"
 PORTAGE_PYM_PATH="${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}"
 
-ROOTPATH=${ROOTPATH##:}
-ROOTPATH=${ROOTPATH%%:}
-PREROOTPATH=${PREROOTPATH##:}
-PREROOTPATH=${PREROOTPATH%%:}
-PATH=$PORTAGE_BIN_PATH/ebuild-helpers:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${ROOTPATH:+:}$ROOTPATH
-export PATH
-
 # Prevent aliases from causing portage to act inappropriately.
 # Make sure it's before everything so we don't mess aliases that follow.
 unalias -a
@@ -584,18 +577,6 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		unset _f _valid_phases
 
 		if [[ $EBUILD_PHASE != depend ]] ; then
-
-			case "$EAPI" in
-				0|1|2|3)
-					_ebuild_helpers_path="$PORTAGE_BIN_PATH/ebuild-helpers"
-					;;
-				*)
-					_ebuild_helpers_path="$PORTAGE_BIN_PATH/ebuild-helpers/4:$PORTAGE_BIN_PATH/ebuild-helpers"
-					;;
-			esac
-
-			PATH=$_ebuild_helpers_path:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${ROOTPATH:+:}$ROOTPATH
-			unset _ebuild_helpers_path
 
 			_eprefix=${EPREFIX}
 			case "$EAPI" in 0|1|2) _eprefix= ;; esac

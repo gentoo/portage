@@ -229,6 +229,7 @@ dyn_unpack() {
 		return 0
 	fi
 	if [ ! -d "${WORKDIR}" ]; then
+		echo PATH=$PATH
 		install -m${PORTAGE_WORKDIR_MODE:-0700} -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
 	fi
 	cd "${WORKDIR}" || die "Directory change failed: \`cd '${WORKDIR}'\`"

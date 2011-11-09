@@ -115,6 +115,38 @@ def _spawn_phase(phase, settings, actionmap=None, **kwargs):
 	ebuild_phase.wait()
 	return ebuild_phase.returncode
 
+def _doebuild_path(settings, eapi=None):
+	"""
+	Generate the PATH variable.
+	"""
+
+	# Note: PORTAGE_BIN_PATH may differ from the global constant
+	# when portage is reinstalling itself.
+	portage_bin_path = settings["PORTAGE_BIN_PATH"]
+	eprefix = settings["EPREFIX"]
+	prerootpath = [x for x in settings.get("PREROOTPATH", "").split(":") if x]
+	rootpath = [x for x in settings.get("ROOTPATH", "").split(":") if x]
+
+	prefixes = []
+	if eprefix:
+		prefixes.append(eprefix)
+	prefixes.append("/")
+
+	path = []
+
+	if eapi not in (None, "0", "1", "2"):
+		path.append(os.path.join(portage_bin_path, "ebuild-helpers", "4"))
+
+	path.append(os.path.join(portage_bin_path, "ebuild-helpers"))
+	path.extend(prerootpath)
+
+	for prefix in prefixes:
+		for x in ("usr/local/sbin", "usr/local/bin", "usr/sbin", "usr/bin", "sbin", "bin"):
+			path.append(os.path.join(prefix, x))
+
+	path.extend(rootpath)
+	settings["PATH"] = ":".join(path)
+
 def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	debug=False, use_cache=None, db=None):
 	"""
@@ -234,16 +266,6 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	else:
 		mysettings["PVR"]=mysplit[1]+"-"+mysplit[2]
 
-	if "PATH" in mysettings:
-		mysplit=mysettings["PATH"].split(":")
-	else:
-		mysplit=[]
-	# Note: PORTAGE_BIN_PATH may differ from the global constant
-	# when portage is reinstalling itself.
-	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
-	if portage_bin_path not in mysplit:
-		mysettings["PATH"] = portage_bin_path + ":" + mysettings["PATH"]
-
 	# All temporary directories should be subdirectories of
 	# $PORTAGE_TMPDIR/portage, since it's common for /tmp and /var/tmp
 	# to be mounted with the "noexec" option (see bug #346899).
@@ -311,6 +333,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 
 		if eapi is not None:
 			if not eapi_is_supported(eapi):
+				_doebuild_path(mysettings)
 				raise UnsupportedAPIException(mycpv, eapi)
 			mysettings.configdict['pkg']['EAPI'] = eapi
 
@@ -320,6 +343,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 		eapi = mysettings["EAPI"]
 		if not eapi_is_supported(eapi):
 			# can't do anything with this.
+			_doebuild_path(mysettings)
 			raise UnsupportedAPIException(mycpv, eapi)
 
 		if hasattr(mydbapi, "getFetchMap") and \
@@ -345,6 +369,8 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 				mysettings.configdict["pkg"]["AA"] = ""
 			else:
 				mysettings.configdict["pkg"]["AA"] = " ".join(uri_map)
+
+	_doebuild_path(mysettings, eapi=eapi)
 
 	if not eapi_exports_KV(eapi):
 		# Discard KV for EAPIs that don't support it. Cache KV is restored
