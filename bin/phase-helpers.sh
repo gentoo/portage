@@ -374,8 +374,7 @@ unpack() {
 econf() {
 	local x
 
-	local eprefix=${EPREFIX}
-	case "$EAPI" in 0|1|2) eprefix= ;; esac
+	case "$EAPI" in 0|1|2) local EPREFIX= ;; esac
 
 	_hasg() {
 		local x s=$1
@@ -406,12 +405,12 @@ econf() {
 			sed -e "1s:^#![[:space:]]*/bin/sh:#!$CONFIG_SHELL:" -i "$ECONF_SOURCE/configure" || \
 				die "Substition of shebang in '$ECONF_SOURCE/configure' failed"
 		fi
-		if [ -e "${eprefix}"/usr/share/gnuconfig/ ]; then
+		if [ -e "${EPREFIX}"/usr/share/gnuconfig/ ]; then
 			find "${WORKDIR}" -type f '(' \
 			-name config.guess -o -name config.sub ')' -print0 | \
 			while read -r -d $'\0' x ; do
-				vecho " * econf: updating ${x/${WORKDIR}\/} with ${eprefix}/usr/share/gnuconfig/${x##*/}"
-				cp -f "${eprefix}"/usr/share/gnuconfig/"${x##*/}" "${x}"
+				vecho " * econf: updating ${x/${WORKDIR}\/} with ${EPREFIX}/usr/share/gnuconfig/${x##*/}"
+				cp -f "${EPREFIX}"/usr/share/gnuconfig/"${x##*/}" "${x}"
 			done
 		fi
 
@@ -431,7 +430,7 @@ econf() {
 		if [[ -n ${CONF_LIBDIR} ]] && ! _hasgq --libdir=\* "$@" ; then
 			export CONF_PREFIX=$(_hasg --exec-prefix=\* "$@")
 			[[ -z ${CONF_PREFIX} ]] && CONF_PREFIX=$(_hasg --prefix=\* "$@")
-			: ${CONF_PREFIX:=${eprefix}/usr}
+			: ${CONF_PREFIX:=${EPREFIX}/usr}
 			CONF_PREFIX=${CONF_PREFIX#*=}
 			[[ ${CONF_PREFIX} != /* ]] && CONF_PREFIX="/${CONF_PREFIX}"
 			[[ ${CONF_LIBDIR} != /* ]] && CONF_LIBDIR="/${CONF_LIBDIR}"
@@ -439,15 +438,15 @@ econf() {
 		fi
 
 		set -- \
-			--prefix="${eprefix}"/usr \
+			--prefix="${EPREFIX}"/usr \
 			${CBUILD:+--build=${CBUILD}} \
 			--host=${CHOST} \
 			${CTARGET:+--target=${CTARGET}} \
-			--mandir="${eprefix}"/usr/share/man \
-			--infodir="${eprefix}"/usr/share/info \
-			--datadir="${eprefix}"/usr/share \
-			--sysconfdir="${eprefix}"/etc \
-			--localstatedir="${eprefix}"/var/lib \
+			--mandir="${EPREFIX}"/usr/share/man \
+			--infodir="${EPREFIX}"/usr/share/info \
+			--datadir="${EPREFIX}"/usr/share \
+			--sysconfdir="${EPREFIX}"/etc \
+			--localstatedir="${EPREFIX}"/var/lib \
 			"$@" \
 			${EXTRA_ECONF}
 		vecho "${ECONF_SOURCE}/configure" "$@"

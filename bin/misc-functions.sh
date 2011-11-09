@@ -1097,13 +1097,12 @@ __END1__
 
 dyn_rpm() {
 
-	local eprefix=${EPREFIX}
-	case "$EAPI" in 0|1|2) eprefix= ;; esac
+	case "$EAPI" in 0|1|2) local EPREFIX= ;; esac
 
 	cd "${T}" || die "cd failed"
 	local machine_name=$(uname -m)
-	local dest_dir=${eprefix}/usr/src/rpm/RPMS/${machine_name}
-	addwrite ${eprefix}/usr/src/rpm
+	local dest_dir=${EPREFIX}/usr/src/rpm/RPMS/${machine_name}
+	addwrite ${EPREFIX}/usr/src/rpm
 	addwrite "${RPMDIR}"
 	dyn_spec
 	rpmbuild -bb --clean --rmsource "${PF}.spec" || die "Failed to integrate rpm spec file"
