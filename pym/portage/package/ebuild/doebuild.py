@@ -372,6 +372,26 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 
 	_doebuild_path(mysettings, eapi=eapi)
 
+	if mydo != "depend":
+		ccache = "ccache" in mysettings.features
+		distcc = "distcc" in mysettings.features
+		if ccache or distcc:
+			# Use default ABI libdir in accordance with bug #355283.
+			libdir = None
+			default_abi = mysettings.get("DEFAULT_ABI")
+			if default_abi:
+				libdir = mysettings.get("LIBDIR_" + default_abi)
+			if not libdir:
+				libdir = "lib"
+
+			if distcc:
+				mysettings["PATH"] = os.path.join(os.sep, eprefix_lstrip,
+					 "usr", libdir, "distcc", "bin") + ":" + mysettings["PATH"]
+
+			if ccache:
+				mysettings["PATH"] = os.path.join(os.sep, eprefix_lstrip,
+					 "usr", libdir, "ccache", "bin") + ":" + mysettings["PATH"]
+
 	if not eapi_exports_KV(eapi):
 		# Discard KV for EAPIs that don't support it. Cache KV is restored
 		# from the backupenv whenever config.reset() is called.
