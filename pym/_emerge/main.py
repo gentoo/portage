@@ -847,7 +847,8 @@ def parse_opts(tmpcmdline, silent=False):
 		"--quiet-build": {
 			"help"     : "redirect build output to logs",
 			"type"     : "choice",
-			"choices"  : true_y_or_n
+			"choices"  : true_y_or_n,
+			"default"  : "y",
 		},
 
 		"--rebuild-if-new-rev": {
