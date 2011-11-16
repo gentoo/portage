@@ -7,10 +7,8 @@ from collections import deque
 import gc
 import gzip
 import logging
-import shutil
 import signal
 import sys
-import tempfile
 import textwrap
 import time
 import warnings
@@ -28,9 +26,10 @@ from portage.output import colorize, create_color_func, red
 bad = create_color_func("BAD")
 from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
-from portage.util import ensure_dirs, writemsg, writemsg_level
+from portage.util import writemsg, writemsg_level
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
+from portage.package.ebuild.doebuild import _check_temp_dir
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
 
 import _emerge
@@ -44,6 +43,7 @@ from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.create_world_atom import create_world_atom
 from _emerge.DepPriority import DepPriority
 from _emerge.depgraph import depgraph, resume_depgraph
+from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildFetcher import EbuildFetcher
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.emergelog import emergelog
@@ -52,11 +52,9 @@ from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_dep
 from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
 from _emerge.JobStatusDisplay import JobStatusDisplay
 from _emerge.MergeListItem import MergeListItem
-from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.Package import Package
 from _emerge.PackageMerge import PackageMerge
 from _emerge.PollScheduler import PollScheduler
-from _emerge.RootConfig import RootConfig
 from _emerge.SlotObject import SlotObject
 from _emerge.SequentialTaskQueue import SequentialTaskQueue
 
@@ -915,11 +913,14 @@ class Scheduler(PollScheduler):
 			root_config = x.root_config
 			settings = self.pkgsettings[root_config.root]
 			settings.setcpv(x)
-			tmpdir_orig = settings["PORTAGE_TMPDIR"]
-			build_prefix_orig = os.path.join(tmpdir_orig, 'portage')
-			ensure_dirs(build_prefix_orig)
-			tmpdir = tempfile.mkdtemp(dir=build_prefix_orig)
-			settings["PORTAGE_TMPDIR"] = tmpdir
+
+			# setcpv/package.env allows for per-package PORTAGE_TMPDIR so we
+			# have to validate it for each package
+			rval = _check_temp_dir(settings)
+			if rval != os.EX_OK:
+				return rval
+
+			build_dir = None
 
 			try:
 				if x.built:
@@ -948,7 +949,8 @@ class Scheduler(PollScheduler):
 					if fetched:
 						bintree.inject(x.cpv, filename=fetched)
 					tbz2_file = bintree.getname(x.cpv)
-					infloc = os.path.join(tmpdir, x.category, x.pf, "build-info")
+					infloc = os.path.join(settings["PORTAGE_TMPDIR"],
+						x.category, x.pf, "build-info")
 					os.makedirs(infloc)
 					portage.xpak.tbz2(tbz2_file).unpackinfo(infloc)
 					ebuild_path = os.path.join(infloc, x.pf + ".ebuild")
@@ -970,6 +972,20 @@ class Scheduler(PollScheduler):
 				portage.package.ebuild.doebuild.doebuild_environment(ebuild_path,
 					"pretend", settings=settings,
 					db=self.trees[settings['EROOT']][tree].dbapi)
+
+				existing_buildir = os.path.isdir(settings["PORTAGE_BUILDDIR"])
+				build_dir = EbuildBuildDir(scheduler=sched_iface,
+					settings=settings)
+				build_dir.lock()
+
+				# Clean up the existing build dir, in case pkg_pretend
+				# checks for available space (bug #390711).
+				if existing_buildir:
+					clean_phase = EbuildPhase(background=False,
+						phase='clean', scheduler=sched_iface, settings=settings)
+					clean_phase.start()
+					clean_phase.wait()
+
 				prepare_build_dirs(root_config.root, settings, cleanup=0)
 
 				vardb = root_config.trees['vartree'].dbapi
@@ -987,8 +1003,12 @@ class Scheduler(PollScheduler):
 					failures += 1
 				portage.elog.elog_process(x.cpv, settings)
 			finally:
-				shutil.rmtree(tmpdir)
-				settings["PORTAGE_TMPDIR"] = tmpdir_orig
+				if build_dir is not None:
+					clean_phase = EbuildPhase(background=False,
+						phase='clean', scheduler=sched_iface, settings=settings)
+					clean_phase.start()
+					clean_phase.wait()
+					build_dir.unlock()
 
 		if failures:
 			return 1
