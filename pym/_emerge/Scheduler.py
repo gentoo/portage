@@ -76,7 +76,7 @@ class Scheduler(PollScheduler):
 		frozenset(["--pretend",
 		"--fetchonly", "--fetch-all-uri"])
 
-	_opts_no_self_reinstall = frozenset(["--buildpkgonly",
+	_opts_no_self_update = frozenset(["--buildpkgonly",
 		"--fetchonly", "--fetch-all-uri", "--pretend"])
 
 	class _iface_class(SlotObject):
@@ -288,17 +288,8 @@ class Scheduler(PollScheduler):
 				self._running_root, installed=True)
 
 	def _handle_self_update(self):
-		"""
-		If portage is updating itself, create temporary
-		copies of PORTAGE_BIN_PATH and PORTAGE_PYM_PATH in order
-		to avoid relying on the new versions which may be
-		incompatible. Register an atexit hook to clean up the
-		temporary directories. Pre-load elog modules here since
-		we won't be able to later if they get unmerged (happens
-		when namespace changes).
-		"""
 
-		if self._opts_no_self_reinstall.intersection(self.myopts):
+		if self._opts_no_self_update.intersection(self.myopts):
 			return
 
 		for x in self._mergelist:

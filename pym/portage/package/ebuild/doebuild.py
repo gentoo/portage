@@ -2017,6 +2017,13 @@ def _merge_unicode_error(errors):
 	return lines
 
 def _prepare_self_update(settings):
+	"""
+	Call this when portage is updating itself, in order to create
+	temporary copies of PORTAGE_BIN_PATH and PORTAGE_PYM_PATH, since
+	the new versions may be incompatible. An atexit hook will
+	automatically clean up the temporary copies.
+	"""
+
 	# Load lazily referenced portage submodules into memory,
 	# so imports won't fail during portage upgrade/downgrade.
 	_preload_elog_modules(settings)
