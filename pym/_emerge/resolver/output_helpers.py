@@ -198,7 +198,6 @@ class _DisplayConfig(object):
 		self.print_use_string = self.verbosity != 1 or "--verbose" in frozen_config.myopts
 		self.changelog = "--changelog" in frozen_config.myopts
 		self.edebug = frozen_config.edebug
-		self.no_restart = frozen_config._opts_no_restart.intersection(frozen_config.myopts)
 		self.unordered_display = "--unordered-display" in frozen_config.myopts
 
 		mywidth = 130

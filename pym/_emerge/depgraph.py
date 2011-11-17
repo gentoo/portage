@@ -100,8 +100,6 @@ class _frozen_depgraph_config(object):
 			self.edebug = 1
 		self.spinner = spinner
 		self._running_root = trees[trees._running_eroot]["root_config"]
-		self._opts_no_restart = frozenset(["--buildpkgonly",
-			"--fetchonly", "--fetch-all-uri", "--pretend"])
 		self.pkgsettings = {}
 		self.trees = {}
 		self._trees_orig = trees

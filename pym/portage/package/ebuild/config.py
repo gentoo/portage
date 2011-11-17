@@ -22,7 +22,7 @@ from portage import bsd_chflags, \
 	load_mod, os, selinux, _unicode_decode
 from portage.const import CACHE_PATH, \
 	DEPCACHE_PATH, INCREMENTALS, MAKE_CONF_FILE, \
-	MODULES_FILE_PATH, PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, \
+	MODULES_FILE_PATH, \
 	PRIVATE_PATH, PROFILE_PATH, USER_CONFIG_PATH, \
 	USER_VIRTUALS_FILE
 from portage.const import _SANDBOX_COMPAT_LEVEL
@@ -721,11 +721,6 @@ class config(object):
 				else:
 					self["USERLAND"] = "GNU"
 				self.backup_changes("USERLAND")
-
-			self["PORTAGE_BIN_PATH"] = PORTAGE_BIN_PATH
-			self.backup_changes("PORTAGE_BIN_PATH")
-			self["PORTAGE_PYM_PATH"] = PORTAGE_PYM_PATH
-			self.backup_changes("PORTAGE_PYM_PATH")
 
 			for var in ("PORTAGE_INST_UID", "PORTAGE_INST_GID"):
 				try:
@@ -2088,6 +2083,14 @@ class config(object):
 					del x[mykey]
 
 	def __getitem__(self,mykey):
+
+		# These ones point to temporary values when
+		# portage plans to update itself.
+		if mykey == "PORTAGE_BIN_PATH":
+			return portage._bin_path
+		elif mykey == "PORTAGE_PYM_PATH":
+			return portage._pym_path
+
 		for d in self.lookuplist:
 			if mykey in d:
 				return d[mykey]
@@ -2133,6 +2136,8 @@ class config(object):
 
 	def __iter__(self):
 		keys = set()
+		keys.add("PORTAGE_BIN_PATH")
+		keys.add("PORTAGE_PYM_PATH")
 		for d in self.lookuplist:
 			keys.update(d)
 		return iter(keys)

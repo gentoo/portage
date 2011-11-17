@@ -865,27 +865,6 @@ class Display(object):
 					continue
 				self.print_msg.append((myprint, self.verboseadd, self.repoadd))
 
-				if not self.conf.tree_display \
-					and not self.conf.no_restart \
-					and pkg.root == self.conf.running_root.root \
-					and match_from_list(PORTAGE_PACKAGE_ATOM, [pkg]) \
-					and not self.conf.quiet:
-
-					if not self.vardb.cpv_exists(pkg.cpv) or \
-						'9999' in pkg.cpv or \
-						'git' in pkg.inherited or \
-						'git-2' in pkg.inherited:
-						if mylist_index < len(mylist) - 1:
-							self.print_msg.append(
-								colorize(
-									"WARN", "*** Portage will stop merging "
-									"at this point and reload itself,"
-									)
-								)
-							self.print_msg.append(
-								colorize("WARN", "    then resume the merge.")
-								)
-
 		show_repos = repoadd_set and repoadd_set != set(["0"])
 
 		# now finally print out the messages

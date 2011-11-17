@@ -29,7 +29,8 @@ from portage._sets.base import InternalPackageSet
 from portage.util import ensure_dirs, writemsg, writemsg_level
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
-from portage.package.ebuild.doebuild import _check_temp_dir
+from portage.package.ebuild.doebuild import (_check_temp_dir,
+	_prepare_self_update)
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
 
 import _emerge
@@ -75,11 +76,8 @@ class Scheduler(PollScheduler):
 		frozenset(["--pretend",
 		"--fetchonly", "--fetch-all-uri"])
 
-	_opts_no_restart = frozenset(["--buildpkgonly",
+	_opts_no_self_reinstall = frozenset(["--buildpkgonly",
 		"--fetchonly", "--fetch-all-uri", "--pretend"])
-
-	_bad_resume_opts = set(["--ask", "--changelog",
-		"--resume", "--skipfirst"])
 
 	class _iface_class(SlotObject):
 		__slots__ = ("fetch",
@@ -288,6 +286,38 @@ class Scheduler(PollScheduler):
 			cpv = portage_match.pop()
 			self._running_portage = self._pkg(cpv, "installed",
 				self._running_root, installed=True)
+
+	def _handle_self_update(self):
+		"""
+		If portage is updating itself, create temporary
+		copies of PORTAGE_BIN_PATH and PORTAGE_PYM_PATH in order
+		to avoid relying on the new versions which may be
+		incompatible. Register an atexit hook to clean up the
+		temporary directories. Pre-load elog modules here since
+		we won't be able to later if they get unmerged (happens
+		when namespace changes).
+		"""
+
+		if self._opts_no_self_reinstall.intersection(self.myopts):
+			return
+
+		for x in self._mergelist:
+			if not isinstance(x, Package):
+				continue
+			if x.operation != "merge":
+				continue
+			if x.root != self._running_root.root:
+				continue
+			if not portage.dep.match_from_list(
+				portage.const.PORTAGE_PACKAGE_ATOM, [x]):
+				continue
+			if self._running_portage is None or \
+				self._running_portage.cpv != x.cpv or \
+				'9999' in x.cpv or \
+				'git' in x.inherited or \
+				'git-2' in x.inherited:
+				_prepare_self_update(self.settings)
+			break
 
 	def _terminate_tasks(self):
 		self._status_display.quiet = True
@@ -785,100 +815,6 @@ class Scheduler(PollScheduler):
 
 		return prefetcher
 
-	def _is_restart_scheduled(self):
-		"""
-		Check if the merge list contains a replacement
-		for the current running instance, that will result
-		in restart after merge.
-		@rtype: bool
-		@returns: True if a restart is scheduled, False otherwise.
-		"""
-		if self._opts_no_restart.intersection(self.myopts):
-			return False
-
-		mergelist = self._mergelist
-
-		for i, pkg in enumerate(mergelist):
-			if self._is_restart_necessary(pkg) and \
-				i != len(mergelist) - 1:
-				return True
-
-		return False
-
-	def _is_restart_necessary(self, pkg):
-		"""
-		@return: True if merging the given package
-			requires restart, False otherwise.
-		"""
-
-		# Figure out if we need a restart.
-		if pkg.root == self._running_root.root and \
-			portage.match_from_list(
-			portage.const.PORTAGE_PACKAGE_ATOM, [pkg]):
-			if self._running_portage is None:
-				return True
-			elif pkg.cpv != self._running_portage.cpv or \
-				'9999' in pkg.cpv or \
-				'git' in pkg.inherited or \
-				'git-2' in pkg.inherited:
-				return True
-		return False
-
-	def _restart_if_necessary(self, pkg):
-		"""
-		Use execv() to restart emerge. This happens
-		if portage upgrades itself and there are
-		remaining packages in the list.
-		"""
-
-		if self._opts_no_restart.intersection(self.myopts):
-			return
-
-		if not self._is_restart_necessary(pkg):
-			return
-
-		if pkg == self._mergelist[-1]:
-			return
-
-		self._main_loop_cleanup()
-
-		logger = self._logger
-		pkg_count = self._pkg_count
-		mtimedb = self._mtimedb
-		bad_resume_opts = self._bad_resume_opts
-
-		logger.log(" ::: completed emerge (%s of %s) %s to %s" % \
-			(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg.root))
-
-		logger.log(" *** RESTARTING " + \
-			"emerge via exec() after change of " + \
-			"portage version.")
-
-		mtimedb["resume"]["mergelist"].remove(list(pkg))
-		mtimedb.commit()
-		portage.run_exitfuncs()
-		# Don't trust sys.argv[0] here because eselect-python may modify it.
-		emerge_binary = os.path.join(portage.const.PORTAGE_BIN_PATH, 'emerge')
-		mynewargv = [emerge_binary, "--resume"]
-		resume_opts = self.myopts.copy()
-		# For automatic resume, we need to prevent
-		# any of bad_resume_opts from leaking in
-		# via EMERGE_DEFAULT_OPTS.
-		resume_opts["--ignore-default-opts"] = True
-		for myopt, myarg in resume_opts.items():
-			if myopt not in bad_resume_opts:
-				if myarg is True:
-					mynewargv.append(myopt)
-				elif isinstance(myarg, list):
-					# arguments like --exclude that use 'append' action
-					for x in myarg:
-						mynewargv.append("%s=%s" % (myopt, x))
-				else:
-					mynewargv.append("%s=%s" % (myopt, myarg))
-		# priority only needs to be adjusted on the first run
-		os.environ["PORTAGE_NICENESS"] = "0"
-		os.execv(mynewargv[0], mynewargv)
-
 	def _run_pkg_pretend(self):
 		"""
 		Since pkg_pretend output may be important, this method sends all
@@ -1033,6 +969,8 @@ class Scheduler(PollScheduler):
 			self._background = self._background_mode()
 		except self._unknown_internal_error:
 			return 1
+
+		self._handle_self_update()
 
 		for root in self.trees:
 			root_config = self.trees[root]["root_config"]
@@ -1379,8 +1317,6 @@ class Scheduler(PollScheduler):
 		if pkg.installed:
 			return
 
-		self._restart_if_necessary(pkg)
-
 		# Call mtimedb.commit() after each merge so that
 		# --resume still works after being interrupted
 		# by reboot, sigkill or similar.
@@ -1585,10 +1521,7 @@ class Scheduler(PollScheduler):
 
 	def _main_loop(self):
 
-		# Only allow 1 job max if a restart is scheduled
-		# due to portage update.
-		if self._is_restart_scheduled() or \
-			self._opts_no_background.intersection(self.myopts):
+		if self._opts_no_background.intersection(self.myopts):
 			self._set_max_jobs(1)
 
 		while self._schedule():
