@@ -386,7 +386,7 @@ class Scheduler(PollScheduler):
 		"""
 		background = (self._max_jobs is True or \
 			self._max_jobs > 1 or "--quiet" in self.myopts \
-			or "--quiet-build" in self.myopts) and \
+			or self.myopts.get("--quiet-build", "y") == "y") and \
 			not bool(self._opts_no_background.intersection(self.myopts))
 
 		if background:

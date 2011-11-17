@@ -848,7 +848,6 @@ def parse_opts(tmpcmdline, silent=False):
 			"help"     : "redirect build output to logs",
 			"type"     : "choice",
 			"choices"  : true_y_or_n,
-			"default"  : "y",
 		},
 
 		"--rebuild-if-new-rev": {
@@ -1092,8 +1091,6 @@ def parse_opts(tmpcmdline, silent=False):
 		myoptions.quiet = None
 
 	if myoptions.quiet_build in true_y:
-		myoptions.quiet_build = True
-	else:
 		myoptions.quiet_build = None
 
 	if myoptions.rebuild_if_new_ver in true_y:
