@@ -1906,7 +1906,7 @@ def emerge_main(args=None):
 					opt_list.append("%s=%s" % (opt, arg))
 			myelogstr=" ".join(opt_list)
 		if myaction:
-			myelogstr+=" "+myaction
+			myelogstr += " --" + myaction
 		if myfiles:
 			myelogstr += " " + " ".join(oldargs)
 		emergelog(xterm_titles, " *** emerge " + myelogstr)
