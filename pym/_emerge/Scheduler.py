@@ -927,6 +927,7 @@ class Scheduler(PollScheduler):
 			build_dir = EbuildBuildDir(scheduler=sched_iface,
 				settings=settings)
 			build_dir.lock()
+			current_task = None
 
 			try:
 
@@ -935,6 +936,7 @@ class Scheduler(PollScheduler):
 				if existing_buildir:
 					clean_phase = EbuildPhase(background=False,
 						phase='clean', scheduler=sched_iface, settings=settings)
+					current_task = clean_phase
 					clean_phase.start()
 					clean_phase.wait()
 
@@ -956,6 +958,7 @@ class Scheduler(PollScheduler):
 
 					verifier = BinpkgVerifier(pkg=x,
 						scheduler=sched_iface)
+					current_task = verifier
 					verifier.start()
 					if verifier.wait() != os.EX_OK:
 						failures += 1
@@ -998,12 +1001,15 @@ class Scheduler(PollScheduler):
 					phase="pretend", scheduler=sched_iface,
 					settings=settings)
 
+				current_task = pretend_phase
 				pretend_phase.start()
 				ret = pretend_phase.wait()
 				if ret != os.EX_OK:
 					failures += 1
 				portage.elog.elog_process(x.cpv, settings)
 			finally:
+				if current_task is not None and current_task.isAlive():
+					current_task.cancel()
 				clean_phase = EbuildPhase(background=False,
 					phase='clean', scheduler=sched_iface, settings=settings)
 				clean_phase.start()
