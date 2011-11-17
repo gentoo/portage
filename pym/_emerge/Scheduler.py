@@ -742,7 +742,6 @@ class Scheduler(PollScheduler):
 			self._status_msg("Starting parallel fetch")
 
 			prefetchers = self._prefetchers
-			getbinpkg = "--getbinpkg" in self.myopts
 
 			for pkg in self._mergelist:
 				# mergelist can contain solved Blocker instances
@@ -1159,11 +1158,8 @@ class Scheduler(PollScheduler):
 			# If only one package failed then just show it's
 			# whole log for easy viewing.
 			failed_pkg = self._failed_pkgs_all[-1]
-			build_dir = failed_pkg.build_dir
 			log_file = None
 			log_file_real = None
-
-			log_paths = [failed_pkg.build_log]
 
 			log_path = self._locate_failure_log(failed_pkg)
 			if log_path is not None:
@@ -1259,9 +1255,6 @@ class Scheduler(PollScheduler):
 				(mysettings, key, errors))
 
 	def _locate_failure_log(self, failed_pkg):
-
-		build_dir = failed_pkg.build_dir
-		log_file = None
 
 		log_paths = [failed_pkg.build_log]
 
@@ -1445,7 +1438,6 @@ class Scheduler(PollScheduler):
 
 		self._add_prefetchers()
 		self._add_packages()
-		pkg_queue = self._pkg_queue
 		failed_pkgs = self._failed_pkgs
 		portage.locks._quiet = self._background
 		portage.elog.add_listener(self._elog_listener)
