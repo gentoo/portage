@@ -26,7 +26,7 @@ from portage.output import colorize, create_color_func, red
 bad = create_color_func("BAD")
 from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
-from portage.util import writemsg, writemsg_level
+from portage.util import ensure_dirs, writemsg, writemsg_level
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
 from portage.package.ebuild.doebuild import _check_temp_dir
@@ -920,9 +920,26 @@ class Scheduler(PollScheduler):
 			if rval != os.EX_OK:
 				return rval
 
+			build_dir_path = os.path.join(
+				os.path.realpath(settings["PORTAGE_TMPDIR"]),
+				"portage", x.category, x.pf)
+			existing_buildir = os.path.isdir(build_dir_path)
 			build_dir = None
 
 			try:
+				settings["PORTAGE_BUILDDIR"] = build_dir_path
+				build_dir = EbuildBuildDir(scheduler=sched_iface,
+					settings=settings)
+				build_dir.lock()
+
+				# Clean up the existing build dir, in case pkg_pretend
+				# checks for available space (bug #390711).
+				if existing_buildir:
+					clean_phase = EbuildPhase(background=False,
+						phase='clean', scheduler=sched_iface, settings=settings)
+					clean_phase.start()
+					clean_phase.wait()
+
 				if x.built:
 					tree = "bintree"
 					bintree = root_config.trees["bintree"].dbapi.bintree
@@ -949,9 +966,8 @@ class Scheduler(PollScheduler):
 					if fetched:
 						bintree.inject(x.cpv, filename=fetched)
 					tbz2_file = bintree.getname(x.cpv)
-					infloc = os.path.join(settings["PORTAGE_TMPDIR"],
-						x.category, x.pf, "build-info")
-					os.makedirs(infloc)
+					infloc = os.path.join(build_dir_path, "build-info")
+					ensure_dirs(infloc)
 					portage.xpak.tbz2(tbz2_file).unpackinfo(infloc)
 					ebuild_path = os.path.join(infloc, x.pf + ".ebuild")
 					settings.configdict["pkg"]["EMERGE_FROM"] = "binary"
@@ -972,19 +988,6 @@ class Scheduler(PollScheduler):
 				portage.package.ebuild.doebuild.doebuild_environment(ebuild_path,
 					"pretend", settings=settings,
 					db=self.trees[settings['EROOT']][tree].dbapi)
-
-				existing_buildir = os.path.isdir(settings["PORTAGE_BUILDDIR"])
-				build_dir = EbuildBuildDir(scheduler=sched_iface,
-					settings=settings)
-				build_dir.lock()
-
-				# Clean up the existing build dir, in case pkg_pretend
-				# checks for available space (bug #390711).
-				if existing_buildir:
-					clean_phase = EbuildPhase(background=False,
-						phase='clean', scheduler=sched_iface, settings=settings)
-					clean_phase.start()
-					clean_phase.wait()
 
 				prepare_build_dirs(root_config.root, settings, cleanup=0)
 
