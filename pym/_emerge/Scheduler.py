@@ -923,13 +923,12 @@ class Scheduler(PollScheduler):
 				os.path.realpath(settings["PORTAGE_TMPDIR"]),
 				"portage", x.category, x.pf)
 			existing_buildir = os.path.isdir(build_dir_path)
-			build_dir = None
+			settings["PORTAGE_BUILDDIR"] = build_dir_path
+			build_dir = EbuildBuildDir(scheduler=sched_iface,
+				settings=settings)
+			build_dir.lock()
 
 			try:
-				settings["PORTAGE_BUILDDIR"] = build_dir_path
-				build_dir = EbuildBuildDir(scheduler=sched_iface,
-					settings=settings)
-				build_dir.lock()
 
 				# Clean up the existing build dir, in case pkg_pretend
 				# checks for available space (bug #390711).
@@ -1005,12 +1004,11 @@ class Scheduler(PollScheduler):
 					failures += 1
 				portage.elog.elog_process(x.cpv, settings)
 			finally:
-				if build_dir is not None:
-					clean_phase = EbuildPhase(background=False,
-						phase='clean', scheduler=sched_iface, settings=settings)
-					clean_phase.start()
-					clean_phase.wait()
-					build_dir.unlock()
+				clean_phase = EbuildPhase(background=False,
+					phase='clean', scheduler=sched_iface, settings=settings)
+				clean_phase.start()
+				clean_phase.wait()
+				build_dir.unlock()
 
 		if failures:
 			return 1
