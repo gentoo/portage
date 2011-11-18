@@ -13,14 +13,13 @@ import sys
 from portage import os
 from portage import _unicode_decode
 from portage.dbapi.dep_expand import dep_expand
-from portage.const import PORTAGE_PACKAGE_ATOM
-from portage.dep import cpvequal, match_from_list
+from portage.dep import cpvequal
 from portage.exception import InvalidDependString, SignatureException
 from portage.output import ( blue, bold, colorize, create_color_func,
 	darkblue, darkgreen, green, nc_len, red, teal, turquoise, yellow )
 bad = create_color_func("BAD")
-from portage.util import writemsg_stdout, writemsg_level
-from portage.versions import best, catpkgsplit, cpv_getkey
+from portage.util import writemsg_stdout
+from portage.versions import best, catpkgsplit
 
 from _emerge.Blocker import Blocker
 from _emerge.create_world_atom import create_world_atom
