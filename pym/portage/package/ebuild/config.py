@@ -2076,13 +2076,15 @@ class config(object):
 				self._virtuals_manager._treeVirtuals = {}
 
 	def __delitem__(self,mykey):
-		self.modifying()
-		for x in self.lookuplist:
-			if x != None:
-				if mykey in x:
-					del x[mykey]
+		self.pop(mykey)
 
-	def __getitem__(self,mykey):
+	def __getitem__(self, key):
+		try:
+			return self._getitem(key)
+		except KeyError:
+			return '' # for backward compat, don't raise KeyError
+
+	def _getitem(self, mykey):
 
 		# These ones point to temporary values when
 		# portage plans to update itself.
@@ -2094,15 +2096,17 @@ class config(object):
 		for d in self.lookuplist:
 			if mykey in d:
 				return d[mykey]
-		return '' # for backward compat, don't raise KeyError
+
+		raise KeyError(mykey)
 
 	def get(self, k, x=None):
-		for d in self.lookuplist:
-			if k in d:
-				return d[k]
-		return x
+		try:
+			return self._getitem(k)
+		except KeyError:
+			return x
 
 	def pop(self, key, *args):
+		self.modifying()
 		if len(args) > 1:
 			raise TypeError(
 				"pop expected at most 2 arguments, got " + \
@@ -2118,10 +2122,12 @@ class config(object):
 
 	def __contains__(self, mykey):
 		"""Called to implement membership test operators (in and not in)."""
-		for d in self.lookuplist:
-			if mykey in d:
-				return True
-		return False
+		try:
+			 self._getitem(mykey)
+		except KeyError:
+			return False
+		else:
+			return True
 
 	def setdefault(self, k, x=None):
 		v = self.get(k)
