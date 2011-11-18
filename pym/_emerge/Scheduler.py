@@ -290,7 +290,7 @@ class Scheduler(PollScheduler):
 	def _handle_self_update(self):
 
 		if self._opts_no_self_update.intersection(self.myopts):
-			return
+			return os.EX_OK
 
 		for x in self._mergelist:
 			if not isinstance(x, Package):
@@ -307,8 +307,13 @@ class Scheduler(PollScheduler):
 				'9999' in x.cpv or \
 				'git' in x.inherited or \
 				'git-2' in x.inherited:
+				rval = _check_temp_dir(self.settings)
+				if rval != os.EX_OK:
+					return rval
 				_prepare_self_update(self.settings)
 			break
+
+		return os.EX_OK
 
 	def _terminate_tasks(self):
 		self._status_display.quiet = True
@@ -961,7 +966,9 @@ class Scheduler(PollScheduler):
 		except self._unknown_internal_error:
 			return 1
 
-		self._handle_self_update()
+		rval = self._handle_self_update()
+		if rval != os.EX_OK:
+			return rval
 
 		for root in self.trees:
 			root_config = self.trees[root]["root_config"]
