@@ -54,8 +54,9 @@ def collect_ebuild_messages(path):
 		f = io.open(_unicode_encode(filename,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['repo.content'], errors='replace')
-		for l in f:
-			l = l.rstrip('\n')
+		# Use split('\n') since normal line iteration or readlines() will
+		# split on \r characters as shown in bug #390833.
+		for l in f.read().split('\n'):
 			if not l:
 				continue
 			try:
