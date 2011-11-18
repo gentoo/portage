@@ -2024,6 +2024,10 @@ def _prepare_self_update(settings):
 	automatically clean up the temporary copies.
 	"""
 
+	# sanity check: ensure that that this routine only runs once
+	if portage._bin_path != portage.const.PORTAGE_BIN_PATH:
+		return
+
 	# Load lazily referenced portage submodules into memory,
 	# so imports won't fail during portage upgrade/downgrade.
 	_preload_elog_modules(settings)
