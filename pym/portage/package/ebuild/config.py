@@ -2094,8 +2094,10 @@ class config(object):
 			return portage._pym_path
 
 		for d in self.lookuplist:
-			if mykey in d:
+			try:
 				return d[mykey]
+			except KeyError:
+				pass
 
 		raise KeyError(mykey)
 
@@ -2153,7 +2155,7 @@ class config(object):
 
 	def iteritems(self):
 		for k in self:
-			yield (k, self[k])
+			yield (k, self._getitem(k))
 
 	def items(self):
 		return list(self.iteritems())
