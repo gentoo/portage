@@ -172,13 +172,17 @@ _functions = { "einfo": ("INFO", "GOOD"),
 		"eerror": ("ERROR", "BAD"),
 }
 
-def _make_msgfunction(level, color):
-	def _elog(msg, phase="other", key=None, out=None):
-		""" Display and log a message assigned to the given key/cpv 
-		    (or unassigned if no key is given).
+class _make_msgfunction(object):
+	__slots__ = ('_color', '_level')
+	def __init__(self, level, color):
+		self._level = level
+		self._color = color
+	def __call__(self, msg, phase="other", key=None, out=None):
+		"""
+		Display and log a message assigned to the given key/cpv.
 		""" 
-		_elog_base(level, msg,  phase=phase, key=key, color=color, out=out)
-	return _elog
+		_elog_base(self._level, msg,  phase=phase,
+			key=key, color=self._color, out=out)
 
 for f in _functions:
 	setattr(sys.modules[__name__], f, _make_msgfunction(_functions[f][0], _functions[f][1]))
