@@ -519,10 +519,11 @@ def _calc_changelog(ebuildpath,current,next):
 		except EnvironmentError:
 			return []
 		for node in _find_changelog_tags(changelog):
-			divisions.append(node)
 			if node[0] == current:
 				found_current = True
 				break
+			else:
+				divisions.append(node)
 		if found_current:
 			break
 
