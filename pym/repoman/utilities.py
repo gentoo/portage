@@ -522,6 +522,10 @@ def FindVCS():
 	else:
 		outvcs = seek()
 
+	if len(outvcs) > 1:
+		# eliminate duplicates, like for svn in bug #391199
+		outvcs = list(set(outvcs))
+
 	return outvcs
 
 _copyright_re1 = re.compile(br'^(# Copyright \d\d\d\d)-\d\d\d\d ')
