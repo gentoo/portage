@@ -12,7 +12,7 @@
 
 #
 # gpg key import
-# KEY_ID=0x239C75C4
+# KEY_ID=0x96D8BF6D
 # gpg --homedir /etc/portage/gnupg --keyserver subkeys.pgp.net --recv-keys $KEY_ID
 # gpg --homedir /etc/portage/gnupg --edit-key $KEY_ID trust
 #
