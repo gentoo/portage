@@ -297,7 +297,29 @@ class config(object):
 			eroot = locations_manager.eroot
 			self.global_config_path = locations_manager.global_config_path
 
-			make_globals = getconfig(os.path.join(self.global_config_path, 'make.globals'))
+			# The expand_map is used for variable substitution
+			# in getconfig() calls, and the getconfig() calls
+			# update expand_map with the value of each variable
+			# assignment that occurs. Variable substitution occurs
+			# in the following order, which corresponds to the
+			# order of appearance in self.lookuplist:
+			#
+			#   * env.d
+			#   * make.globals
+			#   * make.defaults
+			#   * make.conf
+			#
+			# Notably absent is "env", since we want to avoid any
+			# interaction with the calling environment that might
+			# lead to unexpected results.
+			expand_map = {}
+			self._expand_map = expand_map
+
+			env_d = getconfig(os.path.join(eroot, "etc", "profile.env"),
+				expand=expand_map)
+
+			make_globals = getconfig(os.path.join(
+				self.global_config_path, 'make.globals'), expand=expand_map)
 			if make_globals is None:
 				make_globals = {}
 
@@ -345,30 +367,9 @@ class config(object):
 			self.configlist.append({})
 			self.configdict["pkginternal"] = self.configlist[-1]
 
-			# The expand_map is used for variable substitution
-			# in getconfig() calls, and the getconfig() calls
-			# update expand_map with the value of each variable
-			# assignment that occurs. Variable substitution occurs
-			# in the following order, which corresponds to the
-			# order of appearance in self.lookuplist:
-			#
-			#   * env.d
-			#   * make.globals
-			#   * make.defaults
-			#   * make.conf
-			#
-			# Notably absent is "env", since we want to avoid any
-			# interaction with the calling environment that might
-			# lead to unexpected results.
-			expand_map = {}
-			self._expand_map = expand_map
-
-			env_d = getconfig(os.path.join(eroot, "etc", "profile.env"),
-				expand=expand_map)
 			# env_d will be None if profile.env doesn't exist.
 			if env_d:
 				self.configdict["env.d"].update(env_d)
-				expand_map.update(env_d)
 
 			# backupenv is used for calculating incremental variables.
 			if env is None:
