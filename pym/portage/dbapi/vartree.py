@@ -3981,7 +3981,7 @@ class dblink(object):
 			mergelist = stufftomerge
 			offset = ""
 
-		for i, x in enumerate(sorted(mergelist)):
+		for i, x in enumerate(mergelist):
 
 			mysrc = join(srcroot, offset, x)
 			mydest = join(destroot, offset, x)
