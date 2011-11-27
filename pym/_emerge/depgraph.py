@@ -2743,6 +2743,7 @@ class depgraph(object):
 		node = start_node
 		child = None
 		all_parents = self._dynamic_config._parent_atoms
+		graph = self._dynamic_config.digraph
 
 		if target_atom is not None and isinstance(node, Package):
 			affecting_use = set()
@@ -2801,8 +2802,12 @@ class depgraph(object):
 		while node is not None:
 			traversed_nodes.add(node)
 
-			if isinstance(node, DependencyArg):
-				if self._dynamic_config.digraph.parent_nodes(node):
+			if node not in graph:
+				# The parent is not in the graph due to backtracking.
+				break
+
+			elif isinstance(node, DependencyArg):
+				if graph.parent_nodes(node):
 					node_type = "set"
 				else:
 					node_type = "argument"
@@ -2815,13 +2820,21 @@ class depgraph(object):
 						break
 
 				dep_strings = set()
-				for priority in self._dynamic_config.digraph.nodes[node][0][child]:
-					if priority.buildtime:
-						dep_strings.add(node.metadata["DEPEND"])
-					if priority.runtime:
-						dep_strings.add(node.metadata["RDEPEND"])
-					if priority.runtime_post:
-						dep_strings.add(node.metadata["PDEPEND"])
+				priorities = graph.nodes[node][0].get(child)
+				if priorities is None:
+					# This edge comes from _parent_atoms and was not added to
+					# the graph, and _parent_atoms does not contain priorities.
+					dep_strings.add(node.metadata["DEPEND"])
+					dep_strings.add(node.metadata["RDEPEND"])
+					dep_strings.add(node.metadata["PDEPEND"])
+				else:
+					for priority in priorities:
+						if priority.buildtime:
+							dep_strings.add(node.metadata["DEPEND"])
+						if priority.runtime:
+							dep_strings.add(node.metadata["RDEPEND"])
+						if priority.runtime_post:
+							dep_strings.add(node.metadata["PDEPEND"])
 
 				affecting_use = set()
 				for dep_str in dep_strings:
@@ -2847,10 +2860,6 @@ class depgraph(object):
 					pkg_name += "[%s]" % ",".join(usedep)
 
 				dep_chain.append((pkg_name, node.type_name))
-
-			if node not in self._dynamic_config.digraph:
-				# The parent is not in the graph due to backtracking.
-				break
 
 			# When traversing to parents, prefer arguments over packages
 			# since arguments are root nodes. Never traverse the same
