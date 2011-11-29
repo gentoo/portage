@@ -197,10 +197,8 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 				return None # failure
 		try:
 			if didcopy:
-				if stat.S_ISLNK(sstat[stat.ST_MODE]):
-					lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
-				else:
-					os.chown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
+				# didcopy is True only if S_ISREG returned True
+				os.chown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
 				os.chmod(dest, stat.S_IMODE(sstat[stat.ST_MODE])) # Sticky is reset on chown
 				os.unlink(src)
 		except SystemExit as e:
