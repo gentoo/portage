@@ -16,6 +16,16 @@ from portage.localization import _
 from portage.process import spawn
 from portage.util import writemsg
 
+if hasattr(_os, "getxattr"):
+	# Python >=3.3
+	def _copyxattr(src, dest):
+		for attr in _os.listxattr(src):
+			_os.setxattr(dest, attr, _os.getxattr(src, attr))
+else:
+	def _copyxattr(src, dest):
+		pass
+		# Maybe call getfattr and setfattr executables.
+
 def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		hardlink_candidates=None, encoding=_encodings['fs']):
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
@@ -162,10 +172,12 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			try: # For safety copy then move it over.
 				if selinux_enabled:
 					selinux.copyfile(src, dest + "#new")
+					_copyxattr(src, dest + "#new")
 					selinux.rename(dest + "#new", dest)
 				else:
-					shutil.copyfile(src,dest+"#new")
-					os.rename(dest+"#new",dest)
+					shutil.copyfile(src, dest + "#new")
+					_copyxattr(src, dest + "#new")
+					os.rename(dest + "#new", dest)
 				didcopy=1
 			except SystemExit as e:
 				raise
