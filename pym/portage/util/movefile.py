@@ -10,15 +10,16 @@ import stat
 
 import portage
 from portage import bsd_chflags, _encodings, _os_overrides, _selinux, \
-	_unicode_decode, _unicode_func_wrapper, _unicode_module_wrapper
+	_unicode_decode, _unicode_encode, _unicode_func_wrapper,\
+	_unicode_module_wrapper
 from portage.const import MOVE_BINARY
 from portage.localization import _
 from portage.process import spawn
 from portage.util import writemsg
 
-def _apply_stat(os, src_stat, dest):
-	os.chown(dest, src_stat.st_uid, src_stat.st_gid)
-	os.chmod(dest, stat.S_IMODE(src_stat.st_mode))
+def _apply_stat(src_stat, dest):
+	_os.chown(dest, src_stat.st_uid, src_stat.st_gid)
+	_os.chmod(dest, stat.S_IMODE(src_stat.st_mode))
 
 if hasattr(_os, "getxattr"):
 	# Python >=3.3
@@ -40,6 +41,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 	if mysettings is None:
 		mysettings = portage.settings
 
+	src_bytes = _unicode_encode(src, encoding=encoding, errors='strict')
 	selinux_enabled = mysettings.selinux_enabled()
 	if selinux_enabled:
 		selinux = _unicode_module_wrapper(_selinux, encoding=encoding)
@@ -173,16 +175,18 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 	if renamefailed:
 		if stat.S_ISREG(sstat[stat.ST_MODE]):
 			dest_tmp = dest + "#new"
+			dest_tmp_bytes = _unicode_encode(dest_tmp, encoding=encoding,
+				errors='strict')
 			try: # For safety copy then move it over.
 				if selinux_enabled:
 					selinux.copyfile(src, dest_tmp)
-					_copyxattr(src, dest_tmp)
-					_apply_stat(os, sstat, dest_tmp)
+					_copyxattr(src_bytes, dest_tmp_bytes)
+					_apply_stat(sstat, dest_tmp_bytes)
 					selinux.rename(dest_tmp, dest)
 				else:
 					shutil.copyfile(src, dest_tmp)
-					_copyxattr(src, dest_tmp)
-					_apply_stat(os, sstat, dest_tmp)
+					_copyxattr(src_bytes, dest_tmp_bytes)
+					_apply_stat(sstat, dest_tmp_bytes)
 					os.rename(dest_tmp, dest)
 				os.unlink(src)
 			except SystemExit as e:
