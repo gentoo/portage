@@ -16,6 +16,10 @@ from portage.localization import _
 from portage.process import spawn
 from portage.util import writemsg
 
+def _apply_stat(os, src_stat, dest):
+	os.chown(dest, src_stat.st_uid, src_stat.st_gid)
+	os.chmod(dest, stat.S_IMODE(src_stat.st_mode))
+
 if hasattr(_os, "getxattr"):
 	# Python >=3.3
 	def _copyxattr(src, dest):
@@ -167,19 +171,20 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 				return None
 			# Invalid cross-device-link 'bind' mounted or actually Cross-Device
 	if renamefailed:
-		didcopy=0
 		if stat.S_ISREG(sstat[stat.ST_MODE]):
 			dest_tmp = dest + "#new"
 			try: # For safety copy then move it over.
 				if selinux_enabled:
 					selinux.copyfile(src, dest_tmp)
 					_copyxattr(src, dest_tmp)
+					_apply_stat(os, sstat, dest_tmp)
 					selinux.rename(dest_tmp, dest)
 				else:
 					shutil.copyfile(src, dest_tmp)
 					_copyxattr(src, dest_tmp)
+					_apply_stat(os, sstat, dest_tmp)
 					os.rename(dest_tmp, dest)
-				didcopy=1
+				os.unlink(src)
 			except SystemExit as e:
 				raise
 			except Exception as e:
@@ -196,19 +201,6 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 					"dest": _unicode_decode(dest, encoding=encoding)}, noiselevel=-1)
 				writemsg("!!! %s\n" % a, noiselevel=-1)
 				return None # failure
-		try:
-			if didcopy:
-				# didcopy is True only if S_ISREG returned True
-				os.chown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
-				os.chmod(dest, stat.S_IMODE(sstat[stat.ST_MODE])) # Sticky is reset on chown
-				os.unlink(src)
-		except SystemExit as e:
-			raise
-		except Exception as e:
-			print(_("!!! Failed to chown/chmod/unlink in movefile()"))
-			print("!!!",dest)
-			print("!!!",e)
-			return None
 
 	# Always use stat_obj[stat.ST_MTIME] for the integral timestamp which
 	# is returned, since the stat_obj.st_mtime float attribute rounds *up*
