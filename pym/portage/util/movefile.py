@@ -169,15 +169,16 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 	if renamefailed:
 		didcopy=0
 		if stat.S_ISREG(sstat[stat.ST_MODE]):
+			dest_tmp = dest + "#new"
 			try: # For safety copy then move it over.
 				if selinux_enabled:
-					selinux.copyfile(src, dest + "#new")
-					_copyxattr(src, dest + "#new")
-					selinux.rename(dest + "#new", dest)
+					selinux.copyfile(src, dest_tmp)
+					_copyxattr(src, dest_tmp)
+					selinux.rename(dest_tmp, dest)
 				else:
-					shutil.copyfile(src, dest + "#new")
-					_copyxattr(src, dest + "#new")
-					os.rename(dest + "#new", dest)
+					shutil.copyfile(src, dest_tmp)
+					_copyxattr(src, dest_tmp)
+					os.rename(dest_tmp, dest)
 				didcopy=1
 			except SystemExit as e:
 				raise
