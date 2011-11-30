@@ -877,13 +877,15 @@ Per\-package USE from \fB/etc/portage/package.use\fR (see \fBportage\fR(5))
 USE from make.conf
 .TP
 .B defaults
-USE from make.defaults and package.use in the profile (see \fBportage\fR(5))
+USE from make.defaults and package.use in the profile
+(e.g. /etc/portage/make.profile/package.use) (see \fBportage\fR(5))
 .TP
 .B pkginternal
 USE from \fBebuild\fR(5) IUSE defaults
 .TP
 .B repo
-USE from make.defaults and package.use in the repo (see \fBportage\fR(5))
+USE from make.defaults and package.use in the repo's profiles/ top dir
+(e.g. /usr/portage/profiles/package.use) (see \fBportage\fR(5))
 .TP
 .B env.d
 USE from the environment variables, such as LINGUAS, defined by files in
