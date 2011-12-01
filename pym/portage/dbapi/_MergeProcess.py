@@ -212,7 +212,7 @@ class MergeProcess(SpawnProcess):
 		if self._elog_reg_id is not None:
 			self.scheduler.unregister(self._elog_reg_id)
 			self._elog_reg_id = None
-		if self._elog_reader_fd:
+		if self._elog_reader_fd is not None:
 			os.close(self._elog_reader_fd)
 			self._elog_reader_fd = None
 		if self._elog_keys is not None:
