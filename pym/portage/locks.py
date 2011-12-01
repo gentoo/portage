@@ -8,6 +8,7 @@ __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
 
 import errno
 import fcntl
+import platform
 import stat
 import sys
 import time
@@ -26,6 +27,10 @@ if sys.hexversion >= 0x3000000:
 
 HARDLINK_FD = -2
 _default_lock_fn = fcntl.lockf
+
+if platform.python_implementation() == 'PyPy':
+	# workaround for https://bugs.pypy.org/issue747
+	_default_lock_fn = fcntl.flock
 
 # Used by emerge in order to disable the "waiting for lock" message
 # so that it doesn't interfere with the status display.
