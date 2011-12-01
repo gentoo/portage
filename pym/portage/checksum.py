@@ -9,6 +9,7 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_encode
 import errno
+import platform
 import stat
 import tempfile
 
@@ -60,6 +61,28 @@ class _generate_hash_function(object):
 		f.close()
 
 		return (checksum.hexdigest(), size)
+
+_test_hash_func = False
+if platform.python_implementation() == 'PyPy':
+	def _test_hash_func(constructor):
+		"""
+		Test for PyPy crashes observed with hashlib's ripemd160 and whirlpool
+		functions executed under pypy-1.7 with Python 2.7.1:
+		*** glibc detected *** pypy-c1.7: free(): invalid next size (fast): 0x0b963a38 ***
+		*** glibc detected *** pypy-c1.7: free(): corrupted unsorted chunks: 0x09c490b0 ***
+		"""
+		import random
+		pid = os.fork()
+		if pid == 0:
+			data = list(b'abcdefg')
+			for i in range(10):
+				checksum = constructor()
+				random.shuffle(data)
+				checksum.update(b''.join(data))
+				checksum.hexdigest()
+			os._exit(os.EX_OK)
+		pid, status = os.waitpid(pid, 0)
+		return os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK
 
 # Define hash functions, try to use the best module available. Later definitions
 # override earlier ones
@@ -129,6 +152,12 @@ try:
 		except ValueError:
 			pass
 		else:
+			if _test_hash_func and \
+				not _test_hash_func(functools.partial(hashlib.new, hash_name)):
+				portage.util.writemsg("\n!!! hash function appears to "
+					"crash python: %s from %s\n" %
+					(hash_name, "hashlib"), noiselevel=-1)
+				continue
 			globals()['%shash' % local_name] = \
 				_generate_hash_function(local_name.upper(), \
 				functools.partial(hashlib.new, hash_name), \
