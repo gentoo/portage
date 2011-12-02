@@ -127,25 +127,20 @@ def _doebuild_path(settings, eapi=None):
 	eprefix = settings["EPREFIX"]
 	prerootpath = [x for x in settings.get("PREROOTPATH", "").split(":") if x]
 	rootpath = [x for x in settings.get("ROOTPATH", "").split(":") if x]
-
-	prefixes = []
-	if eprefix:
-		prefixes.append(eprefix)
-	prefixes.append("/")
-
-	path = []
+	# PREFIX LOCAL: use DEFAULT_PATH and EXTRA_PATH from make.globals
+	defaultpath = [x for x in settings.get("DEFAULT_PATH", "").split(":") if x]
+	extrapath = [x for x in settings.get("EXTRA_PATH", "").split(":") if x]
 
 	if eapi not in (None, "0", "1", "2", "3"):
 		path.append(os.path.join(portage_bin_path, "ebuild-helpers", "4"))
 
 	path.append(os.path.join(portage_bin_path, "ebuild-helpers"))
 	path.extend(prerootpath)
-
-	for prefix in prefixes:
-		for x in ("usr/local/sbin", "usr/local/bin", "usr/sbin", "usr/bin", "sbin", "bin"):
-			path.append(os.path.join(prefix, x))
-
+	path.extend(defaultpath)
 	path.extend(rootpath)
+	path.extend(extrapath)
+	# END PREFIX LOCAL
+
 	settings["PATH"] = ":".join(path)
 
 def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
