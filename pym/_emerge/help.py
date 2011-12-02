@@ -18,7 +18,7 @@ def help():
 	print("          [ "+green("--complete-graph")+"             ] [ "+green("--deep")+"       ]")
 	print("          [ "+green("--jobs") + " " + turquoise("JOBS")+" ] [ "+green("--keep-going")+" ] [ " + green("--load-average")+" " + turquoise("LOAD") + "            ]")
 	print("          [ "+green("--newuse")+"    ] [ "+green("--noconfmem")+"  ] [ "+green("--nospinner")+"  ]")
-	print("          [ "+green("--oneshot")+"   ] [ "+green("--onlydeps")+"   ]")
+	print("          [ "+green("--oneshot")+"   ] [ "+green("--onlydeps")+"   ] [ "+ green("--quiet-build")+" [ " + turquoise("y") + " | "+ turquoise("n")+" ]        ]")
 	print("          [ "+green("--reinstall ")+turquoise("changed-use")+"      ] [ " + green("--with-bdeps")+" < " + turquoise("y") + " | "+ turquoise("n")+" >         ]")
 	print(bold("Actions:")+"  [ "+green("--depclean")+" | "+green("--list-sets")+" | "+green("--search")+" | "+green("--sync")+" | "+green("--version")+"        ]")
 	print()

@@ -557,6 +557,10 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 			os.path.dirname(os.path.dirname(pkgdir)))
 	else:
 		repo_config = None
+		# FEATURES=noauto only makes sense for porttree, and we don't want
+		# it to trigger redundant sourcing of the ebuild for api consumers
+		# that are using binary packages
+		mysettings.features.discard("noauto")
 	mf = None
 	if "strict" in features and \
 		"digest" not in features and \

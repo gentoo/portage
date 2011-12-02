@@ -4,8 +4,8 @@
 from portage import os
 from _emerge.AbstractPollTask import AbstractPollTask
 from _emerge.PollConstants import PollConstants
+import errno
 import fcntl
-import array
 
 class PipeReader(AbstractPollTask):
 
@@ -59,26 +59,21 @@ class PipeReader(AbstractPollTask):
 
 		if event & PollConstants.POLLIN:
 
-			for f in self.input_files.values():
-				if fd == f.fileno():
-					break
-
-			buf = array.array('B')
-			try:
-				buf.fromfile(f, self._bufsize)
-			except (EOFError, IOError):
-				pass
-
-			if buf:
+			while True:
+				data = None
 				try:
-					# Python >=3.2
-					data = buf.tobytes()
-				except AttributeError:
-					data = buf.tostring()
-				self._read_data.append(data)
-			else:
-				self._unregister()
-				self.wait()
+					data = os.read(fd, self._bufsize)
+				except OSError as e:
+					if e.errno not in (errno.EAGAIN,):
+						raise
+					break
+				else:
+					if data:
+						self._read_data.append(data)
+					else:
+						self._unregister()
+						self.wait()
+						break
 
 		self._unregister_if_appropriate(event)
 
