@@ -19,6 +19,9 @@ into() {
 		export DESTTREE=""
 	else
 		export DESTTREE=$1
+		# PREFIX LOCAL: always support ED
+		#case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+		# END PREFIX LOCAL
 		if [ ! -d "${ED}${DESTTREE}" ]; then
 			install -d "${ED}${DESTTREE}"
 			local ret=$?
@@ -35,6 +38,9 @@ insinto() {
 		export INSDESTTREE=""
 	else
 		export INSDESTTREE=$1
+		# PREFIX LOCAL: always support ED
+		#case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+		# END PREFIX LOCAL
 		if [ ! -d "${ED}${INSDESTTREE}" ]; then
 			install -d "${ED}${INSDESTTREE}"
 			local ret=$?
@@ -51,6 +57,9 @@ exeinto() {
 		export _E_EXEDESTTREE_=""
 	else
 		export _E_EXEDESTTREE_="$1"
+		# PREFIX LOCAL: always support ED
+		#case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+		# END PREFIX LOCAL
 		if [ ! -d "${ED}${_E_EXEDESTTREE_}" ]; then
 			install -d "${ED}${_E_EXEDESTTREE_}"
 			local ret=$?
@@ -67,6 +76,9 @@ docinto() {
 		export _E_DOCDESTTREE_=""
 	else
 		export _E_DOCDESTTREE_="$1"
+		# PREFIX LOCAL: always support ED
+		#case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+		# END PREFIX LOCAL
 		if [ ! -d "${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}" ]; then
 			install -d "${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
 			local ret=$?
@@ -133,6 +145,9 @@ docompress() {
 keepdir() {
 	dodir "$@"
 	local x
+	# PREFIX LOCAL: always support ED
+	#case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+	# END PREFIX LOCAL
 	if [ "$1" == "-R" ] || [ "$1" == "-r" ]; then
 		shift
 		find "$@" -type d -printf "${ED}%p/.keep_${CATEGORY}_${PN}-${SLOT}\n" \
@@ -144,7 +159,7 @@ keepdir() {
 	else
 		for x in "$@"; do
 			>> "${ED}${x}/.keep_${CATEGORY}_${PN}-${SLOT}" || \
-				die "Failed to create .keep in ${D}${x}"
+				die "Failed to create .keep in ${ED}${x}"
 		done
 	fi
 }
@@ -369,6 +384,10 @@ unpack() {
 econf() {
 	local x
 
+	# PREFIX LOCAL: always support EPREFIX
+	#case "$EAPI" in 0|1|2) local EPREFIX= ;; esac
+	# END PREFIX LOCAL
+
 	_hasg() {
 		local x s=$1
 		shift
@@ -463,6 +482,9 @@ econf() {
 einstall() {
 	# CONF_PREFIX is only set if they didn't pass in libdir above.
 	local LOCAL_EXTRA_EINSTALL="${EXTRA_EINSTALL}"
+	# PREFIX LOCAL: always support ED
+	#case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+	# END PREFIX LOCAL
 	LIBDIR_VAR="LIBDIR_${ABI}"
 	if [ -n "${ABI}" -a -n "${!LIBDIR_VAR}" ]; then
 		CONF_LIBDIR="${!LIBDIR_VAR}"
@@ -581,15 +603,30 @@ _eapi4_src_install() {
 	fi
 }
 
+# @FUNCTION: has_version
+# @USAGE: <DEPEND ATOM>
+# @DESCRIPTION:
 # Return true if given package is installed. Otherwise return false.
-# Takes single depend-type atoms.
+# Callers may override the ROOT variable in order to match packages from an
+# alternative ROOT.
 has_version() {
 
+	local eroot
+	case "$EAPI" in
+		# PREFIX LOCAL: always support ED
+		#0|1|2)
+		#	eroot=${ROOT}
+		#	;;
+		# END PREFIX LOCAL
+		*)
+			eroot=${ROOT%/}${EPREFIX}/
+			;;
+	esac
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
-		"$PORTAGE_BIN_PATH"/ebuild-ipc has_version "$ROOT" "$1"
+		"$PORTAGE_BIN_PATH"/ebuild-ipc has_version "${eroot}" "$1"
 	else
 		PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-		"${PORTAGE_PYTHON:-@PORTAGE_PREFIX_PYTHON@}" "${PORTAGE_BIN_PATH}/portageq" has_version "${ROOT}" "$1"
+		"${PORTAGE_PYTHON:-@PORTAGE_PREFIX_PYTHON@}" "${PORTAGE_BIN_PATH}/portageq" has_version "${eroot}" "$1"
 	fi
 	local retval=$?
 	case "${retval}" in
@@ -602,15 +639,30 @@ has_version() {
 	esac
 }
 
+# @FUNCTION: best_version
+# @USAGE: <DEPEND ATOM>
+# @DESCRIPTION:
 # Returns the best/most-current match.
-# Takes single depend-type atoms.
+# Callers may override the ROOT variable in order to match packages from an
+# alternative ROOT.
 best_version() {
 
+	local eroot
+	case "$EAPI" in
+		# PREFIX LOCAL: always support ED
+		#0|1|2)
+		#	eroot=${ROOT}
+		#	;;
+		# END PREFIX LOCAL
+		*)
+			eroot=${ROOT%/}${EPREFIX}/
+			;;
+	esac
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
-		"$PORTAGE_BIN_PATH"/ebuild-ipc best_version "$ROOT" "$1"
+		"$PORTAGE_BIN_PATH"/ebuild-ipc best_version "${eroot}" "$1"
 	else
 		PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-		"${PORTAGE_PYTHON:-@PORTAGE_PREFIX_PYTHON@}" "${PORTAGE_BIN_PATH}/portageq" best_version "${ROOT}" "$1"
+		"${PORTAGE_PYTHON:-@PORTAGE_PREFIX_PYTHON@}" "${PORTAGE_BIN_PATH}/portageq" best_version "${eroot}" "$1"
 	fi
 	local retval=$?
 	case "${retval}" in

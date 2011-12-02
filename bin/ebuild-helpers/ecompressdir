@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
@@ -9,12 +9,16 @@ if [[ -z $1 ]] ; then
 	exit 1
 fi
 
+# PREFIX LOCAL: always support ED
+#case "$EAPI" in 0|1|2) ED=${D} ;; esac
+# END PREFIX LOCAL
+
 case $1 in
 	--ignore)
 		shift
 		for skip in "$@" ; do
 			[[ -d ${ED}${skip} || -f ${ED}${skip} ]] \
-				&& >> "${D}${skip}.ecompress.skip"
+				&& >> "${ED}${skip}.ecompress.skip"
 		done
 		exit 0
 		;;
@@ -32,10 +36,10 @@ case $1 in
 		;;
 	--dequeue)
 		[[ -n $2 ]] && vecho "${0##*/}: --dequeue takes no additional arguments" 1>&2
-		find "${D}" -name '*.ecompress.dir' -print0 \
+		find "${ED}" -name '*.ecompress.dir' -print0 \
 			| sed -e 's:\.ecompress\.dir::g' -e "s:${ED}:/:g" \
 			| ${XARGS} -0 ecompressdir
-		find "${D}" -name '*.ecompress.skip' -print0 | ${XARGS} -0 rm -f
+		find "${ED}" -name '*.ecompress.skip' -print0 | ${XARGS} -0 rm -f
 		exit 0
 		;;
 	--*)
@@ -131,9 +135,10 @@ for dir in "$@" ; do
 		'cp -p "${file}" "${file}.ecompress.break" ; mv -f "${file}.ecompress.break" "${file}"' \;
 
 	# now lets do our work
-	[[ -z ${suffix} ]] && continue
-	vecho "${0##*/}: $(ecompress --bin) /${actual_dir#${D}}"
-	funk_up_dir "compress" "${suffix}" "ecompress"
+	if [[ -n ${suffix} ]] ; then
+		vecho "${0##*/}: $(ecompress --bin) /${actual_dir#${ED}}"
+		funk_up_dir "compress" "${suffix}" "ecompress"
+	fi
 
 	# finally, restore the skipped stuff
 	restore_skip_dirs

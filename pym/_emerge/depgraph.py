@@ -1089,7 +1089,7 @@ class depgraph(object):
 		# package selection, since we want to prompt the user
 		# for USE adjustment rather than have REQUIRED_USE
 		# affect package selection and || dep choices.
-		if not pkg.built and pkg.metadata["REQUIRED_USE"] and \
+		if not pkg.built and pkg.metadata.get("REQUIRED_USE") and \
 			eapi_has_required_use(pkg.metadata["EAPI"]):
 			required_use_is_sat = check_required_use(
 				pkg.metadata["REQUIRED_USE"],
@@ -1855,7 +1855,7 @@ class depgraph(object):
 				i += 1
 			else:
 				try:
-					x = portage.dep.Atom(x)
+					x = portage.dep.Atom(x, eapi=pkg.metadata["EAPI"])
 				except portage.exception.InvalidAtom:
 					if not pkg.installed:
 						raise portage.exception.InvalidDependString(
@@ -3011,7 +3011,7 @@ class depgraph(object):
 								raise
 						if not mreasons and \
 							not pkg.built and \
-							pkg.metadata["REQUIRED_USE"] and \
+							pkg.metadata.get("REQUIRED_USE") and \
 							eapi_has_required_use(pkg.metadata["EAPI"]):
 							if not check_required_use(
 								pkg.metadata["REQUIRED_USE"],
@@ -3066,7 +3066,7 @@ class depgraph(object):
 					continue
 
 				missing_use_adjustable.add(pkg)
-				required_use = pkg.metadata["REQUIRED_USE"]
+				required_use = pkg.metadata.get("REQUIRED_USE")
 				required_use_warning = ""
 				if required_use:
 					old_use = self._pkg_use_enabled(pkg)
@@ -3114,7 +3114,7 @@ class depgraph(object):
 					if untouchable_flags.intersection(involved_flags):
 						continue
 
-					required_use = myparent.metadata["REQUIRED_USE"]
+					required_use = myparent.metadata.get("REQUIRED_USE")
 					required_use_warning = ""
 					if required_use:
 						old_use = self._pkg_use_enabled(myparent)
@@ -3270,7 +3270,8 @@ class depgraph(object):
 
 				all_cp = set()
 				all_cp.update(vardb.cp_all())
-				all_cp.update(portdb.cp_all())
+				if "--usepkgonly" not in self._frozen_config.myopts:
+					all_cp.update(portdb.cp_all())
 				if "--usepkg" in self._frozen_config.myopts:
 					all_cp.update(bindb.cp_all())
 				# discard dir containing no ebuilds
@@ -3691,7 +3692,7 @@ class depgraph(object):
 
 		if new_changes != old_changes:
 			#Don't do the change if it violates REQUIRED_USE.
-			required_use = pkg.metadata["REQUIRED_USE"]
+			required_use = pkg.metadata.get("REQUIRED_USE")
 			if required_use and check_required_use(required_use, old_use, pkg.iuse.is_valid_flag) and \
 				not check_required_use(required_use, new_use, pkg.iuse.is_valid_flag):
 				return old_use

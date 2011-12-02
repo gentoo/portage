@@ -1,5 +1,4 @@
 #!@PORTAGE_BASH@
-#!/bin/bash
 # Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
@@ -10,7 +9,11 @@ if [ $# -lt 1 ] ; then
 	exit 1 	
 fi
 
-dir="${ED}/usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
+# PREFIX LOCAL: always support ED
+#case "$EAPI" in 0|1|2) ED=${D} ;; esac
+# END PREFIX LOCAL
+
+dir="${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
 if [ ! -d "${dir}" ] ; then
 	install -d "${dir}"
 fi

@@ -4,13 +4,17 @@
 
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 
+# PREFIX LOCAL: always support ED
+#case "$EAPI" in 0|1|2) ED=${D} ;; esac
+# END PREFIX LOCAL
+
 if [[ -z $1 ]] ; then
-	infodir="${EPREFIX}/usr/share/info"
+	infodir="/usr/share/info"
 else
 	if [[ -d ${ED}$1/share/info ]] ; then
-		infodir="${EPREFIX}$1/share/info"
+		infodir="$1/share/info"
 	else
-		infodir="${EPREFIX}$1/info"
+		infodir="$1/info"
 	fi
 fi
 

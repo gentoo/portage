@@ -9,6 +9,10 @@ if [[ $# -lt 1 ]] ; then
 	exit 1
 fi
 
+# PREFIX LOCAL: always support ED
+#case "$EAPI" in 0|1|2) ED=${D} ;; esac
+# END PREFIX LOCAL
+
 if [[ ! -d ${ED}${DESTTREE}/bin ]] ; then
 	install -d "${ED}${DESTTREE}/bin" || { helpers_die "${0##*/}: failed to install ${ED}${DESTTREE}/bin"; exit 2; }
 fi

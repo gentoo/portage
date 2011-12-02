@@ -461,7 +461,7 @@ def action_config(settings, trees, myopts, myfiles):
 	if len(myfiles) != 1:
 		print(red("!!! config can only take a single package atom at this time\n"))
 		sys.exit(1)
-	if not is_valid_package_atom(myfiles[0]):
+	if not is_valid_package_atom(myfiles[0], allow_repo=True):
 		portage.writemsg("!!! '%s' is not a valid package atom.\n" % myfiles[0],
 			noiselevel=-1)
 		portage.writemsg("!!! Please check ebuild(5) for full details.\n")

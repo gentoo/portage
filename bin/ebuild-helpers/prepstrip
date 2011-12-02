@@ -18,6 +18,10 @@ exp_tf() {
 exp_tf FEATURES installsources nostrip splitdebug
 exp_tf RESTRICT binchecks installsources strip
 
+# PREFIX LOCAL: always support ED
+#case "$EAPI" in 0|1|2) ED=${D} ;; esac
+# END PREFIX LOCAL
+
 banner=false
 SKIP_STRIP=false
 if ${RESTRICT_strip} || ${FEATURES_nostrip} ; then
@@ -99,7 +103,9 @@ save_elf_debug() {
 	${FEATURES_splitdebug} || return 0
 
 	local x=$1
+	# PREFIX LOCAL: keep offset path in debug location file
 	local y="${ED}usr/lib/debug/${x:${#D}}.debug"
+	# END PREFIX LOCAL
 
 	# dont save debug info twice
 	[[ ${x} == *".debug" ]] && return 0
@@ -108,7 +114,9 @@ save_elf_debug() {
 
 	local inode=$(inode_var_name "$x")
 	if [[ -n ${!inode} ]] ; then
+		# PREFIX LOCAL: keep offset path in debug location file
 		ln "${ED}usr/lib/debug/${!inode:${#D}}.debug" "$y"
+		# END PREFIX LOCAL
 	else
 		eval $inode=\$x
 		if [[ -e ${T}/prepstrip.split.debug ]] ; then
@@ -140,7 +148,7 @@ save_elf_debug() {
 process_elf() {
 	local x=$1 strip_flags=${*:2}
 
-	vecho "   ${x:${#D}}"
+	vecho "   ${x:${#ED}}"
 	save_elf_sources "${x}"
 
 	if ${strip_this} ; then
@@ -165,7 +173,7 @@ if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
 	log=$T/scanelf-already-stripped.log
 	qa_var="QA_PRESTRIPPED_${ARCH/-/_}"
 	[[ -n ${!qa_var} ]] && QA_PRESTRIPPED="${!qa_var}"
-	scanelf -yqRBF '#k%F' -k '!.symtab' "$@" | sed -e "s#^$D##" > "$log"
+	scanelf -yqRBF '#k%F' -k '!.symtab' "$@" | sed -e "s#^${ED}##" > "$log"
 	if [[ -n $QA_PRESTRIPPED && -s $log && \
 		${QA_STRICT_PRESTRIPPED-unset} = unset ]] ; then
 		shopts=$-
@@ -206,7 +214,7 @@ do
 		set -o noglob
 		strip_this=true
 		for m in $(eval echo ${STRIP_MASK}) ; do
-			[[ /${x#${D}} == ${m} ]] && strip_this=false && break
+			[[ /${x#${ED}} == ${m} ]] && strip_this=false && break
 		done
 		set +o noglob
 	else
@@ -252,10 +260,10 @@ if [[ -s ${T}/debug.sources ]] && \
    ${debugedit_found}
 then
 	vecho "installsources: rsyncing source files"
-	[[ -d ${D}${prepstrip_sources_dir} ]] || mkdir -p "${D}${prepstrip_sources_dir}"
+	[[ -d ${ED}${prepstrip_sources_dir} ]] || mkdir -p "${ED}${prepstrip_sources_dir}"
 	grep -zv '/<[^/>]*>$' "${T}"/debug.sources | \
 		(cd "${WORKDIR}"; LANG=C sort -z -u | \
-		rsync -tL0 --files-from=- "${WORKDIR}/" "${D}${prepstrip_sources_dir}/" )
+		rsync -tL0 --files-from=- "${WORKDIR}/" "${ED}${prepstrip_sources_dir}/" )
 
 	# Preserve directory structure.
 	# Needed after running save_elf_sources.
@@ -263,5 +271,5 @@ then
 	while read -r -d $'\0' emptydir
 	do
 		>> "$emptydir"/.keepdir
-	done < <(find "${D}${prepstrip_sources_dir}/" -type d -empty -print0)
+	done < <(find "${ED}${prepstrip_sources_dir}/" -type d -empty -print0)
 fi

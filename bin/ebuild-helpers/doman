@@ -9,6 +9,8 @@ if [[ $# -lt 1 ]] ; then
 	exit 1
 fi
 
+case "$EAPI" in 0|1|2) ED=${D} ;; esac
+
 i18n=""
 
 ret=0

@@ -590,8 +590,15 @@ Results may vary, but the general outcome is a reduced or condensed
 output from portage's displays.
 .TP
 .BR "\-\-quiet\-build [ y | n ]"
-Redirect all build output to logs alone, and do not
-display it on stdout.
+Redirect all build output to logs alone, and do not display it on
+stdout. If a build failure occurs for a single package, the build
+log will be automatically displayed on stdout. If there are multiple
+build failures (due to options like \-\-keep\-going or \-\-jobs),
+then the content of the log files will not be displayed, and instead
+the paths of the log files will be displayed together with the
+corresponding die messages. This option is enabled by default. In
+order to disable \-\-quiet\-build by default, set \-\-quiet\-build=n
+in the \fBEMERGE_DEFAULT_OPTS\fR variable in \fBmake.conf\fR(5).
 .TP
 .BR \-\-quiet\-unmerge\-warn
 Disable the warning message that's shown prior to

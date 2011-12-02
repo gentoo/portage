@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
@@ -8,6 +8,10 @@ if [[ $# -lt 1 ]] ; then
 	helpers_die "${0##*/}: at least one argument needed"
 	exit 1
 fi
+
+# PREFIX LOCAL: always support ED
+#case "$EAPI" in 0|1|2) ED=${D} ;; esac
+# END PREFIX LOCAL
 
 if [[ ! -d ${ED}${_E_EXEDESTTREE_} ]] ; then
 	install -d "${ED}${_E_EXEDESTTREE_}"

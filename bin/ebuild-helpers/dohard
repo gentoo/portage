@@ -1,11 +1,15 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2007 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 if [[ $# -ne 2 ]] ; then
 	echo "$0: two arguments needed" 1>&2
 	exit 1
 fi
+
+# PREFIX LOCAL: always support ED
+#case "$EAPI" in 0|1|2) ED=${D} ;; esac
+# END PREFIX LOCAL
 
 destdir=${2%/*}
 [[ ! -d ${ED}${destdir} ]] && dodir "${destdir}"

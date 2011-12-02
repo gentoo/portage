@@ -500,17 +500,36 @@ def _calc_changelog(ebuildpath,current,next):
 	next = '-'.join(catpkgsplit(next)[1:])
 	if next.endswith('-r0'):
 		next = next[:-3]
-	changelogpath = os.path.join(os.path.split(ebuildpath)[0],'ChangeLog')
-	try:
-		changelog = io.open(_unicode_encode(changelogpath,
-			encoding=_encodings['fs'], errors='strict'),
-			mode='r', encoding=_encodings['repo.content'], errors='replace'
-		).read()
-	except SystemExit:
-		raise # Needed else can't exit
-	except:
+
+	changelogdir = os.path.dirname(ebuildpath)
+	changelogs = ['ChangeLog']
+	# ChangeLog-YYYY (see bug #389611)
+	changelogs.extend(sorted((fn for fn in os.listdir(changelogdir)
+		if fn.startswith('ChangeLog-')), reverse=True))
+
+	divisions = []
+	found_current = False
+	for fn in changelogs:
+		changelogpath = os.path.join(changelogdir, fn)
+		try:
+			with io.open(_unicode_encode(changelogpath,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['repo.content'],
+				errors='replace') as f:
+				changelog = f.read()
+		except EnvironmentError:
+			return []
+		for node in _find_changelog_tags(changelog):
+			divisions.append(node)
+			if node[0] == current:
+				found_current = True
+				break
+		if found_current:
+			break
+
+	if not found_current:
 		return []
-	divisions = _find_changelog_tags(changelog)
+
 	#print 'XX from',current,'to',next
 	#for div,text in divisions: print 'XX',div
 	# skip entries for all revisions above the one we are about to emerge
@@ -518,16 +537,8 @@ def _calc_changelog(ebuildpath,current,next):
 		if divisions[i][0]==next:
 			divisions = divisions[i:]
 			break
-	# find out how many entries we are going to display
-	for i in range(len(divisions)):
-		if divisions[i][0]==current:
-			divisions = divisions[:i]
-			break
-	else:
-		# couldnt find the current revision in the list. display nothing
-		return []
-	return divisions
 
+	return divisions
 
 def _find_changelog_tags(changelog):
 	divs = []

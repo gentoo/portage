@@ -27,12 +27,14 @@ else
 	DOINSRECUR=n
 fi
 
-if [[ ${INSDESTTREE#${D}} != "${INSDESTTREE}" ]]; then
+case "$EAPI" in 0|1|2) export ED="${D}" ;; esac
+
+if [[ ${INSDESTTREE#${ED}} != "${INSDESTTREE}" ]]; then
 	vecho "-------------------------------------------------------" 1>&2
 	vecho "You should not use \${D} or \${ED} with helpers." 1>&2
 	vecho "  --> ${INSDESTTREE}" 1>&2
 	vecho "-------------------------------------------------------" 1>&2
-	helpers_die "${0##*/} used with \${D}"
+	helpers_die "${0##*/} used with \${D} or \${ED}"
 	exit 1
 fi
 if [[ ${INSDESTTREE#${EPREFIX}} != "${INSDESTTREE}" ]]; then
@@ -70,8 +72,8 @@ _doins() {
 		# $PORTAGE_ACTUAL_DISTDIR/.
 		if [ $PRESERVE_SYMLINKS = y ] && \
 			! [[ $(readlink "$mysrc") == "$PORTAGE_ACTUAL_DISTDIR"/* ]] ; then
-			rm -rf "$ED$INSDESTTREE/$mydir/${mysrc##*/}" || return $?
-			cp -P "$mysrc" "$ED$INSDESTTREE/$mydir/${mysrc##*/}"
+			rm -rf "${ED}$INSDESTTREE/$mydir/${mysrc##*/}" || return $?
+			cp -P "$mysrc" "${ED}$INSDESTTREE/$mydir/${mysrc##*/}"
 			return $?
 		else
 			cp "$mysrc" "$TMP/2/${mysrc##*/}" || return $?

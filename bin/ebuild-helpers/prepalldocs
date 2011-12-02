@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
@@ -8,8 +8,11 @@ if [[ -n $1 ]] ; then
 	vecho "${0##*/}: invalid usage; takes no arguments" 1>&2
 fi
 
-cd "${D}"
-[[ -d ${EPREFIX}usr/share/doc ]] || exit 0
+# PREFIX LOCAL: always support ED
+#case "$EAPI" in 0|1|2) ED=${D} ;; esac
+# END PREFIX LOCAL
+
+[[ -d ${ED}usr/share/doc ]] || exit 0
 
 ecompressdir --ignore /usr/share/doc/${PF}/html
 ecompressdir --queue /usr/share/doc

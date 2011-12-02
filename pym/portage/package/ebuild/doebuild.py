@@ -116,6 +116,38 @@ def _spawn_phase(phase, settings, actionmap=None, **kwargs):
 	ebuild_phase.wait()
 	return ebuild_phase.returncode
 
+def _doebuild_path(settings, eapi=None):
+	"""
+	Generate the PATH variable.
+	"""
+
+	# Note: PORTAGE_BIN_PATH may differ from the global constant
+	# when portage is reinstalling itself.
+	portage_bin_path = settings["PORTAGE_BIN_PATH"]
+	eprefix = settings["EPREFIX"]
+	prerootpath = [x for x in settings.get("PREROOTPATH", "").split(":") if x]
+	rootpath = [x for x in settings.get("ROOTPATH", "").split(":") if x]
+
+	prefixes = []
+	if eprefix:
+		prefixes.append(eprefix)
+	prefixes.append("/")
+
+	path = []
+
+	if eapi not in (None, "0", "1", "2", "3"):
+		path.append(os.path.join(portage_bin_path, "ebuild-helpers", "4"))
+
+	path.append(os.path.join(portage_bin_path, "ebuild-helpers"))
+	path.extend(prerootpath)
+
+	for prefix in prefixes:
+		for x in ("usr/local/sbin", "usr/local/bin", "usr/sbin", "usr/bin", "sbin", "bin"):
+			path.append(os.path.join(prefix, x))
+
+	path.extend(rootpath)
+	settings["PATH"] = ":".join(path)
+
 def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	debug=False, use_cache=None, db=None):
 	"""
@@ -236,16 +268,6 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	else:
 		mysettings["PVR"]=mysplit[1]+"-"+mysplit[2]
 
-	if "PATH" in mysettings:
-		mysplit=mysettings["PATH"].split(":")
-	else:
-		mysplit=[]
-	# Note: PORTAGE_BIN_PATH may differ from the global constant
-	# when portage is reinstalling itself.
-	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
-	if portage_bin_path not in mysplit:
-		mysettings["PATH"] = portage_bin_path + ":" + mysettings["PATH"]
-
 	# All temporary directories should be subdirectories of
 	# $PORTAGE_TMPDIR/portage, since it's common for /tmp and /var/tmp
 	# to be mounted with the "noexec" option (see bug #346899).
@@ -285,6 +307,19 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			(c, style_to_ansi_code(c)))
 	mysettings["PORTAGE_COLORMAP"] = "\n".join(mycolors)
 
+	if "COLUMNS" not in mysettings:
+		# Set COLUMNS, in order to prevent unnecessary stty calls
+		# inside the set_colors function of isolated-functions.sh.
+		# We cache the result in os.environ, in order to avoid
+		# multiple stty calls in cases when get_term_size() falls
+		# back to stty due to a missing or broken curses module.
+		columns = os.environ.get("COLUMNS")
+		if columns is None:
+			rows, columns = portage.output.get_term_size()
+			columns = str(columns)
+			os.environ["COLUMNS"] = columns
+		mysettings["COLUMNS"] = columns
+
 	# All EAPI dependent code comes last, so that essential variables
 	# like PORTAGE_BUILDDIR are still initialized even in cases when
 	# UnsupportedAPIException needs to be raised, which can be useful
@@ -300,6 +335,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 
 		if eapi is not None:
 			if not eapi_is_supported(eapi):
+				_doebuild_path(mysettings)
 				raise UnsupportedAPIException(mycpv, eapi)
 			mysettings.configdict['pkg']['EAPI'] = eapi
 
@@ -309,6 +345,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 		eapi = mysettings["EAPI"]
 		if not eapi_is_supported(eapi):
 			# can't do anything with this.
+			_doebuild_path(mysettings)
 			raise UnsupportedAPIException(mycpv, eapi)
 
 		if hasattr(mydbapi, "getFetchMap") and \
@@ -334,6 +371,28 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 				mysettings.configdict["pkg"]["AA"] = ""
 			else:
 				mysettings.configdict["pkg"]["AA"] = " ".join(uri_map)
+
+	_doebuild_path(mysettings, eapi=eapi)
+
+	if mydo != "depend":
+		ccache = "ccache" in mysettings.features
+		distcc = "distcc" in mysettings.features
+		if ccache or distcc:
+			# Use default ABI libdir in accordance with bug #355283.
+			libdir = None
+			default_abi = mysettings.get("DEFAULT_ABI")
+			if default_abi:
+				libdir = mysettings.get("LIBDIR_" + default_abi)
+			if not libdir:
+				libdir = "lib"
+
+			if distcc:
+				mysettings["PATH"] = os.path.join(os.sep, eprefix_lstrip,
+					 "usr", libdir, "distcc", "bin") + ":" + mysettings["PATH"]
+
+			if ccache:
+				mysettings["PATH"] = os.path.join(os.sep, eprefix_lstrip,
+					 "usr", libdir, "ccache", "bin") + ":" + mysettings["PATH"]
 
 	if not eapi_exports_KV(eapi):
 		# Discard KV for EAPIs that don't support it. Cache KV is restored
