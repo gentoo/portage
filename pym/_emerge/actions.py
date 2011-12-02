@@ -588,15 +588,18 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		return rval
 
 	if cleanlist:
-		unmerge(root_config, myopts, "unmerge",
+		if unmerge(root_config, myopts, "unmerge",
 			cleanlist, ldpath_mtimes, ordered=ordered,
-			scheduler=scheduler)
+			scheduler=scheduler):
+			rval = os.EX_OK
+		else:
+			rval = 1
 
 	if action == "prune":
-		return
+		return rval
 
 	if not cleanlist and "--quiet" in myopts:
-		return
+		return rval
 
 	print("Packages installed:   " + str(len(vardb.cpv_all())))
 	print("Packages in world:    " + \
@@ -608,6 +611,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		print("Number to remove:     "+str(len(cleanlist)))
 	else:
 		print("Number removed:       "+str(len(cleanlist)))
+
+	return rval
 
 def calc_depclean(settings, trees, ldpath_mtimes,
 	myopts, action, args_set, spinner):

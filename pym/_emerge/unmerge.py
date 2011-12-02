@@ -526,7 +526,7 @@ def unmerge(root_config, myopts, unmerge_action,
 
 	if "--pretend" in myopts:
 		#we're done... return
-		return 0
+		return 1
 	if "--ask" in myopts:
 		if userquery("Would you like to unmerge these packages?",
 			enter_invalid) == "No":
