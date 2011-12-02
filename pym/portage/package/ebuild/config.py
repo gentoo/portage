@@ -22,7 +22,7 @@ from portage import bsd_chflags, \
 	load_mod, os, selinux, _unicode_decode
 from portage.const import CACHE_PATH, \
 	DEPCACHE_PATH, INCREMENTALS, MAKE_CONF_FILE, \
-	MODULES_FILE_PATH, PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, \
+	MODULES_FILE_PATH, \
 	PRIVATE_PATH, PROFILE_PATH, USER_CONFIG_PATH, \
 	USER_VIRTUALS_FILE 
 from portage.const import _SANDBOX_COMPAT_LEVEL
@@ -721,11 +721,6 @@ class config(object):
 				else:
 					self["USERLAND"] = "GNU"
 				self.backup_changes("USERLAND")
-
-			self["PORTAGE_BIN_PATH"] = PORTAGE_BIN_PATH
-			self.backup_changes("PORTAGE_BIN_PATH")
-			self["PORTAGE_PYM_PATH"] = PORTAGE_PYM_PATH
-			self.backup_changes("PORTAGE_PYM_PATH")
 
 			for var in ("PORTAGE_INST_UID", "PORTAGE_INST_GID"):
 				try:
@@ -2093,25 +2088,39 @@ class config(object):
 				self._virtuals_manager._treeVirtuals = {}
 
 	def __delitem__(self,mykey):
-		self.modifying()
-		for x in self.lookuplist:
-			if x != None:
-				if mykey in x:
-					del x[mykey]
+		self.pop(mykey)
 
-	def __getitem__(self,mykey):
+	def __getitem__(self, key):
+		try:
+			return self._getitem(key)
+		except KeyError:
+			return '' # for backward compat, don't raise KeyError
+
+	def _getitem(self, mykey):
+
+		# These ones point to temporary values when
+		# portage plans to update itself.
+		if mykey == "PORTAGE_BIN_PATH":
+			return portage._bin_path
+		elif mykey == "PORTAGE_PYM_PATH":
+			return portage._pym_path
+
 		for d in self.lookuplist:
-			if mykey in d:
+			try:
 				return d[mykey]
-		return '' # for backward compat, don't raise KeyError
+			except KeyError:
+				pass
+
+		raise KeyError(mykey)
 
 	def get(self, k, x=None):
-		for d in self.lookuplist:
-			if k in d:
-				return d[k]
-		return x
+		try:
+			return self._getitem(k)
+		except KeyError:
+			return x
 
 	def pop(self, key, *args):
+		self.modifying()
 		if len(args) > 1:
 			raise TypeError(
 				"pop expected at most 2 arguments, got " + \
@@ -2127,10 +2136,12 @@ class config(object):
 
 	def __contains__(self, mykey):
 		"""Called to implement membership test operators (in and not in)."""
-		for d in self.lookuplist:
-			if mykey in d:
-				return True
-		return False
+		try:
+			 self._getitem(mykey)
+		except KeyError:
+			return False
+		else:
+			return True
 
 	def setdefault(self, k, x=None):
 		v = self.get(k)
@@ -2145,6 +2156,8 @@ class config(object):
 
 	def __iter__(self):
 		keys = set()
+		keys.add("PORTAGE_BIN_PATH")
+		keys.add("PORTAGE_PYM_PATH")
 		for d in self.lookuplist:
 			keys.update(d)
 		return iter(keys)
@@ -2154,7 +2167,7 @@ class config(object):
 
 	def iteritems(self):
 		for k in self:
-			yield (k, self[k])
+			yield (k, self._getitem(k))
 
 	def items(self):
 		return list(self.iteritems())

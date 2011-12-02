@@ -100,8 +100,6 @@ class _frozen_depgraph_config(object):
 			self.edebug = 1
 		self.spinner = spinner
 		self._running_root = trees[trees._running_eroot]["root_config"]
-		self._opts_no_restart = frozenset(["--buildpkgonly",
-			"--fetchonly", "--fetch-all-uri", "--pretend"])
 		self.pkgsettings = {}
 		self.trees = {}
 		self._trees_orig = trees
@@ -4997,15 +4995,6 @@ class depgraph(object):
 
 		if replacement_portage == running_portage:
 			replacement_portage = None
-
-		if replacement_portage is not None and \
-			(running_portage is None or \
-			running_portage.cpv != replacement_portage.cpv or \
-			'9999' in replacement_portage.cpv or \
-			'git' in replacement_portage.inherited or \
-			'git-2' in replacement_portage.inherited):
-			# update from running_portage to replacement_portage asap
-			asap_nodes.append(replacement_portage)
 
 		if running_portage is not None:
 			try:

@@ -45,7 +45,7 @@ from portage.dep import Atom, check_required_use, \
 from portage.eapi import eapi_exports_KV, eapi_exports_merge_type, \
 	eapi_exports_replace_vars, eapi_has_required_use, \
 	eapi_has_src_prepare_and_src_configure, eapi_has_pkg_pretend
-from portage.elog import elog_process
+from portage.elog import elog_process, _preload_elog_modules
 from portage.elog.messages import eerror, eqawarn
 from portage.exception import DigestException, FileNotFound, \
 	IncorrectParameter, InvalidDependString, PermissionDenied, \
@@ -1024,6 +1024,7 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 			# qmerge is a special phase that implies noclean.
 			if "noclean" not in mysettings.features:
 				mysettings.features.add("noclean")
+			_handle_self_update(mysettings, vartree.dbapi)
 			#qmerge is specifically not supposed to do a runtime dep check
 			retval = merge(
 				mysettings["CATEGORY"], mysettings["PF"], mysettings["D"],
@@ -1040,6 +1041,7 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 				# so that it's only called once.
 				elog_process(mysettings.mycpv, mysettings)
 			if retval == os.EX_OK:
+				_handle_self_update(mysettings, vartree.dbapi)
 				retval = merge(mysettings["CATEGORY"], mysettings["PF"],
 					mysettings["D"], os.path.join(mysettings["PORTAGE_BUILDDIR"],
 					"build-info"), myroot, mysettings,
@@ -2052,3 +2054,54 @@ def _merge_unicode_error(errors):
 		lines.append("")
 
 	return lines
+
+def _prepare_self_update(settings):
+	"""
+	Call this when portage is updating itself, in order to create
+	temporary copies of PORTAGE_BIN_PATH and PORTAGE_PYM_PATH, since
+	the new versions may be incompatible. An atexit hook will
+	automatically clean up the temporary copies.
+	"""
+
+	# sanity check: ensure that that this routine only runs once
+	if portage._bin_path != portage.const.PORTAGE_BIN_PATH:
+		return
+
+	# Load lazily referenced portage submodules into memory,
+	# so imports won't fail during portage upgrade/downgrade.
+	_preload_elog_modules(settings)
+	portage.proxy.lazyimport._preload_portage_submodules()
+
+	# Make the temp directory inside $PORTAGE_TMPDIR/portage, since
+	# it's common for /tmp and /var/tmp to be mounted with the
+	# "noexec" option (see bug #346899).
+	build_prefix = os.path.join(settings["PORTAGE_TMPDIR"], "portage")
+	portage.util.ensure_dirs(build_prefix)
+	base_path_tmp = tempfile.mkdtemp(
+		"", "._portage_reinstall_.", build_prefix)
+	portage.process.atexit_register(shutil.rmtree, base_path_tmp)
+
+	orig_bin_path = portage._bin_path
+	portage._bin_path = os.path.join(base_path_tmp, "bin")
+	shutil.copytree(orig_bin_path, portage._bin_path, symlinks=True)
+
+	orig_pym_path = portage._pym_path
+	portage._pym_path = os.path.join(base_path_tmp, "pym")
+	shutil.copytree(orig_pym_path, portage._pym_path, symlinks=True)
+
+	for dir_path in (base_path_tmp, portage._bin_path, portage._pym_path):
+		os.chmod(dir_path, 0o755)
+
+def _handle_self_update(settings, vardb):
+	cpv = settings.mycpv
+	if settings["ROOT"] == "/" and \
+		portage.dep.match_from_list(
+		portage.const.PORTAGE_PACKAGE_ATOM, [cpv]):
+		inherited = frozenset(settings.get('INHERITED', '').split())
+		if not vardb.cpv_exists(cpv) or \
+			'9999' in cpv or \
+			'git' in inherited or \
+			'git-2' in inherited:
+			_prepare_self_update(settings)
+			return True
+	return False

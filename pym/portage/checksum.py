@@ -99,10 +99,18 @@ except ImportError:
 	pass
 
 # Use pycrypto when available, prefer it over the internal fallbacks
+# Check for 'new' attributes, since they can be missing if the module
+# is broken somehow.
 try:
 	from Crypto.Hash import SHA256, RIPEMD
-	sha256hash = _generate_hash_function("SHA256", SHA256.new, origin="pycrypto")
-	rmd160hash = _generate_hash_function("RMD160", RIPEMD.new, origin="pycrypto")
+	sha256hash = getattr(SHA256, 'new', None)
+	if sha256hash is not None:
+		sha256hash = _generate_hash_function("SHA256",
+			sha256hash, origin="pycrypto")
+	rmd160hash = getattr(RIPEMD, 'new', None)
+	if rmd160hash is not None:
+		rmd160hash = _generate_hash_function("RMD160",
+			rmd160hash, origin="pycrypto")
 except ImportError:
 	pass
 

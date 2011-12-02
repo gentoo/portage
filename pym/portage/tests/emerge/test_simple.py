@@ -228,7 +228,11 @@ pkg_preinst() {
 			emerge_cmd + ("-p", "dev-libs/B"),
 			emerge_cmd + ("-B", "dev-libs/B",),
 			emerge_cmd + ("--oneshot", "--usepkg", "dev-libs/B",),
+
+			# trigger clean prior to pkg_pretend as in bug #390711
+			ebuild_cmd + (test_ebuild, "unpack"), 
 			emerge_cmd + ("--oneshot", "dev-libs/A",),
+
 			emerge_cmd + ("--noreplace", "dev-libs/A",),
 			emerge_cmd + ("--config", "dev-libs/A",),
 			emerge_cmd + ("--info", "dev-libs/A", "dev-libs/B"),

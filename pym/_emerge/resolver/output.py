@@ -13,14 +13,13 @@ import sys
 from portage import os
 from portage import _unicode_decode
 from portage.dbapi.dep_expand import dep_expand
-from portage.const import PORTAGE_PACKAGE_ATOM
-from portage.dep import cpvequal, match_from_list
+from portage.dep import cpvequal
 from portage.exception import InvalidDependString, SignatureException
 from portage.output import ( blue, bold, colorize, create_color_func,
 	darkblue, darkgreen, green, nc_len, red, teal, turquoise, yellow )
 bad = create_color_func("BAD")
-from portage.util import writemsg_stdout, writemsg_level
-from portage.versions import best, catpkgsplit, cpv_getkey
+from portage.util import writemsg_stdout
+from portage.versions import best, catpkgsplit
 
 from _emerge.Blocker import Blocker
 from _emerge.create_world_atom import create_world_atom
@@ -864,27 +863,6 @@ class Display(object):
 				if self.conf.columns and pkg.operation == "uninstall":
 					continue
 				self.print_msg.append((myprint, self.verboseadd, self.repoadd))
-
-				if not self.conf.tree_display \
-					and not self.conf.no_restart \
-					and pkg.root == self.conf.running_root.root \
-					and match_from_list(PORTAGE_PACKAGE_ATOM, [pkg]) \
-					and not self.conf.quiet:
-
-					if not self.vardb.cpv_exists(pkg.cpv) or \
-						'9999' in pkg.cpv or \
-						'git' in pkg.inherited or \
-						'git-2' in pkg.inherited:
-						if mylist_index < len(mylist) - 1:
-							self.print_msg.append(
-								colorize(
-									"WARN", "*** Portage will stop merging "
-									"at this point and reload itself,"
-									)
-								)
-							self.print_msg.append(
-								colorize("WARN", "    then resume the merge.")
-								)
 
 		show_repos = repoadd_set and repoadd_set != set(["0"])
 

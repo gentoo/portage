@@ -2755,7 +2755,7 @@ def adjust_config(myopts, settings):
 	if "--buildpkg" in myopts:
 		settings.features.add("buildpkg")
 
-	if "--quiet" in myopts or "--quiet-build" in myopts:
+	if "--quiet" in myopts:
 		settings["PORTAGE_QUIET"]="1"
 		settings.backup_changes("PORTAGE_QUIET")
 

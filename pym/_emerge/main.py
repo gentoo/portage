@@ -849,7 +849,6 @@ def parse_opts(tmpcmdline, silent=False):
 			"help"     : "redirect build output to logs",
 			"type"     : "choice",
 			"choices"  : true_y_or_n,
-			"default"  : "y",
 		},
 
 		"--rebuild-if-new-rev": {
@@ -1093,8 +1092,6 @@ def parse_opts(tmpcmdline, silent=False):
 		myoptions.quiet = None
 
 	if myoptions.quiet_build in true_y:
-		myoptions.quiet_build = True
-	else:
 		myoptions.quiet_build = None
 
 	if myoptions.rebuild_if_new_ver in true_y:
@@ -1898,9 +1895,19 @@ def emerge_main(args=None):
 				encoding=_encodings['content'], errors='replace'))
 		myelogstr=""
 		if myopts:
-			myelogstr=" ".join(myopts)
+			opt_list = []
+			for opt, arg in myopts.items():
+				if arg is True:
+					opt_list.append(opt)
+				elif isinstance(arg, list):
+					# arguments like --exclude that use 'append' action
+					for x in arg:
+						opt_list.append("%s=%s" % (opt, x))
+				else:
+					opt_list.append("%s=%s" % (opt, arg))
+			myelogstr=" ".join(opt_list)
 		if myaction:
-			myelogstr+=" "+myaction
+			myelogstr += " --" + myaction
 		if myfiles:
 			myelogstr += " " + " ".join(oldargs)
 		emergelog(xterm_titles, " *** emerge " + myelogstr)
