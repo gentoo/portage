@@ -112,16 +112,19 @@ class EbuildMetadataPhase(SubProcess):
 	def _output_handler(self, fd, event):
 
 		if event & PollConstants.POLLIN:
-			try:
-				self._raw_metadata.append(
-					os.read(self._files.ebuild, self._bufsize))
-			except IOError as e:
-				if e.errno not in (errno.EAGAIN,):
-					raise
-			else:
-				if not self._raw_metadata[-1]:
-					self._unregister()
-					self.wait()
+			while True:
+				try:
+					self._raw_metadata.append(
+						os.read(self._files.ebuild, self._bufsize))
+				except OSError as e:
+					if e.errno not in (errno.EAGAIN,):
+						raise
+					break
+				else:
+					if not self._raw_metadata[-1]:
+						self._unregister()
+						self.wait()
+						break
 
 		self._unregister_if_appropriate(event)
 

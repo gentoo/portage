@@ -138,7 +138,7 @@ class _LockThread(AbstractPollTask):
 		if event & PollConstants.POLLIN:
 			try:
 				buf = os.read(self._files['pipe_read'], self._bufsize)
-			except IOError as e:
+			except OSError as e:
 				if e.errno not in (errno.EAGAIN,):
 					raise
 		if buf:
@@ -274,7 +274,7 @@ class _LockProcess(AbstractPollTask):
 		if event & PollConstants.POLLIN:
 			try:
 				buf = os.read(self._files['pipe_in'], self._bufsize)
-			except IOError as e:
+			except OSError as e:
 				if e.errno not in (errno.EAGAIN,):
 					raise
 		if buf:

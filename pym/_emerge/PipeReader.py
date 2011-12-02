@@ -59,18 +59,21 @@ class PipeReader(AbstractPollTask):
 
 		if event & PollConstants.POLLIN:
 
-			data = None
-			try:
-				data = os.read(fd, self._bufsize)
-			except IOError as e:
-				if e.errno not in (errno.EAGAIN,):
-					raise
-			else:
-				if data:
-					self._read_data.append(data)
+			while True:
+				data = None
+				try:
+					data = os.read(fd, self._bufsize)
+				except OSError as e:
+					if e.errno not in (errno.EAGAIN,):
+						raise
+					break
 				else:
-					self._unregister()
-					self.wait()
+					if data:
+						self._read_data.append(data)
+					else:
+						self._unregister()
+						self.wait()
+						break
 
 		self._unregister_if_appropriate(event)
 
