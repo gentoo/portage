@@ -17,7 +17,7 @@ from portage.package.ebuild.config import config
 from portage.package.ebuild.digestgen import digestgen
 from portage._sets import load_default_config
 from portage._sets.base import InternalPackageSet
-from portage.util import ensure_dirs
+from portage.util import ensure_dirs, normalize_path
 from portage.versions import catsplit
 
 import _emerge
@@ -65,9 +65,8 @@ class ResolverPlayground(object):
 		profile: settings defined by the profile.
 		"""
 		self.debug = debug
-		self.root = "/"
-		self.eprefix = tempfile.mkdtemp()
-		self.eroot = self.root + self.eprefix.lstrip(os.sep) + os.sep
+		self.eprefix = normalize_path(tempfile.mkdtemp())
+		self.eroot = self.eprefix + os.sep
 		self.distdir = os.path.join(self.eroot, "var", "portage", "distfiles")
 		self.portdir = os.path.join(self.eroot, "usr/portage")
 		self.vdbdir = os.path.join(self.eroot, "var/db/pkg")
@@ -201,7 +200,7 @@ class ResolverPlayground(object):
 			ebuild_dir = os.path.join(repo_dir, a.cp)
 			ebuild_path = os.path.join(ebuild_dir, a.cpv.split("/")[1] + ".ebuild")
 
-			portdb = self.trees[self.root]["porttree"].dbapi
+			portdb = self.trees[self.eroot]["porttree"].dbapi
 			tmpsettings['O'] = ebuild_dir
 			if not digestgen(mysettings=tmpsettings, myportdb=portdb):
 				raise AssertionError('digest creation failed for %s' % ebuild_path)
@@ -476,8 +475,10 @@ class ResolverPlayground(object):
 				portdir_overlay.append(path)
 
 		env = {
+			"__PORTAGE_TEST_EPREFIX": self.eprefix,
 			"ACCEPT_KEYWORDS": "x86",
 			"DISTDIR" : self.distdir,
+			"PKGDIR": os.path.join(self.eroot, "usr/portage/packages"),
 			"PORTDIR": self.portdir,
 			"PORTDIR_OVERLAY": " ".join(portdir_overlay),
 			'PORTAGE_TMPDIR'       : os.path.join(self.eroot, 'var/tmp'),
@@ -490,19 +491,7 @@ class ResolverPlayground(object):
 		if 'PORTAGE_GRPNAME' in os.environ:
 			env['PORTAGE_GRPNAME'] = os.environ['PORTAGE_GRPNAME']
 
-		settings = config(_eprefix=self.eprefix, env=env)
-		settings.lock()
-
-		trees = {
-			self.root: {
-					"vartree": vartree(settings=settings),
-					"porttree": portagetree(self.root, settings=settings),
-					"bintree": binarytree(self.root,
-						os.path.join(self.eroot, "usr/portage/packages"),
-						settings=settings)
-				}
-			}
-
+		trees = portage.create_trees(env=env)
 		for root, root_trees in trees.items():
 			settings = root_trees["vartree"].settings
 			settings._init_dirs()
@@ -559,7 +548,7 @@ class ResolverPlayground(object):
 				return
 
 	def cleanup(self):
-		portdb = self.trees[self.root]["porttree"].dbapi
+		portdb = self.trees[self.eroot]["porttree"].dbapi
 		portdb.close_caches()
 		portage.dbapi.porttree.portdbapi.portdbapi_instances.remove(portdb)
 		if self.debug:

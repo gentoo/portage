@@ -539,8 +539,12 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	assert(False) # This point should not be reachable
 
 def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
-	use_cache=1, use_binaries=0, myroot="/", trees=None):
-	"""Takes a depend string and parses the condition."""
+	use_cache=1, use_binaries=0, myroot=None, trees=None):
+	"""
+	Takes a depend string, parses it, and selects atoms.
+	The myroot parameter is unused (use mysettings['EROOT'] instead).
+	"""
+	myroot = mysettings['EROOT']
 	edebug = mysettings.get("PORTAGE_DEBUG", None) == "1"
 	#check_config_instance(mysettings)
 	if trees is None:

@@ -93,13 +93,13 @@ class _frozen_depgraph_config(object):
 
 	def __init__(self, settings, trees, myopts, spinner):
 		self.settings = settings
-		self.target_root = settings["ROOT"]
+		self.target_root = settings["EROOT"]
 		self.myopts = myopts
 		self.edebug = 0
 		if settings.get("PORTAGE_DEBUG", "") == "1":
 			self.edebug = 1
 		self.spinner = spinner
-		self._running_root = trees["/"]["root_config"]
+		self._running_root = trees[trees._running_eroot]["root_config"]
 		self._opts_no_restart = frozenset(["--buildpkgonly",
 			"--fetchonly", "--fetch-all-uri", "--pretend"])
 		self.pkgsettings = {}
@@ -1409,7 +1409,7 @@ class depgraph(object):
 		if removal_action:
 			depend_root = myroot
 		else:
-			depend_root = "/"
+			depend_root = self._frozen_config._running_root.root
 			root_deps = self._frozen_config.myopts.get("--root-deps")
 			if root_deps is not None:
 				if root_deps is True:
@@ -1971,13 +1971,14 @@ class depgraph(object):
 		sets = root_config.sets
 		depgraph_sets = self._dynamic_config.sets[root_config.root]
 		myfavorites=[]
-		myroot = self._frozen_config.target_root
-		dbs = self._dynamic_config._filtered_trees[myroot]["dbs"]
-		vardb = self._frozen_config.trees[myroot]["vartree"].dbapi
-		real_vardb = self._frozen_config._trees_orig[myroot]["vartree"].dbapi
-		portdb = self._frozen_config.trees[myroot]["porttree"].dbapi
-		bindb = self._frozen_config.trees[myroot]["bintree"].dbapi
-		pkgsettings = self._frozen_config.pkgsettings[myroot]
+		eroot = root_config.root
+		root = root_config.settings['ROOT']
+		dbs = self._dynamic_config._filtered_trees[eroot]["dbs"]
+		vardb = self._frozen_config.trees[eroot]["vartree"].dbapi
+		real_vardb = self._frozen_config._trees_orig[eroot]["vartree"].dbapi
+		portdb = self._frozen_config.trees[eroot]["porttree"].dbapi
+		bindb = self._frozen_config.trees[eroot]["bintree"].dbapi
+		pkgsettings = self._frozen_config.pkgsettings[eroot]
 		args = []
 		onlydeps = "--onlydeps" in self._frozen_config.myopts
 		lookup_owners = []
@@ -1998,7 +1999,7 @@ class depgraph(object):
 				mytbz2=portage.xpak.tbz2(x)
 				mykey=mytbz2.getelements("CATEGORY")[0]+"/"+os.path.splitext(os.path.basename(x))[0]
 				if os.path.realpath(x) != \
-					os.path.realpath(self._frozen_config.trees[myroot]["bintree"].getname(mykey)):
+					os.path.realpath(bindb.bintree.getname(mykey)):
 					writemsg(colorize("BAD", "\n*** You need to adjust PKGDIR to emerge this package.\n\n"), noiselevel=-1)
 					self._dynamic_config._skip_restart = True
 					return 0, myfavorites
@@ -2044,9 +2045,9 @@ class depgraph(object):
 				args.append(PackageArg(arg=x, package=pkg,
 					root_config=root_config))
 			elif x.startswith(os.path.sep):
-				if not x.startswith(myroot):
+				if not x.startswith(eroot):
 					portage.writemsg(("\n\n!!! '%s' does not start with" + \
-						" $ROOT.\n") % x, noiselevel=-1)
+						" $EROOT.\n") % x, noiselevel=-1)
 					self._dynamic_config._skip_restart = True
 					return 0, []
 				# Queue these up since it's most efficient to handle
@@ -2055,9 +2056,9 @@ class depgraph(object):
 			elif x.startswith("." + os.sep) or \
 				x.startswith(".." + os.sep):
 				f = os.path.abspath(x)
-				if not f.startswith(myroot):
+				if not f.startswith(eroot):
 					portage.writemsg(("\n\n!!! '%s' (resolved from '%s') does not start with" + \
-						" $ROOT.\n") % (f, x), noiselevel=-1)
+						" $EROOT.\n") % (f, x), noiselevel=-1)
 					self._dynamic_config._skip_restart = True
 					return 0, []
 				lookup_owners.append(f)
@@ -2174,7 +2175,7 @@ class depgraph(object):
 			for x in lookup_owners:
 				if not search_for_multiple and os.path.isdir(x):
 					search_for_multiple = True
-				relative_paths.append(x[len(myroot)-1:])
+				relative_paths.append(x[len(root)-1:])
 
 			owners = set()
 			for pkg, relative_path in \

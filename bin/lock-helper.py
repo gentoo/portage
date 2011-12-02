@@ -1,5 +1,5 @@
 #!@PREFIX_PORTAGE_PYTHON@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import os
@@ -9,7 +9,7 @@ import portage
 
 def main(args):
 
-	if args and sys.hexversion < 0x3000000 and not isinstance(args[0], unicode):
+	if args and isinstance(args[0], bytes):
 		for i, x in enumerate(args):
 			args[i] = portage._unicode_decode(x, errors='strict')
 

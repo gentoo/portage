@@ -34,6 +34,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util._dyn_libs.LinkageMapXCoff:LinkageMapXCoff',
 	'portage.versions:best,catpkgsplit,catsplit,cpv_getkey,pkgcmp,' + \
 		'_pkgsplit@pkgsplit',
+	'tarfile',
 )
 
 from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, \
@@ -64,10 +65,12 @@ from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 
 import errno
 import gc
+import grp
 import io
 from itertools import chain
 import logging
 import os as _os
+import pwd
 import re
 import shutil
 import stat
@@ -133,12 +136,11 @@ class vardbapi(dbapi):
 		if settings is None:
 			settings = portage.settings
 		self.settings = settings
-		self.root = settings['ROOT']
 
-		if _unused_param is not None and _unused_param != self.root:
-			warnings.warn("The first parameter of the " + \
-				"portage.dbapi.vartree.vardbapi" + \
-				" constructor is now unused. Use " + \
+		if _unused_param is not None and _unused_param != settings['ROOT']:
+			warnings.warn("The first parameter of the "
+				"portage.dbapi.vartree.vardbapi"
+				" constructor is now unused. Use "
 				"settings['ROOT'] instead.",
 				DeprecationWarning, stacklevel=2)
 
@@ -152,7 +154,7 @@ class vardbapi(dbapi):
 		self._fs_lock_count = 0
 
 		if vartree is None:
-			vartree = portage.db[self.root]["vartree"]
+			vartree = portage.db[settings['EROOT']]['vartree']
 		self.vartree = vartree
 		self._aux_cache_keys = set(
 			["BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "DESCRIPTION",
@@ -168,7 +170,7 @@ class vardbapi(dbapi):
 
 		self._plib_registry = None
 		if _ENABLE_PRESERVE_LIBS:
-			self._plib_registry = PreservedLibsRegistry(self.root,
+			self._plib_registry = PreservedLibsRegistry(settings["ROOT"],
 				os.path.join(self._eroot, PRIVATE_PATH,
 				"preserved_libs_registry"))
 
@@ -188,6 +190,15 @@ class vardbapi(dbapi):
 		self._owners = self._owners_db(self)
 
 		self._cached_counter = None
+
+	@property
+	def root(self):
+		warnings.warn("The root attribute of "
+			"portage.dbapi.vartree.vardbapi"
+			" is deprecated. Use "
+			"settings['ROOT'] instead.",
+			DeprecationWarning, stacklevel=3)
+		return self.settings['ROOT']
 
 	def getpath(self, mykey, filename=None):
 		# This is an optimized hotspot, so don't use unicode-wrapped
@@ -1166,23 +1177,37 @@ class vardbapi(dbapi):
 
 class vartree(object):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"
-	def __init__(self, root=None, virtual=None, categories=None,
+	def __init__(self, root=None, virtual=DeprecationWarning, categories=None,
 		settings=None):
 
 		if settings is None:
 			settings = portage.settings
-		self.root = settings['ROOT']
 
-		if root is not None and root != self.root:
-			warnings.warn("The 'root' parameter of the " + \
-				"portage.dbapi.vartree.vartree" + \
-				" constructor is now unused. Use " + \
+		if root is not None and root != settings['ROOT']:
+			warnings.warn("The 'root' parameter of the "
+				"portage.dbapi.vartree.vartree"
+				" constructor is now unused. Use "
 				"settings['ROOT'] instead.",
+				DeprecationWarning, stacklevel=2)
+
+		if virtual is not DeprecationWarning:
+			warnings.warn("The 'virtual' parameter of the "
+				"portage.dbapi.vartree.vartree"
+				" constructor is unused",
 				DeprecationWarning, stacklevel=2)
 
 		self.settings = settings
 		self.dbapi = vardbapi(settings=settings, vartree=self)
 		self.populated = 1
+
+	@property
+	def root(self):
+		warnings.warn("The root attribute of "
+			"portage.dbapi.vartree.vartree"
+			" is deprecated. Use "
+			"settings['ROOT'] instead.",
+			DeprecationWarning, stacklevel=3)
+		return self.settings['ROOT']
 
 	def getpath(self, mykey, filename=None):
 		return self.dbapi.getpath(mykey, filename=filename)
@@ -1317,7 +1342,7 @@ class dblink(object):
 			raise TypeError("settings argument is required")
 
 		mysettings = settings
-		myroot = settings['ROOT']
+		self._eroot = mysettings['EROOT']
 		self.cat = cat
 		self.pkg = pkg
 		self.mycpv = self.cat + "/" + self.pkg
@@ -1325,14 +1350,10 @@ class dblink(object):
 		self.mysplit[0] = "%s/%s" % (self.cat, self.mysplit[0])
 		self.treetype = treetype
 		if vartree is None:
-			vartree = portage.db[myroot]["vartree"]
+			vartree = portage.db[self._eroot]["vartree"]
 		self.vartree = vartree
 		self._blockers = blockers
 		self._scheduler = scheduler
-
-		# WARNING: EROOT support is experimental and may be incomplete
-		# for cases in which EPREFIX is non-empty.
-		self._eroot = mysettings['EROOT']
 		self.dbroot = normalize_path(os.path.join(self._eroot, VDB_PATH))
 		self.dbcatdir = self.dbroot+"/"+cat
 		self.dbpkgdir = self.dbcatdir+"/"+pkg
@@ -1341,14 +1362,14 @@ class dblink(object):
 		self.settings = mysettings
 		self._verbose = self.settings.get("PORTAGE_VERBOSE") == "1"
 
-		self.myroot=myroot
+		self.myroot = self.settings['ROOT']
 		self._installed_instance = None
 		self.contentscache = None
 		self._contents_inodes = None
 		self._contents_basenames = None
 		self._linkmap_broken = False
 		self._md5_merge_map = {}
-		self._hash_key = (self.myroot, self.mycpv)
+		self._hash_key = (self._eroot, self.mycpv)
 		self._protect_obj = None
 		self._pipe = pipe
 
@@ -4511,6 +4532,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 			os = portage.os
 			encoding = _encodings['fs']
 
+	tar.encoding = encoding
 	root = normalize_path(root).rstrip(os.path.sep) + os.path.sep
 	id_strings = {}
 	maxval = len(contents)
@@ -4544,7 +4566,51 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 			# recorded as a real directory in the tar file to ensure that tar
 			# can properly extract it's children.
 			live_path = os.path.realpath(live_path)
-		tarinfo = tar.gettarinfo(live_path, arcname)
+			lst = os.lstat(live_path)
+
+		# Since os.lstat() inside TarFile.gettarinfo() can trigger a
+		# UnicodeEncodeError when python has something other than utf_8
+		# return from sys.getfilesystemencoding() (as in bug #388773),
+		# we implement the needed functionality here, using the result
+		# of our successful lstat call. An alternative to this would be
+		# to pass in the fileobj argument to TarFile.gettarinfo(), so
+		# that it could use fstat instead of lstat. However, that would
+		# have the unwanted effect of dereferencing symlinks.
+
+		tarinfo = tar.tarinfo()
+		tarinfo.name = arcname
+		tarinfo.mode = lst.st_mode
+		tarinfo.uid = lst.st_uid
+		tarinfo.gid = lst.st_gid
+		tarinfo.size = 0
+		tarinfo.mtime = lst.st_mtime
+		tarinfo.linkname = ""
+		if stat.S_ISREG(lst.st_mode):
+			inode = (lst.st_ino, lst.st_dev)
+			if (lst.st_nlink > 1 and
+				inode in tar.inodes and
+				arcname != tar.inodes[inode]):
+				tarinfo.type = tarfile.LNKTYPE
+				tarinfo.linkname = tar.inodes[inode]
+			else:
+				tar.inodes[inode] = arcname
+				tarinfo.type = tarfile.REGTYPE
+				tarinfo.size = lst.st_size
+		elif stat.S_ISDIR(lst.st_mode):
+			tarinfo.type = tarfile.DIRTYPE
+		elif stat.S_ISLNK(lst.st_mode):
+			tarinfo.type = tarfile.SYMTYPE
+			tarinfo.linkname = os.readlink(live_path)
+		else:
+			continue
+		try:
+			tarinfo.uname = pwd.getpwuid(tarinfo.uid)[0]
+		except KeyError:
+			pass
+		try:
+			tarinfo.gname = grp.getgrgid(tarinfo.gid)[0]
+		except KeyError:
+			pass
 
 		if stat.S_ISREG(lst.st_mode):
 			if protect and protect(path):

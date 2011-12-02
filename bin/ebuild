@@ -262,14 +262,14 @@ if "merge" in pargs and "noauto" in tmpsettings.features:
 
 try:
 	metadata = dict(zip(Package.metadata_keys,
-		portage.db[portage.settings["ROOT"]][mytree].dbapi.aux_get(
+		portage.db[portage.settings['EROOT']][mytree].dbapi.aux_get(
 		cpv, Package.metadata_keys, myrepo=myrepo)))
 except KeyError:
 	# aux_get failure, message should have been shown on stderr.
 	sys.exit(1)
 
 root_config = RootConfig(portage.settings,
-	portage.db[portage.settings["ROOT"]], None)
+	portage.db[portage.settings['EROOT']], None)
 
 pkg = Package(built=(pkg_type != "ebuild"), cpv=cpv,
 	installed=(pkg_type=="installed"),

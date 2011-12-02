@@ -504,14 +504,15 @@ def writedict(mydict,myfilename,writekey=True):
 
 def shlex_split(s):
 	"""
-	This is equivalent to shlex.split but it temporarily encodes unicode
-	strings to bytes since shlex.split() doesn't handle unicode strings.
+	This is equivalent to shlex.split, but if the current interpreter is
+	python2, it temporarily encodes unicode strings to bytes since python2's
+	shlex.split() doesn't handle unicode strings.
 	"""
-	is_unicode = sys.hexversion < 0x3000000 and isinstance(s, unicode)
-	if is_unicode:
+	convert_to_bytes = sys.hexversion < 0x3000000 and not isinstance(s, bytes)
+	if convert_to_bytes:
 		s = _unicode_encode(s)
 	rval = shlex.split(s)
-	if is_unicode:
+	if convert_to_bytes:
 		rval = [_unicode_decode(x) for x in rval]
 	return rval
 

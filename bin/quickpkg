@@ -32,8 +32,9 @@ from portage._sets import load_default_config, SETPREFIX
 
 def quickpkg_atom(options, infos, arg, eout):
 	settings = portage.settings
-	root = portage.settings["ROOT"]
-	trees = portage.db[root]
+	root = portage.settings['ROOT']
+	eroot = portage.settings['EROOT']
+	trees = portage.db[eroot]
 	vartree = trees["vartree"]
 	vardb = vartree.dbapi
 	bintree = trees["bintree"]
@@ -66,10 +67,7 @@ def quickpkg_atom(options, infos, arg, eout):
 	for cpv in matches:
 		excluded_config_files = []
 		bintree.prevent_collision(cpv)
-		cat, pkg = portage.catsplit(cpv)
-		dblnk = dblink(cat, pkg, root,
-			vartree.settings, treetype="vartree",
-			vartree=vartree)
+		dblnk = vardb._dblink(cpv)
 		have_lock = False
 		try:
 			dblnk.lockdb()
@@ -102,7 +100,7 @@ def quickpkg_atom(options, infos, arg, eout):
 			contents = dblnk.getcontents()
 			protect = None
 			if not include_config:
-				confprot = ConfigProtect(root,
+				confprot = ConfigProtect(eroot,
 					shlex_split(settings.get("CONFIG_PROTECT", "")),
 					shlex_split(settings.get("CONFIG_PROTECT_MASK", "")))
 				def protect(filename):
@@ -162,8 +160,8 @@ def quickpkg_atom(options, infos, arg, eout):
 		infos["missing"].append(arg)
 
 def quickpkg_set(options, infos, arg, eout):
-	root = portage.settings["ROOT"]
-	trees = portage.db[root]
+	eroot = portage.settings['EROOT']
+	trees = portage.db[eroot]
 	vartree = trees["vartree"]
 
 	settings = vartree.settings
@@ -190,8 +188,8 @@ def quickpkg_set(options, infos, arg, eout):
 
 
 def quickpkg_extended_atom(options, infos, atom, eout):
-	root = portage.settings["ROOT"]
-	trees = portage.db[root]
+	eroot = portage.settings['EROOT']
+	trees = portage.db[eroot]
 	vartree = trees["vartree"]
 	vardb = vartree.dbapi
 
@@ -223,8 +221,8 @@ def quickpkg_extended_atom(options, infos, atom, eout):
 
 
 def quickpkg_main(options, args, eout):
-	root = portage.settings["ROOT"]
-	trees = portage.db[root]
+	eroot = portage.settings['EROOT']
+	trees = portage.db[eroot]
 	bintree = trees["bintree"]
 
 	try:

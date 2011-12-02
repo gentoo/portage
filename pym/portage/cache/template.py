@@ -47,6 +47,11 @@ class database(object):
 				self.validation_chf, paths=self.store_eclass_paths)
 		elif "_eclasses_" not in d:
 			d["_eclasses_"] = {}
+		# Never return INHERITED, since portdbapi.aux_get() will
+		# generate it automatically from _eclasses_, and we want
+		# to omit it in comparisons between cache entries like
+		# those that egencache uses to avoid redundant writes.
+		d.pop("INHERITED", None)
 		mtime = d.get('_mtime_')
 		if mtime is None:
 			raise cache_errors.CacheCorruption(cpv,

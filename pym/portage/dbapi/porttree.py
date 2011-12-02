@@ -25,8 +25,8 @@ from portage.exception import PortageException, \
 	FileNotFound, InvalidAtom, InvalidDependString, InvalidPackageName
 from portage.localization import _
 
-from portage import eclass_cache, auxdbkeys, \
-	eapi_is_supported, dep_check, \
+from portage import eclass_cache, \
+	eapi_is_supported, \
 	_eapi_is_deprecated
 from portage import os
 from portage import _encodings
@@ -181,23 +181,17 @@ class portdbapi(dbapi):
 				'perms'   : 0o664
 			})
 
-		# XXX: REMOVE THIS ONCE UNUSED_0 IS YANKED FROM auxdbkeys
-		# ~harring
-		filtered_auxdbkeys = [x for x in auxdbkeys if not x.startswith("UNUSED_0")]
-		filtered_auxdbkeys.sort()
-		filtered_auxdbkeys = tuple(filtered_auxdbkeys)
-		self._filtered_auxdbkeys = filtered_auxdbkeys
 		# If secpass < 1, we don't want to write to the cache
 		# since then we won't be able to apply group permissions
 		# to the cache entries/directories.
 		if (secpass < 1 and not depcachedir_unshared) or not depcachedir_w_ok:
 			for x in self.porttrees:
 				self.auxdb[x] = volatile.database(
-					self.depcachedir, x, filtered_auxdbkeys,
+					self.depcachedir, x, self._known_keys,
 					**cache_kwargs)
 				try:
 					self._ro_auxdb[x] = self.auxdbmodule(self.depcachedir, x,
-						filtered_auxdbkeys, readonly=True, **cache_kwargs)
+						self._known_keys, readonly=True, **cache_kwargs)
 				except CacheError:
 					pass
 		else:
@@ -206,7 +200,7 @@ class portdbapi(dbapi):
 					continue
 				# location, label, auxdbkeys
 				self.auxdb[x] = self.auxdbmodule(
-					self.depcachedir, x, filtered_auxdbkeys, **cache_kwargs)
+					self.depcachedir, x, self._known_keys, **cache_kwargs)
 		if "metadata-transfer" not in self.settings.features:
 			for x in self.porttrees:
 				if x in self._pregen_auxdb:
@@ -226,7 +220,7 @@ class portdbapi(dbapi):
 	def _create_pregen_cache(self, tree):
 		conf = self.repositories.get_repo_for_location(tree)
 		cache = conf.get_pregenerated_cache(
-			self._filtered_auxdbkeys, readonly=True)
+			self._known_keys, readonly=True)
 		if cache is not None:
 			try:
 				cache.ec = self._repo_info[tree].eclass_db
@@ -493,7 +487,7 @@ class portdbapi(dbapi):
 			if aux_cache is not None:
 				return [aux_cache.get(x, "") for x in mylist]
 			cache_me = True
-		global auxdbkeys, auxdbkeylen
+
 		try:
 			cat, pkg = mycpv.split("/", 1)
 		except ValueError:
@@ -1064,7 +1058,7 @@ def close_portdbapi_caches():
 portage.process.atexit_register(portage.portageexit)
 
 class portagetree(object):
-	def __init__(self, root=None, virtual=None, settings=None):
+	def __init__(self, root=None, virtual=DeprecationWarning, settings=None):
 		"""
 		Constructor for a PortageTree
 		
@@ -1087,8 +1081,14 @@ class portagetree(object):
 				"settings['ROOT'] instead.",
 				DeprecationWarning, stacklevel=2)
 
+		if virtual is not DeprecationWarning:
+			warnings.warn("The 'virtual' parameter of the "
+				"portage.dbapi.porttree.portagetree"
+				" constructor is unused",
+				DeprecationWarning, stacklevel=2)
+
 		self.portroot = settings["PORTDIR"]
-		self.virtual = virtual
+		self.__virtual = virtual
 		self.dbapi = portdbapi(mysettings=settings)
 
 	@property
@@ -1097,8 +1097,16 @@ class portagetree(object):
 			"portage.dbapi.porttree.portagetree" + \
 			" is deprecated. Use " + \
 			"settings['ROOT'] instead.",
-			DeprecationWarning, stacklevel=2)
+			DeprecationWarning, stacklevel=3)
 		return self.settings['ROOT']
+
+	@property
+	def virtual(self):
+		warnings.warn("The 'virtual' attribute of " + \
+			"portage.dbapi.porttree.portagetree" + \
+			" is deprecated.",
+			DeprecationWarning, stacklevel=3)
+		return self.__virtual
 
 	def dep_bestmatch(self,mydep):
 		"compatibility method"
@@ -1129,9 +1137,6 @@ class portagetree(object):
 		mysplit = pkgname.split("/")
 		psplit = pkgsplit(mysplit[1])
 		return "/".join([self.portroot, mysplit[0], psplit[0], mysplit[1]])+".ebuild"
-
-	def depcheck(self, mycheck, use="yes", myusesplit=None):
-		return dep_check(mycheck, self.dbapi, use=use, myuse=myusesplit)
 
 	def getslot(self,mycatpkg):
 		"Get a slot for a catpkg; assume it exists."

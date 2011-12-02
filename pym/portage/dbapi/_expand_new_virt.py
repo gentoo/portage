@@ -63,7 +63,8 @@ def expand_new_virt(vardb, atom):
 
 		success, atoms = portage.dep_check(rdepend,
 			None, vardb.settings, myuse=valid_use,
-			myroot=vardb.root, trees={vardb.root:{"porttree":vardb.vartree,
+			myroot=vardb.settings['EROOT'],
+			trees={vardb.settings['EROOT']:{"porttree":vardb.vartree,
 			"vartree":vardb.vartree}})
 
 		if success:

@@ -360,7 +360,7 @@ _doebuild_commands_without_builddir = (
 	'fetch', 'fetchall', 'help', 'manifest'
 )
 
-def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
+def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 	fetchonly=0, cleanup=0, dbkey=None, use_cache=1, fetchall=0, tree=None,
 	mydbapi=None, vartree=None, prev_mtimes=None,
 	fd_pipes=None, returnpid=False):
@@ -372,10 +372,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	@type myebuild: String
 	@param mydo: Phase to run
 	@type mydo: String
-	@param myroot: $ROOT (usually '/', see man make.conf)
-	@type myroot: String
-	@param mysettings: Portage Configuration
-	@type mysettings: instance of portage.config
+	@param _unused: Deprecated (use settings["ROOT"] instead)
+	@type _unused: String
+	@param settings: Portage Configuration
+	@type settings: instance of portage.config
 	@param debug: Turns on various debug information (eg, debug for spawn)
 	@type debug: Boolean
 	@param listonly: Used to wrap fetch(); passed such that fetch only lists files required.
@@ -418,7 +418,18 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	Other variables may not be strictly required, many have defaults that are set inside of doebuild.
 	
 	"""
-	
+
+	if settings is None:
+		raise TypeError("settings parameter is required")
+	mysettings = settings
+	myroot = settings['EROOT']
+
+	if _unused is not None and _unused != mysettings['EROOT']:
+		warnings.warn("The third parameter of the "
+			"portage.doebuild() is now unused. Use "
+			"settings['ROOT'] instead.",
+			DeprecationWarning, stacklevel=2)
+
 	if not tree:
 		writemsg("Warning: tree not specified to doebuild\n")
 		tree = "porttree"
@@ -927,7 +938,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				# this phase. This can raise PermissionDenied if
 				# the current user doesn't have write access to $PKGDIR.
 				if hasattr(portage, 'db'):
-					bintree = portage.db[mysettings["ROOT"]]["bintree"]
+					bintree = portage.db[mysettings['EROOT']]['bintree']
 					mysettings["PORTAGE_BINPKG_TMPFILE"] = \
 						bintree.getname(mysettings.mycpv) + \
 						".%s" % (os.getpid(),)

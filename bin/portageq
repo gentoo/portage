@@ -83,7 +83,7 @@ def eval_atom_use(atom):
 #
 
 def has_version(argv):
-	"""<root> <category/package>
+	"""<eroot> <category/package>
 	Return code 0 if it's available, 1 otherwise.
 	"""
 	if (len(argv) < 2):
@@ -130,7 +130,7 @@ has_version.uses_root = True
 
 
 def best_version(argv):
-	"""<root> <category/package>
+	"""<eroot> <category/package>
 	Returns category/package-version (without .ebuild).
 	"""
 	if (len(argv) < 2):
@@ -170,7 +170,7 @@ best_version.uses_root = True
 
 
 def mass_best_version(argv):
-	"""<root> [<category/package>]+
+	"""<eroot> [<category/package>]+
 	Returns category/package-version (without .ebuild).
 	"""
 	if (len(argv) < 2):
@@ -189,7 +189,7 @@ def metadata(argv):
 		print("ERROR: insufficient parameters!", file=sys.stderr)
 		sys.exit(2)
 
-	root, pkgtype, pkgspec = argv[0:3]
+	eroot, pkgtype, pkgspec = argv[0:3]
 	metakeys = argv[3:]
 	type_map = {
 		"ebuild":"porttree",
@@ -199,10 +199,8 @@ def metadata(argv):
 		print("Unrecognized package type: '%s'" % pkgtype, file=sys.stderr)
 		sys.exit(1)
 	trees = portage.db
-	if os.path.realpath(root) == os.path.realpath(portage.settings["ROOT"]):
-		root = portage.settings["ROOT"] # contains the normalized $ROOT
 	try:
-			values = trees[root][type_map[pkgtype]].dbapi.aux_get(
+			values = trees[eroot][type_map[pkgtype]].dbapi.aux_get(
 				pkgspec, metakeys)
 			writemsg_stdout(''.join('%s\n' % x for x in values), noiselevel=-1)
 	except KeyError:
@@ -210,7 +208,7 @@ def metadata(argv):
 		sys.exit(1)
 
 metadata.__doc__ = """
-<root> <pkgtype> <category/package> [<key>]+
+<eroot> <pkgtype> <category/package> [<key>]+
 Returns metadata values for the specified package.
 Available keys: %s
 """  % ','.join(sorted(x for x in portage.auxdbkeys \
@@ -219,10 +217,10 @@ if not x.startswith('UNUSED_')))
 metadata.uses_root = True
 
 def contents(argv):
-	"""<root> <category/package>
+	"""<eroot> <category/package>
 	List the files that are installed for a given package, with
 	one file listed on each line. All file names will begin with
-	<root>.
+	<eroot>.
 	"""
 	if len(argv) != 2:
 		print("ERROR: expected 2 parameters, got %d!" % len(argv))
@@ -241,11 +239,11 @@ def contents(argv):
 contents.uses_root = True
 
 def owners(argv):
-	"""<root> [<filename>]+
+	"""<eroot> [<filename>]+
 	Given a list of files, print the packages that own the files and which
 	files belong to each package. Files owned by a package are listed on
 	the lines below it, indented by a single tab character (\\t). All file
-	paths must either start with <root> or be a basename alone.
+	paths must either start with <eroot> or be a basename alone.
 	Returns 1 if no owners could be found, and 0 otherwise.
 	"""
 	if len(argv) < 2:
@@ -254,9 +252,9 @@ def owners(argv):
 		return 2
 
 	from portage import catsplit, dblink
-	settings = portage.settings
-	root = settings["ROOT"]
-	vardb = portage.db[root]["vartree"].dbapi
+	eroot = argv[0]
+	vardb = portage.db[eroot]["vartree"].dbapi
+	root = portage.settings['ROOT']
 
 	cwd = None
 	try:
@@ -277,8 +275,8 @@ def owners(argv):
 				return 2
 			f = os.path.join(cwd, f)
 			f = portage.normalize_path(f)
-		if not is_basename and not f.startswith(root):
-			sys.stderr.write("ERROR: file paths must begin with <root>!\n")
+		if not is_basename and not f.startswith(eroot):
+			sys.stderr.write("ERROR: file paths must begin with <eroot>!\n")
 			sys.stderr.flush()
 			return 2
 		if is_basename:
@@ -322,9 +320,9 @@ def owners(argv):
 owners.uses_root = True
 
 def is_protected(argv):
-	"""<root> <filename>
+	"""<eroot> <filename>
 	Given a single filename, return code 0 if it's protected, 1 otherwise.
-	The filename must begin with <root>.
+	The filename must begin with <eroot>.
 	"""
 	if len(argv) != 2:
 		sys.stderr.write("ERROR: expected 2 parameters, got %d!\n" % len(argv))
@@ -350,7 +348,7 @@ def is_protected(argv):
 		f = portage.normalize_path(f)
 
 	if not f.startswith(root):
-		err.write("ERROR: file paths must begin with <root>!\n")
+		err.write("ERROR: file paths must begin with <eroot>!\n")
 		err.flush()
 		return 2
 
@@ -369,9 +367,9 @@ def is_protected(argv):
 is_protected.uses_root = True
 
 def filter_protected(argv):
-	"""<root>
+	"""<eroot>
 	Read filenames from stdin and write them to stdout if they are protected.
-	All filenames are delimited by \\n and must begin with <root>.
+	All filenames are delimited by \\n and must begin with <eroot>.
 	"""
 	if len(argv) != 1:
 		sys.stderr.write("ERROR: expected 1 parameter, got %d!\n" % len(argv))
@@ -411,7 +409,7 @@ def filter_protected(argv):
 			f = portage.normalize_path(f)
 
 		if not f.startswith(root):
-			err.write("ERROR: file paths must begin with <root>!\n")
+			err.write("ERROR: file paths must begin with <eroot>!\n")
 			err.flush()
 			errors += 1
 			continue
@@ -429,7 +427,7 @@ def filter_protected(argv):
 filter_protected.uses_root = True
 
 def best_visible(argv):
-	"""<root> [pkgtype] <atom>
+	"""<eroot> [pkgtype] <atom>
 	Returns category/package-version (without .ebuild).
 	The pkgtype argument defaults to "ebuild" if unspecified,
 	otherwise it must be one of ebuild, binary, or installed.
@@ -455,7 +453,8 @@ def best_visible(argv):
 			noiselevel=-1)
 		return 2
 
-	db = portage.db[portage.settings["ROOT"]][type_map[pkgtype]].dbapi
+	eroot = argv[0]
+	db = portage.db[eroot][type_map[pkgtype]].dbapi
 
 	try:
 		atom = portage.dep_expand(atom, mydb=db, settings=portage.settings)
@@ -465,7 +464,7 @@ def best_visible(argv):
 		return 2
 
 	root_config = RootConfig(portage.settings,
-		portage.db[portage.settings["ROOT"]], None)
+		portage.db[eroot], None)
 
 	if hasattr(db, "xmatch"):
 		cpv_list = db.xmatch("match-all-cpv-only", atom)
@@ -508,7 +507,7 @@ best_visible.uses_root = True
 
 
 def mass_best_visible(argv):
-	"""<root> [<category/package>]+
+	"""<eroot> [<category/package>]+
 	Returns category/package-version (without .ebuild).
 	"""
 	if (len(argv) < 2):
@@ -524,7 +523,7 @@ mass_best_visible.uses_root = True
 
 
 def all_best_visible(argv):
-	"""<root>
+	"""<eroot>
 	Returns all best_visible packages (without .ebuild).
 	"""
 	if len(argv) < 1:
@@ -541,7 +540,7 @@ all_best_visible.uses_root = True
 
 
 def match(argv):
-	"""<root> <atom>
+	"""<eroot> <atom>
 	Returns a \\n separated list of category/package-version.
 	When given an empty string, all installed packages will
 	be listed.
@@ -591,7 +590,7 @@ def match(argv):
 match.uses_root = True
 
 def expand_virtual(argv):
-	"""<root> <atom>
+	"""<eroot> <atom>
 	Returns a \\n separated list of atoms expanded from a
 	given virtual atom (GLEP 37 virtuals only),
 	excluding blocker atoms. Satisfied
@@ -705,8 +704,8 @@ def envvar(argv):
 			print(portage.settings[arg])
 
 def get_repos(argv):
-	"""<root>
-	Returns all repos with names (repo_name file) argv[0] = $ROOT
+	"""<eroot>
+	Returns all repos with names (repo_name file) argv[0] = $EROOT
 	"""
 	if len(argv) < 1:
 		print("ERROR: insufficient parameters!")
@@ -714,8 +713,8 @@ def get_repos(argv):
 	print(" ".join(portage.db[argv[0]]["porttree"].dbapi.getRepositories()))
 
 def get_repo_path(argv):
-	"""<root> <repo_id>+
-	Returns the path to the repo named argv[1], argv[0] = $ROOT
+	"""<eroot> <repo_id>+
+	Returns the path to the repo named argv[1], argv[0] = $EROOT
 	"""
 	if len(argv) < 2:
 		print("ERROR: insufficient parameters!")
@@ -727,7 +726,7 @@ def get_repo_path(argv):
 		print(path)
 
 def list_preserved_libs(argv):
-	"""<root>
+	"""<eroot>
 	Print a list of libraries preserved during a package update in the form
 	package: path. Returns 1 if no preserved libraries could be found,
 	0 otherwise.
@@ -843,16 +842,22 @@ def main():
 			sys.stderr.write("Run portageq with --help for info\n")
 			sys.stderr.flush()
 			sys.exit(os.EX_USAGE)
-		os.environ["ROOT"] = sys.argv[2]
+		eprefix = os.environ.get("__PORTAGE_TEST_EPREFIX")
+		eroot = portage.util.normalize_path(sys.argv[2])
+		if eprefix:
+			root = eroot[:1-len(eprefix)]
+		else:
+			root = eroot
+		os.environ["ROOT"] = root
 
 	args = sys.argv[2:]
-	if args and sys.hexversion < 0x3000000 and not isinstance(args[0], unicode):
+	if args and isinstance(args[0], bytes):
 		for i in range(len(args)):
 			args[i] = portage._unicode_decode(args[i])
 
 	try:
 		if uses_root:
-			args[0] = portage.settings["ROOT"]
+			args[0] = portage.settings['EROOT']
 		retval = function(args)
 		if retval:
 			sys.exit(retval)

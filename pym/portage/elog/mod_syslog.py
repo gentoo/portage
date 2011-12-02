@@ -23,7 +23,7 @@ def process(mysettings, key, logentries, fulltext):
 		for msgtype,msgcontent in logentries[phase]:
 			for line in msgcontent:
 				line = "%s: %s: %s" % (key, phase, line)
-				if sys.hexversion < 0x3000000 and isinstance(line, unicode):
+				if sys.hexversion < 0x3000000 and not isinstance(line, bytes):
 					# Avoid TypeError from syslog.syslog()
 					line = line.encode(_encodings['content'], 
 						'backslashreplace')

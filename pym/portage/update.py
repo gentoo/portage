@@ -156,6 +156,7 @@ def parse_updates(mycontent):
 			if len(mysplit) != 3:
 				errors.append(_("ERROR: Update command invalid '%s'") % myline)
 				continue
+			valid = True
 			for i in (1, 2):
 				try:
 					atom = Atom(mysplit[i])
@@ -169,7 +170,11 @@ def parse_updates(mycontent):
 				else:
 					errors.append(
 						_("ERROR: Malformed update entry '%s'") % myline)
+					valid = False
 					break
+			if not valid:
+				continue
+
 		if mysplit[0] == "slotmove":
 			if len(mysplit)!=4:
 				errors.append(_("ERROR: Update command invalid '%s'") % myline)

@@ -36,7 +36,7 @@ class DoebuildSpawnTestCase(TestCase):
 				'RDEPEND'   : '>=app-shells/bash-3.2_p17 >=dev-lang/python-2.6',
 				'SLOT'      : '0',
 			}
-			root_config = playground.trees[playground.root]['root_config']
+			root_config = playground.trees[playground.eroot]['root_config']
 			pkg = Package(built=False, cpv=cpv, installed=False,
 				metadata=metadata, root_config=root_config,
 				type_name='ebuild')

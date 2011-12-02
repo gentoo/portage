@@ -105,8 +105,9 @@ elif mode == "list" and not params:
 # delay this for speed increase
 from portage.glsa import *
 
-vardb = portage.db[portage.settings["ROOT"]]["vartree"].dbapi
-portdb = portage.db["/"]["porttree"].dbapi
+eroot = portage.settings['EROOT']
+vardb = portage.db[eroot]["vartree"].dbapi
+portdb = portage.db[eroot]["porttree"].dbapi
 
 # build glsa lists
 completelist = get_glsa_list(portage.settings)

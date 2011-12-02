@@ -19,7 +19,7 @@ class RootConfig(object):
 	def __init__(self, settings, trees, setconfig):
 		self.trees = trees
 		self.settings = settings
-		self.root = self.settings["ROOT"]
+		self.root = self.settings['EROOT']
 		self.setconfig = setconfig
 		if setconfig is None:
 			self.sets = {}

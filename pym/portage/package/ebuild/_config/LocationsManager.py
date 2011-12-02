@@ -5,7 +5,10 @@ __all__ = (
 	'LocationsManager',
 )
 
+import collections
 import io
+import warnings
+
 from portage import os, eapi_is_supported, _encodings, _unicode_encode
 from portage.const import CUSTOM_PROFILE_PATH, GLOBAL_CONFIG_PATH, \
 	PROFILE_PATH, USER_CONFIG_PATH
@@ -13,7 +16,16 @@ from portage.exception import DirectoryNotFound, ParseError
 from portage.localization import _
 from portage.util import ensure_dirs, grabfile, \
 	normalize_path, shlex_split, writemsg
+from portage.repository.config import parse_layout_conf
 
+
+_PORTAGE1_DIRECTORIES = frozenset([
+	'package.mask', 'package.provided',
+	'package.use', 'package.use.mask', 'package.use.force',
+	'use.mask', 'use.force'])
+
+_profile_node = collections.namedtuple('_profile_node',
+	'location portage1_directories')
 
 class LocationsManager(object):
 
@@ -37,17 +49,24 @@ class LocationsManager(object):
 
 		self._check_var_directory("PORTAGE_CONFIGROOT", self.config_root)
 		self.abs_user_config = os.path.join(self.config_root, USER_CONFIG_PATH)
+		self.config_profile_path = config_profile_path
 
-		if config_profile_path is None:
-			config_profile_path = \
+	def load_profiles(self, known_repository_paths):
+		known_repos = set(os.path.realpath(x) for x in known_repository_paths)
+		# force a trailing '/' for ease of doing startswith checks
+		known_repos = tuple((x + '/', parse_layout_conf(x)[0])
+			for x in known_repos)
+
+		if self.config_profile_path is None:
+			self.config_profile_path = \
 				os.path.join(self.config_root, PROFILE_PATH)
-			if os.path.isdir(config_profile_path):
-				self.profile_path = config_profile_path
+			if os.path.isdir(self.config_profile_path):
+				self.profile_path = self.config_profile_path
 			else:
-				config_profile_path = \
+				self.config_profile_path = \
 					os.path.join(self.abs_user_config, 'make.profile')
-				if os.path.isdir(config_profile_path):
-					self.profile_path = config_profile_path
+				if os.path.isdir(self.config_profile_path):
+					self.profile_path = self.config_profile_path
 				else:
 					self.profile_path = None
 		else:
@@ -55,14 +74,16 @@ class LocationsManager(object):
 			# here, in order to create an empty profile
 			# for checking dependencies of packages with
 			# empty KEYWORDS.
-			self.profile_path = config_profile_path
+			self.profile_path = self.config_profile_path
 
 
 		# The symlink might not exist or might not be a symlink.
 		self.profiles = []
+		self.profiles_complex = []
 		if self.profile_path:
 			try:
-				self._addProfile(os.path.realpath(self.profile_path))
+				self._addProfile(os.path.realpath(self.profile_path),
+					known_repos)
 			except ParseError as e:
 				writemsg(_("!!! Unable to parse profile: '%s'\n") % \
 					self.profile_path, noiselevel=-1)
@@ -75,9 +96,11 @@ class LocationsManager(object):
 			if os.path.exists(custom_prof):
 				self.user_profile_dir = custom_prof
 				self.profiles.append(custom_prof)
+				self.profiles_complex.append(_profile_node(custom_prof, True))
 			del custom_prof
 
 		self.profiles = tuple(self.profiles)
+		self.profiles_complex = tuple(self.profiles_complex)
 
 	def _check_var_directory(self, varname, var):
 		if not os.path.isdir(var):
@@ -86,7 +109,34 @@ class LocationsManager(object):
 				noiselevel=-1)
 			raise DirectoryNotFound(var)
 
-	def _addProfile(self, currentPath):
+	def _addProfile(self, currentPath, known_repos):
+		current_abs_path = os.path.abspath(currentPath)
+		allow_directories = True
+		repo_loc = None
+		compat_mode = False
+		intersecting_repos = [x for x in known_repos if current_abs_path.startswith(x[0])]
+		if intersecting_repos:
+			# protect against nested repositories.  Insane configuration, but the longest
+			# path will be the correct one.
+			repo_loc, layout_data = max(intersecting_repos, key=lambda x:len(x[0]))
+			allow_directories = any(x.startswith("portage-1")
+				for x in layout_data['profile-formats'])
+			compat_mode = layout_data['profile-formats'] == ('portage-1-compat',)
+
+		if compat_mode:
+			offenders = _PORTAGE1_DIRECTORIES.intersection(os.listdir(currentPath))
+			offenders = sorted(x for x in offenders
+				if os.path.isdir(os.path.join(currentPath, x)))
+			if offenders:
+				warnings.warn(_("Profile '%(profile_path)s' in repository "
+					"'%(repo_name)s' is implicitly using 'portage-1' profile format, but "
+					"the repository profiles are not marked as that format.  This will break "
+					"in the future.  Please either convert the following paths "
+					"to files, or add\nprofile-formats = portage-1\nto the "
+					"repositories layout.conf.  Files: '%(files)s'\n")
+					% dict(profile_path=currentPath, repo_name=repo_loc,
+						files=', '.join(offenders)))
+
 		parentsFile = os.path.join(currentPath, "parent")
 		eapi_file = os.path.join(currentPath, "eapi")
 		f = None
@@ -112,15 +162,26 @@ class LocationsManager(object):
 				raise ParseError(
 					_("Empty parent file: '%s'") % parentsFile)
 			for parentPath in parents:
+				abs_parent = parentPath[:1] == os.sep
 				parentPath = normalize_path(os.path.join(
 					currentPath, parentPath))
+
+				if abs_parent or repo_loc is None or \
+					not parentPath.startswith(repo_loc):
+					# It seems that this parent may point outside
+					# of the current repo, so realpath it.
+					parentPath = os.path.realpath(parentPath)
+
 				if os.path.exists(parentPath):
-					self._addProfile(parentPath)
+					self._addProfile(parentPath, known_repos)
 				else:
 					raise ParseError(
 						_("Parent '%s' not found: '%s'") %  \
 						(parentPath, parentsFile))
+
 		self.profiles.append(currentPath)
+		self.profiles_complex.append(
+			_profile_node(currentPath, allow_directories))
 
 	def set_root_override(self, root_overwrite=None):
 		# Allow ROOT setting to come from make.conf if it's not overridden

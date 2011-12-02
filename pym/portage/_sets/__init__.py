@@ -6,21 +6,27 @@ from __future__ import print_function
 __all__ = ["SETPREFIX", "get_boolean", "SetConfigError",
 	"SetConfig", "load_default_config"]
 
+import io
+import logging
 import sys
 try:
-	from configparser import NoOptionError
+	from configparser import NoOptionError, ParsingError
 	if sys.hexversion >= 0x3020000:
 		from configparser import ConfigParser as SafeConfigParser
 	else:
 		from configparser import SafeConfigParser
 except ImportError:
-	from ConfigParser import SafeConfigParser, NoOptionError
+	from ConfigParser import SafeConfigParser, NoOptionError, ParsingError
 from portage import os
 from portage import load_mod
+from portage import _unicode_decode
+from portage import _unicode_encode
+from portage import _encodings
 from portage.const import USER_CONFIG_PATH, GLOBAL_CONFIG_PATH
 from portage.const import _ENABLE_SET_CONFIG
 from portage.exception import PackageSetNotFound
 from portage.localization import _
+from portage.util import writemsg_level
 
 SETPREFIX = "@"
 
@@ -48,7 +54,32 @@ class SetConfig(object):
 			})
 
 		if _ENABLE_SET_CONFIG:
-			self._parser.read(paths)
+			# use read_file/readfp in order to control decoding of unicode
+			try:
+				# Python >=3.2
+				read_file = self._parser.read_file
+			except AttributeError:
+				read_file = self._parser.readfp
+
+			for p in paths:
+				f = None
+				try:
+					f = io.open(_unicode_encode(p,
+						encoding=_encodings['fs'], errors='strict'),
+						mode='r', encoding=_encodings['repo.content'],
+						errors='replace')
+				except EnvironmentError:
+					pass
+				else:
+					try:
+						read_file(f)
+					except ParsingError as e:
+						writemsg_level(_unicode_decode(
+							_("!!! Error while reading sets config file: %s\n")
+							) % e, level=logging.ERROR, noiselevel=-1)
+				finally:
+					if f is not None:
+						f.close()
 		else:
 			self._create_default_config()
 
@@ -206,7 +237,6 @@ class SetConfig(object):
 		except KeyError:
 			raise PackageSetNotFound(setname)
 		myatoms = myset.getAtoms()
-		parser = self._parser
 
 		if ignorelist is None:
 			ignorelist = set()

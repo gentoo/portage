@@ -128,7 +128,7 @@ class SimpleRepomanTestCase(TestCase):
 		settings = playground.settings
 		eprefix = settings["EPREFIX"]
 		eroot = settings["EROOT"]
-		portdb = playground.trees[playground.root]["porttree"].dbapi
+		portdb = playground.trees[playground.eroot]["porttree"].dbapi
 		homedir = os.path.join(eroot, "home")
 		distdir = os.path.join(eprefix, "distdir")
 		portdir = settings["PORTDIR"]

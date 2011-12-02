@@ -480,10 +480,15 @@ def portageexit():
 	if data.secpass > 1 and os.environ.get("SANDBOX_ON") != "1":
 		close_portdbapi_caches()
 
-def create_trees(config_root=None, target_root=None, trees=None):
-	if trees is None:
-		trees = {}
-	else:
+class _trees_dict(dict):
+	__slots__ = ('_running_eroot', '_target_eroot',)
+	def __init__(self, *pargs, **kargs):
+		dict.__init__(self, *pargs, **kargs)
+		self._running_eroot = None
+		self._target_eroot = None
+
+def create_trees(config_root=None, target_root=None, trees=None, env=None):
+	if trees is not None:
 		# clean up any existing portdbapi instances
 		for myroot in trees:
 			portdb = trees[myroot]["porttree"].dbapi
@@ -491,15 +496,27 @@ def create_trees(config_root=None, target_root=None, trees=None):
 			portdbapi.portdbapi_instances.remove(portdb)
 			del trees[myroot]["porttree"], myroot, portdb
 
-	eprefix = os.environ.get("__PORTAGE_TEST_EPREFIX")
+	if trees is None:
+		trees = _trees_dict()
+	elif not isinstance(trees, _trees_dict):
+		# caller passed a normal dict or something,
+		# but we need a _trees_dict instance
+		trees = _trees_dict(trees)
+
+	if env is None:
+		env = os.environ
+	eprefix = env.get("__PORTAGE_TEST_EPREFIX")
 	if not eprefix:
 		eprefix = EPREFIX
 	settings = config(config_root=config_root, target_root=target_root,
-		config_incrementals=portage.const.INCREMENTALS, _eprefix=eprefix)
+		env=env, _eprefix=eprefix)
 	settings.lock()
 
-	myroots = [(settings["ROOT"], settings)]
-	if settings["ROOT"] != "/":
+	trees._target_eroot = settings['EROOT']
+	myroots = [(settings['EROOT'], settings)]
+	if settings["ROOT"] == "/":
+		trees._running_eroot = trees._target_eroot
+	else:
 
 		# When ROOT != "/" we only want overrides from the calling
 		# environment to apply to the config that's associated
@@ -514,18 +531,19 @@ def create_trees(config_root=None, target_root=None, trees=None):
 		settings = config(config_root=None, target_root="/",
 			env=clean_env, _eprefix=eprefix)
 		settings.lock()
-		myroots.append((settings["ROOT"], settings))
+		trees._running_eroot = settings['EROOT']
+		myroots.append((settings['EROOT'], settings))
 
 	for myroot, mysettings in myroots:
 		trees[myroot] = portage.util.LazyItemsDict(trees.get(myroot, {}))
 		trees[myroot].addLazySingleton("virtuals", mysettings.getvirtuals)
 		trees[myroot].addLazySingleton(
-			"vartree", vartree, myroot, categories=mysettings.categories,
+			"vartree", vartree, categories=mysettings.categories,
 				settings=mysettings)
 		trees[myroot].addLazySingleton("porttree",
-			portagetree, myroot, settings=mysettings)
+			portagetree, settings=mysettings)
 		trees[myroot].addLazySingleton("bintree",
-			binarytree, myroot, mysettings["PKGDIR"], settings=mysettings)
+			binarytree, pkgdir=mysettings["PKGDIR"], settings=mysettings)
 	return trees
 
 if VERSION == 'HEAD':

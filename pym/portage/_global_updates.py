@@ -37,7 +37,7 @@ def _global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 		"SANDBOX_ACTIVE" in os.environ or \
 		len(trees) != 1:
 		return retupd
-	root = "/"
+	root = trees._running_eroot
 	mysettings = trees[root]["vartree"].settings
 	portdb = trees[root]["porttree"].dbapi
 	vardb = trees[root]["vartree"].dbapi

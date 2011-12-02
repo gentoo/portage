@@ -29,6 +29,11 @@ class SimpleEmergeTestCase(TestCase):
 
 		install_something = """
 S="${WORKDIR}"
+
+pkg_pretend() {
+	einfo "called pkg_pretend for $CATEGORY/$PF"
+}
+
 src_install() {
 	einfo "installing something..."
 	# TODO: Add prefix support to shell code/helpers, so we
@@ -48,6 +53,15 @@ src_install() {
 	echo "blah blah blah" > ${latin_1_dir}/latin-1-$(printf "\\xa9")-regular-file || die
 	ln -s latin-1-$(printf "\\xa9")-regular-file ${latin_1_dir}/latin-1-$(printf "\\xa9")-symlink || die
 }
+
+pkg_config() {
+	einfo "called pkg_config for $CATEGORY/$PF"
+}
+
+pkg_info() {
+	einfo "called pkg_info for $CATEGORY/$PF"
+}
+
 """
 
 		ebuilds = {
@@ -124,8 +138,7 @@ src_install() {
 		eprefix = settings["EPREFIX"]
 		eroot = settings["EROOT"]
 		trees = playground.trees
-		root = playground.root
-		portdb = trees[root]["porttree"].dbapi
+		portdb = trees[eroot]["porttree"].dbapi
 		portdir = settings["PORTDIR"]
 		var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
 		cachedir = os.path.join(var_cache_edb, "dep")
@@ -168,6 +181,8 @@ src_install() {
 			emerge_cmd + ("--version",),
 			emerge_cmd + ("--info",),
 			emerge_cmd + ("--info", "--verbose"),
+			emerge_cmd + ("--list-sets",),
+			emerge_cmd + ("--check-news",),
 			rm_cmd + ("-rf", cachedir),
 			rm_cmd + ("-rf", cachedir_pregen),
 			emerge_cmd + ("--regen",),
@@ -194,6 +209,8 @@ src_install() {
 			emerge_cmd + ("--oneshot", "--usepkg", "dev-libs/B",),
 			emerge_cmd + ("--oneshot", "dev-libs/A",),
 			emerge_cmd + ("--noreplace", "dev-libs/A",),
+			emerge_cmd + ("--config", "dev-libs/A",),
+			emerge_cmd + ("--info", "dev-libs/A", "dev-libs/B"),
 			emerge_cmd + ("--pretend", "--depclean", "--verbose", "dev-libs/B"),
 			emerge_cmd + ("--pretend", "--depclean",),
 			emerge_cmd + ("--depclean",),
@@ -203,14 +220,16 @@ src_install() {
 			emaint_cmd + ("--fix", "all"),
 			fixpackages_cmd,
 			regenworld_cmd,
-			portageq_cmd + ("match", "/", "dev-libs/A"),
-			portageq_cmd + ("best_visible", "/", "dev-libs/A"),
-			portageq_cmd + ("best_visible", "/", "binary", "dev-libs/A"),
-			portageq_cmd + ("contents", "/", "dev-libs/A-1"),
-			portageq_cmd + ("metadata", "/", "ebuild", "dev-libs/A-1", "EAPI", "IUSE", "RDEPEND"),
-			portageq_cmd + ("metadata", "/", "binary", "dev-libs/A-1", "EAPI", "USE", "RDEPEND"),
-			portageq_cmd + ("metadata", "/", "installed", "dev-libs/A-1", "EAPI", "USE", "RDEPEND"),
-			portageq_cmd + ("owners", "/", eroot + "usr"),
+			portageq_cmd + ("match", eroot, "dev-libs/A"),
+			portageq_cmd + ("best_visible", eroot, "dev-libs/A"),
+			portageq_cmd + ("best_visible", eroot, "binary", "dev-libs/A"),
+			portageq_cmd + ("contents", eroot, "dev-libs/A-1"),
+			portageq_cmd + ("metadata", eroot, "ebuild", "dev-libs/A-1", "EAPI", "IUSE", "RDEPEND"),
+			portageq_cmd + ("metadata", eroot, "binary", "dev-libs/A-1", "EAPI", "USE", "RDEPEND"),
+			portageq_cmd + ("metadata", eroot, "installed", "dev-libs/A-1", "EAPI", "USE", "RDEPEND"),
+			portageq_cmd + ("owners", eroot, eroot + "usr"),
+			emerge_cmd + ("-p", eroot + "usr"),
+			emerge_cmd + ("-p", "--unmerge", "-q", eroot + "usr"),
 			emerge_cmd + ("--unmerge", "--quiet", "dev-libs/A"),
 			emerge_cmd + ("-C", "--quiet", "dev-libs/B"),
 		)

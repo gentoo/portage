@@ -27,6 +27,26 @@ interrupted() {
 
 trap interrupted SIGINT
 
+unused_args=()
+
+while [[ -n $1 ]] ; do
+	case "$1" in
+		--python-versions=*)
+			PYTHON_VERSIONS=${1#--python-versions=}
+			;;
+		--python-versions)
+			shift
+			PYTHON_VERSIONS=$1
+			;;
+		*)
+			unused_args[${#unused_args[@]}]=$1
+			;;
+	esac
+	shift
+done
+
+set -- "${unused_args[@]}"
+
 exit_status="0"
 for version in ${PYTHON_VERSIONS}; do
 	if [[ -x @PREFIX_PORTAGE_PYTHON@${version} ]]; then

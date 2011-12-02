@@ -63,7 +63,8 @@ class EbuildMetadataPhase(SubProcess):
 		else:
 			fd_pipes = {}
 
-		fd_pipes.setdefault(0, sys.stdin.fileno())
+		null_input = open('/dev/null', 'rb')
+		fd_pipes.setdefault(0, null_input.fileno())
 		fd_pipes.setdefault(1, sys.stdout.fileno())
 		fd_pipes.setdefault(2, sys.stderr.fileno())
 
@@ -91,11 +92,12 @@ class EbuildMetadataPhase(SubProcess):
 		self._registered = True
 
 		retval = portage.doebuild(ebuild_path, "depend",
-			settings["ROOT"], settings, debug,
+			settings=settings, debug=debug,
 			mydbapi=self.portdb, tree="porttree",
 			fd_pipes=fd_pipes, returnpid=True)
 
 		os.close(slave_fd)
+		null_input.close()
 
 		if isinstance(retval, int):
 			# doebuild failed before spawning
