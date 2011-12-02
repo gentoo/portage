@@ -108,7 +108,7 @@ save_elf_debug() {
 
 	local inode=$(inode_var_name "$x")
 	if [[ -n ${!inode} ]] ; then
-		ln "${D}usr/lib/debug/${!inode:${#D}}.debug" "$y"
+		ln "${ED}usr/lib/debug/${!inode:${#D}}.debug" "$y"
 	else
 		eval $inode=\$x
 		if [[ -e ${T}/prepstrip.split.debug ]] ; then
@@ -129,7 +129,7 @@ save_elf_debug() {
 			| awk '$NF ~ /GNU/ { getline; printf $2$3$4$5; getline; print $2 }')
 	fi
 	if [[ -n ${buildid} ]] ; then
-		local buildid_dir="${D}usr/lib/debug/.build-id/${buildid:0:2}"
+		local buildid_dir="${ED}usr/lib/debug/.build-id/${buildid:0:2}"
 		local buildid_file="${buildid_dir}/${buildid:2}"
 		mkdir -p "${buildid_dir}"
 		ln -s "../../${x:${#D}}.debug" "${buildid_file}.debug"
