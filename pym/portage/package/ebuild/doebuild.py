@@ -130,6 +130,7 @@ def _doebuild_path(settings, eapi=None):
 	# PREFIX LOCAL: use DEFAULT_PATH and EXTRA_PATH from make.globals
 	defaultpath = [x for x in settings.get("DEFAULT_PATH", "").split(":") if x]
 	extrapath = [x for x in settings.get("EXTRA_PATH", "").split(":") if x]
+	path = []
 
 	if eapi not in (None, "0", "1", "2", "3"):
 		path.append(os.path.join(portage_bin_path, "ebuild-helpers", "4"))
