@@ -128,7 +128,8 @@ class MaskManager(object):
 		repo_pkgunmasklines = []
 		all_profiles = []
 		for repo in repositories.repos_with_profiles():
-			all_profiles.append(_profile_node(repo.location, True))
+			all_profiles.append(_profile_node(
+				os.path.join(repo.location, "profiles"), True))
 		all_profiles.extend(profiles)
 		# END PREFIX LOCAL
 		for x in all_profiles:
