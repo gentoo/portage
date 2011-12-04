@@ -3300,7 +3300,8 @@ class depgraph(object):
 							# differs only by upper/lower case.
 							identical = True
 							for cp_orig in orig_cp_map[other_cp]:
-								if cp_orig != cp:
+								if portage.catsplit(cp_orig)[1] != \
+									portage.catsplit(atom.cp)[1]:
 									identical = False
 									break
 							if identical:
