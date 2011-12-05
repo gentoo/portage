@@ -465,7 +465,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm depend && \
 		die "error processing environment"
 	# Colon separated SANDBOX_* variables need to be cumulative.
 	for x in SANDBOX_DENY SANDBOX_READ SANDBOX_PREDICT SANDBOX_WRITE ; do
-		export PORTAGE_${x}=${!x}
+		export PORTAGE_${x}="${!x}"
 	done
 	PORTAGE_SANDBOX_ON=${SANDBOX_ON}
 	export SANDBOX_ON=1
@@ -479,13 +479,13 @@ if ! has "$EBUILD_PHASE" clean cleanrm depend && \
 	for x in SANDBOX_DENY SANDBOX_PREDICT SANDBOX_READ SANDBOX_WRITE ; do
 		y="PORTAGE_${x}"
 		if [ -z "${!x}" ] ; then
-			export ${x}=${!y}
+			export ${x}="${!y}"
 		elif [ -n "${!y}" ] && [ "${!y}" != "${!x}" ] ; then
 			# filter out dupes
-			export ${x}=$(printf "${!y}:${!x}" | tr ":" "\0" | \
-				sort -z -u | tr "\0" ":")
+			export ${x}="$(printf "${!y}:${!x}" | tr ":" "\0" | \
+				sort -z -u | tr "\0" ":")"
 		fi
-		export ${x}=${!x%:}
+		export ${x}="${!x%:}"
 		unset PORTAGE_${x}
 	done
 	unset x y
