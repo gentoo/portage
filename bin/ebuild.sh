@@ -461,6 +461,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm depend && \
 	# The environment may have been extracted from environment.bz2 or
 	# may have come from another version of ebuild.sh or something.
 	# In any case, preprocess it to prevent any potential interference.
+	# NOTE: export ${FOO}=... requires quoting, unlike normal exports
 	preprocess_ebuild_env || \
 		die "error processing environment"
 	# Colon separated SANDBOX_* variables need to be cumulative.
