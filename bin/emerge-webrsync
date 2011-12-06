@@ -212,6 +212,7 @@ sync_local() {
 		emerge --metadata
 	fi
 	[ -x /etc/portage/bin/post_sync ] && /etc/portage/bin/post_sync
+	has news ${FEATURES} && emerge --check-news
 	return 0
 }
 
