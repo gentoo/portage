@@ -282,11 +282,11 @@ inherit() {
 
 		# If each var has a value, append it to the global variable E_* to
 		# be applied after everything is finished. New incremental behavior.
-		[ "${IUSE+set}"       = set ] && export E_IUSE+="${E_IUSE:+ }${IUSE}"
-		[ "${REQUIRED_USE+set}"       = set ] && export E_REQUIRED_USE+="${E_REQUIRED_USE:+ }${REQUIRED_USE}"
-		[ "${DEPEND+set}"     = set ] && export E_DEPEND+="${E_DEPEND:+ }${DEPEND}"
-		[ "${RDEPEND+set}"    = set ] && export E_RDEPEND+="${E_RDEPEND:+ }${RDEPEND}"
-		[ "${PDEPEND+set}"    = set ] && export E_PDEPEND+="${E_PDEPEND:+ }${PDEPEND}"
+		[ "${IUSE+set}"         = set ] && E_IUSE+="${E_IUSE:+ }${IUSE}"
+		[ "${REQUIRED_USE+set}" = set ] && E_REQUIRED_USE+="${E_REQUIRED_USE:+ }${REQUIRED_USE}"
+		[ "${DEPEND+set}"       = set ] && E_DEPEND+="${E_DEPEND:+ }${DEPEND}"
+		[ "${RDEPEND+set}"      = set ] && E_RDEPEND+="${E_RDEPEND:+ }${RDEPEND}"
+		[ "${PDEPEND+set}"      = set ] && E_PDEPEND+="${E_PDEPEND:+ }${PDEPEND}"
 
 		[ "${B_IUSE+set}"     = set ] && IUSE="${B_IUSE}"
 		[ "${B_IUSE+set}"     = set ] || unset IUSE
