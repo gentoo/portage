@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Oct 2011" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Dec 2011" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -427,8 +427,8 @@ are modified. This option is enabled by default.
 
 \fBWARNING:\fR
 If you want to disable \-\-dynamic\-deps, then it may be necessary to
-first run \fBfixpackages\fR in order to get the best results. The
-\fBfixpackages\fR command performs two different operations that can
+first run \fBfixpackages\fR(1) in order to get the best results. The
+\fBfixpackages\fR(1) command performs two different operations that can
 also be performed separately by the `emaint \-\-fix moveinst` and
 `emaint \-\-fix movebin` commands (see \fBemaint\fR(1)).
 .TP
@@ -561,11 +561,22 @@ Only merge (or pretend to merge) the dependencies of the packages
 specified, not the packages themselves.
 .TP
 .BR "\-\-package\-moves [ y | n ]"
-Perform package moves when necessary. This option
-is enabled by default. \fBWARNING:\fR This option
+Perform package moves when necessary. This option is enabled
+by default. Package moves are typically applied immediately
+after a \fB\-\-sync\fR action. They are applied in an
+incremental fashion, using only the subset of the history of
+package moves which have been added or modified since the
+previous application of package moves.
+
+\fBWARNING:\fR This option
 should remain enabled under normal circumstances.
 Do not disable it unless you know what you are
 doing.
+
+\fBNOTE:\fR The \fBfixpackages\fR(1) command can be used to
+exhaustively apply the entire history of package moves,
+regardless of whether or not any of the package moves have
+been previously applied.
 .TP
 .BR "\-\-pretend " (\fB\-p\fR)
 Instead of actually performing the merge, simply display what *would*
