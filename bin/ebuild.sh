@@ -670,7 +670,7 @@ else
 	declare -r $PORTAGE_READONLY_METADATA $PORTAGE_READONLY_VARS
 	case "$EAPI" in
 		0|1|2)
-			[[ " ${USE} " == *" prefix "* ]] && \
+			[[ " ${FEATURES} " == *" force-prefix "* ]] && \
 				declare -r ED EPREFIX EROOT
 			;;
 		*)

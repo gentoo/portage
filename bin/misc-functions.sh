@@ -17,7 +17,7 @@ shift $#
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}/ebuild.sh"
 
 install_symlink_html_docs() {
-	[[ " ${USE} " == *" prefix "* ]] || \
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
 		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 	cd "${ED}" || die "cd failed"
 	#symlink the html documentation (if DOC_SYMLINKS_DIR is set in make.conf)
@@ -66,7 +66,7 @@ canonicalize() {
 prepcompress() {
 	local -a include exclude incl_d incl_f
 	local f g i real_f real_d
-	[[ " ${USE} " == *" prefix "* ]] || \
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
 		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 
 	# Canonicalize path names and check for their existence.
@@ -149,7 +149,7 @@ prepcompress() {
 
 install_qa_check() {
 	local f i x
-	[[ " ${USE} " == *" prefix "* ]] || \
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
 		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 
 	cd "${ED}" || die "cd failed"
@@ -889,7 +889,7 @@ preinst_mask() {
 		 return 1
 	fi
 
-	[[ " ${USE} " == *" prefix "* ]] || \
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
 		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 
 	# Make sure $PWD is not ${D} so that we don't leave gmon.out files
@@ -918,7 +918,7 @@ preinst_sfperms() {
 		 return 1
 	fi
 
-	[[ " ${USE} " == *" prefix "* ]] || \
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
 		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 
 	# Smart FileSystem Permissions
@@ -957,7 +957,7 @@ preinst_suid_scan() {
 		 return 1
 	fi
 
-	[[ " ${USE} " == *" prefix "* ]] || \
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
 		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 
 	# total suid control.
@@ -1023,7 +1023,7 @@ preinst_selinux_labels() {
 
 dyn_package() {
 
-	[[ " ${USE} " == *" prefix "* ]] || \
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
 		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 
 	# Make sure $PWD is not ${D} so that we don't leave gmon.out files
@@ -1104,7 +1104,7 @@ __END1__
 
 dyn_rpm() {
 
-	[[ " ${USE} " == *" prefix "* ]] || \
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
 		case "$EAPI" in 0|1|2) local EPREFIX= ;; esac
 
 	cd "${T}" || die "cd failed"

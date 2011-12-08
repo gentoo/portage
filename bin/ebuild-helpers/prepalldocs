@@ -8,7 +8,7 @@ if [[ -n $1 ]] ; then
 	vecho "${0##*/}: invalid usage; takes no arguments" 1>&2
 fi
 
-[[ " ${USE} " == *" prefix "* ]] || \
+[[ " ${FEATURES} " == *" force-prefix "* ]] || \
 	case "$EAPI" in 0|1|2) ED=${D} ;; esac
 
 [[ -d ${ED}usr/share/doc ]] || exit 0

@@ -7,7 +7,7 @@ if [[ $# -ne 2 ]] ; then
 	exit 1
 fi
 
-[[ " ${USE} " == *" prefix "* ]] || \
+[[ " ${FEATURES} " == *" force-prefix "* ]] || \
 	case "$EAPI" in 0|1|2) ED=${D} ;; esac
 
 destdir=${2%/*}

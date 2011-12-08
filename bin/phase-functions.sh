@@ -96,7 +96,7 @@ filter_readonly_variables() {
 	# supported by the current EAPI.
 	case "${EAPI:-0}" in
 		0|1|2)
-			[[ " ${USE} " == *" prefix "* ]] && \
+			[[ " ${FEATURES} " == *" force-prefix "* ]] && \
 				filtered_vars+=" ED EPREFIX EROOT"
 			;;
 		*)
@@ -502,7 +502,7 @@ dyn_install() {
 	ebuild_phase pre_src_install
 
 	_x=${ED}
-	[[ " ${USE} " == *" prefix "* ]] || \
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
 		case "$EAPI" in 0|1|2) _x=${D} ;; esac
 	rm -rf "${D}"
 	mkdir -p "${_x}"
@@ -564,7 +564,7 @@ dyn_install() {
 	# work in a different EPREFIX from the one is was built for.
 	case "${EAPI:-0}" in
 		0|1|2)
-			[[ " ${USE} " == *" prefix "* ]] && \
+			[[ " ${FEATURES} " == *" force-prefix "* ]] && \
 				[ -n "${EPREFIX}" ] && echo "${EPREFIX}" > EPREFIX
 			;;
 		*)

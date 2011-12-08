@@ -2238,17 +2238,14 @@ class config(object):
 		if not eapi_exports_merge_type(eapi):
 			mydict.pop("MERGE_TYPE", None)
 
-		# Prefix variables are supported beginning with EAPI 3, or when EPREFIX
-		# is non-empty (implying that EPREFIX support is required in the
-		# current environment, regardless of EAPI). For EAPIs prior to 3,
-		# ebuild helpers rely on these variables only when USE=prefix is
-		# enabled. This is safe because the prefix flag should be masked in all
-		# non-prefix profiles, and older EAPIs would otherwise be useless with
-		# prefix configurations. This brings compatibility with the prefix
-		# branch of portage, which also supports EPREFIX for all EAPIs (for
-		# obvious reasons).
+		# Prefix variables are supported beginning with EAPI 3, or when
+		# force-prefix is in FEATURES, since older EAPIs would otherwise be
+		# useless with prefix configurations. This brings compatibility with
+		# the prefix branch of portage, which also supports EPREFIX for all
+		# EAPIs (for obvious reasons).
 		if phase == 'depend' or eapi is None or \
-			(not eapi_supports_prefix(eapi) and not mydict.get("EPREFIX")):
+			('force-prefix' not in self.features and
+			not eapi_supports_prefix(eapi)):
 			mydict.pop("ED", None)
 			mydict.pop("EPREFIX", None)
 			mydict.pop("EROOT", None)

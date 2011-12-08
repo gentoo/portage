@@ -6,7 +6,7 @@ source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 eqawarn "QA Notice: Deprecated call to 'preplib'"
 
-[[ " ${USE} " == *" prefix "* ]] || \
+[[ " ${FEATURES} " == *" force-prefix "* ]] || \
 	case "$EAPI" in 0|1|2) ED=${D} ;; esac
 
 LIBDIR_VAR="LIBDIR_${ABI}"

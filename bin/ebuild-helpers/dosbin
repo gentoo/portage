@@ -9,7 +9,7 @@ if [[ $# -lt 1 ]] ; then
 	exit 1
 fi
 
-[[ " ${USE} " == *" prefix "* ]] || \
+[[ " ${FEATURES} " == *" force-prefix "* ]] || \
 	case "$EAPI" in 0|1|2) ED=${D} ;; esac
 
 if [[ ! -d ${ED}${DESTTREE}/sbin ]] ; then

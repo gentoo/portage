@@ -19,7 +19,7 @@ into() {
 		export DESTTREE=""
 	else
 		export DESTTREE=$1
-		[[ " ${USE} " == *" prefix "* ]] || \
+		[[ " ${FEATURES} " == *" force-prefix "* ]] || \
 			case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 		if [ ! -d "${ED}${DESTTREE}" ]; then
 			install -d "${ED}${DESTTREE}"
@@ -37,7 +37,7 @@ insinto() {
 		export INSDESTTREE=""
 	else
 		export INSDESTTREE=$1
-		[[ " ${USE} " == *" prefix "* ]] || \
+		[[ " ${FEATURES} " == *" force-prefix "* ]] || \
 			case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 		if [ ! -d "${ED}${INSDESTTREE}" ]; then
 			install -d "${ED}${INSDESTTREE}"
@@ -55,7 +55,7 @@ exeinto() {
 		export _E_EXEDESTTREE_=""
 	else
 		export _E_EXEDESTTREE_="$1"
-		[[ " ${USE} " == *" prefix "* ]] || \
+		[[ " ${FEATURES} " == *" force-prefix "* ]] || \
 			case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 		if [ ! -d "${ED}${_E_EXEDESTTREE_}" ]; then
 			install -d "${ED}${_E_EXEDESTTREE_}"
@@ -73,7 +73,7 @@ docinto() {
 		export _E_DOCDESTTREE_=""
 	else
 		export _E_DOCDESTTREE_="$1"
-		[[ " ${USE} " == *" prefix "* ]] || \
+		[[ " ${FEATURES} " == *" force-prefix "* ]] || \
 			case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 		if [ ! -d "${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}" ]; then
 			install -d "${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
@@ -141,7 +141,7 @@ docompress() {
 keepdir() {
 	dodir "$@"
 	local x
-	[[ " ${USE} " == *" prefix "* ]] || \
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
 		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 	if [ "$1" == "-R" ] || [ "$1" == "-r" ]; then
 		shift
@@ -379,7 +379,7 @@ unpack() {
 econf() {
 	local x
 
-	[[ " ${USE} " == *" prefix "* ]] || \
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
 		case "$EAPI" in 0|1|2) local EPREFIX= ;; esac
 
 	_hasg() {
@@ -476,7 +476,7 @@ econf() {
 einstall() {
 	# CONF_PREFIX is only set if they didn't pass in libdir above.
 	local LOCAL_EXTRA_EINSTALL="${EXTRA_EINSTALL}"
-	[[ " ${USE} " == *" prefix "* ]] || \
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
 		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 	LIBDIR_VAR="LIBDIR_${ABI}"
 	if [ -n "${ABI}" -a -n "${!LIBDIR_VAR}" ]; then
@@ -607,7 +607,7 @@ has_version() {
 	local eroot
 	case "$EAPI" in
 		0|1|2)
-			[[ " ${USE} " == *" prefix "* ]] && \
+			[[ " ${FEATURES} " == *" force-prefix "* ]] && \
 				eroot=${ROOT%/}${EPREFIX}/ || eroot=${ROOT}
 			;;
 		*)
@@ -642,7 +642,7 @@ best_version() {
 	local eroot
 	case "$EAPI" in
 		0|1|2)
-			[[ " ${USE} " == *" prefix "* ]] && \
+			[[ " ${FEATURES} " == *" force-prefix "* ]] && \
 				eroot=${ROOT%/}${EPREFIX}/ || eroot=${ROOT}
 			;;
 		*)
