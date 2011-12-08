@@ -127,6 +127,10 @@ DEFAULT_PATH="@DEFAULT_PATH@"
 # Any extra PATHs to add to the ebuild environment's PATH (if any)
 EXTRA_PATH="@EXTRA_PATH@"
 
+# The offset prefix this Portage was configured with (not used by
+# Portage itself)
+CONFIGURE_EPREFIX=@PORTAGE_EPREFIX@
+
 # Mode bits for ${WORKDIR} (see ebuild.5).
 PORTAGE_WORKDIR_MODE="0700"
 
