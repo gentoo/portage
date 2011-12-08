@@ -558,6 +558,20 @@ dyn_install() {
 	fi
 	echo "${USE}"       > USE
 	echo "${EAPI:-0}"   > EAPI
+
+	# Save EPREFIX, since it makes it easy to use chpathtool to
+	# adjust the content of a binary package so that it will
+	# work in a different EPREFIX from the one is was built for.
+	case "${EAPI:-0}" in
+		0|1|2)
+			[[ " ${USE} " == *" prefix "* ]] && \
+				[ -n "${EPREFIX}" ] && echo "${EPREFIX}" > EPREFIX
+			;;
+		*)
+			[ -n "${EPREFIX}" ] && echo "${EPREFIX}" > EPREFIX
+			;;
+	esac
+
 	set +f
 
 	# local variables can leak into the saved environment.
