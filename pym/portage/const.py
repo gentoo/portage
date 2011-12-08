@@ -140,6 +140,24 @@ MANIFEST2_HASH_DEFAULTS = frozenset(["SHA1", "SHA256", "RMD160"])
 MANIFEST2_REQUIRED_HASH  = "SHA256"
 
 MANIFEST2_IDENTIFIERS    = ("AUX", "MISC", "DIST", "EBUILD")
+
+# The EPREFIX for the current install is hardcoded here, but access to this
+# constant should be minimal, in favor of access via the EPREFIX setting of
+# a config instance (since it's possible to contruct a config instance with
+# a different EPREFIX). Therefore, the EPREFIX constant should *NOT* be used
+# in the definition of any other contstants within this file.
+EPREFIX=""
+
+# pick up EPREFIX from the environment if set
+if "__PORTAGE_TEST_EPREFIX" in os.environ:
+	EPREFIX = os.environ["__PORTAGE_TEST_EPREFIX"]
+	if EPREFIX:
+		EPREFIX = os.path.normpath(EPREFIX)
+
+elif EPREFIX:
+	# Propagate the constant to other portage code which uses this variable.
+	os.environ["__PORTAGE_TEST_EPREFIX"] = EPREFIX
+
 # ===========================================================================
 # END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANT
 # ===========================================================================
