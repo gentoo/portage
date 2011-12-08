@@ -315,6 +315,9 @@ class config(object):
 			expand_map = {}
 			self._expand_map = expand_map
 
+			# Allow make.globals to set default paths relative to ${EPREFIX}.
+			expand_map["EPREFIX"] = eprefix
+
 			env_d = getconfig(os.path.join(eroot, "etc", "profile.env"),
 				expand=expand_map)
 
