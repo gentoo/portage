@@ -9,7 +9,8 @@ if [ $# -lt 1 ] ; then
 	exit 1 	
 fi
 
-case "$EAPI" in 0|1|2) ED=${D} ;; esac
+[[ " ${USE} " == *" prefix "* ]] || \
+	case "$EAPI" in 0|1|2) ED=${D} ;; esac
 
 dir="${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
 if [ ! -d "${dir}" ] ; then

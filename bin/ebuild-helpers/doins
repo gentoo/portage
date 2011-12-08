@@ -27,7 +27,8 @@ else
 	DOINSRECUR=n
 fi
 
-case "$EAPI" in 0|1|2) export ED="${D}" ;; esac
+[[ " ${USE} " == *" prefix "* ]] || \
+	case "$EAPI" in 0|1|2) export ED="${D}" ;; esac
 
 if [[ ${INSDESTTREE#${ED}} != "${INSDESTTREE}" ]]; then
 	vecho "-------------------------------------------------------" 1>&2

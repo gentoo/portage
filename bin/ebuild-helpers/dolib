@@ -4,7 +4,8 @@
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
-case "$EAPI" in 0|1|2) ED=${D} ;; esac
+[[ " ${USE} " == *" prefix "* ]] || \
+	case "$EAPI" in 0|1|2) ED=${D} ;; esac
 
 # Setup ABI cruft
 LIBDIR_VAR="LIBDIR_${ABI}"

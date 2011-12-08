@@ -18,7 +18,8 @@ exp_tf() {
 exp_tf FEATURES installsources nostrip splitdebug
 exp_tf RESTRICT binchecks installsources strip
 
-case "$EAPI" in 0|1|2) ED=${D} ;; esac
+[[ " ${USE} " == *" prefix "* ]] || \
+	case "$EAPI" in 0|1|2) ED=${D} ;; esac
 
 banner=false
 SKIP_STRIP=false

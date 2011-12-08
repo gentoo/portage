@@ -4,7 +4,9 @@
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
-case "$EAPI" in 0|1|2) ED=${D} ;; esac
+[[ " ${USE} " == *" prefix "* ]] || \
+	case "$EAPI" in 0|1|2) ED=${D} ;; esac
+
 # we can't prefix all arguments because
 # chmod takes random options
 slash="/"

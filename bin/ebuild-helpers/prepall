@@ -4,7 +4,8 @@
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
-case "$EAPI" in 0|1|2) ED=${D} ;; esac
+[[ " ${USE} " == *" prefix "* ]] || \
+	case "$EAPI" in 0|1|2) ED=${D} ;; esac
 
 if has chflags $FEATURES ; then
 	# Save all the file flags for restoration at the end of prepall.

@@ -10,7 +10,8 @@ if [ ${mynum} -lt 1 ] ; then
 	exit 1
 fi
 
-case "$EAPI" in 0|1|2) ED=${D} ;; esac
+[[ " ${USE} " == *" prefix "* ]] || \
+	case "$EAPI" in 0|1|2) ED=${D} ;; esac
 
 if [ ! -d "${ED}${DESTTREE}/share/locale" ] ; then
 	install -d "${ED}${DESTTREE}/share/locale/"

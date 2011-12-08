@@ -7,7 +7,8 @@ source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 # replaced by controllable compression in EAPI 4
 has "${EAPI}" 0 1 2 3 || exit 0
 
-case "$EAPI" in 0|1|2) ED=${D} ;; esac
+[[ " ${USE} " == *" prefix "* ]] || \
+	case "$EAPI" in 0|1|2) ED=${D} ;; esac
 
 ret=0
 
