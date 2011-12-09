@@ -325,6 +325,12 @@ fixes (order of flags, duplicated entries, ...)
 Only fetch files from configured mirrors, ignoring \fBSRC_URI\fR,
 except when \fImirror\fR is in the \fBebuild\fR(5) \fBRESTRICT\fR variable.
 .TP
+.B force\-prefix
+Enable prefix support for all ebuilds, regardless of EAPI, since older EAPIs
+would otherwise be useless with prefix configurations. This brings
+compatibility with the prefix branch of portage, which also supports EPREFIX
+for all EAPIs (for obvious reasons).
+.TP
 .B lmirror
 When \fImirror\fR is enabled in \fBFEATURES\fR, fetch files even
 when \fImirror\fR is also in the \fBebuild\fR(5) \fBRESTRICT\fR variable.

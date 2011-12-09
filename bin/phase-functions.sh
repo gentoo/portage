@@ -28,7 +28,7 @@ PORTAGE_READONLY_VARS="D EBUILD EBUILD_PHASE \
 	PORTAGE_TMPDIR PORTAGE_UPDATE_ENV PORTAGE_USERNAME \
 	PORTAGE_VERBOSE PORTAGE_WORKDIR_MODE PORTDIR PORTDIR_OVERLAY \
 	PROFILE_PATHS REPLACING_VERSIONS REPLACED_BY_VERSION T WORKDIR \
-	ED EROOT"
+	__PORTAGE_TEST_EPREFIX ED EROOT"
 
 PORTAGE_SAVED_READONLY_VARS="A CATEGORY P PF PN PR PV PVR"
 
@@ -97,11 +97,11 @@ filter_readonly_variables() {
 	# supported by the current EAPI.
 	case "${EAPI:-0}" in
 		0|1|2)
+			[[ " ${FEATURES} " == *" force-prefix "* ]] && \
+				filtered_vars+=" ED EPREFIX EROOT"
 			;;
 		*)
-			# PREFIX LOCAL: always respect these
-			#filtered_vars+=" ED EPREFIX EROOT"
-			# PREFIX LOCAL
+			filtered_vars+=" ED EPREFIX EROOT"
 			;;
 	esac
 
@@ -503,7 +503,8 @@ dyn_install() {
 	ebuild_phase pre_src_install
 
 	_x=${ED}
-	case "$EAPI" in 0|1|2) _x=${D} ;; esac
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+		case "$EAPI" in 0|1|2) _x=${D} ;; esac
 	rm -rf "${D}"
 	mkdir -p "${_x}"
 	unset _x
@@ -558,7 +559,24 @@ dyn_install() {
 	fi
 	echo "${USE}"       > USE
 	echo "${EAPI:-0}"   > EAPI
+<<<<<<< HEAD
 	echo "${EPREFIX}"   > EPREFIX
+=======
+
+	# Save EPREFIX, since it makes it easy to use chpathtool to
+	# adjust the content of a binary package so that it will
+	# work in a different EPREFIX from the one is was built for.
+	case "${EAPI:-0}" in
+		0|1|2)
+			[[ " ${FEATURES} " == *" force-prefix "* ]] && \
+				[ -n "${EPREFIX}" ] && echo "${EPREFIX}" > EPREFIX
+			;;
+		*)
+			[ -n "${EPREFIX}" ] && echo "${EPREFIX}" > EPREFIX
+			;;
+	esac
+
+>>>>>>> overlays-gentoo-org/master
 	set +f
 
 	# local variables can leak into the saved environment.

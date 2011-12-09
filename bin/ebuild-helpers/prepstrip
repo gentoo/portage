@@ -18,9 +18,8 @@ exp_tf() {
 exp_tf FEATURES installsources nostrip splitdebug
 exp_tf RESTRICT binchecks installsources strip
 
-# PREFIX LOCAL: always support ED
-#case "$EAPI" in 0|1|2) ED=${D} ;; esac
-# END PREFIX LOCAL
+[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+	case "$EAPI" in 0|1|2) ED=${D} ;; esac
 
 banner=false
 SKIP_STRIP=false
@@ -221,6 +220,7 @@ do
 		strip_this=false
 	fi
 
+	# PREFIX LOCAL:
 	# In Prefix we are usually an unprivileged user, so we can't strip
 	# unwritable objects.  Make them temporarily writable for the
 	# stripping.
@@ -229,6 +229,7 @@ do
 		was_not_writable=true
 		chmod u+w "${x}"
 	fi
+	# END PREFIX LOCAL
 
 	# only split debug info for final linked objects
 	# or kernel modules as debuginfo for intermediatary
@@ -249,9 +250,11 @@ do
 		process_elf "${x}" ${SAFE_STRIP_FLAGS}
 	fi
 
+	# PREFIX LOCAL: see above
 	if [[ ${was_not_writable} == "true" ]] ; then
 		chmod u-w "${x}"
 	fi
+	# END PREFIX LOCAL
 done
 
 if [[ -s ${T}/debug.sources ]] && \

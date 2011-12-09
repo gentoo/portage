@@ -19,9 +19,8 @@ into() {
 		export DESTTREE=""
 	else
 		export DESTTREE=$1
-		# PREFIX LOCAL: always support ED
-		#case "$EAPI" in 0|1|2) local ED=${D} ;; esac
-		# END PREFIX LOCAL
+		[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+			case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 		if [ ! -d "${ED}${DESTTREE}" ]; then
 			install -d "${ED}${DESTTREE}"
 			local ret=$?
@@ -38,9 +37,8 @@ insinto() {
 		export INSDESTTREE=""
 	else
 		export INSDESTTREE=$1
-		# PREFIX LOCAL: always support ED
-		#case "$EAPI" in 0|1|2) local ED=${D} ;; esac
-		# END PREFIX LOCAL
+		[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+			case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 		if [ ! -d "${ED}${INSDESTTREE}" ]; then
 			install -d "${ED}${INSDESTTREE}"
 			local ret=$?
@@ -57,9 +55,8 @@ exeinto() {
 		export _E_EXEDESTTREE_=""
 	else
 		export _E_EXEDESTTREE_="$1"
-		# PREFIX LOCAL: always support ED
-		#case "$EAPI" in 0|1|2) local ED=${D} ;; esac
-		# END PREFIX LOCAL
+		[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+			case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 		if [ ! -d "${ED}${_E_EXEDESTTREE_}" ]; then
 			install -d "${ED}${_E_EXEDESTTREE_}"
 			local ret=$?
@@ -76,9 +73,8 @@ docinto() {
 		export _E_DOCDESTTREE_=""
 	else
 		export _E_DOCDESTTREE_="$1"
-		# PREFIX LOCAL: always support ED
-		#case "$EAPI" in 0|1|2) local ED=${D} ;; esac
-		# END PREFIX LOCAL
+		[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+			case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 		if [ ! -d "${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}" ]; then
 			install -d "${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
 			local ret=$?
@@ -145,9 +141,8 @@ docompress() {
 keepdir() {
 	dodir "$@"
 	local x
-	# PREFIX LOCAL: always support ED
-	#case "$EAPI" in 0|1|2) local ED=${D} ;; esac
-	# END PREFIX LOCAL
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 	if [ "$1" == "-R" ] || [ "$1" == "-r" ]; then
 		shift
 		find "$@" -type d -printf "${ED}%p/.keep_${CATEGORY}_${PN}-${SLOT}\n" \
@@ -384,9 +379,8 @@ unpack() {
 econf() {
 	local x
 
-	# PREFIX LOCAL: always support EPREFIX
-	#case "$EAPI" in 0|1|2) local EPREFIX= ;; esac
-	# END PREFIX LOCAL
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+		case "$EAPI" in 0|1|2) local EPREFIX= ;; esac
 
 	_hasg() {
 		local x s=$1
@@ -482,9 +476,8 @@ econf() {
 einstall() {
 	# CONF_PREFIX is only set if they didn't pass in libdir above.
 	local LOCAL_EXTRA_EINSTALL="${EXTRA_EINSTALL}"
-	# PREFIX LOCAL: always support ED
-	#case "$EAPI" in 0|1|2) local ED=${D} ;; esac
-	# END PREFIX LOCAL
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 	LIBDIR_VAR="LIBDIR_${ABI}"
 	if [ -n "${ABI}" -a -n "${!LIBDIR_VAR}" ]; then
 		CONF_LIBDIR="${!LIBDIR_VAR}"
@@ -613,11 +606,10 @@ has_version() {
 
 	local eroot
 	case "$EAPI" in
-		# PREFIX LOCAL: always support ED
-		#0|1|2)
-		#	eroot=${ROOT}
-		#	;;
-		# END PREFIX LOCAL
+		0|1|2)
+			[[ " ${FEATURES} " == *" force-prefix "* ]] && \
+				eroot=${ROOT%/}${EPREFIX}/ || eroot=${ROOT}
+			;;
 		*)
 			eroot=${ROOT%/}${EPREFIX}/
 			;;
@@ -649,11 +641,10 @@ best_version() {
 
 	local eroot
 	case "$EAPI" in
-		# PREFIX LOCAL: always support ED
-		#0|1|2)
-		#	eroot=${ROOT}
-		#	;;
-		# END PREFIX LOCAL
+		0|1|2)
+			[[ " ${FEATURES} " == *" force-prefix "* ]] && \
+				eroot=${ROOT%/}${EPREFIX}/ || eroot=${ROOT}
+			;;
 		*)
 			eroot=${ROOT%/}${EPREFIX}/
 			;;

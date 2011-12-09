@@ -92,7 +92,7 @@ class dispatch:
         confs = []
         count = 0
 
-        config_root = EPREFIX
+        config_root = os.environ.get("__PORTAGE_TEST_EPREFIX", EPREFIX)
         self.options = portage.dispatch_conf.read_config(MANDATORY_OPTS)
 
         if "log-file" in self.options:
@@ -127,7 +127,8 @@ class dispatch:
         #
 
         for path in config_paths:
-            path = portage.normalize_path(EPREFIX + path)
+            path = portage.normalize_path(
+                 os.path.join(config_root, path.lstrip(os.sep)))
             try:
                 mymode = os.stat(path).st_mode
             except OSError:

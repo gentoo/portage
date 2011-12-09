@@ -712,6 +712,8 @@ def get_repos(argv):
 		sys.exit(2)
 	print(" ".join(portage.db[argv[0]]["porttree"].dbapi.getRepositories()))
 
+get_repos.uses_root = True
+
 def get_repo_path(argv):
 	"""<eroot> <repo_id>+
 	Returns the path to the repo named argv[1], argv[0] = $EROOT
@@ -724,6 +726,8 @@ def get_repo_path(argv):
 		if path is None:
 			path = ""
 		print(path)
+
+get_repo_path.uses_root = True
 
 def list_preserved_libs(argv):
 	"""<eroot>

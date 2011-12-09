@@ -282,11 +282,11 @@ inherit() {
 
 		# If each var has a value, append it to the global variable E_* to
 		# be applied after everything is finished. New incremental behavior.
-		[ "${IUSE+set}"       = set ] && export E_IUSE+="${E_IUSE:+ }${IUSE}"
-		[ "${REQUIRED_USE+set}"       = set ] && export E_REQUIRED_USE+="${E_REQUIRED_USE:+ }${REQUIRED_USE}"
-		[ "${DEPEND+set}"     = set ] && export E_DEPEND+="${E_DEPEND:+ }${DEPEND}"
-		[ "${RDEPEND+set}"    = set ] && export E_RDEPEND+="${E_RDEPEND:+ }${RDEPEND}"
-		[ "${PDEPEND+set}"    = set ] && export E_PDEPEND+="${E_PDEPEND:+ }${PDEPEND}"
+		[ "${IUSE+set}"         = set ] && E_IUSE+="${E_IUSE:+ }${IUSE}"
+		[ "${REQUIRED_USE+set}" = set ] && E_REQUIRED_USE+="${E_REQUIRED_USE:+ }${REQUIRED_USE}"
+		[ "${DEPEND+set}"       = set ] && E_DEPEND+="${E_DEPEND:+ }${DEPEND}"
+		[ "${RDEPEND+set}"      = set ] && E_RDEPEND+="${E_RDEPEND:+ }${RDEPEND}"
+		[ "${PDEPEND+set}"      = set ] && E_PDEPEND+="${E_PDEPEND:+ }${PDEPEND}"
 
 		[ "${B_IUSE+set}"     = set ] && IUSE="${B_IUSE}"
 		[ "${B_IUSE+set}"     = set ] || unset IUSE
@@ -461,11 +461,12 @@ if ! has "$EBUILD_PHASE" clean cleanrm depend && \
 	# The environment may have been extracted from environment.bz2 or
 	# may have come from another version of ebuild.sh or something.
 	# In any case, preprocess it to prevent any potential interference.
+	# NOTE: export ${FOO}=... requires quoting, unlike normal exports
 	preprocess_ebuild_env || \
 		die "error processing environment"
 	# Colon separated SANDBOX_* variables need to be cumulative.
 	for x in SANDBOX_DENY SANDBOX_READ SANDBOX_PREDICT SANDBOX_WRITE ; do
-		export PORTAGE_${x}=${!x}
+		export PORTAGE_${x}="${!x}"
 	done
 	PORTAGE_SANDBOX_ON=${SANDBOX_ON}
 	export SANDBOX_ON=1
@@ -479,13 +480,13 @@ if ! has "$EBUILD_PHASE" clean cleanrm depend && \
 	for x in SANDBOX_DENY SANDBOX_PREDICT SANDBOX_READ SANDBOX_WRITE ; do
 		y="PORTAGE_${x}"
 		if [ -z "${!x}" ] ; then
-			export ${x}=${!y}
+			export ${x}="${!y}"
 		elif [ -n "${!y}" ] && [ "${!y}" != "${!x}" ] ; then
 			# filter out dupes
-			export ${x}=$(printf "${!y}:${!x}" | tr ":" "\0" | \
-				sort -z -u | tr "\0" ":")
+			export ${x}="$(printf "${!y}:${!x}" | tr ":" "\0" | \
+				sort -z -u | tr "\0" ":")"
 		fi
-		export ${x}=${!x%:}
+		export ${x}="${!x%:}"
 		unset PORTAGE_${x}
 	done
 	unset x y
@@ -669,6 +670,8 @@ else
 	declare -r $PORTAGE_READONLY_METADATA $PORTAGE_READONLY_VARS
 	case "$EAPI" in
 		0|1|2)
+			[[ " ${FEATURES} " == *" force-prefix "* ]] && \
+				declare -r ED EPREFIX EROOT
 			;;
 		*)
 			# PREFIX LOCAL: allow prefix vars in any EAPI

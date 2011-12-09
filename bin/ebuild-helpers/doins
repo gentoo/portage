@@ -27,9 +27,8 @@ else
 	DOINSRECUR=n
 fi
 
-# PREFIX LOCAL: always support ED
-#case "$EAPI" in 0|1|2) export ED="${D}" ;; esac
-# END PREFIX LOCAL
+[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+	case "$EAPI" in 0|1|2) export ED="${D}" ;; esac
 
 if [[ ${INSDESTTREE#${ED}} != "${INSDESTTREE}" ]]; then
 	vecho "-------------------------------------------------------" 1>&2
@@ -39,6 +38,7 @@ if [[ ${INSDESTTREE#${ED}} != "${INSDESTTREE}" ]]; then
 	helpers_die "${0##*/} used with \${D} or \${ED}"
 	exit 1
 fi
+# PREFIX LOCAL: check for usage with EPREFIX
 if [[ ${INSDESTTREE#${EPREFIX}} != "${INSDESTTREE}" ]]; then
 	vecho "-------------------------------------------------------" 1>&2
 	vecho "You should not use \${EPREFIX} with helpers." 1>&2
@@ -46,6 +46,7 @@ if [[ ${INSDESTTREE#${EPREFIX}} != "${INSDESTTREE}" ]]; then
 	vecho "-------------------------------------------------------" 1>&2
 	exit 1
 fi
+# END PREFIX LOCAL
 
 case "$EAPI" in
 	0|1|2|3|3_pre2)

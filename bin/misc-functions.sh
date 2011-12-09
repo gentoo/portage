@@ -17,11 +17,10 @@ shift $#
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}/ebuild.sh"
 
 install_symlink_html_docs() {
-	# PREFIX LOCAL: always support ED
-	#case "$EAPI" in 0|1|2) local ED=${D} ;; esac
-	# END PREFIX LOCAL
-	# PREFIX LOCAL: ED need not to exist, whereas D does
-	[[ ! -d ${ED} ]] && dodir /
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+	# PREFIX LOCAL: ED needs not to exist, whereas D does
+	[[ ! -d ${ED} && -d ${D} ]] && dodir /
 	# END PREFIX LOCAL
 	cd "${ED}" || die "cd failed"
 	#symlink the html documentation (if DOC_SYMLINKS_DIR is set in make.conf)
@@ -70,9 +69,8 @@ canonicalize() {
 prepcompress() {
 	local -a include exclude incl_d incl_f
 	local f g i real_f real_d
-	# PREFIX LOCAL: always support ED
-	#case "$EAPI" in 0|1|2) local ED=${D} ;; esac
-	# END PREFIX LOCAL
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 
 	# Canonicalize path names and check for their existence.
 	real_d=$(canonicalize "${ED}")
@@ -154,9 +152,8 @@ prepcompress() {
 
 install_qa_check() {
 	local f i x
-	# PREFIX LOCAL: always support ED
-	#case "$EAPI" in 0|1|2) local ED=${D} ;; esac
-	# END PREFIX LOCAL
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 
 	# PREFIX LOCAL: ED needs not to exist, whereas D does
 	cd "${D}" || die "cd failed"
@@ -192,6 +189,7 @@ install_qa_check() {
 		sleep 1
 	fi
 
+	# PREFIX LOCAL:
 	# anything outside the prefix should be caught by the Prefix QA
 	# check, so if there's nothing in ED, we skip searching for QA
 	# checks there, the specific QA funcs can hence rely on ED existing
@@ -220,6 +218,7 @@ install_qa_check() {
 	# this is basically here such that the diff with trunk remains just
 	# offsetted and not out of order
 	install_qa_check_misc
+	# END PREFIX LOCAL
 }
 
 install_qa_check_elf() {
@@ -351,7 +350,6 @@ install_qa_check_elf() {
 		if [[ "${LDFLAGS}" == *,--hash-style=gnu* ]] && [[ "${PN}" != *-bin ]] ; then
 			qa_var="QA_DT_HASH_${ARCH/-/_}"
 			eval "[[ -n \${!qa_var} ]] && QA_DT_HASH=(\"\${${qa_var}[@]}\")"
-
 			f=$(scanelf -qyRF '%k %p' -k .hash "${ED}" | sed -e "s:\.hash ::")
 			if [[ -n ${f} ]] ; then
 				echo "${f}" > "${T}"/scanelf-ignored-LDFLAGS.log
@@ -1516,9 +1514,8 @@ preinst_mask() {
 		 return 1
 	fi
 
-	# PREFIX LOCAL: always support ED
-	#case "$EAPI" in 0|1|2) local ED=${D} ;; esac
-	# END PREFIX LOCAL
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 
 	# Make sure $PWD is not ${D} so that we don't leave gmon.out files
 	# in there in case any tools were built with -pg in CFLAGS.
@@ -1546,9 +1543,8 @@ preinst_sfperms() {
 		 return 1
 	fi
 
-	# PREFIX LOCAL: always support ED
-	#case "$EAPI" in 0|1|2) local ED=${D} ;; esac
-	# END PREFIX LOCAL
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 
 	# Smart FileSystem Permissions
 	if has sfperms $FEATURES; then
@@ -1586,9 +1582,8 @@ preinst_suid_scan() {
 		 return 1
 	fi
 
-	# PREFIX LOCAL: always support ED
-	#case "$EAPI" in 0|1|2) local ED=${D} ;; esac
-	# END PREFIX LOCAL
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 
 	# total suid control.
 	if has suidctl $FEATURES; then
@@ -1653,9 +1648,8 @@ preinst_selinux_labels() {
 
 dyn_package() {
 
-	# PREFIX LOCAL: always support ED
-	#case "$EAPI" in 0|1|2) local ED=${D} ;; esac
-	# END PREFIX LOCAL
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 
 	# Make sure $PWD is not ${D} so that we don't leave gmon.out files
 	# in there in case any tools were built with -pg in CFLAGS.
@@ -1735,9 +1729,8 @@ __END1__
 
 dyn_rpm() {
 
-	# PREFIX LOCAL: always support ED
-	#case "$EAPI" in 0|1|2) local EPREFIX= ;; esac
-	# END PREFIX LOCAL
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+		case "$EAPI" in 0|1|2) local EPREFIX= ;; esac
 
 	cd "${T}" || die "cd failed"
 	local machine_name=$(uname -m)

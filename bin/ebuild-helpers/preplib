@@ -6,9 +6,8 @@ source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 
 eqawarn "QA Notice: Deprecated call to 'preplib'"
 
-# PREFIX LOCAL: always support ED
-#case "$EAPI" in 0|1|2) ED=${D} ;; esac
-# END PREFIX LOCAL
+[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+	case "$EAPI" in 0|1|2) ED=${D} ;; esac
 
 LIBDIR_VAR="LIBDIR_${ABI}"
 if [ -n "${ABI}" -a -n "${!LIBDIR_VAR}" ]; then

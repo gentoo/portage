@@ -4,9 +4,8 @@
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
-# PREFIX LOCAL: always support ED
-#case "$EAPI" in 0|1|2) ED=${D} ;; esac
-# END PREFIX LOCAL
+[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+	case "$EAPI" in 0|1|2) ED=${D} ;; esac
 
 # Setup ABI cruft
 LIBDIR_VAR="LIBDIR_${ABI}"

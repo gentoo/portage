@@ -3296,9 +3296,18 @@ class depgraph(object):
 					for other_cp in list(all_cp):
 						other_pkg = portage.catsplit(other_cp)[1]
 						if other_pkg == pkg:
-							# discard dir containing no ebuilds
-							all_cp.discard(other_cp)
-							continue
+							# Check for non-identical package that
+							# differs only by upper/lower case.
+							identical = True
+							for cp_orig in orig_cp_map[other_cp]:
+								if portage.catsplit(cp_orig)[1] != \
+									portage.catsplit(atom.cp)[1]:
+									identical = False
+									break
+							if identical:
+								# discard dir containing no ebuilds
+								all_cp.discard(other_cp)
+								continue
 						pkg_to_cp.setdefault(other_pkg, set()).add(other_cp)
 					pkg_matches = difflib.get_close_matches(pkg, pkg_to_cp)
 					matches = []

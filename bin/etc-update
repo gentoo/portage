@@ -537,9 +537,9 @@ ${SET_X} && set -x
 
 type portageq > /dev/null || exit $?
 eval $(portageq envvar -v CONFIG_PROTECT \
-	CONFIG_PROTECT_MASK PORTAGE_CONFIGROOT PORTAGE_TMPDIR ROOT USERLAND EPREFIX)
+	CONFIG_PROTECT_MASK PORTAGE_CONFIGROOT PORTAGE_INST_GID PORTAGE_INST_UID \
+	PORTAGE_TMPDIR EROOT USERLAND)
 export PORTAGE_TMPDIR
-export EROOT=${ROOT%/}${EPREFIX}/
 
 TMP="${PORTAGE_TMPDIR}/etc-update-$$"
 trap "die terminated 1" SIGTERM
@@ -555,12 +555,8 @@ rm -rf "${TMP}" 2> /dev/null
 mkdir "${TMP}" || die "failed to create temp dir" 1
 # make sure we have a secure directory to work in
 chmod 0700 "${TMP}" || die "failed to set perms on temp dir" 1
-# GID need not to be available, and group 0 is not cool when not being
-# root, hence just rely on mkdir to have created a dir which is owned by
-# the user
-if [[ -z ${UID} || ${UID} == 0 ]] ; then
-	chown ${UID:-0}:${GID:-0} "${TMP}" || die "failed to set ownership on temp dir" 1
-fi
+chown ${PORTAGE_INST_UID:-0}:${PORTAGE_INST_GID:-0} "${TMP}" || \
+	die "failed to set ownership on temp dir" 1
 
 # I need the CONFIG_PROTECT value
 #CONFIG_PROTECT=$(@PORTAGE_BASE@/bin/portageq envvar CONFIG_PROTECT)

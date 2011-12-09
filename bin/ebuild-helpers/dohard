@@ -7,9 +7,8 @@ if [[ $# -ne 2 ]] ; then
 	exit 1
 fi
 
-# PREFIX LOCAL: always support ED
-#case "$EAPI" in 0|1|2) ED=${D} ;; esac
-# END PREFIX LOCAL
+[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+	case "$EAPI" in 0|1|2) ED=${D} ;; esac
 
 destdir=${2%/*}
 [[ ! -d ${ED}${destdir} ]] && dodir "${destdir}"

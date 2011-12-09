@@ -204,7 +204,7 @@ class GenCache(object):
 		# findname, cp_list, and cpv_list to the desired tree.
 		tree = portdb.porttrees[0]
 		self._portdb = portdb
-		self._eclass_db = portdb._repo_info[tree].eclass_db
+		self._eclass_db = portdb.repositories.get_repo_for_location(tree).eclass_db
 		self._auxdbkeys = portdb._known_keys
 		# We can globally cleanse stale cache only if we
 		# iterate over every single cp.

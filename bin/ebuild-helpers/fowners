@@ -4,14 +4,15 @@
 
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 
+# PREFIX LOCAL: ignore otherwise failing call
 if hasq prefix ${USE} && [[ $EUID != 0 ]] ; then
 	ewarn "fowners ignored in Prefix with non-privileged user"
 	exit 0
 fi
-
-# PREFIX LOCAL: always support ED
-#case "$EAPI" in 0|1|2) ED=${D} ;; esac
 # END PREFIX LOCAL
+
+[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+	case "$EAPI" in 0|1|2) ED=${D} ;; esac
 
 # we can't prefix all arguments because
 # chown takes random options

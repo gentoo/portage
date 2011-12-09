@@ -24,7 +24,7 @@ from portage.const import CACHE_PATH, \
 	DEPCACHE_PATH, INCREMENTALS, MAKE_CONF_FILE, \
 	MODULES_FILE_PATH, \
 	PRIVATE_PATH, PROFILE_PATH, USER_CONFIG_PATH, \
-	USER_VIRTUALS_FILE 
+	USER_VIRTUALS_FILE
 from portage.const import _SANDBOX_COMPAT_LEVEL
 from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
@@ -314,6 +314,9 @@ class config(object):
 			# lead to unexpected results.
 			expand_map = {}
 			self._expand_map = expand_map
+
+			# Allow make.globals to set default paths relative to ${EPREFIX}.
+			expand_map["EPREFIX"] = eprefix
 
 			env_d = getconfig(os.path.join(eroot, "etc", "profile.env"),
 				expand=expand_map)
@@ -681,9 +684,6 @@ class config(object):
 			# USE will always be "" (nothing set)!
 			if "USE_ORDER" not in self:
 				self.backupenv["USE_ORDER"] = "env:pkg:conf:defaults:pkginternal:repo:env.d"
-
-			self["PORTAGE_GID"] = str(portage_gid)
-			self.backup_changes("PORTAGE_GID")
 
 			self.depcachedir = DEPCACHE_PATH
 			if eprefix:
@@ -2105,6 +2105,8 @@ class config(object):
 			return portage._bin_path
 		elif mykey == "PORTAGE_PYM_PATH":
 			return portage._pym_path
+		elif mykey == "PORTAGE_GID":
+			return _unicode_decode(str(portage_gid))
 
 		for d in self.lookuplist:
 			try:
@@ -2159,6 +2161,7 @@ class config(object):
 		keys = set()
 		keys.add("PORTAGE_BIN_PATH")
 		keys.add("PORTAGE_PYM_PATH")
+		keys.add("PORTAGE_GID")
 		for d in self.lookuplist:
 			keys.update(d)
 		return iter(keys)
@@ -2250,12 +2253,17 @@ class config(object):
 		if not eapi_exports_merge_type(eapi):
 			mydict.pop("MERGE_TYPE", None)
 
-		# Prefix variables are supported starting with EAPI 3.
-		# but during transition, we just support them anywhere
-#		if phase == 'depend' or eapi is None or not eapi_supports_prefix(eapi):
-#			mydict.pop("ED", None)
-#			mydict.pop("EPREFIX", None)
-#			mydict.pop("EROOT", None)
+		# Prefix variables are supported beginning with EAPI 3, or when
+		# force-prefix is in FEATURES, since older EAPIs would otherwise be
+		# useless with prefix configurations. This brings compatibility with
+		# the prefix branch of portage, which also supports EPREFIX for all
+		# EAPIs (for obvious reasons).
+		if phase == 'depend' or eapi is None or \
+			('force-prefix' not in self.features and
+			not eapi_supports_prefix(eapi)):
+			mydict.pop("ED", None)
+			mydict.pop("EPREFIX", None)
+			mydict.pop("EROOT", None)
 
 		if phase == 'depend':
 			mydict.pop('FILESDIR', None)

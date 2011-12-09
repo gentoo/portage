@@ -1672,7 +1672,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 
 		if src_db is not None:
 			porttrees_data.append(TreeData(portdb.auxdb[path],
-				portdb._repo_info[path].eclass_db, path, src_db))
+				portdb.repositories.get_repo_for_location(path).eclass_db, path, src_db))
 
 	porttrees = [tree_data.path for tree_data in porttrees_data]
 
@@ -1971,6 +1971,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	os.umask(0o022)
 	dosyncuri = syncuri
 	updatecache_flg = False
+	git = False
 	if myaction == "metadata":
 		print("skipping sync")
 		updatecache_flg = True
@@ -1999,9 +2000,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		msg = ">>> Git pull in %s successful" % myportdir
 		emergelog(xterm_titles, msg)
 		writemsg_level(msg + "\n")
-		exitcode = git_sync_timestamps(portdb, myportdir)
-		if exitcode == os.EX_OK:
-			updatecache_flg = True
+		git = True
 	elif syncuri[:8]=="rsync://" or syncuri[:6]=="ssh://":
 		for vcs_dir in vcs_dirs:
 			writemsg_level(("!!! %s appears to be under revision " + \
@@ -2491,16 +2490,24 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			noiselevel=-1, level=logging.ERROR)
 		return 1
 
-	if updatecache_flg and  \
-		myaction != "metadata" and \
-		"metadata-transfer" not in settings.features:
-		updatecache_flg = False
-
 	# Reload the whole config from scratch.
 	settings, trees, mtimedb = load_emerge_config(trees=trees)
 	adjust_configs(myopts, trees)
 	root_config = trees[settings['EROOT']]['root_config']
 	portdb = trees[settings['EROOT']]['porttree'].dbapi
+
+	if git:
+		# NOTE: Do this after reloading the config, in case
+		# it did not exist prior to sync, so that the config
+		# and portdb properly account for its existence.
+		exitcode = git_sync_timestamps(portdb, myportdir)
+		if exitcode == os.EX_OK:
+			updatecache_flg = True
+
+	if updatecache_flg and  \
+		myaction != "metadata" and \
+		"metadata-transfer" not in settings.features:
+		updatecache_flg = False
 
 	if updatecache_flg and \
 		os.path.exists(os.path.join(myportdir, 'metadata', 'cache')):
@@ -3028,18 +3035,22 @@ def load_emerge_config(trees=None):
 			kwargs[k] = v
 	trees = portage.create_trees(trees=trees, **kwargs)
 
+	settings = trees[trees._target_eroot]['vartree'].settings
+	mtimedbfile = os.path.join(settings['EROOT'], portage.CACHE_PATH, "mtimedb")
+	mtimedb = portage.MtimeDB(mtimedbfile)
+	portage.output._init(config_root=settings['PORTAGE_CONFIGROOT'])
+	# The portage_uid initialization here must to happend before
+	# the _init_dirs() calls below.
+	portage.data._init(settings)
+	QueryCommand._db = trees
+
 	for root, root_trees in trees.items():
 		settings = root_trees["vartree"].settings
 		settings._init_dirs()
 		setconfig = load_default_config(settings, root_trees)
 		root_trees["root_config"] = RootConfig(settings, root_trees, setconfig)
-
-	settings = trees[trees._target_eroot]['vartree'].settings
-	mtimedbfile = os.path.join(settings['EROOT'], portage.CACHE_PATH, "mtimedb")
-	mtimedb = portage.MtimeDB(mtimedbfile)
-	portage.output._init(config_root=settings['PORTAGE_CONFIGROOT'])
-	QueryCommand._db = trees
-	return settings, trees, mtimedb
+	
+	return trees[trees._target_eroot]['vartree'].settings, trees, mtimedb
 
 def chk_updated_cfg_files(eroot, config_protect):
 	target_root = eroot

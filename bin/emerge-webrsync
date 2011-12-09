@@ -39,9 +39,10 @@ eval $(portageq envvar -v FEATURES FETCHCOMMAND GENTOO_MIRRORS \
 DISTDIR="${PORTAGE_TMPDIR}/emerge-webrsync"
 export http_proxy ftp_proxy
 
-# PREFIX HACK: use Prefix servers, just because we want this and infra
+# PREFIX LOCAL: use Prefix servers, just because we want this and infra
 # just can't support us yet
 GENTOO_MIRRORS="http://gentoo-mirror1.prefix.freens.org http://gentoo-mirror2.prefix.freens.org"
+# END PREFIX LOCAL
 
 # If PORTAGE_NICENESS is overriden via the env then it will
 # still pass through the portageq call and override properly.
@@ -183,8 +184,10 @@ sync_local() {
 	vecho "Syncing local tree ..."
 
 	if type -P tarsync > /dev/null ; then
+		# PREFIX LOCAL: use PORTAGE_USER and PORTAGE_GROUP
 		local chown_opts="-o ${PORTAGE_USER:-portage} -g ${PORTAGE_GROUP:-portage}"
 		chown ${PORTAGE_USER:-portage}:${PORTAGE_GROUP:-portage} portage > /dev/null 2>&1 || chown_opts=""
+		# END PREFIX LOCAL
 		if ! tarsync $(vvecho -v) -s 1 ${chown_opts} \
 			-e /distfiles -e /packages -e /local "${file}" "${PORTDIR}"; then
 			eecho "tarsync failed; tarball is corrupt? (${file})"
@@ -200,8 +203,10 @@ sync_local() {
 		# Free disk space
 		rm -f "${file}"
 
+		# PREFIX LOCAL: use PORTAGE_USER and PORTAGE_GROUP
 		chown ${PORTAGE_USER:-portage}:${PORTAGE_GROUP:-portage} portage > /dev/null 2>&1 && \
 			chown -R ${PORTAGE_USER:-portage}:${PORTAGE_GROUP:-portage} portage
+		# END PREFIX LOCAL
 		cd portage
 		rsync -av --progress --stats --delete --delete-after \
 			--exclude='/distfiles' --exclude='/packages' \
@@ -217,6 +222,8 @@ sync_local() {
 		emerge --metadata
 	fi
 	[ -x "${EPREFIX}"/etc/portage/bin/post_sync ] && "${EPREFIX}"/etc/portage/bin/post_sync
+	# --quiet suppresses output if there are no relevant news items
+	has news ${FEATURES} && emerge --check-news --quiet
 	return 0
 }
 

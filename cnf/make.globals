@@ -30,17 +30,17 @@ ACCEPT_LICENSE="* -@EULA"
 ACCEPT_PROPERTIES="*"
 
 # Repository Paths
-PORTDIR="@PORTAGE_EPREFIX@/usr/portage"
-DISTDIR="@PORTAGE_EPREFIX@/usr/portage/distfiles"
-PKGDIR="@PORTAGE_EPREFIX@/usr/portage/packages"
-RPMDIR="@PORTAGE_EPREFIX@/usr/portage/rpm"
+PORTDIR=${EPREFIX}/usr/portage
+DISTDIR=${PORTDIR}/distfiles
+PKGDIR=${PORTDIR}/packages
+RPMDIR=${PORTDIR}/rpm
 
 # Temporary build directory
-PORTAGE_TMPDIR="@PORTAGE_EPREFIX@/var/tmp"
+PORTAGE_TMPDIR=${EPREFIX}/var/tmp
 
 # Fetching command (3 tries, passive ftp for firewall compatibility)
-FETCHCOMMAND="@PORTAGE_WGET@ -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
-RESUMECOMMAND="@PORTAGE_WGET@ -c -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
+FETCHCOMMAND="wget -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
+RESUMECOMMAND="wget -c -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
 
 FETCHCOMMAND_RSYNC="rsync -avP \"\${URI}\" \"\${DISTDIR}/\${FILE}\""
 RESUMECOMMAND_RSYNC="rsync -avP \"\${URI}\" \"\${DISTDIR}/\${FILE}\""
