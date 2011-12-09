@@ -7,8 +7,10 @@ __all__ = [
 
 import copy
 from itertools import chain
+import grp
 import logging
 import platform
+import pwd
 import re
 import sys
 import warnings
@@ -738,6 +740,24 @@ class config(object):
 				else:
 					default_inst_ids["PORTAGE_INST_GID"] = str(eroot_st.st_gid)
 					default_inst_ids["PORTAGE_INST_UID"] = str(eroot_st.st_uid)
+
+					if "PORTAGE_USERNAME" not in self:
+						try:
+							pwd_struct = pwd.getpwuid(eroot_st.st_uid)
+						except KeyError:
+							pass
+						else:
+							self["PORTAGE_USERNAME"] = pwd_struct.pw_name
+							self.backup_changes("PORTAGE_USERNAME")
+
+					if "PORTAGE_GRPNAME" not in self:
+						try:
+							grp_struct = grp.getgrgid(eroot_st.st_gid)
+						except KeyError:
+							pass
+						else:
+							self["PORTAGE_GRPNAME"] = grp_struct.gr_name
+							self.backup_changes("PORTAGE_GRPNAME")
 
 			for var, default_val in default_inst_ids.items():
 				try:
