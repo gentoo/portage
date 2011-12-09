@@ -191,7 +191,9 @@ MANIFEST2_IDENTIFIERS    = ("AUX", "MISC", "DIST", "EBUILD")
 # a config instance (since it's possible to contruct a config instance with
 # a different EPREFIX). Therefore, the EPREFIX constant should *NOT* be used
 # in the definition of any other contstants within this file.
-EPREFIX=""
+# PREFIX LOCAL: rely on EPREFIX from autotools
+#EPREFIX=""
+# END PREFIX LOCAL
 
 # pick up EPREFIX from the environment if set
 if "__PORTAGE_TEST_EPREFIX" in os.environ:
