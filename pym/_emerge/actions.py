@@ -2997,6 +2997,7 @@ def load_emerge_config(trees=None):
 	mtimedbfile = os.path.join(settings['EROOT'], portage.CACHE_PATH, "mtimedb")
 	mtimedb = portage.MtimeDB(mtimedbfile)
 	portage.output._init(config_root=settings['PORTAGE_CONFIGROOT'])
+	portage.data._init(settings)
 	QueryCommand._db = trees
 	return settings, trees, mtimedb
 

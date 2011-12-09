@@ -685,9 +685,6 @@ class config(object):
 			if "USE_ORDER" not in self:
 				self.backupenv["USE_ORDER"] = "env:pkg:conf:defaults:pkginternal:repo:env.d"
 
-			self["PORTAGE_GID"] = str(portage_gid)
-			self.backup_changes("PORTAGE_GID")
-
 			self.depcachedir = DEPCACHE_PATH
 			if eprefix:
 				# See comments about make.globals and EPREFIX
@@ -2096,6 +2093,8 @@ class config(object):
 			return portage._bin_path
 		elif mykey == "PORTAGE_PYM_PATH":
 			return portage._pym_path
+		elif mykey == "PORTAGE_GID":
+			return _unicode_decode(str(portage_gid))
 
 		for d in self.lookuplist:
 			try:
@@ -2150,6 +2149,7 @@ class config(object):
 		keys = set()
 		keys.add("PORTAGE_BIN_PATH")
 		keys.add("PORTAGE_PYM_PATH")
+		keys.add("PORTAGE_GID")
 		for d in self.lookuplist:
 			keys.update(d)
 		return iter(keys)

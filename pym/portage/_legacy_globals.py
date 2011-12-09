@@ -37,6 +37,7 @@ def _get_legacy_global(name):
 
 	settings = portage.db[portage.db._target_eroot]["vartree"].settings
 	portage.output._init(config_root=settings['PORTAGE_CONFIGROOT'])
+	portage.data._init(settings)
 
 	portage.settings = settings
 	constructed.add('settings')
