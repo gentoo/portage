@@ -239,11 +239,11 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	mysettings["FILESDIR"] = pkg_dir+"/files"
 	mysettings["PF"]       = mypv
 
-	if hasattr(mydbapi, '_repo_info'):
-		repo_info = mydbapi._repo_info[mytree]
-		mysettings['PORTDIR'] = repo_info.portdir
-		mysettings['PORTDIR_OVERLAY'] = repo_info.portdir_overlay
-		mysettings.configdict["pkg"]["PORTAGE_REPO_NAME"] = repo_info.name
+	if hasattr(mydbapi, 'repositories'):
+		repo = mydbapi.repositories.get_repo_for_location(mytree)
+		mysettings['PORTDIR'] = repo.eclass_db.porttrees[0]
+		mysettings['PORTDIR_OVERLAY'] = ' '.join(repo.eclass_db.porttrees[1:])
+		mysettings.configdict["pkg"]["PORTAGE_REPO_NAME"] = repo.name
 
 	mysettings["PORTDIR"] = os.path.realpath(mysettings["PORTDIR"])
 	mysettings["DISTDIR"] = os.path.realpath(mysettings["DISTDIR"])

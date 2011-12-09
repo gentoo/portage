@@ -1672,7 +1672,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 
 		if src_db is not None:
 			porttrees_data.append(TreeData(portdb.auxdb[path],
-				portdb._repo_info[path].eclass_db, path, src_db))
+				portdb.repositories.get_repo_for_location(path).eclass_db, path, src_db))
 
 	porttrees = [tree_data.path for tree_data in porttrees_data]
 
