@@ -2987,19 +2987,22 @@ def load_emerge_config(trees=None):
 			kwargs[k] = v
 	trees = portage.create_trees(trees=trees, **kwargs)
 
+	settings = trees[trees._target_eroot]['vartree'].settings
+	mtimedbfile = os.path.join(settings['EROOT'], portage.CACHE_PATH, "mtimedb")
+	mtimedb = portage.MtimeDB(mtimedbfile)
+	portage.output._init(config_root=settings['PORTAGE_CONFIGROOT'])
+	# The portage_uid initialization here must to happend before
+	# the _init_dirs() calls below.
+	portage.data._init(settings)
+	QueryCommand._db = trees
+
 	for root, root_trees in trees.items():
 		settings = root_trees["vartree"].settings
 		settings._init_dirs()
 		setconfig = load_default_config(settings, root_trees)
 		root_trees["root_config"] = RootConfig(settings, root_trees, setconfig)
-
-	settings = trees[trees._target_eroot]['vartree'].settings
-	mtimedbfile = os.path.join(settings['EROOT'], portage.CACHE_PATH, "mtimedb")
-	mtimedb = portage.MtimeDB(mtimedbfile)
-	portage.output._init(config_root=settings['PORTAGE_CONFIGROOT'])
-	portage.data._init(settings)
-	QueryCommand._db = trees
-	return settings, trees, mtimedb
+	
+	return trees[trees._target_eroot]['vartree'].settings, trees, mtimedb
 
 def chk_updated_cfg_files(eroot, config_protect):
 	target_root = eroot
