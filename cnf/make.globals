@@ -111,10 +111,6 @@ CONFIG_PROTECT_MASK="/etc/env.d"
 # Disable auto-use
 USE_ORDER="env:pkg:conf:defaults:pkginternal:repo:env.d"
 
-# Default ownership of installed files.
-PORTAGE_INST_UID="0"
-PORTAGE_INST_GID="0"
-
 # Mode bits for ${WORKDIR} (see ebuild.5).
 PORTAGE_WORKDIR_MODE="0700"
 

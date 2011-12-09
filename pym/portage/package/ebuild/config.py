@@ -723,14 +723,30 @@ class config(object):
 					self["USERLAND"] = "GNU"
 				self.backup_changes("USERLAND")
 
-			for var in ("PORTAGE_INST_UID", "PORTAGE_INST_GID"):
+			default_inst_ids = {
+				"PORTAGE_INST_GID": "0",
+				"PORTAGE_INST_UID": "0",
+			}
+
+			if eprefix:
+				# For prefix environments, default to the UID and GID of
+				# the top-level EROOT directory.
 				try:
-					self[var] = str(int(self.get(var, "0")))
+					eroot_st = os.stat(eroot)
+				except OSError:
+					pass
+				else:
+					default_inst_ids["PORTAGE_INST_GID"] = str(eroot_st.st_gid)
+					default_inst_ids["PORTAGE_INST_UID"] = str(eroot_st.st_uid)
+
+			for var, default_val in default_inst_ids.items():
+				try:
+					self[var] = str(int(self.get(var, default_val)))
 				except ValueError:
 					writemsg(_("!!! %s='%s' is not a valid integer.  "
-						"Falling back to '0'.\n") % (var, self[var]),
+						"Falling back to %s.\n") % (var, self[var], default_val),
 						noiselevel=-1)
-					self[var] = "0"
+					self[var] = default_val
 				self.backup_changes(var)
 
 			# initialize self.features
