@@ -86,8 +86,8 @@ def _get_global(k):
 			secpass = 2
 		#Discover the uid and gid of the portage user/group
 		try:
-			portage_uid = pwd.getpwnam(_get_global('_portage_uname'))[2]
-			portage_gid = grp.getgrnam(_get_global('_portage_grpname'))[2]
+			portage_uid = pwd.getpwnam(_get_global('_portage_uname')).pw_uid
+			portage_gid = grp.getgrnam(_get_global('_portage_grpname')).gr_gid
 			if secpass < 1 and portage_gid in os.getgroups():
 				secpass = 1
 		except KeyError:
