@@ -559,9 +559,6 @@ dyn_install() {
 	fi
 	echo "${USE}"       > USE
 	echo "${EAPI:-0}"   > EAPI
-<<<<<<< HEAD
-	echo "${EPREFIX}"   > EPREFIX
-=======
 
 	# Save EPREFIX, since it makes it easy to use chpathtool to
 	# adjust the content of a binary package so that it will
@@ -576,7 +573,6 @@ dyn_install() {
 			;;
 	esac
 
->>>>>>> overlays-gentoo-org/master
 	set +f
 
 	# local variables can leak into the saved environment.
