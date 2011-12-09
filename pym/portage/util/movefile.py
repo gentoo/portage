@@ -7,6 +7,7 @@ import errno
 import os as _os
 import shutil as _shutil
 import stat
+import subprocess
 
 import portage
 from portage import bsd_chflags, _encodings, _os_overrides, _selinux, \
@@ -22,14 +23,32 @@ def _apply_stat(src_stat, dest):
 	_os.chmod(dest, stat.S_IMODE(src_stat.st_mode))
 
 if hasattr(_os, "getxattr"):
-	# Python >=3.3
+	# Python >=3.3 and GNU/Linux
 	def _copyxattr(src, dest):
 		for attr in _os.listxattr(src):
 			_os.setxattr(dest, attr, _os.getxattr(src, attr))
 else:
-	def _copyxattr(src, dest):
-		pass
-		# Maybe call getfattr and setfattr executables.
+	_devnull = open("/dev/null", "w")
+	try:
+		subprocess.call(["getfattr", "--version"], stdout=_devnull)
+		subprocess.call(["setfattr", "--version"], stdout=_devnull)
+		_has_getfattr_and_setfattr = True
+	except OSError:
+		_has_getfattr_and_setfattr = False
+	_devnull.close()
+	if _has_getfattr_and_setfattr:
+		def _copyxattr(src, dest):
+			getfattr_process = subprocess.Popen(["getfattr", "-d", "--absolute-names", src], stdout=subprocess.PIPE)
+			getfattr_process.wait()
+			extended_attributes = getfattr_process.stdout.readlines()
+			getfattr_process.stdout.close()
+			if extended_attributes:
+				extended_attributes[0] = b"# file: " + _unicode_encode(dest) + b"\n"
+				setfattr_process = subprocess.Popen(["setfattr", "--restore=-"], stdin=subprocess.PIPE)
+				setfattr_process.communicate(input=b"".join(extended_attributes))
+	else:
+		def _copyxattr(src, dest):
+			pass
 
 def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		hardlink_candidates=None, encoding=_encodings['fs']):
