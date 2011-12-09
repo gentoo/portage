@@ -111,7 +111,7 @@ class portdbapi(dbapi):
 					":".join(filter(None, sandbox_write))
 
 		self.porttrees = list(self.settings.repositories.repoLocationList())
-		self.eclassdb = eclass_cache.cache(self.settings.repositories.mainRepoLocation())
+		self.eclassdb = self.repositories.mainRepo().eclass_db
 
 		# This is used as sanity check for aux_get(). If there is no
 		# root eclass dir, we assume that PORTDIR is invalid or
@@ -126,23 +126,11 @@ class portdbapi(dbapi):
 
 		#Create eclass dbs
 		self._repo_info = {}
-		eclass_dbs = {self.settings.repositories.mainRepoLocation() : self.eclassdb}
 		for repo in self.repositories:
 			if repo.location in self._repo_info:
 				continue
 
-			eclass_db = None
-			for eclass_location in repo.eclass_locations:
-				tree_db = eclass_dbs.get(eclass_location)
-				if tree_db is None:
-					tree_db = eclass_cache.cache(eclass_location)
-					eclass_dbs[eclass_location] = tree_db
-				if eclass_db is None:
-					eclass_db = tree_db.copy()
-				else:
-					eclass_db.append(tree_db)
-
-			self._repo_info[repo.location] = _repo_info(repo.name, repo.location, eclass_db)
+			self._repo_info[repo.location] = _repo_info(repo.name, repo.location, repo.eclass_db)
 
 		#Keep a list of repo names, sorted by priority (highest priority first).
 		self._ordered_repo_name_list = tuple(reversed(self.repositories.prepos_order))

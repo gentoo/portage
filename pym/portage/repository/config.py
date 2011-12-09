@@ -15,7 +15,7 @@ try:
 		from configparser import SafeConfigParser
 except ImportError:
 	from ConfigParser import SafeConfigParser, ParsingError
-from portage import os
+from portage import eclass_cache, os
 from portage.const import (MANIFEST2_HASH_FUNCTIONS, MANIFEST2_REQUIRED_HASH,
 	REPO_NAME_LOC, USER_CONFIG_PATH)
 from portage.env.loaders import KeyValuePairFileLoader
@@ -47,7 +47,7 @@ class RepoConfig(object):
 
 	__slots__ = ('aliases', 'allow_missing_manifest',
 		'cache_formats', 'create_manifest', 'disable_manifest',
-		'eclass_overrides', 'eclass_locations', 'format', 'location',
+		'eclass_db', 'eclass_locations', 'eclass_overrides', 'format', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'priority', 'sign_manifest', 'sync', 'thin_manifest',
 		'update_changelog', 'user_location', 'portage1_profiles',
@@ -66,7 +66,8 @@ class RepoConfig(object):
 		if eclass_overrides is not None:
 			eclass_overrides = tuple(eclass_overrides.split())
 		self.eclass_overrides = eclass_overrides
-		#Locations are computed later.
+		# Eclass databases and locations are computed later.
+		self.eclass_db = None
 		self.eclass_locations = None
 
 		# Masters from repos.conf override layout.conf.
@@ -542,6 +543,23 @@ class RepoConfigLoader(object):
 							"'%s'\n") % (other_repo_name, repo_name), \
 							level=logging.ERROR, noiselevel=-1)
 			repo.eclass_locations = tuple(eclass_locations)
+
+		eclass_dbs = {}
+		for repo_name, repo in prepos.items():
+			if repo_name == "DEFAULT":
+				continue
+
+			eclass_db = None
+			for eclass_location in repo.eclass_locations:
+				tree_db = eclass_dbs.get(eclass_location)
+				if tree_db is None:
+					tree_db = eclass_cache.cache(eclass_location)
+					eclass_dbs[eclass_location] = tree_db
+				if eclass_db is None:
+					eclass_db = tree_db.copy()
+				else:
+					eclass_db.append(tree_db)
+			repo.eclass_db = eclass_db
 
 		self._prepos_changed = True
 		self._repo_location_list = []
