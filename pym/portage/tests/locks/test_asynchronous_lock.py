@@ -1,11 +1,11 @@
 # Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import shutil
 import signal
 import tempfile
 
 from portage import os
+from portage import shutil
 from portage.tests import TestCase
 from _emerge.AsynchronousLock import AsynchronousLock
 from _emerge.PollScheduler import PollScheduler

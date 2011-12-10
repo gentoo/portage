@@ -22,11 +22,11 @@ __all__ = ['addtolist', 'decodeint', 'encodeint', 'getboth',
 
 import array
 import errno
-import shutil
 import sys
 
 import portage
 from portage import os
+from portage import shutil
 from portage import normalize_path
 from portage import _encodings
 from portage import _unicode_decode

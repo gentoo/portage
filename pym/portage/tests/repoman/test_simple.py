@@ -1,13 +1,13 @@
 # Copyright 2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import shutil
 import subprocess
 import sys
 import time
 
 import portage
 from portage import os
+from portage import shutil
 from portage import _unicode_decode
 from portage.const import PORTAGE_BASE_PATH, PORTAGE_BIN_PATH, PORTAGE_PYM_PATH
 from portage.process import find_binary

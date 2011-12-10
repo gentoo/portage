@@ -2,11 +2,11 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from itertools import permutations
-import shutil
 import sys
 import tempfile
 import portage
 from portage import os
+from portage import shutil
 from portage.const import (GLOBAL_CONFIG_PATH, PORTAGE_BASE_PATH,
 	USER_CONFIG_PATH)
 from portage.dbapi.vartree import vartree

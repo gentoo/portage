@@ -1,10 +1,10 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import shutil
 import tempfile
 import time
 from portage import os
+from portage import shutil
 from portage import _python_interpreter
 from portage.tests import TestCase
 from portage.const import PORTAGE_BIN_PATH

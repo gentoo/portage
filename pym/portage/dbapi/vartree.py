@@ -48,6 +48,7 @@ from portage import abssymlink, _movefile, bsd_chflags
 
 # This is a special version of the os module, wrapped for unicode support.
 from portage import os
+from portage import shutil
 from portage import _encodings
 from portage import _os_merge
 from portage import _selinux_merge
@@ -69,7 +70,6 @@ import logging
 import os as _os
 import pwd
 import re
-import shutil
 import stat
 import sys
 import tempfile

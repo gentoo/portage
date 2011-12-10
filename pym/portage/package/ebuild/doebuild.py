@@ -10,7 +10,6 @@ from itertools import chain
 import logging
 import os as _os
 import re
-import shutil
 import signal
 import stat
 import sys
@@ -31,7 +30,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage import auxdbkeys, bsd_chflags, \
-	eapi_is_supported, merge, os, selinux, \
+	eapi_is_supported, merge, os, selinux, shutil, \
 	unmerge, _encodings, _parse_eapi_ebuild_head, _os_merge, \
 	_shell_quote, _unicode_decode, _unicode_encode
 from portage.const import EBUILD_SH_ENV_FILE, EBUILD_SH_ENV_DIR, \

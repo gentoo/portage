@@ -14,12 +14,12 @@ from portage.eapi import eapi_exports_replace_vars
 from portage.util import ensure_dirs, writemsg
 import portage
 from portage import os
+from portage import shutil
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 import io
 import logging
-import shutil
 from portage.output import colorize
 
 class Binpkg(CompositeTask):

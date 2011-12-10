@@ -1,12 +1,12 @@
 # Copyright 2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import shutil
 import tempfile
 import traceback
 
 import portage
 from portage import os
+from portage import shutil
 from portage.tests import TestCase
 
 class LockNonblockTestCase(TestCase):

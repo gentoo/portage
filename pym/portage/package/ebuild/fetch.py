@@ -10,7 +10,6 @@ import io
 import logging
 import random
 import re
-import shutil
 import stat
 import sys
 import tempfile
@@ -24,7 +23,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.prepare_build_dirs:prepare_build_dirs',
 )
 
-from portage import OrderedDict, os, selinux, _encodings, \
+from portage import OrderedDict, os, selinux, shutil, _encodings, \
 	_shell_quote, _unicode_encode
 from portage.checksum import hashfunc_map, perform_md5, verify_all
 from portage.const import BASH_BINARY, CUSTOM_MIRRORS_FILE, \

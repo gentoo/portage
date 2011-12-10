@@ -10,7 +10,6 @@ import platform
 import pwd
 import random
 import re
-import shutil
 import signal
 import socket
 import stat
@@ -27,6 +26,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage import os
+from portage import shutil
 from portage import subprocess_getstatusoutput
 from portage import _unicode_decode
 from portage.cache.cache_errors import CacheError
