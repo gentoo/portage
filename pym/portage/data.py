@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os, pwd, grp, platform
-from portage.const import PORTAGE_GROUPNAME, PORTAGE_USERNAME, rootuid, EPREFIX
+from portage.const import PORTAGE_GROUPNAME, PORTAGE_USERNAME, EPREFIX
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
