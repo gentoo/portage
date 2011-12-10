@@ -842,7 +842,7 @@ def main():
 			sys.stderr.write("Run portageq with --help for info\n")
 			sys.stderr.flush()
 			sys.exit(os.EX_USAGE)
-		eprefix = os.environ.get("__PORTAGE_TEST_EPREFIX")
+		eprefix = portage.const.EPREFIX
 		eroot = portage.util.normalize_path(sys.argv[2])
 		if eprefix:
 			root = eroot[:1-len(eprefix)]

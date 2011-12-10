@@ -505,6 +505,8 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None):
 	if env is None:
 		env = os.environ
 	eprefix = env.get("__PORTAGE_TEST_EPREFIX")
+	if eprefix is None:
+		eprefix = portage.const.EPREFIX
 	settings = config(config_root=config_root, target_root=target_root,
 		env=env, _eprefix=eprefix)
 	settings.lock()

@@ -82,7 +82,7 @@ def _get_global(k):
 		secpass = 0
 		if uid == 0:
 			secpass = 2
-		elif "__PORTAGE_TEST_EPREFIX" in os.environ:
+		elif portage.const.EPREFIX:
 			secpass = 2
 		#Discover the uid and gid of the portage user/group
 		try:

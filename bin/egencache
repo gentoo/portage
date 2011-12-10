@@ -841,7 +841,7 @@ def egencache_main(args):
 	if options.portdir is not None:
 		env['PORTDIR'] = options.portdir
 
-	eprefix = os.environ.get("__PORTAGE_TEST_EPREFIX")
+	eprefix = portage.const.EPREFIX
 
 	settings = portage.config(config_root=config_root,
 		local_config=False, env=env, _eprefix=eprefix)

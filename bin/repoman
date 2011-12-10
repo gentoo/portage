@@ -95,7 +95,7 @@ os.umask(0o22)
 # behave incrementally.
 repoman_incrementals = tuple(x for x in \
 	portage.const.INCREMENTALS if x != 'ACCEPT_KEYWORDS')
-eprefix = os.environ.get("__REPOMAN_TEST_EPREFIX")
+eprefix = portage.const.EPREFIX
 repoman_settings = portage.config(local_config=False, _eprefix=eprefix)
 repoman_settings.lock()
 

@@ -154,10 +154,6 @@ if "__PORTAGE_TEST_EPREFIX" in os.environ:
 	if EPREFIX:
 		EPREFIX = os.path.normpath(EPREFIX)
 
-elif EPREFIX:
-	# Propagate the constant to other portage code which uses this variable.
-	os.environ["__PORTAGE_TEST_EPREFIX"] = EPREFIX
-
 # ===========================================================================
 # END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANT
 # ===========================================================================
