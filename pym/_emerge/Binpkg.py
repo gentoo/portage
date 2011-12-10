@@ -354,7 +354,7 @@ class Binpkg(CompositeTask):
 		os.rename(os.path.join(self.settings["D"],
 			self._build_prefix.lstrip(os.sep)), image_tmp_dir)
 		shutil.rmtree(self._image_dir)
-		ensure_dirs(os.path.dirname(self.settings["ED"]))
+		ensure_dirs(os.path.dirname(self.settings["ED"].rstrip(os.sep)))
 		os.rename(image_tmp_dir, self.settings["ED"])
 
 		self.wait()
