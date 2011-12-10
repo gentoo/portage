@@ -6,6 +6,7 @@ import os
 import sys
 sys.path.insert(0, os.environ['PORTAGE_PYM_PATH'])
 import portage
+portage._disable_legacy_globals()
 
 def main(args):
 
