@@ -732,34 +732,40 @@ class config(object):
 				"PORTAGE_INST_UID": "0",
 			}
 
-			if eprefix:
-				# For prefix environments, default to the UID and GID of
-				# the top-level EROOT directory.
-				try:
-					eroot_st = os.stat(eroot)
-				except OSError:
-					pass
-				else:
-					default_inst_ids["PORTAGE_INST_GID"] = str(eroot_st.st_gid)
-					default_inst_ids["PORTAGE_INST_UID"] = str(eroot_st.st_uid)
+			# PREFIX LOCAL: inventing UID/GID based on a path is a very
+			# bad idea, it breaks almost everything since group ids
+			# don't have to match, when a user has many
+			# This in particularly breaks the configure-set portage
+			# group and user (in portage/data.py)
+			#if eprefix:
+			#	# For prefix environments, default to the UID and GID of
+			#	# the top-level EROOT directory.
+			#	try:
+			#		eroot_st = os.stat(eroot)
+			#	except OSError:
+			#		pass
+			#	else:
+			#		default_inst_ids["PORTAGE_INST_GID"] = str(eroot_st.st_gid)
+			#		default_inst_ids["PORTAGE_INST_UID"] = str(eroot_st.st_uid)
 
-					if "PORTAGE_USERNAME" not in self:
-						try:
-							pwd_struct = pwd.getpwuid(eroot_st.st_uid)
-						except KeyError:
-							pass
-						else:
-							self["PORTAGE_USERNAME"] = pwd_struct.pw_name
-							self.backup_changes("PORTAGE_USERNAME")
+			#		if "PORTAGE_USERNAME" not in self:
+			#			try:
+			#				pwd_struct = pwd.getpwuid(eroot_st.st_uid)
+			#			except KeyError:
+			#				pass
+			#			else:
+			#				self["PORTAGE_USERNAME"] = pwd_struct.pw_name
+			#				self.backup_changes("PORTAGE_USERNAME")
 
-					if "PORTAGE_GRPNAME" not in self:
-						try:
-							grp_struct = grp.getgrgid(eroot_st.st_gid)
-						except KeyError:
-							pass
-						else:
-							self["PORTAGE_GRPNAME"] = grp_struct.gr_name
-							self.backup_changes("PORTAGE_GRPNAME")
+			#		if "PORTAGE_GRPNAME" not in self:
+			#			try:
+			#				grp_struct = grp.getgrgid(eroot_st.st_gid)
+			#			except KeyError:
+			#				pass
+			#			else:
+			#				self["PORTAGE_GRPNAME"] = grp_struct.gr_name
+			#				self.backup_changes("PORTAGE_GRPNAME")
+			# END PREFIX LOCAL
 
 			for var, default_val in default_inst_ids.items():
 				try:
