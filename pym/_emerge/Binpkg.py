@@ -318,6 +318,7 @@ class Binpkg(CompositeTask):
 			self._build_prefix = ""
 
 		if self._build_prefix == self.settings["EPREFIX"]:
+			ensure_dirs(self.settings["ED"])
 			self._current_task = None
 			self.returncode = os.EX_OK
 			self.wait()
