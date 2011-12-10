@@ -502,8 +502,13 @@ class config(object):
 			self["ROOT"] = target_root
 			self.backup_changes("ROOT")
 
+			# The PORTAGE_OVERRIDE_EPREFIX variable propagates the EPREFIX
+			# of this config instance to any portage commands or API
+			# consumers running in subprocesses.
 			self["EPREFIX"] = eprefix
 			self.backup_changes("EPREFIX")
+			self["PORTAGE_OVERRIDE_EPREFIX"] = eprefix
+			self.backup_changes("PORTAGE_OVERRIDE_EPREFIX")
 			self["EROOT"] = eroot
 			self.backup_changes("EROOT")
 
