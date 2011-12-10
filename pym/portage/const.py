@@ -145,7 +145,7 @@ MANIFEST2_IDENTIFIERS    = ("AUX", "MISC", "DIST", "EBUILD")
 # constant should be minimal, in favor of access via the EPREFIX setting of
 # a config instance (since it's possible to contruct a config instance with
 # a different EPREFIX). Therefore, the EPREFIX constant should *NOT* be used
-# in the definition of any other contstants within this file.
+# in the definition of any other constants within this file.
 EPREFIX=""
 
 # pick up EPREFIX from the environment if set
