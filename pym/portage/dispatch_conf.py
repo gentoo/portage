@@ -42,7 +42,6 @@ def diffstatusoutput_len(cmd):
 def read_config(mandatory_opts):
     eprefix = EPREFIX
     config_path = os.path.join(eprefix or os.sep, "etc/dispatch-conf.conf")
->>>>>>> overlays-gentoo-org/master
     loader = KeyValuePairFileLoader(config_path, None)
     opts, errors = loader.load()
     if not opts:
