@@ -351,11 +351,17 @@ class Binpkg(CompositeTask):
 		# Move the files to the correct location for merge.
 		image_tmp_dir = os.path.join(
 			self.settings["PORTAGE_BUILDDIR"], "image_tmp")
-		os.rename(os.path.join(self.settings["D"],
-			self._build_prefix.lstrip(os.sep)), image_tmp_dir)
-		shutil.rmtree(self._image_dir)
-		ensure_dirs(os.path.dirname(self.settings["ED"].rstrip(os.sep)))
-		os.rename(image_tmp_dir, self.settings["ED"])
+		build_d = os.path.join(self.settings["D"],
+			self._build_prefix.lstrip(os.sep))
+		if not os.path.isdir(build_d):
+			# Assume this is a virtual package or something.
+			shutil.rmtree(self._image_dir)
+			ensure_dirs(self.settings["ED"])
+		else:
+			os.rename(build_d, image_tmp_dir)
+			shutil.rmtree(self._image_dir)
+			ensure_dirs(os.path.dirname(self.settings["ED"].rstrip(os.sep)))
+			os.rename(image_tmp_dir, self.settings["ED"])
 
 		self.wait()
 
