@@ -784,10 +784,10 @@ class config(object):
 
 			self._validate_commands()
 
-		for k in self._case_insensitive_vars:
-			if k in self:
-				self[k] = self[k].lower()
-				self.backup_changes(k)
+			for k in self._case_insensitive_vars:
+				if k in self:
+					self[k] = self[k].lower()
+					self.backup_changes(k)
 
 		if mycpv:
 			self.setcpv(mycpv)
