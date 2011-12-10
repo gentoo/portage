@@ -50,7 +50,7 @@ else:
 				if raise_exception:
 					raise OperationNotSupported("Filesystem containing file '%s' does not support extended attributes" % dest)
 	else:
-		_devnull = open("/dev/null", "w")
+		_devnull = open("/dev/null", "wb")
 		try:
 			subprocess.call(["getfattr", "--version"], stdout=_devnull)
 			subprocess.call(["setfattr", "--version"], stdout=_devnull)
