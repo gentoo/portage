@@ -155,10 +155,10 @@ def _get_global(k):
 		v = env.get('PORTAGE_GRPNAME', PORTAGE_GROUPNAME)
 		# END PREFIX LOCAL
 	elif k == '_portage_uname':
+		env = getattr(portage, 'settings', os.environ)
 		# PREFIX LOCAL: use var iso hardwired 'portage'
-		env = getattr(portage, 'settings', PORTAGE_USERNAME)
+		v = env.get('PORTAGE_USERNAME', PORTAGE_USERNAME)
 		# END PREFIX LOCAL
-		v = env.get('PORTAGE_USERNAME', 'portage')
 	else:
 		raise AssertionError('unknown name: %s' % k)
 
