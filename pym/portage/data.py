@@ -65,11 +65,6 @@ def portage_group_warning():
 uid=os.getuid()
 wheelgid=0
 
-if uid==rootuid:
-	secpass=2
-elif "__PORTAGE_TEST_EPREFIX" in os.environ:
-	secpass = 2
-
 try:
 	wheelgid=grp.getgrnam("wheel")[2]
 except KeyError:
@@ -91,19 +86,20 @@ def _get_global(k):
 		secpass = 0
 		if uid == 0:
 			secpass = 2
-		elif "__PORTAGE_TEST_EPREFIX" in os.environ:
+		elif portage.const.EPREFIX:
 			secpass = 2
 		#Discover the uid and gid of the portage user/group
 		try:
-			portage_gid = grp.getgrnam(_get_global('_portage_grpname'))[2]
+			portage_gid = grp.getgrnam(_get_global('_portage_grpname')).gr_gid
 		except KeyError:
-			# some sysadmins are insane, bug #344307
+			# PREFIX LOCAL: some sysadmins are insane, bug #344307
 			if _get_global('_portage_grpname').isdigit():
 				portage_gid = int(_get_global('_portage_grpname'))
 			else:
 				portage_gid = None
+			# END PREFIX LOCAL
 		try:
-			portage_uid = pwd.getpwnam(_get_global('_portage_uname'))[2]
+			portage_uid = pwd.getpwnam(_get_global('_portage_uname')).pw_uid
 			if secpass < 1 and portage_gid in os.getgroups():
 				secpass = 1
 		except KeyError:

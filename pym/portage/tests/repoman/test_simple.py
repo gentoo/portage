@@ -184,7 +184,7 @@ class SimpleRepomanTestCase(TestCase):
 			pythonpath = PORTAGE_PYM_PATH + pythonpath
 
 		env = {
-			"__REPOMAN_TEST_EPREFIX" : eprefix,
+			"PORTAGE_OVERRIDE_EPREFIX" : eprefix,
 			"DISTDIR" : distdir,
 			"GENTOO_COMMITTER_NAME" : committer_name,
 			"GENTOO_COMMITTER_EMAIL" : committer_email,

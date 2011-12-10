@@ -487,7 +487,8 @@ class _trees_dict(dict):
 		self._running_eroot = None
 		self._target_eroot = None
 
-def create_trees(config_root=None, target_root=None, trees=None, env=None):
+def create_trees(config_root=None, target_root=None, trees=None, env=None,
+	eprefix=portage.const.EPREFIX):
 	if trees is not None:
 		# clean up any existing portdbapi instances
 		for myroot in trees:
@@ -505,11 +506,8 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None):
 
 	if env is None:
 		env = os.environ
-	eprefix = env.get("__PORTAGE_TEST_EPREFIX")
-	if not eprefix:
-		eprefix = EPREFIX
 	settings = config(config_root=config_root, target_root=target_root,
-		env=env, _eprefix=eprefix)
+		env=env, eprefix=eprefix)
 	settings.lock()
 
 	trees._target_eroot = settings['EROOT']
@@ -529,7 +527,7 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None):
 			if v is not None:
 				clean_env[k] = v
 		settings = config(config_root=None, target_root="/",
-			env=clean_env, _eprefix=eprefix)
+			env=clean_env, eprefix=eprefix)
 		settings.lock()
 		trees._running_eroot = settings['EROOT']
 		myroots.append((settings['EROOT'], settings))

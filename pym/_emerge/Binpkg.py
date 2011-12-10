@@ -10,8 +10,9 @@ from _emerge.CompositeTask import CompositeTask
 from _emerge.BinpkgVerifier import BinpkgVerifier
 from _emerge.EbuildMerge import EbuildMerge
 from _emerge.EbuildBuildDir import EbuildBuildDir
+from _emerge.SpawnProcess import SpawnProcess
 from portage.eapi import eapi_exports_replace_vars
-from portage.util import writemsg
+from portage.util import ensure_dirs, writemsg
 import portage
 from portage import os
 from portage import _encodings
@@ -19,6 +20,7 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 import io
 import logging
+import shutil
 from portage.output import colorize
 from portage.const import EPREFIX
 
@@ -27,8 +29,9 @@ class Binpkg(CompositeTask):
 	__slots__ = ("find_blockers",
 		"ldpath_mtimes", "logger", "opts",
 		"pkg", "pkg_count", "prefetcher", "settings", "world_atom") + \
-		("_buildprefix", "_bintree", "_build_dir", "_ebuild_path", "_fetched_pkg",
-		"_image_dir", "_infloc", "_pkg_path", "_tree", "_verify", "_work_dir")
+		("_bintree", "_build_dir", "_build_prefix",
+		"_ebuild_path", "_fetched_pkg",
+		"_image_dir", "_infloc", "_pkg_path", "_tree", "_verify")
 
 	def _writemsg_level(self, msg, level=0, noiselevel=0):
 		self.scheduler.output(msg, level=level, noiselevel=noiselevel,
@@ -86,9 +89,9 @@ class Binpkg(CompositeTask):
 
 			waiting_msg = ("Fetching '%s' " + \
 				"in the background. " + \
-				"To view fetch progress, run `tail -f " + \
-				EPREFIX + "/var/log/emerge-fetch.log` in another " + \
-				"terminal.") % prefetcher.pkg_path
+				"To view fetch progress, run `tail -f %s" + \
+				"/var/log/emerge-fetch.log` in another " + \
+				"terminal.") % (prefetcher.pkg_path, settings["EPREFIX"])
 			msg_prefix = colorize("GOOD", " * ")
 			from textwrap import wrap
 			waiting_msg = "".join("%s%s\n" % (msg_prefix, line) \
@@ -267,13 +270,14 @@ class Binpkg(CompositeTask):
 		finally:
 			f.close()
 
+		# PREFIX LOCAL: deal with EPREFIX from binpkg
 		# Retrieve the EPREFIX this package was built with
-		self._buildprefix = pkg_xpak.getfile(_unicode_encode("EPREFIX",
+		self._build_prefix = pkg_xpak.getfile(_unicode_encode("EPREFIX",
 			encoding=_encodings['repo.content']))
-		if not self._buildprefix:
-			self._buildprefix = ''
+		if not self._buil_dprefix:
+			self._build_prefix = ''
 		else:
-			self._buildprefix = self._buildprefix.strip()
+			self._build_prefix = self._build_prefix.strip()
 		# We want to install in "our" prefix, not the binary one
 		self.settings["EPREFIX"] = EPREFIX
 		f = io.open(_unicode_encode(os.path.join(infloc, 'EPREFIX'),
@@ -283,6 +287,7 @@ class Binpkg(CompositeTask):
 			f.write(_unicode_decode(EPREFIX + "\n"))
 		finally:
 			f.close()
+		# END PREFIX LOCAL
 
 		env_extractor = BinpkgEnvExtractor(background=self.background,
 			scheduler=self.scheduler, settings=self.settings)
@@ -309,12 +314,14 @@ class Binpkg(CompositeTask):
 			self.wait()
 			return
 
+		# PREFIX LOCAL:
 		# if the prefix differs, we copy it to the image after
 		# extraction using chpathtool
-		if (self._buildprefix != EPREFIX):
+		if (self._build_prefix != EPREFIX):
 			pkgloc = self._work_dir
 		else:
 			pkgloc = self._image_dir
+		# END PREFIX LOCAL
 
 		extractor = BinpkgExtractorAsync(background=self.background,
 			env=self.settings.environ(),
@@ -326,28 +333,34 @@ class Binpkg(CompositeTask):
 		self._start_task(extractor, self._extractor_exit)
 
 	def _extractor_exit(self, extractor):
-		if self._final_exit(extractor) != os.EX_OK:
+		if self._default_exit(extractor) != os.EX_OK:
 			self._unlock_builddir()
 			self._writemsg_level("!!! Error Extracting '%s'\n" % \
 				self._pkg_path, noiselevel=-1, level=logging.ERROR)
 			self.wait()
 			return
 
-		if self._buildprefix != EPREFIX:
+		# PREFIX LOCAL: use chpathtool binary
+		if self._build_prefix != EPREFIX:
 			chpathtool = BinpkgChpathtoolAsync(background=self.background,
 				image_dir=self._image_dir, work_dir=self._work_dir,
-				buildprefix=self._buildprefix, eprefix=EPREFIX,
+				buildprefix=self._build_prefix, eprefix=EPREFIX,
 				pkg=self.pkg, scheduler=self.scheduler)
 			self._writemsg_level(">>> Adjusting Prefix to %s\n" % EPREFIX)
 			self._start_task(chpathtool, self._chpathtool_exit)
 		else:
 			self.wait()
+		# END PREFIX LOCAL
 
 	def _chpathtool_exit(self, chpathtool):
 		if self._final_exit(chpathtool) != os.EX_OK:
 			self._unlock_builddir()
-			writemsg("!!! Error Adjusting Prefix to %s\n" % EPREFIX,
-				noiselevel=-1)
+			self._writemsg_level("!!! Error Adjusting Prefix to %s" %
+				(self.settings["EPREFIX"],),
+				noiselevel=-1, level=logging.ERROR)
+			self.wait()
+			return
+
 		self.wait()
 
 	def _unlock_builddir(self):

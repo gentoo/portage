@@ -59,6 +59,13 @@ class portdbapi(dbapi):
 	def porttree_root(self):
 		return self.settings.repositories.mainRepoLocation()
 
+	@property
+	def eclassdb(self):
+		main_repo = self.repositories.mainRepo()
+		if main_repo is None:
+			return None
+		return main_repo.eclass_db
+
 	def __init__(self, _unused_param=None, mysettings=None):
 		"""
 		@param _unused_param: deprecated, use mysettings['PORTDIR'] instead
@@ -102,7 +109,6 @@ class portdbapi(dbapi):
 					":".join(filter(None, sandbox_write))
 
 		self.porttrees = list(self.settings.repositories.repoLocationList())
-		self.eclassdb = self.repositories.mainRepo().eclass_db
 
 		# This is used as sanity check for aux_get(). If there is no
 		# root eclass dir, we assume that PORTDIR is invalid or

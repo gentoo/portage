@@ -78,7 +78,6 @@ from portage.output import ConsoleStyleFile, StyleWriter
 from portage.util import cmp_sort_key, writemsg_level
 from portage.package.ebuild.digestgen import digestgen
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
-from portage.const import EPREFIX
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -98,10 +97,8 @@ os.umask(0o22)
 # behave incrementally.
 repoman_incrementals = tuple(x for x in \
 	portage.const.INCREMENTALS if x != 'ACCEPT_KEYWORDS')
-eprefix = os.environ.get("__REPOMAN_TEST_EPREFIX")
-if not eprefix:
-	eprefix = EPREFIX
-repoman_settings = portage.config(local_config=False, _eprefix=eprefix)
+eprefix = portage.const.EPREFIX
+repoman_settings = portage.config(local_config=False, eprefix=eprefix)
 repoman_settings.lock()
 
 if repoman_settings.get("NOCOLOR", "").lower() in ("yes", "true") or \
@@ -572,13 +569,13 @@ if options.mode == 'commit' and not options.pretend and not vcs:
 	options.pretend = True
 
 # Ensure that PORTDIR_OVERLAY contains the repository corresponding to $PWD.
-repoman_settings = portage.config(local_config=False, _eprefix=eprefix)
+repoman_settings = portage.config(local_config=False, eprefix=eprefix)
 repoman_settings['PORTDIR_OVERLAY'] = "%s %s" % \
 	(repoman_settings.get('PORTDIR_OVERLAY', ''),
 	portage._shell_quote(portdir_overlay))
 # We have to call the config constructor again so
 # that config.repositories is initialized correctly.
-repoman_settings = portage.config(local_config=False, _eprefix=eprefix,
+repoman_settings = portage.config(local_config=False, eprefix=eprefix,
 	env=dict(os.environ, PORTDIR_OVERLAY=repoman_settings['PORTDIR_OVERLAY']))
 
 root = repoman_settings['EROOT']
@@ -2012,7 +2009,7 @@ for x in effective_scanlist:
 						config_incrementals=repoman_incrementals,
 						local_config=False,
 						_unmatched_removal=options.unmatched_removal,
-						env=env, _eprefix=eprefix)
+						env=env, eprefix=eprefix)
 					dep_settings.categories = repoman_settings.categories
 					if options.without_mask:
 						dep_settings._mask_manager = \

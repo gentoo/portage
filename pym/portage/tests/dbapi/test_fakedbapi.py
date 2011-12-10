@@ -48,7 +48,7 @@ class TestFakedbapi(TestCase):
 				"PORTDIR": portdir,
 			}
 			fakedb = fakedbapi(settings=config(config_profile_path="",
-				env=env, _eprefix=tempdir))
+				env=env, eprefix=tempdir))
 			for cpv, metadata in packages:
 				fakedb.cpv_inject(cpv, metadata=metadata)
 

@@ -148,7 +148,7 @@ SUPPORTED_FEATURES       = frozenset([
                            "strict", "stricter", "suidctl", "test", "test-fail-continue",
                            "unknown-features-filter", "unknown-features-warn",
                            "unmerge-logs", "unmerge-orphans", "userfetch", "userpriv",
-                           "usersandbox", "usersync", "webrsync-gpg"])
+                           "usersandbox", "usersync", "webrsync-gpg", "xattr"])
 
 EAPI                     = 4
 
@@ -196,14 +196,10 @@ MANIFEST2_IDENTIFIERS    = ("AUX", "MISC", "DIST", "EBUILD")
 # END PREFIX LOCAL
 
 # pick up EPREFIX from the environment if set
-if "__PORTAGE_TEST_EPREFIX" in os.environ:
-	EPREFIX = os.environ["__PORTAGE_TEST_EPREFIX"]
+if "PORTAGE_OVERRIDE_EPREFIX" in os.environ:
+	EPREFIX = os.environ["PORTAGE_OVERRIDE_EPREFIX"]
 	if EPREFIX:
 		EPREFIX = os.path.normpath(EPREFIX)
-
-elif EPREFIX:
-	# Propagate the constant to other portage code which uses this variable.
-	os.environ["__PORTAGE_TEST_EPREFIX"] = EPREFIX
 
 # ===========================================================================
 # END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANT

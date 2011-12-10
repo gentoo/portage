@@ -92,7 +92,7 @@ class dispatch:
         confs = []
         count = 0
 
-        config_root = os.environ.get("__PORTAGE_TEST_EPREFIX", EPREFIX)
+        config_root = EPREFIX or os.sep
         self.options = portage.dispatch_conf.read_config(MANDATORY_OPTS)
 
         if "log-file" in self.options:

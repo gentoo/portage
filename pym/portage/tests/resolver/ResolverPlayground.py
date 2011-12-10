@@ -475,7 +475,6 @@ class ResolverPlayground(object):
 				portdir_overlay.append(path)
 
 		env = {
-			"__PORTAGE_TEST_EPREFIX": self.eprefix,
 			"ACCEPT_KEYWORDS": "x86",
 			"DISTDIR" : self.distdir,
 			"PKGDIR": os.path.join(self.eroot, "usr/portage/packages"),
@@ -491,7 +490,7 @@ class ResolverPlayground(object):
 		if 'PORTAGE_GRPNAME' in os.environ:
 			env['PORTAGE_GRPNAME'] = os.environ['PORTAGE_GRPNAME']
 
-		trees = portage.create_trees(env=env)
+		trees = portage.create_trees(env=env, eprefix=self.eprefix)
 		for root, root_trees in trees.items():
 			settings = root_trees["vartree"].settings
 			settings._init_dirs()

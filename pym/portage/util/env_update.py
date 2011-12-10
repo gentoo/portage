@@ -50,7 +50,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 				target_root = portage.settings["ROOT"]
 				target_eroot = portage.settings['EROOT']
 			else:
-				eprefix = os.environ.get("__PORTAGE_TEST_EPREFIX", "")
+				eprefix = portage.const.EPREFIX
 				target_eroot = os.path.join(target_root,
 					eprefix.lstrip(os.sep))
 				target_eroot = target_eroot.rstrip(os.sep) + os.sep

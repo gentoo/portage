@@ -7,8 +7,10 @@ __all__ = [
 
 import copy
 from itertools import chain
+import grp
 import logging
 import platform
+import pwd
 import re
 import sys
 import warnings
@@ -141,7 +143,8 @@ class config(object):
 
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
-		_eprefix=None, local_config=True, env=None, _unmatched_removal=False):
+		eprefix=portage.const.EPREFIX, local_config=True, env=None,
+		_unmatched_removal=False):
 		"""
 		@param clone: If provided, init will use deepcopy to copy by value the instance.
 		@type clone: Instance of config class.
@@ -157,8 +160,8 @@ class config(object):
 		@type config_root: String
 		@param target_root: __init__ override of $ROOT env variable.
 		@type target_root: String
-		@param _eprefix: set the EPREFIX variable (private, used by internal tests)
-		@type _eprefix: String
+		@param eprefix: set the EPREFIX variable
+		@type eprefix: String
 		@param local_config: Enables loading of local config (/etc/portage); used most by repoman to
 		ignore local config (keywording and unmasking)
 		@type local_config: Boolean
@@ -169,10 +172,6 @@ class config(object):
 			--unmatched-removal option is given.
 		@type _unmatched_removal: Boolean
 		"""
-
-		# rename local _eprefix variable for convenience
-		eprefix = _eprefix
-		del _eprefix
 
 		# When initializing the global portage.settings instance, avoid
 		# raising exceptions whenever possible since exceptions thrown
@@ -503,8 +502,13 @@ class config(object):
 			self["ROOT"] = target_root
 			self.backup_changes("ROOT")
 
+			# The PORTAGE_OVERRIDE_EPREFIX variable propagates the EPREFIX
+			# of this config instance to any portage commands or API
+			# consumers running in subprocesses.
 			self["EPREFIX"] = eprefix
 			self.backup_changes("EPREFIX")
+			self["PORTAGE_OVERRIDE_EPREFIX"] = eprefix
+			self.backup_changes("PORTAGE_OVERRIDE_EPREFIX")
 			self["EROOT"] = eroot
 			self.backup_changes("EROOT")
 
@@ -723,14 +727,48 @@ class config(object):
 					self["USERLAND"] = "GNU"
 				self.backup_changes("USERLAND")
 
-			for var in ("PORTAGE_INST_UID", "PORTAGE_INST_GID"):
+			default_inst_ids = {
+				"PORTAGE_INST_GID": "0",
+				"PORTAGE_INST_UID": "0",
+			}
+
+			if eprefix:
+				# For prefix environments, default to the UID and GID of
+				# the top-level EROOT directory.
 				try:
-					self[var] = str(int(self.get(var, "0")))
+					eroot_st = os.stat(eroot)
+				except OSError:
+					pass
+				else:
+					default_inst_ids["PORTAGE_INST_GID"] = str(eroot_st.st_gid)
+					default_inst_ids["PORTAGE_INST_UID"] = str(eroot_st.st_uid)
+
+					if "PORTAGE_USERNAME" not in self:
+						try:
+							pwd_struct = pwd.getpwuid(eroot_st.st_uid)
+						except KeyError:
+							pass
+						else:
+							self["PORTAGE_USERNAME"] = pwd_struct.pw_name
+							self.backup_changes("PORTAGE_USERNAME")
+
+					if "PORTAGE_GRPNAME" not in self:
+						try:
+							grp_struct = grp.getgrgid(eroot_st.st_gid)
+						except KeyError:
+							pass
+						else:
+							self["PORTAGE_GRPNAME"] = grp_struct.gr_name
+							self.backup_changes("PORTAGE_GRPNAME")
+
+			for var, default_val in default_inst_ids.items():
+				try:
+					self[var] = str(int(self.get(var, default_val)))
 				except ValueError:
 					writemsg(_("!!! %s='%s' is not a valid integer.  "
-						"Falling back to '0'.\n") % (var, self[var]),
+						"Falling back to %s.\n") % (var, self[var], default_val),
 						noiselevel=-1)
-					self[var] = "0"
+					self[var] = default_val
 				self.backup_changes(var)
 
 			# initialize self.features
