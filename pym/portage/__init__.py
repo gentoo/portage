@@ -508,7 +508,7 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None):
 	if eprefix is None:
 		eprefix = portage.const.EPREFIX
 	settings = config(config_root=config_root, target_root=target_root,
-		env=env, _eprefix=eprefix)
+		env=env, eprefix=eprefix)
 	settings.lock()
 
 	trees._target_eroot = settings['EROOT']
@@ -528,7 +528,7 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None):
 			if v is not None:
 				clean_env[k] = v
 		settings = config(config_root=None, target_root="/",
-			env=clean_env, _eprefix=eprefix)
+			env=clean_env, eprefix=eprefix)
 		settings.lock()
 		trees._running_eroot = settings['EROOT']
 		myroots.append((settings['EROOT'], settings))
