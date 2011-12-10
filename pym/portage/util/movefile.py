@@ -28,27 +28,36 @@ if hasattr(_os, "getxattr"):
 		for attr in _os.listxattr(src):
 			_os.setxattr(dest, attr, _os.getxattr(src, attr))
 else:
-	_devnull = open("/dev/null", "w")
 	try:
-		subprocess.call(["getfattr", "--version"], stdout=_devnull)
-		subprocess.call(["setfattr", "--version"], stdout=_devnull)
-		_has_getfattr_and_setfattr = True
-	except OSError:
-		_has_getfattr_and_setfattr = False
-	_devnull.close()
-	if _has_getfattr_and_setfattr:
+		import xattr
+	except ImportError:
+		xattr = None
+	if xattr is not None:
 		def _copyxattr(src, dest):
-			getfattr_process = subprocess.Popen(["getfattr", "-d", "--absolute-names", src], stdout=subprocess.PIPE)
-			getfattr_process.wait()
-			extended_attributes = getfattr_process.stdout.readlines()
-			getfattr_process.stdout.close()
-			if extended_attributes:
-				extended_attributes[0] = b"# file: " + _unicode_encode(dest) + b"\n"
-				setfattr_process = subprocess.Popen(["setfattr", "--restore=-"], stdin=subprocess.PIPE)
-				setfattr_process.communicate(input=b"".join(extended_attributes))
+			for attr in xattr.list(src):
+				xattr.set(dest, attr, xattr.get(src, attr))
 	else:
-		def _copyxattr(src, dest):
-			pass
+		_devnull = open("/dev/null", "w")
+		try:
+			subprocess.call(["getfattr", "--version"], stdout=_devnull)
+			subprocess.call(["setfattr", "--version"], stdout=_devnull)
+			_has_getfattr_and_setfattr = True
+		except OSError:
+			_has_getfattr_and_setfattr = False
+		_devnull.close()
+		if _has_getfattr_and_setfattr:
+			def _copyxattr(src, dest):
+				getfattr_process = subprocess.Popen(["getfattr", "-d", "--absolute-names", src], stdout=subprocess.PIPE)
+				getfattr_process.wait()
+				extended_attributes = getfattr_process.stdout.readlines()
+				getfattr_process.stdout.close()
+				if extended_attributes:
+					extended_attributes[0] = b"# file: " + _unicode_encode(dest) + b"\n"
+					setfattr_process = subprocess.Popen(["setfattr", "--restore=-"], stdin=subprocess.PIPE)
+					setfattr_process.communicate(input=b"".join(extended_attributes))
+		else:
+			def _copyxattr(src, dest):
+				pass
 
 def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		hardlink_candidates=None, encoding=_encodings['fs']):
