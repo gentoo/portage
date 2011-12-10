@@ -149,8 +149,8 @@ MANIFEST2_IDENTIFIERS    = ("AUX", "MISC", "DIST", "EBUILD")
 EPREFIX=""
 
 # pick up EPREFIX from the environment if set
-if "__PORTAGE_TEST_EPREFIX" in os.environ:
-	EPREFIX = os.environ["__PORTAGE_TEST_EPREFIX"]
+if "PORTAGE_OVERRIDE_EPREFIX" in os.environ:
+	EPREFIX = os.environ["PORTAGE_OVERRIDE_EPREFIX"]
 	if EPREFIX:
 		EPREFIX = os.path.normpath(EPREFIX)
 

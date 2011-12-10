@@ -66,7 +66,7 @@ environ_whitelist += [
 	"REPLACING_VERSIONS", "REPLACED_BY_VERSION",
 	"ROOT", "ROOTPATH", "T", "TMP", "TMPDIR",
 	"USE_EXPAND", "USE_ORDER", "WORKDIR",
-	"XARGS", "__PORTAGE_TEST_EPREFIX",
+	"XARGS", "PORTAGE_OVERRIDE_EPREFIX",
 ]
 
 # user config variables

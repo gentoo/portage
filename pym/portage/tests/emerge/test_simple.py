@@ -300,7 +300,7 @@ pkg_preinst() {
 			pythonpath = PORTAGE_PYM_PATH + pythonpath
 
 		env = {
-			"__PORTAGE_TEST_EPREFIX" : eprefix,
+			"PORTAGE_OVERRIDE_EPREFIX" : eprefix,
 			"CLEAN_DELAY" : "0",
 			"DISTDIR" : distdir,
 			"EMERGE_WARNING_DELAY" : "0",
