@@ -70,6 +70,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		mysettings = portage.settings
 
 	src_bytes = _unicode_encode(src, encoding=encoding, errors='strict')
+	xattr_enabled = "xattr" in mysettings.features
 	selinux_enabled = mysettings.selinux_enabled()
 	if selinux_enabled:
 		selinux = _unicode_module_wrapper(_selinux, encoding=encoding)
@@ -208,12 +209,14 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			try: # For safety copy then move it over.
 				if selinux_enabled:
 					selinux.copyfile(src, dest_tmp)
-					_copyxattr(src_bytes, dest_tmp_bytes)
+					if xattr_enabled:
+						_copyxattr(src_bytes, dest_tmp_bytes)
 					_apply_stat(sstat, dest_tmp_bytes)
 					selinux.rename(dest_tmp, dest)
 				else:
 					shutil.copyfile(src, dest_tmp)
-					_copyxattr(src_bytes, dest_tmp_bytes)
+					if xattr_enabled:
+						_copyxattr(src_bytes, dest_tmp_bytes)
 					_apply_stat(sstat, dest_tmp_bytes)
 					os.rename(dest_tmp, dest)
 				os.unlink(src)
