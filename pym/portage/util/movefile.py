@@ -14,6 +14,7 @@ from portage import bsd_chflags, _encodings, _os_overrides, _selinux, \
 	_unicode_decode, _unicode_encode, _unicode_func_wrapper,\
 	_unicode_module_wrapper
 from portage.const import MOVE_BINARY
+from portage.exception import OperationNotSupported
 from portage.localization import _
 from portage.process import spawn
 from portage.util import writemsg
@@ -26,7 +27,13 @@ if hasattr(_os, "getxattr"):
 	# Python >=3.3 and GNU/Linux
 	def _copyxattr(src, dest):
 		for attr in _os.listxattr(src):
-			_os.setxattr(dest, attr, _os.getxattr(src, attr))
+			try:
+				_os.setxattr(dest, attr, _os.getxattr(src, attr))
+				raise_exception = False
+			except OSError:
+				raise_exception = True
+			if raise_exception:
+				raise OperationNotSupported("Filesystem containing file '%s' does not support extended attributes" % dest)
 else:
 	try:
 		import xattr
@@ -35,7 +42,13 @@ else:
 	if xattr is not None:
 		def _copyxattr(src, dest):
 			for attr in xattr.list(src):
-				xattr.set(dest, attr, xattr.get(src, attr))
+				try:
+					xattr.set(dest, attr, xattr.get(src, attr))
+					raise_exception = False
+				except IOError:
+					raise_exception = True
+				if raise_exception:
+					raise OperationNotSupported("Filesystem containing file '%s' does not support extended attributes" % dest)
 	else:
 		_devnull = open("/dev/null", "w")
 		try:
@@ -53,8 +66,10 @@ else:
 				getfattr_process.stdout.close()
 				if extended_attributes:
 					extended_attributes[0] = b"# file: " + _unicode_encode(dest) + b"\n"
-					setfattr_process = subprocess.Popen(["setfattr", "--restore=-"], stdin=subprocess.PIPE)
+					setfattr_process = subprocess.Popen(["setfattr", "--restore=-"], stdin=subprocess.PIPE, stderr=subprocess.PIPE)
 					setfattr_process.communicate(input=b"".join(extended_attributes))
+					if setfattr_process.returncode != 0:
+						raise OperationNotSupported("Filesystem containing file '%s' does not support extended attributes" % dest)
 		else:
 			def _copyxattr(src, dest):
 				pass
