@@ -169,13 +169,14 @@ def _init(settings):
 	initialize global variables. This allows settings to come from make.conf
 	instead of requiring them to be set in the calling environment.
 	"""
-	if '_portage_grpname' not in _initialized_globals:
+	if '_portage_grpname' not in _initialized_globals and \
+		'_portage_uname' not in _initialized_globals:
+
 		v = settings.get('PORTAGE_GRPNAME')
 		if v is not None:
 			globals()['_portage_grpname'] = v
 			_initialized_globals.add('_portage_grpname')
 
-	if '_portage_uname' not in _initialized_globals:
 		v = settings.get('PORTAGE_USERNAME')
 		if v is not None:
 			globals()['_portage_uname'] = v

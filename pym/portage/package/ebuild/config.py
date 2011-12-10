@@ -789,6 +789,11 @@ class config(object):
 					self[k] = self[k].lower()
 					self.backup_changes(k)
 
+			# The first constructed config object initializes these modules,
+			# and subsequent calls to the _init() functions have no effect.
+			portage.output._init(config_root=self['PORTAGE_CONFIGROOT'])
+			portage.data._init(self)
+
 		if mycpv:
 			self.setcpv(mycpv)
 

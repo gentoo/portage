@@ -2990,10 +2990,6 @@ def load_emerge_config(trees=None):
 	settings = trees[trees._target_eroot]['vartree'].settings
 	mtimedbfile = os.path.join(settings['EROOT'], portage.CACHE_PATH, "mtimedb")
 	mtimedb = portage.MtimeDB(mtimedbfile)
-	portage.output._init(config_root=settings['PORTAGE_CONFIGROOT'])
-	# The portage_uid initialization here must happen before
-	# the _init_dirs() calls below.
-	portage.data._init(settings)
 	QueryCommand._db = trees
 
 	for root, root_trees in trees.items():
