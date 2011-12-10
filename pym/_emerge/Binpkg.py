@@ -9,8 +9,9 @@ from _emerge.CompositeTask import CompositeTask
 from _emerge.BinpkgVerifier import BinpkgVerifier
 from _emerge.EbuildMerge import EbuildMerge
 from _emerge.EbuildBuildDir import EbuildBuildDir
+from _emerge.SpawnProcess import SpawnProcess
 from portage.eapi import eapi_exports_replace_vars
-from portage.util import writemsg
+from portage.util import ensure_dirs, writemsg
 import portage
 from portage import os
 from portage import _encodings
@@ -18,6 +19,7 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 import io
 import logging
+import shutil
 from portage.output import colorize
 
 class Binpkg(CompositeTask):
@@ -25,7 +27,8 @@ class Binpkg(CompositeTask):
 	__slots__ = ("find_blockers",
 		"ldpath_mtimes", "logger", "opts",
 		"pkg", "pkg_count", "prefetcher", "settings", "world_atom") + \
-		("_bintree", "_build_dir", "_ebuild_path", "_fetched_pkg",
+		("_bintree", "_build_dir", "_build_prefix",
+		"_ebuild_path", "_fetched_pkg",
 		"_image_dir", "_infloc", "_pkg_path", "_tree", "_verify")
 
 	def _writemsg_level(self, msg, level=0, noiselevel=0):
@@ -83,9 +86,9 @@ class Binpkg(CompositeTask):
 
 			waiting_msg = ("Fetching '%s' " + \
 				"in the background. " + \
-				"To view fetch progress, run `tail -f " + \
+				"To view fetch progress, run `tail -f %s" + \
 				"/var/log/emerge-fetch.log` in another " + \
-				"terminal.") % prefetcher.pkg_path
+				"terminal.") % (prefetcher.pkg_path, settings["EPREFIX"])
 			msg_prefix = colorize("GOOD", " * ")
 			from textwrap import wrap
 			waiting_msg = "".join("%s%s\n" % (msg_prefix, line) \
@@ -299,10 +302,61 @@ class Binpkg(CompositeTask):
 		self._start_task(extractor, self._extractor_exit)
 
 	def _extractor_exit(self, extractor):
-		if self._final_exit(extractor) != os.EX_OK:
+		if self._default_exit(extractor) != os.EX_OK:
 			self._unlock_builddir()
 			self._writemsg_level("!!! Error Extracting '%s'\n" % \
 				self._pkg_path, noiselevel=-1, level=logging.ERROR)
+			self.wait()
+			return
+
+		try:
+			with io.open(_unicode_encode(os.path.join(self._infloc, "EPREFIX"),
+				encoding=_encodings['fs'], errors='strict'), mode='r',
+				encoding=_encodings['repo.content'], errors='replace') as f:
+				self._build_prefix = f.read().rstrip('\n')
+		except IOError:
+			self._build_prefix = ""
+
+		if self._build_prefix == self.settings["EPREFIX"]:
+			self._current_task = None
+			self.returncode = os.EX_OK
+			self.wait()
+			return
+
+		chpathtool = SpawnProcess(
+			args=[portage._python_interpreter,
+			os.path.join(self.settings["PORTAGE_BIN_PATH"], "chpathtool.py"),
+			self.settings["D"], self._build_prefix, self.settings["EPREFIX"]],
+			background=self.background, env=self.settings.environ(), 
+			scheduler=self.scheduler,
+			logfile=self.settings.get('PORTAGE_LOG_FILE'))
+		self._writemsg_level(">>> Adjusting Prefix to %s\n" % self.settings["EPREFIX"])
+		self._start_task(chpathtool, self._chpathtool_exit)
+
+	def _chpathtool_exit(self, chpathtool):
+		if self._final_exit(chpathtool) != os.EX_OK:
+			self._unlock_builddir()
+			self._writemsg_level("!!! Error Adjusting Prefix to %s" %
+				(self.settings["EPREFIX"],),
+				noiselevel=-1, level=logging.ERROR)
+			self.wait()
+			return
+
+		# We want to install in "our" prefix, not the binary one
+		with io.open(_unicode_encode(os.path.join(self._infloc, "EPREFIX"),
+			encoding=_encodings['fs'], errors='strict'), mode='w',
+			encoding=_encodings['repo.content'], errors='strict') as f:
+			f.write(self.settings["EPREFIX"] + "\n")
+
+		# Move the files to the correct location for merge.
+		image_tmp_dir = os.path.join(
+			self.settings["PORTAGE_BUILDDIR"], "image_tmp")
+		os.rename(os.path.join(self.settings["D"],
+			self._build_prefix.lstrip(os.sep)), image_tmp_dir)
+		shutil.rmtree(self._image_dir)
+		ensure_dirs(os.path.dirname(self.settings["ED"]))
+		os.rename(image_tmp_dir, self.settings["ED"])
+
 		self.wait()
 
 	def _unlock_builddir(self):
