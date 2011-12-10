@@ -78,6 +78,10 @@ class OperationNotPermitted(PortageException):
 	from errno import EPERM as errno
 	"""An operation was not permitted operating system"""
 
+class OperationNotSupported(PortageException):
+	from errno import EOPNOTSUPP as errno
+	"""Operation not supported"""
+
 class PermissionDenied(PortageException):
 	from errno import EACCES as errno
 	"""Permission denied"""
