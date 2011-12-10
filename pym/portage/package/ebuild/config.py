@@ -2284,9 +2284,9 @@ class config(object):
 		# useless with prefix configurations. This brings compatibility with
 		# the prefix branch of portage, which also supports EPREFIX for all
 		# EAPIs (for obvious reasons).
-		if phase == 'depend' or eapi is None or \
+		if phase == 'depend' or \
 			('force-prefix' not in self.features and
-			not eapi_supports_prefix(eapi)):
+			eapi is not None and not eapi_supports_prefix(eapi)):
 			mydict.pop("ED", None)
 			mydict.pop("EPREFIX", None)
 			mydict.pop("EROOT", None)
