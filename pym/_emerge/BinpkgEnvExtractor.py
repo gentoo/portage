@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -38,7 +38,7 @@ class BinpkgEnvExtractor(CompositeTask):
 			background=self.background,
 			env=self.settings.environ(), 
 			scheduler=self.scheduler,
-			logfile=self.settings.get('PORTAGE_LOGFILE'))
+			logfile=self.settings.get('PORTAGE_LOG_FILE'))
 
 		self._start_task(extractor_proc, self._extractor_exit)
 
