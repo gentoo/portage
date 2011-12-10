@@ -143,7 +143,7 @@ class config(object):
 
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
-		eprefix=portage.const.EPREFIX, local_config=True, env=None,
+		eprefix=None, local_config=True, env=None,
 		_unmatched_removal=False):
 		"""
 		@param clone: If provided, init will use deepcopy to copy by value the instance.
@@ -160,7 +160,7 @@ class config(object):
 		@type config_root: String
 		@param target_root: __init__ override of $ROOT env variable.
 		@type target_root: String
-		@param eprefix: set the EPREFIX variable
+		@param eprefix: set the EPREFIX variable (default is portage.const.EPREFIX)
 		@type eprefix: String
 		@param local_config: Enables loading of local config (/etc/portage); used most by repoman to
 		ignore local config (keywording and unmasking)

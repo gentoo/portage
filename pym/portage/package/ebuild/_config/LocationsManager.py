@@ -9,6 +9,7 @@ import collections
 import io
 import warnings
 
+import portage
 from portage import os, eapi_is_supported, _encodings, _unicode_encode
 from portage.const import CUSTOM_PROFILE_PATH, GLOBAL_CONFIG_PATH, \
 	PROFILE_PATH, USER_CONFIG_PATH
@@ -37,9 +38,9 @@ class LocationsManager(object):
 		self.config_root = config_root
 		self.target_root = target_root
 		self._user_config = local_config
-		
+
 		if self.eprefix is None:
-			self.eprefix = ""
+			self.eprefix = portage.const.EPREFIX
 
 		if self.config_root is None:
 			self.config_root = self.eprefix + os.sep
