@@ -422,12 +422,14 @@ class StyleWriter(formatter.DumbWriter):
 def get_term_size():
 	"""
 	Get the number of lines and columns of the tty that is connected to
-	stdout.  Returns a tuple of (lines, columns) or (-1, -1) if an error
+	stdout.  Returns a tuple of (lines, columns) or (0, 0) if an error
 	occurs. The curses module is used if available, otherwise the output of
-	`stty size` is parsed.
+	`stty size` is parsed. The lines and columns values are guaranteed to be
+	greater than or equal to zero, since a negative COLUMNS variable is
+	known to prevent some commands from working (see bug #394091).
 	"""
 	if not sys.stdout.isatty():
-		return -1, -1
+		return (0, 0)
 	try:
 		import curses
 		try:
@@ -442,10 +444,13 @@ def get_term_size():
 		out = out.split()
 		if len(out) == 2:
 			try:
-				return int(out[0]), int(out[1])
+				val = (int(out[0]), int(out[1]))
 			except ValueError:
 				pass
-	return -1, -1
+			else:
+				if val[0] >= 0 and val[1] >= 0:
+					return val
+	return (0, 0)
 
 def set_term_size(lines, columns, fd):
 	"""
