@@ -143,7 +143,8 @@ class config(object):
 
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
-		_eprefix=None, local_config=True, env=None, _unmatched_removal=False):
+		_eprefix=portage.const.EPREFIX, local_config=True, env=None,
+		_unmatched_removal=False):
 		"""
 		@param clone: If provided, init will use deepcopy to copy by value the instance.
 		@type clone: Instance of config class.
