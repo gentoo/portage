@@ -1,5 +1,5 @@
 # data.py -- Calculated/Discovered Data Values
-# Copyright 1998-2010 Gentoo Foundation
+# Copyright 1998-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import os, pwd, grp, platform
@@ -86,7 +86,7 @@ def _get_global(k):
 			secpass = 2
 		#Discover the uid and gid of the portage user/group
 		try:
-			portage_uid = pwd.getpwnam(_get_global('_portage_uname')).pw_uid
+			portage_uid = pwd.getpwnam(_get_global('_portage_username')).pw_uid
 			portage_gid = grp.getgrnam(_get_global('_portage_grpname')).gr_gid
 			if secpass < 1 and portage_gid in os.getgroups():
 				secpass = 1
@@ -125,7 +125,7 @@ def _get_global(k):
 			# grp.getgrall() since it is known to trigger spurious
 			# SIGPIPE problems with nss_ldap.
 			mystatus, myoutput = \
-				portage.subprocess_getstatusoutput("id -G %s" % _portage_uname)
+				portage.subprocess_getstatusoutput("id -G %s" % _portage_username)
 			if mystatus == os.EX_OK:
 				for x in myoutput.split():
 					try:
@@ -137,7 +137,7 @@ def _get_global(k):
 	elif k == '_portage_grpname':
 		env = getattr(portage, 'settings', os.environ)
 		v = env.get('PORTAGE_GRPNAME', 'portage')
-	elif k == '_portage_uname':
+	elif k == '_portage_username':
 		env = getattr(portage, 'settings', os.environ)
 		v = env.get('PORTAGE_USERNAME', 'portage')
 	else:
@@ -159,7 +159,7 @@ class _GlobalProxy(portage.proxy.objectproxy.ObjectProxy):
 		return _get_global(object.__getattribute__(self, '_name'))
 
 for k in ('portage_gid', 'portage_uid', 'secpass', 'userpriv_groups',
-	'_portage_grpname', '_portage_uname'):
+	'_portage_grpname', '_portage_username'):
 	globals()[k] = _GlobalProxy(k)
 del k
 
@@ -170,7 +170,7 @@ def _init(settings):
 	instead of requiring them to be set in the calling environment.
 	"""
 	if '_portage_grpname' not in _initialized_globals and \
-		'_portage_uname' not in _initialized_globals:
+		'_portage_username' not in _initialized_globals:
 
 		v = settings.get('PORTAGE_GRPNAME')
 		if v is not None:
@@ -179,5 +179,5 @@ def _init(settings):
 
 		v = settings.get('PORTAGE_USERNAME')
 		if v is not None:
-			globals()['_portage_uname'] = v
-			_initialized_globals.add('_portage_uname')
+			globals()['_portage_username'] = v
+			_initialized_globals.add('_portage_username')
