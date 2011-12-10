@@ -134,12 +134,24 @@ def _get_global(k):
 						pass
 				v = sorted(set(v))
 
+	# Avoid instantiating portage.settings when the desired
+	# variable is set in os.environ.
 	elif k == '_portage_grpname':
-		env = getattr(portage, 'settings', os.environ)
-		v = env.get('PORTAGE_GRPNAME', 'portage')
+		v = None
+		if 'PORTAGE_GRPNAME' in os.environ:
+			v = os.environ['PORTAGE_GRPNAME']
+		elif hasattr(portage, 'settings'):
+			v = portage.settings.get('PORTAGE_GRPNAME')
+		if v is None:
+			v = 'portage'
 	elif k == '_portage_username':
-		env = getattr(portage, 'settings', os.environ)
-		v = env.get('PORTAGE_USERNAME', 'portage')
+		v = None
+		if 'PORTAGE_USERNAME' in os.environ:
+			v = os.environ['PORTAGE_USERNAME']
+		elif hasattr(portage, 'settings'):
+			v = portage.settings.get('PORTAGE_USERNAME')
+		if v is None:
+			v = 'portage'
 	else:
 		raise AssertionError('unknown name: %s' % k)
 
