@@ -184,12 +184,10 @@ def _init(settings):
 	if '_portage_grpname' not in _initialized_globals and \
 		'_portage_username' not in _initialized_globals:
 
-		v = settings.get('PORTAGE_GRPNAME')
-		if v is not None:
-			globals()['_portage_grpname'] = v
-			_initialized_globals.add('_portage_grpname')
+		v = settings.get('PORTAGE_GRPNAME', 'portage')
+		globals()['_portage_grpname'] = v
+		_initialized_globals.add('_portage_grpname')
 
-		v = settings.get('PORTAGE_USERNAME')
-		if v is not None:
-			globals()['_portage_username'] = v
-			_initialized_globals.add('_portage_username')
+		v = settings.get('PORTAGE_USERNAME', 'portage')
+		globals()['_portage_username'] = v
+		_initialized_globals.add('_portage_username')
