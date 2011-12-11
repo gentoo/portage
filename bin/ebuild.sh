@@ -40,15 +40,6 @@ else
 	unset x
 fi
 
-if [[ $PORTAGE_SANDBOX_COMPAT_LEVEL -lt 22 ]] ; then
-	# Ensure that /dev/std* streams have appropriate sandbox permission for
-	# bug #288863. This can be removed after sandbox is fixed and portage
-	# depends on the fixed version (sandbox-2.2 has the fix but it is
-	# currently unstable).
-	export SANDBOX_WRITE="${SANDBOX_WRITE:+${SANDBOX_WRITE}:}/dev/stdout:/dev/stderr"
-	export SANDBOX_READ="${SANDBOX_READ:+${SANDBOX_READ}:}/dev/stdin"
-fi
-
 # Don't use sandbox's BASH_ENV for new shells because it does
 # 'source /etc/profile' which can interfere with the build
 # environment by modifying our PATH.
