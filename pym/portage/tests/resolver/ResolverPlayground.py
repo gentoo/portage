@@ -483,6 +483,10 @@ class ResolverPlayground(object):
 			'PORTAGE_TMPDIR'       : os.path.join(self.eroot, 'var/tmp'),
 		}
 
+		if os.environ.get("SANDBOX_ON") == "1":
+			# avoid problems from nested sandbox instances
+			env["FEATURES"] = "-sandbox"
+
 		# Pass along PORTAGE_USERNAME and PORTAGE_GRPNAME since they
 		# need to be inherited by ebuild subprocesses.
 		if 'PORTAGE_USERNAME' in os.environ:
