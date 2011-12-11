@@ -267,7 +267,8 @@ pkg_preinst() {
 		user_config_dir = os.path.join(os.sep, eprefix, USER_CONFIG_PATH)
 
 		features = []
-		if not portage.process.sandbox_capable:
+		if not portage.process.sandbox_capable or \
+			os.environ.get("SANDBOX_ON") == "1":
 			features.append("-sandbox")
 
 		# Since egencache ignores settings from the calling environment,

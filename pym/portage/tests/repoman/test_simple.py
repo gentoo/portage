@@ -196,6 +196,10 @@ class SimpleRepomanTestCase(TestCase):
 			"PYTHONPATH" : pythonpath,
 		}
 
+		if os.environ.get("SANDBOX_ON") == "1":
+			# avoid problems from nested sandbox instances
+			env["FEATURES"] = "-sandbox"
+
 		dirs = [homedir, license_dir, profiles_dir, distdir]
 		try:
 			for d in dirs:
