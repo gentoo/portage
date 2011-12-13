@@ -92,7 +92,19 @@ class AbstractEbuildProcess(SpawnProcess):
 			else:
 				self.settings.pop('PORTAGE_EBUILD_EXIT_FILE', None)
 
-		SpawnProcess._start(self)
+		if self.fd_pipes is None:
+			self.fd_pipes = {}
+		null_fd = None
+		if 0 not in self.fd_pipes and \
+			"interactive" not in self.settings.get("PROPERTIES", "").split():
+			null_fd = os.open('/dev/null', os.O_RDONLY)
+			self.fd_pipes[0] = null_fd
+
+		try:
+			SpawnProcess._start(self)
+		finally:
+			if null_fd is not None:
+				os.close(null_fd)
 
 	def _init_ipc_fifos(self):
 
