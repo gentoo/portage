@@ -21,6 +21,7 @@ class AbstractEbuildProcess(SpawnProcess):
 	__slots__ = ('phase', 'settings',) + \
 		('_build_dir', '_ipc_daemon', '_exit_command',)
 	_phases_without_builddir = ('clean', 'cleanrm', 'depend', 'help',)
+	_phases_interactive_whitelist = ('config',)
 
 	# Number of milliseconds to allow natural exit of the ebuild
 	# process after it has called the exit command via IPC. It
@@ -96,6 +97,7 @@ class AbstractEbuildProcess(SpawnProcess):
 			self.fd_pipes = {}
 		null_fd = None
 		if 0 not in self.fd_pipes and \
+			self.phase not in self._phases_interactive_whitelist and \
 			"interactive" not in self.settings.get("PROPERTIES", "").split():
 			null_fd = os.open('/dev/null', os.O_RDONLY)
 			self.fd_pipes[0] = null_fd
