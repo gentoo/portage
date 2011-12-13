@@ -531,7 +531,12 @@ class RepoConfigLoader(object):
 
 			eclass_locations = []
 			eclass_locations.extend(master_repo.location for master_repo in repo.masters)
-			eclass_locations.append(repo.location)
+			# Only append the current repo to eclass_locations if it's not
+			# there already. This allows masters to have more control over
+			# eclass override order, which may be useful for scenarios in
+			# which there is a plan to migrate eclasses to a master repo.
+			if repo.location not in eclass_locations:
+				eclass_locations.append(repo.location)
 
 			if repo.eclass_overrides:
 				for other_repo_name in repo.eclass_overrides:
