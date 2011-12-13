@@ -122,6 +122,9 @@ class config(object):
 	virtuals ...etc you look in here.
 	"""
 
+	_constant_keys = frozenset(['PORTAGE_BIN_PATH', 'PORTAGE_GID',
+		'PORTAGE_PYM_PATH'])
+
 	_setcpv_aux_keys = ('DEFINED_PHASES', 'DEPEND', 'EAPI',
 		'INHERITED', 'IUSE', 'REQUIRED_USE', 'KEYWORDS', 'LICENSE', 'PDEPEND',
 		'PROPERTIES', 'PROVIDE', 'RDEPEND', 'SLOT',
@@ -2126,14 +2129,16 @@ class config(object):
 
 	def _getitem(self, mykey):
 
-		# These ones point to temporary values when
-		# portage plans to update itself.
-		if mykey == "PORTAGE_BIN_PATH":
-			return portage._bin_path
-		elif mykey == "PORTAGE_PYM_PATH":
-			return portage._pym_path
-		elif mykey == "PORTAGE_GID":
-			return _unicode_decode(str(portage_gid))
+		if mykey in self._constant_keys:
+			# These two point to temporary values when
+			# portage plans to update itself.
+			if mykey == "PORTAGE_BIN_PATH":
+				return portage._bin_path
+			elif mykey == "PORTAGE_PYM_PATH":
+				return portage._pym_path
+
+			elif mykey == "PORTAGE_GID":
+				return _unicode_decode(str(portage_gid))
 
 		for d in self.lookuplist:
 			try:
@@ -2186,9 +2191,7 @@ class config(object):
 
 	def __iter__(self):
 		keys = set()
-		keys.add("PORTAGE_BIN_PATH")
-		keys.add("PORTAGE_PYM_PATH")
-		keys.add("PORTAGE_GID")
+		keys.update(self._constant_keys)
 		for d in self.lookuplist:
 			keys.update(d)
 		return iter(keys)
