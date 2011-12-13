@@ -15,14 +15,14 @@ class FifoIpcDaemon(AbstractPollTask):
 
 	def _start(self):
 		self._files = self._files_dict()
-		input_fd = os.open(self.input_fifo, os.O_RDONLY|os.O_NONBLOCK)
 
 		# File streams are in unbuffered mode since we do atomic
 		# read and write of whole pickles.
-		self._files.pipe_in = os.fdopen(input_fd, 'rb', 0)
+		self._files.pipe_in = \
+			os.open(self.input_fifo, os.O_RDONLY|os.O_NONBLOCK)
 
 		self._reg_id = self.scheduler.register(
-			self._files.pipe_in.fileno(),
+			self._files.pipe_in,
 			self._registered_events, self._input_handler)
 
 		self._registered = True
@@ -32,12 +32,12 @@ class FifoIpcDaemon(AbstractPollTask):
 		Re-open the input stream, in order to suppress
 		POLLHUP events (bug #339976).
 		"""
-		self._files.pipe_in.close()
-		input_fd = os.open(self.input_fifo, os.O_RDONLY|os.O_NONBLOCK)
-		self._files.pipe_in = os.fdopen(input_fd, 'rb', 0)
 		self.scheduler.unregister(self._reg_id)
+		os.close(self._files.pipe_in)
+		self._files.pipe_in = \
+			os.open(self.input_fifo, os.O_RDONLY|os.O_NONBLOCK)
 		self._reg_id = self.scheduler.register(
-			self._files.pipe_in.fileno(),
+			self._files.pipe_in,
 			self._registered_events, self._input_handler)
 
 	def isAlive(self):
@@ -77,5 +77,5 @@ class FifoIpcDaemon(AbstractPollTask):
 
 		if self._files is not None:
 			for f in self._files.values():
-				f.close()
+				os.close(f)
 			self._files = None
