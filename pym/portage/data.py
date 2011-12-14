@@ -90,10 +90,6 @@ def _get_global(k):
 			secpass = 2
 		#Discover the uid and gid of the portage user/group
 		try:
-<<<<<<< HEAD
-=======
-			portage_uid = pwd.getpwnam(_get_global('_portage_username')).pw_uid
->>>>>>> overlays-gentoo-org/master
 			portage_gid = grp.getgrnam(_get_global('_portage_grpname')).gr_gid
 		except KeyError:
 			# PREFIX LOCAL: some sysadmins are insane, bug #344307
@@ -103,7 +99,7 @@ def _get_global(k):
 				portage_gid = None
 			# END PREFIX LOCAL
 		try:
-			portage_uid = pwd.getpwnam(_get_global('_portage_uname')).pw_uid
+			portage_uid = pwd.getpwnam(_get_global('_portage_username')).pw_uid
 			if secpass < 1 and portage_gid in os.getgroups():
 				secpass = 1
 		except KeyError:
