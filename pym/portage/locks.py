@@ -316,6 +316,7 @@ def hardlink_lockfile(lockfilename, max_wait=DeprecationWarning,
 	global _quiet
 	out = None
 	displayed_waiting_msg = False
+	preexisting = os.path.exists(lockfilename)
 	myhardlock = hardlock_name(lockfilename)
 
 	# myhardlock must not exist prior to our link() call, and we can
@@ -350,8 +351,11 @@ def hardlink_lockfile(lockfilename, max_wait=DeprecationWarning,
 			myfd_st = None
 			try:
 				myfd_st = os.fstat(myfd)
-				if myfd_st.st_gid != portage_gid:
-					os.fchown(myfd, -1, portage_gid)
+				if not preexisting:
+					# Don't chown the file if it is preexisting, since we
+					# want to preserve existing permissions in that case.
+					if myfd_st.st_gid != portage_gid:
+						os.fchown(myfd, -1, portage_gid)
 			except OSError as e:
 				if e.errno not in (errno.ENOENT, errno.ESTALE):
 					writemsg("%s: fchown('%s', -1, %d)\n" % \
