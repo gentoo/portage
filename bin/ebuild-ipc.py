@@ -229,7 +229,7 @@ class EbuildIpc(object):
 		pid = os.fork()
 
 		if pid == 0:
-			retval = 1
+			retval = 2
 			try:
 				os.close(pr)
 
@@ -267,7 +267,7 @@ class EbuildIpc(object):
 		pid = os.fork()
 
 		if pid == 0:
-			retval = 1
+			retval = 2
 			try:
 				os.close(pr)
 				retval = self._receive_reply(input_fd)
