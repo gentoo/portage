@@ -51,14 +51,24 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 	if not mypath:
 		raise InvalidData(_("Empty path given"))
 
+	# Support for file object or integer file descriptor parameters is
+	# deprecated due to ambiguity in whether or not it's safe to close
+	# the file descriptor, making it prone to "Bad file descriptor" errors
+	# or file descriptor leaks.
 	if isinstance(mypath, basestring) and mypath[-1] == '/':
 		mypath = mypath[:-1]
 
 	lockfilename_path = mypath
 	if hasattr(mypath, 'fileno'):
+		warnings.warn("portage.locks.lockfile() support for "
+			"file object parameters is deprecated. Use a file path instead.",
+			DeprecationWarning, stacklevel=2)
 		lockfilename_path = getattr(mypath, 'name', None)
 		mypath = mypath.fileno()
 	if isinstance(mypath, int):
+		warnings.warn("portage.locks.lockfile() support for integer file "
+			"descriptor parameters is deprecated. Use a file path instead.",
+			DeprecationWarning, stacklevel=2)
 		lockfilename    = mypath
 		wantnewlockfile = 0
 		unlinkfile      = 0
@@ -157,7 +167,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 			if not isinstance(lockfilename, int):
 				# If a file object was passed in, it's not safe
 				# to close the file descriptor because it may
-				# still be in use (for example, see emergelog).
+				# still be in use.
 				os.close(myfd)
 			lockfilename_path = _unicode_decode(lockfilename_path,
 				encoding=_encodings['fs'], errors='strict')
