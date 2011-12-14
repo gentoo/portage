@@ -10,7 +10,6 @@ from itertools import chain
 import logging
 import os as _os
 import re
-import shutil
 import signal
 import stat
 import sys
@@ -31,7 +30,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage import auxdbkeys, bsd_chflags, \
-	eapi_is_supported, merge, os, selinux, \
+	eapi_is_supported, merge, os, selinux, shutil, \
 	unmerge, _encodings, _parse_eapi_ebuild_head, _os_merge, \
 	_shell_quote, _unicode_decode, _unicode_encode
 from portage.const import EBUILD_SH_ENV_FILE, EBUILD_SH_ENV_DIR, \
@@ -558,10 +557,7 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 			os.path.dirname(os.path.dirname(pkgdir)))
 	else:
 		repo_config = None
-		# FEATURES=noauto only makes sense for porttree, and we don't want
-		# it to trigger redundant sourcing of the ebuild for api consumers
-		# that are using binary packages
-		mysettings.features.discard("noauto")
+
 	mf = None
 	if "strict" in features and \
 		"digest" not in features and \
@@ -735,6 +731,13 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 			rval = _validate_deps(mysettings, myroot, mydo, mydbapi)
 			if rval != os.EX_OK:
 				return rval
+
+		else:
+			# FEATURES=noauto only makes sense for porttree, and we don't want
+			# it to trigger redundant sourcing of the ebuild for API consumers
+			# that are using binary packages
+			if "noauto" in mysettings.features:
+				mysettings.features.discard("noauto")
 
 		# The info phase is special because it uses mkdtemp so and
 		# user (not necessarily in the portage group) can run it.

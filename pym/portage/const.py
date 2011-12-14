@@ -190,7 +190,7 @@ MANIFEST2_IDENTIFIERS    = ("AUX", "MISC", "DIST", "EBUILD")
 # constant should be minimal, in favor of access via the EPREFIX setting of
 # a config instance (since it's possible to contruct a config instance with
 # a different EPREFIX). Therefore, the EPREFIX constant should *NOT* be used
-# in the definition of any other contstants within this file.
+# in the definition of any other constants within this file.
 # PREFIX LOCAL: rely on EPREFIX from autotools
 #EPREFIX=""
 # END PREFIX LOCAL
@@ -211,7 +211,7 @@ _ENABLE_DYN_LINK_MAP    = True
 _ENABLE_PRESERVE_LIBS   = True
 _ENABLE_REPO_NAME_WARN  = True
 _ENABLE_SET_CONFIG      = True
-_SANDBOX_COMPAT_LEVEL   = "22"
+_ENABLE_XATTR           = True
 
 
 # The definitions above will differ between branches, so it's useful to have
@@ -224,3 +224,8 @@ if not _ENABLE_PRESERVE_LIBS:
 
 if not _ENABLE_SET_CONFIG:
 	WORLD_SETS_FILE = '/dev/null'
+
+if not _ENABLE_XATTR:
+	SUPPORTED_FEATURES = set(SUPPORTED_FEATURES)
+	SUPPORTED_FEATURES.remove("xattr")
+	SUPPORTED_FEATURES = frozenset(SUPPORTED_FEATURES)

@@ -842,10 +842,8 @@ def egencache_main(args):
 	if options.portdir is not None:
 		env['PORTDIR'] = options.portdir
 
-	eprefix = EPREFIX
-
 	settings = portage.config(config_root=config_root,
-		local_config=False, env=env, eprefix=eprefix)
+		local_config=False, env=env)
 
 	default_opts = None
 	if not options.ignore_default_opts:
@@ -858,7 +856,7 @@ def egencache_main(args):
 			env['PORTAGE_DEPCACHEDIR'] = options.cache_dir
 
 		settings = portage.config(config_root=config_root,
-			local_config=False, env=env, eprefix=eprefix)
+			local_config=False, env=env)
 
 	if not options.update and not options.update_use_local_desc \
 			and not options.update_changelogs:

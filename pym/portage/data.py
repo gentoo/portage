@@ -1,5 +1,5 @@
 # data.py -- Calculated/Discovered Data Values
-# Copyright 1998-2010 Gentoo Foundation
+# Copyright 1998-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import os, pwd, grp, platform
@@ -90,6 +90,10 @@ def _get_global(k):
 			secpass = 2
 		#Discover the uid and gid of the portage user/group
 		try:
+<<<<<<< HEAD
+=======
+			portage_uid = pwd.getpwnam(_get_global('_portage_username')).pw_uid
+>>>>>>> overlays-gentoo-org/master
 			portage_gid = grp.getgrnam(_get_global('_portage_grpname')).gr_gid
 		except KeyError:
 			# PREFIX LOCAL: some sysadmins are insane, bug #344307
@@ -140,7 +144,7 @@ def _get_global(k):
 			# grp.getgrall() since it is known to trigger spurious
 			# SIGPIPE problems with nss_ldap.
 			mystatus, myoutput = \
-				portage.subprocess_getstatusoutput("id -G %s" % _portage_uname)
+				portage.subprocess_getstatusoutput("id -G %s" % _portage_username)
 			if mystatus == os.EX_OK:
 				for x in myoutput.split():
 					try:
@@ -149,16 +153,28 @@ def _get_global(k):
 						pass
 				v = sorted(set(v))
 
+	# Avoid instantiating portage.settings when the desired
+	# variable is set in os.environ.
 	elif k == '_portage_grpname':
-		env = getattr(portage, 'settings', os.environ)
-		# PREFIX LOCAL: use var iso hardwired 'portage'
-		v = env.get('PORTAGE_GRPNAME', PORTAGE_GROUPNAME)
-		# END PREFIX LOCAL
-	elif k == '_portage_uname':
-		env = getattr(portage, 'settings', os.environ)
-		# PREFIX LOCAL: use var iso hardwired 'portage'
-		v = env.get('PORTAGE_USERNAME', PORTAGE_USERNAME)
-		# END PREFIX LOCAL
+		v = None
+		if 'PORTAGE_GRPNAME' in os.environ:
+			v = os.environ['PORTAGE_GRPNAME']
+		elif hasattr(portage, 'settings'):
+			v = portage.settings.get('PORTAGE_GRPNAME')
+		if v is None:
+			# PREFIX LOCAL: use var iso hardwired 'portage'
+			v = PORTAGE_GROUPNAME
+			# END PREFIX LOCAL
+	elif k == '_portage_username':
+		v = None
+		if 'PORTAGE_USERNAME' in os.environ:
+			v = os.environ['PORTAGE_USERNAME']
+		elif hasattr(portage, 'settings'):
+			v = portage.settings.get('PORTAGE_USERNAME')
+		if v is None:
+			# PREFIX LOCAL: use var iso hardwired 'portage'
+			v = PORTAGE_USERNAME
+			# END PREFIX LOCAL
 	else:
 		raise AssertionError('unknown name: %s' % k)
 
@@ -178,7 +194,7 @@ class _GlobalProxy(portage.proxy.objectproxy.ObjectProxy):
 		return _get_global(object.__getattribute__(self, '_name'))
 
 for k in ('portage_gid', 'portage_uid', 'secpass', 'userpriv_groups',
-	'_portage_grpname', '_portage_uname'):
+	'_portage_grpname', '_portage_username'):
 	globals()[k] = _GlobalProxy(k)
 del k
 
@@ -188,14 +204,17 @@ def _init(settings):
 	initialize global variables. This allows settings to come from make.conf
 	instead of requiring them to be set in the calling environment.
 	"""
-	if '_portage_grpname' not in _initialized_globals:
-		v = settings.get('PORTAGE_GRPNAME')
-		if v is not None:
-			globals()['_portage_grpname'] = v
-			_initialized_globals.add('_portage_grpname')
+	if '_portage_grpname' not in _initialized_globals and \
+		'_portage_username' not in _initialized_globals:
 
-	if '_portage_uname' not in _initialized_globals:
-		v = settings.get('PORTAGE_USERNAME')
-		if v is not None:
-			globals()['_portage_uname'] = v
-			_initialized_globals.add('_portage_uname')
+		# PREFIX LOCAL: use var iso hardwired 'portage'
+		v = settings.get('PORTAGE_GRPNAME', PORTAGE_GROUPNAME)
+		# END PREFIX LOCAL
+		globals()['_portage_grpname'] = v
+		_initialized_globals.add('_portage_grpname')
+
+		# PREFIX LOCAL: use var iso hardwired 'portage'
+		v = settings.get('PORTAGE_USERNAME', PORTAGE_USERNAME)
+		# END PREFIX LOCAL
+		globals()['_portage_username'] = v
+		_initialized_globals.add('_portage_username')

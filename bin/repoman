@@ -97,8 +97,7 @@ os.umask(0o22)
 # behave incrementally.
 repoman_incrementals = tuple(x for x in \
 	portage.const.INCREMENTALS if x != 'ACCEPT_KEYWORDS')
-eprefix = portage.const.EPREFIX
-repoman_settings = portage.config(local_config=False, eprefix=eprefix)
+repoman_settings = portage.config(local_config=False)
 repoman_settings.lock()
 
 if repoman_settings.get("NOCOLOR", "").lower() in ("yes", "true") or \
@@ -569,13 +568,13 @@ if options.mode == 'commit' and not options.pretend and not vcs:
 	options.pretend = True
 
 # Ensure that PORTDIR_OVERLAY contains the repository corresponding to $PWD.
-repoman_settings = portage.config(local_config=False, eprefix=eprefix)
+repoman_settings = portage.config(local_config=False)
 repoman_settings['PORTDIR_OVERLAY'] = "%s %s" % \
 	(repoman_settings.get('PORTDIR_OVERLAY', ''),
 	portage._shell_quote(portdir_overlay))
 # We have to call the config constructor again so
 # that config.repositories is initialized correctly.
-repoman_settings = portage.config(local_config=False, eprefix=eprefix,
+repoman_settings = portage.config(local_config=False,
 	env=dict(os.environ, PORTDIR_OVERLAY=repoman_settings['PORTDIR_OVERLAY']))
 
 root = repoman_settings['EROOT']
@@ -588,8 +587,7 @@ portdb = trees[root]['porttree'].dbapi
 # that are specified in layout.conf.
 repodir = os.path.realpath(portdir_overlay)
 repo_config = repoman_settings.repositories.get_repo_for_location(repodir)
-eclass_db = portdb.repositories.get_repo_for_location(repodir).eclass_db
-portdb.porttrees = list(eclass_db.porttrees)
+portdb.porttrees = list(repo_config.eclass_db.porttrees)
 portdir = portdb.porttrees[0]
 
 # In order to disable manifest signatures, repos may set
@@ -677,7 +675,7 @@ logging.info('PORTDIR_OVERLAY = "%s"' % env['PORTDIR_OVERLAY'])
 env['FEATURES'] = env.get('FEATURES', '') + ' -unknown-features-warn'
 
 categories = []
-for path in eclass_db.porttrees:
+for path in repo_config.eclass_db.porttrees:
 	categories.extend(portage.util.grabfile(
 		os.path.join(path, 'profiles', 'categories')))
 repoman_settings.categories = frozenset(
@@ -2009,7 +2007,7 @@ for x in effective_scanlist:
 						config_incrementals=repoman_incrementals,
 						local_config=False,
 						_unmatched_removal=options.unmatched_removal,
-						env=env, eprefix=eprefix)
+						env=env)
 					dep_settings.categories = repoman_settings.categories
 					if options.without_mask:
 						dep_settings._mask_manager = \

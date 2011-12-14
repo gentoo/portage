@@ -2,11 +2,11 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from itertools import permutations
-import shutil
 import sys
 import tempfile
 import portage
 from portage import os
+from portage import shutil
 from portage.const import (GLOBAL_CONFIG_PATH, PORTAGE_BASE_PATH,
 	USER_CONFIG_PATH)
 from portage.dbapi.vartree import vartree
@@ -482,6 +482,10 @@ class ResolverPlayground(object):
 			"PORTDIR_OVERLAY": " ".join(portdir_overlay),
 			'PORTAGE_TMPDIR'       : os.path.join(self.eroot, 'var/tmp'),
 		}
+
+		if os.environ.get("SANDBOX_ON") == "1":
+			# avoid problems from nested sandbox instances
+			env["FEATURES"] = "-sandbox"
 
 		# Pass along PORTAGE_USERNAME and PORTAGE_GRPNAME since they
 		# need to be inherited by ebuild subprocesses.

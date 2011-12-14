@@ -13,7 +13,7 @@ import portage
 from portage import bsd_chflags, _encodings, _os_overrides, _selinux, \
 	_unicode_decode, _unicode_encode, _unicode_func_wrapper,\
 	_unicode_module_wrapper
-from portage.const import MOVE_BINARY
+from portage.const import MOVE_BINARY, _ENABLE_XATTR
 from portage.exception import OperationNotSupported
 from portage.localization import _
 from portage.process import spawn
@@ -50,7 +50,7 @@ else:
 				if raise_exception:
 					raise OperationNotSupported("Filesystem containing file '%s' does not support extended attributes" % dest)
 	else:
-		_devnull = open("/dev/null", "w")
+		_devnull = open("/dev/null", "wb")
 		try:
 			subprocess.call(["getfattr", "--version"], stdout=_devnull)
 			subprocess.call(["setfattr", "--version"], stdout=_devnull)
@@ -85,7 +85,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		mysettings = portage.settings
 
 	src_bytes = _unicode_encode(src, encoding=encoding, errors='strict')
-	xattr_enabled = "xattr" in mysettings.features
+	xattr_enabled = _ENABLE_XATTR and "xattr" in mysettings.features
 	selinux_enabled = mysettings.selinux_enabled()
 	if selinux_enabled:
 		selinux = _unicode_module_wrapper(_selinux, encoding=encoding)

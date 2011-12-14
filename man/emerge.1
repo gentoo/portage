@@ -609,9 +609,7 @@ log will be automatically displayed on stdout. If there are multiple
 build failures (due to options like \-\-keep\-going or \-\-jobs),
 then the content of the log files will not be displayed, and instead
 the paths of the log files will be displayed together with the
-corresponding die messages. This option is enabled by default. In
-order to disable \-\-quiet\-build by default, set \-\-quiet\-build=n
-in the \fBEMERGE_DEFAULT_OPTS\fR variable in \fBmake.conf\fR(5).
+corresponding die messages.
 Note that interactive packages currently force all build output to
 be displayed on stdout. This issue can be temporarily avoided
 by specifying \fI\-\-accept\-properties=\-interactive\fR.

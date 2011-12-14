@@ -27,7 +27,6 @@ from portage.const import CACHE_PATH, \
 	MODULES_FILE_PATH, \
 	PRIVATE_PATH, PROFILE_PATH, USER_CONFIG_PATH, \
 	USER_VIRTUALS_FILE
-from portage.const import _SANDBOX_COMPAT_LEVEL
 from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
 from portage.dbapi.vartree import vartree
@@ -123,6 +122,9 @@ class config(object):
 	virtuals ...etc you look in here.
 	"""
 
+	_constant_keys = frozenset(['PORTAGE_BIN_PATH', 'PORTAGE_GID',
+		'PORTAGE_PYM_PATH'])
+
 	_setcpv_aux_keys = ('DEFINED_PHASES', 'DEPEND', 'EAPI',
 		'INHERITED', 'IUSE', 'REQUIRED_USE', 'KEYWORDS', 'LICENSE', 'PDEPEND',
 		'PROPERTIES', 'PROVIDE', 'RDEPEND', 'SLOT',
@@ -143,7 +145,7 @@ class config(object):
 
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
-		eprefix=portage.const.EPREFIX, local_config=True, env=None,
+		eprefix=None, local_config=True, env=None,
 		_unmatched_removal=False):
 		"""
 		@param clone: If provided, init will use deepcopy to copy by value the instance.
@@ -160,7 +162,7 @@ class config(object):
 		@type config_root: String
 		@param target_root: __init__ override of $ROOT env variable.
 		@type target_root: String
-		@param eprefix: set the EPREFIX variable
+		@param eprefix: set the EPREFIX variable (default is portage.const.EPREFIX)
 		@type eprefix: String
 		@param local_config: Enables loading of local config (/etc/portage); used most by repoman to
 		ignore local config (keywording and unmasking)
@@ -512,9 +514,6 @@ class config(object):
 			self["EROOT"] = eroot
 			self.backup_changes("EROOT")
 
-			self["PORTAGE_SANDBOX_COMPAT_LEVEL"] = _SANDBOX_COMPAT_LEVEL
-			self.backup_changes("PORTAGE_SANDBOX_COMPAT_LEVEL")
-
 			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
 			self._penvdict = portage.dep.ExtendedAtomDict(dict)
 
@@ -790,10 +789,15 @@ class config(object):
 
 			self._validate_commands()
 
-		for k in self._case_insensitive_vars:
-			if k in self:
-				self[k] = self[k].lower()
-				self.backup_changes(k)
+			for k in self._case_insensitive_vars:
+				if k in self:
+					self[k] = self[k].lower()
+					self.backup_changes(k)
+
+			# The first constructed config object initializes these modules,
+			# and subsequent calls to the _init() functions have no effect.
+			portage.output._init(config_root=self['PORTAGE_CONFIGROOT'])
+			portage.data._init(self)
 
 		if mycpv:
 			self.setcpv(mycpv)
@@ -2143,14 +2147,16 @@ class config(object):
 
 	def _getitem(self, mykey):
 
-		# These ones point to temporary values when
-		# portage plans to update itself.
-		if mykey == "PORTAGE_BIN_PATH":
-			return portage._bin_path
-		elif mykey == "PORTAGE_PYM_PATH":
-			return portage._pym_path
-		elif mykey == "PORTAGE_GID":
-			return _unicode_decode(str(portage_gid))
+		if mykey in self._constant_keys:
+			# These two point to temporary values when
+			# portage plans to update itself.
+			if mykey == "PORTAGE_BIN_PATH":
+				return portage._bin_path
+			elif mykey == "PORTAGE_PYM_PATH":
+				return portage._pym_path
+
+			elif mykey == "PORTAGE_GID":
+				return _unicode_decode(str(portage_gid))
 
 		for d in self.lookuplist:
 			try:
@@ -2203,9 +2209,7 @@ class config(object):
 
 	def __iter__(self):
 		keys = set()
-		keys.add("PORTAGE_BIN_PATH")
-		keys.add("PORTAGE_PYM_PATH")
-		keys.add("PORTAGE_GID")
+		keys.update(self._constant_keys)
 		for d in self.lookuplist:
 			keys.update(d)
 		return iter(keys)
@@ -2302,9 +2306,9 @@ class config(object):
 		# useless with prefix configurations. This brings compatibility with
 		# the prefix branch of portage, which also supports EPREFIX for all
 		# EAPIs (for obvious reasons).
-		if phase == 'depend' or eapi is None or \
+		if phase == 'depend' or \
 			('force-prefix' not in self.features and
-			not eapi_supports_prefix(eapi)):
+			eapi is not None and not eapi_supports_prefix(eapi)):
 			mydict.pop("ED", None)
 			mydict.pop("EPREFIX", None)
 			mydict.pop("EROOT", None)

@@ -34,10 +34,10 @@ import sys
 import time
 import textwrap
 import difflib
-import shutil
 from tempfile import mkstemp
 
 from portage import os
+from portage import shutil
 from portage import subprocess_getstatusoutput
 from portage import _encodings
 from portage import _unicode_decode

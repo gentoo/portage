@@ -1,10 +1,10 @@
 # Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import shutil
 import tempfile
 
 from portage import os
+from portage import shutil
 from portage.const import EBUILD_PHASES
 from portage.elog import elog_process
 from portage.package.ebuild.config import config

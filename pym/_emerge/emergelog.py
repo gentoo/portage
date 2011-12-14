@@ -50,15 +50,12 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 			portage.util.apply_secpass_permissions(file_path,
 				uid=portage.portage_uid, gid=portage.portage_gid,
 				mode=0o660)
-		mylock = None
+		mylock = portage.locks.lockfile(file_path)
 		try:
-			mylock = portage.locks.lockfile(mylogfile)
 			mylogfile.write(_log_fmt % (time.time(), mystr))
-			mylogfile.flush()
-		finally:
-			if mylock:
-				portage.locks.unlockfile(mylock)
 			mylogfile.close()
+		finally:
+			portage.locks.unlockfile(mylock)
 	except (IOError,OSError,portage.exception.PortageException) as e:
 		if secpass >= 1:
 			print("emergelog():",e, file=sys.stderr)

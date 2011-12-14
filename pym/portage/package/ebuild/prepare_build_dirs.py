@@ -5,12 +5,11 @@ __all__ = ['prepare_build_dirs']
 
 import errno
 import gzip
-import shutil
 import stat
 import time
 
 import portage
-from portage import os, _encodings, _unicode_encode, _unicode_decode
+from portage import os, shutil, _encodings, _unicode_encode, _unicode_decode
 from portage.data import portage_gid, portage_uid, secpass
 from portage.exception import DirectoryNotFound, FileNotFound, \
 	OperationNotPermitted, PermissionDenied, PortageException

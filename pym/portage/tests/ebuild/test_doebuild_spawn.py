@@ -26,6 +26,11 @@ class DoebuildSpawnTestCase(TestCase):
 		playground = ResolverPlayground()
 		try:
 			settings = config(clone=playground.settings)
+			if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
+				settings["__PORTAGE_TEST_HARDLINK_LOCKS"] = \
+					os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"]
+				settings.backup_changes("__PORTAGE_TEST_HARDLINK_LOCKS")
+
 			cpv = 'sys-apps/portage-2.1'
 			metadata = {
 				'EAPI'      : '2',

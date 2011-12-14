@@ -1,5 +1,5 @@
 # portage: Lock management code
-# Copyright 2004-2010 Gentoo Foundation
+# Copyright 2004-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
@@ -9,13 +9,12 @@ __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
 import errno
 import fcntl
 import platform
-import stat
 import sys
 import time
+import warnings
 
 import portage
-from portage import os
-from portage.const import PORTAGE_BIN_PATH
+from portage import os, _encodings, _unicode_decode
 from portage.exception import DirectoryNotFound, FileNotFound, \
 	InvalidData, TryAgain, OperationNotPermitted, PermissionDenied
 from portage.data import portage_gid
@@ -26,6 +25,7 @@ if sys.hexversion >= 0x3000000:
 	basestring = str
 
 HARDLINK_FD = -2
+_HARDLINK_POLL_LATENCY = 3 # seconds
 _default_lock_fn = fcntl.lockf
 
 if platform.python_implementation() == 'PyPy':
@@ -51,19 +51,31 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 	if not mypath:
 		raise InvalidData(_("Empty path given"))
 
+	# Support for file object or integer file descriptor parameters is
+	# deprecated due to ambiguity in whether or not it's safe to close
+	# the file descriptor, making it prone to "Bad file descriptor" errors
+	# or file descriptor leaks.
 	if isinstance(mypath, basestring) and mypath[-1] == '/':
 		mypath = mypath[:-1]
 
+	lockfilename_path = mypath
 	if hasattr(mypath, 'fileno'):
+		warnings.warn("portage.locks.lockfile() support for "
+			"file object parameters is deprecated. Use a file path instead.",
+			DeprecationWarning, stacklevel=2)
+		lockfilename_path = getattr(mypath, 'name', None)
 		mypath = mypath.fileno()
 	if isinstance(mypath, int):
+		warnings.warn("portage.locks.lockfile() support for integer file "
+			"descriptor parameters is deprecated. Use a file path instead.",
+			DeprecationWarning, stacklevel=2)
 		lockfilename    = mypath
 		wantnewlockfile = 0
 		unlinkfile      = 0
 	elif wantnewlockfile:
 		base, tail = os.path.split(mypath)
 		lockfilename = os.path.join(base, "." + tail + ".portage_lockfile")
-		del base, tail
+		lockfilename_path = lockfilename
 		unlinkfile   = 1
 	else:
 		lockfilename = mypath
@@ -117,6 +129,8 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 	# we're waiting on lockfile and use a blocking attempt.
 	locking_method = _default_lock_fn
 	try:
+		if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
+			raise IOError(errno.ENOSYS, "Function not implemented")
 		locking_method(myfd, fcntl.LOCK_EX|fcntl.LOCK_NB)
 	except IOError as e:
 		if not hasattr(e, "errno"):
@@ -148,20 +162,22 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 				raise
 			if out is not None:
 				out.eend(os.EX_OK)
-		elif e.errno == errno.ENOLCK:
+		elif e.errno in (errno.ENOSYS, errno.ENOLCK):
 			# We're not allowed to lock on this FS.
-			os.close(myfd)
-			link_success = False
-			if lockfilename == str(lockfilename):
-				if wantnewlockfile:
-					try:
-						if os.stat(lockfilename)[stat.ST_NLINK] == 1:
-							os.unlink(lockfilename)
-					except OSError:
-						pass
-					link_success = hardlink_lockfile(lockfilename)
+			if not isinstance(lockfilename, int):
+				# If a file object was passed in, it's not safe
+				# to close the file descriptor because it may
+				# still be in use.
+				os.close(myfd)
+			lockfilename_path = _unicode_decode(lockfilename_path,
+				encoding=_encodings['fs'], errors='strict')
+			if not isinstance(lockfilename_path, basestring):
+				raise
+			link_success = hardlink_lockfile(lockfilename_path,
+				waiting_msg=waiting_msg, flags=flags)
 			if not link_success:
 				raise
+			lockfilename = lockfilename_path
 			locking_method = None
 			myfd = HARDLINK_FD
 		else:
@@ -208,7 +224,7 @@ def unlockfile(mytuple):
 		raise InvalidData
 
 	if(myfd == HARDLINK_FD):
-		unhardlink_lockfile(lockfilename)
+		unhardlink_lockfile(lockfilename, unlinkfile=unlinkfile)
 		return True
 	
 	# myfd may be None here due to myfd = mypath in lockfile()
@@ -267,65 +283,148 @@ def unlockfile(mytuple):
 
 
 def hardlock_name(path):
-	return path+".hardlock-"+os.uname()[1]+"-"+str(os.getpid())
+	base, tail = os.path.split(path)
+	return os.path.join(base, ".%s.hardlock-%s-%s" %
+		(tail, os.uname()[1], os.getpid()))
 
 def hardlink_is_mine(link,lock):
 	try:
-		return os.stat(link).st_nlink == 2
+		lock_st = os.stat(lock)
+		if lock_st.st_nlink == 2:
+			link_st = os.stat(link)
+			return lock_st.st_ino == link_st.st_ino and \
+				lock_st.st_dev == link_st.st_dev
 	except OSError:
-		return False
-
-def hardlink_lockfile(lockfilename, max_wait=14400):
-	"""Does the NFS, hardlink shuffle to ensure locking on the disk.
-	We create a PRIVATE lockfile, that is just a placeholder on the disk.
-	Then we HARDLINK the real lockfile to that private file.
-	If our file can 2 references, then we have the lock. :)
-	Otherwise we lather, rise, and repeat.
-	We default to a 4 hour timeout.
-	"""
-
-	start_time = time.time()
-	myhardlock = hardlock_name(lockfilename)
-	reported_waiting = False
-	
-	while(time.time() < (start_time + max_wait)):
-		# We only need it to exist.
-		myfd = os.open(myhardlock, os.O_CREAT|os.O_RDWR,0o660)
-		os.close(myfd)
-	
-		if not os.path.exists(myhardlock):
-			raise FileNotFound(
-				_("Created lockfile is missing: %(filename)s") % \
-				{"filename" : myhardlock})
-
-		try:
-			res = os.link(myhardlock, lockfilename)
-		except OSError:
-			pass
-
-		if hardlink_is_mine(myhardlock, lockfilename):
-			# We have the lock.
-			if reported_waiting:
-				writemsg("\n", noiselevel=-1)
-			return True
-
-		if reported_waiting:
-			writemsg(".", noiselevel=-1)
-		else:
-			reported_waiting = True
-			msg = _("\nWaiting on (hardlink) lockfile: (one '.' per 3 seconds)\n"
-				"%(bin_path)s/clean_locks can fix stuck locks.\n"
-				"Lockfile: %(lockfilename)s\n") % \
-				{"bin_path": PORTAGE_BIN_PATH, "lockfilename": lockfilename}
-			writemsg(msg, noiselevel=-1)
-		time.sleep(3)
-	
-	os.unlink(myhardlock)
+		pass
 	return False
 
-def unhardlink_lockfile(lockfilename):
+def hardlink_lockfile(lockfilename, max_wait=DeprecationWarning,
+	waiting_msg=None, flags=0):
+	"""Does the NFS, hardlink shuffle to ensure locking on the disk.
+	We create a PRIVATE hardlink to the real lockfile, that is just a
+	placeholder on the disk.
+	If our file can 2 references, then we have the lock. :)
+	Otherwise we lather, rise, and repeat.
+	"""
+
+	if max_wait is not DeprecationWarning:
+		warnings.warn("The 'max_wait' parameter of "
+			"portage.locks.hardlink_lockfile() is now unused. Use "
+			"flags=os.O_NONBLOCK instead.",
+			DeprecationWarning, stacklevel=2)
+
+	global _quiet
+	out = None
+	displayed_waiting_msg = False
+	preexisting = os.path.exists(lockfilename)
 	myhardlock = hardlock_name(lockfilename)
-	if hardlink_is_mine(myhardlock, lockfilename):
+
+	# myhardlock must not exist prior to our link() call, and we can
+	# can safely unlink it since its file name is unique to our PID
+	try:
+		os.unlink(myhardlock)
+	except OSError as e:
+		if e.errno in (errno.ENOENT, errno.ESTALE):
+			pass
+		else:
+			func_call = "unlink('%s')" % myhardlock
+			if e.errno == OperationNotPermitted.errno:
+				raise OperationNotPermitted(func_call)
+			elif e.errno == PermissionDenied.errno:
+				raise PermissionDenied(func_call)
+			else:
+				raise
+
+	while True:
+		# create lockfilename if it doesn't exist yet
+		try:
+			myfd = os.open(lockfilename, os.O_CREAT|os.O_RDWR, 0o660)
+		except OSError as e:
+			func_call = "open('%s')" % lockfilename
+			if e.errno == OperationNotPermitted.errno:
+				raise OperationNotPermitted(func_call)
+			elif e.errno == PermissionDenied.errno:
+				raise PermissionDenied(func_call)
+			else:
+				raise
+		else:
+			myfd_st = None
+			try:
+				myfd_st = os.fstat(myfd)
+				if not preexisting:
+					# Don't chown the file if it is preexisting, since we
+					# want to preserve existing permissions in that case.
+					if myfd_st.st_gid != portage_gid:
+						os.fchown(myfd, -1, portage_gid)
+			except OSError as e:
+				if e.errno not in (errno.ENOENT, errno.ESTALE):
+					writemsg("%s: fchown('%s', -1, %d)\n" % \
+						(e, lockfilename, portage_gid), noiselevel=-1)
+					writemsg(_("Cannot chown a lockfile: '%s'\n") % \
+						lockfilename, noiselevel=-1)
+					writemsg(_("Group IDs of current user: %s\n") % \
+						" ".join(str(n) for n in os.getgroups()),
+						noiselevel=-1)
+				else:
+					# another process has removed the file, so we'll have
+					# to create it again
+					continue
+			finally:
+				os.close(myfd)
+
+			# If fstat shows more than one hardlink, then it's extremely
+			# unlikely that the following link call will result in a lock,
+			# so optimize away the wasteful link call and sleep or raise
+			# TryAgain.
+			if myfd_st is not None and myfd_st.st_nlink < 2:
+				try:
+					os.link(lockfilename, myhardlock)
+				except OSError as e:
+					func_call = "link('%s', '%s')" % (lockfilename, myhardlock)
+					if e.errno == OperationNotPermitted.errno:
+						raise OperationNotPermitted(func_call)
+					elif e.errno == PermissionDenied.errno:
+						raise PermissionDenied(func_call)
+					elif e.errno in (errno.ESTALE, errno.ENOENT):
+						# another process has removed the file, so we'll have
+						# to create it again
+						continue
+					else:
+						raise
+				else:
+					if hardlink_is_mine(myhardlock, lockfilename):
+						if out is not None:
+							out.eend(os.EX_OK)
+						break
+
+					try:
+						os.unlink(myhardlock)
+					except OSError as e:
+						# This should not happen, since the file name of
+						# myhardlock is unique to our host and PID,
+						# and the above link() call succeeded.
+						if e.errno not in (errno.ENOENT, errno.ESTALE):
+							raise
+						raise FileNotFound(myhardlock)
+
+		if flags & os.O_NONBLOCK:
+			raise TryAgain(lockfilename)
+
+		if out is None and not _quiet:
+			out = portage.output.EOutput()
+		if out is not None and not displayed_waiting_msg:
+			displayed_waiting_msg = True
+			if waiting_msg is None:
+				waiting_msg = _("waiting for lock on %s\n") % lockfilename
+			out.ebegin(waiting_msg)
+
+		time.sleep(_HARDLINK_POLL_LATENCY)
+
+	return True
+
+def unhardlink_lockfile(lockfilename, unlinkfile=True):
+	myhardlock = hardlock_name(lockfilename)
+	if unlinkfile and hardlink_is_mine(myhardlock, lockfilename):
 		# Make sure not to touch lockfilename unless we really have a lock.
 		try:
 			os.unlink(lockfilename)
@@ -349,7 +448,7 @@ def hardlock_cleanup(path, remove_all_locks=False):
 		if os.path.isfile(path+"/"+x):
 			parts = x.split(".hardlock-")
 			if len(parts) == 2:
-				filename = parts[0]
+				filename = parts[0][1:]
 				hostpid  = parts[1].split("-")
 				host  = "-".join(hostpid[:-1])
 				pid   = hostpid[-1]
@@ -373,7 +472,7 @@ def hardlock_cleanup(path, remove_all_locks=False):
 				 remove_all_locks:
 				for y in mylist[x]:
 					for z in mylist[x][y]:
-						filename = path+"/"+x+".hardlock-"+y+"-"+z
+						filename = path+"/."+x+".hardlock-"+y+"-"+z
 						if filename == mylockname:
 							continue
 						try:

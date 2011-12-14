@@ -1,15 +1,16 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import shutil
 import tempfile
 import time
 from portage import os
+from portage import shutil
 from portage import _python_interpreter
 from portage.tests import TestCase
 from portage.const import PORTAGE_BIN_PATH
 from portage.const import PORTAGE_PYM_PATH
 from portage.const import BASH_BINARY
+from portage.locks import hardlock_cleanup
 from portage.package.ebuild._ipc.ExitCommand import ExitCommand
 from portage.util import ensure_dirs
 from _emerge.SpawnProcess import SpawnProcess
@@ -38,6 +39,10 @@ class IpcDaemonTestCase(TestCase):
 			env['PORTAGE_BIN_PATH'] = PORTAGE_BIN_PATH
 			env['PORTAGE_PYM_PATH'] = PORTAGE_PYM_PATH
 			env['PORTAGE_BUILDDIR'] = os.path.join(tmpdir, 'cat', 'pkg-1')
+
+			if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
+				env["__PORTAGE_TEST_HARDLINK_LOCKS"] = \
+					os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"]
 
 			task_scheduler = TaskScheduler(max_jobs=2)
 			build_dir = EbuildBuildDir(
@@ -75,6 +80,8 @@ class IpcDaemonTestCase(TestCase):
 				start_time = time.time()
 				task_scheduler.run(timeout=self._SCHEDULE_TIMEOUT)
 				task_scheduler.clear()
+				hardlock_cleanup(env['PORTAGE_BUILDDIR'],
+					remove_all_locks=True)
 
 				self.assertEqual(self.received_command, True,
 					"command not received after %d seconds" % \
@@ -110,6 +117,8 @@ class IpcDaemonTestCase(TestCase):
 				start_time = time.time()
 				task_scheduler.run(timeout=short_timeout_ms)
 				task_scheduler.clear()
+				hardlock_cleanup(env['PORTAGE_BUILDDIR'],
+					remove_all_locks=True)
 
 				self.assertEqual(self.received_command, False,
 					"command received after %d seconds" % \

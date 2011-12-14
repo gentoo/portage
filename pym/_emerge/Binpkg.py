@@ -15,12 +15,13 @@ from portage.eapi import eapi_exports_replace_vars
 from portage.util import ensure_dirs, writemsg
 import portage
 from portage import os
+from portage import shutil
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 import io
 import logging
-import shutil
+import textwrap
 from portage.output import colorize
 from portage.const import EPREFIX
 
@@ -93,9 +94,8 @@ class Binpkg(CompositeTask):
 				"/var/log/emerge-fetch.log` in another " + \
 				"terminal.") % (prefetcher.pkg_path, settings["EPREFIX"])
 			msg_prefix = colorize("GOOD", " * ")
-			from textwrap import wrap
 			waiting_msg = "".join("%s%s\n" % (msg_prefix, line) \
-				for line in wrap(waiting_msg, 65))
+				for line in textwrap.wrap(waiting_msg, 65))
 			if not self.background:
 				writemsg(waiting_msg, noiselevel=-1)
 
