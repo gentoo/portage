@@ -39,16 +39,6 @@ class SpawnProcess(SubProcess):
 		if self.fd_pipes is None:
 			self.fd_pipes = {}
 		fd_pipes = self.fd_pipes
-		fd_pipes.setdefault(0, sys.stdin.fileno())
-		fd_pipes.setdefault(1, sys.stdout.fileno())
-		fd_pipes.setdefault(2, sys.stderr.fileno())
-
-		# flush any pending output
-		for fd in fd_pipes.values():
-			if fd == sys.stdout.fileno():
-				sys.stdout.flush()
-			if fd == sys.stderr.fileno():
-				sys.stderr.flush()
 
 		self._files = self._files_dict()
 		files = self._files
@@ -62,22 +52,35 @@ class SpawnProcess(SubProcess):
 			logfile = self.logfile
 
 		null_input = None
-		fd_pipes_orig = fd_pipes.copy()
-		if self.background:
+		if not self.background or 0 in fd_pipes:
+			# Subclasses such as AbstractEbuildProcess may have already passed
+			# in a null file descriptor in fd_pipes, so use that when given.
+			pass
+		else:
 			# TODO: Use job control functions like tcsetpgrp() to control
 			# access to stdin. Until then, use /dev/null so that any
 			# attempts to read from stdin will immediately return EOF
 			# instead of blocking indefinitely.
 			null_input = open('/dev/null', 'rb')
 			fd_pipes[0] = null_input.fileno()
-		else:
-			fd_pipes[0] = fd_pipes_orig[0]
+
+		fd_pipes.setdefault(0, sys.stdin.fileno())
+		fd_pipes.setdefault(1, sys.stdout.fileno())
+		fd_pipes.setdefault(2, sys.stderr.fileno())
+
+		# flush any pending output
+		for fd in fd_pipes.values():
+			if fd == sys.stdout.fileno():
+				sys.stdout.flush()
+			if fd == sys.stderr.fileno():
+				sys.stderr.flush()
 
 		# WARNING: It is very important to use unbuffered mode here,
 		# in order to avoid issue 5380 with python3.
 		files.process = os.fdopen(master_fd, 'rb', 0)
 		if logfile is not None:
 
+			fd_pipes_orig = fd_pipes.copy()
 			fd_pipes[1] = slave_fd
 			fd_pipes[2] = slave_fd
 
