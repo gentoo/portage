@@ -337,8 +337,10 @@ def hardlink_lockfile(lockfilename, max_wait=DeprecationWarning,
 			else:
 				raise
 		else:
+			myfd_st = None
 			try:
-				if os.fstat(myfd).st_gid != portage_gid:
+				myfd_st = os.fstat(myfd)
+				if myfd_st.st_gid != portage_gid:
 					os.fchown(myfd, -1, portage_gid)
 			except OSError as e:
 				if e.errno not in (errno.ENOENT, errno.ESTALE):
@@ -349,38 +351,47 @@ def hardlink_lockfile(lockfilename, max_wait=DeprecationWarning,
 					writemsg(_("Group IDs of current user: %s\n") % \
 						" ".join(str(n) for n in os.getgroups()),
 						noiselevel=-1)
+				else:
+					# another process has removed the file, so we'll have
+					# to create it again
+					continue
 			finally:
 				os.close(myfd)
 
-		try:
-			os.link(lockfilename, myhardlock)
-		except OSError as e:
-			func_call = "link('%s', '%s')" % (lockfilename, myhardlock)
-			if e.errno == OperationNotPermitted.errno:
-				raise OperationNotPermitted(func_call)
-			elif e.errno == PermissionDenied.errno:
-				raise PermissionDenied(func_call)
-			elif e.errno in (errno.ESTALE, errno.ENOENT):
-				# another process has removed the file, so we'll have
-				# to create it again
-				continue
-			else:
-				raise
+			# If fstat shows more than one hardlink, then it's extremely
+			# unlikely that the following link call will result in a lock,
+			# so optimize away the wasteful link call and sleep or raise
+			# TryAgain.
+			if myfd_st is not None and myfd_st.st_nlink < 2:
+				try:
+					os.link(lockfilename, myhardlock)
+				except OSError as e:
+					func_call = "link('%s', '%s')" % (lockfilename, myhardlock)
+					if e.errno == OperationNotPermitted.errno:
+						raise OperationNotPermitted(func_call)
+					elif e.errno == PermissionDenied.errno:
+						raise PermissionDenied(func_call)
+					elif e.errno in (errno.ESTALE, errno.ENOENT):
+						# another process has removed the file, so we'll have
+						# to create it again
+						continue
+					else:
+						raise
+				else:
+					if hardlink_is_mine(myhardlock, lockfilename):
+						if out is not None:
+							out.eend(os.EX_OK)
+						break
 
-		if hardlink_is_mine(myhardlock, lockfilename):
-			if out is not None:
-				out.eend(os.EX_OK)
-			break
-
-		try:
-			os.unlink(myhardlock)
-		except OSError as e:
-			# This should not happen, since the file name of
-			# myhardlock is unique to our host and PID,
-			# and the above link() call succeeded.
-			if e.errno not in (errno.ENOENT, errno.ESTALE):
-				raise
-			raise FileNotFound(myhardlock)
+					try:
+						os.unlink(myhardlock)
+					except OSError as e:
+						# This should not happen, since the file name of
+						# myhardlock is unique to our host and PID,
+						# and the above link() call succeeded.
+						if e.errno not in (errno.ENOENT, errno.ESTALE):
+							raise
+						raise FileNotFound(myhardlock)
 
 		if flags & os.O_NONBLOCK:
 			raise TryAgain(lockfilename)
