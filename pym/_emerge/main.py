@@ -1091,7 +1091,7 @@ def parse_opts(tmpcmdline, silent=False):
 		myoptions.quiet = None
 
 	if myoptions.quiet_build in true_y:
-		myoptions.quiet_build = None
+		myoptions.quiet_build = 'y'
 
 	if myoptions.rebuild_if_new_ver in true_y:
 		myoptions.rebuild_if_new_ver = True
