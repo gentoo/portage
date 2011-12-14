@@ -12,7 +12,7 @@ from _emerge.PollScheduler import PollScheduler
 
 class AsynchronousLockTestCase(TestCase):
 
-	def testAsynchronousLock(self):
+	def _testAsynchronousLock(self):
 		scheduler = PollScheduler().sched_iface
 		tempdir = tempfile.mkdtemp()
 		try:
@@ -39,7 +39,17 @@ class AsynchronousLockTestCase(TestCase):
 		finally:
 			shutil.rmtree(tempdir)
 
-	def testAsynchronousLockWait(self):
+	def testAsynchronousLock(self):
+		self._testAsynchronousLock()
+
+	def testAsynchronousLockHardlink(self):
+		os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = "1"
+		try:
+			self._testAsynchronousLock()
+		finally:
+			os.environ.pop("__PORTAGE_TEST_HARDLINK_LOCKS", None)
+
+	def _testAsynchronousLockWait(self):
 		scheduler = PollScheduler().sched_iface
 		tempdir = tempfile.mkdtemp()
 		try:
@@ -67,7 +77,17 @@ class AsynchronousLockTestCase(TestCase):
 		finally:
 			shutil.rmtree(tempdir)
 
-	def testAsynchronousLockWaitCancel(self):
+	def testAsynchronousLockWait(self):
+		self._testAsynchronousLockWait()
+
+	def testAsynchronousLockWaitHardlink(self):
+		os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = "1"
+		try:
+			self._testAsynchronousLockWait()
+		finally:
+			os.environ.pop("__PORTAGE_TEST_HARDLINK_LOCKS", None)
+
+	def _testAsynchronousLockWaitCancel(self):
 		scheduler = PollScheduler().sched_iface
 		tempdir = tempfile.mkdtemp()
 		try:
@@ -92,7 +112,17 @@ class AsynchronousLockTestCase(TestCase):
 		finally:
 			shutil.rmtree(tempdir)
 
-	def testAsynchronousLockWaitKill(self):
+	def testAsynchronousLockWaitCancel(self):
+		self._testAsynchronousLockWaitCancel()
+
+	def testAsynchronousLockWaitCancelHardlink(self):
+		os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = "1"
+		try:
+			self._testAsynchronousLockWaitCancel()
+		finally:
+			os.environ.pop("__PORTAGE_TEST_HARDLINK_LOCKS", None)
+
+	def _testAsynchronousLockWaitKill(self):
 		scheduler = PollScheduler().sched_iface
 		tempdir = tempfile.mkdtemp()
 		try:
@@ -122,3 +152,13 @@ class AsynchronousLockTestCase(TestCase):
 			lock1.unlock()
 		finally:
 			shutil.rmtree(tempdir)
+
+	def testAsynchronousLockWaitKill(self):
+		self._testAsynchronousLockWaitKill()
+
+	def testAsynchronousLockWaitKillHardlink(self):
+		os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = "1"
+		try:
+			self._testAsynchronousLockWaitKill()
+		finally:
+			os.environ.pop("__PORTAGE_TEST_HARDLINK_LOCKS", None)

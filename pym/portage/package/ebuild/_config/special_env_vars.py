@@ -66,7 +66,7 @@ environ_whitelist += [
 	"REPLACING_VERSIONS", "REPLACED_BY_VERSION",
 	"ROOT", "ROOTPATH", "T", "TMP", "TMPDIR",
 	"USE_EXPAND", "USE_ORDER", "WORKDIR",
-	"XARGS",
+	"XARGS", "__PORTAGE_TEST_HARDLINK_LOCKS",
 ]
 
 # user config variables

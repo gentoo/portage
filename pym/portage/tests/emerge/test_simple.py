@@ -318,6 +318,10 @@ pkg_preinst() {
 			"PYTHONPATH" : pythonpath,
 		}
 
+		if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
+			env["__PORTAGE_TEST_HARDLINK_LOCKS"] = \
+				os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"]
+
 		updates_dir = os.path.join(portdir, "profiles", "updates")
 		dirs = [cachedir, cachedir_pregen, distdir, fake_bin,
 			portage_tmpdir, updates_dir,
