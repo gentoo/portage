@@ -13,6 +13,7 @@ import select
 import signal
 import sys
 import time
+import traceback
 
 def debug_signal(signum, frame):
 	import pdb
@@ -228,14 +229,22 @@ class EbuildIpc(object):
 		pid = os.fork()
 
 		if pid == 0:
-			os.close(pr)
+			retval = 1
+			try:
+				os.close(pr)
 
-			# File streams are in unbuffered mode since we do atomic
-			# read and write of whole pickles.
-			output_file = open(self.ipc_in_fifo, 'wb', 0)
-			output_file.write(pickle.dumps(args))
-			output_file.close()
-			os._exit(os.EX_OK)
+				# File streams are in unbuffered mode since we do atomic
+				# read and write of whole pickles.
+				output_file = open(self.ipc_in_fifo, 'wb', 0)
+				output_file.write(pickle.dumps(args))
+				output_file.close()
+				retval = os.EX_OK
+			except SystemExit:
+				raise
+			except:
+				traceback.print_exc()
+			finally:
+				os._exit(retval)
 
 		os.close(pw)
 
@@ -258,9 +267,16 @@ class EbuildIpc(object):
 		pid = os.fork()
 
 		if pid == 0:
-			os.close(pr)
-			retval = self._receive_reply(input_fd)
-			os._exit(retval)
+			retval = 1
+			try:
+				os.close(pr)
+				retval = self._receive_reply(input_fd)
+			except SystemExit:
+				raise
+			except:
+				traceback.print_exc()
+			finally:
+				os._exit(retval)
 
 		os.close(pw)
 		retval = self._wait(pid, pr, portage.localization._('during read'))
