@@ -43,11 +43,14 @@ class AsynchronousLockTestCase(TestCase):
 		self._testAsynchronousLock()
 
 	def testAsynchronousLockHardlink(self):
+		prev_state = os.environ.pop("__PORTAGE_TEST_HARDLINK_LOCKS", None)
 		os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = "1"
 		try:
 			self._testAsynchronousLock()
 		finally:
 			os.environ.pop("__PORTAGE_TEST_HARDLINK_LOCKS", None)
+			if prev_state is not None:
+				os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = prev_state
 
 	def _testAsynchronousLockWait(self):
 		scheduler = PollScheduler().sched_iface
@@ -81,11 +84,14 @@ class AsynchronousLockTestCase(TestCase):
 		self._testAsynchronousLockWait()
 
 	def testAsynchronousLockWaitHardlink(self):
+		prev_state = os.environ.pop("__PORTAGE_TEST_HARDLINK_LOCKS", None)
 		os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = "1"
 		try:
 			self._testAsynchronousLockWait()
 		finally:
 			os.environ.pop("__PORTAGE_TEST_HARDLINK_LOCKS", None)
+			if prev_state is not None:
+				os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = prev_state
 
 	def _testAsynchronousLockWaitCancel(self):
 		scheduler = PollScheduler().sched_iface
@@ -116,11 +122,14 @@ class AsynchronousLockTestCase(TestCase):
 		self._testAsynchronousLockWaitCancel()
 
 	def testAsynchronousLockWaitCancelHardlink(self):
+		prev_state = os.environ.pop("__PORTAGE_TEST_HARDLINK_LOCKS", None)
 		os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = "1"
 		try:
 			self._testAsynchronousLockWaitCancel()
 		finally:
 			os.environ.pop("__PORTAGE_TEST_HARDLINK_LOCKS", None)
+			if prev_state is not None:
+				os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = prev_state
 
 	def _testAsynchronousLockWaitKill(self):
 		scheduler = PollScheduler().sched_iface
@@ -157,8 +166,11 @@ class AsynchronousLockTestCase(TestCase):
 		self._testAsynchronousLockWaitKill()
 
 	def testAsynchronousLockWaitKillHardlink(self):
+		prev_state = os.environ.pop("__PORTAGE_TEST_HARDLINK_LOCKS", None)
 		os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = "1"
 		try:
 			self._testAsynchronousLockWaitKill()
 		finally:
 			os.environ.pop("__PORTAGE_TEST_HARDLINK_LOCKS", None)
+			if prev_state is not None:
+				os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = prev_state

@@ -48,9 +48,12 @@ class LockNonblockTestCase(TestCase):
 		self._testLockNonblock()
 
 	def testLockNonblockHardlink(self):
+		prev_state = os.environ.pop("__PORTAGE_TEST_HARDLINK_LOCKS", None)
 		os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = "1"
 		try:
 			self._testLockNonblock()
 		finally:
 			os.environ.pop("__PORTAGE_TEST_HARDLINK_LOCKS", None)
+			if prev_state is not None:
+				os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = prev_state
 
