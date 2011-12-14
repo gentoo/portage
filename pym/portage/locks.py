@@ -285,7 +285,8 @@ def hardlink_is_mine(link,lock):
 			return lock_st.st_ino == link_st.st_ino and \
 				lock_st.st_dev == link_st.st_dev
 	except OSError:
-		return False
+		pass
+	return False
 
 def hardlink_lockfile(lockfilename, max_wait=DeprecationWarning,
 	waiting_msg=None, flags=0):
