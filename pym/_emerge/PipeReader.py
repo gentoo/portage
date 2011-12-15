@@ -64,7 +64,9 @@ class PipeReader(AbstractPollTask):
 				try:
 					data = os.read(fd, self._bufsize)
 				except OSError as e:
-					if e.errno not in (errno.EAGAIN,):
+					# EIO happens with pty on Linux after the
+					# slave end of the pty has been closed.
+					if e.errno not in (errno.EAGAIN, errno.EIO):
 						raise
 					break
 				else:
