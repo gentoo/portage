@@ -210,7 +210,7 @@ SRC_URI digests are correct.  This feature also affects digest generation via
 \fBebuild\fR(1) and \fBemerge\fR(1) (emerge generates digests only when the
 \fIdigest\fR feature is enabled). Existing digests for files that do not exist
 in ${DISTDIR} will be automatically assumed even when \fIassume\-digests\fR is
-not enabled. If a file exists in ${DISTDIR} but it's size does not match the
+not enabled. If a file exists in ${DISTDIR} but its size does not match the
 existing digest, the digest will be regenerated regardless of whether or
 not \fIassume\-digests\fR is enabled. The \fBebuild\fR(1) \fBdigest\fR command
 has a \fB\-\-force\fR option that can be used to force regeneration of digests.
