@@ -2,7 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import array
+import errno
 import logging
+import os
 
 from portage.util import writemsg_level
 from _emerge.AsynchronousTask import AsynchronousTask
@@ -20,7 +22,7 @@ class AbstractPollTask(AsynchronousTask):
 	def isAlive(self):
 		return bool(self._registered)
 
-	def _read_buf(self, f, event):
+	def _read_buf(self, fd, event):
 		"""
 		| POLLIN | RETURN
 		| BIT    | VALUE
@@ -32,13 +34,26 @@ class AbstractPollTask(AsynchronousTask):
 		| ---------------------------------------------------
 		| 0      | None
 		"""
+		# NOTE: array.fromfile() is no longer used here because it has
+		# bugs in all known versions of Python (including Python 2.7
+		# and Python 3.2).
 		buf = None
 		if event & PollConstants.POLLIN:
 			buf = array.array('B')
 			try:
-				buf.fromfile(f, self._bufsize)
-			except (EOFError, IOError):
-				pass
+				# Python >=3.2
+				frombytes = buf.frombytes
+			except AttributeError:
+				frombytes = buf.fromstring
+			try:
+				frombytes(os.read(fd, self._bufsize))
+			except OSError as e:
+				# EIO happens with pty on Linux after the
+				# slave end of the pty has been closed.
+				if e.errno not in (errno.EAGAIN, errno.EIO):
+					raise
+				buf = None
+
 		return buf
 
 	def _unregister(self):

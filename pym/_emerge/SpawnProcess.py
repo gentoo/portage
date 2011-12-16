@@ -165,11 +165,20 @@ class SpawnProcess(SubProcess):
 	def _output_handler(self, fd, event):
 
 		files = self._files
-		buf = self._read_buf(files.process, event)
+		while True:
+			buf = self._read_buf(fd, event)
 
-		if buf is not None:
+			if buf is None:
+				# not a POLLIN event, EAGAIN, etc...
+				break
 
-			if buf:
+			if not buf:
+				# EOF
+				self._unregister()
+				self.wait()
+				break
+
+			else:
 				if not self.background:
 					write_successful = False
 					failures = 0
@@ -217,9 +226,6 @@ class SpawnProcess(SubProcess):
 						data = buf.tostring()
 					files.log.write(data)
 				files.log.flush()
-			else:
-				self._unregister()
-				self.wait()
 
 		self._unregister_if_appropriate(event)
 
@@ -230,15 +236,18 @@ class SpawnProcess(SubProcess):
 		monitor the process from inside a poll() loop.
 		"""
 
-		buf = self._read_buf(self._files.process, event)
+		while True:
+			buf = self._read_buf(fd, event)
 
-		if buf is not None:
+			if buf is None:
+				# not a POLLIN event, EAGAIN, etc...
+				break
 
-			if buf:
-				pass
-			else:
+			if not buf:
+				# EOF
 				self._unregister()
 				self.wait()
+				break
 
 		self._unregister_if_appropriate(event)
 
