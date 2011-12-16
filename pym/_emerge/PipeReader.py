@@ -15,16 +15,22 @@ class PipeReader(AbstractPollTask):
 	"""
 
 	__slots__ = ("input_files",) + \
-		("_read_data", "_reg_ids")
+		("_read_data", "_reg_ids", "_use_array")
 
 	def _start(self):
 		self._reg_ids = set()
 		self._read_data = []
+
+		if self._use_array:
+			output_handler = self._array_output_handler
+		else:
+			output_handler = self._output_handler
+
 		for k, f in self.input_files.items():
 			fcntl.fcntl(f.fileno(), fcntl.F_SETFL,
 				fcntl.fcntl(f.fileno(), fcntl.F_GETFL) | os.O_NONBLOCK)
 			self._reg_ids.add(self.scheduler.register(f.fileno(),
-				self._registered_events, self._output_handler))
+				self._registered_events, output_handler))
 		self._registered = True
 
 	def isAlive(self):
@@ -57,6 +63,25 @@ class PipeReader(AbstractPollTask):
 
 		while True:
 			data = self._read_buf(fd, event)
+			if data is None:
+				break
+			if data:
+				self._read_data.append(data)
+			else:
+				self._unregister()
+				self.wait()
+				break
+
+		self._unregister_if_appropriate(event)
+
+	def _array_output_handler(self, fd, event):
+
+		for f in self.input_files.values():
+			if f.fileno() == fd:
+				break
+
+		while True:
+			data = self._read_array(f, event)
 			if data is None:
 				break
 			if data:
