@@ -359,7 +359,11 @@ merging the packages.  This comes with the caveat that all build-time
 dependencies must already be emerged on the system.
 .TP
 .BR "\-\-changed\-use"
-This is an alias for \fB\-\-reinstall=changed\-use\fR.
+Tells emerge to include installed packages where USE flags have
+changed since installation. This option also implies the
+\fB\-\-selective\fR option. Unlike \fB\-\-newuse\fR, the
+\fB\-\-changed\-use\fR option does not trigger reinstallation when
+flags that the user has not enabled are added or removed.
 .TP
 .BR "\-\-changelog " (\fB\-l\fR)
 Use this in conjunction with the \fB\-\-pretend\fR option.  This will
@@ -516,7 +520,7 @@ A USE flag was turned off for a package.
 USE flags may be toggled by your profile as well as your USE and package.use
 settings. If you would like to skip rebuilds for which disabled flags have
 been added to or removed from IUSE, see the related
-\-\-reinstall=changed\-use option.
+\fB\-\-changed\-use\fR option.
 .TP
 .BR "\-\-noconfmem"
 Causes portage to disregard merge records indicating that a config file
@@ -648,10 +652,7 @@ and that is larger than that of the installed package will
 be considered by the rebuilt\-binaries logic.
 .TP
 .BR "\-\-reinstall changed\-use"
-Tells emerge to include installed packages where USE flags have
-changed since installation.  Unlike \fB\-\-newuse\fR, this option does
-not trigger reinstallation when flags that the user has not
-enabled are added or removed.
+This is an alias for \fB\-\-changed\-use\fR.
 .TP
 .BR "\-\-reinstall\-atoms " ATOMS
 A space separated list of package names or slot atoms. Emerge will treat
@@ -682,8 +683,8 @@ use \fBEMERGE_DEFAULT_OPTS\fR to make
 This is identical to the \fB\-\-noreplace\fR option.
 Some options, such as \fB\-\-update\fR, imply \fB\-\-selective\fR.
 Use \fB\-\-selective=n\fR if you want to forcefully disable
-\fB\-\-selective\fR, regardless of options like \fB\-\-newuse\fR,
-\fB\-\-noreplace\fR, or \fB\-\-update\fR.
+\fB\-\-selective\fR, regardless of options like \fB\-\-changed\-use\fR,
+\fB\-\-newuse\fR, \fB\-\-noreplace\fR, or \fB\-\-update\fR.
 .TP
 .BR "\-\-skipfirst"
 This option is only valid when used with \fB\-\-resume\fR.  It removes the 
