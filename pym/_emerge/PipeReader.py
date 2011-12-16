@@ -66,9 +66,14 @@ class PipeReader(AbstractPollTask):
 				except OSError as e:
 					# EIO happens with pty on Linux after the
 					# slave end of the pty has been closed.
-					if e.errno not in (errno.EAGAIN, errno.EIO):
+					if e.errno == errno.EIO:
+						self._unregister()
+						self.wait()
+						break
+					elif e.errno == errno.EAGAIN:
+						break
+					else:
 						raise
-					break
 				else:
 					if data:
 						self._read_data.append(data)

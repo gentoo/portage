@@ -50,9 +50,14 @@ class AbstractPollTask(AsynchronousTask):
 			except OSError as e:
 				# EIO happens with pty on Linux after the
 				# slave end of the pty has been closed.
-				if e.errno not in (errno.EAGAIN, errno.EIO):
+				if e.errno == errno.EIO:
+					# EOF: return empty buffer
+					pass
+				elif e.errno == errno.EAGAIN:
+					# EAGAIN: return None
+					buf = None
+				else:
 					raise
-				buf = None
 
 		return buf
 
