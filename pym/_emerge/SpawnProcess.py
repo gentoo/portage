@@ -46,6 +46,7 @@ class SpawnProcess(SubProcess):
 		master_fd, slave_fd = self._pipe(fd_pipes)
 		fcntl.fcntl(master_fd, fcntl.F_SETFL,
 			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
+		files.process = master_fd
 
 		logfile = None
 		if self._can_log(slave_fd):
@@ -75,9 +76,6 @@ class SpawnProcess(SubProcess):
 			if fd == sys.stderr.fileno():
 				sys.stderr.flush()
 
-		# WARNING: It is very important to use unbuffered mode here,
-		# in order to avoid issue 5380 with python3.
-		files.process = os.fdopen(master_fd, 'rb', 0)
 		if logfile is not None:
 
 			fd_pipes_orig = fd_pipes.copy()
@@ -120,7 +118,7 @@ class SpawnProcess(SubProcess):
 		kwargs["returnpid"] = True
 		kwargs.pop("logfile", None)
 
-		self._reg_id = self.scheduler.register(files.process.fileno(),
+		self._reg_id = self.scheduler.register(files.process,
 			self._registered_events, output_handler)
 		self._registered = True
 
