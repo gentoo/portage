@@ -3,8 +3,6 @@
 
 from portage import os
 from _emerge.AbstractPollTask import AbstractPollTask
-from _emerge.PollConstants import PollConstants
-import errno
 import fcntl
 
 class PipeReader(AbstractPollTask):
@@ -57,30 +55,16 @@ class PipeReader(AbstractPollTask):
 
 	def _output_handler(self, fd, event):
 
-		if event & PollConstants.POLLIN:
-
-			while True:
-				data = None
-				try:
-					data = os.read(fd, self._bufsize)
-				except OSError as e:
-					# EIO happens with pty on Linux after the
-					# slave end of the pty has been closed.
-					if e.errno == errno.EIO:
-						self._unregister()
-						self.wait()
-						break
-					elif e.errno == errno.EAGAIN:
-						break
-					else:
-						raise
-				else:
-					if data:
-						self._read_data.append(data)
-					else:
-						self._unregister()
-						self.wait()
-						break
+		while True:
+			data = self._read_buf(fd, event)
+			if data is None:
+				break
+			if data:
+				self._read_data.append(data)
+			else:
+				self._unregister()
+				self.wait()
+				break
 
 		self._unregister_if_appropriate(event)
 
