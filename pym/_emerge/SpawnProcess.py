@@ -183,7 +183,7 @@ class SpawnProcess(SubProcess):
 					while True:
 						try:
 							if not write_successful:
-								buf.tofile(files.stdout)
+								files.stdout.write(buf)
 								write_successful = True
 							files.stdout.flush()
 							break
@@ -213,16 +213,7 @@ class SpawnProcess(SubProcess):
 								fcntl.fcntl(files.stdout.fileno(),
 								fcntl.F_GETFL) ^ os.O_NONBLOCK)
 
-				try:
-					buf.tofile(files.log)
-				except TypeError:
-					# array.tofile() doesn't work with GzipFile
-					try:
-						# Python >=3.2
-						data = buf.tobytes()
-					except AttributeError:
-						data = buf.tostring()
-					files.log.write(data)
+				files.log.write(buf)
 				files.log.flush()
 
 		self._unregister_if_appropriate(event)

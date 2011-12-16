@@ -1,7 +1,6 @@
 # Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import array
 import errno
 import logging
 import os
@@ -27,10 +26,9 @@ class AbstractPollTask(AsynchronousTask):
 		| POLLIN | RETURN
 		| BIT    | VALUE
 		| ---------------------------------------------------
-		| 1      | Read self._bufsize into an instance of
-		|        | array.array('B') and return it, ignoring
-		|        | EOFError and IOError. An empty array
-		|        | indicates EOF.
+		| 1      | Read self._bufsize into a string of bytes,
+		|        | handling EAGAIN and EIO. An empty string
+		|        | of bytes indicates EOF.
 		| ---------------------------------------------------
 		| 0      | None
 		"""
@@ -39,20 +37,14 @@ class AbstractPollTask(AsynchronousTask):
 		# and Python 3.2).
 		buf = None
 		if event & PollConstants.POLLIN:
-			buf = array.array('B')
 			try:
-				# Python >=3.2
-				frombytes = buf.frombytes
-			except AttributeError:
-				frombytes = buf.fromstring
-			try:
-				frombytes(os.read(fd, self._bufsize))
+				buf = os.read(fd, self._bufsize)
 			except OSError as e:
 				# EIO happens with pty on Linux after the
 				# slave end of the pty has been closed.
 				if e.errno == errno.EIO:
-					# EOF: return empty buffer
-					pass
+					# EOF: return empty string of bytes
+					buf = b''
 				elif e.errno == errno.EAGAIN:
 					# EAGAIN: return None
 					buf = None
