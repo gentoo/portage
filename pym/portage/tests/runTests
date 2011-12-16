@@ -30,6 +30,10 @@ import portage
 # work the same regardless of global configuration file state/existence.
 portage._disable_legacy_globals()
 
+# Somehow this prevents "TypeError: expected string" errors
+# from grp.getgrnam() with PyPy 1.7
+portage.data._init(os.environ)
+
 import portage.tests as tests
 from portage.const import PORTAGE_BIN_PATH
 path = os.environ.get("PATH", "").split(":")
