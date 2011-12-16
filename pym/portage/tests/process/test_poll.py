@@ -25,6 +25,9 @@ class PipeReaderTestCase(TestCase):
 		else:
 			got_pty = False
 			master_fd, slave_fd = os.pipe()
+
+		# WARNING: It is very important to use unbuffered mode here,
+		# in order to avoid issue 5380 with python3.
 		master_file = os.fdopen(master_fd, 'rb', 0)
 		slave_file = os.fdopen(slave_fd, 'wb', 0)
 		producer = SpawnProcess(
