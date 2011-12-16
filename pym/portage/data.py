@@ -87,7 +87,12 @@ def _get_global(k):
 		#Discover the uid and gid of the portage user/group
 		try:
 			portage_uid = pwd.getpwnam(_get_global('_portage_username')).pw_uid
-			portage_gid = grp.getgrnam(_get_global('_portage_grpname')).gr_gid
+			_portage_grpname = _get_global('_portage_grpname')
+			if platform.python_implementation() == 'PyPy':
+				# Somehow this prevents "TypeError: expected string" errors
+				# from grp.getgrnam() with PyPy 1.7
+				_portage_grpname = str(_portage_grpname)
+			portage_gid = grp.getgrnam(_portage_grpname).gr_gid
 			if secpass < 1 and portage_gid in os.getgroups():
 				secpass = 1
 		except KeyError:
