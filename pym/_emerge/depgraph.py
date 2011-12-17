@@ -2985,12 +2985,20 @@ class depgraph(object):
 							repo = metadata.get('repository')
 						pkg = self._pkg(cpv, pkg_type, root_config,
 							installed=installed, myrepo=repo)
-						if not atom_set.findAtomForPackage(pkg,
-							modified_use=self._pkg_use_enabled(pkg)):
-							continue
 						# pkg.metadata contains calculated USE for ebuilds,
 						# required later for getMissingLicenses.
 						metadata = pkg.metadata
+						if pkg.invalid:
+							# Avoid doing any operations with packages that
+							# have invalid metadata. It would be unsafe at
+							# least because it could trigger unhandled
+							# exceptions in places like check_required_use().
+							masked_packages.append(
+								(root_config, pkgsettings, cpv, repo, metadata, mreasons))
+							continue
+						if not atom_set.findAtomForPackage(pkg,
+							modified_use=self._pkg_use_enabled(pkg)):
+							continue
 						if pkg in self._dynamic_config._runtime_pkg_mask:
 							backtrack_reasons = \
 								self._dynamic_config._runtime_pkg_mask[pkg]
