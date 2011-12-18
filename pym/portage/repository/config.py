@@ -324,16 +324,12 @@ class RepoConfigLoader(object):
 					repo_conf_opts = prepos.get(repo.name)
 					if repo_conf_opts is not None:
 						if repo_conf_opts.aliases is not None:
-							repo_opts['aliases'] = \
-								' '.join(repo_conf_opts.aliases)
+							repo.aliases = repo_conf_opts.aliases
 						if repo_conf_opts.eclass_overrides is not None:
-							repo_opts['eclass-overrides'] = \
-								' '.join(repo_conf_opts.eclass_overrides)
+							repo.eclass_overrides = repo_conf_opts.eclass_overrides
 						if repo_conf_opts.masters is not None:
-							repo_opts['masters'] = \
-								' '.join(repo_conf_opts.masters)
+							repo.masters = repo_conf_opts.masters
 
-					repo = RepoConfig(repo.name, repo_opts)
 					if repo.name in prepos:
 						old_location = prepos[repo.name].location
 						if old_location is not None and old_location != repo.location:
