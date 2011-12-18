@@ -321,14 +321,15 @@ class RepoConfigLoader(object):
 					repo_opts = default_repo_opts.copy()
 					repo_opts['location'] = ov
 					repo = RepoConfig(None, repo_opts)
-					repo_conf_opts = prepos.get(repo.name)
-					if repo_conf_opts is not None:
-						if repo_conf_opts.aliases is not None:
-							repo.aliases = repo_conf_opts.aliases
-						if repo_conf_opts.eclass_overrides is not None:
-							repo.eclass_overrides = repo_conf_opts.eclass_overrides
-						if repo_conf_opts.masters is not None:
-							repo.masters = repo_conf_opts.masters
+					# repos_conf_opts contains options from /etc/portage/repos.conf
+					repos_conf_opts = prepos.get(repo.name)
+					if repos_conf_opts is not None:
+						if repos_conf_opts.aliases is not None:
+							repo.aliases = repos_conf_opts.aliases
+						if repos_conf_opts.eclass_overrides is not None:
+							repo.eclass_overrides = repos_conf_opts.eclass_overrides
+						if repos_conf_opts.masters is not None:
+							repo.masters = repos_conf_opts.masters
 
 					if repo.name in prepos:
 						old_location = prepos[repo.name].location
