@@ -145,7 +145,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 				f.close()
 				portage.util.apply_secpass_permissions(
 					self._cache_filename, gid=portage.portage_gid, mode=0o644)
-			except (IOError, OSError) as e:
+			except (IOError, OSError):
 				pass
 			self._modified.clear()
 

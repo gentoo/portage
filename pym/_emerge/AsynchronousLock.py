@@ -10,7 +10,7 @@ import sys
 try:
 	import threading
 except ImportError:
-	import dummy_threading as threading
+	threading = dummy_threading
 
 import portage
 from portage import os
@@ -117,7 +117,7 @@ class _LockThread(AbstractPollTask):
 		self._files = {}
 		self._files['pipe_read'] = pr
 		self._files['pipe_write'] = pw
-		for k, f in self._files.items():
+		for f in self._files.values():
 			fcntl.fcntl(f, fcntl.F_SETFL,
 				fcntl.fcntl(f, fcntl.F_GETFL) | os.O_NONBLOCK)
 		self._reg_id = self.scheduler.register(self._files['pipe_read'],

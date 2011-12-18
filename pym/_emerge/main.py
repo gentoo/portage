@@ -10,7 +10,6 @@ import sys
 import textwrap
 import platform
 import portage
-import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.news:count_unread_news,display_news_notifications',
 )
@@ -253,7 +252,6 @@ def display_preserved_libs(vardbapi, myopts):
 		linkmap = vardbapi._linkmap
 		consumer_map = {}
 		owners = {}
-		linkmap_broken = False
 
 		try:
 			linkmap.rebuild()
@@ -261,7 +259,6 @@ def display_preserved_libs(vardbapi, myopts):
 			writemsg_level("!!! Command Not Found: %s\n" % (e,),
 				level=logging.ERROR, noiselevel=-1)
 			del e
-			linkmap_broken = True
 		else:
 			search_for_owners = set()
 			for cpv in plibdata:
@@ -602,8 +599,6 @@ def parse_opts(tmpcmdline, silent=False):
 	myaction=None
 	myopts = {}
 	myfiles=[]
-
-	global options, shortmapping
 
 	actions = frozenset([
 		"clean", "check-news", "config", "depclean", "help",
@@ -1562,7 +1557,7 @@ def config_protect_check(trees):
 def profile_check(trees, myaction):
 	if myaction in ("help", "info", "search", "sync", "version"):
 		return os.EX_OK
-	for root, root_trees in trees.items():
+	for root_trees in trees.values():
 		if root_trees["root_config"].settings.profiles:
 			continue
 		# generate some profile related warning messages

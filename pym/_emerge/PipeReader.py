@@ -26,7 +26,7 @@ class PipeReader(AbstractPollTask):
 		else:
 			output_handler = self._output_handler
 
-		for k, f in self.input_files.items():
+		for f in self.input_files.values():
 			fcntl.fcntl(f.fileno(), fcntl.F_SETFL,
 				fcntl.fcntl(f.fileno(), fcntl.F_GETFL) | os.O_NONBLOCK)
 			self._reg_ids.add(self.scheduler.register(f.fileno(),

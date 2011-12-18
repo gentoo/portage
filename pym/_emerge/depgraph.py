@@ -928,7 +928,6 @@ class depgraph(object):
 		buildpkgonly = "--buildpkgonly" in self._frozen_config.myopts
 		nodeps = "--nodeps" in self._frozen_config.myopts
 		deep = self._dynamic_config.myparams.get("deep", 0)
-		recurse = deep is True or dep.depth <= deep
 		if dep.blocker:
 			if not buildpkgonly and \
 				not nodeps and \
@@ -973,7 +972,7 @@ class depgraph(object):
 			# infinite backtracking loop.
 			if self._dynamic_config._allow_backtracking:
 				if dep.parent in self._dynamic_config._runtime_pkg_mask:
-					if "--debug" in self._frozen_config.myopts:
+					if debug:
 						writemsg(
 							"!!! backtracking loop detected: %s %s\n" % \
 							(dep.parent,
@@ -988,7 +987,7 @@ class depgraph(object):
 					if dep_pkg is None:
 						self._dynamic_config._backtrack_infos["missing dependency"] = dep
 						self._dynamic_config._need_restart = True
-						if "--debug" in self._frozen_config.myopts:
+						if debug:
 							msg = []
 							msg.append("")
 							msg.append("")
@@ -1069,8 +1068,6 @@ class depgraph(object):
 		# are never processed more than once.
 		previously_added = pkg in self._dynamic_config.digraph
 
-		# select the correct /var database that we'll be checking against
-		vardbapi = self._frozen_config.trees[pkg.root]["vartree"].dbapi
 		pkgsettings = self._frozen_config.pkgsettings[pkg.root]
 
 		arg_atoms = None
@@ -1311,12 +1308,11 @@ class depgraph(object):
 				self._dynamic_config.digraph.add(pkg, parent, priority=priority)
 				self._add_parent_atom(pkg, parent_atom)
 
-		""" This section determines whether we go deeper into dependencies or not.
-			We want to go deeper on a few occasions:
-			Installing package A, we need to make sure package A's deps are met.
-			emerge --deep <pkgspec>; we need to recursively check dependencies of pkgspec
-			If we are in --nodeps (no recursion) mode, we obviously only check 1 level of dependencies.
-		"""
+		# This section determines whether we go deeper into dependencies or not.
+		# We want to go deeper on a few occasions:
+		# Installing package A, we need to make sure package A's deps are met.
+		# emerge --deep <pkgspec>; we need to recursively check dependencies of pkgspec
+		# If we are in --nodeps (no recursion) mode, we obviously only check 1 level of dependencies.
 		if arg_atoms:
 			depth = 0
 		pkg.depth = depth
@@ -1366,11 +1362,7 @@ class depgraph(object):
 
 		mytype = pkg.type_name
 		myroot = pkg.root
-		mykey = pkg.cpv
 		metadata = pkg.metadata
-		myuse = self._pkg_use_enabled(pkg)
-		jbigkey = pkg
-		depth = pkg.depth + 1
 		removal_action = "remove" in self._dynamic_config.myparams
 
 		edepend={}
@@ -1434,7 +1426,6 @@ class depgraph(object):
 		)
 
 		debug = "--debug" in self._frozen_config.myopts
-		strict = mytype != "installed"
 
 		for dep_root, dep_string, dep_priority in deps:
 				if not dep_string:
@@ -1527,7 +1518,7 @@ class depgraph(object):
 			selected_atoms = self._select_atoms(dep_root,
 				dep_string, myuse=self._pkg_use_enabled(pkg), parent=pkg,
 				strict=strict, priority=dep_priority)
-		except portage.exception.InvalidDependString as e:
+		except portage.exception.InvalidDependString:
 			if pkg.installed:
 				self._dynamic_config._masked_installed.add(pkg)
 				return 1
@@ -1777,7 +1768,7 @@ class depgraph(object):
 			pkg_atom_map.setdefault(pkg, set()).add(atom)
 			cp_pkg_map.setdefault(pkg.cp, set()).add(pkg)
 
-		for cp, pkgs in cp_pkg_map.items():
+		for pkgs in cp_pkg_map.values():
 			if len(pkgs) < 2:
 				for pkg in pkgs:
 					for atom in pkg_atom_map[pkg]:
@@ -1932,7 +1923,6 @@ class depgraph(object):
 	def _iter_atoms_for_pkg(self, pkg):
 		depgraph_sets = self._dynamic_config.sets[pkg.root]
 		atom_arg_map = depgraph_sets.atom_arg_map
-		root_config = self._frozen_config.roots[pkg.root]
 		for atom in depgraph_sets.atoms.iterAtomsForPackage(pkg):
 			if atom.cp != pkg.cp and \
 				self._have_new_virt(pkg.root, atom.cp):
@@ -1971,7 +1961,6 @@ class depgraph(object):
 		myfavorites=[]
 		eroot = root_config.root
 		root = root_config.settings['ROOT']
-		dbs = self._dynamic_config._filtered_trees[eroot]["dbs"]
 		vardb = self._frozen_config.trees[eroot]["vartree"].dbapi
 		real_vardb = self._frozen_config._trees_orig[eroot]["vartree"].dbapi
 		portdb = self._frozen_config.trees[eroot]["porttree"].dbapi
@@ -2948,7 +2937,6 @@ class depgraph(object):
 		missing_use_adjustable = set()
 		required_use_unsatisfied = []
 		masked_pkg_instances = set()
-		missing_licenses = []
 		have_eapi_mask = False
 		pkgsettings = self._frozen_config.pkgsettings[root]
 		root_config = self._frozen_config.roots[root]
@@ -2959,7 +2947,6 @@ class depgraph(object):
 		for db, pkg_type, built, installed, db_keys in dbs:
 			if installed:
 				continue
-			match = db.match
 			if hasattr(db, "xmatch"):
 				cpv_list = db.xmatch("match-all-cpv-only", atom.without_use)
 			else:
@@ -3478,7 +3465,6 @@ class depgraph(object):
 		self._dynamic_config._highest_pkg_cache[cache_key] = ret
 		pkg, existing = ret
 		if pkg is not None:
-			settings = pkg.root_config.settings
 			if self._pkg_visibility_check(pkg) and \
 				not (pkg.installed and pkg.masks):
 				self._dynamic_config._visible_pkgs[pkg.root].cpv_inject(pkg)
@@ -3740,7 +3726,6 @@ class depgraph(object):
 		pkgsettings = self._frozen_config.pkgsettings[root]
 		dbs = self._dynamic_config._filtered_trees[root]["dbs"]
 		vardb = self._frozen_config.roots[root].trees["vartree"].dbapi
-		portdb = self._frozen_config.roots[root].trees["porttree"].dbapi
 		# List of acceptable packages, ordered by type preference.
 		matched_packages = []
 		matched_pkgs_ignore_use = []
@@ -4433,9 +4418,6 @@ class depgraph(object):
 			"--nodeps" in self._frozen_config.myopts:
 			return True
 
-		complete = "complete" in self._dynamic_config.myparams
-		deep = "deep" in self._dynamic_config.myparams
-
 		if True:
 			# Pull in blockers from all installed packages that haven't already
 			# been pulled into the depgraph, in order to ensure that they are
@@ -4450,10 +4432,8 @@ class depgraph(object):
 			dep_keys = ["RDEPEND", "PDEPEND"]
 			for myroot in self._frozen_config.trees:
 				vardb = self._frozen_config.trees[myroot]["vartree"].dbapi
-				portdb = self._frozen_config.trees[myroot]["porttree"].dbapi
 				pkgsettings = self._frozen_config.pkgsettings[myroot]
 				root_config = self._frozen_config.roots[myroot]
-				dbs = self._dynamic_config._filtered_trees[myroot]["dbs"]
 				final_db = self._dynamic_config.mydbapi[myroot]
 
 				blocker_cache = BlockerCache(myroot, vardb)
@@ -6355,7 +6335,6 @@ class depgraph(object):
 
 		args_set = self._dynamic_config.sets[
 			self._frozen_config.target_root].sets['__non_set_args__']
-		portdb = self._frozen_config.trees[self._frozen_config.target_root]["porttree"].dbapi
 		added_favorites = set()
 		for x in self._dynamic_config._set_nodes:
 			if x.operation != "nomerge":
@@ -6419,15 +6398,12 @@ class depgraph(object):
 			mergelist = []
 
 		favorites = resume_data.get("favorites")
-		args_set = self._dynamic_config.sets[
-			self._frozen_config.target_root].sets['__non_set_args__']
 		if isinstance(favorites, list):
 			args = self._load_favorites(favorites)
 		else:
 			args = []
 
 		fakedb = self._dynamic_config.mydbapi
-		trees = self._frozen_config.trees
 		serialized_tasks = []
 		masked_tasks = []
 		for x in mergelist:
@@ -7085,7 +7061,6 @@ def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 
 def get_mask_info(root_config, cpv, pkgsettings,
 	db, pkg_type, built, installed, db_keys, myrepo = None, _pkg_use_enabled=None):
-	eapi_masked = False
 	try:
 		metadata = dict(zip(db_keys,
 			db.aux_get(cpv, db_keys, myrepo=myrepo)))
@@ -7195,7 +7170,7 @@ def _get_masking_status(pkg, pkgsettings, root_config, myrepo=None, use=None):
 				pkg.metadata["CHOST"]))
 
 	if pkg.invalid:
-		for msg_type, msgs in pkg.invalid.items():
+		for msgs in pkg.invalid.values():
 			for msg in msgs:
 				mreasons.append(
 					_MaskReason("invalid", "invalid: %s" % (msg,)))
