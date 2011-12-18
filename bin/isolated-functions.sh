@@ -415,7 +415,7 @@ set_colors() {
 	# If stdout is a pipe, the parent process can export COLUMNS
 	# if it's relevant.
 	[[ $COLS == 0 && $EBUILD_PHASE != depend ]] && \
-		COLS=$(set -- $(stty size 2>/dev/null) ; echo $2)
+		COLS=$(set -- $(stty size </dev/tty 2>/dev/null) ; echo $2)
 	(( COLS > 0 )) || (( COLS = 80 ))
 
 	# Now, ${ENDCOL} will move us to the end of the
