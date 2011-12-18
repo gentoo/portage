@@ -270,6 +270,9 @@ class RepoConfig(object):
 		repo_msg.append("")
 		return "\n".join(repo_msg)
 
+	def __repr__(self):
+		return "<portage.repository.config.RepoConfig(name='%s', location='%s')>" % (self.name, _unicode_decode(self.location))
+
 	def __str__(self):
 		d = {}
 		for k in self.__slots__:
