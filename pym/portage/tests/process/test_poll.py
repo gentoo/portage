@@ -11,26 +11,33 @@ from _emerge.SpawnProcess import SpawnProcess
 class PipeReaderTestCase(TestCase):
 
 	_use_array = False
+	_use_pty = False
 	_echo_cmd = "echo -n '%s'"
 
-	def _testPipeReader(self, test_string, use_pty):
+	def _testPipeReader(self, test_string):
 		"""
 		Use a poll loop to read data from a pipe and assert that
 		the data written to the pipe is identical to the data
 		read from the pipe.
 		"""
 
-		scheduler = PollScheduler().sched_iface
-		if use_pty:
+		if self._use_pty:
 			got_pty, master_fd, slave_fd = _create_pty_or_pipe()
+			if not got_pty:
+				os.close(slave_fd)
+				os.close(master_fd)
+				skip_reason = "pty not acquired"
+				self.portage_skip = skip_reason
+				self.fail(skip_reason)
+				return
 		else:
-			got_pty = False
 			master_fd, slave_fd = os.pipe()
 
 		# WARNING: It is very important to use unbuffered mode here,
 		# in order to avoid issue 5380 with python3.
 		master_file = os.fdopen(master_fd, 'rb', 0)
 		slave_file = os.fdopen(slave_fd, 'wb', 0)
+		scheduler = PollScheduler().sched_iface
 		producer = SpawnProcess(
 			args=["bash", "-c", self._echo_cmd % test_string],
 			env=os.environ, fd_pipes={1:slave_fd},
@@ -52,18 +59,17 @@ class PipeReaderTestCase(TestCase):
 		self.assertEqual(producer.returncode, os.EX_OK)
 		self.assertEqual(consumer.returncode, os.EX_OK)
 
-		output = consumer.getvalue().decode('ascii', 'replace')
-		return (output, got_pty)
+		return consumer.getvalue().decode('ascii', 'replace')
 
 	def testPipeReader(self):
-		for use_pty in (False, True):
-			for x in (1, 2, 5, 6, 7, 8, 2**5, 2**10, 2**12, 2**13, 2**14):
-				test_string = x * "a"
-				output, got_pty = self._testPipeReader(test_string, use_pty)
-				self.assertEqual(test_string, output,
-					"x = %s, len(output) = %s, "
-					"use_pty = %s, got_pty = %s" %
-					(x, len(output), use_pty, got_pty))
+		for x in (1, 2, 5, 6, 7, 8, 2**5, 2**10, 2**12, 2**13, 2**14):
+			test_string = x * "a"
+			output = self._testPipeReader(test_string)
+			self.assertEqual(test_string, output,
+				"x = %s, len(output) = %s" % (x, len(output)))
+
+class PipeReaderPtyTestCase(PipeReaderTestCase):
+	_use_pty = True
 
 class PipeReaderArrayTestCase(PipeReaderTestCase):
 
@@ -76,3 +82,6 @@ class PipeReaderArrayTestCase(PipeReaderTestCase):
 		# http://bugs.python.org/issue5380
 		# https://bugs.pypy.org/issue956
 		self.todo = True
+
+class PipeReaderPtyArrayTestCase(PipeReaderArrayTestCase):
+	_use_pty = True
