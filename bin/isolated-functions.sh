@@ -413,9 +413,11 @@ set_colors() {
 	COLS=${COLUMNS:-0}      # bash's internal COLUMNS variable
 	# Avoid wasteful stty calls during the "depend" phases.
 	# If stdout is a pipe, the parent process can export COLUMNS
-	# if it's relevant.
+	# if it's relevant. Use an extra subshell for stty calls, in
+	# order to redirect "/dev/tty: No such device or address"
+	# error from bash to /dev/null.
 	[[ $COLS == 0 && $EBUILD_PHASE != depend ]] && \
-		COLS=$(set -- $(stty size </dev/tty 2>/dev/null) ; echo $2)
+		COLS=$(set -- $( ( stty size </dev/tty ) 2>/dev/null || echo 24 80 ) ; echo $2)
 	(( COLS > 0 )) || (( COLS = 80 ))
 
 	# Now, ${ENDCOL} will move us to the end of the
