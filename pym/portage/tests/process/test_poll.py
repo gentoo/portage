@@ -11,6 +11,7 @@ from _emerge.SpawnProcess import SpawnProcess
 class PipeReaderTestCase(TestCase):
 
 	_use_array = False
+	_echo_cmd = "echo -n '%s'"
 
 	def _testPipeReader(self, test_string, use_pty):
 		"""
@@ -31,7 +32,7 @@ class PipeReaderTestCase(TestCase):
 		master_file = os.fdopen(master_fd, 'rb', 0)
 		slave_file = os.fdopen(slave_fd, 'wb', 0)
 		producer = SpawnProcess(
-			args=["bash", "-c", "echo -n '%s'" % test_string],
+			args=["bash", "-c", self._echo_cmd % test_string],
 			env=os.environ, fd_pipes={1:slave_fd},
 			scheduler=scheduler)
 		producer.start()
@@ -67,6 +68,8 @@ class PipeReaderTestCase(TestCase):
 class PipeReaderArrayTestCase(PipeReaderTestCase):
 
 	_use_array = True
+	# sleep allows reliable triggering of the failure mode on fast computers
+	_echo_cmd = "sleep 0.1 ; echo -n '%s'"
 
 	def __init__(self, *args, **kwargs):
 		super(PipeReaderArrayTestCase, self).__init__(*args, **kwargs)
