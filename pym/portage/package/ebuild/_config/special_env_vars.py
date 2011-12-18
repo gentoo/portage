@@ -36,7 +36,7 @@ environ_whitelist = []
 # environment in order to prevent sandbox from sourcing /etc/profile
 # in it's bashrc (causing major leakage).
 environ_whitelist += [
-	"ACCEPT_LICENSE", "BASH_ENV", "BUILD_PREFIX", "D",
+	"ACCEPT_LICENSE", "BASH_ENV", "BUILD_PREFIX", "COLUMNS", "D",
 	"DISTDIR", "DOC_SYMLINKS_DIR", "EAPI", "EBUILD",
 	"EBUILD_FORCE_TEST",
 	"EBUILD_PHASE", "ECLASSDIR", "ECLASS_DEPTH", "ED",
