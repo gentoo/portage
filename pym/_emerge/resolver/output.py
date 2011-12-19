@@ -833,7 +833,7 @@ class Display(object):
 				if self.include_mask_str():
 					addl += self.gen_mask_str(pkg)
 
-				if pkg.root != "/":
+				if pkg.root_config.settings["ROOT"] != "/":
 					if pkg_info.oldbest:
 						pkg_info.oldbest += " "
 					if self.conf.columns:

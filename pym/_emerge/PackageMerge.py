@@ -28,7 +28,7 @@ class PackageMerge(CompositeTask):
 			counter_str,
 			colorize("GOOD", pkg.cpv))
 
-		if pkg.root != "/":
+		if pkg.root_config.settings["ROOT"] != "/":
 			msg += " %s %s" % (preposition, pkg.root)
 
 		if not self.merge.build_opts.fetchonly and \
