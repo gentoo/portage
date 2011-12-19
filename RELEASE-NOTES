@@ -20,11 +20,6 @@ portage-2.2
   /var/lib/portage/world, has been extended to include nested sets that may
   be listed /var/lib/portage/world_sets.
 
-portage-2.1.10.34
-==================================
-* The emerge --quiet-build option is now enabled by default. Set
-  --quiet-build=n in EMERGE_DEFAULT_OPTS if you want to disable it by default.
-
 portage-2.1.10.27
 ==================================
 * FEATURES=fixpackages is now enabled unconditionally. Set --package-moves=n

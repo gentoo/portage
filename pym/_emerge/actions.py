@@ -187,8 +187,7 @@ def action_build(settings, trees, mtimedb,
 			" entire repository or category at once."
 		prefix = bad(" * ")
 		writemsg(prefix + "\n")
-		from textwrap import wrap
-		for line in wrap(msg, 72):
+		for line in textwrap.wrap(msg, 72):
 			writemsg("%s%s\n" % (prefix, line))
 		writemsg(prefix + "\n")
 
@@ -216,7 +215,6 @@ def action_build(settings, trees, mtimedb,
 			if isinstance(e, depgraph.UnsatisfiedResumeDep):
 				mydepgraph = e.depgraph
 
-			from textwrap import wrap
 			from portage.output import EOutput
 			out = EOutput()
 
@@ -255,7 +253,7 @@ def action_build(settings, trees, mtimedb,
 					"to skip the first package in the list and " + \
 					"any other packages that may be " + \
 					"masked or have missing dependencies."
-				for line in wrap(msg, 72):
+				for line in textwrap.wrap(msg, 72):
 					out.eerror(line)
 			elif isinstance(e, portage.exception.PackageNotFound):
 				out.eerror("An expected package is " + \
@@ -265,7 +263,7 @@ def action_build(settings, trees, mtimedb,
 					"packages that are no longer " + \
 					"available. Please restart/continue " + \
 					"the operation manually."
-				for line in wrap(msg, 72):
+				for line in textwrap.wrap(msg, 72):
 					out.eerror(line)
 
 		if success:
@@ -1066,9 +1064,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				"the packages that pulled them in."
 
 			prefix = bad(" * ")
-			from textwrap import wrap
 			writemsg_level("".join(prefix + "%s\n" % line for \
-				line in wrap(msg, 70)), level=logging.WARNING, noiselevel=-1)
+				line in textwrap.wrap(msg, 70)), level=logging.WARNING, noiselevel=-1)
 
 			msg = []
 			for pkg in sorted(consumer_map, key=cmp_sort_key(cmp_pkg_cpv)):
@@ -2803,8 +2800,8 @@ def adjust_config(myopts, settings):
 	if settings.get("NOCOLOR") not in ("yes","true"):
 		portage.output.havecolor = 1
 
-	"""The explicit --color < y | n > option overrides the NOCOLOR environment
-	variable and stdout auto-detection."""
+	# The explicit --color < y | n > option overrides the NOCOLOR environment
+	# variable and stdout auto-detection.
 	if "--color" in myopts:
 		if "y" == myopts["--color"]:
 			portage.output.havecolor = 1
@@ -2876,7 +2873,7 @@ def getportageversion(portdir, _unused, profile, chost, vardb):
 		for cpv in sorted(libclist):
 			libc_split = portage.catpkgsplit(cpv)[1:]
 			if libc_split[-1] == "r0":
-				libc_split[:-1]
+				libc_split = libc_split[:-1]
 			libcver.append("-".join(libc_split))
 	else:
 		libcver = ["unavailable"]
@@ -3035,7 +3032,7 @@ def load_emerge_config(trees=None):
 			kwargs[k] = v
 	trees = portage.create_trees(trees=trees, **kwargs)
 
-	for root, root_trees in trees.items():
+	for root_trees in trees.values():
 		settings = root_trees["vartree"].settings
 		settings._init_dirs()
 		setconfig = load_default_config(settings, root_trees)

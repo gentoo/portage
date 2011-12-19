@@ -2,7 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import array
+import errno
 import logging
+import os
 
 from portage.util import writemsg_level
 from _emerge.AsynchronousTask import AsynchronousTask
@@ -20,8 +22,12 @@ class AbstractPollTask(AsynchronousTask):
 	def isAlive(self):
 		return bool(self._registered)
 
-	def _read_buf(self, f, event):
+	def _read_array(self, f, event):
 		"""
+		NOTE: array.fromfile() is used here only for testing purposes,
+		because it has bugs in all known versions of Python (including
+		Python 2.7 and Python 3.2).
+
 		| POLLIN | RETURN
 		| BIT    | VALUE
 		| ---------------------------------------------------
@@ -37,8 +43,63 @@ class AbstractPollTask(AsynchronousTask):
 			buf = array.array('B')
 			try:
 				buf.fromfile(f, self._bufsize)
-			except (EOFError, IOError):
+			except EOFError:
 				pass
+			except TypeError:
+				# Python 3.2:
+				# TypeError: read() didn't return bytes
+				pass
+			except IOError as e:
+				# EIO happens with pty on Linux after the
+				# slave end of the pty has been closed.
+				if e.errno == errno.EIO:
+					# EOF: return empty string of bytes
+					pass
+				elif e.errno == errno.EAGAIN:
+					# EAGAIN: return None
+					buf = None
+				else:
+					raise
+
+		if buf is not None:
+			try:
+				# Python >=3.2
+				buf = buf.tobytes()
+			except AttributeError:
+				buf = buf.tostring()
+
+		return buf
+
+	def _read_buf(self, fd, event):
+		"""
+		| POLLIN | RETURN
+		| BIT    | VALUE
+		| ---------------------------------------------------
+		| 1      | Read self._bufsize into a string of bytes,
+		|        | handling EAGAIN and EIO. An empty string
+		|        | of bytes indicates EOF.
+		| ---------------------------------------------------
+		| 0      | None
+		"""
+		# NOTE: array.fromfile() is no longer used here because it has
+		# bugs in all known versions of Python (including Python 2.7
+		# and Python 3.2).
+		buf = None
+		if event & PollConstants.POLLIN:
+			try:
+				buf = os.read(fd, self._bufsize)
+			except OSError as e:
+				# EIO happens with pty on Linux after the
+				# slave end of the pty has been closed.
+				if e.errno == errno.EIO:
+					# EOF: return empty string of bytes
+					buf = b''
+				elif e.errno == errno.EAGAIN:
+					# EAGAIN: return None
+					buf = None
+				else:
+					raise
+
 		return buf
 
 	def _unregister(self):

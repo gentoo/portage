@@ -1,7 +1,7 @@
 # Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import array
+import errno
 import fcntl
 import platform
 import pty
@@ -28,19 +28,22 @@ def _can_test_pty_eof():
 	"""
 	return platform.system() in ("Linux",)
 
-def _test_pty_eof(fdopen_buffered=False):
+def _test_pty_eof():
 	"""
-	Returns True if this issues is fixed for the currently
-	running version of python: http://bugs.python.org/issue5380
-	Raises an EnvironmentError from openpty() if it fails.
+	Returns True if EOF appears to be handled correctly with pty
+	devices. Raises an EnvironmentError from openpty() if it fails.
 
-	NOTE: This issue is only problematic when array.fromfile()
-	is used, rather than os.read(). However, array.fromfile()
-	is preferred since it is approximately 10% faster.
+	This used to be used to detect if the following issue was fixed
+	in the currently running version of python:
 
-	New development: It appears that array.fromfile() is usable
-	with python3 as long as fdopen is called with a bufsize
-	argument of 0.
+		http://bugs.python.org/issue5380
+
+	However, array.fromfile() use has since been abandoned due to
+	bugs that exist in all known versions of Python (including Python
+	2.7 and Python 3.2). See PipeReaderArrayTestCase, for example.
+	This is somewhat unfortunate, since the combination of 
+	array.fromfile() and array.tofile() is approximately 10% faster
+	than the combination of os.read() and os.write().
 	"""
 
 	use_fork = False
@@ -86,39 +89,42 @@ def _test_pty_eof(fdopen_buffered=False):
 	if pid is not None:
 		os.waitpid(pid, 0)
 
-	if fdopen_buffered:
-		master_file = os.fdopen(master_fd, 'rb')
-	else:
-		master_file = os.fdopen(master_fd, 'rb', 0)
-	eof = False
 	data = []
-	iwtd = [master_file]
+	iwtd = [master_fd]
 	owtd = []
 	ewtd = []
 
-	while not eof:
+	while True:
 
 		events = select.select(iwtd, owtd, ewtd)
 		if not events[0]:
-			eof = True
+			# EOF
 			break
 
-		buf = array.array('B')
+		buf = None
 		try:
-			buf.fromfile(master_file, 1024)
-		except (EOFError, IOError):
-			eof = True
+			buf = os.read(master_fd, 1024)
+		except OSError as e:
+			# EIO happens with pty on Linux after the
+			# slave end of the pty has been closed.
+			if e.errno == errno.EIO:
+				# EOF: return empty string of bytes
+				buf = b''
+			elif e.errno == errno.EAGAIN:
+				# EAGAIN: return None
+				buf = None
+			else:
+				raise
 
-		if not buf:
-			eof = True
+		if buf is None:
+			pass
+		elif not buf:
+			# EOF
+			break
 		else:
-			try:
-				# Python >=3.2
-				data.append(buf.tobytes())
-			except AttributeError:
-				data.append(buf.tostring())
+			data.append(buf)
 
-	master_file.close()
+	os.close(master_fd)
 
 	return test_string == _unicode_decode(b''.join(data), encoding='utf_8', errors='strict')
 

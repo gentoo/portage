@@ -866,6 +866,20 @@ class Scheduler(PollScheduler):
 				# Clean up the existing build dir, in case pkg_pretend
 				# checks for available space (bug #390711).
 				if existing_buildir:
+					if x.built:
+						tree = "bintree"
+						infloc = os.path.join(build_dir_path, "build-info")
+						ebuild_path = os.path.join(infloc, x.pf + ".ebuild")
+					else:
+						tree = "porttree"
+						portdb = root_config.trees["porttree"].dbapi
+						ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
+						if ebuild_path is None:
+							raise AssertionError(
+								"ebuild not found for '%s'" % x.cpv)
+					portage.package.ebuild.doebuild.doebuild_environment(
+						ebuild_path, "clean", settings=settings,
+						db=self.trees[settings['EROOT']][tree].dbapi)
 					clean_phase = EbuildPhase(background=False,
 						phase='clean', scheduler=sched_iface, settings=settings)
 					current_task = clean_phase

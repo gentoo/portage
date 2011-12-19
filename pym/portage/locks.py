@@ -320,7 +320,7 @@ def hardlink_lockfile(lockfilename, max_wait=DeprecationWarning,
 	myhardlock = hardlock_name(lockfilename)
 
 	# myhardlock must not exist prior to our link() call, and we can
-	# can safely unlink it since its file name is unique to our PID
+	# safely unlink it since its file name is unique to our PID
 	try:
 		os.unlink(myhardlock)
 	except OSError as e:

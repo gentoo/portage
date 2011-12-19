@@ -125,6 +125,33 @@ class RepoConfig(object):
 		self.portage1_profiles = True
 		self.portage1_profiles_compat = False
 
+		# Parse layout.conf.
+		if self.location:
+			layout_filename = os.path.join(self.location, "metadata", "layout.conf")
+			layout_data = parse_layout_conf(self.location, self.name)[0]
+
+			# layout.conf masters may be overridden here if we have a masters
+			# setting from the user's repos.conf
+			if self.masters is None:
+				self.masters = layout_data['masters']
+
+			if layout_data['aliases']:
+				aliases = self.aliases
+				if aliases is None:
+					aliases = ()
+				# repos.conf aliases come after layout.conf aliases, giving
+				# them the ability to do incremental overrides
+				self.aliases = layout_data['aliases'] + tuple(aliases)
+
+			for value in ('allow-missing-manifest', 'cache-formats',
+				'create-manifest', 'disable-manifest', 'manifest-hashes',
+				'sign-manifest', 'thin-manifest', 'update-changelog'):
+				setattr(self, value.lower().replace("-", "_"), layout_data[value])
+
+			self.portage1_profiles = any(x.startswith("portage-1") \
+				for x in layout_data['profile-formats'])
+			self.portage1_profiles_compat = layout_data['profile-formats'] == ('portage-1-compat',)
+
 	def iter_pregenerated_caches(self, auxdbkeys, readonly=True, force=False):
 		"""
 		Reads layout.conf cache-formats from left to right and yields cache
@@ -243,6 +270,9 @@ class RepoConfig(object):
 		repo_msg.append("")
 		return "\n".join(repo_msg)
 
+	def __repr__(self):
+		return "<portage.repository.config.RepoConfig(name='%s', location='%s')>" % (self.name, _unicode_decode(self.location))
+
 	def __str__(self):
 		d = {}
 		for k in self.__slots__:
@@ -294,19 +324,16 @@ class RepoConfigLoader(object):
 					repo_opts = default_repo_opts.copy()
 					repo_opts['location'] = ov
 					repo = RepoConfig(None, repo_opts)
-					repo_conf_opts = prepos.get(repo.name)
-					if repo_conf_opts is not None:
-						if repo_conf_opts.aliases is not None:
-							repo_opts['aliases'] = \
-								' '.join(repo_conf_opts.aliases)
-						if repo_conf_opts.eclass_overrides is not None:
-							repo_opts['eclass-overrides'] = \
-								' '.join(repo_conf_opts.eclass_overrides)
-						if repo_conf_opts.masters is not None:
-							repo_opts['masters'] = \
-								' '.join(repo_conf_opts.masters)
+					# repos_conf_opts contains options from /etc/portage/repos.conf
+					repos_conf_opts = prepos.get(repo.name)
+					if repos_conf_opts is not None:
+						if repos_conf_opts.aliases is not None:
+							repo.aliases = repos_conf_opts.aliases
+						if repos_conf_opts.eclass_overrides is not None:
+							repo.eclass_overrides = repos_conf_opts.eclass_overrides
+						if repos_conf_opts.masters is not None:
+							repo.masters = repos_conf_opts.masters
 
-					repo = RepoConfig(repo.name, repo_opts)
 					if repo.name in prepos:
 						old_location = prepos[repo.name].location
 						if old_location is not None and old_location != repo.location:
@@ -411,35 +438,6 @@ class RepoConfigLoader(object):
 		self.missing_repo_names = frozenset(repo.location
 			for repo in prepos.values()
 			if repo.location is not None and repo.missing_repo_name)
-
-		#Parse layout.conf and read masters key.
-		for repo in prepos.values():
-			if not repo.location:
-				continue
-			layout_filename = os.path.join(repo.location, "metadata", "layout.conf")
-			layout_data, layout_errors = parse_layout_conf(repo.location, repo.name)
-
-			# layout.conf masters may be overridden here if we have a masters
-			# setting from the user's repos.conf
-			if repo.masters is None:
-				repo.masters = layout_data['masters']
-
-			if layout_data['aliases']:
-				aliases = repo.aliases
-				if aliases is None:
-					aliases = ()
-				# repos.conf aliases come after layout.conf aliases, giving
-				# them the ability to do incremental overrrides
-				repo.aliases = layout_data['aliases'] + tuple(aliases)
-
-			for value in ('allow-missing-manifest', 'cache-formats',
-				'create-manifest', 'disable-manifest', 'manifest-hashes',
-				'sign-manifest', 'thin-manifest', 'update-changelog'):
-				setattr(repo, value.lower().replace("-", "_"), layout_data[value])
-
-			repo.portage1_profiles = any(x.startswith("portage-1") \
-				for x in layout_data['profile-formats'])
-			repo.portage1_profiles_compat = layout_data['profile-formats'] == ('portage-1-compat',)
 
 		#Take aliases into account.
 		new_prepos = {}

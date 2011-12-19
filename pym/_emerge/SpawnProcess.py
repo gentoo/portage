@@ -46,6 +46,7 @@ class SpawnProcess(SubProcess):
 		master_fd, slave_fd = self._pipe(fd_pipes)
 		fcntl.fcntl(master_fd, fcntl.F_SETFL,
 			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
+		files.process = master_fd
 
 		logfile = None
 		if self._can_log(slave_fd):
@@ -75,9 +76,6 @@ class SpawnProcess(SubProcess):
 			if fd == sys.stderr.fileno():
 				sys.stderr.flush()
 
-		# WARNING: It is very important to use unbuffered mode here,
-		# in order to avoid issue 5380 with python3.
-		files.process = os.fdopen(master_fd, 'rb', 0)
 		if logfile is not None:
 
 			fd_pipes_orig = fd_pipes.copy()
@@ -120,7 +118,7 @@ class SpawnProcess(SubProcess):
 		kwargs["returnpid"] = True
 		kwargs.pop("logfile", None)
 
-		self._reg_id = self.scheduler.register(files.process.fileno(),
+		self._reg_id = self.scheduler.register(files.process,
 			self._registered_events, output_handler)
 		self._registered = True
 
@@ -165,18 +163,27 @@ class SpawnProcess(SubProcess):
 	def _output_handler(self, fd, event):
 
 		files = self._files
-		buf = self._read_buf(files.process, event)
+		while True:
+			buf = self._read_buf(fd, event)
 
-		if buf is not None:
+			if buf is None:
+				# not a POLLIN event, EAGAIN, etc...
+				break
 
-			if buf:
+			if not buf:
+				# EOF
+				self._unregister()
+				self.wait()
+				break
+
+			else:
 				if not self.background:
 					write_successful = False
 					failures = 0
 					while True:
 						try:
 							if not write_successful:
-								buf.tofile(files.stdout)
+								files.stdout.write(buf)
 								write_successful = True
 							files.stdout.flush()
 							break
@@ -206,20 +213,8 @@ class SpawnProcess(SubProcess):
 								fcntl.fcntl(files.stdout.fileno(),
 								fcntl.F_GETFL) ^ os.O_NONBLOCK)
 
-				try:
-					buf.tofile(files.log)
-				except TypeError:
-					# array.tofile() doesn't work with GzipFile
-					try:
-						# Python >=3.2
-						data = buf.tobytes()
-					except AttributeError:
-						data = buf.tostring()
-					files.log.write(data)
+				files.log.write(buf)
 				files.log.flush()
-			else:
-				self._unregister()
-				self.wait()
 
 		self._unregister_if_appropriate(event)
 
@@ -230,15 +225,18 @@ class SpawnProcess(SubProcess):
 		monitor the process from inside a poll() loop.
 		"""
 
-		buf = self._read_buf(self._files.process, event)
+		while True:
+			buf = self._read_buf(fd, event)
 
-		if buf is not None:
+			if buf is None:
+				# not a POLLIN event, EAGAIN, etc...
+				break
 
-			if buf:
-				pass
-			else:
+			if not buf:
+				# EOF
 				self._unregister()
 				self.wait()
+				break
 
 		self._unregister_if_appropriate(event)
 

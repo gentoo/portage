@@ -90,11 +90,16 @@ def _get_global(k):
 			secpass = 2
 		#Discover the uid and gid of the portage user/group
 		try:
-			portage_gid = grp.getgrnam(_get_global('_portage_grpname')).gr_gid
+			_portage_grpname = _get_global('_portage_grpname')
+			if platform.python_implementation() == 'PyPy':
+				# Somehow this prevents "TypeError: expected string" errors
+				# from grp.getgrnam() with PyPy 1.7
+				_portage_grpname = str(_portage_grpname)
+			portage_gid = grp.getgrnam(_portage_grpname).gr_gid
 		except KeyError:
 			# PREFIX LOCAL: some sysadmins are insane, bug #344307
-			if _get_global('_portage_grpname').isdigit():
-				portage_gid = int(_get_global('_portage_grpname'))
+			if _portage_grpname.isdigit():
+				portage_gid = int(_portage_grpname)
 			else:
 				portage_gid = None
 			# END PREFIX LOCAL

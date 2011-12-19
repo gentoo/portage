@@ -25,17 +25,27 @@ else
 		libopts register_die_hook register_success_hook \
 		remove_path_entry set_unless_changed strip_duplicate_slashes \
 		unset_unless_changed use_with use_enable ; do
-		eval "${x}() { : ; }"
+		eval "${x}() {
+			if has \"\${EAPI:-0}\" 4-python; then
+				die \"\${FUNCNAME}() calls are not allowed in global scope\"
+			fi
+		}"
 	done
-	# These dummy functions return false, in order to ensure that
+	# These dummy functions return false in older EAPIs, in order to ensure that
 	# `use multislot` is false for the "depend" phase.
 	for x in use useq usev ; do
-		eval "${x}() { return 1; }"
+		eval "${x}() {
+			if has \"\${EAPI:-0}\" 4-python; then
+				die \"\${FUNCNAME}() calls are not allowed in global scope\"
+			else
+				return 1
+			fi
+		}"
 	done
 	# These functions die because calls to them during the "depend" phase
 	# are considered to be severe QA violations.
 	for x in best_version has_version portageq ; do
-		eval "${x}() { die \"\${FUNCNAME} calls are not allowed in global scope\"; }"
+		eval "${x}() { die \"\${FUNCNAME}() calls are not allowed in global scope\"; }"
 	done
 	unset x
 fi
