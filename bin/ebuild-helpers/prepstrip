@@ -19,7 +19,7 @@ exp_tf FEATURES installsources nostrip splitdebug
 exp_tf RESTRICT binchecks installsources strip
 
 [[ " ${FEATURES} " == *" force-prefix "* ]] || \
-	case "$EAPI" in 0|1|2) ED=${D} ;; esac
+	case "$EAPI" in 0|1|2) EPREFIX= ED=${D} ;; esac
 
 banner=false
 SKIP_STRIP=false
@@ -57,7 +57,7 @@ case $(${STRIP} --version 2>/dev/null) in
 esac
 : ${PORTAGE_STRIP_FLAGS=${SAFE_STRIP_FLAGS} ${DEF_STRIP_FLAGS}}
 
-prepstrip_sources_dir=/usr/src/debug/${CATEGORY}/${PF}
+prepstrip_sources_dir=${EPREFIX}/usr/src/debug/${CATEGORY}/${PF}
 
 type -P debugedit >/dev/null && debugedit_found=true || debugedit_found=false
 debugedit_warned=false
@@ -101,8 +101,12 @@ save_elf_sources() {
 save_elf_debug() {
 	${FEATURES_splitdebug} || return 0
 
+	# NOTE: Debug files must be installed in
+	# ${EPREFIX}/usr/lib/debug/${EPREFIX} (note that ${EPREFIX} occurs
+	# twice in this path) in order for gdb's debug-file-directory
+	# lookup to work correctly.
 	local x=$1
-	local y="${ED}usr/lib/debug/${x:${#ED}}.debug"
+	local y=${ED}usr/lib/debug/${x:${#D}}.debug
 
 	# dont save debug info twice
 	[[ ${x} == *".debug" ]] && return 0
@@ -111,7 +115,7 @@ save_elf_debug() {
 
 	local inode=$(inode_var_name "$x")
 	if [[ -n ${!inode} ]] ; then
-		ln "${ED}usr/lib/debug/${!inode:${#ED}}.debug" "$y"
+		ln "${ED}usr/lib/debug/${!inode:${#D}}.debug" "$y"
 	else
 		eval $inode=\$x
 		if [[ -e ${T}/prepstrip.split.debug ]] ; then
@@ -135,8 +139,8 @@ save_elf_debug() {
 		local buildid_dir="${ED}usr/lib/debug/.build-id/${buildid:0:2}"
 		local buildid_file="${buildid_dir}/${buildid:2}"
 		mkdir -p "${buildid_dir}"
-		ln -s "../../${x:${#ED}}.debug" "${buildid_file}.debug"
-		ln -s "/${x:${#ED}}" "${buildid_file}"
+		ln -s "../../${x:${#D}}.debug" "${buildid_file}.debug"
+		ln -s "/${x:${#D}}" "${buildid_file}"
 	fi
 }
 
@@ -216,6 +220,15 @@ do
 		strip_this=false
 	fi
 
+	# In Prefix we are usually an unprivileged user, so we can't strip
+	# unwritable objects.  Make them temporarily writable for the
+	# stripping.
+	was_not_writable=false
+	if [[ -n ${EPREFIX} && ! -w ${x} ]] ; then
+		was_not_writable=true
+		chmod u+w "${x}"
+	fi
+
 	# only split debug info for final linked objects
 	# or kernel modules as debuginfo for intermediatary
 	# files (think crt*.o from gcc/glibc) is useless and
@@ -234,6 +247,10 @@ do
 	elif [[ ${f} == *"SB relocatable"* ]] ; then
 		process_elf "${x}" ${SAFE_STRIP_FLAGS}
 	fi
+
+	if ${was_not_writable} ; then
+		chmod u-w "${x}"
+	fi
 done
 
 if [[ -s ${T}/debug.sources ]] && \
@@ -242,10 +259,10 @@ if [[ -s ${T}/debug.sources ]] && \
    ${debugedit_found}
 then
 	vecho "installsources: rsyncing source files"
-	[[ -d ${ED}${prepstrip_sources_dir} ]] || mkdir -p "${ED}${prepstrip_sources_dir}"
+	[[ -d ${D}${prepstrip_sources_dir} ]] || mkdir -p "${D}${prepstrip_sources_dir}"
 	grep -zv '/<[^/>]*>$' "${T}"/debug.sources | \
 		(cd "${WORKDIR}"; LANG=C sort -z -u | \
-		rsync -tL0 --files-from=- "${WORKDIR}/" "${ED}${prepstrip_sources_dir}/" )
+		rsync -tL0 --files-from=- "${WORKDIR}/" "${D}${prepstrip_sources_dir}/" )
 
 	# Preserve directory structure.
 	# Needed after running save_elf_sources.
@@ -253,5 +270,5 @@ then
 	while read -r -d $'\0' emptydir
 	do
 		>> "$emptydir"/.keepdir
-	done < <(find "${ED}${prepstrip_sources_dir}/" -type d -empty -print0)
+	done < <(find "${D}${prepstrip_sources_dir}/" -type d -empty -print0)
 fi
