@@ -1,0 +1,49 @@
+<section id='package-ebuild-eapi-4-python'>
+<title>EAPI 4-python</title>
+<para>Also see the
+<ulink url="http://people.apache.org/~Arfrever/EAPI_4-python_Specification">
+official EAPI 4-python Specification</ulink>.
+</para>
+<section id='package-ebuild-eapi-4-python-helpers'>
+<title>Helpers</title>
+<section id='package-ebuild-eapi-4-python-helpers-banned-global-scope'>
+<title>Helpers Banned in Global Scope</title>
+<para>
+<itemizedlist>
+<listitem><para>diropts</para></listitem>
+<listitem><para>docompress</para></listitem>
+<listitem><para>exeopts</para></listitem>
+<listitem><para>insopts</para></listitem>
+<listitem><para>keepdir</para></listitem>
+<listitem><para>libopts</para></listitem>
+<listitem><para>use</para></listitem>
+<listitem><para>use_enable</para></listitem>
+<listitem><para>use_with</para></listitem>
+<listitem><para>useq</para></listitem>
+<listitem><para>usev</para></listitem>
+</itemizedlist>
+</para>
+</section>
+</section>
+<section id='package-ebuild-eapi-4-python-use-flag-allow-period-characters'>
+<title>Support for Period Characters in USE Flags</title>
+<para>
+The "." character is allowed in USE flags.
+</para>
+</section>
+<section id='package-ebuild-eapi-4-python-repo-level-config'>
+<title>Extended Repository-Level Configuration</title>
+<para>
+Repository-level configuration in ${repository}/profiles is supported for
+the following files:
+<itemizedlist>
+<listitem><para>make.defaults</para></listitem>
+<listitem><para>package.use</para></listitem>
+<listitem><para>package.use.force</para></listitem>
+<listitem><para>package.use.mask</para></listitem>
+<listitem><para>use.force</para></listitem>
+<listitem><para>use.mask</para></listitem>
+</itemizedlist>
+</para>
+</section>
+</section>
