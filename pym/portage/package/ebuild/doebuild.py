@@ -313,6 +313,10 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 		columns = os.environ.get("COLUMNS")
 		if columns is None:
 			rows, columns = portage.output.get_term_size()
+			if columns < 1:
+				# Force a sane value for COLUMNS, so that tools
+				# like ls don't complain (see bug #394091).
+				columns = 80
 			columns = str(columns)
 			os.environ["COLUMNS"] = columns
 		mysettings["COLUMNS"] = columns
