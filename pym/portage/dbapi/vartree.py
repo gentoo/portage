@@ -772,8 +772,7 @@ class vardbapi(dbapi):
 
 		@param myroot: ignored, self._eroot is used instead
 		"""
-		myroot = None
-		new_vdb = False
+		del myroot
 		counter = -1
 		try:
 			cfile = io.open(
@@ -782,8 +781,9 @@ class vardbapi(dbapi):
 				mode='r', encoding=_encodings['repo.content'],
 				errors='replace')
 		except EnvironmentError as e:
-			new_vdb = not bool(self.cpv_all())
-			if not new_vdb:
+			# Silently allow ENOENT since files under
+			# /var/cache/ are allowed to disappear.
+			if e.errno != errno.ENOENT:
 				writemsg(_("!!! Unable to read COUNTER file: '%s'\n") % \
 					self._counter_path, noiselevel=-1)
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
@@ -819,10 +819,6 @@ class vardbapi(dbapi):
 					continue
 				if pkg_counter > max_counter:
 					max_counter = pkg_counter
-
-		if counter < 0 and not new_vdb:
-			writemsg(_("!!! Initializing COUNTER to " \
-				"value of %d\n") % max_counter, noiselevel=-1)
 
 		return max_counter + 1
 
