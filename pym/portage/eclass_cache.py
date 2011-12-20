@@ -49,6 +49,8 @@ class hashed_path(object):
 		setattr(self, attr, val)
 		return val
 
+	def __repr__(self):
+		return "<portage.eclass_cache.hashed_path('%s')>" % (self.location,)
 
 class cache(object):
 	"""
