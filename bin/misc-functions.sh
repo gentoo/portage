@@ -311,20 +311,20 @@ install_qa_check() {
 		# Check for files built without respecting CFLAGS
 		if [[ "${CFLAGS}" == *-frecord-gcc-switches* ]] && \
 			! has binchecks ${RESTRICT} ; then
-			qa_var="QA_DT_SWITCHES_${ARCH/-/_}"
-			eval "[[ -n \${!qa_var} ]] && QA_DT_SWITCHES=(\"\${${qa_var}[@]}\")"
+			qa_var="QA_CFLAGS_IGNORED_${ARCH/-/_}"
+			eval "[[ -n \${!qa_var} ]] && QA_CFLAGS_IGNORED=(\"\${${qa_var}[@]}\")"
 			f=$(scanelf -qyRF '%k %p' -k \!.GCC.command.line "${ED}" | sed -e "s:\!.GCC.command.line ::")
 			if [[ -n ${f} ]] ; then
 				echo "${f}" > "${T}"/scanelf-ignored-CFLAGS.log
 				if [ "${QA_STRICT_DT_SWITCHES-unset}" == unset ] ; then
-					if [[ ${#QA_DT_SWITCHES[@]} -gt 1 ]] ; then
-						for x in "${QA_DT_SWITCHES[@]}" ; do
+					if [[ ${#QA_CFLAGS_IGNORED[@]} -gt 1 ]] ; then
+						for x in "${QA_CFLAGS_IGNORED[@]}" ; do
 							sed -e "s#^${x#/}\$##" -i "${T}"/scanelf-ignored-CFLAGS.log
 						done
 					else
 						local shopts=$-
 						set -o noglob
-						for x in ${QA_DT_SWITCHES} ; do
+						for x in ${QA_CFLAGS_IGNORED} ; do
 							sed -e "s#^${x#/}\$##" -i "${T}"/scanelf-ignored-CFLAGS.log
 						done
 						set +o noglob
