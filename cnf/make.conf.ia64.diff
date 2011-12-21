@@ -1,6 +1,6 @@
---- make.conf	2006-03-19 18:40:11.000000000 +0100
-+++ make.conf.ia64	2006-03-19 18:26:21.000000000 +0100
-@@ -23,20 +23,18 @@
+--- make.conf
++++ make.conf.ia64
+@@ -22,6 +22,13 @@
  # Example:
  #USE="X gtk gnome -alsa"
  
@@ -14,22 +14,7 @@
  # Host and optimization settings 
  # ==============================
  #
--# For optimal performance, enable a CFLAGS setting appropriate for your CPU.
--#
--# Please note that if you experience strange issues with a package, it may be
--# due to gcc's optimizations interacting in a strange way. Please test the
--# package (and in some cases the libraries it uses) at default optimizations
--# before reporting errors to developers.
--#
--# Please refer to the GCC manual for a list of possible values.
--#
- #CFLAGS="-O2 -pipe"
--#
-+
- # If you set a CFLAGS above, then this line will set your default C++ flags to
- # the same settings.
- #CXXFLAGS="${CFLAGS}"
-@@ -61,7 +80,7 @@
+@@ -75,7 +82,7 @@
  # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
  # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
  #
