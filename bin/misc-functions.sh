@@ -309,7 +309,8 @@ install_qa_check() {
 		fi
 
 		# Check for files built without respecting CFLAGS
-		if [[ "${CFLAGS}" == *-frecord-gcc-switches* ]] && [[ "${PN}" != *-bin ]] ; then
+		if [[ "${CFLAGS}" == *-frecord-gcc-switches* ]] && \
+			! has binchecks ${RESTRICT} ; then
 			qa_var="QA_DT_SWITCHES_${ARCH/-/_}"
 			eval "[[ -n \${!qa_var} ]] && QA_DT_SWITCHES=(\"\${${qa_var}[@]}\")"
 			f=$(scanelf -qyRF '%k %p' -k \!.GCC.command.line "${ED}" | sed -e "s:\!.GCC.command.line ::")
@@ -349,7 +350,8 @@ install_qa_check() {
 		fi
 
 		# Check for files built without respecting LDFLAGS
-		if [[ "${LDFLAGS}" == *,--hash-style=gnu* ]] && [[ "${PN}" != *-bin ]] ; then
+		if [[ "${LDFLAGS}" == *,--hash-style=gnu* ]] && \
+			! has binchecks ${RESTRICT} ; then
 			qa_var="QA_DT_HASH_${ARCH/-/_}"
 			eval "[[ -n \${!qa_var} ]] && QA_DT_HASH=(\"\${${qa_var}[@]}\")"
 			f=$(scanelf -qyRF '%k %p' -k .hash "${ED}" | sed -e "s:\.hash ::")
