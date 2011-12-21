@@ -316,7 +316,7 @@ install_qa_check() {
 			f=$(scanelf -qyRF '%k %p' -k \!.GCC.command.line "${ED}" | sed -e "s:\!.GCC.command.line ::")
 			if [[ -n ${f} ]] ; then
 				echo "${f}" > "${T}"/scanelf-ignored-CFLAGS.log
-				if [ "${QA_STRICT_DT_SWITCHES-unset}" == unset ] ; then
+				if [ "${QA_STRICT_CFLAGS_IGNORED-unset}" == unset ] ; then
 					if [[ ${#QA_CFLAGS_IGNORED[@]} -gt 1 ]] ; then
 						for x in "${QA_CFLAGS_IGNORED[@]}" ; do
 							sed -e "s#^${x#/}\$##" -i "${T}"/scanelf-ignored-CFLAGS.log
