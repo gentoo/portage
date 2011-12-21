@@ -720,7 +720,8 @@ class vardbapi(dbapi):
 					myf.close()
 			except IOError:
 				myd = None
-				if x not in self._aux_cache_keys:
+				if x not in self._aux_cache_keys and \
+					self._aux_cache_keys_re.match(x) is None:
 					myd = self._aux_env_search(mycpv, x)
 				if myd is None:
 					myd = _unicode_decode('')
