@@ -32,6 +32,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util._dyn_libs.LinkageMapELF:LinkageMapELF@LinkageMap',
 	'portage.versions:best,catpkgsplit,catsplit,cpv_getkey,pkgcmp,' + \
 		'_pkgsplit@pkgsplit',
+	'subprocess',
 	'tarfile',
 )
 
@@ -717,17 +718,90 @@ class vardbapi(dbapi):
 					myd = myf.read()
 				finally:
 					myf.close()
-				# Preserve \n for metadata that is known to
-				# contain multiple lines.
-				if self._aux_multi_line_re.match(x) is None:
-					myd = " ".join(myd.split())
 			except IOError:
-				myd = _unicode_decode('')
+				myd = None
+				if x not in self._aux_cache_keys:
+					myd = self._aux_env_search(mycpv, x)
+				if myd is None:
+					myd = _unicode_decode('')
+
+			# Preserve \n for metadata that is known to
+			# contain multiple lines.
+			if self._aux_multi_line_re.match(x) is None:
+				myd = " ".join(myd.split())
+
 			if x == "EAPI" and not myd:
 				results.append(_unicode_decode('0'))
 			else:
 				results.append(myd)
 		return results
+
+	def _aux_env_search(self, cpv, variable):
+		"""
+		Search environment.bz2 of the specified variable. Returns
+		the value if found, otherwise None. This is useful for
+		querying variables like ${SRC_URI} and ${A}, which are not
+		saved in separate files but are available in environment.bz2
+		(see bug #395463).
+		"""
+		env_file = self.getpath(cpv, filename="environment.bz2")
+		if not os.path.isfile(env_file):
+			return None
+		bunzip2_cmd = portage.util.shlex_split(
+			self.settings.get("PORTAGE_BUNZIP2_COMMAND", ""))
+		if not bunzip2_cmd:
+			bunzip2_cmd = portage.util.shlex_split(
+				self.settings["PORTAGE_BZIP2_COMMAND"])
+			bunzip2_cmd.append("-d")
+		args = bunzip2_cmd + ["-c", env_file]
+		try:
+			proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+		except EnvironmentError as e:
+			if e.errno != errno.ENOENT:
+				raise
+			raise portage.exception.CommandNotFound(args[0])
+
+		# Parts of the following code are borrowed from
+		# filter-bash-environment.py (keep them in sync).
+		var_assign_re = re.compile(r'(^|^declare\s+-\S+\s+|^declare\s+|^export\s+)([^=\s]+)=("|\')?(.*)$')
+		close_quote_re = re.compile(r'(\\"|"|\')\s*$')
+		def have_end_quote(quote, line):
+			close_quote_match = close_quote_re.search(line)
+			return close_quote_match is not None and \
+				close_quote_match.group(1) == quote
+
+		value = None
+		for line in proc.stdout:
+			line = _unicode_decode(line,
+				encoding=_encodings['content'], errors='replace')
+			var_assign_match = var_assign_re.match(line)
+			if var_assign_match is not None:
+				if var_assign_match.group(2) == variable:
+					quote = var_assign_match.group(3)
+					if quote is not None:
+						if have_end_quote(quote,
+							line[var_assign_match.end(2)+2:]):
+							value = var_assign_match.group(4)
+						else:
+							value = [var_assign_match.group(4)]
+							for line in proc.stdout:
+								value.append(line)
+								if have_end_quote(quote, line):
+									break
+							value = ''.join(value)
+						# remove trailing quote and whitespace
+						value = value.rstrip()[:-1]
+					else:
+						value = var_assign_match.group(4).rstrip()
+
+					# ignore remainder of file
+					for line in proc.stdout:
+						pass
+					break
+
+		proc.wait()
+		proc.stdout.close()
+		return value
 
 	def aux_update(self, cpv, values):
 		mylink = self._dblink(cpv)
