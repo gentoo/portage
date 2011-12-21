@@ -308,8 +308,13 @@ install_qa_check() {
 			sleep 1
 		fi
 
-		# Check for files built without respecting CFLAGS
+		# Check for files built without respecting *FLAGS. Note that
+		# -frecord-gcc-switches must be in all *FLAGS variables, in
+		# order to avoid false positive results here.
 		if [[ "${CFLAGS}" == *-frecord-gcc-switches* ]] && \
+			[[ "${CXXFLAGS}" == *-frecord-gcc-switches* ]] && \
+			[[ "${FFLAGS}" == *-frecord-gcc-switches* ]] && \
+			[[ "${FCFLAGS}" == *-frecord-gcc-switches* ]] && \
 			! has binchecks ${RESTRICT} ; then
 			qa_var="QA_CFLAGS_IGNORED_${ARCH/-/_}"
 			eval "[[ -n \${!qa_var} ]] && QA_CFLAGS_IGNORED=(\"\${${qa_var}[@]}\")"
