@@ -30,7 +30,7 @@ ACCEPT_LICENSE="* -@EULA"
 ACCEPT_PROPERTIES="*"
 
 # Repository Paths
-PORTDIR=${EPREFIX}/usr/portage
+PORTDIR=/usr/portage
 DISTDIR=${PORTDIR}/distfiles
 PKGDIR=${PORTDIR}/packages
 RPMDIR=${PORTDIR}/rpm
