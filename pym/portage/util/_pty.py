@@ -16,8 +16,6 @@ from portage.util import writemsg
 # _disable_openpty on Interix must *never* be True
 _disable_openpty = platform.system() in ("SunOS",)
 
-_tested_pty = False
-
 _fbsd_test_pty = platform.system() == 'FreeBSD'
 
 def _create_pty_or_pipe(copy_term_size=None):
