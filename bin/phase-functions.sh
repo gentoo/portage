@@ -126,14 +126,15 @@ filter_readonly_variables() {
 			LC_CTYPE LC_MESSAGES LC_MONETARY
 			LC_NUMERIC LC_PAPER LC_TIME"
 	fi
-	if [[ ${EMERGE_FROM} != binary ]] && ! has --allow-extra-vars $* ; then
-		filtered_vars="
-			${filtered_vars}
-			${PORTAGE_SAVED_READONLY_VARS}
-			${PORTAGE_MUTABLE_FILTERED_VARS}
-		"
-	elif ! has --allow-extra-vars $* ; then
-		filtered_vars+=" ${binpkg_untrusted_vars}"
+	if ! has --allow-extra-vars $* ; then
+		if [ "${EMERGE_FROM}" = binary ] ; then
+			# preserve additional variables from build time,
+			# while excluding untrusted variables
+			filtered_vars+=" ${binpkg_untrusted_vars}"
+		else
+			filtered_vars+=" ${PORTAGE_SAVED_READONLY_VARS}"
+			filtered_vars+=" ${PORTAGE_MUTABLE_FILTERED_VARS}"
+		fi
 	fi
 
 	"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars}" || die "filter-bash-environment.py failed"
