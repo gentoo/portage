@@ -151,7 +151,7 @@ class search(object):
 					if not result or cpv == portage.best([cpv, result]):
 						result = cpv
 				else:
-					db_keys = Package.metadata_keys
+					db_keys = list(db._aux_cache_keys)
 					# break out of this loop with highest visible
 					# match, checked in descending order
 					for cpv in reversed(db.match(atom)):
