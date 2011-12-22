@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
@@ -13,6 +13,9 @@ if [ ! -e "$1" ] ; then
 	helpers_die "!!! ${0##*/}: $1 does not exist"
 	exit 1
 fi
+
+(($#>2)) && \
+	eqawarn "QA Notice: ${0##*/} called with more than 2 arguments: ${@:3}"
 
 rm -rf "${T}/${2}" && \
 cp -f "${1}" "${T}/${2}" && \
