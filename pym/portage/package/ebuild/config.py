@@ -1188,8 +1188,11 @@ class config(object):
 				# packages since we want to save it PORTAGE_BUILT_USE for
 				# evaluating conditional USE deps in atoms passed via IPC to
 				# helpers like has_version and best_version.
+				aux_keys = set(aux_keys)
+				if hasattr(mydb, '_aux_cache_keys'):
+					aux_keys = aux_keys.intersection(mydb._aux_cache_keys)
+				aux_keys.add('USE')
 				aux_keys = list(aux_keys)
-				aux_keys.append('USE')
 				for k, v in zip(aux_keys, mydb.aux_get(self.mycpv, aux_keys)):
 					pkg_configdict[k] = v
 				built_use = frozenset(pkg_configdict.pop('USE').split())
