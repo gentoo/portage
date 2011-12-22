@@ -244,7 +244,7 @@ class slot_conflict_handler(object):
 		for (slot_atom, root), pkgs \
 			in self.slot_collision_info.items():
 			msg.append(str(slot_atom))
-			if root != '/':
+			if root != self.depgraph._frozen_config._running_root.root:
 				msg.append(" for %s" % (root,))
 			msg.append("\n\n")
 

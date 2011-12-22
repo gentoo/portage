@@ -19,7 +19,7 @@ exp_tf FEATURES installsources nostrip splitdebug
 exp_tf RESTRICT binchecks installsources strip
 
 [[ " ${FEATURES} " == *" force-prefix "* ]] || \
-	case "$EAPI" in 0|1|2) ED=${D} ;; esac
+	case "$EAPI" in 0|1|2) EPREFIX= ED=${D} ;; esac
 
 banner=false
 SKIP_STRIP=false
@@ -51,13 +51,13 @@ case $(${STRIP} --version 2>/dev/null) in
 	# We'll leave out -R .note for now until we can check out the relevance
 	# of the section when it has the ALLOC flag set on it ...
 	SAFE_STRIP_FLAGS="--strip-unneeded"
-	DEF_STRIP_FLAGS="-R .comment"
+	DEF_STRIP_FLAGS="-R .comment -R .GCC.command.line"
 	SPLIT_STRIP_FLAGS=
 	;;
 esac
 : ${PORTAGE_STRIP_FLAGS=${SAFE_STRIP_FLAGS} ${DEF_STRIP_FLAGS}}
 
-prepstrip_sources_dir="${EPREFIX}"/usr/src/debug/${CATEGORY}/${PF}
+prepstrip_sources_dir=${EPREFIX}/usr/src/debug/${CATEGORY}/${PF}
 
 type -P debugedit >/dev/null && debugedit_found=true || debugedit_found=false
 debugedit_warned=false
@@ -101,10 +101,12 @@ save_elf_sources() {
 save_elf_debug() {
 	${FEATURES_splitdebug} || return 0
 
+	# NOTE: Debug files must be installed in
+	# ${EPREFIX}/usr/lib/debug/${EPREFIX} (note that ${EPREFIX} occurs
+	# twice in this path) in order for gdb's debug-file-directory
+	# lookup to work correctly.
 	local x=$1
-	# PREFIX LOCAL: keep offset path in debug location file
-	local y="${ED}usr/lib/debug/${x:${#D}}.debug"
-	# END PREFIX LOCAL
+	local y=${ED}usr/lib/debug/${x:${#D}}.debug
 
 	# dont save debug info twice
 	[[ ${x} == *".debug" ]] && return 0
@@ -113,9 +115,7 @@ save_elf_debug() {
 
 	local inode=$(inode_var_name "$x")
 	if [[ -n ${!inode} ]] ; then
-		# PREFIX LOCAL: keep offset path in debug location file
 		ln "${ED}usr/lib/debug/${!inode:${#D}}.debug" "$y"
-		# END PREFIX LOCAL
 	else
 		eval $inode=\$x
 		if [[ -e ${T}/prepstrip.split.debug ]] ; then
@@ -220,16 +220,14 @@ do
 		strip_this=false
 	fi
 
-	# PREFIX LOCAL:
 	# In Prefix we are usually an unprivileged user, so we can't strip
 	# unwritable objects.  Make them temporarily writable for the
 	# stripping.
 	was_not_writable=false
-	if [[ ! -w ${x} ]] ; then
+	if [[ -n ${EPREFIX} && ! -w ${x} ]] ; then
 		was_not_writable=true
 		chmod u+w "${x}"
 	fi
-	# END PREFIX LOCAL
 
 	# only split debug info for final linked objects
 	# or kernel modules as debuginfo for intermediatary
@@ -250,11 +248,9 @@ do
 		process_elf "${x}" ${SAFE_STRIP_FLAGS}
 	fi
 
-	# PREFIX LOCAL: see above
-	if [[ ${was_not_writable} == "true" ]] ; then
+	if ${was_not_writable} ; then
 		chmod u-w "${x}"
 	fi
-	# END PREFIX LOCAL
 done
 
 if [[ -s ${T}/debug.sources ]] && \

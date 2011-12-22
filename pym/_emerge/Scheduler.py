@@ -425,7 +425,7 @@ class Scheduler(PollScheduler):
 				msg = [""]
 				for pkg in interactive_tasks:
 					pkg_str = "  " + colorize("INFORM", str(pkg.cpv))
-					if pkg.root != "/":
+					if pkg.root_config.settings["ROOT"] != "/":
 						pkg_str += " for " + pkg.root
 					msg.append(pkg_str)
 				msg.append("")
@@ -1251,7 +1251,7 @@ class Scheduler(PollScheduler):
 
 		# Skip this if $ROOT != / since it shouldn't matter if there
 		# are unsatisfied system runtime deps in this case.
-		if pkg.root != '/':
+		if pkg.root_config.settings["ROOT"] != "/":
 			return
 
 		completed_tasks = self._completed_tasks
@@ -1711,7 +1711,7 @@ class Scheduler(PollScheduler):
 		pkg = failed_pkg.pkg
 		msg = "%s to %s %s" % \
 			(bad("Failed"), action, colorize("INFORM", pkg.cpv))
-		if pkg.root != "/":
+		if pkg.root_config.settings["ROOT"] != "/":
 			msg += " %s %s" % (preposition, pkg.root)
 
 		log_path = self._locate_failure_log(failed_pkg)
@@ -1841,7 +1841,7 @@ class Scheduler(PollScheduler):
 			pkg = task
 			msg = "emerge --keep-going:" + \
 				" %s" % (pkg.cpv,)
-			if pkg.root != "/":
+			if pkg.root_config.settings["ROOT"] != "/":
 				msg += " for %s" % (pkg.root,)
 			msg += " dropped due to unsatisfied dependency."
 			for line in textwrap.wrap(msg, msg_width):

@@ -346,8 +346,55 @@ install_qa_check_elf() {
 			sleep 1
 		fi
 
+		# Check for files built without respecting *FLAGS. Note that
+		# -frecord-gcc-switches must be in all *FLAGS variables, in
+		# order to avoid false positive results here.
+		if [[ "${CFLAGS}" == *-frecord-gcc-switches* ]] && \
+			[[ "${CXXFLAGS}" == *-frecord-gcc-switches* ]] && \
+			[[ "${FFLAGS}" == *-frecord-gcc-switches* ]] && \
+			[[ "${FCFLAGS}" == *-frecord-gcc-switches* ]] && \
+			! has binchecks ${RESTRICT} ; then
+			qa_var="QA_CFLAGS_IGNORED_${ARCH/-/_}"
+			eval "[[ -n \${!qa_var} ]] && QA_CFLAGS_IGNORED=(\"\${${qa_var}[@]}\")"
+			f=$(scanelf -qyRF '%k %p' -k \!.GCC.command.line "${ED}" | sed -e "s:\!.GCC.command.line ::")
+			if [[ -n ${f} ]] ; then
+				echo "${f}" > "${T}"/scanelf-ignored-CFLAGS.log
+				if [ "${QA_STRICT_CFLAGS_IGNORED-unset}" == unset ] ; then
+					if [[ ${#QA_CFLAGS_IGNORED[@]} -gt 1 ]] ; then
+						for x in "${QA_CFLAGS_IGNORED[@]}" ; do
+							sed -e "s#^${x#/}\$##" -i "${T}"/scanelf-ignored-CFLAGS.log
+						done
+					else
+						local shopts=$-
+						set -o noglob
+						for x in ${QA_CFLAGS_IGNORED} ; do
+							sed -e "s#^${x#/}\$##" -i "${T}"/scanelf-ignored-CFLAGS.log
+						done
+						set +o noglob
+						set -${shopts}
+					fi
+				fi
+				# Filter anything under /usr/lib/debug/ in order to avoid
+				# duplicate warnings for splitdebug files.
+				sed -e "s#^usr/lib/debug/.*##" -e "/^\$/d" -e "s#^#/#" \
+					-i "${T}"/scanelf-ignored-CFLAGS.log
+				f=$(<"${T}"/scanelf-ignored-CFLAGS.log)
+				if [[ -n ${f} ]] ; then
+					vecho -ne '\n'
+					eqawarn "${BAD}QA Notice: Files built without respecting CFLAGS have been detected${NORMAL}"
+					eqawarn " Please include the following list of files in your report:"
+					eqawarn "${f}"
+					vecho -ne '\n'
+					sleep 1
+				else
+					rm -f "${T}"/scanelf-ignored-CFLAGS.log
+				fi
+			fi
+		fi
+
 		# Check for files built without respecting LDFLAGS
-		if [[ "${LDFLAGS}" == *,--hash-style=gnu* ]] && [[ "${PN}" != *-bin ]] ; then
+		if [[ "${LDFLAGS}" == *,--hash-style=gnu* ]] && \
+			! has binchecks ${RESTRICT} ; then
 			qa_var="QA_DT_HASH_${ARCH/-/_}"
 			eval "[[ -n \${!qa_var} ]] && QA_DT_HASH=(\"\${${qa_var}[@]}\")"
 			f=$(scanelf -qyRF '%k %p' -k .hash "${ED}" | sed -e "s:\.hash ::")

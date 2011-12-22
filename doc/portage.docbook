@@ -20,6 +20,7 @@
 	<!ENTITY package_ebuild_eapi_2 SYSTEM "package/ebuild/eapi/2.docbook">
 	<!ENTITY package_ebuild_eapi_3 SYSTEM "package/ebuild/eapi/3.docbook">
 	<!ENTITY package_ebuild_eapi_4 SYSTEM "package/ebuild/eapi/4.docbook">
+	<!ENTITY package_ebuild_eapi_4_python SYSTEM "package/ebuild/eapi/4-python.docbook">
 	<!ENTITY qa SYSTEM "qa.docbook">
 	<!ENTITY config SYSTEM "config.docbook">
 	<!ENTITY config_bashrc SYSTEM "config/bashrc.docbook">

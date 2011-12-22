@@ -1548,9 +1548,10 @@ def repo_name_duplicate_check(trees):
 
 def config_protect_check(trees):
 	for root, root_trees in trees.items():
-		if not root_trees["root_config"].settings.get("CONFIG_PROTECT"):
+		settings = root_trees["root_config"].settings
+		if not settings.get("CONFIG_PROTECT"):
 			msg = "!!! CONFIG_PROTECT is empty"
-			if root != "/":
+			if settings["ROOT"] != "/":
 				msg += " for '%s'" % root
 			msg += "\n"
 			writemsg_level(msg, level=logging.WARN, noiselevel=-1)

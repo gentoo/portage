@@ -594,7 +594,7 @@ class depgraph(object):
 
 		for pkg, flags in self._dynamic_config.ignored_binaries.items():
 			writemsg("    =%s" % pkg.cpv, noiselevel=-1)
-			if pkg.root != '/':
+			if pkg.root_config.settings["ROOT"] != "/":
 				writemsg(" for %s" % (pkg.root,), noiselevel=-1)
 			writemsg("\n        use flag(s): %s\n" % ", ".join(sorted(flags)),
 				noiselevel=-1)
@@ -679,7 +679,7 @@ class depgraph(object):
 				"due to unsatisfied dependencies:\n\n", noiselevel=-1)
 
 			writemsg(str(pkg.slot_atom), noiselevel=-1)
-			if pkg.root != '/':
+			if pkg.root_config.settings["ROOT"] != "/":
 				writemsg(" for %s" % (pkg.root,), noiselevel=-1)
 			writemsg("\n", noiselevel=-1)
 
@@ -695,7 +695,7 @@ class depgraph(object):
 				"!!! triggered by backtracking:\n\n", noiselevel=-1)
 			for pkg, parent_atoms in backtrack_masked:
 				writemsg(str(pkg.slot_atom), noiselevel=-1)
-				if pkg.root != '/':
+				if pkg.root_config.settings["ROOT"] != "/":
 					writemsg(" for %s" % (pkg.root,), noiselevel=-1)
 				writemsg("\n", noiselevel=-1)
 
@@ -712,7 +712,7 @@ class depgraph(object):
 		indent = "  "
 		for pkg, parent_atoms in missed_updates:
 			msg.append(str(pkg.slot_atom))
-			if pkg.root != '/':
+			if pkg.root_config.settings["ROOT"] != "/":
 				msg.append(" for %s" % (pkg.root,))
 			msg.append("\n\n")
 
@@ -2930,7 +2930,7 @@ class depgraph(object):
 			xinfo = _unicode_decode('"%s"') % (myparent,)
 		# Discard null/ from failed cpv_expand category expansion.
 		xinfo = xinfo.replace("null/", "")
-		if root != "/":
+		if root != self._frozen_config._running_root.root:
 			xinfo = "%s for %s" % (xinfo, root)
 		masked_packages = []
 		missing_use = []

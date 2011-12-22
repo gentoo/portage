@@ -156,25 +156,50 @@ def _get_global(k):
 
 	# Avoid instantiating portage.settings when the desired
 	# variable is set in os.environ.
-	elif k == '_portage_grpname':
+	elif k in ('_portage_grpname', '_portage_username'):
 		v = None
-		if 'PORTAGE_GRPNAME' in os.environ:
-			v = os.environ['PORTAGE_GRPNAME']
+		if k == '_portage_grpname':
+			env_key = 'PORTAGE_GRPNAME'
+		else:
+			env_key = 'PORTAGE_USERNAME'
+
+		if env_key in os.environ:
+			v = os.environ[env_key]
 		elif hasattr(portage, 'settings'):
-			v = portage.settings.get('PORTAGE_GRPNAME')
+			v = portage.settings.get(env_key)
+		elif portage.const.EPREFIX:
+			# For prefix environments, default to the UID and GID of
+			# the top-level EROOT directory. The config class has
+			# equivalent code, but we also need to do it here if
+			# _disable_legacy_globals() has been called.
+			eroot = os.path.join(os.environ.get('ROOT', os.sep),
+				portage.const.EPREFIX.lstrip(os.sep))
+			try:
+				eroot_st = os.stat(eroot)
+			except OSError:
+				pass
+			else:
+				if k == '_portage_grpname':
+					try:
+						grp_struct = grp.getgrgid(eroot_st.st_gid)
+					except KeyError:
+						pass
+					else:
+						v = grp_struct.gr_name
+				else:
+					try:
+						pwd_struct = pwd.getpwuid(eroot_st.st_uid)
+					except KeyError:
+						pass
+					else:
+						v = pwd_struct.pw_name
+
 		if v is None:
 			# PREFIX LOCAL: use var iso hardwired 'portage'
-			v = PORTAGE_GROUPNAME
-			# END PREFIX LOCAL
-	elif k == '_portage_username':
-		v = None
-		if 'PORTAGE_USERNAME' in os.environ:
-			v = os.environ['PORTAGE_USERNAME']
-		elif hasattr(portage, 'settings'):
-			v = portage.settings.get('PORTAGE_USERNAME')
-		if v is None:
-			# PREFIX LOCAL: use var iso hardwired 'portage'
-			v = PORTAGE_USERNAME
+			if k == '_portage_grpname':
+				v = PORTAGE_GRPNAME
+			else:
+				v = PORTAGE_USERNAME
 			# END PREFIX LOCAL
 	else:
 		raise AssertionError('unknown name: %s' % k)

@@ -74,6 +74,8 @@ PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
 #
 # ---allow-extra-vars causes some extra vars to be allowd through, such
 # as ${PORTAGE_SAVED_READONLY_VARS} and ${PORTAGE_MUTABLE_FILTERED_VARS}.
+# This is enabled automatically if EMERGE_FROM=binary, since it preserves
+# variables from when the package was originally built.
 #
 # In bash-3.2_p20+ an attempt to assign BASH_*, FUNCNAME, GROUPS or any
 # readonly variable cause the shell to exit while executing the "source"
@@ -90,6 +92,8 @@ filter_readonly_variables() {
 	local filtered_sandbox_vars="SANDBOX_ACTIVE SANDBOX_BASHRC
 		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
 		SANDBOX_LOG SANDBOX_ON"
+	# Untrusted due to possible application of package renames to binpkgs
+	local binpkg_untrusted_vars="CATEGORY P PF PN PR PV PVR"
 	local misc_garbage_vars="_portage_filter_opts"
 	filtered_vars="$readonly_bash_vars $bash_misc_vars
 		$PORTAGE_READONLY_VARS $misc_garbage_vars"
@@ -122,12 +126,14 @@ filter_readonly_variables() {
 			LC_CTYPE LC_MESSAGES LC_MONETARY
 			LC_NUMERIC LC_PAPER LC_TIME"
 	fi
-	if ! has --allow-extra-vars $* ; then
+	if [[ ${EMERGE_FROM} != binary ]] && ! has --allow-extra-vars $* ; then
 		filtered_vars="
 			${filtered_vars}
 			${PORTAGE_SAVED_READONLY_VARS}
 			${PORTAGE_MUTABLE_FILTERED_VARS}
 		"
+	elif ! has --allow-extra-vars $* ; then
+		filtered_vars+=" ${binpkg_untrusted_vars}"
 	fi
 
 	"${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" "${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars}" || die "filter-bash-environment.py failed"
