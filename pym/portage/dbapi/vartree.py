@@ -625,7 +625,8 @@ class vardbapi(dbapi):
 				cache_these_wants.add(x)
 
 		if not cache_these_wants:
-			return self._aux_get(mycpv, wants)
+			mydata = self._aux_get(mycpv, wants)
+			return [mydata[x] for x in wants]
 
 		cache_these = set(self._aux_cache_keys)
 		cache_these.update(cache_these_wants)
@@ -670,9 +671,7 @@ class vardbapi(dbapi):
 		if pull_me:
 			# pull any needed data and cache it
 			aux_keys = list(pull_me)
-			for k, v in zip(aux_keys,
-				self._aux_get(mycpv, aux_keys, st=mydir_stat)):
-				mydata[k] = v
+			mydata.update(self._aux_get(mycpv, aux_keys, st=mydir_stat))
 			if not cache_valid or cache_these.difference(metadata):
 				cache_data = {}
 				if cache_valid and metadata:
@@ -703,10 +702,11 @@ class vardbapi(dbapi):
 					raise
 		if not stat.S_ISDIR(st.st_mode):
 			raise KeyError(mycpv)
-		results = []
+		results = {}
+		env_keys = []
 		for x in wants:
 			if x == "_mtime_":
-				results.append(st[stat.ST_MTIME])
+				results[x] = st[stat.ST_MTIME]
 				continue
 			try:
 				myf = io.open(
@@ -719,35 +719,46 @@ class vardbapi(dbapi):
 				finally:
 					myf.close()
 			except IOError:
-				myd = None
 				if x not in self._aux_cache_keys and \
 					self._aux_cache_keys_re.match(x) is None:
-					myd = self._aux_env_search(mycpv, x)
-				if myd is None:
-					myd = _unicode_decode('')
+					env_keys.append(x)
+					continue
+				myd = _unicode_decode('')
 
 			# Preserve \n for metadata that is known to
 			# contain multiple lines.
 			if self._aux_multi_line_re.match(x) is None:
 				myd = " ".join(myd.split())
 
-			if x == "EAPI" and not myd:
-				results.append(_unicode_decode('0'))
-			else:
-				results.append(myd)
+			results[x] = myd
+
+		if env_keys:
+			env_results = self._aux_env_search(mycpv, env_keys)
+			for k in env_keys:
+				v = env_results.get(k)
+				if v is None:
+					v = _unicode_decode('')
+				if self._aux_multi_line_re.match(k) is None:
+					v = " ".join(v.split())
+				results[k] = v
+
+		if results.get("EAPI") == "":
+			results["EAPI"] = _unicode_decode('0')
+
 		return results
 
-	def _aux_env_search(self, cpv, variable):
+	def _aux_env_search(self, cpv, variables):
 		"""
-		Search environment.bz2 of the specified variable. Returns
-		the value if found, otherwise None. This is useful for
-		querying variables like ${SRC_URI} and ${A}, which are not
-		saved in separate files but are available in environment.bz2
-		(see bug #395463).
+		Search environment.bz2 for the specified variables. Returns
+		a dict mapping variables to values, and any variables not
+		found in the environment will not be included in the dict.
+		This is useful for querying variables like ${SRC_URI} and
+		${A}, which are not saved in separate files but are available
+		in environment.bz2 (see bug #395463).
 		"""
 		env_file = self.getpath(cpv, filename="environment.bz2")
 		if not os.path.isfile(env_file):
-			return None
+			return {}
 		bunzip2_cmd = portage.util.shlex_split(
 			self.settings.get("PORTAGE_BUNZIP2_COMMAND", ""))
 		if not bunzip2_cmd:
@@ -771,38 +782,37 @@ class vardbapi(dbapi):
 			return close_quote_match is not None and \
 				close_quote_match.group(1) == quote
 
-		value = None
+		variables = frozenset(variables)
+		results = {}
 		for line in proc.stdout:
 			line = _unicode_decode(line,
 				encoding=_encodings['content'], errors='replace')
 			var_assign_match = var_assign_re.match(line)
 			if var_assign_match is not None:
-				if var_assign_match.group(2) == variable:
-					quote = var_assign_match.group(3)
-					if quote is not None:
-						if have_end_quote(quote,
-							line[var_assign_match.end(2)+2:]):
-							value = var_assign_match.group(4)
-						else:
-							value = [var_assign_match.group(4)]
-							for line in proc.stdout:
-								value.append(line)
-								if have_end_quote(quote, line):
-									break
-							value = ''.join(value)
-						# remove trailing quote and whitespace
-						value = value.rstrip()[:-1]
+				key = var_assign_match.group(2)
+				quote = var_assign_match.group(3)
+				if quote is not None:
+					if have_end_quote(quote,
+						line[var_assign_match.end(2)+2:]):
+						value = var_assign_match.group(4)
 					else:
-						value = var_assign_match.group(4).rstrip()
+						value = [var_assign_match.group(4)]
+						for line in proc.stdout:
+							value.append(line)
+							if have_end_quote(quote, line):
+								break
+						value = ''.join(value)
+					# remove trailing quote and whitespace
+					value = value.rstrip()[:-1]
+				else:
+					value = var_assign_match.group(4).rstrip()
 
-					# ignore remainder of file
-					for line in proc.stdout:
-						pass
-					break
+				if key in variables:
+					results[key] = value
 
 		proc.wait()
 		proc.stdout.close()
-		return value
+		return results
 
 	def aux_update(self, cpv, values):
 		mylink = self._dblink(cpv)
