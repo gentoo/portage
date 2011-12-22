@@ -92,6 +92,8 @@ filter_readonly_variables() {
 	local filtered_sandbox_vars="SANDBOX_ACTIVE SANDBOX_BASHRC
 		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
 		SANDBOX_LOG SANDBOX_ON"
+	# Untrusted due to possible application of package renames to binpkgs
+	local binpkg_untrusted_vars="CATEGORY P PF PN PR PV PVR"
 	local misc_garbage_vars="_portage_filter_opts"
 	filtered_vars="$readonly_bash_vars $bash_misc_vars
 		$PORTAGE_READONLY_VARS $misc_garbage_vars"
@@ -130,6 +132,8 @@ filter_readonly_variables() {
 			${PORTAGE_SAVED_READONLY_VARS}
 			${PORTAGE_MUTABLE_FILTERED_VARS}
 		"
+	elif ! has --allow-extra-vars $* ; then
+		filtered_vars+=" ${binpkg_untrusted_vars}"
 	fi
 
 	"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars}" || die "filter-bash-environment.py failed"
