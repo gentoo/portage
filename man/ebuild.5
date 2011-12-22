@@ -604,8 +604,8 @@ The paths may contain fnmatch patterns.
 .TP
 \fBQA_FLAGS_IGNORED\fR
 This should contain a list of file paths, relative to the image directory, of
-files that do not contain .hash or .GCC.command.line sections. The paths may
-contain regular expressions with escape\-quoted special characters.
+files that do not contain .GCC.command.line sections or contain .hash sections.
+The paths may contain regular expressions with escape\-quoted special characters.
 .br
 This variable is intended to be used on files of binary packages which ignore
 CFLAGS, CXXFLAGS, FFLAGS, FCFLAGS, and LDFLAGS variables.
