@@ -36,7 +36,7 @@ PKGDIR=${PORTDIR}/packages
 RPMDIR=${PORTDIR}/rpm
 
 # Temporary build directory
-PORTAGE_TMPDIR=${EPREFIX}/var/tmp
+PORTAGE_TMPDIR=/var/tmp
 
 # Fetching command (3 tries, passive ftp for firewall compatibility)
 FETCHCOMMAND="wget -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
