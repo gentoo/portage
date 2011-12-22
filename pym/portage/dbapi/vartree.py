@@ -743,7 +743,7 @@ class vardbapi(dbapi):
 				results[k] = v
 
 		if results.get("EAPI") == "":
-			results["EAPI"] = _unicode_decode('0')
+			results[_unicode_decode("EAPI")] = _unicode_decode('0')
 
 		return results
 
