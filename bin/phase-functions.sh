@@ -74,6 +74,8 @@ PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
 #
 # ---allow-extra-vars causes some extra vars to be allowd through, such
 # as ${PORTAGE_SAVED_READONLY_VARS} and ${PORTAGE_MUTABLE_FILTERED_VARS}.
+# This is enabled automatically if EMERGE_FROM=binary, since it preserves
+# variables from when the package was originally built.
 #
 # In bash-3.2_p20+ an attempt to assign BASH_*, FUNCNAME, GROUPS or any
 # readonly variable cause the shell to exit while executing the "source"
@@ -122,7 +124,7 @@ filter_readonly_variables() {
 			LC_CTYPE LC_MESSAGES LC_MONETARY
 			LC_NUMERIC LC_PAPER LC_TIME"
 	fi
-	if ! has --allow-extra-vars $* ; then
+	if [[ ${EMERGE_FROM} != binary ]] && ! has --allow-extra-vars $* ; then
 		filtered_vars="
 			${filtered_vars}
 			${PORTAGE_SAVED_READONLY_VARS}
