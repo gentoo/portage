@@ -927,7 +927,6 @@ class depgraph(object):
 		debug = "--debug" in self._frozen_config.myopts
 		buildpkgonly = "--buildpkgonly" in self._frozen_config.myopts
 		nodeps = "--nodeps" in self._frozen_config.myopts
-		deep = self._dynamic_config.myparams.get("deep", 0)
 		if dep.blocker:
 			if not buildpkgonly and \
 				not nodeps and \
@@ -1287,7 +1286,7 @@ class depgraph(object):
 					settings.unlock()
 					settings.setinst(pkg.cpv, pkg.metadata)
 					settings.lock()
-				except portage.exception.InvalidDependString as e:
+				except portage.exception.InvalidDependString:
 					if not pkg.installed:
 						# should have been masked before it was selected
 						raise
@@ -1360,7 +1359,6 @@ class depgraph(object):
 
 	def _add_pkg_deps(self, pkg, allow_unsatisfied=False):
 
-		mytype = pkg.type_name
 		myroot = pkg.root
 		metadata = pkg.metadata
 		removal_action = "remove" in self._dynamic_config.myparams
