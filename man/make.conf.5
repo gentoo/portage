@@ -439,6 +439,10 @@ Output a verbose trace of python execution to stderr when a command's
 .TP
 .B sandbox
 Enable sandbox\-ing when running \fBemerge\fR(1) and \fBebuild\fR(1).
+On Mac OS X platforms that have /usr/bin/sandbox-exec available (10.5
+and later), this particular sandbox implementation is used instead of
+sys-apps/sandbox.  Note that using Mac OS X sandbox slows down the
+emerge process considerably, in particular for write operations.
 .TP
 .B sesandbox
 Enable SELinux sandbox\-ing.  Do not toggle this \fBFEATURE\fR yourself.

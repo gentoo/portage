@@ -1212,15 +1212,13 @@ def _spawn_actionmap(settings):
 	restrict = settings["PORTAGE_RESTRICT"].split()
 	nosandbox = (("userpriv" in features) and \
 		("usersandbox" not in features) and \
-		("macosusersandbox" not in features) and \
 		"userpriv" not in restrict and \
 		"nouserpriv" not in restrict)
 	if nosandbox and ("userpriv" not in features or \
 		"userpriv" in restrict or \
 		"nouserpriv" in restrict):
 		nosandbox = ("sandbox" not in features and \
-			"usersandbox" not in features and \
-			"macosusersandbox" not in features)
+			"usersandbox" not in features)
 
 	if not portage.process.sandbox_capable:
 		nosandbox = True
@@ -1386,26 +1384,13 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	# fake ownership/permissions will have to be converted to real
 	# permissions in the merge phase.
 	fakeroot = fakeroot and uid != 0 and portage.process.fakeroot_capable
-	macossandbox = ("macossandbox" in features or \
-		"macosusersandbox" in features)
 	if droppriv and not uid and portage_gid and portage_uid:
 		keywords.update({"uid":portage_uid,"gid":portage_gid,
 			"groups":userpriv_groups,"umask":0o02})
 	if not free:
-		free=((droppriv and "usersandbox" not in features and
-			"macosusersandbox" not in features) or \
+		free=((droppriv and "usersandbox" not in features) or \
 			(not droppriv and "sandbox" not in features and \
-			"usersandbox" not in features and not fakeroot and \
-			not macossandbox))
-
-	# confining the process to a prefix sandbox is disabled by default, if
-	# a normal sandbox is requested a this point, it will be used, if no
-	# sandbox is requested, a prefix sandbox will be imposed if requested
-	# by the appropriate features
-	prefixsandbox = False
-	if free:
-		prefixsandbox = "macosprefixsandbox" in features
-		free = not prefixsandbox
+			"usersandbox" not in features and not fakeroot))
 
 	if not free and not (fakeroot or portage.process.sandbox_capable or \
 		portage.process.macossandbox_capable):
@@ -1424,12 +1409,9 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		keywords["opt_name"] += " fakeroot"
 		keywords["fakeroot_state"] = os.path.join(mysettings["T"], "fakeroot.state")
 		spawn_func = portage.process.spawn_fakeroot
-	elif macossandbox:
+	elif sandbox and platform.system() == 'Darwin':
 		keywords["opt_name"] += " macossandbox"
-		if prefixsandbox:
-			sbprefixpath = mysettings["EPREFIX"]
-		else:
-			sbprefixpath = mysettings["PORTAGE_BUILDDIR"]
+		sbprefixpath = mysettings["PORTAGE_BUILDDIR"]
 
 		# escape some characters with special meaning in re's
 		sbprefixre = sbprefixpath.replace("+", "\+")
