@@ -812,6 +812,9 @@ class vardbapi(dbapi):
 					else:
 						value = [var_assign_match.group(4)]
 						for line in proc.stdout:
+							line = _unicode_decode(line,
+								encoding=_encodings['content'],
+								errors='replace')
 							value.append(line)
 							if have_end_quote(quote, line):
 								break
