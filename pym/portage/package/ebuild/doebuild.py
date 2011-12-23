@@ -18,6 +18,7 @@ from textwrap import wrap
 import time
 import warnings
 import zlib
+import platform
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -1409,7 +1410,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		keywords["opt_name"] += " fakeroot"
 		keywords["fakeroot_state"] = os.path.join(mysettings["T"], "fakeroot.state")
 		spawn_func = portage.process.spawn_fakeroot
-	elif sandbox and platform.system() == 'Darwin':
+	elif "sandbox" in features and platform.system() == 'Darwin':
 		keywords["opt_name"] += " macossandbox"
 		sbprefixpath = mysettings["PORTAGE_BUILDDIR"]
 
