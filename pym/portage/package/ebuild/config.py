@@ -927,7 +927,7 @@ class config(object):
 			writemsg("!!! /etc/portage/profile/virtuals. Please move it to\n")
 			writemsg("!!! this new location.\n\n")
 
-		if not sandbox_capable and \
+		if not sandbox_capable and not macossandbox_capable and \
 			("sandbox" in self.features or "usersandbox" in self.features):
 			if self.profile_path is not None and \
 				os.path.realpath(self.profile_path) == \
@@ -938,18 +938,6 @@ class config(object):
 				# to the user.
 				writemsg(colorize("BAD", _("!!! Problem with sandbox"
 					" binary. Disabling...\n\n")), noiselevel=-1)
-
-		if not macossandbox_capable and \
-			("macossandbox" in self.features or "macosusersandbox" in self.features):
-			if self.profile_path is not None and \
-				os.path.realpath(self.profile_path) == \
-				os.path.realpath(os.path.join(
-				self["PORTAGE_CONFIGROOT"], PROFILE_PATH)):
-				""" Don't show this warning when running repoman and the
-				sandbox feature came from a profile that doesn't belong to
-				the user."""
-				writemsg(colorize("BAD", "!!! Problem with macos sandbox" + \
-					" binary. Disabling...\n\n"), noiselevel=-1)
 
 		if "fakeroot" in self.features and \
 			not fakeroot_capable:
