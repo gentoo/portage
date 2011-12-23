@@ -603,7 +603,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 
 				# these ones support regular expressions, so translate
 				# fnmatch patterns to regular expressions
-				for x in QA_DT_HASH QA_DT_NEEDED QA_PRESTRIPPED QA_SONAME ; do
+				for x in QA_DT_NEEDED QA_FLAGS_IGNORED QA_PRESTRIPPED QA_SONAME ; do
 					if [[ $(declare -p $x 2>/dev/null) = declare\ -a* ]] ; then
 						eval "$x=(\"\${$x[@]}\" ${QA_PREBUILT//\*/.*})"
 					else
