@@ -260,6 +260,10 @@ Log file names have an extension that is appropriate for the compression
 type. Currently, only \fBgzip\fR(1) compression is supported, so build
 logs will have a '.gz' extension when this feature is enabled.
 .TP
+.B config\-protect\-if\-modified
+This causes the \fBCONFIG_PROTECT\fR behavior to be skipped for files
+that have not been modified since they were installed.
+.TP
 .B digest
 Autogenerate digests for packages when running the
 \fBemerge\fR(1), \fBebuild\fR(1), or \fBrepoman\fR(1) commands. If

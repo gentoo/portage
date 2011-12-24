@@ -4056,6 +4056,10 @@ class dblink(object):
 		destroot = normalize_path(destroot).rstrip(sep) + sep
 		calc_prelink = "prelink-checksums" in self.settings.features
 
+		protect_if_modified = \
+			"config-protect-if-modified" in self.settings.features and \
+			self._installed_instance is not None
+
 		# this is supposed to merge a list of files.  There will be 2 forms of argument passing.
 		if isinstance(stufftomerge, basestring):
 			#A directory is specified.  Figure out protection paths, listdir() it and process it.
@@ -4297,9 +4301,18 @@ class dblink(object):
 						# now, config file management may come into play.
 						# we only need to tweak mydest if cfg file management is in play.
 						if protected:
+							destmd5 = perform_md5(mydest, calc_prelink=calc_prelink)
+							if protect_if_modified:
+								contents_key = \
+									self._installed_instance._match_contents(myrealdest)
+								if contents_key:
+									inst_info = self._installed_instance.getcontents()[contents_key]
+									if inst_info[0] == "obj" and inst_info[2] == destmd5:
+										protected = False
+
+						if protected:
 							# we have a protection path; enable config file management.
 							cfgprot = 0
-							destmd5 = perform_md5(mydest, calc_prelink=calc_prelink)
 							if mymd5 == destmd5:
 								#file already in place; simply update mtimes of destination
 								moveme = 1
