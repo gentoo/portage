@@ -57,6 +57,7 @@ class FakeVartree(vartree):
 		self._db_keys = mykeys
 		self._pkg_cache = pkg_cache
 		self.dbapi = FakeVardbapi(real_vartree.settings)
+		self.dbapi._aux_cache_keys = set(self._db_keys)
 
 		# Initialize variables needed for lazy cache pulls of the live ebuild
 		# metadata.  This ensures that the vardb lock is released ASAP, without
