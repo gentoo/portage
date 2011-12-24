@@ -199,20 +199,22 @@ install_qa_check() {
 		[[ "${CXXFLAGS}" == *-frecord-gcc-switches* ]] && \
 		[[ "${FFLAGS}" == *-frecord-gcc-switches* ]] && \
 		[[ "${FCFLAGS}" == *-frecord-gcc-switches* ]] ; then
-		f=$(scanelf -qyRF '%k %p' -k \!.GCC.command.line "${ED}" | sed -e "s:\!.GCC.command.line ::")
-		if [[ -n ${f} ]] ; then
+		rm -f "${T}"/scanelf-ignored-CFLAGS.log
+		for x in $(scanelf -qyRF '%k %p' -k \!.GCC.command.line "${ED}" | \
+			sed -e "s:\!.GCC.command.line ::") ; do
 			# Separate out file types that are known to support
 			# .GCC.command.line sections, using the `file` command
 			# similar to how prepstrip uses it.
-			> "${T}"/scanelf-ignored-CFLAGS.log
-			for x in $f ; do
-				f=$(file "${x}") || continue
-				[[ -z ${f} ]] && continue
-				if [[ ${f} == *"SB executable"* ||
-					${f} == *"SB shared object"* ]] ; then
-					echo "${x}" >> "${T}"/scanelf-ignored-CFLAGS.log
-				fi
-			done
+			f=$(file "${x}") || continue
+			[[ -z ${f} ]] && continue
+			if [[ ${f} == *"SB executable"* ||
+				${f} == *"SB shared object"* ]] ; then
+				echo "${x}" >> "${T}"/scanelf-ignored-CFLAGS.log
+			fi
+		done
+
+		if [[ -f "${T}"/scanelf-ignored-CFLAGS.log ]] ; then
+
 			if [ "${QA_STRICT_FLAGS_IGNORED-unset}" = unset ] ; then
 				for x in "${QA_FLAGS_IGNORED[@]}" ; do
 					sed -e "s#^${x#/}\$##" -i "${T}"/scanelf-ignored-CFLAGS.log
