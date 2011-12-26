@@ -26,13 +26,13 @@ class AbstractPollTask(AsynchronousTask):
 		"""
 		NOTE: array.fromfile() is used here only for testing purposes,
 		because it has bugs in all known versions of Python (including
-		Python 2.7 and Python 3.2).
+		Python 2.7 and Python 3.2). See PipeReaderArrayTestCase.
 
 		| POLLIN | RETURN
 		| BIT    | VALUE
 		| ---------------------------------------------------
 		| 1      | Read self._bufsize into an instance of
-		|        | array.array('B') and return it, ignoring
+		|        | array.array('B') and return it, handling
 		|        | EOFError and IOError. An empty array
 		|        | indicates EOF.
 		| ---------------------------------------------------

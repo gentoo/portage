@@ -112,7 +112,7 @@ def xpak(rootdir,outfile=None):
 		return xpak_segment
 
 def xpak_mem(mydata):
-	"""Create an xpack segement from a map object."""
+	"""Create an xpack segment from a map object."""
 
 	mydata_encoded = {}
 	for k, v in mydata.items():

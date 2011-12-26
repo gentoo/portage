@@ -2447,10 +2447,6 @@ else:
 		commitmessage += ", RepoMan options: --force"
 	commitmessage += ")"
 
-	if options.ask and userquery('Commit changes?', True) != 'Yes':
-		print("* aborting commit.")
-		sys.exit(1)
-
 	if options.echangelog in ('y', 'force'):
 		logging.info("checking for unmodified ChangeLog files")
 		committer_name = utilities.get_committer_name(env=repoman_settings)
@@ -2573,6 +2569,10 @@ else:
 
 	logging.info("myupdates: %s", myupdates)
 	logging.info("myheaders: %s", myheaders)
+
+	if options.ask and userquery('Commit changes?', True) != 'Yes':
+		print("* aborting commit.")
+		sys.exit(1)
 
 	# Handle the case where committed files have keywords which
 	# will change and need a priming commit before the Manifest

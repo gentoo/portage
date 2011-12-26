@@ -290,7 +290,7 @@ class RepoConfigLoader(object):
 	"""Loads and store config of several repositories, loaded from PORTDIR_OVERLAY or repos.conf"""
 
 	@staticmethod
-	def _add_overlays(portdir, portdir_overlay, prepos, ignored_map, ignored_location_map):
+	def _add_repositories(portdir, portdir_overlay, prepos, ignored_map, ignored_location_map):
 		"""Add overlays in PORTDIR_OVERLAY as repositories"""
 		overlays = []
 		if portdir:
@@ -427,7 +427,7 @@ class RepoConfigLoader(object):
 
 		# If PORTDIR_OVERLAY contains a repo with the same repo_name as
 		# PORTDIR, then PORTDIR is overridden.
-		portdir = self._add_overlays(portdir, portdir_overlay, prepos,
+		portdir = self._add_repositories(portdir, portdir_overlay, prepos,
 			ignored_map, ignored_location_map)
 		if portdir and portdir.strip():
 			portdir = os.path.realpath(portdir)
