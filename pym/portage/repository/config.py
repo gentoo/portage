@@ -318,6 +318,14 @@ class RepoConfigLoader(object):
 				' '.join(prepos['DEFAULT'].masters)
 
 		if overlays:
+			# We need a copy of the original repos.conf data, since we're
+			# going to modify the prepos dict and some of the RepoConfig
+			# objects that we put in prepos may have to be discarded if
+			# they get overridden by a repository with the same name but
+			# a different location. This is common with repoman, for example,
+			# when temporarily overriding an rsync repo with another copy
+			# of the same repo from CVS.
+			repos_conf = prepos.copy()
 			#overlay priority is negative because we want them to be looked before any other repo
 			base_priority = 0
 			for ov in overlays:
@@ -325,21 +333,15 @@ class RepoConfigLoader(object):
 					repo_opts = default_repo_opts.copy()
 					repo_opts['location'] = ov
 					repo = RepoConfig(None, repo_opts)
-					# repos_conf_opts may contain options from various places:
-					# 1) /etc/portage/repos.conf
-					# 2) $location/metadata/layout.conf if repos.conf specified
-					#    the repo location
-					# 3) A RepoConfig instance corresponding to a previously
-					#    processed path in the current list of overlays which
-					#    referred to a repository with the same name.
-					repos_conf_opts = prepos.get(repo.name)
+					# repos_conf_opts contains options from repos.conf
+					repos_conf_opts = repos_conf.get(repo.name)
 					if repos_conf_opts is not None:
-						if repos_conf_opts.aliases is not None:
-							repo.aliases = repos_conf_opts.aliases
-						if repos_conf_opts.eclass_overrides is not None:
-							repo.eclass_overrides = repos_conf_opts.eclass_overrides
-						if repos_conf_opts.masters is not None:
-							repo.masters = repos_conf_opts.masters
+						# Selectively copy only the attributes which
+						# repos.conf is allowed to override.
+						for k in ('aliases', 'eclass_overrides', 'masters'):
+							v = getattr(repos_conf_opts, k, None)
+							if v is not None:
+								setattr(repo, k, v)
 
 					if repo.name in prepos:
 						old_location = prepos[repo.name].location
@@ -348,10 +350,6 @@ class RepoConfigLoader(object):
 							ignored_location_map[old_location] = repo.name
 							if old_location == portdir:
 								portdir = repo.user_location
-						prepos[repo.name].update(repo)
-						repo = prepos[repo.name]
-					else:
-						prepos[repo.name] = repo
 
 					if ov == portdir and portdir not in port_ov:
 						repo.priority = -1000
@@ -359,6 +357,7 @@ class RepoConfigLoader(object):
 						repo.priority = base_priority
 						base_priority += 1
 
+					prepos[repo.name] = repo
 				else:
 					writemsg(_("!!! Invalid PORTDIR_OVERLAY"
 						" (not a dir): '%s'\n") % ov, noiselevel=-1)
