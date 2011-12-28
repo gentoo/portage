@@ -199,8 +199,9 @@ class RepoConfig(object):
 	def update(self, new_repo):
 		"""Update repository with options in another RepoConfig"""
 
-		for k in ('aliases', 'eclass_overrides', 'location', 'masters',
-			'name', 'priority', 'sync', 'user_location'):
+		keys = set(self.__slots__)
+		keys.discard("missing_repo_name")
+		for k in keys:
 			v = getattr(new_repo, k, None)
 			if v is not None:
 				setattr(self, k, v)
@@ -324,7 +325,13 @@ class RepoConfigLoader(object):
 					repo_opts = default_repo_opts.copy()
 					repo_opts['location'] = ov
 					repo = RepoConfig(None, repo_opts)
-					# repos_conf_opts contains options from /etc/portage/repos.conf
+					# repos_conf_opts may contain options from various places:
+					# 1) /etc/portage/repos.conf
+					# 2) $location/metadata/layout.conf if repos.conf specified
+					#    the repo location
+					# 3) A RepoConfig instance corresponding to a previously
+					#    processed path in the current list of overlays which
+					#    referred to a repository with the same name.
 					repos_conf_opts = prepos.get(repo.name)
 					if repos_conf_opts is not None:
 						if repos_conf_opts.aliases is not None:
