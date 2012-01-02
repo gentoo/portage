@@ -1195,6 +1195,8 @@ if options.if_modified == "y":
 for x in effective_scanlist:
 	#ebuilds and digests added to cvs respectively.
 	logging.info("checking package %s" % x)
+	# save memory by discarding xmatch caches from previous package(s)
+	arch_xmatch_caches.clear()
 	eadded=[]
 	catdir,pkgdir=x.split("/")
 	checkdir=repodir+"/"+x
