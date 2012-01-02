@@ -373,8 +373,6 @@ qahelp={
 	"digest.assumed":"Existing digest must be assumed correct (Package level only)",
 	"digest.missing":"Some files listed in SRC_URI aren't referenced in the Manifest",
 	"digest.unused":"Some files listed in the Manifest aren't referenced in SRC_URI",
-	"ebuild.nostable":"There are no ebuilds that are marked as stable for your ARCH",
-	"ebuild.allmasked":"All ebuilds are masked for this package (Package level only)",
 	"ebuild.majorsyn":"This ebuild has a major syntax error that may cause the ebuild to fail partially or fully",
 	"ebuild.minorsyn":"This ebuild has a minor syntax error that contravenes gentoo coding style",
 	"ebuild.badheader":"This ebuild has a malformed header",
@@ -399,8 +397,6 @@ qawarnings = set((
 "digest.assumed",
 "digest.unused",
 "ebuild.notadded",
-"ebuild.nostable",
-"ebuild.allmasked",
 "ebuild.nesteddie",
 "desktop.invalid",
 "DEPEND.badmasked","RDEPEND.badmasked","PDEPEND.badmasked",
@@ -1593,7 +1589,6 @@ for x in effective_scanlist:
 	changelog_path = os.path.join(checkdir_relative, "ChangeLog")
 	changelog_modified = changelog_path in modified_changelogs
 
-	allmasked = True
 	# detect unused local USE-descriptions
 	used_useflags = set()
 
@@ -1776,7 +1771,6 @@ for x in effective_scanlist:
 					arches.append([keyword, keyword[1:], [keyword[1:], keyword]])
 				else:
 					arches.append([keyword, keyword, [keyword]])
-					allmasked = False
 			if not arches:
 				# Use an empty profile for checking dependencies of
 				# packages that have empty KEYWORDS.
@@ -2114,15 +2108,6 @@ for x in effective_scanlist:
 				stats["dependency.unknown"] += 1
 				fails["dependency.unknown"].append("%s: %s: %s" %
 					(relative_path, mytype, ", ".join(sorted(atoms))))
-
-	# Check for 'all unstable' or 'all masked' -- ACCEPT_KEYWORDS is stripped
-	# XXX -- Needs to be implemented in dep code. Can't determine ~arch nicely.
-	#if not portage.portdb.xmatch("bestmatch-visible",x):
-	#    stats["ebuild.nostable"]+=1
-	#    fails["ebuild.nostable"].append(x)
-	if ebuildlist and allmasked and repolevel == 3:
-		stats["ebuild.allmasked"]+=1
-		fails["ebuild.allmasked"].append(x)
 
 	# check if there are unused local USE-descriptions in metadata.xml
 	# (unless there are any invalids, to avoid noise)
