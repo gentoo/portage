@@ -1596,11 +1596,15 @@ def find_updated_config_files(target_root, config_protect):
 					else:
 						yield (x, None)
 
+_ld_so_include_re = re.compile(r'^include\s+(\S.*)')
+
 def getlibpaths(root, env=None):
 	def read_ld_so_conf(path):
 		for l in grabfile(path):
-			if l.startswith('include '):
-				subpath = os.path.join(os.path.dirname(path), l[8:].strip())
+			include_match = _ld_so_include_re.match(l)
+			if include_match is not None:
+				subpath = os.path.join(os.path.dirname(path),
+					include_match.group(1))
 				for p in glob.glob(subpath):
 					for r in read_ld_so_conf(p):
 						yield r
