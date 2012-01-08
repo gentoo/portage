@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import io
@@ -19,8 +19,8 @@ from portage import eclass_cache, os
 from portage.const import (MANIFEST2_HASH_FUNCTIONS, MANIFEST2_REQUIRED_HASH,
 	REPO_NAME_LOC, USER_CONFIG_PATH)
 from portage.env.loaders import KeyValuePairFileLoader
-from portage.util import (normalize_path, writemsg, writemsg_level,
-	shlex_split, stack_lists)
+from portage.util import (normalize_path, read_corresponding_eapi_file, shlex_split,
+	stack_lists, writemsg, writemsg_level)
 from portage.localization import _
 from portage import _unicode_decode
 from portage import _unicode_encode
@@ -46,7 +46,7 @@ class RepoConfig(object):
 	"""Stores config of one repository"""
 
 	__slots__ = ('aliases', 'allow_missing_manifest',
-		'cache_formats', 'create_manifest', 'disable_manifest',
+		'cache_formats', 'create_manifest', 'disable_manifest', 'eapi',
 		'eclass_db', 'eclass_locations', 'eclass_overrides', 'format', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'priority', 'sign_manifest', 'sync', 'thin_manifest',
@@ -106,12 +106,15 @@ class RepoConfig(object):
 			location = None
 		self.location = location
 
+		eapi = None
 		missing = True
 		if self.location is not None:
+			eapi = read_corresponding_eapi_file(os.path.join(self.location, REPO_NAME_LOC))
 			name, missing = self._read_valid_repo_name(self.location)
-
 		elif name == "DEFAULT": 
 			missing = False
+
+		self.eapi = eapi
 		self.name = name
 		self.missing_repo_name = missing
 		self.sign_manifest = True
