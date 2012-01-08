@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
@@ -41,8 +41,9 @@ from portage.dbapi.porttree import _parse_uri_map
 from portage.dep import Atom, check_required_use, \
 	human_readable_required_use, paren_enclose, use_reduce
 from portage.eapi import eapi_exports_KV, eapi_exports_merge_type, \
-	eapi_exports_replace_vars, eapi_has_required_use, \
-	eapi_has_src_prepare_and_src_configure, eapi_has_pkg_pretend
+	eapi_exports_replace_vars, eapi_exports_REPOSITORY, \
+	eapi_has_required_use, eapi_has_src_prepare_and_src_configure, \
+	eapi_has_pkg_pretend
 from portage.elog import elog_process, _preload_elog_modules
 from portage.elog.messages import eerror, eqawarn
 from portage.exception import DigestException, FileNotFound, \
@@ -243,6 +244,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 		mysettings['PORTDIR'] = repo.eclass_db.porttrees[0]
 		mysettings['PORTDIR_OVERLAY'] = ' '.join(repo.eclass_db.porttrees[1:])
 		mysettings.configdict["pkg"]["PORTAGE_REPO_NAME"] = repo.name
+		mysettings.configdict["pkg"]["REPOSITORY"] = repo.name
 
 	mysettings["PORTDIR"] = os.path.realpath(mysettings["PORTDIR"])
 	mysettings["DISTDIR"] = os.path.realpath(mysettings["DISTDIR"])
@@ -411,6 +413,9 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 		else:
 			mysettings["KV"] = ""
 		mysettings.backup_changes("KV")
+
+	if mydo != "depend" and not eapi_exports_REPOSITORY(eapi):
+		mysettings.pop('REPOSITORY', None)
 
 _doebuild_manifest_cache = None
 _doebuild_broken_ebuilds = set()

@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 def eapi_has_iuse_defaults(eapi):
@@ -33,6 +33,9 @@ def eapi_exports_merge_type(eapi):
 
 def eapi_exports_replace_vars(eapi):
 	return eapi not in ("0", "1", "2", "3")
+
+def eapi_exports_REPOSITORY(eapi):
+	return eapi in ("4-python",)
 
 def eapi_has_pkg_pretend(eapi):
 	return eapi not in ("0", "1", "2", "3")
