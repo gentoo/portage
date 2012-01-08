@@ -669,6 +669,7 @@ def _get_repo_name(repo_location, cached=None):
 	return name
 
 def parse_layout_conf(repo_location, repo_name=None):
+	eapi = read_corresponding_eapi_file(os.path.join(repo_location, REPO_NAME_LOC))
 
 	layout_filename = os.path.join(repo_location, "metadata", "layout.conf")
 	layout_file = KeyValuePairFileLoader(layout_filename, None, None)
@@ -742,7 +743,10 @@ def parse_layout_conf(repo_location, repo_name=None):
 
 	raw_formats = layout_data.get('profile-formats')
 	if raw_formats is None:
-		raw_formats = ('portage-1-compat',)
+		if eapi in ('4-python',):
+			raw_formats = ('portage-1',)
+		else:
+			raw_formats = ('portage-1-compat',)
 	else:
 		raw_formats = set(raw_formats.split())
 		unknown = raw_formats.difference(['pms', 'portage-1'])
