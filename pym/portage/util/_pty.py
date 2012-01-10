@@ -14,7 +14,7 @@ from portage.util import writemsg
 # behaviour causing hangs/deadlocks.
 # Additional note for the future: on Interix, pipes do NOT work, so
 # _disable_openpty on Interix must *never* be True
-_disable_openpty = platform.system() in ("SunOS",)
+_disable_openpty = platform.system() in ("SunOS","FreeMiNT",)
 
 _fbsd_test_pty = platform.system() == 'FreeBSD'
 
