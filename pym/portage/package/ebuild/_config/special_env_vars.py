@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -21,8 +21,8 @@ env_blacklist = frozenset((
 	"PORTAGE_BACKGROUND_UNMERGE", "PORTAGE_BUILDIR_LOCKED",
 	"PORTAGE_BUILT_USE", "PORTAGE_CONFIGROOT", "PORTAGE_IUSE",
 	"PORTAGE_NONFATAL", "PORTAGE_REPO_NAME",
-	"PORTAGE_USE", "PROPERTIES", "PROVIDE", "RDEPEND", "RESTRICT",
-	"ROOT", "SLOT", "SRC_URI"
+	"PORTAGE_USE", "PROPERTIES", "PROVIDE", "RDEPEND", "REPOSITORY",
+	"RESTRICT", "ROOT", "SLOT", "SRC_URI"
 ))
 
 environ_whitelist = []

@@ -183,8 +183,6 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env,
 			raise
 		oldld = None
 
-	ldsoconf_update = False
-
 	newld = specials["LDPATH"]
 	if (oldld != newld):
 		#ld.so.conf needs updating and ldconfig needs to be run
@@ -194,7 +192,6 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env,
 		for x in specials["LDPATH"]:
 			myfd.write(x + "\n")
 		myfd.close()
-		ldsoconf_update = True
 
 	# Update prelink.conf if we are prelink-enabled
 	if prelink_capable:
@@ -267,7 +264,6 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env,
 
 	if makelinks and \
 		not mtime_changed and \
-		not ldsoconf_update and \
 		contents is not None:
 		libdir_contents_changed = False
 		for mypath, mydata in contents.items():

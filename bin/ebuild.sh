@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 PORTAGE_BIN_PATH="${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"
@@ -650,9 +650,9 @@ if [[ $EBUILD_PHASE = depend ]] ; then
 		PROPERTIES DEFINED_PHASES UNUSED_05 UNUSED_04
 		UNUSED_03 UNUSED_02 UNUSED_01"
 
-	#the extra $(echo) commands remove newlines
 	[ -n "${EAPI}" ] || EAPI=0
 
+	# The extra $(echo) commands remove newlines.
 	if [ -n "${dbkey}" ] ; then
 		> "${dbkey}"
 		for f in ${auxdbkeys} ; do

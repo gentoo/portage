@@ -25,6 +25,7 @@ import stat
 import string
 import sys
 import traceback
+import glob
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -1596,7 +1597,21 @@ def find_updated_config_files(target_root, config_protect):
 					else:
 						yield (x, None)
 
+_ld_so_include_re = re.compile(r'^include\s+(\S.*)')
+
 def getlibpaths(root, env=None):
+	def read_ld_so_conf(path):
+		for l in grabfile(path):
+			include_match = _ld_so_include_re.match(l)
+			if include_match is not None:
+				subpath = os.path.join(os.path.dirname(path),
+					include_match.group(1))
+				for p in glob.glob(subpath):
+					for r in read_ld_so_conf(p):
+						yield r
+			else:
+				yield l
+
 	""" Return a list of paths that are used for library lookups """
 	if env is None:
 		env = os.environ
@@ -1614,7 +1629,7 @@ def getlibpaths(root, env=None):
 	else:
 	# the following is based on the information from ld.so(8)
 		rval = env.get("LD_LIBRARY_PATH", "").split(":")
-		rval.extend(grabfile(os.path.join(root, "etc", "ld.so.conf")))
+		rval.extend(read_ld_so_conf(os.path.join(root, "etc", "ld.so.conf")))
 		rval.append("/usr/lib")
 		rval.append("/lib")
 
