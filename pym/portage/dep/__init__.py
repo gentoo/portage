@@ -1376,10 +1376,13 @@ class ExtendedAtomDict(portage.cache.mappings.MutableMapping):
 			yield k
 
 	def iteritems(self):
-		for item in self._normal.items():
-			yield item
-		for item in self._extended.items():
-			yield item
+		try:
+			for item in self._normal.items():
+				yield item
+			for item in self._extended.items():
+				yield item
+		except AttributeError:
+			pass # FEATURES=python-trace
 
 	def __delitem__(self, cp):
 		if "*" in cp:
