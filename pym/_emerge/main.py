@@ -28,7 +28,7 @@ import portage.elog
 import portage.util
 import portage.locks
 import portage.exception
-from portage.const import EPREFIX, BPREFIX, EPREFIX_LSTRIP
+from portage.const import EPREFIX, EPREFIX_LSTRIP
 from portage.data import secpass
 from portage.dbapi.dep_expand import dep_expand
 from portage.util import normalize_path as normpath

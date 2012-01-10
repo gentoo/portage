@@ -9,15 +9,6 @@ from portage.const_autotool import *
 
 import os
 
-# save the original prefix
-BPREFIX = EPREFIX
-# pick up EPREFIX from the environment if set
-if "EPREFIX" in os.environ:
-	if os.environ["EPREFIX"] != "":
-		EPREFIX = os.path.normpath(os.environ["EPREFIX"])
-	else:
-		EPREFIX = os.environ["EPREFIX"]
-
 # ===========================================================================
 # START OF CONSTANTS -- START OF CONSTANTS -- START OF CONSTANTS -- START OF
 # ===========================================================================
@@ -78,8 +69,8 @@ PORTAGE_PYM_PATH         = PORTAGE_BASE_PATH + "/pym"
 LOCALE_DATA_PATH         = PORTAGE_BASE_PATH + "/locale"  # FIXME: not used
 EBUILD_SH_BINARY         = PORTAGE_BIN_PATH + "/ebuild.sh"
 MISC_SH_BINARY           = PORTAGE_BIN_PATH + "/misc-functions.sh"
-SANDBOX_BINARY           = BPREFIX + "/usr/bin/sandbox"
-FAKEROOT_BINARY          = BPREFIX + "/usr/bin/fakeroot"
+SANDBOX_BINARY           = EPREFIX + "/usr/bin/sandbox"
+FAKEROOT_BINARY          = EPREFIX + "/usr/bin/fakeroot"
 BASH_BINARY              = PORTAGE_BASH
 MOVE_BINARY              = PORTAGE_MV
 PRELINK_BINARY           = "/usr/sbin/prelink"
