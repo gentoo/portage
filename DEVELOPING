@@ -13,6 +13,13 @@ support Python 3 syntax. All exception handling should use Python 3 'except'
 syntax, and the print function should be used instead of Python 2's print
 statement (from __future__ import print_function).
 
+Dependencies
+------------
+
+Python and Bash should be the only hard dependencies. Any other dependencies,
+including external Python modules that are not included with Python itself,
+must be optionally enabled by run-time detection.
+
 Tabs
 ----
 
