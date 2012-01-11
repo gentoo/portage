@@ -5,6 +5,14 @@ sense, they are pretty basic and mostly apply to old code.  However for people
 who are looking at current code, they make take up bad habits that exist in the
 current codebase.
 
+Python Version
+--------------
+
+Python 2.6 is the minimum supported version, since it is the first version to
+support Python 3 syntax. All exception handling should use Python 3 'except'
+syntax, and the print function should be used instead of Python 2's print
+statement (from __future__ import print_function).
+
 Tabs
 ----
 
