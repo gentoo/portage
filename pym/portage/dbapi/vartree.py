@@ -4629,7 +4629,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 			continue
 		contents_type = contents[path][0]
 		if path.startswith(root):
-			arcname = path[len(root):]
+			arcname = "./" + path[len(root):]
 		else:
 			raise ValueError("invalid root argument: '%s'" % root)
 		live_path = path
