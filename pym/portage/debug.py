@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import os
@@ -26,7 +26,7 @@ class trace_handler(object):
 	def __init__(self):
 		python_system_paths = []
 		for x in sys.path:
-			if os.path.basename(x).startswith("python2."):
+			if os.path.basename(x) == "python%s.%s" % sys.version_info[:2]:
 				python_system_paths.append(x)
 
 		self.ignore_prefixes = []
