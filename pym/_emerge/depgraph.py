@@ -1058,9 +1058,12 @@ class depgraph(object):
 			else:
 				# Display the specific atom from SetArg or
 				# Package types.
+				uneval = ""
+				if dep.atom is not dep.atom.unevaluated_atom:
+					uneval = " (%s)" % (dep.atom.unevaluated_atom,)
 				writemsg_level(
-					"%s%s required by %s\n" %
-					("Parent Dep:".ljust(15), dep.atom, myparent),
+					"%s%s%s required by %s\n" %
+					("Parent Dep:".ljust(15), dep.atom, uneval, myparent),
 					level=logging.DEBUG, noiselevel=-1)
 
 		# Ensure that the dependencies of the same package
