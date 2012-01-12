@@ -388,7 +388,9 @@ def read_corresponding_eapi_file(filename):
 	default = "0"
 	eapi_file = os.path.join(os.path.dirname(filename), "eapi")
 	try:
-		f = open(eapi_file, "r")
+		f = io.open(_unicode_encode(eapi_file,
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['repo.content'], errors='replace')
 		lines = f.readlines()
 		if len(lines) == 1:
 			eapi = lines[0].rstrip("\n")
