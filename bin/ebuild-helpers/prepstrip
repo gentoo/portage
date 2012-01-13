@@ -224,7 +224,7 @@ do
 	# unwritable objects.  Make them temporarily writable for the
 	# stripping.
 	was_not_writable=false
-	if [[ -n ${EPREFIX} && ! -w ${x} ]] ; then
+	if [[ ! -w ${x} ]] ; then
 		was_not_writable=true
 		chmod u+w "${x}"
 	fi
