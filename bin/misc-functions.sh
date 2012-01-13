@@ -1107,6 +1107,7 @@ dyn_package() {
 	local PROOT="${T}/packaging"
 	# make a temporary copy of ${D} so that any modifications we do that
 	# are binpkg specific, do not influence the actual installed image.
+	rm -rf "${PROOT}" || die "failed removing stale package tree"
 	cp -la "${PORTAGE_BUILDDIR}/image" "${PROOT}" || die "failed creating packaging tree"
 
 	install_mask "${PROOT}" "${PKG_INSTALL_MASK}"
