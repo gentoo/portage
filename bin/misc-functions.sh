@@ -1095,24 +1095,29 @@ preinst_selinux_labels() {
 }
 
 dyn_package() {
+	local PROOT
 
 	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+		case "$EAPI" in 0|1|2) local EPREFIX= ED=${D} ;; esac
 
 	# Make sure $PWD is not ${D} so that we don't leave gmon.out files
 	# in there in case any tools were built with -pg in CFLAGS.
 
 	cd "${T}"
 
-	local PROOT="${T}/packaging"
-	# make a temporary copy of ${D} so that any modifications we do that
-	# are binpkg specific, do not influence the actual installed image.
-	rm -rf "${PROOT}" || die "failed removing stale package tree"
-	cp -pPR $(cp --help | grep -qs -e-l && echo -l) \
-		"${PORTAGE_BUILDDIR}/image" "${PROOT}" \
-		|| die "failed creating packaging tree"
+	if [[ -n ${PKG_INSTALL_MASK} ]] ; then
+		PROOT=${T}/packaging/
+		# make a temporary copy of ${D} so that any modifications we do that
+		# are binpkg specific, do not influence the actual installed image.
+		rm -rf "${PROOT}" || die "failed removing stale package tree"
+		cp -pPR $(cp --help | grep -qs -e-l && echo -l) \
+			"${D}" "${PROOT}" \
+			|| die "failed creating packaging tree"
 
-	install_mask "${PROOT}" "${PKG_INSTALL_MASK}"
+		install_mask "${PROOT%/}${EPREFIX}/" "${PKG_INSTALL_MASK}"
+	else
+		PROOT=${D}
+	fi
 
 	local tar_options=""
 	[[ $PORTAGE_VERBOSE = 1 ]] && tar_options+=" -v"
@@ -1145,7 +1150,7 @@ dyn_package() {
 	vecho ">>> Done."
 
 	# cleanup our temp tree
-	rm -rf "${PROOT}"
+	[[ -n ${PKG_INSTALL_MASK} ]] && rm -rf "${PROOT}"
 	cd "${PORTAGE_BUILDDIR}"
 	>> "$PORTAGE_BUILDDIR/.packaged" || \
 		die "Failed to create $PORTAGE_BUILDDIR/.packaged"
