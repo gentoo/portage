@@ -3,6 +3,7 @@
 
 import portage
 from portage import os
+from portage.dep import Atom
 from portage.package.ebuild.config import config
 from portage.package.ebuild._config.LicenseManager import LicenseManager
 from portage.tests import TestCase
@@ -24,7 +25,7 @@ class ConfigTestCase(TestCase):
 			settings = config(clone=playground.settings)
 			result = playground.run(["=dev-libs/A-1"])
 			pkg, existing_node = result.depgraph._select_package(
-				playground.eroot, "=dev-libs/A-1")
+				playground.eroot, Atom("=dev-libs/A-1"))
 			settings.setcpv(pkg)
 
 			# clone after setcpv tests deepcopy of LazyItemsDict
