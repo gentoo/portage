@@ -260,6 +260,12 @@ Log file names have an extension that is appropriate for the compression
 type. Currently, only \fBgzip\fR(1) compression is supported, so build
 logs will have a '.gz' extension when this feature is enabled.
 .TP
+.B compressdebug
+Compress the debug sections in the split debug files with zlib to save
+space.  Make sure you have built both binutils and gdb with USE=zlib
+support for this to work.  See \fBsplitdebug\fR for general split debug
+information (upon which this feature depends).
+.TP
 .B config\-protect\-if\-modified
 This causes the \fBCONFIG_PROTECT\fR behavior to be skipped for files
 that have not been modified since they were installed.
@@ -476,7 +482,9 @@ instead of using \fBPORT_LOGDIR\fR directly.
 .B splitdebug
 Prior to stripping ELF etdyn and etexec files, the debugging info is 
 stored for later use by various debuggers.  This feature is disabled by
-\fBnostrip\fR.  For installation of source code, see \fBinstallsources\fR.
+\fBnostrip\fR.  You should also consider setting \fBcompressdebug\fR so
+the files don't suck up a lot of space.  For installation of source code,
+see \fBinstallsources\fR.
 .TP
 .B strict
 Have portage react strongly to conditions that have the potential to be 
