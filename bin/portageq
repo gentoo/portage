@@ -1,5 +1,5 @@
 #!/usr/bin/python -O
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -195,9 +195,11 @@ def metadata(argv):
 		print("Unrecognized package type: '%s'" % pkgtype, file=sys.stderr)
 		sys.exit(1)
 	trees = portage.db
+	repo = portage.dep.dep_getrepo(pkgspec)
+	pkgspec = portage.dep.remove_slot(pkgspec)
 	try:
 			values = trees[eroot][type_map[pkgtype]].dbapi.aux_get(
-				pkgspec, metakeys)
+				pkgspec, metakeys, myrepo=repo)
 			writemsg_stdout(''.join('%s\n' % x for x in values), noiselevel=-1)
 	except KeyError:
 		print("Package not found: '%s'" % pkgspec, file=sys.stderr)
