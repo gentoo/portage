@@ -1,5 +1,5 @@
 # deps.py -- Portage dependency resolution functions
-# Copyright 2003-2011 Gentoo Foundation
+# Copyright 2003-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -38,7 +38,8 @@ portage.proxy.lazyimport.lazyimport(globals(),
 
 from portage import _unicode_decode
 from portage.eapi import eapi_has_slot_deps, eapi_has_src_uri_arrows, \
-	eapi_has_use_deps, eapi_has_strong_blocks, eapi_has_use_dep_defaults
+	eapi_has_use_deps, eapi_has_strong_blocks, eapi_has_use_dep_defaults, \
+	eapi_has_repo_deps
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString
 from portage.localization import _
 from portage.versions import catpkgsplit, catsplit, \
@@ -1073,6 +1074,9 @@ class Atom(_atom_base):
 			s = _unicode_decode(s)
 
 		_atom_base.__init__(s)
+
+		if eapi_has_repo_deps(eapi):
+			allow_repo = True
 
 		if "!" == s[:1]:
 			blocker = self._blocker(forbid_overlap=("!" == s[1:2]))

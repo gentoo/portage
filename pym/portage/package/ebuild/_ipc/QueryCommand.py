@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import io
@@ -7,6 +7,7 @@ import portage
 from portage import os
 from portage import _unicode_decode
 from portage.dep import Atom
+from portage.eapi import eapi_has_repo_deps
 from portage.elog import messages as elog_messages
 from portage.exception import InvalidAtom
 from portage.package.ebuild._ipc.IpcCommand import IpcCommand
@@ -31,14 +32,16 @@ class QueryCommand(IpcCommand):
 
 		cmd, root, atom_str = argv
 
+		eapi = self.settings.get('EAPI')
+		allow_repo = eapi_has_repo_deps(eapi)
 		try:
-			atom = Atom(atom_str)
+			atom = Atom(atom_str, allow_repo=allow_repo)
 		except InvalidAtom:
 			return ('', 'invalid atom: %s\n' % atom_str, 2)
 
 		warnings = []
 		try:
-			atom = Atom(atom_str, eapi=self.settings.get('EAPI'))
+			atom = Atom(atom_str, allow_repo=allow_repo, eapi=eapi)
 		except InvalidAtom as e:
 			warnings.append(_unicode_decode("QA Notice: %s: %s") % (cmd, e))
 

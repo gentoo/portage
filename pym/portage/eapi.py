@@ -51,3 +51,6 @@ def eapi_has_required_use(eapi):
 
 def eapi_has_use_dep_defaults(eapi):
 	return eapi not in ("0", "1", "2", "3")
+
+def eapi_has_repo_deps(eapi):
+	return eapi in ("4-python",)
