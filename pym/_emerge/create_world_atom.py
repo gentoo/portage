@@ -21,8 +21,25 @@ def create_world_atom(pkg, args_set, root_config):
 	sets = root_config.sets
 	portdb = root_config.trees["porttree"].dbapi
 	vardb = root_config.trees["vartree"].dbapi
-	available_slots = set(portdb.aux_get(cpv, ["SLOT"])[0] \
-		for cpv in portdb.match(cp))
+
+	if arg_atom.repo is not None:
+		repos = [arg_atom.repo]
+	else:
+		# Iterate over portdbapi.porttrees, since it's common to
+		# tweak this attribute in order to adjust match behavior.
+		repos = []
+		for tree in portdb.porttrees:
+			repos.append(portdb.repositories.get_name_for_location(tree))
+
+	available_slots = set()
+	for cpv in portdb.match(cp):
+		for repo in repos:
+			try:
+				available_slots.add(portdb.aux_get(cpv, ["SLOT"],
+					myrepo=repo)[0])
+			except KeyError:
+				pass
+
 	slotted = len(available_slots) > 1 or \
 		(len(available_slots) == 1 and "0" not in available_slots)
 	if not slotted:
@@ -64,8 +81,18 @@ def create_world_atom(pkg, args_set, root_config):
 			# enough to identify a specific slot.
 			matches = mydb.match(arg_atom)
 			matched_slots = set()
-			for cpv in matches:
-				matched_slots.add(mydb.aux_get(cpv, ["SLOT"])[0])
+			if mydb is vardb:
+				for cpv in matches:
+					matched_slots.add(mydb.aux_get(cpv, ["SLOT"])[0])
+			else:
+				for cpv in matches:
+					for repo in repos:
+						try:
+							matched_slots.add(portdb.aux_get(cpv, ["SLOT"],
+								myrepo=repo)[0])
+						except KeyError:
+							pass
+
 			if len(matched_slots) == 1:
 				new_world_atom = slot_atom
 				if arg_atom.repo:
