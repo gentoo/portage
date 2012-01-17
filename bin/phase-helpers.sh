@@ -546,15 +546,12 @@ _eapi0_src_test() {
 	local emake_cmd="${MAKE:-make} ${MAKEOPTS} ${EXTRA_EMAKE}"
 	if $emake_cmd -j1 check -n &> /dev/null; then
 		vecho ">>> Test phase [check]: ${CATEGORY}/${PF}"
-		if ! $emake_cmd -j1 check; then
-			has test $FEATURES && die "Make check failed. See above for details."
-			has test $FEATURES || eerror "Make check failed. See above for details."
-		fi
+		$emake_cmd -j1 check || \
+			die "Make check failed. See above for details."
 	elif $emake_cmd -j1 test -n &> /dev/null; then
 		vecho ">>> Test phase [test]: ${CATEGORY}/${PF}"
-		if ! $emake_cmd -j1 test; then
-			has test $FEATURES && die "Make test failed. See above for details."
-			has test $FEATURES || eerror "Make test failed. See above for details."
+		$emake_cmd -j1 test || \
+			die "Make test failed. See above for details."
 		fi
 	else
 		vecho ">>> Test phase [none]: ${CATEGORY}/${PF}"
