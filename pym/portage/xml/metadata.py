@@ -45,10 +45,15 @@ else:
 	except ImportError:
 		import xml.etree.ElementTree as etree
 
+try:
+	from xml.parsers.expat import ExpatError
+except ImportError:
+	ExpatError = SyntaxError
+
 import re
 import xml.etree.ElementTree
 import portage
-from portage import os
+from portage import os, _unicode_decode
 from portage.util import unique_everseen
 
 class _MetadataTreeBuilder(xml.etree.ElementTree.TreeBuilder):
@@ -179,7 +184,7 @@ class MetaDataXML(object):
 	"""Access metadata.xml"""
 
 	def __init__(self, metadata_xml_path, herds):
-		"""Parse a valid metadata.xml file.
+		"""Parse a valid mnicoetadata.xml file.
 
 		@type metadata_xml_path: str
 		@param metadata_xml_path: path to a valid metadata.xml file
@@ -196,6 +201,8 @@ class MetaDataXML(object):
 				parser=etree.XMLParser(target=_MetadataTreeBuilder()))
 		except ImportError:
 			pass
+		except ExpatError as e:
+			raise SyntaxError(_unicode_decode("%s") % (e,))
 
 		if isinstance(herds, etree.ElementTree):
 			herds_etree = herds
