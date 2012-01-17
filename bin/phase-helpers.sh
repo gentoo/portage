@@ -552,7 +552,6 @@ _eapi0_src_test() {
 		vecho ">>> Test phase [test]: ${CATEGORY}/${PF}"
 		$emake_cmd -j1 test || \
 			die "Make test failed. See above for details."
-		fi
 	else
 		vecho ">>> Test phase [none]: ${CATEGORY}/${PF}"
 	fi
