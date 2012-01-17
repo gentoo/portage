@@ -184,7 +184,7 @@ class MetaDataXML(object):
 	"""Access metadata.xml"""
 
 	def __init__(self, metadata_xml_path, herds):
-		"""Parse a valid mnicoetadata.xml file.
+		"""Parse a valid metadata.xml file.
 
 		@type metadata_xml_path: str
 		@param metadata_xml_path: path to a valid metadata.xml file
