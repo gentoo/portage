@@ -197,7 +197,7 @@ def _get_global(k):
 		if v is None:
 			# PREFIX LOCAL: use var iso hardwired 'portage'
 			if k == '_portage_grpname':
-				v = PORTAGE_GRPNAME
+				v = PORTAGE_GROUPNAME
 			else:
 				v = PORTAGE_USERNAME
 			# END PREFIX LOCAL
