@@ -66,6 +66,7 @@ options=[
 "--nodeps",       "--noreplace",
 "--nospinner",    "--oneshot",
 "--onlydeps",     "--pretend",
+"--quiet-repo-display",
 "--quiet-unmerge-warn",
 "--resume",
 "--searchdesc",

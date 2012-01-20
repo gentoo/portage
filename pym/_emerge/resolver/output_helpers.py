@@ -211,7 +211,8 @@ class _DisplayConfig(object):
 				del e
 		self.columnwidth = mywidth
 
-		self.repo_display = _RepoDisplay(frozen_config.roots)
+		if "--quiet-repo-display" in frozen_config.myopts:
+			self.repo_display = _RepoDisplay(frozen_config.roots)
 		self.trees = frozen_config.trees
 		self.pkgsettings = frozen_config.pkgsettings
 		self.target_root = frozen_config.target_root
