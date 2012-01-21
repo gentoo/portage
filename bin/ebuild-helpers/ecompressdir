@@ -69,6 +69,10 @@ funk_up_dir() {
 	while read -r -d $'\0' brokenlink ; do
 		[[ -e ${brokenlink} ]] && continue
 		olddest=$(readlink "${brokenlink}")
+		# Ignore temporarily broken symlinks due to
+		# _relocate_skip_dirs (bug #399595).
+		skip_dir_dest=${T}/ecompress-skip/${actual_dir#${ED}}/${brokenlink%/*}/${olddest}
+		[[ -e ${skip_dir_dest} ]] && continue
 		[[ ${act} == "compress" ]] \
 			&& newdest="${olddest}${suffix}" \
 			|| newdest="${olddest%${suffix}}"
