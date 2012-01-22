@@ -339,36 +339,34 @@ class Display(object):
 					self.counters.totalsize += mysize
 			self.verboseadd += _format_size(mysize)
 
-		if not self.quiet_repo_display:
-			return
+		if self.quiet_repo_display:
+			# overlay verbose
+			# assign index for a previous version in the same slot
+			slot_matches = self.vardb.match(pkg.slot_atom)
+			if slot_matches:
+				repo_name_prev = self.vardb.aux_get(slot_matches[0],
+					["repository"])[0]
+			else:
+				repo_name_prev = None
 
-		# overlay verbose
-		# assign index for a previous version in the same slot
-		slot_matches = self.vardb.match(pkg.slot_atom)
-		if slot_matches:
-			repo_name_prev = self.vardb.aux_get(slot_matches[0],
-				["repository"])[0]
-		else:
-			repo_name_prev = None
-
-		# now use the data to generate output
-		if pkg.installed or not slot_matches:
-			self.repoadd = self.conf.repo_display.repoStr(
-				pkg_info.repo_path_real)
-		else:
-			repo_path_prev = None
-			if repo_name_prev:
-				repo_path_prev = self.portdb.getRepositoryPath(
-					repo_name_prev)
-			if repo_path_prev == pkg_info.repo_path_real:
+			# now use the data to generate output
+			if pkg.installed or not slot_matches:
 				self.repoadd = self.conf.repo_display.repoStr(
 					pkg_info.repo_path_real)
 			else:
-				self.repoadd = "%s=>%s" % (
-					self.conf.repo_display.repoStr(repo_path_prev),
-					self.conf.repo_display.repoStr(pkg_info.repo_path_real))
-		if self.repoadd:
-			repoadd_set.add(self.repoadd)
+				repo_path_prev = None
+				if repo_name_prev:
+					repo_path_prev = self.portdb.getRepositoryPath(
+						repo_name_prev)
+				if repo_path_prev == pkg_info.repo_path_real:
+					self.repoadd = self.conf.repo_display.repoStr(
+						pkg_info.repo_path_real)
+				else:
+					self.repoadd = "%s=>%s" % (
+						self.conf.repo_display.repoStr(repo_path_prev),
+						self.conf.repo_display.repoStr(pkg_info.repo_path_real))
+			if self.repoadd:
+				repoadd_set.add(self.repoadd)
 
 
 	def convert_myoldbest(self, myoldbest):
