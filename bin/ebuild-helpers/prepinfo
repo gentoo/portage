@@ -4,17 +4,20 @@
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
+[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+	case "$EAPI" in 0|1|2) ED=${D} ;; esac
+
 if [[ -z $1 ]] ; then
 	infodir="/usr/share/info"
 else
-	if [[ -d ${D}$1/share/info ]] ; then
+	if [[ -d ${ED}$1/share/info ]] ; then
 		infodir="$1/share/info"
 	else
 		infodir="$1/info"
 	fi
 fi
 
-if [[ ! -d ${D}${infodir} ]] ; then
+if [[ ! -d ${ED}${infodir} ]] ; then
 	if [[ -n $1 ]] ; then
 		vecho "${0##*/}: '${infodir}' does not exist!"
 		exit 1
@@ -23,7 +26,7 @@ if [[ ! -d ${D}${infodir} ]] ; then
 	fi
 fi
 
-find "${D}${infodir}" -type d -print0 | while read -r -d $'\0' x ; do
+find "${ED}${infodir}" -type d -print0 | while read -r -d $'\0' x ; do
 	for f in "${x}"/.keepinfodir*; do
 		[[ -e ${f} ]] && continue 2
 	done

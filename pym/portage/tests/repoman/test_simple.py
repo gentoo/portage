@@ -1,13 +1,13 @@
 # Copyright 2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import shutil
 import subprocess
 import sys
 import time
 
 import portage
 from portage import os
+from portage import shutil
 from portage import _unicode_decode
 from portage.const import PORTAGE_BASE_PATH, PORTAGE_BIN_PATH, PORTAGE_PYM_PATH
 from portage.process import find_binary
@@ -128,7 +128,7 @@ class SimpleRepomanTestCase(TestCase):
 		settings = playground.settings
 		eprefix = settings["EPREFIX"]
 		eroot = settings["EROOT"]
-		portdb = playground.trees[playground.root]["porttree"].dbapi
+		portdb = playground.trees[playground.eroot]["porttree"].dbapi
 		homedir = os.path.join(eroot, "home")
 		distdir = os.path.join(eprefix, "distdir")
 		portdir = settings["PORTDIR"]
@@ -184,7 +184,7 @@ class SimpleRepomanTestCase(TestCase):
 			pythonpath = PORTAGE_PYM_PATH + pythonpath
 
 		env = {
-			"__REPOMAN_TEST_EPREFIX" : eprefix,
+			"PORTAGE_OVERRIDE_EPREFIX" : eprefix,
 			"DISTDIR" : distdir,
 			"GENTOO_COMMITTER_NAME" : committer_name,
 			"GENTOO_COMMITTER_EMAIL" : committer_email,
@@ -195,6 +195,10 @@ class SimpleRepomanTestCase(TestCase):
 			"PORTDIR" : portdir,
 			"PYTHONPATH" : pythonpath,
 		}
+
+		if os.environ.get("SANDBOX_ON") == "1":
+			# avoid problems from nested sandbox instances
+			env["FEATURES"] = "-sandbox"
 
 		dirs = [homedir, license_dir, profiles_dir, distdir]
 		try:

@@ -47,7 +47,7 @@ class BacktrackParameter(object):
 			self.reinstall_list == other.reinstall_list
 
 
-class _BacktrackNode:
+class _BacktrackNode(object):
 
 	__slots__ = (
 		"parameter", "depth", "mask_steps", "terminal",

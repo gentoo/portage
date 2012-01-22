@@ -17,7 +17,9 @@ shift $#
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}/ebuild.sh"
 
 install_symlink_html_docs() {
-	cd "${D}" || die "cd failed"
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+	cd "${ED}" || die "cd failed"
 	#symlink the html documentation (if DOC_SYMLINKS_DIR is set in make.conf)
 	if [ -n "${DOC_SYMLINKS_DIR}" ] ; then
 		local mydocdir docdir
@@ -64,11 +66,13 @@ canonicalize() {
 prepcompress() {
 	local -a include exclude incl_d incl_f
 	local f g i real_f real_d
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 
 	# Canonicalize path names and check for their existence.
-	real_d=$(canonicalize "${D}")
+	real_d=$(canonicalize "${ED}")
 	for (( i = 0; i < ${#PORTAGE_DOCOMPRESS[@]}; i++ )); do
-		real_f=$(canonicalize "${D}${PORTAGE_DOCOMPRESS[i]}")
+		real_f=$(canonicalize "${ED}${PORTAGE_DOCOMPRESS[i]}")
 		f=${real_f#"${real_d}"}
 		if [[ ${real_f} != "${f}" ]] && [[ -d ${real_f} || -f ${real_f} ]]
 		then
@@ -79,7 +83,7 @@ prepcompress() {
 		fi
 	done
 	for (( i = 0; i < ${#PORTAGE_DOCOMPRESS_SKIP[@]}; i++ )); do
-		real_f=$(canonicalize "${D}${PORTAGE_DOCOMPRESS_SKIP[i]}")
+		real_f=$(canonicalize "${ED}${PORTAGE_DOCOMPRESS_SKIP[i]}")
 		f=${real_f#"${real_d}"}
 		if [[ ${real_f} != "${f}" ]] && [[ -d ${real_f} || -f ${real_f} ]]
 		then
@@ -128,7 +132,7 @@ prepcompress() {
 
 	# Split the include list into directories and files
 	for f in "${include[@]}"; do
-		if [[ -d ${D}${f} ]]; then
+		if [[ -d ${ED}${f} ]]; then
 			incl_d[${#incl_d[@]}]=${f}
 		else
 			incl_f[${#incl_f[@]}]=${f}
@@ -138,15 +142,101 @@ prepcompress() {
 	# Queue up for compression.
 	# ecompress{,dir} doesn't like to be called with empty argument lists.
 	[[ ${#incl_d[@]} -gt 0 ]] && ecompressdir --queue "${incl_d[@]}"
-	[[ ${#incl_f[@]} -gt 0 ]] && ecompress --queue "${incl_f[@]/#/${D}}"
+	[[ ${#incl_f[@]} -gt 0 ]] && ecompress --queue "${incl_f[@]/#/${ED}}"
 	[[ ${#exclude[@]} -gt 0 ]] && ecompressdir --ignore "${exclude[@]}"
 	return 0
 }
 
 install_qa_check() {
-	local f i x
+	local f i qa_var x
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
 
-	cd "${D}" || die "cd failed"
+	cd "${ED}" || die "cd failed"
+
+	# Merge QA_FLAGS_IGNORED and QA_DT_HASH into a single array, since
+	# QA_DT_HASH is deprecated.
+	qa_var="QA_FLAGS_IGNORED_${ARCH/-/_}"
+	eval "[[ -n \${!qa_var} ]] && QA_FLAGS_IGNORED=(\"\${${qa_var}[@]}\")"
+	if [[ ${#QA_FLAGS_IGNORED[@]} -eq 1 ]] ; then
+		local shopts=$-
+		set -o noglob
+		QA_FLAGS_IGNORED=(${QA_FLAGS_IGNORED})
+		set +o noglob
+		set -${shopts}
+	fi
+
+	qa_var="QA_DT_HASH_${ARCH/-/_}"
+	eval "[[ -n \${!qa_var} ]] && QA_DT_HASH=(\"\${${qa_var}[@]}\")"
+	if [[ ${#QA_DT_HASH[@]} -eq 1 ]] ; then
+		local shopts=$-
+		set -o noglob
+		QA_DT_HASH=(${QA_DT_HASH})
+		set +o noglob
+		set -${shopts}
+	fi
+
+	if [[ -n ${QA_DT_HASH} ]] ; then
+		QA_FLAGS_IGNORED=("${QA_FLAGS_IGNORED[@]}" "${QA_DT_HASH[@]}")
+		unset QA_DT_HASH
+	fi
+
+	# Merge QA_STRICT_FLAGS_IGNORED and QA_STRICT_DT_HASH, since
+	# QA_STRICT_DT_HASH is deprecated
+	if [ "${QA_STRICT_FLAGS_IGNORED-unset}" = unset ] && \
+		[ "${QA_STRICT_DT_HASH-unset}" != unset ] ; then
+		QA_STRICT_FLAGS_IGNORED=1
+		unset QA_STRICT_DT_HASH
+	fi
+
+	# Check for files built without respecting *FLAGS. Note that
+	# -frecord-gcc-switches must be in all *FLAGS variables, in
+	# order to avoid false positive results here.
+	# NOTE: This check must execute before prepall/prepstrip, since
+	# prepstrip strips the .GCC.command.line sections.
+	if type -P scanelf > /dev/null && ! has binchecks ${RESTRICT} && \
+		[[ "${CFLAGS}" == *-frecord-gcc-switches* ]] && \
+		[[ "${CXXFLAGS}" == *-frecord-gcc-switches* ]] && \
+		[[ "${FFLAGS}" == *-frecord-gcc-switches* ]] && \
+		[[ "${FCFLAGS}" == *-frecord-gcc-switches* ]] ; then
+		rm -f "${T}"/scanelf-ignored-CFLAGS.log
+		for x in $(scanelf -qyRF '%k %p' -k \!.GCC.command.line "${ED}" | \
+			sed -e "s:\!.GCC.command.line ::") ; do
+			# Separate out file types that are known to support
+			# .GCC.command.line sections, using the `file` command
+			# similar to how prepstrip uses it.
+			f=$(file "${x}") || continue
+			[[ -z ${f} ]] && continue
+			if [[ ${f} == *"SB executable"* ||
+				${f} == *"SB shared object"* ]] ; then
+				echo "${x}" >> "${T}"/scanelf-ignored-CFLAGS.log
+			fi
+		done
+
+		if [[ -f "${T}"/scanelf-ignored-CFLAGS.log ]] ; then
+
+			if [ "${QA_STRICT_FLAGS_IGNORED-unset}" = unset ] ; then
+				for x in "${QA_FLAGS_IGNORED[@]}" ; do
+					sed -e "s#^${x#/}\$##" -i "${T}"/scanelf-ignored-CFLAGS.log
+				done
+			fi
+			# Filter anything under /usr/lib/debug/ in order to avoid
+			# duplicate warnings for splitdebug files.
+			sed -e "s#^usr/lib/debug/.*##" -e "/^\$/d" -e "s#^#/#" \
+				-i "${T}"/scanelf-ignored-CFLAGS.log
+			f=$(<"${T}"/scanelf-ignored-CFLAGS.log)
+			if [[ -n ${f} ]] ; then
+				vecho -ne '\n'
+				eqawarn "${BAD}QA Notice: Files built without respecting CFLAGS have been detected${NORMAL}"
+				eqawarn " Please include the following list of files in your report:"
+				eqawarn "${f}"
+				vecho -ne '\n'
+				sleep 1
+			else
+				rm -f "${T}"/scanelf-ignored-CFLAGS.log
+			fi
+		fi
+	fi
 
 	export STRIP_MASK
 	prepall
@@ -154,9 +244,12 @@ install_qa_check() {
 	ecompressdir --dequeue
 	ecompress --dequeue
 
+	# Prefix specific checks
+	[[ ${ED} != ${D} ]] && install_qa_check_prefix
+
 	f=
 	for x in etc/app-defaults usr/man usr/info usr/X11R6 usr/doc usr/locale ; do
-		[[ -d $D/$x ]] && f+="  $x\n"
+		[[ -d ${ED}/$x ]] && f+="  $x\n"
 	done
 
 	if [[ -n $f ]] ; then
@@ -166,7 +259,7 @@ install_qa_check() {
 	fi
 
 	# Now we look for all world writable files.
-	local unsafe_files=$(find "${D}" -type f -perm -2 | sed -e "s:^${D}:- :")
+	local unsafe_files=$(find "${ED}" -type f -perm -2 | sed -e "s:^${ED}:- :")
 	if [[ -n ${unsafe_files} ]] ; then
 		vecho "QA Security Notice: world writable file(s):"
 		vecho "${unsafe_files}"
@@ -176,7 +269,7 @@ install_qa_check() {
 	fi
 
 	if type -P scanelf > /dev/null && ! has binchecks ${RESTRICT}; then
-		local qa_var insecure_rpath=0 tmp_quiet=${PORTAGE_QUIET}
+		local insecure_rpath=0 tmp_quiet=${PORTAGE_QUIET}
 		local x
 
 		# display warnings when using stricter because we die afterwards
@@ -196,7 +289,7 @@ install_qa_check() {
 		if [[ -n "${ROOT}" && "${ROOT}" != "/" ]]; then
 			forbidden_dirs+=" ${ROOT}"
 		fi
-		local dir l rpath_files=$(scanelf -F '%F:%r' -qBR "${D}")
+		local dir l rpath_files=$(scanelf -F '%F:%r' -qBR "${ED}")
 		f=""
 		for dir in ${forbidden_dirs}; do
 			for l in $(echo "${rpath_files}" | grep -E ":${dir}|::|: "); do
@@ -210,7 +303,7 @@ install_qa_check() {
 
 		# Reject set*id binaries with $ORIGIN in RPATH #260331
 		x=$(
-			find "${D}" -type f \( -perm -u+s -o -perm -g+s \) -print0 | \
+			find "${ED}" -type f \( -perm -u+s -o -perm -g+s \) -print0 | \
 			xargs -0 scanelf -qyRF '%r %p' | grep '$ORIGIN'
 		)
 
@@ -236,7 +329,7 @@ install_qa_check() {
 		[[ -n ${!qa_var} ]] && QA_TEXTRELS=${!qa_var}
 		[[ -n ${QA_STRICT_TEXTRELS} ]] && QA_TEXTRELS=""
 		export QA_TEXTRELS="${QA_TEXTRELS} lib*/modules/*.ko"
-		f=$(scanelf -qyRF '%t %p' "${D}" | grep -v 'usr/lib/debug/')
+		f=$(scanelf -qyRF '%t %p' "${ED}" | grep -v 'usr/lib/debug/')
 		if [[ -n ${f} ]] ; then
 			scanelf -qyRAF '%T %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-textrel.log
 			vecho -ne '\n'
@@ -276,7 +369,7 @@ install_qa_check() {
 					[[ -n ${QA_STRICT_WX_LOAD} ]] && QA_WX_LOAD=""
 					export QA_EXECSTACK="${QA_EXECSTACK} lib*/modules/*.ko"
 					export QA_WX_LOAD="${QA_WX_LOAD} lib*/modules/*.ko"
-					f=$(scanelf -qyRAF '%e %p' "${D}" | grep -v 'usr/lib/debug/')
+					f=$(scanelf -qyRAF '%e %p' "${ED}" | grep -v 'usr/lib/debug/')
 					;;
 			esac
 			;;
@@ -300,26 +393,15 @@ install_qa_check() {
 		fi
 
 		# Check for files built without respecting LDFLAGS
-		if [[ "${LDFLAGS}" == *,--hash-style=gnu* ]] && [[ "${PN}" != *-bin ]] ; then
-			qa_var="QA_DT_HASH_${ARCH/-/_}"
-			eval "[[ -n \${!qa_var} ]] && QA_DT_HASH=(\"\${${qa_var}[@]}\")"
-			f=$(scanelf -qyRF '%k %p' -k .hash "${D}" | sed -e "s:\.hash ::")
+		if [[ "${LDFLAGS}" == *,--hash-style=gnu* ]] && \
+			! has binchecks ${RESTRICT} ; then 
+			f=$(scanelf -qyRF '%k %p' -k .hash "${ED}" | sed -e "s:\.hash ::")
 			if [[ -n ${f} ]] ; then
 				echo "${f}" > "${T}"/scanelf-ignored-LDFLAGS.log
-				if [ "${QA_STRICT_DT_HASH-unset}" == unset ] ; then
-					if [[ ${#QA_DT_HASH[@]} -gt 1 ]] ; then
-						for x in "${QA_DT_HASH[@]}" ; do
-							sed -e "s#^${x#/}\$##" -i "${T}"/scanelf-ignored-LDFLAGS.log
-						done
-					else
-						local shopts=$-
-						set -o noglob
-						for x in ${QA_DT_HASH} ; do
-							sed -e "s#^${x#/}\$##" -i "${T}"/scanelf-ignored-LDFLAGS.log
-						done
-						set +o noglob
-						set -${shopts}
-					fi
+				if [ "${QA_STRICT_FLAGS_IGNORED-unset}" = unset ] ; then
+					for x in "${QA_FLAGS_IGNORED[@]}" ; do
+						sed -e "s#^${x#/}\$##" -i "${T}"/scanelf-ignored-LDFLAGS.log
+					done
 				fi
 				# Filter anything under /usr/lib/debug/ in order to avoid
 				# duplicate warnings for splitdebug files.
@@ -385,7 +467,7 @@ install_qa_check() {
 		# Check for shared libraries lacking SONAMEs
 		qa_var="QA_SONAME_${ARCH/-/_}"
 		eval "[[ -n \${!qa_var} ]] && QA_SONAME=(\"\${${qa_var}[@]}\")"
-		f=$(scanelf -ByF '%S %p' "${D}"{,usr/}lib*/lib*.so* | gawk '$2 == "" { print }' | sed -e "s:^[[:space:]]${D}:/:")
+		f=$(scanelf -ByF '%S %p' "${ED}"{,usr/}lib*/lib*.so* | gawk '$2 == "" { print }' | sed -e "s:^[[:space:]]${ED}:/:")
 		if [[ -n ${f} ]] ; then
 			echo "${f}" > "${T}"/scanelf-missing-SONAME.log
 			if [[ "${QA_STRICT_SONAME-unset}" == unset ]] ; then
@@ -419,7 +501,7 @@ install_qa_check() {
 		# Check for shared libraries lacking NEEDED entries
 		qa_var="QA_DT_NEEDED_${ARCH/-/_}"
 		eval "[[ -n \${!qa_var} ]] && QA_DT_NEEDED=(\"\${${qa_var}[@]}\")"
-		f=$(scanelf -ByF '%n %p' "${D}"{,usr/}lib*/lib*.so* | gawk '$2 == "" { print }' | sed -e "s:^[[:space:]]${D}:/:")
+		f=$(scanelf -ByF '%n %p' "${ED}"{,usr/}lib*/lib*.so* | gawk '$2 == "" { print }' | sed -e "s:^[[:space:]]${ED}:/:")
 		if [[ -n ${f} ]] ; then
 			echo "${f}" > "${T}"/scanelf-missing-NEEDED.log
 			if [[ "${QA_STRICT_DT_NEEDED-unset}" == unset ]] ; then
@@ -453,7 +535,7 @@ install_qa_check() {
 		PORTAGE_QUIET=${tmp_quiet}
 	fi
 
-	local unsafe_files=$(find "${D}" -type f '(' -perm -2002 -o -perm -4002 ')')
+	local unsafe_files=$(find "${ED}" -type f '(' -perm -2002 -o -perm -4002 ')' | sed -e "s:^${ED}:/:")
 	if [[ -n ${unsafe_files} ]] ; then
 		eqawarn "QA Notice: Unsafe files detected (set*id and world writable)"
 		eqawarn "${unsafe_files}"
@@ -473,8 +555,8 @@ install_qa_check() {
 	# Sanity check syntax errors in init.d scripts
 	local d
 	for d in /etc/conf.d /etc/init.d ; do
-		[[ -d ${D}/${d} ]] || continue
-		for i in "${D}"/${d}/* ; do
+		[[ -d ${ED}/${d} ]] || continue
+		for i in "${ED}"/${d}/* ; do
 			[[ -L ${i} ]] && continue
 			# if empty conf.d/init.d dir exists (baselayout), then i will be "/etc/conf.d/*" and not exist
 			[[ ! -e ${i} ]] && continue
@@ -485,17 +567,17 @@ install_qa_check() {
 	# this should help to ensure that all (most?) shared libraries are executable
 	# and that all libtool scripts / static libraries are not executable
 	local j
-	for i in "${D}"opt/*/lib{,32,64} \
-	         "${D}"lib{,32,64}       \
-	         "${D}"usr/lib{,32,64}   \
-	         "${D}"usr/X11R6/lib{,32,64} ; do
+	for i in "${ED}"opt/*/lib{,32,64} \
+	         "${ED}"lib{,32,64}       \
+	         "${ED}"usr/lib{,32,64}   \
+	         "${ED}"usr/X11R6/lib{,32,64} ; do
 		[[ ! -d ${i} ]] && continue
 
 		for j in "${i}"/*.so.* "${i}"/*.so ; do
 			[[ ! -e ${j} ]] && continue
 			[[ -L ${j} ]] && continue
 			[[ -x ${j} ]] && continue
-			vecho "making executable: ${j#${D}}"
+			vecho "making executable: ${j#${ED}}"
 			chmod +x "${j}"
 		done
 
@@ -503,7 +585,7 @@ install_qa_check() {
 			[[ ! -e ${j} ]] && continue
 			[[ -L ${j} ]] && continue
 			[[ ! -x ${j} ]] && continue
-			vecho "removing executable bit: ${j#${D}}"
+			vecho "removing executable bit: ${j#${ED}}"
 			chmod -x "${j}"
 		done
 
@@ -527,7 +609,7 @@ install_qa_check() {
 	# http://bugs.gentoo.org/4411
 	abort="no"
 	local a s
-	for a in "${D}"usr/lib*/*.a ; do
+	for a in "${ED}"usr/lib*/*.a ; do
 		s=${a%.a}.so
 		if [[ ! -e ${s} ]] ; then
 			s=${s%usr/*}${s##*/usr/}
@@ -541,7 +623,7 @@ install_qa_check() {
 	[[ ${abort} == "yes" ]] && die "add those ldscripts"
 
 	# Make sure people don't store libtool files or static libs in /lib
-	f=$(ls "${D}"lib*/*.{a,la} 2>/dev/null)
+	f=$(ls "${ED}"lib*/*.{a,la} 2>/dev/null)
 	if [[ -n ${f} ]] ; then
 		vecho -ne '\n'
 		eqawarn "QA Notice: Excessive files found in the / partition"
@@ -552,9 +634,9 @@ install_qa_check() {
 
 	# Verify that the libtool files don't contain bogus $D entries.
 	local abort=no gentoo_bug=no always_overflow=no
-	for a in "${D}"usr/lib*/*.la ; do
+	for a in "${ED}"usr/lib*/*.la ; do
 		s=${a##*/}
-		if grep -qs "${D}" "${a}" ; then
+		if grep -qs "${ED}" "${a}" ; then
 			vecho -ne '\n'
 			eqawarn "QA Notice: ${s} appears to contain PORTAGE_TMPDIR paths"
 			abort="yes"
@@ -696,7 +778,7 @@ install_qa_check() {
 	fi
 
 	# Portage regenerates this on the installed system.
-	rm -f "${D}"/usr/share/info/dir{,.gz,.bz2}
+	rm -f "${ED}"/usr/share/info/dir{,.gz,.bz2}
 
 	if has multilib-strict ${FEATURES} && \
 	   [[ -x /usr/bin/file && -x /usr/bin/find ]] && \
@@ -705,15 +787,15 @@ install_qa_check() {
 		local abort=no dir file firstrun=yes
 		MULTILIB_STRICT_EXEMPT=$(echo ${MULTILIB_STRICT_EXEMPT} | sed -e 's:\([(|)]\):\\\1:g')
 		for dir in ${MULTILIB_STRICT_DIRS} ; do
-			[[ -d ${D}/${dir} ]] || continue
-			for file in $(find ${D}/${dir} -type f | grep -v "^${D}/${dir}/${MULTILIB_STRICT_EXEMPT}"); do
+			[[ -d ${ED}/${dir} ]] || continue
+			for file in $(find ${ED}/${dir} -type f | grep -v "^${ED}/${dir}/${MULTILIB_STRICT_EXEMPT}"); do
 				if file ${file} | egrep -q "${MULTILIB_STRICT_DENY}" ; then
 					if [[ ${firstrun} == yes ]] ; then
 						echo "Files matching a file type that is not allowed:"
 						firstrun=no
 					fi
 					abort=yes
-					echo "   ${file#${D}//}"
+					echo "   ${file#${ED}//}"
 				fi
 			done
 		done
@@ -722,7 +804,7 @@ install_qa_check() {
 
 	# ensure packages don't install systemd units automagically
 	if ! has systemd ${INHERITED} && \
-		[[ -d "${D}"/lib/systemd/system ]]
+		[[ -d "${ED}"/lib/systemd/system ]]
 	then
 		eqawarn "QA Notice: package installs systemd unit files (/lib/systemd/system)"
 		eqawarn "           but does not inherit systemd.eclass."
@@ -731,6 +813,124 @@ install_qa_check() {
 	fi
 }
 
+install_qa_check_prefix() {
+	if [[ -d ${ED}/${D} ]] ; then
+		find "${ED}/${D}" | \
+		while read i ; do
+			eqawarn "QA Notice: /${i##${ED}/${D}} installed in \${ED}/\${D}"
+		done
+		die "Aborting due to QA concerns: files installed in ${ED}/${D}"
+	fi
+
+	if [[ -d ${ED}/${EPREFIX} ]] ; then
+		find "${ED}/${EPREFIX}/" | \
+		while read i ; do
+			eqawarn "QA Notice: ${i#${D}} double prefix"
+		done
+		die "Aborting due to QA concerns: double prefix files installed"
+	fi
+
+	if [[ -d ${D} ]] ; then
+		INSTALLTOD=$(find ${D%/} | egrep -v "^${ED}" | sed -e "s|^${D%/}||" | awk '{if (length($0) <= length("'"${EPREFIX}"'")) { if (substr("'"${EPREFIX}"'", 1, length($0)) != $0) {print $0;} } else if (substr($0, 1, length("'"${EPREFIX}"'")) != "'"${EPREFIX}"'") {print $0;} }')
+		if [[ -n ${INSTALLTOD} ]] ; then
+			eqawarn "QA Notice: the following files are outside of the prefix:"
+			eqawarn "${INSTALLTOD}"
+			die "Aborting due to QA concerns: there are files installed outside the prefix"
+		fi
+	fi
+
+	# all further checks rely on ${ED} existing
+	[[ -d ${ED} ]] || return
+
+	# this does not really belong here, but it's closely tied to
+	# the code below; many runscripts generate positives here, and we
+	# know they don't work (bug #196294) so as long as that one
+	# remains an issue, simply remove them as they won't work
+	# anyway, avoid etc/init.d/functions.sh from being thrown away
+	if [[ ( -d "${ED}"/etc/conf.d || -d "${ED}"/etc/init.d ) && ! -f "${ED}"/etc/init.d/functions.sh ]] ; then
+		ewarn "removed /etc/init.d and /etc/conf.d directories until bug #196294 has been resolved"
+		rm -Rf "${ED}"/etc/{conf,init}.d
+	fi
+
+	# check shebangs, bug #282539
+	rm -f "${T}"/non-prefix-shebangs-errs
+	local WHITELIST=" /usr/bin/env "
+	# this is hell expensive, but how else?
+	find "${ED}" -executable \! -type d -print0 \
+			| xargs -0 grep -H -n -m1 "^#!" \
+			| while read f ;
+	do
+		local fn=${f%%:*}
+		local pos=${f#*:} ; pos=${pos%:*}
+		local line=${f##*:}
+		# shebang always appears on the first line ;)
+		[[ ${pos} != 1 ]] && continue
+		local oldIFS=${IFS}
+		IFS=$'\r'$'\n'$'\t'" "
+		line=( ${line#"#!"} )
+		IFS=${oldIFS}
+		[[ ${WHITELIST} == *" ${line[0]} "* ]] && continue
+		local fp=${fn#${D}} ; fp=/${fp%/*}
+		# line[0] can be an absolutised path, bug #342929
+		local eprefix=$(canonicalize ${EPREFIX})
+		local rf=${fn}
+		# in case we deal with a symlink, make sure we don't replace it
+		# with a real file (sed -i does that)
+		if [[ -L ${fn} ]] ; then
+			rf=$(readlink ${fn})
+			[[ ${rf} != /* ]] && rf=${fn%/*}/${rf}
+			# ignore symlinks pointing to outside prefix
+			# as seen in sys-devel/native-cctools
+			[[ $(canonicalize "/${rf#${D}}") != ${eprefix}/* ]] && continue
+		fi
+		# does the shebang start with ${EPREFIX}, and does it exist?
+		if [[ ${line[0]} == ${EPREFIX}/* || ${line[0]} == ${eprefix}/* ]] ; then
+			if [[ ! -e ${ROOT%/}${line[0]} && ! -e ${D%/}${line[0]} ]] ; then
+				# hmm, refers explicitly to $EPREFIX, but doesn't exist,
+				# if it's in PATH that's wrong in any case
+				if [[ ":${PATH}:" == *":${fp}:"* ]] ; then
+					echo "${fn#${D}}:${line[0]} (explicit EPREFIX but target not found)" \
+						>> "${T}"/non-prefix-shebangs-errs
+				else
+					eqawarn "${fn#${D}} has explicit EPREFIX in shebang but target not found (${line[0]})"
+				fi
+			fi
+			continue
+		fi
+		# unprefixed shebang, is the script directly in $PATH?
+		if [[ ":${PATH}:" == *":${fp}:"* ]] ; then
+			if [[ -e ${EROOT}${line[0]} || -e ${ED}${line[0]} ]] ; then
+				# is it unprefixed, but we can just fix it because a
+				# prefixed variant exists
+				eqawarn "prefixing shebang of ${fn#${D}}"
+				# statement is made idempotent on purpose, because
+				# symlinks may point to the same target, and hence the
+				# same real file may be sedded multiple times since we
+				# read the shebangs in one go upfront for performance
+				# reasons
+				sed -i -e '1s:^#! \?'"${line[0]}"':#!'"${EPREFIX}"${line[0]}':' "${rf}"
+				continue
+			else
+				# this is definitely wrong: script in $PATH and invalid shebang
+				echo "${fn#${D}}:${line[0]} (script ${fn##*/} installed in PATH but interpreter ${line[0]} not found)" \
+					>> "${T}"/non-prefix-shebangs-errs
+			fi
+		else
+			# unprefixed/invalid shebang, but outside $PATH, this may be
+			# intended (e.g. config.guess) so remain silent by default
+			has stricter ${FEATURES} && \
+				eqawarn "invalid shebang in ${fn#${D}}: ${line[0]}"
+		fi
+	done
+	if [[ -e "${T}"/non-prefix-shebangs-errs ]] ; then
+		eqawarn "QA Notice: the following files use invalid (possible non-prefixed) shebangs:"
+		while read line ; do
+			eqawarn "  ${line}"
+		done < "${T}"/non-prefix-shebangs-errs
+		rm -f "${T}"/non-prefix-shebangs-errs
+		die "Aborting due to QA concerns: invalid shebangs found"
+	fi
+}
 
 install_mask() {
 	local root="$1"
@@ -762,6 +962,9 @@ preinst_mask() {
 		 return 1
 	fi
 
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+
 	# Make sure $PWD is not ${D} so that we don't leave gmon.out files
 	# in there in case any tools were built with -pg in CFLAGS.
 	cd "${T}"
@@ -774,11 +977,11 @@ preinst_mask() {
 		fi
 	done
 
-	install_mask "${D}" "${INSTALL_MASK}"
+	install_mask "${ED}" "${INSTALL_MASK}"
 
 	# remove share dir if unnessesary
 	if has nodoc $FEATURES || has noman $FEATURES || has noinfo $FEATURES; then
-		rmdir "${D}usr/share" &> /dev/null
+		rmdir "${ED}usr/share" &> /dev/null
 	fi
 }
 
@@ -787,29 +990,33 @@ preinst_sfperms() {
 		 eerror "${FUNCNAME}: D is unset"
 		 return 1
 	fi
+
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+
 	# Smart FileSystem Permissions
 	if has sfperms $FEATURES; then
 		local i
-		find "${D}" -type f -perm -4000 -print0 | \
+		find "${ED}" -type f -perm -4000 -print0 | \
 		while read -r -d $'\0' i ; do
 			if [ -n "$(find "$i" -perm -2000)" ] ; then
-				ebegin ">>> SetUID and SetGID: [chmod o-r] /${i#${D}}"
+				ebegin ">>> SetUID and SetGID: [chmod o-r] /${i#${ED}}"
 				chmod o-r "$i"
 				eend $?
 			else
-				ebegin ">>> SetUID: [chmod go-r] /${i#${D}}"
+				ebegin ">>> SetUID: [chmod go-r] /${i#${ED}}"
 				chmod go-r "$i"
 				eend $?
 			fi
 		done
-		find "${D}" -type f -perm -2000 -print0 | \
+		find "${ED}" -type f -perm -2000 -print0 | \
 		while read -r -d $'\0' i ; do
 			if [ -n "$(find "$i" -perm -4000)" ] ; then
 				# This case is already handled
 				# by the SetUID check above.
 				true
 			else
-				ebegin ">>> SetGID: [chmod o-r] /${i#${D}}"
+				ebegin ">>> SetGID: [chmod o-r] /${i#${ED}}"
 				chmod o-r "$i"
 				eend $?
 			fi
@@ -822,6 +1029,10 @@ preinst_suid_scan() {
 		 eerror "${FUNCNAME}: D is unset"
 		 return 1
 	fi
+
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+
 	# total suid control.
 	if has suidctl $FEATURES; then
 		local i sfconf x
@@ -830,10 +1041,10 @@ preinst_suid_scan() {
 		# to files outside of the sandbox, but this
 		# can easly be bypassed using the addwrite() function
 		addwrite "${sfconf}"
-		vecho ">>> Performing suid scan in ${D}"
-		for i in $(find "${D}" -type f \( -perm -4000 -o -perm -2000 \) ); do
+		vecho ">>> Performing suid scan in ${ED}"
+		for i in $(find "${ED}" -type f \( -perm -4000 -o -perm -2000 \) ); do
 			if [ -s "${sfconf}" ]; then
-				install_path=/${i#${D}}
+				install_path=/${i#${ED}}
 				if grep -q "^${install_path}\$" "${sfconf}" ; then
 					vecho "- ${install_path} is an approved suid file"
 				else
@@ -843,7 +1054,7 @@ preinst_suid_scan() {
 					chmod ugo-s "${i}"
 					grep "^#${install_path}$" "${sfconf}" > /dev/null || {
 						vecho ">>> Appending commented out entry to ${sfconf} for ${PF}"
-						echo "## ${ls_ret%${D}*}${install_path}" >> "${sfconf}"
+						echo "## ${ls_ret%${ED}*}${install_path}" >> "${sfconf}"
 						echo "#${install_path}" >> "${sfconf}"
 						# no delwrite() eh?
 						# delwrite ${sconf}
@@ -884,10 +1095,30 @@ preinst_selinux_labels() {
 }
 
 dyn_package() {
+	local PROOT
+
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+		case "$EAPI" in 0|1|2) local EPREFIX= ED=${D} ;; esac
+
 	# Make sure $PWD is not ${D} so that we don't leave gmon.out files
 	# in there in case any tools were built with -pg in CFLAGS.
+
 	cd "${T}"
-	install_mask "${PORTAGE_BUILDDIR}/image" "${PKG_INSTALL_MASK}"
+
+	if [[ -n ${PKG_INSTALL_MASK} ]] ; then
+		PROOT=${T}/packaging/
+		# make a temporary copy of ${D} so that any modifications we do that
+		# are binpkg specific, do not influence the actual installed image.
+		rm -rf "${PROOT}" || die "failed removing stale package tree"
+		cp -pPR $(cp --help | grep -qs -e-l && echo -l) \
+			"${D}" "${PROOT}" \
+			|| die "failed creating packaging tree"
+
+		install_mask "${PROOT%/}${EPREFIX}/" "${PKG_INSTALL_MASK}"
+	else
+		PROOT=${D}
+	fi
+
 	local tar_options=""
 	[[ $PORTAGE_VERBOSE = 1 ]] && tar_options+=" -v"
 	# Sandbox is disabled in case the user wants to use a symlink
@@ -896,7 +1127,7 @@ dyn_package() {
 	[ -z "${PORTAGE_BINPKG_TMPFILE}" ] && \
 		die "PORTAGE_BINPKG_TMPFILE is unset"
 	mkdir -p "${PORTAGE_BINPKG_TMPFILE%/*}" || die "mkdir failed"
-	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${D}" . | \
+	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${PROOT}" . | \
 		$PORTAGE_BZIP2_COMMAND -c > "$PORTAGE_BINPKG_TMPFILE"
 	assert "failed to pack binary package: '$PORTAGE_BINPKG_TMPFILE'"
 	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
@@ -917,6 +1148,9 @@ dyn_package() {
 	[ -n "${md5_hash}" ] && \
 		echo ${md5_hash} > "${PORTAGE_BUILDDIR}"/build-info/BINPKGMD5
 	vecho ">>> Done."
+
+	# cleanup our temp tree
+	[[ -n ${PKG_INSTALL_MASK} ]] && rm -rf "${PROOT}"
 	cd "${PORTAGE_BUILDDIR}"
 	>> "$PORTAGE_BUILDDIR/.packaged" || \
 		die "Failed to create $PORTAGE_BUILDDIR/.packaged"
@@ -961,10 +1195,14 @@ __END1__
 }
 
 dyn_rpm() {
+
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+		case "$EAPI" in 0|1|2) local EPREFIX= ;; esac
+
 	cd "${T}" || die "cd failed"
 	local machine_name=$(uname -m)
-	local dest_dir=/usr/src/rpm/RPMS/${machine_name}
-	addwrite /usr/src/rpm
+	local dest_dir=${EPREFIX}/usr/src/rpm/RPMS/${machine_name}
+	addwrite ${EPREFIX}/usr/src/rpm
 	addwrite "${RPMDIR}"
 	dyn_spec
 	rpmbuild -bb --clean --rmsource "${PF}.spec" || die "Failed to integrate rpm spec file"

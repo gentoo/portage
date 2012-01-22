@@ -4,12 +4,15 @@
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
+[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+	case "$EAPI" in 0|1|2) ED=${D} ;; esac
+
 if has chflags $FEATURES ; then
 	# Save all the file flags for restoration at the end of prepall.
-	mtree -c -p "${D}" -k flags > "${T}/bsdflags.mtree"
+	mtree -c -p "${ED}" -k flags > "${T}/bsdflags.mtree"
 	# Remove all the file flags so that prepall can do anything necessary.
-	chflags -R noschg,nouchg,nosappnd,nouappnd "${D}"
-	chflags -R nosunlnk,nouunlnk "${D}" 2>/dev/null
+	chflags -R noschg,nouchg,nosappnd,nouappnd "${ED}"
+	chflags -R nosunlnk,nouunlnk "${ED}" 2>/dev/null
 fi
 
 prepallman
@@ -19,5 +22,5 @@ prepallstrip
 
 if has chflags $FEATURES ; then
 	# Restore all the file flags that were saved at the beginning of prepall.
-	mtree -U -e -p "${D}" -k flags < "${T}/bsdflags.mtree" &> /dev/null
+	mtree -U -e -p "${ED}" -k flags < "${T}/bsdflags.mtree" &> /dev/null
 fi

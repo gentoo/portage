@@ -526,7 +526,7 @@ def unmerge(root_config, myopts, unmerge_action,
 
 	if "--pretend" in myopts:
 		#we're done... return
-		return 0
+		return 1
 	if "--ask" in myopts:
 		if userquery("Would you like to unmerge these packages?",
 			enter_invalid) == "No":
@@ -546,8 +546,8 @@ def unmerge(root_config, myopts, unmerge_action,
 			emergelog(xterm_titles, "=== Unmerging... ("+y+")")
 			mysplit = y.split("/")
 			#unmerge...
-			retval = portage.unmerge(mysplit[0], mysplit[1], settings["ROOT"],
-				mysettings, unmerge_action not in ["clean","prune"],
+			retval = portage.unmerge(mysplit[0], mysplit[1],
+				settings=mysettings,
 				vartree=vartree, ldpath_mtimes=ldpath_mtimes,
 				scheduler=scheduler)
 

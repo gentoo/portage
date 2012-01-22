@@ -1,5 +1,5 @@
 # setup_env.py -- Make sure bin subdir has sane env for testing
-# Copyright 2007-2010 Gentoo Foundation
+# Copyright 2007-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
@@ -29,12 +29,13 @@ def binTestsInit():
 	binTestsCleanup()
 	global basedir, env
 	basedir = tempfile.mkdtemp()
-	env = os.environ.copy()
+	env = {}
+	env["EAPI"] = "0"
 	env["D"] = os.path.join(basedir, "image")
 	env["T"] = os.path.join(basedir, "temp")
 	env["S"] = os.path.join(basedir, "workdir")
 	env["PF"] = "portage-tests-0.09-r1"
-	env["PATH"] = bindir + ":" + env["PATH"]
+	env["PATH"] = bindir + ":" + os.environ["PATH"]
 	env["PORTAGE_BIN_PATH"] = bindir
 	env["PORTAGE_PYM_PATH"] = pymdir
 	env["PORTAGE_INST_UID"] = str(os.getuid())

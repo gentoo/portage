@@ -3,27 +3,43 @@
 
 from portage import os
 from portage.tests import TestCase
+from portage.util._pty import _create_pty_or_pipe
 from _emerge.PollScheduler import PollScheduler
 from _emerge.PipeReader import PipeReader
 from _emerge.SpawnProcess import SpawnProcess
 
 class PipeReaderTestCase(TestCase):
 
-	def testPipeReader(self):
+	_use_array = False
+	_use_pty = False
+	_echo_cmd = "echo -n '%s'"
+
+	def _testPipeReader(self, test_string):
 		"""
 		Use a poll loop to read data from a pipe and assert that
 		the data written to the pipe is identical to the data
 		read from the pipe.
 		"""
 
-		test_string = 2 * "blah blah blah\n"
+		if self._use_pty:
+			got_pty, master_fd, slave_fd = _create_pty_or_pipe()
+			if not got_pty:
+				os.close(slave_fd)
+				os.close(master_fd)
+				skip_reason = "pty not acquired"
+				self.portage_skip = skip_reason
+				self.fail(skip_reason)
+				return
+		else:
+			master_fd, slave_fd = os.pipe()
 
-		scheduler = PollScheduler().sched_iface
-		master_fd, slave_fd = os.pipe()
+		# WARNING: It is very important to use unbuffered mode here,
+		# in order to avoid issue 5380 with python3.
 		master_file = os.fdopen(master_fd, 'rb', 0)
-		slave_file = os.fdopen(slave_fd, 'wb')
+		slave_file = os.fdopen(slave_fd, 'wb', 0)
+		scheduler = PollScheduler().sched_iface
 		producer = SpawnProcess(
-			args=["bash", "-c", "echo -n '%s'" % test_string],
+			args=["bash", "-c", self._echo_cmd % test_string],
 			env=os.environ, fd_pipes={1:slave_fd},
 			scheduler=scheduler)
 		producer.start()
@@ -31,7 +47,7 @@ class PipeReaderTestCase(TestCase):
 
 		consumer = PipeReader(
 			input_files={"producer" : master_file},
-			scheduler=scheduler)
+			scheduler=scheduler, _use_array=self._use_array)
 
 		consumer.start()
 
@@ -43,5 +59,29 @@ class PipeReaderTestCase(TestCase):
 		self.assertEqual(producer.returncode, os.EX_OK)
 		self.assertEqual(consumer.returncode, os.EX_OK)
 
-		output = consumer.getvalue().decode('ascii', 'replace')
-		self.assertEqual(test_string, output)
+		return consumer.getvalue().decode('ascii', 'replace')
+
+	def testPipeReader(self):
+		for x in (1, 2, 5, 6, 7, 8, 2**5, 2**10, 2**12, 2**13, 2**14):
+			test_string = x * "a"
+			output = self._testPipeReader(test_string)
+			self.assertEqual(test_string, output,
+				"x = %s, len(output) = %s" % (x, len(output)))
+
+class PipeReaderPtyTestCase(PipeReaderTestCase):
+	_use_pty = True
+
+class PipeReaderArrayTestCase(PipeReaderTestCase):
+
+	_use_array = True
+	# sleep allows reliable triggering of the failure mode on fast computers
+	_echo_cmd = "sleep 0.1 ; echo -n '%s'"
+
+	def __init__(self, *args, **kwargs):
+		super(PipeReaderArrayTestCase, self).__init__(*args, **kwargs)
+		# http://bugs.python.org/issue5380
+		# https://bugs.pypy.org/issue956
+		self.todo = True
+
+class PipeReaderPtyArrayTestCase(PipeReaderArrayTestCase):
+	_use_pty = True

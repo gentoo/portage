@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
@@ -9,15 +9,18 @@ if [[ $# -lt 1 ]] ; then
 	exit 1
 fi
 
-if [[ ! -d ${D}${DESTTREE}/sbin ]] ; then
-	install -d "${D}${DESTTREE}/sbin" || { helpers_die "${0##*/}: failed to install ${D}${DESTTREE}/sbin"; exit 2; }
+[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+	case "$EAPI" in 0|1|2) ED=${D} ;; esac
+
+if [[ ! -d ${ED}${DESTTREE}/sbin ]] ; then
+	install -d "${ED}${DESTTREE}/sbin" || { helpers_die "${0##*/}: failed to install ${ED}${DESTTREE}/sbin"; exit 2; }
 fi
 
 ret=0
 
 for x in "$@" ; do
 	if [[ -e ${x} ]] ; then
-		install -m0755 -o ${PORTAGE_INST_UID:-0} -g ${PORTAGE_INST_GID:-0} "${x}" "${D}${DESTTREE}/sbin"
+		install -m0755 -o ${PORTAGE_INST_UID:-0} -g ${PORTAGE_INST_GID:-0} "${x}" "${ED}${DESTTREE}/sbin"
 	else
 		echo "!!! ${0##*/}: ${x} does not exist" 1>&2
 		false

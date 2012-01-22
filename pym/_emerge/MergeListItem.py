@@ -68,7 +68,7 @@ class MergeListItem(CompositeTask):
 					pkg_repo_name = "unknown repo"
 				msg += " from %s" % pkg_repo_name
 
-		if pkg.root != "/":
+		if pkg.root_config.settings["ROOT"] != "/":
 			msg += " %s %s" % (preposition, pkg.root)
 
 		if not build_opts.pretend:

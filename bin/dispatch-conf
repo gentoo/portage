@@ -85,7 +85,7 @@ class dispatch:
         confs = []
         count = 0
 
-        config_root = '/'
+        config_root = portage.const.EPREFIX or os.sep
         self.options = portage.dispatch_conf.read_config(MANDATORY_OPTS)
 
         if "log-file" in self.options:
@@ -120,7 +120,8 @@ class dispatch:
         #
 
         for path in config_paths:
-            path = portage.normalize_path(path)
+            path = portage.normalize_path(
+                 os.path.join(config_root, path.lstrip(os.sep)))
             try:
                 mymode = os.stat(path).st_mode
             except OSError:

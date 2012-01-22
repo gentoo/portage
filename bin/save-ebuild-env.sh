@@ -13,7 +13,8 @@
 save_ebuild_env() {
 	(
 	if has --exclude-init-phases $* ; then
-		unset S _E_DOCDESTTREE_ _E_EXEDESTTREE_
+		unset S _E_DOCDESTTREE_ _E_EXEDESTTREE_ \
+			PORTAGE_DOCOMPRESS PORTAGE_DOCOMPRESS_SKIP
 		if [[ -n $PYTHONPATH &&
 			${PYTHONPATH%%:*} -ef $PORTAGE_PYM_PATH ]] ; then
 			if [[ $PYTHONPATH == *:* ]] ; then
@@ -60,8 +61,9 @@ save_ebuild_env() {
 		abort_handler abort_prepare abort_configure abort_compile \
 		abort_test abort_install dyn_prepare dyn_configure \
 		dyn_compile dyn_test dyn_install \
-		dyn_preinst dyn_help debug-print debug-print-function \
-		debug-print-section inherit EXPORT_FUNCTIONS remove_path_entry \
+		dyn_preinst dyn_pretend dyn_help debug-print debug-print-function \
+		debug-print-section helpers_die inherit EXPORT_FUNCTIONS \
+		nonfatal register_success_hook remove_path_entry \
 		save_ebuild_env filter_readonly_variables preprocess_ebuild_env \
 		set_unless_changed unset_unless_changed source_all_bashrcs \
 		ebuild_main ebuild_phase ebuild_phase_with_hooks \
@@ -77,7 +79,8 @@ save_ebuild_env() {
 		GOOD HILITE HOME \
 		LAST_E_CMD LAST_E_LEN LD_PRELOAD MISC_FUNCTIONS_ARGS MOPREFIX \
 		NOCOLOR NORMAL PKGDIR PKGUSE PKG_LOGDIR PKG_TMPDIR \
-		PORTAGE_BASHRCS_SOURCED PORTAGE_NONFATAL PORTAGE_QUIET \
+		PORTAGE_BASHRCS_SOURCED PORTAGE_COMPRESS_EXCLUDE_SUFFIXES \
+		PORTAGE_NONFATAL PORTAGE_QUIET \
 		PORTAGE_SANDBOX_DENY PORTAGE_SANDBOX_PREDICT \
 		PORTAGE_SANDBOX_READ PORTAGE_SANDBOX_WRITE PREROOTPATH \
 		QA_INTERCEPTORS \

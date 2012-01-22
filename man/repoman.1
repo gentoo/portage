@@ -274,9 +274,6 @@ Some files listed in SRC_URI aren't referenced in the Manifest
 .B digest.unused
 Some files listed in the Manifest aren't referenced in SRC_URI
 .TP
-.B ebuild.allmasked
-All ebuilds are masked for this package (Package level only)
-.TP
 .B ebuild.badheader
 This ebuild has a malformed header
 .TP
@@ -294,9 +291,6 @@ Ebuild files that do not have the same name as their parent directory
 .TP
 .B ebuild.nesteddie
 Placing 'die' inside ( ) prints an error, but doesn't stop the ebuild.
-.TP
-.B ebuild.nostable
-There are no ebuilds that are marked as stable for your ARCH
 .TP
 .B ebuild.notadded
 Ebuilds that exist but have not been added to cvs

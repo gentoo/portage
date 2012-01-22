@@ -1,10 +1,10 @@
 # Copyright 2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import shutil
 import tempfile
 
 from portage import os
+from portage import shutil
 from portage.dbapi.virtual import fakedbapi
 from portage.package.ebuild.config import config
 from portage.tests import TestCase
@@ -48,7 +48,7 @@ class TestFakedbapi(TestCase):
 				"PORTDIR": portdir,
 			}
 			fakedb = fakedbapi(settings=config(config_profile_path="",
-				env=env, _eprefix=tempdir))
+				env=env, eprefix=tempdir))
 			for cpv, metadata in packages:
 				fakedb.cpv_inject(cpv, metadata=metadata)
 

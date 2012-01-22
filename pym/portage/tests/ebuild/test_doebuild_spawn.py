@@ -26,6 +26,11 @@ class DoebuildSpawnTestCase(TestCase):
 		playground = ResolverPlayground()
 		try:
 			settings = config(clone=playground.settings)
+			if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
+				settings["__PORTAGE_TEST_HARDLINK_LOCKS"] = \
+					os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"]
+				settings.backup_changes("__PORTAGE_TEST_HARDLINK_LOCKS")
+
 			cpv = 'sys-apps/portage-2.1'
 			metadata = {
 				'EAPI'      : '2',
@@ -36,7 +41,7 @@ class DoebuildSpawnTestCase(TestCase):
 				'RDEPEND'   : '>=app-shells/bash-3.2_p17 >=dev-lang/python-2.6',
 				'SLOT'      : '0',
 			}
-			root_config = playground.trees[playground.root]['root_config']
+			root_config = playground.trees[playground.eroot]['root_config']
 			pkg = Package(built=False, cpv=cpv, installed=False,
 				metadata=metadata, root_config=root_config,
 				type_name='ebuild')

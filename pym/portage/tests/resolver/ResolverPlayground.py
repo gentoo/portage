@@ -2,11 +2,11 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from itertools import permutations
-import shutil
 import sys
 import tempfile
 import portage
 from portage import os
+from portage import shutil
 from portage.const import (GLOBAL_CONFIG_PATH, PORTAGE_BASE_PATH,
 	USER_CONFIG_PATH)
 from portage.dbapi.vartree import vartree
@@ -17,7 +17,7 @@ from portage.package.ebuild.config import config
 from portage.package.ebuild.digestgen import digestgen
 from portage._sets import load_default_config
 from portage._sets.base import InternalPackageSet
-from portage.util import ensure_dirs
+from portage.util import ensure_dirs, normalize_path
 from portage.versions import catsplit
 
 import _emerge
@@ -65,9 +65,8 @@ class ResolverPlayground(object):
 		profile: settings defined by the profile.
 		"""
 		self.debug = debug
-		self.root = "/"
-		self.eprefix = tempfile.mkdtemp()
-		self.eroot = self.root + self.eprefix.lstrip(os.sep) + os.sep
+		self.eprefix = normalize_path(tempfile.mkdtemp())
+		self.eroot = self.eprefix + os.sep
 		self.distdir = os.path.join(self.eroot, "var", "portage", "distfiles")
 		self.portdir = os.path.join(self.eroot, "usr/portage")
 		self.vdbdir = os.path.join(self.eroot, "var/db/pkg")
@@ -201,7 +200,7 @@ class ResolverPlayground(object):
 			ebuild_dir = os.path.join(repo_dir, a.cp)
 			ebuild_path = os.path.join(ebuild_dir, a.cpv.split("/")[1] + ".ebuild")
 
-			portdb = self.trees[self.root]["porttree"].dbapi
+			portdb = self.trees[self.eroot]["porttree"].dbapi
 			tmpsettings['O'] = ebuild_dir
 			if not digestgen(mysettings=tmpsettings, myportdb=portdb):
 				raise AssertionError('digest creation failed for %s' % ebuild_path)
@@ -377,17 +376,13 @@ class ResolverPlayground(object):
 				with open(os.path.join(metadata_dir, "metadata.xml"), 'w') as f:
 					f.write(herds_xml)
 
+		# Write empty entries for each repository, in order to exercise
+		# RepoConfigLoader's repos.conf processing.
 		repos_conf_file = os.path.join(user_config_dir, "repos.conf")		
 		f = open(repos_conf_file, "w")
-		priority = 0
 		for repo in sorted(self.repo_dirs.keys()):
 			f.write("[%s]\n" % repo)
-			f.write("LOCATION=%s\n" % self.repo_dirs[repo])
-			if repo == "test_repo":
-				f.write("PRIORITY=%s\n" % -1000)
-			else:
-				f.write("PRIORITY=%s\n" % priority)
-				priority += 1
+			f.write("\n")
 		f.close()
 
 		for config_file, lines in user_config.items():
@@ -478,10 +473,15 @@ class ResolverPlayground(object):
 		env = {
 			"ACCEPT_KEYWORDS": "x86",
 			"DISTDIR" : self.distdir,
+			"PKGDIR": os.path.join(self.eroot, "usr/portage/packages"),
 			"PORTDIR": self.portdir,
 			"PORTDIR_OVERLAY": " ".join(portdir_overlay),
 			'PORTAGE_TMPDIR'       : os.path.join(self.eroot, 'var/tmp'),
 		}
+
+		if os.environ.get("SANDBOX_ON") == "1":
+			# avoid problems from nested sandbox instances
+			env["FEATURES"] = "-sandbox"
 
 		# Pass along PORTAGE_USERNAME and PORTAGE_GRPNAME since they
 		# need to be inherited by ebuild subprocesses.
@@ -490,19 +490,7 @@ class ResolverPlayground(object):
 		if 'PORTAGE_GRPNAME' in os.environ:
 			env['PORTAGE_GRPNAME'] = os.environ['PORTAGE_GRPNAME']
 
-		settings = config(_eprefix=self.eprefix, env=env)
-		settings.lock()
-
-		trees = {
-			self.root: {
-					"vartree": vartree(settings=settings),
-					"porttree": portagetree(self.root, settings=settings),
-					"bintree": binarytree(self.root,
-						os.path.join(self.eroot, "usr/portage/packages"),
-						settings=settings)
-				}
-			}
-
+		trees = portage.create_trees(env=env, eprefix=self.eprefix)
 		for root, root_trees in trees.items():
 			settings = root_trees["vartree"].settings
 			settings._init_dirs()
@@ -559,7 +547,7 @@ class ResolverPlayground(object):
 				return
 
 	def cleanup(self):
-		portdb = self.trees[self.root]["porttree"].dbapi
+		portdb = self.trees[self.eroot]["porttree"].dbapi
 		portdb.close_caches()
 		portage.dbapi.porttree.portdbapi.portdbapi_instances.remove(portdb)
 		if self.debug:

@@ -1,15 +1,16 @@
 #!/usr/bin/python
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import os
 import sys
 sys.path.insert(0, os.environ['PORTAGE_PYM_PATH'])
 import portage
+portage._disable_legacy_globals()
 
 def main(args):
 
-	if args and sys.hexversion < 0x3000000 and not isinstance(args[0], unicode):
+	if args and isinstance(args[0], bytes):
 		for i, x in enumerate(args):
 			args[i] = portage._unicode_decode(x, errors='strict')
 

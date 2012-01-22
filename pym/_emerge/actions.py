@@ -5,11 +5,11 @@ from __future__ import print_function
 
 import errno
 import logging
+import operator
 import platform
 import pwd
 import random
 import re
-import shutil
 import signal
 import socket
 import stat
@@ -21,16 +21,22 @@ import time
 from itertools import chain
 
 import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.news:count_unread_news,display_news_notifications',
+)
+
 from portage import os
+from portage import shutil
 from portage import subprocess_getstatusoutput
 from portage import _unicode_decode
 from portage.cache.cache_errors import CacheError
-from portage.const import GLOBAL_CONFIG_PATH, NEWS_LIB_PATH
+from portage.const import GLOBAL_CONFIG_PATH
 from portage.const import _ENABLE_DYN_LINK_MAP, _ENABLE_SET_CONFIG
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.dep import Atom, extended_cp_match
-from portage.exception import InvalidAtom, PermissionDenied
+from portage.eclass_cache import hashed_path
+from portage.exception import InvalidAtom
 from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 	red, yellow
 good = create_color_func("GOOD")
@@ -181,8 +187,7 @@ def action_build(settings, trees, mtimedb,
 			" entire repository or category at once."
 		prefix = bad(" * ")
 		writemsg(prefix + "\n")
-		from textwrap import wrap
-		for line in wrap(msg, 72):
+		for line in textwrap.wrap(msg, 72):
 			writemsg("%s%s\n" % (prefix, line))
 		writemsg(prefix + "\n")
 
@@ -210,7 +215,6 @@ def action_build(settings, trees, mtimedb,
 			if isinstance(e, depgraph.UnsatisfiedResumeDep):
 				mydepgraph = e.depgraph
 
-			from textwrap import wrap
 			from portage.output import EOutput
 			out = EOutput()
 
@@ -249,7 +253,7 @@ def action_build(settings, trees, mtimedb,
 					"to skip the first package in the list and " + \
 					"any other packages that may be " + \
 					"masked or have missing dependencies."
-				for line in wrap(msg, 72):
+				for line in textwrap.wrap(msg, 72):
 					out.eerror(line)
 			elif isinstance(e, portage.exception.PackageNotFound):
 				out.eerror("An expected package is " + \
@@ -259,7 +263,7 @@ def action_build(settings, trees, mtimedb,
 					"packages that are no longer " + \
 					"available. Please restart/continue " + \
 					"the operation manually."
-				for line in wrap(msg, 72):
+				for line in textwrap.wrap(msg, 72):
 					out.eerror(line)
 
 		if success:
@@ -292,7 +296,7 @@ def action_build(settings, trees, mtimedb,
 			success, mydepgraph, favorites = backtrack_depgraph(
 				settings, trees, myopts, myparams, myaction, myfiles, spinner)
 		except portage.exception.PackageSetNotFound as e:
-			root_config = trees[settings["ROOT"]]["root_config"]
+			root_config = trees[settings['EROOT']]['root_config']
 			display_missing_pkg_set(root_config, e.value)
 			return 1
 
@@ -330,7 +334,7 @@ def action_build(settings, trees, mtimedb,
 					mergecount += 1
 
 			if mergecount==0:
-				sets = trees[settings["ROOT"]]["root_config"].sets
+				sets = trees[settings['EROOT']]['root_config'].sets
 				world_candidates = None
 				if "selective" in myparams and \
 					not oneshot and favorites:
@@ -440,7 +444,7 @@ def action_build(settings, trees, mtimedb,
 		if retval == os.EX_OK and not (buildpkgonly or fetchonly or pretend):
 			if "yes" == settings.get("AUTOCLEAN"):
 				portage.writemsg_stdout(">>> Auto-cleaning packages...\n")
-				unmerge(trees[settings["ROOT"]]["root_config"],
+				unmerge(trees[settings['EROOT']]['root_config'],
 					myopts, "clean", [],
 					ldpath_mtimes, autoclean=1)
 			else:
@@ -455,7 +459,7 @@ def action_config(settings, trees, myopts, myfiles):
 	if len(myfiles) != 1:
 		print(red("!!! config can only take a single package atom at this time\n"))
 		sys.exit(1)
-	if not is_valid_package_atom(myfiles[0]):
+	if not is_valid_package_atom(myfiles[0], allow_repo=True):
 		portage.writemsg("!!! '%s' is not a valid package atom.\n" % myfiles[0],
 			noiselevel=-1)
 		portage.writemsg("!!! Please check ebuild(5) for full details.\n")
@@ -463,7 +467,7 @@ def action_config(settings, trees, myopts, myfiles):
 		sys.exit(1)
 	print()
 	try:
-		pkgs = trees[settings["ROOT"]]["vartree"].dbapi.match(myfiles[0])
+		pkgs = trees[settings['EROOT']]['vartree'].dbapi.match(myfiles[0])
 	except portage.exception.AmbiguousPackageName as e:
 		# Multiple matches thrown from cpv_expand
 		pkgs = e.args[0]
@@ -501,17 +505,16 @@ def action_config(settings, trees, myopts, myfiles):
 	else:
 		print("Configuring pkg...")
 	print()
-	ebuildpath = trees[settings["ROOT"]]["vartree"].dbapi.findname(pkg)
+	ebuildpath = trees[settings['EROOT']]['vartree'].dbapi.findname(pkg)
 	mysettings = portage.config(clone=settings)
-	vardb = trees[mysettings["ROOT"]]["vartree"].dbapi
+	vardb = trees[mysettings['EROOT']]['vartree'].dbapi
 	debug = mysettings.get("PORTAGE_DEBUG") == "1"
-	retval = portage.doebuild(ebuildpath, "config", mysettings["ROOT"],
-		mysettings,
+	retval = portage.doebuild(ebuildpath, "config", settings=mysettings,
 		debug=(settings.get("PORTAGE_DEBUG", "") == 1), cleanup=True,
-		mydbapi=trees[settings["ROOT"]]["vartree"].dbapi, tree="vartree")
+		mydbapi = trees[settings['EROOT']]['vartree'].dbapi, tree="vartree")
 	if retval == os.EX_OK:
-		portage.doebuild(ebuildpath, "clean", mysettings["ROOT"],
-			mysettings, debug=debug, mydbapi=vardb, tree="vartree")
+		portage.doebuild(ebuildpath, "clean", settings=mysettings,
+			debug=debug, mydbapi=vardb, tree="vartree")
 	print()
 
 def action_depclean(settings, trees, ldpath_mtimes,
@@ -551,7 +554,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		for x in msg:
 			portage.writemsg_stdout(colorize("WARN", " * ") + x)
 
-	root_config = trees[settings['ROOT']]['root_config']
+	root_config = trees[settings['EROOT']]['root_config']
 	vardb = root_config.trees['vartree'].dbapi
 
 	args_set = InternalPackageSet(allow_repo=True)
@@ -583,15 +586,18 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		return rval
 
 	if cleanlist:
-		unmerge(root_config, myopts, "unmerge",
+		if unmerge(root_config, myopts, "unmerge",
 			cleanlist, ldpath_mtimes, ordered=ordered,
-			scheduler=scheduler)
+			scheduler=scheduler):
+			rval = os.EX_OK
+		else:
+			rval = 1
 
 	if action == "prune":
-		return
+		return rval
 
 	if not cleanlist and "--quiet" in myopts:
-		return
+		return rval
 
 	print("Packages installed:   " + str(len(vardb.cpv_all())))
 	print("Packages in world:    " + \
@@ -604,14 +610,17 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	else:
 		print("Number removed:       "+str(len(cleanlist)))
 
+	return rval
+
 def calc_depclean(settings, trees, ldpath_mtimes,
 	myopts, action, args_set, spinner):
 	allow_missing_deps = bool(args_set)
 
 	debug = '--debug' in myopts
 	xterm_titles = "notitles" not in settings.features
-	myroot = settings["ROOT"]
-	root_config = trees[myroot]["root_config"]
+	root_len = len(settings["ROOT"])
+	eroot = settings['EROOT']
+	root_config = trees[eroot]["root_config"]
 	psets = root_config.setconfig.psets
 	deselect = myopts.get('--deselect') != 'n'
 	required_sets = {}
@@ -650,8 +659,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	resolver_params = create_depgraph_params(myopts, "remove")
 	resolver = depgraph(settings, trees, myopts, resolver_params, spinner)
 	resolver._load_vdb()
-	vardb = resolver._frozen_config.trees[myroot]["vartree"].dbapi
-	real_vardb = trees[myroot]["vartree"].dbapi
+	vardb = resolver._frozen_config.trees[eroot]["vartree"].dbapi
+	real_vardb = trees[eroot]["vartree"].dbapi
 
 	if action == "depclean":
 
@@ -753,7 +762,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				del e
 				required_sets['__excluded__'].add("=" + pkg.cpv)
 
-	success = resolver._complete_graph(required_sets={myroot:required_sets})
+	success = resolver._complete_graph(required_sets={eroot:required_sets})
 	writemsg_level("\b\b... done!\n")
 
 	resolver.display_problems()
@@ -939,7 +948,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			consumers = {}
 
 			for lib in pkg_dblink.getcontents():
-				lib = lib[len(myroot):]
+				lib = lib[root_len:]
 				lib_key = linkmap._obj_key(lib)
 				lib_consumers = consumer_cache.get(lib_key)
 				if lib_consumers is None:
@@ -1055,9 +1064,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				"the packages that pulled them in."
 
 			prefix = bad(" * ")
-			from textwrap import wrap
 			writemsg_level("".join(prefix + "%s\n" % line for \
-				line in wrap(msg, 70)), level=logging.WARNING, noiselevel=-1)
+				line in textwrap.wrap(msg, 70)), level=logging.WARNING, noiselevel=-1)
 
 			msg = []
 			for pkg in sorted(consumer_map, key=cmp_sort_key(cmp_pkg_cpv)):
@@ -1097,7 +1105,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 			writemsg_level("\nCalculating dependencies  ")
 			success = resolver._complete_graph(
-				required_sets={myroot:required_sets})
+				required_sets={eroot:required_sets})
 			writemsg_level("\b\b... done!\n")
 			resolver.display_problems()
 			if not success:
@@ -1139,7 +1147,6 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 		for node in clean_set:
 			graph.add(node, None)
-			mydeps = []
 			for dep_type in dep_keys:
 				depstr = node.metadata[dep_type]
 				if not depstr:
@@ -1155,7 +1162,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 						% (priority,), noiselevel=-1, level=logging.DEBUG)
 
 				try:
-					atoms = resolver._select_atoms(myroot, depstr,
+					atoms = resolver._select_atoms(eroot, depstr,
 						myuse=node.use.enabled, parent=node,
 						priority=priority)[node]
 				except portage.exception.InvalidDependString:
@@ -1228,7 +1235,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 def action_deselect(settings, trees, opts, atoms):
 	enter_invalid = '--ask-enter-invalid' in opts
-	root_config = trees[settings['ROOT']]['root_config']
+	root_config = trees[settings['EROOT']]['root_config']
 	world_set = root_config.sets['selected']
 	if not hasattr(world_set, 'update'):
 		writemsg_level("World @selected set does not appear to be mutable.\n",
@@ -1327,11 +1334,12 @@ def action_info(settings, trees, myopts, myfiles):
 
 	output_buffer = []
 	append = output_buffer.append
-	root_config = trees[settings['ROOT']]['root_config']
+	root_config = trees[settings['EROOT']]['root_config']
+	running_eroot = trees._running_eroot
 
-	append(getportageversion(settings["PORTDIR"], settings["ROOT"],
+	append(getportageversion(settings["PORTDIR"], None,
 		settings.profile_path, settings["CHOST"],
-		trees[settings["ROOT"]]["vartree"].dbapi))
+		trees[settings['EROOT']]["vartree"].dbapi))
 
 	header_width = 65
 	header_title = "System Settings"
@@ -1371,7 +1379,7 @@ def action_info(settings, trees, myopts, myfiles):
 	           "sys-devel/binutils", "sys-devel/libtool",  "dev-lang/python"]
 	myvars += portage.util.grabfile(settings["PORTDIR"]+"/profiles/info_pkgs")
 	atoms = []
-	vardb = trees["/"]["vartree"].dbapi
+	vardb = trees[running_eroot]['vartree'].dbapi
 	for x in myvars:
 		try:
 			x = Atom(x)
@@ -1384,7 +1392,7 @@ def action_info(settings, trees, myopts, myfiles):
 
 	myvars = sorted(set(atoms))
 
-	portdb = trees["/"]["porttree"].dbapi
+	portdb = trees[running_eroot]['porttree'].dbapi
 	main_repo = portdb.getRepositoryName(portdb.porttree_root)
 	cp_map = {}
 	cp_max_len = 0
@@ -1427,8 +1435,6 @@ def action_info(settings, trees, myopts, myfiles):
 		append("%s %s" % \
 			((cp + ":").ljust(cp_max_len + 1), versions))
 
-	libtool_vers = ",".join(trees["/"]["vartree"].dbapi.match("sys-devel/libtool"))
-
 	repos = portdb.settings.repositories
 	if "--verbose" in myopts:
 		append("Repositories:\n")
@@ -1465,9 +1471,6 @@ def action_info(settings, trees, myopts, myfiles):
 	myvars = portage.util.unique_array(myvars)
 	use_expand = settings.get('USE_EXPAND', '').split()
 	use_expand.sort()
-	use_expand_hidden = set(
-		settings.get('USE_EXPAND_HIDDEN', '').upper().split())
-	alphabetical_use = '--alphabetical' in myopts
 	unset_vars = []
 	myvars.sort()
 	for k in myvars:
@@ -1506,9 +1509,10 @@ def action_info(settings, trees, myopts, myfiles):
 	# See if we can find any packages installed matching the strings
 	# passed on the command line
 	mypkgs = []
-	vardb = trees[settings["ROOT"]]["vartree"].dbapi
-	portdb = trees[settings["ROOT"]]["porttree"].dbapi
-	bindb = trees[settings["ROOT"]]["bintree"].dbapi
+	eroot = settings['EROOT']
+	vardb = trees[eroot]["vartree"].dbapi
+	portdb = trees[eroot]['porttree'].dbapi
+	bindb = trees[eroot]["bintree"].dbapi
 	for x in myfiles:
 		match_found = False
 		installed_match = vardb.match(x)
@@ -1543,7 +1547,6 @@ def action_info(settings, trees, myopts, myfiles):
 		mydesiredvars = [ 'CHOST', 'CFLAGS', 'CXXFLAGS', 'LDFLAGS' ]
 		auxkeys = mydesiredvars + list(vardb._aux_cache_keys)
 		auxkeys.append('DEFINED_PHASES')
-		global_vals = {}
 		pkgsettings = portage.config(clone=settings)
 
 		# Loop through each package
@@ -1613,19 +1616,19 @@ def action_info(settings, trees, myopts, myfiles):
 				continue
 
 			if pkg_type == "installed":
-				portage.doebuild(ebuildpath, "info", pkgsettings["ROOT"],
-					pkgsettings, debug=(settings.get("PORTAGE_DEBUG", "") == 1),
-					mydbapi=trees[settings["ROOT"]]["vartree"].dbapi,
+				portage.doebuild(ebuildpath, "info", settings=pkgsettings,
+					debug=(settings.get("PORTAGE_DEBUG", "") == 1),
+					mydbapi=trees[settings['EROOT']]["vartree"].dbapi,
 					tree="vartree")
 			elif pkg_type == "ebuild":
-				portage.doebuild(ebuildpath, "info", pkgsettings["ROOT"],
-					pkgsettings, debug=(settings.get("PORTAGE_DEBUG", "") == 1),
-					mydbapi=trees[settings["ROOT"]]["porttree"].dbapi,
+				portage.doebuild(ebuildpath, "info", settings=pkgsettings,
+					debug=(settings.get("PORTAGE_DEBUG", "") == 1),
+					mydbapi=trees[settings['EROOT']]['porttree'].dbapi,
 					tree="porttree")
 			elif pkg_type == "binary":
-				portage.doebuild(ebuildpath, "info", pkgsettings["ROOT"],
-					pkgsettings, debug=(settings.get("PORTAGE_DEBUG", "") == 1),
-					mydbapi=trees[settings["ROOT"]]["bintree"].dbapi,
+				portage.doebuild(ebuildpath, "info", settings=pkgsettings,
+					debug=(settings.get("PORTAGE_DEBUG", "") == 1),
+					mydbapi=trees[settings['EROOT']]["bintree"].dbapi,
 					tree="bintree")
 				shutil.rmtree(tmpdir)
 
@@ -1645,8 +1648,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 	if not os.path.exists(cachedir):
 		os.makedirs(cachedir)
 
-	auxdbkeys = [x for x in portage.auxdbkeys if not x.startswith("UNUSED_0")]
-	auxdbkeys = tuple(auxdbkeys)
+	auxdbkeys = portdb._known_keys
 
 	class TreeData(object):
 		__slots__ = ('dest_db', 'eclass_db', 'path', 'src_db', 'valid_nodes')
@@ -1667,7 +1669,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 
 		if src_db is not None:
 			porttrees_data.append(TreeData(portdb.auxdb[path],
-				portdb._repo_info[path].eclass_db, path, src_db))
+				portdb.repositories.get_repo_for_location(path).eclass_db, path, src_db))
 
 	porttrees = [tree_data.path for tree_data in porttrees_data]
 
@@ -1713,11 +1715,29 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 
 	for cp in cp_all:
 		for tree_data in porttrees_data:
+
+			src_chf = tree_data.src_db.validation_chf
+			dest_chf = tree_data.dest_db.validation_chf
+			dest_chf_key = '_%s_' % dest_chf
+			dest_chf_getter = operator.attrgetter(dest_chf)
+
 			for cpv in portdb.cp_list(cp, mytree=tree_data.path):
 				tree_data.valid_nodes.add(cpv)
 				try:
 					src = tree_data.src_db[cpv]
 				except (CacheError, KeyError):
+					continue
+
+				ebuild_location = portdb.findname(cpv, mytree=tree_data.path)
+				if ebuild_location is None:
+					continue
+				ebuild_hash = hashed_path(ebuild_location)
+
+				try:
+					if not tree_data.src_db.validate_entry(src,
+						ebuild_hash, tree_data.eclass_db):
+						continue
+				except CacheError:
 					continue
 
 				eapi = src.get('EAPI')
@@ -1739,8 +1759,20 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 					if d is not None and d.get('EAPI') in ('', '0'):
 						del d['EAPI']
 
+				if src_chf != 'mtime':
+					# src may contain an irrelevant _mtime_ which corresponds
+					# to the time that the cache entry was written
+					src.pop('_mtime_', None)
+
+				if src_chf != dest_chf:
+					# populate src entry with dest_chf_key
+					# (the validity of the dest_chf that we generate from the
+					# ebuild here relies on the fact that we already used
+					# validate_entry to validate the ebuild with src_chf)
+					src[dest_chf_key] = dest_chf_getter(ebuild_hash)
+
 				if dest is not None:
-					if not (dest['_mtime_'] == src['_mtime_'] and \
+					if not (dest[dest_chf_key] == src[dest_chf_key] and \
 						tree_data.eclass_db.validate_and_rewrite_cache(
 							dest['_eclasses_'], tree_data.dest_db.validation_chf,
 							tree_data.dest_db.store_eclass_paths) is not None and \
@@ -1750,8 +1782,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 						# We don't want to skip the write unless we're really
 						# sure that the existing cache is identical, so don't
 						# trust _mtime_ and _eclasses_ alone.
-						for k in set(chain(src, dest)).difference(
-							('_mtime_', '_eclasses_')):
+						for k in auxdbkeys:
 							if dest.get(k, '') != src.get(k, ''):
 								dest = None
 								break
@@ -1761,44 +1792,10 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 					# so there's no need to overwrite it.
 					continue
 
-				try:
-					inherited = src.get('INHERITED', '')
-					eclasses = src.get('_eclasses_')
-				except CacheError:
-					continue
-
-				if eclasses is not None:
-					if tree_data.eclass_db.validate_and_rewrite_cache(
-						src['_eclasses_'], tree_data.src_db.validation_chf,
-						tree_data.src_db.store_eclass_paths) is None:
-						continue
-					inherited = eclasses
-				else:
-					inherited = inherited.split()
-
-				if tree_data.src_db.complete_eclass_entries and \
-					eclasses is None:
-					continue
-
-				if inherited:
-					# Even if _eclasses_ already exists, replace it with data from
-					# eclass_cache, in order to insert local eclass paths.
-					try:
-						eclasses = tree_data.eclass_db.get_eclass_data(inherited)
-					except KeyError:
-						# INHERITED contains a non-existent eclass.
-						continue
-
-					if eclasses is None:
-						continue
-					src['_eclasses_'] = eclasses
-				else:
-					src['_eclasses_'] = {}
-
 				if not eapi_supported:
 					src = {
 						'EAPI'       : '-' + eapi,
-						'_mtime_'    : src['_mtime_'],
+						dest_chf_key : src[dest_chf_key],
 						'_eclasses_' : src['_eclasses_'],
 					}
 
@@ -1844,12 +1841,6 @@ def action_regen(settings, portdb, max_jobs, max_load):
 	xterm_titles = "notitles" not in settings.features
 	emergelog(xterm_titles, " === regen")
 	#regenerate cache entries
-	try:
-		os.close(sys.stdin.fileno())
-	except SystemExit as e:
-		raise # Needed else can't exit
-	except:
-		pass
 	sys.stdout.flush()
 
 	regen = MetadataRegen(portdb, max_jobs=max_jobs, max_load=max_load)
@@ -1905,7 +1896,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	enter_invalid = '--ask-enter-invalid' in myopts
 	xterm_titles = "notitles" not in settings.features
 	emergelog(xterm_titles, " === sync")
-	portdb = trees[settings["ROOT"]]["porttree"].dbapi
+	portdb = trees[settings['EROOT']]['porttree'].dbapi
 	myportdir = portdb.porttree_root
 	if not myportdir:
 		myportdir = settings.get('PORTDIR', '')
@@ -1977,6 +1968,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	os.umask(0o022)
 	dosyncuri = syncuri
 	updatecache_flg = False
+	git = False
 	if myaction == "metadata":
 		print("skipping sync")
 		updatecache_flg = True
@@ -2005,9 +1997,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		msg = ">>> Git pull in %s successful" % myportdir
 		emergelog(xterm_titles, msg)
 		writemsg_level(msg + "\n")
-		exitcode = git_sync_timestamps(settings, myportdir)
-		if exitcode == os.EX_OK:
-			updatecache_flg = True
+		git = True
 	elif syncuri[:8]=="rsync://" or syncuri[:6]=="ssh://":
 		for vcs_dir in vcs_dirs:
 			writemsg_level(("!!! %s appears to be under revision " + \
@@ -2034,6 +2024,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				"--whole-file",   # Don't do block transfers, only entire files
 				"--delete",       # Delete files that aren't in the master tree
 				"--stats",        # Show final statistics about what was transfered
+				"--human-readable",
 				"--timeout="+str(mytimeout), # IO timeout if not done in X seconds
 				"--exclude=/distfiles",   # Exclude distfiles from consideration
 				"--exclude=/local",       # Exclude local     from consideration
@@ -2449,16 +2440,24 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			noiselevel=-1, level=logging.ERROR)
 		return 1
 
+	# Reload the whole config from scratch.
+	settings, trees, mtimedb = load_emerge_config(trees=trees)
+	adjust_configs(myopts, trees)
+	root_config = trees[settings['EROOT']]['root_config']
+	portdb = trees[settings['EROOT']]['porttree'].dbapi
+
+	if git:
+		# NOTE: Do this after reloading the config, in case
+		# it did not exist prior to sync, so that the config
+		# and portdb properly account for its existence.
+		exitcode = git_sync_timestamps(portdb, myportdir)
+		if exitcode == os.EX_OK:
+			updatecache_flg = True
+
 	if updatecache_flg and  \
 		myaction != "metadata" and \
 		"metadata-transfer" not in settings.features:
 		updatecache_flg = False
-
-	# Reload the whole config from scratch.
-	settings, trees, mtimedb = load_emerge_config(trees=trees)
-	adjust_configs(myopts, trees)
-	root_config = trees[settings["ROOT"]]["root_config"]
-	portdb = trees[settings["ROOT"]]["porttree"].dbapi
 
 	if updatecache_flg and \
 		os.path.exists(os.path.join(myportdir, 'metadata', 'cache')):
@@ -2473,13 +2472,13 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		# Reload the whole config from scratch.
 		settings, trees, mtimedb = load_emerge_config(trees=trees)
 		adjust_configs(myopts, trees)
-		portdb = trees[settings["ROOT"]]["porttree"].dbapi
-		root_config = trees[settings["ROOT"]]["root_config"]
+		portdb = trees[settings['EROOT']]['porttree'].dbapi
+		root_config = trees[settings['EROOT']]['root_config']
 
 	mybestpv = portdb.xmatch("bestmatch-visible",
 		portage.const.PORTAGE_PACKAGE_ATOM)
 	mypvs = portage.best(
-		trees[settings["ROOT"]]["vartree"].dbapi.match(
+		trees[settings['EROOT']]['vartree'].dbapi.match(
 		portage.const.PORTAGE_PACKAGE_ATOM))
 
 	chk_updated_cfg_files(settings["EROOT"],
@@ -2512,7 +2511,8 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 	# For backward compat, some actions do not require leading '='.
 	ignore_missing_eq = action in ('clean', 'unmerge')
 	root = settings['ROOT']
-	vardb = trees[root]['vartree'].dbapi
+	eroot = settings['EROOT']
+	vardb = trees[settings['EROOT']]['vartree'].dbapi
 	valid_atoms = []
 	lookup_owners = []
 
@@ -2550,9 +2550,9 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 				valid_atoms.append(atom)
 
 		elif x.startswith(os.sep):
-			if not x.startswith(root):
+			if not x.startswith(eroot):
 				writemsg_level(("!!! '%s' does not start with" + \
-					" $ROOT.\n") % x, level=logging.ERROR, noiselevel=-1)
+					" $EROOT.\n") % x, level=logging.ERROR, noiselevel=-1)
 				return 1
 			# Queue these up since it's most efficient to handle
 			# multiple files in a single iter_owners() call.
@@ -2654,13 +2654,13 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 		sched.settings["PORTAGE_BACKGROUND"] = "1"
 		sched.settings.backup_changes("PORTAGE_BACKGROUND")
 		sched.settings.lock()
-		sched.pkgsettings[root] = portage.config(clone=sched.settings)
+		sched.pkgsettings[eroot] = portage.config(clone=sched.settings)
 
 	if action in ('clean', 'unmerge') or \
 		(action == 'prune' and "--nodeps" in opts):
 		# When given a list of atoms, unmerge them in the order given.
 		ordered = action == 'unmerge'
-		unmerge(trees[settings["ROOT"]]['root_config'], opts, action,
+		unmerge(trees[settings['EROOT']]['root_config'], opts, action,
 			valid_atoms, ldpath_mtimes, ordered=ordered,
 			scheduler=sched._sched_iface)
 		rval = os.EX_OK
@@ -2717,7 +2717,7 @@ def adjust_config(myopts, settings):
 	if "--buildpkg" in myopts:
 		settings.features.add("buildpkg")
 
-	if "--quiet" in myopts or "--quiet-build" in myopts:
+	if "--quiet" in myopts:
 		settings["PORTAGE_QUIET"]="1"
 		settings.backup_changes("PORTAGE_QUIET")
 
@@ -2753,8 +2753,8 @@ def adjust_config(myopts, settings):
 	if settings.get("NOCOLOR") not in ("yes","true"):
 		portage.output.havecolor = 1
 
-	"""The explicit --color < y | n > option overrides the NOCOLOR environment
-	variable and stdout auto-detection."""
+	# The explicit --color < y | n > option overrides the NOCOLOR environment
+	# variable and stdout auto-detection.
 	if "--color" in myopts:
 		if "y" == myopts["--color"]:
 			portage.output.havecolor = 1
@@ -2793,7 +2793,7 @@ def relative_profile_path(portdir, abs_profile):
 		profilever = None
 	return profilever
 
-def getportageversion(portdir, target_root, profile, chost, vardb):
+def getportageversion(portdir, _unused, profile, chost, vardb):
 	profilever = None
 	if profile:
 		profilever = relative_profile_path(portdir, profile)
@@ -2826,7 +2826,7 @@ def getportageversion(portdir, target_root, profile, chost, vardb):
 		for cpv in sorted(libclist):
 			libc_split = portage.catpkgsplit(cpv)[1:]
 			if libc_split[-1] == "r0":
-				libc_split[:-1]
+				libc_split = libc_split[:-1]
 			libcver.append("-".join(libc_split))
 	else:
 		libcver = ["unavailable"]
@@ -2837,26 +2837,34 @@ def getportageversion(portdir, target_root, profile, chost, vardb):
 	return "Portage %s (%s, %s, %s, %s)" % \
 		(portage.VERSION, profilever, gccver, ",".join(libcver), unameout)
 
-def git_sync_timestamps(settings, portdir):
+def git_sync_timestamps(portdb, portdir):
 	"""
 	Since git doesn't preserve timestamps, synchronize timestamps between
 	entries and ebuilds/eclasses. Assume the cache has the correct timestamp
 	for a given file as long as the file in the working tree is not modified
 	(relative to HEAD).
 	"""
-	cache_dir = os.path.join(portdir, "metadata", "cache")
-	if not os.path.isdir(cache_dir):
-		return os.EX_OK
-	writemsg_level(">>> Synchronizing timestamps...\n")
 
-	from portage.cache.cache_errors import CacheError
+	cache_db = portdb._pregen_auxdb.get(portdir)
+
 	try:
-		cache_db = settings.load_best_module("portdbapi.metadbmodule")(
-			portdir, "metadata/cache", portage.auxdbkeys[:], readonly=True)
+		if cache_db is None:
+			# portdbapi does not populate _pregen_auxdb
+			# when FEATURES=metadata-transfer is enabled
+			cache_db = portdb._create_pregen_cache(portdir)
 	except CacheError as e:
 		writemsg_level("!!! Unable to instantiate cache: %s\n" % (e,),
 			level=logging.ERROR, noiselevel=-1)
 		return 1
+
+	if cache_db is None:
+		return os.EX_OK
+
+	if cache_db.validation_chf != 'mtime':
+		# newer formats like md5-dict do not require mtime sync
+		return os.EX_OK
+
+	writemsg_level(">>> Synchronizing timestamps...\n")
 
 	ec_dir = os.path.join(portdir, "eclass")
 	try:
@@ -2977,22 +2985,15 @@ def load_emerge_config(trees=None):
 			kwargs[k] = v
 	trees = portage.create_trees(trees=trees, **kwargs)
 
-	for root, root_trees in trees.items():
+	for root_trees in trees.values():
 		settings = root_trees["vartree"].settings
 		settings._init_dirs()
 		setconfig = load_default_config(settings, root_trees)
 		root_trees["root_config"] = RootConfig(settings, root_trees, setconfig)
 
-	settings = trees["/"]["vartree"].settings
-
-	for myroot in trees:
-		if myroot != "/":
-			settings = trees[myroot]["vartree"].settings
-			break
-
+	settings = trees[trees._target_eroot]['vartree'].settings
 	mtimedbfile = os.path.join(settings['EROOT'], portage.CACHE_PATH, "mtimedb")
 	mtimedb = portage.MtimeDB(mtimedbfile)
-	portage.output._init(config_root=settings['PORTAGE_CONFIGROOT'])
 	QueryCommand._db = trees
 	return settings, trees, mtimedb
 
@@ -3024,46 +3025,12 @@ def chk_updated_cfg_files(eroot, config_protect):
 		print(" "+yellow("*")+" man page to learn how to update config files.")
 
 def display_news_notification(root_config, myopts):
-	target_root = root_config.settings['EROOT']
-	trees = root_config.trees
-	settings = trees["vartree"].settings
-	portdb = trees["porttree"].dbapi
-	vardb = trees["vartree"].dbapi
-	NEWS_PATH = os.path.join("metadata", "news")
-	UNREAD_PATH = os.path.join(target_root, NEWS_LIB_PATH, "news")
-	newsReaderDisplay = False
-	if "news" not in settings.features:
+	if "news" not in root_config.settings.features:
 		return
-
-	permission_msgs = set()
-	for repo in portdb.getRepositories():
-		try:
-			unreadItems = checkUpdatedNewsItems(
-				portdb, vardb, NEWS_PATH, UNREAD_PATH, repo, update=True)
-		except PermissionDenied as e:
-			# NOTE: The NewsManager typically handles permission errors by
-			# returning silently, so PermissionDenied won't necessarily be
-			# raised even if we do trigger a permission error above.
-			msg = _unicode_decode("Permission denied: '%s'\n") % (e,)
-			if msg in permission_msgs:
-				pass
-			else:
-				permission_msgs.add(msg)
-				writemsg_level(msg, level=logging.ERROR, noiselevel=-1)
-			unreadItems = None
-
-		if unreadItems:
-			if not newsReaderDisplay:
-				newsReaderDisplay = True
-				print()
-			print(colorize("WARN", " * IMPORTANT:"), end=' ')
-			print("%s news items need reading for repository '%s'." % (unreadItems, repo))
-
-
-	if newsReaderDisplay:
-		print(colorize("WARN", " *"), end=' ')
-		print("Use " + colorize("GOOD", "eselect news") + " to read news items.")
-		print()
+	portdb = root_config.trees["porttree"].dbapi
+	vardb = root_config.trees["vartree"].dbapi
+	news_counts = count_unread_news(portdb, vardb)
+	display_news_notifications(news_counts)
 
 def getgccversion(chost):
 	"""
@@ -3095,29 +3062,3 @@ def getgccversion(chost):
 
 	portage.writemsg(gcc_not_found_error, noiselevel=-1)
 	return "[unavailable]"
-
-def checkUpdatedNewsItems(portdb, vardb, NEWS_PATH, UNREAD_PATH, repo_id,
-	update=False):
-	"""
-	Examines news items in repodir + '/' + NEWS_PATH and attempts to find unread items
-	Returns the number of unread (yet relevent) items.
-
-	@param portdb: a portage tree database
-	@type portdb: pordbapi
-	@param vardb: an installed package database
-	@type vardb: vardbapi
-	@param NEWS_PATH:
-	@type NEWS_PATH:
-	@param UNREAD_PATH:
-	@type UNREAD_PATH:
-	@param repo_id:
-	@type repo_id:
-	@rtype: Integer
-	@returns:
-	1.  The number of unread but relevant news items.
-
-	"""
-	from portage.news import NewsManager
-	manager = NewsManager(portdb, vardb, NEWS_PATH, UNREAD_PATH)
-	return manager.getUnreadItems( repo_id, update=update )
-

@@ -29,13 +29,17 @@ class SimpleEmergeTestCase(TestCase):
 
 		install_something = """
 S="${WORKDIR}"
+
+pkg_pretend() {
+	einfo "called pkg_pretend for $CATEGORY/$PF"
+}
+
 src_install() {
 	einfo "installing something..."
-	# TODO: Add prefix support to shell code/helpers, so we
-	#       can use things like dodir and doins here.
-	mkdir -p "${ED}"/usr/lib/${P} || die
-	echo "blah blah blah" > "${ED}"/usr/lib/${P}/regular-file || die
-	ln -s regular-file "${ED}"/usr/lib/${P}/symlink || die
+	insinto /usr/lib/${P}
+	echo "blah blah blah" > "${T}"/regular-file
+	doins "${T}"/regular-file
+	dosym regular-file /usr/lib/${P}/symlink || die
 
 	# Test code for bug #381629, using a copyright symbol encoded with latin-1.
 	# We use $(printf "\\xa9") rather than $'\\xa9', since printf apparently
@@ -43,11 +47,36 @@ src_install() {
 	# some conditions. TODO: Find out why it transforms to \\xef\\xbf\\xbd when
 	# running tests for Python 3.2 (even though it's bash that is ultimately
 	# responsible for performing the transformation).
-	local latin_1_dir=${ED}/usr/lib/${P}/latin-1-$(printf "\\xa9")-directory
-	mkdir "${latin_1_dir}"
-	echo "blah blah blah" > ${latin_1_dir}/latin-1-$(printf "\\xa9")-regular-file || die
-	ln -s latin-1-$(printf "\\xa9")-regular-file ${latin_1_dir}/latin-1-$(printf "\\xa9")-symlink || die
+	local latin_1_dir=/usr/lib/${P}/latin-1-$(printf "\\xa9")-directory
+	insinto "${latin_1_dir}"
+	echo "blah blah blah" > "${T}"/latin-1-$(printf "\\xa9")-regular-file || die
+	doins "${T}"/latin-1-$(printf "\\xa9")-regular-file
+	dosym latin-1-$(printf "\\xa9")-regular-file ${latin_1_dir}/latin-1-$(printf "\\xa9")-symlink || die
 }
+
+pkg_config() {
+	einfo "called pkg_config for $CATEGORY/$PF"
+}
+
+pkg_info() {
+	einfo "called pkg_info for $CATEGORY/$PF"
+}
+
+pkg_preinst() {
+	einfo "called pkg_preinst for $CATEGORY/$PF"
+
+	# Test that has_version and best_version work correctly with
+	# prefix (involves internal ROOT -> EROOT calculation in order
+	# to support ROOT override via the environment with EAPIs 3
+	# and later which support prefix).
+	if has_version $CATEGORY/$PN:$SLOT ; then
+		einfo "has_version detects an installed instance of $CATEGORY/$PN:$SLOT"
+		einfo "best_version reports that the installed instance is $(best_version $CATEGORY/$PN:$SLOT)"
+	else
+		einfo "has_version does not detect an installed instance of $CATEGORY/$PN:$SLOT"
+	fi
+}
+
 """
 
 		ebuilds = {
@@ -65,6 +94,11 @@ src_install() {
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
 				"MISC_CONTENT": install_something,
+			},
+			"virtual/foo-0": {
+				"EAPI" : "4",
+				"KEYWORDS": "x86",
+				"LICENSE": "GPL-2",
 			},
 		}
 
@@ -124,8 +158,7 @@ src_install() {
 		eprefix = settings["EPREFIX"]
 		eroot = settings["EROOT"]
 		trees = playground.trees
-		root = playground.root
-		portdb = trees[root]["porttree"].dbapi
+		portdb = trees[eroot]["porttree"].dbapi
 		portdir = settings["PORTDIR"]
 		var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
 		cachedir = os.path.join(var_cache_edb, "dep")
@@ -168,6 +201,8 @@ src_install() {
 			emerge_cmd + ("--version",),
 			emerge_cmd + ("--info",),
 			emerge_cmd + ("--info", "--verbose"),
+			emerge_cmd + ("--list-sets",),
+			emerge_cmd + ("--check-news",),
 			rm_cmd + ("-rf", cachedir),
 			rm_cmd + ("-rf", cachedir_pregen),
 			emerge_cmd + ("--regen",),
@@ -186,14 +221,21 @@ src_install() {
 				emerge_cmd + ("--metadata",),
 			emerge_cmd + ("--metadata",),
 			rm_cmd + ("-rf", cachedir),
+			emerge_cmd + ("--oneshot", "virtual/foo"),
 			emerge_cmd + ("--pretend", "dev-libs/A"),
 			ebuild_cmd + (test_ebuild, "manifest", "clean", "package", "merge"),
 			emerge_cmd + ("--pretend", "--tree", "--complete-graph", "dev-libs/A"),
 			emerge_cmd + ("-p", "dev-libs/B"),
 			emerge_cmd + ("-B", "dev-libs/B",),
 			emerge_cmd + ("--oneshot", "--usepkg", "dev-libs/B",),
+
+			# trigger clean prior to pkg_pretend as in bug #390711
+			ebuild_cmd + (test_ebuild, "unpack"), 
 			emerge_cmd + ("--oneshot", "dev-libs/A",),
+
 			emerge_cmd + ("--noreplace", "dev-libs/A",),
+			emerge_cmd + ("--config", "dev-libs/A",),
+			emerge_cmd + ("--info", "dev-libs/A", "dev-libs/B"),
 			emerge_cmd + ("--pretend", "--depclean", "--verbose", "dev-libs/B"),
 			emerge_cmd + ("--pretend", "--depclean",),
 			emerge_cmd + ("--depclean",),
@@ -203,14 +245,16 @@ src_install() {
 			emaint_cmd + ("--fix", "all"),
 			fixpackages_cmd,
 			regenworld_cmd,
-			portageq_cmd + ("match", "/", "dev-libs/A"),
-			portageq_cmd + ("best_visible", "/", "dev-libs/A"),
-			portageq_cmd + ("best_visible", "/", "binary", "dev-libs/A"),
-			portageq_cmd + ("contents", "/", "dev-libs/A-1"),
-			portageq_cmd + ("metadata", "/", "ebuild", "dev-libs/A-1", "EAPI", "IUSE", "RDEPEND"),
-			portageq_cmd + ("metadata", "/", "binary", "dev-libs/A-1", "EAPI", "USE", "RDEPEND"),
-			portageq_cmd + ("metadata", "/", "installed", "dev-libs/A-1", "EAPI", "USE", "RDEPEND"),
-			portageq_cmd + ("owners", "/", eroot + "usr"),
+			portageq_cmd + ("match", eroot, "dev-libs/A"),
+			portageq_cmd + ("best_visible", eroot, "dev-libs/A"),
+			portageq_cmd + ("best_visible", eroot, "binary", "dev-libs/A"),
+			portageq_cmd + ("contents", eroot, "dev-libs/A-1"),
+			portageq_cmd + ("metadata", eroot, "ebuild", "dev-libs/A-1", "EAPI", "IUSE", "RDEPEND"),
+			portageq_cmd + ("metadata", eroot, "binary", "dev-libs/A-1", "EAPI", "USE", "RDEPEND"),
+			portageq_cmd + ("metadata", eroot, "installed", "dev-libs/A-1", "EAPI", "USE", "RDEPEND"),
+			portageq_cmd + ("owners", eroot, eroot + "usr"),
+			emerge_cmd + ("-p", eroot + "usr"),
+			emerge_cmd + ("-p", "--unmerge", "-q", eroot + "usr"),
 			emerge_cmd + ("--unmerge", "--quiet", "dev-libs/A"),
 			emerge_cmd + ("-C", "--quiet", "dev-libs/B"),
 		)
@@ -223,7 +267,8 @@ src_install() {
 		user_config_dir = os.path.join(os.sep, eprefix, USER_CONFIG_PATH)
 
 		features = []
-		if not portage.process.sandbox_capable:
+		if not portage.process.sandbox_capable or \
+			os.environ.get("SANDBOX_ON") == "1":
 			features.append("-sandbox")
 
 		# Since egencache ignores settings from the calling environment,
@@ -231,6 +276,8 @@ src_install() {
 		make_conf = (
 			"FEATURES=\"%s\"\n" % (" ".join(features),),
 			"PORTDIR=\"%s\"\n" % (portdir,),
+			"PORTAGE_GRPNAME=\"%s\"\n" % (os.environ["PORTAGE_GRPNAME"],),
+			"PORTAGE_USERNAME=\"%s\"\n" % (os.environ["PORTAGE_USERNAME"],),
 		)
 
 		path =  os.environ.get("PATH")
@@ -256,7 +303,7 @@ src_install() {
 			pythonpath = PORTAGE_PYM_PATH + pythonpath
 
 		env = {
-			"__PORTAGE_TEST_EPREFIX" : eprefix,
+			"PORTAGE_OVERRIDE_EPREFIX" : eprefix,
 			"CLEAN_DELAY" : "0",
 			"DISTDIR" : distdir,
 			"EMERGE_WARNING_DELAY" : "0",
@@ -264,14 +311,16 @@ src_install() {
 			"INFOPATH" : "",
 			"PATH" : path,
 			"PKGDIR" : pkgdir,
-			"PORTAGE_GRPNAME" : os.environ["PORTAGE_GRPNAME"],
 			"PORTAGE_INST_GID" : str(portage.data.portage_gid),
 			"PORTAGE_INST_UID" : str(portage.data.portage_uid),
 			"PORTAGE_PYTHON" : portage_python,
 			"PORTAGE_TMPDIR" : portage_tmpdir,
-			"PORTAGE_USERNAME" : os.environ["PORTAGE_USERNAME"],
 			"PYTHONPATH" : pythonpath,
 		}
+
+		if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
+			env["__PORTAGE_TEST_HARDLINK_LOCKS"] = \
+				os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"]
 
 		updates_dir = os.path.join(portdir, "profiles", "updates")
 		dirs = [cachedir, cachedir_pregen, distdir, fake_bin,

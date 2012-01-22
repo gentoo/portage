@@ -343,7 +343,12 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	# If the process we're creating hasn't been given a name
 	# assign it the name of the executable.
 	if not opt_name:
-		opt_name = os.path.basename(binary)
+		if binary is portage._python_interpreter:
+			# NOTE: PyPy 1.7 will die due to "libary path not found" if argv[0]
+			# does not contain the full path of the binary.
+			opt_name = binary
+		else:
+			opt_name = os.path.basename(binary)
 
 	# Set up the command's argument list.
 	myargs = [opt_name]

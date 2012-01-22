@@ -34,8 +34,6 @@ class EbuildExecuter(CompositeTask):
 		cleanup = 0
 		portage.prepare_build_dirs(pkg.root, settings, cleanup)
 
-		portdb = pkg.root_config.trees['porttree'].dbapi
-		ebuild_path = settings['EBUILD']
 		alist = settings.configdict["pkg"].get("A", "").split()
 		_prepare_fake_distdir(settings, alist)
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
@@ -9,19 +9,22 @@ if [[ -z $1 ]] ; then
 	exit 1
 fi
 
+[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+	case "$EAPI" in 0|1|2) ED=${D} ;; esac
+
 case $1 in
 	--ignore)
 		shift
 		for skip in "$@" ; do
-			[[ -d ${D}${skip} || -f ${D}${skip} ]] \
-				&& >> "${D}${skip}.ecompress.skip"
+			[[ -d ${ED}${skip} || -f ${ED}${skip} ]] \
+				&& >> "${ED}${skip}.ecompress.skip"
 		done
 		exit 0
 		;;
 	--queue)
 		shift
 		set -- "${@/%/.ecompress.dir}"
-		set -- "${@/#/${D}}"
+		set -- "${@/#/${ED}}"
 		ret=0
 		for x in "$@" ; do
 			>> "$x"
@@ -32,10 +35,10 @@ case $1 in
 		;;
 	--dequeue)
 		[[ -n $2 ]] && vecho "${0##*/}: --dequeue takes no additional arguments" 1>&2
-		find "${D}" -name '*.ecompress.dir' -print0 \
-			| sed -e 's:\.ecompress\.dir::g' -e "s:${D}:/:g" \
+		find "${ED}" -name '*.ecompress.dir' -print0 \
+			| sed -e 's:\.ecompress\.dir::g' -e "s:${ED}:/:g" \
 			| ${XARGS} -0 ecompressdir
-		find "${D}" -name '*.ecompress.skip' -print0 | ${XARGS} -0 rm -f
+		find "${ED}" -name '*.ecompress.skip' -print0 | ${XARGS} -0 rm -f
 		exit 0
 		;;
 	--*)
@@ -66,6 +69,10 @@ funk_up_dir() {
 	while read -r -d $'\0' brokenlink ; do
 		[[ -e ${brokenlink} ]] && continue
 		olddest=$(readlink "${brokenlink}")
+		# Ignore temporarily broken symlinks due to
+		# _relocate_skip_dirs (bug #399595).
+		skip_dir_dest=${T}/ecompress-skip/${actual_dir#${ED}}/${brokenlink%/*}/${olddest}
+		[[ -e ${skip_dir_dest} ]] && continue
 		[[ ${act} == "compress" ]] \
 			&& newdest="${olddest}${suffix}" \
 			|| newdest="${olddest%${suffix}}"
@@ -95,8 +102,8 @@ _relocate_skip_dirs() {
 		mv "${src}.ecompress.skip" "${dst}.ecompress.skip"
 	done
 }
-hide_skip_dirs()    { _relocate_skip_dirs "${D}" "${T}"/ecompress-skip/ ; }
-restore_skip_dirs() { _relocate_skip_dirs "${T}"/ecompress-skip/ "${D}" ; }
+hide_skip_dirs()    { _relocate_skip_dirs "${ED}" "${T}"/ecompress-skip/ ; }
+restore_skip_dirs() { _relocate_skip_dirs "${T}"/ecompress-skip/ "${ED}" ; }
 
 ret=0
 
@@ -104,9 +111,9 @@ rm -rf "${T}"/ecompress-skip
 
 for dir in "$@" ; do
 	dir=${dir#/}
-	dir="${D}${dir}"
+	dir="${ED}${dir}"
 	if [[ ! -d ${dir} ]] ; then
-		vecho "${0##*/}: /${dir#${D}} does not exist!"
+		vecho "${0##*/}: /${dir#${ED}} does not exist!"
 		continue
 	fi
 	cd "${dir}"
@@ -131,9 +138,10 @@ for dir in "$@" ; do
 		'cp -p "${file}" "${file}.ecompress.break" ; mv -f "${file}.ecompress.break" "${file}"' \;
 
 	# now lets do our work
-	[[ -z ${suffix} ]] && continue
-	vecho "${0##*/}: $(ecompress --bin) /${actual_dir#${D}}"
-	funk_up_dir "compress" "${suffix}" "ecompress"
+	if [[ -n ${suffix} ]] ; then
+		vecho "${0##*/}: $(ecompress --bin) /${actual_dir#${ED}}"
+		funk_up_dir "compress" "${suffix}" "ecompress"
+	fi
 
 	# finally, restore the skipped stuff
 	restore_skip_dirs

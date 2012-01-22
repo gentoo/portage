@@ -3,13 +3,14 @@
 
 import dummy_threading
 import fcntl
+import errno
 import logging
 import sys
 
 try:
 	import threading
 except ImportError:
-	import dummy_threading as threading
+	threading = dummy_threading
 
 import portage
 from portage import os
@@ -114,12 +115,12 @@ class _LockThread(AbstractPollTask):
 	def _start(self):
 		pr, pw = os.pipe()
 		self._files = {}
-		self._files['pipe_read'] = os.fdopen(pr, 'rb', 0)
-		self._files['pipe_write'] = os.fdopen(pw, 'wb', 0)
-		for k, f in self._files.items():
-			fcntl.fcntl(f.fileno(), fcntl.F_SETFL,
-				fcntl.fcntl(f.fileno(), fcntl.F_GETFL) | os.O_NONBLOCK)
-		self._reg_id = self.scheduler.register(self._files['pipe_read'].fileno(),
+		self._files['pipe_read'] = pr
+		self._files['pipe_write'] = pw
+		for f in self._files.values():
+			fcntl.fcntl(f, fcntl.F_SETFL,
+				fcntl.fcntl(f, fcntl.F_GETFL) | os.O_NONBLOCK)
+		self._reg_id = self.scheduler.register(self._files['pipe_read'],
 			PollConstants.POLLIN, self._output_handler)
 		self._registered = True
 		threading_mod = threading
@@ -130,10 +131,16 @@ class _LockThread(AbstractPollTask):
 
 	def _run_lock(self):
 		self._lock_obj = lockfile(self.path, wantnewlockfile=True)
-		self._files['pipe_write'].write(b'\0')
+		os.write(self._files['pipe_write'], b'\0')
 
 	def _output_handler(self, f, event):
-		buf = self._read_buf(self._files['pipe_read'], event)
+		buf = None
+		if event & PollConstants.POLLIN:
+			try:
+				buf = os.read(self._files['pipe_read'], self._bufsize)
+			except OSError as e:
+				if e.errno not in (errno.EAGAIN,):
+					raise
 		if buf:
 			self._unregister()
 			self.returncode = os.EX_OK
@@ -171,7 +178,7 @@ class _LockThread(AbstractPollTask):
 
 		if self._files is not None:
 			for f in self._files.values():
-				f.close()
+				os.close(f)
 			self._files = None
 
 class _LockProcess(AbstractPollTask):
@@ -190,8 +197,8 @@ class _LockProcess(AbstractPollTask):
 		in_pr, in_pw = os.pipe()
 		out_pr, out_pw = os.pipe()
 		self._files = {}
-		self._files['pipe_in'] = os.fdopen(in_pr, 'rb', 0)
-		self._files['pipe_out'] = os.fdopen(out_pw, 'wb', 0)
+		self._files['pipe_in'] = in_pr
+		self._files['pipe_out'] = out_pw
 		fcntl.fcntl(in_pr, fcntl.F_SETFL,
 			fcntl.fcntl(in_pr, fcntl.F_GETFL) | os.O_NONBLOCK)
 		self._reg_id = self.scheduler.register(in_pr,
@@ -219,7 +226,7 @@ class _LockProcess(AbstractPollTask):
 			except KeyError:
 				pass
 			else:
-				pipe_out.close()
+				os.close(pipe_out)
 
 		if proc.returncode != os.EX_OK:
 			# Typically, this will happen due to the
@@ -263,7 +270,13 @@ class _LockProcess(AbstractPollTask):
 		return self.returncode
 
 	def _output_handler(self, f, event):
-		buf = self._read_buf(self._files['pipe_in'], event)
+		buf = None
+		if event & PollConstants.POLLIN:
+			try:
+				buf = os.read(self._files['pipe_in'], self._bufsize)
+			except OSError as e:
+				if e.errno not in (errno.EAGAIN,):
+					raise
 		if buf:
 			self._acquired = True
 			self._unregister()
@@ -283,7 +296,7 @@ class _LockProcess(AbstractPollTask):
 			except KeyError:
 				pass
 			else:
-				pipe_in.close()
+				os.close(pipe_in)
 
 	def unlock(self):
 		if self._proc is None:
@@ -294,8 +307,8 @@ class _LockProcess(AbstractPollTask):
 			raise AssertionError("lock process failed with returncode %s" \
 				% (self.returncode,))
 		self._unlocked = True
-		self._files['pipe_out'].write(b'\0')
-		self._files['pipe_out'].close()
+		os.write(self._files['pipe_out'], b'\0')
+		os.close(self._files['pipe_out'])
 		self._files = None
 		self._proc.wait()
 		self._proc = None

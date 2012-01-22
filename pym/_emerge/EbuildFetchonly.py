@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.SlotObject import SlotObject
@@ -21,7 +21,7 @@ class EbuildFetchonly(SlotObject):
 		debug = settings.get("PORTAGE_DEBUG") == "1"
 
 		rval = portage.doebuild(ebuild_path, "fetch",
-			settings["ROOT"], settings, debug=debug,
+			settings=settings, debug=debug,
 			listonly=self.pretend, fetchonly=1, fetchall=self.fetch_all,
 			mydbapi=portdb, tree="porttree")
 

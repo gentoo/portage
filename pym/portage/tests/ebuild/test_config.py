@@ -3,6 +3,7 @@
 
 import portage
 from portage import os
+from portage.dep import Atom
 from portage.package.ebuild.config import config
 from portage.package.ebuild._config.LicenseManager import LicenseManager
 from portage.tests import TestCase
@@ -24,7 +25,7 @@ class ConfigTestCase(TestCase):
 			settings = config(clone=playground.settings)
 			result = playground.run(["=dev-libs/A-1"])
 			pkg, existing_node = result.depgraph._select_package(
-				playground.root, "=dev-libs/A-1")
+				playground.eroot, Atom("=dev-libs/A-1"))
 			settings.setcpv(pkg)
 
 			# clone after setcpv tests deepcopy of LazyItemsDict
@@ -217,6 +218,7 @@ class ConfigTestCase(TestCase):
 			"new_repo": {
 				"layout.conf":
 					(
+						"profile-formats = pms",
 						"thin-manifests = true",
 						"manifest-hashes = RMD160 SHA1 SHA256 SHA512 WHIRLPOOL",
 					),
@@ -237,6 +239,13 @@ class ConfigTestCase(TestCase):
 
 		playground = ResolverPlayground(ebuilds=ebuilds,
 			repo_configs=repo_configs, distfiles=distfiles)
+
+		new_repo_config = playground.settings.repositories.prepos['new_repo']
+		self.assertTrue(len(new_repo_config.masters) > 0, "new_repo has no default master")
+		self.assertEqual(new_repo_config.masters[0].user_location, playground.portdir,
+			"new_repo default master is not PORTDIR")
+		self.assertEqual(new_repo_config.thin_manifest, True,
+			"new_repo_config.thin_manifest != True")
 
 		new_manifest_file = os.path.join(playground.repo_dirs["new_repo"], "dev-libs", "A", "Manifest")
 		self.assertEqual(os.path.exists(new_manifest_file), False)

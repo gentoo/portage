@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """Resolver output display operation.
@@ -13,14 +13,13 @@ import sys
 from portage import os
 from portage import _unicode_decode
 from portage.dbapi.dep_expand import dep_expand
-from portage.const import PORTAGE_PACKAGE_ATOM
-from portage.dep import cpvequal, match_from_list
+from portage.dep import cpvequal, _repo_separator
 from portage.exception import InvalidDependString, SignatureException
 from portage.output import ( blue, bold, colorize, create_color_func,
 	darkblue, darkgreen, green, nc_len, red, teal, turquoise, yellow )
 bad = create_color_func("BAD")
-from portage.util import writemsg_stdout, writemsg_level
-from portage.versions import best, catpkgsplit, cpv_getkey
+from portage.util import writemsg_stdout
+from portage.versions import best, catpkgsplit
 
 from _emerge.Blocker import Blocker
 from _emerge.create_world_atom import create_world_atom
@@ -340,37 +339,37 @@ class Display(object):
 					self.counters.totalsize += mysize
 			self.verboseadd += _format_size(mysize)
 
-		# overlay verbose
-		# assign index for a previous version in the same slot
-		slot_matches = self.vardb.match(pkg.slot_atom)
-		if slot_matches:
-			repo_name_prev = self.vardb.aux_get(slot_matches[0],
-				["repository"])[0]
-		else:
-			repo_name_prev = None
+		if self.quiet_repo_display:
+			# overlay verbose
+			# assign index for a previous version in the same slot
+			slot_matches = self.vardb.match(pkg.slot_atom)
+			if slot_matches:
+				repo_name_prev = self.vardb.aux_get(slot_matches[0],
+					["repository"])[0]
+			else:
+				repo_name_prev = None
 
-		# now use the data to generate output
-		if pkg.installed or not slot_matches:
-			self.repoadd = self.conf.repo_display.repoStr(
-				pkg_info.repo_path_real)
-		else:
-			repo_path_prev = None
-			if repo_name_prev:
-				repo_path_prev = self.portdb.getRepositoryPath(
-					repo_name_prev)
-			if repo_path_prev == pkg_info.repo_path_real:
+			# now use the data to generate output
+			if pkg.installed or not slot_matches:
 				self.repoadd = self.conf.repo_display.repoStr(
 					pkg_info.repo_path_real)
 			else:
-				self.repoadd = "%s=>%s" % (
-					self.conf.repo_display.repoStr(repo_path_prev),
-					self.conf.repo_display.repoStr(pkg_info.repo_path_real))
-		if self.repoadd:
-			repoadd_set.add(self.repoadd)
+				repo_path_prev = None
+				if repo_name_prev:
+					repo_path_prev = self.portdb.getRepositoryPath(
+						repo_name_prev)
+				if repo_path_prev == pkg_info.repo_path_real:
+					self.repoadd = self.conf.repo_display.repoStr(
+						pkg_info.repo_path_real)
+				else:
+					self.repoadd = "%s=>%s" % (
+						self.conf.repo_display.repoStr(repo_path_prev),
+						self.conf.repo_display.repoStr(pkg_info.repo_path_real))
+			if self.repoadd:
+				repoadd_set.add(self.repoadd)
 
 
-	@staticmethod
-	def convert_myoldbest(myoldbest):
+	def convert_myoldbest(self, myoldbest):
 		"""converts and colorizes a version list to a string
 
 		@param myoldbest: list
@@ -385,6 +384,8 @@ class Display(object):
 					"-" + catpkgsplit(pkg.cpv)[3]
 				if key[-3:] == "-r0":
 					key = key[:-3]
+				if self.conf.verbosity == 3 and not self.quiet_repo_display:
+					key += _repo_separator + pkg.repo
 				versions.append(key)
 			myoldbest_str = blue("["+", ".join(versions)+"]")
 		return myoldbest_str
@@ -413,10 +414,13 @@ class Display(object):
 		@param pkg: _emerge.Package instance
 		@rtype string
 		"""
+		ver_str = pkg_info.ver
+		if self.conf.verbosity == 3 and not self.quiet_repo_display:
+			ver_str += _repo_separator + pkg.repo
 		if self.conf.quiet:
 			myprint = addl + " " + self.indent + \
 				self.pkgprint(pkg_info.cp, pkg_info)
-			myprint = myprint+darkblue(" "+pkg_info.ver)+" "
+			myprint = myprint+darkblue(" "+ver_str)+" "
 			myprint = myprint+pkg_info.oldbest
 			myprint = myprint+darkgreen("to "+pkg.root)
 			self.verboseadd = None
@@ -431,7 +435,7 @@ class Display(object):
 					self.indent, self.pkgprint(pkg.cp, pkg_info))
 			if (self.newlp-nc_len(myprint)) > 0:
 				myprint = myprint+(" "*(self.newlp-nc_len(myprint)))
-			myprint = myprint+"["+darkblue(pkg_info.ver)+"] "
+			myprint = myprint+"["+darkblue(ver_str)+"] "
 			if (self.oldlp-nc_len(myprint)) > 0:
 				myprint = myprint+" "*(self.oldlp-nc_len(myprint))
 			myprint = myprint+pkg_info.oldbest
@@ -448,10 +452,13 @@ class Display(object):
 		@rtype string
 		Modifies self.verboseadd
 		"""
+		ver_str = pkg_info.ver
+		if self.conf.verbosity == 3 and not self.quiet_repo_display:
+			ver_str += _repo_separator + pkg.repo
 		if self.conf.quiet:
 			myprint = addl + " " + self.indent + \
 				self.pkgprint(pkg_info.cp, pkg_info)
-			myprint = myprint+" "+green(pkg_info.ver)+" "
+			myprint = myprint+" "+green(ver_str)+" "
 			myprint = myprint+pkg_info.oldbest
 			self.verboseadd = None
 		else:
@@ -466,7 +473,7 @@ class Display(object):
 					self.indent, self.pkgprint(pkg.cp, pkg_info))
 			if (self.newlp-nc_len(myprint)) > 0:
 				myprint = myprint+(" "*(self.newlp-nc_len(myprint)))
-			myprint = myprint+green(" ["+pkg_info.ver+"] ")
+			myprint = myprint+green(" ["+ver_str+"] ")
 			if (self.oldlp-nc_len(myprint)) > 0:
 				myprint = myprint+(" "*(self.oldlp-nc_len(myprint)))
 			myprint += pkg_info.oldbest
@@ -481,18 +488,21 @@ class Display(object):
 		@param addl: the current text to add for the next line to output
 		@rtype the updated addl
 		"""
+		pkg_str = pkg.cpv
+		if self.conf.verbosity == 3 and not self.quiet_repo_display:
+			pkg_str += _repo_separator + pkg.repo
 		if not pkg_info.merge:
 			addl = self.empty_space_in_brackets()
 			myprint = "[%s%s] %s%s %s" % \
 				(self.pkgprint(pkg_info.operation.ljust(13),
 				pkg_info), addl,
-				self.indent, self.pkgprint(pkg.cpv, pkg_info),
+				self.indent, self.pkgprint(pkg_str, pkg_info),
 				pkg_info.oldbest)
 		else:
 			myprint = "[%s %s] %s%s %s" % \
 				(self.pkgprint(pkg.type_name, pkg_info),
 				addl, self.indent,
-				self.pkgprint(pkg.cpv, pkg_info), pkg_info.oldbest)
+				self.pkgprint(pkg_str, pkg_info), pkg_info.oldbest)
 		return myprint
 
 
@@ -745,6 +755,8 @@ class Display(object):
 		installed_versions = self.vardb.match_pkgs(pkg.cp)
 		if self.vardb.cpv_exists(pkg.cpv):
 			addl = "  "+yellow("R")+pkg_info.fetch_symbol+"  "
+			if not self.quiet_repo_display and installed_versions[0].repo != pkg.repo:
+				myoldbest = installed_versions
 			if pkg_info.ordered:
 				if pkg_info.merge:
 					self.counters.reinst += 1
@@ -796,9 +808,12 @@ class Display(object):
 		# files to fetch list - avoids counting a same file twice
 		# in size display (verbose mode)
 		self.myfetchlist = set()
-		# Use this set to detect when all the "repoadd" strings are "[0]"
-		# and disable the entire repo display in this case.
-		repoadd_set = set()
+		
+		self.quiet_repo_display = "--quiet-repo-display" in depgraph._frozen_config.myopts
+		if self.quiet_repo_display:
+			# Use this set to detect when all the "repoadd" strings are "[0]"
+			# and disable the entire repo display in this case.
+			repoadd_set = set()
 
 		for mylist_index in range(len(mylist)):
 			pkg, depth, ordered = mylist[mylist_index]
@@ -815,11 +830,15 @@ class Display(object):
 				addl, pkg_info.oldbest, myinslotlist = \
 					self._get_installed_best(pkg, pkg_info)
 				self.verboseadd = ""
-				self.repoadd = None
+				if self.quiet_repo_display:
+					self.repoadd = None
 				self._display_use(pkg, pkg_info.oldbest, myinslotlist)
 				self.recheck_hidden(pkg)
 				if self.conf.verbosity == 3:
-					self.verbose_size(pkg, repoadd_set, pkg_info)
+					if self.quiet_repo_display:
+						self.verbose_size(pkg, repoadd_set, pkg_info)
+					else:
+						self.verbose_size(pkg, None, pkg_info)
 
 				pkg_info.cp = pkg.cp
 				pkg_info.ver = self.get_ver_str(pkg)
@@ -834,13 +853,16 @@ class Display(object):
 				if self.include_mask_str():
 					addl += self.gen_mask_str(pkg)
 
-				if pkg.root != "/":
+				if pkg.root_config.settings["ROOT"] != "/":
 					if pkg_info.oldbest:
 						pkg_info.oldbest += " "
 					if self.conf.columns:
 						myprint = self._set_non_root_columns(
 							addl, pkg_info, pkg)
 					else:
+						pkg_str = pkg.cpv
+						if self.conf.verbosity == 3 and not self.quiet_repo_display:
+							pkg_str += _repo_separator + pkg.repo
 						if not pkg_info.merge:
 							addl = self.empty_space_in_brackets()
 							myprint = "[%s%s] " % (
@@ -851,7 +873,7 @@ class Display(object):
 							myprint = "[%s %s] " % (
 								self.pkgprint(pkg.type_name, pkg_info), addl)
 						myprint += self.indent + \
-							self.pkgprint(pkg.cpv, pkg_info) + " " + \
+							self.pkgprint(pkg_str, pkg_info) + " " + \
 							pkg_info.oldbest + darkgreen("to " + pkg.root)
 				else:
 					if self.conf.columns:
@@ -863,30 +885,12 @@ class Display(object):
 
 				if self.conf.columns and pkg.operation == "uninstall":
 					continue
-				self.print_msg.append((myprint, self.verboseadd, self.repoadd))
+				if self.quiet_repo_display:
+					self.print_msg.append((myprint, self.verboseadd, self.repoadd))
+				else:
+					self.print_msg.append((myprint, self.verboseadd, None))
 
-				if not self.conf.tree_display \
-					and not self.conf.no_restart \
-					and pkg.root == self.conf.running_root.root \
-					and match_from_list(PORTAGE_PACKAGE_ATOM, [pkg]) \
-					and not self.conf.quiet:
-
-					if not self.vardb.cpv_exists(pkg.cpv) or \
-						'9999' in pkg.cpv or \
-						'git' in pkg.inherited or \
-						'git-2' in pkg.inherited:
-						if mylist_index < len(mylist) - 1:
-							self.print_msg.append(
-								colorize(
-									"WARN", "*** Portage will stop merging "
-									"at this point and reload itself,"
-									)
-								)
-							self.print_msg.append(
-								colorize("WARN", "    then resume the merge.")
-								)
-
-		show_repos = repoadd_set and repoadd_set != set(["0"])
+		show_repos = self.quiet_repo_display and repoadd_set and repoadd_set != set(["0"])
 
 		# now finally print out the messages
 		self.print_messages(show_repos)

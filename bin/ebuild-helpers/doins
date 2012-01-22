@@ -27,12 +27,15 @@ else
 	DOINSRECUR=n
 fi
 
-if [[ ${INSDESTTREE#${D}} != "${INSDESTTREE}" ]]; then
+[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+	case "$EAPI" in 0|1|2) export ED="${D}" ;; esac
+
+if [[ ${INSDESTTREE#${ED}} != "${INSDESTTREE}" ]]; then
 	vecho "-------------------------------------------------------" 1>&2
-	vecho "You should not use \${D} with helpers." 1>&2
+	vecho "You should not use \${D} or \${ED} with helpers." 1>&2
 	vecho "  --> ${INSDESTTREE}" 1>&2
 	vecho "-------------------------------------------------------" 1>&2
-	helpers_die "${0##*/} used with \${D}"
+	helpers_die "${0##*/} used with \${D} or \${ED}"
 	exit 1
 fi
 
@@ -49,7 +52,7 @@ export TMP=$T/.doins_tmp
 # Use separate directories to avoid potential name collisions.
 mkdir -p "$TMP"/{1,2}
 
-[[ ! -d ${D}${INSDESTTREE} ]] && dodir "${INSDESTTREE}"
+[[ ! -d ${ED}${INSDESTTREE} ]] && dodir "${INSDESTTREE}"
 
 _doins() {
 	local mysrc="$1" mydir="$2" cleanup="" rval
@@ -63,8 +66,8 @@ _doins() {
 		# $PORTAGE_ACTUAL_DISTDIR/.
 		if [ $PRESERVE_SYMLINKS = y ] && \
 			! [[ $(readlink "$mysrc") == "$PORTAGE_ACTUAL_DISTDIR"/* ]] ; then
-			rm -rf "$D$INSDESTTREE/$mydir/${mysrc##*/}" || return $?
-			cp -P "$mysrc" "$D$INSDESTTREE/$mydir/${mysrc##*/}"
+			rm -rf "${ED}$INSDESTTREE/$mydir/${mysrc##*/}" || return $?
+			cp -P "$mysrc" "${ED}$INSDESTTREE/$mydir/${mysrc##*/}"
 			return $?
 		else
 			cp "$mysrc" "$TMP/2/${mysrc##*/}" || return $?
@@ -73,7 +76,7 @@ _doins() {
 		fi
 	fi
 
-	install ${INSOPTIONS} "${mysrc}" "${D}${INSDESTTREE}/${mydir}"
+	install ${INSOPTIONS} "${mysrc}" "${ED}${INSDESTTREE}/${mydir}"
 	rval=$?
 	[[ -n ${cleanup} ]] && rm -f "${cleanup}"
 	[ $rval -ne 0 ] && echo "!!! ${0##*/}: $mysrc does not exist" 1>&2

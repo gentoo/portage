@@ -410,14 +410,6 @@ class MergeOrderTestCase(TestCase):
 				["media-video/libav"],
 				success=True,
 				mergelist = ['media-video/libav-0.7_pre20110327', 'media-video/ffmpeg-0.7_rc1', '!media-video/ffmpeg']),
-			# Test that PORTAGE_PACKAGE_ATOM is merged asap. Optimally,
-			# satisfied deps are always merged after the asap nodes that
-			# depend on them.
-			ResolverPlaygroundTestCase(
-				["dev-lang/python", portage.const.PORTAGE_PACKAGE_ATOM],
-				success = True,
-				all_permutations = True,
-				mergelist = ['app-admin/eselect-python-20100321', 'sys-apps/portage-2.1.9.49', 'dev-lang/python-3.2']),
 			# Test that OS_HEADERS_PACKAGE_ATOM and LIBC_PACKAGE_ATOM
 			# are merged asap, in order to account for implicit
 			# dependencies. See bug #303567. Optimally, satisfied deps

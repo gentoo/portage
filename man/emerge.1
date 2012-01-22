@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Oct 2011" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Dec 2011" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -96,6 +96,10 @@ option if you want to install a tbz2\fR.  The packages are added
 to the \fBworld\fR file at the end, so that they are considered for
 later updating.
 .TP
+.BR \-\-check\-news
+Scan all repositories for relevant unread GLEP 42 news items, and display
+how many are found. See \fIhttp://www.gentoo.org/proj/en/glep/glep-0042.html\fR.
+.TP
 .BR \-\-clean
 Cleans up the system by examining the installed packages and removing older
 packages.  This is accomplished by looking at each installed package and separating
@@ -127,8 +131,8 @@ recommended to use a tool such as \fBrevdep-rebuild\fR(1)
 in order to detect such breakage.
 
 \fBWARNING:\fR
-Inexperienced users are advised to use \fB\-\-pretend\fR with this
-option in order to see a preview of which packages
+Inexperienced users are advised to use \fB\-\-pretend\fR or \fB\-\-ask\fR
+with this option in order to see a preview of which packages
 will be uninstalled. Always study the list of packages
 to be cleaned for any obvious mistakes. Note that packages listed in
 package.provided (see \fBportage\fR(5)) may be removed by
@@ -355,7 +359,11 @@ merging the packages.  This comes with the caveat that all build-time
 dependencies must already be emerged on the system.
 .TP
 .BR "\-\-changed\-use"
-This is an alias for \fB\-\-reinstall=changed\-use\fR.
+Tells emerge to include installed packages where USE flags have
+changed since installation. This option also implies the
+\fB\-\-selective\fR option. Unlike \fB\-\-newuse\fR, the
+\fB\-\-changed\-use\fR option does not trigger reinstallation when
+flags that the user has not enabled are added or removed.
 .TP
 .BR "\-\-changelog " (\fB\-l\fR)
 Use this in conjunction with the \fB\-\-pretend\fR option.  This will
@@ -423,8 +431,8 @@ are modified. This option is enabled by default.
 
 \fBWARNING:\fR
 If you want to disable \-\-dynamic\-deps, then it may be necessary to
-first run \fBfixpackages\fR in order to get the best results. The
-\fBfixpackages\fR command performs two different operations that can
+first run \fBfixpackages\fR(1) in order to get the best results. The
+\fBfixpackages\fR(1) command performs two different operations that can
 also be performed separately by the `emaint \-\-fix moveinst` and
 `emaint \-\-fix movebin` commands (see \fBemaint\fR(1)).
 .TP
@@ -472,6 +480,8 @@ Causes \fIEMERGE_DEFAULT_OPTS\fR (see \fBmake.conf\fR(5)) to be ignored.
 Specifies the number of packages to build simultaneously. If this option is
 given without an argument, emerge will not limit the number of jobs that can
 run simultaneously. Also see the related \fB\-\-load\-average\fR option.
+Similarly to the \-\-quiet\-build option, the \-\-jobs option causes all
+build output to be redirected to logs.
 Note that interactive packages currently force a setting
 of \fI\-\-jobs=1\fR. This issue can be temporarily avoided
 by specifying \fI\-\-accept\-properties=\-interactive\fR.
@@ -510,7 +520,8 @@ A USE flag was turned off for a package.
 USE flags may be toggled by your profile as well as your USE and package.use
 settings. If you would like to skip rebuilds for which disabled flags have
 been added to or removed from IUSE, see the related
-\-\-reinstall=changed\-use option.
+\fB\-\-changed\-use\fR option. If you would like to skip rebuilds for
+specific packages, see the \fB\-\-exclude\fR option.
 .TP
 .BR "\-\-noconfmem"
 Causes portage to disregard merge records indicating that a config file
@@ -555,11 +566,22 @@ Only merge (or pretend to merge) the dependencies of the packages
 specified, not the packages themselves.
 .TP
 .BR "\-\-package\-moves [ y | n ]"
-Perform package moves when necessary. This option
-is enabled by default. \fBWARNING:\fR This option
+Perform package moves when necessary. This option is enabled
+by default. Package moves are typically applied immediately
+after a \fB\-\-sync\fR action. They are applied in an
+incremental fashion, using only the subset of the history of
+package moves which have been added or modified since the
+previous application of package moves.
+
+\fBWARNING:\fR This option
 should remain enabled under normal circumstances.
 Do not disable it unless you know what you are
 doing.
+
+\fBNOTE:\fR The \fBfixpackages\fR(1) command can be used to
+exhaustively apply the entire history of package moves,
+regardless of whether or not any of the package moves have
+been previously applied.
 .TP
 .BR "\-\-pretend " (\fB\-p\fR)
 Instead of actually performing the merge, simply display what *would*
@@ -586,8 +608,20 @@ Results may vary, but the general outcome is a reduced or condensed
 output from portage's displays.
 .TP
 .BR "\-\-quiet\-build [ y | n ]"
-Redirect all build output to logs alone, and do not
-display it on stdout.
+Redirect all build output to logs alone, and do not display it on
+stdout. If a build failure occurs for a single package, the build
+log will be automatically displayed on stdout. If there are multiple
+build failures (due to options like \-\-keep\-going or \-\-jobs),
+then the content of the log files will not be displayed, and instead
+the paths of the log files will be displayed together with the
+corresponding die messages.
+Note that interactive packages currently force all build output to
+be displayed on stdout. This issue can be temporarily avoided
+by specifying \fI\-\-accept\-properties=\-interactive\fR.
+.TP
+.BR "\-\-quiet\-repo\-display"
+In the package merge list display, suppress ::repository output, and
+instead use numbers to indicate which repositories package come from.
 .TP
 .BR \-\-quiet\-unmerge\-warn
 Disable the warning message that's shown prior to
@@ -623,10 +657,7 @@ and that is larger than that of the installed package will
 be considered by the rebuilt\-binaries logic.
 .TP
 .BR "\-\-reinstall changed\-use"
-Tells emerge to include installed packages where USE flags have
-changed since installation.  Unlike \fB\-\-newuse\fR, this option does
-not trigger reinstallation when flags that the user has not
-enabled are added or removed.
+This is an alias for \fB\-\-changed\-use\fR.
 .TP
 .BR "\-\-reinstall\-atoms " ATOMS
 A space separated list of package names or slot atoms. Emerge will treat
@@ -657,7 +688,8 @@ use \fBEMERGE_DEFAULT_OPTS\fR to make
 This is identical to the \fB\-\-noreplace\fR option.
 Some options, such as \fB\-\-update\fR, imply \fB\-\-selective\fR.
 Use \fB\-\-selective=n\fR if you want to forcefully disable
-\fB\-\-selective\fR, regardless of options like \fB\-\-update\fR.
+\fB\-\-selective\fR, regardless of options like \fB\-\-changed\-use\fR,
+\fB\-\-newuse\fR, \fB\-\-noreplace\fR, or \fB\-\-update\fR.
 .TP
 .BR "\-\-skipfirst"
 This option is only valid when used with \fB\-\-resume\fR.  It removes the 

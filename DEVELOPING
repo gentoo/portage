@@ -5,6 +5,21 @@ sense, they are pretty basic and mostly apply to old code.  However for people
 who are looking at current code, they make take up bad habits that exist in the
 current codebase.
 
+Python Version
+--------------
+
+Python 2.6 is the minimum supported version, since it is the first version to
+support Python 3 syntax. All exception handling should use Python 3 'except'
+syntax, and the print function should be used instead of Python 2's print
+statement (from __future__ import print_function).
+
+Dependencies
+------------
+
+Python and Bash should be the only hard dependencies. Any other dependencies,
+including external Python modules that are not included with Python itself,
+must be optionally enabled by run-time detection.
+
 Tabs
 ----
 
@@ -32,27 +47,6 @@ errors.append(MalformedMetadata(
 The mixing of tabs and spaces means other developers can't read what you did.
 This is why the python peps state spaces over tabs; because with spaces the line
 wrapping is always clear (but you cannot convert spaces as easily as tabwidth).
-
-String
--------
-Try not to use the functions in the string module, they are deprecated.
-
-string.join(<iterable>," ")
-
-should be replaced with:
-
-" ".join(<iterable>)
-
-and:
-
-string.split(string, delimeter)
-
-should be replaced with:
-
-"somestring".split(delimeter)
-
-Nearly all other methods in string work on string objects and have similar calling
-conventions.
 
 Comparisons
 -----------

@@ -2,24 +2,30 @@
 # Copyright 2006-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from __future__ import print_function
+
 __all__ = ["NewsManager", "NewsItem", "DisplayRestriction",
 	"DisplayProfileRestriction", "DisplayKeywordRestriction",
-	"DisplayInstalledRestriction"]
+	"DisplayInstalledRestriction",
+	"count_unread_news", "display_news_notifications"]
 
 import io
 import logging
 import os as _os
 import re
+from portage import OrderedDict
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
+from portage.const import NEWS_LIB_PATH
 from portage.util import apply_secpass_permissions, ensure_dirs, \
 	grabfile, normalize_path, write_atomic, writemsg_level
 from portage.data import portage_gid
 from portage.dep import isvalidatom
 from portage.localization import _
 from portage.locks import lockfile, unlockfile
+from portage.output import colorize
 from portage.exception import InvalidLocation, OperationNotPermitted, \
 	PermissionDenied
 
@@ -39,7 +45,6 @@ class NewsManager(object):
 	def __init__(self, portdb, vardb, news_path, unread_path, language_id='en'):
 		self.news_path = news_path
 		self.unread_path = unread_path
-		self.target_root = vardb.root
 		self.language_id = language_id
 		self.config = vardb.settings
 		self.vdb = vardb
@@ -114,7 +119,6 @@ class NewsManager(object):
 			except PermissionDenied:
 				return
 
-			updates = []
 			for itemid in news:
 				try:
 					itemid = _unicode_decode(itemid,
@@ -350,3 +354,67 @@ class DisplayInstalledRestriction(DisplayRestriction):
 		if vdb.match(self.atom):
 			return True
 		return False
+
+def count_unread_news(portdb, vardb, repos=None, update=True):
+	"""
+	Returns a dictionary mapping repos to integer counts of unread news items.
+	By default, this will scan all repos and check for new items that have
+	appeared since the last scan.
+
+	@param portdb: a portage tree database
+	@type portdb: pordbapi
+	@param vardb: an installed package database
+	@type vardb: vardbapi
+	@param repos: names of repos to scan (None means to scan all available repos)
+	@type repos: list or None
+	@param update: check for new items (default is True)
+	@type update: boolean
+	@rtype: dict
+	@returns: dictionary mapping repos to integer counts of unread news items
+	"""
+
+	NEWS_PATH = os.path.join("metadata", "news")
+	UNREAD_PATH = os.path.join(vardb.settings['EROOT'], NEWS_LIB_PATH, "news")
+	news_counts = OrderedDict()
+	if repos is None:
+		repos = portdb.getRepositories()
+
+	permission_msgs = set()
+	for repo in repos:
+		try:
+			manager = NewsManager(portdb, vardb, NEWS_PATH, UNREAD_PATH)
+			count = manager.getUnreadItems(repo, update=True)
+		except PermissionDenied as e:
+			# NOTE: The NewsManager typically handles permission errors by
+			# returning silently, so PermissionDenied won't necessarily be
+			# raised even if we do trigger a permission error above.
+			msg = _unicode_decode("Permission denied: '%s'\n") % (e,)
+			if msg in permission_msgs:
+				pass
+			else:
+				permission_msgs.add(msg)
+				writemsg_level(msg, level=logging.ERROR, noiselevel=-1)
+			news_counts[repo] = 0
+		else:
+			news_counts[repo] = count
+
+	return news_counts
+
+def display_news_notifications(news_counts):
+	"""
+	Display a notification for unread news items, using a dictionary mapping
+	repos to integer counts, like that returned from count_unread_news().
+	"""
+	newsReaderDisplay = False
+	for repo, count in news_counts.items():
+		if count > 0:
+			if not newsReaderDisplay:
+				newsReaderDisplay = True
+				print()
+			print(colorize("WARN", " * IMPORTANT:"), end=' ')
+			print("%s news items need reading for repository '%s'." % (count, repo))
+
+	if newsReaderDisplay:
+		print(colorize("WARN", " *"), end=' ')
+		print("Use " + colorize("GOOD", "eselect news") + " to read news items.")
+		print()

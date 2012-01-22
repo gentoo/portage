@@ -1,9 +1,12 @@
 #!/bin/bash
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
-[[ ! -d ${D}usr/share/info ]] && exit 0
+[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+	case "$EAPI" in 0|1|2) ED=${D} ;; esac
+
+[[ -d ${ED}usr/share/info ]] || exit 0
 
 exec prepinfo

@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
@@ -10,7 +10,6 @@ from itertools import chain
 import logging
 import os as _os
 import re
-import shutil
 import signal
 import stat
 import sys
@@ -31,7 +30,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage import auxdbkeys, bsd_chflags, \
-	eapi_is_supported, merge, os, selinux, \
+	eapi_is_supported, merge, os, selinux, shutil, \
 	unmerge, _encodings, _parse_eapi_ebuild_head, _os_merge, \
 	_shell_quote, _unicode_decode, _unicode_encode
 from portage.const import EBUILD_SH_ENV_FILE, EBUILD_SH_ENV_DIR, \
@@ -42,9 +41,10 @@ from portage.dbapi.porttree import _parse_uri_map
 from portage.dep import Atom, check_required_use, \
 	human_readable_required_use, paren_enclose, use_reduce
 from portage.eapi import eapi_exports_KV, eapi_exports_merge_type, \
-	eapi_exports_replace_vars, eapi_has_required_use, \
-	eapi_has_src_prepare_and_src_configure, eapi_has_pkg_pretend
-from portage.elog import elog_process
+	eapi_exports_replace_vars, eapi_exports_REPOSITORY, \
+	eapi_has_required_use, eapi_has_src_prepare_and_src_configure, \
+	eapi_has_pkg_pretend
+from portage.elog import elog_process, _preload_elog_modules
 from portage.elog.messages import eerror, eqawarn
 from portage.exception import DigestException, FileNotFound, \
 	IncorrectParameter, InvalidDependString, PermissionDenied, \
@@ -114,6 +114,38 @@ def _spawn_phase(phase, settings, actionmap=None, **kwargs):
 	ebuild_phase.start()
 	ebuild_phase.wait()
 	return ebuild_phase.returncode
+
+def _doebuild_path(settings, eapi=None):
+	"""
+	Generate the PATH variable.
+	"""
+
+	# Note: PORTAGE_BIN_PATH may differ from the global constant
+	# when portage is reinstalling itself.
+	portage_bin_path = settings["PORTAGE_BIN_PATH"]
+	eprefix = settings["EPREFIX"]
+	prerootpath = [x for x in settings.get("PREROOTPATH", "").split(":") if x]
+	rootpath = [x for x in settings.get("ROOTPATH", "").split(":") if x]
+
+	prefixes = []
+	if eprefix:
+		prefixes.append(eprefix)
+	prefixes.append("/")
+
+	path = []
+
+	if eapi not in (None, "0", "1", "2", "3"):
+		path.append(os.path.join(portage_bin_path, "ebuild-helpers", "4"))
+
+	path.append(os.path.join(portage_bin_path, "ebuild-helpers"))
+	path.extend(prerootpath)
+
+	for prefix in prefixes:
+		for x in ("usr/local/sbin", "usr/local/bin", "usr/sbin", "usr/bin", "sbin", "bin"):
+			path.append(os.path.join(prefix, x))
+
+	path.extend(rootpath)
+	settings["PATH"] = ":".join(path)
 
 def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	debug=False, use_cache=None, db=None):
@@ -207,11 +239,12 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	mysettings["FILESDIR"] = pkg_dir+"/files"
 	mysettings["PF"]       = mypv
 
-	if hasattr(mydbapi, '_repo_info'):
-		repo_info = mydbapi._repo_info[mytree]
-		mysettings['PORTDIR'] = repo_info.portdir
-		mysettings['PORTDIR_OVERLAY'] = repo_info.portdir_overlay
-		mysettings.configdict["pkg"]["PORTAGE_REPO_NAME"] = repo_info.name
+	if hasattr(mydbapi, 'repositories'):
+		repo = mydbapi.repositories.get_repo_for_location(mytree)
+		mysettings['PORTDIR'] = repo.eclass_db.porttrees[0]
+		mysettings['PORTDIR_OVERLAY'] = ' '.join(repo.eclass_db.porttrees[1:])
+		mysettings.configdict["pkg"]["PORTAGE_REPO_NAME"] = repo.name
+		mysettings.configdict["pkg"]["REPOSITORY"] = repo.name
 
 	mysettings["PORTDIR"] = os.path.realpath(mysettings["PORTDIR"])
 	mysettings["DISTDIR"] = os.path.realpath(mysettings["DISTDIR"])
@@ -233,16 +266,6 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 		mysettings["PVR"]=mysplit[1]
 	else:
 		mysettings["PVR"]=mysplit[1]+"-"+mysplit[2]
-
-	if "PATH" in mysettings:
-		mysplit=mysettings["PATH"].split(":")
-	else:
-		mysplit=[]
-	# Note: PORTAGE_BIN_PATH may differ from the global constant
-	# when portage is reinstalling itself.
-	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
-	if portage_bin_path not in mysplit:
-		mysettings["PATH"] = portage_bin_path + ":" + mysettings["PATH"]
 
 	# All temporary directories should be subdirectories of
 	# $PORTAGE_TMPDIR/portage, since it's common for /tmp and /var/tmp
@@ -283,6 +306,23 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			(c, style_to_ansi_code(c)))
 	mysettings["PORTAGE_COLORMAP"] = "\n".join(mycolors)
 
+	if "COLUMNS" not in mysettings:
+		# Set COLUMNS, in order to prevent unnecessary stty calls
+		# inside the set_colors function of isolated-functions.sh.
+		# We cache the result in os.environ, in order to avoid
+		# multiple stty calls in cases when get_term_size() falls
+		# back to stty due to a missing or broken curses module.
+		columns = os.environ.get("COLUMNS")
+		if columns is None:
+			rows, columns = portage.output.get_term_size()
+			if columns < 1:
+				# Force a sane value for COLUMNS, so that tools
+				# like ls don't complain (see bug #394091).
+				columns = 80
+			columns = str(columns)
+			os.environ["COLUMNS"] = columns
+		mysettings["COLUMNS"] = columns
+
 	# All EAPI dependent code comes last, so that essential variables
 	# like PORTAGE_BUILDDIR are still initialized even in cases when
 	# UnsupportedAPIException needs to be raised, which can be useful
@@ -298,6 +338,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 
 		if eapi is not None:
 			if not eapi_is_supported(eapi):
+				_doebuild_path(mysettings)
 				raise UnsupportedAPIException(mycpv, eapi)
 			mysettings.configdict['pkg']['EAPI'] = eapi
 
@@ -307,6 +348,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 		eapi = mysettings["EAPI"]
 		if not eapi_is_supported(eapi):
 			# can't do anything with this.
+			_doebuild_path(mysettings)
 			raise UnsupportedAPIException(mycpv, eapi)
 
 		if hasattr(mydbapi, "getFetchMap") and \
@@ -333,6 +375,28 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			else:
 				mysettings.configdict["pkg"]["AA"] = " ".join(uri_map)
 
+	_doebuild_path(mysettings, eapi=eapi)
+
+	if mydo != "depend":
+		ccache = "ccache" in mysettings.features
+		distcc = "distcc" in mysettings.features
+		if ccache or distcc:
+			# Use default ABI libdir in accordance with bug #355283.
+			libdir = None
+			default_abi = mysettings.get("DEFAULT_ABI")
+			if default_abi:
+				libdir = mysettings.get("LIBDIR_" + default_abi)
+			if not libdir:
+				libdir = "lib"
+
+			if distcc:
+				mysettings["PATH"] = os.path.join(os.sep, eprefix_lstrip,
+					 "usr", libdir, "distcc", "bin") + ":" + mysettings["PATH"]
+
+			if ccache:
+				mysettings["PATH"] = os.path.join(os.sep, eprefix_lstrip,
+					 "usr", libdir, "ccache", "bin") + ":" + mysettings["PATH"]
+
 	if not eapi_exports_KV(eapi):
 		# Discard KV for EAPIs that don't support it. Cache KV is restored
 		# from the backupenv whenever config.reset() is called.
@@ -350,6 +414,9 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			mysettings["KV"] = ""
 		mysettings.backup_changes("KV")
 
+	if mydo != "depend" and not eapi_exports_REPOSITORY(eapi):
+		mysettings.pop('REPOSITORY', None)
+
 _doebuild_manifest_cache = None
 _doebuild_broken_ebuilds = set()
 _doebuild_broken_manifests = set()
@@ -358,7 +425,7 @@ _doebuild_commands_without_builddir = (
 	'fetch', 'fetchall', 'help', 'manifest'
 )
 
-def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
+def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 	fetchonly=0, cleanup=0, dbkey=None, use_cache=1, fetchall=0, tree=None,
 	mydbapi=None, vartree=None, prev_mtimes=None,
 	fd_pipes=None, returnpid=False):
@@ -370,10 +437,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	@type myebuild: String
 	@param mydo: Phase to run
 	@type mydo: String
-	@param myroot: $ROOT (usually '/', see man make.conf)
-	@type myroot: String
-	@param mysettings: Portage Configuration
-	@type mysettings: instance of portage.config
+	@param _unused: Deprecated (use settings["ROOT"] instead)
+	@type _unused: String
+	@param settings: Portage Configuration
+	@type settings: instance of portage.config
 	@param debug: Turns on various debug information (eg, debug for spawn)
 	@type debug: Boolean
 	@param listonly: Used to wrap fetch(); passed such that fetch only lists files required.
@@ -416,7 +483,18 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	Other variables may not be strictly required, many have defaults that are set inside of doebuild.
 	
 	"""
-	
+
+	if settings is None:
+		raise TypeError("settings parameter is required")
+	mysettings = settings
+	myroot = settings['EROOT']
+
+	if _unused is not None and _unused != mysettings['EROOT']:
+		warnings.warn("The third parameter of the "
+			"portage.doebuild() is now unused. Use "
+			"settings['ROOT'] instead.",
+			DeprecationWarning, stacklevel=2)
+
 	if not tree:
 		writemsg("Warning: tree not specified to doebuild\n")
 		tree = "porttree"
@@ -490,6 +568,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			os.path.dirname(os.path.dirname(pkgdir)))
 	else:
 		repo_config = None
+
 	mf = None
 	if "strict" in features and \
 		"digest" not in features and \
@@ -663,6 +742,13 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			rval = _validate_deps(mysettings, myroot, mydo, mydbapi)
 			if rval != os.EX_OK:
 				return rval
+
+		else:
+			# FEATURES=noauto only makes sense for porttree, and we don't want
+			# it to trigger redundant sourcing of the ebuild for API consumers
+			# that are using binary packages
+			if "noauto" in mysettings.features:
+				mysettings.features.discard("noauto")
 
 		# The info phase is special because it uses mkdtemp so and
 		# user (not necessarily in the portage group) can run it.
@@ -925,7 +1011,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				# this phase. This can raise PermissionDenied if
 				# the current user doesn't have write access to $PKGDIR.
 				if hasattr(portage, 'db'):
-					bintree = portage.db[mysettings["ROOT"]]["bintree"]
+					bintree = portage.db[mysettings['EROOT']]['bintree']
 					mysettings["PORTAGE_BINPKG_TMPFILE"] = \
 						bintree.getname(mysettings.mycpv) + \
 						".%s" % (os.getpid(),)
@@ -957,6 +1043,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			# qmerge is a special phase that implies noclean.
 			if "noclean" not in mysettings.features:
 				mysettings.features.add("noclean")
+			_handle_self_update(mysettings, vartree.dbapi)
 			#qmerge is specifically not supposed to do a runtime dep check
 			retval = merge(
 				mysettings["CATEGORY"], mysettings["PF"], mysettings["D"],
@@ -973,6 +1060,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				# so that it's only called once.
 				elog_process(mysettings.mycpv, mysettings)
 			if retval == os.EX_OK:
+				_handle_self_update(mysettings, vartree.dbapi)
 				retval = merge(mysettings["CATEGORY"], mysettings["PF"],
 					mysettings["D"], os.path.join(mysettings["PORTAGE_BUILDDIR"],
 					"build-info"), myroot, mysettings,
@@ -1399,7 +1487,7 @@ _post_phase_cmds = {
 		"preinst_sfperms",
 		"preinst_selinux_labels",
 		"preinst_suid_scan",
-		"preinst_mask"]
+		]
 }
 
 def _post_phase_userpriv_perms(mysettings):
@@ -1943,3 +2031,54 @@ def _merge_unicode_error(errors):
 		lines.append("")
 
 	return lines
+
+def _prepare_self_update(settings):
+	"""
+	Call this when portage is updating itself, in order to create
+	temporary copies of PORTAGE_BIN_PATH and PORTAGE_PYM_PATH, since
+	the new versions may be incompatible. An atexit hook will
+	automatically clean up the temporary copies.
+	"""
+
+	# sanity check: ensure that that this routine only runs once
+	if portage._bin_path != portage.const.PORTAGE_BIN_PATH:
+		return
+
+	# Load lazily referenced portage submodules into memory,
+	# so imports won't fail during portage upgrade/downgrade.
+	_preload_elog_modules(settings)
+	portage.proxy.lazyimport._preload_portage_submodules()
+
+	# Make the temp directory inside $PORTAGE_TMPDIR/portage, since
+	# it's common for /tmp and /var/tmp to be mounted with the
+	# "noexec" option (see bug #346899).
+	build_prefix = os.path.join(settings["PORTAGE_TMPDIR"], "portage")
+	portage.util.ensure_dirs(build_prefix)
+	base_path_tmp = tempfile.mkdtemp(
+		"", "._portage_reinstall_.", build_prefix)
+	portage.process.atexit_register(shutil.rmtree, base_path_tmp)
+
+	orig_bin_path = portage._bin_path
+	portage._bin_path = os.path.join(base_path_tmp, "bin")
+	shutil.copytree(orig_bin_path, portage._bin_path, symlinks=True)
+
+	orig_pym_path = portage._pym_path
+	portage._pym_path = os.path.join(base_path_tmp, "pym")
+	shutil.copytree(orig_pym_path, portage._pym_path, symlinks=True)
+
+	for dir_path in (base_path_tmp, portage._bin_path, portage._pym_path):
+		os.chmod(dir_path, 0o755)
+
+def _handle_self_update(settings, vardb):
+	cpv = settings.mycpv
+	if settings["ROOT"] == "/" and \
+		portage.dep.match_from_list(
+		portage.const.PORTAGE_PACKAGE_ATOM, [cpv]):
+		inherited = frozenset(settings.get('INHERITED', '').split())
+		if not vardb.cpv_exists(cpv) or \
+			'9999' in cpv or \
+			'git' in inherited or \
+			'git-2' in inherited:
+			_prepare_self_update(settings)
+			return True
+	return False

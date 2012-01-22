@@ -1,10 +1,13 @@
 #!/bin/bash
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
-install -d ${DIROPTIONS} "${@/#/${D}/}"
+[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+	case "$EAPI" in 0|1|2) ED=${D} ;; esac
+
+install -d ${DIROPTIONS} "${@/#/${ED}/}"
 ret=$?
 [[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
 exit $ret

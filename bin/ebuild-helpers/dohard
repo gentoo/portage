@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2007 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 if [[ $# -ne 2 ]] ; then
@@ -7,7 +7,10 @@ if [[ $# -ne 2 ]] ; then
 	exit 1
 fi
 
-destdir=${2%/*}
-[[ ! -d ${D}${destdir} ]] && dodir "${destdir}"
+[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+	case "$EAPI" in 0|1|2) ED=${D} ;; esac
 
-exec ln -f "${D}$1" "${D}$2"
+destdir=${2%/*}
+[[ ! -d ${ED}${destdir} ]] && dodir "${destdir}"
+
+exec ln -f "${ED}$1" "${ED}$2"

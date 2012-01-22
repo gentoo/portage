@@ -120,7 +120,10 @@ class SubProcess(AbstractPollTask):
 
 		if self._files is not None:
 			for f in self._files.values():
-				f.close()
+				if isinstance(f, int):
+					os.close(f)
+				else:
+					f.close()
 			self._files = None
 
 	def _set_returncode(self, wait_retval):

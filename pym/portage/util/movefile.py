@@ -7,14 +7,72 @@ import errno
 import os as _os
 import shutil as _shutil
 import stat
+import subprocess
 
 import portage
 from portage import bsd_chflags, _encodings, _os_overrides, _selinux, \
-	_unicode_decode, _unicode_func_wrapper, _unicode_module_wrapper
-from portage.const import MOVE_BINARY
+	_unicode_decode, _unicode_encode, _unicode_func_wrapper,\
+	_unicode_module_wrapper
+from portage.const import MOVE_BINARY, _ENABLE_XATTR
+from portage.exception import OperationNotSupported
 from portage.localization import _
 from portage.process import spawn
 from portage.util import writemsg
+
+def _apply_stat(src_stat, dest):
+	_os.chown(dest, src_stat.st_uid, src_stat.st_gid)
+	_os.chmod(dest, stat.S_IMODE(src_stat.st_mode))
+
+if hasattr(_os, "getxattr"):
+	# Python >=3.3 and GNU/Linux
+	def _copyxattr(src, dest):
+		for attr in _os.listxattr(src):
+			try:
+				_os.setxattr(dest, attr, _os.getxattr(src, attr))
+				raise_exception = False
+			except OSError:
+				raise_exception = True
+			if raise_exception:
+				raise OperationNotSupported("Filesystem containing file '%s' does not support extended attributes" % dest)
+else:
+	try:
+		import xattr
+	except ImportError:
+		xattr = None
+	if xattr is not None:
+		def _copyxattr(src, dest):
+			for attr in xattr.list(src):
+				try:
+					xattr.set(dest, attr, xattr.get(src, attr))
+					raise_exception = False
+				except IOError:
+					raise_exception = True
+				if raise_exception:
+					raise OperationNotSupported("Filesystem containing file '%s' does not support extended attributes" % dest)
+	else:
+		_devnull = open("/dev/null", "wb")
+		try:
+			subprocess.call(["getfattr", "--version"], stdout=_devnull)
+			subprocess.call(["setfattr", "--version"], stdout=_devnull)
+			_has_getfattr_and_setfattr = True
+		except OSError:
+			_has_getfattr_and_setfattr = False
+		_devnull.close()
+		if _has_getfattr_and_setfattr:
+			def _copyxattr(src, dest):
+				getfattr_process = subprocess.Popen(["getfattr", "-d", "--absolute-names", src], stdout=subprocess.PIPE)
+				getfattr_process.wait()
+				extended_attributes = getfattr_process.stdout.readlines()
+				getfattr_process.stdout.close()
+				if extended_attributes:
+					extended_attributes[0] = b"# file: " + _unicode_encode(dest) + b"\n"
+					setfattr_process = subprocess.Popen(["setfattr", "--restore=-"], stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+					setfattr_process.communicate(input=b"".join(extended_attributes))
+					if setfattr_process.returncode != 0:
+						raise OperationNotSupported("Filesystem containing file '%s' does not support extended attributes" % dest)
+		else:
+			def _copyxattr(src, dest):
+				pass
 
 def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		hardlink_candidates=None, encoding=_encodings['fs']):
@@ -26,6 +84,8 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 	if mysettings is None:
 		mysettings = portage.settings
 
+	src_bytes = _unicode_encode(src, encoding=encoding, errors='strict')
+	xattr_enabled = _ENABLE_XATTR and "xattr" in mysettings.features
 	selinux_enabled = mysettings.selinux_enabled()
 	if selinux_enabled:
 		selinux = _unicode_module_wrapper(_selinux, encoding=encoding)
@@ -157,16 +217,24 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 				return None
 			# Invalid cross-device-link 'bind' mounted or actually Cross-Device
 	if renamefailed:
-		didcopy=0
 		if stat.S_ISREG(sstat[stat.ST_MODE]):
+			dest_tmp = dest + "#new"
+			dest_tmp_bytes = _unicode_encode(dest_tmp, encoding=encoding,
+				errors='strict')
 			try: # For safety copy then move it over.
 				if selinux_enabled:
-					selinux.copyfile(src, dest + "#new")
-					selinux.rename(dest + "#new", dest)
+					selinux.copyfile(src, dest_tmp)
+					if xattr_enabled:
+						_copyxattr(src_bytes, dest_tmp_bytes)
+					_apply_stat(sstat, dest_tmp_bytes)
+					selinux.rename(dest_tmp, dest)
 				else:
-					shutil.copyfile(src,dest+"#new")
-					os.rename(dest+"#new",dest)
-				didcopy=1
+					shutil.copyfile(src, dest_tmp)
+					if xattr_enabled:
+						_copyxattr(src_bytes, dest_tmp_bytes)
+					_apply_stat(sstat, dest_tmp_bytes)
+					os.rename(dest_tmp, dest)
+				os.unlink(src)
 			except SystemExit as e:
 				raise
 			except Exception as e:
@@ -183,21 +251,6 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 					"dest": _unicode_decode(dest, encoding=encoding)}, noiselevel=-1)
 				writemsg("!!! %s\n" % a, noiselevel=-1)
 				return None # failure
-		try:
-			if didcopy:
-				if stat.S_ISLNK(sstat[stat.ST_MODE]):
-					lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
-				else:
-					os.chown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
-				os.chmod(dest, stat.S_IMODE(sstat[stat.ST_MODE])) # Sticky is reset on chown
-				os.unlink(src)
-		except SystemExit as e:
-			raise
-		except Exception as e:
-			print(_("!!! Failed to chown/chmod/unlink in movefile()"))
-			print("!!!",dest)
-			print("!!!",e)
-			return None
 
 	# Always use stat_obj[stat.ST_MTIME] for the integral timestamp which
 	# is returned, since the stat_obj.st_mtime float attribute rounds *up*

@@ -9,6 +9,9 @@ if [[ $# -lt 1 ]] ; then
 	exit 1
 fi
 
+[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+	case "$EAPI" in 0|1|2) ED=${D} ;; esac
+
 i18n=""
 
 ret=0
@@ -44,11 +47,11 @@ for x in "$@" ; do
 
 	if [[ ${mandir} == *man[0-9n] ]] ; then
 		if [[ -s ${x} ]] ; then
-			if [[ ! -d ${D}/usr/share/man/${mandir} ]] ; then
-				install -d "${D}/usr/share/man/${mandir}"
+			if [[ ! -d ${ED}/usr/share/man/${mandir} ]] ; then
+				install -d "${ED}/usr/share/man/${mandir}"
 			fi
 
-			install -m0644 "${x}" "${D}/usr/share/man/${mandir}/${name}"
+			install -m0644 "${x}" "${ED}/usr/share/man/${mandir}/${name}"
 			((ret|=$?))
 		elif [[ ! -e ${x} ]] ; then
 			echo "!!! ${0##*/}: $x does not exist" 1>&2

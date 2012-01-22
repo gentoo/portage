@@ -14,6 +14,9 @@ if [ ! -e "$1" ] ; then
 	exit 1
 fi
 
+(($#>2)) && \
+	eqawarn "QA Notice: ${0##*/} called with more than 2 arguments: ${@:3}"
+
 rm -rf "${T}/${2}" || exit $?
 case "$EAPI" in
 	0|1|2|3|3_pre2)

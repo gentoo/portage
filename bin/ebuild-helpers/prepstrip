@@ -15,8 +15,11 @@ exp_tf() {
 		eval ${var}_${flag}=$(tf has ${flag} ${!var})
 	done
 }
-exp_tf FEATURES installsources nostrip splitdebug
+exp_tf FEATURES compressdebug installsources nostrip splitdebug
 exp_tf RESTRICT binchecks installsources strip
+
+[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+	case "$EAPI" in 0|1|2) EPREFIX= ED=${D} ;; esac
 
 banner=false
 SKIP_STRIP=false
@@ -48,13 +51,13 @@ case $(${STRIP} --version 2>/dev/null) in
 	# We'll leave out -R .note for now until we can check out the relevance
 	# of the section when it has the ALLOC flag set on it ...
 	SAFE_STRIP_FLAGS="--strip-unneeded"
-	DEF_STRIP_FLAGS="-R .comment"
+	DEF_STRIP_FLAGS="-R .comment -R .GCC.command.line"
 	SPLIT_STRIP_FLAGS=
 	;;
 esac
 : ${PORTAGE_STRIP_FLAGS=${SAFE_STRIP_FLAGS} ${DEF_STRIP_FLAGS}}
 
-prepstrip_sources_dir=/usr/src/debug/${CATEGORY}/${PF}
+prepstrip_sources_dir=${EPREFIX}/usr/src/debug/${CATEGORY}/${PF}
 
 type -P debugedit >/dev/null && debugedit_found=true || debugedit_found=false
 debugedit_warned=false
@@ -98,8 +101,12 @@ save_elf_sources() {
 save_elf_debug() {
 	${FEATURES_splitdebug} || return 0
 
+	# NOTE: Debug files must be installed in
+	# ${EPREFIX}/usr/lib/debug/${EPREFIX} (note that ${EPREFIX} occurs
+	# twice in this path) in order for gdb's debug-file-directory
+	# lookup to work correctly.
 	local x=$1
-	local y="${D}usr/lib/debug/${x:${#D}}.debug"
+	local y=${ED}usr/lib/debug/${x:${#D}}.debug
 
 	# dont save debug info twice
 	[[ ${x} == *".debug" ]] && return 0
@@ -108,13 +115,15 @@ save_elf_debug() {
 
 	local inode=$(inode_var_name "$x")
 	if [[ -n ${!inode} ]] ; then
-		ln "${D}usr/lib/debug/${!inode:${#D}}.debug" "$y"
+		ln "${ED}usr/lib/debug/${!inode:${#D}}.debug" "$y"
 	else
 		eval $inode=\$x
 		if [[ -e ${T}/prepstrip.split.debug ]] ; then
 			mv "${T}"/prepstrip.split.debug "${y}"
 		else
-			${OBJCOPY} --only-keep-debug "${x}" "${y}"
+			local objcopy_flags="--only-keep-debug"
+			${FEATURES_compressdebug} && objcopy_flags+=" --compress-debug-sections"
+			${OBJCOPY} ${objcopy_flags} "${x}" "${y}"
 			${OBJCOPY} --add-gnu-debuglink="${y}" "${x}"
 		fi
 		local args="a-x,o-w"
@@ -129,7 +138,7 @@ save_elf_debug() {
 			| awk '$NF ~ /GNU/ { getline; printf $2$3$4$5; getline; print $2 }')
 	fi
 	if [[ -n ${buildid} ]] ; then
-		local buildid_dir="${D}usr/lib/debug/.build-id/${buildid:0:2}"
+		local buildid_dir="${ED}usr/lib/debug/.build-id/${buildid:0:2}"
 		local buildid_file="${buildid_dir}/${buildid:2}"
 		mkdir -p "${buildid_dir}"
 		ln -s "../../${x:${#D}}.debug" "${buildid_file}.debug"
@@ -140,7 +149,7 @@ save_elf_debug() {
 process_elf() {
 	local x=$1 strip_flags=${*:2}
 
-	vecho "   ${x:${#D}}"
+	vecho "   ${x:${#ED}}"
 	save_elf_sources "${x}"
 
 	if ${strip_this} ; then
@@ -165,7 +174,7 @@ if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
 	log=$T/scanelf-already-stripped.log
 	qa_var="QA_PRESTRIPPED_${ARCH/-/_}"
 	[[ -n ${!qa_var} ]] && QA_PRESTRIPPED="${!qa_var}"
-	scanelf -yqRBF '#k%F' -k '!.symtab' "$@" | sed -e "s#^$D##" > "$log"
+	scanelf -yqRBF '#k%F' -k '!.symtab' "$@" | sed -e "s#^${ED}##" > "$log"
 	if [[ -n $QA_PRESTRIPPED && -s $log && \
 		${QA_STRICT_PRESTRIPPED-unset} = unset ]] ; then
 		shopts=$-
@@ -206,11 +215,20 @@ do
 		set -o noglob
 		strip_this=true
 		for m in $(eval echo ${STRIP_MASK}) ; do
-			[[ /${x#${D}} == ${m} ]] && strip_this=false && break
+			[[ /${x#${ED}} == ${m} ]] && strip_this=false && break
 		done
 		set +o noglob
 	else
 		strip_this=false
+	fi
+
+	# In Prefix we are usually an unprivileged user, so we can't strip
+	# unwritable objects.  Make them temporarily writable for the
+	# stripping.
+	was_not_writable=false
+	if [[ ! -w ${x} ]] ; then
+		was_not_writable=true
+		chmod u+w "${x}"
 	fi
 
 	# only split debug info for final linked objects
@@ -221,7 +239,7 @@ do
 
 	buildid=
 	if [[ ${f} == *"current ar archive"* ]] ; then
-		vecho "   ${x:${#D}}"
+		vecho "   ${x:${#ED}}"
 		if ${strip_this} ; then
 			# hmm, can we split debug/sources for .a ?
 			${STRIP} -g "${x}"
@@ -230,6 +248,10 @@ do
 		process_elf "${x}" ${PORTAGE_STRIP_FLAGS}
 	elif [[ ${f} == *"SB relocatable"* ]] ; then
 		process_elf "${x}" ${SAFE_STRIP_FLAGS}
+	fi
+
+	if ${was_not_writable} ; then
+		chmod u-w "${x}"
 	fi
 done
 

@@ -31,16 +31,16 @@ ACCEPT_PROPERTIES="*"
 
 # Repository Paths
 PORTDIR=/usr/portage
-DISTDIR=/usr/portage/distfiles
-PKGDIR=/usr/portage/packages
-RPMDIR=/usr/portage/rpm
+DISTDIR=${PORTDIR}/distfiles
+PKGDIR=${PORTDIR}/packages
+RPMDIR=${PORTDIR}/rpm
 
 # Temporary build directory
 PORTAGE_TMPDIR=/var/tmp
 
 # Fetching command (3 tries, passive ftp for firewall compatibility)
-FETCHCOMMAND="/usr/bin/wget -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
-RESUMECOMMAND="/usr/bin/wget -c -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
+FETCHCOMMAND="wget -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
+RESUMECOMMAND="wget -c -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
 
 FETCHCOMMAND_RSYNC="rsync -avP \"\${URI}\" \"\${DISTDIR}/\${FILE}\""
 RESUMECOMMAND_RSYNC="rsync -avP \"\${URI}\" \"\${DISTDIR}/\${FILE}\""
@@ -95,7 +95,7 @@ PORTAGE_RSYNC_RETRIES="-1"
 # Number of seconds rsync will wait before timing out.
 #RSYNC_TIMEOUT="180"
 
-PORTAGE_RSYNC_OPTS="--recursive --links --safe-links --perms --times --compress --force --whole-file --delete --stats --timeout=180 --exclude=/distfiles --exclude=/local --exclude=/packages"
+PORTAGE_RSYNC_OPTS="--recursive --links --safe-links --perms --times --compress --force --whole-file --delete --stats --human-readable --timeout=180 --exclude=/distfiles --exclude=/local --exclude=/packages"
 
 # The number of days after the last `emerge --sync` that a warning
 # message should be produced.
@@ -110,10 +110,6 @@ CONFIG_PROTECT_MASK="/etc/env.d"
 
 # Disable auto-use
 USE_ORDER="env:pkg:conf:defaults:pkginternal:repo:env.d"
-
-# Default ownership of installed files.
-PORTAGE_INST_UID="0"
-PORTAGE_INST_GID="0"
 
 # Mode bits for ${WORKDIR} (see ebuild.5).
 PORTAGE_WORKDIR_MODE="0700"

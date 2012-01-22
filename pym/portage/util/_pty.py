@@ -1,147 +1,20 @@
 # Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import array
-import fcntl
 import platform
 import pty
-import select
-import sys
 import termios
 
-from portage import os, _unicode_decode, _unicode_encode
+from portage import os
 from portage.output import get_term_size, set_term_size
-from portage.process import spawn_bash
 from portage.util import writemsg
 
-def _can_test_pty_eof():
-	"""
-	The _test_pty_eof() function seems to hang on most
-	kernels other than Linux.
-	This was reported for the following kernels which used to work fine
-	without this EOF test: Darwin, AIX, FreeBSD.  They seem to hang on
-	the slave_file.close() call.  Note that Python's implementation of
-	openpty on Solaris already caused random hangs without this EOF test
-	and hence is globally disabled.
-	@rtype: bool
-	@returns: True if _test_pty_eof() won't hang, False otherwise.
-	"""
-	return platform.system() in ("Linux",)
-
-def _test_pty_eof(fdopen_buffered=False):
-	"""
-	Returns True if this issues is fixed for the currently
-	running version of python: http://bugs.python.org/issue5380
-	Raises an EnvironmentError from openpty() if it fails.
-
-	NOTE: This issue is only problematic when array.fromfile()
-	is used, rather than os.read(). However, array.fromfile()
-	is preferred since it is approximately 10% faster.
-
-	New development: It appears that array.fromfile() is usable
-	with python3 as long as fdopen is called with a bufsize
-	argument of 0.
-	"""
-
-	use_fork = False
-
-	test_string = 2 * "blah blah blah\n"
-	test_string = _unicode_decode(test_string,
-		encoding='utf_8', errors='strict')
-
-	# may raise EnvironmentError
-	master_fd, slave_fd = pty.openpty()
-
-	# Non-blocking mode is required for Darwin kernel.
-	fcntl.fcntl(master_fd, fcntl.F_SETFL,
-		fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
-
-	# Disable post-processing of output since otherwise weird
-	# things like \n -> \r\n transformations may occur.
-	mode = termios.tcgetattr(slave_fd)
-	mode[1] &= ~termios.OPOST
-	termios.tcsetattr(slave_fd, termios.TCSANOW, mode)
-
-	# Simulate a subprocess writing some data to the
-	# slave end of the pipe, and then exiting.
-	pid = None
-	if use_fork:
-		pids = spawn_bash(_unicode_encode("echo -n '%s'" % test_string,
-			encoding='utf_8', errors='strict'), env=os.environ,
-			fd_pipes={0:sys.stdin.fileno(), 1:slave_fd, 2:slave_fd},
-			returnpid=True)
-		if isinstance(pids, int):
-			os.close(master_fd)
-			os.close(slave_fd)
-			raise EnvironmentError('spawn failed')
-		pid = pids[0]
-	else:
-		os.write(slave_fd, _unicode_encode(test_string,
-			encoding='utf_8', errors='strict'))
-	os.close(slave_fd)
-
-	# If using a fork, we must wait for the child here,
-	# in order to avoid a race condition that would
-	# lead to inconsistent results.
-	if pid is not None:
-		os.waitpid(pid, 0)
-
-	if fdopen_buffered:
-		master_file = os.fdopen(master_fd, 'rb')
-	else:
-		master_file = os.fdopen(master_fd, 'rb', 0)
-	eof = False
-	data = []
-	iwtd = [master_file]
-	owtd = []
-	ewtd = []
-
-	while not eof:
-
-		events = select.select(iwtd, owtd, ewtd)
-		if not events[0]:
-			eof = True
-			break
-
-		buf = array.array('B')
-		try:
-			buf.fromfile(master_file, 1024)
-		except (EOFError, IOError):
-			eof = True
-
-		if not buf:
-			eof = True
-		else:
-			try:
-				# Python >=3.2
-				data.append(buf.tobytes())
-			except AttributeError:
-				data.append(buf.tostring())
-
-	master_file.close()
-
-	return test_string == _unicode_decode(b''.join(data), encoding='utf_8', errors='strict')
-
-# If _test_pty_eof() can't be used for runtime detection of
-# http://bugs.python.org/issue5380, openpty can't safely be used
-# unless we can guarantee that the current version of python has
-# been fixed (affects all current versions of python3). When
-# this issue is fixed in python3, we can add another sys.hexversion
-# conditional to enable openpty support in the fixed versions.
-if sys.hexversion >= 0x3000000 and not _can_test_pty_eof():
-	_disable_openpty = True
-else:
-	# Disable the use of openpty on Solaris as it seems Python's openpty
-	# implementation doesn't play nice on Solaris with Portage's
-	# behaviour causing hangs/deadlocks.
-	# Additional note for the future: on Interix, pipes do NOT work, so
-	# _disable_openpty on Interix must *never* be True
-	_disable_openpty = platform.system() in ("SunOS",)
-_tested_pty = False
-
-if not _can_test_pty_eof():
-	# Skip _test_pty_eof() on systems where it hangs.
-	_tested_pty = True
+# Disable the use of openpty on Solaris as it seems Python's openpty
+# implementation doesn't play nice on Solaris with Portage's
+# behaviour causing hangs/deadlocks.
+# Additional note for the future: on Interix, pipes do NOT work, so
+# _disable_openpty on Interix must *never* be True
+_disable_openpty = platform.system() in ("SunOS",)
 
 _fbsd_test_pty = platform.system() == 'FreeBSD'
 
@@ -161,17 +34,7 @@ def _create_pty_or_pipe(copy_term_size=None):
 
 	got_pty = False
 
-	global _disable_openpty, _fbsd_test_pty, _tested_pty
-	if not (_tested_pty or _disable_openpty):
-		try:
-			if not _test_pty_eof():
-				_disable_openpty = True
-		except EnvironmentError as e:
-			_disable_openpty = True
-			writemsg("openpty failed: '%s'\n" % str(e),
-				noiselevel=-1)
-			del e
-		_tested_pty = True
+	global _disable_openpty, _fbsd_test_pty
 
 	if _fbsd_test_pty and not _disable_openpty:
 		# Test for python openpty breakage after freebsd7 to freebsd8

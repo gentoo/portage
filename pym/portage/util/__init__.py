@@ -25,6 +25,7 @@ import stat
 import string
 import sys
 import traceback
+import glob
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -387,7 +388,9 @@ def read_corresponding_eapi_file(filename):
 	default = "0"
 	eapi_file = os.path.join(os.path.dirname(filename), "eapi")
 	try:
-		f = open(eapi_file, "r")
+		f = io.open(_unicode_encode(eapi_file,
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['repo.content'], errors='replace')
 		lines = f.readlines()
 		if len(lines) == 1:
 			eapi = lines[0].rstrip("\n")
@@ -503,14 +506,15 @@ def writedict(mydict,myfilename,writekey=True):
 
 def shlex_split(s):
 	"""
-	This is equivalent to shlex.split but it temporarily encodes unicode
-	strings to bytes since shlex.split() doesn't handle unicode strings.
+	This is equivalent to shlex.split, but if the current interpreter is
+	python2, it temporarily encodes unicode strings to bytes since python2's
+	shlex.split() doesn't handle unicode strings.
 	"""
-	is_unicode = sys.hexversion < 0x3000000 and isinstance(s, unicode)
-	if is_unicode:
+	convert_to_bytes = sys.hexversion < 0x3000000 and not isinstance(s, bytes)
+	if convert_to_bytes:
 		s = _unicode_encode(s)
 	rval = shlex.split(s)
-	if is_unicode:
+	if convert_to_bytes:
 		rval = [_unicode_decode(x) for x in rval]
 	return rval
 
@@ -1594,13 +1598,27 @@ def find_updated_config_files(target_root, config_protect):
 					else:
 						yield (x, None)
 
+_ld_so_include_re = re.compile(r'^include\s+(\S.*)')
+
 def getlibpaths(root, env=None):
+	def read_ld_so_conf(path):
+		for l in grabfile(path):
+			include_match = _ld_so_include_re.match(l)
+			if include_match is not None:
+				subpath = os.path.join(os.path.dirname(path),
+					include_match.group(1))
+				for p in glob.glob(subpath):
+					for r in read_ld_so_conf(p):
+						yield r
+			else:
+				yield l
+
 	""" Return a list of paths that are used for library lookups """
 	if env is None:
 		env = os.environ
 	# the following is based on the information from ld.so(8)
 	rval = env.get("LD_LIBRARY_PATH", "").split(":")
-	rval.extend(grabfile(os.path.join(root, "etc", "ld.so.conf")))
+	rval.extend(read_ld_so_conf(os.path.join(root, "etc", "ld.so.conf")))
 	rval.append("/usr/lib")
 	rval.append("/lib")
 

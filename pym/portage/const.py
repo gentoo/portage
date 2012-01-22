@@ -88,9 +88,10 @@ EBUILD_PHASES            = ("pretend", "setup", "unpack", "prepare", "configure"
 SUPPORTED_FEATURES       = frozenset([
                            "assume-digests", "binpkg-logs", "buildpkg", "buildsyspkg", "candy",
                            "ccache", "chflags", "clean-logs",
-                           "collision-protect", "compress-build-logs",
+                           "collision-protect", "compress-build-logs", "compressdebug",
+                           "config-protect-if-modified",
                            "digest", "distcc", "distcc-pump", "distlocks", "ebuild-locks", "fakeroot",
-                           "fail-clean", "force-mirror", "getbinpkg",
+                           "fail-clean", "force-mirror", "force-prefix", "getbinpkg",
                            "installsources", "keeptemp", "keepwork", "fixlafiles", "lmirror",
                            "metadata-transfer", "mirror", "multilib-strict", "news",
                            "noauto", "noclean", "nodoc", "noinfo", "noman",
@@ -103,7 +104,7 @@ SUPPORTED_FEATURES       = frozenset([
                            "strict", "stricter", "suidctl", "test", "test-fail-continue",
                            "unknown-features-filter", "unknown-features-warn",
                            "unmerge-logs", "unmerge-orphans", "userfetch", "userpriv",
-                           "usersandbox", "usersync", "webrsync-gpg"])
+                           "usersandbox", "usersync", "webrsync-gpg", "xattr"])
 
 EAPI                     = 4
 
@@ -140,6 +141,20 @@ MANIFEST2_HASH_DEFAULTS = frozenset(["SHA1", "SHA256", "RMD160"])
 MANIFEST2_REQUIRED_HASH  = "SHA256"
 
 MANIFEST2_IDENTIFIERS    = ("AUX", "MISC", "DIST", "EBUILD")
+
+# The EPREFIX for the current install is hardcoded here, but access to this
+# constant should be minimal, in favor of access via the EPREFIX setting of
+# a config instance (since it's possible to contruct a config instance with
+# a different EPREFIX). Therefore, the EPREFIX constant should *NOT* be used
+# in the definition of any other constants within this file.
+EPREFIX=""
+
+# pick up EPREFIX from the environment if set
+if "PORTAGE_OVERRIDE_EPREFIX" in os.environ:
+	EPREFIX = os.environ["PORTAGE_OVERRIDE_EPREFIX"]
+	if EPREFIX:
+		EPREFIX = os.path.normpath(EPREFIX)
+
 # ===========================================================================
 # END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANT
 # ===========================================================================
@@ -150,7 +165,7 @@ _ENABLE_DYN_LINK_MAP    = True
 _ENABLE_PRESERVE_LIBS   = True
 _ENABLE_REPO_NAME_WARN  = True
 _ENABLE_SET_CONFIG      = True
-_SANDBOX_COMPAT_LEVEL   = "22"
+_ENABLE_XATTR           = True
 
 
 # The definitions above will differ between branches, so it's useful to have
@@ -163,3 +178,8 @@ if not _ENABLE_PRESERVE_LIBS:
 
 if not _ENABLE_SET_CONFIG:
 	WORLD_SETS_FILE = '/dev/null'
+
+if not _ENABLE_XATTR:
+	SUPPORTED_FEATURES = set(SUPPORTED_FEATURES)
+	SUPPORTED_FEATURES.remove("xattr")
+	SUPPORTED_FEATURES = frozenset(SUPPORTED_FEATURES)

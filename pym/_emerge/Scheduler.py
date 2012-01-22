@@ -7,10 +7,8 @@ from collections import deque
 import gc
 import gzip
 import logging
-import shutil
 import signal
 import sys
-import tempfile
 import textwrap
 import time
 import warnings
@@ -28,9 +26,11 @@ from portage.output import colorize, create_color_func, red
 bad = create_color_func("BAD")
 from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
-from portage.util import writemsg, writemsg_level
+from portage.util import ensure_dirs, writemsg, writemsg_level
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
+from portage.package.ebuild.doebuild import (_check_temp_dir,
+	_prepare_self_update)
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
 
 import _emerge
@@ -44,6 +44,7 @@ from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.create_world_atom import create_world_atom
 from _emerge.DepPriority import DepPriority
 from _emerge.depgraph import depgraph, resume_depgraph
+from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildFetcher import EbuildFetcher
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.emergelog import emergelog
@@ -52,11 +53,9 @@ from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_dep
 from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
 from _emerge.JobStatusDisplay import JobStatusDisplay
 from _emerge.MergeListItem import MergeListItem
-from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.Package import Package
 from _emerge.PackageMerge import PackageMerge
 from _emerge.PollScheduler import PollScheduler
-from _emerge.RootConfig import RootConfig
 from _emerge.SlotObject import SlotObject
 from _emerge.SequentialTaskQueue import SequentialTaskQueue
 
@@ -77,11 +76,8 @@ class Scheduler(PollScheduler):
 		frozenset(["--pretend",
 		"--fetchonly", "--fetch-all-uri"])
 
-	_opts_no_restart = frozenset(["--buildpkgonly",
+	_opts_no_self_update = frozenset(["--buildpkgonly",
 		"--fetchonly", "--fetch-all-uri", "--pretend"])
-
-	_bad_resume_opts = set(["--ask", "--changelog",
-		"--resume", "--skipfirst"])
 
 	class _iface_class(SlotObject):
 		__slots__ = ("fetch",
@@ -151,7 +147,7 @@ class Scheduler(PollScheduler):
 				DeprecationWarning, stacklevel=2)
 
 		self.settings = settings
-		self.target_root = settings["ROOT"]
+		self.target_root = settings["EROOT"]
 		self.trees = trees
 		self.myopts = myopts
 		self._spinner = spinner
@@ -207,10 +203,7 @@ class Scheduler(PollScheduler):
 		if max_jobs is None:
 			max_jobs = 1
 		self._set_max_jobs(max_jobs)
-
-		# The root where the currently running
-		# portage instance is installed.
-		self._running_root = trees["/"]["root_config"]
+		self._running_root = trees[trees._running_eroot]["root_config"]
 		self.edebug = 0
 		if settings.get("PORTAGE_DEBUG", "") == "1":
 			self.edebug = 1
@@ -293,6 +286,34 @@ class Scheduler(PollScheduler):
 			cpv = portage_match.pop()
 			self._running_portage = self._pkg(cpv, "installed",
 				self._running_root, installed=True)
+
+	def _handle_self_update(self):
+
+		if self._opts_no_self_update.intersection(self.myopts):
+			return os.EX_OK
+
+		for x in self._mergelist:
+			if not isinstance(x, Package):
+				continue
+			if x.operation != "merge":
+				continue
+			if x.root != self._running_root.root:
+				continue
+			if not portage.dep.match_from_list(
+				portage.const.PORTAGE_PACKAGE_ATOM, [x]):
+				continue
+			if self._running_portage is None or \
+				self._running_portage.cpv != x.cpv or \
+				'9999' in x.cpv or \
+				'git' in x.inherited or \
+				'git-2' in x.inherited:
+				rval = _check_temp_dir(self.settings)
+				if rval != os.EX_OK:
+					return rval
+				_prepare_self_update(self.settings)
+			break
+
+		return os.EX_OK
 
 	def _terminate_tasks(self):
 		self._status_display.quiet = True
@@ -391,7 +412,7 @@ class Scheduler(PollScheduler):
 		"""
 		background = (self._max_jobs is True or \
 			self._max_jobs > 1 or "--quiet" in self.myopts \
-			or "--quiet-build" in self.myopts) and \
+			or self.myopts.get("--quiet-build") == "y") and \
 			not bool(self._opts_no_background.intersection(self.myopts))
 
 		if background:
@@ -404,7 +425,7 @@ class Scheduler(PollScheduler):
 				msg = [""]
 				for pkg in interactive_tasks:
 					pkg_str = "  " + colorize("INFORM", str(pkg.cpv))
-					if pkg.root != "/":
+					if pkg.root_config.settings["ROOT"] != "/":
 						pkg_str += " for " + pkg.root
 					msg.append(pkg_str)
 				msg.append("")
@@ -747,7 +768,6 @@ class Scheduler(PollScheduler):
 			self._status_msg("Starting parallel fetch")
 
 			prefetchers = self._prefetchers
-			getbinpkg = "--getbinpkg" in self.myopts
 
 			for pkg in self._mergelist:
 				# mergelist can contain solved Blocker instances
@@ -791,100 +811,6 @@ class Scheduler(PollScheduler):
 
 		return prefetcher
 
-	def _is_restart_scheduled(self):
-		"""
-		Check if the merge list contains a replacement
-		for the current running instance, that will result
-		in restart after merge.
-		@rtype: bool
-		@returns: True if a restart is scheduled, False otherwise.
-		"""
-		if self._opts_no_restart.intersection(self.myopts):
-			return False
-
-		mergelist = self._mergelist
-
-		for i, pkg in enumerate(mergelist):
-			if self._is_restart_necessary(pkg) and \
-				i != len(mergelist) - 1:
-				return True
-
-		return False
-
-	def _is_restart_necessary(self, pkg):
-		"""
-		@return: True if merging the given package
-			requires restart, False otherwise.
-		"""
-
-		# Figure out if we need a restart.
-		if pkg.root == self._running_root.root and \
-			portage.match_from_list(
-			portage.const.PORTAGE_PACKAGE_ATOM, [pkg]):
-			if self._running_portage is None:
-				return True
-			elif pkg.cpv != self._running_portage.cpv or \
-				'9999' in pkg.cpv or \
-				'git' in pkg.inherited or \
-				'git-2' in pkg.inherited:
-				return True
-		return False
-
-	def _restart_if_necessary(self, pkg):
-		"""
-		Use execv() to restart emerge. This happens
-		if portage upgrades itself and there are
-		remaining packages in the list.
-		"""
-
-		if self._opts_no_restart.intersection(self.myopts):
-			return
-
-		if not self._is_restart_necessary(pkg):
-			return
-
-		if pkg == self._mergelist[-1]:
-			return
-
-		self._main_loop_cleanup()
-
-		logger = self._logger
-		pkg_count = self._pkg_count
-		mtimedb = self._mtimedb
-		bad_resume_opts = self._bad_resume_opts
-
-		logger.log(" ::: completed emerge (%s of %s) %s to %s" % \
-			(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg.root))
-
-		logger.log(" *** RESTARTING " + \
-			"emerge via exec() after change of " + \
-			"portage version.")
-
-		mtimedb["resume"]["mergelist"].remove(list(pkg))
-		mtimedb.commit()
-		portage.run_exitfuncs()
-		# Don't trust sys.argv[0] here because eselect-python may modify it.
-		emerge_binary = os.path.join(portage.const.PORTAGE_BIN_PATH, 'emerge')
-		mynewargv = [emerge_binary, "--resume"]
-		resume_opts = self.myopts.copy()
-		# For automatic resume, we need to prevent
-		# any of bad_resume_opts from leaking in
-		# via EMERGE_DEFAULT_OPTS.
-		resume_opts["--ignore-default-opts"] = True
-		for myopt, myarg in resume_opts.items():
-			if myopt not in bad_resume_opts:
-				if myarg is True:
-					mynewargv.append(myopt)
-				elif isinstance(myarg, list):
-					# arguments like --exclude that use 'append' action
-					for x in myarg:
-						mynewargv.append("%s=%s" % (myopt, x))
-				else:
-					mynewargv.append("%s=%s" % (myopt, myarg))
-		# priority only needs to be adjusted on the first run
-		os.environ["PORTAGE_NICENESS"] = "0"
-		os.execv(mynewargv[0], mynewargv)
-
 	def _run_pkg_pretend(self):
 		"""
 		Since pkg_pretend output may be important, this method sends all
@@ -918,11 +844,48 @@ class Scheduler(PollScheduler):
 			root_config = x.root_config
 			settings = self.pkgsettings[root_config.root]
 			settings.setcpv(x)
-			tmpdir = tempfile.mkdtemp()
-			tmpdir_orig = settings["PORTAGE_TMPDIR"]
-			settings["PORTAGE_TMPDIR"] = tmpdir
+
+			# setcpv/package.env allows for per-package PORTAGE_TMPDIR so we
+			# have to validate it for each package
+			rval = _check_temp_dir(settings)
+			if rval != os.EX_OK:
+				return rval
+
+			build_dir_path = os.path.join(
+				os.path.realpath(settings["PORTAGE_TMPDIR"]),
+				"portage", x.category, x.pf)
+			existing_buildir = os.path.isdir(build_dir_path)
+			settings["PORTAGE_BUILDDIR"] = build_dir_path
+			build_dir = EbuildBuildDir(scheduler=sched_iface,
+				settings=settings)
+			build_dir.lock()
+			current_task = None
 
 			try:
+
+				# Clean up the existing build dir, in case pkg_pretend
+				# checks for available space (bug #390711).
+				if existing_buildir:
+					if x.built:
+						tree = "bintree"
+						infloc = os.path.join(build_dir_path, "build-info")
+						ebuild_path = os.path.join(infloc, x.pf + ".ebuild")
+					else:
+						tree = "porttree"
+						portdb = root_config.trees["porttree"].dbapi
+						ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
+						if ebuild_path is None:
+							raise AssertionError(
+								"ebuild not found for '%s'" % x.cpv)
+					portage.package.ebuild.doebuild.doebuild_environment(
+						ebuild_path, "clean", settings=settings,
+						db=self.trees[settings['EROOT']][tree].dbapi)
+					clean_phase = EbuildPhase(background=False,
+						phase='clean', scheduler=sched_iface, settings=settings)
+					current_task = clean_phase
+					clean_phase.start()
+					clean_phase.wait()
+
 				if x.built:
 					tree = "bintree"
 					bintree = root_config.trees["bintree"].dbapi.bintree
@@ -941,6 +904,7 @@ class Scheduler(PollScheduler):
 
 					verifier = BinpkgVerifier(pkg=x,
 						scheduler=sched_iface)
+					current_task = verifier
 					verifier.start()
 					if verifier.wait() != os.EX_OK:
 						failures += 1
@@ -949,8 +913,8 @@ class Scheduler(PollScheduler):
 					if fetched:
 						bintree.inject(x.cpv, filename=fetched)
 					tbz2_file = bintree.getname(x.cpv)
-					infloc = os.path.join(tmpdir, x.category, x.pf, "build-info")
-					os.makedirs(infloc)
+					infloc = os.path.join(build_dir_path, "build-info")
+					ensure_dirs(infloc)
 					portage.xpak.tbz2(tbz2_file).unpackinfo(infloc)
 					ebuild_path = os.path.join(infloc, x.pf + ".ebuild")
 					settings.configdict["pkg"]["EMERGE_FROM"] = "binary"
@@ -970,7 +934,8 @@ class Scheduler(PollScheduler):
 
 				portage.package.ebuild.doebuild.doebuild_environment(ebuild_path,
 					"pretend", settings=settings,
-					db=self.trees[settings["ROOT"]][tree].dbapi)
+					db=self.trees[settings['EROOT']][tree].dbapi)
+
 				prepare_build_dirs(root_config.root, settings, cleanup=0)
 
 				vardb = root_config.trees['vartree'].dbapi
@@ -982,14 +947,20 @@ class Scheduler(PollScheduler):
 					phase="pretend", scheduler=sched_iface,
 					settings=settings)
 
+				current_task = pretend_phase
 				pretend_phase.start()
 				ret = pretend_phase.wait()
 				if ret != os.EX_OK:
 					failures += 1
 				portage.elog.elog_process(x.cpv, settings)
 			finally:
-				shutil.rmtree(tmpdir)
-				settings["PORTAGE_TMPDIR"] = tmpdir_orig
+				if current_task is not None and current_task.isAlive():
+					current_task.cancel()
+				clean_phase = EbuildPhase(background=False,
+					phase='clean', scheduler=sched_iface, settings=settings)
+				clean_phase.start()
+				clean_phase.wait()
+				build_dir.unlock()
 
 		if failures:
 			return 1
@@ -1008,6 +979,10 @@ class Scheduler(PollScheduler):
 			self._background = self._background_mode()
 		except self._unknown_internal_error:
 			return 1
+
+		rval = self._handle_self_update()
+		if rval != os.EX_OK:
+			return rval
 
 		for root in self.trees:
 			root_config = self.trees[root]["root_config"]
@@ -1137,11 +1112,8 @@ class Scheduler(PollScheduler):
 			# If only one package failed then just show it's
 			# whole log for easy viewing.
 			failed_pkg = self._failed_pkgs_all[-1]
-			build_dir = failed_pkg.build_dir
 			log_file = None
 			log_file_real = None
-
-			log_paths = [failed_pkg.build_log]
 
 			log_path = self._locate_failure_log(failed_pkg)
 			if log_path is not None:
@@ -1238,9 +1210,6 @@ class Scheduler(PollScheduler):
 
 	def _locate_failure_log(self, failed_pkg):
 
-		build_dir = failed_pkg.build_dir
-		log_file = None
-
 		log_paths = [failed_pkg.build_log]
 
 		for log_path in log_paths:
@@ -1282,7 +1251,7 @@ class Scheduler(PollScheduler):
 
 		# Skip this if $ROOT != / since it shouldn't matter if there
 		# are unsatisfied system runtime deps in this case.
-		if pkg.root != '/':
+		if pkg.root_config.settings["ROOT"] != "/":
 			return
 
 		completed_tasks = self._completed_tasks
@@ -1360,8 +1329,6 @@ class Scheduler(PollScheduler):
 		if pkg.installed:
 			return
 
-		self._restart_if_necessary(pkg)
-
 		# Call mtimedb.commit() after each merge so that
 		# --resume still works after being interrupted
 		# by reboot, sigkill or similar.
@@ -1423,7 +1390,6 @@ class Scheduler(PollScheduler):
 
 		self._add_prefetchers()
 		self._add_packages()
-		pkg_queue = self._pkg_queue
 		failed_pkgs = self._failed_pkgs
 		portage.locks._quiet = self._background
 		portage.elog.add_listener(self._elog_listener)
@@ -1563,14 +1529,11 @@ class Scheduler(PollScheduler):
 		return temp_settings
 
 	def _deallocate_config(self, settings):
-		self._config_pool[settings["ROOT"]].append(settings)
+		self._config_pool[settings['EROOT']].append(settings)
 
 	def _main_loop(self):
 
-		# Only allow 1 job max if a restart is scheduled
-		# due to portage update.
-		if self._is_restart_scheduled() or \
-			self._opts_no_background.intersection(self.myopts):
+		if self._opts_no_background.intersection(self.myopts):
 			self._set_max_jobs(1)
 
 		while self._schedule():
@@ -1748,7 +1711,7 @@ class Scheduler(PollScheduler):
 		pkg = failed_pkg.pkg
 		msg = "%s to %s %s" % \
 			(bad("Failed"), action, colorize("INFORM", pkg.cpv))
-		if pkg.root != "/":
+		if pkg.root_config.settings["ROOT"] != "/":
 			msg += " %s %s" % (preposition, pkg.root)
 
 		log_path = self._locate_failure_log(failed_pkg)
@@ -1878,7 +1841,7 @@ class Scheduler(PollScheduler):
 			pkg = task
 			msg = "emerge --keep-going:" + \
 				" %s" % (pkg.cpv,)
-			if pkg.root != "/":
+			if pkg.root_config.settings["ROOT"] != "/":
 				msg += " for %s" % (pkg.root,)
 			msg += " dropped due to unsatisfied dependency."
 			for line in textwrap.wrap(msg, msg_width):

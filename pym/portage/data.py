@@ -1,5 +1,5 @@
 # data.py -- Calculated/Discovered Data Values
-# Copyright 1998-2010 Gentoo Foundation
+# Copyright 1998-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import os, pwd, grp, platform
@@ -58,68 +58,165 @@ def portage_group_warning():
 # If the "wheel" group does not exist then wheelgid falls back to 0.
 # If the "portage" group does not exist then portage_uid falls back to wheelgid.
 
-secpass=0
-
 uid=os.getuid()
 wheelgid=0
-
-if uid==0:
-	secpass=2
-elif "__PORTAGE_TEST_EPREFIX" in os.environ:
-	secpass = 2
 
 try:
 	wheelgid=grp.getgrnam("wheel")[2]
 except KeyError:
 	pass
 
-# Allow the overriding of the user used for 'userpriv' and 'userfetch'
-_portage_uname = os.environ.get('PORTAGE_USERNAME', 'portage')
-_portage_grpname = os.environ.get('PORTAGE_GRPNAME', 'portage')
+# The portage_uid and portage_gid global constants, and others that
+# depend on them are initialized lazily, in order to allow configuration
+# via make.conf. Eventually, these constants may be deprecated in favor
+# of config attributes, since it's conceivable that multiple
+# configurations with different constants could be used simultaneously.
+_initialized_globals = set()
 
-#Discover the uid and gid of the portage user/group
-try:
-	portage_uid = pwd.getpwnam(_portage_uname)[2]
-	portage_gid = grp.getgrnam(_portage_grpname)[2]
-	if secpass < 1 and portage_gid in os.getgroups():
-		secpass=1
-except KeyError:
-	portage_uid=0
-	portage_gid=0
-	userpriv_groups = [portage_gid]
-	writemsg(colorize("BAD",
-		_("portage: 'portage' user or group missing.")) + "\n", noiselevel=-1)
-	writemsg(_(
-		"         For the defaults, line 1 goes into passwd, "
-		"and 2 into group.\n"), noiselevel=-1)
-	writemsg(colorize("GOOD",
-		"         portage:x:250:250:portage:/var/tmp/portage:/bin/false") \
-		+ "\n", noiselevel=-1)
-	writemsg(colorize("GOOD", "         portage::250:portage") + "\n",
-		noiselevel=-1)
-	portage_group_warning()
-else:
-	userpriv_groups = [portage_gid]
-	if secpass >= 2:
-		class _LazyUserprivGroups(portage.proxy.objectproxy.ObjectProxy):
-			def _get_target(self):
-				global userpriv_groups
-				if userpriv_groups is not self:
-					return userpriv_groups
-				userpriv_groups = _userpriv_groups
-				# Get a list of group IDs for the portage user. Do not use
-				# grp.getgrall() since it is known to trigger spurious
-				# SIGPIPE problems with nss_ldap.
-				mystatus, myoutput = \
-					portage.subprocess_getstatusoutput("id -G %s" % _portage_uname)
-				if mystatus == os.EX_OK:
-					for x in myoutput.split():
-						try:
-							userpriv_groups.append(int(x))
-						except ValueError:
-							pass
-					userpriv_groups[:] = sorted(set(userpriv_groups))
-				return userpriv_groups
+def _get_global(k):
+	if k in _initialized_globals:
+		return globals()[k]
 
-		_userpriv_groups = userpriv_groups
-		userpriv_groups = _LazyUserprivGroups()
+	if k in ('portage_gid', 'portage_uid', 'secpass'):
+		global portage_gid, portage_uid, secpass
+		secpass = 0
+		if uid == 0:
+			secpass = 2
+		elif portage.const.EPREFIX:
+			secpass = 2
+		#Discover the uid and gid of the portage user/group
+		try:
+			portage_uid = pwd.getpwnam(_get_global('_portage_username')).pw_uid
+			_portage_grpname = _get_global('_portage_grpname')
+			if platform.python_implementation() == 'PyPy':
+				# Somehow this prevents "TypeError: expected string" errors
+				# from grp.getgrnam() with PyPy 1.7
+				_portage_grpname = str(_portage_grpname)
+			portage_gid = grp.getgrnam(_portage_grpname).gr_gid
+			if secpass < 1 and portage_gid in os.getgroups():
+				secpass = 1
+		except KeyError:
+			portage_uid = 0
+			portage_gid = 0
+			writemsg(colorize("BAD",
+				_("portage: 'portage' user or group missing.")) + "\n", noiselevel=-1)
+			writemsg(_(
+				"         For the defaults, line 1 goes into passwd, "
+				"and 2 into group.\n"), noiselevel=-1)
+			writemsg(colorize("GOOD",
+				"         portage:x:250:250:portage:/var/tmp/portage:/bin/false") \
+				+ "\n", noiselevel=-1)
+			writemsg(colorize("GOOD", "         portage::250:portage") + "\n",
+				noiselevel=-1)
+			portage_group_warning()
+
+		_initialized_globals.add('portage_gid')
+		_initialized_globals.add('portage_uid')
+		_initialized_globals.add('secpass')
+
+		if k == 'portage_gid':
+			return portage_gid
+		elif k == 'portage_uid':
+			return portage_uid
+		elif k == 'secpass':
+			return secpass
+		else:
+			raise AssertionError('unknown name: %s' % k)
+
+	elif k == 'userpriv_groups':
+		v = [portage_gid]
+		if secpass >= 2:
+			# Get a list of group IDs for the portage user. Do not use
+			# grp.getgrall() since it is known to trigger spurious
+			# SIGPIPE problems with nss_ldap.
+			mystatus, myoutput = \
+				portage.subprocess_getstatusoutput("id -G %s" % _portage_username)
+			if mystatus == os.EX_OK:
+				for x in myoutput.split():
+					try:
+						v.append(int(x))
+					except ValueError:
+						pass
+				v = sorted(set(v))
+
+	# Avoid instantiating portage.settings when the desired
+	# variable is set in os.environ.
+	elif k in ('_portage_grpname', '_portage_username'):
+		v = None
+		if k == '_portage_grpname':
+			env_key = 'PORTAGE_GRPNAME'
+		else:
+			env_key = 'PORTAGE_USERNAME'
+
+		if env_key in os.environ:
+			v = os.environ[env_key]
+		elif hasattr(portage, 'settings'):
+			v = portage.settings.get(env_key)
+		elif portage.const.EPREFIX:
+			# For prefix environments, default to the UID and GID of
+			# the top-level EROOT directory. The config class has
+			# equivalent code, but we also need to do it here if
+			# _disable_legacy_globals() has been called.
+			eroot = os.path.join(os.environ.get('ROOT', os.sep),
+				portage.const.EPREFIX.lstrip(os.sep))
+			try:
+				eroot_st = os.stat(eroot)
+			except OSError:
+				pass
+			else:
+				if k == '_portage_grpname':
+					try:
+						grp_struct = grp.getgrgid(eroot_st.st_gid)
+					except KeyError:
+						pass
+					else:
+						v = grp_struct.gr_name
+				else:
+					try:
+						pwd_struct = pwd.getpwuid(eroot_st.st_uid)
+					except KeyError:
+						pass
+					else:
+						v = pwd_struct.pw_name
+
+		if v is None:
+			v = 'portage'
+	else:
+		raise AssertionError('unknown name: %s' % k)
+
+	globals()[k] = v
+	_initialized_globals.add(k)
+	return v
+
+class _GlobalProxy(portage.proxy.objectproxy.ObjectProxy):
+
+	__slots__ = ('_name',)
+
+	def __init__(self, name):
+		portage.proxy.objectproxy.ObjectProxy.__init__(self)
+		object.__setattr__(self, '_name', name)
+
+	def _get_target(self):
+		return _get_global(object.__getattribute__(self, '_name'))
+
+for k in ('portage_gid', 'portage_uid', 'secpass', 'userpriv_groups',
+	'_portage_grpname', '_portage_username'):
+	globals()[k] = _GlobalProxy(k)
+del k
+
+def _init(settings):
+	"""
+	Use config variables like PORTAGE_GRPNAME and PORTAGE_USERNAME to
+	initialize global variables. This allows settings to come from make.conf
+	instead of requiring them to be set in the calling environment.
+	"""
+	if '_portage_grpname' not in _initialized_globals and \
+		'_portage_username' not in _initialized_globals:
+
+		v = settings.get('PORTAGE_GRPNAME', 'portage')
+		globals()['_portage_grpname'] = v
+		_initialized_globals.add('_portage_grpname')
+
+		v = settings.get('PORTAGE_USERNAME', 'portage')
+		globals()['_portage_username'] = v
+		_initialized_globals.add('_portage_username')

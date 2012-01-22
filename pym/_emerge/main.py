@@ -10,6 +10,9 @@ import sys
 import textwrap
 import platform
 import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.news:count_unread_news,display_news_notifications',
+)
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
@@ -63,6 +66,7 @@ options=[
 "--nodeps",       "--noreplace",
 "--nospinner",    "--oneshot",
 "--onlydeps",     "--pretend",
+"--quiet-repo-display",
 "--quiet-unmerge-warn",
 "--resume",
 "--searchdesc",
@@ -92,6 +96,21 @@ shortmapping={
 "u":"--update",
 "v":"--verbose",   "V":"--version"
 }
+
+COWSAY_MOO = """
+
+  Larry loves Gentoo (%s)
+
+ _______________________
+< Have you mooed today? >
+ -----------------------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\ 
+                ||----w |
+                ||     ||
+
+"""
 
 def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 
@@ -234,7 +253,6 @@ def display_preserved_libs(vardbapi, myopts):
 		linkmap = vardbapi._linkmap
 		consumer_map = {}
 		owners = {}
-		linkmap_broken = False
 
 		try:
 			linkmap.rebuild()
@@ -242,7 +260,6 @@ def display_preserved_libs(vardbapi, myopts):
 			writemsg_level("!!! Command Not Found: %s\n" % (e,),
 				level=logging.ERROR, noiselevel=-1)
 			del e
-			linkmap_broken = True
 		else:
 			search_for_owners = set()
 			for cpv in plibdata:
@@ -316,7 +333,7 @@ def post_emerge(myaction, myopts, myfiles,
 	@type myopts: dict
 	@param myfiles: emerge arguments
 	@type myfiles: list
-	@param target_root: The target ROOT for myaction
+	@param target_root: The target EROOT for myaction
 	@type target_root: String
 	@param trees: A dictionary mapping each ROOT to it's package databases
 	@type trees: dict
@@ -327,7 +344,7 @@ def post_emerge(myaction, myopts, myfiles,
 	"""
 
 	root_config = trees[target_root]["root_config"]
-	vardbapi = trees[target_root]["vartree"].dbapi
+	vardbapi = trees[target_root]['vartree'].dbapi
 	settings = vardbapi.settings
 	info_mtimes = mtimedb["info"]
 
@@ -584,11 +601,9 @@ def parse_opts(tmpcmdline, silent=False):
 	myopts = {}
 	myfiles=[]
 
-	global options, shortmapping
-
 	actions = frozenset([
-		"clean", "config", "depclean", "help",
-		"info", "list-sets", "metadata",
+		"clean", "check-news", "config", "depclean", "help",
+		"info", "list-sets", "metadata", "moo",
 		"prune", "regen",  "search",
 		"sync",  "unmerge", "version",
 	])
@@ -828,7 +843,7 @@ def parse_opts(tmpcmdline, silent=False):
 		"--quiet-build": {
 			"help"     : "redirect build output to logs",
 			"type"     : "choice",
-			"choices"  : true_y_or_n
+			"choices"  : true_y_or_n,
 		},
 
 		"--rebuild-if-new-rev": {
@@ -1072,9 +1087,7 @@ def parse_opts(tmpcmdline, silent=False):
 		myoptions.quiet = None
 
 	if myoptions.quiet_build in true_y:
-		myoptions.quiet_build = True
-	else:
-		myoptions.quiet_build = None
+		myoptions.quiet_build = 'y'
 
 	if myoptions.rebuild_if_new_ver in true_y:
 		myoptions.rebuild_if_new_ver = True
@@ -1229,8 +1242,7 @@ def parse_opts(tmpcmdline, silent=False):
 	if myaction is None and myoptions.deselect is True:
 		myaction = 'deselect'
 
-	if myargs and sys.hexversion < 0x3000000 and \
-		not isinstance(myargs[0], unicode):
+	if myargs and isinstance(myargs[0], bytes):
 		for i in range(len(myargs)):
 			myargs[i] = portage._unicode_decode(myargs[i])
 
@@ -1536,17 +1548,18 @@ def repo_name_duplicate_check(trees):
 
 def config_protect_check(trees):
 	for root, root_trees in trees.items():
-		if not root_trees["root_config"].settings.get("CONFIG_PROTECT"):
+		settings = root_trees["root_config"].settings
+		if not settings.get("CONFIG_PROTECT"):
 			msg = "!!! CONFIG_PROTECT is empty"
-			if root != "/":
+			if settings["ROOT"] != "/":
 				msg += " for '%s'" % root
 			msg += "\n"
 			writemsg_level(msg, level=logging.WARN, noiselevel=-1)
 
 def profile_check(trees, myaction):
-	if myaction in ("help", "info", "sync", "version"):
+	if myaction in ("help", "info", "search", "sync", "version"):
 		return os.EX_OK
-	for root, root_trees in trees.items():
+	for root_trees in trees.values():
 		if root_trees["root_config"].settings.profiles:
 			continue
 		# generate some profile related warning messages
@@ -1554,7 +1567,7 @@ def profile_check(trees, myaction):
 		msg = ("Your current profile is invalid. If you have just changed "
 			"your profile configuration, you should revert back to the "
 			"previous configuration. Allowed actions are limited to "
-			"--help, --info, --sync, and --version.")
+			"--help, --info, --search, --sync, and --version.")
 		writemsg_level("".join("!!! %s\n" % l for l in textwrap.wrap(msg, 70)),
 			level=logging.ERROR, noiselevel=-1)
 		return 1
@@ -1600,7 +1613,7 @@ def emerge_main(args=None):
 	# Portage needs to ensure a sane umask for the files it creates.
 	os.umask(0o22)
 	settings, trees, mtimedb = load_emerge_config()
-	portdb = trees[settings["ROOT"]]["porttree"].dbapi
+	portdb = trees[settings['EROOT']]['porttree'].dbapi
 	rval = profile_check(trees, myaction)
 	if rval != os.EX_OK:
 		return rval
@@ -1618,7 +1631,7 @@ def emerge_main(args=None):
 		mtimedb.commit()
 		# Reload the whole config from scratch.
 		settings, trees, mtimedb = load_emerge_config(trees=trees)
-		portdb = trees[settings["ROOT"]]["porttree"].dbapi
+		portdb = trees[settings['EROOT']]['porttree'].dbapi
 
 	xterm_titles = "notitles" not in settings.features
 	if xterm_titles:
@@ -1629,7 +1642,7 @@ def emerge_main(args=None):
 		# Reload the whole config from scratch so that the portdbapi internal
 		# config is updated with new FEATURES.
 		settings, trees, mtimedb = load_emerge_config(trees=trees)
-		portdb = trees[settings["ROOT"]]["porttree"].dbapi
+		portdb = trees[settings['EROOT']]['porttree'].dbapi
 
 	# NOTE: adjust_configs() can map options to FEATURES, so any relevant
 	# options adjustments should be made prior to calling adjust_configs().
@@ -1641,9 +1654,9 @@ def emerge_main(args=None):
 
 	if myaction == 'version':
 		writemsg_stdout(getportageversion(
-			settings["PORTDIR"], settings["ROOT"],
+			settings["PORTDIR"], None,
 			settings.profile_path, settings["CHOST"],
-			trees[settings["ROOT"]]["vartree"].dbapi) + '\n', noiselevel=-1)
+			trees[settings['EROOT']]['vartree'].dbapi) + '\n', noiselevel=-1)
 		return 0
 	elif myaction == 'help':
 		_emerge.help.help()
@@ -1701,20 +1714,11 @@ def emerge_main(args=None):
 	del mytrees, mydb
 
 	if "moo" in myfiles:
-		print("""
-
-  Larry loves Gentoo (""" + platform.system() + """)
-
- _______________________
-< Have you mooed today? >
- -----------------------
-        \   ^__^
-         \  (oo)\_______
-            (__)\       )\/\ 
-                ||----w |
-                ||     ||
-
-""")
+		print(COWSAY_MOO % platform.system())
+		msg = ("The above `emerge moo` display is deprecated. "
+			"Please use `emerge --moo` instead.")
+		for line in textwrap.wrap(msg, 50):
+			print(" %s %s" % (colorize("WARN", "*"), line))
 
 	for x in myfiles:
 		ext = os.path.splitext(x)[1]
@@ -1722,9 +1726,21 @@ def emerge_main(args=None):
 			print(colorize("BAD", "\n*** emerging by path is broken and may not always work!!!\n"))
 			break
 
-	root_config = trees[settings["ROOT"]]["root_config"]
-	if myaction == "list-sets":
+	root_config = trees[settings['EROOT']]['root_config']
+	if myaction == "moo":
+		print(COWSAY_MOO % platform.system())
+		return os.EX_OK
+	elif myaction == "list-sets":
 		writemsg_stdout("".join("%s\n" % s for s in sorted(root_config.sets)))
+		return os.EX_OK
+	elif myaction == "check-news":
+		news_counts = count_unread_news(
+			root_config.trees["porttree"].dbapi,
+			root_config.trees["vartree"].dbapi)
+		if any(news_counts.values()):
+			display_news_notifications(news_counts)
+		elif "--quiet" not in myopts:
+			print("", colorize("GOOD", "*"), "No news items were found.")
 		return os.EX_OK
 
 	ensure_required_sets(trees)
@@ -1875,9 +1891,19 @@ def emerge_main(args=None):
 				encoding=_encodings['content'], errors='replace'))
 		myelogstr=""
 		if myopts:
-			myelogstr=" ".join(myopts)
+			opt_list = []
+			for opt, arg in myopts.items():
+				if arg is True:
+					opt_list.append(opt)
+				elif isinstance(arg, list):
+					# arguments like --exclude that use 'append' action
+					for x in arg:
+						opt_list.append("%s=%s" % (opt, x))
+				else:
+					opt_list.append("%s=%s" % (opt, arg))
+			myelogstr=" ".join(opt_list)
 		if myaction:
-			myelogstr+=" "+myaction
+			myelogstr += " --" + myaction
 		if myfiles:
 			myelogstr += " " + " ".join(oldargs)
 		emergelog(xterm_titles, " *** emerge " + myelogstr)
@@ -1921,7 +1947,7 @@ def emerge_main(args=None):
 	# SEARCH action
 	elif "search"==myaction:
 		validate_ebuild_environment(trees)
-		action_search(trees[settings["ROOT"]]["root_config"],
+		action_search(trees[settings['EROOT']]['root_config'],
 			myopts, myfiles, spinner)
 
 	elif myaction in ('clean', 'depclean', 'deselect', 'prune', 'unmerge'):
@@ -1929,19 +1955,19 @@ def emerge_main(args=None):
 		rval = action_uninstall(settings, trees, mtimedb["ldpath"],
 			myopts, myaction, myfiles, spinner)
 		if not (myaction == 'deselect' or buildpkgonly or fetchonly or pretend):
-			post_emerge(myaction, myopts, myfiles, settings["ROOT"],
+			post_emerge(myaction, myopts, myfiles, settings['EROOT'],
 				trees, mtimedb, rval)
 		return rval
 
 	elif myaction == 'info':
 
 		# Ensure atoms are valid before calling unmerge().
-		vardb = trees[settings["ROOT"]]["vartree"].dbapi
-		portdb = trees[settings["ROOT"]]["porttree"].dbapi
-		bindb = trees[settings["ROOT"]]["bintree"].dbapi
+		vardb = trees[settings['EROOT']]['vartree'].dbapi
+		portdb = trees[settings['EROOT']]['porttree'].dbapi
+		bindb = trees[settings['EROOT']]["bintree"].dbapi
 		valid_atoms = []
 		for x in myfiles:
-			if is_valid_package_atom(x):
+			if is_valid_package_atom(x, allow_repo=True):
 				try:
 					#look at the installed files first, if there is no match
 					#look at the ebuilds, since EAPI 4 allows running pkg_info
@@ -2001,7 +2027,7 @@ def emerge_main(args=None):
 			display_news_notification(root_config, myopts)
 		retval = action_build(settings, trees, mtimedb,
 			myopts, myaction, myfiles, spinner)
-		post_emerge(myaction, myopts, myfiles, settings["ROOT"],
+		post_emerge(myaction, myopts, myfiles, settings['EROOT'],
 			trees, mtimedb, retval)
 
 		return retval

@@ -7,8 +7,10 @@ __all__ = [
 
 import copy
 from itertools import chain
+import grp
 import logging
 import platform
+import pwd
 import re
 import sys
 import warnings
@@ -22,10 +24,9 @@ from portage import bsd_chflags, \
 	load_mod, os, selinux, _unicode_decode
 from portage.const import CACHE_PATH, \
 	DEPCACHE_PATH, INCREMENTALS, MAKE_CONF_FILE, \
-	MODULES_FILE_PATH, PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, \
+	MODULES_FILE_PATH, \
 	PRIVATE_PATH, PROFILE_PATH, USER_CONFIG_PATH, \
 	USER_VIRTUALS_FILE
-from portage.const import _SANDBOX_COMPAT_LEVEL
 from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
 from portage.dbapi.vartree import vartree
@@ -121,6 +122,9 @@ class config(object):
 	virtuals ...etc you look in here.
 	"""
 
+	_constant_keys = frozenset(['PORTAGE_BIN_PATH', 'PORTAGE_GID',
+		'PORTAGE_PYM_PATH'])
+
 	_setcpv_aux_keys = ('DEFINED_PHASES', 'DEPEND', 'EAPI',
 		'INHERITED', 'IUSE', 'REQUIRED_USE', 'KEYWORDS', 'LICENSE', 'PDEPEND',
 		'PROPERTIES', 'PROVIDE', 'RDEPEND', 'SLOT',
@@ -141,7 +145,8 @@ class config(object):
 
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
-		_eprefix=None, local_config=True, env=None, _unmatched_removal=False):
+		eprefix=None, local_config=True, env=None,
+		_unmatched_removal=False):
 		"""
 		@param clone: If provided, init will use deepcopy to copy by value the instance.
 		@type clone: Instance of config class.
@@ -157,8 +162,8 @@ class config(object):
 		@type config_root: String
 		@param target_root: __init__ override of $ROOT env variable.
 		@type target_root: String
-		@param _eprefix: set the EPREFIX variable (private, used by internal tests)
-		@type _eprefix: String
+		@param eprefix: set the EPREFIX variable (default is portage.const.EPREFIX)
+		@type eprefix: String
 		@param local_config: Enables loading of local config (/etc/portage); used most by repoman to
 		ignore local config (keywording and unmasking)
 		@type local_config: Boolean
@@ -169,10 +174,6 @@ class config(object):
 			--unmatched-removal option is given.
 		@type _unmatched_removal: Boolean
 		"""
-
-		# rename local _eprefix variable for convenience
-		eprefix = _eprefix
-		del _eprefix
 
 		# When initializing the global portage.settings instance, avoid
 		# raising exceptions whenever possible since exceptions thrown
@@ -279,9 +280,6 @@ class config(object):
 
 			eprefix = locations_manager.eprefix
 			config_root = locations_manager.config_root
-			self.profiles = locations_manager.profiles
-			self.profile_path = locations_manager.profile_path
-			self.user_profile_dir = locations_manager.user_profile_dir
 			abs_user_config = locations_manager.abs_user_config
 
 			make_conf = getconfig(
@@ -299,6 +297,38 @@ class config(object):
 			target_root = locations_manager.target_root
 			eroot = locations_manager.eroot
 			self.global_config_path = locations_manager.global_config_path
+
+			# The expand_map is used for variable substitution
+			# in getconfig() calls, and the getconfig() calls
+			# update expand_map with the value of each variable
+			# assignment that occurs. Variable substitution occurs
+			# in the following order, which corresponds to the
+			# order of appearance in self.lookuplist:
+			#
+			#   * env.d
+			#   * make.globals
+			#   * make.defaults
+			#   * make.conf
+			#
+			# Notably absent is "env", since we want to avoid any
+			# interaction with the calling environment that might
+			# lead to unexpected results.
+			expand_map = {}
+			self._expand_map = expand_map
+
+			# Allow make.globals to set default paths relative to ${EPREFIX}.
+			expand_map["EPREFIX"] = eprefix
+
+			env_d = getconfig(os.path.join(eroot, "etc", "profile.env"),
+				expand=expand_map)
+
+			make_globals = getconfig(os.path.join(
+				self.global_config_path, 'make.globals'), expand=expand_map)
+			if make_globals is None:
+				make_globals = {}
+
+			for k, v in self._default_globals.items():
+				make_globals.setdefault(k, v)
 
 			if config_incrementals is None:
 				self.incrementals = INCREMENTALS
@@ -341,43 +371,9 @@ class config(object):
 			self.configlist.append({})
 			self.configdict["pkginternal"] = self.configlist[-1]
 
-			self.packages_list = [grabfile_package(os.path.join(x, "packages"), verify_eapi=True) for x in self.profiles]
-			self.packages      = tuple(stack_lists(self.packages_list, incremental=1))
-			del self.packages_list
-			#self.packages = grab_stacked("packages", self.profiles, grabfile, incremental_lines=1)
-
-			# revmaskdict
-			self.prevmaskdict={}
-			for x in self.packages:
-				# Negative atoms are filtered by the above stack_lists() call.
-				if not isinstance(x, Atom):
-					x = Atom(x.lstrip('*'))
-				self.prevmaskdict.setdefault(x.cp, []).append(x)
-
-			# The expand_map is used for variable substitution
-			# in getconfig() calls, and the getconfig() calls
-			# update expand_map with the value of each variable
-			# assignment that occurs. Variable substitution occurs
-			# in the following order, which corresponds to the
-			# order of appearance in self.lookuplist:
-			#
-			#   * env.d
-			#   * make.globals
-			#   * make.defaults
-			#   * make.conf
-			#
-			# Notably absent is "env", since we want to avoid any
-			# interaction with the calling environment that might
-			# lead to unexpected results.
-			expand_map = {}
-			self._expand_map = expand_map
-
-			env_d = getconfig(os.path.join(eroot, "etc", "profile.env"),
-				expand=expand_map)
 			# env_d will be None if profile.env doesn't exist.
 			if env_d:
 				self.configdict["env.d"].update(env_d)
-				expand_map.update(env_d)
 
 			# backupenv is used for calculating incremental variables.
 			if env is None:
@@ -403,40 +399,55 @@ class config(object):
 
 			self.configdict["env"] = LazyItemsDict(self.backupenv)
 
-			for x in (self.global_config_path,):
-				self.mygcfg = getconfig(os.path.join(x, "make.globals"),
-					expand=expand_map)
-				if self.mygcfg:
-					break
-
-			if self.mygcfg is None:
-				self.mygcfg = {}
-
-			for k, v in self._default_globals.items():
-				self.mygcfg.setdefault(k, v)
-
-			self.configlist.append(self.mygcfg)
+			self.configlist.append(make_globals)
 			self.configdict["globals"]=self.configlist[-1]
 
 			self.make_defaults_use = []
-			self.mygcfg = {}
+
+			known_repos = []
+			for confs in [make_globals, make_conf, self.configdict["env"]]:
+				known_repos.extend(confs.get("PORTDIR", '').split())
+				known_repos.extend(confs.get("PORTDIR_OVERLAY", '').split())
+			known_repos = frozenset(known_repos)
+
+			locations_manager.load_profiles(known_repos)
+
+			profiles_complex = locations_manager.profiles_complex
+			self.profiles = locations_manager.profiles
+			self.profile_path = locations_manager.profile_path
+			self.user_profile_dir = locations_manager.user_profile_dir
+
+			packages_list = [grabfile_package(os.path.join(x, "packages"),
+				verify_eapi=True) for x in self.profiles]
+			self.packages = tuple(stack_lists(packages_list, incremental=1))
+
+			# revmaskdict
+			self.prevmaskdict={}
+			for x in self.packages:
+				# Negative atoms are filtered by the above stack_lists() call.
+				if not isinstance(x, Atom):
+					x = Atom(x.lstrip('*'))
+				self.prevmaskdict.setdefault(x.cp, []).append(x)
+
+
+			mygcfg = {}
 			if self.profiles:
 				mygcfg_dlists = [getconfig(os.path.join(x, "make.defaults"),
 					expand=expand_map) for x in self.profiles]
 				self._make_defaults = mygcfg_dlists
-				self.mygcfg = stack_dicts(mygcfg_dlists,
+				mygcfg = stack_dicts(mygcfg_dlists,
 					incrementals=self.incrementals)
-				if self.mygcfg is None:
-					self.mygcfg = {}
-			self.configlist.append(self.mygcfg)
+				if mygcfg is None:
+					mygcfg = {}
+			self.configlist.append(mygcfg)
 			self.configdict["defaults"]=self.configlist[-1]
 
-			self.mygcfg = getconfig(
+			mygcfg = getconfig(
 				os.path.join(config_root, MAKE_CONF_FILE),
 				tolerant=tolerant, allow_sourcing=True,
 				expand=expand_map) or {}
 
-			self.mygcfg.update(getconfig(
+			mygcfg.update(getconfig(
 				os.path.join(abs_user_config, 'make.conf'),
 				tolerant=tolerant, allow_sourcing=True,
 				expand=expand_map) or {})
@@ -461,9 +472,9 @@ class config(object):
 				env_d.pop(k, None)
 
 			for k in profile_only_variables:
-				self.mygcfg.pop(k, None)
+				mygcfg.pop(k, None)
 
-			self.configlist.append(self.mygcfg)
+			self.configlist.append(mygcfg)
 			self.configdict["conf"]=self.configlist[-1]
 
 			self.configlist.append(LazyItemsDict())
@@ -493,13 +504,15 @@ class config(object):
 			self["ROOT"] = target_root
 			self.backup_changes("ROOT")
 
+			# The PORTAGE_OVERRIDE_EPREFIX variable propagates the EPREFIX
+			# of this config instance to any portage commands or API
+			# consumers running in subprocesses.
 			self["EPREFIX"] = eprefix
 			self.backup_changes("EPREFIX")
+			self["PORTAGE_OVERRIDE_EPREFIX"] = eprefix
+			self.backup_changes("PORTAGE_OVERRIDE_EPREFIX")
 			self["EROOT"] = eroot
 			self.backup_changes("EROOT")
-
-			self["PORTAGE_SANDBOX_COMPAT_LEVEL"] = _SANDBOX_COMPAT_LEVEL
-			self.backup_changes("PORTAGE_SANDBOX_COMPAT_LEVEL")
 
 			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
 			self._penvdict = portage.dep.ExtendedAtomDict(dict)
@@ -549,11 +562,11 @@ class config(object):
 				self._repo_make_defaults[repo.name] = d
 
 			#Read package.keywords and package.accept_keywords.
-			self._keywords_manager = KeywordsManager(self.profiles, abs_user_config, \
+			self._keywords_manager = KeywordsManager(profiles_complex, abs_user_config, \
 				local_config, global_accept_keywords=self.configdict["defaults"].get("ACCEPT_KEYWORDS", ""))
 
 			#Read all USE related files from profiles and optionally from user config.
-			self._use_manager = UseManager(self.repositories, self.profiles, abs_user_config, user_config=local_config)
+			self._use_manager = UseManager(self.repositories, profiles_complex, abs_user_config, user_config=local_config)
 			#Initialize all USE related variables we track ourselves.
 			self.usemask = self._use_manager.getUseMask()
 			self.useforce = self._use_manager.getUseForce()
@@ -570,7 +583,7 @@ class config(object):
 					self.configdict["conf"].get("ACCEPT_LICENSE", ""))
 
 			#Read package.mask and package.unmask from profiles and optionally from user config
-			self._mask_manager = MaskManager(self.repositories, self.profiles,
+			self._mask_manager = MaskManager(self.repositories, profiles_complex,
 				abs_user_config, user_config=local_config,
 				strict_umatched_removal=_unmatched_removal)
 
@@ -629,7 +642,10 @@ class config(object):
 			archlist = stack_lists(archlist, incremental=1)
 			self.configdict["conf"]["PORTAGE_ARCHLIST"] = " ".join(archlist)
 
-			pkgprovidedlines = [grabfile(os.path.join(x, "package.provided"), recursive=1) for x in self.profiles]
+			pkgprovidedlines = [grabfile(
+				os.path.join(x.location, "package.provided"),
+				recursive=x.portage1_directories)
+				for x in profiles_complex]
 			pkgprovidedlines = stack_lists(pkgprovidedlines, incremental=1)
 			has_invalid_data = False
 			for x in range(len(pkgprovidedlines)-1, -1, -1):
@@ -672,9 +688,6 @@ class config(object):
 			if "USE_ORDER" not in self:
 				self.backupenv["USE_ORDER"] = "env:pkg:conf:defaults:pkginternal:repo:env.d"
 
-			self["PORTAGE_GID"] = str(portage_gid)
-			self.backup_changes("PORTAGE_GID")
-
 			self.depcachedir = DEPCACHE_PATH
 			if eprefix:
 				# See comments about make.globals and EPREFIX
@@ -713,19 +726,48 @@ class config(object):
 					self["USERLAND"] = "GNU"
 				self.backup_changes("USERLAND")
 
-			self["PORTAGE_BIN_PATH"] = PORTAGE_BIN_PATH
-			self.backup_changes("PORTAGE_BIN_PATH")
-			self["PORTAGE_PYM_PATH"] = PORTAGE_PYM_PATH
-			self.backup_changes("PORTAGE_PYM_PATH")
+			default_inst_ids = {
+				"PORTAGE_INST_GID": "0",
+				"PORTAGE_INST_UID": "0",
+			}
 
-			for var in ("PORTAGE_INST_UID", "PORTAGE_INST_GID"):
+			if eprefix:
+				# For prefix environments, default to the UID and GID of
+				# the top-level EROOT directory.
 				try:
-					self[var] = str(int(self.get(var, "0")))
+					eroot_st = os.stat(eroot)
+				except OSError:
+					pass
+				else:
+					default_inst_ids["PORTAGE_INST_GID"] = str(eroot_st.st_gid)
+					default_inst_ids["PORTAGE_INST_UID"] = str(eroot_st.st_uid)
+
+					if "PORTAGE_USERNAME" not in self:
+						try:
+							pwd_struct = pwd.getpwuid(eroot_st.st_uid)
+						except KeyError:
+							pass
+						else:
+							self["PORTAGE_USERNAME"] = pwd_struct.pw_name
+							self.backup_changes("PORTAGE_USERNAME")
+
+					if "PORTAGE_GRPNAME" not in self:
+						try:
+							grp_struct = grp.getgrgid(eroot_st.st_gid)
+						except KeyError:
+							pass
+						else:
+							self["PORTAGE_GRPNAME"] = grp_struct.gr_name
+							self.backup_changes("PORTAGE_GRPNAME")
+
+			for var, default_val in default_inst_ids.items():
+				try:
+					self[var] = str(int(self.get(var, default_val)))
 				except ValueError:
 					writemsg(_("!!! %s='%s' is not a valid integer.  "
-						"Falling back to '0'.\n") % (var, self[var]),
+						"Falling back to %s.\n") % (var, self[var], default_val),
 						noiselevel=-1)
-					self[var] = "0"
+					self[var] = default_val
 				self.backup_changes(var)
 
 			# initialize self.features
@@ -741,13 +783,23 @@ class config(object):
 
 			self._validate_commands()
 
-		for k in self._case_insensitive_vars:
-			if k in self:
-				self[k] = self[k].lower()
-				self.backup_changes(k)
+			for k in self._case_insensitive_vars:
+				if k in self:
+					self[k] = self[k].lower()
+					self.backup_changes(k)
+
+			# The first constructed config object initializes these modules,
+			# and subsequent calls to the _init() functions have no effect.
+			portage.output._init(config_root=self['PORTAGE_CONFIGROOT'])
+			portage.data._init(self)
 
 		if mycpv:
 			self.setcpv(mycpv)
+
+	@property
+	def mygcfg(self):
+		warnings.warn("portage.config.mygcfg is deprecated", stacklevel=3)
+		return {}
 
 	def _validate_commands(self):
 		for k in special_env_vars.validate_commands:
@@ -1136,8 +1188,11 @@ class config(object):
 				# packages since we want to save it PORTAGE_BUILT_USE for
 				# evaluating conditional USE deps in atoms passed via IPC to
 				# helpers like has_version and best_version.
+				aux_keys = set(aux_keys)
+				if hasattr(mydb, '_aux_cache_keys'):
+					aux_keys = aux_keys.intersection(mydb._aux_cache_keys)
+				aux_keys.add('USE')
 				aux_keys = list(aux_keys)
-				aux_keys.append('USE')
 				for k, v in zip(aux_keys, mydb.aux_get(self.mycpv, aux_keys)):
 					pkg_configdict[k] = v
 				built_use = frozenset(pkg_configdict.pop('USE').split())
@@ -2067,25 +2122,43 @@ class config(object):
 				self._virtuals_manager._treeVirtuals = {}
 
 	def __delitem__(self,mykey):
-		self.modifying()
-		for x in self.lookuplist:
-			if x != None:
-				if mykey in x:
-					del x[mykey]
+		self.pop(mykey)
 
-	def __getitem__(self,mykey):
+	def __getitem__(self, key):
+		try:
+			return self._getitem(key)
+		except KeyError:
+			return '' # for backward compat, don't raise KeyError
+
+	def _getitem(self, mykey):
+
+		if mykey in self._constant_keys:
+			# These two point to temporary values when
+			# portage plans to update itself.
+			if mykey == "PORTAGE_BIN_PATH":
+				return portage._bin_path
+			elif mykey == "PORTAGE_PYM_PATH":
+				return portage._pym_path
+
+			elif mykey == "PORTAGE_GID":
+				return _unicode_decode(str(portage_gid))
+
 		for d in self.lookuplist:
-			if mykey in d:
+			try:
 				return d[mykey]
-		return '' # for backward compat, don't raise KeyError
+			except KeyError:
+				pass
+
+		raise KeyError(mykey)
 
 	def get(self, k, x=None):
-		for d in self.lookuplist:
-			if k in d:
-				return d[k]
-		return x
+		try:
+			return self._getitem(k)
+		except KeyError:
+			return x
 
 	def pop(self, key, *args):
+		self.modifying()
 		if len(args) > 1:
 			raise TypeError(
 				"pop expected at most 2 arguments, got " + \
@@ -2101,10 +2174,12 @@ class config(object):
 
 	def __contains__(self, mykey):
 		"""Called to implement membership test operators (in and not in)."""
-		for d in self.lookuplist:
-			if mykey in d:
-				return True
-		return False
+		try:
+			 self._getitem(mykey)
+		except KeyError:
+			return False
+		else:
+			return True
 
 	def setdefault(self, k, x=None):
 		v = self.get(k)
@@ -2119,6 +2194,7 @@ class config(object):
 
 	def __iter__(self):
 		keys = set()
+		keys.update(self._constant_keys)
 		for d in self.lookuplist:
 			keys.update(d)
 		return iter(keys)
@@ -2128,7 +2204,7 @@ class config(object):
 
 	def iteritems(self):
 		for k in self:
-			yield (k, self[k])
+			yield (k, self._getitem(k))
 
 	def items(self):
 		return list(self.iteritems())
@@ -2210,8 +2286,14 @@ class config(object):
 		if not eapi_exports_merge_type(eapi):
 			mydict.pop("MERGE_TYPE", None)
 
-		# Prefix variables are supported starting with EAPI 3.
-		if phase == 'depend' or eapi is None or not eapi_supports_prefix(eapi):
+		# Prefix variables are supported beginning with EAPI 3, or when
+		# force-prefix is in FEATURES, since older EAPIs would otherwise be
+		# useless with prefix configurations. This brings compatibility with
+		# the prefix branch of portage, which also supports EPREFIX for all
+		# EAPIs (for obvious reasons).
+		if phase == 'depend' or \
+			('force-prefix' not in self.features and
+			eapi is not None and not eapi_supports_prefix(eapi)):
 			mydict.pop("ED", None)
 			mydict.pop("EPREFIX", None)
 			mydict.pop("EROOT", None)

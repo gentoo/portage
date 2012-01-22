@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "August 2011" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Dec 2011" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -210,7 +210,7 @@ SRC_URI digests are correct.  This feature also affects digest generation via
 \fBebuild\fR(1) and \fBemerge\fR(1) (emerge generates digests only when the
 \fIdigest\fR feature is enabled). Existing digests for files that do not exist
 in ${DISTDIR} will be automatically assumed even when \fIassume\-digests\fR is
-not enabled. If a file exists in ${DISTDIR} but it's size does not match the
+not enabled. If a file exists in ${DISTDIR} but its size does not match the
 existing digest, the digest will be regenerated regardless of whether or
 not \fIassume\-digests\fR is enabled. The \fBebuild\fR(1) \fBdigest\fR command
 has a \fB\-\-force\fR option that can be used to force regeneration of digests.
@@ -259,6 +259,16 @@ The causes all build logs to be compressed while they are being written.
 Log file names have an extension that is appropriate for the compression
 type. Currently, only \fBgzip\fR(1) compression is supported, so build
 logs will have a '.gz' extension when this feature is enabled.
+.TP
+.B compressdebug
+Compress the debug sections in the split debug files with zlib to save
+space.  Make sure you have built both binutils and gdb with USE=zlib
+support for this to work.  See \fBsplitdebug\fR for general split debug
+information (upon which this feature depends).
+.TP
+.B config\-protect\-if\-modified
+This causes the \fBCONFIG_PROTECT\fR behavior to be skipped for files
+that have not been modified since they were installed.
 .TP
 .B digest
 Autogenerate digests for packages when running the
@@ -321,6 +331,12 @@ fixes (order of flags, duplicated entries, ...)
 .B force\-mirror
 Only fetch files from configured mirrors, ignoring \fBSRC_URI\fR,
 except when \fImirror\fR is in the \fBebuild\fR(5) \fBRESTRICT\fR variable.
+.TP
+.B force\-prefix
+Enable prefix support for all ebuilds, regardless of EAPI, since older EAPIs
+would otherwise be useless with prefix configurations. This brings
+compatibility with the prefix branch of portage, which also supports EPREFIX
+for all EAPIs (for obvious reasons).
 .TP
 .B lmirror
 When \fImirror\fR is enabled in \fBFEATURES\fR, fetch files even
@@ -399,6 +415,12 @@ before computing checksums for merge and unmerge. This feature is
 useful only if \fBprelink\fR(8) is installed and accurate checksums (despite
 prelinking) are needed for some reason such as for checking the integrity of
 installed files or because the \fIunmerge\-orphans\fR feature is disabled.
+
+Note that normal emerging of packages from source computes the
+checksums before things will be prelinked, so in such cases, this
+feature isn't required either. Undoing prelinking while merging is
+only required when using tools like \fBquickpkg\fR(1) which can cause
+already prelinked files to be merged.
 .TP
 .B preserve\-libs
 Preserve libraries when the sonames change during upgrade or downgrade.
@@ -460,7 +482,9 @@ instead of using \fBPORT_LOGDIR\fR directly.
 .B splitdebug
 Prior to stripping ELF etdyn and etexec files, the debugging info is 
 stored for later use by various debuggers.  This feature is disabled by
-\fBnostrip\fR.  For installation of source code, see \fBinstallsources\fR.
+\fBnostrip\fR.  You should also consider setting \fBcompressdebug\fR so
+the files don't suck up a lot of space.  For installation of source code,
+see \fBinstallsources\fR.
 .TP
 .B strict
 Have portage react strongly to conditions that have the potential to be 
@@ -519,6 +543,10 @@ operations.
 .TP
 .B webrsync-gpg
 Enable GPG verification when using \fIemerge\-webrsync\fR.
+.TP
+.B xattr
+Preserve extended attributes (filesystem-stored metadata) when installing
+files (see \fBattr\fR(1)).
 .RE
 .TP
 .B FETCHCOMMAND
@@ -798,9 +826,14 @@ settings from ebuilds.  See also \fBebuild\fR(5).
 Set this to cause portage to ignore any \fIQA_TEXTREL\fR override
 settings from ebuilds.  See also \fBebuild\fR(5).
 .TP
+\fBQA_STRICT_FLAGS_IGNORED = \fI"set"\fR
+Set this to cause portage to ignore any \fIQA_FLAGS_IGNORED\fR override
+settings from ebuilds.  See also \fBebuild\fR(5).
+.TP
 \fBQA_STRICT_DT_HASH = \fI"set"\fR
 Set this to cause portage to ignore any \fIQA_DT_HASH\fR override
-settings from ebuilds.  See also \fBebuild\fR(5).
+settings from ebuilds. This variable is deprecated. Use
+\fIQA_STRICT_FLAGS_IGNORED\fR instead.
 .TP
 \fBQA_STRICT_PRESTRIPPED = \fI"set"\fR
 Set this to cause portage to ignore any \fIQA_PRESTRIPPED\fR override
@@ -871,16 +904,19 @@ Per\-package USE from \fB/etc/portage/package.use\fR (see \fBportage\fR(5))
 USE from make.conf
 .TP
 .B defaults
-USE from make.defaults and package.use in the profile (see \fBportage\fR(5))
+USE from make.defaults and package.use in the profile
+(e.g. /etc/portage/make.profile/package.use) (see \fBportage\fR(5))
 .TP
 .B pkginternal
 USE from \fBebuild\fR(5) IUSE defaults
 .TP
 .B repo
-USE from make.defaults and package.use in the repo (see \fBportage\fR(5))
+USE from make.defaults and package.use in the repo's profiles/ top dir
+(e.g. /usr/portage/profiles/package.use) (see \fBportage\fR(5))
 .TP
 .B env.d
-USE from the environment variables defined by files in \fI/etc/env.d/\fR
+USE from the environment variables, such as LINGUAS, defined by files in
+\fI/etc/env.d/\fR
 .RE
 
 .SH "REPORTING BUGS"

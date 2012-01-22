@@ -361,15 +361,15 @@ class Package(Task):
 			% (portage.output.colorize(cpv_color, self.cpv + _repo_separator + self.repo) , self.type_name)
 
 		if self.type_name == "installed":
-			if self.root != "/":
-				s += " in '%s'" % self.root
+			if self.root_config.settings['ROOT'] != "/":
+				s += " in '%s'" % self.root_config.settings['ROOT']
 			if self.operation == "uninstall":
 				s += " scheduled for uninstall"
 		else:
 			if self.operation == "merge":
 				s += " scheduled for merge"
-				if self.root != "/":
-					s += " to '%s'" % self.root
+				if self.root_config.settings['ROOT'] != "/":
+					s += " to '%s'" % self.root_config.settings['ROOT']
 		s += ")"
 		return s
 

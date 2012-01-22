@@ -34,10 +34,10 @@ import sys
 import time
 import textwrap
 import difflib
-import shutil
 from tempfile import mkstemp
 
 from portage import os
+from portage import shutil
 from portage import subprocess_getstatusoutput
 from portage import _encodings
 from portage import _unicode_decode
@@ -522,6 +522,10 @@ def FindVCS():
 	else:
 		outvcs = seek()
 
+	if len(outvcs) > 1:
+		# eliminate duplicates, like for svn in bug #391199
+		outvcs = list(set(outvcs))
+
 	return outvcs
 
 _copyright_re1 = re.compile(br'^(# Copyright \d\d\d\d)-\d\d\d\d ')
@@ -751,6 +755,10 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 				elif fn in changed:
 					display_changed = [fn]
 					break
+
+		display_new.sort()
+		display_removed.sort()
+		display_changed.sort()
 
 		mesg = '%s; %s %s:' % (date, user, ', '.join(chain(
 			display_new, display_removed, display_changed)))

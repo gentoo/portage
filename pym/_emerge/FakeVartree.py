@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
+import warnings
 
 import portage
 from portage import os
@@ -49,7 +50,6 @@ class FakeVartree(vartree):
 		real_vartree = root_config.trees["vartree"]
 		self._real_vardb = real_vartree.dbapi
 		portdb = root_config.trees["porttree"].dbapi
-		self.root = real_vartree.root
 		self.settings = real_vartree.settings
 		mykeys = list(real_vartree.dbapi._aux_cache_keys)
 		if "_mtime_" not in mykeys:
@@ -57,6 +57,7 @@ class FakeVartree(vartree):
 		self._db_keys = mykeys
 		self._pkg_cache = pkg_cache
 		self.dbapi = FakeVardbapi(real_vartree.settings)
+		self.dbapi._aux_cache_keys = set(self._db_keys)
 
 		# Initialize variables needed for lazy cache pulls of the live ebuild
 		# metadata.  This ensures that the vardb lock is released ASAP, without
@@ -70,6 +71,15 @@ class FakeVartree(vartree):
 		self._portdb_keys = ["EAPI", "DEPEND", "RDEPEND", "PDEPEND"]
 		self._portdb = portdb
 		self._global_updates = None
+
+	@property
+	def root(self):
+		warnings.warn("The root attribute of "
+			"_emerge.FakeVartree.FakeVartree"
+			" is deprecated. Use "
+			"settings['ROOT'] instead.",
+			DeprecationWarning, stacklevel=3)
+		return self.settings['ROOT']
 
 	def _match_wrapper(self, cpv, use_cache=1):
 		"""
@@ -158,8 +168,6 @@ class FakeVartree(vartree):
 		real_vardb = self._root_config.trees["vartree"].dbapi
 		current_cpv_set = frozenset(real_vardb.cpv_all())
 		pkg_vardb = self.dbapi
-		pkg_cache = self._pkg_cache
-		aux_get_history = self._aux_get_history
 
 		# Remove any packages that have been uninstalled.
 		for pkg in list(pkg_vardb):

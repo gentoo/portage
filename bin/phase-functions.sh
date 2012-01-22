@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # Hardcoded bash lists are needed for backward compatibility with
@@ -9,7 +9,7 @@
 
 PORTAGE_READONLY_METADATA="DEFINED_PHASES DEPEND DESCRIPTION
 	EAPI HOMEPAGE INHERITED IUSE REQUIRED_USE KEYWORDS LICENSE
-	PDEPEND PROVIDE RDEPEND RESTRICT SLOT SRC_URI"
+	PDEPEND PROVIDE RDEPEND REPOSITORY RESTRICT SLOT SRC_URI"
 
 PORTAGE_READONLY_VARS="D EBUILD EBUILD_PHASE \
 	EBUILD_SH_ARGS ECLASSDIR EMERGE_FROM FILESDIR MERGE_TYPE \
@@ -21,13 +21,15 @@ PORTAGE_READONLY_VARS="D EBUILD EBUILD_PHASE \
 	PORTAGE_DEBUG PORTAGE_DEPCACHEDIR PORTAGE_EBUILD_EXIT_FILE \
 	PORTAGE_GID PORTAGE_GRPNAME PORTAGE_INST_GID PORTAGE_INST_UID \
 	PORTAGE_IPC_DAEMON PORTAGE_IUSE PORTAGE_LOG_FILE \
-	PORTAGE_MUTABLE_FILTERED_VARS PORTAGE_PYM_PATH PORTAGE_PYTHON \
+	PORTAGE_MUTABLE_FILTERED_VARS PORTAGE_OVERRIDE_EPREFIX \
+	PORTAGE_PYM_PATH PORTAGE_PYTHON \
 	PORTAGE_READONLY_METADATA PORTAGE_READONLY_VARS \
-	PORTAGE_REPO_NAME PORTAGE_RESTRICT PORTAGE_SANDBOX_COMPAT_LEVEL \
+	PORTAGE_REPO_NAME PORTAGE_RESTRICT \
 	PORTAGE_SAVED_READONLY_VARS PORTAGE_SIGPIPE_STATUS \
 	PORTAGE_TMPDIR PORTAGE_UPDATE_ENV PORTAGE_USERNAME \
 	PORTAGE_VERBOSE PORTAGE_WORKDIR_MODE PORTDIR PORTDIR_OVERLAY \
-	PROFILE_PATHS REPLACING_VERSIONS REPLACED_BY_VERSION T WORKDIR"
+	PROFILE_PATHS REPLACING_VERSIONS REPLACED_BY_VERSION T WORKDIR \
+	__PORTAGE_TEST_HARDLINK_LOCKS"
 
 PORTAGE_SAVED_READONLY_VARS="A CATEGORY P PF PN PR PV PVR"
 
@@ -72,6 +74,8 @@ PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
 #
 # ---allow-extra-vars causes some extra vars to be allowd through, such
 # as ${PORTAGE_SAVED_READONLY_VARS} and ${PORTAGE_MUTABLE_FILTERED_VARS}.
+# This is enabled automatically if EMERGE_FROM=binary, since it preserves
+# variables from when the package was originally built.
 #
 # In bash-3.2_p20+ an attempt to assign BASH_*, FUNCNAME, GROUPS or any
 # readonly variable cause the shell to exit while executing the "source"
@@ -81,13 +85,15 @@ filter_readonly_variables() {
 	local x filtered_vars
 	local readonly_bash_vars="BASHOPTS BASHPID DIRSTACK EUID
 		FUNCNAME GROUPS PIPESTATUS PPID SHELLOPTS UID"
-	local bash_misc_vars="BASH BASH_.* COMP_WORDBREAKS HISTCMD
+	local bash_misc_vars="BASH BASH_.* COLUMNS COMP_WORDBREAKS HISTCMD
 		HISTFILE HOSTNAME HOSTTYPE IFS LINENO MACHTYPE OLDPWD
 		OPTERR OPTIND OSTYPE POSIXLY_CORRECT PS4 PWD RANDOM
-		SECONDS SHELL SHLVL"
+		SECONDS SHELL SHLVL _"
 	local filtered_sandbox_vars="SANDBOX_ACTIVE SANDBOX_BASHRC
 		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
 		SANDBOX_LOG SANDBOX_ON"
+	# Untrusted due to possible application of package renames to binpkgs
+	local binpkg_untrusted_vars="CATEGORY P PF PN PR PV PVR"
 	local misc_garbage_vars="_portage_filter_opts"
 	filtered_vars="$readonly_bash_vars $bash_misc_vars
 		$PORTAGE_READONLY_VARS $misc_garbage_vars"
@@ -96,6 +102,8 @@ filter_readonly_variables() {
 	# supported by the current EAPI.
 	case "${EAPI:-0}" in
 		0|1|2)
+			[[ " ${FEATURES} " == *" force-prefix "* ]] && \
+				filtered_vars+=" ED EPREFIX EROOT"
 			;;
 		*)
 			filtered_vars+=" ED EPREFIX EROOT"
@@ -119,11 +127,14 @@ filter_readonly_variables() {
 			LC_NUMERIC LC_PAPER LC_TIME"
 	fi
 	if ! has --allow-extra-vars $* ; then
-		filtered_vars="
-			${filtered_vars}
-			${PORTAGE_SAVED_READONLY_VARS}
-			${PORTAGE_MUTABLE_FILTERED_VARS}
-		"
+		if [ "${EMERGE_FROM}" = binary ] ; then
+			# preserve additional variables from build time,
+			# while excluding untrusted variables
+			filtered_vars+=" ${binpkg_untrusted_vars}"
+		else
+			filtered_vars+=" ${PORTAGE_SAVED_READONLY_VARS}"
+			filtered_vars+=" ${PORTAGE_MUTABLE_FILTERED_VARS}"
+		fi
 	fi
 
 	"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars}" || die "filter-bash-environment.py failed"
@@ -498,8 +509,14 @@ dyn_install() {
 	fi
 	trap "abort_install" SIGINT SIGQUIT
 	ebuild_phase pre_src_install
-	rm -rf "${PORTAGE_BUILDDIR}/image"
-	mkdir "${PORTAGE_BUILDDIR}/image"
+
+	_x=${ED}
+	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+		case "$EAPI" in 0|1|2) _x=${D} ;; esac
+	rm -rf "${D}"
+	mkdir -p "${_x}"
+	unset _x
+
 	if [[ -d $S ]] ; then
 		cd "${S}"
 	elif has $EAPI 0 1 2 3 3_pre2 ; then
@@ -535,7 +552,7 @@ dyn_install() {
 	set -f
 	local f x
 	IFS=$' \t\n\r'
-	for f in CATEGORY DEFINED_PHASES FEATURES INHERITED IUSE REQUIRED_USE \
+	for f in CATEGORY DEFINED_PHASES FEATURES INHERITED IUSE \
 		PF PKGUSE SLOT KEYWORDS HOMEPAGE DESCRIPTION ; do
 		x=$(echo -n ${!f})
 		[[ -n $x ]] && echo "$x" > $f
@@ -550,6 +567,20 @@ dyn_install() {
 	fi
 	echo "${USE}"       > USE
 	echo "${EAPI:-0}"   > EAPI
+
+	# Save EPREFIX, since it makes it easy to use chpathtool to
+	# adjust the content of a binary package so that it will
+	# work in a different EPREFIX from the one is was built for.
+	case "${EAPI:-0}" in
+		0|1|2)
+			[[ " ${FEATURES} " == *" force-prefix "* ]] && \
+				[ -n "${EPREFIX}" ] && echo "${EPREFIX}" > EPREFIX
+			;;
+		*)
+			[ -n "${EPREFIX}" ] && echo "${EPREFIX}" > EPREFIX
+			;;
+	esac
+
 	set +f
 
 	# local variables can leak into the saved environment.

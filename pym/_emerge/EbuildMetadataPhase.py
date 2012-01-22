@@ -10,6 +10,7 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
+import errno
 import fcntl
 import io
 
@@ -63,7 +64,8 @@ class EbuildMetadataPhase(SubProcess):
 		else:
 			fd_pipes = {}
 
-		fd_pipes.setdefault(0, sys.stdin.fileno())
+		null_input = open('/dev/null', 'rb')
+		fd_pipes.setdefault(0, null_input.fileno())
 		fd_pipes.setdefault(1, sys.stdout.fileno())
 		fd_pipes.setdefault(2, sys.stderr.fileno())
 
@@ -74,7 +76,6 @@ class EbuildMetadataPhase(SubProcess):
 			if fd == sys.stderr.fileno():
 				sys.stderr.flush()
 
-		fd_pipes_orig = fd_pipes.copy()
 		self._files = self._files_dict()
 		files = self._files
 
@@ -85,17 +86,18 @@ class EbuildMetadataPhase(SubProcess):
 		fd_pipes[self._metadata_fd] = slave_fd
 
 		self._raw_metadata = []
-		files.ebuild = os.fdopen(master_fd, 'rb', 0)
-		self._reg_id = self.scheduler.register(files.ebuild.fileno(),
+		files.ebuild = master_fd
+		self._reg_id = self.scheduler.register(files.ebuild,
 			self._registered_events, self._output_handler)
 		self._registered = True
 
 		retval = portage.doebuild(ebuild_path, "depend",
-			settings["ROOT"], settings, debug,
+			settings=settings, debug=debug,
 			mydbapi=self.portdb, tree="porttree",
 			fd_pipes=fd_pipes, returnpid=True)
 
 		os.close(slave_fd)
+		null_input.close()
 
 		if isinstance(retval, int):
 			# doebuild failed before spawning
@@ -110,10 +112,19 @@ class EbuildMetadataPhase(SubProcess):
 	def _output_handler(self, fd, event):
 
 		if event & PollConstants.POLLIN:
-			self._raw_metadata.append(self._files.ebuild.read())
-			if not self._raw_metadata[-1]:
-				self._unregister()
-				self.wait()
+			while True:
+				try:
+					self._raw_metadata.append(
+						os.read(self._files.ebuild, self._bufsize))
+				except OSError as e:
+					if e.errno not in (errno.EAGAIN,):
+						raise
+					break
+				else:
+					if not self._raw_metadata[-1]:
+						self._unregister()
+						self.wait()
+						break
 
 		self._unregister_if_appropriate(event)
 

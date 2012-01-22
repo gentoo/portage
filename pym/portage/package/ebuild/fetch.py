@@ -10,7 +10,6 @@ import io
 import logging
 import random
 import re
-import shutil
 import stat
 import sys
 import tempfile
@@ -24,7 +23,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.prepare_build_dirs:prepare_build_dirs',
 )
 
-from portage import OrderedDict, os, selinux, _encodings, \
+from portage import OrderedDict, os, selinux, shutil, _encodings, \
 	_shell_quote, _unicode_encode
 from portage.checksum import hashfunc_map, perform_md5, verify_all
 from portage.const import BASH_BINARY, CUSTOM_MIRRORS_FILE, \
@@ -634,7 +633,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 				match, mystat = _check_distfile(
 					myfile_path, pruned_digests, eout)
 				if match:
-					if distdir_writable:
+					# Skip permission adjustment for symlinks, since we don't
+					# want to modify anything outside of the primary DISTDIR,
+					# and symlinks typically point to PORTAGE_RO_DISTDIRS.
+					if distdir_writable and not os.path.islink(myfile_path):
 						try:
 							apply_secpass_permissions(myfile_path,
 								gid=portage_gid, mode=0o664, mask=0o2,
@@ -748,14 +750,18 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 						raise
 					del e
 				else:
-					try:
-						apply_secpass_permissions(
-							myfile_path, gid=portage_gid, mode=0o664, mask=0o2,
-							stat_cached=mystat)
-					except PortageException as e:
-						if not os.access(myfile_path, os.R_OK):
-							writemsg(_("!!! Failed to adjust permissions:"
-								" %s\n") % str(e), noiselevel=-1)
+					# Skip permission adjustment for symlinks, since we don't
+					# want to modify anything outside of the primary DISTDIR,
+					# and symlinks typically point to PORTAGE_RO_DISTDIRS.
+					if not os.path.islink(myfile_path):
+						try:
+							apply_secpass_permissions(myfile_path,
+								gid=portage_gid, mode=0o664, mask=0o2,
+								stat_cached=mystat)
+						except PortageException as e:
+							if not os.access(myfile_path, os.R_OK):
+								writemsg(_("!!! Failed to adjust permissions:"
+									" %s\n") % (e,), noiselevel=-1)
 
 					# If the file is empty then it's obviously invalid. Remove
 					# the empty file and try to download if possible.

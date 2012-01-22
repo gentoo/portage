@@ -1,8 +1,11 @@
 #!/bin/bash
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+
+[[ " ${FEATURES} " == *" force-prefix "* ]] || \
+	case "$EAPI" in 0|1|2) ED=${D} ;; esac
 
 # Setup ABI cruft
 LIBDIR_VAR="LIBDIR_${ABI}"
@@ -12,7 +15,7 @@ fi
 unset LIBDIR_VAR
 # we need this to default to lib so that things dont break
 CONF_LIBDIR=${CONF_LIBDIR:-lib}
-libdir="${D}${DESTTREE}/${CONF_LIBDIR}"
+libdir="${ED}${DESTTREE}/${CONF_LIBDIR}"
 
 
 if [[ $# -lt 1 ]] ; then

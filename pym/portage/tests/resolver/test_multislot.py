@@ -14,12 +14,12 @@ class MultSlotTestCase(TestCase):
 
 		ebuilds = {
 			"sys-devel/gcc-4.4.4": { "SLOT": "4.4" },
-			"dev-util/nvidia-cuda-toolkit-4.0" : { "RDEPEND": "sys-devel/gcc:4.4"},
+			"dev-util/nvidia-cuda-toolkit-4.0" : {"EAPI": "1", "RDEPEND": "sys-devel/gcc:4.4"},
 			}
 
 		installed = {
 			"sys-devel/gcc-4.4.4": { "SLOT": "i686-pc-linux-gnu-4.4.4" },
-			"dev-util/nvidia-cuda-toolkit-4.0" : { "RDEPEND": "sys-devel/gcc:4.4"},
+			"dev-util/nvidia-cuda-toolkit-4.0" : {"EAPI": "1", "RDEPEND": "sys-devel/gcc:4.4"},
 			}
 
 		world = (

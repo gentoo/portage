@@ -54,7 +54,7 @@ scan() {
 	local my_basename
 
 	for path in ${CONFIG_PROTECT} ; do
-		path="${ROOT}${path}"
+		path="${EROOT}${path}"
 		# Do not traverse hidden directories such as .svn or .git.
 		find_opts="-name .* -type d -prune -o -name ._cfg????_*"
 		if [ ! -d "${path}" ]; then
@@ -74,7 +74,7 @@ scan() {
 			rpath=$(echo "${file/\/\///}" | sed -e "s:/[^/]*$::")
 			rfile=$(echo "${file/\/\///}" | sed -e "s:^.*/::")
 			for mpath in ${CONFIG_PROTECT_MASK}; do
-				mpath="${ROOT}${mpath}"
+				mpath="${EROOT}${mpath}"
 				mpath=$(echo "${mpath/\/\///}")
 				if [[ "${rpath}" == "${mpath}"* ]]; then
 					mv ${rpath}/${rfile} ${rpath}/${rfile:10}
@@ -537,7 +537,8 @@ ${SET_X} && set -x
 
 type portageq > /dev/null || exit $?
 eval $(portageq envvar -v CONFIG_PROTECT \
-	CONFIG_PROTECT_MASK PORTAGE_CONFIGROOT PORTAGE_TMPDIR ROOT USERLAND)
+	CONFIG_PROTECT_MASK PORTAGE_CONFIGROOT PORTAGE_INST_GID PORTAGE_INST_UID \
+	PORTAGE_TMPDIR EROOT USERLAND)
 export PORTAGE_TMPDIR
 
 TMP="${PORTAGE_TMPDIR}/etc-update-$$"
@@ -554,7 +555,8 @@ rm -rf "${TMP}" 2> /dev/null
 mkdir "${TMP}" || die "failed to create temp dir" 1
 # make sure we have a secure directory to work in
 chmod 0700 "${TMP}" || die "failed to set perms on temp dir" 1
-chown ${UID:-0}:${GID:-0} "${TMP}" || die "failed to set ownership on temp dir" 1
+chown ${PORTAGE_INST_UID:-0}:${PORTAGE_INST_GID:-0} "${TMP}" || \
+	die "failed to set ownership on temp dir" 1
 
 # I need the CONFIG_PROTECT value
 #CONFIG_PROTECT=$(/usr/lib/portage/bin/portageq envvar CONFIG_PROTECT)

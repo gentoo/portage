@@ -2,20 +2,14 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import io
-import shutil
 import signal
-import tempfile
 import traceback
 
 import errno
 import fcntl
 import portage
 from portage import os, _unicode_decode
-from portage.const import PORTAGE_PACKAGE_ATOM
-from portage.dep import match_from_list
 import portage.elog.messages
-from portage.elog import _preload_elog_modules
-from portage.util import ensure_dirs
 from _emerge.PollConstants import PollConstants
 from _emerge.SpawnProcess import SpawnProcess
 
@@ -46,8 +40,6 @@ class MergeProcess(SpawnProcess):
 			settings.reset()
 			settings.setcpv(cpv, mydb=self.mydbapi)
 
-		if not self.unmerge:
-			self._handle_self_reinstall()
 		super(MergeProcess, self)._start()
 
 	def _lock_vdb(self):
@@ -68,56 +60,6 @@ class MergeProcess(SpawnProcess):
 		if self._locked_vdb:
 			self.vartree.dbapi.unlock()
 			self._locked_vdb = False
-
-	def _handle_self_reinstall(self):
-		"""
-		If portage is reinstalling itself, create temporary
-		copies of PORTAGE_BIN_PATH and PORTAGE_PYM_PATH in order
-		to avoid relying on the new versions which may be
-		incompatible. Register an atexit hook to clean up the
-		temporary directories. Pre-load elog modules here since
-		we won't be able to later if they get unmerged (happens
-		when namespace changes).
-		"""
-
-		settings = self.settings
-		cpv = settings.mycpv
-		reinstall_self = False
-		if self.settings["ROOT"] == "/" and \
-			match_from_list(PORTAGE_PACKAGE_ATOM, [cpv]):
-			inherited = frozenset(self.settings.get('INHERITED', '').split())
-			if not self.vartree.dbapi.cpv_exists(cpv) or \
-				'9999' in cpv or \
-				'git' in inherited or \
-				'git-2' in inherited:
-				reinstall_self = True
-
-		if reinstall_self:
-			# Load lazily referenced portage submodules into memory,
-			# so imports won't fail during portage upgrade/downgrade.
-			_preload_elog_modules(self.settings)
-			portage.proxy.lazyimport._preload_portage_submodules()
-
-			# Make the temp directory inside $PORTAGE_TMPDIR/portage, since
-			# it's common for /tmp and /var/tmp to be mounted with the
-			# "noexec" option (see bug #346899).
-			build_prefix = os.path.join(settings["PORTAGE_TMPDIR"], "portage")
-			ensure_dirs(build_prefix)
-			base_path_tmp = tempfile.mkdtemp(
-				"", "._portage_reinstall_.", build_prefix)
-			portage.process.atexit_register(shutil.rmtree, base_path_tmp)
-			dir_perms = 0o755
-			for subdir in "bin", "pym":
-				var_name = "PORTAGE_%s_PATH" % subdir.upper()
-				var_orig = settings[var_name]
-				var_new = os.path.join(base_path_tmp, subdir)
-				settings[var_name] = var_new
-				settings.backup_changes(var_name)
-				shutil.copytree(var_orig, var_new, symlinks=True)
-				os.chmod(var_new, dir_perms)
-			portage._bin_path = settings['PORTAGE_BIN_PATH']
-			portage._pym_path = settings['PORTAGE_PYM_PATH']
-			os.chmod(base_path_tmp, dir_perms)
 
 	def _elog_output_handler(self, fd, event):
 		output = None
@@ -270,7 +212,7 @@ class MergeProcess(SpawnProcess):
 		if self._elog_reg_id is not None:
 			self.scheduler.unregister(self._elog_reg_id)
 			self._elog_reg_id = None
-		if self._elog_reader_fd:
+		if self._elog_reader_fd is not None:
 			os.close(self._elog_reader_fd)
 			self._elog_reader_fd = None
 		if self._elog_keys is not None:

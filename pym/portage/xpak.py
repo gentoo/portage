@@ -22,11 +22,11 @@ __all__ = ['addtolist', 'decodeint', 'encodeint', 'getboth',
 
 import array
 import errno
-import shutil
 import sys
 
 import portage
 from portage import os
+from portage import shutil
 from portage import normalize_path
 from portage import _encodings
 from portage import _unicode_decode
@@ -112,7 +112,7 @@ def xpak(rootdir,outfile=None):
 		return xpak_segment
 
 def xpak_mem(mydata):
-	"""Create an xpack segement from a map object."""
+	"""Create an xpack segment from a map object."""
 
 	mydata_encoded = {}
 	for k, v in mydata.items():

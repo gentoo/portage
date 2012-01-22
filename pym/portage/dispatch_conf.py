@@ -13,6 +13,7 @@ import os, sys, shutil
 import portage
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.localization import _
+from portage.util import varexpand
 
 RCS_BRANCH = '1.1.1'
 RCS_LOCK = 'rcs -ko -M -l'
@@ -38,8 +39,9 @@ def diffstatusoutput_len(cmd):
         return (1, 1)
 
 def read_config(mandatory_opts):
-    loader = KeyValuePairFileLoader(
-        '/etc/dispatch-conf.conf', None)
+    eprefix = portage.const.EPREFIX
+    config_path = os.path.join(eprefix or os.sep, "etc/dispatch-conf.conf")
+    loader = KeyValuePairFileLoader(config_path, None)
     opts, errors = loader.load()
     if not opts:
         print(_('dispatch-conf: Error reading /etc/dispatch-conf.conf; fatal'), file=sys.stderr)
@@ -57,6 +59,10 @@ def read_config(mandatory_opts):
                 opts["merge"] = "sdiff --suppress-common-lines --output='%s' '%s' '%s'"
             else:
                 print(_('dispatch-conf: Missing option "%s" in /etc/dispatch-conf.conf; fatal') % (key,), file=sys.stderr)
+
+    # archive-dir supports ${EPREFIX} expansion, in order to avoid hardcoding
+    variables = {"EPREFIX": eprefix}
+    opts['archive-dir'] = varexpand(opts['archive-dir'], mydict=variables)
 
     if not os.path.exists(opts['archive-dir']):
         os.mkdir(opts['archive-dir'])

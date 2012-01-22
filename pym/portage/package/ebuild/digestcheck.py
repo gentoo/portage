@@ -35,7 +35,7 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
 	eout = EOutput()
 	eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
 	try:
-		if strict and "PORTAGE_PARALLEL_FETCHONLY" not in mysettings:
+		if not mf.thin and strict and "PORTAGE_PARALLEL_FETCHONLY" not in mysettings:
 			if mf.fhashdict.get("EBUILD"):
 				eout.ebegin(_("checking ebuild checksums ;-)"))
 				mf.checkTypeHashes("EBUILD")
