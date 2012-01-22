@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """Resolver output display operation.
@@ -757,6 +757,8 @@ class Display(object):
 		installed_versions = self.vardb.match_pkgs(pkg.cp)
 		if self.vardb.cpv_exists(pkg.cpv):
 			addl = "  "+yellow("R")+pkg_info.fetch_symbol+"  "
+			if not self.quiet_repo_display and installed_versions[0].repo != pkg.repo:
+				myoldbest = installed_versions
 			if pkg_info.ordered:
 				if pkg_info.merge:
 					self.counters.reinst += 1
