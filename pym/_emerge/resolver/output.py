@@ -755,8 +755,9 @@ class Display(object):
 		installed_versions = self.vardb.match_pkgs(pkg.cp)
 		if self.vardb.cpv_exists(pkg.cpv):
 			addl = "  "+yellow("R")+pkg_info.fetch_symbol+"  "
-			if not self.quiet_repo_display and installed_versions[0].repo != pkg.repo:
-				myoldbest = installed_versions
+			installed_version = self.vardb.match_pkgs(pkg.cpv)[0]
+			if not self.quiet_repo_display and installed_version.repo != pkg.repo:
+				myoldbest = [installed_version]
 			if pkg_info.ordered:
 				if pkg_info.merge:
 					self.counters.reinst += 1
