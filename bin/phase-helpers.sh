@@ -302,7 +302,7 @@ unpack() {
 			ZIP|zip|jar)
 				# unzip will interactively prompt under some error conditions,
 				# as reported in bug #336285
-				( while true ; do echo n || break ; done ) | \
+				( set +x ; while true ; do echo n || break ; done ) | \
 				unzip -qo "${srcdir}${x}" || die "$myfail"
 				;;
 			gz|Z|z)
