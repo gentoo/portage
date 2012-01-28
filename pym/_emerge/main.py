@@ -75,6 +75,7 @@ options=[
 "--unordered-display",
 "--update",
 "--verbose",
+"--verbose-main-repo-display",
 ]
 
 shortmapping={
