@@ -385,7 +385,7 @@ class Display(object):
 				if key[-3:] == "-r0":
 					key = key[:-3]
 				if self.conf.verbosity == 3 and not self.quiet_repo_display and (self.verbose_main_repo_display or
-					(any(x.repo != self.portdb.repositories.mainRepo().name for x in myoldbest + [pkg]))):
+					any(x.repo != self.portdb.repositories.mainRepo().name for x in myoldbest + [pkg])):
 					key += _repo_separator + old_pkg.repo
 				versions.append(key)
 			myoldbest_str = blue("["+", ".join(versions)+"]")
@@ -417,7 +417,7 @@ class Display(object):
 		"""
 		ver_str = pkg_info.ver
 		if self.conf.verbosity == 3 and not self.quiet_repo_display and (self.verbose_main_repo_display or
-			(any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg]))):
+			any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
 			ver_str += _repo_separator + pkg.repo
 		if self.conf.quiet:
 			myprint = addl + " " + self.indent + \
@@ -456,7 +456,7 @@ class Display(object):
 		"""
 		ver_str = pkg_info.ver
 		if self.conf.verbosity == 3 and not self.quiet_repo_display and (self.verbose_main_repo_display or
-			(any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg]))):
+			any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
 			ver_str += _repo_separator + pkg.repo
 		if self.conf.quiet:
 			myprint = addl + " " + self.indent + \
@@ -493,7 +493,7 @@ class Display(object):
 		"""
 		pkg_str = pkg.cpv
 		if self.conf.verbosity == 3 and not self.quiet_repo_display and (self.verbose_main_repo_display or
-			(any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg]))):
+			any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
 			pkg_str += _repo_separator + pkg.repo
 		if not pkg_info.merge:
 			addl = self.empty_space_in_brackets()
@@ -869,7 +869,7 @@ class Display(object):
 					else:
 						pkg_str = pkg.cpv
 						if self.conf.verbosity == 3 and not self.quiet_repo_display and (self.verbose_main_repo_display or
-							(any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg]))):
+							any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
 							pkg_str += _repo_separator + pkg.repo
 						if not pkg_info.merge:
 							addl = self.empty_space_in_brackets()
