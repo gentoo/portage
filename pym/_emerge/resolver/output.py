@@ -437,7 +437,7 @@ class Display(object):
 					self.indent, self.pkgprint(pkg.cp, pkg_info))
 			if (self.newlp-nc_len(myprint)) > 0:
 				myprint = myprint+(" "*(self.newlp-nc_len(myprint)))
-			myprint = myprint+"["+darkblue(ver_str)+"] "
+			myprint = myprint+" "+darkblue("["+ver_str+"]")+" "
 			if (self.oldlp-nc_len(myprint)) > 0:
 				myprint = myprint+" "*(self.oldlp-nc_len(myprint))
 			myprint = myprint+pkg_info.oldbest
@@ -476,7 +476,7 @@ class Display(object):
 					self.indent, self.pkgprint(pkg.cp, pkg_info))
 			if (self.newlp-nc_len(myprint)) > 0:
 				myprint = myprint+(" "*(self.newlp-nc_len(myprint)))
-			myprint = myprint+green(" ["+ver_str+"] ")
+			myprint = myprint+" "+green("["+ver_str+"]")+" "
 			if (self.oldlp-nc_len(myprint)) > 0:
 				myprint = myprint+(" "*(self.oldlp-nc_len(myprint)))
 			myprint += pkg_info.oldbest
