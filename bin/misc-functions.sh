@@ -778,7 +778,7 @@ install_qa_check() {
 	fi
 
 	# Portage regenerates this on the installed system.
-	rm -f "${ED}"/usr/share/info/dir{,.gz,.bz2}
+	rm -f "${ED}"/usr/share/info/dir{,.gz,.bz2} || die "rm failed!"
 
 	if has multilib-strict ${FEATURES} && \
 	   [[ -x /usr/bin/file && -x /usr/bin/find ]] && \
