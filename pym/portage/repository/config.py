@@ -341,7 +341,7 @@ class RepoConfigLoader(object):
 					if repos_conf_opts is not None:
 						# Selectively copy only the attributes which
 						# repos.conf is allowed to override.
-						for k in ('aliases', 'eclass_overrides', 'masters'):
+						for k in ('aliases', 'eclass_overrides', 'masters', 'priority'):
 							v = getattr(repos_conf_opts, k, None)
 							if v is not None:
 								setattr(repo, k, v)
@@ -356,7 +356,7 @@ class RepoConfigLoader(object):
 
 					if ov == portdir and portdir not in port_ov:
 						repo.priority = -1000
-					else:
+					elif repo.priority is None:
 						repo.priority = base_priority
 						base_priority += 1
 
