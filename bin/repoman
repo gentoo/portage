@@ -582,6 +582,13 @@ repo_config = repoman_settings.repositories.get_repo_for_location(repodir)
 portdb.porttrees = list(repo_config.eclass_db.porttrees)
 portdir = portdb.porttrees[0]
 
+if repo_config.sign_commit:
+	if vcs == 'git':
+		# NOTE: It's possible to use --gpg-sign=key_id to specify the key in
+		# the commit arguments. If key_id is unspecified, then it must be
+		# configured by `git config user.signingkey key_id`.
+		vcs_local_opts.append("--gpg-sign")
+
 # In order to disable manifest signatures, repos may set
 # "sign-manifests = false" in metadata/layout.conf. This
 # can be used to prevent merge conflicts like those that

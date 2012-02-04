@@ -722,7 +722,9 @@ Defaults to $HOME/.gnupg.
 .TP
 .B PORTAGE_GPG_KEY
 The \fBgpg\fR(1) key used by \fBrepoman\fR(1) to sign manifests
-when \fBsign\fR is in \fBFEATURES\fR.
+when \fBsign\fR is in \fBFEATURES\fR. In order to sign commits with
+\fBgit\fR(1), you will need Git >=1.7.9 and your commit key will have
+to be configured by \fI`git config user.signingkey key_id`\fR.
 .TP
 .B PORTAGE_GPG_SIGNING_COMMAND
 The command used by \fBrepoman\fR(1) to sign manifests when \fBsign\fR is

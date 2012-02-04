@@ -49,7 +49,7 @@ class RepoConfig(object):
 		'cache_formats', 'create_manifest', 'disable_manifest', 'eapi',
 		'eclass_db', 'eclass_locations', 'eclass_overrides', 'format', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
-		'name', 'priority', 'sign_manifest', 'sync', 'thin_manifest',
+		'name', 'priority', 'sign_commit', 'sign_manifest', 'sync', 'thin_manifest',
 		'update_changelog', 'user_location', 'portage1_profiles',
 		'portage1_profiles_compat')
 
@@ -117,6 +117,9 @@ class RepoConfig(object):
 		self.eapi = eapi
 		self.name = name
 		self.missing_repo_name = missing
+		# sign_commit is disabled by default, since it requires Git >=1.7.9,
+		# and key_id configured by `git config user.signingkey key_id`
+		self.sign_commit = False
 		self.sign_manifest = True
 		self.thin_manifest = False
 		self.allow_missing_manifest = False
@@ -148,7 +151,7 @@ class RepoConfig(object):
 
 			for value in ('allow-missing-manifest', 'cache-formats',
 				'create-manifest', 'disable-manifest', 'manifest-hashes',
-				'sign-manifest', 'thin-manifest', 'update-changelog'):
+				'sign-commit', 'sign-manifest', 'thin-manifest', 'update-changelog'):
 				setattr(self, value.lower().replace("-", "_"), layout_data[value])
 
 			self.portage1_profiles = any(x.startswith("portage-1") \
@@ -687,6 +690,9 @@ def parse_layout_conf(repo_location, repo_name=None):
 		masters = tuple(masters.split())
 	data['masters'] = masters
 	data['aliases'] = tuple(layout_data.get('aliases', '').split())
+
+	data['sign-commit'] = layout_data.get('sign-commits', 'false').lower() \
+		== 'true'
 
 	data['sign-manifest'] = layout_data.get('sign-manifests', 'true').lower() \
 		== 'true'
