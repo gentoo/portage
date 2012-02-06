@@ -244,7 +244,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 
 	pid = os.fork()
 
-	if not pid:
+	if pid == 0:
 		try:
 			_exec(binary, mycommand, opt_name, fd_pipes,
 			      env, gid, groups, uid, umask, pre_exec)
@@ -258,6 +258,9 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 			traceback.print_exc()
 			sys.stderr.flush()
 			os._exit(1)
+
+	if not isinstance(pid, int):
+		raise AssertionError("fork returned non-integer: %s" % (repr(pid),))
 
 	# Add the pid to our local and the global pid lists.
 	mypids.append(pid)
