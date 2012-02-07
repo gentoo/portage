@@ -196,6 +196,8 @@ class Scheduler(PollScheduler):
 
 		self._status_display = JobStatusDisplay(
 			xterm_titles=('notitles' not in settings.features))
+		self._timeout_add(self._max_display_latency,
+			self._status_display.display)
 		self._max_load = myopts.get("--load-average")
 		max_jobs = myopts.get("--jobs")
 		if max_jobs is None:
@@ -352,50 +354,8 @@ class Scheduler(PollScheduler):
 		gc.collect()
 
 	def _poll(self, timeout=None):
-
 		self._schedule()
-
-		if timeout is None:
-			while True:
-				if not self._poll_event_handlers:
-					self._schedule()
-					if not self._poll_event_handlers:
-						raise StopIteration(
-							"timeout is None and there are no poll() event handlers")
-				previous_count = len(self._poll_event_queue)
-				PollScheduler._poll(self, timeout=self._max_display_latency)
-				self._status_display.display()
-				if previous_count != len(self._poll_event_queue):
-					break
-
-		elif timeout <= self._max_display_latency:
-			PollScheduler._poll(self, timeout=timeout)
-			if timeout == 0:
-				# The display is updated by _schedule() above, so it would be
-				# redundant to update it here when timeout is 0.
-				pass
-			else:
-				self._status_display.display()
-
-		else:
-			remaining_timeout = timeout
-			start_time = time.time()
-			while True:
-				previous_count = len(self._poll_event_queue)
-				PollScheduler._poll(self,
-					timeout=min(self._max_display_latency, remaining_timeout))
-				self._status_display.display()
-				if previous_count != len(self._poll_event_queue):
-					break
-				elapsed_time = time.time() - start_time
-				if elapsed_time < 0:
-					# The system clock has changed such that start_time
-					# is now in the future, so just assume that the
-					# timeout has already elapsed.
-					break
-				remaining_timeout = timeout - 1000 * elapsed_time
-				if remaining_timeout <= 0:
-					break
+		PollScheduler._poll(self, timeout=timeout)
 
 	def _set_max_jobs(self, max_jobs):
 		self._max_jobs = max_jobs

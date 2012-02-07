@@ -43,6 +43,7 @@ class PollScheduler(object):
 		# Increment id for each new handler.
 		self._event_handler_id = 0
 		self._timeout_handlers = {}
+		self._timeout_interval = None
 		self._poll_obj = create_poll_instance()
 		self._polling = False
 		self._scheduling = False
@@ -142,18 +143,51 @@ class PollScheduler(object):
 		return True
 
 	def _poll(self, timeout=None):
-		"""
-		All poll() calls pass through here. The poll events
-		are added directly to self._poll_event_queue.
-		In order to avoid endless blocking, this raises
-		StopIteration if timeout is None and there are
-		no file descriptors to poll.
-		"""
 		if self._polling:
 			return
 		self._polling = True
 		try:
-			self._do_poll(timeout=timeout)
+			if self._timeout_interval is None:
+				self._run_timeouts()
+				self._do_poll(timeout=timeout)
+
+			elif timeout is None:
+				while True:
+					self._run_timeouts()
+					previous_count = len(self._poll_event_queue)
+					self._do_poll(timeout=self._timeout_interval)
+					if previous_count != len(self._poll_event_queue):
+						break
+
+			elif timeout <= self._timeout_interval:
+				self._run_timeouts()
+				self._do_poll(timeout=timeout)
+
+			else:
+				remaining_timeout = timeout
+				start_time = time.time()
+				while True:
+					self._run_timeouts()
+					# _timeout_interval can change each time
+					# _run_timeouts is called
+					min_timeout = remaining_timeout
+					if self._timeout_interval is not None and \
+						self._timeout_interval < min_timeout:
+						min_timeout = self._timeout_interval
+
+					previous_count = len(self._poll_event_queue)
+					self._do_poll(timeout=min_timeout)
+					if previous_count != len(self._poll_event_queue):
+						break
+					elapsed_time = time.time() - start_time
+					if elapsed_time < 0:
+						# The system clock has changed such that start_time
+						# is now in the future, so just assume that the
+						# timeout has already elapsed.
+						break
+					remaining_timeout = timeout - 1000 * elapsed_time
+					if remaining_timeout <= 0:
+						break
 		finally:
 			self._polling = False
 
@@ -165,7 +199,6 @@ class PollScheduler(object):
 		StopIteration if timeout is None and there are
 		no file descriptors to poll.
 		"""
-		self._run_timeouts()
 		if not self._poll_event_handlers:
 			self._schedule()
 			if timeout is None and \
@@ -273,6 +306,8 @@ class PollScheduler(object):
 			self._timeout_handler_class(
 				interval=interval, function=function, args=args,
 				source_id=source_id, timestamp=time.time())
+		if self._timeout_interval is None or self._timeout_interval < interval:
+			self._timeout_interval = interval
 		return source_id
 
 	def _run_timeouts(self):
@@ -320,6 +355,12 @@ class PollScheduler(object):
 		"""
 		timeout_handler = self._timeout_handlers.pop(reg_id, None)
 		if timeout_handler is not None:
+			if timeout_handler.interval == self._timeout_interval:
+				if self._timeout_handlers:
+					self._timeout_interval = \
+						min(x.interval for x in self._timeout_handlers.values())
+				else:
+					self._timeout_interval = None
 			return True
 		f = self._poll_event_handler_ids.pop(reg_id, None)
 		if f is None:
