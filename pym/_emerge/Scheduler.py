@@ -79,11 +79,9 @@ class Scheduler(PollScheduler):
 	_opts_no_self_update = frozenset(["--buildpkgonly",
 		"--fetchonly", "--fetch-all-uri", "--pretend"])
 
-	class _iface_class(SlotObject):
+	class _iface_class(PollScheduler._sched_iface_class):
 		__slots__ = ("fetch",
-			"output", "register", "schedule",
-			"scheduleSetup", "scheduleUnpack", "scheduleYield",
-			"unregister")
+			"scheduleSetup", "scheduleUnpack", "scheduleYield")
 
 	class _fetch_iface_class(SlotObject):
 		__slots__ = ("log_file", "schedule")
@@ -223,6 +221,8 @@ class Scheduler(PollScheduler):
 			scheduleSetup=self._schedule_setup,
 			scheduleUnpack=self._schedule_unpack,
 			scheduleYield=self._schedule_yield,
+			source_remove=self._unregister,
+			timeout_add=self._timeout_add,
 			unregister=self._unregister)
 
 		self._prefetchers = weakref.WeakValueDictionary()
