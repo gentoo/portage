@@ -14,7 +14,8 @@ class AsynchronousTask(SlotObject):
 	"""
 
 	__slots__ = ("background", "cancelled", "returncode") + \
-		("_exit_listeners", "_exit_listener_stack", "_start_listeners")
+		("_exit_listeners", "_exit_listener_stack", "_start_listeners",
+		"_waiting")
 
 	def start(self):
 		"""
@@ -42,7 +43,12 @@ class AsynchronousTask(SlotObject):
 
 	def wait(self):
 		if self.returncode is None:
-			self._wait()
+			if not self._waiting:
+				self._waiting = True
+				try:
+					self._wait()
+				finally:
+					self._waiting = False
 		self._wait_hook()
 		return self.returncode
 
