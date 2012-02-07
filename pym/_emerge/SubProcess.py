@@ -16,6 +16,10 @@ class SubProcess(AbstractPollTask):
 	# serve this purpose alone.
 	_dummy_pipe_fd = 9
 
+	# This is how much time we allow for waitpid to succeed after
+	# we've sent a kill signal to our subprocess.
+	_cancel_timeout = 1000 # 1 second
+
 	def _poll(self):
 		if self.returncode is not None:
 			return self.returncode
@@ -60,7 +64,7 @@ class SubProcess(AbstractPollTask):
 
 		if self._registered:
 			if self.cancelled:
-				timeout = 1000
+				timeout = self._cancel_timeout
 				self.scheduler.schedule(self._reg_id, timeout=timeout)
 				if self._registered:
 					try:
