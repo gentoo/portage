@@ -64,8 +64,7 @@ class SubProcess(AbstractPollTask):
 
 		if self._registered:
 			if self.cancelled:
-				timeout = self._cancel_timeout
-				self.scheduler.schedule(self._reg_id, timeout=timeout)
+				self._wait_loop(timeout=self._cancel_timeout)
 				if self._registered:
 					try:
 						os.kill(self.pid, signal.SIGKILL)
@@ -73,12 +72,11 @@ class SubProcess(AbstractPollTask):
 						if e.errno != errno.ESRCH:
 							raise
 						del e
-					self.scheduler.schedule(self._reg_id, timeout=timeout)
+					self._wait_loop(timeout=self._cancel_timeout)
 					if self._registered:
 						self._orphan_process_warn()
 			else:
-				while self._registered:
-					self.scheduler.iteration()
+				self._wait_loop()
 			self._unregister()
 			if self.returncode is not None:
 				return self.returncode
