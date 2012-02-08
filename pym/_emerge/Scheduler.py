@@ -196,8 +196,8 @@ class Scheduler(PollScheduler):
 
 		self._status_display = JobStatusDisplay(
 			xterm_titles=('notitles' not in settings.features))
-		self._idle_add(self._idle_schedule)
-		self._timeout_add(self._max_display_latency,
+		self.sched_iface.idle_add(self._idle_schedule)
+		self.sched_iface.timeout_add(self._max_display_latency,
 			self._status_display.display)
 		self._max_load = myopts.get("--load-average")
 		max_jobs = myopts.get("--jobs")
@@ -219,16 +219,16 @@ class Scheduler(PollScheduler):
 			schedule=self._schedule_fetch)
 		self._sched_iface = self._iface_class(
 			fetch=fetch_iface, output=self._task_output,
-			idle_add=self._idle_add,
-			io_add_watch=self._register,
-			iteration=self._iteration,
-			register=self._register,
-			schedule=self._poll_loop,
+			idle_add=self._event_loop._idle_add,
+			io_add_watch=self._event_loop._register,
+			iteration=self._event_loop._iteration,
+			register=self._event_loop._register,
+			schedule=self._event_loop._poll_loop,
 			scheduleSetup=self._schedule_setup,
 			scheduleUnpack=self._schedule_unpack,
-			source_remove=self._unregister,
-			timeout_add=self._timeout_add,
-			unregister=self._unregister)
+			source_remove=self._event_loop._unregister,
+			timeout_add=self._event_loop._timeout_add,
+			unregister=self._event_loop._unregister)
 
 		self._prefetchers = weakref.WeakValueDictionary()
 		self._pkg_queue = []
@@ -1500,13 +1500,13 @@ class Scheduler(PollScheduler):
 			self._set_max_jobs(1)
 
 		while self._schedule():
-			self._poll_loop()
+			self.sched_iface.run()
 
 		while True:
 			self._schedule()
 			if not self._is_work_scheduled():
 				break
-			self._poll_loop()
+			self.sched_iface.run()
 
 	def _keep_scheduling(self):
 		return bool(not self._terminated_tasks and self._pkg_queue and \

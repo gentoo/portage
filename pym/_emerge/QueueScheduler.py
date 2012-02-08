@@ -40,22 +40,22 @@ class QueueScheduler(PollScheduler):
 				timeout_callback.timed_out = True
 				return False
 			timeout_callback.timed_out = False
-			timeout_callback.timeout_id = self._timeout_add(
+			timeout_callback.timeout_id = self.sched_iface.timeout_add(
 				timeout, timeout_callback)
 
 		try:
 
 			while not (timeout_callback is not None and
 				timeout_callback.timed_out) and self._schedule():
-				self._iteration()
+				self.sched_iface.iteration()
 
 			while not (timeout_callback is not None and
 				timeout_callback.timed_out) and self._running_job_count():
-				self._iteration()
+				self.sched_iface.iteration()
 
 		finally:
 			if timeout_callback is not None:
-				self._unregister(timeout_callback.timeout_id)
+				self.sched_iface.unregister(timeout_callback.timeout_id)
 
 	def _schedule_tasks(self):
 		"""

@@ -88,10 +88,10 @@ class MetadataRegen(PollScheduler):
 		dead_nodes = {}
 
 		while self._schedule():
-			self._poll_loop()
+			self.sched_iface.run()
 
 		while self._jobs:
-			self._poll_loop()
+			self.sched_iface.run()
 
 		if self._terminated_tasks:
 			self.returncode = 1

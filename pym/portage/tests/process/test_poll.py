@@ -55,7 +55,7 @@ class PipeReaderTestCase(TestCase):
 		# is necessary to avoid "ResourceWarning: unclosed file"
 		# warnings since Python 3.2 (and also ensures that we
 		# don't leave any zombie child processes).
-		scheduler.schedule()
+		scheduler.run()
 		self.assertEqual(producer.returncode, os.EX_OK)
 		self.assertEqual(consumer.returncode, os.EX_OK)
 

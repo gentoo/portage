@@ -359,11 +359,11 @@ class EventLoop(object):
 		del self._poll_event_handlers[f]
 		return True
 
-class PollScheduler(EventLoop):
+class PollScheduler(object):
 
 	class _sched_iface_class(SlotObject):
 		__slots__ = ("idle_add", "io_add_watch", "iteration",
-			"output", "register", "schedule",
+			"output", "register", "run",
 			"source_remove", "timeout_add", "unregister")
 
 	def __init__(self):
@@ -375,16 +375,18 @@ class PollScheduler(EventLoop):
 		self._jobs = 0
 		self._scheduling = False
 		self._background = False
+		self._event_loop = EventLoop()
+		self._event_loop._schedule = self._schedule
 		self.sched_iface = self._sched_iface_class(
-			idle_add=self._idle_add,
-			io_add_watch=self._register,
-			iteration=self._iteration,
+			idle_add=self._event_loop._idle_add,
+			io_add_watch=self._event_loop._register,
+			iteration=self._event_loop._iteration,
 			output=self._task_output,
-			register=self._register,
-			schedule=self._poll_loop,
-			source_remove=self._unregister,
-			timeout_add=self._timeout_add,
-			unregister=self._unregister)
+			register=self._event_loop._register,
+			run=self._event_loop._poll_loop,
+			source_remove=self._event_loop._unregister,
+			timeout_add=self._event_loop._timeout_add,
+			unregister=self._event_loop._unregister)
 
 	def terminate(self):
 		"""
