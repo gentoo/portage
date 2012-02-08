@@ -218,6 +218,8 @@ class SpawnProcess(SubProcess):
 
 		self._unregister_if_appropriate(event)
 
+		return True
+
 	def _dummy_handler(self, fd, event):
 		"""
 		This method is mainly interested in detecting EOF, since
@@ -239,6 +241,8 @@ class SpawnProcess(SubProcess):
 				break
 
 		self._unregister_if_appropriate(event)
+
+		return True
 
 	def _unregister(self):
 		super(SpawnProcess, self)._unregister()

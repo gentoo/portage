@@ -74,6 +74,8 @@ class PipeReader(AbstractPollTask):
 
 		self._unregister_if_appropriate(event)
 
+		return True
+
 	def _array_output_handler(self, fd, event):
 
 		for f in self.input_files.values():
@@ -92,6 +94,8 @@ class PipeReader(AbstractPollTask):
 				break
 
 		self._unregister_if_appropriate(event)
+
+		return True
 
 	def _unregister(self):
 		"""

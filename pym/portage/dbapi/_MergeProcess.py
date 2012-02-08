@@ -83,6 +83,8 @@ class MergeProcess(SpawnProcess):
 					reporter = getattr(portage.elog.messages, funcname)
 					reporter(msg, phase=phase, key=key, out=out)
 
+		return True
+
 	def _spawn(self, args, fd_pipes, **kwargs):
 		"""
 		Fork a subprocess, apply local settings, and call

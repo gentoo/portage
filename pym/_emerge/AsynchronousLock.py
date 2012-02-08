@@ -143,6 +143,8 @@ class _LockThread(AbstractPollTask):
 			self.returncode = os.EX_OK
 			self.wait()
 
+		return True
+
 	def _cancel(self):
 		# There's currently no way to force thread termination.
 		pass
@@ -279,6 +281,8 @@ class _LockProcess(AbstractPollTask):
 			self._unregister()
 			self.returncode = os.EX_OK
 			self.wait()
+
+		return True
 
 	def _unregister(self):
 		self._registered = False

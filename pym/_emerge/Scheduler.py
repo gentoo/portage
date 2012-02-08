@@ -218,6 +218,7 @@ class Scheduler(PollScheduler):
 			schedule=self._schedule_fetch)
 		self._sched_iface = self._iface_class(
 			fetch=fetch_iface, output=self._task_output,
+			io_add_watch=self._register,
 			register=self._register,
 			schedule=self._schedule_wait,
 			scheduleSetup=self._schedule_setup,

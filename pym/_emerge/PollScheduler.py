@@ -24,8 +24,11 @@ from _emerge.PollSelectAdapter import PollSelectAdapter
 class PollScheduler(object):
 
 	class _sched_iface_class(SlotObject):
-		__slots__ = ("output", "register", "schedule",
+		__slots__ = ("io_add_watch", "output", "register", "schedule",
 			"source_remove", "timeout_add", "unregister")
+
+	class _io_handler_class(SlotObject):
+		__slots__ = ("args", "callback", "fd", "source_id")
 
 	class _timeout_handler_class(SlotObject):
 		__slots__ = ("args", "function", "interval", "source_id",
@@ -49,6 +52,7 @@ class PollScheduler(object):
 		self._scheduling = False
 		self._background = False
 		self.sched_iface = self._sched_iface_class(
+			io_add_watch=self._register,
 			output=self._task_output,
 			register=self._register,
 			schedule=self._schedule_wait,
@@ -248,8 +252,9 @@ class PollScheduler(object):
 		try:
 			while event_handlers:
 				f, event = self._next_poll_event()
-				handler, reg_id = event_handlers[f]
-				handler(f, event)
+				x = event_handlers[f]
+				if not x.callback(f, event, *x.args):
+					self._unregister(x.source_id)
 				event_handled = True
 		except StopIteration:
 			event_handled = True
@@ -277,8 +282,9 @@ class PollScheduler(object):
 		try:
 			while event_handlers and self._poll_event_queue:
 				f, event = self._next_poll_event()
-				handler, reg_id = event_handlers[f]
-				handler(f, event)
+				x = event_handlers[f]
+				if not x.callback(f, event, *x.args):
+					self._unregister(x.source_id)
 				events_handled += 1
 		except StopIteration:
 			events_handled += 1
@@ -332,20 +338,31 @@ class PollScheduler(object):
 
 		return bool(ready_timeouts)
 
-	def _register(self, f, eventmask, handler):
+	def _register(self, f, condition, callback, *args):
 		"""
-		@rtype: Integer
-		@return: A unique registration id, for use in schedule() or
-			unregister() calls.
+		Like glib.io_add_watch(), your function should return False to
+		stop being called, or True to continue being called. Any
+		additional positional arguments given here are passed to your
+		function when it's called.
+
+		@type f: int or object with fileno() method
+		@param f: a file descriptor to monitor
+		@type condition: int
+		@param condition: a condition mask
+		@type callback: callable
+		@param callback: a function to call
+		@rtype: int
+		@return: an integer ID of the event source
 		"""
 		if f in self._poll_event_handlers:
 			raise AssertionError("fd %d is already registered" % f)
 		self._event_handler_id += 1
-		reg_id = self._event_handler_id
-		self._poll_event_handler_ids[reg_id] = f
-		self._poll_event_handlers[f] = (handler, reg_id)
-		self._poll_obj.register(f, eventmask)
-		return reg_id
+		source_id = self._event_handler_id
+		self._poll_event_handler_ids[source_id] = f
+		self._poll_event_handlers[f] = self._io_handler_class(
+			args=args, callback=callback, f=f, source_id=source_id)
+		self._poll_obj.register(f, condition)
+		return source_id
 
 	def _unregister(self, reg_id):
 		"""
@@ -409,8 +426,9 @@ class PollScheduler(object):
 			while (wait_ids is None and event_handlers) or \
 				(wait_ids is not None and wait_ids.intersection(handler_ids)):
 				f, event = self._next_poll_event(timeout=remaining_timeout)
-				handler, reg_id = event_handlers[f]
-				handler(f, event)
+				x = event_handlers[f]
+				if not x.callback(f, event, *x.args):
+					self._unregister(x.source_id)
 				event_handled = True
 				if condition is not None and condition():
 					break
