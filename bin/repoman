@@ -415,7 +415,6 @@ qawarnings = set((
 "RDEPEND.implicit",
 "RDEPEND.suspect",
 "RESTRICT.invalid",
-"SRC_URI.mirror",
 "ebuild.minorsyn",
 "ebuild.badheader",
 "ebuild.patches",
