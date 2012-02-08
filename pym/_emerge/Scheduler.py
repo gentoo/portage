@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -81,7 +81,7 @@ class Scheduler(PollScheduler):
 
 	class _iface_class(PollScheduler._sched_iface_class):
 		__slots__ = ("fetch",
-			"scheduleSetup", "scheduleUnpack", "scheduleYield")
+			"scheduleSetup", "scheduleUnpack")
 
 	class _fetch_iface_class(SlotObject):
 		__slots__ = ("log_file", "schedule")
@@ -221,11 +221,11 @@ class Scheduler(PollScheduler):
 			fetch=fetch_iface, output=self._task_output,
 			idle_add=self._idle_add,
 			io_add_watch=self._register,
+			iteration=self._iteration,
 			register=self._register,
 			schedule=self._schedule_wait,
 			scheduleSetup=self._schedule_setup,
 			scheduleUnpack=self._schedule_unpack,
-			scheduleYield=self._schedule_yield,
 			source_remove=self._unregister,
 			timeout_add=self._timeout_add,
 			unregister=self._unregister)

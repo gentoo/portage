@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import gzip
@@ -24,7 +24,7 @@ from _emerge.PollSelectAdapter import PollSelectAdapter
 class PollScheduler(object):
 
 	class _sched_iface_class(SlotObject):
-		__slots__ = ("idle_add", "io_add_watch",
+		__slots__ = ("idle_add", "io_add_watch", "iteration",
 			"output", "register", "schedule",
 			"source_remove", "timeout_add", "unregister")
 
@@ -59,6 +59,7 @@ class PollScheduler(object):
 		self.sched_iface = self._sched_iface_class(
 			idle_add=self._idle_add,
 			io_add_watch=self._register,
+			iteration=self._iteration,
 			output=self._task_output,
 			register=self._register,
 			schedule=self._schedule_wait,
@@ -268,14 +269,24 @@ class PollScheduler(object):
 		if not event_handled:
 			raise AssertionError("tight loop")
 
-	def _schedule_yield(self):
+	def _iteration(self, *args):
 		"""
-		Schedule for a short period of time chosen by the scheduler based
-		on internal state. Synchronous tasks should call this periodically
-		in order to allow the scheduler to service pending poll events. The
-		scheduler will call poll() exactly once, without blocking, and any
-		resulting poll events will be serviced.
+		Like glib.MainContext.iteration(), runs a single iteration.
+		@type may_block: bool
+		@param may_block: if True the call may block waiting for an event
+			(default is True).
+		@rtype: bool
+		@return: True if events were dispatched.
 		"""
+
+		may_block = True
+
+		if args:
+			if len(args) > 1:
+				raise TypeError(
+					"expected at most 1 argument (%s given)" % len(args))
+			may_block = args[0]
+
 		event_handlers = self._poll_event_handlers
 		events_handled = 0
 
@@ -283,7 +294,11 @@ class PollScheduler(object):
 			return bool(events_handled)
 
 		if not self._poll_event_queue:
-			self._poll(0)
+			if may_block:
+				timeout = 0
+			else:
+				timeout = None
+			self._poll(timeout=timeout)
 
 		try:
 			while event_handlers and self._poll_event_queue:
