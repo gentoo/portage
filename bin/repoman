@@ -1171,7 +1171,10 @@ check_ebuild_notadded = not \
 # Build a regex from thirdpartymirrors for the SRC_URI.mirror check.
 thirdpartymirrors = []
 for v in repoman_settings.thirdpartymirrors().values():
-	thirdpartymirrors.extend(v)
+	for v in v:
+		if not v.endswith("/"):
+			v += "/"
+		thirdpartymirrors.append(v)
 
 class _MetadataTreeBuilder(xml.etree.ElementTree.TreeBuilder):
 	"""
