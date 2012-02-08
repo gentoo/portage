@@ -5,7 +5,6 @@ import array
 import errno
 import logging
 import os
-import time
 
 from portage.util import writemsg_level
 from _emerge.AsynchronousTask import AsynchronousTask
@@ -129,16 +128,14 @@ class AbstractPollTask(AsynchronousTask):
 				self.scheduler.iteration()
 			return
 
-		remaining_timeout = timeout
-		start_time = time.time()
-		while self._registered:
-			self.scheduler.iteration()
-			elapsed_time = time.time() - start_time
-			if elapsed_time < 0:
-				# The system clock has changed such that start_time
-				# is now in the future, so just assume that the
-				# timeout has already elapsed.
-				break
-			remaining_timeout = timeout - 1000 * elapsed_time
-			if remaining_timeout <= 0:
-				break
+		def timeout_cb():
+			timeout_cb.timed_out = True
+			return False
+		timeout_cb.timed_out = False
+		timeout_cb.timeout_id = self.scheduler.timeout_add(timeout, timeout_cb)
+
+		try:
+			while self._registered and not timeout_cb.timed_out:
+				self.scheduler.iteration()
+		finally:
+			self.scheduler.unregister(timeout_cb.timeout_id)
