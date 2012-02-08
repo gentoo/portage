@@ -24,8 +24,12 @@ from _emerge.PollSelectAdapter import PollSelectAdapter
 class PollScheduler(object):
 
 	class _sched_iface_class(SlotObject):
-		__slots__ = ("io_add_watch", "output", "register", "schedule",
+		__slots__ = ("idle_add", "io_add_watch",
+			"output", "register", "schedule",
 			"source_remove", "timeout_add", "unregister")
+
+	class _idle_callback_class(SlotObject):
+		__slots__ = ("args", "callback", "source_id")
 
 	class _io_handler_class(SlotObject):
 		__slots__ = ("args", "callback", "fd", "source_id")
@@ -45,6 +49,7 @@ class PollScheduler(object):
 		self._poll_event_handler_ids = {}
 		# Increment id for each new handler.
 		self._event_handler_id = 0
+		self._idle_callbacks = {}
 		self._timeout_handlers = {}
 		self._timeout_interval = None
 		self._poll_obj = create_poll_instance()
@@ -52,6 +57,7 @@ class PollScheduler(object):
 		self._scheduling = False
 		self._background = False
 		self.sched_iface = self._sched_iface_class(
+			idle_add=self._idle_add,
 			io_add_watch=self._register,
 			output=self._task_output,
 			register=self._register,
@@ -291,6 +297,35 @@ class PollScheduler(object):
 
 		return bool(events_handled)
 
+	def _idle_add(self, callback, *args):
+		"""
+		Like glib.idle_add(), if callback returns False it is
+		automatically removed from the list of event sources and will
+		not be called again.
+
+		@type callback: callable
+		@param callback: a function to call
+		@rtype: int
+		@return: an integer ID
+		"""
+		self._event_handler_id += 1
+		source_id = self._event_handler_id
+		self._idle_callbacks[source_id] = self._idle_callback_class(
+			args=args, callback=callback, source_id=source_id)
+		return source_id
+
+	def _run_idle_callbacks(self):
+		if not self._idle_callbacks:
+			return
+		# Iterate of our local list, since self._idle_callbacks can be
+		# modified during the exection of these callbacks.
+		for x in list(self._idle_callbacks.values()):
+			if x.source_id not in self._idle_callbacks:
+				# it got cancelled while executing another callback
+				continue
+			if not x.callback(*x.args):
+				self._unregister(x.source_id)
+
 	def _timeout_add(self, interval, function, *args):
 		"""
 		Like glib.timeout_add(), interval argument is the number of
@@ -317,6 +352,12 @@ class PollScheduler(object):
 		return source_id
 
 	def _run_timeouts(self):
+
+		self._run_idle_callbacks()
+
+		if not self._timeout_handlers:
+			return False
+
 		ready_timeouts = []
 		current_time = time.time()
 		for x in self._timeout_handlers.values():
@@ -370,6 +411,9 @@ class PollScheduler(object):
 		is found and removed, and False if the reg_id is invalid or has
 		already been removed.
 		"""
+		idle_callback = self._idle_callbacks.pop(reg_id, None)
+		if idle_callback is not None:
+			return True
 		timeout_handler = self._timeout_handlers.pop(reg_id, None)
 		if timeout_handler is not None:
 			if timeout_handler.interval == self._timeout_interval:
