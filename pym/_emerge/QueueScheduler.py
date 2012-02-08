@@ -36,42 +36,25 @@ class QueueScheduler(PollScheduler):
 
 	def run(self, timeout=None):
 
-		start_time = None
-		timed_out = False
-		remaining_timeout = timeout
+		timeout_id = None
 		if timeout is not None:
-			start_time = time.time()
+			def timeout_callback():
+				raise StopIteration()
+			timeout_id = self._timeout_add(timeout, timeout_callback)
 
-		while self._schedule():
-			self._schedule_wait(timeout=remaining_timeout)
-			if timeout is not None:
-				elapsed_time = time.time() - start_time
-				if elapsed_time < 0:
-					# The system clock has changed such that start_time
-					# is now in the future, so just assume that the
-					# timeout has already elapsed.
-					timed_out = True
-					break
-				remaining_timeout = timeout - 1000 * elapsed_time
-				if remaining_timeout <= 0:
-					timed_out = True
-					break
+		try:
 
-		if timeout is None or not timed_out:
+			while self._schedule():
+				self._iteration()
+
 			while self._running_job_count():
-				self._schedule_wait(timeout=remaining_timeout)
-				if timeout is not None:
-					elapsed_time = time.time() - start_time
-					if elapsed_time < 0:
-						# The system clock has changed such that start_time
-						# is now in the future, so just assume that the
-						# timeout has already elapsed.
-						timed_out = True
-						break
-					remaining_timeout = timeout - 1000 * elapsed_time
-					if remaining_timeout <= 0:
-						timed_out = True
-						break
+				self._iteration()
+
+		except StopIteration:
+			pass
+
+		if timeout_id is not None:
+			self._unregister(timeout_id)
 
 	def _schedule_tasks(self):
 		"""
