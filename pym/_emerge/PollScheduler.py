@@ -158,7 +158,7 @@ class EventLoop(object):
 				f, event = self._next_poll_event()
 				x = event_handlers[f]
 				if not x.callback(f, event, *x.args):
-					self._unregister(x.source_id)
+					self.source_remove(x.source_id)
 				event_handled = True
 		except StopIteration:
 			event_handled = True
@@ -166,7 +166,7 @@ class EventLoop(object):
 		if not event_handled:
 			raise AssertionError("tight loop")
 
-	def _iteration(self, *args):
+	def iteration(self, *args):
 		"""
 		Like glib.MainContext.iteration(), runs a single iteration.
 		@type may_block: bool
@@ -202,14 +202,14 @@ class EventLoop(object):
 				f, event = self._next_poll_event()
 				x = event_handlers[f]
 				if not x.callback(f, event, *x.args):
-					self._unregister(x.source_id)
+					self.source_remove(x.source_id)
 				events_handled += 1
 		except StopIteration:
 			events_handled += 1
 
 		return bool(events_handled)
 
-	def _idle_add(self, callback, *args):
+	def idle_add(self, callback, *args):
 		"""
 		Like glib.idle_add(), if callback returns False it is
 		automatically removed from the list of event sources and will
@@ -236,9 +236,9 @@ class EventLoop(object):
 				# it got cancelled while executing another callback
 				continue
 			if not x.callback(*x.args):
-				self._unregister(x.source_id)
+				self.source_remove(x.source_id)
 
-	def _timeout_add(self, interval, function, *args):
+	def timeout_add(self, interval, function, *args):
 		"""
 		Like glib.timeout_add(), interval argument is the number of
 		milliseconds between calls to your function, and your function
@@ -287,11 +287,11 @@ class EventLoop(object):
 				continue
 			x.timestamp = time.time()
 			if not x.function(*x.args):
-				self._unregister(x.source_id)
+				self.source_remove(x.source_id)
 
 		return bool(ready_timeouts)
 
-	def _register(self, f, condition, callback, *args):
+	def io_add_watch(self, f, condition, callback, *args):
 		"""
 		Like glib.io_add_watch(), your function should return False to
 		stop being called, or True to continue being called. Any
@@ -317,7 +317,7 @@ class EventLoop(object):
 		self._poll_obj.register(f, condition)
 		return source_id
 
-	def _unregister(self, reg_id):
+	def source_remove(self, reg_id):
 		"""
 		Like glib.source_remove(), this returns True if the given reg_id
 		is found and removed, and False if the reg_id is invalid or has
@@ -378,15 +378,15 @@ class PollScheduler(object):
 		self._event_loop = EventLoop()
 		self._event_loop._schedule = self._schedule
 		self.sched_iface = self._sched_iface_class(
-			idle_add=self._event_loop._idle_add,
-			io_add_watch=self._event_loop._register,
-			iteration=self._event_loop._iteration,
+			idle_add=self._event_loop.idle_add,
+			io_add_watch=self._event_loop.io_add_watch,
+			iteration=self._event_loop.iteration,
 			output=self._task_output,
-			register=self._event_loop._register,
+			register=self._event_loop.io_add_watch,
 			run=self._event_loop._poll_loop,
-			source_remove=self._event_loop._unregister,
-			timeout_add=self._event_loop._timeout_add,
-			unregister=self._event_loop._unregister)
+			source_remove=self._event_loop.source_remove,
+			timeout_add=self._event_loop.timeout_add,
+			unregister=self._event_loop.source_remove)
 
 	def terminate(self):
 		"""

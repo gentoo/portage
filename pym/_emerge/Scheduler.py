@@ -219,16 +219,16 @@ class Scheduler(PollScheduler):
 			schedule=self._schedule_fetch)
 		self._sched_iface = self._iface_class(
 			fetch=fetch_iface, output=self._task_output,
-			idle_add=self._event_loop._idle_add,
-			io_add_watch=self._event_loop._register,
-			iteration=self._event_loop._iteration,
-			register=self._event_loop._register,
+			idle_add=self._event_loop.idle_add,
+			io_add_watch=self._event_loop.io_add_watch,
+			iteration=self._event_loop.iteration,
+			register=self._event_loop.io_add_watch,
 			schedule=self._event_loop._poll_loop,
 			scheduleSetup=self._schedule_setup,
 			scheduleUnpack=self._schedule_unpack,
-			source_remove=self._event_loop._unregister,
-			timeout_add=self._event_loop._timeout_add,
-			unregister=self._event_loop._unregister)
+			source_remove=self._event_loop.source_remove,
+			timeout_add=self._event_loop.timeout_add,
+			unregister=self._event_loop.source_remove)
 
 		self._prefetchers = weakref.WeakValueDictionary()
 		self._pkg_queue = []
