@@ -1,7 +1,5 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-
-import time
 
 from _emerge.PollScheduler import PollScheduler
 
@@ -36,25 +34,28 @@ class QueueScheduler(PollScheduler):
 
 	def run(self, timeout=None):
 
-		timeout_id = None
+		timeout_callback = None
 		if timeout is not None:
 			def timeout_callback():
-				raise StopIteration()
-			timeout_id = self._timeout_add(timeout, timeout_callback)
+				timeout_callback.timed_out = True
+				return False
+			timeout_callback.timed_out = False
+			timeout_callback.timeout_id = self._timeout_add(
+				timeout, timeout_callback)
 
 		try:
 
-			while self._schedule():
+			while not (timeout_callback is not None and
+				timeout_callback.timed_out) and self._schedule():
 				self._iteration()
 
-			while self._running_job_count():
+			while not (timeout_callback is not None and
+				timeout_callback.timed_out) and self._running_job_count():
 				self._iteration()
 
-		except StopIteration:
-			pass
-
-		if timeout_id is not None:
-			self._unregister(timeout_id)
+		finally:
+			if timeout_callback is not None:
+				self._unregister(timeout_callback.timeout_id)
 
 	def _schedule_tasks(self):
 		"""
