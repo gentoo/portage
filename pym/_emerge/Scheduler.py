@@ -196,6 +196,7 @@ class Scheduler(PollScheduler):
 
 		self._status_display = JobStatusDisplay(
 			xterm_titles=('notitles' not in settings.features))
+		self._idle_add(self._idle_schedule)
 		self._timeout_add(self._max_display_latency,
 			self._status_display.display)
 		self._max_load = myopts.get("--load-average")
@@ -218,6 +219,7 @@ class Scheduler(PollScheduler):
 			schedule=self._schedule_fetch)
 		self._sched_iface = self._iface_class(
 			fetch=fetch_iface, output=self._task_output,
+			idle_add=self._idle_add,
 			io_add_watch=self._register,
 			register=self._register,
 			schedule=self._schedule_wait,
@@ -354,9 +356,9 @@ class Scheduler(PollScheduler):
 		self._set_graph_config(None)
 		gc.collect()
 
-	def _poll(self, timeout=None):
+	def _idle_schedule(self):
 		self._schedule()
-		PollScheduler._poll(self, timeout=timeout)
+		return True
 
 	def _set_max_jobs(self, max_jobs):
 		self._max_jobs = max_jobs
