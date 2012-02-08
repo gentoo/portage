@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
@@ -44,9 +44,8 @@ class PipeReader(AbstractPollTask):
 		if self.returncode is not None:
 			return self.returncode
 
-		if self._registered:
-			self.scheduler.schedule(self._reg_ids)
-			self._unregister()
+		while self._registered:
+			self.scheduler.iteration()
 
 		self.returncode = os.EX_OK
 		return self.returncode

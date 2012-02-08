@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
@@ -52,9 +52,8 @@ class FifoIpcDaemon(AbstractPollTask):
 		if self.returncode is not None:
 			return self.returncode
 
-		if self._registered:
-			self.scheduler.schedule(self._reg_id)
-			self._unregister()
+		while self._registered:
+			self.scheduler.iteration()
 
 		if self.returncode is None:
 			self.returncode = os.EX_OK

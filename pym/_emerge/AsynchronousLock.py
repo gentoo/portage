@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import dummy_threading
@@ -152,8 +152,8 @@ class _LockThread(AbstractPollTask):
 	def _wait(self):
 		if self.returncode is not None:
 			return self.returncode
-		if self._registered:
-			self.scheduler.schedule(self._reg_id)
+		while self._registered:
+			self.scheduler.iteration()
 		return self.returncode
 
 	def unlock(self):
@@ -264,8 +264,8 @@ class _LockProcess(AbstractPollTask):
 	def _wait(self):
 		if self.returncode is not None:
 			return self.returncode
-		if self._registered:
-			self.scheduler.schedule(self._reg_id)
+		while self._registered:
+			self.scheduler.iteration()
 		return self.returncode
 
 	def _output_handler(self, f, event):

@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
@@ -77,7 +77,8 @@ class SubProcess(AbstractPollTask):
 					if self._registered:
 						self._orphan_process_warn()
 			else:
-				self.scheduler.schedule(self._reg_id)
+				while self._registered:
+					self.scheduler.iteration()
 			self._unregister()
 			if self.returncode is not None:
 				return self.returncode
