@@ -62,7 +62,7 @@ class PollScheduler(object):
 			iteration=self._iteration,
 			output=self._task_output,
 			register=self._register,
-			schedule=self._schedule_wait,
+			schedule=self._poll_loop,
 			source_remove=self._unregister,
 			timeout_add=self._timeout_add,
 			unregister=self._unregister)
@@ -461,52 +461,6 @@ class PollScheduler(object):
 
 		del self._poll_event_handlers[f]
 		return True
-
-	def _schedule_wait(self, wait_ids=None, timeout=None, condition=None):
-		"""
-		Schedule until wait_id is not longer registered
-		for poll() events.
-		@type wait_id: int
-		@param wait_id: a task id to wait for
-		"""
-		event_handlers = self._poll_event_handlers
-		handler_ids = self._poll_event_handler_ids
-		event_handled = False
-
-		if isinstance(wait_ids, int):
-			wait_ids = frozenset([wait_ids])
-
-		start_time = None
-		remaining_timeout = timeout
-		timed_out = False
-		if timeout is not None:
-			start_time = time.time()
-		try:
-			while (wait_ids is None and event_handlers) or \
-				(wait_ids is not None and wait_ids.intersection(handler_ids)):
-				f, event = self._next_poll_event(timeout=remaining_timeout)
-				x = event_handlers[f]
-				if not x.callback(f, event, *x.args):
-					self._unregister(x.source_id)
-				event_handled = True
-				if condition is not None and condition():
-					break
-				if timeout is not None:
-					elapsed_time = time.time() - start_time
-					if elapsed_time < 0:
-						# The system clock has changed such that start_time
-						# is now in the future, so just assume that the
-						# timeout has already elapsed.
-						timed_out = True
-						break
-					remaining_timeout = timeout - 1000 * elapsed_time
-					if remaining_timeout <= 0:
-						timed_out = True
-						break
-		except StopIteration:
-			event_handled = True
-
-		return event_handled
 
 	def _task_output(self, msg, log_path=None, background=None,
 		level=0, noiselevel=-1):

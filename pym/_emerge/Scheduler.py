@@ -223,7 +223,7 @@ class Scheduler(PollScheduler):
 			io_add_watch=self._register,
 			iteration=self._iteration,
 			register=self._register,
-			schedule=self._schedule_wait,
+			schedule=self._poll_loop,
 			scheduleSetup=self._schedule_setup,
 			scheduleUnpack=self._schedule_unpack,
 			source_remove=self._unregister,
