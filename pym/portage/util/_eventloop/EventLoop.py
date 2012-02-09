@@ -13,6 +13,8 @@ from _emerge.PollSelectAdapter import PollSelectAdapter
 
 class EventLoop(object):
 
+	supports_multiprocessing = True
+
 	class _idle_callback_class(SlotObject):
 		__slots__ = ("args", "callback", "source_id")
 

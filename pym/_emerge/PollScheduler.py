@@ -12,7 +12,7 @@ except ImportError:
 from portage import _encodings
 from portage import _unicode_encode
 from portage.util import writemsg_level
-from portage.util._eventloop.EventLoop import EventLoop
+from portage.util._eventloop.global_event_loop import global_event_loop
 
 from _emerge.SlotObject import SlotObject
 from _emerge.getloadavg import getloadavg
@@ -32,7 +32,7 @@ class PollScheduler(object):
 		self._jobs = 0
 		self._scheduling = False
 		self._background = False
-		self._event_loop = EventLoop()
+		self._event_loop = global_event_loop()
 		self.sched_iface = self._sched_iface_class(
 			idle_add=self._event_loop.idle_add,
 			io_add_watch=self._event_loop.io_add_watch,
