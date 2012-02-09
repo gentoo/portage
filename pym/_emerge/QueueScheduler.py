@@ -38,7 +38,7 @@ class QueueScheduler(PollScheduler):
 		if timeout is not None:
 			def timeout_callback():
 				timeout_callback.timed_out = True
-				return False
+				raise StopIteration()
 			timeout_callback.timed_out = False
 			timeout_callback.timeout_id = self.sched_iface.timeout_add(
 				timeout, timeout_callback)
@@ -53,6 +53,8 @@ class QueueScheduler(PollScheduler):
 				timeout_callback.timed_out) and self._running_job_count():
 				self.sched_iface.iteration()
 
+		except StopIteration:
+			pass
 		finally:
 			if timeout_callback is not None:
 				self.sched_iface.unregister(timeout_callback.timeout_id)
