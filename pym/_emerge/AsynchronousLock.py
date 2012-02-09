@@ -152,8 +152,7 @@ class _LockThread(AbstractPollTask):
 	def _wait(self):
 		if self.returncode is not None:
 			return self.returncode
-		while self._registered:
-			self.scheduler.iteration()
+		self._wait_loop()
 		return self.returncode
 
 	def unlock(self):
@@ -264,8 +263,7 @@ class _LockProcess(AbstractPollTask):
 	def _wait(self):
 		if self.returncode is not None:
 			return self.returncode
-		while self._registered:
-			self.scheduler.iteration()
+		self._wait_loop()
 		return self.returncode
 
 	def _output_handler(self, f, event):

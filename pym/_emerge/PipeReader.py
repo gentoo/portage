@@ -43,10 +43,7 @@ class PipeReader(AbstractPollTask):
 	def _wait(self):
 		if self.returncode is not None:
 			return self.returncode
-
-		while self._registered:
-			self.scheduler.iteration()
-
+		self._wait_loop()
 		self.returncode = os.EX_OK
 		return self.returncode
 
