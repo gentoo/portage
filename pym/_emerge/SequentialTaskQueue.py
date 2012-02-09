@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -20,10 +20,12 @@ class SequentialTaskQueue(SlotObject):
 	def add(self, task):
 		self._task_queue.append(task)
 		self._dirty = True
+		self.schedule()
 
 	def addFront(self, task):
 		self._task_queue.appendleft(task)
 		self._dirty = True
+		self.schedule()
 
 	def schedule(self):
 
@@ -69,6 +71,7 @@ class SequentialTaskQueue(SlotObject):
 		self.running_tasks.remove(task)
 		if self._task_queue:
 			self._dirty = True
+			self.schedule()
 
 	def clear(self):
 		self._task_queue.clear()

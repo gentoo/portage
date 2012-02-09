@@ -1514,6 +1514,8 @@ class Scheduler(PollScheduler):
 
 		while True:
 
+			state_change = 0
+
 			# When the number of jobs and merges drops to zero,
 			# process a single merge from _merge_wait_queue if
 			# it's not empty. We only process one since these are
@@ -1524,17 +1526,15 @@ class Scheduler(PollScheduler):
 				not self._task_queues.merge):
 				task = self._merge_wait_queue.popleft()
 				task.addExitListener(self._merge_wait_exit_handler)
+				self._merge_wait_scheduled.append(task)
 				self._task_queues.merge.add(task)
 				self._status_display.merges = len(self._task_queues.merge)
-				self._merge_wait_scheduled.append(task)
+				state_change += 1
 
-			self._schedule_tasks_imp()
+			if self._schedule_tasks_imp():
+				state_change += 1
+
 			self._status_display.display()
-
-			state_change = 0
-			for q in self._task_queues.values():
-				if q.schedule():
-					state_change += 1
 
 			# Cancel prefetchers if they're the only reason
 			# the main poll loop is still running.
