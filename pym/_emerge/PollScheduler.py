@@ -130,9 +130,8 @@ class EventLoop(object):
 
 	def _next_poll_event(self, timeout=None):
 		"""
-		Since the _schedule_wait() loop is called by event
-		handlers from _poll_loop(), maintain a central event
-		queue for both of them to share events from a single
+		Since iteration() can be called recursively, maintain
+		a central event queue to share events from a single
 		poll() call. In order to avoid endless blocking, this
 		raises StopIteration if timeout is None and there are
 		no file descriptors to poll.
@@ -142,24 +141,6 @@ class EventLoop(object):
 			if not self._poll_event_queue:
 				raise StopIteration()
 		return self._poll_event_queue.pop()
-
-	def _poll_loop(self):
-
-		event_handlers = self._poll_event_handlers
-		event_handled = False
-
-		try:
-			while event_handlers:
-				f, event = self._next_poll_event()
-				x = event_handlers[f]
-				if not x.callback(f, event, *x.args):
-					self.source_remove(x.source_id)
-				event_handled = True
-		except StopIteration:
-			event_handled = True
-
-		if not event_handled:
-			raise AssertionError("tight loop")
 
 	def iteration(self, *args):
 		"""
@@ -376,7 +357,6 @@ class PollScheduler(object):
 			iteration=self._event_loop.iteration,
 			output=self._task_output,
 			register=self._event_loop.io_add_watch,
-			run=self._event_loop._poll_loop,
 			source_remove=self._event_loop.source_remove,
 			timeout_add=self._event_loop.timeout_add,
 			unregister=self._event_loop.source_remove)

@@ -222,7 +222,6 @@ class Scheduler(PollScheduler):
 			io_add_watch=self._event_loop.io_add_watch,
 			iteration=self._event_loop.iteration,
 			register=self._event_loop.io_add_watch,
-			schedule=self._event_loop._poll_loop,
 			scheduleSetup=self._schedule_setup,
 			scheduleUnpack=self._schedule_unpack,
 			source_remove=self._event_loop.source_remove,
@@ -1492,14 +1491,12 @@ class Scheduler(PollScheduler):
 		if self._opts_no_background.intersection(self.myopts):
 			self._set_max_jobs(1)
 
-		while self._schedule():
-			self.sched_iface.run()
+		self._schedule()
+		while self._keep_scheduling():
+			self.sched_iface.iteration()
 
-		while True:
-			self._schedule()
-			if not self._is_work_scheduled():
-				break
-			self.sched_iface.run()
+		while self._is_work_scheduled():
+			self.sched_iface.iteration()
 
 	def _keep_scheduling(self):
 		return bool(not self._terminated_tasks and self._pkg_queue and \
