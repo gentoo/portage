@@ -83,6 +83,13 @@ class MergeProcess(SpawnProcess):
 					reporter = getattr(portage.elog.messages, funcname)
 					reporter(msg, phase=phase, key=key, out=out)
 
+		if event & PollConstants.POLLHUP:
+			self.scheduler.unregister(self._elog_reg_id)
+			self._elog_reg_id = None
+			os.close(self._elog_reader_fd)
+			self._elog_reader_fd = None
+			return False
+
 		return True
 
 	def _spawn(self, args, fd_pipes, **kwargs):
