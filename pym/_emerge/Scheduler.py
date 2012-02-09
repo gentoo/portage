@@ -733,15 +733,13 @@ class Scheduler(PollScheduler):
 					continue
 				prefetcher = self._create_prefetcher(pkg)
 				if prefetcher is not None:
-					self._task_queues.fetch.add(prefetcher)
+					# This will start the first prefetcher immediately, so that
+					# self._task() won't discard it. This avoids a case where
+					# the first prefetcher is discarded, causing the second
+					# prefetcher to occupy the fetch queue before the first
+					# fetcher has an opportunity to execute.
 					prefetchers[pkg] = prefetcher
-
-			# Start the first prefetcher immediately so that self._task()
-			# won't discard it. This avoids a case where the first
-			# prefetcher is discarded, causing the second prefetcher to
-			# occupy the fetch queue before the first fetcher has an
-			# opportunity to execute.
-			self._task_queues.fetch.schedule()
+					self._task_queues.fetch.add(prefetcher)
 
 	def _create_prefetcher(self, pkg):
 		"""
