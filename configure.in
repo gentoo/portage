@@ -45,108 +45,6 @@ GENTOO_PATH_GNUPROG(PORTAGE_FIND, [find])
 GENTOO_PATH_GNUPROG(PORTAGE_XARGS, [xargs])
 GENTOO_PATH_GNUPROG(PORTAGE_GREP, [grep])
 
-dnl Checks for header files.
-AC_CHECK_HEADERS([string.h strings.h errno.h unistd.h stdio.h stdlib.h])
-AC_CHECK_HEADERS([sys/stat.h sys/types.h dirent.h sys/time.h alloca.h])
-AC_CHECK_HEADERS([fcntl.h])
-AC_CHECK_HEADERS([utime.h])
-
-AC_SEARCH_LIBS([readdir], [c])
-AC_SEARCH_LIBS([strcpy], [c])
-AC_SEARCH_LIBS([strstr], [c])
-AC_SEARCH_LIBS([memcpy], [c])
-AC_CHECK_FUNCS([utimes])
-
-AC_MSG_CHECKING([for the *time fields in struct stat])
-AC_TRY_LINK([
-			 #include <sys/types.h>
-			 #include <sys/stat.h>
-			 #ifdef HAVE_FCNTL_H
-			 #include <fcntl.h>
-			 #endif
-		 ], [
-			 struct stat s;
-			 s.st_atimespec.tv_sec = 0;
-			 s.st_mtimespec.tv_sec = 0;
-		 ], [
-			 AC_DEFINE(ATIME_SEC, st_atimespec.tv_sec, [atime seconds for this platform])
-			 AC_DEFINE(ATIME_NSEC, st_atimespec.tv_nsec, [atime nanoseconds for this platform])
-			 AC_DEFINE(MTIME_SEC, st_mtimespec.tv_sec, [mtime seconds for this platform])
-			 AC_DEFINE(MTIME_NSEC, st_mtimespec.tv_nsec, [mtime nanoseconds for this platform])
-			 AC_MSG_RESULT([st_*timespec])
-		 ], [
-AC_TRY_LINK([
-			 #include <sys/types.h>
-			 #include <sys/stat.h>
-			 #ifdef HAVE_FCNTL_H
-			 #include <fcntl.h>
-			 #endif
-		 ], [
-			 struct stat s;
-			 s.st_atim.tv_sec = 0;
-			 s.st_mtim.tv_sec = 0;
-		 ], [
-			 AC_DEFINE(ATIME_SEC, st_atim.tv_sec, [atime seconds for this platform])
-			 AC_DEFINE(ATIME_NSEC, st_atim.tv_nsec, [atime nanoseconds for this platform])
-			 AC_DEFINE(MTIME_SEC, st_mtim.tv_sec, [mtime seconds for this platform])
-			 AC_DEFINE(MTIME_NSEC, st_mtim.tv_nsec, [mtime nanoseconds for this platform])
-			 AC_MSG_RESULT([st_*tim])
-		 ], [
-AC_TRY_LINK([
-			 #include <sys/types.h>
-			 #include <sys/stat.h>
-			 #ifdef HAVE_FCNTL_H
-			 #include <fcntl.h>
-			 #endif
-		 ], [
-			 struct stat s;
-			 s.st_atime = 0;
-			 s.st_mtime = 0;
-		 ], [
-			 AC_DEFINE(ATIME_SEC, st_atime, [atime seconds for this platform])
-			 AC_DEFINE(MTIME_SEC, st_mtime, [mtime seconds for this platform])
-			 AC_MSG_RESULT([st_*time])
-		 ], [
-			AC_MSG_ERROR([cannot determine])
-		 ]
-)
-		 ]
-)
-		 ]
-)
-
-AC_MSG_CHECKING([if S_ISWHT can be used])
-AC_TRY_LINK([
-			 #include <sys/types.h>
-			 #include <sys/stat.h>
-			 #ifdef HAVE_FCNTL_H
-			 #include <fcntl.h>
-			 #endif
-		 ], [
-			 struct stat s;
-			 if (S_ISWHT(s.st_mode)) {}
-		 ], [
-			 AC_DEFINE(HAVE_S_ISWHT, 1, [defined when S_ISWHT exists])
-			 AC_MSG_RESULT([yes])
-		 ], [
-			 AC_MSG_RESULT([no])
-		 ]
-)
-
-AC_MSG_CHECKING([if lchown exists])
-AC_TRY_LINK([
-			 #include <sys/types.h>
-			 #include <unistd.h>
-		 ], [
-			 lchown("", -1, -1);
-		 ], [
-			 AC_DEFINE(HAVE_LCHOWN, 1, [defined when LCHOWN exists])
-			 AC_MSG_RESULT([yes])
-		 ], [
-			 AC_MSG_RESULT([no])
-		 ]
-)
-
 AC_ARG_WITH(portage-user,
 AC_HELP_STRING([--with-portage-user=myuser],[use user 'myuser' as portage owner (default portage)]),
 [case "${withval}" in
@@ -233,7 +131,6 @@ AC_SUBST(PORTAGE_GREP)
 AC_CONFIG_FILES([subst-install], [chmod +x subst-install])
 AC_CONFIG_FILES([
 				 Makefile
-				 src/Makefile
 				 man/Makefile
 				 bin/Makefile
 				 pym/Makefile

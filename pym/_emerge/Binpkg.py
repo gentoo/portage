@@ -5,7 +5,6 @@ from _emerge.EbuildPhase import EbuildPhase
 from _emerge.BinpkgFetcher import BinpkgFetcher
 from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
 from _emerge.BinpkgExtractorAsync import BinpkgExtractorAsync
-from _emerge.BinpkgChpathtoolAsync import BinpkgChpathtoolAsync
 from _emerge.CompositeTask import CompositeTask
 from _emerge.BinpkgVerifier import BinpkgVerifier
 from _emerge.EbuildMerge import EbuildMerge
@@ -23,7 +22,6 @@ import io
 import logging
 import textwrap
 from portage.output import colorize
-from portage.const import EPREFIX
 
 class Binpkg(CompositeTask):
 
@@ -52,7 +50,6 @@ class Binpkg(CompositeTask):
 		dir_path = os.path.join(os.path.realpath(settings["PORTAGE_TMPDIR"]),
 			"portage", pkg.category, pkg.pf)
 		self._image_dir = os.path.join(dir_path, "image")
-		self._work_dir = os.path.join(dir_path, "work")
 		self._infloc = os.path.join(dir_path, "build-info")
 		self._ebuild_path = os.path.join(self._infloc, pkg.pf + ".ebuild")
 		settings["EBUILD"] = self._ebuild_path
@@ -225,7 +222,7 @@ class Binpkg(CompositeTask):
 		pkg_path = self._pkg_path
 
 		dir_mode = 0o755
-		for mydir in (dir_path, self._image_dir, self._work_dir, infloc):
+		for mydir in (dir_path, self._image_dir, infloc):
 			portage.util.ensure_dirs(mydir, uid=portage.data.portage_uid,
 				gid=portage.data.portage_gid, mode=dir_mode)
 
@@ -270,25 +267,6 @@ class Binpkg(CompositeTask):
 		finally:
 			f.close()
 
-		# PREFIX LOCAL: deal with EPREFIX from binpkg
-		# Retrieve the EPREFIX this package was built with
-		self._build_prefix = pkg_xpak.getfile(_unicode_encode("EPREFIX",
-			encoding=_encodings['repo.content']))
-		if not self._buil_dprefix:
-			self._build_prefix = ''
-		else:
-			self._build_prefix = self._build_prefix.strip()
-		# We want to install in "our" prefix, not the binary one
-		self.settings["EPREFIX"] = EPREFIX
-		f = io.open(_unicode_encode(os.path.join(infloc, 'EPREFIX'),
-			encoding=_encodings['fs'], errors='strict'),
-			mode='w', encoding=_encodings['content'], errors='strict')
-		try:
-			f.write(_unicode_decode(EPREFIX + "\n"))
-		finally:
-			f.close()
-		# END PREFIX LOCAL
-
 		env_extractor = BinpkgEnvExtractor(background=self.background,
 			scheduler=self.scheduler, settings=self.settings)
 
@@ -314,18 +292,9 @@ class Binpkg(CompositeTask):
 			self.wait()
 			return
 
-		# PREFIX LOCAL:
-		# if the prefix differs, we copy it to the image after
-		# extraction using chpathtool
-		if (self._build_prefix != EPREFIX):
-			pkgloc = self._work_dir
-		else:
-			pkgloc = self._image_dir
-		# END PREFIX LOCAL
-
 		extractor = BinpkgExtractorAsync(background=self.background,
 			env=self.settings.environ(),
-			image_dir=pkgloc,
+			image_dir=self._image_dir,
 			pkg=self.pkg, pkg_path=self._pkg_path,
 			logfile=self.settings.get("PORTAGE_LOG_FILE"),
 			scheduler=self.scheduler)
@@ -340,17 +309,30 @@ class Binpkg(CompositeTask):
 			self.wait()
 			return
 
-		# PREFIX LOCAL: use chpathtool binary
-		if self._build_prefix != EPREFIX:
-			chpathtool = BinpkgChpathtoolAsync(background=self.background,
-				image_dir=self._image_dir, work_dir=self._work_dir,
-				buildprefix=self._build_prefix, eprefix=EPREFIX,
-				pkg=self.pkg, scheduler=self.scheduler)
-			self._writemsg_level(">>> Adjusting Prefix to %s\n" % EPREFIX)
-			self._start_task(chpathtool, self._chpathtool_exit)
-		else:
+		try:
+			with io.open(_unicode_encode(os.path.join(self._infloc, "EPREFIX"),
+				encoding=_encodings['fs'], errors='strict'), mode='r',
+				encoding=_encodings['repo.content'], errors='replace') as f:
+				self._build_prefix = f.read().rstrip('\n')
+		except IOError:
+			self._build_prefix = ""
+
+		if self._build_prefix == self.settings["EPREFIX"]:
+			ensure_dirs(self.settings["ED"])
+			self._current_task = None
+			self.returncode = os.EX_OK
 			self.wait()
-		# END PREFIX LOCAL
+			return
+
+		chpathtool = SpawnProcess(
+			args=[portage._python_interpreter,
+			os.path.join(self.settings["PORTAGE_BIN_PATH"], "chpathtool.py"),
+			self.settings["D"], self._build_prefix, self.settings["EPREFIX"]],
+			background=self.background, env=self.settings.environ(), 
+			scheduler=self.scheduler,
+			logfile=self.settings.get('PORTAGE_LOG_FILE'))
+		self._writemsg_level(">>> Adjusting Prefix to %s\n" % self.settings["EPREFIX"])
+		self._start_task(chpathtool, self._chpathtool_exit)
 
 	def _chpathtool_exit(self, chpathtool):
 		if self._final_exit(chpathtool) != os.EX_OK:
@@ -360,6 +342,27 @@ class Binpkg(CompositeTask):
 				noiselevel=-1, level=logging.ERROR)
 			self.wait()
 			return
+
+		# We want to install in "our" prefix, not the binary one
+		with io.open(_unicode_encode(os.path.join(self._infloc, "EPREFIX"),
+			encoding=_encodings['fs'], errors='strict'), mode='w',
+			encoding=_encodings['repo.content'], errors='strict') as f:
+			f.write(self.settings["EPREFIX"] + "\n")
+
+		# Move the files to the correct location for merge.
+		image_tmp_dir = os.path.join(
+			self.settings["PORTAGE_BUILDDIR"], "image_tmp")
+		build_d = os.path.join(self.settings["D"],
+			self._build_prefix.lstrip(os.sep))
+		if not os.path.isdir(build_d):
+			# Assume this is a virtual package or something.
+			shutil.rmtree(self._image_dir)
+			ensure_dirs(self.settings["ED"])
+		else:
+			os.rename(build_d, image_tmp_dir)
+			shutil.rmtree(self._image_dir)
+			ensure_dirs(os.path.dirname(self.settings["ED"].rstrip(os.sep)))
+			os.rename(image_tmp_dir, self.settings["ED"])
 
 		self.wait()
 
