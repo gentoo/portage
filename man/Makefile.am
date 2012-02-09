@@ -1,7 +1,6 @@
 SHELL = @PORTAGE_BASH@
 
 man_MANS = \
-	chpathtool.5 \
 	color.map.5 \
 	dispatch-conf.1 \
 	ebuild.1 \
