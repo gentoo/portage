@@ -129,7 +129,11 @@ class AsynchronousTask(SlotObject):
 			self._exit_listener_stack = self._exit_listeners
 			self._exit_listeners = None
 
-			self._exit_listener_stack.reverse()
+			# Execute exit listeners in reverse order, so that
+			# the last added listener is executed first. This
+			# allows SequentialTaskQueue to decrement its running
+			# task count as soon as one of its tasks exits, so that
+			# the value is accurate when other listeners execute.
 			while self._exit_listener_stack:
 				self._exit_listener_stack.pop()(self)
 
