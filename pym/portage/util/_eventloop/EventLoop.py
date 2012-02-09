@@ -157,9 +157,9 @@ class EventLoop(object):
 
 		if not self._poll_event_queue:
 			if may_block:
-				timeout = 0
-			else:
 				timeout = None
+			else:
+				timeout = 0
 			self._poll(timeout=timeout)
 
 		try:
