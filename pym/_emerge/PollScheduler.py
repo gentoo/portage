@@ -46,10 +46,6 @@ class EventLoop(object):
 		self._poll_obj = create_poll_instance()
 		self._polling = False		
 
-	def _schedule(self):
-		pass
-
-
 	def _poll(self, timeout=None):
 		if self._polling:
 			return
@@ -107,12 +103,11 @@ class EventLoop(object):
 		StopIteration if timeout is None and there are
 		no file descriptors to poll.
 		"""
-		if not self._poll_event_handlers:
-			self._schedule()
-			if timeout is None and \
-				not self._poll_event_handlers:
-				raise StopIteration(
-					"timeout is None and there are no poll() event handlers")
+
+		if timeout is None and \
+			not self._poll_event_handlers:
+			raise StopIteration(
+				"timeout is None and there are no poll() event handlers")
 
 		# The following error is known to occur with Linux kernel versions
 		# less than 2.6.24:
@@ -367,7 +362,6 @@ class PollScheduler(object):
 			"source_remove", "timeout_add", "unregister")
 
 	def __init__(self):
-		super(PollScheduler, self).__init__()
 		self._terminated = threading.Event()
 		self._terminated_tasks = False
 		self._max_jobs = 1
@@ -376,7 +370,6 @@ class PollScheduler(object):
 		self._scheduling = False
 		self._background = False
 		self._event_loop = EventLoop()
-		self._event_loop._schedule = self._schedule
 		self.sched_iface = self._sched_iface_class(
 			idle_add=self._event_loop.idle_add,
 			io_add_watch=self._event_loop.io_add_watch,
