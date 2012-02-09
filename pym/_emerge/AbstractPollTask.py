@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import array
@@ -121,3 +121,21 @@ class AbstractPollTask(AsynchronousTask):
 				self._unregister()
 				self.wait()
 
+	def _wait_loop(self, timeout=None):
+
+		if timeout is None:
+			while self._registered:
+				self.scheduler.iteration()
+			return
+
+		def timeout_cb():
+			timeout_cb.timed_out = True
+			return False
+		timeout_cb.timed_out = False
+		timeout_cb.timeout_id = self.scheduler.timeout_add(timeout, timeout_cb)
+
+		try:
+			while self._registered and not timeout_cb.timed_out:
+				self.scheduler.iteration()
+		finally:
+			self.scheduler.unregister(timeout_cb.timeout_id)

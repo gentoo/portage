@@ -504,12 +504,12 @@ class GenUseLocalDesc(object):
 				errors='backslashreplace')
 			output.write(_unicode_decode('\n'))
 		else:
-			output.write(_unicode_decode('''
-# This file is deprecated as per GLEP 56 in favor of metadata.xml. Please add
-# your descriptions to your package's metadata.xml ONLY.
-# * generated automatically using egencache *
+			output.write(textwrap.dedent(_unicode_decode('''\
+				# This file is deprecated as per GLEP 56 in favor of metadata.xml. Please add
+				# your descriptions to your package's metadata.xml ONLY.
+				# * generated automatically using egencache *
 
-'''.lstrip()))
+				''')))
 
 		# The cmp function no longer exists in python3, so we'll
 		# implement our own here under a slightly different name
@@ -691,12 +691,12 @@ class GenChangeLogs(object):
 			self.returncode |= 2
 			return
 
-		output.write(_unicode_decode('''
-# ChangeLog for %s
-# Copyright 1999-%s Gentoo Foundation; Distributed under the GPL v2
-# $Header: $
+		output.write(textwrap.dedent(_unicode_decode('''\
+			# ChangeLog for %s
+			# Copyright 1999-%s Gentoo Foundation; Distributed under the GPL v2
+			# $Header: $
 
-''' % (cp, time.strftime('%Y'))).lstrip())
+			''' % (cp, time.strftime('%Y')))))
 
 		# now grab all the commits
 		commits = self.grab(['git', 'rev-list', 'HEAD', '--', '.']).split()

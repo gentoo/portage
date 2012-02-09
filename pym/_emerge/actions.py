@@ -2024,6 +2024,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				"--whole-file",   # Don't do block transfers, only entire files
 				"--delete",       # Delete files that aren't in the master tree
 				"--stats",        # Show final statistics about what was transfered
+				"--human-readable",
 				"--timeout="+str(mytimeout), # IO timeout if not done in X seconds
 				"--exclude=/distfiles",   # Exclude distfiles from consideration
 				"--exclude=/local",       # Exclude local     from consideration

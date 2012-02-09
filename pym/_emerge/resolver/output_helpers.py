@@ -211,7 +211,8 @@ class _DisplayConfig(object):
 				del e
 		self.columnwidth = mywidth
 
-		self.repo_display = _RepoDisplay(frozen_config.roots)
+		if "--quiet-repo-display" in frozen_config.myopts:
+			self.repo_display = _RepoDisplay(frozen_config.roots)
 		self.trees = frozen_config.trees
 		self.pkgsettings = frozen_config.pkgsettings
 		self.target_root = frozen_config.target_root
@@ -564,10 +565,9 @@ class PkgInfo(object):
 	information about the pkg being printed.
 	"""
 	
-	__slots__ = ("ordered", "fetch_symbol", "operation", "merge",
-		"built", "cp", "ebuild_path", "repo_name", "repo_path_real", 
-		"world", "system", "use", "oldbest", "ver"
-		)
+	__slots__ = ("built", "cp", "ebuild_path", "fetch_symbol", "merge",
+		"oldbest", "oldbest_list", "operation", "ordered",
+		"repo_name", "repo_path_real", "system", "use", "ver", "world")
 
 
 	def __init__(self):
@@ -577,6 +577,7 @@ class PkgInfo(object):
 		self.fetch_symbol = ''
 		self.merge = ''
 		self.oldbest = ''
+		self.oldbest_list = []
 		self.operation = ''
 		self.ordered = False
 		self.repo_path_real = ''

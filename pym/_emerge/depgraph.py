@@ -827,20 +827,28 @@ class depgraph(object):
 					else:
 						self._dynamic_config._slot_conflict_parent_atoms.add(parent_atom)
 
-	def _reinstall_for_flags(self, forced_flags,
+	def _reinstall_for_flags(self, pkg, forced_flags,
 		orig_use, orig_iuse, cur_use, cur_iuse):
 		"""Return a set of flags that trigger reinstallation, or None if there
 		are no such flags."""
-		if "--newuse" in self._frozen_config.myopts or \
-			self._dynamic_config.myparams.get(
-			"binpkg_respect_use") in ("y", "auto"):
+
+		# binpkg_respect_use: Behave like newuse by default. If newuse is
+		# False and changed_use is True, then behave like changed_use.
+		binpkg_respect_use = (pkg.built and
+			self._dynamic_config.myparams.get("binpkg_respect_use")
+			in ("y", "auto"))
+		newuse = "--newuse" in self._frozen_config.myopts
+		changed_use = "changed-use" == self._frozen_config.myopts.get("--reinstall")
+
+		if newuse or (binpkg_respect_use and not changed_use):
 			flags = set(orig_iuse.symmetric_difference(
 				cur_iuse).difference(forced_flags))
 			flags.update(orig_iuse.intersection(orig_use).symmetric_difference(
 				cur_iuse.intersection(cur_use)))
 			if flags:
 				return flags
-		elif "changed-use" == self._frozen_config.myopts.get("--reinstall"):
+
+		elif changed_use or binpkg_respect_use:
 			flags = orig_iuse.intersection(orig_use).symmetric_difference(
 				cur_iuse.intersection(cur_use))
 			if flags:
@@ -1058,9 +1066,12 @@ class depgraph(object):
 			else:
 				# Display the specific atom from SetArg or
 				# Package types.
+				uneval = ""
+				if dep.atom is not dep.atom.unevaluated_atom:
+					uneval = " (%s)" % (dep.atom.unevaluated_atom,)
 				writemsg_level(
-					"%s%s required by %s\n" %
-					("Parent Dep:".ljust(15), dep.atom, myparent),
+					"%s%s%s required by %s\n" %
+					("Parent Dep:".ljust(15), dep.atom, uneval, myparent),
 					level=logging.DEBUG, noiselevel=-1)
 
 		# Ensure that the dependencies of the same package
@@ -3447,7 +3458,7 @@ class depgraph(object):
 						yield pkg
 
 	def _select_pkg_highest_available(self, root, atom, onlydeps=False):
-		cache_key = (root, atom, onlydeps)
+		cache_key = (root, atom, atom.unevaluated_atom, onlydeps)
 		ret = self._dynamic_config._highest_pkg_cache.get(cache_key)
 		if ret is not None:
 			pkg, existing = ret
@@ -4036,8 +4047,8 @@ class depgraph(object):
 						cur_iuse = iuses
 						if myeb and not usepkgonly and not useoldpkg:
 							cur_iuse = myeb.iuse.all
-						reinstall_for_flags = self._reinstall_for_flags(forced_flags,
-							old_use, iuses, now_use, cur_iuse)
+						reinstall_for_flags = self._reinstall_for_flags(pkg,
+							forced_flags, old_use, iuses, now_use, cur_iuse)
 						if reinstall_for_flags:
 							if not pkg.installed:
 								self._dynamic_config.ignored_binaries.setdefault(pkg, set()).update(reinstall_for_flags)
@@ -4057,7 +4068,7 @@ class depgraph(object):
 						cur_use = self._pkg_use_enabled(pkg)
 						cur_iuse = pkg.iuse.all
 						reinstall_for_flags = \
-							self._reinstall_for_flags(
+							self._reinstall_for_flags(pkg,
 							forced_flags, old_use, old_iuse,
 							cur_use, cur_iuse)
 						if reinstall_for_flags:

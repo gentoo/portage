@@ -123,7 +123,7 @@ EBUILD_PHASES            = ("pretend", "setup", "unpack", "prepare", "configure"
 SUPPORTED_FEATURES       = frozenset([
                            "assume-digests", "binpkg-logs", "buildpkg", "buildsyspkg", "candy",
                            "ccache", "chflags", "clean-logs",
-                           "collision-protect", "compress-build-logs",
+                           "collision-protect", "compress-build-logs", "compressdebug",
                            "config-protect-if-modified",
                            "digest", "distcc", "distcc-pump", "distlocks", "ebuild-locks", "fakeroot",
                            "fail-clean", "force-mirror", "force-prefix", "getbinpkg",
@@ -203,7 +203,6 @@ _ENABLE_DYN_LINK_MAP    = True
 _ENABLE_PRESERVE_LIBS   = True
 _ENABLE_REPO_NAME_WARN  = True
 _ENABLE_SET_CONFIG      = True
-_ENABLE_XATTR           = True
 
 
 # The definitions above will differ between branches, so it's useful to have
@@ -216,8 +215,3 @@ if not _ENABLE_PRESERVE_LIBS:
 
 if not _ENABLE_SET_CONFIG:
 	WORLD_SETS_FILE = '/dev/null'
-
-if not _ENABLE_XATTR:
-	SUPPORTED_FEATURES = set(SUPPORTED_FEATURES)
-	SUPPORTED_FEATURES.remove("xattr")
-	SUPPORTED_FEATURES = frozenset(SUPPORTED_FEATURES)

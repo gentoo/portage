@@ -1,7 +1,5 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-
-import time
 
 from _emerge.PollScheduler import PollScheduler
 
@@ -36,42 +34,28 @@ class QueueScheduler(PollScheduler):
 
 	def run(self, timeout=None):
 
-		start_time = None
-		timed_out = False
-		remaining_timeout = timeout
+		timeout_callback = None
 		if timeout is not None:
-			start_time = time.time()
+			def timeout_callback():
+				timeout_callback.timed_out = True
+				return False
+			timeout_callback.timed_out = False
+			timeout_callback.timeout_id = self.sched_iface.timeout_add(
+				timeout, timeout_callback)
 
-		while self._schedule():
-			self._schedule_wait(timeout=remaining_timeout)
-			if timeout is not None:
-				elapsed_time = time.time() - start_time
-				if elapsed_time < 0:
-					# The system clock has changed such that start_time
-					# is now in the future, so just assume that the
-					# timeout has already elapsed.
-					timed_out = True
-					break
-				remaining_timeout = timeout - 1000 * elapsed_time
-				if remaining_timeout <= 0:
-					timed_out = True
-					break
+		try:
 
-		if timeout is None or not timed_out:
-			while self._running_job_count():
-				self._schedule_wait(timeout=remaining_timeout)
-				if timeout is not None:
-					elapsed_time = time.time() - start_time
-					if elapsed_time < 0:
-						# The system clock has changed such that start_time
-						# is now in the future, so just assume that the
-						# timeout has already elapsed.
-						timed_out = True
-						break
-					remaining_timeout = timeout - 1000 * elapsed_time
-					if remaining_timeout <= 0:
-						timed_out = True
-						break
+			while not (timeout_callback is not None and
+				timeout_callback.timed_out) and self._schedule():
+				self.sched_iface.iteration()
+
+			while not (timeout_callback is not None and
+				timeout_callback.timed_out) and self._running_job_count():
+				self.sched_iface.iteration()
+
+		finally:
+			if timeout_callback is not None:
+				self.sched_iface.unregister(timeout_callback.timeout_id)
 
 	def _schedule_tasks(self):
 		"""

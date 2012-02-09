@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AsynchronousTask import AsynchronousTask
@@ -60,7 +60,8 @@ class CompositeTask(AsynchronousTask):
 					self._current_task = None
 					break
 				else:
-					self.scheduler.schedule(condition=self._task_queued_wait)
+					while not self._task_queued_wait():
+						self.scheduler.iteration()
 					if self.returncode is not None:
 						break
 					elif self.cancelled:

@@ -33,11 +33,13 @@ class EbuildPhase(CompositeTask):
 		("_ebuild_lock",)
 
 	# FEATURES displayed prior to setup phase
-	_features_display = ("ccache", "distcc", "distcc-pump", "fakeroot",
+	_features_display = (
+		"ccache", "compressdebug", "distcc", "distcc-pump", "fakeroot",
 		"installsources", "keeptemp", "keepwork", "nostrip",
 		"preserve-libs", "sandbox", "selinux", "sesandbox",
 		"splitdebug", "suidctl", "test", "userpriv",
-		"usersandbox")
+		"usersandbox"
+	)
 
 	# Locked phases
 	_locked_phases = ("setup", "preinst", "postinst", "prerm", "postrm")

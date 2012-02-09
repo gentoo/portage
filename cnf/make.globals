@@ -98,7 +98,7 @@ PORTAGE_RSYNC_RETRIES="-1"
 # Number of seconds rsync will wait before timing out.
 #RSYNC_TIMEOUT="180"
 
-PORTAGE_RSYNC_OPTS="--recursive --links --safe-links --perms --times --compress --force --whole-file --delete --stats --timeout=180 --exclude=/distfiles --exclude=/local --exclude=/packages"
+PORTAGE_RSYNC_OPTS="--recursive --links --safe-links --perms --times --compress --force --whole-file --delete --stats --human-readable --timeout=180 --exclude=/distfiles --exclude=/local --exclude=/packages"
 
 # The number of days after the last `emerge --sync` that a warning
 # message should be produced.

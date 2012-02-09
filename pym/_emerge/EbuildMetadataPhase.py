@@ -128,6 +128,8 @@ class EbuildMetadataPhase(SubProcess):
 
 		self._unregister_if_appropriate(event)
 
+		return True
+
 	def _set_returncode(self, wait_retval):
 		SubProcess._set_returncode(self, wait_retval)
 		# self._raw_metadata is None when _start returns

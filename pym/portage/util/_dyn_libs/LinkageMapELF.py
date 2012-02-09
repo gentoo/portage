@@ -288,6 +288,13 @@ class LinkageMapELF(object):
 			l = l.rstrip("\n")
 			if not l:
 				continue
+			if '\0' in l:
+				# os.stat() will raise "TypeError: must be encoded string
+				# without NULL bytes, not str" in this case.
+				writemsg_level(_("\nLine contains null byte(s) " \
+					"in %s: %s\n\n") % (location, l),
+					level=logging.ERROR, noiselevel=-1)
+				continue
 			fields = l.split(";")
 			if len(fields) < 5:
 				writemsg_level(_("\nWrong number of fields " \

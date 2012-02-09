@@ -829,7 +829,7 @@ install_qa_check_misc() {
 	fi
 
 	# Portage regenerates this on the installed system.
-	rm -f "${ED}"/usr/share/info/dir{,.gz,.bz2}
+	rm -f "${ED}"/usr/share/info/dir{,.gz,.bz2} || die "rm failed!"
 
 	if has multilib-strict ${FEATURES} && \
 	   [[ -x ${EPREFIX}/usr/bin/file && -x ${EPREFIX}/usr/bin/find ]] && \
@@ -1720,14 +1720,30 @@ preinst_selinux_labels() {
 }
 
 dyn_package() {
+	local PROOT
 
 	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+		case "$EAPI" in 0|1|2) local EPREFIX= ED=${D} ;; esac
 
 	# Make sure $PWD is not ${D} so that we don't leave gmon.out files
 	# in there in case any tools were built with -pg in CFLAGS.
+
 	cd "${T}"
-	install_mask "${ED}" "${PKG_INSTALL_MASK}"
+
+	if [[ -n ${PKG_INSTALL_MASK} ]] ; then
+		PROOT=${T}/packaging/
+		# make a temporary copy of ${D} so that any modifications we do that
+		# are binpkg specific, do not influence the actual installed image.
+		rm -rf "${PROOT}" || die "failed removing stale package tree"
+		cp -pPR $(cp --help | grep -qs -e-l && echo -l) \
+			"${D}" "${PROOT}" \
+			|| die "failed creating packaging tree"
+
+		install_mask "${PROOT%/}${EPREFIX}/" "${PKG_INSTALL_MASK}"
+	else
+		PROOT=${D}
+	fi
+
 	local tar_options=""
 	[[ $PORTAGE_VERBOSE = 1 ]] && tar_options+=" -v"
 	# Sandbox is disabled in case the user wants to use a symlink
@@ -1736,7 +1752,7 @@ dyn_package() {
 	[ -z "${PORTAGE_BINPKG_TMPFILE}" ] && \
 		die "PORTAGE_BINPKG_TMPFILE is unset"
 	mkdir -p "${PORTAGE_BINPKG_TMPFILE%/*}" || die "mkdir failed"
-	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${D}" . | \
+	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${PROOT}" . | \
 		$PORTAGE_BZIP2_COMMAND -c > "$PORTAGE_BINPKG_TMPFILE"
 	assert "failed to pack binary package: '$PORTAGE_BINPKG_TMPFILE'"
 	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
@@ -1757,6 +1773,9 @@ dyn_package() {
 	[ -n "${md5_hash}" ] && \
 		echo ${md5_hash} > "${PORTAGE_BUILDDIR}"/build-info/BINPKGMD5
 	vecho ">>> Done."
+
+	# cleanup our temp tree
+	[[ -n ${PKG_INSTALL_MASK} ]] && rm -rf "${PROOT}"
 	cd "${PORTAGE_BUILDDIR}"
 	>> "$PORTAGE_BUILDDIR/.packaged" || \
 		die "Failed to create $PORTAGE_BUILDDIR/.packaged"

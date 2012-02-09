@@ -419,7 +419,6 @@ qawarnings = set((
 "RDEPEND.implicit",
 "RDEPEND.suspect",
 "RESTRICT.invalid",
-"SRC_URI.mirror",
 "ebuild.minorsyn",
 "ebuild.badheader",
 "ebuild.patches",
@@ -585,6 +584,13 @@ repodir = os.path.realpath(portdir_overlay)
 repo_config = repoman_settings.repositories.get_repo_for_location(repodir)
 portdb.porttrees = list(repo_config.eclass_db.porttrees)
 portdir = portdb.porttrees[0]
+
+if repo_config.sign_commit:
+	if vcs == 'git':
+		# NOTE: It's possible to use --gpg-sign=key_id to specify the key in
+		# the commit arguments. If key_id is unspecified, then it must be
+		# configured by `git config user.signingkey key_id`.
+		vcs_local_opts.append("--gpg-sign")
 
 # In order to disable manifest signatures, repos may set
 # "sign-manifests = false" in metadata/layout.conf. This
@@ -1168,7 +1174,10 @@ check_ebuild_notadded = not \
 # Build a regex from thirdpartymirrors for the SRC_URI.mirror check.
 thirdpartymirrors = []
 for v in repoman_settings.thirdpartymirrors().values():
-	thirdpartymirrors.extend(v)
+	for v in v:
+		if not v.endswith("/"):
+			v += "/"
+		thirdpartymirrors.append(v)
 
 class _MetadataTreeBuilder(xml.etree.ElementTree.TreeBuilder):
 	"""

@@ -84,6 +84,8 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 				if reply_hook is not None:
 					reply_hook()
 
+		return True
+
 	def _send_reply(self, reply):
 		# File streams are in unbuffered mode since we do atomic
 		# read and write of whole pickles. Use non-blocking mode so

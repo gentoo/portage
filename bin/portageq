@@ -1,5 +1,5 @@
 #!@PREFIX_PORTAGE_PYTHON@ -O
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -46,6 +46,7 @@ except ImportError:
 del pym_path
 
 from portage import os
+from portage.eapi import eapi_has_repo_deps
 from portage.util import writemsg, writemsg_stdout
 portage.proxy.lazyimport.lazyimport(globals(),
 	'subprocess',
@@ -92,8 +93,9 @@ def has_version(argv):
 
 	warnings = []
 
+	allow_repo = atom_validate_strict is False or eapi_has_repo_deps(eapi)
 	try:
-		atom = portage.dep.Atom(argv[1])
+		atom = portage.dep.Atom(argv[1], allow_repo=allow_repo)
 	except portage.exception.InvalidAtom:
 		if atom_validate_strict:
 			portage.writemsg("ERROR: Invalid atom: '%s'\n" % argv[1],
@@ -104,7 +106,7 @@ def has_version(argv):
 	else:
 		if atom_validate_strict:
 			try:
-				atom = portage.dep.Atom(argv[1], eapi=eapi)
+				atom = portage.dep.Atom(argv[1], allow_repo=allow_repo, eapi=eapi)
 			except portage.exception.InvalidAtom as e:
 				warnings.append(
 					portage._unicode_decode("QA Notice: %s: %s") % \
@@ -139,8 +141,9 @@ def best_version(argv):
 
 	warnings = []
 
+	allow_repo = atom_validate_strict is False or eapi_has_repo_deps(eapi)
 	try:
-		atom = portage.dep.Atom(argv[1])
+		atom = portage.dep.Atom(argv[1], allow_repo=allow_repo)
 	except portage.exception.InvalidAtom:
 		if atom_validate_strict:
 			portage.writemsg("ERROR: Invalid atom: '%s'\n" % argv[1],
@@ -151,7 +154,7 @@ def best_version(argv):
 	else:
 		if atom_validate_strict:
 			try:
-				atom = portage.dep.Atom(argv[1], eapi=eapi)
+				atom = portage.dep.Atom(argv[1], allow_repo=allow_repo, eapi=eapi)
 			except portage.exception.InvalidAtom as e:
 				warnings.append(
 					portage._unicode_decode("QA Notice: %s: %s") % \
@@ -199,9 +202,11 @@ def metadata(argv):
 		print("Unrecognized package type: '%s'" % pkgtype, file=sys.stderr)
 		sys.exit(1)
 	trees = portage.db
+	repo = portage.dep.dep_getrepo(pkgspec)
+	pkgspec = portage.dep.remove_slot(pkgspec)
 	try:
 			values = trees[eroot][type_map[pkgtype]].dbapi.aux_get(
-				pkgspec, metakeys)
+				pkgspec, metakeys, myrepo=repo)
 			writemsg_stdout(''.join('%s\n' % x for x in values), noiselevel=-1)
 	except KeyError:
 		print("Package not found: '%s'" % pkgspec, file=sys.stderr)

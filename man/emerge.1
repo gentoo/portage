@@ -520,7 +520,8 @@ A USE flag was turned off for a package.
 USE flags may be toggled by your profile as well as your USE and package.use
 settings. If you would like to skip rebuilds for which disabled flags have
 been added to or removed from IUSE, see the related
-\fB\-\-changed\-use\fR option.
+\fB\-\-changed\-use\fR option. If you would like to skip rebuilds for
+specific packages, see the \fB\-\-exclude\fR option.
 .TP
 .BR "\-\-noconfmem"
 Causes portage to disregard merge records indicating that a config file
@@ -617,6 +618,10 @@ corresponding die messages.
 Note that interactive packages currently force all build output to
 be displayed on stdout. This issue can be temporarily avoided
 by specifying \fI\-\-accept\-properties=\-interactive\fR.
+.TP
+.BR "\-\-quiet\-repo\-display"
+In the package merge list display, suppress ::repository output, and
+instead use numbers to indicate which repositories package come from.
 .TP
 .BR \-\-quiet\-unmerge\-warn
 Disable the warning message that's shown prior to
@@ -749,6 +754,9 @@ Symbol	Location	Meaning
 %	suffix	newly added or removed
 ()	circumfix	forced, masked, or removed
 .TE
+.TP
+.BR "\-\-verbose\-main\-repo\-display"
+In the package merge list display, print ::repository even for main repository.
 .TP
 .BR "\-\-with\-bdeps < y | n >"
 In dependency calculations, pull in build time dependencies

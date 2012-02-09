@@ -33,6 +33,7 @@ class MetadataRegen(PollScheduler):
 		self.returncode = os.EX_OK
 		self._error_count = 0
 		self._running_tasks = set()
+		self._remaining_tasks = True
 
 	def _terminate_tasks(self):
 		while self._running_tasks:
@@ -87,11 +88,12 @@ class MetadataRegen(PollScheduler):
 		from portage.cache.cache_errors import CacheError
 		dead_nodes = {}
 
-		while self._schedule():
-			self._poll_loop()
+		self._schedule()
+		while self._remaining_tasks and not self._terminated_tasks:
+			self.sched_iface.iteration()
 
 		while self._jobs:
-			self._poll_loop()
+			self.sched_iface.iteration()
 
 		if self._terminated_tasks:
 			self.returncode = 1
@@ -151,6 +153,7 @@ class MetadataRegen(PollScheduler):
 			try:
 				metadata_process = next(self._process_iter)
 			except StopIteration:
+				self._remaining_tasks = False
 				return False
 
 			self._jobs += 1

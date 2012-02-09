@@ -31,11 +31,45 @@ official EAPI 4-python Specification</ulink>.
 The "." character is allowed in USE flags.
 </para>
 </section>
-<section id='package-ebuild-eapi-4-python-repository'>
-<title>REPOSITORY</title>
+<section id='package-ebuild-eapi-4-python-repository-variable'>
+<title>REPOSITORY Variable</title>
 <para>
 The new REPOSITORY variable is set in ebuild environment. This variable contains name of repository, which contains currently used ebuild.
 </para>
+</section>
+<section id='package-ebuild-eapi-4-python-repository-dependencies'>
+<title>Repository Dependencies</title>
+<para>
+Repository dependencies are supported in atoms in DEPEND, PDEPEND and RDEPEND and atoms passed to best_version and has_version functions.
+Repository dependency is specified by two colons followed by repository name.
+</para>
+<table><title>Repository Dependency Examples</title>
+<tgroup cols='1' align='left' >
+<colspec colname='atom'/>
+<thead>
+<row>
+<entry>Atom</entry>
+</row>
+</thead>
+<tbody>
+<row>
+<entry>dev-lang/python::progress</entry>
+</row>
+<row>
+<entry>&gt;=dev-lang/python-3.2::progress</entry>
+</row>
+<row>
+<entry>dev-lang/python:3.2::progress</entry>
+</row>
+<row>
+<entry>dev-lang/python::progress[xml]</entry>
+</row>
+<row>
+<entry>dev-lang/python:3.2::progress[xml]</entry>
+</row>
+</tbody>
+</tgroup>
+</table>
 </section>
 <section id='package-ebuild-eapi-4-python-repo-level-config'>
 <title>Extended Repository-Level Configuration</title>

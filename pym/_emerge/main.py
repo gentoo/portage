@@ -67,6 +67,7 @@ options=[
 "--nodeps",       "--noreplace",
 "--nospinner",    "--oneshot",
 "--onlydeps",     "--pretend",
+"--quiet-repo-display",
 "--quiet-unmerge-warn",
 "--resume",
 "--searchdesc",
@@ -75,6 +76,7 @@ options=[
 "--unordered-display",
 "--update",
 "--verbose",
+"--verbose-main-repo-display",
 ]
 
 shortmapping={

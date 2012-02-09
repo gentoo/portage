@@ -29,5 +29,11 @@ class MiscFunctionsProcess(AbstractEbuildProcess):
 		AbstractEbuildProcess._start(self)
 
 	def _spawn(self, args, **kwargs):
-		self.settings.pop("EBUILD_PHASE", None)
-		return spawn(" ".join(args), self.settings, **kwargs)
+		# Temporarily unset EBUILD_PHASE so that bashrc code doesn't
+		# think this is a real phase.
+		phase_backup = self.settings.pop("EBUILD_PHASE", None)
+		try:
+			return spawn(" ".join(args), self.settings, **kwargs)
+		finally:
+			if phase_backup is not None:
+				self.settings["EBUILD_PHASE"] = phase_backup

@@ -3403,6 +3403,15 @@ class dblink(object):
 					max_dblnk = dblnk
 			self._installed_instance = max_dblnk
 
+		if self.settings.get("INSTALL_MASK"):
+			# Apply INSTALL_MASK before collision-protect, since it may
+			# be useful to avoid collisions in some scenarios.
+			phase = MiscFunctionsProcess(background=False,
+				commands=["preinst_mask"], phase="preinst",
+				scheduler=self._scheduler, settings=self.settings)
+			phase.start()
+			phase.wait()
+
 		# We check for unicode encoding issues after src_install. However,
 		# the check must be repeated here for binary packages (it's
 		# inexpensive since we call os.walk() here anyway).
@@ -3528,14 +3537,6 @@ class dblink(object):
 			if installed_files:
 				return 1
 
-		# check for package collisions
-		blockers = self._blockers
-		if blockers is None:
-			blockers = []
-		collisions, symlink_collisions, plib_collisions = \
-			self._collision_protect(srcroot, destroot,
-			others_in_slot + blockers, myfilelist, mylinklist)
-
 		# Make sure the ebuild environment is initialized and that ${T}/elog
 		# exists for logging of collision-protect eerror messages.
 		if myebuild is None:
@@ -3546,6 +3547,14 @@ class dblink(object):
 			[portage.versions.cpv_getversion(other.mycpv)
 			for other in others_in_slot])
 		prepare_build_dirs(settings=self.settings, cleanup=cleanup)
+
+		# check for package collisions
+		blockers = self._blockers
+		if blockers is None:
+			blockers = []
+		collisions, symlink_collisions, plib_collisions = \
+			self._collision_protect(srcroot, destroot,
+			others_in_slot + blockers, myfilelist, mylinklist)
 
 		if collisions:
 			collision_protect = "collision-protect" in self.settings.features
@@ -4651,7 +4660,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 			continue
 		contents_type = contents[path][0]
 		if path.startswith(root):
-			arcname = path[len(root):]
+			arcname = "./" + path[len(root):]
 		else:
 			raise ValueError("invalid root argument: '%s'" % root)
 		live_path = path
