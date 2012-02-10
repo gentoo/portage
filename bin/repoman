@@ -95,7 +95,8 @@ os.umask(0o22)
 # behave incrementally.
 repoman_incrementals = tuple(x for x in \
 	portage.const.INCREMENTALS if x != 'ACCEPT_KEYWORDS')
-repoman_settings = portage.config(local_config=False)
+config_root = os.environ.get("PORTAGE_CONFIGROOT")
+repoman_settings = portage.config(config_root=config_root, local_config=False)
 
 if repoman_settings.get("NOCOLOR", "").lower() in ("yes", "true") or \
 	repoman_settings.get('TERM') == 'dumb' or \
@@ -563,7 +564,7 @@ repoman_settings['PORTDIR_OVERLAY'] = "%s %s" % \
 	portage._shell_quote(portdir_overlay))
 # We have to call the config constructor again so
 # that config.repositories is initialized correctly.
-repoman_settings = portage.config(local_config=False,
+repoman_settings = portage.config(config_root=config_root, local_config=False,
 	env=dict(os.environ, PORTDIR_OVERLAY=repoman_settings['PORTDIR_OVERLAY']))
 
 root = repoman_settings['EROOT']
@@ -2004,6 +2005,7 @@ for x in effective_scanlist:
 					dep_settings = portage.config(
 						config_profile_path=prof.abs_path,
 						config_incrementals=repoman_incrementals,
+						config_root=config_root,
 						local_config=False,
 						_unmatched_removal=options.unmatched_removal,
 						env=env)
