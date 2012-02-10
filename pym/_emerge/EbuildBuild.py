@@ -360,7 +360,8 @@ class EbuildBuild(CompositeTask):
 		ebuild_path = self._ebuild_path
 		tree = self._tree
 
-		task = EbuildMerge(find_blockers=self.find_blockers,
+		task = EbuildMerge(exit_hook=self._install_exit,
+			find_blockers=self.find_blockers,
 			ldpath_mtimes=ldpath_mtimes, logger=logger, pkg=pkg,
 			pkg_count=pkg_count, pkg_path=ebuild_path,
 			scheduler=self.scheduler,
@@ -373,7 +374,6 @@ class EbuildBuild(CompositeTask):
 			(pkg_count.curval, pkg_count.maxval, pkg.cpv)
 		logger.log(msg, short_msg=short_msg)
 
-		task.addExitListener(self._install_exit)
 		return task
 
 	def _install_exit(self, task):
