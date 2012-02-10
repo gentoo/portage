@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import io
@@ -10,7 +10,6 @@ import fcntl
 import portage
 from portage import os, _unicode_decode
 import portage.elog.messages
-from _emerge.PollConstants import PollConstants
 from _emerge.SpawnProcess import SpawnProcess
 
 class MergeProcess(SpawnProcess):
@@ -63,7 +62,7 @@ class MergeProcess(SpawnProcess):
 
 	def _elog_output_handler(self, fd, event):
 		output = None
-		if event & PollConstants.POLLIN:
+		if event & self.scheduler.IO_IN:
 			try:
 				output = os.read(fd, self._bufsize)
 			except OSError as e:
@@ -83,7 +82,7 @@ class MergeProcess(SpawnProcess):
 					reporter = getattr(portage.elog.messages, funcname)
 					reporter(msg, phase=phase, key=key, out=out)
 
-		if event & PollConstants.POLLHUP:
+		if event & self.scheduler.IO_HUP:
 			self.scheduler.unregister(self._elog_reg_id)
 			self._elog_reg_id = None
 			os.close(self._elog_reader_fd)

@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -8,7 +8,6 @@ from portage import os
 from portage.localization import _
 from portage.util import writemsg_level
 from _emerge.FifoIpcDaemon import FifoIpcDaemon
-from _emerge.PollConstants import PollConstants
 
 class EbuildIpcDaemon(FifoIpcDaemon):
 	"""
@@ -34,7 +33,7 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 	def _input_handler(self, fd, event):
 		# Read the whole pickle in a single atomic read() call.
 		data = None
-		if event & PollConstants.POLLIN:
+		if event & self.scheduler.IO_IN:
 			# For maximum portability, use os.read() here since
 			# array.fromfile() and file.read() are both known to
 			# erroneously return an empty string from this

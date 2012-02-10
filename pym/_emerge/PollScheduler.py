@@ -20,7 +20,8 @@ from _emerge.getloadavg import getloadavg
 class PollScheduler(object):
 
 	class _sched_iface_class(SlotObject):
-		__slots__ = ("idle_add", "io_add_watch", "iteration",
+		__slots__ = ("IO_ERR", "IO_HUP", "IO_IN", "IO_NVAL", "IO_OUT",
+			"IO_PRI", "idle_add", "io_add_watch", "iteration",
 			"output", "register", "run",
 			"source_remove", "timeout_add", "unregister")
 
@@ -34,6 +35,12 @@ class PollScheduler(object):
 		self._background = False
 		self._event_loop = global_event_loop()
 		self.sched_iface = self._sched_iface_class(
+			IO_ERR=self._event_loop.IO_ERR,
+			IO_HUP=self._event_loop.IO_HUP,
+			IO_IN=self._event_loop.IO_IN,
+			IO_NVAL=self._event_loop.IO_NVAL,
+			IO_OUT=self._event_loop.IO_OUT,
+			IO_PRI=self._event_loop.IO_PRI,
 			idle_add=self._event_loop.idle_add,
 			io_add_watch=self._event_loop.io_add_watch,
 			iteration=self._event_loop.iteration,
