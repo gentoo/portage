@@ -11,7 +11,7 @@ from _emerge.SlotObject import SlotObject
 from _emerge.PollConstants import PollConstants
 from _emerge.PollSelectAdapter import PollSelectAdapter
 
-class EventLoop(PollConstants):
+class EventLoop(object):
 
 	supports_multiprocessing = True
 
@@ -36,6 +36,13 @@ class EventLoop(PollConstants):
 		self._timeout_interval = None
 		self._poll_obj = create_poll_instance()
 		self._polling = False
+
+		self.IO_ERR = PollConstants.POLLERR
+		self.IO_HUP = PollConstants.POLLHUP
+		self.IO_IN = PollConstants.POLLIN
+		self.IO_NVAL = PollConstants.POLLNVAL
+		self.IO_OUT = PollConstants.POLLOUT
+		self.IO_PRI = PollConstants.POLLPRI
 
 	def _poll(self, timeout=None):
 		if self._polling:
