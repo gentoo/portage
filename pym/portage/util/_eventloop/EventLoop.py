@@ -177,7 +177,13 @@ class EventLoop(object):
 				timeout = self._timeout_interval
 			else:
 				timeout = 0
-			self._poll(timeout=timeout)
+			try:
+				self._poll(timeout=timeout)
+			except StopIteration:
+				# This could happen if there are no IO event handlers
+				# after _poll() calls _run_timeouts(), due to them
+				# being removed by timeout or idle callbacks.
+				events_handled += 1
 
 		try:
 			while event_handlers and self._poll_event_queue:
