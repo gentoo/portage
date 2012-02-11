@@ -227,13 +227,6 @@ class EventLoop(object):
 		should return False to stop being called, or True to continue
 		being called. Any additional positional arguments given here
 		are passed to your function when it's called.
-
-		NOTE: Timeouts registered by this function currently do not
-		keep the main loop running when there are no remaining callbacks
-		registered for IO events. This is not an issue if the purpose of
-		the timeout is to place an upper limit on the time allowed for
-		a particular IO event to occur, since the handler associated with
-		the IO event will serve to keep the main loop running.
 		"""
 		self._event_handler_id += 1
 		source_id = self._event_handler_id
