@@ -62,7 +62,10 @@ class MetadataRegen(PollScheduler):
 				break
 			cp_set.add(cp)
 			portage.writemsg_stdout("Processing %s\n" % cp)
-			for repo in portdb.repositories:
+			# We iterate over portdb.porttrees, since it's common to
+			# tweak this attribute in order to adjust repo selection.
+			for mytree in portdb.porttrees:
+				repo = portdb.repositories.get_repo_for_location(mytree)
 				cpv_list = portdb.cp_list(cp, mytree=[repo.location])
 				for cpv in cpv_list:
 					if self._terminated_tasks:
