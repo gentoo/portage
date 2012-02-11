@@ -1,11 +1,6 @@
 # Copyright 2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import portage
-portage.proxy.lazyimport.lazyimport(globals(),
-	'glib',
-)
-
 class GlibEventLoop(object):
 
 	# TODO: Support multiprocessing by using a separate glib.MainContext
@@ -13,6 +8,7 @@ class GlibEventLoop(object):
 	supports_multiprocessing = False
 
 	def __init__(self):
+		import gi.repository.GLib as glib
 		self.IO_ERR = glib.IO_ERR
 		self.IO_HUP = glib.IO_HUP
 		self.IO_IN = glib.IO_IN
