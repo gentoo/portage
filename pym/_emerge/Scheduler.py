@@ -1347,6 +1347,9 @@ class Scheduler(PollScheduler):
 
 	def _merge(self):
 
+		if self._opts_no_background.intersection(self.myopts):
+			self._set_max_jobs(1)
+
 		self._add_prefetchers()
 		self._add_packages()
 		failed_pkgs = self._failed_pkgs
@@ -1492,18 +1495,6 @@ class Scheduler(PollScheduler):
 
 	def _deallocate_config(self, settings):
 		self._config_pool[settings['EROOT']].append(settings)
-
-	def _main_loop(self):
-
-		if self._opts_no_background.intersection(self.myopts):
-			self._set_max_jobs(1)
-
-		self._schedule()
-		while self._keep_scheduling():
-			self.sched_iface.iteration()
-
-		while self._is_work_scheduled():
-			self.sched_iface.iteration()
 
 	def _keep_scheduling(self):
 		return bool(not self._terminated_tasks and self._pkg_queue and \

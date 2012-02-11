@@ -109,6 +109,28 @@ class PollScheduler(object):
 		finally:
 			self._scheduling = False
 
+	def _main_loop(self):
+		# Populate initial event sources. We only need to do
+		# this once here, since it can be called during the
+		# loop from within event handlers.
+		self._schedule()
+
+		# Loop while there are jobs to be scheduled.
+		while self._keep_scheduling():
+			self.sched_iface.iteration()
+
+		# Clean shutdown of previously scheduled jobs. In the
+		# case of termination, this allows for basic cleanup
+		# such as flushing of buffered output to logs.
+		while self._is_work_scheduled():
+			self.sched_iface.iteration()
+
+	def _keep_scheduling(self):
+		return False
+
+	def _is_work_scheduled(self):
+		return bool(self._running_job_count())
+
 	def _running_job_count(self):
 		return self._jobs
 

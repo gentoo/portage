@@ -82,18 +82,16 @@ class MetadataRegen(PollScheduler):
 					portdb=portdb, repo_path=repo_path,
 					settings=portdb.doebuild_settings)
 
+	def _keep_scheduling(self):
+		return self._remaining_tasks and not self._terminated_tasks
+
 	def run(self):
 
 		portdb = self._portdb
 		from portage.cache.cache_errors import CacheError
 		dead_nodes = {}
 
-		self._schedule()
-		while self._remaining_tasks and not self._terminated_tasks:
-			self.sched_iface.iteration()
-
-		while self._jobs:
-			self.sched_iface.iteration()
+		self._main_loop()
 
 		if self._terminated_tasks:
 			self.returncode = 1
