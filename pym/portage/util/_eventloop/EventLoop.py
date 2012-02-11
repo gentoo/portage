@@ -162,7 +162,15 @@ class EventLoop(object):
 		events_handled = 0
 
 		if not event_handlers:
-			return bool(events_handled)
+			if not self._polling:
+				self._polling = True
+				try:
+					if self._run_timeouts():
+						events_handled += 1
+				finally:
+					self._polling = False
+			if not event_handlers:
+				return bool(events_handled)
 
 		if not self._poll_event_queue:
 			if may_block:
