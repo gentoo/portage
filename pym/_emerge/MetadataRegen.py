@@ -139,27 +139,21 @@ class MetadataRegen(PollScheduler):
 						pass
 
 	def _schedule_tasks(self):
-		"""
-		@rtype: bool
-		@returns: True if there may be remaining tasks to schedule,
-			False otherwise.
-		"""
 		if self._terminated_tasks:
-			return False
+			return
 
 		while self._can_add_job():
 			try:
 				metadata_process = next(self._process_iter)
 			except StopIteration:
 				self._remaining_tasks = False
-				return False
+				return
 
 			self._jobs += 1
 			self._running_tasks.add(metadata_process)
 			metadata_process.scheduler = self.sched_iface
 			metadata_process.addExitListener(self._metadata_exit)
 			metadata_process.start()
-		return True
 
 	def _metadata_exit(self, metadata_process):
 		self._jobs -= 1

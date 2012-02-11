@@ -70,6 +70,14 @@ class PollScheduler(object):
 		"""
 		raise NotImplementedError()
 
+	def _keep_scheduling(self):
+		"""
+		@rtype: bool
+		@returns: True if there may be remaining tasks to schedule,
+			False otherwise.
+		"""
+		return False
+
 	def _schedule_tasks(self):
 		"""
 		This is called from inside the _schedule() method, which
@@ -83,7 +91,7 @@ class PollScheduler(object):
 		Unless this method is used to perform user interface updates,
 		or something like that, the first thing it should do is check
 		the state of _terminated_tasks and if that is True then it
-		should return False immediately (since there's no need to
+		should return immediately (since there's no need to
 		schedule anything after _terminate_tasks() has been called).
 		"""
 		pass
@@ -105,7 +113,7 @@ class PollScheduler(object):
 				self._terminated_tasks = True
 				self._terminate_tasks()
 
-			return self._schedule_tasks()
+			self._schedule_tasks()
 		finally:
 			self._scheduling = False
 
@@ -124,9 +132,6 @@ class PollScheduler(object):
 		# such as flushing of buffered output to logs.
 		while self._is_work_scheduled():
 			self.sched_iface.iteration()
-
-	def _keep_scheduling(self):
-		return False
 
 	def _is_work_scheduled(self):
 		return bool(self._running_job_count())

@@ -1542,8 +1542,6 @@ class Scheduler(PollScheduler):
 				not self._task_queues.merge)):
 				break
 
-		return self._keep_scheduling()
-
 	def _job_delay(self):
 		"""
 		@rtype: bool
