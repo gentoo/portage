@@ -2463,6 +2463,15 @@ else:
 			clnew = [elem[cdrlen:] for elem in mynew if elem.startswith(checkdir_relative)]
 			clremoved = [elem[cdrlen:] for elem in myremoved if elem.startswith(checkdir_relative)]
 			clchanged = [elem[cdrlen:] for elem in mychanged if elem.startswith(checkdir_relative)]
+
+			# Skip ChangeLog generation if only the Manifest was modified,
+			# as discussed in bug #398009.
+			nontrivial_cl_files = set()
+			nontrivial_cl_files.update(clnew, clremoved, clchanged)
+			nontrivial_cl_files.difference_update(['Manifest'])
+			if not nontrivial_cl_files and options.echangelog != 'force':
+				continue
+
 			new_changelog = utilities.UpdateChangeLog(checkdir_relative,
 				committer_name, changelog_msg,
 				os.path.join(repodir, 'skel.ChangeLog'),
