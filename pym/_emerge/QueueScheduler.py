@@ -38,15 +38,26 @@ class QueueScheduler(PollScheduler):
 		if timeout is not None:
 			def timeout_callback():
 				timeout_callback.timed_out = True
-				raise StopIteration()
+				return False
 			timeout_callback.timed_out = False
 			timeout_callback.timeout_id = self.sched_iface.timeout_add(
 				timeout, timeout_callback)
 
 		try:
-			self._main_loop()
-		except StopIteration:
-			pass
+			self._schedule()
+
+			while self._keep_scheduling() and \
+				not (timeout_callback is not None and
+				timeout_callback.timed_out):
+				# We don't have any callbacks to trigger _schedule(),
+				# so we have to call it explicitly here.
+				self._schedule()
+				self.sched_iface.iteration()
+
+			while self._is_work_scheduled() and \
+				not (timeout_callback is not None and
+				timeout_callback.timed_out):
+				self.sched_iface.iteration()
 		finally:
 			if timeout_callback is not None:
 				self.sched_iface.unregister(timeout_callback.timeout_id)
@@ -58,7 +69,7 @@ class QueueScheduler(PollScheduler):
 			False otherwise.
 		"""
 		if self._terminated_tasks:
-			return False
+			return
 
 		while self._can_add_job():
 			n = self._max_jobs - self._running_job_count()
@@ -66,12 +77,10 @@ class QueueScheduler(PollScheduler):
 				break
 
 			if not self._start_next_job(n):
-				return False
+				return
 
-		for q in self._queues:
-			if q:
-				return True
-		return False
+	def _keep_scheduling(self):
+		return not self._terminated_tasks and any(self._queues)
 
 	def _running_job_count(self):
 		job_count = 0
