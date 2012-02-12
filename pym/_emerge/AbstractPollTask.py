@@ -127,6 +127,12 @@ class AbstractPollTask(AsynchronousTask):
 				self._unregister()
 				self.wait()
 
+	def _wait(self):
+		if self.returncode is not None:
+			return self.returncode
+		self._wait_loop()
+		return self.returncode
+
 	def _wait_loop(self, timeout=None):
 
 		if timeout is None:

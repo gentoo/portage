@@ -148,12 +148,6 @@ class _LockThread(AbstractPollTask):
 		# There's currently no way to force thread termination.
 		pass
 
-	def _wait(self):
-		if self.returncode is not None:
-			return self.returncode
-		self._wait_loop()
-		return self.returncode
-
 	def unlock(self):
 		if self._lock_obj is None:
 			raise AssertionError('not locked')
@@ -257,12 +251,6 @@ class _LockProcess(AbstractPollTask):
 	def _poll(self):
 		if self._proc is not None:
 			self._proc.poll()
-		return self.returncode
-
-	def _wait(self):
-		if self.returncode is not None:
-			return self.returncode
-		self._wait_loop()
 		return self.returncode
 
 	def _output_handler(self, f, event):
