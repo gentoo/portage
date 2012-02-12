@@ -44,15 +44,15 @@ class QueueScheduler(PollScheduler):
 				timeout, timeout_callback)
 
 		try:
-			self._schedule()
-
-			while self._keep_scheduling() and \
-				not (timeout_callback is not None and
+			while not (timeout_callback is not None and
 				timeout_callback.timed_out):
 				# We don't have any callbacks to trigger _schedule(),
 				# so we have to call it explicitly here.
 				self._schedule()
-				self.sched_iface.iteration()
+				if self._keep_scheduling():
+					self.sched_iface.iteration()
+				else:
+					break
 
 			while self._is_work_scheduled() and \
 				not (timeout_callback is not None and
