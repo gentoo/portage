@@ -5,7 +5,9 @@ import errno
 import logging
 import pickle
 from portage import os
+from portage.exception import TryAgain
 from portage.localization import _
+from portage.locks import lockfile, unlockfile
 from portage.util import writemsg_level
 from _emerge.FifoIpcDaemon import FifoIpcDaemon
 
@@ -82,6 +84,28 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 					'reply_hook', None)
 				if reply_hook is not None:
 					reply_hook()
+
+		elif event & self.scheduler.IO_HUP:
+			# This can be triggered due to a race condition which happens when
+			# the previous _reopen_input() call occurs before the writer has
+			# closed the pipe (see bug #401919). It's not safe to re-open
+			# without a lock here, since it's possible that another writer will
+			# write something to the pipe just before we close it, and in that
+			# case the write will be lost. Therefore, try for a non-blocking
+			# lock, and only re-open the pipe if the lock is acquired.
+			lock_filename = os.path.join(
+				os.path.dirname(self.input_fifo), '.ipc_lock')
+			try:
+				lock_obj = lockfile(lock_filename, unlinkfile=True,
+					flags=os.O_NONBLOCK)
+			except TryAgain:
+				# We'll try again when another IO_HUP event arrives.
+				pass
+			else:
+				try:
+					self._reopen_input()
+				finally:
+					unlockfile(lock_obj)
 
 		return True
 
