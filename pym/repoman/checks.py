@@ -647,7 +647,7 @@ class Eapi4GoneVars(LineCheck):
 
 class PortageInternal(LineCheck):
 	repoman_check_name = 'portage.internal'
-	re = re.compile(r'[^#]*\b(ecompress|ecompressdir|prepall|prepalldocs|preplib)\b')
+	re = re.compile(r'[^#]*\b(ecompress|ecompressdir|env-update|prepall|prepalldocs|preplib)\b')
 
 	def check(self, num, line):
 		"""Run the check on line and return error if there is one"""
