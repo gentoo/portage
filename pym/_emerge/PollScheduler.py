@@ -59,11 +59,30 @@ class PollScheduler(object):
 		"""
 		self._terminated.set()
 
+	def _termination_check(self):
+		"""
+		Calls _terminate_tasks() if appropriate. It's guaranteed not to
+		call it while _schedule_tasks() is being called. The check should
+		be executed for each iteration of the event loop, for response to
+		termination signals at the earliest opportunity. It always returns
+		True, for continuous scheduling via idle_add.
+		"""
+		if not self._scheduling and \
+			self._terminated.is_set() and \
+			not self._terminated_tasks:
+			self._scheduling = True
+			try:
+				self._terminated_tasks = True
+				self._terminate_tasks()
+			finally:
+				self._scheduling = False
+		return True
+
 	def _terminate_tasks(self):
 		"""
 		Send signals to terminate all tasks. This is called once
-		from self._schedule() in the event dispatching thread. This
-		prevents it from being called while the _schedule_tasks()
+		from _keep_scheduling() or _is_work_scheduled() in the event
+		dispatching thread. It will not be called while the _schedule_tasks()
 		implementation is running, in order to avoid potential
 		interference. All tasks should be cleaned up at the earliest
 		opportunity, but not necessarily before this method returns.
@@ -107,31 +126,29 @@ class PollScheduler(object):
 			return False
 		self._scheduling = True
 		try:
-
-			if self._terminated.is_set() and \
-				not self._terminated_tasks:
-				self._terminated_tasks = True
-				self._terminate_tasks()
-
 			self._schedule_tasks()
 		finally:
 			self._scheduling = False
 
 	def _main_loop(self):
-		# Populate initial event sources. We only need to do
-		# this once here, since it can be called during the
-		# loop from within event handlers.
-		self._schedule()
+		term_check_id = self.sched_iface.idle_add(self._termination_check)
+		try:
+			# Populate initial event sources. We only need to do
+			# this once here, since it can be called during the
+			# loop from within event handlers.
+			self._schedule()
 
-		# Loop while there are jobs to be scheduled.
-		while self._keep_scheduling():
-			self.sched_iface.iteration()
+			# Loop while there are jobs to be scheduled.
+			while self._keep_scheduling():
+				self.sched_iface.iteration()
 
-		# Clean shutdown of previously scheduled jobs. In the
-		# case of termination, this allows for basic cleanup
-		# such as flushing of buffered output to logs.
-		while self._is_work_scheduled():
-			self.sched_iface.iteration()
+			# Clean shutdown of previously scheduled jobs. In the
+			# case of termination, this allows for basic cleanup
+			# such as flushing of buffered output to logs.
+			while self._is_work_scheduled():
+				self.sched_iface.iteration()
+		finally:
+			self.sched_iface.source_remove(term_check_id)
 
 	def _is_work_scheduled(self):
 		return bool(self._running_job_count())

@@ -43,6 +43,7 @@ class QueueScheduler(PollScheduler):
 			timeout_callback.timeout_id = self.sched_iface.timeout_add(
 				timeout, timeout_callback)
 
+		term_check_id = self.sched_iface.idle_add(self._termination_check)
 		try:
 			while not (timeout_callback is not None and
 				timeout_callback.timed_out):
@@ -59,6 +60,7 @@ class QueueScheduler(PollScheduler):
 				timeout_callback.timed_out):
 				self.sched_iface.iteration()
 		finally:
+			self.sched_iface.source_remove(term_check_id)
 			if timeout_callback is not None:
 				self.sched_iface.unregister(timeout_callback.timeout_id)
 
