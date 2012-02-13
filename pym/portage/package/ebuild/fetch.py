@@ -66,7 +66,8 @@ def _spawn_fetch(settings, args, **kwargs):
 		}
 
 	if "userfetch" in settings.features and \
-		os.getuid() == 0 and portage_gid and portage_uid:
+		os.getuid() == 0 and portage_gid and portage_uid and \
+		hasattr(os, "setgroups"):
 		kwargs.update(_userpriv_spawn_kwargs)
 
 	spawn_func = spawn
