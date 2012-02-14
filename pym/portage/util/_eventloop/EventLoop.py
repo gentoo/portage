@@ -1,6 +1,7 @@
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import errno
 import logging
 import select
 import time
@@ -100,24 +101,23 @@ class EventLoop(object):
 			raise StopIteration(
 				"timeout is None and there are no poll() event handlers")
 
-		# The following error is known to occur with Linux kernel versions
-		# less than 2.6.24:
-		#
-		#   select.error: (4, 'Interrupted system call')
-		#
-		# This error has been observed after a SIGSTOP, followed by SIGCONT.
-		# Treat it similar to EAGAIN if timeout is None, otherwise just return
-		# without any events.
 		while True:
 			try:
 				self._poll_event_queue.extend(self._poll_obj.poll(timeout))
 				break
 			except select.error as e:
-				writemsg_level("\n!!! select error: %s\n" % (e,),
-					level=logging.ERROR, noiselevel=-1)
+				# Silently handle EINTR, which is normal when we have
+				# received a signal such as SIGINT.
+				if not (e.args and e.args[0] == errno.EINTR):
+					writemsg_level("\n!!! select error: %s\n" % (e,),
+						level=logging.ERROR, noiselevel=-1)
 				del e
-				if timeout is not None:
-					break
+
+				# This typically means that we've received a SIGINT, so
+				# raise StopIteration in order to break out of our current
+				# iteration and respond appropriately to the signal as soon
+				# as possible.
+				raise StopIteration("interrupted")
 
 	def _next_poll_event(self, timeout=None):
 		"""
@@ -170,7 +170,8 @@ class EventLoop(object):
 			except StopIteration:
 				# This could happen if there are no IO event handlers
 				# after _poll() calls _run_timeouts(), due to them
-				# being removed by timeout or idle callbacks.
+				# being removed by timeout or idle callbacks. It can
+				# also be triggered by EINTR which is caused by signals.
 				events_handled += 1
 
 		try:
