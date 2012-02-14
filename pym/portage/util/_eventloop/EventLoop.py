@@ -20,7 +20,7 @@ class EventLoop(object):
 		__slots__ = ("args", "callback", "calling", "source_id")
 
 	class _io_handler_class(SlotObject):
-		__slots__ = ("args", "callback", "calling", "fd", "source_id")
+		__slots__ = ("args", "callback", "fd", "source_id")
 
 	class _timeout_handler_class(SlotObject):
 		__slots__ = ("args", "function", "calling", "interval", "source_id",
@@ -178,16 +178,11 @@ class EventLoop(object):
 			while event_handlers and self._poll_event_queue:
 				f, event = self._next_poll_event()
 				x = event_handlers[f]
-				if x.calling:
-					# don't call it recursively
-					continue
-				events_handled += 1
-				x.calling = True
-				try:
-					if not x.callback(f, event, *x.args):
-						self.source_remove(x.source_id)
-				finally:
-					x.calling = False
+				# NOTE: IO event handlers may be re-entrant, in case something
+				# like AbstractPollTask._wait_loop(), needs to be called inside
+				# a handler for some reason.
+				if not x.callback(f, event, *x.args):
+					self.source_remove(x.source_id)
 		except StopIteration:
 			events_handled += 1
 
