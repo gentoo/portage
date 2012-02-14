@@ -33,9 +33,6 @@ class SpawnProcess(SubProcess):
 
 	def _start(self):
 
-		if self.cancelled:
-			return
-
 		if self.fd_pipes is None:
 			self.fd_pipes = {}
 		fd_pipes = self.fd_pipes
