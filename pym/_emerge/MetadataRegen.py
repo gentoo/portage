@@ -37,8 +37,8 @@ class MetadataRegen(PollScheduler):
 		self._remaining_tasks = True
 
 	def _terminate_tasks(self):
-		while self._running_tasks:
-			self._running_tasks.pop().cancel()
+		for task in list(self._running_tasks):
+			task.cancel()
 
 	def _iter_every_cp(self):
 		portage.writemsg_stdout("Listing available packages...\n")

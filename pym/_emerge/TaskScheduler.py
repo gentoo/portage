@@ -18,6 +18,7 @@ class TaskScheduler(object):
 		self.sched_iface = self._scheduler.sched_iface
 		self.run = self._scheduler.run
 		self.clear = self._scheduler.clear
+		self.wait = self._queue.wait
 		self._scheduler.add(self._queue)
 
 	def add(self, task):

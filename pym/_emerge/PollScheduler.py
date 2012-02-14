@@ -86,6 +86,9 @@ class PollScheduler(object):
 		implementation is running, in order to avoid potential
 		interference. All tasks should be cleaned up at the earliest
 		opportunity, but not necessarily before this method returns.
+		Typically, this method will send kill signals and return without
+		waiting for exit status. This allows basic cleanup to occur, such as
+		flushing of buffered output to logs.
 		"""
 		raise NotImplementedError()
 

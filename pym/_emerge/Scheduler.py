@@ -313,8 +313,7 @@ class Scheduler(PollScheduler):
 
 	def _terminate_tasks(self):
 		self._status_display.quiet = True
-		while self._running_tasks:
-			task_id, task = self._running_tasks.popitem()
+		for task in list(self._running_tasks.values()):
 			task.cancel()
 		for q in self._task_queues.values():
 			q.clear()
@@ -904,6 +903,7 @@ class Scheduler(PollScheduler):
 			finally:
 				if current_task is not None and current_task.isAlive():
 					current_task.cancel()
+					current_task.wait()
 				clean_phase = EbuildPhase(background=False,
 					phase='clean', scheduler=sched_iface, settings=settings)
 				clean_phase.start()

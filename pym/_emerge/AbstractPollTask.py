@@ -123,6 +123,7 @@ class AbstractPollTask(AsynchronousTask):
 				self._log_poll_exception(event)
 				self._unregister()
 				self.cancel()
+				self.wait()
 			elif event & self.scheduler.IO_HUP:
 				self._unregister()
 				self.wait()

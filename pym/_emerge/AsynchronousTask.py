@@ -56,10 +56,17 @@ class AsynchronousTask(SlotObject):
 		return self.returncode
 
 	def cancel(self):
+		"""
+		Cancel the task, but do not wait for exit status. If asynchronous exit
+		notification is desired, then use addExitListener to add a listener
+		before calling this method.
+		NOTE: Synchronous waiting for status is not supported, since it would
+		be vulnerable to hitting the recursion limit when a large number of
+		tasks need to be terminated simultaneously, like in bug #402335.
+		"""
 		if not self.cancelled:
 			self.cancelled = True
 			self._cancel()
-			self.wait()
 
 	def _cancel(self):
 		"""
