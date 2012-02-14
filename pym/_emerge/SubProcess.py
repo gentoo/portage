@@ -81,6 +81,12 @@ class SubProcess(AbstractPollTask):
 			if self.returncode is not None:
 				return self.returncode
 
+		if not isinstance(self.pid, int):
+			# Get debug info for bug #403697.
+			raise AssertionError(
+				"%s: pid is non-integer: %s" %
+				(self.__class__.__name__, repr(self.pid)))
+
 		try:
 			# With waitpid and WNOHANG, only check the
 			# first element of the tuple since the second
