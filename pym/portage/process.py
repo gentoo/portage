@@ -386,7 +386,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	# And switch to the new process.
 	os.execve(binary, myargs, env)
 
-def _setup_pipes(fd_pipes):
+def _setup_pipes(fd_pipes, close_fds=True):
 	"""Setup pipes for a forked process."""
 	my_fds = {}
 	# To protect from cases where direct assignment could
@@ -397,14 +397,16 @@ def _setup_pipes(fd_pipes):
 	# Then assign them to what they should be.
 	for fd in my_fds:
 		os.dup2(my_fds[fd], fd)
-	# Then close _all_ fds that haven't been explicitly
-	# requested to be kept open.
-	for fd in get_open_fds():
-		if fd not in my_fds:
-			try:
-				os.close(fd)
-			except OSError:
-				pass
+
+	if close_fds:
+		# Then close _all_ fds that haven't been explicitly
+		# requested to be kept open.
+		for fd in get_open_fds():
+			if fd not in my_fds:
+				try:
+					os.close(fd)
+				except OSError:
+					pass
 
 def find_binary(binary):
 	"""

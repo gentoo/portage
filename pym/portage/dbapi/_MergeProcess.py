@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import io
+import platform
 import signal
 import traceback
 
@@ -143,7 +144,11 @@ class MergeProcess(SpawnProcess):
 			return [pid]
 
 		os.close(elog_reader_fd)
-		portage.process._setup_pipes(fd_pipes)
+
+		# TODO: Find out why PyPy 1.8 with close_fds=True triggers
+		# "[Errno 9] Bad file descriptor" in subprocesses.
+		close_fds = platform.python_implementation() != 'PyPy'
+		portage.process._setup_pipes(fd_pipes, close_fds=close_fds)
 
 		# Use default signal handlers since the ones inherited
 		# from the parent process are irrelevant here.
