@@ -129,6 +129,10 @@ class MergeProcess(SpawnProcess):
 
 		pid = os.fork()
 		if pid != 0:
+			if not isinstance(pid, int):
+				raise AssertionError(
+					"fork returned non-integer: %s" % (repr(pid),))
+
 			os.close(elog_writer_fd)
 			self._elog_reader_fd = elog_reader_fd
 			self._buf = ""

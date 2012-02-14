@@ -164,6 +164,9 @@ class EbuildFetcher(SpawnProcess):
 
 		pid = os.fork()
 		if pid != 0:
+			if not isinstance(pid, int):
+				raise AssertionError(
+					"fork returned non-integer: %s" % (repr(pid),))
 			portage.process.spawned_pids.append(pid)
 			return [pid]
 
