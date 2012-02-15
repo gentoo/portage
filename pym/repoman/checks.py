@@ -77,6 +77,7 @@ class EbuildHeader(LineCheck):
 	# gentoo_license = re.compile(r'^# Distributed under the terms of the GNU General Public License v2$')
 	gentoo_license = '# Distributed under the terms of the GNU General Public License v2'
 	cvs_header = re.compile(r'^# \$Header: .*\$$')
+	ignore_comment = False
 
 	def new(self, pkg):
 		if pkg.mtime is None:
