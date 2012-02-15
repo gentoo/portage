@@ -1,9 +1,11 @@
 # portage.py -- core Portage functionality
-# Copyright 1998-2010 Gentoo Foundation
+# Copyright 1998-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 
 import atexit
+import errno
+import platform
 import signal
 import sys
 import traceback
@@ -32,6 +34,18 @@ if os.path.isdir("/proc/%i/fd" % os.getpid()):
 	def get_open_fds():
 		return (int(fd) for fd in os.listdir("/proc/%i/fd" % os.getpid()) \
 			if fd.isdigit())
+
+	if platform.python_implementation() == 'PyPy':
+		# EAGAIN observed with PyPy 1.8.
+		_get_open_fds = get_open_fds
+		def get_open_fds():
+			try:
+				return _get_open_fds()
+			except OSError as e:
+				if e.errno != errno.EAGAIN:
+					raise
+				return range(max_fd_limit)
+
 else:
 	def get_open_fds():
 		return range(max_fd_limit)
