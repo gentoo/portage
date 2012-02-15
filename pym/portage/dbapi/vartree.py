@@ -3402,6 +3402,7 @@ class dblink(object):
 		while True:
 
 			unicode_error = False
+			eagain_error = False
 
 			myfilelist = []
 			mylinklist = []
@@ -3409,7 +3410,19 @@ class dblink(object):
 			srcroot_len = len(srcroot)
 			def onerror(e):
 				raise
-			for parent, dirs, files in os.walk(srcroot, onerror=onerror):
+			walk_iter = os.walk(srcroot, onerror=onerror)
+			while True:
+				try:
+					parent, dirs, files = next(walk_iter)
+				except StopIteration:
+					break
+				except OSError as e:
+					if e.errno != errno.EAGAIN:
+						raise
+					# Observed with PyPy 1.8.
+					eagain_error = True
+					break
+
 				try:
 					parent = _unicode_decode(parent,
 						encoding=_encodings['merge'], errors='strict')
@@ -3464,7 +3477,7 @@ class dblink(object):
 				if unicode_error:
 					break
 
-			if not unicode_error:
+			if not (unicode_error or eagain_error):
 				break
 
 		if unicode_errors:
