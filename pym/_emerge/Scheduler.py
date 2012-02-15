@@ -1620,7 +1620,14 @@ class Scheduler(PollScheduler):
 					"installed", pkg.root_config, installed=True,
 					operation="uninstall")
 
-		prefetcher = self._prefetchers.pop(pkg, None)
+		try:
+			prefetcher = self._prefetchers.pop(pkg, None)
+		except KeyError:
+			# KeyError observed with PyPy 1.8, despite None given as default.
+			# Note that PyPy 1.8 has the same WeakValueDictionary code as
+			# CPython 2.7, so it may be possible for CPython to raise KeyError
+			# here as well.
+			prefetcher = None
 		if prefetcher is not None and not prefetcher.isAlive():
 			try:
 				self._task_queues.fetch._task_queue.remove(prefetcher)
