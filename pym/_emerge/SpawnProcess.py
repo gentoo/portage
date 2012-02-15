@@ -91,7 +91,7 @@ class SpawnProcess(SubProcess):
 				mode=0o660)
 
 			if not self.background:
-				files.stdout = os.fdopen(os.dup(fd_pipes_orig[1]), 'wb')
+				files.stdout = os.dup(fd_pipes_orig[1])
 
 			output_handler = self._output_handler
 
@@ -180,11 +180,10 @@ class SpawnProcess(SubProcess):
 					while True:
 						try:
 							if not write_successful:
-								files.stdout.write(buf)
+								os.write(files.stdout, buf)
 								write_successful = True
-							files.stdout.flush()
 							break
-						except IOError as e:
+						except OSError as e:
 							if e.errno != errno.EAGAIN:
 								raise
 							del e
@@ -206,8 +205,8 @@ class SpawnProcess(SubProcess):
 							# inherit stdio file descriptors from portage
 							# (maybe it can't be avoided with
 							# PROPERTIES=interactive).
-							fcntl.fcntl(files.stdout.fileno(), fcntl.F_SETFL,
-								fcntl.fcntl(files.stdout.fileno(),
+							fcntl.fcntl(files.stdout, fcntl.F_SETFL,
+								fcntl.fcntl(files.stdout,
 								fcntl.F_GETFL) ^ os.O_NONBLOCK)
 
 				files.log.write(buf)
