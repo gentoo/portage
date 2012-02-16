@@ -86,10 +86,11 @@ def fixdbentries(update_iter, dbdir):
 	mydata = {}
 	for myfile in [f for f in os.listdir(dbdir) if f not in ignored_dbentries]:
 		file_path = os.path.join(dbdir, myfile)
-		mydata[myfile] = io.open(_unicode_encode(file_path,
+		with io.open(_unicode_encode(file_path,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['repo.content'],
-			errors='replace').read()
+			errors='replace') as f:
+			mydata[myfile] = f.read()
 	updated_items = update_dbentries(update_iter, mydata)
 	for myfile, mycontent in updated_items.items():
 		file_path = os.path.join(dbdir, myfile)
