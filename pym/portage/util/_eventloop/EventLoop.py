@@ -158,7 +158,19 @@ class EventLoop(object):
 			if self._run_timeouts():
 				events_handled += 1
 			if not event_handlers:
-				return bool(events_handled)
+				if not events_handled and may_block and \
+					self._timeout_interval is not None:
+					# Sleep so that we don't waste cpu time by looping too
+					# quickly. This makes EventLoop useful for code that needs
+					# to wait for timeout callbacks regardless of whether or
+					# not any IO handlers are currently registered.
+					time.sleep(self._timeout_interval/1000)
+					if self._run_timeouts():
+						events_handled += 1
+					if not event_handlers:
+						return bool(events_handled)
+				else:
+					return bool(events_handled)
 
 		if not self._poll_event_queue:
 			if may_block:
