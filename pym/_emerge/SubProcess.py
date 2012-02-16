@@ -20,9 +20,6 @@ class SubProcess(AbstractPollTask):
 	# we've sent a kill signal to our subprocess.
 	_cancel_timeout = 1000 # 1 second
 
-	# Poll interval for process exit status.
-	_waitpid_interval = 1000 # 1 second
-
 	def _poll(self):
 		if self.returncode is not None:
 			return self.returncode
@@ -95,37 +92,18 @@ class SubProcess(AbstractPollTask):
 		return self.returncode
 
 	def _waitpid_loop(self):
-		if not self._waitpid_cb():
-			return
-
-		timeout_id = self.scheduler.timeout_add(
-			self._waitpid_interval, self._waitpid_cb)
+		source_id = self.scheduler.child_watch_add(
+			self.pid, self._waitpid_cb)
 		try:
 			while self.returncode is None:
 				self.scheduler.iteration()
 		finally:
-			self.scheduler.source_remove(timeout_id)
+			self.scheduler.source_remove(source_id)
 
-	def _waitpid_cb(self):
-		if self.returncode is not None:
-			return False
-		try:
-			# With waitpid and WNOHANG, only check the
-			# first element of the tuple since the second
-			# element may vary (bug #337465).
-			wait_retval = os.waitpid(self.pid, os.WNOHANG)
-		except OSError as e:
-			if e.errno != errno.ECHILD:
-				raise
-			del e
-			self._set_returncode((self.pid, 1 << 8))
-			return False
-		else:
-			if wait_retval[0] != 0:
-				self._set_returncode(wait_retval)
-				return False
-
-		return True
+	def _waitpid_cb(self, pid, condition, user_data):
+		if pid != self.pid:
+			raise AssertionError("expected pid %s, got %s" % (self.pid, pid))
+		self._set_returncode((pid, condition))
 
 	def _orphan_process_warn(self):
 		pass
