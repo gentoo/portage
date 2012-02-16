@@ -263,6 +263,7 @@ class EventLoop(object):
 			# read until EAGAIN
 			pass
 		self._poll_child_processes()
+		return True
 
 	def _poll_child_processes(self):
 		if not self._child_handlers:
