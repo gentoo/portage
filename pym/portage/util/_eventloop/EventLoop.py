@@ -238,7 +238,7 @@ class EventLoop(object):
 			self._timeout_handler_class(
 				interval=interval, function=function, args=args,
 				source_id=source_id, timestamp=time.time())
-		if self._timeout_interval is None or self._timeout_interval < interval:
+		if self._timeout_interval is None or self._timeout_interval > interval:
 			self._timeout_interval = interval
 		return source_id
 
