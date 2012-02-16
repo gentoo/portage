@@ -20,6 +20,9 @@ class SubProcess(AbstractPollTask):
 	# we've sent a kill signal to our subprocess.
 	_cancel_timeout = 1000 # 1 second
 
+	# Poll interval for process exit status.
+	_waitpid_interval = 1000 # 1 second
+
 	def _poll(self):
 		if self.returncode is not None:
 			return self.returncode
@@ -77,7 +80,7 @@ class SubProcess(AbstractPollTask):
 						self._orphan_process_warn()
 			else:
 				self._wait_loop()
-			self._unregister()
+
 			if self.returncode is not None:
 				return self.returncode
 
@@ -87,6 +90,25 @@ class SubProcess(AbstractPollTask):
 				"%s: pid is non-integer: %s" %
 				(self.__class__.__name__, repr(self.pid)))
 
+		self._waitpid_loop()
+
+		return self.returncode
+
+	def _waitpid_loop(self):
+		if not self._waitpid_cb():
+			return
+
+		timeout_id = self.scheduler.timeout_add(
+			self._waitpid_interval, self._waitpid_cb)
+		try:
+			while self.returncode is None:
+				self.scheduler.iteration()
+		finally:
+			self.scheduler.source_remove(timeout_id)
+
+	def _waitpid_cb(self):
+		if self.returncode is not None:
+			return False
 		try:
 			# With waitpid and WNOHANG, only check the
 			# first element of the tuple since the second
@@ -97,21 +119,13 @@ class SubProcess(AbstractPollTask):
 				raise
 			del e
 			self._set_returncode((self.pid, 1 << 8))
+			return False
 		else:
 			if wait_retval[0] != 0:
 				self._set_returncode(wait_retval)
-			else:
-				try:
-					wait_retval = os.waitpid(self.pid, 0)
-				except OSError as e:
-					if e.errno != errno.ECHILD:
-						raise
-					del e
-					self._set_returncode((self.pid, 1 << 8))
-				else:
-					self._set_returncode(wait_retval)
+				return False
 
-		return self.returncode
+		return True
 
 	def _orphan_process_warn(self):
 		pass
@@ -141,6 +155,7 @@ class SubProcess(AbstractPollTask):
 		subprocess.Popen.returncode: A negative value -N indicates
 		that the child was terminated by signal N (Unix only).
 		"""
+		self._unregister()
 
 		pid, status = wait_retval
 
