@@ -21,7 +21,8 @@ class PollScheduler(object):
 
 	class _sched_iface_class(SlotObject):
 		__slots__ = ("IO_ERR", "IO_HUP", "IO_IN", "IO_NVAL", "IO_OUT",
-			"IO_PRI", "idle_add", "io_add_watch", "iteration",
+			"IO_PRI", "child_watch_add",
+			"idle_add", "io_add_watch", "iteration",
 			"output", "register", "run",
 			"source_remove", "timeout_add", "unregister")
 
@@ -41,6 +42,7 @@ class PollScheduler(object):
 			IO_NVAL=self._event_loop.IO_NVAL,
 			IO_OUT=self._event_loop.IO_OUT,
 			IO_PRI=self._event_loop.IO_PRI,
+			child_watch_add=self._event_loop.child_watch_add,
 			idle_add=self._event_loop.idle_add,
 			io_add_watch=self._event_loop.io_add_watch,
 			iteration=self._event_loop.iteration,

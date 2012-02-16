@@ -16,6 +16,7 @@ class GlibEventLoop(object):
 		self.IO_OUT = glib.IO_OUT
 		self.IO_PRI = glib.IO_PRI
 		self.iteration = glib.main_context_default().iteration
+		self.child_watch_add = glib.child_watch_add
 		self.idle_add = glib.idle_add
 		self.io_add_watch = glib.io_add_watch
 		self.timeout_add = glib.timeout_add
