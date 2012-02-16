@@ -242,11 +242,11 @@ class EventLoop(object):
 		return source_id
 
 	def _sigchld_init(self):
-		signal.signal(signal.SIGCHLD, self._sigchld_sig_cb)
 		self._sigchld_read, self._sigchld_write = os.pipe()
 		fcntl.fcntl(self._sigchld_read, fcntl.F_SETFL,
 			fcntl.fcntl(self._sigchld_read, fcntl.F_GETFL) | os.O_NONBLOCK)
 		self.io_add_watch(self._sigchld_read, self.IO_IN, self._sigchld_io_cb)
+		signal.signal(signal.SIGCHLD, self._sigchld_sig_cb)
 
 	def _sigchld_sig_cb(self, signum, frame):
 		# If this signal handler was not installed by the
