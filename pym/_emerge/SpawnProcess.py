@@ -59,8 +59,8 @@ class SpawnProcess(SubProcess):
 			# access to stdin. Until then, use /dev/null so that any
 			# attempts to read from stdin will immediately return EOF
 			# instead of blocking indefinitely.
-			null_input = open('/dev/null', 'rb')
-			fd_pipes[0] = null_input.fileno()
+			null_input = os.open('/dev/null', os.O_RDWR)
+			fd_pipes[0] = null_input
 
 		fd_pipes.setdefault(0, sys.stdin.fileno())
 		fd_pipes.setdefault(1, sys.stdout.fileno())
@@ -123,7 +123,7 @@ class SpawnProcess(SubProcess):
 
 		os.close(slave_fd)
 		if null_input is not None:
-			null_input.close()
+			os.close(null_input)
 
 		if isinstance(retval, int):
 			# spawn failed
