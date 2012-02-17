@@ -130,10 +130,12 @@ class EventLoop(object):
 						pass
 					if self._run_timeouts():
 						events_handled += 1
-					if not event_handlers:
-						return bool(events_handled)
-				else:
-					return bool(events_handled)
+
+			# If any timeouts have executed, then return immediately,
+			# in order to minimize latency in termination of iteration
+			# loops that they may control.
+			if events_handled or not event_handlers:
+				return bool(events_handled)
 
 		if not event_queue:
 
@@ -149,17 +151,10 @@ class EventLoop(object):
 			else:
 				timeout = 0
 
-			if self._run_timeouts():
-				events_handled += 1
-
 			try:
-
 				self._poll(timeout=timeout)
 			except StopIteration:
-				# This could happen if there are no IO event handlers
-				# after _poll() calls _run_timeouts(), due to them
-				# being removed by timeout or idle callbacks. It can
-				# also be triggered by EINTR which is caused by signals.
+				# This can be triggered by EINTR which is caused by signals.
 				pass
 
 		# NOTE: IO event handlers may be re-entrant, in case something
@@ -171,6 +166,11 @@ class EventLoop(object):
 			x = event_handlers[f]
 			if not x.callback(f, event, *x.args):
 				self.source_remove(x.source_id)
+
+		# Run timeouts last, in order to minimize latency in
+		# termination of iteration loops that they may control.
+		if self._run_timeouts():
+			events_handled += 1
 
 		return bool(events_handled)
 
