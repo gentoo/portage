@@ -57,6 +57,7 @@ class EventLoop(object):
 		self._child_handlers = {}
 		self._sigchld_read = None
 		self._sigchld_write = None
+		self._sigchld_src_id = None
 		self._pid = os.getpid()
 
 	def _poll(self, timeout=None):
@@ -246,18 +247,25 @@ class EventLoop(object):
 		source_id = self._event_handler_id
 		self._child_handlers[source_id] = self._child_callback_class(
 			callback=callback, data=data, pid=pid, source_id=source_id)
+
 		if self._sigchld_read is None:
-			self._sigchld_init()
+			self._sigchld_read, self._sigchld_write = os.pipe()
+			fcntl.fcntl(self._sigchld_read, fcntl.F_SETFL,
+				fcntl.fcntl(self._sigchld_read, fcntl.F_GETFL) | os.O_NONBLOCK)
+
+		# The IO watch is dynamically registered and unregistered as
+		# needed, since we don't want to consider it as a valid source
+		# of events when there are no child listeners. It's important
+		# to distinguish when there are no valid sources of IO events,
+		# in order to avoid an endless poll call if there's no timeout.
+		if self._sigchld_src_id is None:
+			self._sigchld_src_id = self.io_add_watch(
+				self._sigchld_read, self.IO_IN, self._sigchld_io_cb)
+			signal.signal(signal.SIGCHLD, self._sigchld_sig_cb)
+
 		# poll now, in case the SIGCHLD has already arrived
 		self._poll_child_processes()
 		return source_id
-
-	def _sigchld_init(self):
-		self._sigchld_read, self._sigchld_write = os.pipe()
-		fcntl.fcntl(self._sigchld_read, fcntl.F_SETFL,
-			fcntl.fcntl(self._sigchld_read, fcntl.F_GETFL) | os.O_NONBLOCK)
-		self.io_add_watch(self._sigchld_read, self.IO_IN, self._sigchld_io_cb)
-		signal.signal(signal.SIGCHLD, self._sigchld_sig_cb)
 
 	def _sigchld_sig_cb(self, signum, frame):
 		# If this signal handler was not installed by the
@@ -292,14 +300,14 @@ class EventLoop(object):
 				if e.errno != errno.ECHILD:
 					raise
 				del e
-				self._child_handlers.pop(x.source_id, None)
+				self.source_remove(x.source_id)
 			else:
 				# With waitpid and WNOHANG, only check the
 				# first element of the tuple since the second
 				# element may vary (bug #337465).
 				if wait_retval[0] != 0:
 					calls += 1
-					self._child_handlers.pop(x.source_id, None)
+					self.source_remove(x.source_id)
 					x.callback(x.pid, wait_retval[1], x.data)
 
 		return bool(calls)
@@ -429,6 +437,10 @@ class EventLoop(object):
 		"""
 		x = self._child_handlers.pop(reg_id, None)
 		if x is not None:
+			if not self._child_handlers:
+				signal.signal(signal.SIGCHLD, signal.SIG_DFL)
+				self.source_remove(self._sigchld_src_id)
+				self._sigchld_src_id = None
 			return True
 		idle_callback = self._idle_callbacks.pop(reg_id, None)
 		if idle_callback is not None:
