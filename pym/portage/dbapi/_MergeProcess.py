@@ -21,7 +21,7 @@ class MergeProcess(SpawnProcess):
 	"""
 
 	__slots__ = ('mycat', 'mypkg', 'settings', 'treetype',
-		'vartree', 'scheduler', 'blockers', 'pkgloc', 'infloc', 'myebuild',
+		'vartree', 'blockers', 'pkgloc', 'infloc', 'myebuild',
 		'mydbapi', 'prev_mtimes', 'unmerge', '_elog_reader_fd', '_elog_reg_id',
 		'_buf', '_elog_keys', '_locked_vdb')
 
