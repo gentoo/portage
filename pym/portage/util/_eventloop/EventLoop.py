@@ -30,7 +30,7 @@ class EventLoop(object):
 		__slots__ = ("args", "callback", "calling", "source_id")
 
 	class _io_handler_class(SlotObject):
-		__slots__ = ("args", "callback", "fd", "source_id")
+		__slots__ = ("args", "callback", "f", "source_id")
 
 	class _timeout_handler_class(SlotObject):
 		__slots__ = ("args", "function", "calling", "interval", "source_id",
