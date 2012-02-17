@@ -1028,18 +1028,19 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 								# Fetch failed... Try the next one... Kill 404 files though.
 								if (mystat[stat.ST_SIZE]<100000) and (len(myfile)>4) and not ((myfile[-5:]==".html") or (myfile[-4:]==".htm")):
 									html404=re.compile("<title>.*(not found|404).*</title>",re.I|re.M)
-									if html404.search(io.open(
+									with io.open(
 										_unicode_encode(myfile_path,
 										encoding=_encodings['fs'], errors='strict'),
 										mode='r', encoding=_encodings['content'], errors='replace'
-										).read()):
-										try:
-											os.unlink(mysettings["DISTDIR"]+"/"+myfile)
-											writemsg(_(">>> Deleting invalid distfile. (Improper 404 redirect from server.)\n"))
-											fetched = 0
-											continue
-										except (IOError, OSError):
-											pass
+										) as f:
+										if html404.search(f.read()):
+											try:
+												os.unlink(mysettings["DISTDIR"]+"/"+myfile)
+												writemsg(_(">>> Deleting invalid distfile. (Improper 404 redirect from server.)\n"))
+												fetched = 0
+												continue
+											except (IOError, OSError):
+												pass
 								fetched = 1
 								continue
 							if True:
