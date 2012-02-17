@@ -100,7 +100,7 @@ class SubProcess(AbstractPollTask):
 		finally:
 			self.scheduler.source_remove(source_id)
 
-	def _waitpid_cb(self, pid, condition, user_data):
+	def _waitpid_cb(self, pid, condition, user_data=None):
 		if pid != self.pid:
 			raise AssertionError("expected pid %s, got %s" % (self.pid, pid))
 		self._set_returncode((pid, condition))
