@@ -427,7 +427,6 @@ qawarnings = set((
 "portage.internal",
 "usage.obsolete",
 "upstream.workaround",
-"virtual.oldstyle",
 "LIVEVCS.stable",
 "LIVEVCS.unmasked",
 ))
@@ -579,6 +578,9 @@ repodir = os.path.realpath(portdir_overlay)
 repo_config = repoman_settings.repositories.get_repo_for_location(repodir)
 portdb.porttrees = list(repo_config.eclass_db.porttrees)
 portdir = portdb.porttrees[0]
+
+if repo_config.allow_provide_virtual:
+	qawarnings.add("virtual.oldstyle")
 
 if repo_config.sign_commit:
 	if vcs == 'git':
