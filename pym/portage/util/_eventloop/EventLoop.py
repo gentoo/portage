@@ -61,49 +61,6 @@ class EventLoop(object):
 		self._pid = os.getpid()
 
 	def _poll(self, timeout=None):
-		if self._timeout_interval is None:
-			self._run_timeouts()
-			self._do_poll(timeout=timeout)
-
-		elif timeout is None:
-			while True:
-				self._run_timeouts()
-				previous_count = len(self._poll_event_queue)
-				self._do_poll(timeout=self._timeout_interval)
-				if previous_count != len(self._poll_event_queue):
-					break
-
-		elif timeout <= self._timeout_interval:
-			self._run_timeouts()
-			self._do_poll(timeout=timeout)
-
-		else:
-			remaining_timeout = timeout
-			start_time = time.time()
-			while True:
-				self._run_timeouts()
-				# _timeout_interval can change each time
-				# _run_timeouts is called
-				min_timeout = remaining_timeout
-				if self._timeout_interval is not None and \
-					self._timeout_interval < min_timeout:
-					min_timeout = self._timeout_interval
-
-				previous_count = len(self._poll_event_queue)
-				self._do_poll(timeout=min_timeout)
-				if previous_count != len(self._poll_event_queue):
-					break
-				elapsed_time = time.time() - start_time
-				if elapsed_time < 0:
-					# The system clock has changed such that start_time
-					# is now in the future, so just assume that the
-					# timeout has already elapsed.
-					break
-				remaining_timeout = timeout - 1000 * elapsed_time
-				if remaining_timeout <= 0:
-					break
-
-	def _do_poll(self, timeout=None):
 		"""
 		All poll() calls pass through here. The poll events
 		are added directly to self._poll_event_queue.
@@ -135,20 +92,6 @@ class EventLoop(object):
 				# as possible.
 				raise StopIteration("interrupted")
 
-	def _next_poll_event(self, timeout=None):
-		"""
-		Since iteration() can be called recursively, maintain
-		a central event queue to share events from a single
-		poll() call. In order to avoid endless blocking, this
-		raises StopIteration if timeout is None and there are
-		no file descriptors to poll.
-		"""
-		if not self._poll_event_queue:
-			self._poll(timeout)
-			if not self._poll_event_queue:
-				raise StopIteration()
-		return self._poll_event_queue.pop()
-
 	def iteration(self, *args):
 		"""
 		Like glib.MainContext.iteration(), runs a single iteration.
@@ -167,6 +110,7 @@ class EventLoop(object):
 					"expected at most 1 argument (%s given)" % len(args))
 			may_block = args[0]
 
+		event_queue =  self._poll_event_queue
 		event_handlers = self._poll_event_handlers
 		events_handled = 0
 
@@ -181,7 +125,7 @@ class EventLoop(object):
 					# to wait for timeout callbacks regardless of whether or
 					# not any IO handlers are currently registered.
 					try:
-						self._do_poll(timeout=self._timeout_interval)
+						self._poll(timeout=self._timeout_interval)
 					except StopIteration:
 						pass
 					if self._run_timeouts():
@@ -191,7 +135,8 @@ class EventLoop(object):
 				else:
 					return bool(events_handled)
 
-		if not self._poll_event_queue:
+		if not event_queue:
+
 			if may_block:
 				if self._child_handlers:
 					if self._timeout_interval is None:
@@ -203,26 +148,29 @@ class EventLoop(object):
 					timeout = self._timeout_interval
 			else:
 				timeout = 0
+
+			if self._run_timeouts():
+				events_handled += 1
+
 			try:
+
 				self._poll(timeout=timeout)
 			except StopIteration:
 				# This could happen if there are no IO event handlers
 				# after _poll() calls _run_timeouts(), due to them
 				# being removed by timeout or idle callbacks. It can
 				# also be triggered by EINTR which is caused by signals.
-				events_handled += 1
+				pass
 
-		try:
-			while event_handlers and self._poll_event_queue:
-				f, event = self._next_poll_event()
-				x = event_handlers[f]
-				# NOTE: IO event handlers may be re-entrant, in case something
-				# like AbstractPollTask._wait_loop(), needs to be called inside
-				# a handler for some reason.
-				if not x.callback(f, event, *x.args):
-					self.source_remove(x.source_id)
-		except StopIteration:
+		# NOTE: IO event handlers may be re-entrant, in case something
+		# like AbstractPollTask._wait_loop() needs to be called inside
+		# a handler for some reason.
+		while event_queue:
 			events_handled += 1
+			f, event = event_queue.pop()
+			x = event_handlers[f]
+			if not x.callback(f, event, *x.args):
+				self.source_remove(x.source_id)
 
 		return bool(events_handled)
 
