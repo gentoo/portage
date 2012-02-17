@@ -19,6 +19,10 @@ class EventLoop(object):
 
 	supports_multiprocessing = True
 
+	# TODO: Find out why SIGCHLD signals aren't delivered during poll
+	# calls, forcing us to wakeup in order to receive them.
+	_sigchld_interval = 250
+
 	class _child_callback_class(SlotObject):
 		__slots__ = ("callback", "data", "pid", "source_id")
 
@@ -185,7 +189,14 @@ class EventLoop(object):
 
 		if not self._poll_event_queue:
 			if may_block:
-				timeout = self._timeout_interval
+				if self._child_handlers:
+					if self._timeout_interval is None:
+						timeout = self._sigchld_interval
+					else:
+						timeout = min(self._sigchld_interval,
+							self._timeout_interval)
+				else:
+					timeout = self._timeout_interval
 			else:
 				timeout = 0
 			try:
