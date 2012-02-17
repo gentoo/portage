@@ -10,8 +10,8 @@ import signal
 import time
 
 from portage.util import writemsg_level
+from portage.util.SlotObject import SlotObject
 
-from _emerge.SlotObject import SlotObject
 from _emerge.PollConstants import PollConstants
 from _emerge.PollSelectAdapter import PollSelectAdapter
 

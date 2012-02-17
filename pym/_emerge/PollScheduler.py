@@ -12,9 +12,9 @@ except ImportError:
 from portage import _encodings
 from portage import _unicode_encode
 from portage.util import writemsg_level
+from portage.util.SlotObject import SlotObject
 from portage.util._eventloop.global_event_loop import global_event_loop
 
-from _emerge.SlotObject import SlotObject
 from _emerge.getloadavg import getloadavg
 
 class PollScheduler(object):

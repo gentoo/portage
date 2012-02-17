@@ -1,10 +1,10 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from _emerge.SlotObject import SlotObject
 import portage
 from portage import os
 from portage.elog.messages import eerror
+from portage.util.SlotObject import SlotObject
 
 class EbuildFetchonly(SlotObject):
 
