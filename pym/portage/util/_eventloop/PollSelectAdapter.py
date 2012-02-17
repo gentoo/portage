@@ -4,7 +4,7 @@
 from portage.util._eventloop.PollConstants import PollConstants
 import select
 
-class PollSelectAdapter(PollConstants):
+class PollSelectAdapter(object):
 
 	"""
 	Use select to emulate a poll object, for
