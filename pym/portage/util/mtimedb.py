@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['MtimeDB']
@@ -23,6 +23,7 @@ class MtimeDB(dict):
 		self._load(filename)
 
 	def _load(self, filename):
+		f = None
 		try:
 			f = open(_unicode_encode(filename), 'rb')
 			mypickle = pickle.Unpickler(f)
@@ -32,8 +33,6 @@ class MtimeDB(dict):
 				# TODO: If py3k, override Unpickler.find_class().
 				pass
 			d = mypickle.load()
-			f.close()
-			del f
 		except (AttributeError, EOFError, EnvironmentError, ValueError, pickle.UnpicklingError) as e:
 			if isinstance(e, EnvironmentError) and \
 				getattr(e, 'errno', None) in (errno.ENOENT, errno.EACCES):
@@ -43,6 +42,9 @@ class MtimeDB(dict):
 					(filename, str(e)), noiselevel=-1)
 			del e
 			d = {}
+		finally:
+			if f is not None:
+				f.close()
 
 		if "old" in d:
 			d["updates"] = d["old"]
