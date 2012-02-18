@@ -3,11 +3,10 @@
 
 import os
 
-from portage.util._eventloop.EventLoop import EventLoop
+from .EventLoop import EventLoop
 
 _default_constructor = EventLoop
-#from portage.util._eventloop.GlibEventLoop \
-#	import GlibEventLoop as _default_constructor
+#from .GlibEventLoop import GlibEventLoop as _default_constructor
 
 # If _default_constructor doesn't support multiprocessing,
 # then _multiprocessing_constructor is used in subprocesses.

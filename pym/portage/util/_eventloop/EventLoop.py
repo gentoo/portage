@@ -10,9 +10,9 @@ import signal
 import time
 
 from portage.util import writemsg_level
-from portage.util.SlotObject import SlotObject
-from portage.util._eventloop.PollConstants import PollConstants
-from portage.util._eventloop.PollSelectAdapter import PollSelectAdapter
+from ..SlotObject import SlotObject
+from .PollConstants import PollConstants
+from .PollSelectAdapter import PollSelectAdapter
 
 class EventLoop(object):
 

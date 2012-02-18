@@ -1,7 +1,7 @@
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage.util._eventloop.PollConstants import PollConstants
+from .PollConstants import PollConstants
 import select
 
 class PollSelectAdapter(object):
