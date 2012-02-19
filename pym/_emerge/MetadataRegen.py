@@ -1,8 +1,9 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
 from portage import os
+from portage.dep import _repo_separator
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 from _emerge.PollScheduler import PollScheduler
 
@@ -36,8 +37,8 @@ class MetadataRegen(PollScheduler):
 		self._remaining_tasks = True
 
 	def _terminate_tasks(self):
-		while self._running_tasks:
-			self._running_tasks.pop().cancel()
+		for task in list(self._running_tasks):
+			task.cancel()
 
 	def _iter_every_cp(self):
 		portage.writemsg_stdout("Listing available packages...\n")
@@ -61,26 +62,33 @@ class MetadataRegen(PollScheduler):
 				break
 			cp_set.add(cp)
 			portage.writemsg_stdout("Processing %s\n" % cp)
-			cpv_list = portdb.cp_list(cp)
-			for cpv in cpv_list:
-				if self._terminated_tasks:
-					break
-				valid_pkgs.add(cpv)
-				ebuild_path, repo_path = portdb.findname2(cpv)
-				if ebuild_path is None:
-					raise AssertionError("ebuild not found for '%s'" % cpv)
-				metadata, ebuild_hash = portdb._pull_valid_cache(
-					cpv, ebuild_path, repo_path)
-				if metadata is not None:
-					if consumer is not None:
-						consumer(cpv, repo_path, metadata, ebuild_hash)
-					continue
+			# We iterate over portdb.porttrees, since it's common to
+			# tweak this attribute in order to adjust repo selection.
+			for mytree in portdb.porttrees:
+				repo = portdb.repositories.get_repo_for_location(mytree)
+				cpv_list = portdb.cp_list(cp, mytree=[repo.location])
+				for cpv in cpv_list:
+					if self._terminated_tasks:
+						break
+					valid_pkgs.add(cpv)
+					ebuild_path, repo_path = portdb.findname2(cpv, myrepo=repo.name)
+					if ebuild_path is None:
+						raise AssertionError("ebuild not found for '%s%s%s'" % (cpv, _repo_separator, repo.name))
+					metadata, ebuild_hash = portdb._pull_valid_cache(
+						cpv, ebuild_path, repo_path)
+					if metadata is not None:
+						if consumer is not None:
+							consumer(cpv, repo_path, metadata, ebuild_hash)
+						continue
 
-				yield EbuildMetadataPhase(cpv=cpv,
-					ebuild_hash=ebuild_hash,
-					metadata_callback=portdb._metadata_callback,
-					portdb=portdb, repo_path=repo_path,
-					settings=portdb.doebuild_settings)
+					yield EbuildMetadataPhase(cpv=cpv,
+						ebuild_hash=ebuild_hash,
+						metadata_callback=portdb._metadata_callback,
+						portdb=portdb, repo_path=repo_path,
+						settings=portdb.doebuild_settings)
+
+	def _keep_scheduling(self):
+		return self._remaining_tasks and not self._terminated_tasks
 
 	def run(self):
 
@@ -88,12 +96,7 @@ class MetadataRegen(PollScheduler):
 		from portage.cache.cache_errors import CacheError
 		dead_nodes = {}
 
-		self._schedule()
-		while self._remaining_tasks and not self._terminated_tasks:
-			self.sched_iface.iteration()
-
-		while self._jobs:
-			self.sched_iface.iteration()
+		self._main_loop()
 
 		if self._terminated_tasks:
 			self.returncode = 1
@@ -141,27 +144,21 @@ class MetadataRegen(PollScheduler):
 						pass
 
 	def _schedule_tasks(self):
-		"""
-		@rtype: bool
-		@returns: True if there may be remaining tasks to schedule,
-			False otherwise.
-		"""
 		if self._terminated_tasks:
-			return False
+			return
 
 		while self._can_add_job():
 			try:
 				metadata_process = next(self._process_iter)
 			except StopIteration:
 				self._remaining_tasks = False
-				return False
+				return
 
 			self._jobs += 1
 			self._running_tasks.add(metadata_process)
 			metadata_process.scheduler = self.sched_iface
 			metadata_process.addExitListener(self._metadata_exit)
 			metadata_process.start()
-		return True
 
 	def _metadata_exit(self, metadata_process):
 		self._jobs -= 1

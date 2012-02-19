@@ -1390,7 +1390,8 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	# fake ownership/permissions will have to be converted to real
 	# permissions in the merge phase.
 	fakeroot = fakeroot and uid != 0 and portage.process.fakeroot_capable
-	if droppriv and not uid and portage_gid and portage_uid:
+	if droppriv and uid == 0 and portage_gid and portage_uid and \
+		hasattr(os, "setgroups"):
 		keywords.update({"uid":portage_uid,"gid":portage_gid,
 			"groups":userpriv_groups,"umask":0o02})
 	if not free:

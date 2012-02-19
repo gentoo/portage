@@ -1,7 +1,8 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from _emerge.SlotObject import SlotObject
+from portage.util.SlotObject import SlotObject
+
 class Task(SlotObject):
 	__slots__ = ("_hash_key", "_hash_value")
 

@@ -6054,6 +6054,14 @@ class depgraph(object):
 
 			write_to_file = not problems
 
+		def format_msg(lines):
+			lines = lines[:]
+			for i, line in enumerate(lines):
+				if line.startswith("#"):
+					continue
+				lines[i] = colorize("INFORM", line.rstrip()) + "\n"
+			return "".join(lines)
+
 		for root in roots:
 			settings = self._frozen_config.roots[root].settings
 			abs_user_config = os.path.join(
@@ -6065,22 +6073,22 @@ class depgraph(object):
 			if root in unstable_keyword_msg:
 				writemsg_stdout("\nThe following " + colorize("BAD", "keyword changes") + \
 					" are necessary to proceed:\n", noiselevel=-1)
-				writemsg_stdout("".join(unstable_keyword_msg[root]), noiselevel=-1)
+				writemsg_stdout(format_msg(unstable_keyword_msg[root]), noiselevel=-1)
 
 			if root in p_mask_change_msg:
 				writemsg_stdout("\nThe following " + colorize("BAD", "mask changes") + \
 					" are necessary to proceed:\n", noiselevel=-1)
-				writemsg_stdout("".join(p_mask_change_msg[root]), noiselevel=-1)
+				writemsg_stdout(format_msg(p_mask_change_msg[root]), noiselevel=-1)
 
 			if root in use_changes_msg:
 				writemsg_stdout("\nThe following " + colorize("BAD", "USE changes") + \
 					" are necessary to proceed:\n", noiselevel=-1)
-				writemsg_stdout("".join(use_changes_msg[root]), noiselevel=-1)
+				writemsg_stdout(format_msg(use_changes_msg[root]), noiselevel=-1)
 
 			if root in license_msg:
 				writemsg_stdout("\nThe following " + colorize("BAD", "license changes") + \
 					" are necessary to proceed:\n", noiselevel=-1)
-				writemsg_stdout("".join(license_msg[root]), noiselevel=-1)
+				writemsg_stdout(format_msg(license_msg[root]), noiselevel=-1)
 
 		protect_obj = {}
 		if write_to_file:

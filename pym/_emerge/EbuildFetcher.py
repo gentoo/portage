@@ -6,6 +6,7 @@ import traceback
 from _emerge.SpawnProcess import SpawnProcess
 import copy
 import io
+import platform
 import signal
 import sys
 import portage
@@ -163,10 +164,20 @@ class EbuildFetcher(SpawnProcess):
 
 		pid = os.fork()
 		if pid != 0:
+			if not isinstance(pid, int):
+				raise AssertionError(
+					"fork returned non-integer: %s" % (repr(pid),))
 			portage.process.spawned_pids.append(pid)
 			return [pid]
 
-		portage.process._setup_pipes(fd_pipes)
+		# TODO: Find out why PyPy 1.8 with close_fds=True triggers
+		# "[Errno 9] Bad file descriptor" in subprocesses. It could
+		# be due to garbage collection of file objects that were not
+		# closed before going out of scope, since PyPy's garbage
+		# collector does not support the refcounting semantics that
+		# CPython does.
+		close_fds = platform.python_implementation() != 'PyPy'
+		portage.process._setup_pipes(fd_pipes, close_fds=close_fds)
 
 		# Use default signal handlers in order to avoid problems
 		# killing subprocesses as reported in bug #353239.

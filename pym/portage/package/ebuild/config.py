@@ -944,6 +944,23 @@ class config(object):
 			writemsg(_("!!! FEATURES=fakeroot is enabled, but the "
 				"fakeroot binary is not installed.\n"), noiselevel=-1)
 
+		if os.getuid() == 0 and not hasattr(os, "setgroups"):
+			warning_shown = False
+
+			if "userpriv" in self.features:
+				writemsg(_("!!! FEATURES=userpriv is enabled, but "
+					"os.setgroups is not available.\n"), noiselevel=-1)
+				warning_shown = True
+
+			if "userfetch" in self.features:
+				writemsg(_("!!! FEATURES=userfetch is enabled, but "
+					"os.setgroups is not available.\n"), noiselevel=-1)
+				warning_shown = True
+
+			if warning_shown and platform.python_implementation() == 'PyPy':
+				writemsg(_("!!! See https://bugs.pypy.org/issue833 for details.\n"),
+					noiselevel=-1)
+
 	def load_best_module(self,property_string):
 		best_mod = best_from_dict(property_string,self.modules,self.module_priority)
 		mod = None

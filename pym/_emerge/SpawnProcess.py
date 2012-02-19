@@ -33,9 +33,6 @@ class SpawnProcess(SubProcess):
 
 	def _start(self):
 
-		if self.cancelled:
-			return
-
 		if self.fd_pipes is None:
 			self.fd_pipes = {}
 		fd_pipes = self.fd_pipes
@@ -62,8 +59,8 @@ class SpawnProcess(SubProcess):
 			# access to stdin. Until then, use /dev/null so that any
 			# attempts to read from stdin will immediately return EOF
 			# instead of blocking indefinitely.
-			null_input = open('/dev/null', 'rb')
-			fd_pipes[0] = null_input.fileno()
+			null_input = os.open('/dev/null', os.O_RDWR)
+			fd_pipes[0] = null_input
 
 		fd_pipes.setdefault(0, sys.stdin.fileno())
 		fd_pipes.setdefault(1, sys.stdout.fileno())
@@ -94,7 +91,7 @@ class SpawnProcess(SubProcess):
 				mode=0o660)
 
 			if not self.background:
-				files.stdout = os.fdopen(os.dup(fd_pipes_orig[1]), 'wb')
+				files.stdout = os.dup(fd_pipes_orig[1])
 
 			output_handler = self._output_handler
 
@@ -126,7 +123,7 @@ class SpawnProcess(SubProcess):
 
 		os.close(slave_fd)
 		if null_input is not None:
-			null_input.close()
+			os.close(null_input)
 
 		if isinstance(retval, int):
 			# spawn failed
@@ -183,11 +180,10 @@ class SpawnProcess(SubProcess):
 					while True:
 						try:
 							if not write_successful:
-								files.stdout.write(buf)
+								os.write(files.stdout, buf)
 								write_successful = True
-							files.stdout.flush()
 							break
-						except IOError as e:
+						except OSError as e:
 							if e.errno != errno.EAGAIN:
 								raise
 							del e
@@ -209,8 +205,8 @@ class SpawnProcess(SubProcess):
 							# inherit stdio file descriptors from portage
 							# (maybe it can't be avoided with
 							# PROPERTIES=interactive).
-							fcntl.fcntl(files.stdout.fileno(), fcntl.F_SETFL,
-								fcntl.fcntl(files.stdout.fileno(),
+							fcntl.fcntl(files.stdout, fcntl.F_SETFL,
+								fcntl.fcntl(files.stdout,
 								fcntl.F_GETFL) ^ os.O_NONBLOCK)
 
 				files.log.write(buf)

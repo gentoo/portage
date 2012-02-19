@@ -27,6 +27,7 @@ bad = create_color_func("BAD")
 from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import ensure_dirs, writemsg, writemsg_level
+from portage.util.SlotObject import SlotObject
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
 from portage.package.ebuild.doebuild import (_check_temp_dir,
@@ -56,7 +57,6 @@ from _emerge.MergeListItem import MergeListItem
 from _emerge.Package import Package
 from _emerge.PackageMerge import PackageMerge
 from _emerge.PollScheduler import PollScheduler
-from _emerge.SlotObject import SlotObject
 from _emerge.SequentialTaskQueue import SequentialTaskQueue
 
 if sys.hexversion >= 0x3000000:
@@ -196,8 +196,6 @@ class Scheduler(PollScheduler):
 
 		self._status_display = JobStatusDisplay(
 			xterm_titles=('notitles' not in settings.features))
-		self.sched_iface.timeout_add(self._max_display_latency,
-			self._status_display.display)
 		self._max_load = myopts.get("--load-average")
 		max_jobs = myopts.get("--jobs")
 		if max_jobs is None:
@@ -217,16 +215,11 @@ class Scheduler(PollScheduler):
 		fetch_iface = self._fetch_iface_class(log_file=self._fetch_log,
 			schedule=self._schedule_fetch)
 		self._sched_iface = self._iface_class(
-			fetch=fetch_iface, output=self._task_output,
-			idle_add=self._event_loop.idle_add,
-			io_add_watch=self._event_loop.io_add_watch,
-			iteration=self._event_loop.iteration,
-			register=self._event_loop.io_add_watch,
+			fetch=fetch_iface,
 			scheduleSetup=self._schedule_setup,
 			scheduleUnpack=self._schedule_unpack,
-			source_remove=self._event_loop.source_remove,
-			timeout_add=self._event_loop.timeout_add,
-			unregister=self._event_loop.source_remove)
+			**dict((k, getattr(self.sched_iface, k))
+			for k in self.sched_iface.__slots__))
 
 		self._prefetchers = weakref.WeakValueDictionary()
 		self._pkg_queue = []
@@ -320,8 +313,7 @@ class Scheduler(PollScheduler):
 
 	def _terminate_tasks(self):
 		self._status_display.quiet = True
-		while self._running_tasks:
-			task_id, task = self._running_tasks.popitem()
+		for task in list(self._running_tasks.values()):
 			task.cancel()
 		for q in self._task_queues.values():
 			q.clear()
@@ -911,6 +903,7 @@ class Scheduler(PollScheduler):
 			finally:
 				if current_task is not None and current_task.isAlive():
 					current_task.cancel()
+					current_task.wait()
 				clean_phase = EbuildPhase(background=False,
 					phase='clean', scheduler=sched_iface, settings=settings)
 				clean_phase.start()
@@ -1343,11 +1336,16 @@ class Scheduler(PollScheduler):
 
 	def _merge(self):
 
+		if self._opts_no_background.intersection(self.myopts):
+			self._set_max_jobs(1)
+
 		self._add_prefetchers()
 		self._add_packages()
 		failed_pkgs = self._failed_pkgs
 		portage.locks._quiet = self._background
 		portage.elog.add_listener(self._elog_listener)
+		display_timeout_id = self.sched_iface.timeout_add(
+			self._max_display_latency, self._status_display.display)
 		rval = os.EX_OK
 
 		try:
@@ -1356,6 +1354,7 @@ class Scheduler(PollScheduler):
 			self._main_loop_cleanup()
 			portage.locks._quiet = False
 			portage.elog.remove_listener(self._elog_listener)
+			self.sched_iface.source_remove(display_timeout_id)
 			if failed_pkgs:
 				rval = failed_pkgs[-1].returncode
 
@@ -1486,18 +1485,6 @@ class Scheduler(PollScheduler):
 	def _deallocate_config(self, settings):
 		self._config_pool[settings['EROOT']].append(settings)
 
-	def _main_loop(self):
-
-		if self._opts_no_background.intersection(self.myopts):
-			self._set_max_jobs(1)
-
-		self._schedule()
-		while self._keep_scheduling():
-			self.sched_iface.iteration()
-
-		while self._is_work_scheduled():
-			self.sched_iface.iteration()
-
 	def _keep_scheduling(self):
 		return bool(not self._terminated_tasks and self._pkg_queue and \
 			not (self._failed_pkgs and not self._build_opts.fetchonly))
@@ -1543,8 +1530,6 @@ class Scheduler(PollScheduler):
 				(self._merge_wait_queue and not self._jobs and
 				not self._task_queues.merge)):
 				break
-
-		return self._keep_scheduling()
 
 	def _job_delay(self):
 		"""
@@ -1635,7 +1620,14 @@ class Scheduler(PollScheduler):
 					"installed", pkg.root_config, installed=True,
 					operation="uninstall")
 
-		prefetcher = self._prefetchers.pop(pkg, None)
+		try:
+			prefetcher = self._prefetchers.pop(pkg, None)
+		except KeyError:
+			# KeyError observed with PyPy 1.8, despite None given as default.
+			# Note that PyPy 1.8 has the same WeakValueDictionary code as
+			# CPython 2.7, so it may be possible for CPython to raise KeyError
+			# here as well.
+			prefetcher = None
 		if prefetcher is not None and not prefetcher.isAlive():
 			try:
 				self._task_queues.fetch._task_queue.remove(prefetcher)

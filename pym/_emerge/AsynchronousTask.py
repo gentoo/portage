@@ -1,8 +1,9 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
-from _emerge.SlotObject import SlotObject
+from portage.util.SlotObject import SlotObject
+
 class AsynchronousTask(SlotObject):
 	"""
 	Subclasses override _wait() and _poll() so that calls
@@ -56,10 +57,17 @@ class AsynchronousTask(SlotObject):
 		return self.returncode
 
 	def cancel(self):
+		"""
+		Cancel the task, but do not wait for exit status. If asynchronous exit
+		notification is desired, then use addExitListener to add a listener
+		before calling this method.
+		NOTE: Synchronous waiting for status is not supported, since it would
+		be vulnerable to hitting the recursion limit when a large number of
+		tasks need to be terminated simultaneously, like in bug #402335.
+		"""
 		if not self.cancelled:
 			self.cancelled = True
 			self._cancel()
-			self.wait()
 
 	def _cancel(self):
 		"""
@@ -129,7 +137,11 @@ class AsynchronousTask(SlotObject):
 			self._exit_listener_stack = self._exit_listeners
 			self._exit_listeners = None
 
-			self._exit_listener_stack.reverse()
+			# Execute exit listeners in reverse order, so that
+			# the last added listener is executed first. This
+			# allows SequentialTaskQueue to decrement its running
+			# task count as soon as one of its tasks exits, so that
+			# the value is accurate when other listeners execute.
 			while self._exit_listener_stack:
 				self._exit_listener_stack.pop()(self)
 

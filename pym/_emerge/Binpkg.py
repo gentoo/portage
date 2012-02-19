@@ -373,13 +373,13 @@ class Binpkg(CompositeTask):
 		self._build_dir.unlock()
 
 	def create_install_task(self):
-		task = EbuildMerge(find_blockers=self.find_blockers,
+		task = EbuildMerge(exit_hook=self._install_exit,
+			find_blockers=self.find_blockers,
 			ldpath_mtimes=self.ldpath_mtimes, logger=self.logger,
 			pkg=self.pkg, pkg_count=self.pkg_count,
 			pkg_path=self._pkg_path, scheduler=self.scheduler,
 			settings=self.settings, tree=self._tree,
 			world_atom=self.world_atom)
-		task.addExitListener(self._install_exit)
 		return task
 
 	def _install_exit(self, task):

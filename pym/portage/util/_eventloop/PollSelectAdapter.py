@@ -1,9 +1,10 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from _emerge.PollConstants import PollConstants
+from .PollConstants import PollConstants
 import select
-class PollSelectAdapter(PollConstants):
+
+class PollSelectAdapter(object):
 
 	"""
 	Use select to emulate a poll object, for

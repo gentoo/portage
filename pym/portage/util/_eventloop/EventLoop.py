@@ -1,26 +1,38 @@
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import errno
+import fcntl
 import logging
+import os
 import select
+import signal
 import time
 
 from portage.util import writemsg_level
-
-from _emerge.SlotObject import SlotObject
-from _emerge.PollConstants import PollConstants
-from _emerge.PollSelectAdapter import PollSelectAdapter
+from ..SlotObject import SlotObject
+from .PollConstants import PollConstants
+from .PollSelectAdapter import PollSelectAdapter
 
 class EventLoop(object):
 
+	supports_multiprocessing = True
+
+	# TODO: Find out why SIGCHLD signals aren't delivered during poll
+	# calls, forcing us to wakeup in order to receive them.
+	_sigchld_interval = 250
+
+	class _child_callback_class(SlotObject):
+		__slots__ = ("callback", "data", "pid", "source_id")
+
 	class _idle_callback_class(SlotObject):
-		__slots__ = ("args", "callback", "source_id")
+		__slots__ = ("args", "callback", "calling", "source_id")
 
 	class _io_handler_class(SlotObject):
-		__slots__ = ("args", "callback", "fd", "source_id")
+		__slots__ = ("args", "callback", "f", "source_id")
 
 	class _timeout_handler_class(SlotObject):
-		__slots__ = ("args", "function", "interval", "source_id",
+		__slots__ = ("args", "function", "calling", "interval", "source_id",
 			"timestamp")
 
 	def __init__(self):
@@ -33,58 +45,21 @@ class EventLoop(object):
 		self._timeout_handlers = {}
 		self._timeout_interval = None
 		self._poll_obj = create_poll_instance()
-		self._polling = False
+
+		self.IO_ERR = PollConstants.POLLERR
+		self.IO_HUP = PollConstants.POLLHUP
+		self.IO_IN = PollConstants.POLLIN
+		self.IO_NVAL = PollConstants.POLLNVAL
+		self.IO_OUT = PollConstants.POLLOUT
+		self.IO_PRI = PollConstants.POLLPRI
+
+		self._child_handlers = {}
+		self._sigchld_read = None
+		self._sigchld_write = None
+		self._sigchld_src_id = None
+		self._pid = os.getpid()
 
 	def _poll(self, timeout=None):
-		if self._polling:
-			return
-		self._polling = True
-		try:
-			if self._timeout_interval is None:
-				self._run_timeouts()
-				self._do_poll(timeout=timeout)
-
-			elif timeout is None:
-				while True:
-					self._run_timeouts()
-					previous_count = len(self._poll_event_queue)
-					self._do_poll(timeout=self._timeout_interval)
-					if previous_count != len(self._poll_event_queue):
-						break
-
-			elif timeout <= self._timeout_interval:
-				self._run_timeouts()
-				self._do_poll(timeout=timeout)
-
-			else:
-				remaining_timeout = timeout
-				start_time = time.time()
-				while True:
-					self._run_timeouts()
-					# _timeout_interval can change each time
-					# _run_timeouts is called
-					min_timeout = remaining_timeout
-					if self._timeout_interval is not None and \
-						self._timeout_interval < min_timeout:
-						min_timeout = self._timeout_interval
-
-					previous_count = len(self._poll_event_queue)
-					self._do_poll(timeout=min_timeout)
-					if previous_count != len(self._poll_event_queue):
-						break
-					elapsed_time = time.time() - start_time
-					if elapsed_time < 0:
-						# The system clock has changed such that start_time
-						# is now in the future, so just assume that the
-						# timeout has already elapsed.
-						break
-					remaining_timeout = timeout - 1000 * elapsed_time
-					if remaining_timeout <= 0:
-						break
-		finally:
-			self._polling = False
-
-	def _do_poll(self, timeout=None):
 		"""
 		All poll() calls pass through here. The poll events
 		are added directly to self._poll_event_queue.
@@ -98,38 +73,23 @@ class EventLoop(object):
 			raise StopIteration(
 				"timeout is None and there are no poll() event handlers")
 
-		# The following error is known to occur with Linux kernel versions
-		# less than 2.6.24:
-		#
-		#   select.error: (4, 'Interrupted system call')
-		#
-		# This error has been observed after a SIGSTOP, followed by SIGCONT.
-		# Treat it similar to EAGAIN if timeout is None, otherwise just return
-		# without any events.
 		while True:
 			try:
 				self._poll_event_queue.extend(self._poll_obj.poll(timeout))
 				break
 			except select.error as e:
-				writemsg_level("\n!!! select error: %s\n" % (e,),
-					level=logging.ERROR, noiselevel=-1)
+				# Silently handle EINTR, which is normal when we have
+				# received a signal such as SIGINT.
+				if not (e.args and e.args[0] == errno.EINTR):
+					writemsg_level("\n!!! select error: %s\n" % (e,),
+						level=logging.ERROR, noiselevel=-1)
 				del e
-				if timeout is not None:
-					break
 
-	def _next_poll_event(self, timeout=None):
-		"""
-		Since iteration() can be called recursively, maintain
-		a central event queue to share events from a single
-		poll() call. In order to avoid endless blocking, this
-		raises StopIteration if timeout is None and there are
-		no file descriptors to poll.
-		"""
-		if not self._poll_event_queue:
-			self._poll(timeout)
-			if not self._poll_event_queue:
-				raise StopIteration()
-		return self._poll_event_queue.pop()
+				# This typically means that we've received a SIGINT, so
+				# raise StopIteration in order to break out of our current
+				# iteration and respond appropriately to the signal as soon
+				# as possible.
+				raise StopIteration("interrupted")
 
 	def iteration(self, *args):
 		"""
@@ -149,30 +109,158 @@ class EventLoop(object):
 					"expected at most 1 argument (%s given)" % len(args))
 			may_block = args[0]
 
+		event_queue =  self._poll_event_queue
 		event_handlers = self._poll_event_handlers
 		events_handled = 0
 
 		if not event_handlers:
-			return bool(events_handled)
+			if self._run_timeouts():
+				events_handled += 1
+			if not event_handlers:
+				if not events_handled and may_block and \
+					self._timeout_interval is not None:
+					# Block so that we don't waste cpu time by looping too
+					# quickly. This makes EventLoop useful for code that needs
+					# to wait for timeout callbacks regardless of whether or
+					# not any IO handlers are currently registered.
+					try:
+						self._poll(timeout=self._timeout_interval)
+					except StopIteration:
+						pass
+					if self._run_timeouts():
+						events_handled += 1
 
-		if not self._poll_event_queue:
+			# If any timeouts have executed, then return immediately,
+			# in order to minimize latency in termination of iteration
+			# loops that they may control.
+			if events_handled or not event_handlers:
+				return bool(events_handled)
+
+		if not event_queue:
+
 			if may_block:
-				timeout = None
+				if self._child_handlers:
+					if self._timeout_interval is None:
+						timeout = self._sigchld_interval
+					else:
+						timeout = min(self._sigchld_interval,
+							self._timeout_interval)
+				else:
+					timeout = self._timeout_interval
 			else:
 				timeout = 0
-			self._poll(timeout=timeout)
 
-		try:
-			while event_handlers and self._poll_event_queue:
-				f, event = self._next_poll_event()
-				x = event_handlers[f]
-				if not x.callback(f, event, *x.args):
-					self.source_remove(x.source_id)
-				events_handled += 1
-		except StopIteration:
+			try:
+				self._poll(timeout=timeout)
+			except StopIteration:
+				# This can be triggered by EINTR which is caused by signals.
+				pass
+
+		# NOTE: IO event handlers may be re-entrant, in case something
+		# like AbstractPollTask._wait_loop() needs to be called inside
+		# a handler for some reason.
+		while event_queue:
+			events_handled += 1
+			f, event = event_queue.pop()
+			x = event_handlers[f]
+			if not x.callback(f, event, *x.args):
+				self.source_remove(x.source_id)
+
+		# Run timeouts last, in order to minimize latency in
+		# termination of iteration loops that they may control.
+		if self._run_timeouts():
 			events_handled += 1
 
 		return bool(events_handled)
+
+	def child_watch_add(self, pid, callback, data=None):
+		"""
+		Like glib.child_watch_add(), sets callback to be called with the
+		user data specified by data when the child indicated by pid exits.
+		The signature for the callback is:
+
+			def callback(pid, condition, user_data)
+
+		where pid is is the child process id, condition is the status
+		information about the child process and user_data is data.
+
+		@type int
+		@param pid: process id of a child process to watch
+		@type callback: callable
+		@param callback: a function to call
+		@type data: object
+		@param data: the optional data to pass to function
+		@rtype: int
+		@return: an integer ID
+		"""
+		self._event_handler_id += 1
+		source_id = self._event_handler_id
+		self._child_handlers[source_id] = self._child_callback_class(
+			callback=callback, data=data, pid=pid, source_id=source_id)
+
+		if self._sigchld_read is None:
+			self._sigchld_read, self._sigchld_write = os.pipe()
+			fcntl.fcntl(self._sigchld_read, fcntl.F_SETFL,
+				fcntl.fcntl(self._sigchld_read, fcntl.F_GETFL) | os.O_NONBLOCK)
+
+		# The IO watch is dynamically registered and unregistered as
+		# needed, since we don't want to consider it as a valid source
+		# of events when there are no child listeners. It's important
+		# to distinguish when there are no valid sources of IO events,
+		# in order to avoid an endless poll call if there's no timeout.
+		if self._sigchld_src_id is None:
+			self._sigchld_src_id = self.io_add_watch(
+				self._sigchld_read, self.IO_IN, self._sigchld_io_cb)
+			signal.signal(signal.SIGCHLD, self._sigchld_sig_cb)
+
+		# poll now, in case the SIGCHLD has already arrived
+		self._poll_child_processes()
+		return source_id
+
+	def _sigchld_sig_cb(self, signum, frame):
+		# If this signal handler was not installed by the
+		# current process then the signal doesn't belong to
+		# this EventLoop instance.
+		if os.getpid() == self._pid:
+			os.write(self._sigchld_write, b'\0')
+
+	def _sigchld_io_cb(self, fd, events):
+		try:
+			while True:
+				os.read(self._sigchld_read, 4096)
+		except OSError:
+			# read until EAGAIN
+			pass
+		self._poll_child_processes()
+		return True
+
+	def _poll_child_processes(self):
+		if not self._child_handlers:
+			return False
+
+		calls = 0
+
+		for x in list(self._child_handlers.values()):
+			if x.source_id not in self._child_handlers:
+				# it's already been called via re-entrance
+				continue
+			try:
+				wait_retval = os.waitpid(x.pid, os.WNOHANG)
+			except OSError as e:
+				if e.errno != errno.ECHILD:
+					raise
+				del e
+				self.source_remove(x.source_id)
+			else:
+				# With waitpid and WNOHANG, only check the
+				# first element of the tuple since the second
+				# element may vary (bug #337465).
+				if wait_retval[0] != 0:
+					calls += 1
+					self.source_remove(x.source_id)
+					x.callback(x.pid, wait_retval[1], x.data)
+
+		return bool(calls)
 
 	def idle_add(self, callback, *args):
 		"""
@@ -200,8 +288,15 @@ class EventLoop(object):
 			if x.source_id not in self._idle_callbacks:
 				# it got cancelled while executing another callback
 				continue
-			if not x.callback(*x.args):
-				self.source_remove(x.source_id)
+			if x.calling:
+				# don't call it recursively
+				continue
+			x.calling = True
+			try:
+				if not x.callback(*x.args):
+					self.source_remove(x.source_id)
+			finally:
+				x.calling = False
 
 	def timeout_add(self, interval, function, *args):
 		"""
@@ -210,13 +305,6 @@ class EventLoop(object):
 		should return False to stop being called, or True to continue
 		being called. Any additional positional arguments given here
 		are passed to your function when it's called.
-
-		NOTE: Timeouts registered by this function currently do not
-		keep the main loop running when there are no remaining callbacks
-		registered for IO events. This is not an issue if the purpose of
-		the timeout is to place an upper limit on the time allowed for
-		a particular IO event to occur, since the handler associated with
-		the IO event will serve to keep the main loop running.
 		"""
 		self._event_handler_id += 1
 		source_id = self._event_handler_id
@@ -224,7 +312,7 @@ class EventLoop(object):
 			self._timeout_handler_class(
 				interval=interval, function=function, args=args,
 				source_id=source_id, timestamp=time.time())
-		if self._timeout_interval is None or self._timeout_interval < interval:
+		if self._timeout_interval is None or self._timeout_interval > interval:
 			self._timeout_interval = interval
 		return source_id
 
@@ -246,15 +334,24 @@ class EventLoop(object):
 
 		# Iterate of our local list, since self._timeout_handlers can be
 		# modified during the exection of these callbacks.
+		calls = 0
 		for x in ready_timeouts:
 			if x.source_id not in self._timeout_handlers:
 				# it got cancelled while executing another timeout
 				continue
-			x.timestamp = time.time()
-			if not x.function(*x.args):
-				self.source_remove(x.source_id)
+			if x.calling:
+				# don't call it recursively
+				continue
+			calls += 1
+			x.calling = True
+			try:
+				x.timestamp = time.time()
+				if not x.function(*x.args):
+					self.source_remove(x.source_id)
+			finally:
+				x.calling = False
 
-		return bool(ready_timeouts)
+		return bool(calls)
 
 	def io_add_watch(self, f, condition, callback, *args):
 		"""
@@ -288,6 +385,13 @@ class EventLoop(object):
 		is found and removed, and False if the reg_id is invalid or has
 		already been removed.
 		"""
+		x = self._child_handlers.pop(reg_id, None)
+		if x is not None:
+			if not self._child_handlers:
+				signal.signal(signal.SIGCHLD, signal.SIG_DFL)
+				self.source_remove(self._sigchld_src_id)
+				self._sigchld_src_id = None
+			return True
 		idle_callback = self._idle_callbacks.pop(reg_id, None)
 		if idle_callback is not None:
 			return True

@@ -7,7 +7,7 @@ from portage.dbapi._MergeProcess import MergeProcess
 
 class EbuildMerge(CompositeTask):
 
-	__slots__ = ("find_blockers", "logger", "ldpath_mtimes",
+	__slots__ = ("exit_hook", "find_blockers", "logger", "ldpath_mtimes",
 		"pkg", "pkg_count", "pkg_path", "pretend",
 		"settings", "tree", "world_atom")
 
@@ -35,6 +35,7 @@ class EbuildMerge(CompositeTask):
 
 	def _merge_exit(self, merge_task):
 		if self._final_exit(merge_task) != os.EX_OK:
+			self.exit_hook(self)
 			self.wait()
 			return
 
@@ -53,4 +54,5 @@ class EbuildMerge(CompositeTask):
 		logger.log(" ::: completed emerge (%s of %s) %s to %s" % \
 			(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg.root))
 
+		self.exit_hook(self)
 		self.wait()

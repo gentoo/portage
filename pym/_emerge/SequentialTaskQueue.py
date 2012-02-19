@@ -1,9 +1,11 @@
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import sys
-from _emerge.SlotObject import SlotObject
 from collections import deque
+import sys
+
+from portage.util.SlotObject import SlotObject
+
 class SequentialTaskQueue(SlotObject):
 
 	__slots__ = ("max_jobs", "running_tasks") + \
@@ -55,12 +57,19 @@ class SequentialTaskQueue(SlotObject):
 			self.schedule()
 
 	def clear(self):
+		"""
+		Clear the task queue and asynchronously terminate any running tasks.
+		"""
 		self._task_queue.clear()
-		running_tasks = self.running_tasks
-		while running_tasks:
-			task = running_tasks.pop()
-			task.removeExitListener(self._task_exit)
+		for task in list(self.running_tasks):
 			task.cancel()
+
+	def wait(self):
+		"""
+		Synchronously wait for all running tasks to exit.
+		"""
+		while self.running_tasks:
+			next(iter(self.running_tasks)).wait()
 
 	def __bool__(self):
 		return bool(self._task_queue or self.running_tasks)

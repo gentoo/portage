@@ -1,4 +1,4 @@
-# Copyright 2001-2011 Gentoo Foundation
+# Copyright 2001-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -246,16 +246,9 @@ def getitem(myid,myitem):
 	return mydata[myloc[0]:myloc[0]+myloc[1]]
 
 def xpand(myid,mydest):
+	mydest = normalize_path(mydest) + os.sep
 	myindex=myid[0]
 	mydata=myid[1]
-	try:
-		origdir=os.getcwd()
-	except SystemExit as e:
-		raise
-	except:
-		os.chdir("/")
-		origdir="/"
-	os.chdir(mydest)
 	myindexlen=len(myindex)
 	startpos=0
 	while ((startpos+8)<myindexlen):
@@ -263,16 +256,22 @@ def xpand(myid,mydest):
 		datapos=decodeint(myindex[startpos+4+namelen:startpos+8+namelen]);
 		datalen=decodeint(myindex[startpos+8+namelen:startpos+12+namelen]);
 		myname=myindex[startpos+4:startpos+4+namelen]
-		dirname=os.path.dirname(myname)
+		myname = _unicode_decode(myname,
+			encoding=_encodings['repo.content'], errors='replace')
+		filename = os.path.join(mydest, myname.lstrip(os.sep))
+		filename = normalize_path(filename)
+		if not filename.startswith(mydest):
+			# myname contains invalid ../ component(s)
+			continue
+		dirname = os.path.dirname(filename)
 		if dirname:
 			if not os.path.exists(dirname):
 				os.makedirs(dirname)
-		mydat = open(_unicode_encode(myname,
+		mydat = open(_unicode_encode(filename,
 			encoding=_encodings['fs'], errors='strict'), 'wb')
 		mydat.write(mydata[datapos:datapos+datalen])
 		mydat.close()
 		startpos=startpos+namelen+12
-	os.chdir(origdir)
 
 class tbz2(object):
 	def __init__(self,myfile):
@@ -398,7 +397,7 @@ class tbz2(object):
 			self.datapos=a.tell()
 			a.close()
 			return 2
-		except SystemExit as e:
+		except SystemExit:
 			raise
 		except:
 			return 0
@@ -434,18 +433,11 @@ class tbz2(object):
 		"""Unpacks all the files from the dataSegment into 'mydest'."""
 		if not self.scan():
 			return 0
-		try:
-			origdir=os.getcwd()
-		except SystemExit as e:
-			raise
-		except:
-			os.chdir("/")
-			origdir="/"
+		mydest = normalize_path(mydest) + os.sep
 		a = open(_unicode_encode(self.file,
 			encoding=_encodings['fs'], errors='strict'), 'rb')
 		if not os.path.exists(mydest):
 			os.makedirs(mydest)
-		os.chdir(mydest)
 		startpos=0
 		while ((startpos+8)<self.indexsize):
 			namelen=decodeint(self.index[startpos:startpos+4])
@@ -454,18 +446,22 @@ class tbz2(object):
 			myname=self.index[startpos+4:startpos+4+namelen]
 			myname = _unicode_decode(myname,
 				encoding=_encodings['repo.content'], errors='replace')
-			dirname=os.path.dirname(myname)
+			filename = os.path.join(mydest, myname.lstrip(os.sep))
+			filename = normalize_path(filename)
+			if not filename.startswith(mydest):
+				# myname contains invalid ../ component(s)
+				continue
+			dirname = os.path.dirname(filename)
 			if dirname:
 				if not os.path.exists(dirname):
 					os.makedirs(dirname)
-			mydat = open(_unicode_encode(myname,
+			mydat = open(_unicode_encode(filename,
 				encoding=_encodings['fs'], errors='strict'), 'wb')
 			a.seek(self.datapos+datapos)
 			mydat.write(a.read(datalen))
 			mydat.close()
 			startpos=startpos+namelen+12
 		a.close()
-		os.chdir(origdir)
 		return 1
 
 	def get_data(self):

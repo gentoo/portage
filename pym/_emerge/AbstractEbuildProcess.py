@@ -167,8 +167,7 @@ class AbstractEbuildProcess(SpawnProcess):
 			# of time, kill it (solves bug #278895). We try to avoid
 			# this when possible since it makes sandbox complain about
 			# being killed by a signal.
-			self.cancelled = True
-			self._cancel()
+			self.cancel()
 			self._exit_timeout_id = \
 				self.scheduler.timeout_add(self._cancel_timeout,
 					self._cancel_timeout_cb)

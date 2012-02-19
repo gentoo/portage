@@ -45,7 +45,7 @@ def _gen_valid_repo(name):
 class RepoConfig(object):
 	"""Stores config of one repository"""
 
-	__slots__ = ('aliases', 'allow_missing_manifest',
+	__slots__ = ('aliases', 'allow_missing_manifest', 'allow_provide_virtual',
 		'cache_formats', 'create_manifest', 'disable_manifest', 'eapi',
 		'eclass_db', 'eclass_locations', 'eclass_overrides', 'format', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
@@ -123,6 +123,7 @@ class RepoConfig(object):
 		self.sign_manifest = True
 		self.thin_manifest = False
 		self.allow_missing_manifest = False
+		self.allow_provide_virtual = False
 		self.create_manifest = True
 		self.disable_manifest = False
 		self.manifest_hashes = None
@@ -149,7 +150,8 @@ class RepoConfig(object):
 				# them the ability to do incremental overrides
 				self.aliases = layout_data['aliases'] + tuple(aliases)
 
-			for value in ('allow-missing-manifest', 'cache-formats',
+			for value in ('allow-missing-manifest',
+				'allow-provide-virtual', 'cache-formats',
 				'create-manifest', 'disable-manifest', 'manifest-hashes',
 				'sign-commit', 'sign-manifest', 'thin-manifest', 'update-changelog'):
 				setattr(self, value.lower().replace("-", "_"), layout_data[value])
@@ -690,6 +692,9 @@ def parse_layout_conf(repo_location, repo_name=None):
 		masters = tuple(masters.split())
 	data['masters'] = masters
 	data['aliases'] = tuple(layout_data.get('aliases', '').split())
+
+	data['allow-provide-virtual'] = \
+		layout_data.get('allow-provide-virtuals', 'false').lower() == 'true'
 
 	data['sign-commit'] = layout_data.get('sign-commits', 'false').lower() \
 		== 'true'
