@@ -2027,9 +2027,6 @@ class dblink(object):
 					settings=self.settings,
 					vartree=self.vartree, treetype="vartree", pipe=self._pipe))
 
-		dest_root = self._eroot
-		dest_root_len = len(dest_root) - 1
-
 		cfgfiledict = grabdict(self.vartree.dbapi._conf_mem_file)
 		stale_confmem = []
 		protected_symlinks = {}
@@ -2333,6 +2330,11 @@ class dblink(object):
 
 			self._unmerge_dirs(mydirs, infodirs_inodes,
 				protected_symlinks, unmerge_desc, unlink, os)
+			mydirs.clear()
+
+		if protected_symlinks:
+			self._unmerge_protected_symlinks(others_in_slot, infodirs_inodes,
+				protected_symlinks, unmerge_desc, unlink, os)
 
 		if protected_symlinks:
 			msg = "One or more symlinks to directories have been " + \
@@ -2357,6 +2359,86 @@ class dblink(object):
 
 		#remove self from vartree database so that our own virtual gets zapped if we're the last node
 		self.vartree.zap(self.mycpv)
+
+	def _unmerge_protected_symlinks(self, others_in_slot, infodirs_inodes,
+		protected_symlinks, unmerge_desc, unlink, os):
+
+		real_root = self.settings['ROOT']
+		show_unmerge = self._show_unmerge
+		ignored_unlink_errnos = self._ignored_unlink_errnos
+
+		flat_list = set()
+		flat_list.update(*protected_symlinks.values())
+		flat_list = sorted(flat_list)
+
+		for f in flat_list:
+			for dblnk in others_in_slot:
+				if dblnk.isowner(f):
+					# If another package in the same slot installed
+					# a file via a protected symlink, return early
+					# and don't bother searching for any other owners.
+					return
+
+		msg = []
+		msg.append("")
+		msg.append(_("Directory symlink(s) may need protection:"))
+		msg.append("")
+
+		for f in flat_list:
+			msg.append("\t%s" % \
+				os.path.join(real_root, f.lstrip(os.path.sep)))
+
+		msg.append("")
+		msg.append(_("Searching all installed"
+			" packages for files installed via above symlink(s)..."))
+		msg.append("")
+		self._elog("elog", "postrm", msg)
+
+		self.lockdb()
+		try:
+			owners = self.vartree.dbapi._owners.get_owners(flat_list)
+			self.vartree.dbapi.flush_cache()
+		finally:
+			self.unlockdb()
+
+		for owner in list(owners):
+			if owner.mycpv == self.mycpv:
+				owners.pop(owner, None)
+
+		if not owners:
+			msg = []
+			msg.append(_("The above directory symlink(s) are all "
+				"safe to remove. Removing them now..."))
+			msg.append("")
+			self._elog("elog", "postrm", msg)
+			dirs = set()
+			for unmerge_syms in protected_symlinks.values():
+				for relative_path in unmerge_syms:
+					obj = os.path.join(real_root,
+						relative_path.lstrip(os.sep))
+					parent = os.path.dirname(obj)
+					while len(parent) > len(self._eroot):
+						try:
+							lstatobj = os.lstat(parent)
+						except OSError:
+							break
+						else:
+							dirs.add((parent,
+								(lstatobj.st_dev, lstatobj.st_ino)))
+							parent = os.path.dirname(parent)
+					try:
+						unlink(obj, os.lstat(obj))
+						show_unmerge("<<<", "", "sym", obj)
+					except (OSError, IOError) as e:
+						if e.errno not in ignored_unlink_errnos:
+							raise
+						del e
+						show_unmerge("!!!", "", "sym", obj)
+
+			protected_symlinks.clear()
+			self._unmerge_dirs(dirs, infodirs_inodes,
+				protected_symlinks, unmerge_desc, unlink, os)
+			dirs.clear()
 
 	def _unmerge_dirs(self, dirs, infodirs_inodes,
 		protected_symlinks, unmerge_desc, unlink, os):
