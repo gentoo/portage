@@ -2814,6 +2814,10 @@ class depgraph(object):
 			elif node is not start_node:
 				for ppkg, patom in all_parents[child]:
 					if ppkg == node:
+						if child is start_node and unsatisfied_dependency and \
+							InternalPackageSet(initial_atoms=(patom,)).findAtomForPackage(child):
+							# This atom is satisfied by child, there must be another atom.
+							continue
 						atom = patom.unevaluated_atom
 						break
 
