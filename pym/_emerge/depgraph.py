@@ -3505,15 +3505,31 @@ class depgraph(object):
 		return True
 
 	class _AutounmaskLevel(object):
-		__slots__ = ("allow_use_changes", "allow_unstable_keywords", "allow_license_changes", "allow_unmasks")
+		__slots__ = ("allow_use_changes", "allow_unstable_keywords", "allow_license_changes", \
+			"allow_missing_keywords", "allow_unmasks")
 
 		def __init__(self):
 			self.allow_use_changes = False
-			self.allow_unstable_keywords = False
 			self.allow_license_changes = False
+			self.allow_unstable_keywords = False
+			self.allow_missing_keywords = False
 			self.allow_unmasks = False
 
 	def _autounmask_levels(self):
+		"""
+		Iterate over the different allowed things to unmask.
+
+		1. USE
+		2. USE + ~arch + license
+		3. USE + ~arch + license + missing keywords
+		4. USE + ~arch + license + masks
+		5. USE + ~arch + license + missing keywords + masks
+
+		Some thoughts:
+			* Do least invasive changes first.
+			* Try unmasking alone before unmasking + missing keywords
+				to avoid -9999 versions if possible
+		"""
 
 		if self._dynamic_config._autounmask is not True:
 			return
@@ -3528,11 +3544,13 @@ class depgraph(object):
 			autounmask_level.allow_unstable_keywords = (not only_use_changes)
 			autounmask_level.allow_license_changes = (not only_use_changes)
 
-			for allow_unmasks in (False, True):
-				if allow_unmasks and (only_use_changes or autounmask_keep_masks):
-					continue
+			for missing_keyword, unmask in ((False,False), (True, False), (False, True), (True, True)):
 
-				autounmask_level.allow_unmasks = allow_unmasks
+				if (only_use_changes or autounmask_keep_masks) and (missing_keyword or unmask):
+					break
+
+				autounmask_level.allow_missing_keywords = missing_keyword
+				autounmask_level.allow_unmasks = unmask
 
 				yield autounmask_level
 
@@ -3634,9 +3652,8 @@ class depgraph(object):
 			#Package has already been unmasked.
 			return True
 
-		#We treat missing keywords in the same way as masks.
 		if (masked_by_unstable_keywords and not autounmask_level.allow_unstable_keywords) or \
-			(masked_by_missing_keywords and not autounmask_level.allow_unmasks) or \
+			(masked_by_missing_keywords and not autounmask_level.allow_missing_keywords) or \
 			(masked_by_p_mask and not autounmask_level.allow_unmasks) or \
 			(missing_licenses and not autounmask_level.allow_license_changes):
 			#We are not allowed to do the needed changes.
