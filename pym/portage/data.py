@@ -115,7 +115,7 @@ def _get_global(k):
 			portage_gid = 0
 			# PREFIX LOCAL: we need to fix this one day to distinguish prefix vs non-prefix
 			writemsg(colorize("BAD",
-				_("portage: '%s' user or '%s' group missing." % (_get_global('_portage_uname'), _get_global('_portage_grpname')))) + "\n", noiselevel=-1)
+				_("portage: '%s' user or '%s' group missing." % (_get_global('_portage_username'), _get_global('_portage_grpname')))) + "\n", noiselevel=-1)
 			writemsg(colorize("BAD",
 				_("         In Prefix Portage this is quite dramatic")) + "\n", noiselevel=-1)
 			writemsg(colorize("BAD",
