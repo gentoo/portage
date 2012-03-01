@@ -10,7 +10,7 @@ if [[ -z $1 ]] ; then
 fi
 
 [[ " ${FEATURES} " == *" force-prefix "* ]] || \
-	case "$EAPI" in 0|1|2) ED=${D} ;; esac
+	case "$EAPI" in 0|1|2) ED=${D} EPREFIX= ;; esac
 
 case $1 in
 	--ignore)
@@ -70,8 +70,15 @@ funk_up_dir() {
 		[[ -e ${brokenlink} ]] && continue
 		olddest=$(readlink "${brokenlink}")
 		# Ignore temporarily broken symlinks due to
-		# _relocate_skip_dirs (bug #399595).
-		skip_dir_dest=${T}/ecompress-skip/${actual_dir#${ED}}/${brokenlink%/*}/${olddest}
+		# _relocate_skip_dirs (bug #399595), and handle
+		# absolute symlinks to files that aren't merged
+		# yet (bug #405327).
+		if [[ ${olddest} == /* ]] ; then
+			[ -e "${D}${olddest}" ] && continue
+			skip_dir_dest=${T}/ecompress-skip/${olddest#${EPREFIX}}
+		else
+			skip_dir_dest=${T}/ecompress-skip/${actual_dir#${ED}}/${brokenlink%/*}/${olddest}
+		fi
 		[[ -e ${skip_dir_dest} ]] && continue
 		[[ ${act} == "compress" ]] \
 			&& newdest="${olddest}${suffix}" \

@@ -1523,8 +1523,9 @@ class Scheduler(PollScheduler):
 			if self._failed_pkgs and not self._build_opts.fetchonly and \
 				not self._is_work_scheduled() and \
 				self._task_queues.fetch:
+				# Since this happens asynchronously, it doesn't count in
+				# state_change (counting it triggers an infinite loop).
 				self._task_queues.fetch.clear()
-				state_change += 1
 
 			if not (state_change or \
 				(self._merge_wait_queue and not self._jobs and

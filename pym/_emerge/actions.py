@@ -367,7 +367,7 @@ def action_build(settings, trees, mtimedb,
 			print()
 			print("Quitting.")
 			print()
-			return os.EX_OK
+			return 1
 		# Don't ask again (e.g. when auto-cleaning packages after merge)
 		myopts.pop("--ask", None)
 

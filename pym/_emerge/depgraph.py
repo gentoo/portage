@@ -2814,6 +2814,10 @@ class depgraph(object):
 			elif node is not start_node:
 				for ppkg, patom in all_parents[child]:
 					if ppkg == node:
+						if child is start_node and unsatisfied_dependency and \
+							InternalPackageSet(initial_atoms=(patom,)).findAtomForPackage(child):
+							# This atom is satisfied by child, there must be another atom.
+							continue
 						atom = patom.unevaluated_atom
 						break
 
@@ -3500,42 +3504,81 @@ class depgraph(object):
 				return False
 		return True
 
+	class _AutounmaskLevel(object):
+		__slots__ = ("allow_use_changes", "allow_unstable_keywords", "allow_license_changes", \
+			"allow_missing_keywords", "allow_unmasks")
+
+		def __init__(self):
+			self.allow_use_changes = False
+			self.allow_license_changes = False
+			self.allow_unstable_keywords = False
+			self.allow_missing_keywords = False
+			self.allow_unmasks = False
+
+	def _autounmask_levels(self):
+		"""
+		Iterate over the different allowed things to unmask.
+
+		1. USE
+		2. USE + ~arch + license
+		3. USE + ~arch + license + missing keywords
+		4. USE + ~arch + license + masks
+		5. USE + ~arch + license + missing keywords + masks
+
+		Some thoughts:
+			* Do least invasive changes first.
+			* Try unmasking alone before unmasking + missing keywords
+				to avoid -9999 versions if possible
+		"""
+
+		if self._dynamic_config._autounmask is not True:
+			return
+
+		autounmask_keep_masks = self._frozen_config.myopts.get("--autounmask-keep-masks", "n") != "n"
+		autounmask_level = self._AutounmaskLevel()
+
+		autounmask_level.allow_use_changes = True
+
+		for only_use_changes in (True, False):
+
+			autounmask_level.allow_unstable_keywords = (not only_use_changes)
+			autounmask_level.allow_license_changes = (not only_use_changes)
+
+			for missing_keyword, unmask in ((False,False), (True, False), (False, True), (True, True)):
+
+				if (only_use_changes or autounmask_keep_masks) and (missing_keyword or unmask):
+					break
+
+				autounmask_level.allow_missing_keywords = missing_keyword
+				autounmask_level.allow_unmasks = unmask
+
+				yield autounmask_level
+
+
 	def _select_pkg_highest_available_imp(self, root, atom, onlydeps=False):
 		pkg, existing = self._wrapped_select_pkg_highest_available_imp(root, atom, onlydeps=onlydeps)
 
 		default_selection = (pkg, existing)
 
-		autounmask_keep_masks = self._frozen_config.myopts.get("--autounmask-keep-masks", "n") != "n"
-
-		if self._dynamic_config._autounmask is True:
+		def reset_pkg(pkg):
 			if pkg is not None and \
 				pkg.installed and \
 				not self._want_installed_pkg(pkg):
 				pkg = None
 
-			for only_use_changes in True, False:
+		if self._dynamic_config._autounmask is True:
+			reset_pkg(pkg)
+
+			for autounmask_level in self._autounmask_levels():
 				if pkg is not None:
 					break
 
-				for allow_unmasks in (False, True):
-					if allow_unmasks and (only_use_changes or autounmask_keep_masks):
-						continue
+				pkg, existing = \
+					self._wrapped_select_pkg_highest_available_imp(
+						root, atom, onlydeps=onlydeps,
+						autounmask_level=autounmask_level)
 
-					if pkg is not None:
-						break
-
-					pkg, existing = \
-						self._wrapped_select_pkg_highest_available_imp(
-							root, atom, onlydeps=onlydeps,
-							allow_use_changes=True,
-							allow_unstable_keywords=(not only_use_changes),
-							allow_license_changes=(not only_use_changes),
-							allow_unmasks=allow_unmasks)
-
-					if pkg is not None and \
-						pkg.installed and \
-						not self._want_installed_pkg(pkg):
-						pkg = None
+				reset_pkg(pkg)
 			
 			if self._dynamic_config._need_restart:
 				return None, None
@@ -3547,8 +3590,7 @@ class depgraph(object):
 
 		return pkg, existing
 
-	def _pkg_visibility_check(self, pkg, allow_unstable_keywords=False,
-		allow_license_changes=False, allow_unmasks=False, trust_graph=True):
+	def _pkg_visibility_check(self, pkg, autounmask_level=None, trust_graph=True):
 
 		if pkg.visible:
 			return True
@@ -3561,7 +3603,7 @@ class depgraph(object):
 			# as though they are visible.
 			return True
 
-		if not self._dynamic_config._autounmask:
+		if not self._dynamic_config._autounmask or autounmask_level is None:
 			return False
 
 		pkgsettings = self._frozen_config.pkgsettings[pkg.root]
@@ -3610,11 +3652,10 @@ class depgraph(object):
 			#Package has already been unmasked.
 			return True
 
-		#We treat missing keywords in the same way as masks.
-		if (masked_by_unstable_keywords and not allow_unstable_keywords) or \
-			(masked_by_missing_keywords and not allow_unmasks) or \
-			(masked_by_p_mask and not allow_unmasks) or \
-			(missing_licenses and not allow_license_changes):
+		if (masked_by_unstable_keywords and not autounmask_level.allow_unstable_keywords) or \
+			(masked_by_missing_keywords and not autounmask_level.allow_missing_keywords) or \
+			(masked_by_p_mask and not autounmask_level.allow_unmasks) or \
+			(missing_licenses and not autounmask_level.allow_license_changes):
 			#We are not allowed to do the needed changes.
 			return False
 
@@ -3729,8 +3770,7 @@ class depgraph(object):
 				self._dynamic_config._need_restart = True
 		return new_use
 
-	def _wrapped_select_pkg_highest_available_imp(self, root, atom, onlydeps=False, \
-		allow_use_changes=False, allow_unstable_keywords=False, allow_license_changes=False, allow_unmasks=False):
+	def _wrapped_select_pkg_highest_available_imp(self, root, atom, onlydeps=False, autounmask_level=None):
 		root_config = self._frozen_config.roots[root]
 		pkgsettings = self._frozen_config.pkgsettings[root]
 		dbs = self._dynamic_config._filtered_trees[root]["dbs"]
@@ -3857,10 +3897,7 @@ class depgraph(object):
 						# _dep_check_composite_db, in order to prevent
 						# incorrect choices in || deps like bug #351828.
 
-						if not self._pkg_visibility_check(pkg, \
-							allow_unstable_keywords=allow_unstable_keywords,
-							allow_license_changes=allow_license_changes,
-							allow_unmasks=allow_unmasks):
+						if not self._pkg_visibility_check(pkg, autounmask_level):
 							continue
 
 						# Enable upgrade or downgrade to a version
@@ -3900,19 +3937,13 @@ class depgraph(object):
 										pkg_eb_visible = False
 										for pkg_eb in self._iter_match_pkgs(pkg.root_config,
 											"ebuild", Atom("=%s" % (pkg.cpv,))):
-											if self._pkg_visibility_check(pkg_eb, \
-												allow_unstable_keywords=allow_unstable_keywords,
-												allow_license_changes=allow_license_changes,
-												allow_unmasks=allow_unmasks):
+											if self._pkg_visibility_check(pkg_eb, autounmask_level):
 												pkg_eb_visible = True
 												break
 										if not pkg_eb_visible:
 											continue
 									else:
-										if not self._pkg_visibility_check(pkg_eb, \
-											allow_unstable_keywords=allow_unstable_keywords,
-											allow_license_changes=allow_license_changes,
-											allow_unmasks=allow_unmasks):
+										if not self._pkg_visibility_check(pkg_eb, autounmask_level):
 											continue
 
 					# Calculation of USE for unbuilt ebuilds is relatively
@@ -3942,7 +3973,7 @@ class depgraph(object):
 					if atom.use:
 
 						matched_pkgs_ignore_use.append(pkg)
-						if allow_use_changes and not pkg.built:
+						if autounmask_level and autounmask_level.allow_use_changes and not pkg.built:
 							target_use = {}
 							for flag in atom.use.enabled:
 								target_use[flag] = True
@@ -4165,21 +4196,16 @@ class depgraph(object):
 
 			if avoid_update:
 				for pkg in matched_packages:
-					if pkg.installed and self._pkg_visibility_check(pkg, \
-						allow_unstable_keywords=allow_unstable_keywords,
-						allow_license_changes=allow_license_changes,
-						allow_unmasks=allow_unmasks):
+					if pkg.installed and self._pkg_visibility_check(pkg, autounmask_level):
 						return pkg, existing_node
 
 			visible_matches = []
 			if matched_oldpkg:
 				visible_matches = [pkg.cpv for pkg in matched_oldpkg \
-					if self._pkg_visibility_check(pkg, allow_unstable_keywords=allow_unstable_keywords,
-						allow_license_changes=allow_license_changes, allow_unmasks=allow_unmasks)]
+					if self._pkg_visibility_check(pkg, autounmask_level)]
 			if not visible_matches:
 				visible_matches = [pkg.cpv for pkg in matched_packages \
-					if self._pkg_visibility_check(pkg, allow_unstable_keywords=allow_unstable_keywords,
-						allow_license_changes=allow_license_changes, allow_unmasks=allow_unmasks)]
+					if self._pkg_visibility_check(pkg, autounmask_level)]
 			if visible_matches:
 				bestmatch = portage.best(visible_matches)
 			else:
