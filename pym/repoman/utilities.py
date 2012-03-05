@@ -1,5 +1,5 @@
 # repoman: Utilities
-# Copyright 2007-2011 Gentoo Foundation
+# Copyright 2007-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """This module contains utility functions to help repoman find ebuilds to
@@ -17,6 +17,7 @@ __all__ = [
 	"get_commit_message_with_editor",
 	"get_commit_message_with_stdin",
 	"get_committer_name",
+	"have_ebuild_dir",
 	"have_profile_dir",
 	"parse_metadata_use",
 	"UnknownHerdsError",
@@ -30,6 +31,7 @@ from itertools import chain
 import logging
 import pwd
 import re
+import stat
 import sys
 import time
 import textwrap
@@ -125,6 +127,33 @@ def have_profile_dir(path, maxdepth=3, filename="profiles.desc"):
 			return normalize_path(path)
 		path = normalize_path(path + "/..")
 		maxdepth -= 1
+
+def have_ebuild_dir(path, maxdepth=3):
+	""" 
+	Try to figure out if 'path' or a subdirectory contains one or more
+	ebuild files named appropriately for their parent directory.
+	"""
+	stack = [(normalize_path(path), 1)]
+	while stack:
+		path, depth = stack.pop()
+		basename = os.path.basename(path)
+		try:
+			listdir = os.listdir(path)
+		except OSError:
+			continue
+		for filename in listdir:
+			abs_filename = os.path.join(path, filename)
+			try:
+				st = os.stat(abs_filename)
+			except OSError:
+				continue
+			if stat.S_ISDIR(st.st_mode):
+				if depth < maxdepth:
+					stack.append((abs_filename, depth + 1))
+			elif stat.S_ISREG(st.st_mode):
+				if filename.endswith(".ebuild") and \
+					filename.startswith(basename + "-"):
+					return os.path.dirname(os.path.dirname(path))
 
 def parse_metadata_use(xml_tree):
 	"""
@@ -447,6 +476,8 @@ def FindPortdir(settings):
 	# file.
 	if not portdir_overlay:
 		portdir_overlay = have_profile_dir(location, filename="repo_name")
+		if not portdir_overlay:
+			portdir_overlay = have_ebuild_dir(location)
 		if portdir_overlay:
 			subdir = location[len(portdir_overlay):]
 			if subdir and subdir[-1] != os.sep:
