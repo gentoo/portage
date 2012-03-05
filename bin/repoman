@@ -1,5 +1,5 @@
 #!/usr/bin/python -O
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # Next to do: dep syntax checking in mask files
@@ -935,6 +935,20 @@ def vcs_files_to_cps(vcs_file_iter):
 				modified_cps.append("/".join(f_split[1:3]))
 
 	return frozenset(modified_cps)
+
+def git_supports_gpg_sign():
+	status, cmd_output = \
+		subprocess_getstatusoutput("git --version")
+	cmd_output = cmd_output.split()
+	if cmd_output:
+		version = re.match(r'^(\d+)\.(\d+)\.(\d+)', cmd_output[-1])
+		if version is not None:
+			version = [int(x) for x in version.groups()[1:]]
+			if version[0] > 1 or \
+				(version[0] == 1 and version[1] > 7) or \
+				(version[0] == 1 and version[1] == 7 and version[2] >= 9):
+				return True
+	return False
 
 def dev_keywords(profiles):
 	"""
@@ -2772,6 +2786,13 @@ else:
 			else:
 				retval = spawn(commit_cmd, env=os.environ)
 				if retval != os.EX_OK:
+
+					if repo_config.sign_commit and vcs == 'git' and \
+						not git_supports_gpg_sign():
+						# Inform user that newer git is needed (bug #403323).
+						logging.error(
+							"Git >=1.7.9 is required for signed commits!")
+
 					writemsg_level(("!!! Exiting on %s (shell) " + \
 						"error code: %s\n") % (vcs, retval),
 						level=logging.ERROR, noiselevel=-1)
