@@ -4,6 +4,7 @@
 import errno
 import json
 import logging
+import stat
 import sys
 
 try:
@@ -196,9 +197,38 @@ class PreservedLibsRegistry(object):
 		os = _os_merge
 
 		for cps in list(self._data):
-			cpv, counter, paths = self._data[cps]
-			paths = [f for f in paths \
-				if os.path.exists(os.path.join(self._root, f.lstrip(os.sep)))]
+			cpv, counter, _paths = self._data[cps]
+
+			paths = []
+			hardlinks = set()
+			symlinks = {}
+			for f in _paths:
+				f_abs = os.path.join(self._root, f.lstrip(os.sep))
+				try:
+					lst = os.lstat(f_abs)
+				except OSError:
+					continue
+				if stat.S_ISLNK(lst.st_mode):
+					try:
+						symlinks[f] = os.readlink(f_abs)
+					except OSError:
+						continue
+				elif stat.S_ISREG(lst.st_mode):
+					hardlinks.add(f)
+					paths.append(f)
+
+			# Only count symlinks as preserved if they still point to a hardink
+			# in the same directory, in order to handle cases where a tool such
+			# as eselect-opengl has updated the symlink to point to a hardlink
+			# in a different directory (see bug #406837). The unused hardlink
+			# is automatically found by _find_unused_preserved_libs, since the
+			# soname symlink no longer points to it. After the hardlink is
+			# removed by _remove_preserved_libs, it calls pruneNonExisting
+			# which eliminates the irrelevant symlink from the registry here.
+			for f, target in symlinks.items():
+				if os.path.join(os.path.dirname(f), target) in hardlinks:
+					paths.append(f)
+
 			if len(paths) > 0:
 				self._data[cps] = (cpv, counter, paths)
 			else:
