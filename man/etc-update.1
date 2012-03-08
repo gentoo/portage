@@ -1,8 +1,9 @@
-.TH "ETC-UPDATE" "1" "Aug 2008" "Portage VERSION" "Portage"
+.TH "ETC-UPDATE" "1" "Mar 2012" "Portage VERSION" "Portage"
 .SH NAME
 etc-update \- handle configuration file updates
 .SH SYNOPSIS
-.B etc-update
+.BR etc-update
+[\fIoptions\fR] [\fI--automode <mode>\fR]
 .SH DESCRIPTION
 .I etc-update
 is supposed to be run after merging a new package to see if
@@ -16,9 +17,24 @@ will check all directories in the \fICONFIG_PROTECT\fR variable.  All
 config files found in \fICONFIG_PROTECT_MASK\fR will automatically be
 updated for you by \fIetc-update\fR.  See \fBmake.conf\fR(5) for more
 information.
+.PP
+.I etc-update
+respects the normal \fIPORTAGE_CONFIGROOT\fR and \fIEROOT\fR variables
+for finding the aforementioned config protect variables.
 .SH OPTIONS
 .TP
-None.
+.BR \-d ", " \-\-debug
+Run with shell tracing enabled.
+.TP
+.BR \h ", " \-\-help
+Surprisingly, show the help output.
+.TP
+.BR \-v ", " \-\-verbose
+Show settings and important decision info while running.
+.TP
+.BR "\-\-automode <mode>"
+Select one of the automatic merge modes.  Valid modes are: -3 -5 -7 -9.
+See the \fI\-\-help\fR text for more details.
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
 .SH AUTHORS
@@ -31,8 +47,6 @@ Mike Frysinger <vapier@gentoo.org>
 .TP
 .B /etc/etc-update.conf
 Configuration settings for \fIetc-update\fR are stored here.
-.TP
-.B /etc/dispatch-conf.conf
-Settings for dispatching configuration files right before they're merged.
 .SH "SEE ALSO"
+.BR dispatch-conf (1),
 .BR make.conf (5)
