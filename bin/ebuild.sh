@@ -230,11 +230,15 @@ inherit() {
 		unset $__export_funcs_var
 
 		if [ "${EBUILD_PHASE}" != "depend" ] && \
+			[ "${EBUILD_PHASE}" != "nofetch" ] && \
 			[[ ${EBUILD_PHASE} != *rm ]] && \
 			[[ ${EMERGE_FROM} != "binary" ]] ; then
 			# This is disabled in the *rm phases because they frequently give
 			# false alarms due to INHERITED in /var/db/pkg being outdated
-			# in comparison the the eclasses from the portage tree.
+			# in comparison the the eclasses from the portage tree. It's
+			# disabled for nofetch, since that can be called by repoman and
+			# that triggers bug #407449 due to repoman not exporting
+			# non-essential variables such as INHERITED.
 			if ! has $ECLASS $INHERITED $__INHERITED_QA_CACHE ; then
 				eqawarn "QA Notice: ECLASS '$ECLASS' inherited illegally in $CATEGORY/$PF $EBUILD_PHASE"
 			fi
