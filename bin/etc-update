@@ -1,8 +1,9 @@
 #!/bin/bash
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # Author Brandon Low <lostlogic@gentoo.org>
+# Mike Frysinger <vapier@gentoo.org>
 #
 # Previous version (from which I've borrowed a few bits) by:
 # Jochem Kossen <j.kossen@home.nl>
@@ -11,9 +12,7 @@
 
 cd /
 
-if type -P gsed >/dev/null ; then
-	sed() { gsed "$@"; }
-fi
+type -P gsed >/dev/null && sed() { gsed "$@"; }
 
 get_config() {
 	# the sed here does:
@@ -25,10 +24,10 @@ get_config() {
 	# If there's more than one of the same configuration item, then
 	# the store to the hold space clobbers previous value so the last
 	# setting takes precedence.
-	local item=$1
-	eval echo $(sed -n \
+	local match=$1
+	eval $(sed -n -r \
 		-e 's:[[:space:]]*#.*$::' \
-		-e "/^[[:space:]]*$item[[:space:]]*=/{s:[^=]*=[[:space:]]*\([\"']\{0,1\}\)\(.*\)\1:\2:;h}" \
+		-e "/^[[:space:]]*${match}[[:space:]]*=/{s:^([^=]*)=[[:space:]]*([\"']{0,1})(.*)\2:\1=\2\3\2:;H}" \
 		-e '${g;p}' \
 		"${PORTAGE_CONFIGROOT}"etc/etc-update.conf)
 }
@@ -46,39 +45,49 @@ diff_command() {
 
 scan() {
 	echo "Scanning Configuration files..."
-	rm -rf ${TMP}/files > /dev/null 2>&1
-	mkdir ${TMP}/files || die "Failed mkdir command!" 1
+	rm -rf "${TMP}"/files > /dev/null 2>&1
+	mkdir "${TMP}"/files || die "Failed mkdir command!"
 	count=0
 	input=0
 	local find_opts
-	local my_basename
+	local path
 
 	for path in ${CONFIG_PROTECT} ; do
-		path="${EROOT}${path}"
+		path="${EROOT%/}${path}"
+
+		[[ -w ${path} ]] || die "Need write access to ${path}"
+
 		# Do not traverse hidden directories such as .svn or .git.
-		find_opts="-name .* -type d -prune -o -name ._cfg????_*"
-		if [ ! -d "${path}" ]; then
-			[ ! -f "${path}" ] && continue
-			my_basename="${path##*/}"
+		find_opts=( -name '.*' -type d -prune -o -name '._cfg????_*' )
+		if [[ ! -d ${path} ]] ; then
+			[[ ! -f ${path} ]] && continue
+			local my_basename="${path##*/}"
 			path="${path%/*}"
-			find_opts="-maxdepth 1 -name ._cfg????_${my_basename}"
+			find_opts+=( -maxdepth 1 -name "._cfg????_${my_basename}" )
 		fi
+		find_opts+=( ! -name '.*~' ! -iname '.*.bak' -print )
 
-		ofile=""
-		# The below set -f turns off file name globbing in the ${find_opts} expansion.
-		for file in $(set -f ; find ${path}/ ${find_opts} \
-		       ! -name '.*~' ! -iname '.*.bak' -print |
-			   sed -e "s:\(^.*/\)\(\._cfg[0-9]*_\)\(.*$\):\1\2\3\%\1%\2\%\3:" |
-			   sort -t'%' -k2,2 -k4,4 -k3,3 | LANG=POSIX LC_ALL=POSIX cut -f1 -d'%'); do
+		local file ofile b=$'\001'
+		for file in $(find "${path}"/ "${find_opts[@]}" |
+		              sed \
+						-e 's://*:/:g' \
+						-e "s:\(^.*/\)\(\._cfg[0-9]*_\)\(.*$\):\1\2\3$b\1$b\2$b\3:" |
+		              sort -t"$b" -k2,2 -k4,4 -k3,3 |
+		              LC_ALL=C cut -f1 -d"$b")
+		do
+			local rpath rfile cfg_file live_file
+			rpath=${file%/*}
+			rfile=${file##*/}
+			cfg_file="${rpath}/${rfile}"
+			live_file="${rpath}/${rfile:10}"
 
-			rpath=$(echo "${file/\/\///}" | sed -e "s:/[^/]*$::")
-			rfile=$(echo "${file/\/\///}" | sed -e "s:^.*/::")
+			local mpath
 			for mpath in ${CONFIG_PROTECT_MASK}; do
-				mpath="${EROOT}${mpath}"
-				mpath=$(echo "${mpath/\/\///}")
-				if [[ "${rpath}" == "${mpath}"* ]]; then
-					mv ${rpath}/${rfile} ${rpath}/${rfile:10}
-					break
+				mpath="${EROOT%/}${mpath}"
+				if [[ "${rpath}" == "${mpath}"* ]] ; then
+					echo "Updating masked file: ${live_file}"
+					mv "${cfg_file}" "${live_file}"
+					continue 2
 				fi
 			done
 			if [[ ! -f ${file} ]] ; then
@@ -87,39 +96,53 @@ scan() {
 			fi
 
 			if [[ "${ofile:10}" != "${rfile:10}" ]] ||
-			   [[ ${opath} != ${rpath} ]]; then
+			   [[ ${opath} != ${rpath} ]]
+			then
 				MATCHES=0
-				if [[ "${EU_AUTOMERGE}" == "yes" ]]; then
-					if [ ! -e "${rpath}/${rfile}" ] || [ ! -e "${rpath}/${rfile:10}" ]; then
+				if [[ ${eu_automerge} == "yes" ]] ; then
+					if [[ ! -e ${cfg_file} || ! -e ${live_file} ]] ; then
 						MATCHES=0
 					else
-						diff -Bbua ${rpath}/${rfile} ${rpath}/${rfile:10} | egrep '^[+-]' | egrep -v '^[+-][\t ]*#|^--- |^\+\+\+ ' | egrep -qv '^[-+][\t ]*$'
+						diff -Bbua "${cfg_file}" "${live_file}" | \
+							sed -n -r \
+								-e '/^[+-]/{/^([+-][\t ]*(#|$)|-{3} |\+{3} )/d;q0}' \
+								-e '$q1'
 						MATCHES=$?
 					fi
-				elif [[ -z $(diff -Nua ${rpath}/${rfile} ${rpath}/${rfile:10}|
-							  grep "^[+-][^+-]"|grep -v '# .Header:.*') ]]; then
+
+				elif diff -Nua "${cfg_file}" "${live_file}" |
+					sed -n \
+						-e '/# .Header:/d' \
+						-e '/^[+-][^+-]/q1' \
+						-e '$q0'
+				then
 					MATCHES=1
 				fi
-				if [[ "${MATCHES}" == "1" ]]; then
-					echo "Automerging trivial changes in: ${rpath}/${rfile:10}"
-					mv ${rpath}/${rfile} ${rpath}/${rfile:10}
+
+				if [[ ${MATCHES} == 1 ]] ; then
+					echo "Automerging trivial changes in: ${live_file}"
+					mv "${cfg_file}" "${live_file}"
 					continue
 				else
-					count=${count}+1
-					echo "${rpath}/${rfile:10}" > ${TMP}/files/${count}
-					echo "${rpath}/${rfile}" >> ${TMP}/files/${count}
+					: $(( ++count ))
+					echo "${live_file}" > "${TMP}"/files/${count}
+					echo "${cfg_file}" >> "${TMP}"/files/${count}
 					ofile="${rfile}"
 					opath="${rpath}"
 					continue
 				fi
 			fi
 
-			if [[ -z $(diff -Nua ${rpath}/${rfile} ${rpath}/${ofile}|
-					  grep "^[+-][^+-]"|grep -v '# .Header:.*') ]]; then
-				mv ${rpath}/${rfile} ${rpath}/${ofile}
+			if diff -Nua "${cfg_file}" "${rpath}/${ofile}" |
+				sed -n \
+					-e '/# .Header:/d' \
+					-e '/^[+-][^+-]/q1' \
+					-e '$q0'
+			then
+				mv "${cfg_file}" "${rpath}/${ofile}"
 				continue
 			else
-				echo "${rpath}/${rfile}" >> ${TMP}/files/${count}
+				echo "${cfg_file}" >> "${TMP}"/files/${count}
 				ofile="${rfile}"
 				opath="${rpath}"
 			fi
@@ -134,60 +157,63 @@ sel_file() {
 	      [[ ${input} == -1 ]] || \
 	      [[ ${input} == -3 ]]
 	do
-		local numfiles=$(ls ${TMP}/files|wc -l)
-		local numwidth=${#numfiles}
-		for file in $(ls ${TMP}/files|sort -n); do
-			if [[ ${isfirst} == 0 ]] ; then
-				isfirst=${file}
-			fi
-			numshow=$(printf "%${numwidth}i${PAR} " ${file})
-			numupdates=$(( $(wc -l <${TMP}/files/${file}) - 1 ))
-			echo -n "${numshow}"
-			if [[ ${mode} == 0 ]] ; then
-				echo "$(head -n1 ${TMP}/files/${file}) (${numupdates})"
-			else
-				head -n1 ${TMP}/files/${file}
-			fi
-		done > ${TMP}/menuitems
+		local allfiles=( $(cd "${TMP}"/files/ && printf '%s\n' * | sort -n) )
+		local isfirst=${allfiles[0]}
 
-		if [ "${OVERWRITE_ALL}" == "yes" ]; then
-			input=0
-		elif [ "${DELETE_ALL}" == "yes" ]; then
+		# Optimize: no point in building the whole file list if
+		# we're not actually going to talk to the user.
+		if [[ ${OVERWRITE_ALL} == "yes" || ${DELETE_ALL} == "yes" ]] ; then
 			input=0
 		else
-			[[ $CLEAR_TERM == yes ]] && clear
-			if [[ ${mode} == 0 ]] ; then
-				echo "The following is the list of files which need updating, each
-configuration file is followed by a list of possible replacement files."
-			else
-				local my_title="Please select a file to update"
-			fi
+			local numfiles=${#allfiles[@]}
+			local numwidth=${#numfiles}
+			local file fullfile line
+			for file in "${allfiles[@]}" ; do
+				fullfile="${TMP}/files/${file}"
+				line=$(head -n1 "${fullfile}")
+				printf '%*i%s %s' ${numwidth} ${file} "${PAR}" "${line}"
+				if [[ ${mode} == 0 ]] ; then
+					local numupdates=$(( $(wc -l <"${fullfile}") - 1 ))
+					echo " (${numupdates})"
+				else
+					echo
+				fi
+			done > "${TMP}"/menuitems
+
+			clear
 
 			if [[ ${mode} == 0 ]] ; then
-				cat ${TMP}/menuitems
-				echo    "Please select a file to edit by entering the corresponding number."
-				echo    "              (don't use -3, -5, -7 or -9 if you're unsure what to do)"
-				echo    "              (-1 to exit) (-3 to auto merge all remaining files)"
-				echo    "                           (-5 to auto-merge AND not use 'mv -i')"
-				echo    "                           (-7 to discard all updates)"
-				echo -n "                           (-9 to discard all updates AND not use 'rm -i'): "
+				cat <<-EOF
+					The following is the list of files which need updating, each
+					configuration file is followed by a list of possible replacement files.
+					$(<"${TMP}"/menuitems)
+					Please select a file to edit by entering the corresponding number.
+					              (don't use -3, -5, -7 or -9 if you're unsure what to do)
+					              (-1 to exit) (-3 to auto merge all remaining files)
+					                           (-5 to auto-merge AND not use 'mv -i')
+					                           (-7 to discard all updates)
+				EOF
+				printf "                           (-9 to discard all updates AND not use 'rm -i'): "
 				input=$(read_int)
 			else
-				dialog --title "${title}" --menu "${my_title}" \
-					0 0 0 $(echo -e "-1 Exit\n$(<${TMP}/menuitems)") \
-					2> ${TMP}/input || die "User termination!" 0
-				input=$(<${TMP}/input)
+				dialog \
+					--title "${title}" \
+					--menu "Please select a file to update"	\
+					0 0 0 $(<"${TMP}"/menuitems) \
+					2> "${TMP}"/input \
+					|| die "$(<"${TMP}"/input)\n\nUser termination!" 0
+				input=$(<"${TMP}"/input)
 			fi
-			if [[ ${input} == -9 ]]; then
-				read -p "Are you sure that you want to delete all updates (type YES):" reply
-				if [[ ${reply} != "YES" ]]; then
+			if [[ ${input} == -9 ]] ; then
+				read -p "Are you sure that you want to delete all updates (type YES): " reply
+				if [[ ${reply} != "YES" ]] ; then
 					continue
 				else
 					input=-7
 					export rm_opts=""
 				fi
 			fi
-			if [[ ${input} == -7 ]]; then
+			if [[ ${input} == -7 ]] ; then
 				input=0
 				export DELETE_ALL="yes"
 			fi
@@ -201,21 +227,24 @@ configuration file is followed by a list of possible replacement files."
 				export OVERWRITE_ALL="yes"
 			fi
 		fi # -3 automerge
-		if [[ -z ${input} ]] || [[ ${input} == 0 ]] ; then
+		if [[ ${input:-0} == 0 ]] ; then
 			input=${isfirst}
 		fi
 	done
 }
 
 user_special() {
-	if [ -r ${PORTAGE_CONFIGROOT}etc/etc-update.special ]; then
-		if [ -z "$1" ]; then
-			echo "ERROR: user_special() called without arguments"
+	local special="${PORTAGE_CONFIGROOT}etc/etc-update.special"
+
+	if [[ -r ${special} ]] ; then
+		if [[ -z $1 ]] ; then
+			error "user_special() called without arguments"
 			return 1
 		fi
-		while read -r pat; do
-			echo ${1} | grep "${pat}" > /dev/null && return 0
-		done < ${PORTAGE_CONFIGROOT}etc/etc-update.special
+		local pat
+		while read -r pat ; do
+			echo "$1" | grep -q "${pat}" && return 0
+		done < "${special}"
 	fi
 	return 1
 }
@@ -225,12 +254,12 @@ read_int() {
 	# read.  This is a workaround for odd behavior of bash when an attempt is
 	# made to store a value such as "1y" into an integer-only variable.
 	local my_input
-	while true; do
+	while : ; do
 		read my_input
 		# failed integer conversions will break a loop unless they're enclosed
 		# in a subshell.
-		echo "${my_input}" | ( declare -i x; read x) 2>/dev/null && break
-		echo -n "Value '$my_input' is not valid. Please enter an integer value:" >&2
+		echo "${my_input}" | (declare -i x; read x) 2>/dev/null && break
+		printf 'Value "%s" is not valid. Please enter an integer value: ' "${my_input}" >&2
 	done
 	echo ${my_input}
 }
@@ -239,141 +268,147 @@ do_file() {
 	interactive_echo() { [ "${OVERWRITE_ALL}" != "yes" ] && [ "${DELETE_ALL}" != "yes" ] && echo; }
 	interactive_echo
 	local -i my_input
-	local -i fcount=0
-	until (( $(wc -l < ${TMP}/files/${input}) < 2 )); do
-		my_input=0
-		if (( $(wc -l < ${TMP}/files/${input}) == 2 )); then
+	local -i linecnt
+	local fullfile="${TMP}/files/${input}"
+	local ofile=$(head -n1 "${fullfile}")
+
+	# Walk through all the pending updates for this one file.
+	linecnt=$(wc -l <"${fullfile}")
+	while (( linecnt > 1 )) ; do
+		if (( linecnt == 2 )) ; then
+			# Only one update ... keeps things simple.
+			my_input=1
+		else
+			my_input=0
+		fi
+
+		# Optimize: no point in scanning the file list when we know
+		# we're just going to consume all the ones available.
+		if [[ ${OVERWRITE_ALL} == "yes" || ${DELETE_ALL} == "yes" ]] ; then
 			my_input=1
 		fi
-		until (( ${my_input} > 0 )) && (( ${my_input} < $(wc -l < ${TMP}/files/${input}) )); do
-			fcount=0
 
-			if [ "${OVERWRITE_ALL}" == "yes" ]; then
-				my_input=0
-			elif [ "${DELETE_ALL}" == "yes" ]; then
-				my_input=0
-			else
-				for line in $(<${TMP}/files/${input}); do
-					if (( ${fcount} > 0 )); then
-						echo -n "${fcount}${PAR} "
-						echo "${line}"
-					else
-						if [[ ${mode} == 0 ]] ; then
-							echo "Below are the new config files for ${line}:"
-						else
-							local my_title="Please select a file to process for ${line}"
-						fi
-					fi
-					fcount=${fcount}+1
-				done > ${TMP}/menuitems
-
-				if [[ ${mode} == 0 ]] ; then
-					cat ${TMP}/menuitems
-					echo -n "Please select a file to process (-1 to exit this file): "
-					my_input=$(read_int)
-				else
-					dialog --title "${title}" --menu "${my_title}" \
-						0 0 0 $(echo -e "$(<${TMP}/menuitems)\n${fcount} Exit") \
-						2> ${TMP}/input || die "User termination!" 0
-					my_input=$(<${TMP}/input)
+		# Figure out which file they wish to operate on.
+		while (( my_input <= 0 || my_input >= linecnt )) ; do
+			local fcount=0
+			for line in $(<"${fullfile}"); do
+				if (( fcount > 0 )); then
+					printf '%i%s %s\n' ${fcount} "${PAR}" "${line}"
 				fi
-			fi # OVERWRITE_ALL
+				: $(( ++fcount ))
+			done > "${TMP}"/menuitems
+
+			if [[ ${mode} == 0 ]] ; then
+				echo "Below are the new config files for ${ofile}:"
+				cat "${TMP}"/menuitems
+				echo -n "Please select a file to process (-1 to exit this file): "
+				my_input=$(read_int)
+			else
+				dialog \
+					--title "${title}" \
+					--menu "Please select a file to process for ${ofile}" \
+					0 0 0 $(<"${TMP}"/menuitems) \
+					2> "${TMP}"/input \
+					|| die "$(<"${TMP}"/input)\n\nUser termination!" 0
+				my_input=$(<"${TMP}"/input)
+			fi
 
 			if [[ ${my_input} == 0 ]] ; then
+				# Auto select the first file.
 				my_input=1
 			elif [[ ${my_input} == -1 ]] ; then
 				input=0
 				return
-			elif [[ ${my_input} == ${fcount} ]] ; then
-				break
 			fi
 		done
-		if [[ ${my_input} == ${fcount} ]] ; then
-			break
-		fi
 
-		fcount=${my_input}+1
-
-		file=$(sed -e "${fcount}p;d" ${TMP}/files/${input})
-		ofile=$(head -n1 ${TMP}/files/${input})
-
+		# First line is the old file while the rest are the config files.
+		: $(( ++my_input ))
+		local file=$(sed -n -e "${my_input}p" "${fullfile}")
 		do_cfg "${file}" "${ofile}"
 
-		sed -e "${fcount}!p;d" ${TMP}/files/${input} > ${TMP}/files/sed
-		mv ${TMP}/files/sed ${TMP}/files/${input}
+		sed -i -e "${my_input}d" "${fullfile}"
 
-		if [[ ${my_input} == -1 ]] ; then
-			break
-		fi
+		: $(( --linecnt ))
 	done
+
 	interactive_echo
-	rm ${TMP}/files/${input}
-	count=${count}-1
+	rm "${fullfile}"
+	: $(( --count ))
+}
+
+show_diff() {
+	clear
+	local file1=$1 file2=$2
+	if [[ ${using_editor} == 0 ]] ; then
+		(
+			echo "Showing differences between ${file1} and ${file2}"
+			diff_command "${file1}" "${file2}"
+		) | ${pager}
+	else
+		echo "Beginning of differences between ${file1} and ${file2}"
+		diff_command "${file1}" "${file2}"
+		echo "End of differences between ${file1} and ${file2}"
+	fi
 }
 
 do_cfg() {
-
-	local file="${1}"
-	local ofile="${2}"
+	local file=$1
+	local ofile=$2
 	local -i my_input=0
 
-	until (( ${my_input} == -1 )) || [ ! -f ${file} ]; do
+	until (( my_input == -1 )) || [ ! -f ${file} ] ; do
 		if [[ "${OVERWRITE_ALL}" == "yes" ]] && ! user_special "${ofile}"; then
 			my_input=1
 		elif [[ "${DELETE_ALL}" == "yes" ]] && ! user_special "${ofile}"; then
 			my_input=2
 		else
-			[[ $CLEAR_TERM == yes ]] && clear
-			if [ "${using_editor}" == 0 ]; then
-				(
-					echo "Showing differences between ${ofile} and ${file}"
-					diff_command "${ofile}" "${file}"
-				) | ${pager}
-			else
-				echo "Beginning of differences between ${ofile} and ${file}"
-				diff_command "${ofile}" "${file}"
-				echo "End of differences between ${ofile} and ${file}"
+			show_diff "${ofile}" "${file}"
+			if [[ -L ${file} ]] ; then
+				cat <<-EOF
+
+					-------------------------------------------------------------
+					NOTE: File is a symlink to another file. REPLACE recommended.
+					      The original file may simply have moved. Please review.
+					-------------------------------------------------------------
+
+				EOF
 			fi
-			if [ -L "${file}" ]; then
-				echo
-				echo "-------------------------------------------------------------"
-				echo "NOTE: File is a symlink to another file. REPLACE recommended."
-				echo "      The original file may simply have moved. Please review."
-				echo "-------------------------------------------------------------"
-				echo
-			fi
-			echo -n "File: ${file}
-1) Replace original with update
-2) Delete update, keeping original as is
-3) Interactively merge original with update
-4) Show differences again
-5) Save update as example config
-Please select from the menu above (-1 to ignore this update): "
+			cat <<-EOF
+
+				File: ${file}
+				1) Replace original with update
+				2) Delete update, keeping original as is
+				3) Interactively merge original with update
+				4) Show differences again
+				5) Save update as example config
+			EOF
+			printf 'Please select from the menu above (-1 to ignore this update): '
 			my_input=$(read_int)
 		fi
 
 		case ${my_input} in
-			1) echo "Replacing ${ofile} with ${file}"
-			   mv ${mv_opts} ${file} ${ofile}
-			   [ -n "${OVERWRITE_ALL}" ] && my_input=-1
-			   continue
-			   ;;
-			2) echo "Deleting ${file}"
-			   rm ${rm_opts} ${file}
-			   [ -n "${DELETE_ALL}" ] && my_input=-1
-			   continue
-			   ;;
-			3) do_merge "${file}" "${ofile}"
-			   my_input=${?}
-#			   [ ${my_input} == 255 ] && my_input=-1
-			   continue
-			   ;;
-			4) continue
-			   ;;
-			5) do_distconf "${file}" "${ofile}"
-			   ;;
-			*) continue
-			   ;;
+			1)	echo "Replacing ${ofile} with ${file}"
+				mv ${mv_opts} ${file} ${ofile}
+				[ -n "${OVERWRITE_ALL}" ] && my_input=-1
+				continue
+				;;
+			2)	echo "Deleting ${file}"
+				rm ${rm_opts} ${file}
+				[ -n "${DELETE_ALL}" ] && my_input=-1
+				continue
+				;;
+			3)	do_merge "${file}" "${ofile}"
+				my_input=${?}
+#				[ ${my_input} == 255 ] && my_input=-1
+				continue
+				;;
+			4)	continue
+				;;
+			5)	do_distconf "${file}" "${ofile}"
+				;;
+			*)	continue
+				;;
 		esac
 	done
 }
@@ -399,57 +434,48 @@ do_merge() {
 	# need to make sure the full /path/to/ exists ahead of time
 	mkdir -p "${mfile%/*}"
 
-	until (( ${my_input} == -1 )); do
+	until (( my_input == -1 )); do
 		echo "Merging ${file} and ${ofile}"
 		$(echo "${merge_command}" |
 		 sed -e "s:%merged:${mfile}:g" \
 		 	 -e "s:%orig:${ofile}:g" \
 			 -e "s:%new:${file}:g")
-		until (( ${my_input} == -1 )); do
-			echo -n "1) Replace ${ofile} with merged file
-2) Show differences between merged file and original
-3) Remerge original with update
-4) Edit merged file
-5) Return to the previous menu
-Please select from the menu above (-1 to exit, losing this merge): "
+		until (( my_input == -1 )); do
+			cat <<-EOF
+				1) Replace ${ofile} with merged file
+				2) Show differences between merged file and original
+				3) Remerge original with update
+				4) Edit merged file
+				5) Return to the previous menu
+			EOF
+			printf 'Please select from the menu above (-1 to exit, losing this merge): '
 			my_input=$(read_int)
 			case ${my_input} in
-				1) echo "Replacing ${ofile} with ${mfile}"
-				   if  [[ ${USERLAND} == BSD ]] ; then
-				       chown "$(stat -f %Su:%Sg "${ofile}")" "${mfile}"
-				       chmod $(stat -f %Mp%Lp "${ofile}") "${mfile}"
-				   else
-				       chown --reference="${ofile}" "${mfile}"
-				       chmod --reference="${ofile}" "${mfile}"
-				   fi
-				   mv ${mv_opts} "${mfile}" "${ofile}"
-				   rm ${rm_opts} "${file}"
-				   return 255
-				   ;;
-				2)
-					[[ $CLEAR_TERM == yes ]] && clear
-					if [ "${using_editor}" == 0 ]; then
-						(
-							echo "Showing differences between ${ofile} and ${mfile}"
-							diff_command "${ofile}" "${mfile}"
-						) | ${pager}
+				1)	echo "Replacing ${ofile} with ${mfile}"
+					if [[ ${USERLAND} == BSD ]] ; then
+						chown "$(stat -f %Su:%Sg "${ofile}")" "${mfile}"
+						chmod $(stat -f %Mp%Lp "${ofile}") "${mfile}"
 					else
-						echo "Beginning of differences between ${ofile} and ${mfile}"
-						diff_command "${ofile}" "${mfile}"
-						echo "End of differences between ${ofile} and ${mfile}"
+						chown --reference="${ofile}" "${mfile}"
+						chmod --reference="${ofile}" "${mfile}"
 					fi
-				   continue
-				   ;;
-				3) break
-				   ;;
-				4) ${EDITOR:-nano -w} "${mfile}"
-				   continue
-					 ;;
-				5) rm ${rm_opts} "${mfile}"
-				   return 0
-				   ;;
-				*) continue
-				   ;;
+					mv ${mv_opts} "${mfile}" "${ofile}"
+					rm ${rm_opts} "${file}"
+					return 255
+					;;
+				2)	show_diff "${ofile}" "${mfile}"
+					continue
+					;;
+				3)	break
+					;;
+				4)	${EDITOR:-nano -w} "${mfile}"
+					continue
+					;;
+				5)	rm ${rm_opts} "${mfile}"
+					return 0
+					;;
+				*)	continue
+					;;
 			esac
 		done
 	done
@@ -461,21 +487,15 @@ do_distconf() {
 	# search for any previously saved distribution config
 	# files and number the current one accordingly
 
-	local file="${1}"
-	local ofile="${2}"
+	local file=$1 ofile=$2
 	local -i count
-	local -i fill
 	local suffix
 	local efile
 
-	for ((count = 0; count <= 9999; count++)); do
-		suffix=".dist_"
-		for ((fill = 4 - ${#count}; fill > 0; fill--)); do
-			suffix+="0"
-		done
-		suffix+="${count}"
+	for (( count = 0; count <= 9999; ++count )) ; do
+		suffix=$(printf ".dist_%04i" ${count})
 		efile="${ofile}${suffix}"
-		if [[ ! -f ${efile} ]]; then
+		if [[ ! -f ${efile} ]] ; then
 			mv ${mv_opts} "${file}" "${efile}"
 			break
 		elif diff_command "${file}" "${efile}" &> /dev/null; then
@@ -486,20 +506,22 @@ do_distconf() {
 	done
 }
 
+error() { echo "etc-update: ERROR: $*" 1>&2 ; return 1 ; }
 die() {
 	trap SIGTERM
 	trap SIGINT
+	local msg=$1 exitcode=${2:-1}
 
-	if [ "$2" -eq 0 ]; then
-		echo "Exiting: ${1}"
+	if [ ${exitcode} -eq 0 ] ; then
+		printf 'Exiting: %b\n' "${msg}"
 		scan > /dev/null
 		[ ${count} -gt 0 ] && echo "NOTE: ${count} updates remaining"
 	else
-		echo "ERROR: ${1}"
+		error "${msg}"
 	fi
 
 	rm -rf "${TMP}"
-	exit ${2}
+	exit ${exitcode}
 }
 
 usage() {
@@ -511,10 +533,11 @@ usage() {
 	Options:
 	  -d, --debug    Enable shell debugging
 	  -h, --help     Show help and run away
+	  -v, --verbose  Show settings and such along the way
 	  -V, --version  Show version and trundle away
 	EOF
 
-	[[ -n ${*:2} ]] && printf "\nError: %s\n" "${*:2}" 1>&2
+	[[ $# -gt 1 ]] && printf "\nError: %s\n" "${*:2}" 1>&2
 
 	exit ${1:-0}
 }
@@ -524,10 +547,12 @@ usage() {
 #
 
 SET_X=false
+VERBOSE=false
 while [[ -n $1 ]] ; do
 	case $1 in
 		-d|--debug)   SET_X=true;;
 		-h|--help)    usage;;
+		-v|--verbose) VERBOSE=true;;
 		-V|--version) emerge --version ; exit 0;;
 		*)            usage 1 "Invalid option '$1'";;
 	esac
@@ -535,77 +560,85 @@ while [[ -n $1 ]] ; do
 done
 ${SET_X} && set -x
 
-type portageq > /dev/null || exit $?
-eval $(portageq envvar -v CONFIG_PROTECT \
-	CONFIG_PROTECT_MASK PORTAGE_CONFIGROOT PORTAGE_INST_GID PORTAGE_INST_UID \
-	PORTAGE_TMPDIR EROOT USERLAND)
+type portageq >/dev/null || die "missing portageq"
+portage_vars=(
+	CONFIG_PROTECT{,_MASK}
+	PORTAGE_CONFIGROOT
+	PORTAGE_INST_{G,U}ID
+	PORTAGE_TMPDIR
+	EROOT
+	USERLAND
+	NOCOLOR
+)
+eval $(portageq envvar -v ${portage_vars[@]})
 export PORTAGE_TMPDIR
 
 TMP="${PORTAGE_TMPDIR}/etc-update-$$"
-trap "die terminated 1" SIGTERM
-trap "die interrupted 1" SIGINT
+trap "die terminated" SIGTERM
+trap "die interrupted" SIGINT
 
-[ -w ${PORTAGE_CONFIGROOT}etc ] || die "Need write access to ${PORTAGE_CONFIGROOT}etc" 1
-#echo $PORTAGE_TMPDIR
-#echo $CONFIG_PROTECT
-#echo $CONFIG_PROTECT_MASK
-#export PORTAGE_TMPDIR=$(/usr/lib/portage/bin/portageq envvar PORTAGE_TMPDIR)
-
-rm -rf "${TMP}" 2> /dev/null
-mkdir "${TMP}" || die "failed to create temp dir" 1
+rm -rf "${TMP}" 2>/dev/null
+mkdir "${TMP}" || die "failed to create temp dir"
 # make sure we have a secure directory to work in
-chmod 0700 "${TMP}" || die "failed to set perms on temp dir" 1
+chmod 0700 "${TMP}" || die "failed to set perms on temp dir"
 chown ${PORTAGE_INST_UID:-0}:${PORTAGE_INST_GID:-0} "${TMP}" || \
-	die "failed to set ownership on temp dir" 1
+	die "failed to set ownership on temp dir"
 
-# I need the CONFIG_PROTECT value
-#CONFIG_PROTECT=$(/usr/lib/portage/bin/portageq envvar CONFIG_PROTECT)
-#CONFIG_PROTECT_MASK=$(/usr/lib/portage/bin/portageq envvar CONFIG_PROTECT_MASK)
+# Get all the user settings from etc-update.conf
+cfg_vars=(
+	using_editor
+	clear_term
+	eu_automerge
+	rm_opts
+	mv_opts
+	pager
+	diff_command
+	using_editor
+	merge_command
+	mode
+)
+# default them all to ""
+eval ${cfg_vars[@]/%/=}
+# then extract them all from the conf in one shot
+# (ugly var at end is due to printf appending a '|' to last item)
+get_config "($(printf '%s|' "${cfg_vars[@]}")NOVARFOROLDMEN)"
 
-# load etc-config's configuration
-CLEAR_TERM=$(get_config clear_term)
-EU_AUTOMERGE=$(get_config eu_automerge)
-rm_opts=$(get_config rm_opts)
-mv_opts=$(get_config mv_opts)
-cp_opts=$(get_config cp_opts)
-pager=$(get_config pager)
-diff_command=$(get_config diff_command)
-using_editor=$(get_config using_editor)
-merge_command=$(get_config merge_command)
-declare -i mode=$(get_config mode)
-[[ -z ${mode} ]] && mode=0
+# finally setup any specific defaults
+: ${mode:="0"}
 if ! cmd_var_is_valid "${pager}" ; then
 	pager=${PAGER}
 	cmd_var_is_valid "${pager}" || pager=cat
 fi
 
-if [ "${using_editor}" == 0 ]; then
+[[ ${clear_term} == "yes" ]] || clear() { :; }
+
+if [[ ${using_editor} == "0" ]] ; then
 	# Sanity check to make sure diff exists and works
 	echo > "${TMP}"/.diff-test-1
 	echo > "${TMP}"/.diff-test-2
-	
+
 	if ! diff_command "${TMP}"/.diff-test-1 "${TMP}"/.diff-test-2 ; then
-		die "'${diff_command}' does not seem to work, aborting" 1
+		die "'${diff_command}' does not seem to work, aborting"
 	fi
 else
-	if ! type ${diff_command%% *} >/dev/null; then
-		die "'${diff_command}' does not seem to work, aborting" 1
+	if ! cmd_var_is_valid "${diff_command}" ; then
+		die "'${diff_command}' does not seem to work, aborting"
 	fi
 fi
 
-if [[ ${mode} == "1" ]] ; then
-	if ! type dialog >/dev/null || ! dialog --help >/dev/null ; then
-		die "mode=1 and 'dialog' not found or not executable, aborting" 1
-	fi
-fi
-
-#echo "rm_opts: $rm_opts, mv_opts: $mv_opts, cp_opts: $cp_opts"
-#echo "pager: $pager, diff_command: $diff_command, merge_command: $merge_command"
-
-if (( ${mode} == 0 )); then
+if [[ ${mode} == "0" ]] ; then
 	PAR=")"
 else
 	PAR=""
+	if ! type dialog >/dev/null || ! dialog --help >/dev/null ; then
+		die "mode=1 and 'dialog' not found or not executable, aborting"
+	fi
+fi
+
+if ${VERBOSE} ; then
+	for v in ${portage_vars[@]} ${cfg_vars[@]} TMP ; do
+		echo "${v}=${!v}"
+	done
 fi
 
 declare -i count=0
@@ -614,12 +647,12 @@ declare title="Gentoo's etc-update tool!"
 
 scan
 
-until (( ${input} == -1 )); do
-	if (( ${count} == 0 )); then
+until (( input == -1 )); do
+	if (( count == 0 )); then
 		die "Nothing left to do; exiting. :)" 0
 	fi
 	sel_file
-	if (( ${input} != -1 )); then
+	if (( input != -1 )); then
 		do_file
 	fi
 done
