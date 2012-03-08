@@ -148,7 +148,39 @@ scan() {
 			fi
 		done
 	done
+}
 
+parse_automode_flag() {
+	case $1 in
+	-9)
+		local reply
+		read -p "Are you sure that you want to delete all updates (type YES): " reply
+		if [[ ${reply} != "YES" ]] ; then
+			echo "Did not get a 'YES', so ignoring request"
+			return 1
+		else
+			parse_automode_flag -7
+			export rm_opts=""
+		fi
+		;;
+	-7)
+		input=0
+		export DELETE_ALL="yes"
+		;;
+	-5)
+		parse_automode_flag -3
+		export mv_opts=" ${mv_opts} "
+		mv_opts="${mv_opts// -i / }"
+		;;
+	-3)
+		input=0
+		export OVERWRITE_ALL="yes"
+		;;
+	*)
+		return 1
+		;;
+	esac
+	return 0
 }
 
 sel_file() {
@@ -189,11 +221,11 @@ sel_file() {
 					$(<"${TMP}"/menuitems)
 					Please select a file to edit by entering the corresponding number.
 					              (don't use -3, -5, -7 or -9 if you're unsure what to do)
-					              (-1 to exit) (-3 to auto merge all remaining files)
-					                           (-5 to auto-merge AND not use 'mv -i')
-					                           (-7 to discard all updates)
+					              (-1 to exit) (${_3_HELP_TEXT})
+					                           (${_5_HELP_TEXT})
+					                           (${_7_HELP_TEXT})
 				EOF
-				printf "                           (-9 to discard all updates AND not use 'rm -i'): "
+				printf "                           (${_9_HELP_TEXT}): "
 				input=$(read_int)
 			else
 				dialog \
@@ -204,28 +236,8 @@ sel_file() {
 					|| die "$(<"${TMP}"/input)\n\nUser termination!" 0
 				input=$(<"${TMP}"/input)
 			fi
-			if [[ ${input} == -9 ]] ; then
-				read -p "Are you sure that you want to delete all updates (type YES): " reply
-				if [[ ${reply} != "YES" ]] ; then
-					continue
-				else
-					input=-7
-					export rm_opts=""
-				fi
-			fi
-			if [[ ${input} == -7 ]] ; then
-				input=0
-				export DELETE_ALL="yes"
-			fi
-			if [[ ${input} == -5 ]] ; then
-				input=-3
-				export mv_opts=" ${mv_opts} "
-				mv_opts="${mv_opts// -i / }"
-			fi
-			if [[ ${input} == -3 ]] ; then
-				input=0
-				export OVERWRITE_ALL="yes"
-			fi
+
+			parse_automode_flag ${input} || continue
 		fi # -3 automerge
 		if [[ ${input:-0} == 0 ]] ; then
 			input=${isfirst}
@@ -524,6 +536,10 @@ die() {
 	exit ${exitcode}
 }
 
+_3_HELP_TEXT="-3 to auto merge all files"
+_5_HELP_TEXT="-5 to auto-merge AND not use 'mv -i'"
+_7_HELP_TEXT="-7 to discard all updates"
+_9_HELP_TEXT="-9 to discard all updates AND not use 'rm -i'"
 usage() {
 	cat <<-EOF
 	etc-update: Handle configuration file updates
@@ -535,6 +551,12 @@ usage() {
 	  -h, --help     Show help and run away
 	  -v, --verbose  Show settings and such along the way
 	  -V, --version  Show version and trundle away
+
+	  --automode <mode>
+	             ${_3_HELP_TEXT}
+	             ${_5_HELP_TEXT}
+	             ${_7_HELP_TEXT}
+	             ${_9_HELP_TEXT}
 	EOF
 
 	[[ $# -gt 1 ]] && printf "\nError: %s\n" "${*:2}" 1>&2
@@ -546,6 +568,10 @@ usage() {
 # Run the script
 #
 
+declare -i count=0
+declare input=0
+declare title="Gentoo's etc-update tool!"
+
 SET_X=false
 VERBOSE=false
 while [[ -n $1 ]] ; do
@@ -553,7 +579,8 @@ while [[ -n $1 ]] ; do
 		-d|--debug)   SET_X=true;;
 		-h|--help)    usage;;
 		-v|--verbose) VERBOSE=true;;
-		-V|--version) emerge --version ; exit 0;;
+		-V|--version) emerge --version; exit 0;;
+		--automode)   parse_automode_flag $2 && shift || usage 1 "Invalid mode '$2'";;
 		*)            usage 1 "Invalid option '$1'";;
 	esac
 	shift
@@ -640,10 +667,6 @@ if ${VERBOSE} ; then
 		echo "${v}=${!v}"
 	done
 fi
-
-declare -i count=0
-declare input=0
-declare title="Gentoo's etc-update tool!"
 
 scan
 
