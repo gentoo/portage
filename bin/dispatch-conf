@@ -459,6 +459,19 @@ def spawn_shell(cmd):
     else:
         os.system(cmd)
 
+def usage(argv):
+    print('dispatch-conf: sane configuration file update\n')
+    print('Usage: dispatch-conf [config dirs]\n')
+    print('See the dispatch-conf(1) man page for more details')
+    sys.exit(os.EX_OK)
+
+for x in sys.argv:
+    if x in ('-h', '--help'):
+        usage(sys.argv)
+    elif x in ('--version'):
+        print("Portage", portage.VERSION)
+        sys.exit(os.EX_OK)
+
 # run
 d = dispatch ()
 
