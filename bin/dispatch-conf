@@ -27,13 +27,11 @@ except ImportError:
 from portage import os
 from portage import dispatch_conf
 from portage import _unicode_decode
-from portage.dispatch_conf import diffstatusoutput_len
+from portage.dispatch_conf import diffstatusoutput
 from portage.process import find_binary
 
 FIND_EXTANT_CONFIGS  = "find '%s' %s -name '._cfg????_%s' ! -name '.*~' ! -iname '.*.bak' -print"
 DIFF_CONTENTS        = "diff -Nu '%s' '%s'"
-DIFF_CVS_INTERP      = "diff -Nu '%s' '%s' | grep '^[+-][^+-]' | grep -v '# .Header:.*'"
-DIFF_WSCOMMENTS      = "diff -Nu '%s' '%s' | grep '^[+-][^+-]' | grep -v '^[-+]#' | grep -v '^[-+][[:space:]]*$'"
 
 # We need a secure scratch dir and python does silly verbose errors on the use of tempnam
 oldmask = os.umask(0o077)
@@ -62,7 +60,7 @@ def cleanup(mydir=SCRATCH_DIR):
     shutil.rmtree(mydir)
 atexit.register(cleanup)
 
-MANDATORY_OPTS  = [ 'archive-dir', 'diff', 'replace-cvs', 'replace-wscomments', 'merge' ]
+MANDATORY_OPTS = [ 'archive-dir', 'diff', 'replace-cvs', 'replace-wscomments', 'merge' ]
 
 def cmd_var_is_valid(cmd):
     """
@@ -152,6 +150,9 @@ class dispatch:
             portage.util.shlex_split(
             portage.settings.get('CONFIG_PROTECT_MASK', '')))
 
+        def diff(file1, file2):
+            return diffstatusoutput(DIFF_CONTENTS, file1, file2)
+
         #
         # Remove new configs identical to current
         #                  and
@@ -168,11 +169,11 @@ class dispatch:
             else:
                 mrgfail = portage.dispatch_conf.file_archive(archive, conf['current'], conf['new'], mrgconf)
             if os.path.exists(archive + '.dist'):
-                unmodified = diffstatusoutput_len(DIFF_CONTENTS % (conf['current'], archive + '.dist'))[1] == 0
+                unmodified = len(diff(conf['current'], archive + '.dist')[1]) == 0
             else:
                 unmodified = 0
             if os.path.exists(mrgconf):
-                if mrgfail or diffstatusoutput_len(DIFF_CONTENTS % (conf['new'], mrgconf))[1] == 0:
+                if mrgfail or len(diff(conf['new'], mrgconf)[1]) == 0:
                     os.unlink(mrgconf)
                     newconf = conf['new']
                 else:
@@ -183,24 +184,34 @@ class dispatch:
             if newconf == mrgconf and \
                 self.options.get('ignore-previously-merged') != 'yes' and \
                 os.path.exists(archive+'.dist') and \
-                diffstatusoutput_len(DIFF_CONTENTS % (archive+'.dist', conf['new']))[1] == 0:
+                len(diff(archive+'.dist', conf['new'])[1]) == 0:
                 # The current update is identical to the archived .dist
                 # version that has previously been merged.
                 os.unlink(mrgconf)
                 newconf = conf['new']
 
-            mystatus, myoutput_len = diffstatusoutput_len(
-                DIFF_CONTENTS  % (conf ['current'], newconf))
+            mystatus, myoutput = diff(conf['current'], newconf)
+            myoutput_len = len(myoutput)
             same_file = 0 == myoutput_len
             if mystatus >> 8 == 2:
                 # Binary files differ
                 same_cvs = False
                 same_wsc = False
             else:
-                same_cvs = 0 == diffstatusoutput_len(
-                    DIFF_CVS_INTERP % (conf ['current'], newconf))[1]
-                same_wsc = 0 == diffstatusoutput_len(
-                    DIFF_WSCOMMENTS % (conf ['current'], newconf))[1]
+                # Extract all the normal diff lines (ignore the headers).
+                mylines = re.findall('^[+-][^\n+-].*$', myoutput, re.MULTILINE)
+
+                # Filter out all the cvs headers
+                cvs_header = re.compile('# [$]Header:')
+                cvs_lines = list(filter(cvs_header.search, mylines))
+                same_cvs = len(mylines) == len(cvs_lines)
+
+                # Filter out comments and whitespace-only changes.
+                # Note: be nice to also ignore lines that only differ in whitespace...
+                wsc_lines = []
+                for x in ['^[-+]\s*#', '^[-+]\s*$']:
+                   wsc_lines += list(filter(re.compile(x).match, mylines))
+                same_wsc = len(mylines) == len(wsc_lines)
 
             # Do options permit?
             same_cvs = same_cvs and self.options['replace-cvs'] == 'yes'

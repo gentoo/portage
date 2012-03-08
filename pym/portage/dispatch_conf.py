@@ -23,18 +23,18 @@ RCS_MERGE = "rcsmerge -p -r" + RCS_BRANCH + " '%s' > '%s'"
 
 DIFF3_MERGE = "diff3 -mE '%s' '%s' '%s' > '%s'"
 
-def diffstatusoutput_len(cmd):
+def diffstatusoutput(cmd, file1, file2):
     """
     Execute the string cmd in a shell with getstatusoutput() and return a
-    2-tuple (status, output_length). If getstatusoutput() raises
+    2-tuple (status, output). If getstatusoutput() raises
     UnicodeDecodeError (known to happen with python3.1), return a
     2-tuple (1, 1). This provides a simple way to check for non-zero
     output length of diff commands, while providing simple handling of
     UnicodeDecodeError when necessary.
     """
     try:
-        status, output = portage.subprocess_getstatusoutput(cmd)
-        return (status, len(output))
+        status, output = portage.subprocess_getstatusoutput(cmd % (file1, file2))
+        return (status, output)
     except UnicodeDecodeError:
         return (1, 1)
 
