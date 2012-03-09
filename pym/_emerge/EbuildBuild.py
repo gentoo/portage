@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.EbuildExecuter import EbuildExecuter
@@ -106,6 +106,10 @@ class EbuildBuild(CompositeTask):
 		return success
 
 	def _prefetch_exit(self, prefetcher):
+
+		if self._was_cancelled():
+			self.wait()
+			return
 
 		opts = self.opts
 		pkg = self.pkg
