@@ -27,7 +27,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 
 from portage import os
 from portage import shutil
-from portage import subprocess_getstatusoutput
 from portage import _unicode_decode
 from portage.cache.cache_errors import CacheError
 from portage.const import GLOBAL_CONFIG_PATH
@@ -1357,7 +1356,14 @@ def action_info(settings, trees, myopts, myfiles):
 		lastSync = "Unknown"
 	append("Timestamp of tree: %s" % (lastSync,))
 
-	output=subprocess_getstatusoutput("distcc --version")
+	try:
+		proc = subprocess.Popen(["distcc", "--version"],
+			stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	except OSError:
+		output = (1, None)
+	else:
+		output = _unicode_decode(proc.communicate()[0]).rstrip("\n")
+		output = (proc.wait(), output)
 	if output[0] == os.EX_OK:
 		distcc_str = output[1].split("\n", 1)[0]
 		if "distcc" in settings.features:
@@ -1366,7 +1372,14 @@ def action_info(settings, trees, myopts, myfiles):
 			distcc_str += " [disabled]"
 		append(distcc_str)
 
-	output=subprocess_getstatusoutput("ccache -V")
+	try:
+		proc = subprocess.Popen(["ccache", "-V"],
+			stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	except OSError:
+		output = (1, None)
+	else:
+		output = _unicode_decode(proc.communicate()[0]).rstrip("\n")
+		output = (proc.wait(), output)
 	if output[0] == os.EX_OK:
 		ccache_str = output[1].split("\n", 1)[0]
 		if "ccache" in settings.features:
@@ -3038,7 +3051,7 @@ def getgccversion(chost):
 	return:  the current in-use gcc version
 	"""
 
-	gcc_ver_command = 'gcc -dumpversion'
+	gcc_ver_command = ['gcc', '-dumpversion']
 	gcc_ver_prefix = 'gcc-'
 
 	gcc_not_found_error = red(
@@ -3047,16 +3060,40 @@ def getgccversion(chost):
 	"!!! other terminals also.\n"
 	)
 
-	mystatus, myoutput = subprocess_getstatusoutput("gcc-config -c")
+	try:
+		proc = subprocess.Popen(["gcc-config", "-c"],
+			stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	except OSError:
+		myoutput = None
+		mystatus = 1
+	else:
+		myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
+		mystatus = proc.wait()
 	if mystatus == os.EX_OK and myoutput.startswith(chost + "-"):
 		return myoutput.replace(chost + "-", gcc_ver_prefix, 1)
 
-	mystatus, myoutput = subprocess_getstatusoutput(
-		chost + "-" + gcc_ver_command)
+	try:
+		proc = subprocess.Popen(
+			[chost + "-" + gcc_ver_command[0]] + gcc_ver_command[1:],
+			stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	except OSError:
+		myoutput = None
+		mystatus = 1
+	else:
+		myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
+		mystatus = proc.wait()
 	if mystatus == os.EX_OK:
 		return gcc_ver_prefix + myoutput
 
-	mystatus, myoutput = subprocess_getstatusoutput(gcc_ver_command)
+	try:
+		proc = subprocess.Popen(gcc_ver_command,
+			stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	except OSError:
+		myoutput = None
+		mystatus = 1
+	else:
+		myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
+		mystatus = proc.wait()
 	if mystatus == os.EX_OK:
 		return gcc_ver_prefix + myoutput
 
