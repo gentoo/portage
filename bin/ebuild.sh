@@ -375,24 +375,34 @@ source_all_bashrcs() {
 		for x in "${path_array[@]}" ; do
 			[ -f "$x/profile.bashrc" ] && qa_source "$x/profile.bashrc"
 		done
+
+		# The user's bashrc is the ONLY non-portage bit of code that can
+		# change shopts without a QA violation.
+		for x in "${PM_EBUILD_HOOK_DIR}"/${CATEGORY}/{${PN},${PN}:${SLOT},${P},${PF}}; do
+			if [ -r "${x}" ]; then
+				# If $- contains x, then tracing has already been enabled
+				# elsewhere for some reason. We preserve it's state so as
+				# not to interfere.
+				if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
+					source "${x}"
+				else
+					set -x
+					source "${x}"
+					set +x
+				fi
+			fi
+		done
 	fi
 
-	# We assume if people are changing shopts in their bashrc they do so at their
-	# own peril.  This is the ONLY non-portage bit of code that can change shopts
-	# without a QA violation.
-	for x in "${PORTAGE_BASHRC}" "${PM_EBUILD_HOOK_DIR}"/${CATEGORY}/{${PN},${PN}:${SLOT},${P},${PF}}; do
-		if [ -r "${x}" ]; then
-			# If $- contains x, then tracing has already enabled elsewhere for some
-			# reason.  We preserve it's state so as not to interfere.
-			if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
-				source "${x}"
-			else
-				set -x
-				source "${x}"
-				set +x
-			fi
+	if [ -r "${PORTAGE_BASHRC}" ] ; then
+		if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
+			source "${PORTAGE_BASHRC}"
+		else
+			set -x
+			source "${PORTAGE_BASHRC}"
+			set +x
 		fi
-	done
+	fi
 
 	[ ! -z "${OCC}" ] && export CC="${OCC}"
 	[ ! -z "${OCXX}" ] && export CXX="${OCXX}"
