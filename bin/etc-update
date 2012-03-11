@@ -43,6 +43,24 @@ diff_command() {
 	${cmd//%file2/$2}
 }
 
+# Usage: do_mv_ln [options] <src> <dst>
+# Files have to be the last two args, and has to be
+# files so we can handle symlinked target sanely.
+do_mv_ln() {
+	local opts=( ${@:1:$(( $# - 2 ))} )
+	local src=${@:$(( $# - 1 )):1}
+	local dst=${@:$(( $# - 0 )):1}
+
+	if [[ -L ${dst} ]] ; then #330221
+		local lfile=$(readlink "${dst}")
+		[[ ${lfile} == /* ]] || lfile="${dst%/*}/${lfile}"
+		echo " Target is a symlink; replacing ${lfile}"
+		dst=${lfile}
+	fi
+
+	mv "${opts[@]}" "${src}" "${dst}"
+}
+
 scan() {
 	echo "Scanning Configuration files..."
 	rm -rf "${TMP}"/files > /dev/null 2>&1
@@ -121,7 +139,7 @@ scan() {
 
 				if [[ ${MATCHES} == 1 ]] ; then
 					echo "Automerging trivial changes in: ${live_file}"
-					mv "${cfg_file}" "${live_file}"
+					do_mv_ln "${cfg_file}" "${live_file}"
 					continue
 				else
 					: $(( ++count ))
@@ -404,12 +422,12 @@ do_cfg() {
 
 		case ${my_input} in
 			1)	echo "Replacing ${ofile} with ${file}"
-				mv ${mv_opts} ${file} ${ofile}
+				do_mv_ln ${mv_opts} "${file}" "${ofile}"
 				[ -n "${OVERWRITE_ALL}" ] && my_input=-1
 				continue
 				;;
 			2)	echo "Deleting ${file}"
-				rm ${rm_opts} ${file}
+				rm ${rm_opts} "${file}"
 				[ -n "${DELETE_ALL}" ] && my_input=-1
 				continue
 				;;
@@ -474,7 +492,7 @@ do_merge() {
 						chown --reference="${ofile}" "${mfile}"
 						chmod --reference="${ofile}" "${mfile}"
 					fi
-					mv ${mv_opts} "${mfile}" "${ofile}"
+					do_mv_ln ${mv_opts} "${mfile}" "${ofile}"
 					rm ${rm_opts} "${file}"
 					return 255
 					;;
