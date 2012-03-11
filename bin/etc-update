@@ -75,13 +75,14 @@ scan() {
 
 		[[ -w ${path} ]] || die "Need write access to ${path}"
 
-		# Do not traverse hidden directories such as .svn or .git.
-		find_opts=( -name '.*' -type d -prune -o -name '._cfg????_*' )
 		if [[ ! -d ${path} ]] ; then
 			[[ ! -f ${path} ]] && continue
 			local my_basename="${path##*/}"
 			path="${path%/*}"
-			find_opts+=( -maxdepth 1 -name "._cfg????_${my_basename}" )
+			find_opts=( -maxdepth 1 -name "._cfg????_${my_basename}" )
+		else
+			# Do not traverse hidden directories such as .svn or .git.
+			find_opts=( -name '.*' -type d -prune -o -name '._cfg????_*' )
 		fi
 		find_opts+=( ! -name '.*~' ! -iname '.*.bak' -print )
 
