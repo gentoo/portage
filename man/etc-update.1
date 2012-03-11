@@ -3,7 +3,7 @@
 etc-update \- handle configuration file updates
 .SH SYNOPSIS
 .BR etc-update
-[\fIoptions\fR] [\fI--automode <mode>\fR]
+[\fIoptions\fR] [\fI--automode <mode>\fR] [\fIpaths to scan\fR]
 .SH DESCRIPTION
 .I etc-update
 is supposed to be run after merging a new package to see if
@@ -13,7 +13,8 @@ configuration file will override an old one,
 will prompt the user for a decision.
 .PP
 .I etc-update
-will check all directories in the \fICONFIG_PROTECT\fR variable.  All
+will check all directories specified on the command line.  If no paths
+are given, then the \fICONFIG_PROTECT\fR variable will be used.  All
 config files found in \fICONFIG_PROTECT_MASK\fR will automatically be
 updated for you by \fIetc-update\fR.  See \fBmake.conf\fR(5) for more
 information.

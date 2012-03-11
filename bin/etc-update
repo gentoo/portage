@@ -52,7 +52,7 @@ scan() {
 	local find_opts
 	local path
 
-	for path in ${CONFIG_PROTECT} ; do
+	for path in ${SCAN_PATHS} ; do
 		path="${EROOT%/}${path}"
 
 		[[ -w ${path} ]] || die "Need write access to ${path}"
@@ -544,7 +544,9 @@ usage() {
 	cat <<-EOF
 	etc-update: Handle configuration file updates
 
-	Usage: etc-update [options]
+	Usage: etc-update [options] [paths to scan]
+
+	If no paths are specified, then \${CONFIG_PROTECT} will be used.
 
 	Options:
 	  -d, --debug    Enable shell debugging
@@ -581,7 +583,8 @@ while [[ -n $1 ]] ; do
 		-v|--verbose) VERBOSE=true;;
 		-V|--version) emerge --version; exit 0;;
 		--automode)   parse_automode_flag $2 && shift || usage 1 "Invalid mode '$2'";;
-		*)            usage 1 "Invalid option '$1'";;
+		-*)           usage 1 "Invalid option '$1'";;
+		*)            break;;
 	esac
 	shift
 done
@@ -599,6 +602,7 @@ portage_vars=(
 )
 eval $(portageq envvar -v ${portage_vars[@]})
 export PORTAGE_TMPDIR
+SCAN_PATHS=${*:-${CONFIG_PROTECT}}
 
 TMP="${PORTAGE_TMPDIR}/etc-update-$$"
 trap "die terminated" SIGTERM
@@ -663,7 +667,7 @@ else
 fi
 
 if ${VERBOSE} ; then
-	for v in ${portage_vars[@]} ${cfg_vars[@]} TMP ; do
+	for v in ${portage_vars[@]} ${cfg_vars[@]} TMP SCAN_PATHS ; do
 		echo "${v}=${!v}"
 	done
 fi
