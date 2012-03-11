@@ -551,6 +551,7 @@ usage() {
 	Options:
 	  -d, --debug    Enable shell debugging
 	  -h, --help     Show help and run away
+	  -p, --preen    Automerge trivial changes only and quit
 	  -v, --verbose  Show settings and such along the way
 	  -V, --version  Show version and trundle away
 
@@ -574,12 +575,14 @@ declare -i count=0
 declare input=0
 declare title="Gentoo's etc-update tool!"
 
+PREEN=false
 SET_X=false
 VERBOSE=false
 while [[ -n $1 ]] ; do
 	case $1 in
 		-d|--debug)   SET_X=true;;
 		-h|--help)    usage;;
+		-p|--preen)   PREEN=true;;
 		-v|--verbose) VERBOSE=true;;
 		-V|--version) emerge --version; exit 0;;
 		--automode)   parse_automode_flag $2 && shift || usage 1 "Invalid mode '$2'";;
@@ -673,6 +676,8 @@ if ${VERBOSE} ; then
 fi
 
 scan
+
+${PREEN} && exit 0
 
 until (( input == -1 )); do
 	if (( count == 0 )); then
