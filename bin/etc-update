@@ -236,10 +236,13 @@ sel_file() {
 					|| die "$(<"${TMP}"/input)\n\nUser termination!" 0
 				input=$(<"${TMP}"/input)
 			fi
+			: ${input:=0}
 
-			parse_automode_flag ${input} || continue
+			if [[ ${input} != 0 ]] ; then
+				parse_automode_flag ${input} || continue
+			fi
 		fi # -3 automerge
-		if [[ ${input:-0} == 0 ]] ; then
+		if [[ ${input} == 0 ]] ; then
 			input=${isfirst}
 		fi
 	done
