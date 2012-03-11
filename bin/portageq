@@ -44,6 +44,7 @@ del pym_path
 from portage import os
 from portage.eapi import eapi_has_repo_deps
 from portage.util import writemsg, writemsg_stdout
+from portage.output import colormap
 portage.proxy.lazyimport.lazyimport(globals(),
 	'subprocess',
 	'_emerge.Package:Package',
@@ -683,6 +684,13 @@ def distdir(argv):
 	Returns the DISTDIR path.
 	"""
 	print(portage.settings["DISTDIR"])
+
+
+def colormap(argv):
+	"""
+	Display the color.map as environment variables.
+	"""
+	print(portage.output.colormap())
 
 
 def envvar(argv):

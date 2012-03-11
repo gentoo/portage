@@ -50,7 +50,7 @@ from portage.exception import DigestException, FileNotFound, \
 	IncorrectParameter, InvalidDependString, PermissionDenied, \
 	UnsupportedAPIException
 from portage.localization import _
-from portage.output import style_to_ansi_code
+from portage.output import colormap
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
 from portage.util import apply_recursive_permissions, \
 	apply_secpass_permissions, noiselimit, normalize_path, \
@@ -300,11 +300,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_DIR)
 
 	# Allow color.map to control colors associated with einfo, ewarn, etc...
-	mycolors = []
-	for c in ("GOOD", "WARN", "BAD", "HILITE", "BRACKET"):
-		mycolors.append("%s=$'%s'" % \
-			(c, style_to_ansi_code(c)))
-	mysettings["PORTAGE_COLORMAP"] = "\n".join(mycolors)
+	mysettings["PORTAGE_COLORMAP"] = colormap()
 
 	if "COLUMNS" not in mysettings:
 		# Set COLUMNS, in order to prevent unnecessary stty calls
