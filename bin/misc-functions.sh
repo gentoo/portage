@@ -564,6 +564,13 @@ install_qa_check() {
 		done
 	done
 
+	# Look for leaking LDFLAGS into pkg-config files
+	f=$(egrep -sH '^Libs.*-Wl,(-O[012]|--hash-style)' "${ED}"/usr/*/pkgconfig/*.pc)
+	if [[ -n ${f} ]] ; then
+		eqawarn "QA Notice: pkg-config files with wrong LDFLAGS detected:"
+		eqawarn "${f//${D}}"
+	fi
+
 	# this should help to ensure that all (most?) shared libraries are executable
 	# and that all libtool scripts / static libraries are not executable
 	local j
