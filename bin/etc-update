@@ -124,18 +124,16 @@ scan() {
 					else
 						diff -Bbua "${cfg_file}" "${live_file}" | \
 							sed -n -r \
-								-e '/^[+-]/{/^([+-][\t ]*(#|$)|-{3} |\+{3} )/d;q0}' \
-								-e '$q1'
-						MATCHES=$?
+								-e '/^[+-]/{/^([+-][\t ]*(#|$)|-{3} |\+{3} )/d;q1}'
+						: $(( MATCHES = ($? == 0) ))
 					fi
 
-				elif diff -Nua "${cfg_file}" "${live_file}" |
-					sed -n \
-						-e '/# .Header:/d' \
-						-e '/^[+-][^+-]/q1' \
-						-e '$q0'
-				then
-					MATCHES=1
+				else
+					diff -Nbua "${cfg_file}" "${live_file}" |
+						sed -n \
+							-e '/# .Header:/d' \
+							-e '/^[+-][^+-]/q1'
+					: $(( MATCHES = ($? == 0) ))
 				fi
 
 				if [[ ${MATCHES} == 1 ]] ; then
@@ -152,18 +150,17 @@ scan() {
 				fi
 			fi
 
-			if diff -Nua "${cfg_file}" "${rpath}/${ofile}" |
+			if ! diff -Nbua "${cfg_file}" "${rpath}/${ofile}" |
 				sed -n \
 					-e '/# .Header:/d' \
-					-e '/^[+-][^+-]/q1' \
-					-e '$q0'
+					-e '/^[+-][^+-]/q1'
 			then
-				mv "${cfg_file}" "${rpath}/${ofile}"
-				continue
-			else
 				echo "${cfg_file}" >> "${TMP}"/files/${count}
 				ofile="${rfile}"
 				opath="${rpath}"
+			else
+				mv "${cfg_file}" "${rpath}/${ofile}"
+				continue
 			fi
 		done
 	done
