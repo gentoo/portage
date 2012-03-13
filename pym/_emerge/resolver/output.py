@@ -15,6 +15,7 @@ from portage import _unicode_decode
 from portage.dbapi.dep_expand import dep_expand
 from portage.dep import cpvequal, _repo_separator
 from portage.exception import InvalidDependString, SignatureException
+from portage.package.ebuild._spawn_nofetch import spawn_nofetch
 from portage.output import ( blue, bold, colorize, create_color_func,
 	darkblue, darkgreen, green, nc_len, red, teal, turquoise, yellow )
 bad = create_color_func("BAD")
@@ -668,7 +669,6 @@ class Display(object):
 		pkg_info.use = list(self.conf.pkg_use_enabled(pkg))
 		if not pkg.built and pkg.operation == 'merge' and \
 			'fetch' in pkg.metadata.restrict:
-			pkg_info.fetch_symbol = red("F")
 			if pkg_info.ordered:
 				self.counters.restrict_fetch += 1
 			if not self.portdb.getfetchsizes(pkg.cpv,
@@ -676,6 +676,10 @@ class Display(object):
 				pkg_info.fetch_symbol = green("f")
 				if pkg_info.ordered:
 					self.counters.restrict_fetch_satisfied += 1
+			else:
+				pkg_info.fetch_symbol = red("F")
+				if pkg_info.ebuild_path is not None:
+					self.restrict_fetch_list[pkg] = pkg_info
 		return pkg_info
 
 
@@ -821,6 +825,7 @@ class Display(object):
 			repoadd_set = set()
 
 		self.verbose_main_repo_display = "--verbose-main-repo-display" in depgraph._frozen_config.myopts
+		self.restrict_fetch_list = {}
 
 		for mylist_index in range(len(mylist)):
 			pkg, depth, ordered = mylist[mylist_index]
@@ -905,6 +910,12 @@ class Display(object):
 		self.print_blockers()
 		if self.conf.verbosity == 3:
 			self.print_verbose(show_repos)
+		for pkg, pkg_info in self.restrict_fetch_list.items():
+			writemsg_stdout("\nFetch instructions for %s:\n" % (pkg.cpv,),
+							noiselevel=-1)
+			spawn_nofetch(self.conf.trees[pkg.root]["porttree"].dbapi,
+				pkg_info.ebuild_path,
+				settings=self.conf.pkgsettings[pkg.root])
 		if self.conf.changelog:
 			self.print_changelog()
 
