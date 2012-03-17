@@ -188,6 +188,10 @@ def ParseArgs(argv, qahelp):
 	parser.add_option('-M', '--commitmsgfile', dest='commitmsgfile',
 		help='specify a path to a file that contains a commit message')
 
+	parser.add_option('--digest',
+		type='choice', choices=('y', 'n'), metavar='<y|n>',
+		help='Automatically update Manifest digests for modified files')
+
 	parser.add_option('-p', '--pretend', dest='pretend', default=False,
 		action='store_true', help='don\'t commit or fix anything; just show what would be done')
 	
@@ -655,6 +659,9 @@ if vcs is None:
 # Gentoo's Council decided to always use the ChangeLog file.
 # TODO: shouldn't this just be switched on the repo, iso the VCS?
 check_changelog = options.echangelog not in ('y', 'force') and vcs in ('cvs', 'svn')
+
+if 'digest' in repoman_settings.features and options.digest != 'n':
+	options.digest = 'y'
 
 logging.debug("vcs: %s" % (vcs,))
 logging.debug("repo config: %s" % (repo_config,))
@@ -1236,8 +1243,7 @@ for x in effective_scanlist:
 	generated_manifest = False
 
 	if options.mode == "manifest" or \
-	  (options.mode != 'manifest-check' and \
-	  'digest' in repoman_settings.features) or \
+	  (options.mode != 'manifest-check' and options.digest == 'y') or \
 	  options.mode in ('commit', 'fix') and not options.pretend:
 		auto_assumed = set()
 		fetchlist_dict = portage.FetchlistDict(checkdir,
