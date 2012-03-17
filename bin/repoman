@@ -1170,6 +1170,12 @@ if vcs:
 	modified_changelogs.update(x for x in chain(mychanged, mynew) \
 		if os.path.basename(x) == "ChangeLog")
 
+def vcs_new_changed(relative_path):
+	for x in chain(mychanged, mynew):
+		if x == relative_path:
+			return True
+	return False
+
 have_pmasked = False
 have_dev_keywords = False
 dofail = 0
@@ -1361,6 +1367,14 @@ for x in effective_scanlist:
 	for y in checkdirlist:
 		m = disallowed_filename_chars_re.search(y.strip(os.sep))
 		if m is not None:
+			y_relative = os.path.join(checkdir_relative, y)
+			if vcs is not None and not vcs_new_changed(y_relative):
+				# If the file isn't in the VCS new or changed set, then
+				# assume that it's an irrelevant temporary file (Manifest
+				# entries are not generated for file names containing
+				# prohibited characters). See bug #406877.
+				m = None
+		if m is not None:
 			stats["file.name"] += 1
 			fails["file.name"].append("%s/%s: char '%s'" % \
 				(checkdir, y, m.group(0)))
@@ -1528,6 +1542,14 @@ for x in effective_scanlist:
 
 			m = disallowed_filename_chars_re.search(
 				os.path.basename(y.rstrip(os.sep)))
+			if m is not None:
+				y_relative = os.path.join(checkdir_relative, "files", y)
+				if vcs is not None and not vcs_new_changed(y_relative):
+					# If the file isn't in the VCS new or changed set, then
+					# assume that it's an irrelevant temporary file (Manifest
+					# entries are not generated for file names containing
+					# prohibited characters). See bug #406877.
+					m = None
 			if m is not None:
 				stats["file.name"] += 1
 				fails["file.name"].append("%s/files/%s: char '%s'" % \
