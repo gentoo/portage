@@ -3581,7 +3581,8 @@ class dblink(object):
 				break
 
 		if unicode_errors:
-			eerror(_merge_unicode_error(unicode_errors))
+			self._elog("eqawarn", "preinst",
+				_merge_unicode_error(unicode_errors))
 
 		if paths_with_newlines:
 			msg = []
