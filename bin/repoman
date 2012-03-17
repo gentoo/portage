@@ -69,6 +69,8 @@ from portage import cvstree, normalize_path
 from portage import util
 from portage.exception import (FileNotFound, MissingParameter,
 	ParseError, PermissionDenied)
+from portage.manifest import _prohibited_filename_chars_re as \
+	disallowed_filename_chars_re
 from portage.process import find_binary, spawn
 from portage.output import bold, create_color_func, \
 	green, nocolor, red
@@ -85,7 +87,6 @@ util.initialize_logger()
 # 14 is the length of DESCRIPTION=""
 max_desc_len = 100
 allowed_filename_chars="a-zA-Z0-9._-+:"
-disallowed_filename_chars_re = re.compile(r'[^a-zA-Z0-9._\-+:]')
 pv_toolong_re = re.compile(r'[0-9]{19,}')
 bad = create_color_func("BAD")
 
