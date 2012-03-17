@@ -73,8 +73,6 @@ scan() {
 	for path in ${SCAN_PATHS} ; do
 		path="${EROOT%/}${path}"
 
-		[[ -w ${path} ]] || die "Need write access to ${path}"
-
 		if [[ ! -d ${path} ]] ; then
 			[[ ! -f ${path} ]] && continue
 			local my_basename="${path##*/}"
@@ -85,6 +83,11 @@ scan() {
 			find_opts=( -name '.*' -type d -prune -o -name '._cfg????_*' )
 		fi
 		find_opts+=( ! -name '.*~' ! -iname '.*.bak' -print )
+
+		if [ ! -w "${path}" ] ; then
+			[ -e "${path}" ] || continue
+			die "Need write access to ${path}"
+		fi
 
 		local file ofile b=$'\001'
 		for file in $(find "${path}"/ "${find_opts[@]}" |
