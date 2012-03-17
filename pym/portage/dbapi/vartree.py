@@ -3498,6 +3498,8 @@ class dblink(object):
 		# inexpensive since we call os.walk() here anyway).
 		unicode_errors = []
 		line_ending_re = re.compile('[\n\r]')
+		srcroot_len = len(srcroot)
+		ed_len = len(self.settings["ED"])
 
 		while True:
 
@@ -3507,7 +3509,6 @@ class dblink(object):
 			myfilelist = []
 			mylinklist = []
 			paths_with_newlines = []
-			srcroot_len = len(srcroot)
 			def onerror(e):
 				raise
 			walk_iter = os.walk(srcroot, onerror=onerror)
@@ -3535,7 +3536,7 @@ class dblink(object):
 						encoding=_encodings['merge'], errors='replace')
 					os.rename(parent, new_parent)
 					unicode_error = True
-					unicode_errors.append(new_parent[srcroot_len:])
+					unicode_errors.append(new_parent[ed_len:])
 					break
 
 				for fname in files:
@@ -3554,7 +3555,7 @@ class dblink(object):
 						new_fpath = os.path.join(parent, new_fname)
 						os.rename(fpath, new_fpath)
 						unicode_error = True
-						unicode_errors.append(new_fpath[srcroot_len:])
+						unicode_errors.append(new_fpath[ed_len:])
 						fname = new_fname
 						fpath = new_fpath
 					else:

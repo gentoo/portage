@@ -1689,6 +1689,7 @@ def _post_src_install_uid_fix(mysettings, out):
 	_preinst_bsdflags(mysettings)
 
 	destdir = mysettings["D"]
+	ed_len = len(mysettings["ED"])
 	unicode_errors = []
 
 	while True:
@@ -1712,7 +1713,7 @@ def _post_src_install_uid_fix(mysettings, out):
 					encoding=_encodings['merge'], errors='replace')
 				os.rename(parent, new_parent)
 				unicode_error = True
-				unicode_errors.append(new_parent[len(destdir):])
+				unicode_errors.append(new_parent[ed_len:])
 				break
 
 			for fname in chain(dirs, files):
@@ -1731,7 +1732,7 @@ def _post_src_install_uid_fix(mysettings, out):
 					new_fpath = os.path.join(parent, new_fname)
 					os.rename(fpath, new_fpath)
 					unicode_error = True
-					unicode_errors.append(new_fpath[len(destdir):])
+					unicode_errors.append(new_fpath[ed_len:])
 					fname = new_fname
 					fpath = new_fpath
 				else:
