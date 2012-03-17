@@ -391,7 +391,7 @@ do_cfg() {
 	local ofile=$2
 	local -i my_input=0
 
-	until (( my_input == -1 )) || [ ! -f ${file} ] ; do
+	until (( my_input == -1 )) || [ ! -f "${file}" ] ; do
 		if [[ "${OVERWRITE_ALL}" == "yes" ]] && ! user_special "${ofile}"; then
 			my_input=1
 		elif [[ "${DELETE_ALL}" == "yes" ]] && ! user_special "${ofile}"; then
