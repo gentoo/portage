@@ -138,7 +138,7 @@ def file_archive(archive, curconf, newconf, mrgconf):
 
     # Archive the current config file if it isn't already saved
     if os.path.exists(archive) \
-     and diffstatusoutput_len("diff -aq '%s' '%s'" % (curconf,archive))[1] != 0:
+     and len(diffstatusoutput("diff -aq '%s' '%s'", curconf, archive)[1]) != 0:
         suf = 1
         while suf < 9 and os.path.exists(archive + '.' + str(suf)):
             suf += 1
