@@ -1966,6 +1966,15 @@ class dblink(object):
 			contents=contents, env=self.settings,
 			writemsg_level=self._display_merge, vardbapi=self.vartree.dbapi)
 
+		unmerge_with_replacement = preserve_paths is not None
+		if not unmerge_with_replacement:
+			# When there's a replacement package which calls us via treewalk,
+			# treewalk will automatically call _prune_plib_registry for us.
+			# Otherwise, we need to call _prune_plib_registry ourselves.
+			# Don't pass in the "unmerge=True" flag here, since that flag
+			# is intended to be used _prior_ to unmerge, not after.
+			self._prune_plib_registry()
+
 		return os.EX_OK
 
 	def _display_merge(self, msg, level=0, noiselevel=0):
