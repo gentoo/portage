@@ -148,8 +148,7 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 					if not fetch({myfile : uris}, mysettings):
 						myebuild = os.path.join(mysettings["O"],
 							catsplit(cpv)[1] + ".ebuild")
-						spawn_nofetch(myportdb, myebuild,
-							settings=mysettings)
+						spawn_nofetch(myportdb, myebuild)
 						writemsg(_("!!! Fetch failed for %s, can't update "
 							"Manifest\n") % myfile, noiselevel=-1)
 						if myfile in dist_hashes and \

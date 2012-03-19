@@ -914,8 +914,7 @@ class Display(object):
 			writemsg_stdout("\nFetch instructions for %s:\n" % (pkg.cpv,),
 							noiselevel=-1)
 			spawn_nofetch(self.conf.trees[pkg.root]["porttree"].dbapi,
-				pkg_info.ebuild_path,
-				settings=self.conf.pkgsettings[pkg.root])
+				pkg_info.ebuild_path)
 		if self.conf.changelog:
 			self.print_changelog()
 
