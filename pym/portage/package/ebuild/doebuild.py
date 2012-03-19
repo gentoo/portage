@@ -174,19 +174,23 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	ebuild_path = os.path.abspath(myebuild)
 	pkg_dir     = os.path.dirname(ebuild_path)
 	mytree = os.path.dirname(os.path.dirname(pkg_dir))
-
-	if "CATEGORY" in mysettings.configdict["pkg"]:
-		cat = mysettings.configdict["pkg"]["CATEGORY"]
-	else:
-		cat = os.path.basename(normalize_path(os.path.join(pkg_dir, "..")))
-
 	mypv = os.path.basename(ebuild_path)[:-7]
-
-	mycpv = cat+"/"+mypv
 	mysplit = _pkgsplit(mypv)
 	if mysplit is None:
 		raise IncorrectParameter(
 			_("Invalid ebuild path: '%s'") % myebuild)
+
+	if mysettings.mycpv is not None and \
+		mysettings.configdict["pkg"].get("PF") == mypv and \
+		"CATEGORY" in mysettings.configdict["pkg"]:
+		cat = mysettings.configdict["pkg"]["CATEGORY"]
+		mycpv = mysettings.mycpv
+	elif os.path.basename(pkg_dir) in (mysplit[0], mypv):
+		# portdbapi or vardbapi
+		cat = os.path.basename(os.path.dirname(pkg_dir))
+		mycpv = cat + "/" + mypv
+	else:
+		raise AssertionError("unable to determine CATEGORY")
 
 	# Make a backup of PORTAGE_TMPDIR prior to calling config.reset()
 	# so that the caller can override it.
