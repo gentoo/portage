@@ -4075,6 +4075,7 @@ class depgraph(object):
 						forced_flags = set()
 						forced_flags.update(pkgsettings.useforce)
 						forced_flags.update(pkgsettings.usemask)
+						pkgsettings.reset()
 						cur_iuse = iuses
 						if myeb and not usepkgonly and not useoldpkg:
 							cur_iuse = myeb.iuse.all
