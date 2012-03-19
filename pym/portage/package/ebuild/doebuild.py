@@ -183,6 +183,14 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	if mysettings.mycpv is not None and \
 		mysettings.configdict["pkg"].get("PF") == mypv and \
 		"CATEGORY" in mysettings.configdict["pkg"]:
+		# Assume that PF is enough to assume that we've got
+		# the correct CATEGORY, though this is not really
+		# a solid assumption since it's possible (though
+		# unlikely) that two packages in different
+		# categories have the same PF. Callers should call
+		# setcpv or create a clean clone of a locked config
+		# instance in order to ensure that this assumption
+		# does not fail like in bug #408817.
 		cat = mysettings.configdict["pkg"]["CATEGORY"]
 		mycpv = mysettings.mycpv
 	elif os.path.basename(pkg_dir) in (mysplit[0], mypv):
