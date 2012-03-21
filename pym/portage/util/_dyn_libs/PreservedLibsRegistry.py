@@ -30,8 +30,8 @@ if sys.hexversion >= 0x3000000:
 class PreservedLibsRegistry(object):
 	""" This class handles the tracking of preserved library objects """
 
-	# Enable this after JSON read has been supported for some time.
-	_json_write = False
+	# JSON read support has been available since portage-2.2.0_alpha89.
+	_json_write = True
 
 	_json_write_opts = {
 		"ensure_ascii": False,
