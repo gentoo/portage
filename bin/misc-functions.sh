@@ -258,6 +258,18 @@ install_qa_check() {
 		eqawarn "$f"
 	fi
 
+	if [[ -d ${ED}/etc/udev/rules.d ]] ; then
+		f=
+		for x in $(ls "${ED}/etc/udev/rules.d") ; do
+			f+="  etc/udev/rules.d/$x\n"
+		done
+		if [[ -n $f ]] ; then
+			eqawarn "QA Notice: udev rules should be installed in /lib/udev/rules.d:"
+			eqawarn
+			eqawarn "$f"
+		fi
+	fi
+
 	# Now we look for all world writable files.
 	local unsafe_files=$(find "${ED}" -type f -perm -2 | sed -e "s:^${ED}:- :")
 	if [[ -n ${unsafe_files} ]] ; then
