@@ -2727,8 +2727,11 @@ def adjust_config(myopts, settings):
 	settings["EMERGE_WARNING_DELAY"] = str(EMERGE_WARNING_DELAY)
 	settings.backup_changes("EMERGE_WARNING_DELAY")
 
-	if "--buildpkg" in myopts:
+	buildpkg = myopts.get("--buildpkg")
+	if buildpkg is True:
 		settings.features.add("buildpkg")
+	elif buildpkg == 'n':
+		settings.features.discard("buildpkg")
 
 	if "--quiet" in myopts:
 		settings["PORTAGE_QUIET"]="1"

@@ -1005,8 +1005,6 @@ def parse_opts(tmpcmdline, silent=False):
 
 	if myoptions.buildpkg in true_y:
 		myoptions.buildpkg = True
-	else:
-		myoptions.buildpkg = None
 
 	if myoptions.buildpkg_exclude:
 		bad_atoms = _find_bad_atoms(myoptions.buildpkg_exclude, less_strict=True)

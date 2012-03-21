@@ -228,9 +228,10 @@ class EbuildBuild(CompositeTask):
 		#buildsyspkg: Check if we need to _force_ binary package creation
 		self._issyspkg = "buildsyspkg" in features and \
 				system_set.findAtomForPackage(pkg) and \
-				not opts.buildpkg
+				"buildpkg" not in features and \
+				opts.buildpkg != 'n'
 
-		if (opts.buildpkg or "buildpkg" in features or self._issyspkg) \
+		if ("buildpkg" in features or self._issyspkg) \
 			and not self.opts.buildpkg_exclude.findAtomForPackage(pkg):
 
 			self._buildpkg = True

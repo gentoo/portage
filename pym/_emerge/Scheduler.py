@@ -155,7 +155,7 @@ class Scheduler(PollScheduler):
 		self._build_opts = self._build_opts_class()
 
 		for k in self._build_opts.__slots__:
-			setattr(self._build_opts, k, "--" + k.replace("_", "-") in myopts)
+			setattr(self._build_opts, k, myopts.get("--" + k.replace("_", "-")))
 		self._build_opts.buildpkg_exclude = InternalPackageSet( \
 			initial_atoms=" ".join(myopts.get("--buildpkg-exclude", [])).split(), \
 			allow_wildcard=True, allow_repo=True)
