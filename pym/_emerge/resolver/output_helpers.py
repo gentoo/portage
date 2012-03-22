@@ -14,8 +14,8 @@ import sys
 from portage import os
 from portage import _encodings, _unicode_encode
 from portage._sets.base import InternalPackageSet
-from portage.output import blue, colorize, create_color_func, green, red, \
-	teal, yellow
+from portage.output import (blue, bold, colorize, create_color_func,
+	green, red, teal, yellow)
 bad = create_color_func("BAD")
 from portage.util import shlex_split, writemsg
 from portage.versions import catpkgsplit
@@ -539,26 +539,57 @@ def _calc_changelog(ebuildpath,current,next):
 			divisions = divisions[i:]
 			break
 
-	return divisions
+	output = []
+	prev_blank = False
+	prev_rev = False
+	for rev, lines in divisions:
+		if rev is not None:
+			if not (prev_blank or prev_rev):
+				output.append("\n")
+			output.append(bold('*' + rev) + '\n')
+			prev_rev = True
+			prev_blank = False
+		if lines:
+			prev_rev = False
+			if not prev_blank:
+				output.append("\n")
+			for l in lines:
+				output.append(l + "\n")
+			output.append("\n")
+			prev_blank = True
+	return output
+
+def _strip_header_comments(lines):
+	# strip leading and trailing blank or header/comment lines
+	i = 0
+	while i < len(lines) and (not lines[i] or lines[i][:1] == "#"):
+		i += 1
+	if i:
+		lines = lines[i:]
+	while lines and (not lines[-1] or lines[-1][:1] == "#"):
+		lines.pop()
+	return lines
 
 def _find_changelog_tags(changelog):
 	divs = []
+	if not changelog:
+		return divs
 	release = None
-	while 1:
-		match = re.search(r'^\*\ ?([-a-zA-Z0-9_.+]*)(?:\ .*)?\n',changelog,re.M)
-		if match is None:
-			if release is not None:
-				divs.append((release,changelog))
-			return divs
-		if release is not None:
-			divs.append((release,changelog[:match.start()]))
-		changelog = changelog[match.end():]
+	release_end = 0
+	for match in re.finditer(r'^\*\ ?([-a-zA-Z0-9_.+]*)(?:\ .*)?$',
+		changelog, re.M):
+		divs.append((release, _strip_header_comments(
+			changelog[release_end:match.start()].splitlines())))
+		release_end = match.end()
 		release = match.group(1)
 		if release.endswith('.ebuild'):
 			release = release[:-7]
 		if release.endswith('-r0'):
 			release = release[:-3]
 
+	divs.append((release,
+		_strip_header_comments(changelog[release_end:].splitlines())))
+	return divs
 
 class PkgInfo(object):
 	"""Simple class to hold instance attributes for current

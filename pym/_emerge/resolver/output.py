@@ -16,7 +16,7 @@ from portage.dbapi.dep_expand import dep_expand
 from portage.dep import cpvequal, _repo_separator
 from portage.exception import InvalidDependString, SignatureException
 from portage.package.ebuild._spawn_nofetch import spawn_nofetch
-from portage.output import ( blue, bold, colorize, create_color_func,
+from portage.output import ( blue, colorize, create_color_func,
 	darkblue, darkgreen, green, nc_len, red, teal, turquoise, yellow )
 bad = create_color_func("BAD")
 from portage.util import writemsg_stdout
@@ -598,13 +598,9 @@ class Display(object):
 	def print_changelog(self):
 		"""Prints the changelog text to std_out
 		"""
-		if not self.changelogs:
-			return
-		writemsg_stdout('\n', noiselevel=-1)
-		for revision, text in self.changelogs:
-			writemsg_stdout(bold('*'+revision) + '\n' + text,
+		for chunk in self.changelogs:
+			writemsg_stdout(chunk,
 				noiselevel=-1)
-		return
 
 
 	def get_display_list(self, mylist):
