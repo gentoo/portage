@@ -24,8 +24,8 @@ from portage.util import apply_secpass_permissions, atomic_ofstream, writemsg
 
 class MtimeDB(dict):
 
-	# Enable this after JSON read has been supported for some time.
-	_json_write = False
+	# JSON read support has been available since portage-2.1.10.49.
+	_json_write = True
 
 	_json_write_opts = {
 		"ensure_ascii": False,
@@ -60,19 +60,19 @@ class MtimeDB(dict):
 		d = None
 		if content:
 			try:
-				mypickle = pickle.Unpickler(io.BytesIO(content))
-				try:
-					mypickle.find_global = None
-				except AttributeError:
-					# TODO: If py3k, override Unpickler.find_class().
-					pass
-				d = mypickle.load()
+				d = json.loads(_unicode_decode(content,
+					encoding=_encodings['repo.content'], errors='strict'))
 			except SystemExit:
 				raise
 			except Exception as e:
 				try:
-					d = json.loads(_unicode_decode(content,
-						encoding=_encodings['repo.content'], errors='strict'))
+					mypickle = pickle.Unpickler(io.BytesIO(content))
+					try:
+						mypickle.find_global = None
+					except AttributeError:
+						# Python >=3
+						pass
+					d = mypickle.load()
 				except SystemExit:
 					raise
 				except Exception:
