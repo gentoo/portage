@@ -534,10 +534,25 @@ def _calc_changelog(ebuildpath,current,next):
 	#print 'XX from',current,'to',next
 	#for div,text in divisions: print 'XX',div
 	# skip entries for all revisions above the one we are about to emerge
-	for i in range(len(divisions)):
-		if divisions[i][0]==next:
-			divisions = divisions[i:]
+	later_rev_index = None
+	for i, node in enumerate(divisions):
+		if node[0] == next:
+			if later_rev_index is not None:
+				first_node = divisions[later_rev_index]
+				# Discard the later revision and the first ChangeLog entry
+				# that follows it. We want to display all the entries after
+				# that first entry, as discussed in bug #373009.
+				trimmed_lines = []
+				iterator = iter(first_node[1])
+				for l in iterator:
+					if not l:
+						# end of the first entry that's discarded
+						break
+				first_node = (None, list(iterator))
+				divisions = [first_node] + divisions[later_rev_index+1:]
 			break
+		if node[0] is not None:
+			later_rev_index = i
 
 	output = []
 	prev_blank = False
