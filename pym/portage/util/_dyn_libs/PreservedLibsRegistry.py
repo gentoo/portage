@@ -92,13 +92,13 @@ class PreservedLibsRegistry(object):
 		# content is empty if it's an empty lock file
 		if content:
 			try:
-				self._data = pickle.loads(content)
+				self._data = json.loads(_unicode_decode(content,
+					encoding=_encodings['repo.content'], errors='strict'))
 			except SystemExit:
 				raise
 			except Exception as e:
 				try:
-					self._data = json.loads(_unicode_decode(content,
-						encoding=_encodings['repo.content'], errors='strict'))
+					self._data = pickle.loads(content)
 				except SystemExit:
 					raise
 				except Exception:
