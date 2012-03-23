@@ -1,6 +1,8 @@
 # Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from __future__ import print_function
+
 __all__ = ['movefile']
 
 import errno
