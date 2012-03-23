@@ -3661,6 +3661,21 @@ class dblink(object):
 			self._collision_protect(srcroot, destroot,
 			others_in_slot + blockers, myfilelist, mylinklist)
 
+		if symlink_collisions:
+			# Symlink collisions need to be distinguished from other types
+			# of collisions, in order to avoid confusion (see bug #409359).
+			msg = _("Package '%s' has one or more collisions "
+				"between symlinks and directories, which is explicitly "
+				"forbidden by PMS section 13.4 (see bug #326685):") % \
+				(self.settings.mycpv,)
+			msg = textwrap.wrap(msg, 70)
+			msg.append("")
+			for f in symlink_collisions:
+				msg.append("\t%s" % os.path.join(destroot,
+					f.lstrip(os.path.sep)))
+			msg.append("")
+			self._elog("eerror", "preinst", msg)
+
 		if collisions:
 			collision_protect = "collision-protect" in self.settings.features
 			protect_owned = "protect-owned" in self.settings.features
@@ -3742,12 +3757,20 @@ class dblink(object):
 					eerror([_("None of the installed"
 						" packages claim the file(s)."), ""])
 
+			symlink_abort_msg =_("Package '%s' NOT merged since it has "
+				"one or more collisions between symlinks and directories, "
+				"which is explicitly forbidden by PMS section 13.4 "
+				"(see bug #326685).")
+
 			# The explanation about the collision and how to solve
 			# it may not be visible via a scrollback buffer, especially
 			# if the number of file collisions is large. Therefore,
 			# show a summary at the end.
 			abort = False
-			if collision_protect:
+			if symlink_collisions:
+				abort = True
+				msg = symlink_abort_msg % (self.settings.mycpv,)
+			elif collision_protect:
 				abort = True
 				msg = _("Package '%s' NOT merged due to file collisions.") % \
 					self.settings.mycpv
@@ -3755,12 +3778,6 @@ class dblink(object):
 				abort = True
 				msg = _("Package '%s' NOT merged due to file collisions.") % \
 					self.settings.mycpv
-			elif symlink_collisions:
-				abort = True
-				msg = _("Package '%s' NOT merged due to collision " + \
-				"between a symlink and a directory which is explicitly " + \
-				"forbidden by PMS (see bug #326685).") % \
-				(self.settings.mycpv,)
 			else:
 				msg = _("Package '%s' merged despite file collisions.") % \
 					self.settings.mycpv
