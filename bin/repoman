@@ -1866,7 +1866,11 @@ for x in effective_scanlist:
 					if atom == "||":
 						continue
 
-					if not portdb.xmatch("match-all", atom) and \
+					# Skip dependency.unknown for blockers, so that we
+					# don't encourage people to remove necessary blockers,
+					# as discussed in bug #382407.
+					if atom.blocker is None and \
+						not portdb.xmatch("match-all", atom) and \
 						not atom.cp.startswith("virtual/"):
 						unknown_pkgs.add((mytype, atom.unevaluated_atom))
 
