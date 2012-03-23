@@ -38,7 +38,7 @@ class PreservedLibsRegistry(object):
 		"indent": "\t",
 		"sort_keys": True
 	}
-	if sys.hexversion < 0x3020000:
+	if sys.hexversion < 0x30200F0:
 		# indent only supports int number of spaces
 		_json_write_opts["indent"] = 4
 
