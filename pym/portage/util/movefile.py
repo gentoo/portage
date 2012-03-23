@@ -8,6 +8,7 @@ import os as _os
 import shutil as _shutil
 import stat
 import subprocess
+import textwrap
 
 import portage
 from portage import bsd_chflags, _encodings, _os_overrides, _selinux, \
@@ -229,7 +230,18 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			try: # For safety copy then move it over.
 				_copyfile(src_bytes, dest_tmp_bytes)
 				if xattr_enabled:
-					_copyxattr(src_bytes, dest_tmp_bytes)
+					try:
+						_copyxattr(src_bytes, dest_tmp_bytes)
+					except SystemExit:
+						raise
+					except:
+						msg = _("Failed to copy extended attributes. "
+							"In order to avoid this error, set "
+							"FEATURES=\"-xattr\" in make.conf.")
+						msg = textwrap.wrap(msg, 65)
+						for line in msg:
+							writemsg("!!! %s\n" % (line,), noiselevel=-1)
+						raise
 				_apply_stat(sstat, dest_tmp_bytes)
 				_rename(dest_tmp_bytes, dest_bytes)
 				_os.unlink(src_bytes)
