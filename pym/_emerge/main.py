@@ -1849,7 +1849,7 @@ def emerge_main(args=None):
 						portage_group_warning()
 					if userquery("Would you like to add --pretend to options?",
 						"--ask-enter-invalid" in myopts) == "No":
-						return 1
+						return 128 + signal.SIGINT
 					myopts["--pretend"] = True
 					del myopts["--ask"]
 				else:

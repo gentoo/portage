@@ -2622,7 +2622,7 @@ else:
 
 	if options.ask and userquery('Commit changes?', True) != 'Yes':
 		print("* aborting commit.")
-		sys.exit(1)
+		sys.exit(128 + signal.SIGINT)
 
 	# Handle the case where committed files have keywords which
 	# will change and need a priming commit before the Manifest

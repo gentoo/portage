@@ -367,7 +367,7 @@ def action_build(settings, trees, mtimedb,
 			print()
 			print("Quitting.")
 			print()
-			return 1
+			return 128 + signal.SIGINT
 		# Don't ask again (e.g. when auto-cleaning packages after merge)
 		myopts.pop("--ask", None)
 
@@ -487,7 +487,7 @@ def action_config(settings, trees, myopts, myfiles):
 			options.append("X")
 			idx = userquery("Selection?", enter_invalid, responses=options)
 			if idx == "X":
-				sys.exit(0)
+				sys.exit(128 + signal.SIGINT)
 			pkg = pkgs[int(idx)-1]
 		else:
 			print("The following packages available:")
@@ -501,7 +501,7 @@ def action_config(settings, trees, myopts, myfiles):
 	print()
 	if "--ask" in myopts:
 		if userquery("Ready to configure %s?" % pkg, enter_invalid) == "No":
-			sys.exit(0)
+			sys.exit(128 + signal.SIGINT)
 	else:
 		print("Configuring pkg...")
 	print()
@@ -1300,7 +1300,7 @@ def action_deselect(settings, trees, opts, atoms):
 				prompt = "Would you like to remove these " + \
 					"packages from your world favorites?"
 				if userquery(prompt, enter_invalid) == 'No':
-					return os.EX_OK
+					return 128 + signal.SIGINT
 
 			remaining = set(world_set)
 			remaining.difference_update(discard_atoms)
@@ -2226,7 +2226,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 						print()
 						print("Quitting.")
 						print()
-						sys.exit(0)
+						sys.exit(128 + signal.SIGINT)
 				emergelog(xterm_titles, ">>> Starting rsync with " + dosyncuri)
 				if "--quiet" not in myopts:
 					print(">>> Starting rsync with "+dosyncuri+"...")
