@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -40,6 +40,7 @@ from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 	red, yellow
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
+warn = create_color_func("WARN")
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage.package.ebuild.doebuild import _check_temp_dir
 from portage._sets import load_default_config, SETPREFIX
@@ -2510,10 +2511,10 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 	if(mybestpv != mypvs) and not "--quiet" in myopts:
 		print()
-		print(red(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended")
-		print(red(" * ")+"that you update portage now, before any other packages are updated.")
+		print(warn(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended")
+		print(warn(" * ")+"that you update portage now, before any other packages are updated.")
 		print()
-		print(red(" * ")+"To update portage, run 'emerge portage' now.")
+		print(warn(" * ")+"To update portage, run 'emerge portage' now.")
 		print()
 
 	display_news_notification(root_config, myopts)
