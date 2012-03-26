@@ -586,12 +586,9 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		return rval
 
 	if cleanlist:
-		if unmerge(root_config, myopts, "unmerge",
+		rval = unmerge(root_config, myopts, "unmerge",
 			cleanlist, ldpath_mtimes, ordered=ordered,
-			scheduler=scheduler):
-			rval = os.EX_OK
-		else:
-			rval = 1
+			scheduler=scheduler)
 
 	if action == "prune":
 		return rval
@@ -2674,10 +2671,9 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 		(action == 'prune' and "--nodeps" in opts):
 		# When given a list of atoms, unmerge them in the order given.
 		ordered = action == 'unmerge'
-		unmerge(trees[settings['EROOT']]['root_config'], opts, action,
+		rval = unmerge(trees[settings['EROOT']]['root_config'], opts, action,
 			valid_atoms, ldpath_mtimes, ordered=ordered,
 			scheduler=sched._sched_iface)
-		rval = os.EX_OK
 	else:
 		rval = action_depclean(settings, trees, ldpath_mtimes,
 			opts, action, valid_atoms, spinner, scheduler=sched._sched_iface)
