@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -6143,7 +6143,7 @@ class depgraph(object):
 				if protect_obj[root].isprotected(file_to_write_to):
 					# We want to force new_protect_filename to ensure
 					# that the user will see all our changes via
-					# etc-update, even if file_to_write_to doesn't
+					# dispatch-conf, even if file_to_write_to doesn't
 					# exist yet, so we specify force=True.
 					file_to_write_to = new_protect_filename(file_to_write_to,
 						force=True)
@@ -6197,7 +6197,7 @@ class depgraph(object):
 				noiselevel=-1)
 			writemsg_stdout("".join(problems), noiselevel=-1)
 		elif write_to_file and roots:
-			writemsg_stdout("\nAutounmask changes successfully written. Remember to run etc-update.\n", \
+			writemsg_stdout("\nAutounmask changes successfully written. Remember to run dispatch-conf.\n", \
 				noiselevel=-1)
 		elif not pretend and not autounmask_write and roots:
 			writemsg_stdout("\nUse --autounmask-write to write changes to config files (honoring CONFIG_PROTECT).\n", \
