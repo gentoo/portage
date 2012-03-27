@@ -25,6 +25,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.news:count_unread_news,display_news_notifications',
 )
 
+from portage.localization import _
 from portage import os
 from portage import shutil
 from portage import _unicode_decode
@@ -3016,26 +3017,27 @@ def chk_updated_cfg_files(eroot, config_protect):
 		portage.util.find_updated_config_files(target_root, config_protect))
 
 	for x in result:
-		writemsg_level("\n %s " % (colorize("WARN", "* IMPORTANT:"),),
+		writemsg_level("\n %s " % (colorize("WARN", "* " + _("IMPORTANT:"))),
 			level=logging.INFO, noiselevel=-1)
 		if not x[1]: # it's a protected file
-			writemsg_level("config file '%s' needs updating.\n" % x[0],
+			writemsg_level( _("config file '%s' needs updating.\n") % x[0],
 				level=logging.INFO, noiselevel=-1)
 		else: # it's a protected dir
 			if len(x[1]) == 1:
 				head, tail = os.path.split(x[1][0])
 				tail = tail[len("._cfg0000_"):]
 				fpath = os.path.join(head, tail)
-				writemsg_level("config file '%s' needs updating.\n" % fpath,
+				writemsg_level(_("config file '%s' needs updating.\n") % fpath,
 					level=logging.INFO, noiselevel=-1)
 			else:
-				writemsg_level("%d config files in '%s' need updating.\n" % \
+				writemsg_level( _("%d config files in '%s' need updating.\n") % \
 					(len(x[1]), x[0]), level=logging.INFO, noiselevel=-1)
 
 	if result:
-		print(" "+yellow("*")+" See the "+colorize("INFORM","CONFIGURATION FILES")\
-				+ " section of the " + bold("emerge"))
-		print(" "+yellow("*")+" man page to learn how to update config files.")
+		print(" "+yellow("*")+ " See the "+colorize("INFORM", _("CONFIGURATION FILES"))\
+				+ " " + _("section of the") + " " + bold("emerge"))
+		print(" "+yellow("*")+ " " + _("man page to learn how to update config files."))
+
 
 def display_news_notification(root_config, myopts):
 	if "news" not in root_config.settings.features:
