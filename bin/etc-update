@@ -642,7 +642,6 @@ chown ${PORTAGE_INST_UID:-0}:${PORTAGE_INST_GID:-0} "${TMP}" || \
 
 # Get all the user settings from etc-update.conf
 cfg_vars=(
-	using_editor
 	clear_term
 	eu_automerge
 	rm_opts
