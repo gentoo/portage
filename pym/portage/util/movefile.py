@@ -1,8 +1,6 @@
 # Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
-
 __all__ = ['movefile']
 
 import errno
@@ -82,7 +80,6 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
 	be preserved even when moving across filesystems.  Returns true on success and false on
 	failure.  Move is atomic."""
-	#print "movefile("+str(src)+","+str(dest)+","+str(newmtime)+","+str(sstat)+")"
 
 	if mysettings is None:
 		mysettings = portage.settings
@@ -110,8 +107,9 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 	except SystemExit as e:
 		raise
 	except Exception as e:
-		print(_("!!! Stating source file failed... movefile()"))
-		print("!!!",e)
+		writemsg("!!! %s\n" % _("Stating source file failed... movefile()"),
+			noiselevel=-1)
+		writemsg(_unicode_decode("!!! %s\n") % (e,), noiselevel=-1)
 		return None
 
 	destexists=1
@@ -168,9 +166,10 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		except SystemExit as e:
 			raise
 		except Exception as e:
-			print(_("!!! failed to properly create symlink:"))
-			print("!!!",dest,"->",target)
-			print("!!!",e)
+			writemsg("!!! %s\n" % _("failed to properly create symlink:"),
+				noiselevel=-1)
+			writemsg("!!! %s -> %s\n" % (dest, target), noiselevel=-1)
+			writemsg(_unicode_decode("!!! %s\n") % (e,), noiselevel=-1)
 			return None
 
 	hardlinked = False
@@ -220,8 +219,9 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		except OSError as e:
 			if e.errno != errno.EXDEV:
 				# Some random error.
-				print(_("!!! Failed to move %(src)s to %(dest)s") % {"src": src, "dest": dest})
-				print("!!!",e)
+				writemsg("!!! %s\n" % _("Failed to move %(src)s to %(dest)s") %
+					{"src": src, "dest": dest}, noiselevel=-1)
+				writemsg(_unicode_decode("!!! %s\n") % (e,), noiselevel=-1)
 				return None
 			# Invalid cross-device-link 'bind' mounted or actually Cross-Device
 	if renamefailed:
@@ -250,8 +250,9 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			except SystemExit as e:
 				raise
 			except Exception as e:
-				print(_('!!! copy %(src)s -> %(dest)s failed.') % {"src": src, "dest": dest})
-				print("!!!",e)
+				writemsg("!!! %s\n" % _('copy %(src)s -> %(dest)s failed.') %
+					{"src": src, "dest": dest}, noiselevel=-1)
+				writemsg(_unicode_decode("!!! %s\n") % (e,), noiselevel=-1)
 				return None
 		else:
 			#we don't yet handle special, so we need to fall back to /bin/mv
