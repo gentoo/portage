@@ -29,8 +29,9 @@ DIRMODE = 0755
 SYSCONFDIR_FILES = etc-update.conf dispatch-conf.conf
 PORTAGE_CONFDIR_FILES = make.globals
 LOGROTATE_FILES = elog-save-summary
-BINDIR_FILES = ebuild egencache emerge portageq quickpkg repoman
-SBINDIR_FILES = archive-conf dispatch-conf emaint emerge-webrsync \
+BINDIR_FILES = ebuild egencache emerge emerge-webrsync \
+	portageq quickpkg repoman
+SBINDIR_FILES = archive-conf dispatch-conf emaint \
 	env-update etc-update fixpackages regenworld
 DOCS = ChangeLog NEWS RELEASE-NOTES
 

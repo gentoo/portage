@@ -27,11 +27,19 @@ wecho() { echo "${argv0}: warning: $*" 1>&2 ; }
 eecho() { echo "${argv0}: error: $*" 1>&2 ; }
 
 argv0=$0
-if ! type -P portageq > /dev/null ; then
+
+# Use portageq from the same directory/prefix as the current script, so
+# that we don't have to rely on PATH including the current EPREFIX.
+scriptpath=${BASH_SOURCE[0]}
+if [ -x "${scriptpath%/*}/portageq" ]; then
+	portageq=${scriptpath%/*}/portageq
+elif type -P portageq > /dev/null ; then
+	portageq=portageq
+else
 	eecho "could not find 'portageq'; aborting"
 	exit 1
 fi
-eval $(portageq envvar -v FEATURES FETCHCOMMAND GENTOO_MIRRORS \
+eval $("${portageq}" envvar -v FEATURES FETCHCOMMAND GENTOO_MIRRORS \
 	PORTAGE_BIN_PATH PORTAGE_GPG_DIR \
 	PORTAGE_NICENESS PORTAGE_RSYNC_EXTRA_OPTS PORTAGE_TMPDIR PORTDIR \
 	SYNC http_proxy ftp_proxy)
