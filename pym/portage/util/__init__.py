@@ -351,7 +351,6 @@ def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 		'sys-apps/portage x86 amd64 ppc'
 		would return
 		{ "sys-apps/portage" : [ 'x86', 'amd64', 'ppc' ]
-		the line syntax is key : [list of values]
 	"""
 	newdict={}
 	for x in grablines(myfilename, recursive):
