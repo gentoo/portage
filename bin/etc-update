@@ -676,7 +676,9 @@ if [[ ${using_editor} == "0" ]] ; then
 		die "'${diff_command}' does not seem to work, aborting"
 	fi
 else
-	if ! cmd_var_is_valid "${diff_command}" ; then
+	# NOTE: cmd_var_is_valid doesn't work with diff_command="eval emacs..."
+	# because it uses type -P.
+	if ! type ${diff_command%%[[:space:]]*} >/dev/null; then
 		die "'${diff_command}' does not seem to work, aborting"
 	fi
 fi
