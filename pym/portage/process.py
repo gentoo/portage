@@ -401,7 +401,19 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	os.execve(binary, myargs, env)
 
 def _setup_pipes(fd_pipes, close_fds=True):
-	"""Setup pipes for a forked process."""
+	"""Setup pipes for a forked process.
+
+	WARNING: When not followed by exec, the close_fds behavior
+	can trigger interference from destructors that close file
+	descriptors. This interference happens when the garbage
+	collector intermittently executes such destructors after their
+	corresponding file descriptors have been re-used, leading
+	to intermittent "[Errno 9] Bad file descriptor" exceptions in
+	forked processes. This problem has been observed with PyPy 1.8,
+	and also with CPython under some circumstances (as triggered
+	by xmpppy in bug #374335). In order to close a safe subset of
+	file descriptors, see portage.locks._close_fds().
+	"""
 	my_fds = {}
 	# To protect from cases where direct assignment could
 	# clobber needed fds ({1:2, 2:1}) we first dupe the fds
