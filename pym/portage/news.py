@@ -370,7 +370,7 @@ def count_unread_news(portdb, vardb, repos=None, update=True):
 	@param update: check for new items (default is True)
 	@type update: boolean
 	@rtype: dict
-	@returns: dictionary mapping repos to integer counts of unread news items
+	@return: dictionary mapping repos to integer counts of unread news items
 	"""
 
 	NEWS_PATH = os.path.join("metadata", "news")

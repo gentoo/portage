@@ -27,7 +27,7 @@ class QueryCommand(IpcCommand):
 
 	def __call__(self, argv):
 		"""
-		@returns: tuple of (stdout, stderr, returncode)
+		@return: tuple of (stdout, stderr, returncode)
 		"""
 
 		cmd, root, atom_str = argv

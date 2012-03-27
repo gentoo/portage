@@ -435,7 +435,7 @@ def can_poll_device():
 	Test if it's possible to use poll() on a device such as a pty. This
 	is known to fail on Darwin.
 	@rtype: bool
-	@returns: True if poll() on a device succeeds, False otherwise.
+	@return: True if poll() on a device succeeds, False otherwise.
 	"""
 
 	global _can_poll_device

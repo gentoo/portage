@@ -327,7 +327,7 @@ def editor_is_executable(editor):
 	@param editor: An EDITOR value from the environment.
 	@type: string
 	@rtype: bool
-	@returns: True if an executable is found, False otherwise.
+	@return: True if an executable is found, False otherwise.
 	"""
 	editor_split = util.shlex_split(editor)
 	if not editor_split:
@@ -348,7 +348,7 @@ def get_commit_message_with_editor(editor, message=None):
 	@param message: An iterable of lines to show in the editor.
 	@type: iterable
 	@rtype: string or None
-	@returns: A string on success or None if an error occurs.
+	@return: A string on success or None if an error occurs.
 	"""
 	fd, filename = mkstemp()
 	try:
@@ -389,7 +389,7 @@ def get_commit_message_with_stdin():
 	Read a commit message from the user and return it.
 
 	@rtype: string or None
-	@returns: A string on success or None if an error occurs.
+	@return: A string on success or None if an error occurs.
 	"""
 	print("Please enter a commit message. Use Ctrl-d to finish or Ctrl-c to abort.")
 	commitmessage = []

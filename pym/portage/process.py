@@ -354,7 +354,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	@param pre_exec: A function to be called with no arguments just prior to the exec call.
 	@type pre_exec: callable
 	@rtype: None
-	@returns: Never returns (calls os.execve)
+	@return: Never returns (calls os.execve)
 	"""
 	
 	# If the process we're creating hasn't been given a name
@@ -429,7 +429,7 @@ def find_binary(binary):
 	@param binary: Name of the binary to find
 	@type string
 	@rtype: None or string
-	@returns: full path to binary or None if the binary could not be located.
+	@return: full path to binary or None if the binary could not be located.
 	"""
 	for path in os.environ.get("PATH", "").split(":"):
 		filename = "%s/%s" % (path, binary)

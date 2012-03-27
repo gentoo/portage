@@ -1026,7 +1026,7 @@ def fetch_metadata_dtd():
 	Fetch metadata.dtd if it doesn't exist or the ctime is older than
 	metadata_dtd_ctime_interval.
 	@rtype: bool
-	@returns: True if successful, otherwise False
+	@return: True if successful, otherwise False
 	"""
 
 	must_fetch = True

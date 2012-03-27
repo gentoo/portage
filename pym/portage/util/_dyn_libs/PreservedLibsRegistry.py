@@ -242,7 +242,7 @@ class PreservedLibsRegistry(object):
 	
 	def getPreservedLibs(self):
 		""" Return a mapping of packages->preserved objects.
-			@returns mapping of package instances to preserved objects
+			@return mapping of package instances to preserved objects
 			@rtype Dict cpv->list-of-paths
 		"""
 		if self._data is None:

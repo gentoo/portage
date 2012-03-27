@@ -886,7 +886,7 @@ class depgraph(object):
 			relationships from nested sets
 		@type add_to_digraph: Boolean
 		@rtype: Iterable
-		@returns: All args given in the input together with additional
+		@return: All args given in the input together with additional
 			SetArg instances that are generated from nested sets
 		"""
 
@@ -1901,7 +1901,7 @@ class depgraph(object):
 		@param atom_without_category: an atom without a category component
 		@type atom_without_category: String
 		@rtype: list
-		@returns: a list of atoms containing categories (possibly empty)
+		@return: a list of atoms containing categories (possibly empty)
 		"""
 		null_cp = portage.dep_getkey(insert_category_into_atom(
 			atom_without_category, "null"))
@@ -7029,7 +7029,7 @@ def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 	PackageNotFound or depgraph.UnsatisfiedResumeDep when necessary.
 	TODO: Return reasons for dropped_tasks, for display/logging.
 	@rtype: tuple
-	@returns: (success, depgraph, dropped_tasks)
+	@return: (success, depgraph, dropped_tasks)
 	"""
 	skip_masked = True
 	skip_unsatisfied = True

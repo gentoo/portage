@@ -80,7 +80,7 @@ def rewrite_lafile(contents):
 	@param contents: the contents of a libtool archive file
 	@type contents: bytes
 	@rtype: tuple
-	@returns: (True, fixed_contents) if something needed to be
+	@return: (True, fixed_contents) if something needed to be
 		fixed, (False, None) otherwise.
 	"""
 	#Parse the 'dependency_libs' and 'inherited_linker_flags' lines.

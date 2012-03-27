@@ -180,7 +180,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 	def __getitem__(self, cpv):
 		"""
 		@rtype: BlockerData
-		@returns: An object with counter and atoms attributes.
+		@return: An object with counter and atoms attributes.
 		"""
 		return self.BlockerData(*self._cache_data["blockers"][cpv])
 

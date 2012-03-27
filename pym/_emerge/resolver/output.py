@@ -514,8 +514,8 @@ class Display(object):
 	def _insert_slot(self, pkg, pkg_info, myinslotlist):
 		"""Adds slot info to the message
 
-		@returns addl: formatted slot info
-		@returns myoldbest: installed version list
+		@return addl: formatted slot info
+		@return myoldbest: installed version list
 		Modifies self.counters.downgrades, self.counters.upgrades,
 			self.counters.binary
 		"""
@@ -541,8 +541,8 @@ class Display(object):
 	def _new_slot(self, pkg, pkg_info):
 		"""New slot, mark it new.
 
-		@returns addl: formatted slot info
-		@returns myoldbest: installed version list
+		@return addl: formatted slot info
+		@return myoldbest: installed version list
 		Modifies self.counters.newslot, self.counters.binary
 		"""
 		addl = " " + green("NS") + pkg_info.fetch_symbol + "  "

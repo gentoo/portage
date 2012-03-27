@@ -480,7 +480,7 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 		caller clean up all returned PIDs.
 	@type returnpid: Boolean
 	@rtype: Boolean
-	@returns:
+	@return:
 	1. 0 for success
 	2. 1 for error
 	
@@ -1368,7 +1368,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	@param keywords: Extra options encoded as a dict, to be passed to spawn
 	@type keywords: Dictionary
 	@rtype: Integer
-	@returns:
+	@return:
 	1. The return code of the spawned process.
 	"""
 

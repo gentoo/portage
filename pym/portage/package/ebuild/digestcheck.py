@@ -15,7 +15,7 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
 	"""
 	Verifies checksums. Assumes all files have been downloaded.
 	@rtype: int
-	@returns: 1 on success and 0 on failure
+	@return: 1 on success and 0 on failure
 	"""
 
 	if justmanifest is not None:

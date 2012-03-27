@@ -33,7 +33,7 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 	@param myportdb: a portdbapi instance
 	@type myportdb: portdbapi
 	@rtype: int
-	@returns: 1 on success and 0 on failure
+	@return: 1 on success and 0 on failure
 	"""
 	if mysettings is None or myportdb is None:
 		raise TypeError("portage.digestgen(): 'mysettings' and 'myportdb' parameter are required.")

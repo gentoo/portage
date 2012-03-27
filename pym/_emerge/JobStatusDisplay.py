@@ -97,7 +97,7 @@ class JobStatusDisplay(object):
 		"""
 		Initialize term control codes.
 		@rtype: bool
-		@returns: True if term codes were successfully initialized,
+		@return: True if term codes were successfully initialized,
 			False otherwise.
 		"""
 

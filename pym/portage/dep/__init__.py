@@ -62,7 +62,7 @@ def cpvequal(cpv1, cpv2):
 	@param cpv2: CategoryPackageVersion (no operators) Example: "sys-apps/portage-2.1"
 	@type cpv2: String
 	@rtype: Boolean
-	@returns:
+	@return:
 	1.  True if cpv1 = cpv2
 	2.  False Otherwise
 	3.  Throws PortageException if cpv1 or cpv2 is not a CPV

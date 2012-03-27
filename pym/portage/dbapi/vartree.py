@@ -921,7 +921,7 @@ class vardbapi(dbapi):
 		@param myroot: ignored, self._eroot is used instead
 		@param mycpv: ignored
 		@rtype: int
-		@returns: new counter value
+		@return: new counter value
 		"""
 		myroot = None
 		mycpv = None
@@ -1732,7 +1732,7 @@ class dblink(object):
 			PreservedLibsRegistry yet.
 		@type preserve_paths: set
 		@rtype: Integer
-		@returns:
+		@return:
 		1. os.EX_OK if everything went well.
 		2. return code of the failed phase (for prerm, postrm, cleanrm)
 		"""
@@ -2546,7 +2546,7 @@ class dblink(object):
 		@param destroot:
 		@type destroot:
 		@rtype: Boolean
-		@returns:
+		@return:
 		1. True if this package owns the file.
 		2. False if this package does not own the file.
 		"""
@@ -3376,7 +3376,7 @@ class dblink(object):
 		@param prev_mtimes: { Filename:mtime } mapping for env_update
 		@type prev_mtimes: Dictionary
 		@rtype: Boolean
-		@returns:
+		@return:
 		1. 0 on success
 		2. 1 on failure
 		
@@ -4193,7 +4193,7 @@ class dblink(object):
 		@param thismtime: The current time (typically long(time.time())
 		@type thismtime: Long
 		@rtype: None or Boolean
-		@returns:
+		@return:
 		1. True on failure
 		2. None otherwise
 		
