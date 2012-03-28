@@ -18,7 +18,10 @@ class LockNonblockTestCase(TestCase):
 			lock1 = portage.locks.lockfile(path)
 			pid = os.fork()
 			if pid == 0:
-				portage.process._setup_pipes({0:0, 1:1, 2:2})
+				portage.locks._close_fds()
+				 # Disable close_fds since we don't exec
+				 # (see _setup_pipes docstring).
+				portage.process._setup_pipes({0:0, 1:1, 2:2}, close_fds=False)
 				rval = 2
 				try:
 					try:
