@@ -45,7 +45,6 @@ def _close_fds():
 	descriptors for locks held by the parent process. This can be called
 	safely after a fork without exec, unlike the _setup_pipes close_fds
 	behavior.
-	.
 	"""
 	while _open_fds:
 		os.close(_open_fds.pop())
