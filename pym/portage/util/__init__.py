@@ -646,6 +646,8 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 		raise portage.exception.ParseError(str(e)+" in "+mycfg)
 	return mykeys
 
+_varexpand_word_chars = frozenset(string.ascii_letters + string.digits + "_")
+
 def varexpand(mystring, mydict=None):
 	if mydict is None:
 		mydict = {}
@@ -715,8 +717,7 @@ def varexpand(mystring, mydict=None):
 				else:
 					braced=False
 				myvstart=pos
-				validchars=string.ascii_letters+string.digits+"_"
-				while mystring[pos] in validchars:
+				while mystring[pos] in _varexpand_word_chars:
 					if (pos+1)>=len(mystring):
 						if braced:
 							return ""
