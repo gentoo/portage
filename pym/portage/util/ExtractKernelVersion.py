@@ -14,7 +14,7 @@ def ExtractKernelVersion(base_dir):
 	@param base_dir: Path to sources (usually /usr/src/linux)
 	@type base_dir: string
 	@rtype: tuple( version[string], error[string])
-	@returns:
+	@return:
 	1. tuple( version[string], error[string])
 	Either version or error is populated (but never both)
 

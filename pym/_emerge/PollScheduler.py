@@ -97,7 +97,7 @@ class PollScheduler(object):
 	def _keep_scheduling(self):
 		"""
 		@rtype: bool
-		@returns: True if there may be remaining tasks to schedule,
+		@return: True if there may be remaining tasks to schedule,
 			False otherwise.
 		"""
 		return False

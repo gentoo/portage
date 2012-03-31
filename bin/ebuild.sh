@@ -230,11 +230,15 @@ inherit() {
 		unset $__export_funcs_var
 
 		if [ "${EBUILD_PHASE}" != "depend" ] && \
+			[ "${EBUILD_PHASE}" != "nofetch" ] && \
 			[[ ${EBUILD_PHASE} != *rm ]] && \
 			[[ ${EMERGE_FROM} != "binary" ]] ; then
 			# This is disabled in the *rm phases because they frequently give
 			# false alarms due to INHERITED in /var/db/pkg being outdated
-			# in comparison the the eclasses from the portage tree.
+			# in comparison the the eclasses from the portage tree. It's
+			# disabled for nofetch, since that can be called by repoman and
+			# that triggers bug #407449 due to repoman not exporting
+			# non-essential variables such as INHERITED.
 			if ! has $ECLASS $INHERITED $__INHERITED_QA_CACHE ; then
 				eqawarn "QA Notice: ECLASS '$ECLASS' inherited illegally in $CATEGORY/$PF $EBUILD_PHASE"
 			fi
@@ -371,24 +375,34 @@ source_all_bashrcs() {
 		for x in "${path_array[@]}" ; do
 			[ -f "$x/profile.bashrc" ] && qa_source "$x/profile.bashrc"
 		done
+
+		# The user's bashrc is the ONLY non-portage bit of code that can
+		# change shopts without a QA violation.
+		for x in "${PM_EBUILD_HOOK_DIR}"/${CATEGORY}/{${PN},${PN}:${SLOT},${P},${PF}}; do
+			if [ -r "${x}" ]; then
+				# If $- contains x, then tracing has already been enabled
+				# elsewhere for some reason. We preserve it's state so as
+				# not to interfere.
+				if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
+					source "${x}"
+				else
+					set -x
+					source "${x}"
+					set +x
+				fi
+			fi
+		done
 	fi
 
-	# We assume if people are changing shopts in their bashrc they do so at their
-	# own peril.  This is the ONLY non-portage bit of code that can change shopts
-	# without a QA violation.
-	for x in "${PORTAGE_BASHRC}" "${PM_EBUILD_HOOK_DIR}"/${CATEGORY}/{${PN},${PN}:${SLOT},${P},${PF}}; do
-		if [ -r "${x}" ]; then
-			# If $- contains x, then tracing has already enabled elsewhere for some
-			# reason.  We preserve it's state so as not to interfere.
-			if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
-				source "${x}"
-			else
-				set -x
-				source "${x}"
-				set +x
-			fi
+	if [ -r "${PORTAGE_BASHRC}" ] ; then
+		if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
+			source "${PORTAGE_BASHRC}"
+		else
+			set -x
+			source "${PORTAGE_BASHRC}"
+			set +x
 		fi
-	done
+	fi
 
 	[ ! -z "${OCC}" ] && export CC="${OCC}"
 	[ ! -z "${OCXX}" ] && export CXX="${OCXX}"

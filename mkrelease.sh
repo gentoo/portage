@@ -66,7 +66,7 @@ git archive --format=tar $TREE_ISH | \
 
 echo ">>> Building release tree"
 cp -a "${SOURCE_DIR}/"{bin,cnf,doc,man,pym} "${RELEASE_DIR}/" || die "directory copy failed"
-cp "${SOURCE_DIR}/"{DEVELOPING,LICENSE,NEWS,RELEASE-NOTES,TEST-NOTES} \
+cp "${SOURCE_DIR}/"{DEVELOPING,LICENSE,Makefile,NEWS,RELEASE-NOTES,TEST-NOTES} \
 	"${RELEASE_DIR}/" || die "file copy failed"
 
 rm -rf "$SOURCE_DIR" || die "directory cleanup failed"

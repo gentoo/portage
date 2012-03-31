@@ -347,12 +347,11 @@ def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 	@param incremental: Append to the return list, don't overwrite
 	@type incremental: Boolean (integer)
 	@rtype: Dictionary
-	@returns:
+	@return:
 	1.  Returns the lines in a file in a dictionary, for example:
 		'sys-apps/portage x86 amd64 ppc'
 		would return
 		{ "sys-apps/portage" : [ 'x86', 'amd64', 'ppc' ]
-		the line syntax is key : [list of values]
 	"""
 	newdict={}
 	for x in grablines(myfilename, recursive):
@@ -647,15 +646,10 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 	except Exception as e:
 		raise portage.exception.ParseError(str(e)+" in "+mycfg)
 	return mykeys
-	
-#cache expansions of constant strings
-cexpand={}
+
 def varexpand(mystring, mydict=None):
 	if mydict is None:
 		mydict = {}
-	newstring = cexpand.get(" "+mystring, None)
-	if newstring is not None:
-		return newstring
 
 	"""
 	new variable expansion code.  Preserves quotes, handles \n, etc.
@@ -668,7 +662,7 @@ def varexpand(mystring, mydict=None):
 	insing=0
 	indoub=0
 	pos=1
-	newstring=" "
+	newstring = ""
 	while (pos<len(mystring)):
 		if (mystring[pos]=="'") and (mystring[pos-1]!="\\"):
 			if (indoub):
@@ -726,7 +720,6 @@ def varexpand(mystring, mydict=None):
 				while mystring[pos] in validchars:
 					if (pos+1)>=len(mystring):
 						if braced:
-							cexpand[mystring]=""
 							return ""
 						else:
 							pos=pos+1
@@ -735,12 +728,10 @@ def varexpand(mystring, mydict=None):
 				myvarname=mystring[myvstart:pos]
 				if braced:
 					if mystring[pos]!="}":
-						cexpand[mystring]=""
 						return ""
 					else:
 						pos=pos+1
 				if len(myvarname)==0:
-					cexpand[mystring]=""
 					return ""
 				numvars=numvars+1
 				if myvarname in mydict:
@@ -751,9 +742,8 @@ def varexpand(mystring, mydict=None):
 		else:
 			newstring=newstring+mystring[pos]
 			pos=pos+1
-	if numvars==0:
-		cexpand[mystring]=newstring[1:]
-	return newstring[1:]	
+
+	return newstring
 
 # broken and removed, but can still be imported
 pickle_write = None

@@ -155,7 +155,7 @@ class Scheduler(PollScheduler):
 		self._build_opts = self._build_opts_class()
 
 		for k in self._build_opts.__slots__:
-			setattr(self._build_opts, k, "--" + k.replace("_", "-") in myopts)
+			setattr(self._build_opts, k, myopts.get("--" + k.replace("_", "-")))
 		self._build_opts.buildpkg_exclude = InternalPackageSet( \
 			initial_atoms=" ".join(myopts.get("--buildpkg-exclude", [])).split(), \
 			allow_wildcard=True, allow_repo=True)
@@ -357,7 +357,7 @@ class Scheduler(PollScheduler):
 		Check if background mode is enabled and adjust states as necessary.
 
 		@rtype: bool
-		@returns: True if background mode is enabled, False otherwise.
+		@return: True if background mode is enabled, False otherwise.
 		"""
 		background = (self._max_jobs is True or \
 			self._max_jobs > 1 or "--quiet" in self.myopts \
@@ -1435,7 +1435,7 @@ class Scheduler(PollScheduler):
 			merge order
 		@type later: set
 		@rtype: bool
-		@returns: True if the package is dependent, False otherwise.
+		@return: True if the package is dependent, False otherwise.
 		"""
 
 		graph = self._digraph
@@ -1535,7 +1535,7 @@ class Scheduler(PollScheduler):
 	def _job_delay(self):
 		"""
 		@rtype: bool
-		@returns: True if job scheduling should be delayed, False otherwise.
+		@return: True if job scheduling should be delayed, False otherwise.
 		"""
 
 		if self._jobs and self._max_load is not None:
@@ -1553,7 +1553,7 @@ class Scheduler(PollScheduler):
 	def _schedule_tasks_imp(self):
 		"""
 		@rtype: bool
-		@returns: True if state changed, False otherwise.
+		@return: True if state changed, False otherwise.
 		"""
 
 		state_change = 0
@@ -1710,7 +1710,7 @@ class Scheduler(PollScheduler):
 		Use the current resume list to calculate a new one,
 		dropping any packages with unsatisfied deps.
 		@rtype: bool
-		@returns: True if successful, False otherwise.
+		@return: True if successful, False otherwise.
 		"""
 		print(colorize("GOOD", "*** Resuming merge..."))
 

@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import io
-import platform
 import signal
 import sys
 import traceback
@@ -155,15 +154,9 @@ class MergeProcess(SpawnProcess):
 			return [pid]
 
 		os.close(elog_reader_fd)
-
-		# TODO: Find out why PyPy 1.8 with close_fds=True triggers
-		# "[Errno 9] Bad file descriptor" in subprocesses. It could
-		# be due to garbage collection of file objects that were not
-		# closed before going out of scope, since PyPy's garbage
-		# collector does not support the refcounting semantics that
-		# CPython does.
-		close_fds = platform.python_implementation() != 'PyPy'
-		portage.process._setup_pipes(fd_pipes, close_fds=close_fds)
+		portage.locks._close_fds()
+		# Disable close_fds since we don't exec (see _setup_pipes docstring).
+		portage.process._setup_pipes(fd_pipes, close_fds=False)
 
 		# Use default signal handlers since the ones inherited
 		# from the parent process are irrelevant here.

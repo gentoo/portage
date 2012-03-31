@@ -433,8 +433,8 @@ set_colors() {
 		BAD=$'\e[31;01m'
 		HILITE=$'\e[36;01m'
 		BRACKET=$'\e[34;01m'
+		NORMAL=$'\e[0m'
 	fi
-	NORMAL=$'\e[0m'
 }
 
 RC_ENDCOL="yes"

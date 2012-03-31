@@ -83,7 +83,13 @@ def getmaskingreason(mycpv, metadata=None, settings=None,
 	pmasklists = []
 	for profile in locations:
 		pmask_filename = os.path.join(profile, "package.mask")
-		pmasklists.append((pmask_filename, grablines(pmask_filename, recursive=1)))
+		node = None
+		for l, recursive_filename in grablines(pmask_filename,
+			recursive=1, remember_source_file=True):
+			if node is None or node[0] != recursive_filename:
+				node = (recursive_filename, [])
+				pmasklists.append(node)
+			node[1].append(l)
 
 	pmaskdict = settings._mask_manager._pmaskdict
 	if mycp in pmaskdict:

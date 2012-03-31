@@ -502,7 +502,7 @@ class Package(Task):
 
 		def is_valid_flag(self, flags):
 			"""
-			@returns: True if all flags are valid USE values which may
+			@return: True if all flags are valid USE values which may
 				be specified in USE dependencies, False otherwise.
 			"""
 			if isinstance(flags, basestring):
@@ -516,7 +516,7 @@ class Package(Task):
 
 		def get_missing_iuse(self, flags):
 			"""
-			@returns: A list of flags missing from IUSE.
+			@return: A list of flags missing from IUSE.
 			"""
 			if isinstance(flags, basestring):
 				flags = [flags]

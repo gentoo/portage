@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -25,9 +25,9 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.news:count_unread_news,display_news_notifications',
 )
 
+from portage.localization import _
 from portage import os
 from portage import shutil
-from portage import subprocess_getstatusoutput
 from portage import _unicode_decode
 from portage.cache.cache_errors import CacheError
 from portage.const import GLOBAL_CONFIG_PATH, EPREFIX
@@ -41,6 +41,7 @@ from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 	red, yellow
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
+warn = create_color_func("WARN")
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage.package.ebuild.doebuild import _check_temp_dir
 from portage._sets import load_default_config, SETPREFIX
@@ -367,7 +368,7 @@ def action_build(settings, trees, mtimedb,
 			print()
 			print("Quitting.")
 			print()
-			return 1
+			return 128 + signal.SIGINT
 		# Don't ask again (e.g. when auto-cleaning packages after merge)
 		myopts.pop("--ask", None)
 
@@ -487,7 +488,7 @@ def action_config(settings, trees, myopts, myfiles):
 			options.append("X")
 			idx = userquery("Selection?", enter_invalid, responses=options)
 			if idx == "X":
-				sys.exit(0)
+				sys.exit(128 + signal.SIGINT)
 			pkg = pkgs[int(idx)-1]
 		else:
 			print("The following packages available:")
@@ -501,7 +502,7 @@ def action_config(settings, trees, myopts, myfiles):
 	print()
 	if "--ask" in myopts:
 		if userquery("Ready to configure %s?" % pkg, enter_invalid) == "No":
-			sys.exit(0)
+			sys.exit(128 + signal.SIGINT)
 	else:
 		print("Configuring pkg...")
 	print()
@@ -586,12 +587,9 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		return rval
 
 	if cleanlist:
-		if unmerge(root_config, myopts, "unmerge",
+		rval = unmerge(root_config, myopts, "unmerge",
 			cleanlist, ldpath_mtimes, ordered=ordered,
-			scheduler=scheduler):
-			rval = os.EX_OK
-		else:
-			rval = 1
+			scheduler=scheduler)
 
 	if action == "prune":
 		return rval
@@ -1300,7 +1298,7 @@ def action_deselect(settings, trees, opts, atoms):
 				prompt = "Would you like to remove these " + \
 					"packages from your world favorites?"
 				if userquery(prompt, enter_invalid) == 'No':
-					return os.EX_OK
+					return 128 + signal.SIGINT
 
 			remaining = set(world_set)
 			remaining.difference_update(discard_atoms)
@@ -1357,7 +1355,14 @@ def action_info(settings, trees, myopts, myfiles):
 		lastSync = "Unknown"
 	append("Timestamp of tree: %s" % (lastSync,))
 
-	output=subprocess_getstatusoutput("distcc --version")
+	try:
+		proc = subprocess.Popen(["distcc", "--version"],
+			stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	except OSError:
+		output = (1, None)
+	else:
+		output = _unicode_decode(proc.communicate()[0]).rstrip("\n")
+		output = (proc.wait(), output)
 	if output[0] == os.EX_OK:
 		distcc_str = output[1].split("\n", 1)[0]
 		if "distcc" in settings.features:
@@ -1366,7 +1371,14 @@ def action_info(settings, trees, myopts, myfiles):
 			distcc_str += " [disabled]"
 		append(distcc_str)
 
-	output=subprocess_getstatusoutput("ccache -V")
+	try:
+		proc = subprocess.Popen(["ccache", "-V"],
+			stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	except OSError:
+		output = (1, None)
+	else:
+		output = _unicode_decode(proc.communicate()[0]).rstrip("\n")
+		output = (proc.wait(), output)
 	if output[0] == os.EX_OK:
 		ccache_str = output[1].split("\n", 1)[0]
 		if "ccache" in settings.features:
@@ -2212,7 +2224,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 						print()
 						print("Quitting.")
 						print()
-						sys.exit(0)
+						sys.exit(128 + signal.SIGINT)
 				emergelog(xterm_titles, ">>> Starting rsync with " + dosyncuri)
 				if "--quiet" not in myopts:
 					print(">>> Starting rsync with "+dosyncuri+"...")
@@ -2545,10 +2557,10 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 	if(mybestpv != mypvs) and not "--quiet" in myopts:
 		print()
-		print(red(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended")
-		print(red(" * ")+"that you update portage now, before any other packages are updated.")
+		print(warn(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended")
+		print(warn(" * ")+"that you update portage now, before any other packages are updated.")
 		print()
-		print(red(" * ")+"To update portage, run 'emerge portage' now.")
+		print(warn(" * ")+"To update portage, run 'emerge portage' now.")
 		print()
 
 	display_news_notification(root_config, myopts)
@@ -2708,10 +2720,9 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 		(action == 'prune' and "--nodeps" in opts):
 		# When given a list of atoms, unmerge them in the order given.
 		ordered = action == 'unmerge'
-		unmerge(trees[settings['EROOT']]['root_config'], opts, action,
+		rval = unmerge(trees[settings['EROOT']]['root_config'], opts, action,
 			valid_atoms, ldpath_mtimes, ordered=ordered,
 			scheduler=sched._sched_iface)
-		rval = os.EX_OK
 	else:
 		rval = action_depclean(settings, trees, ldpath_mtimes,
 			opts, action, valid_atoms, spinner, scheduler=sched._sched_iface)
@@ -2762,8 +2773,11 @@ def adjust_config(myopts, settings):
 	settings["EMERGE_WARNING_DELAY"] = str(EMERGE_WARNING_DELAY)
 	settings.backup_changes("EMERGE_WARNING_DELAY")
 
-	if "--buildpkg" in myopts:
+	buildpkg = myopts.get("--buildpkg")
+	if buildpkg is True:
 		settings.features.add("buildpkg")
+	elif buildpkg == 'n':
+		settings.features.discard("buildpkg")
 
 	if "--quiet" in myopts:
 		settings["PORTAGE_QUIET"]="1"
@@ -3051,26 +3065,27 @@ def chk_updated_cfg_files(eroot, config_protect):
 		portage.util.find_updated_config_files(target_root, config_protect))
 
 	for x in result:
-		writemsg_level("\n %s " % (colorize("WARN", "* IMPORTANT:"),),
+		writemsg_level("\n %s " % (colorize("WARN", "* " + _("IMPORTANT:"))),
 			level=logging.INFO, noiselevel=-1)
 		if not x[1]: # it's a protected file
-			writemsg_level("config file '%s' needs updating.\n" % x[0],
+			writemsg_level( _("config file '%s' needs updating.\n") % x[0],
 				level=logging.INFO, noiselevel=-1)
 		else: # it's a protected dir
 			if len(x[1]) == 1:
 				head, tail = os.path.split(x[1][0])
 				tail = tail[len("._cfg0000_"):]
 				fpath = os.path.join(head, tail)
-				writemsg_level("config file '%s' needs updating.\n" % fpath,
+				writemsg_level(_("config file '%s' needs updating.\n") % fpath,
 					level=logging.INFO, noiselevel=-1)
 			else:
-				writemsg_level("%d config files in '%s' need updating.\n" % \
+				writemsg_level( _("%d config files in '%s' need updating.\n") % \
 					(len(x[1]), x[0]), level=logging.INFO, noiselevel=-1)
 
 	if result:
-		print(" "+yellow("*")+" See the "+colorize("INFORM","CONFIGURATION FILES")\
-				+ " section of the " + bold("emerge"))
-		print(" "+yellow("*")+" man page to learn how to update config files.")
+		print(" "+yellow("*")+ " See the "+colorize("INFORM", _("CONFIGURATION FILES"))\
+				+ " " + _("section of the") + " " + bold("emerge"))
+		print(" "+yellow("*")+ " " + _("man page to learn how to update config files."))
+
 
 def display_news_notification(root_config, myopts):
 	if "news" not in root_config.settings.features:
@@ -3086,7 +3101,7 @@ def getgccversion(chost):
 	return:  the current in-use gcc version
 	"""
 
-	gcc_ver_command = 'gcc -dumpversion'
+	gcc_ver_command = ['gcc', '-dumpversion']
 	gcc_ver_prefix = 'gcc-'
 
 	gcc_not_found_error = red(
@@ -3095,16 +3110,40 @@ def getgccversion(chost):
 	"!!! other terminals also.\n"
 	)
 
-	mystatus, myoutput = subprocess_getstatusoutput("gcc-config -c")
+	try:
+		proc = subprocess.Popen(["gcc-config", "-c"],
+			stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	except OSError:
+		myoutput = None
+		mystatus = 1
+	else:
+		myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
+		mystatus = proc.wait()
 	if mystatus == os.EX_OK and myoutput.startswith(chost + "-"):
 		return myoutput.replace(chost + "-", gcc_ver_prefix, 1)
 
-	mystatus, myoutput = subprocess_getstatusoutput(
-		chost + "-" + gcc_ver_command)
+	try:
+		proc = subprocess.Popen(
+			[chost + "-" + gcc_ver_command[0]] + gcc_ver_command[1:],
+			stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	except OSError:
+		myoutput = None
+		mystatus = 1
+	else:
+		myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
+		mystatus = proc.wait()
 	if mystatus == os.EX_OK:
 		return gcc_ver_prefix + myoutput
 
-	mystatus, myoutput = subprocess_getstatusoutput(gcc_ver_command)
+	try:
+		proc = subprocess.Popen(gcc_ver_command,
+			stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	except OSError:
+		myoutput = None
+		mystatus = 1
+	else:
+		myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
+		mystatus = proc.wait()
 	if mystatus == os.EX_OK:
 		return gcc_ver_prefix + myoutput
 

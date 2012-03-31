@@ -104,7 +104,7 @@ class CompositeTask(AsynchronousTask):
 		Subclasses can use this as a generic task exit callback.
 
 		@rtype: int
-		@returns: The task.returncode attribute.
+		@return: The task.returncode attribute.
 		"""
 		self._assert_current(task)
 		if task.returncode != os.EX_OK:

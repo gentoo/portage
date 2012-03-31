@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
@@ -20,12 +20,11 @@ fi
 
 destdir=${2%/*}
 [[ ! -d ${ED}${destdir} ]] && dodir "${destdir}"
-
-# PREFIX LOCAL: when absolute, prefix with offset
+# when absolute, prefix with offset for Gentoo Prefix
 target="${1}"
 [[ ${target:0:1} == "/" ]] && target="${EPREFIX}${target}"
 ln -snf "${target}" "${ED}${2}"
-# END PREFIX LOCAL
+
 ret=$?
 [[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
 exit $ret

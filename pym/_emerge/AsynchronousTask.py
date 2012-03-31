@@ -1,6 +1,8 @@
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import signal
+
 from portage import os
 from portage.util.SlotObject import SlotObject
 
@@ -17,6 +19,8 @@ class AsynchronousTask(SlotObject):
 	__slots__ = ("background", "cancelled", "returncode") + \
 		("_exit_listeners", "_exit_listener_stack", "_start_listeners",
 		"_waiting")
+
+	_cancelled_returncode = - signal.SIGINT
 
 	def start(self):
 		"""
@@ -75,6 +79,17 @@ class AsynchronousTask(SlotObject):
 		to be called by AsynchronousTask.cancel().
 		"""
 		pass
+
+	def _was_cancelled(self):
+		"""
+		If cancelled, set returncode if necessary and return True.
+		Otherwise, return False.
+		"""
+		if self.cancelled:
+			if self.returncode is None:
+				self.returncode = self._cancelled_returncode
+			return True
+		return False
 
 	def addStartListener(self, f):
 		"""

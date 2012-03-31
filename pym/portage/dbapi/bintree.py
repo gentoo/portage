@@ -215,7 +215,7 @@ def _pkgindex_cpv_map_latest_build(pkgindex):
 	@param pkgindex: A PackageIndex instance.
 	@type pkgindex: PackageIndex
 	@rtype: dict
-	@returns: a dict containing entry for the give cpv.
+	@return: a dict containing entry for the give cpv.
 	"""
 	cpv_map = {}
 
@@ -1158,7 +1158,7 @@ class binarytree(object):
 		Performs checksums and evaluates USE flag conditionals.
 		Raises InvalidDependString if necessary.
 		@rtype: dict
-		@returns: a dict containing entry for the give cpv.
+		@return: a dict containing entry for the give cpv.
 		"""
 
 		pkg_path = self.getname(cpv)
@@ -1364,7 +1364,7 @@ class binarytree(object):
 		Verify digests for the given package and raise DigestException
 		if verification fails.
 		@rtype: bool
-		@returns: True if digests could be located, False otherwise.
+		@return: True if digests could be located, False otherwise.
 		"""
 		cpv = pkg
 		if not isinstance(cpv, basestring):

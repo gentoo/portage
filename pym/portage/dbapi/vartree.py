@@ -935,7 +935,7 @@ class vardbapi(dbapi):
 		@param myroot: ignored, self._eroot is used instead
 		@param mycpv: ignored
 		@rtype: int
-		@returns: new counter value
+		@return: new counter value
 		"""
 		myroot = None
 		mycpv = None
@@ -1746,7 +1746,7 @@ class dblink(object):
 			PreservedLibsRegistry yet.
 		@type preserve_paths: set
 		@rtype: Integer
-		@returns:
+		@return:
 		1. os.EX_OK if everything went well.
 		2. return code of the failed phase (for prerm, postrm, cleanrm)
 		"""
@@ -1979,6 +1979,15 @@ class dblink(object):
 			prev_mtimes=ldpath_mtimes,
 			contents=contents, env=self.settings,
 			writemsg_level=self._display_merge, vardbapi=self.vartree.dbapi)
+
+		unmerge_with_replacement = preserve_paths is not None
+		if not unmerge_with_replacement:
+			# When there's a replacement package which calls us via treewalk,
+			# treewalk will automatically call _prune_plib_registry for us.
+			# Otherwise, we need to call _prune_plib_registry ourselves.
+			# Don't pass in the "unmerge=True" flag here, since that flag
+			# is intended to be used _prior_ to unmerge, not after.
+			self._prune_plib_registry()
 
 		return os.EX_OK
 
@@ -2551,7 +2560,7 @@ class dblink(object):
 		@param destroot:
 		@type destroot:
 		@rtype: Boolean
-		@returns:
+		@return:
 		1. True if this package owns the file.
 		2. False if this package does not own the file.
 		"""
@@ -3389,7 +3398,7 @@ class dblink(object):
 		@param prev_mtimes: { Filename:mtime } mapping for env_update
 		@type prev_mtimes: Dictionary
 		@rtype: Boolean
-		@returns:
+		@return:
 		1. 0 on success
 		2. 1 on failure
 		
@@ -3520,6 +3529,8 @@ class dblink(object):
 		# inexpensive since we call os.walk() here anyway).
 		unicode_errors = []
 		line_ending_re = re.compile('[\n\r]')
+		srcroot_len = len(srcroot)
+		ed_len = len(self.settings["ED"])
 
 		while True:
 
@@ -3529,7 +3540,6 @@ class dblink(object):
 			myfilelist = []
 			mylinklist = []
 			paths_with_newlines = []
-			srcroot_len = len(srcroot)
 			def onerror(e):
 				raise
 			walk_iter = os.walk(srcroot, onerror=onerror)
@@ -3557,7 +3567,7 @@ class dblink(object):
 						encoding=_encodings['merge'], errors='replace')
 					os.rename(parent, new_parent)
 					unicode_error = True
-					unicode_errors.append(new_parent[srcroot_len:])
+					unicode_errors.append(new_parent[ed_len:])
 					break
 
 				for fname in files:
@@ -3576,7 +3586,7 @@ class dblink(object):
 						new_fpath = os.path.join(parent, new_fname)
 						os.rename(fpath, new_fpath)
 						unicode_error = True
-						unicode_errors.append(new_fpath[srcroot_len:])
+						unicode_errors.append(new_fpath[ed_len:])
 						fname = new_fname
 						fpath = new_fpath
 					else:
@@ -3603,7 +3613,8 @@ class dblink(object):
 				break
 
 		if unicode_errors:
-			eerror(_merge_unicode_error(unicode_errors))
+			self._elog("eqawarn", "preinst",
+				_merge_unicode_error(unicode_errors))
 
 		if paths_with_newlines:
 			msg = []
@@ -3671,6 +3682,21 @@ class dblink(object):
 		collisions, symlink_collisions, plib_collisions = \
 			self._collision_protect(srcroot, destroot,
 			others_in_slot + blockers, myfilelist, mylinklist)
+
+		if symlink_collisions:
+			# Symlink collisions need to be distinguished from other types
+			# of collisions, in order to avoid confusion (see bug #409359).
+			msg = _("Package '%s' has one or more collisions "
+				"between symlinks and directories, which is explicitly "
+				"forbidden by PMS section 13.4 (see bug #326685):") % \
+				(self.settings.mycpv,)
+			msg = textwrap.wrap(msg, 70)
+			msg.append("")
+			for f in symlink_collisions:
+				msg.append("\t%s" % os.path.join(destroot,
+					f.lstrip(os.path.sep)))
+			msg.append("")
+			self._elog("eerror", "preinst", msg)
 
 		if collisions:
 			collision_protect = "collision-protect" in self.settings.features
@@ -3753,12 +3779,20 @@ class dblink(object):
 					eerror([_("None of the installed"
 						" packages claim the file(s)."), ""])
 
+			symlink_abort_msg =_("Package '%s' NOT merged since it has "
+				"one or more collisions between symlinks and directories, "
+				"which is explicitly forbidden by PMS section 13.4 "
+				"(see bug #326685).")
+
 			# The explanation about the collision and how to solve
 			# it may not be visible via a scrollback buffer, especially
 			# if the number of file collisions is large. Therefore,
 			# show a summary at the end.
 			abort = False
-			if collision_protect:
+			if symlink_collisions:
+				abort = True
+				msg = symlink_abort_msg % (self.settings.mycpv,)
+			elif collision_protect:
 				abort = True
 				msg = _("Package '%s' NOT merged due to file collisions.") % \
 					self.settings.mycpv
@@ -3766,12 +3800,6 @@ class dblink(object):
 				abort = True
 				msg = _("Package '%s' NOT merged due to file collisions.") % \
 					self.settings.mycpv
-			elif symlink_collisions:
-				abort = True
-				msg = _("Package '%s' NOT merged due to collision " + \
-				"between a symlink and a directory which is explicitly " + \
-				"forbidden by PMS (see bug #326685).") % \
-				(self.settings.mycpv,)
 			else:
 				msg = _("Package '%s' merged despite file collisions.") % \
 					self.settings.mycpv
@@ -4187,7 +4215,7 @@ class dblink(object):
 		@param thismtime: The current time (typically long(time.time())
 		@type thismtime: Long
 		@rtype: None or Boolean
-		@returns:
+		@return:
 		1. True on failure
 		2. None otherwise
 		

@@ -370,7 +370,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	@param pre_exec: A function to be called with no arguments just prior to the exec call.
 	@type pre_exec: callable
 	@rtype: None
-	@returns: Never returns (calls os.execve)
+	@return: Never returns (calls os.execve)
 	"""
 	
 	# If the process we're creating hasn't been given a name
@@ -417,7 +417,19 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	os.execve(binary, myargs, env)
 
 def _setup_pipes(fd_pipes, close_fds=True):
-	"""Setup pipes for a forked process."""
+	"""Setup pipes for a forked process.
+
+	WARNING: When not followed by exec, the close_fds behavior
+	can trigger interference from destructors that close file
+	descriptors. This interference happens when the garbage
+	collector intermittently executes such destructors after their
+	corresponding file descriptors have been re-used, leading
+	to intermittent "[Errno 9] Bad file descriptor" exceptions in
+	forked processes. This problem has been observed with PyPy 1.8,
+	and also with CPython under some circumstances (as triggered
+	by xmpppy in bug #374335). In order to close a safe subset of
+	file descriptors, see portage.locks._close_fds().
+	"""
 	my_fds = {}
 	# To protect from cases where direct assignment could
 	# clobber needed fds ({1:2, 2:1}) we first dupe the fds
@@ -445,7 +457,7 @@ def find_binary(binary):
 	@param binary: Name of the binary to find
 	@type string
 	@rtype: None or string
-	@returns: full path to binary or None if the binary could not be located.
+	@return: full path to binary or None if the binary could not be located.
 	"""
 	for path in os.environ.get("PATH", "").split(":"):
 		filename = "%s/%s" % (path, binary)

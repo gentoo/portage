@@ -67,7 +67,7 @@ class QueueScheduler(PollScheduler):
 	def _schedule_tasks(self):
 		"""
 		@rtype: bool
-		@returns: True if there may be remaining tasks to schedule,
+		@return: True if there may be remaining tasks to schedule,
 			False otherwise.
 		"""
 		if self._terminated_tasks:

@@ -1,5 +1,5 @@
 # portage: Lock management code
-# Copyright 2004-2011 Gentoo Foundation
+# Copyright 2004-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
@@ -35,6 +35,19 @@ if platform.python_implementation() == 'PyPy':
 # Used by emerge in order to disable the "waiting for lock" message
 # so that it doesn't interfere with the status display.
 _quiet = False
+
+
+_open_fds = set()
+
+def _close_fds():
+	"""
+	This is intended to be called after a fork, in order to close file
+	descriptors for locks held by the parent process. This can be called
+	safely after a fork without exec, unlike the _setup_pipes close_fds
+	behavior.
+	"""
+	while _open_fds:
+		os.close(_open_fds.pop())
 
 def lockdir(mydir, flags=0):
 	return lockfile(mydir, wantnewlockfile=1, flags=flags)
@@ -193,6 +206,9 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 			mypath, wantnewlockfile=wantnewlockfile, unlinkfile=unlinkfile,
 			waiting_msg=waiting_msg, flags=flags)
 
+	if myfd != HARDLINK_FD:
+		_open_fds.add(myfd)
+
 	writemsg(str((lockfilename,myfd,unlinkfile))+"\n",1)
 	return (lockfilename,myfd,unlinkfile,locking_method)
 
@@ -233,6 +249,7 @@ def unlockfile(mytuple):
 		writemsg(_("lockfile does not exist '%s'\n") % lockfilename,1)
 		if myfd is not None:
 			os.close(myfd)
+			_open_fds.remove(myfd)
 		return False
 
 	try:
@@ -243,6 +260,7 @@ def unlockfile(mytuple):
 	except OSError:
 		if isinstance(lockfilename, basestring):
 			os.close(myfd)
+			_open_fds.remove(myfd)
 		raise IOError(_("Failed to unlock file '%s'\n") % lockfilename)
 
 	try:
@@ -264,6 +282,7 @@ def unlockfile(mytuple):
 			else:
 				writemsg(_("lockfile does not exist '%s'\n") % lockfilename, 1)
 				os.close(myfd)
+				_open_fds.remove(myfd)
 				return False
 	except SystemExit:
 		raise
@@ -276,6 +295,7 @@ def unlockfile(mytuple):
 	# open fd closed automatically on them.
 	if isinstance(lockfilename, basestring):
 		os.close(myfd)
+		_open_fds.remove(myfd)
 
 	return True
 
