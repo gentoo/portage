@@ -660,14 +660,15 @@ def varexpand(mystring, mydict=None, error_leader=None):
 	This would be a good bunch of code to port to C.
 	"""
 	numvars=0
-	mystring=" "+mystring
 	#in single, double quotes
 	insing=0
 	indoub=0
-	pos=1
+	pos = 0
+	length = len(mystring)
 	newstring = []
-	while (pos<len(mystring)):
-		if (mystring[pos]=="'") and (mystring[pos-1]!="\\"):
+	while pos < length:
+		current = mystring[pos]
+		if current == "'":
 			if (indoub):
 				newstring.append("'")
 			else:
@@ -675,7 +676,7 @@ def varexpand(mystring, mydict=None, error_leader=None):
 				insing=not insing
 			pos=pos+1
 			continue
-		elif (mystring[pos]=='"') and (mystring[pos-1]!="\\"):
+		elif current == '"':
 			if (insing):
 				newstring.append('"')
 			else:
@@ -685,11 +686,11 @@ def varexpand(mystring, mydict=None, error_leader=None):
 			continue
 		if (not insing): 
 			#expansion time
-			if (mystring[pos]=="\n"):
+			if current == "\n":
 				#convert newlines to spaces
 				newstring.append(" ")
-				pos=pos+1
-			elif (mystring[pos]=="\\"):
+				pos += 1
+			elif current == "\\":
 				# For backslash expansion, this function used to behave like
 				# echo -e, but that's not needed for our purposes. We want to
 				# behave like bash does when expanding a variable assignment
@@ -699,19 +700,27 @@ def varexpand(mystring, mydict=None, error_leader=None):
 				# escaped quotes here, since getconfig() uses shlex
 				# to handle that earlier.
 				if (pos+1>=len(mystring)):
-					newstring.append(mystring[pos])
+					newstring.append(current)
 					break
 				else:
-					a = mystring[pos + 1]
-					pos = pos + 2
-					if a in ("\\", "$"):
-						newstring.append(a)
-					elif a == "\n":
+					current = mystring[pos + 1]
+					pos += 2
+					if current == "$":
+						newstring.append(current)
+					elif current == "\\":
+						newstring.append(current)
+						# BUG: This spot appears buggy, but it's intended to
+						# be bug-for-bug compatible with existing behavior.
+						if pos < length and \
+							mystring[pos] in ("'", '"', "$"):
+							newstring.append(mystring[pos])
+							pos += 1
+					elif current == "\n":
 						pass
 					else:
 						newstring.append(mystring[pos - 2:pos])
 					continue
-			elif (mystring[pos]=="$") and (mystring[pos-1]!="\\"):
+			elif current == "$":
 				pos=pos+1
 				if mystring[pos]=="{":
 					pos=pos+1
@@ -754,11 +763,11 @@ def varexpand(mystring, mydict=None, error_leader=None):
 				if myvarname in mydict:
 					newstring.append(mydict[myvarname])
 			else:
-				newstring.append(mystring[pos])
-				pos=pos+1
+				newstring.append(current)
+				pos += 1
 		else:
-			newstring.append(mystring[pos])
-			pos=pos+1
+			newstring.append(current)
+			pos += 1
 
 	return "".join(newstring)
 
