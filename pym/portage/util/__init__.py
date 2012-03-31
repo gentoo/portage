@@ -661,21 +661,21 @@ def varexpand(mystring, mydict=None):
 	insing=0
 	indoub=0
 	pos=1
-	newstring = ""
+	newstring = []
 	while (pos<len(mystring)):
 		if (mystring[pos]=="'") and (mystring[pos-1]!="\\"):
 			if (indoub):
-				newstring=newstring+"'"
+				newstring.append("'")
 			else:
-				newstring += "'" # Quote removal is handled by shlex.
+				newstring.append("'") # Quote removal is handled by shlex.
 				insing=not insing
 			pos=pos+1
 			continue
 		elif (mystring[pos]=='"') and (mystring[pos-1]!="\\"):
 			if (insing):
-				newstring=newstring+'"'
+				newstring.append('"')
 			else:
-				newstring += '"' # Quote removal is handled by shlex.
+				newstring.append('"') # Quote removal is handled by shlex.
 				indoub=not indoub
 			pos=pos+1
 			continue
@@ -683,7 +683,7 @@ def varexpand(mystring, mydict=None):
 			#expansion time
 			if (mystring[pos]=="\n"):
 				#convert newlines to spaces
-				newstring=newstring+" "
+				newstring.append(" ")
 				pos=pos+1
 			elif (mystring[pos]=="\\"):
 				# For backslash expansion, this function used to behave like
@@ -695,17 +695,17 @@ def varexpand(mystring, mydict=None):
 				# escaped quotes here, since getconfig() uses shlex
 				# to handle that earlier.
 				if (pos+1>=len(mystring)):
-					newstring=newstring+mystring[pos]
+					newstring.append(mystring[pos])
 					break
 				else:
 					a = mystring[pos + 1]
 					pos = pos + 2
 					if a in ("\\", "$"):
-						newstring = newstring + a
+						newstring.append(a)
 					elif a == "\n":
 						pass
 					else:
-						newstring = newstring + mystring[pos-2:pos]
+						newstring.append(mystring[pos - 2:pos])
 					continue
 			elif (mystring[pos]=="$") and (mystring[pos-1]!="\\"):
 				pos=pos+1
@@ -734,15 +734,15 @@ def varexpand(mystring, mydict=None):
 					return ""
 				numvars=numvars+1
 				if myvarname in mydict:
-					newstring=newstring+mydict[myvarname] 
+					newstring.append(mydict[myvarname])
 			else:
-				newstring=newstring+mystring[pos]
+				newstring.append(mystring[pos])
 				pos=pos+1
 		else:
-			newstring=newstring+mystring[pos]
+			newstring.append(mystring[pos])
 			pos=pos+1
 
-	return newstring
+	return "".join(newstring)
 
 # broken and removed, but can still be imported
 pickle_write = None
