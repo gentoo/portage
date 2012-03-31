@@ -636,7 +636,8 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 				continue
 
 			if expand:
-				mykeys[key] = varexpand(val, expand_map)
+				mykeys[key] = varexpand(val, mydict=expand_map,
+					error_leader=lex.error_leader)
 				expand_map[key] = mykeys[key]
 			else:
 				mykeys[key] = val
@@ -647,8 +648,9 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 	return mykeys
 
 _varexpand_word_chars = frozenset(string.ascii_letters + string.digits + "_")
+_varexpand_unexpected_eof_msg = "unexpected EOF while looking for matching `}'"
 
-def varexpand(mystring, mydict=None):
+def varexpand(mystring, mydict=None, error_leader=None):
 	if mydict is None:
 		mydict = {}
 
@@ -720,6 +722,10 @@ def varexpand(mystring, mydict=None):
 				while mystring[pos] in _varexpand_word_chars:
 					if (pos+1)>=len(mystring):
 						if braced:
+							msg = _varexpand_unexpected_eof_msg
+							if error_leader is not None:
+								msg = error_leader() + msg
+							writemsg(msg + "\n", noiselevel=-1)
 							return ""
 						else:
 							pos=pos+1
@@ -728,10 +734,21 @@ def varexpand(mystring, mydict=None):
 				myvarname=mystring[myvstart:pos]
 				if braced:
 					if mystring[pos]!="}":
+						msg = _varexpand_unexpected_eof_msg
+						if error_leader is not None:
+							msg = error_leader() + msg
+						writemsg(msg + "\n", noiselevel=-1)
 						return ""
 					else:
 						pos=pos+1
 				if len(myvarname)==0:
+					msg = "$"
+					if braced:
+						msg += "{}"
+					msg += ": bad substitution"
+					if error_leader is not None:
+						msg = error_leader() + msg
+					writemsg(msg + "\n", noiselevel=-1)
 					return ""
 				numvars=numvars+1
 				if myvarname in mydict:
