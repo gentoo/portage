@@ -30,7 +30,7 @@ def diffstatusoutput(cmd, file1, file2):
     """
     # Use Popen to emulate getstatusoutput(), since getstatusoutput() may
     # raise a UnicodeDecodeError which makes the output inaccessible.
-    proc = subprocess.Popen(portage._unicode_encode(cmd % (file1, file2)),
+    proc = subprocess.Popen(cmd % (file1, file2),
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
     output = portage._unicode_decode(proc.communicate()[0])
     if output and output[-1] == "\n":
