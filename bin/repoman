@@ -547,7 +547,7 @@ if options.if_modified == "y" and vcs is None:
 	options.if_modified = "n"
 
 # Disable copyright/mtime check if vcs does not preserve mtime (bug #324075).
-vcs_preserves_mtime = vcs not in ('git',)
+vcs_preserves_mtime = vcs not in ('git', 'svn')
 
 vcs_local_opts = repoman_settings.get("REPOMAN_VCS_LOCAL_OPTS", "").split()
 vcs_global_opts = repoman_settings.get("REPOMAN_VCS_GLOBAL_OPTS")
