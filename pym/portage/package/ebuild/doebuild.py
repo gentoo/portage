@@ -1151,8 +1151,7 @@ def _check_temp_dir(settings):
 			noiselevel=-1)
 		return 1
 
-	else:
-		fd = tempfile.NamedTemporaryFile(prefix="exectest-", dir=checkdir)
+	with tempfile.NamedTemporaryFile(prefix="exectest-", dir=checkdir) as fd:
 		os.chmod(fd.name, 0o755)
 		if not os.access(fd.name, os.X_OK):
 			writemsg(_("Can not execute files in %s\n"

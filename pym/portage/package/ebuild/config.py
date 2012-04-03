@@ -320,7 +320,7 @@ class config(object):
 			expand_map["EPREFIX"] = eprefix
 
 			env_d = getconfig(os.path.join(eroot, "etc", "profile.env"),
-				expand=expand_map)
+				expand=False)
 
 			make_globals = getconfig(os.path.join(
 				self.global_config_path, 'make.globals'), expand=expand_map)
