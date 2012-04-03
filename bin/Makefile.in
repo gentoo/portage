@@ -20,6 +20,7 @@ usr_binprogs = \
 	ebuild \
 	egencache \
 	emerge \
+	emerge-webrsync \
 	portageq \
 	quickpkg \
 	repoman
@@ -28,7 +29,6 @@ usr_sbinprogs = \
 	archive-conf \
 	dispatch-conf \
 	emaint \
-	emerge-webrsync \
 	env-update \
 	etc-update \
 	fixpackages \
