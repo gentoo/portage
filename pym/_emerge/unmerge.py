@@ -542,10 +542,23 @@ def unmerge(root_config, myopts, unmerge_action,
 	if clean_delay and not autoclean:
 		countdown(int(settings["CLEAN_DELAY"]), ">>> Unmerging")
 
+	all_selected = set()
+	all_selected.update(*[x["selected"] for x in pkgmap])
+
+	# Set counter variables
+	curval = 1
+	maxval = len(all_selected)
+
 	for x in range(len(pkgmap)):
 		for y in pkgmap[x]["selected"]:
-			writemsg_level(">>> Unmerging "+y+"...\n", noiselevel=-1)
 			emergelog(xterm_titles, "=== Unmerging... ("+y+")")
+			message = ">>> Unmerging ({0} of {1}) {2}...\n".format(
+				colorize("MERGE_LIST_PROGRESS", str(curval)),
+				colorize("MERGE_LIST_PROGRESS", str(maxval)),
+				y)
+			writemsg_level(message, noiselevel=-1)
+			curval += 1
+
 			mysplit = y.split("/")
 			#unmerge...
 			retval = portage.unmerge(mysplit[0], mysplit[1],
