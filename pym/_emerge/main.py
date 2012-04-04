@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -6,6 +6,7 @@ from __future__ import print_function
 import logging
 import signal
 import stat
+import subprocess
 import sys
 import textwrap
 import platform
@@ -75,6 +76,7 @@ options=[
 "--unordered-display",
 "--update",
 "--verbose",
+"--verbose-main-repo-display",
 ]
 
 shortmapping={
@@ -178,11 +180,21 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 									raise
 								del e
 					processed_count += 1
-					myso = portage.subprocess_getstatusoutput(
-						"LANG=C LANGUAGE=C /usr/bin/install-info " +
-						"--dir-file=%s/dir %s/%s" % (inforoot, inforoot, x))[1]
+					try:
+						proc = subprocess.Popen(
+							['/usr/bin/install-info',
+							'--dir-file=%s' % os.path.join(inforoot, "dir"),
+							os.path.join(inforoot, x)],
+							env=dict(os.environ, LANG="C", LANGUAGE="C"),
+							stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+					except OSError:
+						myso = None
+					else:
+						myso = _unicode_decode(
+							proc.communicate()[0]).rstrip("\n")
+						proc.wait()
 					existsstr="already exists, for file `"
-					if myso!="":
+					if myso:
 						if re.search(existsstr,myso):
 							# Already exists... Don't increment the count for this.
 							pass
@@ -993,8 +1005,6 @@ def parse_opts(tmpcmdline, silent=False):
 
 	if myoptions.buildpkg in true_y:
 		myoptions.buildpkg = True
-	else:
-		myoptions.buildpkg = None
 
 	if myoptions.buildpkg_exclude:
 		bad_atoms = _find_bad_atoms(myoptions.buildpkg_exclude, less_strict=True)
@@ -1839,7 +1849,7 @@ def emerge_main(args=None):
 						portage_group_warning()
 					if userquery("Would you like to add --pretend to options?",
 						"--ask-enter-invalid" in myopts) == "No":
-						return 1
+						return 128 + signal.SIGINT
 					myopts["--pretend"] = True
 					del myopts["--ask"]
 				else:

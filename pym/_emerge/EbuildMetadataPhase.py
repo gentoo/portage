@@ -1,8 +1,7 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.SubProcess import SubProcess
-from _emerge.PollConstants import PollConstants
 import sys
 from portage.cache.mappings import slot_dict_class
 import portage
@@ -111,7 +110,7 @@ class EbuildMetadataPhase(SubProcess):
 
 	def _output_handler(self, fd, event):
 
-		if event & PollConstants.POLLIN:
+		if event & self.scheduler.IO_IN:
 			while True:
 				try:
 					self._raw_metadata.append(
@@ -127,6 +126,8 @@ class EbuildMetadataPhase(SubProcess):
 						break
 
 		self._unregister_if_appropriate(event)
+
+		return True
 
 	def _set_returncode(self, wait_retval):
 		SubProcess._set_returncode(self, wait_retval)

@@ -19,7 +19,7 @@ from portage.util import apply_secpass_permissions
 class AbstractEbuildProcess(SpawnProcess):
 
 	__slots__ = ('phase', 'settings',) + \
-		('_build_dir', '_ipc_daemon', '_exit_command',)
+		('_build_dir', '_ipc_daemon', '_exit_command', '_exit_timeout_id')
 	_phases_without_builddir = ('clean', 'cleanrm', 'depend', 'help',)
 	_phases_interactive_whitelist = ('config',)
 
@@ -157,13 +157,29 @@ class AbstractEbuildProcess(SpawnProcess):
 	def _exit_command_callback(self):
 		if self._registered:
 			# Let the process exit naturally, if possible.
-			self.scheduler.schedule(self._reg_id, timeout=self._exit_timeout)
-			if self._registered:
-				# If it doesn't exit naturally in a reasonable amount
-				# of time, kill it (solves bug #278895). We try to avoid
-				# this when possible since it makes sandbox complain about
-				# being killed by a signal.
-				self.cancel()
+			self._exit_timeout_id = \
+				self.scheduler.timeout_add(self._exit_timeout,
+				self._exit_command_timeout_cb)
+
+	def _exit_command_timeout_cb(self):
+		if self._registered:
+			# If it doesn't exit naturally in a reasonable amount
+			# of time, kill it (solves bug #278895). We try to avoid
+			# this when possible since it makes sandbox complain about
+			# being killed by a signal.
+			self.cancel()
+			self._exit_timeout_id = \
+				self.scheduler.timeout_add(self._cancel_timeout,
+					self._cancel_timeout_cb)
+		else:
+			self._exit_timeout_id = None
+
+		return False # only run once
+
+	def _cancel_timeout_cb(self):
+		self._exit_timeout_id = None
+		self.wait()
+		return False # only run once
 
 	def _orphan_process_warn(self):
 		phase = self.phase
@@ -252,6 +268,10 @@ class AbstractEbuildProcess(SpawnProcess):
 
 	def _set_returncode(self, wait_retval):
 		SpawnProcess._set_returncode(self, wait_retval)
+
+		if self._exit_timeout_id is not None:
+			self.scheduler.source_remove(self._exit_timeout_id)
+			self._exit_timeout_id = None
 
 		if self._ipc_daemon is not None:
 			self._ipc_daemon.cancel()

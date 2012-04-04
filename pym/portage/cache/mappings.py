@@ -316,7 +316,7 @@ def slot_dict_class(keys, prefix="_val_"):
 		attribute names from keys
 	@type prefix: String
 	@rtype: SlotDict
-	@returns: A class that constructs SlotDict instances
+	@return: A class that constructs SlotDict instances
 		having the specified keys.
 	"""
 	if isinstance(keys, frozenset):

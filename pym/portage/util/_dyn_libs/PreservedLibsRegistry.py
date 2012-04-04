@@ -1,8 +1,10 @@
-# Copyright 1998-2011 Gentoo Foundation
+# Copyright 1998-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
+import json
 import logging
+import stat
 import sys
 
 try:
@@ -27,6 +29,19 @@ if sys.hexversion >= 0x3000000:
 
 class PreservedLibsRegistry(object):
 	""" This class handles the tracking of preserved library objects """
+
+	# JSON read support has been available since portage-2.2.0_alpha89.
+	_json_write = True
+
+	_json_write_opts = {
+		"ensure_ascii": False,
+		"indent": "\t",
+		"sort_keys": True
+	}
+	if sys.hexversion < 0x30200F0:
+		# indent only supports int number of spaces
+		_json_write_opts["indent"] = 4
+
 	def __init__(self, root, filename):
 		""" 
 			@param root: root used to check existence of paths in pruneNonExisting
@@ -56,17 +71,11 @@ class PreservedLibsRegistry(object):
 		""" Reload the registry data from file """
 		self._data = None
 		f = None
+		content = None
 		try:
 			f = open(_unicode_encode(self._filename,
 					encoding=_encodings['fs'], errors='strict'), 'rb')
-			if os.fstat(f.fileno()).st_size == 0:
-				# ignore empty lock file
-				pass
-			else:
-				self._data = pickle.load(f)
-		except (AttributeError, EOFError, ValueError, pickle.UnpicklingError) as e:
-			writemsg_level(_("!!! Error loading '%s': %s\n") % \
-				(self._filename, e), level=logging.ERROR, noiselevel=-1)
+			content = f.read()
 		except EnvironmentError as e:
 			if not hasattr(e, 'errno'):
 				raise
@@ -79,8 +88,33 @@ class PreservedLibsRegistry(object):
 		finally:
 			if f is not None:
 				f.close()
+
+		# content is empty if it's an empty lock file
+		if content:
+			try:
+				self._data = json.loads(_unicode_decode(content,
+					encoding=_encodings['repo.content'], errors='strict'))
+			except SystemExit:
+				raise
+			except Exception as e:
+				try:
+					self._data = pickle.loads(content)
+				except SystemExit:
+					raise
+				except Exception:
+					writemsg_level(_("!!! Error loading '%s': %s\n") %
+						(self._filename, e), level=logging.ERROR,
+						noiselevel=-1)
+
 		if self._data is None:
 			self._data = {}
+		else:
+			for k, v in self._data.items():
+				if isinstance(v, (list, tuple)) and len(v) == 3 and \
+					isinstance(v[2], set):
+					# convert set to list, for write with JSONEncoder
+					self._data[k] = (v[0], v[1], list(v[2]))
+
 		self._data_orig = self._data.copy()
 		self.pruneNonExisting()
 
@@ -97,7 +131,12 @@ class PreservedLibsRegistry(object):
 			return
 		try:
 			f = atomic_ofstream(self._filename, 'wb')
-			pickle.dump(self._data, f, protocol=2)
+			if self._json_write:
+				f.write(_unicode_encode(
+					json.dumps(self._data, **self._json_write_opts),
+					encoding=_encodings['repo.content'], errors='strict'))
+			else:
+				pickle.dump(self._data, f, protocol=2)
 			f.close()
 		except EnvironmentError as e:
 			if e.errno != PermissionDenied.errno:
@@ -138,6 +177,9 @@ class PreservedLibsRegistry(object):
 				self._normalize_counter(self._data[cps][1]) == counter:
 			del self._data[cps]
 		elif len(paths) > 0:
+			if isinstance(paths, set):
+				# convert set to list, for write with JSONEncoder
+				paths = list(paths)
 			self._data[cps] = (cpv, counter, paths)
 
 	def unregister(self, cpv, slot, counter):
@@ -155,9 +197,38 @@ class PreservedLibsRegistry(object):
 		os = _os_merge
 
 		for cps in list(self._data):
-			cpv, counter, paths = self._data[cps]
-			paths = [f for f in paths \
-				if os.path.exists(os.path.join(self._root, f.lstrip(os.sep)))]
+			cpv, counter, _paths = self._data[cps]
+
+			paths = []
+			hardlinks = set()
+			symlinks = {}
+			for f in _paths:
+				f_abs = os.path.join(self._root, f.lstrip(os.sep))
+				try:
+					lst = os.lstat(f_abs)
+				except OSError:
+					continue
+				if stat.S_ISLNK(lst.st_mode):
+					try:
+						symlinks[f] = os.readlink(f_abs)
+					except OSError:
+						continue
+				elif stat.S_ISREG(lst.st_mode):
+					hardlinks.add(f)
+					paths.append(f)
+
+			# Only count symlinks as preserved if they still point to a hardink
+			# in the same directory, in order to handle cases where a tool such
+			# as eselect-opengl has updated the symlink to point to a hardlink
+			# in a different directory (see bug #406837). The unused hardlink
+			# is automatically found by _find_unused_preserved_libs, since the
+			# soname symlink no longer points to it. After the hardlink is
+			# removed by _remove_preserved_libs, it calls pruneNonExisting
+			# which eliminates the irrelevant symlink from the registry here.
+			for f, target in symlinks.items():
+				if os.path.join(os.path.dirname(f), target) in hardlinks:
+					paths.append(f)
+
 			if len(paths) > 0:
 				self._data[cps] = (cpv, counter, paths)
 			else:
@@ -171,7 +242,7 @@ class PreservedLibsRegistry(object):
 	
 	def getPreservedLibs(self):
 		""" Return a mapping of packages->preserved objects.
-			@returns mapping of package instances to preserved objects
+			@return mapping of package instances to preserved objects
 			@rtype Dict cpv->list-of-paths
 		"""
 		if self._data is None:

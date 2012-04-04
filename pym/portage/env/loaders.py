@@ -40,7 +40,7 @@ def RecursiveFileLoader(filename):
 
 	@param filename: name of a file/directory to traverse
 	@rtype: list
-	@returns: List of files to process
+	@return: List of files to process
 	"""
 
 	try:
@@ -139,7 +139,7 @@ class FileLoader(DataLoader):
 			load all files in self.fname
 		@type: Boolean
 		@rtype: tuple
-		@returns:
+		@return:
 		Returns (data,errors), both may be empty dicts or populated.
 		"""
 		data = {}

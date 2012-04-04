@@ -50,7 +50,7 @@ from portage.exception import DigestException, FileNotFound, \
 	IncorrectParameter, InvalidDependString, PermissionDenied, \
 	UnsupportedAPIException
 from portage.localization import _
-from portage.output import style_to_ansi_code
+from portage.output import colormap
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
 from portage.util import apply_recursive_permissions, \
 	apply_secpass_permissions, noiselimit, normalize_path, \
@@ -174,19 +174,31 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	ebuild_path = os.path.abspath(myebuild)
 	pkg_dir     = os.path.dirname(ebuild_path)
 	mytree = os.path.dirname(os.path.dirname(pkg_dir))
-
-	if "CATEGORY" in mysettings.configdict["pkg"]:
-		cat = mysettings.configdict["pkg"]["CATEGORY"]
-	else:
-		cat = os.path.basename(normalize_path(os.path.join(pkg_dir, "..")))
-
 	mypv = os.path.basename(ebuild_path)[:-7]
-
-	mycpv = cat+"/"+mypv
 	mysplit = _pkgsplit(mypv)
 	if mysplit is None:
 		raise IncorrectParameter(
 			_("Invalid ebuild path: '%s'") % myebuild)
+
+	if mysettings.mycpv is not None and \
+		mysettings.configdict["pkg"].get("PF") == mypv and \
+		"CATEGORY" in mysettings.configdict["pkg"]:
+		# Assume that PF is enough to assume that we've got
+		# the correct CATEGORY, though this is not really
+		# a solid assumption since it's possible (though
+		# unlikely) that two packages in different
+		# categories have the same PF. Callers should call
+		# setcpv or create a clean clone of a locked config
+		# instance in order to ensure that this assumption
+		# does not fail like in bug #408817.
+		cat = mysettings.configdict["pkg"]["CATEGORY"]
+		mycpv = mysettings.mycpv
+	elif os.path.basename(pkg_dir) in (mysplit[0], mypv):
+		# portdbapi or vardbapi
+		cat = os.path.basename(os.path.dirname(pkg_dir))
+		mycpv = cat + "/" + mypv
+	else:
+		raise AssertionError("unable to determine CATEGORY")
 
 	# Make a backup of PORTAGE_TMPDIR prior to calling config.reset()
 	# so that the caller can override it.
@@ -300,11 +312,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_DIR)
 
 	# Allow color.map to control colors associated with einfo, ewarn, etc...
-	mycolors = []
-	for c in ("GOOD", "WARN", "BAD", "HILITE", "BRACKET"):
-		mycolors.append("%s=$'%s'" % \
-			(c, style_to_ansi_code(c)))
-	mysettings["PORTAGE_COLORMAP"] = "\n".join(mycolors)
+	mysettings["PORTAGE_COLORMAP"] = colormap()
 
 	if "COLUMNS" not in mysettings:
 		# Set COLUMNS, in order to prevent unnecessary stty calls
@@ -472,7 +480,7 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 		caller clean up all returned PIDs.
 	@type returnpid: Boolean
 	@rtype: Boolean
-	@returns:
+	@return:
 	1. 0 for success
 	2. 1 for error
 	
@@ -1144,8 +1152,7 @@ def _check_temp_dir(settings):
 			noiselevel=-1)
 		return 1
 
-	else:
-		fd = tempfile.NamedTemporaryFile(prefix="exectest-", dir=checkdir)
+	with tempfile.NamedTemporaryFile(prefix="exectest-", dir=checkdir) as fd:
 		os.chmod(fd.name, 0o755)
 		if not os.access(fd.name, os.X_OK):
 			writemsg(_("Can not execute files in %s\n"
@@ -1360,7 +1367,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	@param keywords: Extra options encoded as a dict, to be passed to spawn
 	@type keywords: Dictionary
 	@rtype: Integer
-	@returns:
+	@return:
 	1. The return code of the spawned process.
 	"""
 
@@ -1388,7 +1395,8 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	# fake ownership/permissions will have to be converted to real
 	# permissions in the merge phase.
 	fakeroot = fakeroot and uid != 0 and portage.process.fakeroot_capable
-	if droppriv and not uid and portage_gid and portage_uid:
+	if droppriv and uid == 0 and portage_gid and portage_uid and \
+		hasattr(os, "setgroups"):
 		keywords.update({"uid":portage_uid,"gid":portage_gid,
 			"groups":userpriv_groups,"umask":0o02})
 	if not free:
@@ -1692,6 +1700,7 @@ def _post_src_install_uid_fix(mysettings, out):
 	_preinst_bsdflags(mysettings)
 
 	destdir = mysettings["D"]
+	ed_len = len(mysettings["ED"])
 	unicode_errors = []
 
 	while True:
@@ -1715,7 +1724,7 @@ def _post_src_install_uid_fix(mysettings, out):
 					encoding=_encodings['merge'], errors='replace')
 				os.rename(parent, new_parent)
 				unicode_error = True
-				unicode_errors.append(new_parent[len(destdir):])
+				unicode_errors.append(new_parent[ed_len:])
 				break
 
 			for fname in chain(dirs, files):
@@ -1734,7 +1743,7 @@ def _post_src_install_uid_fix(mysettings, out):
 					new_fpath = os.path.join(parent, new_fname)
 					os.rename(fpath, new_fpath)
 					unicode_error = True
-					unicode_errors.append(new_fpath[len(destdir):])
+					unicode_errors.append(new_fpath[ed_len:])
 					fname = new_fname
 					fpath = new_fpath
 				else:
@@ -1808,7 +1817,7 @@ def _post_src_install_uid_fix(mysettings, out):
 
 	if unicode_errors:
 		for l in _merge_unicode_error(unicode_errors):
-			eerror(l, phase='install', key=mysettings.mycpv, out=out)
+			eqawarn(l, phase='install', key=mysettings.mycpv, out=out)
 
 	build_info_dir = os.path.join(mysettings['PORTAGE_BUILDDIR'],
 		'build-info')
@@ -2009,26 +2018,14 @@ def _post_src_install_soname_symlinks(mysettings, out):
 def _merge_unicode_error(errors):
 	lines = []
 
-	msg = _("This package installs one or more file names containing "
-		"characters that do not match your current locale "
-		"settings. The current setting for filesystem encoding is '%s'.") \
-		% _encodings['merge']
+	msg = _("QA Notice: This package installs one or more file names "
+		"containing characters that are not encoded with the UTF-8 encoding.")
 	lines.extend(wrap(msg, 72))
 
 	lines.append("")
 	errors.sort()
 	lines.extend("\t" + x for x in errors)
 	lines.append("")
-
-	if _encodings['merge'].lower().replace('_', '').replace('-', '') != 'utf8':
-		msg = _("For best results, UTF-8 encoding is recommended. See "
-			"the Gentoo Linux Localization Guide for instructions "
-			"about how to configure your locale for UTF-8 encoding:")
-		lines.extend(wrap(msg, 72))
-		lines.append("")
-		lines.append("\t" + \
-			"http://www.gentoo.org/doc/en/guide-localization.xml")
-		lines.append("")
 
 	return lines
 

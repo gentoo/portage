@@ -730,7 +730,10 @@ masters =
 In this directory additional package\-specific bashrc files can be created.
 Note that if package\-specific environment variable settings are all that's
 needed, then \fB/etc/portage/package.env\fR should be used instead of the
-bashrc approach that is described here.
+bashrc approach that is described here. Also note that special variables
+such as \fBFEATURES\fR and \fBINSTALL_MASK\fR will not produce the intended
+results if they are set in bashrc, and therefore
+\fB/etc/portage/package.env\fR should be used instead.
 
 set_unless_changed and unset_unless_changed functions can be used to set or
 unset given variables only if these variable have not been set to values
@@ -785,6 +788,9 @@ precedence over settings in \fBlayout.conf\fR, except tools such as
 masters = gentoo java-overlay
 # indicate that this repo can be used as a substitute for foo-overlay
 aliases = foo-overlay
+# sign commits in this repo, which requires Git >=1.7.9, and
+# key configured by `git config user.signingkey key_id`
+sign\-commits = true
 # do not sign manifests in this repo
 sign\-manifests = false
 # thin\-manifests only contain DIST entries
@@ -792,6 +798,8 @@ thin\-manifests = true
 # indicate that this repo requires manifests for each package, and is
 # considered a failure if a manifest file is missing/incorrect
 use\-manifests = strict
+# customize the set of hashes generated for Manifest entries
+manifest\-hashes = SHA256 SHA512 WHIRLPOOL
 # indicate that this repo enables repoman's --echangelog=y option automatically
 update\-changelog = true
 # indicate that this repo contains both md5-dict and pms cache formats,

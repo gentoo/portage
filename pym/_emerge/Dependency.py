@@ -1,8 +1,9 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from portage.util.SlotObject import SlotObject
 from _emerge.DepPriority import DepPriority
-from _emerge.SlotObject import SlotObject
+
 class Dependency(SlotObject):
 	__slots__ = ("atom", "blocker", "child", "depth",
 		"parent", "onlydeps", "priority", "root",

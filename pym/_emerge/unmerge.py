@@ -1,9 +1,10 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
 
 import logging
+import signal
 import sys
 import textwrap
 import portage
@@ -503,7 +504,8 @@ def unmerge(root_config, myopts, unmerge_action,
 	clean_world=1, clean_delay=1, ordered=0, raise_on_error=0,
 	scheduler=None, writemsg_level=portage.util.writemsg_level):
 	"""
-	Returns 1 if successful, otherwise 0.
+	Returns os.EX_OK if no errors occur, 1 if an error occurs, and
+	130 if interrupted due to a 'no' answer for --ask.
 	"""
 
 	if clean_world:
@@ -515,7 +517,7 @@ def unmerge(root_config, myopts, unmerge_action,
 		writemsg_level=writemsg_level)
 
 	if rval != os.EX_OK:
-		return 0
+		return rval
 
 	enter_invalid = '--ask-enter-invalid' in myopts
 	vartree = root_config.trees["vartree"]
@@ -526,7 +528,7 @@ def unmerge(root_config, myopts, unmerge_action,
 
 	if "--pretend" in myopts:
 		#we're done... return
-		return 1
+		return os.EX_OK
 	if "--ask" in myopts:
 		if userquery("Would you like to unmerge these packages?",
 			enter_invalid) == "No":
@@ -535,15 +537,28 @@ def unmerge(root_config, myopts, unmerge_action,
 			print()
 			print("Quitting.")
 			print()
-			return 0
+			return 128 + signal.SIGINT
 	#the real unmerging begins, after a short delay....
 	if clean_delay and not autoclean:
 		countdown(int(settings["CLEAN_DELAY"]), ">>> Unmerging")
 
+	all_selected = set()
+	all_selected.update(*[x["selected"] for x in pkgmap])
+
+	# Set counter variables
+	curval = 1
+	maxval = len(all_selected)
+
 	for x in range(len(pkgmap)):
 		for y in pkgmap[x]["selected"]:
-			writemsg_level(">>> Unmerging "+y+"...\n", noiselevel=-1)
 			emergelog(xterm_titles, "=== Unmerging... ("+y+")")
+			message = ">>> Unmerging ({0} of {1}) {2}...\n".format(
+				colorize("MERGE_LIST_PROGRESS", str(curval)),
+				colorize("MERGE_LIST_PROGRESS", str(maxval)),
+				y)
+			writemsg_level(message, noiselevel=-1)
+			curval += 1
+
 			mysplit = y.split("/")
 			#unmerge...
 			retval = portage.unmerge(mysplit[0], mysplit[1],
@@ -574,5 +589,5 @@ def unmerge(root_config, myopts, unmerge_action,
 			sets["selected"].remove(SETPREFIX + s)
 		sets["selected"].unlock()
 
-	return 1
+	return os.EX_OK
 

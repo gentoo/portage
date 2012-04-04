@@ -45,11 +45,11 @@ def _gen_valid_repo(name):
 class RepoConfig(object):
 	"""Stores config of one repository"""
 
-	__slots__ = ('aliases', 'allow_missing_manifest',
+	__slots__ = ('aliases', 'allow_missing_manifest', 'allow_provide_virtual',
 		'cache_formats', 'create_manifest', 'disable_manifest', 'eapi',
 		'eclass_db', 'eclass_locations', 'eclass_overrides', 'format', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
-		'name', 'priority', 'sign_manifest', 'sync', 'thin_manifest',
+		'name', 'priority', 'sign_commit', 'sign_manifest', 'sync', 'thin_manifest',
 		'update_changelog', 'user_location', 'portage1_profiles',
 		'portage1_profiles_compat')
 
@@ -117,9 +117,13 @@ class RepoConfig(object):
 		self.eapi = eapi
 		self.name = name
 		self.missing_repo_name = missing
+		# sign_commit is disabled by default, since it requires Git >=1.7.9,
+		# and key_id configured by `git config user.signingkey key_id`
+		self.sign_commit = False
 		self.sign_manifest = True
 		self.thin_manifest = False
 		self.allow_missing_manifest = False
+		self.allow_provide_virtual = False
 		self.create_manifest = True
 		self.disable_manifest = False
 		self.manifest_hashes = None
@@ -146,9 +150,10 @@ class RepoConfig(object):
 				# them the ability to do incremental overrides
 				self.aliases = layout_data['aliases'] + tuple(aliases)
 
-			for value in ('allow-missing-manifest', 'cache-formats',
+			for value in ('allow-missing-manifest',
+				'allow-provide-virtual', 'cache-formats',
 				'create-manifest', 'disable-manifest', 'manifest-hashes',
-				'sign-manifest', 'thin-manifest', 'update-changelog'):
+				'sign-commit', 'sign-manifest', 'thin-manifest', 'update-changelog'):
 				setattr(self, value.lower().replace("-", "_"), layout_data[value])
 
 			self.portage1_profiles = any(x.startswith("portage-1") \
@@ -341,7 +346,7 @@ class RepoConfigLoader(object):
 					if repos_conf_opts is not None:
 						# Selectively copy only the attributes which
 						# repos.conf is allowed to override.
-						for k in ('aliases', 'eclass_overrides', 'masters'):
+						for k in ('aliases', 'eclass_overrides', 'masters', 'priority'):
 							v = getattr(repos_conf_opts, k, None)
 							if v is not None:
 								setattr(repo, k, v)
@@ -356,7 +361,7 @@ class RepoConfigLoader(object):
 
 					if ov == portdir and portdir not in port_ov:
 						repo.priority = -1000
-					else:
+					elif repo.priority is None:
 						repo.priority = base_priority
 						base_priority += 1
 
@@ -687,6 +692,12 @@ def parse_layout_conf(repo_location, repo_name=None):
 		masters = tuple(masters.split())
 	data['masters'] = masters
 	data['aliases'] = tuple(layout_data.get('aliases', '').split())
+
+	data['allow-provide-virtual'] = \
+		layout_data.get('allow-provide-virtuals', 'false').lower() == 'true'
+
+	data['sign-commit'] = layout_data.get('sign-commits', 'false').lower() \
+		== 'true'
 
 	data['sign-manifest'] = layout_data.get('sign-manifests', 'true').lower() \
 		== 'true'

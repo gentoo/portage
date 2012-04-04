@@ -12,7 +12,7 @@ from portage.package.ebuild.doebuild import _prepare_fake_distdir
 
 class EbuildExecuter(CompositeTask):
 
-	__slots__ = ("pkg", "scheduler", "settings")
+	__slots__ = ("pkg", "settings")
 
 	_phases = ("prepare", "configure", "compile", "test", "install")
 

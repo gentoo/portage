@@ -645,7 +645,7 @@ def WhirlpoolAdd(source, sourceBits, ctx):
     carry = 0
     value = sourceBits
     i = 31
-    while i >= 0 and value != 0:
+    while i >= 0 and (carry != 0 or value != 0):
         carry += ctx.bitLength[i] + ((value % 0x100000000) & 0xff)
         ctx.bitLength[i] = carry % 0x100
         carry >>= 8

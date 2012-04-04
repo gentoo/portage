@@ -1,11 +1,12 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AsynchronousLock import AsynchronousLock
-from _emerge.SlotObject import SlotObject
+
 import portage
 from portage import os
 from portage.exception import PortageException
+from portage.util.SlotObject import SlotObject
 import errno
 
 class EbuildBuildDir(SlotObject):

@@ -1,7 +1,5 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-
-import time
 
 from _emerge.PollScheduler import PollScheduler
 
@@ -36,51 +34,44 @@ class QueueScheduler(PollScheduler):
 
 	def run(self, timeout=None):
 
-		start_time = None
-		timed_out = False
-		remaining_timeout = timeout
+		timeout_callback = None
 		if timeout is not None:
-			start_time = time.time()
+			def timeout_callback():
+				timeout_callback.timed_out = True
+				return False
+			timeout_callback.timed_out = False
+			timeout_callback.timeout_id = self.sched_iface.timeout_add(
+				timeout, timeout_callback)
 
-		while self._schedule():
-			self._schedule_wait(timeout=remaining_timeout)
-			if timeout is not None:
-				elapsed_time = time.time() - start_time
-				if elapsed_time < 0:
-					# The system clock has changed such that start_time
-					# is now in the future, so just assume that the
-					# timeout has already elapsed.
-					timed_out = True
-					break
-				remaining_timeout = timeout - 1000 * elapsed_time
-				if remaining_timeout <= 0:
-					timed_out = True
+		term_check_id = self.sched_iface.idle_add(self._termination_check)
+		try:
+			while not (timeout_callback is not None and
+				timeout_callback.timed_out):
+				# We don't have any callbacks to trigger _schedule(),
+				# so we have to call it explicitly here.
+				self._schedule()
+				if self._keep_scheduling():
+					self.sched_iface.iteration()
+				else:
 					break
 
-		if timeout is None or not timed_out:
-			while self._running_job_count():
-				self._schedule_wait(timeout=remaining_timeout)
-				if timeout is not None:
-					elapsed_time = time.time() - start_time
-					if elapsed_time < 0:
-						# The system clock has changed such that start_time
-						# is now in the future, so just assume that the
-						# timeout has already elapsed.
-						timed_out = True
-						break
-					remaining_timeout = timeout - 1000 * elapsed_time
-					if remaining_timeout <= 0:
-						timed_out = True
-						break
+			while self._is_work_scheduled() and \
+				not (timeout_callback is not None and
+				timeout_callback.timed_out):
+				self.sched_iface.iteration()
+		finally:
+			self.sched_iface.source_remove(term_check_id)
+			if timeout_callback is not None:
+				self.sched_iface.unregister(timeout_callback.timeout_id)
 
 	def _schedule_tasks(self):
 		"""
 		@rtype: bool
-		@returns: True if there may be remaining tasks to schedule,
+		@return: True if there may be remaining tasks to schedule,
 			False otherwise.
 		"""
 		if self._terminated_tasks:
-			return False
+			return
 
 		while self._can_add_job():
 			n = self._max_jobs - self._running_job_count()
@@ -88,12 +79,10 @@ class QueueScheduler(PollScheduler):
 				break
 
 			if not self._start_next_job(n):
-				return False
+				return
 
-		for q in self._queues:
-			if q:
-				return True
-		return False
+	def _keep_scheduling(self):
+		return not self._terminated_tasks and any(self._queues)
 
 	def _running_job_count(self):
 		job_count = 0

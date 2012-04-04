@@ -254,7 +254,7 @@ class portdbapi(dbapi):
 		@param canonical_repo_path: the canonical path of a repository, as
 			resolved by os.path.realpath()
 		@type canonical_repo_path: String
-		@returns: The repo_name for the corresponding repository, or None
+		@return: The repo_name for the corresponding repository, or None
 			if the path does not correspond a known repository
 		@rtype: String or None
 		"""
@@ -331,7 +331,7 @@ class portdbapi(dbapi):
 		Create an EbuildMetadataPhase instance to generate metadata for the
 		give ebuild.
 		@rtype: EbuildMetadataPhase
-		@returns: A new EbuildMetadataPhase instance, or None if the
+		@return: A new EbuildMetadataPhase instance, or None if the
 			metadata cache is already valid.
 		"""
 		metadata, ebuild_hash = self._pull_valid_cache(cpv, ebuild_path, repo_path)
@@ -551,7 +551,7 @@ class portdbapi(dbapi):
 		@param mytree: The canonical path of the tree in which the ebuild
 			is located, or None for automatic lookup
 		@type mypkg: String
-		@returns: A dict which maps each file name to a set of alternative
+		@return: A dict which maps each file name to a set of alternative
 			URIs.
 		@rtype: dict
 		"""

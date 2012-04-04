@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
@@ -43,11 +43,7 @@ class PipeReader(AbstractPollTask):
 	def _wait(self):
 		if self.returncode is not None:
 			return self.returncode
-
-		if self._registered:
-			self.scheduler.schedule(self._reg_ids)
-			self._unregister()
-
+		self._wait_loop()
 		self.returncode = os.EX_OK
 		return self.returncode
 
@@ -74,6 +70,8 @@ class PipeReader(AbstractPollTask):
 
 		self._unregister_if_appropriate(event)
 
+		return True
+
 	def _array_output_handler(self, fd, event):
 
 		for f in self.input_files.values():
@@ -92,6 +90,8 @@ class PipeReader(AbstractPollTask):
 				break
 
 		self._unregister_if_appropriate(event)
+
+		return True
 
 	def _unregister(self):
 		"""

@@ -1,14 +1,15 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
 import logging
 import pickle
 from portage import os
+from portage.exception import TryAgain
 from portage.localization import _
+from portage.locks import lockfile, unlockfile
 from portage.util import writemsg_level
 from _emerge.FifoIpcDaemon import FifoIpcDaemon
-from _emerge.PollConstants import PollConstants
 
 class EbuildIpcDaemon(FifoIpcDaemon):
 	"""
@@ -34,7 +35,7 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 	def _input_handler(self, fd, event):
 		# Read the whole pickle in a single atomic read() call.
 		data = None
-		if event & PollConstants.POLLIN:
+		if event & self.scheduler.IO_IN:
 			# For maximum portability, use os.read() here since
 			# array.fromfile() and file.read() are both known to
 			# erroneously return an empty string from this
@@ -83,6 +84,30 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 					'reply_hook', None)
 				if reply_hook is not None:
 					reply_hook()
+
+		elif event & self.scheduler.IO_HUP:
+			# This can be triggered due to a race condition which happens when
+			# the previous _reopen_input() call occurs before the writer has
+			# closed the pipe (see bug #401919). It's not safe to re-open
+			# without a lock here, since it's possible that another writer will
+			# write something to the pipe just before we close it, and in that
+			# case the write will be lost. Therefore, try for a non-blocking
+			# lock, and only re-open the pipe if the lock is acquired.
+			lock_filename = os.path.join(
+				os.path.dirname(self.input_fifo), '.ipc_lock')
+			try:
+				lock_obj = lockfile(lock_filename, unlinkfile=True,
+					flags=os.O_NONBLOCK)
+			except TryAgain:
+				# We'll try again when another IO_HUP event arrives.
+				pass
+			else:
+				try:
+					self._reopen_input()
+				finally:
+					unlockfile(lock_obj)
+
+		return True
 
 	def _send_reply(self, reply):
 		# File streams are in unbuffered mode since we do atomic

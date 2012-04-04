@@ -33,7 +33,7 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 	@param myportdb: a portdbapi instance
 	@type myportdb: portdbapi
 	@rtype: int
-	@returns: 1 on success and 0 on failure
+	@return: 1 on success and 0 on failure
 	"""
 	if mysettings is None or myportdb is None:
 		raise TypeError("portage.digestgen(): 'mysettings' and 'myportdb' parameter are required.")
@@ -148,8 +148,7 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 					if not fetch({myfile : uris}, mysettings):
 						myebuild = os.path.join(mysettings["O"],
 							catsplit(cpv)[1] + ".ebuild")
-						spawn_nofetch(myportdb, myebuild,
-							settings=mysettings)
+						spawn_nofetch(myportdb, myebuild)
 						writemsg(_("!!! Fetch failed for %s, can't update "
 							"Manifest\n") % myfile, noiselevel=-1)
 						if myfile in dist_hashes and \

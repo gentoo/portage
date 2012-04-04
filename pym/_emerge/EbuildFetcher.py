@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import traceback
@@ -163,10 +163,15 @@ class EbuildFetcher(SpawnProcess):
 
 		pid = os.fork()
 		if pid != 0:
+			if not isinstance(pid, int):
+				raise AssertionError(
+					"fork returned non-integer: %s" % (repr(pid),))
 			portage.process.spawned_pids.append(pid)
 			return [pid]
 
-		portage.process._setup_pipes(fd_pipes)
+		portage.locks._close_fds()
+		# Disable close_fds since we don't exec (see _setup_pipes docstring).
+		portage.process._setup_pipes(fd_pipes, close_fds=False)
 
 		# Use default signal handlers in order to avoid problems
 		# killing subprocesses as reported in bug #353239.

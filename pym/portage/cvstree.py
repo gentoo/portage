@@ -248,11 +248,13 @@ def getentries(mydir,recursive=0):
 			if entries["files"][mysplit[1]]["revision"][0]=="-":
 				entries["files"][mysplit[1]]["status"]+=["removed"]
 
-	for file in apply_cvsignore_filter(os.listdir(mydir)):
+	for file in os.listdir(mydir):
 		if file=="CVS":
 			continue
 		if os.path.isdir(mydir+"/"+file):
 			if file not in entries["dirs"]:
+				if ignore_list.match(file) is not None:
+					continue
 				entries["dirs"][file]={"dirs":{},"files":{}}
 				# It's normal for a directory to be unlisted in Entries
 				# when checked out without -P (see bug #257660).
@@ -266,6 +268,8 @@ def getentries(mydir,recursive=0):
 				entries["dirs"][file]["status"]=["exists"]
 		elif os.path.isfile(mydir+"/"+file):
 			if file not in entries["files"]:
+				if ignore_list.match(file) is not None:
+					continue
 				entries["files"][file]={"revision":"","date":"","flags":"","tags":""}
 			if "status" in entries["files"][file]:
 				if "exists" not in entries["files"][file]["status"]:
@@ -285,7 +289,9 @@ def getentries(mydir,recursive=0):
 				print("failed to stat",file)
 				print(e)
 				return
-				
+
+		elif ignore_list.match(file) is not None:
+			pass
 		else:
 			print()
 			print("File of unknown type:",mydir+"/"+file)

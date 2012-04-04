@@ -28,9 +28,6 @@ class BinpkgFetcher(SpawnProcess):
 
 	def _start(self):
 
-		if self.cancelled:
-			return
-
 		pkg = self.pkg
 		pretend = self.pretend
 		bintree = pkg.root_config.trees["bintree"]

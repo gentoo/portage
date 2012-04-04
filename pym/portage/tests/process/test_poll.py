@@ -4,7 +4,7 @@
 from portage import os
 from portage.tests import TestCase
 from portage.util._pty import _create_pty_or_pipe
-from _emerge.PollScheduler import PollScheduler
+from _emerge.TaskScheduler import TaskScheduler
 from _emerge.PipeReader import PipeReader
 from _emerge.SpawnProcess import SpawnProcess
 
@@ -37,25 +37,25 @@ class PipeReaderTestCase(TestCase):
 		# in order to avoid issue 5380 with python3.
 		master_file = os.fdopen(master_fd, 'rb', 0)
 		slave_file = os.fdopen(slave_fd, 'wb', 0)
-		scheduler = PollScheduler().sched_iface
+		task_scheduler = TaskScheduler(max_jobs=2)
 		producer = SpawnProcess(
 			args=["bash", "-c", self._echo_cmd % test_string],
 			env=os.environ, fd_pipes={1:slave_fd},
-			scheduler=scheduler)
-		producer.start()
+			scheduler=task_scheduler.sched_iface)
+		task_scheduler.add(producer)
 		slave_file.close()
 
 		consumer = PipeReader(
 			input_files={"producer" : master_file},
-			scheduler=scheduler, _use_array=self._use_array)
+			scheduler=task_scheduler.sched_iface, _use_array=self._use_array)
 
-		consumer.start()
+		task_scheduler.add(consumer)
 
 		# This will ensure that both tasks have exited, which
 		# is necessary to avoid "ResourceWarning: unclosed file"
 		# warnings since Python 3.2 (and also ensures that we
 		# don't leave any zombie child processes).
-		scheduler.schedule()
+		task_scheduler.run()
 		self.assertEqual(producer.returncode, os.EX_OK)
 		self.assertEqual(consumer.returncode, os.EX_OK)
 

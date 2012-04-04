@@ -109,7 +109,7 @@ def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelis
 	@param dirsonly: Only return directories.
 	@type dirsonly: Boolean
 	@rtype: List
-	@returns: A list of files and directories (or just files or just directories) or an empty list.
+	@return: A list of files and directories (or just files or just directories) or an empty list.
 	"""
 
 	list, ftype = cacheddir(mypath, ignorecvs, ignorelist, EmptyOnError, followSymlinks)

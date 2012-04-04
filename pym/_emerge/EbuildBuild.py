@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.EbuildExecuter import EbuildExecuter
@@ -106,6 +106,10 @@ class EbuildBuild(CompositeTask):
 		return success
 
 	def _prefetch_exit(self, prefetcher):
+
+		if self._was_cancelled():
+			self.wait()
+			return
 
 		opts = self.opts
 		pkg = self.pkg
@@ -224,9 +228,10 @@ class EbuildBuild(CompositeTask):
 		#buildsyspkg: Check if we need to _force_ binary package creation
 		self._issyspkg = "buildsyspkg" in features and \
 				system_set.findAtomForPackage(pkg) and \
-				not opts.buildpkg
+				"buildpkg" not in features and \
+				opts.buildpkg != 'n'
 
-		if (opts.buildpkg or "buildpkg" in features or self._issyspkg) \
+		if ("buildpkg" in features or self._issyspkg) \
 			and not self.opts.buildpkg_exclude.findAtomForPackage(pkg):
 
 			self._buildpkg = True
@@ -360,7 +365,8 @@ class EbuildBuild(CompositeTask):
 		ebuild_path = self._ebuild_path
 		tree = self._tree
 
-		task = EbuildMerge(find_blockers=self.find_blockers,
+		task = EbuildMerge(exit_hook=self._install_exit,
+			find_blockers=self.find_blockers,
 			ldpath_mtimes=ldpath_mtimes, logger=logger, pkg=pkg,
 			pkg_count=pkg_count, pkg_path=ebuild_path,
 			scheduler=self.scheduler,
@@ -373,7 +379,6 @@ class EbuildBuild(CompositeTask):
 			(pkg_count.curval, pkg_count.maxval, pkg.cpv)
 		logger.log(msg, short_msg=short_msg)
 
-		task.addExitListener(self._install_exit)
 		return task
 
 	def _install_exit(self, task):

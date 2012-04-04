@@ -258,6 +258,18 @@ install_qa_check() {
 		eqawarn "$f"
 	fi
 
+	if [[ -d ${ED}/etc/udev/rules.d ]] ; then
+		f=
+		for x in $(ls "${ED}/etc/udev/rules.d") ; do
+			f+="  etc/udev/rules.d/$x\n"
+		done
+		if [[ -n $f ]] ; then
+			eqawarn "QA Notice: udev rules should be installed in /lib/udev/rules.d:"
+			eqawarn
+			eqawarn "$f"
+		fi
+	fi
+
 	# Now we look for all world writable files.
 	local unsafe_files=$(find "${ED}" -type f -perm -2 | sed -e "s:^${ED}:- :")
 	if [[ -n ${unsafe_files} ]] ; then
@@ -564,6 +576,13 @@ install_qa_check() {
 		done
 	done
 
+	# Look for leaking LDFLAGS into pkg-config files
+	f=$(egrep -sH '^Libs.*-Wl,(-O[012]|--hash-style)' "${ED}"/usr/*/pkgconfig/*.pc)
+	if [[ -n ${f} ]] ; then
+		eqawarn "QA Notice: pkg-config files with wrong LDFLAGS detected:"
+		eqawarn "${f//${D}}"
+	fi
+
 	# this should help to ensure that all (most?) shared libraries are executable
 	# and that all libtool scripts / static libraries are not executable
 	local j
@@ -778,7 +797,7 @@ install_qa_check() {
 	fi
 
 	# Portage regenerates this on the installed system.
-	rm -f "${ED}"/usr/share/info/dir{,.gz,.bz2}
+	rm -f "${ED}"/usr/share/info/dir{,.gz,.bz2} || die "rm failed!"
 
 	if has multilib-strict ${FEATURES} && \
 	   [[ -x /usr/bin/file && -x /usr/bin/find ]] && \

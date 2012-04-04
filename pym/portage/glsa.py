@@ -488,7 +488,7 @@ class Glsa:
 		@type	myfile: String
 		@param	myfile: Filename to grab the XML data from
 		@rtype:		None
-		@returns:	None
+		@return:	None
 		"""
 		self.DOM = xml.dom.minidom.parse(myfile)
 		if not self.DOM.doctype:
@@ -634,7 +634,7 @@ class Glsa:
 		architectures.
 		
 		@rtype:		Boolean
-		@returns:	True if the system is affected, False if not
+		@return:	True if the system is affected, False if not
 		"""
 		rValue = False
 		for k in self.packages:
@@ -654,7 +654,7 @@ class Glsa:
 		GLSA was already applied.
 		
 		@rtype:		Boolean
-		@returns:	True if the GLSA was applied, False if not
+		@return:	True if the GLSA was applied, False if not
 		"""
 		return (self.nr in get_applied_glsas(self.config))
 
@@ -665,7 +665,7 @@ class Glsa:
 		applied or on explicit user request.
 
 		@rtype:		None
-		@returns:	None
+		@return:	None
 		"""
 		if not self.isApplied():
 			checkfile = io.open(

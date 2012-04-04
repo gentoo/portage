@@ -1,8 +1,9 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
 
+import signal
 import sys
 
 from portage.output import bold, create_color_func
@@ -51,5 +52,4 @@ def userquery(prompt, enter_invalid, responses=None, colours=None):
 			print("Sorry, response '%s' not understood." % response, end=' ')
 	except (EOFError, KeyboardInterrupt):
 		print("Interrupted.")
-		sys.exit(1)
-
+		sys.exit(128 + signal.SIGINT)

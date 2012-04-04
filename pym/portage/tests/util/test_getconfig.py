@@ -1,7 +1,10 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import tempfile
+
 from portage import os
+from portage import _unicode_encode
 from portage.const import PORTAGE_BASE_PATH
 from portage.tests import TestCase
 from portage.util import getconfig
@@ -27,3 +30,24 @@ class GetConfigTestCase(TestCase):
 		d = getconfig(make_globals_file)
 		for k, v in self._cases.items():
 			self.assertEqual(d[k], v)
+
+	def testGetConfigProfileEnv(self):
+		# Test the mode which is used to parse /etc/env.d and /etc/profile.env.
+
+		cases = {
+			'LESS_TERMCAP_mb': "$\E[01;31m", # bug #410625
+		}
+
+		with tempfile.NamedTemporaryFile(mode='wb') as f:
+			# Format like env_update formats /etc/profile.env.
+			for k, v in cases.items():
+				if v.startswith('$') and not v.startswith('${'):
+					line = "export %s=$'%s'\n" % (k, v[1:])
+				else:
+					line = "export %s='%s'\n" % (k, v)
+				f.write(_unicode_encode(line))
+			f.flush()
+
+			d = getconfig(f.name, expand=False)
+			for k, v in cases.items():
+				self.assertEqual(d.get(k), v)

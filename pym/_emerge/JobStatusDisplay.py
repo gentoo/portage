@@ -97,7 +97,7 @@ class JobStatusDisplay(object):
 		"""
 		Initialize term control codes.
 		@rtype: bool
-		@returns: True if term codes were successfully initialized,
+		@return: True if term codes were successfully initialized,
 			False otherwise.
 		"""
 
@@ -209,24 +209,26 @@ class JobStatusDisplay(object):
 	def display(self):
 		"""
 		Display status on stdout, but only if something has
-		changed since the last call.
+		changed since the last call. This always returns True,
+		for continuous scheduling via timeout_add.
 		"""
 
 		if self.quiet:
-			return
+			return True
 
 		current_time = time.time()
 		time_delta = current_time - self._last_display_time
 		if self._displayed and \
 			not self._changed:
 			if not self._isatty:
-				return
+				return True
 			if time_delta < self._min_display_latency:
-				return
+				return True
 
 		self._last_display_time = current_time
 		self._changed = False
 		self._display_status()
+		return True
 
 	def _display_status(self):
 		# Don't use len(self._completed_tasks) here since that also

@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import array
@@ -8,16 +8,22 @@ import os
 
 from portage.util import writemsg_level
 from _emerge.AsynchronousTask import AsynchronousTask
-from _emerge.PollConstants import PollConstants
+
 class AbstractPollTask(AsynchronousTask):
 
 	__slots__ = ("scheduler",) + \
 		("_registered",)
 
 	_bufsize = 4096
-	_exceptional_events = PollConstants.POLLERR | PollConstants.POLLNVAL
-	_registered_events = PollConstants.POLLIN | PollConstants.POLLHUP | \
-		_exceptional_events
+
+	@property
+	def _exceptional_events(self):
+		return self.scheduler.IO_ERR | self.scheduler.IO_NVAL
+
+	@property
+	def _registered_events(self):
+		return self.scheduler.IO_IN | self.scheduler.IO_HUP | \
+			self._exceptional_events
 
 	def isAlive(self):
 		return bool(self._registered)
@@ -39,7 +45,7 @@ class AbstractPollTask(AsynchronousTask):
 		| 0      | None
 		"""
 		buf = None
-		if event & PollConstants.POLLIN:
+		if event & self.scheduler.IO_IN:
 			buf = array.array('B')
 			try:
 				buf.fromfile(f, self._bufsize)
@@ -85,7 +91,7 @@ class AbstractPollTask(AsynchronousTask):
 		# bugs in all known versions of Python (including Python 2.7
 		# and Python 3.2).
 		buf = None
-		if event & PollConstants.POLLIN:
+		if event & self.scheduler.IO_IN:
 			try:
 				buf = os.read(fd, self._bufsize)
 			except OSError as e:
@@ -117,7 +123,32 @@ class AbstractPollTask(AsynchronousTask):
 				self._log_poll_exception(event)
 				self._unregister()
 				self.cancel()
-			elif event & PollConstants.POLLHUP:
+				self.wait()
+			elif event & self.scheduler.IO_HUP:
 				self._unregister()
 				self.wait()
 
+	def _wait(self):
+		if self.returncode is not None:
+			return self.returncode
+		self._wait_loop()
+		return self.returncode
+
+	def _wait_loop(self, timeout=None):
+
+		if timeout is None:
+			while self._registered:
+				self.scheduler.iteration()
+			return
+
+		def timeout_cb():
+			timeout_cb.timed_out = True
+			return False
+		timeout_cb.timed_out = False
+		timeout_cb.timeout_id = self.scheduler.timeout_add(timeout, timeout_cb)
+
+		try:
+			while self._registered and not timeout_cb.timed_out:
+				self.scheduler.iteration()
+		finally:
+			self.scheduler.unregister(timeout_cb.timeout_id)

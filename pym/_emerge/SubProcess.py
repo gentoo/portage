@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
@@ -15,6 +15,10 @@ class SubProcess(AbstractPollTask):
 	# inside a poll() loop. When logging is not enabled, create a pipe just to
 	# serve this purpose alone.
 	_dummy_pipe_fd = 9
+
+	# This is how much time we allow for waitpid to succeed after
+	# we've sent a kill signal to our subprocess.
+	_cancel_timeout = 1000 # 1 second
 
 	def _poll(self):
 		if self.returncode is not None:
@@ -60,8 +64,7 @@ class SubProcess(AbstractPollTask):
 
 		if self._registered:
 			if self.cancelled:
-				timeout = 1000
-				self.scheduler.schedule(self._reg_id, timeout=timeout)
+				self._wait_loop(timeout=self._cancel_timeout)
 				if self._registered:
 					try:
 						os.kill(self.pid, signal.SIGKILL)
@@ -69,40 +72,38 @@ class SubProcess(AbstractPollTask):
 						if e.errno != errno.ESRCH:
 							raise
 						del e
-					self.scheduler.schedule(self._reg_id, timeout=timeout)
+					self._wait_loop(timeout=self._cancel_timeout)
 					if self._registered:
 						self._orphan_process_warn()
 			else:
-				self.scheduler.schedule(self._reg_id)
-			self._unregister()
+				self._wait_loop()
+
 			if self.returncode is not None:
 				return self.returncode
 
-		try:
-			# With waitpid and WNOHANG, only check the
-			# first element of the tuple since the second
-			# element may vary (bug #337465).
-			wait_retval = os.waitpid(self.pid, os.WNOHANG)
-		except OSError as e:
-			if e.errno != errno.ECHILD:
-				raise
-			del e
-			self._set_returncode((self.pid, 1 << 8))
-		else:
-			if wait_retval[0] != 0:
-				self._set_returncode(wait_retval)
-			else:
-				try:
-					wait_retval = os.waitpid(self.pid, 0)
-				except OSError as e:
-					if e.errno != errno.ECHILD:
-						raise
-					del e
-					self._set_returncode((self.pid, 1 << 8))
-				else:
-					self._set_returncode(wait_retval)
+		if not isinstance(self.pid, int):
+			# Get debug info for bug #403697.
+			raise AssertionError(
+				"%s: pid is non-integer: %s" %
+				(self.__class__.__name__, repr(self.pid)))
+
+		self._waitpid_loop()
 
 		return self.returncode
+
+	def _waitpid_loop(self):
+		source_id = self.scheduler.child_watch_add(
+			self.pid, self._waitpid_cb)
+		try:
+			while self.returncode is None:
+				self.scheduler.iteration()
+		finally:
+			self.scheduler.source_remove(source_id)
+
+	def _waitpid_cb(self, pid, condition, user_data=None):
+		if pid != self.pid:
+			raise AssertionError("expected pid %s, got %s" % (self.pid, pid))
+		self._set_returncode((pid, condition))
 
 	def _orphan_process_warn(self):
 		pass
@@ -132,6 +133,7 @@ class SubProcess(AbstractPollTask):
 		subprocess.Popen.returncode: A negative value -N indicates
 		that the child was terminated by signal N (Unix only).
 		"""
+		self._unregister()
 
 		pid, status = wait_retval
 

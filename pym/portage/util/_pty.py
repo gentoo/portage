@@ -27,7 +27,7 @@ def _create_pty_or_pipe(copy_term_size=None):
 		then the term size will be copied to the pty.
 	@type copy_term_size: int
 	@rtype: tuple
-	@returns: A tuple of (is_pty, master_fd, slave_fd) where
+	@return: A tuple of (is_pty, master_fd, slave_fd) where
 		is_pty is True if a pty was successfully allocated, and
 		False if a normal pipe was allocated.
 	"""

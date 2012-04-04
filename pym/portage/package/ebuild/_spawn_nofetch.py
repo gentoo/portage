@@ -20,7 +20,11 @@ def spawn_nofetch(portdb, ebuild_path, settings=None):
 	to cache metadata. It will be cloned internally, in order to
 	prevent any changes from interfering with the calling code.
 	If settings is None then a suitable config instance will be
-	acquired from the given portdbapi instance.
+	acquired from the given portdbapi instance. Do not use the
+	settings parameter unless setcpv has been called on the given
+	instance, since otherwise it's possible to trigger issues like
+	bug #408817 due to fragile assumptions involving the config
+	state inside doebuild_environment().
 
 	A private PORTAGE_BUILDDIR will be created and cleaned up, in
 	order to avoid any interference with any other processes.

@@ -346,12 +346,11 @@ def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 	@param incremental: Append to the return list, don't overwrite
 	@type incremental: Boolean (integer)
 	@rtype: Dictionary
-	@returns:
+	@return:
 	1.  Returns the lines in a file in a dictionary, for example:
 		'sys-apps/portage x86 amd64 ppc'
 		would return
 		{ "sys-apps/portage" : [ 'x86', 'amd64', 'ppc' ]
-		the line syntax is key : [list of values]
 	"""
 	newdict={}
 	for x in grablines(myfilename, recursive):
@@ -637,7 +636,8 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 				continue
 
 			if expand:
-				mykeys[key] = varexpand(val, expand_map)
+				mykeys[key] = varexpand(val, mydict=expand_map,
+					error_leader=lex.error_leader)
 				expand_map[key] = mykeys[key]
 			else:
 				mykeys[key] = val
@@ -646,15 +646,13 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 	except Exception as e:
 		raise portage.exception.ParseError(str(e)+" in "+mycfg)
 	return mykeys
-	
-#cache expansions of constant strings
-cexpand={}
-def varexpand(mystring, mydict=None):
+
+_varexpand_word_chars = frozenset(string.ascii_letters + string.digits + "_")
+_varexpand_unexpected_eof_msg = "unexpected EOF while looking for matching `}'"
+
+def varexpand(mystring, mydict=None, error_leader=None):
 	if mydict is None:
 		mydict = {}
-	newstring = cexpand.get(" "+mystring, None)
-	if newstring is not None:
-		return newstring
 
 	"""
 	new variable expansion code.  Preserves quotes, handles \n, etc.
@@ -662,36 +660,37 @@ def varexpand(mystring, mydict=None):
 	This would be a good bunch of code to port to C.
 	"""
 	numvars=0
-	mystring=" "+mystring
 	#in single, double quotes
 	insing=0
 	indoub=0
-	pos=1
-	newstring=" "
-	while (pos<len(mystring)):
-		if (mystring[pos]=="'") and (mystring[pos-1]!="\\"):
+	pos = 0
+	length = len(mystring)
+	newstring = []
+	while pos < length:
+		current = mystring[pos]
+		if current == "'":
 			if (indoub):
-				newstring=newstring+"'"
+				newstring.append("'")
 			else:
-				newstring += "'" # Quote removal is handled by shlex.
+				newstring.append("'") # Quote removal is handled by shlex.
 				insing=not insing
 			pos=pos+1
 			continue
-		elif (mystring[pos]=='"') and (mystring[pos-1]!="\\"):
+		elif current == '"':
 			if (insing):
-				newstring=newstring+'"'
+				newstring.append('"')
 			else:
-				newstring += '"' # Quote removal is handled by shlex.
+				newstring.append('"') # Quote removal is handled by shlex.
 				indoub=not indoub
 			pos=pos+1
 			continue
 		if (not insing): 
 			#expansion time
-			if (mystring[pos]=="\n"):
+			if current == "\n":
 				#convert newlines to spaces
-				newstring=newstring+" "
-				pos=pos+1
-			elif (mystring[pos]=="\\"):
+				newstring.append(" ")
+				pos += 1
+			elif current == "\\":
 				# For backslash expansion, this function used to behave like
 				# echo -e, but that's not needed for our purposes. We want to
 				# behave like bash does when expanding a variable assignment
@@ -701,19 +700,27 @@ def varexpand(mystring, mydict=None):
 				# escaped quotes here, since getconfig() uses shlex
 				# to handle that earlier.
 				if (pos+1>=len(mystring)):
-					newstring=newstring+mystring[pos]
+					newstring.append(current)
 					break
 				else:
-					a = mystring[pos + 1]
-					pos = pos + 2
-					if a in ("\\", "$"):
-						newstring = newstring + a
-					elif a == "\n":
+					current = mystring[pos + 1]
+					pos += 2
+					if current == "$":
+						newstring.append(current)
+					elif current == "\\":
+						newstring.append(current)
+						# BUG: This spot appears buggy, but it's intended to
+						# be bug-for-bug compatible with existing behavior.
+						if pos < length and \
+							mystring[pos] in ("'", '"', "$"):
+							newstring.append(mystring[pos])
+							pos += 1
+					elif current == "\n":
 						pass
 					else:
-						newstring = newstring + mystring[pos-2:pos]
+						newstring.append(mystring[pos - 2:pos])
 					continue
-			elif (mystring[pos]=="$") and (mystring[pos-1]!="\\"):
+			elif current == "$":
 				pos=pos+1
 				if mystring[pos]=="{":
 					pos=pos+1
@@ -721,11 +728,13 @@ def varexpand(mystring, mydict=None):
 				else:
 					braced=False
 				myvstart=pos
-				validchars=string.ascii_letters+string.digits+"_"
-				while mystring[pos] in validchars:
+				while mystring[pos] in _varexpand_word_chars:
 					if (pos+1)>=len(mystring):
 						if braced:
-							cexpand[mystring]=""
+							msg = _varexpand_unexpected_eof_msg
+							if error_leader is not None:
+								msg = error_leader() + msg
+							writemsg(msg + "\n", noiselevel=-1)
 							return ""
 						else:
 							pos=pos+1
@@ -734,25 +743,33 @@ def varexpand(mystring, mydict=None):
 				myvarname=mystring[myvstart:pos]
 				if braced:
 					if mystring[pos]!="}":
-						cexpand[mystring]=""
+						msg = _varexpand_unexpected_eof_msg
+						if error_leader is not None:
+							msg = error_leader() + msg
+						writemsg(msg + "\n", noiselevel=-1)
 						return ""
 					else:
 						pos=pos+1
 				if len(myvarname)==0:
-					cexpand[mystring]=""
+					msg = "$"
+					if braced:
+						msg += "{}"
+					msg += ": bad substitution"
+					if error_leader is not None:
+						msg = error_leader() + msg
+					writemsg(msg + "\n", noiselevel=-1)
 					return ""
 				numvars=numvars+1
 				if myvarname in mydict:
-					newstring=newstring+mydict[myvarname] 
+					newstring.append(mydict[myvarname])
 			else:
-				newstring=newstring+mystring[pos]
-				pos=pos+1
+				newstring.append(current)
+				pos += 1
 		else:
-			newstring=newstring+mystring[pos]
-			pos=pos+1
-	if numvars==0:
-		cexpand[mystring]=newstring[1:]
-	return newstring[1:]	
+			newstring.append(current)
+			pos += 1
+
+	return "".join(newstring)
 
 # broken and removed, but can still be imported
 pickle_write = None

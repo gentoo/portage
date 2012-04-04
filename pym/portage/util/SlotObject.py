@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 class SlotObject(object):
@@ -15,8 +15,17 @@ class SlotObject(object):
 			if not slots:
 				continue
 			for myattr in slots:
-				myvalue = kwargs.get(myattr, None)
+				myvalue = kwargs.pop(myattr, None)
+				if myvalue is None and getattr(self, myattr, None) is not None:
+					raise AssertionError(
+						"class '%s' duplicates '%s' value in __slots__ of base class '%s'" %
+						(self.__class__.__name__, myattr, c.__name__))
 				setattr(self, myattr, myvalue)
+
+		if kwargs:
+			raise TypeError(
+				"'%s' is an invalid keyword argument for this constructor" %
+				(next(iter(kwargs)),))
 
 	def copy(self):
 		"""

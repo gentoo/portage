@@ -1,9 +1,11 @@
 # portage.py -- core Portage functionality
-# Copyright 1998-2010 Gentoo Foundation
+# Copyright 1998-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 
 import atexit
+import errno
+import platform
 import signal
 import sys
 import traceback
@@ -32,6 +34,18 @@ if os.path.isdir("/proc/%i/fd" % os.getpid()):
 	def get_open_fds():
 		return (int(fd) for fd in os.listdir("/proc/%i/fd" % os.getpid()) \
 			if fd.isdigit())
+
+	if platform.python_implementation() == 'PyPy':
+		# EAGAIN observed with PyPy 1.8.
+		_get_open_fds = get_open_fds
+		def get_open_fds():
+			try:
+				return _get_open_fds()
+			except OSError as e:
+				if e.errno != errno.EAGAIN:
+					raise
+				return range(max_fd_limit)
+
 else:
 	def get_open_fds():
 		return range(max_fd_limit)
@@ -244,7 +258,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 
 	pid = os.fork()
 
-	if not pid:
+	if pid == 0:
 		try:
 			_exec(binary, mycommand, opt_name, fd_pipes,
 			      env, gid, groups, uid, umask, pre_exec)
@@ -258,6 +272,9 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 			traceback.print_exc()
 			sys.stderr.flush()
 			os._exit(1)
+
+	if not isinstance(pid, int):
+		raise AssertionError("fork returned non-integer: %s" % (repr(pid),))
 
 	# Add the pid to our local and the global pid lists.
 	mypids.append(pid)
@@ -337,7 +354,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	@param pre_exec: A function to be called with no arguments just prior to the exec call.
 	@type pre_exec: callable
 	@rtype: None
-	@returns: Never returns (calls os.execve)
+	@return: Never returns (calls os.execve)
 	"""
 	
 	# If the process we're creating hasn't been given a name
@@ -383,8 +400,20 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	# And switch to the new process.
 	os.execve(binary, myargs, env)
 
-def _setup_pipes(fd_pipes):
-	"""Setup pipes for a forked process."""
+def _setup_pipes(fd_pipes, close_fds=True):
+	"""Setup pipes for a forked process.
+
+	WARNING: When not followed by exec, the close_fds behavior
+	can trigger interference from destructors that close file
+	descriptors. This interference happens when the garbage
+	collector intermittently executes such destructors after their
+	corresponding file descriptors have been re-used, leading
+	to intermittent "[Errno 9] Bad file descriptor" exceptions in
+	forked processes. This problem has been observed with PyPy 1.8,
+	and also with CPython under some circumstances (as triggered
+	by xmpppy in bug #374335). In order to close a safe subset of
+	file descriptors, see portage.locks._close_fds().
+	"""
 	my_fds = {}
 	# To protect from cases where direct assignment could
 	# clobber needed fds ({1:2, 2:1}) we first dupe the fds
@@ -394,14 +423,16 @@ def _setup_pipes(fd_pipes):
 	# Then assign them to what they should be.
 	for fd in my_fds:
 		os.dup2(my_fds[fd], fd)
-	# Then close _all_ fds that haven't been explicitly
-	# requested to be kept open.
-	for fd in get_open_fds():
-		if fd not in my_fds:
-			try:
-				os.close(fd)
-			except OSError:
-				pass
+
+	if close_fds:
+		# Then close _all_ fds that haven't been explicitly
+		# requested to be kept open.
+		for fd in get_open_fds():
+			if fd not in my_fds:
+				try:
+					os.close(fd)
+				except OSError:
+					pass
 
 def find_binary(binary):
 	"""
@@ -410,7 +441,7 @@ def find_binary(binary):
 	@param binary: Name of the binary to find
 	@type string
 	@rtype: None or string
-	@returns: full path to binary or None if the binary could not be located.
+	@return: full path to binary or None if the binary could not be located.
 	"""
 	for path in os.environ.get("PATH", "").split(":"):
 		filename = "%s/%s" % (path, binary)

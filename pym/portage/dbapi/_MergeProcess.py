@@ -1,8 +1,9 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import io
 import signal
+import sys
 import traceback
 
 import errno
@@ -10,7 +11,6 @@ import fcntl
 import portage
 from portage import os, _unicode_decode
 import portage.elog.messages
-from _emerge.PollConstants import PollConstants
 from _emerge.SpawnProcess import SpawnProcess
 
 class MergeProcess(SpawnProcess):
@@ -20,7 +20,7 @@ class MergeProcess(SpawnProcess):
 	"""
 
 	__slots__ = ('mycat', 'mypkg', 'settings', 'treetype',
-		'vartree', 'scheduler', 'blockers', 'pkgloc', 'infloc', 'myebuild',
+		'vartree', 'blockers', 'pkgloc', 'infloc', 'myebuild',
 		'mydbapi', 'prev_mtimes', 'unmerge', '_elog_reader_fd', '_elog_reg_id',
 		'_buf', '_elog_keys', '_locked_vdb')
 
@@ -39,6 +39,12 @@ class MergeProcess(SpawnProcess):
 			settings.reload()
 			settings.reset()
 			settings.setcpv(cpv, mydb=self.mydbapi)
+
+		# Inherit stdin by default, so that the pdb SIGUSR1
+		# handler is usable for the subprocess.
+		if self.fd_pipes is None:
+			self.fd_pipes = {}
+		self.fd_pipes.setdefault(0, sys.stdin.fileno())
 
 		super(MergeProcess, self)._start()
 
@@ -63,7 +69,7 @@ class MergeProcess(SpawnProcess):
 
 	def _elog_output_handler(self, fd, event):
 		output = None
-		if event & PollConstants.POLLIN:
+		if event & self.scheduler.IO_IN:
 			try:
 				output = os.read(fd, self._bufsize)
 			except OSError as e:
@@ -82,6 +88,15 @@ class MergeProcess(SpawnProcess):
 					self._elog_keys.add(key)
 					reporter = getattr(portage.elog.messages, funcname)
 					reporter(msg, phase=phase, key=key, out=out)
+
+		if event & self.scheduler.IO_HUP:
+			self.scheduler.unregister(self._elog_reg_id)
+			self._elog_reg_id = None
+			os.close(self._elog_reader_fd)
+			self._elog_reader_fd = None
+			return False
+
+		return True
 
 	def _spawn(self, args, fd_pipes, **kwargs):
 		"""
@@ -120,6 +135,10 @@ class MergeProcess(SpawnProcess):
 
 		pid = os.fork()
 		if pid != 0:
+			if not isinstance(pid, int):
+				raise AssertionError(
+					"fork returned non-integer: %s" % (repr(pid),))
+
 			os.close(elog_writer_fd)
 			self._elog_reader_fd = elog_reader_fd
 			self._buf = ""
@@ -135,7 +154,9 @@ class MergeProcess(SpawnProcess):
 			return [pid]
 
 		os.close(elog_reader_fd)
-		portage.process._setup_pipes(fd_pipes)
+		portage.locks._close_fds()
+		# Disable close_fds since we don't exec (see _setup_pipes docstring).
+		portage.process._setup_pipes(fd_pipes, close_fds=False)
 
 		# Use default signal handlers since the ones inherited
 		# from the parent process are irrelevant here.

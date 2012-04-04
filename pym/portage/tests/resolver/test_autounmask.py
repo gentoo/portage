@@ -391,7 +391,11 @@ class AutounmaskTestCase(TestCase):
 
 
 	def testAutounmaskKeepMasks(self):
-
+		"""
+		Ensure that we try to use a masked version with keywords before trying
+		masked version with missing keywords (prefer masked regular version
+		over -9999 version).
+		"""
 		ebuilds = {
 			"app-text/A-1": {},
 			}
@@ -421,6 +425,47 @@ class AutounmaskTestCase(TestCase):
 
 		playground = ResolverPlayground(ebuilds=ebuilds, profile=profile)
 
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
+
+
+	def testAutounmask9999(self):
+
+		ebuilds = {
+			"dev-libs/A-1": { },
+			"dev-libs/A-2": { },
+			"dev-libs/A-9999": { "KEYWORDS": "" },
+			"dev-libs/B-1": { "DEPEND": ">=dev-libs/A-2" },
+			"dev-libs/C-1": { "DEPEND": ">=dev-libs/A-3" },
+			}
+
+		profile = {
+			"package.mask":
+				(
+					">=dev-libs/A-2",
+				),
+		}
+
+		test_cases = (
+			ResolverPlaygroundTestCase(
+				["dev-libs/B"],
+				success = False,
+				mergelist = ["dev-libs/A-2", "dev-libs/B-1"],
+				needed_p_mask_changes = set(["dev-libs/A-2"])),
+
+			ResolverPlaygroundTestCase(
+				["dev-libs/C"],
+				success = False,
+				mergelist = ["dev-libs/A-9999", "dev-libs/C-1"],
+				unstable_keywords = set(["dev-libs/A-9999"]),
+				needed_p_mask_changes = set(["dev-libs/A-9999"])),
+			)
+
+		playground = ResolverPlayground(ebuilds=ebuilds, profile=profile)
 		try:
 			for test_case in test_cases:
 				playground.run_TestCase(test_case)

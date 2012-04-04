@@ -1,5 +1,5 @@
 #!/usr/bin/python -O
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # Next to do: dep syntax checking in mask files
@@ -69,6 +69,8 @@ from portage import cvstree, normalize_path
 from portage import util
 from portage.exception import (FileNotFound, MissingParameter,
 	ParseError, PermissionDenied)
+from portage.manifest import _prohibited_filename_chars_re as \
+	disallowed_filename_chars_re
 from portage.process import find_binary, spawn
 from portage.output import bold, create_color_func, \
 	green, nocolor, red
@@ -85,7 +87,6 @@ util.initialize_logger()
 # 14 is the length of DESCRIPTION=""
 max_desc_len = 100
 allowed_filename_chars="a-zA-Z0-9._-+:"
-disallowed_filename_chars_re = re.compile(r'[^a-zA-Z0-9._\-+:]')
 pv_toolong_re = re.compile(r'[0-9]{19,}')
 bad = create_color_func("BAD")
 
@@ -95,8 +96,8 @@ os.umask(0o22)
 # behave incrementally.
 repoman_incrementals = tuple(x for x in \
 	portage.const.INCREMENTALS if x != 'ACCEPT_KEYWORDS')
-repoman_settings = portage.config(local_config=False)
-repoman_settings.lock()
+config_root = os.environ.get("PORTAGE_CONFIGROOT")
+repoman_settings = portage.config(config_root=config_root, local_config=False)
 
 if repoman_settings.get("NOCOLOR", "").lower() in ("yes", "true") or \
 	repoman_settings.get('TERM') == 'dumb' or \
@@ -186,6 +187,10 @@ def ParseArgs(argv, qahelp):
 
 	parser.add_option('-M', '--commitmsgfile', dest='commitmsgfile',
 		help='specify a path to a file that contains a commit message')
+
+	parser.add_option('--digest',
+		type='choice', choices=('y', 'n'), metavar='<y|n>',
+		help='Automatically update Manifest digests for modified files')
 
 	parser.add_option('-p', '--pretend', dest='pretend', default=False,
 		action='store_true', help='don\'t commit or fix anything; just show what would be done')
@@ -415,7 +420,6 @@ qawarnings = set((
 "RDEPEND.implicit",
 "RDEPEND.suspect",
 "RESTRICT.invalid",
-"SRC_URI.mirror",
 "ebuild.minorsyn",
 "ebuild.badheader",
 "ebuild.patches",
@@ -428,7 +432,6 @@ qawarnings = set((
 "portage.internal",
 "usage.obsolete",
 "upstream.workaround",
-"virtual.oldstyle",
 "LIVEVCS.stable",
 "LIVEVCS.unmasked",
 ))
@@ -544,7 +547,7 @@ if options.if_modified == "y" and vcs is None:
 	options.if_modified = "n"
 
 # Disable copyright/mtime check if vcs does not preserve mtime (bug #324075).
-vcs_preserves_mtime = vcs not in ('git',)
+vcs_preserves_mtime = vcs in ('cvs',)
 
 vcs_local_opts = repoman_settings.get("REPOMAN_VCS_LOCAL_OPTS", "").split()
 vcs_global_opts = repoman_settings.get("REPOMAN_VCS_GLOBAL_OPTS")
@@ -560,13 +563,12 @@ if options.mode == 'commit' and not options.pretend and not vcs:
 	options.pretend = True
 
 # Ensure that PORTDIR_OVERLAY contains the repository corresponding to $PWD.
-repoman_settings = portage.config(local_config=False)
 repoman_settings['PORTDIR_OVERLAY'] = "%s %s" % \
 	(repoman_settings.get('PORTDIR_OVERLAY', ''),
 	portage._shell_quote(portdir_overlay))
 # We have to call the config constructor again so
 # that config.repositories is initialized correctly.
-repoman_settings = portage.config(local_config=False,
+repoman_settings = portage.config(config_root=config_root, local_config=False,
 	env=dict(os.environ, PORTDIR_OVERLAY=repoman_settings['PORTDIR_OVERLAY']))
 
 root = repoman_settings['EROOT']
@@ -581,6 +583,16 @@ repodir = os.path.realpath(portdir_overlay)
 repo_config = repoman_settings.repositories.get_repo_for_location(repodir)
 portdb.porttrees = list(repo_config.eclass_db.porttrees)
 portdir = portdb.porttrees[0]
+
+if repo_config.allow_provide_virtual:
+	qawarnings.add("virtual.oldstyle")
+
+if repo_config.sign_commit:
+	if vcs == 'git':
+		# NOTE: It's possible to use --gpg-sign=key_id to specify the key in
+		# the commit arguments. If key_id is unspecified, then it must be
+		# configured by `git config user.signingkey key_id`.
+		vcs_local_opts.append("--gpg-sign")
 
 # In order to disable manifest signatures, repos may set
 # "sign-manifests = false" in metadata/layout.conf. This
@@ -647,6 +659,9 @@ if vcs is None:
 # Gentoo's Council decided to always use the ChangeLog file.
 # TODO: shouldn't this just be switched on the repo, iso the VCS?
 check_changelog = options.echangelog not in ('y', 'force') and vcs in ('cvs', 'svn')
+
+if 'digest' in repoman_settings.features and options.digest != 'n':
+	options.digest = 'y'
 
 logging.debug("vcs: %s" % (vcs,))
 logging.debug("repo config: %s" % (repo_config,))
@@ -929,6 +944,20 @@ def vcs_files_to_cps(vcs_file_iter):
 
 	return frozenset(modified_cps)
 
+def git_supports_gpg_sign():
+	status, cmd_output = \
+		subprocess_getstatusoutput("git --version")
+	cmd_output = cmd_output.split()
+	if cmd_output:
+		version = re.match(r'^(\d+)\.(\d+)\.(\d+)', cmd_output[-1])
+		if version is not None:
+			version = [int(x) for x in version.groups()[1:]]
+			if version[0] > 1 or \
+				(version[0] == 1 and version[1] > 7) or \
+				(version[0] == 1 and version[1] == 7 and version[2] >= 9):
+				return True
+	return False
+
 def dev_keywords(profiles):
 	"""
 	Create a set of KEYWORDS values that exist in 'dev'
@@ -997,7 +1026,7 @@ def fetch_metadata_dtd():
 	Fetch metadata.dtd if it doesn't exist or the ctime is older than
 	metadata_dtd_ctime_interval.
 	@rtype: bool
-	@returns: True if successful, otherwise False
+	@return: True if successful, otherwise False
 	"""
 
 	must_fetch = True
@@ -1148,6 +1177,12 @@ if vcs:
 	modified_changelogs.update(x for x in chain(mychanged, mynew) \
 		if os.path.basename(x) == "ChangeLog")
 
+def vcs_new_changed(relative_path):
+	for x in chain(mychanged, mynew):
+		if x == relative_path:
+			return True
+	return False
+
 have_pmasked = False
 have_dev_keywords = False
 dofail = 0
@@ -1164,7 +1199,10 @@ check_ebuild_notadded = not \
 # Build a regex from thirdpartymirrors for the SRC_URI.mirror check.
 thirdpartymirrors = []
 for v in repoman_settings.thirdpartymirrors().values():
-	thirdpartymirrors.extend(v)
+	for v in v:
+		if not v.endswith("/"):
+			v += "/"
+		thirdpartymirrors.append(v)
 
 class _MetadataTreeBuilder(xml.etree.ElementTree.TreeBuilder):
 	"""
@@ -1205,8 +1243,7 @@ for x in effective_scanlist:
 	generated_manifest = False
 
 	if options.mode == "manifest" or \
-	  (options.mode != 'manifest-check' and \
-	  'digest' in repoman_settings.features) or \
+	  (options.mode != 'manifest-check' and options.digest == 'y') or \
 	  options.mode in ('commit', 'fix') and not options.pretend:
 		auto_assumed = set()
 		fetchlist_dict = portage.FetchlistDict(checkdir,
@@ -1335,6 +1372,14 @@ for x in effective_scanlist:
 
 	for y in checkdirlist:
 		m = disallowed_filename_chars_re.search(y.strip(os.sep))
+		if m is not None:
+			y_relative = os.path.join(checkdir_relative, y)
+			if vcs is not None and not vcs_new_changed(y_relative):
+				# If the file isn't in the VCS new or changed set, then
+				# assume that it's an irrelevant temporary file (Manifest
+				# entries are not generated for file names containing
+				# prohibited characters). See bug #406877.
+				m = None
 		if m is not None:
 			stats["file.name"] += 1
 			fails["file.name"].append("%s/%s: char '%s'" % \
@@ -1503,6 +1548,14 @@ for x in effective_scanlist:
 
 			m = disallowed_filename_chars_re.search(
 				os.path.basename(y.rstrip(os.sep)))
+			if m is not None:
+				y_relative = os.path.join(checkdir_relative, "files", y)
+				if vcs is not None and not vcs_new_changed(y_relative):
+					# If the file isn't in the VCS new or changed set, then
+					# assume that it's an irrelevant temporary file (Manifest
+					# entries are not generated for file names containing
+					# prohibited characters). See bug #406877.
+					m = None
 			if m is not None:
 				stats["file.name"] += 1
 				fails["file.name"].append("%s/files/%s: char '%s'" % \
@@ -1813,7 +1866,11 @@ for x in effective_scanlist:
 					if atom == "||":
 						continue
 
-					if not portdb.xmatch("match-all", atom) and \
+					# Skip dependency.unknown for blockers, so that we
+					# don't encourage people to remove necessary blockers,
+					# as discussed in bug #382407.
+					if atom.blocker is None and \
+						not portdb.xmatch("match-all", atom) and \
 						not atom.cp.startswith("virtual/"):
 						unknown_pkgs.add((mytype, atom.unevaluated_atom))
 
@@ -1997,6 +2054,7 @@ for x in effective_scanlist:
 					dep_settings = portage.config(
 						config_profile_path=prof.abs_path,
 						config_incrementals=repoman_incrementals,
+						config_root=config_root,
 						local_config=False,
 						_unmatched_removal=options.unmatched_removal,
 						env=env)
@@ -2454,6 +2512,15 @@ else:
 			clnew = [elem[cdrlen:] for elem in mynew if elem.startswith(checkdir_relative)]
 			clremoved = [elem[cdrlen:] for elem in myremoved if elem.startswith(checkdir_relative)]
 			clchanged = [elem[cdrlen:] for elem in mychanged if elem.startswith(checkdir_relative)]
+
+			# Skip ChangeLog generation if only the Manifest was modified,
+			# as discussed in bug #398009.
+			nontrivial_cl_files = set()
+			nontrivial_cl_files.update(clnew, clremoved, clchanged)
+			nontrivial_cl_files.difference_update(['Manifest'])
+			if not nontrivial_cl_files and options.echangelog != 'force':
+				continue
+
 			new_changelog = utilities.UpdateChangeLog(checkdir_relative,
 				committer_name, changelog_msg,
 				os.path.join(repodir, 'skel.ChangeLog'),
@@ -2555,7 +2622,7 @@ else:
 
 	if options.ask and userquery('Commit changes?', True) != 'Yes':
 		print("* aborting commit.")
-		sys.exit(1)
+		sys.exit(128 + signal.SIGINT)
 
 	# Handle the case where committed files have keywords which
 	# will change and need a priming commit before the Manifest
@@ -2752,6 +2819,13 @@ else:
 			else:
 				retval = spawn(commit_cmd, env=os.environ)
 				if retval != os.EX_OK:
+
+					if repo_config.sign_commit and vcs == 'git' and \
+						not git_supports_gpg_sign():
+						# Inform user that newer git is needed (bug #403323).
+						logging.error(
+							"Git >=1.7.9 is required for signed commits!")
+
 					writemsg_level(("!!! Exiting on %s (shell) " + \
 						"error code: %s\n") % (vcs, retval),
 						level=logging.ERROR, noiselevel=-1)

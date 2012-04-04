@@ -1,5 +1,5 @@
 # archive_conf.py -- functionality common to archive-conf and dispatch-conf
-# Copyright 2003-2011 Gentoo Foundation
+# Copyright 2003-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -8,7 +8,7 @@
 
 from __future__ import print_function
 
-import os, sys, shutil
+import os, shutil, subprocess, sys
 
 import portage
 from portage.env.loaders import KeyValuePairFileLoader
@@ -23,20 +23,20 @@ RCS_MERGE = "rcsmerge -p -r" + RCS_BRANCH + " '%s' > '%s'"
 
 DIFF3_MERGE = "diff3 -mE '%s' '%s' '%s' > '%s'"
 
-def diffstatusoutput_len(cmd):
+def diffstatusoutput(cmd, file1, file2):
     """
     Execute the string cmd in a shell with getstatusoutput() and return a
-    2-tuple (status, output_length). If getstatusoutput() raises
-    UnicodeDecodeError (known to happen with python3.1), return a
-    2-tuple (1, 1). This provides a simple way to check for non-zero
-    output length of diff commands, while providing simple handling of
-    UnicodeDecodeError when necessary.
+    2-tuple (status, output).
     """
-    try:
-        status, output = portage.subprocess_getstatusoutput(cmd)
-        return (status, len(output))
-    except UnicodeDecodeError:
-        return (1, 1)
+    # Use Popen to emulate getstatusoutput(), since getstatusoutput() may
+    # raise a UnicodeDecodeError which makes the output inaccessible.
+    proc = subprocess.Popen(cmd % (file1, file2),
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+    output = portage._unicode_decode(proc.communicate()[0])
+    if output and output[-1] == "\n":
+        # getstatusoutput strips one newline
+        output = output[:-1]
+    return (proc.wait(), output)
 
 def read_config(mandatory_opts):
     eprefix = portage.const.EPREFIX
@@ -138,7 +138,7 @@ def file_archive(archive, curconf, newconf, mrgconf):
 
     # Archive the current config file if it isn't already saved
     if os.path.exists(archive) \
-     and diffstatusoutput_len("diff -aq '%s' '%s'" % (curconf,archive))[1] != 0:
+     and len(diffstatusoutput("diff -aq '%s' '%s'", curconf, archive)[1]) != 0:
         suf = 1
         while suf < 9 and os.path.exists(archive + '.' + str(suf)):
             suf += 1

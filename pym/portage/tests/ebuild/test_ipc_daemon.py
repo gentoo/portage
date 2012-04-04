@@ -71,15 +71,16 @@ class IpcDaemonTestCase(TestCase):
 				self.received_command = False
 				def exit_command_callback():
 					self.received_command = True
-					proc.cancel()
-					daemon.cancel()
+					task_scheduler.clear()
+					task_scheduler.wait()
 
 				exit_command.reply_hook = exit_command_callback
+				start_time = time.time()
 				task_scheduler.add(daemon)
 				task_scheduler.add(proc)
-				start_time = time.time()
 				task_scheduler.run(timeout=self._SCHEDULE_TIMEOUT)
 				task_scheduler.clear()
+				task_scheduler.wait()
 				hardlock_cleanup(env['PORTAGE_BUILDDIR'],
 					remove_all_locks=True)
 
@@ -108,15 +109,16 @@ class IpcDaemonTestCase(TestCase):
 				self.received_command = False
 				def exit_command_callback():
 					self.received_command = True
-					proc.cancel()
-					daemon.cancel()
+					task_scheduler.clear()
+					task_scheduler.wait()
 
 				exit_command.reply_hook = exit_command_callback
+				start_time = time.time()
 				task_scheduler.add(daemon)
 				task_scheduler.add(proc)
-				start_time = time.time()
 				task_scheduler.run(timeout=short_timeout_ms)
 				task_scheduler.clear()
+				task_scheduler.wait()
 				hardlock_cleanup(env['PORTAGE_BUILDDIR'],
 					remove_all_locks=True)
 

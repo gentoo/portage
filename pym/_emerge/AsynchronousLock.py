@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import dummy_threading
@@ -20,7 +20,6 @@ from portage.locks import lockfile, unlockfile
 from portage.util import writemsg_level
 from _emerge.AbstractPollTask import AbstractPollTask
 from _emerge.AsynchronousTask import AsynchronousTask
-from _emerge.PollConstants import PollConstants
 from _emerge.SpawnProcess import SpawnProcess
 
 class AsynchronousLock(AsynchronousTask):
@@ -36,7 +35,7 @@ class AsynchronousLock(AsynchronousTask):
 
 	__slots__ = ('path', 'scheduler',) + \
 		('_imp', '_force_async', '_force_dummy', '_force_process', \
-		'_force_thread', '_waiting')
+		'_force_thread')
 
 	_use_process_by_default = True
 
@@ -67,8 +66,7 @@ class AsynchronousLock(AsynchronousTask):
 
 	def _imp_exit(self, imp):
 		# call exit listeners
-		if not self._waiting:
-			self.wait()
+		self.wait()
 
 	def _cancel(self):
 		if isinstance(self._imp, AsynchronousTask):
@@ -82,9 +80,7 @@ class AsynchronousLock(AsynchronousTask):
 	def _wait(self):
 		if self.returncode is not None:
 			return self.returncode
-		self._waiting = True
 		self.returncode = self._imp.wait()
-		self._waiting = False
 		return self.returncode
 
 	def unlock(self):
@@ -121,7 +117,7 @@ class _LockThread(AbstractPollTask):
 			fcntl.fcntl(f, fcntl.F_SETFL,
 				fcntl.fcntl(f, fcntl.F_GETFL) | os.O_NONBLOCK)
 		self._reg_id = self.scheduler.register(self._files['pipe_read'],
-			PollConstants.POLLIN, self._output_handler)
+			self.scheduler.IO_IN, self._output_handler)
 		self._registered = True
 		threading_mod = threading
 		if self._force_dummy:
@@ -135,7 +131,7 @@ class _LockThread(AbstractPollTask):
 
 	def _output_handler(self, f, event):
 		buf = None
-		if event & PollConstants.POLLIN:
+		if event & self.scheduler.IO_IN:
 			try:
 				buf = os.read(self._files['pipe_read'], self._bufsize)
 			except OSError as e:
@@ -146,16 +142,11 @@ class _LockThread(AbstractPollTask):
 			self.returncode = os.EX_OK
 			self.wait()
 
+		return True
+
 	def _cancel(self):
 		# There's currently no way to force thread termination.
 		pass
-
-	def _wait(self):
-		if self.returncode is not None:
-			return self.returncode
-		if self._registered:
-			self.scheduler.schedule(self._reg_id)
-		return self.returncode
 
 	def unlock(self):
 		if self._lock_obj is None:
@@ -202,7 +193,7 @@ class _LockProcess(AbstractPollTask):
 		fcntl.fcntl(in_pr, fcntl.F_SETFL,
 			fcntl.fcntl(in_pr, fcntl.F_GETFL) | os.O_NONBLOCK)
 		self._reg_id = self.scheduler.register(in_pr,
-			PollConstants.POLLIN, self._output_handler)
+			self.scheduler.IO_IN, self._output_handler)
 		self._registered = True
 		self._proc = SpawnProcess(
 			args=[portage._python_interpreter,
@@ -262,16 +253,9 @@ class _LockProcess(AbstractPollTask):
 			self._proc.poll()
 		return self.returncode
 
-	def _wait(self):
-		if self.returncode is not None:
-			return self.returncode
-		if self._registered:
-			self.scheduler.schedule(self._reg_id)
-		return self.returncode
-
 	def _output_handler(self, f, event):
 		buf = None
-		if event & PollConstants.POLLIN:
+		if event & self.scheduler.IO_IN:
 			try:
 				buf = os.read(self._files['pipe_in'], self._bufsize)
 			except OSError as e:
@@ -282,6 +266,8 @@ class _LockProcess(AbstractPollTask):
 			self._unregister()
 			self.returncode = os.EX_OK
 			self.wait()
+
+		return True
 
 	def _unregister(self):
 		self._registered = False
