@@ -2657,7 +2657,7 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 	# redirection of ebuild phase output to logs as required for
 	# options such as --quiet.
 	sched = Scheduler(settings, trees, None, opts,
-		spinner)
+		spinner, uninstall_only=True)
 	sched._background = sched._background_mode()
 	sched._status_display.quiet = True
 

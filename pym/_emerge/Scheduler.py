@@ -135,7 +135,8 @@ class Scheduler(PollScheduler):
 			portage.exception.PortageException.__init__(self, value)
 
 	def __init__(self, settings, trees, mtimedb, myopts,
-		spinner, mergelist=None, favorites=None, graph_config=None):
+		spinner, mergelist=None, favorites=None, graph_config=None,
+		uninstall_only=False):
 		PollScheduler.__init__(self)
 
 		if mergelist is not None:
@@ -151,6 +152,7 @@ class Scheduler(PollScheduler):
 		self._spinner = spinner
 		self._mtimedb = mtimedb
 		self._favorites = favorites
+		self._uninstall_only = uninstall_only
 		self._args_set = InternalPackageSet(favorites, allow_repo=True)
 		self._build_opts = self._build_opts_class()
 
@@ -327,6 +329,8 @@ class Scheduler(PollScheduler):
 		self._blocker_db = {}
 		dynamic_deps = self.myopts.get("--dynamic-deps", "y") != "n"
 		for root in self.trees:
+			if self._uninstall_only:
+				continue
 			if graph_config is None:
 				fake_vartree = FakeVartree(self.trees[root]["root_config"],
 					pkg_cache=self._pkg_cache, dynamic_deps=dynamic_deps)
