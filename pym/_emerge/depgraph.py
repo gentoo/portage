@@ -519,6 +519,10 @@ class depgraph(object):
 			preload_installed_pkgs = \
 				"--nodeps" not in self._frozen_config.myopts
 
+			if self._frozen_config.myopts.get("--root-deps") is not None and \
+				myroot != self._frozen_config.target_root:
+				continue
+
 			fake_vartree = self._frozen_config.trees[myroot]["vartree"]
 			if not fake_vartree.dbapi:
 				# This needs to be called for the first depgraph, but not for
