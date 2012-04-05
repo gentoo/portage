@@ -4470,6 +4470,11 @@ class depgraph(object):
 			# are already built.
 			dep_keys = ["RDEPEND", "PDEPEND"]
 			for myroot in self._frozen_config.trees:
+
+				if self._frozen_config.myopts.get("--root-deps") is not None and \
+					myroot != self._frozen_config.target_root:
+					continue
+
 				vardb = self._frozen_config.trees[myroot]["vartree"].dbapi
 				pkgsettings = self._frozen_config.pkgsettings[myroot]
 				root_config = self._frozen_config.roots[myroot]
