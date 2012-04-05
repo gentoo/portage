@@ -4329,7 +4329,8 @@ class depgraph(object):
 		args = self._dynamic_config._initial_arg_list[:]
 		for root in self._frozen_config.roots:
 			if root != self._frozen_config.target_root and \
-				"remove" in self._dynamic_config.myparams:
+				("remove" in self._dynamic_config.myparams or
+				self._frozen_config.myopts.get("--root-deps") is not None):
 				# Only pull in deps for the relevant root.
 				continue
 			depgraph_sets = self._dynamic_config.sets[root]
