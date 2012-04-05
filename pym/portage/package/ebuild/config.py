@@ -313,14 +313,14 @@ class config(object):
 			# Notably absent is "env", since we want to avoid any
 			# interaction with the calling environment that might
 			# lead to unexpected results.
-			expand_map = {}
+
+			env_d = getconfig(os.path.join(eroot, "etc", "profile.env"),
+				expand=False) or {}
+			expand_map = env_d.copy()
 			self._expand_map = expand_map
 
 			# Allow make.globals to set default paths relative to ${EPREFIX}.
 			expand_map["EPREFIX"] = eprefix
-
-			env_d = getconfig(os.path.join(eroot, "etc", "profile.env"),
-				expand=False)
 
 			make_globals = getconfig(os.path.join(
 				self.global_config_path, 'make.globals'), expand=expand_map)
