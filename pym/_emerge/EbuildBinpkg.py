@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.CompositeTask import CompositeTask
@@ -34,6 +34,10 @@ class EbuildBinpkg(CompositeTask):
 
 		self.settings.pop("PORTAGE_BINPKG_TMPFILE", None)
 		if self._default_exit(package_phase) != os.EX_OK:
+			try:
+				os.unlink(self._binpkg_tmpfile)
+			except OSError:
+				pass
 			self.wait()
 			return
 
