@@ -504,21 +504,35 @@ def best_visible(argv):
 					writemsg_stdout("%s\n" % (pkg.cpv,), noiselevel=-1)
 					return os.EX_OK
 
+	# No package found, write out an empty line.
+	writemsg_stdout("\n", noiselevel=-1)
+
 	return 1
 best_visible.uses_root = True
 
 
 def mass_best_visible(argv):
-	"""<eroot> [<category/package>]+
+	"""<root> [<type>] [<category/package>]+
 	Returns category/package-version (without .ebuild).
+	The pkgtype argument defaults to "ebuild" if unspecified,
+	otherwise it must be one of ebuild, binary, or installed.
 	"""
+	type_map = {
+		"ebuild":"porttree",
+		"binary":"bintree",
+		"installed":"vartree"}
+
 	if (len(argv) < 2):
 		print("ERROR: insufficient parameters!")
 		sys.exit(2)
 	try:
-		for pack in argv[1:]:
-			mylist=portage.db[argv[0]]["porttree"].dbapi.match(pack)
-			print(pack+":"+portage.best(mylist))
+		root = argv.pop(0)
+		pkgtype = "ebuild"
+		if argv[0] in type_map:
+			pkgtype = argv.pop(0)
+		for pack in argv:
+			writemsg_stdout("%s:" % pack, noiselevel=-1)
+			best_visible([root, pkgtype, pack])
 	except KeyError:
 		sys.exit(1)
 mass_best_visible.uses_root = True
