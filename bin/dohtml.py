@@ -91,7 +91,8 @@ class OptionsClass:
 		
 		if "PF" in os.environ:
 			self.PF = os.environ["PF"]
-		if os.environ.get("EAPI", "0") in ("0", "1", "2"):
+		if "force-prefix" not in os.environ.get("FEATURES", "").split() and \
+			os.environ.get("EAPI", "0") in ("0", "1", "2"):
 			self.ED = os.environ.get("D", "")
 		else:
 			self.ED = os.environ.get("ED", "")
