@@ -45,7 +45,7 @@ portage.dep._internal_warnings = True
 try:
 	import xml.etree.ElementTree
 	from xml.parsers.expat import ExpatError
-except ImportError:
+except (ImportError, SystemError):
 	msg = ["Please enable python's \"xml\" USE flag in order to use repoman."]
 	from portage.output import EOutput
 	out = EOutput()
