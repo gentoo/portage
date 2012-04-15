@@ -283,21 +283,37 @@ class EbuildUselessCdS(LineCheck):
 			self.check_next_line = True
 
 class EapiDefinition(LineCheck):
-	""" Check that EAPI is defined before inherits"""
+	"""
+	Check that EAPI assignment conforms to PMS section 8.3.1
+	(first non-comment, non-blank line).
+	"""
 	repoman_check_name = 'EAPI.definition'
+	ignore_comment = True
 
-	eapi_re = re.compile(r'^EAPI=')
-	inherit_re = re.compile(r'^\s*inherit\s')
+	# This pattern is specified by PMS section 8.3.1.
+	_eapi_re = re.compile(r"^[ \t]*EAPI=(['\"]?)([A-Za-z0-9+_.-]*)\1[ \t]*(#.*)?$")
 
 	def new(self, pkg):
-		self.inherit_line = None
+		self._cached_eapi = pkg.metadata['EAPI']
+		self._parsed_eapi = None
+		self._eapi_line_num = None
 
 	def check(self, num, line):
-		if self.eapi_re.match(line) is not None:
-			if self.inherit_line is not None:
-				return errors.EAPI_DEFINED_AFTER_INHERIT
-		elif self.inherit_re.match(line) is not None:
-			self.inherit_line = line
+		if self._eapi_line_num is None and line.strip():
+			self._eapi_line_num = num + 1
+			m = self._eapi_re.match(line)
+			if m is not None:
+				self._parsed_eapi = m.group(2)
+
+	def end(self):
+		if self._parsed_eapi is None:
+			if self._cached_eapi != "0":
+				yield "valid EAPI assignment must occur on or before line: %d" % \
+					self._eapi_line_num
+		elif self._parsed_eapi != self._cached_eapi:
+			yield ("bash returned EAPI '%s' which does not match "
+				"assignment on line: %d") % \
+				(self._cached_eapi, self._eapi_line_num)
 
 class EbuildPatches(LineCheck):
 	"""Ensure ebuilds use bash arrays for PATCHES to ensure white space safety"""
