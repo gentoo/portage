@@ -1452,7 +1452,7 @@ class dblink(object):
 		self._contents_inodes = None
 		self._contents_basenames = None
 		self._linkmap_broken = False
-		self._md5_merge_map = {}
+		self._hardlink_merge_map = {}
 		self._hash_key = (self._eroot, self.mycpv)
 		self._protect_obj = None
 		self._pipe = pipe
@@ -4500,10 +4500,10 @@ class dblink(object):
 					# as hardlinks (having identical st_dev and st_ino).
 					hardlink_key = (mystat.st_dev, mystat.st_ino)
 
-					hardlink_candidates = self._md5_merge_map.get(hardlink_key)
+					hardlink_candidates = self._hardlink_merge_map.get(hardlink_key)
 					if hardlink_candidates is None:
 						hardlink_candidates = []
-						self._md5_merge_map[hardlink_key] = hardlink_candidates
+						self._hardlink_merge_map[hardlink_key] = hardlink_candidates
 
 					mymtime = movefile(mysrc, mydest, newmtime=thismtime,
 						sstat=mystat, mysettings=self.settings,
@@ -4511,8 +4511,7 @@ class dblink(object):
 						encoding=_encodings['merge'])
 					if mymtime is None:
 						return 1
-					if hardlink_candidates is not None:
-						hardlink_candidates.append(mydest)
+					hardlink_candidates.append(mydest)
 					zing = ">>>"
 
 				if mymtime != None:
