@@ -6753,7 +6753,8 @@ class _dep_check_composite_db(dbapi):
 		return ret
 
 	def match(self, atom):
-		ret = self._match_cache.get(atom)
+		cache_key = (atom, atom.unevaluated_atom)
+		ret = self._match_cache.get(cache_key)
 		if ret is not None:
 			return ret[:]
 
@@ -6801,7 +6802,7 @@ class _dep_check_composite_db(dbapi):
 			if len(ret) > 1:
 				self._cpv_sort_ascending(ret)
 
-		self._match_cache[atom] = ret
+		self._match_cache[cache_key] = ret
 		return ret[:]
 
 	def _visible(self, pkg):

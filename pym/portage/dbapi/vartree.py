@@ -484,6 +484,7 @@ class vardbapi(dbapi):
 		"caching match function"
 		mydep = dep_expand(
 			origdep, mydb=self, use_cache=use_cache, settings=self.settings)
+		cache_key = (mydep, mydep.unevaluated_atom)
 		mykey = dep_getkey(mydep)
 		mycat = catsplit(mykey)[0]
 		if not use_cache:
@@ -505,8 +506,8 @@ class vardbapi(dbapi):
 		if mydep not in self.matchcache[mycat]:
 			mymatch = list(self._iter_match(mydep,
 				self.cp_list(mydep.cp, use_cache=use_cache)))
-			self.matchcache[mycat][mydep] = mymatch
-		return self.matchcache[mycat][mydep][:]
+			self.matchcache[mycat][cache_key] = mymatch
+		return self.matchcache[mycat][cache_key][:]
 
 	def findname(self, mycpv, myrepo=None):
 		return self.getpath(str(mycpv), filename=catsplit(mycpv)[1]+".ebuild")

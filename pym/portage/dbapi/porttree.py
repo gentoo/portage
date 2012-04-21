@@ -1,4 +1,4 @@
-# Copyright 1998-2011 Gentoo Foundation
+# Copyright 1998-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -731,7 +731,7 @@ class portdbapi(dbapi):
 				# profile (due to old-style virtuals). Do not propagate
 				# old-style virtuals since cp_list() doesn't expand them.
 				if not (not cachelist and mycp.startswith("virtual/")):
-					self.xcache["match-all"][mycp] = cachelist
+					self.xcache["match-all"][(mycp, mycp)] = cachelist
 				return cachelist[:]
 		mysplit = mycp.split("/")
 		invalid_category = mysplit[0] not in self._categories
@@ -786,7 +786,7 @@ class portdbapi(dbapi):
 			# Do not propagate old-style virtuals since
 			# cp_list() doesn't expand them.
 			if not (not cachelist and mycp.startswith("virtual/")):
-				self.xcache["match-all"][mycp] = cachelist
+				self.xcache["match-all"][(mycp, mycp)] = cachelist
 		return mylist
 
 	def freeze(self):
@@ -809,18 +809,20 @@ class portdbapi(dbapi):
 				"has been renamed to match-visible",
 				DeprecationWarning, stacklevel=2)
 
-		#if no updates are being made to the tree, we can consult our xcache...
-		if self.frozen:
-			try:
-				return self.xcache[level][origdep][:]
-			except KeyError:
-				pass
-
 		if mydep is None:
 			#this stuff only runs on first call of xmatch()
 			#create mydep, mykey from origdep
 			mydep = dep_expand(origdep, mydb=self, settings=self.settings)
 			mykey = mydep.cp
+
+		#if no updates are being made to the tree, we can consult our xcache...
+		cache_key = None
+		if self.frozen:
+			cache_key = (mydep, mydep.unevaluated_atom)
+			try:
+				return self.xcache[level][cache_key][:]
+			except KeyError:
+				pass
 
 		myval = None
 		mytree = None
@@ -930,9 +932,7 @@ class portdbapi(dbapi):
 		if self.frozen:
 			xcache_this_level = self.xcache.get(level)
 			if xcache_this_level is not None:
-				xcache_this_level[mydep] = myval
-				if origdep and origdep != mydep:
-					xcache_this_level[origdep] = myval
+				xcache_this_level[cache_key] = myval
 				myval = myval[:]
 
 		return myval
