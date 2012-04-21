@@ -404,11 +404,10 @@ def post_emerge(myaction, myopts, myfiles,
 			if vdb_lock:
 				vardbapi.unlock()
 
+	display_preserved_libs(vardbapi, myopts)
 	chk_updated_cfg_files(settings['EROOT'], config_protect)
 
 	display_news_notification(root_config, myopts)
-	if retval in (None, os.EX_OK) or (not "--pretend" in myopts):
-		display_preserved_libs(vardbapi, myopts)	
 
 	postemerge = os.path.join(settings["PORTAGE_CONFIGROOT"],
 		portage.USER_CONFIG_PATH, "bin", "post_emerge")
