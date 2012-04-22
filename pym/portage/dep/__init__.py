@@ -33,7 +33,7 @@ from itertools import chain
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.util:cmp_sort_key',
+	'portage.util:cmp_sort_key,writemsg',
 )
 
 from portage import _unicode_decode
@@ -1882,7 +1882,6 @@ def match_from_list(mydep, candidate_list):
 	if not candidate_list:
 		return []
 
-	from portage.util import writemsg
 	if "!" == mydep[:1]:
 		if "!" == mydep[1:2]:
 			mydep = mydep[2:]
