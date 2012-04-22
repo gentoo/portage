@@ -1,5 +1,5 @@
 # repoman: Checks
-# Copyright 2007, 2011 Gentoo Foundation
+# Copyright 2007-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """This module contains functions used in Repoman to ascertain the quality
@@ -308,11 +308,11 @@ class EapiDefinition(LineCheck):
 	def end(self):
 		if self._parsed_eapi is None:
 			if self._cached_eapi != "0":
-				yield "valid EAPI assignment must occur on or before line: %d" % \
+				yield "valid EAPI assignment must occur on or before line: %s" % \
 					self._eapi_line_num
 		elif self._parsed_eapi != self._cached_eapi:
 			yield ("bash returned EAPI '%s' which does not match "
-				"assignment on line: %d") % \
+				"assignment on line: %s") % \
 				(self._cached_eapi, self._eapi_line_num)
 
 class EbuildPatches(LineCheck):
