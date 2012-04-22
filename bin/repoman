@@ -1965,12 +1965,12 @@ for x in effective_scanlist:
 		#keyword checks
 		myuse = myaux["KEYWORDS"].split()
 		for mykey in myuse:
-			myskey=mykey[:]
-			if myskey[0]=="-":
-				myskey=myskey[1:]
-			if myskey[0]=="~":
-				myskey=myskey[1:]
 			if mykey not in ("-*", "*", "~*"):
+				myskey = mykey
+				if myskey[:1] == "-":
+					myskey = myskey[1:]
+				if myskey[:1] == "~":
+					myskey = myskey[1:]
 				if myskey not in kwlist:
 					stats["KEYWORDS.invalid"] += 1
 					fails["KEYWORDS.invalid"].append(x+"/"+y+".ebuild: %s" % mykey)
