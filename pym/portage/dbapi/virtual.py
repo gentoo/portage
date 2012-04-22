@@ -49,8 +49,7 @@ class fakedbapi(dbapi):
 		# match cache uses the result from dep_expand for the cache_key.
 		cache_key = (mycp, mycp)
 		cachelist = self._match_cache.get(cache_key)
-		# cp_list() doesn't expand old-style virtuals
-		if cachelist and cachelist[0].startswith(mycp):
+		if cachelist is not None:
 			return cachelist[:]
 		cpv_list = self.cpdict.get(mycp)
 		if cpv_list is None:
