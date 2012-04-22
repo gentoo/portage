@@ -729,7 +729,7 @@ class portdbapi(dbapi):
 			if cachelist is not None:
 				# Try to propagate this to the match-all cache here for
 				# repoman since he uses separate match-all caches for each
-				# profile (due to old-style virtuals).
+				# profile (due to differences in _get_implicit_iuse).
 				self.xcache["match-all"][(mycp, mycp)] = cachelist
 				return cachelist[:]
 		mysplit = mycp.split("/")
