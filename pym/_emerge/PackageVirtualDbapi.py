@@ -90,10 +90,11 @@ class PackageVirtualDbapi(dbapi):
 		return cpv in self._cpv_map
 
 	def cp_list(self, mycp, use_cache=1):
+		# NOTE: Cache can be safely shared with the match cache, since the
+		# match cache uses the result from dep_expand for the cache_key.
 		cache_key = (mycp, mycp)
 		cachelist = self._match_cache.get(cache_key)
-		# cp_list() doesn't expand old-style virtuals
-		if cachelist and cachelist[0].startswith(mycp):
+		if cachelist is not None:
 			return cachelist[:]
 		cpv_list = self._cp_map.get(mycp)
 		if cpv_list is None:
@@ -101,8 +102,7 @@ class PackageVirtualDbapi(dbapi):
 		else:
 			cpv_list = [pkg.cpv for pkg in cpv_list]
 		self._cpv_sort_ascending(cpv_list)
-		if not (not cpv_list and mycp.startswith("virtual/")):
-			self._match_cache[cache_key] = cpv_list
+		self._match_cache[cache_key] = cpv_list
 		return cpv_list[:]
 
 	def cp_all(self):

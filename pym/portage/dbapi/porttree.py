@@ -715,7 +715,8 @@ class portdbapi(dbapi):
 		return l
 
 	def cp_list(self, mycp, use_cache=1, mytree=None):
-
+		# NOTE: Cache can be safely shared with the match cache, since the
+		# match cache uses the result from dep_expand for the cache_key.
 		if self.frozen and mytree is not None \
 			and len(self.porttrees) == 1 \
 			and mytree == self.porttrees[0]:
@@ -728,10 +729,8 @@ class portdbapi(dbapi):
 			if cachelist is not None:
 				# Try to propagate this to the match-all cache here for
 				# repoman since he uses separate match-all caches for each
-				# profile (due to old-style virtuals). Do not propagate
-				# old-style virtuals since cp_list() doesn't expand them.
-				if not (not cachelist and mycp.startswith("virtual/")):
-					self.xcache["match-all"][(mycp, mycp)] = cachelist
+				# profile (due to old-style virtuals).
+				self.xcache["match-all"][(mycp, mycp)] = cachelist
 				return cachelist[:]
 		mysplit = mycp.split("/")
 		invalid_category = mysplit[0] not in self._categories
@@ -783,10 +782,7 @@ class portdbapi(dbapi):
 		if self.frozen and mytree is None:
 			cachelist = mylist[:]
 			self.xcache["cp-list"][mycp] = cachelist
-			# Do not propagate old-style virtuals since
-			# cp_list() doesn't expand them.
-			if not (not cachelist and mycp.startswith("virtual/")):
-				self.xcache["match-all"][(mycp, mycp)] = cachelist
+			self.xcache["match-all"][(mycp, mycp)] = cachelist
 		return mylist
 
 	def freeze(self):
