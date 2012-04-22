@@ -234,6 +234,7 @@ die() {
 		} > "${T}/die.env"
 		eerror "The ebuild environment file is located at '${T}/die.env'."
 	fi
+	eerror "Working directory: '$(pwd)'"
 	eerror "S: '${S}'"
 
 	[[ -n $PORTAGE_EBUILD_EXIT_FILE ]] && > "$PORTAGE_EBUILD_EXIT_FILE"
