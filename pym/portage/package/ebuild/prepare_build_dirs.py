@@ -346,13 +346,31 @@ def _prepare_workdir(mysettings):
 				writemsg(_unicode_decode("!!! %s: %s\n") %
 					(_("Permission Denied"), log_subdir), noiselevel=-1)
 
+	tmpdir_log_path = os.path.join(
+		mysettings["T"], "build.log%s" % compress_log_ext)
 	if not logdir_subdir_ok:
 		# NOTE: When sesandbox is enabled, the local SELinux security policies
 		# may not allow output to be piped out of the sesandbox domain. The
 		# current policy will allow it to work when a pty is available, but
 		# not through a normal pipe. See bug #162404.
-		mysettings["PORTAGE_LOG_FILE"] = os.path.join(
-			mysettings["T"], "build.log%s" % compress_log_ext)
+		mysettings["PORTAGE_LOG_FILE"] = tmpdir_log_path
+	else:
+		# Create a symlink from tmpdir_log_path to PORTAGE_LOG_FILE, as
+		# requested in bug #412865.
+		make_new_symlink = False
+		try:
+			target = os.readlink(tmpdir_log_path)
+		except OSError:
+			make_new_symlink = True
+		else:
+			if target != mysettings["PORTAGE_LOG_FILE"]:
+				make_new_symlink = True
+		if make_new_symlink:
+			try:
+				os.unlink(tmpdir_log_path)
+			except OSError:
+				pass
+			os.symlink(mysettings["PORTAGE_LOG_FILE"], tmpdir_log_path)
 
 def _ensure_log_subdirs(logdir, subdir):
 	"""
