@@ -1967,7 +1967,7 @@ for x in effective_scanlist:
 				myskey=myskey[1:]
 			if myskey[0]=="~":
 				myskey=myskey[1:]
-			if mykey!="-*":
+			if mykey not in ("-*", "*", "~*"):
 				if myskey not in kwlist:
 					stats["KEYWORDS.invalid"] += 1
 					fails["KEYWORDS.invalid"].append(x+"/"+y+".ebuild: %s" % mykey)
