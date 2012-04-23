@@ -186,7 +186,7 @@ def _perform_md5_merge(x, **kwargs):
 def perform_all(x, calc_prelink=0):
 	mydict = {}
 	for k in hashfunc_map:
-		mydict[k] = perform_checksum(x, hashfunc_map[k], calc_prelink)[0]
+		mydict[k] = perform_checksum(x, k, calc_prelink)[0]
 	return mydict
 
 def get_valid_checksum_keys():

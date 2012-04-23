@@ -498,6 +498,7 @@ class vardbapi(dbapi):
 		"caching match function"
 		mydep = dep_expand(
 			origdep, mydb=self, use_cache=use_cache, settings=self.settings)
+		cache_key = (mydep, mydep.unevaluated_atom)
 		mykey = dep_getkey(mydep)
 		mycat = catsplit(mykey)[0]
 		if not use_cache:
@@ -519,8 +520,8 @@ class vardbapi(dbapi):
 		if mydep not in self.matchcache[mycat]:
 			mymatch = list(self._iter_match(mydep,
 				self.cp_list(mydep.cp, use_cache=use_cache)))
-			self.matchcache[mycat][mydep] = mymatch
-		return self.matchcache[mycat][mydep][:]
+			self.matchcache[mycat][cache_key] = mymatch
+		return self.matchcache[mycat][cache_key][:]
 
 	def findname(self, mycpv, myrepo=None):
 		return self.getpath(str(mycpv), filename=catsplit(mycpv)[1]+".ebuild")
@@ -1466,7 +1467,7 @@ class dblink(object):
 		self._contents_inodes = None
 		self._contents_basenames = None
 		self._linkmap_broken = False
-		self._md5_merge_map = {}
+		self._hardlink_merge_map = {}
 		self._hash_key = (self._eroot, self.mycpv)
 		self._protect_obj = None
 		self._pipe = pipe
@@ -4522,10 +4523,10 @@ class dblink(object):
 					# as hardlinks (having identical st_dev and st_ino).
 					hardlink_key = (mystat.st_dev, mystat.st_ino)
 
-					hardlink_candidates = self._md5_merge_map.get(hardlink_key)
+					hardlink_candidates = self._hardlink_merge_map.get(hardlink_key)
 					if hardlink_candidates is None:
 						hardlink_candidates = []
-						self._md5_merge_map[hardlink_key] = hardlink_candidates
+						self._hardlink_merge_map[hardlink_key] = hardlink_candidates
 
 					mymtime = movefile(mysrc, mydest, newmtime=thismtime,
 						sstat=mystat, mysettings=self.settings,
@@ -4533,8 +4534,7 @@ class dblink(object):
 						encoding=_encodings['merge'])
 					if mymtime is None:
 						return 1
-					if hardlink_candidates is not None:
-						hardlink_candidates.append(mydest)
+					hardlink_candidates.append(mydest)
 					zing = ">>>"
 
 				if mymtime != None:

@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """Provides an easy-to-use python interface to Gentoo's metadata.xml file.
@@ -42,12 +42,12 @@ if sys.hexversion < 0x2070000 or \
 else:
 	try:
 		import xml.etree.cElementTree as etree
-	except ImportError:
+	except (ImportError, SystemError):
 		import xml.etree.ElementTree as etree
 
 try:
 	from xml.parsers.expat import ExpatError
-except ImportError:
+except (ImportError, SystemError):
 	ExpatError = SyntaxError
 
 import re

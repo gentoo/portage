@@ -216,8 +216,15 @@ die() {
 		> "$PORTAGE_BUILDDIR/.die_hooks"
 	fi
 
-	[[ -n ${PORTAGE_LOG_FILE} ]] \
-		&& eerror "The complete build log is located at '${PORTAGE_LOG_FILE}'."
+	if [[ -n ${PORTAGE_LOG_FILE} ]] ; then
+		eerror "The complete build log is located at '${PORTAGE_LOG_FILE}'."
+		if [[ ${PORTAGE_LOG_FILE} != ${T}/* ]] ; then
+			# Display path to symlink in ${T}, as requested in bug #412865.
+			local log_ext=${PORTAGE_LOG_FILE##*/}
+			log_ext=${log_ext#*.}
+			eerror "For convenience, a symlink to the build log is located at '${T}/build.${log_ext}'."
+		fi
+	fi
 	if [ -f "${T}/environment" ] ; then
 		eerror "The ebuild environment file is located at '${T}/environment'."
 	elif [ -d "${T}" ] ; then
@@ -227,6 +234,7 @@ die() {
 		} > "${T}/die.env"
 		eerror "The ebuild environment file is located at '${T}/die.env'."
 	fi
+	eerror "Working directory: '$(pwd)'"
 	eerror "S: '${S}'"
 
 	[[ -n $PORTAGE_EBUILD_EXIT_FILE ]] && > "$PORTAGE_EBUILD_EXIT_FILE"

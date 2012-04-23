@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -79,6 +79,8 @@ class slot_conflict_handler(object):
 	We have found a valid assignment for all involved use flags. Compute
 	the needed USE changes and prepare the message for the user.
 	"""
+
+	_check_configuration_max = 1024
 
 	def __init__(self, depgraph):
 		self.depgraph = depgraph
@@ -663,14 +665,24 @@ class slot_conflict_handler(object):
 
 		solutions = []
 		sol_gen = _solution_candidate_generator(all_involved_flags)
-		while(True):
+		checked = 0
+		while True:
 			candidate = sol_gen.get_candidate()
 			if not candidate:
 				break
 			solution = self._check_solution(config, candidate, all_conflict_atoms_by_slotatom)
+			checked += 1
 			if solution:
 				solutions.append(solution)
-		
+
+			if checked >= self._check_configuration_max:
+				# TODO: Implement early elimination for candidates that would
+				# change forced or masked flags, and don't count them here.
+				if self.debug:
+					writemsg("\nAborting _check_configuration due to "
+						"excessive number of candidates.\n", noiselevel=-1)
+				break
+
 		if self.debug:
 			if not solutions:
 				writemsg("No viable solutions. Rejecting configuration.\n", noiselevel=-1)

@@ -47,7 +47,7 @@ portage.dep._internal_warnings = True
 try:
 	import xml.etree.ElementTree
 	from xml.parsers.expat import ExpatError
-except ImportError:
+except (ImportError, SystemError):
 	msg = ["Please enable python's \"xml\" USE flag in order to use repoman."]
 	from portage.output import EOutput
 	out = EOutput()
@@ -328,7 +328,7 @@ qahelp={
 	"LICENSE.virtual":"Virtuals that have a non-empty LICENSE variable",
 	"DESCRIPTION.missing":"Ebuilds that have a missing or empty DESCRIPTION variable",
 	"DESCRIPTION.toolong":"DESCRIPTION is over %d characters" % max_desc_len,
-	"EAPI.definition":"EAPI is defined after an inherit call (must be defined before)",
+	"EAPI.definition":"EAPI definition does not conform to PMS section 8.3.1 (first non-comment, non-blank line)",
 	"EAPI.deprecated":"Ebuilds that use features that are deprecated in the current EAPI",
 	"EAPI.incompatible":"Ebuilds that use features that are only available with a different EAPI",
 	"EAPI.unsupported":"Ebuilds that have an unsupported EAPI version (you must upgrade portage)",
@@ -1190,6 +1190,9 @@ def vcs_new_changed(relative_path):
 have_pmasked = False
 have_dev_keywords = False
 dofail = 0
+
+# NOTE: match-all caches are not shared due to potential
+# differences between profiles in _get_implicit_iuse.
 arch_caches={}
 arch_xmatch_caches = {}
 shared_xmatch_caches = {"cp-list":{}}
@@ -1966,12 +1969,12 @@ for x in effective_scanlist:
 		#keyword checks
 		myuse = myaux["KEYWORDS"].split()
 		for mykey in myuse:
-			myskey=mykey[:]
-			if myskey[0]=="-":
-				myskey=myskey[1:]
-			if myskey[0]=="~":
-				myskey=myskey[1:]
-			if mykey!="-*":
+			if mykey not in ("-*", "*", "~*"):
+				myskey = mykey
+				if myskey[:1] == "-":
+					myskey = myskey[1:]
+				if myskey[:1] == "~":
+					myskey = myskey[1:]
 				if myskey not in kwlist:
 					stats["KEYWORDS.invalid"] += 1
 					fails["KEYWORDS.invalid"].append(x+"/"+y+".ebuild: %s" % mykey)

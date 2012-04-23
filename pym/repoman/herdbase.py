@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 # repoman: Herd database analysis
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2 or later
 
 import errno
 import xml.etree.ElementTree
 try:
 	from xml.parsers.expat import ExpatError
-except ImportError:
+except (ImportError, SystemError):
 	# This means that python is built without xml support.
 	# We tolerate global scope import failures for optional
 	# modules, so that ImportModulesTestCase can succeed (or

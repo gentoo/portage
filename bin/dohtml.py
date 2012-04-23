@@ -91,13 +91,11 @@ class OptionsClass:
 		
 		if "PF" in os.environ:
 			self.PF = os.environ["PF"]
-		# PREFIX LOCAL: always retrieve ED
-		#if os.environ.get("EAPI", "0") in ("0", "1", "2"):
-		#	self.ED = os.environ.get("D", "")
-		#else:
-		if True:
+		if "force-prefix" not in os.environ.get("FEATURES", "").split() and \
+			os.environ.get("EAPI", "0") in ("0", "1", "2"):
+			self.ED = os.environ.get("D", "")
+		else:
 			self.ED = os.environ.get("ED", "")
-		# END PREFIX LOCAL
 		if "_E_DOCDESTTREE_" in os.environ:
 			self.DOCDESTTREE = os.environ["_E_DOCDESTTREE_"]
 		

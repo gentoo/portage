@@ -1039,6 +1039,13 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 				if mydo == "package" and bintree is not None:
 					bintree.inject(mysettings.mycpv,
 						filename=mysettings["PORTAGE_BINPKG_TMPFILE"])
+			else:
+				if "PORTAGE_BINPKG_TMPFILE" in mysettings:
+					try:
+						os.unlink(mysettings["PORTAGE_BINPKG_TMPFILE"])
+					except OSError:
+						pass
+
 		elif mydo=="qmerge":
 			# check to ensure install was run.  this *only* pops up when users
 			# forget it and are using ebuild
