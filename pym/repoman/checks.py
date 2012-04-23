@@ -664,13 +664,17 @@ class Eapi4GoneVars(LineCheck):
 
 class PortageInternal(LineCheck):
 	repoman_check_name = 'portage.internal'
-	re = re.compile(r'[^#]*\b(ecompress|ecompressdir|env-update|prepall|prepalldocs|preplib)\b')
+	ignore_comment = True
+	# Match when the command is preceded only by leading whitespace or a shell
+	# operator such as (, {, |, ||, or &&. This prevents false postives in
+	# things like elog messages, as reported in bug #413285.
+	re = re.compile(r'^(\s*|.*[|&{(]+\s*)\b(ecompress|ecompressdir|env-update|prepall|prepalldocs|preplib)\b')
 
 	def check(self, num, line):
 		"""Run the check on line and return error if there is one"""
 		m = self.re.match(line)
 		if m is not None:
-			return ("'%s'" % m.group(1)) + " called on line: %d"
+			return ("'%s'" % m.group(2)) + " called on line: %d"
 
 _constant_checks = tuple((c() for c in (
 	EbuildHeader, EbuildWhitespace, EbuildBlankLine, EbuildQuote,
