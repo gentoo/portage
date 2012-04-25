@@ -90,6 +90,7 @@ class LocationsManager(object):
 					self.profile_path, noiselevel=-1)
 				writemsg("!!! ParseError: %s\n" % str(e), noiselevel=-1)
 				self.profiles = []
+				self.profiles_complex = []
 
 		if self._user_config and self.profiles:
 			custom_prof = os.path.join(
