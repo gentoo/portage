@@ -375,7 +375,19 @@ source_all_bashrcs() {
 		for x in "${path_array[@]}" ; do
 			[ -f "$x/profile.bashrc" ] && qa_source "$x/profile.bashrc"
 		done
+	fi
 
+	if [ -r "${PORTAGE_BASHRC}" ] ; then
+		if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
+			source "${PORTAGE_BASHRC}"
+		else
+			set -x
+			source "${PORTAGE_BASHRC}"
+			set +x
+		fi
+	fi
+
+	if [[ $EBUILD_PHASE != depend ]] ; then
 		# The user's bashrc is the ONLY non-portage bit of code that can
 		# change shopts without a QA violation.
 		for x in "${PM_EBUILD_HOOK_DIR}"/${CATEGORY}/{${PN},${PN}:${SLOT},${P},${PF}}; do
@@ -392,16 +404,6 @@ source_all_bashrcs() {
 				fi
 			fi
 		done
-	fi
-
-	if [ -r "${PORTAGE_BASHRC}" ] ; then
-		if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
-			source "${PORTAGE_BASHRC}"
-		else
-			set -x
-			source "${PORTAGE_BASHRC}"
-			set +x
-		fi
 	fi
 
 	[ ! -z "${OCC}" ] && export CC="${OCC}"
