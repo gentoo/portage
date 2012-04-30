@@ -1797,7 +1797,7 @@ for x in effective_scanlist:
 		Ebuilds that inherit a "Live" eclass (darcs,subversion,git,cvs,etc..) should
 		not be allowed to be marked stable
 		"""
-		if live_ebuild:
+		if live_ebuild and repo_config.name == "gentoo":
 			bad_stable_keywords = []
 			for keyword in keywords:
 				if not keyword.startswith("~") and \
