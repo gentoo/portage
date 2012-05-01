@@ -76,6 +76,7 @@ from portage.output import bold, create_color_func, \
 	green, nocolor, red
 from portage.output import ConsoleStyleFile, StyleWriter
 from portage.util import cmp_sort_key, writemsg_level
+from portage.util._desktop_entry import validate_desktop_entry
 from portage.package.ebuild.digestgen import digestgen
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 
@@ -1565,15 +1566,14 @@ for x in effective_scanlist:
 					(checkdir, y, m.group(0)))
 
 			if desktop_file_validate and desktop_pattern.match(y):
-				status, cmd_output = subprocess_getstatusoutput(
-					"'%s' '%s'" % (desktop_file_validate, full_path))
-				if os.WIFEXITED(status) and os.WEXITSTATUS(status) != os.EX_OK:
+				cmd_output = validate_desktop_entry(full_path)
+				if cmd_output:
 					# Note: in the future we may want to grab the
 					# warnings in addition to the errors. We're
 					# just doing errors now since we don't want
 					# to generate too much noise at first.
 					error_re = re.compile(r'.*\s*error:\s*(.*)')
-					for line in cmd_output.splitlines():
+					for line in cmd_output:
 						error_match = error_re.match(line)
 						if error_match is None:
 							continue
