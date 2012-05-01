@@ -3,6 +3,7 @@
 
 import io
 import subprocess
+import sys
 
 try:
 	from configparser import Error as ConfigParserError, RawConfigParser
@@ -41,7 +42,11 @@ _ignored_service_errors = (
 )
 
 def validate_desktop_entry(path):
-	proc = subprocess.Popen([b"desktop-file-validate", _unicode_encode(path)],
+	args = ["desktop-file-validate", path]
+	if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
+		# Python 3.1 does not support bytes in Popen args.
+		args = [_unicode_encode(x, errors='strict') for x in args]
+	proc = subprocess.Popen(args,
 		stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 	output_lines = _unicode_decode(proc.communicate()[0]).splitlines()
 	proc.wait()
