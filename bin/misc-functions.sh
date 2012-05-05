@@ -551,6 +551,12 @@ install_qa_check() {
 		[ -n "${QA_SONAME_NO_SYMLINK}" ] && \
 			echo "${QA_SONAME_NO_SYMLINK}" > \
 			"${PORTAGE_BUILDDIR}"/build-info/QA_SONAME_NO_SYMLINK
+
+		if has binchecks ${RESTRICT} && \
+			[ -s "${PORTAGE_BUILDDIR}/build-info/NEEDED.ELF.2" ] ; then
+			eqawarn "QA Notice: RESTRICT=binchecks prevented checks on these ELF files:"
+			eqawarn "$(while read -r x; do x=${x#*;} ; echo ${x%%;*} ; done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2)"
+		fi
 	fi
 
 	local unsafe_files=$(find "${ED}" -type f '(' -perm -2002 -o -perm -4002 ')' | sed -e "s:^${ED}:/:")
