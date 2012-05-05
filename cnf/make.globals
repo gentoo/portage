@@ -64,7 +64,7 @@ COLLISION_IGNORE="/lib/modules"
 # Ignore file collisions for unowned *.pyo and *.pyc files, this helps during
 # transition from compiling python modules in live file system to compiling
 # them in src_install() function.
-COLLISION_IGNORE_UNOWNED="*.pyc *.pyo"
+COLLISION_IGNORE_UNOWNED="*.py[co]"
 
 # Enable preserve-libs for testing with portage versions that support it.
 # This setting is commented out for portage versions that don't support it.
