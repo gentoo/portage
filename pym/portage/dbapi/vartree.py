@@ -63,6 +63,7 @@ from _emerge.PollScheduler import PollScheduler
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 
 import errno
+import fnmatch
 import gc
 import grp
 import io
@@ -3080,6 +3081,9 @@ class dblink(object):
 				portage.util.shlex_split(
 				self.settings.get("COLLISION_IGNORE", ""))])
 
+			unowned_ignore_patterns = self.settings.get(
+				"COLLISION_IGNORE_UNOWNED", "").split()
+
 			# For collisions with preserved libraries, the current package
 			# will assume ownership and the libraries will be unregistered.
 			if self.vartree.dbapi._plib_registry is None:
@@ -3188,6 +3192,10 @@ class dblink(object):
 								if f.startswith(myignore + os.path.sep):
 									stopmerge = False
 									break
+					for pattern in unowned_ignore_patterns:
+						if fnmatch.fnmatch(f, pattern):
+							stopmerge = False
+							break
 					if stopmerge:
 						collisions.append(f)
 			return collisions, symlink_collisions, plib_collisions

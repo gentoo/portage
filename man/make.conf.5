@@ -134,6 +134,13 @@ This variable allows the user to disable \fIcollision\-protect\fR and
 .br
 Defaults to /lib/modules.
 .TP
+\fBCOLLISION_IGNORE_UNOWNED\fR = \fI[space delimited list of shell patterns]\fR
+This variable allows the user to disable \fIcollision\-protect\fR and
+\fIprotect\-owned\fR for specific shell patterns for files that are
+not owned by any packages.
+.br
+Defaults to *.pyc and *.pyo patterns.
+.TP
 \fBCONFIG_PROTECT\fR = \fI[space delimited list of files and/or directories]\fR
 All files and/or directories that are defined here will have "config file protection"
 enabled for them. See the \fBCONFIGURATION FILES\fR section
