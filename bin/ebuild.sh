@@ -512,6 +512,10 @@ if ! has "$EBUILD_PHASE" clean cleanrm depend && \
 	[[ -n $EAPI ]] || EAPI=0
 fi
 
+if has "${EAPI:-0}" 4-python; then
+	shopt -s globstar
+fi
+
 if ! has "$EBUILD_PHASE" clean cleanrm ; then
 	if [[ $EBUILD_PHASE = depend || ! -f $T/environment || \
 		-f $PORTAGE_BUILDDIR/.ebuild_changed ]] || \
