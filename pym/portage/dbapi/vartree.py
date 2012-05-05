@@ -3183,17 +3183,18 @@ class dblink(object):
 				if not isowned and self.isprotected(full_path):
 					isowned = True
 				if not isowned:
+					f_match = full_path[len(self._eroot)-1:]
 					stopmerge = True
 					if collision_ignore:
-						if f in collision_ignore:
+						if f_match in collision_ignore:
 							stopmerge = False
 						else:
 							for myignore in collision_ignore:
-								if f.startswith(myignore + os.path.sep):
+								if f_match.startswith(myignore + os.path.sep):
 									stopmerge = False
 									break
 					for pattern in unowned_ignore_patterns:
-						if fnmatch.fnmatch(f, pattern):
+						if fnmatch.fnmatch(f_match, pattern):
 							stopmerge = False
 							break
 					if stopmerge:
