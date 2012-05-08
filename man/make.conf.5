@@ -128,10 +128,10 @@ Determines how long the countdown delay will be after running
 .br
 Defaults to 5 seconds.
 .TP
-\fBCOLLISION_IGNORE\fR = \fI[space delimited list of shell patterns]\fR
+\fBCOLLISION_IGNORE\fR = \fI[space delimited list of fnmatch patterns]\fR
 This variable allows the user to disable \fIcollision\-protect\fR and
-\fIprotect\-owned\fR for specific shell patterns. For backward
-compatibility, directories that are listed without a shell pattern will
+\fIprotect\-owned\fR for specific \fBfnmatch\fR(3) patterns. For backward
+compatibility, directories that are listed without a fnmatch pattern will
 automatically have /* appended to them.
 .br
 Defaults to "/lib/modules/* *.py[co]".
