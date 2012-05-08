@@ -150,7 +150,7 @@ prepcompress() {
 install_qa_check() {
 	local f i qa_var x
 	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+		case "$EAPI" in 0|1|2) local EPREFIX= ED=${D} ;; esac
 
 	cd "${ED}" || die "cd failed"
 
@@ -534,7 +534,7 @@ install_qa_check() {
 		if has binchecks ${RESTRICT} && \
 			[ -s "${PORTAGE_BUILDDIR}/build-info/NEEDED.ELF.2" ] ; then
 			eqawarn "QA Notice: RESTRICT=binchecks prevented checks on these ELF files:"
-			eqawarn "$(while read -r x; do x=${x#*;} ; echo ${x%%;*} ; done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2)"
+			eqawarn "$(while read -r x; do x=${x#*;} ; x=${x%%;*} ; echo "${x#${EPREFIX}}" ; done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2)"
 		fi
 	fi
 
