@@ -3077,12 +3077,13 @@ class dblink(object):
 
 			os = _os_merge
 
-			collision_ignore = set([normalize_path(myignore) for myignore in \
-				portage.util.shlex_split(
-				self.settings.get("COLLISION_IGNORE", ""))])
-
-			unowned_ignore_patterns = self.settings.get(
-				"COLLISION_IGNORE_UNOWNED", "").split()
+			collision_ignore = []
+			for x in portage.util.shlex_split(
+				self.settings.get("COLLISION_IGNORE", "")):
+				if os.path.isdir(os.path.join(self._eroot, x.lstrip(os.sep))):
+					x = normalize_path(x)
+					x += "/*"
+				collision_ignore.append(x)
 
 			# For collisions with preserved libraries, the current package
 			# will assume ownership and the libraries will be unregistered.
@@ -3185,15 +3186,7 @@ class dblink(object):
 				if not isowned:
 					f_match = full_path[len(self._eroot)-1:]
 					stopmerge = True
-					if collision_ignore:
-						if f_match in collision_ignore:
-							stopmerge = False
-						else:
-							for myignore in collision_ignore:
-								if f_match.startswith(myignore + os.path.sep):
-									stopmerge = False
-									break
-					for pattern in unowned_ignore_patterns:
+					for pattern in collision_ignore:
 						if fnmatch.fnmatch(f_match, pattern):
 							stopmerge = False
 							break

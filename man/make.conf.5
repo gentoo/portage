@@ -128,18 +128,13 @@ Determines how long the countdown delay will be after running
 .br
 Defaults to 5 seconds.
 .TP
-\fBCOLLISION_IGNORE\fR = \fI[space delimited list of files and/or directories]\fR
+\fBCOLLISION_IGNORE\fR = \fI[space delimited list of shell patterns]\fR
 This variable allows the user to disable \fIcollision\-protect\fR and
-\fIprotect\-owned\fR for specific files and/or directories.
+\fIprotect\-owned\fR for specific shell patterns. For backward
+compatibility, directories that are listed without a shell pattern will
+automatically have /* appended to them.
 .br
-Defaults to /lib/modules.
-.TP
-\fBCOLLISION_IGNORE_UNOWNED\fR = \fI[space delimited list of shell patterns]\fR
-This variable allows the user to disable \fIcollision\-protect\fR and
-\fIprotect\-owned\fR for specific shell patterns for files that are
-not owned by any packages.
-.br
-Defaults to *.pyc and *.pyo patterns.
+Defaults to "/lib/modules/* *.py[co]".
 .TP
 \fBCONFIG_PROTECT\fR = \fI[space delimited list of files and/or directories]\fR
 All files and/or directories that are defined here will have "config file protection"
