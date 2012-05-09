@@ -1117,7 +1117,8 @@ class depgraph(object):
 				if atom is None:
 					atom = Atom("=" + pkg.cpv)
 				self._dynamic_config._unsatisfied_deps_for_display.append(
-					((pkg.root, atom), {"myparent":dep.parent}))
+					((pkg.root, atom),
+					{"myparent" : dep.parent, "show_req_use" : pkg}))
 				self._dynamic_config._skip_restart = True
 				return 0
 
@@ -2928,7 +2929,7 @@ class depgraph(object):
 
 
 	def _show_unsatisfied_dep(self, root, atom, myparent=None, arg=None,
-		check_backtrack=False, check_autounmask_breakage=False):
+		check_backtrack=False, check_autounmask_breakage=False, show_req_use=None):
 		"""
 		When check_backtrack=True, no output is produced and
 		the method either returns or raises _backtrack_mask if
@@ -3209,12 +3210,16 @@ class depgraph(object):
 
 		mask_docs = False
 
-		if required_use_unsatisfied:
+		if show_req_use is None and required_use_unsatisfied:
 			# We have an unmasked package that only requires USE adjustment
 			# in order to satisfy REQUIRED_USE, and nothing more. We assume
 			# that the user wants the latest version, so only the first
 			# instance is displayed.
-			pkg = required_use_unsatisfied[0]
+			show_req_use = required_use_unsatisfied[0]
+
+		if show_req_use is not None:
+
+			pkg = show_req_use
 			output_cpv = pkg.cpv + _repo_separator + pkg.repo
 			writemsg_stdout("\n!!! " + \
 				colorize("BAD", "The ebuild selected to satisfy ") + \
