@@ -12,7 +12,7 @@ def eapi_invalid(self, cpv, repo_name, settings,
 
 	msg = []
 	msg.extend(textwrap.wrap(("EAPI assignment in ebuild '%s%s%s' does not"
-		" conform with PMS section 7.3.1:") %
+		" conform with PMS section 7.3.1 (see bug #402167):") %
 		(cpv, _repo_separator, repo_name), 70))
 
 	if not eapi_parsed:
