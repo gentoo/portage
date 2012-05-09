@@ -158,7 +158,8 @@ class EbuildMetadataPhase(SubProcess):
 				parsed_eapi = self._eapi
 				if parsed_eapi is None:
 					parsed_eapi = "0"
-				if portage.eapi_is_supported(metadata["EAPI"]) and \
+				if (not metadata["EAPI"] or
+					portage.eapi_is_supported(metadata["EAPI"])) and \
 					metadata["EAPI"] != parsed_eapi:
 					self._eapi_invalid(metadata)
 					if 'parse-eapi-ebuild-head' in self.settings.features:
