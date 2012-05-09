@@ -31,7 +31,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 
 from portage import auxdbkeys, bsd_chflags, \
 	eapi_is_supported, merge, os, selinux, shutil, \
-	unmerge, _encodings, _parse_eapi_ebuild_head, _os_merge, \
+	unmerge, _encodings, _os_merge, \
 	_shell_quote, _unicode_decode, _unicode_encode
 from portage.const import EBUILD_SH_ENV_FILE, EBUILD_SH_ENV_DIR, \
 	EBUILD_SH_BINARY, INVALID_ENV_FILE, MISC_SH_BINARY
@@ -335,27 +335,11 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	# like PORTAGE_BUILDDIR are still initialized even in cases when
 	# UnsupportedAPIException needs to be raised, which can be useful
 	# when uninstalling a package that has corrupt EAPI metadata.
-	eapi = None
-	if mydo == 'depend' and 'EAPI' not in mysettings.configdict['pkg']:
-		if eapi is None:
-			with io.open(_unicode_encode(ebuild_path,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='r', encoding=_encodings['content'],
-				errors='replace') as f:
-				eapi, eapi_lineno = _parse_eapi_ebuild_head(f)
-				if eapi is None:
-					eapi = "0"
-
-		if eapi is not None:
-			if not eapi_is_supported(eapi):
-				_doebuild_path(mysettings)
-				raise UnsupportedAPIException(mycpv, eapi)
-			mysettings.configdict['pkg']['EAPI'] = eapi
+	eapi = mysettings.configdict['pkg'].get('EAPI')
 
 	if mydo != "depend":
 		# Metadata vars such as EAPI and RESTRICT are
 		# set by the above config.setcpv() call.
-		eapi = mysettings["EAPI"]
 		if not eapi_is_supported(eapi):
 			# can't do anything with this.
 			_doebuild_path(mysettings)
