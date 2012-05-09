@@ -256,7 +256,6 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 		mysettings['PORTDIR'] = repo.eclass_db.porttrees[0]
 		mysettings['PORTDIR_OVERLAY'] = ' '.join(repo.eclass_db.porttrees[1:])
 		mysettings.configdict["pkg"]["PORTAGE_REPO_NAME"] = repo.name
-		mysettings.configdict["pkg"]["REPOSITORY"] = repo.name
 
 	mysettings["PORTDIR"] = os.path.realpath(mysettings["PORTDIR"])
 	mysettings["DISTDIR"] = os.path.realpath(mysettings["DISTDIR"])
@@ -331,19 +330,19 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			os.environ["COLUMNS"] = columns
 		mysettings["COLUMNS"] = columns
 
-	# All EAPI dependent code comes last, so that essential variables
-	# like PORTAGE_BUILDDIR are still initialized even in cases when
+	# EAPI is always known here, even for the "depend" phase, because
+	# EbuildMetadataPhase gets it from _parse_eapi_ebuild_head().
+	eapi = mysettings.configdict['pkg']['EAPI']
+	_doebuild_path(mysettings, eapi=eapi)
+
+	# All EAPI dependent code comes last, so that essential variables like
+	# PATH and PORTAGE_BUILDDIR are still initialized even in cases when
 	# UnsupportedAPIException needs to be raised, which can be useful
 	# when uninstalling a package that has corrupt EAPI metadata.
-	eapi = mysettings.configdict['pkg'].get('EAPI')
+	if not eapi_is_supported(eapi):
+		raise UnsupportedAPIException(mycpv, eapi)
 
 	if mydo != "depend":
-		# Metadata vars such as EAPI and RESTRICT are
-		# set by the above config.setcpv() call.
-		if not eapi_is_supported(eapi):
-			# can't do anything with this.
-			_doebuild_path(mysettings)
-			raise UnsupportedAPIException(mycpv, eapi)
 
 		if hasattr(mydbapi, "getFetchMap") and \
 			("A" not in mysettings.configdict["pkg"] or \
@@ -369,9 +368,6 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			else:
 				mysettings.configdict["pkg"]["AA"] = " ".join(uri_map)
 
-	_doebuild_path(mysettings, eapi=eapi)
-
-	if mydo != "depend":
 		ccache = "ccache" in mysettings.features
 		distcc = "distcc" in mysettings.features
 		if ccache or distcc:
@@ -391,25 +387,27 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 				mysettings["PATH"] = os.path.join(os.sep, eprefix_lstrip,
 					 "usr", libdir, "ccache", "bin") + ":" + mysettings["PATH"]
 
-	if not eapi_exports_KV(eapi):
-		# Discard KV for EAPIs that don't support it. Cache KV is restored
-		# from the backupenv whenever config.reset() is called.
-		mysettings.pop('KV', None)
-	elif mydo != 'depend' and 'KV' not in mysettings and \
-		mydo in ('compile', 'config', 'configure', 'info',
-		'install', 'nofetch', 'postinst', 'postrm', 'preinst',
-		'prepare', 'prerm', 'setup', 'test', 'unpack'):
-		mykv, err1 = ExtractKernelVersion(
-			os.path.join(mysettings['EROOT'], "usr/src/linux"))
-		if mykv:
-			# Regular source tree
-			mysettings["KV"] = mykv
-		else:
-			mysettings["KV"] = ""
-		mysettings.backup_changes("KV")
+		if not eapi_exports_KV(eapi):
+			# Discard KV for EAPIs that don't support it. Cached KV is restored
+			# from the backupenv whenever config.reset() is called.
+			mysettings.pop('KV', None)
+		elif 'KV' not in mysettings and \
+			mydo in ('compile', 'config', 'configure', 'info',
+			'install', 'nofetch', 'postinst', 'postrm', 'preinst',
+			'prepare', 'prerm', 'setup', 'test', 'unpack'):
+			mykv, err1 = ExtractKernelVersion(
+				os.path.join(mysettings['EROOT'], "usr/src/linux"))
+			if mykv:
+				# Regular source tree
+				mysettings["KV"] = mykv
+			else:
+				mysettings["KV"] = ""
+			mysettings.backup_changes("KV")
 
-	if mydo != "depend" and not eapi_exports_REPOSITORY(eapi):
-		mysettings.pop('REPOSITORY', None)
+		if eapi_exports_REPOSITORY(eapi) and \
+			"PORTAGE_REPO_NAME" in mysettings.configdict["pkg"]:
+			mysettings.configdict["pkg"]["REPOSITORY"] = \
+				mysettings.configdict["pkg"]["PORTAGE_REPO_NAME"]
 
 _doebuild_manifest_cache = None
 _doebuild_broken_ebuilds = set()
