@@ -36,8 +36,6 @@ from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 from _emerge.PollScheduler import PollScheduler
 
 import os as _os
-import io
-import stat
 import sys
 import traceback
 import warnings
