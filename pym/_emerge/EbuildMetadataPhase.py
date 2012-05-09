@@ -5,17 +5,17 @@ from _emerge.SubProcess import SubProcess
 import sys
 from portage.cache.mappings import slot_dict_class
 import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.package.ebuild._eapi_invalid:eapi_invalid',
+)
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
-from portage.dep import _repo_separator
-from portage.elog import elog_process
-from portage.elog.messages import eerror
+
 import errno
 import fcntl
 import io
-import textwrap
 
 class EbuildMetadataPhase(SubProcess):
 
@@ -171,40 +171,10 @@ class EbuildMetadataPhase(SubProcess):
 					self.returncode = 1
 
 	def _eapi_invalid(self, metadata):
-
 		repo_name = self.portdb.getRepositoryName(self.repo_path)
-
-		msg = []
-		msg.extend(textwrap.wrap(("EAPI assignment in ebuild '%s%s%s' does not"
-			" conform with PMS section 7.3.1:") %
-			(self.cpv, _repo_separator, repo_name), 70))
-
-		if not self._eapi:
-			# None means the assignment was not found, while an
-			# empty string indicates an (invalid) empty assingment.
-			msg.append(
-				"\tvalid EAPI assignment must"
-				" occur on or before line: %s" %
-				self._eapi_lineno)
+		if metadata is not None:
+			eapi_var = metadata["EAPI"]
 		else:
-			msg.append(("\tbash returned EAPI '%s' which does not match "
-				"assignment on line: %s") %
-				(metadata["EAPI"], self._eapi_lineno))
-
-		if 'parse-eapi-ebuild-head' in self.settings.features:
-			msg.extend(textwrap.wrap(("NOTE: This error will soon"
-				" become unconditionally fatal in a future version of Portage,"
-				" but at this time, it can by made non-fatal by setting"
-				" FEATURES=-parse-eapi-ebuild-head in"
-				" make.conf."), 70))
-		else:
-			msg.extend(textwrap.wrap(("NOTE: This error will soon"
-				" become unconditionally fatal in a future version of Portage."
-				" At the earliest opportunity, please enable"
-				" FEATURES=parse-eapi-ebuild-head in make.conf in order to"
-				" make this error fatal."), 70))
-
-		for line in msg:
-			eerror(line, phase="other", key=self.cpv)
-		elog_process(self.cpv, self.settings,
-			phasefilter=("other",))
+			eapi_var = None
+		eapi_invalid(self, self.cpv, repo_name, self.settings,
+			eapi_var, self._eapi, self._eapi_lineno)
