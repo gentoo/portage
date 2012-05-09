@@ -485,38 +485,22 @@ class portdbapi(dbapi):
 				raise KeyError(mycpv)
 
 			self.doebuild_settings.setcpv(mycpv)
-			eapi = None
 
-			if eapi is None and \
-				'parse-eapi-ebuild-head' in self.doebuild_settings.features:
-				with io.open(_unicode_encode(myebuild,
-					encoding=_encodings['fs'], errors='strict'),
-					mode='r', encoding=_encodings['repo.content'],
-					errors='replace') as f:
-					eapi = portage._parse_eapi_ebuild_head(f)
+			proc = EbuildMetadataPhase(cpv=mycpv,
+				ebuild_hash=ebuild_hash,
+				metadata_callback=self._metadata_callback, portdb=self,
+				repo_path=mylocation,
+				scheduler=PollScheduler().sched_iface,
+				settings=self.doebuild_settings)
 
-			if eapi is not None:
-				self.doebuild_settings.configdict['pkg']['EAPI'] = eapi
+			proc.start()
+			proc.wait()
 
-			if eapi is not None and not portage.eapi_is_supported(eapi):
-				mydata = self._metadata_callback(
-					mycpv, mylocation, {'EAPI':eapi}, ebuild_hash)
-			else:
-				proc = EbuildMetadataPhase(cpv=mycpv, eapi=eapi,
-					ebuild_hash=ebuild_hash,
-					metadata_callback=self._metadata_callback, portdb=self,
-					repo_path=mylocation,
-					scheduler=PollScheduler().sched_iface,
-					settings=self.doebuild_settings)
+			if proc.returncode != os.EX_OK:
+				self._broken_ebuilds.add(myebuild)
+				raise KeyError(mycpv)
 
-				proc.start()
-				proc.wait()
-
-				if proc.returncode != os.EX_OK:
-					self._broken_ebuilds.add(myebuild)
-					raise KeyError(mycpv)
-
-				mydata = proc.metadata
+			mydata = proc.metadata
 
 		mydata["repository"] = self.repositories.get_name_for_location(mylocation)
 		mydata["_mtime_"] = ebuild_hash.mtime

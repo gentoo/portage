@@ -28,7 +28,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 from portage.localization import _
 from portage import os
 from portage import shutil
-from portage import _unicode_decode
+from portage import eapi_is_supported, _unicode_decode
 from portage.cache.cache_errors import CacheError
 from portage.const import GLOBAL_CONFIG_PATH
 from portage.const import _ENABLE_DYN_LINK_MAP, _ENABLE_SET_CONFIG
@@ -1716,9 +1716,6 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 	if onProgress is not None:
 		onProgress(maxval, curval)
 
-	from portage import eapi_is_supported, \
-		_validate_cache_for_unsupported_eapis
-
 	# TODO: Display error messages, but do not interfere with the progress bar.
 	# Here's how:
 	#  1) erase the progress bar
@@ -1758,8 +1755,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 				eapi = eapi.lstrip('-')
 				eapi_supported = eapi_is_supported(eapi)
 				if not eapi_supported:
-					if not _validate_cache_for_unsupported_eapis:
-						continue
+					continue
 
 				dest = None
 				try:

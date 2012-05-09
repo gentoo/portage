@@ -8,6 +8,7 @@ and correctness of an ebuild."""
 import re
 import time
 import repoman.errors as errors
+import portage
 from portage.eapi import eapi_supports_prefix, eapi_has_implicit_rdepend, \
 	eapi_has_src_prepare_and_src_configure, eapi_has_dosed_dohard, \
 	eapi_exports_AA, eapi_exports_KV
@@ -284,14 +285,12 @@ class EbuildUselessCdS(LineCheck):
 
 class EapiDefinition(LineCheck):
 	"""
-	Check that EAPI assignment conforms to PMS section 8.3.1
+	Check that EAPI assignment conforms to PMS section 7.3.1
 	(first non-comment, non-blank line).
 	"""
 	repoman_check_name = 'EAPI.definition'
 	ignore_comment = True
-
-	# This pattern is specified by PMS section 8.3.1.
-	_eapi_re = re.compile(r"^[ \t]*EAPI=(['\"]?)([A-Za-z0-9+_.-]*)\1[ \t]*(#.*)?$")
+	_eapi_re = portage._pms_eapi_re
 
 	def new(self, pkg):
 		self._cached_eapi = pkg.metadata['EAPI']

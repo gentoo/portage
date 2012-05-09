@@ -337,12 +337,14 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	# when uninstalling a package that has corrupt EAPI metadata.
 	eapi = None
 	if mydo == 'depend' and 'EAPI' not in mysettings.configdict['pkg']:
-		if eapi is None and 'parse-eapi-ebuild-head' in mysettings.features:
+		if eapi is None:
 			with io.open(_unicode_encode(ebuild_path,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['content'],
 				errors='replace') as f:
-				eapi = _parse_eapi_ebuild_head(f)
+				eapi, eapi_lineno = _parse_eapi_ebuild_head(f)
+				if eapi is None:
+					eapi = "0"
 
 		if eapi is not None:
 			if not eapi_is_supported(eapi):

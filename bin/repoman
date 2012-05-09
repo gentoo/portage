@@ -322,7 +322,7 @@ qahelp={
 	"LICENSE.virtual":"Virtuals that have a non-empty LICENSE variable",
 	"DESCRIPTION.missing":"Ebuilds that have a missing or empty DESCRIPTION variable",
 	"DESCRIPTION.toolong":"DESCRIPTION is over %d characters" % max_desc_len,
-	"EAPI.definition":"EAPI definition does not conform to PMS section 8.3.1 (first non-comment, non-blank line)",
+	"EAPI.definition":"EAPI definition does not conform to PMS section 7.3.1 (first non-comment, non-blank line)",
 	"EAPI.deprecated":"Ebuilds that use features that are deprecated in the current EAPI",
 	"EAPI.incompatible":"Ebuilds that use features that are only available with a different EAPI",
 	"EAPI.unsupported":"Ebuilds that have an unsupported EAPI version (you must upgrade portage)",

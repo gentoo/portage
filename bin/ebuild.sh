@@ -534,7 +534,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		# In order to ensure correct interaction between ebuilds and
 		# eclasses, they need to be unset before this process of
 		# interaction begins.
-		unset DEPEND RDEPEND PDEPEND INHERITED IUSE REQUIRED_USE \
+		unset EAPI DEPEND RDEPEND PDEPEND INHERITED IUSE REQUIRED_USE \
 			ECLASS E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND
 
 		if [[ $PORTAGE_DEBUG != 1 || ${-/x/} != $- ]] ; then
@@ -551,7 +551,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 			rm "$PORTAGE_BUILDDIR/.ebuild_changed"
 		fi
 
-		[[ -n $EAPI ]] || EAPI=0
+		[ "${EAPI+set}" = set ] || EAPI=0
 
 		if has "$EAPI" 0 1 2 3 3_pre2 ; then
 			export RDEPEND=${RDEPEND-${DEPEND}}
@@ -670,7 +670,7 @@ if [[ $EBUILD_PHASE = depend ]] ; then
 		PROPERTIES DEFINED_PHASES UNUSED_05 UNUSED_04
 		UNUSED_03 UNUSED_02 UNUSED_01"
 
-	[ -n "${EAPI}" ] || EAPI=0
+	[ "${EAPI+set}" = set ] || EAPI=0
 
 	# The extra $(echo) commands remove newlines.
 	if [ -n "${dbkey}" ] ; then

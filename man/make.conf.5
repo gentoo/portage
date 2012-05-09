@@ -407,9 +407,9 @@ parallelization. For additional parallelization, disable
 \fIebuild\-locks\fR.
 .TP
 .B parse\-eapi\-ebuild\-head
-Parse \fBEAPI\fR from the head of the ebuild (first 30 lines). This feature
-is only intended for experimental purposes and should not be enabled under
-normal circumstances.
+Parse \fBEAPI\fR from the head of the ebuild as specified in PMS section
+7.3.1, and treat non\-conformant ebuilds as invalid. This feature is
+enabled by default, and will soon become enabled unconditionally.
 .TP
 .B prelink\-checksums
 If \fBprelink\fR(8) is installed then use it to undo any prelinks on files

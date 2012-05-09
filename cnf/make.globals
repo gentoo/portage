@@ -52,7 +52,7 @@ FETCHCOMMAND_SFTP="bash -c \"x=\\\${2#sftp://} ; host=\\\${x%%/*} ; port=\\\${ho
 
 # Default user options
 FEATURES="assume-digests binpkg-logs distlocks ebuild-locks
-          fixlafiles news parallel-fetch protect-owned
+          fixlafiles news parallel-fetch parse-eapi-ebuild-head protect-owned
           sandbox sfperms strict unknown-features-warn unmerge-logs
           unmerge-orphans userfetch"
 

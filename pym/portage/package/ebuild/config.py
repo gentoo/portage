@@ -776,9 +776,6 @@ class config(object):
 			if bsd_chflags:
 				self.features.add('chflags')
 
-			if 'parse-eapi-ebuild-head' in self.features:
-				portage._validate_cache_for_unsupported_eapis = False
-
 			self._iuse_implicit_match = _iuse_implicit_match_cache(self)
 
 			self._validate_commands()
