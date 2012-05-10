@@ -79,8 +79,6 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 	mygroups = settings._getKeywords(mycpv, metadata)
 	licenses = metadata["LICENSE"]
 	properties = metadata["PROPERTIES"]
-	if eapi.startswith("-"):
-		eapi = eapi[1:]
 	if not eapi_is_supported(eapi):
 		return [_MaskReason("EAPI", "EAPI %s" % eapi)]
 	elif _eapi_is_deprecated(eapi) and not installed:

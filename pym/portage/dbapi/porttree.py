@@ -95,6 +95,7 @@ class portdbapi(dbapi):
 		# this purpose because doebuild makes many changes to the config
 		# instance that is passed in.
 		self.doebuild_settings = config(clone=self.settings)
+		self._scheduler = PollScheduler().sched_iface
 		self.depcachedir = os.path.realpath(self.settings.depcachedir)
 		
 		if os.environ.get("SANDBOX_ON") == "1":
@@ -324,34 +325,7 @@ class portdbapi(dbapi):
 				return (filename, x)
 		return (None, 0)
 
-	def _metadata_process(self, cpv, ebuild_path, repo_path):
-		"""
-		Create an EbuildMetadataPhase instance to generate metadata for the
-		give ebuild.
-		@rtype: EbuildMetadataPhase
-		@return: A new EbuildMetadataPhase instance, or None if the
-			metadata cache is already valid.
-		"""
-		metadata, ebuild_hash = self._pull_valid_cache(cpv, ebuild_path, repo_path)
-		if metadata is not None:
-			return None
-
-		process = EbuildMetadataPhase(cpv=cpv,
-			ebuild_hash=ebuild_hash, metadata_callback=self._metadata_callback,
-			portdb=self, repo_path=repo_path, settings=self.doebuild_settings)
-		return process
-
-	def _metadata_callback(self, cpv, repo_path, metadata, ebuild_hash):
-
-		i = metadata
-		if hasattr(metadata, "items"):
-			i = iter(metadata.items())
-		metadata = dict(i)
-
-		if metadata.get("INHERITED", False):
-			metadata["_eclasses_"] = self.repositories.get_repo_for_location(repo_path).eclass_db.get_eclass_data(metadata["INHERITED"].split())
-		else:
-			metadata["_eclasses_"] = {}
+	def _write_cache(self, cpv, repo_path, metadata, ebuild_hash):
 
 		try:
 			cache = self.auxdb[repo_path]
@@ -363,20 +337,6 @@ class portdbapi(dbapi):
 			traceback.print_exc()
 			cache = None
 
-		metadata.pop("INHERITED", None)
-
-		eapi = metadata.get("EAPI")
-		if not eapi or not eapi.strip():
-			eapi = "0"
-			metadata["EAPI"] = eapi
-		if not eapi_is_supported(eapi):
-			keys = set(metadata)
-			keys.discard('_eclasses_')
-			keys.discard('_mtime_')
-			keys.discard('_%s_' % chf)
-			metadata.update((k, '') for k in keys)
-			metadata["EAPI"] = "-" + eapi.lstrip("-")
-
 		if cache is not None:
 			try:
 				cache[cpv] = metadata
@@ -384,7 +344,6 @@ class portdbapi(dbapi):
 				# Normally this shouldn't happen, so we'll show
 				# a traceback for debugging purposes.
 				traceback.print_exc()
-		return metadata
 
 	def _pull_valid_cache(self, cpv, ebuild_path, repo_path):
 		try:
@@ -427,7 +386,10 @@ class portdbapi(dbapi):
 			if not eapi:
 				eapi = '0'
 				metadata['EAPI'] = eapi
-			if eapi[:1] == '-' and eapi_is_supported(eapi[1:]):
+			if not eapi_is_supported(eapi):
+				# Since we're supposed to be able to efficiently obtain the
+				# EAPI from _parse_eapi_ebuild_head, we disregard cache entries
+				# for unsupported EAPIs.
 				continue
 			if auxdb.validate_entry(metadata, ebuild_hash, eclass_db):
 				break
@@ -482,13 +444,9 @@ class portdbapi(dbapi):
 			if myebuild in self._broken_ebuilds:
 				raise KeyError(mycpv)
 
-			self.doebuild_settings.setcpv(mycpv)
-
 			proc = EbuildMetadataPhase(cpv=mycpv,
-				ebuild_hash=ebuild_hash,
-				metadata_callback=self._metadata_callback, portdb=self,
-				repo_path=mylocation,
-				scheduler=PollScheduler().sched_iface,
+				ebuild_hash=ebuild_hash, portdb=self,
+				repo_path=mylocation, scheduler=self._scheduler,
 				settings=self.doebuild_settings)
 
 			proc.start()
@@ -552,7 +510,7 @@ class portdbapi(dbapi):
 			# since callers already handle it.
 			raise portage.exception.InvalidDependString(
 				"getFetchMap(): '%s' has unsupported EAPI: '%s'" % \
-				(mypkg, eapi.lstrip("-")))
+				(mypkg, eapi))
 
 		return _parse_uri_map(mypkg, {'EAPI':eapi,'SRC_URI':myuris},
 			use=useflags)

@@ -238,10 +238,15 @@ class GenCache(object):
 
 		self._existing_nodes = set()
 
-	def _metadata_callback(self, cpv, repo_path, metadata, ebuild_hash):
+	def _metadata_callback(self, cpv, repo_path, metadata,
+		ebuild_hash, eapi_supported):
 		self._existing_nodes.add(cpv)
 		self._cp_missing.discard(cpv_getkey(cpv))
-		if metadata is not None:
+
+		# Since we're supposed to be able to efficiently obtain the
+		# EAPI from _parse_eapi_ebuild_head, we don't write cache
+		# entries for unsupported EAPIs.
+		if metadata is not None and eapi_supported:
 			if metadata.get('EAPI') == '0':
 				del metadata['EAPI']
 			for trg_cache in self._trg_caches:

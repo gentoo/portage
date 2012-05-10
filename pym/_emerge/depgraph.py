@@ -7130,8 +7130,6 @@ def get_mask_info(root_config, cpv, pkgsettings,
 		mreasons = ["corruption"]
 	else:
 		eapi = metadata['EAPI']
-		if eapi[:1] == '-':
-			eapi = eapi[1:]
 		if not portage.eapi_is_supported(eapi):
 			mreasons = ['EAPI %s' % eapi]
 		else:

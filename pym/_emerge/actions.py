@@ -1752,7 +1752,6 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 				eapi = src.get('EAPI')
 				if not eapi:
 					eapi = '0'
-				eapi = eapi.lstrip('-')
 				eapi_supported = eapi_is_supported(eapi)
 				if not eapi_supported:
 					continue
@@ -1799,13 +1798,6 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 					# The existing data is valid and identical,
 					# so there's no need to overwrite it.
 					continue
-
-				if not eapi_supported:
-					src = {
-						'EAPI'       : '-' + eapi,
-						dest_chf_key : src[dest_chf_key],
-						'_eclasses_' : src['_eclasses_'],
-					}
 
 				try:
 					tree_data.dest_db[cpv] = src
