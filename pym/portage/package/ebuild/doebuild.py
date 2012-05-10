@@ -342,8 +342,10 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	if not eapi_is_supported(eapi):
 		raise UnsupportedAPIException(mycpv, eapi)
 
-	if mydo != "depend":
+	if eapi_exports_REPOSITORY(eapi) and "PORTAGE_REPO_NAME" in mysettings.configdict["pkg"]:
+		mysettings.configdict["pkg"]["REPOSITORY"] = mysettings.configdict["pkg"]["PORTAGE_REPO_NAME"]
 
+	if mydo != "depend":
 		if hasattr(mydbapi, "getFetchMap") and \
 			("A" not in mysettings.configdict["pkg"] or \
 			"AA" not in mysettings.configdict["pkg"]):
@@ -403,11 +405,6 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			else:
 				mysettings["KV"] = ""
 			mysettings.backup_changes("KV")
-
-		if eapi_exports_REPOSITORY(eapi) and \
-			"PORTAGE_REPO_NAME" in mysettings.configdict["pkg"]:
-			mysettings.configdict["pkg"]["REPOSITORY"] = \
-				mysettings.configdict["pkg"]["PORTAGE_REPO_NAME"]
 
 _doebuild_manifest_cache = None
 _doebuild_broken_ebuilds = set()
