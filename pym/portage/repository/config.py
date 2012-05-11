@@ -49,9 +49,9 @@ class RepoConfig(object):
 		'cache_formats', 'create_manifest', 'disable_manifest', 'eapi',
 		'eclass_db', 'eclass_locations', 'eclass_overrides', 'format', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
-		'name', 'priority', 'profile_formats', 'sign_commit', 'sign_manifest', 'sync', 'thin_manifest',
-		'update_changelog', 'user_location', 'portage1_profiles',
-		'portage1_profiles_compat')
+		'name', 'portage1_profiles', 'portage1_profiles_compat', 'priority',
+		'profile_formats', 'sign_commit', 'sign_manifest', 'sync',
+		'thin_manifest', 'update_changelog', 'user_location')
 
 	def __init__(self, name, repo_opts):
 		"""Build a RepoConfig with options in repo_opts
