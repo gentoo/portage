@@ -523,8 +523,7 @@ class config(object):
 			#filling PORTDIR and PORTDIR_OVERLAY variable for compatibility
 			main_repo = self.repositories.mainRepo()
 			if main_repo is not None:
-				main_repo = main_repo.user_location
-				self["PORTDIR"] = main_repo
+				self["PORTDIR"] = main_repo.user_location
 				self.backup_changes("PORTDIR")
 
 			# repoman controls PORTDIR_OVERLAY via the environment, so no
@@ -784,6 +783,11 @@ class config(object):
 				if k in self:
 					self[k] = self[k].lower()
 					self.backup_changes(k)
+
+			if main_repo is not None and not main_repo.sync:
+				main_repo_sync = self.get("SYNC")
+				if main_repo_sync:
+					main_repo.sync = main_repo_sync
 
 			# The first constructed config object initializes these modules,
 			# and subsequent calls to the _init() functions have no effect.

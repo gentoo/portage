@@ -483,13 +483,6 @@ class RepoConfigLoader(object):
 		prepos_order = [repo.name for (key, repo) in prepos_order
 			if repo.name == key and repo.location is not None]
 
-		if portdir in location_map:
-			portdir_repo = prepos[location_map[portdir]]
-			portdir_sync = settings.get('SYNC', '')
-			#if SYNC variable is set and not overwritten by repos.conf
-			if portdir_sync and not portdir_repo.sync:
-				portdir_repo.sync = portdir_sync
-
 		if prepos['DEFAULT'].main_repo is None or \
 			prepos['DEFAULT'].main_repo not in prepos:
 			#setting main_repo if it was not set in repos.conf
