@@ -27,6 +27,9 @@ from portage import _unicode_encode
 from portage import _encodings
 from portage import manifest
 
+_valid_profile_formats = frozenset(
+	['pms', 'portage-1'])
+
 _repo_name_sub_re = re.compile(r'[^\w-]')
 
 def _gen_valid_repo(name):
@@ -754,7 +757,7 @@ def parse_layout_conf(repo_location, repo_name=None):
 			raw_formats = ('portage-1-compat',)
 	else:
 		raw_formats = set(raw_formats.split())
-		unknown = raw_formats.difference(['pms', 'portage-1'])
+		unknown = raw_formats.difference(_valid_profile_formats)
 		if unknown:
 			repo_name = _get_repo_name(repo_location, cached=repo_name)
 			warnings.warn((_("Repository named '%(repo_name)s' has unsupported "
@@ -764,7 +767,7 @@ def parse_layout_conf(repo_location, repo_name=None):
 				layout_filename=layout_filename,
 				unknown_fmts=" ".join(unknown))),
 				DeprecationWarning)
-		raw_formats = tuple(raw_formats.intersection(['pms', 'portage-1']))
+		raw_formats = tuple(raw_formats.intersection(_valid_profile_formats))
 	data['profile-formats'] = raw_formats
 
 	return data, layout_errors
