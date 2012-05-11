@@ -1,8 +1,8 @@
 #!/bin/bash
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/helper-functions.sh
 
 # avoid multiple calls to `has`.  this creates things like:
 #   FEATURES_foo=false
@@ -61,6 +61,8 @@ prepstrip_sources_dir=${EPREFIX}/usr/src/debug/${CATEGORY}/${PF}
 
 type -P debugedit >/dev/null && debugedit_found=true || debugedit_found=false
 debugedit_warned=false
+
+multijob_init
 
 unset ${!INODE_*}
 
@@ -171,6 +173,8 @@ process_elf() {
 # We want to log already stripped binaries, as this may be a QA violation.
 # They prevent us from getting the splitdebug data.
 if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
+	(
+	multijob_child_init
 	log=$T/scanelf-already-stripped.log
 	qa_var="QA_PRESTRIPPED_${ARCH/-/_}"
 	[[ -n ${!qa_var} ]] && QA_PRESTRIPPED="${!qa_var}"
@@ -193,6 +197,8 @@ if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
 	else
 		rm -f "$log"
 	fi
+	) &
+	multijob_post_fork
 fi
 
 # Now we look for unstripped binaries.
@@ -205,8 +211,10 @@ do
 		banner=true
 	fi
 
-	f=$(file "${x}") || continue
-	[[ -z ${f} ]] && continue
+	(
+	multijob_child_init
+	f=$(file "${x}") || exit 0
+	[[ -z ${f} ]] && exit 0
 
 	if ! ${SKIP_STRIP} ; then
 		# The noglob funk is to support STRIP_MASK="/*/booga" and to keep
@@ -253,6 +261,8 @@ do
 	if ${was_not_writable} ; then
 		chmod u-w "${x}"
 	fi
+	) &
+	multijob_post_fork
 done
 
 if [[ -s ${T}/debug.sources ]] && \
@@ -274,3 +284,5 @@ then
 		>> "$emptydir"/.keepdir
 	done < <(find "${D}${prepstrip_sources_dir}/" -type d -empty -print0)
 fi
+
+multijob_finish

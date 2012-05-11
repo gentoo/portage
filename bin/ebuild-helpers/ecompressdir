@@ -2,7 +2,7 @@
 # Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/helper-functions.sh
 
 if [[ -z $1 ]] ; then
 	helpers_die "${0##*/}: at least one argument needed"
@@ -116,6 +116,16 @@ ret=0
 
 rm -rf "${T}"/ecompress-skip
 
+decompressors=(
+	".Z"    "gunzip -f"
+	".gz"   "gunzip -f"
+	".bz2"  "bunzip2 -f"
+	".xz"   "unxz -f"
+	".lzma" "unxz -f"
+)
+
+multijob_init
+
 for dir in "$@" ; do
 	dir=${dir#/}
 	dir="${ED}${dir}"
@@ -136,13 +146,25 @@ for dir in "$@" ; do
 	find "${dir}" -type f -name '*.ecompress.file' -print0 | ${XARGS} -0 rm -f
 
 	# not uncommon for packages to compress doc files themselves
-	funk_up_dir "decompress" ".Z" "gunzip -f"
-	funk_up_dir "decompress" ".gz" "gunzip -f"
-	funk_up_dir "decompress" ".bz2" "bunzip2 -f"
+	for (( d = 0; d < ${#decompressors[@]}; d += 2 )) ; do
+		# It's faster to parallelize at this stage than to try to
+		# parallelize the compressors.  This is because the find|xargs
+		# ends up launching less compressors overall, so the overhead
+		# of forking children ends up dominating.
+		(
+		multijob_child_init
+		funk_up_dir "decompress" "${decompressors[i]}" "${decompressors[i+1]}"
+		) &
+		multijob_post_fork
+		: $(( ret |= $? ))
+	done
 
 	# forcibly break all hard links as some compressors whine about it
 	find "${dir}" -type f -links +1 -exec env file="{}" sh -c \
 		'cp -p "${file}" "${file}.ecompress.break" ; mv -f "${file}.ecompress.break" "${file}"' \;
+
+	multijob_finish
+	: $(( ret |= $? ))
 
 	# now lets do our work
 	if [[ -n ${suffix} ]] ; then
