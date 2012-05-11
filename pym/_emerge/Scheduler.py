@@ -137,7 +137,7 @@ class Scheduler(PollScheduler):
 	def __init__(self, settings, trees, mtimedb, myopts,
 		spinner, mergelist=None, favorites=None, graph_config=None,
 		uninstall_only=False):
-		PollScheduler.__init__(self)
+		PollScheduler.__init__(self, main=True)
 
 		if mergelist is not None:
 			warnings.warn("The mergelist parameter of the " + \

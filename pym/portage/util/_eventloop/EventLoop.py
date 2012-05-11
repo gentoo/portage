@@ -35,7 +35,15 @@ class EventLoop(object):
 		__slots__ = ("args", "function", "calling", "interval", "source_id",
 			"timestamp")
 
-	def __init__(self):
+	def __init__(self, main=True):
+		"""
+		@param main: If True then this is a singleton instance for use
+			in the main thread, otherwise it is a local instance which
+			can safely be use in a non-main thread (default is True, so
+			that global_event_loop does not need constructor arguments)
+		@type main: bool
+		"""
+		self._use_signal = main
 		self._poll_event_queue = []
 		self._poll_event_handlers = {}
 		self._poll_event_handler_ids = {}
@@ -198,20 +206,22 @@ class EventLoop(object):
 		self._child_handlers[source_id] = self._child_callback_class(
 			callback=callback, data=data, pid=pid, source_id=source_id)
 
-		if self._sigchld_read is None:
-			self._sigchld_read, self._sigchld_write = os.pipe()
-			fcntl.fcntl(self._sigchld_read, fcntl.F_SETFL,
-				fcntl.fcntl(self._sigchld_read, fcntl.F_GETFL) | os.O_NONBLOCK)
+		if self._use_signal:
+			if self._sigchld_read is None:
+				self._sigchld_read, self._sigchld_write = os.pipe()
+				fcntl.fcntl(self._sigchld_read, fcntl.F_SETFL,
+					fcntl.fcntl(self._sigchld_read,
+					fcntl.F_GETFL) | os.O_NONBLOCK)
 
-		# The IO watch is dynamically registered and unregistered as
-		# needed, since we don't want to consider it as a valid source
-		# of events when there are no child listeners. It's important
-		# to distinguish when there are no valid sources of IO events,
-		# in order to avoid an endless poll call if there's no timeout.
-		if self._sigchld_src_id is None:
-			self._sigchld_src_id = self.io_add_watch(
-				self._sigchld_read, self.IO_IN, self._sigchld_io_cb)
-			signal.signal(signal.SIGCHLD, self._sigchld_sig_cb)
+			# The IO watch is dynamically registered and unregistered as
+			# needed, since we don't want to consider it as a valid source
+			# of events when there are no child listeners. It's important
+			# to distinguish when there are no valid sources of IO events,
+			# in order to avoid an endless poll call if there's no timeout.
+			if self._sigchld_src_id is None:
+				self._sigchld_src_id = self.io_add_watch(
+					self._sigchld_read, self.IO_IN, self._sigchld_io_cb)
+				signal.signal(signal.SIGCHLD, self._sigchld_sig_cb)
 
 		# poll now, in case the SIGCHLD has already arrived
 		self._poll_child_processes()
@@ -318,10 +328,15 @@ class EventLoop(object):
 
 	def _run_timeouts(self):
 
+		calls = 0
+		if not self._use_signal:
+			if self._poll_child_processes():
+				calls += 1
+
 		self._run_idle_callbacks()
 
 		if not self._timeout_handlers:
-			return False
+			return bool(calls)
 
 		ready_timeouts = []
 		current_time = time.time()
@@ -334,7 +349,6 @@ class EventLoop(object):
 
 		# Iterate of our local list, since self._timeout_handlers can be
 		# modified during the exection of these callbacks.
-		calls = 0
 		for x in ready_timeouts:
 			if x.source_id not in self._timeout_handlers:
 				# it got cancelled while executing another timeout
@@ -387,7 +401,7 @@ class EventLoop(object):
 		"""
 		x = self._child_handlers.pop(reg_id, None)
 		if x is not None:
-			if not self._child_handlers:
+			if not self._child_handlers and self._use_signal:
 				signal.signal(signal.SIGCHLD, signal.SIG_DFL)
 				self.source_remove(self._sigchld_src_id)
 				self._sigchld_src_id = None

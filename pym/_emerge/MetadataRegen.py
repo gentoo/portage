@@ -11,7 +11,7 @@ class MetadataRegen(PollScheduler):
 
 	def __init__(self, portdb, cp_iter=None, consumer=None,
 		max_jobs=None, max_load=None):
-		PollScheduler.__init__(self)
+		PollScheduler.__init__(self, main=True)
 		self._portdb = portdb
 		self._global_cleanse = False
 		if cp_iter is None:

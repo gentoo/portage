@@ -13,6 +13,7 @@ from portage import _encodings
 from portage import _unicode_encode
 from portage.util import writemsg_level
 from portage.util.SlotObject import SlotObject
+from portage.util._eventloop.EventLoop import EventLoop
 from portage.util._eventloop.global_event_loop import global_event_loop
 
 from _emerge.getloadavg import getloadavg
@@ -26,7 +27,13 @@ class PollScheduler(object):
 			"output", "register", "run",
 			"source_remove", "timeout_add", "unregister")
 
-	def __init__(self):
+	def __init__(self, main=False):
+		"""
+		@param main: If True then use global_event_loop(), otherwise use
+			a local EventLoop instance (default is False, for safe use in
+			a non-main thread)
+		@type main: bool
+		"""
 		self._terminated = threading.Event()
 		self._terminated_tasks = False
 		self._max_jobs = 1
@@ -34,7 +41,10 @@ class PollScheduler(object):
 		self._jobs = 0
 		self._scheduling = False
 		self._background = False
-		self._event_loop = global_event_loop()
+		if main:
+			self._event_loop = global_event_loop()
+		else:
+			self._event_loop = EventLoop(main=False)
 		self.sched_iface = self._sched_iface_class(
 			IO_ERR=self._event_loop.IO_ERR,
 			IO_HUP=self._event_loop.IO_HUP,
