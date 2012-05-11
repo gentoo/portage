@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -406,8 +406,8 @@ class config(object):
 
 			known_repos = []
 			for confs in [make_globals, make_conf, self.configdict["env"]]:
-				known_repos.extend(confs.get("PORTDIR", '').split())
-				known_repos.extend(confs.get("PORTDIR_OVERLAY", '').split())
+				known_repos.extend(shlex_split(confs.get("PORTDIR", '')))
+				known_repos.extend(shlex_split(confs.get("PORTDIR_OVERLAY", '')))
 			known_repos = frozenset(known_repos)
 
 			locations_manager.load_profiles(known_repos)
