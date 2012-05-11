@@ -52,11 +52,20 @@ class LocationsManager(object):
 		self.abs_user_config = os.path.join(self.config_root, USER_CONFIG_PATH)
 		self.config_profile_path = config_profile_path
 
-	def load_profiles(self, known_repository_paths):
-		known_repos = set(os.path.realpath(x) for x in known_repository_paths)
-		# force a trailing '/' for ease of doing startswith checks
-		known_repos = tuple((x + '/', parse_layout_conf(x)[0])
-			for x in known_repos)
+	def load_profiles(self, repositories, known_repository_paths):
+		known_repository_paths = set(os.path.realpath(x)
+			for x in known_repository_paths)
+
+		known_repos = []
+		for x in known_repository_paths:
+			try:
+				layout_data = {"profile-formats":
+					repositories.get_repo_for_location(x).profile_formats}
+			except KeyError:
+				layout_data = parse_layout_conf(x)[0]
+			# force a trailing '/' for ease of doing startswith checks
+			known_repos.append((x + '/', layout_data))
+		known_repos = tuple(known_repos)
 
 		if self.config_profile_path is None:
 			self.config_profile_path = \

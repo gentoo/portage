@@ -427,7 +427,7 @@ class config(object):
 			self.lookuplist = [self.configdict["env"]]
 			self.repositories = load_repository_config(self)
 
-			locations_manager.load_profiles(known_repos)
+			locations_manager.load_profiles(self.repositories, known_repos)
 
 			profiles_complex = locations_manager.profiles_complex
 			self.profiles = locations_manager.profiles

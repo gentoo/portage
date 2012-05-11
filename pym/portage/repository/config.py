@@ -49,7 +49,7 @@ class RepoConfig(object):
 		'cache_formats', 'create_manifest', 'disable_manifest', 'eapi',
 		'eclass_db', 'eclass_locations', 'eclass_overrides', 'format', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
-		'name', 'priority', 'sign_commit', 'sign_manifest', 'sync', 'thin_manifest',
+		'name', 'priority', 'profile_formats', 'sign_commit', 'sign_manifest', 'sync', 'thin_manifest',
 		'update_changelog', 'user_location', 'portage1_profiles',
 		'portage1_profiles_compat')
 
@@ -153,6 +153,7 @@ class RepoConfig(object):
 			for value in ('allow-missing-manifest',
 				'allow-provide-virtual', 'cache-formats',
 				'create-manifest', 'disable-manifest', 'manifest-hashes',
+				'profile-formats',
 				'sign-commit', 'sign-manifest', 'thin-manifest', 'update-changelog'):
 				setattr(self, value.lower().replace("-", "_"), layout_data[value])
 
