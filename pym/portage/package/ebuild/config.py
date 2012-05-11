@@ -404,11 +404,28 @@ class config(object):
 
 			self.make_defaults_use = []
 
+			#Loading Repositories
+			self["PORTAGE_CONFIGROOT"] = config_root
+			self["ROOT"] = target_root
+			self["EPREFIX"] = eprefix
+			self["EROOT"] = eroot
 			known_repos = []
+			portdir = ""
+			portdir_overlay = ""
 			for confs in [make_globals, make_conf, self.configdict["env"]]:
-				known_repos.extend(shlex_split(confs.get("PORTDIR", '')))
-				known_repos.extend(shlex_split(confs.get("PORTDIR_OVERLAY", '')))
+				v = confs.get("PORTDIR")
+				if v:
+					portdir = v
+					known_repos.append(v)
+				v = confs.get("PORTDIR_OVERLAY")
+				if v:
+					portdir_overlay = v
+					known_repos.extend(shlex_split(v))
 			known_repos = frozenset(known_repos)
+			self["PORTDIR"] = portdir
+			self["PORTDIR_OVERLAY"] = portdir_overlay
+			self.lookuplist = [self.configdict["env"]]
+			self.repositories = load_repository_config(self)
 
 			locations_manager.load_profiles(known_repos)
 
@@ -516,9 +533,6 @@ class config(object):
 
 			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
 			self._penvdict = portage.dep.ExtendedAtomDict(dict)
-
-			#Loading Repositories
-			self.repositories = load_repository_config(self)
 
 			#filling PORTDIR and PORTDIR_OVERLAY variable for compatibility
 			main_repo = self.repositories.mainRepo()
