@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -8,7 +8,8 @@ from portage import _encodings, _unicode_decode, _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.const import EBUILD_PHASES
 from portage.dep import Atom, check_required_use, use_reduce, \
-	paren_enclose, _slot_re, _slot_separator, _repo_separator
+	paren_enclose, _slot_re, _slot_separator, _repo_separator, \
+	_unknown_repo
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 from portage.exception import InvalidDependString
 from portage.repository.config import _gen_valid_repo
@@ -38,7 +39,7 @@ class Package(Task):
 
 	_dep_keys = ('DEPEND', 'PDEPEND', 'RDEPEND',)
 	_use_conditional_misc_keys = ('LICENSE', 'PROPERTIES', 'RESTRICT')
-	UNKNOWN_REPO = "__unknown__"
+	UNKNOWN_REPO = _unknown_repo
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)

@@ -54,6 +54,8 @@ if sys.hexversion >= 0x3000000:
 # stable keywords, make these warnings unconditional.
 _internal_warnings = False
 
+_unknown_repo = "__unknown__"
+
 def cpvequal(cpv1, cpv2):
 	"""
 	
@@ -2086,7 +2088,8 @@ def match_from_list(mydep, candidate_list):
 			repo = getattr(x, "repo", False)
 			if repo is False:
 				repo = dep_getrepo(x)
-			if repo is not None and repo != mydep.repo:
+			if repo is not None and repo != _unknown_repo and \
+				repo != mydep.repo:
 				continue
 			mylist.append(x)
 
