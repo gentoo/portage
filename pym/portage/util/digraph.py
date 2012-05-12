@@ -317,16 +317,23 @@ class digraph(object):
 		"""
 		all_cycles = []
 		for node in self.nodes:
+			# If we have multiple paths of the same length, we have to
+			# return them all, so that we always get the same results
+			# even with PYTHONHASHSEED="random" enabled.
 			shortest_path = None
+			candidates = []
 			for child in self.child_nodes(node, ignore_priority):
 				path = self.shortest_path(child, node, ignore_priority)
 				if path is None:
 					continue
-				if not shortest_path or len(shortest_path) > len(path):
+				if not shortest_path or len(shortest_path) >= len(path):
 					shortest_path = path
-			if shortest_path:
-				if not max_length or len(shortest_path) <= max_length:
-					all_cycles.append(shortest_path)
+					candidates.append(path)
+			if shortest_path and \
+				(not max_length or len(shortest_path) <= max_length):
+				for path in candidates:
+					if len(path) == len(shortest_path):
+						all_cycles.append(path)
 		return all_cycles
 
 	# Backward compatibility
