@@ -54,3 +54,6 @@ def eapi_has_use_dep_defaults(eapi):
 
 def eapi_has_repo_deps(eapi):
 	return eapi in ("4-python",)
+
+def eapi_allows_dots_in_PN(eapi):
+	return eapi in ("4-python",)

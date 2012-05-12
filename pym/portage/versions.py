@@ -1,5 +1,5 @@
 # versions.py -- core Portage functionality
-# Copyright 1998-2010 Gentoo Foundation
+# Copyright 1998-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -15,6 +15,7 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util:cmp_sort_key'
 )
+from portage.eapi import eapi_allows_dots_in_PN
 from portage.localization import _
 
 # \w is [a-zA-Z0-9_]
@@ -26,15 +27,27 @@ _cat = r'[\w+][\w+.-]*'
 # 2.1.2 A package name may contain any of the characters [A-Za-z0-9+_-].
 # It must not begin with a hyphen,
 # and must not end in a hyphen followed by one or more digits.
-_pkg = r'[\w+][\w+-]*?'
+_pkg = {
+	"dots_disallowed_in_PN": r'[\w+][\w+-]*?',
+	"dots_allowed_in_PN":    r'[\w+][\w+.-]*?',
+}
 
 _v = r'(cvs\.)?(\d+)((\.\d+)*)([a-z]?)((_(pre|p|beta|alpha|rc)\d*)*)'
 _rev = r'\d+'
 _vr = _v + '(-r(' + _rev + '))?'
 
-_cp = '(' + _cat + '/' + _pkg + '(-' + _vr + ')?)'
-_cpv = '(' + _cp + '-' + _vr + ')'
-_pv = '(?P<pn>' + _pkg + '(?P<pn_inval>-' + _vr + ')?)' + '-(?P<ver>' + _v + ')(-r(?P<rev>' + _rev + '))?'
+_cp = {
+	"dots_disallowed_in_PN": '(' + _cat + '/' + _pkg['dots_disallowed_in_PN'] + '(-' + _vr + ')?)',
+	"dots_allowed_in_PN":    '(' + _cat + '/' + _pkg['dots_allowed_in_PN']    + '(-' + _vr + ')?)',
+}
+_cpv = {
+	"dots_disallowed_in_PN": '(' + _cp['dots_disallowed_in_PN'] + '-' + _vr + ')',
+	"dots_allowed_in_PN":    '(' + _cp['dots_allowed_in_PN']    + '-' + _vr + ')',
+}
+_pv = {
+	"dots_disallowed_in_PN": '(?P<pn>' + _pkg['dots_disallowed_in_PN'] + '(?P<pn_inval>-' + _vr + ')?)' + '-(?P<ver>' + _v + ')(-r(?P<rev>' + _rev + '))?',
+	"dots_allowed_in_PN":    '(?P<pn>' + _pkg['dots_allowed_in_PN']    + '(?P<pn_inval>-' + _vr + ')?)' + '-(?P<ver>' + _v + ')(-r(?P<rev>' + _rev + '))?',
+}
 
 ver_regexp = re.compile("^" + _vr + "$")
 suffix_regexp = re.compile("^(alpha|beta|rc|pre|p)(\\d*)$")
@@ -240,16 +253,25 @@ def pkgcmp(pkg1, pkg2):
 		return None
 	return vercmp("-".join(pkg1[1:]), "-".join(pkg2[1:]))
 
-_pv_re = re.compile('^' + _pv + '$', re.VERBOSE)
+_pv_re = {
+	"dots_disallowed_in_PN": re.compile('^' + _pv['dots_disallowed_in_PN'] + '$', re.VERBOSE),
+	"dots_allowed_in_PN":    re.compile('^' + _pv['dots_allowed_in_PN']    + '$', re.VERBOSE),
+}
 
-def _pkgsplit(mypkg):
+def _get_pv_re(eapi):
+	if eapi is None or eapi_allows_dots_in_PN(eapi):
+		return _pv_re["dots_allowed_in_PN"]
+	else:
+		return _pv_re["dots_disallowed_in_PN"]
+
+def _pkgsplit(mypkg, eapi=None):
 	"""
 	@param mypkg: pv
 	@return:
 	1. None if input is invalid.
 	2. (pn, ver, rev) if input is pv
 	"""
-	m = _pv_re.match(mypkg)
+	m = _get_pv_re(eapi).match(mypkg)
 	if m is None:
 		return None
 
@@ -267,7 +289,7 @@ def _pkgsplit(mypkg):
 _cat_re = re.compile('^%s$' % _cat)
 _missing_cat = 'null'
 catcache={}
-def catpkgsplit(mydata,silent=1):
+def catpkgsplit(mydata, silent=1, eapi=None):
 	"""
 	Takes a Category/Package-Version-Rev and returns a list of each.
 	
@@ -290,11 +312,11 @@ def catpkgsplit(mydata,silent=1):
 	p_split=None
 	if len(mysplit)==1:
 		cat = _missing_cat
-		p_split = _pkgsplit(mydata)
+		p_split = _pkgsplit(mydata, eapi=eapi)
 	elif len(mysplit)==2:
 		cat = mysplit[0]
 		if _cat_re.match(cat) is not None:
-			p_split = _pkgsplit(mysplit[1])
+			p_split = _pkgsplit(mysplit[1], eapi=eapi)
 	if not p_split:
 		catcache[mydata]=None
 		return None
@@ -302,7 +324,7 @@ def catpkgsplit(mydata,silent=1):
 	catcache[mydata]=retval
 	return retval
 
-def pkgsplit(mypkg, silent=1):
+def pkgsplit(mypkg, silent=1, eapi=None):
 	"""
 	@param mypkg: either a pv or cpv
 	@return:
@@ -310,7 +332,7 @@ def pkgsplit(mypkg, silent=1):
 	2. (pn, ver, rev) if input is pv
 	3. (cp, ver, rev) if input is a cpv
 	"""
-	catpsplit = catpkgsplit(mypkg)
+	catpsplit = catpkgsplit(mypkg, eapi=eapi)
 	if catpsplit is None:
 		return None
 	cat, pn, ver, rev = catpsplit
@@ -319,9 +341,9 @@ def pkgsplit(mypkg, silent=1):
 	else:
 		return (cat + '/' + pn, ver, rev)
 
-def cpv_getkey(mycpv):
+def cpv_getkey(mycpv, eapi=None):
 	"""Calls catpkgsplit on a cpv and returns only the cp."""
-	mysplit = catpkgsplit(mycpv)
+	mysplit = catpkgsplit(mycpv, eapi=eapi)
 	if mysplit is not None:
 		return mysplit[0] + '/' + mysplit[1]
 
@@ -330,7 +352,7 @@ def cpv_getkey(mycpv):
 		DeprecationWarning, stacklevel=2)
 
 	myslash = mycpv.split("/", 1)
-	mysplit = _pkgsplit(myslash[-1])
+	mysplit = _pkgsplit(myslash[-1], eapi=eapi)
 	if mysplit is None:
 		return None
 	mylen = len(myslash)
@@ -339,14 +361,14 @@ def cpv_getkey(mycpv):
 	else:
 		return mysplit[0]
 
-def cpv_getversion(mycpv):
+def cpv_getversion(mycpv, eapi=None):
 	"""Returns the v (including revision) from an cpv."""
-	cp = cpv_getkey(mycpv)
+	cp = cpv_getkey(mycpv, eapi=eapi)
 	if cp is None:
 		return None
 	return mycpv[len(cp+"-"):]
 
-def cpv_sort_key():
+def cpv_sort_key(eapi=None):
 	"""
 	Create an object for sorting cpvs, to be used as the 'key' parameter
 	in places like list.sort() or sorted(). This calls catpkgsplit() once for
@@ -365,14 +387,14 @@ def cpv_sort_key():
 
 		split1 = split_cache.get(cpv1, False)
 		if split1 is False:
-			split1 = catpkgsplit(cpv1)
+			split1 = catpkgsplit(cpv1, eapi=eapi)
 			if split1 is not None:
 				split1 = (split1[:2], '-'.join(split1[2:]))
 			split_cache[cpv1] = split1
 
 		split2 = split_cache.get(cpv2, False)
 		if split2 is False:
-			split2 = catpkgsplit(cpv2)
+			split2 = catpkgsplit(cpv2, eapi=eapi)
 			if split2 is not None:
 				split2 = (split2[:2], '-'.join(split2[2:]))
 			split_cache[cpv2] = split2
@@ -387,17 +409,17 @@ def cpv_sort_key():
 def catsplit(mydep):
         return mydep.split("/", 1)
 
-def best(mymatches):
+def best(mymatches, eapi=None):
 	"""Accepts None arguments; assumes matches are valid."""
 	if not mymatches:
 		return ""
 	if len(mymatches) == 1:
 		return mymatches[0]
 	bestmatch = mymatches[0]
-	p2 = catpkgsplit(bestmatch)[1:]
+	p2 = catpkgsplit(bestmatch, eapi=eapi)[1:]
 	for x in mymatches[1:]:
-		p1 = catpkgsplit(x)[1:]
+		p1 = catpkgsplit(x, eapi=eapi)[1:]
 		if pkgcmp(p1, p2) > 0:
 			bestmatch = x
-			p2 = catpkgsplit(bestmatch)[1:]
+			p2 = catpkgsplit(bestmatch, eapi=eapi)[1:]
 	return bestmatch

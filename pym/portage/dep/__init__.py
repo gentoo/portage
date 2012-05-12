@@ -39,7 +39,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 from portage import _unicode_decode
 from portage.eapi import eapi_has_slot_deps, eapi_has_src_uri_arrows, \
 	eapi_has_use_deps, eapi_has_strong_blocks, eapi_has_use_dep_defaults, \
-	eapi_has_repo_deps
+	eapi_has_repo_deps, eapi_allows_dots_in_PN
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString
 from portage.localization import _
 from portage.versions import catpkgsplit, catsplit, \
@@ -1087,11 +1087,11 @@ class Atom(_atom_base):
 		else:
 			blocker = False
 		self.__dict__['blocker'] = blocker
-		m = _atom_re.match(s)
+		m = _get_atom_re(eapi).match(s)
 		extended_syntax = False
 		if m is None:
 			if allow_wildcard:
-				m = _atom_wildcard_re.match(s)
+				m = _get_atom_wildcard_re(eapi).match(s)
 				if m is None:
 					raise InvalidAtom(self)
 				op = None
@@ -1106,32 +1106,32 @@ class Atom(_atom_base):
 			else:
 				raise InvalidAtom(self)
 		elif m.group('op') is not None:
-			base = _atom_re.groupindex['op']
+			base = _get_atom_re(eapi).groupindex['op']
 			op = m.group(base + 1)
 			cpv = m.group(base + 2)
 			cp = m.group(base + 3)
-			slot = m.group(_atom_re.groups - 2)
-			repo = m.group(_atom_re.groups - 1)
-			use_str = m.group(_atom_re.groups)
+			slot = m.group(_get_atom_re(eapi).groups - 2)
+			repo = m.group(_get_atom_re(eapi).groups - 1)
+			use_str = m.group(_get_atom_re(eapi).groups)
 			if m.group(base + 4) is not None:
 				raise InvalidAtom(self)
 		elif m.group('star') is not None:
-			base = _atom_re.groupindex['star']
+			base = _get_atom_re(eapi).groupindex['star']
 			op = '=*'
 			cpv = m.group(base + 1)
 			cp = m.group(base + 2)
-			slot = m.group(_atom_re.groups - 2)
-			repo = m.group(_atom_re.groups - 1)
-			use_str = m.group(_atom_re.groups)
+			slot = m.group(_get_atom_re(eapi).groups - 2)
+			repo = m.group(_get_atom_re(eapi).groups - 1)
+			use_str = m.group(_get_atom_re(eapi).groups)
 			if m.group(base + 3) is not None:
 				raise InvalidAtom(self)
 		elif m.group('simple') is not None:
 			op = None
-			cpv = cp = m.group(_atom_re.groupindex['simple'] + 1)
-			slot = m.group(_atom_re.groups - 2)
-			repo = m.group(_atom_re.groups - 1)
-			use_str = m.group(_atom_re.groups)
-			if m.group(_atom_re.groupindex['simple'] + 2) is not None:
+			cpv = cp = m.group(_get_atom_re(eapi).groupindex['simple'] + 1)
+			slot = m.group(_get_atom_re(eapi).groups - 2)
+			repo = m.group(_get_atom_re(eapi).groups - 1)
+			use_str = m.group(_get_atom_re(eapi).groups)
+			if m.group(_get_atom_re(eapi).groupindex['simple'] + 2) is not None:
 				raise InvalidAtom(self)
 
 		else:
@@ -1640,16 +1640,41 @@ _repo_separator = "::"
 _repo_name = r'[\w][\w-]*'
 _repo = r'(?:' + _repo_separator + '(' + _repo_name + ')' + ')?'
 
-_atom_re = re.compile('^(?P<without_use>(?:' +
-	'(?P<op>' + _op + _cpv + ')|' +
-	'(?P<star>=' + _cpv + r'\*)|' +
-	'(?P<simple>' + _cp + '))' + 
-	'(' + _slot_separator + _slot + ')?' + _repo + ')(' + _use + ')?$', re.VERBOSE)
+_atom_re = {
+	"dots_disallowed_in_PN": re.compile('^(?P<without_use>(?:' +
+		'(?P<op>' + _op + _cpv['dots_disallowed_in_PN'] + ')|' +
+		'(?P<star>=' + _cpv['dots_disallowed_in_PN'] + r'\*)|' +
+		'(?P<simple>' + _cp['dots_disallowed_in_PN'] + '))' + 
+		'(' + _slot_separator + _slot + ')?' + _repo + ')(' + _use + ')?$', re.VERBOSE),
+	"dots_allowed_in_PN": re.compile('^(?P<without_use>(?:' +
+		'(?P<op>' + _op + _cpv['dots_allowed_in_PN'] + ')|' +
+		'(?P<star>=' + _cpv['dots_allowed_in_PN'] + r'\*)|' +
+		'(?P<simple>' + _cp['dots_allowed_in_PN'] + '))' + 
+		'(' + _slot_separator + _slot + ')?' + _repo + ')(' + _use + ')?$', re.VERBOSE),
+}
+
+def _get_atom_re(eapi):
+	if eapi is None or eapi_allows_dots_in_PN(eapi):
+		return _atom_re["dots_allowed_in_PN"]
+	else:
+		return _atom_re["dots_disallowed_in_PN"]
 	
 _extended_cat = r'[\w+*][\w+.*-]*'
-_extended_pkg = r'[\w+*][\w+*-]*?'
+_extended_pkg = {
+	"dots_disallowed_in_PN": r'[\w+*][\w+*-]*?',
+	"dots_allowed_in_PN":    r'[\w+*][\w+.*-]*?',
+}
 
-_atom_wildcard_re = re.compile('(?P<simple>(' + _extended_cat + ')/(' + _extended_pkg + '))(:(?P<slot>' + _slot + '))?(' + _repo_separator + '(?P<repo>' + _repo_name + '))?$')
+_atom_wildcard_re = {
+	"dots_disallowed_in_PN": re.compile('(?P<simple>(' + _extended_cat + ')/(' + _extended_pkg['dots_disallowed_in_PN'] + '))(:(?P<slot>' + _slot + '))?(' + _repo_separator + '(?P<repo>' + _repo_name + '))?$'),
+	"dots_allowed_in_PN":    re.compile('(?P<simple>(' + _extended_cat + ')/(' + _extended_pkg['dots_allowed_in_PN'] + '))(:(?P<slot>' + _slot + '))?(' + _repo_separator + '(?P<repo>' + _repo_name + '))?$'),
+}
+
+def _get_atom_wildcard_re(eapi):
+	if eapi is None or eapi_allows_dots_in_PN(eapi):
+		return _atom_wildcard_re["dots_allowed_in_PN"]
+	else:
+		return _atom_wildcard_re["dots_disallowed_in_PN"]
 
 _useflag_re = {
 	"0":        re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@-]*$'),

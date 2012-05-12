@@ -175,7 +175,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	pkg_dir     = os.path.dirname(ebuild_path)
 	mytree = os.path.dirname(os.path.dirname(pkg_dir))
 	mypv = os.path.basename(ebuild_path)[:-7]
-	mysplit = _pkgsplit(mypv)
+	mysplit = _pkgsplit(mypv, eapi=mysettings.configdict["pkg"].get("EAPI"))
 	if mysplit is None:
 		raise IncorrectParameter(
 			_("Invalid ebuild path: '%s'") % myebuild)
