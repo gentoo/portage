@@ -44,6 +44,10 @@ except ImportError as e:
 	sys.stderr.write("    "+str(e)+"\n\n");
 	raise
 
+if sys.hexversion >= 0x3030000:
+	# Workaround for http://bugs.python.org/issue14007
+	sys.modules["_elementtree"] = None
+
 try:
 
 	import portage.proxy.lazyimport
