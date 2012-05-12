@@ -43,7 +43,7 @@ from portage.eapi import eapi_has_slot_deps, eapi_has_src_uri_arrows, \
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString
 from portage.localization import _
 from portage.versions import catpkgsplit, catsplit, \
-	pkgcmp, vercmp, ververify, _cp, _cpv
+	pkgcmp, vercmp, ververify, _cp, _cpv, _pkg_str
 import portage.cache.mappings
 
 if sys.hexversion >= 0x3000000:
@@ -1137,7 +1137,11 @@ class Atom(_atom_base):
 		else:
 			raise AssertionError(_("required group not found in atom: '%s'") % self)
 		self.__dict__['cp'] = cp
-		self.__dict__['cpv'] = cpv
+		try:
+			self.__dict__['cpv'] = _pkg_str(cpv)
+		except InvalidData:
+			# plain cp, wildcard, or something
+			self.__dict__['cpv'] = cpv
 		self.__dict__['repo'] = repo
 		self.__dict__['slot'] = slot
 		self.__dict__['operator'] = op

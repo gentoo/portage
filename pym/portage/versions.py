@@ -9,13 +9,21 @@ __all__ = [
 ]
 
 import re
+import sys
 import warnings
+
+if sys.hexversion < 0x3000000:
+	_unicode = unicode
+else:
+	_unicode = str
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util:cmp_sort_key'
 )
+from portage import _unicode_decode
 from portage.eapi import eapi_allows_dots_in_PN
+from portage.exception import InvalidData
 from portage.localization import _
 
 # \w is [a-zA-Z0-9_]
@@ -303,7 +311,10 @@ def catpkgsplit(mydata, silent=1, eapi=None):
 	2.  If cat is not specificed in mydata, cat will be "null"
 	3.  if rev does not exist it will be '-r0'
 	"""
-
+	try:
+		return mydata.cpv_split
+	except AttributeError:
+		pass
 	mysplit = mydata.split('/', 1)
 	p_split=None
 	if len(mysplit)==1:
@@ -317,6 +328,33 @@ def catpkgsplit(mydata, silent=1, eapi=None):
 		return None
 	retval = (cat, p_split[0], p_split[1], p_split[2])
 	return retval
+
+class _pkg_str(_unicode):
+	"""
+	This class represents a cpv. It inherits from str (unicode in python2) and
+	has attributes that cache results for use by functions like catpkgsplit and
+	cpv_getkey which are called frequently (especially in match_from_list).
+	Instances are typically created in dbapi.cp_list() or the Atom contructor,
+	and propagate from there. Generally, code that pickles these objects will
+	manually convert them to a plain unicode object first.
+	"""
+
+	def __new__(cls, cpv, eapi=None):
+		return _unicode.__new__(cls, cpv)
+
+	def __init__(self, cpv, eapi=None):
+		if not isinstance(cpv, _unicode):
+			# Avoid TypeError from _unicode.__init__ with PyPy.
+			cpv = _unicode_decode(cpv)
+		_unicode.__init__(cpv)
+		self.__dict__['cpv_split'] = catpkgsplit(cpv, eapi=eapi)
+		if self.cpv_split is None:
+			raise InvalidData(cpv)
+		self.__dict__['cp'] = self.cpv_split[0] + '/' + self.cpv_split[1]
+
+	def __setattr__(self, name, value):
+		raise AttributeError("_pkg_str instances are immutable",
+			self.__class__, name, value)
 
 def pkgsplit(mypkg, silent=1, eapi=None):
 	"""
@@ -337,6 +375,10 @@ def pkgsplit(mypkg, silent=1, eapi=None):
 
 def cpv_getkey(mycpv, eapi=None):
 	"""Calls catpkgsplit on a cpv and returns only the cp."""
+	try:
+		return mycpv.cp
+	except AttributeError:
+		pass
 	mysplit = catpkgsplit(mycpv, eapi=eapi)
 	if mysplit is not None:
 		return mysplit[0] + '/' + mysplit[1]

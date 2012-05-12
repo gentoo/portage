@@ -31,7 +31,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util._dyn_libs.PreservedLibsRegistry:PreservedLibsRegistry',
 	'portage.util._dyn_libs.LinkageMapELF:LinkageMapELF@LinkageMap',
 	'portage.versions:best,catpkgsplit,catsplit,cpv_getkey,pkgcmp,' + \
-		'_pkgsplit@pkgsplit',
+		'_pkgsplit@pkgsplit,_pkg_str',
 	'subprocess',
 	'tarfile',
 )
@@ -87,6 +87,9 @@ except ImportError:
 if sys.hexversion >= 0x3000000:
 	basestring = str
 	long = int
+	_unicode = str
+else:
+	_unicode = unicode
 
 class vardbapi(dbapi):
 
@@ -386,7 +389,7 @@ class vardbapi(dbapi):
 				continue
 			if len(mysplit) > 1:
 				if ps[0] == mysplit[1]:
-					returnme.append(mysplit[0]+"/"+x)
+					returnme.append(_pkg_str(mysplit[0]+"/"+x))
 		self._cpv_sort_ascending(returnme)
 		if use_cache:
 			self.cpcache[mycp] = [mystat, returnme[:]]
@@ -680,7 +683,8 @@ class vardbapi(dbapi):
 					cache_data.update(metadata)
 				for aux_key in cache_these:
 					cache_data[aux_key] = mydata[aux_key]
-				self._aux_cache["packages"][mycpv] = (mydir_mtime, cache_data)
+				self._aux_cache["packages"][_unicode(mycpv)] = \
+					(mydir_mtime, cache_data)
 				self._aux_cache["modified"].add(mycpv)
 
 		if _slot_re.match(mydata['SLOT']) is None:
@@ -1059,7 +1063,7 @@ class vardbapi(dbapi):
 				counter = int(counter)
 			except ValueError:
 				counter = 0
-			return (cpv, counter, mtime)
+			return (_unicode(cpv), counter, mtime)
 
 	class _owners_db(object):
 

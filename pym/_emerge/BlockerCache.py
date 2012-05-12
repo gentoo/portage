@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -16,6 +16,9 @@ except ImportError:
 if sys.hexversion >= 0x3000000:
 	basestring = str
 	long = int
+	_unicode = str
+else:
+	_unicode = unicode
 
 class BlockerCache(portage.cache.mappings.MutableMapping):
 	"""This caches blockers of installed packages so that dep_check does not
@@ -159,7 +162,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 		@param blocker_data: An object with counter and atoms attributes.
 		@type blocker_data: BlockerData
 		"""
-		self._cache_data["blockers"][cpv] = \
+		self._cache_data["blockers"][_unicode(cpv)] = \
 			(blocker_data.counter, tuple(str(x) for x in blocker_data.atoms))
 		self._modified.add(cpv)
 

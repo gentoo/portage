@@ -16,7 +16,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util:atomic_ofstream,ensure_dirs,normalize_path,' + \
 		'writemsg,writemsg_stdout',
 	'portage.util.listdir:listdir',
-	'portage.versions:best,catpkgsplit,catsplit',
+	'portage.versions:best,catpkgsplit,catsplit,_pkg_str',
 )
 
 from portage.cache.mappings import slot_dict_class
@@ -236,7 +236,7 @@ def _pkgindex_cpv_map_latest_build(pkgindex):
 			if other_btime and (not btime or other_btime > btime):
 				continue
 
-		cpv_map[cpv] = d
+		cpv_map[_pkg_str(cpv)] = d
 
 	return cpv_map
 
@@ -658,6 +658,7 @@ class binarytree(object):
 							if mycpv in pkg_paths:
 								# discard duplicates (All/ is preferred)
 								continue
+							mycpv = _pkg_str(mycpv)
 							pkg_paths[mycpv] = mypath
 							# update the path if the package has been moved
 							oldpath = d.get("PATH")
@@ -733,6 +734,7 @@ class binarytree(object):
 							(mycpv, self.settings["PORTAGE_CONFIGROOT"]),
 							noiselevel=-1)
 						continue
+					mycpv = _pkg_str(mycpv)
 					pkg_paths[mycpv] = mypath
 					self.dbapi.cpv_inject(mycpv)
 					update_pkgindex = True
