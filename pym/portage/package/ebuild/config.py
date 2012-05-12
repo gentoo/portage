@@ -414,11 +414,11 @@ class config(object):
 			portdir_overlay = ""
 			for confs in [make_globals, make_conf, self.configdict["env"]]:
 				v = confs.get("PORTDIR")
-				if v:
+				if v is not None:
 					portdir = v
 					known_repos.append(v)
 				v = confs.get("PORTDIR_OVERLAY")
-				if v:
+				if v is not None:
 					portdir_overlay = v
 					known_repos.extend(shlex_split(v))
 			known_repos = frozenset(known_repos)
