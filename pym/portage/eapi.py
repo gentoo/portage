@@ -57,3 +57,6 @@ def eapi_has_repo_deps(eapi):
 
 def eapi_allows_dots_in_PN(eapi):
 	return eapi in ("4-python",)
+
+def eapi_allows_dots_in_use_flags(eapi):
+	return eapi in ("4-python",)

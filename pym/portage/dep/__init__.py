@@ -39,7 +39,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 from portage import _unicode_decode
 from portage.eapi import eapi_has_slot_deps, eapi_has_src_uri_arrows, \
 	eapi_has_use_deps, eapi_has_strong_blocks, eapi_has_use_dep_defaults, \
-	eapi_has_repo_deps, eapi_allows_dots_in_PN
+	eapi_has_repo_deps, eapi_allows_dots_in_PN, eapi_allows_dots_in_use_flags
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString
 from portage.localization import _
 from portage.versions import catpkgsplit, catsplit, \
@@ -642,8 +642,8 @@ def flatten(mylist):
 
 
 _usedep_re = {
-	"0":        re.compile("^(?P<prefix>[!-]?)(?P<flag>[A-Za-z0-9][A-Za-z0-9+_@-]*)(?P<default>(\(\+\)|\(\-\))?)(?P<suffix>[?=]?)$"),
-	"4-python": re.compile("^(?P<prefix>[!-]?)(?P<flag>[A-Za-z0-9][A-Za-z0-9+_@.-]*)(?P<default>(\(\+\)|\(\-\))?)(?P<suffix>[?=]?)$"),
+	"dots_disallowed_in_use_flags": re.compile("^(?P<prefix>[!-]?)(?P<flag>[A-Za-z0-9][A-Za-z0-9+_@-]*)(?P<default>(\(\+\)|\(\-\))?)(?P<suffix>[?=]?)$"),
+	"dots_allowed_in_use_flags":    re.compile("^(?P<prefix>[!-]?)(?P<flag>[A-Za-z0-9][A-Za-z0-9+_@.-]*)(?P<default>(\(\+\)|\(\-\))?)(?P<suffix>[?=]?)$"),
 }
 
 def _get_usedep_re(eapi):
@@ -656,10 +656,10 @@ def _get_usedep_re(eapi):
 	@return: A regular expression object that matches valid USE deps for the
 		given eapi.
 	"""
-	if eapi in (None, "4-python",):
-		return _usedep_re["4-python"]
+	if eapi is None or eapi_allows_dots_in_use_flags(eapi):
+		return _usedep_re["dots_allowed_in_use_flags"]
 	else:
-		return _usedep_re["0"]
+		return _usedep_re["dots_disallowed_in_use_flags"]
 
 class _use_dep(object):
 
@@ -1677,8 +1677,8 @@ def _get_atom_wildcard_re(eapi):
 		return _atom_wildcard_re["dots_disallowed_in_PN"]
 
 _useflag_re = {
-	"0":        re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@-]*$'),
-	"4-python": re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@.-]*$'),
+	"dots_disallowed_in_use_flags": re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@-]*$'),
+	"dots_allowed_in_use_flags":    re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@.-]*$'),
 }
 
 def _get_useflag_re(eapi):
@@ -1691,10 +1691,10 @@ def _get_useflag_re(eapi):
 	@return: A regular expression object that matches valid USE flags for the
 		given eapi.
 	"""
-	if eapi in (None, "4-python",):
-		return _useflag_re["4-python"]
+	if eapi is None or eapi_allows_dots_in_use_flags(eapi):
+		return _useflag_re["dots_allowed_in_use_flags"]
 	else:
-		return _useflag_re["0"]
+		return _useflag_re["dots_disallowed_in_use_flags"]
 
 def isvalidatom(atom, allow_blockers=False, allow_wildcard=False, allow_repo=False):
 	"""
