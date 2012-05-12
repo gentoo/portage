@@ -288,7 +288,7 @@ def _pkgsplit(mypkg, eapi=None):
 
 _cat_re = re.compile('^%s$' % _cat)
 _missing_cat = 'null'
-catcache={}
+
 def catpkgsplit(mydata, silent=1, eapi=None):
 	"""
 	Takes a Category/Package-Version-Rev and returns a list of each.
@@ -304,10 +304,6 @@ def catpkgsplit(mydata, silent=1, eapi=None):
 	3.  if rev does not exist it will be '-r0'
 	"""
 
-	try:
-		return catcache[mydata]
-	except KeyError:
-		pass
 	mysplit = mydata.split('/', 1)
 	p_split=None
 	if len(mysplit)==1:
@@ -318,10 +314,8 @@ def catpkgsplit(mydata, silent=1, eapi=None):
 		if _cat_re.match(cat) is not None:
 			p_split = _pkgsplit(mysplit[1], eapi=eapi)
 	if not p_split:
-		catcache[mydata]=None
 		return None
 	retval = (cat, p_split[0], p_split[1], p_split[2])
-	catcache[mydata]=retval
 	return retval
 
 def pkgsplit(mypkg, silent=1, eapi=None):
