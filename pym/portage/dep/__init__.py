@@ -1990,7 +1990,7 @@ def match_from_list(mydep, candidate_list):
 		myver = mysplit[2].lstrip("0")
 		if not myver or not myver[0].isdigit():
 			myver = "0"+myver
-		mycpv = mysplit[0]+"/"+mysplit[1]+"-"+myver
+		mycpv_cmp = mysplit[0]+"/"+mysplit[1]+"-"+myver
 		for x in candidate_list:
 			xs = getattr(x, "cpv_split", None)
 			if xs is None:
@@ -1999,7 +1999,7 @@ def match_from_list(mydep, candidate_list):
 			if not myver or not myver[0].isdigit():
 				myver = "0"+myver
 			xcpv = xs[0]+"/"+xs[1]+"-"+myver
-			if xcpv.startswith(mycpv):
+			if xcpv.startswith(mycpv_cmp):
 				mylist.append(x)
 
 	elif operator == "~": # version, any revision, match
