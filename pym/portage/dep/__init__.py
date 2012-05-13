@@ -76,16 +76,27 @@ def cpvequal(cpv1, cpv2):
 
 	"""
 
-	split1 = catpkgsplit(cpv1)
-	split2 = catpkgsplit(cpv2)
-	
-	if not split1 or not split2:
+	try:
+		try:
+			split1 = cpv1.cpv_split
+		except AttributeError:
+			cpv1 = _pkg_str(cpv1)
+			split1 = cpv1.cpv_split
+
+		try:
+			split2 = cpv2.cpv_split
+		except AttributeError:
+			cpv2 = _pkg_str(cpv2)
+			split2 = cpv2.cpv_split
+
+	except InvalidData:
 		raise portage.exception.PortageException(_("Invalid data '%s, %s', parameter was not a CPV") % (cpv1, cpv2))
-	
-	if split1[0] != split2[0]:
+
+	if split1[0] != split2[0] or \
+		split1[1] != split2[1]:
 		return False
-	
-	return (pkgcmp(split1[1:], split2[1:]) == 0)
+
+	return vercmp(cpv1.version, cpv2.version) == 0
 
 def strip_empty(myarr):
 	"""
