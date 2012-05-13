@@ -43,7 +43,7 @@ from portage.eapi import eapi_has_slot_deps, eapi_has_src_uri_arrows, \
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString
 from portage.localization import _
 from portage.versions import catpkgsplit, catsplit, \
-	pkgcmp, vercmp, ververify, _cp, _cpv, _pkg_str
+	vercmp, ververify, _cp, _cpv, _pkg_str, _unknown_repo
 import portage.cache.mappings
 
 if sys.hexversion >= 0x3000000:
@@ -53,8 +53,6 @@ if sys.hexversion >= 0x3000000:
 # Once the relevant api changes are in a portage release with
 # stable keywords, make these warnings unconditional.
 _internal_warnings = False
-
-_unknown_repo = "__unknown__"
 
 def cpvequal(cpv1, cpv2):
 	"""

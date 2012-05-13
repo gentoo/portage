@@ -160,8 +160,6 @@ class dbapi(object):
 			try:
 				metadata = dict(zip(aux_keys,
 					self.aux_get(cpv, aux_keys, myrepo=atom.repo)))
-				if not metadata["repository"]:
-					del metadata["repository"]
 			except KeyError:
 				continue
 

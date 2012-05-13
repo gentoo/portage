@@ -19,12 +19,15 @@ else:
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.util:cmp_sort_key'
+	'portage.repository.config:_gen_valid_repo',
+	'portage.util:cmp_sort_key',
 )
 from portage import _unicode_decode
 from portage.eapi import eapi_allows_dots_in_PN
 from portage.exception import InvalidData
 from portage.localization import _
+
+_unknown_repo = "__unknown__"
 
 # \w is [a-zA-Z0-9_]
 
@@ -347,6 +350,9 @@ class _pkg_str(_unicode):
 		if slot is not None:
 			self.__dict__['slot'] = slot
 		if repo is not None:
+			repo = _gen_valid_repo(repo)
+			if not repo:
+				repo = _unknown_repo
 			self.__dict__['repo'] = repo
 
 	def __setattr__(self, name, value):
