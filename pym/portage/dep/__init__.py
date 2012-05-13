@@ -1886,9 +1886,10 @@ def best_match_to_list(mypkg, mylist):
 			# For >, <, >=, and <=, the one with the version
 			# closest to mypkg is the best match.
 			if mypkg_cpv is None:
-				mypkg_cpv = getattr(mypkg, "cpv", None)
-				if mypkg_cpv is None:
-					mypkg_cpv = remove_slot(mypkg)
+				try:
+					mypkg_cpv = mypkg.cpv
+				except AttributeError:
+					mypkg_cpv = _pkg_str(remove_slot(mypkg))
 			if bestm.cpv == mypkg_cpv or bestm.cpv == x.cpv:
 				pass
 			elif x.cpv == mypkg_cpv:
@@ -1896,11 +1897,8 @@ def best_match_to_list(mypkg, mylist):
 			else:
 				# Sort the cpvs to find the one closest to mypkg_cpv
 				cpv_list = [bestm.cpv, mypkg_cpv, x.cpv]
-				ver_map = {}
-				for cpv in cpv_list:
-					ver_map[cpv] = '-'.join(catpkgsplit(cpv)[2:])
 				def cmp_cpv(cpv1, cpv2):
-					return vercmp(ver_map[cpv1], ver_map[cpv2])
+					return vercmp(cpv1.version, cpv2.version)
 				cpv_list.sort(key=cmp_sort_key(cmp_cpv))
 				if cpv_list[0] is mypkg_cpv or cpv_list[-1] is mypkg_cpv:
 					if cpv_list[1] is x.cpv:
