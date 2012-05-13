@@ -393,6 +393,10 @@ def cpv_getkey(mycpv, eapi=None):
 
 def cpv_getversion(mycpv, eapi=None):
 	"""Returns the v (including revision) from an cpv."""
+	try:
+		return mycpv.version
+	except AttributeError:
+		pass
 	cp = cpv_getkey(mycpv, eapi=eapi)
 	if cp is None:
 		return None
@@ -446,10 +450,16 @@ def best(mymatches, eapi=None):
 	if len(mymatches) == 1:
 		return mymatches[0]
 	bestmatch = mymatches[0]
-	p2 = catpkgsplit(bestmatch, eapi=eapi)[1:]
+	try:
+		v2 = bestmatch.version
+	except AttributeError:
+		v2 = _pkg_str(bestmatch, eapi=eapi).version
 	for x in mymatches[1:]:
-		p1 = catpkgsplit(x, eapi=eapi)[1:]
-		if pkgcmp(p1, p2) > 0:
+		try:
+			v1 = x.version
+		except AttributeError:
+			v1 = _pkg_str(x, eapi=eapi).version
+		if vercmp(v1, v2) > 0:
 			bestmatch = x
-			p2 = catpkgsplit(bestmatch, eapi=eapi)[1:]
+			v2 = v1
 	return bestmatch
