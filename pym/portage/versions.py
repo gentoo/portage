@@ -339,10 +339,10 @@ class _pkg_str(_unicode):
 	manually convert them to a plain unicode object first.
 	"""
 
-	def __new__(cls, cpv, eapi=None):
+	def __new__(cls, cpv, slot=None, repo=None, eapi=None):
 		return _unicode.__new__(cls, cpv)
 
-	def __init__(self, cpv, eapi=None):
+	def __init__(self, cpv, slot=None, repo=None, eapi=None):
 		if not isinstance(cpv, _unicode):
 			# Avoid TypeError from _unicode.__init__ with PyPy.
 			cpv = _unicode_decode(cpv)
@@ -353,6 +353,10 @@ class _pkg_str(_unicode):
 		self.__dict__['cp'] = self.cpv_split[0] + '/' + self.cpv_split[1]
 		# for match_from_list introspection
 		self.__dict__['cpv'] = self
+		if slot is not None:
+			self.__dict__['slot'] = slot
+		if repo is not None:
+			self.__dict__['repo'] = repo
 
 	def __setattr__(self, name, value):
 		raise AttributeError("_pkg_str instances are immutable",

@@ -1,4 +1,4 @@
-# Copyright 1998-2011 Gentoo Foundation
+# Copyright 1998-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["dbapi"]
@@ -11,7 +11,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dep:match_from_list',
 	'portage.output:colorize',
 	'portage.util:cmp_sort_key,writemsg',
-	'portage.versions:catsplit,catpkgsplit,vercmp',
+	'portage.versions:catsplit,catpkgsplit,vercmp,_pkg_str',
 )
 
 from portage import os
@@ -155,11 +155,13 @@ class dbapi(object):
 		2) Check enabled/disabled flag states.
 		"""
 
-		aux_keys = ["IUSE", "SLOT", "USE"]
+		aux_keys = ["IUSE", "SLOT", "USE", "repository"]
 		for cpv in cpv_iter:
 			try:
 				metadata = dict(zip(aux_keys,
 					self.aux_get(cpv, aux_keys, myrepo=atom.repo)))
+				if not metadata["repository"]:
+					del metadata["repository"]
 			except KeyError:
 				continue
 
@@ -209,7 +211,11 @@ class dbapi(object):
 
 		elif not self.settings.local_config:
 			# Check masked and forced flags for repoman.
-			pkg = "%s:%s" % (cpv, metadata["SLOT"])
+			if hasattr(cpv, 'slot'):
+				pkg = cpv
+			else:
+				pkg = _pkg_str(cpv, slot=metadata["SLOT"],
+					repo=metadata.get("repository"))
 			usemask = self.settings._getUseMask(pkg)
 			if usemask.intersection(atom.use.enabled):
 				return False

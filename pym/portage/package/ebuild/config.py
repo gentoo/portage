@@ -43,7 +43,7 @@ from portage.util import ensure_dirs, getconfig, grabdict, \
 	grabdict_package, grabfile, grabfile_package, LazyItemsDict, \
 	normalize_path, shlex_split, stack_dictlist, stack_dicts, stack_lists, \
 	writemsg, writemsg_level
-from portage.versions import catpkgsplit, catsplit, cpv_getkey
+from portage.versions import catpkgsplit, catsplit, cpv_getkey, _pkg_str
 
 from portage.package.ebuild._config import special_env_vars
 from portage.package.ebuild._config.env_var_validation import validate_cmd_var
@@ -1239,7 +1239,7 @@ class config(object):
 			slot = pkg_configdict["SLOT"]
 			iuse = pkg_configdict["IUSE"]
 			if pkg is None:
-				cpv_slot = "%s:%s" % (self.mycpv, slot)
+				cpv_slot = _pkg_str(self.mycpv, slot=slot, repo=repository)
 			else:
 				cpv_slot = pkg
 			pkginternaluse = []
@@ -1691,11 +1691,13 @@ class config(object):
 		@return: A list of properties that have not been accepted.
 		"""
 		accept_properties = self._accept_properties
+		if not hasattr(cpv, 'slot'):
+			cpv = _pkg_str(cpv, slot=metadata["SLOT"],
+				repo=metadata.get("repository"))
 		cp = cpv_getkey(cpv)
 		cpdict = self._ppropertiesdict.get(cp)
 		if cpdict:
-			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-			pproperties_list = ordered_by_atom_specificity(cpdict, cpv_slot, repo=metadata.get('repository'))
+			pproperties_list = ordered_by_atom_specificity(cpdict, cpv)
 			if pproperties_list:
 				accept_properties = list(self._accept_properties)
 				for x in pproperties_list:

@@ -10,6 +10,7 @@ from portage.const import EBUILD_PHASES
 from portage.dep import Atom, check_required_use, use_reduce, \
 	paren_enclose, _slot_re, _slot_separator, _repo_separator, \
 	_unknown_repo
+from portage.versions import _pkg_str
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 from portage.exception import InvalidDependString
 from portage.repository.config import _gen_valid_repo
@@ -50,7 +51,6 @@ class Package(Task):
 		self.metadata = _PackageMetadataWrapper(self, self._raw_metadata)
 		if not self.built:
 			self.metadata['CHOST'] = self.root_config.settings.get('CHOST', '')
-		self.cp = portage.cpv_getkey(self.cpv)
 		slot = self.slot
 		if _slot_re.match(slot) is None:
 			self._invalid_metadata('SLOT.invalid',
@@ -58,6 +58,12 @@ class Package(Task):
 			# Avoid an InvalidAtom exception when creating slot_atom.
 			# This package instance will be masked due to empty SLOT.
 			slot = '0'
+		repo = _gen_valid_repo(self.metadata.get('repository', ''))
+		if not repo:
+			repo = self.UNKNOWN_REPO
+		self.metadata['repository'] = repo
+		self.cpv = _pkg_str(self.cpv, slot=slot, repo=repo)
+		self.cp = self.cpv.cp
 		if (self.iuse.enabled or self.iuse.disabled) and \
 			not eapi_has_iuse_defaults(self.metadata["EAPI"]):
 			if not self.installed:
@@ -69,10 +75,6 @@ class Package(Task):
 		self.pv_split = self.cpv_split[1:]
 		if self.inherited is None:
 			self.inherited = frozenset()
-		repo = _gen_valid_repo(self.metadata.get('repository', ''))
-		if not repo:
-			repo = self.UNKNOWN_REPO
-		self.metadata['repository'] = repo
 
 		self._validate_deps()
 		self.masks = self._masks()
