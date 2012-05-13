@@ -2006,16 +2006,18 @@ def match_from_list(mydep, candidate_list):
 
 	elif operator in [">", ">=", "<", "<="]:
 		for x in candidate_list:
-			if not hasattr(x, 'cp'):
+			if hasattr(x, 'cp'):
+				pkg = x
+			else:
 				try:
-					x = _pkg_str(remove_slot(x))
+					pkg = _pkg_str(remove_slot(x))
 				except InvalidData:
 					continue
 
-			if x.cp != mydep.cp:
+			if pkg.cp != mydep.cp:
 				continue
 			try:
-				result = vercmp(x.version, mydep.version)
+				result = vercmp(pkg.version, mydep.version)
 			except ValueError: # pkgcmp may return ValueError during int() conversion
 				writemsg(_("\nInvalid package name: %s\n") % x, noiselevel=-1)
 				raise
