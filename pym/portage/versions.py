@@ -70,7 +70,6 @@ def ververify(myver, silent=1):
 			print(_("!!! syntax error in version: %s") % myver)
 		return 0
 
-vercmp_cache = {}
 def vercmp(ver1, ver2, silent=1):
 	"""
 	Compare two versions
@@ -97,11 +96,7 @@ def vercmp(ver1, ver2, silent=1):
 
 	if ver1 == ver2:
 		return 0
-	mykey=ver1+":"+ver2
-	try:
-		return vercmp_cache[mykey]
-	except KeyError:
-		pass
+
 	match1 = ver_regexp.match(ver1)
 	match2 = ver_regexp.match(ver2)
 	
@@ -117,10 +112,8 @@ def vercmp(ver1, ver2, silent=1):
 
 	# shortcut for cvs ebuilds (new style)
 	if match1.group(1) and not match2.group(1):
-		vercmp_cache[mykey] = 1
 		return 1
 	elif match2.group(1) and not match1.group(1):
-		vercmp_cache[mykey] = -1
 		return -1
 	
 	# building lists of the version parts before the suffix
@@ -174,16 +167,13 @@ def vercmp(ver1, ver2, silent=1):
 
 	for i in range(0, max(len(list1), len(list2))):
 		if len(list1) <= i:
-			vercmp_cache[mykey] = -1
 			return -1
 		elif len(list2) <= i:
-			vercmp_cache[mykey] = 1
 			return 1
 		elif list1[i] != list2[i]:
 			a = list1[i]
 			b = list2[i]
 			rval = (a > b) - (a < b)
-			vercmp_cache[mykey] = rval
 			return rval
 
 	# main version is equal, so now compare the _suffix part
@@ -204,7 +194,6 @@ def vercmp(ver1, ver2, silent=1):
 			a = suffix_value[s1[0]]
 			b = suffix_value[s2[0]]
 			rval = (a > b) - (a < b)
-			vercmp_cache[mykey] = rval
 			return rval
 		if s1[1] != s2[1]:
 			# it's possible that the s(1|2)[1] == ''
@@ -219,7 +208,6 @@ def vercmp(ver1, ver2, silent=1):
 				r2 = 0
 			rval = (r1 > r2) - (r1 < r2)
 			if rval:
-				vercmp_cache[mykey] = rval
 				return rval
 
 	# the suffix part is equal to, so finally check the revision
@@ -232,7 +220,6 @@ def vercmp(ver1, ver2, silent=1):
 	else:
 		r2 = 0
 	rval = (r1 > r2) - (r1 < r2)
-	vercmp_cache[mykey] = rval
 	return rval
 	
 def pkgcmp(pkg1, pkg2):
