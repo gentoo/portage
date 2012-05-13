@@ -338,7 +338,10 @@ class _pkg_str(_unicode):
 		if self.cpv_split is None:
 			raise InvalidData(cpv)
 		self.__dict__['cp'] = self.cpv_split[0] + '/' + self.cpv_split[1]
-		self.__dict__['version'] = "-".join(self.cpv_split[2:])
+		if self.cpv_split[-1] == "r0" and cpv[-3:] != "-r0":
+			self.__dict__['version'] = "-".join(self.cpv_split[2:-1])
+		else:
+			self.__dict__['version'] = "-".join(self.cpv_split[2:])
 		# for match_from_list introspection
 		self.__dict__['cpv'] = self
 		if slot is not None:
