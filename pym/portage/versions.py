@@ -421,22 +421,32 @@ def cpv_sort_key(eapi=None):
 
 		split1 = split_cache.get(cpv1, False)
 		if split1 is False:
-			split1 = catpkgsplit(cpv1, eapi=eapi)
-			if split1 is not None:
-				split1 = (split1[:2], '-'.join(split1[2:]))
+			split1 = None
+			try:
+				split1 = cpv1.cpv
+			except AttributeError:
+				try:
+					split1 = _pkg_str(cpv1, eapi=eapi)
+				except InvalidData:
+					pass
 			split_cache[cpv1] = split1
 
 		split2 = split_cache.get(cpv2, False)
 		if split2 is False:
-			split2 = catpkgsplit(cpv2, eapi=eapi)
-			if split2 is not None:
-				split2 = (split2[:2], '-'.join(split2[2:]))
+			split2 = None
+			try:
+				split2 = cpv2.cpv
+			except AttributeError:
+				try:
+					split2 = _pkg_str(cpv2, eapi=eapi)
+				except InvalidData:
+					pass
 			split_cache[cpv2] = split2
 
-		if split1 is None or split2 is None or split1[0] != split2[0]:
+		if split1 is None or split2 is None or split1.cp != split2.cp:
 			return (cpv1 > cpv2) - (cpv1 < cpv2)
 
-		return vercmp(split1[1], split2[1])
+		return vercmp(split1.version, split2.version)
 
 	return cmp_sort_key(cmp_cpv)
 
