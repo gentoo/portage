@@ -1347,17 +1347,6 @@ for x in effective_scanlist:
 			pkgs[pf] = Package(cpv=cpv, metadata=myaux,
 				root_config=root_config, type_name="ebuild")
 
-	# Sort ebuilds in ascending order for the KEYWORDS.dropped check.
-	pkgsplits = {}
-	for i in range(len(ebuildlist)):
-		ebuild_split = portage.pkgsplit(ebuildlist[i])
-		pkgsplits[ebuild_split] = ebuildlist[i]
-		ebuildlist[i] = ebuild_split
-	ebuildlist.sort(key=cmp_sort_key(portage.pkgcmp))
-	for i in range(len(ebuildlist)):
-		ebuildlist[i] = pkgsplits[ebuildlist[i]]
-	del pkgsplits
-
 	slot_keywords = {}
 
 	if len(pkgs) != len(ebuildlist):
@@ -1368,6 +1357,10 @@ for x in effective_scanlist:
 		# positives confuse users.
 		can_force = False
 		continue
+
+	# Sort ebuilds in ascending order for the KEYWORDS.dropped check.
+	ebuildlist = sorted(pkgs.values())
+	ebuildlist = [pkg.pf for pkg in ebuildlist]
 
 	for y in checkdirlist:
 		m = disallowed_filename_chars_re.search(y.strip(os.sep))
