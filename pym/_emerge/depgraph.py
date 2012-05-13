@@ -18,8 +18,10 @@ from portage import os, OrderedDict
 from portage import _unicode_decode, _unicode_encode, _encodings
 from portage.const import PORTAGE_PACKAGE_ATOM, USER_CONFIG_PATH
 from portage.dbapi import dbapi
+from portage.dbapi.dep_expand import dep_expand
 from portage.dep import Atom, best_match_to_list, extract_affecting_use, \
-	check_required_use, human_readable_required_use, _repo_separator
+	check_required_use, human_readable_required_use, match_from_list, \
+	_repo_separator
 from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use
 from portage.exception import InvalidAtom, InvalidDependString, PortageException
 from portage.output import colorize, create_color_func, \
@@ -3382,60 +3384,12 @@ class depgraph(object):
 		"""
 
 		db = root_config.trees[self.pkg_tree_map[pkg_type]].dbapi
-
-		if hasattr(db, "xmatch"):
-			# For portdbapi we match only against the cpv, in order
-			# to bypass unnecessary cache access for things like IUSE
-			# and SLOT. Later, we cache the metadata in a Package
-			# instance, and use that for further matching. This
-			# optimization is especially relevant since
-			# pordbapi.aux_get() does not cache calls that have
-			# myrepo or mytree arguments.
-			cpv_list = db.xmatch("match-all-cpv-only", atom)
-		else:
-			cpv_list = db.match(atom)
-
-		# USE=multislot can make an installed package appear as if
-		# it doesn't satisfy a slot dependency. Rebuilding the ebuild
-		# won't do any good as long as USE=multislot is enabled since
-		# the newly built package still won't have the expected slot.
-		# Therefore, assume that such SLOT dependencies are already
-		# satisfied rather than forcing a rebuild.
+		atom_exp = dep_expand(atom, mydb=db, settings=root_config.settings)
+		cp_list = db.cp_list(atom_exp.cp)
+		matched_something = False
 		installed = pkg_type == 'installed'
-		if installed and not cpv_list and atom.slot:
 
-			if "remove" in self._dynamic_config.myparams:
-				# We need to search the portdbapi, which is not in our
-				# normal dbs list, in order to find the real SLOT.
-				portdb = self._frozen_config.trees[root_config.root]["porttree"].dbapi
-				db_keys = list(portdb._aux_cache_keys)
-				dbs = [(portdb, "ebuild", False, False, db_keys)]
-			else:
-				dbs = self._dynamic_config._filtered_trees[root_config.root]["dbs"]
-
-			for cpv in db.match(atom.cp):
-				slot_available = False
-				for other_db, other_type, other_built, \
-					other_installed, other_keys in dbs:
-					try:
-						if atom.slot == \
-							other_db.aux_get(cpv, ["SLOT"])[0]:
-							slot_available = True
-							break
-					except KeyError:
-						pass
-				if not slot_available:
-					continue
-				inst_pkg = self._pkg(cpv, "installed",
-					root_config, installed=installed, myrepo = atom.repo)
-				# Remove the slot from the atom and verify that
-				# the package matches the resulting atom.
-				if portage.match_from_list(
-					atom.without_slot, [inst_pkg]):
-					yield inst_pkg
-					return
-
-		if cpv_list:
+		if cp_list:
 			atom_set = InternalPackageSet(initial_atoms=(atom,),
 				allow_repo=True)
 			if atom.repo is None and hasattr(db, "getRepositories"):
@@ -3444,8 +3398,13 @@ class depgraph(object):
 				repo_list = [atom.repo]
 
 			# descending order
-			cpv_list.reverse()
-			for cpv in cpv_list:
+			cp_list.reverse()
+			for cpv in cp_list:
+				# Call match_from_list on one cpv at a time, in order
+				# to avoid unnecessary match_from_list comparisons on
+				# versions that are never yielded from this method.
+				if not match_from_list(atom_exp, [cpv]):
+					continue
 				for repo in repo_list:
 
 					try:
@@ -3462,13 +3421,60 @@ class depgraph(object):
 						# Make sure that cpv from the current repo satisfies the atom.
 						# This might not be the case if there are several repos with
 						# the same cpv, but different metadata keys, like SLOT.
-						# Also, for portdbapi, parts of the match that require
-						# metadata access are deferred until we have cached the
-						# metadata in a Package instance.
+						# Also, parts of the match that require metadata access
+						# are deferred until we have cached the metadata in a
+						# Package instance.
 						if not atom_set.findAtomForPackage(pkg,
 							modified_use=self._pkg_use_enabled(pkg)):
 							continue
+						matched_something = True
 						yield pkg
+
+		# USE=multislot can make an installed package appear as if
+		# it doesn't satisfy a slot dependency. Rebuilding the ebuild
+		# won't do any good as long as USE=multislot is enabled since
+		# the newly built package still won't have the expected slot.
+		# Therefore, assume that such SLOT dependencies are already
+		# satisfied rather than forcing a rebuild.
+		if not matched_something and installed and atom.slot is not None:
+
+			if "remove" in self._dynamic_config.myparams:
+				# We need to search the portdbapi, which is not in our
+				# normal dbs list, in order to find the real SLOT.
+				portdb = self._frozen_config.trees[root_config.root]["porttree"].dbapi
+				db_keys = list(portdb._aux_cache_keys)
+				dbs = [(portdb, "ebuild", False, False, db_keys)]
+			else:
+				dbs = self._dynamic_config._filtered_trees[root_config.root]["dbs"]
+
+			cp_list = db.cp_list(atom_exp.cp)
+			if cp_list:
+				atom_set = InternalPackageSet(
+					initial_atoms=(atom.without_slot,), allow_repo=True)
+				atom_exp_without_slot = atom_exp.without_slot
+				cp_list.reverse()
+				for cpv in cp_list:
+					if not match_from_list(atom_exp_without_slot, [cpv]):
+						continue
+					slot_available = False
+					for other_db, other_type, other_built, \
+						other_installed, other_keys in dbs:
+						try:
+							if atom.slot == \
+								other_db.aux_get(cpv, ["SLOT"])[0]:
+								slot_available = True
+								break
+						except KeyError:
+							pass
+					if not slot_available:
+						continue
+					inst_pkg = self._pkg(cpv, "installed",
+						root_config, installed=installed, myrepo=atom.repo)
+					# Remove the slot from the atom and verify that
+					# the package matches the resulting atom.
+					if atom_set.findAtomForPackage(inst_pkg):
+						yield inst_pkg
+						return
 
 	def _select_pkg_highest_available(self, root, atom, onlydeps=False):
 		cache_key = (root, atom, atom.unevaluated_atom, onlydeps)
