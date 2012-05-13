@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright 2009-2011 Gentoo Foundation
+# Copyright 2009-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -42,7 +42,7 @@ from portage.manifest import guessManifestFileType
 from portage.util import cmp_sort_key, writemsg_level
 from portage import cpv_getkey
 from portage.dep import Atom, isjustname
-from portage.versions import pkgcmp, pkgsplit, vercmp
+from portage.versions import pkgsplit, vercmp
 
 try:
 	from xml.etree import ElementTree
@@ -570,7 +570,7 @@ class GenUseLocalDesc(object):
 								return cmp_func(atomb.operator, atoma.operator)
 							# Version matching
 							elif atoma.cpv != atomb.cpv:
-								return pkgcmp(pkgsplit(atoma.cpv), pkgsplit(atomb.cpv))
+								return vercmp(atoma.version, atomb.version)
 							# Versions match, let's fallback to operator matching
 							else:
 								return cmp_func(ops.get(atoma.operator, -1),
