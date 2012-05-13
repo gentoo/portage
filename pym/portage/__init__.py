@@ -446,7 +446,7 @@ def eapi_is_supported(eapi):
 	return eapi <= portage.const.EAPI
 
 # This pattern is specified by PMS section 7.3.1.
-_pms_eapi_re = re.compile(r"^[ \t]*EAPI=(['\"]?)([A-Za-z0-9+_.-]*)\1[ \t]*(#.*)?$")
+_pms_eapi_re = re.compile(r"^[ \t]*EAPI=(['\"]?)([A-Za-z0-9+_.-]*)\1[ \t]*([ \t]#.*)?$")
 _comment_or_blank_line = re.compile(r"^\s*(#.*)?$")
 
 def _parse_eapi_ebuild_head(f):
