@@ -4,7 +4,7 @@
 
 from portage.dbapi import dbapi
 from portage.dbapi.dep_expand import dep_expand
-from portage import cpv_getkey
+from portage.versions import cpv_getkey, _pkg_str
 
 class fakedbapi(dbapi):
 	"""A fake dbapi that allows consumers to inject/remove packages to/from it
@@ -74,7 +74,13 @@ class fakedbapi(dbapi):
 		@param metadata: dict
 		"""
 		self._clear_cache()
-		mycp = cpv_getkey(mycpv)
+		if not hasattr(mycpv, 'cp'):
+			if metadata is None:
+				mycpv = _pkg_str(mycpv)
+			else:
+				mycpv = _pkg_str(mycpv, slot=metadata.get('SLOT'),
+					repo=metadata.get('repository'))
+		mycp = mycpv.cp
 		self.cpvdict[mycpv] = metadata
 		myslot = None
 		if self._exclusive_slots and metadata:

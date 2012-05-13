@@ -28,7 +28,7 @@ class Package(Task):
 		"root_config", "type_name",
 		"category", "counter", "cp", "cpv_split",
 		"inherited", "invalid", "iuse", "masks", "mtime",
-		"pf", "pv_split", "root", "slot", "slot_atom", "visible",) + \
+		"pf", "root", "slot", "slot_atom", "version", "visible",) + \
 	("_raw_metadata", "_use",)
 
 	metadata_keys = [
@@ -71,8 +71,8 @@ class Package(Task):
 					"IUSE contains defaults, but EAPI doesn't allow them")
 		self.slot_atom = portage.dep.Atom("%s%s%s" % (self.cp, _slot_separator, slot))
 		self.category, self.pf = portage.catsplit(self.cpv)
-		self.cpv_split = portage.catpkgsplit(self.cpv)
-		self.pv_split = self.cpv_split[1:]
+		self.cpv_split = self.cpv.cpv_split
+		self.version = self.cpv.version
 		if self.inherited is None:
 			self.inherited = frozenset()
 
@@ -532,28 +532,28 @@ class Package(Task):
 	def __lt__(self, other):
 		if other.cp != self.cp:
 			return False
-		if portage.pkgcmp(self.pv_split, other.pv_split) < 0:
+		if portage.vercmp(self.version, other.version) < 0:
 			return True
 		return False
 
 	def __le__(self, other):
 		if other.cp != self.cp:
 			return False
-		if portage.pkgcmp(self.pv_split, other.pv_split) <= 0:
+		if portage.vercmp(self.version, other.version) <= 0:
 			return True
 		return False
 
 	def __gt__(self, other):
 		if other.cp != self.cp:
 			return False
-		if portage.pkgcmp(self.pv_split, other.pv_split) > 0:
+		if portage.vercmp(self.version, other.version) > 0:
 			return True
 		return False
 
 	def __ge__(self, other):
 		if other.cp != self.cp:
 			return False
-		if portage.pkgcmp(self.pv_split, other.pv_split) >= 0:
+		if portage.vercmp(self.version, other.version) >= 0:
 			return True
 		return False
 

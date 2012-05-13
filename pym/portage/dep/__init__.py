@@ -1141,9 +1141,11 @@ class Atom(_atom_base):
 		self.__dict__['cp'] = cp
 		try:
 			self.__dict__['cpv'] = _pkg_str(cpv)
+			self.__dict__['version'] = self.cpv.version
 		except InvalidData:
 			# plain cp, wildcard, or something
 			self.__dict__['cpv'] = cpv
+			self.__dict__['version'] = None
 		self.__dict__['repo'] = repo
 		self.__dict__['slot'] = slot
 		self.__dict__['operator'] = op
@@ -2003,15 +2005,17 @@ def match_from_list(mydep, candidate_list):
 			mylist.append(x)
 
 	elif operator in [">", ">=", "<", "<="]:
-		mysplit = ["%s/%s" % (cat, pkg), ver, rev]
 		for x in candidate_list:
-			xs = getattr(x, "cpv_split", None)
-			if xs is None:
-				xs = catpkgsplit(remove_slot(x))
-			xcat, xpkg, xver, xrev = xs
-			xs = ["%s/%s" % (xcat, xpkg), xver, xrev]
+			if not hasattr(x, 'cp'):
+				try:
+					x = _pkg_str(remove_slot(x))
+				except InvalidData:
+					continue
+
+			if x.cp != mydep.cp:
+				continue
 			try:
-				result = pkgcmp(xs, mysplit)
+				result = vercmp(x.version, mydep.version)
 			except ValueError: # pkgcmp may return ValueError during int() conversion
 				writemsg(_("\nInvalid package name: %s\n") % x, noiselevel=-1)
 				raise

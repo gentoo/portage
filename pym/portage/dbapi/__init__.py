@@ -46,7 +46,12 @@ class dbapi(object):
 	def cp_list(self, cp, use_cache=1):
 		raise NotImplementedError(self)
 
-	def _cpv_sort_ascending(self, cpv_list):
+	@staticmethod
+	def _cmp_cpv(cpv1, cpv2):
+		return vercmp(cpv1.version, cpv2.version)
+
+	@staticmethod
+	def _cpv_sort_ascending(cpv_list):
 		"""
 		Use this to sort self.cp_list() results in ascending
 		order. It sorts in place and returns None.
@@ -55,12 +60,7 @@ class dbapi(object):
 			# If the cpv includes explicit -r0, it has to be preserved
 			# for consistency in findname and aux_get calls, so use a
 			# dict to map strings back to their original values.
-			ver_map = {}
-			for cpv in cpv_list:
-				ver_map[cpv] = '-'.join(catpkgsplit(cpv)[2:])
-			def cmp_cpv(cpv1, cpv2):
-				return vercmp(ver_map[cpv1], ver_map[cpv2])
-			cpv_list.sort(key=cmp_sort_key(cmp_cpv))
+			cpv_list.sort(key=cmp_sort_key(dbapi._cmp_cpv))
 
 	def cpv_all(self):
 		"""Return all CPVs in the db
