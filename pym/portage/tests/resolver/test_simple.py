@@ -45,7 +45,8 @@ class SimpleResolverTestCase(TestCase):
 			ResolverPlaygroundTestCase(
 				["app-misc/Z"],
 				success = True,
-				mergelist = ["app-misc/W-1", "app-misc/X-1", "app-misc/Z-1"]),
+				ambiguous_merge_order = True,
+				mergelist = [("app-misc/W-1", "app-misc/X-1"), "app-misc/Z-1"]),
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)
