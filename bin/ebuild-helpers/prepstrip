@@ -215,6 +215,9 @@ if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
 	multijob_post_fork
 fi
 
+# Let the Pre-stripped check finish before we start stripping
+multijob_finish
+
 # Now we look for unstripped binaries.
 for x in \
 	$(scanelf -yqRBF '#k%F' -k '.symtab' "$@") \
