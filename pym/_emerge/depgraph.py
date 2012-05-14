@@ -615,7 +615,7 @@ class depgraph(object):
 		for line in msg:
 			if line:
 				line = colorize("INFORM", line)
-			writemsg_stdout(line + "\n", noiselevel=-1)
+			writemsg(line + "\n", noiselevel=-1)
 
 	def _show_missed_update(self):
 
@@ -3223,55 +3223,55 @@ class depgraph(object):
 
 			pkg = show_req_use
 			output_cpv = pkg.cpv + _repo_separator + pkg.repo
-			writemsg_stdout("\n!!! " + \
+			writemsg("\n!!! " + \
 				colorize("BAD", "The ebuild selected to satisfy ") + \
 				colorize("INFORM", xinfo) + \
 				colorize("BAD", " has unmet requirements.") + "\n",
 				noiselevel=-1)
 			use_display = pkg_use_display(pkg, self._frozen_config.myopts)
-			writemsg_stdout("- %s %s\n" % (output_cpv, use_display),
+			writemsg("- %s %s\n" % (output_cpv, use_display),
 				noiselevel=-1)
-			writemsg_stdout("\n  The following REQUIRED_USE flag constraints " + \
+			writemsg("\n  The following REQUIRED_USE flag constraints " + \
 				"are unsatisfied:\n", noiselevel=-1)
 			reduced_noise = check_required_use(
 				pkg.metadata["REQUIRED_USE"],
 				self._pkg_use_enabled(pkg),
 				pkg.iuse.is_valid_flag).tounicode()
-			writemsg_stdout("    %s\n" % \
+			writemsg("    %s\n" % \
 				human_readable_required_use(reduced_noise),
 				noiselevel=-1)
 			normalized_required_use = \
 				" ".join(pkg.metadata["REQUIRED_USE"].split())
 			if reduced_noise != normalized_required_use:
-				writemsg_stdout("\n  The above constraints " + \
+				writemsg("\n  The above constraints " + \
 					"are a subset of the following complete expression:\n",
 					noiselevel=-1)
-				writemsg_stdout("    %s\n" % \
+				writemsg("    %s\n" % \
 					human_readable_required_use(normalized_required_use),
 					noiselevel=-1)
-			writemsg_stdout("\n", noiselevel=-1)
+			writemsg("\n", noiselevel=-1)
 
 		elif show_missing_use:
-			writemsg_stdout("\nemerge: there are no ebuilds built with USE flags to satisfy "+green(xinfo)+".\n", noiselevel=-1)
-			writemsg_stdout("!!! One of the following packages is required to complete your request:\n", noiselevel=-1)
+			writemsg("\nemerge: there are no ebuilds built with USE flags to satisfy "+green(xinfo)+".\n", noiselevel=-1)
+			writemsg("!!! One of the following packages is required to complete your request:\n", noiselevel=-1)
 			for pkg, mreasons in show_missing_use:
-				writemsg_stdout("- "+pkg.cpv+_repo_separator+pkg.repo+" ("+", ".join(mreasons)+")\n", noiselevel=-1)
+				writemsg("- "+pkg.cpv+_repo_separator+pkg.repo+" ("+", ".join(mreasons)+")\n", noiselevel=-1)
 
 		elif masked_packages:
-			writemsg_stdout("\n!!! " + \
+			writemsg("\n!!! " + \
 				colorize("BAD", "All ebuilds that could satisfy ") + \
 				colorize("INFORM", xinfo) + \
 				colorize("BAD", " have been masked.") + "\n", noiselevel=-1)
-			writemsg_stdout("!!! One of the following masked packages is required to complete your request:\n", noiselevel=-1)
+			writemsg("!!! One of the following masked packages is required to complete your request:\n", noiselevel=-1)
 			have_eapi_mask = show_masked_packages(masked_packages)
 			if have_eapi_mask:
-				writemsg_stdout("\n", noiselevel=-1)
+				writemsg("\n", noiselevel=-1)
 				msg = ("The current version of portage supports " + \
 					"EAPI '%s'. You must upgrade to a newer version" + \
 					" of portage before EAPI masked packages can" + \
 					" be installed.") % portage.const.EAPI
-				writemsg_stdout("\n".join(textwrap.wrap(msg, 75)), noiselevel=-1)
-			writemsg_stdout("\n", noiselevel=-1)
+				writemsg("\n".join(textwrap.wrap(msg, 75)), noiselevel=-1)
+			writemsg("\n", noiselevel=-1)
 			mask_docs = True
 		else:
 			cp_exists = False
@@ -3281,7 +3281,7 @@ class depgraph(object):
 					cp_exists = True
 					break
 
-			writemsg_stdout("\nemerge: there are no ebuilds to satisfy "+green(xinfo)+".\n", noiselevel=-1)
+			writemsg("\nemerge: there are no ebuilds to satisfy "+green(xinfo)+".\n", noiselevel=-1)
 			if isinstance(myparent, AtomArg) and \
 				not cp_exists and \
 				self._frozen_config.myopts.get(
@@ -3291,7 +3291,7 @@ class depgraph(object):
 				if cat == "null":
 					cat = None
 
-				writemsg_stdout("\nemerge: searching for similar names..."
+				writemsg("\nemerge: searching for similar names..."
 					, noiselevel=-1)
 
 				all_cp = set()
@@ -3339,16 +3339,16 @@ class depgraph(object):
 				matches = matches_orig_case
 
 				if len(matches) == 1:
-					writemsg_stdout("\nemerge: Maybe you meant " + matches[0] + "?\n"
+					writemsg("\nemerge: Maybe you meant " + matches[0] + "?\n"
 						, noiselevel=-1)
 				elif len(matches) > 1:
-					writemsg_stdout(
+					writemsg(
 						"\nemerge: Maybe you meant any of these: %s?\n" % \
 						(", ".join(matches),), noiselevel=-1)
 				else:
 					# Generally, this would only happen if
 					# all dbapis are empty.
-					writemsg_stdout(" nothing similar found.\n"
+					writemsg(" nothing similar found.\n"
 						, noiselevel=-1)
 		msg = []
 		if not isinstance(myparent, AtomArg):
@@ -3361,12 +3361,12 @@ class depgraph(object):
 						(node)), node_type))
 
 		if msg:
-			writemsg_stdout("\n".join(msg), noiselevel=-1)
-			writemsg_stdout("\n", noiselevel=-1)
+			writemsg("\n".join(msg), noiselevel=-1)
+			writemsg("\n", noiselevel=-1)
 
 		if mask_docs:
 			show_mask_docs()
-			writemsg_stdout("\n", noiselevel=-1)
+			writemsg("\n", noiselevel=-1)
 
 	def _iter_match_pkgs_any(self, root_config, atom, onlydeps=False):
 		for db, pkg_type, built, installed, db_keys in \
@@ -6115,27 +6115,27 @@ class depgraph(object):
 				settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH)
 
 			if len(roots) > 1:
-				writemsg_stdout("\nFor %s:\n" % abs_user_config, noiselevel=-1)
+				writemsg("\nFor %s:\n" % abs_user_config, noiselevel=-1)
 
 			if root in unstable_keyword_msg:
-				writemsg_stdout("\nThe following " + colorize("BAD", "keyword changes") + \
+				writemsg("\nThe following " + colorize("BAD", "keyword changes") + \
 					" are necessary to proceed:\n", noiselevel=-1)
-				writemsg_stdout(format_msg(unstable_keyword_msg[root]), noiselevel=-1)
+				writemsg(format_msg(unstable_keyword_msg[root]), noiselevel=-1)
 
 			if root in p_mask_change_msg:
-				writemsg_stdout("\nThe following " + colorize("BAD", "mask changes") + \
+				writemsg("\nThe following " + colorize("BAD", "mask changes") + \
 					" are necessary to proceed:\n", noiselevel=-1)
-				writemsg_stdout(format_msg(p_mask_change_msg[root]), noiselevel=-1)
+				writemsg(format_msg(p_mask_change_msg[root]), noiselevel=-1)
 
 			if root in use_changes_msg:
-				writemsg_stdout("\nThe following " + colorize("BAD", "USE changes") + \
+				writemsg("\nThe following " + colorize("BAD", "USE changes") + \
 					" are necessary to proceed:\n", noiselevel=-1)
-				writemsg_stdout(format_msg(use_changes_msg[root]), noiselevel=-1)
+				writemsg(format_msg(use_changes_msg[root]), noiselevel=-1)
 
 			if root in license_msg:
-				writemsg_stdout("\nThe following " + colorize("BAD", "license changes") + \
+				writemsg("\nThe following " + colorize("BAD", "license changes") + \
 					" are necessary to proceed:\n", noiselevel=-1)
-				writemsg_stdout(format_msg(license_msg[root]), noiselevel=-1)
+				writemsg(format_msg(license_msg[root]), noiselevel=-1)
 
 		protect_obj = {}
 		if write_to_file:
@@ -6182,7 +6182,7 @@ class depgraph(object):
 			for line in msg:
 				if line:
 					line = colorize("INFORM", line)
-				writemsg_stdout(line + "\n", noiselevel=-1)
+				writemsg(line + "\n", noiselevel=-1)
 
 		if ask and write_to_file and file_to_write_to:
 			prompt = "\nWould you like to add these " + \
@@ -6214,14 +6214,14 @@ class depgraph(object):
 						file_to_write_to.get((abs_user_config, "package.license")))
 
 		if problems:
-			writemsg_stdout("\nThe following problems occurred while writing autounmask changes:\n", \
+			writemsg("\nThe following problems occurred while writing autounmask changes:\n", \
 				noiselevel=-1)
-			writemsg_stdout("".join(problems), noiselevel=-1)
+			writemsg("".join(problems), noiselevel=-1)
 		elif write_to_file and roots:
-			writemsg_stdout("\nAutounmask changes successfully written. Remember to run dispatch-conf.\n", \
+			writemsg("\nAutounmask changes successfully written. Remember to run dispatch-conf.\n", \
 				noiselevel=-1)
 		elif not pretend and not autounmask_write and roots:
-			writemsg_stdout("\nUse --autounmask-write to write changes to config files (honoring CONFIG_PROTECT).\n", \
+			writemsg("\nUse --autounmask-write to write changes to config files (honoring CONFIG_PROTECT).\n", \
 				noiselevel=-1)
 
 
@@ -6232,35 +6232,8 @@ class depgraph(object):
 		the merge list where it is most likely to be seen, but if display()
 		is not going to be called then this method should be called explicitly
 		to ensure that the user is notified of problems with the graph.
-
-		All output goes to stderr, except for unsatisfied dependencies which
-		go to stdout for parsing by programs such as autounmask.
 		"""
 
-		# Note that show_masked_packages() sends its output to
-		# stdout, and some programs such as autounmask parse the
-		# output in cases when emerge bails out. However, when
-		# show_masked_packages() is called for installed packages
-		# here, the message is a warning that is more appropriate
-		# to send to stderr, so temporarily redirect stdout to
-		# stderr. TODO: Fix output code so there's a cleaner way
-		# to redirect everything to stderr.
-		sys.stdout.flush()
-		sys.stderr.flush()
-		stdout = sys.stdout
-		try:
-			sys.stdout = sys.stderr
-			self._display_problems()
-		finally:
-			sys.stdout = stdout
-			sys.stdout.flush()
-			sys.stderr.flush()
-
-		# This goes to stdout for parsing by programs like autounmask.
-		for pargs, kwargs in self._dynamic_config._unsatisfied_deps_for_display:
-			self._show_unsatisfied_dep(*pargs, **kwargs)
-
-	def _display_problems(self):
 		if self._dynamic_config._circular_deps_for_display is not None:
 			self._show_circular_deps(
 				self._dynamic_config._circular_deps_for_display)
@@ -6378,6 +6351,9 @@ class depgraph(object):
 			show_masked_packages(masked_packages)
 			show_mask_docs()
 			writemsg("\n", noiselevel=-1)
+
+		for pargs, kwargs in self._dynamic_config._unsatisfied_deps_for_display:
+			self._show_unsatisfied_dep(*pargs, **kwargs)
 
 	def saveNomergeFavorites(self):
 		"""Find atoms in favorites that are not in the mergelist and add them
@@ -7192,10 +7168,11 @@ def show_masked_packages(masked_packages):
 				# above via mreasons.
 				pass
 
-		writemsg_stdout("- "+output_cpv+" (masked by: "+", ".join(mreasons)+")\n", noiselevel=-1)
+		writemsg("- "+output_cpv+" (masked by: "+", ".join(mreasons)+")\n",
+			noiselevel=-1)
 
 		if comment and comment not in shown_comments:
-			writemsg_stdout(filename + ":\n" + comment + "\n",
+			writemsg(filename + ":\n" + comment + "\n",
 				noiselevel=-1)
 			shown_comments.add(comment)
 		portdb = root_config.trees["porttree"].dbapi
@@ -7205,13 +7182,14 @@ def show_masked_packages(masked_packages):
 				continue
 			msg = ("A copy of the '%s' license" + \
 			" is located at '%s'.\n\n") % (l, l_path)
-			writemsg_stdout(msg, noiselevel=-1)
+			writemsg(msg, noiselevel=-1)
 			shown_licenses.add(l)
 	return have_eapi_mask
 
 def show_mask_docs():
-	writemsg_stdout("For more information, see the MASKED PACKAGES section in the emerge\n", noiselevel=-1)
-	writemsg_stdout("man page or refer to the Gentoo Handbook.\n", noiselevel=-1)
+	writemsg("For more information, see the MASKED PACKAGES "
+		"section in the emerge\n", noiselevel=-1)
+	writemsg("man page or refer to the Gentoo Handbook.\n", noiselevel=-1)
 
 def show_blocker_docs_link():
 	writemsg("\nFor more information about " + bad("Blocked Packages") + ", please refer to the following\n", noiselevel=-1)
