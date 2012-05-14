@@ -30,7 +30,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.movefile:movefile',
 	'portage.util._dyn_libs.PreservedLibsRegistry:PreservedLibsRegistry',
 	'portage.util._dyn_libs.LinkageMapELF:LinkageMapELF@LinkageMap',
-	'portage.versions:best,catpkgsplit,catsplit,cpv_getkey,pkgcmp,' + \
+	'portage.versions:best,catpkgsplit,catsplit,cpv_getkey,vercmp,' + \
 		'_pkgsplit@pkgsplit,_pkg_str',
 	'subprocess',
 	'tarfile',
@@ -1436,8 +1436,13 @@ class dblink(object):
 		self.cat = cat
 		self.pkg = pkg
 		self.mycpv = self.cat + "/" + self.pkg
-		self.mysplit = list(catpkgsplit(self.mycpv)[1:])
-		self.mysplit[0] = "%s/%s" % (self.cat, self.mysplit[0])
+		if self.mycpv == settings.mycpv and \
+			isinstance(settings.mycpv, _pkg_str):
+			self.mycpv = settings.mycpv
+		else:
+			self.mycpv = _pkg_str(self.mycpv)
+		self.mysplit = list(self.mycpv.cpv_split[1:])
+		self.mysplit[0] = self.mycpv.cp
 		self.treetype = treetype
 		if vartree is None:
 			vartree = portage.db[self._eroot]["vartree"]
@@ -3851,9 +3856,8 @@ class dblink(object):
 			# Always behave like --noconfmem is enabled for downgrades
 			# so that people who don't know about this option are less
 			# likely to get confused when doing upgrade/downgrade cycles.
-			pv_split = catpkgsplit(self.mycpv)[1:]
 			for other in others_in_slot:
-				if pkgcmp(pv_split, catpkgsplit(other.mycpv)[1:]) < 0:
+				if vercmp(self.mycpv.version, other.mycpv.version) < 0:
 					cfgfiledict["IGNORE"] = 1
 					break
 
