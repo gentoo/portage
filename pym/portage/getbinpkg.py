@@ -158,11 +158,16 @@ def create_conn(baseurl,conn=None):
 	http_headers = {}
 	http_params = {}
 	if username and password:
+		try:
+			encodebytes = base64.encodebytes
+		except AttributeError:
+			# Python 2
+			encodebytes = base64.encodestring
 		http_headers = {
-			"Authorization": "Basic %s" %
-			  base64.encodestring("%s:%s" % (username, password)).replace(
-			    "\012",
-			    ""
+			b"Authorization": "Basic %s" % \
+			encodebytes(_unicode_encode("%s:%s" % (username, password))).replace(
+			    b"\012",
+			    b""
 			  ),
 		}
 
