@@ -19,7 +19,7 @@ exp_tf FEATURES compressdebug installsources nostrip splitdebug
 exp_tf RESTRICT binchecks installsources strip
 
 [[ " ${FEATURES} " == *" force-prefix "* ]] || \
-	case "$EAPI" in 0|1|2) EPREFIX= ED=${D} ;; esac
+	case "${EAPI}" in 0|1|2) EPREFIX= ED=${D} ;; esac
 
 banner=false
 SKIP_STRIP=false
@@ -80,14 +80,16 @@ multijob_init
 
 unset ${!INODE_*}
 
+# Usage: inode_var_name: <file>
 inode_var_name() {
-	if  [[ $USERLAND = BSD ]] ; then
+	if  [[ ${USERLAND} == "BSD" ]] ; then
 		stat -f 'INODE_%d_%i' "$1"
 	else
 		stat -c 'INODE_%d_%i' "$1"
 	fi
 }
 
+# Usage: save_elf_sources <elf>
 save_elf_sources() {
 	${FEATURES_installsources} || return 0
 	${RESTRICT_installsources} && return 0
@@ -101,7 +103,7 @@ save_elf_sources() {
 	fi
 
 	local x=$1
-	local inode=$(inode_var_name "$x")
+	local inode=$(inode_var_name "${x}")
 	[[ -n ${!inode} ]] && return 0
 
 	# since we're editing the ELF here, we should recompute the build-id
@@ -114,6 +116,7 @@ save_elf_sources() {
 		"${x}")
 }
 
+# Usage: save_elf_debug <elf>
 save_elf_debug() {
 	${FEATURES_splitdebug} || return 0
 
@@ -129,11 +132,11 @@ save_elf_debug() {
 
 	mkdir -p "${y%/*}"
 
-	local inode=$(inode_var_name "$x")
+	local inode=$(inode_var_name "${x}")
 	if [[ -n ${!inode} ]] ; then
-		ln "${ED}usr/lib/debug/${!inode:${#D}}.debug" "$y"
+		ln "${ED}usr/lib/debug/${!inode:${#D}}.debug" "${y}"
 	else
-		eval $inode=\$x
+		eval ${inode}=\${x}
 		if [[ -e ${T}/prepstrip.split.debug ]] ; then
 			mv "${T}"/prepstrip.split.debug "${y}"
 		else
@@ -162,6 +165,7 @@ save_elf_debug() {
 	fi
 }
 
+# Usage: process_elf <elf>
 process_elf() {
 	local x=$1 strip_flags=${*:2}
 
@@ -196,23 +200,23 @@ if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
 	multijob_child_init
 	qa_var="QA_PRESTRIPPED_${ARCH/-/_}"
 	[[ -n ${!qa_var} ]] && QA_PRESTRIPPED="${!qa_var}"
-	if [[ -n $QA_PRESTRIPPED && -s $log && \
+	if [[ -n ${QA_PRESTRIPPED} && -s ${log} && \
 		${QA_STRICT_PRESTRIPPED-unset} = unset ]] ; then
 		shopts=$-
 		set -o noglob
-		for x in $QA_PRESTRIPPED ; do
-			sed -e "s#^${x#/}\$##" -i "$log"
+		for x in ${QA_PRESTRIPPED} ; do
+			sed -e "s#^${x#/}\$##" -i "${log}"
 		done
 		set +o noglob
-		set -$shopts
+		set -${shopts}
 	fi
-	sed -e "/^\$/d" -e "s#^#/#" -i "$log"
-	if [[ -s $log ]] ; then
+	sed -e "/^\$/d" -e "s#^#/#" -i "${log}"
+	if [[ -s ${log} ]] ; then
 		vecho -e "\n"
 		eqawarn "QA Notice: Pre-stripped files found:"
-		eqawarn "$(<"$log")"
+		eqawarn "$(<"${log}")"
 	else
-		rm -f "$log"
+		rm -f "${log}"
 	fi
 	) &
 	multijob_post_fork
@@ -301,6 +305,6 @@ then
 	# https://bugzilla.redhat.com/show_bug.cgi?id=444310
 	while read -r -d $'\0' emptydir
 	do
-		>> "$emptydir"/.keepdir
+		>> "${emptydir}"/.keepdir
 	done < <(find "${D}${prepstrip_sources_dir}/" -type d -empty -print0)
 fi
