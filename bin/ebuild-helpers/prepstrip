@@ -137,12 +137,7 @@ save_elf_debug() {
 		local args="a-x,o-w"
 		[[ -g ${x} || -u ${x} ]] && args+=",go-r"
 		chmod ${args} "${y}"
-		if ! ln "${y}" "${inode}" ; then
-			# This means a parallel process has already created the
-			# inode link. So, replace ${y} with a link to that inode.
-			rm -f "${y}"
-			ln "${inode}" "${y}"
-		fi
+		ln "${y}" "${inode}"
 	fi
 
 	# if we don't already have build-id from debugedit, look it up
@@ -168,6 +163,20 @@ process_elf() {
 	save_elf_sources "${x}"
 
 	if ${strip_this} ; then
+
+		# If two processes try to strip the same hardlink at the same
+		# time, it will cause one of them to lose the splitdebug info.
+		# So, use a lockfile to prevent interference (easily observed
+		# with dev-vcs/git which creates ~109 hardlinks to one file in
+		# /usr/libexec/git-core).
+		local lockfile=$(inode_file_link "${x}")_lockfile
+		if ! ln "${x}" "${lockfile}" ; then
+			while [[ -f ${lockfile} ]] ; do
+				sleep 1
+			done
+			unset lockfile
+		fi
+
 		# see if we can split & strip at the same time
 		if [[ -n ${SPLIT_STRIP_FLAGS} ]] ; then
 			local shortname="${x##*/}.debug"
@@ -181,6 +190,7 @@ process_elf() {
 			save_elf_debug "${x}"
 			${STRIP} ${strip_flags} "${x}"
 		fi
+		[[ -n ${lockfile} ]] && rm -f "${lockfile}"
 	fi
 }
 
