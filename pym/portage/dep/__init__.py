@@ -1086,6 +1086,7 @@ class Atom(_atom_base):
 
 		_atom_base.__init__(s)
 
+		atom_re = _get_atom_re(eapi)
 		if eapi_has_repo_deps(eapi):
 			allow_repo = True
 
@@ -1098,7 +1099,7 @@ class Atom(_atom_base):
 		else:
 			blocker = False
 		self.__dict__['blocker'] = blocker
-		m = _get_atom_re(eapi).match(s)
+		m = atom_re.match(s)
 		extended_syntax = False
 		if m is None:
 			if allow_wildcard:
@@ -1117,32 +1118,32 @@ class Atom(_atom_base):
 			else:
 				raise InvalidAtom(self)
 		elif m.group('op') is not None:
-			base = _get_atom_re(eapi).groupindex['op']
+			base = atom_re.groupindex['op']
 			op = m.group(base + 1)
 			cpv = m.group(base + 2)
 			cp = m.group(base + 3)
-			slot = m.group(_get_atom_re(eapi).groups - 2)
-			repo = m.group(_get_atom_re(eapi).groups - 1)
-			use_str = m.group(_get_atom_re(eapi).groups)
+			slot = m.group(atom_re.groups - 2)
+			repo = m.group(atom_re.groups - 1)
+			use_str = m.group(atom_re.groups)
 			if m.group(base + 4) is not None:
 				raise InvalidAtom(self)
 		elif m.group('star') is not None:
-			base = _get_atom_re(eapi).groupindex['star']
+			base = atom_re.groupindex['star']
 			op = '=*'
 			cpv = m.group(base + 1)
 			cp = m.group(base + 2)
-			slot = m.group(_get_atom_re(eapi).groups - 2)
-			repo = m.group(_get_atom_re(eapi).groups - 1)
-			use_str = m.group(_get_atom_re(eapi).groups)
+			slot = m.group(atom_re.groups - 2)
+			repo = m.group(atom_re.groups - 1)
+			use_str = m.group(atom_re.groups)
 			if m.group(base + 3) is not None:
 				raise InvalidAtom(self)
 		elif m.group('simple') is not None:
 			op = None
-			cpv = cp = m.group(_get_atom_re(eapi).groupindex['simple'] + 1)
-			slot = m.group(_get_atom_re(eapi).groups - 2)
-			repo = m.group(_get_atom_re(eapi).groups - 1)
-			use_str = m.group(_get_atom_re(eapi).groups)
-			if m.group(_get_atom_re(eapi).groupindex['simple'] + 2) is not None:
+			cpv = cp = m.group(atom_re.groupindex['simple'] + 1)
+			slot = m.group(atom_re.groups - 2)
+			repo = m.group(atom_re.groups - 1)
+			use_str = m.group(atom_re.groups)
+			if m.group(atom_re.groupindex['simple'] + 2) is not None:
 				raise InvalidAtom(self)
 
 		else:
