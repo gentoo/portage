@@ -1,5 +1,5 @@
 # getbinpkg.py -- Portage binary-package helper functions
-# Copyright 2003-2011 Gentoo Foundation
+# Copyright 2003-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.output import colorize
@@ -10,6 +10,7 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
+from portage.package.ebuild.fetch import _hide_url_passwd
 from _emerge.Package import _all_metadata_keys
 
 import sys
@@ -578,7 +579,8 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 	try:
 		filelist = dir_get_list(baseurl, conn)
 	except portage.exception.PortageException as e:
-		sys.stderr.write(_("!!! Error connecting to '%s'.\n") % baseurl)
+		sys.stderr.write(_("!!! Error connecting to '%s'.\n") %
+			_hide_url_passwd(baseurl))
 		sys.stderr.write("!!! %s\n" % str(e))
 		del e
 		return metadata[baseurl]["data"]

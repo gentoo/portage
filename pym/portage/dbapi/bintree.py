@@ -11,7 +11,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.output:EOutput,colorize',
 	'portage.locks:lockfile,unlockfile',
 	'portage.package.ebuild.doebuild:_vdb_use_conditional_atoms',
-	'portage.package.ebuild.fetch:_check_distfile',
+	'portage.package.ebuild.fetch:_check_distfile,_hide_url_passwd',
 	'portage.update:update_dbentries',
 	'portage.util:atomic_ofstream,ensure_dirs,normalize_path,' + \
 		'writemsg,writemsg_stdout',
@@ -36,7 +36,6 @@ from portage import _unicode_encode
 import codecs
 import errno
 import io
-import re
 import stat
 import subprocess
 import sys
@@ -916,7 +915,7 @@ class binarytree(object):
 							noiselevel=-1)
 			except EnvironmentError as e:
 				writemsg(_("\n\n!!! Error fetching binhost package" \
-					" info from '%s'\n") % base_url)
+					" info from '%s'\n") % _hide_url_passwd(base_url))
 				writemsg("!!! %s\n\n" % str(e))
 				del e
 				pkgindex = None
@@ -992,7 +991,7 @@ class binarytree(object):
 			writemsg_stdout("\n")
 			writemsg_stdout(
 				colorize("GOOD", _("Fetching bininfo from ")) + \
-				re.sub(r'//(.+):.+@(.+)/', r'//\1:*password*@\2/', base_url) + "\n")
+				_hide_url_passwd(base_url) + "\n")
 			remotepkgs = portage.getbinpkg.dir_get_metadata(
 				base_url, chunk_size=chunk_size)
 
