@@ -297,15 +297,15 @@ done
 # parallel, but not sure that'd be an overall improvement.
 multijob_finish
 
-cat "${tmpdir}"/sources/* > "${tmpdir}/debug.sources" 2>/dev/null
-if [[ -s ${T}/debug.sources ]] && \
+cd "${tmpdir}"/sources/ && cat * > "${tmpdir}/debug.sources" 2>/dev/null
+if [[ -s ${tmpdir}/debug.sources ]] && \
    ${FEATURES_installsources} && \
    ! ${RESTRICT_installsources} && \
    ${debugedit_found}
 then
 	vecho "installsources: rsyncing source files"
 	[[ -d ${D}${prepstrip_sources_dir} ]] || mkdir -p "${D}${prepstrip_sources_dir}"
-	grep -zv '/<[^/>]*>$' "${T}"/debug.sources | \
+	grep -zv '/<[^/>]*>$' "${tmpdir}"/debug.sources | \
 		(cd "${WORKDIR}"; LANG=C sort -z -u | \
 		rsync -tL0 --files-from=- "${WORKDIR}/" "${D}${prepstrip_sources_dir}/" )
 
