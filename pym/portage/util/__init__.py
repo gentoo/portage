@@ -26,14 +26,6 @@ import string
 import sys
 import traceback
 import glob
-try:
-	import urllib.parse as urllib_parse
-	import urllib.request as urllib_request
-	from urllib.parse import splituser as urllib_parse_splituser
-except ImportError:
-	import urlparse as urllib_parse
-	import urllib2 as urllib_request
-	from urllib import splituser as urllib_parse_splituser
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -1648,14 +1640,3 @@ def getlibpaths(root, env=None):
 	rval.append("/lib")
 
 	return [normalize_path(x) for x in rval if x]
-
-def urlopen(url):	
-	parse_result = urllib_parse.urlparse(url)
-	netloc = urllib_parse_splituser(parse_result.netloc)[1]
-	url = urllib_parse.urlunparse((parse_result.scheme, netloc, parse_result.path, parse_result.params, parse_result.query, parse_result.fragment))
-	password_manager = urllib_request.HTTPPasswordMgrWithDefaultRealm()
-	if parse_result.username is not None:
-		password_manager.add_password(None, url, parse_result.username, parse_result.password)
-	auth_handler = urllib_request.HTTPBasicAuthHandler(password_manager)
-	opener = urllib_request.build_opener(auth_handler)
-	return opener.open(url)

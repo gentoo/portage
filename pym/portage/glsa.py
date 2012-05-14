@@ -5,6 +5,10 @@ from __future__ import absolute_import
 
 import io
 import sys
+try:
+	from urllib.request import urlopen as urllib_request_urlopen
+except ImportError:
+	from urllib import urlopen as urllib_request_urlopen
 import re
 import xml.dom.minidom
 
@@ -14,7 +18,7 @@ from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.versions import pkgsplit, vercmp, best
-from portage.util import grabfile, urlopen
+from portage.util import grabfile
 from portage.const import CACHE_PATH
 from portage.localization import _
 from portage.dep import _slot_separator
@@ -469,7 +473,7 @@ class Glsa:
 			myurl = "file://"+self.nr
 		else:
 			myurl = repository + "glsa-%s.xml" % str(self.nr)
-		self.parse(urlopen(myurl))
+		self.parse(urllib_request_urlopen(myurl))
 		return None
 
 	def parse(self, myfile):

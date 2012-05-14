@@ -26,7 +26,6 @@ from portage.dep import Atom, use_reduce, paren_enclose
 from portage.exception import AlarmSignal, InvalidPackageName, \
 	PermissionDenied, PortageException
 from portage.localization import _
-from portage.util import urlopen
 from portage import _movefile
 from portage import os
 from portage import _encodings
@@ -46,8 +45,10 @@ import warnings
 from itertools import chain
 try:
 	from urllib.parse import urlparse
+	from urllib.request import urlopen as urllib_request_urlopen
 except ImportError:
 	from urlparse import urlparse
+	from urllib import urlopen as urllib_request_urlopen
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -844,7 +845,7 @@ class binarytree(object):
 				# slash, so join manually...
 				url = base_url.rstrip("/") + "/Packages"
 				try:
-					f = urlopen(url)
+					f = urllib_request_urlopen(url)
 				except IOError:
 					path = parsed_url.path.rstrip("/") + "/Packages"
 

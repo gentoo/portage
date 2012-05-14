@@ -25,6 +25,11 @@ import textwrap
 import time
 import platform
 
+try:
+	from urllib.request import urlopen as urllib_request_urlopen
+except ImportError:
+	from urllib import urlopen as urllib_request_urlopen
+
 from itertools import chain
 from stat import S_ISDIR
 
@@ -70,7 +75,7 @@ from portage.process import find_binary, spawn
 from portage.output import bold, create_color_func, \
 	green, nocolor, red
 from portage.output import ConsoleStyleFile, StyleWriter
-from portage.util import cmp_sort_key, urlopen, writemsg_level
+from portage.util import writemsg_level
 from portage.util._desktop_entry import validate_desktop_entry
 from portage.package.ebuild.digestgen import digestgen
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
@@ -1046,7 +1051,7 @@ def fetch_metadata_dtd():
 			"needs to be refetched, doing that now")
 		print()
 		try:
-			url_f = urlopen(metadata_dtd_uri)
+			url_f = urllib_request_urlopen(metadata_dtd_uri)
 			msg_info = url_f.info()
 			last_modified = msg_info.get('last-modified')
 			if last_modified is not None:
