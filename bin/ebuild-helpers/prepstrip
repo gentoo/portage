@@ -187,12 +187,15 @@ process_elf() {
 # We want to log already stripped binaries, as this may be a QA violation.
 # They prevent us from getting the splitdebug data.
 if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
+	# We need to do the non-stripped scan serially first before we turn around
+	# and start stripping the files ourselves.  The log parsing can be done in
+	# parallel though.
+	log=$T/scanelf-already-stripped.log
+	scanelf -yqRBF '#k%F' -k '!.symtab' "$@" | sed -e "s#^${ED}##" > "$log"
 	(
 	multijob_child_init
-	log=$T/scanelf-already-stripped.log
 	qa_var="QA_PRESTRIPPED_${ARCH/-/_}"
 	[[ -n ${!qa_var} ]] && QA_PRESTRIPPED="${!qa_var}"
-	scanelf -yqRBF '#k%F' -k '!.symtab' "$@" | sed -e "s#^${ED}##" > "$log"
 	if [[ -n $QA_PRESTRIPPED && -s $log && \
 		${QA_STRICT_PRESTRIPPED-unset} = unset ]] ; then
 		shopts=$-
@@ -214,9 +217,6 @@ if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
 	) &
 	multijob_post_fork
 fi
-
-# Let the Pre-stripped check finish before we start stripping
-multijob_finish
 
 # Now we look for unstripped binaries.
 for x in \
