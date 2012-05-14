@@ -24,7 +24,7 @@ from portage.cache.mappings import slot_dict_class
 from portage.const import CACHE_PATH
 from portage.dbapi.virtual import fakedbapi
 from portage.dep import Atom, use_reduce, paren_enclose
-from portage.exception import AlarmSignal, InvalidPackageName, \
+from portage.exception import AlarmSignal, InvalidData, InvalidPackageName, \
 	PermissionDenied, PortageException
 from portage.localization import _
 from portage import _movefile
@@ -218,6 +218,13 @@ def _pkgindex_cpv_map_latest_build(pkgindex):
 
 	for d in pkgindex.packages:
 		cpv = d["CPV"]
+
+		try:
+			cpv = _pkg_str(cpv)
+		except InvalidData:
+			writemsg(_("!!! Invalid remote binary package: %s\n") % cpv,
+				noiselevel=-1)
+			continue
 
 		btime = d.get('BUILD_TIME', '')
 		try:
@@ -1003,7 +1010,12 @@ class binarytree(object):
 						noiselevel=-1)
 					continue
 				mycat = mycat.strip()
-				fullpkg = mycat+"/"+mypkg[:-5]
+				try:
+					fullpkg = _pkg_str(mycat+"/"+mypkg[:-5])
+				except InvalidData:
+					writemsg(_("!!! Invalid remote binary package: %s\n") % mypkg,
+						noiselevel=-1)
+					continue
 
 				if fullpkg in metadata:
 					# When using this old protocol, comparison with the remote
