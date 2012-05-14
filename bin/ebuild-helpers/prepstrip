@@ -62,21 +62,12 @@ prepstrip_sources_dir=${EPREFIX}/usr/src/debug/${CATEGORY}/${PF}
 type -P debugedit >/dev/null && debugedit_found=true || debugedit_found=false
 debugedit_warned=false
 
-disable_parallel=false
-${FEATURES_splitdebug} && disable_parallel=true
-${FEATURES_installsources} && \
-	! ${RESTRICT_installsources} && \
-	${debugedit_found} && disable_parallel=true
-
-if ${disable_parallel} ; then
-	# Disable parallel processing, in order to prevent interference with
-	# temp files like debug.sources or prepstrip.split.debug
-	numjobs() {
-		echo 1
-	}
-fi
-
 multijob_init
+
+# Setup $T filesystem layout that we care about.
+tmpdir="${T}/prepstrip"
+rm -rf "${tmpdir}"
+mkdir -p "${tmpdir}"/{splitdebug,sources}
 
 unset ${!INODE_*}
 
@@ -112,11 +103,11 @@ save_elf_sources() {
 	buildid=$(debugedit -i \
 		-b "${WORKDIR}" \
 		-d "${prepstrip_sources_dir}" \
-		-l "${T}"/debug.sources \
+		-l "${tmpdir}/sources/${x##*/}.${BASHPID}" \
 		"${x}")
 }
 
-# Usage: save_elf_debug <elf>
+# Usage: save_elf_debug <elf> [splitdebug file]
 save_elf_debug() {
 	${FEATURES_splitdebug} || return 0
 
@@ -125,6 +116,7 @@ save_elf_debug() {
 	# twice in this path) in order for gdb's debug-file-directory
 	# lookup to work correctly.
 	local x=$1
+	local splitdebug=$2
 	local y=${ED}usr/lib/debug/${x:${#D}}.debug
 
 	# dont save debug info twice
@@ -137,8 +129,8 @@ save_elf_debug() {
 		ln "${ED}usr/lib/debug/${!inode:${#D}}.debug" "${y}"
 	else
 		eval ${inode}=\${x}
-		if [[ -e ${T}/prepstrip.split.debug ]] ; then
-			mv "${T}"/prepstrip.split.debug "${y}"
+		if [[ -n ${splitdebug} ]] ; then
+			mv "${splitdebug}" "${y}"
 		else
 			local objcopy_flags="--only-keep-debug"
 			${FEATURES_compressdebug} && objcopy_flags+=" --compress-debug-sections"
@@ -175,11 +167,13 @@ process_elf() {
 	if ${strip_this} ; then
 		# see if we can split & strip at the same time
 		if [[ -n ${SPLIT_STRIP_FLAGS} ]] ; then
+			local shortname="${x##*/}.debug"
+			local splitdebug="${tmpdir}/splitdebug/${shortname}.${BASHPID}"
 			${STRIP} ${strip_flags} \
-				-f "${T}"/prepstrip.split.debug \
-				-F "${x##*/}.debug" \
+				-f "${splitdebug}" \
+				-F "${shortname}" \
 				"${x}"
-			save_elf_debug "${x}"
+			save_elf_debug "${x}" "${splitdebug}"
 		else
 			save_elf_debug "${x}"
 			${STRIP} ${strip_flags} "${x}"
@@ -194,8 +188,8 @@ if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
 	# We need to do the non-stripped scan serially first before we turn around
 	# and start stripping the files ourselves.  The log parsing can be done in
 	# parallel though.
-	log=$T/scanelf-already-stripped.log
-	scanelf -yqRBF '#k%F' -k '!.symtab' "$@" | sed -e "s#^${ED}##" > "$log"
+	log=${tmpdir}/scanelf-already-stripped.log
+	scanelf -yqRBF '#k%F' -k '!.symtab' "$@" | sed -e "s#^${ED}##" > "${log}"
 	(
 	multijob_child_init
 	qa_var="QA_PRESTRIPPED_${ARCH/-/_}"
@@ -286,9 +280,11 @@ do
 	multijob_post_fork
 done
 
-# Let jobs finish before processing ${T}/debug.sources
+# With a bit more work, we could run the rsync processes below in
+# parallel, but not sure that'd be an overall improvement.
 multijob_finish
 
+cat "${tmpdir}"/sources/* > "${tmpdir}/debug.sources" 2>/dev/null
 if [[ -s ${T}/debug.sources ]] && \
    ${FEATURES_installsources} && \
    ! ${RESTRICT_installsources} && \
