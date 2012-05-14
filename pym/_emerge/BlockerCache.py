@@ -162,8 +162,8 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 		@param blocker_data: An object with counter and atoms attributes.
 		@type blocker_data: BlockerData
 		"""
-		self._cache_data["blockers"][_unicode(cpv)] = \
-			(blocker_data.counter, tuple(str(x) for x in blocker_data.atoms))
+		self._cache_data["blockers"][_unicode(cpv)] = (blocker_data.counter,
+			tuple(_unicode(x) for x in blocker_data.atoms))
 		self._modified.add(cpv)
 
 	def __iter__(self):
