@@ -67,16 +67,15 @@ multijob_init
 # Setup $T filesystem layout that we care about.
 tmpdir="${T}/prepstrip"
 rm -rf "${tmpdir}"
-mkdir -p "${tmpdir}"/{splitdebug,sources}
-
-unset ${!INODE_*}
+mkdir -p "${tmpdir}"/{inodes,splitdebug,sources}
 
 # Usage: inode_var_name: <file>
-inode_var_name() {
+inode_file_link() {
+	echo -n "${tmpdir}/inodes/"
 	if  [[ ${USERLAND} == "BSD" ]] ; then
-		stat -f 'INODE_%d_%i' "$1"
+		stat -f '%i' "$1"
 	else
-		stat -c 'INODE_%d_%i' "$1"
+		stat -c '%i' "$1"
 	fi
 }
 
@@ -94,8 +93,7 @@ save_elf_sources() {
 	fi
 
 	local x=$1
-	local inode=$(inode_var_name "${x}")
-	[[ -n ${!inode} ]] && return 0
+	[[ -f $(inode_file_link "${x}") ]] && return 0
 
 	# since we're editing the ELF here, we should recompute the build-id
 	# (the -i flag below).  save that output so we don't need to recompute
@@ -124,11 +122,10 @@ save_elf_debug() {
 
 	mkdir -p "${y%/*}"
 
-	local inode=$(inode_var_name "${x}")
-	if [[ -n ${!inode} ]] ; then
-		ln "${ED}usr/lib/debug/${!inode:${#D}}.debug" "${y}"
+	local inode=$(inode_file_link "${x}")
+	if [[ -f ${inode} ]] ; then
+		ln "${inode}" "${y}"
 	else
-		eval ${inode}=\${x}
 		if [[ -n ${splitdebug} ]] ; then
 			mv "${splitdebug}" "${y}"
 		else
@@ -140,6 +137,12 @@ save_elf_debug() {
 		local args="a-x,o-w"
 		[[ -g ${x} || -u ${x} ]] && args+=",go-r"
 		chmod ${args} "${y}"
+		if ! ln "${y}" "${inode}" ; then
+			# This means a parallel process has already created the
+			# inode link. So, replace ${y} with a link to that inode.
+			rm -f "${y}"
+			ln "${inode}" "${y}"
+		fi
 	fi
 
 	# if we don't already have build-id from debugedit, look it up
@@ -304,3 +307,5 @@ then
 		>> "${emptydir}"/.keepdir
 	done < <(find "${D}${prepstrip_sources_dir}/" -type d -empty -print0)
 fi
+
+rm -rf "${tmpdir}"
