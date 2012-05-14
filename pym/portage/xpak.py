@@ -360,6 +360,7 @@ class tbz2(object):
 	def scan(self):
 		"""Scans the tbz2 to locate the xpak segment and setup internal values.
 		This function is called by relevant functions already."""
+		a = None
 		try:
 			mystat = os.stat(self.file)
 			if self.filestat:
@@ -378,29 +379,28 @@ class tbz2(object):
 			self.infosize = 0
 			self.xpaksize = 0
 			if trailer[-4:] != b'STOP':
-				a.close()
 				return 0
 			if trailer[0:8] != b'XPAKSTOP':
-				a.close()
 				return 0
 			self.infosize = decodeint(trailer[8:12])
 			self.xpaksize = self.infosize + 8
 			a.seek(-(self.xpaksize), 2)
 			header = a.read(16)
 			if header[0:8] != b'XPAKPACK':
-				a.close()
 				return 0
 			self.indexsize = decodeint(header[8:12])
 			self.datasize = decodeint(header[12:16])
 			self.indexpos = a.tell()
 			self.index = a.read(self.indexsize)
 			self.datapos = a.tell()
-			a.close()
 			return 2
 		except SystemExit:
 			raise
 		except:
 			return 0
+		finally:
+			if a is not None:
+				a.close()
 
 	def filelist(self):
 		"""Return an array of each file listed in the index."""
