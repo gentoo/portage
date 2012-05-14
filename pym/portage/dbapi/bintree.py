@@ -16,6 +16,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util:atomic_ofstream,ensure_dirs,normalize_path,' + \
 		'writemsg,writemsg_stdout',
 	'portage.util.listdir:listdir',
+	'portage.util._urlopen:urlopen@_urlopen',
 	'portage.versions:best,catpkgsplit,catsplit,_pkg_str',
 )
 
@@ -45,10 +46,8 @@ import warnings
 from itertools import chain
 try:
 	from urllib.parse import urlparse
-	from urllib.request import urlopen as urllib_request_urlopen
 except ImportError:
 	from urlparse import urlparse
-	from urllib import urlopen as urllib_request_urlopen
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -845,7 +844,7 @@ class binarytree(object):
 				# slash, so join manually...
 				url = base_url.rstrip("/") + "/Packages"
 				try:
-					f = urllib_request_urlopen(url)
+					f = _urlopen(url)
 				except IOError:
 					path = parsed_url.path.rstrip("/") + "/Packages"
 
