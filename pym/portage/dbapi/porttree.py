@@ -869,7 +869,8 @@ class portdbapi(dbapi):
 			xcache_this_level = self.xcache.get(level)
 			if xcache_this_level is not None:
 				xcache_this_level[cache_key] = myval
-				myval = myval[:]
+				if not isinstance(myval, _pkg_str):
+					myval = myval[:]
 
 		return myval
 
