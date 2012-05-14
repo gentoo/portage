@@ -54,9 +54,11 @@ multijob_finish() {
 }
 
 multijob_post_fork() {
+	local ret=0
 	: $(( ++mj_num_jobs ))
 	if [[ ${mj_num_jobs} -ge ${mj_max_jobs} ]] ; then
 		multijob_finish_one
+		: $(( ret |= $? ))
 	fi
-	return 0
+	return ${ret}
 }
