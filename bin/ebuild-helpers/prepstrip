@@ -62,6 +62,20 @@ prepstrip_sources_dir=${EPREFIX}/usr/src/debug/${CATEGORY}/${PF}
 type -P debugedit >/dev/null && debugedit_found=true || debugedit_found=false
 debugedit_warned=false
 
+disable_parallel=false
+${FEATURES_splitdebug} && disable_parallel=true
+${FEATURES_installsources} && \
+	! ${RESTRICT_installsources} && \
+	${debugedit_found} && disable_parallel=true
+
+if ${disable_parallel} ; then
+	# Disable parallel processing, in order to prevent interference with
+	# temp files like debug.sources or prepstrip.split.debug
+	numjobs() {
+		echo 1
+	}
+fi
+
 multijob_init
 
 unset ${!INODE_*}
@@ -265,6 +279,9 @@ do
 	multijob_post_fork
 done
 
+# Let jobs finish before processing ${T}/debug.sources
+multijob_finish
+
 if [[ -s ${T}/debug.sources ]] && \
    ${FEATURES_installsources} && \
    ! ${RESTRICT_installsources} && \
@@ -284,5 +301,3 @@ then
 		>> "$emptydir"/.keepdir
 	done < <(find "${D}${prepstrip_sources_dir}/" -type d -empty -print0)
 fi
-
-multijob_finish
