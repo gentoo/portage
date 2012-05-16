@@ -607,7 +607,7 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 				msg = lex.error_leader() + \
 					_("Invalid token '%s' (not '=')") % (equ,)
 				if not tolerant:
-					raise Exception(msg)
+					raise ParseError(msg)
 				else:
 					writemsg("%s\n" % msg, noiselevel=-1)
 					return mykeys
