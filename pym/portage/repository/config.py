@@ -30,6 +30,9 @@ from portage import manifest
 _valid_profile_formats = frozenset(
 	['pms', 'portage-1'])
 
+_portage1_profiles_allow_directories = frozenset(
+	["portage-1-compat", "portage-1"])
+
 _repo_name_sub_re = re.compile(r'[^\w-]')
 
 def _gen_valid_repo(name):
@@ -160,7 +163,7 @@ class RepoConfig(object):
 				'sign-commit', 'sign-manifest', 'thin-manifest', 'update-changelog'):
 				setattr(self, value.lower().replace("-", "_"), layout_data[value])
 
-			self.portage1_profiles = any(x.startswith("portage-1") \
+			self.portage1_profiles = any(x in _portage1_profiles_allow_directories
 				for x in layout_data['profile-formats'])
 			self.portage1_profiles_compat = layout_data['profile-formats'] == ('portage-1-compat',)
 

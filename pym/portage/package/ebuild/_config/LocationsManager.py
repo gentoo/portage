@@ -17,7 +17,8 @@ from portage.exception import DirectoryNotFound, ParseError
 from portage.localization import _
 from portage.util import ensure_dirs, grabfile, \
 	normalize_path, shlex_split, writemsg
-from portage.repository.config import parse_layout_conf
+from portage.repository.config import parse_layout_conf, \
+	_portage1_profiles_allow_directories
 
 
 _PORTAGE1_DIRECTORIES = frozenset([
@@ -27,9 +28,6 @@ _PORTAGE1_DIRECTORIES = frozenset([
 
 _profile_node = collections.namedtuple('_profile_node',
 	'location portage1_directories')
-
-_allow_directories = frozenset(
-	["portage-1-compat", "portage-1"])
 
 class LocationsManager(object):
 
@@ -133,7 +131,7 @@ class LocationsManager(object):
 			# protect against nested repositories.  Insane configuration, but the longest
 			# path will be the correct one.
 			repo_loc, layout_data = max(intersecting_repos, key=lambda x:len(x[0]))
-			allow_directories = any(x in _allow_directories
+			allow_directories = any(x in _portage1_profiles_allow_directories
 				for x in layout_data['profile-formats'])
 			compat_mode = layout_data['profile-formats'] == ('portage-1-compat',)
 
