@@ -919,11 +919,26 @@ class config(object):
 					writemsg(_("!!! INVALID ACCEPT_KEYWORDS: %s\n") % str(group),
 						noiselevel=-1)
 
-		abs_profile_path = os.path.join(self["PORTAGE_CONFIGROOT"],
-			PROFILE_PATH)
-		if (not self.profile_path or \
-			not os.path.exists(os.path.join(self.profile_path, "parent"))) and \
-			os.path.exists(os.path.join(self["PORTDIR"], "profiles")):
+		profile_broken = not self.profile_path or \
+			not os.path.exists(os.path.join(self.profile_path, "parent")) and \
+			os.path.exists(os.path.join(self["PORTDIR"], "profiles"))
+
+		if profile_broken:
+			abs_profile_path = None
+			for x in (PROFILE_PATH, 'etc/portage/make.profile'):
+				x = os.path.join(self["PORTAGE_CONFIGROOT"], x)
+				try:
+					os.lstat(x)
+				except OSError:
+					pass
+				else:
+					abs_profile_path = x
+					break
+
+			if abs_profile_path is None:
+				abs_profile_path = os.path.join(self["PORTAGE_CONFIGROOT"],
+					PROFILE_PATH)
+
 			writemsg(_("\n\n!!! %s is not a symlink and will probably prevent most merges.\n") % abs_profile_path,
 				noiselevel=-1)
 			writemsg(_("!!! It should point into a profile within %s/profiles/\n") % self["PORTDIR"])
