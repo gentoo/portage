@@ -3,6 +3,7 @@
 
 import textwrap
 
+import portage
 from portage.dep import _repo_separator
 from portage.elog import elog_process
 from portage.elog.messages import eerror
@@ -40,7 +41,14 @@ def eapi_invalid(self, cpv, repo_name, settings,
 			" FEATURES=parse-eapi-ebuild-head in make.conf in order to"
 			" make this error fatal."), 70))
 
-	for line in msg:
-		eerror(line, phase="other", key=cpv)
-	elog_process(cpv, settings,
-		phasefilter=("other",))
+	if portage.data.secpass >= 2:
+		# TODO: improve elog permission error handling (bug #416231)
+		for line in msg:
+			eerror(line, phase="other", key=cpv)
+		elog_process(cpv, settings,
+			phasefilter=("other",))
+
+	else:
+		out = portage.output.EOutput()
+		for line in msg:
+			out.eerror(line)
