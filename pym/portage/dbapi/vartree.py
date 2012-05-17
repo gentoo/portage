@@ -4287,7 +4287,7 @@ class dblink(object):
 				myabsto = myabsto.lstrip(sep)
 				if self.settings and self.settings["D"]:
 					if myto.startswith(self.settings["D"]):
-						myto = myto[len(self.settings["D"]):]
+						myto = myto[len(self.settings["D"])-1:]
 				# myrealto contains the path of the real file to which this symlink points.
 				# we can simply test for existence of this file to see if the target has been merged yet
 				myrealto = normalize_path(os.path.join(destroot, myabsto))
