@@ -28,10 +28,10 @@ from portage import _encodings
 from portage import manifest
 
 _valid_profile_formats = frozenset(
-	['pms', 'portage-1'])
+	['pms', 'portage-1', 'portage-2'])
 
 _portage1_profiles_allow_directories = frozenset(
-	["portage-1-compat", "portage-1"])
+	["portage-1-compat", "portage-1", 'portage-2'])
 
 _repo_name_sub_re = re.compile(r'[^\w-]')
 

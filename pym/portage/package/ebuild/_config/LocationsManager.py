@@ -29,6 +29,9 @@ _PORTAGE1_DIRECTORIES = frozenset([
 _profile_node = collections.namedtuple('_profile_node',
 	'location portage1_directories')
 
+_allow_parent_colon = frozenset(
+	["portage-2"])
+
 class LocationsManager(object):
 
 	def __init__(self, config_root=None, eprefix=None, config_profile_path=None, local_config=True, \
@@ -94,7 +97,7 @@ class LocationsManager(object):
 		if self.profile_path:
 			try:
 				self._addProfile(os.path.realpath(self.profile_path),
-					known_repos)
+					repositories, known_repos)
 			except ParseError as e:
 				writemsg(_("!!! Unable to parse profile: '%s'\n") % \
 					self.profile_path, noiselevel=-1)
@@ -121,9 +124,10 @@ class LocationsManager(object):
 				noiselevel=-1)
 			raise DirectoryNotFound(var)
 
-	def _addProfile(self, currentPath, known_repos):
+	def _addProfile(self, currentPath, repositories, known_repos):
 		current_abs_path = os.path.abspath(currentPath)
 		allow_directories = True
+		allow_parent_colon = True
 		repo_loc = None
 		compat_mode = False
 		intersecting_repos = [x for x in known_repos if current_abs_path.startswith(x[0])]
@@ -134,6 +138,8 @@ class LocationsManager(object):
 			allow_directories = any(x in _portage1_profiles_allow_directories
 				for x in layout_data['profile-formats'])
 			compat_mode = layout_data['profile-formats'] == ('portage-1-compat',)
+			allow_parent_colon = any(x in _allow_parent_colon
+				for x in layout_data['profile-formats'])
 
 		if compat_mode:
 			offenders = _PORTAGE1_DIRECTORIES.intersection(os.listdir(currentPath))
@@ -175,6 +181,12 @@ class LocationsManager(object):
 					_("Empty parent file: '%s'") % parentsFile)
 			for parentPath in parents:
 				abs_parent = parentPath[:1] == os.sep
+				if not abs_parent and allow_parent_colon:
+					parentPath = self._expand_parent_colon(parentsFile,
+						parentPath, repo_loc, repositories)
+
+				# NOTE: This os.path.join() call is intended to ignore
+				# currentPath if parentPath is already absolute.
 				parentPath = normalize_path(os.path.join(
 					currentPath, parentPath))
 
@@ -185,7 +197,7 @@ class LocationsManager(object):
 					parentPath = os.path.realpath(parentPath)
 
 				if os.path.exists(parentPath):
-					self._addProfile(parentPath, known_repos)
+					self._addProfile(parentPath, repositories, known_repos)
 				else:
 					raise ParseError(
 						_("Parent '%s' not found: '%s'") %  \
@@ -194,6 +206,34 @@ class LocationsManager(object):
 		self.profiles.append(currentPath)
 		self.profiles_complex.append(
 			_profile_node(currentPath, allow_directories))
+
+	def _expand_parent_colon(self, parentsFile, parentPath,
+		repo_loc, repositories):
+		colon = parentPath.find(":")
+		if colon == -1:
+			return parentPath
+
+		if colon == 0:
+			if repo_loc is None:
+				raise ParseError(
+					_("Parent '%s' not found: '%s'") %  \
+					(parentPath, parentsFile))
+			else:
+				parentPath = normalize_path(os.path.join(
+					repo_loc, 'profiles', parentPath[colon+1:]))
+		else:
+			p_repo_name = parentPath[:colon]
+			try:
+				p_repo_loc = repositories.get_location_for_name(p_repo_name)
+			except KeyError:
+				raise ParseError(
+					_("Parent '%s' not found: '%s'") %  \
+					(parentPath, parentsFile))
+			else:
+				parentPath = normalize_path(os.path.join(
+					p_repo_loc, 'profiles', parentPath[colon+1:]))
+
+		return parentPath
 
 	def set_root_override(self, root_overwrite=None):
 		# Allow ROOT setting to come from make.conf if it's not overridden
