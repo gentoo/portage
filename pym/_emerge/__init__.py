@@ -3,7 +3,6 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: emerge 5976 2007-02-17 09:14:53Z genone $
 
-import array
 from collections import deque
 import fcntl
 import formatter
@@ -1767,6 +1766,38 @@ class AbstractPollTask(AsynchronousTask):
 				self._unregister()
 				self.wait()
 
+	def _read_buf(self, fd, event):
+		"""
+		| POLLIN | RETURN
+		| BIT    | VALUE
+		| ---------------------------------------------------
+		| 1      | Read self._bufsize into a string of bytes,
+		|        | handling EAGAIN and EIO. An empty string
+		|        | of bytes indicates EOF.
+		| ---------------------------------------------------
+		| 0      | None
+		"""
+		# NOTE: array.fromfile() is no longer used here because it has
+		# bugs in all known versions of Python (including Python 2.7
+		# and Python 3.2).
+		buf = None
+		if event & PollConstants.POLLIN:
+			try:
+				buf = os.read(fd, self._bufsize)
+			except OSError, e:
+				# EIO happens with pty on Linux after the
+				# slave end of the pty has been closed.
+				if e.errno == errno.EIO:
+					# EOF: return empty string of bytes
+					buf = ''
+				elif e.errno == errno.EAGAIN:
+					# EAGAIN: return None
+					buf = None
+				else:
+					raise
+
+		return buf
+
 class PipeReader(AbstractPollTask):
 
 	"""
@@ -1819,23 +1850,16 @@ class PipeReader(AbstractPollTask):
 
 	def _output_handler(self, fd, event):
 
-		if event & PollConstants.POLLIN:
-
-			for f in self.input_files.itervalues():
-				if fd == f.fileno():
-					break
-
-			buf = array.array('B')
-			try:
-				buf.fromfile(f, self._bufsize)
-			except EOFError:
-				pass
-
-			if buf:
-				self._read_data.append(buf.tostring())
+		while True:
+			data = self._read_buf(fd, event)
+			if data is None:
+				break
+			if data:
+				self._read_data.append(data)
 			else:
 				self._unregister()
 				self.wait()
+				break
 
 		self._unregister_if_appropriate(event)
 		return self._registered
@@ -2231,24 +2255,59 @@ class SpawnProcess(SubProcess):
 
 	def _output_handler(self, fd, event):
 
-		if event & PollConstants.POLLIN:
+		files = self._files
+		while True:
+			buf = self._read_buf(fd, event)
 
-			files = self._files
-			buf = array.array('B')
-			try:
-				buf.fromfile(files.process, self._bufsize)
-			except EOFError:
-				pass
+			if buf is None:
+				# not a POLLIN event, EAGAIN, etc...
+				break
 
-			if buf:
-				if not self.background:
-					buf.tofile(files.stdout)
-					files.stdout.flush()
-				buf.tofile(files.log)
-				files.log.flush()
-			else:
+			if not buf:
+				# EOF
 				self._unregister()
 				self.wait()
+				break
+
+			else:
+				if not self.background:
+					write_successful = False
+					failures = 0
+					while True:
+						try:
+							if not write_successful:
+								files.stdout.write(buf)
+								files.stdout.flush()
+								write_successful = True
+							break
+						except OSError, e:
+							if e.errno != errno.EAGAIN:
+								raise
+							del e
+							failures += 1
+							if failures > 50:
+								# Avoid a potentially infinite loop. In
+								# most cases, the failure count is zero
+								# and it's unlikely to exceed 1.
+								raise
+
+							# This means that a subprocess has put an inherited
+							# stdio file descriptor (typically stdin) into
+							# O_NONBLOCK mode. This is not acceptable (see bug
+							# #264435), so revert it. We need to use a loop
+							# here since there's a race condition due to
+							# parallel processes being able to change the
+							# flags on the inherited file descriptor.
+							# TODO: When possible, avoid having child processes
+							# inherit stdio file descriptors from portage
+							# (maybe it can't be avoided with
+							# PROPERTIES=interactive).
+							fcntl.fcntl(files.stdout.fileno(), fcntl.F_SETFL,
+								fcntl.fcntl(files.stdout.fileno(),
+								fcntl.F_GETFL) ^ os.O_NONBLOCK)
+
+				files.log.write(buf)
+				files.log.flush()
 
 		self._unregister_if_appropriate(event)
 		return self._registered
@@ -2260,19 +2319,18 @@ class SpawnProcess(SubProcess):
 		monitor the process from inside a poll() loop.
 		"""
 
-		if event & PollConstants.POLLIN:
+		while True:
+			buf = self._read_buf(fd, event)
 
-			buf = array.array('B')
-			try:
-				buf.fromfile(self._files.process, self._bufsize)
-			except EOFError:
-				pass
+			if buf is None:
+				# not a POLLIN event, EAGAIN, etc...
+				break
 
-			if buf:
-				pass
-			else:
+			if not buf:
+				# EOF
 				self._unregister()
 				self.wait()
+				break
 
 		self._unregister_if_appropriate(event)
 		return self._registered

@@ -3131,34 +3131,38 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	if logfile:
 		log_file = open(logfile, 'a')
 		stdout_file = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
-		master_file = os.fdopen(master_fd, 'r')
-		iwtd = [master_file]
+		iwtd = [master_fd]
 		owtd = []
 		ewtd = []
-		import array, select
+		import select
 		buffsize = 65536
 		eof = False
 		while not eof:
 			events = select.select(iwtd, owtd, ewtd)
 			for f in events[0]:
-				# Use non-blocking mode to prevent read
-				# calls from blocking indefinitely.
-				buf = array.array('B')
-				try:
-					buf.fromfile(f, buffsize)
-				except EOFError:
-					pass
-				if not buf:
-					eof = True
-					break
-				if f is master_file:
-					buf.tofile(stdout_file)
+				while True:
+					try:
+						buf = os.read(master_fd, buffsize)
+					except OSError, e:
+						# EIO happens with pty on Linux after the
+						# slave end of the pty has been closed.
+						if e.errno == errno.EIO:
+							# EOF
+							eof = True
+							break
+						elif e.errno == errno.EAGAIN:
+							break
+						else:
+							raise
+
+					stdout_file.write(buf)
 					stdout_file.flush()
-					buf.tofile(log_file)
+					log_file.write(buf)
 					log_file.flush()
+
 		log_file.close()
 		stdout_file.close()
-		master_file.close()
+		os.close(master_fd)
 	pid = mypids[-1]
 	retval = os.waitpid(pid, 0)[1]
 	portage.process.spawned_pids.remove(pid)
