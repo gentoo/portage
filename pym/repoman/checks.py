@@ -332,24 +332,6 @@ class EbuildQuotedA(LineCheck):
 		if match:
 			return "Quoted \"${A}\" on line: %d"
 
-class EprefixifyDefined(LineCheck):
-	""" Check that prefix.eclass is inherited if needed"""
-
-	repoman_check_name = 'eprefixify.defined'
-
-	_eprefixify_re = re.compile(r'\beprefixify\b')
-	_inherit_prefix_re = re.compile(r'^\s*inherit\s(.*\s)?prefix\b')
-
-	def new(self, pkg):
-		self._prefix_inherited = False
-
-	def check(self, num, line):
-		if self._eprefixify_re.search(line) is not None:
-			if not self._prefix_inherited:
-				return errors.EPREFIXIFY_MISSING_INHERIT
-		elif self._inherit_prefix_re.search(line) is not None:
-			self._prefix_inherited = True
-
 class NoOffsetWithHelpers(LineCheck):
 	""" Check that the image location, the alternate root offset, and the
 	offset prefix (D, ROOT, ED, EROOT and EPREFIX) are not used with
@@ -465,43 +447,124 @@ class InheritDeprecated(LineCheck):
 					(eclass, replacement)
 		del self._indirect_deprecated
 
-class InheritAutotools(LineCheck):
+class InheritEclass(LineCheck):
 	"""
-	Make sure appropriate functions are called in
-	ebuilds that inherit autotools.eclass.
+	Base class for checking for missing inherits, as well as excess inherits.
+
+	Args:
+		_eclass: Set to the name of your eclass.
+		_funcs: A tuple of functions that this eclass provides.
+		_comprehensive: Is the list of functions complete?
+		_exempt_eclasses: If these eclasses are inherited, disable the missing
+		                  inherit check.
 	"""
 
-	repoman_check_name = 'inherit.autotools'
-	_inherit_autotools_re = re.compile(r'^\s*inherit\s(.*\s)?autotools(\s|$)')
-	_autotools_funcs = (
-		"eaclocal", "eautoconf", "eautoheader",
-		"eautomake", "eautoreconf", "_elibtoolize")
-	_autotools_func_re = re.compile(r'\b(' + \
-		"|".join(_autotools_funcs) + r')\b')
+	def __init__(self):
+		self._inherit_re = re.compile(r'^\s*inherit\s(.*\s)?%s(\s|$)' % self._eclass)
+		self._func_re = re.compile(r'\b(' + '|'.join(self._funcs) + r')\b')
+
+	def new(self, pkg):
+		self.repoman_check_name = 'inherit.missing'
+		# We can't use pkg.inherited because that tells us all the eclass that
+		# have been inherited and not just the ones we inherit directly.
+		self._inherit = False
+		self._func_call = False
+		if hasattr(self, '_exempt_eclasses'):
+			self._disabled = self._exempt_eclasses.intersection(pkg.inherited)
+		else:
+			self._disabled = False
+
+	def check(self, num, line):
+		if not self._inherit:
+			self._inherit = self._inherit_re.match(line)
+		if not self._inherit:
+			if self._disabled:
+				return
+			s = self._func_re.search(line)
+			if s:
+				self._func_call = True
+				return '%s.eclass is not inherited, but "%s" found at line: %s' % \
+					(self._eclass, s.group(0), '%d')
+		elif not self._func_call:
+			self._func_call = self._func_re.search(line)
+
+	def end(self):
+		if self._comprehensive and self._inherit and not self._func_call:
+			self.repoman_check_name = 'inherit.unused'
+			yield 'no function called from %s.eclass; please drop' % self._eclass
+
+class InheritAutotools(InheritEclass):
+	_eclass = 'autotools'
+	_funcs = (
+		'eaclocal', 'eautoconf', 'eautoheader',
+		'eautomake', 'eautoreconf', '_elibtoolize',
+		'eautopoint'
+	)
+	_comprehensive = True
+
 	# Exempt eclasses:
 	# git - An EGIT_BOOTSTRAP variable may be used to call one of
 	#       the autotools functions.
 	# subversion - An ESVN_BOOTSTRAP variable may be used to call one of
 	#       the autotools functions.
-	_exempt_eclasses = frozenset(["git", "subversion"])
+	_exempt_eclasses = frozenset(['git', 'subversion', 'autotools-utils'])
 
-	def new(self, pkg):
-		self._inherit_autotools = None
-		self._autotools_func_call = None
-		self._disabled = self._exempt_eclasses.intersection(pkg.inherited)
+class InheritEutils(InheritEclass):
+	_eclass = 'eutils'
+	_funcs = (
+		'estack_push', 'estack_pop', 'eshopts_push', 'eshopts_pop',
+		'eumask_push', 'eumask_pop', 'epatch', 'epatch_user',
+		'emktemp', 'edos2unix', 'in_iuse', 'use_if_iuse', 'usex',
+		'makeopts_jobs'
+	)
+	_comprehensive = False
 
-	def check(self, num, line):
-		if self._disabled:
-			return
-		if self._inherit_autotools is None:
-			self._inherit_autotools = self._inherit_autotools_re.match(line)
-		if self._inherit_autotools is not None and \
-			self._autotools_func_call is None:
-			self._autotools_func_call = self._autotools_func_re.search(line)
+	# These are "eclasses are the whole ebuild" type thing.
+	_exempt_eclasses = frozenset(['toolchain', 'toolchain-binutils'])
 
-	def end(self):
-		if self._inherit_autotools and self._autotools_func_call is None:
-			yield 'no eauto* function called'
+class InheritFlagOMatic(InheritEclass):
+	_eclass = 'flag-o-matic'
+	_funcs = (
+		'filter-(ld)?flags', 'strip-flags', 'strip-unsupported-flags',
+		'append-((ld|c(pp|xx)?))?flags', 'append-libs',
+	)
+	_comprehensive = False
+
+class InheritLibtool(InheritEclass):
+	_eclass = 'libtool'
+	_funcs = (
+		'elibtoolize',
+	)
+	_comprehensive = True
+
+class InheritMultilib(InheritEclass):
+	_eclass = 'multilib'
+	_funcs = (
+		'get_libdir',
+	)
+	_comprehensive = False
+
+class InheritPrefix(InheritEclass):
+	_eclass = 'prefix'
+	_funcs = (
+		'eprefixify',
+	)
+	_comprehensive = True
+
+class InheritToolchainFuncs(InheritEclass):
+	_eclass = 'toolchain-funcs'
+	_funcs = (
+		'gen_usr_ldscript',
+	)
+	_comprehensive = False
+
+class InheritUser(InheritEclass):
+	_eclass = 'user'
+	_funcs = (
+		'enewuser', 'enewgroup',
+		'egetent', 'egethome', 'egetshell'
+	)
+	_comprehensive = True
 
 class IUseUndefined(LineCheck):
 	"""
@@ -680,8 +743,10 @@ _constant_checks = tuple((c() for c in (
 	EbuildHeader, EbuildWhitespace, EbuildBlankLine, EbuildQuote,
 	EbuildAssignment, Eapi3EbuildAssignment, EbuildUselessDodoc,
 	EbuildUselessCdS, EbuildNestedDie,
-	EbuildPatches, EbuildQuotedA, EapiDefinition, EprefixifyDefined,
-	ImplicitRuntimeDeps, InheritAutotools, InheritDeprecated, IUseUndefined,
+	EbuildPatches, EbuildQuotedA, EapiDefinition,
+	ImplicitRuntimeDeps, InheritAutotools, InheritDeprecated, InheritEutils,
+	InheritFlagOMatic, InheritMultilib, InheritLibtool, InheritPrefix,
+	InheritToolchainFuncs, InheritUser, IUseUndefined,
 	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS, NoAsNeeded,
 	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
 	SrcCompileEconf, Eapi3DeprecatedFuncs, NoOffsetWithHelpers,
