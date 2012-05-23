@@ -194,8 +194,13 @@ class database(object):
 
 	def validate_entry(self, entry, ebuild_hash, eclass_db):
 		hash_key = '_%s_' % self.validation_chf
-		if entry[hash_key] != getattr(ebuild_hash, self.validation_chf):
+		try:
+			entry_hash = entry[hash_key]
+		except KeyError:
 			return False
+		else:
+			if entry_hash != getattr(ebuild_hash, self.validation_chf):
+				return False
 		update = eclass_db.validate_and_rewrite_cache(entry['_eclasses_'], self.validation_chf,
 			self.store_eclass_paths)
 		if update is None:
