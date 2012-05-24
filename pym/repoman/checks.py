@@ -5,6 +5,7 @@
 """This module contains functions used in Repoman to ascertain the quality
 and correctness of an ebuild."""
 
+import codecs
 import re
 import time
 import repoman.errors as errors
@@ -692,8 +693,11 @@ _here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
 _ignore_comment_re = re.compile(r'^\s*#')
 
 def run_checks(contents, pkg):
+	unicode_escape_codec = codecs.lookup('unicode_escape')
+	unicode_escape = lambda x: unicode_escape_codec.decode(x)[0]
 	checks = _constant_checks
 	here_doc_delim = None
+	multiline = None
 
 	for lc in checks:
 		lc.new(pkg)
@@ -707,19 +711,56 @@ def run_checks(contents, pkg):
 			here_doc = _here_doc_re.match(line)
 			if here_doc is not None:
 				here_doc_delim = re.compile(r'^\s*%s$' % here_doc.group(1))
+		if here_doc_delim is not None:
+			continue
 
-		if here_doc_delim is None:
-			# We're not in a here-document.
-			is_comment = _ignore_comment_re.match(line) is not None
-			for lc in checks:
-				if is_comment and lc.ignore_comment:
-					continue
-				if lc.check_eapi(pkg.metadata['EAPI']):
-					ignore = lc.ignore_line
-					if not ignore or not ignore.match(line):
-						e = lc.check(num, line)
-						if e:
-							yield lc.repoman_check_name, e % (num + 1)
+		# Unroll multiline escaped strings so that we can check things:
+		#		inherit foo bar \
+		#			moo \
+		#			cow
+		# This will merge these lines like so:
+		#		inherit foo bar 	moo 	cow
+		try:
+			# A normal line will end in the two bytes: <\> <\n>.  So decoding
+			# that will result in python thinking the <\n> is being escaped
+			# and eat the single <\> which makes it hard for us to detect.
+			# Instead, strip the newline (which we know all lines have), and
+			# append a <0>.  Then when python escapes it, if the line ended
+			# in a <\>, we'll end up with a <\0> marker to key off of.  This
+			# shouldn't be a problem with any valid ebuild ...
+			line_escaped = unicode_escape(line.rstrip('\n') + '0')
+		except SystemExit:
+			raise
+		except:
+			# Who knows what kind of crazy crap an ebuild will have
+			# in it -- don't allow it to kill us.
+			line_escaped = line
+		if multiline:
+			# Chop off the \ and \n bytes from the previous line.
+			multiline = multiline[:-2] + line
+			if not line_escaped.endswith('\0'):
+				line = multiline
+				num = multinum
+				multiline = None
+			else:
+				continue
+		else:
+			if line_escaped.endswith('\0'):
+				multinum = num
+				multiline = line
+				continue
+
+		# Finally we have a full line to parse.
+		is_comment = _ignore_comment_re.match(line) is not None
+		for lc in checks:
+			if is_comment and lc.ignore_comment:
+				continue
+			if lc.check_eapi(pkg.metadata['EAPI']):
+				ignore = lc.ignore_line
+				if not ignore or not ignore.match(line):
+					e = lc.check(num, line)
+					if e:
+						yield lc.repoman_check_name, e % (num + 1)
 
 	for lc in checks:
 		i = lc.end()
