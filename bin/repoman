@@ -1129,7 +1129,7 @@ if vcs == "cvs":
 	if options.if_modified == "y":
 		myremoved = cvstree.findremoved(mycvstree, recursive=1, basedir="./")
 
-if vcs == "svn":
+elif vcs == "svn":
 	with os.popen("svn status") as f:
 		svnstatus = f.readlines()
 	mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem and elem[:1] in "MR" ]
