@@ -1,4 +1,4 @@
-# Copyright: 2005 Gentoo Foundation
+# Copyright: 2005-2012 Gentoo Foundation
 # Author(s): Brian Harring (ferringb@gentoo.org)
 # License: GPL2
 
@@ -10,8 +10,11 @@ import warnings
 import operator
 
 if sys.hexversion >= 0x3000000:
+	_unicode = str
 	basestring = str
 	long = int
+else:
+	_unicode = unicode
 
 class database(object):
 	# this is for metadata/cache transfer.
@@ -273,7 +276,7 @@ def reconstruct_eclasses(cpv, eclass_string, chf_type='mtime', paths=True):
 		# occasionally this occurs in the fs backends.  they suck.
 		return {}
 
-	converter = str
+	converter = _unicode
 	if chf_type == 'mtime':
 		converter = long
 
