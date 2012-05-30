@@ -6,13 +6,14 @@
 and correctness of an ebuild."""
 
 import codecs
+from itertools import chain
 import re
 import time
 import repoman.errors as errors
 import portage
 from portage.eapi import eapi_supports_prefix, eapi_has_implicit_rdepend, \
 	eapi_has_src_prepare_and_src_configure, eapi_has_dosed_dohard, \
-	eapi_exports_AA, eapi_exports_KV
+	eapi_exports_AA
 
 class LineCheck(object):
 	"""Run a check on a line of an ebuild."""
@@ -452,14 +453,19 @@ class InheritEclass(LineCheck):
 	Base class for checking for missing inherits, as well as excess inherits.
 
 	Args:
-		_eclass: Set to the name of your eclass.
-		_funcs: A tuple of functions that this eclass provides.
-		_comprehensive: Is the list of functions complete?
-		_exempt_eclasses: If these eclasses are inherited, disable the missing
+		eclass: Set to the name of your eclass.
+		funcs: A tuple of functions that this eclass provides.
+		comprehensive: Is the list of functions complete?
+		exempt_eclasses: If these eclasses are inherited, disable the missing
 		                  inherit check.
 	"""
 
-	def __init__(self):
+	def __init__(self, eclass, funcs=None, comprehensive=False,
+		exempt_eclasses=None):
+		self._eclass = eclass
+		self._funcs = funcs
+		self._comprehensive = comprehensive
+		self._exempt_eclasses = exempt_eclasses
 		self._inherit_re = re.compile(r'^\s*inherit\s(.*\s)?%s(\s|$)' % self._eclass)
 		self._func_re = re.compile(r'\b(' + '|'.join(self._funcs) + r')\b')
 
@@ -469,7 +475,7 @@ class InheritEclass(LineCheck):
 		# have been inherited and not just the ones we inherit directly.
 		self._inherit = False
 		self._func_call = False
-		if hasattr(self, '_exempt_eclasses'):
+		if self._exempt_eclasses is not None:
 			self._disabled = any(x in pkg.inherited for x in self._exempt_eclasses)
 		else:
 			self._disabled = False
@@ -493,78 +499,80 @@ class InheritEclass(LineCheck):
 			self.repoman_check_name = 'inherit.unused'
 			yield 'no function called from %s.eclass; please drop' % self._eclass
 
-class InheritAutotools(InheritEclass):
-	_eclass = 'autotools'
-	_funcs = (
-		'eaclocal', 'eautoconf', 'eautoheader',
-		'eautomake', 'eautoreconf', '_elibtoolize',
-		'eautopoint'
-	)
-	_comprehensive = True
+_eclass_info = {
+	'autotools': {
+		'funcs': (
+			'eaclocal', 'eautoconf', 'eautoheader',
+			'eautomake', 'eautoreconf', '_elibtoolize',
+			'eautopoint'
+		),
+		'comprehensive': True,
 
-	# Exempt eclasses:
-	# git - An EGIT_BOOTSTRAP variable may be used to call one of
-	#       the autotools functions.
-	# subversion - An ESVN_BOOTSTRAP variable may be used to call one of
-	#       the autotools functions.
-	_exempt_eclasses = frozenset(['git', 'subversion', 'autotools-utils'])
+		# Exempt eclasses:
+		# git - An EGIT_BOOTSTRAP variable may be used to call one of
+		#       the autotools functions.
+		# subversion - An ESVN_BOOTSTRAP variable may be used to call one of
+		#       the autotools functions.
+		'exempt_eclasses': ('git', 'subversion', 'autotools-utils')
+	},
 
-class InheritEutils(InheritEclass):
-	_eclass = 'eutils'
-	_funcs = (
-		'estack_push', 'estack_pop', 'eshopts_push', 'eshopts_pop',
-		'eumask_push', 'eumask_pop', 'epatch', 'epatch_user',
-		'emktemp', 'edos2unix', 'in_iuse', 'use_if_iuse', 'usex',
-		'makeopts_jobs'
-	)
-	_comprehensive = False
+	'eutils': {
+		'funcs': (
+			'estack_push', 'estack_pop', 'eshopts_push', 'eshopts_pop',
+			'eumask_push', 'eumask_pop', 'epatch', 'epatch_user',
+			'emktemp', 'edos2unix', 'in_iuse', 'use_if_iuse', 'usex',
+			'makeopts_jobs'
+		),
+		'comprehensive': False,
 
-	# These are "eclasses are the whole ebuild" type thing.
-	_exempt_eclasses = frozenset(['toolchain', 'toolchain-binutils'])
+		# These are "eclasses are the whole ebuild" type thing.
+		'exempt_eclasses': frozenset(['toolchain', 'toolchain-binutils'])
+	},
 
-class InheritFlagOMatic(InheritEclass):
-	_eclass = 'flag-o-matic'
-	_funcs = (
-		'filter-(ld)?flags', 'strip-flags', 'strip-unsupported-flags',
-		'append-((ld|c(pp|xx)?))?flags', 'append-libs',
-	)
-	_comprehensive = False
+	'flag-o-matic': {
+		'funcs': (
+			'filter-(ld)?flags', 'strip-flags', 'strip-unsupported-flags',
+			'append-((ld|c(pp|xx)?))?flags', 'append-libs',
+		),
+		'comprehensive': False
+	},
 
-class InheritLibtool(InheritEclass):
-	_eclass = 'libtool'
-	_funcs = (
-		'elibtoolize',
-	)
-	_comprehensive = True
+	'libtool': {
+		'funcs': (
+			'elibtoolize',
+		),
+		'comprehensive': True
+	},
 
-class InheritMultilib(InheritEclass):
-	_eclass = 'multilib'
-	_funcs = (
-		'get_libdir',
-	)
-	_comprehensive = False
+	'multilib': {
+		'funcs': (
+			'get_libdir',
+		),
+		'comprehensive': False
+	},
 
-class InheritPrefix(InheritEclass):
-	_eclass = 'prefix'
-	_funcs = (
-		'eprefixify',
-	)
-	_comprehensive = True
+	'prefix': {
+		'funcs': (
+			'eprefixify',
+		),
+		'comprehensive': True
+	},
 
-class InheritToolchainFuncs(InheritEclass):
-	_eclass = 'toolchain-funcs'
-	_funcs = (
-		'gen_usr_ldscript',
-	)
-	_comprehensive = False
+	'toolchain-funcs': {
+		'funcs': (
+			'gen_usr_ldscript',
+		),
+		'comprehensive': False
+	},
 
-class InheritUser(InheritEclass):
-	_eclass = 'user'
-	_funcs = (
-		'enewuser', 'enewgroup',
-		'egetent', 'egethome', 'egetshell'
-	)
-	_comprehensive = True
+	'user': {
+		'funcs': (
+			'enewuser', 'enewgroup',
+			'egetent', 'egethome', 'egetshell'
+		),
+		'comprehensive': True
+	}
+}
 
 class IUseUndefined(LineCheck):
 	"""
@@ -739,20 +747,19 @@ class PortageInternal(LineCheck):
 		if m is not None:
 			return ("'%s'" % m.group(2)) + " called on line: %d"
 
-_constant_checks = tuple((c() for c in (
+_constant_checks = tuple(chain((c() for c in (
 	EbuildHeader, EbuildWhitespace, EbuildBlankLine, EbuildQuote,
 	EbuildAssignment, Eapi3EbuildAssignment, EbuildUselessDodoc,
 	EbuildUselessCdS, EbuildNestedDie,
 	EbuildPatches, EbuildQuotedA, EapiDefinition,
-	ImplicitRuntimeDeps, InheritAutotools, InheritDeprecated, InheritEutils,
-	InheritFlagOMatic, InheritMultilib, InheritLibtool, InheritPrefix,
-	InheritToolchainFuncs, InheritUser, IUseUndefined,
+	ImplicitRuntimeDeps, IUseUndefined,
 	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS, NoAsNeeded,
 	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
 	SrcCompileEconf, Eapi3DeprecatedFuncs, NoOffsetWithHelpers,
 	Eapi4IncompatibleFuncs, Eapi4GoneVars, BuiltWithUse,
 	PreserveOldLib, SandboxAddpredict, PortageInternal,
-	DeprecatedUseq, DeprecatedHasq)))
+	DeprecatedUseq, DeprecatedHasq)),
+	(InheritEclass(k, **kwargs) for k, kwargs in _eclass_info.items())))
 
 _here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
 _ignore_comment_re = re.compile(r'^\s*#')
