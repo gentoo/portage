@@ -461,13 +461,16 @@ class InheritEclass(LineCheck):
 	"""
 
 	def __init__(self, eclass, funcs=None, comprehensive=False,
-		exempt_eclasses=None):
+		exempt_eclasses=None, **kwargs):
 		self._eclass = eclass
-		self._funcs = funcs
 		self._comprehensive = comprehensive
 		self._exempt_eclasses = exempt_eclasses
-		self._inherit_re = re.compile(r'^\s*inherit\s(.*\s)?%s(\s|$)' % self._eclass)
-		self._func_re = re.compile(r'\b(' + '|'.join(self._funcs) + r')\b')
+		inherit_re = eclass
+		subclasses = _eclass_subclass_info.get(eclass)
+		if subclasses is not None:
+			inherit_re = '(%s)' % '|'.join([eclass] + list(subclasses))
+		self._inherit_re = re.compile(r'^\s*inherit\s(.*\s)?%s(\s|$)' % inherit_re)
+		self._func_re = re.compile(r'\b(' + '|'.join(funcs) + r')\b')
 
 	def new(self, pkg):
 		self.repoman_check_name = 'inherit.missing'
@@ -526,7 +529,9 @@ _eclass_info = {
 		'comprehensive': False,
 
 		# These are "eclasses are the whole ebuild" type thing.
-		'exempt_eclasses': frozenset(['toolchain', 'toolchain-binutils'])
+		'exempt_eclasses': ('toolchain', 'toolchain-binutils'),
+
+		#'inherited_api': ('multilib', 'user',),
 	},
 
 	'flag-o-matic': {
@@ -573,6 +578,14 @@ _eclass_info = {
 		'comprehensive': True
 	}
 }
+
+_eclass_subclass_info = {}
+
+for k, v in _eclass_info.items():
+	inherited_api = v.get('inherited_api')
+	if inherited_api is not None:
+		for parent in inherited_api:
+			_eclass_subclass_info.setdefault(parent, set()).add(k)
 
 class IUseUndefined(LineCheck):
 	"""
