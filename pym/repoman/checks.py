@@ -470,7 +470,7 @@ class InheritEclass(LineCheck):
 		self._inherit = False
 		self._func_call = False
 		if hasattr(self, '_exempt_eclasses'):
-			self._disabled = self._exempt_eclasses.intersection(pkg.inherited)
+			self._disabled = any(x in pkg.inherited for x in self._exempt_eclasses)
 		else:
 			self._disabled = False
 

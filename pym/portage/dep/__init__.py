@@ -2081,21 +2081,19 @@ def match_from_list(mydep, candidate_list):
 					missing_disabled = mydep.use.missing_disabled.difference(x.iuse.all)
 
 					if mydep.use.enabled:
-						if mydep.use.enabled.intersection(missing_disabled):
+						if any(f in mydep.use.enabled for f in missing_disabled):
 							continue
 						need_enabled = mydep.use.enabled.difference(use.enabled)
 						if need_enabled:
-							need_enabled = need_enabled.difference(missing_enabled)
-							if need_enabled:
+							if any(f not in missing_enabled for f in need_enabled):
 								continue
 
 					if mydep.use.disabled:
-						if mydep.use.disabled.intersection(missing_enabled):
+						if any(f in mydep.use.disabled for f in missing_enabled):
 							continue
 						need_disabled = mydep.use.disabled.intersection(use.enabled)
 						if need_disabled:
-							need_disabled = need_disabled.difference(missing_disabled)
-							if need_disabled:
+							if any(f not in missing_disabled for f in need_disabled):
 								continue
 
 			mylist.append(x)

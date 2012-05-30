@@ -2390,21 +2390,19 @@ class depgraph(object):
 		except self._unknown_internal_error:
 			return False, myfavorites
 
-		digraph_set = frozenset(self._dynamic_config.digraph)
+		digraph_nodes = self._dynamic_config.digraph.nodes
 
-		if digraph_set.intersection(
+		if any(x in digraph_nodes for x in
 			self._dynamic_config._needed_unstable_keywords) or \
-			digraph_set.intersection(
+			any(x in digraph_nodes for x in
 			self._dynamic_config._needed_p_mask_changes) or \
-			digraph_set.intersection(
+			any(x in digraph_nodes for x in
 			self._dynamic_config._needed_use_config_changes) or \
-			digraph_set.intersection(
+			any(x in digraph_nodes for x in
 			self._dynamic_config._needed_license_changes) :
 			#We failed if the user needs to change the configuration
 			self._dynamic_config._success_without_autounmask = True
 			return False, myfavorites
-
-		digraph_set = None
 
 		if self._rebuild.trigger_rebuilds():
 			backtrack_infos = self._dynamic_config._backtrack_infos
@@ -3083,7 +3081,7 @@ class depgraph(object):
 
 				untouchable_flags = \
 					frozenset(chain(pkg.use.mask, pkg.use.force))
-				if untouchable_flags.intersection(
+				if any(x in untouchable_flags for x in
 					chain(need_enable, need_disable)):
 					continue
 
@@ -3133,7 +3131,7 @@ class depgraph(object):
 
 					untouchable_flags = \
 						frozenset(chain(myparent.use.mask, myparent.use.force))
-					if untouchable_flags.intersection(involved_flags):
+					if any(x in untouchable_flags for x in involved_flags):
 						continue
 
 					required_use = myparent.metadata.get("REQUIRED_USE")
@@ -3758,7 +3756,7 @@ class depgraph(object):
 			new_use, changes = self._dynamic_config._needed_use_config_changes.get(pkg)
 			for ppkg, atom in parent_atoms:
 				if not atom.use or \
-					not atom.use.required.intersection(changes):
+					not any(x in atom.use.required for x in changes):
 					continue
 				else:
 					return True
@@ -3772,8 +3770,8 @@ class depgraph(object):
 				not check_required_use(required_use, new_use, pkg.iuse.is_valid_flag):
 				return old_use
 
-			if pkg.use.mask.intersection(new_changes) or \
-				pkg.use.force.intersection(new_changes):
+			if any(x in pkg.use.mask for x in new_changes) or \
+				any(x in pkg.use.force for x in new_changes):
 				return old_use
 
 			self._dynamic_config._needed_use_config_changes[pkg] = (new_use, new_changes)
@@ -4004,7 +4002,7 @@ class depgraph(object):
 						missing_disabled = atom.use.missing_disabled.difference(pkg.iuse.all)
 
 						if atom.use.enabled:
-							if atom.use.enabled.intersection(missing_disabled):
+							if any(x in atom.use.enabled for x in missing_disabled):
 								use_match = False
 								can_adjust_use = False
 							need_enabled = atom.use.enabled.difference(use)
@@ -4013,11 +4011,11 @@ class depgraph(object):
 								if need_enabled:
 									use_match = False
 									if can_adjust_use:
-										if pkg.use.mask.intersection(need_enabled):
+										if any(x in pkg.use.mask for x in need_enabled):
 											can_adjust_use = False
 
 						if atom.use.disabled:
-							if atom.use.disabled.intersection(missing_enabled):
+							if any(x in atom.use.disabled for x in missing_enabled):
 								use_match = False
 								can_adjust_use = False
 							need_disabled = atom.use.disabled.intersection(use)
@@ -4026,8 +4024,8 @@ class depgraph(object):
 								if need_disabled:
 									use_match = False
 									if can_adjust_use:
-										if pkg.use.force.difference(
-											pkg.use.mask).intersection(need_disabled):
+										if any(x in pkg.use.force and x not in
+											pkg.use.mask for x in need_disabled):
 											can_adjust_use = False
 
 						if not use_match:
@@ -5241,7 +5239,7 @@ class depgraph(object):
 									for node in nodes:
 										parents = mygraph.parent_nodes(node,
 											ignore_priority=DepPrioritySatisfiedRange.ignore_soft)
-										if parents and set(parents).intersection(asap_nodes):
+										if any(x in asap_nodes for x in parents):
 											selected_nodes = [node]
 											break
 								else:

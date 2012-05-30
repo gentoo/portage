@@ -190,21 +190,19 @@ class dbapi(object):
 			missing_disabled = atom.use.missing_disabled.difference(iuse)
 
 			if atom.use.enabled:
-				if atom.use.enabled.intersection(missing_disabled):
+				if any(x in atom.use.enabled for x in missing_disabled):
 					return False
 				need_enabled = atom.use.enabled.difference(use)
 				if need_enabled:
-					need_enabled = need_enabled.difference(missing_enabled)
-					if need_enabled:
+					if any(x not in missing_enabled for x in need_enabled):
 						return False
 
 			if atom.use.disabled:
-				if atom.use.disabled.intersection(missing_enabled):
+				if any(x in atom.use.disabled for x in missing_enabled):
 					return False
 				need_disabled = atom.use.disabled.intersection(use)
 				if need_disabled:
-					need_disabled = need_disabled.difference(missing_disabled)
-					if need_disabled:
+					if any(x not in missing_disabled for x in need_disabled):
 						return False
 
 		elif not self.settings.local_config:
@@ -215,11 +213,12 @@ class dbapi(object):
 				pkg = _pkg_str(cpv, slot=metadata["SLOT"],
 					repo=metadata.get("repository"))
 			usemask = self.settings._getUseMask(pkg)
-			if usemask.intersection(atom.use.enabled):
+			if any(x in usemask for x in atom.use.enabled):
 				return False
 
-			useforce = self.settings._getUseForce(pkg).difference(usemask)
-			if useforce.intersection(atom.use.disabled):
+			useforce = self.settings._getUseForce(pkg)
+			if any(x in useforce and x not in usemask
+				for x in atom.use.disabled):
 				return False
 
 		return True
