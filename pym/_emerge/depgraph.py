@@ -85,9 +85,9 @@ def _wildcard_set(atoms):
 	pkgs = InternalPackageSet(allow_wildcard=True)
 	for x in atoms:
 		try:
-			x = Atom(x, allow_wildcard=True)
+			x = Atom(x, allow_wildcard=True, allow_repo=False)
 		except portage.exception.InvalidAtom:
-			x = Atom("*/" + x, allow_wildcard=True)
+			x = Atom("*/" + x, allow_wildcard=True, allow_repo=False)
 		pkgs.add(x)
 	return pkgs
 
