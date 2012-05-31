@@ -529,7 +529,7 @@ _eclass_info = {
 		'comprehensive': False,
 
 		# These are "eclasses are the whole ebuild" type thing.
-		'exempt_eclasses': ('toolchain', 'toolchain-binutils'),
+		'exempt_eclasses': ('toolchain', 'toolchain-binutils', 'vim'),
 
 		#'inherited_api': ('multilib', 'user',),
 	},
