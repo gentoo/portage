@@ -498,7 +498,7 @@ class InheritEclass(LineCheck):
 			self._func_call = self._func_re.search(line)
 
 	def end(self):
-		if self._comprehensive and self._inherit and not self._func_call:
+		if not self._disabled and self._comprehensive and self._inherit and not self._func_call:
 			self.repoman_check_name = 'inherit.unused'
 			yield 'no function called from %s.eclass; please drop' % self._eclass
 
@@ -516,7 +516,7 @@ _eclass_info = {
 		#       the autotools functions.
 		# subversion - An ESVN_BOOTSTRAP variable may be used to call one of
 		#       the autotools functions.
-		'exempt_eclasses': ('git', 'subversion', 'autotools-utils')
+		'exempt_eclasses': ('git', 'git-2', 'subversion', 'autotools-utils')
 	},
 
 	'eutils': {
