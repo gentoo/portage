@@ -482,8 +482,7 @@ auxdbkeys = (
 auxdbkeylen=len(auxdbkeys)
 
 def portageexit():
-	if os.environ.get("SANDBOX_ON") != "1":
-		close_portdbapi_caches()
+	close_portdbapi_caches()
 
 class _trees_dict(dict):
 	__slots__ = ('_running_eroot', '_target_eroot',)
