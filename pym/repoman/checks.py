@@ -529,7 +529,7 @@ _eclass_info = {
 		'comprehensive': False,
 
 		# These are "eclasses are the whole ebuild" type thing.
-		'exempt_eclasses': ('toolchain', 'toolchain-binutils', 'vim'),
+		'exempt_eclasses': ('base', 'cmake-utils', 'toolchain', 'toolchain-binutils', 'vim'),
 
 		#'inherited_api': ('multilib', 'user',),
 	},
@@ -553,6 +553,10 @@ _eclass_info = {
 		'funcs': (
 			'get_libdir',
 		),
+
+		# These are "eclasses are the whole ebuild" type thing.
+		'exempt_eclasses': ('cmake-utils',),
+
 		'comprehensive': False
 	},
 
