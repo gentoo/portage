@@ -469,7 +469,15 @@ def grablines(myfilename, recursive=0, remember_source_file=False):
 	if recursive and os.path.isdir(myfilename):
 		if os.path.basename(myfilename) in _ignorecvs_dirs:
 			return mylines
-		dirlist = os.listdir(myfilename)
+		try:
+			dirlist = os.listdir(myfilename)
+		except OSError as e:
+			if e.errno == PermissionDenied.errno:
+				raise PermissionDenied(myfilename)
+			elif e.errno in (errno.ENOENT, errno.ESTALE):
+				return mylines
+			else:
+				raise
 		dirlist.sort()
 		for f in dirlist:
 			if not f.startswith(".") and not f.endswith("~"):
@@ -488,7 +496,10 @@ def grablines(myfilename, recursive=0, remember_source_file=False):
 		except IOError as e:
 			if e.errno == PermissionDenied.errno:
 				raise PermissionDenied(myfilename)
-			pass
+			elif e.errno in (errno.ENOENT, errno.ESTALE):
+				pass
+			else:
+				raise
 	return mylines
 
 def writedict(mydict,myfilename,writekey=True):
