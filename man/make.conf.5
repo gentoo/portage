@@ -733,6 +733,24 @@ to be configured by \fI`git config user.signingkey key_id`\fR.
 The command used by \fBrepoman\fR(1) to sign manifests when \fBsign\fR is
 in \fBFEATURES\fR.
 .TP
+\fBPORTAGE_GRPNAME\fR = \fI[group]\fR
+Defines the groupname to use when executing in userpriv/etc... modes (i.e.
+non-root).
+.br
+Defaults to portage.
+.TP
+\fBPORTAGE_INST_GID\fR = \fI[gid]\fR
+Defines the group id when installing files via dobin/dosbin.  Useful when
+running ebuild as yourself.
+.br
+Defaults to 0.
+.TP
+\fBPORTAGE_INST_UID\fR = \fI[uid]\fR
+Defines the user id when installing files via dobin/dosbin.  Useful when
+running ebuild as yourself.
+.br
+Defaults to 0.
+.TP
 \fBPORTAGE_IONICE_COMMAND\fR = \fI[ionice command string]\fR
 This variable should contain a command for portage to call in order
 to adjust the io priority of portage and it's subprocesses. The command
@@ -791,6 +809,12 @@ Defaults to 30.
 Defines the location of the temporary build directories.
 .br
 Defaults to /var/tmp.
+.TP
+\fBPORTAGE_USERNAME\fR = \fI[user]\fR
+Defines the username to use when executing in userpriv/etc... modes (i.e.
+non-root).
+.br
+Defaults to portage.
 .TP
 \fBPORTAGE_WORKDIR_MODE\fR = \fI"0700"\fR
 This variable controls permissions for \fIWORKDIR\fR (see \fBebuild\fR(5)).
