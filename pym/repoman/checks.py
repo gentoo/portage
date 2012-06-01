@@ -469,7 +469,7 @@ class InheritEclass(LineCheck):
 		subclasses = _eclass_subclass_info.get(eclass)
 		if subclasses is not None:
 			inherit_re = '(%s)' % '|'.join([eclass] + list(subclasses))
-		self._inherit_re = re.compile(r'^\s*inherit\s(.*\s)?%s(\s|$)' % inherit_re)
+		self._inherit_re = re.compile(r'^(\s*|.*[|&]\s*)\binherit\s(.*\s)?%s(\s|$)' % inherit_re)
 		self._func_re = re.compile(r'\b(' + '|'.join(funcs) + r')\b')
 
 	def new(self, pkg):
