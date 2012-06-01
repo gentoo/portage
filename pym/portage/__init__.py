@@ -482,7 +482,7 @@ auxdbkeys = (
 auxdbkeylen=len(auxdbkeys)
 
 def portageexit():
-	if data.secpass > 1 and os.environ.get("SANDBOX_ON") != "1":
+	if os.environ.get("SANDBOX_ON") != "1":
 		close_portdbapi_caches()
 
 class _trees_dict(dict):
