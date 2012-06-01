@@ -227,9 +227,12 @@ class config(object):
 			self._setcpv_args_hash = clone._setcpv_args_hash
 
 			# immutable attributes (internal policy ensures lack of mutation)
-			self._keywords_manager = clone._keywords_manager
+			self._locations_manager = clone._locations_manager
 			self._use_manager = clone._use_manager
 			self._mask_manager = clone._mask_manager
+			# force instantiation of lazy immutable objects when cloning, so
+			# that they're not instantiated more than once
+			self._keywords_manager_obj = clone._keywords_manager
 
 			# shared mutable attributes
 			self._unknown_features = clone._unknown_features
@@ -274,9 +277,13 @@ class config(object):
 			self._expand_map = copy.deepcopy(clone._expand_map)
 
 		else:
+			# lazily instantiated objects
+			self._keywords_manager_obj = None
+
 			locations_manager = LocationsManager(config_root=config_root,
 				config_profile_path=config_profile_path, eprefix=eprefix,
 				local_config=local_config, target_root=target_root)
+			self._locations_manager = locations_manager
 
 			eprefix = locations_manager.eprefix
 			config_root = locations_manager.config_root
@@ -573,10 +580,6 @@ class config(object):
 						profile_only_variables, self._global_only_vars):
 						d.pop(k, None)
 				self._repo_make_defaults[repo.name] = d
-
-			#Read package.keywords and package.accept_keywords.
-			self._keywords_manager = KeywordsManager(profiles_complex, abs_user_config, \
-				local_config, global_accept_keywords=self.configdict["defaults"].get("ACCEPT_KEYWORDS", ""))
 
 			#Read all USE related files from profiles and optionally from user config.
 			self._use_manager = UseManager(self.repositories, profiles_complex, abs_user_config, user_config=local_config)
@@ -880,6 +883,16 @@ class config(object):
 					noiselevel=-1)
 				writemsg("!!! %s\n" % str(e),
 					noiselevel=-1)
+
+	@property
+	def _keywords_manager(self):
+		if self._keywords_manager_obj is None:
+			self._keywords_manager_obj = KeywordsManager(
+				self._locations_manager.profiles_complex,
+				self._locations_manager.abs_user_config,
+				self.local_config,
+				global_accept_keywords=self.configdict["defaults"].get("ACCEPT_KEYWORDS", ""))
+		return self._keywords_manager_obj
 
 	@property
 	def pkeywordsdict(self):
