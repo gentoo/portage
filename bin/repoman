@@ -437,6 +437,10 @@ qawarnings = set((
 "LIVEVCS.unmasked",
 ))
 
+if portage.const._ENABLE_INHERIT_CHECK:
+	# This is experimental, so it's non-fatal.
+	qawarnings.add("inherit.missing")
+
 non_ascii_re = re.compile(r'[^\x00-\x7f]')
 
 missingvars = ["KEYWORDS", "LICENSE", "DESCRIPTION", "HOMEPAGE"]
