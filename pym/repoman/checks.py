@@ -14,6 +14,7 @@ import portage
 from portage.eapi import eapi_supports_prefix, eapi_has_implicit_rdepend, \
 	eapi_has_src_prepare_and_src_configure, eapi_has_dosed_dohard, \
 	eapi_exports_AA
+from portage.const import _ENABLE_INHERIT_CHECK
 
 class LineCheck(object):
 	"""Run a check on a line of an ebuild."""
@@ -461,10 +462,11 @@ class InheritEclass(LineCheck):
 	"""
 
 	def __init__(self, eclass, funcs=None, comprehensive=False,
-		exempt_eclasses=None, **kwargs):
+		exempt_eclasses=None, ignore_missing=False, **kwargs):
 		self._eclass = eclass
 		self._comprehensive = comprehensive
 		self._exempt_eclasses = exempt_eclasses
+		self._ignore_missing = ignore_missing
 		inherit_re = eclass
 		subclasses = _eclass_subclass_info.get(eclass)
 		if subclasses is not None:
@@ -487,7 +489,7 @@ class InheritEclass(LineCheck):
 		if not self._inherit:
 			self._inherit = self._inherit_re.match(line)
 		if not self._inherit:
-			if self._disabled:
+			if self._disabled or self._ignore_missing:
 				return
 			s = self._func_re.search(line)
 			if s:
@@ -590,6 +592,30 @@ for k, v in _eclass_info.items():
 	if inherited_api is not None:
 		for parent in inherited_api:
 			_eclass_subclass_info.setdefault(parent, set()).add(k)
+
+if not _ENABLE_INHERIT_CHECK:
+	# Since the InheritEclass check is experimental, in the stable branch
+	# we emulate the old eprefixify.defined and inherit.autotools checks.
+	_eclass_info = {
+		'autotools': {
+			'funcs': (
+				'eaclocal', 'eautoconf', 'eautoheader',
+				'eautomake', 'eautoreconf', '_elibtoolize',
+				'eautopoint'
+			),
+			'comprehensive': True,
+			'ignore_missing': True,
+			'exempt_eclasses': ('git', 'git-2', 'subversion', 'autotools-utils')
+		},
+
+		'prefix': {
+			'funcs': (
+				'eprefixify',
+			),
+			'comprehensive': False
+		}
+	}
+	_eclass_subclass_info = {}
 
 class IUseUndefined(LineCheck):
 	"""

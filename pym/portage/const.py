@@ -165,6 +165,7 @@ _ENABLE_DYN_LINK_MAP    = True
 _ENABLE_PRESERVE_LIBS   = True
 _ENABLE_REPO_NAME_WARN  = True
 _ENABLE_SET_CONFIG      = True
+_ENABLE_INHERIT_CHECK   = True
 
 
 # The definitions above will differ between branches, so it's useful to have
