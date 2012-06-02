@@ -161,11 +161,11 @@ if "PORTAGE_OVERRIDE_EPREFIX" in os.environ:
 
 # Private constants for use in conditional code in order to minimize the diff
 # between branches.
-_ENABLE_DYN_LINK_MAP    = True
-_ENABLE_PRESERVE_LIBS   = True
-_ENABLE_REPO_NAME_WARN  = True
-_ENABLE_SET_CONFIG      = True
-_ENABLE_INHERIT_CHECK   = True
+_ENABLE_DYN_LINK_MAP    = False
+_ENABLE_PRESERVE_LIBS   = False
+_ENABLE_REPO_NAME_WARN  = False
+_ENABLE_SET_CONFIG      = False
+_ENABLE_INHERIT_CHECK   = False
 
 
 # The definitions above will differ between branches, so it's useful to have
