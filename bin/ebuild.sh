@@ -553,6 +553,9 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 
 		[ "${EAPI+set}" = set ] || EAPI=0
 
+		# export EAPI for helpers (especially since we unset it above)
+		export EAPI
+
 		if has "$EAPI" 0 1 2 3 3_pre2 ; then
 			export RDEPEND=${RDEPEND-${DEPEND}}
 			debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
