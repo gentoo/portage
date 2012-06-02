@@ -531,7 +531,7 @@ _eclass_info = {
 		'comprehensive': False,
 
 		# These are "eclasses are the whole ebuild" type thing.
-		'exempt_eclasses': ('base', 'cmake-utils', 'toolchain', 'toolchain-binutils', 'vim'),
+		'exempt_eclasses': ('base', 'cmake-utils', 'kde4-base', 'toolchain', 'toolchain-binutils', 'vim'),
 
 		#'inherited_api': ('multilib', 'user',),
 	},
@@ -557,7 +557,7 @@ _eclass_info = {
 		),
 
 		# These are "eclasses are the whole ebuild" type thing.
-		'exempt_eclasses': ('cmake-utils',),
+		'exempt_eclasses': ('cmake-utils', 'kde4-base'),
 
 		'comprehensive': False
 	},
