@@ -481,7 +481,8 @@ class InheritEclass(LineCheck):
 		self._inherit = False
 		self._func_call = False
 		if self._exempt_eclasses is not None:
-			self._disabled = any(x in pkg.inherited for x in self._exempt_eclasses)
+			inherited = pkg.inherited
+			self._disabled = any(x in inherited for x in self._exempt_eclasses)
 		else:
 			self._disabled = False
 
@@ -503,6 +504,37 @@ class InheritEclass(LineCheck):
 		if not self._disabled and self._comprehensive and self._inherit and not self._func_call:
 			self.repoman_check_name = 'inherit.unused'
 			yield 'no function called from %s.eclass; please drop' % self._eclass
+
+# eclasses that export ${ECLASS}_src_(compile|configure|install)
+_eclass_export_functions = (
+	'ant-tasks', 'apache-2', 'apache-module', 'aspell-dict',
+	'autotools-utils', 'base', 'bsdmk', 'cannadic',
+	'clutter', 'cmake-utils', 'db', 'distutils', 'elisp',
+	'embassy', 'emboss', 'emul-linux-x86', 'enlightenment',
+	'font-ebdftopcf', 'font', 'fox', 'freebsd', 'freedict',
+	'games', 'games-ggz', 'games-mods', 'gdesklets',
+	'gems', 'gkrellm-plugin', 'gnatbuild', 'gnat', 'gnome2',
+	'gnome-python-common', 'gnustep-base', 'go-mono', 'gpe',
+	'gst-plugins-bad', 'gst-plugins-base', 'gst-plugins-good',
+	'gst-plugins-ugly', 'gtk-sharp-module', 'haskell-cabal',
+	'horde', 'java-ant-2', 'java-pkg-2', 'java-pkg-simple',
+	'java-virtuals-2', 'kde4-base', 'kde4-meta', 'kernel-2',
+	'latex-package', 'linux-mod', 'mozlinguas', 'myspell',
+	'myspell-r2', 'mysql', 'mysql-v2', 'mythtv-plugins',
+	'oasis', 'obs-service', 'office-ext', 'perl-app',
+	'perl-module', 'php-ext-base-r1', 'php-ext-pecl-r2',
+	'php-ext-source-r2', 'php-lib-r1', 'php-pear-lib-r1',
+	'php-pear-r1', 'python-distutils-ng', 'python',
+	'qt4-build', 'qt4-r2', 'rox-0install', 'rox', 'ruby',
+	'ruby-ng', 'scsh', 'selinux-policy-2', 'sgml-catalog',
+	'stardict', 'sword-module', 'tetex-3', 'tetex',
+	'texlive-module', 'toolchain-binutils', 'toolchain',
+	'twisted', 'vdr-plugin-2', 'vdr-plugin', 'vim',
+	'vim-plugin', 'vim-spell', 'virtuoso', 'vmware',
+	'vmware-mod', 'waf-utils', 'webapp', 'xemacs-elisp',
+	'xemacs-packages', 'xfconf', 'x-modular', 'xorg-2',
+	'zproduct'
+)
 
 _eclass_info = {
 	'autotools': {
@@ -531,7 +563,7 @@ _eclass_info = {
 		'comprehensive': False,
 
 		# These are "eclasses are the whole ebuild" type thing.
-		'exempt_eclasses': ('base', 'cmake-utils', 'kde4-base', 'toolchain', 'toolchain-binutils', 'vim'),
+		'exempt_eclasses': _eclass_export_functions,
 
 		#'inherited_api': ('multilib', 'user',),
 	},
@@ -557,7 +589,7 @@ _eclass_info = {
 		),
 
 		# These are "eclasses are the whole ebuild" type thing.
-		'exempt_eclasses': ('cmake-utils', 'kde4-base'),
+		'exempt_eclasses': _eclass_export_functions,
 
 		'comprehensive': False
 	},
