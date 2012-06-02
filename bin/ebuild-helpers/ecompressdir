@@ -86,7 +86,11 @@ funk_up_dir() {
 			[[ ${olddest} == *${suffix} ]] || continue
 			newdest=${olddest%${suffix}}
 		fi
-		[[ -f ${newdest} ]] || continue
+		if [[ "${newdest}" == /* ]] ; then
+			[[ -f "${D}${newdest}" ]] || continue
+		else
+			[[ -f "${dir}/${brokenlink%/*}/${newdest}" ]] || continue
+		fi
 		rm -f "${brokenlink}"
 		[[ ${act} == "compress" ]] \
 			&& ln -snf "${newdest}" "${brokenlink}${suffix}" \
