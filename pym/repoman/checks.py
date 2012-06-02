@@ -468,9 +468,6 @@ class InheritEclass(LineCheck):
 		self._exempt_eclasses = exempt_eclasses
 		self._ignore_missing = ignore_missing
 		inherit_re = eclass
-		subclasses = _eclass_subclass_info.get(eclass)
-		if subclasses is not None:
-			inherit_re = '(%s)' % '|'.join([eclass] + list(subclasses))
 		self._inherit_re = re.compile(r'^(\s*|.*[|&]\s*)\binherit\s(.*\s)?%s(\s|$)' % inherit_re)
 		self._func_re = re.compile(r'\b(' + '|'.join(funcs) + r')\b')
 
@@ -564,8 +561,6 @@ _eclass_info = {
 
 		# These are "eclasses are the whole ebuild" type thing.
 		'exempt_eclasses': _eclass_export_functions,
-
-		#'inherited_api': ('multilib', 'user',),
 	},
 
 	'flag-o-matic': {
@@ -617,14 +612,6 @@ _eclass_info = {
 	}
 }
 
-_eclass_subclass_info = {}
-
-for k, v in _eclass_info.items():
-	inherited_api = v.get('inherited_api')
-	if inherited_api is not None:
-		for parent in inherited_api:
-			_eclass_subclass_info.setdefault(parent, set()).add(k)
-
 if not _ENABLE_INHERIT_CHECK:
 	# Since the InheritEclass check is experimental, in the stable branch
 	# we emulate the old eprefixify.defined and inherit.autotools checks.
@@ -647,7 +634,6 @@ if not _ENABLE_INHERIT_CHECK:
 			'comprehensive': False
 		}
 	}
-	_eclass_subclass_info = {}
 
 class IUseUndefined(LineCheck):
 	"""
