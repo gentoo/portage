@@ -61,11 +61,11 @@ funk_up_dir() {
 	local negate=""
 	[[ ${act} == "compress" ]] && negate="!"
 
+	local ret=0
 	# first we act on all the files
 	find "${dir}" -type f ${negate} -iname '*'${suffix} -print0 | ${XARGS} -0 ${binary}
 	((ret|=$?))
 
-	find "${dir}" -type l -print0 | \
 	while read -r -d $'\0' brokenlink ; do
 		[[ -e ${brokenlink} ]] && continue
 		olddest=$(readlink "${brokenlink}")
@@ -88,7 +88,8 @@ funk_up_dir() {
 			&& ln -snf "${newdest}" "${brokenlink}${suffix}" \
 			|| ln -snf "${newdest}" "${brokenlink%${suffix}}"
 		((ret|=$?))
-	done
+	done < <(find "${dir}" -type l -print0)
+	return ${ret}
 }
 
 # _relocate_skip_dirs(srctree, dsttree)
@@ -170,6 +171,7 @@ for dir in "$@" ; do
 	if [[ -n ${suffix} ]] ; then
 		vecho "${0##*/}: $(ecompress --bin) /${actual_dir#${ED}}"
 		funk_up_dir "compress" "${suffix}" "ecompress"
+		: $(( ret |= $? ))
 	fi
 
 	# finally, restore the skipped stuff
