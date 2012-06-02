@@ -271,7 +271,9 @@ class config(object):
 			#all LicenseManager instances.
 			self._license_manager = clone._license_manager
 
-			self._virtuals_manager = copy.deepcopy(clone._virtuals_manager)
+			# force instantiation of lazy objects when cloning, so
+			# that they're not instantiated more than once
+			self._virtuals_manager_obj = copy.deepcopy(clone._virtuals_manager)
 
 			self._accept_properties = copy.deepcopy(clone._accept_properties)
 			self._ppropertiesdict = copy.deepcopy(clone._ppropertiesdict)
@@ -282,6 +284,7 @@ class config(object):
 			# lazily instantiated objects
 			self._keywords_manager_obj = None
 			self._mask_manager_obj = None
+			self._virtuals_manager_obj = None
 
 			locations_manager = LocationsManager(config_root=config_root,
 				config_profile_path=config_profile_path, eprefix=eprefix,
@@ -601,8 +604,6 @@ class config(object):
 				self._license_manager.extract_global_changes( \
 					self.configdict["conf"].get("ACCEPT_LICENSE", ""))
 
-			self._virtuals_manager = VirtualsManager(self.profiles)
-
 			if local_config:
 				#package.properties
 				propdict = grabdict_package(os.path.join(
@@ -901,6 +902,12 @@ class config(object):
 				user_config=self.local_config,
 				strict_umatched_removal=self._unmatched_removal)
 		return self._mask_manager_obj
+
+	@property
+	def _virtuals_manager(self):
+		if self._virtuals_manager_obj is None:
+			self._virtuals_manager_obj = VirtualsManager(self.profiles)
+		return self._virtuals_manager_obj
 
 	@property
 	def pkeywordsdict(self):
