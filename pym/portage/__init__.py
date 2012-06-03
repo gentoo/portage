@@ -335,16 +335,6 @@ _python_interpreter = os.path.realpath(sys.executable)
 _bin_path = PORTAGE_BIN_PATH
 _pym_path = PORTAGE_PYM_PATH
 
-if sys.hexversion >= 0x3030000:
-	# Workaround for http://bugs.python.org/issue14007
-	def _test_xml_etree_ElementTree_TreeBuilder_type():
-		import subprocess
-		p = subprocess.Popen([_python_interpreter, "-c",
-			"import sys, xml.etree.ElementTree; sys.exit(not isinstance(xml.etree.ElementTree.TreeBuilder, type))"])
-		if p.wait() != 0:
-			sys.modules["_elementtree"] = None
-	_test_xml_etree_ElementTree_TreeBuilder_type()
-
 def _shell_quote(s):
 	"""
 	Quote a string in double-quotes and use backslashes to
