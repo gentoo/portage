@@ -68,7 +68,7 @@ class FakeVartree(vartree):
 			self.dbapi.aux_get = self._aux_get_wrapper
 			self.dbapi.match = self._match_wrapper
 		self._aux_get_history = set()
-		self._portdb_keys = ["EAPI", "DEPEND", "RDEPEND", "PDEPEND"]
+		self._portdb_keys = ["EAPI", "KEYWORDS", "DEPEND", "RDEPEND", "PDEPEND"]
 		self._portdb = portdb
 		self._global_updates = None
 
