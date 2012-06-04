@@ -25,9 +25,9 @@ class Package(Task):
 		"installed", "metadata", "onlydeps", "operation",
 		"root_config", "type_name",
 		"category", "counter", "cp", "cpv_split",
-		"inherited", "invalid", "iuse", "masks", "mtime",
-		"pf", "root", "slot", "slot_atom", "version", "visible",) + \
-	("_raw_metadata", "_use",)
+		"inherited", "iuse", "mtime",
+		"pf", "root", "slot", "slot_atom", "version") + \
+	("_invalid", "_raw_metadata", "_masks", "_use", "_visible")
 
 	metadata_keys = [
 		"BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "EAPI",
@@ -73,9 +73,6 @@ class Package(Task):
 		if self.inherited is None:
 			self.inherited = frozenset()
 
-		self._validate_deps()
-		self.masks = self._masks()
-		self.visible = self._visible(self.masks)
 		if self.operation is None:
 			if self.onlydeps or self.installed:
 				self.operation = "nomerge"
@@ -88,6 +85,28 @@ class Package(Task):
 			root_config=self.root_config,
 			type_name=self.type_name)
 		self._hash_value = hash(self._hash_key)
+
+	# These are calculated on-demand, so that they are calculated
+	# after FakeVartree applies its metadata tweaks.
+	@property
+	def invalid(self):
+		if self._invalid is None:
+			self._validate_deps()
+			if self._invalid is None:
+				self._invalid = False
+		return self._invalid
+
+	@property
+	def masks(self):
+		if self._masks is None:
+			self._masks = self._eval_masks()
+		return self._masks
+
+	@property
+	def visible(self):
+		if self._visible is None:
+			self._visible = self._eval_visiblity(self.masks)
+		return self._visible
 
 	@classmethod
 	def _gen_hash_key(cls, cpv=None, installed=None, onlydeps=None,
@@ -205,11 +224,11 @@ class Package(Task):
 			onlydeps=self.onlydeps, operation=self.operation,
 			root_config=self.root_config, type_name=self.type_name)
 
-	def _masks(self):
+	def _eval_masks(self):
 		masks = {}
 		settings = self.root_config.settings
 
-		if self.invalid is not None:
+		if self.invalid is not False:
 			masks['invalid'] = self.invalid
 
 		if not settings._accept_chost(self.cpv, self.metadata):
@@ -249,13 +268,13 @@ class Package(Task):
 			pass
 
 		if not masks:
-			masks = None
+			masks = False
 
 		return masks
 
-	def _visible(self, masks):
+	def _eval_visiblity(self, masks):
 
-		if masks is not None:
+		if masks is not False:
 
 			if 'EAPI.unsupported' in masks:
 				return False
@@ -338,12 +357,12 @@ class Package(Task):
 				_unicode_decode("%s: %s in '%s'") % (k, e, path))
 
 	def _invalid_metadata(self, msg_type, msg):
-		if self.invalid is None:
-			self.invalid = {}
-		msgs = self.invalid.get(msg_type)
+		if self._invalid is None:
+			self._invalid = {}
+		msgs = self._invalid.get(msg_type)
 		if msgs is None:
 			msgs = []
-			self.invalid[msg_type] = msgs
+			self._invalid[msg_type] = msgs
 		msgs.append(msg)
 
 	def __str__(self):
