@@ -2060,7 +2060,7 @@ for x in effective_scanlist:
 						env=env)
 					dep_settings.categories = repoman_settings.categories
 					if options.without_mask:
-						dep_settings._mask_manager = \
+						dep_settings._mask_manager_obj = \
 							copy.deepcopy(dep_settings._mask_manager)
 						dep_settings._mask_manager._pmaskdict.clear()
 					arch_caches[prof.sub_path] = dep_settings
