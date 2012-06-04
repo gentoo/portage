@@ -22,7 +22,7 @@ multijob_init() {
 	mj_control_pipe=$(mktemp -t multijob.XXXXXX)
 	rm "${mj_control_pipe}"
 	mkfifo "${mj_control_pipe}"
-	exec {mj_control_fd}<>${mj_control_pipe}
+	redirect_alloc_fd mj_control_fd "${mj_control_pipe}"
 	rm -f "${mj_control_pipe}"
 
 	# See how many children we can fork based on the user's settings.
@@ -59,4 +59,32 @@ multijob_post_fork() {
 		multijob_finish_one
 	fi
 	return $?
+}
+
+# @FUNCTION: redirect_alloc_fd
+# @USAGE: <var> <file> [redirection]
+# @DESCRIPTION:
+# Find a free fd and redirect the specified file via it.  Store the new
+# fd in the specified variable.  Useful for the cases where we don't care
+# about the exact fd #.
+redirect_alloc_fd() {
+	local var=$1 file=$2 redir=${3:-"<>"}
+
+	if [[ $(( (BASH_VERSINFO[0] << 8) + BASH_VERSINFO[1] )) -ge $(( (4 << 8) + 1 )) ]] ; then
+			# Newer bash provides this functionality.
+			eval "exec {${var}}${redir}'${file}'"
+	else
+			# Need to provide the functionality ourselves.
+			local fd=10
+			while :; do
+					# Make sure the fd isn't open.  It could be a char device,
+					# or a symlink (possibly broken) to something else.
+					if [[ ! -e /dev/fd/${fd} ]] && [[ ! -L /dev/fd/${fd} ]] ; then
+							eval "exec ${fd}${redir}'${file}'" && break
+					fi
+					[[ ${fd} -gt 1024 ]] && die "redirect_alloc_fd failed"
+					: $(( ++fd ))
+			done
+			: $(( ${var} = fd ))
+	fi
 }
