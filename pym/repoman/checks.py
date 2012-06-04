@@ -575,7 +575,8 @@ _eclass_info = {
 		'funcs': (
 			'elibtoolize',
 		),
-		'comprehensive': True
+		'comprehensive': True,
+		'exempt_eclasses': ('autotools',)
 	},
 
 	'multilib': {
