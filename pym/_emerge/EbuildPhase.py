@@ -12,7 +12,16 @@ from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.EbuildProcess import EbuildProcess
 from _emerge.CompositeTask import CompositeTask
 from portage.util import writemsg
-from portage.xml.metadata import MetaDataXML
+
+try:
+	from portage.xml.metadata import MetaDataXML
+except (SystemExit, KeyboardInterrupt):
+	raise
+except (ImportError, SystemError, RuntimeError, Exception):
+	# broken or missing xml support
+	# http://bugs.python.org/issue14988
+	MetaDataXML = None
+
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.elog:messages@elog_messages',
@@ -71,7 +80,7 @@ class EbuildPhase(CompositeTask):
 			maint_str = ""
 			upstr_str = ""
 			metadata_xml_path = os.path.join(os.path.dirname(self.settings['EBUILD']), "metadata.xml")
-			if os.path.isfile(metadata_xml_path):
+			if MetaDataXML is not None and os.path.isfile(metadata_xml_path):
 				herds_path = os.path.join(self.settings['PORTDIR'],
 					'metadata/herds.xml')
 				try:

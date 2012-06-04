@@ -42,12 +42,18 @@ if sys.hexversion < 0x2070000 or \
 else:
 	try:
 		import xml.etree.cElementTree as etree
-	except (ImportError, SystemError):
+	except (SystemExit, KeyboardInterrupt):
+		raise
+	except (ImportError, SystemError, RuntimeError, Exception):
+		# broken or missing xml support
+		# http://bugs.python.org/issue14988
 		import xml.etree.ElementTree as etree
 
 try:
 	from xml.parsers.expat import ExpatError
-except (ImportError, SystemError):
+except (SystemExit, KeyboardInterrupt):
+	raise
+except (ImportError, SystemError, RuntimeError, Exception):
 	ExpatError = SyntaxError
 
 import re
