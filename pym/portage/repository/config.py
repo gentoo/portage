@@ -712,10 +712,10 @@ def parse_layout_conf(repo_location, repo_name=None):
 
 	# for compatibility w/ PMS, fallback to pms; but also check if the
 	# cache exists or not.
-	cache_formats = layout_data.get('cache-formats', 'pms').lower().split()
-	if 'pms' in cache_formats and not os.path.isdir(
+	cache_formats = layout_data.get('cache-formats', '').lower().split()
+	if not cache_formats and os.path.isdir(
 		os.path.join(repo_location, 'metadata', 'cache')):
-		cache_formats.remove('pms')
+		cache_formats = ['pms']
 	data['cache-formats'] = tuple(cache_formats)
 
 	manifest_hashes = layout_data.get('manifest-hashes')
