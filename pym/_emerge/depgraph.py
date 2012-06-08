@@ -1456,7 +1456,10 @@ class depgraph(object):
 
 				try:
 					dep_string = portage.dep.use_reduce(dep_string,
-						uselist=self._pkg_use_enabled(pkg), is_valid_flag=pkg.iuse.is_valid_flag)
+						uselist=self._pkg_use_enabled(pkg),
+						is_valid_flag=pkg.iuse.is_valid_flag,
+						opconvert=True, token_class=Atom,
+						eapi=pkg.metadata['EAPI'])
 				except portage.exception.InvalidDependString as e:
 					if not pkg.installed:
 						# should have been masked before it was selected
@@ -1468,7 +1471,9 @@ class depgraph(object):
 					# practical to ignore this issue for installed packages.
 					try:
 						dep_string = portage.dep.use_reduce(dep_string,
-							uselist=self._pkg_use_enabled(pkg))
+							uselist=self._pkg_use_enabled(pkg),
+							opconvert=True, token_class=Atom,
+							eapi=pkg.metadata['EAPI'])
 					except portage.exception.InvalidDependString as e:
 						self._dynamic_config._masked_installed.add(pkg)
 						del e
@@ -1488,9 +1493,6 @@ class depgraph(object):
 
 				if not dep_string:
 					continue
-
-				dep_string = portage.dep.paren_enclose(dep_string,
-					unevaluated_atom=True)
 
 				if not self._add_pkg_dep_string(
 					pkg, dep_root, dep_priority, dep_string,
@@ -1525,7 +1527,9 @@ class depgraph(object):
 		if debug:
 			writemsg_level("\nParent:    %s\n" % (pkg,),
 				noiselevel=-1, level=logging.DEBUG)
-			writemsg_level("Depstring: %s\n" % (dep_string,),
+			dep_repr = portage.dep.paren_enclose(dep_string,
+				unevaluated_atom=True, opconvert=True)
+			writemsg_level("Depstring: %s\n" % (dep_repr,),
 				noiselevel=-1, level=logging.DEBUG)
 			writemsg_level("Priority:  %s\n" % (dep_priority,),
 				noiselevel=-1, level=logging.DEBUG)
@@ -1847,34 +1851,22 @@ class depgraph(object):
 		Yields non-disjunctive deps. Raises InvalidDependString when 
 		necessary.
 		"""
-		i = 0
-		while i < len(dep_struct):
-			x = dep_struct[i]
+		for x in dep_struct:
 			if isinstance(x, list):
-				for y in self._queue_disjunctive_deps(
-					pkg, dep_root, dep_priority, x):
-					yield y
-			elif x == "||":
-				self._queue_disjunction(pkg, dep_root, dep_priority,
-					[ x, dep_struct[ i + 1 ] ] )
-				i += 1
-			else:
-				try:
-					x = portage.dep.Atom(x, eapi=pkg.metadata["EAPI"])
-				except portage.exception.InvalidAtom:
-					if not pkg.installed:
-						raise portage.exception.InvalidDependString(
-							"invalid atom: '%s'" % x)
+				if x and x[0] == "||":
+					self._queue_disjunction(pkg, dep_root, dep_priority, [x])
 				else:
-					# Note: Eventually this will check for PROPERTIES=virtual
-					# or whatever other metadata gets implemented for this
-					# purpose.
-					if x.cp.startswith('virtual/'):
-						self._queue_disjunction( pkg, dep_root,
-							dep_priority, [ str(x) ] )
-					else:
-						yield str(x)
-			i += 1
+					for y in self._queue_disjunctive_deps(
+						pkg, dep_root, dep_priority, x):
+						yield y
+			else:
+				# Note: Eventually this will check for PROPERTIES=virtual
+				# or whatever other metadata gets implemented for this
+				# purpose.
+				if x.cp.startswith('virtual/'):
+					self._queue_disjunction(pkg, dep_root, dep_priority, [x])
+				else:
+					yield x
 
 	def _queue_disjunction(self, pkg, dep_root, dep_priority, dep_struct):
 		self._dynamic_config._dep_disjunctive_stack.append(
@@ -1887,10 +1879,8 @@ class depgraph(object):
 		"""
 		pkg, dep_root, dep_priority, dep_struct = \
 			self._dynamic_config._dep_disjunctive_stack.pop()
-		dep_string = portage.dep.paren_enclose(dep_struct,
-			unevaluated_atom=True)
 		if not self._add_pkg_dep_string(
-			pkg, dep_root, dep_priority, dep_string, allow_unsatisfied):
+			pkg, dep_root, dep_priority, dep_struct, allow_unsatisfied):
 			return 0
 		return 1
 

@@ -611,12 +611,15 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		if not current_parent.installed:
 			eapi = current_parent.metadata['EAPI']
 
-	try:
-		mysplit = use_reduce(depstring, uselist=myusesplit, masklist=mymasks, \
-			matchall=(use=="all"), excludeall=useforce, opconvert=True, \
-			token_class=Atom, eapi=eapi)
-	except InvalidDependString as e:
-		return [0, _unicode_decode("%s") % (e,)]
+	if isinstance(depstring, list):
+		mysplit = depstring
+	else:
+		try:
+			mysplit = use_reduce(depstring, uselist=myusesplit,
+			masklist=mymasks, matchall=(use=="all"), excludeall=useforce,
+			opconvert=True, token_class=Atom, eapi=eapi)
+		except InvalidDependString as e:
+			return [0, _unicode_decode("%s") % (e,)]
 
 	if mysplit == []:
 		#dependencies were reduced to nothing
