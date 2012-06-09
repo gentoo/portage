@@ -469,10 +469,11 @@ class InheritEclass(LineCheck):
 		self._ignore_missing = ignore_missing
 		inherit_re = eclass
 		self._inherit_re = re.compile(r'^(\s*|.*[|&]\s*)\binherit\s(.*\s)?%s(\s|$)' % inherit_re)
-		# Match when the function is preceded only by leading whitespace or a shell
-		# operator such as (, {, |, ||, or &&. This prevents false postives in
-		# things like elog messages, as reported in bug #413285.
-		self._func_re = re.compile(r'(^|[|&{(])\s*\b(' + '|'.join(funcs) + r')\b')
+		# Match when the function is preceded only by leading whitespace, a
+		# shell operator such as (, {, |, ||, or &&, or optional variable
+		# setting(s). This prevents false postives in things like elog
+		# messages, as reported in bug #413285.
+		self._func_re = re.compile(r'(^|[|&{(])\s*(\w+=.*)?\b(' + '|'.join(funcs) + r')\b')
 
 	def new(self, pkg):
 		self.repoman_check_name = 'inherit.missing'
@@ -496,7 +497,7 @@ class InheritEclass(LineCheck):
 			if s:
 				self._func_call = True
 				return '%s.eclass is not inherited, but "%s" found at line: %s' % \
-					(self._eclass, s.group(2), '%d')
+					(self._eclass, s.group(3), '%d')
 		elif not self._func_call:
 			self._func_call = self._func_re.search(line)
 
