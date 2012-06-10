@@ -108,6 +108,27 @@ def _get_atom_re(eapi_attrs):
 	_atom_re_cache[cache_key] = atom_re
 	return atom_re
 
+_atom_wildcard_re_cache = {}
+
+def _get_atom_wildcard_re(eapi_attrs):
+	cache_key = eapi_attrs.dots_in_PN
+	atom_re = _atom_wildcard_re_cache.get(cache_key)
+	if atom_re is not None:
+		return atom_re
+
+	if eapi_attrs.dots_in_PN:
+		pkg_re = r'[\w+*][\w+.*-]*?'
+	else:
+		pkg_re = r'[\w+*][\w+*-]*?'
+
+	atom_re = re.compile(r'(?P<simple>(' +
+		_extended_cat + r')/(' + pkg_re +
+		r'))(:(?P<slot>' + _slot + r'))?(' +
+		_repo_separator + r'(?P<repo>' + _repo_name + r'))?$')
+
+	_atom_wildcard_re_cache[cache_key] = atom_re
+	return atom_re
+
 _usedep_re_cache = {}
 
 def _get_usedep_re(eapi_attrs):
@@ -1199,7 +1220,7 @@ class Atom(_atom_base):
 		extended_syntax = False
 		if m is None:
 			if allow_wildcard:
-				m = _get_atom_wildcard_re(eapi).match(s)
+				m = _get_atom_wildcard_re(eapi_attrs).match(s)
 				if m is None:
 					raise InvalidAtom(self)
 				op = None
@@ -1755,21 +1776,6 @@ _repo_name = r'[\w][\w-]*'
 _repo = r'(?:' + _repo_separator + '(' + _repo_name + ')' + ')?'
 
 _extended_cat = r'[\w+*][\w+.*-]*'
-_extended_pkg = {
-	"dots_disallowed_in_PN": r'[\w+*][\w+*-]*?',
-	"dots_allowed_in_PN":    r'[\w+*][\w+.*-]*?',
-}
-
-_atom_wildcard_re = {
-	"dots_disallowed_in_PN": re.compile('(?P<simple>(' + _extended_cat + ')/(' + _extended_pkg['dots_disallowed_in_PN'] + '))(:(?P<slot>' + _slot + '))?(' + _repo_separator + '(?P<repo>' + _repo_name + '))?$'),
-	"dots_allowed_in_PN":    re.compile('(?P<simple>(' + _extended_cat + ')/(' + _extended_pkg['dots_allowed_in_PN'] + '))(:(?P<slot>' + _slot + '))?(' + _repo_separator + '(?P<repo>' + _repo_name + '))?$'),
-}
-
-def _get_atom_wildcard_re(eapi):
-	if eapi is None or eapi_allows_dots_in_PN(eapi):
-		return _atom_wildcard_re["dots_allowed_in_PN"]
-	else:
-		return _atom_wildcard_re["dots_disallowed_in_PN"]
 
 def isvalidatom(atom, allow_blockers=False, allow_wildcard=False, allow_repo=False):
 	"""
