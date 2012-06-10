@@ -55,6 +55,23 @@ if sys.hexversion >= 0x3000000:
 # stable keywords, make these warnings unconditional.
 _internal_warnings = False
 
+# \w is [a-zA-Z0-9_]
+
+# PMS 3.1.3: A slot name may contain any of the characters [A-Za-z0-9+_.-].
+# It must not begin with a hyphen or a dot.
+_slot_separator = ":"
+_slot = r'([\w+][\w+.-]*)'
+_slot_re = re.compile('^' + _slot + '$', re.VERBOSE)
+
+_use = r'\[.*\]'
+_op = r'([=~]|[><]=?)'
+
+_repo_separator = "::"
+_repo_name = r'[\w][\w-]*'
+_repo = r'(?:' + _repo_separator + '(' + _repo_name + ')' + ')?'
+
+_extended_cat = r'[\w+*][\w+.*-]*'
+
 _eapi_attrs = collections.namedtuple('_eapi_attrs',
 	'dots_in_PN dots_in_use_flags repo_deps slot_deps '
 	'strong_blocks use_deps use_dep_defaults')
@@ -1760,22 +1777,6 @@ def dep_getusedeps( depend ):
 		# Find next use flag
 		open_bracket = depend.find( '[', open_bracket+1 )
 	return tuple(use_list)
-
-# \w is [a-zA-Z0-9_]
-
-# 2.1.3 A slot name may contain any of the characters [A-Za-z0-9+_.-].
-# It must not begin with a hyphen or a dot.
-_slot_separator = ":"
-_slot = r'([\w+][\w+.-]*)'
-_slot_re = re.compile('^' + _slot + '$', re.VERBOSE)
-
-_use = r'\[.*\]'
-_op = r'([=~]|[><]=?)'
-_repo_separator = "::"
-_repo_name = r'[\w][\w-]*'
-_repo = r'(?:' + _repo_separator + '(' + _repo_name + ')' + ')?'
-
-_extended_cat = r'[\w+*][\w+.*-]*'
 
 def isvalidatom(atom, allow_blockers=False, allow_wildcard=False, allow_repo=False):
 	"""
