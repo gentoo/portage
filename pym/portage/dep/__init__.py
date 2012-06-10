@@ -56,17 +56,23 @@ if sys.hexversion >= 0x3000000:
 _internal_warnings = False
 
 _eapi_attrs = collections.namedtuple('_eapi_attrs',
-	'dots_in_PN repo_deps slot_deps strong_blocks use_deps use_dep_defaults')
+	'dots_in_PN dots_in_use_flags repo_deps slot_deps '
+	'strong_blocks use_deps use_dep_defaults')
 
 _eapi_attrs_cache = {}
 
 def _get_eapi_attrs(eapi):
+	"""
+	When eapi is None then validation is not as strict, since we want the
+	same to work for multiple EAPIs that may have slightly different rules.
+	"""
 	eapi_attrs = _eapi_attrs_cache.get(eapi)
 	if eapi_attrs is not None:
 		return eapi_attrs
 
 	eapi_attrs = _eapi_attrs(
 		dots_in_PN = (eapi is None or eapi_allows_dots_in_PN(eapi)),
+		dots_in_use_flags = (eapi is None or eapi_allows_dots_in_use_flags(eapi)),
 		repo_deps = (eapi is None or eapi_has_repo_deps(eapi)),
 		slot_deps = (eapi is None or eapi_has_slot_deps(eapi)),
 		strong_blocks = (eapi is None or eapi_has_strong_blocks(eapi)),
@@ -100,6 +106,31 @@ def _get_atom_re(eapi_attrs):
 
 	_atom_re_cache[eapi_attrs] = atom_re
 	return atom_re
+
+_usedep_re_cache = {}
+
+def _get_usedep_re(eapi_attrs):
+	"""
+	@param eapi_attrs: The EAPI attributes from _get_eapi_attrs
+	@type eapi_attrs: _eapi_attrs
+	@rtype: regular expression object
+	@return: A regular expression object that matches valid USE deps for the
+		given eapi.
+	"""
+	usedep_re = _usedep_re_cache.get(eapi_attrs)
+	if usedep_re is not None:
+		return usedep_re
+
+	if eapi_attrs.dots_in_use_flags:
+		_flag_re = r'[A-Za-z0-9][A-Za-z0-9+_@.-]*'
+	else:
+		_flag_re = r'[A-Za-z0-9][A-Za-z0-9+_@-]*'
+
+	usedep_re = re.compile(r'^(?P<prefix>[!-]?)(?P<flag>' +
+		_flag_re + r')(?P<default>(\(\+\)|\(\-\))?)(?P<suffix>[?=]?)$')
+
+	_usedep_re_cache[eapi_attrs] = usedep_re
+	return usedep_re
 
 def cpvequal(cpv1, cpv2):
 	"""
@@ -701,30 +732,9 @@ def flatten(mylist):
 			newlist.append(x)
 	return newlist
 
-
-_usedep_re = {
-	"dots_disallowed_in_use_flags": re.compile("^(?P<prefix>[!-]?)(?P<flag>[A-Za-z0-9][A-Za-z0-9+_@-]*)(?P<default>(\(\+\)|\(\-\))?)(?P<suffix>[?=]?)$"),
-	"dots_allowed_in_use_flags":    re.compile("^(?P<prefix>[!-]?)(?P<flag>[A-Za-z0-9][A-Za-z0-9+_@.-]*)(?P<default>(\(\+\)|\(\-\))?)(?P<suffix>[?=]?)$"),
-}
-
-def _get_usedep_re(eapi):
-	"""
-	When eapi is None then validation is not as strict, since we want the
-	same to work for multiple EAPIs that may have slightly different rules.
-	@param eapi: The EAPI
-	@type eapi: String or None
-	@rtype: regular expression object
-	@return: A regular expression object that matches valid USE deps for the
-		given eapi.
-	"""
-	if eapi is None or eapi_allows_dots_in_use_flags(eapi):
-		return _usedep_re["dots_allowed_in_use_flags"]
-	else:
-		return _usedep_re["dots_disallowed_in_use_flags"]
-
 class _use_dep(object):
 
-	__slots__ = ("__weakref__", "eapi", "conditional", "missing_enabled", "missing_disabled",
+	__slots__ = ("_eapi_attrs", "conditional", "missing_enabled", "missing_disabled",
 		"disabled", "enabled", "tokens", "required")
 
 	class _conditionals_class(object):
@@ -750,10 +760,10 @@ class _use_dep(object):
 		'not_equal':   '!%s=',
 	}
 
-	def __init__(self, use, eapi, enabled_flags=None, disabled_flags=None, missing_enabled=None, \
+	def __init__(self, use, eapi_attrs, enabled_flags=None, disabled_flags=None, missing_enabled=None,
 		missing_disabled=None, conditional=None, required=None):
 
-		self.eapi = eapi
+		self._eapi_attrs = eapi_attrs
 
 		if enabled_flags is not None:
 			#A shortcut for the classe's own methods.
@@ -782,7 +792,7 @@ class _use_dep(object):
 		no_default = set()
 
 		conditional = {}
-		usedep_re = _get_usedep_re(self.eapi)
+		usedep_re = _get_usedep_re(self._eapi_attrs)
 
 		for x in use:
 			m = usedep_re.match(x)
@@ -885,7 +895,7 @@ class _use_dep(object):
 		disabled_flags = set(self.disabled)
 
 		tokens = []
-		usedep_re = _get_usedep_re(self.eapi)
+		usedep_re = _get_usedep_re(self._eapi_attrs)
 
 		for x in self.tokens:
 			m = usedep_re.match(x)
@@ -921,7 +931,7 @@ class _use_dep(object):
 			else:
 				tokens.append(x)
 
-		return _use_dep(tokens, self.eapi, enabled_flags=enabled_flags, disabled_flags=disabled_flags, \
+		return _use_dep(tokens, self._eapi_attrs, enabled_flags=enabled_flags, disabled_flags=disabled_flags,
 			missing_enabled=self.missing_enabled, missing_disabled=self.missing_disabled, required=self.required)
 
 	def violated_conditionals(self, other_use, is_valid_flag, parent_use=None):
@@ -943,7 +953,7 @@ class _use_dep(object):
 		def validate_flag(flag):
 			return is_valid_flag(flag) or flag in all_defaults
 
-		usedep_re = _get_usedep_re(self.eapi)
+		usedep_re = _get_usedep_re(self._eapi_attrs)
 
 		for x in self.tokens:
 			m = usedep_re.match(x)
@@ -1035,7 +1045,7 @@ class _use_dep(object):
 						tokens.append(x)
 						conditional.setdefault("disabled", set()).add(flag)
 
-		return _use_dep(tokens, self.eapi, enabled_flags=enabled_flags, disabled_flags=disabled_flags, \
+		return _use_dep(tokens, self._eapi_attrs, enabled_flags=enabled_flags, disabled_flags=disabled_flags,
 			missing_enabled=self.missing_enabled, missing_disabled=self.missing_disabled, \
 			conditional=conditional, required=self.required)
 
@@ -1055,7 +1065,7 @@ class _use_dep(object):
 		missing_disabled = self.missing_disabled
 
 		tokens = []
-		usedep_re = _get_usedep_re(self.eapi)
+		usedep_re = _get_usedep_re(self._eapi_attrs)
 
 		for x in self.tokens:
 			m = usedep_re.match(x)
@@ -1091,7 +1101,7 @@ class _use_dep(object):
 			else:
 				tokens.append(x)
 
-		return _use_dep(tokens, self.eapi, enabled_flags=enabled_flags, disabled_flags=disabled_flags, \
+		return _use_dep(tokens, self._eapi_attrs, enabled_flags=enabled_flags, disabled_flags=disabled_flags,
 			missing_enabled=missing_enabled, missing_disabled=missing_disabled, required=self.required)
 
 if sys.hexversion < 0x3000000:
@@ -1224,7 +1234,7 @@ class Atom(_atom_base):
 			if _use is not None:
 				use = _use
 			else:
-				use = _use_dep(use_str[1:-1].split(","), eapi)
+				use = _use_dep(use_str[1:-1].split(","), eapi_attrs)
 			without_use = Atom(m.group('without_use'), allow_repo=allow_repo)
 		else:
 			use = None
