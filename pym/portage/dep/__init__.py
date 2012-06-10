@@ -27,6 +27,7 @@ __all__ = [
 # "a? ( b? ( z ) ) -- Valid
 #
 
+import collections
 import re, sys
 import warnings
 from itertools import chain
@@ -53,6 +54,48 @@ if sys.hexversion >= 0x3000000:
 # Once the relevant api changes are in a portage release with
 # stable keywords, make these warnings unconditional.
 _internal_warnings = False
+
+_eapi_attrs = collections.namedtuple('_eapi_attrs',
+	'dots_in_PN')
+
+_eapi_attrs_cache = {}
+
+def _get_eapi_attrs(eapi):
+	eapi_attrs = _eapi_attrs_cache.get(eapi)
+	if eapi_attrs is not None:
+		return eapi_attrs
+
+	eapi_attrs = _eapi_attrs(
+		dots_in_PN = (eapi is None or eapi_allows_dots_in_PN(eapi))
+	)
+
+	_eapi_attrs_cache[eapi] = eapi_attrs
+	return eapi_attrs
+
+_atom_re_cache = {}
+
+def _get_atom_re(eapi):
+	eapi_attrs = _get_eapi_attrs(eapi)
+	atom_re = _atom_re_cache.get(eapi_attrs)
+	if atom_re is not None:
+		return atom_re
+
+	if eapi_attrs.dots_in_PN:
+		cp_re =  _cp['dots_allowed_in_PN']
+		cpv_re = _cpv['dots_allowed_in_PN']
+	else:
+		cp_re =  _cp['dots_disallowed_in_PN']
+		cpv_re = _cpv['dots_disallowed_in_PN']
+
+	atom_re = re.compile('^(?P<without_use>(?:' +
+		'(?P<op>' + _op + cpv_re + ')|' +
+		'(?P<star>=' + cpv_re + r'\*)|' +
+		'(?P<simple>' + cp_re + '))' + 
+		'(' + _slot_separator + _slot + ')?' +
+		_repo + ')(' + _use + ')?$', re.VERBOSE)
+
+	_atom_re_cache[eapi_attrs] = atom_re
+	return atom_re
 
 def cpvequal(cpv1, cpv2):
 	"""
@@ -1666,25 +1709,6 @@ _repo_separator = "::"
 _repo_name = r'[\w][\w-]*'
 _repo = r'(?:' + _repo_separator + '(' + _repo_name + ')' + ')?'
 
-_atom_re = {
-	"dots_disallowed_in_PN": re.compile('^(?P<without_use>(?:' +
-		'(?P<op>' + _op + _cpv['dots_disallowed_in_PN'] + ')|' +
-		'(?P<star>=' + _cpv['dots_disallowed_in_PN'] + r'\*)|' +
-		'(?P<simple>' + _cp['dots_disallowed_in_PN'] + '))' + 
-		'(' + _slot_separator + _slot + ')?' + _repo + ')(' + _use + ')?$', re.VERBOSE),
-	"dots_allowed_in_PN": re.compile('^(?P<without_use>(?:' +
-		'(?P<op>' + _op + _cpv['dots_allowed_in_PN'] + ')|' +
-		'(?P<star>=' + _cpv['dots_allowed_in_PN'] + r'\*)|' +
-		'(?P<simple>' + _cp['dots_allowed_in_PN'] + '))' + 
-		'(' + _slot_separator + _slot + ')?' + _repo + ')(' + _use + ')?$', re.VERBOSE),
-}
-
-def _get_atom_re(eapi):
-	if eapi is None or eapi_allows_dots_in_PN(eapi):
-		return _atom_re["dots_allowed_in_PN"]
-	else:
-		return _atom_re["dots_disallowed_in_PN"]
-	
 _extended_cat = r'[\w+*][\w+.*-]*'
 _extended_pkg = {
 	"dots_disallowed_in_PN": r'[\w+*][\w+*-]*?',
