@@ -56,7 +56,7 @@ if sys.hexversion >= 0x3000000:
 _internal_warnings = False
 
 _eapi_attrs = collections.namedtuple('_eapi_attrs',
-	'dots_in_PN')
+	'dots_in_PN repo_deps slot_deps strong_blocks use_deps use_dep_defaults')
 
 _eapi_attrs_cache = {}
 
@@ -66,7 +66,12 @@ def _get_eapi_attrs(eapi):
 		return eapi_attrs
 
 	eapi_attrs = _eapi_attrs(
-		dots_in_PN = (eapi is None or eapi_allows_dots_in_PN(eapi))
+		dots_in_PN = (eapi is None or eapi_allows_dots_in_PN(eapi)),
+		repo_deps = (eapi is None or eapi_has_repo_deps(eapi)),
+		slot_deps = (eapi is None or eapi_has_slot_deps(eapi)),
+		strong_blocks = (eapi is None or eapi_has_strong_blocks(eapi)),
+		use_deps = (eapi is None or eapi_has_use_deps(eapi)),
+		use_dep_defaults = (eapi is None or eapi_has_use_dep_defaults(eapi))
 	)
 
 	_eapi_attrs_cache[eapi] = eapi_attrs
@@ -74,8 +79,7 @@ def _get_eapi_attrs(eapi):
 
 _atom_re_cache = {}
 
-def _get_atom_re(eapi):
-	eapi_attrs = _get_eapi_attrs(eapi)
+def _get_atom_re(eapi_attrs):
 	atom_re = _atom_re_cache.get(eapi_attrs)
 	if atom_re is not None:
 		return atom_re
@@ -1132,11 +1136,12 @@ class Atom(_atom_base):
 
 		_atom_base.__init__(s)
 
-		atom_re = _get_atom_re(eapi)
+		eapi_attrs = _get_eapi_attrs(eapi)
+		atom_re = _get_atom_re(eapi_attrs)
 
 		if eapi is not None:
 			# Ignore allow_repo when eapi is specified.
-			allow_repo = eapi_has_repo_deps(eapi)
+			allow_repo = eapi_attrs.repo_deps
 		else:
 			if allow_repo is None:
 				allow_repo = True
@@ -1244,16 +1249,16 @@ class Atom(_atom_base):
 			if not isinstance(eapi, basestring):
 				raise TypeError('expected eapi argument of ' + \
 					'%s, got %s: %s' % (basestring, type(eapi), eapi,))
-			if self.slot and not eapi_has_slot_deps(eapi):
+			if self.slot and not eapi_attrs.slot_deps:
 				raise InvalidAtom(
 					_("Slot deps are not allowed in EAPI %s: '%s'") \
 					% (eapi, self), category='EAPI.incompatible')
 			if self.use:
-				if not eapi_has_use_deps(eapi):
+				if not eapi_attrs.use_deps:
 					raise InvalidAtom(
 						_("Use deps are not allowed in EAPI %s: '%s'") \
 						% (eapi, self), category='EAPI.incompatible')
-				elif not eapi_has_use_dep_defaults(eapi) and \
+				elif not eapi_attrs.use_dep_defaults and \
 					(self.use.missing_enabled or self.use.missing_disabled):
 					raise InvalidAtom(
 						_("Use dep defaults are not allowed in EAPI %s: '%s'") \
@@ -1276,7 +1281,7 @@ class Atom(_atom_base):
 							"conditional '%s' in atom '%s' is not in IUSE") \
 							% (flag, conditional_str % flag, self)
 						raise InvalidAtom(msg, category='IUSE.missing')
-			if self.blocker and self.blocker.overlap.forbid and not eapi_has_strong_blocks(eapi):
+			if self.blocker and self.blocker.overlap.forbid and not eapi_attrs.strong_blocks:
 				raise InvalidAtom(
 					_("Strong blocks are not allowed in EAPI %s: '%s'") \
 						% (eapi, self), category='EAPI.incompatible')
