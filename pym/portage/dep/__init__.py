@@ -86,7 +86,8 @@ def _get_eapi_attrs(eapi):
 _atom_re_cache = {}
 
 def _get_atom_re(eapi_attrs):
-	atom_re = _atom_re_cache.get(eapi_attrs)
+	cache_key = eapi_attrs.dots_in_PN
+	atom_re = _atom_re_cache.get(cache_key)
 	if atom_re is not None:
 		return atom_re
 
@@ -104,7 +105,7 @@ def _get_atom_re(eapi_attrs):
 		'(' + _slot_separator + _slot + ')?' +
 		_repo + ')(' + _use + ')?$', re.VERBOSE)
 
-	_atom_re_cache[eapi_attrs] = atom_re
+	_atom_re_cache[cache_key] = atom_re
 	return atom_re
 
 _usedep_re_cache = {}
@@ -117,7 +118,8 @@ def _get_usedep_re(eapi_attrs):
 	@return: A regular expression object that matches valid USE deps for the
 		given eapi.
 	"""
-	usedep_re = _usedep_re_cache.get(eapi_attrs)
+	cache_key = eapi_attrs.dots_in_use_flags
+	usedep_re = _usedep_re_cache.get(cache_key)
 	if usedep_re is not None:
 		return usedep_re
 
@@ -129,7 +131,7 @@ def _get_usedep_re(eapi_attrs):
 	usedep_re = re.compile(r'^(?P<prefix>[!-]?)(?P<flag>' +
 		_flag_re + r')(?P<default>(\(\+\)|\(\-\))?)(?P<suffix>[?=]?)$')
 
-	_usedep_re_cache[eapi_attrs] = usedep_re
+	_usedep_re_cache[cache_key] = usedep_re
 	return usedep_re
 
 _useflag_re_cache = {}
