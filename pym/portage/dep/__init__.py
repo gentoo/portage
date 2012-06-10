@@ -132,6 +132,34 @@ def _get_usedep_re(eapi_attrs):
 	_usedep_re_cache[eapi_attrs] = usedep_re
 	return usedep_re
 
+_useflag_re_cache = {}
+
+def _get_useflag_re(eapi):
+	"""
+	When eapi is None then validation is not as strict, since we want the
+	same to work for multiple EAPIs that may have slightly different rules.
+	@param eapi: The EAPI
+	@type eapi: String or None
+	@rtype: regular expression object
+	@return: A regular expression object that matches valid USE flags for the
+		given eapi.
+	"""
+	eapi_attrs = _get_eapi_attrs(eapi)
+	cache_key = eapi_attrs.dots_in_use_flags
+	useflag_re = _useflag_re_cache.get(cache_key)
+	if useflag_re is not None:
+		return useflag_re
+
+	if eapi_attrs.dots_in_use_flags:
+		flag_re = r'[A-Za-z0-9][A-Za-z0-9+_@.-]*'
+	else:
+		flag_re = r'[A-Za-z0-9][A-Za-z0-9+_@-]*'
+
+	useflag_re = re.compile(r'^' + flag_re + r'$')
+
+	_useflag_re_cache[cache_key] = useflag_re
+	return useflag_re
+
 def cpvequal(cpv1, cpv2):
 	"""
 	
@@ -1740,26 +1768,6 @@ def _get_atom_wildcard_re(eapi):
 		return _atom_wildcard_re["dots_allowed_in_PN"]
 	else:
 		return _atom_wildcard_re["dots_disallowed_in_PN"]
-
-_useflag_re = {
-	"dots_disallowed_in_use_flags": re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@-]*$'),
-	"dots_allowed_in_use_flags":    re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@.-]*$'),
-}
-
-def _get_useflag_re(eapi):
-	"""
-	When eapi is None then validation is not as strict, since we want the
-	same to work for multiple EAPIs that may have slightly different rules.
-	@param eapi: The EAPI
-	@type eapi: String or None
-	@rtype: regular expression object
-	@return: A regular expression object that matches valid USE flags for the
-		given eapi.
-	"""
-	if eapi is None or eapi_allows_dots_in_use_flags(eapi):
-		return _useflag_re["dots_allowed_in_use_flags"]
-	else:
-		return _useflag_re["dots_disallowed_in_use_flags"]
 
 def isvalidatom(atom, allow_blockers=False, allow_wildcard=False, allow_repo=False):
 	"""
