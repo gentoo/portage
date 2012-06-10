@@ -1,6 +1,7 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import re
 import sys
 from portage.cache import fs_template
 from portage.cache import cache_errors
@@ -117,7 +118,13 @@ class database(fs_template.FsBased):
 		for k, v in self._db_table.items():
 			if self._db_table_exists(v["table_name"]):
 				create_statement = self._db_table_get_create(v["table_name"])
-				if create_statement != v["create"]:
+				table_ok, missing_keys = self._db_validate_create_statement(create_statement)
+				if table_ok:
+					if missing_keys:
+						for k in sorted(missing_keys):
+							cursor.execute("ALTER TABLE %s ADD COLUMN %s TEXT" %
+								(self._db_table["packages"]["table_name"], k))
+				else:
 					writemsg(_("sqlite: dropping old table: %s\n") % v["table_name"])
 					cursor.execute("DROP TABLE %s" % v["table_name"])
 					cursor.execute(v["create"])
@@ -137,6 +144,37 @@ class database(fs_template.FsBased):
 		cursor.execute("SELECT sql FROM sqlite_master WHERE name=%s" % \
 			self._db_escape_string(table_name))
 		return cursor.fetchall()[0][0]
+
+	def _db_validate_create_statement(self, statement):
+		missing_keys = None
+		if statement == self._db_table["packages"]["create"]:
+			return True, missing_keys
+
+		m = re.match(r'^\s*CREATE\s*TABLE\s*%s\s*\(\s*%s\s*INTEGER\s*PRIMARY\s*KEY\s*AUTOINCREMENT\s*,(.*)\)\s*$' %
+			(self._db_table["packages"]["table_name"],
+			self._db_table["packages"]["package_id"]),
+			statement)
+		if m is None:
+			return False, missing_keys
+
+		unique_constraints = set([self._db_table["packages"]["package_key"]])
+		missing_keys = set(self._allowed_keys)
+		unique_re = re.compile(r'^\s*UNIQUE\s*\(\s*(\w*)\s*\)\s*$')
+		column_re = re.compile(r'^\s*(\w*)\s*TEXT\s*$')
+		for x in m.group(1).split(","):
+			m = column_re.match(x)
+			if m is not None:
+				missing_keys.discard(m.group(1))
+				continue
+			m = unique_re.match(x)
+			if m is not None:
+				unique_constraints.discard(m.group(1))
+				continue
+
+		if unique_constraints:
+			return False, missing_keys
+
+		return True, missing_keys
 
 	def _db_init_cache_size(self, cache_bytes):
 		cursor = self._db_cursor
