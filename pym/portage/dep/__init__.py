@@ -13,20 +13,6 @@ __all__ = [
 	'_repo_separator', '_slot_separator',
 ]
 
-# DEPEND SYNTAX:
-#
-# 'use?' only affects the immediately following word!
-# Nesting is the only legal way to form multiple '[!]use?' requirements.
-#
-# Where: 'a' and 'b' are use flags, and 'z' is a depend atom.
-#
-# "a? z"           -- If 'a' in [use], then b is valid.
-# "a? ( z )"       -- Syntax with parenthesis.
-# "a? b? z"        -- Deprecated.
-# "a? ( b? z )"    -- Valid
-# "a? ( b? ( z ) ) -- Valid
-#
-
 import re, sys
 import warnings
 from itertools import chain
