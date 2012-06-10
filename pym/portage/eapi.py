@@ -1,6 +1,8 @@
 # Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import collections
+
 def eapi_has_iuse_defaults(eapi):
 	return eapi != "0"
 
@@ -60,3 +62,31 @@ def eapi_allows_dots_in_PN(eapi):
 
 def eapi_allows_dots_in_use_flags(eapi):
 	return eapi in ("4-python",)
+
+_eapi_attrs = collections.namedtuple('_eapi_attrs',
+	'dots_in_PN dots_in_use_flags repo_deps slot_deps '
+	'strong_blocks use_deps use_dep_defaults')
+
+_eapi_attrs_cache = {}
+
+def _get_eapi_attrs(eapi):
+	"""
+	When eapi is None then validation is not as strict, since we want the
+	same to work for multiple EAPIs that may have slightly different rules.
+	"""
+	eapi_attrs = _eapi_attrs_cache.get(eapi)
+	if eapi_attrs is not None:
+		return eapi_attrs
+
+	eapi_attrs = _eapi_attrs(
+		dots_in_PN = (eapi is None or eapi_allows_dots_in_PN(eapi)),
+		dots_in_use_flags = (eapi is None or eapi_allows_dots_in_use_flags(eapi)),
+		repo_deps = (eapi is None or eapi_has_repo_deps(eapi)),
+		slot_deps = (eapi is None or eapi_has_slot_deps(eapi)),
+		strong_blocks = (eapi is None or eapi_has_strong_blocks(eapi)),
+		use_deps = (eapi is None or eapi_has_use_deps(eapi)),
+		use_dep_defaults = (eapi is None or eapi_has_use_dep_defaults(eapi))
+	)
+
+	_eapi_attrs_cache[eapi] = eapi_attrs
+	return eapi_attrs
