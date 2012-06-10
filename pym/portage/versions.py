@@ -23,7 +23,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util:cmp_sort_key',
 )
 from portage import _unicode_decode
-from portage.eapi import eapi_allows_dots_in_PN
+from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidData
 from portage.localization import _
 
@@ -64,6 +64,24 @@ ver_regexp = re.compile("^" + _vr + "$")
 suffix_regexp = re.compile("^(alpha|beta|rc|pre|p)(\\d*)$")
 suffix_value = {"pre": -2, "p": 0, "alpha": -4, "beta": -3, "rc": -1}
 endversion_keys = ["pre", "p", "alpha", "beta", "rc"]
+
+_pv_re_cache = {}
+
+def _get_pv_re(eapi_attrs):
+	cache_key = eapi_attrs.dots_in_PN
+	pv_re = _pv_re_cache.get(cache_key)
+	if pv_re is not None:
+		return pv_re
+
+	if eapi_attrs.dots_in_PN:
+		pv_re = _pv['dots_allowed_in_PN']
+	else:
+		pv_re = _pv['dots_disallowed_in_PN']
+
+	pv_re = re.compile('^' + pv_re + '$', re.VERBOSE)
+
+	_pv_re_cache[cache_key] = pv_re
+	return pv_re
 
 def ververify(myver, silent=1):
 	if ver_regexp.match(myver):
@@ -251,17 +269,6 @@ def pkgcmp(pkg1, pkg2):
 		return None
 	return vercmp("-".join(pkg1[1:]), "-".join(pkg2[1:]))
 
-_pv_re = {
-	"dots_disallowed_in_PN": re.compile('^' + _pv['dots_disallowed_in_PN'] + '$', re.VERBOSE),
-	"dots_allowed_in_PN":    re.compile('^' + _pv['dots_allowed_in_PN']    + '$', re.VERBOSE),
-}
-
-def _get_pv_re(eapi):
-	if eapi is None or eapi_allows_dots_in_PN(eapi):
-		return _pv_re["dots_allowed_in_PN"]
-	else:
-		return _pv_re["dots_disallowed_in_PN"]
-
 def _pkgsplit(mypkg, eapi=None):
 	"""
 	@param mypkg: pv
@@ -269,7 +276,7 @@ def _pkgsplit(mypkg, eapi=None):
 	1. None if input is invalid.
 	2. (pn, ver, rev) if input is pv
 	"""
-	m = _get_pv_re(eapi).match(mypkg)
+	m = _get_pv_re(_get_eapi_attrs(eapi)).match(mypkg)
 	if m is None:
 		return None
 
