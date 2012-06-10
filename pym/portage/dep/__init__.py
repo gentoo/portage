@@ -37,7 +37,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage import _unicode_decode
-from portage.eapi import eapi_has_src_uri_arrows, _get_eapi_attrs
+from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString
 from portage.localization import _
 from portage.versions import catpkgsplit, catsplit, \
@@ -438,6 +438,7 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 	if matchall and matchnone:
 		raise ValueError("portage.dep.use_reduce: 'matchall' and 'matchnone' are mutually exclusive")
 
+	eapi_attrs = _get_eapi_attrs(eapi)
 	useflag_re = _get_useflag_re(eapi)
 
 	def is_active(conditional):
@@ -653,7 +654,7 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 			if not is_src_uri:
 				raise InvalidDependString(
 					_("SRC_URI arrow are only allowed in SRC_URI: token %s") % (pos+1,))
-			if eapi is None or not eapi_has_src_uri_arrows(eapi):
+			if not eapi_attrs.src_uri_arrows:
 				raise InvalidDependString(
 					_("SRC_URI arrow not allowed in EAPI %s: token %s") % (eapi, pos+1))
 			need_simple_token = True
