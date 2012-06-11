@@ -12,7 +12,8 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dbapi.dep_expand:dep_expand',
 	'portage.dbapi._MergeProcess:MergeProcess',
 	'portage.dep:dep_getkey,isjustname,match_from_list,' + \
-	 	'use_reduce,_slot_re',
+	 	'use_reduce,_get_slot_re',
+	'portage.eapi:_get_eapi_attrs',
 	'portage.elog:collect_ebuild_messages,collect_messages,' + \
 		'elog_process,_merge_logentries',
 	'portage.locks:lockdir,unlockdir,lockfile,unlockfile',
@@ -687,7 +688,8 @@ class vardbapi(dbapi):
 					(mydir_mtime, cache_data)
 				self._aux_cache["modified"].add(mycpv)
 
-		if _slot_re.match(mydata['SLOT']) is None:
+		eapi_attrs = _get_eapi_attrs(mydata['EAPI'])
+		if _get_slot_re(eapi_attrs).match(mydata['SLOT']) is None:
 			# Empty or invalid slot triggers InvalidAtom exceptions when
 			# generating slot atoms for packages, so translate it to '0' here.
 			mydata['SLOT'] = _unicode_decode('0')

@@ -8,7 +8,7 @@ from portage import _encodings, _unicode_decode, _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.const import EBUILD_PHASES
 from portage.dep import Atom, check_required_use, use_reduce, \
-	paren_enclose, _slot_re, _slot_separator, _repo_separator
+	paren_enclose, _get_slot_re, _slot_separator, _repo_separator
 from portage.versions import _pkg_str, _unknown_repo
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidDependString
@@ -51,7 +51,7 @@ class Package(Task):
 			self.metadata['CHOST'] = self.root_config.settings.get('CHOST', '')
 		eapi_attrs = _get_eapi_attrs(self.metadata["EAPI"])
 		slot = self.slot
-		if _slot_re.match(slot) is None:
+		if _get_slot_re(eapi_attrs).match(slot) is None:
 			self._invalid_metadata('SLOT.invalid',
 				"SLOT: invalid value: '%s'" % slot)
 			# Avoid an InvalidAtom exception when creating slot_atom.

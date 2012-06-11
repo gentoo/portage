@@ -55,6 +55,9 @@ _repo = r'(?:' + _repo_separator + '(' + _repo_name + ')' + ')?'
 
 _extended_cat = r'[\w+*][\w+.*-]*'
 
+def _get_slot_re(eapi_attrs):
+	return _slot_re
+
 _atom_re_cache = {}
 
 def _get_atom_re(eapi_attrs):
