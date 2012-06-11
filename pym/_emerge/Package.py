@@ -10,7 +10,7 @@ from portage.const import EBUILD_PHASES
 from portage.dep import Atom, check_required_use, use_reduce, \
 	paren_enclose, _slot_re, _slot_separator, _repo_separator
 from portage.versions import _pkg_str, _unknown_repo
-from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
+from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidDependString
 from _emerge.Task import Task
 
@@ -49,6 +49,7 @@ class Package(Task):
 		self.metadata = _PackageMetadataWrapper(self, self._raw_metadata)
 		if not self.built:
 			self.metadata['CHOST'] = self.root_config.settings.get('CHOST', '')
+		eapi_attrs = _get_eapi_attrs(self.metadata["EAPI"])
 		slot = self.slot
 		if _slot_re.match(slot) is None:
 			self._invalid_metadata('SLOT.invalid',
@@ -62,7 +63,7 @@ class Package(Task):
 		# sync metadata with validated repo (may be UNKNOWN_REPO)
 		self.metadata['repository'] = self.cpv.repo
 		if (self.iuse.enabled or self.iuse.disabled) and \
-			not eapi_has_iuse_defaults(self.metadata["EAPI"]):
+			not eapi_attrs.iuse_defaults:
 			if not self.installed:
 				self._invalid_metadata('EAPI.incompatible',
 					"IUSE contains defaults, but EAPI doesn't allow them")
@@ -194,7 +195,7 @@ class Package(Task):
 		k = 'REQUIRED_USE'
 		v = self.metadata.get(k)
 		if v:
-			if not eapi_has_required_use(eapi):
+			if not _get_eapi_attrs(eapi).required_use:
 				self._invalid_metadata('EAPI.incompatible',
 					"REQUIRED_USE set, but EAPI='%s' doesn't allow it" % eapi)
 			else:

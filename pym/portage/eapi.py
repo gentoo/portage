@@ -64,7 +64,8 @@ def eapi_allows_dots_in_use_flags(eapi):
 	return eapi in ("4-python",)
 
 _eapi_attrs = collections.namedtuple('_eapi_attrs',
-	'dots_in_PN dots_in_use_flags repo_deps slot_deps '
+	'dots_in_PN dots_in_use_flags iuse_defaults '
+	'repo_deps required_use slot_deps '
 	'src_uri_arrows strong_blocks use_deps use_dep_defaults')
 
 _eapi_attrs_cache = {}
@@ -81,7 +82,9 @@ def _get_eapi_attrs(eapi):
 	eapi_attrs = _eapi_attrs(
 		dots_in_PN = (eapi is None or eapi_allows_dots_in_PN(eapi)),
 		dots_in_use_flags = (eapi is None or eapi_allows_dots_in_use_flags(eapi)),
+		iuse_defaults = (eapi is None or eapi_has_iuse_defaults(eapi)),
 		repo_deps = (eapi is None or eapi_has_repo_deps(eapi)),
+		required_use = (eapi is None or eapi_has_required_use(eapi)),
 		slot_deps = (eapi is None or eapi_has_slot_deps(eapi)),
 		src_uri_arrows = (eapi is None or eapi_has_src_uri_arrows(eapi)),
 		strong_blocks = (eapi is None or eapi_has_strong_blocks(eapi)),
