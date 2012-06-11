@@ -8,7 +8,7 @@ from portage import _encodings, _unicode_decode, _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.const import EBUILD_PHASES
 from portage.dep import Atom, check_required_use, use_reduce, \
-	paren_enclose, _get_slot_re, _slot_separator, _repo_separator
+	paren_enclose, _slot_separator, _repo_separator
 from portage.versions import _pkg_str, _unknown_repo
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidDependString
@@ -50,16 +50,14 @@ class Package(Task):
 		if not self.built:
 			self.metadata['CHOST'] = self.root_config.settings.get('CHOST', '')
 		eapi_attrs = _get_eapi_attrs(self.metadata["EAPI"])
-		slot = self.slot
-		if _get_slot_re(eapi_attrs).match(slot) is None:
+		self.cpv = _pkg_str(self.cpv, slot=self.metadata["SLOT"],
+			repo=self.metadata.get('repository', ''),
+			eapi=self.metadata["EAPI"])
+		if hasattr(self.cpv, 'slot_invalid'):
 			self._invalid_metadata('SLOT.invalid',
-				"SLOT: invalid value: '%s'" % slot)
-			# Avoid an InvalidAtom exception when creating slot_atom.
-			# This package instance will be masked due to empty SLOT.
-			slot = '0'
-		self.cpv = _pkg_str(self.cpv, slot=slot,
-			repo=self.metadata.get('repository', ''))
+				"SLOT: invalid value: '%s'" % self.metadata["SLOT"])
 		self.cp = self.cpv.cp
+		self.slot = self.cpv.slot
 		# sync metadata with validated repo (may be UNKNOWN_REPO)
 		self.metadata['repository'] = self.cpv.repo
 		if (self.iuse.enabled or self.iuse.disabled) and \
@@ -67,7 +65,7 @@ class Package(Task):
 			if not self.installed:
 				self._invalid_metadata('EAPI.incompatible',
 					"IUSE contains defaults, but EAPI doesn't allow them")
-		self.slot_atom = portage.dep.Atom("%s%s%s" % (self.cp, _slot_separator, slot))
+		self.slot_atom = Atom("%s%s%s" % (self.cp, _slot_separator, self.slot))
 		self.category, self.pf = portage.catsplit(self.cpv)
 		self.cpv_split = self.cpv.cpv_split
 		self.version = self.cpv.version
@@ -588,7 +586,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 
 	__slots__ = ("_pkg",)
 	_wrapped_keys = frozenset(
-		["COUNTER", "INHERITED", "IUSE", "SLOT", "USE", "_mtime_"])
+		["COUNTER", "INHERITED", "IUSE", "USE", "_mtime_"])
 	_use_conditional_keys = frozenset(
 		['LICENSE', 'PROPERTIES', 'PROVIDE', 'RESTRICT',])
 
@@ -660,9 +658,6 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 	def _set_iuse(self, k, v):
 		self._pkg.iuse = self._pkg._iuse(
 			v.split(), self._pkg.root_config.settings._iuse_implicit_match)
-
-	def _set_slot(self, k, v):
-		self._pkg.slot = v
 
 	def _set_counter(self, k, v):
 		if isinstance(v, basestring):

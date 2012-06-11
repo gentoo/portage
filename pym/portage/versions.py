@@ -19,6 +19,7 @@ else:
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.dep:_get_slot_re',
 	'portage.repository.config:_gen_valid_repo',
 	'portage.util:cmp_sort_key',
 )
@@ -355,7 +356,14 @@ class _pkg_str(_unicode):
 		# for match_from_list introspection
 		self.__dict__['cpv'] = self
 		if slot is not None:
-			self.__dict__['slot'] = slot
+			slot_match = _get_slot_re(_get_eapi_attrs(eapi)).match(slot)
+			if slot_match is None:
+				# Avoid an InvalidAtom exception when creating SLOT atoms
+				self.__dict__['slot'] = '0'
+				self.__dict__['slot_invalid'] = slot
+			else:
+				self.__dict__['slot'] = slot
+
 		if repo is not None:
 			repo = _gen_valid_repo(repo)
 			if not repo:
