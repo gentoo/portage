@@ -2543,6 +2543,11 @@ else:
 			else:
 				myupdates.append(changelog_path)
 
+			if not options.pretend:
+				# regenerate Manifest for modified ChangeLog (bug #420735)
+				repoman_settings["O"] = checkdir
+				digestgen(mysettings=repoman_settings, myportdb=portdb)
+
 	if myautoadd:
 		print(">>> Auto-Adding missing Manifest/ChangeLog file(s)...")
 		add_cmd = [vcs, "add"]
