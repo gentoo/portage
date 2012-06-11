@@ -10,7 +10,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dep:dep_getkey,isjustname,match_from_list',
 	'portage.output:EOutput,colorize',
 	'portage.locks:lockfile,unlockfile',
-	'portage.package.ebuild.doebuild:_vdb_use_conditional_atoms',
 	'portage.package.ebuild.fetch:_check_distfile,_hide_url_passwd',
 	'portage.update:update_dbentries',
 	'portage.util:atomic_ofstream,ensure_dirs,normalize_path,' + \

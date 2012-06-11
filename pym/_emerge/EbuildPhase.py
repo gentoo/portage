@@ -27,9 +27,9 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.elog:messages@elog_messages',
 	'portage.package.ebuild.doebuild:_check_build_log,' + \
 		'_post_phase_cmds,_post_phase_userpriv_perms,' + \
-		'_post_src_install_chost_fix,' + \
 		'_post_src_install_soname_symlinks,' + \
 		'_post_src_install_uid_fix,_postinst_bsdflags,' + \
+		'_post_src_install_write_metadata,' + \
 		'_preinst_bsdflags'
 )
 from portage import os
@@ -215,7 +215,7 @@ class EbuildPhase(CompositeTask):
 
 		if self.phase == "install":
 			out = io.StringIO()
-			_post_src_install_chost_fix(settings)
+			_post_src_install_write_metadata(settings)
 			_post_src_install_uid_fix(settings, out)
 			msg = out.getvalue()
 			if msg:

@@ -1623,7 +1623,7 @@ def _check_build_log(mysettings, out=None):
 	if f_real is not None:
 		f_real.close()
 
-def _post_src_install_chost_fix(settings):
+def _post_src_install_write_metadata(settings):
 	"""
 	It's possible that the ebuild has changed the
 	CHOST variable, so revert it to the initial
@@ -1646,9 +1646,44 @@ def _post_src_install_chost_fix(settings):
 			if v is not None:
 				write_atomic(os.path.join(build_info_dir, k), v + '\n')
 
+	with io.open(_unicode_encode(os.path.join(build_info_dir,
+		'BUILD_TIME'), encoding=_encodings['fs'], errors='strict'),
+		mode='w', encoding=_encodings['repo.content'],
+		errors='strict') as f:
+		f.write(_unicode_decode("%.0f\n" % (time.time(),)))
+
+	use = frozenset(settings['PORTAGE_USE'].split())
+	for k in _vdb_use_conditional_keys:
+		v = settings.configdict['pkg'].get(k)
+		filename = os.path.join(build_info_dir, k)
+		if v is None:
+			try:
+				os.unlink(filename)
+			except OSError:
+				pass
+			continue
+
+		if k.endswith('DEPEND'):
+			token_class = Atom
+		else:
+			token_class = None
+
+		v = use_reduce(v, uselist=use, token_class=token_class)
+		v = paren_enclose(v)
+		if not v:
+			try:
+				os.unlink(filename)
+			except OSError:
+				pass
+			continue
+		with io.open(_unicode_encode(os.path.join(build_info_dir,
+			k), encoding=_encodings['fs'], errors='strict'),
+			mode='w', encoding=_encodings['repo.content'],
+			errors='strict') as f:
+			f.write(_unicode_decode(v + '\n'))
+
 _vdb_use_conditional_keys = ('DEPEND', 'LICENSE', 'PDEPEND',
 	'PROPERTIES', 'PROVIDE', 'RDEPEND', 'RESTRICT',)
-_vdb_use_conditional_atoms = frozenset(['DEPEND', 'PDEPEND', 'RDEPEND'])
 
 def _preinst_bsdflags(mysettings):
 	if bsd_chflags:
@@ -1816,44 +1851,6 @@ def _post_src_install_uid_fix(mysettings, out):
 		errors='strict')
 	f.write(_unicode_decode(str(size) + '\n'))
 	f.close()
-
-	f = io.open(_unicode_encode(os.path.join(build_info_dir,
-		'BUILD_TIME'), encoding=_encodings['fs'], errors='strict'),
-		mode='w', encoding=_encodings['repo.content'],
-		errors='strict')
-	f.write(_unicode_decode("%.0f\n" % (time.time(),)))
-	f.close()
-
-	use = frozenset(mysettings['PORTAGE_USE'].split())
-	for k in _vdb_use_conditional_keys:
-		v = mysettings.configdict['pkg'].get(k)
-		filename = os.path.join(build_info_dir, k)
-		if v is None:
-			try:
-				os.unlink(filename)
-			except OSError:
-				pass
-			continue
-
-		if k.endswith('DEPEND'):
-			token_class = Atom
-		else:
-			token_class = None
-
-		v = use_reduce(v, uselist=use, token_class=token_class)
-		v = paren_enclose(v)
-		if not v:
-			try:
-				os.unlink(filename)
-			except OSError:
-				pass
-			continue
-		f = io.open(_unicode_encode(os.path.join(build_info_dir,
-			k), encoding=_encodings['fs'], errors='strict'),
-			mode='w', encoding=_encodings['repo.content'],
-			errors='strict')
-		f.write(_unicode_decode(v + '\n'))
-		f.close()
 
 	_reapply_bsdflags_to_image(mysettings)
 
