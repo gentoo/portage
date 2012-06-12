@@ -1,10 +1,10 @@
-# Copyright 2006, 2010 Gentoo Foundation
+# Copyright 2006-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
 from portage.tests import TestCase
 from portage.dep import Atom, match_from_list, _repo_separator
-from portage.versions import catpkgsplit
+from portage.versions import catpkgsplit, _pkg_str
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -16,7 +16,7 @@ class Package(object):
 	def __init__(self, atom):
 		atom = Atom(atom, allow_repo=True)
 		self.cp = atom.cp
-		self.cpv = atom.cpv
+		self.cpv = _pkg_str(atom.cpv, slot=(atom.slot or '0'), repo=atom.repo)
 		self.cpv_split = catpkgsplit(self.cpv)
 		self.slot = atom.slot
 		self.repo = atom.repo
