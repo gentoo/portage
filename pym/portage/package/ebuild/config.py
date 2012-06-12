@@ -328,7 +328,7 @@ class config(object):
 			# lead to unexpected results.
 
 			env_d = getconfig(os.path.join(eroot, "etc", "profile.env"),
-				expand=False) or {}
+				tolerant=tolerant, expand=False) or {}
 			expand_map = env_d.copy()
 			self._expand_map = expand_map
 
@@ -336,7 +336,8 @@ class config(object):
 			expand_map["EPREFIX"] = eprefix
 
 			make_globals = getconfig(os.path.join(
-				self.global_config_path, 'make.globals'), expand=expand_map)
+				self.global_config_path, 'make.globals'),
+				tolerant=tolerant, expand=expand_map)
 			if make_globals is None:
 				make_globals = {}
 
@@ -463,7 +464,8 @@ class config(object):
 			mygcfg = {}
 			if self.profiles:
 				mygcfg_dlists = [getconfig(os.path.join(x, "make.defaults"),
-					expand=expand_map) for x in self.profiles]
+					tolerant=tolerant, expand=expand_map)
+					for x in self.profiles]
 				self._make_defaults = mygcfg_dlists
 				mygcfg = stack_dicts(mygcfg_dlists,
 					incrementals=self.incrementals)
@@ -580,7 +582,7 @@ class config(object):
 			self._repo_make_defaults = {}
 			for repo in self.repositories.repos_with_profiles():
 				d = getconfig(os.path.join(repo.location, "profiles", "make.defaults"),
-					expand=self.configdict["globals"].copy()) or {}
+					tolerant=tolerant, expand=self.configdict["globals"].copy()) or {}
 				if d:
 					for k in chain(self._env_blacklist,
 						profile_only_variables, self._global_only_vars):
@@ -1868,7 +1870,8 @@ class config(object):
 		"""Reload things like /etc/profile.env that can change during runtime."""
 		env_d_filename = os.path.join(self["EROOT"], "etc", "profile.env")
 		self.configdict["env.d"].clear()
-		env_d = getconfig(env_d_filename, expand=False)
+		env_d = getconfig(env_d_filename,
+			tolerant=self._tolerant, expand=False)
 		if env_d:
 			# env_d will be None if profile.env doesn't exist.
 			for k in self._env_d_blacklist:
