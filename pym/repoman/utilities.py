@@ -807,7 +807,9 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 		for line in textwrap.wrap(msg, 80, \
 				initial_indent='  ', subsequent_indent='  '):
 			clnew_lines.append(_unicode_decode('%s\n' % line))
-		clnew_lines.append(_unicode_decode('\n'))
+		# Don't append a trailing newline if the file is new.
+		if clold_file is not None:
+			clnew_lines.append(_unicode_decode('\n'))
 
 		f = io.open(f, mode='w', encoding=_encodings['repo.content'],
 			errors='backslashreplace')
@@ -839,9 +841,12 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 			# in the unified_diff call below.
 			clold_lines = old_header_lines + clold_lines
 
-			for line in clold_file:
-				f.write(line)
+			# Trim any trailing newlines.
+			lines = clold_file.readlines()
 			clold_file.close()
+			while lines and lines[-1] == '\n':
+				del lines[-1]
+			f.writelines(lines)
 		f.close()
 
 		# show diff

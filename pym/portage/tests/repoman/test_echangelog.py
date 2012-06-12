@@ -83,6 +83,7 @@ class RepomanEchangelogTestCase(TestCase):
 		UpdateChangeLog(self.pkgdir, self.user, 'test!', self.skel_changelog, self.cat, self.pkg, quiet=True)
 		actual_cl = self._readlines(self.changelog)
 		self.assertEqual(actual_cl[0], self.header_pkg)
+		self.assertNotEqual(actual_cl[-1], '\n')
 
 	def testExistingGoodHeader(self):
 		# Test existing ChangeLog (correct values)
@@ -99,3 +100,11 @@ class RepomanEchangelogTestCase(TestCase):
 		UpdateChangeLog(self.pkgdir, self.user, 'test!', self.skel_changelog, self.cat, self.pkg, quiet=True)
 		actual_cl = self._readlines(self.changelog)
 		self.assertEqual(actual_cl[0], self.header_pkg)
+
+	def testTrailingNewlines(self):
+		# Make sure trailing newlines get chomped.
+		self._writelines(self.changelog, ['#\n', 'foo\n', '\n', 'bar\n', '\n', '\n'])
+
+		UpdateChangeLog(self.pkgdir, self.user, 'test!', self.skel_changelog, self.cat, self.pkg, quiet=True)
+		actual_cl = self._readlines(self.changelog)
+		self.assertNotEqual(actual_cl[-1], '\n')
