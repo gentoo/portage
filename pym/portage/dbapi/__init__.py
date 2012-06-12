@@ -16,6 +16,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 
 from portage import os
 from portage import auxdbkeys
+from portage.exception import InvalidData
 from portage.localization import _
 
 class dbapi(object):
@@ -24,6 +25,8 @@ class dbapi(object):
 	_use_mutable = False
 	_known_keys = frozenset(x for x in auxdbkeys
 		if not x.startswith("UNUSED_0"))
+	_pkg_str_aux_keys = ("EAPI", "SLOT", "repository")
+
 	def __init__(self):
 		pass
 
@@ -125,29 +128,53 @@ class dbapi(object):
 
 	def _iter_match(self, atom, cpv_iter):
 		cpv_iter = iter(match_from_list(atom, cpv_iter))
+		if atom.repo:
+			cpv_iter = self._iter_match_repo(atom, cpv_iter)
 		if atom.slot:
 			cpv_iter = self._iter_match_slot(atom, cpv_iter)
 		if atom.unevaluated_atom.use:
 			cpv_iter = self._iter_match_use(atom, cpv_iter)
-		if atom.repo:
-			cpv_iter = self._iter_match_repo(atom, cpv_iter)
 		return cpv_iter
+
+	def _pkg_str(self, cpv, repo):
+		"""
+		This is used to contruct _pkg_str instances on-demand during
+		matching. If cpv is a _pkg_str instance with slot attribute,
+		then simply return it. Otherwise, fetch metadata and construct
+		a _pkg_str instance. This may raise KeyError or InvalidData.
+		"""
+		try:
+			cpv.slot
+		except AttributeError:
+			pass
+		else:
+			return cpv
+
+		metadata = dict(zip(self._pkg_str_aux_keys,
+			self.aux_get(cpv, self._pkg_str_aux_keys, myrepo=repo)))
+
+		return _pkg_str(cpv, slot=metadata["SLOT"],
+			repo=metadata["repository"], eapi=metadata["EAPI"])
 
 	def _iter_match_repo(self, atom, cpv_iter):
 		for cpv in cpv_iter:
 			try:
-				if self.aux_get(cpv, ["repository"], myrepo=atom.repo)[0] == atom.repo:
-					yield cpv
-			except KeyError:
-				continue
+				pkg_str = self._pkg_str(cpv, atom.repo)
+			except (KeyError, InvalidData):
+				pass
+			else:
+				if pkg_str.repo == atom.repo:
+					yield pkg_str
 
 	def _iter_match_slot(self, atom, cpv_iter):
 		for cpv in cpv_iter:
 			try:
-				if self.aux_get(cpv, ["SLOT"], myrepo=atom.repo)[0] == atom.slot:
-					yield cpv
-			except KeyError:
-				continue
+				pkg_str = self._pkg_str(cpv, atom.repo)
+			except (KeyError, InvalidData):
+				pass
+			else:
+				if pkg_str.slot == atom.slot:
+					yield pkg_str
 
 	def _iter_match_use(self, atom, cpv_iter):
 		"""

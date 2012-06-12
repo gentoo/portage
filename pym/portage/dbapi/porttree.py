@@ -22,7 +22,8 @@ from portage.cache.cache_errors import CacheError
 from portage.cache.mappings import Mapping
 from portage.dbapi import dbapi
 from portage.exception import PortageException, \
-	FileNotFound, InvalidAtom, InvalidDependString, InvalidPackageName
+	FileNotFound, InvalidAtom, InvalidData, \
+	InvalidDependString, InvalidPackageName
 from portage.localization import _
 
 from portage import eclass_cache, \
@@ -825,18 +826,24 @@ class portdbapi(dbapi):
 						# ebuild not in this repo, or masked by corruption
 						continue
 
-					if visibility_filter and not self._visible(cpv, metadata):
+					try:
+						pkg_str = _pkg_str(cpv, slot=metadata["SLOT"],
+							repo=metadata["repository"], eapi=metadata["EAPI"])
+					except InvalidData:
+						continue
+
+					if visibility_filter and not self._visible(pkg_str, metadata):
 						continue
 
 					if mydep.slot is not None and \
-						mydep.slot != metadata["SLOT"]:
+						mydep.slot != pkg_str.slot:
 						continue
 
 					if mydep.unevaluated_atom.use is not None and \
-						not self._match_use(mydep, cpv, metadata):
+						not self._match_use(mydep, pkg_str, metadata):
 						continue
 
-					myval.append(cpv)
+					myval.append(pkg_str)
 					# only yield a given cpv once
 					break
 
