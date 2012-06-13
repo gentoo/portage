@@ -61,7 +61,7 @@ class RepomanEchangelogTestCase(TestCase):
 		# Test missing ChangeLog, but with empty skel (i.e. do nothing).
 		UpdateChangeLog(self.pkgdir, self.user, 'test!', '/does/not/exist', self.cat, self.pkg, quiet=True)
 		actual_cl = self._readlines(self.changelog)
-		self.assertGreater(len(actual_cl[0]), 0)
+		self.assertTrue(len(actual_cl[0]) > 0)
 
 	def testEmptyChangeLog(self):
 		# Make sure we do the right thing with a 0-byte ChangeLog
