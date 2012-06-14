@@ -285,6 +285,9 @@ class AutounmaskTestCase(TestCase):
 			"dev-libs/E-1": { "LICENSE": "TEST" },
 			"dev-libs/E-2": { "LICENSE": "TEST" },
 			"dev-libs/F-1": { "DEPEND": "=dev-libs/E-1", "LICENSE": "TEST" },
+
+			"dev-java/sun-jdk-1.6.0.32": { "LICENSE": "TEST", "KEYWORDS": "~x86" },
+			"dev-java/sun-jdk-1.6.0.31": { "LICENSE": "TEST", "KEYWORDS": "x86" },
 			}
 
 		test_cases = (
@@ -316,6 +319,14 @@ class AutounmaskTestCase(TestCase):
 					success = False,
 					mergelist = ["dev-libs/E-1", "dev-libs/F-1", "dev-libs/D-1"],
 					license_changes = { "dev-libs/D-1": set(["TEST"]), "dev-libs/E-1": set(["TEST"]), "dev-libs/E-2": set(["TEST"]), "dev-libs/F-1": set(["TEST"]) }),
+
+				#Test license only for bug #420847
+				#ResolverPlaygroundTestCase(
+					#["dev-java/sun-jdk"],
+					#options = {"--autounmask": True},
+					#success = False,
+					#mergelist = ["dev-java/sun-jdk-1.6.0.31"],
+					#license_changes = { "dev-java/sun-jdk-1.6.0.31": set(["TEST"]) }),
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds)
