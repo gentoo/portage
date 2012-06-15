@@ -2180,8 +2180,9 @@ class dblink(object):
 							is_owned = True
 							break
 
-					if file_type == "sym" and is_owned and \
-						(islink and statobj and stat.S_ISDIR(statobj.st_mode)):
+					if is_owned and islink and \
+						file_type in ("sym", "dir") and \
+						statobj and stat.S_ISDIR(statobj.st_mode):
 						# A new instance of this package claims the file, so
 						# don't unmerge it. If the file is symlink to a
 						# directory and the unmerging package installed it as
@@ -2246,12 +2247,12 @@ class dblink(object):
 					show_unmerge("---", unmerge_desc["!mtime"], file_type, obj)
 					continue
 
-				if pkgfiles[objkey][0] == "dir":
+				if file_type == "dir" and not islink:
 					if lstatobj is None or not stat.S_ISDIR(lstatobj.st_mode):
 						show_unmerge("---", unmerge_desc["!dir"], file_type, obj)
 						continue
 					mydirs.add((obj, (lstatobj.st_dev, lstatobj.st_ino)))
-				elif pkgfiles[objkey][0] == "sym":
+				elif file_type == "sym" or (file_type == "dir" and islink):
 					if not islink:
 						show_unmerge("---", unmerge_desc["!sym"], file_type, obj)
 						continue
