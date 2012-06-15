@@ -321,12 +321,12 @@ class AutounmaskTestCase(TestCase):
 					license_changes = { "dev-libs/D-1": set(["TEST"]), "dev-libs/E-1": set(["TEST"]), "dev-libs/E-2": set(["TEST"]), "dev-libs/F-1": set(["TEST"]) }),
 
 				#Test license only for bug #420847
-				#ResolverPlaygroundTestCase(
-					#["dev-java/sun-jdk"],
-					#options = {"--autounmask": True},
-					#success = False,
-					#mergelist = ["dev-java/sun-jdk-1.6.0.31"],
-					#license_changes = { "dev-java/sun-jdk-1.6.0.31": set(["TEST"]) }),
+				ResolverPlaygroundTestCase(
+					["dev-java/sun-jdk"],
+					options = {"--autounmask": True},
+					success = False,
+					mergelist = ["dev-java/sun-jdk-1.6.0.31"],
+					license_changes = { "dev-java/sun-jdk-1.6.0.31": set(["TEST"]) }),
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds)

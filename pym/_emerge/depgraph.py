@@ -3522,7 +3522,8 @@ class depgraph(object):
 		"""
 		Iterate over the different allowed things to unmask.
 
-		1. USE
+		0. USE
+		1. USE + license
 		2. USE + ~arch + license
 		3. USE + ~arch + license + missing keywords
 		4. USE + ~arch + license + masks
@@ -3541,8 +3542,12 @@ class depgraph(object):
 		autounmask_level = self._AutounmaskLevel()
 
 		autounmask_level.allow_use_changes = True
+		yield autounmask_level
 
-		for only_use_changes in (True, False):
+		autounmask_level.allow_license_changes = True
+		yield autounmask_level
+
+		for only_use_changes in (False,):
 
 			autounmask_level.allow_unstable_keywords = (not only_use_changes)
 			autounmask_level.allow_license_changes = (not only_use_changes)
