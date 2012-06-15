@@ -490,7 +490,10 @@ suspect_rdepend = frozenset([
 	"dev-util/gtk-doc-am",
 	"dev-util/intltool",
 	"dev-util/jam",
+	"dev-util/pkg-config-lite",
+	"dev-util/pkgconf",
 	"dev-util/pkgconfig",
+	"dev-util/pkgconfig-openbsd",
 	"dev-util/scons",
 	"dev-util/unifdef",
 	"dev-util/yacc",
@@ -505,6 +508,7 @@ suspect_rdepend = frozenset([
 	"sys-devel/m4",
 	"sys-devel/pmake",
 	"virtual/linux-sources",
+	"virtual/pkgconfig",
 	"x11-misc/bdftopcf",
 	"x11-misc/imake",
 ])
