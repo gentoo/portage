@@ -3465,7 +3465,7 @@ class depgraph(object):
 						return
 
 	def _select_pkg_highest_available(self, root, atom, onlydeps=False):
-		cache_key = (root, atom, atom.unevaluated_atom, onlydeps)
+		cache_key = (root, atom, atom.unevaluated_atom, onlydeps, self._dynamic_config._autounmask)
 		ret = self._dynamic_config._highest_pkg_cache.get(cache_key)
 		if ret is not None:
 			pkg, existing = ret
