@@ -3468,14 +3468,6 @@ class depgraph(object):
 		cache_key = (root, atom, atom.unevaluated_atom, onlydeps, self._dynamic_config._autounmask)
 		ret = self._dynamic_config._highest_pkg_cache.get(cache_key)
 		if ret is not None:
-			pkg, existing = ret
-			if pkg and not existing:
-				existing = self._dynamic_config._slot_pkg_map[root].get(pkg.slot_atom)
-				if existing and existing == pkg:
-					# Update the cache to reflect that the
-					# package has been added to the graph.
-					ret = pkg, pkg
-					self._dynamic_config._highest_pkg_cache[cache_key] = ret
 			return ret
 		ret = self._select_pkg_highest_available_imp(root, atom, onlydeps=onlydeps)
 		self._dynamic_config._highest_pkg_cache[cache_key] = ret
