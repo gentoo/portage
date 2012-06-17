@@ -833,6 +833,132 @@ class depgraph(object):
 					else:
 						self._dynamic_config._slot_conflict_parent_atoms.add(parent_atom)
 
+	def _handle_slot_conflict(self, existing_node, pkg, dep, arg_atoms):
+
+		debug = "--debug" in self._frozen_config.myopts
+		self._add_slot_conflict(pkg)
+
+		if dep.atom is not None and dep.parent is not None:
+			self._add_parent_atom(pkg, (dep.parent, dep.atom))
+
+		if arg_atoms:
+			for parent_atom in arg_atoms:
+				parent, atom = parent_atom
+				self._add_parent_atom(pkg, parent_atom)
+
+		# The existing node should not already be in
+		# runtime_pkg_mask, since that would trigger an
+		# infinite backtracking loop.
+		if self._dynamic_config._allow_backtracking and \
+			existing_node in self._dynamic_config._runtime_pkg_mask:
+			if debug:
+				writemsg_level(
+					"!!! backtracking loop detected: %s %s\n" % \
+					(existing_node,
+					self._dynamic_config._runtime_pkg_mask[existing_node]),
+					level=logging.DEBUG, noiselevel=-1)
+		elif self._dynamic_config._allow_backtracking and \
+			not self._accept_blocker_conflicts() and \
+			not self.need_restart():
+			self._slot_confict_backtrack(existing_node, pkg)
+			return False
+
+		if debug:
+			writemsg_level(
+				"%s%s %s\n" % ("Slot Conflict:".ljust(15),
+				existing_node, pkg_use_display(existing_node,
+				self._frozen_config.myopts,
+				modified_use=self._pkg_use_enabled(existing_node))),
+				level=logging.DEBUG, noiselevel=-1)
+
+		return True
+
+	def _slot_confict_backtrack(self, existing_node, pkg):
+
+		debug = "--debug" in self._frozen_config.myopts
+		self._process_slot_conflicts()
+
+		backtrack_data = []
+		fallback_data = []
+		all_parents = set()
+		# The ordering of backtrack_data can make
+		# a difference here, because both mask actions may lead
+		# to valid, but different, solutions and the one with
+		# 'existing_node' masked is usually the better one. Because
+		# of that, we choose an order such that
+		# the backtracker will first explore the choice with
+		# existing_node masked. The backtracker reverses the
+		# order, so the order it uses is the reverse of the
+		# order shown here. See bug #339606.
+		for to_be_selected, to_be_masked in (existing_node, pkg), (pkg, existing_node):
+			# For missed update messages, find out which
+			# atoms matched to_be_selected that did not
+			# match to_be_masked.
+			parent_atoms = \
+				self._dynamic_config._parent_atoms.get(to_be_selected, set())
+			if parent_atoms:
+				conflict_atoms = self._dynamic_config._slot_conflict_parent_atoms.intersection(parent_atoms)
+				if conflict_atoms:
+					parent_atoms = conflict_atoms
+
+			all_parents.update(parent_atoms)
+
+			all_match = True
+			for parent, atom in parent_atoms:
+				i = InternalPackageSet(initial_atoms=(atom,),
+					allow_repo=True)
+				if not i.findAtomForPackage(to_be_masked):
+					all_match = False
+					break
+
+			fallback_data.append((to_be_masked, parent_atoms))
+
+			if all_match:
+				# 'to_be_masked' does not violate any parent atom, which means
+				# there is no point in masking it.
+				pass
+			else:
+				backtrack_data.append((to_be_masked, parent_atoms))
+
+		if not backtrack_data:
+			# This shouldn't happen, but fall back to the old
+			# behavior if this gets triggered somehow.
+			backtrack_data = fallback_data
+
+		if len(backtrack_data) > 1:
+			# NOTE: Generally, we prefer to mask the higher
+			# version since this solves common cases in which a
+			# lower version is needed so that all dependencies
+			# will be satisfied (bug #337178). However, if
+			# existing_node happens to be installed then we
+			# mask that since this is a common case that is
+			# triggered when --update is not enabled.
+			if existing_node.installed:
+				pass
+			elif pkg > existing_node:
+				backtrack_data.reverse()
+
+		to_be_masked = backtrack_data[-1][0]
+
+		self._dynamic_config._backtrack_infos["slot conflict"] = backtrack_data
+		self._dynamic_config._need_restart = True
+		if debug:
+			msg = []
+			msg.append("")
+			msg.append("")
+			msg.append("backtracking due to slot conflict:")
+			if backtrack_data is fallback_data:
+				msg.append("!!! backtrack_data fallback")
+			msg.append("   first package:  %s" % existing_node)
+			msg.append("   second package: %s" % pkg)
+			msg.append("  package to mask: %s" % to_be_masked)
+			msg.append("      slot: %s" % pkg.slot_atom)
+			msg.append("   parents: %s" % ", ".join( \
+				"(%s, '%s')" % (ppkg, atom) for ppkg, atom in all_parents))
+			msg.append("")
+			writemsg_level("".join("%s\n" % l for l in msg),
+				noiselevel=-1, level=logging.DEBUG)
+
 	def _reinstall_for_flags(self, pkg, forced_flags,
 		orig_use, orig_iuse, cur_use, cur_iuse):
 		"""Return a set of flags that trigger reinstallation, or None if there
@@ -1152,127 +1278,10 @@ class depgraph(object):
 					return 1
 				else:
 					# A slot conflict has occurred. 
-					# The existing node should not already be in
-					# runtime_pkg_mask, since that would trigger an
-					# infinite backtracking loop.
-					if self._dynamic_config._allow_backtracking and \
-						existing_node in \
-						self._dynamic_config._runtime_pkg_mask:
-						if "--debug" in self._frozen_config.myopts:
-							writemsg(
-								"!!! backtracking loop detected: %s %s\n" % \
-								(existing_node,
-								self._dynamic_config._runtime_pkg_mask[
-								existing_node]), noiselevel=-1)
-					elif self._dynamic_config._allow_backtracking and \
-						not self._accept_blocker_conflicts() and \
-						not self.need_restart():
-
-						self._add_slot_conflict(pkg)
-						if dep.atom is not None and dep.parent is not None:
-							self._add_parent_atom(pkg, (dep.parent, dep.atom))
-
-						if arg_atoms:
-							for parent_atom in arg_atoms:
-								parent, atom = parent_atom
-								self._add_parent_atom(pkg, parent_atom)
-						self._process_slot_conflicts()
-
-						backtrack_data = []
-						fallback_data = []
-						all_parents = set()
-						# The ordering of backtrack_data can make
-						# a difference here, because both mask actions may lead
-						# to valid, but different, solutions and the one with
-						# 'existing_node' masked is usually the better one. Because
-						# of that, we choose an order such that
-						# the backtracker will first explore the choice with
-						# existing_node masked. The backtracker reverses the
-						# order, so the order it uses is the reverse of the
-						# order shown here. See bug #339606.
-						for to_be_selected, to_be_masked in (existing_node, pkg), (pkg, existing_node):
-							# For missed update messages, find out which
-							# atoms matched to_be_selected that did not
-							# match to_be_masked.
-							parent_atoms = \
-								self._dynamic_config._parent_atoms.get(to_be_selected, set())
-							if parent_atoms:
-								conflict_atoms = self._dynamic_config._slot_conflict_parent_atoms.intersection(parent_atoms)
-								if conflict_atoms:
-									parent_atoms = conflict_atoms
-
-							all_parents.update(parent_atoms)
-
-							all_match = True
-							for parent, atom in parent_atoms:
-								i = InternalPackageSet(initial_atoms=(atom,),
-									allow_repo=True)
-								if not i.findAtomForPackage(to_be_masked):
-									all_match = False
-									break
-
-							fallback_data.append((to_be_masked, parent_atoms))
-
-							if all_match:
-								# 'to_be_masked' does not violate any parent atom, which means
-								# there is no point in masking it.
-								pass
-							else:
-								backtrack_data.append((to_be_masked, parent_atoms))
-
-						if not backtrack_data:
-							# This shouldn't happen, but fall back to the old
-							# behavior if this gets triggered somehow.
-							backtrack_data = fallback_data
-
-						if len(backtrack_data) > 1:
-							# NOTE: Generally, we prefer to mask the higher
-							# version since this solves common cases in which a
-							# lower version is needed so that all dependencies
-							# will be satisfied (bug #337178). However, if
-							# existing_node happens to be installed then we
-							# mask that since this is a common case that is
-							# triggered when --update is not enabled.
-							if existing_node.installed:
-								pass
-							elif pkg > existing_node:
-								backtrack_data.reverse()
-
-						to_be_masked = backtrack_data[-1][0]
-
-						self._dynamic_config._backtrack_infos["slot conflict"] = backtrack_data
-						self._dynamic_config._need_restart = True
-						if "--debug" in self._frozen_config.myopts:
-							msg = []
-							msg.append("")
-							msg.append("")
-							msg.append("backtracking due to slot conflict:")
-							if backtrack_data is fallback_data:
-								msg.append("!!! backtrack_data fallback")
-							msg.append("   first package:  %s" % existing_node)
-							msg.append("   second package: %s" % pkg)
-							msg.append("  package to mask: %s" % to_be_masked)
-							msg.append("      slot: %s" % pkg.slot_atom)
-							msg.append("   parents: %s" % ", ".join( \
-								"(%s, '%s')" % (ppkg, atom) for ppkg, atom in all_parents))
-							msg.append("")
-							writemsg_level("".join("%s\n" % l for l in msg),
-								noiselevel=-1, level=logging.DEBUG)
-						return 0
-
-					# A slot collision has occurred.  Sometimes this coincides
-					# with unresolvable blockers, so the slot collision will be
-					# shown later if there are no unresolvable blockers.
-					self._add_slot_conflict(pkg)
+					if not self._handle_slot_conflict(
+						existing_node, pkg, dep, arg_atoms):
+						return False
 					slot_collision = True
-
-					if debug:
-						writemsg_level(
-							"%s%s %s\n" % ("Slot Conflict:".ljust(15),
-							existing_node, pkg_use_display(existing_node,
-							self._frozen_config.myopts,
-							modified_use=self._pkg_use_enabled(existing_node))),
-							level=logging.DEBUG, noiselevel=-1)
 
 			if slot_collision:
 				# Now add this node to the graph so that self.display()
