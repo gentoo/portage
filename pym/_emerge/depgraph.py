@@ -2268,7 +2268,24 @@ class depgraph(object):
 		self._dynamic_config._initial_arg_list = args[:]
 	
 		return self._resolve(myfavorites)
-	
+
+	def _gen_reinstall_sets(self):
+
+		atom_list = []
+		for root, atom in self._rebuild.rebuild_list:
+			atom_list.append((root, '__auto_rebuild__', atom))
+		for root, atom in self._rebuild.reinstall_list:
+			atom_list.append((root, '__auto_reinstall__', atom))
+
+		set_dict = {}
+		for root, set_name, atom in atom_list:
+			set_dict.setdefault((root, set_name), []).append(atom)
+
+		for (root, set_name), atoms in set_dict.items():
+			yield SetArg(arg=(SETPREFIX + set_name),
+				pset=InternalPackageSet(initial_atoms=atoms),
+				root_config=self._frozen_config.roots[root])
+
 	def _resolve(self, myfavorites):
 		"""Given self._dynamic_config._initial_arg_list, pull in the root nodes, 
 		call self._creategraph to process theier deps and return 
@@ -2280,10 +2297,9 @@ class depgraph(object):
 		pprovideddict = pkgsettings.pprovideddict
 		virtuals = pkgsettings.getvirtuals()
 		args = self._dynamic_config._initial_arg_list[:]
-		for root, atom in chain(self._rebuild.rebuild_list,
-			self._rebuild.reinstall_list):
-			args.append(AtomArg(arg=atom, atom=atom,
-				root_config=self._frozen_config.roots[root]))
+
+		args.extend(self._gen_reinstall_sets())
+
 		for arg in self._expand_set_args(args, add_to_digraph=True):
 			for atom in arg.pset.getAtoms():
 				self._spinner_update()
