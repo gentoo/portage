@@ -1345,6 +1345,8 @@ class depgraph(object):
 		# If we are in --nodeps (no recursion) mode, we obviously only check 1 level of dependencies.
 		if arg_atoms:
 			depth = 0
+		if previously_added and pkg.depth is not None:
+			depth = min(pkg.depth, depth)
 		pkg.depth = depth
 		deep = self._dynamic_config.myparams.get("deep", 0)
 		recurse = deep is True or depth + 1 <= deep
