@@ -371,7 +371,6 @@ class _dynamic_depgraph_config(object):
 		# blocker validation is only able to account for one package per slot.
 		self._slot_collision_nodes = set()
 		self._parent_atoms = {}
-		self._slot_conflict_parent_atoms = set()
 		self._slot_conflict_handler = None
 		self._circular_dependency_handler = None
 		self._serialized_tasks_cache = None
@@ -799,39 +798,43 @@ class depgraph(object):
 			writemsg(line + '\n', noiselevel=-1)
 		writemsg('\n', noiselevel=-1)
 
-	def _process_slot_conflicts(self):
+	def _process_slot_conflicts(self, root, slot_atom):
 		"""
 		Process slot conflict data to identify specific atoms which
 		lead to conflict. These atoms only match a subset of the
 		packages that have been pulled into a given slot.
 		"""
-		for (slot_atom, root), slot_nodes \
-			in self._dynamic_config._slot_collision_info.items():
+		slot_nodes = \
+			self._dynamic_config._slot_collision_info[(slot_atom, root)]
 
-			all_parent_atoms = set()
-			for pkg in slot_nodes:
-				parent_atoms = self._dynamic_config._parent_atoms.get(pkg)
-				if not parent_atoms:
+		conflict_atoms = set()
+		slot_parent_atoms = set()
+		for pkg in slot_nodes:
+			parent_atoms = self._dynamic_config._parent_atoms.get(pkg)
+			if not parent_atoms:
+				continue
+			slot_parent_atoms.update(parent_atoms)
+
+		for pkg in slot_nodes:
+			parent_atoms = self._dynamic_config._parent_atoms.get(pkg)
+			if parent_atoms is None:
+				parent_atoms = set()
+				self._dynamic_config._parent_atoms[pkg] = parent_atoms
+			for parent_atom in slot_parent_atoms:
+				if parent_atom in parent_atoms:
 					continue
-				all_parent_atoms.update(parent_atoms)
+				# Use package set for matching since it will match via
+				# PROVIDE when necessary, while match_from_list does not.
+				parent, atom = parent_atom
+				atom_set = InternalPackageSet(
+					initial_atoms=(atom,), allow_repo=True)
+				if atom_set.findAtomForPackage(pkg,
+					modified_use=self._pkg_use_enabled(pkg)):
+					parent_atoms.add(parent_atom)
+				else:
+					conflict_atoms.add(parent_atom)
 
-			for pkg in slot_nodes:
-				parent_atoms = self._dynamic_config._parent_atoms.get(pkg)
-				if parent_atoms is None:
-					parent_atoms = set()
-					self._dynamic_config._parent_atoms[pkg] = parent_atoms
-				for parent_atom in all_parent_atoms:
-					if parent_atom in parent_atoms:
-						continue
-					# Use package set for matching since it will match via
-					# PROVIDE when necessary, while match_from_list does not.
-					parent, atom = parent_atom
-					atom_set = InternalPackageSet(
-						initial_atoms=(atom,), allow_repo=True)
-					if atom_set.findAtomForPackage(pkg, modified_use=self._pkg_use_enabled(pkg)):
-						parent_atoms.add(parent_atom)
-					else:
-						self._dynamic_config._slot_conflict_parent_atoms.add(parent_atom)
+		return conflict_atoms
 
 	def _handle_slot_conflict(self, existing_node, pkg, dep, arg_atoms):
 
@@ -845,6 +848,9 @@ class depgraph(object):
 			for parent_atom in arg_atoms:
 				parent, atom = parent_atom
 				self._add_parent_atom(pkg, parent_atom)
+
+		conflict_atoms = \
+			self._process_slot_conflicts(pkg.root, pkg.slot_atom)
 
 		# The existing node should not already be in
 		# runtime_pkg_mask, since that would trigger an
@@ -860,7 +866,7 @@ class depgraph(object):
 		elif self._dynamic_config._allow_backtracking and \
 			not self._accept_blocker_conflicts() and \
 			not self.need_restart():
-			self._slot_confict_backtrack(existing_node, pkg)
+			self._slot_confict_backtrack(existing_node, pkg, conflict_atoms)
 			return False
 
 		if debug:
@@ -873,11 +879,9 @@ class depgraph(object):
 
 		return True
 
-	def _slot_confict_backtrack(self, existing_node, pkg):
+	def _slot_confict_backtrack(self, existing_node, pkg, conflict_atoms):
 
 		debug = "--debug" in self._frozen_config.myopts
-		self._process_slot_conflicts()
-
 		backtrack_data = []
 		fallback_data = []
 		all_parents = set()
@@ -897,9 +901,9 @@ class depgraph(object):
 			parent_atoms = \
 				self._dynamic_config._parent_atoms.get(to_be_selected, set())
 			if parent_atoms:
-				conflict_atoms = self._dynamic_config._slot_conflict_parent_atoms.intersection(parent_atoms)
-				if conflict_atoms:
-					parent_atoms = conflict_atoms
+				p_conflict_atoms = conflict_atoms.intersection(parent_atoms)
+				if p_conflict_atoms:
+					parent_atoms = p_conflict_atoms
 
 			all_parents.update(parent_atoms)
 
@@ -4937,9 +4941,6 @@ class depgraph(object):
 		if not self._validate_blockers():
 			self._dynamic_config._skip_restart = True
 			raise self._unknown_internal_error()
-
-		if self._dynamic_config._slot_collision_info:
-			self._process_slot_conflicts()
 
 	def _serialize_tasks(self):
 
