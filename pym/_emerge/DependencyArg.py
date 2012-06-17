@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -6,6 +6,9 @@ import sys
 from portage import _encodings, _unicode_encode, _unicode_decode
 
 class DependencyArg(object):
+
+	__slots__ = ('arg', 'root_config')
+
 	def __init__(self, arg=None, root_config=None):
 		self.arg = arg
 		self.root_config = root_config
