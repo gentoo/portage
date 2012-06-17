@@ -447,7 +447,7 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=Fals
 		try:
 			pkg = Atom(pkg, allow_wildcard=allow_wildcard, allow_repo=allow_repo, eapi=eapi)
 		except InvalidAtom as e:
-			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, e),
+			writemsg(_("--- Invalid atom in %s: %s\n") % (source_file, e),
 				noiselevel=-1)
 		else:
 			if pkg_orig == str(pkg):
