@@ -382,6 +382,10 @@ Ebuild uses D, ROOT, ED, EROOT or EPREFIX with helpers
 The ebuild PROVIDEs an old-style virtual (see GLEP 37). This is an error
 unless "allow\-provide\-virtuals = true" is set in metadata/layout.conf.
 .TP
+.B virtual.suspect
+Ebuild contains a package that usually should be pulled via virtual/,
+not directly.
+.TP
 .B wxwidgets.eclassnotused
 Ebuild DEPENDs on x11-libs/wxGTK without inheriting wxwidgets.eclass. Refer to
 bug #305469 for more information.

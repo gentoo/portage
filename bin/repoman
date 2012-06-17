@@ -393,6 +393,7 @@ qahelp={
 	"metadata.warning":"Warnings in metadata.xml files",
 	"portage.internal":"The ebuild uses an internal Portage function",
 	"virtual.oldstyle":"The ebuild PROVIDEs an old-style virtual (see GLEP 37)",
+	"virtual.suspect":"Ebuild contains a package that usually should be pulled via virtual/, not directly.",
 	"usage.obsolete":"The ebuild makes use of an obsolete construct",
 	"upstream.workaround":"The ebuild works around an upstream bug, an upstream bug should be filed and tracked in bugs.gentoo.org"
 }
@@ -424,6 +425,7 @@ qawarnings = set((
 "PDEPEND.suspect",
 "RDEPEND.implicit",
 "RDEPEND.suspect",
+"virtual.suspect",
 "RESTRICT.invalid",
 "ebuild.minorsyn",
 "ebuild.badheader",
@@ -512,6 +514,13 @@ suspect_rdepend = frozenset([
 	"x11-misc/bdftopcf",
 	"x11-misc/imake",
 ])
+
+suspect_virtual = {
+	"dev-util/pkg-config-lite":"virtual/pkgconfig",
+	"dev-util/pkgconf":"virtual/pkgconfig",
+	"dev-util/pkgconfig":"virtual/pkgconfig",
+	"dev-util/pkgconfig-openbsd":"virtual/pkgconfig",
+}
 
 metadata_dtd_uri = 'http://www.gentoo.org/dtd/metadata.dtd'
 # force refetch if the local copy creation time is older than this
@@ -1883,6 +1892,15 @@ for x in effective_scanlist:
 						unknown_pkgs.add((mytype, atom.unevaluated_atom))
 
 					is_blocker = atom.blocker
+
+					if catdir != "virtual":
+						if not is_blocker and \
+							atom.cp in suspect_virtual:
+							stats['virtual.suspect'] += 1
+							fails['virtual.suspect'].append(
+								relative_path +
+								": %s: consider using '%s' instead of '%s'" %
+								(mytype, suspect_virtual[atom.cp], atom))
 
 					if mytype == "DEPEND" and \
 						not is_blocker and \
