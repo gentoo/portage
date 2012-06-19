@@ -131,6 +131,14 @@ class Backtracker(object):
 
 		return True
 
+	def _feedback_slot_conflicts(self, conflicts_data):
+		# This should be ordered such that the backtracker will
+		# attempt to solve conflicts which occurred earlier first,
+		# since an earlier conflict can be the cause of a conflict
+		# which occurs later.
+		for slot_data in reversed(conflicts_data):
+			self._feedback_slot_conflict(slot_data)
+
 	def _feedback_slot_conflict(self, conflict_data):
 		for pkg, parent_atoms in conflict_data:
 			new_node = copy.deepcopy(self._current_node)
@@ -196,7 +204,7 @@ class Backtracker(object):
 
 		#There is at most one of the following types of conflicts for a given restart.
 		if "slot conflict" in infos:
-			self._feedback_slot_conflict(infos["slot conflict"])
+			self._feedback_slot_conflicts(infos["slot conflict"])
 		elif "missing dependency" in infos:
 			self._feedback_missing_dep(infos["missing dependency"])
 

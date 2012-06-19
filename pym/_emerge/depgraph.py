@@ -366,7 +366,11 @@ class _dynamic_depgraph_config(object):
 		# This use used to check if we have accounted for blockers
 		# relevant to a package.
 		self._traversed_pkg_deps = set()
-		self._slot_collision_info = {}
+		# This should be ordered such that the backtracker will
+		# attempt to solve conflicts which occurred earlier first,
+		# since an earlier conflict can be the cause of a conflict
+		# which occurs later.
+		self._slot_collision_info = OrderedDict()
 		# Slot collision nodes are not allowed to block other packages since
 		# blocker validation is only able to account for one package per slot.
 		self._slot_collision_nodes = set()
@@ -911,7 +915,7 @@ class depgraph(object):
 		to_be_masked = backtrack_data[-1][0]
 
 		self._dynamic_config._backtrack_infos.setdefault(
-			"slot conflict", []).extend(backtrack_data)
+			"slot conflict", []).append(backtrack_data)
 		self._dynamic_config._need_restart = True
 		if debug:
 			msg = []
