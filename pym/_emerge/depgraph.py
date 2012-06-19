@@ -798,16 +798,26 @@ class depgraph(object):
 			writemsg(line + '\n', noiselevel=-1)
 		writemsg('\n', noiselevel=-1)
 
-	def _process_slot_conflicts(self, root, slot_atom):
+	def _process_slot_conflicts(self):
+		"""
+		If there are any slot conflicts and backtracking is enabled,
+		_complete_graph should complete the graph before this method
+		is called, so that all relevant reverse dependencies are
+		available for use in backtracking decisions.
+		"""
+		for (slot_atom, root), slot_nodes in \
+			self._dynamic_config._slot_collision_info.items():
+			self._process_slot_conflict(root, slot_atom, slot_nodes)
+
+	def _process_slot_conflict(self, root, slot_atom, slot_nodes):
 		"""
 		Process slot conflict data to identify specific atoms which
 		lead to conflict. These atoms only match a subset of the
 		packages that have been pulled into a given slot.
 		"""
-		slot_nodes = \
-			self._dynamic_config._slot_collision_info[(slot_atom, root)]
 
-		conflict_atoms = set()
+		debug = "--debug" in self._frozen_config.myopts
+
 		slot_parent_atoms = set()
 		for pkg in slot_nodes:
 			parent_atoms = self._dynamic_config._parent_atoms.get(pkg)
@@ -815,11 +825,24 @@ class depgraph(object):
 				continue
 			slot_parent_atoms.update(parent_atoms)
 
+		conflict_pkgs = []
 		for pkg in slot_nodes:
+
+			if self._dynamic_config._allow_backtracking and \
+				pkg in self._dynamic_config._runtime_pkg_mask:
+				if debug:
+					writemsg_level(
+						"!!! backtracking loop detected: %s %s\n" % \
+						(pkg,
+						self._dynamic_config._runtime_pkg_mask[pkg]),
+						level=logging.DEBUG, noiselevel=-1)
+
 			parent_atoms = self._dynamic_config._parent_atoms.get(pkg)
 			if parent_atoms is None:
 				parent_atoms = set()
 				self._dynamic_config._parent_atoms[pkg] = parent_atoms
+
+			all_match = True
 			for parent_atom in slot_parent_atoms:
 				if parent_atom in parent_atoms:
 					continue
@@ -832,59 +855,23 @@ class depgraph(object):
 					modified_use=self._pkg_use_enabled(pkg)):
 					parent_atoms.add(parent_atom)
 				else:
-					conflict_atoms.add(parent_atom)
+					all_match = False
 
-		return conflict_atoms
+			if not all_match:
+				conflict_pkgs.append(pkg)
 
-	def _handle_slot_conflict(self, existing_node, pkg, dep, arg_atoms):
+		if conflict_pkgs and \
+			self._dynamic_config._allow_backtracking and \
+			not self._accept_blocker_conflicts():
+			self._slot_confict_backtrack(root, slot_atom,
+				slot_parent_atoms, conflict_pkgs)
 
-		debug = "--debug" in self._frozen_config.myopts
-		self._add_slot_conflict(pkg)
-
-		if dep.atom is not None and dep.parent is not None:
-			self._add_parent_atom(pkg, (dep.parent, dep.atom))
-
-		if arg_atoms:
-			for parent_atom in arg_atoms:
-				parent, atom = parent_atom
-				self._add_parent_atom(pkg, parent_atom)
-
-		conflict_atoms = \
-			self._process_slot_conflicts(pkg.root, pkg.slot_atom)
-
-		# The existing node should not already be in
-		# runtime_pkg_mask, since that would trigger an
-		# infinite backtracking loop.
-		if self._dynamic_config._allow_backtracking and \
-			existing_node in self._dynamic_config._runtime_pkg_mask:
-			if debug:
-				writemsg_level(
-					"!!! backtracking loop detected: %s %s\n" % \
-					(existing_node,
-					self._dynamic_config._runtime_pkg_mask[existing_node]),
-					level=logging.DEBUG, noiselevel=-1)
-		elif self._dynamic_config._allow_backtracking and \
-			not self._accept_blocker_conflicts() and \
-			not self.need_restart():
-			self._slot_confict_backtrack(existing_node, pkg, conflict_atoms)
-			return False
-
-		if debug:
-			writemsg_level(
-				"%s%s %s\n" % ("Slot Conflict:".ljust(15),
-				existing_node, pkg_use_display(existing_node,
-				self._frozen_config.myopts,
-				modified_use=self._pkg_use_enabled(existing_node))),
-				level=logging.DEBUG, noiselevel=-1)
-
-		return True
-
-	def _slot_confict_backtrack(self, existing_node, pkg, conflict_atoms):
+	def _slot_confict_backtrack(self, root, slot_atom,
+		all_parents, conflict_pkgs):
 
 		debug = "--debug" in self._frozen_config.myopts
+		existing_node = self._dynamic_config._slot_pkg_map[root][slot_atom]
 		backtrack_data = []
-		fallback_data = []
-		all_parents = set()
 		# The ordering of backtrack_data can make
 		# a difference here, because both mask actions may lead
 		# to valid, but different, solutions and the one with
@@ -894,40 +881,19 @@ class depgraph(object):
 		# existing_node masked. The backtracker reverses the
 		# order, so the order it uses is the reverse of the
 		# order shown here. See bug #339606.
-		for to_be_selected, to_be_masked in (existing_node, pkg), (pkg, existing_node):
+		if existing_node in conflict_pkgs and \
+			existing_node is not conflict_pkgs[-1]:
+			conflict_pkgs.remove(existing_node)
+			conflict_pkgs.append(existing_node)
+		for to_be_masked in conflict_pkgs:
 			# For missed update messages, find out which
 			# atoms matched to_be_selected that did not
 			# match to_be_masked.
 			parent_atoms = \
-				self._dynamic_config._parent_atoms.get(to_be_selected, set())
-			if parent_atoms:
-				p_conflict_atoms = conflict_atoms.intersection(parent_atoms)
-				if p_conflict_atoms:
-					parent_atoms = p_conflict_atoms
-
-			all_parents.update(parent_atoms)
-
-			all_match = True
-			for parent, atom in parent_atoms:
-				i = InternalPackageSet(initial_atoms=(atom,),
-					allow_repo=True)
-				if not i.findAtomForPackage(to_be_masked):
-					all_match = False
-					break
-
-			fallback_data.append((to_be_masked, parent_atoms))
-
-			if all_match:
-				# 'to_be_masked' does not violate any parent atom, which means
-				# there is no point in masking it.
-				pass
-			else:
-				backtrack_data.append((to_be_masked, parent_atoms))
-
-		if not backtrack_data:
-			# This shouldn't happen, but fall back to the old
-			# behavior if this gets triggered somehow.
-			backtrack_data = fallback_data
+				self._dynamic_config._parent_atoms.get(to_be_masked, set())
+			conflict_atoms = set(parent_atom for parent_atom in all_parents \
+				if parent_atom not in parent_atoms)
+			backtrack_data.append((to_be_masked, conflict_atoms))
 
 		if len(backtrack_data) > 1:
 			# NOTE: Generally, we prefer to mask the higher
@@ -939,24 +905,22 @@ class depgraph(object):
 			# triggered when --update is not enabled.
 			if existing_node.installed:
 				pass
-			elif pkg > existing_node:
+			elif any(pkg > existing_node for pkg in conflict_pkgs):
 				backtrack_data.reverse()
 
 		to_be_masked = backtrack_data[-1][0]
 
-		self._dynamic_config._backtrack_infos["slot conflict"] = backtrack_data
+		self._dynamic_config._backtrack_infos.setdefault(
+			"slot conflict", []).extend(backtrack_data)
 		self._dynamic_config._need_restart = True
 		if debug:
 			msg = []
 			msg.append("")
 			msg.append("")
 			msg.append("backtracking due to slot conflict:")
-			if backtrack_data is fallback_data:
-				msg.append("!!! backtrack_data fallback")
 			msg.append("   first package:  %s" % existing_node)
-			msg.append("   second package: %s" % pkg)
 			msg.append("  package to mask: %s" % to_be_masked)
-			msg.append("      slot: %s" % pkg.slot_atom)
+			msg.append("      slot: %s" % slot_atom)
 			msg.append("   parents: %s" % ", ".join( \
 				"(%s, '%s')" % (ppkg, atom) for ppkg, atom in all_parents))
 			msg.append("")
@@ -1281,10 +1245,15 @@ class depgraph(object):
 								(dep.parent, dep.atom))
 					return 1
 				else:
-					# A slot conflict has occurred. 
-					if not self._handle_slot_conflict(
-						existing_node, pkg, dep, arg_atoms):
-						return False
+					self._add_slot_conflict(pkg)
+					if debug:
+						writemsg_level(
+							"%s%s %s\n" % ("Slot Conflict:".ljust(15),
+							existing_node, pkg_use_display(existing_node,
+							self._frozen_config.myopts,
+							modified_use=self._pkg_use_enabled(existing_node))),
+							level=logging.DEBUG, noiselevel=-1)
+
 					slot_collision = True
 
 			if slot_collision:
@@ -2409,6 +2378,12 @@ class depgraph(object):
 		try:
 			self.altlist()
 		except self._unknown_internal_error:
+			return False, myfavorites
+
+		if (self._dynamic_config._slot_collision_info and
+			not self._accept_blocker_conflicts()) or \
+			(self._dynamic_config._allow_backtracking and
+			"slot conflict" in self._dynamic_config._backtrack_infos):
 			return False, myfavorites
 
 		digraph_nodes = self._dynamic_config.digraph.nodes
@@ -4953,8 +4928,17 @@ class depgraph(object):
 				root_config.root]["root_config"] = root_config
 
 	def _resolve_conflicts(self):
+
+		if "complete" not in self._dynamic_config.myparams and \
+			self._dynamic_config._allow_backtracking and \
+			self._dynamic_config._slot_collision_nodes and \
+			not self._accept_blocker_conflicts():
+			self._dynamic_config.myparams["complete"] = True
+
 		if not self._complete_graph():
 			raise self._unknown_internal_error()
+
+		self._process_slot_conflicts()
 
 		if not self._validate_blockers():
 			self._dynamic_config._skip_restart = True
