@@ -773,16 +773,15 @@ install_qa_check() {
 		fi
 		if [[ ${abort} == "yes" ]] ; then
 			if [[ $gentoo_bug = yes || $always_overflow = yes ]] ; then
-				die "install aborted due to" \
-					"severe warnings shown above"
+				die "install aborted due to severe warnings shown above"
 			else
 				echo "Please do not file a Gentoo bug and instead" \
 				"report the above QA issues directly to the upstream" \
 				"developers of this software." | fmt -w 70 | \
 				while read -r line ; do eqawarn "${line}" ; done
 				eqawarn "Homepage: ${HOMEPAGE}"
-				has stricter ${FEATURES} && die "install aborted due to" \
-					"severe warnings shown above"
+				has stricter ${FEATURES} && \
+					die "install aborted due to severe warnings shown above"
 			fi
 		fi
 	fi
