@@ -746,8 +746,12 @@ class ResolverPlaygroundResult(object):
 					if x.metadata["repository"] != "test_repo":
 						repo_str = _repo_separator + x.metadata["repository"]
 					mergelist_str = x.cpv + repo_str
-					if x.type_name == "binary":
-						mergelist_str = "[binary]" + mergelist_str
+					if x.built:
+						if x.operation == "merge":
+							desc = x.type_name
+						else:
+							desc = x.operation
+						mergelist_str = "[%s]%s" % (desc, mergelist_str)
 					self.mergelist.append(mergelist_str)
 
 		if self.depgraph._dynamic_config._needed_use_config_changes:

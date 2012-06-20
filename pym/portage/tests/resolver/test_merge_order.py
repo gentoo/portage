@@ -376,7 +376,7 @@ class MergeOrderTestCase(TestCase):
 				success = True,
 				all_permutations = True,
 				ambiguous_merge_order = True,
-				mergelist = [("app-misc/blocker-runtime-a-1", "app-misc/blocker-runtime-b-1"), "app-misc/installed-blocker-a-1", ("!app-misc/blocker-runtime-a", "!app-misc/blocker-runtime-b")]),
+				mergelist = [("app-misc/blocker-runtime-a-1", "app-misc/blocker-runtime-b-1"), "[uninstall]app-misc/installed-blocker-a-1", ("!app-misc/blocker-runtime-a", "!app-misc/blocker-runtime-b")]),
 			# We have a soft buildtime blocker against an installed
 			# package that should cause it to be uninstalled. Note that with
 			# soft blockers, the blocking packages are allowed to temporarily
@@ -386,7 +386,7 @@ class MergeOrderTestCase(TestCase):
 			ResolverPlaygroundTestCase(
 				["app-misc/blocker-buildtime-unbuilt-a"],
 				success = True,
-				mergelist = ["app-misc/blocker-buildtime-unbuilt-a-1", "app-misc/installed-blocker-a-1", "!app-misc/installed-blocker-a"]),
+				mergelist = ["app-misc/blocker-buildtime-unbuilt-a-1", "[uninstall]app-misc/installed-blocker-a-1", "!app-misc/installed-blocker-a"]),
 			# We have a hard buildtime blocker against an installed
 			# package that will not resolve automatically (unless
 			# the option requested in bug 250286 is implemented).
@@ -409,7 +409,7 @@ class MergeOrderTestCase(TestCase):
 			ResolverPlaygroundTestCase(
 				["media-video/libav"],
 				success=True,
-				mergelist = ['media-video/libav-0.7_pre20110327', 'media-video/ffmpeg-0.7_rc1', '!media-video/ffmpeg']),
+				mergelist = ['media-video/libav-0.7_pre20110327', '[uninstall]media-video/ffmpeg-0.7_rc1', '!media-video/ffmpeg']),
 			# Test that OS_HEADERS_PACKAGE_ATOM and LIBC_PACKAGE_ATOM
 			# are merged asap, in order to account for implicit
 			# dependencies. See bug #303567. Optimally, satisfied deps
