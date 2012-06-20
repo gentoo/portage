@@ -1316,8 +1316,12 @@ class depgraph(object):
 		# Installing package A, we need to make sure package A's deps are met.
 		# emerge --deep <pkgspec>; we need to recursively check dependencies of pkgspec
 		# If we are in --nodeps (no recursion) mode, we obviously only check 1 level of dependencies.
-		if arg_atoms:
-			depth = 0
+		if arg_atoms and depth > 0:
+			for parent, atom in arg_atoms:
+				if parent.reset_depth:
+					depth = 0
+					break
+
 		if previously_added and pkg.depth is not None:
 			depth = min(pkg.depth, depth)
 		pkg.depth = depth
@@ -2226,6 +2230,7 @@ class depgraph(object):
 			args = revised_greedy_args
 			del revised_greedy_args
 
+		args.extend(self._gen_reinstall_sets())
 		self._set_args(args)
 
 		myfavorites = set(myfavorites)
@@ -2258,7 +2263,13 @@ class depgraph(object):
 
 		for (root, set_name), atoms in set_dict.items():
 			yield SetArg(arg=(SETPREFIX + set_name),
+				# Set reset_depth=False here, since we don't want these
+				# special sets to interact with depth calculations (see
+				# the emerge --deep=DEPTH option), though we want them
+				# to behave like normal arguments in most other respects.
 				pset=InternalPackageSet(initial_atoms=atoms),
+				force_reinstall=True,
+				reset_depth=False,
 				root_config=self._frozen_config.roots[root])
 
 	def _resolve(self, myfavorites):
@@ -2272,8 +2283,6 @@ class depgraph(object):
 		pprovideddict = pkgsettings.pprovideddict
 		virtuals = pkgsettings.getvirtuals()
 		args = self._dynamic_config._initial_arg_list[:]
-
-		args.extend(self._gen_reinstall_sets())
 
 		for arg in self._expand_set_args(args, add_to_digraph=True):
 			for atom in arg.pset.getAtoms():
@@ -3963,9 +3972,10 @@ class depgraph(object):
 					myarg = None
 					if root == self._frozen_config.target_root:
 						try:
-							myarg = next(self._iter_atoms_for_pkg(pkg))
-						except StopIteration:
-							pass
+							for myarg, myarg_atom in self._iter_atoms_for_pkg(pkg):
+								if myarg.force_reinstall:
+									reinstall = True
+									break
 						except portage.exception.InvalidDependString:
 							if not installed:
 								# masked by corruption
