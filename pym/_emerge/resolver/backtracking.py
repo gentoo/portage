@@ -132,12 +132,11 @@ class Backtracker(object):
 		return True
 
 	def _feedback_slot_conflicts(self, conflicts_data):
-		# This should be ordered such that the backtracker will
-		# attempt to solve conflicts which occurred earlier first,
-		# since an earlier conflict can be the cause of a conflict
-		# which occurs later.
-		for slot_data in reversed(conflicts_data):
-			self._feedback_slot_conflict(slot_data)
+		# Only create BacktrackNode instances for the first
+		# conflict which occurred, since the conflicts that
+		# occurred later may have been caused by the first
+		# conflict.
+		self._feedback_slot_conflict(conflicts_data[0])
 
 	def _feedback_slot_conflict(self, conflict_data):
 		for pkg, parent_atoms in conflict_data:
