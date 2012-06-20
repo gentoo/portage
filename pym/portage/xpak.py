@@ -324,7 +324,7 @@ class tbz2(object):
 		"""
 		self.scan() # Don't care about condition... We'll rewrite the data anyway.
 
-		if break_hardlinks and self.filestat.st_nlink > 1:
+		if break_hardlinks and self.filestat and self.filestat.st_nlink > 1:
 			tmp_fname = "%s.%d" % (self.file, os.getpid())
 			shutil.copyfile(self.file, tmp_fname)
 			try:

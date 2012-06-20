@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -17,6 +17,9 @@ class SimpleResolverTestCase(TestCase):
 			"app-misc/X-1": {},
 			"app-misc/W-1": {},
 			}
+		binpkgs = {
+			"dev-libs/B-1.2": {},
+		}
 		installed = {
 			"dev-libs/A-1": {},
 			"dev-libs/B-1.1": {},
@@ -43,13 +46,26 @@ class SimpleResolverTestCase(TestCase):
 				mergelist = ["dev-libs/B-1.2"]),
 
 			ResolverPlaygroundTestCase(
+				["dev-libs/B"],
+				options = {"--update": True, "--usepkg": True},
+				success = True,
+				mergelist = ["dev-libs/B-1.2"]),
+
+			ResolverPlaygroundTestCase(
+				["dev-libs/B"],
+				options = {"--update": True, "--usepkgonly": True},
+				success = True,
+				mergelist = ["dev-libs/B-1.2"]),
+
+			ResolverPlaygroundTestCase(
 				["app-misc/Z"],
 				success = True,
 				ambiguous_merge_order = True,
 				mergelist = [("app-misc/W-1", "app-misc/X-1"), "app-misc/Z-1"]),
 			)
 
-		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			binpkgs=binpkgs, installed=installed)
 		try:
 			for test_case in test_cases:
 				playground.run_TestCase(test_case)

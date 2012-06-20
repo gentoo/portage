@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from itertools import permutations
@@ -9,9 +9,6 @@ from portage import os
 from portage import shutil
 from portage.const import (GLOBAL_CONFIG_PATH, PORTAGE_BASE_PATH,
 	USER_CONFIG_PATH)
-from portage.dbapi.vartree import vartree
-from portage.dbapi.porttree import portagetree
-from portage.dbapi.bintree import binarytree
 from portage.dep import Atom, _repo_separator
 from portage.package.ebuild.config import config
 from portage.package.ebuild.digestgen import digestgen
@@ -56,7 +53,7 @@ class ResolverPlayground(object):
 </pkgmetadata>
 """
 
-	def __init__(self, ebuilds={}, installed={}, profile={}, repo_configs={}, \
+	def __init__(self, ebuilds={}, binpkgs={}, installed={}, profile={}, repo_configs={}, \
 		user_config={}, sets={}, world=[], world_sets=[], distfiles={}, debug=False):
 		"""
 		ebuilds: cpv -> metadata mapping simulating available ebuilds. 
@@ -68,6 +65,7 @@ class ResolverPlayground(object):
 		self.eprefix = normalize_path(tempfile.mkdtemp())
 		self.eroot = self.eprefix + os.sep
 		self.distdir = os.path.join(self.eroot, "var", "portage", "distfiles")
+		self.pkgdir = os.path.join(self.eprefix, "pkgdir")
 		self.portdir = os.path.join(self.eroot, "usr/portage")
 		self.vdbdir = os.path.join(self.eroot, "var/db/pkg")
 		os.makedirs(self.portdir)
@@ -82,6 +80,7 @@ class ResolverPlayground(object):
 
 		self._create_distfiles(distfiles)
 		self._create_ebuilds(ebuilds)
+		self._create_binpkgs(binpkgs)
 		self._create_installed(installed)
 		self._create_profile(ebuilds, installed, profile, repo_configs, user_config, sets)
 		self._create_world(world, world_sets)
@@ -204,6 +203,27 @@ class ResolverPlayground(object):
 			tmpsettings['O'] = ebuild_dir
 			if not digestgen(mysettings=tmpsettings, myportdb=portdb):
 				raise AssertionError('digest creation failed for %s' % ebuild_path)
+
+	def _create_binpkgs(self, binpkgs):
+		for cpv, metadata in binpkgs.items():
+			a = Atom("=" + cpv, allow_repo=True)
+			repo = a.repo
+			if repo is None:
+				repo = "test_repo"
+
+			cat, pf = catsplit(a.cpv)
+			metadata = metadata.copy()
+			metadata.setdefault("SLOT", "0")
+			metadata.setdefault("KEYWORDS", "x86")
+			metadata["CATEGORY"] = cat
+			metadata["PF"] = pf
+
+			repo_dir = self.pkgdir
+			category_dir = os.path.join(repo_dir, cat)
+			binpkg_path = os.path.join(category_dir, pf + ".tbz2")
+			ensure_dirs(category_dir)
+			t = portage.xpak.tbz2(binpkg_path)
+			t.recompose_mem(portage.xpak.xpak_mem(metadata))
 
 	def _create_installed(self, installed):
 		for cpv in installed:
@@ -473,7 +493,7 @@ class ResolverPlayground(object):
 		env = {
 			"ACCEPT_KEYWORDS": "x86",
 			"DISTDIR" : self.distdir,
-			"PKGDIR": os.path.join(self.eroot, "usr/portage/packages"),
+			"PKGDIR": self.pkgdir,
 			"PORTDIR": self.portdir,
 			"PORTDIR_OVERLAY": " ".join(portdir_overlay),
 			'PORTAGE_TMPDIR'       : os.path.join(self.eroot, 'var/tmp'),
@@ -510,6 +530,9 @@ class ResolverPlayground(object):
 				action = "depclean"
 			elif options.get("--prune"):
 				action = "prune"
+
+		if "--usepkgonly" in options:
+			options["--usepkg"] = True
 
 		global_noiselimit = portage.util.noiselimit
 		global_emergelog_disable = _emerge.emergelog._disable
