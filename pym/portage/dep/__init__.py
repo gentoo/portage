@@ -22,7 +22,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util:cmp_sort_key,writemsg',
 )
 
-from portage import _unicode_decode
+from portage import _encodings, _unicode_decode, _unicode_encode
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString
 from portage.localization import _
@@ -32,6 +32,9 @@ import portage.cache.mappings
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
+	_unicode = str
+else:
+	_unicode = unicode
 
 # Api consumers included in portage should set this to True.
 # Once the relevant api changes are in a portage release with
@@ -887,6 +890,14 @@ class _use_dep(object):
 			return ""
 		return "[%s]" % (",".join(self.tokens),)
 
+	if sys.hexversion < 0x3000000:
+
+		__unicode__ = __str__
+
+		def __str__(self):
+			return _unicode_encode(self.__unicode__(),
+				encoding=_encodings['content'], errors='backslashreplace')
+
 	def __repr__(self):
 		return "portage.dep._use_dep(%s)" % repr(self.tokens)
 
@@ -1131,12 +1142,7 @@ class _use_dep(object):
 		return _use_dep(tokens, self._eapi_attrs, enabled_flags=enabled_flags, disabled_flags=disabled_flags,
 			missing_enabled=missing_enabled, missing_disabled=missing_disabled, required=self.required)
 
-if sys.hexversion < 0x3000000:
-	_atom_base = unicode
-else:
-	_atom_base = str
-
-class Atom(_atom_base):
+class Atom(_unicode):
 
 	"""
 	For compatibility with existing atom string manipulation code, this
@@ -1157,7 +1163,7 @@ class Atom(_atom_base):
 
 	def __new__(cls, s, unevaluated_atom=None, allow_wildcard=False, allow_repo=None,
 		_use=None, eapi=None, is_valid_flag=None):
-		return _atom_base.__new__(cls, s)
+		return _unicode.__new__(cls, s)
 
 	def __init__(self, s, unevaluated_atom=None, allow_wildcard=False, allow_repo=None,
 		_use=None, eapi=None, is_valid_flag=None):
@@ -1165,13 +1171,13 @@ class Atom(_atom_base):
 			# This is an efficiency assertion, to ensure that the Atom
 			# constructor is not called redundantly.
 			raise TypeError(_("Expected %s, got %s") % \
-				(_atom_base, type(s)))
+				(_unicode, type(s)))
 
-		if not isinstance(s, _atom_base):
-			# Avoid TypeError from _atom_base.__init__ with PyPy.
+		if not isinstance(s, _unicode):
+			# Avoid TypeError from _unicode.__init__ with PyPy.
 			s = _unicode_decode(s)
 
-		_atom_base.__init__(s)
+		_unicode.__init__(s)
 
 		eapi_attrs = _get_eapi_attrs(eapi)
 		atom_re = _get_atom_re(eapi_attrs)
@@ -1343,7 +1349,7 @@ class Atom(_atom_base):
 			atom += _slot_separator + self.slot
 		atom += _repo_separator + repo
 		if self.use is not None:
-			atom += str(self.use)
+			atom += _unicode(self.use)
 		return Atom(atom, allow_repo=True, allow_wildcard=True)
 
 	def with_slot(self, slot):
@@ -1351,7 +1357,7 @@ class Atom(_atom_base):
 		if self.repo is not None:
 			atom += _repo_separator + self.repo
 		if self.use is not None:
-			atom += str(self.use)
+			atom += _unicode(self.use)
 		return Atom(atom, allow_repo=True, allow_wildcard=True)
 
 	def __setattr__(self, name, value):
@@ -1403,7 +1409,7 @@ class Atom(_atom_base):
 		if self.slot:
 			atom += ":%s" % self.slot
 		use_dep = self.use.evaluate_conditionals(use)
-		atom += str(use_dep)
+		atom += _unicode(use_dep)
 		return Atom(atom, unevaluated_atom=self, allow_repo=(self.repo is not None), _use=use_dep)
 
 	def violated_conditionals(self, other_use, is_valid_flag, parent_use=None):
@@ -1425,7 +1431,7 @@ class Atom(_atom_base):
 		if self.slot:
 			atom += ":%s" % self.slot
 		use_dep = self.use.violated_conditionals(other_use, is_valid_flag, parent_use)
-		atom += str(use_dep)
+		atom += _unicode(use_dep)
 		return Atom(atom, unevaluated_atom=self, allow_repo=(self.repo is not None), _use=use_dep)
 
 	def _eval_qa_conditionals(self, use_mask, use_force):
@@ -1435,7 +1441,7 @@ class Atom(_atom_base):
 		if self.slot:
 			atom += ":%s" % self.slot
 		use_dep = self.use._eval_qa_conditionals(use_mask, use_force)
-		atom += str(use_dep)
+		atom += _unicode(use_dep)
 		return Atom(atom, unevaluated_atom=self, allow_repo=(self.repo is not None), _use=use_dep)
 
 	def __copy__(self):
