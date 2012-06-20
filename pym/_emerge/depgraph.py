@@ -4309,9 +4309,11 @@ class depgraph(object):
 				vardb = self._frozen_config.roots[
 					node.root].trees["vartree"].dbapi
 				inst_pkg = vardb.match_pkgs(node.slot_atom)
-				if inst_pkg and (inst_pkg[0] > node or inst_pkg[0] < node):
-					version_change = True
-					break
+				if inst_pkg and inst_pkg[0].cp == node.cp:
+					inst_pkg = inst_pkg[0]
+					if inst_pkg < node or node < inst_pkg:
+						version_change = True
+						break
 
 			if version_change:
 				self._dynamic_config.myparams["complete"] = True
