@@ -215,6 +215,7 @@ class ResolverPlayground(object):
 			metadata = metadata.copy()
 			metadata.setdefault("SLOT", "0")
 			metadata.setdefault("KEYWORDS", "x86")
+			metadata.setdefault("BUILD_TIME", "0")
 			metadata["CATEGORY"] = cat
 			metadata["PF"] = pf
 
@@ -243,6 +244,7 @@ class ResolverPlayground(object):
 			lic = metadata.pop("LICENSE", "")
 			properties = metadata.pop("PROPERTIES", "")
 			slot = metadata.pop("SLOT", 0)
+			build_time = metadata.pop("BUILD_TIME", "0")
 			keywords = metadata.pop("KEYWORDS", "~x86")
 			iuse = metadata.pop("IUSE", "")
 			use = metadata.pop("USE", "")
@@ -261,6 +263,7 @@ class ResolverPlayground(object):
 				f.close()
 			
 			write_key("EAPI", eapi)
+			write_key("BUILD_TIME", build_time)
 			write_key("COUNTER", "0")
 			write_key("LICENSE", lic)
 			write_key("PROPERTIES", properties)
@@ -622,8 +625,7 @@ class ResolverPlaygroundTestCase(object):
 							if cpv[:1] == "!":
 								new_got.append(cpv)
 								continue
-							a = Atom("="+cpv, allow_repo=True)
-							new_got.append(a.cpv)
+							new_got.append(cpv.split(_repo_separator)[0])
 						got = new_got
 					if expected:
 						new_expected = []
@@ -632,13 +634,13 @@ class ResolverPlaygroundTestCase(object):
 								if obj[:1] == "!":
 									new_expected.append(obj)
 									continue
-								a = Atom("="+obj, allow_repo=True)
-								new_expected.append(a.cpv)
+								new_expected.append(
+									obj.split(_repo_separator)[0])
 								continue
 							new_expected.append(set())
 							for cpv in obj:
 								if cpv[:1] != "!":
-									cpv = Atom("="+cpv, allow_repo=True).cpv
+									cpv = cpv.split(_repo_separator)[0]
 								new_expected[-1].add(cpv)
 						expected = new_expected
 				if self.ignore_mergelist_order and got is not None:
@@ -743,7 +745,10 @@ class ResolverPlaygroundResult(object):
 					repo_str = ""
 					if x.metadata["repository"] != "test_repo":
 						repo_str = _repo_separator + x.metadata["repository"]
-					self.mergelist.append(x.cpv + repo_str)
+					mergelist_str = x.cpv + repo_str
+					if x.type_name == "binary":
+						mergelist_str = "[binary]" + mergelist_str
+					self.mergelist.append(mergelist_str)
 
 		if self.depgraph._dynamic_config._needed_use_config_changes:
 			self.use_changes = {}

@@ -49,13 +49,13 @@ class SimpleResolverTestCase(TestCase):
 				["dev-libs/B"],
 				options = {"--update": True, "--usepkg": True},
 				success = True,
-				mergelist = ["dev-libs/B-1.2"]),
+				mergelist = ["[binary]dev-libs/B-1.2"]),
 
 			ResolverPlaygroundTestCase(
 				["dev-libs/B"],
 				options = {"--update": True, "--usepkgonly": True},
 				success = True,
-				mergelist = ["dev-libs/B-1.2"]),
+				mergelist = ["[binary]dev-libs/B-1.2"]),
 
 			ResolverPlaygroundTestCase(
 				["app-misc/Z"],
