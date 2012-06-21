@@ -611,7 +611,7 @@ _eclass_info = {
 	'user': {
 		'funcs': (
 			'enewuser', 'enewgroup',
-			'egetent', 'egethome', 'egetshell'
+			'egetent', 'egethome', 'egetshell', 'esethome'
 		),
 		'comprehensive': True
 	}
