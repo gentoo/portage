@@ -216,6 +216,7 @@ class ResolverPlayground(object):
 			metadata.setdefault("SLOT", "0")
 			metadata.setdefault("KEYWORDS", "x86")
 			metadata.setdefault("BUILD_TIME", "0")
+			metadata["repository"] = repo
 			metadata["CATEGORY"] = cat
 			metadata["PF"] = pf
 
