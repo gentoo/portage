@@ -172,6 +172,7 @@ def action_build(settings, trees, mtimedb,
 	verbose = "--verbose" in myopts
 	quiet = "--quiet" in myopts
 	myparams = create_depgraph_params(myopts, myaction)
+	mergelist_shown = False
 
 	if pretend or fetchonly:
 		# make the mtimedb readonly
@@ -319,6 +320,7 @@ def action_build(settings, trees, mtimedb,
 				mydepgraph.altlist(reversed=tree),
 				favorites=favorites)
 			mydepgraph.display_problems()
+			mergelist_shown = True
 			if retval != os.EX_OK:
 				return retval
 			prompt="Would you like to resume merging these packages?"
@@ -327,6 +329,7 @@ def action_build(settings, trees, mtimedb,
 				mydepgraph.altlist(reversed=("--tree" in myopts)),
 				favorites=favorites)
 			mydepgraph.display_problems()
+			mergelist_shown = True
 			if retval != os.EX_OK:
 				return retval
 			mergecount=0
@@ -383,6 +386,7 @@ def action_build(settings, trees, mtimedb,
 				mydepgraph.altlist(reversed=tree),
 				favorites=favorites)
 			mydepgraph.display_problems()
+			mergelist_shown = True
 			if retval != os.EX_OK:
 				return retval
 		else:
@@ -390,6 +394,7 @@ def action_build(settings, trees, mtimedb,
 				mydepgraph.altlist(reversed=("--tree" in myopts)),
 				favorites=favorites)
 			mydepgraph.display_problems()
+			mergelist_shown = True
 			if retval != os.EX_OK:
 				return retval
 			if "--buildpkgonly" in myopts:
@@ -419,6 +424,11 @@ def action_build(settings, trees, mtimedb,
 				print("\n!!! --buildpkgonly requires all dependencies to be merged.")
 				print("!!! Cannot merge requested packages. Merge deps and try again.\n")
 				return 1
+
+		if not mergelist_shown:
+			# If we haven't already shown the merge list above, at
+			# least show warnings about missed updates and such.
+			mydepgraph.display_problems()
 
 		if ("--resume" in myopts):
 			favorites=mtimedb["resume"]["favorites"]
