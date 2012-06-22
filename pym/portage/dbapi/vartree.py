@@ -2064,7 +2064,9 @@ class dblink(object):
 
 			#process symlinks second-to-last, directories last.
 			mydirs = set()
-			modprotect = os.path.join(self._eroot, "lib/modules/")
+
+			uninstall_ignore = portage.util.shlex_split(
+				self.settings.get("UNINSTALL_IGNORE", ""))
 
 			def unlink(file_name, lstatobj):
 				if bsd_chflags:
@@ -2171,6 +2173,18 @@ class dblink(object):
 				if lstatobj is None:
 						show_unmerge("---", unmerge_desc["!found"], file_type, obj)
 						continue
+
+				f_match = obj[len(eroot)-1:]
+				ignore = False
+				for pattern in uninstall_ignore:
+					if fnmatch.fnmatch(f_match, pattern):
+						ignore = True
+						break
+
+				if ignore:
+					show_unmerge("---", unmerge_desc["cfgpro"], file_type, obj)
+					continue
+
 				# don't use EROOT, CONTENTS entries already contain EPREFIX
 				if obj.startswith(real_root):
 					relative_path = obj[real_root_len:]
@@ -2214,18 +2228,6 @@ class dblink(object):
 						continue
 					elif relative_path in cfgfiledict:
 						stale_confmem.append(relative_path)
-				# next line includes a tweak to protect modules from being unmerged,
-				# but we don't protect modules from being overwritten if they are
-				# upgraded. We effectively only want one half of the config protection
-				# functionality for /lib/modules. For portage-ng both capabilities
-				# should be able to be independently specified.
-				# TODO: For rebuilds, re-parent previous modules to the new
-				# installed instance (so they are not orphans). For normal
-				# uninstall (not rebuild/reinstall), remove the modules along
-				# with all other files (leave no orphans).
-				if obj.startswith(modprotect):
-					show_unmerge("---", unmerge_desc["cfgpro"], file_type, obj)
-					continue
 
 				# Don't unlink symlinks to directories here since that can
 				# remove /lib and /usr/lib symlinks.

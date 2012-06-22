@@ -896,6 +896,14 @@ is used to sync the local portage tree when `emerge \-\-sync` is run.
 .br
 Defaults to rsync://rsync.gentoo.org/gentoo\-portage
 .TP
+\fBUNINSTALL_IGNORE\fR = \fI[space delimited list of fnmatch patterns]\fR
+This variable prevents uninstallation of files that match
+specific \fBfnmatch\fR(3) patterns. In order to ignore file
+collisions with these files at install time, the same patterns
+can be added to the \fBCOLLISION_IGNORE\fR variable.
+.br
+Defaults to "/lib/modules/*".
+.TP
 \fBUSE\fR = \fI[space delimited list of USE items]\fR
 This variable contains options that control the build behavior of several
 packages.  More information in \fBebuild\fR(5).  Possible USE values

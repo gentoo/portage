@@ -64,6 +64,7 @@ FEATURES="assume-digests binpkg-logs
 # transition from compiling python modules in live file system to compiling
 # them in src_install() function.
 COLLISION_IGNORE="/lib/modules/* *.py[co]"
+UNINSTALL_IGNORE="/lib/modules/*"
 
 # Enable preserve-libs for testing with portage versions that support it.
 # This setting is commented out for portage versions that don't support it.
