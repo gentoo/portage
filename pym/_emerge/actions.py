@@ -2807,6 +2807,7 @@ def relative_profile_path(portdir, abs_profile):
 
 def getportageversion(portdir, _unused, profile, chost, vardb):
 	profilever = None
+	repositories = vardb.settings.repositories
 	if profile:
 		profilever = relative_profile_path(portdir, profile)
 		if profilever is None:
@@ -2817,6 +2818,20 @@ def getportageversion(portdir, _unused, profile, chost, vardb):
 						os.path.join(profile, parent))
 					if profilever is not None:
 						break
+					colon = parent.find(":")
+					if colon != -1:
+						p_repo_name = parent[:colon]
+						try:
+							p_repo_loc = \
+								repositories.get_location_for_name(p_repo_name)
+						except KeyError:
+							pass
+						else:
+							profilever = relative_profile_path(p_repo_loc,
+								os.path.join(p_repo_loc, 'profiles',
+									parent[colon+1:]))
+							if profilever is not None:
+								break
 			except portage.exception.PortageException:
 				pass
 
