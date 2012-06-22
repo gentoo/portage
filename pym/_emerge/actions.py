@@ -31,7 +31,7 @@ from portage import shutil
 from portage import eapi_is_supported, _unicode_decode
 from portage.cache.cache_errors import CacheError
 from portage.const import GLOBAL_CONFIG_PATH
-from portage.const import _ENABLE_DYN_LINK_MAP, _ENABLE_SET_CONFIG
+from portage.const import _ENABLE_DYN_LINK_MAP
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.dep import Atom, extended_cp_match
@@ -76,6 +76,9 @@ from _emerge.userquery import userquery
 
 if sys.hexversion >= 0x3000000:
 	long = int
+	_unicode = str
+else:
+	_unicode = unicode
 
 def action_build(settings, trees, mtimedb,
 	myopts, myaction, myfiles, spinner):
@@ -1297,12 +1300,21 @@ def action_deselect(settings, trees, opts, atoms):
 						break
 		if discard_atoms:
 			for atom in sorted(discard_atoms):
+
 				if pretend:
-					print(">>> Would remove %s from \"world\" favorites file..." % \
-						colorize("INFORM", str(atom)))
+					action_desc = "Would remove"
 				else:
-					print(">>> Removing %s from \"world\" favorites file..." % \
-						colorize("INFORM", str(atom)))
+					action_desc = "Removing"
+
+				if atom.startswith(SETPREFIX):
+					filename = "world_sets"
+				else:
+					filename = "world"
+
+				writemsg_stdout(
+					">>> %s %s from \"%s\" favorites file...\n" %
+					(action_desc, colorize("INFORM", _unicode(atom)),
+					filename), noiselevel=-1)
 
 			if '--ask' in opts:
 				prompt = "Would you like to remove these " + \
@@ -1466,11 +1478,11 @@ def action_info(settings, trees, myopts, myfiles):
 		append("Repositories: %s" % \
 			" ".join(repo.name for repo in repos))
 
-	if _ENABLE_SET_CONFIG:
+	installed_sets = sorted(s for s in
+		root_config.sets['selected'].getNonAtoms() if s.startswith(SETPREFIX))
+	if installed_sets:
 		sets_line = "Installed sets: "
-		sets_line += ", ".join(s for s in \
-			sorted(root_config.sets['selected'].getNonAtoms()) \
-			if s.startswith(SETPREFIX))
+		sets_line += ", ".join(installed_sets)
 		append(sets_line)
 
 	if "--verbose" in myopts:

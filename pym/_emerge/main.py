@@ -1370,14 +1370,9 @@ def clean_logs(settings):
 			"PORT_LOGDIR_CLEAN usage instructions.")
 
 def setconfig_fallback(root_config):
-	from portage._sets.base import DummyPackageSet
-	from portage._sets.files import WorldSelectedSet
-	from portage._sets.profiles import PackagesSystemSet
 	setconfig = root_config.setconfig
-	setconfig.psets['world'] = DummyPackageSet(atoms=['@selected', '@system'])
-	setconfig.psets['selected'] = WorldSelectedSet(root_config.settings['EROOT'])
-	setconfig.psets['system'] = \
-		PackagesSystemSet(root_config.settings.profiles)
+	setconfig._create_default_config()
+	setconfig._parse(update=True)
 	root_config.sets = setconfig.getSets()
 
 def get_missing_sets(root_config):

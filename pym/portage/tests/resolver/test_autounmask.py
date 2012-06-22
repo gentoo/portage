@@ -1,7 +1,6 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage.const import _ENABLE_SET_CONFIG
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground, ResolverPlaygroundTestCase
 
@@ -339,9 +338,6 @@ class AutounmaskTestCase(TestCase):
 
 
 	def testAutounmaskAndSets(self):
-
-		if not _ENABLE_SET_CONFIG:
-			return
 
 		ebuilds = {
 			#ebuilds to test use changes

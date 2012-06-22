@@ -74,6 +74,9 @@ from _emerge.resolver.output import Display
 if sys.hexversion >= 0x3000000:
 	basestring = str
 	long = int
+	_unicode = str
+else:
+	_unicode = unicode
 
 class _scheduler_graph_config(object):
 	def __init__(self, trees, pkg_cache, graph, mergelist):
@@ -6719,9 +6722,13 @@ class depgraph(object):
 		all_added.extend(added_favorites)
 		all_added.sort()
 		for a in all_added:
+			if a.startswith(SETPREFIX):
+				filename = "world_sets"
+			else:
+				filename = "world"
 			writemsg_stdout(
-				">>> Recording %s in \"world\" favorites file...\n" % \
-				colorize("INFORM", str(a)), noiselevel=-1)
+				">>> Recording %s in \"%s\" favorites file...\n" %
+				(colorize("INFORM", _unicode(a)), filename), noiselevel=-1)
 		if all_added:
 			world_set.update(all_added)
 

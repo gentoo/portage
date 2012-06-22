@@ -1,5 +1,5 @@
 # portage: Constants
-# Copyright 1998-2011 Gentoo Foundation
+# Copyright 1998-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import os
@@ -175,6 +175,3 @@ if not _ENABLE_PRESERVE_LIBS:
 	SUPPORTED_FEATURES = set(SUPPORTED_FEATURES)
 	SUPPORTED_FEATURES.remove("preserve-libs")
 	SUPPORTED_FEATURES = frozenset(SUPPORTED_FEATURES)
-
-if not _ENABLE_SET_CONFIG:
-	WORLD_SETS_FILE = '/dev/null'

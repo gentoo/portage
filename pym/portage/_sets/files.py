@@ -1,4 +1,4 @@
-# Copyright 2007-2011 Gentoo Foundation
+# Copyright 2007-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -11,7 +11,6 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.util import grabfile, write_atomic, ensure_dirs, normalize_path
 from portage.const import USER_CONFIG_PATH, WORLD_FILE, WORLD_SETS_FILE
-from portage.const import _ENABLE_SET_CONFIG
 from portage.localization import _
 from portage.locks import lockfile, unlockfile
 from portage import portage_gid
@@ -231,9 +230,8 @@ class WorldSelectedSet(EditablePackageSet):
 		write_atomic(self._filename,
 			"".join(sorted("%s\n" % x for x in self._atoms)))
 
-		if _ENABLE_SET_CONFIG:
-			write_atomic(self._filename2,
-				"".join(sorted("%s\n" % x for x in self._nonatoms)))
+		write_atomic(self._filename2,
+			"".join(sorted("%s\n" % x for x in self._nonatoms)))
 
 	def load(self):
 		atoms = []
@@ -263,9 +261,8 @@ class WorldSelectedSet(EditablePackageSet):
 		else:
 			atoms.extend(self._atoms)
 
-		if _ENABLE_SET_CONFIG:
-			changed2, nonatoms = self._load2()
-			atoms_changed |= changed2
+		changed2, nonatoms = self._load2()
+		atoms_changed |= changed2
 
 		if atoms_changed:
 			self._setAtoms(atoms+nonatoms)
