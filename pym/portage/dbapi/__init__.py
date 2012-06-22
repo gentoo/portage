@@ -8,7 +8,7 @@ import re
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dbapi.dep_expand:dep_expand@_dep_expand',
-	'portage.dep:match_from_list',
+	'portage.dep:match_from_list,_match_slot',
 	'portage.output:colorize',
 	'portage.util:cmp_sort_key,writemsg',
 	'portage.versions:catsplit,catpkgsplit,vercmp,_pkg_str',
@@ -173,7 +173,7 @@ class dbapi(object):
 			except (KeyError, InvalidData):
 				pass
 			else:
-				if pkg_str.slot == atom.slot:
+				if _match_slot(atom, pkg_str):
 					yield pkg_str
 
 	def _iter_match_use(self, atom, cpv_iter):

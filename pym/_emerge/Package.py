@@ -26,8 +26,9 @@ class Package(Task):
 		"root_config", "type_name",
 		"category", "counter", "cp", "cpv_split",
 		"inherited", "iuse", "mtime",
-		"pf", "root", "slot", "slot_atom", "version") + \
-	("_invalid", "_raw_metadata", "_masks", "_use", "_visible")
+		"pf", "root", "slot", "slot_abi", "slot_atom", "version") + \
+		("_invalid", "_raw_metadata", "_masks", "_use",
+		"_validated_atoms", "_visible")
 
 	metadata_keys = [
 		"BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "EAPI",
@@ -58,6 +59,7 @@ class Package(Task):
 				"SLOT: invalid value: '%s'" % self.metadata["SLOT"])
 		self.cp = self.cpv.cp
 		self.slot = self.cpv.slot
+		self.slot_abi = self.cpv.slot_abi
 		# sync metadata with validated repo (may be UNKNOWN_REPO)
 		self.metadata['repository'] = self.cpv.repo
 		if (self.iuse.enabled or self.iuse.disabled) and \
@@ -106,6 +108,17 @@ class Package(Task):
 		if self._visible is None:
 			self._visible = self._eval_visiblity(self.masks)
 		return self._visible
+
+	@property
+	def validated_atoms(self):
+		"""
+		Returns *all* validated atoms from the deps, regardless
+		of USE conditionals, with USE conditionals inside
+		atoms left unevaluated.
+		"""
+		if self._validated_atoms is None:
+			self._validate_deps()
+		return self._validated_atoms
 
 	@classmethod
 	def _gen_hash_key(cls, cpv=None, installed=None, onlydeps=None,
@@ -160,15 +173,20 @@ class Package(Task):
 			dep_eapi = None
 			dep_valid_flag = None
 
+		validated_atoms = []
 		for k in self._dep_keys:
 			v = self.metadata.get(k)
 			if not v:
 				continue
 			try:
-				use_reduce(v, eapi=dep_eapi, matchall=True,
-					is_valid_flag=dep_valid_flag, token_class=Atom)
+				validated_atoms.extend(use_reduce(v, eapi=dep_eapi,
+					matchall=True, is_valid_flag=dep_valid_flag,
+					token_class=Atom, flat=True))
 			except InvalidDependString as e:
 				self._metadata_exception(k, e)
+
+		self._validated_atoms = frozenset(atom for atom in
+			validated_atoms if isinstance(atom, Atom))
 
 		k = 'PROVIDE'
 		v = self.metadata.get(k)

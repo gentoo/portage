@@ -25,6 +25,8 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.digestcheck:digestcheck',
 	'portage.package.ebuild.digestgen:digestgen',
 	'portage.package.ebuild.fetch:fetch',
+	'portage.package.ebuild._ipc.QueryCommand:QueryCommand',
+	'portage.dep._slot_abi:evaluate_slot_abi_equal_deps',
 	'portage.package.ebuild._spawn_nofetch:spawn_nofetch',
 	'portage.util.ExtractKernelVersion:ExtractKernelVersion'
 )
@@ -43,7 +45,7 @@ from portage.dep import Atom, check_required_use, \
 from portage.eapi import eapi_exports_KV, eapi_exports_merge_type, \
 	eapi_exports_replace_vars, eapi_exports_REPOSITORY, \
 	eapi_has_required_use, eapi_has_src_prepare_and_src_configure, \
-	eapi_has_pkg_pretend
+	eapi_has_pkg_pretend, _get_eapi_attrs
 from portage.elog import elog_process, _preload_elog_modules
 from portage.elog.messages import eerror, eqawarn
 from portage.exception import DigestException, FileNotFound, \
@@ -1631,6 +1633,8 @@ def _post_src_install_write_metadata(settings):
 	due to local environment settings like in bug #386829.
 	"""
 
+	eapi_attrs = _get_eapi_attrs(settings.configdict['pkg']['EAPI'])
+
 	build_info_dir = os.path.join(settings['PORTAGE_BUILDDIR'], 'build-info')
 
 	for k in ('IUSE',):
@@ -1664,6 +1668,8 @@ def _post_src_install_write_metadata(settings):
 			continue
 
 		if k.endswith('DEPEND'):
+			if eapi_attrs.slot_abi:
+				continue
 			token_class = Atom
 		else:
 			token_class = None
@@ -1681,6 +1687,22 @@ def _post_src_install_write_metadata(settings):
 			mode='w', encoding=_encodings['repo.content'],
 			errors='strict') as f:
 			f.write(_unicode_decode(v + '\n'))
+
+	if eapi_attrs.slot_abi:
+		deps = evaluate_slot_abi_equal_deps(settings, use, QueryCommand.get_db())
+		for k, v in deps.items():
+			filename = os.path.join(build_info_dir, k)
+			if not v:
+				try:
+					os.unlink(filename)
+				except OSError:
+					pass
+				continue
+			with io.open(_unicode_encode(os.path.join(build_info_dir,
+				k), encoding=_encodings['fs'], errors='strict'),
+				mode='w', encoding=_encodings['repo.content'],
+				errors='strict') as f:
+				f.write(_unicode_decode(v + '\n'))
 
 _vdb_use_conditional_keys = ('DEPEND', 'LICENSE', 'PDEPEND',
 	'PROPERTIES', 'PROVIDE', 'RDEPEND', 'RESTRICT',)

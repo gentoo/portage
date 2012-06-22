@@ -10,7 +10,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum',
 	'portage.data:portage_gid,secpass',
 	'portage.dbapi.dep_expand:dep_expand',
-	'portage.dep:Atom,dep_getkey,match_from_list,use_reduce',
+	'portage.dep:Atom,dep_getkey,match_from_list,use_reduce,_match_slot',
 	'portage.package.ebuild.doebuild:doebuild',
 	'portage.util:ensure_dirs,shlex_split,writemsg,writemsg_level',
 	'portage.util.listdir:listdir',
@@ -836,7 +836,7 @@ class portdbapi(dbapi):
 						continue
 
 					if mydep.slot is not None and \
-						mydep.slot != pkg_str.slot:
+						not _match_slot(mydep, pkg_str):
 						continue
 
 					if mydep.unevaluated_atom.use is not None and \

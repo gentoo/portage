@@ -7,7 +7,8 @@ class BacktrackParameter(object):
 
 	__slots__ = (
 		"needed_unstable_keywords", "runtime_pkg_mask", "needed_use_config_changes", "needed_license_changes",
-		"rebuild_list", "reinstall_list", "needed_p_mask_changes"
+		"rebuild_list", "reinstall_list", "needed_p_mask_changes",
+		"slot_abi_replace_installed"
 	)
 
 	def __init__(self):
@@ -18,6 +19,7 @@ class BacktrackParameter(object):
 		self.needed_license_changes = {}
 		self.rebuild_list = set()
 		self.reinstall_list = set()
+		self.slot_abi_replace_installed = set()
 
 	def __deepcopy__(self, memo=None):
 		if memo is None:
@@ -34,6 +36,7 @@ class BacktrackParameter(object):
 		result.needed_license_changes = copy.copy(self.needed_license_changes)
 		result.rebuild_list = copy.copy(self.rebuild_list)
 		result.reinstall_list = copy.copy(self.reinstall_list)
+		result.slot_abi_replace_installed = copy.copy(self.slot_abi_replace_installed)
 
 		return result
 
@@ -44,7 +47,8 @@ class BacktrackParameter(object):
 			self.needed_use_config_changes == other.needed_use_config_changes and \
 			self.needed_license_changes == other.needed_license_changes and \
 			self.rebuild_list == other.rebuild_list and \
-			self.reinstall_list == other.reinstall_list
+			self.reinstall_list == other.reinstall_list and \
+			self.slot_abi_replace_installed == other.slot_abi_replace_installed
 
 
 class _BacktrackNode(object):
@@ -114,9 +118,10 @@ class Backtracker(object):
 		before, we revert the mask for other packages (bug 375573).
 		"""
 
-		for pkg in runtime_pkg_mask:
+		for pkg, mask_info in runtime_pkg_mask.items():
 
-			if "missing dependency" in runtime_pkg_mask[pkg]:
+			if "missing dependency" in mask_info or \
+				"slot_abi_mask_built" in mask_info:
 				continue
 
 			entry_is_valid = False
@@ -181,6 +186,10 @@ class Backtracker(object):
 			elif change == "needed_use_config_changes":
 				for pkg, (new_use, new_changes) in data:
 					para.needed_use_config_changes[pkg] = (new_use, new_changes)
+			elif change == "slot_abi_mask_built":
+				para.runtime_pkg_mask.update(data)
+			elif change == "slot_abi_replace_installed":
+				para.slot_abi_replace_installed.update(data)
 			elif change == "rebuild_list":
 				para.rebuild_list.update(data)
 			elif change == "reinstall_list":

@@ -22,6 +22,7 @@ from portage.dbapi.dep_expand import dep_expand
 from portage.dep import Atom, best_match_to_list, extract_affecting_use, \
 	check_required_use, human_readable_required_use, match_from_list, \
 	_repo_separator
+from portage.dep._slot_abi import ignore_built_slot_abi_deps
 from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use
 from portage.exception import InvalidAtom, InvalidDependString, PortageException
 from portage.output import colorize, create_color_func, \
@@ -110,6 +111,8 @@ class _frozen_depgraph_config(object):
 		self._pkg_cache = {}
 		self._highest_license_masked = {}
 		dynamic_deps = myopts.get("--dynamic-deps", "y") != "n"
+		ignore_built_slot_abi_deps = myopts.get(
+			"--ignore-built-slot-abi-deps", "n") == "y"
 		for myroot in trees:
 			self.trees[myroot] = {}
 			# Create a RootConfig instance that references
@@ -124,7 +127,8 @@ class _frozen_depgraph_config(object):
 				FakeVartree(trees[myroot]["root_config"],
 					pkg_cache=self._pkg_cache,
 					pkg_root_config=self.roots[myroot],
-					dynamic_deps=dynamic_deps)
+					dynamic_deps=dynamic_deps,
+					ignore_built_slot_abi_deps=ignore_built_slot_abi_deps)
 			self.pkgsettings[myroot] = portage.config(
 				clone=self.trees[myroot]["vartree"].settings)
 
@@ -404,6 +408,7 @@ class _dynamic_depgraph_config(object):
 		self._needed_license_changes = backtrack_parameters.needed_license_changes
 		self._needed_use_config_changes = backtrack_parameters.needed_use_config_changes
 		self._runtime_pkg_mask = backtrack_parameters.runtime_pkg_mask
+		self._slot_abi_replace_installed = backtrack_parameters.slot_abi_replace_installed
 		self._need_restart = False
 		# For conditions that always require user intervention, such as
 		# unsatisfied REQUIRED_USE (currently has no autounmask support).
@@ -413,6 +418,8 @@ class _dynamic_depgraph_config(object):
 		self._autounmask = depgraph._frozen_config.myopts.get('--autounmask') != 'n'
 		self._success_without_autounmask = False
 		self._traverse_ignored_deps = False
+		self._complete_mode = False
+		self._slot_abi_deps = {}
 
 		for myroot in depgraph._frozen_config.trees:
 			self.sets[myroot] = _depgraph_sets()
@@ -830,6 +837,7 @@ class depgraph(object):
 			slot_parent_atoms.update(parent_atoms)
 
 		conflict_pkgs = []
+		conflict_atoms = {}
 		for pkg in slot_nodes:
 
 			if self._dynamic_config._allow_backtracking and \
@@ -860,6 +868,7 @@ class depgraph(object):
 					parent_atoms.add(parent_atom)
 				else:
 					all_match = False
+					conflict_atoms.setdefault(parent_atom, set()).add(pkg)
 
 			if not all_match:
 				conflict_pkgs.append(pkg)
@@ -867,8 +876,14 @@ class depgraph(object):
 		if conflict_pkgs and \
 			self._dynamic_config._allow_backtracking and \
 			not self._accept_blocker_conflicts():
-			self._slot_confict_backtrack(root, slot_atom,
-				slot_parent_atoms, conflict_pkgs)
+			remaining = []
+			for pkg in conflict_pkgs:
+				if not self._slot_conflict_backtrack_abi(pkg,
+					slot_nodes, conflict_atoms):
+					remaining.append(pkg)
+			if remaining:
+				self._slot_confict_backtrack(root, slot_atom,
+					slot_parent_atoms, remaining)
 
 	def _slot_confict_backtrack(self, root, slot_atom,
 		all_parents, conflict_pkgs):
@@ -930,6 +945,219 @@ class depgraph(object):
 			msg.append("")
 			writemsg_level("".join("%s\n" % l for l in msg),
 				noiselevel=-1, level=logging.DEBUG)
+
+	def _slot_conflict_backtrack_abi(self, pkg, slot_nodes, conflict_atoms):
+		"""
+		If one or more conflict atoms have a SLOT/ABI dep that can be resolved
+		by rebuilding the parent package, then schedule the rebuild via
+		backtracking, and return True. Otherwise, return False.
+		"""
+
+		found_update = False
+		for parent_atom, conflict_pkgs in conflict_atoms.items():
+			parent, atom = parent_atom
+			if atom.slot_abi_op != "=" or not parent.built:
+				continue
+
+			if pkg not in conflict_pkgs:
+				continue
+
+			for other_pkg in slot_nodes:
+				if other_pkg in conflict_pkgs:
+					continue
+
+				dep = Dependency(atom=atom, child=other_pkg,
+					parent=parent, root=pkg.root)
+
+				if self._slot_abi_update_probe(dep):
+					self._slot_abi_update_backtrack(dep)
+					found_update = True
+
+		return found_update
+
+	def _slot_abi_update_backtrack(self, dep, new_child_slot=None):
+		if new_child_slot is None:
+			child = dep.child
+		else:
+			child = new_child_slot
+		if "--debug" in self._frozen_config.myopts:
+			msg = []
+			msg.append("")
+			msg.append("")
+			msg.append("backtracking to due missed slot abi update:")
+			msg.append("   child package:  %s" % child)
+			if new_child_slot is not None:
+				msg.append("   new child slot package:  %s" % new_child_slot)
+			msg.append("   parent package: %s" % dep.parent)
+			msg.append("   atom: %s" % dep.atom)
+			msg.append("")
+			writemsg_level("\n".join(msg),
+				noiselevel=-1, level=logging.DEBUG)
+		backtrack_infos = self._dynamic_config._backtrack_infos
+		config = backtrack_infos.setdefault("config", {})
+
+		# mask unwanted binary packages if necessary
+		abi_masks = {}
+		if new_child_slot is None:
+			if not child.installed:
+				abi_masks.setdefault(child, {})["slot_abi_mask_built"] = dep
+		if not dep.parent.installed:
+			abi_masks.setdefault(dep.parent, {})["slot_abi_mask_built"] = dep
+		if abi_masks:
+			config.setdefault("slot_abi_mask_built", {}).update(abi_masks)
+
+		# trigger replacement of installed packages if necessary
+		abi_reinstalls = set()
+		if dep.parent.installed:
+			abi_reinstalls.add((dep.parent.root, dep.parent.slot_atom))
+		if new_child_slot is None and child.installed:
+			abi_reinstalls.add((child.root, child.slot_atom))
+		if abi_reinstalls:
+			config.setdefault("slot_abi_replace_installed",
+				set()).update(abi_reinstalls)
+
+		self._dynamic_config._need_restart = True
+
+	def _slot_abi_update_probe(self, dep, new_child_slot=False):
+		"""
+		SLOT/ABI := operators tend to prevent updates from getting pulled in,
+		since installed packages pull in packages with the SLOT/ABI that they
+		were built against. Detect this case so that we can schedule rebuilds
+		and reinstalls when appropriate.
+		NOTE: This function only searches for updates that involve upgrades
+			to higher versions, since the logic required to detect when a
+			downgrade would be desirable is not implemented.
+		"""
+
+		debug = "--debug" in self._frozen_config.myopts
+
+		for replacement_parent in self._iter_similar_available(dep.parent,
+			dep.parent.slot_atom):
+
+			for atom in replacement_parent.validated_atoms:
+				if not atom.slot_abi_op == "=" or \
+					atom.blocker or \
+					atom.cp != dep.atom.cp:
+					continue
+
+				# Discard USE deps, we're only searching for an approximate
+				# pattern, and dealing with USE states is too complex for
+				# this purpose.
+				atom = atom.without_use
+
+				if replacement_parent.built and \
+					portage.dep._match_slot(atom, dep.child):
+					# Our selected replacement_parent appears to be built
+					# for the existing child selection. So, discard this
+					# parent and search for another.
+					break
+
+				for pkg in self._iter_similar_available(
+					dep.child, atom):
+					if pkg.slot == dep.child.slot and \
+						pkg.slot_abi == dep.child.slot_abi:
+						# If SLOT/ABI is identical, then there's
+						# no point in updating.
+						continue
+					if new_child_slot:
+						if pkg.slot == dep.child.slot:
+							continue
+						if pkg < dep.child:
+							# the new slot only matters if the
+							# package version is higher
+							continue
+					else:
+						if pkg.slot != dep.child.slot:
+							continue
+						if pkg < dep.child:
+							# be careful not to trigger a rebuild when
+							# the only version available with a
+							# different slot_abi is an older version
+							continue
+
+					if debug:
+						msg = []
+						msg.append("")
+						msg.append("")
+						msg.append("slot_abi_update_probe:")
+						msg.append("   existing child package:  %s" % dep.child)
+						msg.append("   existing parent package: %s" % dep.parent)
+						msg.append("   new child package:  %s" % pkg)
+						msg.append("   new parent package: %s" % replacement_parent)
+						msg.append("")
+						writemsg_level("\n".join(msg),
+							noiselevel=-1, level=logging.DEBUG)
+
+					return pkg
+
+		if debug:
+			msg = []
+			msg.append("")
+			msg.append("")
+			msg.append("slot_abi_update_probe:")
+			msg.append("   existing child package:  %s" % dep.child)
+			msg.append("   existing parent package: %s" % dep.parent)
+			msg.append("   new child package:  %s" % None)
+			msg.append("   new parent package: %s" % None)
+			msg.append("")
+			writemsg_level("\n".join(msg),
+				noiselevel=-1, level=logging.DEBUG)
+
+		return None
+
+	def _iter_similar_available(self, graph_pkg, atom):
+		"""
+		Given a package that's in the graph, do a rough check to
+		see if a similar package is available to install. The given
+		graph_pkg itself may be yielded only if it's not installed.
+		"""
+		for pkg in self._iter_match_pkgs_any(
+			graph_pkg.root_config, atom):
+			if pkg.cp != graph_pkg.cp:
+				# discard old-style virtual match
+				continue
+			if pkg.installed:
+				continue
+			if pkg in self._dynamic_config._runtime_pkg_mask:
+				continue
+			if self._frozen_config.excluded_pkgs.findAtomForPackage(pkg,
+				modified_use=self._pkg_use_enabled(pkg)):
+				continue
+			if not self._pkg_visibility_check(pkg):
+				continue
+			yield pkg
+
+	def _slot_abi_trigger_reinstalls(self):
+		"""
+		Search for packages with slot-abi deps on older slots, and schedule
+		rebuilds if they can link to a newer slot that's in the graph.
+		"""
+
+		rebuild_if_new_slot_abi = self._dynamic_config.myparams.get(
+			"rebuild_if_new_slot_abi", "y") == "y"
+
+		for slot_key, slot_info in self._dynamic_config._slot_abi_deps.items():
+
+			for dep in slot_info:
+				if not (dep.child.built and dep.parent and
+					isinstance(dep.parent, Package) and dep.parent.built):
+					continue
+
+				# Check for slot update first, since we don't want to
+				# trigger reinstall of the child package when a newer
+				# slot will be used instead.
+				if rebuild_if_new_slot_abi:
+					new_child = self._slot_abi_update_probe(dep,
+						new_child_slot=True)
+					if new_child:
+						self._slot_abi_update_backtrack(dep,
+							new_child_slot=new_child)
+						break
+
+				if dep.want_update:
+					if self._slot_abi_update_probe(dep):
+						self._slot_abi_update_backtrack(dep)
+						break
 
 	def _reinstall_for_flags(self, pkg, forced_flags,
 		orig_use, orig_iuse, cur_use, cur_iuse):
@@ -1326,6 +1554,17 @@ class depgraph(object):
 			depth = min(pkg.depth, depth)
 		pkg.depth = depth
 		deep = self._dynamic_config.myparams.get("deep", 0)
+		update = "--update" in self._frozen_config.myopts
+
+		dep.want_update = (not self._dynamic_config._complete_mode and
+			(arg_atoms or update) and
+			not (deep is not True and depth > deep))
+
+		dep.child = pkg
+		if (not pkg.onlydeps and pkg.built and
+			dep.atom and dep.atom.slot_abi_built):
+			self._add_slot_abi_dep(dep)
+
 		recurse = deep is True or depth + 1 <= deep
 		dep_stack = self._dynamic_config._dep_stack
 		if "recurse" not in self._dynamic_config.myparams:
@@ -1356,6 +1595,14 @@ class depgraph(object):
 			parent_atoms = set()
 			self._dynamic_config._parent_atoms[pkg] = parent_atoms
 		parent_atoms.add(parent_atom)
+
+	def _add_slot_abi_dep(self, dep):
+		slot_key = (dep.root, dep.child.slot_atom)
+		slot_info = self._dynamic_config._slot_abi_deps.get(slot_key)
+		if slot_info is None:
+			slot_info = []
+			self._dynamic_config._slot_abi_deps[slot_key] = slot_info
+		slot_info.append(dep)
 
 	def _add_slot_conflict(self, pkg):
 		self._dynamic_config._slot_collision_nodes.add(pkg)
@@ -1815,9 +2062,14 @@ class depgraph(object):
 			# Yield ~, =*, < and <= atoms first, since those are more likely to
 			# cause slot conflicts, and we want those atoms to be displayed
 			# in the resulting slot conflict message (see bug #291142).
+			# Give similar treatment to SLOT/ABI atoms.
 			conflict_atoms = []
 			normal_atoms = []
+			abi_atoms = []
 			for atom in cp_atoms:
+				if atom.slot_abi_built:
+					abi_atoms.append(atom)
+					continue
 				conflict = False
 				for child_pkg in atom_pkg_graph.child_nodes(atom):
 					existing_node, matches = \
@@ -1830,7 +2082,7 @@ class depgraph(object):
 				else:
 					normal_atoms.append(atom)
 
-			for atom in chain(conflict_atoms, normal_atoms):
+			for atom in chain(abi_atoms, conflict_atoms, normal_atoms):
 				child_pkgs = atom_pkg_graph.child_nodes(atom)
 				# if more than one child, yield highest version
 				if len(child_pkgs) > 1:
@@ -2256,6 +2508,8 @@ class depgraph(object):
 			atom_list.append((root, '__auto_rebuild__', atom))
 		for root, atom in self._rebuild.reinstall_list:
 			atom_list.append((root, '__auto_reinstall__', atom))
+		for root, atom in self._dynamic_config._slot_abi_replace_installed:
+			atom_list.append((root, '__auto_slot_abi_replace_installed__', atom))
 
 		set_dict = {}
 		for root, set_name, atom in atom_list:
@@ -2421,6 +2675,12 @@ class depgraph(object):
 			self._dynamic_config._need_restart = True
 			return False, myfavorites
 
+		if "config" in self._dynamic_config._backtrack_infos and \
+			("slot_abi_mask_built" in self._dynamic_config._backtrack_infos["config"] or
+			"slot_abi_replace_installed" in self._dynamic_config._backtrack_infos["config"]) and \
+			self.need_restart():
+			return False, myfavorites
+
 		# We're true here unless we are missing binaries.
 		return (True, myfavorites)
 
@@ -2574,6 +2834,22 @@ class depgraph(object):
 		myuse=None, parent=None, strict=True, trees=None, priority=None):
 		"""This will raise InvalidDependString if necessary. If trees is
 		None then self._dynamic_config._filtered_trees is used."""
+
+		if not isinstance(depstring, list):
+			eapi = None
+			is_valid_flag = None
+			if parent is not None:
+				eapi = parent.metadata['EAPI']
+				if not parent.installed:
+					is_valid_flag = parent.iuse.is_valid_flag
+			depstring = portage.dep.use_reduce(depstring,
+				uselist=myuse, opconvert=True, token_class=Atom,
+				is_valid_flag=is_valid_flag, eapi=eapi)
+
+		if (self._dynamic_config.myparams.get(
+			"ignore_built_slot_abi_deps", "n") == "y" and
+			parent and parent.built):
+			ignore_built_slot_abi_deps(depstring)
 
 		pkgsettings = self._frozen_config.pkgsettings[root]
 		if trees is None:
@@ -4298,8 +4574,14 @@ class depgraph(object):
 			"recurse" not in self._dynamic_config.myparams:
 			return 1
 
+		complete_if_new_ver = self._dynamic_config.myparams.get(
+			"complete_if_new_ver", "y") == "y"
+		rebuild_if_new_slot_abi = self._dynamic_config.myparams.get(
+			"rebuild_if_new_slot_abi", "y") == "y"
+		complete_if_new_slot = rebuild_if_new_slot_abi
+
 		if "complete" not in self._dynamic_config.myparams and \
-			self._dynamic_config.myparams.get("complete_if_new_ver", "y") == "y":
+			(complete_if_new_ver or complete_if_new_slot):
 			# Enable complete mode if an installed package version will change.
 			version_change = False
 			for node in self._dynamic_config.digraph:
@@ -4308,10 +4590,19 @@ class depgraph(object):
 					continue
 				vardb = self._frozen_config.roots[
 					node.root].trees["vartree"].dbapi
-				inst_pkg = vardb.match_pkgs(node.slot_atom)
-				if inst_pkg and inst_pkg[0].cp == node.cp:
-					inst_pkg = inst_pkg[0]
-					if inst_pkg < node or node < inst_pkg:
+
+				if complete_if_new_ver:
+					inst_pkg = vardb.match_pkgs(node.slot_atom)
+					if inst_pkg and inst_pkg[0].cp == node.cp:
+						inst_pkg = inst_pkg[0]
+						if inst_pkg < node or node < inst_pkg:
+							version_change = True
+							break
+
+				if complete_if_new_slot:
+					cp_list = vardb.match_pkgs(Atom(node.cp))
+					if (cp_list and cp_list[0].cp == node.cp and
+						not any(node.slot == pkg.slot for pkg in cp_list)):
 						version_change = True
 						break
 
@@ -4329,6 +4620,7 @@ class depgraph(object):
 		# scheduled for replacement. Also, toggle the "deep"
 		# parameter so that all dependencies are traversed and
 		# accounted for.
+		self._complete_mode = True
 		self._select_atoms = self._select_atoms_from_graph
 		if "remove" in self._dynamic_config.myparams:
 			self._select_package = self._select_pkg_from_installed
@@ -4955,6 +5247,8 @@ class depgraph(object):
 			raise self._unknown_internal_error()
 
 		self._process_slot_conflicts()
+
+		self._slot_abi_trigger_reinstalls()
 
 		if not self._validate_blockers():
 			self._dynamic_config._skip_restart = True

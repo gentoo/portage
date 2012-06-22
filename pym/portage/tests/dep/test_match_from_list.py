@@ -16,9 +16,15 @@ class Package(object):
 	def __init__(self, atom):
 		atom = Atom(atom, allow_repo=True)
 		self.cp = atom.cp
-		self.cpv = _pkg_str(atom.cpv, slot=(atom.slot or '0'), repo=atom.repo)
+		slot = atom.slot
+		if atom.slot_abi:
+			slot = "%s/%s" % (slot, atom.slot_abi)
+		if not slot:
+			slot = '0'
+		self.cpv = _pkg_str(atom.cpv, slot=slot, repo=atom.repo)
 		self.cpv_split = catpkgsplit(self.cpv)
-		self.slot = atom.slot
+		self.slot = self.cpv.slot
+		self.slot_abi = self.cpv.slot_abi
 		self.repo = atom.repo
 		if atom.use:
 			self.use = self._use_class(atom.use.enabled)
@@ -93,6 +99,15 @@ class Test_match_from_list(TestCase):
 			("dev-libs/A::repo2[foo]", [Package("=dev-libs/A-1::repo1[-foo]"), Package("=dev-libs/A-1::repo2[foo]")], ["dev-libs/A-1::repo2"] ),
 			("dev-libs/A:1::repo2[foo]", [Package("=dev-libs/A-1:1::repo1"), Package("=dev-libs/A-1:2::repo2")], [] ),
 			("dev-libs/A:1::repo2[foo]", [Package("=dev-libs/A-1:2::repo1"), Package("=dev-libs/A-1:1::repo2[foo]")], ["dev-libs/A-1::repo2"] ),
+
+			("virtual/ffmpeg:0/53", [Package("=virtual/ffmpeg-0.10.3:0/53")], ["virtual/ffmpeg-0.10.3"] ),
+			("virtual/ffmpeg:0/53=", [Package("=virtual/ffmpeg-0.10.3:0/53")], ["virtual/ffmpeg-0.10.3"] ),
+			("virtual/ffmpeg:0/52", [Package("=virtual/ffmpeg-0.10.3:0/53")], [] ),
+			("virtual/ffmpeg:=", [Package("=virtual/ffmpeg-0.10.3:0/53")], ["virtual/ffmpeg-0.10.3"] ),
+			("virtual/ffmpeg:0=", [Package("=virtual/ffmpeg-0.10.3:0/53")], ["virtual/ffmpeg-0.10.3"] ),
+			("virtual/ffmpeg:*", [Package("=virtual/ffmpeg-0.10.3:0/53")], ["virtual/ffmpeg-0.10.3"] ),
+			("virtual/ffmpeg:0*", [Package("=virtual/ffmpeg-0.10.3:0/53")], ["virtual/ffmpeg-0.10.3"] ),
+			("virtual/ffmpeg:0", [Package("=virtual/ffmpeg-0.10.3:0/53")], ["virtual/ffmpeg-0.10.3"] ),
 		)
 
 		for atom, cpv_list, expected_result in tests:

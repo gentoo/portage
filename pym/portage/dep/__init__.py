@@ -47,7 +47,8 @@ _internal_warnings = False
 # It must not begin with a hyphen or a dot.
 _slot_separator = ":"
 _slot = r'([\w+][\w+.-]*)'
-_slot_re = re.compile('^' + _slot + '$', re.VERBOSE)
+# loosly match SLOT, which may have an optional ABI part
+_slot_loose = r'([\w+./*=-]+)'
 
 _use = r'\[.*\]'
 _op = r'([=~]|[><]=?)'
@@ -58,8 +59,49 @@ _repo = r'(?:' + _repo_separator + '(' + _repo_name + ')' + ')?'
 
 _extended_cat = r'[\w+*][\w+.*-]*'
 
+_slot_re_cache = {}
+
 def _get_slot_re(eapi_attrs):
-	return _slot_re
+	cache_key = eapi_attrs.slot_abi
+	slot_re = _slot_re_cache.get(cache_key)
+	if slot_re is not None:
+		return slot_re
+
+	if eapi_attrs.slot_abi:
+		slot_re = _slot + r'(/' + _slot + r'=?)?'
+	else:
+		slot_re = _slot
+
+	slot_re = re.compile('^' + slot_re + '$', re.VERBOSE)
+
+	_slot_re_cache[cache_key] = slot_re
+	return slot_re
+
+_slot_dep_re_cache = {}
+
+def _get_slot_dep_re(eapi_attrs):
+	cache_key = eapi_attrs.slot_abi
+	slot_re = _slot_dep_re_cache.get(cache_key)
+	if slot_re is not None:
+		return slot_re
+
+	if eapi_attrs.slot_abi:
+		slot_re = _slot + r'?(\*|=|/' + _slot + r'=?)?'
+	else:
+		slot_re = _slot
+
+	slot_re = re.compile('^' + slot_re + '$', re.VERBOSE)
+
+	_slot_dep_re_cache[cache_key] = slot_re
+	return slot_re
+
+def _match_slot(atom, pkg):
+	if pkg.slot == atom.slot:
+		if not atom.slot_abi:
+			return True
+		elif atom.slot_abi == pkg.slot_abi:
+			return True
+	return False
 
 _atom_re_cache = {}
 
@@ -80,7 +122,7 @@ def _get_atom_re(eapi_attrs):
 		'(?P<op>' + _op + cpv_re + ')|' +
 		'(?P<star>=' + cpv_re + r'\*)|' +
 		'(?P<simple>' + cp_re + '))' + 
-		'(' + _slot_separator + _slot + ')?' +
+		'(' + _slot_separator + _slot_loose + ')?' +
 		_repo + ')(' + _use + ')?$', re.VERBOSE)
 
 	_atom_re_cache[cache_key] = atom_re
@@ -101,7 +143,7 @@ def _get_atom_wildcard_re(eapi_attrs):
 
 	atom_re = re.compile(r'(?P<simple>(' +
 		_extended_cat + r')/(' + pkg_re +
-		r'))(:(?P<slot>' + _slot + r'))?(' +
+		r'))(:(?P<slot>' + _slot_loose + r'))?(' +
 		_repo_separator + r'(?P<repo>' + _repo_name + r'))?$')
 
 	_atom_wildcard_re_cache[cache_key] = atom_re
@@ -1256,7 +1298,34 @@ class Atom(_unicode):
 			self.__dict__['cpv'] = cpv
 			self.__dict__['version'] = None
 		self.__dict__['repo'] = repo
-		self.__dict__['slot'] = slot
+		if slot is None:
+			self.__dict__['slot'] = None
+			self.__dict__['slot_abi'] = None
+			self.__dict__['slot_abi_op'] = None
+		else:
+			slot_re = _get_slot_dep_re(eapi_attrs)
+			slot_match = slot_re.match(slot)
+			if slot_match is None:
+				raise InvalidAtom(self)
+			if eapi_attrs.slot_abi:
+				self.__dict__['slot'] = slot_match.group(1)
+				slot_abi =  slot_match.group(2)
+				if slot_abi is not None:
+					slot_abi = slot_abi.lstrip("/")
+				if slot_abi in ("*", "="):
+					self.__dict__['slot_abi'] = None
+					self.__dict__['slot_abi_op'] = slot_abi
+				else:
+					slot_abi_op = None
+					if slot_abi is not None and slot_abi[-1:] == "=":
+						slot_abi_op = slot_abi[-1:]
+						slot_abi = slot_abi[:-1]
+					self.__dict__['slot_abi'] = slot_abi
+					self.__dict__['slot_abi_op'] = slot_abi_op
+			else:
+				self.__dict__['slot'] = slot
+				self.__dict__['slot_abi'] = None
+				self.__dict__['slot_abi_op'] = None
 		self.__dict__['operator'] = op
 		self.__dict__['extended_syntax'] = extended_syntax
 
@@ -1330,6 +1399,15 @@ class Atom(_unicode):
 						% (eapi, self), category='EAPI.incompatible')
 
 	@property
+	def slot_abi_built(self):
+		"""
+		Returns True if slot_abi_op == "=" and slot_abi is not None.
+		NOTE: foo/bar:2= is unbuilt and returns False, whereas foo/bar:2/2=
+			is built and returns True.
+		"""
+		return self.slot_abi_op == "=" and self.slot_abi is not None
+
+	@property
 	def without_repo(self):
 		if self.repo is None:
 			return self
@@ -1338,9 +1416,14 @@ class Atom(_unicode):
 
 	@property
 	def without_slot(self):
-		if self.slot is None:
+		if self.slot is None and self.slot_abi_op is None:
 			return self
-		return Atom(self.replace(_slot_separator + self.slot, '', 1),
+		atom = remove_slot(self)
+		if self.repo is not None:
+			atom += _repo_separator + self.repo
+		if self.use is not None:
+			atom += _unicode(self.use)
+		return Atom(atom,
 			allow_repo=True, allow_wildcard=True)
 
 	def with_repo(self, repo):
@@ -2077,16 +2160,33 @@ def match_from_list(mydep, candidate_list):
 	else:
 		raise KeyError(_("Unknown operator: %s") % mydep)
 
-	if slot is not None and not mydep.extended_syntax:
+	if mydep.slot is not None and not mydep.extended_syntax:
 		candidate_list = mylist
 		mylist = []
 		for x in candidate_list:
-			xslot = getattr(x, "slot", False)
-			if xslot is False:
+			x_pkg = None
+			try:
+				x.cpv
+			except AttributeError:
 				xslot = dep_getslot(x)
-			if xslot is not None and xslot != slot:
-				continue
-			mylist.append(x)
+				if xslot is not None:
+					try:
+						x_pkg = _pkg_str(remove_slot(x), slot=xslot)
+					except InvalidData:
+						continue
+			else:
+				x_pkg = x
+
+			if x_pkg is None:
+				mylist.append(x)
+			else:
+				try:
+					x_pkg.slot
+				except AttributeError:
+					mylist.append(x)
+				else:
+					if _match_slot(mydep, x_pkg):
+						mylist.append(x)
 
 	if mydep.unevaluated_atom.use:
 		candidate_list = mylist

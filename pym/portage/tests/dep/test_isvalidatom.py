@@ -134,6 +134,15 @@ class IsValidAtom(TestCase):
 			IsValidAtomTestCase("=sys-apps/portage-2.2*:foo::repo[bar?,!baz?,!doc=,build=]", False, allow_repo=False),
 			IsValidAtomTestCase("=sys-apps/portage-2.2*:foo::repo[doc?]", False, allow_repo=False),
 			IsValidAtomTestCase("null/portage::repo", False, allow_repo=False),
+
+			IsValidAtomTestCase("virtual/ffmpeg:0/53", True),
+			IsValidAtomTestCase("virtual/ffmpeg:0/53=", True),
+			IsValidAtomTestCase("virtual/ffmpeg:0/53*", False),
+			IsValidAtomTestCase("virtual/ffmpeg:=", True),
+			IsValidAtomTestCase("virtual/ffmpeg:0=", True),
+			IsValidAtomTestCase("virtual/ffmpeg:*", True),
+			IsValidAtomTestCase("virtual/ffmpeg:0*", True),
+			IsValidAtomTestCase("virtual/ffmpeg:0", True),
 		)
 
 		for test_case in test_cases:

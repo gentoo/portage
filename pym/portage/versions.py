@@ -356,13 +356,24 @@ class _pkg_str(_unicode):
 		# for match_from_list introspection
 		self.__dict__['cpv'] = self
 		if slot is not None:
-			slot_match = _get_slot_re(_get_eapi_attrs(eapi)).match(slot)
+			eapi_attrs = _get_eapi_attrs(eapi)
+			slot_match = _get_slot_re(eapi_attrs).match(slot)
 			if slot_match is None:
 				# Avoid an InvalidAtom exception when creating SLOT atoms
 				self.__dict__['slot'] = '0'
+				self.__dict__['slot_abi'] = '0'
 				self.__dict__['slot_invalid'] = slot
 			else:
-				self.__dict__['slot'] = slot
+				if eapi_attrs.slot_abi:
+					slot_split = slot.split("/")
+					self.__dict__['slot'] = slot_split[0]
+					if len(slot_split) > 1:
+						self.__dict__['slot_abi'] = slot_split[1]
+					else:
+						self.__dict__['slot_abi'] = slot_split[0]
+				else:
+					self.__dict__['slot'] = slot
+					self.__dict__['slot_abi'] = slot
 
 		if repo is not None:
 			repo = _gen_valid_repo(repo)

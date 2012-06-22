@@ -3465,6 +3465,11 @@ class dblink(object):
 		if not os.path.exists(self.dbcatdir):
 			ensure_dirs(self.dbcatdir)
 
+		try:
+			slot = self.mycpv.slot
+		except AttributeError:
+			# discard the sub-slot if necesssary
+			slot = _pkg_str(self.mycpv, slot=slot).slot
 		cp = self.mysplit[0]
 		slot_atom = "%s:%s" % (cp, slot)
 

@@ -29,7 +29,7 @@ class CompleteGraphTestCase(TestCase):
 		test_cases = (
 			ResolverPlaygroundTestCase(
 				[">=sys-libs/x-2"],
-				options = {"--complete-graph-if-new-ver" : "n"},
+				options = {"--complete-graph-if-new-ver" : "n", "--rebuild-if-new-slot-abi": "n"},
 				mergelist = ["sys-libs/x-2"],
 				success = True,
 			),
@@ -42,7 +42,7 @@ class CompleteGraphTestCase(TestCase):
 			),
 			ResolverPlaygroundTestCase(
 				["<sys-libs/x-1"],
-				options = {"--complete-graph-if-new-ver" : "n"},
+				options = {"--complete-graph-if-new-ver" : "n", "--rebuild-if-new-slot-abi": "n"},
 				mergelist = ["sys-libs/x-0.1"],
 				success = True,
 			),
