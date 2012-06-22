@@ -1,4 +1,4 @@
-# Copyright 2011 Gentoo Foundation
+# Copyright 2011-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
@@ -53,6 +53,9 @@ class TestFakedbapi(TestCase):
 				fakedb.cpv_inject(cpv, metadata=metadata)
 
 			for atom, expected_result in match_tests:
-				self.assertEqual( fakedb.match(atom), expected_result )
+				result = fakedb.match(atom)
+				self.assertEqual(fakedb.match(atom), expected_result,
+					"fakedb.match('%s') = %s != %s" %
+					(atom, result, expected_result))
 		finally:
 			shutil.rmtree(tempdir)
