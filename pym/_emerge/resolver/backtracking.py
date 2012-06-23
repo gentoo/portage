@@ -186,6 +186,8 @@ class Backtracker(object):
 			elif change == "needed_use_config_changes":
 				for pkg, (new_use, new_changes) in data:
 					para.needed_use_config_changes[pkg] = (new_use, new_changes)
+			elif change == "slot_conflict_abi":
+				new_node.terminal = False
 			elif change == "slot_abi_mask_built":
 				for pkg, mask_reasons in data.items():
 					para.runtime_pkg_mask.setdefault(pkg,

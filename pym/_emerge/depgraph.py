@@ -881,8 +881,12 @@ class depgraph(object):
 			not self._accept_blocker_conflicts():
 			remaining = []
 			for pkg in conflict_pkgs:
-				if not self._slot_conflict_backtrack_abi(pkg,
+				if self._slot_conflict_backtrack_abi(pkg,
 					slot_nodes, conflict_atoms):
+					backtrack_infos = self._dynamic_config._backtrack_infos
+					config = backtrack_infos.setdefault("config", {})
+					config.setdefault("slot_conflict_abi", set()).add(pkg)
+				else:
 					remaining.append(pkg)
 			if remaining:
 				self._slot_confict_backtrack(root, slot_atom,
