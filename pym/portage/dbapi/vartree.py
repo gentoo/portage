@@ -2181,6 +2181,12 @@ class dblink(object):
 						ignore = True
 						break
 
+				if not ignore:
+					if islink and f_match in \
+						("/lib", "/usr/lib", "/usr/local/lib"):
+						# Ignore libdir symlinks for bug #423127.
+						ignore = True
+
 				if ignore:
 					show_unmerge("---", unmerge_desc["cfgpro"], file_type, obj)
 					continue
