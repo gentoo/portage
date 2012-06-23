@@ -822,7 +822,12 @@ cache\-formats = md5-dict pms
 # indicate that this repo contains profiles that may use directories for
 # package.mask, package.provided, package.use, package.use.mask,
 # package.use.force, use.mask and use.force.
-profile\-formats = portage-1
+# profile\-formats = portage-1
+# indicate that paths such as 'gentoo:targets/desktop' or ':targets/desktop' in
+# profile parent files can be used to express paths relative to the root
+# 'profiles' directory of a repository (when the repo name is omitted before
+# the colon, it refers to the current repository the parent file is inside)
+profile\-formats = portage-2
 .fi
 .RE
 .TP
