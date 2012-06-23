@@ -185,8 +185,8 @@ class Package(Task):
 			except InvalidDependString as e:
 				self._metadata_exception(k, e)
 
-		self._validated_atoms = frozenset(atom for atom in
-			validated_atoms if isinstance(atom, Atom))
+		self._validated_atoms = tuple(set(atom for atom in
+			validated_atoms if isinstance(atom, Atom)))
 
 		k = 'PROVIDE'
 		v = self.metadata.get(k)
