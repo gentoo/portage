@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Dec 2011" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Jun 2012" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -69,7 +69,9 @@ packages deemed necessary for your system to run properly. \fBworld\fR
 encompasses both the \fBselected\fR and \fBsystem\fR sets. [See
 \fBFILES\fR below for more information.] Other sets can exist depending
 on the current configuration. The default set configuration is located
-in the \fB/usr/share/portage/config/sets\fR directory. Note that a \fIset\fR
+in the \fB/usr/share/portage/config/sets\fR directory.
+User sets may be created by placing files in the \fB/etc/portage/sets/\fR
+directory (see \fBportage\fR(5)). Note that a \fIset\fR
 is generally used in conjunction with \fB\-\-update\fR. When used as 
 arguments to \fBemerge\fR sets have to be prefixed with \fB@\fR to be
 recognized. Use the \fB\-\-list\-sets\fR action to display a list of
@@ -543,7 +545,7 @@ the build may fail if the dependencies aren't satisfied.
 .TP
 .BR "\-\-noreplace " (\fB\-n\fR)
 Skips the packages specified on the command\-line that have already
-been installed.  Without this option, any packages, ebuilds, or deps
+been installed.  Without this option, any package atoms or package sets
 you specify on the command\-line \fBwill\fR cause Portage to remerge
 the package, even if it is already installed.  Note that Portage will
 not remerge dependencies by default.
@@ -915,7 +917,7 @@ those USE settings (on Bourne-compatible shells you may omit the \fBenv\fR
 part).  If you want those USE settings to be more 
 permanent, you can put them in /etc/portage/package.use instead.
 .LP
-If \fBemerge \-\-update system\fR or \fBemerge \-\-update world\fR
+If \fBemerge \-\-update @system\fR or \fBemerge \-\-update @world\fR
 fails with an error message, it may be that an ebuild uses some
 newer feature not present in this version of \fBemerge\fR.  You
 can use \fBemerge \-\-update portage\fR to upgrade to the lastest
@@ -1054,12 +1056,20 @@ Contains a list of all user\-specified packages.  You can safely edit
 this file, adding packages that you want to be considered in \fBworld\fR
 set updates and removing those that you do not want to be considered.
 .TP
+.B /var/lib/portage/world_sets
+This is like the world file but instead of package atoms it contains
+packages sets which always begin with the \fB@\fR character. Use
+\fB/etc/portage/sets/\fR to define user package sets.
+.TP
 .B /etc/make.conf
 Contains variables for the build process, overriding those in
 \fBmake.globals\fR.
 .TP
 .B /etc/portage/color.map
 Contains variables customizing colors.
+.TP
+.B /etc/portage/sets/
+Contains user package set definitions (see \fBportage\fR(5)).
 .TP
 .B /etc/dispatch\-conf.conf
 Contains settings to handle automatic updates/backups of configuration 

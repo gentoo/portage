@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Oct 2011" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "Jun 2012" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -68,6 +68,9 @@ package-specific bashrc files
 .TP
 .BR /etc/portage/profile/
 site-specific overrides of \fB/etc/make.profile/\fR
+.TP
+.BR /etc/portage/sets/
+user\-defined package sets
 .TP
 .BR /usr/portage/metadata/
 .nf
@@ -761,6 +764,17 @@ in the following order:
 /etc/portage/env/${CATEGORY}/${PF}
 .RE
 .TP
+.BR /etc/portage/sets/
+.RS
+For each file in this directory, a package set is created with its name
+corresponding to the name of the file. Each file should contain a list
+of package atoms, one per line. When referencing package sets in
+\fBemerge\fR(1) arguments, the set name is prefixed with \fB@\fR.
+
+Also see \fB/var/lib/portage/world_sets\fR and the \fBemerge\fR(1)
+\fB\-\-list\-sets\fR option.
+.RE
+.TP
 .BR /usr/portage/metadata/
 .RS
 .TP
@@ -1077,7 +1091,8 @@ app\-cdr/cdemu
 .TP
 .BR world_sets
 This is like the world file but instead of package atoms it contains
-packages sets which always begin with the @ character.
+packages sets which always begin with the \fB@\fR character. Use
+\fB/etc/portage/sets/\fR to define user package sets.
 
 .I Example:
 .nf
