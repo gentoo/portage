@@ -152,7 +152,7 @@ class SlotAbiTestCase(TestCase):
 			"app-office/libreoffice-3.5.4.2" : {
 				"EAPI": "4-slot-abi",
 				"DEPEND":  ">=sys-libs/db-4:4.7/4.7=",
-				"RDEPEND": ">=sys-libs/db-4:4.7/4.7=="
+				"RDEPEND": ">=sys-libs/db-4:4.7/4.7="
 			},
 		}
 		installed = {
