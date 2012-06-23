@@ -1849,16 +1849,11 @@ class depgraph(object):
 				self._dynamic_config._slot_pkg_map[dep.child.root].get(
 				dep.child.slot_atom) is None:
 				myarg = None
-				if dep.root == self._frozen_config.target_root:
-					try:
-						myarg = next(self._iter_atoms_for_pkg(dep.child))
-					except StopIteration:
-						pass
-					except InvalidDependString:
-						if not dep.child.installed:
-							# This shouldn't happen since the package
-							# should have been masked.
-							raise
+				try:
+					myarg = next(self._iter_atoms_for_pkg(dep.child), None)
+				except InvalidDependString:
+					if not dep.child.installed:
+						raise
 
 				if myarg is None:
 					# Existing child selection may not be valid unless
@@ -1964,14 +1959,11 @@ class depgraph(object):
 					self._dynamic_config._slot_pkg_map[dep.child.root].get(
 					dep.child.slot_atom) is None:
 					myarg = None
-					if dep.root == self._frozen_config.target_root:
-						try:
-							myarg = next(self._iter_atoms_for_pkg(dep.child))
-						except StopIteration:
-							pass
-						except InvalidDependString:
-							if not dep.child.installed:
-								raise
+					try:
+						myarg = next(self._iter_atoms_for_pkg(dep.child), None)
+					except InvalidDependString:
+						if not dep.child.installed:
+							raise
 
 					if myarg is None:
 						ignored = True
@@ -3782,20 +3774,22 @@ class depgraph(object):
 		True if the user has not explicitly requested for this package
 		to be replaced (typically via an atom on the command line).
 		"""
-		if "selective" not in self._dynamic_config.myparams and \
-			pkg.root == self._frozen_config.target_root:
-			if self._frozen_config.excluded_pkgs.findAtomForPackage(pkg,
-				modified_use=self._pkg_use_enabled(pkg)):
-				return True
-			try:
-				next(self._iter_atoms_for_pkg(pkg))
-			except StopIteration:
-				pass
-			except portage.exception.InvalidDependString:
-				pass
-			else:
-				return False
-		return True
+		if self._frozen_config.excluded_pkgs.findAtomForPackage(pkg,
+			modified_use=self._pkg_use_enabled(pkg)):
+			return True
+
+		arg = False
+		try:
+			for arg, atom in self._iter_atoms_for_pkg(pkg):
+				if arg.force_reinstall:
+					return False
+		except InvalidDependString:
+			pass
+
+		if "selective" in self._dynamic_config.myparams:
+			return True
+
+		return not arg
 
 	class _AutounmaskLevel(object):
 		__slots__ = ("allow_use_changes", "allow_unstable_keywords", "allow_license_changes", \
@@ -4249,16 +4243,15 @@ class depgraph(object):
 					# above visibility checks are complete.
 
 					myarg = None
-					if root == self._frozen_config.target_root:
-						try:
-							for myarg, myarg_atom in self._iter_atoms_for_pkg(pkg):
-								if myarg.force_reinstall:
-									reinstall = True
-									break
-						except portage.exception.InvalidDependString:
-							if not installed:
-								# masked by corruption
-								continue
+					try:
+						for myarg, myarg_atom in self._iter_atoms_for_pkg(pkg):
+							if myarg.force_reinstall:
+								reinstall = True
+								break
+					except InvalidDependString:
+						if not installed:
+							# masked by corruption
+							continue
 					if not installed and myarg:
 						found_available_arg = True
 
@@ -7107,13 +7100,8 @@ class _dep_check_composite_db(dbapi):
 		return ret[:]
 
 	def _visible(self, pkg):
-		if pkg.installed and "selective" not in self._depgraph._dynamic_config.myparams:
-			try:
-				arg = next(self._depgraph._iter_atoms_for_pkg(pkg))
-			except (StopIteration, portage.exception.InvalidDependString):
-				arg = None
-			if arg:
-				return False
+		if pkg.installed and not self._depgraph._want_installed_pkg(pkg):
+			return False
 		if pkg.installed and \
 			(pkg.masks or not self._depgraph._pkg_visibility_check(pkg)):
 			# Account for packages with masks (like KEYWORDS masks)
