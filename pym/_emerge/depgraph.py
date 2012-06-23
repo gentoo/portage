@@ -1032,6 +1032,16 @@ class depgraph(object):
 			downgrade would be desirable is not implemented.
 		"""
 
+		if dep.child.installed and \
+			self._frozen_config.excluded_pkgs.findAtomForPackage(dep.child,
+			modified_use=self._pkg_use_enabled(dep.child)):
+			return None
+
+		if dep.parent.installed and \
+			self._frozen_config.excluded_pkgs.findAtomForPackage(dep.parent,
+			modified_use=self._pkg_use_enabled(dep.parent)):
+			return None
+
 		debug = "--debug" in self._frozen_config.myopts
 
 		for replacement_parent in self._iter_similar_available(dep.parent,
