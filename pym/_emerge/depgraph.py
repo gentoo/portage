@@ -4626,7 +4626,7 @@ class depgraph(object):
 		# scheduled for replacement. Also, toggle the "deep"
 		# parameter so that all dependencies are traversed and
 		# accounted for.
-		self._complete_mode = True
+		self._dynamic_config._complete_mode = True
 		self._select_atoms = self._select_atoms_from_graph
 		if "remove" in self._dynamic_config.myparams:
 			self._select_package = self._select_pkg_from_installed
