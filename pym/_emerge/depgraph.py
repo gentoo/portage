@@ -1007,9 +1007,9 @@ class depgraph(object):
 		abi_masks = {}
 		if new_child_slot is None:
 			if not child.installed:
-				abi_masks.setdefault(child, {})["slot_abi_mask_built"] = dep
+				abi_masks.setdefault(child, {})["slot_abi_mask_built"] = None
 		if not dep.parent.installed:
-			abi_masks.setdefault(dep.parent, {})["slot_abi_mask_built"] = dep
+			abi_masks.setdefault(dep.parent, {})["slot_abi_mask_built"] = None
 		if abi_masks:
 			config.setdefault("slot_abi_mask_built", {}).update(abi_masks)
 
