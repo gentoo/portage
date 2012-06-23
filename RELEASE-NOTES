@@ -20,6 +20,12 @@ portage-2.2
   /var/lib/portage/world, has been extended to include nested sets that may
   be listed /var/lib/portage/world_sets.
 
+portage-2.1.11
+==================================
+* User-defined package sets can now be created by placing files in the
+  /etc/portage/sets/ directory. Refer to the emerge(1) and portage(5) man
+  pages for more information.
+
 portage-2.1.10.61
 ==================================
 * FEATURES=config-protect-if-modified is now enabled by default. This causes
