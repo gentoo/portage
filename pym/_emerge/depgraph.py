@@ -991,7 +991,7 @@ class depgraph(object):
 			msg = []
 			msg.append("")
 			msg.append("")
-			msg.append("backtracking to due missed slot abi update:")
+			msg.append("backtracking due to missed slot abi update:")
 			msg.append("   child package:  %s" % child)
 			if new_child_slot is not None:
 				msg.append("   new child slot package:  %s" % new_child_slot)
