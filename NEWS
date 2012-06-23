@@ -10,8 +10,17 @@ portage-2.2
   sonames change during upgrade or downgrade, and the @preserved-rebuild
   package set which rebuilds consumers of preserved libraries.
 
+portage-2.1.11
+-------------
+
+* Add support for experimental EAPI "4-slot-abi". Refer to the corresponding
+  html documentation that is installed with USE=doc, and also to the emerge(1)
+  man page for information about the related --ignore-built-slot-abi-deps and
+  --rebuild-if-new-slot-abi options.
+
 portage-2.1.10
 -------------
+
 * Improve handling of repositories/overlays for cases in which the same ebuild
   is provided by multiple repositories but with different masking status, and
   support for repository constraints on atoms (atom::repo) in configuration
