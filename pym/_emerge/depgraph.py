@@ -2658,20 +2658,6 @@ class depgraph(object):
 			"slot conflict" in self._dynamic_config._backtrack_infos):
 			return False, myfavorites
 
-		digraph_nodes = self._dynamic_config.digraph.nodes
-
-		if any(x in digraph_nodes for x in
-			self._dynamic_config._needed_unstable_keywords) or \
-			any(x in digraph_nodes for x in
-			self._dynamic_config._needed_p_mask_changes) or \
-			any(x in digraph_nodes for x in
-			self._dynamic_config._needed_use_config_changes) or \
-			any(x in digraph_nodes for x in
-			self._dynamic_config._needed_license_changes) :
-			#We failed if the user needs to change the configuration
-			self._dynamic_config._success_without_autounmask = True
-			return False, myfavorites
-
 		if self._rebuild.trigger_rebuilds():
 			backtrack_infos = self._dynamic_config._backtrack_infos
 			config = backtrack_infos.setdefault("config", {})
@@ -2684,6 +2670,26 @@ class depgraph(object):
 			("slot_abi_mask_built" in self._dynamic_config._backtrack_infos["config"] or
 			"slot_abi_replace_installed" in self._dynamic_config._backtrack_infos["config"]) and \
 			self.need_restart():
+			return False, myfavorites
+
+		# Any failures except those due to autounmask *alone* should return
+		# before this point, since the success_without_autounmask flag that's
+		# set below is reserved for cases where there are *zero* other
+		# problems. For reference, see backtrack_depgraph, where it skips the
+		# get_best_run() call when success_without_autounmask is True.
+
+		digraph_nodes = self._dynamic_config.digraph.nodes
+
+		if any(x in digraph_nodes for x in
+			self._dynamic_config._needed_unstable_keywords) or \
+			any(x in digraph_nodes for x in
+			self._dynamic_config._needed_p_mask_changes) or \
+			any(x in digraph_nodes for x in
+			self._dynamic_config._needed_use_config_changes) or \
+			any(x in digraph_nodes for x in
+			self._dynamic_config._needed_license_changes) :
+			#We failed if the user needs to change the configuration
+			self._dynamic_config._success_without_autounmask = True
 			return False, myfavorites
 
 		# We're true here unless we are missing binaries.
