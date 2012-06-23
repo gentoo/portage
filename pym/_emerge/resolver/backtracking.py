@@ -187,7 +187,9 @@ class Backtracker(object):
 				for pkg, (new_use, new_changes) in data:
 					para.needed_use_config_changes[pkg] = (new_use, new_changes)
 			elif change == "slot_abi_mask_built":
-				para.runtime_pkg_mask.update(data)
+				for pkg, mask_reasons in data.items():
+					para.runtime_pkg_mask.setdefault(pkg,
+						{}).update(mask_reasons)
 			elif change == "slot_abi_replace_installed":
 				para.slot_abi_replace_installed.update(data)
 			elif change == "rebuild_list":
