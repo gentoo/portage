@@ -2380,7 +2380,7 @@ class dblink(object):
 				lines.append("\t%s" % (os.path.join(real_root,
 					f.lstrip(os.sep))))
 			lines.append("")
-			self._elog("eerror", "postrm", lines)
+			self._elog("elog", "postrm", lines)
 
 		# Remove stale entries from config memory.
 		if stale_confmem:
