@@ -2370,7 +2370,11 @@ class dblink(object):
 		if protected_symlinks:
 			msg = "One or more symlinks to directories have been " + \
 				"preserved in order to ensure that files installed " + \
-				"via these symlinks remain accessible:"
+				"via these symlinks remain accessible. " + \
+				"This indicates that the mentioned symlink(s) may " + \
+				"be obsolete remnants of an old install, and it " + \
+				"may be appropriate to replace a given symlink " + \
+				"with the directory that it points to."
 			lines = textwrap.wrap(msg, 72)
 			lines.append("")
 			flat_list = set()
