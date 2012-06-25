@@ -5,6 +5,12 @@
 	</para>
 	<section id='package-ebuild-eapi-4-python-helpers'>
 		<title>Helpers</title>
+		<section id='package-ebuild-eapi-4-python-helpers-dohtml-extended-default-list-of-extensions'>
+			<title>Extended default list of extensions in dohtml</title>
+			<para>
+				dohtml by default additionally installs files with .ico, .svg, .xhtml and .xml extensions.
+			</para>
+		</section>
 		<section id='package-ebuild-eapi-4-python-helpers-banned-in-global-scope'>
 			<title>Helpers Banned in Global Scope</title>
 			<para>

@@ -11,18 +11,18 @@
 #
 #
 # Detailed usage:
-# dohtml <list-of-files> 
-#  - will install the files in the list of files (space-separated list) into 
+# dohtml <list-of-files>
+#  - will install the files in the list of files (space-separated list) into
 #    /usr/share/doc/${PF}/html, provided the file ends in .css, .gif, .htm,
 #    .html, .jpeg, .jpg, .js or .png.
 # dohtml -r <list-of-files-and-directories>
-#  - will do as 'dohtml', but recurse into all directories, as long as the 
+#  - will do as 'dohtml', but recurse into all directories, as long as the
 #    directory name is not CVS
 # dohtml -A jpe,java [-r] <list-of-files[-and-directories]>
 #  - will do as 'dohtml' but add .jpe,.java (default filter list is
 #    added to your list)
 # dohtml -a png,gif,html,htm [-r] <list-of-files[-and-directories]>
-#  - will do as 'dohtml' but filter on .png,.gif,.html,.htm (default filter 
+#  - will do as 'dohtml' but filter on .png,.gif,.html,.htm (default filter
 #    list is ignored)
 # dohtml -x CVS,SCCS,RCS -r <list-of-files-and-directories>
 #  - will do as 'dohtml -r', but ignore directories named CVS, SCCS, RCS
@@ -88,7 +88,7 @@ class OptionsClass:
 		self.PF = ""
 		self.ED = ""
 		self.DOCDESTTREE = ""
-		
+
 		if "PF" in os.environ:
 			self.PF = os.environ["PF"]
 		if "force-prefix" not in os.environ.get("FEATURES", "").split() and \
@@ -98,8 +98,10 @@ class OptionsClass:
 			self.ED = os.environ.get("ED", "")
 		if "_E_DOCDESTTREE_" in os.environ:
 			self.DOCDESTTREE = os.environ["_E_DOCDESTTREE_"]
-		
+
 		self.allowed_exts = ['css', 'gif', 'htm', 'html', 'jpeg', 'jpg', 'js', 'png']
+		if os.environ.get("EAPI", "0") in ("4-python",):
+			self.allowed_exts += ['ico', 'svg', 'xhtml', 'xml']
 		self.allowed_files = []
 		self.disallowed_dirs = ['CVS']
 		self.recurse = False
@@ -126,7 +128,7 @@ def print_help():
 def parse_args():
 	options = OptionsClass()
 	args = []
-	
+
 	x = 1
 	while x < len(sys.argv):
 		arg = sys.argv[x]
@@ -158,7 +160,7 @@ def parse_args():
 		else:
 			args.append(sys.argv[x])
 		x += 1
-	
+
 	return (options, args)
 
 def main():
@@ -171,7 +173,7 @@ def main():
 		print("Allowed files :", options.allowed_files)
 
 	success = False
-	
+
 	for x in args:
 		basename = os.path.basename(x)
 		dirname  = os.path.dirname(x)
