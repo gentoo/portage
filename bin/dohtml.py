@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 #
@@ -13,8 +13,8 @@
 # Detailed usage:
 # dohtml <list-of-files> 
 #  - will install the files in the list of files (space-separated list) into 
-#    /usr/share/doc/${PF}/html, provided the file ends in .htm, .html, .css,
-#      .js, ,gif, .jpeg, .jpg, or .png.
+#    /usr/share/doc/${PF}/html, provided the file ends in .css, .gif, .htm,
+#    .html, .jpeg, .jpg, .js or .png.
 # dohtml -r <list-of-files-and-directories>
 #  - will do as 'dohtml', but recurse into all directories, as long as the 
 #    directory name is not CVS
@@ -99,10 +99,9 @@ class OptionsClass:
 		if "_E_DOCDESTTREE_" in os.environ:
 			self.DOCDESTTREE = os.environ["_E_DOCDESTTREE_"]
 		
-		self.allowed_exts = [ 'htm', 'html', 'css', 'js',
-			'gif', 'jpeg', 'jpg', 'png' ]
+		self.allowed_exts = ['css', 'gif', 'htm', 'html', 'jpeg', 'jpg', 'js', 'png']
 		self.allowed_files = []
-		self.disallowed_dirs = [ 'CVS' ]
+		self.disallowed_dirs = ['CVS']
 		self.recurse = False
 		self.verbose = False
 		self.doc_prefix = ""
