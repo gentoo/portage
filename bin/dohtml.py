@@ -47,6 +47,10 @@ def eqawarn(lines):
 	os.spawnlp(os.P_WAIT, "bash", "bash", "-c", cmd)
 
 skipped_directories = []
+skipped_files = []
+warn_on_skipped_files = os.environ.get("PORTAGE_DOHTML_WARN_ON_SKIPPED_FILES") is not None
+unwarned_skipped_extensions = os.environ.get("PORTAGE_DOHTML_UNWARNED_SKIPPED_EXTENSIONS", "").split()
+unwarned_skipped_files = os.environ.get("PORTAGE_DOHTML_UNWARNED_SKIPPED_FILES", "").split()
 
 def install(basename, dirname, options, prefix=""):
 	fullpath = basename
@@ -64,10 +68,12 @@ def install(basename, dirname, options, prefix=""):
 		sys.stderr.write("!!! dohtml: %s does not exist\n" % fullpath)
 		return False
 	elif os.path.isfile(fullpath):
-		ext = os.path.splitext(basename)[1]
-		if (len(ext) and ext[1:] in options.allowed_exts) or basename in options.allowed_files:
+		ext = os.path.splitext(basename)[1][1:]
+		if ext in options.allowed_exts or basename in options.allowed_files:
 			dodir(destdir)
 			dofile(fullpath, destdir + "/" + basename)
+		elif warn_on_skipped_files and ext not in unwarned_skipped_extensions and basename not in unwarned_skipped_files:
+			skipped_files.append(fullpath)
 	elif options.recurse and os.path.isdir(fullpath) and \
 	     basename not in options.disallowed_dirs:
 		for i in os.listdir(fullpath):
@@ -169,7 +175,7 @@ def main():
 
 	if options.verbose:
 		print("Allowed extensions:", options.allowed_exts)
-		print("Document prefix : '" + options.doc_prefix	 + "'")
+		print("Document prefix : '" + options.doc_prefix + "'")
 		print("Allowed files :", options.allowed_files)
 
 	success = False
@@ -179,10 +185,10 @@ def main():
 		dirname  = os.path.dirname(x)
 		success |= install(basename, dirname, options)
 
-	global skipped_directories
 	for x in skipped_directories:
-		eqawarn(["QA Notice: dohtml on directory " + \
-			"'%s' without recursion option" % x])
+		eqawarn(["QA Notice: dohtml on directory '%s' without recursion option" % x])
+	for x in skipped_files:
+		eqawarn(["dohtml: skipped file '%s'" % x])
 
 	if success:
 		retcode = 0
