@@ -20,7 +20,7 @@ def find_built_slot_abi_atoms(pkg):
 def _find_built_slot_abi_op(dep_struct):
 	for x in dep_struct:
 		if isinstance(x, list):
-			for atom in  _find_slot_abi_equal_op(x):
+			for atom in _find_built_slot_abi_op(x):
 				yield atom
 		elif isinstance(x, Atom) and x.slot_abi_built:
 			yield x
@@ -28,7 +28,7 @@ def _find_built_slot_abi_op(dep_struct):
 def ignore_built_slot_abi_deps(dep_struct):
 	for i, x in enumerate(dep_struct):
 		if isinstance(x, list):
-			ignore_slot_abi_equal_deps(x)
+			ignore_built_slot_abi_deps(x)
 		elif isinstance(x, Atom) and x.slot_abi_built:
 			# There's no way of knowing here whether the SLOT
 			# part of the SLOT/ABI pair should be kept, so we
