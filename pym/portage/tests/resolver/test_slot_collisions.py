@@ -45,6 +45,9 @@ class SlotCollisionTestCase(TestCase):
 			"app-misc/C-1": { "DEPEND": "=app-misc/A-1[foo]", "EAPI": 2 },
 			"app-misc/E-1": { "RDEPEND": "dev-libs/E[foo?]", "IUSE": "foo", "EAPI": "2" },
 			"app-misc/F-1": { "RDEPEND": "=dev-libs/E-1", "IUSE": "foo", "EAPI": "2" },
+
+			"dev-lang/perl-5.12": {"SLOT": "0/5.12", "EAPI": "4-slot-abi"},
+			"dev-lang/perl-5.16": {"SLOT": "0/5.16", "EAPI": "4-slot-abi"},
 			}
 		installed = {
 			"dev-libs/A-1": { "PDEPEND": "foo? ( dev-libs/B )", "IUSE": "foo", "USE": "foo" }, 
@@ -100,6 +103,15 @@ class SlotCollisionTestCase(TestCase):
 				["=app-misc/E-1", "=app-misc/F-1"],
 				success = False,
 				mergelist = ["dev-libs/E-1", "dev-libs/E-2", "app-misc/E-1", "app-misc/F-1"],
+				ignore_mergelist_order = True,
+				slot_collision_solutions = []
+				),
+
+			# sub-slot
+			ResolverPlaygroundTestCase(
+				["dev-lang/perl:0/5.12", "dev-lang/perl:0/5.16", "=dev-lang/perl-5.12*"],
+				success = False,
+				mergelist = ["dev-lang/perl-5.12", "dev-lang/perl-5.16"],
 				ignore_mergelist_order = True,
 				slot_collision_solutions = []
 				),
