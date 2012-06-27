@@ -426,6 +426,9 @@ class GenCache(object):
 					"committing target: %s\n" % (ce,),
 					level=logging.ERROR, noiselevel=-1)
 
+		if hasattr(trg_cache, '_prune_empty_dirs'):
+			trg_cache._prune_empty_dirs()
+
 class GenUseLocalDesc(object):
 	def __init__(self, portdb, output=None,
 			preserve_comments=False):
