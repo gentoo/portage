@@ -31,12 +31,16 @@ class BacktrackParameter(object):
 		#to our sets and dicts. The existing content is immutable.
 		result.needed_unstable_keywords = copy.copy(self.needed_unstable_keywords)
 		result.needed_p_mask_changes = copy.copy(self.needed_p_mask_changes)
-		result.runtime_pkg_mask = copy.copy(self.runtime_pkg_mask)
 		result.needed_use_config_changes = copy.copy(self.needed_use_config_changes)
 		result.needed_license_changes = copy.copy(self.needed_license_changes)
 		result.rebuild_list = copy.copy(self.rebuild_list)
 		result.reinstall_list = copy.copy(self.reinstall_list)
 		result.slot_abi_replace_installed = copy.copy(self.slot_abi_replace_installed)
+
+		# runtime_pkg_mask contains nested dicts that must also be copied
+		result.runtime_pkg_mask = {}
+		for k, v in self.runtime_pkg_mask.items():
+			result.runtime_pkg_mask[k] = copy.copy(v)
 
 		return result
 
