@@ -90,7 +90,8 @@ SUPPORTED_FEATURES       = frozenset([
                            "ccache", "chflags", "clean-logs",
                            "collision-protect", "compress-build-logs", "compressdebug",
                            "config-protect-if-modified",
-                           "digest", "distcc", "distcc-pump", "distlocks", "ebuild-locks", "fakeroot",
+                           "digest", "distcc", "distcc-pump", "distlocks",
+                           "downgrade-backup", "ebuild-locks", "fakeroot",
                            "fail-clean", "force-mirror", "force-prefix", "getbinpkg",
                            "installsources", "keeptemp", "keepwork", "fixlafiles", "lmirror",
                            "metadata-transfer", "mirror", "multilib-strict", "news",
@@ -103,6 +104,7 @@ SUPPORTED_FEATURES       = frozenset([
                            "sign", "skiprocheck", "split-elog", "split-log", "splitdebug",
                            "strict", "stricter", "suidctl", "test", "test-fail-continue",
                            "unknown-features-filter", "unknown-features-warn",
+                           "unmerge-backup",
                            "unmerge-logs", "unmerge-orphans", "userfetch", "userpriv",
                            "usersandbox", "usersync", "webrsync-gpg", "xattr"])
 

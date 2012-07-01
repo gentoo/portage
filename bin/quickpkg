@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -68,11 +68,14 @@ def quickpkg_atom(options, infos, arg, eout):
 		bintree.prevent_collision(cpv)
 		dblnk = vardb._dblink(cpv)
 		have_lock = False
-		try:
-			dblnk.lockdb()
-			have_lock = True
-		except PermissionDenied:
-			pass
+
+		if "__PORTAGE_INHERIT_VARDB_LOCK" not in settings:
+			try:
+				dblnk.lockdb()
+				have_lock = True
+			except PermissionDenied:
+				pass
+
 		try:
 			if not dblnk.exists():
 				# unmerged by a concurrent process
