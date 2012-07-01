@@ -4727,7 +4727,7 @@ class dblink(object):
 		bintree = trees["bintree"]
 		binpkg_path = bintree.getname(backup_dblink.mycpv)
 		if os.path.exists(binpkg_path) and \
-			backup_dblink.mycpv not in bintree.invalids:
+			catsplit(backup_dblink.mycpv)[1] not in bintree.invalids:
 			return os.EX_OK
 
 		self.lockdb()

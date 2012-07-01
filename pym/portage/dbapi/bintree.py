@@ -1312,6 +1312,8 @@ class binarytree(object):
 		"""Returns the URI to the Packages file for a given package."""
 		return self._pkgindex_uri.get(pkgname)
 
+
+
 	def gettbz2(self, pkgname):
 		"""Fetches the package from a remote site, if necessary.  Attempts to
 		resume if the file appears to be partially downloaded."""
@@ -1319,7 +1321,7 @@ class binarytree(object):
 		tbz2name = os.path.basename(tbz2_path)
 		resume = False
 		if os.path.exists(tbz2_path):
-			if (tbz2name not in self.invalids):
+			if tbz2name[:-5] not in self.invalids:
 				return
 			else:
 				resume = True
