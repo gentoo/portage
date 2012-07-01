@@ -4745,6 +4745,12 @@ class dblink(object):
 			env = dict(self.vartree.settings.items())
 			env["__PORTAGE_INHERIT_VARDB_LOCK"] = "1"
 
+			pythonpath = [x for x in env.get('PYTHONPATH', '').split(":") if x]
+			if not pythonpath or \
+				not os.path.samefile(pythonpath[0], portage._pym_path):
+				pythonpath.insert(0, portage._pym_path)
+			env['PYTHONPATH'] = ":".join(pythonpath)
+
 			quickpkg_proc = SpawnProcess(
 				args=[portage._python_interpreter, quickpkg_binary,
 					"=%s" % (backup_dblink.mycpv,)],
