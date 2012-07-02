@@ -1832,9 +1832,6 @@ class dblink(object):
 		except UnsupportedAPIException as e:
 			eapi_unsupported = e
 
-		self._prune_plib_registry(unmerge=True, needed=needed,
-			preserve_paths=preserve_paths)
-
 		builddir_lock = None
 		scheduler = self._scheduler
 		retval = os.EX_OK
@@ -1849,12 +1846,18 @@ class dblink(object):
 				prepare_build_dirs(settings=self.settings, cleanup=True)
 				log_path = self.settings.get("PORTAGE_LOG_FILE")
 
+			# Do this before the following _prune_plib_registry call, since
+			# that removes preserved libraries from our CONTENTS, and we want
+			# may want to backup those libraries first.
 			if not caller_handles_backup:
 				retval = self._pre_unmerge_backup(background)
 				if retval != os.EX_OK:
 					showMessage(_("!!! FAILED prerm: quickpkg: %s\n") % retval,
 						level=logging.ERROR, noiselevel=-1)
 					return retval
+
+			self._prune_plib_registry(unmerge=True, needed=needed,
+				preserve_paths=preserve_paths)
 
 			# Log the error after PORTAGE_LOG_FILE is initialized
 			# by prepare_build_dirs above.
