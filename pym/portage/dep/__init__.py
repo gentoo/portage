@@ -1430,12 +1430,12 @@ class Atom(_unicode):
 		atom = remove_slot(self)
 		if self.slot is not None or self.slot_abi_op is not None:
 			atom += _slot_separator
-		if self.slot is not None:
-			atom += self.slot
-		if self.slot_abi is not None:
-			atom += "/%s" % self.slot_abi
-		if self.slot_abi_op is not None:
-			atom += self.slot_abi_op
+			if self.slot is not None:
+				atom += self.slot
+			if self.slot_abi is not None:
+				atom += "/%s" % self.slot_abi
+			if self.slot_abi_op is not None:
+				atom += self.slot_abi_op
 		atom += _repo_separator + repo
 		if self.use is not None:
 			atom += _unicode(self.use)
@@ -1497,12 +1497,12 @@ class Atom(_unicode):
 		atom = remove_slot(self)
 		if self.slot is not None or self.slot_abi_op is not None:
 			atom += _slot_separator
-		if self.slot is not None:
-			atom += self.slot
-		if self.slot_abi is not None:
-			atom += "/%s" % self.slot_abi
-		if self.slot_abi_op is not None:
-			atom += self.slot_abi_op
+			if self.slot is not None:
+				atom += self.slot
+			if self.slot_abi is not None:
+				atom += "/%s" % self.slot_abi
+			if self.slot_abi_op is not None:
+				atom += self.slot_abi_op
 		use_dep = self.use.evaluate_conditionals(use)
 		atom += _unicode(use_dep)
 		return Atom(atom, unevaluated_atom=self, allow_repo=(self.repo is not None), _use=use_dep)
@@ -1525,12 +1525,12 @@ class Atom(_unicode):
 		atom = remove_slot(self)
 		if self.slot is not None or self.slot_abi_op is not None:
 			atom += _slot_separator
-		if self.slot is not None:
-			atom += self.slot
-		if self.slot_abi is not None:
-			atom += "/%s" % self.slot_abi
-		if self.slot_abi_op is not None:
-			atom += self.slot_abi_op
+			if self.slot is not None:
+				atom += self.slot
+			if self.slot_abi is not None:
+				atom += "/%s" % self.slot_abi
+			if self.slot_abi_op is not None:
+				atom += self.slot_abi_op
 		use_dep = self.use.violated_conditionals(other_use, is_valid_flag, parent_use)
 		atom += _unicode(use_dep)
 		return Atom(atom, unevaluated_atom=self, allow_repo=(self.repo is not None), _use=use_dep)
@@ -1541,12 +1541,12 @@ class Atom(_unicode):
 		atom = remove_slot(self)
 		if self.slot is not None or self.slot_abi_op is not None:
 			atom += _slot_separator
-		if self.slot is not None:
-			atom += self.slot
-		if self.slot_abi is not None:
-			atom += "/%s" % self.slot_abi
-		if self.slot_abi_op is not None:
-			atom += self.slot_abi_op
+			if self.slot is not None:
+				atom += self.slot
+			if self.slot_abi is not None:
+				atom += "/%s" % self.slot_abi
+			if self.slot_abi_op is not None:
+				atom += self.slot_abi_op
 		use_dep = self.use._eval_qa_conditionals(use_mask, use_force)
 		atom += _unicode(use_dep)
 		return Atom(atom, unevaluated_atom=self, allow_repo=(self.repo is not None), _use=use_dep)
