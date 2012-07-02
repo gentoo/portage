@@ -98,7 +98,7 @@ SUPPORTED_FEATURES       = frozenset([
                            "noauto", "noclean", "nodoc", "noinfo", "noman",
                            "nostrip", "notitles", "parallel-fetch", "parallel-install",
                            "parse-eapi-ebuild-head",
-                           "prelink-checksums", "preserve-libs",
+                           "prelink-checksums",
                            "protect-owned", "python-trace", "sandbox",
                            "selinux", "sesandbox", "sfperms",
                            "sign", "skiprocheck", "split-elog", "split-log", "splitdebug",
@@ -173,7 +173,7 @@ _ENABLE_INHERIT_CHECK   = True
 # The definitions above will differ between branches, so it's useful to have
 # common lines of diff context here in order to avoid merge conflicts.
 
-if not _ENABLE_PRESERVE_LIBS:
+if _ENABLE_PRESERVE_LIBS:
 	SUPPORTED_FEATURES = set(SUPPORTED_FEATURES)
-	SUPPORTED_FEATURES.remove("preserve-libs")
+	SUPPORTED_FEATURES.add("preserve-libs")
 	SUPPORTED_FEATURES = frozenset(SUPPORTED_FEATURES)
