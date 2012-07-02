@@ -1852,6 +1852,8 @@ class dblink(object):
 			if not caller_handles_backup:
 				retval = self._pre_unmerge_backup(background)
 				if retval != os.EX_OK:
+					showMessage(_("!!! FAILED prerm: quickpkg: %s\n") % retval,
+						level=logging.ERROR, noiselevel=-1)
 					return retval
 
 			# Log the error after PORTAGE_LOG_FILE is initialized
