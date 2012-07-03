@@ -1,5 +1,6 @@
 #!/usr/bin/python -O
-# vim: noet :
+# Copyright 2005-2012 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
 
@@ -36,7 +37,6 @@ class WorldHandler(object):
 	def __init__(self):
 		self.invalid = []
 		self.not_installed = []
-		self.invalid_category = []
 		self.okay = []
 		from portage._sets import load_default_config
 		setconfig = load_default_config(portage.settings,
@@ -44,7 +44,6 @@ class WorldHandler(object):
 		self._sets = setconfig.getSets()
 
 	def _check_world(self, onProgress):
-		categories = set(portage.settings.categories)
 		eroot = portage.settings['EROOT']
 		self.world_file = os.path.join(eroot, portage.const.WORLD_FILE)
 		self.found = os.access(self.world_file, os.R_OK)
@@ -73,9 +72,6 @@ class WorldHandler(object):
 			if not vardb.match(atom):
 				self.not_installed.append(atom)
 				okay = False
-			if portage.catsplit(atom.cp)[0] not in categories:
-				self.invalid_category.append(atom)
-				okay = False
 			if okay:
 				self.okay.append(atom)
 			if onProgress:
@@ -87,7 +83,6 @@ class WorldHandler(object):
 		if self.found:
 			errors += ["'%s' is not a valid atom" % x for x in self.invalid]
 			errors += ["'%s' is not installed" % x for x in self.not_installed]
-			errors += ["'%s' has a category that is not listed in /etc/portage/categories" % x for x in self.invalid_category]
 		else:
 			errors.append(self.world_file + " could not be opened for reading")
 		return errors
