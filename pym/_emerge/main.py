@@ -1494,6 +1494,12 @@ def expand_set_arguments(myfiles, myaction, root_config):
 					writemsg_level(("emerge: the given set '%s' " + \
 						"contains a non-existent set named '%s'.\n") % \
 						(s, e), level=logging.ERROR, noiselevel=-1)
+					if s in ('world', 'selected') and \
+						SETPREFIX + e.value in sets['selected']:
+						writemsg_level(("Use `emerge --deselect %s%s` to "
+							"remove this set from world_sets.\n") %
+							(SETPREFIX, e,), level=logging.ERROR,
+							noiselevel=-1)
 					return (None, 1)
 				if myaction in unmerge_actions and \
 						not sets[s].supportsOperation("unmerge"):
