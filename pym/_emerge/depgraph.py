@@ -24,7 +24,8 @@ from portage.dep import Atom, best_match_to_list, extract_affecting_use, \
 	_repo_separator
 from portage.dep._slot_abi import ignore_built_slot_abi_deps
 from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use
-from portage.exception import InvalidAtom, InvalidDependString, PortageException
+from portage.exception import (InvalidAtom, InvalidDependString,
+	PackageNotFound, PortageException)
 from portage.output import colorize, create_color_func, \
 	darkgreen, green
 bad = create_color_func("BAD")
@@ -1047,6 +1048,7 @@ class depgraph(object):
 			return None
 
 		debug = "--debug" in self._frozen_config.myopts
+		want_downgrade = None
 
 		for replacement_parent in self._iter_similar_available(dep.parent,
 			dep.parent.slot_atom):
@@ -1087,10 +1089,13 @@ class depgraph(object):
 						if pkg.slot != dep.child.slot:
 							continue
 						if pkg < dep.child:
+							if want_downgrade is None:
+								want_downgrade = self._downgrade_probe(dep.child)
 							# be careful not to trigger a rebuild when
 							# the only version available with a
 							# different slot_abi is an older version
-							continue
+							if not want_downgrade:
+								continue
 
 					if debug:
 						msg = []
@@ -1122,12 +1127,33 @@ class depgraph(object):
 
 		return None
 
+	def _downgrade_probe(self, pkg):
+		"""
+		Detect cases where a downgrade of the given package is considered
+		desirable due to the current version being masked or unavailable.
+		"""
+		available_pkg = None
+		for available_pkg in self._iter_similar_available(pkg,
+			pkg.slot_atom):
+			if available_pkg >= pkg:
+				# There's an available package of the same or higher
+				# version, so downgrade seems undesirable.
+				return False
+
+		return available_pkg is not None
+
 	def _iter_similar_available(self, graph_pkg, atom):
 		"""
 		Given a package that's in the graph, do a rough check to
 		see if a similar package is available to install. The given
 		graph_pkg itself may be yielded only if it's not installed.
 		"""
+
+		usepkgonly = "--usepkgonly" in self._frozen_config.myopts
+		useoldpkg_atoms = self._frozen_config.useoldpkg_atoms
+		use_ebuild_visibility = self._frozen_config.myopts.get(
+			'--use-ebuild-visibility', 'n') != 'n'
+
 		for pkg in self._iter_match_pkgs_any(
 			graph_pkg.root_config, atom):
 			if pkg.cp != graph_pkg.cp:
@@ -1142,6 +1168,14 @@ class depgraph(object):
 				continue
 			if not self._pkg_visibility_check(pkg):
 				continue
+			if pkg.built:
+				if self._equiv_binary_installed(pkg):
+					continue
+				if not (not use_ebuild_visibility and
+					(usepkgonly or useoldpkg_atoms.findAtomForPackage(
+					pkg, modified_use=self._pkg_use_enabled(pkg)))) and \
+					not self._equiv_ebuild_visible(pkg):
+					continue
 			yield pkg
 
 	def _slot_abi_trigger_reinstalls(self):
@@ -3811,6 +3845,38 @@ class depgraph(object):
 
 		return not arg
 
+	def _equiv_ebuild_visible(self, pkg, autounmask_level=None):
+		try:
+			pkg_eb = self._pkg(
+				pkg.cpv, "ebuild", pkg.root_config, myrepo=pkg.repo)
+		except portage.exception.PackageNotFound:
+			pkg_eb_visible = False
+			for pkg_eb in self._iter_match_pkgs(pkg.root_config,
+				"ebuild", Atom("=%s" % (pkg.cpv,))):
+				if self._pkg_visibility_check(pkg_eb, autounmask_level):
+					pkg_eb_visible = True
+					break
+			if not pkg_eb_visible:
+				return False
+		else:
+			if not self._pkg_visibility_check(pkg_eb, autounmask_level):
+				return False
+
+		return True
+
+	def _equiv_binary_installed(self, pkg):
+		build_time = pkg.metadata.get('BUILD_TIME')
+		if not build_time:
+			return False
+
+		try:
+			inst_pkg = self._pkg(pkg.cpv, "installed",
+				pkg.root_config, installed=True)
+		except PackageNotFound:
+			return False
+
+		return build_time == inst_pkg.metadata.get('BUILD_TIME')
+
 	class _AutounmaskLevel(object):
 		__slots__ = ("allow_use_changes", "allow_unstable_keywords", "allow_license_changes", \
 			"allow_missing_keywords", "allow_unmasks")
@@ -4241,22 +4307,9 @@ class depgraph(object):
 								if not use_ebuild_visibility and (usepkgonly or useoldpkg):
 									if pkg.installed and pkg.masks:
 										continue
-								else:
-									try:
-										pkg_eb = self._pkg(
-											pkg.cpv, "ebuild", root_config, myrepo=pkg.repo)
-									except portage.exception.PackageNotFound:
-										pkg_eb_visible = False
-										for pkg_eb in self._iter_match_pkgs(pkg.root_config,
-											"ebuild", Atom("=%s" % (pkg.cpv,))):
-											if self._pkg_visibility_check(pkg_eb, autounmask_level):
-												pkg_eb_visible = True
-												break
-										if not pkg_eb_visible:
-											continue
-									else:
-										if not self._pkg_visibility_check(pkg_eb, autounmask_level):
-											continue
+								elif not self._equiv_ebuild_visible(pkg,
+									autounmask_level=autounmask_level):
+									continue
 
 					# Calculation of USE for unbuilt ebuilds is relatively
 					# expensive, so it is only performed lazily, after the
@@ -7137,24 +7190,8 @@ class _dep_check_composite_db(dbapi):
 			if not avoid_update:
 				if not use_ebuild_visibility and usepkgonly:
 					return False
-				else:
-					try:
-						pkg_eb = self._depgraph._pkg(
-							pkg.cpv, "ebuild", pkg.root_config,
-							myrepo=pkg.repo)
-					except portage.exception.PackageNotFound:
-						pkg_eb_visible = False
-						for pkg_eb in self._depgraph._iter_match_pkgs(
-							pkg.root_config, "ebuild",
-							Atom("=%s" % (pkg.cpv,))):
-							if self._depgraph._pkg_visibility_check(pkg_eb):
-								pkg_eb_visible = True
-								break
-						if not pkg_eb_visible:
-							return False
-					else:
-						if not self._depgraph._pkg_visibility_check(pkg_eb):
-							return False
+				elif not self._depgraph._equiv_ebuild_visible(pkg):
+					return False
 
 		in_graph = self._depgraph._dynamic_config._slot_pkg_map[
 			self._root].get(pkg.slot_atom)
