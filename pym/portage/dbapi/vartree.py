@@ -1847,7 +1847,7 @@ class dblink(object):
 				log_path = self.settings.get("PORTAGE_LOG_FILE")
 
 			# Do this before the following _prune_plib_registry call, since
-			# that removes preserved libraries from our CONTENTS, and we want
+			# that removes preserved libraries from our CONTENTS, and we
 			# may want to backup those libraries first.
 			if not caller_handles_backup:
 				retval = self._pre_unmerge_backup(background)
