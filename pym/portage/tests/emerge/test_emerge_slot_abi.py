@@ -66,6 +66,8 @@ class SlotAbiEmergeTestCase(TestCase):
 		vardb = trees[eroot]["vartree"].dbapi
 		portdir = settings["PORTDIR"]
 		var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
+		user_config_dir = os.path.join(eprefix, USER_CONFIG_PATH)
+		package_mask_path = os.path.join(user_config_dir, "package.mask")
 
 		portage_python = portage._python_interpreter
 		ebuild_cmd = (portage_python, "-Wd",
@@ -79,8 +81,10 @@ class SlotAbiEmergeTestCase(TestCase):
 		test_commands = (
 			emerge_cmd + ("--oneshot", "dev-libs/glib",),
 			(lambda: "dev-libs/glib:2/2.32=" in vardb.aux_get("dev-libs/dbus-glib-0.98", ["RDEPEND"])[0],),
-			emerge_cmd + ("--oneshot", "=dev-libs/glib-2.30.2",  "--ignore-built-slot-abi-deps", "y"),
-			emerge_cmd + ("--oneshot", "dev-libs/dbus-glib"),
+			(BASH_BINARY, "-c", "echo %s >> %s" %
+				tuple(map(portage._shell_quote,
+				(">=dev-libs/glib-2.32", package_mask_path,)))),
+			emerge_cmd + ("--oneshot", "dev-libs/glib",),
 			(lambda: "dev-libs/glib:2/2.30=" in vardb.aux_get("dev-libs/dbus-glib-0.98", ["RDEPEND"])[0],),
 		)
 
@@ -89,7 +93,6 @@ class SlotAbiEmergeTestCase(TestCase):
 		fake_bin = os.path.join(eprefix, "bin")
 		portage_tmpdir = os.path.join(eprefix, "var", "tmp", "portage")
 		profile_path = settings.profile_path
-		user_config_dir = os.path.join(os.sep, eprefix, USER_CONFIG_PATH)
 
 		features = []
 		if not portage.process.sandbox_capable or \
