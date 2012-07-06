@@ -2,7 +2,7 @@
 # Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-PYTHON_VERSIONS="2.6 2.7 2.7-pypy-1.8 3.1 3.2 3.3"
+PYTHON_VERSIONS="2.6 2.7 2.7-pypy-1.8 2.7-pypy-1.9 3.1 3.2 3.3"
 
 # has to be run from portage root dir
 cd "${0%/*}" || exit 1

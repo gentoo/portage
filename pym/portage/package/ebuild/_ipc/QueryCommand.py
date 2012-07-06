@@ -20,6 +20,12 @@ class QueryCommand(IpcCommand):
 
 	_db = None
 
+	@classmethod
+	def get_db(cls):
+		if cls._db is not None:
+			return cls._db
+		return portage.db
+
 	def __init__(self, settings, phase):
 		IpcCommand.__init__(self)
 		self.settings = settings
@@ -52,9 +58,7 @@ class QueryCommand(IpcCommand):
 		use = frozenset(use.split())
 		atom = atom.evaluate_conditionals(use)
 
-		db = self._db
-		if db is None:
-			db = portage.db
+		db = self.get_db()
 
 		warnings_str = ''
 		if warnings:

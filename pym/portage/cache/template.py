@@ -1,4 +1,4 @@
-# Copyright: 2005 Gentoo Foundation
+# Copyright: 2005-2012 Gentoo Foundation
 # Author(s): Brian Harring (ferringb@gentoo.org)
 # License: GPL2
 
@@ -10,8 +10,11 @@ import warnings
 import operator
 
 if sys.hexversion >= 0x3000000:
+	_unicode = str
 	basestring = str
 	long = int
+else:
+	_unicode = unicode
 
 class database(object):
 	# this is for metadata/cache transfer.
@@ -194,8 +197,13 @@ class database(object):
 
 	def validate_entry(self, entry, ebuild_hash, eclass_db):
 		hash_key = '_%s_' % self.validation_chf
-		if entry[hash_key] != getattr(ebuild_hash, self.validation_chf):
+		try:
+			entry_hash = entry[hash_key]
+		except KeyError:
 			return False
+		else:
+			if entry_hash != getattr(ebuild_hash, self.validation_chf):
+				return False
 		update = eclass_db.validate_and_rewrite_cache(entry['_eclasses_'], self.validation_chf,
 			self.store_eclass_paths)
 		if update is None:
@@ -268,7 +276,7 @@ def reconstruct_eclasses(cpv, eclass_string, chf_type='mtime', paths=True):
 		# occasionally this occurs in the fs backends.  they suck.
 		return {}
 
-	converter = str
+	converter = _unicode
 	if chf_type == 'mtime':
 		converter = long
 

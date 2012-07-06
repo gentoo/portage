@@ -1,5 +1,5 @@
 # test_stackLists.py -- Portage Unit Testing Functionality
-# Copyright 2006 Gentoo Foundation
+# Copyright 2006-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -16,4 +16,4 @@ class StackListsTestCase(TestCase):
 
 		for test in tests:
 			result = stack_lists( test[0], test[2] )
-			self.assertEqual( result , test[1] )
+			self.assertEqual( set(result) , set(test[1]) )

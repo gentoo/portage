@@ -1,5 +1,5 @@
 #!@PREFIX_PORTAGE_PYTHON@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 #
 # This is a helper which ebuild processes can use
@@ -9,6 +9,7 @@ import errno
 import logging
 import os
 import pickle
+import platform
 import select
 import signal
 import sys
@@ -18,7 +19,13 @@ import traceback
 def debug_signal(signum, frame):
 	import pdb
 	pdb.set_trace()
-signal.signal(signal.SIGUSR1, debug_signal)
+
+if platform.python_implementation() == 'Jython':
+	debug_signum = signal.SIGUSR2 # bug #424259
+else:
+	debug_signum = signal.SIGUSR1
+
+signal.signal(debug_signum, debug_signal)
 
 # Avoid sandbox violations after python upgrade.
 pym_path = os.path.join(os.path.dirname(

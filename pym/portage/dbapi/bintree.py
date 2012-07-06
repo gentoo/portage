@@ -1,4 +1,4 @@
-# Copyright 1998-2011 Gentoo Foundation
+# Copyright 1998-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["bindbapi", "binarytree"]
@@ -10,20 +10,20 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dep:dep_getkey,isjustname,match_from_list',
 	'portage.output:EOutput,colorize',
 	'portage.locks:lockfile,unlockfile',
-	'portage.package.ebuild.doebuild:_vdb_use_conditional_atoms',
-	'portage.package.ebuild.fetch:_check_distfile',
+	'portage.package.ebuild.fetch:_check_distfile,_hide_url_passwd',
 	'portage.update:update_dbentries',
 	'portage.util:atomic_ofstream,ensure_dirs,normalize_path,' + \
 		'writemsg,writemsg_stdout',
 	'portage.util.listdir:listdir',
-	'portage.versions:best,catpkgsplit,catsplit',
+	'portage.util._urlopen:urlopen@_urlopen',
+	'portage.versions:best,catpkgsplit,catsplit,_pkg_str',
 )
 
 from portage.cache.mappings import slot_dict_class
 from portage.const import CACHE_PATH
 from portage.dbapi.virtual import fakedbapi
 from portage.dep import Atom, use_reduce, paren_enclose
-from portage.exception import AlarmSignal, InvalidPackageName, \
+from portage.exception import AlarmSignal, InvalidData, InvalidPackageName, \
 	PermissionDenied, PortageException
 from portage.const import EAPI
 from portage.localization import _
@@ -36,7 +36,6 @@ from portage import _unicode_encode
 import codecs
 import errno
 import io
-import re
 import stat
 import subprocess
 import sys
@@ -46,10 +45,8 @@ import warnings
 from itertools import chain
 try:
 	from urllib.parse import urlparse
-	from urllib.request import urlopen as urllib_request_urlopen
 except ImportError:
 	from urlparse import urlparse
-	from urllib import urlopen as urllib_request_urlopen
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -222,6 +219,13 @@ def _pkgindex_cpv_map_latest_build(pkgindex):
 	for d in pkgindex.packages:
 		cpv = d["CPV"]
 
+		try:
+			cpv = _pkg_str(cpv)
+		except InvalidData:
+			writemsg(_("!!! Invalid remote binary package: %s\n") % cpv,
+				noiselevel=-1)
+			continue
+
 		btime = d.get('BUILD_TIME', '')
 		try:
 			btime = int(btime)
@@ -238,7 +242,7 @@ def _pkgindex_cpv_map_latest_build(pkgindex):
 			if other_btime and (not btime or other_btime > btime):
 				continue
 
-		cpv_map[cpv] = d
+		cpv_map[_pkg_str(cpv)] = d
 
 	return cpv_map
 
@@ -660,6 +664,7 @@ class binarytree(object):
 							if mycpv in pkg_paths:
 								# discard duplicates (All/ is preferred)
 								continue
+							mycpv = _pkg_str(mycpv)
 							pkg_paths[mycpv] = mypath
 							# update the path if the package has been moved
 							oldpath = d.get("PATH")
@@ -735,6 +740,7 @@ class binarytree(object):
 							(mycpv, self.settings["PORTAGE_CONFIGROOT"]),
 							noiselevel=-1)
 						continue
+					mycpv = _pkg_str(mycpv)
 					pkg_paths[mycpv] = mypath
 					self.dbapi.cpv_inject(mycpv)
 					update_pkgindex = True
@@ -844,7 +850,7 @@ class binarytree(object):
 				# slash, so join manually...
 				url = base_url.rstrip("/") + "/Packages"
 				try:
-					f = urllib_request_urlopen(url)
+					f = _urlopen(url)
 				except IOError:
 					path = parsed_url.path.rstrip("/") + "/Packages"
 
@@ -916,7 +922,7 @@ class binarytree(object):
 							noiselevel=-1)
 			except EnvironmentError as e:
 				writemsg(_("\n\n!!! Error fetching binhost package" \
-					" info from '%s'\n") % base_url)
+					" info from '%s'\n") % _hide_url_passwd(base_url))
 				writemsg("!!! %s\n\n" % str(e))
 				del e
 				pkgindex = None
@@ -992,7 +998,7 @@ class binarytree(object):
 			writemsg_stdout("\n")
 			writemsg_stdout(
 				colorize("GOOD", _("Fetching bininfo from ")) + \
-				re.sub(r'//(.+):.+@(.+)/', r'//\1:*password*@\2/', base_url) + "\n")
+				_hide_url_passwd(base_url) + "\n")
 			remotepkgs = portage.getbinpkg.dir_get_metadata(
 				base_url, chunk_size=chunk_size)
 
@@ -1004,7 +1010,12 @@ class binarytree(object):
 						noiselevel=-1)
 					continue
 				mycat = mycat.strip()
-				fullpkg = mycat+"/"+mypkg[:-5]
+				try:
+					fullpkg = _pkg_str(mycat+"/"+mypkg[:-5])
+				except InvalidData:
+					writemsg(_("!!! Invalid remote binary package: %s\n") % mypkg,
+						noiselevel=-1)
+					continue
 
 				if fullpkg in metadata:
 					# When using this old protocol, comparison with the remote
@@ -1302,6 +1313,8 @@ class binarytree(object):
 		"""Returns the URI to the Packages file for a given package."""
 		return self._pkgindex_uri.get(pkgname)
 
+
+
 	def gettbz2(self, pkgname):
 		"""Fetches the package from a remote site, if necessary.  Attempts to
 		resume if the file appears to be partially downloaded."""
@@ -1309,7 +1322,7 @@ class binarytree(object):
 		tbz2name = os.path.basename(tbz2_path)
 		resume = False
 		if os.path.exists(tbz2_path):
-			if (tbz2name not in self.invalids):
+			if tbz2name[:-5] not in self.invalids:
 				return
 			else:
 				resume = True

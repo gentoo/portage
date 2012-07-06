@@ -144,6 +144,25 @@ class TestAtom(TestCase):
 			self.assertRaisesMsg(atom, (InvalidAtom, TypeError), Atom, atom, \
 				allow_wildcard=allow_wildcard, allow_repo=allow_repo)
 
+	def testSlotAbiAtom(self):
+		tests = (
+			("virtual/ffmpeg:0/53", "4-slot-abi", {"slot": "0", "slot_abi": "53", "slot_abi_op": None}),
+			("virtual/ffmpeg:0/53=", "4-slot-abi", {"slot": "0", "slot_abi": "53", "slot_abi_op": "="}),
+			("virtual/ffmpeg:=", "4-slot-abi", {"slot": None, "slot_abi": None, "slot_abi_op": "="}),
+			("virtual/ffmpeg:0=", "4-slot-abi", {"slot": "0", "slot_abi": None, "slot_abi_op": "="}),
+			("virtual/ffmpeg:*", "4-slot-abi", {"slot": None, "slot_abi": None, "slot_abi_op": "*"}),
+			("virtual/ffmpeg:0*", "4-slot-abi", {"slot": "0", "slot_abi": None, "slot_abi_op": "*"}),
+			("virtual/ffmpeg:0", "4-slot-abi", {"slot": "0", "slot_abi": None, "slot_abi_op": None}),
+			("virtual/ffmpeg", "4-slot-abi", {"slot": None, "slot_abi": None, "slot_abi_op": None}),
+		)
+
+		for atom, eapi, parts in tests:
+			a = Atom(atom, eapi=eapi)
+			for k, v in parts.items():
+				self.assertEqual(v, getattr(a, k),
+					msg="Atom('%s').%s = %s == '%s'" %
+					(atom, k, getattr(a, k), v ))
+
 	def test_intersects(self):
 		test_cases = (
 			("dev-libs/A", "dev-libs/A", True),

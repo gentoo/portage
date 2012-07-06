@@ -1,5 +1,5 @@
 #!@PREFIX_PORTAGE_PYTHON@
-# Copyright 2009-2011 Gentoo Foundation
+# Copyright 2009-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -42,7 +42,7 @@ from portage.manifest import guessManifestFileType
 from portage.util import cmp_sort_key, writemsg_level
 from portage import cpv_getkey
 from portage.dep import Atom, isjustname
-from portage.versions import pkgcmp, pkgsplit, vercmp
+from portage.versions import pkgsplit, vercmp
 from portage.const import EPREFIX
 
 try:
@@ -239,10 +239,15 @@ class GenCache(object):
 
 		self._existing_nodes = set()
 
-	def _metadata_callback(self, cpv, repo_path, metadata, ebuild_hash):
+	def _metadata_callback(self, cpv, repo_path, metadata,
+		ebuild_hash, eapi_supported):
 		self._existing_nodes.add(cpv)
 		self._cp_missing.discard(cpv_getkey(cpv))
-		if metadata is not None:
+
+		# Since we're supposed to be able to efficiently obtain the
+		# EAPI from _parse_eapi_ebuild_head, we don't write cache
+		# entries for unsupported EAPIs.
+		if metadata is not None and eapi_supported:
 			if metadata.get('EAPI') == '0':
 				del metadata['EAPI']
 			for trg_cache in self._trg_caches:
@@ -422,6 +427,9 @@ class GenCache(object):
 					"committing target: %s\n" % (ce,),
 					level=logging.ERROR, noiselevel=-1)
 
+		if hasattr(trg_cache, '_prune_empty_dirs'):
+			trg_cache._prune_empty_dirs()
+
 class GenUseLocalDesc(object):
 	def __init__(self, portdb, output=None,
 			preserve_comments=False):
@@ -566,7 +574,7 @@ class GenUseLocalDesc(object):
 								return cmp_func(atomb.operator, atoma.operator)
 							# Version matching
 							elif atoma.cpv != atomb.cpv:
-								return pkgcmp(pkgsplit(atoma.cpv), pkgsplit(atomb.cpv))
+								return vercmp(atoma.version, atomb.version)
 							# Versions match, let's fallback to operator matching
 							else:
 								return cmp_func(ops.get(atoma.operator, -1),

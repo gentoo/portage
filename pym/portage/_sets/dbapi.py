@@ -1,10 +1,10 @@
-# Copyright 2007-2010 Gentoo Foundation
+# Copyright 2007-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import time
 
 from portage import os
-from portage.versions import catpkgsplit, catsplit, pkgcmp, best
+from portage.versions import best, catsplit, vercmp
 from portage.dep import Atom
 from portage.localization import _
 from portage._sets.base import PackageSet
@@ -72,18 +72,16 @@ class OwnerSet(PackageSet):
 		aux_keys = ["SLOT"]
 		if exclude_paths is None:
 			for link, p in vardb._owners.iter_owners(paths):
-				cat, pn = catpkgsplit(link.mycpv)[:2]
 				slot, = aux_get(link.mycpv, aux_keys)
-				rValue.add("%s/%s:%s" % (cat, pn, slot))
+				rValue.add("%s:%s" % (link.mycpv.cp, slot))
 		else:
 			all_paths = set()
 			all_paths.update(paths)
 			all_paths.update(exclude_paths)
 			exclude_atoms = set()
 			for link, p in vardb._owners.iter_owners(all_paths):
-				cat, pn = catpkgsplit(link.mycpv)[:2]
 				slot, = aux_get(link.mycpv, aux_keys)
-				atom = "%s/%s:%s" % (cat, pn, slot)
+				atom = "%s:%s" % (link.mycpv.cp, slot)
 				rValue.add(atom)
 				if p in exclude_paths:
 					exclude_atoms.add(atom)
@@ -184,9 +182,7 @@ class DowngradeSet(PackageSet):
 				ebuild = xmatch(xmatch_level, slot_atom)
 				if not ebuild:
 					continue
-				ebuild_split = catpkgsplit(ebuild)[1:]
-				installed_split = catpkgsplit(cpv)[1:]
-				if pkgcmp(installed_split, ebuild_split) > 0:
+				if vercmp(cpv.version, ebuild.version) > 0:
 					atoms.append(slot_atom)
 
 		self._setAtoms(atoms)

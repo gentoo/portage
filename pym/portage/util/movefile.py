@@ -141,9 +141,9 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 	if stat.S_ISLNK(sstat[stat.ST_MODE]):
 		try:
 			target=os.readlink(src)
-			if mysettings and mysettings["D"]:
-				if target.find(mysettings["D"])==0:
-					target=target[len(mysettings["D"]):]
+			if mysettings and "D" in mysettings and \
+				target.startswith(mysettings["D"]):
+				target = target[len(mysettings["D"])-1:]
 			if destexists and not stat.S_ISDIR(dstat[stat.ST_MODE]):
 				os.unlink(dest)
 			try:

@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Dec 2011" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Jul 2012" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -128,11 +128,13 @@ Determines how long the countdown delay will be after running
 .br
 Defaults to 5 seconds.
 .TP
-\fBCOLLISION_IGNORE\fR = \fI[space delimited list of files and/or directories]\fR
+\fBCOLLISION_IGNORE\fR = \fI[space delimited list of fnmatch patterns]\fR
 This variable allows the user to disable \fIcollision\-protect\fR and
-\fIprotect\-owned\fR for specific files and/or directories.
+\fIprotect\-owned\fR for specific \fBfnmatch\fR(3) patterns. For backward
+compatibility, directories that are listed without a fnmatch pattern will
+automatically have /* appended to them.
 .br
-Defaults to /lib/modules.
+Defaults to "/lib/modules/* *.py[co]".
 .TP
 \fBCONFIG_PROTECT\fR = \fI[space delimited list of files and/or directories]\fR
 All files and/or directories that are defined here will have "config file protection"
@@ -271,7 +273,8 @@ information (upon which this feature depends).
 .TP
 .B config\-protect\-if\-modified
 This causes the \fBCONFIG_PROTECT\fR behavior to be skipped for files
-that have not been modified since they were installed.
+that have not been modified since they were installed. This feature is
+enabled by default.
 .TP
 .B digest
 Autogenerate digests for packages when running the
@@ -292,6 +295,12 @@ heartache on less intelligent remote filesystems like NFSv2 and some
 strangely configured Samba server (oplocks off, NFS re\-export). A tool
 /usr/lib/portage/bin/clean_locks exists to help handle lock issues
 when a problem arises (normally due to a crash or disconnect).
+.TP
+.B downgrade\-backup
+When a package is downgraded to a lower version, call \fBquickpkg\fR(1)
+in order to create a backup of the installed version before it is
+unmerged (if a binary package of the same version does not already
+exist). Also see the related \fIunmerge\-backup\fR feature.
 .TP
 .B ebuild\-locks
 Use locks to ensure that unsandboxed ebuild phases never execute
@@ -408,9 +417,9 @@ parallelization. For additional parallelization, disable
 \fIebuild\-locks\fR.
 .TP
 .B parse\-eapi\-ebuild\-head
-Parse \fBEAPI\fR from the head of the ebuild (first 30 lines). This feature
-is only intended for experimental purposes and should not be enabled under
-normal circumstances.
+Parse \fBEAPI\fR from the head of the ebuild as specified in PMS section
+7.3.1, and treat non\-conformant ebuilds as invalid. This feature is
+enabled by default, and will soon become enabled unconditionally.
 .TP
 .B prelink\-checksums
 If \fBprelink\fR(8) is installed then use it to undo any prelinks on files
@@ -517,6 +526,11 @@ If "test" is enabled \fBFEATURES\fR and the test phase of an ebuild fails,
 continue to execute the remaining phases as if the failure had not occurred.
 Note that the test phase for a specific package may be disabled by masking
 the "test" \fBUSE\fR flag in \fBpackage.use.mask\fR (see \fBportage\fR(5)).
+.TP
+.B unmerge\-backup
+Call \fBquickpkg\fR(1) to create a backup of each package before it is
+unmerged (if a binary package of the same version does not already exist).
+Also see the related \fIdowngrade\-backup\fR feature.
 .TP
 .B unmerge\-logs
 Keep logs from successful unmerge phases. This is relevant only when
@@ -737,6 +751,24 @@ to be configured by \fI`git config user.signingkey key_id`\fR.
 The command used by \fBrepoman\fR(1) to sign manifests when \fBsign\fR is
 in \fBFEATURES\fR.
 .TP
+\fBPORTAGE_GRPNAME\fR = \fI[group]\fR
+Defines the groupname to use when executing in userpriv/etc... modes (i.e.
+non-root).
+.br
+Defaults to portage.
+.TP
+\fBPORTAGE_INST_GID\fR = \fI[gid]\fR
+Defines the group id when installing files via dobin/dosbin.  Useful when
+running ebuild as yourself.
+.br
+Defaults to 0.
+.TP
+\fBPORTAGE_INST_UID\fR = \fI[uid]\fR
+Defines the user id when installing files via dobin/dosbin.  Useful when
+running ebuild as yourself.
+.br
+Defaults to 0.
+.TP
 \fBPORTAGE_IONICE_COMMAND\fR = \fI[ionice command string]\fR
 This variable should contain a command for portage to call in order
 to adjust the io priority of portage and it's subprocesses. The command
@@ -795,6 +827,12 @@ Defaults to 30.
 Defines the location of the temporary build directories.
 .br
 Defaults to /var/tmp.
+.TP
+\fBPORTAGE_USERNAME\fR = \fI[user]\fR
+Defines the username to use when executing in userpriv/etc... modes (i.e.
+non-root).
+.br
+Defaults to portage.
 .TP
 \fBPORTAGE_WORKDIR_MODE\fR = \fI"0700"\fR
 This variable controls permissions for \fIWORKDIR\fR (see \fBebuild\fR(5)).
@@ -875,6 +913,14 @@ Insert your preferred rsync mirror here.  This rsync server
 is used to sync the local portage tree when `emerge \-\-sync` is run.
 .br
 Defaults to rsync://rsync.gentoo.org/gentoo\-portage
+.TP
+\fBUNINSTALL_IGNORE\fR = \fI[space delimited list of fnmatch patterns]\fR
+This variable prevents uninstallation of files that match
+specific \fBfnmatch\fR(3) patterns. In order to ignore file
+collisions with these files at install time, the same patterns
+can be added to the \fBCOLLISION_IGNORE\fR variable.
+.br
+Defaults to "/lib/modules/*".
 .TP
 \fBUSE\fR = \fI[space delimited list of USE items]\fR
 This variable contains options that control the build behavior of several

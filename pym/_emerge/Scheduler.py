@@ -137,7 +137,7 @@ class Scheduler(PollScheduler):
 	def __init__(self, settings, trees, mtimedb, myopts,
 		spinner, mergelist=None, favorites=None, graph_config=None,
 		uninstall_only=False):
-		PollScheduler.__init__(self)
+		PollScheduler.__init__(self, main=True)
 
 		if mergelist is not None:
 			warnings.warn("The mergelist parameter of the " + \
@@ -328,12 +328,15 @@ class Scheduler(PollScheduler):
 		self._set_graph_config(graph_config)
 		self._blocker_db = {}
 		dynamic_deps = self.myopts.get("--dynamic-deps", "y") != "n"
+		ignore_built_slot_abi_deps = self.myopts.get(
+			"--ignore-built-slot-abi-deps", "n") == "y"
 		for root in self.trees:
 			if self._uninstall_only:
 				continue
 			if graph_config is None:
 				fake_vartree = FakeVartree(self.trees[root]["root_config"],
-					pkg_cache=self._pkg_cache, dynamic_deps=dynamic_deps)
+					pkg_cache=self._pkg_cache, dynamic_deps=dynamic_deps,
+					ignore_built_slot_abi_deps=ignore_built_slot_abi_deps)
 				fake_vartree.sync()
 			else:
 				fake_vartree = graph_config.trees[root]['vartree']

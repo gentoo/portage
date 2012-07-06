@@ -2,7 +2,7 @@
 # Copyright 1999-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
+source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/helper-functions.sh
 
 if [[ -z $1 ]] ; then
 	helpers_die "${0##*/}: at least one argument needed"
@@ -61,11 +61,11 @@ funk_up_dir() {
 	local negate=""
 	[[ ${act} == "compress" ]] && negate="!"
 
+	local ret=0
 	# first we act on all the files
 	find "${dir}" -type f ${negate} -iname '*'${suffix} -print0 | ${XARGS} -0 ${binary}
 	((ret|=$?))
 
-	find "${dir}" -type l -print0 | \
 	while read -r -d $'\0' brokenlink ; do
 		[[ -e ${brokenlink} ]] && continue
 		olddest=$(readlink "${brokenlink}")
@@ -80,15 +80,24 @@ funk_up_dir() {
 			skip_dir_dest=${T}/ecompress-skip/${actual_dir#${ED}}/${brokenlink%/*}/${olddest}
 		fi
 		[[ -e ${skip_dir_dest} ]] && continue
-		[[ ${act} == "compress" ]] \
-			&& newdest="${olddest}${suffix}" \
-			|| newdest="${olddest%${suffix}}"
+		if [[ ${act} == "compress" ]] ; then
+			newdest=${olddest}${suffix}
+		else
+			[[ ${olddest} == *${suffix} ]] || continue
+			newdest=${olddest%${suffix}}
+		fi
+		if [[ "${newdest}" == /* ]] ; then
+			[[ -f "${D}${newdest}" ]] || continue
+		else
+			[[ -f "${dir}/${brokenlink%/*}/${newdest}" ]] || continue
+		fi
 		rm -f "${brokenlink}"
 		[[ ${act} == "compress" ]] \
 			&& ln -snf "${newdest}" "${brokenlink}${suffix}" \
 			|| ln -snf "${newdest}" "${brokenlink%${suffix}}"
 		((ret|=$?))
-	done
+	done < <(find "${dir}" -type l -print0)
+	return ${ret}
 }
 
 # _relocate_skip_dirs(srctree, dsttree)
@@ -116,6 +125,16 @@ ret=0
 
 rm -rf "${T}"/ecompress-skip
 
+decompressors=(
+	".Z"    "gunzip -f"
+	".gz"   "gunzip -f"
+	".bz2"  "bunzip2 -f"
+	".xz"   "unxz -f"
+	".lzma" "unxz -f"
+)
+
+multijob_init
+
 for dir in "$@" ; do
 	dir=${dir#/}
 	dir="${ED}${dir}"
@@ -136,9 +155,21 @@ for dir in "$@" ; do
 	find "${dir}" -type f -name '*.ecompress.file' -print0 | ${XARGS} -0 rm -f
 
 	# not uncommon for packages to compress doc files themselves
-	funk_up_dir "decompress" ".Z" "gunzip -f"
-	funk_up_dir "decompress" ".gz" "gunzip -f"
-	funk_up_dir "decompress" ".bz2" "bunzip2 -f"
+	for (( d = 0; d < ${#decompressors[@]}; d += 2 )) ; do
+		# It's faster to parallelize at this stage than to try to
+		# parallelize the compressors.  This is because the find|xargs
+		# ends up launching less compressors overall, so the overhead
+		# of forking children ends up dominating.
+		(
+		multijob_child_init
+		funk_up_dir "decompress" "${decompressors[i]}" "${decompressors[i+1]}"
+		) &
+		multijob_post_fork
+		: $(( ret |= $? ))
+	done
+
+	multijob_finish
+	: $(( ret |= $? ))
 
 	# forcibly break all hard links as some compressors whine about it
 	find "${dir}" -type f -links +1 -exec env file="{}" sh -c \
@@ -148,6 +179,7 @@ for dir in "$@" ; do
 	if [[ -n ${suffix} ]] ; then
 		vecho "${0##*/}: $(ecompress --bin) /${actual_dir#${ED}}"
 		funk_up_dir "compress" "${suffix}" "ecompress"
+		: $(( ret |= $? ))
 	fi
 
 	# finally, restore the skipped stuff

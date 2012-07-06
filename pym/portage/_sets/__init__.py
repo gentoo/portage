@@ -1,4 +1,4 @@
-# Copyright 2007-2011 Gentoo Foundation
+# Copyright 2007-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -111,15 +111,25 @@ class SetConfig(object):
 		"""
 		parser = self._parser
 
+		parser.remove_section("world")
 		parser.add_section("world")
 		parser.set("world", "class", "portage.sets.base.DummyPackageSet")
 		parser.set("world", "packages", "@selected @system")
 
+		parser.remove_section("selected")
 		parser.add_section("selected")
 		parser.set("selected", "class", "portage.sets.files.WorldSelectedSet")
 
+		parser.remove_section("system")
 		parser.add_section("system")
 		parser.set("system", "class", "portage.sets.profiles.PackagesSystemSet")
+
+		parser.remove_section("usersets")
+		parser.add_section("usersets")
+		parser.set("usersets", "class", "portage.sets.files.StaticFileSet")
+		parser.set("usersets", "multiset", "true")
+		parser.set("usersets", "directory", "%(PORTAGE_CONFIGROOT)setc/portage/sets")
+		parser.set("usersets", "world-candidate", "true")
 
 	def update(self, setname, options):
 		parser = self._parser

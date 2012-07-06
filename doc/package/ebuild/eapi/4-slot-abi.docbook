@@ -1,0 +1,70 @@
+<section id='package-ebuild-eapi-4-slot-abi'>
+<title>EAPI 4-slot-abi</title>
+<section id='package-ebuild-eapi-4-slot-abi-metadata'>
+<title>Metadata</title>
+<section id='package-ebuild-eapi-4-slot-abi-metadata-slot-sub-slot-abi'>
+<title>SLOT Supports Optional "sub-slot" ABI part</title>
+<para>
+In order to represent cases in which an upgrade to a new version of a package
+requires reverse dependencies to be rebuilt, the SLOT variable may contain an
+optional "sub-slot" ABI part that is delimited by a '/' character.
+</para>
+<para>
+For
+example, the package 'dev-libs/glib-2.30.2' may set SLOT="2/2.30" in order to
+indicate a sub-slot value of "2.30". This package will be matched by
+dependency atoms such as 'dev-libs/glib:2' or 'dev-libs/glib:2/2.30', where
+the sub-slot part of the atom is optional.
+</para>
+<para>
+If SLOT does not contain a sub-slot
+part, then it is considered to have an implicit sub-slot that is equal to the
+SLOT value. For example, SLOT="0" is implicitly equal to SLOT="0/0".
+</para>
+<para>
+Refer to the
+<link linkend="package-ebuild-eapi-4-slot-abi-metadata-dependency-atom-slot-abi-equal-operator">
+:= operator </link> documentation for more information about sub-slot usage.
+</para>
+</section>
+<section id='package-ebuild-eapi-4-slot-abi-metadata-dependency-atom-slot-abi-equal-operator'>
+<title>Dependency Atom SLOT/ABI := Operator</title>
+<para>
+Dependency atom syntax now supports SLOT/ABI := operators which allow the
+specific SLOT/ABI that a package is built against to be recorded, so that it's
+possible to automatically determine when a package needs to be rebuilt due to
+having a dependency upgraded to a different SLOT/ABI.
+</para>
+<para>
+For example, if a package is built
+against the package 'dev-libs/glib-2.30.2' with SLOT="2/2.30", then dependency
+atoms such as 'dev-libs/glib:=' or 'dev-libs/glib:2=' will be rewritten at
+build time to be recorded as 'dev-libs/glib:2/2.30='.
+</para>
+<para>
+For another example, if
+a package is built against the package 'sys-libs/db-4.8.30' with SLOT="4.8",
+then a dependency atom such as 'sys-libs/db:=' will be rewritten at build time
+to be recorded as 'sys-libs/db:4.8/4.8='. In this case, since SLOT="4.8" does
+not contain a sub-slot part, the sub-slot is considered to be implicitly equal
+to "4.8".
+</para>
+<para>
+When dependencies are rewritten as described above, the SLOT/ABI recorded in
+the atom is always equal to that of the highest matched version that is
+installed at build time.
+</para>
+</section>
+<section id='package-ebuild-eapi-4-slot-abi-metadata-dependency-atom-slot-abi-asterisk-operator'>
+<title>Dependency Atom SLOT/ABI :* Operator</title>
+<para>
+The new :* operator is used to express dependencies that can change versions
+at runtime without requiring reverse dependencies to be rebuilt. For example,
+a dependency atom such as 'dev-libs/glib:*' can be used to match any slot of
+the 'dev-libs/glib' package, and dependency atom such as 'dev-libs/glib:2*'
+can be used to specifically match slot '2' of the same package (ignoring its
+sub-slot).
+</para>
+</section>
+</section>
+</section>

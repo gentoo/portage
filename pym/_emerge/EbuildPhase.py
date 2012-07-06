@@ -12,15 +12,24 @@ from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.EbuildProcess import EbuildProcess
 from _emerge.CompositeTask import CompositeTask
 from portage.util import writemsg
-from portage.xml.metadata import MetaDataXML
+
+try:
+	from portage.xml.metadata import MetaDataXML
+except (SystemExit, KeyboardInterrupt):
+	raise
+except (ImportError, SystemError, RuntimeError, Exception):
+	# broken or missing xml support
+	# http://bugs.python.org/issue14988
+	MetaDataXML = None
+
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.elog:messages@elog_messages',
 	'portage.package.ebuild.doebuild:_check_build_log,' + \
 		'_post_phase_cmds,_post_phase_userpriv_perms,' + \
-		'_post_src_install_chost_fix,' + \
 		'_post_src_install_soname_symlinks,' + \
 		'_post_src_install_uid_fix,_postinst_bsdflags,' + \
+		'_post_src_install_write_metadata,' + \
 		'_preinst_bsdflags'
 )
 from portage import os
@@ -71,7 +80,7 @@ class EbuildPhase(CompositeTask):
 			maint_str = ""
 			upstr_str = ""
 			metadata_xml_path = os.path.join(os.path.dirname(self.settings['EBUILD']), "metadata.xml")
-			if os.path.isfile(metadata_xml_path):
+			if MetaDataXML is not None and os.path.isfile(metadata_xml_path):
 				herds_path = os.path.join(self.settings['PORTDIR'],
 					'metadata/herds.xml')
 				try:
@@ -206,7 +215,7 @@ class EbuildPhase(CompositeTask):
 
 		if self.phase == "install":
 			out = io.StringIO()
-			_post_src_install_chost_fix(settings)
+			_post_src_install_write_metadata(settings)
 			_post_src_install_uid_fix(settings, out)
 			msg = out.getvalue()
 			if msg:

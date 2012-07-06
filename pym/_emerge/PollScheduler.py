@@ -13,6 +13,7 @@ from portage import _encodings
 from portage import _unicode_encode
 from portage.util import writemsg_level
 from portage.util.SlotObject import SlotObject
+from portage.util._eventloop.EventLoop import EventLoop
 from portage.util._eventloop.global_event_loop import global_event_loop
 
 from _emerge.getloadavg import getloadavg
@@ -26,7 +27,13 @@ class PollScheduler(object):
 			"output", "register", "run",
 			"source_remove", "timeout_add", "unregister")
 
-	def __init__(self):
+	def __init__(self, main=False):
+		"""
+		@param main: If True then use global_event_loop(), otherwise use
+			a local EventLoop instance (default is False, for safe use in
+			a non-main thread)
+		@type main: bool
+		"""
 		self._terminated = threading.Event()
 		self._terminated_tasks = False
 		self._max_jobs = 1
@@ -34,7 +41,10 @@ class PollScheduler(object):
 		self._jobs = 0
 		self._scheduling = False
 		self._background = False
-		self._event_loop = global_event_loop()
+		if main:
+			self._event_loop = global_event_loop()
+		else:
+			self._event_loop = EventLoop(main=False)
 		self.sched_iface = self._sched_iface_class(
 			IO_ERR=self._event_loop.IO_ERR,
 			IO_HUP=self._event_loop.IO_HUP,
@@ -138,14 +148,21 @@ class PollScheduler(object):
 	def _main_loop(self):
 		term_check_id = self.sched_iface.idle_add(self._termination_check)
 		try:
-			# Populate initial event sources. We only need to do
-			# this once here, since it can be called during the
-			# loop from within event handlers.
+			# Populate initial event sources. Unless we're scheduling
+			# based on load average, we only need to do this once
+			# here, since it can be called during the loop from within
+			# event handlers.
 			self._schedule()
+			max_load = self._max_load
 
 			# Loop while there are jobs to be scheduled.
 			while self._keep_scheduling():
 				self.sched_iface.iteration()
+
+				if max_load is not None:
+					# We have to schedule periodically, in case the load
+					# average has changed since the last call.
+					self._schedule()
 
 			# Clean shutdown of previously scheduled jobs. In the
 			# case of termination, this allows for basic cleanup

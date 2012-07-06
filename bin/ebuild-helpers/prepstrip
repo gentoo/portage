@@ -1,8 +1,8 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
+source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/helper-functions.sh
 
 # avoid multiple calls to `has`.  this creates things like:
 #   FEATURES_foo=false
@@ -19,7 +19,7 @@ exp_tf FEATURES compressdebug installsources nostrip splitdebug
 exp_tf RESTRICT binchecks installsources strip
 
 [[ " ${FEATURES} " == *" force-prefix "* ]] || \
-	case "$EAPI" in 0|1|2) EPREFIX= ED=${D} ;; esac
+	case "${EAPI}" in 0|1|2) EPREFIX= ED=${D} ;; esac
 
 banner=false
 SKIP_STRIP=false
@@ -62,16 +62,24 @@ prepstrip_sources_dir=${EPREFIX}/usr/src/debug/${CATEGORY}/${PF}
 type -P debugedit >/dev/null && debugedit_found=true || debugedit_found=false
 debugedit_warned=false
 
-unset ${!INODE_*}
+multijob_init
 
-inode_var_name() {
-	if  [[ $USERLAND = BSD ]] ; then
-		stat -f 'INODE_%d_%i' "$1"
+# Setup $T filesystem layout that we care about.
+tmpdir="${T}/prepstrip"
+rm -rf "${tmpdir}"
+mkdir -p "${tmpdir}"/{inodes,splitdebug,sources}
+
+# Usage: inode_var_name: <file>
+inode_file_link() {
+	echo -n "${tmpdir}/inodes/"
+	if  [[ ${USERLAND} == "BSD" ]] ; then
+		stat -f '%i' "$1"
 	else
-		stat -c 'INODE_%d_%i' "$1"
+		stat -c '%i' "$1"
 	fi
 }
 
+# Usage: save_elf_sources <elf>
 save_elf_sources() {
 	${FEATURES_installsources} || return 0
 	${RESTRICT_installsources} && return 0
@@ -85,8 +93,7 @@ save_elf_sources() {
 	fi
 
 	local x=$1
-	local inode=$(inode_var_name "$x")
-	[[ -n ${!inode} ]] && return 0
+	[[ -f $(inode_file_link "${x}") ]] && return 0
 
 	# since we're editing the ELF here, we should recompute the build-id
 	# (the -i flag below).  save that output so we don't need to recompute
@@ -94,10 +101,11 @@ save_elf_sources() {
 	buildid=$(debugedit -i \
 		-b "${WORKDIR}" \
 		-d "${prepstrip_sources_dir}" \
-		-l "${T}"/debug.sources \
+		-l "${tmpdir}/sources/${x##*/}.${BASHPID}" \
 		"${x}")
 }
 
+# Usage: save_elf_debug <elf> [splitdebug file]
 save_elf_debug() {
 	${FEATURES_splitdebug} || return 0
 
@@ -106,6 +114,7 @@ save_elf_debug() {
 	# twice in this path) in order for gdb's debug-file-directory
 	# lookup to work correctly.
 	local x=$1
+	local splitdebug=$2
 	local y=${ED}usr/lib/debug/${x:${#D}}.debug
 
 	# dont save debug info twice
@@ -113,13 +122,12 @@ save_elf_debug() {
 
 	mkdir -p "${y%/*}"
 
-	local inode=$(inode_var_name "$x")
-	if [[ -n ${!inode} ]] ; then
-		ln "${ED}usr/lib/debug/${!inode:${#D}}.debug" "$y"
+	local inode=$(inode_file_link "${x}")
+	if [[ -f ${inode} ]] ; then
+		ln "${inode}" "${y}"
 	else
-		eval $inode=\$x
-		if [[ -e ${T}/prepstrip.split.debug ]] ; then
-			mv "${T}"/prepstrip.split.debug "${y}"
+		if [[ -n ${splitdebug} ]] ; then
+			mv "${splitdebug}" "${y}"
 		else
 			local objcopy_flags="--only-keep-debug"
 			${FEATURES_compressdebug} && objcopy_flags+=" --compress-debug-sections"
@@ -129,6 +137,7 @@ save_elf_debug() {
 		local args="a-x,o-w"
 		[[ -g ${x} || -u ${x} ]] && args+=",go-r"
 		chmod ${args} "${y}"
+		ln "${y}" "${inode}"
 	fi
 
 	# if we don't already have build-id from debugedit, look it up
@@ -146,6 +155,7 @@ save_elf_debug() {
 	fi
 }
 
+# Usage: process_elf <elf>
 process_elf() {
 	local x=$1 strip_flags=${*:2}
 
@@ -153,17 +163,34 @@ process_elf() {
 	save_elf_sources "${x}"
 
 	if ${strip_this} ; then
+
+		# If two processes try to strip the same hardlink at the same
+		# time, it will cause one of them to lose the splitdebug info.
+		# So, use a lockfile to prevent interference (easily observed
+		# with dev-vcs/git which creates ~109 hardlinks to one file in
+		# /usr/libexec/git-core).
+		local lockfile=$(inode_file_link "${x}")_lockfile
+		if ! ln "${x}" "${lockfile}" ; then
+			while [[ -f ${lockfile} ]] ; do
+				sleep 1
+			done
+			unset lockfile
+		fi
+
 		# see if we can split & strip at the same time
 		if [[ -n ${SPLIT_STRIP_FLAGS} ]] ; then
+			local shortname="${x##*/}.debug"
+			local splitdebug="${tmpdir}/splitdebug/${shortname}.${BASHPID}"
 			${STRIP} ${strip_flags} \
-				-f "${T}"/prepstrip.split.debug \
-				-F "${x##*/}.debug" \
+				-f "${splitdebug}" \
+				-F "${shortname}" \
 				"${x}"
-			save_elf_debug "${x}"
+			save_elf_debug "${x}" "${splitdebug}"
 		else
 			save_elf_debug "${x}"
 			${STRIP} ${strip_flags} "${x}"
 		fi
+		[[ -n ${lockfile} ]] && rm -f "${lockfile}"
 	fi
 }
 
@@ -171,28 +198,35 @@ process_elf() {
 # We want to log already stripped binaries, as this may be a QA violation.
 # They prevent us from getting the splitdebug data.
 if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
-	log=$T/scanelf-already-stripped.log
+	# We need to do the non-stripped scan serially first before we turn around
+	# and start stripping the files ourselves.  The log parsing can be done in
+	# parallel though.
+	log=${tmpdir}/scanelf-already-stripped.log
+	scanelf -yqRBF '#k%F' -k '!.symtab' "$@" | sed -e "s#^${ED}##" > "${log}"
+	(
+	multijob_child_init
 	qa_var="QA_PRESTRIPPED_${ARCH/-/_}"
 	[[ -n ${!qa_var} ]] && QA_PRESTRIPPED="${!qa_var}"
-	scanelf -yqRBF '#k%F' -k '!.symtab' "$@" | sed -e "s#^${ED}##" > "$log"
-	if [[ -n $QA_PRESTRIPPED && -s $log && \
+	if [[ -n ${QA_PRESTRIPPED} && -s ${log} && \
 		${QA_STRICT_PRESTRIPPED-unset} = unset ]] ; then
 		shopts=$-
 		set -o noglob
-		for x in $QA_PRESTRIPPED ; do
-			sed -e "s#^${x#/}\$##" -i "$log"
+		for x in ${QA_PRESTRIPPED} ; do
+			sed -e "s#^${x#/}\$##" -i "${log}"
 		done
 		set +o noglob
-		set -$shopts
+		set -${shopts}
 	fi
-	sed -e "/^\$/d" -e "s#^#/#" -i "$log"
-	if [[ -s $log ]] ; then
+	sed -e "/^\$/d" -e "s#^#/#" -i "${log}"
+	if [[ -s ${log} ]] ; then
 		vecho -e "\n"
 		eqawarn "QA Notice: Pre-stripped files found:"
-		eqawarn "$(<"$log")"
+		eqawarn "$(<"${log}")"
 	else
-		rm -f "$log"
+		rm -f "${log}"
 	fi
+	) &
+	multijob_post_fork
 fi
 
 # Now we look for unstripped binaries.
@@ -205,8 +239,10 @@ do
 		banner=true
 	fi
 
-	f=$(file "${x}") || continue
-	[[ -z ${f} ]] && continue
+	(
+	multijob_child_init
+	f=$(file "${x}") || exit 0
+	[[ -z ${f} ]] && exit 0
 
 	if ! ${SKIP_STRIP} ; then
 		# The noglob funk is to support STRIP_MASK="/*/booga" and to keep
@@ -253,16 +289,23 @@ do
 	if ${was_not_writable} ; then
 		chmod u-w "${x}"
 	fi
+	) &
+	multijob_post_fork
 done
 
-if [[ -s ${T}/debug.sources ]] && \
+# With a bit more work, we could run the rsync processes below in
+# parallel, but not sure that'd be an overall improvement.
+multijob_finish
+
+cd "${tmpdir}"/sources/ && cat * > "${tmpdir}/debug.sources" 2>/dev/null
+if [[ -s ${tmpdir}/debug.sources ]] && \
    ${FEATURES_installsources} && \
    ! ${RESTRICT_installsources} && \
    ${debugedit_found}
 then
 	vecho "installsources: rsyncing source files"
 	[[ -d ${D}${prepstrip_sources_dir} ]] || mkdir -p "${D}${prepstrip_sources_dir}"
-	grep -zv '/<[^/>]*>$' "${T}"/debug.sources | \
+	grep -zv '/<[^/>]*>$' "${tmpdir}"/debug.sources | \
 		(cd "${WORKDIR}"; LANG=C sort -z -u | \
 		rsync -tL0 --files-from=- "${WORKDIR}/" "${D}${prepstrip_sources_dir}/" )
 
@@ -271,6 +314,8 @@ then
 	# https://bugzilla.redhat.com/show_bug.cgi?id=444310
 	while read -r -d $'\0' emptydir
 	do
-		>> "$emptydir"/.keepdir
+		>> "${emptydir}"/.keepdir
 	done < <(find "${D}${prepstrip_sources_dir}/" -type d -empty -print0)
 fi
+
+rm -rf "${tmpdir}"

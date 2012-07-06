@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -11,7 +11,7 @@ from portage.dep import ExtendedAtomDict, _repo_separator, _slot_separator
 from portage.localization import _
 from portage.package.ebuild._config.helper import ordered_by_atom_specificity
 from portage.util import grabdict_package, stack_lists, writemsg
-from portage.versions import cpv_getkey
+from portage.versions import cpv_getkey, _pkg_str
 
 class KeywordsManager(object):
 	"""Manager class to handle keywords processing and validation"""
@@ -77,10 +77,11 @@ class KeywordsManager(object):
 
 
 	def getKeywords(self, cpv, slot, keywords, repo):
-		cp = cpv_getkey(cpv)
-		pkg = "".join((cpv, _slot_separator, slot))
-		if repo and repo != Package.UNKNOWN_REPO:
-			pkg = "".join((pkg, _repo_separator, repo))
+		if not hasattr(cpv, 'slot'):
+			pkg = _pkg_str(cpv, slot=slot, repo=repo)
+		else:
+			pkg = cpv
+		cp = pkg.cp
 		keywords = [[x for x in keywords.split() if x != "-*"]]
 		for pkeywords_dict in self._pkeywords_list:
 			cpdict = pkeywords_dict.get(cp)
@@ -260,18 +261,19 @@ class KeywordsManager(object):
 		"""
 
 		pgroups = global_accept_keywords.split()
+		if not hasattr(cpv, 'slot'):
+			cpv = _pkg_str(cpv, slot=slot, repo=repo)
 		cp = cpv_getkey(cpv)
 
 		unmaskgroups = []
 		if self._p_accept_keywords:
-			cpv_slot = "%s:%s" % (cpv, slot)
 			accept_keywords_defaults = tuple('~' + keyword for keyword in \
 				pgroups if keyword[:1] not in "~-")
 			for d in self._p_accept_keywords:
 				cpdict = d.get(cp)
 				if cpdict:
 					pkg_accept_keywords = \
-						ordered_by_atom_specificity(cpdict, cpv_slot)
+						ordered_by_atom_specificity(cpdict, cpv)
 					if pkg_accept_keywords:
 						for x in pkg_accept_keywords:
 							if not x:
@@ -280,9 +282,8 @@ class KeywordsManager(object):
 
 		pkgdict = self.pkeywordsdict.get(cp)
 		if pkgdict:
-			cpv_slot = "%s:%s" % (cpv, slot)
 			pkg_accept_keywords = \
-				ordered_by_atom_specificity(pkgdict, cpv_slot, repo=repo)
+				ordered_by_atom_specificity(pkgdict, cpv)
 			if pkg_accept_keywords:
 				for x in pkg_accept_keywords:
 					unmaskgroups.extend(x)

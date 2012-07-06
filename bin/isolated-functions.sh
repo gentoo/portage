@@ -173,8 +173,8 @@ die() {
 		| while read -r n ; do eerror "  ${n#RETAIN-LEADING-SPACE}" ; done
 	eerror
 	fi
-	eerror "If you need support, post the output of 'emerge --info =$CATEGORY/$PF',"
-	eerror "the complete build log and the output of 'emerge -pqv =$CATEGORY/$PF'."
+	eerror "If you need support, post the output of \`emerge --info '=$CATEGORY/$PF'\`,"
+	eerror "the complete build log and the output of \`emerge -pqv '=$CATEGORY/$PF'\`."
 	if [[ -n ${EBUILD_OVERLAY_ECLASSES} ]] ; then
 		eerror "This ebuild used the following eclasses from overlays:"
 		local x
@@ -220,8 +220,8 @@ die() {
 		eerror "The complete build log is located at '${PORTAGE_LOG_FILE}'."
 		if [[ ${PORTAGE_LOG_FILE} != ${T}/* ]] ; then
 			# Display path to symlink in ${T}, as requested in bug #412865.
-			local log_ext=${PORTAGE_LOG_FILE##*/}
-			log_ext=${log_ext#*.}
+			local log_ext=log
+			[[ ${PORTAGE_LOG_FILE} != *.log ]] && log_ext+=.${PORTAGE_LOG_FILE##*.}
 			eerror "For convenience, a symlink to the build log is located at '${T}/build.${log_ext}'."
 		fi
 	fi

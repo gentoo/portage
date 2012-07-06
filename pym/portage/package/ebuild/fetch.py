@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -46,6 +46,9 @@ _userpriv_spawn_kwargs = (
 	("groups", userpriv_groups),
 	("umask",  0o02),
 )
+
+def _hide_url_passwd(url):
+	return re.sub(r'//(.+):.+@(.+)', r'//\1:*password*@\2', url)
 
 def _spawn_fetch(settings, args, **kwargs):
 	"""
@@ -950,7 +953,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 						locfetch=fetchcommand
 						command_var = fetchcommand_var
 					writemsg_stdout(_(">>> Downloading '%s'\n") % \
-						re.sub(r'//(.+):.+@(.+)/',r'//\1:*password*@\2/', loc))
+						_hide_url_passwd(loc))
 					variables = {
 						"DISTDIR": mysettings["DISTDIR"],
 						"URI":     loc,

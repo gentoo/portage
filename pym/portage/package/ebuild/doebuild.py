@@ -26,13 +26,15 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.digestcheck:digestcheck',
 	'portage.package.ebuild.digestgen:digestgen',
 	'portage.package.ebuild.fetch:fetch',
+	'portage.package.ebuild._ipc.QueryCommand:QueryCommand',
+	'portage.dep._slot_abi:evaluate_slot_abi_equal_deps',
 	'portage.package.ebuild._spawn_nofetch:spawn_nofetch',
 	'portage.util.ExtractKernelVersion:ExtractKernelVersion'
 )
 
 from portage import auxdbkeys, bsd_chflags, \
 	eapi_is_supported, merge, os, selinux, shutil, \
-	unmerge, _encodings, _parse_eapi_ebuild_head, _os_merge, \
+	unmerge, _encodings, _os_merge, \
 	_shell_quote, _unicode_decode, _unicode_encode
 from portage.const import EBUILD_SH_ENV_FILE, EBUILD_SH_ENV_DIR, \
 	EBUILD_SH_BINARY, INVALID_ENV_FILE, MISC_SH_BINARY, \
@@ -45,7 +47,7 @@ from portage.dep import Atom, check_required_use, \
 from portage.eapi import eapi_exports_KV, eapi_exports_merge_type, \
 	eapi_exports_replace_vars, eapi_exports_REPOSITORY, \
 	eapi_has_required_use, eapi_has_src_prepare_and_src_configure, \
-	eapi_has_pkg_pretend
+	eapi_has_pkg_pretend, _get_eapi_attrs
 from portage.elog import elog_process, _preload_elog_modules
 from portage.elog.messages import eerror, eqawarn
 from portage.exception import DigestException, FileNotFound, \
@@ -173,7 +175,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	pkg_dir     = os.path.dirname(ebuild_path)
 	mytree = os.path.dirname(os.path.dirname(pkg_dir))
 	mypv = os.path.basename(ebuild_path)[:-7]
-	mysplit = _pkgsplit(mypv)
+	mysplit = _pkgsplit(mypv, eapi=mysettings.configdict["pkg"].get("EAPI"))
 	if mysplit is None:
 		raise IncorrectParameter(
 			_("Invalid ebuild path: '%s'") % myebuild)
@@ -255,7 +257,6 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 		mysettings['PORTDIR'] = repo.eclass_db.porttrees[0]
 		mysettings['PORTDIR_OVERLAY'] = ' '.join(repo.eclass_db.porttrees[1:])
 		mysettings.configdict["pkg"]["PORTAGE_REPO_NAME"] = repo.name
-		mysettings.configdict["pkg"]["REPOSITORY"] = repo.name
 
 	mysettings["PORTDIR"] = os.path.realpath(mysettings["PORTDIR"])
 	mysettings["DISTDIR"] = os.path.realpath(mysettings["DISTDIR"])
@@ -330,34 +331,22 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			os.environ["COLUMNS"] = columns
 		mysettings["COLUMNS"] = columns
 
-	# All EAPI dependent code comes last, so that essential variables
-	# like PORTAGE_BUILDDIR are still initialized even in cases when
+	# EAPI is always known here, even for the "depend" phase, because
+	# EbuildMetadataPhase gets it from _parse_eapi_ebuild_head().
+	eapi = mysettings.configdict['pkg']['EAPI']
+	_doebuild_path(mysettings, eapi=eapi)
+
+	# All EAPI dependent code comes last, so that essential variables like
+	# PATH and PORTAGE_BUILDDIR are still initialized even in cases when
 	# UnsupportedAPIException needs to be raised, which can be useful
 	# when uninstalling a package that has corrupt EAPI metadata.
-	eapi = None
-	if mydo == 'depend' and 'EAPI' not in mysettings.configdict['pkg']:
-		if eapi is None and 'parse-eapi-ebuild-head' in mysettings.features:
-			with io.open(_unicode_encode(ebuild_path,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='r', encoding=_encodings['content'],
-				errors='replace') as f:
-				eapi = _parse_eapi_ebuild_head(f)
+	if not eapi_is_supported(eapi):
+		raise UnsupportedAPIException(mycpv, eapi)
 
-		if eapi is not None:
-			if not eapi_is_supported(eapi):
-				_doebuild_path(mysettings)
-				raise UnsupportedAPIException(mycpv, eapi)
-			mysettings.configdict['pkg']['EAPI'] = eapi
+	if eapi_exports_REPOSITORY(eapi) and "PORTAGE_REPO_NAME" in mysettings.configdict["pkg"]:
+		mysettings.configdict["pkg"]["REPOSITORY"] = mysettings.configdict["pkg"]["PORTAGE_REPO_NAME"]
 
 	if mydo != "depend":
-		# Metadata vars such as EAPI and RESTRICT are
-		# set by the above config.setcpv() call.
-		eapi = mysettings["EAPI"]
-		if not eapi_is_supported(eapi):
-			# can't do anything with this.
-			_doebuild_path(mysettings)
-			raise UnsupportedAPIException(mycpv, eapi)
-
 		if hasattr(mydbapi, "getFetchMap") and \
 			("A" not in mysettings.configdict["pkg"] or \
 			"AA" not in mysettings.configdict["pkg"]):
@@ -382,9 +371,6 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			else:
 				mysettings.configdict["pkg"]["AA"] = " ".join(uri_map)
 
-	_doebuild_path(mysettings, eapi=eapi)
-
-	if mydo != "depend":
 		ccache = "ccache" in mysettings.features
 		distcc = "distcc" in mysettings.features
 		if ccache or distcc:
@@ -404,25 +390,22 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 				mysettings["PATH"] = os.path.join(os.sep, eprefix_lstrip,
 					 "usr", libdir, "ccache", "bin") + ":" + mysettings["PATH"]
 
-	if not eapi_exports_KV(eapi):
-		# Discard KV for EAPIs that don't support it. Cache KV is restored
-		# from the backupenv whenever config.reset() is called.
-		mysettings.pop('KV', None)
-	elif mydo != 'depend' and 'KV' not in mysettings and \
-		mydo in ('compile', 'config', 'configure', 'info',
-		'install', 'nofetch', 'postinst', 'postrm', 'preinst',
-		'prepare', 'prerm', 'setup', 'test', 'unpack'):
-		mykv, err1 = ExtractKernelVersion(
-			os.path.join(mysettings['EROOT'], "usr/src/linux"))
-		if mykv:
-			# Regular source tree
-			mysettings["KV"] = mykv
-		else:
-			mysettings["KV"] = ""
-		mysettings.backup_changes("KV")
-
-	if mydo != "depend" and not eapi_exports_REPOSITORY(eapi):
-		mysettings.pop('REPOSITORY', None)
+		if not eapi_exports_KV(eapi):
+			# Discard KV for EAPIs that don't support it. Cached KV is restored
+			# from the backupenv whenever config.reset() is called.
+			mysettings.pop('KV', None)
+		elif 'KV' not in mysettings and \
+			mydo in ('compile', 'config', 'configure', 'info',
+			'install', 'nofetch', 'postinst', 'postrm', 'preinst',
+			'prepare', 'prerm', 'setup', 'test', 'unpack'):
+			mykv, err1 = ExtractKernelVersion(
+				os.path.join(mysettings['EROOT'], "usr/src/linux"))
+			if mykv:
+				# Regular source tree
+				mysettings["KV"] = mykv
+			else:
+				mysettings["KV"] = ""
+			mysettings.backup_changes("KV")
 
 _doebuild_manifest_cache = None
 _doebuild_broken_ebuilds = set()
@@ -1665,13 +1648,15 @@ def _check_build_log(mysettings, out=None):
 	if f_real is not None:
 		f_real.close()
 
-def _post_src_install_chost_fix(settings):
+def _post_src_install_write_metadata(settings):
 	"""
 	It's possible that the ebuild has changed the
 	CHOST variable, so revert it to the initial
 	setting. Also, revert IUSE in case it's corrupted
 	due to local environment settings like in bug #386829.
 	"""
+
+	eapi_attrs = _get_eapi_attrs(settings.configdict['pkg']['EAPI'])
 
 	build_info_dir = os.path.join(settings['PORTAGE_BUILDDIR'], 'build-info')
 
@@ -1688,9 +1673,62 @@ def _post_src_install_chost_fix(settings):
 			if v is not None:
 				write_atomic(os.path.join(build_info_dir, k), v + '\n')
 
+	with io.open(_unicode_encode(os.path.join(build_info_dir,
+		'BUILD_TIME'), encoding=_encodings['fs'], errors='strict'),
+		mode='w', encoding=_encodings['repo.content'],
+		errors='strict') as f:
+		f.write(_unicode_decode("%.0f\n" % (time.time(),)))
+
+	use = frozenset(settings['PORTAGE_USE'].split())
+	for k in _vdb_use_conditional_keys:
+		v = settings.configdict['pkg'].get(k)
+		filename = os.path.join(build_info_dir, k)
+		if v is None:
+			try:
+				os.unlink(filename)
+			except OSError:
+				pass
+			continue
+
+		if k.endswith('DEPEND'):
+			if eapi_attrs.slot_abi:
+				continue
+			token_class = Atom
+		else:
+			token_class = None
+
+		v = use_reduce(v, uselist=use, token_class=token_class)
+		v = paren_enclose(v)
+		if not v:
+			try:
+				os.unlink(filename)
+			except OSError:
+				pass
+			continue
+		with io.open(_unicode_encode(os.path.join(build_info_dir,
+			k), encoding=_encodings['fs'], errors='strict'),
+			mode='w', encoding=_encodings['repo.content'],
+			errors='strict') as f:
+			f.write(_unicode_decode(v + '\n'))
+
+	if eapi_attrs.slot_abi:
+		deps = evaluate_slot_abi_equal_deps(settings, use, QueryCommand.get_db())
+		for k, v in deps.items():
+			filename = os.path.join(build_info_dir, k)
+			if not v:
+				try:
+					os.unlink(filename)
+				except OSError:
+					pass
+				continue
+			with io.open(_unicode_encode(os.path.join(build_info_dir,
+				k), encoding=_encodings['fs'], errors='strict'),
+				mode='w', encoding=_encodings['repo.content'],
+				errors='strict') as f:
+				f.write(_unicode_decode(v + '\n'))
+
 _vdb_use_conditional_keys = ('DEPEND', 'LICENSE', 'PDEPEND',
 	'PROPERTIES', 'PROVIDE', 'RDEPEND', 'RESTRICT',)
-_vdb_use_conditional_atoms = frozenset(['DEPEND', 'PDEPEND', 'RDEPEND'])
 
 def _preinst_bsdflags(mysettings):
 	if bsd_chflags:
@@ -1858,44 +1896,6 @@ def _post_src_install_uid_fix(mysettings, out):
 		errors='strict')
 	f.write(_unicode_decode(str(size) + '\n'))
 	f.close()
-
-	f = io.open(_unicode_encode(os.path.join(build_info_dir,
-		'BUILD_TIME'), encoding=_encodings['fs'], errors='strict'),
-		mode='w', encoding=_encodings['repo.content'],
-		errors='strict')
-	f.write(_unicode_decode("%.0f\n" % (time.time(),)))
-	f.close()
-
-	use = frozenset(mysettings['PORTAGE_USE'].split())
-	for k in _vdb_use_conditional_keys:
-		v = mysettings.configdict['pkg'].get(k)
-		filename = os.path.join(build_info_dir, k)
-		if v is None:
-			try:
-				os.unlink(filename)
-			except OSError:
-				pass
-			continue
-
-		if k.endswith('DEPEND'):
-			token_class = Atom
-		else:
-			token_class = None
-
-		v = use_reduce(v, uselist=use, token_class=token_class)
-		v = paren_enclose(v)
-		if not v:
-			try:
-				os.unlink(filename)
-			except OSError:
-				pass
-			continue
-		f = io.open(_unicode_encode(os.path.join(build_info_dir,
-			k), encoding=_encodings['fs'], errors='strict'),
-			mode='w', encoding=_encodings['repo.content'],
-			errors='strict')
-		f.write(_unicode_decode(v + '\n'))
-		f.close()
 
 	_reapply_bsdflags_to_image(mysettings)
 

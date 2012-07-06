@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -24,7 +24,7 @@ def ordered_by_atom_specificity(cpdict, pkg, repo=None):
 	order to achieve desired results (and thus corrupting
 	the ChangeLog like ordering of the file).
 	"""
-	if repo and repo != Package.UNKNOWN_REPO:
+	if not hasattr(pkg, 'repo') and repo and repo != Package.UNKNOWN_REPO:
 		pkg = pkg + _repo_separator + repo
 
 	results = []

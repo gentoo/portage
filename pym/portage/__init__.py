@@ -409,7 +409,7 @@ def abssymlink(symlink, target=None):
 
 _doebuild_manifest_exempt_depend = 0
 
-_testing_eapis = frozenset(["4-python"])
+_testing_eapis = frozenset(["4-python", "4-slot-abi"])
 _deprecated_eapis = frozenset(["4_pre1", "3_pre2", "3_pre1"])
 
 def _eapi_is_deprecated(eapi):
@@ -436,29 +436,25 @@ def eapi_is_supported(eapi):
 		return False
 	return eapi <= portage.const.EAPI
 
-# Generally, it's best not to assume that cache entries for unsupported EAPIs
-# can be validated. However, the current package manager specification does not
-# guarantee that the EAPI can be parsed without sourcing the ebuild, so
-# it's too costly to discard existing cache entries for unsupported EAPIs.
-# Therefore, by default, assume that cache entries for unsupported EAPIs can be
-# validated. If FEATURES=parse-eapi-* is enabled, this assumption is discarded
-# since the EAPI can be determined without the incurring the cost of sourcing
-# the ebuild.
-_validate_cache_for_unsupported_eapis = True
-
-_parse_eapi_ebuild_head_re = re.compile(r'^EAPI=[\'"]?([^\'"#]*)')
-_parse_eapi_ebuild_head_max_lines = 30
+# This pattern is specified by PMS section 7.3.1.
+_pms_eapi_re = re.compile(r"^[ \t]*EAPI=(['\"]?)([A-Za-z0-9+_.-]*)\1[ \t]*([ \t]#.*)?$")
+_comment_or_blank_line = re.compile(r"^\s*(#.*)?$")
 
 def _parse_eapi_ebuild_head(f):
-	count = 0
+	eapi = None
+	eapi_lineno = None
+	lineno = 0
 	for line in f:
-		m = _parse_eapi_ebuild_head_re.match(line)
-		if m is not None:
-			return m.group(1).strip()
-		count += 1
-		if count >= _parse_eapi_ebuild_head_max_lines:
+		lineno += 1
+		m = _comment_or_blank_line.match(line)
+		if m is None:
+			eapi_lineno = lineno
+			m = _pms_eapi_re.match(line)
+			if m is not None:
+				eapi = m.group(2)
 			break
-	return '0'
+
+	return (eapi, eapi_lineno)
 
 def _movefile(src, dest, **kwargs):
 	"""Calls movefile and raises a PortageException if an error occurs."""
@@ -477,8 +473,7 @@ auxdbkeys = (
 auxdbkeylen=len(auxdbkeys)
 
 def portageexit():
-	if data.secpass > 1 and os.environ.get("SANDBOX_ON") != "1":
-		close_portdbapi_caches()
+	close_portdbapi_caches()
 
 class _trees_dict(dict):
 	__slots__ = ('_running_eroot', '_target_eroot',)
