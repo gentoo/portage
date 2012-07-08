@@ -39,7 +39,7 @@ all:
 
 install:
 	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(PORTAGE_BIN)
-	( cd "$(srcdir)" && find * -type d ) | while read f ; do \
+	( cd "$(srcdir)" && find . -type d ) | while read f ; do \
 		files=( ) ; \
 		for t in "$(srcdir)/$${f}"/* ; do \
 			[[ -d $${t} ]] && continue ; \
