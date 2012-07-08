@@ -16,14 +16,11 @@ PORTAGE_PYM = @PORTAGE_BASE@/pym
 INSTALL = @INSTALL@
 INSTALL_subst = ${top_builddir}/subst-install
 
-list_sourcedir_dirs = \
-	( cd "$(srcdir)" && find . -name '.git' -prune -o -type d -print | sed 's#^./\?##' )
-
 all:
 
 install:
 	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(PORTAGE_PYM)
-	$(list_sourcedir_dirs) | while read f ; do \
+	( cd "$(srcdir)" && find . -name '.git' -prune -o -type d -print | sed 's|^./\?||' ) | while read f ; do \
 		$(INSTALL) -d -m 755 \
 			-o "$(portageuser)" -g "$(portagegroup)" \
 			"$(DESTDIR)$(PORTAGE_PYM)/$${f}" && \
