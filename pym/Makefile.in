@@ -20,7 +20,7 @@ all:
 
 install:
 	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(PORTAGE_PYM)
-	( cd "$(srcdir)" && find . -name '.git' -prune -o -type d -print | sed 's|^./\?||' ) | while read f ; do \
+	( cd "$(srcdir)" && find * -type d ) | while read f ; do \
 		$(INSTALL) -d -m 755 \
 			-o "$(portageuser)" -g "$(portagegroup)" \
 			"$(DESTDIR)$(PORTAGE_PYM)/$${f}" && \
