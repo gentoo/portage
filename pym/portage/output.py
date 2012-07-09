@@ -737,9 +737,9 @@ class TermProgressBar(ProgressBar):
 		square_brackets_width = 2
 		if cols < percentage_str_width:
 			return ""
-		bar_space = cols - percentage_str_width - square_brackets_width
+		bar_space = cols - percentage_str_width - square_brackets_width - 1
 		if self._desc:
-			bar_space -= self._desc_max_length + 1
+			bar_space -= self._desc_max_length
 		if maxval == 0:
 			max_bar_width = bar_space-3
 			image = "    "
