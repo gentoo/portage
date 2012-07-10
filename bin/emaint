@@ -610,19 +610,16 @@ def emaint_main(myargv):
 
 
 	if action == "-c/--check":
-		status = "Checking %s for problems"
 		func = "check"
 	else:
-		status = "Attempting to fix %s"
 		func = "fix"
 
 	isatty = os.environ.get('TERM') != 'dumb' and sys.stdout.isatty()
 	for task in tasks:
-		print(status % task.name())
 		inst = task()
 		onProgress = None
 		if isatty:
-			progressBar = portage.output.TermProgressBar()
+			progressBar = portage.output.TermProgressBar(title="Emaint", max_desc_length=26)
 			progressHandler = ProgressHandler()
 			onProgress = progressHandler.onProgress
 			def display():
@@ -632,6 +629,7 @@ def emaint_main(myargv):
 				lines, progressBar.term_columns = \
 					portage.output.get_term_size()
 			signal.signal(signal.SIGWINCH, sigwinch_handler)
+			progressBar.label(func + " " + inst.name())
 		result = getattr(inst, func)(onProgress=onProgress)
 		if isatty:
 			# make sure the final progress is displayed
