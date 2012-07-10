@@ -4679,8 +4679,8 @@ class depgraph(object):
 						# to use.mask/force changes in the profile.
 						if complete_if_new_use and \
 							(node.iuse.all != inst_pkg.iuse.all or
-							node.use.enabled.intersection(node.iuse.all) !=
-							inst_pkg.use.enabled.intersection(inst_pkg.iuse.all)):
+							self._pkg_use_enabled(node).intersection(node.iuse.all) !=
+							self._pkg_use_enabled(inst_pkg).intersection(inst_pkg.iuse.all)):
 							use_change = True
 							break
 
