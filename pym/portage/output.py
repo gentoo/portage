@@ -733,7 +733,7 @@ class TermProgressBar(ProgressBar):
 		curval = self._curval
 		maxval = self._maxval
 		position = self._position
-		percentage_str_width = 4
+		percentage_str_width = 5
 		square_brackets_width = 2
 		if cols < percentage_str_width:
 			return ""
@@ -742,7 +742,7 @@ class TermProgressBar(ProgressBar):
 			bar_space -= self._desc_max_length
 		if maxval == 0:
 			max_bar_width = bar_space-3
-			image = "    "
+			_percent = "".ljust(percentage_str_width)
 			if cols < min_columns:
 				return image
 			if position <= 0.5:
@@ -760,19 +760,15 @@ class TermProgressBar(ProgressBar):
 				position = 0.5
 			self._position = position
 			bar_width = int(offset * max_bar_width)
-			image = image + "[" + (bar_width * " ") + \
-				"<=>" + ((max_bar_width - bar_width) * " ") + "]"
+			image = "%s%s%s" % (self._desc, _percent,
+				"[" + (bar_width * " ") + \
+				"<=>" + ((max_bar_width - bar_width) * " ") + "]")
 			return image
 		else:
 			percentage = int(100 * float(curval) / maxval)
-			if percentage == 100:
-				percentage_str_width += 1
-				bar_space -= 1
 			max_bar_width = bar_space - 1
-			image = "%s%s" % (
-				self._desc,
-				("%d%%" % percentage).ljust(percentage_str_width),
-			)
+			_percent = ("%d%% " % percentage).rjust(percentage_str_width)
+			image = "%s%s" % (self._desc, _percent)
 
 			if cols < min_columns:
 				return image
