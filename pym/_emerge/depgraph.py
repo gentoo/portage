@@ -4643,6 +4643,8 @@ class depgraph(object):
 			"recurse" not in self._dynamic_config.myparams:
 			return 1
 
+		complete_if_new_use = self._dynamic_config.myparams.get(
+			"complete_if_new_use", "y") == "y"
 		complete_if_new_ver = self._dynamic_config.myparams.get(
 			"complete_if_new_ver", "y") == "y"
 		rebuild_if_new_slot_abi = self._dynamic_config.myparams.get(
@@ -4650,8 +4652,10 @@ class depgraph(object):
 		complete_if_new_slot = rebuild_if_new_slot_abi
 
 		if "complete" not in self._dynamic_config.myparams and \
-			(complete_if_new_ver or complete_if_new_slot):
-			# Enable complete mode if an installed package version will change.
+			(complete_if_new_use or
+			complete_if_new_ver or complete_if_new_slot):
+			# Enable complete mode if an installed package will change somehow.
+			use_change = False
 			version_change = False
 			for node in self._dynamic_config.digraph:
 				if not isinstance(node, Package) or \
@@ -4660,12 +4664,24 @@ class depgraph(object):
 				vardb = self._frozen_config.roots[
 					node.root].trees["vartree"].dbapi
 
-				if complete_if_new_ver:
+				if complete_if_new_use or complete_if_new_ver:
 					inst_pkg = vardb.match_pkgs(node.slot_atom)
 					if inst_pkg and inst_pkg[0].cp == node.cp:
 						inst_pkg = inst_pkg[0]
-						if inst_pkg < node or node < inst_pkg:
+						if complete_if_new_ver and \
+							(inst_pkg < node or node < inst_pkg):
 							version_change = True
+							break
+
+						# Intersect enabled USE with IUSE, in order to
+						# ignore forced USE from implicit IUSE flags, since
+						# they're probably irrelevant and they are sensitive
+						# to use.mask/force changes in the profile.
+						if complete_if_new_use and \
+							(node.iuse.all != inst_pkg.iuse.all or
+							node.use.enabled.intersection(node.iuse.all) !=
+							inst_pkg.use.enabled.intersection(inst_pkg.iuse.all)):
+							use_change = True
 							break
 
 				if complete_if_new_slot:
@@ -4675,7 +4691,7 @@ class depgraph(object):
 						version_change = True
 						break
 
-			if version_change:
+			if use_change or version_change:
 				self._dynamic_config.myparams["complete"] = True
 
 		if "complete" not in self._dynamic_config.myparams:

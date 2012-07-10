@@ -703,6 +703,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices" : true_y_or_n
 		},
 
+		"--complete-graph-if-new-use": {
+			"help"    : "trigger --complete-graph behavior if USE or IUSE will change for an installed package",
+			"type"    : "choice",
+			"choices" : y_or_n
+		},
+
 		"--complete-graph-if-new-ver": {
 			"help"    : "trigger --complete-graph behavior if an installed package version will change (upgrade or downgrade)",
 			"type"    : "choice",
