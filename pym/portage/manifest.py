@@ -507,7 +507,6 @@ class Manifest(object):
 			self.checkFileHashes(idtype, f, ignoreMissing=ignoreMissingFiles)
 	
 	def checkFileHashes(self, ftype, fname, ignoreMissing=False):
-		myhashes = self.fhashdict[ftype][fname]
 		try:
 			ok, reason = verify_all(self._getAbsname(ftype, fname),
 				_filter_unaccelarated_hashes(self.fhashdict[ftype][fname]))
