@@ -647,7 +647,8 @@ class vardbapi(dbapi):
 			if e.errno != errno.ENOENT:
 				raise
 			raise KeyError(mycpv)
-		mydir_mtime = mydir_stat[stat.ST_MTIME]
+		# Use float mtime when available.
+		mydir_mtime = mydir_stat.st_mtime
 		pkg_data = self._aux_cache["packages"].get(mycpv)
 		pull_me = cache_these.union(wants)
 		mydata = {"_mtime_" : mydir_mtime}
@@ -660,13 +661,18 @@ class vardbapi(dbapi):
 				pkg_data = None
 			else:
 				cache_mtime, metadata = pkg_data
-				if not isinstance(cache_mtime, (long, int)) or \
+				if not isinstance(cache_mtime, (float, long, int)) or \
 					not isinstance(metadata, dict):
 					pkg_data = None
 
 		if pkg_data:
 			cache_mtime, metadata = pkg_data
-			cache_valid = cache_mtime == mydir_mtime
+			if isinstance(cache_mtime, float):
+				cache_valid = cache_mtime == mydir_stat.st_mtime
+			else:
+				# Cache may contain integer mtime.
+				cache_valid = cache_mtime == mydir_stat[stat.ST_MTIME]
+
 		if cache_valid:
 			# Migrate old metadata to unicode.
 			for k, v in metadata.items():
