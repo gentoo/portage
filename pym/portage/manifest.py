@@ -8,7 +8,8 @@ import warnings
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.checksum:hashfunc_map,perform_multiple_checksums,verify_all',
+	'portage.checksum:hashfunc_map,perform_multiple_checksums,' + \
+		'verify_all,_filter_unaccelarated_hashes',
 	'portage.util:write_atomic',
 )
 
@@ -508,7 +509,8 @@ class Manifest(object):
 	def checkFileHashes(self, ftype, fname, ignoreMissing=False):
 		myhashes = self.fhashdict[ftype][fname]
 		try:
-			ok,reason = verify_all(self._getAbsname(ftype, fname), self.fhashdict[ftype][fname])
+			ok, reason = verify_all(self._getAbsname(ftype, fname),
+				_filter_unaccelarated_hashes(self.fhashdict[ftype][fname]))
 			if not ok:
 				raise DigestException(tuple([self._getAbsname(ftype, fname)]+list(reason)))
 			return ok, reason
