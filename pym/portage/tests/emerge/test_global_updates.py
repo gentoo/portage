@@ -1,4 +1,4 @@
-# Copyright 2011 Gentoo Foundation
+# Copyright 2011-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -15,6 +15,8 @@ slotmove invalid_atom 0 3
 slotmove !=invalid/blocker-3* 0 3
 slotmove =valid/atom-3* 0 3 invalid_extra_token
 slotmove =valid/atom-3* 0 3
+slotmove =valid/atom-3* 0 3/3.1
+slotmove =valid/atom-3* 0/0 3
 move valid/atom1 valid/atom2 invalid_extra_token
 move valid/atom1 invalid_atom2
 move invalid_atom1 valid/atom2
@@ -28,7 +30,7 @@ move valid/atom1 valid/atom2
 				['slotmove', Atom('=valid/atom-3*'), '0', '3'],
 				['move', Atom('valid/atom1'), Atom('valid/atom2')],
 			],
-			10,
+			12,
 		),
 
 		)

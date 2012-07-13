@@ -22,6 +22,8 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage.const import USER_CONFIG_PATH
+from portage.dep import _get_slot_re
+from portage.eapi import _get_eapi_attrs
 from portage.exception import DirectoryNotFound, InvalidAtom, PortageException
 from portage.localization import _
 
@@ -30,7 +32,7 @@ if sys.hexversion >= 0x3000000:
 
 ignored_dbentries = ("CONTENTS", "environment.bz2")
 
-def update_dbentry(update_cmd, mycontent):
+def update_dbentry(update_cmd, mycontent, eapi=None):
 	if update_cmd[0] == "move":
 		old_value = str(update_cmd[1])
 		if old_value in mycontent:
@@ -143,6 +145,8 @@ def grab_updates(updpath, prev_mtimes=None):
 
 def parse_updates(mycontent):
 	"""Valid updates are returned as a list of split update commands."""
+	eapi_attrs = _get_eapi_attrs(None)
+	slot_re = _get_slot_re(eapi_attrs)
 	myupd = []
 	errors = []
 	mylines = mycontent.splitlines()
@@ -191,6 +195,23 @@ def parse_updates(mycontent):
 			if atom is not None:
 				mysplit[1] = atom
 			else:
+				errors.append(_("ERROR: Malformed update entry '%s'") % myline)
+				continue
+
+			invalid_slot = False
+			for slot in (origslot, newslot):
+				m = slot_re.match(slot)
+				if m is None:
+					invalid_slot = True
+					break
+				if "/" in slot:
+					# Don't support EAPI 4-slot-abi style SLOT in slotmove
+					# yet, since the relevant code isn't aware of EAPI yet
+					# (see bug #426476).
+					invalid_slot = True
+					break
+
+			if invalid_slot:
 				errors.append(_("ERROR: Malformed update entry '%s'") % myline)
 				continue
 
