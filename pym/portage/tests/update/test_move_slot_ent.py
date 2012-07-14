@@ -119,6 +119,11 @@ class MoveSlotEntTestCase(TestCase):
 			finally:
 				portage.util.noiselimit = global_noiselimit
 
+			# Workaround for cache validation not working
+			# correctly when filesystem has timestamp precision
+			# of 1 second.
+			vardb._clear_cache()
+
 			# 0/2.30 -> 2/2.30
 			self.assertEqual("2/2.30",
 				vardb.aux_get("dev-libs/A-1", ["SLOT"])[0])
