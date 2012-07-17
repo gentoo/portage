@@ -286,8 +286,9 @@ def grab_global_updates(portdb):
 	return retupdates
 
 def perform_global_updates(mycpv, mydb, myupdates):
-	aux_keys = ["DEPEND", "RDEPEND", "PDEPEND", 'repository']
+	aux_keys = ["DEPEND", "EAPI", "RDEPEND", "PDEPEND", 'repository']
 	aux_dict = dict(zip(aux_keys, mydb.aux_get(mycpv, aux_keys)))
+	eapi = aux_dict.pop('EAPI')
 	repository = aux_dict.pop('repository')
 	try:
 		mycommands = myupdates[repository]
@@ -300,6 +301,6 @@ def perform_global_updates(mycpv, mydb, myupdates):
 	if not mycommands:
 		return
 
-	updates = update_dbentries(mycommands, aux_dict)
+	updates = update_dbentries(mycommands, aux_dict, eapi=eapi)
 	if updates:
 		mydb.aux_update(mycpv, updates)

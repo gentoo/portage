@@ -377,6 +377,10 @@ class binarytree(object):
 		if not origmatches:
 			return moves
 		for mycpv in origmatches:
+			try:
+				mycpv = self.dbapi._pkg_str(mycpv, None)
+			except (KeyError, InvalidData):
+				continue
 			mycpv_cp = portage.cpv_getkey(mycpv)
 			if mycpv_cp != origcp:
 				# Ignore PROVIDE virtual match.
@@ -404,7 +408,7 @@ class binarytree(object):
 			moves += 1
 			mytbz2 = portage.xpak.tbz2(tbz2path)
 			mydata = mytbz2.get_data()
-			updated_items = update_dbentries([mylist], mydata)
+			updated_items = update_dbentries([mylist], mydata, eapi=mycpv.eapi)
 			mydata.update(updated_items)
 			mydata[b'PF'] = \
 				_unicode_encode(mynewpkg + "\n",

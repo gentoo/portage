@@ -321,6 +321,10 @@ class vardbapi(dbapi):
 		if not origmatches:
 			return moves
 		for mycpv in origmatches:
+			try:
+				mycpv = self._pkg_str(mycpv, None)
+			except (KeyError, InvalidData):
+				continue
 			mycpv_cp = cpv_getkey(mycpv)
 			if mycpv_cp != origcp:
 				# Ignore PROVIDE virtual match.
@@ -358,7 +362,7 @@ class vardbapi(dbapi):
 					del e
 			write_atomic(os.path.join(newpath, "PF"), new_pf+"\n")
 			write_atomic(os.path.join(newpath, "CATEGORY"), mynewcat+"\n")
-			fixdbentries([mylist], newpath)
+			fixdbentries([mylist], newpath, eapi=mycpv.eapi)
 		return moves
 
 	def cp_list(self, mycp, use_cache=1):

@@ -275,17 +275,17 @@ class dbapi(object):
 		maxval = len(cpv_all)
 		aux_get = self.aux_get
 		aux_update = self.aux_update
-		meta_keys = ["DEPEND", "RDEPEND", "PDEPEND", "PROVIDE", 'repository']
+		meta_keys = ["DEPEND", "EAPI", "RDEPEND", "PDEPEND", "PROVIDE", 'repository']
 		repo_dict = None
 		if isinstance(updates, dict):
 			repo_dict = updates
-		from portage.update import update_dbentries
 		if onUpdate:
 			onUpdate(maxval, 0)
 		if onProgress:
 			onProgress(maxval, 0)
 		for i, cpv in enumerate(cpv_all):
 			metadata = dict(zip(meta_keys, aux_get(cpv, meta_keys)))
+			eapi = metadata.pop('EAPI')
 			repo = metadata.pop('repository')
 			if repo_dict is None:
 				updates_list = updates
@@ -301,7 +301,8 @@ class dbapi(object):
 			if not updates_list:
 				continue
 
-			metadata_updates = update_dbentries(updates_list, metadata)
+			metadata_updates = \
+				portage.update_dbentries(updates_list, metadata, eapi=eapi)
 			if metadata_updates:
 				aux_update(cpv, metadata_updates)
 				if onUpdate:
