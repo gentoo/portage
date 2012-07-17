@@ -18,7 +18,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util:ConfigProtect,new_protect_filename,' + \
 		'normalize_path,write_atomic,writemsg',
 	'portage.util.listdir:_ignorecvs_dirs',
-	'portage.versions:ververify'
+	'portage.versions:catsplit,ververify'
 )
 
 from portage.const import USER_CONFIG_PATH
@@ -29,14 +29,20 @@ from portage.localization import _
 
 if sys.hexversion >= 0x3000000:
 	long = int
+	_unicode = str
+else:
+	_unicode = unicode
 
 ignored_dbentries = ("CONTENTS", "environment.bz2")
 
 def update_dbentry(update_cmd, mycontent, eapi=None):
+	eapi_attrs = _get_eapi_attrs(eapi)
 	if update_cmd[0] == "move":
-		old_value = str(update_cmd[1])
-		if old_value in mycontent:
-			new_value = str(update_cmd[2])
+		avoid_dots_in_PN = (not eapi_attrs.dots_in_PN and
+			"." in catsplit(update_cmd[2].cp)[1])
+		if not avoid_dots_in_PN and _unicode(update_cmd[1]) in mycontent:
+			old_value = _unicode(update_cmd[1])
+			new_value = _unicode(update_cmd[2])
 			old_value = re.escape(old_value);
 			mycontent = re.sub(old_value+"(:|$|\\s)", new_value+"\\1", mycontent)
 			def myreplace(matchobj):

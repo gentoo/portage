@@ -330,7 +330,10 @@ class vardbapi(dbapi):
 				# Ignore PROVIDE virtual match.
 				continue
 			if repo_match is not None \
-				and not repo_match(self.aux_get(mycpv, ['repository'])[0]):
+				and not repo_match(mycpv.repo):
+				continue
+			eapi_attrs = _get_eapi_attrs(mycpv.eapi)
+			if not eapi_attrs.dots_in_PN and "." in catsplit(newcp)[1]:
 				continue
 			mynewcpv = mycpv.replace(mycpv_cp, str(newcp), 1)
 			mynewcat = catsplit(newcp)[0]

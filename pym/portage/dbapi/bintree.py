@@ -8,6 +8,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum:hashfunc_map,perform_multiple_checksums,verify_all',
 	'portage.dbapi.dep_expand:dep_expand',
 	'portage.dep:dep_getkey,isjustname,match_from_list',
+	'portage.eapi:_get_eapi_attrs',
 	'portage.output:EOutput,colorize',
 	'portage.locks:lockfile,unlockfile',
 	'portage.package.ebuild.fetch:_check_distfile,_hide_url_passwd',
@@ -386,8 +387,10 @@ class binarytree(object):
 				# Ignore PROVIDE virtual match.
 				continue
 			if repo_match is not None \
-				and not repo_match(self.dbapi.aux_get(mycpv,
-					['repository'])[0]):
+				and not repo_match(mycpv.repo):
+				continue
+			eapi_attrs = _get_eapi_attrs(mycpv.eapi)
+			if not eapi_attrs.dots_in_PN and "." in catsplit(newcp)[1]:
 				continue
 			mynewcpv = mycpv.replace(mycpv_cp, str(newcp), 1)
 			myoldpkg = catsplit(mycpv)[1]
