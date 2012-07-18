@@ -2533,7 +2533,8 @@ class depgraph(object):
 			if isinstance(arg, (AtomArg, PackageArg)):
 				myfavorites.add(arg.atom)
 			elif isinstance(arg, SetArg):
-				myfavorites.add(arg.arg)
+				if not arg.internal:
+					myfavorites.add(arg.arg)
 		myfavorites = list(myfavorites)
 
 		if debug:
@@ -2566,6 +2567,7 @@ class depgraph(object):
 				# to behave like normal arguments in most other respects.
 				pset=InternalPackageSet(initial_atoms=atoms),
 				force_reinstall=True,
+				internal=True,
 				reset_depth=False,
 				root_config=self._frozen_config.roots[root])
 
@@ -6792,6 +6794,9 @@ class depgraph(object):
 			if not isinstance(arg, SetArg):
 				continue
 			if arg.root_config.root != root_config.root:
+				continue
+			if arg.internal:
+				# __auto_* sets
 				continue
 			k = arg.name
 			if k in ("selected", "world") or \
