@@ -212,9 +212,7 @@ def parse_updates(mycontent):
 					invalid_slot = True
 					break
 				if "/" in slot:
-					# Don't support EAPI 4-slot-abi style SLOT in slotmove
-					# yet, since the relevant code isn't aware of EAPI yet
-					# (see bug #426476).
+					# EAPI 4-slot-abi style SLOT is currently not supported.
 					invalid_slot = True
 					break
 
