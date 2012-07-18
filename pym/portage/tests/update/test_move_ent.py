@@ -15,7 +15,7 @@ class MoveEntTestCase(TestCase):
 	def testMoveEnt(self):
 
 		ebuilds = {
-	
+
 			"dev-libs/A-2::dont_apply_updates" : {
 				"EAPI": "4",
 				"SLOT": "2",
@@ -37,7 +37,7 @@ class MoveEntTestCase(TestCase):
 		}
 
 		binpkgs = {
-	
+
 			"dev-libs/A-1::test_repo" : {
 				"EAPI": "4",
 			},
