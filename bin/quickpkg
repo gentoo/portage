@@ -21,7 +21,7 @@ except ImportError:
 from portage import os
 from portage import xpak
 from portage.dbapi.dep_expand import dep_expand
-from portage.dep import Atom, extended_cp_match, use_reduce
+from portage.dep import Atom, use_reduce
 from portage.exception import (AmbiguousPackageName, InvalidAtom, InvalidData,
 	InvalidDependString, PackageSetNotFound, PermissionDenied)
 from portage.util import ConfigProtect, ensure_dirs, shlex_split
@@ -204,16 +204,15 @@ def quickpkg_extended_atom(options, infos, atom, eout):
 			atoms.append(cpv_atom)
 			continue
 
-		if not extended_cp_match(atom.cp, cpv_atom.cp):
+		if not portage.match_from_list(atom, [cpv]):
 			continue
 
 		if require_metadata:
-			slot, repo = vardb.aux_get(cpv, ["SLOT", "repository"])
-
-			if atom.slot and atom.slot != slot:
+			try:
+				cpv = vardb._pkg_str(cpv, atom.repo)
+			except (KeyError, InvalidData):
 				continue
-
-			if atom.repo and atom.repo != repo:
+			if not portage.match_from_list(atom, [cpv]):
 				continue
 
 		atoms.append(cpv_atom)

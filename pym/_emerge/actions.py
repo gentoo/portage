@@ -34,9 +34,9 @@ from portage.const import GLOBAL_CONFIG_PATH
 from portage.const import _ENABLE_DYN_LINK_MAP
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi._expand_new_virt import expand_new_virt
-from portage.dep import Atom, extended_cp_match
+from portage.dep import Atom
 from portage.eclass_cache import hashed_path
-from portage.exception import InvalidAtom
+from portage.exception import InvalidAtom, InvalidData
 from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 	red, yellow
 good = create_color_func("GOOD")
@@ -2594,16 +2594,30 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 					level=logging.ERROR, noiselevel=-1)
 				return 1
 
-			for cp in vardb.cp_all():
-				if extended_cp_match(ext_atom.cp, cp):
-					atom = cp
+			for cpv in vardb.cpv_all():
+				if portage.match_from_list(ext_atom, [cpv]):
+					require_metadata = False
+					atom = portage.cpv_getkey(cpv)
+					if ext_atom.operator == '=*':
+						atom = "=" + atom + "-" + \
+							portage.versions.cpv_getversion(cpv)
 					if ext_atom.slot:
 						atom += ":" + ext_atom.slot
+						require_metadata = True
 					if ext_atom.repo:
 						atom += "::" + ext_atom.repo
+						require_metadata = True
 
-					if vardb.match(atom):
-						valid_atoms.append(Atom(atom, allow_repo=True))
+					atom = Atom(atom, allow_repo=True)
+					if require_metadata:
+						try:
+							cpv = vardb._pkg_str(cpv, ext_atom.repo)
+						except (KeyError, InvalidData):
+							continue
+						if not portage.match_from_list(atom, [cpv]):
+							continue
+
+					valid_atoms.append(atom)
 
 		else:
 			msg = []
