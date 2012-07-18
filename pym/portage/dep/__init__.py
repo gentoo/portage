@@ -2237,7 +2237,7 @@ def match_from_list(mydep, candidate_list):
 	else:
 		raise KeyError(_("Unknown operator: %s") % mydep)
 
-	if mydep.slot is not None and not mydep.extended_syntax:
+	if mydep.slot is not None:
 		candidate_list = mylist
 		mylist = []
 		for x in candidate_list:
