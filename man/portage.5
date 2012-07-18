@@ -162,6 +162,9 @@ next to each other.
 
 .I Examples:
 .nf
+# match anything with a version containing 9999, which can be used in
+# package.mask to prevent emerge --autounmask from selecting live ebuilds
+=*/*-*9999*
 # match anything from the 'sys\-apps' category
 sys\-apps/*
 # match packages named 'zlib' from any category

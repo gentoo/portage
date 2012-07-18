@@ -38,6 +38,8 @@ class Test_best_match_to_list(TestCase):
 						[Atom("=dev-libs/A-1:0")], True),
 					("dev-libs/A-1", [Atom("dev-libs/*", allow_wildcard=True), Atom("=dev-libs/A-1:0")], \
 						[Atom("=dev-libs/A-1:0"), Atom("dev-libs/*", allow_wildcard=True)], True),
+					("dev-libs/A-4.9999-r1", [Atom("dev-libs/*", allow_wildcard=True), Atom("=*/*-*9999*", allow_wildcard=True)], \
+						[Atom("=*/*-*9999*", allow_wildcard=True), Atom("dev-libs/*", allow_wildcard=True)], True),
 					("dev-libs/A-1:0", [Atom("dev-*/*", allow_wildcard=True), Atom("dev-*/*:0", allow_wildcard=True),\
 						Atom("dev-libs/A"), Atom("<=dev-libs/A-2"), Atom("dev-libs/A:0"), \
 						Atom("=dev-libs/A-1*"), Atom("~dev-libs/A-1"), Atom("=dev-libs/A-1")], \
