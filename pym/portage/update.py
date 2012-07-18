@@ -36,13 +36,14 @@ else:
 ignored_dbentries = ("CONTENTS", "environment.bz2")
 
 def update_dbentry(update_cmd, mycontent, eapi=None):
-	eapi_attrs = _get_eapi_attrs(eapi)
+
 	if update_cmd[0] == "move":
-		avoid_dots_in_PN = (not eapi_attrs.dots_in_PN and
-			"." in catsplit(update_cmd[2].cp)[1])
-		if not avoid_dots_in_PN and _unicode(update_cmd[1]) in mycontent:
-			old_value = _unicode(update_cmd[1])
-			new_value = _unicode(update_cmd[2])
+		old_value = _unicode(update_cmd[1])
+		new_value = _unicode(update_cmd[2])
+
+		# Use isvalidatom() to check if this move is valid for the
+		# EAPI (characters allowed in package names may vary).
+		if old_value in mycontent and isvalidatom(new_value, eapi=eapi):
 			old_value = re.escape(old_value);
 			mycontent = re.sub(old_value+"(:|$|\\s)", new_value+"\\1", mycontent)
 			def myreplace(matchobj):

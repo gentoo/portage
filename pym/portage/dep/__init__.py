@@ -1224,6 +1224,7 @@ class Atom(_unicode):
 		eapi_attrs = _get_eapi_attrs(eapi)
 		atom_re = _get_atom_re(eapi_attrs)
 
+		self.__dict__['eapi'] = eapi
 		if eapi is not None:
 			# Ignore allow_repo when eapi is specified.
 			allow_repo = eapi_attrs.repo_deps
@@ -1850,7 +1851,8 @@ def dep_getusedeps( depend ):
 		open_bracket = depend.find( '[', open_bracket+1 )
 	return tuple(use_list)
 
-def isvalidatom(atom, allow_blockers=False, allow_wildcard=False, allow_repo=False):
+def isvalidatom(atom, allow_blockers=False, allow_wildcard=False,
+	allow_repo=False, eapi=None):
 	"""
 	Check to see if a depend atom is valid
 
@@ -1867,9 +1869,15 @@ def isvalidatom(atom, allow_blockers=False, allow_wildcard=False, allow_repo=Fal
 		1) False if the atom is invalid
 		2) True if the atom is valid
 	"""
+
+	if eapi is not None and isinstance(atom, Atom) and atom.eapi != eapi:
+		# We'll construct a new atom with the given eapi.
+		atom = _unicode(atom)
+
 	try:
 		if not isinstance(atom, Atom):
-			atom = Atom(atom, allow_wildcard=allow_wildcard, allow_repo=allow_repo)
+			atom = Atom(atom, allow_wildcard=allow_wildcard,
+				allow_repo=allow_repo, eapi=eapi)
 		if not allow_blockers and atom.blocker:
 			return False
 		return True
