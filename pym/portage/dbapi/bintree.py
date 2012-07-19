@@ -7,7 +7,7 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum:hashfunc_map,perform_multiple_checksums,verify_all',
 	'portage.dbapi.dep_expand:dep_expand',
-	'portage.dep:dep_getkey,isjustname,match_from_list',
+	'portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list',
 	'portage.output:EOutput,colorize',
 	'portage.locks:lockfile,unlockfile',
 	'portage.package.ebuild.fetch:_check_distfile,_hide_url_passwd',
@@ -49,8 +49,11 @@ except ImportError:
 	from urlparse import urlparse
 
 if sys.hexversion >= 0x3000000:
+	_unicode = str
 	basestring = str
 	long = int
+else:
+	_unicode = unicode
 
 class bindbapi(fakedbapi):
 	_known_keys = frozenset(list(fakedbapi._known_keys) + \
@@ -378,15 +381,24 @@ class binarytree(object):
 		if not origmatches:
 			return moves
 		for mycpv in origmatches:
+			try:
+				mycpv = self.dbapi._pkg_str(mycpv, None)
+			except (KeyError, InvalidData):
+				continue
 			mycpv_cp = portage.cpv_getkey(mycpv)
 			if mycpv_cp != origcp:
 				# Ignore PROVIDE virtual match.
 				continue
 			if repo_match is not None \
-				and not repo_match(self.dbapi.aux_get(mycpv,
-					['repository'])[0]):
+				and not repo_match(mycpv.repo):
 				continue
-			mynewcpv = mycpv.replace(mycpv_cp, str(newcp), 1)
+
+			# Use isvalidatom() to check if this move is valid for the
+			# EAPI (characters allowed in package names may vary).
+			if not isvalidatom(newcp, eapi=mycpv.eapi):
+				continue
+
+			mynewcpv = mycpv.replace(mycpv_cp, _unicode(newcp), 1)
 			myoldpkg = catsplit(mycpv)[1]
 			mynewpkg = catsplit(mynewcpv)[1]
 
@@ -405,7 +417,7 @@ class binarytree(object):
 			moves += 1
 			mytbz2 = portage.xpak.tbz2(tbz2path)
 			mydata = mytbz2.get_data()
-			updated_items = update_dbentries([mylist], mydata)
+			updated_items = update_dbentries([mylist], mydata, eapi=mycpv.eapi)
 			mydata.update(updated_items)
 			mydata[b'PF'] = \
 				_unicode_encode(mynewpkg + "\n",

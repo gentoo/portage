@@ -503,6 +503,9 @@ class ResolverPlayground(object):
 			'PORTAGE_TMPDIR'       : os.path.join(self.eroot, 'var/tmp'),
 		}
 
+		if os.environ.get("NOCOLOR"):
+			env["NOCOLOR"] = os.environ["NOCOLOR"]
+
 		if os.environ.get("SANDBOX_ON") == "1":
 			# avoid problems from nested sandbox instances
 			env["FEATURES"] = "-sandbox"

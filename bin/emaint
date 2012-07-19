@@ -337,12 +337,12 @@ class MoveHandler(object):
 		cpv_all.sort()
 		maxval = len(cpv_all)
 		aux_update = self._tree.dbapi.aux_update
-		meta_keys = self._update_keys + ['repository']
-		from portage.update import update_dbentries
+		meta_keys = self._update_keys + ['repository', 'EAPI']
 		if onProgress:
 			onProgress(maxval, 0)
 		for i, cpv in enumerate(cpv_all):
 			metadata = dict(zip(meta_keys, aux_get(cpv, meta_keys)))
+			eapi = metadata.pop('EAPI')
 			repository = metadata.pop('repository')
 			try:
 				updates = allupdates[repository]
@@ -353,7 +353,8 @@ class MoveHandler(object):
 					continue
 			if not updates:
 				continue
-			metadata_updates = update_dbentries(updates, metadata)
+			metadata_updates = \
+				portage.update_dbentries(updates, metadata, eapi=eapi)
 			if metadata_updates:
 				errors.append("'%s' has outdated metadata" % cpv)
 			if onProgress:
@@ -612,19 +613,16 @@ def emaint_main(myargv):
 
 
 	if action == "-c/--check":
-		status = "Checking %s for problems"
 		func = "check"
 	else:
-		status = "Attempting to fix %s"
 		func = "fix"
 
 	isatty = os.environ.get('TERM') != 'dumb' and sys.stdout.isatty()
 	for task in tasks:
-		print(status % task.name())
 		inst = task()
 		onProgress = None
 		if isatty:
-			progressBar = portage.output.TermProgressBar()
+			progressBar = portage.output.TermProgressBar(title="Emaint", max_desc_length=26)
 			progressHandler = ProgressHandler()
 			onProgress = progressHandler.onProgress
 			def display():
@@ -634,6 +632,7 @@ def emaint_main(myargv):
 				lines, progressBar.term_columns = \
 					portage.output.get_term_size()
 			signal.signal(signal.SIGWINCH, sigwinch_handler)
+			progressBar.label(func + " " + inst.name())
 		result = getattr(inst, func)(onProgress=onProgress)
 		if isatty:
 			# make sure the final progress is displayed

@@ -141,9 +141,10 @@ def _get_atom_wildcard_re(eapi_attrs):
 	else:
 		pkg_re = r'[\w+*][\w+*-]*?'
 
-	atom_re = re.compile(r'(?P<simple>(' +
-		_extended_cat + r')/(' + pkg_re +
-		r'))(:(?P<slot>' + _slot_loose + r'))?(' +
+	atom_re = re.compile(r'((?P<simple>(' +
+		_extended_cat + r')/(' + pkg_re + r'))' + \
+		'|(?P<star>=((' + _extended_cat + r')/(' + pkg_re + r'))-(?P<version>\*\d+\*)))' + \
+		'(:(?P<slot>' + _slot_loose + r'))?(' +
 		_repo_separator + r'(?P<repo>' + _repo_name + r'))?$')
 
 	_atom_wildcard_re_cache[cache_key] = atom_re
@@ -1224,6 +1225,7 @@ class Atom(_unicode):
 		eapi_attrs = _get_eapi_attrs(eapi)
 		atom_re = _get_atom_re(eapi_attrs)
 
+		self.__dict__['eapi'] = eapi
 		if eapi is not None:
 			# Ignore allow_repo when eapi is specified.
 			allow_repo = eapi_attrs.repo_deps
@@ -1242,18 +1244,27 @@ class Atom(_unicode):
 		self.__dict__['blocker'] = blocker
 		m = atom_re.match(s)
 		extended_syntax = False
+		extended_version = None
 		if m is None:
 			if allow_wildcard:
-				m = _get_atom_wildcard_re(eapi_attrs).match(s)
+				atom_re = _get_atom_wildcard_re(eapi_attrs)
+				m = atom_re.match(s)
 				if m is None:
 					raise InvalidAtom(self)
-				op = None
 				gdict = m.groupdict()
-				cpv = cp = gdict['simple']
+				if m.group('star') is not None:
+					op = '=*'
+					base = atom_re.groupindex['star']
+					cp = m.group(base + 1)
+					cpv = m.group('star')[1:]
+					extended_version = m.group(base + 4)
+				else:
+					op = None
+					cpv = cp = m.group('simple')
 				if cpv.find("**") != -1:
 					raise InvalidAtom(self)
-				slot = gdict['slot']
-				repo = gdict['repo']
+				slot = m.group('slot')
+				repo = m.group('repo')
 				use_str = None
 				extended_syntax = True
 			else:
@@ -1296,7 +1307,7 @@ class Atom(_unicode):
 		except InvalidData:
 			# plain cp, wildcard, or something
 			self.__dict__['cpv'] = cpv
-			self.__dict__['version'] = None
+			self.__dict__['version'] = extended_version
 		self.__dict__['repo'] = repo
 		if slot is None:
 			self.__dict__['slot'] = None
@@ -1850,7 +1861,8 @@ def dep_getusedeps( depend ):
 		open_bracket = depend.find( '[', open_bracket+1 )
 	return tuple(use_list)
 
-def isvalidatom(atom, allow_blockers=False, allow_wildcard=False, allow_repo=False):
+def isvalidatom(atom, allow_blockers=False, allow_wildcard=False,
+	allow_repo=False, eapi=None):
 	"""
 	Check to see if a depend atom is valid
 
@@ -1867,9 +1879,15 @@ def isvalidatom(atom, allow_blockers=False, allow_wildcard=False, allow_repo=Fal
 		1) False if the atom is invalid
 		2) True if the atom is valid
 	"""
+
+	if eapi is not None and isinstance(atom, Atom) and atom.eapi != eapi:
+		# We'll construct a new atom with the given eapi.
+		atom = _unicode(atom)
+
 	try:
 		if not isinstance(atom, Atom):
-			atom = Atom(atom, allow_wildcard=allow_wildcard, allow_repo=allow_repo)
+			atom = Atom(atom, allow_wildcard=allow_wildcard,
+				allow_repo=allow_repo, eapi=eapi)
 		if not allow_blockers and atom.blocker:
 			return False
 		return True
@@ -1995,18 +2013,22 @@ def best_match_to_list(mypkg, mylist):
 	"""
 	operator_values = {'=':6, '~':5, '=*':4,
 		'>':2, '<':2, '>=':2, '<=':2, None:1}
-	maxvalue = -2
+	maxvalue = -99
 	bestm  = None
 	mypkg_cpv = None
 	for x in match_to_list(mypkg, mylist):
 		if x.extended_syntax:
-			if dep_getslot(x) is not None:
+			if x.operator == '=*':
 				if maxvalue < 0:
 					maxvalue = 0
 					bestm = x
-			else:
+			elif x.slot is not None:
 				if maxvalue < -1:
 					maxvalue = -1
+					bestm = x
+			else:
+				if maxvalue < -2:
+					maxvalue = -2
 					bestm = x
 			continue
 		if dep_getslot(x) is not None:
@@ -2091,7 +2113,8 @@ def match_from_list(mydep, candidate_list):
 
 	mylist = []
 
-	if operator is None:
+	if mydep.extended_syntax:
+
 		for x in candidate_list:
 			cp = getattr(x, "cp", None)
 			if cp is None:
@@ -2102,8 +2125,38 @@ def match_from_list(mydep, candidate_list):
 			if cp is None:
 				continue
 
-			if cp == mycpv or (mydep.extended_syntax and \
-				extended_cp_match(mydep.cp, cp)):
+			if cp == mycpv or extended_cp_match(mydep.cp, cp):
+				mylist.append(x)
+
+		if mylist and mydep.operator == "=*":
+
+			candidate_list = mylist
+			mylist = []
+			# Currently, only \*\d+\* is supported.
+			ver = mydep.version[1:-1]
+
+			for x in candidate_list:
+				x_ver = getattr(x, "version", None)
+				if x_ver is None:
+					xs = catpkgsplit(remove_slot(x))
+					if xs is None:
+						continue
+					x_ver = "-".join(xs[-2:])
+				if ver in x_ver:
+					mylist.append(x)
+
+	elif operator is None:
+		for x in candidate_list:
+			cp = getattr(x, "cp", None)
+			if cp is None:
+				mysplit = catpkgsplit(remove_slot(x))
+				if mysplit is not None:
+					cp = mysplit[0] + '/' + mysplit[1]
+
+			if cp is None:
+				continue
+
+			if cp == mydep.cp:
 				mylist.append(x)
 
 	elif operator == "=": # Exact match
@@ -2184,7 +2237,7 @@ def match_from_list(mydep, candidate_list):
 	else:
 		raise KeyError(_("Unknown operator: %s") % mydep)
 
-	if mydep.slot is not None and not mydep.extended_syntax:
+	if mydep.slot is not None:
 		candidate_list = mylist
 		mylist = []
 		for x in candidate_list:

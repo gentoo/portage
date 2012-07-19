@@ -74,6 +74,8 @@ class Test_match_from_list(TestCase):
 			("=sys-fs/udev-1*", ["sys-fs/udev-123"], ["sys-fs/udev-123"]),
 			("=sys-fs/udev-4*", ["sys-fs/udev-456"], ["sys-fs/udev-456"] ),
 			("*/*", ["sys-fs/udev-456"], ["sys-fs/udev-456"] ),
+			("*/*:0", ["sys-fs/udev-456:0"], ["sys-fs/udev-456:0"] ),
+			("*/*:1", ["sys-fs/udev-456:0"], [] ),
 			("sys-fs/*", ["sys-fs/udev-456"], ["sys-fs/udev-456"] ),
 			("*/udev", ["sys-fs/udev-456"], ["sys-fs/udev-456"] ),
 			("=sys-apps/portage-2*", ["sys-apps/portage-2.1"], ["sys-apps/portage-2.1"] ),

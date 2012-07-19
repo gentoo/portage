@@ -190,6 +190,7 @@ parse_automode_flag() {
 		parse_automode_flag -3
 		export mv_opts=" ${mv_opts} "
 		mv_opts="${mv_opts// -i / }"
+		NONINTERACTIVE_MV=true
 		;;
 	-3)
 		input=0
@@ -600,6 +601,7 @@ declare title="Gentoo's etc-update tool!"
 PREEN=false
 SET_X=false
 VERBOSE=false
+NONINTERACTIVE_MV=false
 while [[ -n $1 ]] ; do
 	case $1 in
 		-d|--debug)   SET_X=true;;
@@ -690,6 +692,11 @@ else
 	if ! type dialog >/dev/null || ! dialog --help >/dev/null ; then
 		die "mode=1 and 'dialog' not found or not executable, aborting"
 	fi
+fi
+
+if ${NONINTERACTIVE_MV} ; then
+	export mv_opts=" ${mv_opts} "
+	mv_opts="${mv_opts// -i / }"
 fi
 
 if ${VERBOSE} ; then

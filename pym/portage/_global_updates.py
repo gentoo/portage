@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -32,11 +32,15 @@ def _global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 	"""
 	# only do this if we're root and not running repoman/ebuild digest
 
-	retupd = False
 	if secpass < 2 or \
 		"SANDBOX_ACTIVE" in os.environ or \
 		len(trees) != 1:
-		return retupd
+		return False
+
+	return _do_global_updates(trees, prev_mtimes,
+		quiet=quiet, if_mtime_changed=if_mtime_changed)
+
+def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 	root = trees._running_eroot
 	mysettings = trees[root]["vartree"].settings
 	portdb = trees[root]["porttree"].dbapi
@@ -61,6 +65,7 @@ def _global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 	repo_map = {}
 	timestamps = {}
 
+	retupd = False
 	update_notice_printed = False
 	for repo_name in portdb.getRepositories():
 		repo = portdb.getRepositoryPath(repo_name)
@@ -237,8 +242,7 @@ def _global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 			# Update progress above is indicated by characters written to stdout so
 			# we print a couple new lines here to separate the progress output from
 			# what follows.
-			print()
-			print()
+			writemsg_stdout("\n\n")
 
 			if do_upgrade_packagesmessage and bindb and \
 				bindb.cpv_all():

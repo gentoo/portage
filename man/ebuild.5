@@ -615,7 +615,7 @@ CFLAGS, CXXFLAGS, FFLAGS, FCFLAGS, and LDFLAGS variables.
 This should contain a list of file paths, relative to the image directory, of
 files that contain .hash sections. The paths may contain regular expressions
 with escape\-quoted special characters. This variable is deprecated. Use
-\fBQA_FLAGS_IGNORED\f instead.
+\fBQA_FLAGS_IGNORED\fR instead.
 .br
 This variable is intended to be used on files of binary packages which ignore
 LDFLAGS variable.
@@ -1105,8 +1105,8 @@ that this expression does \fBNOT\fR use the offset prefix.
 .BR 'dosed\ "s:/usr/local:/usr:g"\ /usr/bin/some\-script'
 runs sed on ${ED}/usr/bin/some\-script
 .TP
-\fBdodir\fR \fI<path>\fR
-Creates a directory inside of ${ED}.
+\fBdodir\fR \fI<path> [more paths]\fR
+Creates directories inside of ${ED}.
 .br
 .BR 'dodir\ /usr/lib/apache'
 creates ${ED}/usr/lib/apache.  Note that the do* functions will run
@@ -1122,8 +1122,8 @@ Sets the root (\fIDESTTREE\fR) for other functions like \fBdobin\fR,
 .br
 The default root is /usr.
 .TP
-\fBkeepdir\fR \fI<path>\fR
-Tells portage to leave a directory behind even if it is empty.  Functions
+\fBkeepdir\fR \fI<path> [more paths]\fR
+Tells portage to leave directories behind even if they're empty.  Functions
 the same as \fBdodir\fR.
 .TP
 \fBdobin\fR \fI<binary> [list of more binaries]\fR

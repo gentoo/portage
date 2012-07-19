@@ -8,7 +8,7 @@ import re
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dbapi.dep_expand:dep_expand@_dep_expand',
-	'portage.dep:match_from_list,_match_slot',
+	'portage.dep:Atom,match_from_list,_match_slot',
 	'portage.output:colorize',
 	'portage.util:cmp_sort_key,writemsg',
 	'portage.versions:catsplit,catpkgsplit,vercmp,_pkg_str',
@@ -275,17 +275,17 @@ class dbapi(object):
 		maxval = len(cpv_all)
 		aux_get = self.aux_get
 		aux_update = self.aux_update
-		meta_keys = ["DEPEND", "RDEPEND", "PDEPEND", "PROVIDE", 'repository']
+		meta_keys = ["DEPEND", "EAPI", "RDEPEND", "PDEPEND", "PROVIDE", 'repository']
 		repo_dict = None
 		if isinstance(updates, dict):
 			repo_dict = updates
-		from portage.update import update_dbentries
 		if onUpdate:
 			onUpdate(maxval, 0)
 		if onProgress:
 			onProgress(maxval, 0)
 		for i, cpv in enumerate(cpv_all):
 			metadata = dict(zip(meta_keys, aux_get(cpv, meta_keys)))
+			eapi = metadata.pop('EAPI')
 			repo = metadata.pop('repository')
 			if repo_dict is None:
 				updates_list = updates
@@ -301,7 +301,8 @@ class dbapi(object):
 			if not updates_list:
 				continue
 
-			metadata_updates = update_dbentries(updates_list, metadata)
+			metadata_updates = \
+				portage.update_dbentries(updates_list, metadata, eapi=eapi)
 			if metadata_updates:
 				aux_update(cpv, metadata_updates)
 				if onUpdate:
@@ -312,27 +313,39 @@ class dbapi(object):
 	def move_slot_ent(self, mylist, repo_match=None):
 		"""This function takes a sequence:
 		Args:
-			mylist: a sequence of (package, originalslot, newslot)
+			mylist: a sequence of (atom, originalslot, newslot)
 			repo_match: callable that takes single repo_name argument
 				and returns True if the update should be applied
 		Returns:
 			The number of slotmoves this function did
 		"""
-		pkg = mylist[1]
+		atom = mylist[1]
 		origslot = mylist[2]
 		newslot = mylist[3]
-		origmatches = self.match(pkg)
+
+		try:
+			atom.with_slot
+		except AttributeError:
+			atom = Atom(atom).with_slot(origslot)
+		else:
+			atom = atom.with_slot(origslot)
+
+		origmatches = self.match(atom)
 		moves = 0
 		if not origmatches:
 			return moves
 		for mycpv in origmatches:
-			slot = self.aux_get(mycpv, ["SLOT"])[0]
-			if slot != origslot:
+			try:
+				mycpv = self._pkg_str(mycpv, atom.repo)
+			except (KeyError, InvalidData):
 				continue
-			if repo_match is not None \
-				and not repo_match(self.aux_get(mycpv, ['repository'])[0]):
+			if repo_match is not None and not repo_match(mycpv.repo):
 				continue
 			moves += 1
+			if "/" not in newslot and \
+				mycpv.slot_abi and \
+				mycpv.slot_abi not in (mycpv.slot, newslot):
+				newslot = "%s/%s" % (newslot, mycpv.slot_abi)
 			mydata = {"SLOT": newslot+"\n"}
 			self.aux_update(mycpv, mydata)
 		return moves

@@ -1,4 +1,4 @@
-# Copyright 2011 Gentoo Foundation
+# Copyright 2011-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -6,6 +6,70 @@ from portage.tests.resolver.ResolverPlayground import (ResolverPlayground,
 	ResolverPlaygroundTestCase)
 
 class CompleteGraphTestCase(TestCase):
+
+	def testCompleteGraphUseChange(self):
+		"""
+		Prevent reverse dependency breakage triggered by USE changes.
+		"""
+
+		ebuilds = {
+			"dev-libs/libxml2-2.8.0": {
+				"EAPI": "2",
+				"IUSE": "+icu",
+				"SLOT": "2",
+			},
+			"x11-libs/qt-webkit-4.8.2": {
+				"EAPI": "2",
+				"IUSE": "icu",
+				"RDEPEND" : "dev-libs/libxml2:2[!icu?]",
+			},
+		}
+
+		installed = {
+			"dev-libs/libxml2-2.8.0": {
+				"EAPI": "2",
+				"IUSE": "+icu",
+				"USE": "",
+				"SLOT": "2",
+			},
+			"x11-libs/qt-webkit-4.8.2": {
+				"EAPI": "2",
+				"IUSE": "icu",
+				"RDEPEND" : "dev-libs/libxml2:2[-icu]",
+				"USE": "",
+			}
+		}
+
+		world = ["x11-libs/qt-webkit"]
+
+		test_cases = (
+
+			ResolverPlaygroundTestCase(
+				["dev-libs/libxml2"],
+				options = {"--complete-graph-if-new-use" : "y" },
+				mergelist = ["dev-libs/libxml2-2.8.0"],
+				slot_collision_solutions = [{'dev-libs/libxml2-2.8.0': {'icu': False}}],
+				success = False,
+			),
+
+			ResolverPlaygroundTestCase(
+				["dev-libs/libxml2"],
+				options = {"--complete-graph-if-new-use" : "n" },
+				mergelist = ["dev-libs/libxml2-2.8.0"],
+				success = True,
+			),
+
+		)
+
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			installed=installed, world=world, debug=False)
+
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
 
 	def testCompleteGraphVersionChange(self):
 		"""

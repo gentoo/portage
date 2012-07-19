@@ -56,6 +56,11 @@ def create_depgraph_params(myopts, myaction):
 	if deep is not None and deep != 0:
 		myparams["deep"] = deep
 
+	complete_if_new_use = \
+		myopts.get("--complete-graph-if-new-use")
+	if complete_if_new_use is not None:
+		myparams["complete_if_new_use"] = complete_if_new_use
+
 	complete_if_new_ver = \
 		myopts.get("--complete-graph-if-new-ver")
 	if complete_if_new_ver is not None:

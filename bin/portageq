@@ -587,17 +587,15 @@ def match(argv):
 			require_metadata = atom.slot or atom.repo
 			for cpv in vardb.cpv_all():
 
-				if not portage.dep.extended_cp_match(
-					atom.cp, portage.cpv_getkey(cpv)):
+				if not portage.match_from_list(atom, [cpv]):
 					continue
 
 				if require_metadata:
-					slot, repo = vardb.aux_get(cpv, ["SLOT", "repository"])
-
-					if atom.slot is not None and atom.slot != slot:
+					try:
+						cpv = vardb._pkg_str(cpv, atom.repo)
+					except (KeyError, portage.exception.InvalidData):
 						continue
-
-					if atom.repo is not None and atom.repo != repo:
+					if not portage.match_from_list(atom, [cpv]):
 						continue
 
 				results.append(cpv)

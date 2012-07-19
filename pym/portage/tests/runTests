@@ -37,6 +37,9 @@ import portage
 # work the same regardless of global configuration file state/existence.
 portage._disable_legacy_globals()
 
+if os.environ.get('NOCOLOR') in ('yes', 'true'):
+	portage.output.nocolor()
+
 import portage.tests as tests
 from portage.const import PORTAGE_BIN_PATH
 path = os.environ.get("PATH", "").split(":")

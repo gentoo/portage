@@ -11,7 +11,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.data:portage_gid,portage_uid,secpass',
 	'portage.dbapi.dep_expand:dep_expand',
 	'portage.dbapi._MergeProcess:MergeProcess',
-	'portage.dep:dep_getkey,isjustname,match_from_list,' + \
+	'portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list,' + \
 	 	'use_reduce,_get_slot_re',
 	'portage.eapi:_get_eapi_attrs',
 	'portage.elog:collect_ebuild_messages,collect_messages,' + \
@@ -335,14 +335,24 @@ class vardbapi(dbapi):
 		if not origmatches:
 			return moves
 		for mycpv in origmatches:
+			try:
+				mycpv = self._pkg_str(mycpv, None)
+			except (KeyError, InvalidData):
+				continue
 			mycpv_cp = cpv_getkey(mycpv)
 			if mycpv_cp != origcp:
 				# Ignore PROVIDE virtual match.
 				continue
 			if repo_match is not None \
-				and not repo_match(self.aux_get(mycpv, ['repository'])[0]):
+				and not repo_match(mycpv.repo):
 				continue
-			mynewcpv = mycpv.replace(mycpv_cp, str(newcp), 1)
+
+			# Use isvalidatom() to check if this move is valid for the
+			# EAPI (characters allowed in package names may vary).
+			if not isvalidatom(newcp, eapi=mycpv.eapi):
+				continue
+
+			mynewcpv = mycpv.replace(mycpv_cp, _unicode(newcp), 1)
 			mynewcat = catsplit(newcp)[0]
 			origpath = self.getpath(mycpv)
 			if not os.path.exists(origpath):
@@ -372,7 +382,7 @@ class vardbapi(dbapi):
 					del e
 			write_atomic(os.path.join(newpath, "PF"), new_pf+"\n")
 			write_atomic(os.path.join(newpath, "CATEGORY"), mynewcat+"\n")
-			fixdbentries([mylist], newpath)
+			fixdbentries([mylist], newpath, eapi=mycpv.eapi)
 		return moves
 
 	def cp_list(self, mycp, use_cache=1):
@@ -661,7 +671,8 @@ class vardbapi(dbapi):
 			if e.errno != errno.ENOENT:
 				raise
 			raise KeyError(mycpv)
-		mydir_mtime = mydir_stat[stat.ST_MTIME]
+		# Use float mtime when available.
+		mydir_mtime = mydir_stat.st_mtime
 		pkg_data = self._aux_cache["packages"].get(mycpv)
 		pull_me = cache_these.union(wants)
 		mydata = {"_mtime_" : mydir_mtime}
@@ -674,13 +685,18 @@ class vardbapi(dbapi):
 				pkg_data = None
 			else:
 				cache_mtime, metadata = pkg_data
-				if not isinstance(cache_mtime, (long, int)) or \
+				if not isinstance(cache_mtime, (float, long, int)) or \
 					not isinstance(metadata, dict):
 					pkg_data = None
 
 		if pkg_data:
 			cache_mtime, metadata = pkg_data
-			cache_valid = cache_mtime == mydir_mtime
+			if isinstance(cache_mtime, float):
+				cache_valid = cache_mtime == mydir_stat.st_mtime
+			else:
+				# Cache may contain integer mtime.
+				cache_valid = cache_mtime == mydir_stat[stat.ST_MTIME]
+
 		if cache_valid:
 			# Migrate old metadata to unicode.
 			for k, v in metadata.items():

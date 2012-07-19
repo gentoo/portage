@@ -318,4 +318,5 @@ then
 	done < <(find "${D}${prepstrip_sources_dir}/" -type d -empty -print0)
 fi
 
+cd "${T}"
 rm -rf "${tmpdir}"

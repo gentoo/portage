@@ -396,6 +396,10 @@ be updated than would have otherwise been updated with the option disabled.
 Using \fB\-\-with\-bdeps=y\fR together with \fB\-\-complete\-graph\fR makes
 the graph as complete as possible.
 .TP
+.BR "\-\-complete\-graph\-if\-new\-use < y | n >"
+Trigger the \fB\-\-complete\-graph\fR behavior if USE or IUSE will
+change for an installed package. This option is enabled by default.
+.TP
 .BR "\-\-complete\-graph\-if\-new\-ver < y | n >"
 Trigger the \fB\-\-complete\-graph\fR behavior if an installed package
 version will change (upgrade or downgrade). This option is enabled by default.

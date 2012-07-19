@@ -370,6 +370,8 @@ class _pkg_str(_unicode):
 			# Avoid TypeError from _unicode.__init__ with PyPy.
 			cpv = _unicode_decode(cpv)
 		_unicode.__init__(cpv)
+		if eapi is not None:
+			self.__dict__['eapi'] = eapi
 		self.__dict__['cpv_split'] = catpkgsplit(cpv, eapi=eapi)
 		if self.cpv_split is None:
 			raise InvalidData(cpv)
