@@ -434,7 +434,7 @@ def get_term_size():
 	greater than or equal to zero, since a negative COLUMNS variable is
 	known to prevent some commands from working (see bug #394091).
 	"""
-	if not sys.stdout.isatty():
+	if not (sys.stdout.isatty() or sys.stderr.isatty()):
 		return (0, 0)
 	try:
 		import curses
