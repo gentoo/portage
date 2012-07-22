@@ -744,7 +744,7 @@ class TermProgressBar(ProgressBar):
 			max_bar_width = bar_space-3
 			_percent = "".ljust(percentage_str_width)
 			if cols < min_columns:
-				return image
+				return ""
 			if position <= 0.5:
 				offset = 2 * position
 			else:
