@@ -425,16 +425,16 @@ class StyleWriter(formatter.DumbWriter):
 		if self.style_listener:
 			self.style_listener(styles)
 
-def get_term_size():
+def get_term_size(fd=sys.stdout):
 	"""
 	Get the number of lines and columns of the tty that is connected to
-	stdout.  Returns a tuple of (lines, columns) or (0, 0) if an error
+	fd.  Returns a tuple of (lines, columns) or (0, 0) if an error
 	occurs. The curses module is used if available, otherwise the output of
 	`stty size` is parsed. The lines and columns values are guaranteed to be
 	greater than or equal to zero, since a negative COLUMNS variable is
 	known to prevent some commands from working (see bug #394091).
 	"""
-	if not (sys.stdout.isatty() or sys.stderr.isatty()):
+	if not hasattr(fd, 'isatty') or not fd.isatty():
 		return (0, 0)
 	try:
 		import curses
@@ -707,10 +707,10 @@ class ProgressBar(object):
 
 class TermProgressBar(ProgressBar):
 	"""A tty progress bar similar to wget's."""
-	def __init__(self, **kwargs):
+	def __init__(self, fd=sys.stdout, **kwargs):
 		ProgressBar.__init__(self, **kwargs)
-		lines, self.term_columns = get_term_size()
-		self.file = sys.stdout
+		lines, self.term_columns = get_term_size(fd)
+		self.file = fd
 		self._min_columns = 11
 		self._max_columns = 80
 		# for indeterminate mode, ranges from 0.0 to 1.0
