@@ -13,6 +13,7 @@ import platform
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.news:count_unread_news,display_news_notifications',
+	'portage.emaint.modules.logs.logs:CleanLogs',
 )
 from portage import os
 from portage import _encodings
@@ -1351,29 +1352,17 @@ def clean_logs(settings):
 	if "clean-logs" not in settings.features:
 		return
 
-	clean_cmd = settings.get("PORT_LOGDIR_CLEAN")
-	if clean_cmd:
-		clean_cmd = shlex_split(clean_cmd)
-	if not clean_cmd:
-		return
-
 	logdir = settings.get("PORT_LOGDIR")
 	if logdir is None or not os.path.isdir(logdir):
 		return
 
-	variables = {"PORT_LOGDIR" : logdir}
-	cmd = [varexpand(x, mydict=variables) for x in clean_cmd]
-
-	try:
-		rval = portage.process.spawn(cmd, env=os.environ)
-	except portage.exception.CommandNotFound:
-		rval = 127
-
-	if rval != os.EX_OK:
-		out = portage.output.EOutput()
-		out.eerror("PORT_LOGDIR_CLEAN returned %d" % (rval,))
-		out.eerror("See the make.conf(5) man page for "
-			"PORT_LOGDIR_CLEAN usage instructions.")
+	options = {
+			'eerror': portage.output.EOutput().eerror,
+			# uncomment next line to output a succeeded message
+			#'einfo': portage.output.EOutput().einfo
+		}
+	cleanlogs = CleanLogs()
+	cleanlogs.clean(settings=settings, options=options)
 
 def setconfig_fallback(root_config):
 	setconfig = root_config.setconfig
