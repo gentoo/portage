@@ -450,8 +450,15 @@ def get_term_size(fd=None):
 	except ImportError:
 		pass
 
-	proc = subprocess.Popen(["stty", "size"],
-		stdout=subprocess.PIPE, stderr=fd)
+	try:
+		proc = subprocess.Popen(["stty", "size"],
+			stdout=subprocess.PIPE, stderr=fd)
+	except EnvironmentError as e:
+		if e.errno != errno.ENOENT:
+			raise
+		# stty command not found
+		return (0, 0)
+
 	out = _unicode_decode(proc.communicate()[0])
 	if proc.wait() == os.EX_OK:
 		out = out.split()
