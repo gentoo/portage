@@ -425,7 +425,7 @@ class StyleWriter(formatter.DumbWriter):
 		if self.style_listener:
 			self.style_listener(styles)
 
-def get_term_size(fd=sys.stdout):
+def get_term_size(fd=None):
 	"""
 	Get the number of lines and columns of the tty that is connected to
 	fd.  Returns a tuple of (lines, columns) or (0, 0) if an error
@@ -434,6 +434,8 @@ def get_term_size(fd=sys.stdout):
 	greater than or equal to zero, since a negative COLUMNS variable is
 	known to prevent some commands from working (see bug #394091).
 	"""
+	if fd is None:
+		fd = sys.stdout
 	if not hasattr(fd, 'isatty') or not fd.isatty():
 		return (0, 0)
 	try:
