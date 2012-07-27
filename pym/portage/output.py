@@ -7,6 +7,7 @@ import errno
 import io
 import formatter
 import re
+import subprocess
 import sys
 
 import portage
@@ -448,8 +449,11 @@ def get_term_size(fd=None):
 			pass
 	except ImportError:
 		pass
-	st, out = portage.subprocess_getstatusoutput('stty size')
-	if st == os.EX_OK:
+
+	proc = subprocess.Popen(["stty", "size"],
+		stdout=subprocess.PIPE, stderr=fd)
+	out = _unicode_decode(proc.communicate()[0])
+	if proc.wait() == os.EX_OK:
 		out = out.split()
 		if len(out) == 2:
 			try:
