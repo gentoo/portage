@@ -441,7 +441,8 @@ def get_term_size(fd=None):
 	try:
 		import curses
 		try:
-			curses.setupterm()
+			curses.setupterm(term=os.environ.get("TERM", "unknown"),
+				fd=fd.fileno())
 			return curses.tigetnum('lines'), curses.tigetnum('cols')
 		except curses.error:
 			pass
