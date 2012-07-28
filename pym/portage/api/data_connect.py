@@ -302,7 +302,7 @@ def get_size(cpv, formatted_string=True, root=None, settings=None):
     ebuild = settings.portdb[root].findname(cpv)
     pkgdir = os.path.dirname(ebuild)
     mf = manifest.Manifest(pkgdir, settings.settings["DISTDIR"])
-    iuse, final_use = get_flags(cpv, final_setting=True, 
+    iuse, final_use = get_flags(cpv, final_setting=True,
         root=root, settings=default_settings)
     #writemsg_level( "DATA_CONNECT: get_size; Attempting to get "
         #"fetchlist final use= " + str(final_use), level=logging.DEBUG)
@@ -355,7 +355,7 @@ def get_properties(cpv, want_dict=False, root=None, settings=None):
     if settings.portdb[root].cpv_exists(cpv): # if in portage tree
         try:
             #writemsg_level(" * DATA_CONNECT: get_properties()", level=logging.DEBUG)
-            prop_dict = dict(zip(settings.keys, 
+            prop_dict = dict(zip(settings.keys,
                 settings.portdb[root].aux_get(cpv, portage.auxdbkeys)))
         except IOError as e: # Sync being performed may delete files
             writemsg_level(" * DATA_CONNECT: get_properties(): IOError: %s"
@@ -367,7 +367,7 @@ def get_properties(cpv, want_dict=False, root=None, settings=None):
             #pass
     else:
         if settings.vardb[root].cpv_exists(cpv): # elif in installed pkg tree
-            prop_dict = dict(zip(settings.keys, 
+            prop_dict = dict(zip(settings.keys,
                 settings.vardb[root].aux_get(cpv, portage.auxdbkeys)))
     if want_dict:
         # return an empty dict instead of None
@@ -514,9 +514,9 @@ def get_cp_all(root=None, vardb=False, categories=None,
     """
     This returns a list of all keys in our tree or trees
     @param categories: optional list of categories to search or
-        defaults to settings.portdb.settings.categories
+        defaults to settings.portdb[root].settings.categories
     @param trees: optional list of trees to search the categories in or
-        defaults to settings.portdb.porttrees
+        defaults to settings.portdb[root].porttrees
     @param settings: optional portage config settings instance.
         defaults to portage.api.settings.default_settings
     @rtype list of [cat/pkg,...]
@@ -543,7 +543,36 @@ def get_cp_list(root=None, cp=None, trees=None, settings=None):
         defaults to portage.api.settings.default_settings
     """
     root, settings = ensure_settings(root, settings)
-    return settings.portdb[root].cp_list(cp, trees)
+    return settings.portdb[root].cp_list(cp, mytree=trees)
+
+
+def get_cpv_all(root=None, categories=None,
+        trees=None, settings=None):
+    """
+    This function returns all cpv's for a given tree or trees without
+    applying any repo priorities.  For a list of visible cpv's using proper
+    repo priorities and masking, use get_allnodes().
+    This returns a dictoinary of lists of all keys in our tree or trees
+    @param categories: optional list of categories to search or
+        defaults to settings.portdb[root].settings.categories
+    @param trees: optional list of trees to search the categories in or
+        defaults to settings.portdb[root].porttrees
+    @param settings: optional portage config settings instance.
+        defaults to portage.api.settings.default_settings
+    @rtype dict of lists of {tree:[cat/pkg-ver,...],}
+    """
+    root, settings = ensure_settings(root, settings)
+    if trees is None:
+        trees = settings.portdb[root].porttrees
+    cpvs = {}
+    for tree in trees:
+        cps = get_cp_all(root=root, categories=categories,
+            trees=[tree], settings=settings)
+        cpvs[tree] = []
+        for c_p in cps:
+            cpvs[tree].append(get_cp_list(root=root, cp=c_p,
+                trees=[tree], settings=settings))
+    return cpvs
 
 
 def findLicensePath(license_name, root=None, settings=None):
