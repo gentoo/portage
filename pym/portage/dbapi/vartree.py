@@ -4262,8 +4262,9 @@ class dblink(object):
 		@type stufftomerge: String or List
 		@param cfgfiledict: { File:mtime } mapping for config_protected files
 		@type cfgfiledict: Dictionary
-		@param thismtime: The current time (typically long(time.time())
-		@type thismtime: Long
+		@param thismtime: None or new mtime for merged files (expressed in seconds
+		in Python <3.3 and nanoseconds in Python >=3.3)
+		@type thismtime: None or Int
 		@rtype: None or Boolean
 		@return:
 		1. True on failure
@@ -4396,7 +4397,10 @@ class dblink(object):
 					encoding=_encodings['merge'])
 				if mymtime != None:
 					showMessage(">>> %s -> %s\n" % (mydest, myto))
-					outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime)+"\n")
+					if sys.hexversion >= 0x3030000:
+						outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime // 1000000000)+"\n")
+					else:
+						outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime)+"\n")
 				else:
 					showMessage(_("!!! Failed to move file.\n"),
 						level=logging.ERROR, noiselevel=-1)
@@ -4550,7 +4554,10 @@ class dblink(object):
 									cfgprot = cfgfiledict["IGNORE"]
 									if not moveme:
 										zing = "---"
-										mymtime = mystat[stat.ST_MTIME]
+										if sys.hexversion >= 0x3030000:
+											mymtime = mystat.st_mtime_ns
+										else:
+											mymtime = mystat[stat.ST_MTIME]
 								else:
 									moveme = 1
 									cfgprot = 1
@@ -4587,7 +4594,10 @@ class dblink(object):
 					zing = ">>>"
 
 				if mymtime != None:
-					outfile.write("obj "+myrealdest+" "+mymd5+" "+str(mymtime)+"\n")
+					if sys.hexversion >= 0x3030000:
+						outfile.write("obj "+myrealdest+" "+mymd5+" "+str(mymtime // 1000000000)+"\n")
+					else:
+						outfile.write("obj "+myrealdest+" "+mymd5+" "+str(mymtime)+"\n")
 				showMessage("%s %s\n" % (zing,mydest))
 			else:
 				# we are merging a fifo or device node
