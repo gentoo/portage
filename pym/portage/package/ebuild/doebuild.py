@@ -1749,6 +1749,8 @@ def _post_src_install_uid_fix(mysettings, out):
 	ed_len = len(mysettings["ED"])
 	desktopfile_errors = []
 	unicode_errors = []
+	desktop_file_validate = \
+		portage.process.find_binary("desktop-file-validate") is not None
 
 	while True:
 
@@ -1796,7 +1798,8 @@ def _post_src_install_uid_fix(mysettings, out):
 				else:
 					fpath = os.path.join(parent, fname)
 
-				if fname.endswith(".desktop") and os.path.isfile(fpath):
+				if desktop_file_validate and fname.endswith(".desktop") and \
+					os.path.isfile(fpath):
 					desktop_validate = validate_desktop_entry(fpath)
 					if desktop_validate:
 						desktopfile_errors.extend(desktop_validate)
