@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['getmaskingstatus']
@@ -9,7 +9,7 @@ import portage
 from portage import eapi_is_supported, _eapi_is_deprecated
 from portage.localization import _
 from portage.package.ebuild.config import config
-from portage.versions import catpkgsplit
+from portage.versions import catpkgsplit, _pkg_str
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -51,9 +51,6 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 		metadata = pkg.metadata
 		installed = pkg.installed
 
-	mysplit = catpkgsplit(mycpv)
-	if not mysplit:
-		raise ValueError(_("invalid CPV: %s") % mycpv)
 	if metadata is None:
 		db_keys = list(portdb._aux_cache_keys)
 		try:
@@ -68,6 +65,13 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 		else:
 			metadata["USE"] = ""
 
+	if not hasattr(mycpv, 'slot'):
+		try:
+			mycpv = _pkg_str(mycpv, slot=metadata['SLOT'],
+				repo=metadata.get('repository'))
+		except portage.exception.InvalidData:
+			raise ValueError(_("invalid CPV: %s") % mycpv)
+
 	rValue = []
 
 	# package.mask checking
@@ -79,8 +83,6 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 	mygroups = settings._getKeywords(mycpv, metadata)
 	licenses = metadata["LICENSE"]
 	properties = metadata["PROPERTIES"]
-	if eapi.startswith("-"):
-		eapi = eapi[1:]
 	if not eapi_is_supported(eapi):
 		return [_MaskReason("EAPI", "EAPI %s" % eapi)]
 	elif _eapi_is_deprecated(eapi) and not installed:

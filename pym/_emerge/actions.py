@@ -28,15 +28,15 @@ portage.proxy.lazyimport.lazyimport(globals(),
 from portage.localization import _
 from portage import os
 from portage import shutil
-from portage import _unicode_decode
+from portage import eapi_is_supported, _unicode_decode
 from portage.cache.cache_errors import CacheError
 from portage.const import GLOBAL_CONFIG_PATH
-from portage.const import _ENABLE_DYN_LINK_MAP, _ENABLE_SET_CONFIG
+from portage.const import _ENABLE_DYN_LINK_MAP
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi._expand_new_virt import expand_new_virt
-from portage.dep import Atom, extended_cp_match
+from portage.dep import Atom
 from portage.eclass_cache import hashed_path
-from portage.exception import InvalidAtom
+from portage.exception import InvalidAtom, InvalidData
 from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 	red, yellow
 good = create_color_func("GOOD")
@@ -76,6 +76,9 @@ from _emerge.userquery import userquery
 
 if sys.hexversion >= 0x3000000:
 	long = int
+	_unicode = str
+else:
+	_unicode = unicode
 
 def action_build(settings, trees, mtimedb,
 	myopts, myaction, myfiles, spinner):
@@ -172,6 +175,7 @@ def action_build(settings, trees, mtimedb,
 	verbose = "--verbose" in myopts
 	quiet = "--quiet" in myopts
 	myparams = create_depgraph_params(myopts, myaction)
+	mergelist_shown = False
 
 	if pretend or fetchonly:
 		# make the mtimedb readonly
@@ -319,6 +323,7 @@ def action_build(settings, trees, mtimedb,
 				mydepgraph.altlist(reversed=tree),
 				favorites=favorites)
 			mydepgraph.display_problems()
+			mergelist_shown = True
 			if retval != os.EX_OK:
 				return retval
 			prompt="Would you like to resume merging these packages?"
@@ -327,6 +332,7 @@ def action_build(settings, trees, mtimedb,
 				mydepgraph.altlist(reversed=("--tree" in myopts)),
 				favorites=favorites)
 			mydepgraph.display_problems()
+			mergelist_shown = True
 			if retval != os.EX_OK:
 				return retval
 			mergecount=0
@@ -383,6 +389,7 @@ def action_build(settings, trees, mtimedb,
 				mydepgraph.altlist(reversed=tree),
 				favorites=favorites)
 			mydepgraph.display_problems()
+			mergelist_shown = True
 			if retval != os.EX_OK:
 				return retval
 		else:
@@ -390,6 +397,7 @@ def action_build(settings, trees, mtimedb,
 				mydepgraph.altlist(reversed=("--tree" in myopts)),
 				favorites=favorites)
 			mydepgraph.display_problems()
+			mergelist_shown = True
 			if retval != os.EX_OK:
 				return retval
 			if "--buildpkgonly" in myopts:
@@ -419,6 +427,11 @@ def action_build(settings, trees, mtimedb,
 				print("\n!!! --buildpkgonly requires all dependencies to be merged.")
 				print("!!! Cannot merge requested packages. Merge deps and try again.\n")
 				return 1
+
+		if not mergelist_shown:
+			# If we haven't already shown the merge list above, at
+			# least show warnings about missed updates and such.
+			mydepgraph.display_problems()
 
 		if ("--resume" in myopts):
 			favorites=mtimedb["resume"]["favorites"]
@@ -1287,12 +1300,21 @@ def action_deselect(settings, trees, opts, atoms):
 						break
 		if discard_atoms:
 			for atom in sorted(discard_atoms):
+
 				if pretend:
-					print(">>> Would remove %s from \"world\" favorites file..." % \
-						colorize("INFORM", str(atom)))
+					action_desc = "Would remove"
 				else:
-					print(">>> Removing %s from \"world\" favorites file..." % \
-						colorize("INFORM", str(atom)))
+					action_desc = "Removing"
+
+				if atom.startswith(SETPREFIX):
+					filename = "world_sets"
+				else:
+					filename = "world"
+
+				writemsg_stdout(
+					">>> %s %s from \"%s\" favorites file...\n" %
+					(action_desc, colorize("INFORM", _unicode(atom)),
+					filename), noiselevel=-1)
 
 			if '--ask' in opts:
 				prompt = "Would you like to remove these " + \
@@ -1456,11 +1478,11 @@ def action_info(settings, trees, myopts, myfiles):
 		append("Repositories: %s" % \
 			" ".join(repo.name for repo in repos))
 
-	if _ENABLE_SET_CONFIG:
+	installed_sets = sorted(s for s in
+		root_config.sets['selected'].getNonAtoms() if s.startswith(SETPREFIX))
+	if installed_sets:
 		sets_line = "Installed sets: "
-		sets_line += ", ".join(s for s in \
-			sorted(root_config.sets['selected'].getNonAtoms()) \
-			if s.startswith(SETPREFIX))
+		sets_line += ", ".join(installed_sets)
 		append(sets_line)
 
 	if "--verbose" in myopts:
@@ -1716,9 +1738,6 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 	if onProgress is not None:
 		onProgress(maxval, curval)
 
-	from portage import eapi_is_supported, \
-		_validate_cache_for_unsupported_eapis
-
 	# TODO: Display error messages, but do not interfere with the progress bar.
 	# Here's how:
 	#  1) erase the progress bar
@@ -1755,11 +1774,9 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 				eapi = src.get('EAPI')
 				if not eapi:
 					eapi = '0'
-				eapi = eapi.lstrip('-')
 				eapi_supported = eapi_is_supported(eapi)
 				if not eapi_supported:
-					if not _validate_cache_for_unsupported_eapis:
-						continue
+					continue
 
 				dest = None
 				try:
@@ -1803,13 +1820,6 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 					# The existing data is valid and identical,
 					# so there's no need to overwrite it.
 					continue
-
-				if not eapi_supported:
-					src = {
-						'EAPI'       : '-' + eapi,
-						dest_chf_key : src[dest_chf_key],
-						'_eclasses_' : src['_eclasses_'],
-					}
 
 				try:
 					tree_data.dest_db[cpv] = src
@@ -2584,16 +2594,30 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 					level=logging.ERROR, noiselevel=-1)
 				return 1
 
-			for cp in vardb.cp_all():
-				if extended_cp_match(ext_atom.cp, cp):
-					atom = cp
+			for cpv in vardb.cpv_all():
+				if portage.match_from_list(ext_atom, [cpv]):
+					require_metadata = False
+					atom = portage.cpv_getkey(cpv)
+					if ext_atom.operator == '=*':
+						atom = "=" + atom + "-" + \
+							portage.versions.cpv_getversion(cpv)
 					if ext_atom.slot:
 						atom += ":" + ext_atom.slot
+						require_metadata = True
 					if ext_atom.repo:
 						atom += "::" + ext_atom.repo
+						require_metadata = True
 
-					if vardb.match(atom):
-						valid_atoms.append(Atom(atom, allow_repo=True))
+					atom = Atom(atom, allow_repo=True)
+					if require_metadata:
+						try:
+							cpv = vardb._pkg_str(cpv, ext_atom.repo)
+						except (KeyError, InvalidData):
+							continue
+						if not portage.match_from_list(atom, [cpv]):
+							continue
+
+					valid_atoms.append(atom)
 
 		else:
 			msg = []
@@ -2657,7 +2681,7 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 	# redirection of ebuild phase output to logs as required for
 	# options such as --quiet.
 	sched = Scheduler(settings, trees, None, opts,
-		spinner)
+		spinner, uninstall_only=True)
 	sched._background = sched._background_mode()
 	sched._status_display.quiet = True
 
@@ -2809,6 +2833,7 @@ def relative_profile_path(portdir, abs_profile):
 
 def getportageversion(portdir, _unused, profile, chost, vardb):
 	profilever = None
+	repositories = vardb.settings.repositories
 	if profile:
 		profilever = relative_profile_path(portdir, profile)
 		if profilever is None:
@@ -2819,6 +2844,20 @@ def getportageversion(portdir, _unused, profile, chost, vardb):
 						os.path.join(profile, parent))
 					if profilever is not None:
 						break
+					colon = parent.find(":")
+					if colon != -1:
+						p_repo_name = parent[:colon]
+						try:
+							p_repo_loc = \
+								repositories.get_location_for_name(p_repo_name)
+						except KeyError:
+							pass
+						else:
+							profilever = relative_profile_path(p_repo_loc,
+								os.path.join(p_repo_loc, 'profiles',
+									parent[colon+1:]))
+							if profilever is not None:
+								break
 			except portage.exception.PortageException:
 				pass
 

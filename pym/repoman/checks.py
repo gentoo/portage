@@ -1,16 +1,20 @@
 # repoman: Checks
-# Copyright 2007, 2011 Gentoo Foundation
+# Copyright 2007-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """This module contains functions used in Repoman to ascertain the quality
 and correctness of an ebuild."""
 
+import codecs
+from itertools import chain
 import re
 import time
 import repoman.errors as errors
+import portage
 from portage.eapi import eapi_supports_prefix, eapi_has_implicit_rdepend, \
 	eapi_has_src_prepare_and_src_configure, eapi_has_dosed_dohard, \
-	eapi_exports_AA, eapi_exports_KV
+	eapi_exports_AA
+from portage.const import _ENABLE_INHERIT_CHECK
 
 class LineCheck(object):
 	"""Run a check on a line of an ebuild."""
@@ -283,21 +287,35 @@ class EbuildUselessCdS(LineCheck):
 			self.check_next_line = True
 
 class EapiDefinition(LineCheck):
-	""" Check that EAPI is defined before inherits"""
+	"""
+	Check that EAPI assignment conforms to PMS section 7.3.1
+	(first non-comment, non-blank line).
+	"""
 	repoman_check_name = 'EAPI.definition'
-
-	eapi_re = re.compile(r'^EAPI=')
-	inherit_re = re.compile(r'^\s*inherit\s')
+	ignore_comment = True
+	_eapi_re = portage._pms_eapi_re
 
 	def new(self, pkg):
-		self.inherit_line = None
+		self._cached_eapi = pkg.metadata['EAPI']
+		self._parsed_eapi = None
+		self._eapi_line_num = None
 
 	def check(self, num, line):
-		if self.eapi_re.match(line) is not None:
-			if self.inherit_line is not None:
-				return errors.EAPI_DEFINED_AFTER_INHERIT
-		elif self.inherit_re.match(line) is not None:
-			self.inherit_line = line
+		if self._eapi_line_num is None and line.strip():
+			self._eapi_line_num = num + 1
+			m = self._eapi_re.match(line)
+			if m is not None:
+				self._parsed_eapi = m.group(2)
+
+	def end(self):
+		if self._parsed_eapi is None:
+			if self._cached_eapi != "0":
+				yield "valid EAPI assignment must occur on or before line: %s" % \
+					self._eapi_line_num
+		elif self._parsed_eapi != self._cached_eapi:
+			yield ("bash returned EAPI '%s' which does not match "
+				"assignment on line: %s") % \
+				(self._cached_eapi, self._eapi_line_num)
 
 class EbuildPatches(LineCheck):
 	"""Ensure ebuilds use bash arrays for PATCHES to ensure white space safety"""
@@ -315,24 +333,6 @@ class EbuildQuotedA(LineCheck):
 		match = self.a_quoted.match(line)
 		if match:
 			return "Quoted \"${A}\" on line: %d"
-
-class EprefixifyDefined(LineCheck):
-	""" Check that prefix.eclass is inherited if needed"""
-
-	repoman_check_name = 'eprefixify.defined'
-
-	_eprefixify_re = re.compile(r'\beprefixify\b')
-	_inherit_prefix_re = re.compile(r'^\s*inherit\s(.*\s)?prefix\b')
-
-	def new(self, pkg):
-		self._prefix_inherited = False
-
-	def check(self, num, line):
-		if self._eprefixify_re.search(line) is not None:
-			if not self._prefix_inherited:
-				return errors.EPREFIXIFY_MISSING_INHERIT
-		elif self._inherit_prefix_re.search(line) is not None:
-			self._prefix_inherited = True
 
 class NoOffsetWithHelpers(LineCheck):
 	""" Check that the image location, the alternate root offset, and the
@@ -449,43 +449,196 @@ class InheritDeprecated(LineCheck):
 					(eclass, replacement)
 		del self._indirect_deprecated
 
-class InheritAutotools(LineCheck):
+class InheritEclass(LineCheck):
 	"""
-	Make sure appropriate functions are called in
-	ebuilds that inherit autotools.eclass.
+	Base class for checking for missing inherits, as well as excess inherits.
+
+	Args:
+		eclass: Set to the name of your eclass.
+		funcs: A tuple of functions that this eclass provides.
+		comprehensive: Is the list of functions complete?
+		exempt_eclasses: If these eclasses are inherited, disable the missing
+		                  inherit check.
 	"""
 
-	repoman_check_name = 'inherit.autotools'
-	_inherit_autotools_re = re.compile(r'^\s*inherit\s(.*\s)?autotools(\s|$)')
-	_autotools_funcs = (
-		"eaclocal", "eautoconf", "eautoheader",
-		"eautomake", "eautoreconf", "_elibtoolize")
-	_autotools_func_re = re.compile(r'\b(' + \
-		"|".join(_autotools_funcs) + r')\b')
-	# Exempt eclasses:
-	# git - An EGIT_BOOTSTRAP variable may be used to call one of
-	#       the autotools functions.
-	# subversion - An ESVN_BOOTSTRAP variable may be used to call one of
-	#       the autotools functions.
-	_exempt_eclasses = frozenset(["git", "subversion"])
+	def __init__(self, eclass, funcs=None, comprehensive=False,
+		exempt_eclasses=None, ignore_missing=False, **kwargs):
+		self._eclass = eclass
+		self._comprehensive = comprehensive
+		self._exempt_eclasses = exempt_eclasses
+		self._ignore_missing = ignore_missing
+		inherit_re = eclass
+		self._inherit_re = re.compile(r'^(\s*|.*[|&]\s*)\binherit\s(.*\s)?%s(\s|$)' % inherit_re)
+		# Match when the function is preceded only by leading whitespace, a
+		# shell operator such as (, {, |, ||, or &&, or optional variable
+		# setting(s). This prevents false postives in things like elog
+		# messages, as reported in bug #413285.
+		self._func_re = re.compile(r'(^|[|&{(])\s*(\w+=.*)?\b(' + '|'.join(funcs) + r')\b')
 
 	def new(self, pkg):
-		self._inherit_autotools = None
-		self._autotools_func_call = None
-		self._disabled = self._exempt_eclasses.intersection(pkg.inherited)
+		self.repoman_check_name = 'inherit.missing'
+		# We can't use pkg.inherited because that tells us all the eclass that
+		# have been inherited and not just the ones we inherit directly.
+		self._inherit = False
+		self._func_call = False
+		if self._exempt_eclasses is not None:
+			inherited = pkg.inherited
+			self._disabled = any(x in inherited for x in self._exempt_eclasses)
+		else:
+			self._disabled = False
 
 	def check(self, num, line):
-		if self._disabled:
-			return
-		if self._inherit_autotools is None:
-			self._inherit_autotools = self._inherit_autotools_re.match(line)
-		if self._inherit_autotools is not None and \
-			self._autotools_func_call is None:
-			self._autotools_func_call = self._autotools_func_re.search(line)
+		if not self._inherit:
+			self._inherit = self._inherit_re.match(line)
+		if not self._inherit:
+			if self._disabled or self._ignore_missing:
+				return
+			s = self._func_re.search(line)
+			if s:
+				self._func_call = True
+				return '%s.eclass is not inherited, but "%s" found at line: %s' % \
+					(self._eclass, s.group(3), '%d')
+		elif not self._func_call:
+			self._func_call = self._func_re.search(line)
 
 	def end(self):
-		if self._inherit_autotools and self._autotools_func_call is None:
-			yield 'no eauto* function called'
+		if not self._disabled and self._comprehensive and self._inherit and not self._func_call:
+			self.repoman_check_name = 'inherit.unused'
+			yield 'no function called from %s.eclass; please drop' % self._eclass
+
+# eclasses that export ${ECLASS}_src_(compile|configure|install)
+_eclass_export_functions = (
+	'ant-tasks', 'apache-2', 'apache-module', 'aspell-dict',
+	'autotools-utils', 'base', 'bsdmk', 'cannadic',
+	'clutter', 'cmake-utils', 'db', 'distutils', 'elisp',
+	'embassy', 'emboss', 'emul-linux-x86', 'enlightenment',
+	'font-ebdftopcf', 'font', 'fox', 'freebsd', 'freedict',
+	'games', 'games-ggz', 'games-mods', 'gdesklets',
+	'gems', 'gkrellm-plugin', 'gnatbuild', 'gnat', 'gnome2',
+	'gnome-python-common', 'gnustep-base', 'go-mono', 'gpe',
+	'gst-plugins-bad', 'gst-plugins-base', 'gst-plugins-good',
+	'gst-plugins-ugly', 'gtk-sharp-module', 'haskell-cabal',
+	'horde', 'java-ant-2', 'java-pkg-2', 'java-pkg-simple',
+	'java-virtuals-2', 'kde4-base', 'kde4-meta', 'kernel-2',
+	'latex-package', 'linux-mod', 'mozlinguas', 'myspell',
+	'myspell-r2', 'mysql', 'mysql-v2', 'mythtv-plugins',
+	'oasis', 'obs-service', 'office-ext', 'perl-app',
+	'perl-module', 'php-ext-base-r1', 'php-ext-pecl-r2',
+	'php-ext-source-r2', 'php-lib-r1', 'php-pear-lib-r1',
+	'php-pear-r1', 'python-distutils-ng', 'python',
+	'qt4-build', 'qt4-r2', 'rox-0install', 'rox', 'ruby',
+	'ruby-ng', 'scsh', 'selinux-policy-2', 'sgml-catalog',
+	'stardict', 'sword-module', 'tetex-3', 'tetex',
+	'texlive-module', 'toolchain-binutils', 'toolchain',
+	'twisted', 'vdr-plugin-2', 'vdr-plugin', 'vim',
+	'vim-plugin', 'vim-spell', 'virtuoso', 'vmware',
+	'vmware-mod', 'waf-utils', 'webapp', 'xemacs-elisp',
+	'xemacs-packages', 'xfconf', 'x-modular', 'xorg-2',
+	'zproduct'
+)
+
+_eclass_info = {
+	'autotools': {
+		'funcs': (
+			'eaclocal', 'eautoconf', 'eautoheader',
+			'eautomake', 'eautoreconf', '_elibtoolize',
+			'eautopoint'
+		),
+		'comprehensive': True,
+
+		# Exempt eclasses:
+		# git - An EGIT_BOOTSTRAP variable may be used to call one of
+		#       the autotools functions.
+		# subversion - An ESVN_BOOTSTRAP variable may be used to call one of
+		#       the autotools functions.
+		'exempt_eclasses': ('git', 'git-2', 'subversion', 'autotools-utils')
+	},
+
+	'eutils': {
+		'funcs': (
+			'estack_push', 'estack_pop', 'eshopts_push', 'eshopts_pop',
+			'eumask_push', 'eumask_pop', 'epatch', 'epatch_user',
+			'emktemp', 'edos2unix', 'in_iuse', 'use_if_iuse', 'usex',
+			'makeopts_jobs'
+		),
+		'comprehensive': False,
+
+		# These are "eclasses are the whole ebuild" type thing.
+		'exempt_eclasses': _eclass_export_functions,
+	},
+
+	'flag-o-matic': {
+		'funcs': (
+			'filter-(ld)?flags', 'strip-flags', 'strip-unsupported-flags',
+			'append-((ld|c(pp|xx)?))?flags', 'append-libs',
+		),
+		'comprehensive': False
+	},
+
+	'libtool': {
+		'funcs': (
+			'elibtoolize',
+		),
+		'comprehensive': True,
+		'exempt_eclasses': ('autotools',)
+	},
+
+	'multilib': {
+		'funcs': (
+			'get_libdir',
+		),
+
+		# These are "eclasses are the whole ebuild" type thing.
+		'exempt_eclasses': _eclass_export_functions + ('autotools', 'libtool'),
+
+		'comprehensive': False
+	},
+
+	'prefix': {
+		'funcs': (
+			'eprefixify',
+		),
+		'comprehensive': True
+	},
+
+	'toolchain-funcs': {
+		'funcs': (
+			'gen_usr_ldscript',
+		),
+		'comprehensive': False
+	},
+
+	'user': {
+		'funcs': (
+			'enewuser', 'enewgroup',
+			'egetent', 'egethome', 'egetshell', 'esethome'
+		),
+		'comprehensive': True
+	}
+}
+
+if not _ENABLE_INHERIT_CHECK:
+	# Since the InheritEclass check is experimental, in the stable branch
+	# we emulate the old eprefixify.defined and inherit.autotools checks.
+	_eclass_info = {
+		'autotools': {
+			'funcs': (
+				'eaclocal', 'eautoconf', 'eautoheader',
+				'eautomake', 'eautoreconf', '_elibtoolize',
+				'eautopoint'
+			),
+			'comprehensive': True,
+			'ignore_missing': True,
+			'exempt_eclasses': ('git', 'git-2', 'subversion', 'autotools-utils')
+		},
+
+		'prefix': {
+			'funcs': (
+				'eprefixify',
+			),
+			'comprehensive': False
+		}
+	}
 
 class IUseUndefined(LineCheck):
 	"""
@@ -648,33 +801,41 @@ class Eapi4GoneVars(LineCheck):
 
 class PortageInternal(LineCheck):
 	repoman_check_name = 'portage.internal'
-	re = re.compile(r'[^#]*\b(ecompress|ecompressdir|env-update|prepall|prepalldocs|preplib)\b')
+	ignore_comment = True
+	# Match when the command is preceded only by leading whitespace or a shell
+	# operator such as (, {, |, ||, or &&. This prevents false postives in
+	# things like elog messages, as reported in bug #413285.
+	re = re.compile(r'^(\s*|.*[|&{(]+\s*)\b(ecompress|ecompressdir|env-update|prepall|prepalldocs|preplib)\b')
 
 	def check(self, num, line):
 		"""Run the check on line and return error if there is one"""
 		m = self.re.match(line)
 		if m is not None:
-			return ("'%s'" % m.group(1)) + " called on line: %d"
+			return ("'%s'" % m.group(2)) + " called on line: %d"
 
-_constant_checks = tuple((c() for c in (
+_constant_checks = tuple(chain((c() for c in (
 	EbuildHeader, EbuildWhitespace, EbuildBlankLine, EbuildQuote,
 	EbuildAssignment, Eapi3EbuildAssignment, EbuildUselessDodoc,
 	EbuildUselessCdS, EbuildNestedDie,
-	EbuildPatches, EbuildQuotedA, EapiDefinition, EprefixifyDefined,
-	ImplicitRuntimeDeps, InheritAutotools, InheritDeprecated, IUseUndefined,
+	EbuildPatches, EbuildQuotedA, EapiDefinition,
+	ImplicitRuntimeDeps, IUseUndefined,
 	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS, NoAsNeeded,
 	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
 	SrcCompileEconf, Eapi3DeprecatedFuncs, NoOffsetWithHelpers,
 	Eapi4IncompatibleFuncs, Eapi4GoneVars, BuiltWithUse,
 	PreserveOldLib, SandboxAddpredict, PortageInternal,
-	DeprecatedUseq, DeprecatedHasq)))
+	DeprecatedUseq, DeprecatedHasq)),
+	(InheritEclass(k, **kwargs) for k, kwargs in _eclass_info.items())))
 
 _here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
 _ignore_comment_re = re.compile(r'^\s*#')
 
 def run_checks(contents, pkg):
+	unicode_escape_codec = codecs.lookup('unicode_escape')
+	unicode_escape = lambda x: unicode_escape_codec.decode(x)[0]
 	checks = _constant_checks
 	here_doc_delim = None
+	multiline = None
 
 	for lc in checks:
 		lc.new(pkg)
@@ -688,19 +849,56 @@ def run_checks(contents, pkg):
 			here_doc = _here_doc_re.match(line)
 			if here_doc is not None:
 				here_doc_delim = re.compile(r'^\s*%s$' % here_doc.group(1))
+		if here_doc_delim is not None:
+			continue
 
-		if here_doc_delim is None:
-			# We're not in a here-document.
-			is_comment = _ignore_comment_re.match(line) is not None
-			for lc in checks:
-				if is_comment and lc.ignore_comment:
-					continue
-				if lc.check_eapi(pkg.metadata['EAPI']):
-					ignore = lc.ignore_line
-					if not ignore or not ignore.match(line):
-						e = lc.check(num, line)
-						if e:
-							yield lc.repoman_check_name, e % (num + 1)
+		# Unroll multiline escaped strings so that we can check things:
+		#		inherit foo bar \
+		#			moo \
+		#			cow
+		# This will merge these lines like so:
+		#		inherit foo bar 	moo 	cow
+		try:
+			# A normal line will end in the two bytes: <\> <\n>.  So decoding
+			# that will result in python thinking the <\n> is being escaped
+			# and eat the single <\> which makes it hard for us to detect.
+			# Instead, strip the newline (which we know all lines have), and
+			# append a <0>.  Then when python escapes it, if the line ended
+			# in a <\>, we'll end up with a <\0> marker to key off of.  This
+			# shouldn't be a problem with any valid ebuild ...
+			line_escaped = unicode_escape(line.rstrip('\n') + '0')
+		except SystemExit:
+			raise
+		except:
+			# Who knows what kind of crazy crap an ebuild will have
+			# in it -- don't allow it to kill us.
+			line_escaped = line
+		if multiline:
+			# Chop off the \ and \n bytes from the previous line.
+			multiline = multiline[:-2] + line
+			if not line_escaped.endswith('\0'):
+				line = multiline
+				num = multinum
+				multiline = None
+			else:
+				continue
+		else:
+			if line_escaped.endswith('\0'):
+				multinum = num
+				multiline = line
+				continue
+
+		# Finally we have a full line to parse.
+		is_comment = _ignore_comment_re.match(line) is not None
+		for lc in checks:
+			if is_comment and lc.ignore_comment:
+				continue
+			if lc.check_eapi(pkg.metadata['EAPI']):
+				ignore = lc.ignore_line
+				if not ignore or not ignore.match(line):
+					e = lc.check(num, line)
+					if e:
+						yield lc.repoman_check_name, e % (num + 1)
 
 	for lc in checks:
 		i = lc.end()

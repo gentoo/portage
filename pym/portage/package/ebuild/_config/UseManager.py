@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -7,10 +7,10 @@ __all__ = (
 
 from _emerge.Package import Package
 from portage import os
-from portage.dep import ExtendedAtomDict, remove_slot, _get_useflag_re
+from portage.dep import dep_getrepo, dep_getslot, ExtendedAtomDict, remove_slot, _get_useflag_re
 from portage.localization import _
 from portage.util import grabfile, grabdict_package, read_corresponding_eapi_file, stack_lists, writemsg
-from portage.versions import cpv_getkey
+from portage.versions import cpv_getkey, _pkg_str
 
 from portage.package.ebuild._config.helper import ordered_by_atom_specificity
 
@@ -148,9 +148,13 @@ class UseManager(object):
 			return frozenset(stack_lists(
 				self._usemask_list, incremental=True))
 
+		slot = None
 		cp = getattr(pkg, "cp", None)
 		if cp is None:
-			cp = cpv_getkey(remove_slot(pkg))
+			slot = dep_getslot(pkg)
+			repo = dep_getrepo(pkg)
+			pkg = _pkg_str(remove_slot(pkg), slot=slot, repo=repo)
+			cp = pkg.cp
 		usemask = []
 		if hasattr(pkg, "repo") and pkg.repo != Package.UNKNOWN_REPO:
 			repos = []

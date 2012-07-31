@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 #
@@ -11,18 +11,18 @@
 #
 #
 # Detailed usage:
-# dohtml <list-of-files> 
-#  - will install the files in the list of files (space-separated list) into 
-#    /usr/share/doc/${PF}/html, provided the file ends in .htm, .html, .css,
-#      .js, ,gif, .jpeg, .jpg, or .png.
+# dohtml <list-of-files>
+#  - will install the files in the list of files (space-separated list) into
+#    /usr/share/doc/${PF}/html, provided the file ends in .css, .gif, .htm,
+#    .html, .jpeg, .jpg, .js or .png.
 # dohtml -r <list-of-files-and-directories>
-#  - will do as 'dohtml', but recurse into all directories, as long as the 
+#  - will do as 'dohtml', but recurse into all directories, as long as the
 #    directory name is not CVS
 # dohtml -A jpe,java [-r] <list-of-files[-and-directories]>
 #  - will do as 'dohtml' but add .jpe,.java (default filter list is
 #    added to your list)
 # dohtml -a png,gif,html,htm [-r] <list-of-files[-and-directories]>
-#  - will do as 'dohtml' but filter on .png,.gif,.html,.htm (default filter 
+#  - will do as 'dohtml' but filter on .png,.gif,.html,.htm (default filter
 #    list is ignored)
 # dohtml -x CVS,SCCS,RCS -r <list-of-files-and-directories>
 #  - will do as 'dohtml -r', but ignore directories named CVS, SCCS, RCS
@@ -47,6 +47,10 @@ def eqawarn(lines):
 	os.spawnlp(os.P_WAIT, "bash", "bash", "-c", cmd)
 
 skipped_directories = []
+skipped_files = []
+warn_on_skipped_files = os.environ.get("PORTAGE_DOHTML_WARN_ON_SKIPPED_FILES") is not None
+unwarned_skipped_extensions = os.environ.get("PORTAGE_DOHTML_UNWARNED_SKIPPED_EXTENSIONS", "").split()
+unwarned_skipped_files = os.environ.get("PORTAGE_DOHTML_UNWARNED_SKIPPED_FILES", "").split()
 
 def install(basename, dirname, options, prefix=""):
 	fullpath = basename
@@ -64,10 +68,12 @@ def install(basename, dirname, options, prefix=""):
 		sys.stderr.write("!!! dohtml: %s does not exist\n" % fullpath)
 		return False
 	elif os.path.isfile(fullpath):
-		ext = os.path.splitext(basename)[1]
-		if (len(ext) and ext[1:] in options.allowed_exts) or basename in options.allowed_files:
+		ext = os.path.splitext(basename)[1][1:]
+		if ext in options.allowed_exts or basename in options.allowed_files:
 			dodir(destdir)
 			dofile(fullpath, destdir + "/" + basename)
+		elif warn_on_skipped_files and ext not in unwarned_skipped_extensions and basename not in unwarned_skipped_files:
+			skipped_files.append(fullpath)
 	elif options.recurse and os.path.isdir(fullpath) and \
 	     basename not in options.disallowed_dirs:
 		for i in os.listdir(fullpath):
@@ -88,20 +94,22 @@ class OptionsClass:
 		self.PF = ""
 		self.ED = ""
 		self.DOCDESTTREE = ""
-		
+
 		if "PF" in os.environ:
 			self.PF = os.environ["PF"]
-		if os.environ.get("EAPI", "0") in ("0", "1", "2"):
+		if "force-prefix" not in os.environ.get("FEATURES", "").split() and \
+			os.environ.get("EAPI", "0") in ("0", "1", "2"):
 			self.ED = os.environ.get("D", "")
 		else:
 			self.ED = os.environ.get("ED", "")
 		if "_E_DOCDESTTREE_" in os.environ:
 			self.DOCDESTTREE = os.environ["_E_DOCDESTTREE_"]
-		
-		self.allowed_exts = [ 'htm', 'html', 'css', 'js',
-			'gif', 'jpeg', 'jpg', 'png' ]
+
+		self.allowed_exts = ['css', 'gif', 'htm', 'html', 'jpeg', 'jpg', 'js', 'png']
+		if os.environ.get("EAPI", "0") in ("4-python",):
+			self.allowed_exts += ['ico', 'svg', 'xhtml', 'xml']
 		self.allowed_files = []
-		self.disallowed_dirs = [ 'CVS' ]
+		self.disallowed_dirs = ['CVS']
 		self.recurse = False
 		self.verbose = False
 		self.doc_prefix = ""
@@ -126,7 +134,7 @@ def print_help():
 def parse_args():
 	options = OptionsClass()
 	args = []
-	
+
 	x = 1
 	while x < len(sys.argv):
 		arg = sys.argv[x]
@@ -158,7 +166,7 @@ def parse_args():
 		else:
 			args.append(sys.argv[x])
 		x += 1
-	
+
 	return (options, args)
 
 def main():
@@ -167,20 +175,20 @@ def main():
 
 	if options.verbose:
 		print("Allowed extensions:", options.allowed_exts)
-		print("Document prefix : '" + options.doc_prefix	 + "'")
+		print("Document prefix : '" + options.doc_prefix + "'")
 		print("Allowed files :", options.allowed_files)
 
 	success = False
-	
+
 	for x in args:
 		basename = os.path.basename(x)
 		dirname  = os.path.dirname(x)
 		success |= install(basename, dirname, options)
 
-	global skipped_directories
 	for x in skipped_directories:
-		eqawarn(["QA Notice: dohtml on directory " + \
-			"'%s' without recursion option" % x])
+		eqawarn(["QA Notice: dohtml on directory '%s' without recursion option" % x])
+	for x in skipped_files:
+		eqawarn(["dohtml: skipped file '%s'" % x])
 
 	if success:
 		retcode = 0

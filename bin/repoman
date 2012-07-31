@@ -45,7 +45,11 @@ portage.dep._internal_warnings = True
 try:
 	import xml.etree.ElementTree
 	from xml.parsers.expat import ExpatError
-except ImportError:
+except (SystemExit, KeyboardInterrupt):
+	raise
+except (ImportError, SystemError, RuntimeError, Exception):
+	# broken or missing xml support
+	# http://bugs.python.org/issue14988
 	msg = ["Please enable python's \"xml\" USE flag in order to use repoman."]
 	from portage.output import EOutput
 	out = EOutput()
@@ -75,7 +79,8 @@ from portage.process import find_binary, spawn
 from portage.output import bold, create_color_func, \
 	green, nocolor, red
 from portage.output import ConsoleStyleFile, StyleWriter
-from portage.util import cmp_sort_key, writemsg_level
+from portage.util import writemsg_level
+from portage.util._desktop_entry import validate_desktop_entry
 from portage.package.ebuild.digestgen import digestgen
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 
@@ -314,8 +319,9 @@ qahelp={
 	"file.size.fatal":"Files in the files directory must be under 60 KiB",
 	"file.name":"File/dir name must be composed of only the following chars: %s " % allowed_filename_chars,
 	"file.UTF8":"File is not UTF8 compliant",
-	"inherit.autotools":"Ebuild inherits autotools but does not call eautomake, eautoconf or eautoreconf",
 	"inherit.deprecated":"Ebuild inherits a deprecated eclass",
+	"inherit.missing":"Ebuild uses functions from an eclass but does not inherit it",
+	"inherit.unused":"Ebuild inherits an eclass but does not use it",
 	"java.eclassesnotused":"With virtual/jdk in DEPEND you must inherit a java eclass",
 	"wxwidgets.eclassnotused":"Ebuild DEPENDs on x11-libs/wxGTK without inheriting wxwidgets.eclass",
 	"KEYWORDS.dropped":"Ebuilds that appear to have dropped KEYWORDS for some arch",
@@ -326,7 +332,7 @@ qahelp={
 	"LICENSE.virtual":"Virtuals that have a non-empty LICENSE variable",
 	"DESCRIPTION.missing":"Ebuilds that have a missing or empty DESCRIPTION variable",
 	"DESCRIPTION.toolong":"DESCRIPTION is over %d characters" % max_desc_len,
-	"EAPI.definition":"EAPI is defined after an inherit call (must be defined before)",
+	"EAPI.definition":"EAPI definition does not conform to PMS section 7.3.1 (first non-comment, non-blank line)",
 	"EAPI.deprecated":"Ebuilds that use features that are deprecated in the current EAPI",
 	"EAPI.incompatible":"Ebuilds that use features that are only available with a different EAPI",
 	"EAPI.unsupported":"Ebuilds that have an unsupported EAPI version (you must upgrade portage)",
@@ -381,13 +387,13 @@ qahelp={
 	"ebuild.majorsyn":"This ebuild has a major syntax error that may cause the ebuild to fail partially or fully",
 	"ebuild.minorsyn":"This ebuild has a minor syntax error that contravenes gentoo coding style",
 	"ebuild.badheader":"This ebuild has a malformed header",
-	"eprefixify.defined":"The ebuild uses eprefixify, but does not inherit the prefix eclass",
 	"manifest.bad":"Manifest has missing or incorrect digests",
 	"metadata.missing":"Missing metadata.xml files",
 	"metadata.bad":"Bad metadata.xml files",
 	"metadata.warning":"Warnings in metadata.xml files",
 	"portage.internal":"The ebuild uses an internal Portage function",
 	"virtual.oldstyle":"The ebuild PROVIDEs an old-style virtual (see GLEP 37)",
+	"virtual.suspect":"Ebuild contains a package that usually should be pulled via virtual/, not directly.",
 	"usage.obsolete":"The ebuild makes use of an obsolete construct",
 	"upstream.workaround":"The ebuild works around an upstream bug, an upstream bug should be filed and tracked in bugs.gentoo.org"
 }
@@ -419,12 +425,13 @@ qawarnings = set((
 "PDEPEND.suspect",
 "RDEPEND.implicit",
 "RDEPEND.suspect",
+"virtual.suspect",
 "RESTRICT.invalid",
 "ebuild.minorsyn",
 "ebuild.badheader",
 "ebuild.patches",
 "file.size",
-"inherit.autotools",
+"inherit.unused",
 "inherit.deprecated",
 "java.eclassesnotused",
 "wxwidgets.eclassnotused",
@@ -435,6 +442,10 @@ qawarnings = set((
 "LIVEVCS.stable",
 "LIVEVCS.unmasked",
 ))
+
+if portage.const._ENABLE_INHERIT_CHECK:
+	# This is experimental, so it's non-fatal.
+	qawarnings.add("inherit.missing")
 
 non_ascii_re = re.compile(r'[^\x00-\x7f]')
 
@@ -481,7 +492,10 @@ suspect_rdepend = frozenset([
 	"dev-util/gtk-doc-am",
 	"dev-util/intltool",
 	"dev-util/jam",
+	"dev-util/pkg-config-lite",
+	"dev-util/pkgconf",
 	"dev-util/pkgconfig",
+	"dev-util/pkgconfig-openbsd",
 	"dev-util/scons",
 	"dev-util/unifdef",
 	"dev-util/yacc",
@@ -496,9 +510,17 @@ suspect_rdepend = frozenset([
 	"sys-devel/m4",
 	"sys-devel/pmake",
 	"virtual/linux-sources",
+	"virtual/pkgconfig",
 	"x11-misc/bdftopcf",
 	"x11-misc/imake",
 ])
+
+suspect_virtual = {
+	"dev-util/pkg-config-lite":"virtual/pkgconfig",
+	"dev-util/pkgconf":"virtual/pkgconfig",
+	"dev-util/pkgconfig":"virtual/pkgconfig",
+	"dev-util/pkgconfig-openbsd":"virtual/pkgconfig",
+}
 
 metadata_dtd_uri = 'http://www.gentoo.org/dtd/metadata.dtd'
 # force refetch if the local copy creation time is older than this
@@ -1128,7 +1150,7 @@ if vcs == "cvs":
 	if options.if_modified == "y":
 		myremoved = cvstree.findremoved(mycvstree, recursive=1, basedir="./")
 
-if vcs == "svn":
+elif vcs == "svn":
 	with os.popen("svn status") as f:
 		svnstatus = f.readlines()
 	mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem and elem[:1] in "MR" ]
@@ -1186,6 +1208,9 @@ def vcs_new_changed(relative_path):
 have_pmasked = False
 have_dev_keywords = False
 dofail = 0
+
+# NOTE: match-all caches are not shared due to potential
+# differences between profiles in _get_implicit_iuse.
 arch_caches={}
 arch_xmatch_caches = {}
 shared_xmatch_caches = {"cp-list":{}}
@@ -1348,17 +1373,6 @@ for x in effective_scanlist:
 			pkgs[pf] = Package(cpv=cpv, metadata=myaux,
 				root_config=root_config, type_name="ebuild")
 
-	# Sort ebuilds in ascending order for the KEYWORDS.dropped check.
-	pkgsplits = {}
-	for i in range(len(ebuildlist)):
-		ebuild_split = portage.pkgsplit(ebuildlist[i])
-		pkgsplits[ebuild_split] = ebuildlist[i]
-		ebuildlist[i] = ebuild_split
-	ebuildlist.sort(key=cmp_sort_key(portage.pkgcmp))
-	for i in range(len(ebuildlist)):
-		ebuildlist[i] = pkgsplits[ebuildlist[i]]
-	del pkgsplits
-
 	slot_keywords = {}
 
 	if len(pkgs) != len(ebuildlist):
@@ -1369,6 +1383,10 @@ for x in effective_scanlist:
 		# positives confuse users.
 		can_force = False
 		continue
+
+	# Sort ebuilds in ascending order for the KEYWORDS.dropped check.
+	ebuildlist = sorted(pkgs.values())
+	ebuildlist = [pkg.pf for pkg in ebuildlist]
 
 	for y in checkdirlist:
 		m = disallowed_filename_chars_re.search(y.strip(os.sep))
@@ -1562,15 +1580,14 @@ for x in effective_scanlist:
 					(checkdir, y, m.group(0)))
 
 			if desktop_file_validate and desktop_pattern.match(y):
-				status, cmd_output = subprocess_getstatusoutput(
-					"'%s' '%s'" % (desktop_file_validate, full_path))
-				if os.WIFEXITED(status) and os.WEXITSTATUS(status) != os.EX_OK:
+				cmd_output = validate_desktop_entry(full_path)
+				if cmd_output:
 					# Note: in the future we may want to grab the
 					# warnings in addition to the errors. We're
 					# just doing errors now since we don't want
 					# to generate too much noise at first.
 					error_re = re.compile(r'.*\s*error:\s*(.*)')
-					for line in cmd_output.splitlines():
+					for line in cmd_output:
 						error_match = error_re.match(line)
 						if error_match is None:
 							continue
@@ -1794,7 +1811,7 @@ for x in effective_scanlist:
 		Ebuilds that inherit a "Live" eclass (darcs,subversion,git,cvs,etc..) should
 		not be allowed to be marked stable
 		"""
-		if live_ebuild:
+		if live_ebuild and repo_config.name == "gentoo":
 			bad_stable_keywords = []
 			for keyword in keywords:
 				if not keyword.startswith("~") and \
@@ -1875,6 +1892,15 @@ for x in effective_scanlist:
 						unknown_pkgs.add((mytype, atom.unevaluated_atom))
 
 					is_blocker = atom.blocker
+
+					if catdir != "virtual":
+						if not is_blocker and \
+							atom.cp in suspect_virtual:
+							stats['virtual.suspect'] += 1
+							fails['virtual.suspect'].append(
+								relative_path +
+								": %s: consider using '%s' instead of '%s'" %
+								(mytype, suspect_virtual[atom.cp], atom))
 
 					if mytype == "DEPEND" and \
 						not is_blocker and \
@@ -1962,12 +1988,12 @@ for x in effective_scanlist:
 		#keyword checks
 		myuse = myaux["KEYWORDS"].split()
 		for mykey in myuse:
-			myskey=mykey[:]
-			if myskey[0]=="-":
-				myskey=myskey[1:]
-			if myskey[0]=="~":
-				myskey=myskey[1:]
-			if mykey!="-*":
+			if mykey not in ("-*", "*", "~*"):
+				myskey = mykey
+				if myskey[:1] == "-":
+					myskey = myskey[1:]
+				if myskey[:1] == "~":
+					myskey = myskey[1:]
 				if myskey not in kwlist:
 					stats["KEYWORDS.invalid"] += 1
 					fails["KEYWORDS.invalid"].append(x+"/"+y+".ebuild: %s" % mykey)
@@ -2060,7 +2086,7 @@ for x in effective_scanlist:
 						env=env)
 					dep_settings.categories = repoman_settings.categories
 					if options.without_mask:
-						dep_settings._mask_manager = \
+						dep_settings._mask_manager_obj = \
 							copy.deepcopy(dep_settings._mask_manager)
 						dep_settings._mask_manager._pmaskdict.clear()
 					arch_caches[prof.sub_path] = dep_settings
@@ -2539,6 +2565,11 @@ else:
 			else:
 				myupdates.append(changelog_path)
 
+			if options.ask and not options.pretend:
+				# regenerate Manifest for modified ChangeLog (bug #420735)
+				repoman_settings["O"] = checkdir
+				digestgen(mysettings=repoman_settings, myportdb=portdb)
+
 	if myautoadd:
 		print(">>> Auto-Adding missing Manifest/ChangeLog file(s)...")
 		add_cmd = [vcs, "add"]
@@ -2747,7 +2778,10 @@ else:
 			for x in sorted(vcs_files_to_cps(
 				chain(myupdates, myremoved, mymanifests))):
 				repoman_settings["O"] = os.path.join(repodir, x)
-				gpgsign(os.path.join(repoman_settings["O"], "Manifest"))
+				manifest_path = os.path.join(repoman_settings["O"], "Manifest")
+				if not os.path.exists(manifest_path):
+					continue
+				gpgsign(manifest_path)
 		except portage.exception.PortageException as e:
 			portage.writemsg("!!! %s\n" % str(e))
 			portage.writemsg("!!! Disabled FEATURES='sign'\n")

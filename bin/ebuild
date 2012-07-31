@@ -1,9 +1,10 @@
 #!/usr/bin/python -O
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
 
+import platform
 import signal
 import sys
 # This block ensures that ^C interrupts are handled quietly.
@@ -26,9 +27,16 @@ except KeyboardInterrupt:
 def debug_signal(signum, frame):
 	import pdb
 	pdb.set_trace()
-signal.signal(signal.SIGUSR1, debug_signal)
+
+if platform.python_implementation() == 'Jython':
+	debug_signum = signal.SIGUSR2 # bug #424259
+else:
+	debug_signum = signal.SIGUSR1
+
+signal.signal(debug_signum, debug_signal)
 
 import imp
+import io
 import optparse
 import os
 
@@ -165,7 +173,12 @@ if not os.path.exists(ebuild):
 ebuild_split = ebuild.split("/")
 cpv = "%s/%s" % (ebuild_split[-3], pf)
 
-if not portage.catpkgsplit(cpv):
+with io.open(_unicode_encode(ebuild, encoding=_encodings['fs'], errors='strict'),
+	mode='r', encoding=_encodings['repo.content'], errors='replace') as f:
+	eapi = portage._parse_eapi_ebuild_head(f)[0]
+if eapi is None:
+	eapi = "0"
+if not portage.catpkgsplit(cpv, eapi=eapi):
 	print("!!! %s does not follow correct package syntax." % (cpv))
 	sys.exit(1)
 

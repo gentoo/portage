@@ -13,7 +13,7 @@ from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.output import bold, colorize, darkgreen, green
 from portage._sets import SETPREFIX
 from portage._sets.base import EditablePackageSet
-from portage.util import cmp_sort_key
+from portage.versions import cpv_sort_key, _pkg_str
 
 from _emerge.emergelog import emergelog
 from _emerge.Package import Package
@@ -468,20 +468,22 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 			if not quiet:
 				writemsg_level((mytype + ": ").rjust(14), noiselevel=-1)
 			if pkgmap[x][mytype]:
-				sorted_pkgs = [portage.catpkgsplit(mypkg)[1:] for mypkg in pkgmap[x][mytype]]
-				sorted_pkgs.sort(key=cmp_sort_key(portage.pkgcmp))
-				for pn, ver, rev in sorted_pkgs:
-					if rev == "r0":
-						myversion = ver
-					else:
-						myversion = ver + "-" + rev
+				sorted_pkgs = []
+				for mypkg in pkgmap[x][mytype]:
+					try:
+						sorted_pkgs.append(mypkg.cpv)
+					except AttributeError:
+						sorted_pkgs.append(_pkg_str(mypkg))
+				sorted_pkgs.sort(key=cpv_sort_key())
+				for mypkg in sorted_pkgs:
 					if mytype == "selected":
 						writemsg_level(
-							colorize("UNMERGE_WARN", myversion + " "),
+							colorize("UNMERGE_WARN", mypkg.version + " "),
 							noiselevel=-1)
 					else:
 						writemsg_level(
-							colorize("GOOD", myversion + " "), noiselevel=-1)
+							colorize("GOOD", mypkg.version + " "),
+							noiselevel=-1)
 			else:
 				writemsg_level("none ", noiselevel=-1)
 			if not quiet:

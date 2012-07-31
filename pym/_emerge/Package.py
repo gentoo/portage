@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -8,10 +8,10 @@ from portage import _encodings, _unicode_decode, _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.const import EBUILD_PHASES
 from portage.dep import Atom, check_required_use, use_reduce, \
-	paren_enclose, _slot_re, _slot_separator, _repo_separator
-from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
+	paren_enclose, _slot_separator, _repo_separator
+from portage.versions import _pkg_str, _unknown_repo
+from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidDependString
-from portage.repository.config import _gen_valid_repo
 from _emerge.Task import Task
 
 if sys.hexversion >= 0x3000000:
@@ -25,9 +25,10 @@ class Package(Task):
 		"installed", "metadata", "onlydeps", "operation",
 		"root_config", "type_name",
 		"category", "counter", "cp", "cpv_split",
-		"inherited", "invalid", "iuse", "masks", "mtime",
-		"pf", "pv_split", "root", "slot", "slot_atom", "visible",) + \
-	("_raw_metadata", "_use",)
+		"inherited", "iuse", "mtime",
+		"pf", "root", "slot", "slot_abi", "slot_atom", "version") + \
+		("_invalid", "_raw_metadata", "_masks", "_use",
+		"_validated_atoms", "_visible")
 
 	metadata_keys = [
 		"BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "EAPI",
@@ -38,7 +39,7 @@ class Package(Task):
 
 	_dep_keys = ('DEPEND', 'PDEPEND', 'RDEPEND',)
 	_use_conditional_misc_keys = ('LICENSE', 'PROPERTIES', 'RESTRICT')
-	UNKNOWN_REPO = "__unknown__"
+	UNKNOWN_REPO = _unknown_repo
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
@@ -49,33 +50,30 @@ class Package(Task):
 		self.metadata = _PackageMetadataWrapper(self, self._raw_metadata)
 		if not self.built:
 			self.metadata['CHOST'] = self.root_config.settings.get('CHOST', '')
-		self.cp = portage.cpv_getkey(self.cpv)
-		slot = self.slot
-		if _slot_re.match(slot) is None:
+		eapi_attrs = _get_eapi_attrs(self.metadata["EAPI"])
+		self.cpv = _pkg_str(self.cpv, slot=self.metadata["SLOT"],
+			repo=self.metadata.get('repository', ''),
+			eapi=self.metadata["EAPI"])
+		if hasattr(self.cpv, 'slot_invalid'):
 			self._invalid_metadata('SLOT.invalid',
-				"SLOT: invalid value: '%s'" % slot)
-			# Avoid an InvalidAtom exception when creating slot_atom.
-			# This package instance will be masked due to empty SLOT.
-			slot = '0'
+				"SLOT: invalid value: '%s'" % self.metadata["SLOT"])
+		self.cp = self.cpv.cp
+		self.slot = self.cpv.slot
+		self.slot_abi = self.cpv.slot_abi
+		# sync metadata with validated repo (may be UNKNOWN_REPO)
+		self.metadata['repository'] = self.cpv.repo
 		if (self.iuse.enabled or self.iuse.disabled) and \
-			not eapi_has_iuse_defaults(self.metadata["EAPI"]):
+			not eapi_attrs.iuse_defaults:
 			if not self.installed:
 				self._invalid_metadata('EAPI.incompatible',
 					"IUSE contains defaults, but EAPI doesn't allow them")
-		self.slot_atom = portage.dep.Atom("%s%s%s" % (self.cp, _slot_separator, slot))
+		self.slot_atom = Atom("%s%s%s" % (self.cp, _slot_separator, self.slot))
 		self.category, self.pf = portage.catsplit(self.cpv)
-		self.cpv_split = portage.catpkgsplit(self.cpv)
-		self.pv_split = self.cpv_split[1:]
+		self.cpv_split = self.cpv.cpv_split
+		self.version = self.cpv.version
 		if self.inherited is None:
 			self.inherited = frozenset()
-		repo = _gen_valid_repo(self.metadata.get('repository', ''))
-		if not repo:
-			repo = self.UNKNOWN_REPO
-		self.metadata['repository'] = repo
 
-		self._validate_deps()
-		self.masks = self._masks()
-		self.visible = self._visible(self.masks)
 		if self.operation is None:
 			if self.onlydeps or self.installed:
 				self.operation = "nomerge"
@@ -84,10 +82,43 @@ class Package(Task):
 
 		self._hash_key = Package._gen_hash_key(cpv=self.cpv,
 			installed=self.installed, onlydeps=self.onlydeps,
-			operation=self.operation, repo_name=repo,
+			operation=self.operation, repo_name=self.cpv.repo,
 			root_config=self.root_config,
 			type_name=self.type_name)
 		self._hash_value = hash(self._hash_key)
+
+	# These are calculated on-demand, so that they are calculated
+	# after FakeVartree applies its metadata tweaks.
+	@property
+	def invalid(self):
+		if self._invalid is None:
+			self._validate_deps()
+			if self._invalid is None:
+				self._invalid = False
+		return self._invalid
+
+	@property
+	def masks(self):
+		if self._masks is None:
+			self._masks = self._eval_masks()
+		return self._masks
+
+	@property
+	def visible(self):
+		if self._visible is None:
+			self._visible = self._eval_visiblity(self.masks)
+		return self._visible
+
+	@property
+	def validated_atoms(self):
+		"""
+		Returns *all* validated atoms from the deps, regardless
+		of USE conditionals, with USE conditionals inside
+		atoms left unevaluated.
+		"""
+		if self._validated_atoms is None:
+			self._validate_deps()
+		return self._validated_atoms
 
 	@classmethod
 	def _gen_hash_key(cls, cpv=None, installed=None, onlydeps=None,
@@ -142,15 +173,20 @@ class Package(Task):
 			dep_eapi = None
 			dep_valid_flag = None
 
+		validated_atoms = []
 		for k in self._dep_keys:
 			v = self.metadata.get(k)
 			if not v:
 				continue
 			try:
-				use_reduce(v, eapi=dep_eapi, matchall=True,
-					is_valid_flag=dep_valid_flag, token_class=Atom)
+				validated_atoms.extend(use_reduce(v, eapi=dep_eapi,
+					matchall=True, is_valid_flag=dep_valid_flag,
+					token_class=Atom, flat=True))
 			except InvalidDependString as e:
 				self._metadata_exception(k, e)
+
+		self._validated_atoms = tuple(set(atom for atom in
+			validated_atoms if isinstance(atom, Atom)))
 
 		k = 'PROVIDE'
 		v = self.metadata.get(k)
@@ -175,7 +211,7 @@ class Package(Task):
 		k = 'REQUIRED_USE'
 		v = self.metadata.get(k)
 		if v:
-			if not eapi_has_required_use(eapi):
+			if not _get_eapi_attrs(eapi).required_use:
 				self._invalid_metadata('EAPI.incompatible',
 					"REQUIRED_USE set, but EAPI='%s' doesn't allow it" % eapi)
 			else:
@@ -205,11 +241,11 @@ class Package(Task):
 			onlydeps=self.onlydeps, operation=self.operation,
 			root_config=self.root_config, type_name=self.type_name)
 
-	def _masks(self):
+	def _eval_masks(self):
 		masks = {}
 		settings = self.root_config.settings
 
-		if self.invalid is not None:
+		if self.invalid is not False:
 			masks['invalid'] = self.invalid
 
 		if not settings._accept_chost(self.cpv, self.metadata):
@@ -249,13 +285,13 @@ class Package(Task):
 			pass
 
 		if not masks:
-			masks = None
+			masks = False
 
 		return masks
 
-	def _visible(self, masks):
+	def _eval_visiblity(self, masks):
 
-		if masks is not None:
+		if masks is not False:
 
 			if 'EAPI.unsupported' in masks:
 				return False
@@ -338,12 +374,12 @@ class Package(Task):
 				_unicode_decode("%s: %s in '%s'") % (k, e, path))
 
 	def _invalid_metadata(self, msg_type, msg):
-		if self.invalid is None:
-			self.invalid = {}
-		msgs = self.invalid.get(msg_type)
+		if self._invalid is None:
+			self._invalid = {}
+		msgs = self._invalid.get(msg_type)
 		if msgs is None:
 			msgs = []
-			self.invalid[msg_type] = msgs
+			self._invalid[msg_type] = msgs
 		msgs.append(msg)
 
 	def __str__(self):
@@ -529,28 +565,28 @@ class Package(Task):
 	def __lt__(self, other):
 		if other.cp != self.cp:
 			return False
-		if portage.pkgcmp(self.pv_split, other.pv_split) < 0:
+		if portage.vercmp(self.version, other.version) < 0:
 			return True
 		return False
 
 	def __le__(self, other):
 		if other.cp != self.cp:
 			return False
-		if portage.pkgcmp(self.pv_split, other.pv_split) <= 0:
+		if portage.vercmp(self.version, other.version) <= 0:
 			return True
 		return False
 
 	def __gt__(self, other):
 		if other.cp != self.cp:
 			return False
-		if portage.pkgcmp(self.pv_split, other.pv_split) > 0:
+		if portage.vercmp(self.version, other.version) > 0:
 			return True
 		return False
 
 	def __ge__(self, other):
 		if other.cp != self.cp:
 			return False
-		if portage.pkgcmp(self.pv_split, other.pv_split) >= 0:
+		if portage.vercmp(self.version, other.version) >= 0:
 			return True
 		return False
 
@@ -568,7 +604,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 
 	__slots__ = ("_pkg",)
 	_wrapped_keys = frozenset(
-		["COUNTER", "INHERITED", "IUSE", "SLOT", "USE", "_mtime_"])
+		["COUNTER", "INHERITED", "IUSE", "USE", "_mtime_"])
 	_use_conditional_keys = frozenset(
 		['LICENSE', 'PROPERTIES', 'PROVIDE', 'RESTRICT',])
 
@@ -640,9 +676,6 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 	def _set_iuse(self, k, v):
 		self._pkg.iuse = self._pkg._iuse(
 			v.split(), self._pkg.root_config.settings._iuse_implicit_match)
-
-	def _set_slot(self, k, v):
-		self._pkg.slot = v
 
 	def _set_counter(self, k, v):
 		if isinstance(v, basestring):

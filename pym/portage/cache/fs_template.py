@@ -1,14 +1,14 @@
-# Copyright: 2005 Gentoo Foundation
+# Copyright 2005-2012 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
-# License: GPL2
 
+import os as _os
 import sys
 from portage.cache import template
 from portage import os
 
 from portage.proxy.lazyimport import lazyimport
 lazyimport(globals(),
-	'portage.data:portage_gid',
 	'portage.exception:PortageException',
 	'portage.util:apply_permissions',
 )
@@ -22,10 +22,6 @@ class FsBased(template.database):
 	attempt to ensure files have the specified owners/perms"""
 
 	def __init__(self, *args, **config):
-		"""throws InitializationError if needs args aren't specified
-		gid and perms aren't listed do to an oddity python currying mechanism
-		gid=portage_gid
-		perms=0665"""
 
 		for x, y in (("gid", -1), ("perms", -1)):
 			if x in config:
@@ -78,7 +74,17 @@ class FsBased(template.database):
 					if self._perms != -1:
 						os.umask(um)
 
-	
+	def _prune_empty_dirs(self):
+		all_dirs = []
+		for parent, dirs, files in os.walk(self.location):
+			for x in dirs:
+				all_dirs.append(_os.path.join(parent, x))
+		while all_dirs:
+			try:
+				_os.rmdir(all_dirs.pop())
+			except OSError:
+				pass
+
 def gen_label(base, label):
 	"""if supplied label is a path, generate a unique label based upon label, and supplied base path"""
 	if label.find(os.path.sep) == -1:

@@ -11,7 +11,7 @@ class MetadataRegen(PollScheduler):
 
 	def __init__(self, portdb, cp_iter=None, consumer=None,
 		max_jobs=None, max_load=None):
-		PollScheduler.__init__(self)
+		PollScheduler.__init__(self, main=True)
 		self._portdb = portdb
 		self._global_cleanse = False
 		if cp_iter is None:
@@ -78,12 +78,11 @@ class MetadataRegen(PollScheduler):
 						cpv, ebuild_path, repo_path)
 					if metadata is not None:
 						if consumer is not None:
-							consumer(cpv, repo_path, metadata, ebuild_hash)
+							consumer(cpv, repo_path, metadata, ebuild_hash, True)
 						continue
 
 					yield EbuildMetadataPhase(cpv=cpv,
 						ebuild_hash=ebuild_hash,
-						metadata_callback=portdb._metadata_callback,
 						portdb=portdb, repo_path=repo_path,
 						settings=portdb.doebuild_settings)
 
@@ -177,7 +176,8 @@ class MetadataRegen(PollScheduler):
 			self._consumer(metadata_process.cpv,
 				metadata_process.repo_path,
 				metadata_process.metadata,
-				metadata_process.ebuild_hash)
+				metadata_process.ebuild_hash,
+				metadata_process.eapi_supported)
 
 		self._schedule()
 

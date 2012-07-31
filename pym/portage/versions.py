@@ -1,5 +1,5 @@
 # versions.py -- core Portage functionality
-# Copyright 1998-2010 Gentoo Foundation
+# Copyright 1998-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -9,13 +9,26 @@ __all__ = [
 ]
 
 import re
+import sys
 import warnings
+
+if sys.hexversion < 0x3000000:
+	_unicode = unicode
+else:
+	_unicode = str
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.util:cmp_sort_key'
+	'portage.dep:_get_slot_re',
+	'portage.repository.config:_gen_valid_repo',
+	'portage.util:cmp_sort_key',
 )
+from portage import _unicode_decode
+from portage.eapi import _get_eapi_attrs
+from portage.exception import InvalidData
 from portage.localization import _
+
+_unknown_repo = "__unknown__"
 
 # \w is [a-zA-Z0-9_]
 
@@ -26,20 +39,50 @@ _cat = r'[\w+][\w+.-]*'
 # 2.1.2 A package name may contain any of the characters [A-Za-z0-9+_-].
 # It must not begin with a hyphen,
 # and must not end in a hyphen followed by one or more digits.
-_pkg = r'[\w+][\w+-]*?'
+_pkg = {
+	"dots_disallowed_in_PN": r'[\w+][\w+-]*?',
+	"dots_allowed_in_PN":    r'[\w+][\w+.-]*?',
+}
 
 _v = r'(cvs\.)?(\d+)((\.\d+)*)([a-z]?)((_(pre|p|beta|alpha|rc)\d*)*)'
 _rev = r'\d+'
 _vr = _v + '(-r(' + _rev + '))?'
 
-_cp = '(' + _cat + '/' + _pkg + '(-' + _vr + ')?)'
-_cpv = '(' + _cp + '-' + _vr + ')'
-_pv = '(?P<pn>' + _pkg + '(?P<pn_inval>-' + _vr + ')?)' + '-(?P<ver>' + _v + ')(-r(?P<rev>' + _rev + '))?'
+_cp = {
+	"dots_disallowed_in_PN": '(' + _cat + '/' + _pkg['dots_disallowed_in_PN'] + '(-' + _vr + ')?)',
+	"dots_allowed_in_PN":    '(' + _cat + '/' + _pkg['dots_allowed_in_PN']    + '(-' + _vr + ')?)',
+}
+_cpv = {
+	"dots_disallowed_in_PN": '(' + _cp['dots_disallowed_in_PN'] + '-' + _vr + ')',
+	"dots_allowed_in_PN":    '(' + _cp['dots_allowed_in_PN']    + '-' + _vr + ')',
+}
+_pv = {
+	"dots_disallowed_in_PN": '(?P<pn>' + _pkg['dots_disallowed_in_PN'] + '(?P<pn_inval>-' + _vr + ')?)' + '-(?P<ver>' + _v + ')(-r(?P<rev>' + _rev + '))?',
+	"dots_allowed_in_PN":    '(?P<pn>' + _pkg['dots_allowed_in_PN']    + '(?P<pn_inval>-' + _vr + ')?)' + '-(?P<ver>' + _v + ')(-r(?P<rev>' + _rev + '))?',
+}
 
 ver_regexp = re.compile("^" + _vr + "$")
 suffix_regexp = re.compile("^(alpha|beta|rc|pre|p)(\\d*)$")
 suffix_value = {"pre": -2, "p": 0, "alpha": -4, "beta": -3, "rc": -1}
 endversion_keys = ["pre", "p", "alpha", "beta", "rc"]
+
+_pv_re_cache = {}
+
+def _get_pv_re(eapi_attrs):
+	cache_key = eapi_attrs.dots_in_PN
+	pv_re = _pv_re_cache.get(cache_key)
+	if pv_re is not None:
+		return pv_re
+
+	if eapi_attrs.dots_in_PN:
+		pv_re = _pv['dots_allowed_in_PN']
+	else:
+		pv_re = _pv['dots_disallowed_in_PN']
+
+	pv_re = re.compile('^' + pv_re + '$', re.VERBOSE)
+
+	_pv_re_cache[cache_key] = pv_re
+	return pv_re
 
 def ververify(myver, silent=1):
 	if ver_regexp.match(myver):
@@ -49,7 +92,6 @@ def ververify(myver, silent=1):
 			print(_("!!! syntax error in version: %s") % myver)
 		return 0
 
-vercmp_cache = {}
 def vercmp(ver1, ver2, silent=1):
 	"""
 	Compare two versions
@@ -76,11 +118,7 @@ def vercmp(ver1, ver2, silent=1):
 
 	if ver1 == ver2:
 		return 0
-	mykey=ver1+":"+ver2
-	try:
-		return vercmp_cache[mykey]
-	except KeyError:
-		pass
+
 	match1 = ver_regexp.match(ver1)
 	match2 = ver_regexp.match(ver2)
 	
@@ -96,10 +134,8 @@ def vercmp(ver1, ver2, silent=1):
 
 	# shortcut for cvs ebuilds (new style)
 	if match1.group(1) and not match2.group(1):
-		vercmp_cache[mykey] = 1
 		return 1
 	elif match2.group(1) and not match1.group(1):
-		vercmp_cache[mykey] = -1
 		return -1
 	
 	# building lists of the version parts before the suffix
@@ -153,16 +189,13 @@ def vercmp(ver1, ver2, silent=1):
 
 	for i in range(0, max(len(list1), len(list2))):
 		if len(list1) <= i:
-			vercmp_cache[mykey] = -1
 			return -1
 		elif len(list2) <= i:
-			vercmp_cache[mykey] = 1
 			return 1
 		elif list1[i] != list2[i]:
 			a = list1[i]
 			b = list2[i]
 			rval = (a > b) - (a < b)
-			vercmp_cache[mykey] = rval
 			return rval
 
 	# main version is equal, so now compare the _suffix part
@@ -183,7 +216,6 @@ def vercmp(ver1, ver2, silent=1):
 			a = suffix_value[s1[0]]
 			b = suffix_value[s2[0]]
 			rval = (a > b) - (a < b)
-			vercmp_cache[mykey] = rval
 			return rval
 		if s1[1] != s2[1]:
 			# it's possible that the s(1|2)[1] == ''
@@ -198,7 +230,6 @@ def vercmp(ver1, ver2, silent=1):
 				r2 = 0
 			rval = (r1 > r2) - (r1 < r2)
 			if rval:
-				vercmp_cache[mykey] = rval
 				return rval
 
 	# the suffix part is equal to, so finally check the revision
@@ -211,7 +242,6 @@ def vercmp(ver1, ver2, silent=1):
 	else:
 		r2 = 0
 	rval = (r1 > r2) - (r1 < r2)
-	vercmp_cache[mykey] = rval
 	return rval
 	
 def pkgcmp(pkg1, pkg2):
@@ -240,16 +270,14 @@ def pkgcmp(pkg1, pkg2):
 		return None
 	return vercmp("-".join(pkg1[1:]), "-".join(pkg2[1:]))
 
-_pv_re = re.compile('^' + _pv + '$', re.VERBOSE)
-
-def _pkgsplit(mypkg):
+def _pkgsplit(mypkg, eapi=None):
 	"""
 	@param mypkg: pv
 	@return:
 	1. None if input is invalid.
 	2. (pn, ver, rev) if input is pv
 	"""
-	m = _pv_re.match(mypkg)
+	m = _get_pv_re(_get_eapi_attrs(eapi)).match(mypkg)
 	if m is None:
 		return None
 
@@ -266,8 +294,8 @@ def _pkgsplit(mypkg):
 
 _cat_re = re.compile('^%s$' % _cat)
 _missing_cat = 'null'
-catcache={}
-def catpkgsplit(mydata,silent=1):
+
+def catpkgsplit(mydata, silent=1, eapi=None):
 	"""
 	Takes a Category/Package-Version-Rev and returns a list of each.
 	
@@ -281,28 +309,85 @@ def catpkgsplit(mydata,silent=1):
 	2.  If cat is not specificed in mydata, cat will be "null"
 	3.  if rev does not exist it will be '-r0'
 	"""
-
 	try:
-		return catcache[mydata]
-	except KeyError:
+		return mydata.cpv_split
+	except AttributeError:
 		pass
 	mysplit = mydata.split('/', 1)
 	p_split=None
 	if len(mysplit)==1:
 		cat = _missing_cat
-		p_split = _pkgsplit(mydata)
+		p_split = _pkgsplit(mydata, eapi=eapi)
 	elif len(mysplit)==2:
 		cat = mysplit[0]
 		if _cat_re.match(cat) is not None:
-			p_split = _pkgsplit(mysplit[1])
+			p_split = _pkgsplit(mysplit[1], eapi=eapi)
 	if not p_split:
-		catcache[mydata]=None
 		return None
 	retval = (cat, p_split[0], p_split[1], p_split[2])
-	catcache[mydata]=retval
 	return retval
 
-def pkgsplit(mypkg, silent=1):
+class _pkg_str(_unicode):
+	"""
+	This class represents a cpv. It inherits from str (unicode in python2) and
+	has attributes that cache results for use by functions like catpkgsplit and
+	cpv_getkey which are called frequently (especially in match_from_list).
+	Instances are typically created in dbapi.cp_list() or the Atom contructor,
+	and propagate from there. Generally, code that pickles these objects will
+	manually convert them to a plain unicode object first.
+	"""
+
+	def __new__(cls, cpv, slot=None, repo=None, eapi=None):
+		return _unicode.__new__(cls, cpv)
+
+	def __init__(self, cpv, slot=None, repo=None, eapi=None):
+		if not isinstance(cpv, _unicode):
+			# Avoid TypeError from _unicode.__init__ with PyPy.
+			cpv = _unicode_decode(cpv)
+		_unicode.__init__(cpv)
+		if eapi is not None:
+			self.__dict__['eapi'] = eapi
+		self.__dict__['cpv_split'] = catpkgsplit(cpv, eapi=eapi)
+		if self.cpv_split is None:
+			raise InvalidData(cpv)
+		self.__dict__['cp'] = self.cpv_split[0] + '/' + self.cpv_split[1]
+		if self.cpv_split[-1] == "r0" and cpv[-3:] != "-r0":
+			self.__dict__['version'] = "-".join(self.cpv_split[2:-1])
+		else:
+			self.__dict__['version'] = "-".join(self.cpv_split[2:])
+		# for match_from_list introspection
+		self.__dict__['cpv'] = self
+		if slot is not None:
+			eapi_attrs = _get_eapi_attrs(eapi)
+			slot_match = _get_slot_re(eapi_attrs).match(slot)
+			if slot_match is None:
+				# Avoid an InvalidAtom exception when creating SLOT atoms
+				self.__dict__['slot'] = '0'
+				self.__dict__['slot_abi'] = '0'
+				self.__dict__['slot_invalid'] = slot
+			else:
+				if eapi_attrs.slot_abi:
+					slot_split = slot.split("/")
+					self.__dict__['slot'] = slot_split[0]
+					if len(slot_split) > 1:
+						self.__dict__['slot_abi'] = slot_split[1]
+					else:
+						self.__dict__['slot_abi'] = slot_split[0]
+				else:
+					self.__dict__['slot'] = slot
+					self.__dict__['slot_abi'] = slot
+
+		if repo is not None:
+			repo = _gen_valid_repo(repo)
+			if not repo:
+				repo = _unknown_repo
+			self.__dict__['repo'] = repo
+
+	def __setattr__(self, name, value):
+		raise AttributeError("_pkg_str instances are immutable",
+			self.__class__, name, value)
+
+def pkgsplit(mypkg, silent=1, eapi=None):
 	"""
 	@param mypkg: either a pv or cpv
 	@return:
@@ -310,7 +395,7 @@ def pkgsplit(mypkg, silent=1):
 	2. (pn, ver, rev) if input is pv
 	3. (cp, ver, rev) if input is a cpv
 	"""
-	catpsplit = catpkgsplit(mypkg)
+	catpsplit = catpkgsplit(mypkg, eapi=eapi)
 	if catpsplit is None:
 		return None
 	cat, pn, ver, rev = catpsplit
@@ -319,9 +404,13 @@ def pkgsplit(mypkg, silent=1):
 	else:
 		return (cat + '/' + pn, ver, rev)
 
-def cpv_getkey(mycpv):
+def cpv_getkey(mycpv, eapi=None):
 	"""Calls catpkgsplit on a cpv and returns only the cp."""
-	mysplit = catpkgsplit(mycpv)
+	try:
+		return mycpv.cp
+	except AttributeError:
+		pass
+	mysplit = catpkgsplit(mycpv, eapi=eapi)
 	if mysplit is not None:
 		return mysplit[0] + '/' + mysplit[1]
 
@@ -330,7 +419,7 @@ def cpv_getkey(mycpv):
 		DeprecationWarning, stacklevel=2)
 
 	myslash = mycpv.split("/", 1)
-	mysplit = _pkgsplit(myslash[-1])
+	mysplit = _pkgsplit(myslash[-1], eapi=eapi)
 	if mysplit is None:
 		return None
 	mylen = len(myslash)
@@ -339,14 +428,18 @@ def cpv_getkey(mycpv):
 	else:
 		return mysplit[0]
 
-def cpv_getversion(mycpv):
+def cpv_getversion(mycpv, eapi=None):
 	"""Returns the v (including revision) from an cpv."""
-	cp = cpv_getkey(mycpv)
+	try:
+		return mycpv.version
+	except AttributeError:
+		pass
+	cp = cpv_getkey(mycpv, eapi=eapi)
 	if cp is None:
 		return None
 	return mycpv[len(cp+"-"):]
 
-def cpv_sort_key():
+def cpv_sort_key(eapi=None):
 	"""
 	Create an object for sorting cpvs, to be used as the 'key' parameter
 	in places like list.sort() or sorted(). This calls catpkgsplit() once for
@@ -365,39 +458,55 @@ def cpv_sort_key():
 
 		split1 = split_cache.get(cpv1, False)
 		if split1 is False:
-			split1 = catpkgsplit(cpv1)
-			if split1 is not None:
-				split1 = (split1[:2], '-'.join(split1[2:]))
+			split1 = None
+			try:
+				split1 = cpv1.cpv
+			except AttributeError:
+				try:
+					split1 = _pkg_str(cpv1, eapi=eapi)
+				except InvalidData:
+					pass
 			split_cache[cpv1] = split1
 
 		split2 = split_cache.get(cpv2, False)
 		if split2 is False:
-			split2 = catpkgsplit(cpv2)
-			if split2 is not None:
-				split2 = (split2[:2], '-'.join(split2[2:]))
+			split2 = None
+			try:
+				split2 = cpv2.cpv
+			except AttributeError:
+				try:
+					split2 = _pkg_str(cpv2, eapi=eapi)
+				except InvalidData:
+					pass
 			split_cache[cpv2] = split2
 
-		if split1 is None or split2 is None or split1[0] != split2[0]:
+		if split1 is None or split2 is None or split1.cp != split2.cp:
 			return (cpv1 > cpv2) - (cpv1 < cpv2)
 
-		return vercmp(split1[1], split2[1])
+		return vercmp(split1.version, split2.version)
 
 	return cmp_sort_key(cmp_cpv)
 
 def catsplit(mydep):
         return mydep.split("/", 1)
 
-def best(mymatches):
+def best(mymatches, eapi=None):
 	"""Accepts None arguments; assumes matches are valid."""
 	if not mymatches:
 		return ""
 	if len(mymatches) == 1:
 		return mymatches[0]
 	bestmatch = mymatches[0]
-	p2 = catpkgsplit(bestmatch)[1:]
+	try:
+		v2 = bestmatch.version
+	except AttributeError:
+		v2 = _pkg_str(bestmatch, eapi=eapi).version
 	for x in mymatches[1:]:
-		p1 = catpkgsplit(x)[1:]
-		if pkgcmp(p1, p2) > 0:
+		try:
+			v1 = x.version
+		except AttributeError:
+			v1 = _pkg_str(x, eapi=eapi).version
+		if vercmp(v1, v2) > 0:
 			bestmatch = x
-			p2 = catpkgsplit(bestmatch)[1:]
+			v2 = v1
 	return bestmatch

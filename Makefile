@@ -81,7 +81,6 @@ install:
 	cd "$(srcdir)/cnf"; \
 	install -m$(INSMODE) $(PORTAGE_CONFDIR_FILES) \
 		"$(DESTDIR)$(portage_confdir)"; \
-	ln -sf "..$(portage_confdir)/make.globals" "$(DESTDIR)$(sysconfdir)"; \
 	install -m$(INSMODE) "$(srcdir)/cnf/make.conf" \
 		"$(DESTDIR)$(portage_confdir)/make.conf.example"; \
 	\

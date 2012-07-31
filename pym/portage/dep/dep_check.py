@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['dep_check', 'dep_eval', 'dep_wordreduce', 'dep_zapdeps']
@@ -11,7 +11,7 @@ from portage.dep import Atom, match_from_list, use_reduce
 from portage.exception import InvalidDependString, ParseError
 from portage.localization import _
 from portage.util import writemsg, writemsg_level
-from portage.versions import catpkgsplit, cpv_getkey, pkgcmp
+from portage.versions import vercmp, _pkg_str
 
 def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	trees=None, use_mask=None, use_force=None, **kwargs):
@@ -39,14 +39,12 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	parent = mytrees.get("parent")
 	virt_parent = mytrees.get("virt_parent")
 	graph_parent = None
-	eapi = None
 	if parent is not None:
 		if virt_parent is not None:
 			graph_parent = virt_parent
 			parent = virt_parent
 		else:
 			graph_parent = parent
-		eapi = parent.metadata["EAPI"]
 	repoman = not mysettings.local_config
 	if kwargs["use_binaries"]:
 		portdb = trees[myroot]["bintree"].dbapi
@@ -352,8 +350,14 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 			avail_pkg = mydbapi.match(atom.without_use)
 			if avail_pkg:
 				avail_pkg = avail_pkg[-1] # highest (ascending order)
-				avail_slot = Atom("%s:%s" % (atom.cp,
-					mydbapi.aux_get(avail_pkg, ["SLOT"])[0]))
+				try:
+					slot = avail_pkg.slot
+				except AttributeError:
+					eapi, slot, repo = mydbapi.aux_get(avail_pkg,
+						["EAPI", "SLOT", "repository"])
+					avail_pkg = _pkg_str(avail_pkg, eapi=eapi,
+						slot=slot, repo=repo)
+				avail_slot = Atom("%s:%s" % (atom.cp, slot))
 			if not avail_pkg:
 				all_available = False
 				all_use_satisfied = False
@@ -368,16 +372,19 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 					avail_pkg_use = avail_pkg_use[-1]
 					if avail_pkg_use != avail_pkg:
 						avail_pkg = avail_pkg_use
-						avail_slot = Atom("%s:%s" % (atom.cp,
-							mydbapi.aux_get(avail_pkg, ["SLOT"])[0]))
+						try:
+							slot = avail_pkg.slot
+						except AttributeError:
+							eapi, slot, repo = mydbapi.aux_get(avail_pkg,
+								["EAPI", "SLOT", "repository"])
+							avail_pkg = _pkg_str(avail_pkg,
+								eapi=eapi, slot=slot, repo=repo)
 
 			slot_map[avail_slot] = avail_pkg
-			pkg_cp = cpv_getkey(avail_pkg)
-			highest_cpv = cp_map.get(pkg_cp)
+			highest_cpv = cp_map.get(avail_pkg.cp)
 			if highest_cpv is None or \
-				pkgcmp(catpkgsplit(avail_pkg)[1:],
-				catpkgsplit(highest_cpv)[1:]) > 0:
-				cp_map[pkg_cp] = avail_pkg
+				vercmp(avail_pkg.version, highest_cpv.version) > 0:
+				cp_map[avail_pkg.cp] = avail_pkg
 
 		this_choice = (atoms, slot_map, cp_map, all_available)
 		if all_available:
@@ -515,8 +522,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				for cp in intersecting_cps:
 					version_1 = cp_map_1[cp]
 					version_2 = cp_map_2[cp]
-					difference = pkgcmp(catpkgsplit(version_1)[1:],
-						catpkgsplit(version_2)[1:])
+					difference = vercmp(version_1.version, version_2.version)
 					if difference != 0:
 						if difference > 0:
 							has_upgrade = True
@@ -605,12 +611,15 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		if not current_parent.installed:
 			eapi = current_parent.metadata['EAPI']
 
-	try:
-		mysplit = use_reduce(depstring, uselist=myusesplit, masklist=mymasks, \
-			matchall=(use=="all"), excludeall=useforce, opconvert=True, \
-			token_class=Atom, eapi=eapi)
-	except InvalidDependString as e:
-		return [0, _unicode_decode("%s") % (e,)]
+	if isinstance(depstring, list):
+		mysplit = depstring
+	else:
+		try:
+			mysplit = use_reduce(depstring, uselist=myusesplit,
+			masklist=mymasks, matchall=(use=="all"), excludeall=useforce,
+			opconvert=True, token_class=Atom, eapi=eapi)
+		except InvalidDependString as e:
+			return [0, _unicode_decode("%s") % (e,)]
 
 	if mysplit == []:
 		#dependencies were reduced to nothing

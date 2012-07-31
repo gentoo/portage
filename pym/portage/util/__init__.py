@@ -1,4 +1,4 @@
-# Copyright 2004-2011 Gentoo Foundation
+# Copyright 2004-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['apply_permissions', 'apply_recursive_permissions',
@@ -41,7 +41,7 @@ from portage import _os_merge
 from portage import _unicode_encode
 from portage import _unicode_decode
 from portage.exception import InvalidAtom, PortageException, FileNotFound, \
-       OperationNotPermitted, PermissionDenied, ReadOnlyFileSystem
+       OperationNotPermitted, ParseError, PermissionDenied, ReadOnlyFileSystem
 from portage.localization import _
 from portage.proxy.objectproxy import ObjectProxy
 from portage.cache.mappings import UserDict
@@ -447,7 +447,7 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=Fals
 		try:
 			pkg = Atom(pkg, allow_wildcard=allow_wildcard, allow_repo=allow_repo, eapi=eapi)
 		except InvalidAtom as e:
-			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, e),
+			writemsg(_("--- Invalid atom in %s: %s\n") % (source_file, e),
 				noiselevel=-1)
 		else:
 			if pkg_orig == str(pkg):
@@ -469,7 +469,15 @@ def grablines(myfilename, recursive=0, remember_source_file=False):
 	if recursive and os.path.isdir(myfilename):
 		if os.path.basename(myfilename) in _ignorecvs_dirs:
 			return mylines
-		dirlist = os.listdir(myfilename)
+		try:
+			dirlist = os.listdir(myfilename)
+		except OSError as e:
+			if e.errno == PermissionDenied.errno:
+				raise PermissionDenied(myfilename)
+			elif e.errno in (errno.ENOENT, errno.ESTALE):
+				return mylines
+			else:
+				raise
 		dirlist.sort()
 		for f in dirlist:
 			if not f.startswith(".") and not f.endswith("~"):
@@ -488,7 +496,10 @@ def grablines(myfilename, recursive=0, remember_source_file=False):
 		except IOError as e:
 			if e.errno == PermissionDenied.errno:
 				raise PermissionDenied(myfilename)
-			pass
+			elif e.errno in (errno.ENOENT, errno.ESTALE):
+				pass
+			else:
+				raise
 	return mylines
 
 def writedict(mydict,myfilename,writekey=True):
@@ -573,6 +584,7 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 		writemsg(("!!! " + _("Please use dos2unix to convert line endings " + \
 			"in config file: '%s'") + "\n") % mycfg, noiselevel=-1)
 
+	lex = None
 	try:
 		if tolerant:
 			shlex_class = _tolerant_shlex
@@ -596,43 +608,38 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 				break;
 			equ=lex.get_token()
 			if (equ==''):
-				#unexpected end of file
-				#lex.error_leader(self.filename,lex.lineno)
+				msg = lex.error_leader() + _("Unexpected EOF")
 				if not tolerant:
-					writemsg(_("!!! Unexpected end of config file: variable %s\n") % key,
-						noiselevel=-1)
-					raise Exception(_("ParseError: Unexpected EOF: %s: on/before line %s") % (mycfg, lex.lineno))
+					raise ParseError(msg)
 				else:
+					writemsg("%s\n" % msg, noiselevel=-1)
 					return mykeys
 			elif (equ!='='):
-				#invalid token
-				#lex.error_leader(self.filename,lex.lineno)
+				msg = lex.error_leader() + \
+					_("Invalid token '%s' (not '=')") % (equ,)
 				if not tolerant:
-					raise Exception(_("ParseError: Invalid token "
-						"'%s' (not '='): %s: line %s") % \
-						(equ, mycfg, lex.lineno))
+					raise ParseError(msg)
 				else:
+					writemsg("%s\n" % msg, noiselevel=-1)
 					return mykeys
 			val=lex.get_token()
 			if val is None:
-				#unexpected end of file
-				#lex.error_leader(self.filename,lex.lineno)
+				msg = lex.error_leader() + \
+					_("Unexpected end of config file: variable '%s'") % (key,)
 				if not tolerant:
-					writemsg(_("!!! Unexpected end of config file: variable %s\n") % key,
-						noiselevel=-1)
-					raise portage.exception.CorruptionError(_("ParseError: Unexpected EOF: %s: line %s") % (mycfg, lex.lineno))
+					raise ParseError(msg)
 				else:
+					writemsg("%s\n" % msg, noiselevel=-1)
 					return mykeys
 			key = _unicode_decode(key)
 			val = _unicode_decode(val)
 
 			if _invalid_var_name_re.search(key) is not None:
+				msg = lex.error_leader() + \
+					_("Invalid variable name '%s'") % (key,)
 				if not tolerant:
-					raise Exception(_(
-						"ParseError: Invalid variable name '%s': line %s") % \
-						(key, lex.lineno - 1))
-				writemsg(_("!!! Invalid variable name '%s': line %s in %s\n") \
-					% (key, lex.lineno - 1, mycfg), noiselevel=-1)
+					raise ParseError(msg)
+				writemsg("%s\n" % msg, noiselevel=-1)
 				continue
 
 			if expand:
@@ -644,7 +651,12 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 	except SystemExit as e:
 		raise
 	except Exception as e:
-		raise portage.exception.ParseError(str(e)+" in "+mycfg)
+		if isinstance(e, ParseError) or lex is None:
+			raise
+		msg = _unicode_decode("%s%s") % (lex.error_leader(), e)
+		writemsg("%s\n" % msg, noiselevel=-1)
+		raise
+
 	return mykeys
 
 _varexpand_word_chars = frozenset(string.ascii_letters + string.digits + "_")

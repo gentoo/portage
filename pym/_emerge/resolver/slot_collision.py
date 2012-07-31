@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -79,6 +79,8 @@ class slot_conflict_handler(object):
 	We have found a valid assignment for all involved use flags. Compute
 	the needed USE changes and prepare the message for the user.
 	"""
+
+	_check_configuration_max = 1024
 
 	def __init__(self, depgraph):
 		self.depgraph = depgraph
@@ -273,19 +275,29 @@ class slot_conflict_handler(object):
 
 							if not atom_without_use_set.findAtomForPackage(other_pkg, \
 								modified_use=_pkg_use_enabled(other_pkg)):
-								#The version range does not match.
-								sub_type = None
-								if atom.operator in (">=", ">"):
-									sub_type = "ge"
-								elif atom.operator in ("=", "~"):
-									sub_type = "eq"
-								elif atom.operator in ("<=", "<"):
-									sub_type = "le"
+								if atom.operator is not None:
+									# The version range does not match.
+									sub_type = None
+									if atom.operator in (">=", ">"):
+										sub_type = "ge"
+									elif atom.operator in ("=", "~"):
+										sub_type = "eq"
+									elif atom.operator in ("<=", "<"):
+										sub_type = "le"
 
-								atoms = collision_reasons.get(("version", sub_type), set())
-								atoms.add((ppkg, atom, other_pkg))
-								num_all_specific_atoms += 1
-								collision_reasons[("version", sub_type)] = atoms
+									key = ("version", sub_type)
+									atoms = collision_reasons.get(key, set())
+									atoms.add((ppkg, atom, other_pkg))
+									num_all_specific_atoms += 1
+									collision_reasons[key] = atoms
+								else:
+									# The slot_abi does not match.
+									key = ("sub-slot", atom.slot_abi)
+									atoms = collision_reasons.get(key, set())
+									atoms.add((ppkg, atom, other_pkg))
+									num_all_specific_atoms += 1
+									collision_reasons[key] = atoms
+
 							elif not atom_set.findAtomForPackage(other_pkg, \
 								modified_use=_pkg_use_enabled(other_pkg)):
 								missing_iuse = other_pkg.iuse.get_missing_iuse(
@@ -331,6 +343,9 @@ class slot_conflict_handler(object):
 								else:
 									best_matches[atom.cp] = (ppkg, atom)
 							selected_for_display.update(best_matches.values())
+						elif type == "sub-slot":
+							for ppkg, atom, other_pkg in parents:
+								selected_for_display.add((ppkg, atom))
 						elif type == "use":
 							#Prefer atoms with unconditional use deps over, because it's
 							#not possible to change them on the parent, which means there
@@ -435,19 +450,22 @@ class slot_conflict_handler(object):
 							# Display the specific atom from SetArg or
 							# Package types.
 							version_violated = False
+							sub_slot_violated = False
 							use = []
 							for (type, sub_type), parents in collision_reasons.items():
 								for x in parents:
 									if parent == x[0] and atom == x[1]:
 										if type == "version":
 											version_violated = True
+										elif type == "sub-slot":
+											sub_slot_violated = True
 										elif type == "use":
 											use.append(sub_type)
 										break
 
 							atom_str = highlight_violations(atom.unevaluated_atom, version_violated, use)
 
-							if version_violated:
+							if version_violated or sub_slot_violated:
 								self.is_a_version_conflict = True
 
 							msg.append("%s required by %s" % (atom_str, parent))
@@ -663,14 +681,24 @@ class slot_conflict_handler(object):
 
 		solutions = []
 		sol_gen = _solution_candidate_generator(all_involved_flags)
-		while(True):
+		checked = 0
+		while True:
 			candidate = sol_gen.get_candidate()
 			if not candidate:
 				break
 			solution = self._check_solution(config, candidate, all_conflict_atoms_by_slotatom)
+			checked += 1
 			if solution:
 				solutions.append(solution)
-		
+
+			if checked >= self._check_configuration_max:
+				# TODO: Implement early elimination for candidates that would
+				# change forced or masked flags, and don't count them here.
+				if self.debug:
+					writemsg("\nAborting _check_configuration due to "
+						"excessive number of candidates.\n", noiselevel=-1)
+				break
+
 		if self.debug:
 			if not solutions:
 				writemsg("No viable solutions. Rejecting configuration.\n", noiselevel=-1)

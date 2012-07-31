@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -43,7 +43,7 @@ from portage.util import ensure_dirs, getconfig, grabdict, \
 	grabdict_package, grabfile, grabfile_package, LazyItemsDict, \
 	normalize_path, shlex_split, stack_dictlist, stack_dicts, stack_lists, \
 	writemsg, writemsg_level
-from portage.versions import catpkgsplit, catsplit, cpv_getkey
+from portage.versions import catpkgsplit, catsplit, cpv_getkey, _pkg_str
 
 from portage.package.ebuild._config import special_env_vars
 from portage.package.ebuild._config.env_var_validation import validate_cmd_var
@@ -181,6 +181,7 @@ class config(object):
 		# can practically render the api unusable for api consumers.
 		tolerant = hasattr(portage, '_initializing_globals')
 		self._tolerant = tolerant
+		self._unmatched_removal = _unmatched_removal
 
 		self.locked   = 0
 		self.mycpv    = None
@@ -205,6 +206,7 @@ class config(object):
 			# For immutable attributes, use shallow copy for
 			# speed and memory conservation.
 			self._tolerant = clone._tolerant
+			self._unmatched_removal = clone._unmatched_removal
 			self.categories = clone.categories
 			self.depcachedir = clone.depcachedir
 			self.incrementals = clone.incrementals
@@ -227,9 +229,12 @@ class config(object):
 			self._setcpv_args_hash = clone._setcpv_args_hash
 
 			# immutable attributes (internal policy ensures lack of mutation)
-			self._keywords_manager = clone._keywords_manager
+			self._locations_manager = clone._locations_manager
 			self._use_manager = clone._use_manager
-			self._mask_manager = clone._mask_manager
+			# force instantiation of lazy immutable objects when cloning, so
+			# that they're not instantiated more than once
+			self._keywords_manager_obj = clone._keywords_manager
+			self._mask_manager_obj = clone._mask_manager
 
 			# shared mutable attributes
 			self._unknown_features = clone._unknown_features
@@ -266,7 +271,9 @@ class config(object):
 			#all LicenseManager instances.
 			self._license_manager = clone._license_manager
 
-			self._virtuals_manager = copy.deepcopy(clone._virtuals_manager)
+			# force instantiation of lazy objects when cloning, so
+			# that they're not instantiated more than once
+			self._virtuals_manager_obj = copy.deepcopy(clone._virtuals_manager)
 
 			self._accept_properties = copy.deepcopy(clone._accept_properties)
 			self._ppropertiesdict = copy.deepcopy(clone._ppropertiesdict)
@@ -274,9 +281,15 @@ class config(object):
 			self._expand_map = copy.deepcopy(clone._expand_map)
 
 		else:
+			# lazily instantiated objects
+			self._keywords_manager_obj = None
+			self._mask_manager_obj = None
+			self._virtuals_manager_obj = None
+
 			locations_manager = LocationsManager(config_root=config_root,
 				config_profile_path=config_profile_path, eprefix=eprefix,
 				local_config=local_config, target_root=target_root)
+			self._locations_manager = locations_manager
 
 			eprefix = locations_manager.eprefix
 			config_root = locations_manager.config_root
@@ -313,17 +326,18 @@ class config(object):
 			# Notably absent is "env", since we want to avoid any
 			# interaction with the calling environment that might
 			# lead to unexpected results.
-			expand_map = {}
+
+			env_d = getconfig(os.path.join(eroot, "etc", "profile.env"),
+				tolerant=tolerant, expand=False) or {}
+			expand_map = env_d.copy()
 			self._expand_map = expand_map
 
 			# Allow make.globals to set default paths relative to ${EPREFIX}.
 			expand_map["EPREFIX"] = eprefix
 
-			env_d = getconfig(os.path.join(eroot, "etc", "profile.env"),
-				expand=False)
-
 			make_globals = getconfig(os.path.join(
-				self.global_config_path, 'make.globals'), expand=expand_map)
+				self.global_config_path, 'make.globals'),
+				tolerant=tolerant, expand=expand_map)
 			if make_globals is None:
 				make_globals = {}
 
@@ -404,13 +418,30 @@ class config(object):
 
 			self.make_defaults_use = []
 
+			#Loading Repositories
+			self["PORTAGE_CONFIGROOT"] = config_root
+			self["ROOT"] = target_root
+			self["EPREFIX"] = eprefix
+			self["EROOT"] = eroot
 			known_repos = []
+			portdir = ""
+			portdir_overlay = ""
 			for confs in [make_globals, make_conf, self.configdict["env"]]:
-				known_repos.extend(confs.get("PORTDIR", '').split())
-				known_repos.extend(confs.get("PORTDIR_OVERLAY", '').split())
+				v = confs.get("PORTDIR")
+				if v is not None:
+					portdir = v
+					known_repos.append(v)
+				v = confs.get("PORTDIR_OVERLAY")
+				if v is not None:
+					portdir_overlay = v
+					known_repos.extend(shlex_split(v))
 			known_repos = frozenset(known_repos)
+			self["PORTDIR"] = portdir
+			self["PORTDIR_OVERLAY"] = portdir_overlay
+			self.lookuplist = [self.configdict["env"]]
+			self.repositories = load_repository_config(self)
 
-			locations_manager.load_profiles(known_repos)
+			locations_manager.load_profiles(self.repositories, known_repos)
 
 			profiles_complex = locations_manager.profiles_complex
 			self.profiles = locations_manager.profiles
@@ -433,7 +464,8 @@ class config(object):
 			mygcfg = {}
 			if self.profiles:
 				mygcfg_dlists = [getconfig(os.path.join(x, "make.defaults"),
-					expand=expand_map) for x in self.profiles]
+					tolerant=tolerant, expand=expand_map)
+					for x in self.profiles]
 				self._make_defaults = mygcfg_dlists
 				mygcfg = stack_dicts(mygcfg_dlists,
 					incrementals=self.incrementals)
@@ -517,14 +549,10 @@ class config(object):
 			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
 			self._penvdict = portage.dep.ExtendedAtomDict(dict)
 
-			#Loading Repositories
-			self.repositories = load_repository_config(self)
-
 			#filling PORTDIR and PORTDIR_OVERLAY variable for compatibility
 			main_repo = self.repositories.mainRepo()
 			if main_repo is not None:
-				main_repo = main_repo.user_location
-				self["PORTDIR"] = main_repo
+				self["PORTDIR"] = main_repo.user_location
 				self.backup_changes("PORTDIR")
 
 			# repoman controls PORTDIR_OVERLAY via the environment, so no
@@ -554,16 +582,12 @@ class config(object):
 			self._repo_make_defaults = {}
 			for repo in self.repositories.repos_with_profiles():
 				d = getconfig(os.path.join(repo.location, "profiles", "make.defaults"),
-					expand=self.configdict["globals"].copy()) or {}
+					tolerant=tolerant, expand=self.configdict["globals"].copy()) or {}
 				if d:
 					for k in chain(self._env_blacklist,
 						profile_only_variables, self._global_only_vars):
 						d.pop(k, None)
 				self._repo_make_defaults[repo.name] = d
-
-			#Read package.keywords and package.accept_keywords.
-			self._keywords_manager = KeywordsManager(profiles_complex, abs_user_config, \
-				local_config, global_accept_keywords=self.configdict["defaults"].get("ACCEPT_KEYWORDS", ""))
 
 			#Read all USE related files from profiles and optionally from user config.
 			self._use_manager = UseManager(self.repositories, profiles_complex, abs_user_config, user_config=local_config)
@@ -581,13 +605,6 @@ class config(object):
 			self.configdict["conf"]["ACCEPT_LICENSE"] = \
 				self._license_manager.extract_global_changes( \
 					self.configdict["conf"].get("ACCEPT_LICENSE", ""))
-
-			#Read package.mask and package.unmask from profiles and optionally from user config
-			self._mask_manager = MaskManager(self.repositories, profiles_complex,
-				abs_user_config, user_config=local_config,
-				strict_umatched_removal=_unmatched_removal)
-
-			self._virtuals_manager = VirtualsManager(self.profiles)
 
 			if local_config:
 				#package.properties
@@ -776,9 +793,6 @@ class config(object):
 			if bsd_chflags:
 				self.features.add('chflags')
 
-			if 'parse-eapi-ebuild-head' in self.features:
-				portage._validate_cache_for_unsupported_eapis = False
-
 			self._iuse_implicit_match = _iuse_implicit_match_cache(self)
 
 			self._validate_commands()
@@ -787,6 +801,11 @@ class config(object):
 				if k in self:
 					self[k] = self[k].lower()
 					self.backup_changes(k)
+
+			if main_repo is not None and not main_repo.sync:
+				main_repo_sync = self.get("SYNC")
+				if main_repo_sync:
+					main_repo.sync = main_repo_sync
 
 			# The first constructed config object initializes these modules,
 			# and subsequent calls to the _init() functions have no effect.
@@ -867,6 +886,32 @@ class config(object):
 					noiselevel=-1)
 
 	@property
+	def _keywords_manager(self):
+		if self._keywords_manager_obj is None:
+			self._keywords_manager_obj = KeywordsManager(
+				self._locations_manager.profiles_complex,
+				self._locations_manager.abs_user_config,
+				self.local_config,
+				global_accept_keywords=self.configdict["defaults"].get("ACCEPT_KEYWORDS", ""))
+		return self._keywords_manager_obj
+
+	@property
+	def _mask_manager(self):
+		if self._mask_manager_obj is None:
+			self._mask_manager_obj = MaskManager(self.repositories,
+				self._locations_manager.profiles_complex,
+				self._locations_manager.abs_user_config,
+				user_config=self.local_config,
+				strict_umatched_removal=self._unmatched_removal)
+		return self._mask_manager_obj
+
+	@property
+	def _virtuals_manager(self):
+		if self._virtuals_manager_obj is None:
+			self._virtuals_manager_obj = VirtualsManager(self.profiles)
+		return self._virtuals_manager_obj
+
+	@property
 	def pkeywordsdict(self):
 		result = self._keywords_manager.pkeywordsdict.copy()
 		for k, v in result.items():
@@ -904,11 +949,26 @@ class config(object):
 					writemsg(_("!!! INVALID ACCEPT_KEYWORDS: %s\n") % str(group),
 						noiselevel=-1)
 
-		abs_profile_path = os.path.join(self["PORTAGE_CONFIGROOT"],
-			PROFILE_PATH)
-		if (not self.profile_path or \
-			not os.path.exists(os.path.join(self.profile_path, "parent"))) and \
-			os.path.exists(os.path.join(self["PORTDIR"], "profiles")):
+		profile_broken = not self.profile_path or \
+			not os.path.exists(os.path.join(self.profile_path, "parent")) and \
+			os.path.exists(os.path.join(self["PORTDIR"], "profiles"))
+
+		if profile_broken:
+			abs_profile_path = None
+			for x in (PROFILE_PATH, 'etc/portage/make.profile'):
+				x = os.path.join(self["PORTAGE_CONFIGROOT"], x)
+				try:
+					os.lstat(x)
+				except OSError:
+					pass
+				else:
+					abs_profile_path = x
+					break
+
+			if abs_profile_path is None:
+				abs_profile_path = os.path.join(self["PORTAGE_CONFIGROOT"],
+					PROFILE_PATH)
+
 			writemsg(_("\n\n!!! %s is not a symlink and will probably prevent most merges.\n") % abs_profile_path,
 				noiselevel=-1)
 			writemsg(_("!!! It should point into a profile within %s/profiles/\n") % self["PORTDIR"])
@@ -1224,7 +1284,7 @@ class config(object):
 			slot = pkg_configdict["SLOT"]
 			iuse = pkg_configdict["IUSE"]
 			if pkg is None:
-				cpv_slot = "%s:%s" % (self.mycpv, slot)
+				cpv_slot = _pkg_str(self.mycpv, slot=slot, repo=repository)
 			else:
 				cpv_slot = pkg
 			pkginternaluse = []
@@ -1676,11 +1736,13 @@ class config(object):
 		@return: A list of properties that have not been accepted.
 		"""
 		accept_properties = self._accept_properties
+		if not hasattr(cpv, 'slot'):
+			cpv = _pkg_str(cpv, slot=metadata["SLOT"],
+				repo=metadata.get("repository"))
 		cp = cpv_getkey(cpv)
 		cpdict = self._ppropertiesdict.get(cp)
 		if cpdict:
-			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-			pproperties_list = ordered_by_atom_specificity(cpdict, cpv_slot, repo=metadata.get('repository'))
+			pproperties_list = ordered_by_atom_specificity(cpdict, cpv)
 			if pproperties_list:
 				accept_properties = list(self._accept_properties)
 				for x in pproperties_list:
@@ -1808,7 +1870,8 @@ class config(object):
 		"""Reload things like /etc/profile.env that can change during runtime."""
 		env_d_filename = os.path.join(self["EROOT"], "etc", "profile.env")
 		self.configdict["env.d"].clear()
-		env_d = getconfig(env_d_filename, expand=False)
+		env_d = getconfig(env_d_filename,
+			tolerant=self._tolerant, expand=False)
 		if env_d:
 			# env_d will be None if profile.env doesn't exist.
 			for k in self._env_d_blacklist:

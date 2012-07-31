@@ -516,8 +516,7 @@ class Display(object):
 
 		@return addl: formatted slot info
 		@return myoldbest: installed version list
-		Modifies self.counters.downgrades, self.counters.upgrades,
-			self.counters.binary
+		Modifies self.counters.downgrades, self.counters.upgrades
 		"""
 		addl = "   " + pkg_info.fetch_symbol
 		if not cpvequal(pkg.cpv,
@@ -526,15 +525,11 @@ class Display(object):
 			addl += turquoise("U")+blue("D")
 			if pkg_info.ordered:
 				self.counters.downgrades += 1
-				if pkg.type_name == "binary":
-					self.counters.binary += 1
 		else:
 			# Update in slot
 			addl += turquoise("U") + " "
 			if pkg_info.ordered:
 				self.counters.upgrades += 1
-				if pkg.type_name == "binary":
-					self.counters.binary += 1
 		return addl
 
 
@@ -543,13 +538,11 @@ class Display(object):
 
 		@return addl: formatted slot info
 		@return myoldbest: installed version list
-		Modifies self.counters.newslot, self.counters.binary
+		Modifies self.counters.newslot
 		"""
 		addl = " " + green("NS") + pkg_info.fetch_symbol + "  "
 		if pkg_info.ordered:
 			self.counters.newslot += 1
-			if pkg.type_name == "binary":
-				self.counters.binary += 1
 		return addl
 
 
@@ -651,6 +644,12 @@ class Display(object):
 		pkg_info.built = pkg.type_name != "ebuild"
 		pkg_info.ebuild_path = None
 		pkg_info.repo_name = pkg.repo
+		if ordered:
+			if pkg_info.merge:
+				if pkg.type_name == "binary":
+					self.counters.binary += 1
+			elif pkg_info.operation == "uninstall":
+				self.counters.uninst += 1
 		if pkg.type_name == "ebuild":
 			pkg_info.ebuild_path = self.portdb.findname(
 				pkg.cpv, myrepo=pkg_info.repo_name)
@@ -751,7 +750,7 @@ class Display(object):
 		@param pkg: _emerge.Package.Package instance
 		@param pkg_info: dictionay
 		@rtype addl, myoldbest: list, myinslotlist: list
-		Modifies self.counters.reinst, self.counters.binary, self.counters.new
+		Modifies self.counters.reinst, self.counters.new
 
 		"""
 		myoldbest = []
@@ -765,10 +764,6 @@ class Display(object):
 			if pkg_info.ordered:
 				if pkg_info.merge:
 					self.counters.reinst += 1
-					if pkg.type_name == "binary":
-						self.counters.binary += 1
-				elif pkg_info.operation == "uninstall":
-					self.counters.uninst += 1
 		# filter out old-style virtual matches
 		elif installed_versions and \
 			installed_versions[0].cp == pkg.cp:
@@ -790,8 +785,6 @@ class Display(object):
 			addl = " " + green("N") + " " + pkg_info.fetch_symbol + "  "
 			if pkg_info.ordered:
 				self.counters.new += 1
-				if pkg.type_name == "binary":
-					self.counters.binary += 1
 		return addl, myoldbest, myinslotlist
 
 

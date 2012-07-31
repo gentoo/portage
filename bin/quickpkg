@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -21,7 +21,7 @@ except ImportError:
 from portage import os
 from portage import xpak
 from portage.dbapi.dep_expand import dep_expand
-from portage.dep import Atom, extended_cp_match, use_reduce
+from portage.dep import Atom, use_reduce
 from portage.exception import (AmbiguousPackageName, InvalidAtom, InvalidData,
 	InvalidDependString, PackageSetNotFound, PermissionDenied)
 from portage.util import ConfigProtect, ensure_dirs, shlex_split
@@ -68,11 +68,14 @@ def quickpkg_atom(options, infos, arg, eout):
 		bintree.prevent_collision(cpv)
 		dblnk = vardb._dblink(cpv)
 		have_lock = False
-		try:
-			dblnk.lockdb()
-			have_lock = True
-		except PermissionDenied:
-			pass
+
+		if "__PORTAGE_INHERIT_VARDB_LOCK" not in settings:
+			try:
+				dblnk.lockdb()
+				have_lock = True
+			except PermissionDenied:
+				pass
+
 		try:
 			if not dblnk.exists():
 				# unmerged by a concurrent process
@@ -201,16 +204,15 @@ def quickpkg_extended_atom(options, infos, atom, eout):
 			atoms.append(cpv_atom)
 			continue
 
-		if not extended_cp_match(atom.cp, cpv_atom.cp):
+		if not portage.match_from_list(atom, [cpv]):
 			continue
 
 		if require_metadata:
-			slot, repo = vardb.aux_get(cpv, ["SLOT", "repository"])
-
-			if atom.slot and atom.slot != slot:
+			try:
+				cpv = vardb._pkg_str(cpv, atom.repo)
+			except (KeyError, InvalidData):
 				continue
-
-			if atom.repo and atom.repo != repo:
+			if not portage.match_from_list(atom, [cpv]):
 				continue
 
 		atoms.append(cpv_atom)

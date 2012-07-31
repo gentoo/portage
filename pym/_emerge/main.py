@@ -13,6 +13,7 @@ import platform
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.news:count_unread_news,display_news_notifications',
+	'portage.emaint.modules.logs.logs:CleanLogs',
 )
 from portage import os
 from portage import _encodings
@@ -381,7 +382,9 @@ def post_emerge(myaction, myopts, myfiles,
 	_flush_elog_mod_echo()
 
 	if not vardbapi._pkgs_changed:
-		display_news_notification(root_config, myopts)
+		# GLEP 42 says to display news *after* an emerge --pretend
+		if "--pretend" in myopts:
+			display_news_notification(root_config, myopts)
 		# If vdb state has not changed then there's nothing else to do.
 		return
 
@@ -402,11 +405,10 @@ def post_emerge(myaction, myopts, myfiles,
 			if vdb_lock:
 				vardbapi.unlock()
 
+	display_preserved_libs(vardbapi, myopts)
 	chk_updated_cfg_files(settings['EROOT'], config_protect)
 
 	display_news_notification(root_config, myopts)
-	if retval in (None, os.EX_OK) or (not "--pretend" in myopts):
-		display_preserved_libs(vardbapi, myopts)	
 
 	postemerge = os.path.join(settings["PORTAGE_CONFIGROOT"],
 		portage.USER_CONFIG_PATH, "bin", "post_emerge")
@@ -476,6 +478,7 @@ def insert_optional_args(args):
 		'--package-moves'        : y_or_n,
 		'--quiet'                : y_or_n,
 		'--quiet-build'          : y_or_n,
+		'--rebuild-if-new-slot-abi': y_or_n,
 		'--rebuild-if-new-rev'   : y_or_n,
 		'--rebuild-if-new-ver'   : y_or_n,
 		'--rebuild-if-unbuilt'   : y_or_n,
@@ -701,6 +704,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices" : true_y_or_n
 		},
 
+		"--complete-graph-if-new-use": {
+			"help"    : "trigger --complete-graph behavior if USE or IUSE will change for an installed package",
+			"type"    : "choice",
+			"choices" : y_or_n
+		},
+
 		"--complete-graph-if-new-ver": {
 			"help"    : "trigger --complete-graph behavior if an installed package version will change (upgrade or downgrade)",
 			"type"    : "choice",
@@ -743,6 +752,16 @@ def parse_opts(tmpcmdline, silent=False):
 			"help"    : "clean temp files after build failure",
 			"type"    : "choice",
 			"choices" : true_y_or_n
+		},
+
+		"--ignore-built-slot-abi-deps": {
+			"help": "Ignore the SLOT/ABI := operator parts of dependencies that have "
+				"been recorded when packages where built. This option is intended "
+				"only for debugging purposes, and it only affects built packages "
+				"that specify SLOT/ABI := operator dependencies using the "
+				"experimental \"4-slot-abi\" EAPI.",
+			"type": "choice",
+			"choices": y_or_n
 		},
 
 		"--jobs": {
@@ -856,6 +875,15 @@ def parse_opts(tmpcmdline, silent=False):
 			"help"     : "redirect build output to logs",
 			"type"     : "choice",
 			"choices"  : true_y_or_n,
+		},
+
+		"--rebuild-if-new-slot-abi": {
+			"help"     : ("Automatically rebuild or reinstall packages when SLOT/ABI := "
+				"operator dependencies can be satisfied by a newer slot, so that "
+				"older packages slots will become eligible for removal by the "
+				"--depclean action as soon as possible."),
+			"type"     : "choice",
+			"choices"  : true_y_or_n
 		},
 
 		"--rebuild-if-new-rev": {
@@ -1099,6 +1127,9 @@ def parse_opts(tmpcmdline, silent=False):
 	if myoptions.quiet_build in true_y:
 		myoptions.quiet_build = 'y'
 
+	if myoptions.rebuild_if_new_slot_abi in true_y:
+		myoptions.rebuild_if_new_slot_abi = 'y'
+
 	if myoptions.rebuild_if_new_ver in true_y:
 		myoptions.rebuild_if_new_ver = True
 	else:
@@ -1321,39 +1352,22 @@ def clean_logs(settings):
 	if "clean-logs" not in settings.features:
 		return
 
-	clean_cmd = settings.get("PORT_LOGDIR_CLEAN")
-	if clean_cmd:
-		clean_cmd = shlex_split(clean_cmd)
-	if not clean_cmd:
-		return
-
 	logdir = settings.get("PORT_LOGDIR")
 	if logdir is None or not os.path.isdir(logdir):
 		return
 
-	variables = {"PORT_LOGDIR" : logdir}
-	cmd = [varexpand(x, mydict=variables) for x in clean_cmd]
-
-	try:
-		rval = portage.process.spawn(cmd, env=os.environ)
-	except portage.exception.CommandNotFound:
-		rval = 127
-
-	if rval != os.EX_OK:
-		out = portage.output.EOutput()
-		out.eerror("PORT_LOGDIR_CLEAN returned %d" % (rval,))
-		out.eerror("See the make.conf(5) man page for "
-			"PORT_LOGDIR_CLEAN usage instructions.")
+	options = {
+			'eerror': portage.output.EOutput().eerror,
+			# uncomment next line to output a succeeded message
+			#'einfo': portage.output.EOutput().einfo
+		}
+	cleanlogs = CleanLogs()
+	cleanlogs.clean(settings=settings, options=options)
 
 def setconfig_fallback(root_config):
-	from portage._sets.base import DummyPackageSet
-	from portage._sets.files import WorldSelectedSet
-	from portage._sets.profiles import PackagesSystemSet
 	setconfig = root_config.setconfig
-	setconfig.psets['world'] = DummyPackageSet(atoms=['@selected', '@system'])
-	setconfig.psets['selected'] = WorldSelectedSet(root_config.settings['EROOT'])
-	setconfig.psets['system'] = \
-		PackagesSystemSet(root_config.settings.profiles)
+	setconfig._create_default_config()
+	setconfig._parse(update=True)
 	root_config.sets = setconfig.getSets()
 
 def get_missing_sets(root_config):
@@ -1475,6 +1489,12 @@ def expand_set_arguments(myfiles, myaction, root_config):
 					writemsg_level(("emerge: the given set '%s' " + \
 						"contains a non-existent set named '%s'.\n") % \
 						(s, e), level=logging.ERROR, noiselevel=-1)
+					if s in ('world', 'selected') and \
+						SETPREFIX + e.value in sets['selected']:
+						writemsg_level(("Use `emerge --deselect %s%s` to "
+							"remove this set from world_sets.\n") %
+							(SETPREFIX, e,), level=logging.ERROR,
+							noiselevel=-1)
 					return (None, 1)
 				if myaction in unmerge_actions and \
 						not sets[s].supportsOperation("unmerge"):
@@ -2033,6 +2053,7 @@ def emerge_main(args=None):
 				level=logging.ERROR, noiselevel=-1)
 			return 1
 
+		# GLEP 42 says to display news *after* an emerge --pretend
 		if "--pretend" not in myopts:
 			display_news_notification(root_config, myopts)
 		retval = action_build(settings, trees, mtimedb,

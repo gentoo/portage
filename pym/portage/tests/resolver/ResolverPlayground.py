@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from itertools import permutations
@@ -9,9 +9,6 @@ from portage import os
 from portage import shutil
 from portage.const import (GLOBAL_CONFIG_PATH, PORTAGE_BASE_PATH,
 	USER_CONFIG_PATH)
-from portage.dbapi.vartree import vartree
-from portage.dbapi.porttree import portagetree
-from portage.dbapi.bintree import binarytree
 from portage.dep import Atom, _repo_separator
 from portage.package.ebuild.config import config
 from portage.package.ebuild.digestgen import digestgen
@@ -56,7 +53,7 @@ class ResolverPlayground(object):
 </pkgmetadata>
 """
 
-	def __init__(self, ebuilds={}, installed={}, profile={}, repo_configs={}, \
+	def __init__(self, ebuilds={}, binpkgs={}, installed={}, profile={}, repo_configs={}, \
 		user_config={}, sets={}, world=[], world_sets=[], distfiles={}, debug=False):
 		"""
 		ebuilds: cpv -> metadata mapping simulating available ebuilds. 
@@ -68,6 +65,7 @@ class ResolverPlayground(object):
 		self.eprefix = normalize_path(tempfile.mkdtemp())
 		self.eroot = self.eprefix + os.sep
 		self.distdir = os.path.join(self.eroot, "var", "portage", "distfiles")
+		self.pkgdir = os.path.join(self.eprefix, "pkgdir")
 		self.portdir = os.path.join(self.eroot, "usr/portage")
 		self.vdbdir = os.path.join(self.eroot, "var/db/pkg")
 		os.makedirs(self.portdir)
@@ -82,6 +80,7 @@ class ResolverPlayground(object):
 
 		self._create_distfiles(distfiles)
 		self._create_ebuilds(ebuilds)
+		self._create_binpkgs(binpkgs)
 		self._create_installed(installed)
 		self._create_profile(ebuilds, installed, profile, repo_configs, user_config, sets)
 		self._create_world(world, world_sets)
@@ -205,6 +204,29 @@ class ResolverPlayground(object):
 			if not digestgen(mysettings=tmpsettings, myportdb=portdb):
 				raise AssertionError('digest creation failed for %s' % ebuild_path)
 
+	def _create_binpkgs(self, binpkgs):
+		for cpv, metadata in binpkgs.items():
+			a = Atom("=" + cpv, allow_repo=True)
+			repo = a.repo
+			if repo is None:
+				repo = "test_repo"
+
+			cat, pf = catsplit(a.cpv)
+			metadata = metadata.copy()
+			metadata.setdefault("SLOT", "0")
+			metadata.setdefault("KEYWORDS", "x86")
+			metadata.setdefault("BUILD_TIME", "0")
+			metadata["repository"] = repo
+			metadata["CATEGORY"] = cat
+			metadata["PF"] = pf
+
+			repo_dir = self.pkgdir
+			category_dir = os.path.join(repo_dir, cat)
+			binpkg_path = os.path.join(category_dir, pf + ".tbz2")
+			ensure_dirs(category_dir)
+			t = portage.xpak.tbz2(binpkg_path)
+			t.recompose_mem(portage.xpak.xpak_mem(metadata))
+
 	def _create_installed(self, installed):
 		for cpv in installed:
 			a = Atom("=" + cpv, allow_repo=True)
@@ -223,6 +245,7 @@ class ResolverPlayground(object):
 			lic = metadata.pop("LICENSE", "")
 			properties = metadata.pop("PROPERTIES", "")
 			slot = metadata.pop("SLOT", 0)
+			build_time = metadata.pop("BUILD_TIME", "0")
 			keywords = metadata.pop("KEYWORDS", "~x86")
 			iuse = metadata.pop("IUSE", "")
 			use = metadata.pop("USE", "")
@@ -241,6 +264,7 @@ class ResolverPlayground(object):
 				f.close()
 			
 			write_key("EAPI", eapi)
+			write_key("BUILD_TIME", build_time)
 			write_key("COUNTER", "0")
 			write_key("LICENSE", lic)
 			write_key("PROPERTIES", properties)
@@ -473,11 +497,14 @@ class ResolverPlayground(object):
 		env = {
 			"ACCEPT_KEYWORDS": "x86",
 			"DISTDIR" : self.distdir,
-			"PKGDIR": os.path.join(self.eroot, "usr/portage/packages"),
+			"PKGDIR": self.pkgdir,
 			"PORTDIR": self.portdir,
 			"PORTDIR_OVERLAY": " ".join(portdir_overlay),
 			'PORTAGE_TMPDIR'       : os.path.join(self.eroot, 'var/tmp'),
 		}
+
+		if os.environ.get("NOCOLOR"):
+			env["NOCOLOR"] = os.environ["NOCOLOR"]
 
 		if os.environ.get("SANDBOX_ON") == "1":
 			# avoid problems from nested sandbox instances
@@ -510,6 +537,9 @@ class ResolverPlayground(object):
 				action = "depclean"
 			elif options.get("--prune"):
 				action = "prune"
+
+		if "--usepkgonly" in options:
+			options["--usepkg"] = True
 
 		global_noiselimit = portage.util.noiselimit
 		global_emergelog_disable = _emerge.emergelog._disable
@@ -599,8 +629,7 @@ class ResolverPlaygroundTestCase(object):
 							if cpv[:1] == "!":
 								new_got.append(cpv)
 								continue
-							a = Atom("="+cpv, allow_repo=True)
-							new_got.append(a.cpv)
+							new_got.append(cpv.split(_repo_separator)[0])
 						got = new_got
 					if expected:
 						new_expected = []
@@ -609,13 +638,13 @@ class ResolverPlaygroundTestCase(object):
 								if obj[:1] == "!":
 									new_expected.append(obj)
 									continue
-								a = Atom("="+obj, allow_repo=True)
-								new_expected.append(a.cpv)
+								new_expected.append(
+									obj.split(_repo_separator)[0])
 								continue
 							new_expected.append(set())
 							for cpv in obj:
 								if cpv[:1] != "!":
-									cpv = Atom("="+cpv, allow_repo=True).cpv
+									cpv = cpv.split(_repo_separator)[0]
 								new_expected[-1].add(cpv)
 						expected = new_expected
 				if self.ignore_mergelist_order and got is not None:
@@ -720,7 +749,14 @@ class ResolverPlaygroundResult(object):
 					repo_str = ""
 					if x.metadata["repository"] != "test_repo":
 						repo_str = _repo_separator + x.metadata["repository"]
-					self.mergelist.append(x.cpv + repo_str)
+					mergelist_str = x.cpv + repo_str
+					if x.built:
+						if x.operation == "merge":
+							desc = x.type_name
+						else:
+							desc = x.operation
+						mergelist_str = "[%s]%s" % (desc, mergelist_str)
+					self.mergelist.append(mergelist_str)
 
 		if self.depgraph._dynamic_config._needed_use_config_changes:
 			self.use_changes = {}

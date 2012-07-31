@@ -86,7 +86,7 @@ def has_version(argv):
 	"""
 	if (len(argv) < 2):
 		print("ERROR: insufficient parameters!")
-		sys.exit(2)
+		return 2
 
 	warnings = []
 
@@ -116,11 +116,11 @@ def has_version(argv):
 	try:
 		mylist = portage.db[argv[0]]["vartree"].dbapi.match(atom)
 		if mylist:
-			sys.exit(0)
+			return 0
 		else:
-			sys.exit(1)
+			return 1
 	except KeyError:
-		sys.exit(1)
+		return 1
 	except portage.exception.InvalidAtom:
 		portage.writemsg("ERROR: Invalid atom: '%s'\n" % argv[1],
 			noiselevel=-1)
@@ -134,7 +134,7 @@ def best_version(argv):
 	"""
 	if (len(argv) < 2):
 		print("ERROR: insufficient parameters!")
-		sys.exit(2)
+		return 2
 
 	warnings = []
 
@@ -165,7 +165,7 @@ def best_version(argv):
 		mylist = portage.db[argv[0]]["vartree"].dbapi.match(atom)
 		print(portage.best(mylist))
 	except KeyError:
-		sys.exit(1)
+		return 1
 best_version.uses_root = True
 
 
@@ -175,19 +175,19 @@ def mass_best_version(argv):
 	"""
 	if (len(argv) < 2):
 		print("ERROR: insufficient parameters!")
-		sys.exit(2)
+		return 2
 	try:
 		for pack in argv[1:]:
 			mylist=portage.db[argv[0]]["vartree"].dbapi.match(pack)
 			print(pack+":"+portage.best(mylist))
 	except KeyError:
-		sys.exit(1)
+		return 1
 mass_best_version.uses_root = True
 
 def metadata(argv):
 	if (len(argv) < 4):
 		print("ERROR: insufficient parameters!", file=sys.stderr)
-		sys.exit(2)
+		return 2
 
 	eroot, pkgtype, pkgspec = argv[0:3]
 	metakeys = argv[3:]
@@ -197,7 +197,7 @@ def metadata(argv):
 		"installed":"vartree"}
 	if pkgtype not in type_map:
 		print("Unrecognized package type: '%s'" % pkgtype, file=sys.stderr)
-		sys.exit(1)
+		return 1
 	trees = portage.db
 	repo = portage.dep.dep_getrepo(pkgspec)
 	pkgspec = portage.dep.remove_slot(pkgspec)
@@ -207,7 +207,7 @@ def metadata(argv):
 			writemsg_stdout(''.join('%s\n' % x for x in values), noiselevel=-1)
 	except KeyError:
 		print("Package not found: '%s'" % pkgspec, file=sys.stderr)
-		sys.exit(1)
+		return 1
 
 metadata.__doc__ = """
 <eroot> <pkgtype> <category/package> [<key>]+
@@ -504,23 +504,37 @@ def best_visible(argv):
 					writemsg_stdout("%s\n" % (pkg.cpv,), noiselevel=-1)
 					return os.EX_OK
 
+	# No package found, write out an empty line.
+	writemsg_stdout("\n", noiselevel=-1)
+
 	return 1
 best_visible.uses_root = True
 
 
 def mass_best_visible(argv):
-	"""<eroot> [<category/package>]+
+	"""<root> [<type>] [<category/package>]+
 	Returns category/package-version (without .ebuild).
+	The pkgtype argument defaults to "ebuild" if unspecified,
+	otherwise it must be one of ebuild, binary, or installed.
 	"""
+	type_map = {
+		"ebuild":"porttree",
+		"binary":"bintree",
+		"installed":"vartree"}
+
 	if (len(argv) < 2):
 		print("ERROR: insufficient parameters!")
-		sys.exit(2)
+		return 2
 	try:
-		for pack in argv[1:]:
-			mylist=portage.db[argv[0]]["porttree"].dbapi.match(pack)
-			print(pack+":"+portage.best(mylist))
+		root = argv.pop(0)
+		pkgtype = "ebuild"
+		if argv[0] in type_map:
+			pkgtype = argv.pop(0)
+		for pack in argv:
+			writemsg_stdout("%s:" % pack, noiselevel=-1)
+			best_visible([root, pkgtype, pack])
 	except KeyError:
-		sys.exit(1)
+		return 1
 mass_best_visible.uses_root = True
 
 
@@ -549,7 +563,7 @@ def match(argv):
 	"""
 	if len(argv) != 2:
 		print("ERROR: expected 2 parameters, got %d!" % len(argv))
-		sys.exit(2)
+		return 2
 	root, atom = argv
 	if not atom:
 		atom = "*/*"
@@ -569,17 +583,15 @@ def match(argv):
 			require_metadata = atom.slot or atom.repo
 			for cpv in vardb.cpv_all():
 
-				if not portage.dep.extended_cp_match(
-					atom.cp, portage.cpv_getkey(cpv)):
+				if not portage.match_from_list(atom, [cpv]):
 					continue
 
 				if require_metadata:
-					slot, repo = vardb.aux_get(cpv, ["SLOT", "repository"])
-
-					if atom.slot is not None and atom.slot != slot:
+					try:
+						cpv = vardb._pkg_str(cpv, atom.repo)
+					except (KeyError, portage.exception.InvalidData):
 						continue
-
-					if atom.repo is not None and atom.repo != repo:
+					if not portage.match_from_list(atom, [cpv]):
 						continue
 
 				results.append(cpv)
@@ -704,7 +716,7 @@ def envvar(argv):
 
 	if len(argv) == 0:
 		print("ERROR: insufficient parameters!")
-		sys.exit(2)
+		return 2
 
 	for arg in argv:
 		if verbose:
@@ -718,7 +730,7 @@ def get_repos(argv):
 	"""
 	if len(argv) < 1:
 		print("ERROR: insufficient parameters!")
-		sys.exit(2)
+		return 2
 	print(" ".join(portage.db[argv[0]]["porttree"].dbapi.getRepositories()))
 
 get_repos.uses_root = True
@@ -729,7 +741,7 @@ def get_repo_path(argv):
 	"""
 	if len(argv) < 2:
 		print("ERROR: insufficient parameters!")
-		sys.exit(2)
+		return 2
 	for arg in argv[1:]:
 		path = portage.db[argv[0]]["porttree"].dbapi.getRepositoryPath(arg)
 		if path is None:
@@ -747,7 +759,7 @@ def list_preserved_libs(argv):
 
 	if len(argv) != 1:
 		print("ERROR: wrong number of arguments")
-		sys.exit(2)
+		return 2
 	mylibs = portage.db[argv[0]]["vartree"].dbapi._plib_registry.getPreservedLibs()
 	rValue = 1
 	msg = []

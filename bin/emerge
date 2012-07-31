@@ -1,9 +1,10 @@
 #!/usr/bin/python
-# Copyright 2006-2011 Gentoo Foundation
+# Copyright 2006-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
 
+import platform
 import signal
 import sys
 # This block ensures that ^C interrupts are handled quietly.
@@ -26,7 +27,13 @@ except KeyboardInterrupt:
 def debug_signal(signum, frame):
 	import pdb
 	pdb.set_trace()
-signal.signal(signal.SIGUSR1, debug_signal)
+
+if platform.python_implementation() == 'Jython':
+	debug_signum = signal.SIGUSR2 # bug #424259
+else:
+	debug_signum = signal.SIGUSR1
+
+signal.signal(debug_signum, debug_signal)
 
 try:
 	from _emerge.main import emerge_main

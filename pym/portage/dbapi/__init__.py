@@ -1,4 +1,4 @@
-# Copyright 1998-2011 Gentoo Foundation
+# Copyright 1998-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["dbapi"]
@@ -8,14 +8,15 @@ import re
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dbapi.dep_expand:dep_expand@_dep_expand',
-	'portage.dep:match_from_list',
+	'portage.dep:Atom,match_from_list,_match_slot',
 	'portage.output:colorize',
 	'portage.util:cmp_sort_key,writemsg',
-	'portage.versions:catsplit,catpkgsplit,vercmp',
+	'portage.versions:catsplit,catpkgsplit,vercmp,_pkg_str',
 )
 
 from portage import os
 from portage import auxdbkeys
+from portage.exception import InvalidData
 from portage.localization import _
 
 class dbapi(object):
@@ -24,6 +25,8 @@ class dbapi(object):
 	_use_mutable = False
 	_known_keys = frozenset(x for x in auxdbkeys
 		if not x.startswith("UNUSED_0"))
+	_pkg_str_aux_keys = ("EAPI", "SLOT", "repository")
+
 	def __init__(self):
 		pass
 
@@ -46,7 +49,12 @@ class dbapi(object):
 	def cp_list(self, cp, use_cache=1):
 		raise NotImplementedError(self)
 
-	def _cpv_sort_ascending(self, cpv_list):
+	@staticmethod
+	def _cmp_cpv(cpv1, cpv2):
+		return vercmp(cpv1.version, cpv2.version)
+
+	@staticmethod
+	def _cpv_sort_ascending(cpv_list):
 		"""
 		Use this to sort self.cp_list() results in ascending
 		order. It sorts in place and returns None.
@@ -55,12 +63,7 @@ class dbapi(object):
 			# If the cpv includes explicit -r0, it has to be preserved
 			# for consistency in findname and aux_get calls, so use a
 			# dict to map strings back to their original values.
-			ver_map = {}
-			for cpv in cpv_list:
-				ver_map[cpv] = '-'.join(catpkgsplit(cpv)[2:])
-			def cmp_cpv(cpv1, cpv2):
-				return vercmp(ver_map[cpv1], ver_map[cpv2])
-			cpv_list.sort(key=cmp_sort_key(cmp_cpv))
+			cpv_list.sort(key=cmp_sort_key(dbapi._cmp_cpv))
 
 	def cpv_all(self):
 		"""Return all CPVs in the db
@@ -125,29 +128,53 @@ class dbapi(object):
 
 	def _iter_match(self, atom, cpv_iter):
 		cpv_iter = iter(match_from_list(atom, cpv_iter))
+		if atom.repo:
+			cpv_iter = self._iter_match_repo(atom, cpv_iter)
 		if atom.slot:
 			cpv_iter = self._iter_match_slot(atom, cpv_iter)
 		if atom.unevaluated_atom.use:
 			cpv_iter = self._iter_match_use(atom, cpv_iter)
-		if atom.repo:
-			cpv_iter = self._iter_match_repo(atom, cpv_iter)
 		return cpv_iter
+
+	def _pkg_str(self, cpv, repo):
+		"""
+		This is used to contruct _pkg_str instances on-demand during
+		matching. If cpv is a _pkg_str instance with slot attribute,
+		then simply return it. Otherwise, fetch metadata and construct
+		a _pkg_str instance. This may raise KeyError or InvalidData.
+		"""
+		try:
+			cpv.slot
+		except AttributeError:
+			pass
+		else:
+			return cpv
+
+		metadata = dict(zip(self._pkg_str_aux_keys,
+			self.aux_get(cpv, self._pkg_str_aux_keys, myrepo=repo)))
+
+		return _pkg_str(cpv, slot=metadata["SLOT"],
+			repo=metadata["repository"], eapi=metadata["EAPI"])
 
 	def _iter_match_repo(self, atom, cpv_iter):
 		for cpv in cpv_iter:
 			try:
-				if self.aux_get(cpv, ["repository"], myrepo=atom.repo)[0] == atom.repo:
-					yield cpv
-			except KeyError:
-				continue
+				pkg_str = self._pkg_str(cpv, atom.repo)
+			except (KeyError, InvalidData):
+				pass
+			else:
+				if pkg_str.repo == atom.repo:
+					yield pkg_str
 
 	def _iter_match_slot(self, atom, cpv_iter):
 		for cpv in cpv_iter:
 			try:
-				if self.aux_get(cpv, ["SLOT"], myrepo=atom.repo)[0] == atom.slot:
-					yield cpv
-			except KeyError:
-				continue
+				pkg_str = self._pkg_str(cpv, atom.repo)
+			except (KeyError, InvalidData):
+				pass
+			else:
+				if _match_slot(atom, pkg_str):
+					yield pkg_str
 
 	def _iter_match_use(self, atom, cpv_iter):
 		"""
@@ -155,7 +182,7 @@ class dbapi(object):
 		2) Check enabled/disabled flag states.
 		"""
 
-		aux_keys = ["IUSE", "SLOT", "USE"]
+		aux_keys = ["IUSE", "SLOT", "USE", "repository"]
 		for cpv in cpv_iter:
 			try:
 				metadata = dict(zip(aux_keys,
@@ -190,32 +217,35 @@ class dbapi(object):
 			missing_disabled = atom.use.missing_disabled.difference(iuse)
 
 			if atom.use.enabled:
-				if atom.use.enabled.intersection(missing_disabled):
+				if any(x in atom.use.enabled for x in missing_disabled):
 					return False
 				need_enabled = atom.use.enabled.difference(use)
 				if need_enabled:
-					need_enabled = need_enabled.difference(missing_enabled)
-					if need_enabled:
+					if any(x not in missing_enabled for x in need_enabled):
 						return False
 
 			if atom.use.disabled:
-				if atom.use.disabled.intersection(missing_enabled):
+				if any(x in atom.use.disabled for x in missing_enabled):
 					return False
 				need_disabled = atom.use.disabled.intersection(use)
 				if need_disabled:
-					need_disabled = need_disabled.difference(missing_disabled)
-					if need_disabled:
+					if any(x not in missing_disabled for x in need_disabled):
 						return False
 
 		elif not self.settings.local_config:
 			# Check masked and forced flags for repoman.
-			pkg = "%s:%s" % (cpv, metadata["SLOT"])
+			if hasattr(cpv, 'slot'):
+				pkg = cpv
+			else:
+				pkg = _pkg_str(cpv, slot=metadata["SLOT"],
+					repo=metadata.get("repository"))
 			usemask = self.settings._getUseMask(pkg)
-			if usemask.intersection(atom.use.enabled):
+			if any(x in usemask for x in atom.use.enabled):
 				return False
 
-			useforce = self.settings._getUseForce(pkg).difference(usemask)
-			if useforce.intersection(atom.use.disabled):
+			useforce = self.settings._getUseForce(pkg)
+			if any(x in useforce and x not in usemask
+				for x in atom.use.disabled):
 				return False
 
 		return True
@@ -245,17 +275,17 @@ class dbapi(object):
 		maxval = len(cpv_all)
 		aux_get = self.aux_get
 		aux_update = self.aux_update
-		meta_keys = ["DEPEND", "RDEPEND", "PDEPEND", "PROVIDE", 'repository']
+		meta_keys = ["DEPEND", "EAPI", "RDEPEND", "PDEPEND", "PROVIDE", 'repository']
 		repo_dict = None
 		if isinstance(updates, dict):
 			repo_dict = updates
-		from portage.update import update_dbentries
 		if onUpdate:
 			onUpdate(maxval, 0)
 		if onProgress:
 			onProgress(maxval, 0)
 		for i, cpv in enumerate(cpv_all):
 			metadata = dict(zip(meta_keys, aux_get(cpv, meta_keys)))
+			eapi = metadata.pop('EAPI')
 			repo = metadata.pop('repository')
 			if repo_dict is None:
 				updates_list = updates
@@ -271,7 +301,8 @@ class dbapi(object):
 			if not updates_list:
 				continue
 
-			metadata_updates = update_dbentries(updates_list, metadata)
+			metadata_updates = \
+				portage.update_dbentries(updates_list, metadata, eapi=eapi)
 			if metadata_updates:
 				aux_update(cpv, metadata_updates)
 				if onUpdate:
@@ -282,27 +313,39 @@ class dbapi(object):
 	def move_slot_ent(self, mylist, repo_match=None):
 		"""This function takes a sequence:
 		Args:
-			mylist: a sequence of (package, originalslot, newslot)
+			mylist: a sequence of (atom, originalslot, newslot)
 			repo_match: callable that takes single repo_name argument
 				and returns True if the update should be applied
 		Returns:
 			The number of slotmoves this function did
 		"""
-		pkg = mylist[1]
+		atom = mylist[1]
 		origslot = mylist[2]
 		newslot = mylist[3]
-		origmatches = self.match(pkg)
+
+		try:
+			atom.with_slot
+		except AttributeError:
+			atom = Atom(atom).with_slot(origslot)
+		else:
+			atom = atom.with_slot(origslot)
+
+		origmatches = self.match(atom)
 		moves = 0
 		if not origmatches:
 			return moves
 		for mycpv in origmatches:
-			slot = self.aux_get(mycpv, ["SLOT"])[0]
-			if slot != origslot:
+			try:
+				mycpv = self._pkg_str(mycpv, atom.repo)
+			except (KeyError, InvalidData):
 				continue
-			if repo_match is not None \
-				and not repo_match(self.aux_get(mycpv, ['repository'])[0]):
+			if repo_match is not None and not repo_match(mycpv.repo):
 				continue
 			moves += 1
+			if "/" not in newslot and \
+				mycpv.slot_abi and \
+				mycpv.slot_abi not in (mycpv.slot, newslot):
+				newslot = "%s/%s" % (newslot, mycpv.slot_abi)
 			mydata = {"SLOT": newslot+"\n"}
 			self.aux_update(mycpv, mydata)
 		return moves

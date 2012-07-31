@@ -150,7 +150,7 @@ prepcompress() {
 install_qa_check() {
 	local f i qa_var x
 	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+		case "$EAPI" in 0|1|2) local EPREFIX= ED=${D} ;; esac
 
 	cd "${ED}" || die "cd failed"
 
@@ -433,43 +433,6 @@ install_qa_check() {
 			fi
 		fi
 
-		# Save NEEDED information after removing self-contained providers
-		rm -f "$PORTAGE_BUILDDIR"/build-info/NEEDED{,.ELF.2}
-		scanelf -qyRF '%a;%p;%S;%r;%n' "${D}" | { while IFS= read -r l; do
-			arch=${l%%;*}; l=${l#*;}
-			obj="/${l%%;*}"; l=${l#*;}
-			soname=${l%%;*}; l=${l#*;}
-			rpath=${l%%;*}; l=${l#*;}; [ "${rpath}" = "  -  " ] && rpath=""
-			needed=${l%%;*}; l=${l#*;}
-			if [ -z "${rpath}" -o -n "${rpath//*ORIGIN*}" ]; then
-				# object doesn't contain $ORIGIN in its runpath attribute
-				echo "${obj} ${needed}"	>> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
-				echo "${arch:3};${obj};${soname};${rpath};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2
-			else
-				dir=${obj%/*}
-				# replace $ORIGIN with the dirname of the current object for the lookup
-				opath=$(echo :${rpath}: | sed -e "s#.*:\(.*\)\$ORIGIN\(.*\):.*#\1${dir}\2#")
-				sneeded=$(echo ${needed} | tr , ' ')
-				rneeded=""
-				for lib in ${sneeded}; do
-					found=0
-					for path in ${opath//:/ }; do
-						[ -e "${D}/${path}/${lib}" ] && found=1 && break
-					done
-					[ "${found}" -eq 0 ] && rneeded="${rneeded},${lib}"
-				done
-				rneeded=${rneeded:1}
-				if [ -n "${rneeded}" ]; then
-					echo "${obj} ${rneeded}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
-					echo "${arch:3};${obj};${soname};${rpath};${rneeded}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2
-				fi
-			fi
-		done }
-
-		[ -n "${QA_SONAME_NO_SYMLINK}" ] && \
-			echo "${QA_SONAME_NO_SYMLINK}" > \
-			"${PORTAGE_BUILDDIR}"/build-info/QA_SONAME_NO_SYMLINK
-
 		if [[ ${insecure_rpath} -eq 1 ]] ; then
 			die "Aborting due to serious QA concerns with RUNPATH/RPATH"
 		elif [[ -n ${die_msg} ]] && has stricter ${FEATURES} ; then
@@ -545,6 +508,34 @@ install_qa_check() {
 		fi
 
 		PORTAGE_QUIET=${tmp_quiet}
+	fi
+
+	# Create NEEDED.ELF.2 regardless of RESTRICT=binchecks, since this info is
+	# too useful not to have (it's required for things like preserve-libs), and
+	# it's tempting for ebuild authors to set RESTRICT=binchecks for packages
+	# containing pre-built binaries.
+	if type -P scanelf > /dev/null ; then
+		# Save NEEDED information after removing self-contained providers
+		rm -f "$PORTAGE_BUILDDIR"/build-info/NEEDED{,.ELF.2}
+		scanelf -qyRF '%a;%p;%S;%r;%n' "${D}" | { while IFS= read -r l; do
+			arch=${l%%;*}; l=${l#*;}
+			obj="/${l%%;*}"; l=${l#*;}
+			soname=${l%%;*}; l=${l#*;}
+			rpath=${l%%;*}; l=${l#*;}; [ "${rpath}" = "  -  " ] && rpath=""
+			needed=${l%%;*}; l=${l#*;}
+			echo "${obj} ${needed}"	>> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+			echo "${arch:3};${obj};${soname};${rpath};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2
+		done }
+
+		[ -n "${QA_SONAME_NO_SYMLINK}" ] && \
+			echo "${QA_SONAME_NO_SYMLINK}" > \
+			"${PORTAGE_BUILDDIR}"/build-info/QA_SONAME_NO_SYMLINK
+
+		if has binchecks ${RESTRICT} && \
+			[ -s "${PORTAGE_BUILDDIR}/build-info/NEEDED.ELF.2" ] ; then
+			eqawarn "QA Notice: RESTRICT=binchecks prevented checks on these ELF files:"
+			eqawarn "$(while read -r x; do x=${x#*;} ; x=${x%%;*} ; echo "${x#${EPREFIX}}" ; done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2)"
+		fi
 	fi
 
 	local unsafe_files=$(find "${ED}" -type f '(' -perm -2002 -o -perm -4002 ')' | sed -e "s:^${ED}:/:")
@@ -782,16 +773,15 @@ install_qa_check() {
 		fi
 		if [[ ${abort} == "yes" ]] ; then
 			if [[ $gentoo_bug = yes || $always_overflow = yes ]] ; then
-				die "install aborted due to" \
-					"severe warnings shown above"
+				die "install aborted due to severe warnings shown above"
 			else
 				echo "Please do not file a Gentoo bug and instead" \
 				"report the above QA issues directly to the upstream" \
 				"developers of this software." | fmt -w 70 | \
 				while read -r line ; do eqawarn "${line}" ; done
 				eqawarn "Homepage: ${HOMEPAGE}"
-				has stricter ${FEATURES} && die "install aborted due to" \
-					"severe warnings shown above"
+				has stricter ${FEATURES} && \
+					die "install aborted due to severe warnings shown above"
 			fi
 		fi
 	fi
@@ -1095,13 +1085,15 @@ preinst_selinux_labels() {
 		# SELinux file labeling (needs to always be last in dyn_preinst)
 		# only attempt to label if setfiles is executable
 		# and 'context' is available on selinuxfs.
-		if [ -f /selinux/context -a -x /usr/sbin/setfiles -a -x /usr/sbin/selinuxconfig ]; then
+		if [ -f /selinux/context -o -f /sys/fs/selinux/context ] && \
+			[ -x /usr/sbin/setfiles -a -x /usr/sbin/selinuxconfig ]; then
 			vecho ">>> Setting SELinux security labels"
 			(
 				eval "$(/usr/sbin/selinuxconfig)" || \
 					die "Failed to determine SELinux policy paths.";
 	
-				addwrite /selinux/context;
+				addwrite /selinux/context
+				addwrite /sys/fs/selinux/context
 	
 				/usr/sbin/setfiles "${file_contexts_path}" -r "${D}" "${D}"
 			) || die "Failed to set SELinux security labels."

@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -220,7 +220,7 @@ class ConfigTestCase(TestCase):
 					(
 						"profile-formats = pms",
 						"thin-manifests = true",
-						"manifest-hashes = RMD160 SHA1 SHA256 SHA512 WHIRLPOOL",
+						"manifest-hashes = SHA256 SHA512 WHIRLPOOL",
 					),
 			}
 		}

@@ -11,8 +11,9 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.data:portage_gid,portage_uid,secpass',
 	'portage.dbapi.dep_expand:dep_expand',
 	'portage.dbapi._MergeProcess:MergeProcess',
-	'portage.dep:dep_getkey,isjustname,match_from_list,' + \
-	 	'use_reduce,_slot_re',
+	'portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list,' + \
+	 	'use_reduce,_get_slot_re',
+	'portage.eapi:_get_eapi_attrs',
 	'portage.elog:collect_ebuild_messages,collect_messages,' + \
 		'elog_process,_merge_logentries',
 	'portage.locks:lockdir,unlockdir,lockfile,unlockfile',
@@ -20,6 +21,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.doebuild:doebuild_environment,' + \
 		'_merge_unicode_error', '_spawn_phase',
 	'portage.package.ebuild.prepare_build_dirs:prepare_build_dirs',
+	'portage.package.ebuild._ipc.QueryCommand:QueryCommand',
 	'portage.update:fixdbentries',
 	'portage.util:apply_secpass_permissions,ConfigProtect,ensure_dirs,' + \
 		'writemsg,writemsg_level,write_atomic,atomic_ofstream,writedict,' + \
@@ -30,8 +32,8 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.movefile:movefile',
 	'portage.util._dyn_libs.PreservedLibsRegistry:PreservedLibsRegistry',
 	'portage.util._dyn_libs.LinkageMapELF:LinkageMapELF@LinkageMap',
-	'portage.versions:best,catpkgsplit,catsplit,cpv_getkey,pkgcmp,' + \
-		'_pkgsplit@pkgsplit',
+	'portage.versions:best,catpkgsplit,catsplit,cpv_getkey,vercmp,' + \
+		'_pkgsplit@pkgsplit,_pkg_str',
 	'subprocess',
 	'tarfile',
 )
@@ -61,8 +63,10 @@ from _emerge.EbuildPhase import EbuildPhase
 from _emerge.emergelog import emergelog
 from _emerge.PollScheduler import PollScheduler
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
+from _emerge.SpawnProcess import SpawnProcess
 
 import errno
+import fnmatch
 import gc
 import grp
 import io
@@ -86,6 +90,9 @@ except ImportError:
 if sys.hexversion >= 0x3000000:
 	basestring = str
 	long = int
+	_unicode = str
+else:
+	_unicode = unicode
 
 class vardbapi(dbapi):
 
@@ -314,14 +321,24 @@ class vardbapi(dbapi):
 		if not origmatches:
 			return moves
 		for mycpv in origmatches:
+			try:
+				mycpv = self._pkg_str(mycpv, None)
+			except (KeyError, InvalidData):
+				continue
 			mycpv_cp = cpv_getkey(mycpv)
 			if mycpv_cp != origcp:
 				# Ignore PROVIDE virtual match.
 				continue
 			if repo_match is not None \
-				and not repo_match(self.aux_get(mycpv, ['repository'])[0]):
+				and not repo_match(mycpv.repo):
 				continue
-			mynewcpv = mycpv.replace(mycpv_cp, str(newcp), 1)
+
+			# Use isvalidatom() to check if this move is valid for the
+			# EAPI (characters allowed in package names may vary).
+			if not isvalidatom(newcp, eapi=mycpv.eapi):
+				continue
+
+			mynewcpv = mycpv.replace(mycpv_cp, _unicode(newcp), 1)
 			mynewcat = catsplit(newcp)[0]
 			origpath = self.getpath(mycpv)
 			if not os.path.exists(origpath):
@@ -351,7 +368,7 @@ class vardbapi(dbapi):
 					del e
 			write_atomic(os.path.join(newpath, "PF"), new_pf+"\n")
 			write_atomic(os.path.join(newpath, "CATEGORY"), mynewcat+"\n")
-			fixdbentries([mylist], newpath)
+			fixdbentries([mylist], newpath, eapi=mycpv.eapi)
 		return moves
 
 	def cp_list(self, mycp, use_cache=1):
@@ -385,7 +402,7 @@ class vardbapi(dbapi):
 				continue
 			if len(mysplit) > 1:
 				if ps[0] == mysplit[1]:
-					returnme.append(mysplit[0]+"/"+x)
+					returnme.append(_pkg_str(mysplit[0]+"/"+x))
 		self._cpv_sort_ascending(returnme)
 		if use_cache:
 			self.cpcache[mycp] = [mystat, returnme[:]]
@@ -484,6 +501,7 @@ class vardbapi(dbapi):
 		"caching match function"
 		mydep = dep_expand(
 			origdep, mydb=self, use_cache=use_cache, settings=self.settings)
+		cache_key = (mydep, mydep.unevaluated_atom)
 		mykey = dep_getkey(mydep)
 		mycat = catsplit(mykey)[0]
 		if not use_cache:
@@ -505,8 +523,8 @@ class vardbapi(dbapi):
 		if mydep not in self.matchcache[mycat]:
 			mymatch = list(self._iter_match(mydep,
 				self.cp_list(mydep.cp, use_cache=use_cache)))
-			self.matchcache[mycat][mydep] = mymatch
-		return self.matchcache[mycat][mydep][:]
+			self.matchcache[mycat][cache_key] = mymatch
+		return self.matchcache[mycat][cache_key][:]
 
 	def findname(self, mycpv, myrepo=None):
 		return self.getpath(str(mycpv), filename=catsplit(mycpv)[1]+".ebuild")
@@ -639,7 +657,8 @@ class vardbapi(dbapi):
 			if e.errno != errno.ENOENT:
 				raise
 			raise KeyError(mycpv)
-		mydir_mtime = mydir_stat[stat.ST_MTIME]
+		# Use float mtime when available.
+		mydir_mtime = mydir_stat.st_mtime
 		pkg_data = self._aux_cache["packages"].get(mycpv)
 		pull_me = cache_these.union(wants)
 		mydata = {"_mtime_" : mydir_mtime}
@@ -652,13 +671,18 @@ class vardbapi(dbapi):
 				pkg_data = None
 			else:
 				cache_mtime, metadata = pkg_data
-				if not isinstance(cache_mtime, (long, int)) or \
+				if not isinstance(cache_mtime, (float, long, int)) or \
 					not isinstance(metadata, dict):
 					pkg_data = None
 
 		if pkg_data:
 			cache_mtime, metadata = pkg_data
-			cache_valid = cache_mtime == mydir_mtime
+			if isinstance(cache_mtime, float):
+				cache_valid = cache_mtime == mydir_stat.st_mtime
+			else:
+				# Cache may contain integer mtime.
+				cache_valid = cache_mtime == mydir_stat[stat.ST_MTIME]
+
 		if cache_valid:
 			# Migrate old metadata to unicode.
 			for k, v in metadata.items():
@@ -678,10 +702,12 @@ class vardbapi(dbapi):
 					cache_data.update(metadata)
 				for aux_key in cache_these:
 					cache_data[aux_key] = mydata[aux_key]
-				self._aux_cache["packages"][mycpv] = (mydir_mtime, cache_data)
+				self._aux_cache["packages"][_unicode(mycpv)] = \
+					(mydir_mtime, cache_data)
 				self._aux_cache["modified"].add(mycpv)
 
-		if _slot_re.match(mydata['SLOT']) is None:
+		eapi_attrs = _get_eapi_attrs(mydata['EAPI'])
+		if _get_slot_re(eapi_attrs).match(mydata['SLOT']) is None:
 			# Empty or invalid slot triggers InvalidAtom exceptions when
 			# generating slot atoms for packages, so translate it to '0' here.
 			mydata['SLOT'] = _unicode_decode('0')
@@ -1057,7 +1083,7 @@ class vardbapi(dbapi):
 				counter = int(counter)
 			except ValueError:
 				counter = 0
-			return (cpv, counter, mtime)
+			return (_unicode(cpv), counter, mtime)
 
 	class _owners_db(object):
 
@@ -1430,8 +1456,13 @@ class dblink(object):
 		self.cat = cat
 		self.pkg = pkg
 		self.mycpv = self.cat + "/" + self.pkg
-		self.mysplit = list(catpkgsplit(self.mycpv)[1:])
-		self.mysplit[0] = "%s/%s" % (self.cat, self.mysplit[0])
+		if self.mycpv == settings.mycpv and \
+			isinstance(settings.mycpv, _pkg_str):
+			self.mycpv = settings.mycpv
+		else:
+			self.mycpv = _pkg_str(self.mycpv)
+		self.mysplit = list(self.mycpv.cpv_split[1:])
+		self.mysplit[0] = self.mycpv.cp
 		self.treetype = treetype
 		if vartree is None:
 			vartree = portage.db[self._eroot]["vartree"]
@@ -1452,7 +1483,7 @@ class dblink(object):
 		self._contents_inodes = None
 		self._contents_basenames = None
 		self._linkmap_broken = False
-		self._md5_merge_map = {}
+		self._hardlink_merge_map = {}
 		self._hash_key = (self._eroot, self.mycpv)
 		self._protect_obj = None
 		self._pipe = pipe
@@ -1764,6 +1795,11 @@ class dblink(object):
 		showMessage = self._display_merge
 		if self.vartree.dbapi._categories is not None:
 			self.vartree.dbapi._categories = None
+
+		# When others_in_slot is not None, the backup has already been
+		# handled by the caller.
+		caller_handles_backup = others_in_slot is not None
+
 		# When others_in_slot is supplied, the security check has already been
 		# done for this slot, so it shouldn't be repeated until the next
 		# replacement or unmerge operation.
@@ -1812,9 +1848,6 @@ class dblink(object):
 		except UnsupportedAPIException as e:
 			eapi_unsupported = e
 
-		self._prune_plib_registry(unmerge=True, needed=needed,
-			preserve_paths=preserve_paths)
-
 		builddir_lock = None
 		scheduler = self._scheduler
 		retval = os.EX_OK
@@ -1828,6 +1861,19 @@ class dblink(object):
 				builddir_lock.lock()
 				prepare_build_dirs(settings=self.settings, cleanup=True)
 				log_path = self.settings.get("PORTAGE_LOG_FILE")
+
+			# Do this before the following _prune_plib_registry call, since
+			# that removes preserved libraries from our CONTENTS, and we
+			# may want to backup those libraries first.
+			if not caller_handles_backup:
+				retval = self._pre_unmerge_backup(background)
+				if retval != os.EX_OK:
+					showMessage(_("!!! FAILED prerm: quickpkg: %s\n") % retval,
+						level=logging.ERROR, noiselevel=-1)
+					return retval
+
+			self._prune_plib_registry(unmerge=True, needed=needed,
+				preserve_paths=preserve_paths)
 
 			# Log the error after PORTAGE_LOG_FILE is initialized
 			# by prepare_build_dirs above.
@@ -2051,7 +2097,9 @@ class dblink(object):
 
 			#process symlinks second-to-last, directories last.
 			mydirs = set()
-			modprotect = os.path.join(self._eroot, "lib/modules/")
+
+			uninstall_ignore = portage.util.shlex_split(
+				self.settings.get("UNINSTALL_IGNORE", ""))
 
 			def unlink(file_name, lstatobj):
 				if bsd_chflags:
@@ -2158,6 +2206,24 @@ class dblink(object):
 				if lstatobj is None:
 						show_unmerge("---", unmerge_desc["!found"], file_type, obj)
 						continue
+
+				f_match = obj[len(eroot)-1:]
+				ignore = False
+				for pattern in uninstall_ignore:
+					if fnmatch.fnmatch(f_match, pattern):
+						ignore = True
+						break
+
+				if not ignore:
+					if islink and f_match in \
+						("/lib", "/usr/lib", "/usr/local/lib"):
+						# Ignore libdir symlinks for bug #423127.
+						ignore = True
+
+				if ignore:
+					show_unmerge("---", unmerge_desc["cfgpro"], file_type, obj)
+					continue
+
 				# don't use EROOT, CONTENTS entries already contain EPREFIX
 				if obj.startswith(real_root):
 					relative_path = obj[real_root_len:]
@@ -2167,8 +2233,9 @@ class dblink(object):
 							is_owned = True
 							break
 
-					if file_type == "sym" and is_owned and \
-						(islink and statobj and stat.S_ISDIR(statobj.st_mode)):
+					if is_owned and islink and \
+						file_type in ("sym", "dir") and \
+						statobj and stat.S_ISDIR(statobj.st_mode):
 						# A new instance of this package claims the file, so
 						# don't unmerge it. If the file is symlink to a
 						# directory and the unmerging package installed it as
@@ -2200,18 +2267,6 @@ class dblink(object):
 						continue
 					elif relative_path in cfgfiledict:
 						stale_confmem.append(relative_path)
-				# next line includes a tweak to protect modules from being unmerged,
-				# but we don't protect modules from being overwritten if they are
-				# upgraded. We effectively only want one half of the config protection
-				# functionality for /lib/modules. For portage-ng both capabilities
-				# should be able to be independently specified.
-				# TODO: For rebuilds, re-parent previous modules to the new
-				# installed instance (so they are not orphans). For normal
-				# uninstall (not rebuild/reinstall), remove the modules along
-				# with all other files (leave no orphans).
-				if obj.startswith(modprotect):
-					show_unmerge("---", unmerge_desc["cfgpro"], file_type, obj)
-					continue
 
 				# Don't unlink symlinks to directories here since that can
 				# remove /lib and /usr/lib symlinks.
@@ -2233,12 +2288,12 @@ class dblink(object):
 					show_unmerge("---", unmerge_desc["!mtime"], file_type, obj)
 					continue
 
-				if pkgfiles[objkey][0] == "dir":
+				if file_type == "dir" and not islink:
 					if lstatobj is None or not stat.S_ISDIR(lstatobj.st_mode):
 						show_unmerge("---", unmerge_desc["!dir"], file_type, obj)
 						continue
 					mydirs.add((obj, (lstatobj.st_dev, lstatobj.st_ino)))
-				elif pkgfiles[objkey][0] == "sym":
+				elif file_type == "sym" or (file_type == "dir" and islink):
 					if not islink:
 						show_unmerge("---", unmerge_desc["!sym"], file_type, obj)
 						continue
@@ -2348,7 +2403,11 @@ class dblink(object):
 		if protected_symlinks:
 			msg = "One or more symlinks to directories have been " + \
 				"preserved in order to ensure that files installed " + \
-				"via these symlinks remain accessible:"
+				"via these symlinks remain accessible. " + \
+				"This indicates that the mentioned symlink(s) may " + \
+				"be obsolete remnants of an old install, and it " + \
+				"may be appropriate to replace a given symlink " + \
+				"with the directory that it points to."
 			lines = textwrap.wrap(msg, 72)
 			lines.append("")
 			flat_list = set()
@@ -2358,7 +2417,7 @@ class dblink(object):
 				lines.append("\t%s" % (os.path.join(real_root,
 					f.lstrip(os.sep))))
 			lines.append("")
-			self._elog("eerror", "postrm", lines)
+			self._elog("elog", "postrm", lines)
 
 		# Remove stale entries from config memory.
 		if stale_confmem:
@@ -3075,9 +3134,13 @@ class dblink(object):
 
 			os = _os_merge
 
-			collision_ignore = set([normalize_path(myignore) for myignore in \
-				portage.util.shlex_split(
-				self.settings.get("COLLISION_IGNORE", ""))])
+			collision_ignore = []
+			for x in portage.util.shlex_split(
+				self.settings.get("COLLISION_IGNORE", "")):
+				if os.path.isdir(os.path.join(self._eroot, x.lstrip(os.sep))):
+					x = normalize_path(x)
+					x += "/*"
+				collision_ignore.append(x)
 
 			# For collisions with preserved libraries, the current package
 			# will assume ownership and the libraries will be unregistered.
@@ -3178,15 +3241,12 @@ class dblink(object):
 				if not isowned and self.isprotected(full_path):
 					isowned = True
 				if not isowned:
+					f_match = full_path[len(self._eroot)-1:]
 					stopmerge = True
-					if collision_ignore:
-						if f in collision_ignore:
+					for pattern in collision_ignore:
+						if fnmatch.fnmatch(f_match, pattern):
 							stopmerge = False
-						else:
-							for myignore in collision_ignore:
-								if f.startswith(myignore + os.path.sep):
-									stopmerge = False
-									break
+							break
 					if stopmerge:
 						collisions.append(f)
 			return collisions, symlink_collisions, plib_collisions
@@ -3450,6 +3510,10 @@ class dblink(object):
 		if not os.path.exists(self.dbcatdir):
 			ensure_dirs(self.dbcatdir)
 
+		# NOTE: We use SLOT obtained from the inforoot
+		#	directory, in order to support USE=multislot.
+		# Use _pkg_str discard the sub-slot part if necessary.
+		slot = _pkg_str(self.mycpv, slot=slot).slot
 		cp = self.mysplit[0]
 		slot_atom = "%s:%s" % (cp, slot)
 
@@ -3802,6 +3866,20 @@ class dblink(object):
 		self.delete()
 		ensure_dirs(self.dbtmpdir)
 
+		downgrade = False
+		if self._installed_instance is not None and \
+			vercmp(self.mycpv.version,
+			self._installed_instance.mycpv.version) < 0:
+			downgrade = True
+
+		if self._installed_instance is not None:
+			rval = self._pre_merge_backup(self._installed_instance, downgrade)
+			if rval != os.EX_OK:
+				showMessage(_("!!! FAILED preinst: ") +
+					"quickpkg: %s\n" % rval,
+					level=logging.ERROR, noiselevel=-1)
+				return rval
+
 		# run preinst script
 		showMessage(_(">>> Merging %(cpv)s to %(destroot)s\n") % \
 			{"cpv":self.mycpv, "destroot":destroot})
@@ -3835,20 +3913,14 @@ class dblink(object):
 		#if we have a file containing previously-merged config file md5sums, grab it.
 		self.vartree.dbapi._fs_lock()
 		try:
-			cfgfiledict = grabdict(self.vartree.dbapi._conf_mem_file)
-			if "NOCONFMEM" in self.settings:
-				cfgfiledict["IGNORE"]=1
-			else:
-				cfgfiledict["IGNORE"]=0
-
 			# Always behave like --noconfmem is enabled for downgrades
 			# so that people who don't know about this option are less
 			# likely to get confused when doing upgrade/downgrade cycles.
-			pv_split = catpkgsplit(self.mycpv)[1:]
-			for other in others_in_slot:
-				if pkgcmp(pv_split, catpkgsplit(other.mycpv)[1:]) < 0:
-					cfgfiledict["IGNORE"] = 1
-					break
+			cfgfiledict = grabdict(self.vartree.dbapi._conf_mem_file)
+			if "NOCONFMEM" in self.settings or downgrade:
+				cfgfiledict["IGNORE"]=1
+			else:
+				cfgfiledict["IGNORE"]=0
 
 			rval = self._merge_contents(srcroot, destroot, cfgfiledict)
 			if rval != os.EX_OK:
@@ -4276,7 +4348,7 @@ class dblink(object):
 				myabsto = myabsto.lstrip(sep)
 				if self.settings and self.settings["D"]:
 					if myto.startswith(self.settings["D"]):
-						myto = myto[len(self.settings["D"]):]
+						myto = myto[len(self.settings["D"])-1:]
 				# myrealto contains the path of the real file to which this symlink points.
 				# we can simply test for existence of this file to see if the target has been merged yet
 				myrealto = normalize_path(os.path.join(destroot, myabsto))
@@ -4500,10 +4572,10 @@ class dblink(object):
 					# as hardlinks (having identical st_dev and st_ino).
 					hardlink_key = (mystat.st_dev, mystat.st_ino)
 
-					hardlink_candidates = self._md5_merge_map.get(hardlink_key)
+					hardlink_candidates = self._hardlink_merge_map.get(hardlink_key)
 					if hardlink_candidates is None:
 						hardlink_candidates = []
-						self._md5_merge_map[hardlink_key] = hardlink_candidates
+						self._hardlink_merge_map[hardlink_key] = hardlink_candidates
 
 					mymtime = movefile(mysrc, mydest, newmtime=thismtime,
 						sstat=mystat, mysettings=self.settings,
@@ -4511,8 +4583,7 @@ class dblink(object):
 						encoding=_encodings['merge'])
 					if mymtime is None:
 						return 1
-					if hardlink_candidates is not None:
-						hardlink_candidates.append(mydest)
+					hardlink_candidates.append(mydest)
 					zing = ">>>"
 
 				if mymtime != None:
@@ -4652,6 +4723,66 @@ class dblink(object):
 	def isregular(self):
 		"Is this a regular package (does it have a CATEGORY file?  A dblink can be virtual *and* regular)"
 		return os.path.exists(os.path.join(self.dbdir, "CATEGORY"))
+
+	def _pre_merge_backup(self, backup_dblink, downgrade):
+
+		if ("unmerge-backup" in self.settings.features or
+			(downgrade and "downgrade-backup" in self.settings.features)):
+			return self._quickpkg_dblink(backup_dblink, False, None)
+
+		return os.EX_OK
+
+	def _pre_unmerge_backup(self, background):
+
+		if "unmerge-backup" in self.settings.features :
+			logfile = None
+			if self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
+				logfile = self.settings.get("PORTAGE_LOG_FILE")
+			return self._quickpkg_dblink(self, background, logfile)
+
+		return os.EX_OK
+
+	def _quickpkg_dblink(self, backup_dblink, background, logfile):
+
+		trees = QueryCommand.get_db()[self.settings["EROOT"]]
+		bintree = trees["bintree"]
+		binpkg_path = bintree.getname(backup_dblink.mycpv)
+		if os.path.exists(binpkg_path) and \
+			catsplit(backup_dblink.mycpv)[1] not in bintree.invalids:
+			return os.EX_OK
+
+		self.lockdb()
+		try:
+
+			if not backup_dblink.exists():
+				# It got unmerged by a concurrent process.
+				return os.EX_OK
+
+			# Call quickpkg for support of QUICKPKG_DEFAULT_OPTS and stuff.
+			quickpkg_binary = os.path.join(self.settings["PORTAGE_BIN_PATH"],
+				"quickpkg")
+
+			# Let quickpkg inherit the global vartree config's env.
+			env = dict(self.vartree.settings.items())
+			env["__PORTAGE_INHERIT_VARDB_LOCK"] = "1"
+
+			pythonpath = [x for x in env.get('PYTHONPATH', '').split(":") if x]
+			if not pythonpath or \
+				not os.path.samefile(pythonpath[0], portage._pym_path):
+				pythonpath.insert(0, portage._pym_path)
+			env['PYTHONPATH'] = ":".join(pythonpath)
+
+			quickpkg_proc = SpawnProcess(
+				args=[portage._python_interpreter, quickpkg_binary,
+					"=%s" % (backup_dblink.mycpv,)],
+				background=background, env=env,
+				scheduler=self._scheduler, logfile=logfile)
+			quickpkg_proc.start()
+
+			return quickpkg_proc.wait()
+
+		finally:
+			self.unlockdb()
 
 def merge(mycat, mypkg, pkgloc, infloc,
 	myroot=None, settings=None, myebuild=None,

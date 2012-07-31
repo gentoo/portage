@@ -681,7 +681,7 @@ def get_committer_name(env=None):
 	return user
 
 def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
-	new=(), removed=(), changed=(), pretend=False):
+	new=(), removed=(), changed=(), pretend=False, quiet=False):
 	"""
 	Write an entry to an existing ChangeLog, or create a new one.
 	Updates copyright year on changed files, and updates the header of
@@ -689,8 +689,8 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 	"""
 
 	if '<root@' in user:
-		err = 'Please set ECHANGELOG_USER or run as non-root'
-		logging.critical(err)
+		if not quiet:
+			logging.critical('Please set ECHANGELOG_USER or run as non-root')
 		return None
 
 	# ChangeLog times are in UTC
@@ -711,24 +711,13 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 	old_header_lines = []
 	header_lines = []
 
+	clold_file = None
 	try:
 		clold_file = io.open(_unicode_encode(cl_path,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['repo.content'], errors='replace')
 	except EnvironmentError:
-		clold_file = None
-
-	clskel_file = None
-	if clold_file is None:
-		# we will only need the ChangeLog skeleton if there is no
-		# ChangeLog yet
-		try:
-			clskel_file = io.open(_unicode_encode(skel_path,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='r', encoding=_encodings['repo.content'],
-				errors='replace')
-		except EnvironmentError:
-			pass
+		pass
 
 	f, clnew_path = mkstemp()
 
@@ -736,17 +725,35 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 	try:
 		if clold_file is not None:
 			# retain header from old ChangeLog
+			first_line = True
 			for line in clold_file:
-				line_strip =  line.strip()
+				line_strip = line.strip()
 				if line_strip and line[:1] != "#":
 					clold_lines.append(line)
 					break
+				# always make sure cat/pkg is up-to-date in case we are
+				# moving packages around, or copied from another pkg, or ...
+				if first_line:
+					if line.startswith('# ChangeLog for'):
+						line = '# ChangeLog for %s/%s\n' % (category, package)
+					first_line = False
 				old_header_lines.append(line)
 				header_lines.append(_update_copyright_year(year, line))
 				if not line_strip:
 					break
 
-		elif clskel_file is not None:
+		clskel_file = None
+		if not header_lines:
+			# delay opening this until we find we need a header
+			try:
+				clskel_file = io.open(_unicode_encode(skel_path,
+					encoding=_encodings['fs'], errors='strict'),
+					mode='r', encoding=_encodings['repo.content'],
+					errors='replace')
+			except EnvironmentError:
+				pass
+
+		if clskel_file is not None:
 			# read skel.ChangeLog up to first empty line
 			for line in clskel_file:
 				line_strip = line.strip()
@@ -800,13 +807,15 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 		for line in textwrap.wrap(msg, 80, \
 				initial_indent='  ', subsequent_indent='  '):
 			clnew_lines.append(_unicode_decode('%s\n' % line))
-		clnew_lines.append(_unicode_decode('\n'))
+		# Don't append a trailing newline if the file is new.
+		if clold_file is not None:
+			clnew_lines.append(_unicode_decode('\n'))
 
 		f = io.open(f, mode='w', encoding=_encodings['repo.content'],
 			errors='backslashreplace')
 
 		for line in clnew_lines:
-			f.write(line)
+			f.write(_unicode_decode(line))
 
 		# append stuff from old ChangeLog
 		if clold_file is not None:
@@ -832,17 +841,20 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 			# in the unified_diff call below.
 			clold_lines = old_header_lines + clold_lines
 
-			for line in clold_file:
-				f.write(line)
+			# Trim any trailing newlines.
+			lines = clold_file.readlines()
 			clold_file.close()
+			while lines and lines[-1] == '\n':
+				del lines[-1]
+			f.writelines(lines)
 		f.close()
 
-		# show diff (do we want to keep on doing this, or only when
-		# pretend?)
-		for line in difflib.unified_diff(clold_lines, clnew_lines,
-			fromfile=cl_path, tofile=cl_path, n=0):
-			util.writemsg_stdout(line, noiselevel=-1)
-		util.writemsg_stdout("\n", noiselevel=-1)
+		# show diff
+		if not quiet:
+			for line in difflib.unified_diff(clold_lines, clnew_lines,
+					fromfile=cl_path, tofile=cl_path, n=0):
+				util.writemsg_stdout(line, noiselevel=-1)
+			util.writemsg_stdout("\n", noiselevel=-1)
 
 		if pretend:
 			# remove what we've done

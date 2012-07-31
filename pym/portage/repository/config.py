@@ -27,6 +27,12 @@ from portage import _unicode_encode
 from portage import _encodings
 from portage import manifest
 
+_valid_profile_formats = frozenset(
+	['pms', 'portage-1', 'portage-2'])
+
+_portage1_profiles_allow_directories = frozenset(
+	["portage-1-compat", "portage-1", 'portage-2'])
+
 _repo_name_sub_re = re.compile(r'[^\w-]')
 
 def _gen_valid_repo(name):
@@ -49,9 +55,9 @@ class RepoConfig(object):
 		'cache_formats', 'create_manifest', 'disable_manifest', 'eapi',
 		'eclass_db', 'eclass_locations', 'eclass_overrides', 'format', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
-		'name', 'priority', 'sign_commit', 'sign_manifest', 'sync', 'thin_manifest',
-		'update_changelog', 'user_location', 'portage1_profiles',
-		'portage1_profiles_compat')
+		'name', 'portage1_profiles', 'portage1_profiles_compat', 'priority',
+		'profile_formats', 'sign_commit', 'sign_manifest', 'sync',
+		'thin_manifest', 'update_changelog', 'user_location')
 
 	def __init__(self, name, repo_opts):
 		"""Build a RepoConfig with options in repo_opts
@@ -153,10 +159,11 @@ class RepoConfig(object):
 			for value in ('allow-missing-manifest',
 				'allow-provide-virtual', 'cache-formats',
 				'create-manifest', 'disable-manifest', 'manifest-hashes',
+				'profile-formats',
 				'sign-commit', 'sign-manifest', 'thin-manifest', 'update-changelog'):
 				setattr(self, value.lower().replace("-", "_"), layout_data[value])
 
-			self.portage1_profiles = any(x.startswith("portage-1") \
+			self.portage1_profiles = any(x in _portage1_profiles_allow_directories
 				for x in layout_data['profile-formats'])
 			self.portage1_profiles_compat = layout_data['profile-formats'] == ('portage-1-compat',)
 
@@ -483,13 +490,6 @@ class RepoConfigLoader(object):
 		prepos_order = [repo.name for (key, repo) in prepos_order
 			if repo.name == key and repo.location is not None]
 
-		if portdir in location_map:
-			portdir_repo = prepos[location_map[portdir]]
-			portdir_sync = settings.get('SYNC', '')
-			#if SYNC variable is set and not overwritten by repos.conf
-			if portdir_sync and not portdir_repo.sync:
-				portdir_repo.sync = portdir_sync
-
 		if prepos['DEFAULT'].main_repo is None or \
 			prepos['DEFAULT'].main_repo not in prepos:
 			#setting main_repo if it was not set in repos.conf
@@ -712,10 +712,10 @@ def parse_layout_conf(repo_location, repo_name=None):
 
 	# for compatibility w/ PMS, fallback to pms; but also check if the
 	# cache exists or not.
-	cache_formats = layout_data.get('cache-formats', 'pms').lower().split()
-	if 'pms' in cache_formats and not os.path.isdir(
+	cache_formats = layout_data.get('cache-formats', '').lower().split()
+	if not cache_formats and os.path.isdir(
 		os.path.join(repo_location, 'metadata', 'cache')):
-		cache_formats.remove('pms')
+		cache_formats = ['pms']
 	data['cache-formats'] = tuple(cache_formats)
 
 	manifest_hashes = layout_data.get('manifest-hashes')
@@ -760,7 +760,7 @@ def parse_layout_conf(repo_location, repo_name=None):
 			raw_formats = ('portage-1-compat',)
 	else:
 		raw_formats = set(raw_formats.split())
-		unknown = raw_formats.difference(['pms', 'portage-1'])
+		unknown = raw_formats.difference(_valid_profile_formats)
 		if unknown:
 			repo_name = _get_repo_name(repo_location, cached=repo_name)
 			warnings.warn((_("Repository named '%(repo_name)s' has unsupported "
@@ -770,7 +770,7 @@ def parse_layout_conf(repo_location, repo_name=None):
 				layout_filename=layout_filename,
 				unknown_fmts=" ".join(unknown))),
 				DeprecationWarning)
-		raw_formats = tuple(raw_formats.intersection(['pms', 'portage-1']))
+		raw_formats = tuple(raw_formats.intersection(_valid_profile_formats))
 	data['profile-formats'] = raw_formats
 
 	return data, layout_errors

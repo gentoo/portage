@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -29,7 +29,8 @@ class TestStandalone(TestCase):
 		)
 
 		for cpv1, cpv2, expected_result in test_cases:
-			self.assertEqual(cpvequal(cpv1, cpv2), expected_result)
+			self.assertEqual(cpvequal(cpv1, cpv2), expected_result,
+				"cpvequal('%s', '%s') != %s" % (cpv1, cpv2, expected_result))
 
 		for cpv1, cpv2 in test_cases_xfail:
 			self.assertRaisesMsg("cpvequal("+cpv1+", "+cpv2+")", \

@@ -137,8 +137,10 @@ try:
 except ImportError:
 	pass
 
+_whirlpool_unaccelerated = False
 if "WHIRLPOOL" not in hashfunc_map:
 	# Bundled WHIRLPOOL implementation
+	_whirlpool_unaccelerated = True
 	from portage.util.whirlpool import new as _new_whirlpool
 	whirlpoolhash = _generate_hash_function("WHIRLPOOL", _new_whirlpool, origin="bundled")
 
@@ -186,7 +188,7 @@ def _perform_md5_merge(x, **kwargs):
 def perform_all(x, calc_prelink=0):
 	mydict = {}
 	for k in hashfunc_map:
-		mydict[k] = perform_checksum(x, hashfunc_map[k], calc_prelink)[0]
+		mydict[k] = perform_checksum(x, k, calc_prelink)[0]
 	return mydict
 
 def get_valid_checksum_keys():
@@ -196,6 +198,24 @@ def get_hash_origin(hashtype):
 	if hashtype not in hashfunc_map:
 		raise KeyError(hashtype)
 	return hashorigin_map.get(hashtype, "unknown")
+
+def _filter_unaccelarated_hashes(digests):
+	"""
+	If multiple digests are available and some are unaccelerated,
+	then return a new dict that omits the unaccelerated ones. This
+	allows extreme performance problems like bug #425046 to be
+	avoided whenever practical, especially for cases like stage
+	builds where acceleration may not be available for some hashes
+	due to minimization of dependencies.
+	"""
+	if _whirlpool_unaccelerated and "WHIRLPOOL" in digests:
+		verifiable_hash_types = set(digests).intersection(hashfunc_map)
+		verifiable_hash_types.discard("size")
+		if len(verifiable_hash_types) > 1:
+			digests = dict(digests)
+			digests.pop("WHIRLPOOL")
+
+	return digests
 
 def verify_all(filename, mydict, calc_prelink=0, strict=0):
 	"""

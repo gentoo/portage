@@ -202,7 +202,7 @@ who uses the \fBebuild\fR(1) and \fBrepoman\fR(1) commands with this
 package will be required to have a version of portage that recognizes
 the EAPI to which this package conforms.
 .TP
-\fBSRC_URI\fR = \fI"http://happy.com/little/${P}.tar.gz"\fR
+\fBSRC_URI\fR = \fI"http://example.com/path/${P}.tar.gz"\fR
 Contains a list of URIs for the required source files.  It can contain
 multiple URIs for a single source file.  The list is processed in order
 if the file was not found on any of the \fIGENTOO_MIRRORS\fR.
@@ -211,7 +211,7 @@ customized with a "->" operator on the right hand side, followed by the
 desired output file name. All tokens, including the operator and output
 file name, should be separated by whitespace.
 .TP
-\fBHOMEPAGE\fR = \fI"http://happy.com/"\fR
+\fBHOMEPAGE\fR = \fI"http://example.com/"\fR
 Should contain a list of URIs for the sources main sites and other further
 package dependent information.
 .TP
@@ -394,7 +394,7 @@ immediately following a flag with either \fB(+)\fR or \fB(\-)\fR. Use
 .RS
 .nf
 media\-video/ffmpeg[threads(+)]
-media\-video/ffmpeg[threads(\-)]
+media\-video/ffmpeg[-threads(\-)]
 .fi
 .RE
 .RE
@@ -468,9 +468,9 @@ will use that to consider the dependency satisfied.
 .TP
 \fBRDEPEND\fR
 This should contain a list of all packages that are required for this
-program to run (aka runtime depend). If this is not set in \fBEAPI\fR
-3 or earlier, then it defaults to the value of \fBDEPEND\fR. In
-EAPI 4 or later, \fBRDEPEND\fR will never be implicitly set.
+program to run (aka runtime depend). If this is not set in \fBEAPI 3\fR
+or earlier, then it defaults to the value of \fBDEPEND\fR. In
+\fBEAPI 4\fR or later, \fBRDEPEND\fR will never be implicitly set.
 .br
 You may use the same syntax to vary dependencies as seen above in \fBDEPEND\fR.
 .TP
@@ -615,7 +615,7 @@ CFLAGS, CXXFLAGS, FFLAGS, FCFLAGS, and LDFLAGS variables.
 This should contain a list of file paths, relative to the image directory, of
 files that contain .hash sections. The paths may contain regular expressions
 with escape\-quoted special characters. This variable is deprecated. Use
-\fBQA_FLAGS_IGNORED\f instead.
+\fBQA_FLAGS_IGNORED\fR instead.
 .br
 This variable is intended to be used on files of binary packages which ignore
 LDFLAGS variable.
@@ -1105,8 +1105,8 @@ that this expression does \fBNOT\fR use the offset prefix.
 .BR 'dosed\ "s:/usr/local:/usr:g"\ /usr/bin/some\-script'
 runs sed on ${ED}/usr/bin/some\-script
 .TP
-\fBdodir\fR \fI<path>\fR
-Creates a directory inside of ${ED}.
+\fBdodir\fR \fI<path> [more paths]\fR
+Creates directories inside of ${ED}.
 .br
 .BR 'dodir\ /usr/lib/apache'
 creates ${ED}/usr/lib/apache.  Note that the do* functions will run
@@ -1122,8 +1122,8 @@ Sets the root (\fIDESTTREE\fR) for other functions like \fBdobin\fR,
 .br
 The default root is /usr.
 .TP
-\fBkeepdir\fR \fI<path>\fR
-Tells portage to leave a directory behind even if it is empty.  Functions
+\fBkeepdir\fR \fI<path> [more paths]\fR
+Tells portage to leave directories behind even if they're empty.  Functions
 the same as \fBdodir\fR.
 .TP
 \fBdobin\fR \fI<binary> [list of more binaries]\fR

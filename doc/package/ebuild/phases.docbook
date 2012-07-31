@@ -13,10 +13,19 @@
 	</para>
 	<itemizedlist>
 	<listitem>
+		<para>pkg_pretend</para>
+	</listitem>
+	<listitem>
 		<para>pkg_setup</para>
 	</listitem>
 	<listitem>
 		<para>src_unpack</para>
+	</listitem>
+	<listitem>
+		<para>src_prepare</para>
+	</listitem>
+	<listitem>
+		<para>src_configure</para>
 	</listitem>
 	<listitem>
 		<para>src_compile</para>

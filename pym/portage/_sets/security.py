@@ -1,9 +1,9 @@
-# Copyright 2007 Gentoo Foundation
+# Copyright 2007-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import portage.glsa as glsa
 from portage._sets.base import PackageSet
-from portage.versions import catpkgsplit, pkgcmp
+from portage.versions import vercmp
 from portage._sets import get_boolean
 
 __all__ = ["SecuritySet", "NewGlsaSet", "NewAffectedSet", "AffectedSet"]
@@ -45,12 +45,12 @@ class SecuritySet(PackageSet):
 		for atom in atomlist[:]:
 			cpv = self._portdbapi.xmatch("match-all", atom)[0]
 			slot = self._portdbapi.aux_get(cpv, ["SLOT"])[0]
-			cps = "/".join(catpkgsplit(cpv)[0:2]) + ":" + slot
+			cps = "%s:%s" % (cpv.cp, slot)
 			if not cps in mydict:
 				mydict[cps] = (atom, cpv)
 			else:
 				other_cpv = mydict[cps][1]
-				if pkgcmp(catpkgsplit(cpv)[1:], catpkgsplit(other_cpv)[1:]) > 0:
+				if vercmp(cpv.version, other_cpv.version) > 0:
 					atomlist.remove(mydict[cps][0])
 					mydict[cps] = (atom, cpv)
 		return atomlist

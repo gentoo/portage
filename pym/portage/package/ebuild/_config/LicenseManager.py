@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 201-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -10,7 +10,7 @@ from portage.dep import ExtendedAtomDict, use_reduce
 from portage.exception import InvalidDependString
 from portage.localization import _
 from portage.util import grabdict, grabdict_package, writemsg
-from portage.versions import cpv_getkey
+from portage.versions import cpv_getkey, _pkg_str
 
 from portage.package.ebuild._config.helper import ordered_by_atom_specificity
 
@@ -119,8 +119,9 @@ class LicenseManager(object):
 		cp = cpv_getkey(cpv)
 		cpdict = self._plicensedict.get(cp)
 		if cpdict:
-			cpv_slot = "%s:%s" % (cpv, slot)
-			plicence_list = ordered_by_atom_specificity(cpdict, cpv_slot, repo)
+			if not hasattr(cpv, slot):
+				cpv = _pkg_str(cpv, slot=slot, repo=repo)
+			plicence_list = ordered_by_atom_specificity(cpdict, cpv)
 			if plicence_list:
 				accept_license = list(self._accept_license)
 				for x in plicence_list:

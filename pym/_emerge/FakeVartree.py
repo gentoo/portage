@@ -10,11 +10,17 @@ from _emerge.Package import Package
 from _emerge.PackageVirtualDbapi import PackageVirtualDbapi
 from portage.const import VDB_PATH
 from portage.dbapi.vartree import vartree
+from portage.dep._slot_abi import find_built_slot_abi_atoms
+from portage.eapi import _get_eapi_attrs
+from portage.exception import InvalidDependString
 from portage.repository.config import _gen_valid_repo
 from portage.update import grab_updates, parse_updates, update_dbentries
 
 if sys.hexversion >= 0x3000000:
 	long = int
+	_unicode = str
+else:
+	_unicode = unicode
 
 class FakeVardbapi(PackageVirtualDbapi):
 	"""
@@ -39,9 +45,10 @@ class FakeVartree(vartree):
 	is not a matching ebuild in the tree). Instances of this class are not
 	populated until the sync() method is called."""
 	def __init__(self, root_config, pkg_cache=None, pkg_root_config=None,
-		dynamic_deps=True):
+		dynamic_deps=True, ignore_built_slot_abi_deps=False):
 		self._root_config = root_config
 		self._dynamic_deps = dynamic_deps
+		self._ignore_built_slot_abi_deps = ignore_built_slot_abi_deps
 		if pkg_root_config is None:
 			pkg_root_config = self._root_config
 		self._pkg_root_config = pkg_root_config
@@ -68,7 +75,7 @@ class FakeVartree(vartree):
 			self.dbapi.aux_get = self._aux_get_wrapper
 			self.dbapi.match = self._match_wrapper
 		self._aux_get_history = set()
-		self._portdb_keys = ["EAPI", "DEPEND", "RDEPEND", "PDEPEND"]
+		self._portdb_keys = ["EAPI", "KEYWORDS", "DEPEND", "RDEPEND", "PDEPEND"]
 		self._portdb = portdb
 		self._global_updates = None
 
@@ -101,7 +108,18 @@ class FakeVartree(vartree):
 		self._aux_get_history.add(pkg)
 		# We need to check the EAPI, and this also raises
 		# a KeyError to the caller if appropriate.
-		installed_eapi, repo = self._aux_get(pkg, ["EAPI", "repository"])
+		pkg_obj = self.dbapi._cpv_map[pkg]
+		installed_eapi = pkg_obj.metadata['EAPI']
+		repo = pkg_obj.metadata['repository']
+		eapi_attrs = _get_eapi_attrs(installed_eapi)
+		built_slot_abi_atoms = None
+
+		if eapi_attrs.slot_abi and not self._ignore_built_slot_abi_deps:
+			try:
+				built_slot_abi_atoms = find_built_slot_abi_atoms(pkg_obj)
+			except InvalidDependString:
+				pass
+
 		try:
 			# Use the live ebuild metadata if possible.
 			repo = _gen_valid_repo(repo)
@@ -118,6 +136,16 @@ class FakeVartree(vartree):
 			if not (portage.eapi_is_supported(live_metadata["EAPI"]) and \
 				portage.eapi_is_supported(installed_eapi)):
 				raise KeyError(pkg)
+
+			# preserve built SLOT/ABI := operator deps
+			if built_slot_abi_atoms:
+				live_eapi_attrs = _get_eapi_attrs(live_metadata["EAPI"])
+				if not live_eapi_attrs.slot_abi:
+					raise KeyError(pkg)
+				for k, v in built_slot_abi_atoms.items():
+					live_metadata[k] += (" " +
+						" ".join(_unicode(atom) for atom in v))
+
 			self.dbapi.aux_update(pkg, live_metadata)
 		except (KeyError, portage.exception.PortageException):
 			if self._global_updates is None:
@@ -258,8 +286,9 @@ def grab_global_updates(portdb):
 	return retupdates
 
 def perform_global_updates(mycpv, mydb, myupdates):
-	aux_keys = ["DEPEND", "RDEPEND", "PDEPEND", 'repository']
+	aux_keys = ["DEPEND", "EAPI", "RDEPEND", "PDEPEND", 'repository']
 	aux_dict = dict(zip(aux_keys, mydb.aux_get(mycpv, aux_keys)))
+	eapi = aux_dict.pop('EAPI')
 	repository = aux_dict.pop('repository')
 	try:
 		mycommands = myupdates[repository]
@@ -272,6 +301,6 @@ def perform_global_updates(mycpv, mydb, myupdates):
 	if not mycommands:
 		return
 
-	updates = update_dbentries(mycommands, aux_dict)
+	updates = update_dbentries(mycommands, aux_dict, eapi=eapi)
 	if updates:
 		mydb.aux_update(mycpv, updates)

@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Dec 2011" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Jun 2012" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -69,7 +69,9 @@ packages deemed necessary for your system to run properly. \fBworld\fR
 encompasses both the \fBselected\fR and \fBsystem\fR sets. [See
 \fBFILES\fR below for more information.] Other sets can exist depending
 on the current configuration. The default set configuration is located
-in the \fB/usr/share/portage/config/sets\fR directory. Note that a \fIset\fR
+in the \fB/usr/share/portage/config/sets\fR directory.
+User sets may be created by placing files in the \fB/etc/portage/sets/\fR
+directory (see \fBportage\fR(5)). Note that a \fIset\fR
 is generally used in conjunction with \fB\-\-update\fR. When used as 
 arguments to \fBemerge\fR sets have to be prefixed with \fB@\fR to be
 recognized. Use the \fB\-\-list\-sets\fR action to display a list of
@@ -200,6 +202,9 @@ generate and distribute cache for use by others, use \fBegencache\fR(1).
 .TP
 .BR "\-\-resume" (\fB\-r\fR)
 Resumes the most recent merge list that has been aborted due to an error.
+This re\-uses the options that were given with the original
+command that's being resumed, and the user may also provide
+additional options when calling \fB\-\-resume\fR.
 Please note that this operation will only return an error on failure.  If there
 is nothing for portage to do, then portage will exit with a message and a
 success condition. A resume list will persist until it has been completed in
@@ -391,6 +396,10 @@ be updated than would have otherwise been updated with the option disabled.
 Using \fB\-\-with\-bdeps=y\fR together with \fB\-\-complete\-graph\fR makes
 the graph as complete as possible.
 .TP
+.BR "\-\-complete\-graph\-if\-new\-use < y | n >"
+Trigger the \fB\-\-complete\-graph\fR behavior if USE or IUSE will
+change for an installed package. This option is enabled by default.
+.TP
 .BR "\-\-complete\-graph\-if\-new\-ver < y | n >"
 Trigger the \fB\-\-complete\-graph\fR behavior if an installed package
 version will change (upgrade or downgrade). This option is enabled by default.
@@ -476,6 +485,13 @@ remote server are preferred over local packages if they are not identical.
 .BR "\-\-ignore-default-opts"
 Causes \fIEMERGE_DEFAULT_OPTS\fR (see \fBmake.conf\fR(5)) to be ignored.
 .TP
+.BR "\-\-ignore\-built\-slot\-abi\-deps < y | n >"
+Ignore the SLOT/ABI := operator parts of dependencies that have
+been recorded when packages where built. This option is intended
+only for debugging purposes, and it only affects built packages
+that specify SLOT/ABI := operator dependencies using the
+experimental "4\-slot\-abi" EAPI.
+.TP
 .BR "-j [JOBS], \-\-jobs[=JOBS]"
 Specifies the number of packages to build simultaneously. If this option is
 given without an argument, emerge will not limit the number of jobs that can
@@ -536,7 +552,7 @@ the build may fail if the dependencies aren't satisfied.
 .TP
 .BR "\-\-noreplace " (\fB\-n\fR)
 Skips the packages specified on the command\-line that have already
-been installed.  Without this option, any packages, ebuilds, or deps
+been installed.  Without this option, any package atoms or package sets
 you specify on the command\-line \fBwill\fR cause Portage to remerge
 the package, even if it is already installed.  Note that Portage will
 not remerge dependencies by default.
@@ -628,6 +644,17 @@ Disable the warning message that's shown prior to
 \fB\-\-unmerge\fR actions. This option is intended
 to be set in the \fBmake.conf\fR(5)
 \fBEMERGE_DEFAULT_OPTS\fR variable.
+.TP
+.BR "\-\-rebuild\-if\-new\-slot\-abi [ y | n ]"
+Automatically rebuild or reinstall packages when SLOT/ABI :=
+operator dependencies can be satisfied by a newer slot, so that
+older packages slots will become eligible for removal by the
+\-\-depclean action as soon as possible. This option only
+affects packages that specify SLOT/ABI dependencies using the
+experimental "4\-slot\-abi" EAPI. Since this option requires
+checking of reverse dependencies, it enables \-\-complete\-graph
+mode whenever a new slot is installed. This option is enabled by
+default.
 .TP
 .BR "\-\-rebuild\-if\-new\-rev [ y | n ]"
 Rebuild packages when build\-time dependencies are built from source, if the
@@ -897,7 +924,7 @@ those USE settings (on Bourne-compatible shells you may omit the \fBenv\fR
 part).  If you want those USE settings to be more 
 permanent, you can put them in /etc/portage/package.use instead.
 .LP
-If \fBemerge \-\-update system\fR or \fBemerge \-\-update world\fR
+If \fBemerge \-\-update @system\fR or \fBemerge \-\-update @world\fR
 fails with an error message, it may be that an ebuild uses some
 newer feature not present in this version of \fBemerge\fR.  You
 can use \fBemerge \-\-update portage\fR to upgrade to the lastest
@@ -1036,12 +1063,20 @@ Contains a list of all user\-specified packages.  You can safely edit
 this file, adding packages that you want to be considered in \fBworld\fR
 set updates and removing those that you do not want to be considered.
 .TP
+.B /var/lib/portage/world_sets
+This is like the world file but instead of package atoms it contains
+packages sets which always begin with the \fB@\fR character. Use
+\fB/etc/portage/sets/\fR to define user package sets.
+.TP
 .B /etc/make.conf
 Contains variables for the build process, overriding those in
 \fBmake.globals\fR.
 .TP
 .B /etc/portage/color.map
 Contains variables customizing colors.
+.TP
+.B /etc/portage/sets/
+Contains user package set definitions (see \fBportage\fR(5)).
 .TP
 .B /etc/dispatch\-conf.conf
 Contains settings to handle automatic updates/backups of configuration 

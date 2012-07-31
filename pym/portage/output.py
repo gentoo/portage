@@ -7,6 +7,7 @@ import errno
 import io
 import formatter
 import re
+import subprocess
 import sys
 
 import portage
@@ -425,28 +426,41 @@ class StyleWriter(formatter.DumbWriter):
 		if self.style_listener:
 			self.style_listener(styles)
 
-def get_term_size():
+def get_term_size(fd=None):
 	"""
 	Get the number of lines and columns of the tty that is connected to
-	stdout.  Returns a tuple of (lines, columns) or (0, 0) if an error
+	fd.  Returns a tuple of (lines, columns) or (0, 0) if an error
 	occurs. The curses module is used if available, otherwise the output of
 	`stty size` is parsed. The lines and columns values are guaranteed to be
 	greater than or equal to zero, since a negative COLUMNS variable is
 	known to prevent some commands from working (see bug #394091).
 	"""
-	if not sys.stdout.isatty():
+	if fd is None:
+		fd = sys.stdout
+	if not hasattr(fd, 'isatty') or not fd.isatty():
 		return (0, 0)
 	try:
 		import curses
 		try:
-			curses.setupterm()
+			curses.setupterm(term=os.environ.get("TERM", "unknown"),
+				fd=fd.fileno())
 			return curses.tigetnum('lines'), curses.tigetnum('cols')
 		except curses.error:
 			pass
 	except ImportError:
 		pass
-	st, out = portage.subprocess_getstatusoutput('stty size')
-	if st == os.EX_OK:
+
+	try:
+		proc = subprocess.Popen(["stty", "size"],
+			stdout=subprocess.PIPE, stderr=fd)
+	except EnvironmentError as e:
+		if e.errno != errno.ENOENT:
+			raise
+		# stty command not found
+		return (0, 0)
+
+	out = _unicode_decode(proc.communicate()[0])
+	if proc.wait() == os.EX_OK:
 		out = out.split()
 		if len(out) == 2:
 			try:
@@ -631,11 +645,14 @@ class EOutput(object):
 class ProgressBar(object):
 	"""The interface is copied from the ProgressBar class from the EasyDialogs
 	module (which is Mac only)."""
-	def __init__(self, title=None, maxval=0, label=None):
-		self._title = title
+	def __init__(self, title=None, maxval=0, label=None, max_desc_length=25):
+		self._title = title or ""
 		self._maxval = maxval
-		self._label = maxval
+		self._label = label or ""
 		self._curval = 0
+		self._desc = ""
+		self._desc_max_length = max_desc_length
+		self._set_desc()
 
 	@property
 	def curval(self):
@@ -659,10 +676,23 @@ class ProgressBar(object):
 	def title(self, newstr):
 		"""Sets the text in the title bar of the progress dialog to newstr."""
 		self._title = newstr
+		self._set_desc()
 
 	def label(self, newstr):
 		"""Sets the text in the progress box of the progress dialog to newstr."""
 		self._label = newstr
+		self._set_desc()
+
+	def _set_desc(self):
+		self._desc = "%s%s" % (
+			"%s: " % self._title if self._title else "",
+			"%s" % self._label if self._label else ""
+		)
+		if len(self._desc) > self._desc_max_length:  # truncate if too long
+			self._desc = "%s..." % self._desc[:self._desc_max_length - 3]
+		if len(self._desc):
+			self._desc = self._desc.ljust(self._desc_max_length)
+
 
 	def set(self, value, maxval=None):
 		"""
@@ -691,10 +721,10 @@ class ProgressBar(object):
 
 class TermProgressBar(ProgressBar):
 	"""A tty progress bar similar to wget's."""
-	def __init__(self, **kwargs):
+	def __init__(self, fd=sys.stdout, **kwargs):
 		ProgressBar.__init__(self, **kwargs)
-		lines, self.term_columns = get_term_size()
-		self.file = sys.stdout
+		lines, self.term_columns = get_term_size(fd)
+		self.file = fd
 		self._min_columns = 11
 		self._max_columns = 80
 		# for indeterminate mode, ranges from 0.0 to 1.0
@@ -717,16 +747,18 @@ class TermProgressBar(ProgressBar):
 		curval = self._curval
 		maxval = self._maxval
 		position = self._position
-		percentage_str_width = 4
+		percentage_str_width = 5
 		square_brackets_width = 2
 		if cols < percentage_str_width:
 			return ""
-		bar_space = cols - percentage_str_width - square_brackets_width
+		bar_space = cols - percentage_str_width - square_brackets_width - 1
+		if self._desc:
+			bar_space -= self._desc_max_length
 		if maxval == 0:
 			max_bar_width = bar_space-3
-			image = "    "
+			_percent = "".ljust(percentage_str_width)
 			if cols < min_columns:
-				return image
+				return ""
 			if position <= 0.5:
 				offset = 2 * position
 			else:
@@ -742,16 +774,16 @@ class TermProgressBar(ProgressBar):
 				position = 0.5
 			self._position = position
 			bar_width = int(offset * max_bar_width)
-			image = image + "[" + (bar_width * " ") + \
-				"<=>" + ((max_bar_width - bar_width) * " ") + "]"
+			image = "%s%s%s" % (self._desc, _percent,
+				"[" + (bar_width * " ") + \
+				"<=>" + ((max_bar_width - bar_width) * " ") + "]")
 			return image
 		else:
 			percentage = int(100 * float(curval) / maxval)
-			if percentage == 100:
-				percentage_str_width += 1
-				bar_space -= 1
 			max_bar_width = bar_space - 1
-			image = ("%d%% " % percentage).rjust(percentage_str_width)
+			_percent = ("%d%% " % percentage).rjust(percentage_str_width)
+			image = "%s%s" % (self._desc, _percent)
+
 			if cols < min_columns:
 				return image
 			offset = float(curval) / maxval

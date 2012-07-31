@@ -375,7 +375,19 @@ source_all_bashrcs() {
 		for x in "${path_array[@]}" ; do
 			[ -f "$x/profile.bashrc" ] && qa_source "$x/profile.bashrc"
 		done
+	fi
 
+	if [ -r "${PORTAGE_BASHRC}" ] ; then
+		if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
+			source "${PORTAGE_BASHRC}"
+		else
+			set -x
+			source "${PORTAGE_BASHRC}"
+			set +x
+		fi
+	fi
+
+	if [[ $EBUILD_PHASE != depend ]] ; then
 		# The user's bashrc is the ONLY non-portage bit of code that can
 		# change shopts without a QA violation.
 		for x in "${PM_EBUILD_HOOK_DIR}"/${CATEGORY}/{${PN},${PN}:${SLOT},${P},${PF}}; do
@@ -392,16 +404,6 @@ source_all_bashrcs() {
 				fi
 			fi
 		done
-	fi
-
-	if [ -r "${PORTAGE_BASHRC}" ] ; then
-		if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
-			source "${PORTAGE_BASHRC}"
-		else
-			set -x
-			source "${PORTAGE_BASHRC}"
-			set +x
-		fi
 	fi
 
 	[ ! -z "${OCC}" ] && export CC="${OCC}"
@@ -510,6 +512,10 @@ if ! has "$EBUILD_PHASE" clean cleanrm depend && \
 	[[ -n $EAPI ]] || EAPI=0
 fi
 
+if has "${EAPI:-0}" 4-python; then
+	shopt -s globstar
+fi
+
 if ! has "$EBUILD_PHASE" clean cleanrm ; then
 	if [[ $EBUILD_PHASE = depend || ! -f $T/environment || \
 		-f $PORTAGE_BUILDDIR/.ebuild_changed ]] || \
@@ -528,7 +534,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		# In order to ensure correct interaction between ebuilds and
 		# eclasses, they need to be unset before this process of
 		# interaction begins.
-		unset DEPEND RDEPEND PDEPEND INHERITED IUSE REQUIRED_USE \
+		unset EAPI DEPEND RDEPEND PDEPEND INHERITED IUSE REQUIRED_USE \
 			ECLASS E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND
 
 		if [[ $PORTAGE_DEBUG != 1 || ${-/x/} != $- ]] ; then
@@ -545,7 +551,10 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 			rm "$PORTAGE_BUILDDIR/.ebuild_changed"
 		fi
 
-		[[ -n $EAPI ]] || EAPI=0
+		[ "${EAPI+set}" = set ] || EAPI=0
+
+		# export EAPI for helpers (especially since we unset it above)
+		export EAPI
 
 		if has "$EAPI" 0 1 2 3 3_pre2 ; then
 			export RDEPEND=${RDEPEND-${DEPEND}}
@@ -663,8 +672,6 @@ if [[ $EBUILD_PHASE = depend ]] ; then
 		DESCRIPTION KEYWORDS INHERITED IUSE REQUIRED_USE PDEPEND PROVIDE EAPI
 		PROPERTIES DEFINED_PHASES UNUSED_05 UNUSED_04
 		UNUSED_03 UNUSED_02 UNUSED_01"
-
-	[ -n "${EAPI}" ] || EAPI=0
 
 	# The extra $(echo) commands remove newlines.
 	if [ -n "${dbkey}" ] ; then

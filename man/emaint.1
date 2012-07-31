@@ -19,8 +19,16 @@ Generate a metadata index for binary packages located in \fBPKGDIR\fR (for
 download by remote clients). See the \fBPORTAGE_BINHOST\fR documentation in
 the \fBmake.conf\fR(5) man page for additional information.
 .TP
+.BR cleanconfig
+Discard no longer installed config tracker entries.
+.TP
 .BR cleanresume
 Discard merge lists saved for the \fBemerge\fR(1) \fB--resume\fR action.
+.TP
+.BR logs
+Clean out old logs from the \fBPORT_LOGDIR\fR using the command \fBPORT_LOGDIR_CLEAN\fR
+See the \fBmake.conf\fR(5) man page for additional information as well as enabling the
+\fB'clean-logs'\fR feature in emerge to do this automatically.
 .TP
 .BR movebin
 Perform package move updates for binary packages located in \fBPKGDIR\fR.
@@ -30,23 +38,37 @@ Perform package move updates for installed packages.
 .TP
 .BR world
 Fix problems in the \fIworld\fR file.
-.SH OPTIONS 
+.SH DEFAULT OPTIONS 
 .TP
 .B \-c, \-\-check
-Check for any problems that may exist.
+Check for any problems that may exist.  (all commands)
 .TP
 .B \-f, \-\-fix
-Fix any problems that may exist.
+Fix any problems that may exist.  (not all commands)
+.SH OPTIONS
+.TP
+.B \-C, \-\-clean
+Cleans the logs from \fBPORT_LOGDIR\fR (logs command only)
+.TP
+.B \-p, \-\-pretend
+Sets pretend mode (same as \-c, \-\-check) for use with the \-C, \-\-clean OPTION (logs command only)
+.TP
+.B \-t NUM, \-\-time NUM
+Changes the minimum age \fBNUM\fR (in days) of the logs to be listed or deleted. (logs command only)
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
 .SH AUTHORS
 .nf
 Mike Frysinger <vapier@gentoo.org>
+Brian Dolbec <dolsen@gentoo.org>
 .fi
 .SH "FILES"
 .TP
 .B /var/lib/portage/world
 Contains a list of all user\-specified packages.
+.TP
+.B /var/lib/portage/config
+Contains the paths and md5sums of all the config files being tracked.
 .SH "SEE ALSO"
 .BR emerge (1),
 .BR portage (5)

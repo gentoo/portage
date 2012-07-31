@@ -7,7 +7,8 @@ class BacktrackParameter(object):
 
 	__slots__ = (
 		"needed_unstable_keywords", "runtime_pkg_mask", "needed_use_config_changes", "needed_license_changes",
-		"rebuild_list", "reinstall_list", "needed_p_mask_changes"
+		"rebuild_list", "reinstall_list", "needed_p_mask_changes",
+		"slot_abi_replace_installed"
 	)
 
 	def __init__(self):
@@ -18,6 +19,7 @@ class BacktrackParameter(object):
 		self.needed_license_changes = {}
 		self.rebuild_list = set()
 		self.reinstall_list = set()
+		self.slot_abi_replace_installed = set()
 
 	def __deepcopy__(self, memo=None):
 		if memo is None:
@@ -29,11 +31,16 @@ class BacktrackParameter(object):
 		#to our sets and dicts. The existing content is immutable.
 		result.needed_unstable_keywords = copy.copy(self.needed_unstable_keywords)
 		result.needed_p_mask_changes = copy.copy(self.needed_p_mask_changes)
-		result.runtime_pkg_mask = copy.copy(self.runtime_pkg_mask)
 		result.needed_use_config_changes = copy.copy(self.needed_use_config_changes)
 		result.needed_license_changes = copy.copy(self.needed_license_changes)
 		result.rebuild_list = copy.copy(self.rebuild_list)
 		result.reinstall_list = copy.copy(self.reinstall_list)
+		result.slot_abi_replace_installed = copy.copy(self.slot_abi_replace_installed)
+
+		# runtime_pkg_mask contains nested dicts that must also be copied
+		result.runtime_pkg_mask = {}
+		for k, v in self.runtime_pkg_mask.items():
+			result.runtime_pkg_mask[k] = copy.copy(v)
 
 		return result
 
@@ -44,7 +51,8 @@ class BacktrackParameter(object):
 			self.needed_use_config_changes == other.needed_use_config_changes and \
 			self.needed_license_changes == other.needed_license_changes and \
 			self.rebuild_list == other.rebuild_list and \
-			self.reinstall_list == other.reinstall_list
+			self.reinstall_list == other.reinstall_list and \
+			self.slot_abi_replace_installed == other.slot_abi_replace_installed
 
 
 class _BacktrackNode(object):
@@ -114,9 +122,10 @@ class Backtracker(object):
 		before, we revert the mask for other packages (bug 375573).
 		"""
 
-		for pkg in runtime_pkg_mask:
+		for pkg, mask_info in runtime_pkg_mask.items():
 
-			if "missing dependency" in runtime_pkg_mask[pkg]:
+			if "missing dependency" in mask_info or \
+				"slot_abi_mask_built" in mask_info:
 				continue
 
 			entry_is_valid = False
@@ -130,6 +139,13 @@ class Backtracker(object):
 				return False
 
 		return True
+
+	def _feedback_slot_conflicts(self, conflicts_data):
+		# Only create BacktrackNode instances for the first
+		# conflict which occurred, since the conflicts that
+		# occurred later may have been caused by the first
+		# conflict.
+		self._feedback_slot_conflict(conflicts_data[0])
 
 	def _feedback_slot_conflict(self, conflict_data):
 		for pkg, parent_atoms in conflict_data:
@@ -174,6 +190,14 @@ class Backtracker(object):
 			elif change == "needed_use_config_changes":
 				for pkg, (new_use, new_changes) in data:
 					para.needed_use_config_changes[pkg] = (new_use, new_changes)
+			elif change == "slot_conflict_abi":
+				new_node.terminal = False
+			elif change == "slot_abi_mask_built":
+				for pkg, mask_reasons in data.items():
+					para.runtime_pkg_mask.setdefault(pkg,
+						{}).update(mask_reasons)
+			elif change == "slot_abi_replace_installed":
+				para.slot_abi_replace_installed.update(data)
 			elif change == "rebuild_list":
 				para.rebuild_list.update(data)
 			elif change == "reinstall_list":
@@ -196,7 +220,7 @@ class Backtracker(object):
 
 		#There is at most one of the following types of conflicts for a given restart.
 		if "slot conflict" in infos:
-			self._feedback_slot_conflict(infos["slot conflict"])
+			self._feedback_slot_conflicts(infos["slot conflict"])
 		elif "missing dependency" in infos:
 			self._feedback_missing_dep(infos["missing dependency"])
 

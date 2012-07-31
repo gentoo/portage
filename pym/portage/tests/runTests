@@ -1,18 +1,25 @@
 #!/usr/bin/python -Wd
 # runTests.py -- Portage Unit Test Functionality
-# Copyright 2006 Gentoo Foundation
+# Copyright 2006-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import os, sys
 import os.path as osp
 import grp
+import platform
 import pwd
 import signal
 
 def debug_signal(signum, frame):
 	import pdb
 	pdb.set_trace()
-signal.signal(signal.SIGUSR1, debug_signal)
+
+if platform.python_implementation() == 'Jython':
+	debug_signum = signal.SIGUSR2 # bug #424259
+else:
+	debug_signum = signal.SIGUSR1
+
+signal.signal(debug_signum, debug_signal)
 
 # Pretend that the current user's uid/gid are the 'portage' uid/gid,
 # so things go smoothly regardless of the current user and global
@@ -29,6 +36,9 @@ import portage
 # Ensure that we don't instantiate portage.settings, so that tests should
 # work the same regardless of global configuration file state/existence.
 portage._disable_legacy_globals()
+
+if os.environ.get('NOCOLOR') in ('yes', 'true'):
+	portage.output.nocolor()
 
 import portage.tests as tests
 from portage.const import PORTAGE_BIN_PATH

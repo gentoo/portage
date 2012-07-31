@@ -1,4 +1,4 @@
-# Copyright 2011 Gentoo Foundation
+# Copyright 2011-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -259,8 +259,8 @@ pkg_preinst() {
 			emerge_cmd + ("-C", "--quiet", "dev-libs/B"),
 		)
 
-		distdir = os.path.join(eprefix, "distdir")
-		pkgdir = os.path.join(eprefix, "pkgdir")
+		distdir = playground.distdir
+		pkgdir = playground.pkgdir
 		fake_bin = os.path.join(eprefix, "bin")
 		portage_tmpdir = os.path.join(eprefix, "var", "tmp", "portage")
 		profile_path = settings.profile_path
