@@ -376,7 +376,10 @@ class vardbapi(dbapi):
 		if mysplit[0] == '*':
 			mysplit[0] = mysplit[0][1:]
 		try:
-			mystat = os.stat(self.getpath(mysplit[0])).st_mtime
+			if sys.hexversion >= 0x3030000:
+				mystat = os.stat(self.getpath(mysplit[0])).st_mtime_ns
+			else:
+				mystat = os.stat(self.getpath(mysplit[0])).st_mtime
 		except OSError:
 			mystat = 0
 		if use_cache and mycp in self.cpcache:
@@ -511,7 +514,10 @@ class vardbapi(dbapi):
 			return list(self._iter_match(mydep,
 				self.cp_list(mydep.cp, use_cache=use_cache)))
 		try:
-			curmtime = os.stat(os.path.join(self._eroot, VDB_PATH, mycat)).st_mtime
+			if sys.hexversion >= 0x3030000:
+				curmtime = os.stat(os.path.join(self._eroot, VDB_PATH, mycat)).st_mtime_ns
+			else:
+				curmtime = os.stat(os.path.join(self._eroot, VDB_PATH, mycat)).st_mtime
 		except (IOError, OSError):
 			curmtime=0
 
