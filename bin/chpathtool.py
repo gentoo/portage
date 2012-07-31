@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright 2011 Gentoo Foundation
+# Copyright 2011-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import io
@@ -121,8 +121,12 @@ def chpath_inplace(filename, is_text_file, old, new):
 
 	f.close()
 	if modified:
-		orig_mtime = orig_stat[stat.ST_MTIME]
-		os.utime(filename, (orig_mtime, orig_mtime))
+		if sys.hexversion >= 0x3030000:
+			orig_mtime = orig_stat.st_mtime_ns
+			os.utime(filename, ns=(orig_mtime, orig_mtime))
+		else:
+			orig_mtime = orig_stat[stat.ST_MTIME]
+			os.utime(filename, (orig_mtime, orig_mtime))
 	return modified
 
 def chpath_inplace_symlink(filename, st, old, new):
