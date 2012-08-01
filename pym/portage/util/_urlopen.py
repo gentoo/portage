@@ -1,6 +1,7 @@
 # Copyright 2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import io
 import sys
 from datetime import datetime
 from time import mktime
@@ -33,7 +34,7 @@ def urlopen(url, if_modified_since=None):
 		request.add_header('User-Agent', 'Gentoo Portage')
 		if if_modified_since:
 			request.add_header('If-Modified-Since', _timestamp_to_http(if_modified_since))
-		opener = urllib_request.build_opener()
+		opener = urllib_request.build_opener(CompressedResponseProcessor)
 		hdl = opener.open(request)
 		if hdl.headers.get('last-modified', ''):
 			try:
@@ -77,3 +78,32 @@ def _http_to_timestamp(http_datetime_string):
 	tuple = parsedate(http_datetime_string)
 	timestamp = mktime(tuple)
 	return str(long(timestamp))
+
+class CompressedResponseProcessor(urllib_request.BaseHandler):
+	# Handler for compressed responses.
+
+	def http_request(self, req):
+		req.add_header('Accept-Encoding', 'bzip2,gzip,deflate')
+		return req
+	https_request = http_request
+
+	def http_response(self, req, response):
+		decompressed = None
+		if response.headers.get('content-encoding') == 'bzip2':
+			import bz2
+			decompressed = io.BytesIO(bz2.decompress(response.read()))
+		elif response.headers.get('content-encoding') == 'gzip':
+			from gzip import GzipFile
+			decompressed = GzipFile(fileobj=io.BytesIO(response.read()), mode='r')
+		elif response.headers.get('content-encoding') == 'deflate':
+			import zlib
+			try:
+				decompressed = io.BytesIO(zlib.decompress(response.read()))
+			except zlib.error: # they ignored RFC1950
+				decompressed = io.BytesIO(zlib.decompress(response.read(), -zlib.MAX_WBITS))
+		if decompressed:
+			old_response = response
+			response = urllib_request.addinfourl(decompressed, old_response.headers, old_response.url, old_response.code)
+			response.msg = old_response.msg
+		return response
+	https_response = http_response
