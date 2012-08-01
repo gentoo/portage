@@ -54,6 +54,11 @@ if sys.hexversion >= 0x3000000:
 else:
 	_unicode = unicode
 
+class UseCachedCopyOfRemoteIndex(Exception):
+	# If the local copy is recent enough
+	# then fetching the remote index can be skipped.
+	pass
+
 class bindbapi(fakedbapi):
 	_known_keys = frozenset(list(fakedbapi._known_keys) + \
 		["CHOST", "repository", "USE"])
@@ -852,6 +857,7 @@ class binarytree(object):
 				if e.errno != errno.ENOENT:
 					raise
 			local_timestamp = pkgindex.header.get("TIMESTAMP", None)
+			remote_timestamp = None
 			rmt_idx = self._new_pkgindex()
 			proc = None
 			tmp_filename = None
@@ -861,8 +867,13 @@ class binarytree(object):
 				# slash, so join manually...
 				url = base_url.rstrip("/") + "/Packages"
 				try:
-					f = _urlopen(url)
-				except IOError:
+					f = _urlopen(url, if_modified_since=local_timestamp)
+					if hasattr(f, 'headers') and f.headers.get('timestamp', ''):
+						remote_timestamp = f.headers.get('timestamp')
+				except IOError as err:
+					if hasattr(err, 'code') and err.code == 304: # not modified (since local_timestamp)
+						raise UseCachedCopyOfRemoteIndex()
+
 					path = parsed_url.path.rstrip("/") + "/Packages"
 
 					if parsed_url.scheme == 'sftp':
@@ -903,7 +914,8 @@ class binarytree(object):
 					_encodings['repo.content'], errors='replace')
 				try:
 					rmt_idx.readHeader(f_dec)
-					remote_timestamp = rmt_idx.header.get("TIMESTAMP", None)
+					if not remote_timestamp: # in case it had not been read from HTTP header
+						remote_timestamp = rmt_idx.header.get("TIMESTAMP", None)
 					if not remote_timestamp:
 						# no timestamp in the header, something's wrong
 						pkgindex = None
@@ -931,6 +943,12 @@ class binarytree(object):
 						writemsg("\n\n!!! %s\n" % \
 							_("Timed out while closing connection to binhost"),
 							noiselevel=-1)
+			except UseCachedCopyOfRemoteIndex:
+				writemsg_stdout("\n")
+				writemsg_stdout(
+					colorize("GOOD", _("Local copy of remote index is up-to-date and will be used.")) + \
+					"\n")
+				rmt_idx = pkgindex
 			except EnvironmentError as e:
 				writemsg(_("\n\n!!! Error fetching binhost package" \
 					" info from '%s'\n") % _hide_url_passwd(base_url))
