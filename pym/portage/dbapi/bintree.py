@@ -1186,9 +1186,13 @@ class binarytree(object):
 			pkgindex.packages.append(d)
 
 			self._update_pkgindex_header(pkgindex.header)
-			f = atomic_ofstream(os.path.join(self.pkgdir, "Packages"))
+			pkgindex_filename = os.path.join(self.pkgdir, "Packages")
+			f = atomic_ofstream(pkgindex_filename)
 			pkgindex.write(f)
 			f.close()
+			# some seconds might have elapsed since TIMESTAMP
+			atime = mtime = long(pkgindex.header["TIMESTAMP"])
+			os.utime(pkgindex_filename, (atime, mtime))
 		finally:
 			if pkgindex_lock:
 				unlockfile(pkgindex_lock)
