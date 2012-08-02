@@ -572,11 +572,12 @@ class vardbapi(dbapi):
 	def _aux_cache_init(self):
 		aux_cache = None
 		open_kwargs = {}
-		if sys.hexversion >= 0x3000000:
+		if sys.hexversion >= 0x3000000 and sys.hexversion < 0x3020000:
 			# Buffered io triggers extreme performance issues in
 			# Unpickler.load() (problem observed with python-3.0.1).
 			# Unfortunately, performance is still poor relative to
-			# python-2.x, but buffering makes it much worse.
+			# python-2.x, but buffering makes it much worse (problem
+			# appears to be solved in Python >=3.2 at least).
 			open_kwargs["buffering"] = 0
 		try:
 			f = open(_unicode_encode(self._aux_cache_filename,
