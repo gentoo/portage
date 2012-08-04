@@ -420,11 +420,17 @@ econf() {
 			done
 		fi
 
+		local conf_help=$("${ECONF_SOURCE}/configure" --help 2>/dev/null)
+
+		case "${conf_help}" in
+			*--disable-silent-rules*) set -- --disable-silent-rules "$@";;
+		esac
+
 		# EAPI=4 adds --disable-dependency-tracking to econf
-		if ! has "$EAPI" 0 1 2 3 3_pre2 && \
-			"${ECONF_SOURCE}/configure" --help 2>/dev/null | \
-			grep -q disable-dependency-tracking ; then
-			set -- --disable-dependency-tracking "$@"
+		if ! has "$EAPI" 0 1 2 3 3_pre2 ; then
+			case "${conf_help}" in
+				*--disable-dependency-tracking*) set -- --disable-dependency-tracking "$@";;
+			esac
 		fi
 
 		# if the profile defines a location to install libs to aside from default, pass it on.
