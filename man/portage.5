@@ -444,12 +444,13 @@ doc
 .fi
 .TP
 .BR virtuals
-This controls what packages will provide a virtual by default.  For example, 
-if a package needs to send e\-mail, it will need virtual/mta.  In the absence 
-of a package that provides virtual/mta (like qmail, sendmail, postfix, etc...), 
-portage will look here to see what package to use.  In this case, Gentoo uses 
-net\-mail/ssmtp as the default (as defined in the virtuals file) because it's 
-the package that does the very bare minimum to send e\-mail.
+The virtuals file controls default preferences for virtuals that
+are defined via the \fBPROVIDE\fR ebuild variable (see
+\fBebuild\fR(5)). Since Gentoo now uses \fBGLEP 37\fR virtuals
+instead of \fBPROVIDE\fR virtuals, the virtuals file is
+irrelevant for all Gentoo ebuilds. However, it is still possible
+for third\-parties to distribute ebuilds that make use of
+\fBPROVIDE\fR.
 
 .I Format:
 .nf
