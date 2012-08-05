@@ -520,6 +520,9 @@ suspect_virtual = {
 	"dev-util/pkgconf":"virtual/pkgconfig",
 	"dev-util/pkgconfig":"virtual/pkgconfig",
 	"dev-util/pkgconfig-openbsd":"virtual/pkgconfig",
+	"dev-libs/libusb":"virtual/libusb",
+	"dev-libs/libusbx":"virtual/libusb",
+	"dev-libs/libusb-compat":"virtual/libusb",
 }
 
 metadata_dtd_uri = 'http://www.gentoo.org/dtd/metadata.dtd'
