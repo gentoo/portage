@@ -268,6 +268,13 @@ space.  Make sure you have built both binutils and gdb with USE=zlib
 support for this to work.  See \fBsplitdebug\fR for general split debug
 information (upon which this feature depends).
 .TP
+.B compress\-index
+If set then a compressed copy of 'Packages' index file will be written.
+This feature is intended for Gentoo binhosts using certain webservers
+(such as, but not limited to, Nginx with gzip_static module) to avoid
+redundant on\-the\-fly compression.  The resulting file will be called
+'Packages.gz' and its modification time will match that of 'Packages'.
+.TP
 .B config\-protect\-if\-modified
 This causes the \fBCONFIG_PROTECT\fR behavior to be skipped for files
 that have not been modified since they were installed. This feature is

@@ -41,6 +41,7 @@ import sys
 import tempfile
 import textwrap
 import warnings
+from gzip import GzipFile
 from itertools import chain
 try:
 	from urllib.parse import urlparse
@@ -1186,13 +1187,21 @@ class binarytree(object):
 			pkgindex.packages.append(d)
 
 			self._update_pkgindex_header(pkgindex.header)
-			pkgindex_filename = os.path.join(self.pkgdir, "Packages")
-			f = atomic_ofstream(pkgindex_filename)
-			pkgindex.write(f)
-			f.close()
-			# some seconds might have elapsed since TIMESTAMP
+			contents = codecs.getwriter(_encodings['repo.content'])(io.BytesIO())
+			pkgindex.write(contents)
+			contents = contents.getvalue()
 			atime = mtime = long(pkgindex.header["TIMESTAMP"])
-			os.utime(pkgindex_filename, (atime, mtime))
+
+			pkgindex_filename = os.path.join(self.pkgdir, "Packages")
+			output_files = [(atomic_ofstream(pkgindex_filename, mode="wb"), pkgindex_filename)]
+			if "compress-index" in self.settings.features:
+				gz_fname = pkgindex_filename + ".gz"
+				output_files.append((GzipFile(gz_fname, mode="wb"), gz_fname))
+			for f, fname in output_files:
+				f.write(contents)
+				f.close()
+				# some seconds might have elapsed since TIMESTAMP
+				os.utime(fname, (atime, mtime))
 		finally:
 			if pkgindex_lock:
 				unlockfile(pkgindex_lock)
