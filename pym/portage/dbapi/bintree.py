@@ -1193,13 +1193,16 @@ class binarytree(object):
 			atime = mtime = long(pkgindex.header["TIMESTAMP"])
 
 			pkgindex_filename = os.path.join(self.pkgdir, "Packages")
-			output_files = [(atomic_ofstream(pkgindex_filename, mode="wb"), pkgindex_filename)]
+			output_files = [(atomic_ofstream(pkgindex_filename, mode="wb"), pkgindex_filename, None)]
 			if "compress-index" in self.settings.features:
 				gz_fname = pkgindex_filename + ".gz"
-				output_files.append((GzipFile(gz_fname, mode="wb"), gz_fname))
-			for f, fname in output_files:
+				fileobj = atomic_ofstream(gz_fname, mode="wb")
+				output_files.append((GzipFile(filename='', mode="wb", fileobj=fileobj, mtime=mtime), gz_fname, fileobj))
+			for f, fname, f_close in output_files:
 				f.write(contents)
 				f.close()
+				if f_close is not None:
+					f_close.close()
 				# some seconds might have elapsed since TIMESTAMP
 				os.utime(fname, (atime, mtime))
 		finally:
