@@ -813,9 +813,7 @@ class binarytree(object):
 				del pkgindex.packages[:]
 				pkgindex.packages.extend(iter(metadata.values()))
 				self._update_pkgindex_header(pkgindex.header)
-				f = atomic_ofstream(self._pkgindex_file)
-				pkgindex.write(f)
-				f.close()
+				self._pkgindex_write(pkgindex)
 
 		if getbinpkgs and not self.settings["PORTAGE_BINHOST"]:
 			writemsg(_("!!! PORTAGE_BINHOST unset, but use is requested.\n"),
@@ -1187,27 +1185,33 @@ class binarytree(object):
 			pkgindex.packages.append(d)
 
 			self._update_pkgindex_header(pkgindex.header)
-			contents = codecs.getwriter(_encodings['repo.content'])(io.BytesIO())
-			pkgindex.write(contents)
-			contents = contents.getvalue()
-			atime = mtime = long(pkgindex.header["TIMESTAMP"])
+			self._pkgindex_write(pkgindex)
 
-			pkgindex_filename = os.path.join(self.pkgdir, "Packages")
-			output_files = [(atomic_ofstream(pkgindex_filename, mode="wb"), pkgindex_filename, None)]
-			if "compress-index" in self.settings.features:
-				gz_fname = pkgindex_filename + ".gz"
-				fileobj = atomic_ofstream(gz_fname, mode="wb")
-				output_files.append((GzipFile(filename='', mode="wb", fileobj=fileobj, mtime=mtime), gz_fname, fileobj))
-			for f, fname, f_close in output_files:
-				f.write(contents)
-				f.close()
-				if f_close is not None:
-					f_close.close()
-				# some seconds might have elapsed since TIMESTAMP
-				os.utime(fname, (atime, mtime))
 		finally:
 			if pkgindex_lock:
 				unlockfile(pkgindex_lock)
+
+	def _pkgindex_write(self, pkgindex):
+		contents = codecs.getwriter(_encodings['repo.content'])(io.BytesIO())
+		pkgindex.write(contents)
+		contents = contents.getvalue()
+		atime = mtime = long(pkgindex.header["TIMESTAMP"])
+		output_files = [(atomic_ofstream(self._pkgindex_file, mode="wb"),
+			self._pkgindex_file, None)]
+
+		if "compress-index" in self.settings.features:
+			gz_fname = self._pkgindex_file + ".gz"
+			fileobj = atomic_ofstream(gz_fname, mode="wb")
+			output_files.append((GzipFile(filename='', mode="wb",
+				fileobj=fileobj, mtime=mtime), gz_fname, fileobj))
+
+		for f, fname, f_close in output_files:
+			f.write(contents)
+			f.close()
+			if f_close is not None:
+				f_close.close()
+			# some seconds might have elapsed since TIMESTAMP
+			os.utime(fname, (atime, mtime))
 
 	def _pkgindex_entry(self, cpv):
 		"""

@@ -151,12 +151,8 @@ class BinhostHandler(object):
 
 				del pkgindex.packages[:]
 				pkgindex.packages.extend(metadata.values())
-				from portage.util import atomic_ofstream
-				f = atomic_ofstream(self._pkgindex_file)
-				try:
-					self._pkgindex.write(f)
-				finally:
-					f.close()
+				bintree._pkgindex_write(self._pkgindex)
+
 			finally:
 				locks.unlockfile(pkgindex_lock)
 
