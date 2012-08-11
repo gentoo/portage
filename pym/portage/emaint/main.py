@@ -115,7 +115,7 @@ class TaskHandler(object):
 			return
 		for task in tasks:
 			inst = task()
-			show_progress = self.show_progress_bar
+			show_progress = self.show_progress_bar and self.isatty
 			# check if the function is capable of progressbar 
 			# and possibly override it off
 			if show_progress and hasattr(inst, 'can_progressbar'):
@@ -133,7 +133,7 @@ class TaskHandler(object):
 				'options': options.copy()
 				}
 			result = getattr(inst, func)(**kwargs)
-			if self.isatty and  show_progress:
+			if show_progress:
 				# make sure the final progress is displayed
 				self.progress_bar.display()
 				print()
