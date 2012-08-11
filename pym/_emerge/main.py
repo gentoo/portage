@@ -1356,13 +1356,12 @@ def clean_logs(settings):
 	if logdir is None or not os.path.isdir(logdir):
 		return
 
-	options = {
-			'eerror': portage.output.EOutput().eerror,
-			# uncomment next line to output a succeeded message
-			#'einfo': portage.output.EOutput().einfo
-		}
 	cleanlogs = CleanLogs()
-	cleanlogs.clean(settings=settings, options=options)
+	errors = cleanlogs.clean(settings=settings)
+	if errors:
+		out = portage.output.EOutput()
+		for msg in errors:
+			out.eerror(msg)
 
 def setconfig_fallback(root_config):
 	setconfig = root_config.setconfig
