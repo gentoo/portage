@@ -307,7 +307,7 @@ then
 	[[ -d ${D}${prepstrip_sources_dir} ]] || mkdir -p "${D}${prepstrip_sources_dir}"
 	grep -zv '/<[^/>]*>$' "${tmpdir}"/debug.sources | \
 		(cd "${WORKDIR}"; LANG=C sort -z -u | \
-		rsync -tL0 --files-from=- "${WORKDIR}/" "${D}${prepstrip_sources_dir}/" )
+		rsync -tL0 --chmod=ugo-st,a+r,go-w,Da+x,Fa-x --files-from=- "${WORKDIR}/" "${D}${prepstrip_sources_dir}/" )
 
 	# Preserve directory structure.
 	# Needed after running save_elf_sources.
