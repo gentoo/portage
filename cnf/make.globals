@@ -144,7 +144,7 @@ PORTAGE_WORKDIR_MODE="0700"
 
 # Some defaults for elog
 PORTAGE_ELOG_CLASSES="log warn error"
-PORTAGE_ELOG_SYSTEM="save_summary echo"
+PORTAGE_ELOG_SYSTEM="save_summary:log,warn,error,qa echo"
 
 PORTAGE_ELOG_MAILURI="@rootuser@"
 PORTAGE_ELOG_MAILSUBJECT="[portage] ebuild log for \${PACKAGE} on \${HOST}"

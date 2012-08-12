@@ -377,7 +377,6 @@ qahelp={
 	"LIVEVCS.unmasked":"This ebuild is a live checkout from a VCS but has keywords and is not masked in the global package.mask.",
 	"IUSE.invalid":"This ebuild has a variable in IUSE that is not in the use.desc or its metadata.xml file",
 	"IUSE.missing":"This ebuild has a USE conditional which references a flag that is not listed in IUSE",
-	"IUSE.undefined":"This ebuild does not define IUSE (style guideline says to define IUSE even when empty)",
 	"LICENSE.invalid":"This ebuild is listing a license that doesnt exist in portages license/ dir.",
 	"KEYWORDS.invalid":"This ebuild contains KEYWORDS that are not listed in profiles/arch.list or for which no valid profile was found",
 	"RDEPEND.implicit":"RDEPEND is unset in the ebuild which triggers implicit RDEPEND=$DEPEND assignment (prior to EAPI 4)",
@@ -425,7 +424,6 @@ qawarnings = set((
 "KEYWORDS.stupid",
 "KEYWORDS.missing",
 "IUSE.invalid",
-"IUSE.undefined",
 "PDEPEND.suspect",
 "RDEPEND.implicit",
 "RDEPEND.suspect",
@@ -524,6 +522,9 @@ suspect_virtual = {
 	"dev-util/pkgconf":"virtual/pkgconfig",
 	"dev-util/pkgconfig":"virtual/pkgconfig",
 	"dev-util/pkgconfig-openbsd":"virtual/pkgconfig",
+	"dev-libs/libusb":"virtual/libusb",
+	"dev-libs/libusbx":"virtual/libusb",
+	"dev-libs/libusb-compat":"virtual/libusb",
 }
 
 metadata_dtd_uri = 'http://www.gentoo.org/dtd/metadata.dtd'

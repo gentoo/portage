@@ -390,7 +390,10 @@ class vardbapi(dbapi):
 		if mysplit[0] == '*':
 			mysplit[0] = mysplit[0][1:]
 		try:
-			mystat = os.stat(self.getpath(mysplit[0])).st_mtime
+			if sys.hexversion >= 0x3030000:
+				mystat = os.stat(self.getpath(mysplit[0])).st_mtime_ns
+			else:
+				mystat = os.stat(self.getpath(mysplit[0])).st_mtime
 		except OSError:
 			mystat = 0
 		if use_cache and mycp in self.cpcache:
@@ -525,7 +528,10 @@ class vardbapi(dbapi):
 			return list(self._iter_match(mydep,
 				self.cp_list(mydep.cp, use_cache=use_cache)))
 		try:
-			curmtime = os.stat(os.path.join(self._eroot, VDB_PATH, mycat)).st_mtime
+			if sys.hexversion >= 0x3030000:
+				curmtime = os.stat(os.path.join(self._eroot, VDB_PATH, mycat)).st_mtime_ns
+			else:
+				curmtime = os.stat(os.path.join(self._eroot, VDB_PATH, mycat)).st_mtime
 		except (IOError, OSError):
 			curmtime=0
 
@@ -580,11 +586,12 @@ class vardbapi(dbapi):
 	def _aux_cache_init(self):
 		aux_cache = None
 		open_kwargs = {}
-		if sys.hexversion >= 0x3000000:
+		if sys.hexversion >= 0x3000000 and sys.hexversion < 0x3020000:
 			# Buffered io triggers extreme performance issues in
 			# Unpickler.load() (problem observed with python-3.0.1).
 			# Unfortunately, performance is still poor relative to
-			# python-2.x, but buffering makes it much worse.
+			# python-2.x, but buffering makes it much worse (problem
+			# appears to be solved in Python >=3.2 at least).
 			open_kwargs["buffering"] = 0
 		try:
 			f = open(_unicode_encode(self._aux_cache_filename,
@@ -4284,8 +4291,9 @@ class dblink(object):
 		@type stufftomerge: String or List
 		@param cfgfiledict: { File:mtime } mapping for config_protected files
 		@type cfgfiledict: Dictionary
-		@param thismtime: The current time (typically long(time.time())
-		@type thismtime: Long
+		@param thismtime: None or new mtime for merged files (expressed in seconds
+		in Python <3.3 and nanoseconds in Python >=3.3)
+		@type thismtime: None or Int
 		@rtype: None or Boolean
 		@return:
 		1. True on failure
@@ -4418,7 +4426,10 @@ class dblink(object):
 					encoding=_encodings['merge'])
 				if mymtime != None:
 					showMessage(">>> %s -> %s\n" % (mydest, myto))
-					outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime)+"\n")
+					if sys.hexversion >= 0x3030000:
+						outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime // 1000000000)+"\n")
+					else:
+						outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime)+"\n")
 				else:
 					showMessage(_("!!! Failed to move file.\n"),
 						level=logging.ERROR, noiselevel=-1)
@@ -4572,7 +4583,10 @@ class dblink(object):
 									cfgprot = cfgfiledict["IGNORE"]
 									if not moveme:
 										zing = "---"
-										mymtime = mystat[stat.ST_MTIME]
+										if sys.hexversion >= 0x3030000:
+											mymtime = mystat.st_mtime_ns
+										else:
+											mymtime = mystat[stat.ST_MTIME]
 								else:
 									moveme = 1
 									cfgprot = 1
@@ -4609,7 +4623,10 @@ class dblink(object):
 					zing = ">>>"
 
 				if mymtime != None:
-					outfile.write("obj "+myrealdest+" "+mymd5+" "+str(mymtime)+"\n")
+					if sys.hexversion >= 0x3030000:
+						outfile.write("obj "+myrealdest+" "+mymd5+" "+str(mymtime // 1000000000)+"\n")
+					else:
+						outfile.write("obj "+myrealdest+" "+mymd5+" "+str(mymtime)+"\n")
 				showMessage("%s %s\n" % (zing,mydest))
 			else:
 				# we are merging a fifo or device node

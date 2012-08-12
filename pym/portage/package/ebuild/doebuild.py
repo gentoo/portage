@@ -29,6 +29,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild._ipc.QueryCommand:QueryCommand',
 	'portage.dep._slot_abi:evaluate_slot_abi_equal_deps',
 	'portage.package.ebuild._spawn_nofetch:spawn_nofetch',
+	'portage.util._desktop_entry:validate_desktop_entry',
 	'portage.util.ExtractKernelVersion:ExtractKernelVersion'
 )
 
@@ -1769,7 +1770,10 @@ def _post_src_install_uid_fix(mysettings, out):
 
 	destdir = mysettings["D"]
 	ed_len = len(mysettings["ED"])
+	desktopfile_errors = []
 	unicode_errors = []
+	desktop_file_validate = \
+		portage.process.find_binary("desktop-file-validate") is not None
 
 	while True:
 
@@ -1816,6 +1820,12 @@ def _post_src_install_uid_fix(mysettings, out):
 					fpath = new_fpath
 				else:
 					fpath = os.path.join(parent, fname)
+
+				if desktop_file_validate and fname.endswith(".desktop") and \
+					os.path.isfile(fpath):
+					desktop_validate = validate_desktop_entry(fpath)
+					if desktop_validate:
+						desktopfile_errors.extend(desktop_validate)
 
 				if fixlafiles and \
 					fname.endswith(".la") and os.path.isfile(fpath):
@@ -1882,6 +1892,11 @@ def _post_src_install_uid_fix(mysettings, out):
 
 		if not unicode_error:
 			break
+
+	if desktopfile_errors:
+		for l in _merge_desktopfile_error(desktopfile_errors):
+			l = l.replace(mysettings["ED"], '/')
+			eqawarn(l, phase='install', key=mysettings.mycpv, out=out)
 
 	if unicode_errors:
 		for l in _merge_unicode_error(unicode_errors):
@@ -2044,6 +2059,20 @@ def _post_src_install_soname_symlinks(mysettings, out):
 	qa_msg.append("")
 	for line in qa_msg:
 		eqawarn(line, key=mysettings.mycpv, out=out)
+
+def _merge_desktopfile_error(errors):
+	lines = []
+
+	msg = _("QA Notice: This package installs one or more .desktop files "
+		"that do not pass validation.")
+	lines.extend(wrap(msg, 72))
+
+	lines.append("")
+	errors.sort()
+	lines.extend("\t" + x for x in errors)
+	lines.append("")
+
+	return lines
 
 def _merge_unicode_error(errors):
 	lines = []

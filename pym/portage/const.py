@@ -124,7 +124,7 @@ SUPPORTED_FEATURES       = frozenset([
                            "assume-digests", "binpkg-logs", "buildpkg", "buildsyspkg", "candy",
                            "ccache", "chflags", "clean-logs",
                            "collision-protect", "compress-build-logs", "compressdebug",
-                           "config-protect-if-modified",
+                           "compress-index", "config-protect-if-modified",
                            "digest", "distcc", "distcc-pump", "distlocks",
                            "downgrade-backup", "ebuild-locks", "fakeroot",
                            "fail-clean", "force-mirror", "force-prefix", "getbinpkg",

@@ -639,6 +639,8 @@ def WhirlpoolInit(ctx):
     return
 
 def WhirlpoolAdd(source, sourceBits, ctx):
+    if not isinstance(source, bytes):
+        raise TypeError("Expected %s, got %s" % (bytes, type(source)))
     if sys.hexversion < 0x3000000:
         source = [ord(s)&0xff for s in source]
 

@@ -31,7 +31,11 @@ def parse_desktop_entry(path):
 		encoding=_encodings['fs'], errors='strict'),
 		mode='r', encoding=_encodings['repo.content'],
 		errors='replace') as f:
-		read_file(f)
+		content = f.read()
+
+	# In Python 3.2, read_file does not support bytes in file names
+	# (see bug #429544), so use StringIO to hide the file name.
+	read_file(io.StringIO(content))
 
 	return parser
 

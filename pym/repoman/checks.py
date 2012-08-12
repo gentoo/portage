@@ -640,26 +640,6 @@ if not _ENABLE_INHERIT_CHECK:
 		}
 	}
 
-class IUseUndefined(LineCheck):
-	"""
-	Make sure the ebuild defines IUSE (style guideline
-	says to define IUSE even when empty).
-	"""
-
-	repoman_check_name = 'IUSE.undefined'
-	_iuse_def_re = re.compile(r'^IUSE=.*')
-
-	def new(self, pkg):
-		self._iuse_def = None
-
-	def check(self, num, line):
-		if self._iuse_def is None:
-			self._iuse_def = self._iuse_def_re.match(line)
-
-	def end(self):
-		if self._iuse_def is None:
-			yield 'IUSE is not defined'
-
 class EMakeParallelDisabled(PhaseCheck):
 	"""Check for emake -j1 calls which disable parallelization."""
 	repoman_check_name = 'upstream.workaround'
@@ -818,7 +798,7 @@ _constant_checks = tuple(chain((c() for c in (
 	EbuildAssignment, Eapi3EbuildAssignment, EbuildUselessDodoc,
 	EbuildUselessCdS, EbuildNestedDie,
 	EbuildPatches, EbuildQuotedA, EapiDefinition,
-	ImplicitRuntimeDeps, IUseUndefined,
+	ImplicitRuntimeDeps,
 	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS, NoAsNeeded,
 	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
 	SrcCompileEconf, Eapi3DeprecatedFuncs, NoOffsetWithHelpers,
