@@ -148,7 +148,6 @@ class MaskManager(object):
 		profile_pkgunmasklines = stack_lists(profile_pkgunmasklines, incremental=1, \
 			remember_source_file=True, warn_for_unmatched_removal=True,
 			strict_warn_for_unmatched_removal=strict_umatched_removal)
-		# PREFIX LOCAL
 
 		#Read /etc/portage/package.mask. Don't stack it to allow the user to
 		#remove mask atoms from everywhere with -atoms.
