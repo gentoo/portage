@@ -333,7 +333,7 @@ do_latest_snapshot() {
 
 	vecho "Fetching most recent snapshot ..."
 
-	# The snapshot for a given day is generated at 01:45 UTC on the following
+	# The snapshot for a given day is generated at 00:45 UTC on the following
 	# day, so the current day's snapshot (going by UTC time) hasn't been
 	# generated yet.  Therefore, always start by looking for the previous day's
 	# snapshot (for attempts=1, subtract 1 day from the current UTC time).
@@ -349,10 +349,10 @@ do_latest_snapshot() {
 	local start_time=$(get_utc_date_in_seconds)
 	local start_hour=$(get_date_part ${start_time} "%H")
 
-	# Daily snapshots are created at 1:45 AM and are not
-	# available until after 2 AM. Don't waste time trying
+	# Daily snapshots are created at 00:45 and are not
+	# available until after 01:00. Don't waste time trying
 	# to fetch a snapshot before it's been created.
-	if [ ${start_hour} -lt 2 ] ; then
+	if [ ${start_hour} -lt 1 ] ; then
 		(( start_time -= 86400 ))
 	fi
 	local snapshot_date=$(get_date_part ${start_time} "%Y%m%d")
@@ -361,8 +361,8 @@ do_latest_snapshot() {
 	while (( ${attempts} <  40 )) ; do
 		(( attempts++ ))
 		(( snapshot_date_seconds -= 86400 ))
-		# snapshots are created at 1:45 AM
-		(( approx_snapshot_time = snapshot_date_seconds + 86400 + 6300 ))
+		# snapshots are created at 00:45
+		(( approx_snapshot_time = snapshot_date_seconds + 86400 + 2700 ))
 		(( timestamp_difference = existing_timestamp - approx_snapshot_time ))
 		[ ${timestamp_difference} -lt 0 ] && (( timestamp_difference = -1 * timestamp_difference ))
 		snapshot_date=$(get_date_part ${snapshot_date_seconds} "%Y%m%d")
