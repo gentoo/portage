@@ -22,9 +22,9 @@ vvecho() { [[ ${do_verbose} -eq 1 ]] && echo "$@" ; }
 # Only echo if not in verbose mode
 nvecho() { [[ ${do_verbose} -eq 0 ]] && echo "$@" ; }
 # warning echos
-wecho() { echo "${argv0}: warning: $*" 1>&2 ; }
+wecho() { echo "${argv0##*/}: warning: $*" 1>&2 ; }
 # error echos
-eecho() { echo "${argv0}: error: $*" 1>&2 ; }
+eecho() { echo "${argv0##*/}: error: $*" 1>&2 ; }
 
 argv0=$0
 
@@ -445,12 +445,28 @@ main() {
 		esac
 	done
 
+	[[ -d ${PORTDIR} ]] || mkdir -p "${PORTDIR}"
+	if [[ ! -w ${PORTDIR} ]] ; then
+		eecho "PORTDIR is not writable: ${PORTDIR}"
+		exit 1
+	fi
+
 	TMPDIR=${PORTAGE_TMPDIR}/emerge-webrsync
 	${keep} || DISTDIR=${TMPDIR}
 
 	[ ! -d "${TMPDIR}" ] && mkdir -p "${TMPDIR}"
 	[ ! -d "${DISTDIR}" ] && mkdir -p "${DISTDIR}"
 	cd "${TMPDIR}" || exit 1
+
+	if ${keep} && [[ ! -w ${DISTDIR} ]] ; then
+		eecho "DISTDIR is not writable: ${DISTDIR}"
+		exit 1
+	fi
+
+	if [[ ! -w ${TMPDIR} ]] ; then
+		eecho "TMPDIR is not writable: ${TMPDIR}"
+		exit 1
+	fi
 
 	# This is a sanity check to help prevent people like funtoo users
 	# from accidentally wiping out their git tree.
