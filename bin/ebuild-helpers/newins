@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
@@ -19,7 +19,7 @@ fi
 
 rm -rf "${T}/${2}" || exit $?
 case "$EAPI" in
-	0|1|2|3|3_pre2)
+	0|1|2|3)
 		cp "$1" "$T/$2" || exit $?
 		;;
 	*)

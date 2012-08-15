@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # We need this next line for "die" and "assert". It expands
@@ -86,7 +86,7 @@ dump_trace() {
 }
 
 nonfatal() {
-	if has "${EAPI:-0}" 0 1 2 3 3_pre2 ; then
+	if has "${EAPI:-0}" 0 1 2 3 ; then
 		die "$FUNCNAME() not supported in this EAPI"
 	fi
 	if [[ $# -lt 1 ]]; then

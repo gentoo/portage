@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 export DESTTREE=/usr
@@ -421,7 +421,7 @@ econf() {
 		fi
 
 		# EAPI=4 adds --disable-dependency-tracking to econf
-		if ! has "$EAPI" 0 1 2 3 3_pre2 && \
+		if ! has "$EAPI" 0 1 2 3 && \
 			"${ECONF_SOURCE}/configure" --help 2>/dev/null | \
 			grep -q disable-dependency-tracking ; then
 			set -- --disable-dependency-tracking "$@"
