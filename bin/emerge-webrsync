@@ -42,7 +42,7 @@ fi
 eval $("${portageq}" envvar -v DISTDIR FEATURES FETCHCOMMAND GENTOO_MIRRORS \
 	PORTAGE_BIN_PATH PORTAGE_GPG_DIR \
 	PORTAGE_NICENESS PORTAGE_RSYNC_EXTRA_OPTS PORTAGE_TMPDIR PORTDIR \
-	SYNC http_proxy ftp_proxy)
+	SYNC USERLAND http_proxy ftp_proxy)
 export http_proxy ftp_proxy
 
 # If PORTAGE_NICENESS is overriden via the env then it will
@@ -187,9 +187,21 @@ sync_local() {
 
 	vecho "Syncing local tree ..."
 
+	local ownership="portage:portage"
+	if has usersync ${FEATURES} ; then
+		case "${USERLAND}" in
+			BSD)
+				ownership=$(stat -f '%Su:%Sg' "${PORTDIR}")
+				;;
+			*)
+				ownership=$(stat -c '%U:%G' "${PORTDIR}")
+				;;
+		esac
+	fi
+
 	if type -P tarsync > /dev/null ; then
-		local chown_opts="-o portage -g portage"
-		chown portage:portage portage > /dev/null 2>&1 || chown_opts=""
+		local chown_opts="-o ${ownership%:*} -g ${ownership#*:}"
+		chown ${ownership} "${PORTDIR}" > /dev/null 2>&1 || chown_opts=""
 		if ! tarsync $(vvecho -v) -s 1 ${chown_opts} \
 			-e /distfiles -e /packages -e /local "${file}" "${PORTDIR}"; then
 			eecho "tarsync failed; tarball is corrupt? (${file})"
@@ -205,8 +217,8 @@ sync_local() {
 		# Free disk space
 		${keep} || rm -f "${file}"
 
-		chown portage:portage portage > /dev/null 2>&1 && \
-			chown -R portage:portage portage
+		chown ${ownership} portage > /dev/null 2>&1 && \
+			chown -R ${ownership} portage
 		cd portage
 		rsync -av --progress --stats --delete --delete-after \
 			--exclude='/distfiles' --exclude='/packages' \
