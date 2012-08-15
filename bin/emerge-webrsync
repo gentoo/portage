@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # Author: Karl Trygve Kalleberg <karltk@gentoo.org>
 # Rewritten from the old, Perl-based emerge-webrsync script
@@ -39,11 +39,10 @@ else
 	eecho "could not find 'portageq'; aborting"
 	exit 1
 fi
-eval $("${portageq}" envvar -v FEATURES FETCHCOMMAND GENTOO_MIRRORS \
+eval $("${portageq}" envvar -v DISTDIR FEATURES FETCHCOMMAND GENTOO_MIRRORS \
 	PORTAGE_BIN_PATH PORTAGE_GPG_DIR \
 	PORTAGE_NICENESS PORTAGE_RSYNC_EXTRA_OPTS PORTAGE_TMPDIR PORTDIR \
 	SYNC http_proxy ftp_proxy)
-DISTDIR="${PORTAGE_TMPDIR}/emerge-webrsync"
 export http_proxy ftp_proxy
 
 # If PORTAGE_NICENESS is overriden via the env then it will
@@ -56,6 +55,7 @@ source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 do_verbose=0
 do_debug=0
+keep=false
 
 if has webrsync-gpg ${FEATURES} ; then
 	WEBSYNC_VERIFY_SIGNATURE=1
@@ -131,7 +131,7 @@ fetch_file() {
 	vecho "Fetching file ${FILE} ..."
 	# already set DISTDIR=
 	eval "${FETCHCOMMAND}" ${opts}
-	[ -s "${FILE}" ]
+	[ -s "${DISTDIR}/${FILE}" ]
 }
 
 check_file_digest() {
@@ -142,7 +142,9 @@ check_file_digest() {
 	vecho "Checking digest ..."
 
 	if type -P md5sum > /dev/null; then
-		md5sum -c $digest && r=0
+		local md5sum_output=$(md5sum "${file}")
+		local digest_content=$(< "${digest}")
+		[ "${md5sum_output%%[[:space:]]*}" = "${digest_content%%[[:space:]]*}" ] && r=0
 	elif type -P md5 > /dev/null; then
 		[ "$(md5 -q "${file}")" == "$(cut -d ' ' -f 1 "${digest}")" ] && r=0
 	else
@@ -201,7 +203,7 @@ sync_local() {
 		fi
 
 		# Free disk space
-		rm -f "${file}"
+		${keep} || rm -f "${file}"
 
 		chown portage:portage portage > /dev/null 2>&1 && \
 			chown -R portage:portage portage
@@ -251,6 +253,7 @@ do_snapshot() {
 
 	for mirror in ${GENTOO_MIRRORS} ; do
 
+		mirror=${mirror%/}
 		vecho "Trying to retrieve ${date} snapshot from ${mirror} ..."
 
 		for compression in ${compressions} ; do
@@ -258,7 +261,7 @@ do_snapshot() {
 			local digest="${file}.md5sum"
 			local signature="${file}.gpgsig"
 
-			if [ -s "${file}" -a -s "${digest}" -a -s "${signature}" ] ; then
+			if [ -s "${DISTDIR}/${file}" -a -s "${DISTDIR}/${digest}" -a -s "${DISTDIR}/${signature}" ] ; then
 				check_file_digest "${DISTDIR}/${digest}" "${DISTDIR}/${file}" && \
 				check_file_signature "${DISTDIR}/${signature}" "${DISTDIR}/${file}" && \
 				have_files=1
@@ -281,7 +284,7 @@ do_snapshot() {
 			if [ ${have_files} -eq 1 ]; then
 
 				vecho "Getting snapshot timestamp ..."
-				local snapshot_timestamp=$(get_snapshot_timestamp "${file}")
+				local snapshot_timestamp=$(get_snapshot_timestamp "${DISTDIR}/${file}")
 
 				if [ ${ignore_timestamp} == 0 ]; then
 					if [ ${snapshot_timestamp} -lt $(get_portage_timestamp) ]; then
@@ -310,7 +313,7 @@ do_snapshot() {
 				#
 				# Remove files and use a different mirror
 				#
-				rm -f "${file}" "${digest}" "${signature}"
+				rm -f "${DISTDIR}/${file}" "${DISTDIR}/${digest}" "${DISTDIR}/${signature}"
 			fi
 		done
 
@@ -318,12 +321,12 @@ do_snapshot() {
 	done
 
 	if [ ${have_files} -eq 1 ]; then
-		sync_local "${file}" && r=0
+		sync_local "${DISTDIR}/${file}" && r=0
 	else
 		vecho "${date} snapshot was not found"
 	fi
-	
-	rm -f "${file}" "${digest}" "${signature}"
+
+	${keep} || rm -f "${DISTDIR}/${file}" "${DISTDIR}/${digest}" "${DISTDIR}/${signature}"
 	return "${r}"
 }
 
@@ -411,6 +414,7 @@ usage() {
 	
 	Options:
 	  --revert=yyyymmdd   Revert to snapshot
+	  -k, --keep          Keep snapshots in DISTDIR (don't delete)
 	  -q, --quiet         Only output errors
 	  -v, --verbose       Enable verbose output
 	  -x, --debug         Enable debug output
@@ -427,14 +431,12 @@ usage() {
 main() {
 	local arg
 	local revert_date
-	
-	[ ! -d "${DISTDIR}" ] && mkdir -p "${DISTDIR}"
-	cd "${DISTDIR}"
 
 	for arg in "$@" ; do
 		local v=${arg#*=}
 		case ${arg} in
 			-h|--help)    usage ;;
+			-k|--keep)    keep=true ;;
 			-q|--quiet)   PORTAGE_QUIET=1 ;;
 			-v|--verbose) do_verbose=1 ;;
 			-x|--debug)   do_debug=1 ;;
@@ -442,6 +444,13 @@ main() {
 			*)            usage "Invalid option '${arg}'" ;;
 		esac
 	done
+
+	TMPDIR=${PORTAGE_TMPDIR}/emerge-webrsync
+	${keep} || DISTDIR=${TMPDIR}
+
+	[ ! -d "${TMPDIR}" ] && mkdir -p "${TMPDIR}"
+	[ ! -d "${DISTDIR}" ] && mkdir -p "${DISTDIR}"
+	cd "${TMPDIR}" || exit 1
 
 	# This is a sanity check to help prevent people like funtoo users
 	# from accidentally wiping out their git tree.
