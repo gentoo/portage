@@ -41,7 +41,8 @@ else
 fi
 eval $("${portageq}" envvar -v DISTDIR FEATURES FETCHCOMMAND GENTOO_MIRRORS \
 	PORTAGE_BIN_PATH PORTAGE_GPG_DIR \
-	PORTAGE_NICENESS PORTAGE_RSYNC_EXTRA_OPTS PORTAGE_TMPDIR PORTDIR \
+	PORTAGE_NICENESS PORTAGE_RSYNC_EXTRA_OPTS \
+	PORTAGE_RSYNC_OPTS PORTAGE_TMPDIR PORTDIR \
 	SYNC USERLAND http_proxy ftp_proxy)
 export http_proxy ftp_proxy
 
@@ -220,9 +221,7 @@ sync_local() {
 		chown ${ownership} portage > /dev/null 2>&1 && \
 			chown -R ${ownership} portage
 		cd portage
-		rsync -av --progress --stats --delete --delete-after \
-			--exclude='/distfiles' --exclude='/packages' \
-			--exclude='/local' ${PORTAGE_RSYNC_EXTRA_OPTS} . "${PORTDIR%%/}"
+		rsync ${PORTAGE_RSYNC_OPTS} ${PORTAGE_RSYNC_EXTRA_OPTS} . "${PORTDIR%%/}"
 		cd ..
 
 		vecho "Cleaning up ..."
