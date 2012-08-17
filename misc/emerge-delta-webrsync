@@ -1,0 +1,512 @@
+#!/bin/bash
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# Author: Brian Harring <ferringb@gentoo.org>, karltk@gentoo.org originally.
+# Rewritten from the old, Perl-based emerge-webrsync script
+
+#-------------------
+#initialization
+#------------------
+
+f=$(python -c 'import portage, sys; sys.stdout.write("|".join([portage.settings[x] for x in ("PORTAGE_NICENESS", "FEATURES", "GENTOO_MIRRORS", "PORTDIR", "FETCHCOMMAND", "USERLAND", "DISTDIR", "PORTAGE_TMPDIR")]))')
+
+IFS='|'
+PORTAGE_NICENESS="${f%%|*}";	f="${f#*|}"
+FEATURES="${f%%|*}"	  ; 		f="${f#*|}"
+GENTOO_MIRRORS="${f%%|*}" ; 		f="${f#*|}"
+PORTDIR="${f%%|*}"	 ;		f="${f#*|}"
+FETCHCOMMAND="${f%%|*}"	 ;		f="${f#*|}"
+USERLAND="${f%%|*}"	 ;		f="${f#*|}"
+DISTDIR="${f%%|*}"	 ;		f="${f#*|}"
+TMPDIR="${f%%|*}/snapshots"
+unset IFS
+
+source /usr/lib/portage/bin/isolated-functions.sh || exit 1
+
+if [ -z "$NICENESS_PULLED" ]; then
+	if [ -n "${PORTAGE_NICENESS}" ]; then
+		export NICENESS_PULLED=asdf
+		exec nice -n "${PORTAGE_NICENESS}" "$0" "$@"
+		echo "failed setting PORTAGE_NICENESS to '$PORTAGE_NICENESS', disabling"
+	fi
+fi
+
+STATE_DIR="/var/delta-webrsync/"
+
+# hack.  bug 92224
+if [ "${FETCHCOMMAND/getdelta.sh}" != "${FETCHCOMMAND}" ]; then
+	# evil evil evil evil
+	eval "$(grep FETCHCOMMAND /etc/make.globals)"
+fi
+
+unset f
+unset IFS
+
+MUST_SYNC='1'
+unset PUKE_HELP wgetops
+for x in $*; do
+	if [[ $x == "-u" ]]; then
+		MUST_SYNC=''
+	elif [[ $x == "-k" ]]; then
+		KEEP_OLDIES='asdf'
+	elif [[ $x == "-h" ]]; then
+		PUKE_HELP=1
+	elif [[ $x == "-v" ]]; then
+		wgetops=
+	else
+		PUKE_HELP=1
+		echo "$x isn't a valid arg.  bailing."
+	fi
+	if [[ -n $PUKE_HELP ]]; then
+		echo "-u for upgrade; sync only if new snapshots are found"
+		echo "-k for keep; keep old tree snapshots around"
+		exit -1
+	fi
+done
+
+if [[ ! -d $STATE_DIR ]]; then
+	echo "$STATE_DIR doesn't exist.  don't have the ability to compensate for compressor differences without it!"
+	exit -2
+fi
+
+if [[ ! -d $DISTDIR ]] ; then
+	mkdir -p $DISTDIR
+fi
+if [[ ! -d $TMPDIR ]]; then
+	mkdir -p $TMPDIR
+fi
+
+cd "$DISTDIR"
+
+found=0
+if [ "${wgetops-UNSET}" == "unset" ]; then
+	#this sucks.  probably better to do 1> /dev/null
+	#that said, waiting on the refactoring.
+	if [ "${FETCHCOMMAND/wget}" != "${FETCHCOMMAND}" ]; then
+		wgetops="-q"
+	elif [ "${FETCHCOMMAND/curl}" != "${FETCHCOMMAND}" ]; then
+		wgetops="-s -f"
+	fi
+fi
+
+if type -p md5sum > /dev/null; then
+	md5_com='md5sum -c "${MD5_LOC}" &> /dev/null'
+elif type -p md5 > /dev/null; then
+	md5_com='[ "$(md5 -q ${FILE})" == "$(cut -d \  -f 1 ${MD5_LOC})" ]'
+else
+	echo "warning, unable to do md5 verification of the snapshot!"
+	echo "no suitable md5/md5sum binary was found!"
+	md5_com='true'
+fi
+
+#---------------
+#funcs
+#---------------
+
+cleanse_state_dir() {
+	[[ ${STATE_DIR:-/} != '/' ]] && rm ${STATE_DIR}/* &> /dev/null;
+}
+
+full_version_attempt() {
+	local FILE file_exists
+	echo "Fetching most recent snapshot"
+	declare -i attempts=-1
+	while (( $attempts <  40 )) ; do
+		unset file_exists
+		attempts=$(( attempts + 1 ))
+
+		#this too, sucks.  it works in the interim though.
+		if [ "$USERLAND" == "BSD" ] || [ "$USERLAND" == "Darwin" ] ; then
+			daysbefore=$(expr $(date +"%s") - 86400 \* $attempts)
+			day=$(date -r $daysbefore +"%d")
+			month=$(date -r $daysbefore +"%m")
+			year=$(date -r $daysbefore +"%Y")
+		else
+			day=$(date -d "-$attempts day" +"%d")
+			month=$(date -d "-$attempts day" +"%m")
+			year=$(date -d "-$attempts day" +"%Y")
+		fi
+
+		FILE="portage-${year}${month}${day}.tar.bz2"
+
+		echo "Attempting to fetch file dated: ${year}${month}${day}"
+		
+		got_md5=0
+
+		if [  ! -e "${FILE}.md5sum" ]; then
+			fetch_from_mirrors "/snapshots/${FILE}.md5sum" "${FILE}.md5sum"
+			got_md5=$?
+		else
+			file_exists='asdf'
+			got_md5=0
+		fi
+
+		if [[ $got_md5 != 0 ]]; then
+			echo " --- No md5sum present on the mirror. (Not yet available.)"
+			continue
+		elif [ -s "${FILE}" ]; then
+			if verify_md5_file "$FILE"; then
+				echo " === snapshot $FILE is correct, using it"
+				if [[ -n $MUST_SYNC ]] || [[ -z file_exists ]]; then
+					sync_local "${FILE}"
+					echo
+					echo " === Snapshot has been sync'd"
+					echo
+				else
+					echo
+					echo "skipped sync"
+					echo
+				fi
+				exit 0
+			else
+				echo "md5 on ${FILE} failed, removing it and starting anew"
+				rm "$FILE" &> /dev/null
+			fi
+		fi
+	
+		if fetch_from_mirrors "/snapshots/${FILE}" "${FILE}"; then
+			if ! verify_md5_file "$FILE"; then
+				echo "md5 failed on $FILE"
+				rm ${FILE} &> /dev/null
+				continue
+			else
+				sync_local "${FILE}"
+				cleanse_state_dir
+				echo
+				echo " *** Completed websync, please now perform a normal rsync if possible."
+				echo "     Update is current as of YYYYMMDD: ${year}${month}${day}"
+				echo
+				exit 0
+			fi
+		fi
+
+	done
+	exit 1
+}
+
+
+sync_local() {
+	local FILE flags
+	FILE="$1"
+	if [ "${FILE/\/}" == "${FILE}" ]; then
+		FILE="${DISTDIR}/${FILE}";
+	fi
+	
+	echo Syncing local tree...
+	if type -p tarsync &> /dev/null; then
+		echo "apparently you have tarsync installed.  using it."
+		if ! tarsync "${FILE}" "${PORTDIR}" -v -s 1 -o portage -g portage -e /distfiles -e /packages -e /local; then
+			echo "ok, tarsync failed.  that's teh suck :/"
+			exit 6
+		fi
+	else
+		cd ${TMPDIR} || die "couldn't cd to tmpdir, $TMPDIR!?"
+		flags="xf"
+		if [ "${FILE%.bz2}" != "${FILE}" ]; then
+			flags="jxf"
+		fi
+		if ! tar ${flags} "$FILE"; then
+			echo "Tar failed to extract the image. Please review the output."
+			echo "Executed command: tar jxf $FILE"
+			exit 1
+		fi
+		# Make sure user and group file ownership is root
+		chown -R 0:0 portage
+		cd portage
+		rsync -av --progress --stats --delete --delete-after \
+		--exclude='/distfiles' --exclude='/packages' \
+		--exclude='/local' . ${PORTDIR%%/}
+		cd ..
+		echo "cleaning up"
+		rm -rf portage
+	fi
+	if has metadata-transfer ${FEATURES} ; then
+		echo "transferring metadata/cache"
+		emerge --metadata
+	fi
+	local post_sync=/etc/portage/bin/post_sync
+	[[ -x "${post_sync}" ]] && ${post_sync}
+}
+
+fetch_from_mirrors() {
+	local i URI FILE MIRRORS
+	if [[ "$#" == 3 ]]; then
+		MIRRORS="${3}"
+	else
+		MIRRORS=$GENTOO_MIRRORS
+	fi
+	FILE="$2"
+	for i in $MIRRORS ; do
+		URI="${i}/${1}"
+		if (eval "$FETCHCOMMAND $wgetops") && [ -s "${FILE}" ]; then
+			return 0
+		else
+			rm "${FILE}" &> /dev/null
+		fi
+	done
+	return 1
+}
+
+verify_md5_file() {
+	local FILE MD5_LOC CUR
+	FILE="$1"
+	if [[ $# == 2 ]]; then
+		MD5_LOC="$2"
+	else
+		MD5_LOC="$(pwd)/$1.md5sum"
+	fi
+	if [ "${FILE/*\/}" != "$1" ]; then
+		CUR="$(pwd)"
+		cd "$(dirname ${FILE})"
+		FILE="$(basename ${FILE})"
+	fi
+	if eval "$md5_com"; then
+		[ -n "${CUR}" ] && cd "${CUR}"
+		return 0
+	else
+		[ -n "${CUR}" ] && cd "${CUR}"
+		return 1
+	fi
+}
+
+
+#--------------------
+#inline actual script
+#--------------------
+
+if ! type -p patcher &> /dev/null; then
+	echo "!!!"
+	echo "!!! cannot find patcher, did you emerge dev-util/diffball?"
+	echo "!!! lack of patcher == have to do full fetch"
+	echo "!!!"
+	sleep 10
+	full_version_attempt
+fi
+
+echo "Looking for available base versions for a delta"
+
+#note we're already in distdir
+
+unset base_version
+# portage-snapshots in reverse order.
+# icky.
+unset dfile
+potentials="$(ls -1 portage-2[[:digit:]][[:digit:]][[:digit:]][[:digit:]][[:digit:]][[:digit:]][[:digit:]].tar.bz2 ${STATE_DIR}/portage-2[[:digit:]][[:digit:]][[:digit:]][[:digit:]][[:digit:]][[:digit:]][[:digit:]].tar.bz2 2> /dev/null | sed -e 's:^.*/::' | sort -r)"
+for basef in ${potentials}; do
+	chksum=''
+	found="dar"
+	if [ -e "${STATE_DIR}/${basef}.md5sum" ]; then
+		chksum="${STATE_DIR}/${basef}.md5sum"
+	elif [ -e "${basef}.md5sum" ]; then
+		chksum="${DISTDIR}/${basef}.md5sum"
+	else
+		echo "attempting to get md5sum for $basef"
+		if ! fetch_from_mirrors "/snapshots/${basef}.md5sum" "${basef}.md5sum"; then
+			echo "can't get md5 for ${basef}"
+			continue
+		fi
+		chksum="${basef}.md5sum"
+	fi
+	if [ -e "${basef}" ]; then
+		dfile="${DISTDIR}/${basef}"
+	else
+		dfile="${STATE_DIR}/${basef}"
+	fi
+	if ! verify_md5_file "${dfile}" "${chksum}"; then
+		echo "found a stale snapshot.  cleansing"
+		rm "${dfile}" &> /dev/null
+		rm "${chksum}.md5sum" &> /dev/null
+		dar=""
+	else
+		base_version="${basef}"
+		break
+	fi
+done
+
+#by this point, we either have a base_version, or we don't.
+if [[ -z ${base_version} ]]; then
+	echo "no base found.  resorting to pulling a full version"
+	full_version_attempt
+fi
+
+#we have a md5 verified base.  now we get the patch.
+
+base_date="${base_version%.tar.bz2}"
+base_date="${base_date#portage-}"
+# we now have yyyymmdd
+
+unset patch_dates
+if [ "$USERLAND" == "BSD" ] || [ "$USERLAND" == "Darwin" ] ; then
+	daysbefore=$(expr $(date +"%s") - 86400 \* $attempts)
+	day=$(date -r $daysbefore +"%d")
+	month=$(date -r $daysbefore +"%m")
+	year=$(date -r $daysbefore +"%Y")
+else
+	day=$(date -d "-$attempts day" +"%d")
+	month=$(date -d "-$attempts day" +"%m")
+	year=$(date -d "-$attempts day" +"%Y")
+fi
+
+#todays_date="${year}${month}${day}"
+
+next_date() {
+	local year day month
+	year="${1:0:4}"
+	month="${1:4:2}"
+	day="${1:6:2}"
+#	if [[ "${USERLAND}" == "BSD" ]] || [[ "${USERLAND}" == "Darwin" ]]; then
+#	else
+		date -d "$year/$month/$day +1 day" +"%Y%m%d"
+#	fi
+}
+
+patches=''
+echo "fetching patches"
+fetched='asdf'
+while [[ -n ${fetched} ]]; do
+	next_day=$(next_date ${base_date})
+	# if we can't get a *single* patch or md5, even one missing, do full.
+	p="snapshot-${base_date}-${next_day}.patch.bz2"
+	if [[ ! -e ${p}.md5sum ]] && ! fetch_from_mirrors "/snapshots/deltas/${p}.md5sum" "${p}.md5sum"; then
+		echo "failed fetching ${p}.md5sum"
+		fetched=''
+		break
+	fi
+	fetch="yes"
+	if [[ -e ${p} ]]; then
+		if ! verify_md5_file "${p}"; then
+			rm ${p} &> /dev/null
+		else
+			fetch=""
+		fi
+	fi
+	if [[ -n $fetch ]]; then
+		if ! fetch_from_mirrors "/snapshots/deltas/${p}" "${p}"; then
+			echo "failed fetching ${p}"
+			fetched=''
+		fi
+	fi
+	if [[ -z ${fetched} ]]; then
+		break
+	fi
+	if ! verify_md5_file "${p}"; then
+		echo "md5 failed on ${p}"
+		fetched=''
+		break
+	fi
+	patches="${patches} ${p}"
+	base_date="${next_day}"
+done
+final_date=${base_date}
+
+if [[ -z $patches ]]; then
+	echo "no patches found? up to date?"
+	if [[ -n $MUST_SYNC ]]; then
+		echo "syncing with existing file"
+		sync_local "${dfile}"
+	else
+		:
+	fi
+	exit $?
+fi
+
+unset got_umd5
+#grab the md5 for later usage.
+if [[ ! -e portage-${final_date}.tar.bz2.md5sum ]] && ! fetch_from_mirrors "/snapshots/portage-${final_date}.tar.bz2.md5sum" "portage-${final_date}.tar.bz2.md5sum"; then
+	echo "warning... couldn't grab the md5sum for ${final_date}.  which is odd"
+	echo "thus, bailing (sorry)"
+	exit 5
+else
+	if [[ ! -e portage-${final_date}.tar.bz2.umd5sum ]] && ! fetch_from_mirrors "/snapshots/portage-${final_date}.tar.bz2.umd5sum" "portage-${final_date}.tar.bz2.umd5sum"; then
+		if ! fetch_from_mirrors "/snapshots/portage-${final_date}.tar.bz2.umd5sum" "portage-${final_date}.tar.bz2.umd5sum"; then
+			echo "couldn't grab umd5sum (uncompressed md5sum) for ${final_date}."
+			echo "can't compensate for bzip2 version differences iow."
+		else
+			got_umd5=1
+		fi
+	else
+		got_umd5=1
+	fi
+fi
+	
+# generate tmp dir.
+TEMPDIR=$(mktemp -d /tmp/delta-webrsync-XXXXXX)
+# got our patches.
+if ! patcher -v "${dfile}" ${patches} "${TEMPDIR}/portage-${final_date}.tar"; then
+	echo "reconstruction failed (contact the author with the error from the reconstructor please)"
+	rm "${TEMPDIR}/portage-${final_date}.tar"
+	rmdir ${TEMPDIR}
+	full_version_attempt
+fi
+verified=0
+if [[ -n $got_umd5 ]]; then
+	echo "verifying uncompressed md5"
+	if ! verify_md5_file "${TEMPDIR}/portage-${final_date}.tar" "${DISTDIR}/portage-${final_date}.tar.bz2.umd5sum"; then
+		echo "uncompressed verification failed.  This means either you found a bug in diffball, or something odd is going on"
+		echo "with upstream patch generation"
+		echo "trying md5sum next, which probably will fail."
+	else
+		verified="1"
+	fi
+fi
+
+unset need_last_sync
+if [ "$verified" == "1" ]; then
+	echo "recompressing. (backgrounding)"
+	need_last_sync="dar"
+	bzip2 -vk9 "${TEMPDIR}/portage-${final_date}.tar" &
+
+	echo "beginning update to the tree"
+	sync_local "${TEMPDIR}/portage-${final_date}.tar"
+	echo "doing final md5 stuff"
+	wait
+	# bzip2 is finished now.
+	rm "${TEMPDIR}/portage-${final_date}.tar"
+else
+	echo "recompressing."
+	bzip2 -v9 "${TEMPDIR}/portage-${final_date}.tar.bz2"
+fi
+
+echo "verifying generated tarball"
+
+if ! verify_md5_file "${TEMPDIR}/portage-${final_date}.tar.bz2" "${DISTDIR}/portage-${final_date}.tar.bz2.md5sum"; then
+	if [[ -z $verified ]]; then
+		echo "couldn't verify the generated tarball.  bug, most likely."
+		exit 5
+	fi
+	# hokay.  md5 doesn't agree with umd5. bzip2 issue in effect.
+	echo "compressed md5 differs, but uncompressed md5 says it right.  bzip2 version incompatability in other words"
+	echo "saving the md5"
+	if type -p md5sum &> /dev/null; then
+		md5sum ${TEMPDIR}/portage-${final_date}.tar.bz2 | sed -e "s:${TEMPDIR}/\?::" > \
+			${STATE_DIR}/portage-${final_date}.tar.bz2.md5sum
+	elif type -p md5 &> /dev/null; then
+		echo "$(md5 -q ${TEMPDIR}/portage-${final_date}.tar.bz2)  portage-${final_date}.tar.bz2" > \
+			${STATE_DIR}/portage-${final_date}.tar.bz2.md5sum
+	else
+		echo "couldn't find either md5 or md5sum.  something is screwed... (bailing, sorry)"
+		exit 7
+	fi
+	mv "${DISTDIR}/portage-${final_date}.tar.bz2.umd5sum" "${TEMPDIR}/portage-${final_date}.tar.bz2" ${STATE_DIR}/
+	rmdir ${TEMPDIR}
+	dfile="${STATE_DIR}/portage-${final_date}.tar.bz2"
+else
+	dfile="${DISTDIR}/portage-${final_date}.tar.bz2"
+	mv "${TEMPDIR}/portage-${final_date}.tar.bz2" ${DISTDIR}/
+fi
+
+if [ -z "${need_last_sync}" ]; then
+	echo "beginning update to the tree"
+	sync_local "${dfile}"
+fi
+
+if [[ -z $KEEP_OLDIES ]]; then
+	echo "cleansing"
+	for x in $potentials; do
+		echo "removing ${x}"
+		rm "${DISTDIR}/${x}" "${DISTDIR}/${x}.md5sum" &> /dev/null
+		rm "${STATE_DIR}/${x}" "${STATE_DIR}/${x}.md5sum" "${STATE_DIR}/${x}.umd5sum" &> /dev/null
+	done
+fi
+echo "done."
+
