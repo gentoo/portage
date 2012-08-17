@@ -65,7 +65,7 @@ git archive --format=tar $TREE_ISH | \
 	tar -xf - -C "$SOURCE_DIR" || die "git archive failed"
 
 echo ">>> Building release tree"
-cp -a "${SOURCE_DIR}/"{bin,cnf,doc,man,pym} "${RELEASE_DIR}/" || die "directory copy failed"
+cp -a "${SOURCE_DIR}/"{bin,cnf,doc,man,misc,pym} "${RELEASE_DIR}/" || die "directory copy failed"
 cp "${SOURCE_DIR}/"{DEVELOPING,LICENSE,Makefile,NEWS,RELEASE-NOTES,TEST-NOTES} \
 	"${RELEASE_DIR}/" || die "file copy failed"
 
