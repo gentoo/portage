@@ -515,7 +515,7 @@ if [[ -z $KEEP_OLDIES ]]; then
 	echo "cleansing"
 	for x in $potentials; do
 		echo "removing ${x}"
-		rm "${DISTDIR}/${x}" "${DISTDIR}/${x}.md5sum" &> /dev/null
+		rm "${DISTDIR}/${x}" "${DISTDIR}/${x}.md5sum" "${DISTDIR}/${x}.umd5sum" &> /dev/null
 		rm "${STATE_DIR}/${x}" "${STATE_DIR}/${x}.md5sum" "${STATE_DIR}/${x}.umd5sum" &> /dev/null
 	done
 fi
