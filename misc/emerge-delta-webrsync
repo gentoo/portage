@@ -63,6 +63,12 @@ unset IFS
 MUST_SYNC='1'
 unset PUKE_HELP wgetops
 for x in $*; do
+	case "${x}" in
+		-q|--quiet)
+			PORTAGE_QUIET=1
+			continue
+			;;
+	esac
 	if [[ $x == "-u" ]]; then
 		MUST_SYNC=''
 	elif [[ $x == "-k" ]]; then
