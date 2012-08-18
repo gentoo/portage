@@ -464,20 +464,20 @@ main() {
 		exit 1
 	fi
 
-	TMPDIR=${PORTAGE_TMPDIR}/emerge-webrsync
-	${keep} || DISTDIR=${TMPDIR}
-
-	[ ! -d "${TMPDIR}" ] && mkdir -p "${TMPDIR}"
-	[ ! -d "${DISTDIR}" ] && mkdir -p "${DISTDIR}"
+	[[ -d ${PORTAGE_TMPDIR}/portage ]] || mkdir -p "${PORTAGE_TMPDIR}/portage"
+	TMPDIR=$(mktemp -d "${PORTAGE_TMPDIR}/portage/webrsync-XXXXXX")
+	if [[ ! -w ${TMPDIR} ]] ; then
+		eecho "TMPDIR is not writable: ${TMPDIR}"
+		exit 1
+	fi
+	trap 'cd / ; rm -rf "${TMPDIR}"' EXIT
 	cd "${TMPDIR}" || exit 1
+
+	${keep} || DISTDIR=${TMPDIR}
+	[ ! -d "${DISTDIR}" ] && mkdir -p "${DISTDIR}"
 
 	if ${keep} && [[ ! -w ${DISTDIR} ]] ; then
 		eecho "DISTDIR is not writable: ${DISTDIR}"
-		exit 1
-	fi
-
-	if [[ ! -w ${TMPDIR} ]] ; then
-		eecho "TMPDIR is not writable: ${TMPDIR}"
 		exit 1
 	fi
 
