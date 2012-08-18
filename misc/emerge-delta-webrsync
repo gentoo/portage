@@ -296,7 +296,7 @@ fetch_from_mirrors() {
 	fi
 	FILE="$2"
 	for i in $MIRRORS ; do
-		URI="${i}/${1}"
+		URI="${i%/}/${1#/}"
 		if (eval "$FETCHCOMMAND $wgetops") && [ -s "${FILE}" ]; then
 			return 0
 		else
