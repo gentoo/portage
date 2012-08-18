@@ -281,11 +281,13 @@ sync_local() {
 		rm -rf portage
 	fi
 	if has metadata-transfer ${FEATURES} ; then
-		echo "transferring metadata/cache"
-		emerge --metadata
+		echo "Updating cache ..."
+		"${PORTAGE_BIN_PATH}/emerge" --metadata
 	fi
 	local post_sync=${PORTAGE_CONFIGROOT}etc/portage/bin/post_sync
 	[ -x "${post_sync}" ] && "${post_sync}"
+	# --quiet suppresses output if there are no relevant news items
+	has news ${FEATURES} && "${PORTAGE_BIN_PATH}/emerge" --check-news --quiet
 }
 
 fetch_from_mirrors() {

@@ -231,12 +231,12 @@ sync_local() {
 
 	if has metadata-transfer ${FEATURES} ; then
 		vecho "Updating cache ..."
-		emerge --metadata
+		"${PORTAGE_BIN_PATH}/emerge" --metadata
 	fi
 	local post_sync=${PORTAGE_CONFIGROOT}etc/portage/bin/post_sync
 	[ -x "${post_sync}" ] && "${post_sync}"
 	# --quiet suppresses output if there are no relevant news items
-	has news ${FEATURES} && emerge --check-news --quiet
+	has news ${FEATURES} && "${PORTAGE_BIN_PATH}/emerge" --check-news --quiet
 	return 0
 }
 
