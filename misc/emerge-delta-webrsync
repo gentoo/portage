@@ -221,9 +221,24 @@ sync_local() {
 	fi
 	
 	echo Syncing local tree...
+
+	local ownership="portage:portage"
+	if has usersync ${FEATURES} ; then
+		case "${USERLAND}" in
+			BSD)
+				ownership=$(stat -f '%Su:%Sg' "${PORTDIR}")
+				;;
+			*)
+				ownership=$(stat -c '%U:%G' "${PORTDIR}")
+				;;
+		esac
+	fi
+
 	if type -p tarsync &> /dev/null; then
 		echo "apparently you have tarsync installed.  using it."
-		if ! tarsync "${FILE}" "${PORTDIR}" -v -s 1 -o portage -g portage -e /distfiles -e /packages -e /local; then
+		local chown_opts="-o ${ownership%:*} -g ${ownership#*:}"
+		chown ${ownership} "${PORTDIR}" > /dev/null 2>&1 || chown_opts=""
+		if ! tarsync "${FILE}" "${PORTDIR}" -v -s 1 ${chown_opts} -e /distfiles -e /packages -e /local; then
 			echo "ok, tarsync failed.  that's teh suck :/"
 			exit 6
 		fi
@@ -238,8 +253,9 @@ sync_local() {
 			echo "Executed command: tar jxf $FILE"
 			exit 1
 		fi
-		# Make sure user and group file ownership is root
-		chown -R 0:0 portage
+		# Make sure user and group file ownership is appropriate
+		chown ${ownership} portage > /dev/null 2>&1 && \
+			chown -R ${ownership} portage
 		cd portage
 		rsync -av --progress --stats --delete --delete-after \
 		--exclude='/distfiles' --exclude='/packages' \
