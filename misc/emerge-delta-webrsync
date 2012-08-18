@@ -1,27 +1,38 @@
 #!/bin/bash
-# Copyright 1999-2004 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # Author: Brian Harring <ferringb@gentoo.org>, karltk@gentoo.org originally.
 # Rewritten from the old, Perl-based emerge-webrsync script
+
+argv0=$0
+
+# error echos
+eecho() { echo "${argv0##*/}: error: $*" 1>&2 ; }
 
 #-------------------
 #initialization
 #------------------
 
-f=$(python -c 'import portage, sys; sys.stdout.write("|".join([portage.settings[x] for x in ("PORTAGE_NICENESS", "FEATURES", "GENTOO_MIRRORS", "PORTDIR", "FETCHCOMMAND", "USERLAND", "DISTDIR", "PORTAGE_TMPDIR")]))')
+# Use portageq from the same directory/prefix as the current script, so
+# that we don't have to rely on PATH including the current EPREFIX.
+scriptpath=${BASH_SOURCE[0]}
+if [ -x "${scriptpath%/*}/portageq" ]; then
+	portageq=${scriptpath%/*}/portageq
+elif type -P portageq > /dev/null ; then
+	portageq=portageq
+else
+	eecho "could not find 'portageq'; aborting"
+	exit 1
+fi
+eval $("${portageq}" envvar -v DISTDIR FEATURES FETCHCOMMAND GENTOO_MIRRORS \
+	PORTAGE_BIN_PATH PORTAGE_GPG_DIR \
+	PORTAGE_NICENESS PORTAGE_RSYNC_EXTRA_OPTS \
+	PORTAGE_RSYNC_OPTS PORTAGE_TMPDIR PORTDIR \
+	USERLAND http_proxy ftp_proxy)
+export http_proxy ftp_proxy
+TMPDIR=${PORTAGE_TMPDIR}/snapshots
 
-IFS='|'
-PORTAGE_NICENESS="${f%%|*}";	f="${f#*|}"
-FEATURES="${f%%|*}"	  ; 		f="${f#*|}"
-GENTOO_MIRRORS="${f%%|*}" ; 		f="${f#*|}"
-PORTDIR="${f%%|*}"	 ;		f="${f#*|}"
-FETCHCOMMAND="${f%%|*}"	 ;		f="${f#*|}"
-USERLAND="${f%%|*}"	 ;		f="${f#*|}"
-DISTDIR="${f%%|*}"	 ;		f="${f#*|}"
-TMPDIR="${f%%|*}/snapshots"
-unset IFS
-
-source /usr/lib/portage/bin/isolated-functions.sh || exit 1
+source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 if [ -z "$NICENESS_PULLED" ]; then
 	if [ -n "${PORTAGE_NICENESS}" ]; then
