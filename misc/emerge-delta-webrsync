@@ -33,7 +33,7 @@ else
 fi
 eval $("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
 	FETCHCOMMAND GENTOO_MIRRORS \
-	PORTAGE_BIN_PATH PORTAGE_GPG_DIR \
+	PORTAGE_BIN_PATH PORTAGE_CONFIGROOT PORTAGE_GPG_DIR \
 	PORTAGE_NICENESS PORTAGE_RSYNC_EXTRA_OPTS \
 	PORTAGE_RSYNC_OPTS PORTAGE_TMPDIR PORTDIR \
 	USERLAND http_proxy ftp_proxy)
@@ -284,8 +284,8 @@ sync_local() {
 		echo "transferring metadata/cache"
 		emerge --metadata
 	fi
-	local post_sync=/etc/portage/bin/post_sync
-	[[ -x "${post_sync}" ]] && ${post_sync}
+	local post_sync=${PORTAGE_CONFIGROOT}etc/portage/bin/post_sync
+	[ -x "${post_sync}" ] && "${post_sync}"
 }
 
 fetch_from_mirrors() {

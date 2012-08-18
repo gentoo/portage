@@ -39,8 +39,9 @@ else
 	eecho "could not find 'portageq'; aborting"
 	exit 1
 fi
-eval $("${portageq}" envvar -v DISTDIR FEATURES FETCHCOMMAND GENTOO_MIRRORS \
-	PORTAGE_BIN_PATH PORTAGE_GPG_DIR \
+eval $("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
+	FETCHCOMMAND GENTOO_MIRRORS \
+	PORTAGE_BIN_PATH PORTAGE_CONFIGROOT PORTAGE_GPG_DIR \
 	PORTAGE_NICENESS PORTAGE_RSYNC_EXTRA_OPTS \
 	PORTAGE_RSYNC_OPTS PORTAGE_TMPDIR PORTDIR \
 	SYNC USERLAND http_proxy ftp_proxy)
@@ -232,7 +233,8 @@ sync_local() {
 		vecho "Updating cache ..."
 		emerge --metadata
 	fi
-	[ -x /etc/portage/bin/post_sync ] && /etc/portage/bin/post_sync
+	local post_sync=${PORTAGE_CONFIGROOT}etc/portage/bin/post_sync
+	[ -x "${post_sync}" ] && "${post_sync}"
 	# --quiet suppresses output if there are no relevant news items
 	has news ${FEATURES} && emerge --check-news --quiet
 	return 0
