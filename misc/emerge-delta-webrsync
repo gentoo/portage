@@ -4,6 +4,13 @@
 # Author: Brian Harring <ferringb@gentoo.org>, karltk@gentoo.org originally.
 # Rewritten from the old, Perl-based emerge-webrsync script
 
+#
+# gpg key import
+# KEY_ID=0x96D8BF6D
+# gpg --homedir /etc/portage/gnupg --keyserver subkeys.pgp.net --recv-keys $KEY_ID
+# gpg --homedir /etc/portage/gnupg --edit-key $KEY_ID trust
+#
+
 argv0=$0
 
 # error echos
@@ -78,6 +85,16 @@ done
 if [[ ! -d $STATE_DIR ]]; then
 	echo "$STATE_DIR doesn't exist.  don't have the ability to compensate for compressor differences without it!"
 	exit -2
+fi
+
+if has webrsync-gpg ${FEATURES} ; then
+	WEBSYNC_VERIFY_SIGNATURE=1
+else
+	WEBSYNC_VERIFY_SIGNATURE=0
+fi
+if [ ${WEBSYNC_VERIFY_SIGNATURE} != 0 -a -z "${PORTAGE_GPG_DIR}" ]; then
+	eecho "please set PORTAGE_GPG_DIR in make.conf"
+	exit 1
 fi
 
 if [[ ! -d $DISTDIR ]] ; then
@@ -280,6 +297,27 @@ verify_md5_file() {
 	fi
 }
 
+check_file_signature() {
+	local signature="$1"
+	local file="$2"
+	local r=1
+
+	if [[ ${WEBSYNC_VERIFY_SIGNATURE} != 0 ]] ; then
+
+		vecho "Checking signature ..."
+
+		if type -P gpg > /dev/null; then
+			gpg --homedir "${PORTAGE_GPG_DIR}" --verify "$signature" "$file" && r=0
+		else
+			eecho "cannot check signature: gpg binary not found"
+			exit 1
+		fi
+	else
+		r=0
+	fi
+
+	return "${r}"
+}
 
 #--------------------
 #inline actual script
@@ -439,7 +477,14 @@ else
 		got_umd5=1
 	fi
 fi
-	
+
+if [[ ${WEBSYNC_VERIFY_SIGNATURE} == 1 && ! -e portage-${final_date}.tar.bz2.gpgsig ]] && \
+	! fetch_from_mirrors "/snapshots/portage-${final_date}.tar.bz2.gpgsig" "portage-${final_date}.tar.bz2.gpgsig" ; then
+	echo "warning... couldn't grab the gpgsig for ${final_date}.  which is odd"
+	echo "thus, bailing (sorry)"
+	exit 5
+fi
+
 # generate tmp dir.
 TEMPDIR=$(mktemp -d /tmp/delta-webrsync-XXXXXX)
 # got our patches.
@@ -465,7 +510,15 @@ unset need_last_sync
 if [ "$verified" == "1" ]; then
 	echo "recompressing. (backgrounding)"
 	need_last_sync="dar"
-	bzip2 -vk9 "${TEMPDIR}/portage-${final_date}.tar" &
+	if [[ ${WEBSYNC_VERIFY_SIGNATURE} == 1 ]] ; then
+		# BUG: Signature verification will fail if the local bzip2
+		# program does not produce output that is perfectly identical
+		# to the bzip2 program used to compress the signed tar file.
+		bzip2 -vk9 "${TEMPDIR}/portage-${final_date}.tar"
+		check_file_signature "${DISTDIR}/portage-${final_date}.tar.bz2.gpgsig" "${TEMPDIR}/portage-${final_date}.tar.bz2" || exit 1
+	else
+		bzip2 -vk9 "${TEMPDIR}/portage-${final_date}.tar" &
+	fi
 
 	echo "beginning update to the tree"
 	sync_local "${TEMPDIR}/portage-${final_date}.tar"
@@ -507,6 +560,9 @@ else
 fi
 
 if [ -z "${need_last_sync}" ]; then
+	if [[ ${WEBSYNC_VERIFY_SIGNATURE} == 1 ]] ; then
+		check_file_signature "${DISTDIR}/portage-${final_date}.tar.bz2.gpgsig" "${dfile}" || exit 1
+	fi
 	echo "beginning update to the tree"
 	sync_local "${dfile}"
 fi
@@ -515,7 +571,7 @@ if [[ -z $KEEP_OLDIES ]]; then
 	echo "cleansing"
 	for x in $potentials; do
 		echo "removing ${x}"
-		rm "${DISTDIR}/${x}" "${DISTDIR}/${x}.md5sum" "${DISTDIR}/${x}.umd5sum" &> /dev/null
+		rm -f "${DISTDIR}/${x}"{,.md5sum,.umd5sum,.gpgsig} &> /dev/null
 		rm "${STATE_DIR}/${x}" "${STATE_DIR}/${x}.md5sum" "${STATE_DIR}/${x}.umd5sum" &> /dev/null
 	done
 fi
