@@ -274,9 +274,7 @@ sync_local() {
 		chown ${ownership} portage > /dev/null 2>&1 && \
 			chown -R ${ownership} portage
 		cd portage
-		rsync -av --progress --stats --delete --delete-after \
-		--exclude='/distfiles' --exclude='/packages' \
-		--exclude='/local' . ${PORTDIR%%/}
+		rsync ${PORTAGE_RSYNC_OPTS} ${PORTAGE_RSYNC_EXTRA_OPTS} . "${PORTDIR%%/}"
 		cd ..
 		echo "cleaning up"
 		rm -rf portage
