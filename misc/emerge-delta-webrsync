@@ -31,7 +31,8 @@ else
 	eecho "could not find 'portageq'; aborting"
 	exit 1
 fi
-eval $("${portageq}" envvar -v DISTDIR FEATURES FETCHCOMMAND GENTOO_MIRRORS \
+eval $("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
+	FETCHCOMMAND GENTOO_MIRRORS \
 	PORTAGE_BIN_PATH PORTAGE_GPG_DIR \
 	PORTAGE_NICENESS PORTAGE_RSYNC_EXTRA_OPTS \
 	PORTAGE_RSYNC_OPTS PORTAGE_TMPDIR PORTDIR \
@@ -54,7 +55,7 @@ STATE_DIR="/var/delta-webrsync/"
 # hack.  bug 92224
 if [ "${FETCHCOMMAND/getdelta.sh}" != "${FETCHCOMMAND}" ]; then
 	# evil evil evil evil
-	eval "$(grep FETCHCOMMAND /etc/make.globals)"
+	eval "$(grep "^FETCHCOMMAND=" "${EPREFIX}/usr/share/portage/config/make.globals")"
 fi
 
 unset f
