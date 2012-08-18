@@ -38,7 +38,6 @@ eval $("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
 	PORTAGE_RSYNC_OPTS PORTAGE_TMPDIR PORTDIR \
 	USERLAND http_proxy ftp_proxy)
 export http_proxy ftp_proxy
-TMPDIR=${PORTAGE_TMPDIR}/snapshots
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
@@ -116,7 +115,8 @@ if [[ ! -w ${DISTDIR} ]] ; then
 	exit 1
 fi
 
-[[ -d ${TMPDIR} ]] || mkdir -p "${TMPDIR}"
+[[ -d ${PORTAGE_TMPDIR}/portage ]] || mkdir -p "${PORTAGE_TMPDIR}/portage" 
+TMPDIR=$(mktemp -d "${PORTAGE_TMPDIR}/portage/delta-webrsync-XXXXXX")
 if [[ ! -w ${TMPDIR} ]] ; then
 	eecho "TMPDIR is not writable: ${TMPDIR}"
 	exit 1
@@ -261,7 +261,7 @@ sync_local() {
 			exit 6
 		fi
 	else
-		cd ${TMPDIR} || die "couldn't cd to tmpdir, $TMPDIR!?"
+		cd "${TMPDIR}" || die "couldn't cd to tmpdir, ${TMPDIR}!?"
 		flags="xf"
 		if [ "${FILE%.bz2}" != "${FILE}" ]; then
 			flags="jxf"
@@ -517,19 +517,16 @@ if [[ ${WEBSYNC_VERIFY_SIGNATURE} == 1 && ! -e portage-${final_date}.tar.bz2.gpg
 	exit 5
 fi
 
-# generate tmp dir.
-TEMPDIR=$(mktemp -d /tmp/delta-webrsync-XXXXXX)
 # got our patches.
-if ! patcher -v "${dfile}" ${patches} "${TEMPDIR}/portage-${final_date}.tar"; then
+if ! patcher -v "${dfile}" ${patches} "${TMPDIR}/portage-${final_date}.tar"; then
 	echo "reconstruction failed (contact the author with the error from the reconstructor please)"
-	rm -f "${TEMPDIR}/portage-${final_date}.tar"
-	rmdir ${TEMPDIR}
+	rm -f "${TMPDIR}/portage-${final_date}.tar"
 	full_version_attempt
 fi
 verified=0
 if [[ -n $got_umd5 ]]; then
 	echo "verifying uncompressed md5"
-	if ! verify_md5_file "${TEMPDIR}/portage-${final_date}.tar" "${DISTDIR}/portage-${final_date}.tar.bz2.umd5sum"; then
+	if ! verify_md5_file "${TMPDIR}/portage-${final_date}.tar" "${DISTDIR}/portage-${final_date}.tar.bz2.umd5sum"; then
 		echo "uncompressed verification failed.  This means either you found a bug in diffball, or something odd is going on"
 		echo "with upstream patch generation"
 		echo "trying md5sum next, which probably will fail."
@@ -546,26 +543,26 @@ if [ "$verified" == "1" ]; then
 		# BUG: Signature verification will fail if the local bzip2
 		# program does not produce output that is perfectly identical
 		# to the bzip2 program used to compress the signed tar file.
-		bzip2 -vk9 "${TEMPDIR}/portage-${final_date}.tar"
-		check_file_signature "${DISTDIR}/portage-${final_date}.tar.bz2.gpgsig" "${TEMPDIR}/portage-${final_date}.tar.bz2" || exit 1
+		bzip2 -vk9 "${TMPDIR}/portage-${final_date}.tar"
+		check_file_signature "${DISTDIR}/portage-${final_date}.tar.bz2.gpgsig" "${TMPDIR}/portage-${final_date}.tar.bz2" || exit 1
 	else
-		bzip2 -vk9 "${TEMPDIR}/portage-${final_date}.tar" &
+		bzip2 -vk9 "${TMPDIR}/portage-${final_date}.tar" &
 	fi
 
 	echo "beginning update to the tree"
-	sync_local "${TEMPDIR}/portage-${final_date}.tar"
+	sync_local "${TMPDIR}/portage-${final_date}.tar"
 	echo "doing final md5 stuff"
 	wait
 	# bzip2 is finished now.
-	rm -f "${TEMPDIR}/portage-${final_date}.tar"
+	rm -f "${TMPDIR}/portage-${final_date}.tar"
 else
 	echo "recompressing."
-	bzip2 -v9 "${TEMPDIR}/portage-${final_date}.tar.bz2"
+	bzip2 -v9 "${TMPDIR}/portage-${final_date}.tar.bz2"
 fi
 
 echo "verifying generated tarball"
 
-if ! verify_md5_file "${TEMPDIR}/portage-${final_date}.tar.bz2" "${DISTDIR}/portage-${final_date}.tar.bz2.md5sum"; then
+if ! verify_md5_file "${TMPDIR}/portage-${final_date}.tar.bz2" "${DISTDIR}/portage-${final_date}.tar.bz2.md5sum"; then
 	if [[ -z $verified ]]; then
 		echo "couldn't verify the generated tarball.  bug, most likely."
 		exit 5
@@ -574,21 +571,20 @@ if ! verify_md5_file "${TEMPDIR}/portage-${final_date}.tar.bz2" "${DISTDIR}/port
 	echo "compressed md5 differs, but uncompressed md5 says it right.  bzip2 version incompatability in other words"
 	echo "saving the md5"
 	if type -p md5sum &> /dev/null; then
-		md5sum ${TEMPDIR}/portage-${final_date}.tar.bz2 | sed -e "s:${TEMPDIR}/\?::" > \
-			${STATE_DIR}/portage-${final_date}.tar.bz2.md5sum
+		md5sum "${TMPDIR}/portage-${final_date}.tar.bz2" | sed -e "s:${TMPDIR}/\?::" > \
+			"${STATE_DIR}/portage-${final_date}.tar.bz2.md5sum"
 	elif type -p md5 &> /dev/null; then
-		echo "$(md5 -q ${TEMPDIR}/portage-${final_date}.tar.bz2)  portage-${final_date}.tar.bz2" > \
-			${STATE_DIR}/portage-${final_date}.tar.bz2.md5sum
+		echo "$(md5 -q "${TMPDIR}/portage-${final_date}.tar.bz2")  portage-${final_date}.tar.bz2" > \
+			"${STATE_DIR}/portage-${final_date}.tar.bz2.md5sum"
 	else
 		echo "couldn't find either md5 or md5sum.  something is screwed... (bailing, sorry)"
 		exit 7
 	fi
-	mv "${DISTDIR}/portage-${final_date}.tar.bz2.umd5sum" "${TEMPDIR}/portage-${final_date}.tar.bz2" ${STATE_DIR}/
-	rmdir ${TEMPDIR}
+	mv "${DISTDIR}/portage-${final_date}.tar.bz2.umd5sum" "${TMPDIR}/portage-${final_date}.tar.bz2" "${STATE_DIR}/"
 	dfile="${STATE_DIR}/portage-${final_date}.tar.bz2"
 else
 	dfile="${DISTDIR}/portage-${final_date}.tar.bz2"
-	mv "${TEMPDIR}/portage-${final_date}.tar.bz2" ${DISTDIR}/
+	mv "${TMPDIR}/portage-${final_date}.tar.bz2" "${DISTDIR}/"
 fi
 
 if [ -z "${need_last_sync}" ]; then
@@ -607,5 +603,6 @@ if [[ -z $KEEP_OLDIES ]]; then
 		rm -f "${STATE_DIR}/${x}"{,.md5sum,.umd5sum} &> /dev/null
 	done
 fi
+rm -rf "${TMPDIR}"
 echo "done."
 
