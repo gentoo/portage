@@ -97,11 +97,22 @@ if [ ${WEBSYNC_VERIFY_SIGNATURE} != 0 -a -z "${PORTAGE_GPG_DIR}" ]; then
 	exit 1
 fi
 
-if [[ ! -d $DISTDIR ]] ; then
-	mkdir -p $DISTDIR
+[[ -d ${PORTDIR} ]] || mkdir -p "${PORTDIR}"
+if [[ ! -w ${PORTDIR} ]] ; then
+	eecho "PORTDIR is not writable: ${PORTDIR}"
+	exit 1
 fi
-if [[ ! -d $TMPDIR ]]; then
-	mkdir -p $TMPDIR
+
+[[ -d ${DISTDIR} ]] || mkdir -p "${DISTDIR}"
+if [[ ! -w ${DISTDIR} ]] ; then
+	eecho "DISTDIR is not writable: ${DISTDIR}"
+	exit 1
+fi
+
+[[ -d ${TMPDIR} ]] || mkdir -p "${TMPDIR}"
+if [[ ! -w ${TMPDIR} ]] ; then
+	eecho "TMPDIR is not writable: ${TMPDIR}"
+	exit 1
 fi
 
 cd "$DISTDIR"
