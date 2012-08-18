@@ -149,7 +149,7 @@ fi
 #---------------
 
 cleanse_state_dir() {
-	[[ ${STATE_DIR:-/} != '/' ]] && rm ${STATE_DIR}/* &> /dev/null;
+	[[ ${STATE_DIR:-/} != '/' ]] && rm -f "${STATE_DIR}"/* &> /dev/null
 }
 
 full_version_attempt() {
@@ -205,14 +205,14 @@ full_version_attempt() {
 				exit 0
 			else
 				echo "md5 on ${FILE} failed, removing it and starting anew"
-				rm "$FILE" &> /dev/null
+				rm -f "${FILE}" &> /dev/null
 			fi
 		fi
 	
 		if fetch_from_mirrors "/snapshots/${FILE}" "${FILE}"; then
 			if ! verify_md5_file "$FILE"; then
 				echo "md5 failed on $FILE"
-				rm ${FILE} &> /dev/null
+				rm -f "${FILE}" &> /dev/null
 				continue
 			else
 				sync_local "${FILE}"
@@ -300,7 +300,7 @@ fetch_from_mirrors() {
 		if (eval "$FETCHCOMMAND $wgetops") && [ -s "${FILE}" ]; then
 			return 0
 		else
-			rm "${FILE}" &> /dev/null
+			rm -f "${FILE}" &> /dev/null
 		fi
 	done
 	return 1
@@ -394,8 +394,8 @@ for basef in ${potentials}; do
 	fi
 	if ! verify_md5_file "${dfile}" "${chksum}"; then
 		echo "found a stale snapshot.  cleansing"
-		rm "${dfile}" &> /dev/null
-		rm "${chksum}.md5sum" &> /dev/null
+		rm -f "${dfile}" &> /dev/null
+		rm -f "${chksum}.md5sum" &> /dev/null
 		dar=""
 	else
 		base_version="${basef}"
@@ -455,7 +455,7 @@ while [[ -n ${fetched} ]]; do
 	fetch="yes"
 	if [[ -e ${p} ]]; then
 		if ! verify_md5_file "${p}"; then
-			rm ${p} &> /dev/null
+			rm -f "${p}" &> /dev/null
 		else
 			fetch=""
 		fi
@@ -521,7 +521,7 @@ TEMPDIR=$(mktemp -d /tmp/delta-webrsync-XXXXXX)
 # got our patches.
 if ! patcher -v "${dfile}" ${patches} "${TEMPDIR}/portage-${final_date}.tar"; then
 	echo "reconstruction failed (contact the author with the error from the reconstructor please)"
-	rm "${TEMPDIR}/portage-${final_date}.tar"
+	rm -f "${TEMPDIR}/portage-${final_date}.tar"
 	rmdir ${TEMPDIR}
 	full_version_attempt
 fi
@@ -556,7 +556,7 @@ if [ "$verified" == "1" ]; then
 	echo "doing final md5 stuff"
 	wait
 	# bzip2 is finished now.
-	rm "${TEMPDIR}/portage-${final_date}.tar"
+	rm -f "${TEMPDIR}/portage-${final_date}.tar"
 else
 	echo "recompressing."
 	bzip2 -v9 "${TEMPDIR}/portage-${final_date}.tar.bz2"
@@ -603,7 +603,7 @@ if [[ -z $KEEP_OLDIES ]]; then
 	for x in $potentials; do
 		echo "removing ${x}"
 		rm -f "${DISTDIR}/${x}"{,.md5sum,.umd5sum,.gpgsig} &> /dev/null
-		rm "${STATE_DIR}/${x}" "${STATE_DIR}/${x}.md5sum" "${STATE_DIR}/${x}.umd5sum" &> /dev/null
+		rm -f "${STATE_DIR}/${x}"{,.md5sum,.umd5sum} &> /dev/null
 	done
 fi
 echo "done."
