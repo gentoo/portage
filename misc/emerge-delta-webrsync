@@ -153,29 +153,56 @@ cleanse_state_dir() {
 	[[ ${STATE_DIR:-/} != '/' ]] && rm -f "${STATE_DIR}"/* &> /dev/null
 }
 
+get_utc_date_in_seconds() {
+	date -u +"%s"
+}
+
+get_date_part() {
+	local utc_time_in_secs="$1"
+	local part="$2"
+
+	if	[[ ${USERLAND} == BSD ]] ; then
+		date -r ${utc_time_in_secs} -u +"${part}"
+	else
+		date -d @${utc_time_in_secs} -u +"${part}"
+	fi
+}
+
+increment_date() {
+	local s="$1" inc="$2"
+	if [[ ${USERLAND} == BSD ]] ; then
+		# Specify zeros for the least significant digits, or else those
+		# digits are inherited from the current system clock time.
+		date -v${inc}d -juf "%Y%m%d%H%M.%S" "${s}0000.00" +"%Y%m%d"
+	else
+		date -d "${s:0:4}-${s:4:2}-${s:6:2} ${inc} day" -u +"%Y%m%d"
+	fi
+}
+
 full_version_attempt() {
 	local FILE file_exists
 	echo "Fetching most recent snapshot"
+
+	local start_time=$(get_utc_date_in_seconds)
+	local start_hour=$(get_date_part ${start_time} "%H")
+	local snapshot_date=$(get_date_part ${start_time} "%Y%m%d")
+
+	# Daily snapshots are created at 00:45 and are not
+	# available until after 01:00. Don't waste time trying
+	# to fetch a snapshot before it's been created.
+	if [ ${start_hour} -lt 1 ] ; then
+		snapshot_date=$(increment_date ${snapshot_date} -1)
+	fi
+
 	declare -i attempts=-1
 	while (( $attempts <  40 )) ; do
 		unset file_exists
 		attempts=$(( attempts + 1 ))
+		snapshot_date=$(increment_date ${snapshot_date} -1)
 
-		#this too, sucks.  it works in the interim though.
-		if [ "$USERLAND" == "BSD" ] || [ "$USERLAND" == "Darwin" ] ; then
-			daysbefore=$(expr $(date +"%s") - 86400 \* $attempts)
-			day=$(date -r $daysbefore +"%d")
-			month=$(date -r $daysbefore +"%m")
-			year=$(date -r $daysbefore +"%Y")
-		else
-			day=$(date -d "-$attempts day" +"%d")
-			month=$(date -d "-$attempts day" +"%m")
-			year=$(date -d "-$attempts day" +"%Y")
-		fi
+		FILE="portage-${snapshot_date}.tar.bz2"
 
-		FILE="portage-${year}${month}${day}.tar.bz2"
-
-		echo "Attempting to fetch file dated: ${year}${month}${day}"
+		echo "Attempting to fetch file dated: ${snapshot_date}"
 		
 		got_md5=0
 
@@ -220,7 +247,7 @@ full_version_attempt() {
 				cleanse_state_dir
 				echo
 				echo " *** Completed websync, please now perform a normal rsync if possible."
-				echo "     Update is current as of YYYYMMDD: ${year}${month}${day}"
+				echo "     Update is current as of YYYYMMDD: ${snapshot_date}"
 				echo
 				exit 0
 			fi
@@ -418,36 +445,11 @@ base_date="${base_version%.tar.bz2}"
 base_date="${base_date#portage-}"
 # we now have yyyymmdd
 
-unset patch_dates
-if [ "$USERLAND" == "BSD" ] || [ "$USERLAND" == "Darwin" ] ; then
-	daysbefore=$(expr $(date +"%s") - 86400 \* $attempts)
-	day=$(date -r $daysbefore +"%d")
-	month=$(date -r $daysbefore +"%m")
-	year=$(date -r $daysbefore +"%Y")
-else
-	day=$(date -d "-$attempts day" +"%d")
-	month=$(date -d "-$attempts day" +"%m")
-	year=$(date -d "-$attempts day" +"%Y")
-fi
-
-#todays_date="${year}${month}${day}"
-
-next_date() {
-	local year day month
-	year="${1:0:4}"
-	month="${1:4:2}"
-	day="${1:6:2}"
-#	if [[ "${USERLAND}" == "BSD" ]] || [[ "${USERLAND}" == "Darwin" ]]; then
-#	else
-		date -d "$year/$month/$day +1 day" +"%Y%m%d"
-#	fi
-}
-
 patches=''
 echo "fetching patches"
 fetched='asdf'
 while [[ -n ${fetched} ]]; do
-	next_day=$(next_date ${base_date})
+	next_day=$(increment_date ${base_date} +1)
 	# if we can't get a *single* patch or md5, even one missing, do full.
 	p="snapshot-${base_date}-${next_day}.patch.bz2"
 	if [[ ! -e ${p}.md5sum ]] && ! fetch_from_mirrors "/snapshots/deltas/${p}.md5sum" "${p}.md5sum"; then
