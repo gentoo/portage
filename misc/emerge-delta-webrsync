@@ -541,15 +541,16 @@ fi
 
 unset need_last_sync
 if [ "$verified" == "1" ]; then
-	echo "recompressing. (backgrounding)"
 	need_last_sync="dar"
 	if [[ ${WEBSYNC_VERIFY_SIGNATURE} == 1 ]] ; then
 		# BUG: Signature verification will fail if the local bzip2
 		# program does not produce output that is perfectly identical
 		# to the bzip2 program used to compress the signed tar file.
+		echo "recompressing ..."
 		bzip2 -vk9 "${TMPDIR}/portage-${final_date}.tar"
 		check_file_signature "${DISTDIR}/portage-${final_date}.tar.bz2.gpgsig" "${TMPDIR}/portage-${final_date}.tar.bz2" || exit 1
 	else
+		echo "recompressing. (backgrounding)"
 		bzip2 -vk9 "${TMPDIR}/portage-${final_date}.tar" &
 	fi
 
