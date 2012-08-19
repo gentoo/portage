@@ -101,7 +101,9 @@ get_date_part() {
 get_utc_second_from_string() {
 	local s="$1"
 	if [[ ${USERLAND} == BSD ]] ; then
-		date -juf "%Y%m%d" "$s" +"%s"
+		# Specify zeros for the least significant digits, or else those
+		# digits are inherited from the current system clock time.
+		date -juf "%Y%m%d%H%M.%S" "${s}0000.00" +"%s"
 	else
 		date -d "${s:0:4}-${s:4:2}-${s:6:2}" -u +"%s"
 	fi
