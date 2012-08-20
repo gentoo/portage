@@ -1351,8 +1351,10 @@ class Scheduler(PollScheduler):
 		failed_pkgs = self._failed_pkgs
 		portage.locks._quiet = self._background
 		portage.elog.add_listener(self._elog_listener)
-		display_timeout_id = self.sched_iface.timeout_add(
-			self._max_display_latency, self._status_display.display)
+		display_timeout_id = None
+		if self._status_display._isatty and not self._status_display.quiet:
+			display_timeout_id = self.sched_iface.timeout_add(
+				self._max_display_latency, self._status_display.display)
 		rval = os.EX_OK
 
 		try:
@@ -1361,7 +1363,8 @@ class Scheduler(PollScheduler):
 			self._main_loop_cleanup()
 			portage.locks._quiet = False
 			portage.elog.remove_listener(self._elog_listener)
-			self.sched_iface.source_remove(display_timeout_id)
+			if display_timeout_id is not None:
+				self.sched_iface.source_remove(display_timeout_id)
 			if failed_pkgs:
 				rval = failed_pkgs[-1].returncode
 
