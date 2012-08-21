@@ -13,6 +13,7 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_encode
 from portage import _unicode_decode
+from portage.checksum import _hash_filter
 from portage.elog.messages import eerror
 from portage.package.ebuild.fetch import _check_distfile, fetch
 from portage.util._pty import _create_pty_or_pipe
@@ -57,6 +58,7 @@ class EbuildFetcher(SpawnProcess):
 			if st.st_size != expected_size:
 				return False
 
+		hash_filter = _hash_filter(settings.get("PORTAGE_CHECKSUM_FILTER", ""))
 		stdout_orig = sys.stdout
 		stderr_orig = sys.stderr
 		global_havecolor = portage.output.havecolor
@@ -78,7 +80,7 @@ class EbuildFetcher(SpawnProcess):
 						break
 					continue
 				ok, st = _check_distfile(os.path.join(distdir, filename),
-					mydigests, eout, show_errors=False)
+					mydigests, eout, show_errors=False, hash_filter=hash_filter)
 				if not ok:
 					success = False
 					break

@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['digestcheck']
@@ -6,6 +6,7 @@ __all__ = ['digestcheck']
 import warnings
 
 from portage import os, _encodings, _unicode_decode
+from portage.checksum import _hash_filter
 from portage.exception import DigestException, FileNotFound
 from portage.localization import _
 from portage.output import EOutput
@@ -28,6 +29,7 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
 	if mysettings.get("EBUILD_SKIP_MANIFEST") == "1":
 		return 1
 	pkgdir = mysettings["O"]
+	hash_filter = _hash_filter(mysettings.get("PORTAGE_CHECKSUM_FILTER", ""))
 	if mf is None:
 		mf = mysettings.repositories.get_repo_for_location(
 			os.path.dirname(os.path.dirname(pkgdir)))
@@ -38,15 +40,16 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
 		if not mf.thin and strict and "PORTAGE_PARALLEL_FETCHONLY" not in mysettings:
 			if mf.fhashdict.get("EBUILD"):
 				eout.ebegin(_("checking ebuild checksums ;-)"))
-				mf.checkTypeHashes("EBUILD")
+				mf.checkTypeHashes("EBUILD", hash_filter=hash_filter)
 				eout.eend(0)
 			if mf.fhashdict.get("AUX"):
 				eout.ebegin(_("checking auxfile checksums ;-)"))
-				mf.checkTypeHashes("AUX")
+				mf.checkTypeHashes("AUX", hash_filter=hash_filter)
 				eout.eend(0)
 			if mf.fhashdict.get("MISC"):
 				eout.ebegin(_("checking miscfile checksums ;-)"))
-				mf.checkTypeHashes("MISC", ignoreMissingFiles=True)
+				mf.checkTypeHashes("MISC", ignoreMissingFiles=True,
+					hash_filter=hash_filter)
 				eout.eend(0)
 		for f in myfiles:
 			eout.ebegin(_("checking %s ;-)") % f)
@@ -58,7 +61,7 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
 				writemsg(_("\n!!! Missing digest for '%s'\n") % (f,),
 					noiselevel=-1)
 				return 0
-			mf.checkFileHashes(ftype, f)
+			mf.checkFileHashes(ftype, f, hash_filter=hash_filter)
 			eout.eend(0)
 	except FileNotFound as e:
 		eout.eend(1)

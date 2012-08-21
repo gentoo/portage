@@ -9,7 +9,7 @@ import warnings
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum:hashfunc_map,perform_multiple_checksums,' + \
-		'verify_all,_filter_unaccelarated_hashes',
+		'verify_all,_apply_hash_filter,_filter_unaccelarated_hashes',
 	'portage.util:write_atomic',
 )
 
@@ -502,14 +502,17 @@ class Manifest(object):
 		for t in MANIFEST2_IDENTIFIERS:
 			self.checkTypeHashes(t, ignoreMissingFiles=ignoreMissingFiles)
 	
-	def checkTypeHashes(self, idtype, ignoreMissingFiles=False):
+	def checkTypeHashes(self, idtype, ignoreMissingFiles=False, hash_filter=None):
 		for f in self.fhashdict[idtype]:
-			self.checkFileHashes(idtype, f, ignoreMissing=ignoreMissingFiles)
+			self.checkFileHashes(idtype, f, ignoreMissing=ignoreMissingFiles,
+				hash_filter=hash_filter)
 	
-	def checkFileHashes(self, ftype, fname, ignoreMissing=False):
+	def checkFileHashes(self, ftype, fname, ignoreMissing=False, hash_filter=None):
+		digests = _filter_unaccelarated_hashes(self.fhashdict[ftype][fname])
+		if hash_filter is not None:
+			digests = _apply_hash_filter(digests, hash_filter)
 		try:
-			ok, reason = verify_all(self._getAbsname(ftype, fname),
-				_filter_unaccelarated_hashes(self.fhashdict[ftype][fname]))
+			ok, reason = verify_all(self._getAbsname(ftype, fname), digests)
 			if not ok:
 				raise DigestException(tuple([self._getAbsname(ftype, fname)]+list(reason)))
 			return ok, reason

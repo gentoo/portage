@@ -26,7 +26,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 from portage import OrderedDict, os, selinux, shutil, _encodings, \
 	_shell_quote, _unicode_encode
 from portage.checksum import (hashfunc_map, perform_md5, verify_all,
-	_filter_unaccelarated_hashes)
+	_filter_unaccelarated_hashes, _hash_filter, _apply_hash_filter)
 from portage.const import BASH_BINARY, CUSTOM_MIRRORS_FILE, \
 	GLOBAL_CONFIG_PATH
 from portage.data import portage_gid, portage_uid, secpass, userpriv_groups
@@ -185,7 +185,7 @@ def _check_digests(filename, digests, show_errors=1):
 		return False
 	return True
 
-def _check_distfile(filename, digests, eout, show_errors=1):
+def _check_distfile(filename, digests, eout, show_errors=1, hash_filter=None):
 	"""
 	@return a tuple of (match, stat_obj) where match is True if filename
 	matches all given digests (if any) and stat_obj is a stat result, or
@@ -212,6 +212,8 @@ def _check_distfile(filename, digests, eout, show_errors=1):
 			return (False, st)
 	else:
 		digests = _filter_unaccelarated_hashes(digests)
+		if hash_filter is not None:
+			digests = _apply_hash_filter(digests, hash_filter)
 		if _check_digests(filename, digests, show_errors=show_errors):
 			eout.ebegin("%s %s ;-)" % (os.path.basename(filename),
 				" ".join(sorted(digests))))
@@ -355,6 +357,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 		if try_mirrors:
 			mymirrors += [x.rstrip("/") for x in mysettings["GENTOO_MIRRORS"].split() if x]
 
+	hash_filter = _hash_filter(mysettings.get("PORTAGE_CHECKSUM_FILTER", ""))
 	skip_manifest = mysettings.get("EBUILD_SKIP_MANIFEST") == "1"
 	if skip_manifest:
 		allow_missing_digests = True
@@ -637,7 +640,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 				eout = EOutput()
 				eout.quiet = mysettings.get("PORTAGE_QUIET") == "1"
 				match, mystat = _check_distfile(
-					myfile_path, pruned_digests, eout)
+					myfile_path, pruned_digests, eout, hash_filter=hash_filter)
 				if match:
 					# Skip permission adjustment for symlinks, since we don't
 					# want to modify anything outside of the primary DISTDIR,
@@ -709,7 +712,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 					for x in ro_distdirs:
 						filename = os.path.join(x, myfile)
 						match, mystat = _check_distfile(
-							filename, pruned_digests, eout)
+							filename, pruned_digests, eout, hash_filter=hash_filter)
 						if match:
 							readonly_file = filename
 							break
@@ -796,6 +799,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 							continue
 						else:
 							digests = _filter_unaccelarated_hashes(mydigests[myfile])
+							digests = _apply_hash_filter(digests, hash_filter)
 							verified_ok, reason = verify_all(myfile_path, digests)
 							if not verified_ok:
 								writemsg(_("!!! Previously fetched"
@@ -1053,6 +1057,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 								# net connection. This way we have a chance to try to download
 								# from another mirror...
 								digests = _filter_unaccelarated_hashes(mydigests[myfile])
+								digests = _apply_hash_filter(digests, hash_filter)
 								verified_ok, reason = verify_all(myfile_path, digests)
 								if not verified_ok:
 									writemsg(_("!!! Fetched file: %s VERIFY FAILED!\n") % myfile,

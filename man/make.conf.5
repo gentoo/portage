@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Jul 2012" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Aug 2012" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -696,6 +696,23 @@ This variable should contain a command that is suitable for portage to call
 for bzip2 compression operations. \fBPORTAGE_BZIP2_COMMAND\fR will also be
 called for extraction operation, with -d appended, unless the
 \fBPORTAGE_BUNZIP2_COMMAND\fR variable is set.
+.TP
+\fBPORTAGE_CHECKSUM_FILTER\fR = \fI[space delimited list of hash names]\fR
+This variable may be used to filter the hash functions that are used to
+verify integrity of files. Hash functions names are case\-insensitive, and
+the \fI*\fR and \fI\-*\fR wildcard tokens are supported.
+.br
+Defaults to the value of *.
+.br
+.I Examples:
+.nf
+# Use all available hash functions
+PORTAGE_CHECKSUM_FILTER="*"
+# Use any function except whirlpool
+PORTAGE_CHECKSUM_FILTER="* \-whirlpool"
+# Only use sha256
+PORTAGE_CHECKSUM_FILTER="\-* sha256"
+.fi
 .TP
 \fBPORTAGE_COMPRESS\fR = \fI"bzip2"\fR
 This variable contains the command used to compress documentation during the
