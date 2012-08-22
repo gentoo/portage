@@ -64,9 +64,9 @@ def _spawn_fetch(settings, args, **kwargs):
 	if "fd_pipes" not in kwargs:
 
 		kwargs["fd_pipes"] = {
-			0 : sys.stdin.fileno(),
-			1 : sys.stdout.fileno(),
-			2 : sys.stdout.fileno(),
+			0 : sys.__stdin__.fileno(),
+			1 : sys.__stdout__.fileno(),
+			2 : sys.__stdout__.fileno(),
 		}
 
 	if "userfetch" in settings.features and \

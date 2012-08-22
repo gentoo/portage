@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AsynchronousLock import AsynchronousLock
@@ -91,9 +91,9 @@ class BinpkgFetcher(SpawnProcess):
 		# Redirect all output to stdout since some fetchers like
 		# wget pollute stderr (if portage detects a problem then it
 		# can send it's own message to stderr).
-		fd_pipes.setdefault(0, sys.stdin.fileno())
-		fd_pipes.setdefault(1, sys.stdout.fileno())
-		fd_pipes.setdefault(2, sys.stdout.fileno())
+		fd_pipes.setdefault(0, sys.__stdin__.fileno())
+		fd_pipes.setdefault(1, sys.__stdout__.fileno())
+		fd_pipes.setdefault(2, sys.__stdout__.fileno())
 
 		self.args = fetch_args
 		self.env = fetch_env
@@ -104,7 +104,7 @@ class BinpkgFetcher(SpawnProcess):
 	def _pipe(self, fd_pipes):
 		"""When appropriate, use a pty so that fetcher progress bars,
 		like wget has, will work properly."""
-		if self.background or not sys.stdout.isatty():
+		if self.background or not sys.__stdout__.isatty():
 			# When the output only goes to a log file,
 			# there's no point in creating a pty.
 			return os.pipe()

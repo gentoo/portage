@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.SubProcess import SubProcess
@@ -62,16 +62,16 @@ class SpawnProcess(SubProcess):
 			null_input = os.open('/dev/null', os.O_RDWR)
 			fd_pipes[0] = null_input
 
-		fd_pipes.setdefault(0, sys.stdin.fileno())
-		fd_pipes.setdefault(1, sys.stdout.fileno())
-		fd_pipes.setdefault(2, sys.stderr.fileno())
+		fd_pipes.setdefault(0, sys.__stdin__.fileno())
+		fd_pipes.setdefault(1, sys.__stdout__.fileno())
+		fd_pipes.setdefault(2, sys.__stderr__.fileno())
 
 		# flush any pending output
 		for fd in fd_pipes.values():
-			if fd == sys.stdout.fileno():
-				sys.stdout.flush()
-			if fd == sys.stderr.fileno():
-				sys.stderr.flush()
+			if fd == sys.__stdout__.fileno():
+				sys.__stdout__.flush()
+			if fd == sys.__stderr__.fileno():
+				sys.__stderr__.flush()
 
 		if logfile is not None:
 

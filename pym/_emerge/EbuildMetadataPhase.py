@@ -74,15 +74,15 @@ class EbuildMetadataPhase(SubProcess):
 
 		null_input = open('/dev/null', 'rb')
 		fd_pipes.setdefault(0, null_input.fileno())
-		fd_pipes.setdefault(1, sys.stdout.fileno())
-		fd_pipes.setdefault(2, sys.stderr.fileno())
+		fd_pipes.setdefault(1, sys.__stdout__.fileno())
+		fd_pipes.setdefault(2, sys.__stderr__.fileno())
 
 		# flush any pending output
 		for fd in fd_pipes.values():
-			if fd == sys.stdout.fileno():
-				sys.stdout.flush()
-			if fd == sys.stderr.fileno():
-				sys.stderr.flush()
+			if fd == sys.__stdout__.fileno():
+				sys.__stdout__.flush()
+			if fd == sys.__stderr__.fileno():
+				sys.__stderr__.flush()
 
 		self._files = self._files_dict()
 		files = self._files
