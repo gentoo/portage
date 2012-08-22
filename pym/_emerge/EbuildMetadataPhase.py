@@ -78,11 +78,12 @@ class EbuildMetadataPhase(SubProcess):
 		fd_pipes.setdefault(2, sys.__stderr__.fileno())
 
 		# flush any pending output
+		stdout_filenos = (sys.__stdout__.fileno(), sys.__stderr__.fileno())
 		for fd in fd_pipes.values():
-			if fd == sys.__stdout__.fileno():
+			if fd in stdout_filenos:
 				sys.__stdout__.flush()
-			if fd == sys.__stderr__.fileno():
 				sys.__stderr__.flush()
+				break
 
 		self._files = self._files_dict()
 		files = self._files
