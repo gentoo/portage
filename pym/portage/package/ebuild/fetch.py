@@ -358,6 +358,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 			mymirrors += [x.rstrip("/") for x in mysettings["GENTOO_MIRRORS"].split() if x]
 
 	hash_filter = _hash_filter(mysettings.get("PORTAGE_CHECKSUM_FILTER", ""))
+	if hash_filter.transparent:
+		hash_filter = None
 	skip_manifest = mysettings.get("EBUILD_SKIP_MANIFEST") == "1"
 	if skip_manifest:
 		allow_missing_digests = True
@@ -799,7 +801,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 							continue
 						else:
 							digests = _filter_unaccelarated_hashes(mydigests[myfile])
-							digests = _apply_hash_filter(digests, hash_filter)
+							if hash_filter is not None:
+								digests = _apply_hash_filter(digests, hash_filter)
 							verified_ok, reason = verify_all(myfile_path, digests)
 							if not verified_ok:
 								writemsg(_("!!! Previously fetched"
@@ -1057,7 +1060,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 								# net connection. This way we have a chance to try to download
 								# from another mirror...
 								digests = _filter_unaccelarated_hashes(mydigests[myfile])
-								digests = _apply_hash_filter(digests, hash_filter)
+								if hash_filter is not None:
+									digests = _apply_hash_filter(digests, hash_filter)
 								verified_ok, reason = verify_all(myfile_path, digests)
 								if not verified_ok:
 									writemsg(_("!!! Fetched file: %s VERIFY FAILED!\n") % myfile,

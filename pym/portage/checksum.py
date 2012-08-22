@@ -250,9 +250,13 @@ def _apply_hash_filter(digests, hash_filter):
 	dict if no changes are necessary. This will always preserve at
 	at least one digest, in order to ensure that they are not all
 	discarded.
+	@param digests: dictionary of digests
+	@type digests: dict
+	@param hash_filter: A callable that takes a single hash name
+		argument, and returns True if the hash is to be used or
+		False otherwise
+	@type hash_filter: callable
 	"""
-	if hash_filter.transparent:
-		return digests
 
 	verifiable_hash_types = set(digests).intersection(hashfunc_map)
 	verifiable_hash_types.discard("size")

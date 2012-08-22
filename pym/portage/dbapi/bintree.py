@@ -1465,7 +1465,8 @@ class binarytree(object):
 
 		hash_filter = _hash_filter(
 			self.settings.get("PORTAGE_CHECKSUM_FILTER", ""))
-		digests = _apply_hash_filter(digests, hash_filter)
+		if not hash_filter.transparent:
+			digests = _apply_hash_filter(digests, hash_filter)
 		eout = EOutput()
 		eout.quiet = self.settings.get("PORTAGE_QUIET") == "1"
 		ok, st = _check_distfile(pkg_path, digests, eout, show_errors=0)

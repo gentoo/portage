@@ -30,6 +30,8 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
 		return 1
 	pkgdir = mysettings["O"]
 	hash_filter = _hash_filter(mysettings.get("PORTAGE_CHECKSUM_FILTER", ""))
+	if hash_filter.transparent:
+		hash_filter = None
 	if mf is None:
 		mf = mysettings.repositories.get_repo_for_location(
 			os.path.dirname(os.path.dirname(pkgdir)))

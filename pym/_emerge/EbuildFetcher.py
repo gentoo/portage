@@ -59,6 +59,8 @@ class EbuildFetcher(SpawnProcess):
 				return False
 
 		hash_filter = _hash_filter(settings.get("PORTAGE_CHECKSUM_FILTER", ""))
+		if hash_filter.transparent:
+			hash_filter = None
 		stdout_orig = sys.stdout
 		stderr_orig = sys.stderr
 		global_havecolor = portage.output.havecolor
