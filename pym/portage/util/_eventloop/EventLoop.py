@@ -96,9 +96,11 @@ class EventLoop(object):
 			try:
 				self._poll_event_queue.extend(self._poll_obj.poll(timeout))
 				break
-			except select.error as e:
+			except (IOError, select.error) as e:
 				# Silently handle EINTR, which is normal when we have
-				# received a signal such as SIGINT.
+				# received a signal such as SIGINT (epoll objects may
+				# raise IOError rather than select.error, at least in
+				# Python 3.2).
 				if not (e.args and e.args[0] == errno.EINTR):
 					writemsg_level("\n!!! select error: %s\n" % (e,),
 						level=logging.ERROR, noiselevel=-1)
