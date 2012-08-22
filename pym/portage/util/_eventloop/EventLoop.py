@@ -52,14 +52,25 @@ class EventLoop(object):
 		self._idle_callbacks = {}
 		self._timeout_handlers = {}
 		self._timeout_interval = None
-		self._poll_obj = create_poll_instance()
 
-		self.IO_ERR = PollConstants.POLLERR
-		self.IO_HUP = PollConstants.POLLHUP
-		self.IO_IN = PollConstants.POLLIN
-		self.IO_NVAL = PollConstants.POLLNVAL
-		self.IO_OUT = PollConstants.POLLOUT
-		self.IO_PRI = PollConstants.POLLPRI
+		try:
+			select.epoll
+		except AttributeError:
+			self._poll_obj = create_poll_instance()
+			self.IO_ERR = PollConstants.POLLERR
+			self.IO_HUP = PollConstants.POLLHUP
+			self.IO_IN = PollConstants.POLLIN
+			self.IO_NVAL = PollConstants.POLLNVAL
+			self.IO_OUT = PollConstants.POLLOUT
+			self.IO_PRI = PollConstants.POLLPRI
+		else:
+			self._poll_obj = _epoll_adapter(select.epoll())
+			self.IO_ERR = select.EPOLLERR
+			self.IO_HUP = select.EPOLLHUP
+			self.IO_IN = select.EPOLLIN
+			self.IO_NVAL = 0
+			self.IO_OUT = select.EPOLLOUT
+			self.IO_PRI = select.EPOLLPRI
 
 		self._child_handlers = {}
 		self._sigchld_read = None
@@ -488,3 +499,37 @@ def create_poll_instance():
 	if can_poll_device():
 		return select.poll()
 	return PollSelectAdapter()
+
+class _epoll_adapter(object):
+	"""
+	Wraps a select.epoll instance in order to make it compatible
+	with select.poll instances. This is necessary since epoll instances
+	interpret timeout arguments differently. Note that the file descriptor
+	that is associated with an epoll instance will close automatically when
+	it is garbage collected, so it's not necessary to close it explicitly.
+	"""
+	__slots__ = ('_epoll_obj',)
+
+	def __init__(self, epoll_obj):
+		self._epoll_obj = epoll_obj
+
+	def register(self, fd, *args):
+		self._epoll_obj.register(fd, *args)
+
+	def unregister(self, fd):
+		self._epoll_obj.unregister(fd)
+
+	def poll(self, *args):
+		if len(args) > 1:
+			raise TypeError(
+				"poll expected at most 2 arguments, got " + \
+				repr(1 + len(args)))
+		timeout = -1
+		if args:
+			timeout = args[0]
+			if timeout is None or timeout < 0:
+				timeout = -1
+			elif timeout != 0:
+				 timeout = timeout / 1000
+
+		return self._epoll_obj.poll(timeout)
