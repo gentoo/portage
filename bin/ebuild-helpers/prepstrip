@@ -160,22 +160,23 @@ process_elf() {
 	local x=$1 strip_flags=${*:2}
 
 	vecho "   ${x:${#ED}}"
+
+	# If two processes try to debugedit or strip the same hardlink at the
+	# same time, it may corrupt files or cause loss of splitdebug info.
+	# So, use a lockfile to prevent interference (easily observed with
+	# dev-vcs/git which creates ~111 hardlinks to one file in
+	# /usr/libexec/git-core).
+	local lockfile=$(inode_file_link "${x}")_lockfile
+	if ! ln "${x}" "${lockfile}" 2>/dev/null ; then
+		while [[ -f ${lockfile} ]] ; do
+			sleep 1
+		done
+		unset lockfile
+	fi
+
 	save_elf_sources "${x}"
 
 	if ${strip_this} ; then
-
-		# If two processes try to strip the same hardlink at the same
-		# time, it will cause one of them to lose the splitdebug info.
-		# So, use a lockfile to prevent interference (easily observed
-		# with dev-vcs/git which creates ~109 hardlinks to one file in
-		# /usr/libexec/git-core).
-		local lockfile=$(inode_file_link "${x}")_lockfile
-		if ! ln "${x}" "${lockfile}" ; then
-			while [[ -f ${lockfile} ]] ; do
-				sleep 1
-			done
-			unset lockfile
-		fi
 
 		# see if we can split & strip at the same time
 		if [[ -n ${SPLIT_STRIP_FLAGS} ]] ; then
@@ -190,8 +191,9 @@ process_elf() {
 			save_elf_debug "${x}"
 			${STRIP} ${strip_flags} "${x}"
 		fi
-		[[ -n ${lockfile} ]] && rm -f "${lockfile}"
 	fi
+
+	[[ -n ${lockfile} ]] && rm -f "${lockfile}"
 }
 
 # The existance of the section .symtab tells us that a binary is stripped.
