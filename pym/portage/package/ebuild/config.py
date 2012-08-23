@@ -42,7 +42,7 @@ from portage.repository.config import load_repository_config
 from portage.util import ensure_dirs, getconfig, grabdict, \
 	grabdict_package, grabfile, grabfile_package, LazyItemsDict, \
 	normalize_path, shlex_split, stack_dictlist, stack_dicts, stack_lists, \
-	writemsg, writemsg_level
+	writemsg, writemsg_level, _eapi_cache
 from portage.versions import catpkgsplit, catsplit, cpv_getkey, _pkg_str
 
 from portage.package.ebuild._config import special_env_vars
@@ -811,6 +811,7 @@ class config(object):
 			# and subsequent calls to the _init() functions have no effect.
 			portage.output._init(config_root=self['PORTAGE_CONFIGROOT'])
 			portage.data._init(self)
+			_eapi_cache.clear()
 
 		if mycpv:
 			self.setcpv(mycpv)

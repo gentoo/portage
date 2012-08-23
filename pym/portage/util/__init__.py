@@ -379,6 +379,8 @@ def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 			newdict[k] = " ".join(v)
 	return newdict
 
+_eapi_cache = {}
+
 def read_corresponding_eapi_file(filename):
 	"""
 	Read the 'eapi' file from the directory 'filename' is in.
@@ -386,6 +388,10 @@ def read_corresponding_eapi_file(filename):
 	"""
 	default = "0"
 	eapi_file = os.path.join(os.path.dirname(filename), "eapi")
+	try:
+		return _eapi_cache[eapi_file]
+	except KeyError:
+		pass
 	try:
 		f = io.open(_unicode_encode(eapi_file,
 			encoding=_encodings['fs'], errors='strict'),
@@ -401,6 +407,7 @@ def read_corresponding_eapi_file(filename):
 	except IOError:
 		eapi = default
 
+	_eapi_cache[eapi_file] = eapi
 	return eapi
 
 def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=False, allow_repo=False,
