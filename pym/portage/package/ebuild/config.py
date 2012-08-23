@@ -811,7 +811,6 @@ class config(object):
 			# and subsequent calls to the _init() functions have no effect.
 			portage.output._init(config_root=self['PORTAGE_CONFIGROOT'])
 			portage.data._init(self)
-			_eapi_cache.clear()
 
 		if mycpv:
 			self.setcpv(mycpv)
@@ -1507,6 +1506,10 @@ class config(object):
 
 		self.configdict["env"]["PORTAGE_USE"] = \
 			" ".join(sorted(x for x in use if x[-2:] != '_*'))
+
+		# Clear the eapi cache here rather than in the constructor, since
+		# setcpv triggers lazy instantiation of things like _use_manager.
+		_eapi_cache.clear()
 
 	def _grab_pkg_env(self, penv, container, protected_keys=None):
 		if protected_keys is None:
