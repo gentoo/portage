@@ -4,35 +4,36 @@
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
+helper=${0##*/}
+
 if [[ -z ${T} ]] || [[ -z ${2} ]] ; then
-	helpers_die "${0##*/}: Need two arguments, old file and new file"
+	helpers_die "${helper}: Need two arguments, old file and new file"
 	exit 1
 fi
 
 if [ ! -e "$1" ] ; then
-	helpers_die "!!! ${0##*/}: $1 does not exist"
+	helpers_die "!!! ${helper}: $1 does not exist"
 	exit 1
 fi
 
 (($#>2)) && \
-	eqawarn "QA Notice: ${0##*/} called with more than 2 arguments: ${@:3}"
+	eqawarn "QA Notice: ${helper} called with more than 2 arguments: ${@:3}"
 
-rm -rf "${T}/${2}" || exit $?
-case "$EAPI" in
-	0|1|2|3)
-		cp "$1" "$T/$2" || exit $?
-		;;
-	*)
-		cp -P "$1" "$T/$2"
-		ret=$?
-		if [[ $ret -ne 0 ]] ; then
-			helpers_die "${0##*/} failed"
-			exit $ret
-		fi
-		;;
-esac
-doins "${T}/${2}"
+cp_args="-f"
+if [[ ${helper} == newins ]] ; then
+	case "${EAPI}" in
+		0|1|2|3)
+			;;
+		*)
+			cp_args+=" -P"
+			;;
+	esac
+fi
+
+rm -rf "${T}/$2" && \
+cp ${cp_args} "$1" "${T}/$2" && \
+do${helper#new} "${T}/$2"
 ret=$?
 rm -rf "${T}/${2}"
-[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
+[[ $ret -ne 0 ]] && helpers_die "${helper} failed"
 exit $ret
