@@ -396,6 +396,20 @@ class _pkg_str(_unicode):
 		raise AttributeError("_pkg_str instances are immutable",
 			self.__class__, name, value)
 
+	@property
+	def stable(self):
+		try:
+			return self._stable
+		except AttributeError:
+			try:
+				metadata = self._metadata
+				settings = self._settings
+			except AttributeError:
+				raise AttributeError('stable')
+			stable = settings._isStable(self)
+			self.__dict__['_stable'] = stable
+			return stable
+
 def pkgsplit(mypkg, silent=1, eapi=None):
 	"""
 	@param mypkg: either a pv or cpv

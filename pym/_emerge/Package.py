@@ -127,6 +127,10 @@ class Package(Task):
 			self._validate_deps()
 		return self._validated_atoms
 
+	@property
+	def stable(self):
+		return self.cpv.stable
+
 	@classmethod
 	def _gen_hash_key(cls, cpv=None, installed=None, onlydeps=None,
 		operation=None, repo_name=None, root_config=None,

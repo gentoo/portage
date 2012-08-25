@@ -1653,6 +1653,11 @@ class config(object):
 				return x
 		return None
 
+	def _isStable(self, pkg):
+		return self._keywords_manager.isStable(pkg,
+			self.get("ACCEPT_KEYWORDS", ""),
+			self.configdict["backupenv"].get("ACCEPT_KEYWORDS", ""))
+
 	def _getKeywords(self, cpv, metadata):
 		return self._keywords_manager.getKeywords(cpv, metadata["SLOT"], \
 			metadata.get("KEYWORDS", ""), metadata.get("repository"))

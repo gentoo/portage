@@ -93,6 +93,33 @@ class KeywordsManager(object):
 					keywords.extend(pkg_keywords)
 		return stack_lists(keywords, incremental=True)
 
+	def isStable(self, pkg, global_accept_keywords, backuped_accept_keywords):
+		mygroups = self.getKeywords(pkg, None, pkg._metadata["KEYWORDS"], None)
+		pgroups = global_accept_keywords.split()
+
+		unmaskgroups = self.getPKeywords(pkg, None, None,
+			global_accept_keywords)
+		pgroups.extend(unmaskgroups)
+
+		egroups = backuped_accept_keywords.split()
+
+		if unmaskgroups or egroups:
+			pgroups = self._getEgroups(egroups, pgroups)
+		else:
+			pgroups = set(pgroups)
+
+		if self._getMissingKeywords(pkg, pgroups, mygroups):
+			return False
+
+		# If replacing all keywords with unstable variants would mask the
+		# package, then it's not considered stable.
+		unstable = []
+		for kw in mygroups:
+			if kw[:1] != "~":
+				kw = "~" + kw
+			unstable.append(kw)
+
+		return bool(self._getMissingKeywords(pkg, pgroups, set(unstable)))
 
 	def getMissingKeywords(self,
 							cpv,
