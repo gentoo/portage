@@ -112,7 +112,7 @@ class KeywordsManager(object):
 			return False
 
 		# If replacing all keywords with unstable variants would mask the
-		# package, then it's not considered stable.
+		# package, then it's considered stable.
 		unstable = []
 		for kw in mygroups:
 			if kw[:1] != "~":
