@@ -1284,7 +1284,8 @@ class config(object):
 			slot = pkg_configdict["SLOT"]
 			iuse = pkg_configdict["IUSE"]
 			if pkg is None:
-				cpv_slot = _pkg_str(self.mycpv, slot=slot, repo=repository)
+				cpv_slot = _pkg_str(self.mycpv, metadata=pkg_configdict,
+					settings=self)
 			else:
 				cpv_slot = pkg
 			pkginternaluse = []
@@ -1740,9 +1741,10 @@ class config(object):
 		@return: A list of properties that have not been accepted.
 		"""
 		accept_properties = self._accept_properties
-		if not hasattr(cpv, 'slot'):
-			cpv = _pkg_str(cpv, slot=metadata["SLOT"],
-				repo=metadata.get("repository"))
+		try:
+			cpv.slot
+		except AttributeError:
+			cpv = _pkg_str(cpv, metadata=metadata, settings=self)
 		cp = cpv_getkey(cpv)
 		cpdict = self._ppropertiesdict.get(cp)
 		if cpdict:

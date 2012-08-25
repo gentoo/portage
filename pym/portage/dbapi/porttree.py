@@ -827,8 +827,8 @@ class portdbapi(dbapi):
 						continue
 
 					try:
-						pkg_str = _pkg_str(cpv, slot=metadata["SLOT"],
-							repo=metadata["repository"], eapi=metadata["EAPI"])
+						pkg_str = _pkg_str(cpv, metadata=metadata,
+							settings=self.settings)
 					except InvalidData:
 						continue
 

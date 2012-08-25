@@ -17,6 +17,9 @@ from _emerge.Task import Task
 if sys.hexversion >= 0x3000000:
 	basestring = str
 	long = int
+	_unicode = str
+else:
+	_unicode = unicode
 
 class Package(Task):
 
@@ -51,9 +54,8 @@ class Package(Task):
 		if not self.built:
 			self.metadata['CHOST'] = self.root_config.settings.get('CHOST', '')
 		eapi_attrs = _get_eapi_attrs(self.metadata["EAPI"])
-		self.cpv = _pkg_str(self.cpv, slot=self.metadata["SLOT"],
-			repo=self.metadata.get('repository', ''),
-			eapi=self.metadata["EAPI"])
+		self.cpv = _pkg_str(self.cpv, metadata=self.metadata,
+			settings=self.root_config.settings)
 		if hasattr(self.cpv, 'slot_invalid'):
 			self._invalid_metadata('SLOT.invalid',
 				"SLOT: invalid value: '%s'" % self.metadata["SLOT"])
@@ -86,6 +88,11 @@ class Package(Task):
 			root_config=self.root_config,
 			type_name=self.type_name)
 		self._hash_value = hash(self._hash_key)
+
+	# For consistency with _pkg_str
+	@property
+	def _metadata(self):
+		return self.metadata
 
 	# These are calculated on-demand, so that they are calculated
 	# after FakeVartree applies its metadata tweaks.
@@ -154,7 +161,7 @@ class Package(Task):
 			# So overwrite the repo_key with type_name.
 			repo_key = type_name
 
-		return (type_name, root, cpv, operation, repo_key)
+		return (type_name, root, _unicode(cpv), operation, repo_key)
 
 	def _validate_deps(self):
 		"""

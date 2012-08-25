@@ -11,7 +11,7 @@ from portage.dep import ExtendedAtomDict, _repo_separator, _slot_separator
 from portage.localization import _
 from portage.package.ebuild._config.helper import ordered_by_atom_specificity
 from portage.util import grabdict_package, stack_lists, writemsg
-from portage.versions import cpv_getkey, _pkg_str
+from portage.versions import _pkg_str
 
 class KeywordsManager(object):
 	"""Manager class to handle keywords processing and validation"""
@@ -77,7 +77,9 @@ class KeywordsManager(object):
 
 
 	def getKeywords(self, cpv, slot, keywords, repo):
-		if not hasattr(cpv, 'slot'):
+		try:
+			cpv.slot
+		except AttributeError:
 			pkg = _pkg_str(cpv, slot=slot, repo=repo)
 		else:
 			pkg = cpv
@@ -237,7 +239,7 @@ class KeywordsManager(object):
 			if not mygroups:
 				# If KEYWORDS is empty then we still have to return something
 				# in order to distinguish from the case of "none missing".
-				mygroups.append("**")
+				mygroups = ["**"]
 			missing = mygroups
 		return missing
 
@@ -261,9 +263,11 @@ class KeywordsManager(object):
 		"""
 
 		pgroups = global_accept_keywords.split()
-		if not hasattr(cpv, 'slot'):
+		try:
+			cpv.slot
+		except AttributeError:
 			cpv = _pkg_str(cpv, slot=slot, repo=repo)
-		cp = cpv_getkey(cpv)
+		cp = cpv.cp
 
 		unmaskgroups = []
 		if self._p_accept_keywords:
@@ -288,4 +292,3 @@ class KeywordsManager(object):
 				for x in pkg_accept_keywords:
 					unmaskgroups.extend(x)
 		return unmaskgroups
-

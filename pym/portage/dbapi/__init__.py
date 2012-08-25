@@ -25,7 +25,7 @@ class dbapi(object):
 	_use_mutable = False
 	_known_keys = frozenset(x for x in auxdbkeys
 		if not x.startswith("UNUSED_0"))
-	_pkg_str_aux_keys = ("EAPI", "SLOT", "repository")
+	_pkg_str_aux_keys = ("EAPI", "KEYWORDS", "SLOT", "repository")
 
 	def __init__(self):
 		pass
@@ -153,8 +153,7 @@ class dbapi(object):
 		metadata = dict(zip(self._pkg_str_aux_keys,
 			self.aux_get(cpv, self._pkg_str_aux_keys, myrepo=repo)))
 
-		return _pkg_str(cpv, slot=metadata["SLOT"],
-			repo=metadata["repository"], eapi=metadata["EAPI"])
+		return _pkg_str(cpv, metadata=metadata, settings=self.settings)
 
 	def _iter_match_repo(self, atom, cpv_iter):
 		for cpv in cpv_iter:
@@ -182,7 +181,7 @@ class dbapi(object):
 		2) Check enabled/disabled flag states.
 		"""
 
-		aux_keys = ["IUSE", "SLOT", "USE", "repository"]
+		aux_keys = ["IUSE", "KEYWORDS", "SLOT", "USE", "repository"]
 		for cpv in cpv_iter:
 			try:
 				metadata = dict(zip(aux_keys,
@@ -234,11 +233,12 @@ class dbapi(object):
 
 		elif not self.settings.local_config:
 			# Check masked and forced flags for repoman.
-			if hasattr(cpv, 'slot'):
-				pkg = cpv
+			try:
+				cpv.slot
+			except AttributeError:
+				pkg = _pkg_str(cpv, metadata=metadata, settings=self.settings)
 			else:
-				pkg = _pkg_str(cpv, slot=metadata["SLOT"],
-					repo=metadata.get("repository"))
+				pkg = cpv
 			usemask = self.settings._getUseMask(pkg)
 			if any(x in usemask for x in atom.use.enabled):
 				return False

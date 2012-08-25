@@ -89,8 +89,8 @@ class fakedbapi(dbapi):
 			if metadata is None:
 				mycpv = _pkg_str(mycpv)
 			else:
-				mycpv = _pkg_str(mycpv, slot=metadata.get('SLOT'),
-					repo=metadata.get('repository'), eapi=metadata.get('EAPI'))
+				mycpv = _pkg_str(mycpv, metadata=metadata,
+					settings=self.settings)
 
 			mycp = mycpv.cp
 			try:
