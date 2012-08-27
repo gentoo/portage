@@ -2314,9 +2314,9 @@ def match_from_list(mydep, candidate_list):
 	return mylist
 
 def human_readable_required_use(required_use):
-	return required_use.replace("^^", "exactly-one-of").replace("||", "any-of")
+	return required_use.replace("^^", "exactly-one-of").replace("||", "any-of").replace("??", "at-most-one-of")
 
-def get_required_use_flags(required_use):
+def get_required_use_flags(required_use, eapi=None):
 	"""
 	Returns a set of use flags that are used in the given REQUIRED_USE string
 
@@ -2325,6 +2325,12 @@ def get_required_use_flags(required_use):
 	@rtype: Set
 	@return: Set of use flags that are used in the given REQUIRED_USE string
 	"""
+
+	eapi_attrs = _get_eapi_attrs(eapi)
+	if eapi_attrs.required_use_at_most_one_of:
+		valid_operators = ("||", "^^", "??")
+	else:
+		valid_operators = ("||", "^^")
 
 	mysplit = required_use.split()
 	level = 0
@@ -2354,7 +2360,7 @@ def get_required_use_flags(required_use):
 				l = stack.pop()
 				ignore = False
 				if stack[level]:
-					if stack[level][-1] in ("||", "^^") or \
+					if stack[level][-1] in valid_operators or \
 						(not isinstance(stack[level][-1], bool) and \
 						stack[level][-1][-1] == "?"):
 						ignore = True
@@ -2366,15 +2372,14 @@ def get_required_use_flags(required_use):
 			else:
 				raise InvalidDependString(
 					_("malformed syntax: '%s'") % required_use)
-		elif token in ("||", "^^"):
+		elif token in valid_operators:
 			if need_bracket:
 				raise InvalidDependString(
 					_("malformed syntax: '%s'") % required_use)
 			need_bracket = True
 			stack[level].append(token)
 		else:
-			if need_bracket or "(" in token or ")" in token or \
-				"|" in token or "^" in token:
+			if need_bracket:
 				raise InvalidDependString(
 					_("malformed syntax: '%s'") % required_use)
 
@@ -2429,7 +2434,7 @@ class _RequiredUseBranch(object):
 		complex_nesting = False
 		node = self
 		while node != None and not complex_nesting:
-			if node._operator in ("||", "^^"):
+			if node._operator in ("||", "^^", "??"):
 				complex_nesting = True
 			else:
 				node = node._parent
@@ -2450,7 +2455,7 @@ class _RequiredUseBranch(object):
 	if sys.hexversion < 0x3000000:
 		__nonzero__ = __bool__
 
-def check_required_use(required_use, use, iuse_match):
+def check_required_use(required_use, use, iuse_match, eapi=None):
 	"""
 	Checks if the use flags listed in 'use' satisfy all
 	constraints specified in 'constraints'.
@@ -2466,6 +2471,12 @@ def check_required_use(required_use, use, iuse_match):
 	@return: Indicates if REQUIRED_USE constraints are satisfied
 	"""
 
+	eapi_attrs = _get_eapi_attrs(eapi)
+	if eapi_attrs.required_use_at_most_one_of:
+		valid_operators = ("||", "^^", "??")
+	else:
+		valid_operators = ("||", "^^")
+
 	def is_active(token):
 		if token.startswith("!"):
 			flag = token[1:]
@@ -2475,6 +2486,11 @@ def check_required_use(required_use, use, iuse_match):
 			is_negated = False
 
 		if not flag or not iuse_match(flag):
+			if not eapi_attrs.required_use_at_most_one_of and flag == "?":
+				msg = _("Operator '??' is not supported with EAPI '%s'") \
+					% (eapi,)
+				e = InvalidData(msg, category='EAPI.incompatible')
+				raise InvalidDependString(msg, errors=(e,))
 			msg = _("USE flag '%s' is not in IUSE") \
 				% (flag,)
 			e = InvalidData(msg, category='IUSE.missing')
@@ -2492,6 +2508,8 @@ def check_required_use(required_use, use, iuse_match):
 			return (True in argument)
 		elif operator == "^^":
 			return (argument.count(True) == 1)
+		elif operator == "??":
+			return (argument.count(True) <= 1)
 		elif operator[-1] == "?":
 			return (False not in argument)
 
@@ -2521,7 +2539,7 @@ def check_required_use(required_use, use, iuse_match):
 				l = stack.pop()
 				op = None
 				if stack[level]:
-					if stack[level][-1] in ("||", "^^"):
+					if stack[level][-1] in valid_operators:
 						op = stack[level].pop()
 						satisfied = is_satisfied(op, l)
 						stack[level].append(satisfied)
@@ -2550,7 +2568,7 @@ def check_required_use(required_use, use, iuse_match):
 						stack[level].append(satisfied)
 
 					if len(node._children) <= 1 or \
-						node._parent._operator not in ("||", "^^"):
+						node._parent._operator not in valid_operators:
 						last_node = node._parent._children.pop()
 						if last_node is not node:
 							raise AssertionError(
@@ -2566,7 +2584,7 @@ def check_required_use(required_use, use, iuse_match):
 						raise AssertionError(
 							"node is not last child of parent")
 
-				elif len(node._children) == 1 and op in ("||", "^^"):
+				elif len(node._children) == 1 and op in valid_operators:
 					last_node = node._parent._children.pop()
 					if last_node is not node:
 						raise AssertionError(
@@ -2576,7 +2594,7 @@ def check_required_use(required_use, use, iuse_match):
 						node._children[0]._parent = node._parent
 						node = node._children[0]
 						if node._operator is None and \
-							node._parent._operator not in ("||", "^^"):
+							node._parent._operator not in valid_operators:
 							last_node = node._parent._children.pop()
 							if last_node is not node:
 								raise AssertionError(
@@ -2590,7 +2608,7 @@ def check_required_use(required_use, use, iuse_match):
 			else:
 				raise InvalidDependString(
 					_("malformed syntax: '%s'") % required_use)
-		elif token in ("||", "^^"):
+		elif token in valid_operators:
 			if need_bracket:
 				raise InvalidDependString(
 					_("malformed syntax: '%s'") % required_use)
@@ -2600,8 +2618,7 @@ def check_required_use(required_use, use, iuse_match):
 			node._children.append(child)
 			node = child
 		else:
-			if need_bracket or "(" in token or ")" in token or \
-				"|" in token or "^" in token:
+			if need_bracket:
 				raise InvalidDependString(
 					_("malformed syntax: '%s'") % required_use)
 

@@ -228,7 +228,7 @@ class Package(Task):
 			else:
 				try:
 					check_required_use(v, (),
-						self.iuse.is_valid_flag)
+						self.iuse.is_valid_flag, eapi=eapi)
 				except InvalidDependString as e:
 					# Force unicode format string for python-2.x safety,
 					# ensuring that PortageException.__unicode__() is used

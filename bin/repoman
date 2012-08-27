@@ -2028,7 +2028,7 @@ for x in effective_scanlist:
 					" not supported with EAPI='%s'" % (eapi,))
 			try:
 				portage.dep.check_required_use(required_use, (),
-					pkg.iuse.is_valid_flag)
+					pkg.iuse.is_valid_flag, eapi=eapi)
 			except portage.exception.InvalidDependString as e:
 				stats["REQUIRED_USE.syntax"] = stats["REQUIRED_USE.syntax"] + 1
 				fails["REQUIRED_USE.syntax"].append(
