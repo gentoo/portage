@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -144,7 +144,8 @@ class circular_dependency_handler(object):
 			#If any of the flags we're going to touch is in REQUIRED_USE, add all
 			#other flags in REQUIRED_USE to affecting_use, to not lose any solution.
 			required_use_flags = get_required_use_flags(
-				parent.metadata.get("REQUIRED_USE", ""))
+				parent.metadata.get("REQUIRED_USE", ""),
+				eapi=parent.metadata["EAPI"])
 
 			if affecting_use.intersection(required_use_flags):
 				# TODO: Find out exactly which REQUIRED_USE flags are
@@ -188,7 +189,9 @@ class circular_dependency_handler(object):
 					#Make sure it doesn't conflict with REQUIRED_USE.
 					required_use = parent.metadata.get("REQUIRED_USE", "")
 
-					if check_required_use(required_use, current_use, parent.iuse.is_valid_flag):
+					if check_required_use(required_use, current_use,
+						parent.iuse.is_valid_flag,
+						eapi=parent.metadata["EAPI"]):
 						use = self.depgraph._pkg_use_enabled(parent)
 						solution = set()
 						for flag, state in zip(affecting_use, use_state):

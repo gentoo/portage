@@ -1302,7 +1302,7 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 		pkg.metadata["REQUIRED_USE"] and \
 		eapi_has_required_use(pkg.metadata["EAPI"]):
 		result = check_required_use(pkg.metadata["REQUIRED_USE"],
-			pkg.use.enabled, pkg.iuse.is_valid_flag)
+			pkg.use.enabled, pkg.iuse.is_valid_flag, eapi=pkg.metadata["EAPI"])
 		if not result:
 			reduced_noise = result.tounicode()
 			writemsg("\n  %s\n" % _("The following REQUIRED_USE flag" + \

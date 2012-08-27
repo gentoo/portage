@@ -1482,7 +1482,8 @@ class depgraph(object):
 			required_use_is_sat = check_required_use(
 				pkg.metadata["REQUIRED_USE"],
 				self._pkg_use_enabled(pkg),
-				pkg.iuse.is_valid_flag)
+				pkg.iuse.is_valid_flag,
+				eapi=pkg.metadata["EAPI"])
 			if not required_use_is_sat:
 				if dep.atom is not None and dep.parent is not None:
 					self._add_parent_atom(pkg, (dep.parent, dep.atom))
@@ -3372,7 +3373,8 @@ class depgraph(object):
 							if not check_required_use(
 								pkg.metadata["REQUIRED_USE"],
 								self._pkg_use_enabled(pkg),
-								pkg.iuse.is_valid_flag):
+								pkg.iuse.is_valid_flag,
+								eapi=pkg.metadata["EAPI"]):
 								required_use_unsatisfied.append(pkg)
 								continue
 						root_slot = (pkg.root, pkg.slot_atom)
@@ -3431,8 +3433,10 @@ class depgraph(object):
 						new_use.add(flag)
 					for flag in need_disable:
 						new_use.discard(flag)
-					if check_required_use(required_use, old_use, pkg.iuse.is_valid_flag) and \
-						not check_required_use(required_use, new_use, pkg.iuse.is_valid_flag):
+					if check_required_use(required_use, old_use,
+						pkg.iuse.is_valid_flag, eapi=pkg.metadata["EAPI"]) \
+						and not check_required_use(required_use, new_use,
+						pkg.iuse.is_valid_flag, eapi=pkg.metadata["EAPI"]):
 							required_use_warning = ", this change violates use flag constraints " + \
 								"defined by %s: '%s'" % (pkg.cpv, human_readable_required_use(required_use))
 
@@ -3480,8 +3484,12 @@ class depgraph(object):
 								new_use.discard(flag)
 							else:
 								new_use.add(flag)
-						if check_required_use(required_use, old_use, myparent.iuse.is_valid_flag) and \
-							not check_required_use(required_use, new_use, myparent.iuse.is_valid_flag):
+						if check_required_use(required_use, old_use,
+							myparent.iuse.is_valid_flag,
+							eapi=myparent.metadata["EAPI"]) and \
+							not check_required_use(required_use, new_use,
+							myparent.iuse.is_valid_flag,
+							eapi=myparent.metadata["EAPI"]):
 								required_use_warning = ", this change violates use flag constraints " + \
 									"defined by %s: '%s'" % (myparent.cpv, \
 									human_readable_required_use(required_use))
@@ -3570,7 +3578,8 @@ class depgraph(object):
 			reduced_noise = check_required_use(
 				pkg.metadata["REQUIRED_USE"],
 				self._pkg_use_enabled(pkg),
-				pkg.iuse.is_valid_flag).tounicode()
+				pkg.iuse.is_valid_flag,
+				eapi=pkg.metadata["EAPI"]).tounicode()
 			writemsg("    %s\n" % \
 				human_readable_required_use(reduced_noise),
 				noiselevel=-1)
@@ -4133,8 +4142,10 @@ class depgraph(object):
 		if new_changes != old_changes:
 			#Don't do the change if it violates REQUIRED_USE.
 			required_use = pkg.metadata.get("REQUIRED_USE")
-			if required_use and check_required_use(required_use, old_use, pkg.iuse.is_valid_flag) and \
-				not check_required_use(required_use, new_use, pkg.iuse.is_valid_flag):
+			if required_use and check_required_use(required_use, old_use,
+				pkg.iuse.is_valid_flag, eapi=pkg.metadata["EAPI"]) and \
+				not check_required_use(required_use, new_use,
+				pkg.iuse.is_valid_flag, eapi=pkg.metadata["EAPI"]):
 				return old_use
 
 			if any(x in pkg.use.mask for x in new_changes) or \
