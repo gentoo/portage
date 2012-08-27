@@ -556,7 +556,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		# export EAPI for helpers (especially since we unset it above)
 		export EAPI
 
-		if has "$EAPI" 0 1 2 3 3_pre2 ; then
+		if has "$EAPI" 0 1 2 3 ; then
 			export RDEPEND=${RDEPEND-${DEPEND}}
 			debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
 		fi
@@ -578,7 +578,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 					pkg_nofetch pkg_postinst pkg_postrm pkg_preinst pkg_prerm
 					pkg_setup src_test src_unpack"
 				;;
-			2|3|3_pre2)
+			2|3)
 				_valid_phases="src_compile pkg_config src_configure pkg_info
 					src_install pkg_nofetch pkg_postinst pkg_postrm pkg_preinst
 					src_prepare pkg_prerm pkg_setup src_test src_unpack"

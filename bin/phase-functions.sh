@@ -364,7 +364,7 @@ dyn_prepare() {
 
 	if [[ -d $S ]] ; then
 		cd "${S}"
-	elif has $EAPI 0 1 2 3 3_pre2 ; then
+	elif has $EAPI 0 1 2 3 ; then
 		cd "${WORKDIR}"
 	elif [[ -z ${A} ]] && ! has_phase_defined_up_to prepare; then
 		cd "${WORKDIR}"
@@ -395,7 +395,7 @@ dyn_configure() {
 
 	if [[ -d $S ]] ; then
 		cd "${S}"
-	elif has $EAPI 0 1 2 3 3_pre2 ; then
+	elif has $EAPI 0 1 2 3 ; then
 		cd "${WORKDIR}"
 	elif [[ -z ${A} ]] && ! has_phase_defined_up_to configure; then
 		cd "${WORKDIR}"
@@ -428,7 +428,7 @@ dyn_compile() {
 
 	if [[ -d $S ]] ; then
 		cd "${S}"
-	elif has $EAPI 0 1 2 3 3_pre2 ; then
+	elif has $EAPI 0 1 2 3 ; then
 		cd "${WORKDIR}"
 	elif [[ -z ${A} ]] && ! has_phase_defined_up_to compile; then
 		cd "${WORKDIR}"
@@ -519,7 +519,7 @@ dyn_install() {
 
 	if [[ -d $S ]] ; then
 		cd "${S}"
-	elif has $EAPI 0 1 2 3 3_pre2 ; then
+	elif has $EAPI 0 1 2 3 ; then
 		cd "${WORKDIR}"
 	elif [[ -z ${A} ]] && ! has_phase_defined_up_to install; then
 		cd "${WORKDIR}"
@@ -685,7 +685,7 @@ _ebuild_arg_to_phase() {
 
 	case "$arg" in
 		pretend)
-			! has $eapi 0 1 2 3 3_pre2 && \
+			! has $eapi 0 1 2 3 && \
 				phase_func=pkg_pretend
 			;;
 		setup)
@@ -781,7 +781,7 @@ _ebuild_phase_funcs() {
 			declare -F src_compile >/dev/null || \
 				src_compile() { _eapi2_src_compile "$@" ; }
 
-			has $eapi 2 3 3_pre2 || declare -F src_install >/dev/null || \
+			has $eapi 2 3 || declare -F src_install >/dev/null || \
 				src_install() { _eapi4_src_install "$@" ; }
 
 			if has $phase_func $default_phases ; then

@@ -5,7 +5,8 @@ __all__ = ["bindbapi", "binarytree"]
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.checksum:hashfunc_map,perform_multiple_checksums,verify_all',
+	'portage.checksum:hashfunc_map,perform_multiple_checksums,' + \
+		'verify_all,_apply_hash_filter,_hash_filter',
 	'portage.dbapi.dep_expand:dep_expand',
 	'portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list',
 	'portage.output:EOutput,colorize',
@@ -1463,6 +1464,10 @@ class binarytree(object):
 		if not digests:
 			return False
 
+		hash_filter = _hash_filter(
+			self.settings.get("PORTAGE_CHECKSUM_FILTER", ""))
+		if not hash_filter.transparent:
+			digests = _apply_hash_filter(digests, hash_filter)
 		eout = EOutput()
 		eout.quiet = self.settings.get("PORTAGE_QUIET") == "1"
 		ok, st = _check_distfile(pkg_path, digests, eout, show_errors=0)

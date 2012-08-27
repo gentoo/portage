@@ -103,7 +103,7 @@ def parse_args(args):
 	update.add_option("--cache-dir",
 		help="location of the metadata cache",
 		dest="cache_dir")
-	update.add_option("--jobs",
+	update.add_option("-j", "--jobs",
 		action="store",
 		help="max ebuild processes to spawn")
 	update.add_option("--load-average",

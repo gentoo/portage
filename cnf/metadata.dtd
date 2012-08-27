@@ -5,7 +5,7 @@
 <!ATTLIST catmetadata pkgname CDATA "">
 
 <!-- Metadata for a package -->
-<!ELEMENT pkgmetadata ( (herd|maintainer|longdescription|use|upstream)* )>
+<!ELEMENT pkgmetadata ( (herd|maintainer|natural-name|longdescription|use|upstream)* )>
 <!ATTLIST pkgmetadata pkgname CDATA "">
 
   <!-- One tag for each herd this package is assigned to. -->
@@ -13,6 +13,9 @@
 
   <!-- One tag for each maintainer of a package, multiple allowed-->
   <!ELEMENT maintainer ( email, (description| name)* )>
+
+  <!-- Natural name for package, example: LibreOffice (for app-office/libreoffice) -->
+  <!ELEMENT natural-name (#PCDATA) >
 
   <!-- A long description of the package in freetext-->
   <!ELEMENT longdescription (#PCDATA|pkg|cat)* >
@@ -61,7 +64,7 @@
     <!ELEMENT bugs-to (#PCDATA)>
     <!-- specify a type of package identification tracker -->
     <!ELEMENT remote-id (#PCDATA)>
-      <!ATTLIST remote-id type (freshmeat|sourceforge|sourceforge-jp|cpan|vim|google-code|ctan|pypi|rubyforge|cran) #REQUIRED>
+      <!ATTLIST remote-id type (bitbucket|cpan|cpan-module|cran|ctan|freshmeat|github|gitorious|google-code|launchpad|pear|pecl|pypi|rubyforge|rubygems|sourceforge|sourceforge-jp|vim) #REQUIRED>
 
   <!-- category/package information for cross-linking in descriptions
     and useflag descriptions -->

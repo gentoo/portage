@@ -36,10 +36,12 @@ class DoebuildSpawnTestCase(TestCase):
 				'EAPI'      : '2',
 				'INHERITED' : 'python eutils',
 				'IUSE'      : 'build doc epydoc python3 selinux',
+				'KEYWORDS'  : 'x86',
 				'LICENSE'   : 'GPL-2',
 				'PROVIDE'   : 'virtual/portage',
 				'RDEPEND'   : '>=app-shells/bash-3.2_p17 >=dev-lang/python-2.6',
 				'SLOT'      : '0',
+				'repository': 'gentoo',
 			}
 			root_config = playground.trees[playground.eroot]['root_config']
 			pkg = Package(built=False, cpv=cpv, installed=False,

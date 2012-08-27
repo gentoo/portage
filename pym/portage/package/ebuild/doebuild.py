@@ -689,9 +689,9 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 				mysettings["dbkey"] = ""
 				pr, pw = os.pipe()
 				fd_pipes = {
-					0:sys.stdin.fileno(),
-					1:sys.stdout.fileno(),
-					2:sys.stderr.fileno(),
+					0:sys.__stdin__.fileno(),
+					1:sys.__stdout__.fileno(),
+					2:sys.__stderr__.fileno(),
 					9:pw}
 				mypids = _spawn_phase(mydo, mysettings, returnpid=True,
 					fd_pipes=fd_pipes)
@@ -1369,18 +1369,18 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	fd_pipes = keywords.get("fd_pipes")
 	if fd_pipes is None:
 		fd_pipes = {
-			0:sys.stdin.fileno(),
-			1:sys.stdout.fileno(),
-			2:sys.stderr.fileno(),
+			0:sys.__stdin__.fileno(),
+			1:sys.__stdout__.fileno(),
+			2:sys.__stderr__.fileno(),
 		}
 	# In some cases the above print statements don't flush stdout, so
 	# it needs to be flushed before allowing a child process to use it
 	# so that output always shows in the correct order.
-	stdout_filenos = (sys.stdout.fileno(), sys.stderr.fileno())
+	stdout_filenos = (sys.__stdout__.fileno(), sys.__stderr__.fileno())
 	for fd in fd_pipes.values():
 		if fd in stdout_filenos:
-			sys.stdout.flush()
-			sys.stderr.flush()
+			sys.__stdout__.flush()
+			sys.__stderr__.flush()
 			break
 
 	features = mysettings.features

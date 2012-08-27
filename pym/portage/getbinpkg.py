@@ -467,10 +467,12 @@ def file_get(baseurl,dest,conn=None,fcmd=None,filename=None):
 	myfetch = portage.util.shlex_split(fcmd)
 	myfetch = [varexpand(x, mydict=variables) for x in myfetch]
 	fd_pipes= {
-		0:sys.stdin.fileno(),
-		1:sys.stdout.fileno(),
-		2:sys.stdout.fileno()
+		0:sys.__stdin__.fileno(),
+		1:sys.__stdout__.fileno(),
+		2:sys.__stdout__.fileno()
 	}
+	sys.__stdout__.flush()
+	sys.__stderr__.flush()
 	retval = spawn(myfetch, env=os.environ.copy(), fd_pipes=fd_pipes)
 	if retval != os.EX_OK:
 		sys.stderr.write(_("Fetcher exited with a failure condition.\n"))

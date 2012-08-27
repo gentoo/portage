@@ -1,5 +1,5 @@
 #!@PREFIX_PORTAGE_PYTHON@ -O
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 #
@@ -470,10 +470,12 @@ if not shell or not os.access(shell, os.EX_OK):
 
 def spawn_shell(cmd):
     if shell:
+        sys.__stdout__.flush()
+        sys.__stderr__.flush()
         spawn([shell, "-c", cmd], env=os.environ,
-            fd_pipes = {  0 : sys.stdin.fileno(),
-                          1 : sys.stdout.fileno(),
-                          2 : sys.stderr.fileno()})
+            fd_pipes = {  0 : sys.__stdin__.fileno(),
+                          1 : sys.__stdout__.fileno(),
+                          2 : sys.__stderr__.fileno()})
     else:
         os.system(cmd)
 

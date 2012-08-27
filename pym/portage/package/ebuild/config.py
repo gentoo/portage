@@ -42,7 +42,7 @@ from portage.repository.config import load_repository_config
 from portage.util import ensure_dirs, getconfig, grabdict, \
 	grabdict_package, grabfile, grabfile_package, LazyItemsDict, \
 	normalize_path, shlex_split, stack_dictlist, stack_dicts, stack_lists, \
-	writemsg, writemsg_level
+	writemsg, writemsg_level, _eapi_cache
 from portage.versions import catpkgsplit, catsplit, cpv_getkey, _pkg_str
 
 from portage.package.ebuild._config import special_env_vars
@@ -1290,7 +1290,8 @@ class config(object):
 			slot = pkg_configdict["SLOT"]
 			iuse = pkg_configdict["IUSE"]
 			if pkg is None:
-				cpv_slot = _pkg_str(self.mycpv, slot=slot, repo=repository)
+				cpv_slot = _pkg_str(self.mycpv, metadata=pkg_configdict,
+					settings=self)
 			else:
 				cpv_slot = pkg
 			pkginternaluse = []
@@ -1513,6 +1514,10 @@ class config(object):
 		self.configdict["env"]["PORTAGE_USE"] = \
 			" ".join(sorted(x for x in use if x[-2:] != '_*'))
 
+		# Clear the eapi cache here rather than in the constructor, since
+		# setcpv triggers lazy instantiation of things like _use_manager.
+		_eapi_cache.clear()
+
 	def _grab_pkg_env(self, penv, container, protected_keys=None):
 		if protected_keys is None:
 			protected_keys = ()
@@ -1654,6 +1659,11 @@ class config(object):
 				return x
 		return None
 
+	def _isStable(self, pkg):
+		return self._keywords_manager.isStable(pkg,
+			self.get("ACCEPT_KEYWORDS", ""),
+			self.configdict["backupenv"].get("ACCEPT_KEYWORDS", ""))
+
 	def _getKeywords(self, cpv, metadata):
 		return self._keywords_manager.getKeywords(cpv, metadata["SLOT"], \
 			metadata.get("KEYWORDS", ""), metadata.get("repository"))
@@ -1742,9 +1752,10 @@ class config(object):
 		@return: A list of properties that have not been accepted.
 		"""
 		accept_properties = self._accept_properties
-		if not hasattr(cpv, 'slot'):
-			cpv = _pkg_str(cpv, slot=metadata["SLOT"],
-				repo=metadata.get("repository"))
+		try:
+			cpv.slot
+		except AttributeError:
+			cpv = _pkg_str(cpv, metadata=metadata, settings=self)
 		cp = cpv_getkey(cpv)
 		cpdict = self._ppropertiesdict.get(cp)
 		if cpdict:

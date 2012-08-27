@@ -65,10 +65,11 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 		else:
 			metadata["USE"] = ""
 
-	if not hasattr(mycpv, 'slot'):
+	try:
+		mycpv.slot
+	except AttributeError:
 		try:
-			mycpv = _pkg_str(mycpv, slot=metadata['SLOT'],
-				repo=metadata.get('repository'))
+			mycpv = _pkg_str(mycpv, metadata=metadata, settings=settings)
 		except portage.exception.InvalidData:
 			raise ValueError(_("invalid CPV: %s") % mycpv)
 

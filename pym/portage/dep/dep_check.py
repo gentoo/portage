@@ -350,14 +350,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 			avail_pkg = mydbapi.match(atom.without_use)
 			if avail_pkg:
 				avail_pkg = avail_pkg[-1] # highest (ascending order)
-				try:
-					slot = avail_pkg.slot
-				except AttributeError:
-					eapi, slot, repo = mydbapi.aux_get(avail_pkg,
-						["EAPI", "SLOT", "repository"])
-					avail_pkg = _pkg_str(avail_pkg, eapi=eapi,
-						slot=slot, repo=repo)
-				avail_slot = Atom("%s:%s" % (atom.cp, slot))
+				avail_pkg = mydbapi._pkg_str(avail_pkg, atom.repo)
+				avail_slot = Atom("%s:%s" % (atom.cp, avail_pkg.slot))
 			if not avail_pkg:
 				all_available = False
 				all_use_satisfied = False
@@ -372,13 +366,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 					avail_pkg_use = avail_pkg_use[-1]
 					if avail_pkg_use != avail_pkg:
 						avail_pkg = avail_pkg_use
-						try:
-							slot = avail_pkg.slot
-						except AttributeError:
-							eapi, slot, repo = mydbapi.aux_get(avail_pkg,
-								["EAPI", "SLOT", "repository"])
-							avail_pkg = _pkg_str(avail_pkg,
-								eapi=eapi, slot=slot, repo=repo)
+					avail_pkg = mydbapi._pkg_str(avail_pkg, atom.repo)
+					avail_slot = Atom("%s:%s" % (atom.cp, avail_pkg.slot))
 
 			slot_map[avail_slot] = avail_pkg
 			highest_cpv = cp_map.get(avail_pkg.cp)

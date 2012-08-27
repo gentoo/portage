@@ -11,7 +11,7 @@ from portage.dep import ExtendedAtomDict, _repo_separator, _slot_separator
 from portage.localization import _
 from portage.package.ebuild._config.helper import ordered_by_atom_specificity
 from portage.util import grabdict_package, stack_lists, writemsg
-from portage.versions import cpv_getkey, _pkg_str
+from portage.versions import _pkg_str
 
 class KeywordsManager(object):
 	"""Manager class to handle keywords processing and validation"""
@@ -77,7 +77,9 @@ class KeywordsManager(object):
 
 
 	def getKeywords(self, cpv, slot, keywords, repo):
-		if not hasattr(cpv, 'slot'):
+		try:
+			cpv.slot
+		except AttributeError:
 			pkg = _pkg_str(cpv, slot=slot, repo=repo)
 		else:
 			pkg = cpv
@@ -91,6 +93,33 @@ class KeywordsManager(object):
 					keywords.extend(pkg_keywords)
 		return stack_lists(keywords, incremental=True)
 
+	def isStable(self, pkg, global_accept_keywords, backuped_accept_keywords):
+		mygroups = self.getKeywords(pkg, None, pkg._metadata["KEYWORDS"], None)
+		pgroups = global_accept_keywords.split()
+
+		unmaskgroups = self.getPKeywords(pkg, None, None,
+			global_accept_keywords)
+		pgroups.extend(unmaskgroups)
+
+		egroups = backuped_accept_keywords.split()
+
+		if unmaskgroups or egroups:
+			pgroups = self._getEgroups(egroups, pgroups)
+		else:
+			pgroups = set(pgroups)
+
+		if self._getMissingKeywords(pkg, pgroups, mygroups):
+			return False
+
+		# If replacing all keywords with unstable variants would mask the
+		# package, then it's considered stable.
+		unstable = []
+		for kw in mygroups:
+			if kw[:1] != "~":
+				kw = "~" + kw
+			unstable.append(kw)
+
+		return bool(self._getMissingKeywords(pkg, pgroups, set(unstable)))
 
 	def getMissingKeywords(self,
 							cpv,
@@ -237,7 +266,7 @@ class KeywordsManager(object):
 			if not mygroups:
 				# If KEYWORDS is empty then we still have to return something
 				# in order to distinguish from the case of "none missing".
-				mygroups.append("**")
+				mygroups = ["**"]
 			missing = mygroups
 		return missing
 
@@ -261,9 +290,11 @@ class KeywordsManager(object):
 		"""
 
 		pgroups = global_accept_keywords.split()
-		if not hasattr(cpv, 'slot'):
+		try:
+			cpv.slot
+		except AttributeError:
 			cpv = _pkg_str(cpv, slot=slot, repo=repo)
-		cp = cpv_getkey(cpv)
+		cp = cpv.cp
 
 		unmaskgroups = []
 		if self._p_accept_keywords:
@@ -288,4 +319,3 @@ class KeywordsManager(object):
 				for x in pkg_accept_keywords:
 					unmaskgroups.extend(x)
 		return unmaskgroups
-

@@ -362,14 +362,23 @@ class _pkg_str(_unicode):
 	manually convert them to a plain unicode object first.
 	"""
 
-	def __new__(cls, cpv, slot=None, repo=None, eapi=None):
+	def __new__(cls, cpv, metadata=None, settings=None, eapi=None,
+		repo=None, slot=None):
 		return _unicode.__new__(cls, cpv)
 
-	def __init__(self, cpv, slot=None, repo=None, eapi=None):
+	def __init__(self, cpv, metadata=None, settings=None, eapi=None,
+		repo=None, slot=None):
 		if not isinstance(cpv, _unicode):
 			# Avoid TypeError from _unicode.__init__ with PyPy.
 			cpv = _unicode_decode(cpv)
 		_unicode.__init__(cpv)
+		if metadata is not None:
+			self.__dict__['_metadata'] = metadata
+			slot = metadata.get('SLOT', slot)
+			repo = metadata.get('repository', repo)
+			eapi = metadata.get('EAPI', eapi)
+		if settings is not None:
+			self.__dict__['_settings'] = settings
 		if eapi is not None:
 			self.__dict__['eapi'] = eapi
 		self.__dict__['cpv_split'] = catpkgsplit(cpv, eapi=eapi)
@@ -411,6 +420,20 @@ class _pkg_str(_unicode):
 	def __setattr__(self, name, value):
 		raise AttributeError("_pkg_str instances are immutable",
 			self.__class__, name, value)
+
+	@property
+	def stable(self):
+		try:
+			return self._stable
+		except AttributeError:
+			try:
+				metadata = self._metadata
+				settings = self._settings
+			except AttributeError:
+				raise AttributeError('stable')
+			stable = settings._isStable(self)
+			self.__dict__['_stable'] = stable
+			return stable
 
 def pkgsplit(mypkg, silent=1, eapi=None):
 	"""

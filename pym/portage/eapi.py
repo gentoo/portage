@@ -3,6 +3,8 @@
 
 import collections
 
+from portage import eapi_is_supported
+
 def eapi_has_iuse_defaults(eapi):
 	return eapi != "0"
 
@@ -77,10 +79,17 @@ def _get_eapi_attrs(eapi):
 	"""
 	When eapi is None then validation is not as strict, since we want the
 	same to work for multiple EAPIs that may have slightly different rules.
+	An unsupported eapi is handled the same as when eapi is None, which may
+	be helpful for handling of corrupt EAPI metadata in essential functions
+	such as pkgsplit.
 	"""
 	eapi_attrs = _eapi_attrs_cache.get(eapi)
 	if eapi_attrs is not None:
 		return eapi_attrs
+
+	orig_eapi = eapi
+	if eapi is not None and not eapi_is_supported(eapi):
+		eapi = None
 
 	eapi_attrs = _eapi_attrs(
 		dots_in_PN = (eapi is None or eapi_allows_dots_in_PN(eapi)),
@@ -96,5 +105,5 @@ def _get_eapi_attrs(eapi):
 		use_dep_defaults = (eapi is None or eapi_has_use_dep_defaults(eapi))
 	)
 
-	_eapi_attrs_cache[eapi] = eapi_attrs
+	_eapi_attrs_cache[orig_eapi] = eapi_attrs
 	return eapi_attrs
