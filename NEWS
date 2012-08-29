@@ -15,8 +15,8 @@ portage-2.1.11
 
 * Add support for experimental EAPI "4-slot-abi". Refer to the corresponding
   html documentation that is installed with USE=doc, and also to the emerge(1)
-  man page for information about the related --ignore-built-slot-abi-deps and
-  --rebuild-if-new-slot-abi options.
+  man page for information about the related --ignore-built-slot-operator-deps and
+  --rebuild-if-new-slot options.
 
 portage-2.1.10
 -------------

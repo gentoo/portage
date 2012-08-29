@@ -8,7 +8,7 @@ class BacktrackParameter(object):
 	__slots__ = (
 		"needed_unstable_keywords", "runtime_pkg_mask", "needed_use_config_changes", "needed_license_changes",
 		"rebuild_list", "reinstall_list", "needed_p_mask_changes",
-		"slot_abi_replace_installed"
+		"slot_operator_replace_installed"
 	)
 
 	def __init__(self):
@@ -19,7 +19,7 @@ class BacktrackParameter(object):
 		self.needed_license_changes = {}
 		self.rebuild_list = set()
 		self.reinstall_list = set()
-		self.slot_abi_replace_installed = set()
+		self.slot_operator_replace_installed = set()
 
 	def __deepcopy__(self, memo=None):
 		if memo is None:
@@ -35,7 +35,7 @@ class BacktrackParameter(object):
 		result.needed_license_changes = copy.copy(self.needed_license_changes)
 		result.rebuild_list = copy.copy(self.rebuild_list)
 		result.reinstall_list = copy.copy(self.reinstall_list)
-		result.slot_abi_replace_installed = copy.copy(self.slot_abi_replace_installed)
+		result.slot_operator_replace_installed = copy.copy(self.slot_operator_replace_installed)
 
 		# runtime_pkg_mask contains nested dicts that must also be copied
 		result.runtime_pkg_mask = {}
@@ -52,7 +52,7 @@ class BacktrackParameter(object):
 			self.needed_license_changes == other.needed_license_changes and \
 			self.rebuild_list == other.rebuild_list and \
 			self.reinstall_list == other.reinstall_list and \
-			self.slot_abi_replace_installed == other.slot_abi_replace_installed
+			self.slot_operator_replace_installed == other.slot_operator_replace_installed
 
 
 class _BacktrackNode(object):
@@ -125,7 +125,7 @@ class Backtracker(object):
 		for pkg, mask_info in runtime_pkg_mask.items():
 
 			if "missing dependency" in mask_info or \
-				"slot_abi_mask_built" in mask_info:
+				"slot_operator_mask_built" in mask_info:
 				continue
 
 			entry_is_valid = False
@@ -192,12 +192,12 @@ class Backtracker(object):
 					para.needed_use_config_changes[pkg] = (new_use, new_changes)
 			elif change == "slot_conflict_abi":
 				new_node.terminal = False
-			elif change == "slot_abi_mask_built":
+			elif change == "slot_operator_mask_built":
 				for pkg, mask_reasons in data.items():
 					para.runtime_pkg_mask.setdefault(pkg,
 						{}).update(mask_reasons)
-			elif change == "slot_abi_replace_installed":
-				para.slot_abi_replace_installed.update(data)
+			elif change == "slot_operator_replace_installed":
+				para.slot_operator_replace_installed.update(data)
 			elif change == "rebuild_list":
 				para.rebuild_list.update(data)
 			elif change == "reinstall_list":

@@ -62,12 +62,12 @@ _extended_cat = r'[\w+*][\w+.*-]*'
 _slot_re_cache = {}
 
 def _get_slot_re(eapi_attrs):
-	cache_key = eapi_attrs.slot_abi
+	cache_key = eapi_attrs.slot_operator
 	slot_re = _slot_re_cache.get(cache_key)
 	if slot_re is not None:
 		return slot_re
 
-	if eapi_attrs.slot_abi:
+	if eapi_attrs.slot_operator:
 		slot_re = _slot + r'(/' + _slot + r'=?)?'
 	else:
 		slot_re = _slot
@@ -80,12 +80,12 @@ def _get_slot_re(eapi_attrs):
 _slot_dep_re_cache = {}
 
 def _get_slot_dep_re(eapi_attrs):
-	cache_key = eapi_attrs.slot_abi
+	cache_key = eapi_attrs.slot_operator
 	slot_re = _slot_dep_re_cache.get(cache_key)
 	if slot_re is not None:
 		return slot_re
 
-	if eapi_attrs.slot_abi:
+	if eapi_attrs.slot_operator:
 		slot_re = _slot + r'?(\*|=|/' + _slot + r'=?)?'
 	else:
 		slot_re = _slot
@@ -97,9 +97,9 @@ def _get_slot_dep_re(eapi_attrs):
 
 def _match_slot(atom, pkg):
 	if pkg.slot == atom.slot:
-		if not atom.slot_abi:
+		if not atom.sub_slot:
 			return True
-		elif atom.slot_abi == pkg.slot_abi:
+		elif atom.sub_slot == pkg.sub_slot:
 			return True
 	return False
 
@@ -1311,32 +1311,32 @@ class Atom(_unicode):
 		self.__dict__['repo'] = repo
 		if slot is None:
 			self.__dict__['slot'] = None
-			self.__dict__['slot_abi'] = None
-			self.__dict__['slot_abi_op'] = None
+			self.__dict__['sub_slot'] = None
+			self.__dict__['slot_operator'] = None
 		else:
 			slot_re = _get_slot_dep_re(eapi_attrs)
 			slot_match = slot_re.match(slot)
 			if slot_match is None:
 				raise InvalidAtom(self)
-			if eapi_attrs.slot_abi:
+			if eapi_attrs.slot_operator:
 				self.__dict__['slot'] = slot_match.group(1)
-				slot_abi =  slot_match.group(2)
-				if slot_abi is not None:
-					slot_abi = slot_abi.lstrip("/")
-				if slot_abi in ("*", "="):
-					self.__dict__['slot_abi'] = None
-					self.__dict__['slot_abi_op'] = slot_abi
+				sub_slot = slot_match.group(2)
+				if sub_slot is not None:
+					sub_slot = sub_slot.lstrip("/")
+				if sub_slot in ("*", "="):
+					self.__dict__['sub_slot'] = None
+					self.__dict__['slot_operator'] = sub_slot
 				else:
-					slot_abi_op = None
-					if slot_abi is not None and slot_abi[-1:] == "=":
-						slot_abi_op = slot_abi[-1:]
-						slot_abi = slot_abi[:-1]
-					self.__dict__['slot_abi'] = slot_abi
-					self.__dict__['slot_abi_op'] = slot_abi_op
+					slot_operator = None
+					if sub_slot is not None and sub_slot[-1:] == "=":
+						slot_operator = sub_slot[-1:]
+						sub_slot = sub_slot[:-1]
+					self.__dict__['sub_slot'] = sub_slot
+					self.__dict__['slot_operator'] = slot_operator
 			else:
 				self.__dict__['slot'] = slot
-				self.__dict__['slot_abi'] = None
-				self.__dict__['slot_abi_op'] = None
+				self.__dict__['sub_slot'] = None
+				self.__dict__['slot_operator'] = None
 		self.__dict__['operator'] = op
 		self.__dict__['extended_syntax'] = extended_syntax
 
@@ -1410,13 +1410,13 @@ class Atom(_unicode):
 						% (eapi, self), category='EAPI.incompatible')
 
 	@property
-	def slot_abi_built(self):
+	def slot_operator_built(self):
 		"""
-		Returns True if slot_abi_op == "=" and slot_abi is not None.
+		Returns True if slot_operator == "=" and sub_slot is not None.
 		NOTE: foo/bar:2= is unbuilt and returns False, whereas foo/bar:2/2=
 			is built and returns True.
 		"""
-		return self.slot_abi_op == "=" and self.slot_abi is not None
+		return self.slot_operator == "=" and self.sub_slot is not None
 
 	@property
 	def without_repo(self):
@@ -1427,7 +1427,7 @@ class Atom(_unicode):
 
 	@property
 	def without_slot(self):
-		if self.slot is None and self.slot_abi_op is None:
+		if self.slot is None and self.slot_operator is None:
 			return self
 		atom = remove_slot(self)
 		if self.repo is not None:
@@ -1439,14 +1439,14 @@ class Atom(_unicode):
 
 	def with_repo(self, repo):
 		atom = remove_slot(self)
-		if self.slot is not None or self.slot_abi_op is not None:
+		if self.slot is not None or self.slot_operator is not None:
 			atom += _slot_separator
 			if self.slot is not None:
 				atom += self.slot
-			if self.slot_abi is not None:
-				atom += "/%s" % self.slot_abi
-			if self.slot_abi_op is not None:
-				atom += self.slot_abi_op
+			if self.sub_slot is not None:
+				atom += "/%s" % self.sub_slot
+			if self.slot_operator is not None:
+				atom += self.slot_operator
 		atom += _repo_separator + repo
 		if self.use is not None:
 			atom += _unicode(self.use)
@@ -1506,14 +1506,14 @@ class Atom(_unicode):
 		if not (self.use and self.use.conditional):
 			return self
 		atom = remove_slot(self)
-		if self.slot is not None or self.slot_abi_op is not None:
+		if self.slot is not None or self.slot_operator is not None:
 			atom += _slot_separator
 			if self.slot is not None:
 				atom += self.slot
-			if self.slot_abi is not None:
-				atom += "/%s" % self.slot_abi
-			if self.slot_abi_op is not None:
-				atom += self.slot_abi_op
+			if self.sub_slot is not None:
+				atom += "/%s" % self.sub_slot
+			if self.slot_operator is not None:
+				atom += self.slot_operator
 		use_dep = self.use.evaluate_conditionals(use)
 		atom += _unicode(use_dep)
 		return Atom(atom, unevaluated_atom=self, allow_repo=(self.repo is not None), _use=use_dep)
@@ -1534,14 +1534,14 @@ class Atom(_unicode):
 		if not self.use:
 			return self
 		atom = remove_slot(self)
-		if self.slot is not None or self.slot_abi_op is not None:
+		if self.slot is not None or self.slot_operator is not None:
 			atom += _slot_separator
 			if self.slot is not None:
 				atom += self.slot
-			if self.slot_abi is not None:
-				atom += "/%s" % self.slot_abi
-			if self.slot_abi_op is not None:
-				atom += self.slot_abi_op
+			if self.sub_slot is not None:
+				atom += "/%s" % self.sub_slot
+			if self.slot_operator is not None:
+				atom += self.slot_operator
 		use_dep = self.use.violated_conditionals(other_use, is_valid_flag, parent_use)
 		atom += _unicode(use_dep)
 		return Atom(atom, unevaluated_atom=self, allow_repo=(self.repo is not None), _use=use_dep)
@@ -1550,14 +1550,14 @@ class Atom(_unicode):
 		if not (self.use and self.use.conditional):
 			return self
 		atom = remove_slot(self)
-		if self.slot is not None or self.slot_abi_op is not None:
+		if self.slot is not None or self.slot_operator is not None:
 			atom += _slot_separator
 			if self.slot is not None:
 				atom += self.slot
-			if self.slot_abi is not None:
-				atom += "/%s" % self.slot_abi
-			if self.slot_abi_op is not None:
-				atom += self.slot_abi_op
+			if self.sub_slot is not None:
+				atom += "/%s" % self.sub_slot
+			if self.slot_operator is not None:
+				atom += self.slot_operator
 		use_dep = self.use._eval_qa_conditionals(use_mask, use_force)
 		atom += _unicode(use_dep)
 		return Atom(atom, unevaluated_atom=self, allow_repo=(self.repo is not None), _use=use_dep)

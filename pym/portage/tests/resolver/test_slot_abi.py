@@ -65,7 +65,7 @@ class SlotAbiTestCase(TestCase):
 
 			ResolverPlaygroundTestCase(
 				["dev-libs/icu"],
-				options = {"--oneshot": True, "--ignore-built-slot-abi-deps": "y"},
+				options = {"--oneshot": True, "--ignore-built-slot-operator-deps": "y"},
 				success = True,
 				mergelist = ["dev-libs/icu-49"]),
 
@@ -83,7 +83,7 @@ class SlotAbiTestCase(TestCase):
 
 			ResolverPlaygroundTestCase(
 				["dev-libs/icu"],
-				options = {"--oneshot": True, "--usepkgonly": True, "--ignore-built-slot-abi-deps": "y"},
+				options = {"--oneshot": True, "--usepkgonly": True, "--ignore-built-slot-operator-deps": "y"},
 				success = True,
 				mergelist = ["[binary]dev-libs/icu-49"]),
 
@@ -95,7 +95,7 @@ class SlotAbiTestCase(TestCase):
 
 			ResolverPlaygroundTestCase(
 				["@world"],
-				options = {"--update": True, "--deep": True, "--ignore-built-slot-abi-deps": "y"},
+				options = {"--update": True, "--deep": True, "--ignore-built-slot-operator-deps": "y"},
 				success = True,
 				mergelist = ["dev-libs/icu-49"]),
 
@@ -113,7 +113,7 @@ class SlotAbiTestCase(TestCase):
 
 			ResolverPlaygroundTestCase(
 				["@world"],
-				options = {"--update": True, "--deep": True, "--usepkgonly": True, "--ignore-built-slot-abi-deps": "y"},
+				options = {"--update": True, "--deep": True, "--usepkgonly": True, "--ignore-built-slot-operator-deps": "y"},
 				success = True,
 				mergelist = ["[binary]dev-libs/icu-49"]),
 
@@ -178,7 +178,7 @@ class SlotAbiTestCase(TestCase):
 
 			ResolverPlaygroundTestCase(
 				["sys-libs/db"],
-				options = {"--oneshot": True, "--ignore-built-slot-abi-deps": "y"},
+				options = {"--oneshot": True, "--ignore-built-slot-operator-deps": "y"},
 				success = True,
 				mergelist = ["sys-libs/db-4.8"]),
 
@@ -196,7 +196,7 @@ class SlotAbiTestCase(TestCase):
 
 			ResolverPlaygroundTestCase(
 				["sys-libs/db"],
-				options = {"--oneshot": True, "--rebuild-if-new-slot-abi": "n"},
+				options = {"--oneshot": True, "--rebuild-if-new-slot": "n"},
 				success = True,
 				mergelist = ["sys-libs/db-4.8"]),
 
@@ -214,7 +214,7 @@ class SlotAbiTestCase(TestCase):
 
 			ResolverPlaygroundTestCase(
 				["@world"],
-				options = {"--update": True, "--deep": True, "--usepkg": True, "--ignore-built-slot-abi-deps": "y"},
+				options = {"--update": True, "--deep": True, "--usepkg": True, "--ignore-built-slot-operator-deps": "y"},
 				success = True,
 				mergelist = ["[binary]sys-libs/db-4.8"]),
 
@@ -226,13 +226,13 @@ class SlotAbiTestCase(TestCase):
 
 			ResolverPlaygroundTestCase(
 				["@world"],
-				options = {"--update": True, "--deep": True, "--usepkgonly": True, "--ignore-built-slot-abi-deps": "y"},
+				options = {"--update": True, "--deep": True, "--usepkgonly": True, "--ignore-built-slot-operator-deps": "y"},
 				success = True,
 				mergelist = ["[binary]sys-libs/db-4.8"]),
 
 			ResolverPlaygroundTestCase(
 				["@world"],
-				options = {"--update": True, "--deep": True, "--rebuild-if-new-slot-abi": "n"},
+				options = {"--update": True, "--deep": True, "--rebuild-if-new-slot": "n"},
 				success = True,
 				mergelist = []),
 
@@ -312,7 +312,7 @@ class SlotAbiTestCase(TestCase):
 
 			ResolverPlaygroundTestCase(
 				["dev-libs/glib"],
-				options = {"--oneshot": True, "--ignore-built-slot-abi-deps": "y"},
+				options = {"--oneshot": True, "--ignore-built-slot-operator-deps": "y"},
 				success = True,
 				mergelist = ["dev-libs/glib-2.32.3"]),
 
@@ -330,7 +330,7 @@ class SlotAbiTestCase(TestCase):
 
 			ResolverPlaygroundTestCase(
 				["dev-libs/glib"],
-				options = {"--oneshot": True, "--usepkgonly": True, "--ignore-built-slot-abi-deps": "y"},
+				options = {"--oneshot": True, "--usepkgonly": True, "--ignore-built-slot-operator-deps": "y"},
 				success = True,
 				mergelist = ["[binary]dev-libs/glib-2.32.3"]),
 
@@ -342,7 +342,7 @@ class SlotAbiTestCase(TestCase):
 
 			ResolverPlaygroundTestCase(
 				["@world"],
-				options = {"--update": True, "--deep": True, "--ignore-built-slot-abi-deps": "y"},
+				options = {"--update": True, "--deep": True, "--ignore-built-slot-operator-deps": "y"},
 				success = True,
 				mergelist = ["dev-libs/glib-2.32.3"]),
 
@@ -360,7 +360,7 @@ class SlotAbiTestCase(TestCase):
 
 			ResolverPlaygroundTestCase(
 				["@world"],
-				options = {"--update": True, "--deep": True, "--usepkgonly": True, "--ignore-built-slot-abi-deps": "y"},
+				options = {"--update": True, "--deep": True, "--usepkgonly": True, "--ignore-built-slot-operator-deps": "y"},
 				success = True,
 				mergelist = ["[binary]dev-libs/glib-2.32.3"]),
 

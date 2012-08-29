@@ -29,7 +29,7 @@ class Package(Task):
 		"root_config", "type_name",
 		"category", "counter", "cp", "cpv_split",
 		"inherited", "iuse", "mtime",
-		"pf", "root", "slot", "slot_abi", "slot_atom", "version") + \
+		"pf", "root", "slot", "sub_slot", "slot_atom", "version") + \
 		("_invalid", "_raw_metadata", "_masks", "_use",
 		"_validated_atoms", "_visible")
 
@@ -61,7 +61,7 @@ class Package(Task):
 				"SLOT: invalid value: '%s'" % self.metadata["SLOT"])
 		self.cp = self.cpv.cp
 		self.slot = self.cpv.slot
-		self.slot_abi = self.cpv.slot_abi
+		self.sub_slot = self.cpv.sub_slot
 		# sync metadata with validated repo (may be UNKNOWN_REPO)
 		self.metadata['repository'] = self.cpv.repo
 

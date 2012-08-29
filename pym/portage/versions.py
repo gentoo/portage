@@ -372,19 +372,19 @@ class _pkg_str(_unicode):
 			if slot_match is None:
 				# Avoid an InvalidAtom exception when creating SLOT atoms
 				self.__dict__['slot'] = '0'
-				self.__dict__['slot_abi'] = '0'
+				self.__dict__['sub_slot'] = '0'
 				self.__dict__['slot_invalid'] = slot
 			else:
-				if eapi_attrs.slot_abi:
+				if eapi_attrs.slot_operator:
 					slot_split = slot.split("/")
 					self.__dict__['slot'] = slot_split[0]
 					if len(slot_split) > 1:
-						self.__dict__['slot_abi'] = slot_split[1]
+						self.__dict__['sub_slot'] = slot_split[1]
 					else:
-						self.__dict__['slot_abi'] = slot_split[0]
+						self.__dict__['sub_slot'] = slot_split[0]
 				else:
 					self.__dict__['slot'] = slot
-					self.__dict__['slot_abi'] = slot
+					self.__dict__['sub_slot'] = slot
 
 		if repo is not None:
 			repo = _gen_valid_repo(repo)

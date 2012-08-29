@@ -291,8 +291,8 @@ class slot_conflict_handler(object):
 									num_all_specific_atoms += 1
 									collision_reasons[key] = atoms
 								else:
-									# The slot_abi does not match.
-									key = ("sub-slot", atom.slot_abi)
+									# The sub_slot does not match.
+									key = ("sub-slot", atom.sub_slot)
 									atoms = collision_reasons.get(key, set())
 									atoms.add((ppkg, atom, other_pkg))
 									num_all_specific_atoms += 1

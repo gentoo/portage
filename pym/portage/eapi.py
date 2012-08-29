@@ -14,7 +14,7 @@ def eapi_has_iuse_effective(eapi):
 def eapi_has_slot_deps(eapi):
 	return eapi != "0"
 
-def eapi_has_slot_abi(eapi):
+def eapi_has_slot_operator(eapi):
 	return eapi in ("4-slot-abi",)
 
 def eapi_has_src_uri_arrows(eapi):
@@ -80,7 +80,7 @@ def eapi_allows_dots_in_use_flags(eapi):
 _eapi_attrs = collections.namedtuple('_eapi_attrs',
 	'dots_in_PN dots_in_use_flags exports_EBUILD_PHASE_FUNC '
 	'iuse_defaults iuse_effective '
-	'repo_deps required_use required_use_at_most_one_of slot_abi slot_deps '
+	'repo_deps required_use required_use_at_most_one_of slot_operator slot_deps '
 	'src_uri_arrows strong_blocks use_deps use_dep_defaults')
 
 _eapi_attrs_cache = {}
@@ -111,7 +111,7 @@ def _get_eapi_attrs(eapi):
 		required_use = (eapi is None or eapi_has_required_use(eapi)),
 		required_use_at_most_one_of = (eapi is None or eapi_has_required_use_at_most_one_of(eapi)),
 		slot_deps = (eapi is None or eapi_has_slot_deps(eapi)),
-		slot_abi = (eapi is None or eapi_has_slot_abi(eapi)),
+		slot_operator = (eapi is None or eapi_has_slot_operator(eapi)),
 		src_uri_arrows = (eapi is None or eapi_has_src_uri_arrows(eapi)),
 		strong_blocks = (eapi is None or eapi_has_strong_blocks(eapi)),
 		use_deps = (eapi is None or eapi_has_use_deps(eapi)),

@@ -26,7 +26,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.digestgen:digestgen',
 	'portage.package.ebuild.fetch:fetch',
 	'portage.package.ebuild._ipc.QueryCommand:QueryCommand',
-	'portage.dep._slot_abi:evaluate_slot_abi_equal_deps',
+	'portage.dep._slot_abi:evaluate_slot_operator_equal_deps',
 	'portage.package.ebuild._spawn_nofetch:spawn_nofetch',
 	'portage.util._desktop_entry:validate_desktop_entry',
 	'portage.util.ExtractKernelVersion:ExtractKernelVersion'
@@ -1691,7 +1691,7 @@ def _post_src_install_write_metadata(settings):
 			continue
 
 		if k.endswith('DEPEND'):
-			if eapi_attrs.slot_abi:
+			if eapi_attrs.slot_operator:
 				continue
 			token_class = Atom
 		else:
@@ -1711,8 +1711,8 @@ def _post_src_install_write_metadata(settings):
 			errors='strict') as f:
 			f.write(_unicode_decode(v + '\n'))
 
-	if eapi_attrs.slot_abi:
-		deps = evaluate_slot_abi_equal_deps(settings, use, QueryCommand.get_db())
+	if eapi_attrs.slot_operator:
+		deps = evaluate_slot_operator_equal_deps(settings, use, QueryCommand.get_db())
 		for k, v in deps.items():
 			filename = os.path.join(build_info_dir, k)
 			if not v:

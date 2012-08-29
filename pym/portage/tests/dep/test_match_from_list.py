@@ -17,14 +17,14 @@ class Package(object):
 		atom = Atom(atom, allow_repo=True)
 		self.cp = atom.cp
 		slot = atom.slot
-		if atom.slot_abi:
-			slot = "%s/%s" % (slot, atom.slot_abi)
+		if atom.sub_slot:
+			slot = "%s/%s" % (slot, atom.sub_slot)
 		if not slot:
 			slot = '0'
 		self.cpv = _pkg_str(atom.cpv, slot=slot, repo=atom.repo)
 		self.cpv_split = catpkgsplit(self.cpv)
 		self.slot = self.cpv.slot
-		self.slot_abi = self.cpv.slot_abi
+		self.sub_slot = self.cpv.sub_slot
 		self.repo = atom.repo
 		if atom.use:
 			self.use = self._use_class(atom.use.enabled)

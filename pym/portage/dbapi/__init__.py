@@ -348,9 +348,9 @@ class dbapi(object):
 				continue
 			moves += 1
 			if "/" not in newslot and \
-				mycpv.slot_abi and \
-				mycpv.slot_abi not in (mycpv.slot, newslot):
-				newslot = "%s/%s" % (newslot, mycpv.slot_abi)
+				mycpv.sub_slot and \
+				mycpv.sub_slot not in (mycpv.slot, newslot):
+				newslot = "%s/%s" % (newslot, mycpv.sub_slot)
 			mydata = {"SLOT": newslot+"\n"}
 			self.aux_update(mycpv, mydata)
 		return moves

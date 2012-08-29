@@ -10,7 +10,7 @@ from _emerge.Package import Package
 from _emerge.PackageVirtualDbapi import PackageVirtualDbapi
 from portage.const import VDB_PATH
 from portage.dbapi.vartree import vartree
-from portage.dep._slot_abi import find_built_slot_abi_atoms
+from portage.dep._slot_abi import find_built_slot_operator_atoms
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidDependString
 from portage.repository.config import _gen_valid_repo
@@ -45,10 +45,10 @@ class FakeVartree(vartree):
 	is not a matching ebuild in the tree). Instances of this class are not
 	populated until the sync() method is called."""
 	def __init__(self, root_config, pkg_cache=None, pkg_root_config=None,
-		dynamic_deps=True, ignore_built_slot_abi_deps=False):
+		dynamic_deps=True, ignore_built_slot_operator_deps=False):
 		self._root_config = root_config
 		self._dynamic_deps = dynamic_deps
-		self._ignore_built_slot_abi_deps = ignore_built_slot_abi_deps
+		self._ignore_built_slot_operator_deps = ignore_built_slot_operator_deps
 		if pkg_root_config is None:
 			pkg_root_config = self._root_config
 		self._pkg_root_config = pkg_root_config
@@ -112,11 +112,11 @@ class FakeVartree(vartree):
 		installed_eapi = pkg_obj.metadata['EAPI']
 		repo = pkg_obj.metadata['repository']
 		eapi_attrs = _get_eapi_attrs(installed_eapi)
-		built_slot_abi_atoms = None
+		built_slot_operator_atoms = None
 
-		if eapi_attrs.slot_abi and not self._ignore_built_slot_abi_deps:
+		if eapi_attrs.slot_operator and not self._ignore_built_slot_operator_deps:
 			try:
-				built_slot_abi_atoms = find_built_slot_abi_atoms(pkg_obj)
+				built_slot_operator_atoms = find_built_slot_operator_atoms(pkg_obj)
 			except InvalidDependString:
 				pass
 
@@ -137,12 +137,12 @@ class FakeVartree(vartree):
 				portage.eapi_is_supported(installed_eapi)):
 				raise KeyError(pkg)
 
-			# preserve built SLOT/ABI := operator deps
-			if built_slot_abi_atoms:
+			# preserve built slot/sub-slot := operator deps
+			if built_slot_operator_atoms:
 				live_eapi_attrs = _get_eapi_attrs(live_metadata["EAPI"])
-				if not live_eapi_attrs.slot_abi:
+				if not live_eapi_attrs.slot_operator:
 					raise KeyError(pkg)
-				for k, v in built_slot_abi_atoms.items():
+				for k, v in built_slot_operator_atoms.items():
 					live_metadata[k] += (" " +
 						" ".join(_unicode(atom) for atom in v))
 
