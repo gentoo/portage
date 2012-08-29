@@ -544,13 +544,19 @@ _eapi0_src_test() {
 	# we call it in 'nonfatal' mode, we use emake_cmd
 	# to emulate the desired parts of emake behavior.
 	local emake_cmd="${MAKE:-make} ${MAKEOPTS} ${EXTRA_EMAKE}"
-	if $emake_cmd -j1 check -n &> /dev/null; then
+	local internal_opts=
+	case "$EAPI" in
+		0|1|2|3|4|4-python|4-slot-abi)
+			internal_opts+=" -j1"
+			;;
+	esac
+	if $emake_cmd ${internal_opts} check -n &> /dev/null; then
 		vecho ">>> Test phase [check]: ${CATEGORY}/${PF}"
-		$emake_cmd -j1 check || \
+		$emake_cmd ${internal_opts} check || \
 			die "Make check failed. See above for details."
-	elif $emake_cmd -j1 test -n &> /dev/null; then
+	elif $emake_cmd ${internal_opts} test -n &> /dev/null; then
 		vecho ">>> Test phase [test]: ${CATEGORY}/${PF}"
-		$emake_cmd -j1 test || \
+		$emake_cmd ${internal_opts} test || \
 			die "Make test failed. See above for details."
 	else
 		vecho ">>> Test phase [none]: ${CATEGORY}/${PF}"
