@@ -75,6 +75,24 @@ _unsandboxed_phases = frozenset([
 	"prerm", "setup"
 ])
 
+_phase_func_map = {
+	"config": "pkg_config",
+	"setup": "pkg_setup",
+	"nofetch": "pkg_nofetch",
+	"unpack": "src_unpack",
+	"prepare": "src_prepare",
+	"configure": "src_configure",
+	"compile": "src_compile",
+	"test": "src_test",
+	"install": "src_install",
+	"preinst": "pkg_preinst",
+	"postinst": "pkg_postinst",
+	"prerm": "pkg_prerm",
+	"postrm": "pkg_postrm",
+	"info": "pkg_info",
+	"pretend": "pkg_pretend",
+}
+
 def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 	"""
 	All proper ebuild phases which execute ebuild.sh are spawned

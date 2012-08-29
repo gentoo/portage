@@ -19,6 +19,7 @@ from _emerge.Package import Package
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.data:portage_gid',
+	'portage.package.ebuild.doebuild:_phase_func_map',
 )
 from portage import bsd_chflags, \
 	load_mod, os, selinux, _unicode_decode
@@ -2402,6 +2403,7 @@ class config(object):
 		environ_filter = self._environ_filter
 
 		eapi = self.get('EAPI')
+		eapi_attrs = _get_eapi_attrs(eapi)
 		phase = self.get('EBUILD_PHASE')
 		filter_calling_env = False
 		if self.mycpv is not None and \
@@ -2482,6 +2484,11 @@ class config(object):
 		if phase not in ("prerm", "postrm") or \
 			not eapi_exports_replace_vars(eapi):
 			mydict.pop("REPLACED_BY_VERSION", None)
+
+		if phase is not None and eapi_attrs.exports_EBUILD_PHASE_FUNC:
+			phase_func = _phase_func_map.get(phase)
+			if phase_func is not None:
+				mydict["EBUILD_PHASE_FUNC"] = phase_func
 
 		return mydict
 
