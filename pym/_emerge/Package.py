@@ -64,6 +64,13 @@ class Package(Task):
 		self.slot_abi = self.cpv.slot_abi
 		# sync metadata with validated repo (may be UNKNOWN_REPO)
 		self.metadata['repository'] = self.cpv.repo
+
+		if eapi_attrs.iuse_effective:
+			implicit_match = self.root_config.settings._iuse_effective_match
+		else:
+			implicit_match = self.root_config.settings._iuse_implicit_match
+		self.iuse = self._iuse(self.metadata["IUSE"].split(), implicit_match)
+
 		if (self.iuse.enabled or self.iuse.disabled) and \
 			not eapi_attrs.iuse_defaults:
 			if not self.installed:
@@ -615,7 +622,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 
 	__slots__ = ("_pkg",)
 	_wrapped_keys = frozenset(
-		["COUNTER", "INHERITED", "IUSE", "USE", "_mtime_"])
+		["COUNTER", "INHERITED", "USE", "_mtime_"])
 	_use_conditional_keys = frozenset(
 		['LICENSE', 'PROPERTIES', 'PROVIDE', 'RESTRICT',])
 
@@ -683,10 +690,6 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 		if isinstance(v, basestring):
 			v = frozenset(v.split())
 		self._pkg.inherited = v
-
-	def _set_iuse(self, k, v):
-		self._pkg.iuse = self._pkg._iuse(
-			v.split(), self._pkg.root_config.settings._iuse_implicit_match)
 
 	def _set_counter(self, k, v):
 		if isinstance(v, basestring):

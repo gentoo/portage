@@ -8,6 +8,9 @@ from portage import eapi_is_supported
 def eapi_has_iuse_defaults(eapi):
 	return eapi != "0"
 
+def eapi_has_iuse_effective(eapi):
+	return eapi not in ("0", "1", "2", "3", "4", "4-python", "4-slot-abi")
+
 def eapi_has_slot_deps(eapi):
 	return eapi != "0"
 
@@ -72,7 +75,7 @@ def eapi_allows_dots_in_use_flags(eapi):
 	return eapi in ("4-python",)
 
 _eapi_attrs = collections.namedtuple('_eapi_attrs',
-	'dots_in_PN dots_in_use_flags iuse_defaults '
+	'dots_in_PN dots_in_use_flags iuse_defaults iuse_effective '
 	'repo_deps required_use required_use_at_most_one_of slot_abi slot_deps '
 	'src_uri_arrows strong_blocks use_deps use_dep_defaults')
 
@@ -98,6 +101,7 @@ def _get_eapi_attrs(eapi):
 		dots_in_PN = (eapi is None or eapi_allows_dots_in_PN(eapi)),
 		dots_in_use_flags = (eapi is None or eapi_allows_dots_in_use_flags(eapi)),
 		iuse_defaults = (eapi is None or eapi_has_iuse_defaults(eapi)),
+		iuse_effective = (eapi is not None and eapi_has_iuse_effective(eapi)),
 		repo_deps = (eapi is None or eapi_has_repo_deps(eapi)),
 		required_use = (eapi is None or eapi_has_required_use(eapi)),
 		required_use_at_most_one_of = (eapi is None or eapi_has_required_use_at_most_one_of(eapi)),

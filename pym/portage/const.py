@@ -79,8 +79,10 @@ OS_HEADERS_PACKAGE_ATOM  = "virtual/os-headers"
 INCREMENTALS             = ("USE", "USE_EXPAND", "USE_EXPAND_HIDDEN",
                            "FEATURES", "ACCEPT_KEYWORDS",
                            "CONFIG_PROTECT_MASK", "CONFIG_PROTECT",
+                           "IUSE_IMPLICIT",
                            "PRELINK_PATH", "PRELINK_PATH_MASK",
-                           "PROFILE_ONLY_VARIABLES")
+                           "PROFILE_ONLY_VARIABLES",
+                           "USE_EXPAND_IMPLICIT", "USE_EXPAND_UNPREFIXED")
 EBUILD_PHASES            = ("pretend", "setup", "unpack", "prepare", "configure",
                            "compile", "test", "install",
                            "package", "preinst", "postinst","prerm", "postrm",

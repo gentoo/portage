@@ -1,8 +1,9 @@
-# Copyright 2011 Gentoo Foundation
+# Copyright 2011-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
 from portage.dep import Atom, _get_useflag_re
+from portage.eapi import _get_eapi_attrs
 
 def expand_new_virt(vardb, atom):
 	"""
@@ -44,6 +45,7 @@ def expand_new_virt(vardb, atom):
 			yield atom
 			continue
 
+		eapi_attrs = _get_eapi_attrs(eapi)
 		# Validate IUSE and IUSE, for early detection of vardb corruption.
 		useflag_re = _get_useflag_re(eapi)
 		valid_iuse = []
@@ -54,7 +56,11 @@ def expand_new_virt(vardb, atom):
 				valid_iuse.append(x)
 		valid_iuse = frozenset(valid_iuse)
 
-		iuse_implicit_match = vardb.settings._iuse_implicit_match
+		if eapi_attrs.iuse_effective:
+			iuse_implicit_match = vardb.settings._iuse_effective_match
+		else:
+			iuse_implicit_match = vardb.settings._iuse_implicit_match
+
 		valid_use = []
 		for x in use.split():
 			if x in valid_iuse or iuse_implicit_match(x):

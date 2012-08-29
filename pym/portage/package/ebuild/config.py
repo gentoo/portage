@@ -32,7 +32,7 @@ from portage.dbapi.porttree import portdbapi
 from portage.dbapi.vartree import vartree
 from portage.dep import Atom, isvalidatom, match_from_list, use_reduce, _repo_separator, _slot_separator
 from portage.eapi import eapi_exports_AA, eapi_exports_merge_type, \
-	eapi_supports_prefix, eapi_exports_replace_vars
+	eapi_supports_prefix, eapi_exports_replace_vars, _get_eapi_attrs
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.exception import InvalidDependString, PortageException
 from portage.localization import _
@@ -215,6 +215,7 @@ class config(object):
 			self.profiles = clone.profiles
 			self.packages = clone.packages
 			self.repositories = clone.repositories
+			self._iuse_effective = clone._iuse_effective
 			self._iuse_implicit_match = clone._iuse_implicit_match
 			self._non_user_variables = clone._non_user_variables
 			self._env_d_blacklist = clone._env_d_blacklist
@@ -793,6 +794,7 @@ class config(object):
 			if bsd_chflags:
 				self.features.add('chflags')
 
+			self._iuse_effective = self._calc_iuse_effective()
 			self._iuse_implicit_match = _iuse_implicit_match_cache(self)
 
 			self._validate_commands()
@@ -1251,6 +1253,7 @@ class config(object):
 		pkg_configdict["CATEGORY"] = cat
 		pkg_configdict["PF"] = pf
 		repository = None
+		eapi = None
 		if mydb:
 			if not hasattr(mydb, "aux_get"):
 				for k in aux_keys:
@@ -1277,6 +1280,7 @@ class config(object):
 					# Empty USE means this dbapi instance does not contain
 					# built packages.
 					built_use = None
+			eapi = pkg_configdict['EAPI']
 
 			repository = pkg_configdict.pop("repository", None)
 			if repository is not None:
@@ -1295,6 +1299,9 @@ class config(object):
 				elif x.startswith("-"):
 					pkginternaluse.append(x)
 			pkginternaluse = " ".join(pkginternaluse)
+
+		eapi_attrs = _get_eapi_attrs(eapi)
+
 		if pkginternaluse != self.configdict["pkginternal"].get("USE", ""):
 			self.configdict["pkginternal"]["USE"] = pkginternaluse
 			has_changed = True
@@ -1434,9 +1441,17 @@ class config(object):
 		use = set(self["USE"].split())
 		if explicit_iuse is None:
 			explicit_iuse = frozenset(x.lstrip("+-") for x in iuse.split())
-		iuse_implicit_match = self._iuse_implicit_match
-		portage_iuse = self._get_implicit_iuse()
-		portage_iuse.update(explicit_iuse)
+
+		if eapi_attrs.iuse_effective:
+			iuse_implicit_match = self._iuse_effective_match
+			portage_iuse = set(self._iuse_effective)
+			portage_iuse.update(explicit_iuse)
+			self.configdict["pkg"]["IUSE_EFFECTIVE"] = \
+				" ".join(sorted(portage_iuse))
+		else:
+			iuse_implicit_match = self._iuse_implicit_match
+			portage_iuse = self._get_implicit_iuse()
+			portage_iuse.update(explicit_iuse)
 
 		# PORTAGE_IUSE is not always needed so it's lazily evaluated.
 		self.configdict["env"].addLazySingleton(
@@ -1501,6 +1516,14 @@ class config(object):
 			self.configdict['env'].addLazySingleton(k,
 				lazy_use_expand.__getitem__, k)
 
+		for k in self.get("USE_EXPAND_UNPREFIXED", "").split():
+			var_split = self.get(k, '').split()
+			var_split = [ x for x in var_split if x in use ]
+			if var_split:
+				self.configlist[-1][k] = ' '.join(var_split)
+			elif k in self:
+				self.configlist[-1][k] = ''
+
 		# Filtered for the ebuild environment. Store this in a separate
 		# attribute since we still want to be able to see global USE
 		# settings for things like emerge --info.
@@ -1545,9 +1568,42 @@ class config(object):
 					else:
 						container[k] = v
 
+	def _iuse_effective_match(self, flag):
+		return flag in self._iuse_effective
+
+	def _calc_iuse_effective(self):
+		"""
+		Beginning with EAPI 5, IUSE_EFFECTIVE is defined by PMS.
+		"""
+		iuse_effective = []
+		iuse_effective.extend(self.get("IUSE_IMPLICIT", "").split())
+
+		# USE_EXPAND_IMPLICIT should contain things like ARCH, ELIBC,
+		# KERNEL, and USERLAND.
+		use_expand_implicit = frozenset(
+			self.get("USE_EXPAND_IMPLICIT", "").split())
+
+		# USE_EXPAND_UNPREFIXED should contain at least ARCH, and
+		# USE_EXPAND_VALUES_ARCH should contain all valid ARCH flags.
+		for v in self.get("USE_EXPAND_UNPREFIXED", "").split():
+			if v not in use_expand_implicit:
+				continue
+			iuse_effective.extend(
+				self.get("USE_EXPAND_VALUES_" + v, "").split())
+
+		use_expand = frozenset(self.get("USE_EXPAND", "").split())
+		for v in use_expand_implicit:
+			if v not in use_expand:
+				continue
+			lower_v = v.lower()
+			for x in self.get("USE_EXPAND_VALUES_" + v, "").split():
+				iuse_effective.append(lower_v + "_" + x)
+
+		return frozenset(iuse_effective)
+
 	def _get_implicit_iuse(self):
 		"""
-		Some flags are considered to
+		Prior to EAPI 5, these flags are considered to
 		be implicit members of IUSE:
 		  * Flags derived from ARCH
 		  * Flags derived from USE_EXPAND_HIDDEN variables
@@ -2005,6 +2061,8 @@ class config(object):
 			if v is not None:
 				use_expand_dict[k] = v
 
+		use_expand_unprefixed = self.get("USE_EXPAND_UNPREFIXED", "").split()
+
 		# In order to best accomodate the long-standing practice of
 		# setting default USE_EXPAND variables in the profile's
 		# make.defaults, we translate these variables into their
@@ -2018,6 +2076,12 @@ class config(object):
 					continue
 				use = cfg.get("USE", "")
 				expand_use = []
+
+				for k in use_expand_unprefixed:
+					v = cfg.get(k)
+					if v is not None:
+						expand_use.extend(v.split())
+
 				for k in use_expand_dict:
 					v = cfg.get(k)
 					if v is None:
@@ -2055,6 +2119,17 @@ class config(object):
 			iuse = [x.lstrip("+-") for x in iuse.split()]
 		myflags = set()
 		for curdb in self.uvlist:
+
+			for k in use_expand_unprefixed:
+				v = curdb.get(k)
+				if v is None:
+					continue
+				for x in v.split():
+					if x[:1] == "-":
+						myflags.discard(x[1:])
+					else:
+						myflags.add(x)
+
 			cur_use_expand = [x for x in use_expand if x in curdb]
 			mysplit = curdb.get("USE", "").split()
 			if not mysplit and not cur_use_expand:
@@ -2166,6 +2241,14 @@ class config(object):
 				var_split = use_expand_dict.get(k, '').split()
 				var_split = [ x for x in var_split if x in expand_flags ]
 				var_split.extend(sorted(expand_flags.difference(var_split)))
+				if var_split:
+					self.configlist[-1][k] = ' '.join(var_split)
+				elif k in self:
+					self.configlist[-1][k] = ''
+
+			for k in use_expand_unprefixed:
+				var_split = self.get(k, '').split()
+				var_split = [ x for x in var_split if x in myflags ]
 				if var_split:
 					self.configlist[-1][k] = ' '.join(var_split)
 				elif k in self:

@@ -1638,8 +1638,12 @@ def _post_src_install_write_metadata(settings):
 
 	build_info_dir = os.path.join(settings['PORTAGE_BUILDDIR'], 'build-info')
 
-	for k in ('IUSE',):
-		v = settings.get(k)
+	metadata_keys = ['IUSE']
+	if eapi_attrs.iuse_effective:
+		metadata_keys.append('IUSE_EFFECTIVE')
+
+	for k in metadata_keys:
+		v = settings.configdict['pkg'].get(k)
 		if v is not None:
 			write_atomic(os.path.join(build_info_dir, k), v + '\n')
 

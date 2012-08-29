@@ -16,6 +16,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 
 from portage import os
 from portage import auxdbkeys
+from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidData
 from portage.localization import _
 
@@ -181,7 +182,7 @@ class dbapi(object):
 		2) Check enabled/disabled flag states.
 		"""
 
-		aux_keys = ["IUSE", "KEYWORDS", "SLOT", "USE", "repository"]
+		aux_keys = ["EAPI", "IUSE", "KEYWORDS", "SLOT", "USE", "repository"]
 		for cpv in cpv_iter:
 			try:
 				metadata = dict(zip(aux_keys,
@@ -195,7 +196,11 @@ class dbapi(object):
 			yield cpv
 
 	def _match_use(self, atom, cpv, metadata):
-		iuse_implicit_match = self.settings._iuse_implicit_match
+		eapi_attrs = _get_eapi_attrs(metadata["EAPI"])
+		if eapi_attrs.iuse_effective:
+			iuse_implicit_match = self.settings._iuse_effective_match
+		else:
+			iuse_implicit_match = self.settings._iuse_implicit_match
 		iuse = frozenset(x.lstrip('+-') for x in metadata["IUSE"].split())
 
 		for x in atom.unevaluated_atom.use.required:
