@@ -15,7 +15,7 @@ def eapi_has_slot_deps(eapi):
 	return eapi != "0"
 
 def eapi_has_slot_operator(eapi):
-	return eapi in ("4-slot-abi",)
+	return eapi not in ("0", "1", "2", "3", "4", "4-python")
 
 def eapi_has_src_uri_arrows(eapi):
 	return eapi not in ("0", "1")
