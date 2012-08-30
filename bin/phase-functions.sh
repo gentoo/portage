@@ -372,6 +372,7 @@ dyn_prepare() {
 	else
 		die "The source directory '${S}' doesn't exist"
 	fi
+	rm -f "${PORTAGE_BUILDDIR}/.apply_user_patches" || die
 
 	trap abort_prepare SIGINT SIGQUIT
 
