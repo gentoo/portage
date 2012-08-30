@@ -1243,6 +1243,7 @@ class config(object):
 		iuse = ""
 		pkg_configdict = self.configdict["pkg"]
 		previous_iuse = pkg_configdict.get("IUSE")
+		previous_iuse_effective = pkg_configdict.get("IUSE_EFFECTIVE")
 		previous_features = pkg_configdict.get("FEATURES")
 
 		aux_keys = self._setcpv_aux_keys
@@ -1433,7 +1434,8 @@ class config(object):
 
 		# If reset() has not been called, it's safe to return
 		# early if IUSE has not changed.
-		if not has_changed and previous_iuse == iuse:
+		if not has_changed and previous_iuse == iuse and \
+			(previous_iuse_effective is not None == eapi_attrs.iuse_effective):
 			return
 
 		# Filter out USE flags that aren't part of IUSE. This has to
