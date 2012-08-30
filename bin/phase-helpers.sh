@@ -598,6 +598,21 @@ _eapi4_src_install() {
 	fi
 }
 
+_eapi5_src_prepare() {
+	apply_user_patches
+}
+
+apply_user_patches() {
+	die "apply_user_patches is not supported with EAPI ${EAPI}"
+}
+
+_eapi5_apply_user_patches() {
+	# This is a no-op that is just enough to fullfill the spec.
+	[[ -f ${PORTAGE_BUILDDIR}/.apply_user_patches ]] && return 1
+	> "${PORTAGE_BUILDDIR}/.apply_user_patches" || die
+	return 1
+}
+
 # @FUNCTION: has_version
 # @USAGE: <DEPEND ATOM>
 # @DESCRIPTION:

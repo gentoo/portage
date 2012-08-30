@@ -277,7 +277,8 @@ dyn_clean() {
 			"$PORTAGE_BUILDDIR"/.{configured,compiled,tested,packaged} \
 			"$PORTAGE_BUILDDIR"/.die_hooks \
 			"$PORTAGE_BUILDDIR"/.ipc_{in,out,lock} \
-			"$PORTAGE_BUILDDIR"/.exit_status
+			"$PORTAGE_BUILDDIR"/.exit_status \
+			"$PORTAGE_BUILDDIR"/.apply_user_patches
 
 		rm -rf "${PORTAGE_BUILDDIR}/build-info"
 		rm -rf "${WORKDIR}"
@@ -381,6 +382,14 @@ dyn_prepare() {
 		die "Failed to create $PORTAGE_BUILDDIR/.prepared"
 	vecho ">>> Source prepared."
 	ebuild_phase post_src_prepare
+	case "${EAPI}" in
+		0|1|2|3|4|4-python|4-slot-abi)
+			;;
+		*)
+			[[ ! -f ${PORTAGE_BUILDDIR}/.apply_user_patches ]] && \
+				die "src_prepare must call apply_user_patches at least once"
+			;;
+	esac
 
 	trap - SIGINT SIGQUIT
 }
@@ -804,6 +813,18 @@ _ebuild_phase_funcs() {
 						eval "default_src_install() { _eapi4_src_install \"\$@\" ; }"
 						[[ $phase_func = src_install ]] && \
 							eval "default() { _eapi4_$phase_func \"\$@\" ; }"
+						case "$eapi" in
+							4|4-python|4-slot-abi)
+								;;
+							*)
+								! declare -F src_prepare >/dev/null && \
+									src_prepare() { _eapi5_src_prepare "$@" ; }
+								default_src_prepare() { _eapi5_src_prepare "$@" ; }
+								[[ $phase_func = src_prepare ]] && \
+									eval "default() { _eapi5_$phase_func \"\$@\" ; }"
+								apply_user_patches() { _eapi5_apply_user_patches "$@" ; }
+								;;
+						esac
 						;;
 				esac
 
