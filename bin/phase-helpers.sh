@@ -421,11 +421,29 @@ econf() {
 		fi
 
 		# EAPI=4 adds --disable-dependency-tracking to econf
-		if ! has "$EAPI" 0 1 2 3 && \
-			"${ECONF_SOURCE}/configure" --help 2>/dev/null | \
-			grep -q disable-dependency-tracking ; then
-			set -- --disable-dependency-tracking "$@"
-		fi
+		case "${EAPI}" in
+			0|1|2|3)
+				;;
+			*)
+				local conf_help=$("${ECONF_SOURCE}/configure" --help 2>/dev/null)
+				case "${conf_help}" in
+					*--disable-dependency-tracking*)
+						set -- --disable-dependency-tracking "$@"
+						;;
+				esac
+				case "${EAPI}" in
+					4|4-python|4-slot-abi)
+						;;
+					*)
+						case "${conf_help}" in
+							*--disable-silent-rules*)
+								set -- --disable-silent-rules "$@"
+								;;
+						esac
+						;;
+				esac
+				;;
+		esac
 
 		# if the profile defines a location to install libs to aside from default, pass it on.
 		# if the ebuild passes in --libdir, they're responsible for the conf_libdir fun.
