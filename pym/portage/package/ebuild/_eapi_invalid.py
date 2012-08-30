@@ -28,19 +28,6 @@ def eapi_invalid(self, cpv, repo_name, settings,
 			"assignment on line: %s") %
 			(eapi_var, eapi_lineno))
 
-	if 'parse-eapi-ebuild-head' in settings.features:
-		msg.extend(textwrap.wrap(("NOTE: This error will soon"
-			" become unconditionally fatal in a future version of Portage,"
-			" but at this time, it can by made non-fatal by setting"
-			" FEATURES=-parse-eapi-ebuild-head in"
-			" make.conf."), 70))
-	else:
-		msg.extend(textwrap.wrap(("NOTE: This error will soon"
-			" become unconditionally fatal in a future version of Portage."
-			" At the earliest opportunity, please enable"
-			" FEATURES=parse-eapi-ebuild-head in make.conf in order to"
-			" make this error fatal."), 70))
-
 	if portage.data.secpass >= 2:
 		# TODO: improve elog permission error handling (bug #416231)
 		for line in msg:

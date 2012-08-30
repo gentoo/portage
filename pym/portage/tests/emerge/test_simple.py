@@ -210,7 +210,7 @@ pkg_preinst() {
 			({"FEATURES" : "metadata-transfer"},) + \
 				emerge_cmd + ("--regen",),
 			rm_cmd + ("-rf", cachedir),
-			({"FEATURES" : "metadata-transfer parse-eapi-ebuild-head"},) + \
+			({"FEATURES" : "metadata-transfer"},) + \
 				emerge_cmd + ("--regen",),
 			rm_cmd + ("-rf", cachedir),
 			egencache_cmd + ("--update",) + tuple(egencache_extra_args),

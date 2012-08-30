@@ -99,7 +99,6 @@ SUPPORTED_FEATURES       = frozenset([
                            "metadata-transfer", "mirror", "multilib-strict", "news",
                            "noauto", "noclean", "nodoc", "noinfo", "noman",
                            "nostrip", "notitles", "parallel-fetch", "parallel-install",
-                           "parse-eapi-ebuild-head",
                            "prelink-checksums",
                            "protect-owned", "python-trace", "sandbox",
                            "selinux", "sesandbox", "sfperms",

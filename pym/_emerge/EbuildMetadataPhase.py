@@ -142,8 +142,7 @@ class EbuildMetadataPhase(SubProcess):
 	def _set_returncode(self, wait_retval):
 		SubProcess._set_returncode(self, wait_retval)
 		# self._raw_metadata is None when _start returns
-		# early due to an unsupported EAPI detected with
-		# FEATURES=parse-eapi-ebuild-head
+		# early due to an unsupported EAPI
 		if self.returncode == os.EX_OK and \
 			self._raw_metadata is not None:
 			metadata_lines = _unicode_decode(b''.join(self._raw_metadata),
@@ -164,8 +163,7 @@ class EbuildMetadataPhase(SubProcess):
 				if (not metadata["EAPI"] or self.eapi_supported) and \
 					metadata["EAPI"] != parsed_eapi:
 					self._eapi_invalid(metadata)
-					if 'parse-eapi-ebuild-head' in self.settings.features:
-						metadata_valid = False
+					metadata_valid = False
 
 			if metadata_valid:
 				# Since we're supposed to be able to efficiently obtain the
