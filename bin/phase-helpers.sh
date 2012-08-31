@@ -174,6 +174,20 @@ usev() {
 	return 1
 }
 
+case ${EAPI} in
+	0|1|2|3|4) ;;
+	*)
+		usex() {
+			if use "$1"; then
+				echo "${2-yes}$4"
+			else
+				echo "${3-no}$5"
+			fi
+			return 0
+		}
+		;;
+esac
+
 use() {
 	local u=$1
 	local found=0

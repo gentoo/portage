@@ -73,6 +73,11 @@ save_ebuild_env() {
 		_hasg _hasgq _unpack_tar \
 		${QA_INTERCEPTORS}
 
+	case ${EAPI} in
+		0|1|2|3|4) ;;
+		*) unset -f usex ;;
+	esac
+
 	# portage config variables and variables set directly by portage
 	unset ACCEPT_LICENSE BAD BRACKET BUILD_PREFIX COLS \
 		DISTCC_DIR DISTDIR DOC_SYMLINKS_DIR \
