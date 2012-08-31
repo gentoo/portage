@@ -632,28 +632,50 @@ _eapi5_apply_user_patches() {
 }
 
 # @FUNCTION: has_version
-# @USAGE: <DEPEND ATOM>
+# @USAGE: [--host-root] <DEPEND ATOM>
 # @DESCRIPTION:
 # Return true if given package is installed. Otherwise return false.
 # Callers may override the ROOT variable in order to match packages from an
 # alternative ROOT.
 has_version() {
 
-	local eroot
+	local atom eroot host_root=false root=${ROOT}
+	while [ $# -gt 0 ] ; do
+		case "$1" in
+			--host-root)
+				host_root=true
+				;;
+			*)
+				[[ -n ${atom} ]] && die "${FUNCNAME[0]}: unused argument: $1"
+				atom=$1
+				;;
+		esac
+		shift
+	done
+
+	if ${host_root} ; then
+		case "${EAPI}" in
+			0|1|2|3|4|4-python|4-slot-abi)
+				die "${FUNCNAME[0]}: option --host-root is not supported with EAPI ${EAPI}"
+				;;
+		esac
+		root=/
+	fi
+
 	case "$EAPI" in
 		0|1|2)
 			[[ " ${FEATURES} " == *" force-prefix "* ]] && \
-				eroot=${ROOT%/}${EPREFIX}/ || eroot=${ROOT}
+				eroot=${root%/}${EPREFIX}/ || eroot=${root}
 			;;
 		*)
-			eroot=${ROOT%/}${EPREFIX}/
+			eroot=${root%/}${EPREFIX}/
 			;;
 	esac
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
-		"$PORTAGE_BIN_PATH"/ebuild-ipc has_version "${eroot}" "$1"
+		"$PORTAGE_BIN_PATH"/ebuild-ipc has_version "${eroot}" "${atom}"
 	else
 		PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-		"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" has_version "${eroot}" "$1"
+		"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" has_version "${eroot}" "${atom}"
 	fi
 	local retval=$?
 	case "${retval}" in
@@ -667,28 +689,50 @@ has_version() {
 }
 
 # @FUNCTION: best_version
-# @USAGE: <DEPEND ATOM>
+# @USAGE: [--host-root] <DEPEND ATOM>
 # @DESCRIPTION:
 # Returns the best/most-current match.
 # Callers may override the ROOT variable in order to match packages from an
 # alternative ROOT.
 best_version() {
 
-	local eroot
+	local atom eroot host_root=false root=${ROOT}
+	while [ $# -gt 0 ] ; do
+		case "$1" in
+			--host-root)
+				host_root=true
+				;;
+			*)
+				[[ -n ${atom} ]] && die "${FUNCNAME[0]}: unused argument: $1"
+				atom=$1
+				;;
+		esac
+		shift
+	done
+
+	if ${host_root} ; then
+		case "${EAPI}" in
+			0|1|2|3|4|4-python|4-slot-abi)
+				die "${FUNCNAME[0]}: option --host-root is not supported with EAPI ${EAPI}"
+				;;
+		esac
+		root=/
+	fi
+
 	case "$EAPI" in
 		0|1|2)
 			[[ " ${FEATURES} " == *" force-prefix "* ]] && \
-				eroot=${ROOT%/}${EPREFIX}/ || eroot=${ROOT}
+				eroot=${root%/}${EPREFIX}/ || eroot=${root}
 			;;
 		*)
-			eroot=${ROOT%/}${EPREFIX}/
+			eroot=${root%/}${EPREFIX}/
 			;;
 	esac
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
-		"$PORTAGE_BIN_PATH"/ebuild-ipc best_version "${eroot}" "$1"
+		"$PORTAGE_BIN_PATH"/ebuild-ipc best_version "${eroot}" "${atom}"
 	else
 		PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-		"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" best_version "${eroot}" "$1"
+		"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" best_version "${eroot}" "${atom}"
 	fi
 	local retval=$?
 	case "${retval}" in
