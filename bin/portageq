@@ -125,7 +125,7 @@ def has_version(argv):
 		portage.writemsg("ERROR: Invalid atom: '%s'\n" % argv[1],
 			noiselevel=-1)
 		return 2
-has_version.uses_root = True
+has_version.uses_eroot = True
 
 
 def best_version(argv):
@@ -166,7 +166,7 @@ def best_version(argv):
 		print(portage.best(mylist))
 	except KeyError:
 		return 1
-best_version.uses_root = True
+best_version.uses_eroot = True
 
 
 def mass_best_version(argv):
@@ -182,7 +182,7 @@ def mass_best_version(argv):
 			print(pack+":"+portage.best(mylist))
 	except KeyError:
 		return 1
-mass_best_version.uses_root = True
+mass_best_version.uses_eroot = True
 
 def metadata(argv):
 	if (len(argv) < 4):
@@ -216,7 +216,7 @@ Available keys: %s
 """  % ','.join(sorted(x for x in portage.auxdbkeys \
 if not x.startswith('UNUSED_')))
 
-metadata.uses_root = True
+metadata.uses_eroot = True
 
 def contents(argv):
 	"""<eroot> <category/package>
@@ -238,7 +238,7 @@ def contents(argv):
 		treetype="vartree", vartree=vartree)
 	writemsg_stdout(''.join('%s\n' % x for x in sorted(db.getcontents())),
 		noiselevel=-1)
-contents.uses_root = True
+contents.uses_eroot = True
 
 def owners(argv):
 	"""<eroot> [<filename>]+
@@ -319,7 +319,7 @@ def owners(argv):
 		return 0
 	return 1
 
-owners.uses_root = True
+owners.uses_eroot = True
 
 def is_protected(argv):
 	"""<eroot> <filename>
@@ -366,7 +366,7 @@ def is_protected(argv):
 		return 0
 	return 1
 
-is_protected.uses_root = True
+is_protected.uses_eroot = True
 
 def filter_protected(argv):
 	"""<eroot>
@@ -426,7 +426,7 @@ def filter_protected(argv):
 
 	return 0
 
-filter_protected.uses_root = True
+filter_protected.uses_eroot = True
 
 def best_visible(argv):
 	"""<eroot> [pkgtype] <atom>
@@ -508,11 +508,11 @@ def best_visible(argv):
 	writemsg_stdout("\n", noiselevel=-1)
 
 	return 1
-best_visible.uses_root = True
+best_visible.uses_eroot = True
 
 
 def mass_best_visible(argv):
-	"""<root> [<type>] [<category/package>]+
+	"""<eroot> [<type>] [<category/package>]+
 	Returns category/package-version (without .ebuild).
 	The pkgtype argument defaults to "ebuild" if unspecified,
 	otherwise it must be one of ebuild, binary, or installed.
@@ -535,7 +535,7 @@ def mass_best_visible(argv):
 			best_visible([root, pkgtype, pack])
 	except KeyError:
 		return 1
-mass_best_visible.uses_root = True
+mass_best_visible.uses_eroot = True
 
 
 def all_best_visible(argv):
@@ -552,7 +552,7 @@ def all_best_visible(argv):
 		mybest=portage.best(portage.db[argv[0]]["porttree"].dbapi.match(pkg))
 		if mybest:
 			print(mybest)
-all_best_visible.uses_root = True
+all_best_visible.uses_eroot = True
 
 
 def match(argv):
@@ -601,7 +601,7 @@ def match(argv):
 		results = vardb.match(atom)
 	for cpv in results:
 		print(cpv)
-match.uses_root = True
+match.uses_eroot = True
 
 def expand_virtual(argv):
 	"""<eroot> <atom>
@@ -637,7 +637,7 @@ def expand_virtual(argv):
 
 	return os.EX_OK
 
-expand_virtual.uses_root = True
+expand_virtual.uses_eroot = True
 
 def vdb_path(argv):
 	"""
@@ -733,7 +733,7 @@ def get_repos(argv):
 		return 2
 	print(" ".join(portage.db[argv[0]]["porttree"].dbapi.getRepositories()))
 
-get_repos.uses_root = True
+get_repos.uses_eroot = True
 
 def get_repo_path(argv):
 	"""<eroot> <repo_id>+
@@ -748,7 +748,7 @@ def get_repo_path(argv):
 			path = ""
 		print(path)
 
-get_repo_path.uses_root = True
+get_repo_path.uses_eroot = True
 
 def list_preserved_libs(argv):
 	"""<eroot>
@@ -771,7 +771,7 @@ def list_preserved_libs(argv):
 		msg.append('\n')
 	writemsg_stdout(''.join(msg), noiselevel=-1)
 	return rValue
-list_preserved_libs.uses_root = True
+list_preserved_libs.uses_eroot = True
 
 #-----------------------------------------------------------------------------
 #
@@ -860,8 +860,8 @@ def main():
 		usage(sys.argv)
 		sys.exit(os.EX_USAGE)
 	function = globals()[cmd]
-	uses_root = getattr(function, "uses_root", False) and len(sys.argv) > 2
-	if uses_root:
+	uses_eroot = getattr(function, "uses_eroot", False) and len(sys.argv) > 2
+	if uses_eroot:
 		if not os.path.isdir(sys.argv[2]):
 			sys.stderr.write("Not a directory: '%s'\n" % sys.argv[2])
 			sys.stderr.write("Run portageq with --help for info\n")
@@ -869,10 +869,19 @@ def main():
 			sys.exit(os.EX_USAGE)
 		eprefix = portage.const.EPREFIX
 		eroot = portage.util.normalize_path(sys.argv[2])
+
 		if eprefix:
+			if not eroot.endswith(eprefix):
+				sys.stderr.write("ERROR: This version of portageq"
+						 " only supports <eroot>s ending in"
+						 " '%s'. The provided <eroot>, '%s',"
+						 " doesn't.\n" % (eprefix, eroot));
+				sys.stderr.flush()
+				sys.exit(os.EX_USAGE)
 			root = eroot[:1-len(eprefix)]
 		else:
 			root = eroot
+
 		os.environ["ROOT"] = root
 
 	args = sys.argv[2:]
@@ -881,7 +890,7 @@ def main():
 			args[i] = portage._unicode_decode(args[i])
 
 	try:
-		if uses_root:
+		if uses_eroot:
 			args[0] = portage.settings['EROOT']
 		retval = function(args)
 		if retval:
