@@ -175,7 +175,7 @@ usev() {
 }
 
 case ${EAPI} in
-	0|1|2|3|4) ;;
+	0|1|2|3|4|4-python|4-slot-abi) ;;
 	*)
 		usex() {
 			if use "$1"; then
