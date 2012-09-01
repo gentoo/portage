@@ -2129,11 +2129,6 @@ def _handle_self_update(settings, vardb):
 	if settings["ROOT"] == "/" and \
 		portage.dep.match_from_list(
 		portage.const.PORTAGE_PACKAGE_ATOM, [cpv]):
-		inherited = frozenset(settings.get('INHERITED', '').split())
-		if not vardb.cpv_exists(cpv) or \
-			'9999' in cpv or \
-			'git' in inherited or \
-			'git-2' in inherited:
-			_prepare_self_update(settings)
-			return True
+		_prepare_self_update(settings)
+		return True
 	return False

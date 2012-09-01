@@ -300,15 +300,10 @@ class Scheduler(PollScheduler):
 			if not portage.dep.match_from_list(
 				portage.const.PORTAGE_PACKAGE_ATOM, [x]):
 				continue
-			if self._running_portage is None or \
-				self._running_portage.cpv != x.cpv or \
-				'9999' in x.cpv or \
-				'git' in x.inherited or \
-				'git-2' in x.inherited:
-				rval = _check_temp_dir(self.settings)
-				if rval != os.EX_OK:
-					return rval
-				_prepare_self_update(self.settings)
+			rval = _check_temp_dir(self.settings)
+			if rval != os.EX_OK:
+				return rval
+			_prepare_self_update(self.settings)
 			break
 
 		return os.EX_OK
