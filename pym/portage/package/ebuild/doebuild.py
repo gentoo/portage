@@ -155,9 +155,6 @@ def _doebuild_path(settings, eapi=None):
 
 	path = []
 
-	if eapi not in (None, "0", "1", "2", "3"):
-		path.append(os.path.join(portage_bin_path, "ebuild-helpers", "4"))
-
 	path.append(os.path.join(portage_bin_path, "ebuild-helpers"))
 	path.extend(prerootpath)
 

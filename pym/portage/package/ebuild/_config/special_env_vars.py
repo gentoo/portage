@@ -170,6 +170,7 @@ environ_filter += [
 	"RESUMECOMMAND_HTTP", "RESUMECOMMAND_HTTPS",
 	"RESUMECOMMAND_RSYNC", "RESUMECOMMAND_SFTP",
 	"SYNC", "UNINSTALL_IGNORE", "USE_EXPAND_HIDDEN", "USE_ORDER",
+	"__PORTAGE_HELPER"
 ]
 
 environ_filter = frozenset(environ_filter)
