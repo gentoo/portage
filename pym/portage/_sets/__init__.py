@@ -131,6 +131,11 @@ class SetConfig(object):
 		parser.set("usersets", "directory", "%(PORTAGE_CONFIGROOT)setc/portage/sets")
 		parser.set("usersets", "world-candidate", "true")
 
+		parser.remove_section("module-rebuild")
+		parser.add_section("module-rebuild")
+		parser.set("module-rebuild", "class", "portage.sets.dbapi.OwnerSet")
+		parser.set("module-rebuild", "files", "/lib/modules")
+
 	def update(self, setname, options):
 		parser = self._parser
 		self.errors = []
