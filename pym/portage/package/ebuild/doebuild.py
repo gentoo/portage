@@ -155,6 +155,9 @@ def _doebuild_path(settings, eapi=None):
 
 	path = []
 
+	if settings.get("USERLAND", "GNU") != "GNU":
+		path.append(os.path.join(portage_bin_path, "ebuild-helpers", "bsd"))
+
 	path.append(os.path.join(portage_bin_path, "ebuild-helpers"))
 	path.extend(prerootpath)
 
