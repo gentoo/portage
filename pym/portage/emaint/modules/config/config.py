@@ -4,7 +4,6 @@
 import portage
 from portage import os
 from portage.const import PRIVATE_PATH
-from portage.checksum import perform_md5
 
 
 class CleanConfig(object):
@@ -32,43 +31,32 @@ class CleanConfig(object):
 		onProgress = kwargs.get('onProgress', None)
 		configs = self.load_configlist()
 		messages = []
-		chksums = []
 		maxval = len(configs)
 		if onProgress:
 			onProgress(maxval, 0)
 			i = 0
 		keys = sorted(configs)
 		for config in keys:
-			if os.path.exists(config):
-				md5sumactual = perform_md5(config)
-				if md5sumactual != configs[config]:
-					chksums.append("  %s" % config)
-			else:
+			if not os.path.exists(config):
 				messages.append("  %s" % config)
 			if onProgress:
 				onProgress(maxval, i+1)
 				i += 1
-		return self._format_output(messages, chksums)
+		return self._format_output(messages)
 
 	def fix(self, **kwargs):
 		onProgress = kwargs.get('onProgress', None)
 		configs = self.load_configlist()
 		messages = []
-		chksums = []
 		maxval = len(configs)
 		if onProgress:
 			onProgress(maxval, 0)
 			i = 0
 		keys = sorted(configs)
 		for config in keys:
-			if os.path.exists(config):
-				md5sumactual = perform_md5(config)
-				if md5sumactual != configs[config]:
-					chksums.append("  %s" % config)
-					configs.pop(config)
-			else:
-					configs.pop(config)
-					messages.append("  %s" % config)
+			if not os.path.exists(config):
+				configs.pop(config)
+				messages.append("  %s" % config)
 			if onProgress:
 				onProgress(maxval, i+1)
 				i += 1
@@ -80,9 +68,9 @@ class CleanConfig(object):
 		lines.append('')
 		with open(self.target, 'w') as configfile:
 			configfile.write('\n'.join(lines))
-		return self._format_output(messages, chksums, True)
+		return self._format_output(messages, True)
 
-	def _format_output(self, messages=[], chksums=[], cleaned=False):
+	def _format_output(self, messages=[], cleaned=False):
 		output = []
 		if messages:
 			output.append('Not Installed:')
@@ -91,11 +79,4 @@ class CleanConfig(object):
 			if cleaned:
 				tot += ' ...Cleaned'
 			output.append(tot  % len(messages))
-		if chksums:
-			output.append('\nChecksums did not match:')
-			output += chksums
-			tot = '------------------------------------\n  Total %i Checksums did not match'
-			if cleaned:
-				tot += ' ...Cleaned'
-			output.append(tot % len(chksums))
 		return output
