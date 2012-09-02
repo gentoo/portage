@@ -10,7 +10,7 @@ from _emerge.Package import Package
 from _emerge.PackageVirtualDbapi import PackageVirtualDbapi
 from portage.const import VDB_PATH
 from portage.dbapi.vartree import vartree
-from portage.dep._slot_abi import find_built_slot_operator_atoms
+from portage.dep._slot_operator import find_built_slot_operator_atoms
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidDependString
 from portage.repository.config import _gen_valid_repo

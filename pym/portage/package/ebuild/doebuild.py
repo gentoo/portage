@@ -26,7 +26,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.digestgen:digestgen',
 	'portage.package.ebuild.fetch:fetch',
 	'portage.package.ebuild._ipc.QueryCommand:QueryCommand',
-	'portage.dep._slot_abi:evaluate_slot_operator_equal_deps',
+	'portage.dep._slot_operator:evaluate_slot_operator_equal_deps',
 	'portage.package.ebuild._spawn_nofetch:spawn_nofetch',
 	'portage.util._desktop_entry:validate_desktop_entry',
 	'portage.util.ExtractKernelVersion:ExtractKernelVersion'

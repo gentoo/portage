@@ -22,7 +22,7 @@ from portage.dbapi.dep_expand import dep_expand
 from portage.dep import Atom, best_match_to_list, extract_affecting_use, \
 	check_required_use, human_readable_required_use, match_from_list, \
 	_repo_separator
-from portage.dep._slot_abi import ignore_built_slot_operator_deps
+from portage.dep._slot_operator import ignore_built_slot_operator_deps
 from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use
 from portage.exception import (InvalidAtom, InvalidDependString,
 	PackageNotFound, PortageException)
