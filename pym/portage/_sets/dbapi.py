@@ -355,6 +355,74 @@ class AgeSet(EverythingSet):
 
 	singleBuilder = classmethod(singleBuilder)
 
+class DateSet(EverythingSet):
+	_operations = ["merge", "unmerge"]
+
+	def __init__(self, vardb, date, mode="older"):
+		super(DateSet, self).__init__(vardb)
+		self._mode = mode
+		self._date = date
+
+	def _filter(self, atom):
+
+		cpv = self._db.match(atom)[0]
+		path = self._db.getpath(cpv, filename="COUNTER")
+		date = os.stat(path).st_mtime
+		# Make sure inequality is _strict_ to exclude tested package
+		if ((self._mode == "older" and date < self._date) \
+			or (self._mode == "newer" and date > self._date)):
+			return True
+		else:
+			return False
+
+	def singleBuilder(cls, options, settings, trees):
+		vardbapi = trees["vartree"].dbapi
+		mode = options.get("mode", "older")
+		if str(mode).lower() not in ["newer", "older"]:
+			raise SetConfigError(_("invalid 'mode' value %s (use either 'newer' or 'older')") % mode)
+		package = options.get("package")
+		if package is not None:
+			format = "package"
+		else:
+			filestamp = options.get("filestamp")
+			if filestamp is not None:
+				format = "filestamp"
+			else:
+				seconds = options.get("seconds")
+				if seconds is not None:
+					format = "seconds"
+				else:
+					dateopt = options.get("date")
+					if dateopt is not None:
+						format = "date"
+					else:
+						raise SetConfigError(_("none of these options specified: 'package', 'filestamp', 'seconds', 'date'"))
+		if (format == "package"):
+			try:
+				cpv = vardbapi.match(package)[0]
+				path = vardbapi.getpath(cpv, filename="COUNTER")
+				date = os.stat(path).st_mtime
+			except ValueError:
+				raise SetConfigError(_("cannot determine installation date of package %s") % package)
+		elif (format == "filestamp"):
+			try:
+				date = os.stat(filestamp).st_mtime
+			except OSError:
+				raise SetConfigError(_("cannot determine 'filestamp' of '%s'") % filestamp)
+		elif (format == "seconds"):
+			# Do *not* test for integer:
+			# Modern filesystems support fractional seconds
+			date = seconds
+		else:
+			try:
+				dateformat = options.get("dateformat", "%x %X")
+				date = time.mktime(time.strptime(dateopt, dateformat))
+			except ValueError:
+				raise SetConfigError(_("'date=%s' does not match 'dateformat=%s'") % (dateopt, dateformat))
+		return DateSet(vardb=vardbapi, date=date, mode=mode)
+
+	singleBuilder = classmethod(singleBuilder)
+
 class RebuiltBinaries(EverythingSet):
 	_operations = ('merge',)
 	_aux_keys = ('BUILD_TIME',)
