@@ -11,5 +11,6 @@
 &package_ebuild_eapi_4;
 &package_ebuild_eapi_4_python;
 &package_ebuild_eapi_4_slot_abi;
+&package_ebuild_eapi_5;
 </section>
 </chapter>
