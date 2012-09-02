@@ -52,6 +52,12 @@ _ignore_kde_types = frozenset(
 # sections in /usr/share/apps/akonadi/{plugins,accountwizard}
 _ignore_kde_sections = ("Currency Code", "Plugin", "Wizard")
 
+_ignored_errors = (
+		# Ignore error for emacs.desktop:
+		# https://bugs.freedesktop.org/show_bug.cgi?id=35844#c6
+		'error: (will be fatal in the future): value "TextEditor" in key "Categories" in group "Desktop Entry" requires another category to be present among the following categories: Utility',
+)
+
 def validate_desktop_entry(path):
 	args = ["desktop-file-validate", path]
 	if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
@@ -98,6 +104,14 @@ def validate_desktop_entry(path):
 			for section in _ignore_kde_sections:
 				if desktop_entry.has_section(section):
 					del output_lines[:]
+
+	if output_lines:
+		filtered_output = []
+		for line in output_lines:
+				if line[len(path)+2:] in _ignored_errors:
+					continue
+				filtered_output.append(line)
+		output_lines = filtered_output
 
 	if output_lines:
 		output_lines = [line for line in output_lines
