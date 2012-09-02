@@ -4,7 +4,7 @@
 import portage
 from portage import os
 from portage.const import PRIVATE_PATH
-from portage.util import writedict
+from portage.util import grabdict, writedict
 
 class CleanConfig(object):
 
@@ -19,14 +19,7 @@ class CleanConfig(object):
 	name = staticmethod(name)
 
 	def load_configlist(self):
-		
-		configs = {}
-		with open(self.target, 'r') as configfile:
-			lines = configfile.readlines()
-		for line in lines:
-			ls = line.split()
-			configs[ls[0]] = ls[1]
-		return configs
+		return grabdict(self.target)
 
 	def check(self,  **kwargs):
 		onProgress = kwargs.get('onProgress', None)
