@@ -380,24 +380,26 @@ class DateSet(EverythingSet):
 		mode = options.get("mode", "older")
 		if str(mode).lower() not in ["newer", "older"]:
 			raise SetConfigError(_("invalid 'mode' value %s (use either 'newer' or 'older')") % mode)
-		package = options.get("package")
-		if package is not None:
-			format = "package"
-		else:
-			filestamp = options.get("filestamp")
-			if filestamp is not None:
-				format = "filestamp"
-			else:
-				seconds = options.get("seconds")
-				if seconds is not None:
-					format = "seconds"
-				else:
-					dateopt = options.get("date")
-					if dateopt is not None:
-						format = "date"
-					else:
-						raise SetConfigError(_("none of these options specified: 'package', 'filestamp', 'seconds', 'date'"))
+
+		formats = []
+		if options.get("package") is not None:
+			formats.append("package")
+		if options.get("filestamp") is not None:
+			formats.append("filestamp")
+		if options.get("seconds") is not None:
+			formats.append("seconds")
+		if options.get("date") is not None:
+			formats.append("date")
+
+		if not formats:
+			raise SetConfigError(_("none of these options specified: 'package', 'filestamp', 'seconds', 'date'"))
+		elif len(formats) > 1:
+			raise SetConfigError(_("no more than one of these options is allowed: 'package', 'filestamp', 'seconds', 'date'"))
+
+		format = formats[0]
+
 		if (format == "package"):
+			package = options.get("package")
 			try:
 				cpv = vardbapi.match(package)[0]
 				path = vardbapi.getpath(cpv, filename="COUNTER")
@@ -405,6 +407,7 @@ class DateSet(EverythingSet):
 			except ValueError:
 				raise SetConfigError(_("cannot determine installation date of package %s") % package)
 		elif (format == "filestamp"):
+			filestamp = options.get("filestamp")
 			try:
 				date = os.stat(filestamp).st_mtime
 			except OSError:
@@ -412,8 +415,9 @@ class DateSet(EverythingSet):
 		elif (format == "seconds"):
 			# Do *not* test for integer:
 			# Modern filesystems support fractional seconds
-			date = seconds
+			date = options.get("seconds")
 		else:
+			dateopt = options.get("date")
 			try:
 				dateformat = options.get("dateformat", "%x %X")
 				date = time.mktime(time.strptime(dateopt, dateformat))
