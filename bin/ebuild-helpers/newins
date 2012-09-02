@@ -15,7 +15,7 @@ fi
 	eqawarn "QA Notice: ${helper} called with more than 2 arguments: ${@:3}"
 
 stdin=
-case ${EAPI} in
+case "${EAPI}" in
 	0|1|2|3|4|4-python|4-slot-abi) ;;
 	*) [[ $1 = "-" ]] && stdin=yes ;;
 esac

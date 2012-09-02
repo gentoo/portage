@@ -174,7 +174,7 @@ usev() {
 	return 1
 }
 
-case ${EAPI} in
+case "${EAPI}" in
 	0|1|2|3|4|4-python|4-slot-abi) ;;
 	*)
 		usex() {

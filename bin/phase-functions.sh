@@ -755,12 +755,12 @@ _ebuild_phase_funcs() {
 			eval "$x() { _eapi0_$x \"\$@\" ; }"
 	done
 
-	case $eapi in
+	case "$eapi" in
 
 		0|1)
 
 			if ! declare -F src_compile >/dev/null ; then
-				case $eapi in
+				case "$eapi" in
 					0)
 						src_compile() { _eapi0_src_compile "$@" ; }
 						;;
@@ -807,7 +807,7 @@ _ebuild_phase_funcs() {
 
 				eval "default() { _eapi2_$phase_func \"\$@\" ; }"
 
-				case $eapi in
+				case "$eapi" in
 					2|3)
 						;;
 					*)

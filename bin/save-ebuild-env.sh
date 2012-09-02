@@ -73,7 +73,7 @@ save_ebuild_env() {
 		_hasg _hasgq _unpack_tar \
 		${QA_INTERCEPTORS}
 
-	case ${EAPI} in
+	case "${EAPI}" in
 		0|1|2|3|4|4-python|4-slot-abi) ;;
 		*) unset -f usex ;;
 	esac

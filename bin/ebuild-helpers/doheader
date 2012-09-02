@@ -4,7 +4,7 @@
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
-case ${EAPI} in
+case "${EAPI}" in
 	0|1|2|3|4|4-python|4-slot-abi)
 		die "${0##*/} is not supported in EAPI ${EAPI}"
 		;;
