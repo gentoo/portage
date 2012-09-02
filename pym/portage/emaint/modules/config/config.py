@@ -11,6 +11,7 @@ class CleanConfig(object):
 	short_desc = "Discard any no longer installed configs from emerge's tracker list"
 
 	def __init__(self):
+		self._root = portage.settings["ROOT"]
 		self.target = os.path.join(portage.settings["EROOT"], PRIVATE_PATH, 'config')
 
 	def name():
@@ -52,10 +53,17 @@ class CleanConfig(object):
 		if onProgress:
 			onProgress(maxval, 0)
 			i = 0
-		keys = sorted(configs)
+
+		root = self._root
+		if root == "/":
+			root = None
 		modified = False
-		for config in keys:
-			if not os.path.exists(config):
+		for config in sorted(configs):
+			if root is None:
+				full_path = config
+			else:
+				full_path = os.path.join(root, config.lstrip(os.sep))
+			if not os.path.exists(full_path):
 				modified = True
 				configs.pop(config)
 				messages.append("  %s" % config)
