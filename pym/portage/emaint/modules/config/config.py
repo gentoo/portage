@@ -4,7 +4,7 @@
 import portage
 from portage import os
 from portage.const import PRIVATE_PATH
-
+from portage.util import writedict
 
 class CleanConfig(object):
 
@@ -53,21 +53,17 @@ class CleanConfig(object):
 			onProgress(maxval, 0)
 			i = 0
 		keys = sorted(configs)
+		modified = False
 		for config in keys:
 			if not os.path.exists(config):
+				modified = True
 				configs.pop(config)
 				messages.append("  %s" % config)
 			if onProgress:
 				onProgress(maxval, i+1)
 				i += 1
-		lines = []
-		keys = sorted(configs)
-		for key in keys:
-			line = ' '.join([key, configs[key]])
-			lines.append(line)
-		lines.append('')
-		with open(self.target, 'w') as configfile:
-			configfile.write('\n'.join(lines))
+		if modified:
+			writedict(configs, self.target)
 		return self._format_output(messages, True)
 
 	def _format_output(self, messages=[], cleaned=False):
