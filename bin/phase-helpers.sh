@@ -639,6 +639,8 @@ apply_user_patches() {
 }
 
 _eapi5_apply_user_patches() {
+	[[ ${EBUILD_PHASE} == prepare ]] || \
+		die "apply_user_patches may only be called during src_prepare"
 	# This is a no-op that is just enough to fullfill the spec.
 	[[ -f ${PORTAGE_BUILDDIR}/.apply_user_patches ]] && return 1
 	> "${PORTAGE_BUILDDIR}/.apply_user_patches" || die
