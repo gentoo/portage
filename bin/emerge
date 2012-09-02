@@ -35,13 +35,10 @@ else:
 
 signal.signal(debug_signum, debug_signal)
 
-try:
-	from _emerge.main import emerge_main
-except ImportError:
-	from os import path as osp
-	import sys
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	from _emerge.main import emerge_main
+from os import path as osp
+pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
+sys.path.insert(0, pym_path)
+from _emerge.main import emerge_main
 
 if __name__ == "__main__":
 	import sys

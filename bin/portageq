@@ -34,13 +34,8 @@ if os.environ.get("SANDBOX_ON") == "1":
 			":".join(filter(None, sandbox_write))
 	del sandbox_write
 
-try:
-	import portage
-except ImportError:
-	sys.path.insert(0, pym_path)
-	import portage
-del pym_path
-
+sys.path.insert(0, pym_path)
+import portage
 from portage import os
 from portage.eapi import eapi_has_repo_deps
 from portage.util import writemsg, writemsg_stdout

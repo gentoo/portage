@@ -33,12 +33,10 @@ except ImportError:
 from itertools import chain
 from stat import S_ISDIR
 
-try:
-	import portage
-except ImportError:
-	from os import path as osp
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
+from os import path as osp
+pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
+sys.path.insert(0, pym_path)
+import portage
 portage._disable_legacy_globals()
 portage.dep._internal_warnings = True
 
