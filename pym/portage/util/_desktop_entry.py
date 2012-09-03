@@ -44,13 +44,18 @@ def parse_desktop_entry(path):
 _trivial_warnings = re.compile(r' looks redundant with value ')
 _ignore_kde_key_re = re.compile(r'^\s*(configurationType\s*=|Type\s*=\s*Service)')
 _ignore_kde_types = frozenset(
-	["AkonadiAgent", "AkonadiResource", "Service", "ServiceType"])
+	["AkonadiAgent", "AkonadiResource", "Service", "ServiceType", "XSession"])
 
 # kdebase-data installs files with [Currency Code] sections
 # in /usr/share/locale/currency
 # kdepim-runtime installs files with [Plugin] and [Wizard]
 # sections in /usr/share/apps/akonadi/{plugins,accountwizard}
-_ignore_kde_sections = ("Currency Code", "Plugin", "Wizard")
+# kdm installs files with [KCM Locale], [KDE Desktop Pattern],
+# [KdmGreeterTheme] and [Wallpaper] sections in various directories
+# libkdegames installs files with [KDE Backdeck] sections in
+# /usr/share/apps/carddecks/
+# Various KDE games install files with [KGameTheme] sections
+_ignore_kde_sections = ("Currency Code", "KCM Locale", "KDE Backdeck", "KDE Desktop Pattern", "KDE Desktop Program", "KdmGreeterTheme", "KGameTheme", "Plugin", "Wallpaper", "Wizard")
 
 _ignored_errors = (
 		# Ignore error for emacs.desktop:
