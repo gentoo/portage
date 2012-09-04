@@ -7,7 +7,6 @@ import portage
 from portage import os
 from portage.exception import PortageException
 from portage.util.SlotObject import SlotObject
-import errno
 
 class EbuildBuildDir(SlotObject):
 
@@ -98,10 +97,8 @@ class EbuildBuildDir(SlotObject):
 		if catdir_lock.wait() == os.EX_OK:
 			try:
 				os.rmdir(self._catdir)
-			except OSError as e:
-				if e.errno not in (errno.ENOENT,
-					errno.ENOTEMPTY, errno.EEXIST, errno.EPERM):
-					raise
+			except OSError:
+				pass
 			finally:
 				catdir_lock.unlock()
 
