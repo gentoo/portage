@@ -1481,6 +1481,12 @@ def expand_set_arguments(myfiles, myaction, root_config):
 				if s not in sets:
 					display_missing_pkg_set(root_config, s)
 					return (None, 1)
+				if s == "installed":
+					msg = ("The @installed set is deprecated and will soon be "
+					"removed. Please refer to bug #387059 for details.")
+					out = portage.output.EOutput()
+					for line in textwrap.wrap(msg, 50):
+						out.ewarn(line)
 				setconfig.active.append(s)
 				try:
 					set_atoms = setconfig.getSetAtoms(s)
