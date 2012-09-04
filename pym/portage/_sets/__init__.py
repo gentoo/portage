@@ -131,6 +131,12 @@ class SetConfig(object):
 		parser.set("usersets", "directory", "%(PORTAGE_CONFIGROOT)setc/portage/sets")
 		parser.set("usersets", "world-candidate", "true")
 
+		parser.remove_section("live-rebuild")
+		parser.add_section("live-rebuild")
+		parser.set("live-rebuild", "class", "portage.sets.dbapi.VariableSet")
+		parser.set("live-rebuild", "variable", "INHERITED")
+		parser.set("live-rebuild", "includes", "bzr cvs darcs git git-2 mercurial subversion tla")
+
 		parser.remove_section("module-rebuild")
 		parser.add_section("module-rebuild")
 		parser.set("module-rebuild", "class", "portage.sets.dbapi.OwnerSet")
