@@ -326,6 +326,7 @@ class CategorySet(PackageSet):
 
 class AgeSet(EverythingSet):
 	_operations = ["merge", "unmerge"]
+	_aux_keys = ('BUILD_TIME',)
 
 	def __init__(self, vardb, mode="older", age=7):
 		super(AgeSet, self).__init__(vardb)
@@ -335,8 +336,12 @@ class AgeSet(EverythingSet):
 	def _filter(self, atom):
 	
 		cpv = self._db.match(atom)[0]
-		path = self._db.getpath(cpv, filename="COUNTER")
-		age = (time.time() - os.stat(path).st_mtime) / (3600 * 24)
+		try:
+			date, = self._db.aux_get(cpv, self._aux_keys)
+			date = int(date)
+		except (KeyError, ValueError):
+			return bool(self._mode == "older")
+		age = (time.time() - date) / (3600 * 24)
 		if ((self._mode == "older" and age <= self._age) \
 			or (self._mode == "newer" and age >= self._age)):
 			return False
@@ -357,6 +362,7 @@ class AgeSet(EverythingSet):
 
 class DateSet(EverythingSet):
 	_operations = ["merge", "unmerge"]
+	_aux_keys = ('BUILD_TIME',)
 
 	def __init__(self, vardb, date, mode="older"):
 		super(DateSet, self).__init__(vardb)
@@ -366,8 +372,11 @@ class DateSet(EverythingSet):
 	def _filter(self, atom):
 
 		cpv = self._db.match(atom)[0]
-		path = self._db.getpath(cpv, filename="COUNTER")
-		date = os.stat(path).st_mtime
+		try:
+			date, = self._db.aux_get(cpv, self._aux_keys)
+			date = int(date)
+		except (KeyError, ValueError):
+			return bool(self._mode == "older")
 		# Make sure inequality is _strict_ to exclude tested package
 		if ((self._mode == "older" and date < self._date) \
 			or (self._mode == "newer" and date > self._date)):
@@ -402,25 +411,26 @@ class DateSet(EverythingSet):
 			package = options.get("package")
 			try:
 				cpv = vardbapi.match(package)[0]
-				path = vardbapi.getpath(cpv, filename="COUNTER")
-				date = os.stat(path).st_mtime
-			except ValueError:
+				date, = vardbapi.aux_get(cpv, ('BUILD_TIME',))
+				date = int(date)
+			except (KeyError, ValueError):
 				raise SetConfigError(_("cannot determine installation date of package %s") % package)
 		elif (format == "filestamp"):
 			filestamp = options.get("filestamp")
 			try:
-				date = os.stat(filestamp).st_mtime
-			except OSError:
+				date = int(os.stat(filestamp).st_mtime)
+			except (OSError, ValueError):
 				raise SetConfigError(_("cannot determine 'filestamp' of '%s'") % filestamp)
 		elif (format == "seconds"):
-			# Do *not* test for integer:
-			# Modern filesystems support fractional seconds
-			date = options.get("seconds")
+			try:
+				date = int(options.get("seconds"))
+			except ValueError:
+				raise SetConfigError(_("option 'seconds' must be an integer"))
 		else:
 			dateopt = options.get("date")
 			try:
 				dateformat = options.get("dateformat", "%x %X")
-				date = time.mktime(time.strptime(dateopt, dateformat))
+				date = int(time.mktime(time.strptime(dateopt, dateformat)))
 			except ValueError:
 				raise SetConfigError(_("'date=%s' does not match 'dateformat=%s'") % (dateopt, dateformat))
 		return DateSet(vardb=vardbapi, date=date, mode=mode)
