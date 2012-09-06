@@ -2475,7 +2475,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				sys.exit(1)
 			try:
 				os.rmdir(myportdir)
-			except OSError, e:
+			except OSError as e:
 				if e.errno != errno.ENOENT:
 					sys.stderr.write(
 						"!!! existing '%s' directory; exiting.\n" % myportdir)
@@ -2501,7 +2501,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			f.write(time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
 			f.write('\n')
 			f.close()
-		except IOError, e:
+		except IOError as e:
 			# too bad, next time better luck!
 			pass
 
