@@ -32,10 +32,14 @@ class UseManager(object):
 		#	profiles
 		#--------------------------------
 		#	use.mask			_usemask_list
+		#	use.stable.mask			_usestablemask_list
 		#	use.force			_useforce_list
+		#	use.stable.force		_usestableforce_list
 		#	package.use.mask		_pusemask_list
+		#	package.use.stable.mask		_pusestablemask_list
 		#	package.use			_pkgprofileuse
 		#	package.use.force		_puseforce_list
+		#	package.use.stable.force	_pusestableforce_list
 		#--------------------------------
 		#	user config
 		#--------------------------------
