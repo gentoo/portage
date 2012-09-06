@@ -131,6 +131,23 @@ class SetConfig(object):
 		parser.set("usersets", "directory", "%(PORTAGE_CONFIGROOT)setc/portage/sets")
 		parser.set("usersets", "world-candidate", "true")
 
+		parser.remove_section("live-rebuild")
+		parser.add_section("live-rebuild")
+		parser.set("live-rebuild", "class", "portage.sets.dbapi.VariableSet")
+		parser.set("live-rebuild", "variable", "INHERITED")
+		parser.set("live-rebuild", "includes", "bzr cvs darcs git git-2 mercurial subversion tla")
+
+		parser.remove_section("module-rebuild")
+		parser.add_section("module-rebuild")
+		parser.set("module-rebuild", "class", "portage.sets.dbapi.OwnerSet")
+		parser.set("module-rebuild", "files", "/lib/modules")
+
+		parser.remove_section("x11-module-rebuild")
+		parser.add_section("x11-module-rebuild")
+		parser.set("x11-module-rebuild", "class", "portage.sets.dbapi.OwnerSet")
+		parser.set("x11-module-rebuild", "files", "/usr/lib/xorg/modules")
+		parser.set("x11-module-rebuild", "exclude-files", "/usr/bin/Xorg")
+
 	def update(self, setname, options):
 		parser = self._parser
 		self.errors = []

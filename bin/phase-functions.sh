@@ -11,7 +11,7 @@ PORTAGE_READONLY_METADATA="DEFINED_PHASES DEPEND DESCRIPTION
 	EAPI HOMEPAGE INHERITED IUSE REQUIRED_USE KEYWORDS LICENSE
 	PDEPEND PROVIDE RDEPEND REPOSITORY RESTRICT SLOT SRC_URI"
 
-PORTAGE_READONLY_VARS="D EBUILD EBUILD_PHASE \
+PORTAGE_READONLY_VARS="D EBUILD EBUILD_PHASE EBUILD_PHASE_FUNC \
 	EBUILD_SH_ARGS ECLASSDIR EMERGE_FROM FILESDIR MERGE_TYPE \
 	PM_EBUILD_HOOK_DIR \
 	PORTAGE_ACTUAL_DISTDIR PORTAGE_ARCHLIST PORTAGE_BASHRC  \
@@ -29,7 +29,7 @@ PORTAGE_READONLY_VARS="D EBUILD EBUILD_PHASE \
 	PORTAGE_TMPDIR PORTAGE_UPDATE_ENV PORTAGE_USERNAME \
 	PORTAGE_VERBOSE PORTAGE_WORKDIR_MODE PORTDIR PORTDIR_OVERLAY \
 	PROFILE_PATHS REPLACING_VERSIONS REPLACED_BY_VERSION T WORKDIR \
-	__PORTAGE_TEST_HARDLINK_LOCKS ED EROOT"
+	__PORTAGE_HELPER __PORTAGE_TEST_HARDLINK_LOCKS ED EROOT"
 
 PORTAGE_SAVED_READONLY_VARS="A CATEGORY P PF PN PR PV PVR"
 
@@ -277,7 +277,8 @@ dyn_clean() {
 			"$PORTAGE_BUILDDIR"/.{configured,compiled,tested,packaged} \
 			"$PORTAGE_BUILDDIR"/.die_hooks \
 			"$PORTAGE_BUILDDIR"/.ipc_{in,out,lock} \
-			"$PORTAGE_BUILDDIR"/.exit_status
+			"$PORTAGE_BUILDDIR"/.exit_status \
+			"$PORTAGE_BUILDDIR"/.apply_user_patches
 
 		rm -rf "${PORTAGE_BUILDDIR}/build-info"
 		rm -rf "${WORKDIR}"
@@ -371,6 +372,7 @@ dyn_prepare() {
 	else
 		die "The source directory '${S}' doesn't exist"
 	fi
+	rm -f "${PORTAGE_BUILDDIR}/.apply_user_patches" || die
 
 	trap abort_prepare SIGINT SIGQUIT
 
@@ -381,6 +383,14 @@ dyn_prepare() {
 		die "Failed to create $PORTAGE_BUILDDIR/.prepared"
 	vecho ">>> Source prepared."
 	ebuild_phase post_src_prepare
+	case "${EAPI}" in
+		0|1|2|3|4|4-python|4-slot-abi)
+			;;
+		*)
+			[[ ! -f ${PORTAGE_BUILDDIR}/.apply_user_patches ]] && \
+				die "src_prepare must call apply_user_patches at least once"
+			;;
+	esac
 
 	trap - SIGINT SIGQUIT
 }
@@ -746,12 +756,12 @@ _ebuild_phase_funcs() {
 			eval "$x() { _eapi0_$x \"\$@\" ; }"
 	done
 
-	case $eapi in
+	case "$eapi" in
 
 		0|1)
 
 			if ! declare -F src_compile >/dev/null ; then
-				case $eapi in
+				case "$eapi" in
 					0)
 						src_compile() { _eapi0_src_compile "$@" ; }
 						;;
@@ -798,13 +808,25 @@ _ebuild_phase_funcs() {
 
 				eval "default() { _eapi2_$phase_func \"\$@\" ; }"
 
-				case $eapi in
+				case "$eapi" in
 					2|3)
 						;;
 					*)
 						eval "default_src_install() { _eapi4_src_install \"\$@\" ; }"
 						[[ $phase_func = src_install ]] && \
 							eval "default() { _eapi4_$phase_func \"\$@\" ; }"
+						case "$eapi" in
+							4|4-python|4-slot-abi)
+								;;
+							*)
+								! declare -F src_prepare >/dev/null && \
+									src_prepare() { _eapi5_src_prepare "$@" ; }
+								default_src_prepare() { _eapi5_src_prepare "$@" ; }
+								[[ $phase_func = src_prepare ]] && \
+									eval "default() { _eapi5_$phase_func \"\$@\" ; }"
+								apply_user_patches() { _eapi5_apply_user_patches "$@" ; }
+								;;
+						esac
 						;;
 				esac
 

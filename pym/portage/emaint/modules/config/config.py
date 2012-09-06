@@ -4,14 +4,14 @@
 import portage
 from portage import os
 from portage.const import PRIVATE_PATH
-from portage.checksum import perform_md5
-
+from portage.util import grabdict, writedict
 
 class CleanConfig(object):
 
 	short_desc = "Discard any no longer installed configs from emerge's tracker list"
 
 	def __init__(self):
+		self._root = portage.settings["ROOT"]
 		self.target = os.path.join(portage.settings["EROOT"], PRIVATE_PATH, 'config')
 
 	def name():
@@ -19,70 +19,55 @@ class CleanConfig(object):
 	name = staticmethod(name)
 
 	def load_configlist(self):
-		
-		configs = {}
-		with open(self.target, 'r') as configfile:
-			lines = configfile.readlines()
-		for line in lines:
-			ls = line.split()
-			configs[ls[0]] = ls[1]
-		return configs
+		return grabdict(self.target)
 
 	def check(self,  **kwargs):
 		onProgress = kwargs.get('onProgress', None)
 		configs = self.load_configlist()
 		messages = []
-		chksums = []
 		maxval = len(configs)
 		if onProgress:
 			onProgress(maxval, 0)
 			i = 0
 		keys = sorted(configs)
 		for config in keys:
-			if os.path.exists(config):
-				md5sumactual = perform_md5(config)
-				if md5sumactual != configs[config]:
-					chksums.append("  %s" % config)
-			else:
+			if not os.path.exists(config):
 				messages.append("  %s" % config)
 			if onProgress:
 				onProgress(maxval, i+1)
 				i += 1
-		return self._format_output(messages, chksums)
+		return self._format_output(messages)
 
 	def fix(self, **kwargs):
 		onProgress = kwargs.get('onProgress', None)
 		configs = self.load_configlist()
 		messages = []
-		chksums = []
 		maxval = len(configs)
 		if onProgress:
 			onProgress(maxval, 0)
 			i = 0
-		keys = sorted(configs)
-		for config in keys:
-			if os.path.exists(config):
-				md5sumactual = perform_md5(config)
-				if md5sumactual != configs[config]:
-					chksums.append("  %s" % config)
-					configs.pop(config)
+
+		root = self._root
+		if root == "/":
+			root = None
+		modified = False
+		for config in sorted(configs):
+			if root is None:
+				full_path = config
 			else:
-					configs.pop(config)
-					messages.append("  %s" % config)
+				full_path = os.path.join(root, config.lstrip(os.sep))
+			if not os.path.exists(full_path):
+				modified = True
+				configs.pop(config)
+				messages.append("  %s" % config)
 			if onProgress:
 				onProgress(maxval, i+1)
 				i += 1
-		lines = []
-		keys = sorted(configs)
-		for key in keys:
-			line = ' '.join([key, configs[key]])
-			lines.append(line)
-		lines.append('')
-		with open(self.target, 'w') as configfile:
-			configfile.write('\n'.join(lines))
-		return self._format_output(messages, chksums, True)
+		if modified:
+			writedict(configs, self.target)
+		return self._format_output(messages, True)
 
-	def _format_output(self, messages=[], chksums=[], cleaned=False):
+	def _format_output(self, messages=[], cleaned=False):
 		output = []
 		if messages:
 			output.append('Not Installed:')
@@ -91,11 +76,4 @@ class CleanConfig(object):
 			if cleaned:
 				tot += ' ...Cleaned'
 			output.append(tot  % len(messages))
-		if chksums:
-			output.append('\nChecksums did not match:')
-			output += chksums
-			tot = '------------------------------------\n  Total %i Checksums did not match'
-			if cleaned:
-				tot += ' ...Cleaned'
-			output.append(tot % len(chksums))
 		return output

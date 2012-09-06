@@ -16,20 +16,10 @@ from __future__ import print_function
 from stat import ST_GID, ST_MODE, ST_UID
 from random import random
 import atexit, re, shutil, stat, sys
-try:
-    from subprocess import getoutput as subprocess_getoutput
-    from subprocess import getstatusoutput as subprocess_getstatusoutput
-except ImportError:
-    from commands import getoutput as subprocess_getoutput
-    from commands import getstatusoutput as subprocess_getstatusoutput
-from os import environ as ose
 from os import path as osp
-if ose.__contains__("PORTAGE_PYTHONPATH"):
-    sys.path.insert(0, ose["PORTAGE_PYTHONPATH"])
-else:
-    sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.                    realpath(__file__))), "pym"))
+pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
+sys.path.insert(0, pym_path)
 import portage
-
 from portage import os
 from portage import dispatch_conf
 from portage import _unicode_decode

@@ -33,13 +33,9 @@ except ImportError:
 from itertools import chain
 from stat import S_ISDIR
 
-# for an explanation on this logic, see pym/_emerge/__init__.py
-import os
-import sys
-if os.environ.__contains__("PORTAGE_PYTHONPATH"):
-	sys.path.insert(0, os.environ["PORTAGE_PYTHONPATH"])
-else:
-	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
+from os import path as osp
+pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
+sys.path.insert(0, pym_path)
 import portage
 portage._disable_legacy_globals()
 portage.dep._internal_warnings = True
@@ -2032,7 +2028,7 @@ for x in effective_scanlist:
 					" not supported with EAPI='%s'" % (eapi,))
 			try:
 				portage.dep.check_required_use(required_use, (),
-					pkg.iuse.is_valid_flag)
+					pkg.iuse.is_valid_flag, eapi=eapi)
 			except portage.exception.InvalidDependString as e:
 				stats["REQUIRED_USE.syntax"] = stats["REQUIRED_USE.syntax"] + 1
 				fails["REQUIRED_USE.syntax"].append(

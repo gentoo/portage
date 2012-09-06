@@ -473,7 +473,8 @@ class Glsa:
 			myurl = "file://"+self.nr
 		else:
 			myurl = repository + "glsa-%s.xml" % str(self.nr)
-		self.parse(urllib_request_urlopen(myurl))
+		with urllib_request_urlopen(myurl) as f:
+			self.parse(f)
 		return None
 
 	def parse(self, myfile):

@@ -174,6 +174,20 @@ usev() {
 	return 1
 }
 
+case "${EAPI}" in
+	0|1|2|3|4|4-python|4-slot-abi) ;;
+	*)
+		usex() {
+			if use "$1"; then
+				echo "${2-yes}$4"
+			else
+				echo "${3-no}$5"
+			fi
+			return 0
+		}
+		;;
+esac
+
 use() {
 	local u=$1
 	local found=0
@@ -421,11 +435,29 @@ econf() {
 		fi
 
 		# EAPI=4 adds --disable-dependency-tracking to econf
-		if ! has "$EAPI" 0 1 2 3 && \
-			"${ECONF_SOURCE}/configure" --help 2>/dev/null | \
-			grep -q disable-dependency-tracking ; then
-			set -- --disable-dependency-tracking "$@"
-		fi
+		case "${EAPI}" in
+			0|1|2|3)
+				;;
+			*)
+				local conf_help=$("${ECONF_SOURCE}/configure" --help 2>/dev/null)
+				case "${conf_help}" in
+					*--disable-dependency-tracking*)
+						set -- --disable-dependency-tracking "$@"
+						;;
+				esac
+				case "${EAPI}" in
+					4|4-python|4-slot-abi)
+						;;
+					*)
+						case "${conf_help}" in
+							*--disable-silent-rules*)
+								set -- --disable-silent-rules "$@"
+								;;
+						esac
+						;;
+				esac
+				;;
+		esac
 
 		# if the profile defines a location to install libs to aside from default, pass it on.
 		# if the ebuild passes in --libdir, they're responsible for the conf_libdir fun.
@@ -544,13 +576,19 @@ _eapi0_src_test() {
 	# we call it in 'nonfatal' mode, we use emake_cmd
 	# to emulate the desired parts of emake behavior.
 	local emake_cmd="${MAKE:-make} ${MAKEOPTS} ${EXTRA_EMAKE}"
-	if $emake_cmd -j1 check -n &> /dev/null; then
+	local internal_opts=
+	case "$EAPI" in
+		0|1|2|3|4|4-python|4-slot-abi)
+			internal_opts+=" -j1"
+			;;
+	esac
+	if $emake_cmd ${internal_opts} check -n &> /dev/null; then
 		vecho ">>> Test phase [check]: ${CATEGORY}/${PF}"
-		$emake_cmd -j1 check || \
+		$emake_cmd ${internal_opts} check || \
 			die "Make check failed. See above for details."
-	elif $emake_cmd -j1 test -n &> /dev/null; then
+	elif $emake_cmd ${internal_opts} test -n &> /dev/null; then
 		vecho ">>> Test phase [test]: ${CATEGORY}/${PF}"
-		$emake_cmd -j1 test || \
+		$emake_cmd ${internal_opts} test || \
 			die "Make test failed. See above for details."
 	else
 		vecho ">>> Test phase [none]: ${CATEGORY}/${PF}"
@@ -592,29 +630,68 @@ _eapi4_src_install() {
 	fi
 }
 
+_eapi5_src_prepare() {
+	apply_user_patches
+}
+
+apply_user_patches() {
+	die "apply_user_patches is not supported with EAPI ${EAPI}"
+}
+
+_eapi5_apply_user_patches() {
+	[[ ${EBUILD_PHASE} == prepare ]] || \
+		die "apply_user_patches may only be called during src_prepare"
+	# This is a no-op that is just enough to fullfill the spec.
+	[[ -f ${PORTAGE_BUILDDIR}/.apply_user_patches ]] && return 1
+	> "${PORTAGE_BUILDDIR}/.apply_user_patches" || die
+	return 1
+}
+
 # @FUNCTION: has_version
-# @USAGE: <DEPEND ATOM>
+# @USAGE: [--host-root] <DEPEND ATOM>
 # @DESCRIPTION:
 # Return true if given package is installed. Otherwise return false.
 # Callers may override the ROOT variable in order to match packages from an
 # alternative ROOT.
 has_version() {
 
-	local eroot
+	local atom eroot host_root=false root=${ROOT}
+	while [ $# -gt 0 ] ; do
+		case "$1" in
+			--host-root)
+				host_root=true
+				;;
+			*)
+				[[ -n ${atom} ]] && die "${FUNCNAME[0]}: unused argument: $1"
+				atom=$1
+				;;
+		esac
+		shift
+	done
+
+	if ${host_root} ; then
+		case "${EAPI}" in
+			0|1|2|3|4|4-python|4-slot-abi)
+				die "${FUNCNAME[0]}: option --host-root is not supported with EAPI ${EAPI}"
+				;;
+		esac
+		root=/
+	fi
+
 	case "$EAPI" in
 		0|1|2)
 			[[ " ${FEATURES} " == *" force-prefix "* ]] && \
-				eroot=${ROOT%/}${EPREFIX}/ || eroot=${ROOT}
+				eroot=${root%/}${EPREFIX}/ || eroot=${root}
 			;;
 		*)
-			eroot=${ROOT%/}${EPREFIX}/
+			eroot=${root%/}${EPREFIX}/
 			;;
 	esac
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
-		"$PORTAGE_BIN_PATH"/ebuild-ipc has_version "${eroot}" "$1"
+		"$PORTAGE_BIN_PATH"/ebuild-ipc has_version "${eroot}" "${atom}"
 	else
 		PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-		"${PORTAGE_PYTHON:-@PORTAGE_PREFIX_PYTHON@}" "${PORTAGE_BIN_PATH}/portageq" has_version "${eroot}" "$1"
+		"${PORTAGE_PYTHON:-@PORTAGE_PREFIX_PYTHON@}" "${PORTAGE_BIN_PATH}/portageq" has_version "${eroot}" "${atom}"
 	fi
 	local retval=$?
 	case "${retval}" in
@@ -628,28 +705,50 @@ has_version() {
 }
 
 # @FUNCTION: best_version
-# @USAGE: <DEPEND ATOM>
+# @USAGE: [--host-root] <DEPEND ATOM>
 # @DESCRIPTION:
 # Returns the best/most-current match.
 # Callers may override the ROOT variable in order to match packages from an
 # alternative ROOT.
 best_version() {
 
-	local eroot
+	local atom eroot host_root=false root=${ROOT}
+	while [ $# -gt 0 ] ; do
+		case "$1" in
+			--host-root)
+				host_root=true
+				;;
+			*)
+				[[ -n ${atom} ]] && die "${FUNCNAME[0]}: unused argument: $1"
+				atom=$1
+				;;
+		esac
+		shift
+	done
+
+	if ${host_root} ; then
+		case "${EAPI}" in
+			0|1|2|3|4|4-python|4-slot-abi)
+				die "${FUNCNAME[0]}: option --host-root is not supported with EAPI ${EAPI}"
+				;;
+		esac
+		root=/
+	fi
+
 	case "$EAPI" in
 		0|1|2)
 			[[ " ${FEATURES} " == *" force-prefix "* ]] && \
-				eroot=${ROOT%/}${EPREFIX}/ || eroot=${ROOT}
+				eroot=${root%/}${EPREFIX}/ || eroot=${root}
 			;;
 		*)
-			eroot=${ROOT%/}${EPREFIX}/
+			eroot=${root%/}${EPREFIX}/
 			;;
 	esac
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
-		"$PORTAGE_BIN_PATH"/ebuild-ipc best_version "${eroot}" "$1"
+		"$PORTAGE_BIN_PATH"/ebuild-ipc best_version "${eroot}" "${atom}"
 	else
 		PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-		"${PORTAGE_PYTHON:-@PORTAGE_PREFIX_PYTHON@}" "${PORTAGE_BIN_PATH}/portageq" best_version "${eroot}" "$1"
+		"${PORTAGE_PYTHON:-@PORTAGE_PREFIX_PYTHON@}" "${PORTAGE_BIN_PATH}/portageq" best_version "${eroot}" "${atom}"
 	fi
 	local retval=$?
 	case "${retval}" in

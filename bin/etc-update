@@ -62,7 +62,7 @@ do_mv_ln() {
 }
 
 scan() {
-	echo "Scanning Configuration files..."
+	${QUIET} || echo "Scanning Configuration files..."
 	rm -rf "${TMP}"/files > /dev/null 2>&1
 	mkdir "${TMP}"/files || die "Failed mkdir command!"
 	count=0
@@ -107,13 +107,13 @@ scan() {
 			for mpath in ${CONFIG_PROTECT_MASK}; do
 				mpath="${EROOT%/}${mpath}"
 				if [[ "${rpath}" == "${mpath}"* ]] ; then
-					echo "Updating masked file: ${live_file}"
+					${QUIET} || echo "Updating masked file: ${live_file}"
 					mv "${cfg_file}" "${live_file}"
 					continue 2
 				fi
 			done
 			if [[ ! -f ${file} ]] ; then
-				echo "Skipping non-file ${file} ..."
+				${QUIET} || echo "Skipping non-file ${file} ..."
 				continue
 			fi
 
@@ -140,7 +140,7 @@ scan() {
 				fi
 
 				if [[ ${MATCHES} == 1 ]] ; then
-					echo "Automerging trivial changes in: ${live_file}"
+					${QUIET} || echo "Automerging trivial changes in: ${live_file}"
 					do_mv_ln "${cfg_file}" "${live_file}"
 					continue
 				else
@@ -548,9 +548,9 @@ die() {
 	local msg=$1 exitcode=${2:-1}
 
 	if [ ${exitcode} -eq 0 ] ; then
-		printf 'Exiting: %b\n' "${msg}"
+		${QUIET} || printf 'Exiting: %b\n' "${msg}"
 		scan > /dev/null
-		[ ${count} -gt 0 ] && echo "NOTE: ${count} updates remaining"
+		! ${QUIET} && [ ${count} -gt 0 ] && echo "NOTE: ${count} updates remaining"
 	else
 		error "${msg}"
 	fi
@@ -575,6 +575,7 @@ usage() {
 	  -d, --debug    Enable shell debugging
 	  -h, --help     Show help and run away
 	  -p, --preen    Automerge trivial changes only and quit
+	  -q, --quiet    Show only essential output
 	  -v, --verbose  Show settings and such along the way
 	  -V, --version  Show version and trundle away
 
@@ -600,6 +601,7 @@ declare title="Gentoo's etc-update tool!"
 
 PREEN=false
 SET_X=false
+QUIET=false
 VERBOSE=false
 NONINTERACTIVE_MV=false
 while [[ -n $1 ]] ; do
@@ -607,6 +609,7 @@ while [[ -n $1 ]] ; do
 		-d|--debug)   SET_X=true;;
 		-h|--help)    usage;;
 		-p|--preen)   PREEN=true;;
+		-q|--quiet)   QUIET=true;;
 		-v|--verbose) VERBOSE=true;;
 		-V|--version) emerge --version; exit 0;;
 		--automode)   parse_automode_flag $2 && shift || usage 1 "Invalid mode '$2'";;

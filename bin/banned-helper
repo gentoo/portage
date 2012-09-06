@@ -1,6 +1,0 @@
-#!@PORTAGE_BASH@
-# Copyright 2009 Gentoo Foundation
-# Distributed under the terms of the GNU General Public License v2
-
-die "'${0##*/}' has been banned for EAPI '$EAPI'"
-exit 1

@@ -1,18 +1,14 @@
 #!@PREFIX_PORTAGE_PYTHON@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
 
 import sys
-# for an explanation on this logic, see pym/_emerge/__init__.py 
-from os import environ as ose
 from os import path as osp
-if ose.__contains__("PORTAGE_PYTHONPATH"): 
-	sys.path.insert(0, ose["PORTAGE_PYTHONPATH"]) 
-else: 
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.    realpath(__file__))), "pym")) 
-import portage 
+pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
+sys.path.insert(0, pym_path)
+import portage
 from portage import os
 import re
 import tempfile

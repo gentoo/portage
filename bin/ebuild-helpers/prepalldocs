@@ -1,8 +1,17 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
+
+case "${EAPI}" in
+	0|1|2|3)
+		;;
+	*)
+		die "'${0##*/}' has been banned for EAPI '$EAPI'"
+		exit 1
+		;;
+esac
 
 if [[ -n $1 ]] ; then
 	vecho "${0##*/}: invalid usage; takes no arguments" 1>&2

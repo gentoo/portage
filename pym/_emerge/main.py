@@ -469,7 +469,7 @@ def insert_optional_args(args):
 		'--package-moves'        : y_or_n,
 		'--quiet'                : y_or_n,
 		'--quiet-build'          : y_or_n,
-		'--rebuild-if-new-slot-abi': y_or_n,
+		'--rebuild-if-new-slot': y_or_n,
 		'--rebuild-if-new-rev'   : y_or_n,
 		'--rebuild-if-new-ver'   : y_or_n,
 		'--rebuild-if-unbuilt'   : y_or_n,
@@ -745,11 +745,11 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices" : true_y_or_n
 		},
 
-		"--ignore-built-slot-abi-deps": {
-			"help": "Ignore the SLOT/ABI := operator parts of dependencies that have "
+		"--ignore-built-slot-operator-deps": {
+			"help": "Ignore the slot/sub-slot := operator parts of dependencies that have "
 				"been recorded when packages where built. This option is intended "
 				"only for debugging purposes, and it only affects built packages "
-				"that specify SLOT/ABI := operator dependencies using the "
+				"that specify slot/sub-slot := operator dependencies using the "
 				"experimental \"4-slot-abi\" EAPI.",
 			"type": "choice",
 			"choices": y_or_n
@@ -868,8 +868,8 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices"  : true_y_or_n,
 		},
 
-		"--rebuild-if-new-slot-abi": {
-			"help"     : ("Automatically rebuild or reinstall packages when SLOT/ABI := "
+		"--rebuild-if-new-slot": {
+			"help"     : ("Automatically rebuild or reinstall packages when slot/sub-slot := "
 				"operator dependencies can be satisfied by a newer slot, so that "
 				"older packages slots will become eligible for removal by the "
 				"--depclean action as soon as possible."),
@@ -1118,8 +1118,8 @@ def parse_opts(tmpcmdline, silent=False):
 	if myoptions.quiet_build in true_y:
 		myoptions.quiet_build = 'y'
 
-	if myoptions.rebuild_if_new_slot_abi in true_y:
-		myoptions.rebuild_if_new_slot_abi = 'y'
+	if myoptions.rebuild_if_new_slot in true_y:
+		myoptions.rebuild_if_new_slot = 'y'
 
 	if myoptions.rebuild_if_new_ver in true_y:
 		myoptions.rebuild_if_new_ver = True
@@ -1472,6 +1472,12 @@ def expand_set_arguments(myfiles, myaction, root_config):
 				if s not in sets:
 					display_missing_pkg_set(root_config, s)
 					return (None, 1)
+				if s == "installed":
+					msg = ("The @installed set is deprecated and will soon be "
+					"removed. Please refer to bug #387059 for details.")
+					out = portage.output.EOutput()
+					for line in textwrap.wrap(msg, 50):
+						out.ewarn(line)
 				setconfig.active.append(s)
 				try:
 					set_atoms = setconfig.getSetAtoms(s)

@@ -30,7 +30,7 @@ class Package(Task):
 		"root_config", "type_name",
 		"category", "counter", "cp", "cpv_split",
 		"inherited", "iuse", "mtime",
-		"pf", "root", "slot", "slot_abi", "slot_atom", "version") + \
+		"pf", "root", "slot", "sub_slot", "slot_atom", "version") + \
 		("_invalid", "_raw_metadata", "_masks", "_use",
 		"_validated_atoms", "_visible")
 
@@ -62,9 +62,16 @@ class Package(Task):
 				"SLOT: invalid value: '%s'" % self.metadata["SLOT"])
 		self.cp = self.cpv.cp
 		self.slot = self.cpv.slot
-		self.slot_abi = self.cpv.slot_abi
+		self.sub_slot = self.cpv.sub_slot
 		# sync metadata with validated repo (may be UNKNOWN_REPO)
 		self.metadata['repository'] = self.cpv.repo
+
+		if eapi_attrs.iuse_effective:
+			implicit_match = self.root_config.settings._iuse_effective_match
+		else:
+			implicit_match = self.root_config.settings._iuse_implicit_match
+		self.iuse = self._iuse(self.metadata["IUSE"].split(), implicit_match)
+
 		if (self.iuse.enabled or self.iuse.disabled) and \
 			not eapi_attrs.iuse_defaults:
 			if not self.installed:
@@ -222,14 +229,14 @@ class Package(Task):
 
 		k = 'REQUIRED_USE'
 		v = self.metadata.get(k)
-		if v:
+		if v and not self.built:
 			if not _get_eapi_attrs(eapi).required_use:
 				self._invalid_metadata('EAPI.incompatible',
 					"REQUIRED_USE set, but EAPI='%s' doesn't allow it" % eapi)
 			else:
 				try:
 					check_required_use(v, (),
-						self.iuse.is_valid_flag)
+						self.iuse.is_valid_flag, eapi=eapi)
 				except InvalidDependString as e:
 					# Force unicode format string for python-2.x safety,
 					# ensuring that PortageException.__unicode__() is used
@@ -626,7 +633,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 
 	__slots__ = ("_pkg",)
 	_wrapped_keys = frozenset(
-		["COUNTER", "INHERITED", "IUSE", "USE", "_mtime_"])
+		["COUNTER", "INHERITED", "USE", "_mtime_"])
 	_use_conditional_keys = frozenset(
 		['LICENSE', 'PROPERTIES', 'PROVIDE', 'RESTRICT',])
 
@@ -694,10 +701,6 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 		if isinstance(v, basestring):
 			v = frozenset(v.split())
 		self._pkg.inherited = v
-
-	def _set_iuse(self, k, v):
-		self._pkg.iuse = self._pkg._iuse(
-			v.split(), self._pkg.root_config.settings._iuse_implicit_match)
 
 	def _set_counter(self, k, v):
 		if isinstance(v, basestring):

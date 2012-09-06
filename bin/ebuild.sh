@@ -33,7 +33,7 @@ else
 	done
 	# These dummy functions return false in older EAPIs, in order to ensure that
 	# `use multislot` is false for the "depend" phase.
-	for x in use useq usev ; do
+	for x in use useq usev usex ; do
 		eval "${x}() {
 			if has \"\${EAPI:-0}\" 4-python; then
 				die \"\${FUNCNAME}() calls are not allowed in global scope\"

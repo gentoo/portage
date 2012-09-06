@@ -61,7 +61,7 @@ class SlotAbiDowngradeTestCase(TestCase):
 
 			ResolverPlaygroundTestCase(
 				["dev-libs/icu"],
-				options = {"--oneshot": True, "--ignore-built-slot-abi-deps": "y"},
+				options = {"--oneshot": True, "--ignore-built-slot-operator-deps": "y"},
 				success = True,
 				mergelist = ["dev-libs/icu-4.8"]),
 
@@ -85,7 +85,7 @@ class SlotAbiDowngradeTestCase(TestCase):
 
 			ResolverPlaygroundTestCase(
 				["@world"],
-				options = {"--update": True, "--deep": True, "--ignore-built-slot-abi-deps": "y"},
+				options = {"--update": True, "--deep": True, "--ignore-built-slot-operator-deps": "y"},
 				success = True,
 				mergelist = ["dev-libs/icu-4.8"]),
 
@@ -173,7 +173,7 @@ class SlotAbiDowngradeTestCase(TestCase):
 
 			ResolverPlaygroundTestCase(
 				["dev-libs/glib"],
-				options = {"--oneshot": True, "--ignore-built-slot-abi-deps": "y"},
+				options = {"--oneshot": True, "--ignore-built-slot-operator-deps": "y"},
 				success = True,
 				mergelist = ["dev-libs/glib-2.30.2"]),
 
@@ -197,7 +197,7 @@ class SlotAbiDowngradeTestCase(TestCase):
 
 			ResolverPlaygroundTestCase(
 				["@world"],
-				options = {"--update": True, "--deep": True, "--ignore-built-slot-abi-deps": "y"},
+				options = {"--update": True, "--deep": True, "--ignore-built-slot-operator-deps": "y"},
 				success = True,
 				mergelist = ["dev-libs/glib-2.30.2"]),
 

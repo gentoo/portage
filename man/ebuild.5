@@ -664,9 +664,10 @@ is used to execute pkg_pretend is not saved and therefore is not
 available in phases that execute afterwards.
 .TP
 .B pkg_nofetch
-If you turn on \fIfetch\fR in \fBRESTRICT\fR, then this function will be
-run when the files in \fBSRC_URI\fR cannot be found.  Useful for
-displaying information to the user on *how* to obtain said files.  All
+This function will be executed when the files in \fBSRC_URI\fR
+cannot be fetched for any reason. If you turn on \fIfetch\fR in
+\fBRESTRICT\fR, this is useful for displaying information to the
+user on *how* to obtain said files. All
 you have to do is output a message and let the function return.  Do not
 end the function with a call to \fBdie\fR.
 .TP

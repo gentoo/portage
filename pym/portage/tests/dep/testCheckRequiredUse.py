@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -18,6 +18,11 @@ class TestCheckRequiredUse(TestCase):
 			( "^^ ( a b )", ["a"], ["a", "b"], True),
 			( "^^ ( a b )", ["b"], ["a", "b"], True),
 			( "^^ ( a b )", ["a", "b"], ["a", "b"], False),
+			( "?? ( a b )", ["a", "b"], ["a", "b"], False),
+			( "?? ( a b )", ["a"], ["a", "b"], True),
+			( "?? ( a b )", ["b"], ["a", "b"], True),
+			( "?? ( a b )", [], ["a", "b"], True),
+			( "?? ( )", [], [], True),
 
 			( "^^ ( || ( a b ) c )", [], ["a", "b", "c"], False),
 			( "^^ ( || ( a b ) c )", ["a"], ["a", "b", "c"], True),
@@ -102,6 +107,10 @@ class TestCheckRequiredUse(TestCase):
 			( "^^ ( || ( a b ) ) ^^ ( b c ) )", [], ["a", "b", "c"]),
 		)
 
+		test_cases_xfail_eapi = (
+			( "?? ( a b )", [], ["a", "b"], "4"),
+		)
+
 		for required_use, use, iuse, expected in test_cases:
 			self.assertEqual(bool(check_required_use(required_use, use, iuse.__contains__)), \
 				expected, required_use + ", USE = " + " ".join(use))
@@ -109,6 +118,11 @@ class TestCheckRequiredUse(TestCase):
 		for required_use, use, iuse in test_cases_xfail:
 			self.assertRaisesMsg(required_use + ", USE = " + " ".join(use), \
 				InvalidDependString, check_required_use, required_use, use, iuse.__contains__)
+
+		for required_use, use, iuse, eapi in test_cases_xfail_eapi:
+			self.assertRaisesMsg(required_use + ", USE = " + " ".join(use), \
+				InvalidDependString, check_required_use, required_use, use,
+				iuse.__contains__, eapi=eapi)
 
 	def testCheckRequiredUseFilterSatisfied(self):
 		"""

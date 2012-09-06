@@ -27,7 +27,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.digestgen:digestgen',
 	'portage.package.ebuild.fetch:fetch',
 	'portage.package.ebuild._ipc.QueryCommand:QueryCommand',
-	'portage.dep._slot_abi:evaluate_slot_abi_equal_deps',
+	'portage.dep._slot_operator:evaluate_slot_operator_equal_deps',
 	'portage.package.ebuild._spawn_nofetch:spawn_nofetch',
 	'portage.util._desktop_entry:validate_desktop_entry',
 	'portage.util.ExtractKernelVersion:ExtractKernelVersion'
@@ -76,6 +76,24 @@ _unsandboxed_phases = frozenset([
 	"preinst", "pretend", "postrm",
 	"prerm", "setup"
 ])
+
+_phase_func_map = {
+	"config": "pkg_config",
+	"setup": "pkg_setup",
+	"nofetch": "pkg_nofetch",
+	"unpack": "src_unpack",
+	"prepare": "src_prepare",
+	"configure": "src_configure",
+	"compile": "src_compile",
+	"test": "src_test",
+	"install": "src_install",
+	"preinst": "pkg_preinst",
+	"postinst": "pkg_postinst",
+	"prerm": "pkg_prerm",
+	"postrm": "pkg_postrm",
+	"info": "pkg_info",
+	"pretend": "pkg_pretend",
+}
 
 def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 	"""
@@ -136,8 +154,8 @@ def _doebuild_path(settings, eapi=None):
 	extrapath = [x for x in settings.get("EXTRA_PATH", "").split(":") if x]
 	path = []
 
-	if eapi not in (None, "0", "1", "2", "3"):
-		path.append(os.path.join(portage_bin_path, "ebuild-helpers", "4"))
+	if settings.get("USERLAND", "GNU") != "GNU":
+		path.append(os.path.join(portage_bin_path, "ebuild-helpers", "bsd"))
 
 	path.append(os.path.join(portage_bin_path, "ebuild-helpers"))
 	path.extend(prerootpath)
@@ -1304,7 +1322,7 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 		pkg.metadata["REQUIRED_USE"] and \
 		eapi_has_required_use(pkg.metadata["EAPI"]):
 		result = check_required_use(pkg.metadata["REQUIRED_USE"],
-			pkg.use.enabled, pkg.iuse.is_valid_flag)
+			pkg.use.enabled, pkg.iuse.is_valid_flag, eapi=pkg.metadata["EAPI"])
 		if not result:
 			reduced_noise = result.tounicode()
 			writemsg("\n  %s\n" % _("The following REQUIRED_USE flag" + \
@@ -1661,8 +1679,12 @@ def _post_src_install_write_metadata(settings):
 
 	build_info_dir = os.path.join(settings['PORTAGE_BUILDDIR'], 'build-info')
 
-	for k in ('IUSE',):
-		v = settings.get(k)
+	metadata_keys = ['IUSE']
+	if eapi_attrs.iuse_effective:
+		metadata_keys.append('IUSE_EFFECTIVE')
+
+	for k in metadata_keys:
+		v = settings.configdict['pkg'].get(k)
 		if v is not None:
 			write_atomic(os.path.join(build_info_dir, k), v + '\n')
 
@@ -1692,7 +1714,7 @@ def _post_src_install_write_metadata(settings):
 			continue
 
 		if k.endswith('DEPEND'):
-			if eapi_attrs.slot_abi:
+			if eapi_attrs.slot_operator:
 				continue
 			token_class = Atom
 		else:
@@ -1712,8 +1734,8 @@ def _post_src_install_write_metadata(settings):
 			errors='strict') as f:
 			f.write(_unicode_decode(v + '\n'))
 
-	if eapi_attrs.slot_abi:
-		deps = evaluate_slot_abi_equal_deps(settings, use, QueryCommand.get_db())
+	if eapi_attrs.slot_operator:
+		deps = evaluate_slot_operator_equal_deps(settings, use, QueryCommand.get_db())
 		for k, v in deps.items():
 			filename = os.path.join(build_info_dir, k)
 			if not v:
@@ -2130,11 +2152,6 @@ def _handle_self_update(settings, vardb):
 	if settings["ROOT"] == "/" and \
 		portage.dep.match_from_list(
 		portage.const.PORTAGE_PACKAGE_ATOM, [cpv]):
-		inherited = frozenset(settings.get('INHERITED', '').split())
-		if not vardb.cpv_exists(cpv) or \
-			'9999' in cpv or \
-			'git' in inherited or \
-			'git-2' in inherited:
-			_prepare_self_update(settings)
-			return True
+		_prepare_self_update(settings)
+		return True
 	return False

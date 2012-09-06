@@ -7,35 +7,35 @@ from portage.exception import InvalidData
 _dep_keys = ('DEPEND', 'PDEPEND', 'RDEPEND')
 _runtime_keys = ('PDEPEND', 'RDEPEND')
 
-def find_built_slot_abi_atoms(pkg):
+def find_built_slot_operator_atoms(pkg):
 	atoms = {}
 	for k in _dep_keys:
-		atom_list = list(_find_built_slot_abi_op(use_reduce(pkg.metadata[k],
+		atom_list = list(_find_built_slot_operator(use_reduce(pkg.metadata[k],
 			uselist=pkg.use.enabled, eapi=pkg.metadata['EAPI'],
 			token_class=Atom)))
 		if atom_list:
 			atoms[k] = atom_list
 	return atoms
 
-def _find_built_slot_abi_op(dep_struct):
+def _find_built_slot_operator(dep_struct):
 	for x in dep_struct:
 		if isinstance(x, list):
-			for atom in _find_built_slot_abi_op(x):
+			for atom in _find_built_slot_operator(x):
 				yield atom
-		elif isinstance(x, Atom) and x.slot_abi_built:
+		elif isinstance(x, Atom) and x.slot_operator_built:
 			yield x
 
-def ignore_built_slot_abi_deps(dep_struct):
+def ignore_built_slot_operator_deps(dep_struct):
 	for i, x in enumerate(dep_struct):
 		if isinstance(x, list):
-			ignore_built_slot_abi_deps(x)
-		elif isinstance(x, Atom) and x.slot_abi_built:
+			ignore_built_slot_operator_deps(x)
+		elif isinstance(x, Atom) and x.slot_operator_built:
 			# There's no way of knowing here whether the SLOT
-			# part of the SLOT/ABI pair should be kept, so we
+			# part of the slot/sub-slot pair should be kept, so we
 			# ignore both parts.
 			dep_struct[i] = x.without_slot
 
-def evaluate_slot_abi_equal_deps(settings, use, trees):
+def evaluate_slot_operator_equal_deps(settings, use, trees):
 
 	metadata = settings.configdict['pkg']
 	eapi = metadata['EAPI']
@@ -65,7 +65,7 @@ def _eval_deps(dep_struct, vardbs):
 	for i, x in enumerate(dep_struct):
 		if isinstance(x, list):
 			_eval_deps(x, vardbs)
-		elif isinstance(x, Atom) and x.slot_abi_op == "=":
+		elif isinstance(x, Atom) and x.slot_operator == "=":
 			for vardb in vardbs:
 				best_version = vardb.match(x)
 				if best_version:
@@ -77,7 +77,7 @@ def _eval_deps(dep_struct, vardbs):
 						pass
 					else:
 						slot_part = "%s/%s=" % \
-							(best_version.slot, best_version.slot_abi)
+							(best_version.slot, best_version.sub_slot)
 						x = x.with_slot(slot_part)
 						dep_struct[i] = x
 						break

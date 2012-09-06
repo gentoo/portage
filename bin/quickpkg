@@ -11,14 +11,10 @@ import signal
 import sys
 import tarfile
 
-from os import environ as ose
 from os import path as osp
-if ose.__contains__("PORTAGE_PYTHONPATH"):
-    sys.path.insert(0, ose["PORTAGE_PYTHONPATH"])
-else:
-    sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.                    realpath(__file__))), "pym"))
+pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
+sys.path.insert(0, pym_path)
 import portage
-
 from portage import os
 from portage import xpak
 from portage.dbapi.dep_expand import dep_expand

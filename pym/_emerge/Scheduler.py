@@ -300,15 +300,10 @@ class Scheduler(PollScheduler):
 			if not portage.dep.match_from_list(
 				portage.const.PORTAGE_PACKAGE_ATOM, [x]):
 				continue
-			if self._running_portage is None or \
-				self._running_portage.cpv != x.cpv or \
-				'9999' in x.cpv or \
-				'git' in x.inherited or \
-				'git-2' in x.inherited:
-				rval = _check_temp_dir(self.settings)
-				if rval != os.EX_OK:
-					return rval
-				_prepare_self_update(self.settings)
+			rval = _check_temp_dir(self.settings)
+			if rval != os.EX_OK:
+				return rval
+			_prepare_self_update(self.settings)
 			break
 
 		return os.EX_OK
@@ -328,15 +323,15 @@ class Scheduler(PollScheduler):
 		self._set_graph_config(graph_config)
 		self._blocker_db = {}
 		dynamic_deps = self.myopts.get("--dynamic-deps", "y") != "n"
-		ignore_built_slot_abi_deps = self.myopts.get(
-			"--ignore-built-slot-abi-deps", "n") == "y"
+		ignore_built_slot_operator_deps = self.myopts.get(
+			"--ignore-built-slot-operator-deps", "n") == "y"
 		for root in self.trees:
 			if self._uninstall_only:
 				continue
 			if graph_config is None:
 				fake_vartree = FakeVartree(self.trees[root]["root_config"],
 					pkg_cache=self._pkg_cache, dynamic_deps=dynamic_deps,
-					ignore_built_slot_abi_deps=ignore_built_slot_abi_deps)
+					ignore_built_slot_operator_deps=ignore_built_slot_operator_deps)
 				fake_vartree.sync()
 			else:
 				fake_vartree = graph_config.trees[root]['vartree']

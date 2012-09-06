@@ -44,13 +44,24 @@ def parse_desktop_entry(path):
 _trivial_warnings = re.compile(r' looks redundant with value ')
 _ignore_kde_key_re = re.compile(r'^\s*(configurationType\s*=|Type\s*=\s*Service)')
 _ignore_kde_types = frozenset(
-	["AkonadiAgent", "AkonadiResource", "Service", "ServiceType"])
+	["AkonadiAgent", "AkonadiResource", "Service", "ServiceType", "XSession"])
 
 # kdebase-data installs files with [Currency Code] sections
 # in /usr/share/locale/currency
 # kdepim-runtime installs files with [Plugin] and [Wizard]
 # sections in /usr/share/apps/akonadi/{plugins,accountwizard}
-_ignore_kde_sections = ("Currency Code", "Plugin", "Wizard")
+# kdm installs files with [KCM Locale], [KDE Desktop Pattern],
+# [KdmGreeterTheme] and [Wallpaper] sections in various directories
+# libkdegames installs files with [KDE Backdeck] sections in
+# /usr/share/apps/carddecks/
+# Various KDE games install files with [KGameTheme] sections
+_ignore_kde_sections = ("Currency Code", "KCM Locale", "KDE Backdeck", "KDE Desktop Pattern", "KDE Desktop Program", "KdmGreeterTheme", "KGameTheme", "Plugin", "Wallpaper", "Wizard")
+
+_ignored_errors = (
+		# Ignore error for emacs.desktop:
+		# https://bugs.freedesktop.org/show_bug.cgi?id=35844#c6
+		'error: (will be fatal in the future): value "TextEditor" in key "Categories" in group "Desktop Entry" requires another category to be present among the following categories: Utility',
+)
 
 def validate_desktop_entry(path):
 	args = ["desktop-file-validate", path]
@@ -98,6 +109,14 @@ def validate_desktop_entry(path):
 			for section in _ignore_kde_sections:
 				if desktop_entry.has_section(section):
 					del output_lines[:]
+
+	if output_lines:
+		filtered_output = []
+		for line in output_lines:
+				if line[len(path)+2:] in _ignored_errors:
+					continue
+				filtered_output.append(line)
+		output_lines = filtered_output
 
 	if output_lines:
 		output_lines = [line for line in output_lines
