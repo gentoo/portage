@@ -25,9 +25,13 @@ class UseManager(object):
 		#	repositories
 		#--------------------------------
 		#	use.mask			_repo_usemask_dict
+		#	use.stable.mask			_repo_usestablemask_dict
 		#	use.force			_repo_useforce_dict
+		#	use.stable.force		_repo_usestableforce_dict
 		#	package.use.mask		_repo_pusemask_dict
+		#	package.use.stable.mask		_repo_pusestablemask_dict
 		#	package.use.force		_repo_puseforce_dict
+		#	package.use.stable.force	_repo_pusestableforce_dict
 		#--------------------------------
 		#	profiles
 		#--------------------------------
@@ -43,7 +47,7 @@ class UseManager(object):
 		#--------------------------------
 		#	user config
 		#--------------------------------
-		#	package.use			_pusedict	
+		#	package.use			_pusedict
 
 		# Dynamic variables tracked by the config class
 		#--------------------------------
@@ -57,9 +61,21 @@ class UseManager(object):
 		#	puse
 
 		self._repo_usemask_dict = self._parse_repository_files_to_dict_of_tuples("use.mask", repositories)
+		self._repo_usestablemask_dict = \
+			self._parse_repository_files_to_dict_of_tuples("use.stable.mask",
+				repositories, eapi_filter=self._stable_mask_eapi_filter)
 		self._repo_useforce_dict = self._parse_repository_files_to_dict_of_tuples("use.force", repositories)
+		self._repo_usestableforce_dict = \
+			self._parse_repository_files_to_dict_of_tuples("use.stable.force",
+				repositories, eapi_filter=self._stable_mask_eapi_filter)
 		self._repo_pusemask_dict = self._parse_repository_files_to_dict_of_dicts("package.use.mask", repositories)
+		self._repo_pusestablemask_dict = \
+			self._parse_repository_files_to_dict_of_dicts("package.use.stable.mask",
+				repositories, eapi_filter=self._stable_mask_eapi_filter)
 		self._repo_puseforce_dict = self._parse_repository_files_to_dict_of_dicts("package.use.force", repositories)
+		self._repo_pusestableforce_dict = \
+			self._parse_repository_files_to_dict_of_dicts("package.use.stable.force",
+				repositories, eapi_filter=self._stable_mask_eapi_filter)
 		self._repo_puse_dict = self._parse_repository_files_to_dict_of_dicts("package.use", repositories)
 
 		self._usemask_list = self._parse_profile_files_to_tuple_of_tuples("use.mask", profiles)
@@ -154,16 +170,16 @@ class UseManager(object):
 
 		return ret
 
-	def _parse_repository_files_to_dict_of_tuples(self, file_name, repositories):
+	def _parse_repository_files_to_dict_of_tuples(self, file_name, repositories, eapi_filter=None):
 		ret = {}
 		for repo in repositories.repos_with_profiles():
-			ret[repo.name] = self._parse_file_to_tuple(os.path.join(repo.location, "profiles", file_name))
+			ret[repo.name] = self._parse_file_to_tuple(os.path.join(repo.location, "profiles", file_name), eapi_filter=eapi_filter)
 		return ret
 
-	def _parse_repository_files_to_dict_of_dicts(self, file_name, repositories):
+	def _parse_repository_files_to_dict_of_dicts(self, file_name, repositories, eapi_filter=None):
 		ret = {}
 		for repo in repositories.repos_with_profiles():
-			ret[repo.name] = self._parse_file_to_dict(os.path.join(repo.location, "profiles", file_name))
+			ret[repo.name] = self._parse_file_to_dict(os.path.join(repo.location, "profiles", file_name), eapi_filter=eapi_filter)
 		return ret
 
 	def _parse_profile_files_to_tuple_of_tuples(self, file_name, locations,
@@ -192,7 +208,15 @@ class UseManager(object):
 			repo = dep_getrepo(pkg)
 			pkg = _pkg_str(remove_slot(pkg), slot=slot, repo=repo)
 			cp = pkg.cp
+
+		try:
+			stable = pkg.stable
+		except AttributeError:
+			# KEYWORDS is unavailable (prior to "depend" phase)
+			stable = False
+
 		usemask = []
+
 		if hasattr(pkg, "repo") and pkg.repo != Package.UNKNOWN_REPO:
 			repos = []
 			try:
@@ -203,17 +227,19 @@ class UseManager(object):
 			repos.append(pkg.repo)
 			for repo in repos:
 				usemask.append(self._repo_usemask_dict.get(repo, {}))
+				if stable:
+					usemask.append(self._repo_usestablemask_dict.get(repo, {}))
 				cpdict = self._repo_pusemask_dict.get(repo, {}).get(cp)
 				if cpdict:
 					pkg_usemask = ordered_by_atom_specificity(cpdict, pkg)
 					if pkg_usemask:
 						usemask.extend(pkg_usemask)
-	
-		try:
-			stable = pkg.stable
-		except AttributeError:
-			# KEYWORDS is unavailable (prior to "depend" phase)
-			stable = False
+				if stable:
+					cpdict = self._repo_pusestablemask_dict.get(repo, {}).get(cp)
+					if cpdict:
+						pkg_usemask = ordered_by_atom_specificity(cpdict, pkg)
+						if pkg_usemask:
+							usemask.extend(pkg_usemask)
 
 		for i, pusemask_dict in enumerate(self._pusemask_list):
 			if self._usemask_list[i]:
@@ -242,7 +268,15 @@ class UseManager(object):
 		cp = getattr(pkg, "cp", None)
 		if cp is None:
 			cp = cpv_getkey(remove_slot(pkg))
+
+		try:
+			stable = pkg.stable
+		except AttributeError:
+			# KEYWORDS is unavailable (prior to "depend" phase)
+			stable = False
+
 		useforce = []
+
 		if hasattr(pkg, "repo") and pkg.repo != Package.UNKNOWN_REPO:
 			repos = []
 			try:
@@ -253,17 +287,19 @@ class UseManager(object):
 			repos.append(pkg.repo)
 			for repo in repos:
 				useforce.append(self._repo_useforce_dict.get(repo, {}))
+				if stable:
+					useforce.append(self._repo_usestableforce_dict.get(repo, {}))
 				cpdict = self._repo_puseforce_dict.get(repo, {}).get(cp)
 				if cpdict:
 					pkg_useforce = ordered_by_atom_specificity(cpdict, pkg)
 					if pkg_useforce:
 						useforce.extend(pkg_useforce)
-
-		try:
-			stable = pkg.stable
-		except AttributeError:
-			# KEYWORDS is unavailable (prior to "depend" phase)
-			stable = False
+				if stable:
+					cpdict = self._repo_pusestableforce_dict.get(repo, {}).get(cp)
+					if cpdict:
+						pkg_useforce = ordered_by_atom_specificity(cpdict, pkg)
+						if pkg_useforce:
+							useforce.extend(pkg_useforce)
 
 		for i, puseforce_dict in enumerate(self._puseforce_list):
 			if self._useforce_list[i]:
