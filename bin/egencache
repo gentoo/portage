@@ -881,20 +881,14 @@ def egencache_main(args):
 			return 1
 
 	if options.update and 'metadata-transfer' not in settings.features:
-		metadata_transfer = True
+		# Forcibly enable metadata-transfer if portdbapi has a pregenerated
+		# cache that does not support eclass validation.
 		repo_config = settings.repositories.get_repo_for_location(repo_path)
 		cache = repo_config.get_pregenerated_cache(
 			portage.dbapi.dbapi._known_keys, readonly=True)
-		if cache is not None:
-			if cache.complete_eclass_entries:
-				# If the portdbapi's pregenerated cache supports eclass
-				# validation, then there's no need to forcibly enable
-				# metadata-transfer.
-				metadata_transfer = False
-			cache = None
-
-		if metadata_transfer:
+		if cache is not None and not cache.complete_eclass_entries:
 			settings.features.add('metadata-transfer')
+		cache = None
 
 	settings.lock()
 
