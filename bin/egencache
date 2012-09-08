@@ -35,6 +35,7 @@ import portage
 from portage import os, _encodings, _unicode_encode, _unicode_decode
 from _emerge.MetadataRegen import MetadataRegen
 from portage.cache.cache_errors import CacheError, StatCollision
+from portage.cache.flat_hash import md5_database
 from portage.manifest import guessManifestFileType
 from portage.util import cmp_sort_key, writemsg_level
 from portage import cpv_getkey
@@ -867,12 +868,39 @@ def egencache_main(args):
 		parser.error('No action specified')
 		return 1
 
+	repo_path = None
+	if options.repo is not None:
+		repo_path = settings.repositories.treemap.get(options.repo)
+		if repo_path is None:
+			parser.error("Unable to locate repository named '%s'" % \
+				(options.repo,))
+			return 1
+	else:
+		repo_path = settings.repositories.mainRepoLocation()
+		if not repo_path:
+			parser.error("PORTDIR is undefined")
+			return 1
+
 	if options.update and 'metadata-transfer' not in settings.features:
-		settings.features.add('metadata-transfer')
+		metadata_transfer = True
+		repo_config = settings.repositories.get_repo_for_location(repo_path)
+		cache = repo_config.get_pregenerated_cache(
+			portage.dbapi.dbapi._known_keys, readonly=True)
+		if cache is not None:
+			if isinstance(cache, md5_database) and \
+				os.path.isdir(cache.location):
+				metadata_transfer = False
+			cache = None
+
+		if metadata_transfer:
+			settings.features.add('metadata-transfer')
 
 	settings.lock()
 
 	portdb = portage.portdbapi(mysettings=settings)
+
+	# Limit ebuilds to the specified repo.
+	portdb.porttrees = [repo_path]
 
 	if options.update:
 		if options.cache_dir is not None:
@@ -888,18 +916,6 @@ def egencache_main(args):
 					"write access denied: %s\n" % (settings["PORTAGE_DEPCACHEDIR"],),
 					level=logging.ERROR, noiselevel=-1)
 				return 1
-
-	if options.repo is not None:
-		repo_path = portdb.getRepositoryPath(options.repo)
-		if repo_path is None:
-			parser.error("Unable to locate repository named '%s'" % \
-				(options.repo,))
-			return 1
-
-		# Limit ebuilds to the specified repo.
-		portdb.porttrees = [repo_path]
-	else:
-		portdb.porttrees = [portdb.porttree_root]
 
 	ret = [os.EX_OK]
 
