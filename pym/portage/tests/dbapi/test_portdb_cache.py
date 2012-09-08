@@ -96,6 +96,21 @@ class PortdbCacheTestCase(TestCase):
 				if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.porttree_root], pms_database):
 					sys.exit(1)
 			"""),),
+
+			# Test auto-detection and preference for md5-cache when both
+			# cache formats are available but layout.conf is absent.
+			(BASH_BINARY, "-c", "rm %s" % portage._shell_quote(layout_conf_path)),
+			python_cmd + (textwrap.dedent("""
+				import os, sys, portage
+				if portage.portdb.porttree_root not in portage.portdb._pregen_auxdb:
+					sys.exit(1)
+			"""),),
+			python_cmd + (textwrap.dedent("""
+				import os, sys, portage
+				from portage.cache.flat_hash import md5_database
+				if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.porttree_root], md5_database):
+					sys.exit(1)
+			"""),),
 		)
 
 		features = []
