@@ -35,7 +35,6 @@ import portage
 from portage import os, _encodings, _unicode_encode, _unicode_decode
 from _emerge.MetadataRegen import MetadataRegen
 from portage.cache.cache_errors import CacheError, StatCollision
-from portage.cache.flat_hash import md5_database
 from portage.manifest import guessManifestFileType
 from portage.util import cmp_sort_key, writemsg_level
 from portage import cpv_getkey
@@ -887,8 +886,10 @@ def egencache_main(args):
 		cache = repo_config.get_pregenerated_cache(
 			portage.dbapi.dbapi._known_keys, readonly=True)
 		if cache is not None:
-			if isinstance(cache, md5_database) and \
-				os.path.isdir(cache.location):
+			if cache.complete_eclass_entries:
+				# If the portdbapi's pregenerated cache supports eclass
+				# validation, then there's no need to forcibly enable
+				# metadata-transfer.
 				metadata_transfer = False
 			cache = None
 
