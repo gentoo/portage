@@ -51,7 +51,7 @@ wrapping is always clear (but you cannot convert spaces as easily as tabwidth).
 Comparisons
 -----------
 
-if foo == None
+if foo != None
 
 should be replaced with:
 
@@ -159,13 +159,4 @@ just COLOR.  However it means during introspection of the current namespace
 The NO example just imports a set of functions from the output module.  It is
 somewhat annoying because the import line needs to be modified when functions
 are needed and often unused functions are left in the import line until someone
-comes along with a linter to clean up (does not happen often).  The color is a
-bit clearer as
-
-  print red('blar')
-
-is shorter than:
-
-  print output.red('blar')
-
-Rationale: python -c 'import portage; dir(portage)' (circa 02/2008)
+comes along with a linter to clean up (does not happen often).

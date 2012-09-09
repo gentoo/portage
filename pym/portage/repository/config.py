@@ -713,9 +713,15 @@ def parse_layout_conf(repo_location, repo_name=None):
 	# for compatibility w/ PMS, fallback to pms; but also check if the
 	# cache exists or not.
 	cache_formats = layout_data.get('cache-formats', '').lower().split()
-	if not cache_formats and os.path.isdir(
-		os.path.join(repo_location, 'metadata', 'cache')):
-		cache_formats = ['pms']
+	if not cache_formats:
+		# Auto-detect cache formats, and prefer md5-cache if available.
+		# After this behavior is deployed in stable portage, the default
+		# egencache format can be changed to md5-dict.
+		cache_formats = []
+		if os.path.isdir(os.path.join(repo_location, 'metadata', 'md5-cache')):
+			cache_formats.append('md5-dict')
+		if os.path.isdir(os.path.join(repo_location, 'metadata', 'cache')):
+			cache_formats.append('pms')
 	data['cache-formats'] = tuple(cache_formats)
 
 	manifest_hashes = layout_data.get('manifest-hashes')

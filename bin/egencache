@@ -868,12 +868,35 @@ def egencache_main(args):
 		parser.error('No action specified')
 		return 1
 
+	repo_path = None
+	if options.repo is not None:
+		repo_path = settings.repositories.treemap.get(options.repo)
+		if repo_path is None:
+			parser.error("Unable to locate repository named '%s'" % \
+				(options.repo,))
+			return 1
+	else:
+		repo_path = settings.repositories.mainRepoLocation()
+		if not repo_path:
+			parser.error("PORTDIR is undefined")
+			return 1
+
 	if options.update and 'metadata-transfer' not in settings.features:
-		settings.features.add('metadata-transfer')
+		# Forcibly enable metadata-transfer if portdbapi has a pregenerated
+		# cache that does not support eclass validation.
+		repo_config = settings.repositories.get_repo_for_location(repo_path)
+		cache = repo_config.get_pregenerated_cache(
+			portage.dbapi.dbapi._known_keys, readonly=True)
+		if cache is not None and not cache.complete_eclass_entries:
+			settings.features.add('metadata-transfer')
+		cache = None
 
 	settings.lock()
 
 	portdb = portage.portdbapi(mysettings=settings)
+
+	# Limit ebuilds to the specified repo.
+	portdb.porttrees = [repo_path]
 
 	if options.update:
 		if options.cache_dir is not None:
@@ -889,18 +912,6 @@ def egencache_main(args):
 					"write access denied: %s\n" % (settings["PORTAGE_DEPCACHEDIR"],),
 					level=logging.ERROR, noiselevel=-1)
 				return 1
-
-	if options.repo is not None:
-		repo_path = portdb.getRepositoryPath(options.repo)
-		if repo_path is None:
-			parser.error("Unable to locate repository named '%s'" % \
-				(options.repo,))
-			return 1
-
-		# Limit ebuilds to the specified repo.
-		portdb.porttrees = [repo_path]
-	else:
-		portdb.porttrees = [portdb.porttree_root]
 
 	ret = [os.EX_OK]
 

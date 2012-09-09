@@ -656,18 +656,13 @@ _eapi5_apply_user_patches() {
 has_version() {
 
 	local atom eroot host_root=false root=${ROOT}
-	while [ $# -gt 0 ] ; do
-		case "$1" in
-			--host-root)
-				host_root=true
-				;;
-			*)
-				[[ -n ${atom} ]] && die "${FUNCNAME[0]}: unused argument: $1"
-				atom=$1
-				;;
-		esac
+	if [[ $1 == --host-root ]] ; then
+		host_root=true
 		shift
-	done
+	fi
+	atom=$1
+	shift
+	[ $# -gt 0 ] && die "${FUNCNAME[0]}: unused argument(s): $*"
 
 	if ${host_root} ; then
 		case "${EAPI}" in
@@ -713,18 +708,13 @@ has_version() {
 best_version() {
 
 	local atom eroot host_root=false root=${ROOT}
-	while [ $# -gt 0 ] ; do
-		case "$1" in
-			--host-root)
-				host_root=true
-				;;
-			*)
-				[[ -n ${atom} ]] && die "${FUNCNAME[0]}: unused argument: $1"
-				atom=$1
-				;;
-		esac
+	if [[ $1 == --host-root ]] ; then
+		host_root=true
 		shift
-	done
+	fi
+	atom=$1
+	shift
+	[ $# -gt 0 ] && die "${FUNCNAME[0]}: unused argument(s): $*"
 
 	if ${host_root} ; then
 		case "${EAPI}" in
