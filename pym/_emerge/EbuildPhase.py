@@ -5,7 +5,6 @@ import gzip
 import io
 import sys
 import tempfile
-import time
 
 from _emerge.AsynchronousLock import AsynchronousLock
 from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
@@ -218,8 +217,7 @@ class EbuildPhase(CompositeTask):
 			# Bump WORKDIR timestamp, in case tar gave it a timestamp
 			# that will interfere with distfiles / WORKDIR timestamp
 			# comparisons as reported in bug #332217.
-			timestamp = time.time()
-			os.utime(settings["WORKDIR"], (timestamp, timestamp))
+			os.utime(settings["WORKDIR"], None)
 		elif self.phase == "install":
 			out = io.StringIO()
 			_post_src_install_write_metadata(settings)
