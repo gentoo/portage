@@ -11,6 +11,7 @@ from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.EbuildProcess import EbuildProcess
 from _emerge.CompositeTask import CompositeTask
+from portage.package.ebuild.prepare_build_dirs import _prepare_workdir
 from portage.util import writemsg
 
 try:
@@ -216,8 +217,10 @@ class EbuildPhase(CompositeTask):
 		if self.phase == "unpack":
 			# Bump WORKDIR timestamp, in case tar gave it a timestamp
 			# that will interfere with distfiles / WORKDIR timestamp
-			# comparisons as reported in bug #332217.
+			# comparisons as reported in bug #332217. Also, fix
+			# ownership since tar can change that too.
 			os.utime(settings["WORKDIR"], None)
+			_prepare_workdir(settings)
 		elif self.phase == "install":
 			out = io.StringIO()
 			_post_src_install_write_metadata(settings)
