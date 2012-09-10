@@ -57,7 +57,6 @@ except (ImportError, SystemError, RuntimeError, Exception):
 	sys.exit(1)
 
 from portage import os
-from portage import subprocess_getstatusoutput
 from portage import _encodings
 from portage import _unicode_encode
 from repoman.checks import run_checks
@@ -742,6 +741,26 @@ else:
 def caterror(mycat):
 	err(mycat+" is not an official category.  Skipping QA checks in this directory.\nPlease ensure that you add "+catdir+" to "+repodir+"/profiles/categories\nif it is a new category.")
 
+def repoman_getstatusoutput(cmd):
+	"""
+	Implements an interface similar to getstatusoutput(), but with
+	customized unicode handling (see bug #310789) and without the shell.
+	"""
+	args = portage.util.shlex_split(cmd)
+	encoding = _encodings['fs']
+	if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
+		# Python 3.1 does not support bytes in Popen args.
+		args = [_unicode_encode(x,
+			encoding=encoding, errors='strict') for x in args]
+	proc = subprocess.Popen(args, stdout=subprocess.PIPE,
+		stderr=subprocess.STDOUT)
+	output = portage._unicode_decode(proc.communicate()[0],
+		encoding=encoding, errors='strict')
+	if output and output[-1] == "\n":
+		# getstatusoutput strips one newline
+		output = output[:-1]
+	return (proc.wait(), output)
+
 class repoman_popen(portage.proxy.objectproxy.ObjectProxy):
 	"""
 	Implements an interface similar to os.popen(), but with customized
@@ -998,7 +1017,7 @@ def vcs_files_to_cps(vcs_file_iter):
 
 def git_supports_gpg_sign():
 	status, cmd_output = \
-		subprocess_getstatusoutput("git --version")
+		repoman_getstatusoutput("git --version")
 	cmd_output = cmd_output.split()
 	if cmd_output:
 		version = re.match(r'^(\d+)\.(\d+)\.(\d+)', cmd_output[-1])
@@ -1676,9 +1695,10 @@ for x in effective_scanlist:
 		if xmllint_capable and not metadata_bad:
 			# xmlint can produce garbage output even on success, so only dump
 			# the ouput when it fails.
-			st, out = subprocess_getstatusoutput(
-				"xmllint --nonet --noout --dtdvalid '%s' '%s'" % \
-				 (metadata_dtd, os.path.join(checkdir, "metadata.xml")))
+			st, out = repoman_getstatusoutput(
+				"xmllint --nonet --noout --dtdvalid %s %s" % \
+				 (portage._shell_quote(metadata_dtd),
+				 portage._shell_quote(os.path.join(checkdir, "metadata.xml"))))
 			if st != os.EX_OK:
 				print(red("!!!") + " metadata.xml is invalid:")
 				for z in out.splitlines():
@@ -2674,7 +2694,8 @@ else:
 
 				headerstring = "'\$(%s).*\$'" % "|".join(enabled_keywords)
 
-			myout = subprocess_getstatusoutput("egrep -q "+headerstring+" "+myfile)
+			myout = repoman_getstatusoutput("egrep -q " + headerstring + " " +
+				portage._shell_quote(myfile))
 			if myout[0] == 0:
 				myheaders.append(myfile)
 
