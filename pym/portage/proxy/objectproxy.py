@@ -1,4 +1,4 @@
-# Copyright 2008-2009 Gentoo Foundation
+# Copyright 2008-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -29,6 +29,13 @@ class ObjectProxy(object):
 	def __call__(self, *args, **kwargs):
 		result = object.__getattribute__(self, '_get_target')()
 		return result(*args, **kwargs)
+
+	def __enter__(self):
+		return object.__getattribute__(self, '_get_target')().__enter__()
+
+	def __exit__(self, exc_type, exc_value, traceback):
+		return object.__getattribute__(self, '_get_target')().__exit__(
+			exc_type, exc_value, traceback)
 
 	def __setitem__(self, key, value):
 		object.__getattribute__(self, '_get_target')()[key] = value
