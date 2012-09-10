@@ -2786,7 +2786,13 @@ else:
 		if options.pretend:
 			print("("+gpgcmd+")")
 		else:
-			rValue = os.system(gpgcmd)
+			# Encode unicode manually for bug #310789.
+			gpgcmd = portage.util.shlex_split(gpgcmd)
+			if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
+				# Python 3.1 does not support bytes in Popen args.
+				gpgcmd = [_unicode_encode(arg,
+					encoding=_encodings['fs'], errors='strict') for arg in gpgcmd]
+			rValue = subprocess.call(gpgcmd)
 			if rValue == os.EX_OK:
 				os.rename(filename+".asc", filename)
 			else:
