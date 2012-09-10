@@ -1665,7 +1665,8 @@ for x in effective_scanlist:
 		# read metadata.xml into memory
 		try:
 			_metadata_xml = xml.etree.ElementTree.parse(
-				os.path.join(checkdir, "metadata.xml"),
+				_unicode_encode(os.path.join(checkdir, "metadata.xml"),
+				encoding=_encodings['fs'], errors='strict'),
 				parser=xml.etree.ElementTree.XMLParser(
 					target=_MetadataTreeBuilder()))
 		except (ExpatError, SyntaxError, EnvironmentError) as e:
