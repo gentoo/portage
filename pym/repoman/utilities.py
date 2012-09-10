@@ -439,7 +439,7 @@ def FindPortdir(settings):
 	portdir = None
 	portdir_overlay = None
 	location = os.getcwd()
-	pwd = os.environ.get('PWD', '')
+	pwd = _unicode_decode(os.environ.get('PWD', ''), encoding=_encodings['fs'])
 	if pwd and pwd != location and os.path.realpath(pwd) == location:
 		# getcwd() returns the canonical path but that makes it hard for repoman to
 		# orient itself if the user has symlinks in their portage tree structure.
