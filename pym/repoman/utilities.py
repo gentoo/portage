@@ -33,6 +33,7 @@ import pwd
 import re
 import stat
 import sys
+import subprocess
 import time
 import textwrap
 import difflib
@@ -40,11 +41,11 @@ from tempfile import mkstemp
 
 from portage import os
 from portage import shutil
-from portage import subprocess_getstatusoutput
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage import output
+from portage.const import BASH_BINARY
 from portage.localization import _
 from portage.output import red, green
 from portage.process import find_binary
@@ -71,22 +72,33 @@ def detect_vcs_conflicts(options, vcs):
 	Returns:
 		None (calls sys.exit on fatal problems)
 	"""
-	retval = ("","")
+
+	cmd = None
 	if vcs == 'cvs':
 		logging.info("Performing a " + output.green("cvs -n up") + \
 			" with a little magic grep to check for updates.")
-		retval = subprocess_getstatusoutput("cvs -n up 2>/dev/null | " + \
+		cmd = "cvs -n up 2>/dev/null | " + \
 			"egrep '^[^\?] .*' | " + \
-			"egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
+			"egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'"
 	if vcs == 'svn':
 		logging.info("Performing a " + output.green("svn status -u") + \
 			" with a little magic grep to check for updates.")
-		retval = subprocess_getstatusoutput("svn status -u 2>&1 | " + \
+		cmd = "svn status -u 2>&1 | " + \
 			"egrep -v '^.  +.*/digest-[^/]+' | " + \
-			"head -n-1")
+			"head -n-1"
 
-	if vcs in ['cvs', 'svn']:
-		mylines = retval[1].splitlines()
+	if cmd is not None:
+		# Use Popen instead of getstatusoutput(), in order to avoid
+		# unicode handling problems (see bug #310789).
+		args = [BASH_BINARY, "-c", cmd]
+		if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
+			# Python 3.1 does not support bytes in Popen args.
+			args = [_unicode_encode(x) for x in args]
+		proc = subprocess.Popen(args, stdout=subprocess.PIPE,
+			stderr=subprocess.STDOUT)
+		out = _unicode_decode(proc.communicate()[0])
+		proc.wait()
+		mylines = out.splitlines()
 		myupdates = []
 		for line in mylines:
 			if not line:
@@ -98,7 +110,7 @@ def detect_vcs_conflicts(options, vcs):
 				logging.error(red("!!! Please fix the following issues reported " + \
 					"from cvs: ")+green("(U,P,M,A,R,D are ok)"))
 				logging.error(red("!!! Note: This is a pretend/no-modify pass..."))
-				logging.error(retval[1])
+				logging.error(out)
 				sys.exit(1)
 			elif vcs == 'cvs' and line[0] in "UP":
 				myupdates.append(line[2:])
