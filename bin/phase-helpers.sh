@@ -215,11 +215,15 @@ use() {
 				"in IUSE for ${CATEGORY}/${PF}"
 	fi
 
+	local IFS=$' \t\n' prev_shopts=$- ret
+	set -f
 	if has ${u} ${USE} ; then
-		return ${found}
+		ret=${found}
 	else
-		return $((!found))
+		ret=$((!found))
 	fi
+	[[ ${prev_shopts} == *f* ]] || set +f
+	return ${ret}
 }
 
 use_with() {
