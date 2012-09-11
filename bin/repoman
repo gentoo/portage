@@ -78,7 +78,6 @@ from portage.output import bold, create_color_func, \
 	green, nocolor, red
 from portage.output import ConsoleStyleFile, StyleWriter
 from portage.util import writemsg_level
-from portage.util._desktop_entry import validate_desktop_entry
 from portage.package.ebuild.digestgen import digestgen
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 
@@ -303,7 +302,6 @@ def ParseArgs(argv, qahelp):
 
 qahelp={
 	"CVS/Entries.IO_error":"Attempting to commit, and an IO error was encountered access the Entries file",
-	"desktop.invalid":"desktop-file-validate reports errors in a *.desktop file",
 	"ebuild.invalidname":"Ebuild files with a non-parseable or syntactically incorrect name (or using 2.1 versioning extensions)",
 	"ebuild.namenomatch":"Ebuild files that do not have the same name as their parent directory",
 	"changelog.ebuildadded":"An ebuild was added but the ChangeLog was not modified",
@@ -406,7 +404,6 @@ qawarnings = set((
 "digest.unused",
 "ebuild.notadded",
 "ebuild.nesteddie",
-"desktop.invalid",
 "DEPEND.badmasked","RDEPEND.badmasked","PDEPEND.badmasked",
 "DEPEND.badindev","RDEPEND.badindev","PDEPEND.badindev",
 "DEPEND.badmaskedindev","RDEPEND.badmaskedindev","PDEPEND.badmaskedindev",
@@ -1054,10 +1051,6 @@ dev_keywords = dev_keywords(profiles)
 stats={}
 fails={}
 
-# provided by the desktop-file-utils package
-desktop_file_validate = find_binary("desktop-file-validate")
-desktop_pattern = re.compile(r'.*\.desktop$')
-
 for x in qacats:
 	stats[x]=0
 	fails[x]=[]
@@ -1630,23 +1623,6 @@ for x in effective_scanlist:
 				stats["file.name"] += 1
 				fails["file.name"].append("%s/files/%s: char '%s'" % \
 					(checkdir, y, m.group(0)))
-
-			if desktop_file_validate and desktop_pattern.match(y):
-				cmd_output = validate_desktop_entry(full_path)
-				if cmd_output:
-					# Note: in the future we may want to grab the
-					# warnings in addition to the errors. We're
-					# just doing errors now since we don't want
-					# to generate too much noise at first.
-					error_re = re.compile(r'.*\s*error:\s*(.*)')
-					for line in cmd_output:
-						error_match = error_re.match(line)
-						if error_match is None:
-							continue
-						stats["desktop.invalid"] += 1
-						fails["desktop.invalid"].append(
-							relative_path + ': %s' % error_match.group(1))
-
 	del mydigests
 
 	if check_changelog and "ChangeLog" not in checkdirlist:

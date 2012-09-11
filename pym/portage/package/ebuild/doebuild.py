@@ -1773,6 +1773,9 @@ def _post_src_install_uid_fix(mysettings, out):
 	unicode_errors = []
 	desktop_file_validate = \
 		portage.process.find_binary("desktop-file-validate") is not None
+	xdg_dirs = mysettings.get('XDG_DATA_DIRS', '/usr/share').split(':')
+	xdg_dirs = tuple(os.path.join(i, "applications") + os.sep
+		for i in xdg_dirs if i)
 
 	while True:
 
@@ -1821,7 +1824,9 @@ def _post_src_install_uid_fix(mysettings, out):
 					fpath = os.path.join(parent, fname)
 
 				if desktop_file_validate and fname.endswith(".desktop") and \
-					os.path.isfile(fpath):
+					os.path.isfile(fpath) and \
+					fpath[ed_len - 1:].startswith(xdg_dirs):
+
 					desktop_validate = validate_desktop_entry(fpath)
 					if desktop_validate:
 						desktopfile_errors.extend(desktop_validate)
