@@ -541,7 +541,8 @@ class GenUseLocalDesc(object):
 		for cp in self._portdb.cp_all():
 			metadata_path = os.path.join(repo_path, cp, 'metadata.xml')
 			try:
-				metadata = ElementTree.parse(metadata_path,
+				metadata = ElementTree.parse(_unicode_encode(metadata_path,
+					encoding=_encodings['fs'], errors='strict'),
 					parser=ElementTree.XMLParser(
 					target=_MetadataTreeBuilder()))
 			except IOError:
