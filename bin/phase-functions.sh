@@ -372,7 +372,11 @@ dyn_prepare() {
 	else
 		die "The source directory '${S}' doesn't exist"
 	fi
-	rm -f "${PORTAGE_BUILDDIR}/.apply_user_patches" || die
+	case "${EAPI}" in
+		5_pre1)
+			rm -f "${PORTAGE_BUILDDIR}/.apply_user_patches" || die
+			;;
+	esac
 
 	trap abort_prepare SIGINT SIGQUIT
 
@@ -384,9 +388,7 @@ dyn_prepare() {
 	vecho ">>> Source prepared."
 	ebuild_phase post_src_prepare
 	case "${EAPI}" in
-		0|1|2|3|4|4-python|4-slot-abi)
-			;;
-		*)
+		5_pre1)
 			[[ ! -f ${PORTAGE_BUILDDIR}/.apply_user_patches ]] && \
 				die "src_prepare must call apply_user_patches at least once"
 			;;
@@ -815,9 +817,7 @@ _ebuild_phase_funcs() {
 						[[ $phase_func = src_install ]] && \
 							eval "default() { _eapi4_$phase_func \"\$@\" ; }"
 						case "$eapi" in
-							4|4-python|4-slot-abi)
-								;;
-							*)
+							5_pre1)
 								! declare -F src_prepare >/dev/null && \
 									src_prepare() { _eapi5_src_prepare "$@" ; }
 								default_src_prepare() { _eapi5_src_prepare "$@" ; }

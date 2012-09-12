@@ -638,10 +638,6 @@ _eapi5_src_prepare() {
 	apply_user_patches
 }
 
-apply_user_patches() {
-	die "apply_user_patches is not supported with EAPI ${EAPI}"
-}
-
 _eapi5_apply_user_patches() {
 	[[ ${EBUILD_PHASE} == prepare ]] || \
 		die "apply_user_patches may only be called during src_prepare"
