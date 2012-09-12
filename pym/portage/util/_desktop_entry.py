@@ -42,20 +42,6 @@ def parse_desktop_entry(path):
 	return parser
 
 _trivial_warnings = re.compile(r' looks redundant with value ')
-_ignore_kde_key_re = re.compile(r'^\s*(configurationType\s*=|Type\s*=\s*Service)')
-_ignore_kde_types = frozenset(
-	["AkonadiAgent", "AkonadiResource", "Service", "ServiceType", "XSession"])
-
-# kdebase-data installs files with [Currency Code] sections
-# in /usr/share/locale/currency
-# kdepim-runtime installs files with [Plugin] and [Wizard]
-# sections in /usr/share/apps/akonadi/{plugins,accountwizard}
-# kdm installs files with [KCM Locale], [KDE Desktop Pattern],
-# [KdmGreeterTheme] and [Wallpaper] sections in various directories
-# libkdegames installs files with [KDE Backdeck] sections in
-# /usr/share/apps/carddecks/
-# Various KDE games install files with [KGameTheme] sections
-_ignore_kde_sections = ("Currency Code", "KCM Locale", "KDE Backdeck", "KDE Desktop Pattern", "KDE Desktop Program", "KdmGreeterTheme", "KGameTheme", "Plugin", "Wallpaper", "Wizard")
 
 _ignored_errors = (
 		# Ignore error for emacs.desktop:
@@ -74,48 +60,11 @@ def validate_desktop_entry(path):
 	proc.wait()
 
 	if output_lines:
-		# Ignore kde extensions for bug #414125 and bug #432862.
-		try:
-			desktop_entry = parse_desktop_entry(path)
-		except ConfigParserError:
-			with io.open(_unicode_encode(path,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='r', encoding=_encodings['repo.content'],
-				errors='replace') as f:
-				for line in f:
-					if _ignore_kde_key_re.match(line):
-						# Ignore kde extensions for bug #432862.
-						del output_lines[:]
-						break
-		else:
-			if desktop_entry.has_section("Desktop Entry"):
-				try:
-					entry_type = desktop_entry.get("Desktop Entry", "Type")
-				except ConfigParserError:
-					pass
-				else:
-					if entry_type in _ignore_kde_types:
-						del output_lines[:]
-				try:
-					desktop_entry.get("Desktop Entry", "Hidden")
-				except ConfigParserError:
-					pass
-				else:
-					# The "Hidden" key appears to be unique to special kde
-					# service files (which don't validate well), installed
-					# in /usr/share/kde4/services/ by packages like
-					# nepomuk-core and kurifilter-plugins.
-					del output_lines[:]
-			for section in _ignore_kde_sections:
-				if desktop_entry.has_section(section):
-					del output_lines[:]
-
-	if output_lines:
 		filtered_output = []
 		for line in output_lines:
-				if line[len(path)+2:] in _ignored_errors:
-					continue
-				filtered_output.append(line)
+			if line[len(path)+2:] in _ignored_errors:
+				continue
+			filtered_output.append(line)
 		output_lines = filtered_output
 
 	if output_lines:

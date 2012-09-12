@@ -17,6 +17,8 @@ except (ImportError, SystemError, RuntimeError, Exception):
 	# modules, so that ImportModulesTestCase can succeed (or
 	# possibly alert us about unexpected import failures).
 	pass
+
+from portage import _encodings, _unicode_encode
 from portage.exception import FileNotFound, ParseError, PermissionDenied
 
 __all__ = [
@@ -56,7 +58,8 @@ def make_herd_base(filename):
 	all_emails = set()
 
 	try:
-		xml_tree = xml.etree.ElementTree.parse(filename,
+		xml_tree = xml.etree.ElementTree.parse(_unicode_encode(filename,
+				encoding=_encodings['fs'], errors='strict'),
 			parser=xml.etree.ElementTree.XMLParser(
 				target=_HerdsTreeBuilder()))
 	except ExpatError as e:

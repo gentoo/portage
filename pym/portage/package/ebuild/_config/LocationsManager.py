@@ -78,7 +78,7 @@ class LocationsManager(object):
 				self.profile_path = self.config_profile_path
 			else:
 				self.config_profile_path = \
-					os.path.join(self.abs_user_config, 'make.profile')
+					os.path.join(self.config_root, 'etc', 'make.profile')
 				if os.path.isdir(self.config_profile_path):
 					self.profile_path = self.config_profile_path
 				else:

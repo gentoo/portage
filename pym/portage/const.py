@@ -43,7 +43,7 @@ EBUILD_SH_ENV_FILE       = USER_CONFIG_PATH + "/bashrc"
 EBUILD_SH_ENV_DIR        = USER_CONFIG_PATH + "/env"
 CUSTOM_MIRRORS_FILE      = USER_CONFIG_PATH + "/mirrors"
 COLOR_MAP_FILE           = USER_CONFIG_PATH + "/color.map"
-PROFILE_PATH             = "etc/make.profile"
+PROFILE_PATH             = USER_CONFIG_PATH + "/make.profile"
 MAKE_DEFAULTS_FILE       = PROFILE_PATH + "/make.defaults"  # FIXME: not used
 DEPRECATED_PROFILE_FILE  = PROFILE_PATH + "/deprecated"
 

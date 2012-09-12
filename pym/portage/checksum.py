@@ -10,6 +10,8 @@ from portage import _encodings
 from portage import _unicode_encode
 import errno
 import stat
+import sys
+import subprocess
 import tempfile
 
 #dict of all available hash functions
@@ -163,11 +165,18 @@ hashfunc_map["size"] = getsize
 
 prelink_capable = False
 if os.path.exists(PRELINK_BINARY):
-	results = portage.subprocess_getstatusoutput(
-		"%s --version > /dev/null 2>&1" % (PRELINK_BINARY,))
-	if (results[0] >> 8) == 0:
+	cmd = [PRELINK_BINARY, "--version"]
+	if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
+		# Python 3.1 does not support bytes in Popen args.
+		cmd = [_unicode_encode(x, encoding=_encodings['fs'], errors='strict')
+			for x in cmd]
+	proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+		stderr=subprocess.STDOUT)
+	proc.communicate()
+	status = proc.wait()
+	if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
 		prelink_capable=1
-	del results
+	del cmd, proc, status
 
 def is_prelinkable_elf(filename):
 	f = _open_file(filename)

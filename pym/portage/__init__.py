@@ -1,5 +1,5 @@
 # portage.py -- core Portage functionality
-# Copyright 1998-2011 Gentoo Foundation
+# Copyright 1998-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 VERSION="HEAD"
@@ -16,14 +16,6 @@ try:
 		errno.ESTALE = -1
 	import re
 	import types
-
-	# Try the commands module first, since this allows us to eliminate
-	# the subprocess module from the baseline imports under python2.
-	try:
-		from commands import getstatusoutput as subprocess_getstatusoutput
-	except ImportError:
-		from subprocess import getstatusoutput as subprocess_getstatusoutput
-
 	import platform
 
 	# Temporarily delete these imports, to ensure that only the
@@ -114,6 +106,7 @@ try:
 			'cpv_getkey@getCPFromCPV,endversion_keys,' + \
 			'suffix_value@endversion,pkgcmp,pkgsplit,vercmp,ververify',
 		'portage.xpak',
+		'subprocess',
 		'time',
 	)
 
@@ -355,8 +348,20 @@ if platform.system() in ('FreeBSD',) and rootuid == 0:
 
 		@classmethod
 		def chflags(cls, path, flags, opts=""):
-			cmd = 'chflags %s %o %s' % (opts, flags, _shell_quote(path))
-			status, output = subprocess_getstatusoutput(cmd)
+			cmd = ['chflags']
+			if opts:
+				cmd.append(opts)
+			cmd.append('%o' % (flags,))
+			cmd.append(path)
+			encoding = _encodings['fs']
+			if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
+				# Python 3.1 does not support bytes in Popen args.
+				cmd = [_unicode_encode(x, encoding=encoding, errors='strict')
+					for x in cmd]
+			proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+				stderr=subprocess.STDOUT)
+			output = proc.communicate()[0]
+			status = proc.wait()
 			if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
 				return
 			# Try to generate an ENOENT error if appropriate.
@@ -369,6 +374,7 @@ if platform.system() in ('FreeBSD',) and rootuid == 0:
 				raise portage.exception.CommandNotFound('chflags')
 			# Now we're not sure exactly why it failed or what
 			# the real errno was, so just report EPERM.
+			output = _unicode_decode(output, encoding=encoding)
 			e = OSError(errno.EPERM, output)
 			e.errno = errno.EPERM
 			e.filename = path
@@ -409,7 +415,7 @@ def abssymlink(symlink, target=None):
 
 _doebuild_manifest_exempt_depend = 0
 
-_testing_eapis = frozenset(["4-python", "4-slot-abi", "5_pre1"])
+_testing_eapis = frozenset(["4-python", "4-slot-abi", "5_pre1", "5_pre2"])
 _deprecated_eapis = frozenset(["4_pre1", "3_pre2", "3_pre1"])
 
 def _eapi_is_deprecated(eapi):
@@ -547,11 +553,19 @@ if VERSION == 'HEAD':
 			if VERSION is not self:
 				return VERSION
 			if os.path.isdir(os.path.join(PORTAGE_BASE_PATH, '.git')):
-				status, output = subprocess_getstatusoutput((
-					"cd %s ; git describe --tags || exit $? ; " + \
+				encoding = _encodings['fs']
+				cmd = [BASH_BINARY, "-c", ("cd %s ; git describe --tags || exit $? ; " + \
 					"if [ -n \"`git diff-index --name-only --diff-filter=M HEAD`\" ] ; " + \
 					"then echo modified ; git rev-list --format=%%ct -n 1 HEAD ; fi ; " + \
-					"exit 0") % _shell_quote(PORTAGE_BASE_PATH))
+					"exit 0") % _shell_quote(PORTAGE_BASE_PATH)]
+				if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
+					# Python 3.1 does not support bytes in Popen args.
+					cmd = [_unicode_encode(x, encoding=encoding, errors='strict')
+						for x in cmd]
+				proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+					stderr=subprocess.STDOUT)
+				output = _unicode_decode(proc.communicate()[0], encoding=encoding)
+				status = proc.wait()
 				if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
 					output_lines = output.splitlines()
 					if output_lines:

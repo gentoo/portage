@@ -215,11 +215,15 @@ use() {
 				"in IUSE for ${CATEGORY}/${PF}"
 	fi
 
+	local IFS=$' \t\n' prev_shopts=$- ret
+	set -f
 	if has ${u} ${USE} ; then
-		return ${found}
+		ret=${found}
 	else
-		return $((!found))
+		ret=$((!found))
 	fi
+	[[ ${prev_shopts} == *f* ]] || set +f
+	return ${ret}
 }
 
 use_with() {
@@ -632,10 +636,6 @@ _eapi4_src_install() {
 
 _eapi5_src_prepare() {
 	apply_user_patches
-}
-
-apply_user_patches() {
-	die "apply_user_patches is not supported with EAPI ${EAPI}"
 }
 
 _eapi5_apply_user_patches() {

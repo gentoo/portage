@@ -613,11 +613,17 @@ class depgraph(object):
 				"due to non matching USE:\n\n", noiselevel=-1)
 
 		for pkg, flags in self._dynamic_config.ignored_binaries.items():
-			writemsg("    =%s" % pkg.cpv, noiselevel=-1)
+			flag_display = []
+			for flag in sorted(flags):
+				if flag not in pkg.use.enabled:
+					flag = "-" + flag
+				flag_display.append(flag)
+			flag_display = " ".join(flag_display)
+			# The user can paste this line into package.use
+			writemsg("    =%s %s" % (pkg.cpv, flag_display), noiselevel=-1)
 			if pkg.root_config.settings["ROOT"] != "/":
-				writemsg(" for %s" % (pkg.root,), noiselevel=-1)
-			writemsg("\n        use flag(s): %s\n" % ", ".join(sorted(flags)),
-				noiselevel=-1)
+				writemsg(" # for %s" % (pkg.root,), noiselevel=-1)
+			writemsg("\n", noiselevel=-1)
 
 		msg = [
 			"",

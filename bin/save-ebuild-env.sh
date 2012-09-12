@@ -46,7 +46,7 @@ save_ebuild_env() {
 	done
 	unset x
 
-	unset -f apply_user_patches assert assert_sigpipe_ok \
+	unset -f assert assert_sigpipe_ok \
 		dump_trace die diefunc \
 		quiet_mode vecho elog_base eqawarn elog \
 		esyslog einfo einfon ewarn eerror ebegin _eend eend KV_major \
@@ -76,6 +76,10 @@ save_ebuild_env() {
 	case "${EAPI}" in
 		0|1|2|3|4|4-python|4-slot-abi) ;;
 		*) unset -f usex ;;
+	esac
+
+	case "${EAPI}" in
+		5_pre1) unset -f apply_user_patches ;;
 	esac
 
 	# portage config variables and variables set directly by portage

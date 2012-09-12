@@ -964,7 +964,7 @@ class config(object):
 
 		if profile_broken:
 			abs_profile_path = None
-			for x in (PROFILE_PATH, 'etc/portage/make.profile'):
+			for x in (PROFILE_PATH, 'etc/make.profile'):
 				x = os.path.join(self["PORTAGE_CONFIGROOT"], x)
 				try:
 					os.lstat(x)

@@ -9,6 +9,7 @@
 from __future__ import print_function
 
 import calendar
+import codecs
 import copy
 import errno
 import formatter
@@ -56,7 +57,6 @@ except (ImportError, SystemError, RuntimeError, Exception):
 	sys.exit(1)
 
 from portage import os
-from portage import subprocess_getstatusoutput
 from portage import _encodings
 from portage import _unicode_encode
 from repoman.checks import run_checks
@@ -78,7 +78,6 @@ from portage.output import bold, create_color_func, \
 	green, nocolor, red
 from portage.output import ConsoleStyleFile, StyleWriter
 from portage.util import writemsg_level
-from portage.util._desktop_entry import validate_desktop_entry
 from portage.package.ebuild.digestgen import digestgen
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 
@@ -303,7 +302,6 @@ def ParseArgs(argv, qahelp):
 
 qahelp={
 	"CVS/Entries.IO_error":"Attempting to commit, and an IO error was encountered access the Entries file",
-	"desktop.invalid":"desktop-file-validate reports errors in a *.desktop file",
 	"ebuild.invalidname":"Ebuild files with a non-parseable or syntactically incorrect name (or using 2.1 versioning extensions)",
 	"ebuild.namenomatch":"Ebuild files that do not have the same name as their parent directory",
 	"changelog.ebuildadded":"An ebuild was added but the ChangeLog was not modified",
@@ -407,7 +405,6 @@ qawarnings = set((
 "digest.unused",
 "ebuild.notadded",
 "ebuild.nesteddie",
-"desktop.invalid",
 "DEPEND.badmasked","RDEPEND.badmasked","PDEPEND.badmasked",
 "DEPEND.badindev","RDEPEND.badindev","PDEPEND.badindev",
 "DEPEND.badmaskedindev","RDEPEND.badmaskedindev","PDEPEND.badmaskedindev",
@@ -743,6 +740,56 @@ else:
 def caterror(mycat):
 	err(mycat+" is not an official category.  Skipping QA checks in this directory.\nPlease ensure that you add "+catdir+" to "+repodir+"/profiles/categories\nif it is a new category.")
 
+def repoman_getstatusoutput(cmd):
+	"""
+	Implements an interface similar to getstatusoutput(), but with
+	customized unicode handling (see bug #310789) and without the shell.
+	"""
+	args = portage.util.shlex_split(cmd)
+	encoding = _encodings['fs']
+	if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
+		# Python 3.1 does not support bytes in Popen args.
+		args = [_unicode_encode(x,
+			encoding=encoding, errors='strict') for x in args]
+	proc = subprocess.Popen(args, stdout=subprocess.PIPE,
+		stderr=subprocess.STDOUT)
+	output = portage._unicode_decode(proc.communicate()[0],
+		encoding=encoding, errors='strict')
+	if output and output[-1] == "\n":
+		# getstatusoutput strips one newline
+		output = output[:-1]
+	return (proc.wait(), output)
+
+class repoman_popen(portage.proxy.objectproxy.ObjectProxy):
+	"""
+	Implements an interface similar to os.popen(), but with customized
+	unicode handling (see bug #310789) and without the shell.
+	"""
+
+	__slots__ = ('_proc', '_stdout')
+
+	def __init__(self, cmd):
+		args = portage.util.shlex_split(cmd)
+		encoding = _encodings['fs']
+		if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
+			# Python 3.1 does not support bytes in Popen args.
+			args = [_unicode_encode(x,
+				encoding=encoding, errors='strict') for x in args]
+		proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+		object.__setattr__(self, '_proc', proc)
+		object.__setattr__(self, '_stdout',
+			codecs.getreader(encoding)(proc.stdout, 'strict'))
+
+	def _get_target(self):
+		return object.__getattribute__(self, '_stdout')
+
+	__enter__ = _get_target
+
+	def __exit__(self, exc_type, exc_value, traceback):
+		proc = object.__getattribute__(self, '_proc')
+		proc.wait()
+		proc.stdout.close()
+
 class ProfileDesc(object):
 	__slots__ = ('abs_path', 'arch', 'status', 'sub_path', 'tree_path',)
 	def __init__(self, arch, status, sub_path, tree_path):
@@ -969,7 +1016,7 @@ def vcs_files_to_cps(vcs_file_iter):
 
 def git_supports_gpg_sign():
 	status, cmd_output = \
-		subprocess_getstatusoutput("git --version")
+		repoman_getstatusoutput("git --version")
 	cmd_output = cmd_output.split()
 	if cmd_output:
 		version = re.match(r'^(\d+)\.(\d+)\.(\d+)', cmd_output[-1])
@@ -1005,10 +1052,6 @@ dev_keywords = dev_keywords(profiles)
 
 stats={}
 fails={}
-
-# provided by the desktop-file-utils package
-desktop_file_validate = find_binary("desktop-file-validate")
-desktop_pattern = re.compile(r'.*\.desktop$')
 
 for x in qacats:
 	stats[x]=0
@@ -1152,7 +1195,7 @@ if vcs == "cvs":
 		myremoved = cvstree.findremoved(mycvstree, recursive=1, basedir="./")
 
 elif vcs == "svn":
-	with os.popen("svn status") as f:
+	with repoman_popen("svn status") as f:
 		svnstatus = f.readlines()
 	mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem and elem[:1] in "MR" ]
 	mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A") ]
@@ -1160,23 +1203,23 @@ elif vcs == "svn":
 		myremoved = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("D")]
 
 elif vcs == "git":
-	with os.popen("git diff-index --name-only "
+	with repoman_popen("git diff-index --name-only "
 		"--relative --diff-filter=M HEAD") as f:
 		mychanged = f.readlines()
 	mychanged = ["./" + elem[:-1] for elem in mychanged]
 
-	with os.popen("git diff-index --name-only "
+	with repoman_popen("git diff-index --name-only "
 		"--relative --diff-filter=A HEAD") as f:
 		mynew = f.readlines()
 	mynew = ["./" + elem[:-1] for elem in mynew]
 	if options.if_modified == "y":
-		with os.popen("git diff-index --name-only "
+		with repoman_popen("git diff-index --name-only "
 			"--relative --diff-filter=D HEAD") as f:
 			myremoved = f.readlines()
 		myremoved = ["./" + elem[:-1] for elem in myremoved]
 
 elif vcs == "bzr":
-	with os.popen("bzr status -S .") as f:
+	with repoman_popen("bzr status -S .") as f:
 		bzrstatus = f.readlines()
 	mychanged = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and elem[1:2] == "M" ]
 	mynew     = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and ( elem[1:2] == "NK" or elem[0:1] == "R" ) ]
@@ -1184,13 +1227,13 @@ elif vcs == "bzr":
 		myremoved = [ "./" + elem.split()[-3:-2][0].split('/')[-1:][0] for elem in bzrstatus if elem and ( elem[1:2] == "K" or elem[0:1] == "R" ) ]
 
 elif vcs == "hg":
-	with os.popen("hg status --no-status --modified .") as f:
+	with repoman_popen("hg status --no-status --modified .") as f:
 		mychanged = f.readlines()
 	mychanged = ["./" + elem.rstrip() for elem in mychanged]
-	mynew = os.popen("hg status --no-status --added .").readlines()
+	mynew = repoman_popen("hg status --no-status --added .").readlines()
 	mynew = ["./" + elem.rstrip() for elem in mynew]
 	if options.if_modified == "y":
-		with os.popen("hg status --no-status --removed .") as f:
+		with repoman_popen("hg status --no-status --removed .") as f:
 			myremoved = f.readlines()
 		myremoved = ["./" + elem.rstrip() for elem in myremoved]
 
@@ -1428,10 +1471,10 @@ for x in effective_scanlist:
 
 	if vcs in ("git", "hg") and check_ebuild_notadded:
 		if vcs == "git":
-			myf = os.popen("git ls-files --others %s" % \
+			myf = repoman_popen("git ls-files --others %s" % \
 				(portage._shell_quote(checkdir_relative),))
 		if vcs == "hg":
-			myf = os.popen("hg status --no-status --unknown %s" % \
+			myf = repoman_popen("hg status --no-status --unknown %s" % \
 				(portage._shell_quote(checkdir_relative),))
 		for l in myf:
 			if l[:-1][-7:] == ".ebuild":
@@ -1445,9 +1488,11 @@ for x in effective_scanlist:
 			if vcs == "cvs":
 				myf=open(checkdir+"/CVS/Entries","r")
 			if vcs == "svn":
-				myf = os.popen("svn status --depth=files --verbose " + checkdir)
+				myf = repoman_popen("svn status --depth=files --verbose " +
+					portage._shell_quote(checkdir))
 			if vcs == "bzr":
-				myf = os.popen("bzr ls -v --kind=file " + checkdir)
+				myf = repoman_popen("bzr ls -v --kind=file " +
+					portage._shell_quote(checkdir))
 			myl = myf.readlines()
 			myf.close()
 			for l in myl:
@@ -1475,7 +1520,8 @@ for x in effective_scanlist:
 					if l[-7:] == ".ebuild":
 						eadded.append(os.path.basename(l[:-7]))
 			if vcs == "svn":
-				myf = os.popen("svn status " + checkdir)
+				myf = repoman_popen("svn status " +
+					portage._shell_quote(checkdir))
 				myl=myf.readlines()
 				myf.close()
 				for l in myl:
@@ -1579,23 +1625,6 @@ for x in effective_scanlist:
 				stats["file.name"] += 1
 				fails["file.name"].append("%s/files/%s: char '%s'" % \
 					(checkdir, y, m.group(0)))
-
-			if desktop_file_validate and desktop_pattern.match(y):
-				cmd_output = validate_desktop_entry(full_path)
-				if cmd_output:
-					# Note: in the future we may want to grab the
-					# warnings in addition to the errors. We're
-					# just doing errors now since we don't want
-					# to generate too much noise at first.
-					error_re = re.compile(r'.*\s*error:\s*(.*)')
-					for line in cmd_output:
-						error_match = error_re.match(line)
-						if error_match is None:
-							continue
-						stats["desktop.invalid"] += 1
-						fails["desktop.invalid"].append(
-							relative_path + ': %s' % error_match.group(1))
-
 	del mydigests
 
 	if check_changelog and "ChangeLog" not in checkdirlist:
@@ -1614,7 +1643,8 @@ for x in effective_scanlist:
 		# read metadata.xml into memory
 		try:
 			_metadata_xml = xml.etree.ElementTree.parse(
-				os.path.join(checkdir, "metadata.xml"),
+				_unicode_encode(os.path.join(checkdir, "metadata.xml"),
+				encoding=_encodings['fs'], errors='strict'),
 				parser=xml.etree.ElementTree.XMLParser(
 					target=_MetadataTreeBuilder()))
 		except (ExpatError, SyntaxError, EnvironmentError) as e:
@@ -1644,9 +1674,10 @@ for x in effective_scanlist:
 		if xmllint_capable and not metadata_bad:
 			# xmlint can produce garbage output even on success, so only dump
 			# the ouput when it fails.
-			st, out = subprocess_getstatusoutput(
-				"xmllint --nonet --noout --dtdvalid '%s' '%s'" % \
-				 (metadata_dtd, os.path.join(checkdir, "metadata.xml")))
+			st, out = repoman_getstatusoutput(
+				"xmllint --nonet --noout --dtdvalid %s %s" % \
+				 (portage._shell_quote(metadata_dtd),
+				 portage._shell_quote(os.path.join(checkdir, "metadata.xml"))))
 			if st != os.EX_OK:
 				print(red("!!!") + " metadata.xml is invalid:")
 				for z in out.splitlines():
@@ -2320,7 +2351,7 @@ else:
 			err("Error retrieving CVS tree; exiting.")
 	if vcs == "svn":
 		try:
-			with os.popen("svn status --no-ignore") as f:
+			with repoman_popen("svn status --no-ignore") as f:
 				svnstatus = f.readlines()
 			myunadded = [ "./"+elem.rstrip().split()[1] for elem in svnstatus if elem.startswith("?") or elem.startswith("I") ]
 		except SystemExit as e:
@@ -2329,12 +2360,12 @@ else:
 			err("Error retrieving SVN info; exiting.")
 	if vcs == "git":
 		# get list of files not under version control or missing
-		myf = os.popen("git ls-files --others")
+		myf = repoman_popen("git ls-files --others")
 		myunadded = [ "./" + elem[:-1] for elem in myf ]
 		myf.close()
 	if vcs == "bzr":
 		try:
-			with os.popen("bzr status -S .") as f:
+			with repoman_popen("bzr status -S .") as f:
 				bzrstatus = f.readlines()
 			myunadded = [ "./"+elem.rstrip().split()[1].split('/')[-1:][0] for elem in bzrstatus if elem.startswith("?") or elem[0:2] == " D" ]
 		except SystemExit as e:
@@ -2342,14 +2373,14 @@ else:
 		except:
 			err("Error retrieving bzr info; exiting.")
 	if vcs == "hg":
-		with os.popen("hg status --no-status --unknown .") as f:
+		with repoman_popen("hg status --no-status --unknown .") as f:
 			myunadded = f.readlines()
 		myunadded = ["./" + elem.rstrip() for elem in myunadded]
 		
 		# Mercurial doesn't handle manually deleted files as removed from
 		# the repository, so the user need to remove them before commit,
 		# using "hg remove [FILES]"
-		with os.popen("hg status --no-status --deleted .") as f:
+		with repoman_popen("hg status --no-status --deleted .") as f:
 			mydeleted = f.readlines()
 		mydeleted = ["./" + elem.rstrip() for elem in mydeleted]
 
@@ -2395,36 +2426,36 @@ else:
 
 
 	if vcs == "svn":
-		with os.popen("svn status") as f:
+		with repoman_popen("svn status") as f:
 			svnstatus = f.readlines()
 		mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if (elem[:1] in "MR" or elem[1:2] in "M")]
 		mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A")]
 		myremoved = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("D")]
 
 		# Subversion expands keywords specified in svn:keywords properties.
-		with os.popen("svn propget -R svn:keywords") as f:
+		with repoman_popen("svn propget -R svn:keywords") as f:
 			props = f.readlines()
 		expansion = dict(("./" + prop.split(" - ")[0], prop.split(" - ")[1].split()) \
 			for prop in props if " - " in prop)
 
 	elif vcs == "git":
-		with os.popen("git diff-index --name-only "
+		with repoman_popen("git diff-index --name-only "
 			"--relative --diff-filter=M HEAD") as f:
 			mychanged = f.readlines()
 		mychanged = ["./" + elem[:-1] for elem in mychanged]
 
-		with os.popen("git diff-index --name-only "
+		with repoman_popen("git diff-index --name-only "
 			"--relative --diff-filter=A HEAD") as f:
 			mynew = f.readlines()
 		mynew = ["./" + elem[:-1] for elem in mynew]
 
-		with os.popen("git diff-index --name-only "
+		with repoman_popen("git diff-index --name-only "
 			"--relative --diff-filter=D HEAD") as f:
 			myremoved = f.readlines()
 		myremoved = ["./" + elem[:-1] for elem in myremoved]
 
 	if vcs == "bzr":
-		with os.popen("bzr status -S .") as f:
+		with repoman_popen("bzr status -S .") as f:
 			bzrstatus = f.readlines()
 		mychanged = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and elem[1:2] == "M" ]
 		mynew     = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and ( elem[1:2] in "NK" or elem[0:1] == "R" ) ]
@@ -2433,15 +2464,15 @@ else:
 		# Bazaar expands nothing.
 
 	if vcs == "hg":
-		with os.popen("hg status --no-status --modified .") as f:
+		with repoman_popen("hg status --no-status --modified .") as f:
 			mychanged = f.readlines()
 		mychanged = ["./" + elem.rstrip() for elem in mychanged]
 
-		with os.popen("hg status --no-status --added .") as f:
+		with repoman_popen("hg status --no-status --added .") as f:
 			mynew = f.readlines()
 		mynew = ["./" + elem.rstrip() for elem in mynew]
 
-		with os.popen("hg status --no-status --removed .") as f:
+		with repoman_popen("hg status --no-status --removed .") as f:
 			myremoved = f.readlines()
 		myremoved = ["./" + elem.rstrip() for elem in myremoved]
 
@@ -2642,7 +2673,8 @@ else:
 
 				headerstring = "'\$(%s).*\$'" % "|".join(enabled_keywords)
 
-			myout = subprocess_getstatusoutput("egrep -q "+headerstring+" "+myfile)
+			myout = repoman_getstatusoutput("egrep -q " + headerstring + " " +
+				portage._shell_quote(myfile))
 			if myout[0] == 0:
 				myheaders.append(myfile)
 
@@ -2732,7 +2764,13 @@ else:
 		if options.pretend:
 			print("("+gpgcmd+")")
 		else:
-			rValue = os.system(gpgcmd)
+			# Encode unicode manually for bug #310789.
+			gpgcmd = portage.util.shlex_split(gpgcmd)
+			if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
+				# Python 3.1 does not support bytes in Popen args.
+				gpgcmd = [_unicode_encode(arg,
+					encoding=_encodings['fs'], errors='strict') for arg in gpgcmd]
+			rValue = subprocess.call(gpgcmd)
 			if rValue == os.EX_OK:
 				os.rename(filename+".asc", filename)
 			else:

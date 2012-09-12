@@ -13,7 +13,7 @@ Portage then checks the make.conf files. Both /etc/make.conf and
 If no setting is found in the make.conf files, Portage checks
 make.globals. If no
 setting is found there, the profile's default setting is grabbed
-from /etc/make.profile/make.defaults. Please note that all user
+from /etc/portage/make.profile/make.defaults. Please note that all user
 settings should be made in the environment or in the make.conf
 files, which are intended to be customized by the user.
 .br
@@ -862,7 +862,7 @@ This variable controls permissions for \fIWORKDIR\fR (see \fBebuild\fR(5)).
 \fBPORTDIR\fR = \fI[path]\fR
 Defines the location of the Portage tree. This is the repository for all
 profile information as well as all ebuilds. If you change this, you must update
-your /etc/make.profile symlink accordingly.
+your /etc/portage/make.profile symlink accordingly.
 .br
 Defaults to /usr/portage. 
 .br
