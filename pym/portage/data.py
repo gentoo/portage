@@ -1,13 +1,14 @@
 # data.py -- Calculated/Discovered Data Values
-# Copyright 1998-2011 Gentoo Foundation
+# Copyright 1998-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import os, pwd, grp, platform
+import os, pwd, grp, platform, sys
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.output:colorize',
 	'portage.util:writemsg',
+	'subprocess'
 )
 from portage.localization import _
 
@@ -129,10 +130,20 @@ def _get_global(k):
 			# Get a list of group IDs for the portage user. Do not use
 			# grp.getgrall() since it is known to trigger spurious
 			# SIGPIPE problems with nss_ldap.
-			mystatus, myoutput = \
-				portage.subprocess_getstatusoutput("id -G %s" % _portage_username)
-			if mystatus == os.EX_OK:
-				for x in myoutput.split():
+			cmd = ["id", "-G", _portage_username]
+			encoding = portage._encodings['content']
+			if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
+				# Python 3.1 does not support bytes in Popen args.
+				cmd = [portage._unicode_encode(x,
+					encoding=encoding, errors='strict')
+					for x in cmd]
+			proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+				stderr=subprocess.STDOUT)
+			myoutput = proc.communicate()[0]
+			status = proc.wait()
+			if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
+				for x in portage._unicode_decode(myoutput,
+					encoding=encoding, errors='strict').split():
 					try:
 						v.append(int(x))
 					except ValueError:

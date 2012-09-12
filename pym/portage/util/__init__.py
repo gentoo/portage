@@ -31,11 +31,11 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'pickle',
 	'portage.dep:Atom',
-	'portage.util.listdir:_ignorecvs_dirs'
+	'portage.util.listdir:_ignorecvs_dirs',
+	'subprocess',
 )
 
 from portage import os
-from portage import subprocess_getstatusoutput
 from portage import _encodings
 from portage import _os_merge
 from portage import _unicode_encode
@@ -1589,7 +1589,7 @@ def find_updated_config_files(target_root, config_protect):
 	If no configuration files needs to be updated, None is returned
 	"""
 
-	os = _os_merge
+	encoding = _encodings['fs']
 
 	if config_protect:
 		# directories with some protect files in them
@@ -1621,10 +1621,17 @@ def find_updated_config_files(target_root, config_protect):
 				mycommand = "find '%s' -maxdepth 1 -name '._cfg????_%s'" % \
 						os.path.split(x.rstrip(os.path.sep))
 			mycommand += " ! -name '.*~' ! -iname '.*.bak' -print0"
-			a = subprocess_getstatusoutput(mycommand)
-
-			if a[0] == 0:
-				files = a[1].split('\0')
+			cmd = shlex_split(mycommand)
+			if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
+				# Python 3.1 does not support bytes in Popen args.
+				cmd = [_unicode_encode(x, encoding=encoding, errors='strict')
+					for x in cmd]
+			proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+				stderr=subprocess.STDOUT)
+			output = _unicode_decode(proc.communicate()[0], encoding=encoding)
+			status = proc.wait()
+			if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
+				files = output.split('\0')
 				# split always produces an empty string as the last element
 				if files and not files[-1]:
 					del files[-1]

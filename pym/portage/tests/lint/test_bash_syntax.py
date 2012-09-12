@@ -3,13 +3,13 @@
 
 from itertools import chain
 import stat
+import subprocess
+import sys
 
 from portage.const import BASH_BINARY, PORTAGE_BASE_PATH, PORTAGE_BIN_PATH
 from portage.tests import TestCase
 from portage import os
-from portage import subprocess_getstatusoutput
 from portage import _encodings
-from portage import _shell_quote
 from portage import _unicode_decode, _unicode_encode
 
 class BashSyntaxTestCase(TestCase):
@@ -42,7 +42,15 @@ class BashSyntaxTestCase(TestCase):
 				f.close()
 				if line[:2] == '#!' and \
 					'bash' in line:
-					cmd = "%s -n %s" % (_shell_quote(BASH_BINARY), _shell_quote(x))
-					status, output = subprocess_getstatusoutput(cmd)
+					cmd = [BASH_BINARY, "-n", x]
+					if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
+						# Python 3.1 does not support bytes in Popen args.
+						cmd = [_unicode_encode(x,
+							encoding=_encodings['fs'], errors='strict') for x in cmd]
+					proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+						stderr=subprocess.STDOUT)
+					output = _unicode_decode(proc.communicate()[0],
+						encoding=_encodings['fs'])
+					status = proc.wait()
 					self.assertEqual(os.WIFEXITED(status) and \
 						os.WEXITSTATUS(status) == os.EX_OK, True, msg=output)
