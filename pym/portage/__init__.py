@@ -347,7 +347,11 @@ if platform.system() in ('FreeBSD',):
 
 		@classmethod
 		def chflags(cls, path, flags, opts=""):
-			cmd = ['chflags', opts, '%o' % (flags,), path]
+			cmd = ['chflags']
+			if opts:
+				cmd.append(opts)
+			cmd.append('%o' % (flags,))
+			cmd.append(path)
 			encoding = _encodings['fs']
 			if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
 				# Python 3.1 does not support bytes in Popen args.
