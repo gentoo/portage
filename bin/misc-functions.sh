@@ -949,8 +949,9 @@ install_qa_check_prefix() {
 			fi
 			continue
 		fi
-		# unprefixed shebang, is the script directly in $PATH?
-		if [[ ":${PATH}:" == *":${fp}:"* ]] ; then
+		# unprefixed shebang, is the script directly in $PATH or an init
+		# script?
+		if [[ ":${PATH}:${EPREFIX}/etc/init.d:" == *":${fp}:"* ]] ; then
 			if [[ -e ${EROOT}${line[0]} || -e ${ED}${line[0]} ]] ; then
 				# is it unprefixed, but we can just fix it because a
 				# prefixed variant exists
