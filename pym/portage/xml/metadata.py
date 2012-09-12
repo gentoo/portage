@@ -58,8 +58,7 @@ except (ImportError, SystemError, RuntimeError, Exception):
 
 import re
 import xml.etree.ElementTree
-import portage
-from portage import os, _unicode_decode
+from portage import _encodings, _unicode_encode, _unicode_decode
 from portage.util import unique_everseen
 
 class _MetadataTreeBuilder(xml.etree.ElementTree.TreeBuilder):
@@ -203,7 +202,8 @@ class MetaDataXML(object):
 		self._xml_tree = None
 
 		try:
-			self._xml_tree = etree.parse(metadata_xml_path,
+			self._xml_tree = etree.parse(_unicode_encode(metadata_xml_path,
+				encoding=_encodings['fs'], errors='strict'),
 				parser=etree.XMLParser(target=_MetadataTreeBuilder()))
 		except ImportError:
 			pass
@@ -241,7 +241,8 @@ class MetaDataXML(object):
 
 		if self._herdstree is None:
 			try:
-				self._herdstree = etree.parse(self._herds_path,
+				self._herdstree = etree.parse(_unicode_encode(self._herds_path,
+					encoding=_encodings['fs'], errors='strict'),
 					parser=etree.XMLParser(target=_MetadataTreeBuilder()))
 			except (ImportError, IOError, SyntaxError):
 				return None
