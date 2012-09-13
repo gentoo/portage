@@ -1465,7 +1465,8 @@ class config(object):
 			not hasattr(self, "_ebuild_force_test_msg_shown"):
 				self._ebuild_force_test_msg_shown = True
 				writemsg(_("Forcing test.\n"), noiselevel=-1)
-		if "test" in self.features:
+		if "test" in self.features and \
+			("test" in explicit_iuse or iuse_implicit_match("test")):
 			if "test" in self.usemask and not ebuild_force_test:
 				# "test" is in IUSE and USE=test is masked, so execution
 				# of src_test() probably is not reliable. Therefore,

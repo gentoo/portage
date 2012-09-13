@@ -478,7 +478,7 @@ dyn_test() {
 		return
 	fi
 
-	if [ "${EBUILD_FORCE_TEST}" == "1" ] ; then
+	if [[ ${EBUILD_FORCE_TEST} == 1 && test =~ $PORTAGE_IUSE ]]; then
 		# If USE came from ${T}/environment then it might not have USE=test
 		# like it's supposed to here.
 		! has test ${USE} && export USE="${USE} test"
