@@ -34,7 +34,7 @@ class ResolverPlayground(object):
 	its work.
 	"""
 
-	config_files = frozenset(("eapi", "package.accept_keywords", "package.use",
+	config_files = frozenset(("eapi", "make.conf", "package.accept_keywords", "package.use",
 		"package.use.stable.mask", "package.mask", "package.keywords",
 		"package.unmask", "package.properties", "package.license", "use.mask", "use.force",
 		"layout.conf",))

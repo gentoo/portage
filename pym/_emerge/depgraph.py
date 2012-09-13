@@ -29,6 +29,7 @@ from portage.exception import (InvalidAtom, InvalidDependString,
 from portage.output import colorize, create_color_func, \
 	darkgreen, green
 bad = create_color_func("BAD")
+from portage.package.ebuild.config import _feature_flags
 from portage.package.ebuild.getmaskingstatus import \
 	_getmaskingstatus, _MaskReason
 from portage._sets import SETPREFIX
@@ -1234,12 +1235,14 @@ class depgraph(object):
 				cur_iuse).difference(forced_flags))
 			flags.update(orig_iuse.intersection(orig_use).symmetric_difference(
 				cur_iuse.intersection(cur_use)))
+			flags.difference_update(_feature_flags)
 			if flags:
 				return flags
 
 		elif changed_use or binpkg_respect_use:
-			flags = orig_iuse.intersection(orig_use).symmetric_difference(
-				cur_iuse.intersection(cur_use))
+			flags = set(orig_iuse.intersection(orig_use).symmetric_difference(
+				cur_iuse.intersection(cur_use)))
+			flags.difference_update(_feature_flags)
 			if flags:
 				return flags
 		return None

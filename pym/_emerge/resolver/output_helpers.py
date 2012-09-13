@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """Contains private support functions for the Display class
@@ -17,6 +17,7 @@ from portage._sets.base import InternalPackageSet
 from portage.output import (blue, bold, colorize, create_color_func,
 	green, red, teal, yellow)
 bad = create_color_func("BAD")
+from portage.package.ebuild.config import _feature_flags
 from portage.util import shlex_split, writemsg
 from portage.versions import catpkgsplit
 
@@ -245,7 +246,6 @@ def _format_size(mysize):
 		mystr=mystr[:mycount]+","+mystr[mycount:]
 	return mystr+" kB"
 
-
 def _create_use_string(conf, name, cur_iuse, iuse_forced, cur_use,
 	old_iuse, old_use,
 	is_new, reinst_flags):
@@ -299,7 +299,9 @@ def _create_use_string(conf, name, cur_iuse, iuse_forced, cur_use,
 			elif flag in old_use:
 				flag_str = green("-" + flag) + "*"
 		if flag_str:
-			if flag in iuse_forced:
+			if flag in _feature_flags:
+				flag_str = "{" + flag_str + "}"
+			elif flag in iuse_forced:
 				flag_str = "(" + flag_str + ")"
 			if isEnabled:
 				enabled.append(flag_str)

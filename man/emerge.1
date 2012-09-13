@@ -369,6 +369,10 @@ changed since installation. This option also implies the
 \fB\-\-selective\fR option. Unlike \fB\-\-newuse\fR, the
 \fB\-\-changed\-use\fR option does not trigger reinstallation when
 flags that the user has not enabled are added or removed.
+
+NOTE: This option ignores the state of the "test" USE flag, since that flag
+has a special binding to FEATURES="test" (see \fBmake.conf\fR(5) for more
+information about \fBFEATURES\fR settings).
 .TP
 .BR "\-\-changelog " (\fB\-l\fR)
 Use this in conjunction with the \fB\-\-pretend\fR option.  This will
@@ -538,6 +542,10 @@ settings. If you would like to skip rebuilds for which disabled flags have
 been added to or removed from IUSE, see the related
 \fB\-\-changed\-use\fR option. If you would like to skip rebuilds for
 specific packages, see the \fB\-\-exclude\fR option.
+
+NOTE: This option ignores the state of the "test" USE flag, since that flag
+has a special binding to FEATURES="test" (see \fBmake.conf\fR(5) for more
+information about \fBFEATURES\fR settings).
 .TP
 .BR "\-\-noconfmem"
 Causes portage to disregard merge records indicating that a config file
@@ -781,6 +789,7 @@ Symbol	Location	Meaning
 *	suffix	transition to or from the enabled state
 %	suffix	newly added or removed
 ()	circumfix	forced, masked, or removed
+{}	circumfix	state is bound to FEATURES settings
 .TE
 .TP
 .BR "\-\-verbose\-main\-repo\-display"

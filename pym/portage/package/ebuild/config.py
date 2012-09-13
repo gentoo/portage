@@ -60,6 +60,8 @@ from portage.package.ebuild._config.helper import ordered_by_atom_specificity, p
 if sys.hexversion >= 0x3000000:
 	basestring = str
 
+_feature_flags = frozenset(["test"])
+
 def autouse(myvartree, use_cache=1, mysettings=None):
 	warnings.warn("portage.autouse() is deprecated",
 		DeprecationWarning, stacklevel=2)
@@ -1479,6 +1481,11 @@ class config(object):
 				if ebuild_force_test and "test" in self.usemask:
 					self.usemask = \
 						frozenset(x for x in self.usemask if x != "test")
+		elif "test" in explicit_iuse or iuse_implicit_match("test"):
+			if "test" in self.usemask or "test" not in self.features:
+				use.discard("test")
+			elif "test" in self.features:
+				use.add("test")
 
 		# Allow _* flags from USE_EXPAND wildcards to pass through here.
 		use.difference_update([x for x in use \

@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Aug 2012" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Sep 2012" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -514,7 +514,10 @@ bits from any file that is not listed in \fI/etc/portage/suidctl.conf\fR.
 Run package\-specific tests during each merge to help make sure 
 the package compiled properly.  See \fItest\fR in \fBebuild\fR(1) 
 and \fIsrc_test()\fR in \fBebuild\fR(5). This feature implies the "test"
-\fBUSE\fR flag.
+\fBUSE\fR flag if it is a member of \fBIUSE\fR, either explicitly or
+implicitly (see \fBebuild\fR(5) for more information about \fBIUSE\fR).
+The "test" \fBUSE\fR flag is also automatically disabled when the
+"test" feature is disabled.
 .TP
 .B test\-fail\-continue
 If "test" is enabled \fBFEATURES\fR and the test phase of an ebuild fails,
