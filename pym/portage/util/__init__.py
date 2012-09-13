@@ -1624,8 +1624,8 @@ def find_updated_config_files(target_root, config_protect):
 			cmd = shlex_split(mycommand)
 			if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
 				# Python 3.1 does not support bytes in Popen args.
-				cmd = [_unicode_encode(x, encoding=encoding, errors='strict')
-					for x in cmd]
+				cmd = [_unicode_encode(arg, encoding=encoding, errors='strict')
+					for arg in cmd]
 			proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
 				stderr=subprocess.STDOUT)
 			output = _unicode_decode(proc.communicate()[0], encoding=encoding)
