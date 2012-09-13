@@ -34,7 +34,8 @@ class ResolverPlayground(object):
 	its work.
 	"""
 
-	config_files = frozenset(("package.accept_keywords", "package.use", "package.mask", "package.keywords", \
+	config_files = frozenset(("eapi", "package.accept_keywords", "package.use",
+		"package.use.stable.mask", "package.mask", "package.keywords",
 		"package.unmask", "package.properties", "package.license", "use.mask", "use.force",
 		"layout.conf",))
 
@@ -344,10 +345,11 @@ class ResolverPlayground(object):
 				sub_profile_dir = os.path.join(profile_dir, "default", "linux", "x86", "test_profile")
 				os.makedirs(sub_profile_dir)
 
-				eapi_file = os.path.join(sub_profile_dir, "eapi")
-				f = open(eapi_file, "w")
-				f.write("0\n")
-				f.close()
+				if not (profile and "eapi" in profile):
+					eapi_file = os.path.join(sub_profile_dir, "eapi")
+					f = open(eapi_file, "w")
+					f.write("0\n")
+					f.close()
 
 				make_defaults_file = os.path.join(sub_profile_dir, "make.defaults")
 				f = open(make_defaults_file, "w")
