@@ -1467,9 +1467,11 @@ class config(object):
 			not hasattr(self, "_ebuild_force_test_msg_shown"):
 				self._ebuild_force_test_msg_shown = True
 				writemsg(_("Forcing test.\n"), noiselevel=-1)
-		if "test" in self.features and \
-			("test" in explicit_iuse or iuse_implicit_match("test")):
-			if "test" in self.usemask and not ebuild_force_test:
+
+		if "test" in explicit_iuse or iuse_implicit_match("test"):
+			if "test" not in self.features:
+				use.discard("test")
+			elif "test" in self.usemask and not ebuild_force_test:
 				# "test" is in IUSE and USE=test is masked, so execution
 				# of src_test() probably is not reliable. Therefore,
 				# temporarily disable FEATURES=test just for this package.
@@ -1481,11 +1483,6 @@ class config(object):
 				if ebuild_force_test and "test" in self.usemask:
 					self.usemask = \
 						frozenset(x for x in self.usemask if x != "test")
-		elif "test" in explicit_iuse or iuse_implicit_match("test"):
-			if "test" in self.usemask or "test" not in self.features:
-				use.discard("test")
-			elif "test" in self.features:
-				use.add("test")
 
 		# Allow _* flags from USE_EXPAND wildcards to pass through here.
 		use.difference_update([x for x in use \
