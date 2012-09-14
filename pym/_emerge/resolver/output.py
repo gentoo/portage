@@ -68,24 +68,21 @@ class Display(object):
 		self.blocker_style = None
 
 
-	def _blockers(self, pkg, fetch_symbol):
+	def _blockers(self, pkg):
 		"""Processes pkg for blockers and adds colorized strings to
 		self.print_msg and self.blockers
 
 		@param pkg: _emerge.Package.Package instance
-		@param fetch_symbol: string
 		@rtype: bool
 		Modifies class globals: self.blocker_style, self.resolved,
 			self.print_msg
 		"""
 		if pkg.satisfied:
 			self.blocker_style = "PKG_BLOCKER_SATISFIED"
-			addl = "%s  %s  " % (colorize(self.blocker_style, "b"),
-				fetch_symbol)
+			addl = "%s     " % (colorize(self.blocker_style, "b"),)
 		else:
 			self.blocker_style = "PKG_BLOCKER"
-			addl = "%s  %s  " % (colorize(self.blocker_style, "B"),
-				fetch_symbol)
+			addl = "%s     " % (colorize(self.blocker_style, "B"),)
 		addl += self.empty_space_in_brackets()
 		self.resolved = dep_expand(
 			str(pkg.atom).lstrip("!"), mydb=self.vardb,
@@ -110,13 +107,10 @@ class Display(object):
 			addl += colorize(self.blocker_style,
 				" (is blocking %s)") % block_parents
 		if isinstance(pkg, Blocker) and pkg.satisfied:
-			if self.conf.columns:
-				return True
-			self.print_msg.append(addl)
+			if not self.conf.columns:
+				self.print_msg.append(addl)
 		else:
 			self.blockers.append(addl)
-		return False
-
 
 	def _display_use(self, pkg, myoldbest, myinslotlist):
 		""" USE flag display
@@ -784,8 +778,7 @@ class Display(object):
 			self.indent = " " * depth
 
 			if isinstance(pkg, Blocker):
-				if self._blockers(pkg, fetch_symbol=" "):
-					continue
+				self._blockers(pkg)
 			else:
 				pkg_info = self.set_pkg_info(pkg, ordered)
 				pkg_info.oldbest_list, myinslotlist = \
