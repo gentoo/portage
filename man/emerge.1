@@ -494,7 +494,7 @@ Ignore the slot/sub\-slot := operator parts of dependencies that have
 been recorded when packages where built. This option is intended
 only for debugging purposes, and it only affects built packages
 that specify slot/sub\-slot := operator dependencies using the
-experimental "4\-slot\-abi", "5_pre1", or "5_pre2" EAPIs.
+experimental "4\-slot\-abi" or "5_pre2" EAPIs.
 .TP
 .BR "-j [JOBS], \-\-jobs[=JOBS]"
 Specifies the number of packages to build simultaneously. If this option is
@@ -660,7 +660,7 @@ operator dependencies can be satisfied by a newer slot, so that
 older packages slots will become eligible for removal by the
 \-\-depclean action as soon as possible. This option only
 affects packages that specify slot/sub\-slot := dependencies using the
-experimental "4\-slot\-abi", "5_pre1", or "5_pre1" EAPIs
+experimental "4\-slot\-abi" or "5_pre2" EAPIs.
 Since this option requires
 checking of reverse dependencies, it enables \-\-complete\-graph
 mode whenever a new slot is installed. This option is enabled by

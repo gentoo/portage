@@ -68,7 +68,6 @@ save_ebuild_env() {
 		save_ebuild_env filter_readonly_variables preprocess_ebuild_env \
 		set_unless_changed unset_unless_changed source_all_bashrcs \
 		ebuild_main ebuild_phase ebuild_phase_with_hooks \
-		_eapi5_apply_user_patches _eapi5_src_prepare \
 		_ebuild_arg_to_phase _ebuild_phase_funcs default \
 		_hasg _hasgq _unpack_tar \
 		${QA_INTERCEPTORS}
@@ -76,10 +75,6 @@ save_ebuild_env() {
 	case "${EAPI}" in
 		0|1|2|3|4|4-python|4-slot-abi) ;;
 		*) unset -f usex ;;
-	esac
-
-	case "${EAPI}" in
-		5_pre1) unset -f apply_user_patches ;;
 	esac
 
 	# portage config variables and variables set directly by portage
