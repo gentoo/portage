@@ -294,24 +294,6 @@ elog() {
 	return 0
 }
 
-esyslog() {
-	local pri=
-	local tag=
-
-	if [ -x /usr/bin/logger ]
-	then
-		pri="$1"
-		tag="$2"
-
-		shift 2
-		[ -z "$*" ] && return 0
-
-		/usr/bin/logger -p "${pri}" -t "${tag}" -- "$*"
-	fi
-
-	return 0
-}
-
 einfo() {
 	elog_base INFO "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo

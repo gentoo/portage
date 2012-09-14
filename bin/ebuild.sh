@@ -23,8 +23,8 @@ else
 	for x in diropts docompress exeopts get_KV insopts \
 		keepdir KV_major KV_micro KV_minor KV_to_int \
 		libopts register_die_hook register_success_hook \
-		remove_path_entry set_unless_changed strip_duplicate_slashes \
-		unset_unless_changed use_with use_enable ; do
+		strip_duplicate_slashes \
+		use_with use_enable ; do
 		eval "${x}() {
 			if has \"\${EAPI:-0}\" 4-python; then
 				die \"\${FUNCNAME}() calls are not allowed in global scope\"
@@ -135,12 +135,6 @@ fi
 
 # the sandbox is disabled by default except when overridden in the relevant stages
 export SANDBOX_ON=0
-
-esyslog() {
-	# Custom version of esyslog() to take care of the "Red Star" bug.
-	# MUST follow functions.sh to override the "" parameter problem.
-	return 0
-}
 
 # Ensure that $PWD is sane whenever possible, to protect against
 # exploitation of insecure search path for python -c in ebuilds.
