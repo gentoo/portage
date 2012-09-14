@@ -25,7 +25,7 @@ into() {
 			install -d "${ED}${DESTTREE}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
-				helpers_die "${FUNCNAME[0]} failed"
+				__helpers_die "${FUNCNAME[0]} failed"
 				return $ret
 			fi
 		fi
@@ -43,7 +43,7 @@ insinto() {
 			install -d "${ED}${INSDESTTREE}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
-				helpers_die "${FUNCNAME[0]} failed"
+				__helpers_die "${FUNCNAME[0]} failed"
 				return $ret
 			fi
 		fi
@@ -61,7 +61,7 @@ exeinto() {
 			install -d "${ED}${_E_EXEDESTTREE_}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
-				helpers_die "${FUNCNAME[0]} failed"
+				__helpers_die "${FUNCNAME[0]} failed"
 				return $ret
 			fi
 		fi
@@ -79,7 +79,7 @@ docinto() {
 			install -d "${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
-				helpers_die "${FUNCNAME[0]} failed"
+				__helpers_die "${FUNCNAME[0]} failed"
 				return $ret
 			fi
 		fi
@@ -279,7 +279,7 @@ unpack() {
 	[ -z "$*" ] && die "Nothing passed to the 'unpack' command"
 
 	for x in "$@"; do
-		vecho ">>> Unpacking ${x} to ${PWD}"
+		__vecho ">>> Unpacking ${x} to ${PWD}"
 		y=${x%.*}
 		y=${y##*.}
 
@@ -297,7 +297,7 @@ unpack() {
 		_unpack_tar() {
 			if [ "${y}" == "tar" ]; then
 				$1 -c -- "$srcdir$x" | tar xof -
-				assert_sigpipe_ok "$myfail"
+				__assert_sigpipe_ok "$myfail"
 			else
 				local cwd_dest=${x##*/}
 				cwd_dest=${cwd_dest%.*}
@@ -315,7 +315,7 @@ unpack() {
 				;;
 			tbz|tbz2)
 				${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d} -c -- "$srcdir$x" | tar xof -
-				assert_sigpipe_ok "$myfail"
+				__assert_sigpipe_ok "$myfail"
 				;;
 			ZIP|zip|jar)
 				# unzip will interactively prompt under some error conditions,
@@ -378,13 +378,13 @@ unpack() {
 				;;
 			xz)
 				if has $eapi 0 1 2 ; then
-					vecho "unpack ${x}: file format not recognized. Ignoring."
+					__vecho "unpack ${x}: file format not recognized. Ignoring."
 				else
 					_unpack_tar "xz -d"
 				fi
 				;;
 			*)
-				vecho "unpack ${x}: file format not recognized. Ignoring."
+				__vecho "unpack ${x}: file format not recognized. Ignoring."
 				;;
 		esac
 	done
@@ -433,7 +433,7 @@ econf() {
 			find "${WORKDIR}" -type f '(' \
 			-name config.guess -o -name config.sub ')' -print0 | \
 			while read -r -d $'\0' x ; do
-				vecho " * econf: updating ${x/${WORKDIR}\/} with ${EPREFIX}/usr/share/gnuconfig/${x##*/}"
+				__vecho " * econf: updating ${x/${WORKDIR}\/} with ${EPREFIX}/usr/share/gnuconfig/${x##*/}"
 				cp -f "${EPREFIX}"/usr/share/gnuconfig/"${x##*/}" "${x}"
 			done
 		fi
@@ -491,7 +491,7 @@ econf() {
 			--localstatedir="${EPREFIX}"/var/lib \
 			"$@" \
 			${EXTRA_ECONF}
-		vecho "${ECONF_SOURCE}/configure" "$@"
+		__vecho "${ECONF_SOURCE}/configure" "$@"
 
 		if ! "${ECONF_SOURCE}/configure" "$@" ; then
 
@@ -587,15 +587,15 @@ _eapi0_src_test() {
 			;;
 	esac
 	if $emake_cmd ${internal_opts} check -n &> /dev/null; then
-		vecho ">>> Test phase [check]: ${CATEGORY}/${PF}"
+		__vecho ">>> Test phase [check]: ${CATEGORY}/${PF}"
 		$emake_cmd ${internal_opts} check || \
 			die "Make check failed. See above for details."
 	elif $emake_cmd ${internal_opts} test -n &> /dev/null; then
-		vecho ">>> Test phase [test]: ${CATEGORY}/${PF}"
+		__vecho ">>> Test phase [test]: ${CATEGORY}/${PF}"
 		$emake_cmd ${internal_opts} test || \
 			die "Make test failed. See above for details."
 	else
-		vecho ">>> Test phase [none]: ${CATEGORY}/${PF}"
+		__vecho ">>> Test phase [none]: ${CATEGORY}/${PF}"
 	fi
 }
 

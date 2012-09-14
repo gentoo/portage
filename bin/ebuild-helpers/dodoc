@@ -16,7 +16,7 @@ esac
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 if [ $# -lt 1 ] ; then
-	helpers_die "${0##*/}: at least one argument needed"
+	__helpers_die "${0##*/}: at least one argument needed"
 	exit 1 	
 fi
 
@@ -41,5 +41,5 @@ for x in "$@" ; do
 	fi
 done
 
-[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
+[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
 exit ${ret}

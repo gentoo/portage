@@ -210,8 +210,8 @@ ebuild_phase_with_hooks() {
 
 dyn_pretend() {
 	if [[ -e $PORTAGE_BUILDDIR/.pretended ]] ; then
-		vecho ">>> It appears that '$PF' is already pretended; skipping."
-		vecho ">>> Remove '$PORTAGE_BUILDDIR/.pretended' to force pretend."
+		__vecho ">>> It appears that '$PF' is already pretended; skipping."
+		__vecho ">>> Remove '$PORTAGE_BUILDDIR/.pretended' to force pretend."
 		return 0
 	fi
 	ebuild_phase pre_pkg_pretend
@@ -223,8 +223,8 @@ dyn_pretend() {
 
 dyn_setup() {
 	if [[ -e $PORTAGE_BUILDDIR/.setuped ]] ; then
-		vecho ">>> It appears that '$PF' is already setup; skipping."
-		vecho ">>> Remove '$PORTAGE_BUILDDIR/.setuped' to force setup."
+		__vecho ">>> It appears that '$PF' is already setup; skipping."
+		__vecho ">>> Remove '$PORTAGE_BUILDDIR/.setuped' to force setup."
 		return 0
 	fi
 	ebuild_phase pre_pkg_setup
@@ -236,7 +236,7 @@ dyn_setup() {
 
 dyn_unpack() {
 	if [[ -f ${PORTAGE_BUILDDIR}/.unpacked ]] ; then
-		vecho ">>> WORKDIR is up-to-date, keeping..."
+		__vecho ">>> WORKDIR is up-to-date, keeping..."
 		return 0
 	fi
 	if [ ! -d "${WORKDIR}" ]; then
@@ -244,11 +244,11 @@ dyn_unpack() {
 	fi
 	cd "${WORKDIR}" || die "Directory change failed: \`cd '${WORKDIR}'\`"
 	ebuild_phase pre_src_unpack
-	vecho ">>> Unpacking source..."
+	__vecho ">>> Unpacking source..."
 	ebuild_phase src_unpack
 	>> "$PORTAGE_BUILDDIR/.unpacked" || \
 		die "Failed to create $PORTAGE_BUILDDIR/.unpacked"
-	vecho ">>> Source unpacked in ${WORKDIR}"
+	__vecho ">>> Source unpacked in ${WORKDIR}"
 	ebuild_phase post_src_unpack
 }
 
@@ -357,8 +357,8 @@ has_phase_defined_up_to() {
 dyn_prepare() {
 
 	if [[ -e $PORTAGE_BUILDDIR/.prepared ]] ; then
-		vecho ">>> It appears that '$PF' is already prepared; skipping."
-		vecho ">>> Remove '$PORTAGE_BUILDDIR/.prepared' to force prepare."
+		__vecho ">>> It appears that '$PF' is already prepared; skipping."
+		__vecho ">>> Remove '$PORTAGE_BUILDDIR/.prepared' to force prepare."
 		return 0
 	fi
 
@@ -375,11 +375,11 @@ dyn_prepare() {
 	trap abort_prepare SIGINT SIGQUIT
 
 	ebuild_phase pre_src_prepare
-	vecho ">>> Preparing source in $PWD ..."
+	__vecho ">>> Preparing source in $PWD ..."
 	ebuild_phase src_prepare
 	>> "$PORTAGE_BUILDDIR/.prepared" || \
 		die "Failed to create $PORTAGE_BUILDDIR/.prepared"
-	vecho ">>> Source prepared."
+	__vecho ">>> Source prepared."
 	ebuild_phase post_src_prepare
 
 	trap - SIGINT SIGQUIT
@@ -388,8 +388,8 @@ dyn_prepare() {
 dyn_configure() {
 
 	if [[ -e $PORTAGE_BUILDDIR/.configured ]] ; then
-		vecho ">>> It appears that '$PF' is already configured; skipping."
-		vecho ">>> Remove '$PORTAGE_BUILDDIR/.configured' to force configuration."
+		__vecho ">>> It appears that '$PF' is already configured; skipping."
+		__vecho ">>> Remove '$PORTAGE_BUILDDIR/.configured' to force configuration."
 		return 0
 	fi
 
@@ -407,11 +407,11 @@ dyn_configure() {
 
 	ebuild_phase pre_src_configure
 
-	vecho ">>> Configuring source in $PWD ..."
+	__vecho ">>> Configuring source in $PWD ..."
 	ebuild_phase src_configure
 	>> "$PORTAGE_BUILDDIR/.configured" || \
 		die "Failed to create $PORTAGE_BUILDDIR/.configured"
-	vecho ">>> Source configured."
+	__vecho ">>> Source configured."
 
 	ebuild_phase post_src_configure
 
@@ -421,8 +421,8 @@ dyn_configure() {
 dyn_compile() {
 
 	if [[ -e $PORTAGE_BUILDDIR/.compiled ]] ; then
-		vecho ">>> It appears that '${PF}' is already compiled; skipping."
-		vecho ">>> Remove '$PORTAGE_BUILDDIR/.compiled' to force compilation."
+		__vecho ">>> It appears that '${PF}' is already compiled; skipping."
+		__vecho ">>> Remove '$PORTAGE_BUILDDIR/.compiled' to force compilation."
 		return 0
 	fi
 
@@ -447,11 +447,11 @@ dyn_compile() {
 
 	ebuild_phase pre_src_compile
 
-	vecho ">>> Compiling source in $PWD ..."
+	__vecho ">>> Compiling source in $PWD ..."
 	ebuild_phase src_compile
 	>> "$PORTAGE_BUILDDIR/.compiled" || \
 		die "Failed to create $PORTAGE_BUILDDIR/.compiled"
-	vecho ">>> Source compiled."
+	__vecho ">>> Source compiled."
 
 	ebuild_phase post_src_compile
 
@@ -461,8 +461,8 @@ dyn_compile() {
 dyn_test() {
 
 	if [[ -e $PORTAGE_BUILDDIR/.tested ]] ; then
-		vecho ">>> It appears that ${PN} has already been tested; skipping."
-		vecho ">>> Remove '${PORTAGE_BUILDDIR}/.tested' to force test."
+		__vecho ">>> It appears that ${PN} has already been tested; skipping."
+		__vecho ">>> Remove '${PORTAGE_BUILDDIR}/.tested' to force test."
 		return
 	fi
 
@@ -480,10 +480,10 @@ dyn_test() {
 	fi
 
 	if ! has test $FEATURES && [ "${EBUILD_FORCE_TEST}" != "1" ]; then
-		vecho ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
+		__vecho ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
 	elif has test $RESTRICT; then
 		einfo "Skipping make test/check due to ebuild restriction."
-		vecho ">>> Test phase [explicitly disabled]: ${CATEGORY}/${PF}"
+		__vecho ">>> Test phase [explicitly disabled]: ${CATEGORY}/${PF}"
 	else
 		local save_sp=${SANDBOX_PREDICT}
 		addpredict /
@@ -503,8 +503,8 @@ dyn_install() {
 	if has noauto $FEATURES ; then
 		rm -f "${PORTAGE_BUILDDIR}/.installed"
 	elif [[ -e $PORTAGE_BUILDDIR/.installed ]] ; then
-		vecho ">>> It appears that '${PF}' is already installed; skipping."
-		vecho ">>> Remove '${PORTAGE_BUILDDIR}/.installed' to force install."
+		__vecho ">>> It appears that '${PF}' is already installed; skipping."
+		__vecho ">>> Remove '${PORTAGE_BUILDDIR}/.installed' to force install."
 		return 0
 	fi
 	trap "abort_install" SIGINT SIGQUIT
@@ -527,8 +527,8 @@ dyn_install() {
 		die "The source directory '${S}' doesn't exist"
 	fi
 
-	vecho
-	vecho ">>> Install ${PF} into ${D} category ${CATEGORY}"
+	__vecho
+	__vecho ">>> Install ${PF} into ${D} category ${CATEGORY}"
 	#our custom version of libtool uses $S and $D to fix
 	#invalid paths in .la files
 	export S D
@@ -544,8 +544,8 @@ dyn_install() {
 	ebuild_phase src_install
 	>> "$PORTAGE_BUILDDIR/.installed" || \
 		die "Failed to create $PORTAGE_BUILDDIR/.installed"
-	vecho ">>> Completed installing ${PF} into ${D}"
-	vecho
+	__vecho ">>> Completed installing ${PF} into ${D}"
+	__vecho
 	ebuild_phase post_src_install
 
 	cd "${PORTAGE_BUILDDIR}"/build-info

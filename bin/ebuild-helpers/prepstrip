@@ -159,7 +159,7 @@ save_elf_debug() {
 process_elf() {
 	local x=$1 strip_flags=${*:2}
 
-	vecho "   ${x:${#ED}}"
+	__vecho "   ${x:${#ED}}"
 
 	# If two processes try to debugedit or strip the same hardlink at the
 	# same time, it may corrupt files or cause loss of splitdebug info.
@@ -221,7 +221,7 @@ if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
 	fi
 	sed -e "/^\$/d" -e "s#^#/#" -i "${log}"
 	if [[ -s ${log} ]] ; then
-		vecho -e "\n"
+		__vecho -e "\n"
 		eqawarn "QA Notice: Pre-stripped files found:"
 		eqawarn "$(<"${log}")"
 	else
@@ -237,7 +237,7 @@ for x in \
 	$(find "$@" -type f -name '*.a')
 do
 	if ! ${banner} ; then
-		vecho "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
+		__vecho "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
 		banner=true
 	fi
 
@@ -277,7 +277,7 @@ do
 
 	buildid=
 	if [[ ${f} == *"current ar archive"* ]] ; then
-		vecho "   ${x:${#ED}}"
+		__vecho "   ${x:${#ED}}"
 		if ${strip_this} ; then
 			# hmm, can we split debug/sources for .a ?
 			${STRIP} -g "${x}"
@@ -305,7 +305,7 @@ if [[ -s ${tmpdir}/debug.sources ]] && \
    ! ${RESTRICT_installsources} && \
    ${debugedit_found}
 then
-	vecho "installsources: rsyncing source files"
+	__vecho "installsources: rsyncing source files"
 	[[ -d ${D}${prepstrip_sources_dir} ]] || mkdir -p "${D}${prepstrip_sources_dir}"
 	grep -zv '/<[^/>]*>$' "${tmpdir}"/debug.sources | \
 		(cd "${WORKDIR}"; LANG=C sort -z -u | \

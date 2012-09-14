@@ -226,11 +226,11 @@ install_qa_check() {
 				-i "${T}"/scanelf-ignored-CFLAGS.log
 			f=$(<"${T}"/scanelf-ignored-CFLAGS.log)
 			if [[ -n ${f} ]] ; then
-				vecho -ne '\n'
+				__vecho -ne '\n'
 				eqawarn "${BAD}QA Notice: Files built without respecting CFLAGS have been detected${NORMAL}"
 				eqawarn " Please include the following list of files in your report:"
 				eqawarn "${f}"
-				vecho -ne '\n'
+				__vecho -ne '\n'
 				sleep 1
 			else
 				rm -f "${T}"/scanelf-ignored-CFLAGS.log
@@ -273,10 +273,10 @@ install_qa_check() {
 	# Now we look for all world writable files.
 	local unsafe_files=$(find "${ED}" -type f -perm -2 | sed -e "s:^${ED}:- :")
 	if [[ -n ${unsafe_files} ]] ; then
-		vecho "QA Security Notice: world writable file(s):"
-		vecho "${unsafe_files}"
-		vecho "- This may or may not be a security problem, most of the time it is one."
-		vecho "- Please double check that $PF really needs a world writeable bit and file bugs accordingly."
+		__vecho "QA Security Notice: world writable file(s):"
+		__vecho "${unsafe_files}"
+		__vecho "- This may or may not be a security problem, most of the time it is one."
+		__vecho "- Please double check that $PF really needs a world writeable bit and file bugs accordingly."
 		sleep 1
 	fi
 
@@ -307,7 +307,7 @@ install_qa_check() {
 			for l in $(echo "${rpath_files}" | grep -E ":${dir}|::|: "); do
 				f+="  ${l%%:*}\n"
 				if ! has stricter ${FEATURES}; then
-					vecho "Auto fixing rpaths for ${l%%:*}"
+					__vecho "Auto fixing rpaths for ${l%%:*}"
 					TMPDIR="${dir}" scanelf -BXr "${l%%:*}" -o /dev/null
 				fi
 			done
@@ -321,12 +321,12 @@ install_qa_check() {
 
 		# Print QA notice.
 		if [[ -n ${f}${x} ]] ; then
-			vecho -ne '\n'
+			__vecho -ne '\n'
 			eqawarn "QA Notice: The following files contain insecure RUNPATHs"
 			eqawarn " Please file a bug about this at http://bugs.gentoo.org/"
 			eqawarn " with the maintaining herd of the package."
 			eqawarn "${f}${f:+${x:+\n}}${x}"
-			vecho -ne '\n'
+			__vecho -ne '\n'
 			if [[ -n ${x} ]] || has stricter ${FEATURES} ; then
 				insecure_rpath=1
 			fi
@@ -344,7 +344,7 @@ install_qa_check() {
 		f=$(scanelf -qyRF '%t %p' "${ED}" | grep -v 'usr/lib/debug/')
 		if [[ -n ${f} ]] ; then
 			scanelf -qyRAF '%T %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-textrel.log
-			vecho -ne '\n'
+			__vecho -ne '\n'
 			eqawarn "QA Notice: The following files contain runtime text relocations"
 			eqawarn " Text relocations force the dynamic linker to perform extra"
 			eqawarn " work at startup, waste system resources, and may pose a security"
@@ -353,7 +353,7 @@ install_qa_check() {
 			eqawarn " For more information, see http://hardened.gentoo.org/pic-fix-guide.xml"
 			eqawarn " Please include the following list of files in your report:"
 			eqawarn "${f}"
-			vecho -ne '\n'
+			__vecho -ne '\n'
 			die_msg="${die_msg} textrels,"
 			sleep 1
 		fi
@@ -389,7 +389,7 @@ install_qa_check() {
 		if [[ -n ${f} ]] ; then
 			# One more pass to help devs track down the source
 			scanelf -qyRAF '%e %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-execstack.log
-			vecho -ne '\n'
+			__vecho -ne '\n'
 			eqawarn "QA Notice: The following files contain writable and executable sections"
 			eqawarn " Files with such sections will not work properly (or at all!) on some"
 			eqawarn " architectures/operating systems.  A bug should be filed at"
@@ -399,7 +399,7 @@ install_qa_check() {
 			eqawarn " Note: Bugs should be filed for the respective maintainers"
 			eqawarn " of the package in question and not hardened@g.o."
 			eqawarn "${f}"
-			vecho -ne '\n'
+			__vecho -ne '\n'
 			die_msg="${die_msg} execstacks"
 			sleep 1
 		fi
@@ -421,11 +421,11 @@ install_qa_check() {
 					-i "${T}"/scanelf-ignored-LDFLAGS.log
 				f=$(<"${T}"/scanelf-ignored-LDFLAGS.log)
 				if [[ -n ${f} ]] ; then
-					vecho -ne '\n'
+					__vecho -ne '\n'
 					eqawarn "${BAD}QA Notice: Files built without respecting LDFLAGS have been detected${NORMAL}"
 					eqawarn " Please include the following list of files in your report:"
 					eqawarn "${f}"
-					vecho -ne '\n'
+					__vecho -ne '\n'
 					sleep 1
 				else
 					rm -f "${T}"/scanelf-ignored-LDFLAGS.log
@@ -463,10 +463,10 @@ install_qa_check() {
 			sed -e "/^\$/d" -i "${T}"/scanelf-missing-SONAME.log
 			f=$(<"${T}"/scanelf-missing-SONAME.log)
 			if [[ -n ${f} ]] ; then
-				vecho -ne '\n'
+				__vecho -ne '\n'
 				eqawarn "QA Notice: The following shared libraries lack a SONAME"
 				eqawarn "${f}"
-				vecho -ne '\n'
+				__vecho -ne '\n'
 				sleep 1
 			else
 				rm -f "${T}"/scanelf-missing-SONAME.log
@@ -497,10 +497,10 @@ install_qa_check() {
 			sed -e "/^\$/d" -i "${T}"/scanelf-missing-NEEDED.log
 			f=$(<"${T}"/scanelf-missing-NEEDED.log)
 			if [[ -n ${f} ]] ; then
-				vecho -ne '\n'
+				__vecho -ne '\n'
 				eqawarn "QA Notice: The following shared libraries lack NEEDED entries"
 				eqawarn "${f}"
-				vecho -ne '\n'
+				__vecho -ne '\n'
 				sleep 1
 			else
 				rm -f "${T}"/scanelf-missing-NEEDED.log
@@ -587,7 +587,7 @@ install_qa_check() {
 			[[ ! -e ${j} ]] && continue
 			[[ -L ${j} ]] && continue
 			[[ -x ${j} ]] && continue
-			vecho "making executable: ${j#${ED}}"
+			__vecho "making executable: ${j#${ED}}"
 			chmod +x "${j}"
 		done
 
@@ -595,7 +595,7 @@ install_qa_check() {
 			[[ ! -e ${j} ]] && continue
 			[[ -L ${j} ]] && continue
 			[[ ! -x ${j} ]] && continue
-			vecho "removing executable bit: ${j#${ED}}"
+			__vecho "removing executable bit: ${j#${ED}}"
 			chmod -x "${j}"
 		done
 
@@ -604,7 +604,7 @@ install_qa_check() {
 			[[ ! -L ${j} ]] && continue
 			linkdest=$(readlink "${j}")
 			if [[ ${linkdest} == /* ]] ; then
-				vecho -ne '\n'
+				__vecho -ne '\n'
 				eqawarn "QA Notice: Found an absolute symlink in a library directory:"
 				eqawarn "           ${j#${D}} -> ${linkdest}"
 				eqawarn "           It should be a relative symlink if in the same directory"
@@ -624,7 +624,7 @@ install_qa_check() {
 		if [[ ! -e ${s} ]] ; then
 			s=${s%usr/*}${s##*/usr/}
 			if [[ -e ${s} ]] ; then
-				vecho -ne '\n'
+				__vecho -ne '\n'
 				eqawarn "QA Notice: Missing gen_usr_ldscript for ${s##*/}"
 	 			abort="yes"
 			fi
@@ -635,10 +635,10 @@ install_qa_check() {
 	# Make sure people don't store libtool files or static libs in /lib
 	f=$(ls "${ED}"lib*/*.{a,la} 2>/dev/null)
 	if [[ -n ${f} ]] ; then
-		vecho -ne '\n'
+		__vecho -ne '\n'
 		eqawarn "QA Notice: Excessive files found in the / partition"
 		eqawarn "${f}"
-		vecho -ne '\n'
+		__vecho -ne '\n'
 		die "static archives (*.a) and libtool library files (*.la) do not belong in /"
 	fi
 
@@ -647,7 +647,7 @@ install_qa_check() {
 	for a in "${ED}"usr/lib*/*.la ; do
 		s=${a##*/}
 		if grep -qs "${ED}" "${a}" ; then
-			vecho -ne '\n'
+			__vecho -ne '\n'
 			eqawarn "QA Notice: ${s} appears to contain PORTAGE_TMPDIR paths"
 			abort="yes"
 		fi
@@ -726,11 +726,11 @@ install_qa_check() {
 					eerror " with the maintaining herd of the package."
 					eerror
 				else
-					vecho -ne '\n'
+					__vecho -ne '\n'
 					eqawarn "QA Notice: Package triggers severe warnings which indicate that it"
 					eqawarn "           may exhibit random runtime failures."
 					eqawarn "${f}"
-					vecho -ne '\n'
+					__vecho -ne '\n'
 				fi
 			fi
 		done
@@ -763,11 +763,11 @@ install_qa_check() {
 				eerror " with the maintaining herd of the package."
 				eerror
 			else
-				vecho -ne '\n'
+				__vecho -ne '\n'
 				eqawarn "QA Notice: Package triggers severe warnings which indicate that it"
 				eqawarn "           will almost certainly crash on 64bit architectures."
 				eqawarn "${f}"
-				vecho -ne '\n'
+				__vecho -ne '\n'
 			fi
 
 		fi
@@ -952,7 +952,7 @@ install_mask() {
 	local no_inst
 	for no_inst in ${install_mask}; do
 		set +o noglob
-		quiet_mode || einfo "Removing ${no_inst}"
+		__quiet_mode || einfo "Removing ${no_inst}"
 		# normal stuff
 		rm -Rf "${root}"/${no_inst} >&/dev/null
 
@@ -1050,19 +1050,19 @@ preinst_suid_scan() {
 		# to files outside of the sandbox, but this
 		# can easly be bypassed using the addwrite() function
 		addwrite "${sfconf}"
-		vecho ">>> Performing suid scan in ${ED}"
+		__vecho ">>> Performing suid scan in ${ED}"
 		for i in $(find "${ED}" -type f \( -perm -4000 -o -perm -2000 \) ); do
 			if [ -s "${sfconf}" ]; then
 				install_path=/${i#${ED}}
 				if grep -q "^${install_path}\$" "${sfconf}" ; then
-					vecho "- ${install_path} is an approved suid file"
+					__vecho "- ${install_path} is an approved suid file"
 				else
-					vecho ">>> Removing sbit on non registered ${install_path}"
+					__vecho ">>> Removing sbit on non registered ${install_path}"
 					for x in 5 4 3 2 1 0; do sleep 0.25 ; done
 					ls_ret=$(ls -ldh "${i}")
 					chmod ugo-s "${i}"
 					grep "^#${install_path}$" "${sfconf}" > /dev/null || {
-						vecho ">>> Appending commented out entry to ${sfconf} for ${PF}"
+						__vecho ">>> Appending commented out entry to ${sfconf} for ${PF}"
 						echo "## ${ls_ret%${ED}*}${install_path}" >> "${sfconf}"
 						echo "#${install_path}" >> "${sfconf}"
 						# no delwrite() eh?
@@ -1070,7 +1070,7 @@ preinst_suid_scan() {
 					}
 				fi
 			else
-				vecho "suidctl feature set but you are lacking a ${sfconf}"
+				__vecho "suidctl feature set but you are lacking a ${sfconf}"
 			fi
 		done
 	fi
@@ -1087,7 +1087,7 @@ preinst_selinux_labels() {
 		# and 'context' is available on selinuxfs.
 		if [ -f /selinux/context -o -f /sys/fs/selinux/context ] && \
 			[ -x /usr/sbin/setfiles -a -x /usr/sbin/selinuxconfig ]; then
-			vecho ">>> Setting SELinux security labels"
+			__vecho ">>> Setting SELinux security labels"
 			(
 				eval "$(/usr/sbin/selinuxconfig)" || \
 					die "Failed to determine SELinux policy paths.";
@@ -1100,7 +1100,7 @@ preinst_selinux_labels() {
 		else
 			# nonfatal, since merging can happen outside a SE kernel
 			# like during a recovery situation
-			vecho "!!! Unable to set SELinux security labels"
+			__vecho "!!! Unable to set SELinux security labels"
 		fi
 	fi
 }
@@ -1158,7 +1158,7 @@ dyn_package() {
 	fi
 	[ -n "${md5_hash}" ] && \
 		echo ${md5_hash} > "${PORTAGE_BUILDDIR}"/build-info/BINPKGMD5
-	vecho ">>> Done."
+	__vecho ">>> Done."
 
 	# cleanup our temp tree
 	[[ -n ${PKG_INSTALL_MASK} ]] && rm -rf "${PROOT}"

@@ -11,7 +11,7 @@ case "${EAPI}" in
 esac
 
 if [[ $# -lt 1 ]] ; then
-	helpers_die "${0##*/}: at least one argument needed"
+	__helpers_die "${0##*/}: at least one argument needed"
 	exit 1
 fi
 

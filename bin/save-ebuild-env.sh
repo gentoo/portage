@@ -46,11 +46,11 @@ save_ebuild_env() {
 	done
 	unset x
 
-	unset -f assert assert_sigpipe_ok \
-		dump_trace die \
-		quiet_mode vecho elog_base eqawarn elog \
-		einfo einfon ewarn eerror ebegin _eend eend KV_major \
-		KV_minor KV_micro KV_to_int get_KV unset_colors set_colors has \
+	unset -f assert __assert_sigpipe_ok \
+		__dump_trace die \
+		__quiet_mode __vecho __elog_base eqawarn elog \
+		einfo einfon ewarn eerror ebegin __eend eend KV_major \
+		KV_minor KV_micro KV_to_int get_KV __1 __1 has \
 		has_phase_defined_up_to \
 		hasv hasq qa_source qa_call \
 		addread addwrite adddeny addpredict _sb_append_var \
@@ -63,7 +63,7 @@ save_ebuild_env() {
 		abort_test abort_install dyn_prepare dyn_configure \
 		dyn_compile dyn_test dyn_install \
 		dyn_preinst dyn_pretend dyn_help debug-print debug-print-function \
-		debug-print-section helpers_die inherit EXPORT_FUNCTIONS \
+		debug-print-section __helpers_die inherit EXPORT_FUNCTIONS \
 		nonfatal register_success_hook \
 		save_ebuild_env filter_readonly_variables preprocess_ebuild_env \
 		source_all_bashrcs \

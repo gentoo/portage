@@ -19,7 +19,7 @@ fi
 
 if [[ ! -d ${ED}${infodir} ]] ; then
 	if [[ -n $1 ]] ; then
-		vecho "${0##*/}: '${infodir}' does not exist!"
+		__vecho "${0##*/}: '${infodir}' does not exist!"
 		exit 1
 	else
 		exit 0
