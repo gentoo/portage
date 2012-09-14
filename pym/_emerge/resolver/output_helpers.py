@@ -641,6 +641,7 @@ class PkgInfo(object):
 class PkgAttrDisplay(SlotObject):
 
 	__slots__ = ("downgrade", "fetch_restrict", "fetch_restrict_satisfied",
+		"force_reinstall",
 		"interactive", "mask", "new", "new_slot", "new_version", "replace")
 
 	def __str__(self):
@@ -651,8 +652,11 @@ class PkgAttrDisplay(SlotObject):
 		else:
 			output.append(" ")
 
-		if self.new:
-			output.append(green("N"))
+		if self.new or self.force_reinstall:
+			if self.force_reinstall:
+				output.append(red("r"))
+			else:
+				output.append(green("N"))
 		else:
 			output.append(" ")
 

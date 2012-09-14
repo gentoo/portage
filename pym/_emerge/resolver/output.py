@@ -790,6 +790,13 @@ class Display(object):
 				pkg_info = self.set_pkg_info(pkg, ordered)
 				pkg_info.oldbest_list, myinslotlist = \
 					self._get_installed_best(pkg, pkg_info)
+				if ordered and pkg_info.merge and \
+					not pkg_info.attr_display.new:
+					for arg, atom in depgraph._iter_atoms_for_pkg(pkg):
+						if arg.force_reinstall:
+							pkg_info.attr_display.force_reinstall = True
+							break
+
 				self.verboseadd = ""
 				if self.quiet_repo_display:
 					self.repoadd = None
