@@ -23,7 +23,7 @@ register_success_hook() {
 	done
 }
 
-strip_duplicate_slashes() {
+__strip_duplicate_slashes() {
 	if [[ -n $1 ]] ; then
 		local removed=$1
 		while [[ ${removed} == *//* ]] ; do

@@ -133,7 +133,7 @@ decompressors=(
 	".lzma" "unxz -f"
 )
 
-multijob_init
+__multijob_init
 
 for dir in "$@" ; do
 	dir=${dir#/}
@@ -161,14 +161,14 @@ for dir in "$@" ; do
 		# ends up launching less compressors overall, so the overhead
 		# of forking children ends up dominating.
 		(
-		multijob_child_init
+		__multijob_child_init
 		funk_up_dir "decompress" "${decompressors[i]}" "${decompressors[i+1]}"
 		) &
-		multijob_post_fork
+		__multijob_post_fork
 		: $(( ret |= $? ))
 	done
 
-	multijob_finish
+	__multijob_finish
 	: $(( ret |= $? ))
 
 	# forcibly break all hard links as some compressors whine about it

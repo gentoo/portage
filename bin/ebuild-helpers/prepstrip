@@ -62,7 +62,7 @@ prepstrip_sources_dir=${EPREFIX}/usr/src/debug/${CATEGORY}/${PF}
 type -P debugedit >/dev/null && debugedit_found=true || debugedit_found=false
 debugedit_warned=false
 
-multijob_init
+__multijob_init
 
 # Setup $T filesystem layout that we care about.
 tmpdir="${T}/prepstrip"
@@ -206,7 +206,7 @@ if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
 	log=${tmpdir}/scanelf-already-stripped.log
 	scanelf -yqRBF '#k%F' -k '!.symtab' "$@" | sed -e "s#^${ED}##" > "${log}"
 	(
-	multijob_child_init
+	__multijob_child_init
 	qa_var="QA_PRESTRIPPED_${ARCH/-/_}"
 	[[ -n ${!qa_var} ]] && QA_PRESTRIPPED="${!qa_var}"
 	if [[ -n ${QA_PRESTRIPPED} && -s ${log} && \
@@ -228,7 +228,7 @@ if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
 		rm -f "${log}"
 	fi
 	) &
-	multijob_post_fork
+	__multijob_post_fork
 fi
 
 # Now we look for unstripped binaries.
@@ -242,7 +242,7 @@ do
 	fi
 
 	(
-	multijob_child_init
+	__multijob_child_init
 	f=$(file "${x}") || exit 0
 	[[ -z ${f} ]] && exit 0
 
@@ -292,12 +292,12 @@ do
 		chmod u-w "${x}"
 	fi
 	) &
-	multijob_post_fork
+	__multijob_post_fork
 done
 
 # With a bit more work, we could run the rsync processes below in
 # parallel, but not sure that'd be an overall improvement.
-multijob_finish
+__multijob_finish
 
 cd "${tmpdir}"/sources/ && cat * > "${tmpdir}/debug.sources" 2>/dev/null
 if [[ -s ${tmpdir}/debug.sources ]] && \

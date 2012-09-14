@@ -23,7 +23,7 @@ else
 	for x in diropts docompress exeopts get_KV insopts \
 		keepdir KV_major KV_micro KV_minor KV_to_int \
 		libopts register_die_hook register_success_hook \
-		strip_duplicate_slashes \
+		__strip_duplicate_slashes \
 		use_with use_enable ; do
 		eval "${x}() {
 			if has \"\${EAPI:-0}\" 4-python; then
