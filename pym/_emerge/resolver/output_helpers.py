@@ -15,10 +15,11 @@ from portage import os
 from portage import _encodings, _unicode_encode
 from portage._sets.base import InternalPackageSet
 from portage.output import (blue, bold, colorize, create_color_func,
-	green, red, teal, yellow)
+	green, red, teal, turquoise, yellow)
 bad = create_color_func("BAD")
 from portage.package.ebuild.config import _feature_flags
 from portage.util import shlex_split, writemsg
+from portage.util.SlotObject import SlotObject
 from portage.versions import catpkgsplit
 
 from _emerge.Blocker import Blocker
@@ -613,7 +614,8 @@ class PkgInfo(object):
 	information about the pkg being printed.
 	"""
 	
-	__slots__ = ("built", "cp", "ebuild_path", "fetch_symbol", "merge",
+	__slots__ = ("attr_display", "built", "cp",
+		"ebuild_path", "fetch_symbol", "merge",
 		"oldbest", "oldbest_list", "operation", "ordered",
 		"repo_name", "repo_path_real", "system", "use", "ver", "world")
 
@@ -634,3 +636,61 @@ class PkgInfo(object):
 		self.use = ''
 		self.ver = ''
 		self.world = False
+		self.attr_display = PkgAttrDisplay()
+
+class PkgAttrDisplay(SlotObject):
+
+	__slots__ = ("downgrade", "fetch_restrict", "fetch_restrict_satisfied",
+		"interactive", "mask", "new", "new_slot", "new_version", "replace")
+
+	def __str__(self):
+		output = []
+
+		if self.interactive:
+			output.append(colorize("WARN", "I"))
+		else:
+			output.append(" ")
+
+		if self.new:
+			output.append(green("N"))
+		else:
+			output.append(" ")
+
+		if self.new_slot or self.replace:
+			if self.replace:
+				output.append(yellow("R"))
+			else:
+				output.append(green("S"))
+		else:
+			output.append(" ")
+
+		if self.fetch_restrict or self.fetch_restrict_satisfied:
+			if self.fetch_restrict_satisfied:
+				output.append(green("f"))
+			else:
+				output.append(red("F"))
+		else:
+			output.append(" ")
+
+		if self.new_version:
+			output.append(turquoise("U"))
+		else:
+			output.append(" ")
+
+		if self.downgrade:
+			output.append(blue("D"))
+		else:
+			output.append(" ")
+
+		if self.mask is not None:
+			output.append(self.mask)
+
+		return "".join(output)
+
+	if sys.hexversion < 0x3000000:
+
+		__unicode__ = __str__
+
+		def __str__(self):
+			return _unicode_encode(self.__unicode__(),
+				encoding=_encodings['content'])
