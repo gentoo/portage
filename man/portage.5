@@ -742,19 +742,6 @@ such as \fBFEATURES\fR and \fBINSTALL_MASK\fR will not produce the intended
 results if they are set in bashrc, and therefore
 \fB/etc/portage/package.env\fR should be used instead.
 
-set_unless_changed and unset_unless_changed functions can be used to set or
-unset given variables only if these variable have not been set to values
-different than values set in make.conf. This functionality can be useful for
-temporary overriding of these variables during emerge invocation. Variables
-set without using set_unless_changed will unconditionally override variables
-set during emerge invocation.
-
-.I Syntax:
-.nf
-set_unless_changed VARIABLE=VALUE
-unset_unless_changed VALUE
-.fi
-
 Portage will source all of these bashrc files after \fB/etc/portage/bashrc\fR
 in the following order:
 .nr step 1 1
