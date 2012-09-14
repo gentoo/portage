@@ -67,13 +67,13 @@ __save_ebuild_env() {
 		debug-print debug-print-function \
 		debug-print-section __helpers_die inherit EXPORT_FUNCTIONS \
 		nonfatal register_success_hook \
+		__hasg __hasgq \
 		__save_ebuild_env __set_colors __filter_readonly_variables \
 		__preprocess_ebuild_env \
 		__source_all_bashrcs \
 		__ebuild_main __ebuild_phase __ebuild_phase_with_hooks \
 		__ebuild_arg_to_phase __ebuild_phase_funcs default \
-		__unset_colors \
-		_hasg _hasgq _unpack_tar \
+		__unpack_tar __unset_colors \
 		${QA_INTERCEPTORS}
 
 	case "${EAPI}" in

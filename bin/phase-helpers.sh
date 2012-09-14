@@ -294,7 +294,7 @@ unpack() {
 		fi
 		[[ ! -s ${srcdir}${x} ]] && die "${x} does not exist"
 
-		_unpack_tar() {
+		__unpack_tar() {
 			if [ "${y}" == "tar" ]; then
 				$1 -c -- "$srcdir$x" | tar xof -
 				__assert_sigpipe_ok "$myfail"
@@ -324,10 +324,10 @@ unpack() {
 				unzip -qo "${srcdir}${x}" || die "$myfail"
 				;;
 			gz|Z|z)
-				_unpack_tar "gzip -d"
+				__unpack_tar "gzip -d"
 				;;
 			bz2|bz)
-				_unpack_tar "${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d}"
+				__unpack_tar "${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d}"
 				;;
 			7Z|7z)
 				local my_output
@@ -374,13 +374,13 @@ unpack() {
 				fi
 				;;
 			lzma)
-				_unpack_tar "lzma -d"
+				__unpack_tar "lzma -d"
 				;;
 			xz)
 				if has $eapi 0 1 2 ; then
 					__vecho "unpack ${x}: file format not recognized. Ignoring."
 				else
-					_unpack_tar "xz -d"
+					__unpack_tar "xz -d"
 				fi
 				;;
 			*)
@@ -400,14 +400,14 @@ econf() {
 	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
 		case "$EAPI" in 0|1|2) local EPREFIX= ;; esac
 
-	_hasg() {
+	__hasg() {
 		local x s=$1
 		shift
 		for x ; do [[ ${x} == ${s} ]] && echo "${x}" && return 0 ; done
 		return 1
 	}
 
-	_hasgq() { _hasg "$@" >/dev/null ; }
+	__hasgq() { __hasg "$@" >/dev/null ; }
 
 	local phase_func=$(__ebuild_arg_to_phase "$EAPI" "$EBUILD_PHASE")
 	if [[ -n $phase_func ]] ; then
@@ -469,9 +469,9 @@ econf() {
 		if [[ -n ${ABI} && -n ${!LIBDIR_VAR} ]] ; then
 			CONF_LIBDIR=${!LIBDIR_VAR}
 		fi
-		if [[ -n ${CONF_LIBDIR} ]] && ! _hasgq --libdir=\* "$@" ; then
-			export CONF_PREFIX=$(_hasg --exec-prefix=\* "$@")
-			[[ -z ${CONF_PREFIX} ]] && CONF_PREFIX=$(_hasg --prefix=\* "$@")
+		if [[ -n ${CONF_LIBDIR} ]] && ! __hasgq --libdir=\* "$@" ; then
+			export CONF_PREFIX=$(__hasg --exec-prefix=\* "$@")
+			[[ -z ${CONF_PREFIX} ]] && CONF_PREFIX=$(__hasg --prefix=\* "$@")
 			: ${CONF_PREFIX:=${EPREFIX}/usr}
 			CONF_PREFIX=${CONF_PREFIX#*=}
 			[[ ${CONF_PREFIX} != /* ]] && CONF_PREFIX="/${CONF_PREFIX}"
