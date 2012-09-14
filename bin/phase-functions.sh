@@ -143,7 +143,7 @@ __filter_readonly_variables() {
 # @FUNCTION: __preprocess_ebuild_env
 # @DESCRIPTION:
 # Filter any readonly variables from ${T}/environment, source it, and then
-# save it via save_ebuild_env(). This process should be sufficient to prevent
+# save it via __save_ebuild_env(). This process should be sufficient to prevent
 # any stale variables or functions from an arbitrary environment from
 # interfering with the current environment. This is useful when an existing
 # environment needs to be loaded from a binary or installed package.
@@ -174,15 +174,15 @@ __preprocess_ebuild_env() {
 		# until we've merged them with our current values.
 		export SANDBOX_ON=0
 
-		# It's remotely possible that save_ebuild_env() has been overridden
+		# It's remotely possible that __save_ebuild_env() has been overridden
 		# by the above source command. To protect ourselves, we override it
 		# here with our own version. ${PORTAGE_BIN_PATH} is safe to use here
 		# because it's already filtered above.
 		source "${PORTAGE_BIN_PATH}/save-ebuild-env.sh" || exit $?
 
-		# Rely on save_ebuild_env() to filter out any remaining variables
+		# Rely on __save_ebuild_env() to filter out any remaining variables
 		# and functions that could interfere with the current environment.
-		save_ebuild_env || exit $?
+		__save_ebuild_env || exit $?
 		>> "$T/environment.success" || exit $?
 	) > "${T}/environment.filtered"
 	local retval
@@ -586,9 +586,9 @@ __dyn_install() {
 	# local variables can leak into the saved environment.
 	unset f
 
-	save_ebuild_env --exclude-init-phases | __filter_readonly_variables \
+	__save_ebuild_env --exclude-init-phases | __filter_readonly_variables \
 		--filter-path --filter-sandbox --allow-extra-vars > environment
-	assert "save_ebuild_env failed"
+	assert "__save_ebuild_env failed"
 
 	${PORTAGE_BZIP2_COMMAND} -f9 environment
 
@@ -887,11 +887,11 @@ __ebuild_main() {
 		if [[ $EBUILD_PHASE == postinst ]] && [[ -n $PORTAGE_UPDATE_ENV ]]; then
 			# Update environment.bz2 in case installation phases
 			# need to pass some variables to uninstallation phases.
-			save_ebuild_env --exclude-init-phases | \
+			__save_ebuild_env --exclude-init-phases | \
 				__filter_readonly_variables --filter-path \
 				--filter-sandbox --allow-extra-vars \
 				| ${PORTAGE_BZIP2_COMMAND} -c -f9 > "$PORTAGE_UPDATE_ENV"
-			assert "save_ebuild_env failed"
+			assert "__save_ebuild_env failed"
 		fi
 		;;
 	unpack|prepare|configure|compile|test|clean|install)
@@ -987,9 +987,9 @@ __ebuild_main() {
 	# Save the env only for relevant phases.
 	if ! has "${1}" clean help info nofetch ; then
 		umask 002
-		save_ebuild_env | __filter_readonly_variables \
+		__save_ebuild_env | __filter_readonly_variables \
 			--filter-features > "$T/environment"
-		assert "save_ebuild_env failed"
+		assert "__save_ebuild_env failed"
 		chown portage:portage "$T/environment" &>/dev/null
 		chmod g+w "$T/environment" &>/dev/null
 	fi

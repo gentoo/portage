@@ -2,7 +2,7 @@
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-# @FUNCTION: save_ebuild_env
+# @FUNCTION: __save_ebuild_env
 # @DESCRIPTION:
 # echo the current environment to stdout, filtering out redundant info.
 #
@@ -10,7 +10,7 @@
 # be excluded from the output. These function are not needed for installation
 # or removal of the packages, and can therefore be safely excluded.
 #
-save_ebuild_env() {
+__save_ebuild_env() {
 	(
 	if has --exclude-init-phases $* ; then
 		unset S _E_DOCDESTTREE_ _E_EXEDESTTREE_ \
@@ -66,7 +66,7 @@ save_ebuild_env() {
 		__dyn_preinst dyn_pretend dyn_help debug-print debug-print-function \
 		debug-print-section __helpers_die inherit EXPORT_FUNCTIONS \
 		nonfatal register_success_hook \
-		save_ebuild_env __filter_readonly_variables __preprocess_ebuild_env \
+		__save_ebuild_env __filter_readonly_variables __preprocess_ebuild_env \
 		source_all_bashrcs \
 		__ebuild_main __ebuild_phase __ebuild_phase_with_hooks \
 		__ebuild_arg_to_phase __ebuild_phase_funcs default \
