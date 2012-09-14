@@ -1261,7 +1261,7 @@ def _spawn_actionmap(settings):
 	misc_sh_binary = os.path.join(portage_bin_path,
 		os.path.basename(MISC_SH_BINARY))
 	ebuild_sh = _shell_quote(ebuild_sh_binary) + " %s"
-	misc_sh = _shell_quote(misc_sh_binary) + " dyn_%s"
+	misc_sh = _shell_quote(misc_sh_binary) + " __dyn_%s"
 
 	# args are for the to spawn function
 	actionmap = {

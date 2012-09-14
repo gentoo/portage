@@ -42,7 +42,7 @@ save_ebuild_env() {
 	for x in pkg_setup pkg_nofetch src_unpack src_prepare src_configure \
 		src_compile src_test src_install pkg_preinst pkg_postinst \
 		pkg_prerm pkg_postrm ; do
-		unset -f default_$x _eapi{0,1,2,3,4}_$x
+		unset -f default_$x __eapi{0,1,2,3,4}_$x
 	done
 	unset x
 
@@ -51,24 +51,25 @@ save_ebuild_env() {
 		__quiet_mode __vecho __elog_base eqawarn elog \
 		einfo einfon ewarn eerror ebegin __eend eend KV_major \
 		KV_minor KV_micro KV_to_int get_KV __1 __1 has \
-		has_phase_defined_up_to \
+		__has_phase_defined_up_to \
 		hasv hasq qa_source qa_call \
 		addread addwrite adddeny addpredict _sb_append_var \
 		use usev useq has_version portageq \
 		best_version use_with use_enable register_die_hook \
 		keepdir unpack __strip_duplicate_slashes econf einstall \
-		dyn_setup dyn_unpack dyn_clean into insinto exeinto docinto \
+		__dyn_setup __dyn_unpack __dyn_clean \
+		into insinto exeinto docinto \
 		insopts diropts exeopts libopts docompress \
-		abort_handler abort_prepare abort_configure abort_compile \
-		abort_test abort_install dyn_prepare dyn_configure \
-		dyn_compile dyn_test dyn_install \
-		dyn_preinst dyn_pretend dyn_help debug-print debug-print-function \
+		__abort_handler __abort_prepare __abort_configure __abort_compile \
+		__abort_test __abort_install __dyn_prepare dyn_configure \
+		__dyn_compile dyn_test dyn_install \
+		__dyn_preinst dyn_pretend dyn_help debug-print debug-print-function \
 		debug-print-section __helpers_die inherit EXPORT_FUNCTIONS \
 		nonfatal register_success_hook \
-		save_ebuild_env filter_readonly_variables preprocess_ebuild_env \
+		save_ebuild_env __filter_readonly_variables __preprocess_ebuild_env \
 		source_all_bashrcs \
-		ebuild_main ebuild_phase ebuild_phase_with_hooks \
-		_ebuild_arg_to_phase _ebuild_phase_funcs default \
+		__ebuild_main __ebuild_phase __ebuild_phase_with_hooks \
+		__ebuild_arg_to_phase __ebuild_phase_funcs default \
 		_hasg _hasgq _unpack_tar \
 		${QA_INTERCEPTORS}
 

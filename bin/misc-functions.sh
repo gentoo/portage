@@ -1082,7 +1082,7 @@ preinst_selinux_labels() {
 		 return 1
 	fi
 	if has selinux ${FEATURES}; then
-		# SELinux file labeling (needs to always be last in dyn_preinst)
+		# SELinux file labeling (needs to always be last in __dyn_preinst)
 		# only attempt to label if setfiles is executable
 		# and 'context' is available on selinuxfs.
 		if [ -f /selinux/context -o -f /sys/fs/selinux/context ] && \
@@ -1105,7 +1105,7 @@ preinst_selinux_labels() {
 	fi
 }
 
-dyn_package() {
+__dyn_package() {
 	local PROOT
 
 	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
@@ -1167,7 +1167,7 @@ dyn_package() {
 		die "Failed to create $PORTAGE_BUILDDIR/.packaged"
 }
 
-dyn_spec() {
+__dyn_spec() {
 	local sources_dir=/usr/src/rpm/SOURCES
 	mkdir -p "${sources_dir}"
 	declare -a tar_args=("${EBUILD}")
@@ -1205,7 +1205,7 @@ __END1__
 
 }
 
-dyn_rpm() {
+__dyn_rpm() {
 
 	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
 		case "$EAPI" in 0|1|2) local EPREFIX= ;; esac
@@ -1215,7 +1215,7 @@ dyn_rpm() {
 	local dest_dir=${EPREFIX}/usr/src/rpm/RPMS/${machine_name}
 	addwrite ${EPREFIX}/usr/src/rpm
 	addwrite "${RPMDIR}"
-	dyn_spec
+	__dyn_spec
 	rpmbuild -bb --clean --rmsource "${PF}.spec" || die "Failed to integrate rpm spec file"
 	install -D "${dest_dir}/${PN}-${PV}-${PR}.${machine_name}.rpm" \
 		"${RPMDIR}/${CATEGORY}/${PN}-${PV}-${PR}.rpm" || \

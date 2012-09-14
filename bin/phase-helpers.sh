@@ -409,7 +409,7 @@ econf() {
 
 	_hasgq() { _hasg "$@" >/dev/null ; }
 
-	local phase_func=$(_ebuild_arg_to_phase "$EAPI" "$EBUILD_PHASE")
+	local phase_func=$(__ebuild_arg_to_phase "$EAPI" "$EBUILD_PHASE")
 	if [[ -n $phase_func ]] ; then
 		if has "$EAPI" 0 1 ; then
 			[[ $phase_func != src_compile ]] && \
@@ -552,7 +552,7 @@ einstall() {
 	fi
 }
 
-_eapi0_pkg_nofetch() {
+__eapi0_pkg_nofetch() {
 	[ -z "${SRC_URI}" ] && return
 
 	elog "The following are listed in SRC_URI for ${PN}:"
@@ -562,18 +562,18 @@ _eapi0_pkg_nofetch() {
 	done
 }
 
-_eapi0_src_unpack() {
+__eapi0_src_unpack() {
 	[[ -n ${A} ]] && unpack ${A}
 }
 
-_eapi0_src_compile() {
+__eapi0_src_compile() {
 	if [ -x ./configure ] ; then
 		econf
 	fi
-	_eapi2_src_compile
+	__eapi2_src_compile
 }
 
-_eapi0_src_test() {
+__eapi0_src_test() {
 	# Since we don't want emake's automatic die
 	# support (EAPI 4 and later), and we also don't
 	# want the warning messages that it produces if
@@ -599,24 +599,24 @@ _eapi0_src_test() {
 	fi
 }
 
-_eapi1_src_compile() {
-	_eapi2_src_configure
-	_eapi2_src_compile
+__eapi1_src_compile() {
+	__eapi2_src_configure
+	__eapi2_src_compile
 }
 
-_eapi2_src_configure() {
+__eapi2_src_configure() {
 	if [[ -x ${ECONF_SOURCE:-.}/configure ]] ; then
 		econf
 	fi
 }
 
-_eapi2_src_compile() {
+__eapi2_src_compile() {
 	if [ -f Makefile ] || [ -f GNUmakefile ] || [ -f makefile ]; then
 		emake || die "emake failed"
 	fi
 }
 
-_eapi4_src_install() {
+__eapi4_src_install() {
 	if [[ -f Makefile || -f GNUmakefile || -f makefile ]] ; then
 		emake DESTDIR="${D}" install
 	fi

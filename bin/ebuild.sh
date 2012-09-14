@@ -473,7 +473,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm depend && \
 	# may have come from another version of ebuild.sh or something.
 	# In any case, preprocess it to prevent any potential interference.
 	# NOTE: export ${FOO}=... requires quoting, unlike normal exports
-	preprocess_ebuild_env || \
+	__preprocess_ebuild_env || \
 		die "error processing environment"
 	# Colon separated SANDBOX_* variables need to be cumulative.
 	for x in SANDBOX_DENY SANDBOX_READ SANDBOX_PREDICT SANDBOX_WRITE ; do
@@ -681,7 +681,7 @@ if [[ $EBUILD_PHASE = depend ]] ; then
 	fi
 	set +f
 else
-	# Note: readonly variables interfere with preprocess_ebuild_env(), so
+	# Note: readonly variables interfere with __preprocess_ebuild_env(), so
 	# declare them only after it has already run.
 	declare -r $PORTAGE_READONLY_METADATA $PORTAGE_READONLY_VARS
 	case "$EAPI" in
@@ -699,7 +699,7 @@ else
 			# Don't allow subprocesses to inherit the pipe which
 			# emerge uses to monitor ebuild.sh.
 			exec 9>&-
-			ebuild_main ${EBUILD_SH_ARGS}
+			__ebuild_main ${EBUILD_SH_ARGS}
 			exit 0
 		)
 		exit $?
