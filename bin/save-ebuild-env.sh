@@ -47,7 +47,7 @@ save_ebuild_env() {
 	unset x
 
 	unset -f assert assert_sigpipe_ok \
-		dump_trace die diefunc \
+		dump_trace die \
 		quiet_mode vecho elog_base eqawarn elog \
 		esyslog einfo einfon ewarn eerror ebegin _eend eend KV_major \
 		KV_minor KV_micro KV_to_int get_KV unset_colors set_colors has \

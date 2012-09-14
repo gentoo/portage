@@ -245,12 +245,6 @@ die() {
 	exit 1
 }
 
-# We need to implement diefunc() since environment.bz2 files contain
-# calls to it (due to alias expansion).
-diefunc() {
-	die "${@}"
-}
-
 quiet_mode() {
 	[[ ${PORTAGE_QUIET} -eq 1 ]]
 }
