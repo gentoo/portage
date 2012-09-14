@@ -1254,7 +1254,7 @@ install_hooks() {
 }
 
 if [ -n "${MISC_FUNCTIONS_ARGS}" ]; then
-	source_all_bashrcs
+	__source_all_bashrcs
 	[ "$PORTAGE_DEBUG" == "1" ] && set -x
 	for x in ${MISC_FUNCTIONS_ARGS}; do
 		${x}

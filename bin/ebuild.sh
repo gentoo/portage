@@ -66,7 +66,7 @@ export PORTAGE_BZIP2_COMMAND=${PORTAGE_BZIP2_COMMAND:-bzip2}
 # with shell opts (shopts).  Ebuilds/eclasses changing shopts should reset them 
 # when they are done.
 
-qa_source() {
+__qa_source() {
 	local shopts=$(shopt) OLDIFS="$IFS"
 	local retval
 	source "$@"
@@ -79,7 +79,7 @@ qa_source() {
 	return $retval
 }
 
-qa_call() {
+__qa_call() {
 	local shopts=$(shopt) OLDIFS="$IFS"
 	local retval
 	"$@"
@@ -102,7 +102,7 @@ unset GZIP BZIP BZIP2 CDPATH GREP_OPTIONS GREP_COLOR GLOBIGNORE
 [[ $PORTAGE_QUIET != "" ]] && export PORTAGE_QUIET
 
 # sandbox support functions; defined prior to profile.bashrc srcing, since the profile might need to add a default exception (/usr/lib64/conftest fex)
-_sb_append_var() {
+__sb_append_var() {
 	local _v=$1 ; shift
 	local var="SANDBOX_${_v}"
 	[[ -z $1 || -n $2 ]] && die "Usage: add$(echo ${_v} | \
@@ -111,11 +111,11 @@ _sb_append_var() {
 }
 # bash-4 version:
 # local var="SANDBOX_${1^^}"
-# addread() { _sb_append_var ${0#add} "$@" ; }
-addread()    { _sb_append_var READ    "$@" ; }
-addwrite()   { _sb_append_var WRITE   "$@" ; }
-adddeny()    { _sb_append_var DENY    "$@" ; }
-addpredict() { _sb_append_var PREDICT "$@" ; }
+# addread() { __sb_append_var ${0#add} "$@" ; }
+addread()    { __sb_append_var READ    "$@" ; }
+addwrite()   { __sb_append_var WRITE   "$@" ; }
+adddeny()    { __sb_append_var DENY    "$@" ; }
+addpredict() { __sb_append_var PREDICT "$@" ; }
 
 addwrite "${PORTAGE_TMPDIR}"
 addread "/:${PORTAGE_TMPDIR}"
@@ -274,7 +274,7 @@ inherit() {
 		#turn on glob expansion
 		set +f
 
-		qa_source "$location" || die "died sourcing $location in inherit()"
+		__qa_source "$location" || die "died sourcing $location in inherit()"
 		
 		#turn off glob expansion
 		set -f
@@ -342,7 +342,7 @@ EXPORT_FUNCTIONS() {
 
 PORTAGE_BASHRCS_SOURCED=0
 
-# @FUNCTION: source_all_bashrcs
+# @FUNCTION: __source_all_bashrcs
 # @DESCRIPTION:
 # Source a relevant bashrc files and perform other miscellaneous
 # environment initialization when appropriate.
@@ -353,7 +353,7 @@ PORTAGE_BASHRCS_SOURCED=0
 #  * A "default" function which is an alias for the default phase
 #    function for the current phase.
 #
-source_all_bashrcs() {
+__source_all_bashrcs() {
 	[[ $PORTAGE_BASHRCS_SOURCED = 1 ]] && return 0
 	PORTAGE_BASHRCS_SOURCED=1
 	local x
@@ -367,7 +367,7 @@ source_all_bashrcs() {
 		local path_array=($PROFILE_PATHS)
 		restore_IFS
 		for x in "${path_array[@]}" ; do
-			[ -f "$x/profile.bashrc" ] && qa_source "$x/profile.bashrc"
+			[ -f "$x/profile.bashrc" ] && __qa_source "$x/profile.bashrc"
 		done
 	fi
 
@@ -516,7 +516,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		has noauto $FEATURES ; then
 		# The bashrcs get an opportunity here to set aliases that will be expanded
 		# during sourcing of ebuilds and eclasses.
-		source_all_bashrcs
+		__source_all_bashrcs
 
 		# When EBUILD_PHASE != depend, INHERITED comes pre-initialized
 		# from cache. In order to make INHERITED content independent of

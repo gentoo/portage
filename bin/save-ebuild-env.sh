@@ -52,8 +52,8 @@ __save_ebuild_env() {
 		einfo einfon ewarn eerror ebegin __eend eend KV_major \
 		KV_minor KV_micro KV_to_int get_KV __1 __1 has \
 		__has_phase_defined_up_to \
-		hasv hasq qa_source qa_call \
-		addread addwrite adddeny addpredict _sb_append_var \
+		hasv hasq __qa_source __qa_call \
+		addread addwrite adddeny addpredict __sb_append_var \
 		use usev useq has_version portageq \
 		best_version use_with use_enable register_die_hook \
 		keepdir unpack __strip_duplicate_slashes econf einstall \
@@ -67,7 +67,7 @@ __save_ebuild_env() {
 		debug-print-section __helpers_die inherit EXPORT_FUNCTIONS \
 		nonfatal register_success_hook \
 		__save_ebuild_env __filter_readonly_variables __preprocess_ebuild_env \
-		source_all_bashrcs \
+		__source_all_bashrcs \
 		__ebuild_main __ebuild_phase __ebuild_phase_with_hooks \
 		__ebuild_arg_to_phase __ebuild_phase_funcs default \
 		_hasg _hasgq _unpack_tar \

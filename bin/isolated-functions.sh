@@ -51,13 +51,13 @@ __dump_trace() {
 	declare -i strip=${1:-1}
 	local filespacing=$2 linespacing=$3
 
-	# The qa_call() function and anything before it are portage internals
+	# The __qa_call() function and anything before it are portage internals
 	# that the user will not be interested in. Therefore, the stack trace
-	# should only show calls that come after qa_call().
+	# should only show calls that come after __qa_call().
 	(( n = ${#FUNCNAME[@]} - 1 ))
 	(( p = ${#BASH_ARGV[@]} ))
 	while (( n > 0 )) ; do
-		[ "${FUNCNAME[${n}]}" == "qa_call" ] && break
+		[ "${FUNCNAME[${n}]}" == "__qa_call" ] && break
 		(( p -= ${BASH_ARGC[${n}]} ))
 		(( n-- ))
 	done
@@ -124,7 +124,7 @@ die() {
 	# setup spacing to make output easier to read
 	(( n = ${#FUNCNAME[@]} - 1 ))
 	while (( n > 0 )) ; do
-		[ "${FUNCNAME[${n}]}" == "qa_call" ] && break
+		[ "${FUNCNAME[${n}]}" == "__qa_call" ] && break
 		(( n-- ))
 	done
 	(( n == 0 )) && (( n = ${#FUNCNAME[@]} - 1 ))

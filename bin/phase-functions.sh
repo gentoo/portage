@@ -198,7 +198,7 @@ __preprocess_ebuild_env() {
 }
 
 __ebuild_phase() {
-	declare -F "$1" >/dev/null && qa_call $1
+	declare -F "$1" >/dev/null && __qa_call $1
 }
 
 __ebuild_phase_with_hooks() {
@@ -865,7 +865,7 @@ __ebuild_main() {
 	[[ -n $phase_func ]] && __ebuild_phase_funcs "$EAPI" "$phase_func"
 	unset phase_func
 
-	source_all_bashrcs
+	__source_all_bashrcs
 
 	case ${1} in
 	nofetch)
