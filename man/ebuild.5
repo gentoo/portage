@@ -979,16 +979,20 @@ places where output is to be disregarded. Never use the output for calculation.
 The \fIitem list\fR is delimited by the \fIIFS\fR variable.  This variable
 has a default value of ' ', or a space.  It is a \fBbash\fR(1) setting.
 .TP
-\fBhas_version\fR \fI<category/package\-version>\fR
+\fBhas_version\fR \fI[\-\-host\-root]\fR \fI<category/package\-version>\fR
 Check to see if \fIcategory/package\-version\fR is installed on the system.
 The parameter accepts all values that are acceptable in the \fBDEPEND\fR
 variable.  The function returns 0 if \fIcategory/package\-version\fR is
-installed, 1 otherwise.
+installed, 1 otherwise. Beginning with \fBEAPI 5\fR, the
+\-\-host\-root option may be used in order to cause the query
+to apply to the host root instead of ${ROOT}.
 .TP
-\fBbest_version\fR \fI<package name>\fR
+\fBbest_version\fR \fI[\-\-host\-root]\fR \fI<package name>\fR
 This function will look up \fIpackage name\fR in the database of currently
 installed programs and echo the "best version" of the package that is
-currently installed. 
+currently installed. Beginning with \fBEAPI 5\fR, the
+\-\-host\-root option may be used in order to cause the query
+to apply to the host root instead of ${ROOT}.
 .RS
 .TP
 .I Example:
