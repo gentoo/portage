@@ -212,9 +212,11 @@ class GenCache(object):
 		else:
 			self._cp_set = None
 			self._cp_missing = set()
+		write_auxdb = "metadata-transfer" in portdb.settings.features
 		self._regen = MetadataRegen(portdb, cp_iter=cp_iter,
 			consumer=self._metadata_callback,
-			max_jobs=max_jobs, max_load=max_load)
+			max_jobs=max_jobs, max_load=max_load,
+			write_auxdb=write_auxdb)
 		self.returncode = os.EX_OK
 		conf = portdb.repositories.get_repo_for_location(tree)
 		self._trg_caches = tuple(conf.iter_pregenerated_caches(

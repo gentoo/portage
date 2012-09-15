@@ -10,9 +10,10 @@ from _emerge.PollScheduler import PollScheduler
 class MetadataRegen(PollScheduler):
 
 	def __init__(self, portdb, cp_iter=None, consumer=None,
-		max_jobs=None, max_load=None):
+		max_jobs=None, max_load=None, write_auxdb=True):
 		PollScheduler.__init__(self, main=True)
 		self._portdb = portdb
+		self._write_auxdb = write_auxdb
 		self._global_cleanse = False
 		if cp_iter is None:
 			cp_iter = self._iter_every_cp()
@@ -84,7 +85,8 @@ class MetadataRegen(PollScheduler):
 					yield EbuildMetadataPhase(cpv=cpv,
 						ebuild_hash=ebuild_hash,
 						portdb=portdb, repo_path=repo_path,
-						settings=portdb.doebuild_settings)
+						settings=portdb.doebuild_settings,
+						write_auxdb=self._write_auxdb)
 
 	def _keep_scheduling(self):
 		return self._remaining_tasks and not self._terminated_tasks
