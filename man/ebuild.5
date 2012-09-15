@@ -589,6 +589,7 @@ If flag1 disabled then flag2 enabled	!flag1? ( flag2 )
 If flag1 disabled then flag2 disabled	!flag1? ( !flag2 )
 Must enable any one or more (inclusive or)	|| ( flag1 flag2 flag3 )
 Must enable exactly one but not more (exclusive or)	^^ ( flag1 flag2 flag3 )
+May enable at most one (EAPI 5 or later)	?? ( flag1 flag2 flag3 )
 .TE
 .TP
 \fBRESTRICT\fR = \fI[strip,mirror,fetch,userpriv]\fR
