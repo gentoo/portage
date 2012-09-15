@@ -925,6 +925,11 @@ fi
 .fi
 .RE
 .TP
+\fBusex\fR \fI<USE flag>\fR \fI[true output]\fR \fI[false output]\fR \fI[true suffix]\fR \fI[false suffix]\fR
+If USE flag is set, echo [true output][true suffix] (defaults to
+"yes"), otherwise echo [false output][false suffix] (defaults to
+"no"). The usex helper is available beginning with \fBEAPI 5\fR.
+.TP
 \fBuse_with\fR \fI<USE item>\fR \fI[configure name]\fR \fI[configure opt]\fR
 Useful for creating custom options to pass to a configure script. If \fIUSE
 item\fR is in the \fBUSE\fR variable and a \fIconfigure opt\fR is specified,
