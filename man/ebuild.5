@@ -808,8 +808,11 @@ steps should be done here.
 Initial working directory of $S.
 .TP
 .B src_test
-Run all package specific test cases.  The default is to run 'make check'
-followed 'make test'.
+Run all package specific test cases. The default is to run
+\'emake check\' followed \'emake test\'. Prior to \fBEAPI 5\fR,
+the default src_test implementation will automatically pass the
+\-j1 option as the last argument to emake, and beginning with
+\fBEAPI 5\fR it will allow the tests to run in parallel.
 .br
 Initial working directory of $S.
 .TP
