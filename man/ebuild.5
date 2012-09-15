@@ -102,6 +102,16 @@ Contains the path to the package build root.  Do not modify this variable.
 Contains the path to the 'files' sub folder in the package specific
 location in the portage tree.  Do not modify this variable.
 .TP
+.B EBUILD_PHASE
+Contains the abreviated name of the phase function that is
+currently executing, such as "setup", "unpack", "compile", or
+"preinst".
+.TP
+.B EBUILD_PHASE_FUNC
+Beginning with \fBEAPI 5\fR, contains the full name of the phase
+function that is currently executing, such as "pkg_setup",
+"src_unpack", "src_compile", or "pkg_preinst".
+.TP
 .B EPREFIX
 Beginning with \fBEAPI 3\fR, contains the offset
 that this Portage was configured for during
