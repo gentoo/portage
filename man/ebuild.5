@@ -1304,6 +1304,12 @@ should call \fBln(1)\fR directly.
 .PD 1
 Performs the ln command to create a symlink.
 .TP
+\fBdoheader\fR \fI[\-r] <file> [list of more files]\fR
+Installs the given header files into /usr/include/, by default
+with file mode \fI0644\fR (this can be overridden with the
+\fBinsopts\fR function). Setting \-r sets recursive. The
+\fBdoheader\fR helper is available beginning with \fBEAPI 5\fR.
+.TP
 \fBdohtml\fR \fI [\-a filetypes] [\-r] [\-x list\-of\-dirs\-to\-ignore] [list\-of\-files\-and\-dirs]\fR
 Installs the files in the list of files (space\-separated list) into
 /usr/share/doc/${PF}/html provided the file ends in .htm, .html, .css, .js, .gif, .jpeg, .jpg, or .png.
