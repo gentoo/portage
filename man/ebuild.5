@@ -1,4 +1,4 @@
-.TH "EBUILD" "5" "Dec 2011" "Portage VERSION" "Portage"
+.TH "EBUILD" "5" "Sep 2012" "Portage VERSION" "Portage"
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
 .SH "DESCRIPTION"
@@ -231,6 +231,18 @@ This sets the SLOT for packages that may need to have multiple versions
 co\-exist.  By default you should set \fBSLOT\fR="0".  If you are unsure, then
 do not fiddle with this until you seek some guidance from some guru.  This
 value should \fINEVER\fR be left undefined.
+
+Beginning with \fBEAPI 5\fR, the SLOT variable may contain
+an optional sub\-slot part that follows the regular slot and
+is delimited by a / character. The sub\-slot must be a valid
+slot name. The sub\-slot is used to represent cases in which
+an upgrade to a new version of a package with a different
+sub\-slot may require dependent packages to be rebuilt. When
+the sub\-slot part is omitted from the SLOT definition, the
+package is considered to have an implicit sub\-slot which is
+equal to the regular slot. Refer to the \fBAtom Slot
+Operators\fR section for more information about sub\-slot
+usage.
 .TP
 \fBLICENSE\fR
 This should be a space delimited list of licenses that the package falls
@@ -347,6 +359,87 @@ x11\-libs/qt:3
 \fI>=\fRx11\-libs/qt-3.3.8:3
 \fI=\fRx11\-libs/qt-3.3*:3
 .fi
+
+Beginning with \fBEAPI 5\fR, a slot dependency may contain an
+optional sub\-slot part that follows the regular slot and is
+delimited by a \fB/\fR character.
+
+.I Examples:
+
+.nf
+dev\-libs/icu:0/0
+dev\-libs/icu:0/49
+dev\-lang/perl:0/5.12
+dev\-libs/glib:2/2.30
+.fi
+
+.TP
+.B Atom Slot Operators
+Beginning with \fBEAPI 5\fR, slot operator dependency consists
+of a colon followed by one of the following operators:
+.RS
+.TP
+.I *
+Indicates that any slot value is acceptable. In addition,
+for runtime dependencies, indicates that the package will not
+break if the matched package is uninstalled and replaced by
+a different matching package in a different slot.
+
+.I Examples:
+
+.nf
+dev\-libs/icu:*
+dev\-lang/perl:*
+dev-libs/glib:*
+.fi
+.TP
+.I =
+Indicates that any slot value is acceptable. In addition,
+for runtime dependencies, indicates that the package will
+break unless a matching package with slot and sub\-slot equal
+to the slot and sub\-slot of the best installed version at the
+time the package was installed is available.
+
+.I Examples:
+
+.nf
+dev\-libs/icu:=
+dev\-lang/perl:=
+dev-libs/glib:=
+.fi
+.TP
+.I slot=
+Indicates that only a specific slot value is acceptable, and
+otherwise behaves identically to the plain equals slot operator.
+
+.I Examples:
+
+.nf
+dev\-libs/icu:0=
+dev\-lang/perl:0=
+dev-libs/glib:2=
+.fi
+.PP
+To implement the equals slot operator, the package manager
+will need to store the slot/sub\-slot pair of the best installed
+version of the matching package. This syntax is only for package
+manager use and must not be used by ebuilds. The package manager
+may do this by inserting the appropriate slot/sub\-slot pair
+between the colon and equals sign when saving the package's
+dependencies. The sub\-slot part must not be omitted here
+(when the SLOT variable omits the sub\-slot part, the package
+is considered to have an implicit sub\-slot which is equal to
+the regular slot).
+
+.I Examples:
+
+.nf
+dev\-libs/icu:0/0=
+dev\-libs/icu:0/49=
+dev\-lang/perl:0/5.12=
+dev-libs/glib:2/2.30=
+.fi
+.RE
 .TP
 .B Atom USE
 Beginning with \fBEAPI 2\fR, any atom can be constrained to match specific
