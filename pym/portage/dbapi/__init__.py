@@ -253,7 +253,7 @@ class dbapi(object):
 				for x in atom.use.disabled):
 				return False
 
-			# Check unsatsified use-default deps
+			# Check unsatisfied use-default deps
 			if atom.use.enabled:
 				missing_disabled = atom.use.missing_disabled.difference(iuse)
 				if any(x in atom.use.enabled for x in missing_disabled):
