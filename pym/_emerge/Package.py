@@ -12,6 +12,7 @@ from portage.dep import Atom, check_required_use, use_reduce, \
 from portage.versions import _pkg_str, _unknown_repo
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidDependString
+from portage.localization import _
 from _emerge.Task import Task
 
 if sys.hexversion >= 0x3000000:
@@ -197,11 +198,23 @@ class Package(Task):
 			if not v:
 				continue
 			try:
-				validated_atoms.extend(use_reduce(v, eapi=dep_eapi,
+				atoms = use_reduce(v, eapi=dep_eapi,
 					matchall=True, is_valid_flag=dep_valid_flag,
-					token_class=Atom, flat=True))
+					token_class=Atom, flat=True)
 			except InvalidDependString as e:
 				self._metadata_exception(k, e)
+			else:
+				validated_atoms.extend(atoms)
+				if not self.built:
+					for atom in atoms:
+						if not isinstance(atom, Atom):
+							continue
+						if atom.slot_operator_built:
+							e = InvalidDependString(
+								_("Improper context for slot-operator "
+								"\"built\" atom syntax: %s") %
+								(atom.unevaluated_atom,))
+							self._metadata_exception(k, e)
 
 		self._validated_atoms = tuple(set(atom for atom in
 			validated_atoms if isinstance(atom, Atom)))
