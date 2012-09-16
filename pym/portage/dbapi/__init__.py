@@ -253,6 +253,16 @@ class dbapi(object):
 				for x in atom.use.disabled):
 				return False
 
+			# Check unsatsified use-default deps
+			if atom.use.enabled:
+				missing_disabled = atom.use.missing_disabled.difference(iuse)
+				if any(x in atom.use.enabled for x in missing_disabled):
+					return False
+			if atom.use.disabled:
+				missing_enabled = atom.use.missing_enabled.difference(iuse)
+				if any(x in atom.use.disabled for x in missing_enabled):
+					return False
+
 		return True
 
 	def invalidentry(self, mypath):
