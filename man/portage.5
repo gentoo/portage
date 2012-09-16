@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Jun 2012" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "Sep 2012" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -274,6 +274,15 @@ Architecture type (x86/ppc/hppa/etc...).
 .TP
 .B USERLAND = \fI"GNU"\fR
 Support BSD/cygwin/etc...
+.TP
+\fBUSE_EXPAND\fR = \fI[space delimited list of variable names]\fR
+Any variable listed here will be used to augment USE by inserting a new flag
+for every value in that variable, so USE_EXPAND="FOO" and FOO="bar bla" results
+in USE="foo_bar foo_bla".
+.TP
+\fBUSE_EXPAND_HIDDEN\fR = \fI[space delimited list of variable names]\fR
+Names of \fBUSE_EXPAND\fR variables that should not be shown in the verbose merge
+list output of the \fBemerge\fR(1) command.
 .TP
 .B ELIBC = \fI"glibc"\fR
 Support uClibc/BSD libc/etc...

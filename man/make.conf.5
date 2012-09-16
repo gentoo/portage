@@ -945,15 +945,6 @@ This variable contains options that control the build behavior of several
 packages.  More information in \fBebuild\fR(5).  Possible USE values
 can be found in \fI/usr/portage/profiles/use.desc\fR.
 .TP
-\fBUSE_EXPAND\fR = \fI[space delimited list of variable names]\fR
-Any variable listed here will be used to augment USE by inserting a new flag
-for every value in that variable, so USE_EXPAND="FOO" and FOO="bar bla" results
-in USE="foo_bar foo_bla".
-.TP
-\fBUSE_EXPAND_HIDDEN\fR = \fI[space delimited list of variable names]\fR
-Names of \fBUSE_EXPAND\fR variables that should not be shown in the verbose merge
-list output of the \fBemerge\fR(1) command.
-.TP
 \fBUSE_ORDER\fR = \fI"env:pkg:conf:defaults:pkginternal:repo:env.d"\fR
 Determines the precedence of layers in the incremental stacking of the USE
 variable. Precedence decreases from left to right such that env overrides
