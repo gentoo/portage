@@ -272,6 +272,14 @@ few specific variables too:
 .BR ARCH
 Architecture type (x86/ppc/hppa/etc...).
 .TP
+\fBIUSE_IMPLICIT\fR = \fI[space delimited list of USE flags]\fR
+Defines implicit \fBIUSE\fR for ebuilds using \fBEAPI 5\fR or
+later. Flags that come from \fBUSE_EXPAND\fR or
+\fBUSE_EXPAND_UNPREFIXED\fR variables do not belong in
+\fBIUSE_IMPLICIT\fR, since \fBUSE_EXPAND_VALUES_*\fR variables
+are used to define implicit \fBIUSE\fR for those flags. See
+\fBebuild\fR(5) for more information about \fBIUSE\fR.
+.TP
 .B USERLAND = \fI"GNU"\fR
 Support BSD/cygwin/etc...
 .TP
@@ -283,6 +291,33 @@ in USE="foo_bar foo_bla".
 \fBUSE_EXPAND_HIDDEN\fR = \fI[space delimited list of variable names]\fR
 Names of \fBUSE_EXPAND\fR variables that should not be shown in the verbose merge
 list output of the \fBemerge\fR(1) command.
+.TP
+\fBUSE_EXPAND_IMPLICIT\fR = \fI[space delimited list of variable names]\fR
+Defines \fBUSE_EXPAND\fR and \fBUSE_EXPAND_UNPREFIXED\fR
+variables for which the corresponding USE flags may have
+implicit \fBIUSE\fR for ebuilds using \fBEAPI 5\fR or later.
+.TP
+\fBUSE_EXPAND_UNPREFIXED\fR = \fI[space delimited list of variable names]\fR
+Any variable listed here will be used to augment USE by
+inserting a new flag for every value in that variable, so
+USE_EXPAND_UNPREFIXED="FOO" and FOO="bar bla" results in
+USE="bar bla".
+.TP
+\fBUSE_EXPAND_VALUES_ARCH\fR = \fI[space delimited list of ARCH values]\fR
+Defines ARCH values used to generate implicit
+\fBIUSE\fR for ebuilds using \fBEAPI 5\fR or later.
+.TP
+\fBUSE_EXPAND_VALUES_ELIBC\fR = \fI[space delimited list of ELIBC values]\fR
+Defines ELIBC values used to generate implicit
+\fBIUSE\fR for ebuilds using \fBEAPI 5\fR or later.
+.TP
+\fBUSE_EXPAND_VALUES_KERNEL\fR = \fI[space delimited list of KERNEL values]\fR
+Defines KERNEL values used to generate implicit
+\fBIUSE\fR for ebuilds using \fBEAPI 5\fR or later.
+.TP
+\fBUSE_EXPAND_VALUES_USERLAND\fR = \fI[space delimited list of USERLAND values]\fR
+Defines USERLAND values used to generate implicit
+\fBIUSE\fR for ebuilds using \fBEAPI 5\fR or later.
 .TP
 .B ELIBC = \fI"glibc"\fR
 Support uClibc/BSD libc/etc...
