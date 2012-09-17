@@ -29,7 +29,7 @@ __strip_duplicate_slashes() {
 		while [[ ${removed} == *//* ]] ; do
 			removed=${removed//\/\///}
 		done
-		echo ${removed}
+		echo "${removed}"
 	fi
 }
 

@@ -476,7 +476,7 @@ econf() {
 			CONF_PREFIX=${CONF_PREFIX#*=}
 			[[ ${CONF_PREFIX} != /* ]] && CONF_PREFIX="/${CONF_PREFIX}"
 			[[ ${CONF_LIBDIR} != /* ]] && CONF_LIBDIR="/${CONF_LIBDIR}"
-			set -- --libdir="$(__strip_duplicate_slashes ${CONF_PREFIX}${CONF_LIBDIR})" "$@"
+			set -- --libdir="$(__strip_duplicate_slashes "${CONF_PREFIX}${CONF_LIBDIR}")" "$@"
 		fi
 
 		set -- \
@@ -521,7 +521,7 @@ einstall() {
 	unset LIBDIR_VAR
 	if [ -n "${CONF_LIBDIR}" ] && [ "${CONF_PREFIX:+set}" = set ]; then
 		EI_DESTLIBDIR="${D}/${CONF_PREFIX}/${CONF_LIBDIR}"
-		EI_DESTLIBDIR="$(__strip_duplicate_slashes ${EI_DESTLIBDIR})"
+		EI_DESTLIBDIR="$(__strip_duplicate_slashes "${EI_DESTLIBDIR}")"
 		LOCAL_EXTRA_EINSTALL="libdir=${EI_DESTLIBDIR} ${LOCAL_EXTRA_EINSTALL}"
 		unset EI_DESTLIBDIR
 	fi
