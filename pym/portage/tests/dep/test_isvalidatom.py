@@ -141,7 +141,7 @@ class IsValidAtom(TestCase):
 			IsValidAtomTestCase("virtual/ffmpeg:=", True),
 			IsValidAtomTestCase("virtual/ffmpeg:0=", True),
 			IsValidAtomTestCase("virtual/ffmpeg:*", True),
-			IsValidAtomTestCase("virtual/ffmpeg:0*", True),
+			IsValidAtomTestCase("virtual/ffmpeg:0*", False),
 			IsValidAtomTestCase("virtual/ffmpeg:0", True),
 		)
 

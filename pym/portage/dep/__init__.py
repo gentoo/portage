@@ -1333,6 +1333,8 @@ class Atom(_unicode):
 						sub_slot = sub_slot[:-1]
 					self.__dict__['sub_slot'] = sub_slot
 					self.__dict__['slot_operator'] = slot_operator
+				if self.slot is not None and self.slot_operator == "*":
+					raise InvalidAtom(self)
 			else:
 				self.__dict__['slot'] = slot
 				self.__dict__['sub_slot'] = None

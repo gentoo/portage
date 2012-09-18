@@ -155,7 +155,6 @@ class TestAtom(TestCase):
 			("virtual/ffmpeg:=", "4-slot-abi", {"slot": None, "sub_slot": None, "slot_operator": "="}),
 			("virtual/ffmpeg:0=", "4-slot-abi", {"slot": "0", "sub_slot": None, "slot_operator": "="}),
 			("virtual/ffmpeg:*", "4-slot-abi", {"slot": None, "sub_slot": None, "slot_operator": "*"}),
-			("virtual/ffmpeg:0*", "4-slot-abi", {"slot": "0", "sub_slot": None, "slot_operator": "*"}),
 			("virtual/ffmpeg:0", "4-slot-abi", {"slot": "0", "sub_slot": None, "slot_operator": None}),
 			("virtual/ffmpeg", "4-slot-abi", {"slot": None, "sub_slot": None, "slot_operator": None}),
 		)
