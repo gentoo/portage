@@ -1082,7 +1082,7 @@ preinst_selinux_labels() {
 		 return 1
 	fi
 	if has selinux ${FEATURES}; then
-		# SELinux file labeling (needs to always be last in __dyn_preinst)
+		# SELinux file labeling (needs to execute after preinst)
 		# only attempt to label if setfiles is executable
 		# and 'context' is available on selinuxfs.
 		if [ -f /selinux/context -o -f /sys/fs/selinux/context ] && \

@@ -601,14 +601,6 @@ __dyn_install() {
 	trap - SIGINT SIGQUIT
 }
 
-__dyn_preinst() {
-	if [ -z "${D}" ]; then
-		eerror "${FUNCNAME}: D is unset"
-		return 1
-	fi
-	__ebuild_phase_with_hooks pkg_preinst
-}
-
 __dyn_help() {
 	echo
 	echo "Portage"
@@ -871,7 +863,7 @@ __ebuild_main() {
 	nofetch)
 		__ebuild_phase_with_hooks pkg_nofetch
 		;;
-	prerm|postrm|postinst|config|info)
+	prerm|postrm|preinst|postinst|config|info)
 		if has "${1}" config info && \
 			! declare -F "pkg_${1}" >/dev/null ; then
 			ewarn  "pkg_${1}() is not defined: '${EBUILD##*/}'"
@@ -884,7 +876,7 @@ __ebuild_main() {
 			__ebuild_phase_with_hooks pkg_${1}
 			set +x
 		fi
-		if [[ $EBUILD_PHASE == postinst ]] && [[ -n $PORTAGE_UPDATE_ENV ]]; then
+		if [[ -n $PORTAGE_UPDATE_ENV ]] ; then
 			# Update environment.bz2 in case installation phases
 			# need to pass some variables to uninstallation phases.
 			__save_ebuild_env --exclude-init-phases | \
@@ -960,7 +952,7 @@ __ebuild_main() {
 		fi
 		export SANDBOX_ON="0"
 		;;
-	help|pretend|setup|preinst)
+	help|pretend|setup)
 		#pkg_setup needs to be out of the sandbox for tmp file creation;
 		#for example, awking and piping a file in /tmp requires a temp file to be created
 		#in /etc.  If pkg_setup is in the sandbox, both our lilo and apache ebuilds break.

@@ -63,7 +63,7 @@ __save_ebuild_env() {
 		__abort_handler __abort_prepare __abort_configure __abort_compile \
 		__abort_test __abort_install __dyn_prepare __dyn_configure \
 		__dyn_compile __dyn_test __dyn_install \
-		__dyn_preinst __dyn_pretend __dyn_help \
+		__dyn_pretend __dyn_help \
 		debug-print debug-print-function \
 		debug-print-section __helpers_die inherit EXPORT_FUNCTIONS \
 		nonfatal register_success_hook \

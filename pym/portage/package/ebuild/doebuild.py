@@ -904,8 +904,16 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 		# the sandbox -- and stop now.
 		if mydo in ("config", "help", "info", "postinst",
 			"preinst", "pretend", "postrm", "prerm"):
-			return _spawn_phase(mydo, mysettings,
-				fd_pipes=fd_pipes, logfile=logfile, returnpid=returnpid)
+			if mydo in ("preinst", "postinst"):
+				env_file = os.path.join(os.path.dirname(mysettings["EBUILD"]),
+					"environment.bz2")
+				if os.path.isfile(env_file):
+					mysettings["PORTAGE_UPDATE_ENV"] = env_file
+			try:
+				return _spawn_phase(mydo, mysettings,
+					fd_pipes=fd_pipes, logfile=logfile, returnpid=returnpid)
+			finally:
+				mysettings.pop("PORTAGE_UPDATE_ENV", None)
 
 		mycpv = "/".join((mysettings["CATEGORY"], mysettings["PF"]))
 
