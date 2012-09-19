@@ -6,14 +6,40 @@ import textwrap
 
 import portage
 from portage import os
+from portage.dep import Atom
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
+from portage.update import update_dbentry
 from portage.util import ensure_dirs
 from portage._global_updates import _do_global_updates
 
 class UpdateDbentryTestCase(TestCase):
 
 	def testUpdateDbentryTestCase(self):
+		cases = (
+			(("slotmove", Atom("dev-libs/A"), "0", "1"), "1",
+				"  dev-libs/A:0  ", "  dev-libs/A:1  "),
+
+			(("slotmove", Atom("dev-libs/A"), "0", "1"), "1",
+				"  >=dev-libs/A-1:0  ", "  >=dev-libs/A-1:1  "),
+
+			(("slotmove", Atom("dev-libs/A"), "0", "1"), "5_pre2",
+				"  dev-libs/A:0/1=[foo]  ", "  dev-libs/A:1/1=[foo]  "),
+
+			(("slotmove", Atom("dev-libs/A"), "0", "1"), "5_pre2",
+				"  dev-libs/A:0/1[foo]  ", "  dev-libs/A:1/1[foo]  "),
+
+			(("slotmove", Atom("dev-libs/A"), "0", "1"), "5_pre2",
+				"  dev-libs/A:0/0[foo]  ", "  dev-libs/A:1/1[foo]  "),
+
+			(("slotmove", Atom("dev-libs/A"), "0", "1"), "5_pre2",
+				"  dev-libs/A:0=[foo]  ", "  dev-libs/A:1=[foo]  "),
+		)
+		for update_cmd, eapi, input_str, output_str in cases:
+			result = update_dbentry(update_cmd, input_str, eapi=eapi)
+			self.assertEqual(result, output_str)
+
+	def testUpdateDbentryDbapiTestCase(self):
 
 		ebuilds = {
 
