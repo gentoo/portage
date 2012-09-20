@@ -178,6 +178,9 @@ class config(object):
 		@type _unmatched_removal: Boolean
 		"""
 
+		# This is important when config is reloaded after emerge --sync.
+		_eapi_cache.clear()
+
 		# When initializing the global portage.settings instance, avoid
 		# raising exceptions whenever possible since exceptions thrown
 		# from 'import portage' or 'import portage.exceptions' statements
