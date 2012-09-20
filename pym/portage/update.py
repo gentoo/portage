@@ -44,18 +44,25 @@ def update_dbentry(update_cmd, mycontent, eapi=None):
 		# Use isvalidatom() to check if this move is valid for the
 		# EAPI (characters allowed in package names may vary).
 		if old_value in mycontent and isvalidatom(new_value, eapi=eapi):
-			old_value = re.escape(old_value);
-			mycontent = re.sub(old_value+"(:|$|\\s)", new_value+"\\1", mycontent)
-			def myreplace(matchobj):
-				# Strip slot and * operator if necessary
-				# so that ververify works.
-				ver = remove_slot(matchobj.group(2))
-				ver = ver.rstrip("*")
-				if ververify(ver):
-					return "%s-%s" % (new_value, matchobj.group(2))
-				else:
-					return "".join(matchobj.groups())
-			mycontent = re.sub("(%s-)(\\S*)" % old_value, myreplace, mycontent)
+			# this split preserves existing whitespace
+			split_content = re.split(r'(\s+)', mycontent)
+			modified = False
+			for i, token in enumerate(split_content):
+				if old_value not in token:
+					continue
+				try:
+					atom = Atom(token, eapi=eapi)
+				except InvalidAtom:
+					continue
+				if atom.cp != old_value:
+					continue
+
+				split_content[i] = token.replace(old_value, new_value, 1)
+				modified = True
+
+			if modified:
+				mycontent = "".join(split_content)
+
 	elif update_cmd[0] == "slotmove" and update_cmd[1].operator is None:
 		orig_atom, origslot, newslot = update_cmd[1:]
 		orig_cp = orig_atom.cp

@@ -24,6 +24,9 @@ class UpdateDbentryTestCase(TestCase):
 			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "1",
 				"  >=dev-libs/A-1:0  ", "  >=dev-libs/B-1:0  "),
 
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "2",
+				"  dev-libs/A[foo]  ", "  dev-libs/B[foo]  "),
+
 			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "5_pre2",
 				"  dev-libs/A:0/1=[foo]  ", "  dev-libs/B:0/1=[foo]  "),
 
