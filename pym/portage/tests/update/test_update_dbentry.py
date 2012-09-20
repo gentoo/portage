@@ -17,6 +17,25 @@ class UpdateDbentryTestCase(TestCase):
 
 	def testUpdateDbentryTestCase(self):
 		cases = (
+
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "1",
+				"  dev-libs/A:0  ", "  dev-libs/B:0  "),
+
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "1",
+				"  >=dev-libs/A-1:0  ", "  >=dev-libs/B-1:0  "),
+
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "5_pre2",
+				"  dev-libs/A:0/1=[foo]  ", "  dev-libs/B:0/1=[foo]  "),
+
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "5_pre2",
+				"  dev-libs/A:0/1[foo]  ", "  dev-libs/B:0/1[foo]  "),
+
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "5_pre2",
+				"  dev-libs/A:0/0[foo]  ", "  dev-libs/B:0/0[foo]  "),
+
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "5_pre2",
+				"  dev-libs/A:0=[foo]  ", "  dev-libs/B:0=[foo]  "),
+
 			(("slotmove", Atom("dev-libs/A"), "0", "1"), "1",
 				"  dev-libs/A:0  ", "  dev-libs/A:1  "),
 
