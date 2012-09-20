@@ -303,11 +303,11 @@ class config(object):
 			abs_user_config = locations_manager.abs_user_config
 
 			make_conf = getconfig(
-				os.path.join(config_root, MAKE_CONF_FILE),
+				os.path.join(config_root, 'etc', 'make.conf'),
 				tolerant=tolerant, allow_sourcing=True) or {}
 
 			make_conf.update(getconfig(
-				os.path.join(abs_user_config, 'make.conf'),
+				os.path.join(config_root, MAKE_CONF_FILE),
 				tolerant=tolerant, allow_sourcing=True,
 				expand=make_conf) or {})
 
@@ -482,12 +482,12 @@ class config(object):
 			self.configdict["defaults"]=self.configlist[-1]
 
 			mygcfg = getconfig(
-				os.path.join(config_root, MAKE_CONF_FILE),
+				os.path.join(config_root, 'etc', 'make.conf'),
 				tolerant=tolerant, allow_sourcing=True,
 				expand=expand_map) or {}
 
 			mygcfg.update(getconfig(
-				os.path.join(abs_user_config, 'make.conf'),
+				os.path.join(config_root, MAKE_CONF_FILE),
 				tolerant=tolerant, allow_sourcing=True,
 				expand=expand_map) or {})
 
