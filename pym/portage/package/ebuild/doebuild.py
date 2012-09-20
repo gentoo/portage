@@ -1785,6 +1785,29 @@ def _post_src_install_uid_fix(mysettings, out):
 	xdg_dirs = tuple(os.path.join(i, "applications") + os.sep
 		for i in xdg_dirs if i)
 
+	qa_desktop_file = ""
+	f = None
+	try:
+		with io.open(_unicode_encode(os.path.join(
+			mysettings["PORTAGE_BUILDDIR"],
+			"build-info", "QA_DESKTOP_FILE"),
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['repo.content'],
+			errors='replace') as f:
+			qa_desktop_file = f.read()
+	except IOError as e:
+		if e.errno not in (errno.ENOENT, errno.ESTALE):
+			raise
+
+	qa_desktop_file = qa_desktop_file.split()
+	if qa_desktop_file:
+		if len(qa_desktop_file) > 1:
+			qa_desktop_file = "|".join("(%s)" % x for x in qa_desktop_file)
+			qa_desktop_file = "^(%s)$" % qa_desktop_file
+		else:
+			qa_desktop_file = "^%s$" % qa_desktop_file[0]
+		qa_desktop_file = re.compile(qa_desktop_file)
+
 	while True:
 
 		unicode_error = False
@@ -1831,9 +1854,11 @@ def _post_src_install_uid_fix(mysettings, out):
 				else:
 					fpath = os.path.join(parent, fname)
 
+				fpath_relative = fpath[ed_len - 1:]
 				if desktop_file_validate and fname.endswith(".desktop") and \
 					os.path.isfile(fpath) and \
-					fpath[ed_len - 1:].startswith(xdg_dirs):
+					fpath_relative.startswith(xdg_dirs) and \
+					not (qa_desktop_file and qa_desktop_file.match(fpath_relative.strip(os.sep)) is not None):
 
 					desktop_validate = validate_desktop_entry(fpath)
 					if desktop_validate:
