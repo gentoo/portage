@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -13,16 +13,13 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.dep:Atom,dep_getkey,isvalidatom,' + \
-	'remove_slot',
+	'portage.dep:Atom,dep_getkey,isvalidatom,_get_slot_re',
 	'portage.util:ConfigProtect,new_protect_filename,' + \
 		'normalize_path,write_atomic,writemsg',
 	'portage.util.listdir:_ignorecvs_dirs',
-	'portage.versions:catsplit,ververify'
 )
 
 from portage.const import USER_CONFIG_PATH
-from portage.dep import Atom, _get_slot_re
 from portage.eapi import _get_eapi_attrs
 from portage.exception import DirectoryNotFound, InvalidAtom, PortageException
 from portage.localization import _
