@@ -10,6 +10,11 @@ portage-2.2
   sonames change during upgrade or downgrade, and the @preserved-rebuild
   package set which rebuilds consumers of preserved libraries.
 
+portage-2.1.11.19
+-------------
+* Add support for EAPI 5. Refer to the PMS EAPI Cheat Sheet, portage's html
+  docs installed with USE=doc, or `man 5 ebuild` for more info about EAPI 5.
+
 portage-2.1.11
 -------------
 
