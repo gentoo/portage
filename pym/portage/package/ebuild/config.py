@@ -301,15 +301,21 @@ class config(object):
 			eprefix = locations_manager.eprefix
 			config_root = locations_manager.config_root
 			abs_user_config = locations_manager.abs_user_config
-
-			make_conf = getconfig(
+			make_conf_paths = [
 				os.path.join(config_root, 'etc', 'make.conf'),
-				tolerant=tolerant, allow_sourcing=True) or {}
+				os.path.join(config_root, MAKE_CONF_FILE)
+			]
+			try:
+				if os.path.samefile(*make_conf_paths):
+					make_conf_paths.pop()
+			except OSError:
+				pass
 
-			make_conf.update(getconfig(
-				os.path.join(config_root, MAKE_CONF_FILE),
-				tolerant=tolerant, allow_sourcing=True,
-				expand=make_conf) or {})
+			make_conf = {}
+			for x in make_conf_paths:
+				make_conf.update(getconfig(x,
+					tolerant=tolerant, allow_sourcing=True,
+					expand=make_conf) or {})
 
 			# Allow ROOT setting to come from make.conf if it's not overridden
 			# by the constructor argument (from the calling environment).
@@ -481,15 +487,11 @@ class config(object):
 			self.configlist.append(mygcfg)
 			self.configdict["defaults"]=self.configlist[-1]
 
-			mygcfg = getconfig(
-				os.path.join(config_root, 'etc', 'make.conf'),
-				tolerant=tolerant, allow_sourcing=True,
-				expand=expand_map) or {}
-
-			mygcfg.update(getconfig(
-				os.path.join(config_root, MAKE_CONF_FILE),
-				tolerant=tolerant, allow_sourcing=True,
-				expand=expand_map) or {})
+			mygcfg = {}
+			for x in make_conf_paths:
+				mygcfg.update(getconfig(x,
+					tolerant=tolerant, allow_sourcing=True,
+					expand=expand_map) or {})
 
 			# Don't allow the user to override certain variables in make.conf
 			profile_only_variables = self.configdict["defaults"].get(
