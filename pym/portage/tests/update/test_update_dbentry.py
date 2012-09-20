@@ -27,16 +27,16 @@ class UpdateDbentryTestCase(TestCase):
 			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "2",
 				"  dev-libs/A[foo]  ", "  dev-libs/B[foo]  "),
 
-			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "5_pre2",
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "5",
 				"  dev-libs/A:0/1=[foo]  ", "  dev-libs/B:0/1=[foo]  "),
 
-			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "5_pre2",
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "5",
 				"  dev-libs/A:0/1[foo]  ", "  dev-libs/B:0/1[foo]  "),
 
-			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "5_pre2",
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "5",
 				"  dev-libs/A:0/0[foo]  ", "  dev-libs/B:0/0[foo]  "),
 
-			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "5_pre2",
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "5",
 				"  dev-libs/A:0=[foo]  ", "  dev-libs/B:0=[foo]  "),
 
 			(("slotmove", Atom("dev-libs/A"), "0", "1"), "1",
@@ -45,16 +45,16 @@ class UpdateDbentryTestCase(TestCase):
 			(("slotmove", Atom("dev-libs/A"), "0", "1"), "1",
 				"  >=dev-libs/A-1:0  ", "  >=dev-libs/A-1:1  "),
 
-			(("slotmove", Atom("dev-libs/A"), "0", "1"), "5_pre2",
+			(("slotmove", Atom("dev-libs/A"), "0", "1"), "5",
 				"  dev-libs/A:0/1=[foo]  ", "  dev-libs/A:1/1=[foo]  "),
 
-			(("slotmove", Atom("dev-libs/A"), "0", "1"), "5_pre2",
+			(("slotmove", Atom("dev-libs/A"), "0", "1"), "5",
 				"  dev-libs/A:0/1[foo]  ", "  dev-libs/A:1/1[foo]  "),
 
-			(("slotmove", Atom("dev-libs/A"), "0", "1"), "5_pre2",
+			(("slotmove", Atom("dev-libs/A"), "0", "1"), "5",
 				"  dev-libs/A:0/0[foo]  ", "  dev-libs/A:1/1[foo]  "),
 
-			(("slotmove", Atom("dev-libs/A"), "0", "1"), "5_pre2",
+			(("slotmove", Atom("dev-libs/A"), "0", "1"), "5",
 				"  dev-libs/A:0=[foo]  ", "  dev-libs/A:1=[foo]  "),
 		)
 		for update_cmd, eapi, input_str, output_str in cases:

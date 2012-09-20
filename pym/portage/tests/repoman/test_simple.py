@@ -79,7 +79,7 @@ class SimpleRepomanTestCase(TestCase):
 		)
 
 		profile = {
-			"eapi": ("5_pre2",),
+			"eapi": ("5",),
 			"package.use.stable.mask": ("dev-libs/A flag",)
 		}
 
@@ -87,7 +87,7 @@ class SimpleRepomanTestCase(TestCase):
 			"dev-libs/A-0": {
 				"COPYRIGHT_HEADER" : copyright_header,
 				"DESCRIPTION" : "Desc goes here",
-				"EAPI" : "5_pre2",
+				"EAPI" : "5",
 				"HOMEPAGE" : "http://example.com",
 				"IUSE" : "flag",
 				"KEYWORDS": "x86",

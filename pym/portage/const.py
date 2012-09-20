@@ -109,7 +109,7 @@ SUPPORTED_FEATURES       = frozenset([
                            "unmerge-logs", "unmerge-orphans", "userfetch", "userpriv",
                            "usersandbox", "usersync", "webrsync-gpg", "xattr"])
 
-EAPI                     = 4
+EAPI                     = 5
 
 HASHING_BLOCKSIZE        = 32768
 MANIFEST1_HASH_FUNCTIONS = ("MD5", "SHA256", "RMD160")

@@ -1,8 +1,8 @@
-<section id='package-ebuild-eapi-5_pre2'>
-<title>EAPI 5_pre2</title>
-<section id='package-ebuild-eapi-5_pre2-metadata'>
+<section id='package-ebuild-eapi-5'>
+<title>EAPI 5</title>
+<section id='package-ebuild-eapi-5-metadata'>
 <title>Metadata</title>
-<section id='package-ebuild-eapi-5_pre2-metadata-required-use-at-most-one-of'>
+<section id='package-ebuild-eapi-5-metadata-required-use-at-most-one-of'>
 <title>REQUIRED_USE supports new at-most-one-of operator</title>
 <para>
 The new at-most-one-of operator consists of the string '??',
@@ -10,7 +10,7 @@ and is satisfied if zero or one (but no more) of its child
 elements is matched.
 </para>
 </section>
-<section id='package-ebuild-eapi-5_pre2-metadata-slot-sub-slot'>
+<section id='package-ebuild-eapi-5-metadata-slot-sub-slot'>
 <title>SLOT supports optional "sub-slot" part</title>
 <para>
 The SLOT variable may contain an optional sub-slot part that
@@ -24,11 +24,11 @@ implicit sub-slot which is equal to the regular slot.
 </para>
 <para>
 Refer to the
-<link linkend="package-ebuild-eapi-5_pre2-metadata-dependency-atom-slot-operators">
+<link linkend="package-ebuild-eapi-5-metadata-dependency-atom-slot-operators">
 slot operators</link> documentation for more information about sub-slot usage.
 </para>
 </section>
-<section id='package-ebuild-eapi-5_pre2-metadata-dependency-atom-slot-operators'>
+<section id='package-ebuild-eapi-5-metadata-dependency-atom-slot-operators'>
 <title>Dependency atom slot operators</title>
 <para>
 A slot dependency may contain an optional sub-slot part that
@@ -70,9 +70,9 @@ the regular slot).
 </para>
 </section>
 </section>
-<section id='package-ebuild-eapi-5_pre2-profile'>
+<section id='package-ebuild-eapi-5-profile'>
 <title>Profiles</title>
-<section id='package-ebuild-eapi-5_pre2-profile-iuse-injection'>
+<section id='package-ebuild-eapi-5-profile-iuse-injection'>
 <title>Profile IUSE Injection</title>
 <para>
 IUSE_EFFECTIVE is a variable calculated from IUSE and
@@ -156,7 +156,7 @@ equivalent of ${v}.
 </table>
 </para>
 </section>
-<section id='package-ebuild-eapi-5_pre2-profile-stable-use-masking'>
+<section id='package-ebuild-eapi-5-profile-stable-use-masking'>
 <title>Profile stable USE forcing and masking</title>
 <para>
 In profile directories with an EAPI supporting stable masking,
@@ -168,29 +168,29 @@ only influence packages that are merged due to a stable keyword.
 </para>
 </section>
 </section>
-<section id='package-ebuild-eapi-5_pre2-helpers'>
+<section id='package-ebuild-eapi-5-helpers'>
 <title>Helpers</title>
-<section id='package-ebuild-eapi-5_pre2-helpers-econf-disable-silent-rules'>
+<section id='package-ebuild-eapi-5-helpers-econf-disable-silent-rules'>
 <title>econf adds --disable-silent-rules</title>
 <para>
 This option will automatically be passed if
 --disable-silent-rules occurs in the output of configure --help.
 </para>
 </section>
-<section id='package-ebuild-eapi-5_pre2-helpers-newfoo-stdin'>
+<section id='package-ebuild-eapi-5-helpers-newfoo-stdin'>
 <title>new* commands can read from standard input</title>
 <para>
 Standard input is read when the first parameter is - (a hyphen).
 </para>
 </section>
-<section id='package-ebuild-eapi-5_pre2-helpers-foo-version-host-root'>
+<section id='package-ebuild-eapi-5-helpers-foo-version-host-root'>
 <title>New option --host-root for {has,best}_version</title>
 <para>
 This option --host-root will cause the query to apply to the
 host root instead of ROOT.
 </para>
 </section>
-<section id='package-ebuild-eapi-5_pre2-helpers-doheader'>
+<section id='package-ebuild-eapi-5-helpers-doheader'>
 <title>New doheader helper function</title>
 <para>
 Installs the given header files into /usr/include/, by default
@@ -198,7 +198,7 @@ with file mode 0644. This can be overridden by setting
 INSOPTIONS with the insopts function.
 </para>
 </section>
-<section id='package-ebuild-eapi-5_pre2-helpers-usex'>
+<section id='package-ebuild-eapi-5-helpers-usex'>
 <title>New usex helper function</title>
 <programlisting>
 USAGE: usex &lt;USE flag&gt; [true output] [false output] [true suffix] [false suffix]
@@ -208,9 +208,9 @@ DESCRIPTION:
 </programlisting>
 </section>
 </section>
-<section id='package-ebuild-eapi-5_pre2-phases'>
+<section id='package-ebuild-eapi-5-phases'>
 <title>Phases</title>
-<section id='package-ebuild-eapi-5_pre2-phases-src-test-parallel'>
+<section id='package-ebuild-eapi-5-phases-src-test-parallel'>
 <title>src_test supports parallel tests</title>
 <para>
 Unlike older EAPIs, the default src_test implementation will not
@@ -218,9 +218,9 @@ pass the -j1 option to emake.
 </para>
 </section>
 </section>
-<section id='package-ebuild-eapi-5_pre2-ebuild-environment-variables'>
+<section id='package-ebuild-eapi-5-ebuild-environment-variables'>
 <title>Ebuild Environment Variables</title>
-<section id='package-ebuild-eapi-5_pre2-ebuild-environment-variables-ebuild-phase-func'>
+<section id='package-ebuild-eapi-5-ebuild-environment-variables-ebuild-phase-func'>
 <title>New EBUILD_PHASE_FUNC variable</title>
 <para>
 During execution of an ebuild phase function (such as pkg_setup
