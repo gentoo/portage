@@ -773,9 +773,6 @@ list_preserved_libs.uses_eroot = True
 # DO NOT CHANGE CODE BEYOND THIS POINT - IT'S NOT NEEDED!
 #
 
-if not portage.const._ENABLE_PRESERVE_LIBS:
-	del list_preserved_libs
-
 non_commands = frozenset(['elog', 'eval_atom_use',
 	'exithandler', 'expand_new_virt', 'main',
 	'usage', 'writemsg', 'writemsg_stdout'])

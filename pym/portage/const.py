@@ -99,7 +99,7 @@ SUPPORTED_FEATURES       = frozenset([
                            "metadata-transfer", "mirror", "multilib-strict", "news",
                            "noauto", "noclean", "nodoc", "noinfo", "noman",
                            "nostrip", "notitles", "parallel-fetch", "parallel-install",
-                           "prelink-checksums",
+                           "prelink-checksums", "preserve-libs",
                            "protect-owned", "python-trace", "sandbox",
                            "selinux", "sesandbox", "sfperms",
                            "sign", "skiprocheck", "split-elog", "split-log", "splitdebug",
@@ -166,18 +166,7 @@ if "PORTAGE_OVERRIDE_EPREFIX" in os.environ:
 
 # Private constants for use in conditional code in order to minimize the diff
 # between branches.
-_ENABLE_DYN_LINK_MAP    = True
 _DEPCLEAN_LIB_CHECK_DEFAULT = True
-_ENABLE_PRESERVE_LIBS   = True
 _ENABLE_REPO_NAME_WARN  = True
 _ENABLE_SET_CONFIG      = True
 _ENABLE_INHERIT_CHECK   = True
-
-
-# The definitions above will differ between branches, so it's useful to have
-# common lines of diff context here in order to avoid merge conflicts.
-
-if _ENABLE_PRESERVE_LIBS:
-	SUPPORTED_FEATURES = set(SUPPORTED_FEATURES)
-	SUPPORTED_FEATURES.add("preserve-libs")
-	SUPPORTED_FEATURES = frozenset(SUPPORTED_FEATURES)

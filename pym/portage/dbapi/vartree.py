@@ -40,7 +40,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 
 from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, \
 	PORTAGE_PACKAGE_ATOM, PRIVATE_PATH, VDB_PATH
-from portage.const import _ENABLE_DYN_LINK_MAP, _ENABLE_PRESERVE_LIBS
 from portage.dbapi import dbapi
 from portage.exception import CommandNotFound, \
 	InvalidData, InvalidLocation, InvalidPackageName, \
@@ -172,15 +171,9 @@ class vardbapi(dbapi):
 		self._counter_path = os.path.join(self._eroot,
 			CACHE_PATH, "counter")
 
-		self._plib_registry = None
-		if _ENABLE_PRESERVE_LIBS:
-			self._plib_registry = PreservedLibsRegistry(settings["ROOT"],
-				os.path.join(self._eroot, PRIVATE_PATH,
-				"preserved_libs_registry"))
-
-		self._linkmap = None
-		if _ENABLE_DYN_LINK_MAP:
-			self._linkmap = LinkageMap(self)
+		self._plib_registry = PreservedLibsRegistry(settings["ROOT"],
+			os.path.join(self._eroot, PRIVATE_PATH, "preserved_libs_registry"))
+		self._linkmap = LinkageMap(self)
 		self._owners = self._owners_db(self)
 
 		self._cached_counter = None

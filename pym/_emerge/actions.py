@@ -31,7 +31,7 @@ from portage import shutil
 from portage import eapi_is_supported, _unicode_decode
 from portage.cache.cache_errors import CacheError
 from portage.const import GLOBAL_CONFIG_PATH
-from portage.const import _ENABLE_DYN_LINK_MAP, _DEPCLEAN_LIB_CHECK_DEFAULT
+from portage.const import _DEPCLEAN_LIB_CHECK_DEFAULT
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.dep import Atom
@@ -544,7 +544,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	# specific packages.
 
 	msg = []
-	if not _ENABLE_DYN_LINK_MAP:
+	if "preserve-libs" not in settings.features and \
+		not myopts.get("--depclean-lib-check", _DEPCLEAN_LIB_CHECK_DEFAULT) != "n":
 		msg.append("Depclean may break link level dependencies. Thus, it is\n")
 		msg.append("recommended to use a tool such as " + good("`revdep-rebuild`") + " (from\n")
 		msg.append("app-portage/gentoolkit) in order to detect such breakage.\n")
