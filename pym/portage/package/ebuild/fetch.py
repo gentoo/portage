@@ -429,10 +429,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 
 				# now try the official mirrors
 				if mirrorname in thirdpartymirrors:
-					random.shuffle(thirdpartymirrors[mirrorname])
-
 					uris = [locmirr.rstrip("/") + "/" + path \
 						for locmirr in thirdpartymirrors[mirrorname]]
+					random.shuffle(uris)
 					filedict[myfile].extend(uris)
 					thirdpartymirror_uris.setdefault(myfile, []).extend(uris)
 
@@ -445,15 +444,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 			if restrict_fetch or force_mirror:
 				# Only fetch from specific mirrors is allowed.
 				continue
-			if "primaryuri" in restrict:
-				# Use the source site first.
-				if myfile in primaryuri_indexes:
-					primaryuri_indexes[myfile] += 1
-				else:
-					primaryuri_indexes[myfile] = 0
-				filedict[myfile].insert(primaryuri_indexes[myfile], myuri)
-			else:
-				filedict[myfile].append(myuri)
 			primaryuris = primaryuri_dict.get(myfile)
 			if primaryuris is None:
 				primaryuris = []
@@ -464,6 +454,15 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	# the file does not yet exist on the normal mirrors.
 	for myfile, uris in thirdpartymirror_uris.items():
 		primaryuri_dict.setdefault(myfile, []).extend(uris)
+
+	# Now merge primaryuri values into filedict (includes mirrors
+	# explicitly referenced in SRC_URI).
+	if "primaryuri" in restrict:
+		for myfile, uris in filedict.items():
+			filedict[myfile] = primaryuri_dict.get(myfile, []) + uris
+	else:
+		for myfile in filedict:
+			filedict[myfile] += primaryuri_dict.get(myfile, [])
 
 	can_fetch=True
 
