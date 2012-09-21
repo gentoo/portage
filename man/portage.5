@@ -816,8 +816,10 @@ in the following order:
 .RS
 For each file in this directory, a package set is created with its name
 corresponding to the name of the file. Each file should contain a list
-of package atoms, one per line. When referencing package sets in
-\fBemerge\fR(1) arguments, the set name is prefixed with \fB@\fR.
+of package atoms and nested package sets, one per line. When a package
+set is referenced as an \fBemerge\fR(1) argument or when it is
+referenced as a nested package set (inside of another package set), the
+set name is prefixed with \fB@\fR.
 
 Also see \fB/var/lib/portage/world_sets\fR and the \fBemerge\fR(1)
 \fB\-\-list\-sets\fR option.
