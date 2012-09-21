@@ -1786,7 +1786,6 @@ def _post_src_install_uid_fix(mysettings, out):
 		for i in xdg_dirs if i)
 
 	qa_desktop_file = ""
-	f = None
 	try:
 		with io.open(_unicode_encode(os.path.join(
 			mysettings["PORTAGE_BUILDDIR"],
