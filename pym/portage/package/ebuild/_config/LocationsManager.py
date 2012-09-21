@@ -130,6 +130,26 @@ class LocationsManager(object):
 		allow_parent_colon = True
 		repo_loc = None
 		compat_mode = False
+
+		eapi_file = os.path.join(currentPath, "eapi")
+		f = None
+		try:
+			f = io.open(_unicode_encode(eapi_file,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['content'], errors='replace')
+			eapi = f.readline().strip()
+		except IOError:
+			pass
+		else:
+			if not eapi_is_supported(eapi):
+				raise ParseError(_(
+					"Profile contains unsupported "
+					"EAPI '%s': '%s'") % \
+					(eapi, os.path.realpath(eapi_file),))
+		finally:
+			if f is not None:
+				f.close()
+
 		intersecting_repos = [x for x in known_repos if current_abs_path.startswith(x[0])]
 		if intersecting_repos:
 			# protect against nested repositories.  Insane configuration, but the longest
@@ -156,24 +176,6 @@ class LocationsManager(object):
 						files=', '.join(offenders)))
 
 		parentsFile = os.path.join(currentPath, "parent")
-		eapi_file = os.path.join(currentPath, "eapi")
-		f = None
-		try:
-			f = io.open(_unicode_encode(eapi_file,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='r', encoding=_encodings['content'], errors='replace')
-			eapi = f.readline().strip()
-		except IOError:
-			pass
-		else:
-			if not eapi_is_supported(eapi):
-				raise ParseError(_(
-					"Profile contains unsupported "
-					"EAPI '%s': '%s'") % \
-					(eapi, os.path.realpath(eapi_file),))
-		finally:
-			if f is not None:
-				f.close()
 		if os.path.exists(parentsFile):
 			parents = grabfile(parentsFile)
 			if not parents:
