@@ -26,7 +26,7 @@ else
 		__strip_duplicate_slashes \
 		use_with use_enable ; do
 		eval "${x}() {
-			if has \"\${EAPI:-0}\" 4-python; then
+			if has \"\${EAPI:-0}\" 4-python 5-progress; then
 				die \"\${FUNCNAME}() calls are not allowed in global scope\"
 			fi
 		}"
@@ -35,7 +35,7 @@ else
 	# `use multislot` is false for the "depend" phase.
 	for x in use useq usev usex ; do
 		eval "${x}() {
-			if has \"\${EAPI:-0}\" 4-python; then
+			if has \"\${EAPI:-0}\" 4-python 5-progress; then
 				die \"\${FUNCNAME}() calls are not allowed in global scope\"
 			else
 				return 1
@@ -506,7 +506,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm depend && \
 	[[ -n $EAPI ]] || EAPI=0
 fi
 
-if has "${EAPI:-0}" 4-python; then
+if has "${EAPI:-0}" 4-python 5-progress; then
 	shopt -s globstar
 fi
 

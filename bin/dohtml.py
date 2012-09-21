@@ -106,7 +106,7 @@ class OptionsClass:
 			self.DOCDESTTREE = os.environ["_E_DOCDESTTREE_"]
 
 		self.allowed_exts = ['css', 'gif', 'htm', 'html', 'jpeg', 'jpg', 'js', 'png']
-		if os.environ.get("EAPI", "0") in ("4-python",):
+		if os.environ.get("EAPI", "0") in ("4-python", "5-progress"):
 			self.allowed_exts += ['ico', 'svg', 'xhtml', 'xml']
 		self.allowed_files = []
 		self.disallowed_dirs = ['CVS']

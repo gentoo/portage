@@ -48,7 +48,7 @@ def eapi_exports_EBUILD_PHASE_FUNC(eapi):
 	return eapi not in ("0", "1", "2", "3", "4", "4-python", "4-slot-abi")
 
 def eapi_exports_REPOSITORY(eapi):
-	return eapi in ("4-python",)
+	return eapi in ("4-python", "5-progress")
 
 def eapi_has_pkg_pretend(eapi):
 	return eapi not in ("0", "1", "2", "3")
@@ -69,19 +69,19 @@ def eapi_has_use_dep_defaults(eapi):
 	return eapi not in ("0", "1", "2", "3")
 
 def eapi_has_repo_deps(eapi):
-	return eapi in ("4-python",)
+	return eapi in ("4-python", "5-progress")
 
 def eapi_allows_dots_in_PN(eapi):
-	return eapi in ("4-python",)
+	return eapi in ("4-python", "5-progress")
 
 def eapi_allows_dots_in_use_flags(eapi):
-	return eapi in ("4-python",)
+	return eapi in ("4-python", "5-progress")
 
 def eapi_supports_stable_use_forcing_and_masking(eapi):
 	return eapi not in ("0", "1", "2", "3", "4", "4-python", "4-slot-abi")
 
 def eapi_allows_directories_on_profile_level_and_repository_level(eapi):
-	return eapi in ("4-python",)
+	return eapi in ("4-python", "5-progress")
 
 _eapi_attrs = collections.namedtuple('_eapi_attrs',
 	'dots_in_PN dots_in_use_flags exports_EBUILD_PHASE_FUNC '

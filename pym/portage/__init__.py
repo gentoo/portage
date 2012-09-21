@@ -414,7 +414,7 @@ def abssymlink(symlink, target=None):
 
 _doebuild_manifest_exempt_depend = 0
 
-_testing_eapis = frozenset(["4-python", "4-slot-abi", "5_pre2"])
+_testing_eapis = frozenset(["4-python", "4-slot-abi", "5_pre2", "5-progress"])
 _deprecated_eapis = frozenset(["4_pre1", "3_pre2", "3_pre1", "5_pre1"])
 
 def _eapi_is_deprecated(eapi):

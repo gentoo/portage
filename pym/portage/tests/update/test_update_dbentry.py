@@ -191,7 +191,7 @@ class UpdateDbentryTestCase(TestCase):
 			self.assertTrue(old_pattern.search(rdepend) is None)
 			self.assertTrue("dev-libs/M-moved" in rdepend)
 
-			# EAPI 4-python N -> N.moved
+			# EAPI 4-python/*-progress N -> N.moved
 			rdepend = vardb.aux_get("dev-libs/B-1", ["RDEPEND"])[0]
 			old_pattern = re.compile(r"\bdev-libs/N(\s|$)")
 			self.assertTrue(old_pattern.search(rdepend) is None)
