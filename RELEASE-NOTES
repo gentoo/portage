@@ -4,27 +4,19 @@ Features/major bugfixes are listed in NEWS
 portage-2.2
 ==================================
 
+* FEATURES=preserve-libs is enabled by default.
 * Portage now warns if an ebuild repository does not have a name, as several
   new features in 2.2 make use of or require named repositories. The repository
   name is stored in profiles/repo_name in each repository.
-* Package set support: There are several important notes regarding package
-  sets:
-  - they may currently only include simple and versioned atoms or other sets,
-    use conditionals or any-of constructs aren't possible yet
-  - sets can be referenced either in other file-based sets or as argument to
-    emerge, but not in ebuilds, config files or other tools at this time.
-  - packages won't be unmerged if they are referenced by an installed package
-    set (with the exception of the world set, and installed being determined
-    by the world_sets file).
-* The "selected" package set, which includes packages listed in
-  /var/lib/portage/world, has been extended to include nested sets that may
-  be listed /var/lib/portage/world_sets.
 
 portage-2.1.11
 ==================================
 * User-defined package sets can now be created by placing files in the
   /etc/portage/sets/ directory. Refer to the emerge(1) and portage(5) man
   pages for more information.
+* The "selected" package set, which includes packages listed in
+  /var/lib/portage/world, has been extended to include nested sets that may
+  be listed /var/lib/portage/world_sets.
 
 portage-2.1.10.61
 ==================================
