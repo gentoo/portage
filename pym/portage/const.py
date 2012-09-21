@@ -180,6 +180,6 @@ SUPPORTED_BINPKG_FORMATS = ("tar", "rpm")
 # Private constants for use in conditional code in order to minimize the diff
 # between branches.
 _DEPCLEAN_LIB_CHECK_DEFAULT = True
-_ENABLE_REPO_NAME_WARN  = True
-_ENABLE_SET_CONFIG      = True
-_ENABLE_INHERIT_CHECK   = True
+_ENABLE_REPO_NAME_WARN  = False
+_ENABLE_SET_CONFIG      = False
+_ENABLE_INHERIT_CHECK   = False
