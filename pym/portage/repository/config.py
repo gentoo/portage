@@ -18,6 +18,7 @@ except ImportError:
 from portage import eclass_cache, os
 from portage.const import (MANIFEST2_HASH_FUNCTIONS, MANIFEST2_REQUIRED_HASH,
 	REPO_NAME_LOC, USER_CONFIG_PATH)
+from portage.eapi import eapi_allows_directories_on_profile_level_and_repository_level
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.util import (normalize_path, read_corresponding_eapi_file, shlex_split,
 	stack_lists, writemsg, writemsg_level)
@@ -163,9 +164,10 @@ class RepoConfig(object):
 				'sign-commit', 'sign-manifest', 'thin-manifest', 'update-changelog'):
 				setattr(self, value.lower().replace("-", "_"), layout_data[value])
 
-			self.portage1_profiles = any(x in _portage1_profiles_allow_directories
-				for x in layout_data['profile-formats'])
-			self.portage1_profiles_compat = layout_data['profile-formats'] == ('portage-1-compat',)
+			self.portage1_profiles = eapi_allows_directories_on_profile_level_and_repository_level(eapi) or \
+				any(x in _portage1_profiles_allow_directories for x in layout_data['profile-formats'])
+			self.portage1_profiles_compat = not eapi_allows_directories_on_profile_level_and_repository_level(eapi) and \
+				layout_data['profile-formats'] == ('portage-1-compat',)
 
 	def iter_pregenerated_caches(self, auxdbkeys, readonly=True, force=False):
 		"""
@@ -760,7 +762,7 @@ def parse_layout_conf(repo_location, repo_name=None):
 
 	raw_formats = layout_data.get('profile-formats')
 	if raw_formats is None:
-		if eapi in ('4-python',):
+		if eapi_allows_directories_on_profile_level_and_repository_level(eapi):
 			raw_formats = ('portage-1',)
 		else:
 			raw_formats = ('portage-1-compat',)

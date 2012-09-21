@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -13,6 +13,7 @@ import portage
 from portage import os, eapi_is_supported, _encodings, _unicode_encode
 from portage.const import CUSTOM_PROFILE_PATH, GLOBAL_CONFIG_PATH, \
 	PROFILE_PATH, USER_CONFIG_PATH
+from portage.eapi import eapi_allows_directories_on_profile_level_and_repository_level
 from portage.exception import DirectoryNotFound, ParseError
 from portage.localization import _
 from portage.util import ensure_dirs, grabfile, \
@@ -132,6 +133,7 @@ class LocationsManager(object):
 		compat_mode = False
 
 		eapi_file = os.path.join(currentPath, "eapi")
+		eapi = "0"
 		f = None
 		try:
 			f = io.open(_unicode_encode(eapi_file,
@@ -155,9 +157,10 @@ class LocationsManager(object):
 			# protect against nested repositories.  Insane configuration, but the longest
 			# path will be the correct one.
 			repo_loc, layout_data = max(intersecting_repos, key=lambda x:len(x[0]))
-			allow_directories = any(x in _portage1_profiles_allow_directories
-				for x in layout_data['profile-formats'])
-			compat_mode = layout_data['profile-formats'] == ('portage-1-compat',)
+			allow_directories = eapi_allows_directories_on_profile_level_and_repository_level(eapi) or \
+				any(x in _portage1_profiles_allow_directories for x in layout_data['profile-formats'])
+			compat_mode = not eapi_allows_directories_on_profile_level_and_repository_level(eapi) and \
+				layout_data['profile-formats'] == ('portage-1-compat',)
 			allow_parent_colon = any(x in _allow_parent_colon
 				for x in layout_data['profile-formats'])
 

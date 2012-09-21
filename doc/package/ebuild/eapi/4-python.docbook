@@ -97,7 +97,7 @@
 	<section id='package-ebuild-eapi-4-python-repo-level-config'>
 		<title>Extended Repository-Level Configuration</title>
 		<para>
-			Repository-level configuration in ${repository}/profiles is supported for the following files:
+			Repository-level configuration in ${repository_path}/profiles is supported for the following files:
 			<itemizedlist>
 				<listitem><para>make.defaults</para></listitem>
 				<listitem><para>package.use</para></listitem>
@@ -107,8 +107,11 @@
 				<listitem><para>use.mask</para></listitem>
 			</itemizedlist>
 		</para>
+	</section>
+	<section id='package-ebuild-eapi-4-python-directories'>
+		<title>Directories Allowed for Profile-Level and Repository-Level Configuration</title>
 		<para>
-			By default, the following files in ${repository}/profiles can be also directories:
+			The following files can be directories:
 			<itemizedlist>
 				<listitem><para>package.mask</para></listitem>
 				<listitem><para>package.use</para></listitem>
