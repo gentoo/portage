@@ -77,6 +77,9 @@ def eapi_allows_dots_in_PN(eapi):
 def eapi_allows_dots_in_use_flags(eapi):
 	return eapi in ("4-python",)
 
+def eapi_supports_stable_use_forcing_and_masking(eapi):
+	return eapi not in ("0", "1", "2", "3", "4", "4-python", "4-slot-abi")
+
 _eapi_attrs = collections.namedtuple('_eapi_attrs',
 	'dots_in_PN dots_in_use_flags exports_EBUILD_PHASE_FUNC '
 	'iuse_defaults iuse_effective '
