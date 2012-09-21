@@ -15,7 +15,7 @@ portage-2.1.11.20
   package set which rebuilds consumers of preserved libraries.
 * Add link level dependency awareness to emerge --depclean and --prune actions
   in order to protect against uninstallation of required libraries. Refer to
-  the --depclean-lib-check in the emerge(1) man page.
+  the --depclean-lib-check option in the emerge(1) man page.
 
 portage-2.1.11
 -------------
