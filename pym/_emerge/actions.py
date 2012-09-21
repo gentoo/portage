@@ -31,7 +31,7 @@ from portage import shutil
 from portage import eapi_is_supported, _unicode_decode
 from portage.cache.cache_errors import CacheError
 from portage.const import GLOBAL_CONFIG_PATH
-from portage.const import _ENABLE_DYN_LINK_MAP
+from portage.const import _ENABLE_DYN_LINK_MAP, _DEPCLEAN_LIB_CHECK_DEFAULT
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.dep import Atom
@@ -941,7 +941,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 	if cleanlist and \
 		real_vardb._linkmap is not None and \
-		myopts.get("--depclean-lib-check") != "n" and \
+		myopts.get("--depclean-lib-check", _DEPCLEAN_LIB_CHECK_DEFAULT) != "n" and \
 		"preserve-libs" not in settings.features:
 
 		# Check if any of these packages are the sole providers of libraries
