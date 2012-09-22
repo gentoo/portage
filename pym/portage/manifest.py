@@ -4,6 +4,7 @@
 import errno
 import io
 import re
+import sys
 import warnings
 
 import portage
@@ -23,6 +24,11 @@ from portage.exception import DigestException, FileNotFound, \
 from portage.const import (MANIFEST1_HASH_FUNCTIONS, MANIFEST2_HASH_DEFAULTS,
 	MANIFEST2_HASH_FUNCTIONS, MANIFEST2_IDENTIFIERS, MANIFEST2_REQUIRED_HASH)
 from portage.localization import _
+
+if sys.hexversion >= 0x3000000:
+	_unicode = str
+else:
+	_unicode = unicode
 
 # Characters prohibited by repoman's file.name check.
 _prohibited_filename_chars_re = re.compile(r'[^a-zA-Z0-9._\-+:]')
@@ -107,6 +113,14 @@ class Manifest2Entry(ManifestEntry):
 
 	def __ne__(self, other):
 		return not self.__eq__(other)
+
+	if sys.hexversion < 0x3000000:
+
+		__unicode__ = __str__
+
+		def __str__(self):
+			return _unicode_encode(self.__unicode__(),
+				encoding=_encodings['repo.content'], errors='strict')
 
 class Manifest(object):
 	parsers = (parseManifest2,)
@@ -289,7 +303,7 @@ class Manifest(object):
 					# thin manifests with no DIST entries, myentries is
 					# non-empty for all currently known use cases.
 					write_atomic(self.getFullname(), "".join("%s\n" %
-						str(myentry) for myentry in myentries))
+						_unicode(myentry) for myentry in myentries))
 				else:
 					# With thin manifest, there's no need to have
 					# a Manifest file if there are no DIST entries.

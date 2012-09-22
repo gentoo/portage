@@ -79,7 +79,7 @@ def _get_pv_re(eapi_attrs):
 	else:
 		pv_re = _pv['dots_disallowed_in_PN']
 
-	pv_re = re.compile('^' + pv_re + '$', re.VERBOSE)
+	pv_re = re.compile(_unicode_decode('^' + pv_re + '$'), re.VERBOSE | re.UNICODE)
 
 	_pv_re_cache[cache_key] = pv_re
 	return pv_re
@@ -292,7 +292,7 @@ def _pkgsplit(mypkg, eapi=None):
 
 	return  (m.group('pn'), m.group('ver'), rev) 
 
-_cat_re = re.compile('^%s$' % _cat)
+_cat_re = re.compile('^%s$' % _cat, re.UNICODE)
 _missing_cat = 'null'
 
 def catpkgsplit(mydata, silent=1, eapi=None):

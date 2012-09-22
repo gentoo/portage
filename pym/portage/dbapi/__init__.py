@@ -21,7 +21,7 @@ from portage.exception import InvalidData
 from portage.localization import _
 
 class dbapi(object):
-	_category_re = re.compile(r'^\w[-.+\w]*$')
+	_category_re = re.compile(r'^\w[-.+\w]*$', re.UNICODE)
 	_categories = None
 	_use_mutable = False
 	_known_keys = frozenset(x for x in auxdbkeys
