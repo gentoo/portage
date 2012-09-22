@@ -1,57 +1,328 @@
 .TH "EBUILD" "5" "Sep 2012" "Portage VERSION" "Portage"
+
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
+
 .SH "DESCRIPTION"
-The
-.BR ebuild (1)
-program accepts a single ebuild script as an argument.  This script
+The \fBebuild\fR(1) program accepts a single ebuild script as an argument.  This script
 contains variables and commands that specify how to download, unpack,
 patch, compile, install and merge a particular software package from
 its original sources.  In addition to all of this, the ebuild script
 can also contain pre/post install/remove commands, as required.  All
 ebuild scripts are written in bash.
-.SH "EXAMPLES"
-Here's a simple example ebuild:
 
-.DS
+.SS "Dependencies"
+A \fIdepend atom\fR is simply a dependency that is used by portage when calculating
+relationships between packages.  Please note that if the atom has not already
+been emerged, then the latest version available is matched.
+.TP
+.B Atom Bases
+The base atom is just a full category/packagename.
+
+Examples:
 .nf
-# Copyright 1999\-2009 Gentoo Foundation
-# Distributed under the terms of the GNU General Public License v2
-# $Header: $
-
-EAPI="5"
-
-inherit some_eclass another_eclass
-
-DESCRIPTION="Super\-useful stream editor (sed)"
-HOMEPAGE="http://www.gnu.org/software/sed/sed.html"
-SRC_URI="ftp://alpha.gnu.org/pub/gnu/${PN}/${P}.tar.gz"
-
-LICENSE="GPL\-2"
-SLOT="0"
-KEYWORDS="~x86"
-IUSE=""
-
-RDEPEND=""
-DEPEND="nls? ( sys-devel/gettext )"
-
-src_configure() {
-	econf \\
-		\-\-bindir="${EPREFIX}"/bin
-}
-
-src_install() {
-	emake DESTDIR="${D}" install
-	dodoc NEWS README* THANKS AUTHORS BUGS ChangeLog
-}
+.I 	sys\-apps/sed
+.I 	sys\-libs/zlib
+.I 	net\-misc/dhcp
 .fi
+.TP
+.B Atom Versions
+It is nice to be more specific and say that only certain versions of atoms are
+acceptable.  Note that versions must be combined with a prefix (see below).  
+Hence you may add a version number as a postfix to the base.
+
+Examples:
+.nf
+	sys\-apps/sed\fI\-4.0.5\fR
+	sys\-libs/zlib\fI\-1.1.4\-r1\fR
+	net\-misc/dhcp\fI\-3.0_p2\fR
+.fi
+
+Versions are normally made up of two or three numbers separated by periods, such
+as 1.2 or 4.5.2.  This string may be followed by a character such as 1.2a or 
+4.5.2z.  Note that this letter is \fInot\fR meant to indicate alpha, beta,
+etc... status.  For that, use the optional suffix; either _alpha, _beta, _pre 
+(pre\-release), _rc (release candidate), or _p (patch).  This means for the 
+3rd pre\-release of a package, you would use something like 1.2_pre3.  The 
+suffixes here can be arbitrarily chained without limitation.
+.TP
+.B Atom Prefix Operators [> >= = <= <]
+Sometimes you want to be able to depend on general versions rather than specifying
+exact versions all the time.  Hence we provide standard boolean operators:
+
+Examples:
+.nf
+	\fI>\fRmedia\-libs/libgd\-1.6
+	\fI>=\fRmedia\-libs/libgd\-1.6
+	\fI=\fRmedia\-libs/libgd\-1.6
+	\fI<=\fRmedia\-libs/libgd\-1.6
+	\fI<\fRmedia\-libs/libgd\-1.6
+.fi
+.TP
+.B Extended Atom Prefixes [!~] and Postfixes [*]
+Now to get even fancier, we provide the ability to define blocking packages and
+version range matching.  Also note that these extended prefixes/postfixes may
+be combined in any way with the atom classes defined above.
+.RS
+.TP
+.I ~
+means match any revision of the base version specified.  So in the
+example below, we would match versions '1.0.2a', '1.0.2a\-r1', '1.0.2a\-r2',
+etc...
+
+Example:
+.nf
+	\fI~\fRnet\-libs/libnet\-1.0.2a
+.fi
+.TP
+.I !
+means block packages from being installed at the same time.
+
+Example:
+.nf
+	\fI!\fRapp\-text/dos2unix
+.fi
+.TP
+.I !!
+means block packages from being installed at the same time
+and explicitly disallow them from being temporarily installed
+simultaneously during a series of upgrades. This syntax is supported
+beginning with \fBEAPI 2\fR.
+
+Example:
+.nf
+	\fI!!\fR<sys\-apps/portage\-2.1.4_rc1
+.fi
+.TP
+.I *
+means match any version of the package so long
+as the specified string prefix is matched. So with a
+version of '2*', we can match '2.1', '2.2', '2.2.1',
+etc... and not match version '1.0', '3.0', '4.1', etc...
+Beware that, due to the string matching nature, '20'
+will also be matched by '2*'. The version part
+that comes before the '*' must be a valid version in the absence of the '*'.
+For example, '2' is a valid version and '2.' is not. Therefore, '2*' is
+allowed and '2.*' is not.
+
+Examples:
+.nf
+	=dev\-libs/glib\-2\fI*\fR
+	\fI!\fR=net\-fs/samba\-2\fI*\fR
+.fi
+.RE
+.TP
+.B Atom Slots
+Beginning with \fBEAPI 1\fR, any atom can be constrained to match a specific
+\fBSLOT\fR. This is accomplished by appending a colon followed by a
+\fBSLOT\fR:
+
+Examples:
+.nf
+	x11\-libs/qt:3
+	\fI~\fRx11\-libs/qt-3.3.8:3
+	\fI>=\fRx11\-libs/qt-3.3.8:3
+	\fI=\fRx11\-libs/qt-3.3*:3
+.fi
+.TP
+.B Sub Slots
+Beginning with \fBEAPI 5\fR, a slot dependency may contain an
+optional sub\-slot part that follows the regular slot and is
+delimited by a \fI/\fR character.
+
+Examples:
+.nf
+	dev\-libs/icu:0/0
+	dev\-libs/icu:0/49
+	dev\-lang/perl:0/5.12
+	dev\-libs/glib:2/2.30
+.fi
+.TP
+.B Atom Slot Operators
+Beginning with \fBEAPI 5\fR, slot operator dependency consists
+of a colon followed by one of the following operators:
+.RS
+.TP
+.I *
+Indicates that any slot value is acceptable. In addition,
+for runtime dependencies, indicates that the package will not
+break if the matched package is uninstalled and replaced by
+a different matching package in a different slot.
+
+Examples:
+.nf
+	dev\-libs/icu:*
+	dev\-lang/perl:*
+	dev-libs/glib:*
+.fi
+.TP
+.I =
+Indicates that any slot value is acceptable. In addition,
+for runtime dependencies, indicates that the package will
+break unless a matching package with slot and sub\-slot equal
+to the slot and sub\-slot of the best installed version at the
+time the package was installed is available.
+
+Examples:
+.nf
+	dev\-libs/icu:=
+	dev\-lang/perl:=
+	dev-libs/glib:=
+.fi
+.TP
+.I slot=
+Indicates that only a specific slot value is acceptable, and
+otherwise behaves identically to the plain equals slot operator.
+
+Examples:
+.nf
+	dev\-libs/icu:0=
+	dev\-lang/perl:0=
+	dev-libs/glib:2=
+.fi
+.PP
+To implement the equals slot operator, the package manager
+will need to store the slot/sub\-slot pair of the best installed
+version of the matching package. This syntax is only for package
+manager use and must not be used by ebuilds. The package manager
+may do this by inserting the appropriate slot/sub\-slot pair
+between the colon and equals sign when saving the package's
+dependencies. The sub\-slot part must not be omitted here
+(when the SLOT variable omits the sub\-slot part, the package
+is considered to have an implicit sub\-slot which is equal to
+the regular slot).
+
+Examples:
+.nf
+	dev\-libs/icu:0/0=
+	dev\-libs/icu:0/49=
+	dev\-lang/perl:0/5.12=
+	dev-libs/glib:2/2.30=
+.fi
+.RE
+.TP
+.B Atom USE
+Beginning with \fBEAPI 2\fR, any atom can be constrained to match specific
+\fBUSE\fR flag settings. When used together with \fBSLOT\fR dependencies,
+\fBUSE\fR dependencies appear on the right hand side of \fBSLOT\fR
+dependencies.
+.RS
+.TP
+.B Unconditional USE Dependencies
+.TS
+l l
+__
+l l.
+Example	Meaning
+foo[bar]	foo must have bar enabled
+foo[bar,baz]	foo must have both bar and baz enabled
+foo[\-bar,baz]	foo must have bar disabled and baz enabled
+.TE
+.TP
+.B Conditional USE Dependencies
+.TS
+l l
+__
+l l.
+Compact Form	Equivalent Expanded Form
+foo[bar?]	bar? ( foo[bar] ) !bar? ( foo )
+foo[!bar?]	bar? ( foo ) !bar? ( foo[\-bar] )
+foo[bar=]	bar? ( foo[bar] ) !bar? ( foo[\-bar] )
+foo[!bar=]	bar? ( foo[\-bar] ) !bar? ( foo[bar] )
+.TE
+.RE
+.TP
+.B Atom USE defaults
+Beginning with \fBEAPI 4\fR, \fBUSE\fR dependencies may specify default
+assumptions about values for flags that may or may not be missing from
+the \fBIUSE\fR of the matched package. Such defaults are specified by
+immediately following a flag with either \fI(+)\fR or \fI(\-)\fR. Use
+\fI(+)\fR to behave as if a missing flag is present and enabled, or
+\fI(\-)\fR to behave as if it is present and disabled:
+
+Examples:
+.nf
+	media\-video/ffmpeg[threads(+)]
+	media\-video/ffmpeg[-threads(\-)]
+.fi
+.TP
+.B Dynamic Dependencies
+Sometimes programs may depend on different things depending on the USE
+variable.  Portage offers a few options to handle this.  Note that when
+using the following syntaxes, each case is considered as 1 Atom in the
+scope it appears.  That means that each Atom both conditionally include
+multiple Atoms and be nested to an infinite depth.
+.RS
+.TP
+.B usevar? ( Atom )
+To include the jpeg library when the user has jpeg in \fBUSE\fR, simply use the
+following syntax:
+
+jpeg? ( media\-libs/jpeg )
+.TP
+.B !usevar? ( Atom )
+If you want to include a package only if the user does not have a certain option
+in their \fBUSE\fR variable, then use the following syntax:
+
+!nophysfs? ( dev\-games/physfs )
+
+This is often useful for those times when you want to want to add optional support
+for a feature and have it enabled by default.
+.TP
+.B usevar? ( Atom if true ) !usevar? ( Atom if false )
+For functionality like the tertiary operator found in C you must use
+two statements, one normal and one inverted.  If a package uses
+GTK2 or GTK1, but not both, then you can handle that like this:
+
+gtk2? ( =x11\-libs/gtk+\-2* ) !gtk2? ( =x11\-libs/gtk+\-1* )
+
+That way the default is the superior GTK2 library.
+.TP
+.B || ( Atom Atom ... )
+When a package can work with a few different packages but a virtual is not
+appropriate, this syntax can easily be used.
+
+Example:
+.nf
+|| (
+	app\-games/unreal\-tournament
+	app\-games/unreal\-tournament\-goty
+)
+.fi
+
+Here we see that unreal\-tournament has a normal version and it has a goty
+version.  Since they provide the same base set of files, another package can
+use either.  Adding a virtual is inappropriate due to the small scope of it.
+
+Another good example is when a package can be built with multiple video
+interfaces, but it can only ever have just one.
+
+Example:
+.nf
+|| (
+	sdl? ( media\-libs/libsdl )
+	svga? ( media\-libs/svgalib )
+	opengl? ( virtual/opengl )
+	ggi? ( media\-libs/libggi )
+	virtual/x11
+)
+.fi
+
+Here only one of the packages will be chosen, and the order of preference is
+determined by the order in which they appear.  So sdl has the best chance of
+being chosen, followed by svga, then opengl, then ggi, with a default of X if
+the user does not specify any of the previous choices.
+
+Note that if any of the packages listed are already merged, the package manager
+will use that to consider the dependency satisfied.
+
 .SH "VARIABLES"
 .TP
-.B MISC USAGE NOTES
+.B Usage Notes
 \- All variables defined in \fBmake.conf\fR(5) are available for use in
 ebuilds (such as the PORTAGE* and PORTDIR* variables)
 .br
-\- When assigning values to variables in ebuilds, you \fBcannot have a
+\- When assigning values to variables in ebuilds, you \fIcannot have a
 space\fR between the variable name and the equal sign.
 .br
 \- Variable values should only contain characters that are members of the
@@ -60,45 +331,45 @@ space\fR between the variable name and the equal sign.
 .B P
 This variable contains the package name without the ebuild revision.
 This variable must NEVER be modified.
-.br
-\fBxfree\-4.2.1\-r2.ebuild\fR \-\-> \fB$P\fR=='\fIxfree\-4.2.1\fR'
+
+xfree\-4.2.1\-r2.ebuild \-\-> $P=='xfree\-4.2.1'
 .TP
 .B PN
 Contains the name of the script without the version number.
-.br
-\fBxfree\-4.2.1\-r2.ebuild\fR \-\-> \fB$PN\fR=='\fIxfree\fR'
+
+xfree\-4.2.1\-r2.ebuild \-\-> $PN=='xfree'
 .TP
 .B PV
 Contains the version number without the revision.
-.br
-\fBxfree\-4.2.1\-r2.ebuild\fR \-\-> \fB$PV\fR=='\fI4.2.1\fR'
+
+xfree\-4.2.1\-r2.ebuild \-\-> $PV=='4.2.1'
 .TP
 .B PR
 Contains the revision number or 'r0' if no revision number exists.
-.br
-\fBxfree\-4.2.1\-r2.ebuild\fR \-\-> \fB$PR\fR=='\fIr2\fR'
+
+xfree\-4.2.1\-r2.ebuild \-\-> $PR=='r2'
 .TP
 .B PVR
 Contains the version number with the revision.
-.br
-\fBxfree\-4.2.1\-r2.ebuild\fR \-\-> \fB$PVR\fR=='\fI4.2.1\-r2\fR'
+
+xfree\-4.2.1\-r2.ebuild \-\-> $PVR=='4.2.1\-r2'
 .TP
 .B PF
-Contains the full package name \fI[PN]\-[PVR]\fR
-.br
-\fBxfree\-4.2.1\-r2.ebuild\fR \-\-> \fB$PF\fR=='\fIxfree\-4.2.1\-r2\fR'
+Contains the full package name \fBPN\fR\-\fBPVR\fR
+
+xfree\-4.2.1\-r2.ebuild \-\-> $PF=='xfree\-4.2.1\-r2'
 .TP
 .B CATEGORY
 Contains the package category name.
 .TP
 .B A
 Contains all source files required for the package.  This variable must
-not be defined. It is autogenerated from the \fISRC_URI\fR variable.
+not be defined. It is autogenerated from the \fBSRC_URI\fR variable.
 .TP
-\fBWORKDIR\fR = \fI"${PORTAGE_TMPDIR}/portage/${CATEGORY}/${PF}/work"\fR
+.B WORKDIR\fR = \fI"${PORTAGE_TMPDIR}/portage/${CATEGORY}/${PF}/work"
 Contains the path to the package build root.  Do not modify this variable.
 .TP
-\fBFILESDIR\fR = \fI"${PORTDIR}/${CATEGORY}/${PN}/files"\fR
+.B FILESDIR\fR = \fI"${PORTDIR}/${CATEGORY}/${PN}/files"
 Contains the path to the 'files' sub folder in the package specific
 location in the portage tree.  Do not modify this variable.
 .TP
@@ -120,17 +391,17 @@ and is available in such cases as ${EPREFIX}.  EPREFIX does not contain
 a trailing slash, therefore an absent offset is represented by the empty
 string.  Do not modify this variable.
 .TP
-\fBS\fR = \fI"${WORKDIR}/${P}"\fR
+.B S\fR = \fI"${WORKDIR}/${P}"
 Contains the path to the temporary \fIbuild directory\fR.  This variable
 is used by the functions \fIsrc_compile\fR and \fIsrc_install\fR.  Both
 are executed with \fIS\fR as the current directory.  This variable may
 be modified to match the extraction directory of a tarball for the package.
 .TP
-\fBT\fR = \fI"${PORTAGE_TMPDIR}/portage/${CATEGORY}/${PF}/temp"\fR
+.B T\fR = \fI"${PORTAGE_TMPDIR}/portage/${CATEGORY}/${PF}/temp"
 Contains the path to a \fItemporary directory\fR.  You may use this for
 whatever you like.
 .TP
-\fBD\fR = \fI"${PORTAGE_TMPDIR}/portage/${CATEGORY}/${PF}/image/"\fR
+.B D\fR = \fI"${PORTAGE_TMPDIR}/portage/${CATEGORY}/${PF}/image/"
 Contains the path to the temporary \fIinstall directory\fR.  Every write
 operation that does not involve the helper tools and functions (found below)
 should be prefixed with ${D}.
@@ -139,12 +410,12 @@ to be taken into account here, for which the variable
 ${ED} is provided (see below).
 Do not modify this variable.
 .TP
-\fBED\fT = \fI"${PORTAGE_TMPDIR}/portage/${CATEGORY}/${PF}/image/${EPREFIX}/"\fR
+.B ED\fR = \fI"${PORTAGE_TMPDIR}/portage/${CATEGORY}/${PF}/image/${EPREFIX}/"
 Beginning with \fBEAPI 3\fR, contains the path
 "${D%/}${EPREFIX}/" for convenience purposes.
-For \fBEAPI\fR values prior to \fBEAPI 3\fR which do
-not support \fB${ED}\fR, helpers use \fB${D}\fR where
-they would otherwise use \fB${ED}\fR.
+For EAPI values prior to \fBEAPI 3\fR which do
+not support ED, helpers use \fBD\fR where
+they would otherwise use ED.
 Do not modify this variable.
 .TP
 .B MERGE_TYPE
@@ -158,7 +429,6 @@ l l
 __
 l l.
 Value	Meaning
-
 binary	previously\-built which is scheduled for merge
 buildonly	source\-build which is not scheduled for merge
 source	source\-build which is scheduled for merge
@@ -167,7 +437,7 @@ source	source\-build which is scheduled for merge
 .TP
 .B PORTAGE_LOG_FILE
 Contains the path of the build log. If \fBPORT_LOGDIR\fR variable is unset then
-\fBPORTAGE_LOG_FILE\fR=\fB"${T}/build.log"\fR.
+PORTAGE_LOG_FILE=\fI"${T}/build.log"\fR.
 .TP
 .B REPLACED_BY_VERSION
 Beginning with \fBEAPI 4\fR, the REPLACED_BY_VERSION variable can be
@@ -186,22 +456,22 @@ to the package version(s) being replaced. Typically, this variable will
 not contain more than one version, but according to PMS it can contain
 more.
 .TP
-\fBROOT\fR = \fI"/"\fR
+.B ROOT\fR = \fI"/"
 Contains the path that portage should use as the root of the live filesystem.
 When packages wish to make changes to the live filesystem, they should do so in
 the tree prefixed by ${ROOT}.  Often the offset prefix needs to be taken
 into account here, for which the variable ${EROOT} is provided (see
 below).  Do not modify this variable.
 .TP
-\fBEROOT\fR = \fI"${ROOT%/}${EPREFIX}/"\fR
+.B EROOT\fR = \fI"${ROOT%/}${EPREFIX}/"
 Beginning with \fBEAPI 3\fR, contains
 "${ROOT%/}${EPREFIX}/" for convenience
 purposes. Do not modify this variable.
 .TP
-\fBDESCRIPTION\fR = \fI"A happy little package"\fR
+.B DESCRIPTION\fR = \fI"A happy little package"
 Should contain a short description of the package.
 .TP
-\fBEAPI\fR = \fI"0"\fR
+.B EAPI\fR = \fI"0"
 Defines the ebuild API version to which this package conforms. If not
 defined then it defaults to "0". If portage does not recognize the
 EAPI value then it will mask the package and refuse to perform any
@@ -212,7 +482,7 @@ who uses the \fBebuild\fR(1) and \fBrepoman\fR(1) commands with this
 package will be required to have a version of portage that recognizes
 the EAPI to which this package conforms.
 .TP
-\fBSRC_URI\fR = \fI"http://example.com/path/${P}.tar.gz"\fR
+.B SRC_URI\fR = \fI"http://example.com/path/${P}.tar.gz"
 Contains a list of URIs for the required source files.  It can contain
 multiple URIs for a single source file.  The list is processed in order
 if the file was not found on any of the \fIGENTOO_MIRRORS\fR.
@@ -221,11 +491,11 @@ customized with a "->" operator on the right hand side, followed by the
 desired output file name. All tokens, including the operator and output
 file name, should be separated by whitespace.
 .TP
-\fBHOMEPAGE\fR = \fI"http://example.com/"\fR
+.B HOMEPAGE\fR = \fI"http://example.com/"
 Should contain a list of URIs for the sources main sites and other further
 package dependent information.
 .TP
-\fBKEYWORDS\fR = \fI[\-~][x86,ppc,sparc,mips,alpha,arm,hppa]\fR
+.B KEYWORDS\fR = \fI[\-~][x86,ppc,sparc,mips,alpha,arm,hppa]
 Should contain appropriate list of arches that the ebuild is know to
 work/not work.  By default if you do not know if an ebuild runs under
 a particular arch simply omit that KEYWORD.  If the ebuild will not
@@ -236,7 +506,7 @@ unmasked for testing by setting ACCEPT_KEYWORDS="~arch" on the command
 line, or in \fBmake.conf\fR(5)) For an authoritative list please review
 /usr/portage/profiles/arch.list.  Please keep this list in alphabetical order.
 .TP
-\fBSLOT\fR
+.B SLOT
 This sets the SLOT for packages that may need to have multiple versions
 co\-exist.  By default you should set \fBSLOT\fR="0".  If you are unsure, then
 do not fiddle with this until you seek some guidance from some guru.  This
@@ -254,13 +524,13 @@ equal to the regular slot. Refer to the \fBAtom Slot
 Operators\fR section for more information about sub\-slot
 usage.
 .TP
-\fBLICENSE\fR
+.B LICENSE
 This should be a space delimited list of licenses that the package falls
 under.  This \fB_must_\fR be set to a matching license in
 /usr/portage/licenses/. If the license does not exist in portage yet, you
 must add it first.
 .TP
-\fBIUSE\fR
+.B IUSE
 This should be a list of any and all USE flags that are leveraged within
 your build script.  The only USE flags that should not be listed here are
 arch related flags (see \fBKEYWORDS\fR). Beginning with \fBEAPI 1\fR, it
@@ -272,318 +542,25 @@ negative IUSE default settings are effective only for negation of
 repo\-level USE settings, since profile and user configuration settings
 override them.
 .TP
-\fBDEPEND\fR
+.B DEPEND
 This should contain a list of all packages that are required for the
-program to compile.
-.RS
+program to compile as described in \fBDEPENDENCIES\fR.
 .TP
-.B DEPEND Atoms
-A depend atom is simply a dependency that is used by portage when calculating
-relationships between packages.  Please note that if the atom has not already
-been emerged, then the latest version available is matched.
-.RS
-.TP
-.B Atom Bases
-The base atom is just a full category/packagename.  Hence, these are base atoms:
-
-.nf
-.I sys\-apps/sed
-.I sys\-libs/zlib
-.I net\-misc/dhcp
-.fi
-.TP
-.B Atom Versions
-It is nice to be more specific and say that only certain versions of atoms are
-acceptable.  Note that versions must be combined with a prefix (see below).  
-Hence you may add a version number as a postfix to the base:
-
-.nf
-sys\-apps/sed\fI\-4.0.5\fR
-sys\-libs/zlib\fI\-1.1.4\-r1\fR
-net\-misc/dhcp\fI\-3.0_p2\fR
-.fi
-
-Versions are normally made up of two or three numbers separated by periods, such
-as 1.2 or 4.5.2.  This string may be followed by a character such as 1.2a or 
-4.5.2z.  Note that this letter is \fBnot\fR meant to indicate alpha, beta, 
-etc... status.  For that, use the optional suffix; either _alpha, _beta, _pre 
-(pre\-release), _rc (release candidate), or _p (patch).  This means for the 
-3rd pre\-release of a package, you would use something like 1.2_pre3.  The 
-suffixes here can be arbitrarily chained without limitation.
-.TP
-.B Atom Prefix Operators [> >= = <= <]
-Sometimes you want to be able to depend on general versions rather than specifying
-exact versions all the time.  Hence we provide standard boolean operators:
-
-.nf
-\fI>\fRmedia\-libs/libgd\-1.6
-\fI>=\fRmedia\-libs/libgd\-1.6
-\fI=\fRmedia\-libs/libgd\-1.6
-\fI<=\fRmedia\-libs/libgd\-1.6
-\fI<\fRmedia\-libs/libgd\-1.6
-.fi
-.TP
-.B Extended Atom Prefixes [!~] and Postfixes [*]
-Now to get even fancier, we provide the ability to define blocking packages and
-version range matching.  Also note that these extended prefixes/postfixes may
-be combined in any way with the atom classes defined above.  Here are some common
-examples you may find in the portage tree:
-
-.nf
-\fI!\fRapp\-text/dos2unix
-=dev\-libs/glib\-2\fI*\fR
-\fI!\fR=net\-fs/samba\-2\fI*\fR
-\fI~\fRnet\-libs/libnet\-1.0.2a
-\fI!!\fR<sys\-apps/portage\-2.1.4_rc1\fI\fR
-.fi
-
-\fI!\fR means block packages from being installed at the same time.
-.br
-\fI!!\fR means block packages from being installed at the same time
-and explicitly disallow them from being temporarily installed
-simultaneously during a series of upgrades. This syntax is supported
-beginning with \fBEAPI 2\fR.
-.br
-\fI*\fR means match any version of the package so long
-as the specified string prefix is matched. So with a
-version of '2*', we can match '2.1', '2.2', '2.2.1',
-etc... and not match version '1.0', '3.0', '4.1', etc...
-Beware that, due to the string matching nature, '20'
-will also be matched by '2*'. The version part
-that comes before the '*' must be a valid version in the absence of the '*'.
-For example, '2' is a valid version and '2.' is not. Therefore, '2*' is
-allowed and '2.*' is not.
-.br
-\fI~\fR means match any revision of the base version specified.  So in the
-above example, we would match versions '1.0.2a', '1.0.2a\-r1', '1.0.2a\-r2',
-etc...
-.TP
-.B Atom Slots
-Beginning with \fBEAPI 1\fR, any atom can be constrained to match a specific
-\fBSLOT\fR. This is accomplished by appending a colon followed by a
-\fBSLOT\fR:
-
-.nf
-x11\-libs/qt:3
-\fI~\fRx11\-libs/qt-3.3.8:3
-\fI>=\fRx11\-libs/qt-3.3.8:3
-\fI=\fRx11\-libs/qt-3.3*:3
-.fi
-
-Beginning with \fBEAPI 5\fR, a slot dependency may contain an
-optional sub\-slot part that follows the regular slot and is
-delimited by a \fB/\fR character.
-
-.I Examples:
-
-.nf
-dev\-libs/icu:0/0
-dev\-libs/icu:0/49
-dev\-lang/perl:0/5.12
-dev\-libs/glib:2/2.30
-.fi
-
-.TP
-.B Atom Slot Operators
-Beginning with \fBEAPI 5\fR, slot operator dependency consists
-of a colon followed by one of the following operators:
-.RS
-.TP
-.I *
-Indicates that any slot value is acceptable. In addition,
-for runtime dependencies, indicates that the package will not
-break if the matched package is uninstalled and replaced by
-a different matching package in a different slot.
-
-.I Examples:
-
-.nf
-dev\-libs/icu:*
-dev\-lang/perl:*
-dev-libs/glib:*
-.fi
-.TP
-.I =
-Indicates that any slot value is acceptable. In addition,
-for runtime dependencies, indicates that the package will
-break unless a matching package with slot and sub\-slot equal
-to the slot and sub\-slot of the best installed version at the
-time the package was installed is available.
-
-.I Examples:
-
-.nf
-dev\-libs/icu:=
-dev\-lang/perl:=
-dev-libs/glib:=
-.fi
-.TP
-.I slot=
-Indicates that only a specific slot value is acceptable, and
-otherwise behaves identically to the plain equals slot operator.
-
-.I Examples:
-
-.nf
-dev\-libs/icu:0=
-dev\-lang/perl:0=
-dev-libs/glib:2=
-.fi
-.PP
-To implement the equals slot operator, the package manager
-will need to store the slot/sub\-slot pair of the best installed
-version of the matching package. This syntax is only for package
-manager use and must not be used by ebuilds. The package manager
-may do this by inserting the appropriate slot/sub\-slot pair
-between the colon and equals sign when saving the package's
-dependencies. The sub\-slot part must not be omitted here
-(when the SLOT variable omits the sub\-slot part, the package
-is considered to have an implicit sub\-slot which is equal to
-the regular slot).
-
-.I Examples:
-
-.nf
-dev\-libs/icu:0/0=
-dev\-libs/icu:0/49=
-dev\-lang/perl:0/5.12=
-dev-libs/glib:2/2.30=
-.fi
-.RE
-.TP
-.B Atom USE
-Beginning with \fBEAPI 2\fR, any atom can be constrained to match specific
-\fBUSE\fR flag settings. When used together with \fBSLOT\fR dependencies,
-\fBUSE\fR dependencies appear on the right hand side of \fBSLOT\fR
-dependencies.
-
-.RS
-.TP
-.B Unconditional USE Dependencies
-.TS
-l l
-__
-l l.
-Example	Meaning
-
-foo[bar]	foo must have bar enabled
-foo[bar,baz]	foo must have both bar and baz enabled
-foo[\-bar,baz]	foo must have bar disabled and baz enabled
-.TE
-
-.TP
-.B Conditional USE Dependencies
-.TS
-l l
-__
-l l.
-Compact Form	Equivalent Expanded Form
-
-foo[bar?]	bar? ( foo[bar] ) !bar? ( foo )
-foo[!bar?]	bar? ( foo ) !bar? ( foo[\-bar] )
-foo[bar=]	bar? ( foo[bar] ) !bar? ( foo[\-bar] )
-foo[!bar=]	bar? ( foo[\-bar] ) !bar? ( foo[bar] )
-.TE
-.RE
-.TP
-.B Atom USE defaults
-Beginning with \fBEAPI 4\fR, \fBUSE\fR dependencies may specify default
-assumptions about values for flags that may or may not be missing from
-the \fBIUSE\fR of the matched package. Such defaults are specified by
-immediately following a flag with either \fB(+)\fR or \fB(\-)\fR. Use
-\fB(+)\fR to behave as if a missing flag is present and enabled, or
-\fB(\-)\fR to behave as if it is present and disabled:
-
-.RS
-.nf
-media\-video/ffmpeg[threads(+)]
-media\-video/ffmpeg[-threads(\-)]
-.fi
-.RE
-.RE
-.TP
-.B Dynamic DEPENDs
-Sometimes programs may depend on different things depending on the USE
-variable.  Portage offers a few options to handle this.  Note that when
-using the following syntaxes, each case is considered as 1 Atom in the
-scope it appears.  That means that each Atom both conditionally include
-multiple Atoms and be nested to an infinite depth.
-.RS
-.TP
-.B usevar? ( DEPEND Atom )
-To include the jpeg library when the user has jpeg in \fBUSE\fR, simply use the
-following syntax:
-.br
-.B jpeg? ( media\-libs/jpeg )
-.TP
-.B !usevar? ( Atom )
-If you want to include a package only if the user does not have a certain option
-in their \fBUSE\fR variable, then use the following syntax:
-.br
-.B !nophysfs? ( dev\-games/physfs )
-.br
-This is often useful for those times when you want to want to add optional support
-for a feature and have it enabled by default.
-.TP
-.B usevar? ( Atom if true ) !usevar? ( Atom if false )
-For functionality like the tertiary operator found in C you must use
-two statements, one normal and one inverted.  If a package uses
-GTK2 or GTK1, but not both, then you can handle that like this:
-.br
-.B gtk2? ( =x11\-libs/gtk+\-2* ) !gtk2? ( =x11\-libs/gtk+\-1* )
-.br
-That way the default is the superior GTK2 library.
-.TP
-.B || ( Atom Atom ... )
-When a package can work with a few different packages but a virtual is not
-appropriate, this syntax can easily be used.
-.nf
-.B || (
-.B 	app\-games/unreal\-tournament
-.B 	app\-games/unreal\-tournament\-goty
-.B )
-.fi
-Here we see that unreal\-tournament has a normal version and it has a goty
-version.  Since they provide the same base set of files, another package can
-use either.  Adding a virtual is inappropriate due to the small scope of it.
-.br
-Another good example is when a package can be built with multiple video 
-interfaces, but it can only ever have just one.
-.nf
-.B || (
-.B 	sdl? ( media\-libs/libsdl )
-.B 	svga? ( media\-libs/svgalib )
-.B 	opengl? ( virtual/opengl )
-.B 	ggi? ( media\-libs/libggi )
-.B 	virtual/x11
-.B )
-.fi
-Here only one of the packages will be chosen, and the order of preference is
-determined by the order in which they appear.  So sdl has the best chance of
-being chosen, followed by svga, then opengl, then ggi, with a default of X if
-the user does not specify any of the previous choices.
-.br
-Note that if any of the packages listed are already merged, the package manager
-will use that to consider the dependency satisfied.
-.RE
-
-.RE
-.TP
-\fBRDEPEND\fR
+.B RDEPEND
 This should contain a list of all packages that are required for this
 program to run (aka runtime depend). If this is not set in \fBEAPI 3\fR
 or earlier, then it defaults to the value of \fBDEPEND\fR. In
 \fBEAPI 4\fR or later, \fBRDEPEND\fR will never be implicitly set.
-.br
-You may use the same syntax to vary dependencies as seen above in \fBDEPEND\fR.
+
+You may use the same syntax to vary dependencies as seen above in \fBDEPENDENCIES\fR.
 .TP
-\fBPDEPEND\fR
+.B PDEPEND
 This should contain a list of all packages that should be merged after this one,
 but may be merged before if need be.
-.br
-You may use the same syntax to vary dependencies as seen above in \fBDEPEND\fR.
+
+You may use the same syntax to vary dependencies as seen above in \fBDEPENDENCIES\fR.
 .TP
-\fBREQUIRED_USE\fR
+.B REQUIRED_USE
 Beginning with \fBEAPI 4\fR, the \fBREQUIRED_USE\fR variable can be
 used to specify combinations of \fBUSE\fR flags that are allowed
 or not allowed. Elements can be nested when necessary.
@@ -592,7 +569,6 @@ l l
 __
 l l.
 Behavior	Expression
-
 If flag1 enabled then flag2 disabled	flag1? ( !flag2 )
 If flag1 enabled then flag2 enabled	flag1? ( flag2 )
 If flag1 disabled then flag2 enabled	!flag1? ( flag2 )
@@ -602,7 +578,7 @@ Must enable exactly one but not more (exclusive or)	^^ ( flag1 flag2 flag3 )
 May enable at most one (EAPI 5 or later)	?? ( flag1 flag2 flag3 )
 .TE
 .TP
-\fBRESTRICT\fR = \fI[strip,mirror,fetch,userpriv]\fR
+.B RESTRICT\fR = \fI[strip,mirror,fetch,userpriv]
 This should be a space delimited list of portage features to restrict.
 You may use conditional syntax to vary restrictions as seen above in DEPEND.
 .PD 0
@@ -642,7 +618,7 @@ Disables userpriv for specific packages.
 .RE
 .PD 1
 .TP
-\fBPROPERTIES\fR = \fI[interactive]\fR
+.B PROPERTIES\fR = \fI[interactive]
 A space delimited list of properties, with conditional syntax support.
 .PD 0
 .RS
@@ -652,30 +628,31 @@ One or more ebuild phases will produce a prompt that requires user interaction.
 .RE
 .PD 1
 .TP
-\fBPROVIDE\fR = \fI"virtual/TARGET"\fR
+.B PROVIDE\fR = \fI"virtual/TARGET"
 This variable should only be used when a package provides a virtual target.
 For example, blackdown\-jdk and sun\-jdk provide \fIvirtual/jdk\fR.  This
 allows for packages to depend on \fIvirtual/jdk\fR rather than on blackdown
 or sun specifically.
 .TP
-\fBDOCS\fR
+.B DOCS
 Beginning with \fBEAPI 4\fR, an array or space\-delimited list of documentation
 files for the default src_install function to install using dodoc. If
 undefined, a reasonable default list is used. See the documentation for
 src_install below.
-.SH "QA CONTROL VARIABLES"
+
+.SS "QA Control Variables:"
 .TP
-.B USAGE NOTES
+.B Usage Notes
 Several QA variables are provided which allow an ebuild to manipulate some
 of the QA checks performed by portage.  Use of these variables in ebuilds
 should be kept to an absolute minimum otherwise they defeat the purpose
 of the QA checks, and their use is subject to agreement of the QA team.
 They are primarily intended for use by ebuilds that install closed\-source
 binary objects that cannot be altered.
-.br
+
 Note that objects that violate these rules may fail on some architectures.
 .TP
-\fBQA_PREBUILT\fR
+.B QA_PREBUILT
 This should contain a list of file paths, relative to the image
 directory, of files that are pre\-built binaries. Paths
 listed here will be appended to each of the QA_* variables
@@ -685,70 +662,70 @@ the QA_* variables that support regular expressions instead
 of fnmatch patterns. The translation mechanism simply replaces
 "*" with ".*".
 .TP
-\fBQA_TEXTRELS\fR
+.B QA_TEXTRELS
 This variable can be set to a list of file paths, relative to the image
 directory, of files that contain text relocations that cannot be eliminated.
 The paths may contain fnmatch patterns.
-.br
+
 This variable is intended to be used on closed\-source binary objects that
 cannot be altered.
 .TP
-\fBQA_EXECSTACK\fR
+.B QA_EXECSTACK
 This should contain a list of file paths, relative to the image directory, of
 objects that require executable stack in order to run.
 The paths may contain fnmatch patterns.
-.br
+
 This variable is intended to be used on objects that truly need executable
 stack (i.e. not those marked to need it which in fact do not).
 .TP
-\fBQA_WX_LOAD\fR
+.B QA_WX_LOAD
 This should contain a list of file paths, relative to the image directory, of
 files that contain writable and executable segments.  These are rare.
 The paths may contain fnmatch patterns.
 .TP
-\fBQA_FLAGS_IGNORED\fR
+.B QA_FLAGS_IGNORED
 This should contain a list of file paths, relative to the image directory, of
 files that do not contain .GCC.command.line sections or contain .hash sections.
 The paths may contain regular expressions with escape\-quoted special characters.
-.br
+
 This variable is intended to be used on files of binary packages which ignore
 CFLAGS, CXXFLAGS, FFLAGS, FCFLAGS, and LDFLAGS variables.
 .TP
-.TP
-\fBQA_DT_HASH\fR
+.B QA_DT_HASH
 This should contain a list of file paths, relative to the image directory, of
 files that contain .hash sections. The paths may contain regular expressions
 with escape\-quoted special characters. This variable is deprecated. Use
 \fBQA_FLAGS_IGNORED\fR instead.
-.br
+
 This variable is intended to be used on files of binary packages which ignore
 LDFLAGS variable.
 .TP
-\fBQA_PRESTRIPPED\fR
+.B QA_PRESTRIPPED
 This should contain a list of file paths, relative to the image directory, of
 files that contain pre-stripped binaries. The paths may contain regular
 expressions with escape\-quoted special characters.
 .TP
-\fBQA_SONAME\fR
+.B QA_SONAME
 This should contain a list of file paths, relative to the image directory, of
 shared libraries that lack SONAMEs. The paths may contain regular expressions
 with escape\-quoted special characters.
 .TP
-\fBQA_SONAME_NO_SYMLINK\fR
+.B QA_SONAME_NO_SYMLINK
 This should contain a list of file paths, relative to the image directory, of
 shared libraries that have SONAMEs but should not have a corresponding SONAME
 symlink in the same directory. The paths may contain regular expressions
 with escape\-quoted special characters.
 .TP
-\fBQA_DT_NEEDED\fR
+.B QA_DT_NEEDED
 This should contain a list of file paths, relative to the image directory, of
 shared libraries that lack NEEDED entries. The paths may contain regular
 expressions with escape\-quoted special characters.
 .TP
-\fBQA_DESKTOP_FILE\fR
+.B QA_DESKTOP_FILE
 This should contain a list of file paths, relative to the image directory, of
 desktop files which should not be validated. The paths may contain regular
 expressions with escape\-quoted special characters.
+
 .SH "PORTAGE DECLARATIONS"
 .TP
 .B inherit
@@ -761,6 +738,7 @@ ebuild. Specification of the eclasses contains only their name and not the
 \fI.eclass\fR extension. Also note that the inherit statement must come
 before other variable declarations unless these variables are used in global
 scope of eclasses.
+
 .SH "PHASE FUNCTIONS"
 .TP
 .B pkg_pretend
@@ -784,33 +762,33 @@ end the function with a call to \fBdie\fR.
 This function can be used if the package needs specific setup actions or
 checks to be preformed before anything else.
 .br
-Initial working directory of ${PORTAGE_TMPDIR}.
+Initial working directory: $PORTAGE_TMPDIR
 .TP
 .B src_unpack
 This function is used to unpack all the sources in \fIA\fR to \fIWORKDIR\fR.
 If not defined in the \fIebuild script\fR it calls \fIunpack ${A}\fR. Any
 patches and other pre configure/compile modifications should be done here.
 .br
-Initial working directory of $WORKDIR.
+Initial working directory: $WORKDIR
 .TP
 .B src_prepare
 All preparation of source code, such as application of patches, should be done
 here. This function is supported beginning with \fBEAPI 2\fR.
 .br
-Initial working directory of $S.
+Initial working directory: $S
 .TP
 .B src_configure
 All necessary steps for configuration should be done here. This function is
 supported beginning with \fBEAPI 2\fR.
 .br
-Initial working directory of $S.
+Initial working directory: $S
 .TP
 .B src_compile
 With less than \fBEAPI 2\fR, all necessary steps for both configuration and
 compilation should be done here. Beginning with \fBEAPI 2\fR, only compilation
 steps should be done here.
 .br
-Initial working directory of $S.
+Initial working directory: $S
 .TP
 .B src_test
 Run all package specific test cases. The default is to run
@@ -819,13 +797,13 @@ the default src_test implementation will automatically pass the
 \-j1 option as the last argument to emake, and beginning with
 \fBEAPI 5\fR it will allow the tests to run in parallel.
 .br
-Initial working directory of $S.
+Initial working directory: $S
 .TP
 .B src_install
 Should contain everything required to install the package in the temporary
 \fIinstall directory\fR.
 .br
-Initial working directory of $S.
+Initial working directory: $S
 
 Beginning with \fBEAPI 4\fR, if src_install is undefined then the
 following default implementation is used:
@@ -855,18 +833,20 @@ All modifications required on the live\-filesystem before and after the
 package is merged should be placed here. Also commentary for the user
 should be listed here as it will be displayed last.
 .br
-Initial working directory of $PWD.
+Initial working directory: $PWD
 .TP
 .B pkg_prerm pkg_postrm
 Like the pkg_*inst functions but for unmerge.
 .br
-Initial working directory of $PWD.
+Initial working directory: $PWD
 .TP
 .B pkg_config
 This function should contain optional basic configuration steps.
 .br
-Initial working directory of $PWD.
-.SH "HELPER FUNCTIONS: PHASES"
+Initial working directory: $PWD
+
+.SH "HELPER FUNCTIONS"
+.SS "Phases:"
 .TP
 .B default
 Calls the default phase function implementation for the currently executing
@@ -885,7 +865,6 @@ l
 _
 l.
 Default Phase Functions
-
 default_pkg_nofetch
 default_src_unpack
 default_src_prepare
@@ -894,9 +873,10 @@ default_src_compile
 default_src_test
 .TE
 .RE
-.SH "HELPER FUNCTIONS: GENERAL"
+
+.SS "General:"
 .TP
-\fBdie\fR \fI[reason]\fR
+.B die\fR \fI[reason]
 Causes the current emerge process to be aborted. The final display will
 include \fIreason\fR.
 
@@ -904,11 +884,11 @@ Beginning with \fBEAPI 4\fR, all helpers automatically call \fBdie\fR
 whenever some sort of error occurs. Helper calls may be prefixed with
 the \fBnonfatal\fR helper in order to prevent errors from being fatal.
 .TP
-\fBnonfatal\fR \fI<helper>\fR
+.B nonfatal\fR \fI<helper>
 Execute \fIhelper\fR and \fIdo not\fR call die if it fails.
 The \fBnonfatal\fR helper is available beginning with \fBEAPI 4\fR.
 .TP
-\fBuse\fR \fI<USE item>\fR
+.B use\fR \fI<USE item>
 If \fIUSE item\fR is in the \fBUSE\fR variable, the function will silently
 return 0 (aka shell true).  If \fIUSE item\fR is not in the \fBUSE\fR
 variable, the function will silently return 1 (aka shell false).  \fBusev\fR
@@ -930,12 +910,12 @@ fi
 .fi
 .RE
 .TP
-\fBusex\fR \fI<USE flag>\fR \fI[true output]\fR \fI[false output]\fR \fI[true suffix]\fR \fI[false suffix]\fR
+.B usex\fR \fI<USE flag>\fR \fI[true output]\fR \fI[false output]\fR \fI[true suffix]\fR \fI[false suffix]
 If USE flag is set, echo [true output][true suffix] (defaults to
 "yes"), otherwise echo [false output][false suffix] (defaults to
 "no"). The usex helper is available beginning with \fBEAPI 5\fR.
 .TP
-\fBuse_with\fR \fI<USE item>\fR \fI[configure name]\fR \fI[configure opt]\fR
+.B use_with\fR \fI<USE item>\fR \fI[configure name]\fR \fI[configure opt]
 Useful for creating custom options to pass to a configure script. If \fIUSE
 item\fR is in the \fBUSE\fR variable and a \fIconfigure opt\fR is specified,
 then the string \fI\-\-with\-[configure name]=[configure opt]\fR will be echoed.
@@ -968,14 +948,14 @@ myconf=$(use_with sdl SDL all\-plugins)
 .fi
 .RE
 .TP
-\fBuse_enable\fR \fI<USE item>\fR \fI[configure name]\fR \fI[configure opt]\fR
+.B use_enable\fR \fI<USE item>\fR \fI[configure name]\fR \fI[configure opt]
 Same as \fBuse_with\fR above, except that the configure options are
 \fI\-\-enable\-\fR instead of \fI\-\-with\-\fR and \fI\-\-disable\-\fR instead of
 \fI\-\-without\-\fR. Beginning with \fBEAPI 4\fR, an empty \fIconfigure opt\fR
 argument is recognized. In \fBEAPI 3\fR and earlier, an empty
 \fIconfigure opt\fR argument is treated as if it weren't provided.
 .TP
-\fBhasv\fR \fI<item>\fR \fI<item list>\fR
+.B hasv\fR \fI<item>\fR \fI<item list>
 If \fIitem\fR is in \fIitem list\fR, then \fIitem\fR is echoed and \fBhasv\fR
 returns 0.  Otherwise, nothing is echoed and 1 is returned. As indicated with
 use, there is a non\-echoing version \fBhas\fR. Please use \fBhas\fR in all
@@ -984,7 +964,7 @@ places where output is to be disregarded. Never use the output for calculation.
 The \fIitem list\fR is delimited by the \fIIFS\fR variable.  This variable
 has a default value of ' ', or a space.  It is a \fBbash\fR(1) setting.
 .TP
-\fBhas_version\fR \fI[\-\-host\-root]\fR \fI<category/package\-version>\fR
+.B has_version\fR \fI[\-\-host\-root]\fR \fI<category/package\-version>
 Check to see if \fIcategory/package\-version\fR is installed on the system.
 The parameter accepts all values that are acceptable in the \fBDEPEND\fR
 variable.  The function returns 0 if \fIcategory/package\-version\fR is
@@ -992,68 +972,69 @@ installed, 1 otherwise. Beginning with \fBEAPI 5\fR, the
 \-\-host\-root option may be used in order to cause the query
 to apply to the host root instead of ${ROOT}.
 .TP
-\fBbest_version\fR \fI[\-\-host\-root]\fR \fI<package name>\fR
+.B best_version\fR \fI[\-\-host\-root]\fR \fI<package name>
 This function will look up \fIpackage name\fR in the database of currently
 installed programs and echo the "best version" of the package that is
 currently installed. Beginning with \fBEAPI 5\fR, the
 \-\-host\-root option may be used in order to cause the query
 to apply to the host root instead of ${ROOT}.
-.RS
+
+Example:
+.nf
+	VERINS="$(best_version net\-ftp/glftpd)"
+	(VERINS now has the value "net\-ftp/glftpd\-1.27" if glftpd\-1.27 is installed)
+.fi
+
+.SS "Hooks:"
 .TP
-.I Example:
-VERINS="$(best_version net\-ftp/glftpd)"
-.br
-(VERINS now has the value "net\-ftp/glftpd\-1.27" if glftpd\-1.27 is installed)
-.RE
-.SH "HELPER FUNCTIONS: HOOKS"
-.TP
-\fBregister_die_hook\fR \fI[list of function names]\fR
+.B register_die_hook\fR \fI[list of function names]
 Register one or more functions to call when the ebuild fails for any reason,
 including file collisions with other packages.
 .TP
-\fBregister_success_hook\fR \fI[list of function names]\fR
+.B register_success_hook\fR \fI[list of function names]
 Register one or more functions to call when the ebuild builds and/or installs
 successfully.
+
+.SS "Output:"
 .TP
-.RE
-.SH "HELPER FUNCTIONS: OUTPUT"
-.TP
-\fBeinfo\fR \fI"disposable message"\fR
+.B einfo\fR \fI"disposable message"
 Same as \fBelog\fR, but should be used when the message isn't important to the
 user (like progress or status messages during the build process).
 .TP
-\fBelog\fR \fI"informative message"\fR
+.B elog\fR \fI"informative message"
 If you need to display a message that you wish the user to read and take
 notice of, then use \fBelog\fR.  It works just like \fBecho\fR(1), but
 adds a little more to the output so as to catch the user's eye. The message
 will also be logged by portage for later review.
 .TP
-\fBewarn\fR \fI"warning message"\fR
+.B ewarn\fR \fI"warning message"
 Same as \fBeinfo\fR, but should be used when showing a warning to the user.
 .TP
-\fBeqawarn\fR \fI"QA warning message"\fR
+.B eqawarn\fR \fI"QA warning message"
 Same as \fBeinfo\fR, but should be used when showing a QA warning to the user.
 .TP
-\fBeerror\fR \fI"error message"\fR
+.B eerror\fR \fI"error message"
 Same as \fBeinfo\fR, but should be used when showing an error to the user.
 .TP
-\fBebegin\fR \fI"helpful message"\fR
+.B ebegin\fR \fI"helpful message"
 Like \fBeinfo\fR, we output a \fIhelpful message\fR and then hint that the
 following operation may take some time to complete.  Once the task is
 finished, you need to call \fBeend\fR.
 .TP
-\fBeend\fR \fI<status>\fR \fI["error message"]\fR
+.B eend\fR \fI<status>\fR \fI["error message"]
 Followup the \fBebegin\fR message with an appropriate "OK" or "!!" (for
 errors) marker.  If \fIstatus\fR is non\-zero, then the additional \fIerror
 message\fR is displayed.
-.SH "HELPER FUNCTIONS: UNPACK"
+
+.SS "Unpack:"
 .TP
-\fBunpack\fR \fI<source>\fR \fI[list of more sources]\fR
+.B unpack\fR \fI<source>\fR \fI[list of more sources]
 This function uncompresses and/or untars a list of sources into the current
 directory. The function will append \fIsource\fR to the \fBDISTDIR\fR variable.
-.SH "HELPER FUNCTIONS: COMPILE"
+
+.SS "Compile:"
 .TP
-\fBeconf\fR \fI[configure options]\fR
+.B econf\fR \fI[configure options]
 This is used as a replacement for configure.  Performs:
 .nf
 ${\fIECONF_SOURCE\fR:-.}/configure \\
@@ -1085,20 +1066,21 @@ Beginning with \fBEAPI 5\fR, \fBeconf\fR adds
 string \fIdisable\-silent\-rules\fR occurs in the output
 of \fIconfigure \-\-help\fR.
 .TP
-\fBemake\fR \fI[make options]\fR
+.B emake\fR \fI[make options]
 This is used as a replacement for make.  Performs 'make ${MAKEOPTS}
 \fImake options\fR' (as set in make.globals), default is MAKEOPTS="\-j2".
 
-\fB***warning***\fR
+.B ***WARNING***
 .br
 if you are going to use \fBemake\fR, make sure your build is happy with
 parallel makes (make \-j2).  It should be tested thoroughly as parallel
 makes are notorious for failing _sometimes_ but not always.  If you determine
 that your package fails to build in parallel, and you are unable to resolve
 the issue, then you should run '\fBemake\fR \-j1' instead of 'make'.
-.SH "HELPER FUNCTIONS: INSTALL"
+
+.SS "Install:"
 .TP
-\fBeinstall\fR \fI[make options]\fR
+.B einstall\fR \fI[make options]
 This is used as a replacement for make install.  Performs:
 .nf
 make \\
@@ -1155,11 +1137,11 @@ Strips all executable files of debugging symboles.  This includes libraries.
 .RE
 
 .TP
-\fBprepinfo\fR \fI[dir]\fR
+.B prepinfo\fR \fI[dir]
 .TP
-\fBprepman\fR \fI[dir]\fR
+.B prepman\fR \fI[dir]
 .TP
-\fBprepstrip\fR \fI[dir]\fR
+.B prepstrip\fR \fI[dir]
 .PD 1
 Similar to the \fBprepall\fR functions, these are subtle in their differences.
 .RS
@@ -1181,7 +1163,7 @@ multiple directories.
 .RE
 .PD 1
 .TP
-\fBdocompress\fR \fI[\-x] <path> [list of more paths]\fR
+.B docompress\fR \fI[\-x] <path> [list of more paths]
 .RS
 Beginning with \fBEAPI 4\fR, the \fBdocompress\fR helper is used to
 manage lists of files to be included or excluded from optional compression.
@@ -1220,7 +1202,7 @@ If the item does not exist, it is ignored.
 .RE
 .RE
 .TP
-\fBdosed\fR \fI"s:orig:change:g" <filename>\fR
+.B dosed\fR \fI"s:orig:change:g" <filename>
 Beginning with \fBEAPI 4\fR, the \fBdosed\fR helper no longer exists. Ebuilds
 should call \fBsed(1)\fR directly (and assume that it is GNU sed).
 
@@ -1231,66 +1213,66 @@ that this expression does \fBNOT\fR use the offset prefix.
 .BR 'dosed\ "s:/usr/local:/usr:g"\ /usr/bin/some\-script'
 runs sed on ${ED}/usr/bin/some\-script
 .TP
-\fBdodir\fR \fI<path> [more paths]\fR
+.B dodir\fR \fI<path> [more paths]
 Creates directories inside of ${ED}.
 .br
 .BR 'dodir\ /usr/lib/apache'
 creates ${ED}/usr/lib/apache.  Note that the do* functions will run
 \fBdodir\fR for you.
 .TP
-\fBdiropts\fR \fI[options for install(1)]\fR
+.B diropts\fR \fI[options for install(1)]
 Can be used to define options for the install function used in
 \fBdodir\fR.  The default is \fI\-m0755\fR.
 .TP
-\fBinto\fR \fI<path>\fR
+.B into\fR \fI<path>
 Sets the root (\fIDESTTREE\fR) for other functions like \fBdobin\fR,
 \fBdosbin\fR, \fBdoman\fR, \fBdoinfo\fR, \fBdolib\fR.
 .br
 The default root is /usr.
 .TP
-\fBkeepdir\fR \fI<path> [more paths]\fR
+.B keepdir\fR \fI<path> [more paths]
 Tells portage to leave directories behind even if they're empty.  Functions
 the same as \fBdodir\fR.
 .TP
-\fBdobin\fR \fI<binary> [list of more binaries]\fR
+.B dobin\fR \fI<binary> [list of more binaries]
 Installs a \fIbinary\fR or a list of binaries into \fIDESTTREE\fR/bin.
 Creates all necessary dirs.
 .TP
-\fBdosbin\fR \fI<binary> [list of more binaries]\fR
+.B dosbin\fR \fI<binary> [list of more binaries]
 Installs a \fIbinary\fR or a list of binaries into \fIDESTTREE\fR/sbin.
 Creates all necessary dirs.
 .TP
-\fBdoinitd\fR \fI<init.d script> [list of more init.d scripts]\fR
+.B doinitd\fR \fI<init.d script> [list of more init.d scripts]
 Install Gentoo \fIinit.d scripts\fR.  They will be installed into the
 correct location for Gentoo init.d scripts (/etc/init.d/).  Creates all
 necessary dirs.
 .TP
-\fBdoconfd\fR \fI<conf.d file> [list of more conf.d file]\fR
+.B doconfd\fR \fI<conf.d file> [list of more conf.d file]
 Install Gentoo \fIconf.d files\fR.  They will be installed into the
 correct location for Gentoo conf.d files (/etc/conf.d/).  Creates all
 necessary dirs.
 .TP
-\fBdoenvd\fR \fI<env.d entry> [list of more env.d entries]\fR
+.B doenvd\fR \fI<env.d entry> [list of more env.d entries]
 Install Gentoo \fIenv.d entries\fR.  They will be installed into the
 correct location for Gentoo env.d entries (/etc/env.d/).  Creates all
 necessary dirs.
 
 .PD 0
 .TP
-\fBdolib\fR \fI<library>\fR \fI[list of more libraries]\fR
+.B dolib\fR \fI<library>\fR \fI[list of more libraries]
 .TP
-\fBdolib.a\fR \fI<library>\fR \fI[list of more libraries]\fR
+.B dolib.a\fR \fI<library>\fR \fI[list of more libraries]
 .TP
-\fBdolib.so\fR \fI<library>\fR \fI[list of more libraries]\fR
+.B dolib.so\fR \fI<library>\fR \fI[list of more libraries]
 .PD 1
 Installs a library or a list of libraries into \fIDESTTREE\fR/lib.
 Creates all necessary dirs.
 .TP
-\fBlibopts\fR \fI[options for install(1)]\fR
+.B libopts\fR \fI[options for install(1)]
 Can be used to define options for the install function used in
 the \fBdolib\fR functions.  The default is \fI\-m0644\fR.
 .TP
-\fBdoman\fR \fI[\-i18n=<locale>]\fR \fI<man\-page> [list of more man\-pages]\fR
+.B doman\fR \fI[\-i18n=<locale>]\fR \fI<man\-page> [list of more man\-pages]
 Installs manual\-pages into /usr/share/man/man[0\-9n] depending on the
 manual file ending.  The files are compressed if they are not already.  You
 can specify locale\-specific manpages with the \fI\-i18n\fR option.  Then the
@@ -1305,79 +1287,79 @@ the \fI\-i18n\fR option takes precedence over the locale suffix of the
 file name.
 .PD 0
 .TP
-\fBdohard\fR \fI<filename> <linkname>\fR
+.B dohard\fR \fI<filename> <linkname>
 Beginning with \fBEAPI 4\fR, the \fBdohard\fR helper no longer exists. Ebuilds
 should call \fBln(1)\fR directly.
 .TP
-\fBdosym\fR \fI<filename> <linkname>\fR
+.B dosym\fR \fI<filename> <linkname>
 .PD 1
 Performs the ln command to create a symlink.
 .TP
-\fBdoheader\fR \fI[\-r] <file> [list of more files]\fR
+.B doheader\fR \fI[\-r] <file> [list of more files]
 Installs the given header files into /usr/include/, by default
 with file mode \fI0644\fR (this can be overridden with the
 \fBinsopts\fR function). Setting \-r sets recursive. The
 \fBdoheader\fR helper is available beginning with \fBEAPI 5\fR.
 .TP
-\fBdohtml\fR \fI [\-a filetypes] [\-r] [\-x list\-of\-dirs\-to\-ignore] [list\-of\-files\-and\-dirs]\fR
+.B dohtml\fR \fI [\-a filetypes] [\-r] [\-x list\-of\-dirs\-to\-ignore] [list\-of\-files\-and\-dirs]
 Installs the files in the list of files (space\-separated list) into
 /usr/share/doc/${PF}/html provided the file ends in .htm, .html, .css, .js, .gif, .jpeg, .jpg, or .png.
 Setting \fI\-a\fR limits what types of files will be included,
 \fI\-A\fR appends to the default list, setting \fI\-x\fR sets which dirs to
 exclude (CVS excluded by default), \fI\-p\fR sets a document prefix, \fI\-r\fR sets recursive.
 .TP
-\fBdoinfo\fR \fI<info\-file> [list of more info\-files]\fR
+.B doinfo\fR \fI<info\-file> [list of more info\-files]
 Installs info\-pages into \fIDESTDIR\fR/info.  Files are automatically
 gzipped.  Creates all necessary dirs.
 .TP
-\fBdomo\fR \fI<locale\-file> [list of more locale\-files] \fR
+.B domo\fR \fI<locale\-file> [list of more locale\-files]
 Installs locale\-files into \fIDESTDIR\fR/usr/share/locale/[LANG]
 depending on local\-file's ending.  Creates all necessary dirs.
 
 .PD 0
 .TP
-\fBfowners\fR \fI<permissions> <file> [files]\fR
+.B fowners\fR \fI<permissions> <file> [files]
 .TP
-\fBfperms\fR \fI<permissions> <file> [files]\fR
+.B fperms\fR \fI<permissions> <file> [files]
 .PD 1
 Performs chown (\fBfowners\fR) or chmod (\fBfperms\fR), applying
 \fIpermissions\fR to \fIfiles\fR.
 .TP
-\fBinsinto\fR \fI[path]\fR
+.B insinto\fR \fI[path]
 Sets the destination path for the \fBdoins\fR function.
 .br
 The default path is /.
 .TP
-\fBinsopts\fR \fI[options for install(1)]\fR
+.B insopts\fR \fI[options for install(1)]
 Can be used to define options for the install function used in
 \fBdoins\fR.  The default is \fI\-m0644\fR.
 .TP
-\fBdoins\fR \fI[\-r] <file> [list of more files]\fR
+.B doins\fR \fI[\-r] <file> [list of more files]
 Installs files into the path controlled by \fBinsinto\fR.  This function
 uses \fBinstall\fR(1).  Creates all necessary dirs.
 Setting \-r sets recursive. Beginning with \fBEAPI 4\fR, both
 \fBdoins\fR and \fBnewins\fR preserve symlinks. In \fBEAPI 3\fR and
 earlier, symlinks are dereferenced rather than preserved.
 .TP
-\fBexeinto\fR \fI[path]\fR
+.B exeinto\fR \fI[path]
 Sets the destination path for the \fBdoexe\fR function.
 .br
 The default path is /.
 .TP
-\fBexeopts\fR \fI[options for install(1)]\fR
+.B exeopts\fR \fI[options for install(1)]
 Can be used to define options for the install function used in \fBdoexe\fR.
 The default is \fI\-m0755\fR.
 .TP
-\fBdoexe\fR \fI<executable> [list of more executables]\fR
+.B doexe\fR \fI<executable> [list of more executables]
 Installs executables into the path controlled by \fBexeinto\fR.  This function
 uses \fBinstall\fR(1).  Creates all necessary dirs.
 .TP
-\fBdocinto\fR \fI[path]\fR
+.B docinto\fR \fI[path]
 Sets the subdir used by \fBdodoc\fR and \fBdohtml\fR
 when installing into the document tree
 (based in /usr/share/doc/${PF}/).  Default is no subdir, or just "".
 .TP
-\fBdodoc\fR \fI[-r] <document> [list of more documents]\fR
+.B dodoc\fR \fI[-r] <document> [list of more documents]
 Installs a document or a list of documents into /usr/share/doc/${PF}/\fI<docinto path>\fR.
 Documents are marked for compression.  Creates all necessary dirs.
 Beginning with \fBEAPI 4\fR, there is support for recursion, enabled by the
@@ -1385,45 +1367,70 @@ new \fI\-r\fR option.
 
 .PD 0
 .TP
-\fBnewbin\fR \fI<old file> <new filename>\fR
+.B newbin\fR \fI<old file> <new filename>
 .TP
-\fBnewsbin\fR \fI<old file> <new filename>\fR
+.B newsbin\fR \fI<old file> <new filename>
 .TP
-\fBnewinitd\fR \fI<old file> <new filename>\fR
+.B newinitd\fR \fI<old file> <new filename>
 .TP
-\fBnewconfd\fR \fI<old file> <new filename>\fR
+.B newconfd\fR \fI<old file> <new filename>
 .TP
-\fBnewenvd\fR \fI<old file> <new filename>\fR
+.B newenvd\fR \fI<old file> <new filename>
 .TP
-\fBnewlib.so\fR \fI<old file> <new filename>\fR
+.B newlib.so\fR \fI<old file> <new filename>
 .TP
-\fBnewlib.a\fR \fI<old file> <new filename>\fR
+.B newlib.a\fR \fI<old file> <new filename>
 .TP
-\fBnewman\fR \fI<old file> <new filename>\fR
+.B newman\fR \fI<old file> <new filename>
 .TP
-\fBnewinfo\fR \fI<old file> <new filename>\fR
+.B newinfo\fR \fI<old file> <new filename>
 .TP
-\fBnewins\fR \fI<old file> <new filename>\fR
+.B newins\fR \fI<old file> <new filename>
 .TP
-\fBnewexe\fR \fI<old file> <new filename>\fR
+.B newexe\fR \fI<old file> <new filename>
 .TP
-\fBnewdoc\fR \fI<old file> <new filename>\fR
+.B newdoc\fR \fI<old file> <new filename>
 .PD 1
 All these functions act like the do* functions, but they only work with one
 file and the file is installed as \fI[new filename]\fR.
 Beginning with \fBEAPI 5\fR, standard input is read when the
 first parameter is \- (a hyphen).
-.SH "REPORTING BUGS"
-Please report bugs via http://bugs.gentoo.org/
-.SH "AUTHORS"
+
+.SH "EXAMPLES"
+.DS
 .nf
-Achim Gottinger <achim@gentoo.org>
-Mark Guertin <gerk@gentoo.org>
-Nicholas Jones <carpaski@gentoo.org>
-Mike Frysinger <vapier@gentoo.org>
-Arfrever Frehtes Taifersar Arahesis <Arfrever.FTA@gmail.com>
-Fabian Groffen <grobian@gentoo.org>
+# Copyright 1999\-2009 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: $
+
+EAPI="5"
+
+inherit some_eclass another_eclass
+
+DESCRIPTION="Super\-useful stream editor (sed)"
+HOMEPAGE="http://www.gnu.org/software/sed/sed.html"
+SRC_URI="ftp://alpha.gnu.org/pub/gnu/${PN}/${P}.tar.gz"
+
+LICENSE="GPL\-2"
+SLOT="0"
+KEYWORDS="~x86"
+IUSE=""
+
+RDEPEND=""
+DEPEND="nls? ( sys-devel/gettext )"
+
+src_configure() {
+	econf \\
+		\-\-bindir="${EPREFIX}"/bin
+}
+
+src_install() {
+	emake DESTDIR="${D}" install
+	dodoc NEWS README* THANKS AUTHORS BUGS ChangeLog
+}
 .fi
+.DE
+
 .SH "FILES"
 .TP
 The \fI/usr/sbin/ebuild.sh\fR script.
@@ -1439,7 +1446,21 @@ Contains the default variables for the build\-process, you should edit
 .TP
 .B /etc/portage/color.map
 Contains variables customizing colors.
+
 .SH "SEE ALSO"
 .BR ebuild (1),
 .BR make.conf (5),
 .BR color.map (5)
+
+.SH "REPORTING BUGS"
+Please report bugs via http://bugs.gentoo.org/
+
+.SH "AUTHORS"
+.nf
+Achim Gottinger <achim@gentoo.org>
+Mark Guertin <gerk@gentoo.org>
+Nicholas Jones <carpaski@gentoo.org>
+Mike Frysinger <vapier@gentoo.org>
+Arfrever Frehtes Taifersar Arahesis <Arfrever.FTA@gmail.com>
+Fabian Groffen <grobian@gentoo.org>
+.fi
