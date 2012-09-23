@@ -555,8 +555,13 @@ or earlier, then it defaults to the value of \fBDEPEND\fR. In
 You may use the same syntax to vary dependencies as seen above in \fBDependencies\fR.
 .TP
 .B PDEPEND
-This should contain a list of all packages that should be merged after this one,
-but may be merged before if need be.
+This should contain a list of all packages that should be merged after this
+one, but which may be installed by the package manager at any time, if that is
+not possible.
+
+.B ***WARNING***
+.br
+Use this only as last resort to break cyclic dependencies!
 
 You may use the same syntax to vary dependencies as seen above in \fBDependencies\fR.
 .TP
