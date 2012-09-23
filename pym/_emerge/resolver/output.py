@@ -251,7 +251,7 @@ class Display(object):
 		for key in use_expand:
 			if key in self.use_expand_hidden:
 				continue
-			self.verboseadd += _create_use_string(self.conf, key.upper(),
+			self.verboseadd += _create_use_string(pkg, self.conf, key.upper(),
 				cur_iuse_map[key], iuse_forced[key],
 				cur_use_map[key], old_iuse_map[key],
 				old_use_map[key], self.is_new,

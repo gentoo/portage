@@ -23,13 +23,14 @@ from portage.dep import Atom, best_match_to_list, extract_affecting_use, \
 	check_required_use, human_readable_required_use, match_from_list, \
 	_repo_separator
 from portage.dep._slot_operator import ignore_built_slot_operator_deps
-from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use
+from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use, \
+	_get_eapi_attrs
 from portage.exception import (InvalidAtom, InvalidDependString,
 	PackageNotFound, PortageException)
 from portage.output import colorize, create_color_func, \
 	darkgreen, green
 bad = create_color_func("BAD")
-from portage.package.ebuild.config import _feature_flags
+from portage.package.ebuild.config import _get_feature_flags
 from portage.package.ebuild.getmaskingstatus import \
 	_getmaskingstatus, _MaskReason
 from portage._sets import SETPREFIX
@@ -1229,20 +1230,22 @@ class depgraph(object):
 			in ("y", "auto"))
 		newuse = "--newuse" in self._frozen_config.myopts
 		changed_use = "changed-use" == self._frozen_config.myopts.get("--reinstall")
+		feature_flags = _get_feature_flags(
+			_get_eapi_attrs(pkg.metadata["EAPI"]))
 
 		if newuse or (binpkg_respect_use and not changed_use):
 			flags = set(orig_iuse.symmetric_difference(
 				cur_iuse).difference(forced_flags))
 			flags.update(orig_iuse.intersection(orig_use).symmetric_difference(
 				cur_iuse.intersection(cur_use)))
-			flags.difference_update(_feature_flags)
+			flags.difference_update(feature_flags)
 			if flags:
 				return flags
 
 		elif changed_use or binpkg_respect_use:
 			flags = set(orig_iuse.intersection(orig_use).symmetric_difference(
 				cur_iuse.intersection(cur_use)))
-			flags.difference_update(_feature_flags)
+			flags.difference_update(feature_flags)
 			if flags:
 				return flags
 		return None

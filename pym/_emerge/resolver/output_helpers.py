@@ -14,10 +14,11 @@ import sys
 from portage import os
 from portage import _encodings, _unicode_encode
 from portage._sets.base import InternalPackageSet
+from portage.eapi import _get_eapi_attrs
 from portage.output import (blue, bold, colorize, create_color_func,
 	green, red, teal, turquoise, yellow)
 bad = create_color_func("BAD")
-from portage.package.ebuild.config import _feature_flags
+from portage.package.ebuild.config import _get_feature_flags
 from portage.util import shlex_split, writemsg
 from portage.util.SlotObject import SlotObject
 from portage.versions import catpkgsplit
@@ -247,7 +248,7 @@ def _format_size(mysize):
 		mystr=mystr[:mycount]+","+mystr[mycount:]
 	return mystr+" kB"
 
-def _create_use_string(conf, name, cur_iuse, iuse_forced, cur_use,
+def _create_use_string(pkg, conf, name, cur_iuse, iuse_forced, cur_use,
 	old_iuse, old_use,
 	is_new, reinst_flags):
 
@@ -267,6 +268,7 @@ def _create_use_string(conf, name, cur_iuse, iuse_forced, cur_use,
 	any_iuse = cur_iuse.union(old_iuse)
 	any_iuse = list(any_iuse)
 	any_iuse.sort()
+	feature_flags = _get_feature_flags(_get_eapi_attrs(pkg.metadata["EAPI"]))
 	for flag in any_iuse:
 		flag_str = None
 		isEnabled = False
@@ -300,7 +302,7 @@ def _create_use_string(conf, name, cur_iuse, iuse_forced, cur_use,
 			elif flag in old_use:
 				flag_str = green("-" + flag) + "*"
 		if flag_str:
-			if flag in _feature_flags:
+			if flag in feature_flags:
 				flag_str = "{" + flag_str + "}"
 			elif flag in iuse_forced:
 				flag_str = "(" + flag_str + ")"
