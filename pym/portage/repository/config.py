@@ -28,6 +28,9 @@ from portage import _unicode_encode
 from portage import _encodings
 from portage import manifest
 
+# Characters prohibited by repoman's file.name check.
+_invalid_path_char_re = re.compile(r'[^a-zA-Z0-9._\-+:/]')
+
 _valid_profile_formats = frozenset(
 	['pms', 'portage-1', 'portage-2'])
 
@@ -49,12 +52,27 @@ def _gen_valid_repo(name):
 		name = None
 	return name
 
+def _find_invalid_path_char(path, pos=0, endpos=None):
+	"""
+	Returns the position of the first invalid character found in basename,
+	or -1 if no invalid characters are found.
+	"""
+	if endpos is None:
+		endpos = len(path)
+
+	m = _invalid_path_char_re.search(path, pos=pos, endpos=endpos)
+	if m is not None:
+		return m.start()
+
+	return -1
+
 class RepoConfig(object):
 	"""Stores config of one repository"""
 
 	__slots__ = ('aliases', 'allow_missing_manifest', 'allow_provide_virtual',
 		'cache_formats', 'create_manifest', 'disable_manifest', 'eapi',
-		'eclass_db', 'eclass_locations', 'eclass_overrides', 'format', 'location',
+		'eclass_db', 'eclass_locations', 'eclass_overrides',
+		'find_invalid_path_char', 'format', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'portage1_profiles', 'portage1_profiles_compat', 'priority',
 		'profile_formats', 'sign_commit', 'sign_manifest', 'sync',
@@ -138,6 +156,7 @@ class RepoConfig(object):
 		self.cache_formats = None
 		self.portage1_profiles = True
 		self.portage1_profiles_compat = False
+		self.find_invalid_path_char = _find_invalid_path_char
 
 		# Parse layout.conf.
 		if self.location:
@@ -211,6 +230,7 @@ class RepoConfig(object):
 		kwds['hashes'] = self.manifest_hashes
 		if self.disable_manifest:
 			kwds['from_scratch'] = True
+		kwds['find_invalid_path_char'] = self.find_invalid_path_char
 		return manifest.Manifest(*args, **kwds)
 
 	def update(self, new_repo):

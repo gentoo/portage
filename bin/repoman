@@ -71,8 +71,6 @@ from portage import cvstree, normalize_path
 from portage import util
 from portage.exception import (FileNotFound, MissingParameter,
 	ParseError, PermissionDenied)
-from portage.manifest import _prohibited_filename_chars_re as \
-	disallowed_filename_chars_re
 from portage.process import find_binary, spawn
 from portage.output import bold, create_color_func, \
 	green, nocolor, red
@@ -1431,19 +1429,19 @@ for x in effective_scanlist:
 	ebuildlist = [pkg.pf for pkg in ebuildlist]
 
 	for y in checkdirlist:
-		m = disallowed_filename_chars_re.search(y.strip(os.sep))
-		if m is not None:
+		index = repo_config.find_invalid_path_char(y)
+		if index != -1:
 			y_relative = os.path.join(checkdir_relative, y)
 			if vcs is not None and not vcs_new_changed(y_relative):
 				# If the file isn't in the VCS new or changed set, then
 				# assume that it's an irrelevant temporary file (Manifest
 				# entries are not generated for file names containing
 				# prohibited characters). See bug #406877.
-				m = None
-		if m is not None:
+				index = -1
+		if index != -1:
 			stats["file.name"] += 1
 			fails["file.name"].append("%s/%s: char '%s'" % \
-				(checkdir, y, m.group(0)))
+				(checkdir, y, y[index]))
 
 		if not (y in ("ChangeLog", "metadata.xml") or y.endswith(".ebuild")):
 			continue
@@ -1609,20 +1607,19 @@ for x in effective_scanlist:
 				stats["file.size"] += 1
 				fails["file.size"].append("("+ str(mystat.st_size//1024) + " KiB) "+x+"/files/"+y)
 
-			m = disallowed_filename_chars_re.search(
-				os.path.basename(y.rstrip(os.sep)))
-			if m is not None:
+			index = repo_config.find_invalid_path_char(y)
+			if index != -1:
 				y_relative = os.path.join(checkdir_relative, "files", y)
 				if vcs is not None and not vcs_new_changed(y_relative):
 					# If the file isn't in the VCS new or changed set, then
 					# assume that it's an irrelevant temporary file (Manifest
 					# entries are not generated for file names containing
 					# prohibited characters). See bug #406877.
-					m = None
-			if m is not None:
+					index = -1
+			if index != -1:
 				stats["file.name"] += 1
 				fails["file.name"].append("%s/files/%s: char '%s'" % \
-					(checkdir, y, m.group(0)))
+					(checkdir, y, y[index]))
 	del mydigests
 
 	if check_changelog and "ChangeLog" not in checkdirlist:
