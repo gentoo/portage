@@ -544,7 +544,7 @@ override them.
 .TP
 .B DEPEND
 This should contain a list of all packages that are required for the
-program to compile as described in \fBDEPENDENCIES\fR.
+program to compile as described in \fBDependencies\fR.
 .TP
 .B RDEPEND
 This should contain a list of all packages that are required for this
@@ -552,13 +552,13 @@ program to run (aka runtime depend). If this is not set in \fBEAPI 3\fR
 or earlier, then it defaults to the value of \fBDEPEND\fR. In
 \fBEAPI 4\fR or later, \fBRDEPEND\fR will never be implicitly set.
 
-You may use the same syntax to vary dependencies as seen above in \fBDEPENDENCIES\fR.
+You may use the same syntax to vary dependencies as seen above in \fBDependencies\fR.
 .TP
 .B PDEPEND
 This should contain a list of all packages that should be merged after this one,
 but may be merged before if need be.
 
-You may use the same syntax to vary dependencies as seen above in \fBDEPENDENCIES\fR.
+You may use the same syntax to vary dependencies as seen above in \fBDependencies\fR.
 .TP
 .B REQUIRED_USE
 Beginning with \fBEAPI 4\fR, the \fBREQUIRED_USE\fR variable can be
