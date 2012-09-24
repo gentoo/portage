@@ -711,10 +711,11 @@ of packages for \fBROOT\fR.
 This option is only meaningful when used together with \fBROOT\fR and it should
 not be enabled under normal circumstances!
 
-For currently supported \fBEAPI\fR values, the build-time dependencies are
-specified in the \fBDEPEND\fR variable.
-However, behavior may change for new \fBEAPI\fRs when related extensions are
-added in the future.
+Affects \fBEAPI 5\fR and earlier ebuilds only.
+Experimental \fBEAPI 5-hdepend\fR and later provide \fBHDEPEND\fR as a new
+means to adjust installation into "\fI/\fR" and \fBROOT\fR.
+If \fBEAPI 5\fR and earlier ebuilds are built in the same \fBemerge\fR run as
+\fBEAPI 5-hdepend\fR and later ebuilds, this option affects only the former.
 .TP
 .BR "\-\-select [ y | n ]"
 Add specified packages to the world set (inverse of
