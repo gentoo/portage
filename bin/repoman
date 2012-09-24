@@ -334,22 +334,28 @@ qahelp={
 	"HOMEPAGE.missing":"Ebuilds that have a missing or empty HOMEPAGE variable",
 	"HOMEPAGE.virtual":"Virtuals that have a non-empty HOMEPAGE variable",
 	"DEPEND.bad":"User-visible ebuilds with bad DEPEND settings (matched against *visible* ebuilds)",
+	"HDEPEND.bad":"User-visible ebuilds with bad HDEPEND settings (matched against *visible* ebuilds)",
 	"RDEPEND.bad":"User-visible ebuilds with bad RDEPEND settings (matched against *visible* ebuilds)",
 	"PDEPEND.bad":"User-visible ebuilds with bad PDEPEND settings (matched against *visible* ebuilds)",
 	"DEPEND.badmasked":"Masked ebuilds with bad DEPEND settings (matched against *all* ebuilds)",
+	"HDEPEND.badmasked":"Masked ebuilds with bad HDEPEND settings (matched against *all* ebuilds)",
 	"RDEPEND.badmasked":"Masked ebuilds with RDEPEND settings (matched against *all* ebuilds)",
 	"PDEPEND.badmasked":"Masked ebuilds with PDEPEND settings (matched against *all* ebuilds)",
 	"DEPEND.badindev":"User-visible ebuilds with bad DEPEND settings (matched against *visible* ebuilds) in developing arch",
+	"HDEPEND.badindev":"User-visible ebuilds with bad HDEPEND settings (matched against *visible* ebuilds) in developing arch",
 	"RDEPEND.badindev":"User-visible ebuilds with bad RDEPEND settings (matched against *visible* ebuilds) in developing arch",
 	"PDEPEND.badindev":"User-visible ebuilds with bad PDEPEND settings (matched against *visible* ebuilds) in developing arch",
 	"DEPEND.badmaskedindev":"Masked ebuilds with bad DEPEND settings (matched against *all* ebuilds) in developing arch",
+	"HDEPEND.badmaskedindev":"Masked ebuilds with bad HDEPEND settings (matched against *all* ebuilds) in developing arch",
 	"RDEPEND.badmaskedindev":"Masked ebuilds with RDEPEND settings (matched against *all* ebuilds) in developing arch",
 	"PDEPEND.badmaskedindev":"Masked ebuilds with PDEPEND settings (matched against *all* ebuilds) in developing arch",
 	"PDEPEND.suspect":"PDEPEND contains a package that usually only belongs in DEPEND.",
 	"DEPEND.syntax":"Syntax error in DEPEND (usually an extra/missing space/parenthesis)",
+	"HDEPEND.syntax":"Syntax error in HDEPEND (usually an extra/missing space/parenthesis)",
 	"RDEPEND.syntax":"Syntax error in RDEPEND (usually an extra/missing space/parenthesis)",
 	"PDEPEND.syntax":"Syntax error in PDEPEND (usually an extra/missing space/parenthesis)",
 	"DEPEND.badtilde":"DEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)",
+	"HDEPEND.badtilde":"HDEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)",
 	"RDEPEND.badtilde":"RDEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)",
 	"PDEPEND.badtilde":"PDEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)",
 	"LICENSE.syntax":"Syntax error in LICENSE (usually an extra/missing space/parenthesis)",
@@ -402,10 +408,10 @@ qawarnings = set((
 "digest.unused",
 "ebuild.notadded",
 "ebuild.nesteddie",
-"DEPEND.badmasked","RDEPEND.badmasked","PDEPEND.badmasked",
-"DEPEND.badindev","RDEPEND.badindev","PDEPEND.badindev",
-"DEPEND.badmaskedindev","RDEPEND.badmaskedindev","PDEPEND.badmaskedindev",
-"DEPEND.badtilde", "RDEPEND.badtilde", "PDEPEND.badtilde",
+"DEPEND.badmasked", "HDEPEND.badmasked", "RDEPEND.badmasked", "PDEPEND.badmasked",
+"DEPEND.badindev", "HDEPEND.badindev", "RDEPEND.badindev", "PDEPEND.badindev",
+"DEPEND.badmaskedindev", "HDEPEND.badmaskedindev", "RDEPEND.badmaskedindev", "PDEPEND.badmaskedindev",
+"DEPEND.badtilde", "HDEPEND.badtilde", "RDEPEND.badtilde", "PDEPEND.badtilde",
 "DESCRIPTION.toolong",
 "EAPI.deprecated",
 "HOMEPAGE.virtual",
@@ -1884,12 +1890,13 @@ for x in effective_scanlist:
 		inherited_wxwidgets_eclass = "wxwidgets" in inherited
 		operator_tokens = set(["||", "(", ")"])
 		type_list, badsyntax = [], []
-		for mytype in ("DEPEND", "RDEPEND", "PDEPEND",
+		for mytype in ("DEPEND", "HDEPEND", "RDEPEND", "PDEPEND",
 			"LICENSE", "PROPERTIES", "PROVIDE"):
 			mydepstr = myaux[mytype]
 
+			buildtime = mytype in ('DEPEND', 'HDEPEND')
 			token_class = None
-			if mytype in ("DEPEND", "RDEPEND", "PDEPEND"):
+			if mytype.endswith("DEPEND"):
 				token_class=portage.dep.Atom
 
 			try:
@@ -1899,7 +1906,7 @@ for x in effective_scanlist:
 				atoms = None
 				badsyntax.append(str(e))
 
-			if atoms and mytype in ("DEPEND", "RDEPEND", "PDEPEND"):
+			if atoms and mytype.endswith("DEPEND"):
 				if mytype in ("RDEPEND", "PDEPEND") and \
 					"test?" in mydepstr.split():
 					stats[mytype + '.suspect'] += 1
@@ -1929,20 +1936,20 @@ for x in effective_scanlist:
 								": %s: consider using '%s' instead of '%s'" %
 								(mytype, suspect_virtual[atom.cp], atom))
 
-					if mytype == "DEPEND" and \
+					if buildtime and \
 						not is_blocker and \
 						not inherited_java_eclass and \
 						atom.cp == "virtual/jdk":
 						stats['java.eclassesnotused'] += 1
 						fails['java.eclassesnotused'].append(relative_path)
-					elif mytype == "DEPEND" and \
+					elif buildtime and \
 						not is_blocker and \
 						not inherited_wxwidgets_eclass and \
 						atom.cp == "x11-libs/wxGTK":
 						stats['wxwidgets.eclassnotused'] += 1
 						fails['wxwidgets.eclassnotused'].append(
-							relative_path + ": DEPENDs on x11-libs/wxGTK"
-							" without inheriting wxwidgets.eclass")
+							(relative_path + ": %ss on x11-libs/wxGTK"
+							" without inheriting wxwidgets.eclass") % mytype)
 					elif mytype in ("PDEPEND", "RDEPEND"):
 						if not is_blocker and \
 							atom.cp in suspect_rdepend:
@@ -2159,7 +2166,7 @@ for x in effective_scanlist:
 					if prof.status == "dev":
 						suffix=suffix+"indev"
 
-					for mytype,mypos in [["DEPEND",len(missingvars)],["RDEPEND",len(missingvars)+1],["PDEPEND",len(missingvars)+2]]:
+					for mytype in ("DEPEND", "HDEPEND", "PDEPEND", "RDEPEND"):
 						
 						mykey=mytype+".bad"+suffix
 						myvalue = myaux[mytype]

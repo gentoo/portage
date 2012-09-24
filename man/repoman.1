@@ -158,6 +158,24 @@ Ebuilds that use features that are only available with a different EAPI
 .B EAPI.unsupported
 Ebuilds that have an unsupported EAPI version (you must upgrade portage)
 .TP
+.B HDEPEND.bad
+User-visible ebuilds with bad HDEPEND settings (matched against *visible* ebuilds)
+.TP
+.B HDEPEND.badindev
+User-visible ebuilds with bad HDEPEND settings (matched against *visible* ebuilds) in developing arch
+.TP
+.B HDEPEND.badmasked
+Masked ebuilds with bad HDEPEND settings (matched against *all* ebuilds)
+.TP
+.B HDEPEND.badmaskedindev
+Masked ebuilds with bad HDEPEND settings (matched against *all* ebuilds) in developing arch
+.TP
+.B HDEPEND.badtilde
+HDEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)
+.TP
+.B HDEPEND.syntax
+Syntax error in HDEPEND (usually an extra/missing space/parenthesis)
+.TP
 .B HOMEPAGE.missing
 Ebuilds that have a missing or empty HOMEPAGE variable
 .TP
