@@ -324,9 +324,9 @@ Portage supports cross-compilation into a subdirectory specified by \fBROOT\fR.
 what autotools calls CBUILD.
 Its packages are contained in the root of the filesystem ("\fI/\fR").
 If \fBROOT\fR is "\fI/\fR", all dependency types will be installed there.
-Otherwise, starting from experimental \fBEAPI 5-hdepend\fR, only \fBHDEPEND\fR
-is installed into "\fI/\fR".
-In \fBEAPI 5\fR and earlier, the behaviour is controlled by the
+Otherwise, for EAPIs that support \fBHDEPEND\fR (experimental
+\fBEAPI 5-hdepend\fR), only \fBHDEPEND\fR is installed into "\fI/\fR".
+For EAPIs that do not support \fBHDEPEND\fR, the behaviour is controlled by the
 \fI\-\-root-deps\fR flag to \fBemerge\fR(1), defaulting to install only
 \fBDEPEND\fR into the \fIhost\fR.
 .TP
@@ -337,11 +337,11 @@ The directory housing this system is specified by \fBROOT\fR.
 If it is different from "\fI/\fR", i.e. \fIhost\fR and \fItarget\fR are not the
 same, this variable contains the path to the directory housing the \fItarget\fR
 system.
-Starting from experimental \fBEAPI 5-hdepend\fR, \fBDEPEND\fR and \fBRDEPEND\fR
+For EAPIs that support \fBHDEPEND\fR (experimental \fBEAPI 5-hdepend\fR),
+\fBDEPEND\fR, \fBRDEPEND\fR, and \fBPDEPEND\fR
 list the \fItarget\fR dependencies, i.e. those to be installed into \fBROOT\fR.
-In \fBEAPI 5\fR and earlier, the \fBemerge\fR(1) flag \fI\-\-root-deps\fR
-controlled what the package manager installed there, defaulting to only
-\fBRDEPEND\fR.
+For EAPIs that do not support \fBHDEPEND\fR, the \fBemerge\fR(1) flag
+\fI\-\-root-deps\fR controls what the package manager installs there.
 .PP
 See section \fBVARIABLES\fR for more information about the \fBDEPEND\fR,
 \fBRDEPEND\fR and \fBHDEPEND\fR variables.
