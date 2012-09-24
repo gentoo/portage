@@ -14,7 +14,9 @@ from portage import os
 from portage import _unicode_decode
 from portage.dbapi.dep_expand import dep_expand
 from portage.dep import cpvequal, _repo_separator
+from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidDependString, SignatureException
+from portage.package.ebuild.config import _get_feature_flags
 from portage.package.ebuild._spawn_nofetch import spawn_nofetch
 from portage.output import ( blue, colorize, create_color_func,
 	darkblue, darkgreen, green, nc_len, teal)
@@ -247,14 +249,15 @@ class Display(object):
 
 		use_expand = sorted(self.use_expand)
 		use_expand.insert(0, "USE")
+		feature_flags = _get_feature_flags(_get_eapi_attrs(pkg.metadata["EAPI"]))
 
 		for key in use_expand:
 			if key in self.use_expand_hidden:
 				continue
-			self.verboseadd += _create_use_string(pkg, self.conf, key.upper(),
+			self.verboseadd += _create_use_string(self.conf, key.upper(),
 				cur_iuse_map[key], iuse_forced[key],
 				cur_use_map[key], old_iuse_map[key],
-				old_use_map[key], self.is_new,
+				old_use_map[key], self.is_new, feature_flags,
 				reinst_flags_map.get(key))
 		return
 
