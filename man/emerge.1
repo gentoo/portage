@@ -443,7 +443,7 @@ required.
 .BR "\-\-depclean\-lib\-check [ y | n ]"
 Account for library link-level dependencies during
 \fB\-\-depclean\fR and \fB\-\-prune\fR actions.
-This option is enabled by default. If FEATURES="preserve\-libs" is
+This option is disabled by default. If FEATURES="preserve\-libs" is
 enabled in \fBmake.conf\fR(5), and preserve\-libs is not restricted
 for any of the packages selected for removal, then this option is
 ignored because any libraries that have consumers will simply be
