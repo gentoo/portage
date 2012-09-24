@@ -316,6 +316,36 @@ the user does not specify any of the previous choices.
 Note that if any of the packages listed are already merged, the package manager
 will use that to consider the dependency satisfied.
 
+.SS "Cross-compilation"
+Portage supports cross-compilation into a subdirectory specified by \fBROOT\fR.
+.TP
+.B Host
+\fIHost\fR in this context means the platform hosting the build process, i.e.
+what autotools calls CBUILD.
+Its packages are contained in the root of the filesystem ("\fI/\fR").
+If \fBROOT\fR is "\fI/\fR", all dependency types will be installed there.
+Otherwise, starting from experimental \fBEAPI 5-hdepend\fR, only \fBHDEPEND\fR
+is installed into "\fI/\fR".
+In \fBEAPI 5\fR and earlier, the behaviour is controlled by the
+\fI\-\-root-deps\fR flag to \fBemerge\fR(1), defaulting to install only
+\fBDEPEND\fR into the \fIhost\fR.
+.TP
+.B Target
+\fITarget\fR refers to the platform that the package will later run on, i.e.
+what autotools calls CHOST.
+The directory housing this system is specified by \fBROOT\fR.
+If it is different from "\fI/\fR", i.e. \fIhost\fR and \fItarget\fR are not the
+same, this variable contains the path to the directory housing the \fItarget\fR
+system.
+Starting from experimental \fBEAPI 5-hdepend\fR, \fBDEPEND\fR and \fBRDEPEND\fR
+list the \fItarget\fR dependencies, i.e. those to be installed into \fBROOT\fR.
+In \fBEAPI 5\fR and earlier, the \fBemerge\fR(1) flag \fI\-\-root-deps\fR
+controlled what the package manager installed there, defaulting to only
+\fBRDEPEND\fR.
+.PP
+See section \fBVARIABLES\fR for more information about the \fBDEPEND\fR,
+\fBRDEPEND\fR and \fBHDEPEND\fR variables.
+
 .SH "VARIABLES"
 .TP
 .B Usage Notes
@@ -547,6 +577,11 @@ This should contain a list of all packages that are required for the program
 to compile (aka \fIbuildtime\fR dependencies).  These are usually libraries and
 headers.
 
+Starting from experimental \fBEAPI 5-hdepend\fR, tools should go into the
+\fBHDEPEND\fR variable instead, as \fBDEPEND\fR will only be installed into the
+\fItarget\fR system and hence cannot be executed in a cross\-compile setting.
+(See section \fBCross\-compilation\fR for more information.)
+
 You may use the syntax described above in the \fBDependencies\fR section.
 .TP
 .B RDEPEND
@@ -556,6 +591,17 @@ program to run (aka \fIruntime\fR dependencies).  These are usually libraries.
 In \fBEAPI 3\fR or earlier, if this is not set, then it defaults to the value
 of \fBDEPEND\fR. In \fBEAPI 4\fR or later, \fBRDEPEND\fR will never be
 implicitly set.
+
+You may use the syntax described above in the \fBDependencies\fR section.
+.TP
+.B HDEPEND
+This should contain a list of all packages that are required to be executable
+during compilation of this program (aka \fIhost\fR buildtime dependencies).
+These are usually tools, like interpreters or (cross\-)compilers.
+
+This variable is new in experimental \fBEAPI 5-hdepend\fR and will be installed
+into the \fIhost\fR system.
+(See section \fBCross-compilation\fR for more information.)
 
 You may use the syntax described above in the \fBDependencies\fR section.
 .TP
