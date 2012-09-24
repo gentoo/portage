@@ -1735,7 +1735,7 @@ def _post_src_install_write_metadata(settings):
 				errors='strict') as f:
 				f.write(_unicode_decode(v + '\n'))
 
-_vdb_use_conditional_keys = ('DEPEND', 'LICENSE', 'PDEPEND',
+_vdb_use_conditional_keys = ('DEPEND', 'HDEPEND', 'LICENSE', 'PDEPEND',
 	'PROPERTIES', 'PROVIDE', 'RDEPEND', 'RESTRICT',)
 
 def _preinst_bsdflags(mysettings):

@@ -1147,13 +1147,14 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		graph = digraph()
 		del cleanlist[:]
 
-		dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
+		dep_keys = ["DEPEND", "HDEPEND", "RDEPEND", "PDEPEND"]
 		runtime = UnmergeDepPriority(runtime=True)
 		runtime_post = UnmergeDepPriority(runtime_post=True)
 		buildtime = UnmergeDepPriority(buildtime=True)
 		priority_map = {
 			"RDEPEND": runtime,
 			"PDEPEND": runtime_post,
+			"HDEPEND": buildtime,
 			"DEPEND": buildtime,
 		}
 

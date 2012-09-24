@@ -977,7 +977,6 @@ def parse_opts(tmpcmdline, silent=False):
 			"type"     : "choice",
 			"choices"  : true_y_or_n
 		},
-
 	}
 
 	from optparse import OptionParser

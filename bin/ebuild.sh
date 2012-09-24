@@ -215,6 +215,7 @@ inherit() {
 	local B_DEPEND
 	local B_RDEPEND
 	local B_PDEPEND
+	local B_HDEPEND
 	while [ "$1" ]; do
 		location="${ECLASSDIR}/${1}.eclass"
 		olocation=""
@@ -257,20 +258,21 @@ inherit() {
 				EBUILD_OVERLAY_ECLASSES="${EBUILD_OVERLAY_ECLASSES} ${location}"
 		fi
 
-		#We need to back up the value of DEPEND and RDEPEND to B_DEPEND and B_RDEPEND
+		#We need to back up the values of *DEPEND to B_*DEPEND
 		#(if set).. and then restore them after the inherit call.
 
 		#turn off glob expansion
 		set -f
 
 		# Retain the old data and restore it later.
-		unset B_IUSE B_REQUIRED_USE B_DEPEND B_RDEPEND B_PDEPEND
+		unset B_IUSE B_REQUIRED_USE B_DEPEND B_RDEPEND B_PDEPEND B_HDEPEND
 		[ "${IUSE+set}"       = set ] && B_IUSE="${IUSE}"
 		[ "${REQUIRED_USE+set}" = set ] && B_REQUIRED_USE="${REQUIRED_USE}"
 		[ "${DEPEND+set}"     = set ] && B_DEPEND="${DEPEND}"
 		[ "${RDEPEND+set}"    = set ] && B_RDEPEND="${RDEPEND}"
 		[ "${PDEPEND+set}"    = set ] && B_PDEPEND="${PDEPEND}"
-		unset IUSE REQUIRED_USE DEPEND RDEPEND PDEPEND
+		[ "${HDEPEND+set}"    = set ] && B_HDEPEND="${HDEPEND}"
+		unset IUSE REQUIRED_USE DEPEND RDEPEND PDEPEND HDEPEND
 		#turn on glob expansion
 		set +f
 
@@ -286,6 +288,7 @@ inherit() {
 		[ "${DEPEND+set}"       = set ] && E_DEPEND+="${E_DEPEND:+ }${DEPEND}"
 		[ "${RDEPEND+set}"      = set ] && E_RDEPEND+="${E_RDEPEND:+ }${RDEPEND}"
 		[ "${PDEPEND+set}"      = set ] && E_PDEPEND+="${E_PDEPEND:+ }${PDEPEND}"
+		[ "${HDEPEND+set}"      = set ] && E_HDEPEND+="${E_HDEPEND:+ }${HDEPEND}"
 
 		[ "${B_IUSE+set}"     = set ] && IUSE="${B_IUSE}"
 		[ "${B_IUSE+set}"     = set ] || unset IUSE
@@ -301,6 +304,9 @@ inherit() {
 
 		[ "${B_PDEPEND+set}"  = set ] && PDEPEND="${B_PDEPEND}"
 		[ "${B_PDEPEND+set}"  = set ] || unset PDEPEND
+
+		[ "${B_HDEPEND+set}"  = set ] && HDEPEND="${B_HDEPEND}"
+		[ "${B_HDEPEND+set}"  = set ] || unset HDEPEND
 
 		#turn on glob expansion
 		set +f
@@ -528,8 +534,9 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		# In order to ensure correct interaction between ebuilds and
 		# eclasses, they need to be unset before this process of
 		# interaction begins.
-		unset EAPI DEPEND RDEPEND PDEPEND INHERITED IUSE REQUIRED_USE \
-			ECLASS E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND
+		unset EAPI DEPEND RDEPEND PDEPEND HDEPEND INHERITED IUSE REQUIRED_USE \
+			ECLASS E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND \
+			E_HDEPEND
 
 		if [[ $PORTAGE_DEBUG != 1 || ${-/x/} != $- ]] ; then
 			source "$EBUILD" || die "error sourcing ebuild"
@@ -560,13 +567,14 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		DEPEND+="${DEPEND:+ }${E_DEPEND}"
 		RDEPEND+="${RDEPEND:+ }${E_RDEPEND}"
 		PDEPEND+="${PDEPEND:+ }${E_PDEPEND}"
+		HDEPEND+="${HDEPEND:+ }${E_HDEPEND}"
 		REQUIRED_USE+="${REQUIRED_USE:+ }${E_REQUIRED_USE}"
 		
-		unset ECLASS E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND \
+		unset ECLASS E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND E_HDEPEND \
 			__INHERITED_QA_CACHE
 
 		# alphabetically ordered by $EBUILD_PHASE value
-		case "$EAPI" in
+		case ${EAPI} in
 			0|1)
 				_valid_phases="src_compile pkg_config pkg_info src_install
 					pkg_nofetch pkg_postinst pkg_postrm pkg_preinst pkg_prerm
@@ -664,8 +672,16 @@ if [[ $EBUILD_PHASE = depend ]] ; then
 
 	auxdbkeys="DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE
 		DESCRIPTION KEYWORDS INHERITED IUSE REQUIRED_USE PDEPEND PROVIDE EAPI
-		PROPERTIES DEFINED_PHASES UNUSED_05 UNUSED_04
+		PROPERTIES DEFINED_PHASES HDEPEND UNUSED_04
 		UNUSED_03 UNUSED_02 UNUSED_01"
+
+	case ${EAPI} in
+		5-hdepend)
+			;;
+		*)
+			unset HDEPEND
+			;;
+	esac
 
 	# The extra $(echo) commands remove newlines.
 	if [ -n "${dbkey}" ] ; then
@@ -684,7 +700,7 @@ else
 	# Note: readonly variables interfere with __preprocess_ebuild_env(), so
 	# declare them only after it has already run.
 	declare -r $PORTAGE_READONLY_METADATA $PORTAGE_READONLY_VARS
-	case "$EAPI" in
+	case ${EAPI} in
 		0|1|2)
 			[[ " ${FEATURES} " == *" force-prefix "* ]] && \
 				declare -r ED EPREFIX EROOT

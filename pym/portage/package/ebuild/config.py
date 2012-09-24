@@ -63,7 +63,7 @@ if sys.hexversion >= 0x3000000:
 _feature_flags_cache = {}
 
 def _get_feature_flags(eapi_attrs):
-	cache_key = (eapi_attrs.feature_flag_test,)
+	cache_key = (eapi_attrs.feature_flag_test, eapi_attrs.feature_flag_targetroot)
 	flags = _feature_flags_cache.get(cache_key)
 	if flags is not None:
 		return flags
@@ -71,6 +71,8 @@ def _get_feature_flags(eapi_attrs):
 	flags = []
 	if eapi_attrs.feature_flag_test:
 		flags.append("test")
+	if eapi_attrs.feature_flag_targetroot:
+		flags.append("targetroot")
 
 	flags = frozenset(flags)
 	_feature_flags_cache[cache_key] = flags
@@ -142,7 +144,7 @@ class config(object):
 	_constant_keys = frozenset(['PORTAGE_BIN_PATH', 'PORTAGE_GID',
 		'PORTAGE_PYM_PATH'])
 
-	_setcpv_aux_keys = ('DEFINED_PHASES', 'DEPEND', 'EAPI',
+	_setcpv_aux_keys = ('DEFINED_PHASES', 'DEPEND', 'EAPI', 'HDEPEND',
 		'INHERITED', 'IUSE', 'REQUIRED_USE', 'KEYWORDS', 'LICENSE', 'PDEPEND',
 		'PROPERTIES', 'PROVIDE', 'RDEPEND', 'SLOT',
 		'repository', 'RESTRICT', 'LICENSE',)
@@ -1502,6 +1504,13 @@ class config(object):
 				if ebuild_force_test and "test" in self.usemask:
 					self.usemask = \
 						frozenset(x for x in self.usemask if x != "test")
+
+		if eapi_attrs.feature_flag_targetroot and \
+			("targetroot" in explicit_iuse or iuse_implicit_match("targetroot")):
+			if self["ROOT"] != "/":
+				use.add("targetroot")
+			else:
+				use.discard("targetroot")
 
 		# Allow _* flags from USE_EXPAND wildcards to pass through here.
 		use.difference_update([x for x in use \

@@ -290,7 +290,8 @@ class dbapi(object):
 		maxval = len(cpv_all)
 		aux_get = self.aux_get
 		aux_update = self.aux_update
-		meta_keys = ["DEPEND", "EAPI", "RDEPEND", "PDEPEND", "PROVIDE", 'repository']
+		meta_keys = ["DEPEND", "EAPI", "HDEPEND",
+			"PDEPEND", "PROVIDE", "RDEPEND", 'repository']
 		repo_dict = None
 		if isinstance(updates, dict):
 			repo_dict = updates

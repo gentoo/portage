@@ -414,7 +414,7 @@ def abssymlink(symlink, target=None):
 
 _doebuild_manifest_exempt_depend = 0
 
-_testing_eapis = frozenset(["4-python", "4-slot-abi", "5-progress"])
+_testing_eapis = frozenset(["4-python", "4-slot-abi", "5-progress", "5-hdepend"])
 _deprecated_eapis = frozenset(["4_pre1", "3_pre2", "3_pre1", "5_pre1", "5_pre2"])
 
 def _eapi_is_deprecated(eapi):
@@ -472,7 +472,7 @@ auxdbkeys = (
 	'RESTRICT',  'HOMEPAGE',  'LICENSE',   'DESCRIPTION',
 	'KEYWORDS',  'INHERITED', 'IUSE', 'REQUIRED_USE',
 	'PDEPEND',   'PROVIDE', 'EAPI',
-	'PROPERTIES', 'DEFINED_PHASES', 'UNUSED_05', 'UNUSED_04',
+	'PROPERTIES', 'DEFINED_PHASES', 'HDEPEND', 'UNUSED_04',
 	'UNUSED_03', 'UNUSED_02', 'UNUSED_01',
 )
 auxdbkeylen=len(auxdbkeys)

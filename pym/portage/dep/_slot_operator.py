@@ -4,7 +4,7 @@
 from portage.dep import Atom, paren_enclose, use_reduce
 from portage.exception import InvalidData
 
-_dep_keys = ('DEPEND', 'PDEPEND', 'RDEPEND')
+_dep_keys = ('DEPEND', 'HDEPEND', 'PDEPEND', 'RDEPEND')
 _runtime_keys = ('PDEPEND', 'RDEPEND')
 
 def find_built_slot_operator_atoms(pkg):
