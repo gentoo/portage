@@ -701,15 +701,6 @@ The paths may contain regular expressions with escape\-quoted special characters
 This variable is intended to be used on files of binary packages which ignore
 CFLAGS, CXXFLAGS, FFLAGS, FCFLAGS, and LDFLAGS variables.
 .TP
-.B QA_DT_HASH
-This should contain a list of file paths, relative to the image directory, of
-files that contain .hash sections. The paths may contain regular expressions
-with escape\-quoted special characters. This variable is deprecated. Use
-\fBQA_FLAGS_IGNORED\fR instead.
-
-This variable is intended to be used on files of binary packages which ignore
-LDFLAGS variable.
-.TP
 .B QA_PRESTRIPPED
 This should contain a list of file paths, relative to the image directory, of
 files that contain pre-stripped binaries. The paths may contain regular

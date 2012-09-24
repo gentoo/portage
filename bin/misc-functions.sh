@@ -167,8 +167,6 @@ install_qa_check() {
 
 	cd "${ED}" || die "cd failed"
 
-	# Merge QA_FLAGS_IGNORED and QA_DT_HASH into a single array, since
-	# QA_DT_HASH is deprecated.
 	qa_var="QA_FLAGS_IGNORED_${ARCH/-/_}"
 	eval "[[ -n \${!qa_var} ]] && QA_FLAGS_IGNORED=(\"\${${qa_var}[@]}\")"
 	if [[ ${#QA_FLAGS_IGNORED[@]} -eq 1 ]] ; then
@@ -177,29 +175,6 @@ install_qa_check() {
 		QA_FLAGS_IGNORED=(${QA_FLAGS_IGNORED})
 		set +o noglob
 		set -${shopts}
-	fi
-
-	qa_var="QA_DT_HASH_${ARCH/-/_}"
-	eval "[[ -n \${!qa_var} ]] && QA_DT_HASH=(\"\${${qa_var}[@]}\")"
-	if [[ ${#QA_DT_HASH[@]} -eq 1 ]] ; then
-		local shopts=$-
-		set -o noglob
-		QA_DT_HASH=(${QA_DT_HASH})
-		set +o noglob
-		set -${shopts}
-	fi
-
-	if [[ -n ${QA_DT_HASH} ]] ; then
-		QA_FLAGS_IGNORED=("${QA_FLAGS_IGNORED[@]}" "${QA_DT_HASH[@]}")
-		unset QA_DT_HASH
-	fi
-
-	# Merge QA_STRICT_FLAGS_IGNORED and QA_STRICT_DT_HASH, since
-	# QA_STRICT_DT_HASH is deprecated
-	if [ "${QA_STRICT_FLAGS_IGNORED-unset}" = unset ] && \
-		[ "${QA_STRICT_DT_HASH-unset}" != unset ] ; then
-		QA_STRICT_FLAGS_IGNORED=1
-		unset QA_STRICT_DT_HASH
 	fi
 
 	# Check for files built without respecting *FLAGS. Note that
