@@ -1,16 +1,17 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['env_update']
 
 import errno
+import glob
 import io
 import stat
 import sys
 import time
 
 import portage
-from portage import os, _encodings, _unicode_encode
+from portage import os, _encodings, _unicode_decode, _unicode_encode
 from portage.checksum import prelink_capable
 from portage.data import ostype
 from portage.exception import ParseError
@@ -88,6 +89,7 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env,
 
 	eprefix = settings.get("EPREFIX", "")
 	eprefix_lstrip = eprefix.lstrip(os.sep)
+	eroot = normalize_path(os.path.join(target_root, eprefix_lstrip)).rstrip(os.sep) + os.sep
 	envd_dir = os.path.join(target_root, eprefix_lstrip, "etc", "env.d")
 	ensure_dirs(envd_dir, mode=0o755)
 	fns = listdir(envd_dir, EmptyOnError=1)
@@ -229,9 +231,22 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env,
 
 	current_time = long(time.time())
 	mtime_changed = False
+
+	potential_lib_dirs = []
+	for lib_dir_glob in ['usr/lib*', 'lib*']:
+		x = os.path.join(target_root, eprefix_lstrip, lib_dir_glob)
+		for y in glob.glob(_unicode_encode(x,
+			encoding=_encodings['fs'], errors='strict')):
+			try:
+				y = _unicode_decode(y,
+					encoding=_encodings['fs'], errors='strict')
+			except UnicodeDecodeError:
+				continue
+			if os.path.basename(y) != "libexec":
+				potential_lib_dirs.append(y[len(eroot):])
+
 	lib_dirs = set()
-	for lib_dir in set(specials["LDPATH"] + \
-		['usr/lib','usr/lib64','usr/lib32','lib','lib64','lib32']):
+	for lib_dir in set(specials["LDPATH"] + potential_lib_dirs):
 		x = os.path.join(target_root, eprefix_lstrip, lib_dir.lstrip(os.sep))
 		try:
 			newldpathtime = os.stat(x)[stat.ST_MTIME]
