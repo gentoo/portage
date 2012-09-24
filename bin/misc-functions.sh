@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 #
 # Miscellaneous shell functions that make use of the ebuild env but don't need
@@ -577,10 +577,9 @@ install_qa_check() {
 	# this should help to ensure that all (most?) shared libraries are executable
 	# and that all libtool scripts / static libraries are not executable
 	local j
-	for i in "${ED}"opt/*/lib{,32,64} \
-	         "${ED}"lib{,32,64}       \
-	         "${ED}"usr/lib{,32,64}   \
-	         "${ED}"usr/X11R6/lib{,32,64} ; do
+	for i in "${ED}"opt/*/lib* \
+	         "${ED}"lib* \
+	         "${ED}"usr/lib* ; do
 		[[ ! -d ${i} ]] && continue
 
 		for j in "${i}"/*.so.* "${i}"/*.so ; do
