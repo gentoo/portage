@@ -132,24 +132,18 @@ class ResolverPlayground(object):
 
 			metadata = ebuilds[cpv].copy()
 			copyright_header = metadata.pop("COPYRIGHT_HEADER", None)
-			desc = metadata.pop("DESCRIPTION", None)
-			eapi = metadata.pop("EAPI", 0)
-			lic = metadata.pop("LICENSE", "")
-			properties = metadata.pop("PROPERTIES", "")
-			slot = metadata.pop("SLOT", 0)
-			keywords = metadata.pop("KEYWORDS", "x86")
-			homepage = metadata.pop("HOMEPAGE", None)
-			src_uri = metadata.pop("SRC_URI", None)
-			iuse = metadata.pop("IUSE", "")
-			provide = metadata.pop("PROVIDE", None)
-			depend = metadata.pop("DEPEND", "")
-			rdepend = metadata.pop("RDEPEND", None)
-			pdepend = metadata.pop("PDEPEND", None)
-			required_use = metadata.pop("REQUIRED_USE", None)
+			eapi = metadata.pop("EAPI", "0")
 			misc_content = metadata.pop("MISC_CONTENT", None)
+			metadata.setdefault("DEPEND", "")
+			metadata.setdefault("SLOT", "0")
+			metadata.setdefault("KEYWORDS", "x86")
+			metadata.setdefault("IUSE", "")
 
-			if metadata:
-				raise ValueError("metadata of ebuild '%s' contains unknown keys: %s" % (cpv, metadata.keys()))
+			unknown_keys = set(metadata).difference(
+				portage.dbapi.dbapi._known_keys)
+			if unknown_keys:
+				raise ValueError("metadata of ebuild '%s' contains unknown keys: %s" %
+					(cpv, sorted(unknown_keys)))
 
 			repo_dir = self._get_repo_dir(repo)
 			ebuild_dir = os.path.join(repo_dir, a.cp)
@@ -162,27 +156,9 @@ class ResolverPlayground(object):
 			f = open(ebuild_path, "w")
 			if copyright_header is not None:
 				f.write(copyright_header)
-			f.write('EAPI="' + str(eapi) + '"\n')
-			if desc is not None:
-				f.write('DESCRIPTION="%s"\n' % desc)
-			if homepage is not None:
-				f.write('HOMEPAGE="%s"\n' % homepage)
-			if src_uri is not None:
-				f.write('SRC_URI="%s"\n' % src_uri)
-			f.write('LICENSE="' + str(lic) + '"\n')
-			f.write('PROPERTIES="' + str(properties) + '"\n')
-			f.write('SLOT="' + str(slot) + '"\n')
-			f.write('KEYWORDS="' + str(keywords) + '"\n')
-			f.write('IUSE="' + str(iuse) + '"\n')
-			if provide is not None:
-				f.write('PROVIDE="%s"\n' % provide)
-			f.write('DEPEND="' + str(depend) + '"\n')
-			if rdepend is not None:
-				f.write('RDEPEND="' + str(rdepend) + '"\n')
-			if pdepend is not None:
-				f.write('PDEPEND="' + str(pdepend) + '"\n')
-			if required_use is not None:
-				f.write('REQUIRED_USE="' + str(required_use) + '"\n')
+			f.write('EAPI="%s"\n' % eapi)
+			for k, v in metadata.items():
+				f.write('%s="%s"\n' % (k, v))
 			if misc_content is not None:
 				f.write(misc_content)
 			f.close()
@@ -242,49 +218,25 @@ class ResolverPlayground(object):
 				pass
 
 			metadata = installed[cpv].copy()
-			eapi = metadata.pop("EAPI", 0)
-			lic = metadata.pop("LICENSE", "")
-			properties = metadata.pop("PROPERTIES", "")
-			slot = metadata.pop("SLOT", 0)
-			build_time = metadata.pop("BUILD_TIME", "0")
-			keywords = metadata.pop("KEYWORDS", "~x86")
-			iuse = metadata.pop("IUSE", "")
-			use = metadata.pop("USE", "")
-			provide = metadata.pop("PROVIDE", None)
-			depend = metadata.pop("DEPEND", "")
-			rdepend = metadata.pop("RDEPEND", None)
-			pdepend = metadata.pop("PDEPEND", None)
-			required_use = metadata.pop("REQUIRED_USE", None)
+			metadata.setdefault("SLOT", "0")
+			metadata.setdefault("BUILD_TIME", "0")
+			metadata.setdefault("COUNTER", "0")
+			metadata.setdefault("KEYWORDS", "~x86")
 
-			if metadata:
-				raise ValueError("metadata of installed '%s' contains unknown keys: %s" % (cpv, metadata.keys()))
+			unknown_keys = set(metadata).difference(
+				portage.dbapi.dbapi._known_keys)
+			unknown_keys.discard("BUILD_TIME")
+			unknown_keys.discard("COUNTER")
+			unknown_keys.discard("repository")
+			unknown_keys.discard("USE")
+			if unknown_keys:
+				raise ValueError("metadata of installed '%s' contains unknown keys: %s" %
+					(cpv, sorted(unknown_keys)))
 
-			def write_key(key, value):
-				f = open(os.path.join(vdb_pkg_dir, key), "w")
-				f.write(str(value) + "\n")
-				f.close()
-			
-			write_key("EAPI", eapi)
-			write_key("BUILD_TIME", build_time)
-			write_key("COUNTER", "0")
-			write_key("LICENSE", lic)
-			write_key("PROPERTIES", properties)
-			write_key("SLOT", slot)
-			write_key("LICENSE", lic)
-			write_key("PROPERTIES", properties)
-			write_key("repository", repo)
-			write_key("KEYWORDS", keywords)
-			write_key("IUSE", iuse)
-			write_key("USE", use)
-			if provide is not None:
-				write_key("PROVIDE", provide)
-			write_key("DEPEND", depend)
-			if rdepend is not None:
-				write_key("RDEPEND", rdepend)
-			if pdepend is not None:
-				write_key("PDEPEND", pdepend)
-			if required_use is not None:
-				write_key("REQUIRED_USE", required_use)
+			metadata["repository"] = repo
+			for k, v in metadata.items():
+				with open(os.path.join(vdb_pkg_dir, k), "w") as f:
+					f.write("%s\n" % v)
 
 	def _create_profile(self, ebuilds, installed, profile, repo_configs, user_config, sets):
 
