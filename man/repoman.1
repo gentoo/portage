@@ -124,23 +124,23 @@ Scan directory tree for QA issues; if OK, commit via cvs
 .B CVS/Entries.IO_error
 Attempting to commit, and an IO error was encountered access the Entries file
 .TP
-.B DEPEND.bad
-User-visible ebuilds with bad DEPEND settings (matched against *visible* ebuilds)
+.B DEPEND.bad HDEPEND.bad PDEPEND.bad RDEPEND.bad
+User-visible ebuilds with unsatisfied dependencies (matched against *visible* ebuilds)
 .TP
-.B DEPEND.badindev
-User-visible ebuilds with bad DEPEND settings (matched against *visible* ebuilds) in developing arch
+.B DEPEND.badindev HDEPEND.badindev PDEPEND.badindev RDEPEND.badindev
+User-visible ebuilds with unsatisfied dependencies (matched against *visible* ebuilds) in developing arch
 .TP
-.B DEPEND.badmasked
-Masked ebuilds with bad DEPEND settings (matched against *all* ebuilds)
+.B DEPEND.badmasked HDEPEND.badmasked PDEPEND.badmasked RDEPEND.badmasked
+Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds)
 .TP
-.B DEPEND.badmaskedindev
-Masked ebuilds with bad DEPEND settings (matched against *all* ebuilds) in developing arch
+.B DEPEND.badmaskedindev HDEPEND.badmaskedindev PDEPEND.badmaskedindev RDEPEND.badmaskedindev
+Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds) in developing arch
 .TP
-.B DEPEND.badtilde
-DEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)
+.B DEPEND.badtilde HDEPEND.badtilde PDEPEND.badtilde RDEPEND.badtilde
+Uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)
 .TP
-.B DEPEND.syntax
-Syntax error in DEPEND (usually an extra/missing space/parenthesis)
+.B DEPEND.syntax HDEPEND.syntax PDEPEND.syntax RDEPEND.syntax
+Syntax error in *DEPEND (usually an extra/missing space/parenthesis)
 .TP
 .B DESCRIPTION.missing
 Ebuilds that have a missing or empty DESCRIPTION variable
@@ -157,24 +157,6 @@ Ebuilds that use features that are only available with a different EAPI
 .TP
 .B EAPI.unsupported
 Ebuilds that have an unsupported EAPI version (you must upgrade portage)
-.TP
-.B HDEPEND.bad
-User-visible ebuilds with bad HDEPEND settings (matched against *visible* ebuilds)
-.TP
-.B HDEPEND.badindev
-User-visible ebuilds with bad HDEPEND settings (matched against *visible* ebuilds) in developing arch
-.TP
-.B HDEPEND.badmasked
-Masked ebuilds with bad HDEPEND settings (matched against *all* ebuilds)
-.TP
-.B HDEPEND.badmaskedindev
-Masked ebuilds with bad HDEPEND settings (matched against *all* ebuilds) in developing arch
-.TP
-.B HDEPEND.badtilde
-HDEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)
-.TP
-.B HDEPEND.syntax
-Syntax error in HDEPEND (usually an extra/missing space/parenthesis)
 .TP
 .B HOMEPAGE.missing
 Ebuilds that have a missing or empty HOMEPAGE variable
@@ -222,44 +204,11 @@ Ebuild is a live ebuild (cvs, git, darcs, svn, etc) checkout with stable keyword
 Ebuild is a live ebuild (cvs, git, darcs, svn, etc) checkout but has keywords
 and is not masked in the global package.mask.
 .TP
-.B PDEPEND.bad
-User-visible ebuilds with bad PDEPEND settings (matched against *visible* ebuilds)
-.TP
-.B PDEPEND.badindev
-User-visible ebuilds with bad PDEPEND settings (matched against *visible* ebuilds) in developing arch
-.TP
-.B PDEPEND.badmasked
-Masked ebuilds with PDEPEND settings (matched against *all* ebuilds)
-.TP
-.B PDEPEND.badmaskedindev
-Masked ebuilds with PDEPEND settings (matched against *all* ebuilds) in developing arch
-.TP
-.B PDEPEND.badtilde
-PDEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)
-.TP
 .B PDEPEND.suspect
 PDEPEND contains a package that usually only belongs in DEPEND
 .TP
-.B PDEPEND.syntax
-Syntax error in PDEPEND (usually an extra/missing space/parenthesis)
-.TP
 .B PROVIDE.syntax
 Syntax error in PROVIDE (usually an extra/missing space/parenthesis)
-.TP
-.B RDEPEND.bad
-User-visible ebuilds with bad RDEPEND settings (matched against *visible* ebuilds)
-.TP
-.B RDEPEND.badindev
-User-visible ebuilds with bad RDEPEND settings (matched against *visible* ebuilds) in developing arch
-.TP
-.B RDEPEND.badmasked
-Masked ebuilds with RDEPEND settings (matched against *all* ebuilds)
-.TP
-.B RDEPEND.badmaskedindev
-Masked ebuilds with RDEPEND settings (matched against *all* ebuilds) in developing arch
-.TP
-.B RDEPEND.badtilde
-RDEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)
 .TP
 .B RDEPEND.implicit
 RDEPEND is unset in the ebuild which triggers implicit RDEPEND=$DEPEND
@@ -267,9 +216,6 @@ assignment (prior to EAPI 4)
 .TP
 .B RDEPEND.suspect
 RDEPEND contains a package that usually only belongs in DEPEND
-.TP
-.B RDEPEND.syntax
-Syntax error in RDEPEND (usually an extra/missing space/parenthesis)
 .TP
 .B PROPERTIES.syntax
 Syntax error in PROPERTIES (usually an extra/missing space/parenthesis)
