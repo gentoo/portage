@@ -1,0 +1,32 @@
+<section id='package-ebuild-eapi-5-hdepend'>
+<title>EAPI 5-hdepend</title>
+<section id='package-ebuild-eapi-5-hdepend-metadata'>
+<title>Metadata</title>
+<section id='package-ebuild-eapi-5-hdepend-metadata-dependencies'>
+<title>Dependencies</title>
+<section id='package-ebuild-eapi-5-hdepend-metadata-dependencies-hdepend'>
+<title>HDEPEND</title>
+<para>
+The HDEPEND variable is used to represent build-time host dependencies. For
+build-time target dependencies, use DEPEND (if the host is the target then both
+HDEPEND and DEPEND will be installed on it). For EAPIs that support HDEPEND,
+the emerge --root-deps option will have no effect, since it is not needed
+when build-time dependencies are correctly specified with HDEPEND and DEPEND.
+If ebuilds using EAPIs which <emphasis>do not</emphasis> support HDEPEND are
+built in the same emerge run as those using EAPIs which <emphasis>do</emphasis>
+support HDEPEND, the emerge --root-deps option will only apply to the former.
+</para>
+</section>
+<section id='package-ebuild-eapi-5-hdepend-metadata-dependencies-targetroot'>
+<title>Special "targetroot" USE flag</title>
+<para>
+The special "targetroot" USE flag will be automatically enabled for packages
+that are built for installation into a target ROOT, and will otherwise be
+automatically disabled. This flag may be used to control conditional
+dependencies, and ebuilds that use this flag need to add it to IUSE unless it
+happens to be included in the profile's IUSE_IMPLICIT variable.
+</para>
+</section>
+</section>
+</section>
+</section>
