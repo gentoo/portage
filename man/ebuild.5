@@ -323,6 +323,7 @@ Portage supports cross-compilation into a subdirectory specified by \fBROOT\fR.
 \fIHost\fR in this context means the platform hosting the build process, i.e.
 what autotools calls CBUILD.
 Its packages are contained in the root of the filesystem ("\fI/\fR").
+
 If \fBROOT\fR is "\fI/\fR", all dependency types will be installed there.
 Otherwise, for EAPIs that support \fBHDEPEND\fR (experimental
 \fBEAPI 5-hdepend\fR), only \fBHDEPEND\fR is installed into "\fI/\fR".
@@ -337,6 +338,7 @@ The directory housing this system is specified by \fBROOT\fR.
 If it is different from "\fI/\fR", i.e. \fIhost\fR and \fItarget\fR are not the
 same, this variable contains the path to the directory housing the \fItarget\fR
 system.
+
 For EAPIs that support \fBHDEPEND\fR (experimental \fBEAPI 5-hdepend\fR),
 \fBDEPEND\fR, \fBRDEPEND\fR, and \fBPDEPEND\fR
 list the \fItarget\fR dependencies, i.e. those to be installed into \fBROOT\fR.
