@@ -373,6 +373,11 @@ class Package(Task):
 
 	def _metadata_exception(self, k, e):
 
+		if k.endswith('DEPEND'):
+			qacat = 'dependency.syntax'
+		else:
+			qacat = k + ".syntax"
+
 		# For unicode safety with python-2.x we need to avoid
 		# using the string format operator with a non-unicode
 		# format string, since that will result in the
@@ -393,7 +398,7 @@ class Package(Task):
 						_unicode_decode("%s: %s") % (k, error))
 
 			if not categorized_error:
-				self._invalid_metadata(k + ".syntax",
+				self._invalid_metadata(qacat,
 					_unicode_decode("%s: %s") % (k, e))
 		else:
 			# For installed packages, show the path of the file
@@ -401,7 +406,7 @@ class Package(Task):
 			# want to fix the deps by hand.
 			vardb = self.root_config.trees['vartree'].dbapi
 			path = vardb.getpath(self.cpv, filename=k)
-			self._invalid_metadata(k + ".syntax",
+			self._invalid_metadata(qacat,
 				_unicode_decode("%s: %s in '%s'") % (k, e, path))
 
 	def _invalid_metadata(self, msg_type, msg):

@@ -124,24 +124,6 @@ Scan directory tree for QA issues; if OK, commit via cvs
 .B CVS/Entries.IO_error
 Attempting to commit, and an IO error was encountered access the Entries file
 .TP
-.B DEPEND.bad HDEPEND.bad PDEPEND.bad RDEPEND.bad
-User-visible ebuilds with unsatisfied dependencies (matched against *visible* ebuilds)
-.TP
-.B DEPEND.badindev HDEPEND.badindev PDEPEND.badindev RDEPEND.badindev
-User-visible ebuilds with unsatisfied dependencies (matched against *visible* ebuilds) in developing arch
-.TP
-.B DEPEND.badmasked HDEPEND.badmasked PDEPEND.badmasked RDEPEND.badmasked
-Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds)
-.TP
-.B DEPEND.badmaskedindev HDEPEND.badmaskedindev PDEPEND.badmaskedindev RDEPEND.badmaskedindev
-Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds) in developing arch
-.TP
-.B DEPEND.badtilde HDEPEND.badtilde PDEPEND.badtilde RDEPEND.badtilde
-Uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)
-.TP
-.B DEPEND.syntax HDEPEND.syntax PDEPEND.syntax RDEPEND.syntax
-Syntax error in *DEPEND (usually an extra/missing space/parenthesis)
-.TP
 .B DESCRIPTION.missing
 Ebuilds that have a missing or empty DESCRIPTION variable
 .TP
@@ -236,6 +218,24 @@ Missing ChangeLog files
 .TP
 .B changelog.notadded
 ChangeLogs that exist but have not been added to cvs
+.TP
+.B dependency.bad
+User-visible ebuilds with unsatisfied dependencies (matched against *visible* ebuilds)
+.TP
+.B dependency.badindev
+User-visible ebuilds with unsatisfied dependencies (matched against *visible* ebuilds) in developing arch
+.TP
+.B dependency.badmasked
+Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds)
+.TP
+.B dependency.badmaskedindev
+Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds) in developing arch
+.TP
+.B dependency.badtilde
+Uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)
+.TP
+.B dependency.syntax
+Syntax error in dependency string (usually an extra/missing space/parenthesis)
 .TP
 .B dependency.unknown
 Ebuild has a dependency that refers to an unknown package (which may be

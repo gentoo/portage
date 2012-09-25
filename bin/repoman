@@ -307,6 +307,12 @@ qahelp={
 	"ebuild.notadded":"Ebuilds that exist but have not been added to cvs",
 	"ebuild.patches":"PATCHES variable should be a bash array to ensure white space safety",
 	"changelog.notadded":"ChangeLogs that exist but have not been added to cvs",
+	"dependency.bad": "User-visible ebuilds with unsatisfied dependencies (matched against *visible* ebuilds)",
+	"dependency.badmasked": "Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds)",
+	"dependency.badindev": "User-visible ebuilds with unsatisfied dependencies (matched against *visible* ebuilds) in developing arch",
+	"dependency.badmaskedindev": "Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds) in developing arch",
+	"dependency.badtilde": "Uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)",
+	"dependency.syntax": "Syntax error in dependency string (usually an extra/missing space/parenthesis)",
 	"dependency.unknown" : "Ebuild has a dependency that refers to an unknown package (which may be valid if it is a blocker for a renamed/removed package, or is an alternative choice provided by an overlay)",
 	"file.executable":"Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do not need the executable bit",
 	"file.size":"Files in the files directory must be under 20 KiB",
@@ -333,31 +339,7 @@ qahelp={
 	"SLOT.invalid":"Ebuilds that have a missing or invalid SLOT variable value",
 	"HOMEPAGE.missing":"Ebuilds that have a missing or empty HOMEPAGE variable",
 	"HOMEPAGE.virtual":"Virtuals that have a non-empty HOMEPAGE variable",
-	"DEPEND.bad":"User-visible ebuilds with bad DEPEND settings (matched against *visible* ebuilds)",
-	"HDEPEND.bad":"User-visible ebuilds with bad HDEPEND settings (matched against *visible* ebuilds)",
-	"RDEPEND.bad":"User-visible ebuilds with bad RDEPEND settings (matched against *visible* ebuilds)",
-	"PDEPEND.bad":"User-visible ebuilds with bad PDEPEND settings (matched against *visible* ebuilds)",
-	"DEPEND.badmasked":"Masked ebuilds with bad DEPEND settings (matched against *all* ebuilds)",
-	"HDEPEND.badmasked":"Masked ebuilds with bad HDEPEND settings (matched against *all* ebuilds)",
-	"RDEPEND.badmasked":"Masked ebuilds with RDEPEND settings (matched against *all* ebuilds)",
-	"PDEPEND.badmasked":"Masked ebuilds with PDEPEND settings (matched against *all* ebuilds)",
-	"DEPEND.badindev":"User-visible ebuilds with bad DEPEND settings (matched against *visible* ebuilds) in developing arch",
-	"HDEPEND.badindev":"User-visible ebuilds with bad HDEPEND settings (matched against *visible* ebuilds) in developing arch",
-	"RDEPEND.badindev":"User-visible ebuilds with bad RDEPEND settings (matched against *visible* ebuilds) in developing arch",
-	"PDEPEND.badindev":"User-visible ebuilds with bad PDEPEND settings (matched against *visible* ebuilds) in developing arch",
-	"DEPEND.badmaskedindev":"Masked ebuilds with bad DEPEND settings (matched against *all* ebuilds) in developing arch",
-	"HDEPEND.badmaskedindev":"Masked ebuilds with bad HDEPEND settings (matched against *all* ebuilds) in developing arch",
-	"RDEPEND.badmaskedindev":"Masked ebuilds with RDEPEND settings (matched against *all* ebuilds) in developing arch",
-	"PDEPEND.badmaskedindev":"Masked ebuilds with PDEPEND settings (matched against *all* ebuilds) in developing arch",
 	"PDEPEND.suspect":"PDEPEND contains a package that usually only belongs in DEPEND.",
-	"DEPEND.syntax":"Syntax error in DEPEND (usually an extra/missing space/parenthesis)",
-	"HDEPEND.syntax":"Syntax error in HDEPEND (usually an extra/missing space/parenthesis)",
-	"RDEPEND.syntax":"Syntax error in RDEPEND (usually an extra/missing space/parenthesis)",
-	"PDEPEND.syntax":"Syntax error in PDEPEND (usually an extra/missing space/parenthesis)",
-	"DEPEND.badtilde":"DEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)",
-	"HDEPEND.badtilde":"HDEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)",
-	"RDEPEND.badtilde":"RDEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)",
-	"PDEPEND.badtilde":"PDEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)",
 	"LICENSE.syntax":"Syntax error in LICENSE (usually an extra/missing space/parenthesis)",
 	"PROVIDE.syntax":"Syntax error in PROVIDE (usually an extra/missing space/parenthesis)",
 	"PROPERTIES.syntax":"Syntax error in PROPERTIES (usually an extra/missing space/parenthesis)",
@@ -408,10 +390,10 @@ qawarnings = set((
 "digest.unused",
 "ebuild.notadded",
 "ebuild.nesteddie",
-"DEPEND.badmasked", "HDEPEND.badmasked", "RDEPEND.badmasked", "PDEPEND.badmasked",
-"DEPEND.badindev", "HDEPEND.badindev", "RDEPEND.badindev", "PDEPEND.badindev",
-"DEPEND.badmaskedindev", "HDEPEND.badmaskedindev", "RDEPEND.badmaskedindev", "PDEPEND.badmaskedindev",
-"DEPEND.badtilde", "HDEPEND.badtilde", "RDEPEND.badtilde", "PDEPEND.badtilde",
+"dependency.badmasked",
+"dependency.badindev",
+"dependency.badmaskedindev",
+"dependency.badtilde",
 "DESCRIPTION.toolong",
 "EAPI.deprecated",
 "HOMEPAGE.virtual",
@@ -1733,7 +1715,7 @@ for x in effective_scanlist:
 			for k, msgs in pkg.invalid.items():
 				for msg in msgs:
 					stats[k] = stats[k] + 1
-					fails[k].append("%s %s" % (relative_path, msg))
+					fails[k].append("%s: %s" % (relative_path, msg))
 			continue
 
 		myaux = pkg.metadata
@@ -1959,8 +1941,9 @@ for x in effective_scanlist:
 
 					if atom.operator == "~" and \
 						portage.versions.catpkgsplit(atom.cpv)[3] != "r0":
-						stats[mytype + '.badtilde'] += 1
-						fails[mytype + '.badtilde'].append(
+						qacat = 'dependency.badtilde'
+						stats[qacat] += 1
+						fails[qacat].append(
 							(relative_path + ": %s uses the ~ operator"
 							 " with a non-zero revision:" + \
 							 " '%s'") % (mytype, atom))
@@ -1968,8 +1951,12 @@ for x in effective_scanlist:
 			type_list.extend([mytype] * (len(badsyntax) - len(type_list)))
 
 		for m,b in zip(type_list, badsyntax):
-			stats[m+".syntax"] += 1
-			fails[m+".syntax"].append(catpkg+".ebuild "+m+": "+b)
+			if m.endswith("DEPEND"):
+				qacat = "dependency.syntax"
+			else:
+				qacat = m + ".syntax"
+			stats[qacat] += 1
+			fails[qacat].append("%s: %s: %s" % (relative_path, m, b))
 
 		badlicsyntax = len([z for z in type_list if z == "LICENSE"])
 		badprovsyntax = len([z for z in type_list if z == "PROVIDE"])
@@ -2168,7 +2155,7 @@ for x in effective_scanlist:
 
 					for mytype in ("DEPEND", "HDEPEND", "PDEPEND", "RDEPEND"):
 						
-						mykey=mytype+".bad"+suffix
+						mykey = "dependency.bad" + suffix
 						myvalue = myaux[mytype]
 						if not myvalue:
 							continue
@@ -2209,13 +2196,13 @@ for x in effective_scanlist:
 								if not atoms:
 									continue
 								stats[mykey]=stats[mykey]+1
-								fails[mykey].append("%s: %s(%s) %s" % \
-									(relative_path, keyword,
+								fails[mykey].append("%s: %s: %s(%s) %s" % \
+									(relative_path, mytype, keyword,
 									prof, repr(atoms)))
 						else:
 							stats[mykey]=stats[mykey]+1
-							fails[mykey].append("%s: %s(%s) %s" % \
-								(relative_path, keyword,
+							fails[mykey].append("%s: %s: %s(%s) %s" % \
+								(relative_path, mytype, keyword,
 								prof, repr(atoms)))
 
 		if not baddepsyntax and unknown_pkgs:
