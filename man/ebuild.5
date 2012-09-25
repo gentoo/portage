@@ -349,6 +349,15 @@ Without it, \fBemerge\fR defaults to install only runtime dependencies (i.e.
 .PP
 See section \fBVARIABLES\fR for more information about the \fBDEPEND\fR,
 \fBRDEPEND\fR and \fBHDEPEND\fR variables.
+.TP
+.B The targetroot USE flag
+For EAPIs that support the "\fItargetroot\fR" USE flag, that flag is
+automatically enabled by the package manager if \fIhost\fR and \fItarget\fR
+system are not the same, i.e. if the \fBROOT\fR is not "\fI/\fR".
+This is necessary where the package to be built needs an executable copy of
+itself during the build process.
+A known example is dev-lang/python, which needs to run a Python interpreter
+during compilation.
 
 .SH "VARIABLES"
 .TP
