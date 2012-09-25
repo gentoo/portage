@@ -344,6 +344,8 @@ For EAPIs that support \fBHDEPEND\fR (experimental \fBEAPI 5-hdepend\fR),
 list the \fItarget\fR dependencies, i.e. those to be installed into \fBROOT\fR.
 For EAPIs that do not support \fBHDEPEND\fR, the \fBemerge\fR(1) flag
 \fI\-\-root-deps\fR controls what the package manager installs there.
+Without it, \fBemerge\fR defaults to install only runtime dependencies (i.e.
+\fBRDEPEND\fR and \fBPDEPEND\fR) into \fBROOT\fR.
 .PP
 See section \fBVARIABLES\fR for more information about the \fBDEPEND\fR,
 \fBRDEPEND\fR and \fBHDEPEND\fR variables.
