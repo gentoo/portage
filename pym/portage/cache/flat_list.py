@@ -28,7 +28,8 @@ class database(fs_template.FsBased):
 	auxdbkey_order=('DEPEND', 'RDEPEND', 'SLOT', 'SRC_URI',
 		'RESTRICT',  'HOMEPAGE',  'LICENSE', 'DESCRIPTION',
 		'KEYWORDS',  'IUSE', 'REQUIRED_USE',
-		'PDEPEND',   'PROVIDE', 'EAPI', 'PROPERTIES', 'DEFINED_PHASES')
+		'PDEPEND',   'PROVIDE', 'EAPI', 'PROPERTIES',
+		'DEFINED_PHASES', 'HDEPEND')
 
 	def __init__(self, *args, **config):
 		super(database,self).__init__(*args, **config)
