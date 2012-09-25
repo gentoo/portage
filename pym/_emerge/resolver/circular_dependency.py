@@ -113,7 +113,8 @@ class circular_dependency_handler(object):
 			parent_atoms = self.all_parent_atoms.get(pkg)
 
 			if priorities[-1].buildtime:
-				dep = parent.metadata["DEPEND"]
+				dep = parent.metadata["DEPEND"] + \
+					" " + parent.metadata["HDEPEND"]
 			elif priorities[-1].runtime:
 				dep = parent.metadata["RDEPEND"]
 
