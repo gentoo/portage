@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
@@ -9,8 +9,9 @@ if [[ $# -lt 1 ]] ; then
 	exit 1
 fi
 
-[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-	case "$EAPI" in 0|1|2) ED=${D} ;; esac
+if ! ___eapi_has_prefix_variables; then
+	ED=${D}
+fi
 
 if [[ ! -d ${ED}${_E_EXEDESTTREE_} ]] ; then
 	install -d "${ED}${_E_EXEDESTTREE_}"

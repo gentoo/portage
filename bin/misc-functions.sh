@@ -17,8 +17,9 @@ shift $#
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}/ebuild.sh"
 
 install_symlink_html_docs() {
-	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+	if ! ___eapi_has_prefix_variables; then
+		local ED=${D}
+	fi
 	cd "${ED}" || die "cd failed"
 	#symlink the html documentation (if DOC_SYMLINKS_DIR is set in make.conf)
 	if [ -n "${DOC_SYMLINKS_DIR}" ] ; then
@@ -79,8 +80,9 @@ canonicalize() {
 prepcompress() {
 	local -a include exclude incl_d incl_f
 	local f g i real_f real_d
-	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+	if ! ___eapi_has_prefix_variables; then
+		local ED=${D}
+	fi
 
 	# Canonicalize path names and check for their existence.
 	real_d=$(canonicalize "${ED}")
@@ -162,8 +164,9 @@ prepcompress() {
 
 install_qa_check() {
 	local f i qa_var x
-	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-		case "$EAPI" in 0|1|2) local EPREFIX= ED=${D} ;; esac
+	if ! ___eapi_has_prefix_variables; then
+		local EPREFIX= ED=${D}
+	fi
 
 	cd "${ED}" || die "cd failed"
 
@@ -228,7 +231,7 @@ install_qa_check() {
 
 	export STRIP_MASK
 	prepall
-	has "${EAPI}" 0 1 2 3 || prepcompress
+	___eapi_has_docompress && prepcompress
 	ecompressdir --dequeue
 	ecompress --dequeue
 
@@ -958,8 +961,9 @@ preinst_mask() {
 		 return 1
 	fi
 
-	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+	if ! ___eapi_has_prefix_variables; then
+		local ED=${D}
+	fi
 
 	# Make sure $PWD is not ${D} so that we don't leave gmon.out files
 	# in there in case any tools were built with -pg in CFLAGS.
@@ -987,8 +991,9 @@ preinst_sfperms() {
 		 return 1
 	fi
 
-	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+	if ! ___eapi_has_prefix_variables; then
+		local ED=${D}
+	fi
 
 	# Smart FileSystem Permissions
 	if has sfperms $FEATURES; then
@@ -1026,8 +1031,9 @@ preinst_suid_scan() {
 		 return 1
 	fi
 
-	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+	if ! ___eapi_has_prefix_variables; then
+		local ED=${D}
+	fi
 
 	# total suid control.
 	if has suidctl $FEATURES; then
@@ -1095,8 +1101,9 @@ preinst_selinux_labels() {
 __dyn_package() {
 	local PROOT
 
-	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-		case "$EAPI" in 0|1|2) local EPREFIX= ED=${D} ;; esac
+	if ! ___eapi_has_prefix_variables; then
+		local EPREFIX= ED=${D}
+	fi
 
 	# Make sure $PWD is not ${D} so that we don't leave gmon.out files
 	# in there in case any tools were built with -pg in CFLAGS.
@@ -1193,9 +1200,9 @@ __END1__
 }
 
 __dyn_rpm() {
-
-	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-		case "$EAPI" in 0|1|2) local EPREFIX= ;; esac
+	if ! ___eapi_has_prefix_variables; then
+		local EPREFIX=
+	fi
 
 	cd "${T}" || die "cd failed"
 	local machine_name=$(uname -m)

@@ -76,10 +76,11 @@ __save_ebuild_env() {
 		__unpack_tar __unset_colors \
 		${QA_INTERCEPTORS}
 
-	case "${EAPI}" in
-		0|1|2|3|4|4-python|4-slot-abi) ;;
-		*) unset -f usex ;;
-	esac
+	if ___eapi_has_usex; then
+		unset -f usex
+	fi
+
+	unset -f $(compgen -A function ___eapi_)
 
 	# portage config variables and variables set directly by portage
 	unset ACCEPT_LICENSE BAD BRACKET BUILD_PREFIX COLS \

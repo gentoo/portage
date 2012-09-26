@@ -9,8 +9,9 @@ if [[ $# -ne 2 ]] ; then
 	exit 1
 fi
 
-[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-	case "$EAPI" in 0|1|2) ED=${D} ;; esac
+if ! ___eapi_has_prefix_variables; then
+	ED=${D}
+fi
 
 if [[ ${2} == */ ]] || \
 	[[ -d ${ED}${2} && ! -L ${ED}${2} ]] ; then

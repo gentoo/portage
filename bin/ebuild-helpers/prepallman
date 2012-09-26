@@ -1,14 +1,15 @@
 #!/bin/bash
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 # replaced by controllable compression in EAPI 4
-has "${EAPI}" 0 1 2 3 || exit 0
+___eapi_has_docompress && exit 0
 
-[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-	case "$EAPI" in 0|1|2) ED=${D} ;; esac
+if ! ___eapi_has_prefix_variables; then
+	ED=${D}
+fi
 
 ret=0
 

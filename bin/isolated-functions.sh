@@ -2,6 +2,8 @@
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}/eapi.sh"
+
 # We need this next line for "die" and "assert". It expands
 # It _must_ preceed all the calls to die and assert.
 shopt -s expand_aliases
@@ -86,7 +88,7 @@ __dump_trace() {
 }
 
 nonfatal() {
-	if has "${EAPI:-0}" 0 1 2 3 ; then
+	if ! ___eapi_has_nonfatal; then
 		die "$FUNCNAME() not supported in this EAPI"
 	fi
 	if [[ $# -lt 1 ]]; then
@@ -97,14 +99,11 @@ nonfatal() {
 }
 
 __helpers_die() {
-	case "${EAPI:-0}" in
-		0|1|2|3)
-			echo -e "$@" >&2
-			;;
-		*)
-			die "$@"
-			;;
-	esac
+	if ___eapi_helpers_can_die; then
+		die "$@"
+	else
+		echo -e "$@" >&2
+	fi
 }
 
 die() {

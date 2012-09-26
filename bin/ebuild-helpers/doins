@@ -29,8 +29,9 @@ else
 	DOINSRECUR=n
 fi
 
-[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-	case "$EAPI" in 0|1|2) export ED="${D}" ;; esac
+if ! ___eapi_has_prefix_variables; then
+	export ED="${D}"
+fi
 
 if [[ ${INSDESTTREE#${ED}} != "${INSDESTTREE}" ]]; then
 	__vecho "-------------------------------------------------------" 1>&2
@@ -41,14 +42,11 @@ if [[ ${INSDESTTREE#${ED}} != "${INSDESTTREE}" ]]; then
 	exit 1
 fi
 
-case "$EAPI" in
-	0|1|2|3)
-		PRESERVE_SYMLINKS=n
-		;;
-	*)
-		PRESERVE_SYMLINKS=y
-		;;
-esac
+if ___eapi_doins_and_newins_preserve_symlinks; then
+	PRESERVE_SYMLINKS=y
+else
+	PRESERVE_SYMLINKS=n
+fi
 
 export TMP=$T/.doins_tmp
 # Use separate directories to avoid potential name collisions.

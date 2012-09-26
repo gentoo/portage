@@ -15,10 +15,9 @@ fi
 	eqawarn "QA Notice: ${helper} called with more than 2 arguments: ${@:3}"
 
 stdin=
-case "${EAPI}" in
-	0|1|2|3|4|4-python|4-slot-abi) ;;
-	*) [[ $1 = "-" ]] && stdin=yes ;;
-esac
+if ___eapi_newins_supports_reading_from_standard_input && [[ $1 == "-" ]]; then
+	stdin=yes
+fi
 
 rm -rf "${T}/$2"
 
@@ -37,13 +36,9 @@ else
 
 	cp_args="-f"
 	if [[ ${helper} == newins ]] ; then
-		case "${EAPI}" in
-			0|1|2|3)
-				;;
-			*)
-				cp_args+=" -P"
-				;;
-		esac
+		if ___eapi_doins_and_newins_preserve_symlinks; then
+			cp_args+=" -P"
+		fi
 	fi
 
 	cp ${cp_args} "$1" "${T}/$2"

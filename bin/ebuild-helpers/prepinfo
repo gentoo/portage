@@ -1,11 +1,12 @@
 #!/bin/bash
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
-[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-	case "$EAPI" in 0|1|2) ED=${D} ;; esac
+if ! ___eapi_has_prefix_variables; then
+	ED=${D}
+fi
 
 if [[ -z $1 ]] ; then
 	infodir="/usr/share/info"
@@ -33,5 +34,5 @@ find "${ED}${infodir}" -type d -print0 | while read -r -d $'\0' x ; do
 	rm -f "${x}"/dir{,.info}{,.gz,.bz2}
 done
 
-has "${EAPI}" 0 1 2 3 || exit 0
+___eapi_has_docompress && exit 0
 exec ecompressdir --queue "${infodir}"

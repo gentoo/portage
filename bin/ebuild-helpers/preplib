@@ -1,13 +1,14 @@
 #!/bin/bash
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 eqawarn "QA Notice: Deprecated call to 'preplib'"
 
-[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-	case "$EAPI" in 0|1|2) ED=${D} ;; esac
+if ! ___eapi_has_prefix_variables; then
+	ED=${D}
+fi
 
 LIBDIR_VAR="LIBDIR_${ABI}"
 if [ -n "${ABI}" -a -n "${!LIBDIR_VAR}" ]; then

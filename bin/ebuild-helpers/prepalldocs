@@ -4,21 +4,18 @@
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
-case "${EAPI}" in
-	0|1|2|3)
-		;;
-	*)
-		die "'${0##*/}' has been banned for EAPI '$EAPI'"
-		exit 1
-		;;
-esac
+if ! ___eapi_has_docompress; then
+	die "'${0##*/}' has been banned for EAPI '$EAPI'"
+	exit 1
+fi
 
 if [[ -n $1 ]] ; then
 	__vecho "${0##*/}: invalid usage; takes no arguments" 1>&2
 fi
 
-[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-	case "$EAPI" in 0|1|2) ED=${D} ;; esac
+if ! ___eapi_has_prefix_variables; then
+	ED=${D}
+fi
 
 [[ -d ${ED}usr/share/doc ]] || exit 0
 
