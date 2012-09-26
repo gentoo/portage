@@ -19,6 +19,7 @@ from portage import auxdbkeys
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidData
 from portage.localization import _
+from _emerge.Package import Package
 
 class dbapi(object):
 	_category_re = re.compile(r'^\w[-.+\w]*$', re.UNICODE)
@@ -290,8 +291,7 @@ class dbapi(object):
 		maxval = len(cpv_all)
 		aux_get = self.aux_get
 		aux_update = self.aux_update
-		meta_keys = ["DEPEND", "EAPI", "HDEPEND",
-			"PDEPEND", "PROVIDE", "RDEPEND", 'repository']
+		meta_keys = Package._dep_keys + ("EAPI", "PROVIDE", "repository")
 		repo_dict = None
 		if isinstance(updates, dict):
 			repo_dict = updates
