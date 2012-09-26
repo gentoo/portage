@@ -52,6 +52,7 @@ def evaluate_slot_operator_equal_deps(settings, use, trees):
 		vardbs.append(running_vardb)
 
 	_eval_deps(deps["DEPEND"], vardbs)
+	_eval_deps(deps["HDEPEND"], [running_vardb])
 
 	result = {}
 	for k, v in deps.items():
