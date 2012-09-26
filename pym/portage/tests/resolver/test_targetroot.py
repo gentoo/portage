@@ -20,7 +20,7 @@ class TargetRootTestCase(TestCase):
 				["dev-lang/python"],
 				options = {},
 				success = True,
-				mergelist = ["dev-lang/python-3.2", "dev-lang/python-3.2"]),
+				mergelist = ["dev-lang/python-3.2", "dev-lang/python-3.2{targetroot}"]),
 		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, targetroot=True,

@@ -707,6 +707,7 @@ class ResolverPlaygroundResult(object):
 
 		if self.depgraph._dynamic_config._serialized_tasks_cache is not None:
 			self.mergelist = []
+			host_root = self.depgraph._frozen_config._running_root.root
 			for x in self.depgraph._dynamic_config._serialized_tasks_cache:
 				if isinstance(x, Blocker):
 					self.mergelist.append(x.atom)
@@ -721,6 +722,8 @@ class ResolverPlaygroundResult(object):
 						else:
 							desc = x.operation
 						mergelist_str = "[%s]%s" % (desc, mergelist_str)
+					if x.root != host_root:
+						mergelist_str += "{targetroot}"
 					self.mergelist.append(mergelist_str)
 
 		if self.depgraph._dynamic_config._needed_use_config_changes:
