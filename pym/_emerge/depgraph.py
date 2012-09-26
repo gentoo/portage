@@ -3187,15 +3187,13 @@ class depgraph(object):
 				if priorities is None:
 					# This edge comes from _parent_atoms and was not added to
 					# the graph, and _parent_atoms does not contain priorities.
-					dep_strings.add(node.metadata["DEPEND"])
-					dep_strings.add(node.metadata["RDEPEND"])
-					dep_strings.add(node.metadata["PDEPEND"])
-					dep_strings.add(node.metadata["HDEPEND"])
+					for k in Package._dep_keys:
+						dep_strings.add(node.metadata[k])
 				else:
 					for priority in priorities:
 						if priority.buildtime:
-							dep_strings.add(node.metadata["DEPEND"])
-							dep_strings.add(node.metadata["HDEPEND"])
+							for k in Package._buildtime_keys:
+								dep_strings.add(node.metadata[k])
 						if priority.runtime:
 							dep_strings.add(node.metadata["RDEPEND"])
 						if priority.runtime_post:
