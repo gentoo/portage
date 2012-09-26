@@ -564,18 +564,15 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 
 	mymasks = set()
 	useforce = set()
-	useforce.add(mysettings["ARCH"])
 	if use == "all":
-		# This masking/forcing is only for repoman.  In other cases, relevant
-		# masking/forcing should have already been applied via
-		# config.regenerate().  Also, binary or installed packages may have
-		# been built with flags that are now masked, and it would be
-		# inconsistent to mask them now.  Additionally, myuse may consist of
-		# flags from a parent package that is being merged to a $ROOT that is
-		# different from the one that mysettings represents.
+		# This is only for repoman, in order to constrain the use_reduce
+		# matchall behavior to account for profile use.mask/force. The
+		# ARCH/archlist code here may be redundant, since the profile
+		# really should be handling ARCH masking/forcing itself.
 		mymasks.update(mysettings.usemask)
 		mymasks.update(mysettings.archlist())
 		mymasks.discard(mysettings["ARCH"])
+		useforce.add(mysettings["ARCH"])
 		useforce.update(mysettings.useforce)
 		useforce.difference_update(mymasks)
 

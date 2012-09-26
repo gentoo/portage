@@ -108,13 +108,11 @@ class Test_match_from_list(TestCase):
 			("virtual/ffmpeg:=", [Package("=virtual/ffmpeg-0.10.3:0/53")], ["virtual/ffmpeg-0.10.3"] ),
 			("virtual/ffmpeg:0=", [Package("=virtual/ffmpeg-0.10.3:0/53")], ["virtual/ffmpeg-0.10.3"] ),
 			("virtual/ffmpeg:*", [Package("=virtual/ffmpeg-0.10.3:0/53")], ["virtual/ffmpeg-0.10.3"] ),
-			("virtual/ffmpeg:0*", [Package("=virtual/ffmpeg-0.10.3:0/53")], ["virtual/ffmpeg-0.10.3"] ),
 			("virtual/ffmpeg:0", [Package("=virtual/ffmpeg-0.10.3:0/53")], ["virtual/ffmpeg-0.10.3"] ),
 
 			("sys-libs/db:4.8/4.8", [Package("=sys-libs/db-4.8.30:4.8")], ["sys-libs/db-4.8.30"] ),
 			("sys-libs/db:4.8/4.8=", [Package("=sys-libs/db-4.8.30:4.8")], ["sys-libs/db-4.8.30"] ),
 			("sys-libs/db:4.8=", [Package("=sys-libs/db-4.8.30:4.8")], ["sys-libs/db-4.8.30"] ),
-			("sys-libs/db:4.8*", [Package("=sys-libs/db-4.8.30:4.8")], ["sys-libs/db-4.8.30"] ),
 			("sys-libs/db:*", [Package("=sys-libs/db-4.8.30:4.8")], ["sys-libs/db-4.8.30"] ),
 			("sys-libs/db:4.8/0", [Package("=sys-libs/db-4.8.30:4.8")], [] ),
 			("sys-libs/db:4.8/0=", [Package("=sys-libs/db-4.8.30:4.8")], [] ),

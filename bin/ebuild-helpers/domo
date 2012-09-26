@@ -6,7 +6,7 @@ source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 
 mynum=${#}
 if [ ${mynum} -lt 1 ] ; then
-	helpers_die "${0}: at least one argument needed"
+	__helpers_die "${0}: at least one argument needed"
 	exit 1
 fi
 
@@ -34,5 +34,5 @@ for x in "$@" ; do
 	((ret|=$?))
 done
 
-[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
+[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
 exit $ret

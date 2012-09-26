@@ -1,11 +1,11 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import re
 from portage.dep import isvalidatom
 
 def insert_category_into_atom(atom, category):
-	alphanum = re.search(r'\w', atom)
+	alphanum = re.search(r'\w', atom, re.UNICODE)
 	if alphanum:
 		ret = atom[:alphanum.start()] + "%s/" % category + \
 			atom[alphanum.start():]

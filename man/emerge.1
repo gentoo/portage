@@ -369,6 +369,10 @@ changed since installation. This option also implies the
 \fB\-\-selective\fR option. Unlike \fB\-\-newuse\fR, the
 \fB\-\-changed\-use\fR option does not trigger reinstallation when
 flags that the user has not enabled are added or removed.
+
+NOTE: This option ignores the state of the "test" USE flag, since that flag
+has a special binding to FEATURES="test" (see \fBmake.conf\fR(5) for more
+information about \fBFEATURES\fR settings).
 .TP
 .BR "\-\-changelog " (\fB\-l\fR)
 Use this in conjunction with the \fB\-\-pretend\fR option.  This will
@@ -424,9 +428,8 @@ required.
 .TP
 .BR "\-\-depclean\-lib\-check [ y | n ]"
 Account for library link-level dependencies during
-\fB\-\-depclean\fR and \fB\-\-prune\fR actions. This
-option is enabled by default. In some cases this can
-be somewhat time\-consuming. This option is ignored
+\fB\-\-depclean\fR and \fB\-\-prune\fR actions.
+This option is enabled by default. This option is ignored
 when FEATURES="preserve\-libs" is enabled in
 \fBmake.conf\fR(5), since any libraries that have
 consumers will simply be preserved.
@@ -489,8 +492,8 @@ Causes \fIEMERGE_DEFAULT_OPTS\fR (see \fBmake.conf\fR(5)) to be ignored.
 Ignore the slot/sub\-slot := operator parts of dependencies that have
 been recorded when packages where built. This option is intended
 only for debugging purposes, and it only affects built packages
-that specify slot/sub\-slot := operator dependencies using the
-experimental "4\-slot\-abi", "5_pre1", or "5_pre2" EAPIs.
+that specify slot/sub\-slot := operator dependencies which are
+supported beginning with \fBEAPI 5\fR.
 .TP
 .BR "-j [JOBS], \-\-jobs[=JOBS]"
 Specifies the number of packages to build simultaneously. If this option is
@@ -538,6 +541,10 @@ settings. If you would like to skip rebuilds for which disabled flags have
 been added to or removed from IUSE, see the related
 \fB\-\-changed\-use\fR option. If you would like to skip rebuilds for
 specific packages, see the \fB\-\-exclude\fR option.
+
+NOTE: This option ignores the state of the "test" USE flag, since that flag
+has a special binding to FEATURES="test" (see \fBmake.conf\fR(5) for more
+information about \fBFEATURES\fR settings).
 .TP
 .BR "\-\-noconfmem"
 Causes portage to disregard merge records indicating that a config file
@@ -611,7 +618,8 @@ N	new (not yet installed)
 S	new SLOT installation (side-by-side versions) 
 U	updating (to another version)
 D	downgrading (best version seems lower)
-R	replacing (remerging same version))
+r	reinstall (forced due to slot or sub\-slot change of a dependency)
+R	replacing (remerging same version)
 F	fetch restricted (must be manually downloaded)
 f	fetch restricted (already downloaded)
 I	interactive (requires user input)
@@ -650,8 +658,8 @@ Automatically rebuild or reinstall packages when slot/sub\-slot :=
 operator dependencies can be satisfied by a newer slot, so that
 older packages slots will become eligible for removal by the
 \-\-depclean action as soon as possible. This option only
-affects packages that specify slot/sub\-slot := dependencies using the
-experimental "4\-slot\-abi", "5_pre1", or "5_pre1" EAPIs
+affects packages that specify slot/sub\-slot := dependencies
+which are supported beginning with \fBEAPI 5\fR.
 Since this option requires
 checking of reverse dependencies, it enables \-\-complete\-graph
 mode whenever a new slot is installed. This option is enabled by
@@ -697,14 +705,18 @@ Set the \fBROOT\fR environment variable.
 .TP
 .BR "\-\-root\-deps[=rdeps]"
 If no argument is given then build\-time dependencies of packages for
-\fBROOT\fR are installed to
-\fBROOT\fR instead of /. If the \fBrdeps\fR argument is given then discard
-all build\-time dependencies of packages for \fBROOT\fR. This option is
-only meaningful when used together with \fBROOT\fR and it should not
-be enabled under normal circumstances. For currently supported
-\fBEAPI\fR values, the build-time dependencies are specified in the
-\fBDEPEND\fR variable. However, behavior may change for new
-\fBEAPI\fRs when related extensions are added in the future.
+\fBROOT\fR are installed to \fBROOT\fR instead of /.
+If the \fBrdeps\fR argument is given then discard all build\-time dependencies
+of packages for \fBROOT\fR.
+This option is only meaningful when used together with \fBROOT\fR and it should
+not be enabled under normal circumstances!
+
+Does not affect EAPIs that support \fBHDEPEND\fR.
+Experimental \fBEAPI 5-hdepend\fR provides \fBHDEPEND\fR as a new
+means to adjust installation into "\fI/\fR" and \fBROOT\fR.
+If ebuilds using EAPIs which \fIdo not\fR support \fBHDEPEND\fR are built in
+the same \fBemerge\fR run as those using EAPIs which \fIdo\fR support
+\fBHDEPEND\fR, this option affects only the former.
 .TP
 .BR "\-\-select [ y | n ]"
 Add specified packages to the world set (inverse of
@@ -781,6 +793,7 @@ Symbol	Location	Meaning
 *	suffix	transition to or from the enabled state
 %	suffix	newly added or removed
 ()	circumfix	forced, masked, or removed
+{}	circumfix	state is bound to FEATURES settings
 .TE
 .TP
 .BR "\-\-verbose\-main\-repo\-display"

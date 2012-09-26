@@ -5,7 +5,7 @@
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 
 if [[ $# -lt 1 ]] ; then
-	helpers_die "${0##*/}: at least one argument needed"
+	__helpers_die "${0##*/}: at least one argument needed"
 	exit 1
 fi
 
@@ -13,7 +13,7 @@ fi
 	case "$EAPI" in 0|1|2) ED=${D} ;; esac
 
 if [[ ! -d ${ED}${DESTTREE}/sbin ]] ; then
-	install -d "${ED}${DESTTREE}/sbin" || { helpers_die "${0##*/}: failed to install ${ED}${DESTTREE}/sbin"; exit 2; }
+	install -d "${ED}${DESTTREE}/sbin" || { __helpers_die "${0##*/}: failed to install ${ED}${DESTTREE}/sbin"; exit 2; }
 fi
 
 ret=0
@@ -28,5 +28,5 @@ for x in "$@" ; do
 	((ret|=$?))
 done
 
-[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
+[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
 exit ${ret}

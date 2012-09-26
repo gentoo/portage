@@ -266,20 +266,6 @@ pkg_preinst() {
 		profile_path = settings.profile_path
 		user_config_dir = os.path.join(os.sep, eprefix, USER_CONFIG_PATH)
 
-		features = []
-		if not portage.process.sandbox_capable or \
-			os.environ.get("SANDBOX_ON") == "1":
-			features.append("-sandbox")
-
-		# Since egencache ignores settings from the calling environment,
-		# configure it via make.conf.
-		make_conf = (
-			"FEATURES=\"%s\"\n" % (" ".join(features),),
-			"PORTDIR=\"%s\"\n" % (portdir,),
-			"PORTAGE_GRPNAME=\"%s\"\n" % (os.environ["PORTAGE_GRPNAME"],),
-			"PORTAGE_USERNAME=\"%s\"\n" % (os.environ["PORTAGE_USERNAME"],),
-		)
-
 		path =  os.environ.get("PATH")
 		if path is not None and not path.strip():
 			path = None
@@ -333,9 +319,6 @@ pkg_preinst() {
 		try:
 			for d in dirs:
 				ensure_dirs(d)
-			with open(os.path.join(user_config_dir, "make.conf"), 'w') as f:
-				for line in make_conf:
-					f.write(line)
 			for x in true_symlinks:
 				os.symlink(true_binary, os.path.join(fake_bin, x))
 			with open(os.path.join(var_cache_edb, "counter"), 'wb') as f:

@@ -34,7 +34,8 @@ class ResolverPlayground(object):
 	its work.
 	"""
 
-	config_files = frozenset(("package.accept_keywords", "package.use", "package.mask", "package.keywords", \
+	config_files = frozenset(("eapi", "make.conf", "package.accept_keywords", "package.use",
+		"package.use.stable.mask", "package.mask", "package.keywords",
 		"package.unmask", "package.properties", "package.license", "use.mask", "use.force",
 		"layout.conf",))
 
@@ -54,7 +55,8 @@ class ResolverPlayground(object):
 """
 
 	def __init__(self, ebuilds={}, binpkgs={}, installed={}, profile={}, repo_configs={}, \
-		user_config={}, sets={}, world=[], world_sets=[], distfiles={}, debug=False):
+		user_config={}, sets={}, world=[], world_sets=[], distfiles={},
+		targetroot=False, debug=False):
 		"""
 		ebuilds: cpv -> metadata mapping simulating available ebuilds. 
 		installed: cpv -> metadata mapping simulating installed packages.
@@ -64,6 +66,10 @@ class ResolverPlayground(object):
 		self.debug = debug
 		self.eprefix = normalize_path(tempfile.mkdtemp())
 		self.eroot = self.eprefix + os.sep
+		if targetroot:
+			self.target_root = os.path.join(self.eroot, 'target_root')
+		else:
+			self.target_root = os.sep
 		self.distdir = os.path.join(self.eroot, "var", "portage", "distfiles")
 		self.pkgdir = os.path.join(self.eprefix, "pkgdir")
 		self.portdir = os.path.join(self.eroot, "usr/portage")
@@ -131,24 +137,18 @@ class ResolverPlayground(object):
 
 			metadata = ebuilds[cpv].copy()
 			copyright_header = metadata.pop("COPYRIGHT_HEADER", None)
-			desc = metadata.pop("DESCRIPTION", None)
-			eapi = metadata.pop("EAPI", 0)
-			lic = metadata.pop("LICENSE", "")
-			properties = metadata.pop("PROPERTIES", "")
-			slot = metadata.pop("SLOT", 0)
-			keywords = metadata.pop("KEYWORDS", "x86")
-			homepage = metadata.pop("HOMEPAGE", None)
-			src_uri = metadata.pop("SRC_URI", None)
-			iuse = metadata.pop("IUSE", "")
-			provide = metadata.pop("PROVIDE", None)
-			depend = metadata.pop("DEPEND", "")
-			rdepend = metadata.pop("RDEPEND", None)
-			pdepend = metadata.pop("PDEPEND", None)
-			required_use = metadata.pop("REQUIRED_USE", None)
+			eapi = metadata.pop("EAPI", "0")
 			misc_content = metadata.pop("MISC_CONTENT", None)
+			metadata.setdefault("DEPEND", "")
+			metadata.setdefault("SLOT", "0")
+			metadata.setdefault("KEYWORDS", "x86")
+			metadata.setdefault("IUSE", "")
 
-			if metadata:
-				raise ValueError("metadata of ebuild '%s' contains unknown keys: %s" % (cpv, metadata.keys()))
+			unknown_keys = set(metadata).difference(
+				portage.dbapi.dbapi._known_keys)
+			if unknown_keys:
+				raise ValueError("metadata of ebuild '%s' contains unknown keys: %s" %
+					(cpv, sorted(unknown_keys)))
 
 			repo_dir = self._get_repo_dir(repo)
 			ebuild_dir = os.path.join(repo_dir, a.cp)
@@ -161,27 +161,9 @@ class ResolverPlayground(object):
 			f = open(ebuild_path, "w")
 			if copyright_header is not None:
 				f.write(copyright_header)
-			f.write('EAPI="' + str(eapi) + '"\n')
-			if desc is not None:
-				f.write('DESCRIPTION="%s"\n' % desc)
-			if homepage is not None:
-				f.write('HOMEPAGE="%s"\n' % homepage)
-			if src_uri is not None:
-				f.write('SRC_URI="%s"\n' % src_uri)
-			f.write('LICENSE="' + str(lic) + '"\n')
-			f.write('PROPERTIES="' + str(properties) + '"\n')
-			f.write('SLOT="' + str(slot) + '"\n')
-			f.write('KEYWORDS="' + str(keywords) + '"\n')
-			f.write('IUSE="' + str(iuse) + '"\n')
-			if provide is not None:
-				f.write('PROVIDE="%s"\n' % provide)
-			f.write('DEPEND="' + str(depend) + '"\n')
-			if rdepend is not None:
-				f.write('RDEPEND="' + str(rdepend) + '"\n')
-			if pdepend is not None:
-				f.write('PDEPEND="' + str(pdepend) + '"\n')
-			if required_use is not None:
-				f.write('REQUIRED_USE="' + str(required_use) + '"\n')
+			f.write('EAPI="%s"\n' % eapi)
+			for k, v in metadata.items():
+				f.write('%s="%s"\n' % (k, v))
 			if misc_content is not None:
 				f.write(misc_content)
 			f.close()
@@ -241,49 +223,25 @@ class ResolverPlayground(object):
 				pass
 
 			metadata = installed[cpv].copy()
-			eapi = metadata.pop("EAPI", 0)
-			lic = metadata.pop("LICENSE", "")
-			properties = metadata.pop("PROPERTIES", "")
-			slot = metadata.pop("SLOT", 0)
-			build_time = metadata.pop("BUILD_TIME", "0")
-			keywords = metadata.pop("KEYWORDS", "~x86")
-			iuse = metadata.pop("IUSE", "")
-			use = metadata.pop("USE", "")
-			provide = metadata.pop("PROVIDE", None)
-			depend = metadata.pop("DEPEND", "")
-			rdepend = metadata.pop("RDEPEND", None)
-			pdepend = metadata.pop("PDEPEND", None)
-			required_use = metadata.pop("REQUIRED_USE", None)
+			metadata.setdefault("SLOT", "0")
+			metadata.setdefault("BUILD_TIME", "0")
+			metadata.setdefault("COUNTER", "0")
+			metadata.setdefault("KEYWORDS", "~x86")
 
-			if metadata:
-				raise ValueError("metadata of installed '%s' contains unknown keys: %s" % (cpv, metadata.keys()))
+			unknown_keys = set(metadata).difference(
+				portage.dbapi.dbapi._known_keys)
+			unknown_keys.discard("BUILD_TIME")
+			unknown_keys.discard("COUNTER")
+			unknown_keys.discard("repository")
+			unknown_keys.discard("USE")
+			if unknown_keys:
+				raise ValueError("metadata of installed '%s' contains unknown keys: %s" %
+					(cpv, sorted(unknown_keys)))
 
-			def write_key(key, value):
-				f = open(os.path.join(vdb_pkg_dir, key), "w")
-				f.write(str(value) + "\n")
-				f.close()
-			
-			write_key("EAPI", eapi)
-			write_key("BUILD_TIME", build_time)
-			write_key("COUNTER", "0")
-			write_key("LICENSE", lic)
-			write_key("PROPERTIES", properties)
-			write_key("SLOT", slot)
-			write_key("LICENSE", lic)
-			write_key("PROPERTIES", properties)
-			write_key("repository", repo)
-			write_key("KEYWORDS", keywords)
-			write_key("IUSE", iuse)
-			write_key("USE", use)
-			if provide is not None:
-				write_key("PROVIDE", provide)
-			write_key("DEPEND", depend)
-			if rdepend is not None:
-				write_key("RDEPEND", rdepend)
-			if pdepend is not None:
-				write_key("PDEPEND", pdepend)
-			if required_use is not None:
-				write_key("REQUIRED_USE", required_use)
+			metadata["repository"] = repo
+			for k, v in metadata.items():
+				with open(os.path.join(vdb_pkg_dir, k), "w") as f:
+					f.write("%s\n" % v)
 
 	def _create_profile(self, ebuilds, installed, profile, repo_configs, user_config, sets):
 
@@ -344,10 +302,11 @@ class ResolverPlayground(object):
 				sub_profile_dir = os.path.join(profile_dir, "default", "linux", "x86", "test_profile")
 				os.makedirs(sub_profile_dir)
 
-				eapi_file = os.path.join(sub_profile_dir, "eapi")
-				f = open(eapi_file, "w")
-				f.write("0\n")
-				f.close()
+				if not (profile and "eapi" in profile):
+					eapi_file = os.path.join(sub_profile_dir, "eapi")
+					f = open(eapi_file, "w")
+					f.write("0\n")
+					f.close()
 
 				make_defaults_file = os.path.join(sub_profile_dir, "make.defaults")
 				f = open(make_defaults_file, "w")
@@ -409,7 +368,51 @@ class ResolverPlayground(object):
 			f.write("\n")
 		f.close()
 
-		for config_file, lines in user_config.items():
+		portdir_overlay = []
+		for repo_name in sorted(self.repo_dirs):
+			path = self.repo_dirs[repo_name]
+			if path != self.portdir:
+				portdir_overlay.append(path)
+
+		make_conf = {
+			"ACCEPT_KEYWORDS": "x86",
+			"CLEAN_DELAY": "0",
+			"DISTDIR" : self.distdir,
+			"EMERGE_WARNING_DELAY": "0",
+			"PKGDIR": self.pkgdir,
+			"PORTDIR": self.portdir,
+			"PORTAGE_INST_GID": str(portage.data.portage_gid),
+			"PORTAGE_INST_UID": str(portage.data.portage_uid),
+			"PORTDIR_OVERLAY": " ".join("'%s'" % x for x in portdir_overlay),
+			"PORTAGE_TMPDIR": os.path.join(self.eroot, 'var/tmp'),
+		}
+
+		if os.environ.get("NOCOLOR"):
+			make_conf["NOCOLOR"] = os.environ["NOCOLOR"]
+
+		# Pass along PORTAGE_USERNAME and PORTAGE_GRPNAME since they
+		# need to be inherited by ebuild subprocesses.
+		if 'PORTAGE_USERNAME' in os.environ:
+			make_conf['PORTAGE_USERNAME'] = os.environ['PORTAGE_USERNAME']
+		if 'PORTAGE_GRPNAME' in os.environ:
+			make_conf['PORTAGE_GRPNAME'] = os.environ['PORTAGE_GRPNAME']
+
+		make_conf_lines = []
+		for k_v in make_conf.items():
+			make_conf_lines.append('%s="%s"' % k_v)
+
+		if "make.conf" in user_config:
+			make_conf_lines.extend(user_config["make.conf"])
+
+		if not portage.process.sandbox_capable or \
+			os.environ.get("SANDBOX_ON") == "1":
+			# avoid problems from nested sandbox instances
+			make_conf_lines.append('FEATURES="${FEATURES} -sandbox"')
+
+		configs = user_config.copy()
+		configs["make.conf"] = make_conf_lines
+
+		for config_file, lines in configs.items():
 			if config_file not in self.config_files:
 				raise ValueError("Unknown config file: '%s'" % config_file)
 
@@ -452,23 +455,6 @@ class ResolverPlayground(object):
 				f.write("%s\n" % line)
 			f.close()
 
-		user_config_dir = os.path.join(self.eroot, "etc", "portage")
-
-		try:
-			os.makedirs(user_config_dir)
-		except os.error:
-			pass
-
-		for config_file, lines in user_config.items():
-			if config_file not in self.config_files:
-				raise ValueError("Unknown config file: '%s'" % config_file)
-
-			file_name = os.path.join(user_config_dir, config_file)
-			f = open(file_name, "w")
-			for line in lines:
-				f.write("%s\n" % line)
-			f.close()
-
 	def _create_world(self, world, world_sets):
 		#Create /var/lib/portage/world
 		var_lib_portage = os.path.join(self.eroot, "var", "lib", "portage")
@@ -488,43 +474,21 @@ class ResolverPlayground(object):
 		f.close()
 
 	def _load_config(self):
-		portdir_overlay = []
-		for repo_name in sorted(self.repo_dirs):
-			path = self.repo_dirs[repo_name]
-			if path != self.portdir:
-				portdir_overlay.append(path)
 
-		env = {
-			"ACCEPT_KEYWORDS": "x86",
-			"DISTDIR" : self.distdir,
-			"PKGDIR": self.pkgdir,
-			"PORTDIR": self.portdir,
-			"PORTDIR_OVERLAY": " ".join(portdir_overlay),
-			'PORTAGE_TMPDIR'       : os.path.join(self.eroot, 'var/tmp'),
-		}
+		create_trees_kwargs = {}
+		if self.target_root != os.sep:
+			create_trees_kwargs["target_root"] = self.target_root
 
-		if os.environ.get("NOCOLOR"):
-			env["NOCOLOR"] = os.environ["NOCOLOR"]
+		trees = portage.create_trees(env={}, eprefix=self.eprefix,
+			**create_trees_kwargs)
 
-		if os.environ.get("SANDBOX_ON") == "1":
-			# avoid problems from nested sandbox instances
-			env["FEATURES"] = "-sandbox"
-
-		# Pass along PORTAGE_USERNAME and PORTAGE_GRPNAME since they
-		# need to be inherited by ebuild subprocesses.
-		if 'PORTAGE_USERNAME' in os.environ:
-			env['PORTAGE_USERNAME'] = os.environ['PORTAGE_USERNAME']
-		if 'PORTAGE_GRPNAME' in os.environ:
-			env['PORTAGE_GRPNAME'] = os.environ['PORTAGE_GRPNAME']
-
-		trees = portage.create_trees(env=env, eprefix=self.eprefix)
 		for root, root_trees in trees.items():
 			settings = root_trees["vartree"].settings
 			settings._init_dirs()
 			setconfig = load_default_config(settings, root_trees)
 			root_trees["root_config"] = RootConfig(settings, root_trees, setconfig)
-		
-		return settings, trees
+
+		return trees[trees._target_eroot]["vartree"].settings, trees
 
 	def run(self, atoms, options={}, action=None):
 		options = options.copy()
@@ -577,9 +541,10 @@ class ResolverPlayground(object):
 				return
 
 	def cleanup(self):
-		portdb = self.trees[self.eroot]["porttree"].dbapi
-		portdb.close_caches()
-		portage.dbapi.porttree.portdbapi.portdbapi_instances.remove(portdb)
+		for eroot in self.trees:
+			portdb = self.trees[eroot]["porttree"].dbapi
+			portdb.close_caches()
+			portage.dbapi.porttree.portdbapi.portdbapi_instances.remove(portdb)
 		if self.debug:
 			print("\nEROOT=%s" % self.eroot)
 		else:
@@ -742,6 +707,7 @@ class ResolverPlaygroundResult(object):
 
 		if self.depgraph._dynamic_config._serialized_tasks_cache is not None:
 			self.mergelist = []
+			host_root = self.depgraph._frozen_config._running_root.root
 			for x in self.depgraph._dynamic_config._serialized_tasks_cache:
 				if isinstance(x, Blocker):
 					self.mergelist.append(x.atom)
@@ -756,6 +722,8 @@ class ResolverPlaygroundResult(object):
 						else:
 							desc = x.operation
 						mergelist_str = "[%s]%s" % (desc, mergelist_str)
+					if x.root != host_root:
+						mergelist_str += "{targetroot}"
 					self.mergelist.append(mergelist_str)
 
 		if self.depgraph._dynamic_config._needed_use_config_changes:

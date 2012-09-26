@@ -32,7 +32,7 @@ from portage import eapi_is_supported, _unicode_decode
 from portage.cache.cache_errors import CacheError
 from portage.const import EPREFIX
 from portage.const import GLOBAL_CONFIG_PATH
-from portage.const import _ENABLE_DYN_LINK_MAP
+from portage.const import _DEPCLEAN_LIB_CHECK_DEFAULT
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.dep import Atom
@@ -545,7 +545,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	# specific packages.
 
 	msg = []
-	if not _ENABLE_DYN_LINK_MAP:
+	if "preserve-libs" not in settings.features and \
+		not myopts.get("--depclean-lib-check", _DEPCLEAN_LIB_CHECK_DEFAULT) != "n":
 		msg.append("Depclean may break link level dependencies. Thus, it is\n")
 		msg.append("recommended to use a tool such as " + good("`revdep-rebuild`") + " (from\n")
 		msg.append("app-portage/gentoolkit) in order to detect such breakage.\n")
@@ -942,7 +943,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 	if cleanlist and \
 		real_vardb._linkmap is not None and \
-		myopts.get("--depclean-lib-check") != "n" and \
+		myopts.get("--depclean-lib-check", _DEPCLEAN_LIB_CHECK_DEFAULT) != "n" and \
 		"preserve-libs" not in settings.features:
 
 		# Check if any of these packages are the sole providers of libraries
@@ -1147,19 +1148,19 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		graph = digraph()
 		del cleanlist[:]
 
-		dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 		runtime = UnmergeDepPriority(runtime=True)
 		runtime_post = UnmergeDepPriority(runtime_post=True)
 		buildtime = UnmergeDepPriority(buildtime=True)
 		priority_map = {
 			"RDEPEND": runtime,
 			"PDEPEND": runtime_post,
+			"HDEPEND": buildtime,
 			"DEPEND": buildtime,
 		}
 
 		for node in clean_set:
 			graph.add(node, None)
-			for dep_type in dep_keys:
+			for dep_type in Package._dep_keys:
 				depstr = node.metadata[dep_type]
 				if not depstr:
 					continue

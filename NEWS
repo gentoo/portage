@@ -2,13 +2,20 @@ News (mainly features/major bug fixes)
 
 portage-2.2
 -------------
+* FEATURES=preserve-libs is enabled by default.
+* Add extended set configuration via /etc/portage/sets.conf. See
+  /usr/share/portage/config/sets/portage.conf for examples.
 
-* Add link level dependency awareness to emerge --depclean and --prune actions
-  in order to protect against uninstallation of required libraries.
-* Add support for generic package sets (also see RELEASE-NOTES)
+portage-2.1.11.20
+-------------
+* Add support for EAPI 5. Refer to the PMS EAPI Cheat Sheet, portage's html
+  docs installed with USE=doc, or `man 5 ebuild` for more info about EAPI 5.
 * Add support for FEATURES=preserve-libs which preserves libraries when the
   sonames change during upgrade or downgrade, and the @preserved-rebuild
   package set which rebuilds consumers of preserved libraries.
+* Add link level dependency awareness to emerge --depclean and --prune actions
+  in order to protect against uninstallation of required libraries. Refer to
+  the --depclean-lib-check option in the emerge(1) man page.
 
 portage-2.1.11
 -------------

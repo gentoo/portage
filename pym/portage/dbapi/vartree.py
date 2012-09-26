@@ -43,7 +43,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 
 from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, \
 	PORTAGE_PACKAGE_ATOM, PRIVATE_PATH, VDB_PATH, EPREFIX, EPREFIX_LSTRIP, BASH_BINARY
-from portage.const import _ENABLE_DYN_LINK_MAP, _ENABLE_PRESERVE_LIBS
 from portage.dbapi import dbapi
 from portage.exception import CommandNotFound, \
 	InvalidData, InvalidLocation, InvalidPackageName, \
@@ -166,7 +165,7 @@ class vardbapi(dbapi):
 		self.vartree = vartree
 		self._aux_cache_keys = set(
 			["BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "DESCRIPTION",
-			"EAPI", "HOMEPAGE", "IUSE", "KEYWORDS",
+			"EAPI", "HDEPEND", "HOMEPAGE", "IUSE", "KEYWORDS",
 			"LICENSE", "PDEPEND", "PROPERTIES", "PROVIDE", "RDEPEND",
 			"repository", "RESTRICT" , "SLOT", "USE", "DEFINED_PHASES",
 			])
@@ -176,25 +175,20 @@ class vardbapi(dbapi):
 		self._counter_path = os.path.join(self._eroot,
 			CACHE_PATH, "counter")
 
-		self._plib_registry = None
-		if _ENABLE_PRESERVE_LIBS:
-			self._plib_registry = PreservedLibsRegistry(settings["ROOT"],
-				os.path.join(self._eroot, PRIVATE_PATH,
-				"preserved_libs_registry"))
-
-		self._linkmap = None
-		if _ENABLE_DYN_LINK_MAP:
-			chost = self.settings.get('CHOST')
-			if not chost:
-				chost = 'lunix?' # this happens when profiles are not available
-			if chost.find('darwin') >= 0:
-				self._linkmap = LinkageMapMachO(self)
-			elif chost.find('interix') >= 0 or chost.find('winnt') >= 0:
-				self._linkmap = LinkageMapPeCoff(self)
-			elif chost.find('aix') >= 0:
-				self._linkmap = LinkageMapXCoff(self)
-			else:
-				self._linkmap = LinkageMap(self)
+		self._plib_registry = PreservedLibsRegistry(settings["ROOT"],
+			os.path.join(self._eroot, PRIVATE_PATH, "preserved_libs_registry"))
+		self._linkmap = LinkageMap(self)
+		chost = self.settings.get('CHOST')
+		if not chost:
+			chost = 'lunix?' # this happens when profiles are not available
+		if chost.find('darwin') >= 0:
+			self._linkmap = LinkageMapMachO(self)
+		elif chost.find('interix') >= 0 or chost.find('winnt') >= 0:
+			self._linkmap = LinkageMapPeCoff(self)
+		elif chost.find('aix') >= 0:
+			self._linkmap = LinkageMapXCoff(self)
+		else:
+			self._linkmap = LinkageMap(self)
 		self._owners = self._owners_db(self)
 
 		self._cached_counter = None

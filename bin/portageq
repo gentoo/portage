@@ -777,14 +777,9 @@ list_preserved_libs.uses_eroot = True
 # DO NOT CHANGE CODE BEYOND THIS POINT - IT'S NOT NEEDED!
 #
 
-if not portage.const._ENABLE_PRESERVE_LIBS:
-	del list_preserved_libs
-
-non_commands = frozenset(['elog', 'eval_atom_use',
-	'exithandler', 'expand_new_virt', 'main',
-	'usage', 'writemsg', 'writemsg_stdout'])
+non_commands = frozenset(['elog', 'eval_atom_use', 'exithandler', 'main', 'usage'])
 commands = sorted(k for k, v in globals().items() \
-	if k not in non_commands and isinstance(v, types.FunctionType))
+	if k not in non_commands and isinstance(v, types.FunctionType) and v.__module__ == "__main__")
 
 def usage(argv):
 	print(">>> Portage information query tool")

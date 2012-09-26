@@ -34,8 +34,8 @@ EPREFIX_LSTRIP          = EPREFIX.lstrip(os.path.sep)
 # The variables in this file are grouped by config_root, target_root.
 
 # variables used with config_root (these need to be relative)
-MAKE_CONF_FILE           = "etc/make.conf"
 USER_CONFIG_PATH         = "etc/portage"
+MAKE_CONF_FILE           = USER_CONFIG_PATH + "/make.conf"
 MODULES_FILE_PATH        = USER_CONFIG_PATH + "/modules"
 CUSTOM_PROFILE_PATH      = USER_CONFIG_PATH + "/profile"
 USER_VIRTUALS_FILE       = USER_CONFIG_PATH + "/virtuals"
@@ -135,7 +135,7 @@ SUPPORTED_FEATURES       = frozenset([
                            "metadata-transfer", "mirror", "multilib-strict", "news",
                            "noauto", "noclean", "nodoc", "noinfo", "noman",
                            "nostrip", "notitles", "parallel-fetch", "parallel-install",
-                           "prelink-checksums",
+                           "prelink-checksums", "preserve-libs",
                            "protect-owned", "python-trace", "sandbox",
                            "selinux", "sesandbox", "sfperms",
                            "sign", "skiprocheck", "split-elog", "split-log", "splitdebug",
@@ -145,7 +145,7 @@ SUPPORTED_FEATURES       = frozenset([
                            "unmerge-logs", "unmerge-orphans", "userfetch", "userpriv",
                            "usersandbox", "usersync", "webrsync-gpg", "xattr"])
 
-EAPI                     = 4
+EAPI                     = 5
 
 HASHING_BLOCKSIZE        = 32768
 MANIFEST1_HASH_FUNCTIONS = ("MD5", "SHA256", "RMD160")
@@ -204,17 +204,7 @@ if "PORTAGE_OVERRIDE_EPREFIX" in os.environ:
 
 # Private constants for use in conditional code in order to minimize the diff
 # between branches.
-_ENABLE_DYN_LINK_MAP    = True
-_ENABLE_PRESERVE_LIBS   = True
+_DEPCLEAN_LIB_CHECK_DEFAULT = True
 _ENABLE_REPO_NAME_WARN  = True
 _ENABLE_SET_CONFIG      = True
 _ENABLE_INHERIT_CHECK   = True
-
-
-# The definitions above will differ between branches, so it's useful to have
-# common lines of diff context here in order to avoid merge conflicts.
-
-if _ENABLE_PRESERVE_LIBS:
-	SUPPORTED_FEATURES = set(SUPPORTED_FEATURES)
-	SUPPORTED_FEATURES.add("preserve-libs")
-	SUPPORTED_FEATURES = frozenset(SUPPORTED_FEATURES)

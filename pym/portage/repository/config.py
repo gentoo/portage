@@ -18,6 +18,7 @@ except ImportError:
 from portage import eclass_cache, os
 from portage.const import (MANIFEST2_HASH_FUNCTIONS, MANIFEST2_REQUIRED_HASH,
 	REPO_NAME_LOC, USER_CONFIG_PATH)
+from portage.eapi import eapi_allows_directories_on_profile_level_and_repository_level
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.util import (normalize_path, read_corresponding_eapi_file, shlex_split,
 	stack_lists, writemsg, writemsg_level)
@@ -26,6 +27,9 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 from portage import _encodings
 from portage import manifest
+
+# Characters prohibited by repoman's file.name check.
+_invalid_path_char_re = re.compile(r'[^a-zA-Z0-9._\-+:/]')
 
 _valid_profile_formats = frozenset(
 	['pms', 'portage-1', 'portage-2'])
@@ -48,12 +52,27 @@ def _gen_valid_repo(name):
 		name = None
 	return name
 
+def _find_invalid_path_char(path, pos=0, endpos=None):
+	"""
+	Returns the position of the first invalid character found in basename,
+	or -1 if no invalid characters are found.
+	"""
+	if endpos is None:
+		endpos = len(path)
+
+	m = _invalid_path_char_re.search(path, pos=pos, endpos=endpos)
+	if m is not None:
+		return m.start()
+
+	return -1
+
 class RepoConfig(object):
 	"""Stores config of one repository"""
 
 	__slots__ = ('aliases', 'allow_missing_manifest', 'allow_provide_virtual',
 		'cache_formats', 'create_manifest', 'disable_manifest', 'eapi',
-		'eclass_db', 'eclass_locations', 'eclass_overrides', 'format', 'location',
+		'eclass_db', 'eclass_locations', 'eclass_overrides',
+		'find_invalid_path_char', 'format', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'portage1_profiles', 'portage1_profiles_compat', 'priority',
 		'profile_formats', 'sign_commit', 'sign_manifest', 'sync',
@@ -137,6 +156,7 @@ class RepoConfig(object):
 		self.cache_formats = None
 		self.portage1_profiles = True
 		self.portage1_profiles_compat = False
+		self.find_invalid_path_char = _find_invalid_path_char
 
 		# Parse layout.conf.
 		if self.location:
@@ -163,9 +183,10 @@ class RepoConfig(object):
 				'sign-commit', 'sign-manifest', 'thin-manifest', 'update-changelog'):
 				setattr(self, value.lower().replace("-", "_"), layout_data[value])
 
-			self.portage1_profiles = any(x in _portage1_profiles_allow_directories
-				for x in layout_data['profile-formats'])
-			self.portage1_profiles_compat = layout_data['profile-formats'] == ('portage-1-compat',)
+			self.portage1_profiles = eapi_allows_directories_on_profile_level_and_repository_level(eapi) or \
+				any(x in _portage1_profiles_allow_directories for x in layout_data['profile-formats'])
+			self.portage1_profiles_compat = not eapi_allows_directories_on_profile_level_and_repository_level(eapi) and \
+				layout_data['profile-formats'] == ('portage-1-compat',)
 
 	def iter_pregenerated_caches(self, auxdbkeys, readonly=True, force=False):
 		"""
@@ -209,6 +230,7 @@ class RepoConfig(object):
 		kwds['hashes'] = self.manifest_hashes
 		if self.disable_manifest:
 			kwds['from_scratch'] = True
+		kwds['find_invalid_path_char'] = self.find_invalid_path_char
 		return manifest.Manifest(*args, **kwds)
 
 	def update(self, new_repo):
@@ -760,7 +782,7 @@ def parse_layout_conf(repo_location, repo_name=None):
 
 	raw_formats = layout_data.get('profile-formats')
 	if raw_formats is None:
-		if eapi in ('4-python',):
+		if eapi_allows_directories_on_profile_level_and_repository_level(eapi):
 			raw_formats = ('portage-1',)
 		else:
 			raw_formats = ('portage-1-compat',)

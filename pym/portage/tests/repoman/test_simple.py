@@ -78,7 +78,22 @@ class SimpleRepomanTestCase(TestCase):
 			("x86", "default/linux/x86/test_profile", "stable"),
 		)
 
+		profile = {
+			"eapi": ("5",),
+			"package.use.stable.mask": ("dev-libs/A flag",)
+		}
+
 		ebuilds = {
+			"dev-libs/A-0": {
+				"COPYRIGHT_HEADER" : copyright_header,
+				"DESCRIPTION" : "Desc goes here",
+				"EAPI" : "5",
+				"HOMEPAGE" : "http://example.com",
+				"IUSE" : "flag",
+				"KEYWORDS": "x86",
+				"LICENSE": "GPL-2",
+				"RDEPEND": "flag? ( dev-libs/B[flag] )",
+			},
 			"dev-libs/A-1": {
 				"COPYRIGHT_HEADER" : copyright_header,
 				"DESCRIPTION" : "Desc goes here",
@@ -97,6 +112,17 @@ class SimpleRepomanTestCase(TestCase):
 				"IUSE" : "flag",
 				"KEYWORDS": "~x86",
 				"LICENSE": "GPL-2",
+			},
+			"dev-libs/C-0": {
+				"COPYRIGHT_HEADER" : copyright_header,
+				"DESCRIPTION" : "Desc goes here",
+				"EAPI" : "4",
+				"HOMEPAGE" : "http://example.com",
+				"IUSE" : "flag",
+				# must be unstable, since dev-libs/A[flag] is stable masked
+				"KEYWORDS": "~x86",
+				"LICENSE": "GPL-2",
+				"RDEPEND": "flag? ( dev-libs/A[flag] )",
 			},
 		}
 		licenses = ["GPL-2"]
@@ -117,6 +143,13 @@ class SimpleRepomanTestCase(TestCase):
 					"flags" : "<flag name='flag'>Description of how USE='flag' affects this package</flag>",
 				},
 			),
+			(
+				"dev-libs/C",
+				{
+					"herd" : "no-herd",
+					"flags" : "<flag name='flag'>Description of how USE='flag' affects this package</flag>",
+				},
+			),
 		)
 
 		use_desc = (
@@ -124,7 +157,7 @@ class SimpleRepomanTestCase(TestCase):
 		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds,
-			repo_configs=repo_configs, debug=debug)
+			profile=profile, repo_configs=repo_configs, debug=debug)
 		settings = playground.settings
 		eprefix = settings["EPREFIX"]
 		eroot = settings["EROOT"]

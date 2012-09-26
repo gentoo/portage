@@ -18,7 +18,7 @@ if [[ ${helper} == dodoc ]] ; then
 fi
 
 if [ $# -lt 1 ] ; then
-	helpers_die "${helper}: at least one argument needed"
+	__helpers_die "${helper}: at least one argument needed"
 	exit 1
 fi
 
@@ -33,11 +33,11 @@ fi
 	case "$EAPI" in 0|1|2) export ED="${D}" ;; esac
 
 if [[ ${INSDESTTREE#${ED}} != "${INSDESTTREE}" ]]; then
-	vecho "-------------------------------------------------------" 1>&2
-	vecho "You should not use \${D} or \${ED} with helpers." 1>&2
-	vecho "  --> ${INSDESTTREE}" 1>&2
-	vecho "-------------------------------------------------------" 1>&2
-	helpers_die "${helper} used with \${D} or \${ED}"
+	__vecho "-------------------------------------------------------" 1>&2
+	__vecho "You should not use \${D} or \${ED} with helpers." 1>&2
+	__vecho "  --> ${INSDESTTREE}" 1>&2
+	__vecho "-------------------------------------------------------" 1>&2
+	__helpers_die "${helper} used with \${D} or \${ED}"
 	exit 1
 fi
 # PREFIX LOCAL: check for usage with EPREFIX
@@ -166,4 +166,4 @@ for x in "$@" ; do
 	fi
 done
 rm -rf "$TMP"
-[[ $failed -ne 0 || $success -eq 0 ]] && { helpers_die "${helper} failed"; exit 1; } || exit 0
+[[ $failed -ne 0 || $success -eq 0 ]] && { __helpers_die "${helper} failed"; exit 1; } || exit 0

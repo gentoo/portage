@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Jun 2012" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "Sep 2012" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -36,10 +36,14 @@ package.unmask
 package.use
 package.use.force
 package.use.mask
+package.use.stable.force
+package.use.stable.mask
 parent
 profile.bashrc
 use.force
 use.mask
+use.stable.mask
+use.stable.force
 virtuals
 .fi
 .TP
@@ -90,6 +94,8 @@ package.unmask
 package.use
 package.use.force
 package.use.mask
+package.use.stable.force
+package.use.stable.mask
 profiles.desc
 repo_name
 thirdpartymirrors
@@ -97,6 +103,8 @@ use.desc
 use.force
 use.local.desc
 use.mask
+use.stable.mask
+use.stable.force
 .fi
 .TP
 .BR /usr/share/portage/config/
@@ -246,7 +254,12 @@ default-linux/x86/2005.0
 .BR eapi
 The first line of this file specifies the \fBEAPI\fR to which files in the
 same directory conform. See \fBebuild\fR(5) for information about \fBEAPI\fR
-and related features.
+and related features. Beginning with \fBEAPI 5\fR, new USE
+configuration files are supported: use.stable.mask,
+use.stable.force, package.use.stable.mask and
+package.use.stable.force. These files behave similarly to
+previously supported USE configuration files, except that they
+only influence packages that are merged due to a stable keyword.
 .TP
 .BR make.defaults
 The profile default settings for Portage.  The general format is described 
@@ -259,8 +272,52 @@ few specific variables too:
 .BR ARCH
 Architecture type (x86/ppc/hppa/etc...).
 .TP
+\fBIUSE_IMPLICIT\fR = \fI[space delimited list of USE flags]\fR
+Defines implicit \fBIUSE\fR for ebuilds using \fBEAPI 5\fR or
+later. Flags that come from \fBUSE_EXPAND\fR or
+\fBUSE_EXPAND_UNPREFIXED\fR variables do not belong in
+\fBIUSE_IMPLICIT\fR, since \fBUSE_EXPAND_VALUES_*\fR variables
+are used to define implicit \fBIUSE\fR for those flags. See
+\fBebuild\fR(5) for more information about \fBIUSE\fR.
+.TP
 .B USERLAND = \fI"GNU"\fR
 Support BSD/cygwin/etc...
+.TP
+\fBUSE_EXPAND\fR = \fI[space delimited list of variable names]\fR
+Any variable listed here will be used to augment USE by inserting a new flag
+for every value in that variable, so USE_EXPAND="FOO" and FOO="bar bla" results
+in USE="foo_bar foo_bla".
+.TP
+\fBUSE_EXPAND_HIDDEN\fR = \fI[space delimited list of variable names]\fR
+Names of \fBUSE_EXPAND\fR variables that should not be shown in the verbose merge
+list output of the \fBemerge\fR(1) command.
+.TP
+\fBUSE_EXPAND_IMPLICIT\fR = \fI[space delimited list of variable names]\fR
+Defines \fBUSE_EXPAND\fR and \fBUSE_EXPAND_UNPREFIXED\fR
+variables for which the corresponding USE flags may have
+implicit \fBIUSE\fR for ebuilds using \fBEAPI 5\fR or later.
+.TP
+\fBUSE_EXPAND_UNPREFIXED\fR = \fI[space delimited list of variable names]\fR
+Any variable listed here will be used to augment USE by
+inserting a new flag for every value in that variable, so
+USE_EXPAND_UNPREFIXED="FOO" and FOO="bar bla" results in
+USE="bar bla".
+.TP
+\fBUSE_EXPAND_VALUES_ARCH\fR = \fI[space delimited list of ARCH values]\fR
+Defines ARCH values used to generate implicit
+\fBIUSE\fR for ebuilds using \fBEAPI 5\fR or later.
+.TP
+\fBUSE_EXPAND_VALUES_ELIBC\fR = \fI[space delimited list of ELIBC values]\fR
+Defines ELIBC values used to generate implicit
+\fBIUSE\fR for ebuilds using \fBEAPI 5\fR or later.
+.TP
+\fBUSE_EXPAND_VALUES_KERNEL\fR = \fI[space delimited list of KERNEL values]\fR
+Defines KERNEL values used to generate implicit
+\fBIUSE\fR for ebuilds using \fBEAPI 5\fR or later.
+.TP
+\fBUSE_EXPAND_VALUES_USERLAND\fR = \fI[space delimited list of USERLAND values]\fR
+Defines USERLAND values used to generate implicit
+\fBIUSE\fR for ebuilds using \fBEAPI 5\fR or later.
 .TP
 .B ELIBC = \fI"glibc"\fR
 Support uClibc/BSD libc/etc...
@@ -273,7 +330,7 @@ or the env.
 Distinguish machines classes that have the same \fBARCH\fR.  All sparc 
 machines have ARCH=sparc but set this to either 'sparc32' or 'sparc64'.
 .TP
-.BR STAGE1_USE
+.BR BOOTSTRAP_USE
 Special USE flags which may be needed when bootstrapping from stage1 to stage2.
 .RE
 .PD 1
@@ -349,7 +406,7 @@ x11-libs/qt-3.3.0
 x11-base/xorg-x11-6.8
 .fi
 .TP
-.BR package.use.force
+\fBpackage.use.force\fR and \fBpackage.use.stable.force\fR
 Per\-package USE flag forcing.
 
 .I Note:
@@ -371,7 +428,7 @@ a '\-'.
 x11\-libs/qt \-mysql
 .fi
 .TP
-.BR package.use.mask
+\fBpackage.use.mask\fR and \fBpackage.use.stable.mask\fR
 Per\-package USE flag masks.
 
 .I Note:
@@ -404,7 +461,7 @@ If needed, this file can be used to set up a special environment for ebuilds,
 different from the standard root environment.  The syntax is the same as for
 any other bash script.
 .TP
-.BR use.force
+\fBuse.force\fR and \fBuse.stable.force\fR
 Some USE flags don't make sense to disable under certain conditions.  Here we
 list forced flags.
 
@@ -419,7 +476,7 @@ a '\-'.
 \- one USE flag per line
 .fi
 .TP
-.BR use.mask
+\fBuse.mask\fR and \fBuse.stable.mask\fR
 Some USE flags don't make sense on some archs (for example altivec on 
 non\-ppc or mmx on non\-x86), or haven't yet been tested.  Here we list 
 the masked ones.
@@ -742,19 +799,6 @@ such as \fBFEATURES\fR and \fBINSTALL_MASK\fR will not produce the intended
 results if they are set in bashrc, and therefore
 \fB/etc/portage/package.env\fR should be used instead.
 
-set_unless_changed and unset_unless_changed functions can be used to set or
-unset given variables only if these variable have not been set to values
-different than values set in make.conf. This functionality can be useful for
-temporary overriding of these variables during emerge invocation. Variables
-set without using set_unless_changed will unconditionally override variables
-set during emerge invocation.
-
-.I Syntax:
-.nf
-set_unless_changed VARIABLE=VALUE
-unset_unless_changed VALUE
-.fi
-
 Portage will source all of these bashrc files after \fB/etc/portage/bashrc\fR
 in the following order:
 .nr step 1 1
@@ -772,8 +816,10 @@ in the following order:
 .RS
 For each file in this directory, a package set is created with its name
 corresponding to the name of the file. Each file should contain a list
-of package atoms, one per line. When referencing package sets in
-\fBemerge\fR(1) arguments, the set name is prefixed with \fB@\fR.
+of package atoms and nested package sets, one per line. When a package
+set is referenced as an \fBemerge\fR(1) argument or when it is
+referenced as a nested package set (inside of another package set), the
+set name is prefixed with \fB@\fR.
 
 Also see \fB/var/lib/portage/world_sets\fR and the \fBemerge\fR(1)
 \fB\-\-list\-sets\fR option.
@@ -824,8 +870,9 @@ update\-changelog = true
 # which may be generated by egencache(1)
 cache\-formats = md5-dict pms
 # indicate that this repo contains profiles that may use directories for
-# package.mask, package.provided, package.use, package.use.mask,
-# package.use.force, use.mask and use.force.
+# package.mask, package.provided, package.use, package.use.force,
+# package.use.mask, package.use.stable.force, package.use.stable.mask,
+# use.force, use.mask, use.stable.force, and use.stable.mask.
 # profile\-formats = portage-1
 # indicate that paths such as 'gentoo:targets/desktop' or ':targets/desktop' in
 # profile parent files can be used to express paths relative to the root

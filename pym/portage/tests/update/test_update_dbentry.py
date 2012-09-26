@@ -6,14 +6,62 @@ import textwrap
 
 import portage
 from portage import os
+from portage.dep import Atom
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
+from portage.update import update_dbentry
 from portage.util import ensure_dirs
 from portage._global_updates import _do_global_updates
 
 class UpdateDbentryTestCase(TestCase):
 
 	def testUpdateDbentryTestCase(self):
+		cases = (
+
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "1",
+				"  dev-libs/A:0  ", "  dev-libs/B:0  "),
+
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "1",
+				"  >=dev-libs/A-1:0  ", "  >=dev-libs/B-1:0  "),
+
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "2",
+				"  dev-libs/A[foo]  ", "  dev-libs/B[foo]  "),
+
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "5",
+				"  dev-libs/A:0/1=[foo]  ", "  dev-libs/B:0/1=[foo]  "),
+
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "5",
+				"  dev-libs/A:0/1[foo]  ", "  dev-libs/B:0/1[foo]  "),
+
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "5",
+				"  dev-libs/A:0/0[foo]  ", "  dev-libs/B:0/0[foo]  "),
+
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")), "5",
+				"  dev-libs/A:0=[foo]  ", "  dev-libs/B:0=[foo]  "),
+
+			(("slotmove", Atom("dev-libs/A"), "0", "1"), "1",
+				"  dev-libs/A:0  ", "  dev-libs/A:1  "),
+
+			(("slotmove", Atom("dev-libs/A"), "0", "1"), "1",
+				"  >=dev-libs/A-1:0  ", "  >=dev-libs/A-1:1  "),
+
+			(("slotmove", Atom("dev-libs/A"), "0", "1"), "5",
+				"  dev-libs/A:0/1=[foo]  ", "  dev-libs/A:1/1=[foo]  "),
+
+			(("slotmove", Atom("dev-libs/A"), "0", "1"), "5",
+				"  dev-libs/A:0/1[foo]  ", "  dev-libs/A:1/1[foo]  "),
+
+			(("slotmove", Atom("dev-libs/A"), "0", "1"), "5",
+				"  dev-libs/A:0/0[foo]  ", "  dev-libs/A:1/1[foo]  "),
+
+			(("slotmove", Atom("dev-libs/A"), "0", "1"), "5",
+				"  dev-libs/A:0=[foo]  ", "  dev-libs/A:1=[foo]  "),
+		)
+		for update_cmd, eapi, input_str, output_str in cases:
+			result = update_dbentry(update_cmd, input_str, eapi=eapi)
+			self.assertEqual(result, output_str)
+
+	def testUpdateDbentryDbapiTestCase(self):
 
 		ebuilds = {
 
@@ -143,7 +191,7 @@ class UpdateDbentryTestCase(TestCase):
 			self.assertTrue(old_pattern.search(rdepend) is None)
 			self.assertTrue("dev-libs/M-moved" in rdepend)
 
-			# EAPI 4-python N -> N.moved
+			# EAPI 4-python/*-progress N -> N.moved
 			rdepend = vardb.aux_get("dev-libs/B-1", ["RDEPEND"])[0]
 			old_pattern = re.compile(r"\bdev-libs/N(\s|$)")
 			self.assertTrue(old_pattern.search(rdepend) is None)

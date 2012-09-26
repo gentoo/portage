@@ -3,13 +3,14 @@
 
 import errno
 import io
-import re
+import sys
 import warnings
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum:hashfunc_map,perform_multiple_checksums,' + \
 		'verify_all,_apply_hash_filter,_filter_unaccelarated_hashes',
+	'portage.repository.config:_find_invalid_path_char',
 	'portage.util:write_atomic',
 )
 
@@ -24,8 +25,10 @@ from portage.const import (MANIFEST1_HASH_FUNCTIONS, MANIFEST2_HASH_DEFAULTS,
 	MANIFEST2_HASH_FUNCTIONS, MANIFEST2_IDENTIFIERS, MANIFEST2_REQUIRED_HASH)
 from portage.localization import _
 
-# Characters prohibited by repoman's file.name check.
-_prohibited_filename_chars_re = re.compile(r'[^a-zA-Z0-9._\-+:]')
+if sys.hexversion >= 0x3000000:
+	_unicode = str
+else:
+	_unicode = unicode
 
 class FileNotInManifestException(PortageException):
 	pass
@@ -38,14 +41,10 @@ def manifest2AuxfileFilter(filename):
 	for x in mysplit:
 		if x[:1] == '.':
 			return False
-		if _prohibited_filename_chars_re.search(x) is not None:
-			return False
 	return not filename[:7] == 'digest-'
 
 def manifest2MiscfileFilter(filename):
 	filename = filename.strip(os.sep)
-	if _prohibited_filename_chars_re.search(filename) is not None:
-		return False
 	return not (filename in ["CVS", ".svn", "files", "Manifest"] or filename.endswith(".ebuild"))
 
 def guessManifestFileType(filename):
@@ -108,11 +107,20 @@ class Manifest2Entry(ManifestEntry):
 	def __ne__(self, other):
 		return not self.__eq__(other)
 
+	if sys.hexversion < 0x3000000:
+
+		__unicode__ = __str__
+
+		def __str__(self):
+			return _unicode_encode(self.__unicode__(),
+				encoding=_encodings['repo.content'], errors='strict')
+
 class Manifest(object):
 	parsers = (parseManifest2,)
 	def __init__(self, pkgdir, distdir, fetchlist_dict=None,
 		manifest1_compat=DeprecationWarning, from_scratch=False, thin=False,
-			allow_missing=False, allow_create=True, hashes=None):
+		allow_missing=False, allow_create=True, hashes=None,
+		find_invalid_path_char=None):
 		""" Create new Manifest instance for package in pkgdir.
 		    Do not parse Manifest file if from_scratch == True (only for internal use)
 			The fetchlist_dict parameter is required only for generation of
@@ -125,6 +133,9 @@ class Manifest(object):
 				"portage.manifest.Manifest constructor is deprecated.",
 				DeprecationWarning, stacklevel=2)
 
+		if find_invalid_path_char is None:
+			find_invalid_path_char = _find_invalid_path_char
+		self._find_invalid_path_char = find_invalid_path_char
 		self.pkgdir = _unicode_decode(pkgdir).rstrip(os.sep) + os.sep
 		self.fhashdict = {}
 		self.hashes = set()
@@ -289,7 +300,7 @@ class Manifest(object):
 					# thin manifests with no DIST entries, myentries is
 					# non-empty for all currently known use cases.
 					write_atomic(self.getFullname(), "".join("%s\n" %
-						str(myentry) for myentry in myentries))
+						_unicode(myentry) for myentry in myentries))
 				else:
 					# With thin manifest, there's no need to have
 					# a Manifest file if there are no DIST entries.
@@ -366,7 +377,8 @@ class Manifest(object):
 		self.__init__(self.pkgdir, self.distdir,
 			fetchlist_dict=self.fetchlist_dict, from_scratch=True,
 			thin=self.thin, allow_missing=self.allow_missing,
-			allow_create=self.allow_create, hashes=self.hashes)
+			allow_create=self.allow_create, hashes=self.hashes,
+			find_invalid_path_char=self._find_invalid_path_char)
 		pn = os.path.basename(self.pkgdir.rstrip(os.path.sep))
 		cat = self._pkgdir_category()
 
@@ -461,7 +473,8 @@ class Manifest(object):
 			if pf is not None:
 				mytype = "EBUILD"
 				cpvlist.append(pf)
-			elif manifest2MiscfileFilter(f):
+			elif self._find_invalid_path_char(f) == -1 and \
+				manifest2MiscfileFilter(f):
 				mytype = "MISC"
 			else:
 				continue
@@ -480,7 +493,8 @@ class Manifest(object):
 				full_path = os.path.join(parentdir, f)
 				recursive_files.append(full_path[cut_len:])
 		for f in recursive_files:
-			if not manifest2AuxfileFilter(f):
+			if self._find_invalid_path_char(f) != -1 or \
+				not manifest2AuxfileFilter(f):
 				continue
 			self.fhashdict["AUX"][f] = perform_multiple_checksums(
 				os.path.join(self.pkgdir, "files", f.lstrip(os.sep)), self.hashes)

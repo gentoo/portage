@@ -5,7 +5,7 @@
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/helper-functions.sh
 
 if [[ -z $1 ]] ; then
-	helpers_die "${0##*/}: at least one argument needed"
+	__helpers_die "${0##*/}: at least one argument needed"
 	exit 1
 fi
 
@@ -30,11 +30,11 @@ case $1 in
 			>> "$x"
 			((ret|=$?))
 		done
-		[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
+		[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
 		exit $ret
 		;;
 	--dequeue)
-		[[ -n $2 ]] && vecho "${0##*/}: --dequeue takes no additional arguments" 1>&2
+		[[ -n $2 ]] && __vecho "${0##*/}: --dequeue takes no additional arguments" 1>&2
 		find "${ED}" -name '*.ecompress.dir' -print0 \
 			| sed -e 's:\.ecompress\.dir::g' -e "s:${ED}:/:g" \
 			| ${XARGS} -0 ecompressdir
@@ -42,7 +42,7 @@ case $1 in
 		exit 0
 		;;
 	--*)
-		helpers_die "${0##*/}: unknown arguments '$*'"
+		__helpers_die "${0##*/}: unknown arguments '$*'"
 		exit 1
 		;;
 esac
@@ -133,13 +133,13 @@ decompressors=(
 	".lzma" "unxz -f"
 )
 
-multijob_init
+__multijob_init
 
 for dir in "$@" ; do
 	dir=${dir#/}
 	dir="${ED}${dir}"
 	if [[ ! -d ${dir} ]] ; then
-		vecho "${0##*/}: /${dir#${ED}} does not exist!"
+		__vecho "${0##*/}: /${dir#${ED}} does not exist!"
 		continue
 	fi
 	cd "${dir}"
@@ -161,14 +161,14 @@ for dir in "$@" ; do
 		# ends up launching less compressors overall, so the overhead
 		# of forking children ends up dominating.
 		(
-		multijob_child_init
+		__multijob_child_init
 		funk_up_dir "decompress" "${decompressors[i]}" "${decompressors[i+1]}"
 		) &
-		multijob_post_fork
+		__multijob_post_fork
 		: $(( ret |= $? ))
 	done
 
-	multijob_finish
+	__multijob_finish
 	: $(( ret |= $? ))
 
 	# forcibly break all hard links as some compressors whine about it
@@ -177,7 +177,7 @@ for dir in "$@" ; do
 
 	# now lets do our work
 	if [[ -n ${suffix} ]] ; then
-		vecho "${0##*/}: $(ecompress --bin) /${actual_dir#${ED}}"
+		__vecho "${0##*/}: $(ecompress --bin) /${actual_dir#${ED}}"
 		funk_up_dir "compress" "${suffix}" "ecompress"
 		: $(( ret |= $? ))
 	fi
@@ -186,5 +186,5 @@ for dir in "$@" ; do
 	restore_skip_dirs
 done
 
-[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
+[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
 exit ${ret}

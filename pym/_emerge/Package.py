@@ -12,6 +12,7 @@ from portage.dep import Atom, check_required_use, use_reduce, \
 from portage.versions import _pkg_str, _unknown_repo
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidDependString
+from portage.localization import _
 from _emerge.Task import Task
 from portage.const import EPREFIX
 
@@ -36,12 +37,14 @@ class Package(Task):
 
 	metadata_keys = [
 		"BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "EAPI",
-		"INHERITED", "IUSE", "KEYWORDS",
+		"HDEPEND", "INHERITED", "IUSE", "KEYWORDS",
 		"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
 		"repository", "PROPERTIES", "RESTRICT", "SLOT", "USE",
 		"_mtime_", "DEFINED_PHASES", "REQUIRED_USE", "EPREFIX"]
 
-	_dep_keys = ('DEPEND', 'PDEPEND', 'RDEPEND',)
+	_dep_keys = ('DEPEND', 'HDEPEND', 'PDEPEND', 'RDEPEND')
+	_buildtime_keys = ('DEPEND', 'HDEPEND')
+	_runtime_keys = ('PDEPEND', 'RDEPEND')
 	_use_conditional_misc_keys = ('LICENSE', 'PROPERTIES', 'RESTRICT')
 	UNKNOWN_REPO = _unknown_repo
 
@@ -198,11 +201,23 @@ class Package(Task):
 			if not v:
 				continue
 			try:
-				validated_atoms.extend(use_reduce(v, eapi=dep_eapi,
+				atoms = use_reduce(v, eapi=dep_eapi,
 					matchall=True, is_valid_flag=dep_valid_flag,
-					token_class=Atom, flat=True))
+					token_class=Atom, flat=True)
 			except InvalidDependString as e:
 				self._metadata_exception(k, e)
+			else:
+				validated_atoms.extend(atoms)
+				if not self.built:
+					for atom in atoms:
+						if not isinstance(atom, Atom):
+							continue
+						if atom.slot_operator_built:
+							e = InvalidDependString(
+								_("Improper context for slot-operator "
+								"\"built\" atom syntax: %s") %
+								(atom.unevaluated_atom,))
+							self._metadata_exception(k, e)
 
 		self._validated_atoms = tuple(set(atom for atom in
 			validated_atoms if isinstance(atom, Atom)))
@@ -371,6 +386,11 @@ class Package(Task):
 
 	def _metadata_exception(self, k, e):
 
+		if k.endswith('DEPEND'):
+			qacat = 'dependency.syntax'
+		else:
+			qacat = k + ".syntax"
+
 		# For unicode safety with python-2.x we need to avoid
 		# using the string format operator with a non-unicode
 		# format string, since that will result in the
@@ -391,7 +411,7 @@ class Package(Task):
 						_unicode_decode("%s: %s") % (k, error))
 
 			if not categorized_error:
-				self._invalid_metadata(k + ".syntax",
+				self._invalid_metadata(qacat,
 					_unicode_decode("%s: %s") % (k, e))
 		else:
 			# For installed packages, show the path of the file
@@ -399,7 +419,7 @@ class Package(Task):
 			# want to fix the deps by hand.
 			vardb = self.root_config.trees['vartree'].dbapi
 			path = vardb.getpath(self.cpv, filename=k)
-			self._invalid_metadata(k + ".syntax",
+			self._invalid_metadata(qacat,
 				_unicode_decode("%s: %s in '%s'") % (k, e, path))
 
 	def _invalid_metadata(self, msg_type, msg):

@@ -25,7 +25,7 @@ class EbuildMetadataPhase(SubProcess):
 	"""
 
 	__slots__ = ("cpv", "eapi_supported", "ebuild_hash", "fd_pipes",
-		"metadata", "portdb", "repo_path", "settings") + \
+		"metadata", "portdb", "repo_path", "settings", "write_auxdb") + \
 		("_eapi", "_eapi_lineno", "_raw_metadata",)
 
 	_file_names = ("ebuild",)
@@ -180,8 +180,11 @@ class EbuildMetadataPhase(SubProcess):
 						metadata["_eclasses_"] = {}
 					metadata.pop("INHERITED", None)
 
-					self.portdb._write_cache(self.cpv,
-						self.repo_path, metadata, self.ebuild_hash)
+					# If called by egencache, this cache write is
+					# undesirable when metadata-transfer is disabled.
+					if self.write_auxdb is not False:
+						self.portdb._write_cache(self.cpv,
+							self.repo_path, metadata, self.ebuild_hash)
 				else:
 					metadata = {"EAPI": metadata["EAPI"]}
 				self.metadata = metadata

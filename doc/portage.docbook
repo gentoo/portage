@@ -23,6 +23,8 @@
 	<!ENTITY package_ebuild_eapi_4_python SYSTEM "package/ebuild/eapi/4-python.docbook">
 	<!ENTITY package_ebuild_eapi_4_slot_abi SYSTEM "package/ebuild/eapi/4-slot-abi.docbook">
 	<!ENTITY package_ebuild_eapi_5 SYSTEM "package/ebuild/eapi/5.docbook">
+	<!ENTITY package_ebuild_eapi_5_progress SYSTEM "package/ebuild/eapi/5-progress.docbook">
+	<!ENTITY package_ebuild_eapi_5_hdepend SYSTEM "package/ebuild/eapi/5-hdepend.docbook">
 	<!ENTITY qa SYSTEM "qa.docbook">
 	<!ENTITY config SYSTEM "config.docbook">
 	<!ENTITY config_bashrc SYSTEM "config/bashrc.docbook">

@@ -5,7 +5,7 @@
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 
 if [[ $# -lt 1 ]] ; then
-	helpers_die "${0##*/}: at least one argument needed"
+	__helpers_die "${0##*/}: at least one argument needed"
 	exit 1
 fi
 
@@ -26,7 +26,7 @@ for x in "$@" ; do
 		cp "$x" "$TMP"
 		mysrc=$TMP/${x##*/}
 	elif [ -d "${x}" ] ; then
-		vecho "doexe: warning, skipping directory ${x}"
+		__vecho "doexe: warning, skipping directory ${x}"
 		continue
 	else
 		mysrc="${x}"
@@ -42,5 +42,5 @@ done
 
 rm -rf "$TMP"
 
-[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
+[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
 exit $ret

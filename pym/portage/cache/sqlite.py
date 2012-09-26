@@ -21,7 +21,7 @@ class database(fs_template.FsBased):
 	# to calculate the number of pages requested, according to the following
 	# equation: cache_bytes = page_bytes * page_count
 	cache_bytes = 1024 * 1024 * 10
-	_db_table = None
+	_EMPTY_STRING = _unicode_decode("")
 
 	def __init__(self, *args, **config):
 		super(database, self).__init__(*args, **config)
@@ -29,6 +29,7 @@ class database(fs_template.FsBased):
 		self._allowed_keys = ["_mtime_", "_eclasses_"]
 		self._allowed_keys.extend(self._known_keys)
 		self._allowed_keys.sort()
+		self._allowed_keys_set = frozenset(self._allowed_keys)
 		self.location = os.path.join(self.location, 
 			self.label.lstrip(os.path.sep).rstrip(os.path.sep))
 
@@ -93,9 +94,6 @@ class database(fs_template.FsBased):
 		self._db_table["packages"]["table_name"] = mytable
 		self._db_table["packages"]["package_id"] = "internal_db_package_id"
 		self._db_table["packages"]["package_key"] = "portage_package_key"
-		self._db_table["packages"]["internal_columns"] = \
-			[self._db_table["packages"]["package_id"],
-			self._db_table["packages"]["package_key"]]
 		create_statement = []
 		create_statement.append("CREATE TABLE")
 		create_statement.append(mytable)
@@ -110,9 +108,6 @@ class database(fs_template.FsBased):
 		create_statement.append(")")
 		
 		self._db_table["packages"]["create"] = " ".join(create_statement)
-		self._db_table["packages"]["columns"] = \
-			self._db_table["packages"]["internal_columns"] + \
-			self._allowed_keys
 
 		cursor = self._db_cursor
 		for k, v in self._db_table.items():
@@ -211,13 +206,17 @@ class database(fs_template.FsBased):
 			raise KeyError(cpv)
 		else:
 			raise cache_errors.CacheCorruption(cpv, "key is not unique")
+		result = result[0]
 		d = {}
-		internal_columns = self._db_table["packages"]["internal_columns"]
-		column_index = -1
-		for k in self._db_table["packages"]["columns"]:
-			column_index +=1
-			if k not in internal_columns:
-				d[k] = result[0][column_index]
+		allowed_keys_set = self._allowed_keys_set
+		for column_index, column_info in enumerate(cursor.description):
+			k = column_info[0]
+			if k in allowed_keys_set:
+				v = result[column_index]
+				if v is None:
+					# This happens after a new empty column has been added.
+					v = self._EMPTY_STRING
+				d[k] = v
 
 		return d
 

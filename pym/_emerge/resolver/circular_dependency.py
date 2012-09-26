@@ -11,6 +11,7 @@ from portage.exception import InvalidDependString
 from portage.output import colorize
 from portage.util import writemsg_level
 from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
+from _emerge.Package import Package
 
 class circular_dependency_handler(object):
 	
@@ -113,7 +114,8 @@ class circular_dependency_handler(object):
 			parent_atoms = self.all_parent_atoms.get(pkg)
 
 			if priorities[-1].buildtime:
-				dep = parent.metadata["DEPEND"]
+				dep = " ".join(parent.metadata[k]
+					for k in Package._buildtime_keys)
 			elif priorities[-1].runtime:
 				dep = parent.metadata["RDEPEND"]
 

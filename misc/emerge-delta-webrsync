@@ -15,6 +15,10 @@ argv0=$0
 
 # error echos
 eecho() { echo "${argv0##*/}: error: $*" 1>&2 ; }
+# This function from isolated-functions.sh got renamed to __vecho.
+vecho() {
+	[[ ${PORTAGE_QUIET} -eq 1 ]] || echo "$@"
+}
 
 #-------------------
 #initialization

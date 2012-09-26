@@ -46,12 +46,6 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 	portdb = trees[root]["porttree"].dbapi
 	vardb = trees[root]["vartree"].dbapi
 	bindb = trees[root]["bintree"].dbapi
-	if not os.access(bindb.bintree.pkgdir, os.W_OK):
-		bindb = None
-	else:
-		# Call binarytree.populate(), since we want to make sure it's
-		# only populated with local packages here (getbinpkgs=0).
-		bindb.bintree.populate()
 
 	world_file = os.path.join(mysettings['EROOT'], WORLD_FILE)
 	world_list = grabfile(world_file)
@@ -119,6 +113,14 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 						writemsg("%s\n" % msg, noiselevel=-1)
 			if myupd:
 				retupd = True
+
+	if retupd:
+		if os.access(bindb.bintree.pkgdir, os.W_OK):
+			# Call binarytree.populate(), since we want to make sure it's
+			# only populated with local packages here (getbinpkgs=0).
+			bindb.bintree.populate()
+		else:
+			bindb = None
 
 	master_repo = portdb.getRepositoryName(portdb.porttree_root)
 	if master_repo in repo_map:

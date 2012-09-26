@@ -14,10 +14,12 @@ from portage import os
 from portage import _unicode_decode
 from portage.dbapi.dep_expand import dep_expand
 from portage.dep import cpvequal, _repo_separator
+from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidDependString, SignatureException
+from portage.package.ebuild.config import _get_feature_flags
 from portage.package.ebuild._spawn_nofetch import spawn_nofetch
 from portage.output import ( blue, colorize, create_color_func,
-	darkblue, darkgreen, green, nc_len, red, teal, turquoise, yellow )
+	darkblue, darkgreen, green, nc_len, teal)
 bad = create_color_func("BAD")
 from portage.util import writemsg_stdout
 from portage.versions import best, catpkgsplit
@@ -68,24 +70,21 @@ class Display(object):
 		self.blocker_style = None
 
 
-	def _blockers(self, pkg, fetch_symbol):
+	def _blockers(self, pkg):
 		"""Processes pkg for blockers and adds colorized strings to
 		self.print_msg and self.blockers
 
 		@param pkg: _emerge.Package.Package instance
-		@param fetch_symbol: string
 		@rtype: bool
 		Modifies class globals: self.blocker_style, self.resolved,
 			self.print_msg
 		"""
 		if pkg.satisfied:
 			self.blocker_style = "PKG_BLOCKER_SATISFIED"
-			addl = "%s  %s  " % (colorize(self.blocker_style, "b"),
-				fetch_symbol)
+			addl = "%s     " % (colorize(self.blocker_style, "b"),)
 		else:
 			self.blocker_style = "PKG_BLOCKER"
-			addl = "%s  %s  " % (colorize(self.blocker_style, "B"),
-				fetch_symbol)
+			addl = "%s     " % (colorize(self.blocker_style, "B"),)
 		addl += self.empty_space_in_brackets()
 		self.resolved = dep_expand(
 			str(pkg.atom).lstrip("!"), mydb=self.vardb,
@@ -110,13 +109,10 @@ class Display(object):
 			addl += colorize(self.blocker_style,
 				" (is blocking %s)") % block_parents
 		if isinstance(pkg, Blocker) and pkg.satisfied:
-			if self.conf.columns:
-				return True
-			self.print_msg.append(addl)
+			if not self.conf.columns:
+				self.print_msg.append(addl)
 		else:
 			self.blockers.append(addl)
-		return False
-
 
 	def _display_use(self, pkg, myoldbest, myinslotlist):
 		""" USE flag display
@@ -253,6 +249,7 @@ class Display(object):
 
 		use_expand = sorted(self.use_expand)
 		use_expand.insert(0, "USE")
+		feature_flags = _get_feature_flags(_get_eapi_attrs(pkg.metadata["EAPI"]))
 
 		for key in use_expand:
 			if key in self.use_expand_hidden:
@@ -260,7 +257,7 @@ class Display(object):
 			self.verboseadd += _create_use_string(self.conf, key.upper(),
 				cur_iuse_map[key], iuse_forced[key],
 				cur_use_map[key], old_iuse_map[key],
-				old_use_map[key], self.is_new,
+				old_use_map[key], self.is_new, feature_flags,
 				reinst_flags_map.get(key))
 		return
 
@@ -392,26 +389,9 @@ class Display(object):
 			myoldbest_str = blue("["+", ".join(versions)+"]")
 		return myoldbest_str
 
-
-	def set_interactive(self, pkg, ordered, addl):
-		"""Increments counters.interactive if the pkg is to
-		be merged and it's metadata has interactive set True
-
-		@param pkg: _emerge.Package.Package instance
-		@param ordered: boolean
-		@param addl: already defined string to add to
-		"""
-		if 'interactive' in pkg.metadata.properties and \
-			pkg.operation == 'merge':
-			addl = colorize("WARN", "I") + addl[1:]
-			if ordered:
-				self.counters.interactive += 1
-		return addl
-
-	def _set_non_root_columns(self, addl, pkg_info, pkg):
+	def _set_non_root_columns(self, pkg_info, pkg):
 		"""sets the indent level and formats the output
 
-		@param addl: already defined string to add to
 		@param pkg_info: dictionary
 		@param pkg: _emerge.Package.Package instance
 		@rtype string
@@ -421,7 +401,7 @@ class Display(object):
 			any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
 			ver_str += _repo_separator + pkg.repo
 		if self.conf.quiet:
-			myprint = addl + " " + self.indent + \
+			myprint = str(pkg_info.attr_display) + " " + self.indent + \
 				self.pkgprint(pkg_info.cp, pkg_info)
 			myprint = myprint+darkblue(" "+ver_str)+" "
 			myprint = myprint+pkg_info.oldbest
@@ -434,7 +414,8 @@ class Display(object):
 					self.indent, self.pkgprint(pkg.cp, pkg_info))
 			else:
 				myprint = "[%s %s] %s%s" % \
-					(self.pkgprint(pkg.type_name, pkg_info), addl,
+					(self.pkgprint(pkg.type_name, pkg_info),
+					pkg_info.attr_display,
 					self.indent, self.pkgprint(pkg.cp, pkg_info))
 			if (self.newlp-nc_len(myprint)) > 0:
 				myprint = myprint+(" "*(self.newlp-nc_len(myprint)))
@@ -446,10 +427,9 @@ class Display(object):
 		return myprint
 
 
-	def _set_root_columns(self, addl, pkg_info, pkg):
+	def _set_root_columns(self, pkg_info, pkg):
 		"""sets the indent level and formats the output
 
-		@param addl: already defined string to add to
 		@param pkg_info: dictionary
 		@param pkg: _emerge.Package.Package instance
 		@rtype string
@@ -460,7 +440,7 @@ class Display(object):
 			any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
 			ver_str += _repo_separator + pkg.repo
 		if self.conf.quiet:
-			myprint = addl + " " + self.indent + \
+			myprint = str(pkg_info.attr_display) + " " + self.indent + \
 				self.pkgprint(pkg_info.cp, pkg_info)
 			myprint = myprint+" "+green(ver_str)+" "
 			myprint = myprint+pkg_info.oldbest
@@ -473,7 +453,8 @@ class Display(object):
 					addl, self.indent, self.pkgprint(pkg.cp, pkg_info))
 			else:
 				myprint = "[%s %s] %s%s" % \
-					(self.pkgprint(pkg.type_name, pkg_info), addl,
+					(self.pkgprint(pkg.type_name, pkg_info),
+					pkg_info.attr_display,
 					self.indent, self.pkgprint(pkg.cp, pkg_info))
 			if (self.newlp-nc_len(myprint)) > 0:
 				myprint = myprint+(" "*(self.newlp-nc_len(myprint)))
@@ -484,12 +465,11 @@ class Display(object):
 		return myprint
 
 
-	def _set_no_columns(self, pkg, pkg_info, addl):
+	def _set_no_columns(self, pkg, pkg_info):
 		"""prints pkg info without column indentation.
 
 		@param pkg: _emerge.Package.Package instance
 		@param pkg_info: dictionary
-		@param addl: the current text to add for the next line to output
 		@rtype the updated addl
 		"""
 		pkg_str = pkg.cpv
@@ -506,45 +486,9 @@ class Display(object):
 		else:
 			myprint = "[%s %s] %s%s %s" % \
 				(self.pkgprint(pkg.type_name, pkg_info),
-				addl, self.indent,
+				pkg_info.attr_display, self.indent,
 				self.pkgprint(pkg_str, pkg_info), pkg_info.oldbest)
 		return myprint
-
-
-	def _insert_slot(self, pkg, pkg_info, myinslotlist):
-		"""Adds slot info to the message
-
-		@return addl: formatted slot info
-		@return myoldbest: installed version list
-		Modifies self.counters.downgrades, self.counters.upgrades
-		"""
-		addl = "   " + pkg_info.fetch_symbol
-		if not cpvequal(pkg.cpv,
-			best([pkg.cpv] + [x.cpv for x in myinslotlist])):
-			# Downgrade in slot
-			addl += turquoise("U")+blue("D")
-			if pkg_info.ordered:
-				self.counters.downgrades += 1
-		else:
-			# Update in slot
-			addl += turquoise("U") + " "
-			if pkg_info.ordered:
-				self.counters.upgrades += 1
-		return addl
-
-
-	def _new_slot(self, pkg, pkg_info):
-		"""New slot, mark it new.
-
-		@return addl: formatted slot info
-		@return myoldbest: installed version list
-		Modifies self.counters.newslot
-		"""
-		addl = " " + green("NS") + pkg_info.fetch_symbol + "  "
-		if pkg_info.ordered:
-			self.counters.newslot += 1
-		return addl
-
 
 	def print_messages(self, show_repos):
 		"""Performs the actual output printing of the pre-formatted
@@ -636,7 +580,6 @@ class Display(object):
 		"""
 		pkg_info = PkgInfo()
 		pkg_info.ordered = ordered
-		pkg_info.fetch_symbol = " "
 		pkg_info.operation = pkg.operation
 		pkg_info.merge = ordered and pkg_info.operation == "merge"
 		if not pkg_info.merge and pkg_info.operation == "merge":
@@ -666,13 +609,13 @@ class Display(object):
 			'fetch' in pkg.metadata.restrict:
 			if pkg_info.ordered:
 				self.counters.restrict_fetch += 1
+			pkg_info.attr_display.fetch_restrict = True
 			if not self.portdb.getfetchsizes(pkg.cpv,
 				useflags=pkg_info.use, myrepo=pkg.repo):
-				pkg_info.fetch_symbol = green("f")
+				pkg_info.attr_display.fetch_restrict_satisfied = True
 				if pkg_info.ordered:
 					self.counters.restrict_fetch_satisfied += 1
 			else:
-				pkg_info.fetch_symbol = red("F")
 				if pkg_info.ebuild_path is not None:
 					self.restrict_fetch_list[pkg] = pkg_info
 		return pkg_info
@@ -757,7 +700,7 @@ class Display(object):
 		myinslotlist = None
 		installed_versions = self.vardb.match_pkgs(pkg.cp)
 		if self.vardb.cpv_exists(pkg.cpv):
-			addl = "  "+yellow("R")+pkg_info.fetch_symbol+"  "
+			pkg_info.attr_display.replace = True
 			installed_version = self.vardb.match_pkgs(pkg.cpv)[0]
 			if not self.quiet_repo_display and installed_version.repo != pkg.repo:
 				myoldbest = [installed_version]
@@ -775,17 +718,31 @@ class Display(object):
 				myinslotlist = None
 			if myinslotlist:
 				myoldbest = myinslotlist[:]
-				addl = self._insert_slot(pkg, pkg_info, myinslotlist)
+				if not cpvequal(pkg.cpv,
+					best([pkg.cpv] + [x.cpv for x in myinslotlist])):
+					# Downgrade in slot
+					pkg_info.attr_display.new_version = True
+					pkg_info.attr_display.downgrade = True
+					if pkg_info.ordered:
+						self.counters.downgrades += 1
+				else:
+					# Update in slot
+					pkg_info.attr_display.new_version = True
+					if pkg_info.ordered:
+						self.counters.upgrades += 1
 			else:
 				myoldbest = installed_versions
-				addl = self._new_slot(pkg, pkg_info)
+				pkg_info.attr_display.new = True
+				pkg_info.attr_display.new_slot = True
+				if pkg_info.ordered:
+					self.counters.newslot += 1
 			if self.conf.changelog:
 				self.do_changelog(pkg, pkg_info)
 		else:
-			addl = " " + green("N") + " " + pkg_info.fetch_symbol + "  "
+			pkg_info.attr_display.new = True
 			if pkg_info.ordered:
 				self.counters.new += 1
-		return addl, myoldbest, myinslotlist
+		return myoldbest, myinslotlist
 
 
 	def __call__(self, depgraph, mylist, favorites=None, verbosity=None):
@@ -824,12 +781,18 @@ class Display(object):
 			self.indent = " " * depth
 
 			if isinstance(pkg, Blocker):
-				if self._blockers(pkg, fetch_symbol=" "):
-					continue
+				self._blockers(pkg)
 			else:
 				pkg_info = self.set_pkg_info(pkg, ordered)
-				addl, pkg_info.oldbest_list, myinslotlist = \
+				pkg_info.oldbest_list, myinslotlist = \
 					self._get_installed_best(pkg, pkg_info)
+				if ordered and pkg_info.merge and \
+					not pkg_info.attr_display.new:
+					for arg, atom in depgraph._iter_atoms_for_pkg(pkg):
+						if arg.force_reinstall:
+							pkg_info.attr_display.force_reinstall = True
+							break
+
 				self.verboseadd = ""
 				if self.quiet_repo_display:
 					self.repoadd = None
@@ -849,17 +812,20 @@ class Display(object):
 				pkg_info.oldbest = self.convert_myoldbest(pkg, pkg_info.oldbest_list)
 				pkg_info.system, pkg_info.world = \
 					self.check_system_world(pkg)
-				addl = self.set_interactive(pkg, pkg_info.ordered, addl)
+				if 'interactive' in pkg.metadata.properties and \
+					pkg.operation == 'merge':
+					pkg_info.attr_display.interactive = True
+					if ordered:
+						self.counters.interactive += 1
 
 				if self.include_mask_str():
-					addl += self.gen_mask_str(pkg)
+					pkg_info.attr_display.mask = self.gen_mask_str(pkg)
 
 				if pkg.root_config.settings["ROOT"] != "/":
 					if pkg_info.oldbest:
 						pkg_info.oldbest += " "
 					if self.conf.columns:
-						myprint = self._set_non_root_columns(
-							addl, pkg_info, pkg)
+						myprint = self._set_non_root_columns(pkg_info, pkg)
 					else:
 						pkg_str = pkg.cpv
 						if self.conf.verbosity == 3 and not self.quiet_repo_display and (self.verbose_main_repo_display or
@@ -873,17 +839,16 @@ class Display(object):
 								)
 						else:
 							myprint = "[%s %s] " % (
-								self.pkgprint(pkg.type_name, pkg_info), addl)
+								self.pkgprint(pkg.type_name, pkg_info),
+								pkg_info.attr_display)
 						myprint += self.indent + \
 							self.pkgprint(pkg_str, pkg_info) + " " + \
 							pkg_info.oldbest + darkgreen("to " + pkg.root)
 				else:
 					if self.conf.columns:
-						myprint = self._set_root_columns(
-							addl, pkg_info, pkg)
+						myprint = self._set_root_columns(pkg_info, pkg)
 					else:
-						myprint = self._set_no_columns(
-							pkg, pkg_info, addl)
+						myprint = self._set_no_columns(pkg, pkg_info)
 
 				if self.conf.columns and pkg.operation == "uninstall":
 					continue

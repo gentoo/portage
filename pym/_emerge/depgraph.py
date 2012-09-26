@@ -23,12 +23,14 @@ from portage.dep import Atom, best_match_to_list, extract_affecting_use, \
 	check_required_use, human_readable_required_use, match_from_list, \
 	_repo_separator
 from portage.dep._slot_operator import ignore_built_slot_operator_deps
-from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use
+from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use, \
+	_get_eapi_attrs
 from portage.exception import (InvalidAtom, InvalidDependString,
 	PackageNotFound, PortageException)
 from portage.output import colorize, create_color_func, \
 	darkgreen, green
 bad = create_color_func("BAD")
+from portage.package.ebuild.config import _get_feature_flags
 from portage.package.ebuild.getmaskingstatus import \
 	_getmaskingstatus, _MaskReason
 from portage._sets import SETPREFIX
@@ -501,8 +503,6 @@ class _dynamic_depgraph_config(object):
 class depgraph(object):
 
 	pkg_tree_map = RootConfig.pkg_tree_map
-
-	_dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 	
 	def __init__(self, settings, trees, myopts, myparams, spinner,
 		frozen_config=None, backtrack_parameters=BacktrackParameter(), allow_backtracking=False):
@@ -534,10 +534,6 @@ class depgraph(object):
 				"dynamic_deps", "y") != "n"
 			preload_installed_pkgs = \
 				"--nodeps" not in self._frozen_config.myopts
-
-			if self._frozen_config.myopts.get("--root-deps") is not None and \
-				myroot != self._frozen_config.target_root:
-				continue
 
 			fake_vartree = self._frozen_config.trees[myroot]["vartree"]
 			if not fake_vartree.dbapi:
@@ -1228,18 +1224,22 @@ class depgraph(object):
 			in ("y", "auto"))
 		newuse = "--newuse" in self._frozen_config.myopts
 		changed_use = "changed-use" == self._frozen_config.myopts.get("--reinstall")
+		feature_flags = _get_feature_flags(
+			_get_eapi_attrs(pkg.metadata["EAPI"]))
 
 		if newuse or (binpkg_respect_use and not changed_use):
 			flags = set(orig_iuse.symmetric_difference(
 				cur_iuse).difference(forced_flags))
 			flags.update(orig_iuse.intersection(orig_use).symmetric_difference(
 				cur_iuse.intersection(cur_use)))
+			flags.difference_update(feature_flags)
 			if flags:
 				return flags
 
 		elif changed_use or binpkg_respect_use:
-			flags = orig_iuse.intersection(orig_use).symmetric_difference(
-				cur_iuse.intersection(cur_use))
+			flags = set(orig_iuse.intersection(orig_use).symmetric_difference(
+				cur_iuse.intersection(cur_use)))
+			flags.difference_update(feature_flags)
 			if flags:
 				return flags
 		return None
@@ -1677,10 +1677,10 @@ class depgraph(object):
 		myroot = pkg.root
 		metadata = pkg.metadata
 		removal_action = "remove" in self._dynamic_config.myparams
+		eapi_attrs = _get_eapi_attrs(pkg.metadata["EAPI"])
 
 		edepend={}
-		depkeys = ["DEPEND","RDEPEND","PDEPEND"]
-		for k in depkeys:
+		for k in Package._dep_keys:
 			edepend[k] = metadata[k]
 
 		if not pkg.built and \
@@ -1707,31 +1707,44 @@ class depgraph(object):
 			# Removal actions never traverse ignored buildtime
 			# dependencies, so it's safe to discard them early.
 			edepend["DEPEND"] = ""
+			edepend["HDEPEND"] = ""
 			ignore_build_time_deps = True
+
+		ignore_depend_deps = ignore_build_time_deps
+		ignore_hdepend_deps = ignore_build_time_deps
 
 		if removal_action:
 			depend_root = myroot
 		else:
-			depend_root = self._frozen_config._running_root.root
-			root_deps = self._frozen_config.myopts.get("--root-deps")
-			if root_deps is not None:
-				if root_deps is True:
-					depend_root = myroot
-				elif root_deps == "rdeps":
-					ignore_build_time_deps = True
+			if eapi_attrs.hdepend:
+				depend_root = myroot
+			else:
+				depend_root = self._frozen_config._running_root.root
+				root_deps = self._frozen_config.myopts.get("--root-deps")
+				if root_deps is not None:
+					if root_deps is True:
+						depend_root = myroot
+					elif root_deps == "rdeps":
+						ignore_depend_deps = True
 
 		# If rebuild mode is not enabled, it's safe to discard ignored
 		# build-time dependencies. If you want these deps to be traversed
 		# in "complete" mode then you need to specify --with-bdeps=y.
-		if ignore_build_time_deps and \
-			not self._rebuild.rebuild:
-			edepend["DEPEND"] = ""
+		if not self._rebuild.rebuild:
+			if ignore_depend_deps:
+				edepend["DEPEND"] = ""
+			if ignore_hdepend_deps:
+				edepend["HDEPEND"] = ""
 
 		deps = (
 			(depend_root, edepend["DEPEND"],
 				self._priority(buildtime=True,
-				optional=(pkg.built or ignore_build_time_deps),
-				ignored=ignore_build_time_deps)),
+				optional=(pkg.built or ignore_depend_deps),
+				ignored=ignore_depend_deps)),
+			(self._frozen_config._running_root.root, edepend["HDEPEND"],
+				self._priority(buildtime=True,
+				optional=(pkg.built or ignore_hdepend_deps),
+				ignored=ignore_hdepend_deps)),
 			(myroot, edepend["RDEPEND"],
 				self._priority(runtime=True)),
 			(myroot, edepend["PDEPEND"],
@@ -2832,7 +2845,7 @@ class depgraph(object):
 			return [pkg.slot_atom for pkg in greedy_pkgs]
 
 		blockers = {}
-		blocker_dep_keys = ["DEPEND", "PDEPEND", "RDEPEND"]
+		blocker_dep_keys = Package._dep_keys
 		for pkg in greedy_pkgs + [highest_pkg]:
 			dep_str = " ".join(pkg.metadata[k] for k in blocker_dep_keys)
 			try:
@@ -3093,7 +3106,7 @@ class depgraph(object):
 
 		if target_atom is not None and isinstance(node, Package):
 			affecting_use = set()
-			for dep_str in "DEPEND", "RDEPEND", "PDEPEND":
+			for dep_str in Package._dep_keys:
 				try:
 					affecting_use.update(extract_affecting_use(
 						node.metadata[dep_str], target_atom,
@@ -3174,13 +3187,13 @@ class depgraph(object):
 				if priorities is None:
 					# This edge comes from _parent_atoms and was not added to
 					# the graph, and _parent_atoms does not contain priorities.
-					dep_strings.add(node.metadata["DEPEND"])
-					dep_strings.add(node.metadata["RDEPEND"])
-					dep_strings.add(node.metadata["PDEPEND"])
+					for k in Package._dep_keys:
+						dep_strings.add(node.metadata[k])
 				else:
 					for priority in priorities:
 						if priority.buildtime:
-							dep_strings.add(node.metadata["DEPEND"])
+							for k in Package._buildtime_keys:
+								dep_strings.add(node.metadata[k])
 						if priority.runtime:
 							dep_strings.add(node.metadata["RDEPEND"])
 						if priority.runtime_post:
@@ -4123,7 +4136,7 @@ class depgraph(object):
 			if pkg not in self._dynamic_config.digraph.nodes:
 				return False
 
-			for key in "DEPEND", "RDEPEND", "PDEPEND", "LICENSE":
+			for key in Package._dep_keys + ("LICENSE",):
 				dep = pkg.metadata[key]
 				old_val = set(portage.dep.use_reduce(dep, pkg.use.enabled, is_valid_flag=pkg.iuse.is_valid_flag, flat=True))
 				new_val = set(portage.dep.use_reduce(dep, new_use, is_valid_flag=pkg.iuse.is_valid_flag, flat=True))
@@ -4883,7 +4896,7 @@ class depgraph(object):
 			# For installed packages, always ignore blockers from DEPEND since
 			# only runtime dependencies should be relevant for packages that
 			# are already built.
-			dep_keys = ["RDEPEND", "PDEPEND"]
+			dep_keys = Package._runtime_keys
 			for myroot in self._frozen_config.trees:
 
 				if self._frozen_config.myopts.get("--root-deps") is not None and \

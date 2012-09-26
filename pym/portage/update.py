@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -13,16 +13,13 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.dep:Atom,dep_getkey,isvalidatom,' + \
-	'remove_slot',
+	'portage.dep:Atom,dep_getkey,isvalidatom,_get_slot_re',
 	'portage.util:ConfigProtect,new_protect_filename,' + \
 		'normalize_path,write_atomic,writemsg',
 	'portage.util.listdir:_ignorecvs_dirs',
-	'portage.versions:catsplit,ververify'
 )
 
 from portage.const import USER_CONFIG_PATH
-from portage.dep import _get_slot_re
 from portage.eapi import _get_eapi_attrs
 from portage.exception import DirectoryNotFound, InvalidAtom, PortageException
 from portage.localization import _
@@ -44,25 +41,64 @@ def update_dbentry(update_cmd, mycontent, eapi=None):
 		# Use isvalidatom() to check if this move is valid for the
 		# EAPI (characters allowed in package names may vary).
 		if old_value in mycontent and isvalidatom(new_value, eapi=eapi):
-			old_value = re.escape(old_value);
-			mycontent = re.sub(old_value+"(:|$|\\s)", new_value+"\\1", mycontent)
-			def myreplace(matchobj):
-				# Strip slot and * operator if necessary
-				# so that ververify works.
-				ver = remove_slot(matchobj.group(2))
-				ver = ver.rstrip("*")
-				if ververify(ver):
-					return "%s-%s" % (new_value, matchobj.group(2))
-				else:
-					return "".join(matchobj.groups())
-			mycontent = re.sub("(%s-)(\\S*)" % old_value, myreplace, mycontent)
+			# this split preserves existing whitespace
+			split_content = re.split(r'(\s+)', mycontent)
+			modified = False
+			for i, token in enumerate(split_content):
+				if old_value not in token:
+					continue
+				try:
+					atom = Atom(token, eapi=eapi)
+				except InvalidAtom:
+					continue
+				if atom.cp != old_value:
+					continue
+
+				split_content[i] = token.replace(old_value, new_value, 1)
+				modified = True
+
+			if modified:
+				mycontent = "".join(split_content)
+
 	elif update_cmd[0] == "slotmove" and update_cmd[1].operator is None:
-		pkg, origslot, newslot = update_cmd[1:]
-		old_value = "%s:%s" % (pkg, origslot)
-		if old_value in mycontent:
-			old_value = re.escape(old_value)
-			new_value = "%s:%s" % (pkg, newslot)
-			mycontent = re.sub(old_value+"($|\\s)", new_value+"\\1", mycontent)
+		orig_atom, origslot, newslot = update_cmd[1:]
+		orig_cp = orig_atom.cp
+
+		# We don't support versioned slotmove atoms here, since it can be
+		# difficult to determine if the version constraints really match
+		# the atoms that we're trying to update.
+		if orig_atom.version is None and orig_cp in mycontent:
+			# this split preserves existing whitespace
+			split_content = re.split(r'(\s+)', mycontent)
+			modified = False
+			for i, token in enumerate(split_content):
+				if orig_cp not in token:
+					continue
+				try:
+					atom = Atom(token, eapi=eapi)
+				except InvalidAtom:
+					continue
+				if atom.cp != orig_cp:
+					continue
+				if atom.slot is None or atom.slot != origslot:
+					continue
+
+				slot_part = newslot
+				if atom.sub_slot is not None:
+					if atom.sub_slot == origslot:
+						sub_slot = newslot
+					else:
+						sub_slot = atom.sub_slot
+					slot_part += "/" + sub_slot
+				if atom.slot_operator is not None:
+					slot_part += atom.slot_operator
+
+				split_content[i] = atom.with_slot(slot_part)
+				modified = True
+
+			if modified:
+				mycontent = "".join(split_content)
+
 	return mycontent
 
 def update_dbentries(update_iter, mydata, eapi=None):

@@ -48,7 +48,7 @@ def eapi_exports_EBUILD_PHASE_FUNC(eapi):
 	return eapi not in ("0", "1", "2", "3", "4", "4-python", "4-slot-abi")
 
 def eapi_exports_REPOSITORY(eapi):
-	return eapi in ("4-python",)
+	return eapi in ("4-python", "5-progress")
 
 def eapi_has_pkg_pretend(eapi):
 	return eapi not in ("0", "1", "2", "3")
@@ -69,17 +69,30 @@ def eapi_has_use_dep_defaults(eapi):
 	return eapi not in ("0", "1", "2", "3")
 
 def eapi_has_repo_deps(eapi):
-	return eapi in ("4-python",)
+	return eapi in ("4-python", "5-progress")
 
 def eapi_allows_dots_in_PN(eapi):
-	return eapi in ("4-python",)
+	return eapi in ("4-python", "5-progress")
 
 def eapi_allows_dots_in_use_flags(eapi):
-	return eapi in ("4-python",)
+	return eapi in ("4-python", "5-progress")
+
+def eapi_supports_stable_use_forcing_and_masking(eapi):
+	return eapi not in ("0", "1", "2", "3", "4", "4-python", "4-slot-abi")
+
+def eapi_allows_directories_on_profile_level_and_repository_level(eapi):
+	return eapi in ("4-python", "5-progress")
+
+def eapi_has_hdepend(eapi):
+	return eapi in ("5-hdepend",)
+
+def eapi_has_targetroot(eapi):
+	return eapi in ("5-hdepend",)
 
 _eapi_attrs = collections.namedtuple('_eapi_attrs',
 	'dots_in_PN dots_in_use_flags exports_EBUILD_PHASE_FUNC '
-	'iuse_defaults iuse_effective '
+	'feature_flag_test feature_flag_targetroot '
+	'hdepend iuse_defaults iuse_effective '
 	'repo_deps required_use required_use_at_most_one_of slot_operator slot_deps '
 	'src_uri_arrows strong_blocks use_deps use_dep_defaults')
 
@@ -105,6 +118,9 @@ def _get_eapi_attrs(eapi):
 		dots_in_PN = (eapi is None or eapi_allows_dots_in_PN(eapi)),
 		dots_in_use_flags = (eapi is None or eapi_allows_dots_in_use_flags(eapi)),
 		exports_EBUILD_PHASE_FUNC = (eapi is None or eapi_exports_EBUILD_PHASE_FUNC(eapi)),
+		feature_flag_test = True,
+		feature_flag_targetroot = (eapi is not None and eapi_has_targetroot(eapi)),
+		hdepend = (eapi is not None and eapi_has_hdepend(eapi)),
 		iuse_defaults = (eapi is None or eapi_has_iuse_defaults(eapi)),
 		iuse_effective = (eapi is not None and eapi_has_iuse_effective(eapi)),
 		repo_deps = (eapi is None or eapi_has_repo_deps(eapi)),

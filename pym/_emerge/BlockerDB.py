@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -9,6 +9,7 @@ from portage import digraph
 from portage._sets.base import InternalPackageSet
 
 from _emerge.BlockerCache import BlockerCache
+from _emerge.Package import Package
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
 
 if sys.hexversion >= 0x3000000:
@@ -38,7 +39,7 @@ class BlockerDB(object):
 		"""
 		blocker_cache = BlockerCache(None,
 			self._vartree.dbapi)
-		dep_keys = ["RDEPEND", "PDEPEND"]
+		dep_keys = Package._runtime_keys
 		settings = self._vartree.settings
 		stale_cache = set(blocker_cache)
 		fake_vartree = self._fake_vartree

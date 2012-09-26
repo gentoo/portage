@@ -3,13 +3,11 @@
 
 from portage.dep import Atom, paren_enclose, use_reduce
 from portage.exception import InvalidData
-
-_dep_keys = ('DEPEND', 'PDEPEND', 'RDEPEND')
-_runtime_keys = ('PDEPEND', 'RDEPEND')
+from _emerge.Package import Package
 
 def find_built_slot_operator_atoms(pkg):
 	atoms = {}
-	for k in _dep_keys:
+	for k in Package._dep_keys:
 		atom_list = list(_find_built_slot_operator(use_reduce(pkg.metadata[k],
 			uselist=pkg.use.enabled, eapi=pkg.metadata['EAPI'],
 			token_class=Atom)))
@@ -43,17 +41,18 @@ def evaluate_slot_operator_equal_deps(settings, use, trees):
 	target_vardb = trees[trees._target_eroot]["vartree"].dbapi
 	vardbs = [target_vardb]
 	deps = {}
-	for k in _dep_keys:
+	for k in Package._dep_keys:
 		deps[k] = use_reduce(metadata[k],
 			uselist=use, eapi=eapi, token_class=Atom)
 
-	for k in _runtime_keys:
+	for k in Package._runtime_keys:
 		_eval_deps(deps[k], vardbs)
 
 	if running_vardb is not target_vardb:
 		vardbs.append(running_vardb)
 
 	_eval_deps(deps["DEPEND"], vardbs)
+	_eval_deps(deps["HDEPEND"], [running_vardb])
 
 	result = {}
 	for k, v in deps.items():

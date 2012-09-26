@@ -60,6 +60,24 @@ from portage.package.ebuild._config.helper import ordered_by_atom_specificity, p
 if sys.hexversion >= 0x3000000:
 	basestring = str
 
+_feature_flags_cache = {}
+
+def _get_feature_flags(eapi_attrs):
+	cache_key = (eapi_attrs.feature_flag_test, eapi_attrs.feature_flag_targetroot)
+	flags = _feature_flags_cache.get(cache_key)
+	if flags is not None:
+		return flags
+
+	flags = []
+	if eapi_attrs.feature_flag_test:
+		flags.append("test")
+	if eapi_attrs.feature_flag_targetroot:
+		flags.append("targetroot")
+
+	flags = frozenset(flags)
+	_feature_flags_cache[cache_key] = flags
+	return flags
+
 def autouse(myvartree, use_cache=1, mysettings=None):
 	warnings.warn("portage.autouse() is deprecated",
 		DeprecationWarning, stacklevel=2)
@@ -126,7 +144,7 @@ class config(object):
 	_constant_keys = frozenset(['PORTAGE_BIN_PATH', 'PORTAGE_GID',
 		'PORTAGE_PYM_PATH'])
 
-	_setcpv_aux_keys = ('DEFINED_PHASES', 'DEPEND', 'EAPI',
+	_setcpv_aux_keys = ('DEFINED_PHASES', 'DEPEND', 'EAPI', 'HDEPEND',
 		'INHERITED', 'IUSE', 'REQUIRED_USE', 'KEYWORDS', 'LICENSE', 'PDEPEND',
 		'PROPERTIES', 'PROVIDE', 'RDEPEND', 'SLOT',
 		'repository', 'RESTRICT', 'LICENSE',)
@@ -175,6 +193,9 @@ class config(object):
 			--unmatched-removal option is given.
 		@type _unmatched_removal: Boolean
 		"""
+
+		# This is important when config is reloaded after emerge --sync.
+		_eapi_cache.clear()
 
 		# When initializing the global portage.settings instance, avoid
 		# raising exceptions whenever possible since exceptions thrown
@@ -296,15 +317,21 @@ class config(object):
 			eprefix = locations_manager.eprefix
 			config_root = locations_manager.config_root
 			abs_user_config = locations_manager.abs_user_config
+			make_conf_paths = [
+				os.path.join(config_root, 'etc', 'make.conf'),
+				os.path.join(config_root, MAKE_CONF_FILE)
+			]
+			try:
+				if os.path.samefile(*make_conf_paths):
+					make_conf_paths.pop()
+			except OSError:
+				pass
 
-			make_conf = getconfig(
-				os.path.join(config_root, MAKE_CONF_FILE),
-				tolerant=tolerant, allow_sourcing=True) or {}
-
-			make_conf.update(getconfig(
-				os.path.join(abs_user_config, 'make.conf'),
-				tolerant=tolerant, allow_sourcing=True,
-				expand=make_conf) or {})
+			make_conf = {}
+			for x in make_conf_paths:
+				make_conf.update(getconfig(x,
+					tolerant=tolerant, allow_sourcing=True,
+					expand=make_conf) or {})
 
 			# Allow ROOT setting to come from make.conf if it's not overridden
 			# by the constructor argument (from the calling environment).
@@ -476,15 +503,11 @@ class config(object):
 			self.configlist.append(mygcfg)
 			self.configdict["defaults"]=self.configlist[-1]
 
-			mygcfg = getconfig(
-				os.path.join(config_root, MAKE_CONF_FILE),
-				tolerant=tolerant, allow_sourcing=True,
-				expand=expand_map) or {}
-
-			mygcfg.update(getconfig(
-				os.path.join(abs_user_config, 'make.conf'),
-				tolerant=tolerant, allow_sourcing=True,
-				expand=expand_map) or {})
+			mygcfg = {}
+			for x in make_conf_paths:
+				mygcfg.update(getconfig(x,
+					tolerant=tolerant, allow_sourcing=True,
+					expand=expand_map) or {})
 
 			# Don't allow the user to override certain variables in make.conf
 			profile_only_variables = self.configdict["defaults"].get(
@@ -1471,8 +1494,11 @@ class config(object):
 			not hasattr(self, "_ebuild_force_test_msg_shown"):
 				self._ebuild_force_test_msg_shown = True
 				writemsg(_("Forcing test.\n"), noiselevel=-1)
-		if "test" in self.features:
-			if "test" in self.usemask and not ebuild_force_test:
+
+		if "test" in explicit_iuse or iuse_implicit_match("test"):
+			if "test" not in self.features:
+				use.discard("test")
+			elif "test" in self.usemask and not ebuild_force_test:
 				# "test" is in IUSE and USE=test is masked, so execution
 				# of src_test() probably is not reliable. Therefore,
 				# temporarily disable FEATURES=test just for this package.
@@ -1484,6 +1510,13 @@ class config(object):
 				if ebuild_force_test and "test" in self.usemask:
 					self.usemask = \
 						frozenset(x for x in self.usemask if x != "test")
+
+		if eapi_attrs.feature_flag_targetroot and \
+			("targetroot" in explicit_iuse or iuse_implicit_match("targetroot")):
+			if self["ROOT"] != "/":
+				use.add("targetroot")
+			else:
+				use.discard("targetroot")
 
 		# Allow _* flags from USE_EXPAND wildcards to pass through here.
 		use.difference_update([x for x in use \

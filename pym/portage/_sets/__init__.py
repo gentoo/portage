@@ -142,6 +142,10 @@ class SetConfig(object):
 		parser.set("module-rebuild", "class", "portage.sets.dbapi.OwnerSet")
 		parser.set("module-rebuild", "files", "/lib/modules")
 
+		parser.remove_section("preserved-rebuild")
+		parser.add_section("preserved-rebuild")
+		parser.set("preserved-rebuild", "class", "portage.sets.libs.PreservedLibraryConsumerSet")
+
 		parser.remove_section("x11-module-rebuild")
 		parser.add_section("x11-module-rebuild")
 		parser.set("x11-module-rebuild", "class", "portage.sets.dbapi.OwnerSet")

@@ -28,7 +28,8 @@ class database(flat_hash.database):
 	auxdbkey_order=('DEPEND', 'RDEPEND', 'SLOT', 'SRC_URI',
 		'RESTRICT',  'HOMEPAGE',  'LICENSE', 'DESCRIPTION',
 		'KEYWORDS',  'INHERITED', 'IUSE', 'REQUIRED_USE',
-		'PDEPEND',   'PROVIDE', 'EAPI', 'PROPERTIES', 'DEFINED_PHASES')
+		'PDEPEND',   'PROVIDE', 'EAPI', 'PROPERTIES',
+		'DEFINED_PHASES', 'HDEPEND')
 
 	autocommits = True
 	serialize_eclasses = False

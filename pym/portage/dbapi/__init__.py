@@ -19,9 +19,10 @@ from portage import auxdbkeys
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidData
 from portage.localization import _
+from _emerge.Package import Package
 
 class dbapi(object):
-	_category_re = re.compile(r'^\w[-.+\w]*$')
+	_category_re = re.compile(r'^\w[-.+\w]*$', re.UNICODE)
 	_categories = None
 	_use_mutable = False
 	_known_keys = frozenset(x for x in auxdbkeys
@@ -253,6 +254,16 @@ class dbapi(object):
 				for x in atom.use.disabled):
 				return False
 
+			# Check unsatisfied use-default deps
+			if atom.use.enabled:
+				missing_disabled = atom.use.missing_disabled.difference(iuse)
+				if any(x in atom.use.enabled for x in missing_disabled):
+					return False
+			if atom.use.disabled:
+				missing_enabled = atom.use.missing_enabled.difference(iuse)
+				if any(x in atom.use.disabled for x in missing_enabled):
+					return False
+
 		return True
 
 	def invalidentry(self, mypath):
@@ -280,7 +291,7 @@ class dbapi(object):
 		maxval = len(cpv_all)
 		aux_get = self.aux_get
 		aux_update = self.aux_update
-		meta_keys = ["DEPEND", "EAPI", "RDEPEND", "PDEPEND", "PROVIDE", 'repository']
+		meta_keys = Package._dep_keys + ("EAPI", "PROVIDE", "repository")
 		repo_dict = None
 		if isinstance(updates, dict):
 			repo_dict = updates

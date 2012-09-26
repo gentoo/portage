@@ -10,5 +10,5 @@ PYTHONPATH=$PORTAGE_PYM_PATH${PYTHONPATH:+:}$PYTHONPATH \
 	"${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" "$PORTAGE_BIN_PATH/dohtml.py" "$@"
 
 ret=$?
-[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
+[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
 exit $ret

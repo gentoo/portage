@@ -2,7 +2,7 @@
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-# @FUNCTION: save_ebuild_env
+# @FUNCTION: __save_ebuild_env
 # @DESCRIPTION:
 # echo the current environment to stdout, filtering out redundant info.
 #
@@ -10,7 +10,7 @@
 # be excluded from the output. These function are not needed for installation
 # or removal of the packages, and can therefore be safely excluded.
 #
-save_ebuild_env() {
+__save_ebuild_env() {
 	(
 	if has --exclude-init-phases $* ; then
 		unset S _E_DOCDESTTREE_ _E_EXEDESTTREE_ \
@@ -42,44 +42,43 @@ save_ebuild_env() {
 	for x in pkg_setup pkg_nofetch src_unpack src_prepare src_configure \
 		src_compile src_test src_install pkg_preinst pkg_postinst \
 		pkg_prerm pkg_postrm ; do
-		unset -f default_$x _eapi{0,1,2,3,4}_$x
+		unset -f default_$x __eapi{0,1,2,3,4}_$x
 	done
 	unset x
 
-	unset -f assert assert_sigpipe_ok \
-		dump_trace die diefunc \
-		quiet_mode vecho elog_base eqawarn elog \
-		esyslog einfo einfon ewarn eerror ebegin _eend eend KV_major \
-		KV_minor KV_micro KV_to_int get_KV unset_colors set_colors has \
-		has_phase_defined_up_to \
-		hasv hasq qa_source qa_call \
-		addread addwrite adddeny addpredict _sb_append_var \
+	unset -f assert __assert_sigpipe_ok \
+		__dump_trace die \
+		__quiet_mode __vecho __elog_base eqawarn elog \
+		einfo einfon ewarn eerror ebegin __eend eend KV_major \
+		KV_minor KV_micro KV_to_int get_KV __1 __1 has \
+		__has_phase_defined_up_to \
+		hasv hasq __qa_source __qa_call \
+		addread addwrite adddeny addpredict __sb_append_var \
 		use usev useq has_version portageq \
 		best_version use_with use_enable register_die_hook \
-		keepdir unpack strip_duplicate_slashes econf einstall \
-		dyn_setup dyn_unpack dyn_clean into insinto exeinto docinto \
+		keepdir unpack __strip_duplicate_slashes econf einstall \
+		__dyn_setup __dyn_unpack __dyn_clean \
+		into insinto exeinto docinto \
 		insopts diropts exeopts libopts docompress \
-		abort_handler abort_prepare abort_configure abort_compile \
-		abort_test abort_install dyn_prepare dyn_configure \
-		dyn_compile dyn_test dyn_install \
-		dyn_preinst dyn_pretend dyn_help debug-print debug-print-function \
-		debug-print-section helpers_die inherit EXPORT_FUNCTIONS \
-		nonfatal register_success_hook remove_path_entry \
-		save_ebuild_env filter_readonly_variables preprocess_ebuild_env \
-		set_unless_changed unset_unless_changed source_all_bashrcs \
-		ebuild_main ebuild_phase ebuild_phase_with_hooks \
-		_eapi5_apply_user_patches _eapi5_src_prepare \
-		_ebuild_arg_to_phase _ebuild_phase_funcs default \
-		_hasg _hasgq _unpack_tar \
+		__abort_handler __abort_prepare __abort_configure __abort_compile \
+		__abort_test __abort_install __dyn_prepare __dyn_configure \
+		__dyn_compile __dyn_test __dyn_install \
+		__dyn_pretend __dyn_help \
+		debug-print debug-print-function \
+		debug-print-section __helpers_die inherit EXPORT_FUNCTIONS \
+		nonfatal register_success_hook \
+		__hasg __hasgq \
+		__save_ebuild_env __set_colors __filter_readonly_variables \
+		__preprocess_ebuild_env \
+		__source_all_bashrcs \
+		__ebuild_main __ebuild_phase __ebuild_phase_with_hooks \
+		__ebuild_arg_to_phase __ebuild_phase_funcs default \
+		__unpack_tar __unset_colors \
 		${QA_INTERCEPTORS}
 
 	case "${EAPI}" in
 		0|1|2|3|4|4-python|4-slot-abi) ;;
 		*) unset -f usex ;;
-	esac
-
-	case "${EAPI}" in
-		5_pre1) unset -f apply_user_patches ;;
 	esac
 
 	# portage config variables and variables set directly by portage

@@ -62,7 +62,7 @@ prepstrip_sources_dir=${EPREFIX}/usr/src/debug/${CATEGORY}/${PF}
 type -P debugedit >/dev/null && debugedit_found=true || debugedit_found=false
 debugedit_warned=false
 
-multijob_init
+__multijob_init
 
 # Setup $T filesystem layout that we care about.
 tmpdir="${T}/prepstrip"
@@ -159,7 +159,7 @@ save_elf_debug() {
 process_elf() {
 	local x=$1 strip_flags=${*:2}
 
-	vecho "   ${x:${#ED}}"
+	__vecho "   ${x:${#ED}}"
 
 	# If two processes try to debugedit or strip the same hardlink at the
 	# same time, it may corrupt files or cause loss of splitdebug info.
@@ -206,7 +206,7 @@ if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
 	log=${tmpdir}/scanelf-already-stripped.log
 	scanelf -yqRBF '#k%F' -k '!.symtab' "$@" | sed -e "s#^${ED}##" > "${log}"
 	(
-	multijob_child_init
+	__multijob_child_init
 	qa_var="QA_PRESTRIPPED_${ARCH/-/_}"
 	[[ -n ${!qa_var} ]] && QA_PRESTRIPPED="${!qa_var}"
 	if [[ -n ${QA_PRESTRIPPED} && -s ${log} && \
@@ -221,14 +221,14 @@ if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
 	fi
 	sed -e "/^\$/d" -e "s#^#/#" -i "${log}"
 	if [[ -s ${log} ]] ; then
-		vecho -e "\n"
+		__vecho -e "\n"
 		eqawarn "QA Notice: Pre-stripped files found:"
 		eqawarn "$(<"${log}")"
 	else
 		rm -f "${log}"
 	fi
 	) &
-	multijob_post_fork
+	__multijob_post_fork
 fi
 
 # Now we look for unstripped binaries.
@@ -237,12 +237,12 @@ for x in \
 	$(find "$@" -type f -name '*.a')
 do
 	if ! ${banner} ; then
-		vecho "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
+		__vecho "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
 		banner=true
 	fi
 
 	(
-	multijob_child_init
+	__multijob_child_init
 	f=$(file "${x}") || exit 0
 	[[ -z ${f} ]] && exit 0
 
@@ -277,7 +277,7 @@ do
 
 	buildid=
 	if [[ ${f} == *"current ar archive"* ]] ; then
-		vecho "   ${x:${#ED}}"
+		__vecho "   ${x:${#ED}}"
 		if ${strip_this} ; then
 			# hmm, can we split debug/sources for .a ?
 			${STRIP} -g "${x}"
@@ -292,12 +292,12 @@ do
 		chmod u-w "${x}"
 	fi
 	) &
-	multijob_post_fork
+	__multijob_post_fork
 done
 
 # With a bit more work, we could run the rsync processes below in
 # parallel, but not sure that'd be an overall improvement.
-multijob_finish
+__multijob_finish
 
 cd "${tmpdir}"/sources/ && cat * > "${tmpdir}/debug.sources" 2>/dev/null
 if [[ -s ${tmpdir}/debug.sources ]] && \
@@ -305,7 +305,7 @@ if [[ -s ${tmpdir}/debug.sources ]] && \
    ! ${RESTRICT_installsources} && \
    ${debugedit_found}
 then
-	vecho "installsources: rsyncing source files"
+	__vecho "installsources: rsyncing source files"
 	[[ -d ${D}${prepstrip_sources_dir} ]] || mkdir -p "${D}${prepstrip_sources_dir}"
 	grep -zv '/<[^/>]*>$' "${tmpdir}"/debug.sources | \
 		(cd "${WORKDIR}"; LANG=C sort -z -u | \

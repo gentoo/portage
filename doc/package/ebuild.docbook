@@ -12,5 +12,7 @@
 &package_ebuild_eapi_4_python;
 &package_ebuild_eapi_4_slot_abi;
 &package_ebuild_eapi_5;
+&package_ebuild_eapi_5_progress;
+&package_ebuild_eapi_5_hdepend;
 </section>
 </chapter>

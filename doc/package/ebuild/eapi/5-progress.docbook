@@ -1,17 +1,17 @@
-<section id='package-ebuild-eapi-4-python'>
-	<title>EAPI 4-python</title>
+<section id='package-ebuild-eapi-5-progress'>
+	<title>EAPI 5-progress</title>
 	<para>
-		Also see the <ulink url="http://people.apache.org/~Arfrever/EAPI_4-python_Specification">official EAPI 4-python Specification</ulink>.
+		Also see the <ulink url="http://people.apache.org/~Arfrever/EAPI_5-progress_Specification">official EAPI 5-progress Specification</ulink>.
 	</para>
-	<section id='package-ebuild-eapi-4-python-helpers'>
+	<section id='package-ebuild-eapi-5-progress-helpers'>
 		<title>Helpers</title>
-		<section id='package-ebuild-eapi-4-python-helpers-dohtml-extended-default-list-of-extensions'>
+		<section id='package-ebuild-eapi-5-progress-helpers-dohtml-extended-default-list-of-extensions'>
 			<title>Extended default list of extensions in dohtml</title>
 			<para>
 				dohtml by default additionally installs files with .ico, .svg, .xhtml and .xml extensions.
 			</para>
 		</section>
-		<section id='package-ebuild-eapi-4-python-helpers-banned-in-global-scope'>
+		<section id='package-ebuild-eapi-5-progress-helpers-banned-in-global-scope'>
 			<title>Helpers Banned in Global Scope</title>
 			<para>
 				<itemizedlist>
@@ -26,25 +26,26 @@
 					<listitem><para>use_with</para></listitem>
 					<listitem><para>useq</para></listitem>
 					<listitem><para>usev</para></listitem>
+					<listitem><para>usex</para></listitem>
 				</itemizedlist>
 			</para>
 		</section>
 	</section>
-	<section id='package-ebuild-eapi-4-python-metadata'>
+	<section id='package-ebuild-eapi-5-progress-metadata'>
 		<title>Metadata</title>
-		<section id='package-ebuild-eapi-4-python-metadata-package-names-allow-period-characters'>
+		<section id='package-ebuild-eapi-5-progress-metadata-package-names-allow-period-characters'>
 			<title>Support for Period Characters in Package Names</title>
 			<para>
 				The "." character is allowed in package names.
 			</para>
 		</section>
-		<section id='package-ebuild-eapi-4-python-metadata-use-flags-allow-period-characters'>
+		<section id='package-ebuild-eapi-5-progress-metadata-use-flags-allow-period-characters'>
 			<title>Support for Period Characters in USE Flags</title>
 			<para>
 				The "." character is allowed in USE flags.
 			</para>
 		</section>
-		<section id='package-ebuild-eapi-4-python-metadata-repository-dependencies'>
+		<section id='package-ebuild-eapi-5-progress-metadata-repository-dependencies'>
 			<title>Repository Dependencies</title>
 			<para>
 				Repository dependencies are supported in atoms in DEPEND, PDEPEND and RDEPEND and atoms passed to best_version and has_version functions.
@@ -79,22 +80,22 @@
 			</table>
 		</section>
 	</section>
-	<section id='package-ebuild-eapi-4-python-globstar'>
+	<section id='package-ebuild-eapi-5-progress-globstar'>
 		<title>globstar shell option enabled by default</title>
 		<para>
 			globstar shell option is enabled by default, which enables recursive expansion of ** pattern in pathname expansion context.
 		</para>
 	</section>
-	<section id='package-ebuild-eapi-4-python-variables'>
+	<section id='package-ebuild-eapi-5-progress-variables'>
 		<title>Variables</title>
-		<section id='package-ebuild-eapi-4-python-variables-repository'>
+		<section id='package-ebuild-eapi-5-progress-variables-repository'>
 			<title>REPOSITORY Variable</title>
 			<para>
 				The new REPOSITORY variable is set in ebuild environment. This variable contains name of repository, which contains currently used ebuild.
 			</para>
 		</section>
 	</section>
-	<section id='package-ebuild-eapi-4-python-repo-level-config'>
+	<section id='package-ebuild-eapi-5-progress-repo-level-config'>
 		<title>Extended Repository-Level Configuration</title>
 		<para>
 			Repository-level configuration in ${repository_path}/profiles is supported for the following files:
@@ -103,12 +104,16 @@
 				<listitem><para>package.use</para></listitem>
 				<listitem><para>package.use.force</para></listitem>
 				<listitem><para>package.use.mask</para></listitem>
+				<listitem><para>package.use.stable.force</para></listitem>
+				<listitem><para>package.use.stable.mask</para></listitem>
 				<listitem><para>use.force</para></listitem>
 				<listitem><para>use.mask</para></listitem>
+				<listitem><para>use.stable.force</para></listitem>
+				<listitem><para>use.stable.mask</para></listitem>
 			</itemizedlist>
 		</para>
 	</section>
-	<section id='package-ebuild-eapi-4-python-directories'>
+	<section id='package-ebuild-eapi-5-progress-directories'>
 		<title>Directories Allowed for Profile-Level and Repository-Level Configuration</title>
 		<para>
 			The following files can be directories:
@@ -117,8 +122,12 @@
 				<listitem><para>package.use</para></listitem>
 				<listitem><para>package.use.force</para></listitem>
 				<listitem><para>package.use.mask</para></listitem>
+				<listitem><para>package.use.stable.force</para></listitem>
+				<listitem><para>package.use.stable.mask</para></listitem>
 				<listitem><para>use.force</para></listitem>
 				<listitem><para>use.mask</para></listitem>
+				<listitem><para>use.stable.force</para></listitem>
+				<listitem><para>use.stable.mask</para></listitem>
 			</itemizedlist>
 		</para>
 	</section>

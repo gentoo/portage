@@ -75,7 +75,7 @@ class FakeVartree(vartree):
 			self.dbapi.aux_get = self._aux_get_wrapper
 			self.dbapi.match = self._match_wrapper
 		self._aux_get_history = set()
-		self._portdb_keys = ["EAPI", "KEYWORDS", "DEPEND", "RDEPEND", "PDEPEND"]
+		self._portdb_keys = Package._dep_keys + ("EAPI", "KEYWORDS")
 		self._portdb = portdb
 		self._global_updates = None
 
@@ -286,7 +286,7 @@ def grab_global_updates(portdb):
 	return retupdates
 
 def perform_global_updates(mycpv, mydb, myupdates):
-	aux_keys = ["DEPEND", "EAPI", "RDEPEND", "PDEPEND", 'repository']
+	aux_keys = Package._dep_keys + ("EAPI", 'repository')
 	aux_dict = dict(zip(aux_keys, mydb.aux_get(mycpv, aux_keys)))
 	eapi = aux_dict.pop('EAPI')
 	repository = aux_dict.pop('repository')

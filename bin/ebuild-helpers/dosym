@@ -5,7 +5,7 @@
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 
 if [[ $# -ne 2 ]] ; then
-	helpers_die "${0##*/}: two arguments needed"
+	__helpers_die "${0##*/}: two arguments needed"
 	exit 1
 fi
 
@@ -26,5 +26,5 @@ target="${1}"
 ln -snf "${target}" "${ED}${2}"
 
 ret=$?
-[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
+[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
 exit $ret

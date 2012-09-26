@@ -12,5 +12,5 @@ source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 slash="/"
 chmod "${@/#${slash}/${ED}${slash}}"
 ret=$?
-[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
+[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
 exit $ret

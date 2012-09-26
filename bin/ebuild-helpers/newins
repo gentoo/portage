@@ -8,7 +8,7 @@ source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 helper=${0##*/}
 
 if [[ -z ${T} ]] || [[ -z ${2} ]] ; then
-	helpers_die "${helper}: Need two arguments, old file and new file"
+	__helpers_die "${helper}: Need two arguments, old file and new file"
 	exit 1
 fi
 
@@ -25,14 +25,14 @@ rm -rf "${T}/$2"
 
 if [[ ${stdin} ]] ; then
 	if [[ -t 0 ]] ; then
-		helpers_die "!!! ${helper}: Input is from a terminal"
+		__helpers_die "!!! ${helper}: Input is from a terminal"
 		exit 1
 	fi
 	cat > "${T}/$2"
 	ret=$?
 else
 	if [[ ! -e $1 ]] ; then
-		helpers_die "!!! ${helper}: $1 does not exist"
+		__helpers_die "!!! ${helper}: $1 does not exist"
 		exit 1
 	fi
 
@@ -52,12 +52,12 @@ else
 fi
 
 if [[ ${ret} -ne 0 ]] ; then
-	helpers_die "${0##*/} failed"
+	__helpers_die "${0##*/} failed"
 	exit ${ret}
 fi
 
 do${helper#new} "${T}/$2"
 ret=$?
 rm -rf "${T}/${2}"
-[[ $ret -ne 0 ]] && helpers_die "${helper} failed"
+[[ $ret -ne 0 ]] && __helpers_die "${helper} failed"
 exit $ret

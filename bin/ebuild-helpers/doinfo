@@ -5,7 +5,7 @@
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 
 if [[ -z $1 ]] ; then
-	helpers_die "${0##*/}: at least one argument needed"
+	__helpers_die "${0##*/}: at least one argument needed"
 	exit 1 	
 fi
 
@@ -13,7 +13,7 @@ fi
 	case "$EAPI" in 0|1|2) ED=${D} ;; esac
 
 if [[ ! -d ${ED}usr/share/info ]] ; then
-	install -d "${ED}usr/share/info" || { helpers_die "${0##*/}: failed to install ${ED}usr/share/info"; exit 1; }
+	install -d "${ED}usr/share/info" || { __helpers_die "${0##*/}: failed to install ${ED}usr/share/info"; exit 1; }
 fi
 
 install -m0644 "$@" "${ED}usr/share/info"
@@ -22,6 +22,6 @@ if [ $rval -ne 0 ] ; then
 	for x in "$@" ; do
 		[ -e "$x" ] || echo "!!! ${0##*/}: $x does not exist" 1>&2
 	done
-	helpers_die "${0##*/} failed"
+	__helpers_die "${0##*/} failed"
 fi
 exit $rval

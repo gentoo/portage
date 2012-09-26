@@ -14,7 +14,7 @@ case "${EAPI}" in
 esac
 
 if [[ -n $1 ]] ; then
-	vecho "${0##*/}: invalid usage; takes no arguments" 1>&2
+	__vecho "${0##*/}: invalid usage; takes no arguments" 1>&2
 fi
 
 [[ " ${FEATURES} " == *" force-prefix "* ]] || \

@@ -95,6 +95,9 @@ _phase_func_map = {
 	"pretend": "pkg_pretend",
 }
 
+_vdb_use_conditional_keys = Package._dep_keys + \
+	('LICENSE', 'PROPERTIES', 'PROVIDE', 'RESTRICT',)
+
 def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 	"""
 	All proper ebuild phases which execute ebuild.sh are spawned
@@ -903,8 +906,16 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 		# the sandbox -- and stop now.
 		if mydo in ("config", "help", "info", "postinst",
 			"preinst", "pretend", "postrm", "prerm"):
-			return _spawn_phase(mydo, mysettings,
-				fd_pipes=fd_pipes, logfile=logfile, returnpid=returnpid)
+			if mydo in ("preinst", "postinst"):
+				env_file = os.path.join(os.path.dirname(mysettings["EBUILD"]),
+					"environment.bz2")
+				if os.path.isfile(env_file):
+					mysettings["PORTAGE_UPDATE_ENV"] = env_file
+			try:
+				return _spawn_phase(mydo, mysettings,
+					fd_pipes=fd_pipes, logfile=logfile, returnpid=returnpid)
+			finally:
+				mysettings.pop("PORTAGE_UPDATE_ENV", None)
 
 		mycpv = "/".join((mysettings["CATEGORY"], mysettings["PF"]))
 
@@ -1263,7 +1274,7 @@ def _spawn_actionmap(settings):
 	misc_sh_binary = os.path.join(portage_bin_path,
 		os.path.basename(MISC_SH_BINARY))
 	ebuild_sh = _shell_quote(ebuild_sh_binary) + " %s"
-	misc_sh = _shell_quote(misc_sh_binary) + " dyn_%s"
+	misc_sh = _shell_quote(misc_sh_binary) + " __dyn_%s"
 
 	# args are for the to spawn function
 	actionmap = {
@@ -1750,9 +1761,6 @@ def _post_src_install_write_metadata(settings):
 				errors='strict') as f:
 				f.write(_unicode_decode(v + '\n'))
 
-_vdb_use_conditional_keys = ('DEPEND', 'LICENSE', 'PDEPEND',
-	'PROPERTIES', 'PROVIDE', 'RDEPEND', 'RESTRICT',)
-
 def _preinst_bsdflags(mysettings):
 	if bsd_chflags:
 		# Save all the file flags for restoration later.
@@ -1800,6 +1808,28 @@ def _post_src_install_uid_fix(mysettings, out):
 	xdg_dirs = tuple(os.path.join(i, "applications") + os.sep
 		for i in xdg_dirs if i)
 
+	qa_desktop_file = ""
+	try:
+		with io.open(_unicode_encode(os.path.join(
+			mysettings["PORTAGE_BUILDDIR"],
+			"build-info", "QA_DESKTOP_FILE"),
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['repo.content'],
+			errors='replace') as f:
+			qa_desktop_file = f.read()
+	except IOError as e:
+		if e.errno not in (errno.ENOENT, errno.ESTALE):
+			raise
+
+	qa_desktop_file = qa_desktop_file.split()
+	if qa_desktop_file:
+		if len(qa_desktop_file) > 1:
+			qa_desktop_file = "|".join("(%s)" % x for x in qa_desktop_file)
+			qa_desktop_file = "^(%s)$" % qa_desktop_file
+		else:
+			qa_desktop_file = "^%s$" % qa_desktop_file[0]
+		qa_desktop_file = re.compile(qa_desktop_file)
+
 	while True:
 
 		unicode_error = False
@@ -1846,9 +1876,11 @@ def _post_src_install_uid_fix(mysettings, out):
 				else:
 					fpath = os.path.join(parent, fname)
 
+				fpath_relative = fpath[ed_len - 1:]
 				if desktop_file_validate and fname.endswith(".desktop") and \
 					os.path.isfile(fpath) and \
-					fpath[ed_len - 1:].startswith(xdg_dirs):
+					fpath_relative.startswith(xdg_dirs) and \
+					not (qa_desktop_file and qa_desktop_file.match(fpath_relative.strip(os.sep)) is not None):
 
 					desktop_validate = validate_desktop_entry(fpath)
 					if desktop_validate:

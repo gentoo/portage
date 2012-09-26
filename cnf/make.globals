@@ -66,8 +66,7 @@ FEATURES="assume-digests binpkg-logs
 COLLISION_IGNORE="/lib/modules/* *.py[co]"
 UNINSTALL_IGNORE="/lib/modules/*"
 
-# Enable preserve-libs for testing with portage versions that support it.
-# This setting is commented out for portage versions that don't support it.
+# Prefix: we want preserve-libs, not sure how mainline goes about this
 FEATURES="${FEATURES} preserve-libs"
 
 # Force EPREFIX, ED and EROOT to exist in all EAPIs, not just 3 and up

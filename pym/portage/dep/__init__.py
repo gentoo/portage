@@ -72,7 +72,7 @@ def _get_slot_re(eapi_attrs):
 	else:
 		slot_re = _slot
 
-	slot_re = re.compile('^' + slot_re + '$', re.VERBOSE)
+	slot_re = re.compile('^' + slot_re + '$', re.VERBOSE | re.UNICODE)
 
 	_slot_re_cache[cache_key] = slot_re
 	return slot_re
@@ -90,7 +90,7 @@ def _get_slot_dep_re(eapi_attrs):
 	else:
 		slot_re = _slot
 
-	slot_re = re.compile('^' + slot_re + '$', re.VERBOSE)
+	slot_re = re.compile('^' + slot_re + '$', re.VERBOSE | re.UNICODE)
 
 	_slot_dep_re_cache[cache_key] = slot_re
 	return slot_re
@@ -123,7 +123,7 @@ def _get_atom_re(eapi_attrs):
 		'(?P<star>=' + cpv_re + r'\*)|' +
 		'(?P<simple>' + cp_re + '))' + 
 		'(' + _slot_separator + _slot_loose + ')?' +
-		_repo + ')(' + _use + ')?$', re.VERBOSE)
+		_repo + ')(' + _use + ')?$', re.VERBOSE | re.UNICODE)
 
 	_atom_re_cache[cache_key] = atom_re
 	return atom_re
@@ -145,7 +145,7 @@ def _get_atom_wildcard_re(eapi_attrs):
 		_extended_cat + r')/(' + pkg_re + r'))' + \
 		'|(?P<star>=((' + _extended_cat + r')/(' + pkg_re + r'))-(?P<version>\*\d+\*)))' + \
 		'(:(?P<slot>' + _slot_loose + r'))?(' +
-		_repo_separator + r'(?P<repo>' + _repo_name + r'))?$')
+		_repo_separator + r'(?P<repo>' + _repo_name + r'))?$', re.UNICODE)
 
 	_atom_wildcard_re_cache[cache_key] = atom_re
 	return atom_re
@@ -1333,6 +1333,8 @@ class Atom(_unicode):
 						sub_slot = sub_slot[:-1]
 					self.__dict__['sub_slot'] = sub_slot
 					self.__dict__['slot_operator'] = slot_operator
+				if self.slot is not None and self.slot_operator == "*":
+					raise InvalidAtom(self)
 			else:
 				self.__dict__['slot'] = slot
 				self.__dict__['sub_slot'] = None
@@ -1583,7 +1585,7 @@ def extended_cp_match(extended_cp, other_cp):
 	extended_cp_re = _extended_cp_re_cache.get(extended_cp)
 	if extended_cp_re is None:
 		extended_cp_re = re.compile("^" + re.escape(extended_cp).replace(
-			r'\*', '[^/]*') + "$")
+			r'\*', '[^/]*') + "$", re.UNICODE)
 		_extended_cp_re_cache[extended_cp] = extended_cp_re
 	return extended_cp_re.match(other_cp) is not None
 

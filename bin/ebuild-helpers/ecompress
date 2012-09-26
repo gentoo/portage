@@ -5,7 +5,7 @@
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 
 if [[ -z $1 ]] ; then
-	helpers_die "${0##*/}: at least one argument needed"
+	__helpers_die "${0##*/}: at least one argument needed"
 	exit 1
 fi
 
@@ -68,7 +68,7 @@ decompress_args() {
 
 case $1 in
 	--suffix)
-		[[ -n $2 ]] && vecho "${0##*/}: --suffix takes no additional arguments" 1>&2
+		[[ -n $2 ]] && __vecho "${0##*/}: --suffix takes no additional arguments" 1>&2
 
 		if [[ ! -e ${T}/.ecompress.suffix ]] ; then
 			set -e
@@ -93,7 +93,7 @@ case $1 in
 		cat "${T}/.ecompress.suffix"
 		;;
 	--bin)
-		[[ -n $2 ]] && vecho "${0##*/}: --bin takes no additional arguments" 1>&2
+		[[ -n $2 ]] && __vecho "${0##*/}: --bin takes no additional arguments" 1>&2
 
 		echo "${PORTAGE_COMPRESS} ${PORTAGE_COMPRESS_FLAGS}"
 		;;
@@ -104,18 +104,18 @@ case $1 in
 			>> "$x"
 			((ret|=$?))
 		done
-		[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
+		[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
 		exit $ret
 		;;
 	--dequeue)
-		[[ -n $2 ]] && vecho "${0##*/}: --dequeue takes no additional arguments" 1>&2
+		[[ -n $2 ]] && __vecho "${0##*/}: --dequeue takes no additional arguments" 1>&2
 		find "${D}" -name '*.ecompress.file' -print0 \
 			| sed -e 's:\.ecompress\.file::g' \
 			| ${XARGS} -0 ecompress
 		find "${D}" -name '*.ecompress.file' -print0 | ${XARGS} -0 rm -f
 		;;
 	--*)
-		helpers_die "${0##*/}: unknown arguments '$*'"
+		__helpers_die "${0##*/}: unknown arguments '$*'"
 		exit 1
 		;;
 	*)
@@ -155,7 +155,7 @@ case $1 in
 		# Finally, let's actually do some real work
 		"${PORTAGE_COMPRESS}" ${PORTAGE_COMPRESS_FLAGS} "$@"
 		ret=$?
-		[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
+		[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
 		exit $ret
 		;;
 esac

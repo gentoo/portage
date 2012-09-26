@@ -13,12 +13,25 @@ from portage.util import writemsg
 
 def deprecated_profile_check(settings=None):
 	config_root = "/"
+	deprecated_profile_file = None
 	if settings is not None:
 		config_root = settings["PORTAGE_CONFIGROOT"]
-	deprecated_profile_file = os.path.join(config_root,
-		DEPRECATED_PROFILE_FILE)
-	if not os.access(deprecated_profile_file, os.R_OK):
-		return False
+		for x in reversed(settings.profiles):
+			deprecated_profile_file = os.path.join(x, "deprecated")
+			if os.access(deprecated_profile_file, os.R_OK):
+				break
+		else:
+			deprecated_profile_file = None
+
+	if deprecated_profile_file is None:
+		deprecated_profile_file = os.path.join(config_root,
+			DEPRECATED_PROFILE_FILE)
+		if not os.access(deprecated_profile_file, os.R_OK):
+			deprecated_profile_file = os.path.join(config_root,
+				'etc', 'make.profile', 'deprecated')
+			if not os.access(deprecated_profile_file, os.R_OK):
+				return
+
 	dcontent = io.open(_unicode_encode(deprecated_profile_file,
 		encoding=_encodings['fs'], errors='strict'), 
 		mode='r', encoding=_encodings['content'], errors='replace').readlines()

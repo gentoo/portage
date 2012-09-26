@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Aug 2012" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Sep 2012" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -521,7 +521,10 @@ bits from any file that is not listed in \fI/etc/portage/suidctl.conf\fR.
 Run package\-specific tests during each merge to help make sure 
 the package compiled properly.  See \fItest\fR in \fBebuild\fR(1) 
 and \fIsrc_test()\fR in \fBebuild\fR(5). This feature implies the "test"
-\fBUSE\fR flag.
+\fBUSE\fR flag if it is a member of \fBIUSE\fR, either explicitly or
+implicitly (see \fBebuild\fR(5) for more information about \fBIUSE\fR).
+The "test" \fBUSE\fR flag is also automatically disabled when the
+"test" feature is disabled.
 .TP
 .B test\-fail\-continue
 If "test" is enabled \fBFEATURES\fR and the test phase of an ebuild fails,
@@ -899,11 +902,6 @@ settings from ebuilds.  See also \fBebuild\fR(5).
 Set this to cause portage to ignore any \fIQA_FLAGS_IGNORED\fR override
 settings from ebuilds.  See also \fBebuild\fR(5).
 .TP
-\fBQA_STRICT_DT_HASH = \fI"set"\fR
-Set this to cause portage to ignore any \fIQA_DT_HASH\fR override
-settings from ebuilds. This variable is deprecated. Use
-\fIQA_STRICT_FLAGS_IGNORED\fR instead.
-.TP
 \fBQA_STRICT_PRESTRIPPED = \fI"set"\fR
 Set this to cause portage to ignore any \fIQA_PRESTRIPPED\fR override
 settings from ebuilds.  See also \fBebuild\fR(5).
@@ -917,11 +915,12 @@ be necessary in order to continue a partially downloaded file located at
 .TP
 \fBROOT\fR = \fI[path]\fR
 Use \fBROOT\fR to specify the target root filesystem to be used for merging 
-packages or ebuilds.  All \fBRDEPEND\fR and \fBPDEPEND\fR will be installed 
-into \fBROOT\fR while all \fBDEPEND\fR will be still be installed into /.  
+packages or ebuilds.
 Typically, you should set this setting in the environment rather than in 
 \fI/etc/make.conf\fR itself.  It's commonly used for creating new build 
-images.  Make sure you use an absolute path.
+images. Make sure you use an absolute path. Refer to the
+\fBCross-compilation\fR section of \fBebuild\fR(5) for information about
+how dependencies are handled for \fBROOT\fR.
 .br
 Defaults to /.
 .TP
@@ -948,15 +947,6 @@ Defaults to "/lib/modules/*".
 This variable contains options that control the build behavior of several
 packages.  More information in \fBebuild\fR(5).  Possible USE values
 can be found in \fI/usr/portage/profiles/use.desc\fR.
-.TP
-\fBUSE_EXPAND\fR = \fI[space delimited list of variable names]\fR
-Any variable listed here will be used to augment USE by inserting a new flag
-for every value in that variable, so USE_EXPAND="FOO" and FOO="bar bla" results
-in USE="foo_bar foo_bla".
-.TP
-\fBUSE_EXPAND_HIDDEN\fR = \fI[space delimited list of variable names]\fR
-Names of \fBUSE_EXPAND\fR variables that should not be shown in the verbose merge
-list output of the \fBemerge\fR(1) command.
 .TP
 \fBUSE_ORDER\fR = \fI"env:pkg:conf:defaults:pkginternal:repo:env.d"\fR
 Determines the precedence of layers in the incremental stacking of the USE
