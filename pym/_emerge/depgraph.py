@@ -24,7 +24,7 @@ from portage.dep import Atom, best_match_to_list, extract_affecting_use, \
 	_repo_separator
 from portage.dep._slot_operator import ignore_built_slot_operator_deps
 from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use, \
-	_get_eapi_attrs, eapi_has_hdepend
+	_get_eapi_attrs
 from portage.exception import (InvalidAtom, InvalidDependString,
 	PackageNotFound, PortageException)
 from portage.output import colorize, create_color_func, \
@@ -1679,6 +1679,7 @@ class depgraph(object):
 		myroot = pkg.root
 		metadata = pkg.metadata
 		removal_action = "remove" in self._dynamic_config.myparams
+		eapi_attrs = _get_eapi_attrs(pkg.metadata["EAPI"])
 
 		edepend={}
 		depkeys = ["DEPEND","RDEPEND","PDEPEND","HDEPEND"]
@@ -1718,7 +1719,7 @@ class depgraph(object):
 		if removal_action:
 			depend_root = myroot
 		else:
-			if eapi_has_hdepend(pkg.metadata['EAPI']):
+			if eapi_attrs.hdepend:
 				depend_root = myroot
 			else:
 				depend_root = self._frozen_config._running_root.root
