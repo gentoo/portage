@@ -2,14 +2,14 @@
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+
 if ___eapi_dodoc_supports_-r; then
 	exec \
 	env \
 	__PORTAGE_HELPER="dodoc" \
 	doins "$@"
 fi
-
-source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 if [ $# -lt 1 ] ; then
 	__helpers_die "${0##*/}: at least one argument needed"
