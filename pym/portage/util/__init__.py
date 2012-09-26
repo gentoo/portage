@@ -381,17 +381,22 @@ def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 
 _eapi_cache = {}
 
-def read_corresponding_eapi_file(filename):
+def read_corresponding_eapi_file(filename, default="0"):
 	"""
 	Read the 'eapi' file from the directory 'filename' is in.
 	Returns "0" if the file is not present or invalid.
 	"""
-	default = "0"
 	eapi_file = os.path.join(os.path.dirname(filename), "eapi")
 	try:
-		return _eapi_cache[eapi_file]
+		eapi = _eapi_cache[eapi_file]
 	except KeyError:
 		pass
+	else:
+		if eapi is None:
+			return default
+		return eapi
+
+	eapi = None
 	try:
 		f = io.open(_unicode_encode(eapi_file,
 			encoding=_encodings['fs'], errors='strict'),
@@ -402,12 +407,13 @@ def read_corresponding_eapi_file(filename):
 		else:
 			writemsg(_("--- Invalid 'eapi' file (doesn't contain exactly one line): %s\n") % (eapi_file),
 				noiselevel=-1)
-			eapi = default
 		f.close()
 	except IOError:
-		eapi = default
+		pass
 
 	_eapi_cache[eapi_file] = eapi
+	if eapi is None:
+		return default
 	return eapi
 
 def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=False, allow_repo=False,
