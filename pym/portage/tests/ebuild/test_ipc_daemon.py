@@ -92,7 +92,9 @@ class IpcDaemonTestCase(TestCase):
 				self.assertEqual(exit_command.exitcode, exitcode)
 
 			# Intentionally short timeout test for QueueScheduler.run()
-			sleep_time_s = 10      # 10.000 seconds
+			# Use a ridiculously long sleep_time_s in case the user's
+			# system is heavily loaded (see bug #436334).
+			sleep_time_s = 600     #600.000 seconds
 			short_timeout_ms = 10  #  0.010 seconds
 
 			for i in range(3):
