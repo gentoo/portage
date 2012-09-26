@@ -3106,7 +3106,7 @@ class depgraph(object):
 
 		if target_atom is not None and isinstance(node, Package):
 			affecting_use = set()
-			for dep_str in "DEPEND", "RDEPEND", "PDEPEND", "HDEPEND":
+			for dep_str in Package._dep_keys:
 				try:
 					affecting_use.update(extract_affecting_use(
 						node.metadata[dep_str], target_atom,
@@ -4138,7 +4138,7 @@ class depgraph(object):
 			if pkg not in self._dynamic_config.digraph.nodes:
 				return False
 
-			for key in "DEPEND", "RDEPEND", "PDEPEND", "HDEPEND", "LICENSE":
+			for key in Package._dep_keys + ("LICENSE",):
 				dep = pkg.metadata[key]
 				old_val = set(portage.dep.use_reduce(dep, pkg.use.enabled, is_valid_flag=pkg.iuse.is_valid_flag, flat=True))
 				new_val = set(portage.dep.use_reduce(dep, new_use, is_valid_flag=pkg.iuse.is_valid_flag, flat=True))
@@ -4898,7 +4898,7 @@ class depgraph(object):
 			# For installed packages, always ignore blockers from DEPEND since
 			# only runtime dependencies should be relevant for packages that
 			# are already built.
-			dep_keys = ["RDEPEND", "PDEPEND"]
+			dep_keys = Package._runtime_keys
 			for myroot in self._frozen_config.trees:
 
 				if self._frozen_config.myopts.get("--root-deps") is not None and \
