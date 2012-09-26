@@ -137,15 +137,15 @@ class EventLoop(object):
 		if not event_handlers:
 			if self._run_timeouts():
 				events_handled += 1
-			if not event_handlers:
-				if not events_handled and may_block and \
-					self._timeout_interval is not None:
+			if not event_handlers and not events_handled and may_block:
+				timeout = self._get_poll_timeout()
+				if timeout is not None:
 					# Block so that we don't waste cpu time by looping too
 					# quickly. This makes EventLoop useful for code that needs
 					# to wait for timeout callbacks regardless of whether or
 					# not any IO handlers are currently registered.
 					try:
-						self._poll(timeout=self._timeout_interval)
+						self._poll(timeout=timeout)
 					except StopIteration:
 						pass
 					if self._run_timeouts():
@@ -160,14 +160,7 @@ class EventLoop(object):
 		if not event_queue:
 
 			if may_block:
-				if self._child_handlers:
-					if self._timeout_interval is None:
-						timeout = self._sigchld_interval
-					else:
-						timeout = min(self._sigchld_interval,
-							self._timeout_interval)
-				else:
-					timeout = self._timeout_interval
+				timeout = self._get_poll_timeout()
 			else:
 				timeout = 0
 
@@ -193,6 +186,17 @@ class EventLoop(object):
 			events_handled += 1
 
 		return bool(events_handled)
+
+	def _get_poll_timeout(self):
+		if self._child_handlers:
+			if self._timeout_interval is None:
+				timeout = self._sigchld_interval
+			else:
+				timeout = min(self._sigchld_interval,
+					self._timeout_interval)
+		else:
+			timeout = self._timeout_interval
+		return timeout
 
 	def child_watch_add(self, pid, callback, data=None):
 		"""
@@ -532,6 +536,6 @@ class _epoll_adapter(object):
 			if timeout is None or timeout < 0:
 				timeout = -1
 			elif timeout != 0:
-				 timeout = timeout / 1000
+				 timeout = float(timeout) / 1000
 
 		return self._epoll_obj.poll(timeout)

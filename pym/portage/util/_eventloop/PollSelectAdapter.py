@@ -64,7 +64,7 @@ class PollSelectAdapter(object):
 			if timeout is not None and timeout < 0:
 				timeout = None
 			if timeout is not None:
-				select_args.append(timeout / 1000)
+				select_args.append(float(timeout) / 1000)
 
 		select_events = select.select(*select_args)
 		poll_events = []
