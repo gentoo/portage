@@ -55,7 +55,8 @@ class ResolverPlayground(object):
 """
 
 	def __init__(self, ebuilds={}, binpkgs={}, installed={}, profile={}, repo_configs={}, \
-		user_config={}, sets={}, world=[], world_sets=[], distfiles={}, debug=False):
+		user_config={}, sets={}, world=[], world_sets=[], distfiles={},
+		targetroot=False, debug=False):
 		"""
 		ebuilds: cpv -> metadata mapping simulating available ebuilds. 
 		installed: cpv -> metadata mapping simulating installed packages.
@@ -65,6 +66,10 @@ class ResolverPlayground(object):
 		self.debug = debug
 		self.eprefix = normalize_path(tempfile.mkdtemp())
 		self.eroot = self.eprefix + os.sep
+		if targetroot:
+			self.target_root = os.path.join(self.eroot, 'target_root')
+		else:
+			self.target_root = os.sep
 		self.distdir = os.path.join(self.eroot, "var", "portage", "distfiles")
 		self.pkgdir = os.path.join(self.eprefix, "pkgdir")
 		self.portdir = os.path.join(self.eroot, "usr/portage")
@@ -363,7 +368,51 @@ class ResolverPlayground(object):
 			f.write("\n")
 		f.close()
 
-		for config_file, lines in user_config.items():
+		portdir_overlay = []
+		for repo_name in sorted(self.repo_dirs):
+			path = self.repo_dirs[repo_name]
+			if path != self.portdir:
+				portdir_overlay.append(path)
+
+		make_conf = {
+			"ACCEPT_KEYWORDS": "x86",
+			"CLEAN_DELAY": "0",
+			"DISTDIR" : self.distdir,
+			"EMERGE_WARNING_DELAY": "0",
+			"PKGDIR": self.pkgdir,
+			"PORTDIR": self.portdir,
+			"PORTAGE_INST_GID": str(portage.data.portage_gid),
+			"PORTAGE_INST_UID": str(portage.data.portage_uid),
+			"PORTDIR_OVERLAY": " ".join("'%s'" % x for x in portdir_overlay),
+			"PORTAGE_TMPDIR": os.path.join(self.eroot, 'var/tmp'),
+		}
+
+		if os.environ.get("NOCOLOR"):
+			make_conf["NOCOLOR"] = os.environ["NOCOLOR"]
+
+		# Pass along PORTAGE_USERNAME and PORTAGE_GRPNAME since they
+		# need to be inherited by ebuild subprocesses.
+		if 'PORTAGE_USERNAME' in os.environ:
+			make_conf['PORTAGE_USERNAME'] = os.environ['PORTAGE_USERNAME']
+		if 'PORTAGE_GRPNAME' in os.environ:
+			make_conf['PORTAGE_GRPNAME'] = os.environ['PORTAGE_GRPNAME']
+
+		make_conf_lines = []
+		for k_v in make_conf.items():
+			make_conf_lines.append('%s="%s"' % k_v)
+
+		if "make.conf" in user_config:
+			make_conf_lines.extend(user_config["make.conf"])
+
+		if not portage.process.sandbox_capable or \
+			os.environ.get("SANDBOX_ON") == "1":
+			# avoid problems from nested sandbox instances
+			make_conf_lines.append('FEATURES="${FEATURES} -sandbox"')
+
+		configs = user_config.copy()
+		configs["make.conf"] = make_conf_lines
+
+		for config_file, lines in configs.items():
 			if config_file not in self.config_files:
 				raise ValueError("Unknown config file: '%s'" % config_file)
 
@@ -406,23 +455,6 @@ class ResolverPlayground(object):
 				f.write("%s\n" % line)
 			f.close()
 
-		user_config_dir = os.path.join(self.eroot, "etc", "portage")
-
-		try:
-			os.makedirs(user_config_dir)
-		except os.error:
-			pass
-
-		for config_file, lines in user_config.items():
-			if config_file not in self.config_files:
-				raise ValueError("Unknown config file: '%s'" % config_file)
-
-			file_name = os.path.join(user_config_dir, config_file)
-			f = open(file_name, "w")
-			for line in lines:
-				f.write("%s\n" % line)
-			f.close()
-
 	def _create_world(self, world, world_sets):
 		#Create /var/lib/portage/world
 		var_lib_portage = os.path.join(self.eroot, "var", "lib", "portage")
@@ -442,43 +474,21 @@ class ResolverPlayground(object):
 		f.close()
 
 	def _load_config(self):
-		portdir_overlay = []
-		for repo_name in sorted(self.repo_dirs):
-			path = self.repo_dirs[repo_name]
-			if path != self.portdir:
-				portdir_overlay.append(path)
 
-		env = {
-			"ACCEPT_KEYWORDS": "x86",
-			"DISTDIR" : self.distdir,
-			"PKGDIR": self.pkgdir,
-			"PORTDIR": self.portdir,
-			"PORTDIR_OVERLAY": " ".join(portdir_overlay),
-			'PORTAGE_TMPDIR'       : os.path.join(self.eroot, 'var/tmp'),
-		}
+		create_trees_kwargs = {}
+		if self.target_root != os.sep:
+			create_trees_kwargs["target_root"] = self.target_root
 
-		if os.environ.get("NOCOLOR"):
-			env["NOCOLOR"] = os.environ["NOCOLOR"]
+		trees = portage.create_trees(env={}, eprefix=self.eprefix,
+			**create_trees_kwargs)
 
-		if os.environ.get("SANDBOX_ON") == "1":
-			# avoid problems from nested sandbox instances
-			env["FEATURES"] = "-sandbox"
-
-		# Pass along PORTAGE_USERNAME and PORTAGE_GRPNAME since they
-		# need to be inherited by ebuild subprocesses.
-		if 'PORTAGE_USERNAME' in os.environ:
-			env['PORTAGE_USERNAME'] = os.environ['PORTAGE_USERNAME']
-		if 'PORTAGE_GRPNAME' in os.environ:
-			env['PORTAGE_GRPNAME'] = os.environ['PORTAGE_GRPNAME']
-
-		trees = portage.create_trees(env=env, eprefix=self.eprefix)
 		for root, root_trees in trees.items():
 			settings = root_trees["vartree"].settings
 			settings._init_dirs()
 			setconfig = load_default_config(settings, root_trees)
 			root_trees["root_config"] = RootConfig(settings, root_trees, setconfig)
-		
-		return settings, trees
+
+		return trees[trees._target_eroot]["vartree"].settings, trees
 
 	def run(self, atoms, options={}, action=None):
 		options = options.copy()
@@ -531,9 +541,10 @@ class ResolverPlayground(object):
 				return
 
 	def cleanup(self):
-		portdb = self.trees[self.eroot]["porttree"].dbapi
-		portdb.close_caches()
-		portage.dbapi.porttree.portdbapi.portdbapi_instances.remove(portdb)
+		for eroot in self.trees:
+			portdb = self.trees[eroot]["porttree"].dbapi
+			portdb.close_caches()
+			portage.dbapi.porttree.portdbapi.portdbapi_instances.remove(portdb)
 		if self.debug:
 			print("\nEROOT=%s" % self.eroot)
 		else:

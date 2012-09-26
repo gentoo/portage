@@ -94,25 +94,6 @@ class SlotAbiEmergeTestCase(TestCase):
 		portage_tmpdir = os.path.join(eprefix, "var", "tmp", "portage")
 		profile_path = settings.profile_path
 
-		features = []
-		if not portage.process.sandbox_capable or \
-			os.environ.get("SANDBOX_ON") == "1":
-			features.append("-sandbox")
-
-		make_conf = (
-			"FEATURES=\"%s\"\n" % (" ".join(features),),
-			"PORTDIR=\"%s\"\n" % (portdir,),
-			"PORTAGE_GRPNAME=\"%s\"\n" % (os.environ["PORTAGE_GRPNAME"],),
-			"PORTAGE_USERNAME=\"%s\"\n" % (os.environ["PORTAGE_USERNAME"],),
-			"PKGDIR=\"%s\"\n" % (pkgdir,),
-			"PORTAGE_INST_GID=%s\n" % (portage.data.portage_gid,),
-			"PORTAGE_INST_UID=%s\n" % (portage.data.portage_uid,),
-			"PORTAGE_TMPDIR=\"%s\"\n" % (portage_tmpdir,),
-			"CLEAN_DELAY=0\n",
-			"DISTDIR=\"%s\"\n" % (distdir,),
-			"EMERGE_WARNING_DELAY=0\n",
-		)
-
 		path =  os.environ.get("PATH")
 		if path is not None and not path.strip():
 			path = None
@@ -155,9 +136,6 @@ class SlotAbiEmergeTestCase(TestCase):
 		try:
 			for d in dirs:
 				ensure_dirs(d)
-			with open(os.path.join(user_config_dir, "make.conf"), 'w') as f:
-				for line in make_conf:
-					f.write(line)
 			for x in true_symlinks:
 				os.symlink(true_binary, os.path.join(fake_bin, x))
 			with open(os.path.join(var_cache_edb, "counter"), 'wb') as f:

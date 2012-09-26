@@ -113,18 +113,6 @@ class PortdbCacheTestCase(TestCase):
 			"""),),
 		)
 
-		features = []
-		if not portage.process.sandbox_capable or \
-			os.environ.get("SANDBOX_ON") == "1":
-			features.append("-sandbox")
-
-		make_conf = (
-			"FEATURES=\"%s\"\n" % (" ".join(features),),
-			"PORTDIR=\"%s\"\n" % (portdir,),
-			"PORTAGE_GRPNAME=\"%s\"\n" % (os.environ["PORTAGE_GRPNAME"],),
-			"PORTAGE_USERNAME=\"%s\"\n" % (os.environ["PORTAGE_USERNAME"],),
-		)
-
 		pythonpath =  os.environ.get("PYTHONPATH")
 		if pythonpath is not None and not pythonpath.strip():
 			pythonpath = None
@@ -154,9 +142,6 @@ class PortdbCacheTestCase(TestCase):
 		try:
 			for d in dirs:
 				ensure_dirs(d)
-			with open(os.path.join(user_config_dir, "make.conf"), 'w') as f:
-				for line in make_conf:
-					f.write(line)
 
 			if debug:
 				# The subprocess inherits both stdout and stderr, for
