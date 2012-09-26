@@ -1872,11 +1872,11 @@ for x in effective_scanlist:
 		inherited_wxwidgets_eclass = "wxwidgets" in inherited
 		operator_tokens = set(["||", "(", ")"])
 		type_list, badsyntax = [], []
-		for mytype in ("DEPEND", "HDEPEND", "RDEPEND", "PDEPEND",
-			"LICENSE", "PROPERTIES", "PROVIDE"):
+		for mytype in Package._dep_keys + ("LICENSE", "PROPERTIES", "PROVIDE"):
 			mydepstr = myaux[mytype]
 
-			buildtime = mytype in ('DEPEND', 'HDEPEND')
+			buildtime = mytype in Package._buildtime_keys
+			runtime = mytype in Package._runtime_keys
 			token_class = None
 			if mytype.endswith("DEPEND"):
 				token_class=portage.dep.Atom
@@ -1889,7 +1889,7 @@ for x in effective_scanlist:
 				badsyntax.append(str(e))
 
 			if atoms and mytype.endswith("DEPEND"):
-				if mytype in ("RDEPEND", "PDEPEND") and \
+				if runtime and \
 					"test?" in mydepstr.split():
 					stats[mytype + '.suspect'] += 1
 					fails[mytype + '.suspect'].append(relative_path + \
@@ -1932,7 +1932,7 @@ for x in effective_scanlist:
 						fails['wxwidgets.eclassnotused'].append(
 							(relative_path + ": %ss on x11-libs/wxGTK"
 							" without inheriting wxwidgets.eclass") % mytype)
-					elif mytype in ("PDEPEND", "RDEPEND"):
+					elif runtime:
 						if not is_blocker and \
 							atom.cp in suspect_rdepend:
 							stats[mytype + '.suspect'] += 1
@@ -2153,7 +2153,7 @@ for x in effective_scanlist:
 					if prof.status == "dev":
 						suffix=suffix+"indev"
 
-					for mytype in ("DEPEND", "HDEPEND", "PDEPEND", "RDEPEND"):
+					for mytype in Package._dep_keys:
 						
 						mykey = "dependency.bad" + suffix
 						myvalue = myaux[mytype]

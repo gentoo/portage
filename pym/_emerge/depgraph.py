@@ -503,8 +503,6 @@ class _dynamic_depgraph_config(object):
 class depgraph(object):
 
 	pkg_tree_map = RootConfig.pkg_tree_map
-
-	_dep_keys = ["DEPEND", "RDEPEND", "PDEPEND", "HDEPEND"]
 	
 	def __init__(self, settings, trees, myopts, myparams, spinner,
 		frozen_config=None, backtrack_parameters=BacktrackParameter(), allow_backtracking=False):
@@ -1682,8 +1680,7 @@ class depgraph(object):
 		eapi_attrs = _get_eapi_attrs(pkg.metadata["EAPI"])
 
 		edepend={}
-		depkeys = ["DEPEND","RDEPEND","PDEPEND","HDEPEND"]
-		for k in depkeys:
+		for k in Package._dep_keys:
 			edepend[k] = metadata[k]
 
 		if not pkg.built and \
@@ -2848,7 +2845,7 @@ class depgraph(object):
 			return [pkg.slot_atom for pkg in greedy_pkgs]
 
 		blockers = {}
-		blocker_dep_keys = ["DEPEND", "PDEPEND", "RDEPEND", "HDEPEND"]
+		blocker_dep_keys = Package._dep_keys
 		for pkg in greedy_pkgs + [highest_pkg]:
 			dep_str = " ".join(pkg.metadata[k] for k in blocker_dep_keys)
 			try:

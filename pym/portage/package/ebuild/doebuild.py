@@ -93,6 +93,9 @@ _phase_func_map = {
 	"pretend": "pkg_pretend",
 }
 
+_vdb_use_conditional_keys = Package._dep_keys + \
+	('LICENSE', 'PROPERTIES', 'PROVIDE', 'RESTRICT',)
+
 def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 	"""
 	All proper ebuild phases which execute ebuild.sh are spawned
@@ -1734,9 +1737,6 @@ def _post_src_install_write_metadata(settings):
 				mode='w', encoding=_encodings['repo.content'],
 				errors='strict') as f:
 				f.write(_unicode_decode(v + '\n'))
-
-_vdb_use_conditional_keys = ('DEPEND', 'HDEPEND', 'LICENSE', 'PDEPEND',
-	'PROPERTIES', 'PROVIDE', 'RDEPEND', 'RESTRICT',)
 
 def _preinst_bsdflags(mysettings):
 	if bsd_chflags:

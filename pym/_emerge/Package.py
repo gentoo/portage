@@ -41,7 +41,9 @@ class Package(Task):
 		"repository", "PROPERTIES", "RESTRICT", "SLOT", "USE",
 		"_mtime_", "DEFINED_PHASES", "REQUIRED_USE"]
 
-	_dep_keys = ('DEPEND', 'HDEPEND' 'PDEPEND', 'RDEPEND',)
+	_dep_keys = ('DEPEND', 'HDEPEND', 'PDEPEND', 'RDEPEND')
+	_buildtime_keys = ('DEPEND', 'HDEPEND')
+	_runtime_keys = ('PDEPEND', 'RDEPEND')
 	_use_conditional_misc_keys = ('LICENSE', 'PROPERTIES', 'RESTRICT')
 	UNKNOWN_REPO = _unknown_repo
 

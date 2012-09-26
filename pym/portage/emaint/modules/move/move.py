@@ -3,14 +3,14 @@
 
 import portage
 from portage import os
-
+from _emerge.Package import Package
 
 class MoveHandler(object):
 
 	def __init__(self, tree, porttree):
 		self._tree = tree
 		self._portdb = porttree.dbapi
-		self._update_keys = ["DEPEND", "HDEPEND", "RDEPEND", "PDEPEND", "PROVIDE"]
+		self._update_keys = ["PROVIDE"] + list(Package._dep_keys)
 		self._master_repo = \
 			self._portdb.getRepositoryName(self._portdb.porttree_root)
 
