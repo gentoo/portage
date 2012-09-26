@@ -34,6 +34,11 @@ class TargetRootTestCase(TestCase):
 				success = True,
 				mergelist = ["dev-lang/python-3.2", "dev-lang/python-3.2{targetroot}"]),
 			ResolverPlaygroundTestCase(
+				["dev-lang/python"],
+				options = {"--root-deps": "rdeps"},
+				success = True,
+				mergelist = ["dev-lang/python-3.2", "dev-lang/python-3.2{targetroot}"]),
+			ResolverPlaygroundTestCase(
 				["dev-libs/A"],
 				options = {},
 				ambiguous_merge_order = True,
