@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.dep import Atom, paren_enclose, use_reduce
+from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidData
 from _emerge.Package import Package
 
@@ -37,6 +38,7 @@ def evaluate_slot_operator_equal_deps(settings, use, trees):
 
 	metadata = settings.configdict['pkg']
 	eapi = metadata['EAPI']
+	eapi_attrs = _get_eapi_attrs(eapi)
 	running_vardb = trees[trees._running_eroot]["vartree"].dbapi
 	target_vardb = trees[trees._target_eroot]["vartree"].dbapi
 	vardbs = [target_vardb]
@@ -48,11 +50,13 @@ def evaluate_slot_operator_equal_deps(settings, use, trees):
 	for k in Package._runtime_keys:
 		_eval_deps(deps[k], vardbs)
 
-	if running_vardb is not target_vardb:
-		vardbs.append(running_vardb)
-
-	_eval_deps(deps["DEPEND"], vardbs)
-	_eval_deps(deps["HDEPEND"], [running_vardb])
+	if eapi_attrs.hdepend:
+		_eval_deps(deps["HDEPEND"], [running_vardb])
+		_eval_deps(deps["DEPEND"], [target_vardb])
+	else:
+		if running_vardb is not target_vardb:
+			vardbs.append(running_vardb)
+		_eval_deps(deps["DEPEND"], vardbs)
 
 	result = {}
 	for k, v in deps.items():
