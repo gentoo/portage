@@ -33,7 +33,11 @@ else
 	done
 	# These dummy functions return false in non-strict EAPIs, in order to ensure that
 	# `use multislot` is false for the "depend" phase.
-	for x in use useq usev usex ; do
+		funcs="use useq usev"
+		if ___eapi_has_usex; then
+			funcs+=" usex"
+		fi
+		for x in ${funcs} ; do
 		eval "${x}() {
 			if ___eapi_disallows_helpers_in_global_scope; then
 				die \"\${FUNCNAME}() calls are not allowed in global scope\"
@@ -47,7 +51,7 @@ else
 	for x in best_version has_version portageq ; do
 		eval "${x}() { die \"\${FUNCNAME}() calls are not allowed in global scope\"; }"
 	done
-	unset x
+	unset funcs x
 fi
 
 # Don't use sandbox's BASH_ENV for new shells because it does
