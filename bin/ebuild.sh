@@ -176,8 +176,8 @@ debug-print() {
 		# default target
 		printf '%s\n' "${@}" >> "${T}/eclass-debug.log"
 		# let the portage user own/write to this file
-		chgrp portage "${T}/eclass-debug.log" &>/dev/null
-		chmod g+w "${T}/eclass-debug.log" &>/dev/null
+		chgrp "${PORTAGE_GRPNAME:-portage}" "${T}/eclass-debug.log"
+		chmod g+w "${T}/eclass-debug.log"
 	fi
 }
 
