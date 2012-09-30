@@ -1,4 +1,4 @@
-#!/bin/bash
+#!@PORTAGE_BASH@
 # Copyright 2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
@@ -13,7 +13,7 @@ for path in ${PATH}; do
 	IFS=$' \t\n'
 	output=$("${path}/${scriptname}" "$@" 2>&1)
 	if [[ $? -ne 0 ]] ; then
-		source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+		source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 
 		if ! ___eapi_has_prefix_variables; then
 			EPREFIX=
