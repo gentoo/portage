@@ -971,6 +971,8 @@ __ebuild_main() {
 		__save_ebuild_env | __filter_readonly_variables \
 			--filter-features > "$T/environment"
 		assert "__save_ebuild_env failed"
+		chgrp "${PORTAGE_GRPNAME:-portage}" "$T/environment"
+		chmod g+w "$T/environment"
 	fi
 	[[ -n $PORTAGE_EBUILD_EXIT_FILE ]] && > "$PORTAGE_EBUILD_EXIT_FILE"
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
