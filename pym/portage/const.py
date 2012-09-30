@@ -79,7 +79,7 @@ MACOSSANDBOX_PROFILE     = '''(version 1)
 
 (allow default)
 
-(deny file-write* (with no-log))
+(deny file-write*@@LOGGING@@)
 
 (allow file-read* file-write*
   (literal
@@ -101,6 +101,7 @@ MACOSSANDBOX_PROFILE     = '''(version 1)
     #"^(/private)?/var/run/syslog$"
   )
 )'''
+MACOSSANDBOX_NOLOG=" (with no-log)"
 
 PORTAGE_GROUPNAME        = portagegroup
 PORTAGE_USERNAME         = portageuser
@@ -137,7 +138,7 @@ SUPPORTED_FEATURES       = frozenset([
                            "noauto", "noclean", "nodoc", "noinfo", "noman",
                            "nostrip", "notitles", "parallel-fetch", "parallel-install",
                            "prelink-checksums", "preserve-libs",
-                           "protect-owned", "python-trace", "sandbox",
+                           "protect-owned", "python-trace", "sandbox", "sandbox-debug", 
                            "selinux", "sesandbox", "sfperms",
                            "sign", "skiprocheck", "split-elog", "split-log", "splitdebug",
                            "strict", "stricter", "suidctl", "test", "test-fail-continue",
