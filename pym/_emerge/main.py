@@ -181,9 +181,19 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 									raise
 								del e
 					processed_count += 1
-					myso = portage.subprocess_getstatusoutput(
-						"LANG=C LANGUAGE=C %s/usr/bin/install-info " \
-						"--dir-file=%s/dir %s/%s" % (EPREFIX, inforoot, inforoot, x))[1]
+					try:
+						proc = subprocess.Popen(
+							['%s/usr/bin/install-info'
+							'--dir-file=%s' % (EPREFIX, os.path.join(inforoot, "dir")),
+							os.path.join(inforoot, x)],
+							env=dict(os.environ, LANG="C", LANGUAGE="C"),
+							stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+					except OSError:
+						myso = None
+					else:
+						myso = _unicode_decode(
+							proc.communicate()[0]).rstrip("\n")
+						proc.wait()
 					existsstr="already exists, for file `"
 					if myso:
 						if re.search(existsstr,myso):
