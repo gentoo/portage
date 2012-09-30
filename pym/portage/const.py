@@ -133,7 +133,6 @@ SUPPORTED_FEATURES       = frozenset([
                            "downgrade-backup", "ebuild-locks", "fakeroot",
                            "fail-clean", "force-mirror", "force-prefix", "getbinpkg",
                            "installsources", "keeptemp", "keepwork", "fixlafiles", "lmirror",
-                            "macossandbox", "macosprefixsandbox", "macosusersandbox",
                            "metadata-transfer", "mirror", "multilib-strict", "news",
                            "noauto", "noclean", "nodoc", "noinfo", "noman",
                            "nostrip", "notitles", "parallel-fetch", "parallel-install",
