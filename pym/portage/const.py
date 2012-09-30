@@ -79,11 +79,13 @@ MACOSSANDBOX_PROFILE     = '''(version 1)
 
 (allow default)
 
-(deny file-write*)
+(deny file-write* (with no-log))
 
 (allow file-read* file-write*
   (literal
     #"@@WRITEABLE_PREFIX@@"
+    #"/dev/tty"
+    #"/dev/dtracehelper"
   )
 
   (regex
