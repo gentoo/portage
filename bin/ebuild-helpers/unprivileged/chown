@@ -1,0 +1,33 @@
+#!/bin/bash
+# Copyright 2012 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+
+scriptpath=${BASH_SOURCE[0]}
+scriptname=${scriptpath##*/}
+
+IFS=':'
+
+for path in ${PATH}; do
+	[[ -x ${path}/${scriptname} ]] || continue
+	[[ ${path}/${scriptname} -ef ${scriptpath} ]] && continue
+	IFS=$' \t\n'
+	output=$("${path}/${scriptname}" "$@" 2>&1)
+	if [[ $? -ne 0 ]] ; then
+		source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+
+		if ! ___eapi_has_prefix_variables; then
+			EPREFIX=
+		fi
+		msg="${scriptname} failure ignored with unprivileged user:\n    ${scriptname} $*\n    ${output}"
+		# Reverse expansion of ${D} and ${EPREFIX}, for readability.
+		msg=${msg//${D}/'${D}'}
+		if [[ -n ${EPREFIX} ]] ; then
+			msg=${msg//${EPREFIX}/'${EPREFIX}'}
+			msg=${msg//${EPREFIX#/}/'${EPREFIX}'}
+		fi
+		ewarn "${msg}"
+	fi
+	exit 0
+done
+
+exit 1

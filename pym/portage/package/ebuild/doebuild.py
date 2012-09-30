@@ -158,6 +158,10 @@ def _doebuild_path(settings, eapi=None):
 
 	path = []
 
+	if eprefix and uid != 0 and "fakeroot" not in settings.features:
+		path.append(os.path.join(portage_bin_path,
+			"ebuild-helpers", "unprivileged"))
+
 	if settings.get("USERLAND", "GNU") != "GNU":
 		path.append(os.path.join(portage_bin_path, "ebuild-helpers", "bsd"))
 
