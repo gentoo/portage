@@ -121,12 +121,21 @@ class UseManager(object):
 				ret.append(prefixed_useflag)
 		return tuple(ret)
 
-	def _parse_file_to_dict(self, file_name, juststrings=False, recursive=True, eapi_filter=None):
+	def _parse_file_to_dict(self, file_name, juststrings=False, recursive=True,
+		eapi_filter=None, user_config=False):
 		ret = {}
 		location_dict = {}
-		file_dict = grabdict_package(file_name, recursive=recursive, verify_eapi=True)
-		eapi = read_corresponding_eapi_file(file_name)
-		if eapi_filter is not None and not eapi_filter(eapi):
+		eapi = read_corresponding_eapi_file(file_name, default=None)
+		if eapi is None and not user_config:
+			eapi = "0"
+		if eapi is None:
+			ret = ExtendedAtomDict(dict)
+		else:
+			ret = {}
+		file_dict = grabdict_package(file_name, recursive=recursive,
+			allow_wildcard=(eapi is None), allow_repo=(eapi is None),
+			verify_eapi=(eapi is not None))
+		if eapi is not None and eapi_filter is not None and not eapi_filter(eapi):
 			if file_dict:
 				writemsg(_("--- EAPI '%s' does not support '%s': '%s'\n") %
 					(eapi, os.path.basename(file_name), file_name),
@@ -187,7 +196,8 @@ class UseManager(object):
 		juststrings=False, eapi_filter=None):
 		return tuple(self._parse_file_to_dict(
 			os.path.join(profile.location, file_name), juststrings,
-			recursive=profile.portage1_directories, eapi_filter=eapi_filter)
+			recursive=profile.portage1_directories, eapi_filter=eapi_filter,
+			user_config=profile.user_config)
 			for profile in locations)
 
 	def getUseMask(self, pkg=None):

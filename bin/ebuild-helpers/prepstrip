@@ -18,8 +18,9 @@ exp_tf() {
 exp_tf FEATURES compressdebug installsources nostrip splitdebug
 exp_tf RESTRICT binchecks installsources strip
 
-[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-	case "${EAPI}" in 0|1|2) EPREFIX= ED=${D} ;; esac
+if ! ___eapi_has_prefix_variables; then
+	EPREFIX= ED=${D}
+fi
 
 banner=false
 SKIP_STRIP=false

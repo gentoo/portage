@@ -26,16 +26,20 @@ else
 		__strip_duplicate_slashes \
 		use_with use_enable ; do
 		eval "${x}() {
-			if has \"\${EAPI:-0}\" 4-python 5-progress; then
+			if ___eapi_disallows_helpers_in_global_scope; then
 				die \"\${FUNCNAME}() calls are not allowed in global scope\"
 			fi
 		}"
 	done
-	# These dummy functions return false in older EAPIs, in order to ensure that
+	# These dummy functions return false in non-strict EAPIs, in order to ensure that
 	# `use multislot` is false for the "depend" phase.
-	for x in use useq usev usex ; do
+	funcs="use useq usev"
+	if ___eapi_has_usex; then
+		funcs+=" usex"
+	fi
+	for x in ${funcs} ; do
 		eval "${x}() {
-			if has \"\${EAPI:-0}\" 4-python 5-progress; then
+			if ___eapi_disallows_helpers_in_global_scope; then
 				die \"\${FUNCNAME}() calls are not allowed in global scope\"
 			else
 				return 1
@@ -47,7 +51,7 @@ else
 	for x in best_version has_version portageq ; do
 		eval "${x}() { die \"\${FUNCNAME}() calls are not allowed in global scope\"; }"
 	done
-	unset x
+	unset funcs x
 fi
 
 # Don't use sandbox's BASH_ENV for new shells because it does
@@ -512,7 +516,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm depend && \
 	[[ -n $EAPI ]] || EAPI=0
 fi
 
-if has "${EAPI:-0}" 4-python 5-progress; then
+if ___eapi_enables_globstar; then
 	shopt -s globstar
 fi
 
@@ -557,7 +561,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		# export EAPI for helpers (especially since we unset it above)
 		export EAPI
 
-		if has "$EAPI" 0 1 2 3 ; then
+		if ___eapi_has_RDEPEND_DEPEND_fallback; then
 			export RDEPEND=${RDEPEND-${DEPEND}}
 			debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
 		fi
@@ -675,13 +679,9 @@ if [[ $EBUILD_PHASE = depend ]] ; then
 		PROPERTIES DEFINED_PHASES HDEPEND UNUSED_04
 		UNUSED_03 UNUSED_02 UNUSED_01"
 
-	case ${EAPI} in
-		5-hdepend)
-			;;
-		*)
-			unset HDEPEND
-			;;
-	esac
+	if ! ___eapi_has_HDEPEND; then
+		unset HDEPEND
+	fi
 
 	# The extra $(echo) commands remove newlines.
 	if [ -n "${dbkey}" ] ; then
@@ -700,17 +700,9 @@ else
 	# Note: readonly variables interfere with __preprocess_ebuild_env(), so
 	# declare them only after it has already run.
 	declare -r $PORTAGE_READONLY_METADATA $PORTAGE_READONLY_VARS
-	case ${EAPI} in
-		0|1|2)
-			[[ " ${FEATURES} " == *" force-prefix "* ]] && \
-				declare -r ED EPREFIX EROOT
-			;;
-		*)
-			# PREFIX LOCAL: allow prefix vars in any EAPI
-			#declare -r ED EPREFIX EROOT
-			# PREFIX LOCAL
-			;;
-	esac
+	if ___eapi_has_prefix_variables; then
+		declare -r ED EPREFIX EROOT
+	fi
 
 	if [[ -n $EBUILD_SH_ARGS ]] ; then
 		(

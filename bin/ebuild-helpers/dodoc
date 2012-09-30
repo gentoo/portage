@@ -2,26 +2,23 @@
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-case "${EAPI}" in
-	0|1|2|3)
-		;;
-	*)
-		exec \
-		env \
-		__PORTAGE_HELPER="dodoc" \
-		doins "$@"
-		;;
-esac
-
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
+
+if ___eapi_dodoc_supports_-r; then
+	exec \
+	env \
+	__PORTAGE_HELPER="dodoc" \
+	doins "$@"
+fi
 
 if [ $# -lt 1 ] ; then
 	__helpers_die "${0##*/}: at least one argument needed"
 	exit 1 	
 fi
 
-[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-	case "$EAPI" in 0|1|2) ED=${D} ;; esac
+if ! ___eapi_has_prefix_variables; then
+	ED=${D}
+fi
 
 dir="${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
 if [ ! -d "${dir}" ] ; then

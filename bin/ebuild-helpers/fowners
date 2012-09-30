@@ -5,19 +5,15 @@
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 
 
-[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-	case "$EAPI" in 0|1|2) EPREFIX= ED=${D} ;; esac
+if ! ___eapi_has_prefix_variables; then
+	EPREFIX= ED=${D}
+fi
 
 # we can't prefix all arguments because
 # chown takes random options
 slash="/"
 chown "${@/#${slash}/${ED}${slash}}"
 ret=$?
-
-if [[ ${ret} != 0 && -n ${EPREFIX} && ${EUID} != 0 ]] ; then
-	ewarn "fowners failure ignored in Prefix with non-privileged user"
-	exit 0
-fi
 
 [[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
 exit $ret

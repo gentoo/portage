@@ -600,7 +600,9 @@ class vardbapi(dbapi):
 			aux_cache = mypickle.load()
 			f.close()
 			del f
-		except (AttributeError, EOFError, EnvironmentError, ValueError, pickle.UnpicklingError) as e:
+		except (SystemExit, KeyboardInterrupt):
+			raise
+		except Exception as e:
 			if isinstance(e, EnvironmentError) and \
 				getattr(e, 'errno', None) in (errno.ENOENT, errno.EACCES):
 				pass

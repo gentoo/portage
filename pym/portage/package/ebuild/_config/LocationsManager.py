@@ -28,7 +28,7 @@ _PORTAGE1_DIRECTORIES = frozenset([
 	'use.mask', 'use.force'])
 
 _profile_node = collections.namedtuple('_profile_node',
-	'location portage1_directories')
+	'location portage1_directories user_config')
 
 _allow_parent_colon = frozenset(
 	["portage-2"])
@@ -112,7 +112,8 @@ class LocationsManager(object):
 			if os.path.exists(custom_prof):
 				self.user_profile_dir = custom_prof
 				self.profiles.append(custom_prof)
-				self.profiles_complex.append(_profile_node(custom_prof, True))
+				self.profiles_complex.append(
+					_profile_node(custom_prof, True, True))
 			del custom_prof
 
 		self.profiles = tuple(self.profiles)
@@ -210,7 +211,7 @@ class LocationsManager(object):
 
 		self.profiles.append(currentPath)
 		self.profiles_complex.append(
-			_profile_node(currentPath, allow_directories))
+			_profile_node(currentPath, allow_directories, False))
 
 	def _expand_parent_colon(self, parentsFile, parentPath,
 		repo_loc, repositories):

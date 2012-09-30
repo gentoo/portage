@@ -2,22 +2,21 @@
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-case "${EAPI}" in
-	0|1|2|3)
-		;;
-	*)
-		die "'${0##*/}' has been banned for EAPI '$EAPI'"
-		exit 1
-		;;
-esac
+source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+
+if ! ___eapi_has_dosed; then
+	die "'${0##*/}' has been banned for EAPI '$EAPI'"
+	exit 1
+fi
 
 if [[ $# -lt 1 ]] ; then
 	echo "!!! ${0##*/}: at least one argument needed" >&2
 	exit 1
 fi
 
-[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-	case "$EAPI" in 0|1|2) ED=${D} ;; esac
+if ! ___eapi_has_prefix_variables; then
+	ED=${D}
+fi
 
 ret=0
 file_found=0

@@ -19,8 +19,9 @@ into() {
 		export DESTTREE=""
 	else
 		export DESTTREE=$1
-		[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-			case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+		if ! ___eapi_has_prefix_variables; then
+			local ED=${D}
+		fi
 		if [ ! -d "${ED}${DESTTREE}" ]; then
 			install -d "${ED}${DESTTREE}"
 			local ret=$?
@@ -37,8 +38,9 @@ insinto() {
 		export INSDESTTREE=""
 	else
 		export INSDESTTREE=$1
-		[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-			case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+		if ! ___eapi_has_prefix_variables; then
+			local ED=${D}
+		fi
 		if [ ! -d "${ED}${INSDESTTREE}" ]; then
 			install -d "${ED}${INSDESTTREE}"
 			local ret=$?
@@ -55,8 +57,9 @@ exeinto() {
 		export _E_EXEDESTTREE_=""
 	else
 		export _E_EXEDESTTREE_="$1"
-		[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-			case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+		if ! ___eapi_has_prefix_variables; then
+			local ED=${D}
+		fi
 		if [ ! -d "${ED}${_E_EXEDESTTREE_}" ]; then
 			install -d "${ED}${_E_EXEDESTTREE_}"
 			local ret=$?
@@ -73,8 +76,9 @@ docinto() {
 		export _E_DOCDESTTREE_=""
 	else
 		export _E_DOCDESTTREE_="$1"
-		[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-			case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+		if ! ___eapi_has_prefix_variables; then
+			local ED=${D}
+		fi
 		if [ ! -d "${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}" ]; then
 			install -d "${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
 			local ret=$?
@@ -112,7 +116,7 @@ libopts() {
 }
 
 docompress() {
-	has "${EAPI}" 0 1 2 3 && die "'docompress' not supported in this EAPI"
+	___eapi_has_docompress || die "'docompress' not supported in this EAPI"
 
 	local f g
 	if [[ $1 = "-x" ]]; then
@@ -141,8 +145,9 @@ docompress() {
 keepdir() {
 	dodir "$@"
 	local x
-	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+	if ! ___eapi_has_prefix_variables; then
+		local ED=${D}
+	fi
 	if [ "$1" == "-R" ] || [ "$1" == "-r" ]; then
 		shift
 		find "$@" -type d -printf "${ED}%p/.keep_${CATEGORY}_${PN}-${SLOT}\n" \
@@ -174,19 +179,16 @@ usev() {
 	return 1
 }
 
-case "${EAPI}" in
-	0|1|2|3|4|4-python|4-slot-abi) ;;
-	*)
-		usex() {
-			if use "$1"; then
-				echo "${2-yes}$4"
-			else
-				echo "${3-no}$5"
-			fi
-			return 0
-		}
-		;;
-esac
+if ___eapi_has_usex; then
+	usex() {
+		if use "$1"; then
+			echo "${2-yes}$4"
+		else
+			echo "${3-no}$5"
+		fi
+		return 0
+	}
+fi
 
 use() {
 	local u=$1
@@ -233,7 +235,7 @@ use_with() {
 		return 1
 	fi
 
-	if ! has "${EAPI:-0}" 0 1 2 3 ; then
+	if ___eapi_use_enable_and_use_with_support_empty_third_argument; then
 		local UW_SUFFIX=${3+=$3}
 	else
 		local UW_SUFFIX=${3:+=$3}
@@ -255,7 +257,7 @@ use_enable() {
 		return 1
 	fi
 
-	if ! has "${EAPI:-0}" 0 1 2 3 ; then
+	if ___eapi_use_enable_and_use_with_support_empty_third_argument; then
 		local UE_SUFFIX=${3+=$3}
 	else
 		local UE_SUFFIX=${3:+=$3}
@@ -377,10 +379,10 @@ unpack() {
 				__unpack_tar "lzma -d"
 				;;
 			xz)
-				if has $eapi 0 1 2 ; then
-					__vecho "unpack ${x}: file format not recognized. Ignoring."
-				else
+				if ___eapi_unpack_supports_xz; then
 					__unpack_tar "xz -d"
+				else
+					__vecho "unpack ${x}: file format not recognized. Ignoring."
 				fi
 				;;
 			*)
@@ -397,8 +399,9 @@ unpack() {
 econf() {
 	local x
 
-	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-		case "$EAPI" in 0|1|2) local EPREFIX= ;; esac
+	if ! ___eapi_has_prefix_variables; then
+		local EPREFIX=
+	fi
 
 	__hasg() {
 		local x s=$1
@@ -409,9 +412,9 @@ econf() {
 
 	__hasgq() { __hasg "$@" >/dev/null ; }
 
-	local phase_func=$(__ebuild_arg_to_phase "$EAPI" "$EBUILD_PHASE")
+	local phase_func=$(__ebuild_arg_to_phase "$EBUILD_PHASE")
 	if [[ -n $phase_func ]] ; then
-		if has "$EAPI" 0 1 ; then
+		if ! ___eapi_has_src_configure; then
 			[[ $phase_func != src_compile ]] && \
 				eqawarn "QA Notice: econf called in" \
 					"$phase_func instead of src_compile"
@@ -438,30 +441,25 @@ econf() {
 			done
 		fi
 
-		# EAPI=4 adds --disable-dependency-tracking to econf
-		case "${EAPI}" in
-			0|1|2|3)
-				;;
-			*)
-				local conf_help=$("${ECONF_SOURCE}/configure" --help 2>/dev/null)
+		if ___eapi_econf_passes_--disable-dependency-tracking || ___eapi_econf_passes_--disable-silent-rules; then
+			local conf_help=$("${ECONF_SOURCE}/configure" --help 2>/dev/null)
+
+			if ___eapi_econf_passes_--disable-dependency-tracking; then
 				case "${conf_help}" in
 					*--disable-dependency-tracking*)
 						set -- --disable-dependency-tracking "$@"
 						;;
 				esac
-				case "${EAPI}" in
-					4|4-python|4-slot-abi)
-						;;
-					*)
-						case "${conf_help}" in
-							*--disable-silent-rules*)
-								set -- --disable-silent-rules "$@"
-								;;
-						esac
+			fi
+
+			if ___eapi_econf_passes_--disable-silent-rules; then
+				case "${conf_help}" in
+					*--disable-silent-rules*)
+						set -- --disable-silent-rules "$@"
 						;;
 				esac
-				;;
-		esac
+			fi
+		fi
 
 		# if the profile defines a location to install libs to aside from default, pass it on.
 		# if the ebuild passes in --libdir, they're responsible for the conf_libdir fun.
@@ -512,8 +510,9 @@ econf() {
 einstall() {
 	# CONF_PREFIX is only set if they didn't pass in libdir above.
 	local LOCAL_EXTRA_EINSTALL="${EXTRA_EINSTALL}"
-	[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-		case "$EAPI" in 0|1|2) local ED=${D} ;; esac
+	if ! ___eapi_has_prefix_variables; then
+		local ED=${D}
+	fi
 	LIBDIR_VAR="LIBDIR_${ABI}"
 	if [ -n "${ABI}" -a -n "${!LIBDIR_VAR}" ]; then
 		CONF_LIBDIR="${!LIBDIR_VAR}"
@@ -581,11 +580,9 @@ __eapi0_src_test() {
 	# to emulate the desired parts of emake behavior.
 	local emake_cmd="${MAKE:-make} ${MAKEOPTS} ${EXTRA_EMAKE}"
 	local internal_opts=
-	case "$EAPI" in
-		0|1|2|3|4|4-python|4-slot-abi)
-			internal_opts+=" -j1"
-			;;
-	esac
+	if ___eapi_default_src_test_disables_parallel_jobs; then
+		internal_opts+=" -j1"
+	fi
 	if $emake_cmd ${internal_opts} check -n &> /dev/null; then
 		__vecho ">>> Test phase [check]: ${CATEGORY}/${PF}"
 		$emake_cmd ${internal_opts} check || \
@@ -652,23 +649,17 @@ has_version() {
 	[ $# -gt 0 ] && die "${FUNCNAME[0]}: unused argument(s): $*"
 
 	if ${host_root} ; then
-		case "${EAPI}" in
-			0|1|2|3|4|4-python|4-slot-abi)
-				die "${FUNCNAME[0]}: option --host-root is not supported with EAPI ${EAPI}"
-				;;
-		esac
+		if ! ___eapi_best_version_and_has_version_support_--host-root; then
+			die "${FUNCNAME[0]}: option --host-root is not supported with EAPI ${EAPI}"
+		fi
 		root=/
 	fi
 
-	case "$EAPI" in
-		0|1|2)
-			[[ " ${FEATURES} " == *" force-prefix "* ]] && \
-				eroot=${root%/}${EPREFIX}/ || eroot=${root}
-			;;
-		*)
-			eroot=${root%/}${EPREFIX}/
-			;;
-	esac
+	if ___eapi_has_prefix_variables; then
+		eroot=${root%/}${EPREFIX}/
+	else
+		eroot=${root}
+	fi
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
 		"$PORTAGE_BIN_PATH"/ebuild-ipc has_version "${eroot}" "${atom}"
 	else
@@ -704,23 +695,17 @@ best_version() {
 	[ $# -gt 0 ] && die "${FUNCNAME[0]}: unused argument(s): $*"
 
 	if ${host_root} ; then
-		case "${EAPI}" in
-			0|1|2|3|4|4-python|4-slot-abi)
-				die "${FUNCNAME[0]}: option --host-root is not supported with EAPI ${EAPI}"
-				;;
-		esac
+		if ! ___eapi_best_version_and_has_version_support_--host-root; then
+			die "${FUNCNAME[0]}: option --host-root is not supported with EAPI ${EAPI}"
+		fi
 		root=/
 	fi
 
-	case "$EAPI" in
-		0|1|2)
-			[[ " ${FEATURES} " == *" force-prefix "* ]] && \
-				eroot=${root%/}${EPREFIX}/ || eroot=${root}
-			;;
-		*)
-			eroot=${root%/}${EPREFIX}/
-			;;
-	esac
+	if ___eapi_has_prefix_variables; then
+		eroot=${root%/}${EPREFIX}/
+	else
+		eroot=${root}
+	fi
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
 		"$PORTAGE_BIN_PATH"/ebuild-ipc best_version "${eroot}" "${atom}"
 	else
