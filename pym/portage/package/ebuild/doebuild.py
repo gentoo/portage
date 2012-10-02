@@ -39,7 +39,7 @@ from portage import auxdbkeys, bsd_chflags, \
 	_shell_quote, _unicode_decode, _unicode_encode
 from portage.const import EBUILD_SH_ENV_FILE, EBUILD_SH_ENV_DIR, \
 	EBUILD_SH_BINARY, INVALID_ENV_FILE, MISC_SH_BINARY, \
-	EPREFIX, MACOSSANDBOX_PROFILE, MACOSSANDBOX_NOLOG
+	EPREFIX, MACOSSANDBOX_PROFILE
 from portage.data import portage_gid, portage_uid, secpass, \
 	uid, userpriv_groups
 from portage.dbapi.porttree import _parse_uri_map
@@ -1460,11 +1460,6 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		sbprofile = MACOSSANDBOX_PROFILE
 		sbprofile = sbprofile.replace("@@WRITEABLE_PREFIX@@", sbprefixpath)
 		sbprofile = sbprofile.replace("@@WRITEABLE_PREFIX_RE@@", sbprefixre)
-
-		if "sandbox-debug" in features:
-			sbprofile = sbprofile.replace("@@LOGGING@@", "")
-		else:
-			sbprofile = sbprofile.replace("@@LOGGING@@", MACOSSANDBOX_NOLOG)
 
 		keywords["profile"] = sbprofile
 		spawn_func = portage.process.spawn_macossandbox

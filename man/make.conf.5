@@ -464,12 +464,6 @@ On Mac OS X platforms that have /usr/bin/sandbox-exec available (10.5
 and later), this particular sandbox implementation is used instead of
 sys-apps/sandbox.
 .TP
-.B sandbox-debug
-Enable debug messages regarding sandboxing. This currently only has
-an effect on Mac OS X platforms where it enables logging of denied
-access into /var/log/system.log. Note that logging is extremely slow
-and will slow down the emerge process considerably.
-.TP
 .B sesandbox
 Enable SELinux sandbox\-ing.  Do not toggle this \fBFEATURE\fR yourself.
 .TP
