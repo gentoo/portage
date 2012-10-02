@@ -79,7 +79,7 @@ MACOSSANDBOX_PROFILE     = '''(version 1)
 
 (allow default)
 
-(deny file-write* (with no-log))
+(deny file-write*)
 
 (allow file-read* file-write*
   (literal
