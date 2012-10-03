@@ -4,6 +4,7 @@
 import portage
 from portage import os
 from portage.dep import _repo_separator
+from portage.exception import InvalidDependString
 from portage.localization import _
 from portage.util._async.AsyncScheduler import AsyncScheduler
 from .ManifestTask import ManifestTask
@@ -61,9 +62,17 @@ class ManifestScheduler(AsyncScheduler):
 				if not cpv_list:
 					continue
 				fetchlist_dict = {}
-				for cpv in cpv_list:
-					fetchlist_dict[cpv] = \
-						list(portdb.getFetchMap(cpv, mytree=mytree))
+				try:
+					for cpv in cpv_list:
+						fetchlist_dict[cpv] = \
+							list(portdb.getFetchMap(cpv, mytree=mytree))
+				except InvalidDependString as e:
+					portage.writemsg(
+						_("!!! %s%s%s: SRC_URI: %s\n") %
+						(cp, _repo_separator, repo_config.name, e),
+						noiselevel=-1)
+					self._error_count += 1
+					continue
 
 				yield ManifestTask(cp=cp, distdir=distdir,
 					fetchlist_dict=fetchlist_dict, repo_config=repo_config,
