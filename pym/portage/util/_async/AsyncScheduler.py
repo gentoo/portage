@@ -80,6 +80,14 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 		while self._is_work_scheduled():
 			self.sched_iface.iteration()
 
+		if self._term_check_id is not None:
+			self.sched_iface.source_remove(self._term_check_id)
+			self._term_check_id = None
+
+		if self._loadavg_check_id is not None:
+			self.sched_iface.source_remove(self._loadavg_check_id)
+			self._loadavg_check_id = None
+
 		if self._error_count > 0:
 			self.returncode = 1
 		else:
