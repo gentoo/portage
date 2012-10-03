@@ -25,6 +25,11 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 		self._term_check_id = None
 		self._loadavg_check_id = None
 
+	def _poll(self):
+		if not (self._is_work_scheduled() or self._keep_scheduling()):
+			self.wait()
+		return self.returncode
+
 	def _cancel(self):
 		self._terminated.set()
 		self._termination_check()
