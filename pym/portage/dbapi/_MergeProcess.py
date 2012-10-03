@@ -11,9 +11,9 @@ import fcntl
 import portage
 from portage import os, _unicode_decode
 import portage.elog.messages
-from _emerge.SpawnProcess import SpawnProcess
+from portage.util._async.ForkProcess import ForkProcess
 
-class MergeProcess(SpawnProcess):
+class MergeProcess(ForkProcess):
 	"""
 	Merge packages in a subprocess, so the Scheduler can run in the main
 	thread while files are moved or copied asynchronously.
@@ -101,7 +101,7 @@ class MergeProcess(SpawnProcess):
 	def _spawn(self, args, fd_pipes, **kwargs):
 		"""
 		Fork a subprocess, apply local settings, and call
-		dblink.merge().
+		dblink.merge(). TODO: Share code with ForkProcess.
 		"""
 
 		elog_reader_fd, elog_writer_fd = os.pipe()

@@ -1,13 +1,10 @@
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import traceback
-
-from _emerge.SpawnProcess import SpawnProcess
 import copy
 import io
-import signal
 import sys
+
 import portage
 from portage import os
 from portage import _encodings
@@ -16,9 +13,10 @@ from portage import _unicode_decode
 from portage.checksum import _hash_filter
 from portage.elog.messages import eerror
 from portage.package.ebuild.fetch import _check_distfile, fetch
+from portage.util._async.ForkProcess import ForkProcess
 from portage.util._pty import _create_pty_or_pipe
 
-class EbuildFetcher(SpawnProcess):
+class EbuildFetcher(ForkProcess):
 
 	__slots__ = ("config_pool", "ebuild_path", "fetchonly", "fetchall",
 		"pkg", "prefetch") + \
@@ -152,7 +150,7 @@ class EbuildFetcher(SpawnProcess):
 			settings["NOCOLOR"] = nocolor
 
 		self._settings = settings
-		SpawnProcess._start(self)
+		ForkProcess._start(self)
 
 		# Free settings now since it's no longer needed in
 		# this process (the subprocess has a private copy).
@@ -160,28 +158,7 @@ class EbuildFetcher(SpawnProcess):
 		settings = None
 		self._settings = None
 
-	def _spawn(self, args, fd_pipes=None, **kwargs):
-		"""
-		Fork a subprocess, apply local settings, and call fetch().
-		"""
-
-		pid = os.fork()
-		if pid != 0:
-			if not isinstance(pid, int):
-				raise AssertionError(
-					"fork returned non-integer: %s" % (repr(pid),))
-			portage.process.spawned_pids.append(pid)
-			return [pid]
-
-		portage.locks._close_fds()
-		# Disable close_fds since we don't exec (see _setup_pipes docstring).
-		portage.process._setup_pipes(fd_pipes, close_fds=False)
-
-		# Use default signal handlers in order to avoid problems
-		# killing subprocesses as reported in bug #353239.
-		signal.signal(signal.SIGINT, signal.SIG_DFL)
-		signal.signal(signal.SIGTERM, signal.SIG_DFL)
-
+	def _run(self):
 		# Force consistent color output, in case we are capturing fetch
 		# output through a normal pipe due to unavailability of ptys.
 		portage.output.havecolor = self._settings.get('NOCOLOR') \
@@ -189,19 +166,11 @@ class EbuildFetcher(SpawnProcess):
 
 		rval = 1
 		allow_missing = self._get_manifest().allow_missing
-		try:
-			if fetch(self._uri_map, self._settings, fetchonly=self.fetchonly,
-				digests=copy.deepcopy(self._get_digests()),
-				allow_missing_digests=allow_missing):
-				rval = os.EX_OK
-		except SystemExit:
-			raise
-		except:
-			traceback.print_exc()
-		finally:
-			# Call os._exit() from finally block, in order to suppress any
-			# finally blocks from earlier in the call stack. See bug #345289.
-			os._exit(rval)
+		if fetch(self._uri_map, self._settings, fetchonly=self.fetchonly,
+			digests=copy.deepcopy(self._get_digests()),
+			allow_missing_digests=allow_missing):
+			rval = os.EX_OK
+		return rval
 
 	def _get_ebuild_path(self):
 		if self.ebuild_path is not None:
@@ -301,7 +270,7 @@ class EbuildFetcher(SpawnProcess):
 			self.scheduler.output(msg, log_path=self.logfile)
 
 	def _set_returncode(self, wait_retval):
-		SpawnProcess._set_returncode(self, wait_retval)
+		ForkProcess._set_returncode(self, wait_retval)
 		# Collect elog messages that might have been
 		# created by the pkg_nofetch phase.
 		# Skip elog messages for prefetch, in order to avoid duplicates.

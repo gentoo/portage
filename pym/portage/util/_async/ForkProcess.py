@@ -10,6 +10,8 @@ from _emerge.SpawnProcess import SpawnProcess
 
 class ForkProcess(SpawnProcess):
 
+	__slots__ = ()
+
 	def _spawn(self, args, fd_pipes=None, **kwargs):
 		"""
 		Fork a subprocess, apply local settings, and call fetch().
