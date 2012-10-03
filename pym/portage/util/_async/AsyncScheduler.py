@@ -27,7 +27,7 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 
 	def _cancel(self):
 		self._terminated.set()
-		self._terminate_tasks()
+		self._termination_check()
 
 	def _terminate_tasks(self):
 		for task in list(self._running_tasks):
