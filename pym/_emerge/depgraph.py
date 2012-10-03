@@ -2297,8 +2297,18 @@ class depgraph(object):
 						writemsg("!!! Please ensure the tbz2 exists as specified.\n\n", noiselevel=-1)
 						return 0, myfavorites
 				mytbz2=portage.xpak.tbz2(x)
-				mykey=mytbz2.getelements("CATEGORY")[0]+"/"+os.path.splitext(os.path.basename(x))[0]
-				if os.path.realpath(x) != \
+				mykey = None
+				cat = mytbz2.getfile("CATEGORY")
+				if cat is not None:
+					cat = _unicode_decode(cat.strip(),
+						encoding=_encodings['repo.content'])
+					mykey = cat + "/" + os.path.basename(x)[:-5]
+
+				if mykey is None:
+					writemsg(colorize("BAD", "\n*** Package is missing CATEGORY metadata: %s.\n\n" % x), noiselevel=-1)
+					self._dynamic_config._skip_restart = True
+					return 0, myfavorites
+				elif os.path.realpath(x) != \
 					os.path.realpath(bindb.bintree.getname(mykey)):
 					writemsg(colorize("BAD", "\n*** You need to adjust PKGDIR to emerge this package.\n\n"), noiselevel=-1)
 					self._dynamic_config._skip_restart = True
