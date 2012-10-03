@@ -1,7 +1,10 @@
 # Copyright 2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import errno
+
 from portage import os
+from portage import _unicode_encode, _encodings
 from portage.util import shlex_split, varexpand, writemsg
 from _emerge.CompositeTask import CompositeTask
 from _emerge.SpawnProcess import SpawnProcess
@@ -11,6 +14,8 @@ class ManifestTask(CompositeTask):
 
 	__slots__ = ("cp", "distdir", "fetchlist_dict", "gpg_cmd",
 		"gpg_vars", "repo_config", "_manifest_path")
+
+	_PGP_HEADER = b"BEGIN PGP SIGNED MESSAGE"
 
 	def _start(self):
 		self._manifest_path = os.path.join(self.repo_config.location,
@@ -29,9 +34,12 @@ class ManifestTask(CompositeTask):
 			return
 
 		modified = manifest_proc.returncode == manifest_proc.MODIFIED
+		sign = self.gpg_cmd is not None
 
-		if self.gpg_cmd is None or not modified or \
-			not os.path.exists(self._manifest_path):
+		if not modified and sign:
+			sign = self._need_signature()
+
+		if not sign or not os.path.exists(self._manifest_path):
 			self.returncode = os.EX_OK
 			self._current_task = None
 			self.wait()
@@ -73,3 +81,13 @@ class ManifestTask(CompositeTask):
 
 		self._current_task = None
 		self.wait()
+
+	def _need_signature(self):
+		try:
+			with open(_unicode_encode(self._manifest_path,
+				encoding=_encodings['fs'], errors='strict'), 'rb') as f:
+				return self._PGP_HEADER not in f.readline()
+		except IOError as e:
+			if e.errno in (errno.ENOENT, errno.ESTALE):
+				return False
+			raise
