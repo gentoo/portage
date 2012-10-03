@@ -2765,6 +2765,16 @@ else:
 			else:
 				raise portage.exception.PortageException("!!! gpg exited with '" + str(rValue) + "' status")
 
+	def need_signature(filename):
+		try:
+			with open(_unicode_encode(filename,
+				encoding=_encodings['fs'], errors='strict'), 'rb') as f:
+				return b"BEGIN PGP SIGNED MESSAGE" not in f.readline()
+		except IOError as e:
+			if e.errno in (errno.ENOENT, errno.ESTALE):
+				return False
+			raise
+
 	# When files are removed and re-added, the cvs server will put /Attic/
 	# inside the $Header path. This code detects the problem and corrects it
 	# so that the Manifest will generate correctly. See bug #169500.
@@ -2807,7 +2817,7 @@ else:
 				chain(myupdates, myremoved, mymanifests))):
 				repoman_settings["O"] = os.path.join(repodir, x)
 				manifest_path = os.path.join(repoman_settings["O"], "Manifest")
-				if not os.path.exists(manifest_path):
+				if not need_signature(manifest_path):
 					continue
 				gpgsign(manifest_path)
 		except portage.exception.PortageException as e:
