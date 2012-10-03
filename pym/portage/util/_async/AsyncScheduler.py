@@ -59,6 +59,9 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 				task.addExitListener(self._task_exit)
 				task.start()
 
+		# Triggers cleanup and exit listeners if there's nothing left to do.
+		self.poll()
+
 	def _task_exit(self, task):
 		self._running_tasks.discard(task)
 		if task.returncode != os.EX_OK:
