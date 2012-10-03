@@ -266,9 +266,12 @@ class Manifest(object):
 						(MANIFEST2_REQUIRED_HASH, t, f))
 
 	def write(self, sign=False, force=False):
-		""" Write Manifest instance to disk, optionally signing it """
+		""" Write Manifest instance to disk, optionally signing it. Returns
+		True if the Manifest is actually written, and False if the write
+		is skipped due to existing Manifest being identical."""
+		rval = False
 		if not self.allow_create:
-			return
+			return rval
 		self.checkIntegrity()
 		try:
 			myentries = list(self._createManifestEntries())
@@ -301,6 +304,7 @@ class Manifest(object):
 					# non-empty for all currently known use cases.
 					write_atomic(self.getFullname(), "".join("%s\n" %
 						_unicode(myentry) for myentry in myentries))
+					rval = True
 				else:
 					# With thin manifest, there's no need to have
 					# a Manifest file if there are no DIST entries.
@@ -309,6 +313,7 @@ class Manifest(object):
 					except OSError as e:
 						if e.errno != errno.ENOENT:
 							raise
+					rval = True
 
 			if sign:
 				self.sign()
@@ -316,6 +321,7 @@ class Manifest(object):
 			if e.errno == errno.EACCES:
 				raise PermissionDenied(str(e))
 			raise
+		return rval
 
 	def sign(self):
 		""" Sign the Manifest """

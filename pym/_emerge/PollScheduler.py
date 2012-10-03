@@ -30,7 +30,7 @@ class PollScheduler(object):
 			"output", "register", "run",
 			"source_remove", "timeout_add", "unregister")
 
-	def __init__(self, main=False):
+	def __init__(self, main=False, event_loop=None):
 		"""
 		@param main: If True then use global_event_loop(), otherwise use
 			a local EventLoop instance (default is False, for safe use in
@@ -44,7 +44,9 @@ class PollScheduler(object):
 		self._jobs = 0
 		self._scheduling = False
 		self._background = False
-		if main:
+		if event_loop is not None:
+			self._event_loop = event_loop
+		elif main:
 			self._event_loop = global_event_loop()
 		else:
 			self._event_loop = EventLoop(main=False)

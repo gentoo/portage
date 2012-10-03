@@ -20,6 +20,12 @@ Update the ChangeLog files from SCM logs (supported only in git repos).
 .TP
 .BR "\-\-update\-use\-local\-desc"
 Update the \fIprofiles/use.local.desc\fR file from metadata.xml.
+.TP
+.BR "\-\-update\-manifests"
+Update manifest files, and sign them if signing is enabled. This supports
+parallelization if enabled via the \-\-jobs option. The \-\-thin\-manifests
+and \-\-sign\-manifests options may be used to manually override layout.conf
+settings.
 .SH OPTIONS
 .TP
 .BR "\-\-cache\-dir=CACHE_DIR"
@@ -33,6 +39,12 @@ Defaults to /var/cache/edb/dep.
 Location of portage config files.
 .br
 Defaults to /.
+.TP
+.BR "\-\-gpg\-dir"
+Override the PORTAGE_GPG_DIR variable.
+.TP
+.BR "\-\-gpg\-key"
+Override the PORTAGE_GPG_KEY variable.
 .TP
 .BR "\-\-ignore-default-opts"
 Causes \fIEGENCACHE_DEFAULT_OPTS\fR to be ignored.
@@ -71,6 +83,15 @@ This option should only be needed for distribution via something like
 (see \fBbug 139134\fR). It's not needed with \fBgit\fR(1) since that uses a
 more thorough mechanism which allows it to detect changed inode numbers
 (described in \fIracy-git.txt\fR in the git technical docs).
+.TP
+.BR "\-\-sign\-manifests< y | n >"
+Manually override layout.conf sign-manifests setting.
+.TP
+.BR "\-\-strict\-manifests< y | n >"
+Manually override "strict" FEATURES setting.
+.TP
+.BR "\-\-thin\-manifests< y | n >"
+Manually override layout.conf thin-manifests setting.
 .TP
 .BR "\-\-tolerant"
 Exit successfully if only minor errors occurred, such as skipped cache

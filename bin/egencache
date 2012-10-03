@@ -4,6 +4,7 @@
 
 from __future__ import print_function
 
+import platform
 import signal
 import sys
 # This block ensures that ^C interrupts are handled quietly.
@@ -19,6 +20,17 @@ try:
 
 except KeyboardInterrupt:
 	sys.exit(128 + signal.SIGINT)
+
+def debug_signal(signum, frame):
+	import pdb
+	pdb.set_trace()
+
+if platform.python_implementation() == 'Jython':
+	debug_signum = signal.SIGUSR2 # bug #424259
+else:
+	debug_signum = signal.SIGUSR1
+
+signal.signal(debug_signum, debug_signal)
 
 import io
 import logging
@@ -36,7 +48,9 @@ from portage import os, _encodings, _unicode_encode, _unicode_decode
 from _emerge.MetadataRegen import MetadataRegen
 from portage.cache.cache_errors import CacheError, StatCollision
 from portage.manifest import guessManifestFileType
+from portage.package.ebuild._parallel_manifest.ManifestScheduler import ManifestScheduler
 from portage.util import cmp_sort_key, writemsg_level
+from portage.util._eventloop.global_event_loop import global_event_loop
 from portage import cpv_getkey
 from portage.dep import Atom, isjustname
 from portage.versions import pkgsplit, vercmp
@@ -72,6 +86,9 @@ def parse_args(args):
 	actions.add_option("--update-changelogs",
 		action="store_true",
 		help="update the ChangeLog files from SCM logs")
+	actions.add_option("--update-manifests",
+		action="store_true",
+		help="update manifests")
 	parser.add_option_group(actions)
 
 	common = optparse.OptionGroup(parser, 'Common options')
@@ -81,12 +98,33 @@ def parse_args(args):
 	common.add_option("--config-root",
 		help="location of portage config files",
 		dest="portage_configroot")
+	common.add_option("--gpg-dir",
+		help="override the PORTAGE_GPG_DIR variable",
+		dest="gpg_dir")
+	common.add_option("--gpg-key",
+		help="override the PORTAGE_GPG_KEY variable",
+		dest="gpg_key")
 	common.add_option("--portdir",
 		help="override the portage tree location",
 		dest="portdir")
 	common.add_option("--portdir-overlay",
 		help="override the PORTDIR_OVERLAY variable (requires that --repo is also specified)",
 		dest="portdir_overlay")
+	common.add_option("--sign-manifests",
+		type="choice",
+		choices=('y', 'n'),
+		metavar="<y|n>",
+		help="manually override layout.conf sign-manifests setting")
+	common.add_option("--strict-manifests",
+		type="choice",
+		choices=('y', 'n'),
+		metavar="<y|n>",
+		help="manually override \"strict\" FEATURES setting")
+	common.add_option("--thin-manifests",
+		type="choice",
+		choices=('y', 'n'),
+		metavar="<y|n>",
+		help="manually override layout.conf thin-manifests setting")
 	common.add_option("--tolerant",
 		action="store_true",
 		help="exit successfully if only minor errors occurred")
@@ -865,8 +903,8 @@ def egencache_main(args):
 		settings = portage.config(config_root=config_root,
 			local_config=False, env=env)
 
-	if not options.update and not options.update_use_local_desc \
-			and not options.update_changelogs:
+	if not (options.update or options.update_use_local_desc or
+			options.update_changelogs or options.update_manifests):
 		parser.error('No action specified')
 		return 1
 
@@ -883,10 +921,17 @@ def egencache_main(args):
 			parser.error("PORTDIR is undefined")
 			return 1
 
+	repo_config = settings.repositories.get_repo_for_location(repo_path)
+
+	if options.strict_manifests is not None:
+		if options.strict_manifests == "y":
+			settings.features.add("strict")
+		else:
+			settings.features.add("discard")
+
 	if options.update and 'metadata-transfer' not in settings.features:
 		# Forcibly enable metadata-transfer if portdbapi has a pregenerated
 		# cache that does not support eclass validation.
-		repo_config = settings.repositories.get_repo_for_location(repo_path)
 		cache = repo_config.get_pregenerated_cache(
 			portage.dbapi.dbapi._known_keys, readonly=True)
 		if cache is not None and not cache.complete_eclass_entries:
@@ -915,6 +960,69 @@ def egencache_main(args):
 					level=logging.ERROR, noiselevel=-1)
 				return 1
 
+	if options.sign_manifests is not None:
+		repo_config.sign_manifest = options.sign_manifests == 'y'
+
+	if options.thin_manifests is not None:
+		repo_config.thin_manifest = options.thin_manifests == 'y'
+
+	gpg_cmd = None
+	gpg_vars = None
+
+	if options.update_manifests:
+		if repo_config.sign_manifest:
+
+			sign_problem = False
+			gpg_dir = None
+			gpg_cmd = settings.get("PORTAGE_GPG_SIGNING_COMMAND")
+			if gpg_cmd is None:
+				writemsg_level("egencache: error: "
+					"PORTAGE_GPG_SIGNING_COMMAND is unset! "
+					"Is make.globals missing?\n",
+					level=logging.ERROR, noiselevel=-1)
+				sign_problem = True
+			elif "${PORTAGE_GPG_KEY}" in gpg_cmd and \
+				options.gpg_key is None and \
+				"PORTAGE_GPG_KEY" not in settings:
+				writemsg_level("egencache: error: "
+					"PORTAGE_GPG_KEY is unset!\n",
+					level=logging.ERROR, noiselevel=-1)
+				sign_problem = True
+			elif "${PORTAGE_GPG_DIR}" in gpg_cmd:
+				if options.gpg_dir is not None:
+					gpg_dir = options.gpg_dir
+				elif "PORTAGE_GPG_DIR" not in settings:
+					gpg_dir = os.path.expanduser("~/.gnupg")
+				else:
+					gpg_dir = os.path.expanduser(settings["PORTAGE_GPG_DIR"])
+				if not os.access(gpg_dir, os.X_OK):
+					writemsg_level(("egencache: error: "
+						"Unable to access directory: "
+						"PORTAGE_GPG_DIR='%s'\n") % gpg_dir,
+						level=logging.ERROR, noiselevel=-1)
+					sign_problem = True
+
+			if sign_problem:
+				writemsg_level("egencache: You may disable manifest "
+					"signatures with --sign-manifests=n or by setting "
+					"\"sign-manifests = false\" in metadata/layout.conf\n",
+					level=logging.ERROR, noiselevel=-1)
+				return 1
+
+			gpg_vars = {}
+			if gpg_dir is not None:
+				gpg_vars["PORTAGE_GPG_DIR"] = gpg_dir
+			gpg_var_names = []
+			if options.gpg_key is None:
+				gpg_var_names.append("PORTAGE_GPG_KEY")
+			else:
+				gpg_vars["PORTAGE_GPG_KEY"] = options.gpg_key
+
+			for k in gpg_var_names:
+				v = settings.get(k)
+				if v is not None:
+					gpg_vars[k] = v
+
 	ret = [os.EX_OK]
 
 	if options.update:
@@ -931,6 +1039,52 @@ def egencache_main(args):
 			ret.append(os.EX_OK)
 		else:
 			ret.append(gen_cache.returncode)
+
+	if options.update_manifests:
+
+		cp_iter = None
+		if atoms:
+			cp_iter = iter(atoms)
+
+		event_loop = global_event_loop()
+		scheduler = ManifestScheduler(portdb, cp_iter=cp_iter,
+			gpg_cmd=gpg_cmd, gpg_vars=gpg_vars,
+			max_jobs=options.jobs,
+			max_load=options.load_average,
+			event_loop=event_loop)
+
+		received_signal = []
+
+		def sighandler(signum, frame):
+			signal.signal(signal.SIGINT, signal.SIG_IGN)
+			signal.signal(signal.SIGTERM, signal.SIG_IGN)
+			received_signal.append(128 + signum)
+			scheduler.terminate()
+
+		earlier_sigint_handler = signal.signal(signal.SIGINT, sighandler)
+		earlier_sigterm_handler = signal.signal(signal.SIGTERM, sighandler)
+
+		try:
+			scheduler.start()
+			scheduler.wait()
+		finally:
+			# Restore previous handlers
+			if earlier_sigint_handler is not None:
+				signal.signal(signal.SIGINT, earlier_sigint_handler)
+			else:
+				signal.signal(signal.SIGINT, signal.SIG_DFL)
+			if earlier_sigterm_handler is not None:
+				signal.signal(signal.SIGTERM, earlier_sigterm_handler)
+			else:
+				signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+		if received_signal:
+			sys.exit(received_signal[0])
+
+		if options.tolerant:
+			ret.append(os.EX_OK)
+		else:
+			ret.append(scheduler.returncode)
 
 	if options.update_use_local_desc:
 		gen_desc = GenUseLocalDesc(portdb,
