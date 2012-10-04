@@ -520,10 +520,12 @@ if ___eapi_enables_globstar; then
 	shopt -s globstar
 fi
 
+# Source the ebuild every time for FEATURES=noauto, so that ebuild
+# modifications take effect immediately.
 if ! has "$EBUILD_PHASE" clean cleanrm ; then
 	if [[ $EBUILD_PHASE = depend || ! -f $T/environment || \
-		-f $PORTAGE_BUILDDIR/.ebuild_changed ]] || \
-		has noauto $FEATURES ; then
+		-f $PORTAGE_BUILDDIR/.ebuild_changed || \
+		" ${FEATURES} " == *" noauto "* ]] ; then
 		# The bashrcs get an opportunity here to set aliases that will be expanded
 		# during sourcing of ebuilds and eclasses.
 		__source_all_bashrcs
