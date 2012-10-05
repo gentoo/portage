@@ -47,6 +47,8 @@ class FifoIpcDaemon(AbstractPollTask):
 		if self.returncode is None:
 			self.returncode = 1
 		self._unregister()
+		# notify exit listeners
+		self.wait()
 
 	def _wait(self):
 		if self.returncode is not None:
