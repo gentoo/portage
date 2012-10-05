@@ -13,10 +13,20 @@ from portage.const import BASH_BINARY
 from portage.locks import hardlock_cleanup
 from portage.package.ebuild._ipc.ExitCommand import ExitCommand
 from portage.util import ensure_dirs
+from portage.util._async.ForkProcess import ForkProcess
 from _emerge.SpawnProcess import SpawnProcess
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
 from _emerge.TaskScheduler import TaskScheduler
+
+class SleepProcess(ForkProcess):
+	"""
+	Emulate the sleep command, in order to ensure a consistent
+	return code when it is killed by SIGTERM (see bug #437180).
+	"""
+	__slots__ = ('seconds',)
+	def _run(self):
+		time.sleep(self.seconds)
 
 class IpcDaemonTestCase(TestCase):
 
@@ -104,9 +114,8 @@ class IpcDaemonTestCase(TestCase):
 					input_fifo=input_fifo,
 					output_fifo=output_fifo,
 					scheduler=task_scheduler.sched_iface)
-				proc = SpawnProcess(
-					args=[BASH_BINARY, "-c", 'exec sleep %d' % sleep_time_s],
-					env=env, scheduler=task_scheduler.sched_iface)
+				proc = SleepProcess(seconds=sleep_time_s,
+					scheduler=task_scheduler.sched_iface)
 
 				self.received_command = False
 				def exit_command_callback():
