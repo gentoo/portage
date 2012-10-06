@@ -91,6 +91,9 @@ class MetadataRegen(PollScheduler):
 	def _keep_scheduling(self):
 		return self._remaining_tasks and not self._terminated_tasks
 
+	def _running_job_count(self):
+		return len(self._running_tasks)
+
 	def run(self):
 
 		portdb = self._portdb
@@ -155,14 +158,12 @@ class MetadataRegen(PollScheduler):
 				self._remaining_tasks = False
 				return
 
-			self._jobs += 1
 			self._running_tasks.add(metadata_process)
 			metadata_process.scheduler = self.sched_iface
 			metadata_process.addExitListener(self._metadata_exit)
 			metadata_process.start()
 
 	def _metadata_exit(self, metadata_process):
-		self._jobs -= 1
 		self._running_tasks.discard(metadata_process)
 		if metadata_process.returncode != os.EX_OK:
 			self.returncode = 1

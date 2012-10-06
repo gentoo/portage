@@ -225,6 +225,7 @@ class Scheduler(PollScheduler):
 
 		self._prefetchers = weakref.WeakValueDictionary()
 		self._pkg_queue = []
+		self._jobs = 0
 		self._running_tasks = {}
 		self._completed_tasks = set()
 
@@ -1497,6 +1498,9 @@ class Scheduler(PollScheduler):
 
 	def _is_work_scheduled(self):
 		return bool(self._running_tasks)
+
+	def _running_job_count(self):
+		return self._jobs
 
 	def _schedule_tasks(self):
 

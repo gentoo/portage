@@ -41,7 +41,6 @@ class PollScheduler(object):
 		self._terminated_tasks = False
 		self._max_jobs = 1
 		self._max_load = None
-		self._jobs = 0
 		self._scheduling = False
 		self._background = False
 		if event_loop is not None:
@@ -184,7 +183,7 @@ class PollScheduler(object):
 		return bool(self._running_job_count())
 
 	def _running_job_count(self):
-		return self._jobs
+		raise NotImplementedError(self)
 
 	def _can_add_job(self):
 		if self._terminated_tasks:
