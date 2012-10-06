@@ -1866,7 +1866,8 @@ def action_regen(settings, portdb, max_jobs, max_load):
 	#regenerate cache entries
 	sys.stdout.flush()
 
-	regen = MetadataRegen(portdb, max_jobs=max_jobs, max_load=max_load)
+	regen = MetadataRegen(portdb, max_jobs=max_jobs,
+		max_load=max_load, main=True)
 	received_signal = []
 
 	def emergeexitsig(signum, frame):
@@ -1881,7 +1882,8 @@ def action_regen(settings, portdb, max_jobs, max_load):
 	earlier_sigterm_handler = signal.signal(signal.SIGTERM, emergeexitsig)
 
 	try:
-		regen.run()
+		regen.start()
+		regen.wait()
 	finally:
 		# Restore previous handlers
 		if earlier_sigint_handler is not None:

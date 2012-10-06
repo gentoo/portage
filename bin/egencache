@@ -254,7 +254,7 @@ class GenCache(object):
 		self._regen = MetadataRegen(portdb, cp_iter=cp_iter,
 			consumer=self._metadata_callback,
 			max_jobs=max_jobs, max_load=max_load,
-			write_auxdb=write_auxdb)
+			write_auxdb=write_auxdb, main=True)
 		self.returncode = os.EX_OK
 		conf = portdb.repositories.get_repo_for_location(tree)
 		self._trg_caches = tuple(conf.iter_pregenerated_caches(
@@ -370,7 +370,8 @@ class GenCache(object):
 		earlier_sigterm_handler = signal.signal(signal.SIGTERM, sighandler)
 
 		try:
-			self._regen.run()
+			self._regen.start()
+			self._regen.wait()
 		finally:
 			# Restore previous handlers
 			if earlier_sigint_handler is not None:
