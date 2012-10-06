@@ -33,8 +33,8 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_encode
 from portage import OrderedDict
+from portage.util._eventloop.EventLoop import EventLoop
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
-from _emerge.PollScheduler import PollScheduler
 
 import os as _os
 import sys
@@ -96,7 +96,7 @@ class portdbapi(dbapi):
 		# this purpose because doebuild makes many changes to the config
 		# instance that is passed in.
 		self.doebuild_settings = config(clone=self.settings)
-		self._scheduler = PollScheduler().sched_iface
+		self._event_loop = EventLoop(main=False)
 		self.depcachedir = os.path.realpath(self.settings.depcachedir)
 		
 		if os.environ.get("SANDBOX_ON") == "1":
@@ -448,7 +448,7 @@ class portdbapi(dbapi):
 
 			proc = EbuildMetadataPhase(cpv=mycpv,
 				ebuild_hash=ebuild_hash, portdb=self,
-				repo_path=mylocation, scheduler=self._scheduler,
+				repo_path=mylocation, scheduler=self._event_loop,
 				settings=self.doebuild_settings)
 
 			proc.start()

@@ -10,8 +10,8 @@ from portage import _encodings
 from portage import _unicode_encode
 from portage.const import BASH_BINARY
 from portage.tests import TestCase
+from portage.util._eventloop.global_event_loop import global_event_loop
 from _emerge.SpawnProcess import SpawnProcess
-from _emerge.PollScheduler import PollScheduler
 
 class SpawnTestCase(TestCase):
 
@@ -22,12 +22,11 @@ class SpawnTestCase(TestCase):
 			os.close(fd)
 			null_fd = os.open('/dev/null', os.O_RDWR)
 			test_string = 2 * "blah blah blah\n"
-			scheduler = PollScheduler().sched_iface
 			proc = SpawnProcess(
 				args=[BASH_BINARY, "-c",
 				"echo -n '%s'" % test_string],
 				env={}, fd_pipes={0:sys.stdin.fileno(), 1:null_fd, 2:null_fd},
-				scheduler=scheduler,
+				scheduler=global_event_loop(),
 				logfile=logfile)
 			proc.start()
 			os.close(null_fd)

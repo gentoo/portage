@@ -32,6 +32,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.movefile:movefile',
 	'portage.util._dyn_libs.PreservedLibsRegistry:PreservedLibsRegistry',
 	'portage.util._dyn_libs.LinkageMapELF:LinkageMapELF@LinkageMap',
+	'portage.util._eventloop.EventLoop:EventLoop',
 	'portage.versions:best,catpkgsplit,catsplit,cpv_getkey,vercmp,' + \
 		'_pkgsplit@pkgsplit,_pkg_str',
 	'subprocess',
@@ -4814,7 +4815,7 @@ def merge(mycat, mypkg, pkgloc, infloc,
 	merge_task = MergeProcess(
 		mycat=mycat, mypkg=mypkg, settings=settings,
 		treetype=mytree, vartree=vartree,
-		scheduler=(scheduler or PollScheduler().sched_iface),
+		scheduler=(scheduler or EventLoop(main=False)),
 		background=background, blockers=blockers, pkgloc=pkgloc,
 		infloc=infloc, myebuild=myebuild, mydbapi=mydbapi,
 		prev_mtimes=prev_mtimes, logfile=settings.get('PORTAGE_LOG_FILE'))

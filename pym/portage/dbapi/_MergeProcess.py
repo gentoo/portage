@@ -116,8 +116,7 @@ class MergeProcess(ForkProcess):
 			blockers = self.blockers()
 		mylink = portage.dblink(self.mycat, self.mypkg, settings=self.settings,
 			treetype=self.treetype, vartree=self.vartree,
-			blockers=blockers, scheduler=self.scheduler,
-			pipe=elog_writer_fd)
+			blockers=blockers, pipe=elog_writer_fd)
 		fd_pipes[elog_writer_fd] = elog_writer_fd
 		self._elog_reg_id = self.scheduler.io_add_watch(elog_reader_fd,
 			self._registered_events, self._elog_output_handler)
@@ -165,11 +164,6 @@ class MergeProcess(ForkProcess):
 
 		portage.output.havecolor = self.settings.get('NOCOLOR') \
 			not in ('yes', 'true')
-
-		# In this subprocess we want mylink._display_merge() to use
-		# stdout/stderr directly since they are pipes. This behavior
-		# is triggered when mylink._scheduler is None.
-		mylink._scheduler = None
 
 		# Avoid wastful updates of the vdb cache.
 		self.vartree.dbapi._flush_cache_enabled = False

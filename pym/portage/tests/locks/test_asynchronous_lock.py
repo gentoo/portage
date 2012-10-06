@@ -7,13 +7,13 @@ import tempfile
 from portage import os
 from portage import shutil
 from portage.tests import TestCase
+from portage.util._eventloop.global_event_loop import global_event_loop
 from _emerge.AsynchronousLock import AsynchronousLock
-from _emerge.PollScheduler import PollScheduler
 
 class AsynchronousLockTestCase(TestCase):
 
 	def _testAsynchronousLock(self):
-		scheduler = PollScheduler().sched_iface
+		scheduler = global_event_loop()
 		tempdir = tempfile.mkdtemp()
 		try:
 			path = os.path.join(tempdir, 'lock_me')
@@ -53,7 +53,7 @@ class AsynchronousLockTestCase(TestCase):
 				os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = prev_state
 
 	def _testAsynchronousLockWait(self):
-		scheduler = PollScheduler().sched_iface
+		scheduler = global_event_loop()
 		tempdir = tempfile.mkdtemp()
 		try:
 			path = os.path.join(tempdir, 'lock_me')
@@ -94,7 +94,7 @@ class AsynchronousLockTestCase(TestCase):
 				os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = prev_state
 
 	def _testAsynchronousLockWaitCancel(self):
-		scheduler = PollScheduler().sched_iface
+		scheduler = global_event_loop()
 		tempdir = tempfile.mkdtemp()
 		try:
 			path = os.path.join(tempdir, 'lock_me')
@@ -132,7 +132,7 @@ class AsynchronousLockTestCase(TestCase):
 				os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = prev_state
 
 	def _testAsynchronousLockWaitKill(self):
-		scheduler = PollScheduler().sched_iface
+		scheduler = global_event_loop()
 		tempdir = tempfile.mkdtemp()
 		try:
 			path = os.path.join(tempdir, 'lock_me')
