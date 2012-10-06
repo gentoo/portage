@@ -5,8 +5,6 @@ from .AsyncScheduler import AsyncScheduler
 
 class TaskScheduler(AsyncScheduler):
 
-	__slots__ = ('_task_iter',)
-
 	"""
 	A simple way to handle scheduling of AbstractPollTask instances. Simply
 	pass a task iterator into the constructor and call start(). Use the

@@ -7,10 +7,6 @@ from _emerge.PollScheduler import PollScheduler
 
 class AsyncScheduler(AsynchronousTask, PollScheduler):
 
-	__slots__ = ('_error_count', '_loadavg_check_id',
-		'_max_jobs', '_max_load',
-		'_remaining_tasks', '_running_tasks', '_term_check_id')
-
 	def __init__(self, max_jobs=None, max_load=None, **kwargs):
 		AsynchronousTask.__init__(self)
 		PollScheduler.__init__(self, **kwargs)
