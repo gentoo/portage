@@ -90,7 +90,7 @@ class MergeProcess(ForkProcess):
 					reporter(msg, phase=phase, key=key, out=out)
 
 		if event & self.scheduler.IO_HUP:
-			self.scheduler.unregister(self._elog_reg_id)
+			self.scheduler.source_remove(self._elog_reg_id)
 			self._elog_reg_id = None
 			os.close(self._elog_reader_fd)
 			self._elog_reader_fd = None
@@ -119,7 +119,7 @@ class MergeProcess(ForkProcess):
 			blockers=blockers, scheduler=self.scheduler,
 			pipe=elog_writer_fd)
 		fd_pipes[elog_writer_fd] = elog_writer_fd
-		self._elog_reg_id = self.scheduler.register(elog_reader_fd,
+		self._elog_reg_id = self.scheduler.io_add_watch(elog_reader_fd,
 			self._registered_events, self._elog_output_handler)
 
 		# If a concurrent emerge process tries to install a package
@@ -231,7 +231,7 @@ class MergeProcess(ForkProcess):
 
 		self._unlock_vdb()
 		if self._elog_reg_id is not None:
-			self.scheduler.unregister(self._elog_reg_id)
+			self.scheduler.source_remove(self._elog_reg_id)
 			self._elog_reg_id = None
 		if self._elog_reader_fd is not None:
 			os.close(self._elog_reader_fd)

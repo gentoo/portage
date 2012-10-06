@@ -116,7 +116,7 @@ class SpawnProcess(SubProcess):
 		kwargs["returnpid"] = True
 		kwargs.pop("logfile", None)
 
-		self._reg_id = self.scheduler.register(files.process,
+		self._reg_id = self.scheduler.io_add_watch(files.process,
 			self._registered_events, output_handler)
 		self._registered = True
 

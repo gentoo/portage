@@ -96,7 +96,7 @@ class EbuildMetadataPhase(SubProcess):
 
 		self._raw_metadata = []
 		files.ebuild = master_fd
-		self._reg_id = self.scheduler.register(files.ebuild,
+		self._reg_id = self.scheduler.io_add_watch(files.ebuild,
 			self._registered_events, self._output_handler)
 		self._registered = True
 

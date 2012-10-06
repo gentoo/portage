@@ -16,7 +16,6 @@ from portage.util import ensure_dirs
 from portage.util._async.ForkProcess import ForkProcess
 from portage.util._async.TaskScheduler import TaskScheduler
 from portage.util._eventloop.global_event_loop import global_event_loop
-from _emerge.PollScheduler import PollScheduler
 from _emerge.SpawnProcess import SpawnProcess
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
@@ -58,7 +57,7 @@ class IpcDaemonTestCase(TestCase):
 					os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"]
 
 			build_dir = EbuildBuildDir(
-				scheduler=PollScheduler(event_loop=event_loop).sched_iface,
+				scheduler=event_loop,
 				settings=env)
 			build_dir.lock()
 			ensure_dirs(env['PORTAGE_BUILDDIR'])

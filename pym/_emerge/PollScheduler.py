@@ -27,8 +27,8 @@ class PollScheduler(object):
 		__slots__ = ("IO_ERR", "IO_HUP", "IO_IN", "IO_NVAL", "IO_OUT",
 			"IO_PRI", "child_watch_add",
 			"idle_add", "io_add_watch", "iteration",
-			"output", "register", "run",
-			"source_remove", "timeout_add", "unregister")
+			"output", "run",
+			"source_remove", "timeout_add")
 
 	def __init__(self, main=False, event_loop=None):
 		"""
@@ -61,10 +61,8 @@ class PollScheduler(object):
 			io_add_watch=self._event_loop.io_add_watch,
 			iteration=self._event_loop.iteration,
 			output=self._task_output,
-			register=self._event_loop.io_add_watch,
 			source_remove=self._event_loop.source_remove,
-			timeout_add=self._event_loop.timeout_add,
-			unregister=self._event_loop.source_remove)
+			timeout_add=self._event_loop.timeout_add)
 
 	def terminate(self):
 		"""

@@ -116,7 +116,7 @@ class _LockThread(AbstractPollTask):
 		for f in self._files.values():
 			fcntl.fcntl(f, fcntl.F_SETFL,
 				fcntl.fcntl(f, fcntl.F_GETFL) | os.O_NONBLOCK)
-		self._reg_id = self.scheduler.register(self._files['pipe_read'],
+		self._reg_id = self.scheduler.io_add_watch(self._files['pipe_read'],
 			self.scheduler.IO_IN, self._output_handler)
 		self._registered = True
 		threading_mod = threading
@@ -164,7 +164,7 @@ class _LockThread(AbstractPollTask):
 			self._thread = None
 
 		if self._reg_id is not None:
-			self.scheduler.unregister(self._reg_id)
+			self.scheduler.source_remove(self._reg_id)
 			self._reg_id = None
 
 		if self._files is not None:
@@ -192,7 +192,7 @@ class _LockProcess(AbstractPollTask):
 		self._files['pipe_out'] = out_pw
 		fcntl.fcntl(in_pr, fcntl.F_SETFL,
 			fcntl.fcntl(in_pr, fcntl.F_GETFL) | os.O_NONBLOCK)
-		self._reg_id = self.scheduler.register(in_pr,
+		self._reg_id = self.scheduler.io_add_watch(in_pr,
 			self.scheduler.IO_IN, self._output_handler)
 		self._registered = True
 		self._proc = SpawnProcess(
@@ -273,7 +273,7 @@ class _LockProcess(AbstractPollTask):
 		self._registered = False
 
 		if self._reg_id is not None:
-			self.scheduler.unregister(self._reg_id)
+			self.scheduler.source_remove(self._reg_id)
 			self._reg_id = None
 
 		if self._files is not None:
