@@ -147,36 +147,6 @@ class PollScheduler(object):
 		finally:
 			self._scheduling = False
 
-	def _main_loop(self):
-		term_check_id = self.sched_iface.idle_add(self._termination_check)
-		loadavg_check_id = None
-		if self._max_load is not None:
-			# We have to schedule periodically, in case the load
-			# average has changed since the last call.
-			loadavg_check_id = self.sched_iface.timeout_add(
-				self._loadavg_latency, self._schedule)
-
-		try:
-			# Populate initial event sources. Unless we're scheduling
-			# based on load average, we only need to do this once
-			# here, since it can be called during the loop from within
-			# event handlers.
-			self._schedule()
-
-			# Loop while there are jobs to be scheduled.
-			while self._keep_scheduling():
-				self.sched_iface.iteration()
-
-			# Clean shutdown of previously scheduled jobs. In the
-			# case of termination, this allows for basic cleanup
-			# such as flushing of buffered output to logs.
-			while self._is_work_scheduled():
-				self.sched_iface.iteration()
-		finally:
-			self.sched_iface.source_remove(term_check_id)
-			if loadavg_check_id is not None:
-				self.sched_iface.source_remove(loadavg_check_id)
-
 	def _is_work_scheduled(self):
 		return bool(self._running_job_count())
 
