@@ -79,10 +79,12 @@ class ManifestScheduler(AsyncScheduler):
 					gpg_cmd=self._gpg_cmd, gpg_vars=self._gpg_vars)
 
 	def _task_exit(self, task):
-		AsyncScheduler._task_exit(self, task)
+
 		if task.returncode != os.EX_OK:
 			if not self._terminated_tasks:
 				portage.writemsg(
 					"Error processing %s%s%s, continuing...\n" %
 					(task.cp, _repo_separator, task.repo_config.name),
 					noiselevel=-1)
+
+		AsyncScheduler._task_exit(self, task)
