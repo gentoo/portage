@@ -12,7 +12,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dbapi.dep_expand:dep_expand',
 	'portage.dbapi._MergeProcess:MergeProcess',
 	'portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list,' + \
-	 	'use_reduce,_get_slot_re',
+	 	'use_reduce,_get_slot_re,_slot_separator,_repo_separator',
 	'portage.eapi:_get_eapi_attrs',
 	'portage.elog:collect_ebuild_messages,collect_messages,' + \
 		'elog_process,_merge_logentries',
@@ -3803,17 +3803,29 @@ class dblink(object):
 					# get_owners is slow for large numbers of files, so
 					# don't look them all up.
 					collisions = collisions[:20]
+
+				pkg_info_strs = {}
 				self.lockdb()
 				try:
 					owners = self.vartree.dbapi._owners.get_owners(collisions)
 					self.vartree.dbapi.flush_cache()
+
+					for pkg in owners:
+						other_slot, other_repo = self.vartree.dbapi.aux_get(
+							pkg.mycpv, ["SLOT", "repository"])
+						pkg_info_str = "%s%s%s" % (pkg.mycpv,
+							_slot_separator, other_slot)
+						if other_repo:
+							pkg_info_str += "%s%s" % (_repo_separator,
+								other_repo)
+						pkg_info_strs[pkg.mycpv] = pkg_info_str
+
 				finally:
 					self.unlockdb()
 
 				for pkg, owned_files in owners.items():
-					cpv = pkg.mycpv
 					msg = []
-					msg.append("%s" % cpv)
+					msg.append(pkg_info_strs[pkg.mycpv])
 					for f in sorted(owned_files):
 						msg.append("\t%s" % os.path.join(destroot,
 							f.lstrip(os.path.sep)))
