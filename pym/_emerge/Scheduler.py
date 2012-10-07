@@ -28,6 +28,8 @@ from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import ensure_dirs, writemsg, writemsg_level
 from portage.util.SlotObject import SlotObject
+from portage.util._async.SchedulerInterface import SchedulerInterface
+from portage.util._eventloop.EventLoop import EventLoop
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
 from portage.package.ebuild.doebuild import (_check_temp_dir,
@@ -79,7 +81,7 @@ class Scheduler(PollScheduler):
 	_opts_no_self_update = frozenset(["--buildpkgonly",
 		"--fetchonly", "--fetch-all-uri", "--pretend"])
 
-	class _iface_class(PollScheduler._sched_iface_class):
+	class _iface_class(SchedulerInterface):
 		__slots__ = ("fetch",
 			"scheduleSetup", "scheduleUnpack")
 
@@ -215,11 +217,11 @@ class Scheduler(PollScheduler):
 		fetch_iface = self._fetch_iface_class(log_file=self._fetch_log,
 			schedule=self._schedule_fetch)
 		self._sched_iface = self._iface_class(
+			self._event_loop,
+			is_background=self._is_background,
 			fetch=fetch_iface,
 			scheduleSetup=self._schedule_setup,
-			scheduleUnpack=self._schedule_unpack,
-			**dict((k, getattr(self.sched_iface, k))
-			for k in self.sched_iface.__slots__))
+			scheduleUnpack=self._schedule_unpack)
 
 		self._prefetchers = weakref.WeakValueDictionary()
 		self._pkg_queue = []
@@ -767,10 +769,10 @@ class Scheduler(PollScheduler):
 
 		failures = 0
 
-		# Use a local PollScheduler instance here, since we don't
+		# Use a local EventLoop instance here, since we don't
 		# want tasks here to trigger the usual Scheduler callbacks
 		# that handle job scheduling and status display.
-		sched_iface = PollScheduler().sched_iface
+		sched_iface = SchedulerInterface(EventLoop(main=False))
 
 		for x in self._mergelist:
 			if not isinstance(x, Package):

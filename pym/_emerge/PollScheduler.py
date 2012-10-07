@@ -1,18 +1,12 @@
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import gzip
-import errno
-
 try:
 	import threading
 except ImportError:
 	import dummy_threading as threading
 
-from portage import _encodings
-from portage import _unicode_encode
-from portage.util import writemsg_level
-from portage.util.SlotObject import SlotObject
+from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.EventLoop import EventLoop
 from portage.util._eventloop.global_event_loop import global_event_loop
 
@@ -22,13 +16,6 @@ class PollScheduler(object):
 
 	# max time between loadavg checks (milliseconds)
 	_loadavg_latency = 30000
-
-	class _sched_iface_class(SlotObject):
-		__slots__ = ("IO_ERR", "IO_HUP", "IO_IN", "IO_NVAL", "IO_OUT",
-			"IO_PRI", "child_watch_add",
-			"idle_add", "io_add_watch", "iteration",
-			"output", "run",
-			"source_remove", "timeout_add")
 
 	def __init__(self, main=False, event_loop=None):
 		"""
@@ -49,20 +36,11 @@ class PollScheduler(object):
 			self._event_loop = global_event_loop()
 		else:
 			self._event_loop = EventLoop(main=False)
-		self.sched_iface = self._sched_iface_class(
-			IO_ERR=self._event_loop.IO_ERR,
-			IO_HUP=self._event_loop.IO_HUP,
-			IO_IN=self._event_loop.IO_IN,
-			IO_NVAL=self._event_loop.IO_NVAL,
-			IO_OUT=self._event_loop.IO_OUT,
-			IO_PRI=self._event_loop.IO_PRI,
-			child_watch_add=self._event_loop.child_watch_add,
-			idle_add=self._event_loop.idle_add,
-			io_add_watch=self._event_loop.io_add_watch,
-			iteration=self._event_loop.iteration,
-			output=self._task_output,
-			source_remove=self._event_loop.source_remove,
-			timeout_add=self._event_loop.timeout_add)
+		self.sched_iface = SchedulerInterface(self._event_loop,
+			is_background=self._is_background)
+
+	def _is_background(self):
+		return self._background
 
 	def terminate(self):
 		"""
@@ -176,47 +154,3 @@ class PollScheduler(object):
 				return False
 
 		return True
-
-	def _task_output(self, msg, log_path=None, background=None,
-		level=0, noiselevel=-1):
-		"""
-		Output msg to stdout if not self._background. If log_path
-		is not None then append msg to the log (appends with
-		compression if the filename extension of log_path
-		corresponds to a supported compression type).
-		"""
-
-		if background is None:
-			# If the task does not have a local background value
-			# (like for parallel-fetch), then use the global value.
-			background = self._background
-
-		msg_shown = False
-		if not background:
-			writemsg_level(msg, level=level, noiselevel=noiselevel)
-			msg_shown = True
-
-		if log_path is not None:
-			try:
-				f = open(_unicode_encode(log_path,
-					encoding=_encodings['fs'], errors='strict'),
-					mode='ab')
-				f_real = f
-			except IOError as e:
-				if e.errno not in (errno.ENOENT, errno.ESTALE):
-					raise
-				if not msg_shown:
-					writemsg_level(msg, level=level, noiselevel=noiselevel)
-			else:
-
-				if log_path.endswith('.gz'):
-					# NOTE: The empty filename argument prevents us from
-					# triggering a bug in python3 which causes GzipFile
-					# to raise AttributeError if fileobj.name is bytes
-					# instead of unicode.
-					f =  gzip.GzipFile(filename='', mode='ab', fileobj=f)
-
-				f.write(_unicode_encode(msg))
-				f.close()
-				if f_real is not f:
-					f_real.close()
