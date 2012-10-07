@@ -49,6 +49,8 @@ from portage._sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, \
 	writemsg_level, writemsg_stdout
 from portage.util.digraph import digraph
+from portage.util._async.SchedulerInterface import SchedulerInterface
+from portage.util._eventloop.global_event_loop import global_event_loop
 from portage._global_updates import _global_updates
 
 from _emerge.clear_caches import clear_caches
@@ -61,7 +63,6 @@ from _emerge.emergelog import emergelog
 from _emerge.is_valid_package_atom import is_valid_package_atom
 from _emerge.MetadataRegen import MetadataRegen
 from _emerge.Package import Package
-from _emerge.PollScheduler import PollScheduler
 from _emerge.ProgressHandler import ProgressHandler
 from _emerge.RootConfig import RootConfig
 from _emerge.Scheduler import Scheduler
@@ -2684,12 +2685,13 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 	# Use the same logic as the Scheduler class to trigger redirection
 	# of ebuild pkg_prerm/postrm phase output to logs as appropriate
 	# for options such as --jobs, --quiet and --quiet-build.
-	sched = PollScheduler(main=True)
 	max_jobs = opts.get("--jobs", 1)
-	sched._background = (max_jobs is True or max_jobs > 1 or
+	background = (max_jobs is True or max_jobs > 1 or
 		"--quiet" in opts or opts.get("--quiet-build") == "y")
+	sched_iface = SchedulerInterface(global_event_loop(),
+		is_background=lambda: background)
 
-	if sched._background:
+	if background:
 		settings.unlock()
 		settings["PORTAGE_BACKGROUND"] = "1"
 		settings.backup_changes("PORTAGE_BACKGROUND")
@@ -2701,11 +2703,11 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 		ordered = action == 'unmerge'
 		rval = unmerge(trees[settings['EROOT']]['root_config'], opts, action,
 			valid_atoms, ldpath_mtimes, ordered=ordered,
-			scheduler=sched.sched_iface)
+			scheduler=sched_iface)
 	else:
 		rval = action_depclean(settings, trees, ldpath_mtimes,
 			opts, action, valid_atoms, spinner,
-			scheduler=sched.sched_iface)
+			scheduler=sched_iface)
 
 	return rval
 

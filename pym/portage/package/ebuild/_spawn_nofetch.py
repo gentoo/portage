@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
@@ -10,8 +10,9 @@ from portage.elog import elog_process
 from portage.package.ebuild.config import config
 from portage.package.ebuild.doebuild import doebuild_environment
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
+from portage.util._async.SchedulerInterface import SchedulerInterface
+from portage.util._eventloop.EventLoop import EventLoop
 from _emerge.EbuildPhase import EbuildPhase
-from _emerge.PollScheduler import PollScheduler
 
 def spawn_nofetch(portdb, ebuild_path, settings=None):
 	"""
@@ -77,7 +78,8 @@ def spawn_nofetch(portdb, ebuild_path, settings=None):
 
 		prepare_build_dirs(settings=settings)
 		ebuild_phase = EbuildPhase(background=False,
-			phase='nofetch', scheduler=PollScheduler().sched_iface,
+			phase='nofetch',
+			scheduler=SchedulerInterface(EventLoop(main=False)),
 			settings=settings)
 		ebuild_phase.start()
 		ebuild_phase.wait()
