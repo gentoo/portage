@@ -81,7 +81,7 @@ def has_version(argv):
 	"""
 	if (len(argv) < 2):
 		print("ERROR: insufficient parameters!")
-		return 2
+		return 3
 
 	warnings = []
 
@@ -129,7 +129,7 @@ def best_version(argv):
 	"""
 	if (len(argv) < 2):
 		print("ERROR: insufficient parameters!")
-		return 2
+		return 3
 
 	warnings = []
 

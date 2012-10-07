@@ -66,7 +66,7 @@ class QueryCommand(IpcCommand):
 
 		root = normalize_path(root).rstrip(os.path.sep) + os.path.sep
 		if root not in db:
-			return ('', 'invalid ROOT: %s\n' % root, 2)
+			return ('', 'invalid ROOT: %s\n' % root, 3)
 
 		vardb = db[root]["vartree"].dbapi
 
@@ -80,7 +80,7 @@ class QueryCommand(IpcCommand):
 			m = best(vardb.match(atom))
 			return ('%s\n' % m, warnings_str, 0)
 		else:
-			return ('', 'invalid command: %s\n' % cmd, 2)
+			return ('', 'invalid command: %s\n' % cmd, 3)
 
 	def _elog(self, elog_funcname, lines):
 		"""
