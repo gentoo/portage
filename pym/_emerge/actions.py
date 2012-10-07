@@ -61,6 +61,7 @@ from _emerge.emergelog import emergelog
 from _emerge.is_valid_package_atom import is_valid_package_atom
 from _emerge.MetadataRegen import MetadataRegen
 from _emerge.Package import Package
+from _emerge.PollScheduler import PollScheduler
 from _emerge.ProgressHandler import ProgressHandler
 from _emerge.RootConfig import RootConfig
 from _emerge.Scheduler import Scheduler
@@ -2680,20 +2681,19 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 	if action == 'deselect':
 		return action_deselect(settings, trees, opts, valid_atoms)
 
-	# Create a Scheduler for calls to unmerge(), in order to cause
-	# redirection of ebuild phase output to logs as required for
-	# options such as --quiet.
-	sched = Scheduler(settings, trees, None, opts,
-		spinner, uninstall_only=True)
-	sched._background = sched._background_mode()
-	sched._status_display.quiet = True
+	# Use the same logic as the Scheduler class to trigger redirection
+	# of ebuild pkg_prerm/postrm phase output to logs as appropriate
+	# for options such as --jobs, --quiet and --quiet-build.
+	sched = PollScheduler(main=True)
+	max_jobs = opts.get("--jobs", 1)
+	sched._background = (max_jobs is True or max_jobs > 1 or
+		"--quiet" in opts or opts.get("--quiet-build") == "y")
 
 	if sched._background:
-		sched.settings.unlock()
-		sched.settings["PORTAGE_BACKGROUND"] = "1"
-		sched.settings.backup_changes("PORTAGE_BACKGROUND")
-		sched.settings.lock()
-		sched.pkgsettings[eroot] = portage.config(clone=sched.settings)
+		settings.unlock()
+		settings["PORTAGE_BACKGROUND"] = "1"
+		settings.backup_changes("PORTAGE_BACKGROUND")
+		settings.lock()
 
 	if action in ('clean', 'unmerge') or \
 		(action == 'prune' and "--nodeps" in opts):
@@ -2701,10 +2701,11 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 		ordered = action == 'unmerge'
 		rval = unmerge(trees[settings['EROOT']]['root_config'], opts, action,
 			valid_atoms, ldpath_mtimes, ordered=ordered,
-			scheduler=sched._sched_iface)
+			scheduler=sched.sched_iface)
 	else:
 		rval = action_depclean(settings, trees, ldpath_mtimes,
-			opts, action, valid_atoms, spinner, scheduler=sched._sched_iface)
+			opts, action, valid_atoms, spinner,
+			scheduler=sched.sched_iface)
 
 	return rval
 
