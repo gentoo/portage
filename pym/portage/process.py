@@ -15,7 +15,7 @@ from portage import _encodings
 from portage import _unicode_encode
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.util:dump_traceback',
+	'portage.util:dump_traceback,writemsg',
 )
 
 from portage.const import BASH_BINARY, SANDBOX_BINARY, FAKEROOT_BINARY
@@ -268,9 +268,12 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 			# We need to catch _any_ exception so that it doesn't
 			# propagate out of this function and cause exiting
 			# with anything other than os._exit()
-			sys.stderr.write("%s:\n   %s\n" % (e, " ".join(mycommand)))
+			writemsg("%s:\n   %s\n" % (e, " ".join(mycommand)), noiselevel=-1)
 			traceback.print_exc()
 			sys.stderr.flush()
+		finally:
+			# Call os._exit() from finally block, in order to suppress any
+			# finally blocks from earlier in the call stack. See bug #345289.
 			os._exit(1)
 
 	if not isinstance(pid, int):
