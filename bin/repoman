@@ -372,7 +372,7 @@ qahelp={
 	"metadata.missing":"Missing metadata.xml files",
 	"metadata.bad":"Bad metadata.xml files",
 	"metadata.warning":"Warnings in metadata.xml files",
-	"portage.internal":"The ebuild uses an internal Portage function",
+	"portage.internal":"The ebuild uses an internal Portage function or variable",
 	"virtual.oldstyle":"The ebuild PROVIDEs an old-style virtual (see GLEP 37)",
 	"virtual.suspect":"Ebuild contains a package that usually should be pulled via virtual/, not directly.",
 	"usage.obsolete":"The ebuild makes use of an obsolete construct",
