@@ -407,7 +407,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 			file_uri_tuples.append((os.path.basename(myuri), myuri))
 
 	filedict = OrderedDict()
-	primaryuri_indexes={}
 	primaryuri_dict = {}
 	thirdpartymirror_uris = {}
 	for myfile, myuri in file_uri_tuples:
@@ -449,6 +448,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 				primaryuris = []
 				primaryuri_dict[myfile] = primaryuris
 			primaryuris.append(myuri)
+
+	# Order primaryuri_dict values to match that in SRC_URI.
+	for uris in primaryuri_dict.values():
+		uris.reverse()
 
 	# Prefer thirdpartymirrors over normal mirrors in cases when
 	# the file does not yet exist on the normal mirrors.
