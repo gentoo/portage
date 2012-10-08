@@ -25,17 +25,19 @@ class ForkProcess(SpawnProcess):
 			portage.process.spawned_pids.append(pid)
 			return [pid]
 
-		portage.locks._close_fds()
-		# Disable close_fds since we don't exec (see _setup_pipes docstring).
-		portage.process._setup_pipes(fd_pipes, close_fds=False)
-
-		# Use default signal handlers in order to avoid problems
-		# killing subprocesses as reported in bug #353239.
-		signal.signal(signal.SIGINT, signal.SIG_DFL)
-		signal.signal(signal.SIGTERM, signal.SIG_DFL)
-
 		rval = 1
 		try:
+
+			# Use default signal handlers in order to avoid problems
+			# killing subprocesses as reported in bug #353239.
+			signal.signal(signal.SIGINT, signal.SIG_DFL)
+			signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+			portage.locks._close_fds()
+			# We don't exec, so use close_fds=False
+			# (see _setup_pipes docstring).
+			portage.process._setup_pipes(fd_pipes, close_fds=False)
+
 			rval = self._run()
 		except SystemExit:
 			raise
