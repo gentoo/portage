@@ -132,83 +132,96 @@ class MergeProcess(ForkProcess):
 		if not self.unmerge:
 			counter = self.vartree.dbapi.counter_tick()
 
-		pid = os.fork()
-		if pid != 0:
-			if not isinstance(pid, int):
-				raise AssertionError(
-					"fork returned non-integer: %s" % (repr(pid),))
-
-			os.close(elog_writer_fd)
-			self._elog_reader_fd = elog_reader_fd
-			self._buf = ""
-			self._elog_keys = set()
-
-			# invalidate relevant vardbapi caches
-			if self.vartree.dbapi._categories is not None:
-				self.vartree.dbapi._categories = None
-			self.vartree.dbapi._pkgs_changed = True
-			self.vartree.dbapi._clear_pkg_cache(mylink)
-
-			portage.process.spawned_pids.append(pid)
-			return [pid]
-
-		os.close(elog_reader_fd)
-		portage.locks._close_fds()
-		# Disable close_fds since we don't exec (see _setup_pipes docstring).
-		portage.process._setup_pipes(fd_pipes, close_fds=False)
-
-		# Use default signal handlers since the ones inherited
-		# from the parent process are irrelevant here.
-		signal.signal(signal.SIGINT, signal.SIG_DFL)
-		signal.signal(signal.SIGTERM, signal.SIG_DFL)
-
-		portage.output.havecolor = self.settings.get('NOCOLOR') \
-			not in ('yes', 'true')
-
-		# Avoid wastful updates of the vdb cache.
-		self.vartree.dbapi._flush_cache_enabled = False
-
-		# In this subprocess we don't want PORTAGE_BACKGROUND to
-		# suppress stdout/stderr output since they are pipes. We
-		# also don't want to open PORTAGE_LOG_FILE, since it will
-		# already be opened by the parent process, so we set the
-		# "subprocess" value for use in conditional logging code
-		# involving PORTAGE_LOG_FILE.
-		if not self.unmerge:
-			# unmerge phases have separate logs
-			if self.settings.get("PORTAGE_BACKGROUND") == "1":
-				self.settings["PORTAGE_BACKGROUND_UNMERGE"] = "1"
-			else:
-				self.settings["PORTAGE_BACKGROUND_UNMERGE"] = "0"
-			self.settings.backup_changes("PORTAGE_BACKGROUND_UNMERGE")
-		self.settings["PORTAGE_BACKGROUND"] = "subprocess"
-		self.settings.backup_changes("PORTAGE_BACKGROUND")
-
-		rval = 1
+		parent_pid = os.getpid()
+		pid = None
 		try:
-			if self.unmerge:
-				if not mylink.exists():
-					rval = os.EX_OK
-				elif mylink.unmerge(
-					ldpath_mtimes=self.prev_mtimes) == os.EX_OK:
-					mylink.lockdb()
-					try:
-						mylink.delete()
-					finally:
-						mylink.unlockdb()
-					rval = os.EX_OK
-			else:
-				rval = mylink.merge(self.pkgloc, self.infloc,
-					myebuild=self.myebuild, mydbapi=self.mydbapi,
-					prev_mtimes=self.prev_mtimes, counter=counter)
-		except SystemExit:
-			raise
-		except:
-			traceback.print_exc()
+			pid = os.fork()
+
+			if pid != 0:
+				if not isinstance(pid, int):
+					raise AssertionError(
+						"fork returned non-integer: %s" % (repr(pid),))
+
+				os.close(elog_writer_fd)
+				self._elog_reader_fd = elog_reader_fd
+				self._buf = ""
+				self._elog_keys = set()
+
+				# invalidate relevant vardbapi caches
+				if self.vartree.dbapi._categories is not None:
+					self.vartree.dbapi._categories = None
+				self.vartree.dbapi._pkgs_changed = True
+				self.vartree.dbapi._clear_pkg_cache(mylink)
+
+				portage.process.spawned_pids.append(pid)
+				return [pid]
+
+			os.close(elog_reader_fd)
+
+			# Use default signal handlers in order to avoid problems
+			# killing subprocesses as reported in bug #353239.
+			signal.signal(signal.SIGINT, signal.SIG_DFL)
+			signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+			portage.locks._close_fds()
+			# We don't exec, so use close_fds=False
+			# (see _setup_pipes docstring).
+			portage.process._setup_pipes(fd_pipes, close_fds=False)
+
+			portage.output.havecolor = self.settings.get('NOCOLOR') \
+				not in ('yes', 'true')
+
+			# Avoid wastful updates of the vdb cache.
+			self.vartree.dbapi._flush_cache_enabled = False
+
+			# In this subprocess we don't want PORTAGE_BACKGROUND to
+			# suppress stdout/stderr output since they are pipes. We
+			# also don't want to open PORTAGE_LOG_FILE, since it will
+			# already be opened by the parent process, so we set the
+			# "subprocess" value for use in conditional logging code
+			# involving PORTAGE_LOG_FILE.
+			if not self.unmerge:
+				# unmerge phases have separate logs
+				if self.settings.get("PORTAGE_BACKGROUND") == "1":
+					self.settings["PORTAGE_BACKGROUND_UNMERGE"] = "1"
+				else:
+					self.settings["PORTAGE_BACKGROUND_UNMERGE"] = "0"
+				self.settings.backup_changes("PORTAGE_BACKGROUND_UNMERGE")
+			self.settings["PORTAGE_BACKGROUND"] = "subprocess"
+			self.settings.backup_changes("PORTAGE_BACKGROUND")
+
+			rval = 1
+			try:
+				if self.unmerge:
+					if not mylink.exists():
+						rval = os.EX_OK
+					elif mylink.unmerge(
+						ldpath_mtimes=self.prev_mtimes) == os.EX_OK:
+						mylink.lockdb()
+						try:
+							mylink.delete()
+						finally:
+							mylink.unlockdb()
+						rval = os.EX_OK
+				else:
+					rval = mylink.merge(self.pkgloc, self.infloc,
+						myebuild=self.myebuild, mydbapi=self.mydbapi,
+						prev_mtimes=self.prev_mtimes, counter=counter)
+			except SystemExit:
+				raise
+			except:
+				traceback.print_exc()
+			finally:
+				os._exit(rval)
+
 		finally:
-			# Call os._exit() from finally block, in order to suppress any
-			# finally blocks from earlier in the call stack. See bug #345289.
-			os._exit(rval)
+			if pid == 0 or (pid is None and os.getpid() != parent_pid):
+				# Call os._exit() from a finally block in order
+				# to suppress any finally blocks from earlier
+				# in the call stack (see bug #345289). This
+				# finally block has to be setup before the fork
+				# in order to avoid a race condition.
+				os._exit(1)
 
 	def _unregister(self):
 		"""

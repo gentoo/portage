@@ -17,36 +17,47 @@ class ForkProcess(SpawnProcess):
 		Fork a subprocess, apply local settings, and call fetch().
 		"""
 
-		pid = os.fork()
-		if pid != 0:
-			if not isinstance(pid, int):
-				raise AssertionError(
-					"fork returned non-integer: %s" % (repr(pid),))
-			portage.process.spawned_pids.append(pid)
-			return [pid]
-
-		rval = 1
+		parent_pid = os.getpid()
+		pid = None
 		try:
+			pid = os.fork()
 
-			# Use default signal handlers in order to avoid problems
-			# killing subprocesses as reported in bug #353239.
-			signal.signal(signal.SIGINT, signal.SIG_DFL)
-			signal.signal(signal.SIGTERM, signal.SIG_DFL)
+			if pid != 0:
+				if not isinstance(pid, int):
+					raise AssertionError(
+						"fork returned non-integer: %s" % (repr(pid),))
+				portage.process.spawned_pids.append(pid)
+				return [pid]
 
-			portage.locks._close_fds()
-			# We don't exec, so use close_fds=False
-			# (see _setup_pipes docstring).
-			portage.process._setup_pipes(fd_pipes, close_fds=False)
+			rval = 1
+			try:
 
-			rval = self._run()
-		except SystemExit:
-			raise
-		except:
-			traceback.print_exc()
+				# Use default signal handlers in order to avoid problems
+				# killing subprocesses as reported in bug #353239.
+				signal.signal(signal.SIGINT, signal.SIG_DFL)
+				signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+				portage.locks._close_fds()
+				# We don't exec, so use close_fds=False
+				# (see _setup_pipes docstring).
+				portage.process._setup_pipes(fd_pipes, close_fds=False)
+
+				rval = self._run()
+			except SystemExit:
+				raise
+			except:
+				traceback.print_exc()
+			finally:
+				os._exit(rval)
+
 		finally:
-			# Call os._exit() from finally block, in order to suppress any
-			# finally blocks from earlier in the call stack. See bug #345289.
-			os._exit(rval)
+			if pid == 0 or (pid is None and os.getpid() != parent_pid):
+				# Call os._exit() from a finally block in order
+				# to suppress any finally blocks from earlier
+				# in the call stack (see bug #345289). This
+				# finally block has to be setup before the fork
+				# in order to avoid a race condition.
+				os._exit(1)
 
 	def _run(self):
 		raise NotImplementedError(self)
