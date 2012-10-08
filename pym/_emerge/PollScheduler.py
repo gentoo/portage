@@ -36,7 +36,7 @@ class PollScheduler(object):
 			self._event_loop = global_event_loop()
 		else:
 			self._event_loop = EventLoop(main=False)
-		self.sched_iface = SchedulerInterface(self._event_loop,
+		self._sched_iface = SchedulerInterface(self._event_loop,
 			is_background=self._is_background)
 
 	def _is_background(self):

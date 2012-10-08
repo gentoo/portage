@@ -1337,12 +1337,12 @@ class Scheduler(PollScheduler):
 		blocker_db.discardBlocker(pkg)
 
 	def _main_loop(self):
-		term_check_id = self.sched_iface.idle_add(self._termination_check)
+		term_check_id = self._event_loop.idle_add(self._termination_check)
 		loadavg_check_id = None
 		if self._max_load is not None:
 			# We have to schedule periodically, in case the load
 			# average has changed since the last call.
-			loadavg_check_id = self.sched_iface.timeout_add(
+			loadavg_check_id = self._event_loop.timeout_add(
 				self._loadavg_latency, self._schedule)
 
 		try:
@@ -1354,17 +1354,17 @@ class Scheduler(PollScheduler):
 
 			# Loop while there are jobs to be scheduled.
 			while self._keep_scheduling():
-				self.sched_iface.iteration()
+				self._event_loop.iteration()
 
 			# Clean shutdown of previously scheduled jobs. In the
 			# case of termination, this allows for basic cleanup
 			# such as flushing of buffered output to logs.
 			while self._is_work_scheduled():
-				self.sched_iface.iteration()
+				self._event_loop.iteration()
 		finally:
-			self.sched_iface.source_remove(term_check_id)
+			self._event_loop.source_remove(term_check_id)
 			if loadavg_check_id is not None:
-				self.sched_iface.source_remove(loadavg_check_id)
+				self._event_loop.source_remove(loadavg_check_id)
 
 	def _merge(self):
 
@@ -1378,7 +1378,7 @@ class Scheduler(PollScheduler):
 		portage.elog.add_listener(self._elog_listener)
 		display_timeout_id = None
 		if self._status_display._isatty and not self._status_display.quiet:
-			display_timeout_id = self.sched_iface.timeout_add(
+			display_timeout_id = self._event_loop.timeout_add(
 				self._max_display_latency, self._status_display.display)
 		rval = os.EX_OK
 
@@ -1389,7 +1389,7 @@ class Scheduler(PollScheduler):
 			portage.locks._quiet = False
 			portage.elog.remove_listener(self._elog_listener)
 			if display_timeout_id is not None:
-				self.sched_iface.source_remove(display_timeout_id)
+				self._event_loop.source_remove(display_timeout_id)
 			if failed_pkgs:
 				rval = failed_pkgs[-1].returncode
 

@@ -110,10 +110,8 @@ class IpcDaemonTestCase(TestCase):
 				commands = {'exit' : exit_command}
 				daemon = EbuildIpcDaemon(commands=commands,
 					input_fifo=input_fifo,
-					output_fifo=output_fifo,
-					scheduler=task_scheduler.sched_iface)
-				proc = SleepProcess(seconds=sleep_time_s,
-					scheduler=task_scheduler.sched_iface)
+					output_fifo=output_fifo)
+				proc = SleepProcess(seconds=sleep_time_s)
 				task_scheduler = TaskScheduler(iter([daemon, proc]),
 					max_jobs=2, event_loop=event_loop)
 
