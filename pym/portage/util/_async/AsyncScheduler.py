@@ -66,7 +66,9 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 
 	def _start(self):
 		self._term_check_id = self._event_loop.idle_add(self._termination_check)
-		if self._max_load is not None:
+		if self._max_load is not None and \
+			self._loadavg_latency is not None and \
+			(self._max_jobs is True or self._max_jobs > 1):
 			# We have to schedule periodically, in case the load
 			# average has changed since the last call.
 			self._loadavg_check_id = self._event_loop.timeout_add(

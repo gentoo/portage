@@ -66,6 +66,9 @@ if sys.hexversion >= 0x3000000:
 
 class Scheduler(PollScheduler):
 
+	# max time between loadavg checks (milliseconds)
+	_loadavg_latency = 30000
+
 	# max time between display status updates (milliseconds)
 	_max_display_latency = 3000
 
@@ -1339,7 +1342,9 @@ class Scheduler(PollScheduler):
 	def _main_loop(self):
 		term_check_id = self._event_loop.idle_add(self._termination_check)
 		loadavg_check_id = None
-		if self._max_load is not None:
+		if self._max_load is not None and \
+			self._loadavg_latency is not None and \
+			(self._max_jobs is True or self._max_jobs > 1):
 			# We have to schedule periodically, in case the load
 			# average has changed since the last call.
 			loadavg_check_id = self._event_loop.timeout_add(
