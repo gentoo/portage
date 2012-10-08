@@ -36,6 +36,7 @@ class IpcDaemonTestCase(TestCase):
 	def testIpcDaemon(self):
 		event_loop = global_event_loop()
 		tmpdir = tempfile.mkdtemp()
+		main_pid = os.getpid()
 		build_dir = None
 		try:
 			env = {}
@@ -135,6 +136,14 @@ class IpcDaemonTestCase(TestCase):
 				self.assertEqual(proc.returncode == os.EX_OK, False)
 
 		finally:
+
+			# Ensure that finally blocks don't run in forked subprocesses
+			# before they are able to exec or _exit themselves, since the
+			# fork might fail or be killed before it can setup its own
+			# try/finally/_exit routine. See bug #345289.
+			if os.getpid() != main_pid:
+				os._exit(1)
+
 			if build_dir is not None:
 				build_dir.unlock()
 			shutil.rmtree(tmpdir)
