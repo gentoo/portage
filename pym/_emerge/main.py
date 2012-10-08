@@ -454,6 +454,16 @@ def insert_optional_args(args):
 				return False
 
 	valid_integers = valid_integers()
+
+	class valid_floats(object):
+		def __contains__(self, s):
+			try:
+				return float(s) >= 0
+			except (ValueError, OverflowError):
+				return False
+
+	valid_floats = valid_floats()
+
 	y_or_n = ('y', 'n',)
 
 	new_args = []
@@ -475,6 +485,7 @@ def insert_optional_args(args):
 		'--getbinpkgonly'        : y_or_n,
 		'--jobs'       : valid_integers,
 		'--keep-going'           : y_or_n,
+		'--load-average'         : valid_floats,
 		'--package-moves'        : y_or_n,
 		'--quiet'                : y_or_n,
 		'--quiet-build'          : y_or_n,
@@ -1208,6 +1219,9 @@ def parse_opts(tmpcmdline, silent=False):
 					(myoptions.jobs,))
 
 		myoptions.jobs = jobs
+
+	if myoptions.load_average == "True":
+		myoptions.load_average = None
 
 	if myoptions.load_average:
 		try:
