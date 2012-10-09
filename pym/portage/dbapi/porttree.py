@@ -1138,9 +1138,14 @@ def _parse_uri_map(cpv, metadata, use=None):
 
 		uri_set = uri_map.get(distfile)
 		if uri_set is None:
-			uri_set = set()
+			# Use OrderedDict to preserve order from SRC_URI
+			# while ensuring uniqueness.
+			uri_set = OrderedDict()
 			uri_map[distfile] = uri_set
-		uri_set.add(uri)
-		uri = None
+		uri_set[uri] = True
+
+	# Convert OrderedDicts to tuples.
+	for k, v in uri_map.items():
+		uri_map[k] = tuple(v)
 
 	return uri_map
