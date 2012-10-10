@@ -115,15 +115,17 @@ class PollScheduler(object):
 		Calls _schedule_tasks() and automatically returns early from
 		any recursive calls to this method that the _schedule_tasks()
 		call might trigger. This makes _schedule() safe to call from
-		inside exit listeners.
+		inside exit listeners. This method always returns True, so that
+		it may be scheduled continuously via EventLoop.timeout_add().
 		"""
 		if self._scheduling:
-			return False
+			return True
 		self._scheduling = True
 		try:
 			self._schedule_tasks()
 		finally:
 			self._scheduling = False
+		return True
 
 	def _is_work_scheduled(self):
 		return bool(self._running_job_count())
