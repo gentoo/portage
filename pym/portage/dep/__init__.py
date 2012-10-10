@@ -143,7 +143,7 @@ def _get_atom_wildcard_re(eapi_attrs):
 
 	atom_re = re.compile(r'((?P<simple>(' +
 		_extended_cat + r')/(' + pkg_re + r'))' + \
-		'|(?P<star>=((' + _extended_cat + r')/(' + pkg_re + r'))-(?P<version>\*\d+\*)))' + \
+		'|(?P<star>=((' + _extended_cat + r')/(' + pkg_re + r'))-(?P<version>\*\w+\*)))' + \
 		'(:(?P<slot>' + _slot_loose + r'))?(' +
 		_repo_separator + r'(?P<repo>' + _repo_name + r'))?$', re.UNICODE)
 
@@ -2134,7 +2134,7 @@ def match_from_list(mydep, candidate_list):
 
 			candidate_list = mylist
 			mylist = []
-			# Currently, only \*\d+\* is supported.
+			# Currently, only \*\w+\* is supported.
 			ver = mydep.version[1:-1]
 
 			for x in candidate_list:

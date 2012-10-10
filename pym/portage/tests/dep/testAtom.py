@@ -1,4 +1,4 @@
-# Copyright 2006, 2010 Gentoo Foundation
+# Copyright 2006-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -24,6 +24,10 @@ class TestAtom(TestCase):
 				('=*',  '*/*', '*9999*', None, None, None), True, False ),
 			( "=*/*-*9999*:0::repo_name",
 				('=*',  '*/*', '*9999*', '0', None, 'repo_name'), True, True ),
+			( "=*/*-*_beta*",
+				('=*',  '*/*', '*_beta*', None, None, None), True, False ),
+			( "=*/*-*_beta*:0::repo_name",
+				('=*',  '*/*', '*_beta*', '0', None, 'repo_name'), True, True ),
 			( "sys-apps/*",
 				(None,  'sys-apps/*', None, None, None, None), True, False ),
 			( "*/portage",
