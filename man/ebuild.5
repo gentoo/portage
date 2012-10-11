@@ -1,4 +1,4 @@
-.TH "EBUILD" "5" "Sep 2012" "Portage VERSION" "Portage"
+.TH "EBUILD" "5" "Oct 2012" "Portage VERSION" "Portage"
 
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
@@ -759,6 +759,11 @@ The paths may contain regular expressions with escape\-quoted special characters
 
 This variable is intended to be used on files of binary packages which ignore
 CFLAGS, CXXFLAGS, FFLAGS, FCFLAGS, and LDFLAGS variables.
+.TP
+.B QA_MULTILIB_PATHS
+This should contain a list of file paths, relative to the image directory, of
+files that should be ignored for the multilib\-strict checks.
+The paths may contain regular expressions with escape\-quoted special characters.
 .TP
 .B QA_PRESTRIPPED
 This should contain a list of file paths, relative to the image directory, of
