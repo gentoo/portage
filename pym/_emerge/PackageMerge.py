@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.CompositeTask import CompositeTask
@@ -11,6 +11,9 @@ class PackageMerge(CompositeTask):
 		self.scheduler = self.merge.scheduler
 		pkg = self.merge.pkg
 		pkg_count = self.merge.pkg_count
+		pkg_color = "PKG_MERGE"
+		if pkg.type_name == "binary":
+			pkg_color = "PKG_BINARY_MERGE"
 
 		if pkg.installed:
 			action_desc = "Uninstalling"
@@ -26,7 +29,7 @@ class PackageMerge(CompositeTask):
 		msg = "%s %s%s" % \
 			(action_desc,
 			counter_str,
-			colorize("GOOD", pkg.cpv))
+			colorize(pkg_color, pkg.cpv))
 
 		if pkg.root_config.settings["ROOT"] != "/":
 			msg += " %s %s" % (preposition, pkg.root)
