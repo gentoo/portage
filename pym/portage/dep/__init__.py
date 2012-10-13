@@ -55,6 +55,7 @@ _op = r'([=~]|[><]=?)'
 
 _repo_separator = "::"
 _repo_name = r'[\w][\w-]*'
+_repo_name_re = re.compile('^' + _repo_name + '$', re.UNICODE)
 _repo = r'(?:' + _repo_separator + '(' + _repo_name + ')' + ')?'
 
 _extended_cat = r'[\w+*][\w+.*-]*'

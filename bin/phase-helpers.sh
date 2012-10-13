@@ -736,3 +736,162 @@ best_version() {
 			;;
 	esac
 }
+
+if ___eapi_has_master_repositories; then
+	master_repositories() {
+		local output repository=$1 retval
+		shift
+		[[ $# -gt 0 ]] && die "${FUNCNAME[0]}: unused argument(s): $*"
+
+		if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
+			"${PORTAGE_BIN_PATH}/ebuild-ipc" master_repositories "${EROOT}" "${repository}"
+		else
+			output=$(PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
+			"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" master_repositories "${EROOT}" "${repository}")
+		fi
+		retval=$?
+		[[ -n ${output} ]] && echo "${output}"
+		case "${retval}" in
+			0|1)
+				return ${retval}
+				;;
+			2)
+				die "${FUNCNAME[0]}: invalid repository: ${repository}"
+				;;
+			*)
+				if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
+					die "${FUNCNAME[0]}: unexpected ebuild-ipc exit code: ${retval}"
+				else
+					die "${FUNCNAME[0]}: unexpected portageq exit code: ${retval}"
+				fi
+				;;
+		esac
+	}
+fi
+
+if ___eapi_has_repository_path; then
+	repository_path() {
+		local output repository=$1 retval
+		shift
+		[[ $# -gt 0 ]] && die "${FUNCNAME[0]}: unused argument(s): $*"
+
+		if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
+			"${PORTAGE_BIN_PATH}/ebuild-ipc" repository_path "${EROOT}" "${repository}"
+		else
+			output=$(PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
+			"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" get_repo_path "${EROOT}" "${repository}")
+		fi
+		retval=$?
+		[[ -n ${output} ]] && echo "${output}"
+		case "${retval}" in
+			0|1)
+				return ${retval}
+				;;
+			2)
+				die "${FUNCNAME[0]}: invalid repository: ${repository}"
+				;;
+			*)
+				if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
+					die "${FUNCNAME[0]}: unexpected ebuild-ipc exit code: ${retval}"
+				else
+					die "${FUNCNAME[0]}: unexpected portageq exit code: ${retval}"
+				fi
+				;;
+		esac
+	}
+fi
+
+if ___eapi_has_available_eclasses; then
+	available_eclasses() {
+		local output repository=${PORTAGE_REPO_NAME} retval
+		[[ $# -gt 0 ]] && die "${FUNCNAME[0]}: unused argument(s): $*"
+
+		if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
+			"${PORTAGE_BIN_PATH}/ebuild-ipc" available_eclasses "${EROOT}" "${repository}"
+		else
+			output=$(PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
+			"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" available_eclasses "${EROOT}" "${repository}")
+		fi
+		retval=$?
+		[[ -n ${output} ]] && echo "${output}"
+		case "${retval}" in
+			0|1)
+				return ${retval}
+				;;
+			2)
+				die "${FUNCNAME[0]}: invalid repository: ${repository}"
+				;;
+			*)
+				if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
+					die "${FUNCNAME[0]}: unexpected ebuild-ipc exit code: ${retval}"
+				else
+					die "${FUNCNAME[0]}: unexpected portageq exit code: ${retval}"
+				fi
+				;;
+		esac
+	}
+fi
+
+if ___eapi_has_eclass_path; then
+	eclass_path() {
+		local eclass=$1 output repository=${PORTAGE_REPO_NAME} retval
+		shift
+		[[ $# -gt 0 ]] && die "${FUNCNAME[0]}: unused argument(s): $*"
+
+		if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
+			"${PORTAGE_BIN_PATH}/ebuild-ipc" eclass_path "${EROOT}" "${repository}" "${eclass}"
+		else
+			output=$(PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
+			"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" eclass_path "${EROOT}" "${repository}" "${eclass}")
+		fi
+		retval=$?
+		[[ -n ${output} ]] && echo "${output}"
+		case "${retval}" in
+			0|1)
+				return ${retval}
+				;;
+			2)
+				die "${FUNCNAME[0]}: invalid repository: ${repository}"
+				;;
+			*)
+				if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
+					die "${FUNCNAME[0]}: unexpected ebuild-ipc exit code: ${retval}"
+				else
+					die "${FUNCNAME[0]}: unexpected portageq exit code: ${retval}"
+				fi
+				;;
+		esac
+	}
+fi
+
+if ___eapi_has_license_path; then
+	license_path() {
+		local license=$1 output repository=${PORTAGE_REPO_NAME} retval
+		shift
+		[[ $# -gt 0 ]] && die "${FUNCNAME[0]}: unused argument(s): $*"
+
+		if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
+			"${PORTAGE_BIN_PATH}/ebuild-ipc" license_path "${EROOT}" "${repository}" "${license}"
+		else
+			output=$(PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
+			"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" license_path "${EROOT}" "${repository}" "${license}")
+		fi
+		retval=$?
+		[[ -n ${output} ]] && echo "${output}"
+		case "${retval}" in
+			0|1)
+				return ${retval}
+				;;
+			2)
+				die "${FUNCNAME[0]}: invalid repository: ${repository}"
+				;;
+			*)
+				if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
+					die "${FUNCNAME[0]}: unexpected ebuild-ipc exit code: ${retval}"
+				else
+					die "${FUNCNAME[0]}: unexpected portageq exit code: ${retval}"
+				fi
+				;;
+		esac
+	}
+fi
