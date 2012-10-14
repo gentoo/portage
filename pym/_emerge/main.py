@@ -4,23 +4,23 @@
 from __future__ import print_function
 
 import logging
+import platform
 import signal
-import stat
-import subprocess
 import sys
 import textwrap
-import platform
+import time
+
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.news:count_unread_news,display_news_notifications',
 	'portage.emaint.modules.logs.logs:CleanLogs',
 	'portage.util._dyn_libs.display_preserved_libs:display_preserved_libs',
+	'portage.util._info_files:chk_updated_info_files',
 )
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 import _emerge.help
-import portage.xpak, errno, re, time
 from portage.output import colorize, xtermTitle, xtermTitleReset
 from portage.output import create_color_func
 good = create_color_func("GOOD")
@@ -32,7 +32,6 @@ import portage.locks
 import portage.exception
 from portage.data import secpass
 from portage.dbapi.dep_expand import dep_expand
-from portage.util import normalize_path as normpath
 from portage.util import (shlex_split, varexpand,
 	writemsg_level, writemsg_stdout)
 from portage._sets import SETPREFIX
@@ -115,132 +114,6 @@ COWSAY_MOO = """
 
 """
 
-def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
-
-	if os.path.exists("/usr/bin/install-info"):
-		out = portage.output.EOutput()
-		regen_infodirs=[]
-		for z in infodirs:
-			if z=='':
-				continue
-			inforoot=normpath(root+z)
-			if os.path.isdir(inforoot) and \
-				not [x for x in os.listdir(inforoot) \
-				if x.startswith('.keepinfodir')]:
-					infomtime = os.stat(inforoot)[stat.ST_MTIME]
-					if inforoot not in prev_mtimes or \
-						prev_mtimes[inforoot] != infomtime:
-							regen_infodirs.append(inforoot)
-
-		if not regen_infodirs:
-			portage.writemsg_stdout("\n")
-			if portage.util.noiselimit >= 0:
-				out.einfo("GNU info directory index is up-to-date.")
-		else:
-			portage.writemsg_stdout("\n")
-			if portage.util.noiselimit >= 0:
-				out.einfo("Regenerating GNU info directory index...")
-
-			dir_extensions = ("", ".gz", ".bz2")
-			icount=0
-			badcount=0
-			errmsg = ""
-			for inforoot in regen_infodirs:
-				if inforoot=='':
-					continue
-
-				if not os.path.isdir(inforoot) or \
-					not os.access(inforoot, os.W_OK):
-					continue
-
-				file_list = os.listdir(inforoot)
-				file_list.sort()
-				dir_file = os.path.join(inforoot, "dir")
-				moved_old_dir = False
-				processed_count = 0
-				for x in file_list:
-					if x.startswith(".") or \
-						os.path.isdir(os.path.join(inforoot, x)):
-						continue
-					if x.startswith("dir"):
-						skip = False
-						for ext in dir_extensions:
-							if x == "dir" + ext or \
-								x == "dir" + ext + ".old":
-								skip = True
-								break
-						if skip:
-							continue
-					if processed_count == 0:
-						for ext in dir_extensions:
-							try:
-								os.rename(dir_file + ext, dir_file + ext + ".old")
-								moved_old_dir = True
-							except EnvironmentError as e:
-								if e.errno != errno.ENOENT:
-									raise
-								del e
-					processed_count += 1
-					try:
-						proc = subprocess.Popen(
-							['/usr/bin/install-info',
-							'--dir-file=%s' % os.path.join(inforoot, "dir"),
-							os.path.join(inforoot, x)],
-							env=dict(os.environ, LANG="C", LANGUAGE="C"),
-							stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-					except OSError:
-						myso = None
-					else:
-						myso = _unicode_decode(
-							proc.communicate()[0]).rstrip("\n")
-						proc.wait()
-					existsstr="already exists, for file `"
-					if myso:
-						if re.search(existsstr,myso):
-							# Already exists... Don't increment the count for this.
-							pass
-						elif myso[:44]=="install-info: warning: no info dir entry in ":
-							# This info file doesn't contain a DIR-header: install-info produces this
-							# (harmless) warning (the --quiet switch doesn't seem to work).
-							# Don't increment the count for this.
-							pass
-						else:
-							badcount=badcount+1
-							errmsg += myso + "\n"
-					icount=icount+1
-
-				if moved_old_dir and not os.path.exists(dir_file):
-					# We didn't generate a new dir file, so put the old file
-					# back where it was originally found.
-					for ext in dir_extensions:
-						try:
-							os.rename(dir_file + ext + ".old", dir_file + ext)
-						except EnvironmentError as e:
-							if e.errno != errno.ENOENT:
-								raise
-							del e
-
-				# Clean dir.old cruft so that they don't prevent
-				# unmerge of otherwise empty directories.
-				for ext in dir_extensions:
-					try:
-						os.unlink(dir_file + ext + ".old")
-					except EnvironmentError as e:
-						if e.errno != errno.ENOENT:
-							raise
-						del e
-
-				#update mtime so we can potentially avoid regenerating.
-				prev_mtimes[inforoot] = os.stat(inforoot)[stat.ST_MTIME]
-
-			if badcount:
-				out.eerror("Processed %d info files; %d errors." % \
-					(icount, badcount))
-				writemsg_level(errmsg, level=logging.ERROR, noiselevel=-1)
-			else:
-				if icount > 0 and portage.util.noiselimit >= 0:
-					out.einfo("Processed %d info files." % (icount,))
-
 def post_emerge(myaction, myopts, myfiles,
 	target_root, trees, mtimedb, retval):
 	"""
@@ -311,7 +184,7 @@ def post_emerge(myaction, myopts, myfiles,
 		try:
 			if "noinfo" not in settings.features:
 				chk_updated_info_files(target_root,
-					infodirs, info_mtimes, retval)
+					infodirs, info_mtimes)
 			mtimedb.commit()
 		finally:
 			if vdb_lock:
