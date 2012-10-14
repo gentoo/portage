@@ -328,6 +328,8 @@ _python_interpreter = os.path.realpath(sys.executable)
 _bin_path = PORTAGE_BIN_PATH
 _pym_path = PORTAGE_PYM_PATH
 
+_sync_disabled_warnings = False
+
 def _shell_quote(s):
 	"""
 	Quote a string in double-quotes and use backslashes to

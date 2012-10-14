@@ -100,9 +100,9 @@ class LocationsManager(object):
 				self._addProfile(os.path.realpath(self.profile_path),
 					repositories, known_repos)
 			except ParseError as e:
-				writemsg(_("!!! Unable to parse profile: '%s'\n") % \
-					self.profile_path, noiselevel=-1)
-				writemsg("!!! ParseError: %s\n" % str(e), noiselevel=-1)
+				if not portage._sync_disabled_warnings:
+					writemsg(_("!!! Unable to parse profile: '%s'\n") % self.profile_path, noiselevel=-1)
+					writemsg("!!! ParseError: %s\n" % str(e), noiselevel=-1)
 				self.profiles = []
 				self.profiles_complex = []
 

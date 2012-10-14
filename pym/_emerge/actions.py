@@ -2468,6 +2468,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		return 1
 
 	# Reload the whole config from scratch.
+	portage._sync_disabled_warnings = False
 	settings, trees, mtimedb = load_emerge_config(trees=trees)
 	adjust_configs(myopts, trees)
 	root_config = trees[settings['EROOT']]['root_config']

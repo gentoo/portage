@@ -1655,6 +1655,8 @@ def emerge_main(args=None):
 
 	# Portage needs to ensure a sane umask for the files it creates.
 	os.umask(0o22)
+	if myaction == "sync":
+		portage._sync_disabled_warnings = True
 	settings, trees, mtimedb = load_emerge_config()
 	portdb = trees[settings['EROOT']]['porttree'].dbapi
 	rval = profile_check(trees, myaction)

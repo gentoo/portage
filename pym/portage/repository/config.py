@@ -15,6 +15,7 @@ try:
 		from configparser import SafeConfigParser
 except ImportError:
 	from ConfigParser import SafeConfigParser, ParsingError
+import portage
 from portage import eclass_cache, os
 from portage.const import (MANIFEST2_HASH_FUNCTIONS, MANIFEST2_REQUIRED_HASH,
 	REPO_NAME_LOC, USER_CONFIG_PATH)
@@ -396,8 +397,8 @@ class RepoConfigLoader(object):
 
 					prepos[repo.name] = repo
 				else:
-					writemsg(_("!!! Invalid PORTDIR_OVERLAY"
-						" (not a dir): '%s'\n") % ov, noiselevel=-1)
+					if not portage._sync_disabled_warnings:
+						writemsg(_("!!! Invalid PORTDIR_OVERLAY (not a dir): '%s'\n") % ov, noiselevel=-1)
 
 		return portdir
 
@@ -521,7 +522,8 @@ class RepoConfigLoader(object):
 				prepos['DEFAULT'].main_repo = ignored_location_map[portdir]
 			else:
 				prepos['DEFAULT'].main_repo = None
-				writemsg(_("!!! main-repo not set in DEFAULT and PORTDIR is empty. \n"), noiselevel=-1)
+				if not portage._sync_disabled_warnings:
+					writemsg(_("!!! main-repo not set in DEFAULT and PORTDIR is empty.\n"), noiselevel=-1)
 
 		self.prepos = prepos
 		self.prepos_order = prepos_order
