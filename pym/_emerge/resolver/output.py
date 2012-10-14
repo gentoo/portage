@@ -676,12 +676,10 @@ class Display(object):
 		@param pkg: _emerge.Package.Package instance
 		@rtype string
 		"""
-		ver_str = list(catpkgsplit(pkg.cpv)[2:])
-		if ver_str[1] == "r0":
-			ver_str[1] = ""
-		else:
-			ver_str[1] = "-" + ver_str[1]
-		return ver_str[0]+ver_str[1]
+		ver_str = pkg.cpv.version
+		if ver_str.endswith("-r0"):
+			ver_str = ver_str[:-3]
+		return ver_str
 
 
 	def _get_installed_best(self, pkg, pkg_info):
