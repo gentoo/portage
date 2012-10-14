@@ -1955,11 +1955,10 @@ def emerge_main(args=None):
 	del oldargs
 
 	def emergeexitsig(signum, frame):
-		signal.signal(signal.SIGINT, signal.SIG_IGN)
 		signal.signal(signal.SIGTERM, signal.SIG_IGN)
 		portage.util.writemsg("\n\nExiting on signal %(signal)s\n" % {"signal":signum})
 		sys.exit(128 + signum)
-	signal.signal(signal.SIGINT, emergeexitsig)
+
 	signal.signal(signal.SIGTERM, emergeexitsig)
 
 	def emergeexit():
