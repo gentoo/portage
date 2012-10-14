@@ -2175,11 +2175,10 @@ def match_from_list(mydep, candidate_list):
 		# XXX: Nasty special casing for leading zeros
 		# Required as =* is a literal prefix match, so can't 
 		# use vercmp
-		mysplit = catpkgsplit(mycpv)
-		myver = mysplit[2].lstrip("0")
+		myver = mycpv_cps[2].lstrip("0")
 		if not myver or not myver[0].isdigit():
 			myver = "0"+myver
-		mycpv_cmp = mysplit[0]+"/"+mysplit[1]+"-"+myver
+		mycpv_cmp = mycpv_cps[0] + "/" + mycpv_cps[1] + "-" + myver
 		for x in candidate_list:
 			xs = getattr(x, "cpv_split", None)
 			if xs is None:
