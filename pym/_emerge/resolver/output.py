@@ -579,6 +579,8 @@ class Display(object):
 			self.counters.restrict_fetch_satisfied
 		"""
 		pkg_info = PkgInfo()
+		pkg_info.cp = pkg.cp
+		pkg_info.ver = self.get_ver_str(pkg)
 		pkg_info.ordered = ordered
 		pkg_info.operation = pkg.operation
 		pkg_info.merge = ordered and pkg_info.operation == "merge"
@@ -801,9 +803,6 @@ class Display(object):
 						self.verbose_size(pkg, repoadd_set, pkg_info)
 					else:
 						self.verbose_size(pkg, None, pkg_info)
-
-				pkg_info.cp = pkg.cp
-				pkg_info.ver = self.get_ver_str(pkg)
 
 				self.oldlp = self.conf.columnwidth - 30
 				self.newlp = self.oldlp - 30
