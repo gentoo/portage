@@ -389,11 +389,11 @@ class Display(object):
 			myoldbest_str = blue("["+", ".join(versions)+"]")
 		return myoldbest_str
 
-	def _set_non_root_columns(self, pkg_info, pkg):
+	def _set_non_root_columns(self, pkg, pkg_info):
 		"""sets the indent level and formats the output
 
-		@param pkg_info: dictionary
 		@param pkg: _emerge.Package.Package instance
+		@param pkg_info: dictionary
 		@rtype string
 		"""
 		ver_str = pkg_info.ver
@@ -427,11 +427,11 @@ class Display(object):
 		return myprint
 
 
-	def _set_root_columns(self, pkg_info, pkg):
+	def _set_root_columns(self, pkg, pkg_info):
 		"""sets the indent level and formats the output
 
-		@param pkg_info: dictionary
 		@param pkg: _emerge.Package.Package instance
+		@param pkg_info: dictionary
 		@rtype string
 		Modifies self.verboseadd
 		"""
@@ -822,7 +822,7 @@ class Display(object):
 					if pkg_info.oldbest:
 						pkg_info.oldbest += " "
 					if self.conf.columns:
-						myprint = self._set_non_root_columns(pkg_info, pkg)
+						myprint = self._set_non_root_columns(pkg, pkg_info)
 					else:
 						pkg_str = pkg.cpv
 						if self.conf.verbosity == 3 and not self.quiet_repo_display and (self.verbose_main_repo_display or
@@ -843,7 +843,7 @@ class Display(object):
 							pkg_info.oldbest + darkgreen("to " + pkg.root)
 				else:
 					if self.conf.columns:
-						myprint = self._set_root_columns(pkg_info, pkg)
+						myprint = self._set_root_columns(pkg, pkg_info)
 					else:
 						myprint = self._set_no_columns(pkg, pkg_info)
 
