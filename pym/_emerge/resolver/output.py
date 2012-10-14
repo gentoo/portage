@@ -22,7 +22,7 @@ from portage.output import ( blue, colorize, create_color_func,
 	darkblue, darkgreen, green, nc_len, teal)
 bad = create_color_func("BAD")
 from portage.util import writemsg_stdout
-from portage.versions import best, catpkgsplit
+from portage.versions import best
 
 from _emerge.Blocker import Blocker
 from _emerge.create_world_atom import create_world_atom
@@ -379,7 +379,7 @@ class Display(object):
 		if myoldbest:
 			versions = []
 			for pos, old_pkg in enumerate(myoldbest):
-				key = catpkgsplit(old_pkg.cpv)[2] + "-" + catpkgsplit(old_pkg.cpv)[3]
+				key = old_pkg.version
 				if key[-3:] == "-r0":
 					key = key[:-3]
 				if self.conf.verbosity == 3 and not self.quiet_repo_display and (self.verbose_main_repo_display or
