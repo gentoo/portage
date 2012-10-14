@@ -2533,6 +2533,11 @@ else:
 		(portage_version, vcs, unameout)
 	if options.force:
 		commitmessage += ", RepoMan options: --force"
+	if sign_manifests:
+		commitmessage += ", signed Manifest commit with key %s" % \
+			repoman_settings["PORTAGE_GPG_KEY"]
+	else:
+		commitmessage += ", unsigned Manifest commit"
 	commitmessage += ")"
 
 	if options.echangelog in ('y', 'force'):
@@ -2859,14 +2864,7 @@ else:
 
 		fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
 		mymsg = os.fdopen(fd, "wb")
-		# strip the closing parenthesis
-		mymsg.write(_unicode_encode(commitmessage[:-1]))
-		if signed:
-			mymsg.write(_unicode_encode(
-				", signed Manifest commit with key %s)" % \
-				repoman_settings["PORTAGE_GPG_KEY"]))
-		else:
-			mymsg.write(b", unsigned Manifest commit)")
+		mymsg.write(_unicode_encode(commitmessage))
 		mymsg.close()
 
 		commit_cmd = []
