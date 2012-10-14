@@ -62,6 +62,7 @@ try:
 			'match_from_list,match_to_list',
 		'portage.dep.dep_check:dep_check,dep_eval,dep_wordreduce,dep_zapdeps',
 		'portage.eclass_cache',
+		'portage.elog',
 		'portage.exception',
 		'portage.getbinpkg',
 		'portage.locks',

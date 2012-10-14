@@ -3,50 +3,39 @@
 
 from __future__ import print_function
 
-import logging
 import platform
 import signal
 import sys
-import textwrap
-import time
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
+	'logging',
+	'portage.dbapi.dep_expand:dep_expand',
 	'portage.news:count_unread_news,display_news_notifications',
 	'portage.emaint.modules.logs.logs:CleanLogs',
+	'portage.output:colorize,xtermTitle,xtermTitleReset',
+	'portage._global_updates:_global_updates',
+	'portage._sets:SETPREFIX',
+	'portage.util:shlex_split,varexpand,writemsg_level,writemsg_stdout',
 	'portage.util._dyn_libs.display_preserved_libs:display_preserved_libs',
 	'portage.util._info_files:chk_updated_info_files',
+	'textwrap',
+	'time',
+	'_emerge.actions:action_build,action_config,action_info,' + \
+		'action_metadata,action_regen,action_search,action_sync,' + \
+		'action_uninstall,adjust_configs,chk_updated_cfg_files,'+ \
+		'display_missing_pkg_set,display_news_notification,' + \
+		'getportageversion,load_emerge_config',
+	'_emerge.emergelog:emergelog',
+	'_emerge.help:help@emerge_help',
+	'_emerge.is_valid_package_atom:is_valid_package_atom',
+	'_emerge.stdout_spinner:stdout_spinner',
+	'_emerge.userquery:userquery',
+	'_emerge._flush_elog_mod_echo:_flush_elog_mod_echo',
 )
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
-import _emerge.help
-from portage.output import colorize, xtermTitle, xtermTitleReset
-from portage.output import create_color_func
-good = create_color_func("GOOD")
-bad = create_color_func("BAD")
-
-import portage.elog
-import portage.util
-import portage.locks
-import portage.exception
-from portage.data import secpass
-from portage.dbapi.dep_expand import dep_expand
-from portage.util import (shlex_split, varexpand,
-	writemsg_level, writemsg_stdout)
-from portage._sets import SETPREFIX
-from portage._global_updates import _global_updates
-
-from _emerge.actions import action_config, action_sync, action_metadata, \
-	action_regen, action_search, action_uninstall, action_info, action_build, \
-	adjust_configs, chk_updated_cfg_files, display_missing_pkg_set, \
-	display_news_notification, getportageversion, load_emerge_config
-import _emerge
-from _emerge.emergelog import emergelog
-from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
-from _emerge.is_valid_package_atom import is_valid_package_atom
-from _emerge.stdout_spinner import stdout_spinner
-from _emerge.userquery import userquery
 
 if sys.hexversion >= 0x3000000:
 	long = int
@@ -216,7 +205,8 @@ def post_emerge(myaction, myopts, myfiles,
 						[postemerge], env=settings.environ())
 		if hook_retval != os.EX_OK:
 			writemsg_level(
-				" %s spawn failed of %s\n" % (bad("*"), postemerge,),
+				" %s spawn failed of %s\n" %
+				(colorize("BAD", "*"), postemerge,),
 				level=logging.ERROR, noiselevel=-1)
 
 	clean_logs(settings)
@@ -1434,6 +1424,11 @@ def emerge_main(args=None):
 	if args is None:
 		args = sys.argv[1:]
 
+	# optimize --help (no need to load config / EMERGE_DEFAULT_OPTS)
+	if "--help" in args or "-h" in args:
+		emerge_help()
+		return 0
+
 	portage._disable_legacy_globals()
 	portage.dep._internal_warnings = True
 	# Disable color until we're sure that it should be enabled (after
@@ -1504,7 +1499,7 @@ def emerge_main(args=None):
 			trees[settings['EROOT']]['vartree'].dbapi) + '\n', noiselevel=-1)
 		return 0
 	elif myaction == 'help':
-		_emerge.help.help()
+		emerge_help()
 		return 0
 
 	spinner = stdout_spinner()
@@ -1652,7 +1647,7 @@ def emerge_main(args=None):
 		print("myopts", myopts)
 
 	if not myaction and not myfiles and "--resume" not in myopts:
-		_emerge.help.help()
+		emerge_help()
 		return 1
 
 	pretend = "--pretend" in myopts
@@ -1666,7 +1661,7 @@ def emerge_main(args=None):
 			need_superuser = myaction in ('clean', 'depclean', 'deselect',
 				'prune', 'unmerge') or not \
 				(fetchonly or \
-				(buildpkgonly and secpass >= 1) or \
+				(buildpkgonly and portage.data.secpass >= 1) or \
 				myaction in ("metadata", "regen", "sync"))
 			if portage.secpass < 1 or \
 				need_superuser:
@@ -1709,6 +1704,7 @@ def emerge_main(args=None):
 	elif portage.data.secpass < 1:
 		disable_emergelog = True
 
+	import _emerge.emergelog
 	_emerge.emergelog._disable = disable_emergelog
 
 	if not disable_emergelog:

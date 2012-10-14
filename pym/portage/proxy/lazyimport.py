@@ -1,4 +1,4 @@
-# Copyright 2009 Gentoo Foundation
+# Copyright 2009-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['lazyimport']
@@ -32,7 +32,7 @@ def _preload_portage_submodules():
 	while True:
 		remaining = False
 		for name in list(_module_proxies):
-			if name.startswith('portage.'):
+			if name.startswith('portage.') or name.startswith('_emerge.'):
 				if name in imported:
 					continue
 				imported.add(name)
