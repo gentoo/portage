@@ -2527,11 +2527,11 @@ else:
 
 	if vcs == "git":
 		# Use new footer only for git (see bug #438364).
-		commit_footer = "\n\nPackage-manager: portage-%s" % portage_version
+		commit_footer = "\n\nPackage-Manager: portage-%s" % portage_version
 		if options.force:
-			commit_footer += "\nRepoMan-options: --force"
+			commit_footer += "\nRepoMan-Options: --force"
 		if sign_manifests:
-			commit_footer += "\nManifest-sign-key: %s" % \
+			commit_footer += "\nManifest-Sign-Key: %s" % \
 				repoman_settings.get("PORTAGE_GPG_KEY", "")
 	else:
 		unameout = platform.system() + " "
