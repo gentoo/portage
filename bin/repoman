@@ -2524,21 +2524,33 @@ else:
 		sys.stderr.write("Failed to insert portage version in message!\n")
 		sys.stderr.flush()
 		portage_version = "Unknown"
-	unameout = platform.system() + " "
-	if platform.system() in ["Darwin", "SunOS"]:
-		unameout += platform.processor()
+
+	if vcs == "git":
+		# Use new footer only for git (see bug #438364).
+		commit_footer = "\n\nPackage-manager: portage-%s" % portage_version
+		if options.force:
+			commit_footer += "\nRepoMan-options: --force"
+		if sign_manifests:
+			commit_footer += "\nManifest-sign-key: %s" % \
+				repoman_settings.get("PORTAGE_GPG_KEY", "")
 	else:
-		unameout += platform.machine()
-	commitmessage += "\n\n(Portage version: %s/%s/%s" % \
-		(portage_version, vcs, unameout)
-	if options.force:
-		commitmessage += ", RepoMan options: --force"
-	if sign_manifests:
-		commitmessage += ", signed Manifest commit with key %s" % \
-			repoman_settings["PORTAGE_GPG_KEY"]
-	else:
-		commitmessage += ", unsigned Manifest commit"
-	commitmessage += ")"
+		unameout = platform.system() + " "
+		if platform.system() in ["Darwin", "SunOS"]:
+			unameout += platform.processor()
+		else:
+			unameout += platform.machine()
+		commit_footer += "\n\n(Portage version: %s/%s/%s" % \
+			(portage_version, vcs, unameout)
+		if options.force:
+			commit_footer += ", RepoMan options: --force"
+		if sign_manifests:
+			commit_footer += ", signed Manifest commit with key %s" % \
+				repoman_settings.get("PORTAGE_GPG_KEY", "")
+		else:
+			commit_footer += ", unsigned Manifest commit"
+		commit_footer += ")"
+
+	commitmessage += commit_footer
 
 	if options.echangelog in ('y', 'force'):
 		logging.info("checking for unmodified ChangeLog files")
