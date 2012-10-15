@@ -50,7 +50,7 @@ class MergeListItem(CompositeTask):
 		pkg_color = "PKG_MERGE"
 		if pkg.type_name == "binary":
 			pkg_color = "PKG_BINARY_MERGE"
-			action_desc += " " + colorize(pkg_color, "binary")
+			action_desc += " binary"
 
 		if build_opts.fetchonly:
 			action_desc = "Fetching"
