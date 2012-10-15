@@ -13,7 +13,7 @@ import sys
 from portage import os
 from portage import _unicode_decode
 from portage.dbapi.dep_expand import dep_expand
-from portage.dep import cpvequal, _repo_separator
+from portage.dep import cpvequal, _repo_separator, _slot_separator
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidDependString, SignatureException
 from portage.package.ebuild.config import _get_feature_flags
@@ -367,13 +367,14 @@ class Display(object):
 				repoadd_set.add(self.repoadd)
 
 
-	def convert_myoldbest(self, pkg, myoldbest):
+	def convert_myoldbest(self, pkg, pkg_info):
 		"""converts and colorizes a version list to a string
 
 		@param pkg: _emerge.Package.Package instance
-		@param myoldbest: list
+		@param pkg_info: dictionary
 		@rtype string.
 		"""
+		myoldbest = pkg_info.oldbest_list
 		# Convert myoldbest from a list to a string.
 		myoldbest_str = ""
 		if myoldbest:
@@ -382,12 +383,41 @@ class Display(object):
 				key = old_pkg.version
 				if key[-3:] == "-r0":
 					key = key[:-3]
-				if self.conf.verbosity == 3 and not self.quiet_repo_display and (self.verbose_main_repo_display or
-					any(x.repo != self.portdb.repositories.mainRepo().name for x in myoldbest + [pkg])):
-					key += _repo_separator + old_pkg.repo
+				if self.conf.verbosity == 3:
+					if pkg_info.attr_display.new_slot:
+						key += _slot_separator + old_pkg.slot
+						if old_pkg.slot != old_pkg.sub_slot:
+							key += "/" + old_pkg.sub_slot
+					elif any(x.slot + "/" + x.sub_slot != "0/0" for x in myoldbest + [pkg]):
+						key += _slot_separator + old_pkg.slot
+						if old_pkg.slot != old_pkg.sub_slot or \
+							old_pkg.slot == pkg.slot and old_pkg.sub_slot != pkg.sub_slot:
+							key += "/" + old_pkg.sub_slot
+					if not self.quiet_repo_display and (self.verbose_main_repo_display or
+						any(x.repo != self.portdb.repositories.mainRepo().name for x in myoldbest + [pkg])):
+						key += _repo_separator + old_pkg.repo
 				versions.append(key)
 			myoldbest_str = blue("["+", ".join(versions)+"]")
 		return myoldbest_str
+
+	def _append_slot(self, pkg_str, pkg, pkg_info):
+		"""Potentially appends slot and subslot to package string.
+
+		@param pkg_str: string
+		@param pkg: _emerge.Package.Package instance
+		@param pkg_info: dictionary
+		@rtype string
+		"""
+		if pkg_info.attr_display.new_slot:
+			pkg_str += _slot_separator + pkg_info.slot
+			if pkg_info.slot != pkg_info.sub_slot:
+				pkg_str += "/" + pkg_info.sub_slot
+		elif any(x.slot + "/" + x.sub_slot != "0/0" for x in pkg_info.oldbest_list + [pkg]):
+			pkg_str += _slot_separator + pkg_info.slot
+			if pkg_info.slot != pkg_info.sub_slot or \
+				any(x.slot == pkg_info.slot and x.sub_slot != pkg_info.sub_slot for x in pkg_info.oldbest_list):
+				pkg_str += "/" + pkg_info.sub_slot
+		return pkg_str
 
 	def _set_non_root_columns(self, pkg, pkg_info):
 		"""sets the indent level and formats the output
@@ -397,9 +427,11 @@ class Display(object):
 		@rtype string
 		"""
 		ver_str = pkg_info.ver
-		if self.conf.verbosity == 3 and not self.quiet_repo_display and (self.verbose_main_repo_display or
-			any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
-			ver_str += _repo_separator + pkg.repo
+		if self.conf.verbosity == 3:
+			ver_str = self._append_slot(ver_str, pkg, pkg_info)
+			if not self.quiet_repo_display and (self.verbose_main_repo_display or
+				any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
+				ver_str += _repo_separator + pkg.repo
 		if self.conf.quiet:
 			myprint = str(pkg_info.attr_display) + " " + self.indent + \
 				self.pkgprint(pkg_info.cp, pkg_info)
@@ -436,9 +468,11 @@ class Display(object):
 		Modifies self.verboseadd
 		"""
 		ver_str = pkg_info.ver
-		if self.conf.verbosity == 3 and not self.quiet_repo_display and (self.verbose_main_repo_display or
-			any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
-			ver_str += _repo_separator + pkg.repo
+		if self.conf.verbosity == 3:
+			ver_str = self._append_slot(ver_str, pkg, pkg_info)
+			if not self.quiet_repo_display and (self.verbose_main_repo_display or
+				any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
+				ver_str += _repo_separator + pkg.repo
 		if self.conf.quiet:
 			myprint = str(pkg_info.attr_display) + " " + self.indent + \
 				self.pkgprint(pkg_info.cp, pkg_info)
@@ -473,9 +507,11 @@ class Display(object):
 		@rtype the updated addl
 		"""
 		pkg_str = pkg.cpv
-		if self.conf.verbosity == 3 and not self.quiet_repo_display and (self.verbose_main_repo_display or
-			any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
-			pkg_str += _repo_separator + pkg.repo
+		if self.conf.verbosity == 3:
+			pkg_str = self._append_slot(pkg_str, pkg, pkg_info)
+			if not self.quiet_repo_display and (self.verbose_main_repo_display or
+				any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
+				pkg_str += _repo_separator + pkg.repo
 		if not pkg_info.merge:
 			addl = self.empty_space_in_brackets()
 			myprint = "[%s%s] %s%s %s" % \
@@ -581,6 +617,9 @@ class Display(object):
 		pkg_info = PkgInfo()
 		pkg_info.cp = pkg.cp
 		pkg_info.ver = self.get_ver_str(pkg)
+		pkg_info.slot = pkg.slot
+		pkg_info.sub_slot = pkg.sub_slot
+		pkg_info.repo_name = pkg.repo
 		pkg_info.ordered = ordered
 		pkg_info.operation = pkg.operation
 		pkg_info.merge = ordered and pkg_info.operation == "merge"
@@ -588,7 +627,6 @@ class Display(object):
 			pkg_info.operation = "nomerge"
 		pkg_info.built = pkg.type_name != "ebuild"
 		pkg_info.ebuild_path = None
-		pkg_info.repo_name = pkg.repo
 		if ordered:
 			if pkg_info.merge:
 				if pkg.type_name == "binary":
@@ -702,7 +740,8 @@ class Display(object):
 		if self.vardb.cpv_exists(pkg.cpv):
 			pkg_info.attr_display.replace = True
 			installed_version = self.vardb.match_pkgs(pkg.cpv)[0]
-			if not self.quiet_repo_display and installed_version.repo != pkg.repo:
+			if installed_version.slot != pkg.slot or installed_version.sub_slot != pkg.sub_slot or \
+				not self.quiet_repo_display and installed_version.repo != pkg.repo:
 				myoldbest = [installed_version]
 			if pkg_info.ordered:
 				if pkg_info.merge:
@@ -806,7 +845,7 @@ class Display(object):
 
 				self.oldlp = self.conf.columnwidth - 30
 				self.newlp = self.oldlp - 30
-				pkg_info.oldbest = self.convert_myoldbest(pkg, pkg_info.oldbest_list)
+				pkg_info.oldbest = self.convert_myoldbest(pkg, pkg_info)
 				pkg_info.system, pkg_info.world = \
 					self.check_system_world(pkg)
 				if 'interactive' in pkg.metadata.properties and \
@@ -825,9 +864,11 @@ class Display(object):
 						myprint = self._set_non_root_columns(pkg, pkg_info)
 					else:
 						pkg_str = pkg.cpv
-						if self.conf.verbosity == 3 and not self.quiet_repo_display and (self.verbose_main_repo_display or
-							any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
-							pkg_str += _repo_separator + pkg.repo
+						if self.conf.verbosity == 3:
+							pkg_str = self._append_slot(pkg_str, pkg, pkg_info)
+							if not self.quiet_repo_display and (self.verbose_main_repo_display or
+								any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
+								pkg_str += _repo_separator + pkg.repo
 						if not pkg_info.merge:
 							addl = self.empty_space_in_brackets()
 							myprint = "[%s%s] " % (
