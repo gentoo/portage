@@ -2539,7 +2539,7 @@ else:
 			unameout += platform.processor()
 		else:
 			unameout += platform.machine()
-		commit_footer += "\n\n(Portage version: %s/%s/%s" % \
+		commit_footer = "\n\n(Portage version: %s/%s/%s" % \
 			(portage_version, vcs, unameout)
 		if options.force:
 			commit_footer += ", RepoMan options: --force"
