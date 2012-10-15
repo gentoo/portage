@@ -10,6 +10,7 @@ import sys
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'logging',
+	'portage.debug',
 	'portage.dbapi.dep_expand:dep_expand',
 	'portage.news:count_unread_news,display_news_notifications',
 	'portage.emaint.modules.logs.logs:CleanLogs',
@@ -1635,8 +1636,7 @@ def emerge_main(args=None):
 		spinner.update = spinner.update_quiet
 		portage.util.noiselimit = 0
 		if "python-trace" in settings.features:
-			import portage.debug as portage_debug
-			portage_debug.set_trace(True)
+			portage.debug.set_trace(True)
 
 	if not ("--quiet" in myopts):
 		if '--nospinner' in myopts or \
@@ -1673,12 +1673,11 @@ def emerge_main(args=None):
 					access_desc = "portage group"
 				# Always show portage_group_warning() when only portage group
 				# access is required but the user is not in the portage group.
-				from portage.data import portage_group_warning
 				if "--ask" in myopts:
 					writemsg_stdout("This action requires %s access...\n" % \
 						(access_desc,), noiselevel=-1)
 					if portage.secpass < 1 and not need_superuser:
-						portage_group_warning()
+						portage.data.portage_group_warning()
 					if userquery("Would you like to add --pretend to options?",
 						"--ask-enter-invalid" in myopts) == "No":
 						return 128 + signal.SIGINT
@@ -1688,7 +1687,7 @@ def emerge_main(args=None):
 					sys.stderr.write(("emerge: %s access is required\n") \
 						% access_desc)
 					if portage.secpass < 1 and not need_superuser:
-						portage_group_warning()
+						portage.data.portage_group_warning()
 					return 1
 
 	# Disable emergelog for everything except build or unmerge operations.
