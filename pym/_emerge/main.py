@@ -1424,6 +1424,10 @@ def emerge_main(args=None):
 	if args is None:
 		args = sys.argv[1:]
 
+	# Disable color until we're sure that it should be enabled (after
+	# EMERGE_DEFAULT_OPTS has been parsed).
+	portage.output.havecolor = 0
+
 	# optimize --help (no need to load config / EMERGE_DEFAULT_OPTS)
 	if "--help" in args or "-h" in args:
 		emerge_help()
@@ -1431,9 +1435,7 @@ def emerge_main(args=None):
 
 	portage._disable_legacy_globals()
 	portage.dep._internal_warnings = True
-	# Disable color until we're sure that it should be enabled (after
-	# EMERGE_DEFAULT_OPTS has been parsed).
-	portage.output.havecolor = 0
+
 	# This first pass is just for options that need to be known as early as
 	# possible, such as --config-root.  They will be parsed again later,
 	# together with EMERGE_DEFAULT_OPTS (which may vary depending on the
