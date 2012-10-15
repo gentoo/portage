@@ -419,6 +419,19 @@ class Display(object):
 				pkg_str += "/" + pkg_info.sub_slot
 		return pkg_str
 
+	def _append_repository(self, pkg_str, pkg, pkg_info):
+		"""Potentially appends repository to package string.
+
+		@param pkg_str: string
+		@param pkg: _emerge.Package.Package instance
+		@param pkg_info: dictionary
+		@rtype string
+		"""
+		if not self.quiet_repo_display and (self.verbose_main_repo_display or
+			any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
+			pkg_str += _repo_separator + pkg.repo
+		return pkg_str
+
 	def _set_non_root_columns(self, pkg, pkg_info):
 		"""sets the indent level and formats the output
 
@@ -429,9 +442,7 @@ class Display(object):
 		ver_str = pkg_info.ver
 		if self.conf.verbosity == 3:
 			ver_str = self._append_slot(ver_str, pkg, pkg_info)
-			if not self.quiet_repo_display and (self.verbose_main_repo_display or
-				any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
-				ver_str += _repo_separator + pkg.repo
+			ver_str = self._append_repository(ver_str, pkg, pkg_info)
 		if self.conf.quiet:
 			myprint = str(pkg_info.attr_display) + " " + self.indent + \
 				self.pkgprint(pkg_info.cp, pkg_info)
@@ -470,9 +481,7 @@ class Display(object):
 		ver_str = pkg_info.ver
 		if self.conf.verbosity == 3:
 			ver_str = self._append_slot(ver_str, pkg, pkg_info)
-			if not self.quiet_repo_display and (self.verbose_main_repo_display or
-				any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
-				ver_str += _repo_separator + pkg.repo
+			ver_str = self._append_repository(ver_str, pkg, pkg_info)
 		if self.conf.quiet:
 			myprint = str(pkg_info.attr_display) + " " + self.indent + \
 				self.pkgprint(pkg_info.cp, pkg_info)
@@ -509,9 +518,7 @@ class Display(object):
 		pkg_str = pkg.cpv
 		if self.conf.verbosity == 3:
 			pkg_str = self._append_slot(pkg_str, pkg, pkg_info)
-			if not self.quiet_repo_display and (self.verbose_main_repo_display or
-				any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
-				pkg_str += _repo_separator + pkg.repo
+			pkg_str = self._append_repository(pkg_str, pkg, pkg_info)
 		if not pkg_info.merge:
 			addl = self.empty_space_in_brackets()
 			myprint = "[%s%s] %s%s %s" % \
@@ -802,7 +809,7 @@ class Display(object):
 		# files to fetch list - avoids counting a same file twice
 		# in size display (verbose mode)
 		self.myfetchlist = set()
-		
+
 		self.quiet_repo_display = "--quiet-repo-display" in depgraph._frozen_config.myopts
 		if self.quiet_repo_display:
 			# Use this set to detect when all the "repoadd" strings are "[0]"
@@ -866,9 +873,7 @@ class Display(object):
 						pkg_str = pkg.cpv
 						if self.conf.verbosity == 3:
 							pkg_str = self._append_slot(pkg_str, pkg, pkg_info)
-							if not self.quiet_repo_display and (self.verbose_main_repo_display or
-								any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
-								pkg_str += _repo_separator + pkg.repo
+							pkg_str = self._append_repository(pkg_str, pkg, pkg_info)
 						if not pkg_info.merge:
 							addl = self.empty_space_in_brackets()
 							myprint = "[%s%s] " % (
