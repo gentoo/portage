@@ -19,8 +19,7 @@ from .ManifestProcess import ManifestProcess
 class ManifestTask(CompositeTask):
 
 	__slots__ = ("cp", "distdir", "fetchlist_dict", "gpg_cmd",
-		"gpg_vars", "repo_config", "force_sign_key", "_manifest_path",
-		"_proc")
+		"gpg_vars", "repo_config", "force_sign_key", "_manifest_path")
 
 	_PGP_HEADER = b"BEGIN PGP SIGNED MESSAGE"
 	_manifest_line_re = re.compile(r'^(%s) ' % "|".join(MANIFEST2_IDENTIFIERS))
@@ -32,11 +31,6 @@ class ManifestTask(CompositeTask):
 			fetchlist_dict=self.fetchlist_dict, repo_config=self.repo_config,
 			scheduler=self.scheduler)
 		self._start_task(manifest_proc, self._manifest_proc_exit)
-
-	def _cancel(self):
-		if self._proc is not None:
-			self._proc.cancel()
-		CompositeTask._cancel(self)
 
 	def _manifest_proc_exit(self, manifest_proc):
 		self._assert_current(manifest_proc)
@@ -65,14 +59,13 @@ class ManifestTask(CompositeTask):
 		self._start_gpg_proc()
 
 	def _check_sig_key(self):
-		self._proc = PopenProcess(proc=subprocess.Popen(
+		popen_proc = PopenProcess(proc=subprocess.Popen(
 			["gpg", "--verify", self._manifest_path],
 			stdout=subprocess.PIPE, stderr=subprocess.STDOUT),
-			pipe_reader=PipeReader(scheduler=self.scheduler),
-			scheduler=self.scheduler)
-		self._proc.pipe_reader.input_files = {
-			"producer" : self._proc.proc.stdout}
-		self._start_task(self._proc, self._check_sig_key_exit)
+			pipe_reader=PipeReader())
+		popen_proc.pipe_reader.input_files = {
+			"producer" : popen_proc.proc.stdout}
+		self._start_task(popen_proc, self._check_sig_key_exit)
 
 	@staticmethod
 	def _parse_gpg_key(output):
@@ -90,13 +83,16 @@ class ManifestTask(CompositeTask):
 	def _check_sig_key_exit(self, proc):
 		self._assert_current(proc)
 
-		self._proc = None
 		parsed_key = self._parse_gpg_key(
 			proc.pipe_reader.getvalue().decode('utf_8', 'replace'))
 		if parsed_key is not None and \
 			parsed_key.lower() in self.force_sign_key.lower():
 			self.returncode = os.EX_OK
 			self._current_task = None
+			self.wait()
+			return
+
+		if self._was_cancelled():
 			self.wait()
 			return
 
