@@ -969,6 +969,7 @@ def egencache_main(args):
 
 	gpg_cmd = None
 	gpg_vars = None
+	force_sign_key = None
 
 	if options.update_manifests:
 		if repo_config.sign_manifest:
@@ -1024,6 +1025,8 @@ def egencache_main(args):
 				if v is not None:
 					gpg_vars[k] = v
 
+			force_sign_key = gpg_vars.get("PORTAGE_GPG_KEY")
+
 	ret = [os.EX_OK]
 
 	if options.update:
@@ -1050,6 +1053,7 @@ def egencache_main(args):
 		event_loop = global_event_loop()
 		scheduler = ManifestScheduler(portdb, cp_iter=cp_iter,
 			gpg_cmd=gpg_cmd, gpg_vars=gpg_vars,
+			force_sign_key=force_sign_key,
 			max_jobs=options.jobs,
 			max_load=options.load_average,
 			event_loop=event_loop)

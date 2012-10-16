@@ -12,7 +12,7 @@ from .ManifestTask import ManifestTask
 class ManifestScheduler(AsyncScheduler):
 
 	def __init__(self, portdb, cp_iter=None,
-		gpg_cmd=None, gpg_vars=None, **kwargs):
+		gpg_cmd=None, gpg_vars=None, force_sign_key=None, **kwargs):
 
 		AsyncScheduler.__init__(self, **kwargs)
 
@@ -23,6 +23,7 @@ class ManifestScheduler(AsyncScheduler):
 		self._cp_iter = cp_iter
 		self._gpg_cmd = gpg_cmd
 		self._gpg_vars = gpg_vars
+		self._force_sign_key = force_sign_key
 		self._task_iter = self._iter_tasks()
 
 	def _next_task(self):
@@ -76,7 +77,8 @@ class ManifestScheduler(AsyncScheduler):
 
 				yield ManifestTask(cp=cp, distdir=distdir,
 					fetchlist_dict=fetchlist_dict, repo_config=repo_config,
-					gpg_cmd=self._gpg_cmd, gpg_vars=self._gpg_vars)
+					gpg_cmd=self._gpg_cmd, gpg_vars=self._gpg_vars,
+					force_sign_key=self._force_sign_key)
 
 	def _task_exit(self, task):
 
