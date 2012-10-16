@@ -3426,7 +3426,14 @@ def repo_name_duplicate_check(trees):
 
 	return bool(ignored_repos)
 
-def run_action(settings, trees, mtimedb, myaction, myopts, myfiles):
+def run_action(settings, trees, mtimedb, myaction, myopts, myfiles,
+	gc_locals=None):
+
+	# The caller may have its local variables garbage collected, so
+	# they don't consume any memory during this long-running function.
+	if gc_locals is not None:
+		gc_locals()
+		gc_locals = None
 
 	# skip global updates prior to sync, since it's called after sync
 	if myaction not in ('help', 'info', 'sync', 'version') and \

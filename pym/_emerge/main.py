@@ -999,4 +999,5 @@ def emerge_main(args=None):
 	tmpcmdline.extend(args)
 	myaction, myopts, myfiles = parse_opts(tmpcmdline)
 
-	return run_action(settings, trees, mtimedb, myaction, myopts, myfiles)
+	return run_action(settings, trees, mtimedb, myaction, myopts, myfiles,
+		gc_locals=locals().clear)
