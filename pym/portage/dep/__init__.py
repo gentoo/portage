@@ -36,11 +36,6 @@ if sys.hexversion >= 0x3000000:
 else:
 	_unicode = unicode
 
-# Api consumers included in portage should set this to True.
-# Once the relevant api changes are in a portage release with
-# stable keywords, make these warnings unconditional.
-_internal_warnings = False
-
 # \w is [a-zA-Z0-9_]
 
 # PMS 3.1.3: A slot name may contain any of the characters [A-Za-z0-9+_.-].
@@ -274,7 +269,7 @@ def paren_reduce(mystr):
 	@rtype: Array
 	@return: The reduced string in an array
 	"""
-	if _internal_warnings:
+	if portage._internal_warnings:
 		warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
 			('portage.dep.paren_reduce',), DeprecationWarning, stacklevel=2)
 	mysplit = mystr.split()
@@ -366,7 +361,7 @@ class paren_normalize(list):
 	"""Take a dependency structure as returned by paren_reduce or use_reduce
 	and generate an equivalent structure that has no redundant lists."""
 	def __init__(self, src):
-		if _internal_warnings:
+		if portage._internal_warnings:
 			warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
 				('portage.dep.paren_normalize',), DeprecationWarning, stacklevel=2)
 		list.__init__(self)
@@ -462,7 +457,7 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 	@return: The use reduced depend array
 	"""
 	if isinstance(depstr, list):
-		if _internal_warnings:
+		if portage._internal_warnings:
 			warnings.warn(_("Passing paren_reduced dep arrays to %s is deprecated. " + \
 				"Pass the original dep string instead.") % \
 				('portage.dep.use_reduce',), DeprecationWarning, stacklevel=2)
@@ -763,7 +758,7 @@ def dep_opconvert(deplist):
 	@return:
 		The new list with the new ordering
 	"""
-	if _internal_warnings:
+	if portage._internal_warnings:
 		warnings.warn(_("%s is deprecated. Use %s with the opconvert parameter set to True instead.") % \
 			('portage.dep.dep_opconvert', 'portage.dep.use_reduce'), DeprecationWarning, stacklevel=2)
 
@@ -794,7 +789,7 @@ def flatten(mylist):
 	@rtype: List
 	@return: A single list containing only non-list elements.
 	"""
-	if _internal_warnings:
+	if portage._internal_warnings:
 		warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
 			('portage.dep.flatten',), DeprecationWarning, stacklevel=2)
 

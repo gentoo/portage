@@ -68,7 +68,7 @@ from os import path as osp
 pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
 sys.path.insert(0, pym_path)
 import portage
-portage.dep._internal_warnings = True
+portage._internal_warnings = True
 from portage import os
 from portage import _encodings
 from portage import _shell_quote

@@ -334,6 +334,9 @@ _python_interpreter = os.path.realpath(sys.executable)
 _bin_path = PORTAGE_BIN_PATH
 _pym_path = PORTAGE_PYM_PATH
 
+# Api consumers included in portage should set this to True.
+_internal_warnings = False
+
 _sync_disabled_warnings = False
 
 def _shell_quote(s):

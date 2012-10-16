@@ -39,7 +39,7 @@ pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
 sys.path.insert(0, pym_path)
 import portage
 portage._disable_legacy_globals()
-portage.dep._internal_warnings = True
+portage._internal_warnings = True
 
 try:
 	import xml.etree.ElementTree
