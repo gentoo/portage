@@ -3,6 +3,7 @@
 
 from __future__ import print_function
 
+import platform
 import sys
 
 import portage
@@ -66,6 +67,21 @@ shortmapping={
 "u":"--update",
 "v":"--verbose",   "V":"--version"
 }
+
+COWSAY_MOO = """
+
+  Larry loves Gentoo (%s)
+
+ _______________________
+< Have you mooed today? >
+ -----------------------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\ 
+                ||----w |
+                ||     ||
+
+"""
 
 def multiple_actions(action1, action2):
 	sys.stderr.write("\n!!! Multiple actions requested... Please choose one only.\n")
@@ -981,6 +997,9 @@ def emerge_main(args=None):
 	# optimize --help (no need to load config / EMERGE_DEFAULT_OPTS)
 	if myaction == "help":
 		emerge_help()
+		return os.EX_OK
+	elif myaction == "moo":
+		print(COWSAY_MOO % platform.system())
 		return os.EX_OK
 
 	# Portage needs to ensure a sane umask for the files it creates.

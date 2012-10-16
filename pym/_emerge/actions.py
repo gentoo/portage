@@ -87,21 +87,6 @@ if sys.hexversion >= 0x3000000:
 else:
 	_unicode = unicode
 
-COWSAY_MOO = """
-
-  Larry loves Gentoo (%s)
-
- _______________________
-< Have you mooed today? >
- -----------------------
-        \   ^__^
-         \  (oo)\_______
-            (__)\       )\/\ 
-                ||----w |
-                ||     ||
-
-"""
-
 def action_build(settings, trees, mtimedb,
 	myopts, myaction, myfiles, spinner):
 
@@ -3522,13 +3507,6 @@ def run_action(settings, trees, mtimedb, myaction, myopts, myfiles,
 
 	del mytrees, mydb
 
-	if "moo" in myfiles:
-		print(COWSAY_MOO % platform.system())
-		msg = ("The above `emerge moo` display is deprecated. "
-			"Please use `emerge --moo` instead.")
-		for line in textwrap.wrap(msg, 50):
-			print(" %s %s" % (colorize("WARN", "*"), line))
-
 	for x in myfiles:
 		ext = os.path.splitext(x)[1]
 		if (ext == ".ebuild" or ext == ".tbz2") and \
@@ -3538,10 +3516,8 @@ def run_action(settings, trees, mtimedb, myaction, myopts, myfiles,
 			break
 
 	root_config = trees[settings['EROOT']]['root_config']
-	if myaction == "moo":
-		print(COWSAY_MOO % platform.system())
-		return os.EX_OK
-	elif myaction == "list-sets":
+
+	if myaction == "list-sets":
 		writemsg_stdout("".join("%s\n" % s for s in sorted(root_config.sets)))
 		return os.EX_OK
 	elif myaction == "check-news":
