@@ -38,11 +38,6 @@ class ManifestTask(CompositeTask):
 			self._proc.cancel()
 		CompositeTask._cancel(self)
 
-	def _proc_wait(self):
-		if self._proc is not None:
-			self._proc.wait()
-			self._proc = None
-
 	def _manifest_proc_exit(self, manifest_proc):
 		self._assert_current(manifest_proc)
 		if manifest_proc.returncode not in (os.EX_OK, manifest_proc.MODIFIED):
@@ -73,11 +68,11 @@ class ManifestTask(CompositeTask):
 		self._proc = PopenProcess(proc=subprocess.Popen(
 			["gpg", "--verify", self._manifest_path],
 			stdout=subprocess.PIPE, stderr=subprocess.STDOUT),
+			pipe_reader=PipeReader(scheduler=self.scheduler),
 			scheduler=self.scheduler)
-		pipe_reader = PipeReader(
-			input_files={"producer" : self._proc.proc.stdout},
-			scheduler=self.scheduler)
-		self._start_task(pipe_reader, self._check_sig_key_exit)
+		self._proc.pipe_reader.input_files = {
+			"producer" : self._proc.proc.stdout}
+		self._start_task(self._proc, self._check_sig_key_exit)
 
 	@staticmethod
 	def _parse_gpg_key(output):
@@ -92,16 +87,16 @@ class ManifestTask(CompositeTask):
 				return output[-1]
 		return None
 
-	def _check_sig_key_exit(self, pipe_reader):
-		self._assert_current(pipe_reader)
+	def _check_sig_key_exit(self, proc):
+		self._assert_current(proc)
 
+		self._proc = None
 		parsed_key = self._parse_gpg_key(
-			pipe_reader.getvalue().decode('utf_8', 'replace'))
+			proc.pipe_reader.getvalue().decode('utf_8', 'replace'))
 		if parsed_key is not None and \
 			parsed_key.lower() in self.force_sign_key.lower():
 			self.returncode = os.EX_OK
 			self._current_task = None
-			self._proc_wait()
 			self.wait()
 			return
 
@@ -142,7 +137,6 @@ class ManifestTask(CompositeTask):
 
 	def _gpg_proc_exit(self, gpg_proc):
 		if self._default_exit(gpg_proc) != os.EX_OK:
-			self._proc_wait()
 			self.wait()
 			return
 
@@ -161,7 +155,6 @@ class ManifestTask(CompositeTask):
 			self.returncode = os.EX_OK
 
 		self._current_task = None
-		self._proc_wait()
 		self.wait()
 
 	def _need_signature(self):
