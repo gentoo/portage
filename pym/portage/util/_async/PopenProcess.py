@@ -14,6 +14,10 @@ class PopenProcess(SubProcess):
 
 	def _start(self):
 		if self.pipe_reader is not None:
+			try:
+				self.pipe_reader.scheduler = self.scheduler
+			except AttributeError:
+				pass
 			self.pipe_reader.addExitListener(self._pipe_reader_exit)
 			self.pipe_reader.start()
 
