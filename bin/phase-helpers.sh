@@ -150,7 +150,7 @@ keepdir() {
 	fi
 	if [ "$1" == "-R" ] || [ "$1" == "-r" ]; then
 		shift
-		find "$@" -type d -printf "${ED}%p/.keep_${CATEGORY}_${PN}-${SLOT}\n" \
+		find "$@" -type d -printf "${ED}%p/.keep_${CATEGORY}_${PN}-${SLOT%/*}\n" \
 			| tr "\n" "\0" | \
 			while read -r -d $'\0' ; do
 				>> "$REPLY" || \
@@ -158,7 +158,7 @@ keepdir() {
 			done
 	else
 		for x in "$@"; do
-			>> "${ED}${x}/.keep_${CATEGORY}_${PN}-${SLOT}" || \
+			>> "${ED}${x}/.keep_${CATEGORY}_${PN}-${SLOT%/*}" || \
 				die "Failed to create .keep in ${ED}${x}"
 		done
 	fi
