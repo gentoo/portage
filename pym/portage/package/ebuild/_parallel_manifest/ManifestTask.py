@@ -23,6 +23,8 @@ class ManifestTask(CompositeTask):
 
 	_PGP_HEADER = b"BEGIN PGP SIGNED MESSAGE"
 	_manifest_line_re = re.compile(r'^(%s) ' % "|".join(MANIFEST2_IDENTIFIERS))
+	_gpg_key_id_re = re.compile(r'^[0-9A-F]*$')
+	_gpg_key_id_lengths = (8, 16, 24, 32, 40)
 
 	def _start(self):
 		self._manifest_path = os.path.join(self.repo_config.location,
@@ -70,14 +72,15 @@ class ManifestTask(CompositeTask):
 	@staticmethod
 	def _parse_gpg_key(output):
 		"""
-		Returns the last token of the first line, or None if there
-		is no such token.
+		Returns the first token which appears to represent a gpg key
+		id, or None if there is no such token.
 		"""
-		output = output.splitlines()
-		if output:
-			output = output[0].split()
-			if output:
-				return output[-1]
+		regex = ManifestTask._gpg_key_id_re
+		lengths = ManifestTask._gpg_key_id_lengths
+		for token in output.split():
+			m = regex.match(token)
+			if m is not None and len(m.group(0)) in lengths:
+				return m.group(0)
 		return None
 
 	def _check_sig_key_exit(self, proc):
