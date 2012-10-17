@@ -52,6 +52,7 @@ from _emerge.EbuildFetcher import EbuildFetcher
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.emergelog import emergelog
 from _emerge.FakeVartree import FakeVartree
+from _emerge.getloadavg import getloadavg
 from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
 from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
 from _emerge.JobStatusDisplay import JobStatusDisplay
@@ -247,9 +248,7 @@ class Scheduler(PollScheduler):
 		# The load average takes some time to respond when new
 		# jobs are added, so we need to limit the rate of adding
 		# new jobs.
-		self._job_delay_max = 10
-		self._job_delay_factor = 1.0
-		self._job_delay_exp = 1.5
+		self._job_delay_max = 5
 		self._previous_job_start_time = None
 
 		# This is used to memoize the _choose_pkg() result when
@@ -1584,13 +1583,25 @@ class Scheduler(PollScheduler):
 		if self._jobs and self._max_load is not None:
 
 			current_time = time.time()
+			try:
+				avg1, avg5, avg15 = getloadavg()
+			except OSError:
+				return False
 
-			delay = self._job_delay_factor * self._jobs ** self._job_delay_exp
+			delay = self._job_delay_max * avg1 / self._max_load
 			if delay > self._job_delay_max:
 				delay = self._job_delay_max
-			if (current_time - self._previous_job_start_time) < delay:
+			elapsed_seconds = current_time - self._previous_job_start_time
+			# elapsed_seconds < 0 means the system clock has been adjusted
+			if elapsed_seconds > 0 and elapsed_seconds < delay:
+				self._event_loop.timeout_add(
+					1000 * (delay - elapsed_seconds), self._schedule_once)
 				return True
 
+		return False
+
+	def _schedule_once(self):
+		self._schedule()
 		return False
 
 	def _schedule_tasks_imp(self):
