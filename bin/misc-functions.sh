@@ -34,7 +34,7 @@ install_symlink_html_docs() {
 			if [ -z "${SLOT}" -o "${SLOT}" = "0" ] ; then
 				mysympath="${DOC_SYMLINKS_DIR}/${CATEGORY}/${PN}"
 			else
-				mysympath="${DOC_SYMLINKS_DIR}/${CATEGORY}/${PN}-${SLOT}"
+				mysympath="${DOC_SYMLINKS_DIR}/${CATEGORY}/${PN}-${SLOT%/*}"
 			fi
 			einfo "Symlinking ${mysympath} to the HTML documentation"
 			dodir "${DOC_SYMLINKS_DIR}/${CATEGORY}"
