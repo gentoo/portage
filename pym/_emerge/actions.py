@@ -1285,11 +1285,8 @@ def action_deselect(settings, trees, opts, atoms):
 								allow_repo=True, allow_wildcard=True))
 
 				for cpv in vardb.match(atom):
-					slot, = vardb.aux_get(cpv, ["SLOT"])
-					if not slot:
-						slot = "0"
-					expanded_atoms.add(Atom("%s:%s" % \
-						(portage.cpv_getkey(cpv), slot)))
+					pkg = vardb._pkg_str(cpv, None)
+					expanded_atoms.add(Atom("%s:%s" % (pkg.cp, pkg.slot)))
 
 		discard_atoms = set()
 		for atom in world_set:
@@ -2658,13 +2655,8 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 
 		if owners:
 			for cpv in owners:
-				slot = vardb.aux_get(cpv, ['SLOT'])[0]
-				if not slot:
-					# portage now masks packages with missing slot, but it's
-					# possible that one was installed by an older version
-					atom = portage.cpv_getkey(cpv)
-				else:
-					atom = '%s:%s' % (portage.cpv_getkey(cpv), slot)
+				pkg = vardb._pkg_str(cpv, None)
+				atom = '%s:%s' % (pkg.cp, pkg.slot)
 				valid_atoms.append(portage.dep.Atom(atom))
 		else:
 			writemsg_level(("!!! '%s' is not claimed " + \
