@@ -1484,9 +1484,7 @@ class binarytree(object):
 		"Get a slot for a catpkg; assume it exists."
 		myslot = ""
 		try:
-			myslot = self.dbapi.aux_get(mycatpkg,["SLOT"])[0]
-		except SystemExit as e:
-			raise
-		except Exception as e:
+			myslot = self.dbapi._pkg_str(mycatpkg, None).slot
+		except KeyError:
 			pass
 		return myslot
