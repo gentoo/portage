@@ -1312,8 +1312,9 @@ class config(object):
 				pkg_configdict["PORTAGE_REPO_NAME"] = repository
 			iuse = pkg_configdict["IUSE"]
 			if pkg is None:
-				cpv_slot = _pkg_str(self.mycpv, metadata=pkg_configdict,
+				self.mycpv = _pkg_str(self.mycpv, metadata=pkg_configdict,
 					settings=self)
+				cpv_slot = self.mycpv
 			else:
 				cpv_slot = pkg
 			pkginternaluse = []
