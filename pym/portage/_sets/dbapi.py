@@ -26,8 +26,7 @@ class EverythingSet(PackageSet):
 
 	def load(self):
 		myatoms = []
-		db_keys = ["SLOT"]
-		aux_get = self._db.aux_get
+		pkg_str = self._db._pkg_str
 		cp_list = self._db.cp_list
 
 		for cp in self._db.cp_all():
@@ -35,8 +34,8 @@ class EverythingSet(PackageSet):
 				# NOTE: Create SLOT atoms even when there is only one
 				# SLOT installed, in order to avoid the possibility
 				# of unwanted upgrades as reported in bug #338959.
-				slot, = aux_get(cpv, db_keys)
-				atom = Atom("%s:%s" % (cp, slot))
+				pkg = pkg_str(cpv, None)
+				atom = Atom("%s:%s" % (pkg.cp, pkg.slot))
 				if self._filter:
 					if self._filter(atom):
 						myatoms.append(atom)
@@ -68,20 +67,19 @@ class OwnerSet(PackageSet):
 		"""
 		rValue = set()
 		vardb = self._db
-		aux_get = vardb.aux_get
-		aux_keys = ["SLOT"]
+		pkg_str = vardb._pkg_str
 		if exclude_paths is None:
 			for link, p in vardb._owners.iter_owners(paths):
-				slot, = aux_get(link.mycpv, aux_keys)
-				rValue.add("%s:%s" % (link.mycpv.cp, slot))
+				pkg = pkg_str(link.mycpv, None)
+				rValue.add("%s:%s" % (pkg.cp, pkg.slot))
 		else:
 			all_paths = set()
 			all_paths.update(paths)
 			all_paths.update(exclude_paths)
 			exclude_atoms = set()
 			for link, p in vardb._owners.iter_owners(all_paths):
-				slot, = aux_get(link.mycpv, aux_keys)
-				atom = "%s:%s" % (link.mycpv.cp, slot)
+				pkg = pkg_str(link.mycpv, None)
+				atom = "%s:%s" % (pkg.cp, pkg.slot)
 				rValue.add(atom)
 				if p in exclude_paths:
 					exclude_atoms.add(atom)
@@ -173,12 +171,11 @@ class DowngradeSet(PackageSet):
 		xmatch = self._portdb.xmatch
 		xmatch_level = "bestmatch-visible"
 		cp_list = self._vardb.cp_list
-		aux_get = self._vardb.aux_get
-		aux_keys = ["SLOT"]
+		pkg_str = self._vardb._pkg_str
 		for cp in self._vardb.cp_all():
 			for cpv in cp_list(cp):
-				slot, = aux_get(cpv, aux_keys)
-				slot_atom = "%s:%s" % (cp, slot)
+				pkg = pkg_str(cpv, None)
+				slot_atom = "%s:%s" % (pkg.cp, pkg.slot)
 				ebuild = xmatch(xmatch_level, slot_atom)
 				if not ebuild:
 					continue
