@@ -226,7 +226,7 @@ if mode in ["dump", "fix", "inject", "pretend"]:
 				for pkg in mergelist:
 					oldver = None
 					for x in vardb.match(portage.cpv_getkey(pkg)):
-						if vardb.aux_get(x, ["SLOT"]) == portdb.aux_get(pkg, ["SLOT"]):
+						if vardb._pkg_str(x, None).slot == portdb._pkg_str(pkg, None).slot:
 							oldver = x
 					if oldver == None:
 						raise ValueError("could not find old version for package %s" % pkg)
