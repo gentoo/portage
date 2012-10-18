@@ -25,7 +25,7 @@ from portage.dep import Atom, best_match_to_list, extract_affecting_use, \
 from portage.dep._slot_operator import ignore_built_slot_operator_deps
 from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use, \
 	_get_eapi_attrs
-from portage.exception import (InvalidAtom, InvalidDependString,
+from portage.exception import (InvalidAtom, InvalidData, InvalidDependString,
 	PackageNotFound, PortageException)
 from portage.output import colorize, create_color_func, \
 	darkgreen, green
@@ -3832,7 +3832,7 @@ class depgraph(object):
 								other_db._pkg_str(_unicode(cpv), None).slot:
 								slot_available = True
 								break
-						except KeyError:
+						except (KeyError, InvalidData):
 							pass
 					if not slot_available:
 						continue

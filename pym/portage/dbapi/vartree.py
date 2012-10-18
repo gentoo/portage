@@ -4094,7 +4094,7 @@ class dblink(object):
 							try:
 								slot = self.vartree.dbapi._pkg_str(cpv, None).slot
 								counter = self.vartree.dbapi.cpv_counter(cpv)
-							except KeyError:
+							except (KeyError, InvalidData):
 								pass
 							else:
 								has_vdb_entry = True

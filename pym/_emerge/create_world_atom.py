@@ -1,7 +1,15 @@
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import sys
+
 from portage.dep import _repo_separator
+from portage.exception import InvalidData
+
+if sys.hexversion >= 0x3000000:
+	_unicode = str
+else:
+	_unicode = unicode
 
 def create_world_atom(pkg, args_set, root_config):
 	"""Create a new atom for the world file if one does not exist.  If the
@@ -35,8 +43,8 @@ def create_world_atom(pkg, args_set, root_config):
 	for cpv in portdb.match(cp):
 		for repo in repos:
 			try:
-				available_slots.add(portdb._pkg_str(cpv, repo).slot)
-			except KeyError:
+				available_slots.add(portdb._pkg_str(_unicode(cpv), repo).slot)
+			except (KeyError, InvalidData):
 				pass
 
 	slotted = len(available_slots) > 1 or \
@@ -87,8 +95,9 @@ def create_world_atom(pkg, args_set, root_config):
 				for cpv in matches:
 					for repo in repos:
 						try:
-							matched_slots.add(portdb._pkg_str(cpv, repo).slot)
-						except KeyError:
+							matched_slots.add(
+								portdb._pkg_str(_unicode(cpv), repo).slot)
+						except (KeyError, InvalidData):
 							pass
 
 			if len(matched_slots) == 1:

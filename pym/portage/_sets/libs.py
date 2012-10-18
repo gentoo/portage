@@ -3,6 +3,7 @@
 
 from __future__ import print_function
 
+from portage.exception import InvalidData
 from portage.localization import _
 from portage._sets.base import PackageSet
 from portage._sets import get_boolean, SetConfigError
@@ -22,7 +23,7 @@ class LibraryConsumerSet(PackageSet):
 			for cpv in self.dbapi._linkmap.getOwners(p):
 				try:
 					pkg = self.dbapi._pkg_str(cpv, None)
-				except KeyError:
+				except (KeyError, InvalidData):
 					# This is expected for preserved libraries
 					# of packages that have been uninstalled
 					# without replacement.
