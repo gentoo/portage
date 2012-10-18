@@ -7,13 +7,15 @@ class PopenProcess(SubProcess):
 
 	__slots__ = ("pipe_reader", "proc",)
 
-	def __init__(self, **kwargs):
-		SubProcess.__init__(self, **kwargs)
+	def _start(self):
+
 		self.pid = self.proc.pid
 		self._registered = True
 
-	def _start(self):
-		if self.pipe_reader is not None:
+		if self.pipe_reader is None:
+			self._reg_id = self.scheduler.child_watch_add(
+				self.pid, self._child_watch_cb)
+		else:
 			try:
 				self.pipe_reader.scheduler = self.scheduler
 			except AttributeError:
