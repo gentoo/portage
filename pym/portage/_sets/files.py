@@ -86,8 +86,8 @@ class StaticFileSet(EditablePackageSet):
 				for a in data:
 					matches = self.dbapi.match(a)
 					for cpv in matches:
-						atoms.append("%s:%s" % (cpv_getkey(cpv),
-							self.dbapi.aux_get(cpv, ["SLOT"])[0]))
+						pkg = self.dbapi._pkg_str(cpv, None)
+						atoms.append("%s:%s" % (pkg.cp, pkg.slot))
 					# In addition to any installed slots, also try to pull
 					# in the latest new slot that may be available.
 					atoms.append(a)
