@@ -900,9 +900,8 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 			else:
 				vardb = vartree.dbapi
 				cpv = mysettings.mycpv
-				cp = portage.versions.cpv_getkey(cpv)
-				slot = mysettings["SLOT"]
-				cpv_slot = cp + ":" + slot
+				cpv_slot = "%s%s%s" % \
+					(cpv.cp, portage.dep._slot_separator, cpv.slot)
 				mysettings["REPLACING_VERSIONS"] = " ".join(
 					set(portage.versions.cpv_getversion(match) \
 						for match in vardb.match(cpv_slot) + \
