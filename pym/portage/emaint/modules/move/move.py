@@ -3,6 +3,7 @@
 
 import portage
 from portage import os
+from portage.exception import InvalidData
 from _emerge.Package import Package
 
 class MoveHandler(object):
@@ -66,14 +67,21 @@ class MoveHandler(object):
 				if update_cmd[0] == "move":
 					origcp, newcp = update_cmd[1:]
 					for cpv in match(origcp):
-						cpv = pkg_str(cpv, None)
+						try:
+							cpv = pkg_str(cpv, origcp.repo)
+						except (KeyError, InvalidData):
+							continue
 						if repo_match(cpv.repo):
 							errors.append("'%s' moved to '%s'" % (cpv, newcp))
 				elif update_cmd[0] == "slotmove":
 					pkg, origslot, newslot = update_cmd[1:]
-					for cpv in match(pkg):
-						cpv = pkg_str(cpv, None)
-						if cpv.slot == origslot and repo_match(cpv.repo):
+					atom = pkg.with_slot(origslot)
+					for cpv in match(atom):
+						try:
+							cpv = pkg_str(cpv, atom.repo)
+						except (KeyError, InvalidData):
+							continue
+						if repo_match(cpv.repo):
 							errors.append("'%s' slot moved from '%s' to '%s'" % \
 								(cpv, origslot, newslot))
 				if onProgress:
