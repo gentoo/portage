@@ -66,9 +66,6 @@ FEATURES="assume-digests binpkg-logs
 COLLISION_IGNORE="/lib/modules/* *.py[co]"
 UNINSTALL_IGNORE="/lib/modules/*"
 
-# Default chunksize for binhost comms
-PORTAGE_BINHOST_CHUNKSIZE="3000"
-
 # By default wait 5 secs before cleaning a package
 CLEAN_DELAY="5"
 

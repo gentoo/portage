@@ -663,14 +663,10 @@ unless \fBclean\-logs\fR is enabled in \fBFEATURES\fR.
 \fBPORTAGE_BINHOST\fR = \fI[space delimited URI list]\fR
 This is a list of hosts from which portage will grab prebuilt\-binary packages.
 Each entry in the list must specify the full address of a directory
-serving tbz2's for your system. This is only used when running with
+serving tbz2's for your system (this directory must contain a 'Packages' index
+file). This is only used when running with
 the get binary pkg options are given to \fBemerge\fR.  Review \fBemerge\fR(1) 
-for more information.  For versions of portage less that 2.1.6, this variable
-should point to the 'All' directory on the host that creates the binary
-packages and not to the root of the \fBPKGDIR\fR.  Starting with portage 2.1.6,
-it should point to a directory containing a 'Packages' index file.  If
-${PORTAGE_BINHOST}/Packages does not exist then portage will attempt to use
-the older protocol.
+for more information.
 .TP
 \fBPORTAGE_BINHOST_HEADER_URI\fR = \fI"ftp://login:pass@grp.mirror.site/pub/grp/i686/athlon\-xp/"\fR
 This variable only makes sense on a system that will serve as a binhost and

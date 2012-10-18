@@ -18,6 +18,7 @@ import socket
 import time
 import tempfile
 import base64
+import warnings
 
 _all_errors = [NotImplementedError, ValueError, socket.error]
 
@@ -65,6 +66,10 @@ if sys.hexversion >= 0x3000000:
 	long = int
 
 def make_metadata_dict(data):
+
+	warnings.warn("portage.getbinpkg.make_metadata_dict() is deprecated",
+		DeprecationWarning, stacklevel=2)
+
 	myid,myglob = data
 	
 	mydict = {}
@@ -84,6 +89,10 @@ class ParseLinks(html_parser_HTMLParser):
 	"""Parser class that overrides HTMLParser to grab all anchors from an html
 	page and provide suffix and prefix limitors"""
 	def __init__(self):
+
+		warnings.warn("portage.getbinpkg.ParseLinks is deprecated",
+			DeprecationWarning, stacklevel=2)
+
 		self.PL_anchors = []
 		html_parser_HTMLParser.__init__(self)
 
@@ -121,6 +130,9 @@ def create_conn(baseurl,conn=None):
 	"""(baseurl,conn) --- Takes a protocol://site:port/address url, and an
 	optional connection. If connection is already active, it is passed on.
 	baseurl is reduced to address and is returned in tuple (conn,address)"""
+
+	warnings.warn("portage.getbinpkg.create_conn() is deprecated",
+		DeprecationWarning, stacklevel=2)
 
 	parts = baseurl.split("://",1)
 	if len(parts) != 2:
@@ -221,6 +233,10 @@ def create_conn(baseurl,conn=None):
 def make_ftp_request(conn, address, rest=None, dest=None):
 	"""(conn,address,rest) --- uses the conn object to request the data
 	from address and issuing a rest if it is passed."""
+
+	warnings.warn("portage.getbinpkg.make_ftp_request() is deprecated",
+		DeprecationWarning, stacklevel=2)
+
 	try:
 	
 		if dest:
@@ -270,6 +286,9 @@ def make_http_request(conn, address, params={}, headers={}, dest=None):
 	the data from address, performing Location forwarding and using the
 	optional params and headers."""
 
+	warnings.warn("portage.getbinpkg.make_http_request() is deprecated",
+		DeprecationWarning, stacklevel=2)
+
 	rc = 0
 	response = None
 	while (rc == 0) or (rc == 301) or (rc == 302):
@@ -312,6 +331,10 @@ def make_http_request(conn, address, params={}, headers={}, dest=None):
 
 
 def match_in_array(array, prefix="", suffix="", match_both=1, allow_overlap=0):
+
+	warnings.warn("portage.getbinpkg.match_in_array() is deprecated",
+		DeprecationWarning, stacklevel=2)
+
 	myarray = []
 	
 	if not (prefix and suffix):
@@ -351,6 +374,9 @@ def dir_get_list(baseurl,conn=None):
 	"""(baseurl[,connection]) -- Takes a base url to connect to and read from.
 	URI should be in the form <proto>://<site>[:port]<path>
 	Connection is used for persistent connection instances."""
+
+	warnings.warn("portage.getbinpkg.dir_get_list() is deprecated",
+		DeprecationWarning, stacklevel=2)
 
 	if not conn:
 		keepconnection = 0
@@ -399,6 +425,9 @@ def file_get_metadata(baseurl,conn=None, chunk_size=3000):
 	"""(baseurl[,connection]) -- Takes a base url to connect to and read from.
 	URI should be in the form <proto>://<site>[:port]<path>
 	Connection is used for persistent connection instances."""
+
+	warnings.warn("portage.getbinpkg.file_get_metadata() is deprecated",
+		DeprecationWarning, stacklevel=2)
 
 	if not conn:
 		keepconnection = 0
@@ -451,6 +480,10 @@ def file_get(baseurl,dest,conn=None,fcmd=None,filename=None):
 	URI should be in the form <proto>://[user[:pass]@]<site>[:port]<path>"""
 
 	if not fcmd:
+
+		warnings.warn("Use of portage.getbinpkg.file_get() without the fcmd "
+			"parameter is deprecated", DeprecationWarning, stacklevel=2)
+
 		return file_get_lib(baseurl,dest,conn)
 	if not filename:
 		filename = os.path.basename(baseurl)
@@ -482,6 +515,9 @@ def file_get_lib(baseurl,dest,conn=None):
 	"""(baseurl[,connection]) -- Takes a base url to connect to and read from.
 	URI should be in the form <proto>://<site>[:port]<path>
 	Connection is used for persistent connection instances."""
+
+	warnings.warn("portage.getbinpkg.file_get_lib() is deprecated",
+		DeprecationWarning, stacklevel=2)
 
 	if not conn:
 		keepconnection = 0
@@ -526,6 +562,10 @@ def file_get_lib(baseurl,dest,conn=None):
 def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=1, makepickle=None):
 	"""(baseurl,conn,chunk_size,verbose) -- 
 	"""
+
+	warnings.warn("portage.getbinpkg.dir_get_metadata() is deprecated",
+		DeprecationWarning, stacklevel=2)
+
 	if not conn:
 		keepconnection = 0
 	else:
