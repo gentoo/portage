@@ -35,7 +35,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util._async.SchedulerInterface:SchedulerInterface',
 	'portage.util._eventloop.EventLoop:EventLoop',
 	'portage.versions:best,catpkgsplit,catsplit,cpv_getkey,vercmp,' + \
-		'_pkgsplit@pkgsplit,_pkg_str',
+		'_pkgsplit@pkgsplit,_pkg_str,_unknown_repo',
 	'subprocess',
 	'tarfile',
 )
@@ -1393,7 +1393,7 @@ class vartree(object):
 	def getslot(self, mycatpkg):
 		"Get a slot for a catpkg; assume it exists."
 		try:
-			return self.dbapi.aux_get(mycatpkg, ["SLOT"])[0]
+			return self.dbapi._pkg_str(mycatpkg, None).slot
 		except KeyError:
 			return ""
 
@@ -1701,8 +1701,11 @@ class dblink(object):
 						unmerge_preserve = \
 							self._find_libs_to_preserve(unmerge=True)
 					counter = self.vartree.dbapi.cpv_counter(self.mycpv)
-					plib_registry.unregister(self.mycpv,
-						self.settings["SLOT"], counter)
+					try:
+						slot = self.mycpv.slot
+					except AttributeError:
+						slot = _pkg_str(self.mycpv, slot=self.settings["SLOT"]).slot
+					plib_registry.unregister(self.mycpv, slot, counter)
 					if unmerge_preserve:
 						for path in sorted(unmerge_preserve):
 							contents_key = self._match_contents(path)
@@ -1712,7 +1715,7 @@ class dblink(object):
 							self._display_merge(_(">>> needed   %s %s\n") % \
 								(obj_type, contents_key), noiselevel=-1)
 						plib_registry.register(self.mycpv,
-							self.settings["SLOT"], counter, unmerge_preserve)
+							slot, counter, unmerge_preserve)
 						# Remove the preserved files from our contents
 						# so that they won't be unmerged.
 						self.vartree.dbapi.removeFromContents(self,
@@ -1807,7 +1810,7 @@ class dblink(object):
 		# done for this slot, so it shouldn't be repeated until the next
 		# replacement or unmerge operation.
 		if others_in_slot is None:
-			slot = self.vartree.dbapi.aux_get(self.mycpv, ["SLOT"])[0]
+			slot = self.vartree.dbapi._pkg_str(self.mycpv, None).slot
 			slot_matches = self.vartree.dbapi.match(
 				"%s:%s" % (portage.cpv_getkey(self.mycpv), slot))
 			others_in_slot = []
@@ -2075,7 +2078,7 @@ class dblink(object):
 
 		if others_in_slot is None:
 			others_in_slot = []
-			slot = self.vartree.dbapi.aux_get(self.mycpv, ["SLOT"])[0]
+			slot = self.vartree.dbapi._pkg_str(self.mycpv, None).slot
 			slot_matches = self.vartree.dbapi.match(
 				"%s:%s" % (portage.cpv_getkey(self.mycpv), slot))
 			for cur_cpv in slot_matches:
@@ -3811,14 +3814,13 @@ class dblink(object):
 					self.vartree.dbapi.flush_cache()
 
 					for pkg in owners:
-						other_slot, other_repo = self.vartree.dbapi.aux_get(
-							pkg.mycpv, ["SLOT", "repository"])
-						pkg_info_str = "%s%s%s" % (pkg.mycpv,
-							_slot_separator, other_slot)
-						if other_repo:
+						pkg = self.vartree.dbapi._pkg_str(pkg.mycpv, None)
+						pkg_info_str = "%s%s%s" % (pkg,
+							_slot_separator, pkg.slot)
+						if pkg.repo != _unknown_repo:
 							pkg_info_str += "%s%s" % (_repo_separator,
-								other_repo)
-						pkg_info_strs[pkg.mycpv] = pkg_info_str
+								pkg.repo)
+						pkg_info_strs[pkg] = pkg_info_str
 
 				finally:
 					self.unlockdb()
@@ -4090,8 +4092,8 @@ class dblink(object):
 						self.vartree.dbapi.lock()
 						try:
 							try:
-								slot, counter = self.vartree.dbapi.aux_get(
-									cpv, ["SLOT", "COUNTER"])
+								slot = self.vartree.dbapi._pkg_str(cpv, None).slot
+								counter = self.vartree.dbapi.cpv_counter(cpv)
 							except KeyError:
 								pass
 							else:
