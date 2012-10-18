@@ -60,10 +60,12 @@ class ManifestTask(CompositeTask):
 		self._start_gpg_proc()
 
 	def _check_sig_key(self):
+		null_fd = os.open('/dev/null', os.O_RDONLY)
 		popen_proc = PopenProcess(proc=subprocess.Popen(
 			["gpg", "--verify", self._manifest_path],
-			stdout=subprocess.PIPE, stderr=subprocess.STDOUT),
+			stdin=null_fd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT),
 			pipe_reader=PipeReader())
+		os.close(null_fd)
 		popen_proc.pipe_reader.input_files = {
 			"producer" : popen_proc.proc.stdout}
 		self._start_task(popen_proc, self._check_sig_key_exit)
