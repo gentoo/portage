@@ -13,7 +13,6 @@ from portage.util import (atomic_ofstream, grablines,
 from portage.util._async.PopenProcess import PopenProcess
 from _emerge.CompositeTask import CompositeTask
 from _emerge.PipeReader import PipeReader
-from _emerge.SpawnProcess import SpawnProcess
 from .ManifestProcess import ManifestProcess
 
 class ManifestTask(CompositeTask):
@@ -130,8 +129,7 @@ class ManifestTask(CompositeTask):
 		gpg_vars["FILE"] = self._manifest_path
 		gpg_cmd = varexpand(self.gpg_cmd, mydict=gpg_vars)
 		gpg_cmd = shlex_split(gpg_cmd)
-		gpg_proc = SpawnProcess(
-			args=gpg_cmd, env=os.environ, scheduler=self.scheduler)
+		gpg_proc = PopenProcess(proc=subprocess.Popen(gpg_cmd))
 		self._start_task(gpg_proc, self._gpg_proc_exit)
 
 	def _gpg_proc_exit(self, gpg_proc):
