@@ -82,13 +82,26 @@ class ManifestTask(CompositeTask):
 				return m.group(0)
 		return None
 
+	@staticmethod
+	def _normalize_gpg_key(key_str):
+		"""
+		Strips leading "0x" and trailing "!", and converts to uppercase
+		(intended to be the same format as that in gpg --verify output).
+		"""
+		key_str = key_str.upper()
+		if key_str.startswith("0X"):
+			key_str = key_str[2:]
+		key_str = key_str.rstrip("!")
+		return key_str
+
 	def _check_sig_key_exit(self, proc):
 		self._assert_current(proc)
 
 		parsed_key = self._parse_gpg_key(
 			proc.pipe_reader.getvalue().decode('utf_8', 'replace'))
 		if parsed_key is not None and \
-			parsed_key.lower() in self.force_sign_key.lower():
+			self._normalize_gpg_key(parsed_key) == \
+			self._normalize_gpg_key(self.force_sign_key):
 			self.returncode = os.EX_OK
 			self._current_task = None
 			self.wait()
