@@ -1806,9 +1806,9 @@ for x in effective_scanlist:
 		ebuild_archs = set(kw.lstrip("~") for kw in keywords \
 			if not kw.startswith("-"))
 
-		previous_keywords = slot_keywords.get(myaux["SLOT"])
+		previous_keywords = slot_keywords.get(pkg.slot)
 		if previous_keywords is None:
-			slot_keywords[myaux["SLOT"]] = set()
+			slot_keywords[pkg.slot] = set()
 		elif ebuild_archs and not live_ebuild:
 			dropped_keywords = previous_keywords.difference(ebuild_archs)
 			if dropped_keywords:
@@ -1817,7 +1817,7 @@ for x in effective_scanlist:
 					relative_path + ": %s" % \
 					" ".join(sorted(dropped_keywords)))
 
-		slot_keywords[myaux["SLOT"]].update(ebuild_archs)
+		slot_keywords[pkg.slot].update(ebuild_archs)
 
 		# KEYWORDS="-*" is a stupid replacement for package.mask and screws general KEYWORDS semantics
 		if "-*" in keywords:
