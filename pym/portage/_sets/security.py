@@ -44,8 +44,8 @@ class SecuritySet(PackageSet):
 		mydict = {}
 		for atom in atomlist[:]:
 			cpv = self._portdbapi.xmatch("match-all", atom)[0]
-			slot = self._portdbapi.aux_get(cpv, ["SLOT"])[0]
-			cps = "%s:%s" % (cpv.cp, slot)
+			pkg = self._portdbapi._pkg_str(cpv, None)
+			cps = "%s:%s" % (pkg.cp, pkg.slot)
 			if not cps in mydict:
 				mydict[cps] = (atom, cpv)
 			else:
