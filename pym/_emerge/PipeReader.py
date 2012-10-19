@@ -33,9 +33,6 @@ class PipeReader(AbstractPollTask):
 				self._registered_events, output_handler))
 		self._registered = True
 
-	def isAlive(self):
-		return self._registered
-
 	def _cancel(self):
 		if self.returncode is None:
 			self.returncode = 1

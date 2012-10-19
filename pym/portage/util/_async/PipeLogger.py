@@ -45,9 +45,6 @@ class PipeLogger(AbstractPollTask):
 			self._registered_events, self._output_handler)
 		self._registered = True
 
-	def isAlive(self):
-		return self._registered
-
 	def _cancel(self):
 		self._unregister()
 		if self.returncode is None:
