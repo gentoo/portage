@@ -29,16 +29,14 @@ class PipeReader(AbstractPollTask):
 		for f in self.input_files.values():
 			fcntl.fcntl(f.fileno(), fcntl.F_SETFL,
 				fcntl.fcntl(f.fileno(), fcntl.F_GETFL) | os.O_NONBLOCK)
-			self._reg_ids.add(self.scheduler.register(f.fileno(),
+			self._reg_ids.add(self.scheduler.io_add_watch(f.fileno(),
 				self._registered_events, output_handler))
 		self._registered = True
 
-	def isAlive(self):
-		return self._registered
-
 	def _cancel(self):
+		self._unregister()
 		if self.returncode is None:
-			self.returncode = 1
+			self.returncode = self._cancelled_returncode
 
 	def _wait(self):
 		if self.returncode is not None:
@@ -102,7 +100,7 @@ class PipeReader(AbstractPollTask):
 
 		if self._reg_ids is not None:
 			for reg_id in self._reg_ids:
-				self.scheduler.unregister(reg_id)
+				self.scheduler.source_remove(reg_id)
 			self._reg_ids = None
 
 		if self.input_files is not None:

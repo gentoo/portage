@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
@@ -9,10 +9,11 @@ from portage.package.ebuild.config import config
 from portage.package.ebuild.doebuild import spawn as doebuild_spawn
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
+from portage.util._async.SchedulerInterface import SchedulerInterface
+from portage.util._eventloop.global_event_loop import global_event_loop
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.Package import Package
-from _emerge.PollScheduler import PollScheduler
 
 class DoebuildSpawnTestCase(TestCase):
 	"""
@@ -59,7 +60,7 @@ class DoebuildSpawnTestCase(TestCase):
 			# has been sourced already.
 			open(os.path.join(settings['T'], 'environment'), 'wb').close()
 
-			scheduler = PollScheduler().sched_iface
+			scheduler = SchedulerInterface(global_event_loop())
 			for phase in ('_internal_test',):
 
 				# Test EbuildSpawnProcess by calling doebuild.spawn() with

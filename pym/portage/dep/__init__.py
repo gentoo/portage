@@ -36,11 +36,6 @@ if sys.hexversion >= 0x3000000:
 else:
 	_unicode = unicode
 
-# Api consumers included in portage should set this to True.
-# Once the relevant api changes are in a portage release with
-# stable keywords, make these warnings unconditional.
-_internal_warnings = False
-
 # \w is [a-zA-Z0-9_]
 
 # PMS 3.1.3: A slot name may contain any of the characters [A-Za-z0-9+_.-].
@@ -55,6 +50,7 @@ _op = r'([=~]|[><]=?)'
 
 _repo_separator = "::"
 _repo_name = r'[\w][\w-]*'
+_repo_name_re = re.compile('^' + _repo_name + '$', re.UNICODE)
 _repo = r'(?:' + _repo_separator + '(' + _repo_name + ')' + ')?'
 
 _extended_cat = r'[\w+*][\w+.*-]*'
@@ -143,7 +139,7 @@ def _get_atom_wildcard_re(eapi_attrs):
 
 	atom_re = re.compile(r'((?P<simple>(' +
 		_extended_cat + r')/(' + pkg_re + r'))' + \
-		'|(?P<star>=((' + _extended_cat + r')/(' + pkg_re + r'))-(?P<version>\*\d+\*)))' + \
+		'|(?P<star>=((' + _extended_cat + r')/(' + pkg_re + r'))-(?P<version>\*\w+\*)))' + \
 		'(:(?P<slot>' + _slot_loose + r'))?(' +
 		_repo_separator + r'(?P<repo>' + _repo_name + r'))?$', re.UNICODE)
 
@@ -273,7 +269,7 @@ def paren_reduce(mystr):
 	@rtype: Array
 	@return: The reduced string in an array
 	"""
-	if _internal_warnings:
+	if portage._internal_warnings:
 		warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
 			('portage.dep.paren_reduce',), DeprecationWarning, stacklevel=2)
 	mysplit = mystr.split()
@@ -365,7 +361,7 @@ class paren_normalize(list):
 	"""Take a dependency structure as returned by paren_reduce or use_reduce
 	and generate an equivalent structure that has no redundant lists."""
 	def __init__(self, src):
-		if _internal_warnings:
+		if portage._internal_warnings:
 			warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
 				('portage.dep.paren_normalize',), DeprecationWarning, stacklevel=2)
 		list.__init__(self)
@@ -461,7 +457,7 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 	@return: The use reduced depend array
 	"""
 	if isinstance(depstr, list):
-		if _internal_warnings:
+		if portage._internal_warnings:
 			warnings.warn(_("Passing paren_reduced dep arrays to %s is deprecated. " + \
 				"Pass the original dep string instead.") % \
 				('portage.dep.use_reduce',), DeprecationWarning, stacklevel=2)
@@ -762,7 +758,7 @@ def dep_opconvert(deplist):
 	@return:
 		The new list with the new ordering
 	"""
-	if _internal_warnings:
+	if portage._internal_warnings:
 		warnings.warn(_("%s is deprecated. Use %s with the opconvert parameter set to True instead.") % \
 			('portage.dep.dep_opconvert', 'portage.dep.use_reduce'), DeprecationWarning, stacklevel=2)
 
@@ -793,7 +789,7 @@ def flatten(mylist):
 	@rtype: List
 	@return: A single list containing only non-list elements.
 	"""
-	if _internal_warnings:
+	if portage._internal_warnings:
 		warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
 			('portage.dep.flatten',), DeprecationWarning, stacklevel=2)
 
@@ -2134,7 +2130,7 @@ def match_from_list(mydep, candidate_list):
 
 			candidate_list = mylist
 			mylist = []
-			# Currently, only \*\d+\* is supported.
+			# Currently, only \*\w+\* is supported.
 			ver = mydep.version[1:-1]
 
 			for x in candidate_list:
@@ -2174,11 +2170,10 @@ def match_from_list(mydep, candidate_list):
 		# XXX: Nasty special casing for leading zeros
 		# Required as =* is a literal prefix match, so can't 
 		# use vercmp
-		mysplit = catpkgsplit(mycpv)
-		myver = mysplit[2].lstrip("0")
+		myver = mycpv_cps[2].lstrip("0")
 		if not myver or not myver[0].isdigit():
 			myver = "0"+myver
-		mycpv_cmp = mysplit[0]+"/"+mysplit[1]+"-"+myver
+		mycpv_cmp = mycpv_cps[0] + "/" + mycpv_cps[1] + "-" + myver
 		for x in candidate_list:
 			xs = getattr(x, "cpv_split", None)
 			if xs is None:

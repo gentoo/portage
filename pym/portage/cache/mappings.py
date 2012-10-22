@@ -199,10 +199,10 @@ class OrderedDict(UserDict):
 		return iter(self._order)
 
 	def __setitem__(self, key, item):
-		if key in self:
-			self._order.remove(key)
+		new_key = key not in self
 		UserDict.__setitem__(self, key, item)
-		self._order.append(key)
+		if new_key:
+			self._order.append(key)
 
 	def __delitem__(self, key):
 		UserDict.__delitem__(self, key)

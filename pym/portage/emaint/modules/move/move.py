@@ -3,6 +3,7 @@
 
 import portage
 from portage import os
+from portage.exception import InvalidData
 from _emerge.Package import Package
 
 class MoveHandler(object):
@@ -48,6 +49,7 @@ class MoveHandler(object):
 		# progress bar is updated in indeterminate mode.
 		match = self._tree.dbapi.match
 		aux_get = self._tree.dbapi.aux_get
+		pkg_str = self._tree.dbapi._pkg_str
 		if onProgress:
 			onProgress(0, 0)
 		for repo, updates in allupdates.items():
@@ -65,13 +67,21 @@ class MoveHandler(object):
 				if update_cmd[0] == "move":
 					origcp, newcp = update_cmd[1:]
 					for cpv in match(origcp):
-						if repo_match(aux_get(cpv, ["repository"])[0]):
+						try:
+							cpv = pkg_str(cpv, origcp.repo)
+						except (KeyError, InvalidData):
+							continue
+						if repo_match(cpv.repo):
 							errors.append("'%s' moved to '%s'" % (cpv, newcp))
 				elif update_cmd[0] == "slotmove":
 					pkg, origslot, newslot = update_cmd[1:]
-					for cpv in match(pkg):
-						slot, prepo = aux_get(cpv, ["SLOT", "repository"])
-						if slot == origslot and repo_match(prepo):
+					atom = pkg.with_slot(origslot)
+					for cpv in match(atom):
+						try:
+							cpv = pkg_str(cpv, atom.repo)
+						except (KeyError, InvalidData):
+							continue
+						if repo_match(cpv.repo):
 							errors.append("'%s' slot moved from '%s' to '%s'" % \
 								(cpv, origslot, newslot))
 				if onProgress:

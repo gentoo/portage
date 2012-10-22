@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import io
@@ -143,9 +143,14 @@ class AbstractEbuildProcess(SpawnProcess):
 		self._exit_command.reply_hook = self._exit_command_callback
 		query_command = QueryCommand(self.settings, self.phase)
 		commands = {
-			'best_version' : query_command,
-			'exit'         : self._exit_command,
-			'has_version'  : query_command,
+			'available_eclasses'  : query_command,
+			'best_version'        : query_command,
+			'eclass_path'         : query_command,
+			'exit'                : self._exit_command,
+			'has_version'         : query_command,
+			'license_path'        : query_command,
+			'master_repositories' : query_command,
+			'repository_path'     : query_command,
 		}
 		input_fifo, output_fifo = self._init_ipc_fifos()
 		self._ipc_daemon = EbuildIpcDaemon(commands=commands,

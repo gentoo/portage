@@ -6,7 +6,7 @@ import io
 import portage
 from portage import os
 from portage import _unicode_decode
-from portage.dep import Atom
+from portage.dep import Atom, _repo_name_re
 from portage.eapi import eapi_has_repo_deps
 from portage.elog import messages as elog_messages
 from portage.exception import InvalidAtom
@@ -36,39 +36,46 @@ class QueryCommand(IpcCommand):
 		@return: tuple of (stdout, stderr, returncode)
 		"""
 
-		cmd, root, atom_str = argv
-
-		eapi = self.settings.get('EAPI')
-		allow_repo = eapi_has_repo_deps(eapi)
-		try:
-			atom = Atom(atom_str, allow_repo=allow_repo)
-		except InvalidAtom:
-			return ('', 'invalid atom: %s\n' % atom_str, 2)
+		# Python 3:
+		# cmd, root, *args = argv
+		cmd = argv[0]
+		root = argv[1]
+		args = argv[2:]
 
 		warnings = []
-		try:
-			atom = Atom(atom_str, allow_repo=allow_repo, eapi=eapi)
-		except InvalidAtom as e:
-			warnings.append(_unicode_decode("QA Notice: %s: %s") % (cmd, e))
-
-		use = self.settings.get('PORTAGE_BUILT_USE')
-		if use is None:
-			use = self.settings['PORTAGE_USE']
-
-		use = frozenset(use.split())
-		atom = atom.evaluate_conditionals(use)
+		warnings_str = ''
 
 		db = self.get_db()
-
-		warnings_str = ''
-		if warnings:
-			warnings_str = self._elog('eqawarn', warnings)
+		eapi = self.settings.get('EAPI')
 
 		root = normalize_path(root).rstrip(os.path.sep) + os.path.sep
 		if root not in db:
-			return ('', 'invalid ROOT: %s\n' % root, 2)
+			return ('', '%s: Invalid ROOT: %s\n' % (cmd, root), 3)
 
+		portdb = db[root]["porttree"].dbapi
 		vardb = db[root]["vartree"].dbapi
+
+		if cmd in ('best_version', 'has_version'):
+			allow_repo = eapi_has_repo_deps(eapi)
+			try:
+				atom = Atom(args[0], allow_repo=allow_repo)
+			except InvalidAtom:
+				return ('', '%s: Invalid atom: %s\n' % (cmd, args[0]), 2)
+
+			try:
+				atom = Atom(args[0], allow_repo=allow_repo, eapi=eapi)
+			except InvalidAtom as e:
+				warnings.append(_unicode_decode("QA Notice: %s: %s") % (cmd, e))
+
+			use = self.settings.get('PORTAGE_BUILT_USE')
+			if use is None:
+				use = self.settings['PORTAGE_USE']
+
+			use = frozenset(use.split())
+			atom = atom.evaluate_conditionals(use)
+
+		if warnings:
+			warnings_str = self._elog('eqawarn', warnings)
 
 		if cmd == 'has_version':
 			if vardb.match(atom):
@@ -79,8 +86,35 @@ class QueryCommand(IpcCommand):
 		elif cmd == 'best_version':
 			m = best(vardb.match(atom))
 			return ('%s\n' % m, warnings_str, 0)
+		elif cmd in ('master_repositories', 'repository_path', 'available_eclasses', 'eclass_path', 'license_path'):
+			repo = _repo_name_re.match(args[0])
+			if repo is None:
+				return ('', '%s: Invalid repository: %s\n' % (cmd, args[0]), 2)
+			try:
+				repo = portdb.repositories[args[0]]
+			except KeyError:
+				return ('', warnings_str, 1)
+
+			if cmd == 'master_repositories':
+				return ('%s\n' % ' '.join(x.name for x in repo.masters), warnings_str, 0)
+			elif cmd == 'repository_path':
+				return ('%s\n' % repo.location, warnings_str, 0)
+			elif cmd == 'available_eclasses':
+				return ('%s\n' % ' '.join(sorted(repo.eclass_db.eclasses)), warnings_str, 0)
+			elif cmd == 'eclass_path':
+				try:
+					eclass = repo.eclass_db.eclasses[args[1]]
+				except KeyError:
+					return ('', warnings_str, 1)
+				return ('%s\n' % eclass.location, warnings_str, 0)
+			elif cmd == 'license_path':
+				paths = reversed([os.path.join(x.location, 'licenses', args[1]) for x in list(repo.masters) + [repo]])
+				for path in paths:
+					if os.path.exists(path):
+						return ('%s\n' % path, warnings_str, 0)
+				return ('', warnings_str, 1)
 		else:
-			return ('', 'invalid command: %s\n' % cmd, 2)
+			return ('', 'Invalid command: %s\n' % cmd, 3)
 
 	def _elog(self, elog_funcname, lines):
 		"""

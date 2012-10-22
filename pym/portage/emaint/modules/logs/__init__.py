@@ -20,7 +20,7 @@ module_spec = {
 				'clean': {
 					"short": "-C", "long": "--clean",
 					"help": "Cleans out logs more than 7 days old (cleanlogs only)" + \
-								 "   modulke-options: -t, -p",
+								 "   module-options: -t, -p",
 					'status': "Cleaning %s",
 					'func': 'clean'
 					},

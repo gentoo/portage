@@ -151,4 +151,4 @@ class AbstractPollTask(AsynchronousTask):
 			while self._registered and not timeout_cb.timed_out:
 				self.scheduler.iteration()
 		finally:
-			self.scheduler.unregister(timeout_cb.timeout_id)
+			self.scheduler.source_remove(timeout_cb.timeout_id)

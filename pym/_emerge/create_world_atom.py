@@ -1,7 +1,15 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import sys
+
 from portage.dep import _repo_separator
+from portage.exception import InvalidData
+
+if sys.hexversion >= 0x3000000:
+	_unicode = str
+else:
+	_unicode = unicode
 
 def create_world_atom(pkg, args_set, root_config):
 	"""Create a new atom for the world file if one does not exist.  If the
@@ -35,16 +43,15 @@ def create_world_atom(pkg, args_set, root_config):
 	for cpv in portdb.match(cp):
 		for repo in repos:
 			try:
-				available_slots.add(portdb.aux_get(cpv, ["SLOT"],
-					myrepo=repo)[0])
-			except KeyError:
+				available_slots.add(portdb._pkg_str(_unicode(cpv), repo).slot)
+			except (KeyError, InvalidData):
 				pass
 
 	slotted = len(available_slots) > 1 or \
 		(len(available_slots) == 1 and "0" not in available_slots)
 	if not slotted:
 		# check the vdb in case this is multislot
-		available_slots = set(vardb.aux_get(cpv, ["SLOT"])[0] \
+		available_slots = set(vardb._pkg_str(cpv, None).slot \
 			for cpv in vardb.match(cp))
 		slotted = len(available_slots) > 1 or \
 			(len(available_slots) == 1 and "0" not in available_slots)
@@ -83,14 +90,14 @@ def create_world_atom(pkg, args_set, root_config):
 			matched_slots = set()
 			if mydb is vardb:
 				for cpv in matches:
-					matched_slots.add(mydb.aux_get(cpv, ["SLOT"])[0])
+					matched_slots.add(mydb._pkg_str(cpv, None).slot)
 			else:
 				for cpv in matches:
 					for repo in repos:
 						try:
-							matched_slots.add(portdb.aux_get(cpv, ["SLOT"],
-								myrepo=repo)[0])
-						except KeyError:
+							matched_slots.add(
+								portdb._pkg_str(_unicode(cpv), repo).slot)
+						except (KeyError, InvalidData):
 							pass
 
 			if len(matched_slots) == 1:

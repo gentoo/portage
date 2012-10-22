@@ -1,18 +1,12 @@
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import gzip
-import errno
-
 try:
 	import threading
 except ImportError:
 	import dummy_threading as threading
 
-from portage import _encodings
-from portage import _unicode_encode
-from portage.util import writemsg_level
-from portage.util.SlotObject import SlotObject
+from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.EventLoop import EventLoop
 from portage.util._eventloop.global_event_loop import global_event_loop
 
@@ -21,16 +15,9 @@ from _emerge.getloadavg import getloadavg
 class PollScheduler(object):
 
 	# max time between loadavg checks (milliseconds)
-	_loadavg_latency = 30000
+	_loadavg_latency = None
 
-	class _sched_iface_class(SlotObject):
-		__slots__ = ("IO_ERR", "IO_HUP", "IO_IN", "IO_NVAL", "IO_OUT",
-			"IO_PRI", "child_watch_add",
-			"idle_add", "io_add_watch", "iteration",
-			"output", "register", "run",
-			"source_remove", "timeout_add", "unregister")
-
-	def __init__(self, main=False):
+	def __init__(self, main=False, event_loop=None):
 		"""
 		@param main: If True then use global_event_loop(), otherwise use
 			a local EventLoop instance (default is False, for safe use in
@@ -41,29 +28,19 @@ class PollScheduler(object):
 		self._terminated_tasks = False
 		self._max_jobs = 1
 		self._max_load = None
-		self._jobs = 0
 		self._scheduling = False
 		self._background = False
-		if main:
+		if event_loop is not None:
+			self._event_loop = event_loop
+		elif main:
 			self._event_loop = global_event_loop()
 		else:
 			self._event_loop = EventLoop(main=False)
-		self.sched_iface = self._sched_iface_class(
-			IO_ERR=self._event_loop.IO_ERR,
-			IO_HUP=self._event_loop.IO_HUP,
-			IO_IN=self._event_loop.IO_IN,
-			IO_NVAL=self._event_loop.IO_NVAL,
-			IO_OUT=self._event_loop.IO_OUT,
-			IO_PRI=self._event_loop.IO_PRI,
-			child_watch_add=self._event_loop.child_watch_add,
-			idle_add=self._event_loop.idle_add,
-			io_add_watch=self._event_loop.io_add_watch,
-			iteration=self._event_loop.iteration,
-			output=self._task_output,
-			register=self._event_loop.io_add_watch,
-			source_remove=self._event_loop.source_remove,
-			timeout_add=self._event_loop.timeout_add,
-			unregister=self._event_loop.source_remove)
+		self._sched_iface = SchedulerInterface(self._event_loop,
+			is_background=self._is_background)
+
+	def _is_background(self):
+		return self._background
 
 	def terminate(self):
 		"""
@@ -138,51 +115,23 @@ class PollScheduler(object):
 		Calls _schedule_tasks() and automatically returns early from
 		any recursive calls to this method that the _schedule_tasks()
 		call might trigger. This makes _schedule() safe to call from
-		inside exit listeners.
+		inside exit listeners. This method always returns True, so that
+		it may be scheduled continuously via EventLoop.timeout_add().
 		"""
 		if self._scheduling:
-			return False
+			return True
 		self._scheduling = True
 		try:
 			self._schedule_tasks()
 		finally:
 			self._scheduling = False
-
-	def _main_loop(self):
-		term_check_id = self.sched_iface.idle_add(self._termination_check)
-		loadavg_check_id = None
-		if self._max_load is not None:
-			# We have to schedule periodically, in case the load
-			# average has changed since the last call.
-			loadavg_check_id = self.sched_iface.timeout_add(
-				self._loadavg_latency, self._schedule)
-
-		try:
-			# Populate initial event sources. Unless we're scheduling
-			# based on load average, we only need to do this once
-			# here, since it can be called during the loop from within
-			# event handlers.
-			self._schedule()
-
-			# Loop while there are jobs to be scheduled.
-			while self._keep_scheduling():
-				self.sched_iface.iteration()
-
-			# Clean shutdown of previously scheduled jobs. In the
-			# case of termination, this allows for basic cleanup
-			# such as flushing of buffered output to logs.
-			while self._is_work_scheduled():
-				self.sched_iface.iteration()
-		finally:
-			self.sched_iface.source_remove(term_check_id)
-			if loadavg_check_id is not None:
-				self.sched_iface.source_remove(loadavg_check_id)
+		return True
 
 	def _is_work_scheduled(self):
 		return bool(self._running_job_count())
 
 	def _running_job_count(self):
-		return self._jobs
+		raise NotImplementedError(self)
 
 	def _can_add_job(self):
 		if self._terminated_tasks:
@@ -207,47 +156,3 @@ class PollScheduler(object):
 				return False
 
 		return True
-
-	def _task_output(self, msg, log_path=None, background=None,
-		level=0, noiselevel=-1):
-		"""
-		Output msg to stdout if not self._background. If log_path
-		is not None then append msg to the log (appends with
-		compression if the filename extension of log_path
-		corresponds to a supported compression type).
-		"""
-
-		if background is None:
-			# If the task does not have a local background value
-			# (like for parallel-fetch), then use the global value.
-			background = self._background
-
-		msg_shown = False
-		if not background:
-			writemsg_level(msg, level=level, noiselevel=noiselevel)
-			msg_shown = True
-
-		if log_path is not None:
-			try:
-				f = open(_unicode_encode(log_path,
-					encoding=_encodings['fs'], errors='strict'),
-					mode='ab')
-				f_real = f
-			except IOError as e:
-				if e.errno not in (errno.ENOENT, errno.ESTALE):
-					raise
-				if not msg_shown:
-					writemsg_level(msg, level=level, noiselevel=noiselevel)
-			else:
-
-				if log_path.endswith('.gz'):
-					# NOTE: The empty filename argument prevents us from
-					# triggering a bug in python3 which causes GzipFile
-					# to raise AttributeError if fileobj.name is bytes
-					# instead of unicode.
-					f =  gzip.GzipFile(filename='', mode='ab', fileobj=f)
-
-				f.write(_unicode_encode(msg))
-				f.close()
-				if f_real is not f:
-					f_real.close()

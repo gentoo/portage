@@ -38,7 +38,7 @@ install_symlink_html_docs() {
 			if [ -z "${SLOT}" -o "${SLOT}" = "0" ] ; then
 				mysympath="${DOC_SYMLINKS_DIR}/${CATEGORY}/${PN}"
 			else
-				mysympath="${DOC_SYMLINKS_DIR}/${CATEGORY}/${PN}-${SLOT}"
+				mysympath="${DOC_SYMLINKS_DIR}/${CATEGORY}/${PN}-${SLOT%/*}"
 			fi
 			einfo "Symlinking ${mysympath} to the HTML documentation"
 			dodir "${DOC_SYMLINKS_DIR}/${CATEGORY}"
@@ -837,21 +837,41 @@ install_qa_check_misc() {
 	   [[ -x ${EPREFIX}/usr/bin/file && -x ${EPREFIX}/usr/bin/find ]] && \
 	   [[ -n ${MULTILIB_STRICT_DIRS} && -n ${MULTILIB_STRICT_DENY} ]]
 	then
-		local abort=no dir file firstrun=yes
+		rm -f "${T}/multilib-strict.log"
+		local abort=no dir file
 		MULTILIB_STRICT_EXEMPT=$(echo ${MULTILIB_STRICT_EXEMPT} | sed -e 's:\([(|)]\):\\\1:g')
 		for dir in ${MULTILIB_STRICT_DIRS} ; do
 			[[ -d ${ED}/${dir} ]] || continue
 			for file in $(find ${ED}/${dir} -type f | grep -v "^${ED}/${dir}/${MULTILIB_STRICT_EXEMPT}"); do
 				if file ${file} | egrep -q "${MULTILIB_STRICT_DENY}" ; then
-					if [[ ${firstrun} == yes ]] ; then
-						echo "Files matching a file type that is not allowed:"
-						firstrun=no
-					fi
-					abort=yes
-					echo "   ${file#${ED}//}"
+					echo "${file#${ED}//}" >> "${T}/multilib-strict.log"
 				fi
 			done
 		done
+
+		if [[ -s ${T}/multilib-strict.log ]] ; then
+			if [[ ${#QA_MULTILIB_PATHS[@]} -eq 1 ]] ; then
+				local shopts=$-
+				set -o noglob
+				QA_MULTILIB_PATHS=(${QA_MULTILIB_PATHS})
+				set +o noglob
+				set -${shopts}
+			fi
+			if [ "${QA_STRICT_MULTILIB_PATHS-unset}" = unset ] ; then
+				for x in "${QA_MULTILIB_PATHS[@]}" ; do
+					sed -e "s#^${x#/}\$##" -i "${T}/multilib-strict.log"
+				done
+				sed -e "/^\$/d" -i "${T}/multilib-strict.log"
+			fi
+			if [[ -s ${T}/multilib-strict.log ]] ; then
+				abort=yes
+				echo "Files matching a file type that is not allowed:"
+				while read -r ; do
+					echo "   ${REPLY}"
+				done < "${T}/multilib-strict.log"
+			fi
+		fi
+
 		[[ ${abort} == yes ]] && die "multilib-strict check failed!"
 	fi
 
@@ -1794,7 +1814,7 @@ Summary: ${DESCRIPTION}
 Name: ${PN}
 Version: ${PV}
 Release: ${PR}
-Copyright: GPL
+License: GPL
 Group: portage/${CATEGORY}
 Source: ${PF}.tar.gz
 Buildroot: ${D}

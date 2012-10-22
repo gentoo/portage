@@ -378,7 +378,7 @@ def getMinUpgrade(vulnerableList, unaffectedList, portdbapi, vardbapi, minimize=
 						or not match("="+rValue, portdbapi) \
 						or (minimize ^ (vercmp(c.version, rValue.version) > 0)) \
 							and match("="+c, portdbapi)) \
-					and portdbapi.aux_get(c, ["SLOT"]) == vardbapi.aux_get(best(v_installed), ["SLOT"]):
+					and portdbapi._pkg_str(c, None).slot == vardbapi._pkg_str(best(v_installed), None).slot:
 				rValue = c
 	return rValue
 
@@ -473,8 +473,13 @@ class Glsa:
 			myurl = "file://"+self.nr
 		else:
 			myurl = repository + "glsa-%s.xml" % str(self.nr)
-		with urllib_request_urlopen(myurl) as f:
+
+		f = urllib_request_urlopen(myurl)
+		try:
 			self.parse(f)
+		finally:
+			f.close()
+
 		return None
 
 	def parse(self, myfile):

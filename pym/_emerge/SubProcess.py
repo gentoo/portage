@@ -116,7 +116,7 @@ class SubProcess(AbstractPollTask):
 		self._registered = False
 
 		if self._reg_id is not None:
-			self.scheduler.unregister(self._reg_id)
+			self.scheduler.source_remove(self._reg_id)
 			self._reg_id = None
 
 		if self._files is not None:

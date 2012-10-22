@@ -12,7 +12,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dbapi.dep_expand:dep_expand',
 	'portage.dbapi._MergeProcess:MergeProcess',
 	'portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list,' + \
-	 	'use_reduce,_get_slot_re',
+	 	'use_reduce,_get_slot_re,_slot_separator,_repo_separator',
 	'portage.eapi:_get_eapi_attrs',
 	'portage.elog:collect_ebuild_messages,collect_messages,' + \
 		'elog_process,_merge_logentries',
@@ -35,8 +35,10 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util._dyn_libs.LinkageMapMachO:LinkageMapMachO',
 	'portage.util._dyn_libs.LinkageMapPeCoff:LinkageMapPeCoff',
 	'portage.util._dyn_libs.LinkageMapXCoff:LinkageMapXCoff',
+	'portage.util._async.SchedulerInterface:SchedulerInterface',
+	'portage.util._eventloop.EventLoop:EventLoop',
 	'portage.versions:best,catpkgsplit,catsplit,cpv_getkey,vercmp,' + \
-		'_pkgsplit@pkgsplit,_pkg_str',
+		'_pkgsplit@pkgsplit,_pkg_str,_unknown_repo',
 	'subprocess',
 	'tarfile',
 )
@@ -63,7 +65,6 @@ from portage import _unicode_encode
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.emergelog import emergelog
-from _emerge.PollScheduler import PollScheduler
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.SpawnProcess import SpawnProcess
 
@@ -1407,7 +1408,7 @@ class vartree(object):
 	def getslot(self, mycatpkg):
 		"Get a slot for a catpkg; assume it exists."
 		try:
-			return self.dbapi.aux_get(mycatpkg, ["SLOT"])[0]
+			return self.dbapi._pkg_str(mycatpkg, None).slot
 		except KeyError:
 			return ""
 
@@ -1715,8 +1716,11 @@ class dblink(object):
 						unmerge_preserve = \
 							self._find_libs_to_preserve(unmerge=True)
 					counter = self.vartree.dbapi.cpv_counter(self.mycpv)
-					plib_registry.unregister(self.mycpv,
-						self.settings["SLOT"], counter)
+					try:
+						slot = self.mycpv.slot
+					except AttributeError:
+						slot = _pkg_str(self.mycpv, slot=self.settings["SLOT"]).slot
+					plib_registry.unregister(self.mycpv, slot, counter)
 					if unmerge_preserve:
 						for path in sorted(unmerge_preserve):
 							contents_key = self._match_contents(path)
@@ -1726,7 +1730,7 @@ class dblink(object):
 							self._display_merge(_(">>> needed   %s %s\n") % \
 								(obj_type, contents_key), noiselevel=-1)
 						plib_registry.register(self.mycpv,
-							self.settings["SLOT"], counter, unmerge_preserve)
+							slot, counter, unmerge_preserve)
 						# Remove the preserved files from our contents
 						# so that they won't be unmerged.
 						self.vartree.dbapi.removeFromContents(self,
@@ -1796,7 +1800,7 @@ class dblink(object):
 		if self._scheduler is None:
 			# We create a scheduler instance and use it to
 			# log unmerge output separately from merge output.
-			self._scheduler = PollScheduler().sched_iface
+			self._scheduler = SchedulerInterface(EventLoop(main=False))
 		if self.settings.get("PORTAGE_BACKGROUND") == "subprocess":
 			if self.settings.get("PORTAGE_BACKGROUND_UNMERGE") == "1":
 				self.settings["PORTAGE_BACKGROUND"] = "1"
@@ -1821,7 +1825,7 @@ class dblink(object):
 		# done for this slot, so it shouldn't be repeated until the next
 		# replacement or unmerge operation.
 		if others_in_slot is None:
-			slot = self.vartree.dbapi.aux_get(self.mycpv, ["SLOT"])[0]
+			slot = self.vartree.dbapi._pkg_str(self.mycpv, None).slot
 			slot_matches = self.vartree.dbapi.match(
 				"%s:%s" % (portage.cpv_getkey(self.mycpv), slot))
 			others_in_slot = []
@@ -2089,7 +2093,7 @@ class dblink(object):
 
 		if others_in_slot is None:
 			others_in_slot = []
-			slot = self.vartree.dbapi.aux_get(self.mycpv, ["SLOT"])[0]
+			slot = self.vartree.dbapi._pkg_str(self.mycpv, None).slot
 			slot_matches = self.vartree.dbapi.match(
 				"%s:%s" % (portage.cpv_getkey(self.mycpv), slot))
 			for cur_cpv in slot_matches:
@@ -3825,17 +3829,28 @@ class dblink(object):
 					# get_owners is slow for large numbers of files, so
 					# don't look them all up.
 					collisions = collisions[:20]
+
+				pkg_info_strs = {}
 				self.lockdb()
 				try:
 					owners = self.vartree.dbapi._owners.get_owners(collisions)
 					self.vartree.dbapi.flush_cache()
+
+					for pkg in owners:
+						pkg = self.vartree.dbapi._pkg_str(pkg.mycpv, None)
+						pkg_info_str = "%s%s%s" % (pkg,
+							_slot_separator, pkg.slot)
+						if pkg.repo != _unknown_repo:
+							pkg_info_str += "%s%s" % (_repo_separator,
+								pkg.repo)
+						pkg_info_strs[pkg] = pkg_info_str
+
 				finally:
 					self.unlockdb()
 
 				for pkg, owned_files in owners.items():
-					cpv = pkg.mycpv
 					msg = []
-					msg.append("%s" % cpv)
+					msg.append(pkg_info_strs[pkg.mycpv])
 					for f in sorted(owned_files):
 						msg.append("\t%s" % os.path.join(destroot,
 							f.lstrip(os.path.sep)))
@@ -4100,9 +4115,9 @@ class dblink(object):
 						self.vartree.dbapi.lock()
 						try:
 							try:
-								slot, counter = self.vartree.dbapi.aux_get(
-									cpv, ["SLOT", "COUNTER"])
-							except KeyError:
+								slot = self.vartree.dbapi._pkg_str(cpv, None).slot
+								counter = self.vartree.dbapi.cpv_counter(cpv)
+							except (KeyError, InvalidData):
 								pass
 							else:
 								has_vdb_entry = True
@@ -4653,7 +4668,7 @@ class dblink(object):
 			self.lockdb()
 		self.vartree.dbapi._bump_mtime(self.mycpv)
 		if self._scheduler is None:
-			self._scheduler = PollScheduler().sched_iface
+			self._scheduler = SchedulerInterface(EventLoop(main=False))
 		try:
 			retval = self.treewalk(mergeroot, myroot, inforoot, myebuild,
 				cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes,
@@ -4837,7 +4852,7 @@ def merge(mycat, mypkg, pkgloc, infloc,
 	merge_task = MergeProcess(
 		mycat=mycat, mypkg=mypkg, settings=settings,
 		treetype=mytree, vartree=vartree,
-		scheduler=(scheduler or PollScheduler().sched_iface),
+		scheduler=(scheduler or EventLoop(main=False)),
 		background=background, blockers=blockers, pkgloc=pkgloc,
 		infloc=infloc, myebuild=myebuild, mydbapi=mydbapi,
 		prev_mtimes=prev_mtimes, logfile=settings.get('PORTAGE_LOG_FILE'))

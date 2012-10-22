@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
@@ -47,7 +47,9 @@ class MergeListItem(CompositeTask):
 
 		action_desc = "Emerging"
 		preposition = "for"
+		pkg_color = "PKG_MERGE"
 		if pkg.type_name == "binary":
+			pkg_color = "PKG_BINARY_MERGE"
 			action_desc += " binary"
 
 		if build_opts.fetchonly:
@@ -57,7 +59,7 @@ class MergeListItem(CompositeTask):
 			(action_desc,
 			colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
 			colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)),
-			colorize("GOOD", pkg.cpv))
+			colorize(pkg_color, pkg.cpv))
 
 		portdb = pkg.root_config.trees["porttree"].dbapi
 		portdir_repo_name = portdb.getRepositoryName(portdb.porttree_root)

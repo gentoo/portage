@@ -28,6 +28,8 @@ from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import ensure_dirs, writemsg, writemsg_level
 from portage.util.SlotObject import SlotObject
+from portage.util._async.SchedulerInterface import SchedulerInterface
+from portage.util._eventloop.EventLoop import EventLoop
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
 from portage.package.ebuild.doebuild import (_check_temp_dir,
@@ -50,6 +52,7 @@ from _emerge.EbuildFetcher import EbuildFetcher
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.emergelog import emergelog
 from _emerge.FakeVartree import FakeVartree
+from _emerge.getloadavg import getloadavg
 from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
 from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
 from _emerge.JobStatusDisplay import JobStatusDisplay
@@ -63,6 +66,9 @@ if sys.hexversion >= 0x3000000:
 	basestring = str
 
 class Scheduler(PollScheduler):
+
+	# max time between loadavg checks (milliseconds)
+	_loadavg_latency = 30000
 
 	# max time between display status updates (milliseconds)
 	_max_display_latency = 3000
@@ -79,7 +85,7 @@ class Scheduler(PollScheduler):
 	_opts_no_self_update = frozenset(["--buildpkgonly",
 		"--fetchonly", "--fetch-all-uri", "--pretend"])
 
-	class _iface_class(PollScheduler._sched_iface_class):
+	class _iface_class(SchedulerInterface):
 		__slots__ = ("fetch",
 			"scheduleSetup", "scheduleUnpack")
 
@@ -135,8 +141,7 @@ class Scheduler(PollScheduler):
 			portage.exception.PortageException.__init__(self, value)
 
 	def __init__(self, settings, trees, mtimedb, myopts,
-		spinner, mergelist=None, favorites=None, graph_config=None,
-		uninstall_only=False):
+		spinner, mergelist=None, favorites=None, graph_config=None):
 		PollScheduler.__init__(self, main=True)
 
 		if mergelist is not None:
@@ -152,7 +157,6 @@ class Scheduler(PollScheduler):
 		self._spinner = spinner
 		self._mtimedb = mtimedb
 		self._favorites = favorites
-		self._uninstall_only = uninstall_only
 		self._args_set = InternalPackageSet(favorites, allow_repo=True)
 		self._build_opts = self._build_opts_class()
 
@@ -217,14 +221,15 @@ class Scheduler(PollScheduler):
 		fetch_iface = self._fetch_iface_class(log_file=self._fetch_log,
 			schedule=self._schedule_fetch)
 		self._sched_iface = self._iface_class(
+			self._event_loop,
+			is_background=self._is_background,
 			fetch=fetch_iface,
 			scheduleSetup=self._schedule_setup,
-			scheduleUnpack=self._schedule_unpack,
-			**dict((k, getattr(self.sched_iface, k))
-			for k in self.sched_iface.__slots__))
+			scheduleUnpack=self._schedule_unpack)
 
 		self._prefetchers = weakref.WeakValueDictionary()
 		self._pkg_queue = []
+		self._jobs = 0
 		self._running_tasks = {}
 		self._completed_tasks = set()
 
@@ -243,9 +248,7 @@ class Scheduler(PollScheduler):
 		# The load average takes some time to respond when new
 		# jobs are added, so we need to limit the rate of adding
 		# new jobs.
-		self._job_delay_max = 10
-		self._job_delay_factor = 1.0
-		self._job_delay_exp = 1.5
+		self._job_delay_max = 5
 		self._previous_job_start_time = None
 
 		# This is used to memoize the _choose_pkg() result when
@@ -326,8 +329,6 @@ class Scheduler(PollScheduler):
 		ignore_built_slot_operator_deps = self.myopts.get(
 			"--ignore-built-slot-operator-deps", "n") == "y"
 		for root in self.trees:
-			if self._uninstall_only:
-				continue
 			if graph_config is None:
 				fake_vartree = FakeVartree(self.trees[root]["root_config"],
 					pkg_cache=self._pkg_cache, dynamic_deps=dynamic_deps,
@@ -770,10 +771,10 @@ class Scheduler(PollScheduler):
 
 		failures = 0
 
-		# Use a local PollScheduler instance here, since we don't
+		# Use a local EventLoop instance here, since we don't
 		# want tasks here to trigger the usual Scheduler callbacks
 		# that handle job scheduling and status display.
-		sched_iface = PollScheduler().sched_iface
+		sched_iface = SchedulerInterface(EventLoop(main=False))
 
 		for x in self._mergelist:
 			if not isinstance(x, Package):
@@ -1337,6 +1338,38 @@ class Scheduler(PollScheduler):
 		blocker_db = self._blocker_db[pkg.root]
 		blocker_db.discardBlocker(pkg)
 
+	def _main_loop(self):
+		term_check_id = self._event_loop.idle_add(self._termination_check)
+		loadavg_check_id = None
+		if self._max_load is not None and \
+			self._loadavg_latency is not None and \
+			(self._max_jobs is True or self._max_jobs > 1):
+			# We have to schedule periodically, in case the load
+			# average has changed since the last call.
+			loadavg_check_id = self._event_loop.timeout_add(
+				self._loadavg_latency, self._schedule)
+
+		try:
+			# Populate initial event sources. Unless we're scheduling
+			# based on load average, we only need to do this once
+			# here, since it can be called during the loop from within
+			# event handlers.
+			self._schedule()
+
+			# Loop while there are jobs to be scheduled.
+			while self._keep_scheduling():
+				self._event_loop.iteration()
+
+			# Clean shutdown of previously scheduled jobs. In the
+			# case of termination, this allows for basic cleanup
+			# such as flushing of buffered output to logs.
+			while self._is_work_scheduled():
+				self._event_loop.iteration()
+		finally:
+			self._event_loop.source_remove(term_check_id)
+			if loadavg_check_id is not None:
+				self._event_loop.source_remove(loadavg_check_id)
+
 	def _merge(self):
 
 		if self._opts_no_background.intersection(self.myopts):
@@ -1349,7 +1382,7 @@ class Scheduler(PollScheduler):
 		portage.elog.add_listener(self._elog_listener)
 		display_timeout_id = None
 		if self._status_display._isatty and not self._status_display.quiet:
-			display_timeout_id = self.sched_iface.timeout_add(
+			display_timeout_id = self._event_loop.timeout_add(
 				self._max_display_latency, self._status_display.display)
 		rval = os.EX_OK
 
@@ -1360,7 +1393,7 @@ class Scheduler(PollScheduler):
 			portage.locks._quiet = False
 			portage.elog.remove_listener(self._elog_listener)
 			if display_timeout_id is not None:
-				self.sched_iface.source_remove(display_timeout_id)
+				self._event_loop.source_remove(display_timeout_id)
 			if failed_pkgs:
 				rval = failed_pkgs[-1].returncode
 
@@ -1498,6 +1531,9 @@ class Scheduler(PollScheduler):
 	def _is_work_scheduled(self):
 		return bool(self._running_tasks)
 
+	def _running_job_count(self):
+		return self._jobs
+
 	def _schedule_tasks(self):
 
 		while True:
@@ -1547,13 +1583,25 @@ class Scheduler(PollScheduler):
 		if self._jobs and self._max_load is not None:
 
 			current_time = time.time()
+			try:
+				avg1, avg5, avg15 = getloadavg()
+			except OSError:
+				return False
 
-			delay = self._job_delay_factor * self._jobs ** self._job_delay_exp
+			delay = self._job_delay_max * avg1 / self._max_load
 			if delay > self._job_delay_max:
 				delay = self._job_delay_max
-			if (current_time - self._previous_job_start_time) < delay:
+			elapsed_seconds = current_time - self._previous_job_start_time
+			# elapsed_seconds < 0 means the system clock has been adjusted
+			if elapsed_seconds > 0 and elapsed_seconds < delay:
+				self._event_loop.timeout_add(
+					1000 * (delay - elapsed_seconds), self._schedule_once)
 				return True
 
+		return False
+
+	def _schedule_once(self):
+		self._schedule()
 		return False
 
 	def _schedule_tasks_imp(self):

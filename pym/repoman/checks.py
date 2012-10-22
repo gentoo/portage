@@ -221,21 +221,13 @@ class EbuildAssignment(LineCheck):
 	"""Ensure ebuilds don't assign to readonly variables."""
 
 	repoman_check_name = 'variable.readonly'
-
 	readonly_assignment = re.compile(r'^\s*(export\s+)?(A|CATEGORY|P|PV|PN|PR|PVR|PF|D|WORKDIR|FILESDIR|FEATURES|USE)=')
-	line_continuation = re.compile(r'([^#]*\S)(\s+|\t)\\$')
-	ignore_line = re.compile(r'(^$)|(^(\t)*#)')
-	ignore_comment = False
-
-	def __init__(self):
-		self.previous_line = None
 
 	def check(self, num, line):
 		match = self.readonly_assignment.match(line)
 		e = None
-		if match and (not self.previous_line or not self.line_continuation.match(self.previous_line)):
+		if match is not None:
 			e = errors.READONLY_ASSIGNMENT_ERROR
-		self.previous_line = line
 		return e
 
 class Eapi3EbuildAssignment(EbuildAssignment):
@@ -793,6 +785,19 @@ class PortageInternal(LineCheck):
 		if m is not None:
 			return ("'%s'" % m.group(2)) + " called on line: %d"
 
+class PortageInternalVariableAssignment(LineCheck):
+
+	repoman_check_name = 'portage.internal'
+	internal_assignment = re.compile(r'\s*(export\s+)?(EXTRA_ECONF|EXTRA_EMAKE)\+?=')
+
+	def check(self, num, line):
+		match = self.internal_assignment.match(line)
+		e = None
+		if match is not None:
+			e = 'Assignment to variable %s' % match.group(2)
+			e += ' on line: %d'
+		return e
+
 _constant_checks = tuple(chain((c() for c in (
 	EbuildHeader, EbuildWhitespace, EbuildBlankLine, EbuildQuote,
 	EbuildAssignment, Eapi3EbuildAssignment, EbuildUselessDodoc,
@@ -804,7 +809,7 @@ _constant_checks = tuple(chain((c() for c in (
 	SrcCompileEconf, Eapi3DeprecatedFuncs, NoOffsetWithHelpers,
 	Eapi4IncompatibleFuncs, Eapi4GoneVars, BuiltWithUse,
 	PreserveOldLib, SandboxAddpredict, PortageInternal,
-	DeprecatedUseq, DeprecatedHasq)),
+	PortageInternalVariableAssignment, DeprecatedUseq, DeprecatedHasq)),
 	(InheritEclass(k, **kwargs) for k, kwargs in _eclass_info.items())))
 
 _here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')

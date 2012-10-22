@@ -64,6 +64,26 @@ ___eapi_has_usex() {
 	[[ ! ${1-${EAPI}} =~ ^(0|1|2|3|4|4-python|4-slot-abi)$ ]]
 }
 
+___eapi_has_master_repositories() {
+	[[ ${1-${EAPI}} =~ ^(5-progress)$ ]]
+}
+
+___eapi_has_repository_path() {
+	[[ ${1-${EAPI}} =~ ^(5-progress)$ ]]
+}
+
+___eapi_has_available_eclasses() {
+	[[ ${1-${EAPI}} =~ ^(5-progress)$ ]]
+}
+
+___eapi_has_eclass_path() {
+	[[ ${1-${EAPI}} =~ ^(5-progress)$ ]]
+}
+
+___eapi_has_license_path() {
+	[[ ${1-${EAPI}} =~ ^(5-progress)$ ]]
+}
+
 # HELPERS BEHAVIOR
 
 ___eapi_best_version_and_has_version_support_--host-root() {

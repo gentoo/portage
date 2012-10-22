@@ -5,6 +5,36 @@
 	</para>
 	<section id='package-ebuild-eapi-5-progress-helpers'>
 		<title>Helpers</title>
+		<section id='package-ebuild-eapi-5-progress-helpers-master-repositories'>
+			<title>master_repositories</title>
+			<para>
+				New master_repositories function prints space-separated list of master repositories for specified repository.
+			</para>
+		</section>
+		<section id='package-ebuild-eapi-5-progress-helpers-repository-path'>
+			<title>repository_path</title>
+			<para>
+				New repository_path function prints path to specified repository.
+			</para>
+		</section>
+		<section id='package-ebuild-eapi-5-progress-helpers-available-eclasses'>
+			<title>available_eclasses</title>
+			<para>
+				New available_eclasses function prints space-separated list of available eclasses for current repository.
+			</para>
+		</section>
+		<section id='package-ebuild-eapi-5-progress-helpers-eclass-path'>
+			<title>eclass_path</title>
+			<para>
+				New eclass_path function prints path to specified eclass for current repository.
+			</para>
+		</section>
+		<section id='package-ebuild-eapi-5-progress-helpers-license-path'>
+			<title>license_path</title>
+			<para>
+				New license_path function prints path to specified license for current repository.
+			</para>
+		</section>
 		<section id='package-ebuild-eapi-5-progress-helpers-dohtml-extended-default-list-of-extensions'>
 			<title>Extended default list of extensions in dohtml</title>
 			<para>

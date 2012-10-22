@@ -39,7 +39,7 @@ pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
 sys.path.insert(0, pym_path)
 import portage
 portage._disable_legacy_globals()
-portage.dep._internal_warnings = True
+portage._internal_warnings = True
 
 try:
 	import xml.etree.ElementTree
@@ -88,6 +88,7 @@ util.initialize_logger()
 max_desc_len = 100
 allowed_filename_chars="a-zA-Z0-9._-+:"
 pv_toolong_re = re.compile(r'[0-9]{19,}')
+GPG_KEY_ID_REGEX = r'(0x)?([0-9a-fA-F]{8}|[0-9a-fA-F]{16}|[0-9a-fA-F]{24}|[0-9a-fA-F]{32}|[0-9a-fA-F]{40})!?'
 bad = create_color_func("BAD")
 
 # A sane umask is needed for files that portage creates.
@@ -372,7 +373,7 @@ qahelp={
 	"metadata.missing":"Missing metadata.xml files",
 	"metadata.bad":"Bad metadata.xml files",
 	"metadata.warning":"Warnings in metadata.xml files",
-	"portage.internal":"The ebuild uses an internal Portage function",
+	"portage.internal":"The ebuild uses an internal Portage function or variable",
 	"virtual.oldstyle":"The ebuild PROVIDEs an old-style virtual (see GLEP 37)",
 	"virtual.suspect":"Ebuild contains a package that usually should be pulled via virtual/, not directly.",
 	"usage.obsolete":"The ebuild makes use of an obsolete construct",
@@ -606,6 +607,14 @@ if repo_config.sign_commit:
 # thin-manifests is designed to prevent.
 sign_manifests = "sign" in repoman_settings.features and \
 	repo_config.sign_manifest
+
+if sign_manifests and options.mode in ("commit",) and \
+	repoman_settings.get("PORTAGE_GPG_KEY") and \
+	re.match(r'^%s$' % GPG_KEY_ID_REGEX,
+	repoman_settings["PORTAGE_GPG_KEY"]) is None:
+	logging.error("PORTAGE_GPG_KEY value is invalid: %s" %
+		repoman_settings["PORTAGE_GPG_KEY"])
+	sys.exit(1)
 
 manifest_hashes = repo_config.manifest_hashes
 if manifest_hashes is None:
@@ -1799,9 +1808,9 @@ for x in effective_scanlist:
 		ebuild_archs = set(kw.lstrip("~") for kw in keywords \
 			if not kw.startswith("-"))
 
-		previous_keywords = slot_keywords.get(myaux["SLOT"])
+		previous_keywords = slot_keywords.get(pkg.slot)
 		if previous_keywords is None:
-			slot_keywords[myaux["SLOT"]] = set()
+			slot_keywords[pkg.slot] = set()
 		elif ebuild_archs and not live_ebuild:
 			dropped_keywords = previous_keywords.difference(ebuild_archs)
 			if dropped_keywords:
@@ -1810,7 +1819,7 @@ for x in effective_scanlist:
 					relative_path + ": %s" % \
 					" ".join(sorted(dropped_keywords)))
 
-		slot_keywords[myaux["SLOT"]].update(ebuild_archs)
+		slot_keywords[pkg.slot].update(ebuild_archs)
 
 		# KEYWORDS="-*" is a stupid replacement for package.mask and screws general KEYWORDS semantics
 		if "-*" in keywords:
@@ -2526,16 +2535,33 @@ else:
 		sys.stderr.write("Failed to insert portage version in message!\n")
 		sys.stderr.flush()
 		portage_version = "Unknown"
-	unameout = platform.system() + " "
-	if platform.system() in ["Darwin", "SunOS"]:
-		unameout += platform.processor()
+
+	if vcs == "git":
+		# Use new footer only for git (see bug #438364).
+		commit_footer = "\n\nPackage-Manager: portage-%s" % portage_version
+		if options.force:
+			commit_footer += "\nRepoMan-Options: --force"
+		if sign_manifests:
+			commit_footer += "\nManifest-Sign-Key: %s" % \
+				repoman_settings.get("PORTAGE_GPG_KEY", "")
 	else:
-		unameout += platform.machine()
-	commitmessage += "\n\n(Portage version: %s/%s/%s" % \
-		(portage_version, vcs, unameout)
-	if options.force:
-		commitmessage += ", RepoMan options: --force"
-	commitmessage += ")"
+		unameout = platform.system() + " "
+		if platform.system() in ["Darwin", "SunOS"]:
+			unameout += platform.processor()
+		else:
+			unameout += platform.machine()
+		commit_footer = "\n\n(Portage version: %s/%s/%s" % \
+			(portage_version, vcs, unameout)
+		if options.force:
+			commit_footer += ", RepoMan options: --force"
+		if sign_manifests:
+			commit_footer += ", signed Manifest commit with key %s" % \
+				repoman_settings.get("PORTAGE_GPG_KEY", "")
+		else:
+			commit_footer += ", unsigned Manifest commit"
+		commit_footer += ")"
+
+	commitmessage += commit_footer
 
 	if options.echangelog in ('y', 'force'):
 		logging.info("checking for unmodified ChangeLog files")
@@ -2767,6 +2793,16 @@ else:
 			else:
 				raise portage.exception.PortageException("!!! gpg exited with '" + str(rValue) + "' status")
 
+	def need_signature(filename):
+		try:
+			with open(_unicode_encode(filename,
+				encoding=_encodings['fs'], errors='strict'), 'rb') as f:
+				return b"BEGIN PGP SIGNED MESSAGE" not in f.readline()
+		except IOError as e:
+			if e.errno in (errno.ENOENT, errno.ESTALE):
+				return False
+			raise
+
 	# When files are removed and re-added, the cvs server will put /Attic/
 	# inside the $Header path. This code detects the problem and corrects it
 	# so that the Manifest will generate correctly. See bug #169500.
@@ -2809,7 +2845,7 @@ else:
 				chain(myupdates, myremoved, mymanifests))):
 				repoman_settings["O"] = os.path.join(repodir, x)
 				manifest_path = os.path.join(repoman_settings["O"], "Manifest")
-				if not os.path.exists(manifest_path):
+				if not need_signature(manifest_path):
 					continue
 				gpgsign(manifest_path)
 		except portage.exception.PortageException as e:
@@ -2851,14 +2887,7 @@ else:
 
 		fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
 		mymsg = os.fdopen(fd, "wb")
-		# strip the closing parenthesis
-		mymsg.write(_unicode_encode(commitmessage[:-1]))
-		if signed:
-			mymsg.write(_unicode_encode(
-				", signed Manifest commit with key %s)" % \
-				repoman_settings["PORTAGE_GPG_KEY"]))
-		else:
-			mymsg.write(b", unsigned Manifest commit)")
+		mymsg.write(_unicode_encode(commitmessage))
 		mymsg.close()
 
 		commit_cmd = []

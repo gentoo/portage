@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['getmaskingreason']
@@ -6,13 +6,12 @@ __all__ = ['getmaskingreason']
 import portage
 from portage import os
 from portage.const import USER_CONFIG_PATH
-from portage.dep import Atom, match_from_list, _slot_separator, _repo_separator
+from portage.dep import Atom, match_from_list
 from portage.exception import InvalidAtom
 from portage.localization import _
 from portage.repository.config import _gen_valid_repo
 from portage.util import grablines, normalize_path
-from portage.versions import catpkgsplit
-from _emerge.Package import Package
+from portage.versions import catpkgsplit, _pkg_str
 
 def getmaskingreason(mycpv, metadata=None, settings=None,
 	portdb=None, return_location=False, myrepo=None):
@@ -60,15 +59,14 @@ def getmaskingreason(mycpv, metadata=None, settings=None,
 
 	# Sometimes we can't access SLOT or repository due to corruption.
 	pkg = mycpv
-	if metadata is not None:
-		pkg = "".join((mycpv, _slot_separator, metadata["SLOT"]))
-	# At this point myrepo should be None, a valid name, or
-	# Package.UNKNOWN_REPO which we ignore.
-	if myrepo is not None and myrepo != Package.UNKNOWN_REPO:
-		pkg = "".join((pkg, _repo_separator, myrepo))
+	try:
+		pkg.slot
+	except AttributeError:
+		pkg = _pkg_str(mycpv, metadata=metadata, repo=myrepo)
+
 	cpv_slot_list = [pkg]
 
-	mycp=mysplit[0]+"/"+mysplit[1]
+	mycp = pkg.cp
 
 	# XXX- This is a temporary duplicate of code from the config constructor.
 	locations = [os.path.join(settings["PORTDIR"], "profiles")]

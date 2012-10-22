@@ -1,12 +1,12 @@
-# Copyright 2007-2011 Gentoo Foundation
+# Copyright 2007-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
 
+from portage.exception import InvalidData
 from portage.localization import _
 from portage._sets.base import PackageSet
 from portage._sets import get_boolean, SetConfigError
-from portage.versions import cpv_getkey
 import portage
 
 class LibraryConsumerSet(PackageSet):
@@ -22,14 +22,14 @@ class LibraryConsumerSet(PackageSet):
 		for p in paths:
 			for cpv in self.dbapi._linkmap.getOwners(p):
 				try:
-					slot, = self.dbapi.aux_get(cpv, ["SLOT"])
-				except KeyError:
+					pkg = self.dbapi._pkg_str(cpv, None)
+				except (KeyError, InvalidData):
 					# This is expected for preserved libraries
 					# of packages that have been uninstalled
 					# without replacement.
 					pass
 				else:
-					rValue.add("%s:%s" % (cpv_getkey(cpv), slot))
+					rValue.add("%s:%s" % (pkg.cp, pkg.slot))
 		return rValue
 
 class LibraryFileConsumerSet(LibraryConsumerSet):

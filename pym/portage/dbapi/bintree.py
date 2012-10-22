@@ -1021,75 +1021,7 @@ class binarytree(object):
 					# Local package instances override remote instances.
 					for cpv in metadata:
 						self._remotepkgs.pop(cpv, None)
-				continue
-			try:
-				chunk_size = long(self.settings["PORTAGE_BINHOST_CHUNKSIZE"])
-				if chunk_size < 8:
-					chunk_size = 8
-			except (ValueError, KeyError):
-				chunk_size = 3000
-			writemsg_stdout("\n")
-			writemsg_stdout(
-				colorize("GOOD", _("Fetching bininfo from ")) + \
-				_hide_url_passwd(base_url) + "\n")
-			remotepkgs = portage.getbinpkg.dir_get_metadata(
-				base_url, chunk_size=chunk_size)
 
-			for mypkg, remote_metadata in remotepkgs.items():
-				mycat = remote_metadata.get("CATEGORY")
-				if mycat is None:
-					#old-style or corrupt package
-					writemsg(_("!!! Invalid remote binary package: %s\n") % mypkg,
-						noiselevel=-1)
-					continue
-				mycat = mycat.strip()
-				try:
-					fullpkg = _pkg_str(mycat+"/"+mypkg[:-5])
-				except InvalidData:
-					writemsg(_("!!! Invalid remote binary package: %s\n") % mypkg,
-						noiselevel=-1)
-					continue
-
-				if fullpkg in metadata:
-					# When using this old protocol, comparison with the remote
-					# package isn't supported, so the local package is always
-					# preferred even if getbinpkgsonly is enabled.
-					continue
-
-				if not self.dbapi._category_re.match(mycat):
-					writemsg(_("!!! Remote binary package has an " \
-						"unrecognized category: '%s'\n") % fullpkg,
-						noiselevel=-1)
-					writemsg(_("!!! '%s' has a category that is not" \
-						" listed in %setc/portage/categories\n") % \
-						(fullpkg, self.settings["PORTAGE_CONFIGROOT"]),
-						noiselevel=-1)
-					continue
-				mykey = portage.cpv_getkey(fullpkg)
-				try:
-					# invalid tbz2's can hurt things.
-					self.dbapi.cpv_inject(fullpkg)
-					for k, v in remote_metadata.items():
-						remote_metadata[k] = v.strip()
-					remote_metadata["BASE_URI"] = base_url
-
-					# Eliminate metadata values with names that digestCheck
-					# uses, since they are not valid when using the old
-					# protocol. Typically this is needed for SIZE metadata
-					# which corresponds to the size of the unpacked files
-					# rather than the binpkg file size, triggering digest
-					# verification failures as reported in bug #303211.
-					remote_metadata.pop('SIZE', None)
-					for k in portage.checksum.hashfunc_map:
-						remote_metadata.pop(k, None)
-
-					self._remotepkgs[fullpkg] = remote_metadata
-				except SystemExit as e:
-					raise
-				except:
-					writemsg(_("!!! Failed to inject remote binary package: %s\n") % fullpkg,
-						noiselevel=-1)
-					continue
 		self.populated=1
 
 	def inject(self, cpv, filename=None):
@@ -1486,9 +1418,7 @@ class binarytree(object):
 		"Get a slot for a catpkg; assume it exists."
 		myslot = ""
 		try:
-			myslot = self.dbapi.aux_get(mycatpkg,["SLOT"])[0]
-		except SystemExit as e:
-			raise
-		except Exception as e:
+			myslot = self.dbapi._pkg_str(mycatpkg, None).slot
+		except KeyError:
 			pass
 		return myslot

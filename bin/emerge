@@ -7,64 +7,71 @@ from __future__ import print_function
 import platform
 import signal
 import sys
-# This block ensures that ^C interrupts are handled quietly.
+
+# This block ensures that ^C interrupts are handled quietly. We handle
+# KeyboardInterrupt instead of installing a SIGINT handler, since
+# exiting from signal handlers intermittently causes python to ignore
+# the SystemExit exception with a message like this:
+# Exception SystemExit: 130 in <function remove at 0x7fd2146c1320> ignored
 try:
 
 	def exithandler(signum,frame):
-		signal.signal(signal.SIGINT, signal.SIG_IGN)
 		signal.signal(signal.SIGTERM, signal.SIG_IGN)
 		sys.exit(128 + signum)
 
-	signal.signal(signal.SIGINT, exithandler)
 	signal.signal(signal.SIGTERM, exithandler)
 	# Prevent "[Errno 32] Broken pipe" exceptions when
 	# writing to a pipe.
 	signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
-except KeyboardInterrupt:
-	sys.exit(128 + signal.SIGINT)
+	def debug_signal(signum, frame):
+		import pdb
+		pdb.set_trace()
 
-def debug_signal(signum, frame):
-	import pdb
-	pdb.set_trace()
+	if platform.python_implementation() == 'Jython':
+		debug_signum = signal.SIGUSR2 # bug #424259
+	else:
+		debug_signum = signal.SIGUSR1
 
-if platform.python_implementation() == 'Jython':
-	debug_signum = signal.SIGUSR2 # bug #424259
-else:
-	debug_signum = signal.SIGUSR1
+	signal.signal(debug_signum, debug_signal)
 
-signal.signal(debug_signum, debug_signal)
+	from os import path as osp
+	pym_path = osp.join(osp.dirname(osp.dirname(
+		osp.realpath(__file__))), "pym")
+	sys.path.insert(0, pym_path)
+	from _emerge.main import emerge_main
 
-from os import path as osp
-pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
-sys.path.insert(0, pym_path)
-from _emerge.main import emerge_main
-
-if __name__ == "__main__":
-	import sys
-	from portage.exception import ParseError, PermissionDenied
-	try:
-		retval = emerge_main()
-	except PermissionDenied as e:
-		sys.stderr.write("Permission denied: '%s'\n" % str(e))
-		sys.exit(e.errno)
-	except ParseError as e:
-		sys.stderr.write("%s\n" % str(e))
-		sys.exit(1)
-	except SystemExit:
-		raise
-	except Exception:
-		# If an unexpected exception occurs then we don't want the mod_echo
-		# output to obscure the traceback, so dump the mod_echo output before
-		# showing the traceback.
-		import traceback
-		tb_str = traceback.format_exc()
+	if __name__ == "__main__":
+		import sys
+		from portage.exception import ParseError, PermissionDenied
 		try:
-			from portage.elog import mod_echo
-		except ImportError:
-			pass
-		else:
-			mod_echo.finalize()
-		sys.stderr.write(tb_str)
-		sys.exit(1)
-	sys.exit(retval)
+			retval = emerge_main()
+		except PermissionDenied as e:
+			sys.stderr.write("Permission denied: '%s'\n" % str(e))
+			sys.exit(e.errno)
+		except ParseError as e:
+			sys.stderr.write("%s\n" % str(e))
+			sys.exit(1)
+		except (KeyboardInterrupt, SystemExit):
+			raise
+		except Exception:
+			# If an unexpected exception occurs then we don't want the
+			# mod_echo output to obscure the traceback, so dump the
+			# mod_echo output before showing the traceback.
+			import traceback
+			tb_str = traceback.format_exc()
+			try:
+				from portage.elog import mod_echo
+			except ImportError:
+				pass
+			else:
+				mod_echo.finalize()
+			sys.stderr.write(tb_str)
+			sys.exit(1)
+		sys.exit(retval)
+
+except KeyboardInterrupt:
+	sys.stderr.write("\n\nExiting on signal %(signal)s\n" %
+		{"signal": signal.SIGINT})
+	sys.stderr.flush()
+	sys.exit(128 + signal.SIGINT)

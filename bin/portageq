@@ -85,7 +85,7 @@ def has_version(argv):
 	"""
 	if (len(argv) < 2):
 		print("ERROR: insufficient parameters!")
-		return 2
+		return 3
 
 	warnings = []
 
@@ -133,7 +133,7 @@ def best_version(argv):
 	"""
 	if (len(argv) < 2):
 		print("ERROR: insufficient parameters!")
-		return 2
+		return 3
 
 	warnings = []
 
@@ -734,20 +734,126 @@ def get_repos(argv):
 
 get_repos.uses_eroot = True
 
+def master_repositories(argv):
+	"""<eroot> <repo_id>+
+	Returns space-separated list of master repositories for specified repository.
+	"""
+	if len(argv) < 2:
+		print("ERROR: insufficient parameters!", file=sys.stderr)
+		return 3
+	for arg in argv[1:]:
+		if portage.dep._repo_name_re.match(arg) is None:
+			print("ERROR: invalid repository: %s" % arg, file=sys.stderr)
+			return 2
+		try:
+			repo = portage.db[argv[0]]["porttree"].dbapi.repositories[arg]
+		except KeyError:
+			print("")
+			return 1
+		else:
+			print(" ".join(x.name for x in repo.masters))
+
+master_repositories.uses_eroot = True
+
 def get_repo_path(argv):
 	"""<eroot> <repo_id>+
 	Returns the path to the repo named argv[1], argv[0] = $EROOT
 	"""
 	if len(argv) < 2:
-		print("ERROR: insufficient parameters!")
-		return 2
+		print("ERROR: insufficient parameters!", file=sys.stderr)
+		return 3
 	for arg in argv[1:]:
+		if portage.dep._repo_name_re.match(arg) is None:
+			print("ERROR: invalid repository: %s" % arg, file=sys.stderr)
+			return 2
 		path = portage.db[argv[0]]["porttree"].dbapi.getRepositoryPath(arg)
 		if path is None:
-			path = ""
+			print("")
+			return 1
 		print(path)
 
 get_repo_path.uses_eroot = True
+
+def available_eclasses(argv):
+	"""<eroot> <repo_id>+
+	Returns space-separated list of available eclasses for specified repository.
+	"""
+	if len(argv) < 2:
+		print("ERROR: insufficient parameters!", file=sys.stderr)
+		return 3
+	for arg in argv[1:]:
+		if portage.dep._repo_name_re.match(arg) is None:
+			print("ERROR: invalid repository: %s" % arg, file=sys.stderr)
+			return 2
+		try:
+			repo = portage.db[argv[0]]["porttree"].dbapi.repositories[arg]
+		except KeyError:
+			print("")
+			return 1
+		else:
+			print(" ".join(sorted(repo.eclass_db.eclasses)))
+
+available_eclasses.uses_eroot = True
+
+def eclass_path(argv):
+	"""<eroot> <repo_id> <eclass>+
+	Returns the path to specified eclass for specified repository.
+	"""
+	if len(argv) < 3:
+		print("ERROR: insufficient parameters!", file=sys.stderr)
+		return 3
+	if portage.dep._repo_name_re.match(argv[1]) is None:
+		print("ERROR: invalid repository: %s" % argv[1], file=sys.stderr)
+		return 2
+	try:
+		repo = portage.db[argv[0]]["porttree"].dbapi.repositories[argv[1]]
+	except KeyError:
+		print("")
+		return 1
+	else:
+		retval = 0
+		for arg in argv[2:]:
+			try:
+				eclass = repo.eclass_db.eclasses[arg]
+			except KeyError:
+				print("")
+				retval = 1
+			else:
+				print(eclass.location)
+		return retval
+
+eclass_path.uses_eroot = True
+
+def license_path(argv):
+	"""<eroot> <repo_id> <license>+
+	Returns the path to specified license for specified repository.
+	"""
+	if len(argv) < 3:
+		print("ERROR: insufficient parameters!", file=sys.stderr)
+		return 3
+	if portage.dep._repo_name_re.match(argv[1]) is None:
+		print("ERROR: invalid repository: %s" % argv[1], file=sys.stderr)
+		return 2
+	try:
+		repo = portage.db[argv[0]]["porttree"].dbapi.repositories[argv[1]]
+	except KeyError:
+		print("")
+		return 1
+	else:
+		retval = 0
+		for arg in argv[2:]:
+			eclass_path = ""
+			paths = reversed([os.path.join(x.location, 'licenses', arg) for x in list(repo.masters) + [repo]])
+			for path in paths:
+				if os.path.exists(path):
+					eclass_path = path
+					break
+			if eclass_path == "":
+				retval = 1
+			print(eclass_path)
+		return retval
+
+license_path.uses_eroot = True
 
 def list_preserved_libs(argv):
 	"""<eroot>

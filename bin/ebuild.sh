@@ -34,9 +34,7 @@ else
 	# These dummy functions return false in non-strict EAPIs, in order to ensure that
 	# `use multislot` is false for the "depend" phase.
 	funcs="use useq usev"
-	if ___eapi_has_usex; then
-		funcs+=" usex"
-	fi
+	___eapi_has_usex && funcs+=" usex"
 	for x in ${funcs} ; do
 		eval "${x}() {
 			if ___eapi_disallows_helpers_in_global_scope; then
@@ -48,7 +46,13 @@ else
 	done
 	# These functions die because calls to them during the "depend" phase
 	# are considered to be severe QA violations.
-	for x in best_version has_version portageq ; do
+	funcs="best_version has_version portageq"
+	___eapi_has_master_repositories && funcs+=" master_repositories"
+	___eapi_has_repository_path && funcs+=" repository_path"
+	___eapi_has_available_eclasses && funcs+=" available_eclasses"
+	___eapi_has_eclass_path && funcs+=" eclass_path"
+	___eapi_has_license_path && funcs+=" license_path"
+	for x in ${funcs} ; do
 		eval "${x}() { die \"\${FUNCNAME}() calls are not allowed in global scope\"; }"
 	done
 	unset funcs x
@@ -394,7 +398,7 @@ __source_all_bashrcs() {
 	if [[ $EBUILD_PHASE != depend ]] ; then
 		# The user's bashrc is the ONLY non-portage bit of code that can
 		# change shopts without a QA violation.
-		for x in "${PM_EBUILD_HOOK_DIR}"/${CATEGORY}/{${PN},${PN}:${SLOT},${P},${PF}}; do
+		for x in "${PM_EBUILD_HOOK_DIR}"/${CATEGORY}/{${PN},${PN}:${SLOT%/*},${P},${PF}}; do
 			if [ -r "${x}" ]; then
 				# If $- contains x, then tracing has already been enabled
 				# elsewhere for some reason. We preserve it's state so as
@@ -520,10 +524,12 @@ if ___eapi_enables_globstar; then
 	shopt -s globstar
 fi
 
+# Source the ebuild every time for FEATURES=noauto, so that ebuild
+# modifications take effect immediately.
 if ! has "$EBUILD_PHASE" clean cleanrm ; then
 	if [[ $EBUILD_PHASE = depend || ! -f $T/environment || \
-		-f $PORTAGE_BUILDDIR/.ebuild_changed ]] || \
-		has noauto $FEATURES ; then
+		-f $PORTAGE_BUILDDIR/.ebuild_changed || \
+		" ${FEATURES} " == *" noauto "* ]] ; then
 		# The bashrcs get an opportunity here to set aliases that will be expanded
 		# during sourcing of ebuilds and eclasses.
 		__source_all_bashrcs

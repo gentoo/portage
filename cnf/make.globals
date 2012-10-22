@@ -72,9 +72,6 @@ FEATURES="${FEATURES} preserve-libs"
 # Force EPREFIX, ED and EROOT to exist in all EAPIs, not just 3 and up
 FEATURES="${FEATURES} force-prefix"
 
-# Default chunksize for binhost comms
-PORTAGE_BINHOST_CHUNKSIZE="3000"
-
 # By default wait 5 secs before cleaning a package
 CLEAN_DELAY="5"
 
