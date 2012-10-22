@@ -9,16 +9,17 @@ import subprocess
 
 import portage
 from portage import os
+from portage.const import EPREFIX
 
 def chk_updated_info_files(root, infodirs, prev_mtimes):
 
-	if os.path.exists("/usr/bin/install-info"):
+	if os.path.exists(EPREFIX + "/usr/bin/install-info"):
 		out = portage.output.EOutput()
 		regen_infodirs=[]
 		for z in infodirs:
 			if z=='':
 				continue
-			inforoot = portage.util.normalize_path(root + z)
+			inforoot = portage.util.normalize_path(root + EPREFIX + z)
 			if os.path.isdir(inforoot) and \
 				not [x for x in os.listdir(inforoot) \
 				if x.startswith('.keepinfodir')]:
@@ -78,7 +79,7 @@ def chk_updated_info_files(root, infodirs, prev_mtimes):
 					processed_count += 1
 					try:
 						proc = subprocess.Popen(
-							['/usr/bin/install-info',
+							['%s/usr/bin/install-info' % EPREFIX,
 							'--dir-file=%s' % os.path.join(inforoot, "dir"),
 							os.path.join(inforoot, x)],
 							env=dict(os.environ, LANG="C", LANGUAGE="C"),
