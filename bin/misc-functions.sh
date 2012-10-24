@@ -31,7 +31,7 @@ install_symlink_html_docs() {
 		done
 		if [ -n "${mydocdir}" ] ; then
 			local mysympath
-			if [ -z "${SLOT}" -o "${SLOT}" = "0" ] ; then
+			if [ -z "${SLOT}" -o "${SLOT%/*}" = "0" ] ; then
 				mysympath="${DOC_SYMLINKS_DIR}/${CATEGORY}/${PN}"
 			else
 				mysympath="${DOC_SYMLINKS_DIR}/${CATEGORY}/${PN}-${SLOT%/*}"
