@@ -2151,10 +2151,12 @@ class dblink(object):
 						["Could not chmod or unlink '%s': %s" % \
 						(file_name, ose)])
 				else:
-					try:
-						self._merged_path(file_name, lstatobj)
-					except OSError:
-						pass
+
+					# Even though the file no longer exists, we log it
+					# here so that _unmerge_dirs can see that we've
+					# removed a file from this device, and will record
+					# the parent directory for a syncfs call.
+					self._merged_path(file_name, lstatobj)
 
 				finally:
 					if bsd_chflags and pflags != 0:
@@ -2576,15 +2578,19 @@ class dblink(object):
 								raise
 							del e
 							show_unmerge("!!!", "", "obj", child)
+
 			try:
+				parent_name = os.path.dirname(obj)
+				parent_stat = os.stat(parent_name)
+
 				if bsd_chflags:
 					lstatobj = os.lstat(obj)
 					if lstatobj.st_flags != 0:
 						bsd_chflags.lchflags(obj, 0)
-					parent_name = os.path.dirname(obj)
+
 					# Use normal stat/chflags for the parent since we want to
 					# follow any symlinks to the real parent directory.
-					pflags = os.stat(parent_name).st_flags
+					pflags = parent_stat.st_flags
 					if pflags != 0:
 						bsd_chflags.chflags(parent_name, 0)
 				try:
@@ -2593,13 +2599,34 @@ class dblink(object):
 					if bsd_chflags and pflags != 0:
 						# Restore the parent flags we saved before unlinking
 						bsd_chflags.chflags(parent_name, pflags)
+
+				# Record the parent directory for use in syncfs calls.
+				# Note that we use a realpath and a regular stat here, since
+				# we want to follow any symlinks back to the real device where
+				# the real parent directory resides.
+				self._merged_path(os.path.realpath(parent_name), parent_stat)
+
 				show_unmerge("<<<", "", "dir", obj)
 			except EnvironmentError as e:
 				if e.errno not in ignored_rmdir_errnos:
 					raise
 				if e.errno != errno.ENOENT:
 					show_unmerge("---", unmerge_desc["!empty"], "dir", obj)
-				del e
+
+				# Since we didn't remove this directory, record the directory
+				# itself for use in syncfs calls, if we have removed another
+				# file from the same device.
+				# Note that we use a realpath and a regular stat here, since
+				# we want to follow any symlinks back to the real device where
+				# the real directory resides.
+				try:
+					dir_stat = os.stat(obj)
+				except OSError:
+					pass
+				else:
+					if dir_stat.st_dev in self._device_path_map:
+						self._merged_path(os.path.realpath(obj), dir_stat)
+
 			else:
 				# When a directory is successfully removed, there's
 				# no need to protect symlinks that point to it.
