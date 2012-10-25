@@ -30,6 +30,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.env_update:env_update',
 	'portage.util.listdir:dircache,listdir',
 	'portage.util.movefile:movefile',
+	'portage.util._ctypes:find_library,LoadLibrary',
 	'portage.util._dyn_libs.PreservedLibsRegistry:PreservedLibsRegistry',
 	'portage.util._dyn_libs.LinkageMapELF:LinkageMapELF@LinkageMap',
 	'portage.util._async.SchedulerInterface:SchedulerInterface',
@@ -73,6 +74,7 @@ import io
 from itertools import chain
 import logging
 import os as _os
+import platform
 import pwd
 import re
 import stat
@@ -4688,7 +4690,44 @@ class dblink(object):
 		disk and avoid data-loss in the event of a power failure. This method
 		does nothing if FEATURES=merge-sync is disabled.
 		"""
-		pass
+		if not self._device_path_map or \
+			"merge-sync" not in self.settings.features:
+			return
+
+		syncfs = self._get_syncfs()
+		if syncfs is None:
+			try:
+				proc = subprocess.Popen(["sync"])
+			except EnvironmentError:
+				pass
+			else:
+				proc.wait()
+		else:
+			for path in self._device_path_map.values():
+				try:
+					fd = os.open(path, os.O_RDONLY)
+				except OSError:
+					pass
+				else:
+					try:
+						syncfs(fd)
+					except OSError:
+						pass
+					finally:
+						os.close(fd)
+
+	def _get_syncfs(self):
+		if platform.system() == "Linux":
+			filename = find_library("c")
+			if filename is not None:
+				library = LoadLibrary(filename)
+				if library is not None:
+					try:
+						return library.syncfs
+					except AttributeError:
+						pass
+
+		return None
 
 	def merge(self, mergeroot, inforoot, myroot=None, myebuild=None, cleanup=0,
 		mydbapi=None, prev_mtimes=None, counter=None):

@@ -361,6 +361,11 @@ Do \fBNOT\fR use \fIlmirror\fR for clients that need to override \fBRESTRICT\fR
 when fetching from a local mirror, but instead use a "local" mirror setting
 in \fI/etc/portage/mirrors\fR, as described in \fBportage\fR(5).
 .TP
+.B merge\-sync
+After a package is merged or unmerged, sync relevant files to
+disk in order to avoid data\-loss in the event of a power failure.
+This feature is enabled by default.
+.TP
 .B metadata\-transfer
 Automatically perform a metadata transfer when `emerge \-\-sync` is run.
 In versions of portage >=2.1.5, this feature is disabled by
