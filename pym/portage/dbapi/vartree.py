@@ -2156,7 +2156,7 @@ class dblink(object):
 					# here so that _unmerge_dirs can see that we've
 					# removed a file from this device, and will record
 					# the parent directory for a syncfs call.
-					self._merged_path(file_name, lstatobj)
+					self._merged_path(file_name, lstatobj, exists=False)
 
 				finally:
 					if bsd_chflags and pflags != 0:
@@ -4706,10 +4706,17 @@ class dblink(object):
 					outfile.write("dev %s\n" % myrealdest)
 				showMessage(zing + " " + mydest + "\n")
 
-	def _merged_path(self, path, lstatobj):
+	def _merged_path(self, path, lstatobj, exists=True):
 		previous_path = self._device_path_map.get(lstatobj.st_dev)
-		if previous_path is None or len(path) < len(previous_path):
-			self._device_path_map[lstatobj.st_dev] = path
+		if previous_path is None or previous_path is False or \
+			(exists and len(path) < len(previous_path)):
+			if exists:
+				self._device_path_map[lstatobj.st_dev] = path
+			else:
+				# This entry is used to indicate that we've unmerged
+				# a file from this device, and later, this entry is
+				# replaced by a parent directory.
+				self._device_path_map[lstatobj.st_dev] = False
 
 	def _post_merge_sync(self):
 		"""
@@ -4731,6 +4738,8 @@ class dblink(object):
 				proc.wait()
 		else:
 			for path in self._device_path_map.values():
+				if path is False:
+					continue
 				try:
 					fd = os.open(path, os.O_RDONLY)
 				except OSError:
