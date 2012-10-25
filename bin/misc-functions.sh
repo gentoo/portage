@@ -558,6 +558,23 @@ install_qa_check() {
 		done
 	done
 
+	local checkbashisms=$(type -P checkbashisms)
+	if [[ -n ${checkbashisms} ]] ; then
+		for d in /etc/init.d ; do
+			[[ -d ${ED}${d} ]] || continue
+			for i in "${ED}${d}"/* ; do
+				[[ -e ${i} ]] || continue
+				[[ -L ${i} ]] && continue
+				f=$("${checkbashisms}" -f "${i}" 2>&1)
+				[[ $? != 0 && -n ${f} ]] || continue
+				eqawarn "QA Notice: shell script appears to use non-POSIX feature(s):"
+				while read -r ;
+					do eqawarn "   ${REPLY}"
+				done <<< "${f//${ED}}"
+			done
+		done
+	fi
+
 	# Look for leaking LDFLAGS into pkg-config files
 	f=$(egrep -sH '^Libs.*-Wl,(-O[012]|--hash-style)' "${ED}"/usr/*/pkgconfig/*.pc)
 	if [[ -n ${f} ]] ; then
