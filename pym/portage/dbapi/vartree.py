@@ -4694,7 +4694,7 @@ class dblink(object):
 			"merge-sync" not in self.settings.features:
 			return
 
-		syncfs = self._get_syncfs()
+		syncfs = _get_syncfs()
 		if syncfs is None:
 			try:
 				proc = subprocess.Popen(["sync"])
@@ -4715,19 +4715,6 @@ class dblink(object):
 						pass
 					finally:
 						os.close(fd)
-
-	def _get_syncfs(self):
-		if platform.system() == "Linux":
-			filename = find_library("c")
-			if filename is not None:
-				library = LoadLibrary(filename)
-				if library is not None:
-					try:
-						return library.syncfs
-					except AttributeError:
-						pass
-
-		return None
 
 	def merge(self, mergeroot, inforoot, myroot=None, myebuild=None, cleanup=0,
 		mydbapi=None, prev_mtimes=None, counter=None):
@@ -4906,6 +4893,19 @@ class dblink(object):
 
 		finally:
 			self.unlockdb()
+
+def _get_syncfs():
+	if platform.system() == "Linux":
+		filename = find_library("c")
+		if filename is not None:
+			library = LoadLibrary(filename)
+			if library is not None:
+				try:
+					return library.syncfs
+				except AttributeError:
+					pass
+
+	return None
 
 def merge(mycat, mypkg, pkgloc, infloc,
 	myroot=None, settings=None, myebuild=None,
