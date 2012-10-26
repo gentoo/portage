@@ -33,6 +33,22 @@ class SlotConflictRebuildTestCase(TestCase):
 				"RDEPEND": "<app-misc/A-2"
 			},
 
+			"app-misc/D-1" : {
+				"EAPI": "5",
+				"SLOT": "0/1"
+			},
+
+			"app-misc/D-2" : {
+				"EAPI": "5",
+				"SLOT": "0/2"
+			},
+
+			"app-misc/E-0" : {
+				"EAPI": "5",
+				"DEPEND": "app-misc/D:=",
+				"RDEPEND": "app-misc/D:="
+			},
+
 		}
 
 		installed = {
@@ -54,9 +70,20 @@ class SlotConflictRebuildTestCase(TestCase):
 				"RDEPEND": "<app-misc/A-2"
 			},
 
+			"app-misc/D-1" : {
+				"EAPI": "5",
+				"SLOT": "0/1"
+			},
+
+			"app-misc/E-0" : {
+				"EAPI": "5",
+				"DEPEND": "app-misc/D:0/1=",
+				"RDEPEND": "app-misc/D:0/1="
+			},
+
 		}
 
-		world = ["app-misc/B", "app-misc/C"]
+		world = ["app-misc/B", "app-misc/C", "app-misc/E"]
 
 		test_cases = (
 
@@ -66,7 +93,7 @@ class SlotConflictRebuildTestCase(TestCase):
 				["@world"],
 				options = {"--update": True, "--deep": True},
 				success = True,
-				mergelist = []),
+				mergelist = ["app-misc/D-2", "app-misc/E-0"]),
 
 		)
 
