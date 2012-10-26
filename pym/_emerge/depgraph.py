@@ -3853,8 +3853,8 @@ class depgraph(object):
 					for other_db, other_type, other_built, \
 						other_installed, other_keys in dbs:
 						try:
-							if atom.slot == \
-								other_db._pkg_str(_unicode(cpv), None).slot:
+							if portage.dep._match_slot(atom,
+								other_db._pkg_str(_unicode(cpv), None)):
 								slot_available = True
 								break
 						except (KeyError, InvalidData):
