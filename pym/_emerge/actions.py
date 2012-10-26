@@ -1361,6 +1361,7 @@ def action_info(settings, trees, myopts, myfiles):
 	append = output_buffer.append
 	root_config = trees[settings['EROOT']]['root_config']
 	running_eroot = trees._running_eroot
+	chost = settings.get("CHOST")
 
 	append(getportageversion(settings["PORTDIR"], None,
 		settings.profile_path, settings["CHOST"],
@@ -1381,6 +1382,23 @@ def action_info(settings, trees, myopts, myfiles):
 	else:
 		lastSync = "Unknown"
 	append("Timestamp of tree: %s" % (lastSync,))
+
+	ld_names = []
+	if chost:
+		ld_names.append(chost + "-ld")
+	ld_names.append("ld")
+	for name in ld_names:
+		try:
+			proc = subprocess.Popen([name, "--version"],
+				stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		except OSError:
+			pass
+		else:
+			output = _unicode_decode(proc.communicate()[0]).splitlines()
+			proc.wait()
+			if proc.wait() == os.EX_OK and output:
+				append("ld %s" % (output[0]))
+				break
 
 	try:
 		proc = subprocess.Popen(["distcc", "--version"],
