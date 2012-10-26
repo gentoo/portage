@@ -43,13 +43,16 @@ class SlotOperatorUnsatisfiedTestCase(TestCase):
 		test_cases = (
 
 			# Demonstrate bug #439694, where a broken slot-operator
-			# sub-slot dependency fails to trigger rebuild.
+			# sub-slot dependency needs to trigger a rebuild.
 			ResolverPlaygroundTestCase(
 				["@world"],
 				options = {"--update": True, "--deep": True},
 				success = True,
-				mergelist = ["app-misc/A-1"]),
+				mergelist = ["app-misc/B-0"]),
 
+			# This doesn't trigger a rebuild, since there's no version
+			# change to trigger complete graph mode, and initially
+			# unsatisfied deps are ignored in complete graph mode anyway.
 			ResolverPlaygroundTestCase(
 				["app-misc/A"],
 				options = {"--oneshot": True},

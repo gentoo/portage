@@ -1192,7 +1192,7 @@ class depgraph(object):
 		for slot_key, slot_info in self._dynamic_config._slot_operator_deps.items():
 
 			for dep in slot_info:
-				if not (dep.child.built and dep.parent and
+				if not (dep.parent and
 					isinstance(dep.parent, Package) and dep.parent.built):
 					continue
 
@@ -1619,7 +1619,7 @@ class depgraph(object):
 			not (deep is not True and depth > deep))
 
 		dep.child = pkg
-		if (not pkg.onlydeps and pkg.built and
+		if (not pkg.onlydeps and
 			dep.atom and dep.atom.slot_operator_built):
 			self._add_slot_operator_dep(dep)
 
