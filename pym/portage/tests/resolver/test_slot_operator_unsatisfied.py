@@ -43,12 +43,12 @@ class SlotOperatorUnsatisfiedTestCase(TestCase):
 		test_cases = (
 
 			# Demonstrate bug #439694, where a broken slot-operator
-			# sub-slot dependency fails to be recognized.
+			# sub-slot dependency fails to trigger rebuild.
 			ResolverPlaygroundTestCase(
 				["@world"],
 				options = {"--update": True, "--deep": True},
 				success = True,
-				mergelist = []),
+				mergelist = ["app-misc/A-1"]),
 
 			ResolverPlaygroundTestCase(
 				["app-misc/A"],

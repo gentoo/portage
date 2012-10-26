@@ -3804,7 +3804,8 @@ class depgraph(object):
 		# the newly built package still won't have the expected slot.
 		# Therefore, assume that such SLOT dependencies are already
 		# satisfied rather than forcing a rebuild.
-		if not matched_something and installed and atom.slot is not None:
+		if not matched_something and installed and \
+			atom.slot is not None and not atom.slot_operator_built:
 
 			if "remove" in self._dynamic_config.myparams:
 				# We need to search the portdbapi, which is not in our
