@@ -415,6 +415,7 @@ class _dynamic_depgraph_config(object):
 		self._needed_use_config_changes = backtrack_parameters.needed_use_config_changes
 		self._runtime_pkg_mask = backtrack_parameters.runtime_pkg_mask
 		self._slot_operator_replace_installed = backtrack_parameters.slot_operator_replace_installed
+		self._prune_rebuilds = backtrack_parameters.prune_rebuilds
 		self._need_restart = False
 		# For conditions that always require user intervention, such as
 		# unsatisfied REQUIRED_USE (currently has no autounmask support).
@@ -633,7 +634,7 @@ class depgraph(object):
 				line = colorize("INFORM", line)
 			writemsg(line + "\n", noiselevel=-1)
 
-	def _show_missed_update(self):
+	def _get_missed_updates(self):
 
 		# In order to minimize noise, show only the highest
 		# missed update from each SLOT.
@@ -658,6 +659,12 @@ class depgraph(object):
 					continue
 				missed_updates[k] = (pkg, mask_type, parent_atoms)
 				break
+
+		return missed_updates
+
+	def _show_missed_update(self):
+
+		missed_updates = self._get_missed_updates()
 
 		if not missed_updates:
 			return
@@ -2735,6 +2742,23 @@ class depgraph(object):
 			("slot_operator_mask_built" in self._dynamic_config._backtrack_infos["config"] or
 			"slot_operator_replace_installed" in self._dynamic_config._backtrack_infos["config"]) and \
 			self.need_restart():
+			return False, myfavorites
+
+		if not self._dynamic_config._prune_rebuilds and \
+			self._dynamic_config._slot_operator_replace_installed and \
+			self._get_missed_updates():
+			# When there are missed updates, we might have triggered
+			# some unnecessary rebuilds (see bug #439688). So, prune
+			# all the rebuilds and backtrack with the problematic
+			# updates masked. The next backtrack run should pull in
+			# any rebuilds that are really needed, and this
+			# prune_rebuilds path should never be entered more than
+			# once in a series of backtracking nodes (in order to
+			# avoid a backtracking loop).
+			backtrack_infos = self._dynamic_config._backtrack_infos
+			config = backtrack_infos.setdefault("config", {})
+			config["prune_rebuilds"] = True
+			self._dynamic_config._need_restart = True
 			return False, myfavorites
 
 		# Any failures except those due to autounmask *alone* should return

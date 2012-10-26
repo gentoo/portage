@@ -60,13 +60,13 @@ class SlotConflictRebuildTestCase(TestCase):
 
 		test_cases = (
 
-			# Demonstrate bug #439688, where a slot conflict prevents
-			# an upgrade and triggers unnecessary rebuilds.
+			# Test bug #439688, where a slot conflict prevents an
+			# upgrade and we don't want to trigger unnecessary rebuilds.
 			ResolverPlaygroundTestCase(
 				["@world"],
 				options = {"--update": True, "--deep": True},
 				success = True,
-				mergelist = ["app-misc/A-1", "app-misc/B-0"]),
+				mergelist = []),
 
 		)
 
