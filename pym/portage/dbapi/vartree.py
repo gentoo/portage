@@ -4356,18 +4356,18 @@ class dblink(object):
 		# this is supposed to merge a list of files.  There will be 2 forms of argument passing.
 		if isinstance(stufftomerge, basestring):
 			#A directory is specified.  Figure out protection paths, listdir() it and process it.
-			mergelist = os.listdir(join(srcroot, stufftomerge))
-			offset = stufftomerge
+			mergelist = [join(stufftomerge, child) for child in \
+				os.listdir(join(srcroot, stufftomerge))]
 		else:
-			mergelist = stufftomerge
-			offset = ""
+			mergelist = stufftomerge[:]
 
-		for i, x in enumerate(mergelist):
+		while mergelist:
 
-			mysrc = join(srcroot, offset, x)
-			mydest = join(destroot, offset, x)
+			relative_path = mergelist.pop()
+			mysrc = join(srcroot, relative_path)
+			mydest = join(destroot, relative_path)
 			# myrealdest is mydest without the $ROOT prefix (makes a difference if ROOT!="/")
-			myrealdest = join(sep, offset, x)
+			myrealdest = join(sep, relative_path)
 			# stat file once, test using S_* macros many times (faster that way)
 			mystat = os.lstat(mysrc)
 			mymode = mystat[stat.ST_MODE]
@@ -4575,9 +4575,9 @@ class dblink(object):
 
 				outfile.write("dir "+myrealdest+"\n")
 				# recurse and merge this directory
-				if self.mergeme(srcroot, destroot, outfile, secondhand,
-					join(offset, x), cfgfiledict, thismtime):
-					return 1
+				mergelist.extend(join(relative_path, child) for child in
+					os.listdir(join(srcroot, relative_path)))
+
 			elif stat.S_ISREG(mymode):
 				# we are merging a regular file
 				mymd5 = perform_md5(mysrc, calc_prelink=calc_prelink)
