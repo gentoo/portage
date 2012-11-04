@@ -385,6 +385,7 @@ class InheritDeprecated(LineCheck):
 		"php-ext-pecl-r1": "php-ext-pecl-r2",
 		"php-ext-source-r1": "php-ext-source-r2",
 		"php-pear": "php-pear-r1",
+		"python-distutils-ng": "python-r1 + distutils-r1",
 		"qt3": False,
 		"qt4": "qt4-r2",
 		"ruby": "ruby-ng",

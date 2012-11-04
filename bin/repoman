@@ -359,6 +359,7 @@ qahelp={
 	"IUSE.invalid":"This ebuild has a variable in IUSE that is not in the use.desc or its metadata.xml file",
 	"IUSE.missing":"This ebuild has a USE conditional which references a flag that is not listed in IUSE",
 	"LICENSE.invalid":"This ebuild is listing a license that doesnt exist in portages license/ dir.",
+	"LICENSE.deprecated":"This ebuild is listing a deprecated license.",
 	"KEYWORDS.invalid":"This ebuild contains KEYWORDS that are not listed in profiles/arch.list or for which no valid profile was found",
 	"RDEPEND.implicit":"RDEPEND is unset in the ebuild which triggers implicit RDEPEND=$DEPEND assignment (prior to EAPI 4)",
 	"RDEPEND.suspect":"RDEPEND contains a package that usually only belongs in DEPEND.",
@@ -399,6 +400,7 @@ qawarnings = set((
 "DESCRIPTION.toolong",
 "EAPI.deprecated",
 "HOMEPAGE.virtual",
+"LICENSE.deprecated",
 "LICENSE.virtual",
 "KEYWORDS.dropped",
 "KEYWORDS.stupid",
@@ -923,6 +925,13 @@ for x in repoman_settings.archlist():
 		print(red("You need to either \"cvs update\" your profiles dir or follow this"))
 		print(red("up with the "+x+" team."))
 		print()
+
+global_noiselimit = portage.util.noiselimit
+# Suppress error message if @DEPRECATED license group doesn't exist
+portage.util.noiselimit = -2
+liclist_deprecated = \
+	set(repoman_settings._license_manager.expandLicenseTokens(["@DEPRECATED"]))
+portage.util.noiselimit = global_noiselimit
 
 if not liclist:
 	logging.fatal("Couldn't find licenses?")
@@ -2016,6 +2025,9 @@ for x in effective_scanlist:
 				if lic not in liclist and lic != "||":
 					stats["LICENSE.invalid"]=stats["LICENSE.invalid"]+1
 					fails["LICENSE.invalid"].append(x+"/"+y+".ebuild: %s" % lic)
+				elif lic in liclist_deprecated:
+					stats["LICENSE.deprecated"] = stats["LICENSE.deprecated"] + 1
+					fails["LICENSE.deprecated"].append("%s: %s" % (relative_path, lic))
 
 		#keyword checks
 		myuse = myaux["KEYWORDS"].split()

@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import copy
@@ -7,8 +7,8 @@ class BacktrackParameter(object):
 
 	__slots__ = (
 		"needed_unstable_keywords", "runtime_pkg_mask", "needed_use_config_changes", "needed_license_changes",
-		"rebuild_list", "reinstall_list", "needed_p_mask_changes",
-		"slot_operator_replace_installed"
+		"prune_rebuilds", "rebuild_list", "reinstall_list", "needed_p_mask_changes",
+		"slot_operator_mask_built", "slot_operator_replace_installed"
 	)
 
 	def __init__(self):
@@ -20,6 +20,8 @@ class BacktrackParameter(object):
 		self.rebuild_list = set()
 		self.reinstall_list = set()
 		self.slot_operator_replace_installed = set()
+		self.slot_operator_mask_built = set()
+		self.prune_rebuilds = False
 
 	def __deepcopy__(self, memo=None):
 		if memo is None:
@@ -36,6 +38,8 @@ class BacktrackParameter(object):
 		result.rebuild_list = copy.copy(self.rebuild_list)
 		result.reinstall_list = copy.copy(self.reinstall_list)
 		result.slot_operator_replace_installed = copy.copy(self.slot_operator_replace_installed)
+		result.slot_operator_mask_built = self.slot_operator_mask_built.copy()
+		result.prune_rebuilds = self.prune_rebuilds
 
 		# runtime_pkg_mask contains nested dicts that must also be copied
 		result.runtime_pkg_mask = {}
@@ -52,7 +56,9 @@ class BacktrackParameter(object):
 			self.needed_license_changes == other.needed_license_changes and \
 			self.rebuild_list == other.rebuild_list and \
 			self.reinstall_list == other.reinstall_list and \
-			self.slot_operator_replace_installed == other.slot_operator_replace_installed
+			self.slot_operator_replace_installed == other.slot_operator_replace_installed and \
+			self.slot_operator_mask_built == other.slot_operator_mask_built and \
+			self.prune_rebuilds == other.prune_rebuilds
 
 
 class _BacktrackNode(object):
@@ -193,6 +199,7 @@ class Backtracker(object):
 			elif change == "slot_conflict_abi":
 				new_node.terminal = False
 			elif change == "slot_operator_mask_built":
+				para.slot_operator_mask_built.update(data)
 				for pkg, mask_reasons in data.items():
 					para.runtime_pkg_mask.setdefault(pkg,
 						{}).update(mask_reasons)
@@ -202,6 +209,17 @@ class Backtracker(object):
 				para.rebuild_list.update(data)
 			elif change == "reinstall_list":
 				para.reinstall_list.update(data)
+			elif change == "prune_rebuilds":
+				para.prune_rebuilds = True
+				para.slot_operator_replace_installed.clear()
+				for pkg in para.slot_operator_mask_built:
+					runtime_masks = para.runtime_pkg_mask.get(pkg)
+					if runtime_masks is None:
+						continue
+					runtime_masks.pop("slot_operator_mask_built", None)
+					if not runtime_masks:
+						para.runtime_pkg_mask.pop(pkg)
+				para.slot_operator_mask_built.clear()
 
 		self._add(new_node, explore=explore)
 		self._current_node = new_node

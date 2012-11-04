@@ -107,6 +107,8 @@ __helpers_die() {
 }
 
 die() {
+	local IFS=$' \t\n'
+
 	if [[ $PORTAGE_NONFATAL -eq 1 ]]; then
 		echo -e " $WARN*$NORMAL ${FUNCNAME[1]}: WARNING: $@" >&2
 		return 1

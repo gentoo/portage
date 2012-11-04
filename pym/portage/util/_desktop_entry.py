@@ -62,7 +62,9 @@ def validate_desktop_entry(path):
 	if output_lines:
 		filtered_output = []
 		for line in output_lines:
-			if line[len(path)+2:] in _ignored_errors:
+			msg = line[len(path)+2:]
+			# "hint:" output is new in desktop-file-utils-0.21
+			if msg.startswith('hint: ') or msg in _ignored_errors:
 				continue
 			filtered_output.append(line)
 		output_lines = filtered_output

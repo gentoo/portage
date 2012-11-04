@@ -415,6 +415,7 @@ class _dynamic_depgraph_config(object):
 		self._needed_use_config_changes = backtrack_parameters.needed_use_config_changes
 		self._runtime_pkg_mask = backtrack_parameters.runtime_pkg_mask
 		self._slot_operator_replace_installed = backtrack_parameters.slot_operator_replace_installed
+		self._prune_rebuilds = backtrack_parameters.prune_rebuilds
 		self._need_restart = False
 		# For conditions that always require user intervention, such as
 		# unsatisfied REQUIRED_USE (currently has no autounmask support).
@@ -633,7 +634,7 @@ class depgraph(object):
 				line = colorize("INFORM", line)
 			writemsg(line + "\n", noiselevel=-1)
 
-	def _show_missed_update(self):
+	def _get_missed_updates(self):
 
 		# In order to minimize noise, show only the highest
 		# missed update from each SLOT.
@@ -658,6 +659,12 @@ class depgraph(object):
 					continue
 				missed_updates[k] = (pkg, mask_type, parent_atoms)
 				break
+
+		return missed_updates
+
+	def _show_missed_update(self):
+
+		missed_updates = self._get_missed_updates()
 
 		if not missed_updates:
 			return
@@ -1192,7 +1199,7 @@ class depgraph(object):
 		for slot_key, slot_info in self._dynamic_config._slot_operator_deps.items():
 
 			for dep in slot_info:
-				if not (dep.child.built and dep.parent and
+				if not (dep.parent and
 					isinstance(dep.parent, Package) and dep.parent.built):
 					continue
 
@@ -1619,7 +1626,7 @@ class depgraph(object):
 			not (deep is not True and depth > deep))
 
 		dep.child = pkg
-		if (not pkg.onlydeps and pkg.built and
+		if (not pkg.onlydeps and
 			dep.atom and dep.atom.slot_operator_built):
 			self._add_slot_operator_dep(dep)
 
@@ -2737,6 +2744,23 @@ class depgraph(object):
 			self.need_restart():
 			return False, myfavorites
 
+		if not self._dynamic_config._prune_rebuilds and \
+			self._dynamic_config._slot_operator_replace_installed and \
+			self._get_missed_updates():
+			# When there are missed updates, we might have triggered
+			# some unnecessary rebuilds (see bug #439688). So, prune
+			# all the rebuilds and backtrack with the problematic
+			# updates masked. The next backtrack run should pull in
+			# any rebuilds that are really needed, and this
+			# prune_rebuilds path should never be entered more than
+			# once in a series of backtracking nodes (in order to
+			# avoid a backtracking loop).
+			backtrack_infos = self._dynamic_config._backtrack_infos
+			config = backtrack_infos.setdefault("config", {})
+			config["prune_rebuilds"] = True
+			self._dynamic_config._need_restart = True
+			return False, myfavorites
+
 		# Any failures except those due to autounmask *alone* should return
 		# before this point, since the success_without_autounmask flag that's
 		# set below is reserved for cases where there are *zero* other
@@ -3804,7 +3828,8 @@ class depgraph(object):
 		# the newly built package still won't have the expected slot.
 		# Therefore, assume that such SLOT dependencies are already
 		# satisfied rather than forcing a rebuild.
-		if not matched_something and installed and atom.slot is not None:
+		if not matched_something and installed and \
+			atom.slot is not None and not atom.slot_operator_built:
 
 			if "remove" in self._dynamic_config.myparams:
 				# We need to search the portdbapi, which is not in our
@@ -3828,8 +3853,8 @@ class depgraph(object):
 					for other_db, other_type, other_built, \
 						other_installed, other_keys in dbs:
 						try:
-							if atom.slot == \
-								other_db._pkg_str(_unicode(cpv), None).slot:
+							if portage.dep._match_slot(atom,
+								other_db._pkg_str(_unicode(cpv), None)):
 								slot_available = True
 								break
 						except (KeyError, InvalidData):

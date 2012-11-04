@@ -10,6 +10,7 @@ import errno
 import fcntl
 import portage
 from portage import os, _unicode_decode
+from portage.dbapi.vartree import _get_syncfs
 import portage.elog.messages
 from portage.util._async.ForkProcess import ForkProcess
 
@@ -39,6 +40,11 @@ class MergeProcess(ForkProcess):
 			settings.reload()
 			settings.reset()
 			settings.setcpv(cpv, mydb=self.mydbapi)
+
+		# This caches the libc library lookup in the current
+		# process, so that it's only done once rather than
+		# for each child process.
+		_get_syncfs()
 
 		# Inherit stdin by default, so that the pdb SIGUSR1
 		# handler is usable for the subprocess.

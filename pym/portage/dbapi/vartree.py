@@ -30,6 +30,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.env_update:env_update',
 	'portage.util.listdir:dircache,listdir',
 	'portage.util.movefile:movefile',
+	'portage.util._ctypes:find_library,LoadLibrary',
 	'portage.util._dyn_libs.PreservedLibsRegistry:PreservedLibsRegistry',
 	'portage.util._dyn_libs.LinkageMapELF:LinkageMapELF@LinkageMap',
 	'portage.util._dyn_libs.LinkageMapMachO:LinkageMapMachO',
@@ -76,6 +77,7 @@ import io
 from itertools import chain
 import logging
 import os as _os
+import platform
 import pwd
 import re
 import stat
@@ -1501,6 +1503,7 @@ class dblink(object):
 		self._contents_inodes = None
 		self._contents_basenames = None
 		self._linkmap_broken = False
+		self._device_path_map = {}
 		self._hardlink_merge_map = {}
 		self._hash_key = (self._eroot, self.mycpv)
 		self._protect_obj = None
@@ -1548,7 +1551,11 @@ class dblink(object):
 		"""
 		Remove this entry from the database
 		"""
-		if not os.path.exists(self.dbdir):
+		try:
+			os.lstat(self.dbdir)
+		except OSError as e:
+			if e.errno not in (errno.ENOENT, errno.ENOTDIR, errno.ESTALE):
+				raise
 			return
 
 		# Check validity of self.dbdir before attempting to remove it.
@@ -1564,6 +1571,14 @@ class dblink(object):
 		except OSError:
 			pass
 		self.vartree.dbapi._remove(self)
+
+		# Use self.dbroot since we need an existing path for syncfs.
+		try:
+			self._merged_path(self.dbroot, os.lstat(self.dbroot))
+		except OSError:
+			pass
+
+		self._post_merge_sync()
 
 	def clearcontents(self):
 		"""
@@ -2150,6 +2165,14 @@ class dblink(object):
 					self._eerror("postrm", 
 						["Could not chmod or unlink '%s': %s" % \
 						(file_name, ose)])
+				else:
+
+					# Even though the file no longer exists, we log it
+					# here so that _unmerge_dirs can see that we've
+					# removed a file from this device, and will record
+					# the parent directory for a syncfs call.
+					self._merged_path(file_name, lstatobj, exists=False)
+
 				finally:
 					if bsd_chflags and pflags != 0:
 						# Restore the parent flags we saved before unlinking
@@ -2570,15 +2593,19 @@ class dblink(object):
 								raise
 							del e
 							show_unmerge("!!!", "", "obj", child)
+
 			try:
+				parent_name = os.path.dirname(obj)
+				parent_stat = os.stat(parent_name)
+
 				if bsd_chflags:
 					lstatobj = os.lstat(obj)
 					if lstatobj.st_flags != 0:
 						bsd_chflags.lchflags(obj, 0)
-					parent_name = os.path.dirname(obj)
+
 					# Use normal stat/chflags for the parent since we want to
 					# follow any symlinks to the real parent directory.
-					pflags = os.stat(parent_name).st_flags
+					pflags = parent_stat.st_flags
 					if pflags != 0:
 						bsd_chflags.chflags(parent_name, 0)
 				try:
@@ -2587,13 +2614,34 @@ class dblink(object):
 					if bsd_chflags and pflags != 0:
 						# Restore the parent flags we saved before unlinking
 						bsd_chflags.chflags(parent_name, pflags)
+
+				# Record the parent directory for use in syncfs calls.
+				# Note that we use a realpath and a regular stat here, since
+				# we want to follow any symlinks back to the real device where
+				# the real parent directory resides.
+				self._merged_path(os.path.realpath(parent_name), parent_stat)
+
 				show_unmerge("<<<", "", "dir", obj)
 			except EnvironmentError as e:
 				if e.errno not in ignored_rmdir_errnos:
 					raise
 				if e.errno != errno.ENOENT:
 					show_unmerge("---", unmerge_desc["!empty"], "dir", obj)
-				del e
+
+				# Since we didn't remove this directory, record the directory
+				# itself for use in syncfs calls, if we have removed another
+				# file from the same device.
+				# Note that we use a realpath and a regular stat here, since
+				# we want to follow any symlinks back to the real device where
+				# the real directory resides.
+				try:
+					dir_stat = os.stat(obj)
+				except OSError:
+					pass
+				else:
+					if dir_stat.st_dev in self._device_path_map:
+						self._merged_path(os.path.realpath(obj), dir_stat)
+
 			else:
 				# When a directory is successfully removed, there's
 				# no need to protect symlinks that point to it.
@@ -4071,6 +4119,7 @@ class dblink(object):
 		try:
 			self.delete()
 			_movefile(self.dbtmpdir, self.dbpkgdir, mysettings=self.settings)
+			self._merged_path(self.dbpkgdir, os.lstat(self.dbpkgdir))
 		finally:
 			self.unlockdb()
 
@@ -4186,6 +4235,7 @@ class dblink(object):
 		# For gcc upgrades, preserved libs have to be removed after the
 		# the library path has been updated.
 		self._prune_plib_registry()
+		self._post_merge_sync()
 
 		return os.EX_OK
 
@@ -4329,18 +4379,18 @@ class dblink(object):
 		# this is supposed to merge a list of files.  There will be 2 forms of argument passing.
 		if isinstance(stufftomerge, basestring):
 			#A directory is specified.  Figure out protection paths, listdir() it and process it.
-			mergelist = os.listdir(join(srcroot, stufftomerge))
-			offset = stufftomerge
+			mergelist = [join(stufftomerge, child) for child in \
+				os.listdir(join(srcroot, stufftomerge))]
 		else:
-			mergelist = stufftomerge
-			offset = ""
+			mergelist = stufftomerge[:]
 
-		for i, x in enumerate(mergelist):
+		while mergelist:
 
-			mysrc = join(srcroot, offset, x)
-			mydest = join(destroot, offset, x)
+			relative_path = mergelist.pop()
+			mysrc = join(srcroot, relative_path)
+			mydest = join(destroot, relative_path)
 			# myrealdest is mydest without the $ROOT prefix (makes a difference if ROOT!="/")
-			myrealdest = join(sep, offset, x)
+			myrealdest = join(sep, relative_path)
 			# stat file once, test using S_* macros many times (faster that way)
 			mystat = os.lstat(mysrc)
 			mymode = mystat[stat.ST_MODE]
@@ -4435,6 +4485,12 @@ class dblink(object):
 				mymtime = movefile(mysrc, mydest, newmtime=thismtime,
 					sstat=mystat, mysettings=self.settings,
 					encoding=_encodings['merge'])
+
+				try:
+					self._merged_path(mydest, os.lstat(mydest))
+				except OSError:
+					pass
+
 				if mymtime != None:
 					showMessage(">>> %s -> %s\n" % (mydest, myto))
 					if sys.hexversion >= 0x3030000:
@@ -4534,11 +4590,17 @@ class dblink(object):
 					os.chmod(mydest, mystat[0])
 					os.chown(mydest, mystat[4], mystat[5])
 					showMessage(">>> %s/\n" % mydest)
+
+				try:
+					self._merged_path(mydest, os.lstat(mydest))
+				except OSError:
+					pass
+
 				outfile.write("dir "+myrealdest+"\n")
 				# recurse and merge this directory
-				if self.mergeme(srcroot, destroot, outfile, secondhand,
-					join(offset, x), cfgfiledict, thismtime):
-					return 1
+				mergelist.extend(join(relative_path, child) for child in
+					os.listdir(join(srcroot, relative_path)))
+
 			elif stat.S_ISREG(mymode):
 				# we are merging a regular file
 				mymd5 = perform_md5(mysrc, calc_prelink=calc_prelink)
@@ -4633,6 +4695,11 @@ class dblink(object):
 					hardlink_candidates.append(mydest)
 					zing = ">>>"
 
+					try:
+						self._merged_path(mydest, os.lstat(mydest))
+					except OSError:
+						pass
+
 				if mymtime != None:
 					if sys.hexversion >= 0x3030000:
 						outfile.write("obj "+myrealdest+" "+mymd5+" "+str(mymtime // 1000000000)+"\n")
@@ -4648,6 +4715,12 @@ class dblink(object):
 						sstat=mystat, mysettings=self.settings,
 						encoding=_encodings['merge']) is not None:
 						zing = ">>>"
+
+						try:
+							self._merged_path(mydest, os.lstat(mydest))
+						except OSError:
+							pass
+
 					else:
 						return 1
 				if stat.S_ISFIFO(mymode):
@@ -4655,6 +4728,52 @@ class dblink(object):
 				else:
 					outfile.write("dev %s\n" % myrealdest)
 				showMessage(zing + " " + mydest + "\n")
+
+	def _merged_path(self, path, lstatobj, exists=True):
+		previous_path = self._device_path_map.get(lstatobj.st_dev)
+		if previous_path is None or previous_path is False or \
+			(exists and len(path) < len(previous_path)):
+			if exists:
+				self._device_path_map[lstatobj.st_dev] = path
+			else:
+				# This entry is used to indicate that we've unmerged
+				# a file from this device, and later, this entry is
+				# replaced by a parent directory.
+				self._device_path_map[lstatobj.st_dev] = False
+
+	def _post_merge_sync(self):
+		"""
+		Call this after merge or unmerge, in order to sync relevant files to
+		disk and avoid data-loss in the event of a power failure. This method
+		does nothing if FEATURES=merge-sync is disabled.
+		"""
+		if not self._device_path_map or \
+			"merge-sync" not in self.settings.features:
+			return
+
+		syncfs = _get_syncfs()
+		if syncfs is None:
+			try:
+				proc = subprocess.Popen(["sync"])
+			except EnvironmentError:
+				pass
+			else:
+				proc.wait()
+		else:
+			for path in self._device_path_map.values():
+				if path is False:
+					continue
+				try:
+					fd = os.open(path, os.O_RDONLY)
+				except OSError:
+					pass
+				else:
+					try:
+						syncfs(fd)
+					except OSError:
+						pass
+					finally:
+						os.close(fd)
 
 	def merge(self, mergeroot, inforoot, myroot=None, myebuild=None, cleanup=0,
 		mydbapi=None, prev_mtimes=None, counter=None):
@@ -4833,6 +4952,19 @@ class dblink(object):
 
 		finally:
 			self.unlockdb()
+
+def _get_syncfs():
+	if platform.system() == "Linux":
+		filename = find_library("c")
+		if filename is not None:
+			library = LoadLibrary(filename)
+			if library is not None:
+				try:
+					return library.syncfs
+				except AttributeError:
+					pass
+
+	return None
 
 def merge(mycat, mypkg, pkgloc, infloc,
 	myroot=None, settings=None, myebuild=None,
