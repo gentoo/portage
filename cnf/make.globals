@@ -63,7 +63,7 @@ FEATURES="assume-digests binpkg-logs
 # Ignore file collisions for unowned *.pyo and *.pyc files, this helps during
 # transition from compiling python modules in live file system to compiling
 # them in src_install() function.
-COLLISION_IGNORE="/lib/modules/* *.py[co]"
+COLLISION_IGNORE="/lib/modules/* *.py[co] *\$py.class"
 UNINSTALL_IGNORE="/lib/modules/*"
 
 # By default wait 5 secs before cleaning a package
