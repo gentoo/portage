@@ -70,16 +70,6 @@ tmpdir="${T}/prepstrip"
 rm -rf "${tmpdir}"
 mkdir -p "${tmpdir}"/{inodes,splitdebug,sources}
 
-# Usage: inode_var_name: <file>
-inode_file_link() {
-	echo -n "${tmpdir}/inodes/"
-	if  [[ ${USERLAND} == "BSD" ]] ; then
-		stat -f '%i' "$1"
-	else
-		stat -c '%i' "$1"
-	fi
-}
-
 # Usage: save_elf_sources <elf>
 save_elf_sources() {
 	${FEATURES_installsources} || return 0
@@ -247,16 +237,21 @@ fi
 # inodes in advance, so that we can avoid interference due to trying
 # to strip the same (hardlinked) file multiple times in parallel.
 # See bug #421099.
+if  [[ ${USERLAND} == BSD ]] ; then
+	get_inode_number() { stat -f '%i' "$1"; }
+else
+	get_inode_number() { stat -c '%i' "$1"; }
+fi
+cd "${tmpdir}/inodes" || die "cd failed unexpectedly"
 while read -r x ; do
-	inode_link=$(inode_file_link "${x}")
-	echo "${x}" >> "${inode_link}" || die "echo failed"
+	inode_link=$(get_inode_number "${x}") || die "stat failed unexpectedly"
+	echo "${x}" >> "${inode_link}" || die "echo failed unexpectedly"
 done < <(
 	scanelf -yqRBF '#k%F' -k '.symtab' "$@"
 	find "$@" -type f ! -type l -name '*.a'
 )
 
 # Now we look for unstripped binaries.
-cd "${tmpdir}/inodes" || die "cd failed"
 for inode_link in $(shopt -s nullglob; echo *) ; do
 while read -r x
 do
