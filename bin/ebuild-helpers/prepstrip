@@ -257,7 +257,7 @@ done < <(
 
 # Now we look for unstripped binaries.
 cd "${tmpdir}/inodes" || die "cd failed"
-for inode_link in * ; do
+for inode_link in $(shopt -s nullglob; echo *) ; do
 while read -r x
 do
 
