@@ -302,11 +302,14 @@ sync_local() {
 			echo "Executed command: tar jxf $FILE"
 			exit 1
 		fi
-		# Make sure user and group file ownership is appropriate
-		chown ${ownership} portage > /dev/null 2>&1 && \
+
+		local rsync_opts="${PORTAGE_RSYNC_OPTS} ${PORTAGE_RSYNC_EXTRA_OPTS}"
+		if chown ${ownership} portage > /dev/null 2>&1; then
 			chown -R ${ownership} portage
+			rsync_opts+=" --owner --group"
+		fi
 		cd portage
-		rsync ${PORTAGE_RSYNC_OPTS} ${PORTAGE_RSYNC_EXTRA_OPTS} . "${PORTDIR%%/}"
+		rsync ${rsync_opts} . "${PORTDIR%%/}"
 		cd ..
 		echo "cleaning up"
 		rm -rf portage
