@@ -905,13 +905,18 @@ class Scheduler(PollScheduler):
 					failures += 1
 				portage.elog.elog_process(x.cpv, settings)
 			finally:
-				if current_task is not None and current_task.isAlive():
-					current_task.cancel()
-					current_task.wait()
-				clean_phase = EbuildPhase(background=False,
-					phase='clean', scheduler=sched_iface, settings=settings)
-				clean_phase.start()
-				clean_phase.wait()
+
+				if current_task is not None:
+					if current_task.isAlive():
+						current_task.cancel()
+						current_task.wait()
+					if current_task.returncode == os.EX_OK:
+						clean_phase = EbuildPhase(background=False,
+							phase='clean', scheduler=sched_iface,
+							settings=settings)
+						clean_phase.start()
+						clean_phase.wait()
+
 				build_dir.unlock()
 
 		if failures:
