@@ -20,6 +20,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage.const import USER_CONFIG_PATH
+from portage.dep import match_from_list
 from portage.eapi import _get_eapi_attrs
 from portage.exception import DirectoryNotFound, InvalidAtom, PortageException
 from portage.localization import _
@@ -57,7 +58,16 @@ def update_dbentry(update_cmd, mycontent, eapi=None, parent=None):
 				if atom.cp != old_value:
 					continue
 
-				split_content[i] = token.replace(old_value, new_value, 1)
+				new_atom = Atom(token.replace(old_value, new_value, 1),
+					eapi=eapi)
+
+				# Avoid creating self-blockers for bug #367215.
+				if new_atom.blocker and parent is not None and \
+					parent.cp == new_atom.cp and \
+					match_from_list(new_atom, [parent]):
+					continue
+
+				split_content[i] = _unicode(new_atom)
 				modified = True
 
 			if modified:
