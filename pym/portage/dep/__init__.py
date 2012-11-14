@@ -1229,11 +1229,14 @@ class Atom(_unicode):
 			if allow_repo is None:
 				allow_repo = True
 
+		blocker_prefix = ""
 		if "!" == s[:1]:
 			blocker = self._blocker(forbid_overlap=("!" == s[1:2]))
 			if blocker.overlap.forbid:
+				blocker_prefix = s[:2]
 				s = s[2:]
 			else:
+				blocker_prefix = s[:1]
 				s = s[1:]
 		else:
 			blocker = False
@@ -1346,15 +1349,18 @@ class Atom(_unicode):
 				use = _use
 			else:
 				use = _use_dep(use_str[1:-1].split(","), eapi_attrs)
-			without_use = Atom(m.group('without_use'), allow_repo=allow_repo)
+			without_use = Atom(blocker_prefix + m.group('without_use'),
+				allow_repo=allow_repo)
 		else:
 			use = None
 			if unevaluated_atom is not None and \
 				unevaluated_atom.use is not None:
 				# unevaluated_atom.use is used for IUSE checks when matching
 				# packages, so it must not propagate to without_use
-				without_use = Atom(s, allow_wildcard=allow_wildcard,
-					allow_repo=allow_repo)
+				without_use = Atom(_unicode(self),
+					allow_wildcard=allow_wildcard,
+					allow_repo=allow_repo,
+					eapi=eapi)
 			else:
 				without_use = self
 
