@@ -5,13 +5,14 @@ import portage
 from portage import os
 from portage.exception import InvalidData
 from _emerge.Package import Package
+from portage.versions import _pkg_str
 
 class MoveHandler(object):
 
 	def __init__(self, tree, porttree):
 		self._tree = tree
 		self._portdb = porttree.dbapi
-		self._update_keys = ["PROVIDE"] + list(Package._dep_keys)
+		self._update_keys = Package._dep_keys + ("PROVIDE",)
 		self._master_repo = \
 			self._portdb.getRepositoryName(self._portdb.porttree_root)
 
@@ -92,15 +93,18 @@ class MoveHandler(object):
 		cpv_all = self._tree.dbapi.cpv_all()
 		cpv_all.sort()
 		maxval = len(cpv_all)
-		meta_keys = self._update_keys + ['repository', 'EAPI']
+		meta_keys = self._update_keys + self._portdb._pkg_str_aux_keys
 		if onProgress:
 			onProgress(maxval, 0)
 		for i, cpv in enumerate(cpv_all):
 			metadata = dict(zip(meta_keys, aux_get(cpv, meta_keys)))
-			eapi = metadata.pop('EAPI')
-			repository = metadata.pop('repository')
 			try:
-				updates = allupdates[repository]
+				pkg = _pkg_str(cpv, metadata=metadata)
+			except InvalidData:
+				continue
+			metadata = dict((k, metadata[k]) for k in self._update_keys)
+			try:
+				updates = allupdates[pkg.repo]
 			except KeyError:
 				try:
 					updates = allupdates['DEFAULT']
@@ -109,7 +113,7 @@ class MoveHandler(object):
 			if not updates:
 				continue
 			metadata_updates = \
-				portage.update_dbentries(updates, metadata, eapi=eapi)
+				portage.update_dbentries(updates, metadata, parent=pkg)
 			if metadata_updates:
 				errors.append("'%s' has outdated metadata" % cpv)
 			if onProgress:

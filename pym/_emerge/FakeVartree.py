@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -15,6 +15,7 @@ from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidDependString
 from portage.repository.config import _gen_valid_repo
 from portage.update import grab_updates, parse_updates, update_dbentries
+from portage.versions import _pkg_str
 
 if sys.hexversion >= 0x3000000:
 	long = int
@@ -286,12 +287,15 @@ def grab_global_updates(portdb):
 	return retupdates
 
 def perform_global_updates(mycpv, mydb, myupdates):
-	aux_keys = Package._dep_keys + ("EAPI", 'repository')
+	aux_keys = Package._dep_keys + mydb._pkg_str_aux_keys
 	aux_dict = dict(zip(aux_keys, mydb.aux_get(mycpv, aux_keys)))
-	eapi = aux_dict.pop('EAPI')
-	repository = aux_dict.pop('repository')
 	try:
-		mycommands = myupdates[repository]
+		pkg = _pkg_str(mycpv, metadata=aux_dict)
+	except InvalidData:
+		return
+	aux_dict = dict((k, aux_dict[k]) for k in Package._dep_keys)
+	try:
+		mycommands = myupdates[pkg.repo]
 	except KeyError:
 		try:
 			mycommands = myupdates['DEFAULT']
@@ -301,6 +305,6 @@ def perform_global_updates(mycpv, mydb, myupdates):
 	if not mycommands:
 		return
 
-	updates = update_dbentries(mycommands, aux_dict, eapi=eapi)
+	updates = update_dbentries(mycommands, aux_dict, parent=pkg)
 	if updates:
 		mydb.aux_update(mycpv, updates)

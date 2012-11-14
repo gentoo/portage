@@ -291,7 +291,8 @@ class dbapi(object):
 		maxval = len(cpv_all)
 		aux_get = self.aux_get
 		aux_update = self.aux_update
-		meta_keys = Package._dep_keys + ("EAPI", "PROVIDE", "repository")
+		update_keys = Package._dep_keys + ("PROVIDE",)
+		meta_keys = update_keys + self._pkg_str_aux_keys
 		repo_dict = None
 		if isinstance(updates, dict):
 			repo_dict = updates
@@ -301,13 +302,16 @@ class dbapi(object):
 			onProgress(maxval, 0)
 		for i, cpv in enumerate(cpv_all):
 			metadata = dict(zip(meta_keys, aux_get(cpv, meta_keys)))
-			eapi = metadata.pop('EAPI')
-			repo = metadata.pop('repository')
+			try:
+				pkg = _pkg_str(cpv, metadata=metadata)
+			except InvalidData:
+				continue
+			metadata = dict((k, metadata[k]) for k in update_keys)
 			if repo_dict is None:
 				updates_list = updates
 			else:
 				try:
-					updates_list = repo_dict[repo]
+					updates_list = repo_dict[pkg.repo]
 				except KeyError:
 					try:
 						updates_list = repo_dict['DEFAULT']
@@ -318,7 +322,7 @@ class dbapi(object):
 				continue
 
 			metadata_updates = \
-				portage.update_dbentries(updates_list, metadata, eapi=eapi)
+				portage.update_dbentries(updates_list, metadata, parent=pkg)
 			if metadata_updates:
 				aux_update(cpv, metadata_updates)
 				if onUpdate:
