@@ -69,8 +69,9 @@ import portage.checksum
 import portage.const
 from portage import cvstree, normalize_path
 from portage import util
-from portage.exception import (FileNotFound, MissingParameter,
+from portage.exception import (FileNotFound, InvalidAtom, MissingParameter,
 	ParseError, PermissionDenied)
+from portage.dep import Atom
 from portage.process import find_binary, spawn
 from portage.output import bold, create_color_func, \
 	green, nocolor, red
@@ -1661,6 +1662,22 @@ for x in effective_scanlist:
 				metadata_bad = True
 				stats["metadata.bad"] += 1
 				fails["metadata.bad"].append("%s/metadata.xml: %s" % (x, e))
+			else:
+				for atom in chain(*musedict.values()):
+					if atom is None:
+						continue
+					try:
+						atom = Atom(atom)
+					except InvalidAtom as e:
+						stats["metadata.bad"] += 1
+						fails["metadata.bad"].append(
+							"%s/metadata.xml: Invalid atom: %s" % (x, e))
+					else:
+						if atom.cp != x:
+							stats["metadata.bad"] += 1
+							fails["metadata.bad"].append(
+								("%s/metadata.xml: Atom contains "
+								"unexpected cat/pn: %s") % (x, atom))
 
 			# Run other metadata.xml checkers
 			try:

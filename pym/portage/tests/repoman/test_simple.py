@@ -133,7 +133,7 @@ class SimpleRepomanTestCase(TestCase):
 				"dev-libs/A",
 				{
 					"herd" : "base-system",
-					"flags" : "<flag name='flag'>Description of how USE='flag' affects this package</flag>",
+					"flags" : "<flag name='flag' restrict='&gt;=dev-libs/A-0'>Description of how USE='flag' affects this package</flag>",
 				},
 			),
 			(
