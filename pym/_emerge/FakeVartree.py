@@ -290,7 +290,7 @@ def perform_global_updates(mycpv, mydb, myupdates):
 	aux_keys = Package._dep_keys + mydb._pkg_str_aux_keys
 	aux_dict = dict(zip(aux_keys, mydb.aux_get(mycpv, aux_keys)))
 	try:
-		pkg = _pkg_str(mycpv, metadata=aux_dict)
+		pkg = _pkg_str(mycpv, metadata=aux_dict, settings=mydb.settings)
 	except InvalidData:
 		return
 	aux_dict = dict((k, aux_dict[k]) for k in Package._dep_keys)

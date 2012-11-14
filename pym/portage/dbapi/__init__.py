@@ -301,9 +301,12 @@ class dbapi(object):
 		if onProgress:
 			onProgress(maxval, 0)
 		for i, cpv in enumerate(cpv_all):
-			metadata = dict(zip(meta_keys, aux_get(cpv, meta_keys)))
 			try:
-				pkg = _pkg_str(cpv, metadata=metadata)
+				metadata = dict(zip(meta_keys, aux_get(cpv, meta_keys)))
+			except KeyError:
+				continue
+			try:
+				pkg = _pkg_str(cpv, metadata=metadata, settings=self.settings)
 			except InvalidData:
 				continue
 			metadata = dict((k, metadata[k]) for k in update_keys)

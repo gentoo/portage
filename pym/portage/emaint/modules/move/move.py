@@ -51,6 +51,7 @@ class MoveHandler(object):
 		match = self._tree.dbapi.match
 		aux_get = self._tree.dbapi.aux_get
 		pkg_str = self._tree.dbapi._pkg_str
+		settings = self._tree.dbapi.settings
 		if onProgress:
 			onProgress(0, 0)
 		for repo, updates in allupdates.items():
@@ -97,9 +98,12 @@ class MoveHandler(object):
 		if onProgress:
 			onProgress(maxval, 0)
 		for i, cpv in enumerate(cpv_all):
-			metadata = dict(zip(meta_keys, aux_get(cpv, meta_keys)))
 			try:
-				pkg = _pkg_str(cpv, metadata=metadata)
+				metadata = dict(zip(meta_keys, aux_get(cpv, meta_keys)))
+			except KeyError:
+				continue
+			try:
+				pkg = _pkg_str(cpv, metadata=metadata, settings=settings)
 			except InvalidData:
 				continue
 			metadata = dict((k, metadata[k]) for k in self._update_keys)
