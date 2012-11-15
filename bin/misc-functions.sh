@@ -1199,7 +1199,7 @@ __dyn_package() {
 }
 
 __dyn_spec() {
-	local sources_dir=/usr/src/rpm/SOURCES
+	local sources_dir=${T}/rpmbuild/SOURCES
 	mkdir -p "${sources_dir}"
 	declare -a tar_args=("${EBUILD}")
 	[[ -d ${FILESDIR} ]] && tar_args=("${EBUILD}" "${FILESDIR}")
@@ -1215,7 +1215,6 @@ Release: ${PR}
 License: GPL
 Group: portage/${CATEGORY}
 Source: ${PF}.tar.gz
-Buildroot: ${D}
 %description
 ${DESCRIPTION}
 
@@ -1242,12 +1241,12 @@ __dyn_rpm() {
 	fi
 
 	cd "${T}" || die "cd failed"
-	local machine_name=$(uname -m)
-	local dest_dir=${EPREFIX}/usr/src/rpm/RPMS/${machine_name}
-	addwrite ${EPREFIX}/usr/src/rpm
+	local machine_name=${CHOST%%-*}
+	local dest_dir=${T}/rpmbuild/RPMS/${machine_name}
 	addwrite "${RPMDIR}"
 	__dyn_spec
-	rpmbuild -bb --clean --rmsource "${PF}.spec" || die "Failed to integrate rpm spec file"
+	HOME=${T} \
+	rpmbuild -bb --clean --rmsource "${PF}.spec" --buildroot "${D}" --target "${CHOST}" || die "Failed to integrate rpm spec file"
 	install -D "${dest_dir}/${PN}-${PV}-${PR}.${machine_name}.rpm" \
 		"${RPMDIR}/${CATEGORY}/${PN}-${PV}-${PR}.rpm" || \
 		die "Failed to move rpm"
