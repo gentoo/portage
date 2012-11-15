@@ -34,10 +34,10 @@ class ResolverPlayground(object):
 	its work.
 	"""
 
-	config_files = frozenset(("eapi", "make.conf", "package.accept_keywords", "package.use",
-		"package.use.stable.mask", "package.mask", "package.keywords",
-		"package.unmask", "package.properties", "package.license", "use.mask", "use.force",
-		"layout.conf",))
+	config_files = frozenset(("eapi", "layout.conf", "make.conf", "package.accept_keywords",
+		"package.keywords", "package.license", "package.mask", "package.properties",
+		"package.unmask", "package.use", "package.use.aliases", "package.use.stable.mask",
+		"use.aliases", "use.force", "use.mask", "layout.conf"))
 
 	metadata_xml_template = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">

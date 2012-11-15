@@ -10,7 +10,7 @@ from portage.const import EBUILD_PHASES
 from portage.dep import Atom, check_required_use, use_reduce, \
 	paren_enclose, _slot_separator, _repo_separator
 from portage.versions import _pkg_str, _unknown_repo
-from portage.eapi import _get_eapi_attrs
+from portage.eapi import _get_eapi_attrs, eapi_has_use_aliases
 from portage.exception import InvalidDependString
 from portage.localization import _
 from _emerge.Task import Task
@@ -62,9 +62,13 @@ class Package(Task):
 		if hasattr(self.cpv, 'slot_invalid'):
 			self._invalid_metadata('SLOT.invalid',
 				"SLOT: invalid value: '%s'" % self.metadata["SLOT"])
+		self.cpv_split = self.cpv.cpv_split
+		self.category, self.pf = portage.catsplit(self.cpv)
 		self.cp = self.cpv.cp
+		self.version = self.cpv.version
 		self.slot = self.cpv.slot
 		self.sub_slot = self.cpv.sub_slot
+		self.slot_atom = Atom("%s%s%s" % (self.cp, _slot_separator, self.slot))
 		# sync metadata with validated repo (may be UNKNOWN_REPO)
 		self.metadata['repository'] = self.cpv.repo
 
@@ -72,17 +76,15 @@ class Package(Task):
 			implicit_match = self.root_config.settings._iuse_effective_match
 		else:
 			implicit_match = self.root_config.settings._iuse_implicit_match
-		self.iuse = self._iuse(self.metadata["IUSE"].split(), implicit_match)
+		usealiases = self.root_config.settings._use_manager.getUseAliases(self)
+		self.iuse = self._iuse(self, self.metadata["IUSE"].split(), implicit_match,
+			usealiases, self.metadata["EAPI"])
 
 		if (self.iuse.enabled or self.iuse.disabled) and \
 			not eapi_attrs.iuse_defaults:
 			if not self.installed:
 				self._invalid_metadata('EAPI.incompatible',
 					"IUSE contains defaults, but EAPI doesn't allow them")
-		self.slot_atom = Atom("%s%s%s" % (self.cp, _slot_separator, self.slot))
-		self.category, self.pf = portage.catsplit(self.cpv)
-		self.cpv_split = self.cpv.cpv_split
-		self.version = self.cpv.version
 		if self.inherited is None:
 			self.inherited = frozenset()
 
@@ -469,7 +471,11 @@ class Package(Task):
 			self._expand_hidden = None
 			self._force = None
 			self._mask = None
-			self.enabled = frozenset(use_str.split())
+			enabled_flags = use_str.split()
+			if eapi_has_use_aliases(pkg.metadata["EAPI"]):
+				for enabled_flag in enabled_flags:
+					enabled_flags.extend(pkg.iuse.alias_mapping.get(enabled_flag, []))
+			self.enabled = frozenset(enabled_flags)
 			if pkg.built:
 				# Use IUSE to validate USE settings for built packages,
 				# in case the package manager that built this package
@@ -542,26 +548,42 @@ class Package(Task):
 
 	class _iuse(object):
 
-		__slots__ = ("__weakref__", "all", "enabled", "disabled",
-			"tokens") + ("_iuse_implicit_match",)
+		__slots__ = ("__weakref__", "_iuse_implicit_match", "_pkg", "alias_mapping",
+			"all", "all_aliases", "enabled", "disabled", "tokens")
 
-		def __init__(self, tokens, iuse_implicit_match):
+		def __init__(self, pkg, tokens, iuse_implicit_match, aliases, eapi):
+			self._pkg = pkg
 			self.tokens = tuple(tokens)
 			self._iuse_implicit_match = iuse_implicit_match
 			enabled = []
 			disabled = []
 			other = []
+			enabled_aliases = []
+			disabled_aliases = []
+			other_aliases = []
+			aliases_supported = eapi_has_use_aliases(eapi)
+			self.alias_mapping = {}
 			for x in tokens:
 				prefix = x[:1]
 				if prefix == "+":
 					enabled.append(x[1:])
+					if aliases_supported:
+						self.alias_mapping[x[1:]] = aliases.get(x[1:], [])
+						enabled_aliases.extend(self.alias_mapping[x[1:]])
 				elif prefix == "-":
 					disabled.append(x[1:])
+					if aliases_supported:
+						self.alias_mapping[x[1:]] = aliases.get(x[1:], [])
+						disabled_aliases.extend(self.alias_mapping[x[1:]])
 				else:
 					other.append(x)
-			self.enabled = frozenset(enabled)
-			self.disabled = frozenset(disabled)
+					if aliases_supported:
+						self.alias_mapping[x] = aliases.get(x, [])
+						other_aliases.extend(self.alias_mapping[x])
+			self.enabled = frozenset(chain(enabled, enabled_aliases))
+			self.disabled = frozenset(chain(disabled, disabled_aliases))
 			self.all = frozenset(chain(enabled, disabled, other))
+			self.all_aliases = frozenset(chain(enabled_aliases, disabled_aliases, other_aliases))
 
 		def is_valid_flag(self, flags):
 			"""
@@ -572,7 +594,7 @@ class Package(Task):
 				flags = [flags]
 
 			for flag in flags:
-				if not flag in self.all and \
+				if not flag in self.all and not flag in self.all_aliases and \
 					not self._iuse_implicit_match(flag):
 					return False
 			return True
@@ -585,10 +607,21 @@ class Package(Task):
 				flags = [flags]
 			missing_iuse = []
 			for flag in flags:
-				if not flag in self.all and \
+				if not flag in self.all and not flag in self.all_aliases and \
 					not self._iuse_implicit_match(flag):
 					missing_iuse.append(flag)
 			return missing_iuse
+
+		def get_real_flag(self, flag):
+			if flag in self.all:
+				return flag
+			elif flag in self.all_aliases:
+				for k, v in self.alias_mapping.items():
+					if flag in v:
+						return k
+			else:
+				raise ValueError("'%s' flag is not in IUSE and is not an alias of any flag in IUSE of '%s::%s'" %
+					(flag, self._pkg.cpv, self._pkg.repo))
 
 	def __len__(self):
 		return 4

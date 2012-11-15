@@ -122,4 +122,40 @@
 			</itemizedlist>
 		</para>
 	</section>
+	<section id='package-ebuild-eapi-4-python-use-aliases'>
+		<title>USE Flag Aliases</title>
+		<para>
+			USE flag aliases are supported to allow to satisfy dependencies of packages from other repositories, which require differently named USE flags. USE flag aliases are defined in ${repository_path}/profiles/use.aliases and ${repository_path}/profiles/package.use.aliases files.
+		</para>
+		<table><title>use.aliases Example</title>
+			<tgroup cols='1' align='left'>
+				<tbody>
+					<row>
+						<entry>real_flag1 alias1 alias2</entry>
+					</row>
+					<row>
+						<entry>real_flag2 alias3 alias4</entry>
+					</row>
+				</tbody>
+			</tgroup>
+		</table>
+		<table><title>package.use.aliases Example</title>
+			<tgroup cols='1' align='left'>
+				<tbody>
+					<row>
+						<entry>category/package1 real_flag1 alias1 alias2</entry>
+					</row>
+					<row>
+						<entry>category/package1 real_flag2 alias3 alias4</entry>
+					</row>
+					<row>
+						<entry>=category/package2-1* real_flag3 alias5 alias6</entry>
+					</row>
+					<row>
+						<entry>=category/package2-2* real_flag4 alias5 alias6</entry>
+					</row>
+				</tbody>
+			</tgroup>
+		</table>
+	</section>
 </section>
