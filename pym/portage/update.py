@@ -6,6 +6,7 @@ import io
 import re
 import stat
 import sys
+import warnings
 
 from portage import os
 from portage import _encodings
@@ -142,6 +143,10 @@ def fixdbentries(update_iter, dbdir, eapi=None, parent=None):
 	"""Performs update commands which result in search and replace operations
 	for each of the files in dbdir (excluding CONTENTS and environment.bz2).
 	Returns True when actual modifications are necessary and False otherwise."""
+
+	warnings.warn("portage.update.fixdbentries() is deprecated",
+		DeprecationWarning, stacklevel=2)
+
 	mydata = {}
 	for myfile in [f for f in os.listdir(dbdir) if f not in ignored_dbentries]:
 		file_path = os.path.join(dbdir, myfile)
