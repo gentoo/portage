@@ -35,6 +35,18 @@
 				New license_path function prints path to specified license for current repository.
 			</para>
 		</section>
+		<section id='package-ebuild-eapi-5-progress-helpers-package-manager-build-user'>
+			<title>package_manager_build_user</title>
+			<para>
+				New package_manager_build_user function prints name of user used by package manager in build phases.
+			</para>
+		</section>
+		<section id='package-ebuild-eapi-5-progress-helpers-package-manager-build-group'>
+			<title>package_manager_build_group</title>
+			<para>
+				New package_manager_build_group function prints name of group used by package manager in build phases.
+			</para>
+		</section>
 		<section id='package-ebuild-eapi-5-progress-helpers-dohtml-extended-default-list-of-extensions'>
 			<title>Extended default list of extensions in dohtml</title>
 			<para>

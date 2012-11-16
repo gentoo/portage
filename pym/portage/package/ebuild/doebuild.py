@@ -3,12 +3,14 @@
 
 __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
 
+import grp
 import gzip
 import errno
 import io
 from itertools import chain
 import logging
 import os as _os
+import pwd
 import re
 import signal
 import stat
@@ -1419,10 +1421,22 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	# fake ownership/permissions will have to be converted to real
 	# permissions in the merge phase.
 	fakeroot = fakeroot and uid != 0 and portage.process.fakeroot_capable
-	if droppriv and uid == 0 and portage_gid and portage_uid and \
-		hasattr(os, "setgroups"):
-		keywords.update({"uid":portage_uid,"gid":portage_gid,
-			"groups":userpriv_groups,"umask":0o02})
+	portage_build_uid = os.getuid()
+	portage_build_gid = os.getgid()
+	if uid == 0 and portage_uid and portage_gid and hasattr(os, "setgroups"):
+		if droppriv:
+			keywords.update({
+				"uid": portage_uid,
+				"gid": portage_gid,
+				"groups": userpriv_groups,
+				"umask": 0o02
+			})
+		if "userpriv" in features and "userpriv" not in mysettings["PORTAGE_RESTRICT"].split() and secpass >= 2:
+			portage_build_uid = portage_uid
+			portage_build_gid = portage_gid
+	mysettings["PORTAGE_BUILD_USER"] = pwd.getpwuid(portage_build_uid).pw_name
+	mysettings["PORTAGE_BUILD_GROUP"] = grp.getgrgid(portage_build_gid).gr_name
+
 	if not free:
 		free=((droppriv and "usersandbox" not in features) or \
 			(not droppriv and "sandbox" not in features and \

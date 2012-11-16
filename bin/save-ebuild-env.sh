@@ -82,6 +82,8 @@ __save_ebuild_env() {
 	___eapi_has_available_eclasses && unset -f available_eclasses
 	___eapi_has_eclass_path && unset -f eclass_path
 	___eapi_has_license_path && unset -f license_path
+	___eapi_has_package_manager_build_user && unset -f package_manager_build_user
+	___eapi_has_package_manager_build_group && unset -f package_manager_build_group
 
 	unset -f $(compgen -A function ___eapi_)
 

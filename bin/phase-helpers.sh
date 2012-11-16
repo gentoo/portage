@@ -895,3 +895,15 @@ if ___eapi_has_license_path; then
 		esac
 	}
 fi
+
+if ___eapi_has_package_manager_build_user; then
+	package_manager_build_user() {
+		echo "${PORTAGE_BUILD_USER}"
+	}
+fi
+
+if ___eapi_has_package_manager_build_group; then
+	package_manager_build_group() {
+		echo "${PORTAGE_BUILD_GROUP}"
+	}
+fi
