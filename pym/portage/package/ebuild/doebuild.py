@@ -692,7 +692,7 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 		if mydo in clean_phases:
 			builddir_lock = None
 			if not returnpid and \
-				'PORTAGE_BUILDIR_LOCKED' not in mysettings:
+				'PORTAGE_BUILDDIR_LOCKED' not in mysettings:
 				builddir_lock = EbuildBuildDir(
 					scheduler=EventLoop(main=False),
 					settings=mysettings)
@@ -834,7 +834,7 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 
 				if newstuff:
 					if builddir_lock is None and \
-						'PORTAGE_BUILDIR_LOCKED' not in mysettings:
+						'PORTAGE_BUILDDIR_LOCKED' not in mysettings:
 						builddir_lock = EbuildBuildDir(
 							scheduler=EventLoop(main=False),
 							settings=mysettings)
@@ -857,7 +857,7 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 		if not parallel_fetchonly and \
 			mydo not in ('digest', 'fetch', 'help', 'manifest'):
 			if not returnpid and \
-				'PORTAGE_BUILDIR_LOCKED' not in mysettings:
+				'PORTAGE_BUILDDIR_LOCKED' not in mysettings:
 				builddir_lock = EbuildBuildDir(
 					scheduler=EventLoop(main=False),
 					settings=mysettings)

@@ -1874,7 +1874,7 @@ class dblink(object):
 		try:
 			# Only create builddir_lock if the caller
 			# has not already acquired the lock.
-			if "PORTAGE_BUILDIR_LOCKED" not in self.settings:
+			if "PORTAGE_BUILDDIR_LOCKED" not in self.settings:
 				builddir_lock = EbuildBuildDir(
 					scheduler=scheduler,
 					settings=self.settings)
@@ -3585,7 +3585,7 @@ class dblink(object):
 			# Clone the config in case one of these has to be unmerged since
 			# we need it to have private ${T} etc... for things like elog.
 			settings_clone = config(clone=self.settings)
-			settings_clone.pop("PORTAGE_BUILDIR_LOCKED", None)
+			settings_clone.pop("PORTAGE_BUILDDIR_LOCKED", None)
 			settings_clone.reset()
 			others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
 				settings=settings_clone,
