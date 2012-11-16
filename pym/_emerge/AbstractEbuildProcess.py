@@ -52,7 +52,7 @@ class AbstractEbuildProcess(SpawnProcess):
 		if need_builddir and \
 			not os.path.isdir(self.settings['PORTAGE_BUILDDIR']):
 			msg = _("The ebuild phase '%s' has been aborted "
-			"since PORTAGE_BUILDIR does not exist: '%s'") % \
+			"since PORTAGE_BUILDDIR does not exist: '%s'") % \
 			(self.phase, self.settings['PORTAGE_BUILDDIR'])
 			self._eerror(textwrap.wrap(msg, 72))
 			self._set_returncode((self.pid, 1 << 8))

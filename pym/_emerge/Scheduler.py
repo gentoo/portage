@@ -805,7 +805,7 @@ class Scheduler(PollScheduler):
 			build_dir_path = os.path.join(
 				os.path.realpath(settings["PORTAGE_TMPDIR"]),
 				"portage", x.category, x.pf)
-			existing_buildir = os.path.isdir(build_dir_path)
+			existing_builddir = os.path.isdir(build_dir_path)
 			settings["PORTAGE_BUILDDIR"] = build_dir_path
 			build_dir = EbuildBuildDir(scheduler=sched_iface,
 				settings=settings)
@@ -816,7 +816,7 @@ class Scheduler(PollScheduler):
 
 				# Clean up the existing build dir, in case pkg_pretend
 				# checks for available space (bug #390711).
-				if existing_buildir:
+				if existing_builddir:
 					if x.built:
 						tree = "bintree"
 						infloc = os.path.join(build_dir_path, "build-info")
