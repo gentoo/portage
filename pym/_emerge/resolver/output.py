@@ -249,7 +249,7 @@ class Display(object):
 
 		use_expand = sorted(self.use_expand)
 		use_expand.insert(0, "USE")
-		feature_flags = _get_feature_flags(_get_eapi_attrs(pkg.metadata["EAPI"]))
+		feature_flags = _get_feature_flags(_get_eapi_attrs(pkg.eapi))
 
 		for key in use_expand:
 			if key in self.use_expand_hidden:

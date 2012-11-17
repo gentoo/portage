@@ -1232,7 +1232,7 @@ class depgraph(object):
 		newuse = "--newuse" in self._frozen_config.myopts
 		changed_use = "changed-use" == self._frozen_config.myopts.get("--reinstall")
 		feature_flags = _get_feature_flags(
-			_get_eapi_attrs(pkg.metadata["EAPI"]))
+			_get_eapi_attrs(pkg.eapi))
 
 		if newuse or (binpkg_respect_use and not changed_use):
 			flags = set(orig_iuse.symmetric_difference(
@@ -1344,7 +1344,7 @@ class depgraph(object):
 				# The blocker applies to the root where
 				# the parent is or will be installed.
 				blocker = Blocker(atom=dep.atom,
-					eapi=dep.parent.metadata["EAPI"],
+					eapi=dep.parent.eapi,
 					priority=dep.priority, root=dep.parent.root)
 				self._dynamic_config._blocker_parents.add(blocker, dep.parent)
 			return 1
@@ -1491,12 +1491,12 @@ class depgraph(object):
 		# for USE adjustment rather than have REQUIRED_USE
 		# affect package selection and || dep choices.
 		if not pkg.built and pkg.metadata.get("REQUIRED_USE") and \
-			eapi_has_required_use(pkg.metadata["EAPI"]):
+			eapi_has_required_use(pkg.eapi):
 			required_use_is_sat = check_required_use(
 				pkg.metadata["REQUIRED_USE"],
 				self._pkg_use_enabled(pkg),
 				pkg.iuse.is_valid_flag,
-				eapi=pkg.metadata["EAPI"])
+				eapi=pkg.eapi)
 			if not required_use_is_sat:
 				if dep.atom is not None and dep.parent is not None:
 					self._add_parent_atom(pkg, (dep.parent, dep.atom))
@@ -1684,7 +1684,7 @@ class depgraph(object):
 		myroot = pkg.root
 		metadata = pkg.metadata
 		removal_action = "remove" in self._dynamic_config.myparams
-		eapi_attrs = _get_eapi_attrs(pkg.metadata["EAPI"])
+		eapi_attrs = _get_eapi_attrs(pkg.eapi)
 
 		edepend={}
 		for k in Package._dep_keys:
@@ -1776,7 +1776,7 @@ class depgraph(object):
 						uselist=self._pkg_use_enabled(pkg),
 						is_valid_flag=pkg.iuse.is_valid_flag,
 						opconvert=True, token_class=Atom,
-						eapi=pkg.metadata['EAPI'])
+						eapi=pkg.eapi)
 				except portage.exception.InvalidDependString as e:
 					if not pkg.installed:
 						# should have been masked before it was selected
@@ -1790,7 +1790,7 @@ class depgraph(object):
 						dep_string = portage.dep.use_reduce(dep_string,
 							uselist=self._pkg_use_enabled(pkg),
 							opconvert=True, token_class=Atom,
-							eapi=pkg.metadata['EAPI'])
+							eapi=pkg.eapi)
 					except portage.exception.InvalidDependString as e:
 						self._dynamic_config._masked_installed.add(pkg)
 						del e
@@ -2940,7 +2940,7 @@ class depgraph(object):
 			eapi = None
 			is_valid_flag = None
 			if parent is not None:
-				eapi = parent.metadata['EAPI']
+				eapi = parent.eapi
 				if not parent.installed:
 					is_valid_flag = parent.iuse.is_valid_flag
 			depstring = portage.dep.use_reduce(depstring,
@@ -3140,7 +3140,7 @@ class depgraph(object):
 				try:
 					affecting_use.update(extract_affecting_use(
 						node.metadata[dep_str], target_atom,
-						eapi=node.metadata["EAPI"]))
+						eapi=node.eapi))
 				except InvalidDependString:
 					if not node.installed:
 						raise
@@ -3233,7 +3233,7 @@ class depgraph(object):
 				for dep_str in dep_strings:
 					try:
 						affecting_use.update(extract_affecting_use(
-							dep_str, atom, eapi=node.metadata["EAPI"]))
+							dep_str, atom, eapi=node.eapi))
 					except InvalidDependString:
 						if not node.installed:
 							raise
@@ -3418,12 +3418,12 @@ class depgraph(object):
 						if not mreasons and \
 							not pkg.built and \
 							pkg.metadata.get("REQUIRED_USE") and \
-							eapi_has_required_use(pkg.metadata["EAPI"]):
+							eapi_has_required_use(pkg.eapi):
 							if not check_required_use(
 								pkg.metadata["REQUIRED_USE"],
 								self._pkg_use_enabled(pkg),
 								pkg.iuse.is_valid_flag,
-								eapi=pkg.metadata["EAPI"]):
+								eapi=pkg.eapi):
 								required_use_unsatisfied.append(pkg)
 								continue
 						root_slot = (pkg.root, pkg.slot_atom)
@@ -3483,9 +3483,9 @@ class depgraph(object):
 					for flag in need_disable:
 						new_use.discard(flag)
 					if check_required_use(required_use, old_use,
-						pkg.iuse.is_valid_flag, eapi=pkg.metadata["EAPI"]) \
+						pkg.iuse.is_valid_flag, eapi=pkg.eapi) \
 						and not check_required_use(required_use, new_use,
-						pkg.iuse.is_valid_flag, eapi=pkg.metadata["EAPI"]):
+						pkg.iuse.is_valid_flag, eapi=pkg.eapi):
 							required_use_warning = ", this change violates use flag constraints " + \
 								"defined by %s: '%s'" % (pkg.cpv, human_readable_required_use(required_use))
 
@@ -3535,10 +3535,10 @@ class depgraph(object):
 								new_use.add(flag)
 						if check_required_use(required_use, old_use,
 							myparent.iuse.is_valid_flag,
-							eapi=myparent.metadata["EAPI"]) and \
+							eapi=myparent.eapi) and \
 							not check_required_use(required_use, new_use,
 							myparent.iuse.is_valid_flag,
-							eapi=myparent.metadata["EAPI"]):
+							eapi=myparent.eapi):
 								required_use_warning = ", this change violates use flag constraints " + \
 									"defined by %s: '%s'" % (myparent.cpv, \
 									human_readable_required_use(required_use))
@@ -3628,7 +3628,7 @@ class depgraph(object):
 				pkg.metadata["REQUIRED_USE"],
 				self._pkg_use_enabled(pkg),
 				pkg.iuse.is_valid_flag,
-				eapi=pkg.metadata["EAPI"]).tounicode()
+				eapi=pkg.eapi).tounicode()
 			writemsg("    %s\n" % \
 				human_readable_required_use(reduced_noise),
 				noiselevel=-1)
@@ -4194,9 +4194,9 @@ class depgraph(object):
 			#Don't do the change if it violates REQUIRED_USE.
 			required_use = pkg.metadata.get("REQUIRED_USE")
 			if required_use and check_required_use(required_use, old_use,
-				pkg.iuse.is_valid_flag, eapi=pkg.metadata["EAPI"]) and \
+				pkg.iuse.is_valid_flag, eapi=pkg.eapi) and \
 				not check_required_use(required_use, new_use,
-				pkg.iuse.is_valid_flag, eapi=pkg.metadata["EAPI"]):
+				pkg.iuse.is_valid_flag, eapi=pkg.eapi):
 				return old_use
 
 			if any(x in pkg.use.mask for x in new_changes) or \
@@ -5058,7 +5058,7 @@ class depgraph(object):
 						try:
 							for atom in blocker_atoms:
 								blocker = Blocker(atom=atom,
-									eapi=pkg.metadata["EAPI"],
+									eapi=pkg.eapi,
 									priority=self._priority(runtime=True),
 									root=myroot)
 								self._dynamic_config._blocker_parents.add(blocker, pkg)

@@ -783,7 +783,7 @@ class Scheduler(PollScheduler):
 			if x.operation == "uninstall":
 				continue
 
-			if x.metadata["EAPI"] in ("0", "1", "2", "3"):
+			if x.eapi in ("0", "1", "2", "3"):
 				continue
 
 			if "pretend" not in x.metadata.defined_phases:

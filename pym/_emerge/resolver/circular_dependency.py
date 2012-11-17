@@ -127,7 +127,7 @@ class circular_dependency_handler(object):
 
 			try:
 				affecting_use = extract_affecting_use(dep, parent_atom,
-					eapi=parent.metadata["EAPI"])
+					eapi=parent.eapi)
 			except InvalidDependString:
 				if not parent.installed:
 					raise
@@ -147,7 +147,7 @@ class circular_dependency_handler(object):
 			#other flags in REQUIRED_USE to affecting_use, to not lose any solution.
 			required_use_flags = get_required_use_flags(
 				parent.metadata.get("REQUIRED_USE", ""),
-				eapi=parent.metadata["EAPI"])
+				eapi=parent.eapi)
 
 			if affecting_use.intersection(required_use_flags):
 				# TODO: Find out exactly which REQUIRED_USE flags are
@@ -193,7 +193,7 @@ class circular_dependency_handler(object):
 
 					if check_required_use(required_use, current_use,
 						parent.iuse.is_valid_flag,
-						eapi=parent.metadata["EAPI"]):
+						eapi=parent.eapi):
 						use = self.depgraph._pkg_use_enabled(parent)
 						solution = set()
 						for flag, state in zip(affecting_use, use_state):

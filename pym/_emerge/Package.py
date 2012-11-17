@@ -56,7 +56,7 @@ class Package(Task):
 		self.metadata = _PackageMetadataWrapper(self, self._raw_metadata)
 		if not self.built:
 			self.metadata['CHOST'] = self.root_config.settings.get('CHOST', '')
-		eapi_attrs = _get_eapi_attrs(self.metadata["EAPI"])
+		eapi_attrs = _get_eapi_attrs(self.eapi)
 		self.cpv = _pkg_str(self.cpv, metadata=self.metadata,
 			settings=self.root_config.settings)
 		if hasattr(self.cpv, 'slot_invalid'):
@@ -78,7 +78,7 @@ class Package(Task):
 			implicit_match = self.root_config.settings._iuse_implicit_match
 		usealiases = self.root_config.settings._use_manager.getUseAliases(self)
 		self.iuse = self._iuse(self, self.metadata["IUSE"].split(), implicit_match,
-			usealiases, self.metadata["EAPI"])
+			usealiases, self.eapi)
 
 		if (self.iuse.enabled or self.iuse.disabled) and \
 			not eapi_attrs.iuse_defaults:
@@ -100,6 +100,10 @@ class Package(Task):
 			root_config=self.root_config,
 			type_name=self.type_name)
 		self._hash_value = hash(self._hash_key)
+
+	@property
+	def eapi(self):
+		return self.metadata["EAPI"]
 
 	# For consistency with _pkg_str
 	@property
@@ -185,7 +189,7 @@ class Package(Task):
 		is expensive for ebuilds and therefore we want to avoid doing
 		in unnecessarily (like for masked packages).
 		"""
-		eapi = self.metadata['EAPI']
+		eapi = self.eapi
 		dep_eapi = eapi
 		dep_valid_flag = self.iuse.is_valid_flag
 		if self.installed:
@@ -286,7 +290,7 @@ class Package(Task):
 		if not settings._accept_chost(self.cpv, self.metadata):
 			masks['CHOST'] = self.metadata['CHOST']
 
-		eapi = self.metadata["EAPI"]
+		eapi = self.eapi
 		if not portage.eapi_is_supported(eapi):
 			masks['EAPI.unsupported'] = eapi
 		if portage._eapi_is_deprecated(eapi):
@@ -472,7 +476,7 @@ class Package(Task):
 			self._force = None
 			self._mask = None
 			enabled_flags = use_str.split()
-			if eapi_has_use_aliases(pkg.metadata["EAPI"]):
+			if eapi_has_use_aliases(pkg.eapi):
 				for enabled_flag in enabled_flags:
 					enabled_flags.extend(pkg.iuse.alias_mapping.get(enabled_flag, []))
 			self.enabled = frozenset(enabled_flags)

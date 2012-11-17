@@ -595,7 +595,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		# dependencies so that things like --depclean work as well as possible
 		# in spite of partial invalidity.
 		if not current_parent.installed:
-			eapi = current_parent.metadata['EAPI']
+			eapi = current_parent.eapi
 
 	if isinstance(depstring, list):
 		mysplit = depstring

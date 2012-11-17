@@ -110,7 +110,7 @@ class FakeVartree(vartree):
 		# We need to check the EAPI, and this also raises
 		# a KeyError to the caller if appropriate.
 		pkg_obj = self.dbapi._cpv_map[pkg]
-		installed_eapi = pkg_obj.metadata['EAPI']
+		installed_eapi = pkg_obj.eapi
 		repo = pkg_obj.metadata['repository']
 		eapi_attrs = _get_eapi_attrs(installed_eapi)
 		built_slot_operator_atoms = None

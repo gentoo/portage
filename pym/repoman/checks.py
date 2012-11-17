@@ -288,7 +288,7 @@ class EapiDefinition(LineCheck):
 	_eapi_re = portage._pms_eapi_re
 
 	def new(self, pkg):
-		self._cached_eapi = pkg.metadata['EAPI']
+		self._cached_eapi = pkg.eapi
 		self._parsed_eapi = None
 		self._eapi_line_num = None
 
@@ -879,7 +879,7 @@ def run_checks(contents, pkg):
 		for lc in checks:
 			if is_comment and lc.ignore_comment:
 				continue
-			if lc.check_eapi(pkg.metadata['EAPI']):
+			if lc.check_eapi(pkg.eapi):
 				ignore = lc.ignore_line
 				if not ignore or not ignore.match(line):
 					e = lc.check(num, line)
