@@ -187,7 +187,7 @@ class Package(Task):
 		"""
 		Validate deps. This does not trigger USE calculation since that
 		is expensive for ebuilds and therefore we want to avoid doing
-		in unnecessarily (like for masked packages).
+		it unnecessarily (like for masked packages).
 		"""
 		eapi = self.eapi
 		dep_eapi = eapi
