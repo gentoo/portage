@@ -798,19 +798,9 @@ class PortageInternalVariableAssignment(LineCheck):
 			e = 'Assignment to variable %s' % match.group(2)
 			e += ' on line: %d'
 		return e
-
-_constant_checks = tuple(chain((c() for c in (
-	EbuildHeader, EbuildWhitespace, EbuildBlankLine, EbuildQuote,
-	EbuildAssignment, Eapi3EbuildAssignment, EbuildUselessDodoc,
-	EbuildUselessCdS, EbuildNestedDie,
-	EbuildPatches, EbuildQuotedA, EapiDefinition,
-	ImplicitRuntimeDeps,
-	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS, NoAsNeeded,
-	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
-	SrcCompileEconf, Eapi3DeprecatedFuncs, NoOffsetWithHelpers,
-	Eapi4IncompatibleFuncs, Eapi4GoneVars, BuiltWithUse,
-	PreserveOldLib, SandboxAddpredict, PortageInternal,
-	PortageInternalVariableAssignment, DeprecatedUseq, DeprecatedHasq)),
+_base_check_classes = (InheritEclass, LineCheck, PhaseCheck)
+_constant_checks = tuple(chain((v() for k, v in globals().items()
+	if isinstance(v, type) and issubclass(v, LineCheck) and v not in _base_check_classes),
 	(InheritEclass(k, **kwargs) for k, kwargs in _eclass_info.items())))
 
 _here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
