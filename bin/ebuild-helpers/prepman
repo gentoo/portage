@@ -8,7 +8,7 @@ if ! ___eapi_has_prefix_variables; then
 	ED=${D}
 fi
 
-if [[ -z $1 ]] ; then 
+if [[ -z $1 ]] ; then
 	mandir="${ED}usr/share/man"
 else
 	mandir="${ED}$1/man"

@@ -35,7 +35,7 @@ except ImportError:
         for ix in range(len(md5sum)):
             hexform = hexform + "%02x" % ord(md5sum[ix])
         return hexform.lower()
-    
+
     def perform_checksum(filename):
         f = open(filename, 'rb')
         blocksize=32768

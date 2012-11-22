@@ -397,7 +397,7 @@ install_qa_check() {
 
 		# Check for files built without respecting LDFLAGS
 		if [[ "${LDFLAGS}" == *,--hash-style=gnu* ]] && \
-			! has binchecks ${RESTRICT} ; then 
+			! has binchecks ${RESTRICT} ; then
 			f=$(scanelf -qyRF '%k %p' -k .hash "${ED}" | sed -e "s:\.hash ::")
 			if [[ -n ${f} ]] ; then
 				echo "${f}" > "${T}"/scanelf-ignored-LDFLAGS.log
@@ -620,8 +620,8 @@ install_qa_check() {
 		done
 	done
 
-	# When installing static libraries into /usr/lib and shared libraries into 
-	# /lib, we have to make sure we have a linker script in /usr/lib along side 
+	# When installing static libraries into /usr/lib and shared libraries into
+	# /lib, we have to make sure we have a linker script in /usr/lib along side
 	# the static library, or gcc will utilize the static lib when linking :(.
 	# http://bugs.gentoo.org/4411
 	abort="no"
@@ -1121,10 +1121,10 @@ preinst_selinux_labels() {
 			(
 				eval "$(/usr/sbin/selinuxconfig)" || \
 					die "Failed to determine SELinux policy paths.";
-	
+
 				addwrite /selinux/context
 				addwrite /sys/fs/selinux/context
-	
+
 				/usr/sbin/setfiles "${file_contexts_path}" -r "${D}" "${D}"
 			) || die "Failed to set SELinux security labels."
 		else
