@@ -53,9 +53,28 @@ class EventLoop(object):
 		self._timeout_handlers = {}
 		self._timeout_interval = None
 
+		self._poll_obj = None
 		try:
 			select.epoll
 		except AttributeError:
+			pass
+		else:
+			try:
+				epoll_obj = select.epoll()
+			except IOError:
+				# This happens with Linux 2.4 kernels:
+				# IOError: [Errno 38] Function not implemented
+				pass
+			else:
+				self._poll_obj = _epoll_adapter(epoll_obj)
+				self.IO_ERR = select.EPOLLERR
+				self.IO_HUP = select.EPOLLHUP
+				self.IO_IN = select.EPOLLIN
+				self.IO_NVAL = 0
+				self.IO_OUT = select.EPOLLOUT
+				self.IO_PRI = select.EPOLLPRI
+
+		if self._poll_obj is None:
 			self._poll_obj = create_poll_instance()
 			self.IO_ERR = PollConstants.POLLERR
 			self.IO_HUP = PollConstants.POLLHUP
@@ -63,14 +82,6 @@ class EventLoop(object):
 			self.IO_NVAL = PollConstants.POLLNVAL
 			self.IO_OUT = PollConstants.POLLOUT
 			self.IO_PRI = PollConstants.POLLPRI
-		else:
-			self._poll_obj = _epoll_adapter(select.epoll())
-			self.IO_ERR = select.EPOLLERR
-			self.IO_HUP = select.EPOLLHUP
-			self.IO_IN = select.EPOLLIN
-			self.IO_NVAL = 0
-			self.IO_OUT = select.EPOLLOUT
-			self.IO_PRI = select.EPOLLPRI
 
 		self._child_handlers = {}
 		self._sigchld_read = None
