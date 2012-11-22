@@ -378,6 +378,7 @@ class InheritDeprecated(LineCheck):
 	# deprecated eclass : new eclass (False if no new eclass)
 	deprecated_classes = {
 		"bash-completion": "bash-completion-r1",
+		"boost-utils": False,
 		"gems": "ruby-fakegem",
 		"git": "git-2",
 		"mozconfig-2": "mozconfig-3",
