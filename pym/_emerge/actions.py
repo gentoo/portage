@@ -1357,6 +1357,53 @@ class _info_pkgs_ver(object):
 
 def action_info(settings, trees, myopts, myfiles):
 
+	# See if we can find any packages installed matching the strings
+	# passed on the command line
+	mypkgs = []
+	eroot = settings['EROOT']
+	vardb = trees[eroot]["vartree"].dbapi
+	portdb = trees[eroot]['porttree'].dbapi
+	bindb = trees[eroot]["bintree"].dbapi
+	for x in myfiles:
+		match_found = False
+		installed_match = vardb.match(x)
+		for installed in installed_match:
+			mypkgs.append((installed, "installed"))
+			match_found = True
+
+		if match_found:
+			continue
+
+		for db, pkg_type in ((portdb, "ebuild"), (bindb, "binary")):
+			if pkg_type == "binary" and "--usepkg" not in myopts:
+				continue
+
+			matches = db.match(x)
+			matches.reverse()
+			for match in matches:
+				if pkg_type == "binary":
+					if db.bintree.isremote(match):
+						continue
+				auxkeys = ["EAPI", "DEFINED_PHASES"]
+				metadata = dict(zip(auxkeys, db.aux_get(match, auxkeys)))
+				if metadata["EAPI"] not in ("0", "1", "2", "3") and \
+					"info" in metadata["DEFINED_PHASES"].split():
+					mypkgs.append((match, pkg_type))
+					match_found = True
+					break
+
+		if not match_found:
+			xinfo = '"%s"' % x.unevaluated_atom
+			# Discard null/ from failed cpv_expand category expansion.
+			xinfo = xinfo.replace("null/", "")
+			if settings["ROOT"] != "/":
+				xinfo = "%s for %s" % (xinfo, eroot)
+			writemsg("\nemerge: there are no ebuilds to satisfy %s.\n" %
+				colorize("INFORM", xinfo), noiselevel=-1)
+			# TODO: Split out --misspell-suggestions code from depgraph
+			# and call it here.
+			return 1
+
 	output_buffer = []
 	append = output_buffer.append
 	root_config = trees[settings['EROOT']]['root_config']
@@ -1562,40 +1609,6 @@ def action_info(settings, trees, myopts, myfiles):
 	append("")
 	writemsg_stdout("\n".join(output_buffer),
 		noiselevel=-1)
-
-	# See if we can find any packages installed matching the strings
-	# passed on the command line
-	mypkgs = []
-	eroot = settings['EROOT']
-	vardb = trees[eroot]["vartree"].dbapi
-	portdb = trees[eroot]['porttree'].dbapi
-	bindb = trees[eroot]["bintree"].dbapi
-	for x in myfiles:
-		match_found = False
-		installed_match = vardb.match(x)
-		for installed in installed_match:
-			mypkgs.append((installed, "installed"))
-			match_found = True
-
-		if match_found:
-			continue
-
-		for db, pkg_type in ((portdb, "ebuild"), (bindb, "binary")):
-			if pkg_type == "binary" and "--usepkg" not in myopts:
-				continue
-
-			matches = db.match(x)
-			matches.reverse()
-			for match in matches:
-				if pkg_type == "binary":
-					if db.bintree.isremote(match):
-						continue
-				auxkeys = ["EAPI", "DEFINED_PHASES"]
-				metadata = dict(zip(auxkeys, db.aux_get(match, auxkeys)))
-				if metadata["EAPI"] not in ("0", "1", "2", "3") and \
-					"info" in metadata["DEFINED_PHASES"].split():
-					mypkgs.append((match, pkg_type))
-					break
 
 	# If some packages were found...
 	if mypkgs:
