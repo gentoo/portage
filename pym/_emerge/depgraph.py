@@ -3,7 +3,6 @@
 
 from __future__ import print_function
 
-import difflib
 import errno
 import io
 import logging
@@ -19,6 +18,7 @@ from portage import _unicode_decode, _unicode_encode, _encodings
 from portage.const import PORTAGE_PACKAGE_ATOM, USER_CONFIG_PATH
 from portage.dbapi import dbapi
 from portage.dbapi.dep_expand import dep_expand
+from portage.dbapi._similar_name_search import similar_name_search
 from portage.dep import Atom, best_match_to_list, extract_affecting_use, \
 	check_required_use, human_readable_required_use, match_from_list, \
 	_repo_separator
@@ -3678,57 +3678,17 @@ class depgraph(object):
 				not cp_exists and \
 				self._frozen_config.myopts.get(
 				"--misspell-suggestions", "y") != "n":
-				cp = myparent.atom.cp.lower()
-				cat, pkg = portage.catsplit(cp)
-				if cat == "null":
-					cat = None
 
 				writemsg("\nemerge: searching for similar names..."
 					, noiselevel=-1)
 
-				all_cp = set()
-				all_cp.update(vardb.cp_all())
+				dbs = [vardb]
 				if "--usepkgonly" not in self._frozen_config.myopts:
-					all_cp.update(portdb.cp_all())
+					dbs.append(portdb)
 				if "--usepkg" in self._frozen_config.myopts:
-					all_cp.update(bindb.cp_all())
-				# discard dir containing no ebuilds
-				all_cp.discard(cp)
+					dbs.append(bindb)
 
-				orig_cp_map = {}
-				for cp_orig in all_cp:
-					orig_cp_map.setdefault(cp_orig.lower(), []).append(cp_orig)
-				all_cp = set(orig_cp_map)
-
-				if cat:
-					matches = difflib.get_close_matches(cp, all_cp)
-				else:
-					pkg_to_cp = {}
-					for other_cp in list(all_cp):
-						other_pkg = portage.catsplit(other_cp)[1]
-						if other_pkg == pkg:
-							# Check for non-identical package that
-							# differs only by upper/lower case.
-							identical = True
-							for cp_orig in orig_cp_map[other_cp]:
-								if portage.catsplit(cp_orig)[1] != \
-									portage.catsplit(atom.cp)[1]:
-									identical = False
-									break
-							if identical:
-								# discard dir containing no ebuilds
-								all_cp.discard(other_cp)
-								continue
-						pkg_to_cp.setdefault(other_pkg, set()).add(other_cp)
-					pkg_matches = difflib.get_close_matches(pkg, pkg_to_cp)
-					matches = []
-					for pkg_match in pkg_matches:
-						matches.extend(pkg_to_cp[pkg_match])
-
-				matches_orig_case = []
-				for cp in matches:
-					matches_orig_case.extend(orig_cp_map[cp])
-				matches = matches_orig_case
+				matches = similar_name_search(dbs, atom)
 
 				if len(matches) == 1:
 					writemsg("\nemerge: Maybe you meant " + matches[0] + "?\n"
