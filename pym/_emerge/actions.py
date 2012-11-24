@@ -22,6 +22,7 @@ from itertools import chain
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.dbapi._similar_name_search:similar_name_search',
 	'portage.debug',
 	'portage.news:count_unread_news,display_news_notifications',
 	'_emerge.chk_updated_cfg_files:chk_updated_cfg_files',
@@ -1366,6 +1367,7 @@ def action_info(settings, trees, myopts, myfiles):
 	bindb = trees[eroot]["bintree"].dbapi
 	for x in myfiles:
 		match_found = False
+		cp_exists = False
 		installed_match = vardb.match(x)
 		for installed in installed_match:
 			mypkgs.append((installed, "installed"))
@@ -1377,6 +1379,9 @@ def action_info(settings, trees, myopts, myfiles):
 		for db, pkg_type in ((portdb, "ebuild"), (bindb, "binary")):
 			if pkg_type == "binary" and "--usepkg" not in myopts:
 				continue
+
+			if not cp_exists and db.cp_list(x.cp):
+				cp_exists = True
 
 			matches = db.match(x)
 			matches.reverse()
@@ -1400,8 +1405,34 @@ def action_info(settings, trees, myopts, myfiles):
 				xinfo = "%s for %s" % (xinfo, eroot)
 			writemsg("\nemerge: there are no ebuilds to satisfy %s.\n" %
 				colorize("INFORM", xinfo), noiselevel=-1)
-			# TODO: Split out --misspell-suggestions code from depgraph
-			# and call it here.
+
+			if not cp_exists and myopts.get(
+				"--misspell-suggestions", "y") != "n":
+
+				writemsg("\nemerge: searching for similar names..."
+					, noiselevel=-1)
+
+				dbs = [vardb]
+				#if "--usepkgonly" not in myopts:
+				dbs.append(portdb)
+				if "--usepkg" in myopts:
+					dbs.append(bindb)
+
+				matches = similar_name_search(dbs, x)
+
+				if len(matches) == 1:
+					writemsg("\nemerge: Maybe you meant " + matches[0] + "?\n"
+						, noiselevel=-1)
+				elif len(matches) > 1:
+					writemsg(
+						"\nemerge: Maybe you meant any of these: %s?\n" % \
+						(", ".join(matches),), noiselevel=-1)
+				else:
+					# Generally, this would only happen if
+					# all dbapis are empty.
+					writemsg(" nothing similar found.\n"
+						, noiselevel=-1)
+
 			return 1
 
 	output_buffer = []
