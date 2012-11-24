@@ -2764,3 +2764,48 @@ def extract_affecting_use(mystr, atom, eapi=None):
 			_("malformed syntax: '%s'") % mystr)
 
 	return affecting_use
+
+def extract_unpack_dependencies(src_uri, unpackers):
+	"""
+	Return unpack dependencies string for given SRC_URI string.
+
+	@param src_uri: SRC_URI string
+	@type src_uri: String
+	@param unpackers: Dictionary mapping archive suffixes to dependency strings
+	@type unpackers: Dictionary
+	@rtype: String
+	@return: Dependency string specifying packages required to unpack archives.
+	"""
+	src_uri = src_uri.split()
+
+	depend = []
+	for i in range(len(src_uri)):
+		if src_uri[i][-1] == "?" or src_uri[i] in ("(", ")"):
+			depend.append(src_uri[i])
+		elif (i+1 < len(src_uri) and src_uri[i+1] == "->") or src_uri[i] == "->":
+			continue
+		else:
+			for suffix in sorted(unpackers, key=lambda x: len(x), reverse=True):
+				suffix = suffix.lower()
+				if src_uri[i].lower().endswith(suffix):
+					depend.append(unpackers[suffix])
+					break
+
+	while True:
+		cleaned_depend = depend[:]
+		for i in range(len(cleaned_depend)):
+			if cleaned_depend[i] is None:
+				continue
+			elif cleaned_depend[i] == "(" and cleaned_depend[i+1] == ")":
+				cleaned_depend[i] = None
+				cleaned_depend[i+1] = None
+			elif cleaned_depend[i][-1] == "?" and cleaned_depend[i+1] == "(" and cleaned_depend[i+2] == ")":
+				cleaned_depend[i] = None
+				cleaned_depend[i+1] = None
+				cleaned_depend[i+2] = None
+		if depend == cleaned_depend:
+			break
+		else:
+			depend = [x for x in cleaned_depend if x is not None]
+
+	return " ".join(depend)

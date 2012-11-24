@@ -121,6 +121,36 @@
 				</tgroup>
 			</table>
 		</section>
+		<section id='package-ebuild-eapi-5-progress-metadata-automatic-unpack-dependencies'>
+			<title>Automatic Unpack Dependencies</title>
+			<para>
+				Dependencies on packages required to unpack archives specified in SRC_URI are automatically appended to DEPEND. These dependencies are calculated from filename extensions of archives specified in SRC_URI. Dependencies (for ebuilds using given EAPI) corresponding to given filename extensions are configured in ${repository_path}/profiles/unpack_dependencies/${EAPI} files.
+			</para>
+			<table><title>Unpack Dependencies Configuration Examples</title>
+				<tgroup cols='1' align='left'>
+					<tbody>
+						<row>
+							<entry>bz2 app-arch/bzip2</entry>
+						</row>
+						<row>
+							<entry>gz app-arch/gzip</entry>
+						</row>
+						<row>
+							<entry>tar app-arch/tar</entry>
+						</row>
+						<row>
+							<entry>tar.bz2 app-arch/tar app-arch/bzip2</entry>
+						</row>
+						<row>
+							<entry>tar.gz app-arch/tar app-arch/gzip</entry>
+						</row>
+						<row>
+							<entry>zip app-arch/unzip</entry>
+						</row>
+					</tbody>
+				</tgroup>
+			</table>
+		</section>
 	</section>
 	<section id='package-ebuild-eapi-5-progress-globstar'>
 		<title>globstar shell option enabled by default</title>
