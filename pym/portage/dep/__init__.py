@@ -2649,16 +2649,16 @@ def extract_affecting_use(mystr, atom, eapi=None):
 	that decide if the given atom is in effect.
 
 	Example usage:
-		>>> extract_use_cond('sasl? ( dev-libs/cyrus-sasl ) \
+		>>> extract_affecting_use('sasl? ( dev-libs/cyrus-sasl ) \
 			!minimal? ( cxx? ( dev-libs/cyrus-sasl ) )', 'dev-libs/cyrus-sasl')
-		(['sasl', 'minimal', 'cxx'])
+		{'cxx', 'minimal', 'sasl'}
 
-	@param dep: The dependency string
+	@param mystr: The dependency string
 	@type mystr: String
 	@param atom: The atom to get into effect
 	@type atom: String
-	@rtype: Tuple of two lists of strings
-	@return: List of use flags that need to be enabled, List of use flag that need to be disabled
+	@rtype: Set of strings
+	@return: Set of use flags affecting given atom
 	"""
 	useflag_re = _get_useflag_re(eapi)
 	mysplit = mystr.split()
