@@ -7,8 +7,8 @@ from portage.versions import catsplit
 
 def similar_name_search(dbs, atom):
 
-	cp = atom.cp.lower()
-	cat, pkg = catsplit(cp)
+	cp_lower = atom.cp.lower()
+	cat, pkg = catsplit(cp_lower)
 	if cat == "null":
 		cat = None
 
@@ -17,7 +17,7 @@ def similar_name_search(dbs, atom):
 		all_cp.update(db.cp_all())
 
 	# discard dir containing no ebuilds
-	all_cp.discard(cp)
+	all_cp.discard(atom.cp)
 
 	orig_cp_map = {}
 	for cp_orig in all_cp:
@@ -25,7 +25,7 @@ def similar_name_search(dbs, atom):
 	all_cp = set(orig_cp_map)
 
 	if cat:
-		matches = difflib.get_close_matches(cp, all_cp)
+		matches = difflib.get_close_matches(cp_lower, all_cp)
 	else:
 		pkg_to_cp = {}
 		for other_cp in list(all_cp):
