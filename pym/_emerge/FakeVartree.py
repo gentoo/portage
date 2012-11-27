@@ -252,12 +252,6 @@ class FakeVartree(vartree):
 			root_config=self._pkg_root_config,
 			type_name="installed")
 
-		try:
-			mycounter = long(pkg.metadata["COUNTER"])
-		except ValueError:
-			mycounter = 0
-			pkg.metadata["COUNTER"] = str(mycounter)
-
 		self._pkg_cache[pkg] = pkg
 		return pkg
 

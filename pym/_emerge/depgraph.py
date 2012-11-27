@@ -4950,7 +4950,7 @@ class depgraph(object):
 					self._spinner_update()
 					blocker_data = blocker_cache.get(cpv)
 					if blocker_data is not None and \
-						blocker_data.counter != long(pkg.metadata["COUNTER"]):
+						blocker_data.counter != pkg.counter:
 						blocker_data = None
 
 					# If blocker data from the graph is available, use
@@ -4967,9 +4967,8 @@ class depgraph(object):
 						blockers is not None:
 						# Re-use the blockers from the graph.
 						blocker_atoms = sorted(blockers)
-						counter = long(pkg.metadata["COUNTER"])
 						blocker_data = \
-							blocker_cache.BlockerData(counter, blocker_atoms)
+							blocker_cache.BlockerData(pkg.counter, blocker_atoms)
 						blocker_cache[pkg.cpv] = blocker_data
 						continue
 
@@ -5011,9 +5010,8 @@ class depgraph(object):
 						blocker_atoms = [myatom for myatom in atoms \
 							if myatom.blocker]
 						blocker_atoms.sort()
-						counter = long(pkg.metadata["COUNTER"])
 						blocker_cache[cpv] = \
-							blocker_cache.BlockerData(counter, blocker_atoms)
+							blocker_cache.BlockerData(pkg.counter, blocker_atoms)
 					if blocker_atoms:
 						try:
 							for atom in blocker_atoms:
@@ -5825,8 +5823,7 @@ class depgraph(object):
 							other_version = None
 							for pkg in vardb.match_pkgs(atom):
 								if pkg.cpv == task.cpv and \
-									pkg.metadata["COUNTER"] == \
-									task.metadata["COUNTER"]:
+									pkg.counter == task.counter:
 									continue
 								other_version = pkg
 								break
