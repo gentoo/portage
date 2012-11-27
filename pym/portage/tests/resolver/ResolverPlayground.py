@@ -716,8 +716,8 @@ class ResolverPlaygroundResult(object):
 					self.mergelist.append(x.atom)
 				else:
 					repo_str = ""
-					if x.metadata["repository"] != "test_repo":
-						repo_str = _repo_separator + x.metadata["repository"]
+					if x.repo != "test_repo":
+						repo_str = _repo_separator + x.repo
 					mergelist_str = x.cpv + repo_str
 					if x.built:
 						if x.operation == "merge":

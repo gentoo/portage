@@ -340,10 +340,9 @@ class Display(object):
 		if self.quiet_repo_display:
 			# overlay verbose
 			# assign index for a previous version in the same slot
-			slot_matches = self.vardb.match(pkg.slot_atom)
+			slot_matches = self.vardb.match_pkgs(pkg.slot_atom)
 			if slot_matches:
-				repo_name_prev = self.vardb.aux_get(slot_matches[0],
-					["repository"])[0]
+				repo_name_prev = slot_matches[0].repo
 			else:
 				repo_name_prev = None
 
@@ -649,8 +648,7 @@ class Display(object):
 			pkg_info.repo_path_real = os.path.dirname(os.path.dirname(
 				os.path.dirname(pkg_info.ebuild_path)))
 		else:
-			pkg_info.repo_path_real = \
-				self.portdb.getRepositoryPath(pkg.metadata["repository"])
+			pkg_info.repo_path_real = self.portdb.getRepositoryPath(pkg.repo)
 		pkg_info.use = list(self.conf.pkg_use_enabled(pkg))
 		if not pkg.built and pkg.operation == 'merge' and \
 			'fetch' in pkg.metadata.restrict:

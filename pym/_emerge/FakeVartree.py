@@ -12,8 +12,7 @@ from portage.const import VDB_PATH
 from portage.dbapi.vartree import vartree
 from portage.dep._slot_operator import find_built_slot_operator_atoms
 from portage.eapi import _get_eapi_attrs
-from portage.exception import InvalidDependString
-from portage.repository.config import _gen_valid_repo
+from portage.exception import InvalidData, InvalidDependString
 from portage.update import grab_updates, parse_updates, update_dbentries
 from portage.versions import _pkg_str
 
@@ -111,7 +110,6 @@ class FakeVartree(vartree):
 		# a KeyError to the caller if appropriate.
 		pkg_obj = self.dbapi._cpv_map[pkg]
 		installed_eapi = pkg_obj.eapi
-		repo = pkg_obj.metadata['repository']
 		eapi_attrs = _get_eapi_attrs(installed_eapi)
 		built_slot_operator_atoms = None
 
@@ -123,9 +121,9 @@ class FakeVartree(vartree):
 
 		try:
 			# Use the live ebuild metadata if possible.
-			repo = _gen_valid_repo(repo)
 			live_metadata = dict(zip(self._portdb_keys,
-				self._portdb.aux_get(pkg, self._portdb_keys, myrepo=repo)))
+				self._portdb.aux_get(pkg, self._portdb_keys,
+				myrepo=pkg_obj.repo)))
 			# Use the metadata from the installed instance if the EAPI
 			# of either instance is unsupported, since if the installed
 			# instance has an unsupported or corrupt EAPI then we don't
