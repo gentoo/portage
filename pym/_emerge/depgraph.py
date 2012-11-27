@@ -269,13 +269,12 @@ class _rebuild_config(object):
 					return True
 				elif (parent.installed and
 					root_slot not in self.reinstall_list):
-					inst_build_time = parent._metadata.get("BUILD_TIME")
 					try:
 						bin_build_time, = bindb.aux_get(parent.cpv,
 							["BUILD_TIME"])
 					except KeyError:
 						continue
-					if bin_build_time != inst_build_time:
+					if bin_build_time != _unicode(parent.build_time):
 						# 2) Remote binary package is valid, and local package
 						#    is not up to date. Force reinstall.
 						reinstall = True
@@ -593,8 +592,7 @@ class depgraph(object):
 
 			if selected_pkg.installed and \
 				selected_pkg.cpv == pkg.cpv and \
-				selected_pkg._metadata.get('BUILD_TIME') == \
-				pkg._metadata.get('BUILD_TIME'):
+				selected_pkg.build_time == pkg.build_time:
 				# We don't care about ignored binaries when an
 				# identical installed instance is selected to
 				# fill the slot.
@@ -3886,7 +3884,7 @@ class depgraph(object):
 		return True
 
 	def _equiv_binary_installed(self, pkg):
-		build_time = pkg._metadata.get('BUILD_TIME')
+		build_time = pkg.build_time
 		if not build_time:
 			return False
 
@@ -3896,7 +3894,7 @@ class depgraph(object):
 		except PackageNotFound:
 			return False
 
-		return build_time == inst_pkg._metadata.get('BUILD_TIME')
+		return build_time == inst_pkg.build_time
 
 	class _AutounmaskLevel(object):
 		__slots__ = ("allow_use_changes", "allow_unstable_keywords", "allow_license_changes", \
@@ -4317,8 +4315,8 @@ class depgraph(object):
 								for selected_pkg in matched_packages:
 									if selected_pkg.type_name == "binary" and \
 										selected_pkg.cpv == pkg.cpv and \
-										selected_pkg._metadata.get('BUILD_TIME') == \
-										pkg._metadata.get('BUILD_TIME'):
+										selected_pkg.build_time == \
+										pkg.build_time:
 										identical_binary = True
 										break
 
@@ -4551,15 +4549,8 @@ class depgraph(object):
 					# non-empty, in order to avoid cases like to
 					# bug #306659 where BUILD_TIME fields are missing
 					# in local and/or remote Packages file.
-					try:
-						built_timestamp = int(built_pkg._metadata['BUILD_TIME'])
-					except (KeyError, ValueError):
-						built_timestamp = 0
-
-					try:
-						installed_timestamp = int(inst_pkg._metadata['BUILD_TIME'])
-					except (KeyError, ValueError):
-						installed_timestamp = 0
+					built_timestamp = built_pkg.build_time
+					installed_timestamp = inst_pkg.build_time
 
 					if unbuilt_pkg is not None and unbuilt_pkg > built_pkg:
 						pass

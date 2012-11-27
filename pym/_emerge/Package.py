@@ -109,6 +109,15 @@ class Package(Task):
 		return self._metadata["EAPI"]
 
 	@property
+	def build_time(self):
+		if not self.built:
+			raise AttributeError('build_time')
+		try:
+			return long(self._metadata['BUILD_TIME'])
+		except (KeyError, ValueError):
+			return 0
+
+	@property
 	def defined_phases(self):
 		return self._metadata.defined_phases
 
