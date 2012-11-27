@@ -160,7 +160,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			# According to GLEP 37, RDEPEND is the only dependency
 			# type that is valid for new-style virtuals. Repoman
 			# should enforce this.
-			depstring = pkg.metadata['RDEPEND']
+			depstring = pkg._metadata['RDEPEND']
 			pkg_kwargs = kwargs.copy()
 			pkg_kwargs["myuse"] = pkg_use_enabled(pkg)
 			if edebug:

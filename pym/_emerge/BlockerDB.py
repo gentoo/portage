@@ -92,7 +92,7 @@ class BlockerDB(object):
 			blocking_pkgs.update(blocker_parents.parent_nodes(atom))
 
 		# Check for blockers in the other direction.
-		depstr = " ".join(new_pkg.metadata[k] for k in dep_keys)
+		depstr = " ".join(new_pkg._metadata[k] for k in dep_keys)
 		success, atoms = portage.dep_check(depstr,
 			vardb, settings, myuse=new_pkg.use.enabled,
 			trees=dep_check_trees, myroot=new_pkg.root)

@@ -409,7 +409,7 @@ class Scheduler(PollScheduler):
 			if not (isinstance(task, Package) and \
 				task.operation == "merge"):
 				continue
-			if 'interactive' in task.metadata.properties:
+			if 'interactive' in task._metadata.properties:
 				interactive_tasks.append(task)
 		return interactive_tasks
 
@@ -786,7 +786,7 @@ class Scheduler(PollScheduler):
 			if x.eapi in ("0", "1", "2", "3"):
 				continue
 
-			if "pretend" not in x.metadata.defined_phases:
+			if "pretend" not in x._metadata.defined_phases:
 				continue
 
 			out_str =">>> Running pre-merge checks for " + colorize("INFORM", x.cpv) + "\n"

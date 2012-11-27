@@ -1753,7 +1753,7 @@ for x in effective_scanlist:
 					fails[k].append("%s: %s" % (relative_path, msg))
 			continue
 
-		myaux = pkg.metadata
+		myaux = pkg._metadata
 		eapi = myaux["EAPI"]
 		inherited = pkg.inherited
 		live_ebuild = live_eclasses.intersection(inherited)
@@ -2174,7 +2174,7 @@ for x in effective_scanlist:
 					if ismasked:
 						if not have_pmasked:
 							have_pmasked = bool(dep_settings._getMaskAtom(
-								pkg.cpv, pkg.metadata))
+								pkg.cpv, pkg._metadata))
 						if options.ignore_masked:
 							continue
 						#we are testing deps for a masked package; give it some lee-way

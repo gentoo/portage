@@ -140,10 +140,10 @@ class PackageVirtualDbapi(dbapi):
 		self._clear_cache()
 
 	def aux_get(self, cpv, wants, myrepo=None):
-		metadata = self._cpv_map[cpv].metadata
+		metadata = self._cpv_map[cpv]._metadata
 		return [metadata.get(x, "") for x in wants]
 
 	def aux_update(self, cpv, values):
-		self._cpv_map[cpv].metadata.update(values)
+		self._cpv_map[cpv]._metadata.update(values)
 		self._clear_cache()
 

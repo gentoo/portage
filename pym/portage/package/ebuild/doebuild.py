@@ -1334,9 +1334,9 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 
 	if not pkg.built and \
 		mydo not in ("digest", "help", "manifest") and \
-		pkg.metadata["REQUIRED_USE"] and \
+		pkg._metadata["REQUIRED_USE"] and \
 		eapi_has_required_use(pkg.eapi):
-		result = check_required_use(pkg.metadata["REQUIRED_USE"],
+		result = check_required_use(pkg._metadata["REQUIRED_USE"],
 			pkg.use.enabled, pkg.iuse.is_valid_flag, eapi=pkg.eapi)
 		if not result:
 			reduced_noise = result.tounicode()
@@ -1345,7 +1345,7 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 			writemsg("    %s\n" % reduced_noise,
 				noiselevel=-1)
 			normalized_required_use = \
-				" ".join(pkg.metadata["REQUIRED_USE"].split())
+				" ".join(pkg._metadata["REQUIRED_USE"].split())
 			if reduced_noise != normalized_required_use:
 				writemsg("\n  %s\n" % _("The above constraints " + \
 					"are a subset of the following complete expression:"),

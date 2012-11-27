@@ -706,7 +706,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 						continue
 				except portage.exception.InvalidDependString as e:
 					show_invalid_depstring_notice(pkg,
-						pkg.metadata["PROVIDE"], str(e))
+						pkg._metadata["PROVIDE"], _unicode(e))
 					del e
 					protected_set.add("=" + pkg.cpv)
 					continue
@@ -760,7 +760,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 					continue
 			except portage.exception.InvalidDependString as e:
 				show_invalid_depstring_notice(pkg,
-					pkg.metadata["PROVIDE"], str(e))
+					pkg._metadata["PROVIDE"], _unicode(e))
 				del e
 				protected_set.add("=" + pkg.cpv)
 				continue
@@ -778,7 +778,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 					required_sets['__excluded__'].add("=" + pkg.cpv)
 			except portage.exception.InvalidDependString as e:
 				show_invalid_depstring_notice(pkg,
-					pkg.metadata["PROVIDE"], str(e))
+					pkg._metadata["PROVIDE"], _unicode(e))
 				del e
 				required_sets['__excluded__'].add("=" + pkg.cpv)
 
@@ -1168,7 +1168,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		for node in clean_set:
 			graph.add(node, None)
 			for dep_type in Package._dep_keys:
-				depstr = node.metadata[dep_type]
+				depstr = node._metadata[dep_type]
 				if not depstr:
 					continue
 				priority = priority_map[dep_type]

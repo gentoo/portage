@@ -1248,7 +1248,7 @@ class config(object):
 		if not isinstance(mycpv, basestring):
 			pkg = mycpv
 			mycpv = pkg.cpv
-			mydb = pkg.metadata
+			mydb = pkg._metadata
 			explicit_iuse = pkg.iuse.all
 			args_hash = (mycpv, id(pkg))
 			if pkg.built:

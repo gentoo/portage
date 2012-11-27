@@ -269,7 +269,7 @@ class _rebuild_config(object):
 					return True
 				elif (parent.installed and
 					root_slot not in self.reinstall_list):
-					inst_build_time = parent.metadata.get("BUILD_TIME")
+					inst_build_time = parent._metadata.get("BUILD_TIME")
 					try:
 						bin_build_time, = bindb.aux_get(parent.cpv,
 							["BUILD_TIME"])
@@ -593,8 +593,8 @@ class depgraph(object):
 
 			if selected_pkg.installed and \
 				selected_pkg.cpv == pkg.cpv and \
-				selected_pkg.metadata.get('BUILD_TIME') == \
-				pkg.metadata.get('BUILD_TIME'):
+				selected_pkg._metadata.get('BUILD_TIME') == \
+				pkg._metadata.get('BUILD_TIME'):
 				# We don't care about ignored binaries when an
 				# identical installed instance is selected to
 				# fill the slot.
@@ -1490,10 +1490,10 @@ class depgraph(object):
 		# package selection, since we want to prompt the user
 		# for USE adjustment rather than have REQUIRED_USE
 		# affect package selection and || dep choices.
-		if not pkg.built and pkg.metadata.get("REQUIRED_USE") and \
+		if not pkg.built and pkg._metadata.get("REQUIRED_USE") and \
 			eapi_has_required_use(pkg.eapi):
 			required_use_is_sat = check_required_use(
-				pkg.metadata["REQUIRED_USE"],
+				pkg._metadata["REQUIRED_USE"],
 				self._pkg_use_enabled(pkg),
 				pkg.iuse.is_valid_flag,
 				eapi=pkg.eapi)
@@ -1577,11 +1577,11 @@ class depgraph(object):
 				# doesn't already. Any pre-existing providers will be preferred
 				# over this one.
 				try:
-					pkgsettings.setinst(pkg.cpv, pkg.metadata)
+					pkgsettings.setinst(pkg.cpv, pkg._metadata)
 					# For consistency, also update the global virtuals.
 					settings = self._frozen_config.roots[pkg.root].settings
 					settings.unlock()
-					settings.setinst(pkg.cpv, pkg.metadata)
+					settings.setinst(pkg.cpv, pkg._metadata)
 					settings.lock()
 				except portage.exception.InvalidDependString:
 					if not pkg.installed:
@@ -1682,7 +1682,7 @@ class depgraph(object):
 	def _add_pkg_deps(self, pkg, allow_unsatisfied=False):
 
 		myroot = pkg.root
-		metadata = pkg.metadata
+		metadata = pkg._metadata
 		removal_action = "remove" in self._dynamic_config.myparams
 		eapi_attrs = _get_eapi_attrs(pkg.eapi)
 
@@ -2877,7 +2877,7 @@ class depgraph(object):
 		blockers = {}
 		blocker_dep_keys = Package._dep_keys
 		for pkg in greedy_pkgs + [highest_pkg]:
-			dep_str = " ".join(pkg.metadata[k] for k in blocker_dep_keys)
+			dep_str = " ".join(pkg._metadata[k] for k in blocker_dep_keys)
 			try:
 				selected_atoms = self._select_atoms(
 					pkg.root, dep_str, self._pkg_use_enabled(pkg),
@@ -3066,7 +3066,7 @@ class depgraph(object):
 			return
 		try:
 			rdepend = self._select_atoms_from_graph(
-				pkg.root, pkg.metadata.get("RDEPEND", ""),
+				pkg.root, pkg._metadata.get("RDEPEND", ""),
 				myuse=self._pkg_use_enabled(pkg),
 				parent=pkg, strict=False)
 		except InvalidDependString as e:
@@ -3094,7 +3094,7 @@ class depgraph(object):
 		"""
 		try:
 			rdepend = self._select_atoms(
-				pkg.root, pkg.metadata.get("RDEPEND", ""),
+				pkg.root, pkg._metadata.get("RDEPEND", ""),
 				myuse=self._pkg_use_enabled(pkg),
 				parent=pkg, priority=self._priority(runtime=True))
 		except InvalidDependString as e:
@@ -3139,7 +3139,7 @@ class depgraph(object):
 			for dep_str in Package._dep_keys:
 				try:
 					affecting_use.update(extract_affecting_use(
-						node.metadata[dep_str], target_atom,
+						node._metadata[dep_str], target_atom,
 						eapi=node.eapi))
 				except InvalidDependString:
 					if not node.installed:
@@ -3218,16 +3218,16 @@ class depgraph(object):
 					# This edge comes from _parent_atoms and was not added to
 					# the graph, and _parent_atoms does not contain priorities.
 					for k in Package._dep_keys:
-						dep_strings.add(node.metadata[k])
+						dep_strings.add(node._metadata[k])
 				else:
 					for priority in priorities:
 						if priority.buildtime:
 							for k in Package._buildtime_keys:
-								dep_strings.add(node.metadata[k])
+								dep_strings.add(node._metadata[k])
 						if priority.runtime:
-							dep_strings.add(node.metadata["RDEPEND"])
+							dep_strings.add(node._metadata["RDEPEND"])
 						if priority.runtime_post:
-							dep_strings.add(node.metadata["PDEPEND"])
+							dep_strings.add(node._metadata["PDEPEND"])
 
 				affecting_use = set()
 				for dep_str in dep_strings:
@@ -3376,9 +3376,9 @@ class depgraph(object):
 							repo = metadata.get('repository')
 						pkg = self._pkg(cpv, pkg_type, root_config,
 							installed=installed, myrepo=repo)
-						# pkg.metadata contains calculated USE for ebuilds,
+						# pkg._metadata contains calculated USE for ebuilds,
 						# required later for getMissingLicenses.
-						metadata = pkg.metadata
+						metadata = pkg._metadata
 						if pkg.invalid:
 							# Avoid doing any operations with packages that
 							# have invalid metadata. It would be unsafe at
@@ -3417,10 +3417,10 @@ class depgraph(object):
 								raise
 						if not mreasons and \
 							not pkg.built and \
-							pkg.metadata.get("REQUIRED_USE") and \
+							pkg._metadata.get("REQUIRED_USE") and \
 							eapi_has_required_use(pkg.eapi):
 							if not check_required_use(
-								pkg.metadata["REQUIRED_USE"],
+								pkg._metadata["REQUIRED_USE"],
 								self._pkg_use_enabled(pkg),
 								pkg.iuse.is_valid_flag,
 								eapi=pkg.eapi):
@@ -3473,7 +3473,7 @@ class depgraph(object):
 					continue
 
 				missing_use_adjustable.add(pkg)
-				required_use = pkg.metadata.get("REQUIRED_USE")
+				required_use = pkg._metadata.get("REQUIRED_USE")
 				required_use_warning = ""
 				if required_use:
 					old_use = self._pkg_use_enabled(pkg)
@@ -3523,7 +3523,7 @@ class depgraph(object):
 					if any(x in untouchable_flags for x in involved_flags):
 						continue
 
-					required_use = myparent.metadata.get("REQUIRED_USE")
+					required_use = myparent._metadata.get("REQUIRED_USE")
 					required_use_warning = ""
 					if required_use:
 						old_use = self._pkg_use_enabled(myparent)
@@ -3625,7 +3625,7 @@ class depgraph(object):
 			writemsg("\n  The following REQUIRED_USE flag constraints " + \
 				"are unsatisfied:\n", noiselevel=-1)
 			reduced_noise = check_required_use(
-				pkg.metadata["REQUIRED_USE"],
+				pkg._metadata["REQUIRED_USE"],
 				self._pkg_use_enabled(pkg),
 				pkg.iuse.is_valid_flag,
 				eapi=pkg.eapi).tounicode()
@@ -3633,7 +3633,7 @@ class depgraph(object):
 				human_readable_required_use(reduced_noise),
 				noiselevel=-1)
 			normalized_required_use = \
-				" ".join(pkg.metadata["REQUIRED_USE"].split())
+				" ".join(pkg._metadata["REQUIRED_USE"].split())
 			if reduced_noise != normalized_required_use:
 				writemsg("\n  The above constraints " + \
 					"are a subset of the following complete expression:\n",
@@ -3886,7 +3886,7 @@ class depgraph(object):
 		return True
 
 	def _equiv_binary_installed(self, pkg):
-		build_time = pkg.metadata.get('BUILD_TIME')
+		build_time = pkg._metadata.get('BUILD_TIME')
 		if not build_time:
 			return False
 
@@ -3896,7 +3896,7 @@ class depgraph(object):
 		except PackageNotFound:
 			return False
 
-		return build_time == inst_pkg.metadata.get('BUILD_TIME')
+		return build_time == inst_pkg._metadata.get('BUILD_TIME')
 
 	class _AutounmaskLevel(object):
 		__slots__ = ("allow_use_changes", "allow_unstable_keywords", "allow_license_changes", \
@@ -4129,7 +4129,7 @@ class depgraph(object):
 				return False
 
 			for key in Package._dep_keys + ("LICENSE",):
-				dep = pkg.metadata[key]
+				dep = pkg._metadata[key]
 				old_val = set(portage.dep.use_reduce(dep, pkg.use.enabled, is_valid_flag=pkg.iuse.is_valid_flag, flat=True))
 				new_val = set(portage.dep.use_reduce(dep, new_use, is_valid_flag=pkg.iuse.is_valid_flag, flat=True))
 
@@ -4152,7 +4152,7 @@ class depgraph(object):
 
 		if new_changes != old_changes:
 			#Don't do the change if it violates REQUIRED_USE.
-			required_use = pkg.metadata.get("REQUIRED_USE")
+			required_use = pkg._metadata.get("REQUIRED_USE")
 			if required_use and check_required_use(required_use, old_use,
 				pkg.iuse.is_valid_flag, eapi=pkg.eapi) and \
 				not check_required_use(required_use, new_use,
@@ -4317,8 +4317,8 @@ class depgraph(object):
 								for selected_pkg in matched_packages:
 									if selected_pkg.type_name == "binary" and \
 										selected_pkg.cpv == pkg.cpv and \
-										selected_pkg.metadata.get('BUILD_TIME') == \
-										pkg.metadata.get('BUILD_TIME'):
+										selected_pkg._metadata.get('BUILD_TIME') == \
+										pkg._metadata.get('BUILD_TIME'):
 										identical_binary = True
 										break
 
@@ -4552,12 +4552,12 @@ class depgraph(object):
 					# bug #306659 where BUILD_TIME fields are missing
 					# in local and/or remote Packages file.
 					try:
-						built_timestamp = int(built_pkg.metadata['BUILD_TIME'])
+						built_timestamp = int(built_pkg._metadata['BUILD_TIME'])
 					except (KeyError, ValueError):
 						built_timestamp = 0
 
 					try:
-						installed_timestamp = int(inst_pkg.metadata['BUILD_TIME'])
+						installed_timestamp = int(inst_pkg._metadata['BUILD_TIME'])
 					except (KeyError, ValueError):
 						installed_timestamp = 0
 
@@ -5157,7 +5157,7 @@ class depgraph(object):
 					for inst_pkg, inst_task in depends_on_order:
 						uninst_task = Package(built=inst_pkg.built,
 							cpv=inst_pkg.cpv, installed=inst_pkg.installed,
-							metadata=inst_pkg.metadata,
+							metadata=inst_pkg._metadata,
 							operation="uninstall",
 							root_config=inst_pkg.root_config,
 							type_name=inst_pkg.type_name)
@@ -5475,7 +5475,7 @@ class depgraph(object):
 		if running_portage is not None:
 			try:
 				portage_rdepend = self._select_atoms_highest_available(
-					running_root, running_portage.metadata["RDEPEND"],
+					running_root, running_portage._metadata["RDEPEND"],
 					myuse=self._pkg_use_enabled(running_portage),
 					parent=running_portage, strict=False)
 			except portage.exception.InvalidDependString as e:
@@ -6030,7 +6030,7 @@ class depgraph(object):
 						inst_pkg = inst_pkg[0]
 						uninst_task = Package(built=inst_pkg.built,
 							cpv=inst_pkg.cpv, installed=inst_pkg.installed,
-							metadata=inst_pkg.metadata,
+							metadata=inst_pkg._metadata,
 							operation="uninstall",
 							root_config=inst_pkg.root_config,
 							type_name=inst_pkg.type_name)
@@ -6362,7 +6362,7 @@ class depgraph(object):
 						keyword = reason.unmask_hint.value
 
 						comment, filename = portage.getmaskingreason(
-							pkg.cpv, metadata=pkg.metadata,
+							pkg.cpv, metadata=pkg._metadata,
 							settings=pkgsettings,
 							portdb=pkg.root_config.trees["porttree"].dbapi,
 							return_location=True)
@@ -6741,7 +6741,7 @@ class depgraph(object):
 			pkgsettings = self._frozen_config.pkgsettings[pkg.root]
 			mreasons = get_masking_status(pkg, pkgsettings, root_config, use=self._pkg_use_enabled(pkg))
 			masked_packages.append((root_config, pkgsettings,
-				pkg.cpv, pkg.repo, pkg.metadata, mreasons))
+				pkg.cpv, pkg.repo, pkg._metadata, mreasons))
 		if masked_packages:
 			writemsg("\n" + colorize("BAD", "!!!") + \
 				" The following updates are masked by LICENSE changes:\n",
@@ -6756,7 +6756,7 @@ class depgraph(object):
 			pkgsettings = self._frozen_config.pkgsettings[pkg.root]
 			mreasons = get_masking_status(pkg, pkgsettings, root_config, use=self._pkg_use_enabled)
 			masked_packages.append((root_config, pkgsettings,
-				pkg.cpv, pkg.repo, pkg.metadata, mreasons))
+				pkg.cpv, pkg.repo, pkg._metadata, mreasons))
 		if masked_packages:
 			writemsg("\n" + colorize("BAD", "!!!") + \
 				" The following installed packages are masked:\n",
@@ -7253,7 +7253,7 @@ class _dep_check_composite_db(dbapi):
 		return True
 
 	def aux_get(self, cpv, wants):
-		metadata = self._cpv_pkg_map[cpv].metadata
+		metadata = self._cpv_pkg_map[cpv]._metadata
 		return [metadata.get(x, "") for x in wants]
 
 	def match_pkgs(self, atom):
@@ -7605,9 +7605,9 @@ def _get_masking_status(pkg, pkgsettings, root_config, myrepo=None, use=None):
 		portdb=root_config.trees["porttree"].dbapi, myrepo=myrepo)
 
 	if not pkg.installed:
-		if not pkgsettings._accept_chost(pkg.cpv, pkg.metadata):
+		if not pkgsettings._accept_chost(pkg.cpv, pkg._metadata):
 			mreasons.append(_MaskReason("CHOST", "CHOST: %s" % \
-				pkg.metadata["CHOST"]))
+				pkg._metadata["CHOST"]))
 
 	if pkg.invalid:
 		for msgs in pkg.invalid.values():
@@ -7615,7 +7615,7 @@ def _get_masking_status(pkg, pkgsettings, root_config, myrepo=None, use=None):
 				mreasons.append(
 					_MaskReason("invalid", "invalid: %s" % (msg,)))
 
-	if not pkg.metadata["SLOT"]:
+	if not pkg._metadata["SLOT"]:
 		mreasons.append(
 			_MaskReason("invalid", "SLOT: undefined"))
 

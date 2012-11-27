@@ -3,6 +3,8 @@
 
 import sys
 from itertools import chain
+import warnings
+
 import portage
 from portage import _encodings, _unicode_decode, _unicode_encode
 from portage.cache.mappings import slot_dict_class
@@ -26,12 +28,12 @@ class Package(Task):
 
 	__hash__ = Task.__hash__
 	__slots__ = ("built", "cpv", "depth",
-		"installed", "metadata", "onlydeps", "operation",
+		"installed", "onlydeps", "operation",
 		"root_config", "type_name",
 		"category", "counter", "cp", "cpv_split",
 		"inherited", "iuse", "mtime",
 		"pf", "root", "slot", "sub_slot", "slot_atom", "version") + \
-		("_invalid", "_raw_metadata", "_masks", "_use",
+		("_invalid", "_masks", "_metadata", "_raw_metadata", "_use",
 		"_validated_atoms", "_visible")
 
 	metadata_keys = [
@@ -48,20 +50,21 @@ class Package(Task):
 	UNKNOWN_REPO = _unknown_repo
 
 	def __init__(self, **kwargs):
+		metadata = _PackageMetadataWrapperBase(kwargs.pop('metadata'))
 		Task.__init__(self, **kwargs)
 		# the SlotObject constructor assigns self.root_config from keyword args
 		# and is an instance of a '_emerge.RootConfig.RootConfig class
 		self.root = self.root_config.root
-		self._raw_metadata = _PackageMetadataWrapperBase(self.metadata)
-		self.metadata = _PackageMetadataWrapper(self, self._raw_metadata)
+		self._raw_metadata = metadata
+		self._metadata = _PackageMetadataWrapper(self, metadata)
 		if not self.built:
-			self.metadata['CHOST'] = self.root_config.settings.get('CHOST', '')
+			self._metadata['CHOST'] = self.root_config.settings.get('CHOST', '')
 		eapi_attrs = _get_eapi_attrs(self.eapi)
-		self.cpv = _pkg_str(self.cpv, metadata=self.metadata,
+		self.cpv = _pkg_str(self.cpv, metadata=self._metadata,
 			settings=self.root_config.settings)
 		if hasattr(self.cpv, 'slot_invalid'):
 			self._invalid_metadata('SLOT.invalid',
-				"SLOT: invalid value: '%s'" % self.metadata["SLOT"])
+				"SLOT: invalid value: '%s'" % self._metadata["SLOT"])
 		self.cpv_split = self.cpv.cpv_split
 		self.category, self.pf = portage.catsplit(self.cpv)
 		self.cp = self.cpv.cp
@@ -70,14 +73,14 @@ class Package(Task):
 		self.sub_slot = self.cpv.sub_slot
 		self.slot_atom = Atom("%s%s%s" % (self.cp, _slot_separator, self.slot))
 		# sync metadata with validated repo (may be UNKNOWN_REPO)
-		self.metadata['repository'] = self.cpv.repo
+		self._metadata['repository'] = self.cpv.repo
 
 		if eapi_attrs.iuse_effective:
 			implicit_match = self.root_config.settings._iuse_effective_match
 		else:
 			implicit_match = self.root_config.settings._iuse_implicit_match
 		usealiases = self.root_config.settings._use_manager.getUseAliases(self)
-		self.iuse = self._iuse(self, self.metadata["IUSE"].split(), implicit_match,
+		self.iuse = self._iuse(self, self._metadata["IUSE"].split(), implicit_match,
 			usealiases, self.eapi)
 
 		if (self.iuse.enabled or self.iuse.disabled) and \
@@ -103,12 +106,13 @@ class Package(Task):
 
 	@property
 	def eapi(self):
-		return self.metadata["EAPI"]
+		return self._metadata["EAPI"]
 
-	# For consistency with _pkg_str
 	@property
-	def _metadata(self):
-		return self.metadata
+	def metadata(self):
+		warnings.warn("_emerge.Package.Package.metadata is deprecated",
+			DeprecationWarning, stacklevel=3)
+		return self._metadata
 
 	# These are calculated on-demand, so that they are calculated
 	# after FakeVartree applies its metadata tweaks.
@@ -202,7 +206,7 @@ class Package(Task):
 
 		validated_atoms = []
 		for k in self._dep_keys:
-			v = self.metadata.get(k)
+			v = self._metadata.get(k)
 			if not v:
 				continue
 			try:
@@ -228,7 +232,7 @@ class Package(Task):
 			validated_atoms if isinstance(atom, Atom)))
 
 		k = 'PROVIDE'
-		v = self.metadata.get(k)
+		v = self._metadata.get(k)
 		if v:
 			try:
 				use_reduce(v, eapi=dep_eapi, matchall=True,
@@ -238,7 +242,7 @@ class Package(Task):
 					_unicode_decode("%s: %s") % (k, e))
 
 		for k in self._use_conditional_misc_keys:
-			v = self.metadata.get(k)
+			v = self._metadata.get(k)
 			if not v:
 				continue
 			try:
@@ -248,7 +252,7 @@ class Package(Task):
 				self._metadata_exception(k, e)
 
 		k = 'REQUIRED_USE'
-		v = self.metadata.get(k)
+		v = self._metadata.get(k)
 		if v and not self.built:
 			if not _get_eapi_attrs(eapi).required_use:
 				self._invalid_metadata('EAPI.incompatible',
@@ -265,7 +269,7 @@ class Package(Task):
 						_unicode_decode("%s: %s") % (k, e))
 
 		k = 'SRC_URI'
-		v = self.metadata.get(k)
+		v = self._metadata.get(k)
 		if v:
 			try:
 				use_reduce(v, is_src_uri=True, eapi=eapi, matchall=True,
@@ -287,8 +291,8 @@ class Package(Task):
 		if self.invalid is not False:
 			masks['invalid'] = self.invalid
 
-		if not settings._accept_chost(self.cpv, self.metadata):
-			masks['CHOST'] = self.metadata['CHOST']
+		if not settings._accept_chost(self.cpv, self._metadata):
+			masks['CHOST'] = self._metadata['CHOST']
 
 		eapi = self.eapi
 		if not portage.eapi_is_supported(eapi):
@@ -297,26 +301,26 @@ class Package(Task):
 			masks['EAPI.deprecated'] = eapi
 
 		missing_keywords = settings._getMissingKeywords(
-			self.cpv, self.metadata)
+			self.cpv, self._metadata)
 		if missing_keywords:
 			masks['KEYWORDS'] = missing_keywords
 
 		try:
 			missing_properties = settings._getMissingProperties(
-				self.cpv, self.metadata)
+				self.cpv, self._metadata)
 			if missing_properties:
 				masks['PROPERTIES'] = missing_properties
 		except InvalidDependString:
 			# already recorded as 'invalid'
 			pass
 
-		mask_atom = settings._getMaskAtom(self.cpv, self.metadata)
+		mask_atom = settings._getMaskAtom(self.cpv, self._metadata)
 		if mask_atom is not None:
 			masks['package.mask'] = mask_atom
 
 		try:
 			missing_licenses = settings._getMissingLicenses(
-				self.cpv, self.metadata)
+				self.cpv, self._metadata)
 			if missing_licenses:
 				masks['LICENSE'] = missing_licenses
 		except InvalidDependString:
@@ -355,7 +359,7 @@ class Package(Task):
 		"""returns None, 'missing', or 'unstable'."""
 
 		missing = self.root_config.settings._getRawMissingKeywords(
-				self.cpv, self.metadata)
+				self.cpv, self._metadata)
 
 		if not missing:
 			return None
@@ -376,7 +380,7 @@ class Package(Task):
 		"""returns a bool if the cpv is in the list of
 		expanded pmaskdict[cp] available ebuilds"""
 		pmask = self.root_config.settings._getRawMaskAtom(
-			self.cpv, self.metadata)
+			self.cpv, self._metadata)
 		return pmask is not None
 
 	def _metadata_exception(self, k, e):
@@ -529,7 +533,7 @@ class Package(Task):
 
 	@property
 	def repo(self):
-		return self.metadata['repository']
+		return self._metadata['repository']
 
 	@property
 	def repo_priority(self):
@@ -541,7 +545,7 @@ class Package(Task):
 	@property
 	def use(self):
 		if self._use is None:
-			self.metadata._init_use()
+			self._metadata._init_use()
 		return self._use
 
 	def _get_pkgsettings(self):
