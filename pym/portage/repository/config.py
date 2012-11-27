@@ -200,7 +200,11 @@ class RepoConfig(object):
 		if not formats:
 			if not force:
 				return
-			formats = ('pms',)
+			# The default egencache format was 'pms' prior to portage-2.1.11.32
+			# (portage versions ersions prior to portage-2.1.11.14 will NOT
+			# recognize md5-dict format unless it is explicitly listed in
+			# layout.conf).
+			formats = ('md5-dict',)
 
 		for fmt in formats:
 			name = None
@@ -739,8 +743,11 @@ def parse_layout_conf(repo_location, repo_name=None):
 	cache_formats = layout_data.get('cache-formats', '').lower().split()
 	if not cache_formats:
 		# Auto-detect cache formats, and prefer md5-cache if available.
-		# After this behavior is deployed in stable portage, the default
-		# egencache format can be changed to md5-dict.
+		# This behavior was deployed in portage-2.1.11.14, so that the
+		# default egencache format could eventually be changed to md5-dict
+		# in portage-2.1.11.32. WARNING: Versions prior to portage-2.1.11.14
+		# will NOT recognize md5-dict format unless it is explicitly
+		# listed in layout.conf.
 		cache_formats = []
 		if os.path.isdir(os.path.join(repo_location, 'metadata', 'md5-cache')):
 			cache_formats.append('md5-dict')

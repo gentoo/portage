@@ -51,8 +51,8 @@ class PortdbCacheTestCase(TestCase):
 			"""),),
 
 			egencache_cmd + ("--update",),
-			(lambda: os.path.exists(pms_cache_dir),),
-			(lambda: not os.path.exists(md5_cache_dir),),
+			(lambda: not os.path.exists(pms_cache_dir),),
+			(lambda: os.path.exists(md5_cache_dir),),
 			python_cmd + (textwrap.dedent("""
 				import os, sys, portage
 				if portage.portdb.porttree_root not in portage.portdb._pregen_auxdb:
@@ -60,8 +60,8 @@ class PortdbCacheTestCase(TestCase):
 			"""),),
 			python_cmd + (textwrap.dedent("""
 				import os, sys, portage
-				from portage.cache.metadata import database as pms_database
-				if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.porttree_root], pms_database):
+				from portage.cache.flat_hash import md5_database
+				if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.porttree_root], md5_database):
 					sys.exit(1)
 			"""),),
 
