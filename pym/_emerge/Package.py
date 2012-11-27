@@ -109,6 +109,18 @@ class Package(Task):
 		return self._metadata["EAPI"]
 
 	@property
+	def defined_phases(self):
+		return self._metadata.defined_phases
+
+	@property
+	def properties(self):
+		return self._metadata.properties
+
+	@property
+	def restrict(self):
+		return self._metadata.restrict
+
+	@property
 	def metadata(self):
 		warnings.warn("_emerge.Package.Package.metadata is deprecated",
 			DeprecationWarning, stacklevel=3)

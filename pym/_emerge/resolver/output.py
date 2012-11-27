@@ -651,7 +651,7 @@ class Display(object):
 			pkg_info.repo_path_real = self.portdb.getRepositoryPath(pkg.repo)
 		pkg_info.use = list(self.conf.pkg_use_enabled(pkg))
 		if not pkg.built and pkg.operation == 'merge' and \
-			'fetch' in pkg._metadata.restrict:
+			'fetch' in pkg.restrict:
 			if pkg_info.ordered:
 				self.counters.restrict_fetch += 1
 			pkg_info.attr_display.fetch_restrict = True
@@ -853,7 +853,7 @@ class Display(object):
 				pkg_info.oldbest = self.convert_myoldbest(pkg, pkg_info)
 				pkg_info.system, pkg_info.world = \
 					self.check_system_world(pkg)
-				if 'interactive' in pkg._metadata.properties and \
+				if 'interactive' in pkg.properties and \
 					pkg.operation == 'merge':
 					pkg_info.attr_display.interactive = True
 					if ordered:
