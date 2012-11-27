@@ -87,12 +87,12 @@ class PortdbCacheTestCase(TestCase):
 			(BASH_BINARY, "-c", "echo %s > %s" %
 				tuple(map(portage._shell_quote,
 				("cache-formats = pms md5-dict", layout_conf_path,)))),
-			(portage_python, "-c") + (textwrap.dedent("""
+			(portage_python, "-Wi", "-c") + (textwrap.dedent("""
 				import os, sys, portage
 				if portage.portdb.porttree_root not in portage.portdb._pregen_auxdb:
 					sys.exit(1)
 			"""),),
-			(portage_python, "-c") + (textwrap.dedent("""
+			(portage_python, "-Wi", "-c") + (textwrap.dedent("""
 				import os, sys, portage
 				from portage.cache.metadata import database as pms_database
 				if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.porttree_root], pms_database):
