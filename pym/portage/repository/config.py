@@ -201,7 +201,7 @@ class RepoConfig(object):
 			if not force:
 				return
 			# The default egencache format was 'pms' prior to portage-2.1.11.32
-			# (portage versions ersions prior to portage-2.1.11.14 will NOT
+			# (portage versions prior to portage-2.1.11.14 will NOT
 			# recognize md5-dict format unless it is explicitly listed in
 			# layout.conf).
 			formats = ('md5-dict',)

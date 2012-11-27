@@ -82,15 +82,17 @@ class PortdbCacheTestCase(TestCase):
 					sys.exit(1)
 			"""),),
 
+			# Don't use python -Wd, since the pms format triggers deprecation warnings
+			# in portdbapi._create_pregen_cache().
 			(BASH_BINARY, "-c", "echo %s > %s" %
 				tuple(map(portage._shell_quote,
 				("cache-formats = pms md5-dict", layout_conf_path,)))),
-			python_cmd + (textwrap.dedent("""
+			(portage_python, "-c") + (textwrap.dedent("""
 				import os, sys, portage
 				if portage.portdb.porttree_root not in portage.portdb._pregen_auxdb:
 					sys.exit(1)
 			"""),),
-			python_cmd + (textwrap.dedent("""
+			(portage_python, "-c") + (textwrap.dedent("""
 				import os, sys, portage
 				from portage.cache.metadata import database as pms_database
 				if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.porttree_root], pms_database):
@@ -173,6 +175,6 @@ class PortdbCacheTestCase(TestCase):
 							sys.stderr.write(_unicode_decode(line))
 
 				self.assertEqual(os.EX_OK, proc.returncode,
-					"command failed with args %s" % (args,))
+					"command %d failed with args %s" % (i, args,))
 		finally:
 			playground.cleanup()
