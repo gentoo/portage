@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Oct 2012" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Nov 2012" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -635,7 +635,8 @@ output from portage's displays.
 .BR "\-\-quiet\-build [ y | n ]"
 Redirect all build output to logs alone, and do not display it on
 stdout. If a build failure occurs for a single package, the build
-log will be automatically displayed on stdout. If there are multiple
+log will be automatically displayed on stdout (unless the
+\fI\-\-quiet\-fail\fR option is enabled). If there are multiple
 build failures (due to options like \-\-keep\-going or \-\-jobs),
 then the content of the log files will not be displayed, and instead
 the paths of the log files will be displayed together with the
@@ -643,6 +644,12 @@ corresponding die messages.
 Note that interactive packages currently force all build output to
 be displayed on stdout. This issue can be temporarily avoided
 by specifying \fI\-\-accept\-properties=\-interactive\fR.
+.TP
+.BR "\-\-quiet\-fail [ y | n ]"
+Suppresses display of the build log on stdout when build output is hidden
+due to options such as \fI\-\-jobs\fR, \fI\-\-quiet\fR, or
+\fI\-\-quiet\-build\fR. Only the die message and the path of the build log
+will be displayed on stdout.
 .TP
 .BR "\-\-quiet\-repo\-display"
 In the package merge list display, suppress ::repository output, and

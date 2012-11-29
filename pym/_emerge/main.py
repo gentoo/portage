@@ -139,6 +139,7 @@ def insert_optional_args(args):
 		'--package-moves'        : y_or_n,
 		'--quiet'                : y_or_n,
 		'--quiet-build'          : y_or_n,
+		'--quiet-fail'           : y_or_n,
 		'--rebuild-if-new-slot': y_or_n,
 		'--rebuild-if-new-rev'   : y_or_n,
 		'--rebuild-if-new-ver'   : y_or_n,
@@ -541,6 +542,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices"  : true_y_or_n,
 		},
 
+		"--quiet-fail": {
+			"help"     : "suppresses display of the build log on stdout",
+			"type"     : "choice",
+			"choices"  : true_y_or_n,
+		},
+
 		"--rebuild-if-new-slot": {
 			"help"     : ("Automatically rebuild or reinstall packages when slot/sub-slot := "
 				"operator dependencies can be satisfied by a newer slot, so that "
@@ -781,6 +788,9 @@ def parse_opts(tmpcmdline, silent=False):
 
 	if myoptions.quiet_build in true_y:
 		myoptions.quiet_build = 'y'
+
+	if myoptions.quiet_fail in true_y:
+		myoptions.quiet_fail = 'y'
 
 	if myoptions.rebuild_if_new_slot in true_y:
 		myoptions.rebuild_if_new_slot = 'y'

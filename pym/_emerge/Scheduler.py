@@ -1065,7 +1065,8 @@ class Scheduler(PollScheduler):
 		printer = portage.output.EOutput()
 		background = self._background
 		failure_log_shown = False
-		if background and len(self._failed_pkgs_all) == 1:
+		if background and len(self._failed_pkgs_all) == 1 and \
+			self.myopts.get('--quiet-fail', 'n') != 'y':
 			# If only one package failed then just show it's
 			# whole log for easy viewing.
 			failed_pkg = self._failed_pkgs_all[-1]
