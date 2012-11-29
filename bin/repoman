@@ -925,12 +925,10 @@ for x in repoman_settings.archlist():
 		print(red("up with the "+x+" team."))
 		print()
 
-global_noiselimit = portage.util.noiselimit
-# Suppress error message if @DEPRECATED license group doesn't exist
-portage.util.noiselimit = -2
-liclist_deprecated = \
-	set(repoman_settings._license_manager.expandLicenseTokens(["@DEPRECATED"]))
-portage.util.noiselimit = global_noiselimit
+liclist_deprecated = set()
+if "DEPRECATED" in repoman_settings._license_manager._license_groups:
+	liclist_deprecated.update(
+		repoman_settings._license_manager.expandLicenseTokens(["@DEPRECATED"]))
 
 if not liclist:
 	logging.fatal("Couldn't find licenses?")
