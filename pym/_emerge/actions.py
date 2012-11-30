@@ -2592,7 +2592,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		print(warn(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended")
 		print(warn(" * ")+"that you update portage now, before any other packages are updated.")
 		print()
-		print(warn(" * ")+"To update portage, run 'emerge portage' now.")
+		print(warn(" * ")+"To update portage, run 'emerge --oneshot portage' now.")
 		print()
 
 	display_news_notification(root_config, myopts)
