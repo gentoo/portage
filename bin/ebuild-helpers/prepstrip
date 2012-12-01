@@ -247,8 +247,10 @@ while read -r x ; do
 	inode_link=$(get_inode_number "${x}") || die "stat failed unexpectedly"
 	echo "${x}" >> "${inode_link}" || die "echo failed unexpectedly"
 done < <(
-	scanelf -yqRBF '#k%F' -k '.symtab' "$@"
-	find "$@" -type f ! -type l -name '*.a'
+	(
+		scanelf -yqRBF '#k%F' -k '.symtab' "$@"
+		find "$@" -type f ! -type l -name '*.a'
+	) | LC_ALL=C sort -u
 )
 
 # Now we look for unstripped binaries.
