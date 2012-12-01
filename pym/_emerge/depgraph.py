@@ -4634,6 +4634,14 @@ class depgraph(object):
 					unmasked = [pkg for pkg in matches if not pkg.masks]
 					if unmasked:
 						matches = unmasked
+						if len(matches) > 1:
+							# Now account for packages for which existing
+							# ebuilds are masked or unavailable (bug #445506).
+							unmasked = [pkg for pkg in matches if
+								self._equiv_ebuild_visible(pkg)]
+							if unmasked:
+								matches = unmasked
+
 		pkg = matches[-1] # highest match
 		in_graph = self._dynamic_config._slot_pkg_map[root].get(pkg.slot_atom)
 		return pkg, in_graph
