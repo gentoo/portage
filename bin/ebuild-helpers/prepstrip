@@ -249,7 +249,7 @@ while read -r x ; do
 done < <(
 	scanelf -yqRBF '#k%F' -k '.symtab' "$@"
 	find "$@" -type f ! -type l -name '*.a'
-)
+) | LC_ALL=C sort -u
 
 # Now we look for unstripped binaries.
 for inode_link in $(shopt -s nullglob; echo *) ; do
