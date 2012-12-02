@@ -7575,8 +7575,10 @@ def show_masked_packages(masked_packages):
 			shown_comments.add(comment)
 		portdb = root_config.trees["porttree"].dbapi
 		for l in missing_licenses:
-			l_path = portdb.findLicensePath(l)
 			if l in shown_licenses:
+				continue
+			l_path = portdb.findLicensePath(l)
+			if l_path is None:
 				continue
 			msg = ("A copy of the '%s' license" + \
 			" is located at '%s'.\n\n") % (l, l_path)
