@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from itertools import permutations
+import fnmatch
 import sys
 import tempfile
 import portage
@@ -34,10 +35,10 @@ class ResolverPlayground(object):
 	its work.
 	"""
 
-	config_files = frozenset(("eapi", "make.conf", "package.accept_keywords", "package.use",
-		"package.use.stable.mask", "package.mask", "package.keywords",
-		"package.unmask", "package.properties", "package.license", "use.mask", "use.force",
-		"layout.conf",))
+	config_files = frozenset(("eapi", "layout.conf", "make.conf", "package.accept_keywords",
+		"package.keywords", "package.license", "package.mask", "package.properties",
+		"package.unmask", "package.use", "package.use.aliases", "package.use.stable.mask",
+		"unpack_dependencies", "use.aliases", "use.force", "use.mask", "layout.conf"))
 
 	metadata_xml_template = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
@@ -282,13 +283,15 @@ class ResolverPlayground(object):
 			repo_config = repo_configs.get(repo) 
 			if repo_config:
 				for config_file, lines in repo_config.items():
-					if config_file not in self.config_files:
+					if config_file not in self.config_files and not any(fnmatch.fnmatch(config_file, os.path.join(x, "*")) for x in self.config_files): 
 						raise ValueError("Unknown config file: '%s'" % config_file)
 
 					if config_file in ("layout.conf",):
 						file_name = os.path.join(repo_dir, "metadata", config_file)
 					else:
 						file_name = os.path.join(profile_dir, config_file)
+						if "/" in config_file and not os.path.isdir(os.path.dirname(file_name)):
+							os.makedirs(os.path.dirname(file_name))
 					f = open(file_name, "w")
 					for line in lines:
 						f.write("%s\n" % line)
@@ -713,8 +716,8 @@ class ResolverPlaygroundResult(object):
 					self.mergelist.append(x.atom)
 				else:
 					repo_str = ""
-					if x.metadata["repository"] != "test_repo":
-						repo_str = _repo_separator + x.metadata["repository"]
+					if x.repo != "test_repo":
+						repo_str = _repo_separator + x.repo
 					mergelist_str = x.cpv + repo_str
 					if x.built:
 						if x.operation == "merge":

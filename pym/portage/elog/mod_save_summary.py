@@ -1,7 +1,8 @@
 # elog/mod_save_summary.py - elog dispatch module
-# Copyright 2006-2011 Gentoo Foundation
+# Copyright 2006-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import errno
 import io
 import time
 import portage
@@ -37,9 +38,21 @@ def process(mysettings, key, logentries, fulltext):
 
 	# TODO: Locking
 	elogfilename = elogdir+"/summary.log"
-	elogfile = io.open(_unicode_encode(elogfilename,
-		encoding=_encodings['fs'], errors='strict'),
-		mode='a', encoding=_encodings['content'], errors='backslashreplace')
+	try:
+		elogfile = io.open(_unicode_encode(elogfilename,
+			encoding=_encodings['fs'], errors='strict'),
+			mode='a', encoding=_encodings['content'],
+			errors='backslashreplace')
+	except IOError as e:
+		func_call = "open('%s', 'a')" % elogfilename
+		if e.errno == errno.EACCES:
+			raise portage.exception.PermissionDenied(func_call)
+		elif e.errno == errno.EPERM:
+			raise portage.exception.OperationNotPermitted(func_call)
+		elif e.errno == errno.EROFS:
+			raise portage.exception.ReadOnlyFileSystem(func_call)
+		else:
+			raise
 
 	# Copy group permission bits from parent directory.
 	elogdir_st = os.stat(elogdir)

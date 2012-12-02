@@ -48,7 +48,7 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 		# emerge passed in a Package instance
 		pkg = mycpv
 		mycpv = pkg.cpv
-		metadata = pkg.metadata
+		metadata = pkg._metadata
 		installed = pkg.installed
 
 	if metadata is None:

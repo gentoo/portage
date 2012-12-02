@@ -83,6 +83,12 @@ def eapi_supports_stable_use_forcing_and_masking(eapi):
 def eapi_allows_directories_on_profile_level_and_repository_level(eapi):
 	return eapi in ("4-python", "5-progress")
 
+def eapi_has_use_aliases(eapi):
+	return eapi in ("4-python", "5-progress")
+
+def eapi_has_automatic_unpack_dependencies(eapi):
+	return eapi in ("5-progress",)
+
 def eapi_has_hdepend(eapi):
 	return eapi in ("5-hdepend",)
 

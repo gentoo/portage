@@ -13,6 +13,8 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
+from portage.exception import InvalidData
+from portage.versions import _pkg_str
 
 if sys.hexversion >= 0x3000000:
 	long = int
@@ -135,8 +137,6 @@ class database(fs_template.FsBased):
 				del e
 				continue
 			for l in dir_list:
-				if l.endswith(".cpickle"):
-					continue
 				p = os.path.join(dir_path, l)
 				try:
 					st = os.lstat(p)
@@ -151,7 +151,11 @@ class database(fs_template.FsBased):
 					if depth < 1:
 						dirs.append((depth+1, p))
 					continue
-				yield p[len_base+1:]
+
+				try:
+					yield _pkg_str(p[len_base+1:])
+				except InvalidData:
+					continue
 
 
 class md5_database(database):

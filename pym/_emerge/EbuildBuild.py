@@ -261,8 +261,8 @@ class EbuildBuild(CompositeTask):
 		# to be displayed for problematic packages even though they do
 		# not set RESTRICT=fetch (bug #336499).
 
-		if 'fetch' not in self.pkg.metadata.restrict and \
-			'nofetch' not in self.pkg.metadata.defined_phases:
+		if 'fetch' not in self.pkg.restrict and \
+			'nofetch' not in self.pkg.defined_phases:
 			self._unlock_builddir()
 			self.wait()
 			return

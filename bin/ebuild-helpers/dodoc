@@ -13,7 +13,7 @@ fi
 
 if [ $# -lt 1 ] ; then
 	__helpers_die "${0##*/}: at least one argument needed"
-	exit 1 	
+	exit 1
 fi
 
 if ! ___eapi_has_prefix_variables; then

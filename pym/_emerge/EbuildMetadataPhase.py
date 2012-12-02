@@ -12,6 +12,8 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
+from portage.dep import extract_unpack_dependencies
+from portage.eapi import eapi_has_automatic_unpack_dependencies
 
 import errno
 import fcntl
@@ -179,6 +181,13 @@ class EbuildMetadataPhase(SubProcess):
 					else:
 						metadata["_eclasses_"] = {}
 					metadata.pop("INHERITED", None)
+
+					if eapi_has_automatic_unpack_dependencies(metadata["EAPI"]):
+						repo = self.portdb.repositories.get_name_for_location(self.repo_path)
+						unpackers = self.settings.unpack_dependencies.get(repo, {}).get(metadata["EAPI"], {})
+						unpack_dependencies = extract_unpack_dependencies(metadata["SRC_URI"], unpackers)
+						if unpack_dependencies:
+							metadata["DEPEND"] += (" " if metadata["DEPEND"] else "") + unpack_dependencies
 
 					# If called by egencache, this cache write is
 					# undesirable when metadata-transfer is disabled.

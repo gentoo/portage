@@ -52,7 +52,7 @@ class AbstractEbuildProcess(SpawnProcess):
 		if need_builddir and \
 			not os.path.isdir(self.settings['PORTAGE_BUILDDIR']):
 			msg = _("The ebuild phase '%s' has been aborted "
-			"since PORTAGE_BUILDIR does not exist: '%s'") % \
+			"since PORTAGE_BUILDDIR does not exist: '%s'") % \
 			(self.phase, self.settings['PORTAGE_BUILDDIR'])
 			self._eerror(textwrap.wrap(msg, 72))
 			self._set_returncode((self.pid, 1 << 8))
@@ -67,7 +67,7 @@ class AbstractEbuildProcess(SpawnProcess):
 		if self._enable_ipc_daemon:
 			self.settings.pop('PORTAGE_EBUILD_EXIT_FILE', None)
 			if self.phase not in self._phases_without_builddir:
-				if 'PORTAGE_BUILDIR_LOCKED' not in self.settings:
+				if 'PORTAGE_BUILDDIR_LOCKED' not in self.settings:
 					self._build_dir = EbuildBuildDir(
 						scheduler=self.scheduler, settings=self.settings)
 					self._build_dir.lock()

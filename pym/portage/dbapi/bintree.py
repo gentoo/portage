@@ -427,7 +427,7 @@ class binarytree(object):
 			moves += 1
 			mytbz2 = portage.xpak.tbz2(tbz2path)
 			mydata = mytbz2.get_data()
-			updated_items = update_dbentries([mylist], mydata, eapi=mycpv.eapi)
+			updated_items = update_dbentries([mylist], mydata, parent=mycpv)
 			mydata.update(updated_items)
 			mydata[b'PF'] = \
 				_unicode_encode(mynewpkg + "\n",

@@ -51,7 +51,7 @@ class BlockerDB(object):
 			stale_cache.discard(inst_pkg.cpv)
 			cached_blockers = blocker_cache.get(inst_pkg.cpv)
 			if cached_blockers is not None and \
-				cached_blockers.counter != long(inst_pkg.metadata["COUNTER"]):
+				cached_blockers.counter != inst_pkg.counter:
 				cached_blockers = None
 			if cached_blockers is not None:
 				blocker_atoms = cached_blockers.atoms
@@ -72,9 +72,8 @@ class BlockerDB(object):
 				blocker_atoms = [atom for atom in atoms \
 					if atom.startswith("!")]
 				blocker_atoms.sort()
-				counter = long(inst_pkg.metadata["COUNTER"])
 				blocker_cache[inst_pkg.cpv] = \
-					blocker_cache.BlockerData(counter, blocker_atoms)
+					blocker_cache.BlockerData(inst_pkg.counter, blocker_atoms)
 		for cpv in stale_cache:
 			del blocker_cache[cpv]
 		blocker_cache.flush()
@@ -93,7 +92,7 @@ class BlockerDB(object):
 			blocking_pkgs.update(blocker_parents.parent_nodes(atom))
 
 		# Check for blockers in the other direction.
-		depstr = " ".join(new_pkg.metadata[k] for k in dep_keys)
+		depstr = " ".join(new_pkg._metadata[k] for k in dep_keys)
 		success, atoms = portage.dep_check(depstr,
 			vardb, settings, myuse=new_pkg.use.enabled,
 			trees=dep_check_trees, myroot=new_pkg.root)

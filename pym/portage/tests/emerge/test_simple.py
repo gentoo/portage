@@ -162,7 +162,7 @@ pkg_preinst() {
 		portdir = settings["PORTDIR"]
 		var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
 		cachedir = os.path.join(var_cache_edb, "dep")
-		cachedir_pregen = os.path.join(portdir, "metadata", "cache")
+		cachedir_pregen = os.path.join(portdir, "metadata", "md5-cache")
 
 		portage_python = portage._python_interpreter
 		ebuild_cmd = (portage_python, "-Wd",

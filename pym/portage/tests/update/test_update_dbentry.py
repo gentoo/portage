@@ -11,6 +11,7 @@ from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.update import update_dbentry
 from portage.util import ensure_dirs
+from portage.versions import _pkg_str
 from portage._global_updates import _do_global_updates
 
 class UpdateDbentryTestCase(TestCase):
@@ -59,6 +60,50 @@ class UpdateDbentryTestCase(TestCase):
 		)
 		for update_cmd, eapi, input_str, output_str in cases:
 			result = update_dbentry(update_cmd, input_str, eapi=eapi)
+			self.assertEqual(result, output_str)
+
+
+	def testUpdateDbentryBlockerTestCase(self):
+		"""
+		Avoid creating self-blockers for bug #367215.
+		"""
+		cases = (
+
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")),
+				_pkg_str("dev-libs/B-1", eapi="1", slot="0"),
+				"  !dev-libs/A  ", "  !dev-libs/A  "),
+
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")),
+				_pkg_str("dev-libs/C-1", eapi="1", slot="0"),
+				"  !dev-libs/A  ", "  !dev-libs/B  "),
+
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")),
+				_pkg_str("dev-libs/B-1", eapi="1", slot="0"),
+				"  !dev-libs/A:0  ", "  !dev-libs/A:0  "),
+
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")),
+				_pkg_str("dev-libs/C-1", eapi="1", slot="0"),
+				"  !dev-libs/A:0  ", "  !dev-libs/B:0  "),
+
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")),
+				_pkg_str("dev-libs/C-1", eapi="1", slot="0"),
+				"  !>=dev-libs/A-1:0  ", "  !>=dev-libs/B-1:0  "),
+
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")),
+				_pkg_str("dev-libs/B-1", eapi="1", slot="0"),
+				"  !>=dev-libs/A-1:0  ", "  !>=dev-libs/A-1:0  "),
+
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")),
+				_pkg_str("dev-libs/C-1", eapi="1", slot="0"),
+				"  !>=dev-libs/A-1  ", "  !>=dev-libs/B-1  "),
+
+			(("move", Atom("dev-libs/A"), Atom("dev-libs/B")),
+				_pkg_str("dev-libs/B-1", eapi="1", slot="0"),
+				"  !>=dev-libs/A-1  ", "  !>=dev-libs/A-1  "),
+
+		)
+		for update_cmd, parent, input_str, output_str in cases:
+			result = update_dbentry(update_cmd, input_str, parent=parent)
 			self.assertEqual(result, output_str)
 
 	def testUpdateDbentryDbapiTestCase(self):

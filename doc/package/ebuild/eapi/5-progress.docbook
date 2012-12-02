@@ -35,6 +35,18 @@
 				New license_path function prints path to specified license for current repository.
 			</para>
 		</section>
+		<section id='package-ebuild-eapi-5-progress-helpers-package-manager-build-user'>
+			<title>package_manager_build_user</title>
+			<para>
+				New package_manager_build_user function prints name of user used by package manager in build phases.
+			</para>
+		</section>
+		<section id='package-ebuild-eapi-5-progress-helpers-package-manager-build-group'>
+			<title>package_manager_build_group</title>
+			<para>
+				New package_manager_build_group function prints name of group used by package manager in build phases.
+			</para>
+		</section>
 		<section id='package-ebuild-eapi-5-progress-helpers-dohtml-extended-default-list-of-extensions'>
 			<title>Extended default list of extensions in dohtml</title>
 			<para>
@@ -109,6 +121,36 @@
 				</tgroup>
 			</table>
 		</section>
+		<section id='package-ebuild-eapi-5-progress-metadata-automatic-unpack-dependencies'>
+			<title>Automatic Unpack Dependencies</title>
+			<para>
+				Dependencies on packages required to unpack archives specified in SRC_URI are automatically appended to DEPEND. These dependencies are calculated from filename extensions of archives specified in SRC_URI. Dependencies (for ebuilds using given EAPI) corresponding to given filename extensions are configured in ${repository_path}/profiles/unpack_dependencies/${EAPI} files.
+			</para>
+			<table><title>Unpack Dependencies Configuration Examples</title>
+				<tgroup cols='1' align='left'>
+					<tbody>
+						<row>
+							<entry>bz2 app-arch/bzip2</entry>
+						</row>
+						<row>
+							<entry>gz app-arch/gzip</entry>
+						</row>
+						<row>
+							<entry>tar app-arch/tar</entry>
+						</row>
+						<row>
+							<entry>tar.bz2 app-arch/tar app-arch/bzip2</entry>
+						</row>
+						<row>
+							<entry>tar.gz app-arch/tar app-arch/gzip</entry>
+						</row>
+						<row>
+							<entry>zip app-arch/unzip</entry>
+						</row>
+					</tbody>
+				</tgroup>
+			</table>
+		</section>
 	</section>
 	<section id='package-ebuild-eapi-5-progress-globstar'>
 		<title>globstar shell option enabled by default</title>
@@ -160,5 +202,41 @@
 				<listitem><para>use.stable.mask</para></listitem>
 			</itemizedlist>
 		</para>
+	</section>
+	<section id='package-ebuild-eapi-5-progress-use-aliases'>
+		<title>USE Flag Aliases</title>
+		<para>
+			USE flag aliases are supported to allow to satisfy dependencies of packages from other repositories, which require differently named USE flags. USE flag aliases are defined in ${repository_path}/profiles/use.aliases and ${repository_path}/profiles/package.use.aliases files.
+		</para>
+		<table><title>use.aliases Example</title>
+			<tgroup cols='1' align='left'>
+				<tbody>
+					<row>
+						<entry>real_flag1 alias1 alias2</entry>
+					</row>
+					<row>
+						<entry>real_flag2 alias3 alias4</entry>
+					</row>
+				</tbody>
+			</tgroup>
+		</table>
+		<table><title>package.use.aliases Example</title>
+			<tgroup cols='1' align='left'>
+				<tbody>
+					<row>
+						<entry>category/package1 real_flag1 alias1 alias2</entry>
+					</row>
+					<row>
+						<entry>category/package1 real_flag2 alias3 alias4</entry>
+					</row>
+					<row>
+						<entry>=category/package2-1* real_flag3 alias5 alias6</entry>
+					</row>
+					<row>
+						<entry>=category/package2-2* real_flag4 alias5 alias6</entry>
+					</row>
+				</tbody>
+			</tgroup>
+		</table>
 	</section>
 </section>

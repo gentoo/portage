@@ -123,6 +123,7 @@ class _LockThread(AbstractPollTask):
 		if self._force_dummy:
 			threading_mod = dummy_threading
 		self._thread = threading_mod.Thread(target=self._run_lock)
+		self._thread.daemon = True
 		self._thread.start()
 
 	def _run_lock(self):

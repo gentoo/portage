@@ -63,7 +63,7 @@ FEATURES="assume-digests binpkg-logs
 # Ignore file collisions for unowned *.pyo and *.pyc files, this helps during
 # transition from compiling python modules in live file system to compiling
 # them in src_install() function.
-COLLISION_IGNORE="/lib/modules/* *.py[co]"
+COLLISION_IGNORE="/lib/modules/* *.py[co] *\$py.class"
 UNINSTALL_IGNORE="/lib/modules/*"
 
 # Prefix: we want preserve-libs, not sure how mainline goes about this

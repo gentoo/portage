@@ -114,7 +114,7 @@ glsalist = []
 if "new" in params:
 	glsalist = todolist
 	params.remove("new")
-	
+
 if "all" in params:
 	glsalist = completelist
 	params.remove("all")
@@ -183,7 +183,7 @@ def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr):
 		fd1.write(")")
 		if list_cve:
 			fd1.write(" "+(",".join([r[:13] for r in myglsa.references if r[:4] in ["CAN-", "CVE-"]])))
-		fd1.write("\n")		
+		fd1.write("\n")
 	return 0
 
 if mode == "list":
@@ -267,7 +267,7 @@ if mode == "mail":
 	import portage.mail, socket
 	from io import StringIO
 	from email.mime.text import MIMEText
-	
+
 	# color doesn't make any sense for mail
 	nocolor()
 
@@ -275,7 +275,7 @@ if mode == "mail":
 		myrecipient = portage.settings["PORTAGE_ELOG_MAILURI"].split()[0]
 	else:
 		myrecipient = "root@localhost"
-	
+
 	if "PORTAGE_ELOG_MAILFROM" in portage.settings:
 		myfrom = portage.settings["PORTAGE_ELOG_MAILFROM"]
 	else:
@@ -303,12 +303,12 @@ if mode == "mail":
 		myglsa.dump(outstream=myfd)
 		myattachments.append(MIMEText(str(myfd.getvalue()), _charset="utf8"))
 		myfd.close()
-		
+
 	mymessage = portage.mail.create_message(myfrom, myrecipient, mysubject, summary, myattachments)
 	portage.mail.send_mail(portage.settings, mymessage)
-		
+
 	sys.exit(0)
-	
+
 # something wrong here, all valid paths are covered with sys.exit()
 sys.stderr.write("nothing more to do\n")
 sys.exit(2)

@@ -56,6 +56,7 @@ from portage.package.ebuild._config.LocationsManager import LocationsManager
 from portage.package.ebuild._config.MaskManager import MaskManager
 from portage.package.ebuild._config.VirtualsManager import VirtualsManager
 from portage.package.ebuild._config.helper import ordered_by_atom_specificity, prune_incremental
+from portage.package.ebuild._config.unpack_dependencies import load_unpack_dependencies_configuration
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -237,6 +238,7 @@ class config(object):
 			self.profiles = clone.profiles
 			self.packages = clone.packages
 			self.repositories = clone.repositories
+			self.unpack_dependencies = clone.unpack_dependencies
 			self._iuse_effective = clone._iuse_effective
 			self._iuse_implicit_match = clone._iuse_implicit_match
 			self._non_user_variables = clone._non_user_variables
@@ -489,6 +491,7 @@ class config(object):
 					x = Atom(x.lstrip('*'))
 				self.prevmaskdict.setdefault(x.cp, []).append(x)
 
+			self.unpack_dependencies = load_unpack_dependencies_configuration(self.repositories)
 
 			mygcfg = {}
 			if self.profiles:
@@ -1251,7 +1254,7 @@ class config(object):
 		if not isinstance(mycpv, basestring):
 			pkg = mycpv
 			mycpv = pkg.cpv
-			mydb = pkg.metadata
+			mydb = pkg._metadata
 			explicit_iuse = pkg.iuse.all
 			args_hash = (mycpv, id(pkg))
 			if pkg.built:

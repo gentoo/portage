@@ -754,13 +754,7 @@ performed by these tools
 are inherently \fBnot\fR \fIsite\-specific\fR. \fBWARNING:\fR Use of
 \fBrepos.conf\fR is generally not recommended since resulting changes in
 eclass inheritance (especially due to \fBeclass\-overrides\fR) may trigger
-performance issues under some circumstances (see \fBbug #124041\fR). When
-using \fBeclass\-overrides\fR, due to bug #276264, you must ensure that
-your portage tree does not contain a metadata/cache/ directory. If that
-directory exists then you should remove it entirely, and set
-PORTAGE_RSYNC_EXTRA_OPTS="\-\-exclude=/metadata/cache" in
-make.conf in order to exclude the metadata/cache/ directory during
-\fBemerge\fR(1) \-\-sync operations.
+performance issues under some circumstances (see \fBbug #124041\fR).
 
 .I Example:
 .nf

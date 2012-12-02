@@ -409,7 +409,7 @@ class Scheduler(PollScheduler):
 			if not (isinstance(task, Package) and \
 				task.operation == "merge"):
 				continue
-			if 'interactive' in task.metadata.properties:
+			if 'interactive' in task.properties:
 				interactive_tasks.append(task)
 		return interactive_tasks
 
@@ -783,10 +783,10 @@ class Scheduler(PollScheduler):
 			if x.operation == "uninstall":
 				continue
 
-			if x.metadata["EAPI"] in ("0", "1", "2", "3"):
+			if x.eapi in ("0", "1", "2", "3"):
 				continue
 
-			if "pretend" not in x.metadata.defined_phases:
+			if "pretend" not in x.defined_phases:
 				continue
 
 			out_str =">>> Running pre-merge checks for " + colorize("INFORM", x.cpv) + "\n"
@@ -805,7 +805,7 @@ class Scheduler(PollScheduler):
 			build_dir_path = os.path.join(
 				os.path.realpath(settings["PORTAGE_TMPDIR"]),
 				"portage", x.category, x.pf)
-			existing_buildir = os.path.isdir(build_dir_path)
+			existing_builddir = os.path.isdir(build_dir_path)
 			settings["PORTAGE_BUILDDIR"] = build_dir_path
 			build_dir = EbuildBuildDir(scheduler=sched_iface,
 				settings=settings)
@@ -816,7 +816,7 @@ class Scheduler(PollScheduler):
 
 				# Clean up the existing build dir, in case pkg_pretend
 				# checks for available space (bug #390711).
-				if existing_buildir:
+				if existing_builddir:
 					if x.built:
 						tree = "bintree"
 						infloc = os.path.join(build_dir_path, "build-info")
@@ -905,13 +905,18 @@ class Scheduler(PollScheduler):
 					failures += 1
 				portage.elog.elog_process(x.cpv, settings)
 			finally:
-				if current_task is not None and current_task.isAlive():
-					current_task.cancel()
-					current_task.wait()
-				clean_phase = EbuildPhase(background=False,
-					phase='clean', scheduler=sched_iface, settings=settings)
-				clean_phase.start()
-				clean_phase.wait()
+
+				if current_task is not None:
+					if current_task.isAlive():
+						current_task.cancel()
+						current_task.wait()
+					if current_task.returncode == os.EX_OK:
+						clean_phase = EbuildPhase(background=False,
+							phase='clean', scheduler=sched_iface,
+							settings=settings)
+						clean_phase.start()
+						clean_phase.wait()
+
 				build_dir.unlock()
 
 		if failures:
@@ -1060,7 +1065,8 @@ class Scheduler(PollScheduler):
 		printer = portage.output.EOutput()
 		background = self._background
 		failure_log_shown = False
-		if background and len(self._failed_pkgs_all) == 1:
+		if background and len(self._failed_pkgs_all) == 1 and \
+			self.myopts.get('--quiet-fail', 'n') != 'y':
 			# If only one package failed then just show it's
 			# whole log for easy viewing.
 			failed_pkg = self._failed_pkgs_all[-1]

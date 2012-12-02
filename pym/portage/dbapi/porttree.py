@@ -204,6 +204,13 @@ class portdbapi(dbapi):
 				cache.ec = self.repositories.get_repo_for_location(tree).eclass_db
 			except AttributeError:
 				pass
+
+			if not cache.complete_eclass_entries:
+				warnings.warn(
+					("Repository '%s' used deprecated 'pms' cache format. "
+					"Please migrate to 'md5-dict' format.") % (conf.name,),
+					DeprecationWarning)
+
 		return cache
 
 	def _init_cache_dirs(self):

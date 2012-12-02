@@ -60,7 +60,7 @@ def spawn_nofetch(portdb, ebuild_path, settings=None):
 	settings['PORTAGE_TMPDIR'] = private_tmpdir
 	settings.backup_changes('PORTAGE_TMPDIR')
 	# private temp dir was just created, so it's not locked yet
-	settings.pop('PORTAGE_BUILDIR_LOCKED', None)
+	settings.pop('PORTAGE_BUILDDIR_LOCKED', None)
 
 	try:
 		doebuild_environment(ebuild_path, 'nofetch',

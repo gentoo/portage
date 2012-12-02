@@ -3,12 +3,14 @@
 
 __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
 
+import grp
 import gzip
 import errno
 import io
 from itertools import chain
 import logging
 import os as _os
+import pwd
 import re
 import signal
 import stat
@@ -689,7 +691,7 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 		if mydo in clean_phases:
 			builddir_lock = None
 			if not returnpid and \
-				'PORTAGE_BUILDIR_LOCKED' not in mysettings:
+				'PORTAGE_BUILDDIR_LOCKED' not in mysettings:
 				builddir_lock = EbuildBuildDir(
 					scheduler=EventLoop(main=False),
 					settings=mysettings)
@@ -831,7 +833,7 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 
 				if newstuff:
 					if builddir_lock is None and \
-						'PORTAGE_BUILDIR_LOCKED' not in mysettings:
+						'PORTAGE_BUILDDIR_LOCKED' not in mysettings:
 						builddir_lock = EbuildBuildDir(
 							scheduler=EventLoop(main=False),
 							settings=mysettings)
@@ -854,7 +856,7 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 		if not parallel_fetchonly and \
 			mydo not in ('digest', 'fetch', 'help', 'manifest'):
 			if not returnpid and \
-				'PORTAGE_BUILDIR_LOCKED' not in mysettings:
+				'PORTAGE_BUILDDIR_LOCKED' not in mysettings:
 				builddir_lock = EbuildBuildDir(
 					scheduler=EventLoop(main=False),
 					settings=mysettings)
@@ -1334,10 +1336,10 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 
 	if not pkg.built and \
 		mydo not in ("digest", "help", "manifest") and \
-		pkg.metadata["REQUIRED_USE"] and \
-		eapi_has_required_use(pkg.metadata["EAPI"]):
-		result = check_required_use(pkg.metadata["REQUIRED_USE"],
-			pkg.use.enabled, pkg.iuse.is_valid_flag, eapi=pkg.metadata["EAPI"])
+		pkg._metadata["REQUIRED_USE"] and \
+		eapi_has_required_use(pkg.eapi):
+		result = check_required_use(pkg._metadata["REQUIRED_USE"],
+			pkg.use.enabled, pkg.iuse.is_valid_flag, eapi=pkg.eapi)
 		if not result:
 			reduced_noise = result.tounicode()
 			writemsg("\n  %s\n" % _("The following REQUIRED_USE flag" + \
@@ -1345,7 +1347,7 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 			writemsg("    %s\n" % reduced_noise,
 				noiselevel=-1)
 			normalized_required_use = \
-				" ".join(pkg.metadata["REQUIRED_USE"].split())
+				" ".join(pkg._metadata["REQUIRED_USE"].split())
 			if reduced_noise != normalized_required_use:
 				writemsg("\n  %s\n" % _("The above constraints " + \
 					"are a subset of the following complete expression:"),
@@ -1421,10 +1423,22 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	# fake ownership/permissions will have to be converted to real
 	# permissions in the merge phase.
 	fakeroot = fakeroot and uid != 0 and portage.process.fakeroot_capable
-	if droppriv and uid == 0 and portage_gid and portage_uid and \
-		hasattr(os, "setgroups"):
-		keywords.update({"uid":portage_uid,"gid":portage_gid,
-			"groups":userpriv_groups,"umask":0o02})
+	portage_build_uid = os.getuid()
+	portage_build_gid = os.getgid()
+	if uid == 0 and portage_uid and portage_gid and hasattr(os, "setgroups"):
+		if droppriv:
+			keywords.update({
+				"uid": portage_uid,
+				"gid": portage_gid,
+				"groups": userpriv_groups,
+				"umask": 0o02
+			})
+		if "userpriv" in features and "userpriv" not in mysettings["PORTAGE_RESTRICT"].split() and secpass >= 2:
+			portage_build_uid = portage_uid
+			portage_build_gid = portage_gid
+	mysettings["PORTAGE_BUILD_USER"] = pwd.getpwuid(portage_build_uid).pw_name
+	mysettings["PORTAGE_BUILD_GROUP"] = grp.getgrgid(portage_build_gid).gr_name
+
 	if not free:
 		free=((droppriv and "usersandbox" not in features) or \
 			(not droppriv and "sandbox" not in features and \

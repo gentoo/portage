@@ -6,6 +6,7 @@ import io
 import re
 import stat
 import sys
+import warnings
 
 from portage import os
 from portage import _encodings
@@ -20,6 +21,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage.const import USER_CONFIG_PATH
+from portage.dep import match_from_list
 from portage.eapi import _get_eapi_attrs
 from portage.exception import DirectoryNotFound, InvalidAtom, PortageException
 from portage.localization import _
@@ -32,7 +34,10 @@ else:
 
 ignored_dbentries = ("CONTENTS", "environment.bz2")
 
-def update_dbentry(update_cmd, mycontent, eapi=None):
+def update_dbentry(update_cmd, mycontent, eapi=None, parent=None):
+
+	if parent is not None:
+		eapi = parent.eapi
 
 	if update_cmd[0] == "move":
 		old_value = _unicode(update_cmd[1])
@@ -54,7 +59,16 @@ def update_dbentry(update_cmd, mycontent, eapi=None):
 				if atom.cp != old_value:
 					continue
 
-				split_content[i] = token.replace(old_value, new_value, 1)
+				new_atom = Atom(token.replace(old_value, new_value, 1),
+					eapi=eapi)
+
+				# Avoid creating self-blockers for bug #367215.
+				if new_atom.blocker and parent is not None and \
+					parent.cp == new_atom.cp and \
+					match_from_list(new_atom, [parent]):
+					continue
+
+				split_content[i] = _unicode(new_atom)
 				modified = True
 
 			if modified:
@@ -101,7 +115,7 @@ def update_dbentry(update_cmd, mycontent, eapi=None):
 
 	return mycontent
 
-def update_dbentries(update_iter, mydata, eapi=None):
+def update_dbentries(update_iter, mydata, eapi=None, parent=None):
 	"""Performs update commands and returns a
 	dict containing only the updated items."""
 	updated_items = {}
@@ -115,7 +129,8 @@ def update_dbentries(update_iter, mydata, eapi=None):
 			is_encoded = mycontent is not orig_content
 			orig_content = mycontent
 			for update_cmd in update_iter:
-				mycontent = update_dbentry(update_cmd, mycontent, eapi=eapi)
+				mycontent = update_dbentry(update_cmd, mycontent,
+					eapi=eapi, parent=parent)
 			if mycontent != orig_content:
 				if is_encoded:
 					mycontent = _unicode_encode(mycontent,
@@ -124,10 +139,14 @@ def update_dbentries(update_iter, mydata, eapi=None):
 				updated_items[k] = mycontent
 	return updated_items
 
-def fixdbentries(update_iter, dbdir, eapi=None):
+def fixdbentries(update_iter, dbdir, eapi=None, parent=None):
 	"""Performs update commands which result in search and replace operations
 	for each of the files in dbdir (excluding CONTENTS and environment.bz2).
 	Returns True when actual modifications are necessary and False otherwise."""
+
+	warnings.warn("portage.update.fixdbentries() is deprecated",
+		DeprecationWarning, stacklevel=2)
+
 	mydata = {}
 	for myfile in [f for f in os.listdir(dbdir) if f not in ignored_dbentries]:
 		file_path = os.path.join(dbdir, myfile)
@@ -136,7 +155,8 @@ def fixdbentries(update_iter, dbdir, eapi=None):
 			mode='r', encoding=_encodings['repo.content'],
 			errors='replace') as f:
 			mydata[myfile] = f.read()
-	updated_items = update_dbentries(update_iter, mydata, eapi=eapi)
+	updated_items = update_dbentries(update_iter, mydata,
+		eapi=eapi, parent=parent)
 	for myfile, mycontent in updated_items.items():
 		file_path = os.path.join(dbdir, myfile)
 		write_atomic(file_path, mycontent, encoding=_encodings['repo.content'])

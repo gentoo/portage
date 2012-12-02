@@ -114,10 +114,10 @@ class circular_dependency_handler(object):
 			parent_atoms = self.all_parent_atoms.get(pkg)
 
 			if priorities[-1].buildtime:
-				dep = " ".join(parent.metadata[k]
+				dep = " ".join(parent._metadata[k]
 					for k in Package._buildtime_keys)
 			elif priorities[-1].runtime:
-				dep = parent.metadata["RDEPEND"]
+				dep = parent._metadata["RDEPEND"]
 
 			for ppkg, atom in parent_atoms:
 				if ppkg == parent:
@@ -127,7 +127,7 @@ class circular_dependency_handler(object):
 
 			try:
 				affecting_use = extract_affecting_use(dep, parent_atom,
-					eapi=parent.metadata["EAPI"])
+					eapi=parent.eapi)
 			except InvalidDependString:
 				if not parent.installed:
 					raise
@@ -146,8 +146,8 @@ class circular_dependency_handler(object):
 			#If any of the flags we're going to touch is in REQUIRED_USE, add all
 			#other flags in REQUIRED_USE to affecting_use, to not lose any solution.
 			required_use_flags = get_required_use_flags(
-				parent.metadata.get("REQUIRED_USE", ""),
-				eapi=parent.metadata["EAPI"])
+				parent._metadata.get("REQUIRED_USE", ""),
+				eapi=parent.eapi)
 
 			if affecting_use.intersection(required_use_flags):
 				# TODO: Find out exactly which REQUIRED_USE flags are
@@ -189,11 +189,11 @@ class circular_dependency_handler(object):
 					parent_atom not in reduced_dep:
 					#We found an assignment that removes the atom from 'dep'.
 					#Make sure it doesn't conflict with REQUIRED_USE.
-					required_use = parent.metadata.get("REQUIRED_USE", "")
+					required_use = parent._metadata.get("REQUIRED_USE", "")
 
 					if check_required_use(required_use, current_use,
 						parent.iuse.is_valid_flag,
-						eapi=parent.metadata["EAPI"]):
+						eapi=parent.eapi):
 						use = self.depgraph._pkg_use_enabled(parent)
 						solution = set()
 						for flag, state in zip(affecting_use, use_state):

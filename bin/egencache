@@ -475,7 +475,7 @@ class GenUseLocalDesc(object):
 		self._portdb = portdb
 		self._output = output
 		self._preserve_comments = preserve_comments
-	
+
 	def run(self):
 		repo_path = self._portdb.porttrees[0]
 		ops = {'<':0, '<=':1, '=':2, '>=':3, '>':4}

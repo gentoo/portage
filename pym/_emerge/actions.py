@@ -22,6 +22,7 @@ from itertools import chain
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.dbapi._similar_name_search:similar_name_search',
 	'portage.debug',
 	'portage.news:count_unread_news,display_news_notifications',
 	'_emerge.chk_updated_cfg_files:chk_updated_cfg_files',
@@ -706,7 +707,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 						continue
 				except portage.exception.InvalidDependString as e:
 					show_invalid_depstring_notice(pkg,
-						pkg.metadata["PROVIDE"], str(e))
+						pkg._metadata["PROVIDE"], _unicode(e))
 					del e
 					protected_set.add("=" + pkg.cpv)
 					continue
@@ -760,7 +761,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 					continue
 			except portage.exception.InvalidDependString as e:
 				show_invalid_depstring_notice(pkg,
-					pkg.metadata["PROVIDE"], str(e))
+					pkg._metadata["PROVIDE"], _unicode(e))
 				del e
 				protected_set.add("=" + pkg.cpv)
 				continue
@@ -778,7 +779,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 					required_sets['__excluded__'].add("=" + pkg.cpv)
 			except portage.exception.InvalidDependString as e:
 				show_invalid_depstring_notice(pkg,
-					pkg.metadata["PROVIDE"], str(e))
+					pkg._metadata["PROVIDE"], _unicode(e))
 				del e
 				required_sets['__excluded__'].add("=" + pkg.cpv)
 
@@ -1168,7 +1169,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		for node in clean_set:
 			graph.add(node, None)
 			for dep_type in Package._dep_keys:
-				depstr = node.metadata[dep_type]
+				depstr = node._metadata[dep_type]
 				if not depstr:
 					continue
 				priority = priority_map[dep_type]
@@ -1357,6 +1358,83 @@ class _info_pkgs_ver(object):
 		return self.ver + self.repo_suffix + self.provide_suffix
 
 def action_info(settings, trees, myopts, myfiles):
+
+	# See if we can find any packages installed matching the strings
+	# passed on the command line
+	mypkgs = []
+	eroot = settings['EROOT']
+	vardb = trees[eroot]["vartree"].dbapi
+	portdb = trees[eroot]['porttree'].dbapi
+	bindb = trees[eroot]["bintree"].dbapi
+	for x in myfiles:
+		match_found = False
+		cp_exists = False
+		installed_match = vardb.match(x)
+		for installed in installed_match:
+			mypkgs.append((installed, "installed"))
+			match_found = True
+
+		if match_found:
+			continue
+
+		for db, pkg_type in ((portdb, "ebuild"), (bindb, "binary")):
+			if pkg_type == "binary" and "--usepkg" not in myopts:
+				continue
+
+			if not cp_exists and db.cp_list(x.cp):
+				cp_exists = True
+
+			matches = db.match(x)
+			matches.reverse()
+			for match in matches:
+				if pkg_type == "binary":
+					if db.bintree.isremote(match):
+						continue
+				auxkeys = ["EAPI", "DEFINED_PHASES"]
+				metadata = dict(zip(auxkeys, db.aux_get(match, auxkeys)))
+				if metadata["EAPI"] not in ("0", "1", "2", "3") and \
+					"info" in metadata["DEFINED_PHASES"].split():
+					mypkgs.append((match, pkg_type))
+					match_found = True
+					break
+
+		if not match_found:
+			xinfo = '"%s"' % x.unevaluated_atom
+			# Discard null/ from failed cpv_expand category expansion.
+			xinfo = xinfo.replace("null/", "")
+			if settings["ROOT"] != "/":
+				xinfo = "%s for %s" % (xinfo, eroot)
+			writemsg("\nemerge: there are no ebuilds to satisfy %s.\n" %
+				colorize("INFORM", xinfo), noiselevel=-1)
+
+			if not cp_exists and myopts.get(
+				"--misspell-suggestions", "y") != "n":
+
+				writemsg("\nemerge: searching for similar names..."
+					, noiselevel=-1)
+
+				dbs = [vardb]
+				#if "--usepkgonly" not in myopts:
+				dbs.append(portdb)
+				if "--usepkg" in myopts:
+					dbs.append(bindb)
+
+				matches = similar_name_search(dbs, x)
+
+				if len(matches) == 1:
+					writemsg("\nemerge: Maybe you meant " + matches[0] + "?\n"
+						, noiselevel=-1)
+				elif len(matches) > 1:
+					writemsg(
+						"\nemerge: Maybe you meant any of these: %s?\n" % \
+						(", ".join(matches),), noiselevel=-1)
+				else:
+					# Generally, this would only happen if
+					# all dbapis are empty.
+					writemsg(" nothing similar found.\n"
+						, noiselevel=-1)
+
+			return 1
 
 	output_buffer = []
 	append = output_buffer.append
@@ -1563,40 +1641,6 @@ def action_info(settings, trees, myopts, myfiles):
 	append("")
 	writemsg_stdout("\n".join(output_buffer),
 		noiselevel=-1)
-
-	# See if we can find any packages installed matching the strings
-	# passed on the command line
-	mypkgs = []
-	eroot = settings['EROOT']
-	vardb = trees[eroot]["vartree"].dbapi
-	portdb = trees[eroot]['porttree'].dbapi
-	bindb = trees[eroot]["bintree"].dbapi
-	for x in myfiles:
-		match_found = False
-		installed_match = vardb.match(x)
-		for installed in installed_match:
-			mypkgs.append((installed, "installed"))
-			match_found = True
-
-		if match_found:
-			continue
-
-		for db, pkg_type in ((portdb, "ebuild"), (bindb, "binary")):
-			if pkg_type == "binary" and "--usepkg" not in myopts:
-				continue
-
-			matches = db.match(x)
-			matches.reverse()
-			for match in matches:
-				if pkg_type == "binary":
-					if db.bintree.isremote(match):
-						continue
-				auxkeys = ["EAPI", "DEFINED_PHASES"]
-				metadata = dict(zip(auxkeys, db.aux_get(match, auxkeys)))
-				if metadata["EAPI"] not in ("0", "1", "2", "3") and \
-					"info" in metadata["DEFINED_PHASES"].split():
-					mypkgs.append((match, pkg_type))
-					break
 
 	# If some packages were found...
 	if mypkgs:
@@ -2597,7 +2641,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		print(warn(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended")
 		print(warn(" * ")+"that you update portage now, before any other packages are updated.")
 		print()
-		print(warn(" * ")+"To update portage, run 'emerge portage' now.")
+		print(warn(" * ")+"To update portage, run 'emerge --oneshot portage' now.")
 		print()
 
 	display_news_notification(root_config, myopts)

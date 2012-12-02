@@ -7,10 +7,11 @@ __all__ = (
 
 from _emerge.Package import Package
 from portage import os
-from portage.dep import dep_getrepo, dep_getslot, ExtendedAtomDict, remove_slot, _get_useflag_re
-from portage.eapi import eapi_supports_stable_use_forcing_and_masking
+from portage.dep import Atom, dep_getrepo, dep_getslot, ExtendedAtomDict, remove_slot, _get_useflag_re, _repo_separator
+from portage.eapi import eapi_has_use_aliases, eapi_supports_stable_use_forcing_and_masking
+from portage.exception import InvalidAtom
 from portage.localization import _
-from portage.util import grabfile, grabdict_package, read_corresponding_eapi_file, stack_lists, writemsg
+from portage.util import grabfile, grabdict, grabdict_package, read_corresponding_eapi_file, stack_lists, writemsg
 from portage.versions import _pkg_str
 
 from portage.package.ebuild._config.helper import ordered_by_atom_specificity
@@ -26,10 +27,12 @@ class UseManager(object):
 		#	use.stable.mask			_repo_usestablemask_dict
 		#	use.force			_repo_useforce_dict
 		#	use.stable.force		_repo_usestableforce_dict
+		#	use.aliases			_repo_usealiases_dict
 		#	package.use.mask		_repo_pusemask_dict
 		#	package.use.stable.mask		_repo_pusestablemask_dict
 		#	package.use.force		_repo_puseforce_dict
 		#	package.use.stable.force	_repo_pusestableforce_dict
+		#	package.use.aliases		_repo_pusealiases_dict
 		#--------------------------------
 		#	profiles
 		#--------------------------------
@@ -95,6 +98,9 @@ class UseManager(object):
 				profiles, eapi_filter=eapi_supports_stable_use_forcing_and_masking)
 
 		self._pusedict = self._parse_user_files_to_extatomdict("package.use", abs_user_config, user_config)
+
+		self._repo_usealiases_dict = self._parse_repository_usealiases(repositories)
+		self._repo_pusealiases_dict = self._parse_repository_packageusealiases(repositories)
 
 		self.repositories = repositories
 
@@ -199,6 +205,69 @@ class UseManager(object):
 			recursive=profile.portage1_directories, eapi_filter=eapi_filter,
 			user_config=profile.user_config)
 			for profile in locations)
+
+	def _parse_repository_usealiases(self, repositories):
+		ret = {}
+		for repo in repositories.repos_with_profiles():
+			file_name = os.path.join(repo.location, "profiles", "use.aliases")
+			eapi = read_corresponding_eapi_file(file_name)
+			useflag_re = _get_useflag_re(eapi)
+			raw_file_dict = grabdict(file_name, recursive=True)
+			file_dict = {}
+			for real_flag, aliases in raw_file_dict.items():
+				if useflag_re.match(real_flag) is None:
+					writemsg(_("--- Invalid real USE flag in '%s': '%s'\n") % (file_name, real_flag), noiselevel=-1)
+				else:
+					for alias in aliases:
+						if useflag_re.match(alias) is None:
+							writemsg(_("--- Invalid USE flag alias for '%s' real USE flag in '%s': '%s'\n") %
+								(real_flag, file_name, alias), noiselevel=-1)
+						else:
+							if any(alias in v for k, v in file_dict.items() if k != real_flag):
+								writemsg(_("--- Duplicated USE flag alias in '%s': '%s'\n") %
+									(file_name, alias), noiselevel=-1)
+							else:
+								file_dict.setdefault(real_flag, []).append(alias)
+			ret[repo.name] = file_dict
+		return ret
+
+	def _parse_repository_packageusealiases(self, repositories):
+		ret = {}
+		for repo in repositories.repos_with_profiles():
+			file_name = os.path.join(repo.location, "profiles", "package.use.aliases")
+			eapi = read_corresponding_eapi_file(file_name)
+			useflag_re = _get_useflag_re(eapi)
+			lines = grabfile(file_name, recursive=True)
+			file_dict = {}
+			for line in lines:
+				elements = line.split()
+				atom = elements[0]
+				try:
+					atom = Atom(atom, eapi=eapi)
+				except InvalidAtom:
+					writemsg(_("--- Invalid atom in '%s': '%s'\n") % (file_name, atom))
+					continue
+				if len(elements) == 1:
+					writemsg(_("--- Missing real USE flag for '%s' in '%s'\n") % (atom, file_name), noiselevel=-1)
+					continue
+				real_flag = elements[1]
+				if useflag_re.match(real_flag) is None:
+					writemsg(_("--- Invalid real USE flag for '%s' in '%s': '%s'\n") % (atom, file_name, real_flag), noiselevel=-1)
+				else:
+					for alias in elements[2:]:
+						if useflag_re.match(alias) is None:
+							writemsg(_("--- Invalid USE flag alias for '%s' real USE flag for '%s' in '%s': '%s'\n") %
+								(real_flag, atom, file_name, alias), noiselevel=-1)
+						else:
+							# Duplicated USE flag aliases in entries for different atoms
+							# matching the same package version are detected in getUseAliases().
+							if any(alias in v for k, v in file_dict.get(atom.cp, {}).get(atom, {}).items() if k != real_flag):
+								writemsg(_("--- Duplicated USE flag alias for '%s' in '%s': '%s'\n") %
+									(atom, file_name, alias), noiselevel=-1)
+							else:
+								file_dict.setdefault(atom.cp, {}).setdefault(atom, {}).setdefault(real_flag, []).append(alias)
+			ret[repo.name] = file_dict
+		return ret
 
 	def getUseMask(self, pkg=None):
 		if pkg is None:
@@ -326,6 +395,50 @@ class UseManager(object):
 						useforce.extend(pkg_useforce)
 
 		return frozenset(stack_lists(useforce, incremental=True))
+
+	def getUseAliases(self, pkg):
+		if not eapi_has_use_aliases(pkg.eapi):
+			return {}
+
+		cp = getattr(pkg, "cp", None)
+		if cp is None:
+			slot = dep_getslot(pkg)
+			repo = dep_getrepo(pkg)
+			pkg = _pkg_str(remove_slot(pkg), slot=slot, repo=repo)
+			cp = pkg.cp
+
+		usealiases = {}
+
+		if hasattr(pkg, "repo") and pkg.repo != Package.UNKNOWN_REPO:
+			repos = []
+			try:
+				repos.extend(repo.name for repo in
+					self.repositories[pkg.repo].masters)
+			except KeyError:
+				pass
+			repos.append(pkg.repo)
+			for repo in repos:
+				usealiases_dict = self._repo_usealiases_dict.get(repo, {})
+				for real_flag, aliases in usealiases_dict.items():
+					for alias in aliases:
+						if any(alias in v for k, v in usealiases.items() if k != real_flag):
+							writemsg(_("--- Duplicated USE flag alias for '%s%s%s': '%s'\n") %
+								(pkg.cpv, _repo_separator, pkg.repo, alias), noiselevel=-1)
+						else:
+							usealiases.setdefault(real_flag, []).append(alias)
+				cp_usealiases_dict = self._repo_pusealiases_dict.get(repo, {}).get(cp)
+				if cp_usealiases_dict:
+					usealiases_dict_list = ordered_by_atom_specificity(cp_usealiases_dict, pkg)
+					for usealiases_dict in usealiases_dict_list:
+						for real_flag, aliases in usealiases_dict.items():
+							for alias in aliases:
+								if any(alias in v for k, v in usealiases.items() if k != real_flag):
+									writemsg(_("--- Duplicated USE flag alias for '%s%s%s': '%s'\n") %
+										(pkg.cpv, _repo_separator, pkg.repo, alias), noiselevel=-1)
+								else:
+									usealiases.setdefault(real_flag, []).append(alias)
+
+		return usealiases
 
 	def getPUSE(self, pkg):
 		cp = getattr(pkg, "cp", None)

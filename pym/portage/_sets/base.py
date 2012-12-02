@@ -126,7 +126,7 @@ class PackageSet(object):
 
 		if modified_use is not None and modified_use is not pkg.use.enabled:
 			pkg = pkg.copy()
-			pkg.metadata["USE"] = " ".join(modified_use)
+			pkg._metadata["USE"] = " ".join(modified_use)
 
 		# Atoms matched via PROVIDE must be temporarily transformed since
 		# match_from_list() only works correctly when atom.cp == pkg.cp.
@@ -156,7 +156,7 @@ class PackageSet(object):
 			for atom in atoms:
 				if match_from_list(atom, cpv_slot_list):
 					yield atom
-		provides = pkg.metadata['PROVIDE']
+		provides = pkg._metadata['PROVIDE']
 		if not provides:
 			return
 		provides = provides.split()

@@ -1,7 +1,8 @@
 # elog/mod_save.py - elog dispatch module
-# Copyright 2006-2011 Gentoo Foundation
+# Copyright 2006-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import errno
 import io
 import time
 import portage
@@ -48,11 +49,22 @@ def process(mysettings, key, logentries, fulltext):
 		elogfilename = os.path.join(log_subdir, cat + ':' + elogfilename)
 	_ensure_log_subdirs(logdir, log_subdir)
 
-	elogfile = io.open(_unicode_encode(elogfilename,
-		encoding=_encodings['fs'], errors='strict'),
-		mode='w', encoding=_encodings['content'], errors='backslashreplace')
-	elogfile.write(_unicode_decode(fulltext))
-	elogfile.close()
+	try:
+		with io.open(_unicode_encode(elogfilename,
+			encoding=_encodings['fs'], errors='strict'), mode='w',
+			encoding=_encodings['content'],
+			errors='backslashreplace') as elogfile:
+			elogfile.write(_unicode_decode(fulltext))
+	except IOError as e:
+		func_call = "open('%s', 'w')" % elogfilename
+		if e.errno == errno.EACCES:
+			raise portage.exception.PermissionDenied(func_call)
+		elif e.errno == errno.EPERM:
+			raise portage.exception.OperationNotPermitted(func_call)
+		elif e.errno == errno.EROFS:
+			raise portage.exception.ReadOnlyFileSystem(func_call)
+		else:
+			raise
 
 	# Copy group permission bits from parent directory.
 	elogdir_st = os.stat(log_subdir)

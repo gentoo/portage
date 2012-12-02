@@ -60,7 +60,7 @@ class EbuildBuildDir(SlotObject):
 			builddir_lock.wait()
 			self._assert_lock(builddir_lock)
 			self._lock_obj = builddir_lock
-			self.settings['PORTAGE_BUILDIR_LOCKED'] = '1'
+			self.settings['PORTAGE_BUILDDIR_LOCKED'] = '1'
 		finally:
 			self.locked = self._lock_obj is not None
 			catdir_lock.unlock()
@@ -92,7 +92,7 @@ class EbuildBuildDir(SlotObject):
 		self._lock_obj.unlock()
 		self._lock_obj = None
 		self.locked = False
-		self.settings.pop('PORTAGE_BUILDIR_LOCKED', None)
+		self.settings.pop('PORTAGE_BUILDDIR_LOCKED', None)
 		catdir_lock = AsynchronousLock(path=self._catdir, scheduler=self.scheduler)
 		catdir_lock.start()
 		if catdir_lock.wait() == os.EX_OK:

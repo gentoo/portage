@@ -1229,11 +1229,14 @@ class Atom(_unicode):
 			if allow_repo is None:
 				allow_repo = True
 
+		blocker_prefix = ""
 		if "!" == s[:1]:
 			blocker = self._blocker(forbid_overlap=("!" == s[1:2]))
 			if blocker.overlap.forbid:
+				blocker_prefix = s[:2]
 				s = s[2:]
 			else:
+				blocker_prefix = s[:1]
 				s = s[1:]
 		else:
 			blocker = False
@@ -1346,15 +1349,18 @@ class Atom(_unicode):
 				use = _use
 			else:
 				use = _use_dep(use_str[1:-1].split(","), eapi_attrs)
-			without_use = Atom(m.group('without_use'), allow_repo=allow_repo)
+			without_use = Atom(blocker_prefix + m.group('without_use'),
+				allow_repo=allow_repo)
 		else:
 			use = None
 			if unevaluated_atom is not None and \
 				unevaluated_atom.use is not None:
 				# unevaluated_atom.use is used for IUSE checks when matching
 				# packages, so it must not propagate to without_use
-				without_use = Atom(s, allow_wildcard=allow_wildcard,
-					allow_repo=allow_repo)
+				without_use = Atom(_unicode(self),
+					allow_wildcard=allow_wildcard,
+					allow_repo=allow_repo,
+					eapi=eapi)
 			else:
 				without_use = self
 
@@ -2643,16 +2649,16 @@ def extract_affecting_use(mystr, atom, eapi=None):
 	that decide if the given atom is in effect.
 
 	Example usage:
-		>>> extract_use_cond('sasl? ( dev-libs/cyrus-sasl ) \
+		>>> extract_affecting_use('sasl? ( dev-libs/cyrus-sasl ) \
 			!minimal? ( cxx? ( dev-libs/cyrus-sasl ) )', 'dev-libs/cyrus-sasl')
-		(['sasl', 'minimal', 'cxx'])
+		{'cxx', 'minimal', 'sasl'}
 
-	@param dep: The dependency string
+	@param mystr: The dependency string
 	@type mystr: String
 	@param atom: The atom to get into effect
 	@type atom: String
-	@rtype: Tuple of two lists of strings
-	@return: List of use flags that need to be enabled, List of use flag that need to be disabled
+	@rtype: Set of strings
+	@return: Set of use flags affecting given atom
 	"""
 	useflag_re = _get_useflag_re(eapi)
 	mysplit = mystr.split()
@@ -2758,3 +2764,48 @@ def extract_affecting_use(mystr, atom, eapi=None):
 			_("malformed syntax: '%s'") % mystr)
 
 	return affecting_use
+
+def extract_unpack_dependencies(src_uri, unpackers):
+	"""
+	Return unpack dependencies string for given SRC_URI string.
+
+	@param src_uri: SRC_URI string
+	@type src_uri: String
+	@param unpackers: Dictionary mapping archive suffixes to dependency strings
+	@type unpackers: Dictionary
+	@rtype: String
+	@return: Dependency string specifying packages required to unpack archives.
+	"""
+	src_uri = src_uri.split()
+
+	depend = []
+	for i in range(len(src_uri)):
+		if src_uri[i][-1] == "?" or src_uri[i] in ("(", ")"):
+			depend.append(src_uri[i])
+		elif (i+1 < len(src_uri) and src_uri[i+1] == "->") or src_uri[i] == "->":
+			continue
+		else:
+			for suffix in sorted(unpackers, key=lambda x: len(x), reverse=True):
+				suffix = suffix.lower()
+				if src_uri[i].lower().endswith(suffix):
+					depend.append(unpackers[suffix])
+					break
+
+	while True:
+		cleaned_depend = depend[:]
+		for i in range(len(cleaned_depend)):
+			if cleaned_depend[i] is None:
+				continue
+			elif cleaned_depend[i] == "(" and cleaned_depend[i+1] == ")":
+				cleaned_depend[i] = None
+				cleaned_depend[i+1] = None
+			elif cleaned_depend[i][-1] == "?" and cleaned_depend[i+1] == "(" and cleaned_depend[i+2] == ")":
+				cleaned_depend[i] = None
+				cleaned_depend[i+1] = None
+				cleaned_depend[i+2] = None
+		if depend == cleaned_depend:
+			break
+		else:
+			depend = [x for x in cleaned_depend if x is not None]
+
+	return " ".join(depend)

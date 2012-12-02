@@ -22,7 +22,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 		'_merge_unicode_error', '_spawn_phase',
 	'portage.package.ebuild.prepare_build_dirs:prepare_build_dirs',
 	'portage.package.ebuild._ipc.QueryCommand:QueryCommand',
-	'portage.update:fixdbentries',
 	'portage.util:apply_secpass_permissions,ConfigProtect,ensure_dirs,' + \
 		'writemsg,writemsg_level,write_atomic,atomic_ofstream,writedict,' + \
 		'grabdict,normalize_path,new_protect_filename',
@@ -379,7 +378,7 @@ class vardbapi(dbapi):
 					del e
 			write_atomic(os.path.join(newpath, "PF"), new_pf+"\n")
 			write_atomic(os.path.join(newpath, "CATEGORY"), mynewcat+"\n")
-			fixdbentries([mylist], newpath, eapi=mycpv.eapi)
+
 		return moves
 
 	def cp_list(self, mycp, use_cache=1):
@@ -1890,7 +1889,7 @@ class dblink(object):
 		try:
 			# Only create builddir_lock if the caller
 			# has not already acquired the lock.
-			if "PORTAGE_BUILDIR_LOCKED" not in self.settings:
+			if "PORTAGE_BUILDDIR_LOCKED" not in self.settings:
 				builddir_lock = EbuildBuildDir(
 					scheduler=scheduler,
 					settings=self.settings)
@@ -3609,7 +3608,7 @@ class dblink(object):
 			# Clone the config in case one of these has to be unmerged since
 			# we need it to have private ${T} etc... for things like elog.
 			settings_clone = config(clone=self.settings)
-			settings_clone.pop("PORTAGE_BUILDIR_LOCKED", None)
+			settings_clone.pop("PORTAGE_BUILDDIR_LOCKED", None)
 			settings_clone.reset()
 			others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
 				settings=settings_clone,

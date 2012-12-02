@@ -70,16 +70,6 @@ tmpdir="${T}/prepstrip"
 rm -rf "${tmpdir}"
 mkdir -p "${tmpdir}"/{inodes,splitdebug,sources}
 
-# Usage: inode_var_name: <file>
-inode_file_link() {
-	echo -n "${tmpdir}/inodes/"
-	if  [[ ${USERLAND} == "BSD" ]] ; then
-		stat -f '%i' "$1"
-	else
-		stat -c '%i' "$1"
-	fi
-}
-
 # Usage: save_elf_sources <elf>
 save_elf_sources() {
 	${FEATURES_installsources} || return 0
@@ -94,7 +84,6 @@ save_elf_sources() {
 	fi
 
 	local x=$1
-	[[ -f $(inode_file_link "${x}") ]] && return 0
 
 	# since we're editing the ELF here, we should recompute the build-id
 	# (the -i flag below).  save that output so we don't need to recompute
@@ -115,7 +104,8 @@ save_elf_debug() {
 	# twice in this path) in order for gdb's debug-file-directory
 	# lookup to work correctly.
 	local x=$1
-	local splitdebug=$2
+	local inode_debug=$2
+	local splitdebug=$3
 	local y=${ED}usr/lib/debug/${x:${#D}}.debug
 
 	# dont save debug info twice
@@ -123,9 +113,8 @@ save_elf_debug() {
 
 	mkdir -p "${y%/*}"
 
-	local inode=$(inode_file_link "${x}")
-	if [[ -f ${inode} ]] ; then
-		ln "${inode}" "${y}"
+	if [ -f "${inode_debug}" ] ; then
+		ln "${inode_debug}" "${y}" || die "ln failed unexpectedly"
 	else
 		if [[ -n ${splitdebug} ]] ; then
 			mv "${splitdebug}" "${y}"
@@ -138,7 +127,7 @@ save_elf_debug() {
 		local args="a-x,o-w"
 		[[ -g ${x} || -u ${x} ]] && args+=",go-r"
 		chmod ${args} "${y}"
-		ln "${y}" "${inode}"
+		ln "${y}" "${inode_debug}" || die "ln failed unexpectedly"
 	fi
 
 	# if we don't already have build-id from debugedit, look it up
@@ -158,7 +147,8 @@ save_elf_debug() {
 
 # Usage: process_elf <elf>
 process_elf() {
-	local x=$1 strip_flags=${*:2}
+	local x=$1 inode_link=$2 strip_flags=${*:3}
+	local already_stripped lockfile
 
 	__vecho "   ${x:${#ED}}"
 
@@ -167,15 +157,17 @@ process_elf() {
 	# So, use a lockfile to prevent interference (easily observed with
 	# dev-vcs/git which creates ~111 hardlinks to one file in
 	# /usr/libexec/git-core).
-	local lockfile=$(inode_file_link "${x}")_lockfile
-	if ! ln "${x}" "${lockfile}" 2>/dev/null ; then
+	lockfile=${inode_link}_lockfile
+	if ! ln "${inode_link}" "${lockfile}" 2>/dev/null ; then
 		while [[ -f ${lockfile} ]] ; do
 			sleep 1
 		done
 		unset lockfile
 	fi
 
-	save_elf_sources "${x}"
+	[ -f "${inode_link}_stripped" ] && already_stripped=true || already_stripped=false
+
+	${already_stripped} || save_elf_sources "${x}"
 
 	if ${strip_this} ; then
 
@@ -183,15 +175,24 @@ process_elf() {
 		if [[ -n ${SPLIT_STRIP_FLAGS} ]] ; then
 			local shortname="${x##*/}.debug"
 			local splitdebug="${tmpdir}/splitdebug/${shortname}.${BASHPID}"
+			${already_stripped} || \
 			${STRIP} ${strip_flags} \
 				-f "${splitdebug}" \
 				-F "${shortname}" \
 				"${x}"
-			save_elf_debug "${x}" "${splitdebug}"
+			save_elf_debug "${x}" "${inode_link}_debug" "${splitdebug}"
 		else
-			save_elf_debug "${x}"
+			save_elf_debug "${x}" "${inode_link}_debug"
+			${already_stripped} || \
 			${STRIP} ${strip_flags} "${x}"
 		fi
+	fi
+
+	if ${already_stripped} ; then
+		rm -f "${x}" || die "rm failed unexpectedly"
+		ln "${inode_link}_stripped" "${x}" || die "ln failed unexpectedly"
+	else
+		ln "${x}" "${inode_link}_stripped" || die "ln failed unexpectedly"
 	fi
 
 	[[ -n ${lockfile} ]] && rm -f "${lockfile}"
@@ -232,11 +233,32 @@ if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
 	__multijob_post_fork
 fi
 
+# Since strip creates a new inode, we need to know the initial set of
+# inodes in advance, so that we can avoid interference due to trying
+# to strip the same (hardlinked) file multiple times in parallel.
+# See bug #421099.
+if  [[ ${USERLAND} == BSD ]] ; then
+	get_inode_number() { stat -f '%i' "$1"; }
+else
+	get_inode_number() { stat -c '%i' "$1"; }
+fi
+cd "${tmpdir}/inodes" || die "cd failed unexpectedly"
+while read -r x ; do
+	inode_link=$(get_inode_number "${x}") || die "stat failed unexpectedly"
+	echo "${x}" >> "${inode_link}" || die "echo failed unexpectedly"
+done < <(
+	# Use sort -u to eliminate duplicates for bug #445336.
+	(
+		scanelf -yqRBF '#k%F' -k '.symtab' "$@"
+		find "$@" -type f ! -type l -name '*.a'
+	) | LC_ALL=C sort -u
+)
+
 # Now we look for unstripped binaries.
-for x in \
-	$(scanelf -yqRBF '#k%F' -k '.symtab' "$@") \
-	$(find "$@" -type f -name '*.a')
+for inode_link in $(shopt -s nullglob; echo *) ; do
+while read -r x
 do
+
 	if ! ${banner} ; then
 		__vecho "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
 		banner=true
@@ -284,9 +306,9 @@ do
 			${STRIP} -g "${x}"
 		fi
 	elif [[ ${f} == *"SB executable"* || ${f} == *"SB shared object"* ]] ; then
-		process_elf "${x}" ${PORTAGE_STRIP_FLAGS}
+		process_elf "${x}" "${inode_link}" ${PORTAGE_STRIP_FLAGS}
 	elif [[ ${f} == *"SB relocatable"* ]] ; then
-		process_elf "${x}" ${SAFE_STRIP_FLAGS}
+		process_elf "${x}" "${inode_link}" ${SAFE_STRIP_FLAGS}
 	fi
 
 	if ${was_not_writable} ; then
@@ -294,6 +316,8 @@ do
 	fi
 	) &
 	__multijob_post_fork
+
+done < "${inode_link}"
 done
 
 # With a bit more work, we could run the rsync processes below in

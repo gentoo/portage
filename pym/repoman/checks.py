@@ -69,7 +69,7 @@ class EbuildHeader(LineCheck):
 		Copyright header errors
 		CVS header errors
 		License header errors
-	
+
 	Args:
 		modification_year - Year the ebuild was last modified
 	"""
@@ -112,7 +112,7 @@ class EbuildWhitespace(LineCheck):
 	ignore_line = re.compile(r'(^$)|(^(\t)*#)')
 	ignore_comment = False
 	leading_spaces = re.compile(r'^[\S\t]')
-	trailing_whitespace = re.compile(r'.*([\S]$)')	
+	trailing_whitespace = re.compile(r'.*([\S]$)')
 
 	def check(self, num, line):
 		if self.leading_spaces.match(line) is None:
@@ -169,7 +169,7 @@ class EbuildQuote(LineCheck):
 		r'\}?[^"\'\s]*(\s|$)')
 	cond_begin =  re.compile(r'(^|\s+)\[\[($|\\$|\s+)')
 	cond_end =  re.compile(r'(^|\s+)\]\]($|\\$|\s+)')
-	
+
 	def check(self, num, line):
 		if self.var_reference.search(line) is None:
 			return
@@ -239,11 +239,11 @@ class Eapi3EbuildAssignment(EbuildAssignment):
 		return eapi_supports_prefix(eapi)
 
 class EbuildNestedDie(LineCheck):
-	"""Check ebuild for nested die statements (die statements in subshells"""
-	
+	"""Check ebuild for nested die statements (die statements in subshells)"""
+
 	repoman_check_name = 'ebuild.nesteddie'
 	nesteddie_re = re.compile(r'^[^#]*\s\(\s[^)]*\bdie\b')
-	
+
 	def check(self, num, line):
 		if self.nesteddie_re.match(line):
 			return errors.NESTED_DIE_ERROR
@@ -288,7 +288,7 @@ class EapiDefinition(LineCheck):
 	_eapi_re = portage._pms_eapi_re
 
 	def new(self, pkg):
-		self._cached_eapi = pkg.metadata['EAPI']
+		self._cached_eapi = pkg.eapi
 		self._parsed_eapi = None
 		self._eapi_line_num = None
 
@@ -378,6 +378,7 @@ class InheritDeprecated(LineCheck):
 	# deprecated eclass : new eclass (False if no new eclass)
 	deprecated_classes = {
 		"bash-completion": "bash-completion-r1",
+		"boost-utils": False,
 		"gems": "ruby-fakegem",
 		"git": "git-2",
 		"mozconfig-2": "mozconfig-3",
@@ -464,13 +465,13 @@ class InheritEclass(LineCheck):
 		self._inherit_re = re.compile(r'^(\s*|.*[|&]\s*)\binherit\s(.*\s)?%s(\s|$)' % inherit_re)
 		# Match when the function is preceded only by leading whitespace, a
 		# shell operator such as (, {, |, ||, or &&, or optional variable
-		# setting(s). This prevents false postives in things like elog
+		# setting(s). This prevents false positives in things like elog
 		# messages, as reported in bug #413285.
 		self._func_re = re.compile(r'(^|[|&{(])\s*(\w+=.*)?\b(' + '|'.join(funcs) + r')\b')
 
 	def new(self, pkg):
 		self.repoman_check_name = 'inherit.missing'
-		# We can't use pkg.inherited because that tells us all the eclass that
+		# We can't use pkg.inherited because that tells us all the eclasses that
 		# have been inherited and not just the ones we inherit directly.
 		self._inherit = False
 		self._func_call = False
@@ -776,7 +777,7 @@ class PortageInternal(LineCheck):
 	repoman_check_name = 'portage.internal'
 	ignore_comment = True
 	# Match when the command is preceded only by leading whitespace or a shell
-	# operator such as (, {, |, ||, or &&. This prevents false postives in
+	# operator such as (, {, |, ||, or &&. This prevents false positives in
 	# things like elog messages, as reported in bug #413285.
 	re = re.compile(r'^(\s*|.*[|&{(]+\s*)\b(ecompress|ecompressdir|env-update|prepall|prepalldocs|preplib)\b')
 
@@ -787,7 +788,6 @@ class PortageInternal(LineCheck):
 			return ("'%s'" % m.group(2)) + " called on line: %d"
 
 class PortageInternalVariableAssignment(LineCheck):
-
 	repoman_check_name = 'portage.internal'
 	internal_assignment = re.compile(r'\s*(export\s+)?(EXTRA_ECONF|EXTRA_EMAKE)\+?=')
 
@@ -799,18 +799,9 @@ class PortageInternalVariableAssignment(LineCheck):
 			e += ' on line: %d'
 		return e
 
-_constant_checks = tuple(chain((c() for c in (
-	EbuildHeader, EbuildWhitespace, EbuildBlankLine, EbuildQuote,
-	EbuildAssignment, Eapi3EbuildAssignment, EbuildUselessDodoc,
-	EbuildUselessCdS, EbuildNestedDie,
-	EbuildPatches, EbuildQuotedA, EapiDefinition,
-	ImplicitRuntimeDeps,
-	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS, NoAsNeeded,
-	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
-	SrcCompileEconf, Eapi3DeprecatedFuncs, NoOffsetWithHelpers,
-	Eapi4IncompatibleFuncs, Eapi4GoneVars, BuiltWithUse,
-	PreserveOldLib, SandboxAddpredict, PortageInternal,
-	PortageInternalVariableAssignment, DeprecatedUseq, DeprecatedHasq)),
+_base_check_classes = (InheritEclass, LineCheck, PhaseCheck)
+_constant_checks = tuple(chain((v() for k, v in globals().items()
+	if isinstance(v, type) and issubclass(v, LineCheck) and v not in _base_check_classes),
 	(InheritEclass(k, **kwargs) for k, kwargs in _eclass_info.items())))
 
 _here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
@@ -879,7 +870,7 @@ def run_checks(contents, pkg):
 		for lc in checks:
 			if is_comment and lc.ignore_comment:
 				continue
-			if lc.check_eapi(pkg.metadata['EAPI']):
+			if lc.check_eapi(pkg.eapi):
 				ignore = lc.ignore_line
 				if not ignore or not ignore.match(line):
 					e = lc.check(num, line)

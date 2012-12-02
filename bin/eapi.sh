@@ -84,6 +84,14 @@ ___eapi_has_license_path() {
 	[[ ${1-${EAPI}} =~ ^(5-progress)$ ]]
 }
 
+___eapi_has_package_manager_build_user() {
+	[[ ${1-${EAPI}} =~ ^(5-progress)$ ]]
+}
+
+___eapi_has_package_manager_build_group() {
+	[[ ${1-${EAPI}} =~ ^(5-progress)$ ]]
+}
+
 # HELPERS BEHAVIOR
 
 ___eapi_best_version_and_has_version_support_--host-root() {

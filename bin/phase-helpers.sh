@@ -276,14 +276,18 @@ unpack() {
 	local srcdir
 	local x
 	local y
+	local suffix
 	local myfail
 	local eapi=${EAPI:-0}
 	[ -z "$*" ] && die "Nothing passed to the 'unpack' command"
 
 	for x in "$@"; do
 		__vecho ">>> Unpacking ${x} to ${PWD}"
+		suffix=${x##*.}
+		suffix=$(LC_ALL=C tr "[:upper:]" "[:lower:]" <<< "${suffix}")
 		y=${x%.*}
 		y=${y##*.}
+		y=$(LC_ALL=C tr "[:upper:]" "[:lower:]" <<< "${y}")
 
 		if [[ ${x} == "./"* ]] ; then
 			srcdir=""
@@ -308,7 +312,7 @@ unpack() {
 		}
 
 		myfail="failure unpacking ${x}"
-		case "${x##*.}" in
+		case "${suffix}" in
 			tar)
 				tar xof "$srcdir$x" || die "$myfail"
 				;;
@@ -319,19 +323,19 @@ unpack() {
 				${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d} -c -- "$srcdir$x" | tar xof -
 				__assert_sigpipe_ok "$myfail"
 				;;
-			ZIP|zip|jar)
+			zip|jar)
 				# unzip will interactively prompt under some error conditions,
 				# as reported in bug #336285
 				( set +x ; while true ; do echo n || break ; done ) | \
 				unzip -qo "${srcdir}${x}" || die "$myfail"
 				;;
-			gz|Z|z)
+			gz|z)
 				__unpack_tar "gzip -d"
 				;;
 			bz2|bz)
 				__unpack_tar "${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d}"
 				;;
-			7Z|7z)
+			7z)
 				local my_output
 				my_output="$(7z x -y "${srcdir}${x}")"
 				if [ $? -ne 0 ]; then
@@ -339,10 +343,10 @@ unpack() {
 					die "$myfail"
 				fi
 				;;
-			RAR|rar)
+			rar)
 				unrar x -idq -o+ "${srcdir}${x}" || die "$myfail"
 				;;
-			LHa|LHA|lha|lzh)
+			lha|lzh)
 				lha xfq "${srcdir}${x}" || die "$myfail"
 				;;
 			a)
@@ -893,5 +897,17 @@ if ___eapi_has_license_path; then
 				fi
 				;;
 		esac
+	}
+fi
+
+if ___eapi_has_package_manager_build_user; then
+	package_manager_build_user() {
+		echo "${PORTAGE_BUILD_USER}"
+	}
+fi
+
+if ___eapi_has_package_manager_build_group; then
+	package_manager_build_group() {
+		echo "${PORTAGE_BUILD_GROUP}"
 	}
 fi
