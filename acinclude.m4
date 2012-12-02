@@ -24,9 +24,9 @@ AC_DEFUN([GENTOO_PATH_PYTHON],
   fi
 
   dnl is it the version we want?
-  ver=`$PREFIX_PORTAGE_PYTHON -c 'import sys; print sys.version.split(" ")[[0]]'`
+  ver=`$PREFIX_PORTAGE_PYTHON -c 'import sys; print(sys.version.split(" ")[[0]])'`
   AC_MSG_CHECKING([whether $PREFIX_PORTAGE_PYTHON $ver >= $1])
-  cmp=`$PREFIX_PORTAGE_PYTHON -c 'import sys; print sys.version.split(" ")[[0]] >= "$1"'`
+  cmp=`$PREFIX_PORTAGE_PYTHON -c 'import sys; print(sys.version.split(" ")[[0]] >= "$1")'`
   if test "$cmp" = "True" ; then
     AC_MSG_RESULT([yes])
   else
