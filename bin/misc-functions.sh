@@ -1072,7 +1072,6 @@ install_qa_check_macho() {
 		fi
 
 		# this is ugly, paths with spaces won't work
-		reevaluate=0
 		for lib in ${needed//,/ } ; do
 			if [[ ${lib} == ${D}* ]] ; then
 				eqawarn "QA Notice: install_name references \${D}: ${lib} in ${obj}"
@@ -1081,32 +1080,13 @@ install_qa_check_macho() {
 				eqawarn "QA Notice: install_name references \${S}: ${lib} in ${obj}"
 				touch "${T}"/.install_name_check_failed
 			elif [[ ! -e ${lib} && ! -e ${D}${lib} && ${lib} != "@executable_path/"* && ${lib} != "@loader_path/"* ]] ; then
-				# try to "repair" this if possible, happens because of
-				# gen_usr_ldscript tactics
-				s=${lib%usr/*}${lib##*/usr/}
-				if [[ -e ${D}${s} ]] ; then
-					ewarn "correcting install_name from ${lib} to ${s} in ${obj}"
-					install_name_tool -change \
-						"${lib}" "${s}" "${D}${obj}"
-					reevaluate=1
-				else
-					eqawarn "QA Notice: invalid reference to ${lib} in ${obj}"
-					# remember we are in an implicit subshell, that's
-					# why we touch a file here ... ideally we should be
-					# able to die correctly/nicely here
-					touch "${T}"/.install_name_check_failed
-				fi
+				eqawarn "QA Notice: invalid reference to ${lib} in ${obj}"
+				# remember we are in an implicit subshell, that's
+				# why we touch a file here ... ideally we should be
+				# able to die correctly/nicely here
+				touch "${T}"/.install_name_check_failed
 			fi
 		done
-		if [[ ${reevaluate} == 1 ]]; then
-			# install_name(s) have been changed, refresh data so we
-			# store the correct meta data
-			l=$(scanmacho -qyF '%a;%p;%S;%n' ${D}${obj})
-			arch=${l%%;*}; l=${l#*;}
-			obj="/${l%%;*}"; l=${l#*;}
-			install_name=${l%%;*}; l=${l#*;}
-			needed=${l%%;*}; l=${l#*;}
-		fi
 
 		# backwards compatability
 		echo "${obj} ${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
