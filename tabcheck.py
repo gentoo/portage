@@ -3,5 +3,5 @@
 import tabnanny,sys
 
 for x in sys.argv:
-	print "Tabchecking " + x
+	print ("Tabchecking " + x)
 	tabnanny.check(x)
