@@ -2095,7 +2095,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				"control (contains %s).\n!!! Aborting rsync sync.\n") % \
 				(myportdir, vcs_dir), level=logging.ERROR, noiselevel=-1)
 			return 1
-		if not os.path.exists("/usr/bin/rsync"):
+		rsync_binary = portage.process.find_binary("rsync")
+		if rsync_binary is None:
 			print("!!! /usr/bin/rsync does not exist, so rsync support is disabled.")
 			print("!!! Type \"emerge net-misc/rsync\" to enable rsync support.")
 			sys.exit(1)
@@ -2321,7 +2322,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			if mytimestamp != 0 and "--quiet" not in myopts:
 				print(">>> Checking server timestamp ...")
 
-			rsynccommand = ["/usr/bin/rsync"] + rsync_opts + extra_rsync_opts
+			rsynccommand = [rsync_binary] + rsync_opts + extra_rsync_opts
 
 			if "--debug" in myopts:
 				print(rsynccommand)
