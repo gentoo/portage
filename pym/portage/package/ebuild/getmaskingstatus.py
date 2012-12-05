@@ -123,6 +123,13 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 			if gp=="*":
 				kmask=None
 				break
+			elif gp == "~*":
+				for x in pgroups:
+					if x[:1] == "~":
+						kmask = None
+						break
+				if kmask is None:
+					break
 			elif gp=="-"+myarch and myarch in pgroups:
 				kmask="-"+myarch
 				break
