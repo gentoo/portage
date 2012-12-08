@@ -44,7 +44,6 @@ options=[
 "--tree",
 "--unordered-display",
 "--update",
-"--verbose",
 "--verbose-main-repo-display",
 ]
 
@@ -65,7 +64,7 @@ shortmapping={
 "s":"--search",    "S":"--searchdesc",
 "t":"--tree",
 "u":"--update",
-"v":"--verbose",   "V":"--version"
+"V":"--version"
 }
 
 COWSAY_MOO = """
@@ -151,6 +150,7 @@ def insert_optional_args(args):
 		"--use-ebuild-visibility": y_or_n,
 		'--usepkg'               : y_or_n,
 		'--usepkgonly'           : y_or_n,
+		'--verbose'              : y_or_n,
 	}
 
 	short_arg_opts = {
@@ -168,6 +168,7 @@ def insert_optional_args(args):
 		'k' : y_or_n,
 		'K' : y_or_n,
 		'q' : y_or_n,
+		'v' : y_or_n,
 	}
 
 	arg_stack = args[:]
@@ -645,6 +646,13 @@ def parse_opts(tmpcmdline, silent=False):
 			"type"     : "choice",
 			"choices"  : true_y_or_n
 		},
+
+		"--verbose": {
+			"shortopt" : "-v",
+			"help"     : "verbose output",
+			"type"     : "choice",
+			"choices"  : true_y_or_n
+		},
 	}
 
 	from optparse import OptionParser
@@ -926,6 +934,11 @@ def parse_opts(tmpcmdline, silent=False):
 		myoptions.usepkgonly = True
 	else:
 		myoptions.usepkgonly = None
+
+	if myoptions.verbose in true_y:
+		myoptions.verbose = True
+	else:
+		myoptions.verbose = None
 
 	for myopt in options:
 		v = getattr(myoptions, myopt.lstrip("--").replace("-", "_"))
