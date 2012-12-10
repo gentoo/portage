@@ -226,6 +226,9 @@ class slot_conflict_handler(object):
 		for pkg in solution:
 			for flag, state in solution[pkg].items():
 				real_flag = pkg.iuse.get_real_flag(flag)
+				if real_flag is None:
+					# Triggered by use-dep defaults.
+					continue
 				if state == "enabled" and flag not in _pkg_use_enabled(pkg):
 					new_change.setdefault(pkg, {})[real_flag] = True
 				elif state == "disabled" and flag in _pkg_use_enabled(pkg):

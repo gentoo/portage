@@ -4109,6 +4109,9 @@ class depgraph(object):
 
 		for flag, state in target_use.items():
 			real_flag = pkg.iuse.get_real_flag(flag)
+			if real_flag is None:
+				# Triggered by use-dep defaults.
+				continue
 			if state:
 				if real_flag not in old_use:
 					if new_changes.get(real_flag) == False:
