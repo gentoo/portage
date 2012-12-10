@@ -124,10 +124,14 @@ save_elf_debug() {
 			${OBJCOPY} ${objcopy_flags} "${x}" "${y}"
 			${OBJCOPY} --add-gnu-debuglink="${y}" "${x}"
 		fi
-		local args="a-x,o-w"
-		[[ -g ${x} || -u ${x} ]] && args+=",go-r"
-		chmod ${args} "${y}"
-		ln "${y}" "${inode_debug}" || die "ln failed unexpectedly"
+		# Only do the following if the debug file was
+		# successfully created (see bug #446774).
+		if [ $? -eq 0 ] ; then
+			local args="a-x,o-w"
+			[[ -g ${x} || -u ${x} ]] && args+=",go-r"
+			chmod ${args} "${y}"
+			ln "${y}" "${inode_debug}" || die "ln failed unexpectedly"
+		fi
 	fi
 
 	# if we don't already have build-id from debugedit, look it up
