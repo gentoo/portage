@@ -3436,7 +3436,10 @@ class dblink(object):
 		else:
 			logdir = os.path.join(self.settings["T"], "logging")
 			ebuild_logentries = collect_ebuild_messages(logdir)
-			py_logentries = collect_messages(key=cpv).get(cpv, {})
+			# phasefilter is irrelevant for the above collect_ebuild_messages
+			# call, since this package instance has a private logdir. However,
+			# it may be relevant for the following collect_messages call.
+			py_logentries = collect_messages(key=cpv, phasefilter=phasefilter).get(cpv, {})
 			logentries = _merge_logentries(py_logentries, ebuild_logentries)
 			funcnames = {
 				"INFO": "einfo",
