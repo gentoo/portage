@@ -152,6 +152,9 @@ class MergeProcess(ForkProcess):
 				self._elog_reader_fd = elog_reader_fd
 				self._buf = ""
 				self._elog_keys = set()
+				# Discard messages which will be collected by the subprocess,
+				# in order to avoid duplicates (bug #446136).
+				portage.elog.messages.collect_messages(key=mylink.mycpv)
 
 				# invalidate relevant vardbapi caches
 				if self.vartree.dbapi._categories is not None:
