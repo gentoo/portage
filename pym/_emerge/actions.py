@@ -1367,7 +1367,7 @@ def action_info(settings, trees, myopts, myfiles):
 	bindb = trees[eroot]["bintree"].dbapi
 	for x in myfiles:
 		any_match = False
-		cp_exists = False
+		cp_exists = bool(vardb.match(x.cp))
 		installed_match = vardb.match(x)
 		for installed in installed_match:
 			mypkgs.append((installed, "installed"))
@@ -1380,13 +1380,17 @@ def action_info(settings, trees, myopts, myfiles):
 			if pkg_type == "binary" and "--usepkg" not in myopts:
 				continue
 
-			if not cp_exists and db.cp_list(x.cp):
+			# Use match instead of cp_list, to account for old-style virtuals.
+			if not cp_exists and db.match(x.cp):
+				cp_exists = True
+			# Search for masked packages too.
+			if not cp_exists and hasattr(db, "xmatch") and \
+				db.xmatch("match-all", x.cp):
 				cp_exists = True
 
 			matches = db.match(x)
 			matches.reverse()
 			for match in matches:
-				any_match = True
 				if pkg_type == "binary":
 					if db.bintree.isremote(match):
 						continue
@@ -1397,7 +1401,7 @@ def action_info(settings, trees, myopts, myfiles):
 					mypkgs.append((match, pkg_type))
 					break
 
-		if not any_match:
+		if not cp_exists:
 			xinfo = '"%s"' % x.unevaluated_atom
 			# Discard null/ from failed cpv_expand category expansion.
 			xinfo = xinfo.replace("null/", "")
@@ -1406,8 +1410,7 @@ def action_info(settings, trees, myopts, myfiles):
 			writemsg("\nemerge: there are no ebuilds to satisfy %s.\n" %
 				colorize("INFORM", xinfo), noiselevel=-1)
 
-			if not cp_exists and myopts.get(
-				"--misspell-suggestions", "y") != "n":
+			if myopts.get("--misspell-suggestions", "y") != "n":
 
 				writemsg("\nemerge: searching for similar names..."
 					, noiselevel=-1)
