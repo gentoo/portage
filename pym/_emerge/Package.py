@@ -652,8 +652,11 @@ class Package(Task):
 				for k, v in self.alias_mapping.items():
 					if flag in v:
 						return k
-			else:
-				return None
+
+			if self._iuse_implicit_match(flag):
+				return flag
+
+			return None
 
 	def __len__(self):
 		return 4
