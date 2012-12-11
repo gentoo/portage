@@ -94,11 +94,14 @@ def dump_xattrs(file_in, file_out):
 		attrs = xattr.list(pathname)
 		if not attrs:
 			continue
-		file_out.write(b'# file: ' + quote(pathname, b'\n\r') + b'\n')
+
+		# NOTE: Always quote backslashes, in order to ensure that they are
+		# not interpreted as quotes when they are processed by unquote.
+		file_out.write(b'# file: ' + quote(pathname, b'\n\r\\\\') + b'\n')
 		for attr in attrs:
 			attr = unicode_encode(attr)
-			file_out.write(quote(attr, b'=\n\r') + b'="' +
-				quote(xattr.get(pathname, attr), b'\\\0\n\r"') + b'"\n')
+			file_out.write(quote(attr, b'=\n\r\\\\') + b'="' +
+				quote(xattr.get(pathname, attr), b'\0\n\r"\\\\') + b'"\n')
 
 def restore_xattrs(file_in):
 
