@@ -557,7 +557,8 @@ __dyn_install() {
 	if [[ $CATEGORY != virtual ]] ; then
 		for f in ASFLAGS CBUILD CC CFLAGS CHOST CTARGET CXX \
 			CXXFLAGS EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
-			LDFLAGS LIBCFLAGS LIBCXXFLAGS QA_DESKTOP_FILE ; do
+			LDFLAGS LIBCFLAGS LIBCXXFLAGS QA_CONFIGURE_OPTIONS \
+			QA_DESKTOP_FILE ; do
 			x=$(echo -n ${!f})
 			[[ -n $x ]] && echo "$x" > $f
 		done

@@ -1579,7 +1579,29 @@ def _check_build_log(mysettings, out=None):
 
 	configure_opts_warn = []
 	configure_opts_warn_re = re.compile(
-		r'^configure: WARNING: [Uu]nrecognized options: ')
+		r'^configure: WARNING: [Uu]nrecognized options: (.*)')
+
+	qa_configure_opts = ""
+	try:
+		with io.open(_unicode_encode(os.path.join(
+			mysettings["PORTAGE_BUILDDIR"],
+			"build-info", "QA_CONFIGURE_OPTIONS"),
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['repo.content'],
+			errors='replace') as qa_configure_opts_f:
+			qa_configure_opts = qa_configure_opts_f.read()
+	except IOError as e:
+		if e.errno not in (errno.ENOENT, errno.ESTALE):
+			raise
+
+	qa_configure_opts = qa_configure_opts.split()
+	if qa_configure_opts:
+		if len(qa_configure_opts) > 1:
+			qa_configure_opts = "|".join("(%s)" % x for x in qa_configure_opts)
+			qa_configure_opts = "^(%s)$" % qa_configure_opts
+		else:
+			qa_configure_opts = "^%s$" % qa_configure_opts[0]
+		qa_configure_opts = re.compile(qa_configure_opts)
 
 	# Exclude output from dev-libs/yaz-3.0.47 which looks like this:
 	#
@@ -1611,8 +1633,11 @@ def _check_build_log(mysettings, out=None):
 			if helper_missing_file_re.match(line) is not None:
 				helper_missing_file.append(line.rstrip("\n"))
 
-			if configure_opts_warn_re.match(line) is not None:
-				configure_opts_warn.append(line.rstrip("\n"))
+			m = configure_opts_warn_re.match(line)
+			if m is not None:
+				for x in m.group(1).split(", "):
+					if not qa_configure_opts or qa_configure_opts.match(x) is None:
+						configure_opts_warn.append(x)
 
 			if make_jobserver_re.match(line) is not None:
 				make_jobserver.append(line.rstrip("\n"))
@@ -1661,7 +1686,7 @@ def _check_build_log(mysettings, out=None):
 	if configure_opts_warn:
 		msg = [_("QA Notice: Unrecognized configure options:")]
 		msg.append("")
-		msg.extend("\t" + line for line in configure_opts_warn)
+		msg.extend("\t%s" % x for x in configure_opts_warn)
 		_eqawarn(msg)
 
 	if make_jobserver:
