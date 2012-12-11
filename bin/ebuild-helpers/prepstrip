@@ -15,7 +15,7 @@ exp_tf() {
 		eval ${var}_${flag}=$(tf has ${flag} ${!var})
 	done
 }
-exp_tf FEATURES compressdebug installsources nostrip splitdebug
+exp_tf FEATURES compressdebug installsources nostrip splitdebug xattr
 exp_tf RESTRICT binchecks installsources strip
 
 if ! ___eapi_has_prefix_variables; then
@@ -28,6 +28,28 @@ if ${RESTRICT_strip} || ${FEATURES_nostrip} ; then
 	SKIP_STRIP=true
 	banner=true
 	${FEATURES_installsources} || exit 0
+fi
+
+PRESERVE_XATTR=false
+if [[ ${KERNEL} == linux ]] && ${FEATURES_xattr} ; then
+	PRESERVE_XATTR=true
+	if type -P getfattr >/dev/null && type -P setfattr >/dev/null ; then
+		dump_xattrs() {
+			getfattr -d --absolute-names "$1"
+		}
+		restore_xattrs() {
+			setfattr --restore=-
+		}
+	else
+		dump_xattrs() {
+			"${PORTAGE_PYTHON:-/usr/bin/python}" \
+			"${PORTAGE_BIN_PATH}/xattr-helper.py" --dump < <(echo -n "$1")
+		}
+		restore_xattrs() {
+			"${PORTAGE_PYTHON:-/usr/bin/python}" \
+			"${PORTAGE_BIN_PATH}/xattr-helper.py" --restore
+		}
+	fi
 fi
 
 # look up the tools we might be using
@@ -152,7 +174,7 @@ save_elf_debug() {
 # Usage: process_elf <elf>
 process_elf() {
 	local x=$1 inode_link=$2 strip_flags=${*:3}
-	local already_stripped lockfile
+	local already_stripped lockfile xt_data
 
 	__vecho "   ${x:${#ED}}"
 
@@ -171,7 +193,12 @@ process_elf() {
 
 	[ -f "${inode_link}_stripped" ] && already_stripped=true || already_stripped=false
 
-	${already_stripped} || save_elf_sources "${x}"
+	if ! ${already_stripped} ; then
+		if ${PRESERVE_XATTR} ; then
+			xt_data=$(dump_xattrs "${x}")
+		fi
+		save_elf_sources "${x}"
+	fi
 
 	if ${strip_this} ; then
 
@@ -197,6 +224,9 @@ process_elf() {
 		ln "${inode_link}_stripped" "${x}" || die "ln failed unexpectedly"
 	else
 		ln "${x}" "${inode_link}_stripped" || die "ln failed unexpectedly"
+		if [[ ${xt_data} ]] ; then
+			restore_xattrs <<< "${xt_data}"
+		fi
 	fi
 
 	[[ -n ${lockfile} ]] && rm -f "${lockfile}"
