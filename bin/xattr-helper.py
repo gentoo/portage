@@ -113,13 +113,13 @@ def restore_xattrs(file_in):
 			parts = line.split(b'=', 1)
 			if len(parts) == 2:
 				if pathname is None:
-					raise AssertionError('line %d: missing pathname' % i + 1)
+					raise AssertionError('line %d: missing pathname' % (i + 1,))
 				attr = unquote(parts[0])
 				# strip trailing newline and quotes 
 				value = unquote(parts[1].rstrip(b'\n')[1:-1])
 				xattr.set(pathname, attr, value)
 			elif line.strip():
-				raise AssertionError("line %d: malformed entry" % i + 1)
+				raise AssertionError("line %d: malformed entry" % (i + 1,))
 
 def main(argv):
 
