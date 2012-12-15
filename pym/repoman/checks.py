@@ -552,8 +552,7 @@ _eclass_info = {
 		'funcs': (
 			'estack_push', 'estack_pop', 'eshopts_push', 'eshopts_pop',
 			'eumask_push', 'eumask_pop', 'epatch', 'epatch_user',
-			'emktemp', 'edos2unix', 'in_iuse', 'use_if_iuse', 'usex',
-			'makeopts_jobs'
+			'emktemp', 'edos2unix', 'in_iuse', 'use_if_iuse', 'usex'
 		),
 		'comprehensive': False,
 
@@ -585,6 +584,13 @@ _eclass_info = {
 		# These are "eclasses are the whole ebuild" type thing.
 		'exempt_eclasses': _eclass_export_functions + ('autotools', 'libtool'),
 
+		'comprehensive': False
+	},
+
+	'multiprocessing': {
+		'funcs': (
+			'makeopts_jobs',
+		),
 		'comprehensive': False
 	},
 
