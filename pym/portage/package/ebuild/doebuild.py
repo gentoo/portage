@@ -718,7 +718,7 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 				mysettings["dbkey"] = ""
 				pr, pw = os.pipe()
 				fd_pipes = {
-					0:sys.__stdin__.fileno(),
+					0:portage._get_stdin().fileno(),
 					1:sys.__stdout__.fileno(),
 					2:sys.__stderr__.fileno(),
 					9:pw}
@@ -1402,7 +1402,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	fd_pipes = keywords.get("fd_pipes")
 	if fd_pipes is None:
 		fd_pipes = {
-			0:sys.__stdin__.fileno(),
+			0:portage._get_stdin().fileno(),
 			1:sys.__stdout__.fileno(),
 			2:sys.__stderr__.fileno(),
 		}

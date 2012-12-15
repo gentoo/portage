@@ -64,7 +64,7 @@ def _spawn_fetch(settings, args, **kwargs):
 	if "fd_pipes" not in kwargs:
 
 		kwargs["fd_pipes"] = {
-			0 : sys.__stdin__.fileno(),
+			0 : portage._get_stdin().fileno(),
 			1 : sys.__stdout__.fileno(),
 			2 : sys.__stdout__.fileno(),
 		}
