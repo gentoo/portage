@@ -1833,7 +1833,7 @@ for x in effective_scanlist:
 		previous_keywords = slot_keywords.get(pkg.slot)
 		if previous_keywords is None:
 			slot_keywords[pkg.slot] = set()
-		elif ebuild_archs and not live_ebuild:
+		elif ebuild_archs and "*" not in ebuild_archs and not live_ebuild:
 			dropped_keywords = previous_keywords.difference(ebuild_archs)
 			if dropped_keywords:
 				stats["KEYWORDS.dropped"] += 1
