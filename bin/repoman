@@ -1881,18 +1881,31 @@ for x in effective_scanlist:
 			arches = [[repoman_settings["ARCH"], repoman_settings["ARCH"],
 				repoman_settings["ACCEPT_KEYWORDS"].split()]]
 		else:
-			arches=[]
-			for keyword in myaux["KEYWORDS"].split():
+			arches = set()
+			for keyword in keywords:
 				if (keyword[0]=="-"):
 					continue
 				elif (keyword[0]=="~"):
-					arches.append([keyword, keyword[1:], [keyword[1:], keyword]])
+					arch = keyword[1:]
+					if arch == "*":
+						for expanded_arch in profiles:
+							if expanded_arch == "**":
+								continue
+							arches.add((keyword, expanded_arch, (arch, keyword)))
+					else:
+						arches.add((keyword, arch, (arch, keyword)))
 				else:
-					arches.append([keyword, keyword, [keyword]])
+					if keyword == "*":
+						for expanded_arch in profiles:
+							if expanded_arch == "**":
+								continue
+							arches.add((keyword, expanded_arch, (keyword,)))
+					else:
+						arches.add((keyword, keyword, (keyword,)))
 			if not arches:
 				# Use an empty profile for checking dependencies of
 				# packages that have empty KEYWORDS.
-				arches.append(['**', '**', ['**']])
+				arches.add(('**', '**', ('**',)))
 
 		unknown_pkgs = set()
 		baddepsyntax = False
@@ -2119,14 +2132,22 @@ for x in effective_scanlist:
 			# user is intent on forcing the commit anyway.
 			continue
 
+		relevant_profiles = []
 		for keyword,arch,groups in arches:
 
 			if arch not in profiles:
 				# A missing profile will create an error further down
 				# during the KEYWORDS verification.
 				continue
+			relevant_profiles.extend((keyword, groups, prof)
+				for prof in profiles[arch])
 
-			for prof in profiles[arch]:
+		def sort_key(item):
+			return item[2].sub_path
+
+		relevant_profiles.sort(key=sort_key)
+
+		for keyword, groups, prof in relevant_profiles:
 
 				if prof.status not in ("stable", "dev") or \
 					prof.status == "dev" and not options.include_dev:
