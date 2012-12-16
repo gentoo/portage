@@ -1891,7 +1891,8 @@ for x in effective_scanlist:
 						for expanded_arch in profiles:
 							if expanded_arch == "**":
 								continue
-							arches.add((keyword, expanded_arch, (arch, keyword)))
+							arches.add((keyword, expanded_arch,
+								(expanded_arch, "~" + expanded_arch)))
 					else:
 						arches.add((keyword, arch, (arch, keyword)))
 				else:
@@ -1899,7 +1900,8 @@ for x in effective_scanlist:
 						for expanded_arch in profiles:
 							if expanded_arch == "**":
 								continue
-							arches.add((keyword, expanded_arch, (keyword,)))
+							arches.add((keyword, expanded_arch,
+								(expanded_arch,)))
 					else:
 						arches.add((keyword, keyword, (keyword,)))
 			if not arches:
