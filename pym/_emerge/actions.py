@@ -619,11 +619,17 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	if not cleanlist and "--quiet" in myopts:
 		return rval
 
+	set_atoms = {}
+	for k in ("system", "selected"):
+		try:
+			set_atoms[k] = root_config.setconfig.getSetAtoms(k)
+		except portage.exception.PackageSetNotFound:
+			# A nested set could not be resolved, so ignore nested sets.
+			set_atoms[k] = root_config.sets[k].getAtoms()
+
 	print("Packages installed:   " + str(len(vardb.cpv_all())))
-	print("Packages in world:    " + \
-		str(len(root_config.sets["selected"].getAtoms())))
-	print("Packages in system:   " + \
-		str(len(root_config.sets["system"].getAtoms())))
+	print("Packages in world:    %d" % len(set_atoms["selected"]))
+	print("Packages in system:   %d" % len(set_atoms["system"]))
 	print("Required packages:    "+str(req_pkg_count))
 	if "--pretend" in myopts:
 		print("Number to remove:     "+str(len(cleanlist)))
