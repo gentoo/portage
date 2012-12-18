@@ -662,13 +662,21 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	required_sets[protected_set_name] = protected_set
 	system_set = psets["system"]
 
-	if not system_set or not selected_set:
+	set_atoms = {}
+	for k in ("system", "selected"):
+		try:
+			set_atoms[k] = root_config.setconfig.getSetAtoms(k)
+		except portage.exception.PackageSetNotFound:
+			# A nested set could not be resolved, so ignore nested sets.
+			set_atoms[k] = root_config.sets[k].getAtoms()
 
-		if not system_set:
+	if not set_atoms["system"] or not set_atoms["selected"]:
+
+		if not set_atoms["system"]:
 			writemsg_level("!!! You have no system list.\n",
 				level=logging.ERROR, noiselevel=-1)
 
-		if not selected_set:
+		if not set_atoms["selected"]:
 			writemsg_level("!!! You have no world file.\n",
 					level=logging.WARNING, noiselevel=-1)
 
