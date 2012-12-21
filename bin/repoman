@@ -1820,7 +1820,7 @@ for x in effective_scanlist:
 				not keyword.startswith("-"):
 				stable_keywords.append(keyword)
 		if stable_keywords:
-			if ebuild_path in new_ebuilds:
+			if ebuild_path in new_ebuilds and catdir != "virtual":
 				stable_keywords.sort()
 				stats["KEYWORDS.stable"] += 1
 				fails["KEYWORDS.stable"].append(
