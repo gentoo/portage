@@ -2405,7 +2405,7 @@ class depgraph(object):
 				#      came from, if any.
 				#   2) It takes away freedom from the resolver to choose other
 				#      possible expansions when necessary.
-				if "/" in x:
+				if "/" in x.split(":")[0]:
 					args.append(AtomArg(arg=x, atom=Atom(x, allow_repo=True),
 						root_config=root_config))
 					continue

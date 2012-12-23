@@ -14,7 +14,7 @@ def insert_category_into_atom(atom, category):
 	return ret
 
 def is_valid_package_atom(x, allow_repo=False):
-	if "/" not in x:
+	if "/" not in x.split(":")[0]:
 		x2 = insert_category_into_atom(x, 'cat')
 		if x2 != None:
 			x = x2
