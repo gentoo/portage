@@ -112,7 +112,8 @@ class vardbapi(dbapi):
 	_aux_cache_keys_re = re.compile(r'^NEEDED\..*$')
 	_aux_multi_line_re = re.compile(r'^(CONTENTS|NEEDED\..*)$')
 
-	def __init__(self, _unused_param=None, categories=None, settings=None, vartree=None):
+	def __init__(self, _unused_param=DeprecationWarning,
+		categories=None, settings=None, vartree=None):
 		"""
 		The categories parameter is unused since the dbapi class
 		now has a categories property that is generated from the
@@ -142,11 +143,11 @@ class vardbapi(dbapi):
 			settings = portage.settings
 		self.settings = settings
 
-		if _unused_param is not None and _unused_param != settings['ROOT']:
+		if _unused_param is not DeprecationWarning:
 			warnings.warn("The first parameter of the "
 				"portage.dbapi.vartree.vardbapi"
-				" constructor is now unused. Use "
-				"settings['ROOT'] instead.",
+				" constructor is now unused. Instead "
+				"settings['ROOT'] is used.",
 				DeprecationWarning, stacklevel=2)
 
 		self._eroot = settings['EROOT']
