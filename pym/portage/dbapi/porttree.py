@@ -65,7 +65,7 @@ class portdbapi(dbapi):
 			return None
 		return main_repo.eclass_db
 
-	def __init__(self, _unused_param=None, mysettings=None):
+	def __init__(self, _unused_param=DeprecationWarning, mysettings=None):
 		"""
 		@param _unused_param: deprecated, use mysettings['PORTDIR'] instead
 		@type _unused_param: None
@@ -81,7 +81,7 @@ class portdbapi(dbapi):
 			from portage import settings
 			self.settings = config(clone=settings)
 
-		if _unused_param is not None:
+		if _unused_param is not DeprecationWarning:
 			warnings.warn("The first parameter of the " + \
 				"portage.dbapi.porttree.portdbapi" + \
 				" constructor is unused since portage-2.1.8. " + \
@@ -986,7 +986,8 @@ def close_portdbapi_caches():
 portage.process.atexit_register(portage.portageexit)
 
 class portagetree(object):
-	def __init__(self, root=None, virtual=DeprecationWarning, settings=None):
+	def __init__(self, root=DeprecationWarning, virtual=DeprecationWarning,
+		settings=None):
 		"""
 		Constructor for a PortageTree
 		
@@ -1002,7 +1003,7 @@ class portagetree(object):
 			settings = portage.settings
 		self.settings = settings
 
-		if root is not None and root != settings['ROOT']:
+		if root is not DeprecationWarning:
 			warnings.warn("The root parameter of the " + \
 				"portage.dbapi.porttree.portagetree" + \
 				" constructor is now unused. Use " + \
