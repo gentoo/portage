@@ -620,11 +620,17 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	if not cleanlist and "--quiet" in myopts:
 		return rval
 
+	set_atoms = {}
+	for k in ("system", "selected"):
+		try:
+			set_atoms[k] = root_config.setconfig.getSetAtoms(k)
+		except portage.exception.PackageSetNotFound:
+			# A nested set could not be resolved, so ignore nested sets.
+			set_atoms[k] = root_config.sets[k].getAtoms()
+
 	print("Packages installed:   " + str(len(vardb.cpv_all())))
-	print("Packages in world:    " + \
-		str(len(root_config.sets["selected"].getAtoms())))
-	print("Packages in system:   " + \
-		str(len(root_config.sets["system"].getAtoms())))
+	print("Packages in world:    %d" % len(set_atoms["selected"]))
+	print("Packages in system:   %d" % len(set_atoms["system"]))
 	print("Required packages:    "+str(req_pkg_count))
 	if "--pretend" in myopts:
 		print("Number to remove:     "+str(len(cleanlist)))
@@ -657,13 +663,21 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	required_sets[protected_set_name] = protected_set
 	system_set = psets["system"]
 
-	if not system_set or not selected_set:
+	set_atoms = {}
+	for k in ("system", "selected"):
+		try:
+			set_atoms[k] = root_config.setconfig.getSetAtoms(k)
+		except portage.exception.PackageSetNotFound:
+			# A nested set could not be resolved, so ignore nested sets.
+			set_atoms[k] = root_config.sets[k].getAtoms()
 
-		if not system_set:
+	if not set_atoms["system"] or not set_atoms["selected"]:
+
+		if not set_atoms["system"]:
 			writemsg_level("!!! You have no system list.\n",
 				level=logging.ERROR, noiselevel=-1)
 
-		if not selected_set:
+		if not set_atoms["selected"]:
 			writemsg_level("!!! You have no world file.\n",
 					level=logging.WARNING, noiselevel=-1)
 
@@ -1367,21 +1381,26 @@ def action_info(settings, trees, myopts, myfiles):
 	portdb = trees[eroot]['porttree'].dbapi
 	bindb = trees[eroot]["bintree"].dbapi
 	for x in myfiles:
-		match_found = False
-		cp_exists = False
+		any_match = False
+		cp_exists = bool(vardb.match(x.cp))
 		installed_match = vardb.match(x)
 		for installed in installed_match:
 			mypkgs.append((installed, "installed"))
-			match_found = True
+			any_match = True
 
-		if match_found:
+		if any_match:
 			continue
 
 		for db, pkg_type in ((portdb, "ebuild"), (bindb, "binary")):
 			if pkg_type == "binary" and "--usepkg" not in myopts:
 				continue
 
-			if not cp_exists and db.cp_list(x.cp):
+			# Use match instead of cp_list, to account for old-style virtuals.
+			if not cp_exists and db.match(x.cp):
+				cp_exists = True
+			# Search for masked packages too.
+			if not cp_exists and hasattr(db, "xmatch") and \
+				db.xmatch("match-all", x.cp):
 				cp_exists = True
 
 			matches = db.match(x)
@@ -1395,10 +1414,9 @@ def action_info(settings, trees, myopts, myfiles):
 				if metadata["EAPI"] not in ("0", "1", "2", "3") and \
 					"info" in metadata["DEFINED_PHASES"].split():
 					mypkgs.append((match, pkg_type))
-					match_found = True
 					break
 
-		if not match_found:
+		if not cp_exists:
 			xinfo = '"%s"' % x.unevaluated_atom
 			# Discard null/ from failed cpv_expand category expansion.
 			xinfo = xinfo.replace("null/", "")
@@ -1407,8 +1425,7 @@ def action_info(settings, trees, myopts, myfiles):
 			writemsg("\nemerge: there are no ebuilds to satisfy %s.\n" %
 				colorize("INFORM", xinfo), noiselevel=-1)
 
-			if not cp_exists and myopts.get(
-				"--misspell-suggestions", "y") != "n":
+			if myopts.get("--misspell-suggestions", "y") != "n":
 
 				writemsg("\nemerge: searching for similar names..."
 					, noiselevel=-1)
@@ -2096,8 +2113,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				"control (contains %s).\n!!! Aborting rsync sync.\n") % \
 				(myportdir, vcs_dir), level=logging.ERROR, noiselevel=-1)
 			return 1
-		if not os.path.exists(EPREFIX + "/usr/bin/rsync"):
-			print("!!! " + EPREFIX + "/usr/bin/rsync does not exist, so rsync support is disabled.")
+		rsync_binary = portage.process.find_binary("rsync")
+		if rsync_binary is None:
+			print("!!! /usr/bin/rsync does not exist, so rsync support is disabled.")
 			print("!!! Type \"emerge net-misc/rsync\" to enable rsync support.")
 			sys.exit(1)
 		mytimeout=180
@@ -2322,7 +2340,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			if mytimestamp != 0 and "--quiet" not in myopts:
 				print(">>> Checking server timestamp ...")
 
-			rsynccommand = [EPREFIX + "/usr/bin/rsync"] + rsync_opts + extra_rsync_opts
+			rsynccommand = [rsync_binary] + rsync_opts + extra_rsync_opts
 
 			if "--debug" in myopts:
 				print(rsynccommand)

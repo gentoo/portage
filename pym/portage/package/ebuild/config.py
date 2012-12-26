@@ -180,7 +180,8 @@ class config(object):
 		@type config_incrementals: List
 		@param config_root: path to read local config from (defaults to "/", see PORTAGE_CONFIGROOT)
 		@type config_root: String
-		@param target_root: __init__ override of $ROOT env variable.
+		@param target_root: the target root, which typically corresponds to the
+			value of the $ROOT env variable (default is /)
 		@type target_root: String
 		@param eprefix: set the EPREFIX variable (default is portage.const.EPREFIX)
 		@type eprefix: String

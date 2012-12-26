@@ -2405,7 +2405,7 @@ class depgraph(object):
 				#      came from, if any.
 				#   2) It takes away freedom from the resolver to choose other
 				#      possible expansions when necessary.
-				if "/" in x:
+				if "/" in x.split(":")[0]:
 					args.append(AtomArg(arg=x, atom=Atom(x, allow_repo=True),
 						root_config=root_config))
 					continue
@@ -4109,6 +4109,9 @@ class depgraph(object):
 
 		for flag, state in target_use.items():
 			real_flag = pkg.iuse.get_real_flag(flag)
+			if real_flag is None:
+				# Triggered by use-dep defaults.
+				continue
 			if state:
 				if real_flag not in old_use:
 					if new_changes.get(real_flag) == False:
@@ -7575,8 +7578,10 @@ def show_masked_packages(masked_packages):
 			shown_comments.add(comment)
 		portdb = root_config.trees["porttree"].dbapi
 		for l in missing_licenses:
-			l_path = portdb.findLicensePath(l)
 			if l in shown_licenses:
+				continue
+			l_path = portdb.findLicensePath(l)
+			if l_path is None:
 				continue
 			msg = ("A copy of the '%s' license" + \
 			" is located at '%s'.\n\n") % (l, l_path)

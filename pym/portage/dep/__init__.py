@@ -64,7 +64,7 @@ def _get_slot_re(eapi_attrs):
 		return slot_re
 
 	if eapi_attrs.slot_operator:
-		slot_re = _slot + r'(/' + _slot + r'=?)?'
+		slot_re = _slot + r'(/' + _slot + r')?'
 	else:
 		slot_re = _slot
 

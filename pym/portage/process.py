@@ -242,7 +242,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	# default to propagating our stdin, stdout and stderr.
 	if fd_pipes is None:
 		fd_pipes = {
-			0:sys.__stdin__.fileno(),
+			0:portage._get_stdin().fileno(),
 			1:sys.__stdout__.fileno(),
 			2:sys.__stderr__.fileno(),
 		}

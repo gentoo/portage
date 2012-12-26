@@ -1,4 +1,4 @@
-.TH "EBUILD" "5" "Oct 2012" "Portage VERSION" "Portage"
+.TH "EBUILD" "5" "Dec 2012" "Portage VERSION" "Portage"
 
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
@@ -780,6 +780,11 @@ This should contain a list of file paths, relative to the image directory, of
 shared libraries that have SONAMEs but should not have a corresponding SONAME
 symlink in the same directory. The paths may contain regular expressions
 with escape\-quoted special characters.
+.TP
+.B QA_CONFIGURE_OPTIONS
+This should contain a list of configure options which trigger warnings about
+unrecognized options. The options may contain regular expressions with
+escape\-quoted special characters.
 .TP
 .B QA_DT_NEEDED
 This should contain a list of file paths, relative to the image directory, of

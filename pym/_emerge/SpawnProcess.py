@@ -50,7 +50,7 @@ class SpawnProcess(SubProcess):
 			null_input = os.open('/dev/null', os.O_RDWR)
 			fd_pipes[0] = null_input
 
-		fd_pipes.setdefault(0, sys.__stdin__.fileno())
+		fd_pipes.setdefault(0, portage._get_stdin().fileno())
 		fd_pipes.setdefault(1, sys.__stdout__.fileno())
 		fd_pipes.setdefault(2, sys.__stderr__.fileno())
 

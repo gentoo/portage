@@ -91,7 +91,7 @@ class BinpkgFetcher(SpawnProcess):
 		# Redirect all output to stdout since some fetchers like
 		# wget pollute stderr (if portage detects a problem then it
 		# can send it's own message to stderr).
-		fd_pipes.setdefault(0, sys.__stdin__.fileno())
+		fd_pipes.setdefault(0, portage._get_stdin().fileno())
 		fd_pipes.setdefault(1, sys.__stdout__.fileno())
 		fd_pipes.setdefault(2, sys.__stdout__.fileno())
 

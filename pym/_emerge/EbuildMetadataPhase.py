@@ -6,7 +6,7 @@ import sys
 from portage.cache.mappings import slot_dict_class
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.package.ebuild._eapi_invalid:eapi_invalid',
+	'portage.package.ebuild._metadata_invalid:eapi_invalid',
 )
 from portage import os
 from portage import _encodings

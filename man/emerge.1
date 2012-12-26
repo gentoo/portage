@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Nov 2012" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Dec 2012" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -785,7 +785,7 @@ packages must be available at the time of dependency calculation or emerge
 will simply abort.  Portage does not use $PORTDIR when calculating dependency 
 information so all masking information is ignored.
 .TP
-.BR "\-\-verbose " (\fB\-v\fR)
+.BR "\-\-verbose [ y | n ] (\-v short option)"
 Tell emerge to run in verbose mode.  Currently this flag causes emerge to print 
 out GNU info errors, if any, and to show the USE flags that will be used for 
 each package when pretending. The following symbols are affixed to USE flags

@@ -653,15 +653,21 @@ class Package(Task):
 			return missing_iuse
 
 		def get_real_flag(self, flag):
+			"""
+			Returns the flag's name within the scope of this package
+			(accounting for aliases), or None if the flag is unknown.
+			"""
 			if flag in self.all:
 				return flag
 			elif flag in self.all_aliases:
 				for k, v in self.alias_mapping.items():
 					if flag in v:
 						return k
-			else:
-				raise ValueError("'%s' flag is not in IUSE and is not an alias of any flag in IUSE of '%s::%s'" %
-					(flag, self._pkg.cpv, self._pkg.repo))
+
+			if self._iuse_implicit_match(flag):
+				return flag
+
+			return None
 
 	def __len__(self):
 		return 4

@@ -260,7 +260,7 @@ def _pkgindex_cpv_map_latest_build(pkgindex):
 
 class binarytree(object):
 	"this tree scans for a list of all packages available in PKGDIR"
-	def __init__(self, _unused=None, pkgdir=None,
+	def __init__(self, _unused=DeprecationWarning, pkgdir=None,
 		virtual=DeprecationWarning, settings=None):
 
 		if pkgdir is None:
@@ -269,11 +269,11 @@ class binarytree(object):
 		if settings is None:
 			raise TypeError("settings parameter is required")
 
-		if _unused is not None and _unused != settings['ROOT']:
-			warnings.warn("The root parameter of the "
+		if _unused is not DeprecationWarning:
+			warnings.warn("The first parameter of the "
 				"portage.dbapi.bintree.binarytree"
-				" constructor is now unused. Use "
-				"settings['ROOT'] instead.",
+				" constructor is now unused. Instead "
+				"settings['ROOT'] is used.",
 				DeprecationWarning, stacklevel=2)
 
 		if virtual is not DeprecationWarning:

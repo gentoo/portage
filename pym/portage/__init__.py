@@ -340,6 +340,17 @@ _internal_warnings = False
 
 _sync_disabled_warnings = False
 
+def _get_stdin():
+	"""
+	Buggy code in python's multiprocessing/process.py closes sys.stdin
+	and reassigns it to open(os.devnull), but fails to update the
+	corresponding __stdin__ reference. So, detect that case and handle
+	it appropriately.
+	"""
+	if not sys.__stdin__.closed:
+		return sys.__stdin__
+	return sys.stdin
+
 def _shell_quote(s):
 	"""
 	Quote a string in double-quotes and use backslashes to

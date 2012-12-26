@@ -463,7 +463,7 @@ def spawn_shell(cmd):
         sys.__stdout__.flush()
         sys.__stderr__.flush()
         spawn([shell, "-c", cmd], env=os.environ,
-            fd_pipes = {  0 : sys.__stdin__.fileno(),
+            fd_pipes = {  0 : portage._get_stdin().fileno(),
                           1 : sys.__stdout__.fileno(),
                           2 : sys.__stderr__.fileno()})
     else:
