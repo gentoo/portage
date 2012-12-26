@@ -30,7 +30,7 @@ install_symlink_html_docs() {
 		local mydocdir docdir
 		for docdir in "${HTMLDOC_DIR:-does/not/exist}" "${PF}/html" "${PF}/HTML" "${P}/html" "${P}/HTML" ; do
 			if [ -d "usr/share/doc/${docdir}" ] ; then
-				mydocdir="${EPREFIX}/usr/share/doc/${docdir}"
+				mydocdir="/usr/share/doc/${docdir}"
 			fi
 		done
 		if [ -n "${mydocdir}" ] ; then
