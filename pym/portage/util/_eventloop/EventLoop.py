@@ -2,12 +2,17 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
-import fcntl
 import logging
 import os
 import select
 import signal
 import time
+
+try:
+	import fcntl
+except ImportError:
+	#  http://bugs.jython.org/issue1074
+	fcntl = None
 
 try:
 	import threading
@@ -54,7 +59,7 @@ class EventLoop(object):
 			that global_event_loop does not need constructor arguments)
 		@type main: bool
 		"""
-		self._use_signal = main
+		self._use_signal = main and fcntl is not None
 		self._thread_rlock = threading.RLock()
 		self._poll_event_queue = []
 		self._poll_event_handlers = {}
@@ -524,7 +529,12 @@ def can_poll_device():
 		return _can_poll_device
 
 	p = select.poll()
-	p.register(dev_null.fileno(), PollConstants.POLLIN)
+	try:
+		p.register(dev_null.fileno(), PollConstants.POLLIN)
+	except TypeError:
+		# Jython: Object 'org.python.core.io.FileIO@f8f175' is not watchable
+		_can_poll_device = False
+		return _can_poll_device
 
 	invalid_request = False
 	for f, event in p.poll():
