@@ -4731,15 +4731,10 @@ class dblink(object):
 			"merge-sync" not in self.settings.features:
 			return
 
+		syncfs_failed = False
 		syncfs = _get_syncfs()
-		if syncfs is None:
-			try:
-				proc = subprocess.Popen(["sync"])
-			except EnvironmentError:
-				pass
-			else:
-				proc.wait()
-		else:
+
+		if syncfs is not None:
 			for path in self._device_path_map.values():
 				if path is False:
 					continue
@@ -4749,11 +4744,21 @@ class dblink(object):
 					pass
 				else:
 					try:
-						syncfs(fd)
+						if syncfs(fd) != 0:
+							# Happens with PyPy (bug #446610)
+							syncfs_failed = True
 					except OSError:
 						pass
 					finally:
 						os.close(fd)
+
+		if syncfs is None or syncfs_failed:
+			try:
+				proc = subprocess.Popen(["sync"])
+			except EnvironmentError:
+				pass
+			else:
+				proc.wait()
 
 	def merge(self, mergeroot, inforoot, myroot=None, myebuild=None, cleanup=0,
 		mydbapi=None, prev_mtimes=None, counter=None):
