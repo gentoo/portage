@@ -6,6 +6,7 @@ import subprocess
 try:
 	import threading
 except ImportError:
+	# dummy_threading will not suffice
 	threading = None
 
 from portage import os

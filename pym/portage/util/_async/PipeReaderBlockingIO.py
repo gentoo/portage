@@ -1,7 +1,11 @@
 # Copyright 2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import threading
+try:
+	import threading
+except ImportError:
+	# dummy_threading will not suffice
+	threading = None
 
 from portage import os
 from _emerge.AbstractPollTask import AbstractPollTask
