@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import io
+import platform
 import signal
 import sys
 import traceback
@@ -10,7 +11,7 @@ import errno
 import fcntl
 import portage
 from portage import os, _unicode_decode
-from portage.dbapi.vartree import _get_syncfs
+from portage.util._ctypes import find_library
 import portage.elog.messages
 from portage.util._async.ForkProcess import ForkProcess
 
@@ -44,7 +45,9 @@ class MergeProcess(ForkProcess):
 		# This caches the libc library lookup in the current
 		# process, so that it's only done once rather than
 		# for each child process.
-		_get_syncfs()
+		if platform.system() == "Linux" and \
+			"merge-sync" in settings.features:
+			find_library("c")
 
 		# Inherit stdin by default, so that the pdb SIGUSR1
 		# handler is usable for the subprocess.
