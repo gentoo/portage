@@ -1,8 +1,8 @@
-.TH "QUICKPKG" "1" "Mar 2010" "Portage VERSION" "Portage"
+.TH "QUICKPKG" "1" "Dec 2012" "Portage VERSION" "Portage"
 .SH NAME
 quickpkg \- creates portage packages
 .SH SYNOPSIS
-.B quickpkg <list of packages or package\-sets>
+.B quickpkg [options] <list of packages or package\-sets>
 .SH DESCRIPTION
 .I quickpkg
 can be utilized to quickly create a package for portage by
@@ -28,6 +28,20 @@ The second form is a portage depend atom or a portage package
 set.  The atom or set is of the same form that you would give
 \fBemerge\fR if you wanted to emerge something.
 See \fBebuild\fR(5) for full definition.
+.TP
+.BR "\-\-ignore\-default\-opts"
+Causes the \fIQUICKPKG_DEFAULT_OPTS\fR environment variable to be ignored.
+.TP
+.BR "\-\-include\-config < y | n >"
+Include all files protected by CONFIG_PROTECT (as a security precaution,
+default is 'n').
+.TP
+.BR "\-\-include\-unmodified\-config < y | n >"
+Include files protected by CONFIG_PROTECT that have not been modified
+since installation (as a security precaution, default is 'n').
+.TP
+.BR \-\-umask=UMASK
+The umask used during package creation (default is 0077).
 .SH "EXAMPLES"
 .B quickpkg
 /var/db/pkg/dev-python/pyogg-1.1
