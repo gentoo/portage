@@ -61,6 +61,7 @@ class EventLoop(object):
 		"""
 		self._use_signal = main and fcntl is not None
 		self._thread_rlock = threading.RLock()
+		self._thread_condition = threading.Condition(self._thread_rlock)
 		self._poll_event_queue = []
 		self._poll_event_handlers = {}
 		self._poll_event_handler_ids = {}
@@ -150,7 +151,19 @@ class EventLoop(object):
 
 	def iteration(self, *args):
 		"""
-		Like glib.MainContext.iteration(), runs a single iteration.
+		Like glib.MainContext.iteration(), runs a single iteration. In order
+		to avoid blocking forever when may_block is True (the default),
+		callers must be careful to ensure that at least one of the following
+		conditions is met:
+			1) An event source or timeout is registered which is guaranteed
+				to trigger at least on event (a call to an idle function
+				only counts as an event if it returns a False value which
+				causes it to stop being called)
+			2) Another thread is guaranteed to call one of the thread-safe
+				methods which notify iteration to stop waiting (such as
+				idle_add or timeout_add).
+		These rules ensure that iteration is able to block until an event
+		arrives, without doing any busy waiting that would waste CPU time.
 		@type may_block: bool
 		@param may_block: if True the call may block waiting for an event
 			(default is True).
@@ -171,19 +184,25 @@ class EventLoop(object):
 		events_handled = 0
 
 		if not event_handlers:
-			if self._run_timeouts():
-				events_handled += 1
-			if not event_handlers and not events_handled and may_block:
-				timeout = self._get_poll_timeout()
-				if timeout is not None:
+			with self._thread_condition:
+				if self._run_timeouts():
+					events_handled += 1
+				if not event_handlers and not events_handled and may_block:
 					# Block so that we don't waste cpu time by looping too
 					# quickly. This makes EventLoop useful for code that needs
 					# to wait for timeout callbacks regardless of whether or
 					# not any IO handlers are currently registered.
-					try:
-						self._poll(timeout=timeout)
-					except StopIteration:
-						pass
+					timeout = self._get_poll_timeout()
+					if timeout is None:
+						wait_timeout = None
+					else:
+						wait_timeout = float(timeout) / 1000
+					# NOTE: In order to avoid a possible infinite wait when
+					# wait_timeout is None, the previous _run_timeouts()
+					# call must have returned False *with* _thread_condition
+					# acquired. Otherwise, we would risk going to sleep after
+					# our only notify event has already passed.
+					self._thread_condition.wait(wait_timeout)
 					if self._run_timeouts():
 						events_handled += 1
 
@@ -338,16 +357,18 @@ class EventLoop(object):
 		@rtype: int
 		@return: an integer ID
 		"""
-		with self._thread_rlock:
+		with self._thread_condition:
 			source_id = self._new_source_id()
 			self._idle_callbacks[source_id] = self._idle_callback_class(
 				args=args, callback=callback, source_id=source_id)
+			self._thread_condition.notify()
 		return source_id
 
 	def _run_idle_callbacks(self):
 		# assumes caller has acquired self._thread_rlock
 		if not self._idle_callbacks:
-			return
+			return False
+		state_change = 0
 		# Iterate of our local list, since self._idle_callbacks can be
 		# modified during the exection of these callbacks.
 		for x in list(self._idle_callbacks.values()):
@@ -360,9 +381,12 @@ class EventLoop(object):
 			x.calling = True
 			try:
 				if not x.callback(*x.args):
+					state_change += 1
 					self.source_remove(x.source_id)
 			finally:
 				x.calling = False
+
+		return bool(state_change)
 
 	def timeout_add(self, interval, function, *args):
 		"""
@@ -373,7 +397,7 @@ class EventLoop(object):
 		are passed to your function when it's called. This method is
 		thread-safe.
 		"""
-		with self._thread_rlock:
+		with self._thread_condition:
 			source_id = self._new_source_id()
 			self._timeout_handlers[source_id] = \
 				self._timeout_handler_class(
@@ -382,6 +406,7 @@ class EventLoop(object):
 			if self._timeout_interval is None or \
 				self._timeout_interval > interval:
 				self._timeout_interval = interval
+			self._thread_condition.notify()
 		return source_id
 
 	def _run_timeouts(self):
@@ -393,7 +418,8 @@ class EventLoop(object):
 
 		with self._thread_rlock:
 
-			self._run_idle_callbacks()
+			if self._run_idle_callbacks():
+				calls += 1
 
 			if not self._timeout_handlers:
 				return bool(calls)
