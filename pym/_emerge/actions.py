@@ -55,6 +55,7 @@ from portage._sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, varexpand, \
 	writemsg_level, writemsg_stdout
 from portage.util.digraph import digraph
+from portage.util._async.run_main_scheduler import run_main_scheduler
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage._global_updates import _global_updates
@@ -1951,35 +1952,10 @@ def action_regen(settings, portdb, max_jobs, max_load):
 
 	regen = MetadataRegen(portdb, max_jobs=max_jobs,
 		max_load=max_load, main=True)
-	received_signal = []
 
-	def emergeexitsig(signum, frame):
-		signal.signal(signal.SIGINT, signal.SIG_IGN)
-		signal.signal(signal.SIGTERM, signal.SIG_IGN)
-		portage.util.writemsg("\n\nExiting on signal %(signal)s\n" % \
-			{"signal":signum})
-		regen.terminate()
-		received_signal.append(128 + signum)
-
-	earlier_sigint_handler = signal.signal(signal.SIGINT, emergeexitsig)
-	earlier_sigterm_handler = signal.signal(signal.SIGTERM, emergeexitsig)
-
-	try:
-		regen.start()
-		regen.wait()
-	finally:
-		# Restore previous handlers
-		if earlier_sigint_handler is not None:
-			signal.signal(signal.SIGINT, earlier_sigint_handler)
-		else:
-			signal.signal(signal.SIGINT, signal.SIG_DFL)
-		if earlier_sigterm_handler is not None:
-			signal.signal(signal.SIGTERM, earlier_sigterm_handler)
-		else:
-			signal.signal(signal.SIGTERM, signal.SIG_DFL)
-
-	if received_signal:
-		sys.exit(received_signal[0])
+	signum = run_main_scheduler(regen)
+	if signum is not None:
+		sys.exit(128 + signum)
 
 	portage.writemsg_stdout("done!\n")
 	return regen.returncode
