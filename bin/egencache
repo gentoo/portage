@@ -928,7 +928,7 @@ def egencache_main(args):
 		if options.strict_manifests == "y":
 			settings.features.add("strict")
 		else:
-			settings.features.add("discard")
+			settings.features.discard("strict")
 
 	if options.update and 'metadata-transfer' not in settings.features:
 		# Forcibly enable metadata-transfer if portdbapi has a pregenerated
