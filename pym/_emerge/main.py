@@ -169,6 +169,7 @@ def insert_optional_args(args):
 		'K' : y_or_n,
 		'q' : y_or_n,
 		'v' : y_or_n,
+		'w' : y_or_n,
 	}
 
 	arg_stack = args[:]
@@ -608,6 +609,7 @@ def parse_opts(tmpcmdline, silent=False):
 		},
 
 		"--select": {
+			"shortopt" : "-w",
 			"help"    : "add specified packages to the world set " + \
 			            "(inverse of --oneshot)",
 			"type"    : "choice",
