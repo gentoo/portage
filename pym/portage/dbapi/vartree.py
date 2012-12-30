@@ -11,6 +11,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.data:portage_gid,portage_uid,secpass',
 	'portage.dbapi.dep_expand:dep_expand',
 	'portage.dbapi._MergeProcess:MergeProcess',
+	'portage.dbapi._SyncfsProcess:SyncfsProcess',
 	'portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list,' + \
 	 	'use_reduce,_get_slot_re,_slot_separator,_repo_separator',
 	'portage.eapi:_get_eapi_attrs',
@@ -29,7 +30,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.env_update:env_update',
 	'portage.util.listdir:dircache,listdir',
 	'portage.util.movefile:movefile',
-	'portage.util._ctypes:find_library,LoadLibrary',
 	'portage.util._dyn_libs.PreservedLibsRegistry:PreservedLibsRegistry',
 	'portage.util._dyn_libs.LinkageMapELF:LinkageMapELF@LinkageMap',
 	'portage.util._async.SchedulerInterface:SchedulerInterface',
@@ -4731,28 +4731,22 @@ class dblink(object):
 			"merge-sync" not in self.settings.features:
 			return
 
-		syncfs_failed = False
-		syncfs = _get_syncfs()
+		returncode = None
+		if platform.system() == "Linux":
 
-		if syncfs is not None:
+			paths = []
 			for path in self._device_path_map.values():
-				if path is False:
-					continue
-				try:
-					fd = os.open(path, os.O_RDONLY)
-				except OSError:
-					pass
-				else:
-					try:
-						if syncfs(fd) != 0:
-							# Happens with PyPy (bug #446610)
-							syncfs_failed = True
-					except OSError:
-						pass
-					finally:
-						os.close(fd)
+				if path is not False:
+					paths.append(path)
+			paths = tuple(paths)
 
-		if syncfs is None or syncfs_failed:
+			proc = SyncfsProcess(paths=paths,
+				scheduler=(self._scheduler or
+				SchedulerInterface(EventLoop(main=False))))
+			proc.start()
+			returncode = proc.wait()
+
+		if returncode is None or returncode != os.EX_OK:
 			try:
 				proc = subprocess.Popen(["sync"])
 			except EnvironmentError:
@@ -4937,19 +4931,6 @@ class dblink(object):
 
 		finally:
 			self.unlockdb()
-
-def _get_syncfs():
-	if platform.system() == "Linux":
-		filename = find_library("c")
-		if filename is not None:
-			library = LoadLibrary(filename)
-			if library is not None:
-				try:
-					return library.syncfs
-				except AttributeError:
-					pass
-
-	return None
 
 def merge(mycat, mypkg, pkgloc, infloc,
 	myroot=None, settings=None, myebuild=None,
