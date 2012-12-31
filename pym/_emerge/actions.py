@@ -829,7 +829,12 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			msg.append("the following required packages not being installed:")
 			msg.append("")
 			for atom, parent in unresolvable:
-				msg.append("  %s pulled in by:" % (atom,))
+				if atom != atom.unevaluated_atom and \
+					vardb.match(_unicode(atom)):
+					msg.append("  %s (%s) pulled in by:" %
+						(atom.unevaluated_atom, atom))
+				else:
+					msg.append("  %s pulled in by:" % (atom,))
 				msg.append("    %s" % (parent,))
 				msg.append("")
 			msg.extend(textwrap.wrap(
