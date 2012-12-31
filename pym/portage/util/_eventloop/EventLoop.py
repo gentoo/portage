@@ -182,11 +182,13 @@ class EventLoop(object):
 		event_queue =  self._poll_event_queue
 		event_handlers = self._poll_event_handlers
 		events_handled = 0
+		timeouts_checked = False
 
 		if not event_handlers:
 			with self._thread_condition:
 				if self._run_timeouts():
 					events_handled += 1
+				timeouts_checked = True
 				if not event_handlers and not events_handled and may_block:
 					# Block so that we don't waste cpu time by looping too
 					# quickly. This makes EventLoop useful for code that needs
@@ -205,6 +207,7 @@ class EventLoop(object):
 					self._thread_condition.wait(wait_timeout)
 					if self._run_timeouts():
 						events_handled += 1
+					timeouts_checked = True
 
 			# If any timeouts have executed, then return immediately,
 			# in order to minimize latency in termination of iteration
@@ -216,6 +219,17 @@ class EventLoop(object):
 
 			if may_block:
 				timeout = self._get_poll_timeout()
+
+				# Avoid blocking for IO if there are any timeout
+				# or idle callbacks available to process.
+				if timeout != 0 and not timeouts_checked:
+					if self._run_timeouts():
+						events_handled += 1
+					timeouts_checked = True
+					if events_handled:
+						# Minimize latency for loops controlled
+						# by timeout or idle callback events.
+						timeout = 0
 			else:
 				timeout = 0
 
@@ -235,10 +249,10 @@ class EventLoop(object):
 			if not x.callback(f, event, *x.args):
 				self.source_remove(x.source_id)
 
-		# Run timeouts last, in order to minimize latency in
-		# termination of iteration loops that they may control.
-		if self._run_timeouts():
-			events_handled += 1
+		if not timeouts_checked:
+			if self._run_timeouts():
+				events_handled += 1
+			timeouts_checked = True
 
 		return bool(events_handled)
 
