@@ -66,7 +66,7 @@ class AsynchronousTask(SlotObject):
 		convenient way to trigger an asynchronous call to self.wait()
 		(in order to notify exit listeners), avoiding excessive event
 		loop recursion (or stack overflow) that synchronous calling of
-		exit listeners can cause.
+		exit listeners can cause. This method is thread-safe.
 		"""
 		self.scheduler.idle_add(self._async_wait_cb)
 
