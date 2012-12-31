@@ -32,7 +32,7 @@ class MergeListItem(CompositeTask):
 		if pkg.installed:
 			# uninstall,  executed by self.merge()
 			self.returncode = os.EX_OK
-			self.wait()
+			self._async_wait()
 			return
 
 		args_set = self.args_set

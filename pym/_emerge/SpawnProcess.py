@@ -96,7 +96,7 @@ class SpawnProcess(SubProcess):
 			# spawn failed
 			self._unregister()
 			self._set_returncode((self.pid, retval))
-			self.wait()
+			self._async_wait()
 			return
 
 		self.pid = retval[0]

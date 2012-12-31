@@ -56,7 +56,7 @@ class AbstractEbuildProcess(SpawnProcess):
 			(self.phase, self.settings['PORTAGE_BUILDDIR'])
 			self._eerror(textwrap.wrap(msg, 72))
 			self._set_returncode((self.pid, 1 << 8))
-			self.wait()
+			self._async_wait()
 			return
 
 		if self.background:

@@ -60,6 +60,20 @@ class AsynchronousTask(SlotObject):
 	def _wait(self):
 		return self.returncode
 
+	def _async_wait(self):
+		"""
+		For cases where _start exits synchronously, this method is a
+		convenient way to trigger an asynchronous call to self.wait()
+		(in order to notify exit listeners), avoiding excessive event
+		loop recursion (or stack overflow) that synchronous calling of
+		exit listeners can cause.
+		"""
+		self.scheduler.idle_add(self._async_wait_cb)
+
+	def _async_wait_cb(self):
+		self.wait()
+		return False
+
 	def cancel(self):
 		"""
 		Cancel the task, but do not wait for exit status. If asynchronous exit

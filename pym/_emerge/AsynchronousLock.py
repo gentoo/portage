@@ -49,7 +49,7 @@ class AsynchronousLock(AsynchronousTask):
 				pass
 			else:
 				self.returncode = os.EX_OK
-				self.wait()
+				self._async_wait()
 				return
 
 		if self._force_process or \

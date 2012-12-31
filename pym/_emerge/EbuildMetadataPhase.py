@@ -51,14 +51,14 @@ class EbuildMetadataPhase(SubProcess):
 			# An empty EAPI setting is invalid.
 			self._eapi_invalid(None)
 			self._set_returncode((self.pid, 1 << 8))
-			self.wait()
+			self._async_wait()
 			return
 
 		self.eapi_supported = portage.eapi_is_supported(parsed_eapi)
 		if not self.eapi_supported:
 			self.metadata = {"EAPI": parsed_eapi}
 			self._set_returncode((self.pid, os.EX_OK << 8))
-			self.wait()
+			self._async_wait()
 			return
 
 		settings = self.settings
@@ -114,7 +114,7 @@ class EbuildMetadataPhase(SubProcess):
 			# doebuild failed before spawning
 			self._unregister()
 			self._set_returncode((self.pid, retval << 8))
-			self.wait()
+			self._async_wait()
 			return
 
 		self.pid = retval[0]
