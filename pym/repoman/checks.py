@@ -506,7 +506,7 @@ class InheritEclass(LineCheck):
 			yield 'no function called from %s.eclass; please drop' % self._eclass
 
 _eclass_eapi_functions = {
-	"usex" : lambda eapi: eapi not in ("0", "1", "2", "3", "4")
+	"usex" : lambda eapi: eapi not in ("0", "1", "2", "3", "4", "4-python", "4-slot-abi")
 }
 
 # eclasses that export ${ECLASS}_src_(compile|configure|install)
