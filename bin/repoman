@@ -1267,12 +1267,12 @@ check_ebuild_notadded = not \
 	(vcs == "svn" and repolevel < 3 and options.mode != "commit")
 
 # Build a regex from thirdpartymirrors for the SRC_URI.mirror check.
-thirdpartymirrors = []
-for v in repoman_settings.thirdpartymirrors().values():
+thirdpartymirrors = {}
+for k, v in repoman_settings.thirdpartymirrors().items():
 	for v in v:
 		if not v.endswith("/"):
 			v += "/"
-		thirdpartymirrors.append(v)
+		thirdpartymirrors[v] = k
 
 class _MetadataTreeBuilder(xml.etree.ElementTree.TreeBuilder):
 	"""
@@ -1772,7 +1772,7 @@ for x in effective_scanlist:
 			for uri in portage.dep.use_reduce( \
 				myaux["SRC_URI"], matchall=True, is_src_uri=True, eapi=eapi, flat=True):
 				contains_mirror = False
-				for mirror in thirdpartymirrors:
+				for mirror, mirror_alias in thirdpartymirrors.items():
 					if uri.startswith(mirror):
 						contains_mirror = True
 						break
@@ -1781,8 +1781,8 @@ for x in effective_scanlist:
 
 				stats["SRC_URI.mirror"] += 1
 				fails["SRC_URI.mirror"].append(
-					"%s: '%s' found in thirdpartymirrors" % \
-					(relative_path, mirror))
+					"%s: '%s' found in thirdpartymirrors: 'mirror://%s'" % \
+					(relative_path, mirror, mirror_alias))
 
 		if myaux.get("PROVIDE"):
 			stats["virtual.oldstyle"]+=1
