@@ -480,6 +480,7 @@ class InheritEclass(LineCheck):
 			self._disabled = any(x in inherited for x in self._exempt_eclasses)
 		else:
 			self._disabled = False
+		self._eapi = pkg.eapi
 
 	def check(self, num, line):
 		if not self._inherit:
@@ -488,10 +489,14 @@ class InheritEclass(LineCheck):
 			if self._disabled or self._ignore_missing:
 				return
 			s = self._func_re.search(line)
-			if s:
-				self._func_call = True
-				return '%s.eclass is not inherited, but "%s" found at line: %s' % \
-					(self._eclass, s.group(3), '%d')
+			if s is not None:
+				func_name = s.group(3)
+				eapi_func = _eclass_eapi_functions.get(func_name)
+				if eapi_func is None or not eapi_func(self._eapi):
+					self._func_call = True
+					return ('%s.eclass is not inherited, '
+						'but "%s" found at line: %s') % \
+						(self._eclass, func_name, '%d')
 		elif not self._func_call:
 			self._func_call = self._func_re.search(line)
 
@@ -499,6 +504,10 @@ class InheritEclass(LineCheck):
 		if not self._disabled and self._comprehensive and self._inherit and not self._func_call:
 			self.repoman_check_name = 'inherit.unused'
 			yield 'no function called from %s.eclass; please drop' % self._eclass
+
+_eclass_eapi_functions = {
+	"usex" : lambda eapi: eapi not in ("0", "1", "2", "3", "4")
+}
 
 # eclasses that export ${ECLASS}_src_(compile|configure|install)
 _eclass_export_functions = (
