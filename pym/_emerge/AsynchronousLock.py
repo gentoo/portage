@@ -119,12 +119,12 @@ class _LockThread(AbstractPollTask):
 	def _run_lock(self):
 		self._lock_obj = lockfile(self.path, wantnewlockfile=True)
 		# Thread-safe callback to EventLoop
-		self._async_wait()
+		self.scheduler.idle_add(self._run_lock_cb)
 
-	def _async_wait_cb(self):
+	def _run_lock_cb(self):
 		self._unregister()
 		self.returncode = os.EX_OK
-		AbstractPollTask._async_wait_cb(self)
+		self.wait()
 		return False
 
 	def _cancel(self):
