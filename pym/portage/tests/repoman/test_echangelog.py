@@ -1,13 +1,9 @@
 # Copyright 2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import datetime
-import subprocess
-import sys
 import tempfile
 import time
 
-import portage
 from portage import os
 from portage import shutil
 from portage.tests import TestCase
@@ -35,7 +31,7 @@ class RepomanEchangelogTestCase(TestCase):
 
 		self.header_pkg = '# ChangeLog for %s/%s\n' % (self.cat, self.pkg)
 		self.header_copyright = '# Copyright 1999-%s Gentoo Foundation; Distributed under the GPL v2\n' % \
-			datetime.datetime.now().year
+			time.strftime('%Y', time.gmtime())
 		self.header_cvs = '# $Header: $\n'
 
 		self.changelog = os.path.join(self.pkgdir, 'ChangeLog')
