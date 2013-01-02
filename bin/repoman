@@ -1779,10 +1779,11 @@ for x in effective_scanlist:
 				if not contains_mirror:
 					continue
 
+				new_uri = "mirror://%s/%s" % (mirror_alias, uri[len(mirror):])
 				stats["SRC_URI.mirror"] += 1
 				fails["SRC_URI.mirror"].append(
-					"%s: '%s' found in thirdpartymirrors: 'mirror://%s'" % \
-					(relative_path, mirror, mirror_alias))
+					"%s: '%s' found in thirdpartymirrors, use '%s'" % \
+					(relative_path, mirror, new_uri))
 
 		if myaux.get("PROVIDE"):
 			stats["virtual.oldstyle"]+=1
