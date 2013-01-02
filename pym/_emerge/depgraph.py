@@ -41,6 +41,7 @@ from portage.util import ensure_dirs
 from portage.util import writemsg_level, write_atomic
 from portage.util.digraph import digraph
 from portage.util.listdir import _ignorecvs_dirs
+from portage.util._async.TaskScheduler import TaskScheduler
 from portage.versions import catpkgsplit
 
 from _emerge.AtomArg import AtomArg
@@ -54,6 +55,7 @@ from _emerge.DependencyArg import DependencyArg
 from _emerge.DepPriority import DepPriority
 from _emerge.DepPriorityNormalRange import DepPriorityNormalRange
 from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
+from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 from _emerge.FakeVartree import FakeVartree
 from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
 from _emerge.is_valid_package_atom import insert_category_into_atom, \
@@ -551,16 +553,58 @@ class depgraph(object):
 				fakedb = self._dynamic_config._graph_trees[
 					myroot]["vartree"].dbapi
 
-				for pkg in vardb:
-					self._spinner_update()
-					if dynamic_deps:
-						# This causes FakeVartree to update the
-						# Package instance dependencies via
-						# PackageVirtualDbapi.aux_update()
-						vardb.aux_get(pkg.cpv, [])
-					fakedb.cpv_inject(pkg)
+				if not dynamic_deps:
+					for pkg in vardb:
+						fakedb.cpv_inject(pkg)
+				else:
+					max_jobs = self._frozen_config.myopts.get("--jobs")
+					max_load = self._frozen_config.myopts.get("--load-average")
+					scheduler = TaskScheduler(
+						self._dynamic_deps_preload(fake_vartree, fakedb),
+						max_jobs=max_jobs,
+						max_load=max_load,
+						event_loop=fake_vartree._portdb._event_loop)
+					scheduler.start()
+					scheduler.wait()
 
 		self._dynamic_config._vdb_loaded = True
+
+	def _dynamic_deps_preload(self, fake_vartree, fakedb):
+		portdb = fake_vartree._portdb
+		for pkg in fake_vartree.dbapi:
+			self._spinner_update()
+			fakedb.cpv_inject(pkg)
+			ebuild_path, repo_path = \
+				portdb.findname2(pkg.cpv, myrepo=pkg.repo)
+			if ebuild_path is None:
+				fake_vartree.dynamic_deps_preload(pkg, None)
+				continue
+			metadata, ebuild_hash = portdb._pull_valid_cache(
+				pkg.cpv, ebuild_path, repo_path)
+			if metadata is not None:
+				fake_vartree.dynamic_deps_preload(pkg, metadata)
+			else:
+				proc =  EbuildMetadataPhase(cpv=pkg.cpv,
+					ebuild_hash=ebuild_hash,
+					portdb=portdb, repo_path=repo_path,
+					settings=portdb.doebuild_settings)
+				proc.addExitListener(
+					self._dynamic_deps_proc_exit(pkg, fake_vartree))
+				yield proc
+
+	class _dynamic_deps_proc_exit(object):
+
+		__slots__ = ('_pkg', '_fake_vartree')
+
+		def __init__(self, pkg, fake_vartree):
+			self._pkg = pkg
+			self._fake_vartree = fake_vartree
+
+		def __call__(self, proc):
+			metadata = None
+			if proc.returncode == os.EX_OK:
+				metadata = proc.metadata
+			self._fake_vartree.dynamic_deps_preload(self._pkg, metadata)
 
 	def _spinner_update(self):
 		if self._frozen_config.spinner:

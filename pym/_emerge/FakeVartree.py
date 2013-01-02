@@ -167,6 +167,13 @@ class FakeVartree(vartree):
 			perform_global_updates(
 				pkg.cpv, self.dbapi, self._global_updates)
 
+	def dynamic_deps_preload(self, pkg, metadata):
+		if metadata is not None:
+			metadata = dict((k, metadata.get(k, ''))
+				for k in self._portdb_keys)
+		self._apply_dynamic_deps(pkg, metadata)
+		self._aux_get_history.add(pkg.cpv)
+
 	def cpv_discard(self, pkg):
 		"""
 		Discard a package from the fake vardb if it exists.
