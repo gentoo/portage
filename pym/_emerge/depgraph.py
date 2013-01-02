@@ -7477,7 +7477,7 @@ def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 	skip_masked = True
 	skip_unsatisfied = True
 	mergelist = mtimedb["resume"]["mergelist"]
-	dropped_tasks = set()
+	dropped_tasks = {}
 	frozen_config = _frozen_depgraph_config(settings, trees,
 		myopts, spinner)
 	while True:
@@ -7491,12 +7491,21 @@ def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 				raise
 
 			graph = mydepgraph._dynamic_config.digraph
-			unsatisfied_parents = dict((dep.parent, dep.parent) \
-				for dep in e.value)
+			unsatisfied_parents = {}
 			traversed_nodes = set()
-			unsatisfied_stack = list(unsatisfied_parents)
+			unsatisfied_stack = [(dep.parent, dep.atom) for dep in e.value]
 			while unsatisfied_stack:
-				pkg = unsatisfied_stack.pop()
+				pkg, atom = unsatisfied_stack.pop()
+				if atom is not None and \
+					mydepgraph._select_pkg_from_installed(
+					pkg.root, atom)[0] is not None:
+					continue
+				atoms = unsatisfied_parents.get(pkg)
+				if atoms is None:
+					atoms = []
+					unsatisfied_parents[pkg] = atoms
+				if atom is not None:
+					atoms.append(atom)
 				if pkg in traversed_nodes:
 					continue
 				traversed_nodes.add(pkg)
@@ -7505,7 +7514,8 @@ def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 				# package scheduled for merge, removing this
 				# package may cause the the parent package's
 				# dependency to become unsatisfied.
-				for parent_node in graph.parent_nodes(pkg):
+				for parent_node, atom in \
+					mydepgraph._dynamic_config._parent_atoms.get(pkg, []):
 					if not isinstance(parent_node, Package) \
 						or parent_node.operation not in ("merge", "nomerge"):
 						continue
@@ -7513,8 +7523,7 @@ def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 					# ensure that a package with an unsatisfied depenedency
 					# won't get pulled in, even indirectly via a soft
 					# dependency.
-					unsatisfied_parents[parent_node] = parent_node
-					unsatisfied_stack.append(parent_node)
+					unsatisfied_stack.append((parent_node, atom))
 
 			unsatisfied_tuples = frozenset(tuple(parent_node)
 				for parent_node in unsatisfied_parents
@@ -7535,8 +7544,8 @@ def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 			# Exclude installed packages that have been removed from the graph due
 			# to failure to build/install runtime dependencies after the dependent
 			# package has already been installed.
-			dropped_tasks.update(pkg for pkg in \
-				unsatisfied_parents if pkg.operation != "nomerge")
+			dropped_tasks.update((pkg, atoms) for pkg, atoms in \
+				unsatisfied_parents.items() if pkg.operation != "nomerge")
 
 			del e, graph, traversed_nodes, \
 				unsatisfied_parents, unsatisfied_stack
