@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
@@ -110,6 +110,11 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 
 	if phase == 'depend':
 		kwargs['droppriv'] = 'userpriv' in settings.features
+		# It's not necessary to close_fds for this phase, since
+		# it should not spawn any daemons, and close_fds is
+		# best avoided since it can interact badly with some
+		# garbage collectors (see _setup_pipes docstring).
+		kwargs['close_fds'] = False
 
 	if actionmap is not None and phase in actionmap:
 		kwargs.update(actionmap[phase]["args"])
