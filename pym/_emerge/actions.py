@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -883,15 +883,27 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			required_pkgs_total += 1
 
 	def show_parents(child_node):
-		parent_nodes = graph.parent_nodes(child_node)
-		if not parent_nodes:
+		parent_atoms = \
+			resolver._dynamic_config._parent_atoms.get(child_node, [])
+
+		# Never display the special internal protected_set.
+		parent_atoms = [parent_atom for parent_atom in parent_atoms
+			if not (isinstance(parent_atom[0], SetArg) and
+			parent_atom[0].name == protected_set_name)]
+
+		if not parent_atoms:
 			# With --prune, the highest version can be pulled in without any
 			# real parent since all installed packages are pulled in.  In that
 			# case there's nothing to show here.
 			return
+		parent_atom_dict = {}
+		for parent, atom in parent_atoms:
+			parent_atom_dict.setdefault(parent, []).append(atom)
+
 		parent_strs = []
-		for node in parent_nodes:
-			parent_strs.append(str(getattr(node, "cpv", node)))
+		for parent, atoms in parent_atom_dict.items():
+			parent_strs.append("%s requires %s" %
+				(getattr(parent, "cpv", parent), ", ".join(atoms)))
 		parent_strs.sort()
 		msg = []
 		msg.append("  %s pulled in by:\n" % (child_node.cpv,))
@@ -915,12 +927,6 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			writemsg("\ndigraph:\n\n", noiselevel=-1)
 			graph.debug_print()
 			writemsg("\n", noiselevel=-1)
-
-		# Never display the special internal protected_set.
-		for node in graph:
-			if isinstance(node, SetArg) and node.name == protected_set_name:
-				graph.remove(node)
-				break
 
 		pkgs_to_remove = []
 
