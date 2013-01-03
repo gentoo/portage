@@ -1,5 +1,5 @@
 #!/usr/bin/python -O
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -36,6 +36,7 @@ if os.environ.get("SANDBOX_ON") == "1":
 
 sys.path.insert(0, pym_path)
 import portage
+portage._internal_caller = True
 from portage import os
 from portage.eapi import eapi_has_repo_deps
 from portage.util import writemsg, writemsg_stdout

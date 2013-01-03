@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 #
 # This is a helper which ebuild processes can use
@@ -38,6 +38,7 @@ if os.environ.get("SANDBOX_ON") == "1":
 			":".join(filter(None, sandbox_write))
 
 import portage
+portage._internal_caller = True
 portage._disable_legacy_globals()
 
 class EbuildIpc(object):

@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import io
@@ -17,6 +17,7 @@ from os import path as osp
 pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
 sys.path.insert(0, pym_path)
 import portage
+portage._internal_caller = True
 
 def parse_args(argv):
 	prog_name = os.path.basename(argv[0])

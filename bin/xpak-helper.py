@@ -1,10 +1,11 @@
 #!/usr/bin/python
-# Copyright 2009-2011 Gentoo Foundation
+# Copyright 2009-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import optparse
 import sys
 import portage
+portage._internal_caller = True
 from portage import os
 
 def command_recompose(args):

@@ -1,5 +1,5 @@
 #!/usr/bin/python -O
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # Next to do: dep syntax checking in mask files
@@ -38,8 +38,8 @@ from os import path as osp
 pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
 sys.path.insert(0, pym_path)
 import portage
+portage._internal_caller = True
 portage._disable_legacy_globals()
-portage._internal_warnings = True
 
 try:
 	import xml.etree.ElementTree

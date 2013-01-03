@@ -1,4 +1,4 @@
-# Copyright 1998-2012 Gentoo Foundation
+# Copyright 1998-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -197,7 +197,7 @@ class portdbapi(dbapi):
 
 	@property
 	def _event_loop(self):
-		if portage._internal_warnings:
+		if portage._internal_caller:
 			# For internal portage usage, the global_event_loop is safe.
 			return global_event_loop()
 		else:
