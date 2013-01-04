@@ -41,6 +41,9 @@ import portage
 portage._internal_caller = True
 portage._disable_legacy_globals()
 
+from portage.util._eventloop.global_event_loop import global_event_loop
+from _emerge.PipeReader import PipeReader
+
 class EbuildIpc(object):
 
 	# Timeout for each individual communication attempt (we retry
@@ -99,23 +102,22 @@ class EbuildIpc(object):
 
 		start_time = time.time()
 
-		while True:
-			try:
-				events = select.select([pr], [], [],
-					self._COMMUNICATE_RETRY_TIMEOUT_SECONDS)
-			except select.error as e:
-				portage.util.writemsg_level(
-					"ebuild-ipc: %s: %s\n" % \
-					(portage.localization._('during select'), e),
-					level=logging.ERROR, noiselevel=-1)
-				continue
+		pipe_reader = PipeReader(input_files={"pipe_read":pr},
+			scheduler=global_event_loop())
+		pipe_reader.start()
 
-			if events[0]:
+		eof = pipe_reader.poll() is not None
+
+		while not eof:
+			pipe_reader.scheduler.iteration()
+
+			eof = pipe_reader.poll() is not None
+			if eof:
 				break
-
-			if self._daemon_is_alive():
+			elif self._daemon_is_alive():
 				self._timeout_retry_msg(start_time, msg)
 			else:
+				pipe_reader.cancel()
 				self._no_daemon_msg()
 				try:
 					os.kill(pid, signal.SIGKILL)
@@ -258,7 +260,6 @@ class EbuildIpc(object):
 
 		msg = portage.localization._('during write')
 		retval = self._wait(pid, pr, msg)
-		os.close(pr)
 
 		if retval != os.EX_OK:
 			portage.util.writemsg_level(
@@ -288,7 +289,6 @@ class EbuildIpc(object):
 
 		os.close(pw)
 		retval = self._wait(pid, pr, portage.localization._('during read'))
-		os.close(pr)
 		os.close(input_fd)
 		return retval
 
