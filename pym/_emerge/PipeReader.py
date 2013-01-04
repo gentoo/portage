@@ -35,9 +35,10 @@ class PipeReader(AbstractPollTask):
 			fcntl_flags |= fcntl.FD_CLOEXEC
 
 		for f in self.input_files.values():
-			fcntl.fcntl(f.fileno(), fcntl.F_SETFL,
-				fcntl.fcntl(f.fileno(), fcntl.F_GETFL) | fcntl_flags)
-			self._reg_ids.add(self.scheduler.io_add_watch(f.fileno(),
+			fd = isinstance(f, int) and f or f.fileno()
+			fcntl.fcntl(fd, fcntl.F_SETFL,
+				fcntl.fcntl(fd, fcntl.F_GETFL) | fcntl_flags)
+			self._reg_ids.add(self.scheduler.io_add_watch(fd,
 				self._registered_events, output_handler))
 		self._registered = True
 
@@ -113,6 +114,9 @@ class PipeReader(AbstractPollTask):
 
 		if self.input_files is not None:
 			for f in self.input_files.values():
-				f.close()
+				if isinstance(f, int):
+					os.close(f)
+				else:
+					f.close()
 			self.input_files = None
 
