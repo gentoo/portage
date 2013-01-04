@@ -33,6 +33,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util._desktop_entry:validate_desktop_entry',
 	'portage.util._async.SchedulerInterface:SchedulerInterface',
 	'portage.util._eventloop.EventLoop:EventLoop',
+	'portage.util._eventloop.global_event_loop:global_event_loop',
 	'portage.util.ExtractKernelVersion:ExtractKernelVersion'
 )
 
@@ -141,7 +142,8 @@ def _spawn_phase(phase, settings, actionmap=None, **kwargs):
 		return _doebuild_spawn(phase, settings, actionmap=actionmap, **kwargs)
 
 	ebuild_phase = EbuildPhase(actionmap=actionmap, background=False,
-		phase=phase, scheduler=SchedulerInterface(EventLoop(main=False)),
+		phase=phase, scheduler=SchedulerInterface(portage._internal_caller and
+			global_event_loop() or EventLoop(main=False)),
 		settings=settings)
 	ebuild_phase.start()
 	ebuild_phase.wait()
@@ -699,7 +701,8 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 			if not returnpid and \
 				'PORTAGE_BUILDDIR_LOCKED' not in mysettings:
 				builddir_lock = EbuildBuildDir(
-					scheduler=EventLoop(main=False),
+					scheduler=(portage._internal_caller and
+						global_event_loop() or EventLoop(main=False)),
 					settings=mysettings)
 				builddir_lock.lock()
 			try:
@@ -841,7 +844,8 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 					if builddir_lock is None and \
 						'PORTAGE_BUILDDIR_LOCKED' not in mysettings:
 						builddir_lock = EbuildBuildDir(
-							scheduler=EventLoop(main=False),
+							scheduler=(portage._internal_caller and
+								global_event_loop() or EventLoop(main=False)),
 							settings=mysettings)
 						builddir_lock.lock()
 					try:
@@ -864,7 +868,8 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 			if not returnpid and \
 				'PORTAGE_BUILDDIR_LOCKED' not in mysettings:
 				builddir_lock = EbuildBuildDir(
-					scheduler=EventLoop(main=False),
+					scheduler=(portage._internal_caller and
+						global_event_loop() or EventLoop(main=False)),
 					settings=mysettings)
 				builddir_lock.lock()
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
@@ -1204,7 +1209,9 @@ def _prepare_env_file(settings):
 	"""
 
 	env_extractor = BinpkgEnvExtractor(background=False,
-		scheduler=EventLoop(main=False), settings=settings)
+		scheduler=(portage._internal_caller and
+			global_event_loop() or EventLoop(main=False)),
+		settings=settings)
 
 	if env_extractor.dest_env_exists():
 		# There are lots of possible states when doebuild()
@@ -1476,7 +1483,8 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 
 	proc = EbuildSpawnProcess(
 		background=False, args=mystring,
-		scheduler=SchedulerInterface(EventLoop(main=False)),
+		scheduler=SchedulerInterface(portage._internal_caller and
+			global_event_loop() or EventLoop(main=False)),
 		spawn_func=spawn_func,
 		settings=mysettings, **keywords)
 

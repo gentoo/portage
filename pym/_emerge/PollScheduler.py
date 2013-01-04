@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 try:
@@ -6,6 +6,7 @@ try:
 except ImportError:
 	import dummy_threading as threading
 
+import portage
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.EventLoop import EventLoop
 from portage.util._eventloop.global_event_loop import global_event_loop
@@ -35,7 +36,8 @@ class PollScheduler(object):
 		elif main:
 			self._event_loop = global_event_loop()
 		else:
-			self._event_loop = EventLoop(main=False)
+			self._event_loop = (portage._internal_caller and
+				global_event_loop() or EventLoop(main=False))
 		self._sched_iface = SchedulerInterface(self._event_loop,
 			is_background=self._is_background)
 
