@@ -84,6 +84,17 @@ class EventLoop(object):
 				# IOError: [Errno 38] Function not implemented
 				pass
 			else:
+
+				if fcntl is not None:
+					try:
+						fcntl.FD_CLOEXEC
+					except AttributeError:
+						pass
+					else:
+						fcntl.fcntl(epoll_obj.fileno(), fcntl.F_SETFL,
+							fcntl.fcntl(epoll_obj.fileno(),
+								fcntl.F_GETFL) | fcntl.FD_CLOEXEC)
+
 				self._poll_obj = _epoll_adapter(epoll_obj)
 				self.IO_ERR = select.EPOLLERR
 				self.IO_HUP = select.EPOLLHUP
