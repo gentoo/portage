@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -57,10 +57,13 @@ class TestParenReduce(TestCase):
 		)
 
 		for dep_str, expected_result in test_cases:
-			self.assertEqual(paren_reduce(dep_str), expected_result,
+			self.assertEqual(paren_reduce(dep_str, _deprecation_warn=False),
+				expected_result,
 				"input: '%s' result: %s != %s" % (dep_str,
-				paren_reduce(dep_str), expected_result))
+				paren_reduce(dep_str, _deprecation_warn=False),
+				expected_result))
 
 		for dep_str in test_cases_xfail:
 			self.assertRaisesMsg(dep_str,
-				InvalidDependString, paren_reduce, dep_str)
+				InvalidDependString, paren_reduce, dep_str,
+					_deprecation_warn=False)

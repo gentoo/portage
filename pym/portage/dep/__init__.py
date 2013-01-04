@@ -255,7 +255,7 @@ def strip_empty(myarr):
 		('portage.dep.strip_empty',), DeprecationWarning, stacklevel=2)
 	return [x for x in myarr if x]
 
-def paren_reduce(mystr):
+def paren_reduce(mystr, _deprecation_warn=True):
 	"""
 	Take a string and convert all paren enclosed entities into sublists and
 	split the list elements by spaces. All redundant brackets are removed.
@@ -269,7 +269,7 @@ def paren_reduce(mystr):
 	@rtype: Array
 	@return: The reduced string in an array
 	"""
-	if portage._internal_caller:
+	if portage._internal_caller and _deprecation_warn:
 		warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
 			('portage.dep.paren_reduce',), DeprecationWarning, stacklevel=2)
 	mysplit = mystr.split()
