@@ -145,12 +145,26 @@ class EbuildIpc(object):
 
 	def _receive_reply(self, input_fd):
 
-		buf = None
+		start_time = time.time()
 
 		pipe_reader = PipeReader(input_files={"input_fd":input_fd},
 			scheduler=global_event_loop())
 		pipe_reader.start()
-		pipe_reader.wait()
+
+		eof = pipe_reader.poll() is not None
+
+		while not eof:
+			pipe_reader._wait_loop(timeout=self._COMMUNICATE_RETRY_TIMEOUT_MS)
+			eof = pipe_reader.poll() is not None
+			if not eof:
+				if self._daemon_is_alive():
+					self._timeout_retry_msg(start_time,
+						portage.localization._('during read'))
+				else:
+					pipe_reader.cancel()
+					self._no_daemon_msg()
+					return 2
+
 		buf = pipe_reader.getvalue() 
 
 		retval = 2
