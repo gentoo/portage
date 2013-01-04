@@ -77,6 +77,7 @@ if [ ${#status_array[@]} -gt 0 ] ; then
 		[ ${#version} -gt ${max_len} ] && max_len=${#version}
 	done
 	(( columns = max_len + 2 ))
+	(( columns >= 7 )) || columns=7
 	printf "\nSummary:\n\n"
 	printf "| %-${columns}s | %s\n|" "Version" "Status"
 	(( total_cols = columns + 11 ))
