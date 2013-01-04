@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.SubProcess import SubProcess
@@ -91,8 +91,17 @@ class EbuildMetadataPhase(SubProcess):
 		files = self._files
 
 		master_fd, slave_fd = os.pipe()
+
+		fcntl_flags = os.O_NONBLOCK
+		try:
+			fcntl.FD_CLOEXEC
+		except AttributeError:
+			pass
+		else:
+			fcntl_flags |= fcntl.FD_CLOEXEC
+
 		fcntl.fcntl(master_fd, fcntl.F_SETFL,
-			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
+			fcntl.fcntl(master_fd, fcntl.F_GETFL) | fcntl_flags)
 
 		fd_pipes[self._metadata_fd] = slave_fd
 

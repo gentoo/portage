@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -308,9 +308,18 @@ class EventLoop(object):
 		if self._use_signal:
 			if self._sigchld_read is None:
 				self._sigchld_read, self._sigchld_write = os.pipe()
+
+				fcntl_flags = os.O_NONBLOCK
+				try:
+					fcntl.FD_CLOEXEC
+				except AttributeError:
+					pass
+				else:
+					fcntl_flags |= fcntl.FD_CLOEXEC
+
 				fcntl.fcntl(self._sigchld_read, fcntl.F_SETFL,
 					fcntl.fcntl(self._sigchld_read,
-					fcntl.F_GETFL) | os.O_NONBLOCK)
+					fcntl.F_GETFL) | fcntl_flags)
 
 			# The IO watch is dynamically registered and unregistered as
 			# needed, since we don't want to consider it as a valid source
