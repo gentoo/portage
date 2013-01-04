@@ -1,4 +1,4 @@
-# Copyright 2008-2012 Gentoo Foundation
+# Copyright 2008-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.SubProcess import SubProcess
@@ -18,7 +18,7 @@ class SpawnProcess(SubProcess):
 
 	_spawn_kwarg_names = ("env", "opt_name", "fd_pipes",
 		"uid", "gid", "groups", "umask", "logfile",
-		"path_lookup", "pre_exec")
+		"path_lookup", "pre_exec", "close_fds")
 
 	__slots__ = ("args",) + \
 		_spawn_kwarg_names + ("_pipe_logger", "_selinux_type",)
