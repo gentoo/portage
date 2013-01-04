@@ -46,7 +46,7 @@ class EbuildIpc(object):
 
 	# Timeout for each individual communication attempt (we retry
 	# as long as the daemon process appears to be alive).
-	_COMMUNICATE_RETRY_TIMEOUT_SECONDS = 15
+	_COMMUNICATE_RETRY_TIMEOUT_MS = 15000
 
 	def __init__(self):
 		self.fifo_dir = os.environ['PORTAGE_BUILDDIR']
@@ -106,7 +106,7 @@ class EbuildIpc(object):
 		eof = pipe_reader.poll() is not None
 
 		while not eof:
-			pipe_reader.scheduler.iteration()
+			pipe_reader._wait_loop(timeout=self._COMMUNICATE_RETRY_TIMEOUT_MS)
 
 			eof = pipe_reader.poll() is not None
 			if eof:
