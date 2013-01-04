@@ -5,12 +5,10 @@
 # This is a helper which ebuild processes can use
 # to communicate with portage's main python process.
 
-import errno
 import logging
 import os
 import pickle
 import platform
-import select
 import signal
 import sys
 import time
@@ -49,7 +47,6 @@ class EbuildIpc(object):
 	# Timeout for each individual communication attempt (we retry
 	# as long as the daemon process appears to be alive).
 	_COMMUNICATE_RETRY_TIMEOUT_SECONDS = 15
-	_BUFSIZE = 4096
 
 	def __init__(self):
 		self.fifo_dir = os.environ['PORTAGE_BUILDDIR']
@@ -148,41 +145,13 @@ class EbuildIpc(object):
 
 	def _receive_reply(self, input_fd):
 
-		# Timeouts are handled by the parent process, so just
-		# block until input is available. For maximum portability,
-		# use a single atomic read.
 		buf = None
-		while True:
-			try:
-				events = select.select([input_fd], [], [])
-			except select.error as e:
-				portage.util.writemsg_level(
-					"ebuild-ipc: %s: %s\n" % \
-					(portage.localization._('during select for read'), e),
-					level=logging.ERROR, noiselevel=-1)
-				continue
 
-			if events[0]:
-				# For maximum portability, use os.read() here since
-				# array.fromfile() and file.read() are both known to
-				# erroneously return an empty string from this
-				# non-blocking fifo stream on FreeBSD (bug #337465).
-				try:
-					buf = os.read(input_fd, self._BUFSIZE)
-				except OSError as e:
-					if e.errno != errno.EAGAIN:
-						portage.util.writemsg_level(
-							"ebuild-ipc: %s: %s\n" % \
-							(portage.localization._('read error'), e),
-							level=logging.ERROR, noiselevel=-1)
-						break
-					# Assume that another event will be generated
-					# if there's any relevant data.
-					continue
-
-				# Only one (atomic) read should be necessary.
-				if buf:
-					break
+		pipe_reader = PipeReader(input_files={"input_fd":input_fd},
+			scheduler=global_event_loop())
+		pipe_reader.start()
+		pipe_reader.wait()
+		buf = pipe_reader.getvalue() 
 
 		retval = 2
 
@@ -272,25 +241,7 @@ class EbuildIpc(object):
 			self._no_daemon_msg()
 			return 2
 
-		pr, pw = os.pipe()
-		pid = os.fork()
-
-		if pid == 0:
-			retval = 2
-			try:
-				os.close(pr)
-				retval = self._receive_reply(input_fd)
-			except SystemExit:
-				raise
-			except:
-				traceback.print_exc()
-			finally:
-				os._exit(retval)
-
-		os.close(pw)
-		retval = self._wait(pid, pr, portage.localization._('during read'))
-		os.close(input_fd)
-		return retval
+		return self._receive_reply(input_fd)
 
 def ebuild_ipc_main(args):
 	ebuild_ipc = EbuildIpc()
