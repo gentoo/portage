@@ -1616,6 +1616,29 @@ def _check_build_log(mysettings, out=None):
 			qa_configure_opts = "^%s$" % qa_configure_opts[0]
 		qa_configure_opts = re.compile(qa_configure_opts)
 
+	qa_am_maintainer_mode = []
+	try:
+		with io.open(_unicode_encode(os.path.join(
+			mysettings["PORTAGE_BUILDDIR"],
+			"build-info", "QA_AM_MAINTAINER_MODE"),
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['repo.content'],
+			errors='replace') as qa_am_maintainer_mode_f:
+			qa_am_maintainer_mode = [x for x in
+				qa_am_maintainer_mode_f.read().splitlines() if x]
+	except IOError as e:
+		if e.errno not in (errno.ENOENT, errno.ESTALE):
+			raise
+
+	if qa_am_maintainer_mode:
+		if len(qa_am_maintainer_mode) > 1:
+			qa_am_maintainer_mode = \
+				"|".join("(%s)" % x for x in qa_am_maintainer_mode)
+			qa_am_maintainer_mode = "^(%s)$" % qa_am_maintainer_mode
+		else:
+			qa_am_maintainer_mode = "^%s$" % qa_am_maintainer_mode[0]
+		qa_am_maintainer_mode = re.compile(qa_am_maintainer_mode)
+
 	# Exclude output from dev-libs/yaz-3.0.47 which looks like this:
 	#
 	#Configuration:
@@ -1636,7 +1659,9 @@ def _check_build_log(mysettings, out=None):
 		for line in f:
 			line = _unicode_decode(line)
 			if am_maintainer_mode_re.search(line) is not None and \
-				am_maintainer_mode_exclude_re.search(line) is None:
+				am_maintainer_mode_exclude_re.search(line) is None and \
+				(not qa_am_maintainer_mode or
+					qa_am_maintainer_mode.search(line) is None):
 				am_maintainer_mode.append(line.rstrip("\n"))
 
 			if bash_command_not_found_re.match(line) is not None and \
