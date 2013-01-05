@@ -1,4 +1,4 @@
-# Copyright 1998-2012 Gentoo Foundation
+# Copyright 1998-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -11,6 +11,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.data:portage_gid,portage_uid,secpass',
 	'portage.dbapi.dep_expand:dep_expand',
 	'portage.dbapi._MergeProcess:MergeProcess',
+	'portage.dbapi._SyncfsProcess:SyncfsProcess',
 	'portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list,' + \
 	 	'use_reduce,_get_slot_re,_slot_separator,_repo_separator',
 	'portage.eapi:_get_eapi_attrs',
@@ -29,7 +30,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.env_update:env_update',
 	'portage.util.listdir:dircache,listdir',
 	'portage.util.movefile:movefile',
-	'portage.util._ctypes:find_library,LoadLibrary',
 	'portage.util._dyn_libs.PreservedLibsRegistry:PreservedLibsRegistry',
 	'portage.util._dyn_libs.LinkageMapELF:LinkageMapELF@LinkageMap',
 	'portage.util._dyn_libs.LinkageMapMachO:LinkageMapMachO',
@@ -37,6 +37,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util._dyn_libs.LinkageMapXCoff:LinkageMapXCoff',
 	'portage.util._async.SchedulerInterface:SchedulerInterface',
 	'portage.util._eventloop.EventLoop:EventLoop',
+	'portage.util._eventloop.global_event_loop:global_event_loop',
 	'portage.versions:best,catpkgsplit,catsplit,cpv_getkey,vercmp,' + \
 		'_pkgsplit@pkgsplit,_pkg_str,_unknown_repo',
 	'subprocess',
@@ -1815,7 +1816,8 @@ class dblink(object):
 		if self._scheduler is None:
 			# We create a scheduler instance and use it to
 			# log unmerge output separately from merge output.
-			self._scheduler = SchedulerInterface(EventLoop(main=False))
+			self._scheduler = SchedulerInterface(portage._internal_caller and
+				global_event_loop() or EventLoop(main=False))
 		if self.settings.get("PORTAGE_BACKGROUND") == "subprocess":
 			if self.settings.get("PORTAGE_BACKGROUND_UNMERGE") == "1":
 				self.settings["PORTAGE_BACKGROUND"] = "1"
@@ -3484,7 +3486,9 @@ class dblink(object):
 							str_buffer.append(' '.join(fields))
 							str_buffer.append('\n')
 			if str_buffer:
-				os.write(self._pipe, _unicode_encode(''.join(str_buffer)))
+				str_buffer = _unicode_encode(''.join(str_buffer))
+				while str_buffer:
+					str_buffer = str_buffer[os.write(self._pipe, str_buffer):]
 
 	def _emerge_log(self, msg):
 		emergelog(False, msg)
@@ -4754,29 +4758,29 @@ class dblink(object):
 			"merge-sync" not in self.settings.features:
 			return
 
-		syncfs = _get_syncfs()
-		if syncfs is None:
+		returncode = None
+		if platform.system() == "Linux":
+
+			paths = []
+			for path in self._device_path_map.values():
+				if path is not False:
+					paths.append(path)
+			paths = tuple(paths)
+
+			proc = SyncfsProcess(paths=paths,
+				scheduler=(self._scheduler or
+				SchedulerInterface(portage._internal_caller and
+					global_event_loop() or EventLoop(main=False))))
+			proc.start()
+			returncode = proc.wait()
+
+		if returncode is None or returncode != os.EX_OK:
 			try:
 				proc = subprocess.Popen(["sync"])
 			except EnvironmentError:
 				pass
 			else:
 				proc.wait()
-		else:
-			for path in self._device_path_map.values():
-				if path is False:
-					continue
-				try:
-					fd = os.open(path, os.O_RDONLY)
-				except OSError:
-					pass
-				else:
-					try:
-						syncfs(fd)
-					except OSError:
-						pass
-					finally:
-						os.close(fd)
 
 	def merge(self, mergeroot, inforoot, myroot=None, myebuild=None, cleanup=0,
 		mydbapi=None, prev_mtimes=None, counter=None):
@@ -4790,7 +4794,8 @@ class dblink(object):
 			self.lockdb()
 		self.vartree.dbapi._bump_mtime(self.mycpv)
 		if self._scheduler is None:
-			self._scheduler = SchedulerInterface(EventLoop(main=False))
+			self._scheduler = SchedulerInterface(portage._internal_caller and
+				global_event_loop() or EventLoop(main=False))
 		try:
 			retval = self.treewalk(mergeroot, myroot, inforoot, myebuild,
 				cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes,
@@ -4956,19 +4961,6 @@ class dblink(object):
 		finally:
 			self.unlockdb()
 
-def _get_syncfs():
-	if platform.system() == "Linux":
-		filename = find_library("c")
-		if filename is not None:
-			library = LoadLibrary(filename)
-			if library is not None:
-				try:
-					return library.syncfs
-				except AttributeError:
-					pass
-
-	return None
-
 def merge(mycat, mypkg, pkgloc, infloc,
 	myroot=None, settings=None, myebuild=None,
 	mytree=None, mydbapi=None, vartree=None, prev_mtimes=None, blockers=None,
@@ -4987,7 +4979,8 @@ def merge(mycat, mypkg, pkgloc, infloc,
 	merge_task = MergeProcess(
 		mycat=mycat, mypkg=mypkg, settings=settings,
 		treetype=mytree, vartree=vartree,
-		scheduler=(scheduler or EventLoop(main=False)),
+		scheduler=(scheduler or portage._internal_caller and
+			global_event_loop() or EventLoop(main=False)),
 		background=background, blockers=blockers, pkgloc=pkgloc,
 		infloc=infloc, myebuild=myebuild, mydbapi=mydbapi,
 		prev_mtimes=prev_mtimes, logfile=settings.get('PORTAGE_LOG_FILE'))

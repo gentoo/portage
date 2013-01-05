@@ -726,7 +726,7 @@ If ebuilds using EAPIs which \fIdo not\fR support \fBHDEPEND\fR are built in
 the same \fBemerge\fR run as those using EAPIs which \fIdo\fR support
 \fBHDEPEND\fR, this option affects only the former.
 .TP
-.BR "\-\-select [ y | n ]"
+.BR "\-\-select [ y | n ] (\-w short option)"
 Add specified packages to the world set (inverse of
 \fB\-\-oneshot\fR). This is useful if you want to
 use \fBEMERGE_DEFAULT_OPTS\fR to make
@@ -1040,13 +1040,13 @@ defined in make.globals. Directory exceptions to the CONFIG_PROTECTed
 directories can be specified using the \fICONFIG_PROTECT_MASK\fR variable. To find
 files that need to be updated in /etc, type \fBfind /etc \-iname \'._cfg????_*\'\fR.
 .LP
-You can disable this feature by setting \fICONFIG_PROTECT="\-*"\fR in /etc/make.conf.
+You can disable this feature by setting \fICONFIG_PROTECT="\-*"\fR in \fBmake.conf\fR(5).
 Then, Portage will mercilessly auto\-update your config files. Alternatively,
 you can leave Config File Protection on but tell Portage that it can overwrite
 files in certain specific /etc subdirectories. For example, if you wanted
 Portage to automatically update your rc scripts and your wget configuration,
 but didn't want any other changes made without your explicit approval, you'd
-add this to /etc/make.conf:
+add this to \fBmake.conf\fR(5):
 .LP
 .I CONFIG_PROTECT_MASK="/etc/wget /etc/rc.d"
 .LP
@@ -1097,7 +1097,7 @@ This is like the world file but instead of package atoms it contains
 packages sets which always begin with the \fB@\fR character. Use
 \fB/etc/portage/sets/\fR to define user package sets.
 .TP
-.B /etc/make.conf
+.B /etc/portage/make.conf
 Contains variables for the build process, overriding those in
 \fBmake.globals\fR.
 .TP

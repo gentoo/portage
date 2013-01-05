@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -170,6 +170,7 @@ def insert_optional_args(args):
 		'K' : y_or_n,
 		'q' : y_or_n,
 		'v' : y_or_n,
+		'w' : y_or_n,
 	}
 
 	arg_stack = args[:]
@@ -609,6 +610,7 @@ def parse_opts(tmpcmdline, silent=False):
 		},
 
 		"--select": {
+			"shortopt" : "-w",
 			"help"    : "add specified packages to the world set " + \
 			            "(inverse of --oneshot)",
 			"type"    : "choice",
@@ -998,8 +1000,6 @@ def emerge_main(args=None):
 	if args is None:
 		args = sys.argv[1:]
 
-	portage._disable_legacy_globals()
-	portage._internal_warnings = True
 	# Disable color until we're sure that it should be enabled (after
 	# EMERGE_DEFAULT_OPTS has been parsed).
 	portage.output.havecolor = 0

@@ -1791,7 +1791,7 @@ class Scheduler(PollScheduler):
 			#              scope
 			e = exc
 			mydepgraph = e.depgraph
-			dropped_tasks = set()
+			dropped_tasks = {}
 
 		if e is not None:
 			def unsatisfied_resume_dep_msg():
@@ -1841,7 +1841,7 @@ class Scheduler(PollScheduler):
 		self._init_graph(mydepgraph.schedulerGraph())
 
 		msg_width = 75
-		for task in dropped_tasks:
+		for task, atoms in dropped_tasks.items():
 			if not (isinstance(task, Package) and task.operation == "merge"):
 				continue
 			pkg = task
@@ -1849,7 +1849,10 @@ class Scheduler(PollScheduler):
 				" %s" % (pkg.cpv,)
 			if pkg.root_config.settings["ROOT"] != "/":
 				msg += " for %s" % (pkg.root,)
-			msg += " dropped due to unsatisfied dependency."
+			if not atoms:
+				msg += " dropped because it is masked or unavailable"
+			else:
+				msg += " dropped because it requires %s" % ", ".join(atoms)
 			for line in textwrap.wrap(msg, msg_width):
 				eerror(line, phase="other", key=pkg.cpv)
 			settings = self.pkgsettings[pkg.root]

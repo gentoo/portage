@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Oct 2012" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Dec 2012" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -921,7 +921,7 @@ be necessary in order to continue a partially downloaded file located at
 Use \fBROOT\fR to specify the target root filesystem to be used for merging 
 packages or ebuilds.
 Typically, you should set this setting in the environment rather than in 
-\fI/etc/make.conf\fR itself.  It's commonly used for creating new build 
+\fImake.conf\fR itself. It's commonly used for creating new build
 images. Make sure you use an absolute path. Refer to the
 \fBCross-compilation\fR section of \fBebuild\fR(5) for information about
 how dependencies are handled for \fBROOT\fR.
@@ -1005,7 +1005,7 @@ Saleem Abdulrasool <compnerd@gentoo.org>
 Contains variables for the build\-process and overwrites those in make.defaults.
 .TP
 .B /usr/share/portage/config/make.globals
-Contains the default variables for the build\-process, you should edit \fI/etc/make.conf\fR instead.
+Contains the default variables for the build\-process, you should edit \fI/etc/portage/make.conf\fR instead.
 .TP
 .B /etc/portage/color.map
 Contains variables customizing colors.

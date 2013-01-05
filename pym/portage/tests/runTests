@@ -32,6 +32,7 @@ os.environ["PORTAGE_GRPNAME"] = grp.getgrgid(os.getgid()).gr_name
 sys.path.insert(0, osp.dirname(osp.dirname(osp.dirname(osp.abspath(__file__)))))
 
 import portage
+portage._internal_caller = True
 
 # Ensure that we don't instantiate portage.settings, so that tests should
 # work the same regardless of global configuration file state/existence.

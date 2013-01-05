@@ -184,13 +184,12 @@ class Manifest(object):
 		"""Parse a manifest.  If myhashdict is given then data will be added too it.
 		   Otherwise, a new dict will be created and returned."""
 		try:
-			fd = io.open(_unicode_encode(file_path,
+			with io.open(_unicode_encode(file_path,
 				encoding=_encodings['fs'], errors='strict'), mode='r',
-				encoding=_encodings['repo.content'], errors='replace')
-			if myhashdict is None:
-				myhashdict = {}
-			self._parseDigests(fd, myhashdict=myhashdict, **kwargs)
-			fd.close()
+				encoding=_encodings['repo.content'], errors='replace') as f:
+				if myhashdict is None:
+					myhashdict = {}
+				self._parseDigests(f, myhashdict=myhashdict, **kwargs)
 			return myhashdict
 		except (OSError, IOError) as e:
 			if e.errno == errno.ENOENT:

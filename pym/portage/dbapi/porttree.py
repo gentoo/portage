@@ -1,4 +1,4 @@
-# Copyright 1998-2012 Gentoo Foundation
+# Copyright 1998-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -34,6 +34,7 @@ from portage import _encodings
 from portage import _unicode_encode
 from portage import OrderedDict
 from portage.util._eventloop.EventLoop import EventLoop
+from portage.util._eventloop.global_event_loop import global_event_loop
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 
 import os as _os
@@ -96,7 +97,6 @@ class portdbapi(dbapi):
 		# this purpose because doebuild makes many changes to the config
 		# instance that is passed in.
 		self.doebuild_settings = config(clone=self.settings)
-		self._event_loop = EventLoop(main=False)
 		self.depcachedir = os.path.realpath(self.settings.depcachedir)
 		
 		if os.environ.get("SANDBOX_ON") == "1":
@@ -194,6 +194,17 @@ class portdbapi(dbapi):
 
 		self._aux_cache = {}
 		self._broken_ebuilds = set()
+
+	@property
+	def _event_loop(self):
+		if portage._internal_caller:
+			# For internal portage usage, the global_event_loop is safe.
+			return global_event_loop()
+		else:
+			# For external API consumers, use a local EventLoop, since
+			# we don't want to assume that it's safe to override the
+			# global SIGCHLD handler.
+			return EventLoop(main=False)
 
 	def _create_pregen_cache(self, tree):
 		conf = self.repositories.get_repo_for_location(tree)

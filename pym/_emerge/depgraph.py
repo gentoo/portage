@@ -41,6 +41,7 @@ from portage.util import ensure_dirs
 from portage.util import writemsg_level, write_atomic
 from portage.util.digraph import digraph
 from portage.util.listdir import _ignorecvs_dirs
+from portage.util._async.TaskScheduler import TaskScheduler
 from portage.versions import catpkgsplit
 
 from _emerge.AtomArg import AtomArg
@@ -54,6 +55,7 @@ from _emerge.DependencyArg import DependencyArg
 from _emerge.DepPriority import DepPriority
 from _emerge.DepPriorityNormalRange import DepPriorityNormalRange
 from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
+from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 from _emerge.FakeVartree import FakeVartree
 from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
 from _emerge.is_valid_package_atom import insert_category_into_atom, \
@@ -551,16 +553,58 @@ class depgraph(object):
 				fakedb = self._dynamic_config._graph_trees[
 					myroot]["vartree"].dbapi
 
-				for pkg in vardb:
-					self._spinner_update()
-					if dynamic_deps:
-						# This causes FakeVartree to update the
-						# Package instance dependencies via
-						# PackageVirtualDbapi.aux_update()
-						vardb.aux_get(pkg.cpv, [])
-					fakedb.cpv_inject(pkg)
+				if not dynamic_deps:
+					for pkg in vardb:
+						fakedb.cpv_inject(pkg)
+				else:
+					max_jobs = self._frozen_config.myopts.get("--jobs")
+					max_load = self._frozen_config.myopts.get("--load-average")
+					scheduler = TaskScheduler(
+						self._dynamic_deps_preload(fake_vartree, fakedb),
+						max_jobs=max_jobs,
+						max_load=max_load,
+						event_loop=fake_vartree._portdb._event_loop)
+					scheduler.start()
+					scheduler.wait()
 
 		self._dynamic_config._vdb_loaded = True
+
+	def _dynamic_deps_preload(self, fake_vartree, fakedb):
+		portdb = fake_vartree._portdb
+		for pkg in fake_vartree.dbapi:
+			self._spinner_update()
+			fakedb.cpv_inject(pkg)
+			ebuild_path, repo_path = \
+				portdb.findname2(pkg.cpv, myrepo=pkg.repo)
+			if ebuild_path is None:
+				fake_vartree.dynamic_deps_preload(pkg, None)
+				continue
+			metadata, ebuild_hash = portdb._pull_valid_cache(
+				pkg.cpv, ebuild_path, repo_path)
+			if metadata is not None:
+				fake_vartree.dynamic_deps_preload(pkg, metadata)
+			else:
+				proc =  EbuildMetadataPhase(cpv=pkg.cpv,
+					ebuild_hash=ebuild_hash,
+					portdb=portdb, repo_path=repo_path,
+					settings=portdb.doebuild_settings)
+				proc.addExitListener(
+					self._dynamic_deps_proc_exit(pkg, fake_vartree))
+				yield proc
+
+	class _dynamic_deps_proc_exit(object):
+
+		__slots__ = ('_pkg', '_fake_vartree')
+
+		def __init__(self, pkg, fake_vartree):
+			self._pkg = pkg
+			self._fake_vartree = fake_vartree
+
+		def __call__(self, proc):
+			metadata = None
+			if proc.returncode == os.EX_OK:
+				metadata = proc.metadata
+			self._fake_vartree.dynamic_deps_preload(self._pkg, metadata)
 
 	def _spinner_update(self):
 		if self._frozen_config.spinner:
@@ -7433,7 +7477,7 @@ def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 	skip_masked = True
 	skip_unsatisfied = True
 	mergelist = mtimedb["resume"]["mergelist"]
-	dropped_tasks = set()
+	dropped_tasks = {}
 	frozen_config = _frozen_depgraph_config(settings, trees,
 		myopts, spinner)
 	while True:
@@ -7447,12 +7491,21 @@ def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 				raise
 
 			graph = mydepgraph._dynamic_config.digraph
-			unsatisfied_parents = dict((dep.parent, dep.parent) \
-				for dep in e.value)
+			unsatisfied_parents = {}
 			traversed_nodes = set()
-			unsatisfied_stack = list(unsatisfied_parents)
+			unsatisfied_stack = [(dep.parent, dep.atom) for dep in e.value]
 			while unsatisfied_stack:
-				pkg = unsatisfied_stack.pop()
+				pkg, atom = unsatisfied_stack.pop()
+				if atom is not None and \
+					mydepgraph._select_pkg_from_installed(
+					pkg.root, atom)[0] is not None:
+					continue
+				atoms = unsatisfied_parents.get(pkg)
+				if atoms is None:
+					atoms = []
+					unsatisfied_parents[pkg] = atoms
+				if atom is not None:
+					atoms.append(atom)
 				if pkg in traversed_nodes:
 					continue
 				traversed_nodes.add(pkg)
@@ -7461,7 +7514,8 @@ def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 				# package scheduled for merge, removing this
 				# package may cause the the parent package's
 				# dependency to become unsatisfied.
-				for parent_node in graph.parent_nodes(pkg):
+				for parent_node, atom in \
+					mydepgraph._dynamic_config._parent_atoms.get(pkg, []):
 					if not isinstance(parent_node, Package) \
 						or parent_node.operation not in ("merge", "nomerge"):
 						continue
@@ -7469,8 +7523,7 @@ def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 					# ensure that a package with an unsatisfied depenedency
 					# won't get pulled in, even indirectly via a soft
 					# dependency.
-					unsatisfied_parents[parent_node] = parent_node
-					unsatisfied_stack.append(parent_node)
+					unsatisfied_stack.append((parent_node, atom))
 
 			unsatisfied_tuples = frozenset(tuple(parent_node)
 				for parent_node in unsatisfied_parents
@@ -7491,8 +7544,8 @@ def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 			# Exclude installed packages that have been removed from the graph due
 			# to failure to build/install runtime dependencies after the dependent
 			# package has already been installed.
-			dropped_tasks.update(pkg for pkg in \
-				unsatisfied_parents if pkg.operation != "nomerge")
+			dropped_tasks.update((pkg, atoms) for pkg, atoms in \
+				unsatisfied_parents.items() if pkg.operation != "nomerge")
 
 			del e, graph, traversed_nodes, \
 				unsatisfied_parents, unsatisfied_stack

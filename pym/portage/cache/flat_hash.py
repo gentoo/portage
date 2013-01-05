@@ -1,4 +1,4 @@
-# Copyright: 2005-2011 Gentoo Foundation
+# Copyright: 2005-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
 
@@ -42,11 +42,10 @@ class database(fs_template.FsBased):
 		# Don't use os.path.join, for better performance.
 		fp = self.location + _os.sep + cpv
 		try:
-			myf = io.open(_unicode_encode(fp,
+			with io.open(_unicode_encode(fp,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],
-				errors='replace')
-			try:
+				errors='replace') as myf:
 				lines = myf.read().split("\n")
 				if not lines[-1]:
 					lines.pop()
@@ -56,8 +55,6 @@ class database(fs_template.FsBased):
 					# that uses mtime mangling.
 					d['_mtime_'] = _os.fstat(myf.fileno())[stat.ST_MTIME]
 				return d
-			finally:
-				myf.close()
 		except (IOError, OSError) as e:
 			if e.errno != errno.ENOENT:
 				raise cache_errors.CacheCorruption(cpv, e)

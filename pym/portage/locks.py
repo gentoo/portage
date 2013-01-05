@@ -1,5 +1,5 @@
 # portage: Lock management code
-# Copyright 2004-2012 Gentoo Foundation
+# Copyright 2004-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
@@ -207,6 +207,15 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 			waiting_msg=waiting_msg, flags=flags)
 
 	if myfd != HARDLINK_FD:
+
+		try:
+			fcntl.FD_CLOEXEC
+		except AttributeError:
+			pass
+		else:
+			fcntl.fcntl(myfd, fcntl.F_SETFL,
+				fcntl.fcntl(myfd, fcntl.F_GETFL) | fcntl.FD_CLOEXEC)
+
 		_open_fds.add(myfd)
 
 	writemsg(str((lockfilename,myfd,unlinkfile))+"\n",1)

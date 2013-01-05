@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -56,6 +56,7 @@ from portage._sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, varexpand, \
 	writemsg_level, writemsg_stdout
 from portage.util.digraph import digraph
+from portage.util._async.run_main_scheduler import run_main_scheduler
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage._global_updates import _global_updates
@@ -286,8 +287,14 @@ def action_build(settings, trees, mtimedb,
 					"dropped due to\n" + \
 					"!!! masking or unsatisfied dependencies:\n\n",
 					noiselevel=-1)
-				for task in dropped_tasks:
-					portage.writemsg("  " + str(task) + "\n", noiselevel=-1)
+				for task, atoms in dropped_tasks.items():
+					if not atoms:
+						writemsg("  %s is masked or unavailable\n" %
+							(task,), noiselevel=-1)
+					else:
+						writemsg("  %s requires %s\n" %
+							(task, ", ".join(atoms)), noiselevel=-1)
+
 				portage.writemsg("\n", noiselevel=-1)
 			del dropped_tasks
 		else:
@@ -829,7 +836,12 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			msg.append("the following required packages not being installed:")
 			msg.append("")
 			for atom, parent in unresolvable:
-				msg.append("  %s pulled in by:" % (atom,))
+				if atom != atom.unevaluated_atom and \
+					vardb.match(_unicode(atom)):
+					msg.append("  %s (%s) pulled in by:" %
+						(atom.unevaluated_atom, atom))
+				else:
+					msg.append("  %s pulled in by:" % (atom,))
 				msg.append("    %s" % (parent,))
 				msg.append("")
 			msg.extend(textwrap.wrap(
@@ -872,15 +884,27 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			required_pkgs_total += 1
 
 	def show_parents(child_node):
-		parent_nodes = graph.parent_nodes(child_node)
-		if not parent_nodes:
+		parent_atoms = \
+			resolver._dynamic_config._parent_atoms.get(child_node, [])
+
+		# Never display the special internal protected_set.
+		parent_atoms = [parent_atom for parent_atom in parent_atoms
+			if not (isinstance(parent_atom[0], SetArg) and
+			parent_atom[0].name == protected_set_name)]
+
+		if not parent_atoms:
 			# With --prune, the highest version can be pulled in without any
 			# real parent since all installed packages are pulled in.  In that
 			# case there's nothing to show here.
 			return
+		parent_atom_dict = {}
+		for parent, atom in parent_atoms:
+			parent_atom_dict.setdefault(parent, []).append(atom)
+
 		parent_strs = []
-		for node in parent_nodes:
-			parent_strs.append(str(getattr(node, "cpv", node)))
+		for parent, atoms in parent_atom_dict.items():
+			parent_strs.append("%s requires %s" %
+				(getattr(parent, "cpv", parent), ", ".join(atoms)))
 		parent_strs.sort()
 		msg = []
 		msg.append("  %s pulled in by:\n" % (child_node.cpv,))
@@ -904,12 +928,6 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			writemsg("\ndigraph:\n\n", noiselevel=-1)
 			graph.debug_print()
 			writemsg("\n", noiselevel=-1)
-
-		# Never display the special internal protected_set.
-		for node in graph:
-			if isinstance(node, SetArg) and node.name == protected_set_name:
-				graph.remove(node)
-				break
 
 		pkgs_to_remove = []
 
@@ -1952,35 +1970,10 @@ def action_regen(settings, portdb, max_jobs, max_load):
 
 	regen = MetadataRegen(portdb, max_jobs=max_jobs,
 		max_load=max_load, main=True)
-	received_signal = []
 
-	def emergeexitsig(signum, frame):
-		signal.signal(signal.SIGINT, signal.SIG_IGN)
-		signal.signal(signal.SIGTERM, signal.SIG_IGN)
-		portage.util.writemsg("\n\nExiting on signal %(signal)s\n" % \
-			{"signal":signum})
-		regen.terminate()
-		received_signal.append(128 + signum)
-
-	earlier_sigint_handler = signal.signal(signal.SIGINT, emergeexitsig)
-	earlier_sigterm_handler = signal.signal(signal.SIGTERM, emergeexitsig)
-
-	try:
-		regen.start()
-		regen.wait()
-	finally:
-		# Restore previous handlers
-		if earlier_sigint_handler is not None:
-			signal.signal(signal.SIGINT, earlier_sigint_handler)
-		else:
-			signal.signal(signal.SIGINT, signal.SIG_DFL)
-		if earlier_sigterm_handler is not None:
-			signal.signal(signal.SIGTERM, earlier_sigterm_handler)
-		else:
-			signal.signal(signal.SIGTERM, signal.SIG_DFL)
-
-	if received_signal:
-		sys.exit(received_signal[0])
+	signum = run_main_scheduler(regen)
+	if signum is not None:
+		sys.exit(128 + signum)
 
 	portage.writemsg_stdout("done!\n")
 	return regen.returncode

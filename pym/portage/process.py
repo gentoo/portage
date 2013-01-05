@@ -1,5 +1,5 @@
 # portage.py -- core Portage functionality
-# Copyright 1998-2012 Gentoo Foundation
+# Copyright 1998-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -180,7 +180,7 @@ atexit_register(cleanup)
 
 def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
           uid=None, gid=None, groups=None, umask=None, logfile=None,
-          path_lookup=True, pre_exec=None):
+          path_lookup=True, pre_exec=None, close_fds=True):
 	"""
 	Spawns a given command.
 	
@@ -191,6 +191,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	@param opt_name: an optional name for the spawn'd process (defaults to the binary name)
 	@type opt_name: String
 	@param fd_pipes: A dict of mapping for pipes, { '0': stdin, '1': stdout } for example
+		(default is {0:stdin, 1:stdout, 2:stderr})
 	@type fd_pipes: Dictionary
 	@param returnpid: Return the Process IDs for a successful spawn.
 	NOTE: This requires the caller clean up all the PIDs, otherwise spawn will clean them.
@@ -209,6 +210,9 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	@type path_lookup: Boolean
 	@param pre_exec: A function to be called with no arguments just prior to the exec call.
 	@type pre_exec: callable
+	@param close_fds: If True, then close all file descriptors except those
+		referenced by fd_pipes (default is True).
+	@type close_fds: Boolean
 	
 	logfile requires stdout and stderr to be assigned to this process (ie not pointed
 	   somewhere else.)
@@ -280,7 +284,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 		if pid == 0:
 			try:
 				_exec(binary, mycommand, opt_name, fd_pipes,
-					env, gid, groups, uid, umask, pre_exec)
+					env, gid, groups, uid, umask, pre_exec, close_fds)
 			except SystemExit:
 				raise
 			except Exception as e:
@@ -356,7 +360,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	return 0
 
 def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
-	pre_exec):
+	pre_exec, close_fds):
 
 	"""
 	Execute a given binary with options
@@ -411,7 +415,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	# the parent process (see bug #289486).
 	signal.signal(signal.SIGQUIT, signal.SIG_DFL)
 
-	_setup_pipes(fd_pipes)
+	_setup_pipes(fd_pipes, close_fds=close_fds)
 
 	# Set requested process permissions.
 	if gid:

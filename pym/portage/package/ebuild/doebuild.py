@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
@@ -34,6 +34,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util._desktop_entry:validate_desktop_entry',
 	'portage.util._async.SchedulerInterface:SchedulerInterface',
 	'portage.util._eventloop.EventLoop:EventLoop',
+	'portage.util._eventloop.global_event_loop:global_event_loop',
 	'portage.util.ExtractKernelVersion:ExtractKernelVersion'
 )
 
@@ -112,6 +113,11 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 
 	if phase == 'depend':
 		kwargs['droppriv'] = 'userpriv' in settings.features
+		# It's not necessary to close_fds for this phase, since
+		# it should not spawn any daemons, and close_fds is
+		# best avoided since it can interact badly with some
+		# garbage collectors (see _setup_pipes docstring).
+		kwargs['close_fds'] = False
 
 	if actionmap is not None and phase in actionmap:
 		kwargs.update(actionmap[phase]["args"])
@@ -138,7 +144,8 @@ def _spawn_phase(phase, settings, actionmap=None, **kwargs):
 		return _doebuild_spawn(phase, settings, actionmap=actionmap, **kwargs)
 
 	ebuild_phase = EbuildPhase(actionmap=actionmap, background=False,
-		phase=phase, scheduler=SchedulerInterface(EventLoop(main=False)),
+		phase=phase, scheduler=SchedulerInterface(portage._internal_caller and
+			global_event_loop() or EventLoop(main=False)),
 		settings=settings)
 	ebuild_phase.start()
 	ebuild_phase.wait()
@@ -693,7 +700,8 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 			if not returnpid and \
 				'PORTAGE_BUILDDIR_LOCKED' not in mysettings:
 				builddir_lock = EbuildBuildDir(
-					scheduler=EventLoop(main=False),
+					scheduler=(portage._internal_caller and
+						global_event_loop() or EventLoop(main=False)),
 					settings=mysettings)
 				builddir_lock.lock()
 			try:
@@ -835,7 +843,8 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 					if builddir_lock is None and \
 						'PORTAGE_BUILDDIR_LOCKED' not in mysettings:
 						builddir_lock = EbuildBuildDir(
-							scheduler=EventLoop(main=False),
+							scheduler=(portage._internal_caller and
+								global_event_loop() or EventLoop(main=False)),
 							settings=mysettings)
 						builddir_lock.lock()
 					try:
@@ -858,7 +867,8 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 			if not returnpid and \
 				'PORTAGE_BUILDDIR_LOCKED' not in mysettings:
 				builddir_lock = EbuildBuildDir(
-					scheduler=EventLoop(main=False),
+					scheduler=(portage._internal_caller and
+						global_event_loop() or EventLoop(main=False)),
 					settings=mysettings)
 				builddir_lock.lock()
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
@@ -1198,7 +1208,9 @@ def _prepare_env_file(settings):
 	"""
 
 	env_extractor = BinpkgEnvExtractor(background=False,
-		scheduler=EventLoop(main=False), settings=settings)
+		scheduler=(portage._internal_caller and
+			global_event_loop() or EventLoop(main=False)),
+		settings=settings)
 
 	if env_extractor.dest_env_exists():
 		# There are lots of possible states when doebuild()
@@ -1490,7 +1502,8 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 
 	proc = EbuildSpawnProcess(
 		background=False, args=mystring,
-		scheduler=SchedulerInterface(EventLoop(main=False)),
+		scheduler=SchedulerInterface(portage._internal_caller and
+			global_event_loop() or EventLoop(main=False)),
 		spawn_func=spawn_func,
 		settings=mysettings, **keywords)
 
@@ -1626,6 +1639,29 @@ def _check_build_log(mysettings, out=None):
 			qa_configure_opts = "^%s$" % qa_configure_opts[0]
 		qa_configure_opts = re.compile(qa_configure_opts)
 
+	qa_am_maintainer_mode = []
+	try:
+		with io.open(_unicode_encode(os.path.join(
+			mysettings["PORTAGE_BUILDDIR"],
+			"build-info", "QA_AM_MAINTAINER_MODE"),
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['repo.content'],
+			errors='replace') as qa_am_maintainer_mode_f:
+			qa_am_maintainer_mode = [x for x in
+				qa_am_maintainer_mode_f.read().splitlines() if x]
+	except IOError as e:
+		if e.errno not in (errno.ENOENT, errno.ESTALE):
+			raise
+
+	if qa_am_maintainer_mode:
+		if len(qa_am_maintainer_mode) > 1:
+			qa_am_maintainer_mode = \
+				"|".join("(%s)" % x for x in qa_am_maintainer_mode)
+			qa_am_maintainer_mode = "^(%s)$" % qa_am_maintainer_mode
+		else:
+			qa_am_maintainer_mode = "^%s$" % qa_am_maintainer_mode[0]
+		qa_am_maintainer_mode = re.compile(qa_am_maintainer_mode)
+
 	# Exclude output from dev-libs/yaz-3.0.47 which looks like this:
 	#
 	#Configuration:
@@ -1646,7 +1682,9 @@ def _check_build_log(mysettings, out=None):
 		for line in f:
 			line = _unicode_decode(line)
 			if am_maintainer_mode_re.search(line) is not None and \
-				am_maintainer_mode_exclude_re.search(line) is None:
+				am_maintainer_mode_exclude_re.search(line) is None and \
+				(not qa_am_maintainer_mode or
+					qa_am_maintainer_mode.search(line) is None):
 				am_maintainer_mode.append(line.rstrip("\n"))
 
 			if bash_command_not_found_re.match(line) is not None and \

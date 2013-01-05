@@ -1,5 +1,5 @@
 #!@PREFIX_PORTAGE_PYTHON@
-# Copyright 2009-2012 Gentoo Foundation
+# Copyright 2009-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -44,12 +44,14 @@ from os import path as osp
 pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
 sys.path.insert(0, pym_path)
 import portage
+portage._internal_caller = True
 from portage import os, _encodings, _unicode_encode, _unicode_decode
 from _emerge.MetadataRegen import MetadataRegen
 from portage.cache.cache_errors import CacheError, StatCollision
 from portage.manifest import guessManifestFileType
 from portage.package.ebuild._parallel_manifest.ManifestScheduler import ManifestScheduler
 from portage.util import cmp_sort_key, writemsg_level
+from portage.util._async.run_main_scheduler import run_main_scheduler
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage import cpv_getkey
 from portage.dep import Atom, isjustname
@@ -358,34 +360,9 @@ class GenCache(object):
 					level=logging.ERROR, noiselevel=-1)
 
 	def run(self):
-
-		received_signal = []
-
-		def sighandler(signum, frame):
-			signal.signal(signal.SIGINT, signal.SIG_IGN)
-			signal.signal(signal.SIGTERM, signal.SIG_IGN)
-			self._regen.terminate()
-			received_signal.append(128 + signum)
-
-		earlier_sigint_handler = signal.signal(signal.SIGINT, sighandler)
-		earlier_sigterm_handler = signal.signal(signal.SIGTERM, sighandler)
-
-		try:
-			self._regen.start()
-			self._regen.wait()
-		finally:
-			# Restore previous handlers
-			if earlier_sigint_handler is not None:
-				signal.signal(signal.SIGINT, earlier_sigint_handler)
-			else:
-				signal.signal(signal.SIGINT, signal.SIG_DFL)
-			if earlier_sigterm_handler is not None:
-				signal.signal(signal.SIGTERM, earlier_sigterm_handler)
-			else:
-				signal.signal(signal.SIGTERM, signal.SIG_DFL)
-
-		if received_signal:
-			sys.exit(received_signal[0])
+		signum = run_main_scheduler(self._regen)
+		if signum is not None:
+			sys.exit(128 + signum)
 
 		self.returncode |= self._regen.returncode
 
@@ -929,7 +906,7 @@ def egencache_main(args):
 		if options.strict_manifests == "y":
 			settings.features.add("strict")
 		else:
-			settings.features.add("discard")
+			settings.features.discard("strict")
 
 	if options.update and 'metadata-transfer' not in settings.features:
 		# Forcibly enable metadata-transfer if portdbapi has a pregenerated
@@ -1059,33 +1036,9 @@ def egencache_main(args):
 			max_load=options.load_average,
 			event_loop=event_loop)
 
-		received_signal = []
-
-		def sighandler(signum, frame):
-			signal.signal(signal.SIGINT, signal.SIG_IGN)
-			signal.signal(signal.SIGTERM, signal.SIG_IGN)
-			received_signal.append(128 + signum)
-			scheduler.terminate()
-
-		earlier_sigint_handler = signal.signal(signal.SIGINT, sighandler)
-		earlier_sigterm_handler = signal.signal(signal.SIGTERM, sighandler)
-
-		try:
-			scheduler.start()
-			scheduler.wait()
-		finally:
-			# Restore previous handlers
-			if earlier_sigint_handler is not None:
-				signal.signal(signal.SIGINT, earlier_sigint_handler)
-			else:
-				signal.signal(signal.SIGINT, signal.SIG_DFL)
-			if earlier_sigterm_handler is not None:
-				signal.signal(signal.SIGTERM, earlier_sigterm_handler)
-			else:
-				signal.signal(signal.SIGTERM, signal.SIG_DFL)
-
-		if received_signal:
-			sys.exit(received_signal[0])
+		signum = run_main_scheduler(scheduler)
+		if signum is not None:
+			sys.exit(128 + signum)
 
 		if options.tolerant:
 			ret.append(os.EX_OK)

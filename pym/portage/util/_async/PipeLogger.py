@@ -1,4 +1,4 @@
-# Copyright 2008-2012 Gentoo Foundation
+# Copyright 2008-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import fcntl
@@ -38,8 +38,16 @@ class PipeLogger(AbstractPollTask):
 				uid=portage.portage_uid, gid=portage.portage_gid,
 				mode=0o660)
 
+		fcntl_flags = os.O_NONBLOCK
+		try:
+			fcntl.FD_CLOEXEC
+		except AttributeError:
+			pass
+		else:
+			fcntl_flags |= fcntl.FD_CLOEXEC
+
 		fcntl.fcntl(self.input_fd, fcntl.F_SETFL,
-			fcntl.fcntl(self.input_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
+			fcntl.fcntl(self.input_fd, fcntl.F_GETFL) | fcntl_flags)
 
 		self._reg_id = self.scheduler.io_add_watch(self.input_fd,
 			self._registered_events, self._output_handler)
@@ -78,14 +86,12 @@ class PipeLogger(AbstractPollTask):
 
 			else:
 				if not background and stdout_fd is not None:
-					write_successful = False
 					failures = 0
-					while True:
+					stdout_buf = buf
+					while stdout_buf:
 						try:
-							if not write_successful:
-								os.write(stdout_fd, buf)
-								write_successful = True
-							break
+							stdout_buf = \
+								stdout_buf[os.write(stdout_fd, stdout_buf):]
 						except OSError as e:
 							if e.errno != errno.EAGAIN:
 								raise

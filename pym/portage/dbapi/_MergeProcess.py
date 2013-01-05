@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import io
+import platform
 import signal
 import sys
 import traceback
@@ -10,7 +11,7 @@ import errno
 import fcntl
 import portage
 from portage import os, _unicode_decode
-from portage.dbapi.vartree import _get_syncfs
+from portage.util._ctypes import find_library
 import portage.elog.messages
 from portage.util._async.ForkProcess import ForkProcess
 
@@ -44,7 +45,9 @@ class MergeProcess(ForkProcess):
 		# This caches the libc library lookup in the current
 		# process, so that it's only done once rather than
 		# for each child process.
-		_get_syncfs()
+		if platform.system() == "Linux" and \
+			"merge-sync" in settings.features:
+			find_library("c")
 
 		# Inherit stdin by default, so that the pdb SIGUSR1
 		# handler is usable for the subprocess.
@@ -111,8 +114,17 @@ class MergeProcess(ForkProcess):
 		"""
 
 		elog_reader_fd, elog_writer_fd = os.pipe()
+
+		fcntl_flags = os.O_NONBLOCK
+		try:
+			fcntl.FD_CLOEXEC
+		except AttributeError:
+			pass
+		else:
+			fcntl_flags |= fcntl.FD_CLOEXEC
+
 		fcntl.fcntl(elog_reader_fd, fcntl.F_SETFL,
-			fcntl.fcntl(elog_reader_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
+			fcntl.fcntl(elog_reader_fd, fcntl.F_GETFL) | fcntl_flags)
 		blockers = None
 		if self.blockers is not None:
 			# Query blockers in the main process, since closing

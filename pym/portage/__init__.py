@@ -1,5 +1,5 @@
 # portage.py -- core Portage functionality
-# Copyright 1998-2012 Gentoo Foundation
+# Copyright 1998-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 VERSION="HEAD"
@@ -336,7 +336,7 @@ _bin_path = PORTAGE_BIN_PATH
 _pym_path = PORTAGE_PYM_PATH
 
 # Api consumers included in portage should set this to True.
-_internal_warnings = False
+_internal_caller = False
 
 _sync_disabled_warnings = False
 

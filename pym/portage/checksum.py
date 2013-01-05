@@ -50,16 +50,15 @@ class _generate_hash_function(object):
 		@type filename: String
 		@return: The hash and size of the data
 		"""
-		f = _open_file(filename)
-		blocksize = HASHING_BLOCKSIZE
-		data = f.read(blocksize)
-		size = 0
-		checksum = self._hashobject()
-		while data:
-			checksum.update(data)
-			size = size + len(data)
+		with _open_file(filename) as f:
+			blocksize = HASHING_BLOCKSIZE
+			size = 0
+			checksum = self._hashobject()
 			data = f.read(blocksize)
-		f.close()
+			while data:
+				checksum.update(data)
+				size = size + len(data)
+				data = f.read(blocksize)
 
 		return (checksum.hexdigest(), size)
 

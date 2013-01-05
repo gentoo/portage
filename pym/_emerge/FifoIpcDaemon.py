@@ -1,5 +1,11 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+try:
+	import fcntl
+except ImportError:
+	#  http://bugs.jython.org/issue1074
+	fcntl = None
 
 from portage import os
 from _emerge.AbstractPollTask import AbstractPollTask
@@ -21,6 +27,16 @@ class FifoIpcDaemon(AbstractPollTask):
 		self._files.pipe_in = \
 			os.open(self.input_fifo, os.O_RDONLY|os.O_NONBLOCK)
 
+		if fcntl is not None:
+			try:
+				fcntl.FD_CLOEXEC
+			except AttributeError:
+				pass
+			else:
+				fcntl.fcntl(self._files.pipe_in, fcntl.F_SETFL,
+					fcntl.fcntl(self._files.pipe_in,
+						fcntl.F_GETFL) | fcntl.FD_CLOEXEC)
+
 		self._reg_id = self.scheduler.io_add_watch(
 			self._files.pipe_in,
 			self._registered_events, self._input_handler)
@@ -36,6 +52,17 @@ class FifoIpcDaemon(AbstractPollTask):
 		os.close(self._files.pipe_in)
 		self._files.pipe_in = \
 			os.open(self.input_fifo, os.O_RDONLY|os.O_NONBLOCK)
+
+		if fcntl is not None:
+			try:
+				fcntl.FD_CLOEXEC
+			except AttributeError:
+				pass
+			else:
+				fcntl.fcntl(self._files.pipe_in, fcntl.F_SETFL,
+					fcntl.fcntl(self._files.pipe_in,
+						fcntl.F_GETFL) | fcntl.FD_CLOEXEC)
+
 		self._reg_id = self.scheduler.io_add_watch(
 			self._files.pipe_in,
 			self._registered_events, self._input_handler)

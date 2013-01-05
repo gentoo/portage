@@ -1,4 +1,4 @@
-.TH "EBUILD" "5" "Dec 2012" "Portage VERSION" "Portage"
+.TH "EBUILD" "5" "Jan 2013" "Portage VERSION" "Portage"
 
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
@@ -781,6 +781,11 @@ shared libraries that have SONAMEs but should not have a corresponding SONAME
 symlink in the same directory. The paths may contain regular expressions
 with escape\-quoted special characters.
 .TP
+.B QA_AM_MAINTAINER_MODE
+This should contain a list of lines containing automake missing \-\-run
+commands. The lines may contain regular expressions with escape\-quoted
+special characters.
+.TP
 .B QA_CONFIGURE_OPTIONS
 This should contain a list of configure options which trigger warnings about
 unrecognized options. The options may contain regular expressions with
@@ -1507,12 +1512,12 @@ The \fI/usr/sbin/ebuild.sh\fR script.
 .TP
 The helper apps in \fI/usr/lib/portage/bin\fR.
 .TP
-.B /etc/make.conf
+.B /etc/portage/make.conf
 Contains variables for the build\-process and overwrites those in make.defaults.
 .TP
 .B /usr/share/portage/config/make.globals
 Contains the default variables for the build\-process, you should edit
-\fI/etc/make.conf\fR instead.
+\fI/etc/portage/make.conf\fR instead.
 .TP
 .B /etc/portage/color.map
 Contains variables customizing colors.

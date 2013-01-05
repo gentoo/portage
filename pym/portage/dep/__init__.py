@@ -1,5 +1,5 @@
 # deps.py -- Portage dependency resolution functions
-# Copyright 2003-2012 Gentoo Foundation
+# Copyright 2003-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -255,7 +255,7 @@ def strip_empty(myarr):
 		('portage.dep.strip_empty',), DeprecationWarning, stacklevel=2)
 	return [x for x in myarr if x]
 
-def paren_reduce(mystr):
+def paren_reduce(mystr, _deprecation_warn=True):
 	"""
 	Take a string and convert all paren enclosed entities into sublists and
 	split the list elements by spaces. All redundant brackets are removed.
@@ -269,7 +269,7 @@ def paren_reduce(mystr):
 	@rtype: Array
 	@return: The reduced string in an array
 	"""
-	if portage._internal_warnings:
+	if portage._internal_caller and _deprecation_warn:
 		warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
 			('portage.dep.paren_reduce',), DeprecationWarning, stacklevel=2)
 	mysplit = mystr.split()
@@ -361,7 +361,7 @@ class paren_normalize(list):
 	"""Take a dependency structure as returned by paren_reduce or use_reduce
 	and generate an equivalent structure that has no redundant lists."""
 	def __init__(self, src):
-		if portage._internal_warnings:
+		if portage._internal_caller:
 			warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
 				('portage.dep.paren_normalize',), DeprecationWarning, stacklevel=2)
 		list.__init__(self)
@@ -457,7 +457,7 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 	@return: The use reduced depend array
 	"""
 	if isinstance(depstr, list):
-		if portage._internal_warnings:
+		if portage._internal_caller:
 			warnings.warn(_("Passing paren_reduced dep arrays to %s is deprecated. " + \
 				"Pass the original dep string instead.") % \
 				('portage.dep.use_reduce',), DeprecationWarning, stacklevel=2)
@@ -758,7 +758,7 @@ def dep_opconvert(deplist):
 	@return:
 		The new list with the new ordering
 	"""
-	if portage._internal_warnings:
+	if portage._internal_caller:
 		warnings.warn(_("%s is deprecated. Use %s with the opconvert parameter set to True instead.") % \
 			('portage.dep.dep_opconvert', 'portage.dep.use_reduce'), DeprecationWarning, stacklevel=2)
 
@@ -789,7 +789,7 @@ def flatten(mylist):
 	@rtype: List
 	@return: A single list containing only non-list elements.
 	"""
-	if portage._internal_warnings:
+	if portage._internal_caller:
 		warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
 			('portage.dep.flatten',), DeprecationWarning, stacklevel=2)
 

@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.SubProcess import SubProcess
@@ -51,14 +51,14 @@ class EbuildMetadataPhase(SubProcess):
 			# An empty EAPI setting is invalid.
 			self._eapi_invalid(None)
 			self._set_returncode((self.pid, 1 << 8))
-			self.wait()
+			self._async_wait()
 			return
 
 		self.eapi_supported = portage.eapi_is_supported(parsed_eapi)
 		if not self.eapi_supported:
 			self.metadata = {"EAPI": parsed_eapi}
 			self._set_returncode((self.pid, os.EX_OK << 8))
-			self.wait()
+			self._async_wait()
 			return
 
 		settings = self.settings
@@ -91,8 +91,17 @@ class EbuildMetadataPhase(SubProcess):
 		files = self._files
 
 		master_fd, slave_fd = os.pipe()
+
+		fcntl_flags = os.O_NONBLOCK
+		try:
+			fcntl.FD_CLOEXEC
+		except AttributeError:
+			pass
+		else:
+			fcntl_flags |= fcntl.FD_CLOEXEC
+
 		fcntl.fcntl(master_fd, fcntl.F_SETFL,
-			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
+			fcntl.fcntl(master_fd, fcntl.F_GETFL) | fcntl_flags)
 
 		fd_pipes[self._metadata_fd] = slave_fd
 
@@ -114,7 +123,7 @@ class EbuildMetadataPhase(SubProcess):
 			# doebuild failed before spawning
 			self._unregister()
 			self._set_returncode((self.pid, retval << 8))
-			self.wait()
+			self._async_wait()
 			return
 
 		self.pid = retval[0]

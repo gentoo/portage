@@ -1,4 +1,4 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import gzip
@@ -11,9 +11,12 @@ from ..SlotObject import SlotObject
 
 class SchedulerInterface(SlotObject):
 
-	__slots__ = ("IO_ERR", "IO_HUP", "IO_IN", "IO_NVAL", "IO_OUT", "IO_PRI",
-		"child_watch_add", "idle_add", "io_add_watch", "iteration",
-		"source_remove", "timeout_add", "_event_loop", "_is_background")
+	_event_loop_attrs = ("IO_ERR", "IO_HUP", "IO_IN",
+		"IO_NVAL", "IO_OUT", "IO_PRI",
+		"child_watch_add", "idle_add", "io_add_watch",
+		"iteration", "source_remove", "timeout_add")
+
+	__slots__ = _event_loop_attrs + ("_event_loop", "_is_background")
 
 	def __init__(self, event_loop, is_background=None, **kwargs):
 		SlotObject.__init__(self, **kwargs)
@@ -21,18 +24,8 @@ class SchedulerInterface(SlotObject):
 		if is_background is None:
 			is_background = self._return_false
 		self._is_background = is_background
-		self.IO_ERR = event_loop.IO_ERR
-		self.IO_HUP = event_loop.IO_HUP
-		self.IO_IN = event_loop.IO_IN
-		self.IO_NVAL = event_loop.IO_NVAL
-		self.IO_OUT = event_loop.IO_OUT
-		self.IO_PRI = event_loop.IO_PRI
-		self.child_watch_add = event_loop.child_watch_add
-		self.idle_add = event_loop.idle_add
-		self.io_add_watch = event_loop.io_add_watch
-		self.iteration = event_loop.iteration
-		self.source_remove = event_loop.source_remove
-		self.timeout_add = event_loop.timeout_add
+		for k in self._event_loop_attrs:
+			setattr(self, k, getattr(event_loop, k))
 
 	@staticmethod
 	def _return_false():

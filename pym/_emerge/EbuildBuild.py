@@ -36,7 +36,7 @@ class EbuildBuild(CompositeTask):
 			if rval != os.EX_OK:
 				self.returncode = rval
 				self._current_task = None
-				self.wait()
+				self._async_wait()
 				return
 
 		root_config = pkg.root_config
@@ -61,7 +61,7 @@ class EbuildBuild(CompositeTask):
 		if not self._check_manifest():
 			self.returncode = 1
 			self._current_task = None
-			self.wait()
+			self._async_wait()
 			return
 
 		prefetcher = self.prefetcher

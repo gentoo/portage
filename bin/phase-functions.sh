@@ -1,5 +1,5 @@
 #!@PREFIX_PORTAGE_BASH@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # Hardcoded bash lists are needed for backward compatibility with
@@ -561,6 +561,10 @@ __dyn_install() {
 			QA_DESKTOP_FILE ; do
 			x=$(echo -n ${!f})
 			[[ -n $x ]] && echo "$x" > $f
+		done
+		# whitespace preserved
+		for f in QA_AM_MAINTAINER_MODE ; do
+			[[ -n ${!f} ]] && echo "${!f}" > $f
 		done
 	fi
 	echo "${USE}"       > USE

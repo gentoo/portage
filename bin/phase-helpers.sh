@@ -212,9 +212,15 @@ use() {
 
 	# Make sure we have this USE flag in IUSE
 	elif [[ -n $PORTAGE_IUSE && -n $EBUILD_PHASE ]] ; then
-		[[ $u =~ $PORTAGE_IUSE ]] || \
+		if [[ ! $u =~ $PORTAGE_IUSE ]] ; then
+			if [[ ! ${EAPI} =~ ^(0|1|2|3|4|4-python|4-slot-abi)$ ]] ; then
+				# This is only strict starting with EAPI 5, since implicit IUSE
+				# is not well defined for earlier EAPIs (see bug #449708).
+				die "USE Flag '${u}' not in IUSE for ${CATEGORY}/${PF}"
+			fi
 			eqawarn "QA Notice: USE Flag '${u}' not" \
 				"in IUSE for ${CATEGORY}/${PF}"
+		fi
 	fi
 
 	local IFS=$' \t\n' prev_shopts=$- ret
