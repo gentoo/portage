@@ -86,14 +86,12 @@ class PipeLogger(AbstractPollTask):
 
 			else:
 				if not background and stdout_fd is not None:
-					write_successful = False
 					failures = 0
-					while True:
+					stdout_buf = buf
+					while stdout_buf:
 						try:
-							if not write_successful:
-								os.write(stdout_fd, buf)
-								write_successful = True
-							break
+							stdout_buf = \
+								stdout_buf[os.write(stdout_fd, stdout_buf):]
 						except OSError as e:
 							if e.errno != errno.EAGAIN:
 								raise
