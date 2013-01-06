@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -50,7 +50,7 @@ class MetadataRegen(AsyncScheduler):
 		consumer = self._consumer
 
 		for cp in self._cp_iter:
-			if self._terminated_tasks:
+			if self._terminated.is_set():
 				break
 			cp_set.add(cp)
 			portage.writemsg_stdout("Processing %s\n" % cp)
@@ -60,7 +60,7 @@ class MetadataRegen(AsyncScheduler):
 				repo = portdb.repositories.get_repo_for_location(mytree)
 				cpv_list = portdb.cp_list(cp, mytree=[repo.location])
 				for cpv in cpv_list:
-					if self._terminated_tasks:
+					if self._terminated.is_set():
 						break
 					valid_pkgs.add(cpv)
 					ebuild_path, repo_path = portdb.findname2(cpv, myrepo=repo.name)
@@ -86,6 +86,7 @@ class MetadataRegen(AsyncScheduler):
 		portdb = self._portdb
 		dead_nodes = {}
 
+		self._termination_check()
 		if self._terminated_tasks:
 			self.returncode = self._cancelled_returncode
 			return self.returncode
