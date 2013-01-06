@@ -36,7 +36,7 @@ class MetadataRegen(AsyncScheduler):
 		portage.writemsg_stdout("Listing available packages...\n")
 		every_cp = self._portdb.cp_all()
 		portage.writemsg_stdout("Regenerating cache entries...\n")
-		every_cp.sort(reverse=True)
+		every_cp.reverse()
 		try:
 			while not self._terminated_tasks:
 				yield every_cp.pop()
