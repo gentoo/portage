@@ -1,4 +1,4 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -31,7 +31,7 @@ class ManifestScheduler(AsyncScheduler):
 
 	def _iter_every_cp(self):
 		every_cp = self._portdb.cp_all()
-		every_cp.sort(reverse=True)
+		every_cp.reverse()
 		try:
 			while not self._terminated_tasks:
 				yield every_cp.pop()
@@ -44,11 +44,13 @@ class ManifestScheduler(AsyncScheduler):
 		disabled_repos = set()
 
 		for cp in self._cp_iter:
-			if self._terminated_tasks:
+			if self._terminated.is_set():
 				break
 			# We iterate over portdb.porttrees, since it's common to
 			# tweak this attribute in order to adjust repo selection.
 			for mytree in portdb.porttrees:
+				if self._terminated.is_set():
+					break
 				repo_config = portdb.repositories.get_repo_for_location(mytree)
 				if not repo_config.create_manifest:
 					if repo_config.name not in disabled_repos:
