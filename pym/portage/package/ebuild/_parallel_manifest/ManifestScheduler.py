@@ -30,13 +30,16 @@ class ManifestScheduler(AsyncScheduler):
 		return next(self._task_iter)
 
 	def _iter_every_cp(self):
-		every_cp = self._portdb.cp_all()
-		every_cp.reverse()
-		try:
-			while not self._terminated_tasks:
-				yield every_cp.pop()
-		except IndexError:
-			pass
+		# List categories individually, in order to start yielding quicker,
+		# and in order to reduce latency in case of a signal interrupt.
+		categories = sorted(self._portdb.settings.categories, reverse=True)
+		cp_all = self._portdb.cp_all
+
+		while categories:
+			category = categories.pop()
+			category_cps = cp_all(categories=(category,), reverse=True)
+			while category_cps:
+				yield category_cps.pop()
 
 	def _iter_tasks(self):
 		portdb = self._portdb

@@ -33,15 +33,16 @@ class MetadataRegen(AsyncScheduler):
 		return next(self._process_iter)
 
 	def _iter_every_cp(self):
-		portage.writemsg_stdout("Listing available packages...\n")
-		every_cp = self._portdb.cp_all()
-		portage.writemsg_stdout("Regenerating cache entries...\n")
-		every_cp.reverse()
-		try:
-			while not self._terminated_tasks:
-				yield every_cp.pop()
-		except IndexError:
-			pass
+		# List categories individually, in order to start yielding quicker,
+		# and in order to reduce latency in case of a signal interrupt.
+		categories = sorted(self._portdb.settings.categories, reverse=True)
+		cp_all = self._portdb.cp_all
+
+		while categories:
+			category = categories.pop()
+			category_cps = cp_all(categories=(category,), reverse=True)
+			while category_cps:
+				yield category_cps.pop()
 
 	def _iter_metadata_processes(self):
 		portdb = self._portdb
@@ -49,6 +50,7 @@ class MetadataRegen(AsyncScheduler):
 		cp_set = self._cp_set
 		consumer = self._consumer
 
+		portage.writemsg_stdout("Regenerating cache entries...\n")
 		for cp in self._cp_iter:
 			if self._terminated.is_set():
 				break
