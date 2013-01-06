@@ -646,13 +646,14 @@ class portdbapi(dbapi):
 		else:
 			return 0
 
-	def cp_all(self, categories=None, trees=None):
+	def cp_all(self, categories=None, trees=None, reverse=False):
 		"""
 		This returns a list of all keys in our tree or trees
 		@param categories: optional list of categories to search or 
 			defaults to self.settings.categories
 		@param trees: optional list of trees to search the categories in or
 			defaults to self.porttrees
+		@param reverse: reverse sort order (default is False)
 		@rtype list of [cat/pkg,...]
 		"""
 		d = {}
@@ -671,7 +672,7 @@ class portdbapi(dbapi):
 						continue
 					d[atom.cp] = None
 		l = list(d)
-		l.sort()
+		l.sort(reverse=reverse)
 		return l
 
 	def cp_list(self, mycp, use_cache=1, mytree=None):
