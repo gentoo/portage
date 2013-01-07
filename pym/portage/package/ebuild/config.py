@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -330,11 +330,20 @@ class config(object):
 			except OSError:
 				pass
 
+			make_conf_count = 0
 			make_conf = {}
 			for x in make_conf_paths:
-				make_conf.update(getconfig(x,
+				mygcfg = getconfig(x,
 					tolerant=tolerant, allow_sourcing=True,
-					expand=make_conf) or {})
+					expand=make_conf)
+				if mygcfg is not None:
+					make_conf.update(mygcfg)
+					make_conf_count += 1
+
+			if make_conf_count == 2:
+				writemsg("!!! %s\n" %
+					_("Found 2 make.conf files, using both '%s' and '%s'") %
+					tuple(make_conf_paths), noiselevel=-1)
 
 			# Allow ROOT setting to come from make.conf if it's not overridden
 			# by the constructor argument (from the calling environment).
