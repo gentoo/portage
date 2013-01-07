@@ -35,14 +35,10 @@ class MetadataRegen(AsyncScheduler):
 	def _iter_every_cp(self):
 		# List categories individually, in order to start yielding quicker,
 		# and in order to reduce latency in case of a signal interrupt.
-		categories = sorted(self._portdb.settings.categories, reverse=True)
 		cp_all = self._portdb.cp_all
-
-		while categories:
-			category = categories.pop()
-			category_cps = cp_all(categories=(category,), reverse=True)
-			while category_cps:
-				yield category_cps.pop()
+		for category in sorted(self._portdb.categories):
+			for cp in cp_all(categories=(category,)):
+				yield cp
 
 	def _iter_metadata_processes(self):
 		portdb = self._portdb
