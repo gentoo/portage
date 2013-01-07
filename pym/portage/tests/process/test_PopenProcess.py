@@ -1,4 +1,4 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -53,12 +53,9 @@ class PopenPipeTestCase(TestCase):
 		try:
 
 			consumer = PipeLogger(background=True,
-				input_fd=os.dup(producer.proc.stdout.fileno()),
+				input_fd=producer.proc.stdout,
 				log_file_path=log_file_path)
 
-			# Close the stdout pipe, since we duplicated it, and it
-			# must be closed in order to avoid a ResourceWarning.
-			producer.proc.stdout.close()
 			producer.pipe_reader = consumer
 
 			producer.start()

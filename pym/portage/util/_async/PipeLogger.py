@@ -46,10 +46,15 @@ class PipeLogger(AbstractPollTask):
 		else:
 			fcntl_flags |= fcntl.FD_CLOEXEC
 
-		fcntl.fcntl(self.input_fd, fcntl.F_SETFL,
-			fcntl.fcntl(self.input_fd, fcntl.F_GETFL) | fcntl_flags)
+		if isinstance(self.input_fd, int):
+			fd = self.input_fd
+		else:
+			fd = self.input_fd.fileno()
 
-		self._reg_id = self.scheduler.io_add_watch(self.input_fd,
+		fcntl.fcntl(fd, fcntl.F_SETFL,
+			fcntl.fcntl(fd, fcntl.F_GETFL) | fcntl_flags)
+
+		self._reg_id = self.scheduler.io_add_watch(fd,
 			self._registered_events, self._output_handler)
 		self._registered = True
 
@@ -133,7 +138,10 @@ class PipeLogger(AbstractPollTask):
 			self._reg_id = None
 
 		if self.input_fd is not None:
-			os.close(self.input_fd)
+			if isinstance(self.input_fd, int):
+				os.close(self.input_fd)
+			else:
+				self.input_fd.close()
 			self.input_fd = None
 
 		if self.stdout_fd is not None:
