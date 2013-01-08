@@ -27,7 +27,7 @@ from portage.const import (MANIFEST1_HASH_FUNCTIONS, MANIFEST2_HASH_DEFAULTS,
 from portage.localization import _
 
 _manifest_re = re.compile(
-	r'^(' + '|'.join(MANIFEST2_IDENTIFIERS) + ') (.*)( \d+( \S+ \S+)+)$',
+	r'^(' + '|'.join(MANIFEST2_IDENTIFIERS) + r') (.*)( \d+( \S+ \S+)+)$',
 	re.UNICODE)
 
 if sys.hexversion >= 0x3000000:
