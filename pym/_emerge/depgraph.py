@@ -6578,22 +6578,22 @@ class depgraph(object):
 
 			if root in unstable_keyword_msg:
 				writemsg("\nThe following " + colorize("BAD", "keyword changes") + \
-					" are necessary to proceed:\n", noiselevel=-1)
+					" (package.accept_keywords) are necessary to proceed:\n", noiselevel=-1)
 				writemsg(format_msg(unstable_keyword_msg[root]), noiselevel=-1)
 
 			if root in p_mask_change_msg:
 				writemsg("\nThe following " + colorize("BAD", "mask changes") + \
-					" are necessary to proceed:\n", noiselevel=-1)
+					" (package.unmask) are necessary to proceed:\n", noiselevel=-1)
 				writemsg(format_msg(p_mask_change_msg[root]), noiselevel=-1)
 
 			if root in use_changes_msg:
 				writemsg("\nThe following " + colorize("BAD", "USE changes") + \
-					" are necessary to proceed:\n", noiselevel=-1)
+					" (package.use) are necessary to proceed:\n", noiselevel=-1)
 				writemsg(format_msg(use_changes_msg[root]), noiselevel=-1)
 
 			if root in license_msg:
 				writemsg("\nThe following " + colorize("BAD", "license changes") + \
-					" are necessary to proceed:\n", noiselevel=-1)
+					" (package.license) are necessary to proceed:\n", noiselevel=-1)
 				writemsg(format_msg(license_msg[root]), noiselevel=-1)
 
 		protect_obj = {}
@@ -6680,7 +6680,9 @@ class depgraph(object):
 			writemsg("\nAutounmask changes successfully written. Remember to run dispatch-conf.\n", \
 				noiselevel=-1)
 		elif not pretend and not autounmask_write and roots:
-			writemsg("\nUse --autounmask-write to write changes to config files (honoring CONFIG_PROTECT).\n", \
+			writemsg("\nUse --autounmask-write to write changes to config files (honoring CONFIG_PROTECT).  " + \
+				"Always examine the list of proposed changes before continuing with --autounmask-write, " + \
+				"as these changes may not be safe. \n", \
 				noiselevel=-1)
 
 
