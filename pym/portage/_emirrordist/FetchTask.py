@@ -475,8 +475,8 @@ class FetchTask(CompositeTask):
 		else:
 			bad_digest = self._find_bad_digest(digester.digests)
 			if bad_digest is not None:
-				msg = "%s %s has bad %s digest: expected %s, got %s" % \
-					(self.distfile, self._current_mirror.name, bad_digest,
+				msg = "%s has bad %s digest: expected %s, got %s" % \
+					(self.distfile, bad_digest,
 					self.digests[bad_digest], digester.digests[bad_digest])
 				self.scheduler.output(msg + '\n', background=True,
 					log_path=self._log_path)
