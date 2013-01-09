@@ -6680,9 +6680,10 @@ class depgraph(object):
 			writemsg("\nAutounmask changes successfully written. Remember to run dispatch-conf.\n", \
 				noiselevel=-1)
 		elif not pretend and not autounmask_write and roots:
-			writemsg("\nUse --autounmask-write to write changes to config files (honoring CONFIG_PROTECT).  " + \
-				"Always examine the list of proposed changes before continuing with --autounmask-write, " + \
-				"as these changes may not be safe. \n", \
+			writemsg("\nUse --autounmask-write to write changes to config files (honoring\n"
+				"CONFIG_PROTECT). Carefully examine the list of proposed changes,\n"
+				"paying special attention to mask or keyword changes that may expose\n"
+				"experimental or unstable packages.\n",
 				noiselevel=-1)
 
 
