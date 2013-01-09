@@ -122,7 +122,7 @@ class Manifest2Entry(ManifestEntry):
 
 class Manifest(object):
 	parsers = (parseManifest2,)
-	def __init__(self, pkgdir, distdir, fetchlist_dict=None,
+	def __init__(self, pkgdir, distdir=None, fetchlist_dict=None,
 		manifest1_compat=DeprecationWarning, from_scratch=False, thin=False,
 		allow_missing=False, allow_create=True, hashes=None,
 		find_invalid_path_char=None):
@@ -383,7 +383,7 @@ class Manifest(object):
 			distfilehashes = self.fhashdict["DIST"]
 		else:
 			distfilehashes = {}
-		self.__init__(self.pkgdir, self.distdir,
+		self.__init__(self.pkgdir, distdir=self.distdir,
 			fetchlist_dict=self.fetchlist_dict, from_scratch=True,
 			thin=self.thin, allow_missing=self.allow_missing,
 			allow_create=self.allow_create, hashes=self.hashes,
