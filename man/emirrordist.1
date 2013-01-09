@@ -1,0 +1,143 @@
+.TH "EMIRRORDIST" "1" "Jan 2013" "Portage VERSION" "Portage"
+.SH "NAME"
+emirrordist \- a fetch tool for mirroring of package distfiles
+.SH SYNOPSIS
+.B emirrordist
+[\fIoptions\fR] \fI<action>\fR
+.SH ACTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Show a help message and exit.
+.TP
+\fB\-\-version\fR
+Display portage version and exit.
+.TP
+\fB\-\-mirror\fR
+Mirror distfiles for the selected repository.
+.SH OPTIONS
+.TP
+\fB\-\-dry\-run\fR
+Perform a trial run with no changes made (typically combined
+with \fI\-v\fR or \fI\-vv\fR).
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR
+Display extra information on stderr (multiple occurences
+increase verbosity).
+.TP
+\fB\-\-ignore\-default\-opts\fR
+Do not use the \fIEMIRRORDIST_DEFAULT_OPTS\fR environment
+variable.
+.TP
+\fB\-\-distfiles\fR=\fIDIR\fR
+Distfiles directory to use (required).
+.TP
+\fB\-j\fR JOBS, \fB\-\-jobs\fR=\fIJOBS\fR
+Number of concurrent jobs to run.
+.TP
+\fB\-l\fR LOAD, \fB\-\-load\-average\fR=\fILOAD\fR
+Load average limit for spawning of new concurrent jobs.
+.TP
+\fB\-\-tries\fR=\fITRIES\fR
+Maximum number of tries per file, 0 means unlimited
+(default is 10).
+.TP
+\fB\-\-repo\fR=\fIREPO\fR
+Name of repo to operate on (default repo is located at
+$PORTDIR).
+.TP
+\fB\-\-config\-root\fR=\fIDIR\fR
+Location of portage config files.
+.TP
+\fB\-\-portdir\fR=\fIDIR\fR
+Override the portage tree location.
+.TP
+\fB\-\-portdir\-overlay\fR=\fIPORTDIR_OVERLAY\fR
+Override the PORTDIR_OVERLAY variable (requires that
+\fI\-\-repo\fR is also specified).
+.TP
+\fB\-\-strict\-manifests=\fR<y|n>
+Manually override "strict" FEATURES setting.
+.TP
+\fB\-\-failure\-log\fR=\fIFILE\fR
+Log file for fetch failures, with tab\-delimited output, for
+reporting purposes. Opened in append mode.
+.TP
+\fB\-\-success\-log\fR=\fIFILE\fR
+Log file for fetch successes, with tab\-delimited output, for
+reporting purposes. Opened in append mode.
+.TP
+\fB\-\-scheduled\-deletion\-log\fR=\fIFILE\fR
+Log file for scheduled deletions, with tab\-delimited output, for
+reporting purposes. Overwritten with each run.
+.TP
+\fB\-\-delete\fR
+Enable deletion of unused distfiles.
+.TP
+\fB\-\-deletion\-db\fR=\fIFILE\fR
+Database file used to track lifetime of files scheduled for
+delayed deletion.
+.TP
+\fB\-\-deletion\-delay\fR=\fISECONDS\fR
+Delay time for deletion of unused distfiles, measured in seconds.
+.TP
+\fB\-\-temp\-dir\fR=\fIDIR\fR
+Temporary directory for downloads.
+.TP
+\fB\-\-mirror\-overrides\fR=\fIFILE\fR
+File holding a list of mirror overrides.
+.TP
+\fB\-\-mirror\-skip\fR=\fIMIRROR_SKIP\fR
+Comma delimited list of mirror targets to skip when
+fetching.
+.TP
+\fB\-\-restrict\-mirror\-exemptions\fR=\fIRESTRICT_MIRROR_EXEMPTIONS\fR
+Comma delimited list of mirror targets for which to ignore
+RESTRICT="mirror" (see \fBebuild\fR(5)).
+.TP
+\fB\-\-verify\-existing\-digest\fR
+Use digest as a verification of whether existing
+distfiles are valid.
+.TP
+\fB\-\-distfiles\-local\fR=\fIDIR\fR
+The distfiles\-local directory to use.
+.TP
+\fB\-\-distfiles\-db\fR=\fIFILE\fR
+Database file used to track which ebuilds a distfile belongs to.
+.TP
+\fB\-\-recycle\-dir\fR=\fIDIR\fR
+Directory for extended retention of files that are removed from
+distdir with the \-\-delete option. These files may be be recycled if
+they are needed again, instead of downloading them again.
+.TP
+\fB\-\-recycle\-db\fR=\fIFILE\fR
+Database file used to track lifetime of files in recycle dir.
+.TP
+\fB\-\-recycle\-deletion\-delay\fR=\fISECONDS\fR
+Delay time for deletion of unused files from recycle dir,
+measured in seconds (defaults to the equivalent of 60 days).
+.TP
+\fB\-\-fetch\-log\-dir\fR=\fIDIR\fR
+Directory for individual fetch logs.
+.TP
+\fB\-\-whitelist\-from\fR=\fIFILE\fR
+Specifies a file containing a list of files to whitelist, one per line,
+# prefixed lines ignored. Use this option multiple times in order to
+specify multiple whitelists.
+.SH "REPORTING BUGS"
+Please report bugs via http://bugs.gentoo.org/
+.SH "THANKS"
+Special thanks to Brian Harring, author of the mirror\-dist program from
+which emirrordist is derived.
+.SH "AUTHORS"
+.nf
+Zac Medico <zmedico@gentoo.org>
+.fi
+.SH "FILES"
+.TP
+.B /etc/portage/make.conf
+Contains variables.
+.SH "SEE ALSO"
+.BR ebuild (5),
+.BR egencache (1),
+.BR make.conf (5),
+.BR portage (5)
