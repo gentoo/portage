@@ -4,6 +4,7 @@
 import collections
 import errno
 import logging
+import random
 import stat
 import subprocess
 import sys
@@ -206,7 +207,12 @@ class FetchTask(CompositeTask):
 		slash_index = uri.find("/", 9)
 		if slash_index != -1:
 			mirror_name = uri[9:slash_index].strip("/")
-			for mirror in mirrors_dict.get(mirror_name, []):
+			mirrors = mirrors_dict.get(mirror_name)
+			if not mirrors:
+				return
+			mirrors = list(mirrors)
+			while mirrors:
+				mirror = mirrors.pop(random.randint(0, len(mirrors) - 1))
 				yield mirror.rstrip("/") + "/" + uri[slash_index+1:]
 
 	def _try_next_mirror(self):
