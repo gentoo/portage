@@ -117,9 +117,14 @@ class SpawnProcess(SubProcess):
 				except AttributeError:
 					pass
 				else:
-					fcntl.fcntl(stdout_fd, fcntl.F_SETFL,
-						fcntl.fcntl(stdout_fd,
-						fcntl.F_GETFL) | fcntl.FD_CLOEXEC)
+					try:
+						fcntl.fcntl(stdout_fd, fcntl.F_SETFL,
+							fcntl.fcntl(stdout_fd,
+							fcntl.F_GETFL) | fcntl.FD_CLOEXEC)
+					except IOError:
+						# FreeBSD may return "Inappropriate ioctl for device"
+						# error here (ENOTTY).
+						pass
 
 		self._pipe_logger = PipeLogger(background=self.background,
 			scheduler=self.scheduler, input_fd=master_fd,
