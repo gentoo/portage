@@ -255,8 +255,10 @@ class FetchTask(CompositeTask):
 					if uri not in self._tried_uris:
 						return uri
 
-			if self._primaryuri_stack:
-				return self._primaryuri_stack.pop()
+			while self._primaryuri_stack:
+				uri = self._primaryuri_stack.pop()
+				if uri not in self._tried_uris:
+					return uri
 
 		return None
 
