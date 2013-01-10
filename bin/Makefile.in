@@ -21,6 +21,7 @@ usr_binprogs = \
 	egencache \
 	emerge \
 	emerge-webrsync \
+	emirrordist \
 	portageq \
 	quickpkg \
 	repoman
