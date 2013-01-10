@@ -162,10 +162,18 @@ def _doebuild_path(settings, eapi=None):
 	eprefix = settings["EPREFIX"]
 	prerootpath = [x for x in settings.get("PREROOTPATH", "").split(":") if x]
 	rootpath = [x for x in settings.get("ROOTPATH", "").split(":") if x]
+	overrides = [x for x in settings.get(
+		"__PORTAGE_TEST_PATH_OVERRIDE", "").split(":") if x]
+
+	prefixes = []
+	if eprefix:
+		prefixes.append(eprefix)
+	prefixes.append("/")
+
+	path = overrides
 	# PREFIX LOCAL: use DEFAULT_PATH and EXTRA_PATH from make.globals
 	defaultpath = [x for x in settings.get("DEFAULT_PATH", "").split(":") if x]
 	extrapath = [x for x in settings.get("EXTRA_PATH", "").split(":") if x]
-	path = []
 
 	if eprefix and uid != 0 and "fakeroot" not in settings.features:
 		path.append(os.path.join(portage_bin_path,

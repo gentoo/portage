@@ -31,15 +31,17 @@ def find_library(name):
 		return None
 	return filename
 
+_library_handles = {}
+
 def LoadLibrary(name):
 	"""
 	Calls ctypes.cdll.LoadLibrary(name) if the ctypes module is available,
-	and otherwise returns None. Results are not cached, since that can
-	cause problems when libraries are updated (see bug #448858).
+	and otherwise returns None. Results are cached for future invocations.
 	"""
-	handle = None
+	handle = _library_handles.get(name)
 
-	if ctypes is not None:
+	if handle is None and ctypes is not None:
 		handle = ctypes.cdll.LoadLibrary(name)
+		_library_handles[name] = handle
 
 	return handle

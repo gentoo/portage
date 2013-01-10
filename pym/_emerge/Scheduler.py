@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -1531,7 +1531,7 @@ class Scheduler(PollScheduler):
 		self._config_pool[settings['EROOT']].append(settings)
 
 	def _keep_scheduling(self):
-		return bool(not self._terminated_tasks and self._pkg_queue and \
+		return bool(not self._terminated.is_set() and self._pkg_queue and \
 			not (self._failed_pkgs and not self._build_opts.fetchonly))
 
 	def _is_work_scheduled(self):

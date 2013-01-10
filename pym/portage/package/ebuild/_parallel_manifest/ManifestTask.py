@@ -1,4 +1,4 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -10,6 +10,7 @@ from portage import _unicode_encode, _encodings
 from portage.const import MANIFEST2_IDENTIFIERS
 from portage.util import (atomic_ofstream, grablines,
 	shlex_split, varexpand, writemsg)
+from portage.util._async.PipeLogger import PipeLogger
 from portage.util._async.PopenProcess import PopenProcess
 from _emerge.CompositeTask import CompositeTask
 from _emerge.PipeReader import PipeReader
@@ -144,7 +145,12 @@ class ManifestTask(CompositeTask):
 		gpg_vars["FILE"] = self._manifest_path
 		gpg_cmd = varexpand(self.gpg_cmd, mydict=gpg_vars)
 		gpg_cmd = shlex_split(gpg_cmd)
-		gpg_proc = PopenProcess(proc=subprocess.Popen(gpg_cmd))
+		gpg_proc = PopenProcess(proc=subprocess.Popen(gpg_cmd,
+			stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
+		# PipeLogger echos output and efficiently monitors for process
+		# exit by listening for the stdout EOF event.
+		gpg_proc.pipe_reader = PipeLogger(background=self.background,
+			input_fd=gpg_proc.proc.stdout, scheduler=self.scheduler)
 		self._start_task(gpg_proc, self._gpg_proc_exit)
 
 	def _gpg_proc_exit(self, gpg_proc):

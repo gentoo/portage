@@ -1,4 +1,4 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
@@ -38,7 +38,7 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 		raise NotImplementedError(self)
 
 	def _keep_scheduling(self):
-		return self._remaining_tasks and not self._terminated_tasks
+		return self._remaining_tasks and not self._terminated.is_set()
 
 	def _running_job_count(self):
 		return len(self._running_tasks)

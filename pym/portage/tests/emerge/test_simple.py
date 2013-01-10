@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Gentoo Foundation
+# Copyright 2011-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -302,6 +302,7 @@ pkg_preinst() {
 			"PORTAGE_PYTHON" : portage_python,
 			"PORTAGE_TMPDIR" : portage_tmpdir,
 			"PYTHONPATH" : pythonpath,
+			"__PORTAGE_TEST_PATH_OVERRIDE" : fake_bin,
 		}
 
 		if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
@@ -312,7 +313,10 @@ pkg_preinst() {
 		dirs = [cachedir, cachedir_pregen, distdir, fake_bin,
 			portage_tmpdir, updates_dir,
 			user_config_dir, var_cache_edb]
-		true_symlinks = ["chown", "chgrp"]
+		# Override things that may be unavailable, or may have portability
+		# issues when running tests in exotic environments.
+		#   prepstrip - bug #447810 (bash read builtin EINTR problem)
+		true_symlinks = ["find", "gawk", "prepstrip", "sed", "scanelf"]
 		true_binary = find_binary("true")
 		self.assertEqual(true_binary is None, False,
 			"true command not found")
