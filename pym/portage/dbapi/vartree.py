@@ -4746,8 +4746,8 @@ class dblink(object):
 
 			proc = SyncfsProcess(paths=paths,
 				scheduler=(self._scheduler or
-				SchedulerInterface(portage._internal_caller and
-					global_event_loop() or EventLoop(main=False))))
+					portage._internal_caller and global_event_loop() or
+					EventLoop(main=False)))
 			proc.start()
 			returncode = proc.wait()
 
