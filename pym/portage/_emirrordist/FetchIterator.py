@@ -2,6 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
+from portage.checksum import (_apply_hash_filter,
+	_filter_unaccelarated_hashes, _hash_filter)
 from portage.dep import use_reduce
 from portage.exception import PortageException
 from .FetchTask import FetchTask
@@ -27,6 +29,11 @@ class FetchIterator(object):
 		file_owners = self._config.file_owners
 		file_failures = self._config.file_failures
 		restrict_mirror_exemptions = self._config.restrict_mirror_exemptions
+
+		hash_filter = _hash_filter(
+			portdb.settings.get("PORTAGE_CHECKSUM_FILTER", ""))
+		if hash_filter.transparent:
+			hash_filter = None
 
 		for cp in self._iter_every_cp():
 
@@ -124,6 +131,12 @@ class FetchIterator(object):
 						if filename in file_owners:
 							continue
 						file_owners[filename] = cpv
+
+						file_digests = \
+							_filter_unaccelarated_hashes(file_digests)
+						if hash_filter is not None:
+							file_digests = _apply_hash_filter(
+								file_digests, hash_filter)
 
 						yield FetchTask(cpv=cpv,
 							background=True,
