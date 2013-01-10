@@ -160,13 +160,15 @@ def _doebuild_path(settings, eapi=None):
 	eprefix = settings["EPREFIX"]
 	prerootpath = [x for x in settings.get("PREROOTPATH", "").split(":") if x]
 	rootpath = [x for x in settings.get("ROOTPATH", "").split(":") if x]
+	overrides = [x for x in settings.get(
+		"__PORTAGE_TEST_PATH_OVERRIDE", "").split(":") if x]
 
 	prefixes = []
 	if eprefix:
 		prefixes.append(eprefix)
 	prefixes.append("/")
 
-	path = []
+	path = overrides
 
 	if eprefix and uid != 0 and "fakeroot" not in settings.features:
 		path.append(os.path.join(portage_bin_path,
