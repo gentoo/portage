@@ -4,7 +4,6 @@
 from portage import os
 from portage.dep import use_reduce
 from portage.exception import PortageException
-from portage.manifest import Manifest
 from .FetchTask import FetchTask
 
 class FetchIterator(object):
@@ -24,6 +23,7 @@ class FetchIterator(object):
 	def __iter__(self):
 
 		portdb = self._config.portdb
+		get_repo_for_location = portdb.repositories.get_repo_for_location
 		file_owners = self._config.file_owners
 		file_failures = self._config.file_failures
 		restrict_mirror_exemptions = self._config.restrict_mirror_exemptions
@@ -35,6 +35,7 @@ class FetchIterator(object):
 				# Reset state so the Manifest is pulled once
 				# for this cp / tree combination.
 				digests = None
+				repo_config = get_repo_for_location(tree)
 
 				for cpv in portdb.cp_list(cp, mytree=tree):
 
@@ -95,8 +96,9 @@ class FetchIterator(object):
 					# Parse Manifest for this cp if we haven't yet.
 					if digests is None:
 						try:
-							digests = Manifest(os.path.join(
-								tree, cp)).getTypeDigests("DIST")
+							digests = repo_config.load_manifest(
+								os.path.join(repo_config.location, cp)
+								).getTypeDigests("DIST")
 						except (EnvironmentError, PortageException) as e:
 							for filename in uri_map:
 								self._log_failure(
