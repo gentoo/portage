@@ -11,7 +11,6 @@ from portage.util import normalize_path
 from portage.util._async.run_main_scheduler import run_main_scheduler
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.global_event_loop import global_event_loop
-from portage._emirrordist.Config import Config
 from .Config import Config
 from .MirrorDistTask import MirrorDistTask
 
