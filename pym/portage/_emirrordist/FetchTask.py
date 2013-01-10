@@ -150,11 +150,18 @@ class FetchTask(CompositeTask):
 			return
 
 		if self._default_exit(digester) != os.EX_OK:
+			# IOError reading file in our main distfiles directory? This
+			# is a bad situation which normally does not occur, so
+			# skip this file and report it, in order to draw attention
+			# from the administrator.
 			msg = "%s distfiles digester failed unexpectedly" % \
 				(self.distfile,)
 			self.scheduler.output(msg + '\n', background=True,
 				log_path=self._log_path)
 			logging.error(msg)
+			self.config.log_failure("%s\t%s\t%s" %
+				(self.cpv, self.distfile, msg))
+			self.config.file_failures[self.distfile] = self.cpv
 			self.wait()
 			return
 
