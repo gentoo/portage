@@ -12,7 +12,6 @@ import sys
 import portage
 from portage import _encodings, _unicode_encode
 from portage import os
-from portage.exception import PortageException
 from portage.util._async.FileCopier import FileCopier
 from portage.util._async.FileDigester import FileDigester
 from portage.util._async.PipeLogger import PipeLogger
@@ -368,17 +367,8 @@ class FetchTask(CompositeTask):
 			logging.debug("copy '%s' from %s to distfiles" %
 				(self.distfile, current_mirror.name))
 
-			try:
-				portage.util.apply_stat_permissions(
-					copier.dest_path, self._current_stat)
-			except (OSError, PortageException) as e:
-				msg = ("%s %s apply_stat_permissions "
-					"failed unexpectedly: %s") % \
-					(self.distfile, current_mirror.name, e)
-				self.scheduler.output(msg + '\n', background=True,
-					log_path=self._log_path)
-				logging.error(msg)
-
+			# Apply the timestamp from the source file, but
+			# just rely on umask for permissions.
 			try:
 				if sys.hexversion >= 0x3030000:
 					os.utime(copier.dest_path,
