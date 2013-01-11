@@ -3,6 +3,7 @@
 
 import tempfile
 
+import portage
 from portage import os
 from portage import shutil
 from portage.const import EBUILD_PHASES
