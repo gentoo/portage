@@ -599,6 +599,10 @@ install_qa_check_misc() {
 			[[ -L ${i} ]] && continue
 			# if empty conf.d/init.d dir exists (baselayout), then i will be "/etc/conf.d/*" and not exist
 			[[ ! -e ${i} ]] && continue
+			if [[ ${d} == /etc/init.d && ${i} != *.sh ]] ; then
+				# skip non-shell-script for bug #451386
+				[[ $(head -n1 "${i}") =~ ^#!.*[[:space:]/](runscript|sh)$ ]] || continue
+			fi
 			bash -n "${i}" || die "The init.d file has syntax errors: ${i}"
 		done
 	done
