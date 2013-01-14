@@ -184,10 +184,16 @@ install:
 	cd "$(srcdir)"; \
 	install -m $(INSMODE) $(DOCS) "$(DESTDIR)$(docdir)"; \
 	\
-	for x in 1 5 ; do \
-		install -d -m$(DIRMODE) "$(DESTDIR)$(mandir)/man$$x"; \
-		cd "$(srcdir)/man"; \
-		install -m$(INSMODE) *.$$x "$(DESTDIR)$(mandir)/man$$x"; \
+	for x in "" $$(cd "$(srcdir)/man" && find -type d) ; do \
+		for y in 1 5 ; do \
+			cd "$(srcdir)/man/$$x"; \
+			files=$$(echo *.$$y); \
+			if [ -z "$$files" ] || [ "$$files" = "*.$$y" ]; then \
+				continue; \
+			fi; \
+			install -d -m$(DIRMODE) "$(DESTDIR)$(mandir)/$$x/man$$y"; \
+			install -m$(INSMODE) *.$$y "$(DESTDIR)$(mandir)/$$x/man$$y"; \
+		done; \
 	done; \
 	\
 	if [ -f "$(srcdir)/doc/portage.html" ] ; then \
