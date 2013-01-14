@@ -181,6 +181,8 @@ if sys.hexversion >= 0x3000000:
 		if isinstance(s, bytes):
 			s = str(s, encoding=encoding, errors=errors)
 		return s
+
+	_native_string = _unicode_decode
 else:
 	def _unicode_encode(s, encoding=_encodings['content'], errors='backslashreplace'):
 		if isinstance(s, unicode):
@@ -191,6 +193,8 @@ else:
 		if isinstance(s, bytes):
 			s = unicode(s, encoding=encoding, errors=errors)
 		return s
+
+	_native_string = _unicode_encode
 
 class _unicode_func_wrapper(object):
 	"""
