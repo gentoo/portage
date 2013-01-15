@@ -6576,24 +6576,25 @@ class depgraph(object):
 			if len(roots) > 1:
 				writemsg("\nFor %s:\n" % abs_user_config, noiselevel=-1)
 
+			def _writemsg(reason, file):
+				writemsg(('\nThe following %s are necessary to proceed:\n'
+				          ' (see "%s" in the portage(5) man page for more details)\n')
+				         % (colorize('BAD', reason), file), noiselevel=-1)
+
 			if root in unstable_keyword_msg:
-				writemsg("\nThe following " + colorize("BAD", "keyword changes") + \
-					" (package.accept_keywords) are necessary to proceed:\n", noiselevel=-1)
+				_writemsg('keyword changes', 'package.accept_keywords')
 				writemsg(format_msg(unstable_keyword_msg[root]), noiselevel=-1)
 
 			if root in p_mask_change_msg:
-				writemsg("\nThe following " + colorize("BAD", "mask changes") + \
-					" (package.unmask) are necessary to proceed:\n", noiselevel=-1)
+				_writemsg('mask changes', 'package.unmask')
 				writemsg(format_msg(p_mask_change_msg[root]), noiselevel=-1)
 
 			if root in use_changes_msg:
-				writemsg("\nThe following " + colorize("BAD", "USE changes") + \
-					" (package.use) are necessary to proceed:\n", noiselevel=-1)
+				_writemsg('USE changes', 'package.use')
 				writemsg(format_msg(use_changes_msg[root]), noiselevel=-1)
 
 			if root in license_msg:
-				writemsg("\nThe following " + colorize("BAD", "license changes") + \
-					" (package.license) are necessary to proceed:\n", noiselevel=-1)
+				_writemsg('license changes', 'package.license')
 				writemsg(format_msg(license_msg[root]), noiselevel=-1)
 
 		protect_obj = {}
