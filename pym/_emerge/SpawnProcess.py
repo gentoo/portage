@@ -76,8 +76,14 @@ class SpawnProcess(SubProcess):
 
 		else:
 			# Create a dummy pipe so the scheduler can monitor
-			# the process from inside a poll() loop.
-			fd_pipes[self._dummy_pipe_fd] = slave_fd
+			# the process from inside a poll() loop. Ensure that
+			# it doesn't interfere with a random fd that's already
+			# in fd_pipes though (as least FileDigester can pass
+			# in a random fd returned from os.pipe()).
+			unique_dummy_fd = self._dummy_pipe_fd
+			while unique_dummy_fd in fd_pipes:
+				unique_dummy_fd += 1
+			fd_pipes[unique_dummy_fd] = slave_fd
 			if self.background:
 				fd_pipes[1] = slave_fd
 				fd_pipes[2] = slave_fd
