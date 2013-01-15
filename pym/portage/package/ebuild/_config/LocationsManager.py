@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -73,13 +73,25 @@ class LocationsManager(object):
 		known_repos = tuple(known_repos)
 
 		if self.config_profile_path is None:
+			deprecated_profile_path = os.path.join(
+				self.config_root, 'etc', 'make.profile')
 			self.config_profile_path = \
 				os.path.join(self.config_root, PROFILE_PATH)
 			if os.path.isdir(self.config_profile_path):
 				self.profile_path = self.config_profile_path
+				if os.path.isdir(deprecated_profile_path) and not \
+					os.path.samefile(self.profile_path,
+					deprecated_profile_path):
+					# Don't warn if they refer to the same path, since
+					# that can be used for backward compatibility with
+					# old software.
+					writemsg("!!! %s\n" %
+						_("Found 2 make.profile dirs: "
+						"using '%s', ignoring '%s'") %
+						(self.profile_path, deprecated_profile_path),
+						noiselevel=-1)
 			else:
-				self.config_profile_path = \
-					os.path.join(self.config_root, 'etc', 'make.profile')
+				self.config_profile_path = deprecated_profile_path
 				if os.path.isdir(self.config_profile_path):
 					self.profile_path = self.config_profile_path
 				else:
