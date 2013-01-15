@@ -441,6 +441,9 @@ already prelinked files to be merged.
 .B preserve\-libs
 Preserve libraries when the sonames change during upgrade or downgrade.
 Libraries are preserved only if consumers of those libraries are detected.
+Preserved libraries are automatically removed when there are no remaining
+consumers. Run `emerge @preserved\-rebuild` in order to rebuild all
+consumers of preserved libraries.
 .TP
 .B protect\-owned
 This is identical to the \fIcollision\-protect\fR feature except that files
