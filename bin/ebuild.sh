@@ -696,9 +696,9 @@ if [[ $EBUILD_PHASE = depend ]] ; then
 		done
 	else
 		for f in ${auxdbkeys} ; do
-			echo $(echo ${!f}) 1>&9 || exit $?
+			eval "echo \$(echo \${!f}) 1>&${PORTAGE_PIPE_FD}" || exit $?
 		done
-		exec 9>&-
+		eval "exec ${PORTAGE_PIPE_FD}>&-"
 	fi
 	set +f
 else

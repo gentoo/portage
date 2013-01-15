@@ -455,7 +455,7 @@ _doebuild_commands_without_builddir = (
 )
 
 def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
-	fetchonly=0, cleanup=0, dbkey=None, use_cache=1, fetchall=0, tree=None,
+	fetchonly=0, cleanup=0, dbkey=DeprecationWarning, use_cache=1, fetchall=0, tree=None,
 	mydbapi=None, vartree=None, prev_mtimes=None,
 	fd_pipes=None, returnpid=False):
 	"""
@@ -522,6 +522,11 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 		warnings.warn("The third parameter of the "
 			"portage.doebuild() is now unused. Use "
 			"settings['ROOT'] instead.",
+			DeprecationWarning, stacklevel=2)
+
+	if dbkey is not DeprecationWarning:
+		warnings.warn("portage.doebuild() called "
+			"with deprecated dbkey argument.",
 			DeprecationWarning, stacklevel=2)
 
 	if not tree:
@@ -720,42 +725,7 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 			if returnpid:
 				return _spawn_phase(mydo, mysettings,
 					fd_pipes=fd_pipes, returnpid=returnpid)
-			elif isinstance(dbkey, dict):
-				warnings.warn("portage.doebuild() called " + \
-					"with dict dbkey argument. This usage will " + \
-					"not be supported in the future.",
-					DeprecationWarning, stacklevel=2)
-				mysettings["dbkey"] = ""
-				pr, pw = os.pipe()
-				fd_pipes = {
-					0:portage._get_stdin().fileno(),
-					1:sys.__stdout__.fileno(),
-					2:sys.__stderr__.fileno(),
-					9:pw}
-				mypids = _spawn_phase(mydo, mysettings, returnpid=True,
-					fd_pipes=fd_pipes)
-				os.close(pw) # belongs exclusively to the child process now
-				f = os.fdopen(pr, 'rb', 0)
-				for k, v in zip(auxdbkeys,
-					(_unicode_decode(line).rstrip('\n') for line in f)):
-					dbkey[k] = v
-				f.close()
-				retval = os.waitpid(mypids[0], 0)[1]
-				portage.process.spawned_pids.remove(mypids[0])
-				# If it got a signal, return the signal that was sent, but
-				# shift in order to distinguish it from a return value. (just
-				# like portage.process.spawn() would do).
-				if retval & 0xff:
-					retval = (retval & 0xff) << 8
-				else:
-					# Otherwise, return its exit code.
-					retval = retval >> 8
-				if retval == os.EX_OK and len(dbkey) != len(auxdbkeys):
-					# Don't trust bash's returncode if the
-					# number of lines is incorrect.
-					retval = 1
-				return retval
-			elif dbkey:
+			elif dbkey and dbkey is not DeprecationWarning:
 				mysettings["dbkey"] = dbkey
 			else:
 				mysettings["dbkey"] = \
