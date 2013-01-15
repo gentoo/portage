@@ -454,7 +454,7 @@ _doebuild_commands_without_builddir = (
 	'fetch', 'fetchall', 'help', 'manifest'
 )
 
-def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
+def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0, listonly=0,
 	fetchonly=0, cleanup=0, dbkey=DeprecationWarning, use_cache=1, fetchall=0, tree=None,
 	mydbapi=None, vartree=None, prev_mtimes=None,
 	fd_pipes=None, returnpid=False):
@@ -518,10 +518,10 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 	mysettings = settings
 	myroot = settings['EROOT']
 
-	if _unused is not None and _unused != mysettings['EROOT']:
+	if _unused is not DeprecationWarning:
 		warnings.warn("The third parameter of the "
-			"portage.doebuild() is now unused. Use "
-			"settings['ROOT'] instead.",
+			"portage.doebuild() is deprecated. Instead "
+			"settings['EROOT'] is used.",
 			DeprecationWarning, stacklevel=2)
 
 	if dbkey is not DeprecationWarning:
