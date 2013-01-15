@@ -376,8 +376,22 @@ class config(object):
 			# Allow make.globals to set default paths relative to ${EPREFIX}.
 			expand_map["EPREFIX"] = eprefix
 
-			make_globals = getconfig(os.path.join(
-				self.global_config_path, 'make.globals'),
+			make_globals_path = os.path.join(
+				self.global_config_path, 'make.globals')
+			old_make_globals = os.path.join(config_root,
+				'etc', 'make.globals')
+			if os.path.isfile(old_make_globals) and \
+				not os.path.samefile(make_globals_path, old_make_globals):
+				# Don't warn if they refer to the same path, since
+				# that can be used for backward compatibility with
+				# old software.
+				writemsg("!!! %s\n" %
+					_("Found obsolete make.globals file: "
+					"'%s', (using '%s' instead)") %
+					(old_make_globals, make_globals_path),
+					noiselevel=-1)
+
+			make_globals = getconfig(make_globals_path,
 				tolerant=tolerant, expand=expand_map)
 			if make_globals is None:
 				make_globals = {}
