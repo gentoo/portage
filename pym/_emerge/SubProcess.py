@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
@@ -9,12 +9,7 @@ import errno
 class SubProcess(AbstractPollTask):
 
 	__slots__ = ("pid",) + \
-		("_files", "_reg_id")
-
-	# A file descriptor is required for the scheduler to monitor changes from
-	# inside a poll() loop. When logging is not enabled, create a pipe just to
-	# serve this purpose alone.
-	_dummy_pipe_fd = 9
+		("_dummy_pipe_fd", "_files", "_reg_id")
 
 	# This is how much time we allow for waitpid to succeed after
 	# we've sent a kill signal to our subprocess.

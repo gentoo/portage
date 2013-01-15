@@ -70,23 +70,20 @@ class SpawnProcess(SubProcess):
 
 		fd_pipes_orig = fd_pipes.copy()
 
-		if log_file_path is not None:
+		if log_file_path is not None or self.background:
 			fd_pipes[1] = slave_fd
 			fd_pipes[2] = slave_fd
 
 		else:
-			# Create a dummy pipe so the scheduler can monitor
-			# the process from inside a poll() loop. Ensure that
-			# it doesn't interfere with a random fd that's already
-			# in fd_pipes though (as least FileDigester can pass
-			# in a random fd returned from os.pipe()).
-			unique_dummy_fd = self._dummy_pipe_fd
-			while unique_dummy_fd in fd_pipes:
-				unique_dummy_fd += 1
-			fd_pipes[unique_dummy_fd] = slave_fd
-			if self.background:
-				fd_pipes[1] = slave_fd
-				fd_pipes[2] = slave_fd
+			# Create a dummy pipe that PipeLogger uses to efficiently
+			# monitors for process exit by listening for the EOF event.
+			# Re-use of the allocated fd number for the key in fd_pipes
+			# guarantees that the keys will not collide for similarly
+			# allocated pipes which are used by callers such as
+			# FileDigester and MergeProcess. See the _setup_pipes
+			# docstring for more benefits of this allocation approach.
+			self._dummy_pipe_fd = slave_fd
+			fd_pipes[slave_fd] = slave_fd
 
 		kwargs = {}
 		for k in self._spawn_kwarg_names:

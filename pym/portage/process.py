@@ -429,6 +429,21 @@ def _setup_pipes(fd_pipes, close_fds=True):
 	and also with CPython under some circumstances (as triggered
 	by xmpppy in bug #374335). In order to close a safe subset of
 	file descriptors, see portage.locks._close_fds().
+
+	NOTE: When not followed by exec, even when close_fds is False,
+	it's still possible for dup2() calls to cause interference in a
+	way that's similar to the way that close_fds interferes (since
+	dup2() has to close the target fd if it happens to be open).
+	It's possible to avoid such interference by using allocated
+	file descriptors as the keys in fd_pipes. For example:
+
+		pr, pw = os.pipe()
+		fd_pipes[pw] = pw
+
+	By using the allocated pw file descriptor as the key in fd_pipes,
+	it's not necessary for dup2() to close a file descriptor (it
+	actually does nothing in this case), which avoids possible
+	interference.
 	"""
 	my_fds = {}
 	# To protect from cases where direct assignment could
