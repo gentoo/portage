@@ -25,6 +25,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dbapi._similar_name_search:similar_name_search',
 	'portage.debug',
 	'portage.news:count_unread_news,display_news_notifications',
+	'portage.util._get_vm_info:get_vm_info',
 	'_emerge.chk_updated_cfg_files:chk_updated_cfg_files',
 	'_emerge.help:help@emerge_help',
 	'_emerge.post_emerge:display_news_notification,post_emerge',
@@ -1487,6 +1488,18 @@ def action_info(settings, trees, myopts, myfiles):
 		append(header_title.rjust(int(header_width/2 + len(header_title)/2)))
 	append(header_width * "=")
 	append("System uname: %s" % (platform.platform(aliased=1),))
+
+	vm_info = get_vm_info()
+	if "ram.total" in vm_info:
+		line = "%-9s %10d total" % ("KiB Mem:", vm_info["ram.total"] / 1024)
+		if "ram.free" in vm_info:
+			line += ",%10d free" % (vm_info["ram.free"] / 1024,)
+		append(line)
+	if "swap.total" in vm_info:
+		line = "%-9s %10d total" % ("KiB Swap:", vm_info["swap.total"] / 1024)
+		if "swap.free" in vm_info:
+			line += ",%10d free" % (vm_info["swap.free"] / 1024,)
+		append(line)
 
 	lastSync = portage.grabfile(os.path.join(
 		settings["PORTDIR"], "metadata", "timestamp.chk"))
