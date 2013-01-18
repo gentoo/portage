@@ -2971,7 +2971,8 @@ class depgraph(object):
 		not been scheduled for replacement.
 		"""
 		kwargs["trees"] = self._dynamic_config._graph_trees
-		return self._select_atoms_highest_available(*pargs, **kwargs)
+		return self._select_atoms_highest_available(*pargs,
+			**portage._native_kwargs(kwargs))
 
 	def _select_atoms_highest_available(self, root, depstring,
 		myuse=None, parent=None, strict=True, trees=None, priority=None):
@@ -6813,7 +6814,8 @@ class depgraph(object):
 			writemsg("\n", noiselevel=-1)
 
 		for pargs, kwargs in self._dynamic_config._unsatisfied_deps_for_display:
-			self._show_unsatisfied_dep(*pargs, **kwargs)
+			self._show_unsatisfied_dep(*pargs,
+				**portage._native_kwargs(kwargs))
 
 	def saveNomergeFavorites(self):
 		"""Find atoms in favorites that are not in the mergelist and add them
@@ -7158,7 +7160,8 @@ class depgraph(object):
 		try:
 			for pargs, kwargs in self._dynamic_config._unsatisfied_deps_for_display:
 				self._show_unsatisfied_dep(
-					*pargs, check_autounmask_breakage=True, **kwargs)
+					*pargs, check_autounmask_breakage=True,
+					**portage._native_kwargs(kwargs))
 		except self._autounmask_breakage:
 			return True
 		return False

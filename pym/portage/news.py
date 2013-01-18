@@ -13,6 +13,7 @@ import io
 import logging
 import os as _os
 import re
+import portage
 from portage import OrderedDict
 from portage import os
 from portage import _encodings
@@ -241,7 +242,8 @@ class NewsItem(object):
 		for values in self.restrictions.values():
 			any_match = False
 			for restriction in values:
-				if restriction.checkRestriction(**kwargs):
+				if restriction.checkRestriction(
+					**portage._native_kwargs(kwargs)):
 					any_match = True
 			if not any_match:
 				all_match = False

@@ -198,6 +198,15 @@ else:
 
 	_native_string = _unicode_encode
 
+if sys.hexversion >= 0x20605f0:
+	def _native_kwargs(kwargs):
+		return kwargs
+else:
+	# Avoid "TypeError: keywords must be strings" issue triggered
+	# by unicode_literals: http://bugs.python.org/issue4978
+	def _native_kwargs(kwargs):
+		return dict((_native_string(k), v) for k, v in kwargs.iteritems())
+
 class _unicode_func_wrapper(object):
 	"""
 	Wraps a function, converts arguments from unicode to bytes,

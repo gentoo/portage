@@ -238,7 +238,7 @@ class RepoConfig(object):
 		if self.disable_manifest:
 			kwds['from_scratch'] = True
 		kwds['find_invalid_path_char'] = self.find_invalid_path_char
-		return manifest.Manifest(*args, **kwds)
+		return manifest.Manifest(*args, **portage._native_kwargs(kwds))
 
 	def update(self, new_repo):
 		"""Update repository with options in another RepoConfig"""

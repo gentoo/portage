@@ -155,10 +155,10 @@ class portdbapi(dbapi):
 			# portage group.
 			depcachedir_unshared = True
 		else:
-			cache_kwargs.update({
+			cache_kwargs.update(portage._native_kwargs({
 				'gid'     : portage_gid,
 				'perms'   : 0o664
-			})
+			}))
 
 		# If secpass < 1, we don't want to write to the cache
 		# since then we won't be able to apply group permissions

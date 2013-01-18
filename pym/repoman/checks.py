@@ -819,7 +819,8 @@ class PortageInternalVariableAssignment(LineCheck):
 _base_check_classes = (InheritEclass, LineCheck, PhaseCheck)
 _constant_checks = tuple(chain((v() for k, v in globals().items()
 	if isinstance(v, type) and issubclass(v, LineCheck) and v not in _base_check_classes),
-	(InheritEclass(k, **kwargs) for k, kwargs in _eclass_info.items())))
+	(InheritEclass(k, **portage._native_kwargs(kwargs))
+	for k, kwargs in _eclass_info.items())))
 
 _here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
 _ignore_comment_re = re.compile(r'^\s*#')

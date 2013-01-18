@@ -4837,7 +4837,8 @@ class dblink(object):
 		else:
 			kwargs['mode'] = 'w'
 			kwargs['encoding'] = _encodings['repo.content']
-		write_atomic(os.path.join(self.dbdir, fname), data, **kwargs)
+		write_atomic(os.path.join(self.dbdir, fname), data,
+			**portage._native_kwargs(kwargs))
 
 	def getelements(self,ename):
 		if not os.path.exists(self.dbdir+"/"+ename):

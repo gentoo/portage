@@ -12,6 +12,7 @@ __all__ = (
 
 import sys
 
+import portage
 from portage import os
 from portage.dbapi.dep_expand import dep_expand
 from portage.dep import cpvequal, _repo_separator, _slot_separator
@@ -316,7 +317,8 @@ class Display(object):
 				kwargs["myrepo"] = pkg.repo
 			myfilesdict = None
 			try:
-				myfilesdict = db.getfetchsizes(pkg.cpv, **kwargs)
+				myfilesdict = db.getfetchsizes(pkg.cpv,
+					**portage._native_kwargs(kwargs))
 			except InvalidDependString as e:
 				# FIXME: validate SRC_URI earlier
 				depstr, = db.aux_get(pkg.cpv,
