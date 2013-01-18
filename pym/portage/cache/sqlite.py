@@ -1,5 +1,7 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 import re
 import sys
@@ -21,7 +23,6 @@ class database(fs_template.FsBased):
 	# to calculate the number of pages requested, according to the following
 	# equation: cache_bytes = page_bytes * page_count
 	cache_bytes = 1024 * 1024 * 10
-	_EMPTY_STRING = _unicode_decode("")
 
 	def __init__(self, *args, **config):
 		super(database, self).__init__(*args, **config)
@@ -215,7 +216,7 @@ class database(fs_template.FsBased):
 				v = result[column_index]
 				if v is None:
 					# This happens after a new empty column has been added.
-					v = self._EMPTY_STRING
+					v = ""
 				d[k] = v
 
 		return d
