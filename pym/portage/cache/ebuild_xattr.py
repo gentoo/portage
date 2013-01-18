@@ -1,4 +1,4 @@
-# -*- coding: UTF8 -*-
+# -*- coding: utf-8 -*-
 # Copyright: 2009-2011 Gentoo Foundation
 # Author(s): Petteri Räty (betelgeuse@gentoo.org)
 # License: GPL2
