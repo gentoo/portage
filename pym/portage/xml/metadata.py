@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """Provides an easy-to-use python interface to Gentoo's metadata.xml file.
@@ -27,6 +27,8 @@
 		>>> upstream[0].maintainer[0].name
 		'Thomas Mills Hinkle'
 """
+
+from __future__ import unicode_literals
 
 __all__ = ('MetaDataXML',)
 
@@ -58,7 +60,7 @@ except (ImportError, SystemError, RuntimeError, Exception):
 
 import re
 import xml.etree.ElementTree
-from portage import _encodings, _unicode_encode, _unicode_decode
+from portage import _encodings, _unicode_encode
 from portage.util import unique_everseen
 
 class _MetadataTreeBuilder(xml.etree.ElementTree.TreeBuilder):
@@ -208,7 +210,7 @@ class MetaDataXML(object):
 		except ImportError:
 			pass
 		except ExpatError as e:
-			raise SyntaxError(_unicode_decode("%s") % (e,))
+			raise SyntaxError("%s" % (e,))
 
 		if isinstance(herds, etree.ElementTree):
 			herds_etree = herds

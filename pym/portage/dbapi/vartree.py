@@ -1,6 +1,8 @@
 # Copyright 1998-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from __future__ import unicode_literals
+
 __all__ = [
 	"vardbapi", "vartree", "dblink"] + \
 	["write_contents", "tar_contents"]
@@ -594,7 +596,7 @@ class vardbapi(dbapi):
 				getattr(e, 'errno', None) in (errno.ENOENT, errno.EACCES):
 				pass
 			else:
-				writemsg(_unicode_decode(_("!!! Error loading '%s': %s\n")) % \
+				writemsg(_("!!! Error loading '%s': %s\n") % \
 					(self._aux_cache_filename, e), noiselevel=-1)
 			del e
 
@@ -714,7 +716,7 @@ class vardbapi(dbapi):
 		if _get_slot_re(eapi_attrs).match(mydata['SLOT']) is None:
 			# Empty or invalid slot triggers InvalidAtom exceptions when
 			# generating slot atoms for packages, so translate it to '0' here.
-			mydata['SLOT'] = _unicode_decode('0')
+			mydata['SLOT'] = '0'
 
 		return [mydata[x] for x in wants]
 
@@ -750,7 +752,7 @@ class vardbapi(dbapi):
 					self._aux_cache_keys_re.match(x) is None:
 					env_keys.append(x)
 					continue
-				myd = _unicode_decode('')
+				myd = ''
 
 			# Preserve \n for metadata that is known to
 			# contain multiple lines.
@@ -764,13 +766,13 @@ class vardbapi(dbapi):
 			for k in env_keys:
 				v = env_results.get(k)
 				if v is None:
-					v = _unicode_decode('')
+					v = ''
 				if self._aux_multi_line_re.match(k) is None:
 					v = " ".join(v.split())
 				results[k] = v
 
 		if results.get("EAPI") == "":
-			results[_unicode_decode("EAPI")] = _unicode_decode('0')
+			results["EAPI"] = '0'
 
 		return results
 
@@ -1607,7 +1609,7 @@ class dblink(object):
 		if myroot == os.path.sep:
 			myroot = None
 		# used to generate parent dir entries
-		dir_entry = (_unicode_decode("dir"),)
+		dir_entry = ("dir",)
 		eroot_split_len = len(self.settings["EROOT"].split(os.sep)) - 1
 		pos = 0
 		errors = []
@@ -1896,7 +1898,7 @@ class dblink(object):
 				showMessage(_("!!! FAILED prerm: %s\n") % \
 					os.path.join(self.dbdir, "EAPI"),
 					level=logging.ERROR, noiselevel=-1)
-				showMessage(_unicode_decode("%s\n") % (eapi_unsupported,),
+				showMessage("%s\n" % (eapi_unsupported,),
 					level=logging.ERROR, noiselevel=-1)
 			elif os.path.isfile(myebuildpath):
 				phase = EbuildPhase(background=background,
@@ -3963,7 +3965,7 @@ class dblink(object):
 			encoding=_encodings['fs'], errors='strict'),
 			mode='w', encoding=_encodings['repo.content'],
 			errors='backslashreplace') as f:
-			f.write(_unicode_decode(str(counter)))
+			f.write("%s" % counter)
 
 		self.updateprotect()
 
@@ -4859,7 +4861,7 @@ class dblink(object):
 			mode='w', encoding=_encodings['repo.content'],
 			errors='backslashreplace') as f:
 			for x in mylist:
-				f.write(_unicode_decode(x + "\n"))
+				f.write("%s\n" % x)
 
 	def isregular(self):
 		"Is this a regular package (does it have a CATEGORY file?  A dblink can be virtual *and* regular)"

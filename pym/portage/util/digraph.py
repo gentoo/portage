@@ -1,12 +1,13 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 __all__ = ['digraph']
 
 from collections import deque
 import sys
 
-from portage import _unicode_decode
 from portage.util import writemsg
 
 class digraph(object):
@@ -272,18 +273,17 @@ class digraph(object):
 	def debug_print(self):
 		def output(s):
 			writemsg(s, noiselevel=-1)
-		# Use _unicode_decode() to force unicode format
+		# Use unicode_literals to force unicode format
 		# strings for python-2.x safety, ensuring that
 		# node.__unicode__() is used when necessary.
 		for node in self.nodes:
-			output(_unicode_decode("%s ") % (node,))
+			output("%s " % (node,))
 			if self.nodes[node][0]:
 				output("depends on\n")
 			else:
 				output("(no children)\n")
 			for child, priorities in self.nodes[node][0].items():
-				output(_unicode_decode("  %s (%s)\n") % \
-					(child, priorities[-1],))
+				output("  %s (%s)\n" % (child, priorities[-1],))
 
 	def bfs(self, start, ignore_priority=None):
 		if start not in self:

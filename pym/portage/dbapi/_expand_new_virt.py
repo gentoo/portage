@@ -1,5 +1,7 @@
-# Copyright 2011-2012 Gentoo Foundation
+# Copyright 2011-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 import portage
 from portage.dep import Atom, _get_useflag_re

@@ -1,6 +1,8 @@
 # Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from __future__ import unicode_literals
+
 __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
 
 import grp
@@ -1742,7 +1744,7 @@ def _post_src_install_write_metadata(settings):
 		'BUILD_TIME'), encoding=_encodings['fs'], errors='strict'),
 		mode='w', encoding=_encodings['repo.content'],
 		errors='strict') as f:
-		f.write(_unicode_decode("%.0f\n" % (time.time(),)))
+		f.write("%.0f\n" % (time.time(),))
 
 	use = frozenset(settings['PORTAGE_USE'].split())
 	for k in _vdb_use_conditional_keys:
@@ -1774,7 +1776,7 @@ def _post_src_install_write_metadata(settings):
 			k), encoding=_encodings['fs'], errors='strict'),
 			mode='w', encoding=_encodings['repo.content'],
 			errors='strict') as f:
-			f.write(_unicode_decode(v + '\n'))
+			f.write('%s\n' % v)
 
 	if eapi_attrs.slot_operator:
 		deps = evaluate_slot_operator_equal_deps(settings, use, QueryCommand.get_db())
@@ -1790,7 +1792,7 @@ def _post_src_install_write_metadata(settings):
 				k), encoding=_encodings['fs'], errors='strict'),
 				mode='w', encoding=_encodings['repo.content'],
 				errors='strict') as f:
-				f.write(_unicode_decode(v + '\n'))
+				f.write('%s\n' % v)
 
 def _preinst_bsdflags(mysettings):
 	if bsd_chflags:
@@ -1999,7 +2001,7 @@ def _post_src_install_uid_fix(mysettings, out):
 		'SIZE'), encoding=_encodings['fs'], errors='strict'),
 		mode='w', encoding=_encodings['repo.content'],
 		errors='strict')
-	f.write(_unicode_decode(str(size) + '\n'))
+	f.write('%d\n' % size)
 	f.close()
 
 	_reapply_bsdflags_to_image(mysettings)

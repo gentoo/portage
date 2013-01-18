@@ -1,8 +1,10 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """Resolver output display operation.
 """
+
+from __future__ import unicode_literals
 
 __all__ = (
 	"Display",
@@ -11,7 +13,6 @@ __all__ = (
 import sys
 
 from portage import os
-from portage import _unicode_decode
 from portage.dbapi.dep_expand import dep_expand
 from portage.dep import cpvequal, _repo_separator, _slot_separator
 from portage.eapi import _get_eapi_attrs
@@ -567,9 +568,9 @@ class Display(object):
 		"""
 		writemsg_stdout('\n%s\n' % (self.counters,), noiselevel=-1)
 		if show_repos:
-			# Use _unicode_decode() to force unicode format string so
+			# Use unicode_literals to force unicode format string so
 			# that RepoDisplay.__unicode__() is called in python2.
-			writemsg_stdout(_unicode_decode("%s") % (self.conf.repo_display,),
+			writemsg_stdout("%s" % (self.conf.repo_display,),
 				noiselevel=-1)
 		return
 

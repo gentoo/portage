@@ -1,7 +1,7 @@
 # Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
 from collections import deque
 import gc
@@ -18,7 +18,7 @@ import zlib
 import portage
 from portage import os
 from portage import _encodings
-from portage import _unicode_decode, _unicode_encode
+from portage import _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.elog.messages import eerror
 from portage.localization import _
@@ -1145,9 +1145,9 @@ class Scheduler(PollScheduler):
 				printer.eerror(line)
 			printer.eerror("")
 			for failed_pkg in self._failed_pkgs_all:
-				# Use _unicode_decode() to force unicode format string so
+				# Use unicode_literals to force unicode format string so
 				# that Package.__unicode__() is called in python2.
-				msg = _unicode_decode(" %s") % (failed_pkg.pkg,)
+				msg = " %s" % (failed_pkg.pkg,)
 				log_path = self._locate_failure_log(failed_pkg)
 				if log_path is not None:
 					msg += ", Log file:"

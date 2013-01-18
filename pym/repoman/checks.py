@@ -1,9 +1,11 @@
 # repoman: Checks
-# Copyright 2007-2012 Gentoo Foundation
+# Copyright 2007-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """This module contains functions used in Repoman to ascertain the quality
 and correctness of an ebuild."""
+
+from __future__ import unicode_literals
 
 import codecs
 from itertools import chain

@@ -1,5 +1,7 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 import io
 import logging
@@ -320,7 +322,7 @@ class RepoConfig(object):
 		d = {}
 		for k in self.__slots__:
 			d[k] = getattr(self, k, None)
-		return _unicode_decode("%s") % (d,)
+		return "%s" % (d,)
 
 	if sys.hexversion < 0x3000000:
 
@@ -431,9 +433,9 @@ class RepoConfigLoader(object):
 				try:
 					read_file(f)
 				except ParsingError as e:
-					writemsg(_unicode_decode(
-						_("!!! Error while reading repo config file: %s\n")
-						) % e, noiselevel=-1)
+					writemsg(
+						_("!!! Error while reading repo config file: %s\n") % e,
+						noiselevel=-1)
 			finally:
 				if f is not None:
 					f.close()

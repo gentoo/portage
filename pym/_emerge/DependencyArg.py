@@ -1,9 +1,11 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 import sys
 
-from portage import _encodings, _unicode_encode, _unicode_decode
+from portage import _encodings, _unicode_encode
 
 class DependencyArg(object):
 
@@ -31,10 +33,10 @@ class DependencyArg(object):
 		return hash((self.arg, self.root_config.root))
 
 	def __str__(self):
-		# Force unicode format string for python-2.x safety,
+		# Use unicode_literals format string for python-2.x safety,
 		# ensuring that self.arg.__unicode__() is used
 		# when necessary.
-		return _unicode_decode("%s") % (self.arg,)
+		return "%s" % (self.arg,)
 
 	if sys.hexversion < 0x3000000:
 

@@ -1,10 +1,11 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
 import sys
 
+from portage import _encodings, _unicode_encode
 from _emerge.AtomArg import AtomArg
 from _emerge.Package import Package
 from _emerge.PackageArg import PackageArg
@@ -150,7 +151,7 @@ class slot_conflict_handler(object):
 			if self.debug:
 				writemsg("\nNew configuration:\n", noiselevel=-1)
 				for pkg in config:
-					writemsg("   " + str(pkg) + "\n", noiselevel=-1)
+					writemsg("   %s\n" % (pkg,), noiselevel=-1)
 				writemsg("\n", noiselevel=-1)
 
 			new_solutions = self._check_configuration(config, all_conflict_atoms_by_slotatom, conflict_nodes)
@@ -249,14 +250,14 @@ class slot_conflict_handler(object):
 
 		for (slot_atom, root), pkgs \
 			in self.slot_collision_info.items():
-			msg.append(str(slot_atom))
+			msg.append("%s" % (slot_atom,))
 			if root != self.depgraph._frozen_config._running_root.root:
 				msg.append(" for %s" % (root,))
 			msg.append("\n\n")
 
 			for pkg in pkgs:
 				msg.append(indent)
-				msg.append(str(pkg))
+				msg.append("%s" % (pkg,))
 				parent_atoms = self.all_parents.get(pkg)
 				if parent_atoms:
 					#Create a list of collision reasons and map them to sets
@@ -394,7 +395,7 @@ class slot_conflict_handler(object):
 
 					def highlight_violations(atom, version, use=[]):
 						"""Colorize parts of an atom"""
-						atom_str = str(atom)
+						atom_str = "%s" % (atom,)
 						if version:
 							op = atom.operator
 							ver = None
@@ -449,7 +450,7 @@ class slot_conflict_handler(object):
 							(PackageArg, AtomArg)):
 							# For PackageArg and AtomArg types, it's
 							# redundant to display the atom attribute.
-							msg.append(str(parent))
+							msg.append("%s" % (parent,))
 						else:
 							# Display the specific atom from SetArg or
 							# Package types.
@@ -567,7 +568,9 @@ class slot_conflict_handler(object):
 					if pkg.iuse.all.symmetric_difference(other_pkg.iuse.all) \
 						or _pkg_use_enabled(pkg).symmetric_difference(_pkg_use_enabled(other_pkg)):
 						if self.debug:
-							writemsg(str(pkg) + " has pending USE changes. Rejecting configuration.\n", noiselevel=-1)
+							writemsg(("%s has pending USE changes. "
+								"Rejecting configuration.\n") % (pkg,),
+								noiselevel=-1)
 						return False
 
 		#A list of dicts. Keeps one dict per slot conflict. [ { flag1: "enabled" }, { flag2: "disabled" } ]
@@ -590,16 +593,18 @@ class slot_conflict_handler(object):
 				if not i.findAtomForPackage(pkg, modified_use=_pkg_use_enabled(pkg)):
 					#Version range does not match.
 					if self.debug:
-						writemsg(str(pkg) + " does not satify all version requirements." + \
-							" Rejecting configuration.\n", noiselevel=-1)
+						writemsg(("%s does not satify all version "
+							"requirements. Rejecting configuration.\n") %
+							(pkg,), noiselevel=-1)
 					return False
 
 				if not pkg.iuse.is_valid_flag(atom.unevaluated_atom.use.required):
 					#Missing IUSE.
 					#FIXME: This needs to support use dep defaults.
 					if self.debug:
-						writemsg(str(pkg) + " misses needed flags from IUSE." + \
-							" Rejecting configuration.\n", noiselevel=-1)
+						writemsg(("%s misses needed flags from IUSE."
+							" Rejecting configuration.\n") % (pkg,),
+							noiselevel=-1)
 					return False
 
 				if not isinstance(ppkg, Package) or ppkg.installed:
@@ -624,8 +629,9 @@ class slot_conflict_handler(object):
 					#We can't change USE of an installed package (only of an ebuild, but that is already
 					#part of the conflict, isn't it?
 					if self.debug:
-						writemsg(str(pkg) + ": installed package would need USE changes." + \
-							" Rejecting configuration.\n", noiselevel=-1)
+						writemsg(("%s: installed package would need USE"
+							" changes. Rejecting configuration.\n") % (pkg,),
+							noiselevel=-1)
 					return False
 
 				#Compute the required USE changes. A flag can be forced to "enabled" or "disabled",
@@ -679,7 +685,7 @@ class slot_conflict_handler(object):
 		if self.debug:
 			writemsg("All involved flags:\n", noiselevel=-1)
 			for id, involved_flags in enumerate(all_involved_flags):
-				writemsg("   " + str(config[id]) + "\n", noiselevel=-1)
+				writemsg("   %s\n" % (config[id],), noiselevel=-1)
 				for flag, state in involved_flags.items():
 					writemsg("     " + flag + ": " + state + "\n", noiselevel=-1)
 
@@ -762,7 +768,7 @@ class slot_conflict_handler(object):
 						inner_first = False
 					else:
 						msg += ", "
-					msg += flag + ": " + str(state)
+					msg += flag + ": %s" % (state,)
 				msg += "}"
 			msg += "]\n"
 			writemsg(msg, noiselevel=-1)
@@ -866,8 +872,9 @@ class slot_conflict_handler(object):
 					#We managed to create a new problem with our changes.
 					is_valid_solution = False
 					if self.debug:
-						writemsg("new conflict introduced: " + str(pkg) + \
-							" does not match " + new_atom + " from " + str(ppkg) + "\n", noiselevel=-1)
+						writemsg(("new conflict introduced: %s"
+							" does not match %s from %s\n") %
+							(pkg, new_atom, ppkg), noiselevel=-1)
 					break
 
 			if not is_valid_solution:
@@ -954,8 +961,16 @@ class _solution_candidate_generator(object):
 			else:
 				return self.value == other.value
 		def __str__(self):
-			return str(self.value)
-	
+			return "%s" % (self.value,)
+
+		if sys.hexversion < 0x3000000:
+
+			__unicode__ = __str__
+
+			def __str__(self):
+				return _unicode_encode(self.__unicode__(),
+					encoding=_encodings['content'], errors='backslashreplace')
+
 	def __init__(self, all_involved_flags):
 		#A copy of all_involved_flags with all "cond" values
 		#replaced by a _value_helper object.

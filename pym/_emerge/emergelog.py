@@ -1,7 +1,7 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
+from __future__ import unicode_literals
 
 import io
 import sys
@@ -19,10 +19,6 @@ from portage.output import xtermTitle
 # unless it's really called via emerge.
 _disable = True
 _emerge_log_dir = '/var/log'
-
-# Coerce to unicode, in order to prevent TypeError when writing
-# raw bytes to TextIOWrapper with python2.
-_log_fmt = _unicode_decode("%.0f: %s\n")
 
 def emergelog(xterm_titles, mystr, short_msg=None):
 
@@ -51,10 +47,10 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 				mode=0o660)
 		mylock = portage.locks.lockfile(file_path)
 		try:
-			mylogfile.write(_log_fmt % (time.time(), mystr))
+			mylogfile.write("%.0f: %s\n" % (time.time(), mystr))
 			mylogfile.close()
 		finally:
 			portage.locks.unlockfile(mylock)
 	except (IOError,OSError,portage.exception.PortageException) as e:
 		if secpass >= 1:
-			print("emergelog():",e, file=sys.stderr)
+			portage.util.writemsg("emergelog(): %s\n" % (e,), noiselevel=-1)

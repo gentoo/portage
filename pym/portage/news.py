@@ -1,8 +1,8 @@
 # portage: news management code
-# Copyright 2006-2011 Gentoo Foundation
+# Copyright 2006-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
 __all__ = ["NewsManager", "NewsItem", "DisplayRestriction",
 	"DisplayProfileRestriction", "DisplayKeywordRestriction",
@@ -388,7 +388,7 @@ def count_unread_news(portdb, vardb, repos=None, update=True):
 			# NOTE: The NewsManager typically handles permission errors by
 			# returning silently, so PermissionDenied won't necessarily be
 			# raised even if we do trigger a permission error above.
-			msg = _unicode_decode("Permission denied: '%s'\n") % (e,)
+			msg = "Permission denied: '%s'\n" % (e,)
 			if msg in permission_msgs:
 				pass
 			else:

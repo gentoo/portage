@@ -1,5 +1,7 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 import sys
 from itertools import chain
@@ -259,8 +261,7 @@ class Package(Task):
 				use_reduce(v, eapi=dep_eapi, matchall=True,
 					is_valid_flag=dep_valid_flag, token_class=Atom)
 			except InvalidDependString as e:
-				self._invalid_metadata("PROVIDE.syntax",
-					_unicode_decode("%s: %s") % (k, e))
+				self._invalid_metadata("PROVIDE.syntax", "%s: %s" % (k, e))
 
 		for k in self._use_conditional_misc_keys:
 			v = self._metadata.get(k)
@@ -283,11 +284,7 @@ class Package(Task):
 					check_required_use(v, (),
 						self.iuse.is_valid_flag, eapi=eapi)
 				except InvalidDependString as e:
-					# Force unicode format string for python-2.x safety,
-					# ensuring that PortageException.__unicode__() is used
-					# when necessary.
-					self._invalid_metadata(k + ".syntax",
-						_unicode_decode("%s: %s") % (k, e))
+					self._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
 
 		k = 'SRC_URI'
 		v = self._metadata.get(k)
@@ -416,7 +413,7 @@ class Package(Task):
 		# format string, since that will result in the
 		# PortageException.__str__() method being invoked,
 		# followed by unsafe decoding that may result in a
-		# UnicodeDecodeError. Therefore, use _unicode_decode()
+		# UnicodeDecodeError. Therefore, use unicode_literals
 		# to ensure that format strings are unicode, so that
 		# PortageException.__unicode__() is used when necessary
 		# in python-2.x.
@@ -428,19 +425,17 @@ class Package(Task):
 						continue
 					categorized_error = True
 					self._invalid_metadata(error.category,
-						_unicode_decode("%s: %s") % (k, error))
+						"%s: %s" % (k, error))
 
 			if not categorized_error:
-				self._invalid_metadata(qacat,
-					_unicode_decode("%s: %s") % (k, e))
+				self._invalid_metadata(qacat,"%s: %s" % (k, e))
 		else:
 			# For installed packages, show the path of the file
 			# containing the invalid metadata, since the user may
 			# want to fix the deps by hand.
 			vardb = self.root_config.trees['vartree'].dbapi
 			path = vardb.getpath(self.cpv, filename=k)
-			self._invalid_metadata(qacat,
-				_unicode_decode("%s: %s in '%s'") % (k, e, path))
+			self._invalid_metadata(qacat, "%s: %s in '%s'" % (k, e, path))
 
 	def _invalid_metadata(self, msg_type, msg):
 		if self._invalid is None:

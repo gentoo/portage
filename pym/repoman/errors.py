@@ -1,6 +1,8 @@
 # repoman: Error Messages
-# Copyright 2007-2011 Gentoo Foundation
+# Copyright 2007-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 COPYRIGHT_ERROR = 'Invalid Gentoo Copyright on line: %d'
 LICENSE_ERROR = 'Invalid Gentoo/GPL License on line: %d'

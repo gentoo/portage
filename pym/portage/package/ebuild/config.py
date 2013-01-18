@@ -1,6 +1,8 @@
 # Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from __future__ import unicode_literals
+
 __all__ = [
 	'autouse', 'best_from_dict', 'check_config_instance', 'config',
 ]
@@ -2378,7 +2380,7 @@ class config(object):
 				return portage._pym_path
 
 			elif mykey == "PORTAGE_GID":
-				return _unicode_decode(str(portage_gid))
+				return "%s" % portage_gid
 
 		for d in self.lookuplist:
 			try:

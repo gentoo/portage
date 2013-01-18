@@ -2,7 +2,7 @@
 # Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
 import signal
 import sys
@@ -101,9 +101,7 @@ def has_version(argv):
 			try:
 				atom = portage.dep.Atom(argv[1], allow_repo=allow_repo, eapi=eapi)
 			except portage.exception.InvalidAtom as e:
-				warnings.append(
-					portage._unicode_decode("QA Notice: %s: %s") % \
-					('has_version', e))
+				warnings.append("QA Notice: %s: %s" % ('has_version', e))
 		atom = eval_atom_use(atom)
 
 	if warnings:
@@ -149,9 +147,7 @@ def best_version(argv):
 			try:
 				atom = portage.dep.Atom(argv[1], allow_repo=allow_repo, eapi=eapi)
 			except portage.exception.InvalidAtom as e:
-				warnings.append(
-					portage._unicode_decode("QA Notice: %s: %s") % \
-					('best_version', e))
+				warnings.append("QA Notice: %s: %s" % ('best_version', e))
 		atom = eval_atom_use(atom)
 
 	if warnings:

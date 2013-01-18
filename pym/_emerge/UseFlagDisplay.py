@@ -1,10 +1,12 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 from itertools import chain
 import sys
 
-from portage import _encodings, _unicode_decode, _unicode_encode
+from portage import _encodings, _unicode_encode
 from portage.output import red
 from portage.util import cmp_sort_key
 from portage.output import blue
@@ -114,9 +116,9 @@ def pkg_use_display(pkg, opts, modified_use=None):
 			flags.sort(key=UseFlagDisplay.sort_combined)
 		else:
 			flags.sort(key=UseFlagDisplay.sort_separated)
-		# Use _unicode_decode() to force unicode format string so
+		# Use unicode_literals to force unicode format string so
 		# that UseFlagDisplay.__unicode__() is called in python2.
 		flag_displays.append('%s="%s"' % (varname,
-			' '.join(_unicode_decode("%s") % (f,) for f in flags)))
+			' '.join("%s" % (f,) for f in flags)))
 
 	return ' '.join(flag_displays)

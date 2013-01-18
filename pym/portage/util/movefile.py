@@ -1,5 +1,7 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 __all__ = ['movefile']
 
@@ -111,7 +113,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 	except Exception as e:
 		writemsg("!!! %s\n" % _("Stating source file failed... movefile()"),
 			noiselevel=-1)
-		writemsg(_unicode_decode("!!! %s\n") % (e,), noiselevel=-1)
+		writemsg("!!! %s\n" % (e,), noiselevel=-1)
 		return None
 
 	destexists=1
@@ -180,7 +182,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			writemsg("!!! %s\n" % _("failed to properly create symlink:"),
 				noiselevel=-1)
 			writemsg("!!! %s -> %s\n" % (dest, target), noiselevel=-1)
-			writemsg(_unicode_decode("!!! %s\n") % (e,), noiselevel=-1)
+			writemsg("!!! %s\n" % (e,), noiselevel=-1)
 			return None
 
 	hardlinked = False
@@ -232,7 +234,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 				# Some random error.
 				writemsg("!!! %s\n" % _("Failed to move %(src)s to %(dest)s") %
 					{"src": src, "dest": dest}, noiselevel=-1)
-				writemsg(_unicode_decode("!!! %s\n") % (e,), noiselevel=-1)
+				writemsg("!!! %s\n" % (e,), noiselevel=-1)
 				return None
 			# Invalid cross-device-link 'bind' mounted or actually Cross-Device
 	if renamefailed:
@@ -263,7 +265,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			except Exception as e:
 				writemsg("!!! %s\n" % _('copy %(src)s -> %(dest)s failed.') %
 					{"src": src, "dest": dest}, noiselevel=-1)
-				writemsg(_unicode_decode("!!! %s\n") % (e,), noiselevel=-1)
+				writemsg("!!! %s\n" % (e,), noiselevel=-1)
 				return None
 		else:
 			#we don't yet handle special, so we need to fall back to /bin/mv

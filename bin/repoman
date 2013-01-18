@@ -6,7 +6,7 @@
 # Then, check to make sure deps are satisfiable (to avoid "can't find match for" problems)
 # that last one is tricky because multiple profiles need to be checked.
 
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
 import calendar
 import codecs
