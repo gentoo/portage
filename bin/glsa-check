@@ -13,7 +13,7 @@ sys.path.insert(0, pym_path)
 import portage
 portage._internal_caller = True
 from portage import os
-from portage.output import *
+from portage.output import green, red, nocolor, white
 
 from optparse import OptionGroup, OptionParser
 
@@ -100,7 +100,8 @@ elif mode == "list" and not params:
 	params.append("new")
 
 # delay this for speed increase
-from portage.glsa import *
+from portage.glsa import (Glsa, GlsaTypeException, GlsaFormatException,
+	get_applied_glsas, get_glsa_list)
 
 eroot = portage.settings['EROOT']
 vardb = portage.db[eroot]["vartree"].dbapi
@@ -225,7 +226,7 @@ if mode in ["dump", "fix", "inject", "pretend"]:
 					# using emerge for the actual merging as it contains the dependency
 					# code and we want to be consistent in behaviour. Also this functionality
 					# will be integrated in emerge later, so it shouldn't hurt much.
-					emergecmd = "emerge --oneshot " + glsaconfig["EMERGE_OPTS"] + " =" + pkg
+					emergecmd = "emerge --oneshot " + " =" + pkg
 					if verbose:
 						sys.stderr.write(emergecmd+"\n")
 					exitcode = os.system(emergecmd)
