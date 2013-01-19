@@ -76,6 +76,8 @@ class SimpleRepomanTestCase(TestCase):
 
 		profiles = (
 			("x86", "default/linux/x86/test_profile", "stable"),
+			("x86", "default/linux/x86/test_dev", "dev"),
+			("x86", "default/linux/x86/test_exp", "exp"),
 		)
 
 		profile = {
@@ -192,6 +194,7 @@ class SimpleRepomanTestCase(TestCase):
 			("", git_cmd + ("init-db",)),
 			("", git_cmd + ("add", ".")),
 			("", git_cmd + ("commit", "-a", "-m", "add whole repo")),
+			("", repoman_cmd + ("full", "-d")),
 			("", cp_cmd + (test_ebuild, test_ebuild[:-8] + "2.ebuild")),
 			("", git_cmd + ("add", test_ebuild[:-8] + "2.ebuild")),
 			("", repoman_cmd + ("commit", "-m", "bump to version 2")),
@@ -242,6 +245,18 @@ class SimpleRepomanTestCase(TestCase):
 			with open(os.path.join(profiles_dir, "profiles.desc"), 'w') as f:
 				for x in profiles:
 					f.write("%s %s %s\n" % x)
+
+			# ResolverPlayground only created the first profile,
+			# so create the remaining ones.
+			for x in profiles[1:]:
+				sub_profile_dir = os.path.join(profiles_dir, x[1])
+				ensure_dirs(sub_profile_dir)
+				for config_file, lines in profile.items():
+					file_name = os.path.join(sub_profile_dir, config_file)
+					with open(file_name, "w") as f:
+						for line in lines:
+							f.write("%s\n" % line)
+
 			for x in licenses:
 				open(os.path.join(license_dir, x), 'wb').close()
 			with open(os.path.join(profiles_dir, "arch.list"), 'w') as f:
