@@ -25,6 +25,7 @@ __all__ = [
 	"UpdateChangeLog"
 ]
 
+import collections
 import errno
 import io
 from itertools import chain
@@ -521,6 +522,28 @@ def FindPortdir(settings):
 
 	return [normalize_path(x) for x in (portdir, portdir_overlay, location)]
 
+_vcs_type = collections.namedtuple('_vcs_type',
+	'name dir_name')
+
+_FindVCS_data = (
+	_vcs_type(
+		name = 'git',
+		dir_name = '.git'
+	),
+	_vcs_type(
+		name = 'bzr',
+		dir_name = '.bzr'
+	),
+	_vcs_type(
+		name = 'hg',
+		dir_name = '.hg'
+	),
+	_vcs_type(
+		name = 'svn',
+		dir_name = '.svn'
+	)
+)
+
 def FindVCS():
 	""" Try to figure out in what VCS' working tree we are. """
 
@@ -532,14 +555,13 @@ def FindVCS():
 		pathprep = ''
 
 		while depth is None or depth > 0:
-			if os.path.isdir(os.path.join(pathprep, '.git')):
-				retvcs.append('git')
-			if os.path.isdir(os.path.join(pathprep, '.bzr')):
-				retvcs.append('bzr')
-			if os.path.isdir(os.path.join(pathprep, '.hg')):
-				retvcs.append('hg')
-			if os.path.isdir(os.path.join(pathprep, '.svn')):  # >=1.7
-				retvcs.append('svn')
+			for vcs_type in _FindVCS_data:
+				vcs_dir = os.path.join(pathprep, vcs_type.dir_name)
+				if os.path.isdir(vcs_dir):
+					logging.debug('FindVCS: found %(name)s dir: %(vcs_dir)s' %
+						{'name': vcs_type.name,
+						'vcs_dir': os.path.abspath(vcs_dir)})
+					retvcs.append(vcs_type.name)
 
 			if retvcs:
 				break
