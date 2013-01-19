@@ -58,7 +58,20 @@ class SecuritySetTestCase(TestCase):
 </glsa>
 """
 
+	def _must_skip(self):
+		try:
+			__import__("xml.etree.ElementTree")
+			__import__("xml.parsers.expat").parsers.expat.ExpatError
+		except (AttributeError, ImportError):
+			return "python is missing xml support"
+
 	def testSecuritySet(self):
+
+		skip_reason = self._must_skip()
+		if skip_reason:
+			self.portage_skip = skip_reason
+			self.assertFalse(True, skip_reason)
+			return
 
 		ebuilds = {
 			"cat/A-vulnerable-2.2": {
