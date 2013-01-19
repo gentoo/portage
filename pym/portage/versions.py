@@ -409,7 +409,10 @@ class _pkg_str(_unicode):
 			except AttributeError:
 				raise AttributeError('stable')
 			stable = settings._isStable(self)
-			self.__dict__['_stable'] = stable
+			if settings.local_config:
+				# For repoman, don't cache this value, since
+				# it needs to be re-computed for each profile.
+				self.__dict__['_stable'] = stable
 			return stable
 
 def pkgsplit(mypkg, silent=1, eapi=None):
