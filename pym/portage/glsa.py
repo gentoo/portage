@@ -379,7 +379,7 @@ def getMinUpgrade(vulnerableList, unaffectedList, portdbapi, vardbapi, minimize=
 	for u in unaffectedList:
 		# TODO: This had match_type="match-all" before. I don't think it should
 		# since we disregarded masked items later anyway (match(=rValue, "porttree"))
-		avail_updates.update(match(u, "porttree"))
+		avail_updates.update(match(u, portdbapi))
 	# if an atom is already installed, we should not consider it for upgrades
 	avail_updates.difference_update(u_installed)
 
@@ -718,7 +718,8 @@ class Glsa:
 		systemAffection = []
 		for pkg in self.packages.keys():
 			for path in self.packages[pkg]:
-				update = getMinUpgrade(path["vul_atoms"], path["unaff_atoms"], minimize=least_change)
+				update = getMinUpgrade(path["vul_atoms"], path["unaff_atoms"],
+					self.portdbapi, self.vardbapi, minimize=least_change)
 				if update:
 					systemAffection.extend(update)
 		return systemAffection
