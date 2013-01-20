@@ -127,8 +127,12 @@ class KeywordsManager(object):
 			# profile, then consider it stable.
 			for kw in pgroups:
 				if kw[:1] != "~":
-					if kw in mygroups or kw == '*' or '*' in mygroups:
+					if kw in mygroups or '*' in mygroups:
 						return True
+					if kw == '*':
+						for x in mygroups:
+							if x[:1] != "~":
+								return True
 			return False
 
 	def getMissingKeywords(self,
