@@ -1084,7 +1084,7 @@ def parsedate(s):
 	m = month_map.get(b)
 	if m is None:
 		return None
-	m = str(m).rjust(2, '0')
+	m = "%02d" % m
 
 	return time.strptime(':'.join((Y, m, d, H_M_S)), '%Y:%m:%d:%H:%M:%S')
 
