@@ -18,7 +18,8 @@ from portage.package.ebuild._config.helper import ordered_by_atom_specificity
 
 class UseManager(object):
 
-	def __init__(self, repositories, profiles, abs_user_config, user_config=True):
+	def __init__(self, repositories, profiles, abs_user_config, is_stable,
+		user_config=True):
 		#	file				variable
 		#--------------------------------
 		#	repositories
@@ -61,6 +62,8 @@ class UseManager(object):
 		#--------------------------------
 		#	puse
 
+		self._user_config = user_config
+		self._is_stable = is_stable
 		self._repo_usemask_dict = self._parse_repository_files_to_dict_of_tuples("use.mask", repositories)
 		self._repo_usestablemask_dict = \
 			self._parse_repository_files_to_dict_of_tuples("use.stable.mask",
@@ -269,6 +272,25 @@ class UseManager(object):
 			ret[repo.name] = file_dict
 		return ret
 
+	def _isStable(self, pkg):
+		if self._user_config:
+			try:
+				return pkg.stable
+			except AttributeError:
+				# KEYWORDS is unavailable (prior to "depend" phase)
+				return False
+
+		try:
+			pkg._metadata
+		except AttributeError:
+			# KEYWORDS is unavailable (prior to "depend" phase)
+			return False
+
+		# Since repoman uses different config instances for
+		# different profiles, we have to be careful to do the
+		# stable check against the correct profile here.
+		return self._is_stable(pkg)
+
 	def getUseMask(self, pkg=None):
 		if pkg is None:
 			return frozenset(stack_lists(
@@ -282,11 +304,7 @@ class UseManager(object):
 			pkg = _pkg_str(remove_slot(pkg), slot=slot, repo=repo)
 			cp = pkg.cp
 
-		try:
-			stable = pkg.stable
-		except AttributeError:
-			# KEYWORDS is unavailable (prior to "depend" phase)
-			stable = False
+		stable = self._isStable(pkg)
 
 		usemask = []
 
@@ -345,11 +363,7 @@ class UseManager(object):
 			pkg = _pkg_str(remove_slot(pkg), slot=slot, repo=repo)
 			cp = pkg.cp
 
-		try:
-			stable = pkg.stable
-		except AttributeError:
-			# KEYWORDS is unavailable (prior to "depend" phase)
-			stable = False
+		stable = self._isStable(pkg)
 
 		useforce = []
 

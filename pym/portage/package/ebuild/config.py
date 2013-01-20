@@ -644,7 +644,8 @@ class config(object):
 				self._repo_make_defaults[repo.name] = d
 
 			#Read all USE related files from profiles and optionally from user config.
-			self._use_manager = UseManager(self.repositories, profiles_complex, abs_user_config, user_config=local_config)
+			self._use_manager = UseManager(self.repositories, profiles_complex,
+				abs_user_config, self._isStable, user_config=local_config)
 			#Initialize all USE related variables we track ourselves.
 			self.usemask = self._use_manager.getUseMask()
 			self.useforce = self._use_manager.getUseForce()

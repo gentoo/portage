@@ -408,11 +408,13 @@ class _pkg_str(_unicode):
 				settings = self._settings
 			except AttributeError:
 				raise AttributeError('stable')
+			if not settings.local_config:
+				# Since repoman uses different config instances for
+				# different profiles, our local instance does not
+				# refer to the correct profile.
+				raise AssertionError('invalid context')
 			stable = settings._isStable(self)
-			if settings.local_config:
-				# For repoman, don't cache this value, since
-				# it needs to be re-computed for each profile.
-				self.__dict__['_stable'] = stable
+			self.__dict__['_stable'] = stable
 			return stable
 
 def pkgsplit(mypkg, silent=1, eapi=None):
