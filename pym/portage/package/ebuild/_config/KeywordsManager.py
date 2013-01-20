@@ -127,7 +127,7 @@ class KeywordsManager(object):
 			# profile, then consider it stable.
 			for kw in pgroups:
 				if kw[:1] != "~":
-					if kw in mygroups:
+					if kw in mygroups or kw == '*':
 						return True
 			return False
 
