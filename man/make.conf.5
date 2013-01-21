@@ -55,12 +55,12 @@ Defaults to the value of * -@EULA.
 .br
 .I Examples:
 .nf
-# Accept any license
-ACCEPT_LICENSE="*"
-# Accept any license except the "public-domain" license
-ACCEPT_LICENSE="* -public-domain"
-# Only accept licenses in the FSF-APPROVED license group
-ACCEPT_LICENSE="-* @FSF-APPROVED"
+# Only accept licenses in the FREE license group (i.e. Free Software)
+ACCEPT_LICENSE="-* @FREE"
+# As before, but exclude the "Artistic" license
+ACCEPT_LICENSE="-* @FREE -Artistic"
+# Accept any license except those in the EULA license group (default)
+ACCEPT_LICENSE="* -@EULA"
 .fi
 .TP
 \fBACCEPT_PROPERTIES\fR = \fI[space delimited list of properties]\fR
