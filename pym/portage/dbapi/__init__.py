@@ -220,8 +220,12 @@ class dbapi(object):
 			# data corruption).
 			use = frozenset(x for x in metadata["USE"].split()
 				if x in iuse or iuse_implicit_match(x))
-			missing_enabled = atom.use.missing_enabled.difference(iuse)
-			missing_disabled = atom.use.missing_disabled.difference(iuse)
+			missing_enabled = frozenset(x for x in
+				atom.use.missing_enabled if not
+				(x in iuse or iuse_implicit_match(x)))
+			missing_disabled = frozenset(x for x in
+				atom.use.missing_disabled if not
+				(x in iuse or iuse_implicit_match(x)))
 
 			if atom.use.enabled:
 				if any(x in atom.use.enabled for x in missing_disabled):
@@ -258,11 +262,15 @@ class dbapi(object):
 
 			# Check unsatisfied use-default deps
 			if atom.use.enabled:
-				missing_disabled = atom.use.missing_disabled.difference(iuse)
+				missing_disabled = frozenset(x for x in
+					atom.use.missing_disabled if not
+					(x in iuse or iuse_implicit_match(x)))
 				if any(x in atom.use.enabled for x in missing_disabled):
 					return False
 			if atom.use.disabled:
-				missing_enabled = atom.use.missing_enabled.difference(iuse)
+				missing_enabled = frozenset(x for x in
+					atom.use.missing_enabled if not
+					(x in iuse or iuse_implicit_match(x)))
 				if any(x in atom.use.disabled for x in missing_enabled):
 					return False
 

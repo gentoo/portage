@@ -2282,9 +2282,11 @@ def match_from_list(mydep, candidate_list):
 					continue
 
 				if mydep.use:
-
-					missing_enabled = mydep.use.missing_enabled.difference(x.iuse.all)
-					missing_disabled = mydep.use.missing_disabled.difference(x.iuse.all)
+					is_valid_flag = x.iuse.is_valid_flag
+					missing_enabled = frozenset(flag for flag in
+						mydep.use.missing_enabled if not is_valid_flag(flag))
+					missing_disabled = frozenset(flag for flag in
+						mydep.use.missing_disabled if not is_valid_flag(flag))
 
 					if mydep.use.enabled:
 						if any(f in mydep.use.enabled for f in missing_disabled):

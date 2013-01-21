@@ -4418,8 +4418,11 @@ class depgraph(object):
 
 						use_match = True
 						can_adjust_use = not pkg.built
-						missing_enabled = atom.use.missing_enabled.difference(pkg.iuse.all)
-						missing_disabled = atom.use.missing_disabled.difference(pkg.iuse.all)
+						is_valid_flag = pkg.iuse.is_valid_flag
+						missing_enabled = frozenset(x for x in
+							atom.use.missing_enabled if not is_valid_flag(x))
+						missing_disabled = frozenset(x for x in
+							atom.use.missing_disabled if not is_valid_flag(x))
 
 						if atom.use.enabled:
 							if any(x in atom.use.enabled for x in missing_disabled):
