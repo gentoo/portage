@@ -561,7 +561,7 @@ class Package(Task):
 	@property
 	def use(self):
 		if self._use is None:
-			self._metadata._init_use()
+			self._init_use()
 		return self._use
 
 	def _get_pkgsettings(self):
@@ -569,6 +569,42 @@ class Package(Task):
 			'porttree'].dbapi.doebuild_settings
 		pkgsettings.setcpv(self)
 		return pkgsettings
+
+	def _init_use(self):
+		if self.built:
+			# Use IUSE to validate USE settings for built packages,
+			# in case the package manager that built this package
+			# failed to do that for some reason (or in case of
+			# data corruption). The enabled flags must be consistent
+			# with implicit IUSE, in order to avoid potential
+			# inconsistencies in USE dep matching (see bug #453400).
+			use_str = self._metadata['USE']
+			is_valid_flag = self.iuse.is_valid_flag
+			enabled_flags = [x for x in use_str.split() if is_valid_flag(x)]
+			use_str = " ".join(enabled_flags)
+			self._use = self._use_class(
+				self, use_str)
+		else:
+			try:
+				use_str = _PackageMetadataWrapperBase.__getitem__(
+					self._metadata, 'USE')
+			except KeyError:
+				use_str = None
+			calculated_use = False
+			if not use_str:
+				use_str = self._get_pkgsettings()["PORTAGE_USE"]
+				calculated_use = True
+			_PackageMetadataWrapperBase.__setitem__(
+				self._metadata, 'USE', use_str)
+			self._use = self._use_class(
+				self, use_str)
+			# Initialize these now, since USE access has just triggered
+			# setcpv, and we want to cache the result of the force/mask
+			# calculations that were done.
+			if calculated_use:
+				self._use._init_force_mask()
+
+		return use_str
 
 	class _iuse(object):
 
@@ -718,31 +754,6 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 
 		self.update(metadata)
 
-	def _init_use(self):
-		if self._pkg.built:
-			use_str = self['USE']
-			self._pkg._use = self._pkg._use_class(
-				self._pkg, use_str)
-		else:
-			try:
-				use_str = _PackageMetadataWrapperBase.__getitem__(self, 'USE')
-			except KeyError:
-				use_str = None
-			calculated_use = False
-			if not use_str:
-				use_str = self._pkg._get_pkgsettings()["PORTAGE_USE"]
-				calculated_use = True
-			_PackageMetadataWrapperBase.__setitem__(self, 'USE', use_str)
-			self._pkg._use = self._pkg._use_class(
-				self._pkg, use_str)
-			# Initialize these now, since USE access has just triggered
-			# setcpv, and we want to cache the result of the force/mask
-			# calculations that were done.
-			if calculated_use:
-				self._pkg._use._init_force_mask()
-
-		return use_str
-
 	def __getitem__(self, k):
 		v = _PackageMetadataWrapperBase.__getitem__(self, k)
 		if k in self._use_conditional_keys:
@@ -760,7 +771,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 		elif k == 'USE' and not self._pkg.built:
 			if not v:
 				# This is lazy because it's expensive.
-				v = self._init_use()
+				v = self._pkg._init_use()
 
 		return v
 

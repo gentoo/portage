@@ -217,7 +217,9 @@ class dbapi(object):
 			# Use IUSE to validate USE settings for built packages,
 			# in case the package manager that built this package
 			# failed to do that for some reason (or in case of
-			# data corruption).
+			# data corruption). The enabled flags must be consistent
+			# with implicit IUSE, in order to avoid potential
+			# inconsistencies in USE dep matching (see bug #453400).
 			use = frozenset(x for x in metadata["USE"].split()
 				if x in iuse or iuse_implicit_match(x))
 			missing_enabled = frozenset(x for x in
