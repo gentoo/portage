@@ -46,6 +46,7 @@ from portage.util import ensure_dirs, getconfig, grabdict, \
 	grabdict_package, grabfile, grabfile_package, LazyItemsDict, \
 	normalize_path, shlex_split, stack_dictlist, stack_dicts, stack_lists, \
 	writemsg, writemsg_level, _eapi_cache
+from portage.util._path import exists_raise_eaccess, isdir_raise_eaccess
 from portage.versions import catpkgsplit, catsplit, cpv_getkey, _pkg_str
 
 from portage.package.ebuild._config import special_env_vars
@@ -620,7 +621,7 @@ class config(object):
 				shell_quote_re = re.compile(r"[\s\\\"'$`]")
 				for ov in portdir_overlay:
 					ov = normalize_path(ov)
-					if os.path.isdir(ov):
+					if isdir_raise_eaccess(ov):
 						if shell_quote_re.search(ov) is not None:
 							ov = portage._shell_quote(ov)
 						new_ov.append(ov)
@@ -1006,8 +1007,8 @@ class config(object):
 						noiselevel=-1)
 
 		profile_broken = not self.profile_path or \
-			not os.path.exists(os.path.join(self.profile_path, "parent")) and \
-			os.path.exists(os.path.join(self["PORTDIR"], "profiles"))
+			not exists_raise_eaccess(os.path.join(self.profile_path, "parent")) and \
+			exists_raise_eaccess(os.path.join(self["PORTDIR"], "profiles"))
 
 		if profile_broken:
 			abs_profile_path = None
