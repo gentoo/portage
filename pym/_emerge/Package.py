@@ -593,8 +593,6 @@ class Package(Task):
 			if not use_str:
 				use_str = self._get_pkgsettings()["PORTAGE_USE"]
 				calculated_use = True
-			_PackageMetadataWrapperBase.__setitem__(
-				self._metadata, 'USE', use_str)
 			self._use = self._use_class(
 				self, use_str.split())
 			# Initialize these now, since USE access has just triggered
@@ -602,6 +600,9 @@ class Package(Task):
 			# calculations that were done.
 			if calculated_use:
 				self._use._init_force_mask()
+
+		_PackageMetadataWrapperBase.__setitem__(
+			self._metadata, 'USE', use_str)
 
 		return use_str
 
