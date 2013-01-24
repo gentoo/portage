@@ -6,7 +6,6 @@ from __future__ import unicode_literals
 import io
 import logging
 import warnings
-import stat
 import sys
 import re
 
@@ -24,9 +23,9 @@ from portage.const import (MANIFEST2_HASH_FUNCTIONS, MANIFEST2_REQUIRED_HASH,
 	REPO_NAME_LOC, USER_CONFIG_PATH)
 from portage.eapi import eapi_allows_directories_on_profile_level_and_repository_level
 from portage.env.loaders import KeyValuePairFileLoader
-from portage.exception import PermissionDenied
 from portage.util import (normalize_path, read_corresponding_eapi_file, shlex_split,
 	stack_lists, writemsg, writemsg_level)
+from portage.util._path import exists_raise_eaccess, isdir_raise_eaccess
 from portage.localization import _
 from portage import _unicode_decode
 from portage import _unicode_encode
@@ -375,14 +374,7 @@ class RepoConfigLoader(object):
 			#overlay priority is negative because we want them to be looked before any other repo
 			base_priority = 0
 			for ov in overlays:
-				try:
-					st = os.stat(ov)
-				except OSError as e:
-					st = None
-					if e.errno == PermissionDenied.errno:
-						raise PermissionDenied("stat('%s')" % ov)
-
-				if st is not None and stat.S_ISDIR(st.st_mode):
+				if isdir_raise_eaccess(ov):
 					repo_opts = default_repo_opts.copy()
 					repo_opts['location'] = ov
 					repo = RepoConfig(None, repo_opts)
@@ -456,7 +448,7 @@ class RepoConfigLoader(object):
 				optdict[oname] = parser.get(sname, oname)
 
 			repo = RepoConfig(sname, optdict)
-			if repo.location and not os.path.exists(repo.location):
+			if repo.location and not exists_raise_eaccess(repo.location):
 				writemsg(_("!!! Invalid repos.conf entry '%s'"
 					" (not a dir): '%s'\n") % (sname, repo.location), noiselevel=-1)
 				continue
@@ -664,7 +656,7 @@ class RepoConfigLoader(object):
 				if r.location is None:
 					writemsg(_("!!! Location not set for repository %s\n") % name, noiselevel=-1)
 				else:
-					if not os.path.isdir(r.location):
+					if not isdir_raise_eaccess(r.location):
 						self.prepos_order.remove(name)
 						writemsg(_("!!! Invalid Repository Location"
 							" (not a dir): '%s'\n") % r.location, noiselevel=-1)
