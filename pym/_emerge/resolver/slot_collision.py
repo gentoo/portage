@@ -317,6 +317,26 @@ class slot_conflict_handler(object):
 									#Use conditionals not met.
 									violated_atom = atom.violated_conditionals(_pkg_use_enabled(other_pkg), \
 										other_pkg.iuse.is_valid_flag)
+									if violated_atom.use is None:
+										# Something like bug #453400 caused the
+										# above findAtomForPackage call to
+										# to return None unexpectedly.
+										msg = ("\n\n!!! BUG: Detected "
+											"USE dep match inconsistency:\n"
+											"\tppkg: %s\n"
+											"\tviolated_atom: %s\n"
+											"\tatom: %s unevaluated: %s\n"
+											"\tother_pkg: %s IUSE: %s USE: %s\n" %
+											(ppkg,
+											violated_atom,
+											atom,
+											atom.unevaluated_atom,
+											other_pkg,
+											sorted(other_pkg.iuse.all),
+											sorted(_pkg_use_enabled(other_pkg))))
+										writemsg(msg, noiselevel=-2)
+										raise AssertionError(
+											'BUG: USE dep match inconsistency')
 									for flag in violated_atom.use.enabled.union(violated_atom.use.disabled):
 										atoms = collision_reasons.get(("use", flag), set())
 										atoms.add((ppkg, atom, other_pkg))
