@@ -4222,7 +4222,7 @@ class dblink(object):
 		x = -1
 		while True:
 			x += 1
-			backup_p = p + '.backup.' + str(x).rjust(4, '0')
+			backup_p = '%s.backup.%04d' % (p, x)
 			try:
 				os.lstat(backup_p)
 			except OSError:
