@@ -489,13 +489,12 @@ class Package(Task):
 		# Share identical frozenset instances when available.
 		_frozensets = {}
 
-		def __init__(self, pkg, use_str):
+		def __init__(self, pkg, enabled_flags):
 			self._pkg = pkg
 			self._expand = None
 			self._expand_hidden = None
 			self._force = None
 			self._mask = None
-			enabled_flags = use_str.split()
 			if eapi_has_use_aliases(pkg.eapi):
 				for enabled_flag in enabled_flags:
 					enabled_flags.extend(pkg.iuse.alias_mapping.get(enabled_flag, []))
@@ -583,7 +582,7 @@ class Package(Task):
 			enabled_flags = [x for x in use_str.split() if is_valid_flag(x)]
 			use_str = " ".join(enabled_flags)
 			self._use = self._use_class(
-				self, use_str)
+				self, enabled_flags)
 		else:
 			try:
 				use_str = _PackageMetadataWrapperBase.__getitem__(
@@ -597,7 +596,7 @@ class Package(Task):
 			_PackageMetadataWrapperBase.__setitem__(
 				self._metadata, 'USE', use_str)
 			self._use = self._use_class(
-				self, use_str)
+				self, use_str.split())
 			# Initialize these now, since USE access has just triggered
 			# setcpv, and we want to cache the result of the force/mask
 			# calculations that were done.
