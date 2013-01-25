@@ -86,19 +86,27 @@ def _get_global(k):
 		elif portage.const.EPREFIX:
 			secpass = 2
 		#Discover the uid and gid of the portage user/group
+		keyerror = False
 		try:
 			portage_uid = pwd.getpwnam(_get_global('_portage_username')).pw_uid
-			_portage_grpname = _get_global('_portage_grpname')
-			if platform.python_implementation() == 'PyPy':
-				# Somehow this prevents "TypeError: expected string" errors
-				# from grp.getgrnam() with PyPy 1.7
-				_portage_grpname = str(_portage_grpname)
-			portage_gid = grp.getgrnam(_portage_grpname).gr_gid
-			if secpass < 1 and portage_gid in os.getgroups():
-				secpass = 1
 		except KeyError:
+			keyerror = True
 			portage_uid = 0
+
+		try:
+			portage_gid = grp.getgrnam(_get_global('_portage_grpname')).gr_gid
+		except KeyError:
+			keyerror = True
 			portage_gid = 0
+
+		if secpass < 1 and portage_gid in os.getgroups():
+			secpass = 1
+
+		# Suppress this error message if both PORTAGE_GRPNAME and
+		# PORTAGE_USERNAME are set to "root", for things like
+		# Android (see bug #454060).
+		if keyerror and not (_get_global('_portage_username') == "root" and
+			_get_global('_portage_grpname') == "root"):
 			writemsg(colorize("BAD",
 				_("portage: 'portage' user or group missing.")) + "\n", noiselevel=-1)
 			writemsg(_(
@@ -224,10 +232,18 @@ def _init(settings):
 	if '_portage_grpname' not in _initialized_globals and \
 		'_portage_username' not in _initialized_globals:
 
+		# Prevents "TypeError: expected string" errors
+		# from grp.getgrnam() with PyPy
+		native_string = platform.python_implementation() == 'PyPy'
+
 		v = settings.get('PORTAGE_GRPNAME', 'portage')
+		if native_string:
+			v = portage._native_string(v)
 		globals()['_portage_grpname'] = v
 		_initialized_globals.add('_portage_grpname')
 
 		v = settings.get('PORTAGE_USERNAME', 'portage')
+		if native_string:
+			v = portage._native_string(v)
 		globals()['_portage_username'] = v
 		_initialized_globals.add('_portage_username')
