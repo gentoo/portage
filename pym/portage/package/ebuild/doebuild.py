@@ -1420,8 +1420,30 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		if "userpriv" in features and "userpriv" not in mysettings["PORTAGE_RESTRICT"].split() and secpass >= 2:
 			portage_build_uid = portage_uid
 			portage_build_gid = portage_gid
-	mysettings["PORTAGE_BUILD_USER"] = pwd.getpwuid(portage_build_uid).pw_name
-	mysettings["PORTAGE_BUILD_GROUP"] = grp.getgrgid(portage_build_gid).gr_name
+
+	if "PORTAGE_BUILD_USER" not in mysettings:
+		user = None
+		try:
+			user = pwd.getpwuid(portage_build_uid).pw_name
+		except KeyError:
+			if portage_build_uid == 0:
+				user = "root"
+			elif portage_build_uid == portage_uid:
+				user = portage.data._portage_username
+		if user is not None:
+			mysettings["PORTAGE_BUILD_USER"] = user
+
+	if "PORTAGE_BUILD_GROUP" not in mysettings:
+		group = None
+		try:
+			group = grp.getgrgid(portage_build_gid).gr_name
+		except KeyError:
+			if portage_build_gid == 0:
+				group = "root"
+			elif portage_build_gid == portage_gid:
+				group = portage.data._portage_grpname
+		if group is not None:
+			mysettings["PORTAGE_BUILD_GROUP"] = group
 
 	if not free:
 		free=((droppriv and "usersandbox" not in features) or \
