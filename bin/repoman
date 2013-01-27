@@ -648,19 +648,6 @@ if options.mode in ("commit", "fix", "manifest"):
 			logging.error(line)
 		sys.exit(1)
 
-if "commit" == options.mode and \
-	repo_config.name == "gentoo" and \
-	"RMD160" in manifest_hashes and \
-	"RMD160" not in portage.checksum.hashorigin_map:
-	msg = "Please install " \
-	"pycrypto or enable python's ssl USE flag in order " \
-	"to enable RMD160 hash support. See bug #198398 for " \
-	"more information."
-	prefix = bad(" * ")
-	for line in textwrap.wrap(msg, 70):
-		print(prefix + line)
-	sys.exit(1)
-
 if options.echangelog is None and repo_config.update_changelog:
 	options.echangelog = 'y'
 
