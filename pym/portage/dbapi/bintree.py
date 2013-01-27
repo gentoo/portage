@@ -1,5 +1,7 @@
-# Copyright 1998-2012 Gentoo Foundation
+# Copyright 1998-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 __all__ = ["bindbapi", "binarytree"]
 
@@ -140,15 +142,15 @@ class bindbapi(fakedbapi):
 			if myval:
 				mydata[x] = " ".join(myval.split())
 
-		if not mydata.setdefault('EAPI', _unicode_decode('0')):
-			mydata['EAPI'] = _unicode_decode('0')
+		if not mydata.setdefault('EAPI', '0'):
+			mydata['EAPI'] = '0'
 
 		if cache_me:
 			aux_cache = self._aux_cache_slot_dict()
 			for x in self._aux_cache_keys:
-				aux_cache[x] = mydata.get(x, _unicode_decode(''))
+				aux_cache[x] = mydata.get(x, '')
 			self._aux_cache[mycpv] = aux_cache
-		return [mydata.get(x, _unicode_decode('')) for x in wants]
+		return [mydata.get(x, '') for x in wants]
 
 	def aux_update(self, cpv, values):
 		if not self.bintree.populated:

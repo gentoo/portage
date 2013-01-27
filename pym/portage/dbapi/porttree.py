@@ -1,6 +1,8 @@
 # Copyright 1998-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from __future__ import unicode_literals
+
 __all__ = [
 	"close_portdbapi_caches", "FetchlistDict", "portagetree", "portdbapi"
 ]
@@ -153,10 +155,10 @@ class portdbapi(dbapi):
 			# portage group.
 			depcachedir_unshared = True
 		else:
-			cache_kwargs.update({
+			cache_kwargs.update(portage._native_kwargs({
 				'gid'     : portage_gid,
 				'perms'   : 0o664
-			})
+			}))
 
 		# If secpass < 1, we don't want to write to the cache
 		# since then we won't be able to apply group permissions

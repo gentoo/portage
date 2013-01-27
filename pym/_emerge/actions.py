@@ -1,7 +1,7 @@
 # Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
 import errno
 import logging
@@ -25,6 +25,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dbapi._similar_name_search:similar_name_search',
 	'portage.debug',
 	'portage.news:count_unread_news,display_news_notifications',
+	'portage.util._get_vm_info:get_vm_info',
 	'_emerge.chk_updated_cfg_files:chk_updated_cfg_files',
 	'_emerge.help:help@emerge_help',
 	'_emerge.post_emerge:display_news_notification,post_emerge',
@@ -1207,11 +1208,11 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				priority = priority_map[dep_type]
 
 				if debug:
-					writemsg_level(_unicode_decode("\nParent:    %s\n") \
+					writemsg_level("\nParent:    %s\n"
 						% (node,), noiselevel=-1, level=logging.DEBUG)
-					writemsg_level(_unicode_decode(  "Depstring: %s\n") \
+					writemsg_level(  "Depstring: %s\n"
 						% (depstr,), noiselevel=-1, level=logging.DEBUG)
-					writemsg_level(_unicode_decode(  "Priority:  %s\n") \
+					writemsg_level(  "Priority:  %s\n"
 						% (priority,), noiselevel=-1, level=logging.DEBUG)
 
 				try:
@@ -1225,7 +1226,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 				if debug:
 					writemsg_level("Candidates: [%s]\n" % \
-						', '.join(_unicode_decode("'%s'") % (x,) for x in atoms),
+						', '.join("'%s'" % (x,) for x in atoms),
 						noiselevel=-1, level=logging.DEBUG)
 
 				for atom in atoms:
@@ -1488,6 +1489,18 @@ def action_info(settings, trees, myopts, myfiles):
 		append(header_title.rjust(int(header_width/2 + len(header_title)/2)))
 	append(header_width * "=")
 	append("System uname: %s" % (platform.platform(aliased=1),))
+
+	vm_info = get_vm_info()
+	if "ram.total" in vm_info:
+		line = "%-9s %10d total" % ("KiB Mem:", vm_info["ram.total"] / 1024)
+		if "ram.free" in vm_info:
+			line += ",%10d free" % (vm_info["ram.free"] / 1024,)
+		append(line)
+	if "swap.total" in vm_info:
+		line = "%-9s %10d total" % ("KiB Swap:", vm_info["swap.total"] / 1024)
+		if "swap.free" in vm_info:
+			line += ",%10d free" % (vm_info["swap.free"] / 1024,)
+		append(line)
 
 	lastSync = portage.grabfile(os.path.join(
 		settings["PORTDIR"], "metadata", "timestamp.chk"))
@@ -3786,10 +3799,15 @@ def run_action(settings, trees, mtimedb, myaction, myopts, myfiles,
 			portage.util.ensure_dirs(_emerge.emergelog._emerge_log_dir)
 
 	if not "--pretend" in myopts:
-		emergelog(xterm_titles, "Started emerge on: "+\
-			_unicode_decode(
-				time.strftime("%b %d, %Y %H:%M:%S", time.localtime()),
-				encoding=_encodings['content'], errors='replace'))
+		time_fmt = "%b %d, %Y %H:%M:%S"
+		if sys.hexversion < 0x3000000:
+			time_fmt = portage._unicode_encode(time_fmt)
+		time_str = time.strftime(time_fmt, time.localtime(time.time()))
+		# Avoid potential UnicodeDecodeError in Python 2, since strftime
+		# returns bytes in Python 2, and %b may contain non-ascii chars.
+		time_str = _unicode_decode(time_str,
+			encoding=_encodings['content'], errors='replace')
+		emergelog(xterm_titles, "Started emerge on: %s" % time_str)
 		myelogstr=""
 		if myopts:
 			opt_list = []

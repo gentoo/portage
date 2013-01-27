@@ -2,6 +2,8 @@
 # Copyright 2003-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from __future__ import unicode_literals
+
 __all__ = [
 	'Atom', 'best_match_to_list', 'cpvequal',
 	'dep_getcpv', 'dep_getkey', 'dep_getslot',
@@ -2280,9 +2282,11 @@ def match_from_list(mydep, candidate_list):
 					continue
 
 				if mydep.use:
-
-					missing_enabled = mydep.use.missing_enabled.difference(x.iuse.all)
-					missing_disabled = mydep.use.missing_disabled.difference(x.iuse.all)
+					is_valid_flag = x.iuse.is_valid_flag
+					missing_enabled = frozenset(flag for flag in
+						mydep.use.missing_enabled if not is_valid_flag(flag))
+					missing_disabled = frozenset(flag for flag in
+						mydep.use.missing_disabled if not is_valid_flag(flag))
 
 					if mydep.use.enabled:
 						if any(f in mydep.use.enabled for f in missing_disabled):

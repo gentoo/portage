@@ -1,5 +1,7 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 import io
 import logging
@@ -23,6 +25,7 @@ from portage.eapi import eapi_allows_directories_on_profile_level_and_repository
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.util import (normalize_path, read_corresponding_eapi_file, shlex_split,
 	stack_lists, writemsg, writemsg_level)
+from portage.util._path import exists_raise_eaccess, isdir_raise_eaccess
 from portage.localization import _
 from portage import _unicode_decode
 from portage import _unicode_encode
@@ -236,7 +239,7 @@ class RepoConfig(object):
 		if self.disable_manifest:
 			kwds['from_scratch'] = True
 		kwds['find_invalid_path_char'] = self.find_invalid_path_char
-		return manifest.Manifest(*args, **kwds)
+		return manifest.Manifest(*args, **portage._native_kwargs(kwds))
 
 	def update(self, new_repo):
 		"""Update repository with options in another RepoConfig"""
@@ -320,7 +323,7 @@ class RepoConfig(object):
 		d = {}
 		for k in self.__slots__:
 			d[k] = getattr(self, k, None)
-		return _unicode_decode("%s") % (d,)
+		return "%s" % (d,)
 
 	if sys.hexversion < 0x3000000:
 
@@ -371,7 +374,7 @@ class RepoConfigLoader(object):
 			#overlay priority is negative because we want them to be looked before any other repo
 			base_priority = 0
 			for ov in overlays:
-				if os.path.isdir(ov):
+				if isdir_raise_eaccess(ov):
 					repo_opts = default_repo_opts.copy()
 					repo_opts['location'] = ov
 					repo = RepoConfig(None, repo_opts)
@@ -431,9 +434,9 @@ class RepoConfigLoader(object):
 				try:
 					read_file(f)
 				except ParsingError as e:
-					writemsg(_unicode_decode(
-						_("!!! Error while reading repo config file: %s\n")
-						) % e, noiselevel=-1)
+					writemsg(
+						_("!!! Error while reading repo config file: %s\n") % e,
+						noiselevel=-1)
 			finally:
 				if f is not None:
 					f.close()
@@ -445,7 +448,7 @@ class RepoConfigLoader(object):
 				optdict[oname] = parser.get(sname, oname)
 
 			repo = RepoConfig(sname, optdict)
-			if repo.location and not os.path.exists(repo.location):
+			if repo.location and not exists_raise_eaccess(repo.location):
 				writemsg(_("!!! Invalid repos.conf entry '%s'"
 					" (not a dir): '%s'\n") % (sname, repo.location), noiselevel=-1)
 				continue
@@ -653,7 +656,7 @@ class RepoConfigLoader(object):
 				if r.location is None:
 					writemsg(_("!!! Location not set for repository %s\n") % name, noiselevel=-1)
 				else:
-					if not os.path.isdir(r.location):
+					if not isdir_raise_eaccess(r.location):
 						self.prepos_order.remove(name)
 						writemsg(_("!!! Invalid Repository Location"
 							" (not a dir): '%s'\n") % r.location, noiselevel=-1)

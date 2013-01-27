@@ -1,6 +1,8 @@
 # Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from __future__ import unicode_literals
+
 __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
 
 import grp
@@ -135,7 +137,7 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 
 	settings['EBUILD_PHASE'] = phase
 	try:
-		return spawn(cmd, settings, **kwargs)
+		return spawn(cmd, settings, **portage._native_kwargs(kwargs))
 	finally:
 		settings.pop('EBUILD_PHASE', None)
 
@@ -459,8 +461,8 @@ _doebuild_commands_without_builddir = (
 	'fetch', 'fetchall', 'help', 'manifest'
 )
 
-def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
-	fetchonly=0, cleanup=0, dbkey=None, use_cache=1, fetchall=0, tree=None,
+def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0, listonly=0,
+	fetchonly=0, cleanup=0, dbkey=DeprecationWarning, use_cache=1, fetchall=0, tree=None,
 	mydbapi=None, vartree=None, prev_mtimes=None,
 	fd_pipes=None, returnpid=False):
 	"""
@@ -523,10 +525,15 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 	mysettings = settings
 	myroot = settings['EROOT']
 
-	if _unused is not None and _unused != mysettings['EROOT']:
+	if _unused is not DeprecationWarning:
 		warnings.warn("The third parameter of the "
-			"portage.doebuild() is now unused. Use "
-			"settings['ROOT'] instead.",
+			"portage.doebuild() is deprecated. Instead "
+			"settings['EROOT'] is used.",
+			DeprecationWarning, stacklevel=2)
+
+	if dbkey is not DeprecationWarning:
+		warnings.warn("portage.doebuild() called "
+			"with deprecated dbkey argument.",
 			DeprecationWarning, stacklevel=2)
 
 	if not tree:
@@ -725,42 +732,7 @@ def doebuild(myebuild, mydo, _unused=None, settings=None, debug=0, listonly=0,
 			if returnpid:
 				return _spawn_phase(mydo, mysettings,
 					fd_pipes=fd_pipes, returnpid=returnpid)
-			elif isinstance(dbkey, dict):
-				warnings.warn("portage.doebuild() called " + \
-					"with dict dbkey argument. This usage will " + \
-					"not be supported in the future.",
-					DeprecationWarning, stacklevel=2)
-				mysettings["dbkey"] = ""
-				pr, pw = os.pipe()
-				fd_pipes = {
-					0:portage._get_stdin().fileno(),
-					1:sys.__stdout__.fileno(),
-					2:sys.__stderr__.fileno(),
-					9:pw}
-				mypids = _spawn_phase(mydo, mysettings, returnpid=True,
-					fd_pipes=fd_pipes)
-				os.close(pw) # belongs exclusively to the child process now
-				f = os.fdopen(pr, 'rb', 0)
-				for k, v in zip(auxdbkeys,
-					(_unicode_decode(line).rstrip('\n') for line in f)):
-					dbkey[k] = v
-				f.close()
-				retval = os.waitpid(mypids[0], 0)[1]
-				portage.process.spawned_pids.remove(mypids[0])
-				# If it got a signal, return the signal that was sent, but
-				# shift in order to distinguish it from a return value. (just
-				# like portage.process.spawn() would do).
-				if retval & 0xff:
-					retval = (retval & 0xff) << 8
-				else:
-					# Otherwise, return its exit code.
-					retval = retval >> 8
-				if retval == os.EX_OK and len(dbkey) != len(auxdbkeys):
-					# Don't trust bash's returncode if the
-					# number of lines is incorrect.
-					retval = 1
-				return retval
-			elif dbkey:
+			elif dbkey and dbkey is not DeprecationWarning:
 				mysettings["dbkey"] = dbkey
 			else:
 				mysettings["dbkey"] = \
@@ -1456,8 +1428,30 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		if "userpriv" in features and "userpriv" not in mysettings["PORTAGE_RESTRICT"].split() and secpass >= 2:
 			portage_build_uid = portage_uid
 			portage_build_gid = portage_gid
-	mysettings["PORTAGE_BUILD_USER"] = pwd.getpwuid(portage_build_uid).pw_name
-	mysettings["PORTAGE_BUILD_GROUP"] = grp.getgrgid(portage_build_gid).gr_name
+
+	if "PORTAGE_BUILD_USER" not in mysettings:
+		user = None
+		try:
+			user = pwd.getpwuid(portage_build_uid).pw_name
+		except KeyError:
+			if portage_build_uid == 0:
+				user = "root"
+			elif portage_build_uid == portage_uid:
+				user = portage.data._portage_username
+		if user is not None:
+			mysettings["PORTAGE_BUILD_USER"] = user
+
+	if "PORTAGE_BUILD_GROUP" not in mysettings:
+		group = None
+		try:
+			group = grp.getgrgid(portage_build_gid).gr_name
+		except KeyError:
+			if portage_build_gid == 0:
+				group = "root"
+			elif portage_build_gid == portage_gid:
+				group = portage.data._portage_grpname
+		if group is not None:
+			mysettings["PORTAGE_BUILD_GROUP"] = group
 
 	if not free:
 		free=((droppriv and "usersandbox" not in features) or \
@@ -1506,14 +1500,15 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 			mysettings["PORTAGE_SANDBOX_T"])
 
 	if keywords.get("returnpid"):
-		return spawn_func(mystring, env=mysettings.environ(), **keywords)
+		return spawn_func(mystring, env=mysettings.environ(),
+			**portage._native_kwargs(keywords))
 
 	proc = EbuildSpawnProcess(
 		background=False, args=mystring,
 		scheduler=SchedulerInterface(portage._internal_caller and
 			global_event_loop() or EventLoop(main=False)),
 		spawn_func=spawn_func,
-		settings=mysettings, **keywords)
+		settings=mysettings, **portage._native_kwargs(keywords))
 
 	proc.start()
 	proc.wait()
@@ -1801,7 +1796,7 @@ def _post_src_install_write_metadata(settings):
 		'BUILD_TIME'), encoding=_encodings['fs'], errors='strict'),
 		mode='w', encoding=_encodings['repo.content'],
 		errors='strict') as f:
-		f.write(_unicode_decode("%.0f\n" % (time.time(),)))
+		f.write("%.0f\n" % (time.time(),))
 
 	use = frozenset(settings['PORTAGE_USE'].split())
 	for k in _vdb_use_conditional_keys:
@@ -1833,7 +1828,7 @@ def _post_src_install_write_metadata(settings):
 			k), encoding=_encodings['fs'], errors='strict'),
 			mode='w', encoding=_encodings['repo.content'],
 			errors='strict') as f:
-			f.write(_unicode_decode(v + '\n'))
+			f.write('%s\n' % v)
 
 	if eapi_attrs.slot_operator:
 		deps = evaluate_slot_operator_equal_deps(settings, use, QueryCommand.get_db())
@@ -1849,7 +1844,7 @@ def _post_src_install_write_metadata(settings):
 				k), encoding=_encodings['fs'], errors='strict'),
 				mode='w', encoding=_encodings['repo.content'],
 				errors='strict') as f:
-				f.write(_unicode_decode(v + '\n'))
+				f.write('%s\n' % v)
 
 def _preinst_bsdflags(mysettings):
 	if bsd_chflags:
@@ -2058,7 +2053,7 @@ def _post_src_install_uid_fix(mysettings, out):
 		'SIZE'), encoding=_encodings['fs'], errors='strict'),
 		mode='w', encoding=_encodings['repo.content'],
 		errors='strict')
-	f.write(_unicode_decode(str(size) + '\n'))
+	f.write('%d\n' % size)
 	f.close()
 
 	_reapply_bsdflags_to_image(mysettings)

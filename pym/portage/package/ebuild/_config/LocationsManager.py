@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -18,6 +18,7 @@ from portage.exception import DirectoryNotFound, ParseError
 from portage.localization import _
 from portage.util import ensure_dirs, grabfile, \
 	normalize_path, shlex_split, writemsg
+from portage.util._path import exists_raise_eaccess, isdir_raise_eaccess
 from portage.repository.config import parse_layout_conf, \
 	_portage1_profiles_allow_directories
 
@@ -73,14 +74,26 @@ class LocationsManager(object):
 		known_repos = tuple(known_repos)
 
 		if self.config_profile_path is None:
+			deprecated_profile_path = os.path.join(
+				self.config_root, 'etc', 'make.profile')
 			self.config_profile_path = \
 				os.path.join(self.config_root, PROFILE_PATH)
-			if os.path.isdir(self.config_profile_path):
+			if isdir_raise_eaccess(self.config_profile_path):
 				self.profile_path = self.config_profile_path
+				if isdir_raise_eaccess(deprecated_profile_path) and not \
+					os.path.samefile(self.profile_path,
+					deprecated_profile_path):
+					# Don't warn if they refer to the same path, since
+					# that can be used for backward compatibility with
+					# old software.
+					writemsg("!!! %s\n" %
+						_("Found 2 make.profile dirs: "
+						"using '%s', ignoring '%s'") %
+						(self.profile_path, deprecated_profile_path),
+						noiselevel=-1)
 			else:
-				self.config_profile_path = \
-					os.path.join(self.config_root, 'etc', 'make.profile')
-				if os.path.isdir(self.config_profile_path):
+				self.config_profile_path = deprecated_profile_path
+				if isdir_raise_eaccess(self.config_profile_path):
 					self.profile_path = self.config_profile_path
 				else:
 					self.profile_path = None
@@ -120,7 +133,7 @@ class LocationsManager(object):
 		self.profiles_complex = tuple(self.profiles_complex)
 
 	def _check_var_directory(self, varname, var):
-		if not os.path.isdir(var):
+		if not isdir_raise_eaccess(var):
 			writemsg(_("!!! Error: %s='%s' is not a directory. "
 				"Please correct this.\n") % (varname, var),
 				noiselevel=-1)
@@ -180,7 +193,7 @@ class LocationsManager(object):
 						files=', '.join(offenders)))
 
 		parentsFile = os.path.join(currentPath, "parent")
-		if os.path.exists(parentsFile):
+		if exists_raise_eaccess(parentsFile):
 			parents = grabfile(parentsFile)
 			if not parents:
 				raise ParseError(
@@ -202,7 +215,7 @@ class LocationsManager(object):
 					# of the current repo, so realpath it.
 					parentPath = os.path.realpath(parentPath)
 
-				if os.path.exists(parentPath):
+				if exists_raise_eaccess(parentPath):
 					self._addProfile(parentPath, repositories, known_repos)
 				else:
 					raise ParseError(
@@ -293,7 +306,7 @@ class LocationsManager(object):
 		for ov in shlex_split(self.portdir_overlay):
 			ov = normalize_path(ov)
 			profiles_dir = os.path.join(ov, "profiles")
-			if os.path.isdir(profiles_dir):
+			if isdir_raise_eaccess(profiles_dir):
 				self.overlay_profiles.append(profiles_dir)
 
 		self.profile_locations = [os.path.join(portdir, "profiles")] + self.overlay_profiles

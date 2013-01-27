@@ -1,5 +1,7 @@
-# Copyright 1998-2012 Gentoo Foundation
+# Copyright 1998-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 __all__ = ["dbapi"]
 
@@ -215,11 +217,17 @@ class dbapi(object):
 			# Use IUSE to validate USE settings for built packages,
 			# in case the package manager that built this package
 			# failed to do that for some reason (or in case of
-			# data corruption).
+			# data corruption). The enabled flags must be consistent
+			# with implicit IUSE, in order to avoid potential
+			# inconsistencies in USE dep matching (see bug #453400).
 			use = frozenset(x for x in metadata["USE"].split()
 				if x in iuse or iuse_implicit_match(x))
-			missing_enabled = atom.use.missing_enabled.difference(iuse)
-			missing_disabled = atom.use.missing_disabled.difference(iuse)
+			missing_enabled = frozenset(x for x in
+				atom.use.missing_enabled if not
+				(x in iuse or iuse_implicit_match(x)))
+			missing_disabled = frozenset(x for x in
+				atom.use.missing_disabled if not
+				(x in iuse or iuse_implicit_match(x)))
 
 			if atom.use.enabled:
 				if any(x in atom.use.enabled for x in missing_disabled):
@@ -256,11 +264,15 @@ class dbapi(object):
 
 			# Check unsatisfied use-default deps
 			if atom.use.enabled:
-				missing_disabled = atom.use.missing_disabled.difference(iuse)
+				missing_disabled = frozenset(x for x in
+					atom.use.missing_disabled if not
+					(x in iuse or iuse_implicit_match(x)))
 				if any(x in atom.use.enabled for x in missing_disabled):
 					return False
 			if atom.use.disabled:
-				missing_enabled = atom.use.missing_enabled.difference(iuse)
+				missing_enabled = frozenset(x for x in
+					atom.use.missing_enabled if not
+					(x in iuse or iuse_implicit_match(x)))
 				if any(x in atom.use.disabled for x in missing_enabled):
 					return False
 

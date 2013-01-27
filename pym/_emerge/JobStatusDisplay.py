@@ -1,5 +1,7 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 import formatter
 import io
@@ -9,7 +11,6 @@ import time
 import portage
 from portage import os
 from portage import _encodings
-from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.output import xtermTitle
 
@@ -233,10 +234,10 @@ class JobStatusDisplay(object):
 	def _display_status(self):
 		# Don't use len(self._completed_tasks) here since that also
 		# can include uninstall tasks.
-		curval_str = str(self.curval)
-		maxval_str = str(self.maxval)
-		running_str = str(self.running)
-		failed_str = str(self.failed)
+		curval_str = "%s" % (self.curval,)
+		maxval_str = "%s" % (self.maxval,)
+		running_str = "%s" % (self.running,)
+		failed_str = "%s" % (self.failed,)
 		load_avg_str = self._load_avg_str()
 
 		color_output = io.StringIO()
@@ -248,36 +249,36 @@ class JobStatusDisplay(object):
 		f = formatter.AbstractFormatter(style_writer)
 
 		number_style = "INFORM"
-		f.add_literal_data(_unicode_decode("Jobs: "))
+		f.add_literal_data("Jobs: ")
 		f.push_style(number_style)
-		f.add_literal_data(_unicode_decode(curval_str))
+		f.add_literal_data(curval_str)
 		f.pop_style()
-		f.add_literal_data(_unicode_decode(" of "))
+		f.add_literal_data(" of ")
 		f.push_style(number_style)
-		f.add_literal_data(_unicode_decode(maxval_str))
+		f.add_literal_data(maxval_str)
 		f.pop_style()
-		f.add_literal_data(_unicode_decode(" complete"))
+		f.add_literal_data(" complete")
 
 		if self.running:
-			f.add_literal_data(_unicode_decode(", "))
+			f.add_literal_data(", ")
 			f.push_style(number_style)
-			f.add_literal_data(_unicode_decode(running_str))
+			f.add_literal_data(running_str)
 			f.pop_style()
-			f.add_literal_data(_unicode_decode(" running"))
+			f.add_literal_data(" running")
 
 		if self.failed:
-			f.add_literal_data(_unicode_decode(", "))
+			f.add_literal_data(", ")
 			f.push_style(number_style)
-			f.add_literal_data(_unicode_decode(failed_str))
+			f.add_literal_data(failed_str)
 			f.pop_style()
-			f.add_literal_data(_unicode_decode(" failed"))
+			f.add_literal_data(" failed")
 
 		padding = self._jobs_column_width - len(plain_output.getvalue())
 		if padding > 0:
-			f.add_literal_data(padding * _unicode_decode(" "))
+			f.add_literal_data(padding * " ")
 
-		f.add_literal_data(_unicode_decode("Load avg: "))
-		f.add_literal_data(_unicode_decode(load_avg_str))
+		f.add_literal_data("Load avg: ")
+		f.add_literal_data(load_avg_str)
 
 		# Truncate to fit width, to avoid making the terminal scroll if the
 		# line overflows (happens when the load average is large).

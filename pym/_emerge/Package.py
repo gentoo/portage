@@ -1,5 +1,7 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 import sys
 from itertools import chain
@@ -260,8 +262,7 @@ class Package(Task):
 				use_reduce(v, eapi=dep_eapi, matchall=True,
 					is_valid_flag=dep_valid_flag, token_class=Atom)
 			except InvalidDependString as e:
-				self._invalid_metadata("PROVIDE.syntax",
-					_unicode_decode("%s: %s") % (k, e))
+				self._invalid_metadata("PROVIDE.syntax", "%s: %s" % (k, e))
 
 		for k in self._use_conditional_misc_keys:
 			v = self._metadata.get(k)
@@ -284,11 +285,7 @@ class Package(Task):
 					check_required_use(v, (),
 						self.iuse.is_valid_flag, eapi=eapi)
 				except InvalidDependString as e:
-					# Force unicode format string for python-2.x safety,
-					# ensuring that PortageException.__unicode__() is used
-					# when necessary.
-					self._invalid_metadata(k + ".syntax",
-						_unicode_decode("%s: %s") % (k, e))
+					self._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
 
 		k = 'SRC_URI'
 		v = self._metadata.get(k)
@@ -427,7 +424,7 @@ class Package(Task):
 		# format string, since that will result in the
 		# PortageException.__str__() method being invoked,
 		# followed by unsafe decoding that may result in a
-		# UnicodeDecodeError. Therefore, use _unicode_decode()
+		# UnicodeDecodeError. Therefore, use unicode_literals
 		# to ensure that format strings are unicode, so that
 		# PortageException.__unicode__() is used when necessary
 		# in python-2.x.
@@ -439,19 +436,17 @@ class Package(Task):
 						continue
 					categorized_error = True
 					self._invalid_metadata(error.category,
-						_unicode_decode("%s: %s") % (k, error))
+						"%s: %s" % (k, error))
 
 			if not categorized_error:
-				self._invalid_metadata(qacat,
-					_unicode_decode("%s: %s") % (k, e))
+				self._invalid_metadata(qacat,"%s: %s" % (k, e))
 		else:
 			# For installed packages, show the path of the file
 			# containing the invalid metadata, since the user may
 			# want to fix the deps by hand.
 			vardb = self.root_config.trees['vartree'].dbapi
 			path = vardb.getpath(self.cpv, filename=k)
-			self._invalid_metadata(qacat,
-				_unicode_decode("%s: %s in '%s'") % (k, e, path))
+			self._invalid_metadata(qacat, "%s: %s in '%s'" % (k, e, path))
 
 	def _invalid_metadata(self, msg_type, msg):
 		if self._invalid is None:
@@ -505,13 +500,12 @@ class Package(Task):
 		# Share identical frozenset instances when available.
 		_frozensets = {}
 
-		def __init__(self, pkg, use_str):
+		def __init__(self, pkg, enabled_flags):
 			self._pkg = pkg
 			self._expand = None
 			self._expand_hidden = None
 			self._force = None
 			self._mask = None
-			enabled_flags = use_str.split()
 			if eapi_has_use_aliases(pkg.eapi):
 				for enabled_flag in enabled_flags:
 					enabled_flags.extend(pkg.iuse.alias_mapping.get(enabled_flag, []))
@@ -577,7 +571,7 @@ class Package(Task):
 	@property
 	def use(self):
 		if self._use is None:
-			self._metadata._init_use()
+			self._init_use()
 		return self._use
 
 	def _get_pkgsettings(self):
@@ -585,6 +579,43 @@ class Package(Task):
 			'porttree'].dbapi.doebuild_settings
 		pkgsettings.setcpv(self)
 		return pkgsettings
+
+	def _init_use(self):
+		if self.built:
+			# Use IUSE to validate USE settings for built packages,
+			# in case the package manager that built this package
+			# failed to do that for some reason (or in case of
+			# data corruption). The enabled flags must be consistent
+			# with implicit IUSE, in order to avoid potential
+			# inconsistencies in USE dep matching (see bug #453400).
+			use_str = self._metadata['USE']
+			is_valid_flag = self.iuse.is_valid_flag
+			enabled_flags = [x for x in use_str.split() if is_valid_flag(x)]
+			use_str = " ".join(enabled_flags)
+			self._use = self._use_class(
+				self, enabled_flags)
+		else:
+			try:
+				use_str = _PackageMetadataWrapperBase.__getitem__(
+					self._metadata, 'USE')
+			except KeyError:
+				use_str = None
+			calculated_use = False
+			if not use_str:
+				use_str = self._get_pkgsettings()["PORTAGE_USE"]
+				calculated_use = True
+			self._use = self._use_class(
+				self, use_str.split())
+			# Initialize these now, since USE access has just triggered
+			# setcpv, and we want to cache the result of the force/mask
+			# calculations that were done.
+			if calculated_use:
+				self._use._init_force_mask()
+
+		_PackageMetadataWrapperBase.__setitem__(
+			self._metadata, 'USE', use_str)
+
+		return use_str
 
 	class _iuse(object):
 
@@ -734,31 +765,6 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 
 		self.update(metadata)
 
-	def _init_use(self):
-		if self._pkg.built:
-			use_str = self['USE']
-			self._pkg._use = self._pkg._use_class(
-				self._pkg, use_str)
-		else:
-			try:
-				use_str = _PackageMetadataWrapperBase.__getitem__(self, 'USE')
-			except KeyError:
-				use_str = None
-			calculated_use = False
-			if not use_str:
-				use_str = self._pkg._get_pkgsettings()["PORTAGE_USE"]
-				calculated_use = True
-			_PackageMetadataWrapperBase.__setitem__(self, 'USE', use_str)
-			self._pkg._use = self._pkg._use_class(
-				self._pkg, use_str)
-			# Initialize these now, since USE access has just triggered
-			# setcpv, and we want to cache the result of the force/mask
-			# calculations that were done.
-			if calculated_use:
-				self._pkg._use._init_force_mask()
-
-		return use_str
-
 	def __getitem__(self, k):
 		v = _PackageMetadataWrapperBase.__getitem__(self, k)
 		if k in self._use_conditional_keys:
@@ -776,7 +782,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 		elif k == 'USE' and not self._pkg.built:
 			if not v:
 				# This is lazy because it's expensive.
-				v = self._init_use()
+				v = self._pkg._init_use()
 
 		return v
 

@@ -1,6 +1,8 @@
 # versions.py -- core Portage functionality
-# Copyright 1998-2012 Gentoo Foundation
+# Copyright 1998-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 __all__ = [
 	'best', 'catpkgsplit', 'catsplit',
@@ -80,7 +82,7 @@ def _get_pv_re(eapi_attrs):
 	else:
 		pv_re = _pv['dots_disallowed_in_PN']
 
-	pv_re = re.compile(_unicode_decode('^' + pv_re + '$'), re.VERBOSE | re.UNICODE)
+	pv_re = re.compile(r'^' + pv_re + r'$', re.VERBOSE | re.UNICODE)
 
 	_pv_re_cache[cache_key] = pv_re
 	return pv_re
@@ -431,6 +433,11 @@ class _pkg_str(_unicode):
 				settings = self._settings
 			except AttributeError:
 				raise AttributeError('stable')
+			if not settings.local_config:
+				# Since repoman uses different config instances for
+				# different profiles, our local instance does not
+				# refer to the correct profile.
+				raise AssertionError('invalid context')
 			stable = settings._isStable(self)
 			self.__dict__['_stable'] = stable
 			return stable

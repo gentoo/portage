@@ -2,7 +2,8 @@
 # Copyright 2009-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
+# unicode_literals for compat with TextIOWrapper in Python 2
+from __future__ import print_function, unicode_literals
 
 import platform
 import signal
@@ -525,14 +526,14 @@ class GenUseLocalDesc(object):
 				encoding=_encodings['fs'], errors='strict'),
 				mode='a', encoding=_encodings['repo.content'],
 				errors='backslashreplace')
-			output.write(_unicode_decode('\n'))
+			output.write('\n')
 		else:
-			output.write(textwrap.dedent(_unicode_decode('''\
+			output.write(textwrap.dedent('''\
 				# This file is deprecated as per GLEP 56 in favor of metadata.xml. Please add
 				# your descriptions to your package's metadata.xml ONLY.
 				# * generated automatically using egencache *
 
-				''')))
+				'''))
 
 		# The cmp function no longer exists in python3, so we'll
 		# implement our own here under a slightly different name
@@ -617,8 +618,7 @@ class GenUseLocalDesc(object):
 								resatoms = sorted(reskeys, key=cmp_sort_key(atomcmp))
 								resdesc = resdict[reskeys[resatoms[-1]]]
 
-						output.write(_unicode_decode(
-							'%s:%s - %s\n' % (cp, flag, resdesc)))
+						output.write('%s:%s - %s\n' % (cp, flag, resdesc))
 
 		output.close()
 
@@ -715,12 +715,12 @@ class GenChangeLogs(object):
 			self.returncode |= 2
 			return
 
-		output.write(textwrap.dedent(_unicode_decode('''\
+		output.write(textwrap.dedent('''\
 			# ChangeLog for %s
 			# Copyright 1999-%s Gentoo Foundation; Distributed under the GPL v2
 			# $Header: $
 
-			''' % (cp, time.strftime('%Y')))))
+			''' % (cp, time.strftime('%Y'))))
 
 		# now grab all the commits
 		commits = self.grab(['git', 'rev-list', 'HEAD', '--', '.']).split()
@@ -784,11 +784,10 @@ class GenChangeLogs(object):
 			# Reverse the sort order for headers.
 			for c in reversed(changed):
 				if c.startswith('+') and c.endswith('.ebuild'):
-					output.write(_unicode_decode(
-						'*%s (%s)\n' % (c[1:-7], date)))
+					output.write('*%s (%s)\n' % (c[1:-7], date))
 					wroteheader = True
 			if wroteheader:
-				output.write(_unicode_decode('\n'))
+				output.write('\n')
 
 			# strip '<cp>: ', '[<cp>] ', and similar
 			body[0] = re.sub(r'^\W*' + re.escape(cp) + r'\W+', '', body[0])
@@ -808,13 +807,12 @@ class GenChangeLogs(object):
 
 			# don't break filenames on hyphens
 			self._wrapper.break_on_hyphens = False
-			output.write(_unicode_decode(
-				self._wrapper.fill(
-				'%s; %s %s:' % (date, author, ', '.join(changed)))))
+			output.write(self._wrapper.fill(
+				'%s; %s %s:' % (date, author, ', '.join(changed))))
 			# but feel free to break commit messages there
 			self._wrapper.break_on_hyphens = True
-			output.write(_unicode_decode(
-				'\n%s\n\n' % '\n'.join(self._wrapper.fill(x) for x in body)))
+			output.write(
+				'\n%s\n\n' % '\n'.join(self._wrapper.fill(x) for x in body))
 
 		output.close()
 

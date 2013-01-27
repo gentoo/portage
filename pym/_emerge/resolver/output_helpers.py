@@ -1,9 +1,12 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """Contains private support functions for the Display class
 in output.py
 """
+
+from __future__ import unicode_literals
+
 __all__ = (
 	)
 

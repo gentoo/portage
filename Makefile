@@ -34,6 +34,7 @@ BINDIR_FILES = ebuild egencache emerge emerge-webrsync \
 SBINDIR_FILES = archive-conf dispatch-conf emaint \
 	env-update etc-update fixpackages regenworld
 DOCS = ChangeLog NEWS RELEASE-NOTES
+LINGUAS ?= $(shell cd "$(srcdir)/man" && find -mindepth 1 -type d)
 
 ifdef PYTHONPATH
 	PYTHONPATH := $(srcdir)/pym:$(PYTHONPATH)
@@ -184,10 +185,18 @@ install:
 	cd "$(srcdir)"; \
 	install -m $(INSMODE) $(DOCS) "$(DESTDIR)$(docdir)"; \
 	\
-	for x in 1 5 ; do \
-		install -d -m$(DIRMODE) "$(DESTDIR)$(mandir)/man$$x"; \
-		cd "$(srcdir)/man"; \
-		install -m$(INSMODE) *.$$x "$(DESTDIR)$(mandir)/man$$x"; \
+	for x in "" $(LINGUAS); do \
+		for y in 1 5 ; do \
+			if [ -d "$(srcdir)/man/$$x" ]; then \
+				cd "$(srcdir)/man/$$x"; \
+				files=$$(echo *.$$y); \
+				if [ -z "$$files" ] || [ "$$files" = "*.$$y" ]; then \
+					continue; \
+				fi; \
+				install -d -m$(DIRMODE) "$(DESTDIR)$(mandir)/$$x/man$$y"; \
+				install -m$(INSMODE) *.$$y "$(DESTDIR)$(mandir)/$$x/man$$y"; \
+			fi; \
+		done; \
 	done; \
 	\
 	if [ -f "$(srcdir)/doc/portage.html" ] ; then \

@@ -1,7 +1,7 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
 import errno
 import io
@@ -2971,7 +2971,8 @@ class depgraph(object):
 		not been scheduled for replacement.
 		"""
 		kwargs["trees"] = self._dynamic_config._graph_trees
-		return self._select_atoms_highest_available(*pargs, **kwargs)
+		return self._select_atoms_highest_available(*pargs,
+			**portage._native_kwargs(kwargs))
 
 	def _select_atoms_highest_available(self, root, depstring,
 		myuse=None, parent=None, strict=True, trees=None, priority=None):
@@ -3187,7 +3188,7 @@ class depgraph(object):
 					if not node.installed:
 						raise
 			affecting_use.difference_update(node.use.mask, node.use.force)
-			pkg_name = _unicode_decode("%s") % (node.cpv,)
+			pkg_name = "%s" % (node.cpv,)
 			if affecting_use:
 				usedep = []
 				for flag in affecting_use:
@@ -3242,7 +3243,7 @@ class depgraph(object):
 					node_type = "set"
 				else:
 					node_type = "argument"
-				dep_chain.append((_unicode_decode("%s") % (node,), node_type))
+				dep_chain.append(("%s" % (node,), node_type))
 
 			elif node is not start_node:
 				for ppkg, patom in all_parents[child]:
@@ -3284,7 +3285,7 @@ class depgraph(object):
 				affecting_use.difference_update(node.use.mask, \
 					node.use.force)
 
-				pkg_name = _unicode_decode("%s") % (node.cpv,)
+				pkg_name = "%s" % (node.cpv,)
 				if affecting_use:
 					usedep = []
 					for flag in affecting_use:
@@ -3336,8 +3337,7 @@ class depgraph(object):
 				if self._dynamic_config.digraph.parent_nodes(parent_arg):
 					selected_parent = parent_arg
 				else:
-					dep_chain.append(
-						(_unicode_decode("%s") % (parent_arg,), "argument"))
+					dep_chain.append(("%s" % (parent_arg,), "argument"))
 					selected_parent = None
 
 			node = selected_parent
@@ -3373,7 +3373,7 @@ class depgraph(object):
 		if arg:
 			xinfo='"%s"' % arg
 		if isinstance(myparent, AtomArg):
-			xinfo = _unicode_decode('"%s"') % (myparent,)
+			xinfo = '"%s"' % (myparent,)
 		# Discard null/ from failed cpv_expand category expansion.
 		xinfo = xinfo.replace("null/", "")
 		if root != self._frozen_config._running_root.root:
@@ -3751,8 +3751,7 @@ class depgraph(object):
 			dep_chain = self._get_dep_chain(myparent, atom)
 			for node, node_type in dep_chain:
 				msg.append('(dependency required by "%s" [%s])' % \
-						(colorize('INFORM', _unicode_decode("%s") % \
-						(node)), node_type))
+						(colorize('INFORM', "%s" % (node)), node_type))
 
 		if msg:
 			writemsg("\n".join(msg), noiselevel=-1)
@@ -4419,8 +4418,11 @@ class depgraph(object):
 
 						use_match = True
 						can_adjust_use = not pkg.built
-						missing_enabled = atom.use.missing_enabled.difference(pkg.iuse.all)
-						missing_disabled = atom.use.missing_disabled.difference(pkg.iuse.all)
+						is_valid_flag = pkg.iuse.is_valid_flag
+						missing_enabled = frozenset(x for x in
+							atom.use.missing_enabled if not is_valid_flag(x))
+						missing_disabled = frozenset(x for x in
+							atom.use.missing_disabled if not is_valid_flag(x))
 
 						if atom.use.enabled:
 							if any(x in atom.use.enabled for x in missing_disabled):
@@ -5039,7 +5041,7 @@ class depgraph(object):
 							# matches (this can happen if an atom lacks a
 							# category).
 							show_invalid_depstring_notice(
-								pkg, depstr, _unicode_decode("%s") % (e,))
+								pkg, depstr, "%s" % (e,))
 							del e
 							raise
 						if not success:
@@ -5069,8 +5071,7 @@ class depgraph(object):
 						except portage.exception.InvalidAtom as e:
 							depstr = " ".join(vardb.aux_get(pkg.cpv, dep_keys))
 							show_invalid_depstring_notice(
-								pkg, depstr,
-								_unicode_decode("Invalid Atom: %s") % (e,))
+								pkg, depstr, "Invalid Atom: %s" % (e,))
 							return False
 				for cpv in stale_cache:
 					del blocker_cache[cpv]
@@ -6576,24 +6577,25 @@ class depgraph(object):
 			if len(roots) > 1:
 				writemsg("\nFor %s:\n" % abs_user_config, noiselevel=-1)
 
+			def _writemsg(reason, file):
+				writemsg(('\nThe following %s are necessary to proceed:\n'
+				          ' (see "%s" in the portage(5) man page for more details)\n')
+				         % (colorize('BAD', reason), file), noiselevel=-1)
+
 			if root in unstable_keyword_msg:
-				writemsg("\nThe following " + colorize("BAD", "keyword changes") + \
-					" (package.accept_keywords) are necessary to proceed:\n", noiselevel=-1)
+				_writemsg('keyword changes', 'package.accept_keywords')
 				writemsg(format_msg(unstable_keyword_msg[root]), noiselevel=-1)
 
 			if root in p_mask_change_msg:
-				writemsg("\nThe following " + colorize("BAD", "mask changes") + \
-					" (package.unmask) are necessary to proceed:\n", noiselevel=-1)
+				_writemsg('mask changes', 'package.unmask')
 				writemsg(format_msg(p_mask_change_msg[root]), noiselevel=-1)
 
 			if root in use_changes_msg:
-				writemsg("\nThe following " + colorize("BAD", "USE changes") + \
-					" (package.use) are necessary to proceed:\n", noiselevel=-1)
+				_writemsg('USE changes', 'package.use')
 				writemsg(format_msg(use_changes_msg[root]), noiselevel=-1)
 
 			if root in license_msg:
-				writemsg("\nThe following " + colorize("BAD", "license changes") + \
-					" (package.license) are necessary to proceed:\n", noiselevel=-1)
+				_writemsg('license changes', 'package.license')
 				writemsg(format_msg(license_msg[root]), noiselevel=-1)
 
 		protect_obj = {}
@@ -6815,7 +6817,8 @@ class depgraph(object):
 			writemsg("\n", noiselevel=-1)
 
 		for pargs, kwargs in self._dynamic_config._unsatisfied_deps_for_display:
-			self._show_unsatisfied_dep(*pargs, **kwargs)
+			self._show_unsatisfied_dep(*pargs,
+				**portage._native_kwargs(kwargs))
 
 	def saveNomergeFavorites(self):
 		"""Find atoms in favorites that are not in the mergelist and add them
@@ -7160,7 +7163,8 @@ class depgraph(object):
 		try:
 			for pargs, kwargs in self._dynamic_config._unsatisfied_deps_for_display:
 				self._show_unsatisfied_dep(
-					*pargs, check_autounmask_breakage=True, **kwargs)
+					*pargs, check_autounmask_breakage=True,
+					**portage._native_kwargs(kwargs))
 		except self._autounmask_breakage:
 			return True
 		return False

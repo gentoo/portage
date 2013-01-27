@@ -1,11 +1,11 @@
 # repoman: Utilities
-# Copyright 2007-2012 Gentoo Foundation
+# Copyright 2007-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """This module contains utility functions to help repoman find ebuilds to
 scan"""
 
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
 __all__ = [
 	"detect_vcs_conflicts",
@@ -25,6 +25,7 @@ __all__ = [
 	"UpdateChangeLog"
 ]
 
+import collections
 import errno
 import io
 from itertools import chain
@@ -310,12 +311,12 @@ def format_qa_output(formatter, stats, fails, dofull, dofail, options, qawarning
 	# we only want key value pairs where value > 0 
 	for category, number in \
 		filter(lambda myitem: myitem[1] > 0, iter(stats.items())):
-		formatter.add_literal_data(_unicode_decode("  " + category.ljust(30)))
+		formatter.add_literal_data("  " + category.ljust(30))
 		if category in qawarnings:
 			formatter.push_style("WARN")
 		else:
 			formatter.push_style("BAD")
-		formatter.add_literal_data(_unicode_decode(str(number)))
+		formatter.add_literal_data("%s" % number)
 		formatter.pop_style()
 		formatter.add_line_break()
 		if not dofull:
@@ -326,7 +327,7 @@ def format_qa_output(formatter, stats, fails, dofull, dofail, options, qawarning
 			if not full and len(fails_list) > 12:
 				fails_list = fails_list[:12]
 			for failure in fails_list:
-				formatter.add_literal_data(_unicode_decode("   " + failure))
+				formatter.add_literal_data("   " + failure)
 				formatter.add_line_break()
 
 
@@ -521,6 +522,28 @@ def FindPortdir(settings):
 
 	return [normalize_path(x) for x in (portdir, portdir_overlay, location)]
 
+_vcs_type = collections.namedtuple('_vcs_type',
+	'name dir_name')
+
+_FindVCS_data = (
+	_vcs_type(
+		name = 'git',
+		dir_name = '.git'
+	),
+	_vcs_type(
+		name = 'bzr',
+		dir_name = '.bzr'
+	),
+	_vcs_type(
+		name = 'hg',
+		dir_name = '.hg'
+	),
+	_vcs_type(
+		name = 'svn',
+		dir_name = '.svn'
+	)
+)
+
 def FindVCS():
 	""" Try to figure out in what VCS' working tree we are. """
 
@@ -532,14 +555,13 @@ def FindVCS():
 		pathprep = ''
 
 		while depth is None or depth > 0:
-			if os.path.isdir(os.path.join(pathprep, '.git')):
-				retvcs.append('git')
-			if os.path.isdir(os.path.join(pathprep, '.bzr')):
-				retvcs.append('bzr')
-			if os.path.isdir(os.path.join(pathprep, '.hg')):
-				retvcs.append('hg')
-			if os.path.isdir(os.path.join(pathprep, '.svn')):  # >=1.7
-				retvcs.append('svn')
+			for vcs_type in _FindVCS_data:
+				vcs_dir = os.path.join(pathprep, vcs_type.dir_name)
+				if os.path.isdir(vcs_dir):
+					logging.debug('FindVCS: found %(name)s dir: %(vcs_dir)s' %
+						{'name': vcs_type.name,
+						'vcs_dir': os.path.abspath(vcs_dir)})
+					retvcs.append(vcs_type.name)
 
 			if retvcs:
 				break
@@ -775,7 +797,7 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 				line = line.replace('<PACKAGE_NAME>', package)
 				line = _update_copyright_year(year, line)
 				header_lines.append(line)
-			header_lines.append(_unicode_decode('\n'))
+			header_lines.append('\n')
 			clskel_file.close()
 
 		# write new ChangeLog entry
@@ -785,10 +807,10 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 			if not fn.endswith('.ebuild'):
 				continue
 			ebuild = fn.split(os.sep)[-1][0:-7] 
-			clnew_lines.append(_unicode_decode('*%s (%s)\n' % (ebuild, date)))
+			clnew_lines.append('*%s (%s)\n' % (ebuild, date))
 			newebuild = True
 		if newebuild:
-			clnew_lines.append(_unicode_decode('\n'))
+			clnew_lines.append('\n')
 		trivial_files = ('ChangeLog', 'Manifest')
 		display_new = ['+' + elem for elem in new
 			if elem not in trivial_files]
@@ -815,19 +837,19 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 		for line in textwrap.wrap(mesg, 80, \
 				initial_indent='  ', subsequent_indent='  ', \
 				break_on_hyphens=False):
-			clnew_lines.append(_unicode_decode('%s\n' % line))
+			clnew_lines.append('%s\n' % line)
 		for line in textwrap.wrap(msg, 80, \
 				initial_indent='  ', subsequent_indent='  '):
-			clnew_lines.append(_unicode_decode('%s\n' % line))
+			clnew_lines.append('%s\n' % line)
 		# Don't append a trailing newline if the file is new.
 		if clold_file is not None:
-			clnew_lines.append(_unicode_decode('\n'))
+			clnew_lines.append('\n')
 
 		f = io.open(f, mode='w', encoding=_encodings['repo.content'],
 			errors='backslashreplace')
 
 		for line in clnew_lines:
-			f.write(_unicode_decode(line))
+			f.write(line)
 
 		# append stuff from old ChangeLog
 		if clold_file is not None:

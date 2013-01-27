@@ -190,7 +190,14 @@ class EbuildPhase(CompositeTask):
 		if self._default_exit(ebuild_process) != os.EX_OK:
 			if self.phase == "test" and \
 				"test-fail-continue" in self.settings.features:
-				pass
+				# mark test phase as complete (bug #452030)
+				try:
+					open(_unicode_encode(os.path.join(
+						self.settings["PORTAGE_BUILDDIR"], ".tested"),
+						encoding=_encodings['fs'], errors='strict'),
+						'wb').close()
+				except OSError:
+					pass
 			else:
 				fail = True
 

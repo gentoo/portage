@@ -1,6 +1,8 @@
-# Copyright: 2005-2012 Gentoo Foundation
+# Copyright: 2005-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
+
+from __future__ import unicode_literals
 
 from portage.cache import fs_template
 from portage.cache import cache_errors
@@ -11,17 +13,12 @@ import sys
 import os as _os
 from portage import os
 from portage import _encodings
-from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.exception import InvalidData
 from portage.versions import _pkg_str
 
 if sys.hexversion >= 0x3000000:
 	long = int
-
-# Coerce to unicode, in order to prevent TypeError when writing
-# raw bytes to TextIOWrapper with python2.
-_setitem_fmt = _unicode_decode("%s=%s\n")
 
 class database(fs_template.FsBased):
 
@@ -93,7 +90,10 @@ class database(fs_template.FsBased):
 				v = values.get(k)
 				if not v:
 					continue
-				myf.write(_setitem_fmt % (k, v))
+				# NOTE: This format string requires unicode_literals, so that
+				# k and v are coerced to unicode, in order to prevent TypeError
+				# when writing raw bytes to TextIOWrapper with Python 2.
+				myf.write("%s=%s\n" % (k, v))
 		finally:
 			myf.close()
 		self._ensure_access(fp)

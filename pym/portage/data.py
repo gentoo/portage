@@ -90,30 +90,32 @@ def _get_global(k):
 		elif portage.const.EPREFIX:
 			secpass = 2
 		#Discover the uid and gid of the portage user/group
+		keyerror = False
 		try:
-			_portage_grpname = _get_global('_portage_grpname')
-			if platform.python_implementation() == 'PyPy':
-				# Somehow this prevents "TypeError: expected string" errors
-				# from grp.getgrnam() with PyPy 1.7
-				_portage_grpname = str(_portage_grpname)
-			portage_gid = grp.getgrnam(_portage_grpname).gr_gid
+			portage_uid = pwd.getpwnam(_get_global('_portage_username')).pw_uid
 		except KeyError:
 			# PREFIX LOCAL: some sysadmins are insane, bug #344307
 			if _portage_grpname.isdigit():
 				portage_gid = int(_portage_grpname)
 			else:
-				portage_gid = None
+				keyerror = True
 			# END PREFIX LOCAL
-		try:
-			portage_uid = pwd.getpwnam(_get_global('_portage_username')).pw_uid
-			if secpass < 1 and portage_gid in os.getgroups():
-				secpass = 1
-		except KeyError:
-			portage_uid = None
-
-		if portage_uid is None or portage_gid is None:
 			portage_uid = 0
+
+		try:
+			portage_gid = grp.getgrnam(_get_global('_portage_grpname')).gr_gid
+		except KeyError:
+			keyerror = True
 			portage_gid = 0
+
+		if secpass < 1 and portage_gid in os.getgroups():
+			secpass = 1
+
+		# Suppress this error message if both PORTAGE_GRPNAME and
+		# PORTAGE_USERNAME are set to "root", for things like
+		# Android (see bug #454060).
+		if keyerror and not (_get_global('_portage_username') == "root" and
+			_get_global('_portage_grpname') == "root"):
 			# PREFIX LOCAL: we need to fix this one day to distinguish prefix vs non-prefix
 			writemsg(colorize("BAD",
 				_("portage: '%s' user or '%s' group missing." % (_get_global('_portage_username'), _get_global('_portage_grpname')))) + "\n", noiselevel=-1)
@@ -244,14 +246,22 @@ def _init(settings):
 	if '_portage_grpname' not in _initialized_globals and \
 		'_portage_username' not in _initialized_globals:
 
+		# Prevents "TypeError: expected string" errors
+		# from grp.getgrnam() with PyPy
+		native_string = platform.python_implementation() == 'PyPy'
+
 		# PREFIX LOCAL: use var iso hardwired 'portage'
 		v = settings.get('PORTAGE_GRPNAME', PORTAGE_GROUPNAME)
 		# END PREFIX LOCAL
+		if native_string:
+			v = portage._native_string(v)
 		globals()['_portage_grpname'] = v
 		_initialized_globals.add('_portage_grpname')
 
 		# PREFIX LOCAL: use var iso hardwired 'portage'
 		v = settings.get('PORTAGE_USERNAME', PORTAGE_USERNAME)
 		# END PREFIX LOCAL
+		if native_string:
+			v = portage._native_string(v)
 		globals()['_portage_username'] = v
 		_initialized_globals.add('_portage_username')

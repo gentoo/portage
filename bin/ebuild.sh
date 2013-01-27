@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 PORTAGE_BIN_PATH="${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"
@@ -696,9 +696,9 @@ if [[ $EBUILD_PHASE = depend ]] ; then
 		done
 	else
 		for f in ${auxdbkeys} ; do
-			echo $(echo ${!f}) 1>&9 || exit $?
+			eval "echo \$(echo \${!f}) 1>&${PORTAGE_PIPE_FD}" || exit $?
 		done
-		exec 9>&-
+		eval "exec ${PORTAGE_PIPE_FD}>&-"
 	fi
 	set +f
 else
@@ -713,7 +713,10 @@ else
 		(
 			# Don't allow subprocesses to inherit the pipe which
 			# emerge uses to monitor ebuild.sh.
-			exec 9>&-
+			if [[ -n ${PORTAGE_PIPE_FD} ]] ; then
+				eval "exec ${PORTAGE_PIPE_FD}>&-"
+				unset PORTAGE_PIPE_FD
+			fi
 			__ebuild_main ${EBUILD_SH_ARGS}
 			exit 0
 		)

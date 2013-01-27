@@ -32,7 +32,6 @@ class EbuildMetadataPhase(SubProcess):
 
 	_file_names = ("ebuild",)
 	_files_dict = slot_dict_class(_file_names, prefix="")
-	_metadata_fd = 9
 
 	def _start(self):
 		ebuild_path = self.ebuild_hash.location
@@ -103,7 +102,8 @@ class EbuildMetadataPhase(SubProcess):
 		fcntl.fcntl(master_fd, fcntl.F_SETFL,
 			fcntl.fcntl(master_fd, fcntl.F_GETFL) | fcntl_flags)
 
-		fd_pipes[self._metadata_fd] = slave_fd
+		fd_pipes[slave_fd] = slave_fd
+		settings["PORTAGE_PIPE_FD"] = str(slave_fd)
 
 		self._raw_metadata = []
 		files.ebuild = master_fd
@@ -115,6 +115,7 @@ class EbuildMetadataPhase(SubProcess):
 			settings=settings, debug=debug,
 			mydbapi=self.portdb, tree="porttree",
 			fd_pipes=fd_pipes, returnpid=True)
+		settings.pop("PORTAGE_PIPE_FD", None)
 
 		os.close(slave_fd)
 		null_input.close()

@@ -1,5 +1,7 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 __all__ = ['prepare_build_dirs']
 
@@ -339,12 +341,12 @@ def _prepare_workdir(mysettings):
 			try:
 				_ensure_log_subdirs(logdir, log_subdir)
 			except PortageException as e:
-				writemsg(_unicode_decode("!!! %s\n") % (e,), noiselevel=-1)
+				writemsg("!!! %s\n" % (e,), noiselevel=-1)
 
 			if os.access(log_subdir, os.W_OK):
 				logdir_subdir_ok = True
 			else:
-				writemsg(_unicode_decode("!!! %s: %s\n") %
+				writemsg("!!! %s: %s\n" %
 					(_("Permission Denied"), log_subdir), noiselevel=-1)
 
 	tmpdir_log_path = os.path.join(

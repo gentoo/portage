@@ -1,11 +1,12 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 import io
 
 import portage
 from portage import os
-from portage import _unicode_decode
 from portage.dep import Atom, _repo_name_re
 from portage.eapi import eapi_has_repo_deps
 from portage.elog import messages as elog_messages
@@ -65,7 +66,7 @@ class QueryCommand(IpcCommand):
 			try:
 				atom = Atom(args[0], allow_repo=allow_repo, eapi=eapi)
 			except InvalidAtom as e:
-				warnings.append(_unicode_decode("QA Notice: %s: %s") % (cmd, e))
+				warnings.append("QA Notice: %s: %s" % (cmd, e))
 
 			use = self.settings.get('PORTAGE_BUILT_USE')
 			if use is None:

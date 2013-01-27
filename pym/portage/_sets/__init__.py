@@ -124,6 +124,10 @@ class SetConfig(object):
 		parser.add_section("system")
 		parser.set("system", "class", "portage.sets.profiles.PackagesSystemSet")
 
+		parser.remove_section("security")
+		parser.add_section("security")
+		parser.set("security", "class", "portage.sets.security.NewAffectedSet")
+
 		parser.remove_section("usersets")
 		parser.add_section("usersets")
 		parser.set("usersets", "class", "portage.sets.files.StaticFileSet")

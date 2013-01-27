@@ -1,4 +1,4 @@
-.TH "EBUILD" "1" "Dec 2012" "Portage VERSION" "Portage"
+.TH "EBUILD" "1" "Jan 2013" "Portage VERSION" "Portage"
 .SH "NAME"
 ebuild \- a low level interface to the Portage system
 .SH "SYNOPSIS"
@@ -53,13 +53,13 @@ manually clean these files with \fIrm \-rf /var/tmp/portage\fR.
 .BR fetch
 Checks to see if all the sources specified in SRC_URI are available in
 DISTDIR (see \fBmake.conf\fR(5) for more information) and have a valid
-md5 checksum.  If the sources aren't available, an attempt is made to
+checksum.  If the sources aren't available, an attempt is made to
 download them from the locations specified in SRC_URI.  If multiple
 download locations are listed for a particular file, Portage pings
 each location to see which location is closer. (May not be true
 presently.)  The Gentoo Linux mirrors defined by GENTOO_MIRRORS is
 always considered first.  If for some reason the current or
-just\-downloaded sources' md5 digests don't match those recorded
+just\-downloaded sources' checksums don't match those recorded
 in files/digest\-[package]\-[version\-rev], a warning is printed
 and ebuild exits with an error code of 1.
 .TP
@@ -135,8 +135,8 @@ shown here.
 This function installs all the files in the \fIinstall directory\fR
 to the live filesystem.  The process works as follows: first, the
 \fIpkg_preinst()\fR function (if specified) is run.  Then, the files
-are merged into the live filesystem, and the installed files' md5
-digests are recorded in
+are merged into the live filesystem, and the installed files'
+checksums are recorded in
 \fI/var/db/pkg/${CATEGORY}/${PN}\-${PVR}/CONTENTS\fR.  After
 all the files have been merged, the \fIpkg_postinst()\fR function
 (if specified) is executed.
@@ -150,7 +150,7 @@ particular step doesn't complete successfully.
 .TP
 .BR unmerge
 This function first executes the \fIpkg_prerm()\fR function (if specified).
-Then it removes all files from the live filesystem that have a valid md5
+Then it removes all files from the live filesystem that have a valid
 checksum and mtime in the package contents file.  Any empty directories
 are recursively removed.  Finally, it runs \fIpkg_postrm()\fR function (if
 specified).  It is safe to merge a new version of a package first and

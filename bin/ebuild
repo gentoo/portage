@@ -331,7 +331,7 @@ for arg in pargs:
 
 		if arg in ("digest", "manifest") and force:
 			discard_digests(ebuild, tmpsettings, portage.portdb)
-		a = portage.doebuild(ebuild, arg, portage.root, tmpsettings,
+		a = portage.doebuild(ebuild, arg, settings=tmpsettings,
 			debug=debug, tree=mytree,
 			vartree=portage.db[portage.root]['vartree'])
 	except KeyboardInterrupt:

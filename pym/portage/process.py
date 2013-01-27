@@ -435,6 +435,13 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 def _setup_pipes(fd_pipes, close_fds=True):
 	"""Setup pipes for a forked process.
 
+	Even when close_fds is False, file descriptors referenced as
+	values in fd_pipes are automatically closed if they do not also
+	occur as keys in fd_pipes. It is assumed that the caller will
+	explicitely add them to the fd_pipes keys if they are intended
+	to remain open. This allows for convenient elimination of
+	unnecessary duplicate file descriptors.
+
 	WARNING: When not followed by exec, the close_fds behavior
 	can trigger interference from destructors that close file
 	descriptors. This interference happens when the garbage
@@ -445,22 +452,67 @@ def _setup_pipes(fd_pipes, close_fds=True):
 	and also with CPython under some circumstances (as triggered
 	by xmpppy in bug #374335). In order to close a safe subset of
 	file descriptors, see portage.locks._close_fds().
+
+	NOTE: When not followed by exec, even when close_fds is False,
+	it's still possible for dup2() calls to cause interference in a
+	way that's similar to the way that close_fds interferes (since
+	dup2() has to close the target fd if it happens to be open).
+	It's possible to avoid such interference by using allocated
+	file descriptors as the keys in fd_pipes. For example:
+
+		pr, pw = os.pipe()
+		fd_pipes[pw] = pw
+
+	By using the allocated pw file descriptor as the key in fd_pipes,
+	it's not necessary for dup2() to close a file descriptor (it
+	actually does nothing in this case), which avoids possible
+	interference.
 	"""
-	my_fds = {}
+	reverse_map = {}
 	# To protect from cases where direct assignment could
-	# clobber needed fds ({1:2, 2:1}) we first dupe the fds
-	# into unused fds.
-	for fd in fd_pipes:
-		my_fds[fd] = os.dup(fd_pipes[fd])
-	# Then assign them to what they should be.
-	for fd in my_fds:
-		os.dup2(my_fds[fd], fd)
+	# clobber needed fds ({1:2, 2:1}) we create a reverse map
+	# in order to know when it's necessary to create temporary
+	# backup copies with os.dup().
+	for newfd, oldfd in fd_pipes.items():
+		newfds = reverse_map.get(oldfd)
+		if newfds is None:
+			newfds = []
+			reverse_map[oldfd] = newfds
+		newfds.append(newfd)
+
+	# Assign newfds via dup2(), making temporary backups when
+	# necessary, and closing oldfd if the caller has not
+	# explicitly requested for it to remain open by adding
+	# it to the keys of fd_pipes.
+	while reverse_map:
+
+		oldfd, newfds = reverse_map.popitem()
+
+		for newfd in newfds:
+			if newfd in reverse_map:
+				# Make a temporary backup before re-assignment, assuming
+				# that backup_fd won't collide with a key in reverse_map
+				# (since all of the keys correspond to open file
+				# descriptors, and os.dup() only allocates a previously
+				# unused file discriptors).
+				backup_fd = os.dup(newfd)
+				reverse_map[backup_fd] = reverse_map.pop(newfd)
+			if oldfd != newfd:
+				os.dup2(oldfd, newfd)
+
+		if oldfd not in fd_pipes:
+			# If oldfd is not a key in fd_pipes, then it's safe
+			# to close now, since we've already made all of the
+			# requested duplicates. This also closes every
+			# backup_fd that may have been created on previous
+			# iterations of this loop.
+			os.close(oldfd)
 
 	if close_fds:
 		# Then close _all_ fds that haven't been explicitly
 		# requested to be kept open.
 		for fd in get_open_fds():
-			if fd not in my_fds:
+			if fd not in fd_pipes:
 				try:
 					os.close(fd)
 				except OSError:

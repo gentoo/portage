@@ -1,12 +1,13 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 __all__ = ['dep_check', 'dep_eval', 'dep_wordreduce', 'dep_zapdeps']
 
 import logging
 
 import portage
-from portage import _unicode_decode
 from portage.dep import Atom, match_from_list, use_reduce
 from portage.exception import InvalidDependString, ParseError
 from portage.localization import _
@@ -183,7 +184,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					del mytrees["virt_parent"]
 
 			if not mycheck[0]:
-				raise ParseError(_unicode_decode("%s: %s '%s'") % \
+				raise ParseError("%s: %s '%s'" % \
 					(pkg, mycheck[1], depstring))
 
 			# pull in the new-style virtual
@@ -605,7 +606,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 			masklist=mymasks, matchall=(use=="all"), excludeall=useforce,
 			opconvert=True, token_class=Atom, eapi=eapi)
 		except InvalidDependString as e:
-			return [0, _unicode_decode("%s") % (e,)]
+			return [0, "%s" % (e,)]
 
 	if mysplit == []:
 		#dependencies were reduced to nothing
@@ -619,7 +620,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 			use_force=useforce, use_mask=mymasks, use_cache=use_cache,
 			use_binaries=use_binaries, myroot=myroot, trees=trees)
 	except ParseError as e:
-		return [0, _unicode_decode("%s") % (e,)]
+		return [0, "%s" % (e,)]
 
 	mysplit2=mysplit[:]
 	mysplit2=dep_wordreduce(mysplit2,mysettings,mydbapi,mode,use_cache=use_cache)

@@ -1,5 +1,7 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 __all__ = (
 	'case_insensitive_vars', 'default_globals', 'env_blacklist', \
@@ -22,7 +24,7 @@ env_blacklist = frozenset((
 	"PDEPEND", "PF", "PKGUSE", "PORTAGE_BACKGROUND",
 	"PORTAGE_BACKGROUND_UNMERGE", "PORTAGE_BUILDDIR_LOCKED",
 	"PORTAGE_BUILT_USE", "PORTAGE_CONFIGROOT", "PORTAGE_IUSE",
-	"PORTAGE_NONFATAL", "PORTAGE_REPO_NAME",
+	"PORTAGE_NONFATAL", "PORTAGE_PIPE_FD", "PORTAGE_REPO_NAME",
 	"PORTAGE_USE", "PROPERTIES", "PROVIDE", "RDEPEND", "REPOSITORY",
 	"RESTRICT", "ROOT", "SLOT", "SRC_URI"
 ))
@@ -63,7 +65,7 @@ environ_whitelist += [
 	"PORTAGE_GID", "PORTAGE_GRPNAME",
 	"PORTAGE_INST_GID", "PORTAGE_INST_UID",
 	"PORTAGE_IPC_DAEMON", "PORTAGE_IUSE",
-	"PORTAGE_LOG_FILE", "PORTAGE_OVERRIDE_EPREFIX",
+	"PORTAGE_LOG_FILE", "PORTAGE_OVERRIDE_EPREFIX", "PORTAGE_PIPE_FD",
 	"PORTAGE_PYM_PATH", "PORTAGE_PYTHON", "PORTAGE_QUIET",
 	"PORTAGE_REPO_NAME", "PORTAGE_RESTRICT",
 	"PORTAGE_SIGPIPE_STATUS",

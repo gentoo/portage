@@ -5,6 +5,7 @@
 from __future__ import print_function
 
 import sys
+import codecs
 
 from os import path as osp
 pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
@@ -12,7 +13,7 @@ sys.path.insert(0, pym_path)
 import portage
 portage._internal_caller = True
 from portage import os
-from portage.output import *
+from portage.output import green, red, nocolor, white
 
 from optparse import OptionGroup, OptionParser
 
@@ -54,7 +55,7 @@ modes.add_option("-f", "--fix", action="store_const",
 		const="fix", dest="mode",
 		help="Try to auto-apply this GLSA (experimental)")
 modes.add_option("-i", "--inject", action="store_const", dest="mode",
-		help="Inject the given GLSA into the checkfile")
+		help="inject the given GLSA into the glsa_injected file")
 modes.add_option("-m", "--mail", action="store_const",
 		const="mail", dest="mode",
 		help="Send a mail with the given GLSAs to the administrator")
@@ -99,7 +100,8 @@ elif mode == "list" and not params:
 	params.append("new")
 
 # delay this for speed increase
-from portage.glsa import *
+from portage.glsa import (Glsa, GlsaTypeException, GlsaFormatException,
+	get_applied_glsas, get_glsa_list)
 
 eroot = portage.settings['EROOT']
 vardb = portage.db[eroot]["vartree"].dbapi
@@ -140,8 +142,17 @@ for p in params[:]:
 
 glsalist.extend([g for g in params if g not in glsalist])
 
-def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr):
-	fd2.write(white("[A]")+" means this GLSA was already applied,\n")
+def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr, encoding="utf-8"):
+	# Get to the raw streams in py3k before wrapping them with an encoded writer
+	# to avoid writing bytes to a text stream (stdout/stderr are text streams
+	# by default in py3k)
+	if hasattr(fd1, "buffer"):
+		fd1 = fd1.buffer
+	if hasattr(fd2, "buffer"):
+		fd2 = fd2.buffer
+	fd1 = codecs.getwriter(encoding)(fd1)
+	fd2 = codecs.getwriter(encoding)(fd2)
+	fd2.write(white("[A]")+" means this GLSA was marked as applied (injected),\n")
 	fd2.write(green("[U]")+" means the system is not affected and\n")
 	fd2.write(red("[N]")+" indicates that the system might be affected.\n\n")
 
@@ -153,7 +164,7 @@ def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr):
 			if verbose:
 				fd2.write(("invalid GLSA: %s (error message was: %s)\n" % (myid, e)))
 			continue
-		if myglsa.isApplied():
+		if myglsa.isInjected():
 			status = "[A]"
 			color = white
 		elif myglsa.isVulnerable():
@@ -202,39 +213,46 @@ if mode in ["dump", "fix", "inject", "pretend"]:
 		if mode == "dump":
 			myglsa.dump()
 		elif mode == "fix":
-			sys.stdout.write("fixing "+myid+"\n")
-			mergelist = myglsa.getMergeList(least_change=least_change)
-			for pkg in mergelist:
-				sys.stdout.write(">>> merging "+pkg+"\n")
-				# using emerge for the actual merging as it contains the dependency
-				# code and we want to be consistent in behaviour. Also this functionality
-				# will be integrated in emerge later, so it shouldn't hurt much.
-				emergecmd = "emerge --oneshot " + portage.settings["EMERGE_OPTS"] + " =" + pkg
-				if verbose:
-					sys.stderr.write(emergecmd+"\n")
-				exitcode = os.system(emergecmd)
-				# system() returns the exitcode in the high byte of a 16bit integer
-				if exitcode >= 1<<8:
-					exitcode >>= 8
-				if exitcode:
-					sys.exit(exitcode)
-			myglsa.inject()
+			sys.stdout.write("Fixing GLSA "+myid+"\n")
+			if not myglsa.isVulnerable():
+				sys.stdout.write(">>> no vulnerable packages installed\n")
+			else:
+				mergelist = myglsa.getMergeList(least_change=least_change)
+				if mergelist == []:
+					sys.stdout.write(">>> cannot fix GLSA, no unaffected packages available\n")
+					sys.exit(2)
+				for pkg in mergelist:
+					sys.stdout.write(">>> merging "+pkg+"\n")
+					# using emerge for the actual merging as it contains the dependency
+					# code and we want to be consistent in behaviour. Also this functionality
+					# will be integrated in emerge later, so it shouldn't hurt much.
+					emergecmd = "emerge --oneshot " + " =" + pkg
+					if verbose:
+						sys.stderr.write(emergecmd+"\n")
+					exitcode = os.system(emergecmd)
+					# system() returns the exitcode in the high byte of a 16bit integer
+					if exitcode >= 1<<8:
+						exitcode >>= 8
+					if exitcode:
+						sys.exit(exitcode)
+			if len(mergelist):
+				sys.stdout.write("\n")
 		elif mode == "pretend":
 			sys.stdout.write("Checking GLSA "+myid+"\n")
-			mergelist = myglsa.getMergeList(least_change=least_change)
-			if mergelist:
-				sys.stdout.write("The following updates will be performed for this GLSA:\n")
-				for pkg in mergelist:
-					oldver = None
-					for x in vardb.match(portage.cpv_getkey(pkg)):
-						if vardb._pkg_str(x, None).slot == portdb._pkg_str(pkg, None).slot:
-							oldver = x
-					if oldver == None:
-						raise ValueError("could not find old version for package %s" % pkg)
-					oldver = oldver[len(portage.cpv_getkey(oldver))+1:]
-					sys.stdout.write("     " + pkg + " (" + oldver + ")\n")
+			if not myglsa.isVulnerable():
+				sys.stdout.write(">>> no vulnerable packages installed\n")
 			else:
-				sys.stdout.write("Nothing to do for this GLSA\n")
+				mergedict = {}
+				for (vuln, update) in myglsa.getAffectionTable(least_change=least_change):
+					mergedict.setdefault(update, []).append(vuln)
+				
+				sys.stdout.write(">>> The following updates will be performed for this GLSA:\n")
+				for pkg in mergedict:
+					if pkg != "":
+						sys.stdout.write("     " + pkg + " (vulnerable: " + ", ".join(mergedict[pkg]) + ")\n")
+				if "" in mergedict:
+					sys.stdout.write("\n>>> For the following packages, no upgrade path exists:\n")
+					sys.stdout.write("     " + ", ".join(mergedict[""]))
 		elif mode == "inject":
 			sys.stdout.write("injecting " + myid + "\n")
 			myglsa.inject()
@@ -266,7 +284,7 @@ if mode == "test":
 # mail mode as requested by solar
 if mode == "mail":
 	import portage.mail, socket
-	from io import StringIO
+	from io import BytesIO
 	from email.mime.text import MIMEText
 
 	# color doesn't make any sense for mail
@@ -285,11 +303,13 @@ if mode == "mail":
 	mysubject = "[glsa-check] Summary for %s" % socket.getfqdn()
 
 	# need a file object for summarylist()
-	myfd = StringIO()
-	myfd.write("GLSA Summary report for host %s\n" % socket.getfqdn())
-	myfd.write("(Command was: %s)\n\n" % " ".join(sys.argv))
+	myfd = BytesIO()
+	line = "GLSA Summary report for host %s\n" % socket.getfqdn()
+	myfd.write(line.encode("utf-8"))
+	line = "(Command was: %s)\n\n" % " ".join(sys.argv)
+	myfd.write(line.encode("utf-8"))
 	summarylist(glsalist, fd1=myfd, fd2=myfd)
-	summary = str(myfd.getvalue())
+	summary = myfd.getvalue().decode("utf-8")
 	myfd.close()
 
 	myattachments = []
@@ -300,9 +320,10 @@ if mode == "mail":
 			if verbose:
 				sys.stderr.write(("invalid GLSA: %s (error message was: %s)\n" % (myid, e)))
 			continue
-		myfd = StringIO()
+		myfd = BytesIO()
 		myglsa.dump(outstream=myfd)
-		myattachments.append(MIMEText(str(myfd.getvalue()), _charset="utf8"))
+		attachment = myfd.getvalue().decode("utf-8")
+		myattachments.append(MIMEText(attachment, _charset="utf8"))
 		myfd.close()
 
 	mymessage = portage.mail.create_message(myfrom, myrecipient, mysubject, summary, myattachments)
