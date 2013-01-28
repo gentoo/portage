@@ -1002,7 +1002,11 @@ class vardbapi(dbapi):
 				relative_filename = filename[root_len:]
 			contents_key = pkg._match_contents(relative_filename)
 			if contents_key:
-				del new_contents[contents_key]
+				# It's possible for two different paths to refer to the same
+				# contents_key, due to directory symlinks. Therefore, pass a
+				# default value to pop, in order to avoid a KeyError which
+				# could otherwise be triggered (see bug #454400).
+				new_contents.pop(contents_key, None)
 				removed += 1
 
 		if removed:
