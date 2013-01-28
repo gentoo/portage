@@ -1,5 +1,5 @@
 # data.py -- Calculated/Discovered Data Values
-# Copyright 1998-2012 Gentoo Foundation
+# Copyright 1998-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import os, pwd, grp, platform, sys
@@ -32,7 +32,7 @@ if not lchown:
 				" exist.  Please rebuild python.\n"), noiselevel=-1)
 		lchown()
 
-lchown = portage._unicode_func_wrapper(lchown)
+lchown = portage._chown_func_wrapper(lchown)
 
 def portage_group_warning():
 	warn_prefix = colorize("BAD", "*** WARNING ***  ")

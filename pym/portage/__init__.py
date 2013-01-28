@@ -224,7 +224,7 @@ class _unicode_func_wrapper(object):
 		self._func = func
 		self._encoding = encoding
 
-	def __call__(self, *args, **kwargs):
+	def _process_args(self, args, kwargs):
 
 		encoding = self._encoding
 		wrapped_args = [_unicode_encode(x, encoding=encoding, errors='strict')
@@ -235,6 +235,13 @@ class _unicode_func_wrapper(object):
 				for k, v in kwargs.items())
 		else:
 			wrapped_kwargs = {}
+
+		return (wrapped_args, wrapped_kwargs)
+
+	def __call__(self, *args, **kwargs):
+
+		encoding = self._encoding
+		wrapped_args, wrapped_kwargs = self._process_args(args, kwargs)
 
 		rval = self._func(*wrapped_args, **wrapped_kwargs)
 
@@ -258,6 +265,23 @@ class _unicode_func_wrapper(object):
 			rval = _unicode_decode(rval, encoding=encoding, errors='replace')
 
 		return rval
+
+class _chown_func_wrapper(_unicode_func_wrapper):
+	"""
+	Compatibility workaround for Python 2.7.3 in Fedora 18, which throws
+	"TypeError: group id must be integer" if we try to pass an ObjectProxy
+	instance into chown.
+	"""
+
+	def _process_args(self, args, kwargs):
+
+		wrapped_args, wrapped_kwargs = \
+			_unicode_func_wrapper._process_args(self, args, kwargs)
+
+		for i in (1, 2):
+			wrapped_args[i] = int(wrapped_args[i])
+
+		return (wrapped_args, wrapped_kwargs)
 
 class _unicode_module_wrapper(object):
 	"""
@@ -302,6 +326,7 @@ class _unicode_module_wrapper(object):
 
 import os as _os
 _os_overrides = {
+	id(_os.chown)         : _chown_func_wrapper(_os.chown),
 	id(_os.fdopen)        : _os.fdopen,
 	id(_os.popen)         : _os.popen,
 	id(_os.read)          : _os.read,
