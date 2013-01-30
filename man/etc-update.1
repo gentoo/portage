@@ -1,28 +1,24 @@
 .TH "ETC-UPDATE" "1" "Mar 2012" "Portage VERSION" "Portage"
-.SH NAME
-etc-update \- handle configuration file updates
-.SH SYNOPSIS
-.BR etc-update
+.SH "NAME"
+etc\-update \- handle configuration file updates
+.SH "SYNOPSIS"
+.BR etc\-update
 [\fIoptions\fR] [\fI--automode <mode>\fR] [\fIpaths to scan\fR]
-.SH DESCRIPTION
-.I etc-update
-is supposed to be run after merging a new package to see if
+.SH "DESCRIPTION"
+\fIetc\-update\fR is supposed to be run after merging a new package to see if
 there are updates to the configuration files.  If a new
 configuration file will override an old one, 
-.I etc-update 
-will prompt the user for a decision.
+\fIetc\-update\fR will prompt the user for a decision.
 .PP
-.I etc-update
-will check all directories specified on the command line.  If no paths
-are given, then the \fICONFIG_PROTECT\fR variable will be used.  All
-config files found in \fICONFIG_PROTECT_MASK\fR will automatically be
-updated for you by \fIetc-update\fR.  See \fBmake.conf\fR(5) for more
-information.
+\fIetc\-update\fR will check all directories specified on the command
+line.  If no paths are given, then the \fICONFIG_PROTECT\fR variable
+will be used.  All config files found in \fICONFIG_PROTECT_MASK\fR will
+automatically be updated for you by \fIetc\-update\fR.
+See \fBmake.conf\fR(5) for more information.
 .PP
-.I etc-update
-respects the normal \fIPORTAGE_CONFIGROOT\fR and \fIEROOT\fR variables
-for finding the aforementioned config protect variables.
-.SH OPTIONS
+\fIetc\-update\fR respects the normal \fIPORTAGE_CONFIGROOT\fR and
+\fIEROOT\fR variables for finding the aforementioned config protect variables.
+.SH "OPTIONS"
 .TP
 .BR \-d ", " \-\-debug
 Run with shell tracing enabled.
@@ -37,11 +33,11 @@ Automerge trivial changes only and quit.
 Show settings and important decision info while running.
 .TP
 .BR "\-\-automode <mode>"
-Select one of the automatic merge modes.  Valid modes are: -3 -5 -7 -9.
+Select one of the automatic merge modes.  Valid modes are: \-3 \-5 \-7 \-9.
 See the \fI\-\-help\fR text for more details.
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
-.SH AUTHORS
+.SH "AUTHORS"
 .nf
 Jochem Kossen and Leo Lipelis
 Karl Trygve Kalleberg <karltk@gentoo.org>
@@ -49,8 +45,8 @@ Mike Frysinger <vapier@gentoo.org>
 .fi
 .SH "FILES"
 .TP
-.B /etc/etc-update.conf
-Configuration settings for \fIetc-update\fR are stored here.
+.B /etc/etc\-update.conf
+Configuration settings for \fIetc\-update\fR are stored here.
 .SH "SEE ALSO"
-.BR dispatch-conf (1),
+.BR dispatch\-conf (1),
 .BR make.conf (5)

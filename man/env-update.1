@@ -1,26 +1,26 @@
 .TH "ENV-UPDATE" "1" "Aug 2008" "Portage VERSION" "Portage"
-.SH NAME
+.SH "NAME"
 env\-update \- updates environment settings automatically
-.SH SYNOPSIS
+.SH "SYNOPSIS"
 \fBenv\-update\fR \fI[options]\fR
-.SH DESCRIPTION
+.SH "DESCRIPTION"
 .B env\-update
 reads the files in \fI/etc/env.d\fR and automatically generates
 \fI/etc/profile.env\fR and \fI/etc/ld.so.conf\fR.  Then \fBldconfig\fR(8)
 is run to update \fI/etc/ld.so.cache\fR.  \fBenv-update\fR is run by
 \fBemerge\fR(1) automatically after each package merge.  Also, if you
-make changes to \fI/etc/env.d\fR, you should run \fIenv-update\fR 
+make changes to \fI/etc/env.d\fR, you should run \fBenv-update\fR
 yourself for changes to take effect immediately.  Note that this would 
 only affect new processes.  In order for the changes to affect your 
 active shell, you will probably have to run \fIsource /etc/profile\fR 
 first.
-.SH OPTIONS 
+.SH "OPTIONS"
 .TP
 .B \-\-no\-ldconfig
-Do not run ldconfig (and thus skip rebuilding the ld.so cache, etc...).
+Do not run \fBldconfig\fR (and thus skip rebuilding the \fIld.so.cache\fR, etc...).
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
-.SH AUTHORS
+.SH "AUTHORS"
 Daniel Robbins <drobbins@gentoo.org>
 .SH "SEE ALSO"
 .BR emerge (1),
