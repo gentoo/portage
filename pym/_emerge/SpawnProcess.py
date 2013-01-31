@@ -76,7 +76,7 @@ class SpawnProcess(SubProcess):
 
 		else:
 			# Create a dummy pipe that PipeLogger uses to efficiently
-			# monitors for process exit by listening for the EOF event.
+			# monitor for process exit by listening for the EOF event.
 			# Re-use of the allocated fd number for the key in fd_pipes
 			# guarantees that the keys will not collide for similarly
 			# allocated pipes which are used by callers such as

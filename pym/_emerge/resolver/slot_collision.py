@@ -320,7 +320,7 @@ class slot_conflict_handler(object):
 									if violated_atom.use is None:
 										# Something like bug #453400 caused the
 										# above findAtomForPackage call to
-										# to return None unexpectedly.
+										# return None unexpectedly.
 										msg = ("\n\n!!! BUG: Detected "
 											"USE dep match inconsistency:\n"
 											"\tppkg: %s\n"

@@ -1,4 +1,4 @@
-# Copyright 2004-2012 Gentoo Foundation
+# Copyright 2004-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['apply_permissions', 'apply_recursive_permissions',
@@ -1236,7 +1236,7 @@ class atomic_ofstream(ObjectProxy):
 			self.close()
 
 	def __del__(self):
-		"""If the user does not explicitely call close(), it is
+		"""If the user does not explicitly call close(), it is
 		assumed that an error has occurred, so we abort()."""
 		try:
 			f = object.__getattribute__(self, '_file')
