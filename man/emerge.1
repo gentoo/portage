@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Dec 2012" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Jan 2013" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -893,6 +893,19 @@ it was last installed.  For information about all \fBUSE\fR symbols, see the
 displayed when you use the \fB\-\-pretend\fR and \fB\-\-verbose\fR options.
 Using the \fB\-\-quiet\fR option will prevent all information from being
 displayed.
+.TP
+.B [ebuild  r  U  ] dev\-libs/icu\-50.1.1:0/50.1.1 [50.1\-r2:0/50.1]
+Icu 50.1\-r2 has already been emerged and can be Updated to version
+50.1.1. The \fBr\fR symbol indicates that a sub\-slot change (from 50.1
+to 50.1.1 in this case) will force packages having slot\-operator
+dependencies on it to be rebuilt (as libxml2 will be rebuilt in the next
+example).
+.TP
+.B [ebuild  rR    ] dev\-libs/libxml2\-2.9.0\-r1:2  USE="icu"
+Libxml2 2.9.0\-r1 has already been emerged, but if you run the command,
+then portage will Re\-emerge it in order to satisfy a slot\-operator
+dependency which forces it to be rebuilt when the icu sub\-slot changes
+(as it changed in the previous example).
 .TP
 .B [ebuild     U *] sys\-apps/portage\-2.2.0_alpha6 [2.1.9.25]
 Portage 2.1.9.25 is installed, but if you run the command, then
