@@ -439,8 +439,12 @@ econf() {
 	if [ -x "${ECONF_SOURCE}/configure" ]; then
 		if [[ -n $CONFIG_SHELL && \
 			"$(head -n1 "$ECONF_SOURCE/configure")" =~ ^'#!'[[:space:]]*/bin/sh([[:space:]]|$) ]] ; then
+			# preserve timestamp, see bug #440304
+			touch -r "$ECONF_SOURCE/configure" "$ECONF_SOURCE/configure._portage_tmp_.$$" || die
 			sed -e "1s:^#![[:space:]]*/bin/sh:#!$CONFIG_SHELL:" -i "$ECONF_SOURCE/configure" || \
 				die "Substition of shebang in '$ECONF_SOURCE/configure' failed"
+			touch -r "$ECONF_SOURCE/configure._portage_tmp_.$$" "$ECONF_SOURCE/configure" || die
+			rm -f "$ECONF_SOURCE/configure._portage_tmp_.$$"
 		fi
 		if [ -e "${EPREFIX}"/usr/share/gnuconfig/ ]; then
 			find "${WORKDIR}" -type f '(' \

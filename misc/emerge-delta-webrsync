@@ -53,7 +53,7 @@ if [ -z "$NICENESS_PULLED" ]; then
 	fi
 fi
 
-STATE_DIR="/var/delta-webrsync/"
+STATE_DIR="${EPREFIX}/var/delta-webrsync/"
 
 # hack.  bug 92224
 if [ "${FETCHCOMMAND/getdelta.sh}" != "${FETCHCOMMAND}" ]; then

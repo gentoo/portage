@@ -438,7 +438,7 @@ def _setup_pipes(fd_pipes, close_fds=True):
 	Even when close_fds is False, file descriptors referenced as
 	values in fd_pipes are automatically closed if they do not also
 	occur as keys in fd_pipes. It is assumed that the caller will
-	explicitely add them to the fd_pipes keys if they are intended
+	explicitly add them to the fd_pipes keys if they are intended
 	to remain open. This allows for convenient elimination of
 	unnecessary duplicate file descriptors.
 

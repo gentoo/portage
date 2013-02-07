@@ -197,8 +197,7 @@ install_qa_check() {
 		[[ "${FFLAGS}" == *-frecord-gcc-switches* ]] && \
 		[[ "${FCFLAGS}" == *-frecord-gcc-switches* ]] ; then
 		rm -f "${T}"/scanelf-ignored-CFLAGS.log
-		for x in $(scanelf -qyRF '%k %p' -k \!.GCC.command.line "${ED}" | \
-			sed -e "s:\!.GCC.command.line ::") ; do
+		for x in $(scanelf -qyRF '#k%p' -k '!.GCC.command.line' "${ED}") ; do
 			# Separate out file types that are known to support
 			# .GCC.command.line sections, using the `file` command
 			# similar to how prepstrip uses it.
@@ -439,7 +438,7 @@ install_qa_check_elf() {
 		# Check for files built without respecting LDFLAGS
 		if [[ "${LDFLAGS}" == *,--hash-style=gnu* ]] && \
 			! has binchecks ${RESTRICT} ; then
-			f=$(scanelf -qyRF '%k %p' -k .hash "${ED}" | sed -e "s:\.hash ::")
+			f=$(scanelf -qyRF '#k%p' -k .hash "${ED}")
 			if [[ -n ${f} ]] ; then
 				echo "${f}" > "${T}"/scanelf-ignored-LDFLAGS.log
 				if [ "${QA_STRICT_FLAGS_IGNORED-unset}" = unset ] ; then
