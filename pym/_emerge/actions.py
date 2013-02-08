@@ -325,6 +325,7 @@ def action_build(settings, trees, mtimedb,
 			mydepgraph.display_problems()
 			return 1
 
+	mergecount = None
 	if "--pretend" not in myopts and \
 		("--ask" in myopts or "--tree" in myopts or \
 		"--verbose" in myopts) and \
@@ -356,6 +357,7 @@ def action_build(settings, trees, mtimedb,
 				if isinstance(x, Package) and x.operation == "merge":
 					mergecount += 1
 
+			prompt = None
 			if mergecount==0:
 				sets = trees[settings['EROOT']]['root_config'].sets
 				world_candidates = None
@@ -368,12 +370,11 @@ def action_build(settings, trees, mtimedb,
 					world_candidates = [x for x in favorites \
 						if not (x.startswith(SETPREFIX) and \
 						not sets[x[1:]].world_candidate)]
+
 				if "selective" in myparams and \
 					not oneshot and world_candidates:
-					print()
-					for x in world_candidates:
-						print(" %s %s" % (good("*"), x))
-					prompt="Would you like to add these packages to your world favorites?"
+					# Prompt later, inside saveNomergeFavorites.
+					prompt = None
 				elif settings["AUTOCLEAN"] and "yes"==settings["AUTOCLEAN"]:
 					prompt="Nothing to merge; would you like to auto-clean packages?"
 				else:
@@ -386,13 +387,15 @@ def action_build(settings, trees, mtimedb,
 			else:
 				prompt="Would you like to merge these packages?"
 		print()
-		if "--ask" in myopts and userquery(prompt, enter_invalid) == "No":
+		if prompt is not None and "--ask" in myopts and \
+			userquery(prompt, enter_invalid) == "No":
 			print()
 			print("Quitting.")
 			print()
 			return 128 + signal.SIGINT
 		# Don't ask again (e.g. when auto-cleaning packages after merge)
-		myopts.pop("--ask", None)
+		if mergecount != 0:
+			myopts.pop("--ask", None)
 
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
 		if ("--resume" in myopts):
@@ -462,25 +465,29 @@ def action_build(settings, trees, mtimedb,
 
 			mydepgraph.saveNomergeFavorites()
 
-		mergetask = Scheduler(settings, trees, mtimedb, myopts,
-			spinner, favorites=favorites,
-			graph_config=mydepgraph.schedulerGraph())
+		if mergecount == 0:
+			retval = os.EX_OK
+		else:
+			mergetask = Scheduler(settings, trees, mtimedb, myopts,
+				spinner, favorites=favorites,
+				graph_config=mydepgraph.schedulerGraph())
 
-		del mydepgraph
-		clear_caches(trees)
+			del mydepgraph
+			clear_caches(trees)
 
-		retval = mergetask.merge()
+			retval = mergetask.merge()
 
-		if retval == os.EX_OK and not (buildpkgonly or fetchonly or pretend):
-			if "yes" == settings.get("AUTOCLEAN"):
-				portage.writemsg_stdout(">>> Auto-cleaning packages...\n")
-				unmerge(trees[settings['EROOT']]['root_config'],
-					myopts, "clean", [],
-					ldpath_mtimes, autoclean=1)
-			else:
-				portage.writemsg_stdout(colorize("WARN", "WARNING:")
-					+ " AUTOCLEAN is disabled.  This can cause serious"
-					+ " problems due to overlapping packages.\n")
+			if retval == os.EX_OK and \
+				not (buildpkgonly or fetchonly or pretend):
+				if "yes" == settings.get("AUTOCLEAN"):
+					portage.writemsg_stdout(">>> Auto-cleaning packages...\n")
+					unmerge(trees[settings['EROOT']]['root_config'],
+						myopts, "clean", [],
+						ldpath_mtimes, autoclean=1)
+				else:
+					portage.writemsg_stdout(colorize("WARN", "WARNING:")
+						+ " AUTOCLEAN is disabled.  This can cause serious"
+						+ " problems due to overlapping packages.\n")
 
 		return retval
 

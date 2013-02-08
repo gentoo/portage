@@ -6879,16 +6879,31 @@ class depgraph(object):
 			all_added.append(SETPREFIX + k)
 		all_added.extend(added_favorites)
 		all_added.sort()
-		for a in all_added:
-			if a.startswith(SETPREFIX):
-				filename = "world_sets"
-			else:
-				filename = "world"
-			writemsg_stdout(
-				">>> Recording %s in \"%s\" favorites file...\n" %
-				(colorize("INFORM", _unicode(a)), filename), noiselevel=-1)
 		if all_added:
-			world_set.update(all_added)
+			skip = False
+			if "--ask" in self._frozen_config.myopts:
+				writemsg_stdout("\n", noiselevel=-1)
+				for a in all_added:
+					writemsg_stdout(" %s %s\n" % (colorize("GOOD", "*"), a),
+						noiselevel=-1)
+				writemsg_stdout("\n", noiselevel=-1)
+				prompt = "Would you like to add these packages to your world " \
+					"favorites?"
+				enter_invalid = '--ask-enter-invalid' in \
+					self._frozen_config.myopts
+				if userquery(prompt, enter_invalid) == "No":
+					skip = True
+
+			if not skip:
+				for a in all_added:
+					if a.startswith(SETPREFIX):
+						filename = "world_sets"
+					else:
+						filename = "world"
+					writemsg_stdout(
+						">>> Recording %s in \"%s\" favorites file...\n" %
+						(colorize("INFORM", _unicode(a)), filename), noiselevel=-1)
+				world_set.update(all_added)
 
 		if world_locked:
 			world_set.unlock()
