@@ -2109,7 +2109,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		emergelog(xterm_titles, msg )
 		writemsg_level(msg + "\n")
 		exitcode = portage.process.spawn_bash("cd %s ; git pull" % \
-			(portage._shell_quote(myportdir),), **spawn_kwargs)
+			(portage._shell_quote(myportdir),),
+			**portage._native_kwargs(spawn_kwargs))
 		if exitcode != os.EX_OK:
 			msg = "!!! git pull error in %s." % myportdir
 			emergelog(xterm_titles, msg)
@@ -2398,7 +2399,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 								rsync_initial_timeout)
 
 						mypids.extend(portage.process.spawn(
-							mycommand, returnpid=True, **spawn_kwargs))
+							mycommand, returnpid=True,
+							**portage._native_kwargs(spawn_kwargs)))
 						exitcode = os.waitpid(mypids[0], 0)[1]
 						if usersync_uid is not None:
 							portage.util.apply_permissions(tmpservertimestampfile,
@@ -2464,7 +2466,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				elif (servertimestamp == 0) or (servertimestamp > mytimestamp):
 					# actual sync
 					mycommand = rsynccommand + [dosyncuri+"/", myportdir]
-					exitcode = portage.process.spawn(mycommand, **spawn_kwargs)
+					exitcode = portage.process.spawn(mycommand,
+						**portage._native_kwargs(spawn_kwargs))
 					if exitcode in [0,1,3,4,11,14,20,21]:
 						break
 			elif exitcode in [1,3,4,11,14,20,21]:
@@ -2542,7 +2545,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			if portage.process.spawn_bash(
 					"cd %s; exec cvs -z0 -d %s co -P gentoo-x86" % \
 					(portage._shell_quote(cvsdir), portage._shell_quote(cvsroot)),
-					**spawn_kwargs) != os.EX_OK:
+					**portage._native_kwargs(spawn_kwargs)) != os.EX_OK:
 				print("!!! cvs checkout error; exiting.")
 				sys.exit(1)
 			os.rename(os.path.join(cvsdir, "gentoo-x86"), myportdir)
@@ -2551,7 +2554,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			print(">>> Starting cvs update with "+syncuri+"...")
 			retval = portage.process.spawn_bash(
 				"cd %s; exec cvs -z0 -q update -dP" % \
-				(portage._shell_quote(myportdir),), **spawn_kwargs)
+				(portage._shell_quote(myportdir),),
+				**portage._native_kwargs(spawn_kwargs))
 			if retval != os.EX_OK:
 				writemsg_level("!!! cvs update error; exiting.\n",
 					noiselevel=-1, level=logging.ERROR)
@@ -3133,7 +3137,7 @@ def load_emerge_config(trees=None):
 		v = os.environ.get(envvar, None)
 		if v and v.strip():
 			kwargs[k] = v
-	trees = portage.create_trees(trees=trees, **kwargs)
+	trees = portage.create_trees(trees=trees, **portage._native_kwargs(kwargs))
 
 	for root_trees in trees.values():
 		settings = root_trees["vartree"].settings
