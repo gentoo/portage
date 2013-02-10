@@ -316,7 +316,7 @@ pkg_preinst() {
 		# Override things that may be unavailable, or may have portability
 		# issues when running tests in exotic environments.
 		#   prepstrip - bug #447810 (bash read builtin EINTR problem)
-		true_symlinks = ["find", "gawk", "prepstrip", "sed", "scanelf"]
+		true_symlinks = ["find", "prepstrip", "sed", "scanelf"]
 		true_binary = find_binary("true")
 		self.assertEqual(true_binary is None, False,
 			"true command not found")
