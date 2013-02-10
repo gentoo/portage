@@ -63,8 +63,8 @@ def archive_conf():
         md5_match_hash[conf] = ''
 
     # Find all the CONTENT files in VDB_PATH.
-    content_files += os.popen(FIND_EXTANT_CONTENTS %
-			(os.path.join(portage.settings['EROOT'], portage.VDB_PATH))).readlines()
+    with os.popen(FIND_EXTANT_CONTENTS % (os.path.join(portage.settings['EROOT'], portage.VDB_PATH))) as f:
+	    content_files += f.readlines()
 
     # Search for the saved md5 checksum of all the specified config files
     # and see if the current file is unmodified or not.

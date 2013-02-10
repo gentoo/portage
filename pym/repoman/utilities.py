@@ -380,10 +380,11 @@ def get_commit_message_with_editor(editor, message=None):
 		if not (os.WIFEXITED(retval) and os.WEXITSTATUS(retval) == os.EX_OK):
 			return None
 		try:
-			mylines = io.open(_unicode_encode(filename,
+			with io.open(_unicode_encode(filename,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['content'], errors='replace'
-				).readlines()
+				) as f:
+				mylines = f.readlines()
 		except OSError as e:
 			if e.errno != errno.ENOENT:
 				raise

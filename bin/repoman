@@ -1218,7 +1218,8 @@ elif vcs == "hg":
 	with repoman_popen("hg status --no-status --modified .") as f:
 		mychanged = f.readlines()
 	mychanged = ["./" + elem.rstrip() for elem in mychanged]
-	mynew = repoman_popen("hg status --no-status --added .").readlines()
+	with repoman_popen("hg status --no-status --added .") as f:
+		mynew = f.readlines()
 	mynew = ["./" + elem.rstrip() for elem in mynew]
 	if options.if_modified == "y":
 		with repoman_popen("hg status --no-status --removed .") as f:

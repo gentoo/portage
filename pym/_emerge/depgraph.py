@@ -6609,11 +6609,12 @@ class depgraph(object):
 		def write_changes(root, changes, file_to_write_to):
 			file_contents = None
 			try:
-				file_contents = io.open(
+				with io.open(
 					_unicode_encode(file_to_write_to,
 					encoding=_encodings['fs'], errors='strict'),
 					mode='r', encoding=_encodings['content'],
-					errors='replace').readlines()
+					errors='replace') as f:
+					file_contents = f.readlines()
 			except IOError as e:
 				if e.errno == errno.ENOENT:
 					file_contents = []
