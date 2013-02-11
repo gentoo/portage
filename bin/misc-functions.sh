@@ -248,16 +248,17 @@ install_qa_check() {
 		eqawarn "$f"
 	fi
 
-	if [[ -d ${ED}/etc/udev/rules.d ]] ; then
-		f=
-		for x in $(ls "${ED}/etc/udev/rules.d") ; do
-			f+="  etc/udev/rules.d/$x\n"
-		done
-		if [[ -n $f ]] ; then
-			eqawarn "QA Notice: udev rules should be installed in /lib/udev/rules.d:"
-			eqawarn
-			eqawarn "$f"
-		fi
+	set +f
+	f=
+	for x in "${ED}etc/udev/rules.d/"* "${ED}lib"*"/udev/rules.d/"* ; do
+		[[ -e ${x} ]] || continue
+		[[ ${x} == ${ED}lib/udev/rules.d/* ]] && continue
+		f+="  ${x#${ED}}\n"
+	done
+	if [[ -n $f ]] ; then
+		eqawarn "QA Notice: udev rules should be installed in /lib/udev/rules.d:"
+		eqawarn
+		eqawarn "$f"
 	fi
 
 	# Now we look for all world writable files.
