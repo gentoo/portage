@@ -5,6 +5,7 @@ __all__ = ['deprecated_profile_check']
 
 import io
 
+import portage
 from portage import os, _encodings, _unicode_encode
 from portage.const import DEPRECATED_PROFILE_FILE
 from portage.localization import _
@@ -12,10 +13,12 @@ from portage.output import colorize
 from portage.util import writemsg
 
 def deprecated_profile_check(settings=None):
-	config_root = "/"
+	config_root = None
+	eprefix = None
 	deprecated_profile_file = None
 	if settings is not None:
 		config_root = settings["PORTAGE_CONFIGROOT"]
+		eprefix = settings["EPREFIX"]
 		for x in reversed(settings.profiles):
 			deprecated_profile_file = os.path.join(x, "deprecated")
 			if os.access(deprecated_profile_file, os.R_OK):
@@ -24,10 +27,10 @@ def deprecated_profile_check(settings=None):
 			deprecated_profile_file = None
 
 	if deprecated_profile_file is None:
-		deprecated_profile_file = os.path.join(config_root,
+		deprecated_profile_file = os.path.join(config_root or "/",
 			DEPRECATED_PROFILE_FILE)
 		if not os.access(deprecated_profile_file, os.R_OK):
-			deprecated_profile_file = os.path.join(config_root,
+			deprecated_profile_file = os.path.join(config_root or "/",
 				'etc', 'make.profile', 'deprecated')
 			if not os.access(deprecated_profile_file, os.R_OK):
 				return
@@ -53,4 +56,24 @@ def deprecated_profile_check(settings=None):
 		for myline in dcontent[1:]:
 			writemsg(myline, noiselevel=-1)
 		writemsg("\n\n", noiselevel=-1)
+
+	if settings is not None:
+		main_repo_loc = settings.repositories.mainRepoLocation()
+		new_profile_path = os.path.join(main_repo_loc,
+			"profiles", newprofile.rstrip("\n"))
+
+		if os.path.isdir(new_profile_path):
+			new_config = portage.config(config_root=config_root,
+				config_profile_path=new_profile_path,
+				eprefix=eprefix)
+
+			if not new_config.profiles:
+				writemsg("\n %s %s\n" % (colorize("WARN", "*"),
+					_("You must update portage before you "
+					"can migrate to the above profile.")), noiselevel=-1)
+				writemsg(" %s %s\n\n" % (colorize("WARN", "*"),
+					_("In order to update portage, "
+					"run 'emerge --oneshot portage'.")),
+					noiselevel=-1)
+
 	return True
