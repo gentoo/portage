@@ -844,6 +844,10 @@ class config(object):
 					self[var] = default_val
 				self.backup_changes(var)
 
+			if portage._internal_caller:
+				self["PORTAGE_INTERNAL_CALLER"] = "1"
+				self.backup_changes("PORTAGE_INTERNAL_CALLER")
+
 			# initialize self.features
 			self.regenerate()
 
