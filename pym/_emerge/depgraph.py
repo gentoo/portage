@@ -1034,6 +1034,71 @@ class depgraph(object):
 
 		return found_update
 
+	def _slot_change_probe(self, dep):
+		"""
+		@rtype: bool
+		@return: True if dep.child should be rebuilt due to a change
+			in sub-slot (without revbump, as in bug #456208).
+		"""
+		if not (isinstance(dep.parent, Package) and \
+			not dep.parent.built and dep.child.built):
+			return None
+
+		root_config = self._frozen_config.roots[dep.root]
+		try:
+			unbuilt_child  = self._pkg(dep.child.cpv, "ebuild",
+				root_config, myrepo=dep.child.repo)
+		except PackageNotFound:
+			for unbuilt_child in self._iter_match_pkgs(root_config,
+				"ebuild", Atom("=%s" % (dep.child.cpv,))):
+				break
+			else:
+				return None
+
+		if unbuilt_child.slot == dep.child.slot and \
+			unbuilt_child.sub_slot == dep.child.sub_slot:
+			return None
+
+		return unbuilt_child
+
+	def _slot_change_backtrack(self, dep, new_child_slot):
+		child = dep.child
+		if "--debug" in self._frozen_config.myopts:
+			msg = []
+			msg.append("")
+			msg.append("")
+			msg.append("backtracking due to slot/sub-slot change:")
+			msg.append("   child package:  %s" % child)
+			msg.append("      child slot:  %s/%s" %
+				(child.slot, child.sub_slot))
+			msg.append("       new child:  %s" % new_child_slot)
+			msg.append("  new child slot:  %s/%s" %
+				(new_child_slot.slot, new_child_slot.sub_slot))
+			msg.append("   parent package: %s" % dep.parent)
+			msg.append("   atom: %s" % dep.atom)
+			msg.append("")
+			writemsg_level("\n".join(msg),
+				noiselevel=-1, level=logging.DEBUG)
+		backtrack_infos = self._dynamic_config._backtrack_infos
+		config = backtrack_infos.setdefault("config", {})
+
+		# mask unwanted binary packages if necessary
+		masks = {}
+		if not child.installed:
+			masks.setdefault(dep.child, {})["slot_operator_mask_built"] = None
+		if masks:
+			config.setdefault("slot_operator_mask_built", {}).update(masks)
+
+		# trigger replacement of installed packages if necessary
+		reinstalls = set()
+		if child.installed:
+			reinstalls.add((child.root, child.slot_atom))
+		if reinstalls:
+			config.setdefault("slot_operator_replace_installed",
+				set()).update(reinstalls)
+
+		self._dynamic_config._need_restart = True
+
 	def _slot_operator_update_backtrack(self, dep, new_child_slot=None):
 		if new_child_slot is None:
 			child = dep.child
@@ -1241,6 +1306,17 @@ class depgraph(object):
 		for slot_key, slot_info in self._dynamic_config._slot_operator_deps.items():
 
 			for dep in slot_info:
+
+				atom = dep.atom
+				if atom.slot_operator is None:
+					continue
+
+				if not atom.slot_operator_built:
+					new_child_slot = self._slot_change_probe(dep)
+					if new_child_slot is not None:
+						self._slot_change_backtrack(dep, new_child_slot)
+					continue
+
 				if not (dep.parent and
 					isinstance(dep.parent, Package) and dep.parent.built):
 					continue
@@ -1669,7 +1745,7 @@ class depgraph(object):
 
 		dep.child = pkg
 		if (not pkg.onlydeps and
-			dep.atom and dep.atom.slot_operator_built):
+			dep.atom and dep.atom.slot_operator is not None):
 			self._add_slot_operator_dep(dep)
 
 		recurse = deep is True or depth + 1 <= deep
