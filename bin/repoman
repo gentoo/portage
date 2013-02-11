@@ -2178,6 +2178,14 @@ for x in effective_scanlist:
 				# just in case, prevent config.reset() from nuking these.
 				dep_settings.backup_changes("ACCEPT_KEYWORDS")
 
+				# This attribute is used in dbapi._match_use() to apply
+				# use.stable.{mask,force} settings based on the stable
+				# status of the parent package. This is required in order
+				# for USE deps of unstable packages to be resolved correctly,
+				# since otherwise use.stable.{mask,force} settings of
+				# dependencies may conflict (see bug #456342).
+				dep_settings._parent_stable = dep_settings._isStable(pkg)
+
 				if not baddepsyntax:
 					ismasked = not ebuild_archs or \
 						pkg.cpv not in portdb.xmatch("match-visible", pkg.cp)

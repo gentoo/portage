@@ -253,11 +253,13 @@ class dbapi(object):
 				pkg = _pkg_str(cpv, metadata=metadata, settings=self.settings)
 			else:
 				pkg = cpv
-			usemask = self.settings._getUseMask(pkg)
+			usemask = self.settings._getUseMask(pkg,
+				stable=self.settings._parent_stable)
 			if any(x in usemask for x in atom.use.enabled):
 				return False
 
-			useforce = self.settings._getUseForce(pkg)
+			useforce = self.settings._getUseForce(pkg,
+				stable=self.settings._parent_stable)
 			if any(x in useforce and x not in usemask
 				for x in atom.use.disabled):
 				return False

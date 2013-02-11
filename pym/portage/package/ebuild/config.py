@@ -221,6 +221,7 @@ class config(object):
 		self._accept_properties = None
 		self._features_overrides = []
 		self._make_defaults = None
+		self._parent_stable = None
 
 		# _unknown_features records unknown features that
 		# have triggered warning messages, and ensures that
@@ -1734,11 +1735,11 @@ class config(object):
 
 		return iuse_implicit
 
-	def _getUseMask(self, pkg):
-		return self._use_manager.getUseMask(pkg)
+	def _getUseMask(self, pkg, stable=None):
+		return self._use_manager.getUseMask(pkg, stable=stable)
 
-	def _getUseForce(self, pkg):
-		return self._use_manager.getUseForce(pkg)
+	def _getUseForce(self, pkg, stable=None):
+		return self._use_manager.getUseForce(pkg, stable=stable)
 
 	def _getMaskAtom(self, cpv, metadata):
 		"""
