@@ -1176,6 +1176,7 @@ class depgraph(object):
 			return None
 
 		debug = "--debug" in self._frozen_config.myopts
+		selective = "selective" in self._dynamic_config.myparams
 		want_downgrade = None
 
 		for replacement_parent in self._iter_similar_available(dep.parent,
@@ -1225,6 +1226,18 @@ class depgraph(object):
 							if not want_downgrade:
 								continue
 
+					insignificant = False
+					if selective and \
+						dep.parent.installed and \
+						dep.child.installed and \
+						dep.parent.cpv == replacement_parent.cpv and \
+						dep.child.cpv == pkg.cpv:
+						# Then can happen if the child's sub-slot changed
+						# without a revision bump. The sub-slot change is
+						# considered insignificant until one of its parent
+						# packages needs to be rebuilt.
+						insignificant = True
+
 					if debug:
 						msg = []
 						msg.append("")
@@ -1234,9 +1247,14 @@ class depgraph(object):
 						msg.append("   existing parent package: %s" % dep.parent)
 						msg.append("   new child package:  %s" % pkg)
 						msg.append("   new parent package: %s" % replacement_parent)
+						if insignificant:
+							msg.append("insignificant changes detected")
 						msg.append("")
 						writemsg_level("\n".join(msg),
 							noiselevel=-1, level=logging.DEBUG)
+
+					if insignificant:
+						return None
 
 					return pkg
 
