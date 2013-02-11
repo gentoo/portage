@@ -1653,24 +1653,25 @@ class depgraph(object):
 			if existing_node:
 				if existing_node_matches:
 					# The existing node can be reused.
-					if arg_atoms:
-						for parent_atom in arg_atoms:
-							parent, atom = parent_atom
-							self._dynamic_config.digraph.add(existing_node, parent,
-								priority=priority)
-							self._add_parent_atom(existing_node, parent_atom)
-					# If a direct circular dependency is not an unsatisfied
-					# buildtime dependency then drop it here since otherwise
-					# it can skew the merge order calculation in an unwanted
-					# way.
-					if existing_node != myparent or \
-						(priority.buildtime and not priority.satisfied):
-						self._dynamic_config.digraph.addnode(existing_node, myparent,
-							priority=priority)
-						if dep.atom is not None and dep.parent is not None:
-							self._add_parent_atom(existing_node,
-								(dep.parent, dep.atom))
-					return 1
+					if pkg != existing_node:
+						pkg = existing_node
+						previously_added = True
+						try:
+							arg_atoms = list(self._iter_atoms_for_pkg(pkg))
+						except InvalidDependString as e:
+							if not pkg.installed:
+								# should have been masked before
+								# it was selected
+								raise
+
+						if debug:
+							writemsg_level(
+								"%s%s %s\n" % ("Re-used Child:".ljust(15),
+								pkg, pkg_use_display(pkg,
+								self._frozen_config.myopts,
+								modified_use=self._pkg_use_enabled(pkg))),
+								level=logging.DEBUG, noiselevel=-1)
+
 				else:
 					self._add_slot_conflict(pkg)
 					if debug:
@@ -1721,12 +1722,19 @@ class depgraph(object):
 		if arg_atoms:
 			self._dynamic_config._set_nodes.add(pkg)
 
-		# Do this even when addme is False (--onlydeps) so that the
+		# Do this even for onlydeps, so that the
 		# parent/child relationship is always known in case
 		# self._show_slot_collision_notice() needs to be called later.
-		self._dynamic_config.digraph.add(pkg, myparent, priority=priority)
-		if dep.atom is not None and dep.parent is not None:
-			self._add_parent_atom(pkg, (dep.parent, dep.atom))
+		# If a direct circular dependency is not an unsatisfied
+		# buildtime dependency then drop it here since otherwise
+		# it can skew the merge order calculation in an unwanted
+		# way.
+		if pkg != dep.parent or \
+			(priority.buildtime and not priority.satisfied):
+			self._dynamic_config.digraph.add(pkg,
+				dep.parent, priority=priority)
+			if dep.atom is not None and dep.parent is not None:
+				self._add_parent_atom(pkg, (dep.parent, dep.atom))
 
 		if arg_atoms:
 			for parent_atom in arg_atoms:

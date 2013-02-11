@@ -25,6 +25,13 @@ class SlotChangeWithoutRevBumpTestCase(TestCase):
 			},
 		}
 
+		binpkgs = {
+			"app-arch/libarchive-3.1.1" : {
+				"EAPI": "5",
+				"SLOT": "0"
+			},
+		}
+
 		installed = {
 			"app-arch/libarchive-3.1.1" : {
 				"EAPI": "5",
@@ -46,13 +53,13 @@ class SlotChangeWithoutRevBumpTestCase(TestCase):
 			# without revbump needs to trigger a rebuild.
 			ResolverPlaygroundTestCase(
 				["kde-base/ark"],
-				options = {"--oneshot": True},
+				options = {"--oneshot": True, "--usepkg": True},
 				success = True,
 				mergelist = ['app-arch/libarchive-3.1.1', "kde-base/ark-4.10.0"]),
 
 		)
 
-		playground = ResolverPlayground(ebuilds=ebuilds,
+		playground = ResolverPlayground(ebuilds=ebuilds, binpkgs=binpkgs,
 			installed=installed, world=world, debug=False)
 		try:
 			for test_case in test_cases:
