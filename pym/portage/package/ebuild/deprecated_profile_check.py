@@ -47,15 +47,19 @@ def deprecated_profile_check(settings=None):
 		writemsg(colorize("BAD", _("!!! Please refer to the "
 			"Gentoo Upgrading Guide.")) + "\n", noiselevel=-1)
 		return True
-	newprofile = dcontent[0]
+	newprofile = dcontent[0].rstrip("\n")
 	writemsg(colorize("BAD", _("!!! Please upgrade to the "
-		"following profile if possible:")) + "\n", noiselevel=-1)
-	writemsg(8*" " + colorize("GOOD", newprofile) + "\n", noiselevel=-1)
+		"following profile if possible:")) + "\n\n", noiselevel=-1)
+	writemsg(8*" " + colorize("GOOD", newprofile) + "\n\n", noiselevel=-1)
 	if len(dcontent) > 1:
 		writemsg(_("To upgrade do the following steps:\n"), noiselevel=-1)
 		for myline in dcontent[1:]:
 			writemsg(myline, noiselevel=-1)
 		writemsg("\n\n", noiselevel=-1)
+	else:
+		writemsg(_("You may use the following command to upgrade:\n\n"), noiselevel=-1)
+		writemsg(8*" " + colorize("INFORM", 'eselect profile set ' +
+			newprofile) + "\n\n", noiselevel=-1)
 
 	if settings is not None:
 		main_repo_loc = settings.repositories.mainRepoLocation()
