@@ -657,10 +657,17 @@ if VERSION == 'HEAD':
 			return VERSION
 	VERSION = _LazyVersion()
 
-if "_legacy_globals_constructed" in globals():
-	# The module has been reloaded, so perform any relevant cleanup
-	# and prevent memory leaks.
-	if "db" in _legacy_globals_constructed:
+_legacy_global_var_names = ("archlist", "db", "features",
+	"groups", "mtimedb", "mtimedbfile", "pkglines",
+	"portdb", "profiledir", "root", "selinux_enabled",
+	"settings", "thirdpartymirrors")
+
+def _reset_legacy_globals():
+
+	global _legacy_globals_constructed
+
+	if "_legacy_globals_constructed" in globals() and \
+		"db" in _legacy_globals_constructed:
 		try:
 			db
 		except NameError:
@@ -684,7 +691,10 @@ if "_legacy_globals_constructed" in globals():
 						portdbapi.portdbapi_instances.remove(_x)
 					except ValueError:
 						pass
-				del _x
+
+	_legacy_globals_constructed = set()
+	for k in _legacy_global_var_names:
+		globals()[k] = _LegacyGlobalProxy(k)
 
 class _LegacyGlobalProxy(proxy.objectproxy.ObjectProxy):
 
@@ -699,16 +709,7 @@ class _LegacyGlobalProxy(proxy.objectproxy.ObjectProxy):
 		from portage._legacy_globals import _get_legacy_global
 		return _get_legacy_global(name)
 
-_legacy_global_var_names = ("archlist", "db", "features",
-	"groups", "mtimedb", "mtimedbfile", "pkglines",
-	"portdb", "profiledir", "root", "selinux_enabled",
-	"settings", "thirdpartymirrors")
-
-for k in _legacy_global_var_names:
-	globals()[k] = _LegacyGlobalProxy(k)
-del k
-
-_legacy_globals_constructed = set()
+_reset_legacy_globals()
 
 def _disable_legacy_globals():
 	"""
