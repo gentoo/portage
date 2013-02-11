@@ -1045,15 +1045,27 @@ class depgraph(object):
 			return None
 
 		root_config = self._frozen_config.roots[dep.root]
+		matches = []
 		try:
-			unbuilt_child  = self._pkg(dep.child.cpv, "ebuild",
-				root_config, myrepo=dep.child.repo)
+			matches.append(self._pkg(dep.child.cpv, "ebuild",
+				root_config, myrepo=dep.child.repo))
 		except PackageNotFound:
-			for unbuilt_child in self._iter_match_pkgs(root_config,
-				"ebuild", Atom("=%s" % (dep.child.cpv,))):
-				break
-			else:
-				return None
+			pass
+
+		for unbuilt_child in chain(matches,
+			self._iter_match_pkgs(root_config, "ebuild",
+			Atom("=%s" % (dep.child.cpv,)))):
+			if unbuilt_child in self._dynamic_config._runtime_pkg_mask:
+				continue
+			if self._frozen_config.excluded_pkgs.findAtomForPackage(
+				unbuilt_child,
+				modified_use=self._pkg_use_enabled(unbuilt_child)):
+				continue
+			if not self._pkg_visibility_check(unbuilt_child):
+				continue
+			break
+		else:
+			return None
 
 		if unbuilt_child.slot == dep.child.slot and \
 			unbuilt_child.sub_slot == dep.child.sub_slot:
