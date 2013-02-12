@@ -37,6 +37,14 @@ class SlotOperatorUnsolvedTestCase(TestCase):
 			},
 		}
 
+		binpkgs = {
+			"net-libs/webkit-gtk-1.10.2-r300" : {
+				"EAPI": "5",
+				"DEPEND":  ">=dev-libs/icu-3.8.1-r1:0/50=",
+				"RDEPEND": ">=dev-libs/icu-3.8.1-r1:0/50="
+			},
+		}
+
 		installed = {
 			"dev-libs/icu-50.1.2" : {
 				"EAPI": "5",
@@ -59,7 +67,7 @@ class SlotOperatorUnsolvedTestCase(TestCase):
 
 			ResolverPlaygroundTestCase(
 				["@world"],
-				options = {"--update": True, "--deep": True},
+				options = {"--update": True, "--deep": True, "--usepkg": True},
 				circular_dependency_solutions = {
 					'dev-ruby/hoe-2.13.0': frozenset([frozenset([('test', False)])]),
 					'dev-ruby/rdoc-3.12.1': frozenset([frozenset([('test', False)])])
@@ -69,7 +77,7 @@ class SlotOperatorUnsolvedTestCase(TestCase):
 
 		)
 
-		playground = ResolverPlayground(ebuilds=ebuilds,
+		playground = ResolverPlayground(ebuilds=ebuilds, binpkgs=binpkgs,
 			installed=installed, user_config=user_config,
 			world=world, debug=False)
 		try:
