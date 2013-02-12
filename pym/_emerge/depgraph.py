@@ -1273,6 +1273,100 @@ class depgraph(object):
 
 		return None
 
+	def _slot_operator_unsatisfied_probe(self, dep):
+
+		if dep.parent.installed and \
+			self._frozen_config.excluded_pkgs.findAtomForPackage(dep.parent,
+			modified_use=self._pkg_use_enabled(dep.parent)):
+			return False
+
+		debug = "--debug" in self._frozen_config.myopts
+
+		for replacement_parent in self._iter_similar_available(dep.parent,
+			dep.parent.slot_atom):
+
+			for atom in replacement_parent.validated_atoms:
+				if not atom.slot_operator == "=" or \
+					atom.blocker or \
+					atom.cp != dep.atom.cp:
+					continue
+
+				# Discard USE deps, we're only searching for an approximate
+				# pattern, and dealing with USE states is too complex for
+				# this purpose.
+				atom = atom.without_use
+
+				pkg, existing_node = self._select_package(dep.root, atom,
+					onlydeps=dep.onlydeps)
+
+				if pkg is not None:
+
+					if debug:
+						msg = []
+						msg.append("")
+						msg.append("")
+						msg.append("slot_operator_unsatisfied_probe:")
+						msg.append("   existing parent package: %s" % dep.parent)
+						msg.append("   existing parent atom: %s" % dep.atom)
+						msg.append("   new parent package: %s" % replacement_parent)
+						msg.append("   new child package:  %s" % pkg)
+						msg.append("")
+						writemsg_level("\n".join(msg),
+							noiselevel=-1, level=logging.DEBUG)
+
+					return True
+
+		if debug:
+			msg = []
+			msg.append("")
+			msg.append("")
+			msg.append("slot_operator_unsatisfied_probe:")
+			msg.append("   existing parent package: %s" % dep.parent)
+			msg.append("   existing parent atom: %s" % dep.atom)
+			msg.append("   new parent package: %s" % None)
+			msg.append("   new child package:  %s" % None)
+			msg.append("")
+			writemsg_level("\n".join(msg),
+				noiselevel=-1, level=logging.DEBUG)
+
+		return False
+
+	def _slot_operator_unsatisfied_backtrack(self, dep):
+
+		parent = dep.parent
+
+		if "--debug" in self._frozen_config.myopts:
+			msg = []
+			msg.append("")
+			msg.append("")
+			msg.append("backtracking due to unsatisfied "
+				"built slot-operator dep:")
+			msg.append("   parent package: %s" % parent)
+			msg.append("   atom: %s" % dep.atom)
+			msg.append("")
+			writemsg_level("\n".join(msg),
+				noiselevel=-1, level=logging.DEBUG)
+
+		backtrack_infos = self._dynamic_config._backtrack_infos
+		config = backtrack_infos.setdefault("config", {})
+
+		# mask unwanted binary packages if necessary
+		masks = {}
+		if not parent.installed:
+			masks.setdefault(parent, {})["slot_operator_mask_built"] = None
+		if masks:
+			config.setdefault("slot_operator_mask_built", {}).update(masks)
+
+		# trigger replacement of installed packages if necessary
+		reinstalls = set()
+		if parent.installed:
+			reinstalls.add((parent.root, parent.slot_atom))
+		if reinstalls:
+			config.setdefault("slot_operator_replace_installed",
+				set()).update(reinstalls)
+
+		self._dynamic_config._need_restart = True
+
 	def _downgrade_probe(self, pkg):
 		"""
 		Detect cases where a downgrade of the given package is considered
@@ -1529,6 +1623,10 @@ class depgraph(object):
 							(dep.parent,
 							self._dynamic_config._runtime_pkg_mask[
 							dep.parent]), noiselevel=-1)
+				elif dep.atom.slot_operator_built and \
+					self._slot_operator_unsatisfied_probe(dep):
+					self._slot_operator_unsatisfied_backtrack(dep)
+					return 1
 				elif not self.need_restart():
 					# Do not backtrack if only USE have to be changed in
 					# order to satisfy the dependency.

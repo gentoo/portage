@@ -9,11 +9,6 @@ class SlotOperatorUnsolvedTestCase(TestCase):
 	"""
 	Demonstrate bug #456340, where an unsolved circular dependency
 	interacts with an unsatisfied built slot-operator dep.
-
-	The problem here results from poor handling of the unsatisfied built
-	slot operator dep inside _add_dep, where it aborts the graph and tries
-	to backtrack immediately. We really want it to queue a rebuild here,
-	and continue filling out the graph.
 	"""
 	def __init__(self, *args, **kwargs):
 		super(SlotOperatorUnsolvedTestCase, self).__init__(*args, **kwargs)
@@ -31,12 +26,14 @@ class SlotOperatorUnsolvedTestCase(TestCase):
 			},
 			"dev-ruby/rdoc-3.12.1" : {
 				"EAPI": "5",
-				"DEPEND": ">=dev-ruby/hoe-2.7.0",
+				"IUSE": "test",
+				"DEPEND": "test? ( >=dev-ruby/hoe-2.7.0 )",
 			},
 			"dev-ruby/hoe-2.13.0" : {
 				"EAPI": "5",
-				"DEPEND": ">=dev-ruby/rdoc-3.10",
-				"RDEPEND": ">=dev-ruby/rdoc-3.10",
+				"IUSE": "test",
+				"DEPEND": "test? ( >=dev-ruby/rdoc-3.10 )",
+				"RDEPEND": "test? ( >=dev-ruby/rdoc-3.10 )",
 			},
 		}
 
@@ -52,6 +49,10 @@ class SlotOperatorUnsolvedTestCase(TestCase):
 			},
 		}
 
+		user_config = {
+			"make.conf" : ("FEATURES=test",)
+		}
+
 		world = ["net-libs/webkit-gtk", "dev-ruby/hoe"]
 
 		test_cases = (
@@ -59,12 +60,18 @@ class SlotOperatorUnsolvedTestCase(TestCase):
 			ResolverPlaygroundTestCase(
 				["@world"],
 				options = {"--update": True, "--deep": True},
-				success = False),
+				circular_dependency_solutions = {
+					'dev-ruby/hoe-2.13.0': frozenset([frozenset([('test', False)])]),
+					'dev-ruby/rdoc-3.12.1': frozenset([frozenset([('test', False)])])
+				},
+				success = False
+			),
 
 		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds,
-			installed=installed, world=world, debug=False)
+			installed=installed, user_config=user_config,
+			world=world, debug=False)
 		try:
 			for test_case in test_cases:
 				playground.run_TestCase(test_case)
