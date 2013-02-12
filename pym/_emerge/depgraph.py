@@ -3388,6 +3388,15 @@ class depgraph(object):
 		child = None
 		all_parents = self._dynamic_config._parent_atoms
 		graph = self._dynamic_config.digraph
+		verbose_main_repo_display = "--verbose-main-repo-display" in \
+			self._frozen_config.myopts
+
+		def format_pkg(pkg):
+			pkg_name = "%s" % (pkg.cpv,)
+			if verbose_main_repo_display or pkg.repo != \
+				pkg.root_config.settings.repositories.mainRepo().name:
+				pkg_name += _repo_separator + pkg.repo
+			return pkg_name
 
 		if target_atom is not None and isinstance(node, Package):
 			affecting_use = set()
@@ -3400,7 +3409,8 @@ class depgraph(object):
 					if not node.installed:
 						raise
 			affecting_use.difference_update(node.use.mask, node.use.force)
-			pkg_name = "%s" % (node.cpv,)
+			pkg_name = format_pkg(node)
+
 			if affecting_use:
 				usedep = []
 				for flag in affecting_use:
@@ -3497,7 +3507,7 @@ class depgraph(object):
 				affecting_use.difference_update(node.use.mask, \
 					node.use.force)
 
-				pkg_name = "%s" % (node.cpv,)
+				pkg_name = format_pkg(node)
 				if affecting_use:
 					usedep = []
 					for flag in affecting_use:
