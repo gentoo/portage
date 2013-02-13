@@ -2584,15 +2584,16 @@ class depgraph(object):
 				pkgdir = os.path.dirname(ebuild_path)
 				tree_root = os.path.dirname(os.path.dirname(pkgdir))
 				cp = pkgdir[len(tree_root)+1:]
-				e = portage.exception.PackageNotFound(
-					("%s is not in a valid portage tree " + \
-					"hierarchy or does not exist") % x)
+				error_msg = ("\n\n!!! '%s' is not in a valid portage tree "
+					"hierarchy or does not exist\n") % x
 				if not portage.isvalidatom(cp):
-					raise e
+					writemsg(error_msg, noiselevel=-1)
+					return 0, myfavorites
 				cat = portage.catsplit(cp)[0]
 				mykey = cat + "/" + os.path.basename(ebuild_path[:-7])
 				if not portage.isvalidatom("="+mykey):
-					raise e
+					writemsg(error_msg, noiselevel=-1)
+					return 0, myfavorites
 				ebuild_path = portdb.findname(mykey)
 				if ebuild_path:
 					if ebuild_path != os.path.join(os.path.realpath(tree_root),
@@ -2608,8 +2609,8 @@ class depgraph(object):
 						countdown(int(self._frozen_config.settings["EMERGE_WARNING_DELAY"]),
 							"Continuing...")
 				else:
-					raise portage.exception.PackageNotFound(
-						"%s is not in a valid portage tree hierarchy or does not exist" % x)
+					writemsg(error_msg, noiselevel=-1)
+					return 0, myfavorites
 				pkg = self._pkg(mykey, "ebuild", root_config,
 					onlydeps=onlydeps, myrepo=portdb.getRepositoryName(
 					os.path.dirname(os.path.dirname(os.path.dirname(ebuild_path)))))
