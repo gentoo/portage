@@ -1028,7 +1028,7 @@ class depgraph(object):
 				dep = Dependency(atom=atom, child=other_pkg,
 					parent=parent, root=pkg.root)
 
-				if self._slot_operator_update_probe(dep):
+				if self._slot_operator_update_probe(dep, slot_conflict=True):
 					self._slot_operator_update_backtrack(dep)
 					found_update = True
 
@@ -1154,7 +1154,8 @@ class depgraph(object):
 
 		self._dynamic_config._need_restart = True
 
-	def _slot_operator_update_probe(self, dep, new_child_slot=False):
+	def _slot_operator_update_probe(self, dep, new_child_slot=False,
+		slot_conflict=False):
 		"""
 		slot/sub-slot := operators tend to prevent updates from getting pulled in,
 		since installed packages pull in packages with the slot/sub-slot that they
@@ -1227,7 +1228,8 @@ class depgraph(object):
 								continue
 
 					insignificant = False
-					if selective and \
+					if not slot_conflict and \
+						selective and \
 						dep.parent.installed and \
 						dep.child.installed and \
 						dep.parent.cpv == replacement_parent.cpv and \
@@ -1235,7 +1237,8 @@ class depgraph(object):
 						# Then can happen if the child's sub-slot changed
 						# without a revision bump. The sub-slot change is
 						# considered insignificant until one of its parent
-						# packages needs to be rebuilt.
+						# packages needs to be rebuilt (which may trigger a
+						# slot conflict).
 						insignificant = True
 
 					if debug:
