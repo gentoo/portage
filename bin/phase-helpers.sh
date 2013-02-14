@@ -494,6 +494,9 @@ econf() {
 			set -- --libdir="$(__strip_duplicate_slashes "${CONF_PREFIX}${CONF_LIBDIR}")" "$@"
 		fi
 
+		# Handle arguments containing quoted whitespace (see bug #457136).
+		eval "local -a EXTRA_ECONF=(${EXTRA_ECONF})"
+
 		set -- \
 			--prefix="${EPREFIX}"/usr \
 			${CBUILD:+--build=${CBUILD}} \
@@ -505,7 +508,7 @@ econf() {
 			--sysconfdir="${EPREFIX}"/etc \
 			--localstatedir="${EPREFIX}"/var/lib \
 			"$@" \
-			${EXTRA_ECONF}
+			"${EXTRA_ECONF[@]}"
 		__vecho "${ECONF_SOURCE}/configure" "$@"
 
 		if ! "${ECONF_SOURCE}/configure" "$@" ; then
