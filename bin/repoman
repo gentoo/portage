@@ -609,6 +609,17 @@ if repo_config.sign_commit:
 sign_manifests = "sign" in repoman_settings.features and \
 	repo_config.sign_manifest
 
+if repo_config.sign_manifest and repo_config.name == "gentoo" and \
+	options.mode in ("commit",) and not sign_manifests:
+	msg = ("The '%s' repository has manifest signatures enabled, "
+	"but FEATURES=sign is currently disabled. In order to avoid this "
+	"warning, enable FEATURES=sign in make.conf. Alternatively, "
+	"repositories can disable manifest signatures by setting "
+	"'sign-manifests = false' in metadata/layout.conf.") % \
+	(repo_config.name,)
+	for line in textwrap.wrap(msg, 60):
+		logging.warn(line)
+
 if sign_manifests and options.mode in ("commit",) and \
 	repoman_settings.get("PORTAGE_GPG_KEY") and \
 	re.match(r'^%s$' % GPG_KEY_ID_REGEX,
