@@ -4963,10 +4963,16 @@ class depgraph(object):
 					inst_pkg = vardb.match_pkgs(node.slot_atom)
 					if inst_pkg and inst_pkg[0].cp == node.cp:
 						inst_pkg = inst_pkg[0]
-						if complete_if_new_ver and \
-							(inst_pkg < node or node < inst_pkg):
-							version_change = True
-							break
+						if complete_if_new_ver:
+							if inst_pkg < node or node < inst_pkg:
+								version_change = True
+								break
+							elif not (inst_pkg.slot == node.slot and
+								inst_pkg.sub_slot == node.sub_slot):
+								# slot/sub-slot change without revbump gets
+								# similar treatment to a version change
+								version_change = True
+								break
 
 						# Intersect enabled USE with IUSE, in order to
 						# ignore forced USE from implicit IUSE flags, since
@@ -4982,7 +4988,8 @@ class depgraph(object):
 				if complete_if_new_slot:
 					cp_list = vardb.match_pkgs(Atom(node.cp))
 					if (cp_list and cp_list[0].cp == node.cp and
-						not any(node.slot == pkg.slot for pkg in cp_list)):
+						not any(node.slot == pkg.slot and
+						node.sub_slot == pkg.sub_slot for pkg in cp_list)):
 						version_change = True
 						break
 
