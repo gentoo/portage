@@ -1104,7 +1104,9 @@ class depgraph(object):
 		# trigger replacement of installed packages if necessary
 		reinstalls = set()
 		if child.installed:
-			reinstalls.add((child.root, child.slot_atom))
+			replacement_atom = self._replace_installed_atom(child)
+			if replacement_atom is not None:
+				reinstalls.add((child.root, replacement_atom))
 		if reinstalls:
 			config.setdefault("slot_operator_replace_installed",
 				set()).update(reinstalls)
@@ -1145,9 +1147,13 @@ class depgraph(object):
 		# trigger replacement of installed packages if necessary
 		abi_reinstalls = set()
 		if dep.parent.installed:
-			abi_reinstalls.add((dep.parent.root, dep.parent.slot_atom))
+			replacement_atom = self._replace_installed_atom(dep.parent)
+			if replacement_atom is not None:
+				abi_reinstalls.add((dep.parent.root, replacement_atom))
 		if new_child_slot is None and child.installed:
-			abi_reinstalls.add((child.root, child.slot_atom))
+			replacement_atom = self._replace_installed_atom(child)
+			if replacement_atom is not None:
+				abi_reinstalls.add((child.root, replacement_atom))
 		if abi_reinstalls:
 			config.setdefault("slot_operator_replace_installed",
 				set()).update(abi_reinstalls)
@@ -1363,7 +1369,9 @@ class depgraph(object):
 		# trigger replacement of installed packages if necessary
 		reinstalls = set()
 		if parent.installed:
-			reinstalls.add((parent.root, parent.slot_atom))
+			replacement_atom = self._replace_installed_atom(parent)
+			if replacement_atom is not None:
+				reinstalls.add((parent.root, replacement_atom))
 		if reinstalls:
 			config.setdefault("slot_operator_replace_installed",
 				set()).update(reinstalls)
@@ -1420,6 +1428,37 @@ class depgraph(object):
 					not self._equiv_ebuild_visible(pkg):
 					continue
 			yield pkg
+
+	def _replace_installed_atom(self, inst_pkg):
+		"""
+		Given an installed package, generate an atom suitable for
+		slot_operator_replace_installed backtracking info. The replacement
+		SLOT may differ from the installed SLOT, so first search by cpv.
+		"""
+		built_pkgs = []
+		for pkg in self._iter_similar_available(inst_pkg,
+			Atom("=%s" % inst_pkg.cpv)):
+			if not pkg.built:
+				return pkg.slot_atom
+			elif not pkg.installed:
+				# avoid using SLOT from a built instance
+				built_pkgs.append(pkg)
+
+		for pkg in self._iter_similar_available(inst_pkg, inst_pkg.slot_atom):
+			if not pkg.built:
+				return pkg.slot_atom
+			elif not pkg.installed:
+				# avoid using SLOT from a built instance
+				built_pkgs.append(pkg)
+
+		if built_pkgs:
+			best_version = None
+			for pkg in built_pkgs:
+				if best_version is None or pkg > best_version:
+					best_version = pkg
+			return best_version.slot_atom
+
+		return None
 
 	def _slot_operator_trigger_reinstalls(self):
 		"""
