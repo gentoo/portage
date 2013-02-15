@@ -464,7 +464,15 @@ def getcwd():
 getcwd()
 
 def abssymlink(symlink, target=None):
-	"This reads symlinks, resolving the relative symlinks, and returning the absolute."
+	"""
+	This reads symlinks, resolving the relative symlinks,
+	and returning the absolute.
+	@param symlink: path of symlink (must be absolute)
+	@param target: the target of the symlink (as returned
+		by readlink)
+	@rtype: str
+	@return: the absolute path of the symlink target
+	"""
 	if target is not None:
 		mylink = target
 	else:
