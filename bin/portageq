@@ -891,7 +891,7 @@ def usage(argv):
 	# Show our commands -- we do this by scanning the functions in this
 	# file, and formatting each functions documentation.
 	#
-	help_mode = '--help' in sys.argv
+	help_mode = '--help' in argv
 	for name in commands:
 		# Drop non-functions
 		obj = globals()[name]
@@ -905,12 +905,12 @@ def usage(argv):
 
 		lines = doc.lstrip("\n").split("\n")
 		print("   " + name + " " + lines[0].strip())
-		if (len(sys.argv) > 1):
+		if len(argv) > 1:
 			if (not help_mode):
 				lines = lines[:-1]
 			for line in lines[1:]:
 				print("      " + line.strip())
-	if (len(sys.argv) == 1):
+	if len(argv) == 1:
 		print("\nRun portageq with --help for info")
 
 atom_validate_strict = "EBUILD_PHASE" in os.environ
@@ -929,39 +929,42 @@ else:
 	def elog(elog_funcname, lines):
 		pass
 
-def main():
+def main(argv):
+
+	if argv and isinstance(argv[0], bytes):
+		argv = [portage._unicode_decode(x) for x in argv]
 
 	nocolor = os.environ.get('NOCOLOR')
 	if nocolor in ('yes', 'true'):
 		portage.output.nocolor()
 
-	if len(sys.argv) < 2:
-		usage(sys.argv)
+	if len(argv) < 2:
+		usage(argv)
 		sys.exit(os.EX_USAGE)
 
-	for x in sys.argv:
+	for x in argv:
 		if x in ("-h", "--help"):
-			usage(sys.argv)
+			usage(argv)
 			sys.exit(os.EX_OK)
 		elif x == "--version":
 			print("Portage", portage.VERSION)
 			sys.exit(os.EX_OK)
 
-	cmd = sys.argv[1]
+	cmd = argv[1]
 	function = globals().get(cmd)
 	if function is None or cmd not in commands:
-		usage(sys.argv)
+		usage(argv)
 		sys.exit(os.EX_USAGE)
 	function = globals()[cmd]
-	uses_eroot = getattr(function, "uses_eroot", False) and len(sys.argv) > 2
+	uses_eroot = getattr(function, "uses_eroot", False) and len(argv) > 2
 	if uses_eroot:
-		if not os.path.isdir(sys.argv[2]):
-			sys.stderr.write("Not a directory: '%s'\n" % sys.argv[2])
+		if not os.path.isdir(argv[2]):
+			sys.stderr.write("Not a directory: '%s'\n" % argv[2])
 			sys.stderr.write("Run portageq with --help for info\n")
 			sys.stderr.flush()
 			sys.exit(os.EX_USAGE)
 		eprefix = portage.const.EPREFIX
-		eroot = portage.util.normalize_path(sys.argv[2])
+		eroot = portage.util.normalize_path(argv[2])
 
 		if eprefix:
 			if not eroot.endswith(eprefix):
@@ -977,10 +980,7 @@ def main():
 
 		os.environ["ROOT"] = root
 
-	args = sys.argv[2:]
-	if args and isinstance(args[0], bytes):
-		for i in range(len(args)):
-			args[i] = portage._unicode_decode(args[i])
+	args = argv[2:]
 
 	try:
 		if uses_eroot:
@@ -1004,6 +1004,6 @@ def main():
 		portage.writemsg("\nPlease use a more specific atom.\n", noiselevel=-1)
 		sys.exit(1)
 
-main()
+main(sys.argv)
 
 #-----------------------------------------------------------------------------
