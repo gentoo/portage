@@ -120,10 +120,10 @@ def exithandler(signum=None, frame=None):
 	else:
 		sys.exit(128 + signum)
 
-signal.signal(signal.SIGINT,exithandler)
+signal.signal(signal.SIGINT, exithandler)
 
 class RepomanHelpFormatter(optparse.IndentedHelpFormatter):
-	"""Repoman needs it's own HelpFormatter for now, because the default ones
+	"""Repoman needs its own HelpFormatter for now, because the default ones
 	murder the help text."""
 
 	def __init__(self, indent_increment=1, max_help_position=24, width=150, short_first=1):
@@ -179,7 +179,7 @@ def ParseArgs(argv, qahelp):
 	parser.description = green(" ".join((os.path.basename(argv[0]), "1.2")))
 	parser.description += "\nCopyright 1999-2007 Gentoo Foundation"
 	parser.description += "\nDistributed under the terms of the GNU General Public License v2"
-	parser.description += "\nmodes: " + " | ".join(map(green,mode_keys))
+	parser.description += "\nmodes: " + " | ".join(map(green, mode_keys))
 
 	parser.add_option('-a', '--ask', dest='ask', action='store_true', default=False,
 		help='Request a confirmation before commiting')
@@ -300,86 +300,86 @@ def ParseArgs(argv, qahelp):
 
 	return (opts, args)
 
-qahelp={
-	"CVS/Entries.IO_error":"Attempting to commit, and an IO error was encountered access the Entries file",
-	"ebuild.invalidname":"Ebuild files with a non-parseable or syntactically incorrect name (or using 2.1 versioning extensions)",
-	"ebuild.namenomatch":"Ebuild files that do not have the same name as their parent directory",
-	"changelog.ebuildadded":"An ebuild was added but the ChangeLog was not modified",
-	"changelog.missing":"Missing ChangeLog files",
-	"ebuild.notadded":"Ebuilds that exist but have not been added to cvs",
-	"ebuild.patches":"PATCHES variable should be a bash array to ensure white space safety",
-	"changelog.notadded":"ChangeLogs that exist but have not been added to cvs",
+qahelp = {
+	"CVS/Entries.IO_error": "Attempting to commit, and an IO error was encountered access the Entries file",
+	"ebuild.invalidname": "Ebuild files with a non-parseable or syntactically incorrect name (or using 2.1 versioning extensions)",
+	"ebuild.namenomatch": "Ebuild files that do not have the same name as their parent directory",
+	"changelog.ebuildadded": "An ebuild was added but the ChangeLog was not modified",
+	"changelog.missing": "Missing ChangeLog files",
+	"ebuild.notadded": "Ebuilds that exist but have not been added to cvs",
+	"ebuild.patches": "PATCHES variable should be a bash array to ensure white space safety",
+	"changelog.notadded": "ChangeLogs that exist but have not been added to cvs",
 	"dependency.bad": "User-visible ebuilds with unsatisfied dependencies (matched against *visible* ebuilds)",
 	"dependency.badmasked": "Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds)",
 	"dependency.badindev": "User-visible ebuilds with unsatisfied dependencies (matched against *visible* ebuilds) in developing arch",
 	"dependency.badmaskedindev": "Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds) in developing arch",
 	"dependency.badtilde": "Uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)",
 	"dependency.syntax": "Syntax error in dependency string (usually an extra/missing space/parenthesis)",
-	"dependency.unknown" : "Ebuild has a dependency that refers to an unknown package (which may be valid if it is a blocker for a renamed/removed package, or is an alternative choice provided by an overlay)",
-	"file.executable":"Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do not need the executable bit",
-	"file.size":"Files in the files directory must be under 20 KiB",
-	"file.size.fatal":"Files in the files directory must be under 60 KiB",
-	"file.name":"File/dir name must be composed of only the following chars: %s " % allowed_filename_chars,
-	"file.UTF8":"File is not UTF8 compliant",
-	"inherit.deprecated":"Ebuild inherits a deprecated eclass",
-	"inherit.missing":"Ebuild uses functions from an eclass but does not inherit it",
-	"inherit.unused":"Ebuild inherits an eclass but does not use it",
-	"java.eclassesnotused":"With virtual/jdk in DEPEND you must inherit a java eclass",
-	"wxwidgets.eclassnotused":"Ebuild DEPENDs on x11-libs/wxGTK without inheriting wxwidgets.eclass",
-	"KEYWORDS.dropped":"Ebuilds that appear to have dropped KEYWORDS for some arch",
-	"KEYWORDS.missing":"Ebuilds that have a missing or empty KEYWORDS variable",
-	"KEYWORDS.stable":"Ebuilds that have been added directly with stable KEYWORDS",
-	"KEYWORDS.stupid":"Ebuilds that use KEYWORDS=-* instead of package.mask",
-	"LICENSE.missing":"Ebuilds that have a missing or empty LICENSE variable",
-	"LICENSE.virtual":"Virtuals that have a non-empty LICENSE variable",
-	"DESCRIPTION.missing":"Ebuilds that have a missing or empty DESCRIPTION variable",
-	"DESCRIPTION.toolong":"DESCRIPTION is over %d characters" % max_desc_len,
-	"EAPI.definition":"EAPI definition does not conform to PMS section 7.3.1 (first non-comment, non-blank line)",
-	"EAPI.deprecated":"Ebuilds that use features that are deprecated in the current EAPI",
-	"EAPI.incompatible":"Ebuilds that use features that are only available with a different EAPI",
-	"EAPI.unsupported":"Ebuilds that have an unsupported EAPI version (you must upgrade portage)",
-	"SLOT.invalid":"Ebuilds that have a missing or invalid SLOT variable value",
-	"HOMEPAGE.missing":"Ebuilds that have a missing or empty HOMEPAGE variable",
-	"HOMEPAGE.virtual":"Virtuals that have a non-empty HOMEPAGE variable",
-	"PDEPEND.suspect":"PDEPEND contains a package that usually only belongs in DEPEND.",
-	"LICENSE.syntax":"Syntax error in LICENSE (usually an extra/missing space/parenthesis)",
-	"PROVIDE.syntax":"Syntax error in PROVIDE (usually an extra/missing space/parenthesis)",
-	"PROPERTIES.syntax":"Syntax error in PROPERTIES (usually an extra/missing space/parenthesis)",
-	"RESTRICT.syntax":"Syntax error in RESTRICT (usually an extra/missing space/parenthesis)",
-	"REQUIRED_USE.syntax":"Syntax error in REQUIRED_USE (usually an extra/missing space/parenthesis)",
-	"SRC_URI.syntax":"Syntax error in SRC_URI (usually an extra/missing space/parenthesis)",
-	"SRC_URI.mirror":"A uri listed in profiles/thirdpartymirrors is found in SRC_URI",
-	"ebuild.syntax":"Error generating cache entry for ebuild; typically caused by ebuild syntax error or digest verification failure",
-	"ebuild.output":"A simple sourcing of the ebuild produces output; this breaks ebuild policy.",
-	"ebuild.nesteddie":"Placing 'die' inside ( ) prints an error, but doesn't stop the ebuild.",
-	"variable.invalidchar":"A variable contains an invalid character that is not part of the ASCII character set",
-	"variable.readonly":"Assigning a readonly variable",
-	"variable.usedwithhelpers":"Ebuild uses D, ROOT, ED, EROOT or EPREFIX with helpers",
-	"LIVEVCS.stable":"This ebuild is a live checkout from a VCS but has stable keywords.",
-	"LIVEVCS.unmasked":"This ebuild is a live checkout from a VCS but has keywords and is not masked in the global package.mask.",
-	"IUSE.invalid":"This ebuild has a variable in IUSE that is not in the use.desc or its metadata.xml file",
-	"IUSE.missing":"This ebuild has a USE conditional which references a flag that is not listed in IUSE",
-	"LICENSE.invalid":"This ebuild is listing a license that doesnt exist in portages license/ dir.",
-	"LICENSE.deprecated":"This ebuild is listing a deprecated license.",
-	"KEYWORDS.invalid":"This ebuild contains KEYWORDS that are not listed in profiles/arch.list or for which no valid profile was found",
-	"RDEPEND.implicit":"RDEPEND is unset in the ebuild which triggers implicit RDEPEND=$DEPEND assignment (prior to EAPI 4)",
-	"RDEPEND.suspect":"RDEPEND contains a package that usually only belongs in DEPEND.",
-	"RESTRICT.invalid":"This ebuild contains invalid RESTRICT values.",
-	"digest.assumed":"Existing digest must be assumed correct (Package level only)",
-	"digest.missing":"Some files listed in SRC_URI aren't referenced in the Manifest",
-	"digest.unused":"Some files listed in the Manifest aren't referenced in SRC_URI",
-	"ebuild.majorsyn":"This ebuild has a major syntax error that may cause the ebuild to fail partially or fully",
-	"ebuild.minorsyn":"This ebuild has a minor syntax error that contravenes gentoo coding style",
-	"ebuild.badheader":"This ebuild has a malformed header",
-	"manifest.bad":"Manifest has missing or incorrect digests",
-	"metadata.missing":"Missing metadata.xml files",
-	"metadata.bad":"Bad metadata.xml files",
-	"metadata.warning":"Warnings in metadata.xml files",
-	"portage.internal":"The ebuild uses an internal Portage function or variable",
-	"virtual.oldstyle":"The ebuild PROVIDEs an old-style virtual (see GLEP 37)",
-	"virtual.suspect":"Ebuild contains a package that usually should be pulled via virtual/, not directly.",
-	"usage.obsolete":"The ebuild makes use of an obsolete construct",
-	"upstream.workaround":"The ebuild works around an upstream bug, an upstream bug should be filed and tracked in bugs.gentoo.org"
+	"dependency.unknown": "Ebuild has a dependency that refers to an unknown package (which may be valid if it is a blocker for a renamed/removed package, or is an alternative choice provided by an overlay)",
+	"file.executable": "Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do not need the executable bit",
+	"file.size": "Files in the files directory must be under 20 KiB",
+	"file.size.fatal": "Files in the files directory must be under 60 KiB",
+	"file.name": "File/dir name must be composed of only the following chars: %s " % allowed_filename_chars,
+	"file.UTF8": "File is not UTF8 compliant",
+	"inherit.deprecated": "Ebuild inherits a deprecated eclass",
+	"inherit.missing": "Ebuild uses functions from an eclass but does not inherit it",
+	"inherit.unused": "Ebuild inherits an eclass but does not use it",
+	"java.eclassesnotused": "With virtual/jdk in DEPEND you must inherit a java eclass",
+	"wxwidgets.eclassnotused": "Ebuild DEPENDs on x11-libs/wxGTK without inheriting wxwidgets.eclass",
+	"KEYWORDS.dropped": "Ebuilds that appear to have dropped KEYWORDS for some arch",
+	"KEYWORDS.missing": "Ebuilds that have a missing or empty KEYWORDS variable",
+	"KEYWORDS.stable": "Ebuilds that have been added directly with stable KEYWORDS",
+	"KEYWORDS.stupid": "Ebuilds that use KEYWORDS=-* instead of package.mask",
+	"LICENSE.missing": "Ebuilds that have a missing or empty LICENSE variable",
+	"LICENSE.virtual": "Virtuals that have a non-empty LICENSE variable",
+	"DESCRIPTION.missing": "Ebuilds that have a missing or empty DESCRIPTION variable",
+	"DESCRIPTION.toolong": "DESCRIPTION is over %d characters" % max_desc_len,
+	"EAPI.definition": "EAPI definition does not conform to PMS section 7.3.1 (first non-comment, non-blank line)",
+	"EAPI.deprecated": "Ebuilds that use features that are deprecated in the current EAPI",
+	"EAPI.incompatible": "Ebuilds that use features that are only available with a different EAPI",
+	"EAPI.unsupported": "Ebuilds that have an unsupported EAPI version (you must upgrade portage)",
+	"SLOT.invalid": "Ebuilds that have a missing or invalid SLOT variable value",
+	"HOMEPAGE.missing": "Ebuilds that have a missing or empty HOMEPAGE variable",
+	"HOMEPAGE.virtual": "Virtuals that have a non-empty HOMEPAGE variable",
+	"PDEPEND.suspect": "PDEPEND contains a package that usually only belongs in DEPEND.",
+	"LICENSE.syntax": "Syntax error in LICENSE (usually an extra/missing space/parenthesis)",
+	"PROVIDE.syntax": "Syntax error in PROVIDE (usually an extra/missing space/parenthesis)",
+	"PROPERTIES.syntax": "Syntax error in PROPERTIES (usually an extra/missing space/parenthesis)",
+	"RESTRICT.syntax": "Syntax error in RESTRICT (usually an extra/missing space/parenthesis)",
+	"REQUIRED_USE.syntax": "Syntax error in REQUIRED_USE (usually an extra/missing space/parenthesis)",
+	"SRC_URI.syntax": "Syntax error in SRC_URI (usually an extra/missing space/parenthesis)",
+	"SRC_URI.mirror": "A uri listed in profiles/thirdpartymirrors is found in SRC_URI",
+	"ebuild.syntax": "Error generating cache entry for ebuild; typically caused by ebuild syntax error or digest verification failure",
+	"ebuild.output": "A simple sourcing of the ebuild produces output; this breaks ebuild policy.",
+	"ebuild.nesteddie": "Placing 'die' inside ( ) prints an error, but doesn't stop the ebuild.",
+	"variable.invalidchar": "A variable contains an invalid character that is not part of the ASCII character set",
+	"variable.readonly": "Assigning a readonly variable",
+	"variable.usedwithhelpers": "Ebuild uses D, ROOT, ED, EROOT or EPREFIX with helpers",
+	"LIVEVCS.stable": "This ebuild is a live checkout from a VCS but has stable keywords.",
+	"LIVEVCS.unmasked": "This ebuild is a live checkout from a VCS but has keywords and is not masked in the global package.mask.",
+	"IUSE.invalid": "This ebuild has a variable in IUSE that is not in the use.desc or its metadata.xml file",
+	"IUSE.missing": "This ebuild has a USE conditional which references a flag that is not listed in IUSE",
+	"LICENSE.invalid": "This ebuild is listing a license that doesnt exist in portages license/ dir.",
+	"LICENSE.deprecated": "This ebuild is listing a deprecated license.",
+	"KEYWORDS.invalid": "This ebuild contains KEYWORDS that are not listed in profiles/arch.list or for which no valid profile was found",
+	"RDEPEND.implicit": "RDEPEND is unset in the ebuild which triggers implicit RDEPEND=$DEPEND assignment (prior to EAPI 4)",
+	"RDEPEND.suspect": "RDEPEND contains a package that usually only belongs in DEPEND.",
+	"RESTRICT.invalid": "This ebuild contains invalid RESTRICT values.",
+	"digest.assumed": "Existing digest must be assumed correct (Package level only)",
+	"digest.missing": "Some files listed in SRC_URI aren't referenced in the Manifest",
+	"digest.unused": "Some files listed in the Manifest aren't referenced in SRC_URI",
+	"ebuild.majorsyn": "This ebuild has a major syntax error that may cause the ebuild to fail partially or fully",
+	"ebuild.minorsyn": "This ebuild has a minor syntax error that contravenes gentoo coding style",
+	"ebuild.badheader": "This ebuild has a malformed header",
+	"manifest.bad": "Manifest has missing or incorrect digests",
+	"metadata.missing": "Missing metadata.xml files",
+	"metadata.bad": "Bad metadata.xml files",
+	"metadata.warning": "Warnings in metadata.xml files",
+	"portage.internal": "The ebuild uses an internal Portage function or variable",
+	"virtual.oldstyle": "The ebuild PROVIDEs an old-style virtual (see GLEP 37)",
+	"virtual.suspect": "Ebuild contains a package that usually should be pulled via virtual/, not directly.",
+	"usage.obsolete": "The ebuild makes use of an obsolete construct",
+	"upstream.workaround": "The ebuild works around an upstream bug, an upstream bug should be filed and tracked in bugs.gentoo.org"
 }
 
 qacats = list(qahelp)
@@ -436,7 +436,7 @@ missingvars = ["KEYWORDS", "LICENSE", "DESCRIPTION", "HOMEPAGE"]
 allvars = set(x for x in portage.auxdbkeys if not x.startswith("UNUSED_"))
 allvars.update(Package.metadata_keys)
 allvars = sorted(allvars)
-commitmessage=None
+commitmessage = None
 for x in missingvars:
 	x += ".missing"
 	if x not in qacats:
@@ -513,7 +513,7 @@ metadata_dtd_uri = 'http://www.gentoo.org/dtd/metadata.dtd'
 metadata_dtd_ctime_interval = 60 * 60 * 24 * 7 # 7 days
 
 # file.executable
-no_exec = frozenset(["Manifest","ChangeLog","metadata.xml"])
+no_exec = frozenset(["Manifest", "ChangeLog", "metadata.xml"])
 
 options, arguments = ParseArgs(sys.argv, qahelp)
 
@@ -716,7 +716,7 @@ repolevel = len(reposplit)
 # check if it's in $PORTDIR/$CATEGORY/$PN , otherwise bail if commiting.
 # Reason for this is if they're trying to commit in just $FILESDIR/*, the Manifest needs updating.
 # this check ensures that repoman knows where it is, and the manifest recommit is at least possible.
-if options.mode == 'commit' and repolevel not in [1,2,3]:
+if options.mode == 'commit' and repolevel not in [1, 2, 3]:
 	print(red("***")+" Commit attempts *must* be from within a vcs co, category, or package directory.")
 	print(red("***")+" Attempting to commit from a packages files directory will be blocked for instance.")
 	print(red("***")+" This is intended behaviour, to ensure the manifest is recommitted for a package.")
@@ -729,10 +729,10 @@ if repolevel == 1:
 	startdir = repodir
 else:
 	startdir = normalize_path(mydir)
-	startdir = os.path.join(repodir, *startdir.split(os.sep)[-2-repolevel+3:])
+	startdir = os.path.join(repodir, *startdir.split(os.sep)[-2 - repolevel + 3:])
 
 def caterror(mycat):
-	err(mycat+" is not an official category.  Skipping QA checks in this directory.\nPlease ensure that you add "+catdir+" to "+repodir+"/profiles/categories\nif it is a new category.")
+	err(mycat + " is not an official category.  Skipping QA checks in this directory.\nPlease ensure that you add " + catdir + " to " + repodir + "/profiles/categories\nif it is a new category.")
 
 def repoman_getstatusoutput(cmd):
 	"""
@@ -860,18 +860,18 @@ for path in portdb.porttrees:
 				continue
 			if len(arch) != 3:
 				err("wrong format: \"" + bad(x.strip()) + "\" in " + \
-					desc_path + " line %d" % (i+1, ))
+					desc_path + " line %d" % (i + 1, ))
 			elif arch[0] not in kwlist:
 				err("invalid arch: \"" + bad(arch[0]) + "\" in " + \
-					desc_path + " line %d" % (i+1, ))
+					desc_path + " line %d" % (i + 1, ))
 			elif arch[2] not in valid_profile_types:
 				err("invalid profile type: \"" + bad(arch[2]) + "\" in " + \
-					desc_path + " line %d" % (i+1, ))
+					desc_path + " line %d" % (i + 1, ))
 			profile_desc = ProfileDesc(arch[0], arch[2], arch[1], path)
 			if not os.path.isdir(profile_desc.abs_path):
 				logging.error(
 					"Invalid %s profile (%s) for arch %s in %s line %d",
-					arch[2], arch[1], arch[0], desc_path, i+1)
+					arch[2], arch[1], arch[0], desc_path, i + 1)
 				continue
 			if os.path.exists(
 				os.path.join(profile_desc.abs_path, 'deprecated')):
@@ -918,9 +918,9 @@ for x in repoman_settings.archlist():
 	if x[0] == "~":
 		continue
 	if x not in profiles:
-		print(red("\""+x+"\" doesn't have a valid profile listed in profiles.desc."))
+		print(red("\"" + x + "\" doesn't have a valid profile listed in profiles.desc."))
 		print(red("You need to either \"cvs update\" your profiles dir or follow this"))
-		print(red("up with the "+x+" team."))
+		print(red("up with the " + x + " team."))
 		print()
 
 liclist_deprecated = set()
@@ -940,34 +940,34 @@ if not uselist:
 	logging.fatal("Couldn't find use.desc?")
 	sys.exit(1)
 
-scanlist=[]
-if repolevel==2:
-	#we are inside a category directory
-	catdir=reposplit[-1]
+scanlist = []
+if repolevel == 2:
+	# we are inside a category directory
+	catdir = reposplit[-1]
 	if catdir not in categories:
 		caterror(catdir)
-	mydirlist=os.listdir(startdir)
+	mydirlist = os.listdir(startdir)
 	for x in mydirlist:
 		if x == "CVS" or x.startswith("."):
 			continue
-		if os.path.isdir(startdir+"/"+x):
-			scanlist.append(catdir+"/"+x)
+		if os.path.isdir(startdir + "/" + x):
+			scanlist.append(catdir + "/" + x)
 	repo_subdir = catdir + os.sep
-elif repolevel==1:
+elif repolevel == 1:
 	for x in categories:
-		if not os.path.isdir(startdir+"/"+x):
+		if not os.path.isdir(startdir + "/" + x):
 			continue
-		for y in os.listdir(startdir+"/"+x):
+		for y in os.listdir(startdir + "/" + x):
 			if y == "CVS" or y.startswith("."):
 				continue
-			if os.path.isdir(startdir+"/"+x+"/"+y):
-				scanlist.append(x+"/"+y)
+			if os.path.isdir(startdir + "/" + x + "/" + y):
+				scanlist.append(x + "/" + y)
 	repo_subdir = ""
-elif repolevel==3:
+elif repolevel == 3:
 	catdir = reposplit[-2]
 	if catdir not in categories:
 		caterror(catdir)
-	scanlist.append(catdir+"/"+reposplit[-1])
+	scanlist.append(catdir + "/" + reposplit[-1])
 	repo_subdir = scanlist[-1] + os.sep
 else:
 	msg = 'Repoman is unable to determine PORTDIR or PORTDIR_OVERLAY' + \
@@ -999,7 +999,7 @@ def vcs_files_to_cps(vcs_file_iter):
 		if category in categories:
 			for filename in vcs_file_iter:
 				f_split = filename.split(os.sep)
-				# ['.', pn,...]
+				# ['.', pn, ...]
 				if len(f_split) > 2:
 					modified_cps.append(category + "/" + f_split[1])
 
@@ -1007,7 +1007,7 @@ def vcs_files_to_cps(vcs_file_iter):
 		# repolevel == 1
 		for filename in vcs_file_iter:
 			f_split = filename.split(os.sep)
-			# ['.', category, pn,...]
+			# ['.', category, pn, ...]
 			if len(f_split) > 3 and f_split[1] in categories:
 				modified_cps.append("/".join(f_split[1:3]))
 
@@ -1049,12 +1049,12 @@ def dev_keywords(profiles):
 
 dev_keywords = dev_keywords(profiles)
 
-stats={}
-fails={}
+stats = {}
+fails = {}
 
 for x in qacats:
-	stats[x]=0
-	fails[x]=[]
+	stats[x] = 0
+	fails[x] = []
 
 xmllint_capable = False
 metadata_dtd = os.path.join(repoman_settings["DISTDIR"], 'metadata.dtd')
@@ -1160,14 +1160,14 @@ if options.mode == "manifest":
 	pass
 elif not find_binary('xmllint'):
 	print(red("!!! xmllint not found. Can't check metadata.xml.\n"))
-	if options.xml_parse or repolevel==3:
+	if options.xml_parse or repolevel == 3:
 		print(red("!!!")+" sorry, xmllint is needed.  failing\n")
 		sys.exit(1)
 else:
 	if not fetch_metadata_dtd():
 		sys.exit(1)
-	#this can be problematic if xmllint changes their output
-	xmllint_capable=True
+	# this can be problematic if xmllint changes their output
+	xmllint_capable = True
 
 if options.mode == 'commit' and vcs:
 	utilities.detect_vcs_conflicts(options, vcs)
@@ -1196,10 +1196,10 @@ if vcs == "cvs":
 elif vcs == "svn":
 	with repoman_popen("svn status") as f:
 		svnstatus = f.readlines()
-	mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem and elem[:1] in "MR" ]
-	mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A") ]
+	mychanged = ["./" + elem.split()[-1:][0] for elem in svnstatus if elem and elem[:1] in "MR"]
+	mynew     = ["./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A")]
 	if options.if_modified == "y":
-		myremoved = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("D")]
+		myremoved = ["./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("D")]
 
 elif vcs == "git":
 	with repoman_popen("git diff-index --name-only "
@@ -1220,10 +1220,10 @@ elif vcs == "git":
 elif vcs == "bzr":
 	with repoman_popen("bzr status -S .") as f:
 		bzrstatus = f.readlines()
-	mychanged = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and elem[1:2] == "M" ]
-	mynew     = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and ( elem[1:2] == "NK" or elem[0:1] == "R" ) ]
+	mychanged = ["./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and elem[1:2] == "M"]
+	mynew     = ["./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and (elem[1:2] == "NK" or elem[0:1] == "R")]
 	if options.if_modified == "y":
-		myremoved = [ "./" + elem.split()[-3:-2][0].split('/')[-1:][0] for elem in bzrstatus if elem and ( elem[1:2] == "K" or elem[0:1] == "R" ) ]
+		myremoved = ["./" + elem.split()[-3:-2][0].split('/')[-1:][0] for elem in bzrstatus if elem and (elem[1:2] == "K" or elem[0:1] == "R")]
 
 elif vcs == "hg":
 	with repoman_popen("hg status --no-status --modified .") as f:
@@ -1255,7 +1255,7 @@ dofail = 0
 
 # NOTE: match-all caches are not shared due to potential
 # differences between profiles in _get_implicit_iuse.
-arch_caches={}
+arch_caches = {}
 arch_xmatch_caches = {}
 shared_xmatch_caches = {"cp-list":{}}
 
@@ -1300,9 +1300,9 @@ for x in effective_scanlist:
 	logging.info("checking package %s" % x)
 	# save memory by discarding xmatch caches from previous package(s)
 	arch_xmatch_caches.clear()
-	eadded=[]
-	catdir,pkgdir=x.split("/")
-	checkdir=repodir+"/"+x
+	eadded = []
+	catdir, pkgdir = x.split("/")
+	checkdir = repodir + "/" + x
 	checkdir_relative = ""
 	if repolevel < 3:
 		checkdir_relative = os.path.join(pkgdir, checkdir_relative)
@@ -1384,8 +1384,8 @@ for x in effective_scanlist:
 	if options.mode == 'manifest-check':
 		continue
 
-	checkdirlist=os.listdir(checkdir)
-	ebuildlist=[]
+	checkdirlist = os.listdir(checkdir)
+	ebuildlist = []
 	pkgs = {}
 	allvalid = True
 	for y in checkdirlist:
@@ -1456,7 +1456,7 @@ for x in effective_scanlist:
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'])
 			for l in f:
-				line +=1
+				line += 1
 		except UnicodeDecodeError as ue:
 			stats["file.UTF8"] += 1
 			s = ue.object[:ue.start]
@@ -1486,7 +1486,7 @@ for x in effective_scanlist:
 	if vcs in ("cvs", "svn", "bzr") and check_ebuild_notadded:
 		try:
 			if vcs == "cvs":
-				myf=open(checkdir+"/CVS/Entries","r")
+				myf = open(checkdir + "/CVS/Entries", "r")
 			if vcs == "svn":
 				myf = repoman_popen("svn status --depth=files --verbose " +
 					portage._shell_quote(checkdir))
@@ -1497,12 +1497,12 @@ for x in effective_scanlist:
 			myf.close()
 			for l in myl:
 				if vcs == "cvs":
-					if l[0]!="/":
+					if l[0] != "/":
 						continue
-					splitl=l[1:].split("/")
+					splitl = l[1:].split("/")
 					if not len(splitl):
 						continue
-					if splitl[0][-7:]==".ebuild":
+					if splitl[0][-7:] == ".ebuild":
 						eadded.append(splitl[0][:-7])
 				if vcs == "svn":
 					if l[:1] == "?":
@@ -1522,7 +1522,7 @@ for x in effective_scanlist:
 			if vcs == "svn":
 				myf = repoman_popen("svn status " +
 					portage._shell_quote(checkdir))
-				myl=myf.readlines()
+				myl = myf.readlines()
 				myf.close()
 				for l in myl:
 					if l[0] == "A":
@@ -1532,7 +1532,7 @@ for x in effective_scanlist:
 		except IOError:
 			if vcs == "cvs":
 				stats["CVS/Entries.IO_error"] += 1
-				fails["CVS/Entries.IO_error"].append(checkdir+"/CVS/Entries")
+				fails["CVS/Entries.IO_error"].append(checkdir + "/CVS/Entries")
 			else:
 				raise
 			continue
@@ -1540,7 +1540,7 @@ for x in effective_scanlist:
 	mf = repoman_settings.repositories.get_repo_for_location(
 		os.path.dirname(os.path.dirname(checkdir)))
 	mf = mf.load_manifest(checkdir, repoman_settings["DISTDIR"])
-	mydigests=mf.getTypeDigests("DIST")
+	mydigests = mf.getTypeDigests("DIST")
 
 	fetchlist_dict = portage.FetchlistDict(checkdir, repoman_settings, portdb)
 	myfiles_all = []
@@ -1556,7 +1556,7 @@ for x in effective_scanlist:
 				# This will be reported as an "ebuild.syntax" error.
 				pass
 			else:
-				stats["SRC_URI.syntax"] = stats["SRC_URI.syntax"] + 1
+				stats["SRC_URI.syntax"] += 1
 				fails["SRC_URI.syntax"].append(
 					"%s.ebuild SRC_URI: %s" % (mykey, e))
 	del fetchlist_dict
@@ -1570,15 +1570,15 @@ for x in effective_scanlist:
 		for entry in mydigests:
 			if entry not in myfiles_all:
 				stats["digest.unused"] += 1
-				fails["digest.unused"].append(checkdir+"::"+entry)
+				fails["digest.unused"].append(checkdir + "::" + entry)
 		for entry in myfiles_all:
 			if entry not in mydigests:
 				stats["digest.missing"] += 1
-				fails["digest.missing"].append(checkdir+"::"+entry)
+				fails["digest.missing"].append(checkdir + "::" + entry)
 	del myfiles_all
 
-	if os.path.exists(checkdir+"/files"):
-		filesdirlist=os.listdir(checkdir+"/files")
+	if os.path.exists(checkdir + "/files"):
+		filesdirlist = os.listdir(checkdir + "/files")
 
 		# recurse through files directory
 		# use filesdirlist as a stack, appending directories as needed so people can't hide > 20k files in a subdirectory.
@@ -1598,18 +1598,18 @@ for x in effective_scanlist:
 				# !!! VCS "portability" alert!  Need some function isVcsDir() or alike !!!
 				if y == "CVS" or y == ".svn":
 					continue
-				for z in os.listdir(checkdir+"/files/"+y):
+				for z in os.listdir(checkdir + "/files/" + y):
 					if z == "CVS" or z == ".svn":
 						continue
-					filesdirlist.append(y+"/"+z)
+					filesdirlist.append(y + "/" + z)
 			# Current policy is no files over 20 KiB, these are the checks. File size between
 			# 20 KiB and 60 KiB causes a warning, while file size over 60 KiB causes an error.
 			elif mystat.st_size > 61440:
 				stats["file.size.fatal"] += 1
-				fails["file.size.fatal"].append("("+ str(mystat.st_size//1024) + " KiB) "+x+"/files/"+y)
+				fails["file.size.fatal"].append("(" + str(mystat.st_size//1024) + " KiB) " + x + "/files/" + y)
 			elif mystat.st_size > 20480:
 				stats["file.size"] += 1
-				fails["file.size"].append("("+ str(mystat.st_size//1024) + " KiB) "+x+"/files/"+y)
+				fails["file.size"].append("(" + str(mystat.st_size//1024) + " KiB) " + x + "/files/" + y)
 
 			index = repo_config.find_invalid_path_char(y)
 			if index != -1:
@@ -1627,15 +1627,15 @@ for x in effective_scanlist:
 	del mydigests
 
 	if check_changelog and "ChangeLog" not in checkdirlist:
-		stats["changelog.missing"]+=1
-		fails["changelog.missing"].append(x+"/ChangeLog")
+		stats["changelog.missing"] += 1
+		fails["changelog.missing"].append(x + "/ChangeLog")
 
 	musedict = {}
-	#metadata.xml file check
+	# metadata.xml file check
 	if "metadata.xml" not in checkdirlist:
-		stats["metadata.missing"]+=1
-		fails["metadata.missing"].append(x+"/metadata.xml")
-	#metadata.xml parse check
+		stats["metadata.missing"] += 1
+		fails["metadata.missing"].append(x + "/metadata.xml")
+	# metadata.xml parse check
 	else:
 		metadata_bad = False
 
@@ -1696,9 +1696,9 @@ for x in effective_scanlist:
 			if st != os.EX_OK:
 				print(red("!!!") + " metadata.xml is invalid:")
 				for z in out.splitlines():
-					print(red("!!! ")+z)
-				stats["metadata.bad"]+=1
-				fails["metadata.bad"].append(x+"/metadata.xml")
+					print(red("!!! ") + z)
+				stats["metadata.bad"] += 1
+				fails["metadata.bad"].append(x + "/metadata.xml")
 
 		del metadata_bad
 	muselist = frozenset(musedict)
@@ -1725,19 +1725,19 @@ for x in effective_scanlist:
 
 		if vcs in ("cvs", "svn", "bzr") and check_ebuild_notadded and y not in eadded:
 			#ebuild not added to vcs
-			stats["ebuild.notadded"]=stats["ebuild.notadded"]+1
-			fails["ebuild.notadded"].append(x+"/"+y+".ebuild")
-		myesplit=portage.pkgsplit(y)
+			stats["ebuild.notadded"] += 1
+			fails["ebuild.notadded"].append(x + "/" + y + ".ebuild")
+		myesplit = portage.pkgsplit(y)
 		if myesplit is None or myesplit[0] != x.split("/")[-1] \
 			    or pv_toolong_re.search(myesplit[1]) \
 			    or pv_toolong_re.search(myesplit[2]):
-			stats["ebuild.invalidname"]=stats["ebuild.invalidname"]+1
-			fails["ebuild.invalidname"].append(x+"/"+y+".ebuild")
+			stats["ebuild.invalidname"] += 1
+			fails["ebuild.invalidname"].append(x + "/" + y + ".ebuild")
 			continue
-		elif myesplit[0]!=pkgdir:
-			print(pkgdir,myesplit[0])
-			stats["ebuild.namenomatch"]=stats["ebuild.namenomatch"]+1
-			fails["ebuild.namenomatch"].append(x+"/"+y+".ebuild")
+		elif myesplit[0] != pkgdir:
+			print(pkgdir, myesplit[0])
+			stats["ebuild.namenomatch"] += 1
+			fails["ebuild.namenomatch"].append(x + "/" + y + ".ebuild")
 			continue
 
 		pkg = pkgs[y]
@@ -1746,7 +1746,7 @@ for x in effective_scanlist:
 			allvalid = False
 			for k, msgs in pkg.invalid.items():
 				for msg in msgs:
-					stats[k] = stats[k] + 1
+					stats[k] += 1
 					fails[k].append("%s: %s" % (relative_path, msg))
 			continue
 
@@ -1785,7 +1785,7 @@ for x in effective_scanlist:
 					(relative_path, mirror, new_uri))
 
 		if myaux.get("PROVIDE"):
-			stats["virtual.oldstyle"]+=1
+			stats["virtual.oldstyle"] += 1
 			fails["virtual.oldstyle"].append(relative_path)
 
 		for pos, missing_var in enumerate(missingvars):
@@ -1795,15 +1795,15 @@ for x in effective_scanlist:
 					continue
 				if live_ebuild and missing_var == "KEYWORDS":
 					continue
-				myqakey=missingvars[pos]+".missing"
-				stats[myqakey]=stats[myqakey]+1
-				fails[myqakey].append(x+"/"+y+".ebuild")
+				myqakey = missingvars[pos] + ".missing"
+				stats[myqakey] += 1
+				fails[myqakey].append(x + "/" + y + ".ebuild")
 
 		if catdir == "virtual":
 			for var in ("HOMEPAGE", "LICENSE"):
 				if myaux.get(var):
 					myqakey = var + ".virtual"
-					stats[myqakey] = stats[myqakey] + 1
+					stats[myqakey] += 1
 					fails[myqakey].append(relative_path)
 
 		# 14 is the length of DESCRIPTION=""
@@ -1853,7 +1853,7 @@ for x in effective_scanlist:
 					haskeyword = True
 			if not haskeyword:
 				stats["KEYWORDS.stupid"] += 1
-				fails["KEYWORDS.stupid"].append(x+"/"+y+".ebuild")
+				fails["KEYWORDS.stupid"].append(x + "/" + y + ".ebuild")
 
 		"""
 		Ebuilds that inherit a "Live" eclass (darcs,subversion,git,cvs,etc..) should
@@ -1883,9 +1883,9 @@ for x in effective_scanlist:
 		else:
 			arches = set()
 			for keyword in keywords:
-				if (keyword[0]=="-"):
+				if keyword[0] == "-":
 					continue
-				elif (keyword[0]=="~"):
+				elif keyword[0] == "~":
 					arch = keyword[1:]
 					if arch == "*":
 						for expanded_arch in profiles:
@@ -1913,7 +1913,7 @@ for x in effective_scanlist:
 		baddepsyntax = False
 		badlicsyntax = False
 		badprovsyntax = False
-		catpkg = catdir+"/"+y
+		catpkg = catdir + "/" + y
 
 		inherited_java_eclass = "java-pkg-2" in inherited or \
 			"java-pkg-opt-2" in inherited
@@ -1927,7 +1927,7 @@ for x in effective_scanlist:
 			runtime = mytype in Package._runtime_keys
 			token_class = None
 			if mytype.endswith("DEPEND"):
-				token_class=portage.dep.Atom
+				token_class = portage.dep.Atom
 
 			try:
 				atoms = portage.dep.use_reduce(mydepstr, matchall=1, flat=True, \
@@ -1998,7 +1998,7 @@ for x in effective_scanlist:
 
 			type_list.extend([mytype] * (len(badsyntax) - len(type_list)))
 
-		for m,b in zip(type_list, badsyntax):
+		for m, b in zip(type_list, badsyntax):
 			if m.endswith("DEPEND"):
 				qacat = "dependency.syntax"
 			else:
@@ -2024,7 +2024,7 @@ for x in effective_scanlist:
 				myuse.append(flag_name)
 
 		# uselist checks - metadata
-		for mypos in range(len(myuse)-1,-1,-1):
+		for mypos in range(len(myuse)-1, -1, -1):
 			if myuse[mypos] and (myuse[mypos] in muselist):
 				del myuse[mypos]
 
@@ -2037,8 +2037,8 @@ for x in effective_scanlist:
 					" '%s'") % (eapi, myflag))
 
 		for mypos in range(len(myuse)):
-			stats["IUSE.invalid"]=stats["IUSE.invalid"]+1
-			fails["IUSE.invalid"].append(x+"/"+y+".ebuild: %s" % myuse[mypos])
+			stats["IUSE.invalid"] += 1
+			fails["IUSE.invalid"].append(x + "/" + y + ".ebuild: %s" % myuse[mypos])
 
 		# license checks
 		if not badlicsyntax:
@@ -2051,10 +2051,10 @@ for x in effective_scanlist:
 				# Need to check for "||" manually as no portage
 				# function will remove it without removing values.
 				if lic not in liclist and lic != "||":
-					stats["LICENSE.invalid"]=stats["LICENSE.invalid"]+1
-					fails["LICENSE.invalid"].append(x+"/"+y+".ebuild: %s" % lic)
+					stats["LICENSE.invalid"] += 1
+					fails["LICENSE.invalid"].append(x + "/" + y + ".ebuild: %s" % lic)
 				elif lic in liclist_deprecated:
-					stats["LICENSE.deprecated"] = stats["LICENSE.deprecated"] + 1
+					stats["LICENSE.deprecated"] += 1
 					fails["LICENSE.deprecated"].append("%s: %s" % (relative_path, lic))
 
 		#keyword checks
@@ -2068,17 +2068,17 @@ for x in effective_scanlist:
 					myskey = myskey[1:]
 				if myskey not in kwlist:
 					stats["KEYWORDS.invalid"] += 1
-					fails["KEYWORDS.invalid"].append(x+"/"+y+".ebuild: %s" % mykey)
+					fails["KEYWORDS.invalid"].append(x + "/" + y + ".ebuild: %s" % mykey)
 				elif myskey not in profiles:
 					stats["KEYWORDS.invalid"] += 1
-					fails["KEYWORDS.invalid"].append(x+"/"+y+".ebuild: %s (profile invalid)" % mykey)
+					fails["KEYWORDS.invalid"].append(x + "/" + y + ".ebuild: %s (profile invalid)" % mykey)
 
 		#restrict checks
 		myrestrict = None
 		try:
 			myrestrict = portage.dep.use_reduce(myaux["RESTRICT"], matchall=1, flat=True)
 		except portage.exception.InvalidDependString as e:
-			stats["RESTRICT.syntax"] = stats["RESTRICT.syntax"] + 1
+			stats["RESTRICT.syntax"] += 1
 			fails["RESTRICT.syntax"].append(
 				"%s: RESTRICT: %s" % (relative_path, e))
 			del e
@@ -2088,7 +2088,7 @@ for x in effective_scanlist:
 			if mybadrestrict:
 				stats["RESTRICT.invalid"] += len(mybadrestrict)
 				for mybad in mybadrestrict:
-					fails["RESTRICT.invalid"].append(x+"/"+y+".ebuild: %s" % mybad)
+					fails["RESTRICT.invalid"].append(x + "/" + y + ".ebuild: %s" % mybad)
 		#REQUIRED_USE check
 		required_use = myaux["REQUIRED_USE"]
 		if required_use:
@@ -2101,7 +2101,7 @@ for x in effective_scanlist:
 				portage.dep.check_required_use(required_use, (),
 					pkg.iuse.is_valid_flag, eapi=eapi)
 			except portage.exception.InvalidDependString as e:
-				stats["REQUIRED_USE.syntax"] = stats["REQUIRED_USE.syntax"] + 1
+				stats["REQUIRED_USE.syntax"] += 1
 				fails["REQUIRED_USE.syntax"].append(
 					"%s: REQUIRED_USE: %s" % (relative_path, e))
 				del e
@@ -2135,8 +2135,7 @@ for x in effective_scanlist:
 			continue
 
 		relevant_profiles = []
-		for keyword,arch,groups in arches:
-
+		for keyword, arch, groups in arches:
 			if arch not in profiles:
 				# A missing profile will create an error further down
 				# during the KEYWORDS verification.
@@ -2207,10 +2206,10 @@ for x in effective_scanlist:
 						if options.ignore_masked:
 							continue
 						#we are testing deps for a masked package; give it some lee-way
-						suffix="masked"
+						suffix = "masked"
 						matchmode = "minimum-all"
 					else:
-						suffix=""
+						suffix = ""
 						matchmode = "minimum-visible"
 
 					if not have_dev_keywords:
@@ -2218,7 +2217,7 @@ for x in effective_scanlist:
 							bool(dev_keywords.intersection(keywords))
 
 					if prof.status == "dev":
-						suffix=suffix+"indev"
+						suffix = suffix + "indev"
 
 					for mytype in Package._dep_keys:
 
@@ -2262,12 +2261,12 @@ for x in effective_scanlist:
 								#if we emptied out our list, continue:
 								if not atoms:
 									continue
-								stats[mykey]=stats[mykey]+1
+								stats[mykey] += 1
 								fails[mykey].append("%s: %s: %s(%s) %s" % \
 									(relative_path, mytype, keyword,
 									prof, repr(atoms)))
 						else:
-							stats[mykey]=stats[mykey]+1
+							stats[mykey] += 1
 							fails[mykey].append("%s: %s: %s(%s) %s" % \
 								(relative_path, mytype, keyword,
 								prof, repr(atoms)))
@@ -2296,11 +2295,11 @@ if options.if_modified == "y" and len(effective_scanlist) < 1:
 if options.mode == "manifest":
 	sys.exit(dofail)
 
-#dofail will be set to 1 if we have failed in at least one non-warning category
-dofail=0
-#dowarn will be set to 1 if we tripped any warnings
-dowarn=0
-#dofull will be set if we should print a "repoman full" informational message
+# dofail will be set to 1 if we have failed in at least one non-warning category
+dofail = 0
+# dowarn will be set to 1 if we tripped any warnings
+dowarn = 0
+# dofull will be set if we should print a "repoman full" informational message
 dofull = options.mode != 'full'
 
 for x in qacats:
@@ -2335,20 +2334,20 @@ del console_writer, f, style_file
 qa_output = qa_output.getvalue()
 qa_output = qa_output.splitlines(True)
 
-def grouplist(mylist,seperator="/"):
+def grouplist(mylist, seperator="/"):
 	"""(list,seperator="/") -- Takes a list of elements; groups them into
 	same initial element categories. Returns a dict of {base:[sublist]}
 	From: ["blah/foo","spork/spatula","blah/weee/splat"]
 	To:   {"blah":["foo","weee/splat"], "spork":["spatula"]}"""
-	mygroups={}
+	mygroups = {}
 	for x in mylist:
-		xs=x.split(seperator)
-		if xs[0]==".":
-			xs=xs[1:]
+		xs = x.split(seperator)
+		if xs[0] == ".":
+			xs = xs[1:]
 		if xs[0] not in mygroups:
-			mygroups[xs[0]]=[seperator.join(xs[1:])]
+			mygroups[xs[0]] = [seperator.join(xs[1:])]
 		else:
-			mygroups[xs[0]]+=[seperator.join(xs[1:])]
+			mygroups[xs[0]] += [seperator.join(xs[1:])]
 	return mygroups
 
 suggest_ignore_masked = False
@@ -2399,8 +2398,8 @@ else:
 	myunadded = []
 	if vcs == "cvs":
 		try:
-			myvcstree=portage.cvstree.getentries("./",recursive=1)
-			myunadded=portage.cvstree.findunadded(myvcstree,recursive=1,basedir="./")
+			myvcstree = portage.cvstree.getentries("./", recursive=1)
+			myunadded = portage.cvstree.findunadded(myvcstree, recursive=1, basedir="./")
 		except SystemExit as e:
 			raise  # TODO propagate this
 		except:
@@ -2409,7 +2408,7 @@ else:
 		try:
 			with repoman_popen("svn status --no-ignore") as f:
 				svnstatus = f.readlines()
-			myunadded = [ "./"+elem.rstrip().split()[1] for elem in svnstatus if elem.startswith("?") or elem.startswith("I") ]
+			myunadded = ["./" + elem.rstrip().split()[1] for elem in svnstatus if elem.startswith("?") or elem.startswith("I")]
 		except SystemExit as e:
 			raise  # TODO propagate this
 		except:
@@ -2417,13 +2416,13 @@ else:
 	if vcs == "git":
 		# get list of files not under version control or missing
 		myf = repoman_popen("git ls-files --others")
-		myunadded = [ "./" + elem[:-1] for elem in myf ]
+		myunadded = ["./" + elem[:-1] for elem in myf]
 		myf.close()
 	if vcs == "bzr":
 		try:
 			with repoman_popen("bzr status -S .") as f:
 				bzrstatus = f.readlines()
-			myunadded = [ "./"+elem.rstrip().split()[1].split('/')[-1:][0] for elem in bzrstatus if elem.startswith("?") or elem[0:2] == " D" ]
+			myunadded = ["./" + elem.rstrip().split()[1].split('/')[-1:][0] for elem in bzrstatus if elem.startswith("?") or elem[0:2] == " D"]
 		except SystemExit as e:
 			raise  # TODO propagate this
 		except:
@@ -2441,23 +2440,23 @@ else:
 		mydeleted = ["./" + elem.rstrip() for elem in mydeleted]
 
 
-	myautoadd=[]
+	myautoadd = []
 	if myunadded:
-		for x in range(len(myunadded)-1,-1,-1):
-			xs=myunadded[x].split("/")
-			if xs[-1]=="files":
+		for x in range(len(myunadded)-1, -1, -1):
+			xs = myunadded[x].split("/")
+			if xs[-1] == "files":
 				print("!!! files dir is not added! Please correct this.")
 				sys.exit(-1)
-			elif xs[-1]=="Manifest":
+			elif xs[-1] == "Manifest":
 				# It's a manifest... auto add
-				myautoadd+=[myunadded[x]]
+				myautoadd += [myunadded[x]]
 				del myunadded[x]
 
 	if myunadded:
 		print(red("!!! The following files are in your local tree but are not added to the master"))
 		print(red("!!! tree. Please remove them from the local tree or add them to the master tree."))
 		for x in myunadded:
-			print("   ",x)
+			print("   ", x)
 		print()
 		print()
 		sys.exit(1)
@@ -2466,7 +2465,7 @@ else:
 		print(red("!!! The following files are removed manually from your local tree but are not"))
 		print(red("!!! removed from the repository. Please remove them, using \"hg remove [FILES]\"."))
 		for x in mydeleted:
-			print("   ",x)
+			print("   ", x)
 		print()
 		print()
 		sys.exit(1)
@@ -2475,18 +2474,17 @@ else:
 		mycvstree = cvstree.getentries("./", recursive=1)
 		mychanged = cvstree.findchanged(mycvstree, recursive=1, basedir="./")
 		mynew = cvstree.findnew(mycvstree, recursive=1, basedir="./")
-		myremoved=portage.cvstree.findremoved(mycvstree,recursive=1,basedir="./")
+		myremoved = portage.cvstree.findremoved(mycvstree, recursive=1, basedir="./")
 		bin_blob_pattern = re.compile("^-kb$")
 		no_expansion = set(portage.cvstree.findoption(mycvstree, bin_blob_pattern,
 			recursive=1, basedir="./"))
 
-
 	if vcs == "svn":
 		with repoman_popen("svn status") as f:
 			svnstatus = f.readlines()
-		mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if (elem[:1] in "MR" or elem[1:2] in "M")]
-		mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A")]
-		myremoved = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("D")]
+		mychanged = ["./" + elem.split()[-1:][0] for elem in svnstatus if (elem[:1] in "MR" or elem[1:2] in "M")]
+		mynew     = ["./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A")]
+		myremoved = ["./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("D")]
 
 		# Subversion expands keywords specified in svn:keywords properties.
 		with repoman_popen("svn propget -R svn:keywords") as f:
@@ -2513,10 +2511,10 @@ else:
 	if vcs == "bzr":
 		with repoman_popen("bzr status -S .") as f:
 			bzrstatus = f.readlines()
-		mychanged = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and elem[1:2] == "M" ]
-		mynew     = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and ( elem[1:2] in "NK" or elem[0:1] == "R" ) ]
-		myremoved = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem.startswith("-") ]
-		myremoved = [ "./" + elem.split()[-3:-2][0].split('/')[-1:][0] for elem in bzrstatus if elem and ( elem[1:2] == "K" or elem[0:1] == "R" ) ]
+		mychanged = ["./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and elem[1:2] == "M"]
+		mynew     = ["./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and (elem[1:2] in "NK" or elem[0:1] == "R")]
+		myremoved = ["./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem.startswith("-")]
+		myremoved = ["./" + elem.split()[-3:-2][0].split('/')[-1:][0] for elem in bzrstatus if elem and (elem[1:2] == "K" or elem[0:1] == "R")]
 		# Bazaar expands nothing.
 
 	if vcs == "hg":
@@ -2835,7 +2833,7 @@ else:
 				gpgvars[k] = v
 		gpgcmd = portage.util.varexpand(gpgcmd, mydict=gpgvars)
 		if options.pretend:
-			print("("+gpgcmd+")")
+			print("(" + gpgcmd + ")")
 		else:
 			# Encode unicode manually for bug #310789.
 			gpgcmd = portage.util.shlex_split(gpgcmd)
@@ -2845,7 +2843,7 @@ else:
 					encoding=_encodings['fs'], errors='strict') for arg in gpgcmd]
 			rValue = subprocess.call(gpgcmd)
 			if rValue == os.EX_OK:
-				os.rename(filename+".asc", filename)
+				os.rename(filename + ".asc", filename)
 			else:
 				raise portage.exception.PortageException("!!! gpg exited with '" + str(rValue) + "' status")
 
@@ -2931,7 +2929,6 @@ else:
 				sys.exit(retval)
 
 	if True:
-
 		myfiles = mymanifests[:]
 		# If there are no header (SVN/CVS keywords) changes in
 		# the files, this Manifest commit must include the
@@ -2968,7 +2965,6 @@ else:
 			else:
 				retval = spawn(commit_cmd, env=os.environ)
 				if retval != os.EX_OK:
-
 					if repo_config.sign_commit and vcs == 'git' and \
 						not git_supports_gpg_sign():
 						# Inform user that newer git is needed (bug #403323).
@@ -2992,4 +2988,3 @@ else:
 		print("repoman was too scared by not seeing any familiar version control file that he forgot to commit anything")
 	print(green("RepoMan sez:"), "\"If everyone were like you, I'd be out of business!\"\n")
 sys.exit(0)
-
