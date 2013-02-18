@@ -3617,7 +3617,7 @@ class depgraph(object):
 			else:
 				display_list.append("required by %s" % node)
 
-		msg = "#" + ", ".join(display_list) + "\n"
+		msg = "# " + "\n# ".join(display_list) + "\n"
 		return msg
 
 
