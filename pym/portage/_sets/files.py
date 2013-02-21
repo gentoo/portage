@@ -1,4 +1,4 @@
-# Copyright 2007-2012 Gentoo Foundation
+# Copyright 2007-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -296,10 +296,14 @@ class WorldSelectedSet(EditablePackageSet):
 		ensure_dirs(os.path.dirname(self._filename), gid=portage_gid, mode=0o2750, mask=0o2)
 
 	def lock(self):
+		if self._lock is not None:
+			raise AssertionError("already locked")
 		self._ensure_dirs()
 		self._lock = lockfile(self._filename, wantnewlockfile=1)
 
 	def unlock(self):
+		if self._lock is None:
+			raise AssertionError("not locked")
 		unlockfile(self._lock)
 		self._lock = None
 

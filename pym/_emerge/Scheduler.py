@@ -1896,11 +1896,21 @@ class Scheduler(PollScheduler):
 		root_config = pkg.root_config
 		world_set = root_config.sets["selected"]
 		world_locked = False
-		if hasattr(world_set, "lock"):
-			world_set.lock()
-			world_locked = True
+		atom = None
+
+		if pkg.operation != "uninstall":
+			# Do this before acquiring the lock, since it queries the
+			# portdbapi which can call the global event loop, triggering
+			# a concurrent call to this method or something else that
+			# needs an exclusive (non-reentrant) lock on the world file.
+			atom = create_world_atom(pkg, args_set, root_config)
 
 		try:
+
+			if hasattr(world_set, "lock"):
+				world_set.lock()
+				world_locked = True
+
 			if hasattr(world_set, "load"):
 				world_set.load() # maybe it's changed on disk
 
@@ -1912,8 +1922,7 @@ class Scheduler(PollScheduler):
 					for s in pkg.root_config.setconfig.active:
 						world_set.remove(SETPREFIX+s)
 			else:
-				atom = create_world_atom(pkg, args_set, root_config)
-				if atom:
+				if atom is not None:
 					if hasattr(world_set, "add"):
 						self._status_msg(('Recording %s in "world" ' + \
 							'favorites file...') % atom)
