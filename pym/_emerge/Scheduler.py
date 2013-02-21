@@ -718,7 +718,6 @@ class Scheduler(PollScheduler):
 			return
 
 		if self._parallel_fetch:
-			self._status_msg("Starting parallel fetch")
 
 			prefetchers = self._prefetchers
 
