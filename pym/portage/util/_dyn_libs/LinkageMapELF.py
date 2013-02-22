@@ -1,4 +1,4 @@
-# Copyright 1998-2011 Gentoo Foundation
+# Copyright 1998-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -26,7 +26,7 @@ class LinkageMapELF(object):
 	_soname_map_class = slot_dict_class(
 		("consumers", "providers"), prefix="")
 
-	class _obj_properies_class(object):
+	class _obj_properties_class(object):
 
 		__slots__ = ("arch", "needed", "runpaths", "soname", "alt_paths",
 			"owner",)
@@ -316,7 +316,7 @@ class LinkageMapELF(object):
 			myprops = obj_properties.get(obj_key)
 			if myprops is None:
 				indexed = False
-				myprops = self._obj_properies_class(
+				myprops = self._obj_properties_class(
 					arch, needed, path, soname, [], owner)
 				obj_properties[obj_key] = myprops
 			# All object paths are added into the obj_properties tuple.
