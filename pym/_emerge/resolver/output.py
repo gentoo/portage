@@ -116,12 +116,10 @@ class Display(object):
 		else:
 			self.blockers.append(addl)
 
-	def _display_use(self, pkg, myoldbest, myinslotlist):
+	def _display_use(self, pkg, pkg_info):
 		""" USE flag display
 
 		@param pkg: _emerge.Package.Package instance
-		@param myoldbest: list of installed versions
-		@param myinslotlist: list of installed slots
 		Modifies class globals: self.forced_flags, self.cur_iuse,
 			self.old_iuse, self.old_use, self.use_expand
 		"""
@@ -134,12 +132,8 @@ class Display(object):
 			if flag in pkg.iuse.all]
 		self.cur_iuse = sorted(pkg.iuse.all)
 
-		if myoldbest and myinslotlist:
-			previous_cpv = myoldbest[0].cpv
-		else:
-			previous_cpv = pkg.cpv
-		if self.vardb.cpv_exists(previous_cpv):
-			previous_pkg = self.vardb.match_pkgs('=' + previous_cpv)[0]
+		if pkg_info.previous_pkg is not None:
+			previous_pkg = pkg_info.previous_pkg
 			self.old_iuse = sorted(previous_pkg.iuse.all)
 			self.old_use = previous_pkg.use.enabled
 			self.is_new = False
@@ -343,14 +337,13 @@ class Display(object):
 		if self.quiet_repo_display:
 			# overlay verbose
 			# assign index for a previous version in the same slot
-			slot_matches = self.vardb.match_pkgs(pkg.slot_atom)
-			if slot_matches:
-				repo_name_prev = slot_matches[0].repo
+			if pkg_info.previous_pkg is not None:
+				repo_name_prev = pkg_info.previous_pkg.repo
 			else:
 				repo_name_prev = None
 
 			# now use the data to generate output
-			if pkg.installed or not slot_matches:
+			if pkg.installed or pkg_info.previous_pkg is None:
 				self.repoadd = self.conf.repo_display.repoStr(
 					pkg_info.repo_path_real)
 			else:
@@ -666,6 +659,15 @@ class Display(object):
 			else:
 				if pkg_info.ebuild_path is not None:
 					self.restrict_fetch_list[pkg] = pkg_info
+
+		if self.vardb.cpv_exists(pkg.cpv):
+			# Do a cpv match first, in case the SLOT has changed.
+			pkg_info.previous_pkg = self.vardb.match_pkgs('=' + pkg.cpv)[0]
+		else:
+			slot_matches = self.vardb.match_pkgs(pkg.slot_atom)
+			if slot_matches:
+				pkg_info.previous_pkg = slot_matches[0]
+
 		return pkg_info
 
 
@@ -676,15 +678,14 @@ class Display(object):
 		@param pkg_info: dictionay
 		Modifies self.changelogs
 		"""
-		inst_matches = self.vardb.match(pkg.slot_atom)
-		if inst_matches:
+		if pkg_info.previous_pkg is not None:
 			ebuild_path_cl = pkg_info.ebuild_path
 			if ebuild_path_cl is None:
 				# binary package
 				ebuild_path_cl = self.portdb.findname(pkg.cpv, myrepo=pkg.repo)
 			if ebuild_path_cl is not None:
 				self.changelogs.extend(_calc_changelog(
-					ebuild_path_cl, inst_matches[0], pkg.cpv))
+					ebuild_path_cl, pkg_info.previous_pkg, pkg.cpv))
 		return
 
 
@@ -747,7 +748,7 @@ class Display(object):
 		installed_versions = self.vardb.match_pkgs(pkg.cp)
 		if self.vardb.cpv_exists(pkg.cpv):
 			pkg_info.attr_display.replace = True
-			installed_version = self.vardb.match_pkgs(pkg.cpv)[0]
+			installed_version = pkg_info.previous_pkg
 			if installed_version.slot != pkg.slot or installed_version.sub_slot != pkg.sub_slot or \
 				not self.quiet_repo_display and installed_version.repo != pkg.repo:
 				myoldbest = [installed_version]
@@ -843,7 +844,7 @@ class Display(object):
 				self.verboseadd = ""
 				if self.quiet_repo_display:
 					self.repoadd = None
-				self._display_use(pkg, pkg_info.oldbest_list, myinslotlist)
+				self._display_use(pkg, pkg_info)
 				self.recheck_hidden(pkg)
 				if self.conf.verbosity == 3:
 					if self.quiet_repo_display:
