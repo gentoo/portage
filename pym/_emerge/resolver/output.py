@@ -116,38 +116,6 @@ class Display(object):
 		else:
 			self.blockers.append(addl)
 
-	def _display_use(self, pkg, pkg_info):
-		""" USE flag display
-
-		@param pkg: _emerge.Package.Package instance
-		Modifies class globals: self.forced_flags, self.cur_iuse,
-			self.old_iuse, self.old_use, self.use_expand
-		"""
-
-		self.forced_flags = set()
-		self.forced_flags.update(pkg.use.force)
-		self.forced_flags.update(pkg.use.mask)
-
-		self.cur_use = [flag for flag in self.conf.pkg_use_enabled(pkg) \
-			if flag in pkg.iuse.all]
-		self.cur_iuse = sorted(pkg.iuse.all)
-
-		if pkg_info.previous_pkg is not None:
-			previous_pkg = pkg_info.previous_pkg
-			self.old_iuse = sorted(previous_pkg.iuse.all)
-			self.old_use = previous_pkg.use.enabled
-			self.is_new = False
-		else:
-			self.old_iuse = []
-			self.old_use = []
-			self.is_new = True
-
-		self.old_use = [flag for flag in self.old_use if flag in self.old_iuse]
-
-		self.use_expand = pkg.use.expand
-		self.use_expand_hidden = pkg.use.expand_hidden
-		return
-
 	def include_mask_str(self):
 		return self.conf.verbosity > 1
 
@@ -211,13 +179,40 @@ class Display(object):
 		return ret
 
 
-	def recheck_hidden(self, pkg):
-		""" Prevent USE_EXPAND_HIDDEN flags from being hidden if they
-		are the only thing that triggered reinstallation.
+	def _display_use(self, pkg, pkg_info):
+		""" USE flag display
 
 		@param pkg: _emerge.Package.Package instance
-		Modifies self.use_expand_hidden, self.use_expand, self.verboseadd
+		@param pkg_info: PkgInfo instance
+		Modifies self.use_expand_hidden, self.use_expand, self.verboseadd,
+			self.forced_flags, self.cur_iuse, self.old_iuse, self.old_use
 		"""
+
+		self.forced_flags = set()
+		self.forced_flags.update(pkg.use.force)
+		self.forced_flags.update(pkg.use.mask)
+
+		self.cur_use = [flag for flag in self.conf.pkg_use_enabled(pkg) \
+			if flag in pkg.iuse.all]
+		self.cur_iuse = sorted(pkg.iuse.all)
+
+		if pkg_info.previous_pkg is not None:
+			previous_pkg = pkg_info.previous_pkg
+			self.old_iuse = sorted(previous_pkg.iuse.all)
+			self.old_use = previous_pkg.use.enabled
+			self.is_new = False
+		else:
+			self.old_iuse = []
+			self.old_use = []
+			self.is_new = True
+
+		self.old_use = [flag for flag in self.old_use if flag in self.old_iuse]
+
+		self.use_expand = pkg.use.expand
+		self.use_expand_hidden = pkg.use.expand_hidden
+
+		# Prevent USE_EXPAND_HIDDEN flags from being hidden if they
+		# are the only thing that triggered reinstallation.
 		reinst_flags_map = {}
 		reinstall_for_flags = self.conf.reinstall_nodes.get(pkg)
 		reinst_expand_map = None
@@ -845,7 +840,6 @@ class Display(object):
 				if self.quiet_repo_display:
 					self.repoadd = None
 				self._display_use(pkg, pkg_info)
-				self.recheck_hidden(pkg)
 				if self.conf.verbosity == 3:
 					if self.quiet_repo_display:
 						self.verbose_size(pkg, repoadd_set, pkg_info)
