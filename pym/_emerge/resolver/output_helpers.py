@@ -619,7 +619,7 @@ class PkgInfo(object):
 	
 	__slots__ = ("attr_display", "built", "cp",
 		"ebuild_path", "fetch_symbol", "merge",
-		"oldbest", "oldbest_list", "operation", "ordered",
+		"oldbest", "oldbest_list", "operation", "ordered", "previous_pkg",
 		"repo_name", "repo_path_real", "slot", "sub_slot", "system", "use", "ver", "world")
 
 
@@ -633,6 +633,7 @@ class PkgInfo(object):
 		self.oldbest_list = []
 		self.operation = ''
 		self.ordered = False
+		self.previous_pkg = None
 		self.repo_path_real = ''
 		self.repo_name = ''
 		self.slot = ''

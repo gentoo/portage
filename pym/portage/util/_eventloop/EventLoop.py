@@ -256,7 +256,13 @@ class EventLoop(object):
 		while event_queue:
 			events_handled += 1
 			f, event = event_queue.pop()
-			x = event_handlers[f]
+			try:
+				x = event_handlers[f]
+			except KeyError:
+				# This is known to be triggered by the epoll
+				# implementation in qemu-user-1.2.2, and appears
+				# to be harmless (see bug #451326).
+				continue
 			if not x.callback(f, event, *x.args):
 				self.source_remove(x.source_id)
 

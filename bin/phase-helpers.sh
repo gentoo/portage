@@ -210,8 +210,11 @@ use() {
 		#fi
 		true
 
-	# Make sure we have this USE flag in IUSE
-	elif [[ -n $PORTAGE_IUSE && -n $EBUILD_PHASE ]] ; then
+	# Make sure we have this USE flag in IUSE, but exempt binary
+	# packages for API consumers like Entropy which do not require
+	# a full profile with IUSE_IMPLICIT and stuff (see bug #456830).
+	elif [[ -n $PORTAGE_IUSE && -n $EBUILD_PHASE &&
+		-n $PORTAGE_INTERNAL_CALLER ]] ; then
 		if [[ ! $u =~ $PORTAGE_IUSE ]] ; then
 			if [[ ! ${EAPI} =~ ^(0|1|2|3|4|4-python|4-slot-abi)$ ]] ; then
 				# This is only strict starting with EAPI 5, since implicit IUSE
@@ -491,6 +494,9 @@ econf() {
 			set -- --libdir="$(__strip_duplicate_slashes "${CONF_PREFIX}${CONF_LIBDIR}")" "$@"
 		fi
 
+		# Handle arguments containing quoted whitespace (see bug #457136).
+		eval "local -a EXTRA_ECONF=(${EXTRA_ECONF})"
+
 		set -- \
 			--prefix="${EPREFIX}"/usr \
 			${CBUILD:+--build=${CBUILD}} \
@@ -502,7 +508,7 @@ econf() {
 			--sysconfdir="${EPREFIX}"/etc \
 			--localstatedir="${EPREFIX}"/var/lib \
 			"$@" \
-			${EXTRA_ECONF}
+			"${EXTRA_ECONF[@]}"
 		__vecho "${ECONF_SOURCE}/configure" "$@"
 
 		if ! "${ECONF_SOURCE}/configure" "$@" ; then

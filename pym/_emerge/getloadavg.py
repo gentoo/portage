@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
@@ -20,7 +20,8 @@ if getloadavg is None:
 				loadavg_str = [x.rstrip(',') for x in loadavg_str]
 				loadavg_str = ' '.join(loadavg_str)
 			else:
-				loadavg_str = open('/proc/loadavg').readline()
+                with open('/proc/loadavg') as f:
+                    loadavg_str = f.readline()
 		except (IOError, IndexError):
 			# getloadavg() is only supposed to raise OSError, so convert
 			raise OSError('unknown')

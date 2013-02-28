@@ -112,67 +112,64 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 					missing_files.append(myfile)
 					continue
 
-		if missing_files:
-				for myfile in missing_files:
-					uris = set()
-					all_restrict = set()
-					for cpv in distfiles_map[myfile]:
-						uris.update(myportdb.getFetchMap(
-							cpv, mytree=mytree)[myfile])
-						restrict = myportdb.aux_get(cpv, ['RESTRICT'],
-							mytree=mytree)[0]
-						# Here we ignore conditional parts of RESTRICT since
-						# they don't apply unconditionally. Assume such
-						# conditionals only apply on the client side where
-						# digestgen() does not need to be called.
-						all_restrict.update(use_reduce(restrict,
-							flat=True, matchnone=True))
+		for myfile in missing_files:
+			uris = set()
+			all_restrict = set()
+			for cpv in distfiles_map[myfile]:
+				uris.update(myportdb.getFetchMap(
+					cpv, mytree=mytree)[myfile])
+				restrict = myportdb.aux_get(cpv, ['RESTRICT'], mytree=mytree)[0]
+				# Here we ignore conditional parts of RESTRICT since
+				# they don't apply unconditionally. Assume such
+				# conditionals only apply on the client side where
+				# digestgen() does not need to be called.
+				all_restrict.update(use_reduce(restrict,
+					flat=True, matchnone=True))
 
-						# fetch() uses CATEGORY and PF to display a message
-						# when fetch restriction is triggered.
-						cat, pf = catsplit(cpv)
-						mysettings["CATEGORY"] = cat
-						mysettings["PF"] = pf
+				# fetch() uses CATEGORY and PF to display a message
+				# when fetch restriction is triggered.
+				cat, pf = catsplit(cpv)
+				mysettings["CATEGORY"] = cat
+				mysettings["PF"] = pf
 
-					# fetch() uses PORTAGE_RESTRICT to control fetch
-					# restriction, which is only applied to files that
-					# are not fetchable via a mirror:// URI.
-					mysettings["PORTAGE_RESTRICT"] = " ".join(all_restrict)
+			# fetch() uses PORTAGE_RESTRICT to control fetch
+			# restriction, which is only applied to files that
+			# are not fetchable via a mirror:// URI.
+			mysettings["PORTAGE_RESTRICT"] = " ".join(all_restrict)
 
-					try:
-						st = os.stat(os.path.join(
-							mysettings["DISTDIR"],myfile))
-					except OSError:
-						st = None
+			try:
+				st = os.stat(os.path.join(mysettings["DISTDIR"], myfile))
+			except OSError:
+				st = None
 
-					if not fetch({myfile : uris}, mysettings):
-						myebuild = os.path.join(mysettings["O"],
-							catsplit(cpv)[1] + ".ebuild")
-						spawn_nofetch(myportdb, myebuild)
-						writemsg(_("!!! Fetch failed for %s, can't update "
-							"Manifest\n") % myfile, noiselevel=-1)
-						if myfile in dist_hashes and \
-							st is not None and st.st_size > 0:
-							# stat result is obtained before calling fetch(),
-							# since fetch may rename the existing file if the
-							# digest does not match.
-							writemsg(_("!!! If you would like to "
-								"forcefully replace the existing "
-								"Manifest entry\n!!! for %s, use "
-								"the following command:\n") % myfile + \
-								"!!!    " + colorize("INFORM",
-								"ebuild --force %s manifest" % \
-								os.path.basename(myebuild)) + "\n",
-								noiselevel=-1)
-						return 0
+			if not fetch({myfile : uris}, mysettings):
+				myebuild = os.path.join(mysettings["O"],
+					catsplit(cpv)[1] + ".ebuild")
+				spawn_nofetch(myportdb, myebuild)
+				writemsg(_("!!! Fetch failed for %s, can't update Manifest\n")
+					% myfile, noiselevel=-1)
+				if myfile in dist_hashes and \
+					st is not None and st.st_size > 0:
+					# stat result is obtained before calling fetch(),
+					# since fetch may rename the existing file if the
+					# digest does not match.
+					cmd = colorize("INFORM", "ebuild --force %s manifest" %
+						os.path.basename(myebuild))
+					writemsg((_(
+						"!!! If you would like to forcefully replace the existing Manifest entry\n"
+						"!!! for %s, use the following command:\n") % myfile) +
+						"!!!    %s\n" % cmd,
+						noiselevel=-1)
+				return 0
+
 		writemsg_stdout(_(">>> Creating Manifest for %s\n") % mysettings["O"])
 		try:
 			mf.create(assumeDistHashesSometimes=True,
 				assumeDistHashesAlways=(
 				"assume-digests" in mysettings.features))
 		except FileNotFound as e:
-			writemsg(_("!!! File %s doesn't exist, can't update "
-				"Manifest\n") % e, noiselevel=-1)
+			writemsg(_("!!! File %s doesn't exist, can't update Manifest\n")
+				% e, noiselevel=-1)
 			return 0
 		except PortagePackageException as e:
 			writemsg(("!!! %s\n") % (e,), noiselevel=-1)

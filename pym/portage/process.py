@@ -403,6 +403,10 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	myargs = [opt_name]
 	myargs.extend(mycommand[1:])
 
+	# Avoid a potential UnicodeEncodeError from os.execve().
+	myargs = [_unicode_encode(x, encoding=_encodings['fs'],
+		errors='strict') for x in myargs]
+
 	# Use default signal handlers in order to avoid problems
 	# killing subprocesses as reported in bug #353239.
 	signal.signal(signal.SIGINT, signal.SIG_DFL)

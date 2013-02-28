@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -291,7 +291,7 @@ class UseManager(object):
 		# stable check against the correct profile here.
 		return self._is_stable(pkg)
 
-	def getUseMask(self, pkg=None):
+	def getUseMask(self, pkg=None, stable=None):
 		if pkg is None:
 			return frozenset(stack_lists(
 				self._usemask_list, incremental=True))
@@ -304,7 +304,8 @@ class UseManager(object):
 			pkg = _pkg_str(remove_slot(pkg), slot=slot, repo=repo)
 			cp = pkg.cp
 
-		stable = self._isStable(pkg)
+		if stable is None:
+			stable = self._isStable(pkg)
 
 		usemask = []
 
@@ -351,7 +352,7 @@ class UseManager(object):
 
 		return frozenset(stack_lists(usemask, incremental=True))
 
-	def getUseForce(self, pkg=None):
+	def getUseForce(self, pkg=None, stable=None):
 		if pkg is None:
 			return frozenset(stack_lists(
 				self._useforce_list, incremental=True))
@@ -363,7 +364,8 @@ class UseManager(object):
 			pkg = _pkg_str(remove_slot(pkg), slot=slot, repo=repo)
 			cp = pkg.cp
 
-		stable = self._isStable(pkg)
+		if stable is None:
+			stable = self._isStable(pkg)
 
 		useforce = []
 

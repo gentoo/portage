@@ -35,7 +35,6 @@ else:
 
 signal.signal(debug_signum, debug_signal)
 
-import imp
 import io
 import optparse
 import os
@@ -157,7 +156,7 @@ if ebuild_portdir != vdb_path and \
 			encoding=_encodings['content'], errors='strict')
 
 	print("Appending %s to PORTDIR_OVERLAY..." % ebuild_portdir)
-	imp.reload(portage)
+	portage._reset_legacy_globals()
 
 myrepo = None
 if ebuild_portdir != vdb_path:

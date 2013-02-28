@@ -221,6 +221,7 @@ class config(object):
 		self._accept_properties = None
 		self._features_overrides = []
 		self._make_defaults = None
+		self._parent_stable = None
 
 		# _unknown_features records unknown features that
 		# have triggered warning messages, and ensures that
@@ -849,6 +850,10 @@ class config(object):
 					self[var] = default_val
 				self.backup_changes(var)
 
+			if portage._internal_caller:
+				self["PORTAGE_INTERNAL_CALLER"] = "1"
+				self.backup_changes("PORTAGE_INTERNAL_CALLER")
+
 			# initialize self.features
 			self.regenerate()
 
@@ -1184,8 +1189,11 @@ class config(object):
 		the previously calculated USE settings.
 		"""
 
-		def __init__(self, use, usemask, iuse_implicit,
+		def __init__(self, settings, unfiltered_use,
+			use, usemask, iuse_implicit,
 			use_expand_split, use_expand_dict):
+			self._settings = settings
+			self._unfiltered_use = unfiltered_use
 			self._use = use
 			self._usemask = usemask
 			self._iuse_implicit = iuse_implicit
@@ -1240,13 +1248,32 @@ class config(object):
 				# Don't export empty USE_EXPAND vars unless the user config
 				# exports them as empty.  This is required for vars such as
 				# LINGUAS, where unset and empty have different meanings.
+				# The special '*' token is understood by ebuild.sh, which
+				# will unset the variable so that things like LINGUAS work
+				# properly (see bug #459350).
 				if has_wildcard:
-					# ebuild.sh will see this and unset the variable so
-					# that things like LINGUAS work properly
 					value = '*'
 				else:
 					if has_iuse:
-						value = ''
+						already_set = False
+						# Skip the first 'env' configdict, in order to
+						# avoid infinite recursion here, since that dict's
+						# __getitem__ calls the current __getitem__.
+						for d in self._settings.lookuplist[1:]:
+							if key in d:
+								already_set = True
+								break
+
+						if not already_set:
+							for x in self._unfiltered_use:
+								if x[:prefix_len] == prefix:
+									already_set = True
+									break
+
+						if already_set:
+							value = ''
+						else:
+							value = '*'
 					else:
 						# It's not in IUSE, so just allow the variable content
 						# to pass through if it is defined somewhere.  This
@@ -1502,6 +1529,7 @@ class config(object):
 		# be done for every setcpv() call since practically every
 		# package has different IUSE.
 		use = set(self["USE"].split())
+		unfiltered_use = frozenset(use)
 		if explicit_iuse is None:
 			explicit_iuse = frozenset(x.lstrip("+-") for x in iuse.split())
 
@@ -1586,7 +1614,8 @@ class config(object):
 		# comparison instead of startswith().
 		use_expand_split = set(x.lower() for \
 			x in self.get('USE_EXPAND', '').split())
-		lazy_use_expand = self._lazy_use_expand(use, self.usemask,
+		lazy_use_expand = self._lazy_use_expand(
+			self, unfiltered_use, use, self.usemask,
 			portage_iuse, use_expand_split, self._use_expand_dict)
 
 		use_expand_iuses = {}
@@ -1740,11 +1769,11 @@ class config(object):
 
 		return iuse_implicit
 
-	def _getUseMask(self, pkg):
-		return self._use_manager.getUseMask(pkg)
+	def _getUseMask(self, pkg, stable=None):
+		return self._use_manager.getUseMask(pkg, stable=stable)
 
-	def _getUseForce(self, pkg):
-		return self._use_manager.getUseForce(pkg)
+	def _getUseForce(self, pkg, stable=None):
+		return self._use_manager.getUseForce(pkg, stable=stable)
 
 	def _getMaskAtom(self, cpv, metadata):
 		"""

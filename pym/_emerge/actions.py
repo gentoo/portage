@@ -326,6 +326,7 @@ def action_build(settings, trees, mtimedb,
 			mydepgraph.display_problems()
 			return 1
 
+	mergecount = None
 	if "--pretend" not in myopts and \
 		("--ask" in myopts or "--tree" in myopts or \
 		"--verbose" in myopts) and \
@@ -357,6 +358,7 @@ def action_build(settings, trees, mtimedb,
 				if isinstance(x, Package) and x.operation == "merge":
 					mergecount += 1
 
+			prompt = None
 			if mergecount==0:
 				sets = trees[settings['EROOT']]['root_config'].sets
 				world_candidates = None
@@ -369,12 +371,11 @@ def action_build(settings, trees, mtimedb,
 					world_candidates = [x for x in favorites \
 						if not (x.startswith(SETPREFIX) and \
 						not sets[x[1:]].world_candidate)]
+
 				if "selective" in myparams and \
 					not oneshot and world_candidates:
-					print()
-					for x in world_candidates:
-						print(" %s %s" % (good("*"), x))
-					prompt="Would you like to add these packages to your world favorites?"
+					# Prompt later, inside saveNomergeFavorites.
+					prompt = None
 				elif settings["AUTOCLEAN"] and "yes"==settings["AUTOCLEAN"]:
 					prompt="Nothing to merge; would you like to auto-clean packages?"
 				else:
@@ -387,13 +388,15 @@ def action_build(settings, trees, mtimedb,
 			else:
 				prompt="Would you like to merge these packages?"
 		print()
-		if "--ask" in myopts and userquery(prompt, enter_invalid) == "No":
+		if prompt is not None and "--ask" in myopts and \
+			userquery(prompt, enter_invalid) == "No":
 			print()
 			print("Quitting.")
 			print()
 			return 128 + signal.SIGINT
 		# Don't ask again (e.g. when auto-cleaning packages after merge)
-		myopts.pop("--ask", None)
+		if mergecount != 0:
+			myopts.pop("--ask", None)
 
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
 		if ("--resume" in myopts):
@@ -463,25 +466,29 @@ def action_build(settings, trees, mtimedb,
 
 			mydepgraph.saveNomergeFavorites()
 
-		mergetask = Scheduler(settings, trees, mtimedb, myopts,
-			spinner, favorites=favorites,
-			graph_config=mydepgraph.schedulerGraph())
+		if mergecount == 0:
+			retval = os.EX_OK
+		else:
+			mergetask = Scheduler(settings, trees, mtimedb, myopts,
+				spinner, favorites=favorites,
+				graph_config=mydepgraph.schedulerGraph())
 
-		del mydepgraph
-		clear_caches(trees)
+			del mydepgraph
+			clear_caches(trees)
 
-		retval = mergetask.merge()
+			retval = mergetask.merge()
 
-		if retval == os.EX_OK and not (buildpkgonly or fetchonly or pretend):
-			if "yes" == settings.get("AUTOCLEAN"):
-				portage.writemsg_stdout(">>> Auto-cleaning packages...\n")
-				unmerge(trees[settings['EROOT']]['root_config'],
-					myopts, "clean", [],
-					ldpath_mtimes, autoclean=1)
-			else:
-				portage.writemsg_stdout(colorize("WARN", "WARNING:")
-					+ " AUTOCLEAN is disabled.  This can cause serious"
-					+ " problems due to overlapping packages.\n")
+			if retval == os.EX_OK and \
+				not (buildpkgonly or fetchonly or pretend):
+				if "yes" == settings.get("AUTOCLEAN"):
+					portage.writemsg_stdout(">>> Auto-cleaning packages...\n")
+					unmerge(trees[settings['EROOT']]['root_config'],
+						myopts, "clean", [],
+						ldpath_mtimes, autoclean=1)
+				else:
+					portage.writemsg_stdout(colorize("WARN", "WARNING:")
+						+ " AUTOCLEAN is disabled.  This can cause serious"
+						+ " problems due to overlapping packages.\n")
 
 		return retval
 
@@ -2103,7 +2110,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		emergelog(xterm_titles, msg )
 		writemsg_level(msg + "\n")
 		exitcode = portage.process.spawn_bash("cd %s ; git pull" % \
-			(portage._shell_quote(myportdir),), **spawn_kwargs)
+			(portage._shell_quote(myportdir),),
+			**portage._native_kwargs(spawn_kwargs))
 		if exitcode != os.EX_OK:
 			msg = "!!! git pull error in %s." % myportdir
 			emergelog(xterm_titles, msg)
@@ -2392,7 +2400,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 								rsync_initial_timeout)
 
 						mypids.extend(portage.process.spawn(
-							mycommand, returnpid=True, **spawn_kwargs))
+							mycommand, returnpid=True,
+							**portage._native_kwargs(spawn_kwargs)))
 						exitcode = os.waitpid(mypids[0], 0)[1]
 						if usersync_uid is not None:
 							portage.util.apply_permissions(tmpservertimestampfile,
@@ -2458,7 +2467,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				elif (servertimestamp == 0) or (servertimestamp > mytimestamp):
 					# actual sync
 					mycommand = rsynccommand + [dosyncuri+"/", myportdir]
-					exitcode = portage.process.spawn(mycommand, **spawn_kwargs)
+					exitcode = portage.process.spawn(mycommand,
+						**portage._native_kwargs(spawn_kwargs))
 					if exitcode in [0,1,3,4,11,14,20,21]:
 						break
 			elif exitcode in [1,3,4,11,14,20,21]:
@@ -2536,7 +2546,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			if portage.process.spawn_bash(
 					"cd %s; exec cvs -z0 -d %s co -P gentoo-x86" % \
 					(portage._shell_quote(cvsdir), portage._shell_quote(cvsroot)),
-					**spawn_kwargs) != os.EX_OK:
+					**portage._native_kwargs(spawn_kwargs)) != os.EX_OK:
 				print("!!! cvs checkout error; exiting.")
 				sys.exit(1)
 			os.rename(os.path.join(cvsdir, "gentoo-x86"), myportdir)
@@ -2545,7 +2555,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			print(">>> Starting cvs update with "+syncuri+"...")
 			retval = portage.process.spawn_bash(
 				"cd %s; exec cvs -z0 -q update -dP" % \
-				(portage._shell_quote(myportdir),), **spawn_kwargs)
+				(portage._shell_quote(myportdir),),
+				**portage._native_kwargs(spawn_kwargs))
 			if retval != os.EX_OK:
 				writemsg_level("!!! cvs update error; exiting.\n",
 					noiselevel=-1, level=logging.ERROR)
@@ -3175,7 +3186,7 @@ def load_emerge_config(trees=None):
 		v = os.environ.get(envvar, None)
 		if v and v.strip():
 			kwargs[k] = v
-	trees = portage.create_trees(trees=trees, **kwargs)
+	trees = portage.create_trees(trees=trees, **portage._native_kwargs(kwargs))
 
 	for root_trees in trees.values():
 		settings = root_trees["vartree"].settings

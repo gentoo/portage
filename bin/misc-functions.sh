@@ -254,16 +254,17 @@ install_qa_check() {
 		eqawarn "$f"
 	fi
 
-	if [[ -d ${ED}/etc/udev/rules.d ]] ; then
-		f=
-		for x in $(ls "${ED}/etc/udev/rules.d") ; do
-			f+="  etc/udev/rules.d/$x\n"
-		done
-		if [[ -n $f ]] ; then
-			eqawarn "QA Notice: udev rules should be installed in /lib/udev/rules.d:"
-			eqawarn
-			eqawarn "$f"
-		fi
+	set +f
+	f=
+	for x in "${ED}etc/udev/rules.d/"* "${ED}lib"*"/udev/rules.d/"* ; do
+		[[ -e ${x} ]] || continue
+		[[ ${x} == ${ED}lib/udev/rules.d/* ]] && continue
+		f+="  ${x#${ED}}\n"
+	done
+	if [[ -n $f ]] ; then
+		eqawarn "QA Notice: udev rules should be installed in /lib/udev/rules.d:"
+		eqawarn
+		eqawarn "$f"
 	fi
 
 	# Now we look for all world writable files.
@@ -395,7 +396,7 @@ install_qa_check_elf() {
 			*-linux-gnu*)
 			# Check for files with executable stacks, but only on arches which
 			# are supported at the moment.  Keep this list in sync with
-			# http://hardened.gentoo.org/gnu-stack.xml (Arch Status)
+			# http://www.gentoo.org/proj/en/hardened/gnu-stack.xml (Arch Status)
 			case ${CTARGET:-${CHOST}} in
 				arm*|i?86*|ia64*|m68k*|s390*|sh*|x86_64*)
 					# Allow devs to mark things as ignorable ... e.g. things
@@ -473,7 +474,7 @@ install_qa_check_elf() {
 		# Check for shared libraries lacking SONAMEs
 		qa_var="QA_SONAME_${ARCH/-/_}"
 		eval "[[ -n \${!qa_var} ]] && QA_SONAME=(\"\${${qa_var}[@]}\")"
-		f=$(scanelf -ByF '%S %p' "${ED}"{,usr/}lib*/lib*.so* | gawk '$2 == "" { print }' | sed -e "s:^[[:space:]]${ED}:/:")
+		f=$(scanelf -ByF '%S %p' "${ED}"{,usr/}lib*/lib*.so* | awk '$2 == "" { print }' | sed -e "s:^[[:space:]]${ED}:/:")
 		if [[ -n ${f} ]] ; then
 			echo "${f}" > "${T}"/scanelf-missing-SONAME.log
 			if [[ "${QA_STRICT_SONAME-unset}" == unset ]] ; then
@@ -508,7 +509,7 @@ install_qa_check_elf() {
 		qa_var="QA_DT_NEEDED_${ARCH/-/_}"
 		eval "[[ -n \${!qa_var} ]] && QA_DT_NEEDED=(\"\${${qa_var}[@]}\")"
 		# PREFIX LOCAL: keep offset prefix in the recorded files
-		f=$(scanelf -ByF '%n %p' "${ED}"{,usr/}lib*/lib*.so* | gawk '$2 == "" { print }' | sed -e "s:^[[:space:]]${D}:/:")
+		f=$(scanelf -ByF '%n %p' "${ED}"{,usr/}lib*/lib*.so* | awk '$2 == "" { print }' | sed -e "s:^[[:space:]]${D}:/:")
 		# END PREFIX LOCAL
 		if [[ -n ${f} ]] ; then
 			echo "${f}" > "${T}"/scanelf-missing-NEEDED.log

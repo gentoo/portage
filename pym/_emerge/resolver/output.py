@@ -58,11 +58,6 @@ class Display(object):
 		self.oldlp = None
 		self.myfetchlist = None
 		self.indent = ''
-		self.is_new = True
-		self.cur_use = None
-		self.cur_iuse = None
-		self.old_use = ''
-		self.old_iuse = ''
 		self.use_expand = None
 		self.use_expand_hidden = None
 		self.pkgsettings = None
@@ -115,44 +110,6 @@ class Display(object):
 				self.print_msg.append(addl)
 		else:
 			self.blockers.append(addl)
-
-	def _display_use(self, pkg, myoldbest, myinslotlist):
-		""" USE flag display
-
-		@param pkg: _emerge.Package.Package instance
-		@param myoldbest: list of installed versions
-		@param myinslotlist: list of installed slots
-		Modifies class globals: self.forced_flags, self.cur_iuse,
-			self.old_iuse, self.old_use, self.use_expand
-		"""
-
-		self.forced_flags = set()
-		self.forced_flags.update(pkg.use.force)
-		self.forced_flags.update(pkg.use.mask)
-
-		self.cur_use = [flag for flag in self.conf.pkg_use_enabled(pkg) \
-			if flag in pkg.iuse.all]
-		self.cur_iuse = sorted(pkg.iuse.all)
-
-		if myoldbest and myinslotlist:
-			previous_cpv = myoldbest[0].cpv
-		else:
-			previous_cpv = pkg.cpv
-		if self.vardb.cpv_exists(previous_cpv):
-			previous_pkg = self.vardb.match_pkgs('=' + previous_cpv)[0]
-			self.old_iuse = sorted(previous_pkg.iuse.all)
-			self.old_use = previous_pkg.use.enabled
-			self.is_new = False
-		else:
-			self.old_iuse = []
-			self.old_use = []
-			self.is_new = True
-
-		self.old_use = [flag for flag in self.old_use if flag in self.old_iuse]
-
-		self.use_expand = pkg.use.expand
-		self.use_expand_hidden = pkg.use.expand_hidden
-		return
 
 	def include_mask_str(self):
 		return self.conf.verbosity > 1
@@ -217,13 +174,40 @@ class Display(object):
 		return ret
 
 
-	def recheck_hidden(self, pkg):
-		""" Prevent USE_EXPAND_HIDDEN flags from being hidden if they
-		are the only thing that triggered reinstallation.
+	def _display_use(self, pkg, pkg_info):
+		""" USE flag display
 
 		@param pkg: _emerge.Package.Package instance
-		Modifies self.use_expand_hidden, self.use_expand, self.verboseadd
+		@param pkg_info: PkgInfo instance
+		Modifies self.use_expand_hidden, self.use_expand, self.verboseadd,
+			self.forced_flags
 		"""
+
+		self.forced_flags = set()
+		self.forced_flags.update(pkg.use.force)
+		self.forced_flags.update(pkg.use.mask)
+
+		cur_use = [flag for flag in self.conf.pkg_use_enabled(pkg) \
+			if flag in pkg.iuse.all]
+		cur_iuse = sorted(pkg.iuse.all)
+
+		if pkg_info.previous_pkg is not None:
+			previous_pkg = pkg_info.previous_pkg
+			old_iuse = sorted(previous_pkg.iuse.all)
+			old_use = previous_pkg.use.enabled
+			is_new = False
+		else:
+			old_iuse = []
+			old_use = []
+			is_new = True
+
+		old_use = [flag for flag in old_use if flag in old_iuse]
+
+		self.use_expand = pkg.use.expand
+		self.use_expand_hidden = pkg.use.expand_hidden
+
+		# Prevent USE_EXPAND_HIDDEN flags from being hidden if they
+		# are the only thing that triggered reinstallation.
 		reinst_flags_map = {}
 		reinstall_for_flags = self.conf.reinstall_nodes.get(pkg)
 		reinst_expand_map = None
@@ -244,10 +228,10 @@ class Display(object):
 				reinst_expand_map)
 
 		cur_iuse_map, iuse_forced = \
-			self.map_to_use_expand(self.cur_iuse, forced_flags=True)
-		cur_use_map = self.map_to_use_expand(self.cur_use)
-		old_iuse_map = self.map_to_use_expand(self.old_iuse)
-		old_use_map = self.map_to_use_expand(self.old_use)
+			self.map_to_use_expand(cur_iuse, forced_flags=True)
+		cur_use_map = self.map_to_use_expand(cur_use)
+		old_iuse_map = self.map_to_use_expand(old_iuse)
+		old_use_map = self.map_to_use_expand(old_use)
 
 		use_expand = sorted(self.use_expand)
 		use_expand.insert(0, "USE")
@@ -259,7 +243,7 @@ class Display(object):
 			self.verboseadd += _create_use_string(self.conf, key.upper(),
 				cur_iuse_map[key], iuse_forced[key],
 				cur_use_map[key], old_iuse_map[key],
-				old_use_map[key], self.is_new, feature_flags,
+				old_use_map[key], is_new, feature_flags,
 				reinst_flags_map.get(key))
 		return
 
@@ -343,14 +327,13 @@ class Display(object):
 		if self.quiet_repo_display:
 			# overlay verbose
 			# assign index for a previous version in the same slot
-			slot_matches = self.vardb.match_pkgs(pkg.slot_atom)
-			if slot_matches:
-				repo_name_prev = slot_matches[0].repo
+			if pkg_info.previous_pkg is not None:
+				repo_name_prev = pkg_info.previous_pkg.repo
 			else:
 				repo_name_prev = None
 
 			# now use the data to generate output
-			if pkg.installed or not slot_matches:
+			if pkg.installed or pkg_info.previous_pkg is None:
 				self.repoadd = self.conf.repo_display.repoStr(
 					pkg_info.repo_path_real)
 			else:
@@ -666,6 +649,15 @@ class Display(object):
 			else:
 				if pkg_info.ebuild_path is not None:
 					self.restrict_fetch_list[pkg] = pkg_info
+
+		if self.vardb.cpv_exists(pkg.cpv):
+			# Do a cpv match first, in case the SLOT has changed.
+			pkg_info.previous_pkg = self.vardb.match_pkgs('=' + pkg.cpv)[0]
+		else:
+			slot_matches = self.vardb.match_pkgs(pkg.slot_atom)
+			if slot_matches:
+				pkg_info.previous_pkg = slot_matches[0]
+
 		return pkg_info
 
 
@@ -676,15 +668,14 @@ class Display(object):
 		@param pkg_info: dictionay
 		Modifies self.changelogs
 		"""
-		inst_matches = self.vardb.match(pkg.slot_atom)
-		if inst_matches:
+		if pkg_info.previous_pkg is not None:
 			ebuild_path_cl = pkg_info.ebuild_path
 			if ebuild_path_cl is None:
 				# binary package
 				ebuild_path_cl = self.portdb.findname(pkg.cpv, myrepo=pkg.repo)
 			if ebuild_path_cl is not None:
 				self.changelogs.extend(_calc_changelog(
-					ebuild_path_cl, inst_matches[0], pkg.cpv))
+					ebuild_path_cl, pkg_info.previous_pkg, pkg.cpv))
 		return
 
 
@@ -747,7 +738,7 @@ class Display(object):
 		installed_versions = self.vardb.match_pkgs(pkg.cp)
 		if self.vardb.cpv_exists(pkg.cpv):
 			pkg_info.attr_display.replace = True
-			installed_version = self.vardb.match_pkgs(pkg.cpv)[0]
+			installed_version = pkg_info.previous_pkg
 			if installed_version.slot != pkg.slot or installed_version.sub_slot != pkg.sub_slot or \
 				not self.quiet_repo_display and installed_version.repo != pkg.repo:
 				myoldbest = [installed_version]
@@ -843,8 +834,7 @@ class Display(object):
 				self.verboseadd = ""
 				if self.quiet_repo_display:
 					self.repoadd = None
-				self._display_use(pkg, pkg_info.oldbest_list, myinslotlist)
-				self.recheck_hidden(pkg)
+				self._display_use(pkg, pkg_info)
 				if self.conf.verbosity == 3:
 					if self.quiet_repo_display:
 						self.verbose_size(pkg, repoadd_set, pkg_info)

@@ -1,4 +1,4 @@
-# Copyright 2009-2010 Gentoo Foundation
+# Copyright 2009-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import itertools
@@ -9,8 +9,6 @@ from portage.tests import TestCase
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode, _unicode_encode
-
-import py_compile
 
 class CompileModulesTestCase(TestCase):
 
@@ -34,13 +32,13 @@ class CompileModulesTestCase(TestCase):
 					do_compile = True
 				else:
 					# Check for python shebang
-					f = open(_unicode_encode(x,
-						encoding=_encodings['fs'], errors='strict'), 'rb')
-					line = _unicode_decode(f.readline(),
-						encoding=_encodings['content'], errors='replace')
-					f.close()
-					if line[:2] == '#!' and \
-						'python' in line:
+					with open(_unicode_encode(x,
+						encoding=_encodings['fs'], errors='strict'), 'rb') as f:
+						line = _unicode_decode(f.readline(),
+							encoding=_encodings['content'], errors='replace')
+					if line[:2] == '#!' and 'python' in line:
 						do_compile = True
 				if do_compile:
-					py_compile.compile(x, cfile='/dev/null', doraise=True)
+					with open(_unicode_encode(x,
+						encoding=_encodings['fs'], errors='strict'), 'rb') as f:
+						compile(f.read(), x, 'exec')
