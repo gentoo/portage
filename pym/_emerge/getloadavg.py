@@ -20,8 +20,8 @@ if getloadavg is None:
 				loadavg_str = [x.rstrip(',') for x in loadavg_str]
 				loadavg_str = ' '.join(loadavg_str)
 			else:
-                with open('/proc/loadavg') as f:
-                    loadavg_str = f.readline()
+				with open('/proc/loadavg') as f:
+					loadavg_str = f.readline()
 		except (IOError, IndexError):
 			# getloadavg() is only supposed to raise OSError, so convert
 			raise OSError('unknown')
