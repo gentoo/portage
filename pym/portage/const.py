@@ -85,13 +85,15 @@ MACOSSANDBOX_PROFILE     = '''(version 1)
 
 (allow file-read* file-write*
   (literal
-    #"@@WRITEABLE_PREFIX@@"
+    ;;#"@@PORTAGE_BUILDDIR@@"
+    ;;#"@@PORTAGE_ACTUAL_DISTDIR@@"
     #"/dev/tty"
     #"/dev/dtracehelper"
   )
 
   (regex
-    #"^@@WRITEABLE_PREFIX_RE@@/"
+    ;;#"^@@PORTAGE_BUILDDIR_RE@@/"
+    ;;#"^@@PORTAGE_ACTUAL_DISTDIR_RE@@/"
     #"^(/private)?/var/tmp"
     #"^(/private)?/tmp"
   )

@@ -1477,17 +1477,25 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		spawn_func = portage.process.spawn_fakeroot
 	elif "sandbox" in features and platform.system() == 'Darwin':
 		keywords["opt_name"] += " macossandbox"
-		sbprefixpath = mysettings["PORTAGE_BUILDDIR"]
-
-		# escape some characters with special meaning in re's
-		sbprefixre = sbprefixpath.replace("+", "\+")
-		sbprefixre = sbprefixre.replace("*", "\*")
-		sbprefixre = sbprefixre.replace("[", "\[")
-		sbprefixre = sbprefixre.replace("[", "\[")
 
 		sbprofile = MACOSSANDBOX_PROFILE
-		sbprofile = sbprofile.replace("@@WRITEABLE_PREFIX@@", sbprefixpath)
-		sbprofile = sbprofile.replace("@@WRITEABLE_PREFIX_RE@@", sbprefixre)
+		for pathvar in [ "PORTAGE_BUILDDIR", "PORTAGE_ACTUAL_DISTDIR" ]:
+			if pathvar not in mysettings:
+				continue
+
+			sbprefixpath = mysettings[pathvar]
+
+			# escape some characters with special meaning in re's
+			sbprefixre = sbprefixpath.replace("+", "\+")
+			sbprefixre = sbprefixre.replace("*", "\*")
+			sbprefixre = sbprefixre.replace("[", "\[")
+			sbprefixre = sbprefixre.replace("[", "\[")
+
+			sbprofile = sbprofile.replace("@@%s@@" % pathvar, sbprefixpath)
+			sbprofile = sbprofile.replace("@@%s_RE@@" % pathvar, sbprefixre)
+
+		# uncomment all rules that don't contain any @@'s any more
+		sbprofile = re.sub(r';;(#"[^@"]*")', r'\1', sbprofile)
 
 		keywords["profile"] = sbprofile
 		spawn_func = portage.process.spawn_macossandbox
