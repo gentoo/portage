@@ -3058,6 +3058,10 @@ class depgraph(object):
 			self._dynamic_config._need_restart = True
 			return False, myfavorites
 
+		if self.need_restart():
+			# want_restart_for_use_change triggers this
+			return False, myfavorites
+
 		# Any failures except those due to autounmask *alone* should return
 		# before this point, since the success_without_autounmask flag that's
 		# set below is reserved for cases where there are *zero* other
@@ -4274,19 +4278,27 @@ class depgraph(object):
 		if self._dynamic_config._autounmask is True:
 			reset_pkg(pkg)
 
-			for autounmask_level in self._autounmask_levels():
-				if pkg is not None:
-					break
+			# Temporarily reset _need_restart state, in order to
+			# avoid interference as reported in bug #459832.
+			earlier_need_restart = self._dynamic_config._need_restart
+			self._dynamic_config._need_restart = False
+			try:
+				for autounmask_level in self._autounmask_levels():
+					if pkg is not None:
+						break
 
-				pkg, existing = \
-					self._wrapped_select_pkg_highest_available_imp(
-						root, atom, onlydeps=onlydeps,
-						autounmask_level=autounmask_level)
+					pkg, existing = \
+						self._wrapped_select_pkg_highest_available_imp(
+							root, atom, onlydeps=onlydeps,
+							autounmask_level=autounmask_level)
 
-				reset_pkg(pkg)
-			
-			if self._dynamic_config._need_restart:
-				return None, None
+					reset_pkg(pkg)
+
+				if self._dynamic_config._need_restart:
+					return None, None
+			finally:
+				if earlier_need_restart:
+					self._dynamic_config._need_restart = True
 
 		if pkg is None:
 			# This ensures that we can fall back to an installed package
