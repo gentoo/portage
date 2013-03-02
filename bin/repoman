@@ -508,6 +508,7 @@ suspect_virtual = {
 	"dev-libs/libusb-compat":"virtual/libusb",
 }
 
+metadata_doctype_name = 'pkgmetadata'
 metadata_dtd_uri = 'http://www.gentoo.org/dtd/metadata.dtd'
 # force refetch if the local copy creation time is older than this
 metadata_dtd_ctime_interval = 60 * 60 * 24 * 7 # 7 days
@@ -1278,8 +1279,12 @@ class _MetadataTreeBuilder(xml.etree.ElementTree.TreeBuilder):
 	Implements doctype() as required to avoid deprecation warnings with
 	>=python-2.7.
 	"""
+	def __init__(self, data):
+		xml.etree.ElementTree.TreeBuilder.__init__(self)
+		self._portage_data = data
+
 	def doctype(self, name, pubid, system):
-		pass
+		self._portage_data["DOCTYPE"] = (name, pubid, system)
 
 try:
 	herd_base = make_herd_base(os.path.join(repoman_settings["PORTDIR"], "metadata/herds.xml"))
@@ -1638,6 +1643,7 @@ for x in effective_scanlist:
 	# metadata.xml parse check
 	else:
 		metadata_bad = False
+		xml_info = {}
 
 		# read metadata.xml into memory
 		try:
@@ -1645,13 +1651,33 @@ for x in effective_scanlist:
 				_unicode_encode(os.path.join(checkdir, "metadata.xml"),
 				encoding=_encodings['fs'], errors='strict'),
 				parser=xml.etree.ElementTree.XMLParser(
-					target=_MetadataTreeBuilder()))
+					target=_MetadataTreeBuilder(xml_info)))
 		except (ExpatError, SyntaxError, EnvironmentError) as e:
 			metadata_bad = True
 			stats["metadata.bad"] += 1
 			fails["metadata.bad"].append("%s/metadata.xml: %s" % (x, e))
 			del e
 		else:
+			if "DOCTYPE" not in xml_info:
+				metadata_bad = True
+				stats["metadata.bad"] += 1
+				fails["metadata.bad"].append("%s/metadata.xml: %s" % (x,
+					"DOCTYPE is missing"))
+			else:
+				doctype_name, doctype_pubid, doctype_system = \
+					xml_info["DOCTYPE"]
+				if doctype_system != metadata_dtd_uri:
+					stats["metadata.bad"] += 1
+					fails["metadata.bad"].append("%s/metadata.xml: "
+						"DOCTYPE: SYSTEM should refer to '%s', not '%s'" %
+						(x, metadata_dtd_uri, doctype_system))
+
+				if doctype_name != metadata_doctype_name:
+					stats["metadata.bad"] += 1
+					fails["metadata.bad"].append("%s/metadata.xml: "
+						"DOCTYPE: name should be '%s', not '%s'" %
+						(x, metadata_doctype_name, doctype_name))
+
 			# load USE flags from metadata.xml
 			try:
 				musedict = utilities.parse_metadata_use(_metadata_xml)
