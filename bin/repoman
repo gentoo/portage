@@ -2360,22 +2360,6 @@ del console_writer, f, style_file
 qa_output = qa_output.getvalue()
 qa_output = qa_output.splitlines(True)
 
-def grouplist(mylist, seperator="/"):
-	"""(list,seperator="/") -- Takes a list of elements; groups them into
-	same initial element categories. Returns a dict of {base:[sublist]}
-	From: ["blah/foo","spork/spatula","blah/weee/splat"]
-	To:   {"blah":["foo","weee/splat"], "spork":["spatula"]}"""
-	mygroups = {}
-	for x in mylist:
-		xs = x.split(seperator)
-		if xs[0] == ".":
-			xs = xs[1:]
-		if xs[0] not in mygroups:
-			mygroups[xs[0]] = [seperator.join(xs[1:])]
-		else:
-			mygroups[xs[0]] += [seperator.join(xs[1:])]
-	return mygroups
-
 suggest_ignore_masked = False
 suggest_include_dev = False
 
