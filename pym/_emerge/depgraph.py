@@ -3123,8 +3123,8 @@ class depgraph(object):
 				if refs is None:
 					refs = []
 					atom_arg_map[atom_key] = refs
-					if arg not in refs:
-						refs.append(arg)
+				if arg not in refs:
+					refs.append(arg)
 
 		for root in self._dynamic_config.sets:
 			depgraph_sets = self._dynamic_config.sets[root]
