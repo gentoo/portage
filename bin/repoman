@@ -1658,7 +1658,11 @@ for x in effective_scanlist:
 			fails["metadata.bad"].append("%s/metadata.xml: %s" % (x, e))
 			del e
 		else:
-			if "DOCTYPE" not in xml_info:
+			if sys.hexversion < 0x2070000 or \
+				(sys.hexversion > 0x3000000 and sys.hexversion < 0x3020000):
+				# doctype is not parsed with python 2.6 or 3.1
+				pass
+			elif "DOCTYPE" not in xml_info:
 				metadata_bad = True
 				stats["metadata.bad"] += 1
 				fails["metadata.bad"].append("%s/metadata.xml: %s" % (x,
