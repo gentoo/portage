@@ -1,4 +1,4 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -240,6 +240,63 @@ class SlotAbiTestCase(TestCase):
 
 		playground = ResolverPlayground(ebuilds=ebuilds, binpkgs=binpkgs,
 			installed=installed, world=world, debug=False)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
+
+
+	def testWholeSlotConditional(self):
+		ebuilds = {
+			"dev-libs/libnl-3.2.14" : {
+				"SLOT": "3"
+			},
+			"dev-libs/libnl-1.1-r3" : {
+				"SLOT": "1.1"
+			},
+			"net-misc/networkmanager-0.9.6.4-r1" : {
+				"EAPI": "5",
+				"IUSE": "wimax",
+				"DEPEND": "wimax? ( dev-libs/libnl:1.1= ) !wimax? ( dev-libs/libnl:3= )",
+				"RDEPEND": "wimax? ( dev-libs/libnl:1.1= ) !wimax? ( dev-libs/libnl:3= )"
+			},
+		}
+		installed = {
+			"dev-libs/libnl-1.1-r3" : {
+				"SLOT": "1.1"
+			},
+			"net-misc/networkmanager-0.9.6.4-r1" : {
+				"EAPI": "5",
+				"IUSE": "wimax",
+				"USE": "wimax",
+				"DEPEND":  "dev-libs/libnl:1.1/1.1=",
+				"RDEPEND": "dev-libs/libnl:1.1/1.1="
+			},
+		}
+
+		user_config = {
+			"make.conf" : ("USE=\"wimax\"",)
+		}
+
+		world = ["net-misc/networkmanager"]
+
+		test_cases = (
+
+			# Demonstrate bug #460304, where _slot_operator_update_probe needs
+			# to account for USE conditional deps.
+			ResolverPlaygroundTestCase(
+				["@world"],
+				options = {"--update": True, "--deep": True},
+				success = True,
+				mergelist = ["net-misc/networkmanager-0.9.6.4-r1"]),
+
+		)
+
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			installed=installed, user_config=user_config, world=world,
+			debug=False)
 		try:
 			for test_case in test_cases:
 				playground.run_TestCase(test_case)
