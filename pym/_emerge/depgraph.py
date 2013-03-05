@@ -1695,9 +1695,13 @@ class depgraph(object):
 					self._slot_operator_unsatisfied_probe(dep):
 					self._slot_operator_unsatisfied_backtrack(dep)
 					return 1
-				elif not self.need_restart():
+				else:
 					# Do not backtrack if only USE have to be changed in
-					# order to satisfy the dependency.
+					# order to satisfy the dependency. Note that when
+					# want_restart_for_use_change sets the need_restart
+					# flag, it causes _select_pkg_highest_available to
+					# return None, and eventually we come through here
+					# and skip the "missing dependency" backtracking path.
 					dep_pkg, existing_node = \
 						self._select_package(dep.root, dep.atom.without_use,
 							onlydeps=dep.onlydeps)
