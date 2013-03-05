@@ -1189,6 +1189,8 @@ class depgraph(object):
 		for replacement_parent in self._iter_similar_available(dep.parent,
 			dep.parent.slot_atom):
 
+			selected_atoms = None
+
 			for atom in replacement_parent.validated_atoms:
 				if not atom.slot_operator == "=" or \
 					atom.blocker or \
@@ -1198,6 +1200,7 @@ class depgraph(object):
 				# Discard USE deps, we're only searching for an approximate
 				# pattern, and dealing with USE states is too complex for
 				# this purpose.
+				unevaluated_atom = atom.unevaluated_atom
 				atom = atom.without_use
 
 				if replacement_parent.built and \
@@ -1246,6 +1249,17 @@ class depgraph(object):
 						# packages needs to be rebuilt (which may trigger a
 						# slot conflict).
 						insignificant = True
+
+					if not insignificant:
+						# Evaluate USE conditionals and || deps, in order
+						# to see if this atom is really desirable, since
+						# otherwise we may trigger an undesirable rebuild
+						# as in bug #460304.
+						if selected_atoms is None:
+							selected_atoms = self._select_atoms_probe(
+								dep.child.root, replacement_parent)
+						if unevaluated_atom not in selected_atoms:
+							continue
 
 					if debug:
 						msg = []
@@ -1392,6 +1406,18 @@ class depgraph(object):
 				return False
 
 		return available_pkg is not None
+
+	def _select_atoms_probe(self, root, pkg):
+		selected_atoms = []
+		use = self._pkg_use_enabled(pkg)
+		for k in pkg._dep_keys:
+			v = pkg._metadata.get(k)
+			if not v:
+				continue
+			selected_atoms.extend(self._select_atoms(
+				root, v, myuse=use, parent=pkg)[pkg])
+		return frozenset(x.unevaluated_atom for
+			x in selected_atoms)
 
 	def _iter_similar_available(self, graph_pkg, atom):
 		"""
