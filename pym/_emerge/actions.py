@@ -3597,7 +3597,7 @@ def run_action(settings, trees, mtimedb, myaction, myopts, myfiles,
 	del mytrees, mydb
 
 	for x in myfiles:
-		if (x.endswith(".ebuild") or x.endswith(".tbz2")) and \
+		if x.endswith((".ebuild", ".tbz2")) and \
 			os.path.exists(os.path.abspath(x)):
 			print(colorize("BAD", "\n*** emerging by path is broken "
 				"and may not always work!!!\n"))
