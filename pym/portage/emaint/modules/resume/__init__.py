@@ -1,15 +1,13 @@
 # Copyright 2005-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-"""This emaint module provides checks and maintenance for:
-Cleaning the "emerge --resume" lists
+"""Check and fix problems in the resume and/or resume_backup files.
 """
 
 
 module_spec = {
 	'name': 'resume',
-	'description': "Provides functions to scan, check and fix problems " +\
-		"in the resume and/or resume_backup files",
+	'description': __doc__,
 	'provides':{
 		'module1': {
 			'name': "cleanresume",
