@@ -1,7 +1,7 @@
 # Copyright 2005-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-"""'This emaint module provides checks and maintenance for:
+"""This emaint module provides checks and maintenance for:
   1) "Performing package move updates for installed packages",
   2)"Perform package move updates for binary packages"
 """

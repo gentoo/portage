@@ -2,7 +2,7 @@
 # Copyright 2005-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-"""'The emaint program provides an interface to system health
+"""The emaint program provides an interface to system health
 	checks and maintenance.
 """
 

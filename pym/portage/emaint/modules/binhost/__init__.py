@@ -1,7 +1,7 @@
 # Copyright 2005-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-"""'The emaint program module provides checks and maintenancefor:
+"""The emaint program module provides checks and maintenancefor:
   Scanning, checking and fixing problems in the world file.
 """
 
