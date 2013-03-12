@@ -183,14 +183,17 @@ class LocationsManager(object):
 			offenders = sorted(x for x in offenders
 				if os.path.isdir(os.path.join(currentPath, x)))
 			if offenders:
-				warnings.warn(_("Profile '%(profile_path)s' in repository "
-					"'%(repo_name)s' is implicitly using 'portage-1' profile format, but "
-					"the repository profiles are not marked as that format.  This will break "
-					"in the future.  Please either convert the following paths "
-					"to files, or add\nprofile-formats = portage-1\nto the "
-					"repositories layout.conf.  Files: '%(files)s'\n")
+				warnings.warn(_(
+					"\nThe selected profile is implicitly using the 'portage-1' format:\n"
+					"\tprofile = %(profile_path)s\n"
+					"But this repository is not using that format:\n"
+					"\trepo = %(repo_name)s\n"
+					"This will break in the future.  Please convert these dirs to files:\n"
+					"\t%(files)s\n"
+					"Or, add this line to the repository's layout.conf:\n"
+					"\tprofile-formats = portage-1")
 					% dict(profile_path=currentPath, repo_name=repo_loc,
-						files=', '.join(offenders)))
+						files='\n\t'.join(offenders)))
 
 		parentsFile = os.path.join(currentPath, "parent")
 		if exists_raise_eaccess(parentsFile):
