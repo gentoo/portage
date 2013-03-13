@@ -2742,7 +2742,8 @@ class depgraph(object):
 							noiselevel=-1)
 						for pset in list(depgraph_sets.sets.values()) + [sets[s]]:
 							for error_msg in pset.errors:
-								sys.stderr.write("%s\n" % (error_msg,))
+								writemsg_level("%s\n" % (error_msg,),
+									level=logging.ERROR, noiselevel=-1)
 
 						writemsg_level(("emerge: the given set '%s' "
 							"contains a non-existent set named '%s'.\n") % \
@@ -7076,8 +7077,9 @@ class depgraph(object):
 
 		for depgraph_sets in self._dynamic_config.sets.values():
 			for pset in depgraph_sets.sets.values():
-				for e in pset.errors:
-					sys.stderr.write("%s\n" % (e,))
+				for error_msg in pset.errors:
+					writemsg_level("%s\n" % (error_msg,),
+						level=logging.ERROR, noiselevel=-1)
 
 		# TODO: Add generic support for "set problem" handlers so that
 		# the below warnings aren't special cases for world only.

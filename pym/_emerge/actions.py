@@ -3429,15 +3429,18 @@ def expand_set_arguments(myfiles, myaction, root_config):
 					return (None, 1)
 				if myaction in unmerge_actions and \
 						not sets[s].supportsOperation("unmerge"):
-					sys.stderr.write("emerge: the given set '%s' does " % s + \
-						"not support unmerge operations\n")
+					writemsg_level("emerge: the given set '%s' does " % s + \
+						"not support unmerge operations\n",
+						level=logging.ERROR, noiselevel=-1)
 					retval = 1
 				elif not set_atoms:
-					print("emerge: '%s' is an empty set" % s)
+					writemsg_level("emerge: '%s' is an empty set\n" % s,
+						level=logging.INFO, noiselevel=-1)
 				else:
 					newargs.extend(set_atoms)
-				for e in sets[s].errors:
-					print(e)
+				for error_msg in sets[s].errors:
+					writemsg_level("%s\n" % (error_msg,),
+						level=logging.ERROR, noiselevel=-1)
 		else:
 			newargs.append(a)
 	return (newargs, retval)
