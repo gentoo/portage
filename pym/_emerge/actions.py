@@ -3340,7 +3340,7 @@ def expand_set_arguments(myfiles, myaction, root_config):
 	# world file, the depgraph performs set expansion later. It will get
 	# confused about where the atoms came from if it's not allowed to
 	# expand them itself.
-	do_not_expand = (None, )
+	do_not_expand = myaction is None
 	newargs = []
 	for a in myfiles:
 		if a in ("system", "world"):
@@ -3406,6 +3406,14 @@ def expand_set_arguments(myfiles, myaction, root_config):
 					for line in textwrap.wrap(msg, 50):
 						out.ewarn(line)
 				setconfig.active.append(s)
+
+				if do_not_expand:
+					# Loading sets can be slow, so skip it here, in order
+					# to allow the depgraph to indicate progress with the
+					# spinner while sets are loading (bug #461412).
+					newargs.append(a)
+					continue
+
 				try:
 					set_atoms = setconfig.getSetAtoms(s)
 				except portage.exception.PackageSetNotFound as e:
@@ -3426,8 +3434,6 @@ def expand_set_arguments(myfiles, myaction, root_config):
 					retval = 1
 				elif not set_atoms:
 					print("emerge: '%s' is an empty set" % s)
-				elif myaction not in do_not_expand:
-					newargs.extend(set_atoms)
 				else:
 					newargs.append(SETPREFIX+s)
 				for e in sets[s].errors:

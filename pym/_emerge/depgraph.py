@@ -2714,6 +2714,29 @@ class depgraph(object):
 						raise portage.exception.PackageSetNotFound(s)
 					if s in depgraph_sets.sets:
 						continue
+
+					try:
+						set_atoms = root_config.setconfig.getSetAtoms(s)
+					except portage.exception.PackageSetNotFound as e:
+						writemsg_level("\n\n", level=logging.ERROR,
+							noiselevel=-1)
+						for pset in list(depgraph_sets.sets.values()) + [sets[s]]:
+							for error_msg in pset.errors:
+								sys.stderr.write("%s\n" % (error_msg,))
+
+						writemsg_level(("emerge: the given set '%s' "
+							"contains a non-existent set named '%s'.\n") % \
+							(s, e), level=logging.ERROR, noiselevel=-1)
+						if s in ('world', 'selected') and \
+							SETPREFIX + e.value in sets['selected']:
+							writemsg_level(("Use `emerge --deselect %s%s` to "
+								"remove this set from world_sets.\n") %
+								(SETPREFIX, e,), level=logging.ERROR,
+								noiselevel=-1)
+						writemsg_level("\n", level=logging.ERROR,
+							noiselevel=-1)
+						return False, myfavorites
+
 					pset = sets[s]
 					depgraph_sets.sets[s] = pset
 					args.append(SetArg(arg=x, pset=pset,
@@ -7030,6 +7053,11 @@ class depgraph(object):
 		self._show_ignored_binaries()
 
 		self._display_autounmask()
+
+		for depgraph_sets in self._dynamic_config.sets.values():
+			for pset in depgraph_sets.sets.values():
+				for e in pset.errors:
+					sys.stderr.write("%s\n" % (e,))
 
 		# TODO: Add generic support for "set problem" handlers so that
 		# the below warnings aren't special cases for world only.
