@@ -3435,7 +3435,7 @@ def expand_set_arguments(myfiles, myaction, root_config):
 				elif not set_atoms:
 					print("emerge: '%s' is an empty set" % s)
 				else:
-					newargs.append(SETPREFIX+s)
+					newargs.extend(set_atoms)
 				for e in sets[s].errors:
 					print(e)
 		else:
