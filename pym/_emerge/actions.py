@@ -37,8 +37,7 @@ from portage import os
 from portage import shutil
 from portage import eapi_is_supported, _encodings, _unicode_decode
 from portage.cache.cache_errors import CacheError
-from portage.const import GLOBAL_CONFIG_PATH
-from portage.const import _DEPCLEAN_LIB_CHECK_DEFAULT
+from portage.const import GLOBAL_CONFIG_PATH, VCS_DIRS, _DEPCLEAN_LIB_CHECK_DEFAULT
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.dep import Atom
@@ -2083,7 +2082,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			noiselevel=-1, level=logging.ERROR)
 		return 1
 
-	vcs_dirs = frozenset([".git", ".svn", "CVS", ".hg"])
+	vcs_dirs = frozenset(VCS_DIRS)
 	vcs_dirs = vcs_dirs.intersection(os.listdir(myportdir))
 
 	os.umask(0o022)

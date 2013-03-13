@@ -31,7 +31,6 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'pickle',
 	'portage.dep:Atom',
-	'portage.util.listdir:_ignorecvs_dirs',
 	'subprocess',
 )
 
@@ -40,6 +39,7 @@ from portage import _encodings
 from portage import _os_merge
 from portage import _unicode_encode
 from portage import _unicode_decode
+from portage.const import VCS_DIRS
 from portage.exception import InvalidAtom, PortageException, FileNotFound, \
        OperationNotPermitted, ParseError, PermissionDenied, ReadOnlyFileSystem
 from portage.localization import _
@@ -480,7 +480,7 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=Fals
 def grablines(myfilename, recursive=0, remember_source_file=False):
 	mylines=[]
 	if recursive and os.path.isdir(myfilename):
-		if os.path.basename(myfilename) in _ignorecvs_dirs:
+		if os.path.basename(myfilename) in VCS_DIRS:
 			return mylines
 		try:
 			dirlist = os.listdir(myfilename)

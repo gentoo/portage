@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['cacheddir', 'listdir']
@@ -8,10 +8,10 @@ import stat
 import time
 
 from portage import os
+from portage.const import VCS_DIRS
 from portage.exception import DirectoryNotFound, PermissionDenied, PortageException
 from portage.util import normalize_path, writemsg
 
-_ignorecvs_dirs = ('CVS', 'RCS', 'SCCS', '.svn', '.git')
 dircache = {}
 cacheHit = 0
 cacheMiss = 0
@@ -77,7 +77,7 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 			pass
 		elif ignorecvs:
 			if list[x][:2] != ".#" and \
-				not (ftype[x] == 1 and list[x] in _ignorecvs_dirs):
+				not (ftype[x] == 1 and list[x] in VCS_DIRS):
 				ret_list.append(list[x])
 				ret_ftype.append(ftype[x])
 		else:
@@ -98,7 +98,7 @@ def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelis
 	@type recursive: Boolean
 	@param filesonly; Only return files, not more directories
 	@type filesonly: Boolean
-	@param ignorecvs: Ignore CVS directories ('CVS','SCCS','.svn','.git')
+	@param ignorecvs: Ignore VCS directories
 	@type ignorecvs: Boolean
 	@param ignorelist: List of filenames/directories to exclude
 	@type ignorelist: List

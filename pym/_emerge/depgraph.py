@@ -15,7 +15,7 @@ from itertools import chain
 import portage
 from portage import os, OrderedDict
 from portage import _unicode_decode, _unicode_encode, _encodings
-from portage.const import PORTAGE_PACKAGE_ATOM, USER_CONFIG_PATH
+from portage.const import PORTAGE_PACKAGE_ATOM, USER_CONFIG_PATH, VCS_DIRS
 from portage.dbapi import dbapi
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi._similar_name_search import similar_name_search
@@ -40,7 +40,6 @@ from portage.util import cmp_sort_key, writemsg, writemsg_stdout
 from portage.util import ensure_dirs
 from portage.util import writemsg_level, write_atomic
 from portage.util.digraph import digraph
-from portage.util.listdir import _ignorecvs_dirs
 from portage.util._async.TaskScheduler import TaskScheduler
 from portage.versions import catpkgsplit
 
@@ -6822,7 +6821,7 @@ class depgraph(object):
 					if stat.S_ISREG(st.st_mode):
 						last_file_path = p
 					elif stat.S_ISDIR(st.st_mode):
-						if os.path.basename(p) in _ignorecvs_dirs:
+						if os.path.basename(p) in VCS_DIRS:
 							continue
 						try:
 							contents = os.listdir(p)

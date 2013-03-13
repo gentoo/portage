@@ -19,10 +19,9 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dep:Atom,dep_getkey,isvalidatom,_get_slot_re',
 	'portage.util:ConfigProtect,new_protect_filename,' + \
 		'normalize_path,write_atomic,writemsg',
-	'portage.util.listdir:_ignorecvs_dirs',
 )
 
-from portage.const import USER_CONFIG_PATH
+from portage.const import USER_CONFIG_PATH, VCS_DIRS
 from portage.dep import match_from_list
 from portage.eapi import _get_eapi_attrs
 from portage.exception import DirectoryNotFound, InvalidAtom, PortageException
@@ -327,7 +326,7 @@ def update_config_files(config_root, protect, protect_mask, update_iter, match_c
 					except UnicodeDecodeError:
 						dirs.remove(y_enc)
 						continue
-					if y.startswith(".") or y in _ignorecvs_dirs:
+					if y.startswith(".") or y in VCS_DIRS:
 						dirs.remove(y_enc)
 				for y in files:
 					try:
