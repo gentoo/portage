@@ -1260,18 +1260,35 @@ class vardbapi(dbapi):
 					name = os.path.basename(path.rstrip(os.path.sep))
 				path_info_list.append((path, name, is_basename))
 
+			# Do work via the global event loop, so that it can be used
+			# for indication of progress during the search (bug #461412).
+			event_loop = (portage._internal_caller and
+				global_event_loop() or EventLoop(main=False))
 			root = self._vardb._eroot
-			for cpv in self._vardb.cpv_all():
-				dblnk =  self._vardb._dblink(cpv)
 
+			def search_pkg(cpv):
+				dblnk = self._vardb._dblink(cpv)
 				for path, name, is_basename in path_info_list:
 					if is_basename:
 						for p in dblnk.getcontents():
 							if os.path.basename(p) == name:
-								yield dblnk, p[len(root):]
+								search_pkg.results.append((dblnk, p[len(root):]))
 					else:
 						if dblnk.isowner(path):
-							yield dblnk, path
+							search_pkg.results.append((dblnk, path))
+				search_pkg.complete = True
+				return False
+
+			search_pkg.results = []
+
+			for cpv in self._vardb.cpv_all():
+				del search_pkg.results[:]
+				search_pkg.complete = False
+				event_loop.idle_add(search_pkg, cpv)
+				while not search_pkg.complete:
+					event_loop.iteration()
+				for result in search_pkg.results:
+					yield result
 
 class vartree(object):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"

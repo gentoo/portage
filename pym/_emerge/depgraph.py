@@ -41,6 +41,8 @@ from portage.util import ensure_dirs
 from portage.util import writemsg_level, write_atomic
 from portage.util.digraph import digraph
 from portage.util._async.TaskScheduler import TaskScheduler
+from portage.util._eventloop.EventLoop import EventLoop
+from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.versions import catpkgsplit
 
 from _emerge.AtomArg import AtomArg
@@ -517,6 +519,9 @@ class depgraph(object):
 
 		self._select_atoms = self._select_atoms_highest_available
 		self._select_package = self._select_pkg_highest_available
+
+		self._event_loop = (portage._internal_caller and
+			global_event_loop() or EventLoop(main=False))
 
 	def _load_vdb(self):
 		"""
@@ -2594,7 +2599,22 @@ class depgraph(object):
 					continue
 				yield arg, atom
 
-	def select_files(self, myfiles):
+	def select_files(self, args):
+		# Use the global event loop for spinner progress
+		# indication during file owner lookups (bug #461412).
+		spinner_id = None
+		try:
+			spinner = self._frozen_config.spinner
+			if spinner is not None and \
+				spinner.update is not spinner.update_quiet:
+				spinner_id = self._event_loop.idle_add(
+					self._frozen_config.spinner.update)
+			return self._select_files(args)
+		finally:
+			if spinner_id is not None:
+				self._event_loop.source_remove(spinner_id)
+
+	def _select_files(self, myfiles):
 		"""Given a list of .tbz2s, .ebuilds sets, and deps, populate
 		self._dynamic_config._initial_arg_list and call self._resolve to create the 
 		appropriate depgraph and return a favorite list."""
