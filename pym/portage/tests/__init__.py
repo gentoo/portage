@@ -1,5 +1,5 @@
 # tests/__init__.py -- Portage Unit Test functionality
-# Copyright 2006-2011 Gentoo Foundation
+# Copyright 2006-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -70,15 +70,12 @@ def getTestFromCommandLine(args, base_path):
 
 def getTestDirs(base_path):
 	TEST_FILE = b'__test__'
-	svn_dirname = b'.svn'
 	testDirs = []
 
 	# the os.walk help mentions relative paths as being quirky
 	# I was tired of adding dirs to the list, so now we add __test__
 	# to each dir we want tested.
 	for root, dirs, files in os.walk(base_path):
-		if svn_dirname in dirs:
-			dirs.remove(svn_dirname)
 		try:
 			root = _unicode_decode(root,
 				encoding=_encodings['fs'], errors='strict')
