@@ -159,8 +159,7 @@ save_elf_debug() {
 	# if we don't already have build-id from debugedit, look it up
 	if [[ -z ${buildid} ]] ; then
 		# convert the readelf output to something useful
-		buildid=$(${READELF} -x .note.gnu.build-id "${x}" 2>/dev/null \
-			| awk '$NF ~ /GNU/ { getline; printf $2$3$4$5; getline; print $2 }')
+		buildid=$(${READELF} -n "${x}" 2>/dev/null | awk '/Build ID:/{ print $NF; exit }')
 	fi
 	if [[ -n ${buildid} ]] ; then
 		local buildid_dir="${ED}usr/lib/debug/.build-id/${buildid:0:2}"
