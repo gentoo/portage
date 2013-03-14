@@ -74,7 +74,7 @@ case $(${STRIP} --version 2>/dev/null) in
 	# We'll leave out -R .note for now until we can check out the relevance
 	# of the section when it has the ALLOC flag set on it ...
 	SAFE_STRIP_FLAGS="--strip-unneeded"
-	DEF_STRIP_FLAGS="-R .comment -R .GCC.command.line"
+	DEF_STRIP_FLAGS="-R .comment -R .GCC.command.line -R .note.gnu.gold-version"
 	SPLIT_STRIP_FLAGS=
 	;;
 esac
