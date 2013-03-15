@@ -165,7 +165,7 @@ class EbuildQuote(LineCheck):
 		"GAMES_LOGDIR", "GAMES_BINDIR"]
 
 	# variables for multibuild.eclass
-	var_name += ["BUILD_DIR"]
+	var_names += ["BUILD_DIR"]
 
 	var_names = "(%s)" % "|".join(var_names)
 	var_reference = re.compile(r'\$(\{'+var_names+'\}|' + \
