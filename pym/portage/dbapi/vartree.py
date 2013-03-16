@@ -4484,7 +4484,10 @@ class dblink(object):
 					pass
 
 				if mymtime != None:
-					if not os.path.exists(myrealto) and not os.path.exists(join(srcroot, myabsto)):
+					# Use lexists, since if the target happens to be a broken
+					# symlink then that should trigger an independent warning.
+					if not (os.path.lexists(myrealto) or
+						os.path.lexists(join(srcroot, myabsto))):
 						self._eqawarn('preinst',
 							[_("QA Notice: Symbolic link /%s points to /%s which does not exist.")
 							% (relative_path, myabsto)])
