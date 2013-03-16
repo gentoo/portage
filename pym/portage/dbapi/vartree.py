@@ -4484,6 +4484,11 @@ class dblink(object):
 					pass
 
 				if mymtime != None:
+					if not os.path.exists(myrealto) and not os.path.exists(join(srcroot, myabsto)):
+						self._eqawarn('preinst',
+							[_("QA Notice: Symbolic link /%s points to /%s which does not exist.")
+							% (relative_path, myabsto)])
+
 					showMessage(">>> %s -> %s\n" % (mydest, myto))
 					if sys.hexversion >= 0x3030000:
 						outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime // 1000000000)+"\n")
