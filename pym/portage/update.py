@@ -282,7 +282,7 @@ def parse_updates(mycontent):
 	return myupd, errors
 
 def update_config_files(config_root, protect, protect_mask, update_iter, match_callback = None):
-	"""Perform global updates on /etc/portage/package.*.
+	"""Perform global updates on /etc/portage/package.*, /etc/portage/profile/packages and /etc/portage/profile/package.*.
 	config_root - location of files to update
 	protect - list of paths from CONFIG_PROTECT
 	protect_mask - list of paths from CONFIG_PROTECT_MASK
@@ -307,7 +307,13 @@ def update_config_files(config_root, protect, protect_mask, update_iter, match_c
 		"package.mask", "package.properties",
 		"package.unmask", "package.use"
 	]
-	myxfiles += [os.path.join("profile", x) for x in myxfiles]
+	myxfiles += [os.path.join("profile", x) for x in (
+		"packages", "package.accept_keywords",
+		"package.keywords", "package.mask",
+		"package.unmask", "package.use",
+		"package.use.force", "package.use.mask",
+		"package.use.stable.force", "package.use.stable.mask"
+	)]
 	abs_user_config = os.path.join(config_root, USER_CONFIG_PATH)
 	recursivefiles = []
 	for x in myxfiles:
@@ -356,7 +362,6 @@ def update_config_files(config_root, protect, protect_mask, update_iter, match_c
 			if f is not None:
 				f.close()
 
-	# update /etc/portage/packages.*
 	ignore_line_re = re.compile(r'^#|^\s*$')
 	if repo_dict is None:
 		update_items = [(None, update_iter)]
@@ -375,6 +380,9 @@ def update_config_files(config_root, protect, protect_mask, update_iter, match_c
 					atom = line.split()[0]
 					if atom[:1] == "-":
 						# package.mask supports incrementals
+						atom = atom[1:]
+					if atom[:1] == "*":
+						# packages file supports "*"-prefixed atoms as indication of system packages.
 						atom = atom[1:]
 					if not isvalidatom(atom):
 						continue
