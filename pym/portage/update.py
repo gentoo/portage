@@ -282,7 +282,8 @@ def parse_updates(mycontent):
 	return myupd, errors
 
 def update_config_files(config_root, protect, protect_mask, update_iter, match_callback = None):
-	"""Perform global updates on /etc/portage/package.*, /etc/portage/profile/packages and /etc/portage/profile/package.*.
+	"""Perform global updates on /etc/portage/package.*, /etc/portage/profile/package.*,
+	/etc/portage/profile/packages and /etc/portage/sets.
 	config_root - location of files to update
 	protect - list of paths from CONFIG_PROTECT
 	protect_mask - list of paths from CONFIG_PROTECT_MASK
@@ -305,7 +306,7 @@ def update_config_files(config_root, protect, protect_mask, update_iter, match_c
 		"package.accept_keywords", "package.env",
 		"package.keywords", "package.license",
 		"package.mask", "package.properties",
-		"package.unmask", "package.use"
+		"package.unmask", "package.use", "sets"
 	]
 	myxfiles += [os.path.join("profile", x) for x in (
 		"packages", "package.accept_keywords",
