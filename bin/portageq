@@ -40,7 +40,6 @@ portage._internal_caller = True
 from portage import os
 from portage.eapi import eapi_has_repo_deps
 from portage.util import writemsg, writemsg_stdout
-from portage.output import colormap
 portage.proxy.lazyimport.lazyimport(globals(),
 	'subprocess',
 	'_emerge.Package:Package',
@@ -245,7 +244,6 @@ def owners(argv):
 		sys.stderr.flush()
 		return 2
 
-	from portage import catsplit, dblink
 	eroot = argv[0]
 	vardb = portage.db[eroot]["vartree"].dbapi
 	root = portage.settings['ROOT']
