@@ -20,6 +20,7 @@ try:
 except KeyboardInterrupt:
 	sys.exit(128 + signal.SIGINT)
 
+import optparse
 import os
 import types
 
@@ -41,11 +42,13 @@ from portage import os
 from portage.eapi import eapi_has_repo_deps
 from portage.util import writemsg, writemsg_stdout
 portage.proxy.lazyimport.lazyimport(globals(),
+	're',
 	'subprocess',
 	'_emerge.Package:Package',
 	'_emerge.RootConfig:RootConfig',
 	'portage.dbapi._expand_new_virt:expand_new_virt',
 	'portage._sets.base:InternalPackageSet',
+	'portage.xml.metadata:MetaDataXML'
 )
 
 def eval_atom_use(atom):
@@ -874,11 +877,11 @@ list_preserved_libs.uses_eroot = True
 # DO NOT CHANGE CODE BEYOND THIS POINT - IT'S NOT NEEDED!
 #
 
-non_commands = frozenset(['elog', 'eval_atom_use', 'exithandler', 'main', 'usage'])
+non_commands = frozenset(['elog', 'eval_atom_use', 'exithandler', 'main', 'pquery', 'usage'])
 commands = sorted(k for k, v in globals().items() \
 	if k not in non_commands and isinstance(v, types.FunctionType) and v.__module__ == "__main__")
 
-def usage(argv):
+def usage(argv, parser=None, pquery_option_groups=None):
 	print(">>> Portage information query tool")
 	print(">>> %s" % portage.VERSION)
 	print(">>> Usage: portageq <command> [<option> ...]")
@@ -908,6 +911,15 @@ def usage(argv):
 				lines = lines[:-1]
 			for line in lines[1:]:
 				print("      " + line.strip())
+
+	if pquery_option_groups is not None:
+		parser.formatter.store_option_strings(parser)
+		print()
+		print('Pkgcore pquery compatible options:')
+		print()
+		for optgroup in pquery_option_groups:
+			print(optgroup.format_help(parser.formatter))
+
 	if len(argv) == 1:
 		print("\nRun portageq with --help for info")
 
@@ -927,6 +939,87 @@ else:
 	def elog(elog_funcname, lines):
 		pass
 
+class MaintainerEmailMatcher(object):
+	def __init__(self, maintainer_emails):
+		self._re = re.compile("^(%s)$" % "|".join(maintainer_emails))
+
+	def __call__(self, metadata_xml):
+		match = False
+		matcher = self._re.match
+		for x in metadata_xml.maintainers():
+			if x.email is not None and matcher(x.email) is not None:
+				match = True
+				break
+		return match
+
+class HerdMatcher(object):
+	def __init__(self, herds):
+		self._herds = frozenset(herds)
+
+	def __call__(self, metadata_xml):
+		herds = self._herds
+		return any(x in herds for x in metadata_xml.herds())
+
+def pquery(parser, pquery_option_groups, opts, args):
+
+	xml_matchers = []
+	if opts.maintainer_email:
+		maintainer_emails = []
+		for x in opts.maintainer_email:
+			maintainer_emails.extend(x.split(","))
+		xml_matchers.append(MaintainerEmailMatcher(maintainer_emails))
+	if opts.herd is not None:
+		herds  = []
+		for x in opts.herd:
+			herds.extend(x.split(","))
+		xml_matchers.append(HerdMatcher(herds))
+
+	portdb = portage.db[portage.root]['porttree'].dbapi
+
+	repos = []
+	if opts.all_repos:
+		repos.extend(portdb.repositories.get_repo_for_location(location)
+			for location in portdb.porttrees)
+	elif opts.repo is not None:
+		repos.append(portdb.repositories[opts.repo])
+	else:
+		repos.append(portdb.repositories.mainRepo())
+
+	for category in sorted(portdb.categories):
+		for cp in portdb.cp_all(categories=(category,)):
+			matches = []
+			for repo in repos:
+				match = True
+				if xml_matchers:
+					metadata_xml_path = os.path.join(
+						repo.location, cp, 'metadata.xml')
+					try:
+						metadata_xml = MetaDataXML(metadata_xml_path, None)
+					except (EnvironmentError, SyntaxError):
+						match = False
+					else:
+						for matcher in xml_matchers:
+							if not matcher(metadata_xml):
+								match = False
+								break
+				if not match:
+					continue
+				cpv_list = portdb.cp_list(cp, mytree=[repo.location])
+				matches.extend(cpv_list)
+
+			if not matches:
+				continue
+
+			if opts.no_version:
+				writemsg_stdout("%s\n" % (cp,), noiselevel=-1)
+			else:
+				matches = sorted(set(matches),
+					key=portage.versions.cpv_sort_key())
+				for cpv in matches:
+					writemsg_stdout("%s\n" % (cpv,), noiselevel=-1)
+
+	return os.EX_OK
+
 def main(argv):
 
 	if argv and isinstance(argv[0], bytes):
@@ -936,17 +1029,57 @@ def main(argv):
 	if nocolor in ('yes', 'true'):
 		portage.output.nocolor()
 
+	parser = optparse.OptionParser(add_help_option=False)
+	actions = optparse.OptionGroup(parser, 'Actions')
+	actions.add_option("-h", "--help", action="store_true")
+	actions.add_option("--version", action="store_true")
+	parser.add_option_group(actions)
+
+	pquery_option_groups = []
+
+	repo_optgroup = optparse.OptionGroup(parser,
+		'Repository matching options')
+	repo_optgroup.add_option("--repo", action="store",
+		help="repo to use (default is PORTDIR if omitted)")
+	repo_optgroup.add_option("--all-repos", action="store_true",
+		help="search all repos")
+	parser.add_option_group(repo_optgroup)
+	pquery_option_groups.append(repo_optgroup)
+
+	matching_optgroup = optparse.OptionGroup(parser,
+		'Package matching options')
+	matching_optgroup.add_option("--herd", action="append",
+		help="exact match on a herd")
+	matching_optgroup.add_option("--maintainer-email", action="append",
+		help="comma-separated list of maintainer email regexes to search for")
+	parser.add_option_group(matching_optgroup)
+	pquery_option_groups.append(matching_optgroup)
+
+	formatting_optgroup = optparse.OptionGroup(parser,
+		'Output formatting')
+	formatting_optgroup.add_option("-n", "--no-version", action="store_true",
+		help="collapse multiple matching versions together")
+	parser.add_option_group(formatting_optgroup)
+	pquery_option_groups.append(formatting_optgroup)
+
+	opts, args = parser.parse_args(argv[1:])
+
+	if opts.help:
+		usage(argv, parser=parser, pquery_option_groups=pquery_option_groups)
+		return os.EX_OK
+	elif opts.version:
+		print("Portage", portage.VERSION)
+		return os.EX_OK
+
+	if (opts.herd is not None or
+		opts.maintainer_email is not None):
+		return pquery(parser, pquery_option_groups, opts, args)
+
+	argv = argv[:1] + args
+
 	if len(argv) < 2:
 		usage(argv)
 		sys.exit(os.EX_USAGE)
-
-	for x in argv:
-		if x in ("-h", "--help"):
-			usage(argv)
-			sys.exit(os.EX_OK)
-		elif x == "--version":
-			print("Portage", portage.VERSION)
-			sys.exit(os.EX_OK)
 
 	cmd = argv[1]
 	function = globals().get(cmd)
@@ -1002,6 +1135,7 @@ def main(argv):
 		portage.writemsg("\nPlease use a more specific atom.\n", noiselevel=-1)
 		sys.exit(1)
 
-main(sys.argv)
+if __name__ == '__main__':
+	sys.exit(main(sys.argv))
 
 #-----------------------------------------------------------------------------
