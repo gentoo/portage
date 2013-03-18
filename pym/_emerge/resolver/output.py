@@ -100,13 +100,18 @@ class Display(object):
 		block_parents = self.conf.blocker_parents.parent_nodes(blocker)
 		block_parents = set(_unicode(pnode.cpv) for pnode in block_parents)
 		block_parents = ", ".join(block_parents)
+		if blocker.atom.blocker.overlap.forbid:
+			blocking_desc = "hard blocking"
+		else:
+			blocking_desc = "blocking"
 		if self.resolved != blocker.atom:
 			addl += colorize(self.blocker_style,
-				" (\"%s\" is blocking %s)") % \
-				(_unicode(blocker.atom).lstrip("!"), block_parents)
+				" (\"%s\" is %s %s)" %
+				(_unicode(blocker.atom).lstrip("!"),
+				blocking_desc, block_parents))
 		else:
 			addl += colorize(self.blocker_style,
-				" (is blocking %s)") % block_parents
+				" (is %s %s)" % (blocking_desc, block_parents))
 		if blocker.satisfied:
 			if not self.conf.columns:
 				self.print_msg.append(addl)
