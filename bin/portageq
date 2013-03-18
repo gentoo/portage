@@ -964,6 +964,8 @@ class HerdMatcher(object):
 def pquery(parser, pquery_option_groups, opts, args):
 
 	portdb = portage.db[portage.root]['porttree'].dbapi
+	root_config = RootConfig(portdb.settings,
+		portage.db[portage.root], None)
 
 	need_metadata = False
 	extended_syntax = False
@@ -996,6 +998,9 @@ def pquery(parser, pquery_option_groups, opts, args):
 		del atoms[:]
 		need_metadata = False
 		extended_syntax = False
+
+	if not opts.no_filters:
+		need_metadata = True
 
 	xml_matchers = []
 	if opts.maintainer_email:
@@ -1059,6 +1064,7 @@ def pquery(parser, pquery_option_groups, opts, args):
 				cpv_list = portdb.cp_list(cp, mytree=[repo.location])
 				if atoms:
 					for cpv in cpv_list:
+						pkg = None
 						for atom in atoms:
 							if atom.repo is not None and \
 								atom.repo != repo.name:
@@ -1066,8 +1072,23 @@ def pquery(parser, pquery_option_groups, opts, args):
 							if not portage.match_from_list(atom, [cpv]):
 								continue
 							if need_metadata:
-								cpv = portdb._pkg_str(cpv, repo.name)
-								if not portage.match_from_list(atom, [cpv]):
+								if pkg is None:
+									try:
+										metadata = dict(zip(
+											Package.metadata_keys,
+											portdb.aux_get(cpv,
+											Package.metadata_keys,
+											myrepo=repo.name)))
+									except KeyError:
+										continue
+									pkg = Package(built=False, cpv=cpv,
+										installed=False, metadata=metadata,
+										root_config=root_config,
+										type_name="ebuild")
+
+								if not (opts.no_filters or pkg.visible):
+									continue
+								if not portage.match_from_list(atom, [pkg]):
 									continue
 							matches.append(cpv)
 							break
@@ -1106,6 +1127,8 @@ def main(argv):
 
 	repo_optgroup = optparse.OptionGroup(parser,
 		'Repository matching options')
+	repo_optgroup.add_option("--no-filters", action="store_true",
+		help="no visibility filters (ACCEPT_KEYWORDS, package masking, etc)")
 	repo_optgroup.add_option("--repo", action="store",
 		help="repo to use (default is PORTDIR if omitted)")
 	repo_optgroup.add_option("--all-repos", action="store_true",
