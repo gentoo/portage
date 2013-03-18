@@ -46,6 +46,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'subprocess',
 	'_emerge.Package:Package',
 	'_emerge.RootConfig:RootConfig',
+	'_emerge.is_valid_package_atom:insert_category_into_atom',
 	'portage.dbapi._expand_new_virt:expand_new_virt',
 	'portage._sets.base:InternalPackageSet',
 	'portage.xml.metadata:MetaDataXML'
@@ -962,6 +963,40 @@ class HerdMatcher(object):
 
 def pquery(parser, pquery_option_groups, opts, args):
 
+	portdb = portage.db[portage.root]['porttree'].dbapi
+
+	need_metadata = False
+	extended_syntax = False
+	atoms = []
+	for arg in args:
+		if "/" not in arg.split(":")[0]:
+			atom = insert_category_into_atom(arg, '*')
+			if atom is None:
+				writemsg("ERROR: Invalid atom: '%s'\n" % arg,
+					noiselevel=-1)
+				return 2
+		else:
+			atom = arg
+
+		try:
+			atom = portage.dep.Atom(atom, allow_wildcard=True, allow_repo=True)
+		except portage.exception.InvalidAtom:
+			writemsg("ERROR: Invalid atom: '%s'\n" % arg,
+				noiselevel=-1)
+			return 2
+
+		if atom.slot is not None:
+			need_metadata = True
+		if atom.extended_syntax:
+			extended_syntax = True
+
+		atoms.append(atom)
+
+	if "*/*" in atoms:
+		del atoms[:]
+		need_metadata = False
+		extended_syntax = False
+
 	xml_matchers = []
 	if opts.maintainer_email:
 		maintainer_emails = []
@@ -974,8 +1009,6 @@ def pquery(parser, pquery_option_groups, opts, args):
 			herds.extend(x.split(","))
 		xml_matchers.append(HerdMatcher(herds))
 
-	portdb = portage.db[portage.root]['porttree'].dbapi
-
 	repos = []
 	if opts.all_repos:
 		repos.extend(portdb.repositories.get_repo_for_location(location)
@@ -985,8 +1018,27 @@ def pquery(parser, pquery_option_groups, opts, args):
 	else:
 		repos.append(portdb.repositories.mainRepo())
 
-	for category in sorted(portdb.categories):
-		for cp in portdb.cp_all(categories=(category,)):
+	if extended_syntax or not atoms:
+		names = None
+		categories = list(portdb.categories)
+	else:
+		categories = []
+		names = []
+		for atom in atoms:
+			category, name = portage.catsplit(atom.cp)
+			categories.append(category)
+			names.append(name)
+		categories = list(set(categories))
+		names = sorted(set(names))
+
+	categories.sort()
+
+	for category in categories:
+		if names is None:
+			cp_list = portdb.cp_all(categories=(category,))
+		else:
+			cp_list = [category + "/" + name for name in names]
+		for cp in cp_list:
 			matches = []
 			for repo in repos:
 				match = True
@@ -1005,7 +1057,22 @@ def pquery(parser, pquery_option_groups, opts, args):
 				if not match:
 					continue
 				cpv_list = portdb.cp_list(cp, mytree=[repo.location])
-				matches.extend(cpv_list)
+				if atoms:
+					for cpv in cpv_list:
+						for atom in atoms:
+							if atom.repo is not None and \
+								atom.repo != repo.name:
+								continue
+							if not portage.match_from_list(atom, [cpv]):
+								continue
+							if need_metadata:
+								cpv = portdb._pkg_str(cpv, repo.name)
+								if not portage.match_from_list(atom, [cpv]):
+									continue
+							matches.append(cpv)
+							break
+				else:
+					matches.extend(cpv_list)
 
 			if not matches:
 				continue
@@ -1071,8 +1138,11 @@ def main(argv):
 		print("Portage", portage.VERSION)
 		return os.EX_OK
 
-	if (opts.herd is not None or
-		opts.maintainer_email is not None):
+	cmd = None
+	if args and args[0] in commands:
+		cmd = args[0]
+
+	if cmd is None:
 		return pquery(parser, pquery_option_groups, opts, args)
 
 	argv = argv[:1] + args
@@ -1081,11 +1151,6 @@ def main(argv):
 		usage(argv)
 		sys.exit(os.EX_USAGE)
 
-	cmd = argv[1]
-	function = globals().get(cmd)
-	if function is None or cmd not in commands:
-		usage(argv)
-		sys.exit(os.EX_USAGE)
 	function = globals()[cmd]
 	uses_eroot = getattr(function, "uses_eroot", False) and len(argv) > 2
 	if uses_eroot:
