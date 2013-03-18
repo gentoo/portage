@@ -968,7 +968,6 @@ def pquery(parser, pquery_option_groups, opts, args):
 		portage.db[portage.root], None)
 
 	need_metadata = False
-	extended_syntax = False
 	atoms = []
 	for arg in args:
 		if "/" not in arg.split(":")[0]:
@@ -989,15 +988,12 @@ def pquery(parser, pquery_option_groups, opts, args):
 
 		if atom.slot is not None:
 			need_metadata = True
-		if atom.extended_syntax:
-			extended_syntax = True
 
 		atoms.append(atom)
 
 	if "*/*" in atoms:
 		del atoms[:]
 		need_metadata = False
-		extended_syntax = False
 
 	if not opts.no_filters:
 		need_metadata = True
@@ -1023,18 +1019,32 @@ def pquery(parser, pquery_option_groups, opts, args):
 	else:
 		repos.append(portdb.repositories.mainRepo())
 
-	if extended_syntax or not atoms:
+	if not atoms:
 		names = None
 		categories = list(portdb.categories)
 	else:
+		category_wildcard = False
+		name_wildcard = False
 		categories = []
 		names = []
 		for atom in atoms:
 			category, name = portage.catsplit(atom.cp)
 			categories.append(category)
 			names.append(name)
-		categories = list(set(categories))
-		names = sorted(set(names))
+			if "*" in category:
+				category_wildcard = True
+			if "*" in name:
+				name_wildcard = True
+
+		if category_wildcard:
+			categories = list(portdb.categories)
+		else:
+			categories = list(set(categories))
+
+		if name_wildcard:
+			names = None
+		else:
+			names = sorted(set(names))
 
 	categories.sort()
 
