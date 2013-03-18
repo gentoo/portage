@@ -34,7 +34,9 @@ from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
-
+	_unicode = str
+else:
+	_unicode = unicode
 
 class Display(object):
 	"""Formats and outputs the depgrah supplied it for merge/re-merge, etc.
@@ -84,16 +86,16 @@ class Display(object):
 			addl = "%s     " % (colorize(self.blocker_style, "B"),)
 		addl += self.empty_space_in_brackets()
 		self.resolved = dep_expand(
-			str(pkg.atom).lstrip("!"), mydb=self.vardb,
+			_unicode(pkg.atom).lstrip("!"), mydb=self.vardb,
 			settings=self.pkgsettings
 			)
 		if self.conf.columns and self.conf.quiet:
-			addl += " " + colorize(self.blocker_style, str(self.resolved))
+			addl += " " + colorize(self.blocker_style, _unicode(self.resolved))
 		else:
 			addl = "[%s %s] %s%s" % \
 				(colorize(self.blocker_style, "blocks"),
 				addl, self.indent,
-				colorize(self.blocker_style, str(self.resolved))
+				colorize(self.blocker_style, _unicode(self.resolved))
 				)
 		block_parents = self.conf.blocker_parents.parent_nodes(pkg)
 		block_parents = set([pnode[2] for pnode in block_parents])
@@ -101,7 +103,7 @@ class Display(object):
 		if self.resolved != pkg[2]:
 			addl += colorize(self.blocker_style,
 				" (\"%s\" is blocking %s)") % \
-				(str(pkg.atom).lstrip("!"), block_parents)
+				(_unicode(pkg.atom).lstrip("!"), block_parents)
 		else:
 			addl += colorize(self.blocker_style,
 				" (is blocking %s)") % block_parents
@@ -308,7 +310,7 @@ class Display(object):
 				depstr, = db.aux_get(pkg.cpv,
 					["SRC_URI"], myrepo=pkg.repo)
 				show_invalid_depstring_notice(
-					pkg, depstr, str(e))
+					pkg, depstr, _unicode(e))
 				raise
 			except SignatureException:
 				# missing/invalid binary package SIZE signature
@@ -429,7 +431,7 @@ class Display(object):
 			ver_str = self._append_slot(ver_str, pkg, pkg_info)
 			ver_str = self._append_repository(ver_str, pkg, pkg_info)
 		if self.conf.quiet:
-			myprint = str(pkg_info.attr_display) + " " + self.indent + \
+			myprint = _unicode(pkg_info.attr_display) + " " + self.indent + \
 				self.pkgprint(pkg_info.cp, pkg_info)
 			myprint = myprint+darkblue(" "+ver_str)+" "
 			myprint = myprint+pkg_info.oldbest
@@ -468,7 +470,7 @@ class Display(object):
 			ver_str = self._append_slot(ver_str, pkg, pkg_info)
 			ver_str = self._append_repository(ver_str, pkg, pkg_info)
 		if self.conf.quiet:
-			myprint = str(pkg_info.attr_display) + " " + self.indent + \
+			myprint = _unicode(pkg_info.attr_display) + " " + self.indent + \
 				self.pkgprint(pkg_info.cp, pkg_info)
 			myprint = myprint+" "+green(ver_str)+" "
 			myprint = myprint+pkg_info.oldbest
