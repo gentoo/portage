@@ -996,6 +996,7 @@ def pquery(parser, pquery_option_groups, opts, args):
 		else:
 			names = sorted(set(names))
 
+	no_version = opts.no_version
 	categories.sort()
 
 	for category in categories:
@@ -1044,6 +1045,8 @@ def pquery(parser, pquery_option_groups, opts, args):
 									continue
 							matches.append(cpv)
 							break
+						if no_version and matches:
+							break
 				elif opts.no_filters:
 					matches.extend(cpv_list)
 				else:
@@ -1055,15 +1058,20 @@ def pquery(parser, pquery_option_groups, opts, args):
 						else:
 							if pkg.visible:
 								matches.append(cpv)
+								if no_version:
+									break
+
+				if no_version and matches:
+					break
 
 			if not matches:
 				continue
 
-			if opts.no_version:
+			if no_version:
 				writemsg_stdout("%s\n" % (cp,), noiselevel=-1)
 			else:
-				matches = sorted(set(matches),
-					key=portage.versions.cpv_sort_key())
+				matches = list(set(matches))
+				portdb._cpv_sort_ascending(matches)
 				for cpv in matches:
 					writemsg_stdout("%s\n" % (cpv,), noiselevel=-1)
 
