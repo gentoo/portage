@@ -903,6 +903,20 @@ def pquery(parser, pquery_option_groups, opts, args):
 	root_config = RootConfig(portdb.settings,
 		portage.db[portage.root], None)
 
+	def _pkg(cpv, repo_name):
+		try:
+			metadata = dict(zip(
+				Package.metadata_keys,
+				portdb.aux_get(cpv,
+				Package.metadata_keys,
+				myrepo=repo_name)))
+		except KeyError:
+			raise portage.exception.PackageNotFound(cpv)
+		return Package(built=False, cpv=cpv,
+			installed=False, metadata=metadata,
+			root_config=root_config,
+			type_name="ebuild")
+
 	need_metadata = False
 	atoms = []
 	for arg in args:
@@ -1020,17 +1034,9 @@ def pquery(parser, pquery_option_groups, opts, args):
 							if need_metadata:
 								if pkg is None:
 									try:
-										metadata = dict(zip(
-											Package.metadata_keys,
-											portdb.aux_get(cpv,
-											Package.metadata_keys,
-											myrepo=repo.name)))
-									except KeyError:
+										pkg = _pkg(cpv, repo.name)
+									except portage.exception.PackageNotFound:
 										continue
-									pkg = Package(built=False, cpv=cpv,
-										installed=False, metadata=metadata,
-										root_config=root_config,
-										type_name="ebuild")
 
 								if not (opts.no_filters or pkg.visible):
 									continue
@@ -1038,8 +1044,17 @@ def pquery(parser, pquery_option_groups, opts, args):
 									continue
 							matches.append(cpv)
 							break
-				else:
+				elif opts.no_filters:
 					matches.extend(cpv_list)
+				else:
+					for cpv in cpv_list:
+						try:
+							pkg = _pkg(cpv, repo.name)
+						except portage.exception.PackageNotFound:
+							continue
+						else:
+							if pkg.visible:
+								matches.append(cpv)
 
 			if not matches:
 				continue
