@@ -873,73 +873,6 @@ def list_preserved_libs(argv):
 	return rValue
 list_preserved_libs.uses_eroot = True
 
-#-----------------------------------------------------------------------------
-#
-# DO NOT CHANGE CODE BEYOND THIS POINT - IT'S NOT NEEDED!
-#
-
-non_commands = frozenset(['elog', 'eval_atom_use', 'exithandler', 'main', 'pquery', 'usage'])
-commands = sorted(k for k, v in globals().items() \
-	if k not in non_commands and isinstance(v, types.FunctionType) and v.__module__ == "__main__")
-
-def usage(argv, parser=None, pquery_option_groups=None):
-	print(">>> Portage information query tool")
-	print(">>> %s" % portage.VERSION)
-	print(">>> Usage: portageq <command> [<option> ...]")
-	print("")
-	print("Available commands:")
-
-	#
-	# Show our commands -- we do this by scanning the functions in this
-	# file, and formatting each functions documentation.
-	#
-	help_mode = '--help' in argv
-	for name in commands:
-		# Drop non-functions
-		obj = globals()[name]
-
-		doc = obj.__doc__
-		if (doc == None):
-			print("   " + name)
-			print("      MISSING DOCUMENTATION!")
-			print("")
-			continue
-
-		lines = doc.lstrip("\n").split("\n")
-		print("   " + name + " " + lines[0].strip())
-		if len(argv) > 1:
-			if (not help_mode):
-				lines = lines[:-1]
-			for line in lines[1:]:
-				print("      " + line.strip())
-
-	if pquery_option_groups is not None:
-		parser.formatter.store_option_strings(parser)
-		print()
-		print('Pkgcore pquery compatible options:')
-		print()
-		for optgroup in pquery_option_groups:
-			print(optgroup.format_help(parser.formatter))
-
-	if len(argv) == 1:
-		print("\nRun portageq with --help for info")
-
-atom_validate_strict = "EBUILD_PHASE" in os.environ
-eapi = None
-if atom_validate_strict:
-	eapi = os.environ.get('EAPI')
-
-	def elog(elog_funcname, lines):
-		cmd = "source '%s/isolated-functions.sh' ; " % \
-			os.environ["PORTAGE_BIN_PATH"]
-		for line in lines:
-			cmd += "%s %s ; " % (elog_funcname, portage._shell_quote(line))
-		subprocess.call([portage.const.BASH_BINARY, "-c", cmd])
-
-else:
-	def elog(elog_funcname, lines):
-		pass
-
 class MaintainerEmailMatcher(object):
 	def __init__(self, maintainer_emails):
 		self._re = re.compile("^(%s)$" % "|".join(maintainer_emails))
@@ -962,6 +895,9 @@ class HerdMatcher(object):
 		return any(x in herds for x in metadata_xml.herds())
 
 def pquery(parser, pquery_option_groups, opts, args):
+	"""[options] [atom]+
+	Emulates a subset of Pkgcore's pquery tool.
+	"""
 
 	portdb = portage.db[portage.root]['porttree'].dbapi
 	root_config = RootConfig(portdb.settings,
@@ -1118,6 +1054,75 @@ def pquery(parser, pquery_option_groups, opts, args):
 
 	return os.EX_OK
 
+pquery.uses_eroot = False
+
+#-----------------------------------------------------------------------------
+#
+# DO NOT CHANGE CODE BEYOND THIS POINT - IT'S NOT NEEDED!
+#
+
+non_commands = frozenset(['elog', 'eval_atom_use', 'exithandler', 'main', 'usage'])
+commands = sorted(k for k, v in globals().items() \
+	if k not in non_commands and isinstance(v, types.FunctionType) and v.__module__ == "__main__")
+
+def usage(argv, parser=None, pquery_option_groups=None):
+	print(">>> Portage information query tool")
+	print(">>> %s" % portage.VERSION)
+	print(">>> Usage: portageq <command> [<option> ...]")
+	print("")
+	print("Available commands:")
+
+	#
+	# Show our commands -- we do this by scanning the functions in this
+	# file, and formatting each functions documentation.
+	#
+	help_mode = '--help' in argv
+	for name in commands:
+		# Drop non-functions
+		obj = globals()[name]
+
+		doc = obj.__doc__
+		if (doc == None):
+			print("   " + name)
+			print("      MISSING DOCUMENTATION!")
+			print("")
+			continue
+
+		lines = doc.lstrip("\n").split("\n")
+		print("   " + name + " " + lines[0].strip())
+		if len(argv) > 1:
+			if (not help_mode):
+				lines = lines[:-1]
+			for line in lines[1:]:
+				print("      " + line.strip())
+
+	if pquery_option_groups is not None:
+		parser.formatter.store_option_strings(parser)
+		print()
+		print('Pkgcore pquery compatible options:')
+		print()
+		for optgroup in pquery_option_groups:
+			print(optgroup.format_help(parser.formatter))
+
+	if len(argv) == 1:
+		print("\nRun portageq with --help for info")
+
+atom_validate_strict = "EBUILD_PHASE" in os.environ
+eapi = None
+if atom_validate_strict:
+	eapi = os.environ.get('EAPI')
+
+	def elog(elog_funcname, lines):
+		cmd = "source '%s/isolated-functions.sh' ; " % \
+			os.environ["PORTAGE_BIN_PATH"]
+		for line in lines:
+			cmd += "%s %s ; " % (elog_funcname, portage._shell_quote(line))
+		subprocess.call([portage.const.BASH_BINARY, "-c", cmd])
+
+else:
+	def elog(elog_funcname, lines):
+		pass
+
 def main(argv):
 
 	if argv and isinstance(argv[0], bytes):
@@ -1174,6 +1179,10 @@ def main(argv):
 	cmd = None
 	if args and args[0] in commands:
 		cmd = args[0]
+
+	if cmd == 'pquery':
+		cmd = None
+		args = args[1:]
 
 	if cmd is None:
 		return pquery(parser, pquery_option_groups, opts, args)
