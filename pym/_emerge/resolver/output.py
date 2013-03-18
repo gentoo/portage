@@ -69,16 +69,16 @@ class Display(object):
 		self.blocker_style = None
 
 
-	def _blockers(self, pkg):
-		"""Processes pkg for blockers and adds colorized strings to
+	def _blockers(self, blocker):
+		"""Adds colorized strings to
 		self.print_msg and self.blockers
 
-		@param pkg: _emerge.Package.Package instance
+		@param blocker: _emerge.Blocker.Blocker instance
 		@rtype: bool
 		Modifies class globals: self.blocker_style, self.resolved,
 			self.print_msg
 		"""
-		if pkg.satisfied:
+		if blocker.satisfied:
 			self.blocker_style = "PKG_BLOCKER_SATISFIED"
 			addl = "%s     " % (colorize(self.blocker_style, "b"),)
 		else:
@@ -86,7 +86,7 @@ class Display(object):
 			addl = "%s     " % (colorize(self.blocker_style, "B"),)
 		addl += self.empty_space_in_brackets()
 		self.resolved = dep_expand(
-			_unicode(pkg.atom).lstrip("!"), mydb=self.vardb,
+			_unicode(blocker.atom).lstrip("!"), mydb=self.vardb,
 			settings=self.pkgsettings
 			)
 		if self.conf.columns and self.conf.quiet:
@@ -97,17 +97,17 @@ class Display(object):
 				addl, self.indent,
 				colorize(self.blocker_style, _unicode(self.resolved))
 				)
-		block_parents = self.conf.blocker_parents.parent_nodes(pkg)
-		block_parents = set([pnode[2] for pnode in block_parents])
+		block_parents = self.conf.blocker_parents.parent_nodes(blocker)
+		block_parents = set(_unicode(pnode.cpv) for pnode in block_parents)
 		block_parents = ", ".join(block_parents)
-		if self.resolved != pkg[2]:
+		if self.resolved != blocker.atom:
 			addl += colorize(self.blocker_style,
 				" (\"%s\" is blocking %s)") % \
-				(_unicode(pkg.atom).lstrip("!"), block_parents)
+				(_unicode(blocker.atom).lstrip("!"), block_parents)
 		else:
 			addl += colorize(self.blocker_style,
 				" (is blocking %s)") % block_parents
-		if isinstance(pkg, Blocker) and pkg.satisfied:
+		if blocker.satisfied:
 			if not self.conf.columns:
 				self.print_msg.append(addl)
 		else:
