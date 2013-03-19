@@ -21,6 +21,7 @@ from _emerge.Package import Package
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.data:portage_gid',
+	'portage.dbapi.vartree:vartree',
 	'portage.package.ebuild.doebuild:_phase_func_map',
 )
 from portage import bsd_chflags, \
@@ -32,7 +33,6 @@ from portage.const import CACHE_PATH, \
 	USER_VIRTUALS_FILE
 from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
-from portage.dbapi.vartree import vartree
 from portage.dep import Atom, isvalidatom, match_from_list, use_reduce, _repo_separator, _slot_separator
 from portage.eapi import eapi_exports_AA, eapi_exports_merge_type, \
 	eapi_supports_prefix, eapi_exports_replace_vars, _get_eapi_attrs

@@ -3597,11 +3597,10 @@ class dblink(object):
 			slot_matches.append(self.mycpv)
 
 		others_in_slot = []
-		from portage import config
 		for cur_cpv in slot_matches:
 			# Clone the config in case one of these has to be unmerged since
 			# we need it to have private ${T} etc... for things like elog.
-			settings_clone = config(clone=self.settings)
+			settings_clone = portage.config(clone=self.settings)
 			settings_clone.pop("PORTAGE_BUILDDIR_LOCKED", None)
 			settings_clone.reset()
 			others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
