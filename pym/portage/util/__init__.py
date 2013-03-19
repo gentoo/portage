@@ -253,10 +253,10 @@ def append_repo(atom_list, repo_name, remember_source_file=False):
 	If an atom already has a repo part, then it is preserved (see bug #461948).
 	"""
 	if remember_source_file:
-		return [(atom.repo is not None and atom or Atom(atom + "::" + repo_name, allow_wildcard=True, allow_repo=True), source) \
+		return [(atom.repo is not None and atom or atom.with_repo(repo_name), source) \
 			for atom, source in atom_list]
 	else:
-		return [atom.repo is not None and atom or Atom(atom + "::" + repo_name, allow_wildcard=True, allow_repo=True) \
+		return [atom.repo is not None and atom or atom.with_repo(repo_name) \
 			for atom in atom_list]
 
 def stack_lists(lists, incremental=1, remember_source_file=False,
