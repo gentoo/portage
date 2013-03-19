@@ -595,6 +595,7 @@ repodir = os.path.realpath(portdir_overlay)
 repo_config = repoman_settings.repositories.get_repo_for_location(repodir)
 portdb.porttrees = list(repo_config.eclass_db.porttrees)
 portdir = portdb.porttrees[0]
+commit_env = os.environ.copy()
 
 if repo_config.allow_provide_virtual:
 	qawarnings.add("virtual.oldstyle")
@@ -605,6 +606,9 @@ if repo_config.sign_commit:
 		# the commit arguments. If key_id is unspecified, then it must be
 		# configured by `git config user.signingkey key_id`.
 		vcs_local_opts.append("--gpg-sign")
+		if repoman_settings.get("PORTAGE_GPG_DIR"):
+			# Pass GNUPGHOME to git for bug #462362.
+			commit_env["GNUPGHOME"] = repoman_settings["PORTAGE_GPG_DIR"]
 
 # In order to disable manifest signatures, repos may set
 # "sign-manifests = false" in metadata/layout.conf. This
@@ -2855,7 +2859,7 @@ else:
 			if options.pretend:
 				print("(%s)" % (" ".join(commit_cmd),))
 			else:
-				retval = spawn(commit_cmd, env=os.environ)
+				retval = spawn(commit_cmd, env=commit_env)
 				if retval != os.EX_OK:
 					writemsg_level(("!!! Exiting on %s (shell) " + \
 						"error code: %s\n") % (vcs, retval),
@@ -3026,7 +3030,7 @@ else:
 			if options.pretend:
 				print("(%s)" % (" ".join(commit_cmd),))
 			else:
-				retval = spawn(commit_cmd, env=os.environ)
+				retval = spawn(commit_cmd, env=commit_env)
 				if retval != os.EX_OK:
 					if repo_config.sign_commit and vcs == 'git' and \
 						not git_supports_gpg_sign():
