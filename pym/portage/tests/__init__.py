@@ -14,6 +14,7 @@ try:
 except ImportError:
 	from unittest import _TextTestResult
 
+import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
@@ -27,6 +28,11 @@ def main():
 	parser.add_option("-l", "--list", help="list all tests",
 		action="store_true", dest="list_tests")
 	(options, args) = parser.parse_args(args=sys.argv)
+
+	if (os.environ.get('NOCOLOR') in ('yes', 'true') or
+		os.environ.get('TERM') == 'dumb' or
+		not sys.stdout.isatty()):
+		portage.output.nocolor()
 
 	if options.list_tests:
 		testdir = os.path.dirname(sys.argv[0])
