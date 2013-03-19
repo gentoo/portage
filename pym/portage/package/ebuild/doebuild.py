@@ -1477,25 +1477,67 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		spawn_func = portage.process.spawn_fakeroot
 	elif "sandbox" in features and platform.system() == 'Darwin':
 		keywords["opt_name"] += " macossandbox"
-
 		sbprofile = MACOSSANDBOX_PROFILE
-		for pathvar in [ "PORTAGE_BUILDDIR", "PORTAGE_ACTUAL_DISTDIR" ]:
-			if pathvar not in mysettings:
+
+		# determine variable names from profile: split
+		# "text@@VARNAME@@moretext@@OTHERVAR@@restoftext" into
+		# ("text", # "VARNAME", "moretext", "OTHERVAR", "restoftext")
+		# and extract variable named by reading every second item.
+		variables = []
+		for line in sbprofile.split("\n"):
+			variables.extend(line.split("@@")[1:-1:2])
+
+		for var in variables:
+			paths = ""
+			if var in mysettings:
+				paths = mysettings[var]
+			else:
+				writemsg("Warning: sandbox profile references variable %s "
+						 "which is not set.\nThe rule using it will have no "
+						 "effect, which is most likely not the intended "
+						 "result.\nPlease check make.conf/make.globals.\n" %
+						 var)
+
+			# not set or empty value
+			if not paths:
+				sbprofile = sbprofile.replace("@@%s@@" % var, "")
 				continue
 
-			sbprefixpath = mysettings[pathvar]
+			rules_literal = ""
+			rules_regex = ""
 
-			# escape some characters with special meaning in re's
-			sbprefixre = sbprefixpath.replace("+", "\+")
-			sbprefixre = sbprefixre.replace("*", "\*")
-			sbprefixre = sbprefixre.replace("[", "\[")
-			sbprefixre = sbprefixre.replace("[", "\[")
+			# FIXME: Allow for quoting inside the variable to allow paths with
+			# spaces in them?
+			for path in paths.split(" "):
+				# do a second round of token replacements to be able to
+				# reference settings like EPREFIX or PORTAGE_BUILDDIR.
+				for token in path.split("@@")[1:-1:2]:
+					if token not in mysettings:
+						continue
 
-			sbprofile = sbprofile.replace("@@%s@@" % pathvar, sbprefixpath)
-			sbprofile = sbprofile.replace("@@%s_RE@@" % pathvar, sbprefixre)
+					path = path.replace("@@%s@@" % token, mysettings[token])
 
-		# uncomment all rules that don't contain any @@'s any more
-		sbprofile = re.sub(r';;(#"[^@"]*")', r'\1', sbprofile)
+				if "@@" in path:
+					# unreplaced tokens left - silently ignore path - needed
+					# for PORTAGE_ACTUAL_DISTDIR which isn't always set
+					pass
+				elif path[-1] == os.sep:
+					# path ends in slash - make it a regex and allow access
+					# recursively.
+					path = path.replace("+", "\+")
+					path = path.replace("*", "\*")
+					path = path.replace("[", "\[")
+					path = path.replace("[", "\[")
+					rules_regex += "    #\"^%s\"\n" % path
+				else:
+					rules_literal += "    #\"%s\"\n" % path
+
+			rules = ""
+			if rules_literal:
+				rules += "  (literal\n" + rules_literal + "  )\n"
+			if rules_regex:
+				rules += "  (regex\n" + rules_regex + "  )\n"
+			sbprofile = sbprofile.replace("@@%s@@" % var, rules)
 
 		keywords["profile"] = sbprofile
 		spawn_func = portage.process.spawn_macossandbox

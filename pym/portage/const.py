@@ -82,33 +82,12 @@ MOVE_BINARY              = PORTAGE_MV
 PRELINK_BINARY           = "/usr/sbin/prelink"
 MACOSSANDBOX_BINARY      = "/usr/bin/sandbox-exec"
 MACOSSANDBOX_PROFILE     = '''(version 1)
-
 (allow default)
-
 (deny file-write*)
-
-(allow file-read* file-write*
-  (literal
-    ;;#"@@PORTAGE_BUILDDIR@@"
-    ;;#"@@PORTAGE_ACTUAL_DISTDIR@@"
-    #"/dev/tty"
-    #"/dev/dtracehelper"
-  )
-
-  (regex
-    ;;#"^@@PORTAGE_BUILDDIR_RE@@/"
-    ;;#"^@@PORTAGE_ACTUAL_DISTDIR_RE@@/"
-    #"^(/private)?/var/tmp"
-    #"^(/private)?/tmp"
-  )
-)
-
-(allow file-read-data file-write-data
-  (regex
-    #"^/dev/null$"
-    #"^(/private)?/var/run/syslog$"
-  )
-)'''
+(allow file-write*
+@@MACOSSANDBOX_PATHS@@)
+(allow file-write-data
+@@MACOSSANDBOX_PATHS_CONTENT_ONLY@@)'''
 
 PORTAGE_GROUPNAME        = portagegroup
 PORTAGE_USERNAME         = portageuser
