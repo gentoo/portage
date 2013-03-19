@@ -46,6 +46,11 @@ from portage.localization import _
 from portage.proxy.objectproxy import ObjectProxy
 from portage.cache.mappings import UserDict
 
+if sys.hexversion >= 0x3000000:
+	_unicode = str
+else:
+	_unicode = unicode
+
 noiselimit = 0
 
 def initialize_logger(level=logging.WARN):
@@ -463,7 +468,7 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=Fals
 			writemsg(_("--- Invalid atom in %s: %s\n") % (source_file, e),
 				noiselevel=-1)
 		else:
-			if pkg_orig == str(pkg):
+			if pkg_orig == _unicode(pkg):
 				# normal atom, so return as Atom instance
 				if remember_source_file:
 					atoms.append((pkg, source_file))
