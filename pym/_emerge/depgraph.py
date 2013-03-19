@@ -1032,8 +1032,11 @@ class depgraph(object):
 				dep = Dependency(atom=atom, child=other_pkg,
 					parent=parent, root=pkg.root)
 
-				if self._slot_operator_update_probe(dep, slot_conflict=True):
-					self._slot_operator_update_backtrack(dep)
+				new_dep = \
+					self._slot_operator_update_probe_slot_conflict(dep)
+				if new_dep is not None:
+					self._slot_operator_update_backtrack(dep,
+						new_dep=new_dep)
 					found_update = True
 
 		return found_update
@@ -1117,7 +1120,8 @@ class depgraph(object):
 
 		self._dynamic_config._need_restart = True
 
-	def _slot_operator_update_backtrack(self, dep, new_child_slot=None):
+	def _slot_operator_update_backtrack(self, dep, new_child_slot=None,
+		new_dep=None):
 		if new_child_slot is None:
 			child = dep.child
 		else:
@@ -1131,6 +1135,8 @@ class depgraph(object):
 			if new_child_slot is not None:
 				msg.append("   new child slot package:  %s" % new_child_slot)
 			msg.append("   parent package: %s" % dep.parent)
+			if new_dep is not None:
+				msg.append("   new parent pkg: %s" % new_dep.parent)
 			msg.append("   atom: %s" % dep.atom)
 			msg.append("")
 			writemsg_level("\n".join(msg),
@@ -1151,7 +1157,10 @@ class depgraph(object):
 		# trigger replacement of installed packages if necessary
 		abi_reinstalls = set()
 		if dep.parent.installed:
-			replacement_atom = self._replace_installed_atom(dep.parent)
+			if new_dep is not None:
+				replacement_atom = new_dep.parent.slot_atom
+			else:
+				replacement_atom = self._replace_installed_atom(dep.parent)
 			if replacement_atom is not None:
 				abi_reinstalls.add((dep.parent.root, replacement_atom))
 		if new_child_slot is None and child.installed:
@@ -1164,8 +1173,26 @@ class depgraph(object):
 
 		self._dynamic_config._need_restart = True
 
+	def _slot_operator_update_probe_slot_conflict(self, dep):
+		new_dep = self._slot_operator_update_probe(dep, slot_conflict=True)
+
+		if new_dep is not None:
+			return new_dep
+
+		if self._dynamic_config._autounmask is True:
+
+			for autounmask_level in self._autounmask_levels():
+
+				new_dep = self._slot_operator_update_probe(dep,
+					slot_conflict=True, autounmask_level=autounmask_level)
+
+				if new_dep is not None:
+					return new_dep
+
+		return None
+
 	def _slot_operator_update_probe(self, dep, new_child_slot=False,
-		slot_conflict=False):
+		slot_conflict=False, autounmask_level=None):
 		"""
 		slot/sub-slot := operators tend to prevent updates from getting pulled in,
 		since installed packages pull in packages with the slot/sub-slot that they
@@ -1191,7 +1218,7 @@ class depgraph(object):
 		want_downgrade = None
 
 		for replacement_parent in self._iter_similar_available(dep.parent,
-			dep.parent.slot_atom):
+			dep.parent.slot_atom, autounmask_level=autounmask_level):
 
 			selected_atoms = None
 
@@ -1283,7 +1310,8 @@ class depgraph(object):
 					if insignificant:
 						return None
 
-					return pkg
+					return Dependency(parent=replacement_parent,
+						child=pkg, atom=unevaluated_atom)
 
 		if debug:
 			msg = []
@@ -1423,7 +1451,7 @@ class depgraph(object):
 		return frozenset(x.unevaluated_atom for
 			x in selected_atoms)
 
-	def _iter_similar_available(self, graph_pkg, atom):
+	def _iter_similar_available(self, graph_pkg, atom, autounmask_level=None):
 		"""
 		Given a package that's in the graph, do a rough check to
 		see if a similar package is available to install. The given
@@ -1447,16 +1475,18 @@ class depgraph(object):
 			if self._frozen_config.excluded_pkgs.findAtomForPackage(pkg,
 				modified_use=self._pkg_use_enabled(pkg)):
 				continue
-			if not self._pkg_visibility_check(pkg):
+			if pkg.built and self._equiv_binary_installed(pkg):
 				continue
 			if pkg.built:
-				if self._equiv_binary_installed(pkg):
-					continue
 				if not (not use_ebuild_visibility and
 					(usepkgonly or useoldpkg_atoms.findAtomForPackage(
 					pkg, modified_use=self._pkg_use_enabled(pkg)))) and \
-					not self._equiv_ebuild_visible(pkg):
+					not self._equiv_ebuild_visible(pkg,
+					autounmask_level=autounmask_level):
 					continue
+			if not self._pkg_visibility_check(pkg,
+				autounmask_level=autounmask_level):
+				continue
 			yield pkg
 
 	def _replace_installed_atom(self, inst_pkg):
@@ -1521,11 +1551,11 @@ class depgraph(object):
 				# trigger reinstall of the child package when a newer
 				# slot will be used instead.
 				if rebuild_if_new_slot:
-					new_child = self._slot_operator_update_probe(dep,
+					new_dep = self._slot_operator_update_probe(dep,
 						new_child_slot=True)
-					if new_child:
+					if new_dep is not None:
 						self._slot_operator_update_backtrack(dep,
-							new_child_slot=new_child)
+							new_child_slot=new_dep.child)
 						break
 
 				if dep.want_update:
