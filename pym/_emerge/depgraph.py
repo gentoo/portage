@@ -4342,14 +4342,11 @@ class depgraph(object):
 
 		default_selection = (pkg, existing)
 
-		def reset_pkg(pkg):
+		if self._dynamic_config._autounmask is True:
 			if pkg is not None and \
 				pkg.installed and \
 				not self._want_installed_pkg(pkg):
 				pkg = None
-
-		if self._dynamic_config._autounmask is True:
-			reset_pkg(pkg)
 
 			# Temporarily reset _need_restart state, in order to
 			# avoid interference as reported in bug #459832.
@@ -4365,7 +4362,10 @@ class depgraph(object):
 							root, atom, onlydeps=onlydeps,
 							autounmask_level=autounmask_level)
 
-					reset_pkg(pkg)
+					if pkg is not None and \
+						pkg.installed and \
+						not self._want_installed_pkg(pkg):
+						pkg = None
 
 				if self._dynamic_config._need_restart:
 					return None, None
