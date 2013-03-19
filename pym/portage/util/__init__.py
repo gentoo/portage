@@ -250,12 +250,13 @@ def stack_dicts(dicts, incremental=0, incrementals=[], ignore_none=0):
 def append_repo(atom_list, repo_name, remember_source_file=False):
 	"""
 	Takes a list of valid atoms without repo spec and appends ::repo_name.
+	If an atom already has a repo part, then it is preserved (see bug #461948).
 	"""
 	if remember_source_file:
-		return [(Atom(atom + "::" + repo_name, allow_wildcard=True, allow_repo=True), source) \
+		return [(atom.repo is not None and atom or Atom(atom + "::" + repo_name, allow_wildcard=True, allow_repo=True), source) \
 			for atom, source in atom_list]
 	else:
-		return [Atom(atom + "::" + repo_name, allow_wildcard=True, allow_repo=True) \
+		return [atom.repo is not None and atom or Atom(atom + "::" + repo_name, allow_wildcard=True, allow_repo=True) \
 			for atom in atom_list]
 
 def stack_lists(lists, incremental=1, remember_source_file=False,
