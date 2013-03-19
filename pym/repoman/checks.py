@@ -596,7 +596,8 @@ _eclass_info = {
 		),
 
 		# These are "eclasses are the whole ebuild" type thing.
-		'exempt_eclasses': _eclass_export_functions + ('autotools', 'libtool'),
+		'exempt_eclasses': _eclass_export_functions + ('autotools', 'libtool',
+			'multilib-minimal'),
 
 		'comprehensive': False
 	},
