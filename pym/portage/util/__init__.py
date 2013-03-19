@@ -848,6 +848,9 @@ class cmp_sort_key(object):
 	list.sort(), making it easier to port code for python-3.0 compatibility.
 	It works by generating key objects which use the given cmp function to
 	implement their __lt__ method.
+
+	Beginning with Python 2.7 and 3.2, equivalent functionality is provided
+	by functools.cmp_to_key().
 	"""
 	__slots__ = ("_cmp_func",)
 
