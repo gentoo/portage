@@ -1475,9 +1475,9 @@ class depgraph(object):
 			if self._frozen_config.excluded_pkgs.findAtomForPackage(pkg,
 				modified_use=self._pkg_use_enabled(pkg)):
 				continue
-			if pkg.built and self._equiv_binary_installed(pkg):
-				continue
 			if pkg.built:
+				if self._equiv_binary_installed(pkg):
+					continue
 				if not (not use_ebuild_visibility and
 					(usepkgonly or useoldpkg_atoms.findAtomForPackage(
 					pkg, modified_use=self._pkg_use_enabled(pkg)))) and \
