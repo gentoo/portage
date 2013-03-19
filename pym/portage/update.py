@@ -16,13 +16,13 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.dep:Atom,dep_getkey,isvalidatom,_get_slot_re',
+	'portage.dep:Atom,dep_getkey,isvalidatom,match_from_list',
 	'portage.util:ConfigProtect,new_protect_filename,' + \
 		'normalize_path,write_atomic,writemsg',
+	'portage.versions:_get_slot_re',
 )
 
 from portage.const import USER_CONFIG_PATH, VCS_DIRS
-from portage.dep import match_from_list
 from portage.eapi import _get_eapi_attrs
 from portage.exception import DirectoryNotFound, InvalidAtom, PortageException
 from portage.localization import _

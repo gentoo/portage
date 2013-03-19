@@ -21,7 +21,6 @@ else:
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.dep:_get_slot_re',
 	'portage.repository.config:_gen_valid_repo',
 	'portage.util:cmp_sort_key',
 )
@@ -33,6 +32,10 @@ from portage.localization import _
 _unknown_repo = "__unknown__"
 
 # \w is [a-zA-Z0-9_]
+
+# PMS 3.1.3: A slot name may contain any of the characters [A-Za-z0-9+_.-].
+# It must not begin with a hyphen or a dot.
+_slot = r'([\w+][\w+.-]*)'
 
 # 2.1.1 A category name may contain any of the characters [A-Za-z0-9+_.-].
 # It must not begin with a hyphen or a dot.
@@ -67,6 +70,24 @@ ver_regexp = re.compile("^" + _vr + "$")
 suffix_regexp = re.compile("^(alpha|beta|rc|pre|p)(\\d*)$")
 suffix_value = {"pre": -2, "p": 0, "alpha": -4, "beta": -3, "rc": -1}
 endversion_keys = ["pre", "p", "alpha", "beta", "rc"]
+
+_slot_re_cache = {}
+
+def _get_slot_re(eapi_attrs):
+	cache_key = eapi_attrs.slot_operator
+	slot_re = _slot_re_cache.get(cache_key)
+	if slot_re is not None:
+		return slot_re
+
+	if eapi_attrs.slot_operator:
+		slot_re = _slot + r'(/' + _slot + r')?'
+	else:
+		slot_re = _slot
+
+	slot_re = re.compile('^' + slot_re + '$', re.VERBOSE | re.UNICODE)
+
+	_slot_re_cache[cache_key] = slot_re
+	return slot_re
 
 _pv_re_cache = {}
 

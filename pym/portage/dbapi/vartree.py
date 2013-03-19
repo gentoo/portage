@@ -15,7 +15,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dbapi._MergeProcess:MergeProcess',
 	'portage.dbapi._SyncfsProcess:SyncfsProcess',
 	'portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list,' + \
-	 	'use_reduce,_get_slot_re,_slot_separator,_repo_separator',
+	 	'use_reduce,_slot_separator,_repo_separator',
 	'portage.eapi:_get_eapi_attrs',
 	'portage.elog:collect_ebuild_messages,collect_messages,' + \
 		'elog_process,_merge_logentries',
@@ -38,7 +38,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util._eventloop.EventLoop:EventLoop',
 	'portage.util._eventloop.global_event_loop:global_event_loop',
 	'portage.versions:best,catpkgsplit,catsplit,cpv_getkey,vercmp,' + \
-		'_pkgsplit@pkgsplit,_pkg_str,_unknown_repo',
+		'_get_slot_re,_pkgsplit@pkgsplit,_pkg_str,_unknown_repo',
 	'subprocess',
 	'tarfile',
 )
