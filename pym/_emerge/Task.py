@@ -43,5 +43,8 @@ class Task(SlotObject):
 		return "(%s)" % ", ".join(("'%s'" % x for x in self._hash_key))
 
 	def __repr__(self):
+		if self._hash_key is None:
+			# triggered by python-trace
+			return SlotObject.__repr__(self)
 		return "<%s (%s)>" % (self.__class__.__name__,
 			", ".join(("'%s'" % x for x in self._hash_key)))
