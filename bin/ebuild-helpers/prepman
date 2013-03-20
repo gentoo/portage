@@ -2,6 +2,9 @@
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+# Do not compress man pages which are smaller than this (in bytes). #169260
+SIZE_LIMIT='128'
+
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 if ! ___eapi_has_prefix_variables; then
@@ -31,6 +34,6 @@ for subdir in "${mandir}"/man* "${mandir}"/*/man* ; do
 	[[ -d ${subdir} ]] && really_is_mandir=1 && break
 done
 
-[[ ${really_is_mandir} == 1 ]] && exec ecompressdir --queue "${mandir#${ED}}"
+[[ ${really_is_mandir} == 1 ]] && exec ecompressdir --limit ${SIZE_LIMIT} --queue "${mandir#${ED}}"
 
 exit 0

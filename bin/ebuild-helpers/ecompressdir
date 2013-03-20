@@ -13,7 +13,9 @@ if ! ___eapi_has_prefix_variables; then
 	ED=${D} EPREFIX=
 fi
 
-case $1 in
+SIZE_LIMIT=''
+while [[ $# -gt 0 ]] ; do
+	case $1 in
 	--ignore)
 		shift
 		for skip in "$@" ; do
@@ -28,7 +30,8 @@ case $1 in
 		set -- "${@/#/${ED}}"
 		ret=0
 		for x in "$@" ; do
-			>> "$x"
+			# Stash the limit in the .dir file so we can reload it later.
+			printf "${SIZE_LIMIT}" > "${x}"
 			((ret|=$?))
 		done
 		[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
@@ -42,29 +45,44 @@ case $1 in
 		find "${ED}" -name '*.ecompress.skip' -print0 | ${XARGS} -0 rm -f
 		exit 0
 		;;
+	--limit)
+		SIZE_LIMIT=$2
+		shift
+		;;
 	--*)
 		__helpers_die "${0##*/}: unknown arguments '$*'"
 		exit 1
 		;;
-esac
+	*)
+		break
+		;;
+	esac
+	shift
+done
 
 # figure out the new suffix
 suffix=$(ecompress --suffix)
 
-# funk_up_dir(action, suffix, binary)
+# funk_up_dir(action, suffix, binary, [size_limit])
 #	- action: compress or decompress
 #	- suffix: the compression suffix to work with
 #	- binary: the program to execute that'll compress/decompress
+#   - size_limit: if compressing, skip files smaller than this
 # The directory we act on is implied in the ${dir} variable
 funk_up_dir() {
-	local act=$1 suffix=$2 binary=$3
+	local act=$1 suffix=$2 binary=$3 size_limit=$4
 
 	local negate=""
 	[[ ${act} == "compress" ]] && negate="!"
 
 	local ret=0
 	# first we act on all the files
-	find "${dir}" -type f ${negate} -iname '*'${suffix} -print0 | ${XARGS} -0 ${binary}
+	local args=(
+		-type f
+		${negate} -iname "*${suffix}"
+	)
+	[[ -n ${size_limit} ]] && args+=( -size "+${size_limit}c" )
+	find "${dir}" "${args[@]}" -print0 | ${XARGS} -0 ${binary}
 	((ret|=$?))
 
 	while read -r -d $'\0' brokenlink ; do
@@ -152,6 +170,7 @@ for dir in "$@" ; do
 
 	# since we've been requested to compress the whole dir,
 	# delete any individual queued requests
+	size_limit=${SIZE_LIMIT:-$(<"${actual_dir}.ecompress.dir")}
 	rm -f "${actual_dir}.ecompress.dir"
 	find "${dir}" -type f -name '*.ecompress.file' -print0 | ${XARGS} -0 rm -f
 
@@ -179,7 +198,7 @@ for dir in "$@" ; do
 	# now lets do our work
 	if [[ -n ${suffix} ]] ; then
 		__vecho "${0##*/}: $(ecompress --bin) /${actual_dir#${ED}}"
-		funk_up_dir "compress" "${suffix}" "ecompress"
+		funk_up_dir "compress" "${suffix}" "ecompress" "${size_limit}"
 		: $(( ret |= $? ))
 	fi
 
