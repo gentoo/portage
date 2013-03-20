@@ -385,7 +385,8 @@ class Display(object):
 						if old_pkg.slot != old_pkg.sub_slot or \
 							old_pkg.slot == pkg.slot and old_pkg.sub_slot != pkg.sub_slot:
 							key += "/" + old_pkg.sub_slot
-					if not self.quiet_repo_display and self.portdb.repositories.mainRepo() and (self.verbose_main_repo_display or
+					if not self.quiet_repo_display and (self.verbose_main_repo_display or
+						self.portdb.repositories.mainRepo() is None or
 						any(x.repo != self.portdb.repositories.mainRepo().name for x in myoldbest + [pkg])):
 						key += _repo_separator + old_pkg.repo
 				versions.append(key)
@@ -419,7 +420,8 @@ class Display(object):
 		@param pkg_info: dictionary
 		@rtype string
 		"""
-		if not self.quiet_repo_display and self.portdb.repositories.mainRepo() and (self.verbose_main_repo_display or
+		if not self.quiet_repo_display and (self.verbose_main_repo_display or
+			self.portdb.repositories.mainRepo() is None or
 			any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
 			pkg_str += _repo_separator + pkg.repo
 		return pkg_str
