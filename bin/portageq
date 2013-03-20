@@ -1156,6 +1156,10 @@ def main(argv):
 		portage.output.nocolor()
 
 	parser = optparse.OptionParser(add_help_option=False)
+
+	# used by envvar
+	parser.add_option("-v", dest="verbose", action="store_true")
+
 	actions = optparse.OptionGroup(parser, 'Actions')
 	actions.add_option("-h", "--help", action="store_true")
 	actions.add_option("--version", action="store_true")
@@ -1209,6 +1213,10 @@ def main(argv):
 
 	if cmd is None:
 		return pquery(parser, pquery_option_groups, opts, args)
+
+	if opts.verbose:
+		# used by envvar
+		args.append("-v")
 
 	argv = argv[:1] + args
 
