@@ -7,7 +7,7 @@ import sys
 import portage
 from portage import os
 from portage import _unicode_decode
-from portage.const import (BASH_BINARY,
+from portage.const import (BASH_BINARY, PORTAGE_BASE_PATH,
 	PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, USER_CONFIG_PATH)
 from portage.process import find_binary
 from portage.tests import TestCase
@@ -166,6 +166,8 @@ pkg_preinst() {
 		cachedir_pregen = os.path.join(portdir, "metadata", "md5-cache")
 
 		portage_python = portage._python_interpreter
+		dispatch_conf_cmd = (portage_python, "-Wd",
+			os.path.join(PORTAGE_BIN_PATH, "dispatch-conf"))
 		ebuild_cmd = (portage_python, "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "ebuild"))
 		egencache_cmd = (portage_python, "-Wd",
@@ -204,6 +206,7 @@ pkg_preinst() {
 			portageq_cmd + ("envvar", "-v", "CONFIG_PROTECT", "EROOT",
 				"PORTAGE_CONFIGROOT", "PORTAGE_TMPDIR", "USERLAND"),
 			etc_update_cmd,
+			dispatch_conf_cmd,
 			emerge_cmd + ("--version",),
 			emerge_cmd + ("--info",),
 			emerge_cmd + ("--info", "--verbose"),
@@ -319,6 +322,7 @@ pkg_preinst() {
 		dirs = [cachedir, cachedir_pregen, distdir, fake_bin,
 			portage_tmpdir, updates_dir,
 			user_config_dir, var_cache_edb]
+		etc_symlinks = ("dispatch-conf.conf", "etc-update.conf")
 		# Override things that may be unavailable, or may have portability
 		# issues when running tests in exotic environments.
 		#   prepstrip - bug #447810 (bash read builtin EINTR problem)
@@ -331,6 +335,9 @@ pkg_preinst() {
 				ensure_dirs(d)
 			for x in true_symlinks:
 				os.symlink(true_binary, os.path.join(fake_bin, x))
+			for x in etc_symlinks:
+				os.symlink(os.path.join(PORTAGE_BASE_PATH, "cnf", x),
+					os.path.join(eprefix, "etc", x))
 			with open(os.path.join(var_cache_edb, "counter"), 'wb') as f:
 				f.write(b"100")
 			# non-empty system set keeps --depclean quiet
