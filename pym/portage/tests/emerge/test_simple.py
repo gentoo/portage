@@ -7,7 +7,8 @@ import sys
 import portage
 from portage import os
 from portage import _unicode_decode
-from portage.const import PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, USER_CONFIG_PATH
+from portage.const import (BASH_BINARY,
+	PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, USER_CONFIG_PATH)
 from portage.process import find_binary
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
@@ -175,6 +176,8 @@ pkg_preinst() {
 			os.path.join(PORTAGE_BIN_PATH, "emaint"))
 		env_update_cmd = (portage_python, "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "env-update"))
+		etc_update_cmd = (BASH_BINARY,
+			os.path.join(PORTAGE_BIN_PATH, "etc-update"))
 		fixpackages_cmd = (portage_python, "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "fixpackages"))
 		portageq_cmd = (portage_python, "-Wd",
@@ -198,6 +201,9 @@ pkg_preinst() {
 
 		test_commands = (
 			env_update_cmd,
+			portageq_cmd + ("envvar", "-v", "CONFIG_PROTECT", "EROOT",
+				"PORTAGE_CONFIGROOT", "PORTAGE_TMPDIR", "USERLAND"),
+			etc_update_cmd,
 			emerge_cmd + ("--version",),
 			emerge_cmd + ("--info",),
 			emerge_cmd + ("--info", "--verbose"),
