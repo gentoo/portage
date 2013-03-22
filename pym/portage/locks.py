@@ -163,7 +163,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 				if isinstance(mypath, int):
 					waiting_msg = _("waiting for lock on fd %i") % myfd
 				else:
-					waiting_msg = _("waiting for lock on %s\n") % lockfilename
+					waiting_msg = _("waiting for lock on %s") % lockfilename
 			if out is not None:
 				out.ebegin(waiting_msg)
 			# try for the exclusive lock now.
