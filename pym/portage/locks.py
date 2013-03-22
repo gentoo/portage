@@ -148,7 +148,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 	except IOError as e:
 		if not hasattr(e, "errno"):
 			raise
-		if e.errno in (errno.EACCES, errno.EAGAIN):
+		if e.errno in (errno.EACCES, errno.EAGAIN, errno.ENOLCK):
 			# resource temp unavailable; eg, someone beat us to the lock.
 			if flags & os.O_NONBLOCK:
 				os.close(myfd)
@@ -167,15 +167,39 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 			if out is not None:
 				out.ebegin(waiting_msg)
 			# try for the exclusive lock now.
-			try:
-				locking_method(myfd, fcntl.LOCK_EX)
-			except EnvironmentError as e:
-				if out is not None:
-					out.eend(1, str(e))
-				raise
+			enolock_msg_shown = False
+			while True:
+				try:
+					locking_method(myfd, fcntl.LOCK_EX)
+				except EnvironmentError as e:
+					if e.errno == errno.ENOLCK:
+						# This is known to occur on Solaris NFS (see
+						# bug #462694). Assume that the error is due
+						# to temporary exhaustion of record locks,
+						# and loop until one becomes available.
+						if not enolock_msg_shown:
+							enolock_msg_shown = True
+							if isinstance(mypath, int):
+								context_desc = _("Error while waiting "
+									"to lock fd %i") % myfd
+							else:
+								context_desc = _("Error while waiting "
+									"to lock '%s'") % lockfilename
+							writemsg("\n!!! %s: %s\n" % (context_desc, e),
+								noiselevel=-1)
+
+						time.sleep(_HARDLINK_POLL_LATENCY)
+						continue
+
+					if out is not None:
+						out.eend(1, str(e))
+					raise
+				else:
+					break
+
 			if out is not None:
 				out.eend(os.EX_OK)
-		elif e.errno in (errno.ENOSYS, errno.ENOLCK):
+		elif e.errno in (errno.ENOSYS,):
 			# We're not allowed to lock on this FS.
 			if not isinstance(lockfilename, int):
 				# If a file object was passed in, it's not safe
