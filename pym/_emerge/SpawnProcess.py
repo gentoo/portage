@@ -14,6 +14,12 @@ from portage import os
 from portage.const import BASH_BINARY
 from portage.util._async.PipeLogger import PipeLogger
 
+# https://bugs.gentoo.org/show_bug.cgi?id=456296
+import platform
+if platform.system() in ("Darwin",):
+    # disable FD_CLOEXEC on stdout, breaks horribly
+    fcntl = None
+
 class SpawnProcess(SubProcess):
 
 	"""
