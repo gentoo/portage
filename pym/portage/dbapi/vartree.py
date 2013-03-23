@@ -15,7 +15,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dbapi._MergeProcess:MergeProcess',
 	'portage.dbapi._SyncfsProcess:SyncfsProcess',
 	'portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list,' + \
-	 	'use_reduce,_get_slot_re,_slot_separator,_repo_separator',
+	 	'use_reduce,_slot_separator,_repo_separator',
 	'portage.eapi:_get_eapi_attrs',
 	'portage.elog:collect_ebuild_messages,collect_messages,' + \
 		'elog_process,_merge_logentries',
@@ -41,7 +41,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util._eventloop.EventLoop:EventLoop',
 	'portage.util._eventloop.global_event_loop:global_event_loop',
 	'portage.versions:best,catpkgsplit,catsplit,cpv_getkey,vercmp,' + \
-		'_pkgsplit@pkgsplit,_pkg_str,_unknown_repo',
+		'_get_slot_re,_pkgsplit@pkgsplit,_pkg_str,_unknown_repo',
 	'subprocess',
 	'tarfile',
 )
@@ -1275,18 +1275,35 @@ class vardbapi(dbapi):
 					name = os.path.basename(path.rstrip(os.path.sep))
 				path_info_list.append((path, name, is_basename))
 
+			# Do work via the global event loop, so that it can be used
+			# for indication of progress during the search (bug #461412).
+			event_loop = (portage._internal_caller and
+				global_event_loop() or EventLoop(main=False))
 			root = self._vardb._eroot
-			for cpv in self._vardb.cpv_all():
-				dblnk =  self._vardb._dblink(cpv)
 
+			def search_pkg(cpv):
+				dblnk = self._vardb._dblink(cpv)
 				for path, name, is_basename in path_info_list:
 					if is_basename:
 						for p in dblnk.getcontents():
 							if os.path.basename(p) == name:
-								yield dblnk, p[len(root):]
+								search_pkg.results.append((dblnk, p[len(root):]))
 					else:
 						if dblnk.isowner(path):
-							yield dblnk, path
+							search_pkg.results.append((dblnk, path))
+				search_pkg.complete = True
+				return False
+
+			search_pkg.results = []
+
+			for cpv in self._vardb.cpv_all():
+				del search_pkg.results[:]
+				search_pkg.complete = False
+				event_loop.idle_add(search_pkg, cpv)
+				while not search_pkg.complete:
+					event_loop.iteration()
+				for result in search_pkg.results:
+					yield result
 
 class vartree(object):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"
@@ -3603,11 +3620,10 @@ class dblink(object):
 			slot_matches.append(self.mycpv)
 
 		others_in_slot = []
-		from portage import config
 		for cur_cpv in slot_matches:
 			# Clone the config in case one of these has to be unmerged since
 			# we need it to have private ${T} etc... for things like elog.
-			settings_clone = config(clone=self.settings)
+			settings_clone = portage.config(clone=self.settings)
 			settings_clone.pop("PORTAGE_BUILDDIR_LOCKED", None)
 			settings_clone.reset()
 			others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
@@ -4490,6 +4506,14 @@ class dblink(object):
 					pass
 
 				if mymtime != None:
+					# Use lexists, since if the target happens to be a broken
+					# symlink then that should trigger an independent warning.
+					if not (os.path.lexists(myrealto) or
+						os.path.lexists(join(srcroot, myabsto))):
+						self._eqawarn('preinst',
+							[_("QA Notice: Symbolic link /%s points to /%s which does not exist.")
+							% (relative_path, myabsto)])
+
 					showMessage(">>> %s -> %s\n" % (mydest, myto))
 					if sys.hexversion >= 0x3030000:
 						outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime // 1000000000)+"\n")

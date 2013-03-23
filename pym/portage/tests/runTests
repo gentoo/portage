@@ -29,7 +29,7 @@ os.environ["PORTAGE_GRPNAME"] = grp.getgrgid(os.getgid()).gr_name
 
 # Insert our parent dir so we can do shiny import "tests"
 # This line courtesy of Marienz and Pkgcore ;)
-sys.path.insert(0, osp.dirname(osp.dirname(osp.dirname(osp.abspath(__file__)))))
+sys.path.insert(0, osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__)))))
 
 import portage
 portage._internal_caller = True

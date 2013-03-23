@@ -52,8 +52,7 @@ def manifest2AuxfileFilter(filename):
 	return not filename[:7] == 'digest-'
 
 def manifest2MiscfileFilter(filename):
-	filename = filename.strip(os.sep)
-	return not (filename in ["CVS", ".svn", "files", "Manifest"] or filename.endswith(".ebuild"))
+	return not (filename == "Manifest" or filename.endswith(".ebuild"))
 
 def guessManifestFileType(filename):
 	""" Perform a best effort guess of which type the given filename is, avoid using this if possible """

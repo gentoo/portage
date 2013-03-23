@@ -1,5 +1,5 @@
 # tests/__init__.py -- Portage Unit Test functionality
-# Copyright 2006-2011 Gentoo Foundation
+# Copyright 2006-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -14,6 +14,7 @@ try:
 except ImportError:
 	from unittest import _TextTestResult
 
+import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
@@ -27,6 +28,11 @@ def main():
 	parser.add_option("-l", "--list", help="list all tests",
 		action="store_true", dest="list_tests")
 	(options, args) = parser.parse_args(args=sys.argv)
+
+	if (os.environ.get('NOCOLOR') in ('yes', 'true') or
+		os.environ.get('TERM') == 'dumb' or
+		not sys.stdout.isatty()):
+		portage.output.nocolor()
 
 	if options.list_tests:
 		testdir = os.path.dirname(sys.argv[0])
@@ -70,15 +76,12 @@ def getTestFromCommandLine(args, base_path):
 
 def getTestDirs(base_path):
 	TEST_FILE = b'__test__'
-	svn_dirname = b'.svn'
 	testDirs = []
 
 	# the os.walk help mentions relative paths as being quirky
 	# I was tired of adding dirs to the list, so now we add __test__
 	# to each dir we want tested.
 	for root, dirs, files in os.walk(base_path):
-		if svn_dirname in dirs:
-			dirs.remove(svn_dirname)
 		try:
 			root = _unicode_decode(root,
 				encoding=_encodings['fs'], errors='strict')

@@ -20,6 +20,7 @@ try:
 except KeyboardInterrupt:
 	sys.exit(128 + signal.SIGINT)
 
+import optparse
 import os
 import types
 
@@ -44,13 +45,15 @@ portage._internal_caller = True
 from portage import os
 from portage.eapi import eapi_has_repo_deps
 from portage.util import writemsg, writemsg_stdout
-from portage.output import colormap
 portage.proxy.lazyimport.lazyimport(globals(),
+	're',
 	'subprocess',
 	'_emerge.Package:Package',
 	'_emerge.RootConfig:RootConfig',
+	'_emerge.is_valid_package_atom:insert_category_into_atom',
 	'portage.dbapi._expand_new_virt:expand_new_virt',
 	'portage._sets.base:InternalPackageSet',
+	'portage.xml.metadata:MetaDataXML'
 )
 
 def eval_atom_use(atom):
@@ -249,7 +252,6 @@ def owners(argv):
 		sys.stderr.flush()
 		return 2
 
-	from portage import catsplit, dblink
 	eroot = argv[0]
 	vardb = portage.db[eroot]["vartree"].dbapi
 	root = portage.settings['ROOT']
@@ -875,6 +877,212 @@ def list_preserved_libs(argv):
 	return rValue
 list_preserved_libs.uses_eroot = True
 
+class MaintainerEmailMatcher(object):
+	def __init__(self, maintainer_emails):
+		self._re = re.compile("^(%s)$" % "|".join(maintainer_emails))
+
+	def __call__(self, metadata_xml):
+		match = False
+		matcher = self._re.match
+		for x in metadata_xml.maintainers():
+			if x.email is not None and matcher(x.email) is not None:
+				match = True
+				break
+		return match
+
+class HerdMatcher(object):
+	def __init__(self, herds):
+		self._herds = frozenset(herds)
+
+	def __call__(self, metadata_xml):
+		herds = self._herds
+		return any(x in herds for x in metadata_xml.herds())
+
+def pquery(parser, pquery_option_groups, opts, args):
+	"""[options] [atom]+
+	Emulates a subset of Pkgcore's pquery tool.
+	"""
+
+	portdb = portage.db[portage.root]['porttree'].dbapi
+	root_config = RootConfig(portdb.settings,
+		portage.db[portage.root], None)
+
+	def _pkg(cpv, repo_name):
+		try:
+			metadata = dict(zip(
+				Package.metadata_keys,
+				portdb.aux_get(cpv,
+				Package.metadata_keys,
+				myrepo=repo_name)))
+		except KeyError:
+			raise portage.exception.PackageNotFound(cpv)
+		return Package(built=False, cpv=cpv,
+			installed=False, metadata=metadata,
+			root_config=root_config,
+			type_name="ebuild")
+
+	need_metadata = False
+	atoms = []
+	for arg in args:
+		if "/" not in arg.split(":")[0]:
+			atom = insert_category_into_atom(arg, '*')
+			if atom is None:
+				writemsg("ERROR: Invalid atom: '%s'\n" % arg,
+					noiselevel=-1)
+				return 2
+		else:
+			atom = arg
+
+		try:
+			atom = portage.dep.Atom(atom, allow_wildcard=True, allow_repo=True)
+		except portage.exception.InvalidAtom:
+			writemsg("ERROR: Invalid atom: '%s'\n" % arg,
+				noiselevel=-1)
+			return 2
+
+		if atom.slot is not None:
+			need_metadata = True
+
+		atoms.append(atom)
+
+	if "*/*" in atoms:
+		del atoms[:]
+		need_metadata = False
+
+	if not opts.no_filters:
+		need_metadata = True
+
+	xml_matchers = []
+	if opts.maintainer_email:
+		maintainer_emails = []
+		for x in opts.maintainer_email:
+			maintainer_emails.extend(x.split(","))
+		xml_matchers.append(MaintainerEmailMatcher(maintainer_emails))
+	if opts.herd is not None:
+		herds  = []
+		for x in opts.herd:
+			herds.extend(x.split(","))
+		xml_matchers.append(HerdMatcher(herds))
+
+	repos = []
+	if opts.all_repos:
+		repos.extend(portdb.repositories.get_repo_for_location(location)
+			for location in portdb.porttrees)
+	elif opts.repo is not None:
+		repos.append(portdb.repositories[opts.repo])
+	else:
+		repos.append(portdb.repositories.mainRepo())
+
+	if not atoms:
+		names = None
+		categories = list(portdb.categories)
+	else:
+		category_wildcard = False
+		name_wildcard = False
+		categories = []
+		names = []
+		for atom in atoms:
+			category, name = portage.catsplit(atom.cp)
+			categories.append(category)
+			names.append(name)
+			if "*" in category:
+				category_wildcard = True
+			if "*" in name:
+				name_wildcard = True
+
+		if category_wildcard:
+			categories = list(portdb.categories)
+		else:
+			categories = list(set(categories))
+
+		if name_wildcard:
+			names = None
+		else:
+			names = sorted(set(names))
+
+	no_version = opts.no_version
+	categories.sort()
+
+	for category in categories:
+		if names is None:
+			cp_list = portdb.cp_all(categories=(category,))
+		else:
+			cp_list = [category + "/" + name for name in names]
+		for cp in cp_list:
+			matches = []
+			for repo in repos:
+				match = True
+				if xml_matchers:
+					metadata_xml_path = os.path.join(
+						repo.location, cp, 'metadata.xml')
+					try:
+						metadata_xml = MetaDataXML(metadata_xml_path, None)
+					except (EnvironmentError, SyntaxError):
+						match = False
+					else:
+						for matcher in xml_matchers:
+							if not matcher(metadata_xml):
+								match = False
+								break
+				if not match:
+					continue
+				cpv_list = portdb.cp_list(cp, mytree=[repo.location])
+				if atoms:
+					for cpv in cpv_list:
+						pkg = None
+						for atom in atoms:
+							if atom.repo is not None and \
+								atom.repo != repo.name:
+								continue
+							if not portage.match_from_list(atom, [cpv]):
+								continue
+							if need_metadata:
+								if pkg is None:
+									try:
+										pkg = _pkg(cpv, repo.name)
+									except portage.exception.PackageNotFound:
+										continue
+
+								if not (opts.no_filters or pkg.visible):
+									continue
+								if not portage.match_from_list(atom, [pkg]):
+									continue
+							matches.append(cpv)
+							break
+						if no_version and matches:
+							break
+				elif opts.no_filters:
+					matches.extend(cpv_list)
+				else:
+					for cpv in cpv_list:
+						try:
+							pkg = _pkg(cpv, repo.name)
+						except portage.exception.PackageNotFound:
+							continue
+						else:
+							if pkg.visible:
+								matches.append(cpv)
+								if no_version:
+									break
+
+				if no_version and matches:
+					break
+
+			if not matches:
+				continue
+
+			if no_version:
+				writemsg_stdout("%s\n" % (cp,), noiselevel=-1)
+			else:
+				matches = list(set(matches))
+				portdb._cpv_sort_ascending(matches)
+				for cpv in matches:
+					writemsg_stdout("%s\n" % (cpv,), noiselevel=-1)
+
+	return os.EX_OK
+
+pquery.uses_eroot = False
+
 #-----------------------------------------------------------------------------
 #
 # DO NOT CHANGE CODE BEYOND THIS POINT - IT'S NOT NEEDED!
@@ -884,7 +1092,7 @@ non_commands = frozenset(['elog', 'eval_atom_use', 'exithandler', 'main', 'usage
 commands = sorted(k for k, v in globals().items() \
 	if k not in non_commands and isinstance(v, types.FunctionType) and v.__module__ == "__main__")
 
-def usage(argv):
+def usage(argv, parser=None, pquery_option_groups=None):
 	print(">>> Portage information query tool")
 	print(">>> %s" % portage.VERSION)
 	print(">>> Usage: portageq <command> [<option> ...]")
@@ -914,6 +1122,15 @@ def usage(argv):
 				lines = lines[:-1]
 			for line in lines[1:]:
 				print("      " + line.strip())
+
+	if pquery_option_groups is not None:
+		parser.formatter.store_option_strings(parser)
+		print()
+		print('Pkgcore pquery compatible options:')
+		print()
+		for optgroup in pquery_option_groups:
+			print(optgroup.format_help(parser.formatter))
+
 	if len(argv) == 1:
 		print("\nRun portageq with --help for info")
 
@@ -942,23 +1159,75 @@ def main(argv):
 	if nocolor in ('yes', 'true'):
 		portage.output.nocolor()
 
+	parser = optparse.OptionParser(add_help_option=False)
+
+	# used by envvar
+	parser.add_option("-v", dest="verbose", action="store_true")
+
+	actions = optparse.OptionGroup(parser, 'Actions')
+	actions.add_option("-h", "--help", action="store_true")
+	actions.add_option("--version", action="store_true")
+	parser.add_option_group(actions)
+
+	pquery_option_groups = []
+
+	repo_optgroup = optparse.OptionGroup(parser,
+		'Repository matching options')
+	repo_optgroup.add_option("--no-filters", action="store_true",
+		help="no visibility filters (ACCEPT_KEYWORDS, package masking, etc)")
+	repo_optgroup.add_option("--repo", action="store",
+		help="repo to use (default is PORTDIR if omitted)")
+	repo_optgroup.add_option("--all-repos", action="store_true",
+		help="search all repos")
+	parser.add_option_group(repo_optgroup)
+	pquery_option_groups.append(repo_optgroup)
+
+	matching_optgroup = optparse.OptionGroup(parser,
+		'Package matching options')
+	matching_optgroup.add_option("--herd", action="append",
+		help="exact match on a herd")
+	matching_optgroup.add_option("--maintainer-email", action="append",
+		help="comma-separated list of maintainer email regexes to search for")
+	parser.add_option_group(matching_optgroup)
+	pquery_option_groups.append(matching_optgroup)
+
+	formatting_optgroup = optparse.OptionGroup(parser,
+		'Output formatting')
+	formatting_optgroup.add_option("-n", "--no-version", action="store_true",
+		help="collapse multiple matching versions together")
+	parser.add_option_group(formatting_optgroup)
+	pquery_option_groups.append(formatting_optgroup)
+
+	opts, args = parser.parse_args(argv[1:])
+
+	if opts.help:
+		usage(argv, parser=parser, pquery_option_groups=pquery_option_groups)
+		return os.EX_OK
+	elif opts.version:
+		print("Portage", portage.VERSION)
+		return os.EX_OK
+
+	cmd = None
+	if args and args[0] in commands:
+		cmd = args[0]
+
+	if cmd == 'pquery':
+		cmd = None
+		args = args[1:]
+
+	if cmd is None:
+		return pquery(parser, pquery_option_groups, opts, args)
+
+	if opts.verbose:
+		# used by envvar
+		args.append("-v")
+
+	argv = argv[:1] + args
+
 	if len(argv) < 2:
 		usage(argv)
 		sys.exit(os.EX_USAGE)
 
-	for x in argv:
-		if x in ("-h", "--help"):
-			usage(argv)
-			sys.exit(os.EX_OK)
-		elif x == "--version":
-			print("Portage", portage.VERSION)
-			sys.exit(os.EX_OK)
-
-	cmd = argv[1]
-	function = globals().get(cmd)
-	if function is None or cmd not in commands:
-		usage(argv)
-		sys.exit(os.EX_USAGE)
 	function = globals()[cmd]
 	uses_eroot = getattr(function, "uses_eroot", False) and len(argv) > 2
 	if uses_eroot:
@@ -1008,6 +1277,7 @@ def main(argv):
 		portage.writemsg("\nPlease use a more specific atom.\n", noiselevel=-1)
 		sys.exit(1)
 
-main(sys.argv)
+if __name__ == '__main__':
+	sys.exit(main(sys.argv))
 
 #-----------------------------------------------------------------------------

@@ -2,8 +2,7 @@
 # Copyright 2005-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-"""'The emaint program provides an interface to system health
-	checks and maintenance.
+"""System health checks and maintenance utilities.
 """
 
 from __future__ import print_function

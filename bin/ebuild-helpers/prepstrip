@@ -74,7 +74,7 @@ case $(${STRIP} --version 2>/dev/null) in
 	# We'll leave out -R .note for now until we can check out the relevance
 	# of the section when it has the ALLOC flag set on it ...
 	SAFE_STRIP_FLAGS="--strip-unneeded"
-	DEF_STRIP_FLAGS="-R .comment -R .GCC.command.line"
+	DEF_STRIP_FLAGS="-R .comment -R .GCC.command.line -R .note.gnu.gold-version"
 	SPLIT_STRIP_FLAGS=
 	;;
 esac
@@ -159,15 +159,14 @@ save_elf_debug() {
 	# if we don't already have build-id from debugedit, look it up
 	if [[ -z ${buildid} ]] ; then
 		# convert the readelf output to something useful
-		buildid=$(${READELF} -x .note.gnu.build-id "${x}" 2>/dev/null \
-			| awk '$NF ~ /GNU/ { getline; printf $2$3$4$5; getline; print $2 }')
+		buildid=$(${READELF} -n "${x}" 2>/dev/null | awk '/Build ID:/{ print $NF; exit }')
 	fi
 	if [[ -n ${buildid} ]] ; then
 		local buildid_dir="${ED}usr/lib/debug/.build-id/${buildid:0:2}"
 		local buildid_file="${buildid_dir}/${buildid:2}"
 		mkdir -p "${buildid_dir}"
-		ln -s "../../${x:${#D}}.debug" "${buildid_file}.debug"
-		ln -s "/${x:${#D}}" "${buildid_file}"
+		[ -L "${buildid_file}".debug ] || ln -s "../../${x:${#D}}.debug" "${buildid_file}.debug"
+		[ -L "${buildid_file}" ] || ln -s "/${x:${#D}}" "${buildid_file}"
 	fi
 }
 

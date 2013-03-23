@@ -16,14 +16,13 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.dep:Atom,dep_getkey,isvalidatom,_get_slot_re',
+	'portage.dep:Atom,dep_getkey,isvalidatom,match_from_list',
 	'portage.util:ConfigProtect,new_protect_filename,' + \
 		'normalize_path,write_atomic,writemsg',
-	'portage.util.listdir:_ignorecvs_dirs',
+	'portage.versions:_get_slot_re',
 )
 
-from portage.const import USER_CONFIG_PATH
-from portage.dep import match_from_list
+from portage.const import USER_CONFIG_PATH, VCS_DIRS
 from portage.eapi import _get_eapi_attrs
 from portage.exception import DirectoryNotFound, InvalidAtom, PortageException
 from portage.localization import _
@@ -283,7 +282,8 @@ def parse_updates(mycontent):
 	return myupd, errors
 
 def update_config_files(config_root, protect, protect_mask, update_iter, match_callback = None):
-	"""Perform global updates on /etc/portage/package.*.
+	"""Perform global updates on /etc/portage/package.*, /etc/portage/profile/package.*,
+	/etc/portage/profile/packages and /etc/portage/sets.
 	config_root - location of files to update
 	protect - list of paths from CONFIG_PROTECT
 	protect_mask - list of paths from CONFIG_PROTECT_MASK
@@ -306,9 +306,15 @@ def update_config_files(config_root, protect, protect_mask, update_iter, match_c
 		"package.accept_keywords", "package.env",
 		"package.keywords", "package.license",
 		"package.mask", "package.properties",
-		"package.unmask", "package.use"
+		"package.unmask", "package.use", "sets"
 	]
-	myxfiles += [os.path.join("profile", x) for x in myxfiles]
+	myxfiles += [os.path.join("profile", x) for x in (
+		"packages", "package.accept_keywords",
+		"package.keywords", "package.mask",
+		"package.unmask", "package.use",
+		"package.use.force", "package.use.mask",
+		"package.use.stable.force", "package.use.stable.mask"
+	)]
 	abs_user_config = os.path.join(config_root, USER_CONFIG_PATH)
 	recursivefiles = []
 	for x in myxfiles:
@@ -327,7 +333,7 @@ def update_config_files(config_root, protect, protect_mask, update_iter, match_c
 					except UnicodeDecodeError:
 						dirs.remove(y_enc)
 						continue
-					if y.startswith(".") or y in _ignorecvs_dirs:
+					if y.startswith(".") or y in VCS_DIRS:
 						dirs.remove(y_enc)
 				for y in files:
 					try:
@@ -357,7 +363,6 @@ def update_config_files(config_root, protect, protect_mask, update_iter, match_c
 			if f is not None:
 				f.close()
 
-	# update /etc/portage/packages.*
 	ignore_line_re = re.compile(r'^#|^\s*$')
 	if repo_dict is None:
 		update_items = [(None, update_iter)]
@@ -376,6 +381,9 @@ def update_config_files(config_root, protect, protect_mask, update_iter, match_c
 					atom = line.split()[0]
 					if atom[:1] == "-":
 						# package.mask supports incrementals
+						atom = atom[1:]
+					if atom[:1] == "*":
+						# packages file supports "*"-prefixed atoms as indication of system packages.
 						atom = atom[1:]
 					if not isvalidatom(atom):
 						continue

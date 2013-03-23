@@ -1,4 +1,4 @@
-# Copyright 2007-2012 Gentoo Foundation
+# Copyright 2007-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -50,6 +50,9 @@ def display_preserved_libs(vardb):
 			if owner_set:
 				owners[f] = owner_set
 
+	all_preserved = set()
+	all_preserved.update(*plibdata.values())
+
 	for cpv in plibdata:
 		print(colorize("WARN", ">>>") + " package: %s" % cpv)
 		samefile_map = {}
@@ -67,13 +70,29 @@ def display_preserved_libs(vardb):
 				print(colorize("WARN", " * ") + " - %s" % (p,))
 			f = alt_paths[0]
 			consumers = consumer_map.get(f, [])
-			for c in consumers[:MAX_DISPLAY]:
-				print(colorize("WARN", " * ") + "     used by %s (%s)" % \
-					(c, ", ".join(x.mycpv for x in owners.get(c, []))))
+			consumers_non_preserved = [c for c in consumers
+				if c not in all_preserved]
+			if consumers_non_preserved:
+				# Filter the consumers that are preserved libraries, since
+				# they don't need to be rebuilt (see bug #461908).
+				consumers = consumers_non_preserved
+
 			if len(consumers) == MAX_DISPLAY + 1:
+				# Display 1 extra consumer, instead of displaying
+				# "used by 1 other files".
+				max_display = MAX_DISPLAY + 1
+			else:
+				max_display = MAX_DISPLAY
+			for c in consumers[:max_display]:
+				if c in all_preserved:
+					# The owner is displayed elsewhere due to having
+					# its libs preserved, so distinguish this special
+					# case (see bug #461908).
+					owners_desc = "preserved"
+				else:
+					owners_desc = ", ".join(x.mycpv for x in owners.get(c, []))
 				print(colorize("WARN", " * ") + "     used by %s (%s)" % \
-					(consumers[MAX_DISPLAY], ", ".join(x.mycpv \
-					for x in owners.get(consumers[MAX_DISPLAY], []))))
-			elif len(consumers) > MAX_DISPLAY:
+					(c, owners_desc))
+			if len(consumers) > max_display:
 				print(colorize("WARN", " * ") + "     used by %d other files" %
-					(len(consumers) - MAX_DISPLAY))
+					(len(consumers) - max_display))

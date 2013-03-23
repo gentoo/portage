@@ -38,8 +38,7 @@ from portage import shutil
 from portage import eapi_is_supported, _encodings, _unicode_decode
 from portage.cache.cache_errors import CacheError
 from portage.const import EPREFIX
-from portage.const import GLOBAL_CONFIG_PATH
-from portage.const import _DEPCLEAN_LIB_CHECK_DEFAULT
+from portage.const import GLOBAL_CONFIG_PATH, VCS_DIRS, _DEPCLEAN_LIB_CHECK_DEFAULT
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.dep import Atom
@@ -2084,7 +2083,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			noiselevel=-1, level=logging.ERROR)
 		return 1
 
-	vcs_dirs = frozenset([".git", ".svn", "CVS", ".hg"])
+	vcs_dirs = frozenset(VCS_DIRS)
 	vcs_dirs = vcs_dirs.intersection(os.listdir(myportdir))
 
 	os.umask(0o022)
@@ -3390,7 +3389,7 @@ def expand_set_arguments(myfiles, myaction, root_config):
 	# world file, the depgraph performs set expansion later. It will get
 	# confused about where the atoms came from if it's not allowed to
 	# expand them itself.
-	do_not_expand = (None, )
+	do_not_expand = myaction is None
 	newargs = []
 	for a in myfiles:
 		if a in ("system", "world"):
@@ -3456,6 +3455,14 @@ def expand_set_arguments(myfiles, myaction, root_config):
 					for line in textwrap.wrap(msg, 50):
 						out.ewarn(line)
 				setconfig.active.append(s)
+
+				if do_not_expand:
+					# Loading sets can be slow, so skip it here, in order
+					# to allow the depgraph to indicate progress with the
+					# spinner while sets are loading (bug #461412).
+					newargs.append(a)
+					continue
+
 				try:
 					set_atoms = setconfig.getSetAtoms(s)
 				except portage.exception.PackageSetNotFound as e:
@@ -3471,17 +3478,18 @@ def expand_set_arguments(myfiles, myaction, root_config):
 					return (None, 1)
 				if myaction in unmerge_actions and \
 						not sets[s].supportsOperation("unmerge"):
-					sys.stderr.write("emerge: the given set '%s' does " % s + \
-						"not support unmerge operations\n")
+					writemsg_level("emerge: the given set '%s' does " % s + \
+						"not support unmerge operations\n",
+						level=logging.ERROR, noiselevel=-1)
 					retval = 1
 				elif not set_atoms:
-					print("emerge: '%s' is an empty set" % s)
-				elif myaction not in do_not_expand:
-					newargs.extend(set_atoms)
+					writemsg_level("emerge: '%s' is an empty set\n" % s,
+						level=logging.INFO, noiselevel=-1)
 				else:
-					newargs.append(SETPREFIX+s)
-				for e in sets[s].errors:
-					print(e)
+					newargs.extend(set_atoms)
+				for error_msg in sets[s].errors:
+					writemsg_level("%s\n" % (error_msg,),
+						level=logging.ERROR, noiselevel=-1)
 		else:
 			newargs.append(a)
 	return (newargs, retval)
@@ -3646,8 +3654,7 @@ def run_action(settings, trees, mtimedb, myaction, myopts, myfiles,
 	del mytrees, mydb
 
 	for x in myfiles:
-		ext = os.path.splitext(x)[1]
-		if (ext == ".ebuild" or ext == ".tbz2") and \
+		if x.endswith((".ebuild", ".tbz2")) and \
 			os.path.exists(os.path.abspath(x)):
 			print(colorize("BAD", "\n*** emerging by path is broken "
 				"and may not always work!!!\n"))

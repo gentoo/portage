@@ -1,19 +1,17 @@
 # setup_env.py -- Make sure bin subdir has sane env for testing
-# Copyright 2007-2011 Gentoo Foundation
+# Copyright 2007-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
 
 from portage import os
 from portage import shutil
+from portage.const import PORTAGE_BIN_PATH
+from portage.const import PORTAGE_PYM_PATH
 from portage.tests import TestCase
 from portage.process import spawn
 
-basepath = os.path.join(os.path.dirname(os.path.dirname(
-	os.path.abspath(__file__))),
-	"..", "..", "..")
-bindir = os.path.join(basepath, "bin")
-pymdir = os.path.join(basepath, "pym")
+bindir = PORTAGE_BIN_PATH
 basedir = None
 env = None
 
@@ -37,7 +35,7 @@ def binTestsInit():
 	env["PF"] = "portage-tests-0.09-r1"
 	env["PATH"] = bindir + ":" + os.environ["PATH"]
 	env["PORTAGE_BIN_PATH"] = bindir
-	env["PORTAGE_PYM_PATH"] = pymdir
+	env["PORTAGE_PYM_PATH"] = PORTAGE_PYM_PATH
 	env["PORTAGE_INST_UID"] = str(os.getuid())
 	env["PORTAGE_INST_GID"] = str(os.getgid())
 	env["DESTTREE"] = "/usr"

@@ -29,7 +29,7 @@ from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString
 from portage.localization import _
 from portage.versions import catpkgsplit, catsplit, \
-	vercmp, ververify, _cp, _cpv, _pkg_str, _unknown_repo
+	vercmp, ververify, _cp, _cpv, _pkg_str, _slot, _unknown_repo
 import portage.cache.mappings
 
 if sys.hexversion >= 0x3000000:
@@ -43,7 +43,6 @@ else:
 # PMS 3.1.3: A slot name may contain any of the characters [A-Za-z0-9+_.-].
 # It must not begin with a hyphen or a dot.
 _slot_separator = ":"
-_slot = r'([\w+][\w+.-]*)'
 # loosly match SLOT, which may have an optional ABI part
 _slot_loose = r'([\w+./*=-]+)'
 
@@ -56,24 +55,6 @@ _repo_name_re = re.compile('^' + _repo_name + '$', re.UNICODE)
 _repo = r'(?:' + _repo_separator + '(' + _repo_name + ')' + ')?'
 
 _extended_cat = r'[\w+*][\w+.*-]*'
-
-_slot_re_cache = {}
-
-def _get_slot_re(eapi_attrs):
-	cache_key = eapi_attrs.slot_operator
-	slot_re = _slot_re_cache.get(cache_key)
-	if slot_re is not None:
-		return slot_re
-
-	if eapi_attrs.slot_operator:
-		slot_re = _slot + r'(/' + _slot + r')?'
-	else:
-		slot_re = _slot
-
-	slot_re = re.compile('^' + slot_re + '$', re.VERBOSE | re.UNICODE)
-
-	_slot_re_cache[cache_key] = slot_re
-	return slot_re
 
 _slot_dep_re_cache = {}
 

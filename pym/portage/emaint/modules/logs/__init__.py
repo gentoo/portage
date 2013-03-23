@@ -1,20 +1,18 @@
 # Copyright 2005-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-"""'This emaint module provides checks and maintenance for:
-Cleaning the PORT_LOGDIR logs
+"""Check and clean old logs in the PORT_LOGDIR.
 """
 
 
 module_spec = {
 	'name': 'logs',
-	'description': "Provides functions to scan, check and clean old logs " +\
-		"in the PORT_LOGDIR",
+	'description': __doc__,
 	'provides':{
 		'module1': {
 			'name': "logs",
 			'class': "CleanLogs",
-			'description':  "Clean out old logs from the PORT_LOGDIR",
+			'description': __doc__,
 			'functions': ['check','clean'],
 			'func_desc': {
 				'clean': {

@@ -17,11 +17,10 @@ ret=0
 [[ -d ${ED} ]] || exit ${ret}
 # END PREFIX LOCAL
 
-find "${ED}" -type d -name man > "${T}"/prepallman.filelist
-while read -r mandir ; do
+while IFS= read -r -d '' mandir ; do
 	mandir=${mandir#${ED}}
 	prepman "${mandir%/man}"
 	((ret|=$?))
-done < "${T}"/prepallman.filelist
+done < <(find "${ED}" -type d -name man -print0)
 
 exit ${ret}

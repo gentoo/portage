@@ -31,7 +31,6 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'pickle',
 	'portage.dep:Atom',
-	'portage.util.listdir:_ignorecvs_dirs',
 	'subprocess',
 )
 
@@ -40,12 +39,18 @@ from portage import _encodings
 from portage import _os_merge
 from portage import _unicode_encode
 from portage import _unicode_decode
+from portage.const import VCS_DIRS
 from portage.exception import InvalidAtom, PortageException, FileNotFound, \
        OperationNotPermitted, ParseError, PermissionDenied, ReadOnlyFileSystem
 from portage.localization import _
 from portage.proxy.objectproxy import ObjectProxy
 from portage.cache.mappings import UserDict
 from portage.const import EPREFIX
+
+if sys.hexversion >= 0x3000000:
+	_unicode = str
+else:
+	_unicode = unicode
 
 noiselimit = 0
 
@@ -246,12 +251,13 @@ def stack_dicts(dicts, incremental=0, incrementals=[], ignore_none=0):
 def append_repo(atom_list, repo_name, remember_source_file=False):
 	"""
 	Takes a list of valid atoms without repo spec and appends ::repo_name.
+	If an atom already has a repo part, then it is preserved (see bug #461948).
 	"""
 	if remember_source_file:
-		return [(Atom(atom + "::" + repo_name, allow_wildcard=True, allow_repo=True), source) \
+		return [(atom.repo is not None and atom or atom.with_repo(repo_name), source) \
 			for atom, source in atom_list]
 	else:
-		return [Atom(atom + "::" + repo_name, allow_wildcard=True, allow_repo=True) \
+		return [atom.repo is not None and atom or atom.with_repo(repo_name) \
 			for atom in atom_list]
 
 def stack_lists(lists, incremental=1, remember_source_file=False,
@@ -464,7 +470,7 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=Fals
 			writemsg(_("--- Invalid atom in %s: %s\n") % (source_file, e),
 				noiselevel=-1)
 		else:
-			if pkg_orig == str(pkg):
+			if pkg_orig == _unicode(pkg):
 				# normal atom, so return as Atom instance
 				if remember_source_file:
 					atoms.append((pkg, source_file))
@@ -481,7 +487,7 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=Fals
 def grablines(myfilename, recursive=0, remember_source_file=False):
 	mylines=[]
 	if recursive and os.path.isdir(myfilename):
-		if os.path.basename(myfilename) in _ignorecvs_dirs:
+		if os.path.basename(myfilename) in VCS_DIRS:
 			return mylines
 		try:
 			dirlist = os.listdir(myfilename)
@@ -844,6 +850,9 @@ class cmp_sort_key(object):
 	list.sort(), making it easier to port code for python-3.0 compatibility.
 	It works by generating key objects which use the given cmp function to
 	implement their __lt__ method.
+
+	Beginning with Python 2.7 and 3.2, equivalent functionality is provided
+	by functools.cmp_to_key().
 	"""
 	__slots__ = ("_cmp_func",)
 

@@ -453,10 +453,13 @@ x11\-libs/qt \-mysql
 .fi
 .TP
 .BR parent
-This contains a path to the parent profile.  It may be either relative or 
-absolute.  The paths will be relative to the location of the profile.  Most 
-commonly this file contains '..' to indicate the directory above.  Utilized 
-only in cascading profiles.
+This contains paths to the parent profiles (one per line).  They may be either
+relative (to the location of the profile) or absolute.  Most commonly this file
+contains '..' to indicate the directory above.  Utilized only in cascading
+profiles.
+
+When multiple parent profiles are specified, they are inherited in order from
+the first line to the last.
 
 If \fBlayout.conf\fR is new enough, you can also use the <repo>:<path>
 syntax.  The <repo> is the same string as is stored in the \fBrepo_name\fR

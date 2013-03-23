@@ -490,9 +490,15 @@ class RepoConfigLoader(object):
 			for repo in prepos.values()
 			if repo.location is not None and repo.missing_repo_name)
 
-		#Take aliases into account.
-		new_prepos = {}
+		# Do this before expanding aliases, so that location_map and
+		# treemap consistently map unaliased names whenever available.
 		for repo_name, repo in prepos.items():
+			if repo.location is not None:
+				location_map[repo.location] = repo_name
+				treemap[repo_name] = repo.location
+
+		# Add alias mappings, but never replace unaliased mappings.
+		for repo_name, repo in list(prepos.items()):
 			names = set()
 			names.add(repo_name)
 			if repo.aliases:
@@ -500,17 +506,23 @@ class RepoConfigLoader(object):
 				names.update(aliases)
 
 			for name in names:
-				if name in new_prepos:
+				if name in prepos and prepos[name].location is not None:
+					if name == repo_name:
+						# unaliased names already handled earlier
+						continue
 					writemsg_level(_("!!! Repository name or alias '%s', " + \
 						"defined for repository '%s', overrides " + \
 						"existing alias or repository.\n") % (name, repo_name), level=logging.WARNING, noiselevel=-1)
-				new_prepos[name] = repo
-		prepos = new_prepos
-
-		for (name, r) in prepos.items():
-			if r.location is not None:
-				location_map[r.location] = name
-				treemap[name] = r.location
+					# Never replace an unaliased mapping with
+					# an aliased mapping.
+					continue
+				prepos[name] = repo
+				if repo.location is not None:
+					if repo.location not in location_map:
+						# Never replace an unaliased mapping with
+						# an aliased mapping.
+						location_map[repo.location] = name
+					treemap[name] = repo.location
 
 		# filter duplicates from aliases, by only including
 		# items where repo.name == key
@@ -644,10 +656,10 @@ class RepoConfigLoader(object):
 
 	def mainRepo(self):
 		"""Returns the main repo"""
-		maid_repo = self.prepos['DEFAULT'].main_repo
-		if maid_repo is None:
+		main_repo = self.prepos['DEFAULT'].main_repo
+		if main_repo is None:
 			return None
-		return self.prepos[maid_repo]
+		return self.prepos[main_repo]
 
 	def _check_locations(self):
 		"""Check if repositories location are correct and show a warning message if not"""

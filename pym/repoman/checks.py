@@ -164,6 +164,9 @@ class EbuildQuote(LineCheck):
 		"GAMES_DATADIR_BASE", "GAMES_SYSCONFDIR", "GAMES_STATEDIR",
 		"GAMES_LOGDIR", "GAMES_BINDIR"]
 
+	# variables for multibuild.eclass
+	var_names += ["BUILD_DIR"]
+
 	var_names = "(%s)" % "|".join(var_names)
 	var_reference = re.compile(r'\$(\{'+var_names+'\}|' + \
 		var_names + '\W)')
@@ -593,7 +596,8 @@ _eclass_info = {
 		),
 
 		# These are "eclasses are the whole ebuild" type thing.
-		'exempt_eclasses': _eclass_export_functions + ('autotools', 'libtool'),
+		'exempt_eclasses': _eclass_export_functions + ('autotools', 'libtool',
+			'multilib-minimal'),
 
 		'comprehensive': False
 	},

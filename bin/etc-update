@@ -620,7 +620,7 @@ while [[ -n $1 ]] ; do
 done
 ${SET_X} && set -x
 
-type portageq >/dev/null || die "missing portageq"
+type -P portageq >/dev/null || die "missing portageq"
 portage_vars=(
 	CONFIG_PROTECT{,_MASK}
 	PORTAGE_CONFIGROOT
@@ -630,7 +630,7 @@ portage_vars=(
 	USERLAND
 	NOCOLOR
 )
-eval $(portageq envvar -v ${portage_vars[@]})
+eval $(${PORTAGE_PYTHON:+"${PORTAGE_PYTHON}"} "$(type -P portageq)" envvar -v ${portage_vars[@]})
 export PORTAGE_TMPDIR
 SCAN_PATHS=${*:-${CONFIG_PROTECT}}
 

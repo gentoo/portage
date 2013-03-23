@@ -704,7 +704,7 @@ install_qa_check_misc() {
 		eqawarn "QA Notice: Excessive files found in the / partition"
 		eqawarn "${f}"
 		__vecho -ne '\n'
-		die "static archives (*.a) and libtool library files (*.la) do not belong in /"
+		die "static archives (*.a) and libtool library files (*.la) belong in /usr/lib*, not /lib*"
 	fi
 
 	# Verify that the libtool files don't contain bogus $D entries.

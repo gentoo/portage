@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.util.SlotObject import SlotObject
@@ -41,3 +41,10 @@ class Task(SlotObject):
 		strings.
 		"""
 		return "(%s)" % ", ".join(("'%s'" % x for x in self._hash_key))
+
+	def __repr__(self):
+		if self._hash_key is None:
+			# triggered by python-trace
+			return SlotObject.__repr__(self)
+		return "<%s (%s)>" % (self.__class__.__name__,
+			", ".join(("'%s'" % x for x in self._hash_key)))

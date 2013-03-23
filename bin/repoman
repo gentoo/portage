@@ -510,6 +510,10 @@ suspect_virtual = {
 	"dev-libs/libusb-compat":"virtual/libusb",
 }
 
+metadata_xml_encoding = 'UTF-8'
+metadata_xml_declaration = '<?xml version="1.0" encoding="%s"?>' % \
+	(metadata_xml_encoding,)
+metadata_doctype_name = 'pkgmetadata'
 metadata_dtd_uri = 'http://www.gentoo.org/dtd/metadata.dtd'
 # force refetch if the local copy creation time is older than this
 metadata_dtd_ctime_interval = 60 * 60 * 24 * 7 # 7 days
@@ -593,6 +597,7 @@ repodir = os.path.realpath(portdir_overlay)
 repo_config = repoman_settings.repositories.get_repo_for_location(repodir)
 portdb.porttrees = list(repo_config.eclass_db.porttrees)
 portdir = portdb.porttrees[0]
+commit_env = os.environ.copy()
 
 if repo_config.allow_provide_virtual:
 	qawarnings.add("virtual.oldstyle")
@@ -603,6 +608,9 @@ if repo_config.sign_commit:
 		# the commit arguments. If key_id is unspecified, then it must be
 		# configured by `git config user.signingkey key_id`.
 		vcs_local_opts.append("--gpg-sign")
+		if repoman_settings.get("PORTAGE_GPG_DIR"):
+			# Pass GNUPGHOME to git for bug #462362.
+			commit_env["GNUPGHOME"] = repoman_settings["PORTAGE_GPG_DIR"]
 
 # In order to disable manifest signatures, repos may set
 # "sign-manifests = false" in metadata/layout.conf. This
@@ -1275,6 +1283,31 @@ for k, v in repoman_settings.thirdpartymirrors().items():
 			v += "/"
 		thirdpartymirrors[v] = k
 
+class _XMLParser(xml.etree.ElementTree.XMLParser):
+
+	def __init__(self, data, **kwargs):
+		xml.etree.ElementTree.XMLParser.__init__(self, **kwargs)
+		self._portage_data = data
+		if hasattr(self, 'parser'):
+			self._base_XmlDeclHandler = self.parser.XmlDeclHandler
+			self.parser.XmlDeclHandler = self._portage_XmlDeclHandler
+			self._base_StartDoctypeDeclHandler = \
+				self.parser.StartDoctypeDeclHandler
+			self.parser.StartDoctypeDeclHandler = \
+				self._portage_StartDoctypeDeclHandler
+
+	def _portage_XmlDeclHandler(self, version, encoding, standalone):
+		if self._base_XmlDeclHandler is not None:
+			self._base_XmlDeclHandler(version, encoding, standalone)
+		self._portage_data["XML_DECLARATION"] = (version, encoding, standalone)
+
+	def _portage_StartDoctypeDeclHandler(self, doctypeName, systemId, publicId,
+		has_internal_subset):
+		if self._base_StartDoctypeDeclHandler is not None:
+			self._base_StartDoctypeDeclHandler(doctypeName, systemId, publicId,
+				has_internal_subset)
+		self._portage_data["DOCTYPE"] = (doctypeName, systemId, publicId)
+
 class _MetadataTreeBuilder(xml.etree.ElementTree.TreeBuilder):
 	"""
 	Implements doctype() as required to avoid deprecation warnings with
@@ -1640,20 +1673,70 @@ for x in effective_scanlist:
 	# metadata.xml parse check
 	else:
 		metadata_bad = False
+		xml_info = {}
+		xml_parser = _XMLParser(xml_info, target=_MetadataTreeBuilder())
 
 		# read metadata.xml into memory
 		try:
 			_metadata_xml = xml.etree.ElementTree.parse(
 				_unicode_encode(os.path.join(checkdir, "metadata.xml"),
 				encoding=_encodings['fs'], errors='strict'),
-				parser=xml.etree.ElementTree.XMLParser(
-					target=_MetadataTreeBuilder()))
+				parser=xml_parser)
 		except (ExpatError, SyntaxError, EnvironmentError) as e:
 			metadata_bad = True
 			stats["metadata.bad"] += 1
 			fails["metadata.bad"].append("%s/metadata.xml: %s" % (x, e))
 			del e
 		else:
+			if not hasattr(xml_parser, 'parser') or \
+				sys.hexversion < 0x2070000 or \
+				(sys.hexversion > 0x3000000 and sys.hexversion < 0x3020000):
+				# doctype is not parsed with python 2.6 or 3.1
+				pass
+			else:
+				if "XML_DECLARATION" not in xml_info:
+					stats["metadata.bad"] += 1
+					fails["metadata.bad"].append("%s/metadata.xml: "
+						"xml declaration is missing on first line, "
+						"should be '%s'" % (x, metadata_xml_declaration))
+				else:
+					xml_version, xml_encoding, xml_standalone = \
+						xml_info["XML_DECLARATION"]
+					if xml_encoding is None or \
+						xml_encoding.upper() != metadata_xml_encoding:
+						stats["metadata.bad"] += 1
+						if xml_encoding is None:
+							encoding_problem = "but it is undefined"
+						else:
+							encoding_problem = "not '%s'" % xml_encoding
+						fails["metadata.bad"].append("%s/metadata.xml: "
+							"xml declaration encoding should be '%s', %s" %
+							(x, metadata_xml_encoding, encoding_problem))
+
+				if "DOCTYPE" not in xml_info:
+					metadata_bad = True
+					stats["metadata.bad"] += 1
+					fails["metadata.bad"].append("%s/metadata.xml: %s" % (x,
+						"DOCTYPE is missing"))
+				else:
+					doctype_name, doctype_system, doctype_pubid = \
+						xml_info["DOCTYPE"]
+					if doctype_system != metadata_dtd_uri:
+						stats["metadata.bad"] += 1
+						if doctype_system is None:
+							system_problem = "but it is undefined"
+						else:
+							system_problem = "not '%s'" % doctype_system
+						fails["metadata.bad"].append("%s/metadata.xml: "
+							"DOCTYPE: SYSTEM should refer to '%s', %s" %
+							(x, metadata_dtd_uri, system_problem))
+
+					if doctype_name != metadata_doctype_name:
+						stats["metadata.bad"] += 1
+						fails["metadata.bad"].append("%s/metadata.xml: "
+							"DOCTYPE: name should be '%s', not '%s'" %
+							(x, metadata_doctype_name, doctype_name))
+
 			# load USE flags from metadata.xml
 			try:
 				musedict = utilities.parse_metadata_use(_metadata_xml)
@@ -2336,22 +2419,6 @@ del console_writer, f, style_file
 qa_output = qa_output.getvalue()
 qa_output = qa_output.splitlines(True)
 
-def grouplist(mylist, seperator="/"):
-	"""(list,seperator="/") -- Takes a list of elements; groups them into
-	same initial element categories. Returns a dict of {base:[sublist]}
-	From: ["blah/foo","spork/spatula","blah/weee/splat"]
-	To:   {"blah":["foo","weee/splat"], "spork":["spatula"]}"""
-	mygroups = {}
-	for x in mylist:
-		xs = x.split(seperator)
-		if xs[0] == ".":
-			xs = xs[1:]
-		if xs[0] not in mygroups:
-			mygroups[xs[0]] = [seperator.join(xs[1:])]
-		else:
-			mygroups[xs[0]] += [seperator.join(xs[1:])]
-	return mygroups
-
 suggest_ignore_masked = False
 suggest_include_dev = False
 
@@ -2794,7 +2861,7 @@ else:
 			if options.pretend:
 				print("(%s)" % (" ".join(commit_cmd),))
 			else:
-				retval = spawn(commit_cmd, env=os.environ)
+				retval = spawn(commit_cmd, env=commit_env)
 				if retval != os.EX_OK:
 					writemsg_level(("!!! Exiting on %s (shell) " + \
 						"error code: %s\n") % (vcs, retval),
@@ -2965,7 +3032,7 @@ else:
 			if options.pretend:
 				print("(%s)" % (" ".join(commit_cmd),))
 			else:
-				retval = spawn(commit_cmd, env=os.environ)
+				retval = spawn(commit_cmd, env=commit_env)
 				if retval != os.EX_OK:
 					if repo_config.sign_commit and vcs == 'git' and \
 						not git_supports_gpg_sign():

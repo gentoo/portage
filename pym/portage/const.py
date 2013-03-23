@@ -66,6 +66,10 @@ GLOBAL_CONFIG_PATH       = "/usr/share/portage/config"
 
 # these variables are not used with target_root or config_root
 PORTAGE_BASE_PATH        = PORTAGE_BASE
+# NOTE: Use realpath(__file__) so that python module symlinks in site-packages
+# are followed back to the real location of the whole portage installation.
+#PREFIX: below should work, but I'm not sure how it it affects other places
+#PORTAGE_BASE_PATH        = os.path.join(os.sep, os.sep.join(os.path.realpath(__file__.rstrip("co")).split(os.sep)[:-3]))
 PORTAGE_BIN_PATH         = PORTAGE_BASE_PATH + "/bin"
 PORTAGE_PYM_PATH         = PORTAGE_BASE_PATH + "/pym"
 LOCALE_DATA_PATH         = PORTAGE_BASE_PATH + "/locale"  # FIXME: not used
@@ -203,6 +207,8 @@ if "PORTAGE_OVERRIDE_EPREFIX" in os.environ:
 	EPREFIX = os.environ["PORTAGE_OVERRIDE_EPREFIX"]
 	if EPREFIX:
 		EPREFIX = os.path.normpath(EPREFIX)
+
+VCS_DIRS = ("CVS", "RCS", "SCCS", ".bzr", ".git", ".hg", ".svn")
 
 # ===========================================================================
 # END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANT
