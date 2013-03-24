@@ -85,7 +85,8 @@ __save_ebuild_env() {
 	___eapi_has_package_manager_build_user && unset -f package_manager_build_user
 	___eapi_has_package_manager_build_group && unset -f package_manager_build_group
 
-	unset -f $(compgen -A function ___eapi_)
+	# PREFIX: compgen is not compiled in during bootstrap
+	type compgen > /dev/null && unset -f $(compgen -A function ___eapi_)
 
 	# portage config variables and variables set directly by portage
 	unset ACCEPT_LICENSE BAD BRACKET BUILD_PREFIX COLS \
