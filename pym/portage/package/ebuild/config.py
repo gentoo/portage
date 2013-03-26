@@ -339,7 +339,7 @@ class config(object):
 			for x in make_conf_paths:
 				mygcfg = getconfig(x,
 					tolerant=tolerant, allow_sourcing=True,
-					expand=make_conf)
+					expand=make_conf, recursive=True)
 				if mygcfg is not None:
 					make_conf.update(mygcfg)
 					make_conf_count += 1
@@ -538,7 +538,7 @@ class config(object):
 			for x in make_conf_paths:
 				mygcfg.update(getconfig(x,
 					tolerant=tolerant, allow_sourcing=True,
-					expand=expand_map) or {})
+					expand=expand_map, recursive=True) or {})
 
 			# Don't allow the user to override certain variables in make.conf
 			profile_only_variables = self.configdict["defaults"].get(
