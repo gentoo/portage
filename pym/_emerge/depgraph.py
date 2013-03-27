@@ -4330,8 +4330,9 @@ class depgraph(object):
 		1. USE + license
 		2. USE + ~arch + license
 		3. USE + ~arch + license + missing keywords
-		4. USE + ~arch + license + masks
-		5. USE + ~arch + license + missing keywords + masks
+		4. USE + license + masks
+		5. USE + ~arch + license + masks
+		6. USE + ~arch + license + missing keywords + masks
 
 		Some thoughts:
 			* Do least invasive changes first.
@@ -4356,7 +4357,20 @@ class depgraph(object):
 
 		if not autounmask_keep_masks:
 
-			for missing_keyword, unmask in ((True, False), (False, True), (True, True)):
+			autounmask_level.allow_missing_keywords = True
+			yield autounmask_level
+
+			# 4. USE + license + masks
+			# Try to respect keywords while discarding
+			# package.mask (see bug #463394).
+			autounmask_level.allow_unstable_keywords = False
+			autounmask_level.allow_missing_keywords = False
+			autounmask_level.allow_unmasks = True
+			yield autounmask_level
+
+			autounmask_level.allow_unstable_keywords = True
+
+			for missing_keyword, unmask in ((False, True), (True, True)):
 
 				autounmask_level.allow_missing_keywords = missing_keyword
 				autounmask_level.allow_unmasks = unmask
