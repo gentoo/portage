@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Jan 2013" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Mar 2013" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -573,7 +573,8 @@ Enable GPG verification when using \fIemerge\-webrsync\fR.
 .TP
 .B xattr
 Preserve extended attributes (filesystem-stored metadata) when installing
-files (see \fBattr\fR(1)).
+files (see \fBattr\fR(1)). The \fBPORTAGE_XATTR_EXCLUDE\fR variable may be
+used to exclude specific attributes from being preserved.
 .RE
 .TP
 .B FETCHCOMMAND
@@ -858,6 +859,12 @@ Defaults to portage.
 .TP
 \fBPORTAGE_WORKDIR_MODE\fR = \fI"0700"\fR
 This variable controls permissions for \fIWORKDIR\fR (see \fBebuild\fR(5)).
+.TP
+\fBPORTAGE_XATTR_EXCLUDE\fR = \fI[space delimited list of fnmatch patterns]\fR
+This variable may be used to exclude specific attributes from being preserved
+when \fBxattr\fR is in \fBFEATURES\fR.
+.br
+Defaults to "security.*" (security labels are special, see bug #461868).
 .TP
 \fBPORTDIR\fR = \fI[path]\fR
 Defines the location of the Portage tree. This is the repository for all
