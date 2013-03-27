@@ -524,7 +524,7 @@ class config(object):
 			mygcfg = {}
 			if self.profiles:
 				mygcfg_dlists = [getconfig(os.path.join(x, "make.defaults"),
-					tolerant=tolerant, expand=expand_map)
+					tolerant=tolerant, expand=expand_map, recursive=True)
 					for x in self.profiles]
 				self._make_defaults = mygcfg_dlists
 				mygcfg = stack_dicts(mygcfg_dlists,
@@ -638,7 +638,7 @@ class config(object):
 			self._repo_make_defaults = {}
 			for repo in self.repositories.repos_with_profiles():
 				d = getconfig(os.path.join(repo.location, "profiles", "make.defaults"),
-					tolerant=tolerant, expand=self.configdict["globals"].copy()) or {}
+					tolerant=tolerant, expand=self.configdict["globals"].copy(), recursive=True) or {}
 				if d:
 					for k in chain(self._env_blacklist,
 						profile_only_variables, self._global_only_vars):
