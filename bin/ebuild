@@ -77,6 +77,10 @@ from portage.const import VDB_PATH
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
 
+def err(txt):
+	portage.writemsg('ebuild: %s\n' % (txt,), noiselevel=-1)
+	sys.exit(1)
+
 if opts.version:
 	print("Portage", portage.VERSION)
 	sys.exit(os.EX_OK)
@@ -115,9 +119,7 @@ if ebuild.endswith(".ebuild"):
 	pf = os.path.basename(ebuild)[:-7]
 
 if pf is None:
-	portage.writemsg("'%s' does not end with '.ebuild'.\n" % \
-		(ebuild,), noiselevel=-1)
-	sys.exit(1)
+	err("%s: does not end with '.ebuild'" % (ebuild,))
 
 if not os.path.isabs(ebuild):
 	mycwd = os.getcwd()
@@ -163,8 +165,7 @@ if ebuild_portdir != vdb_path:
 	myrepo = portage.portdb.getRepositoryName(ebuild_portdir)
 
 if not os.path.exists(ebuild):
-	print("'%s' does not exist." % ebuild)
-	sys.exit(1)
+	err('%s: does not exist' % (ebuild,))
 
 ebuild_split = ebuild.split("/")
 cpv = "%s/%s" % (ebuild_split[-3], pf)
@@ -175,8 +176,7 @@ with io.open(_unicode_encode(ebuild, encoding=_encodings['fs'], errors='strict')
 if eapi is None:
 	eapi = "0"
 if not portage.catpkgsplit(cpv, eapi=eapi):
-	print("!!! %s does not follow correct package syntax." % (cpv))
-	sys.exit(1)
+	err('%s: %s: does not follow correct package syntax' % (ebuild, cpv))
 
 if ebuild.startswith(vdb_path):
 	mytree = "vartree"
@@ -185,8 +185,7 @@ if ebuild.startswith(vdb_path):
 	portage_ebuild = portage.db[portage.root][mytree].dbapi.findname(cpv, myrepo=myrepo)
 
 	if os.path.realpath(portage_ebuild) != ebuild:
-		print("!!! Portage seems to think that %s is at %s" % (cpv, portage_ebuild))
-		sys.exit(1)
+		err('Portage seems to think that %s is at %s' % (cpv, portage_ebuild))
 
 else:
 	mytree = "porttree"
@@ -195,12 +194,10 @@ else:
 	portage_ebuild = portage.portdb.findname(cpv, myrepo=myrepo)
 
 	if not portage_ebuild or portage_ebuild != ebuild:
-		print("!!! %s does not seem to have a valid PORTDIR structure." % ebuild)
-		sys.exit(1)
+		err('%s: does not seem to have a valid PORTDIR structure' % (ebuild,))
 
 if len(pargs) > 1 and "config" in pargs:
-	print("config must be called on it's own, not combined with any other phase")
-	sys.exit(1)
+	err('"config" must not be called with any other phase')
 
 def discard_digests(myebuild, mysettings, mydbapi):
 	"""Discard all distfiles digests for the given ebuild.  This is useful when
