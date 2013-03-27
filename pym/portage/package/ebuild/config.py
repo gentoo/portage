@@ -522,10 +522,10 @@ class config(object):
 			self.unpack_dependencies = load_unpack_dependencies_configuration(self.repositories)
 
 			mygcfg = {}
-			if self.profiles:
-				mygcfg_dlists = [getconfig(os.path.join(x, "make.defaults"),
-					tolerant=tolerant, expand=expand_map, recursive=True)
-					for x in self.profiles]
+			if profiles_complex:
+				mygcfg_dlists = [getconfig(os.path.join(x.location, "make.defaults"),
+					tolerant=tolerant, expand=expand_map, recursive=x.portage1_directories)
+					for x in profiles_complex]
 				self._make_defaults = mygcfg_dlists
 				mygcfg = stack_dicts(mygcfg_dlists,
 					incrementals=self.incrementals)
@@ -638,7 +638,7 @@ class config(object):
 			self._repo_make_defaults = {}
 			for repo in self.repositories.repos_with_profiles():
 				d = getconfig(os.path.join(repo.location, "profiles", "make.defaults"),
-					tolerant=tolerant, expand=self.configdict["globals"].copy(), recursive=True) or {}
+					tolerant=tolerant, expand=self.configdict["globals"].copy(), recursive=repo.portage1_profiles) or {}
 				if d:
 					for k in chain(self._env_blacklist,
 						profile_only_variables, self._global_only_vars):
