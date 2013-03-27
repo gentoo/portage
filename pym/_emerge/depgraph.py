@@ -4351,15 +4351,12 @@ class depgraph(object):
 		autounmask_level.allow_license_changes = True
 		yield autounmask_level
 
-		for only_use_changes in (False,):
+		autounmask_level.allow_unstable_keywords = True
+		yield autounmask_level
 
-			autounmask_level.allow_unstable_keywords = (not only_use_changes)
-			autounmask_level.allow_license_changes = (not only_use_changes)
+		if not autounmask_keep_masks:
 
-			for missing_keyword, unmask in ((False,False), (True, False), (False, True), (True, True)):
-
-				if (only_use_changes or autounmask_keep_masks) and (missing_keyword or unmask):
-					break
+			for missing_keyword, unmask in ((True, False), (False, True), (True, True)):
 
 				autounmask_level.allow_missing_keywords = missing_keyword
 				autounmask_level.allow_unmasks = unmask
