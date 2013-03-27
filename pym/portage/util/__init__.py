@@ -564,6 +564,18 @@ _invalid_var_name_re = re.compile(r'^\d|\W')
 def getconfig(mycfg, tolerant=False, allow_sourcing=False, expand=True,
 	recursive=False):
 
+	is_dir = False
+	if recursive:
+		try:
+			is_dir = stat.S_ISDIR(os.stat(mycfg).st_mode)
+		except OSError as e:
+			if e.errno == PermissionDenied.errno:
+				raise PermissionDenied(mycfg)
+			elif e.errno in (errno.ENOENT, errno.ESTALE, errno.EISDIR):
+				return None
+			else:
+				raise
+
 	if isinstance(expand, dict):
 		# Some existing variable definitions have been
 		# passed in, for use in substitutions.
@@ -573,11 +585,15 @@ def getconfig(mycfg, tolerant=False, allow_sourcing=False, expand=True,
 		expand_map = {}
 	mykeys = {}
 
-	if recursive and os.path.isdir(mycfg):
-		# Use source commands so that syntax error messages
+	if recursive and is_dir:
+		# Emulate source commands so that syntax error messages
 		# can display real file names and line numbers.
+		def onerror(e):
+			if e.errno == PermissionDenied.errno:
+				raise PermissionDenied(mycfg)
+
 		recursive_files = []
-		for parent, dirs, files in os.walk(mycfg):
+		for parent, dirs, files in os.walk(mycfg, onerror=onerror):
 			try:
 				parent = _unicode_decode(parent,
 					encoding=_encodings['fs'], errors='strict')
