@@ -16,7 +16,7 @@ exp_tf() {
 	done
 }
 exp_tf FEATURES compressdebug installsources nostrip splitdebug xattr
-exp_tf RESTRICT binchecks installsources strip
+exp_tf RESTRICT binchecks installsources splitdebug strip
 
 if ! ___eapi_has_prefix_variables; then
 	EPREFIX= ED=${D}
@@ -120,6 +120,7 @@ save_elf_sources() {
 # Usage: save_elf_debug <elf> [splitdebug file]
 save_elf_debug() {
 	${FEATURES_splitdebug} || return 0
+	${RESTRICT_splitdebug} && return 0
 
 	# NOTE: Debug files must be installed in
 	# ${EPREFIX}/usr/lib/debug/${EPREFIX} (note that ${EPREFIX} occurs
