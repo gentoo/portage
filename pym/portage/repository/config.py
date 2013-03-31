@@ -180,6 +180,12 @@ class RepoConfig(object):
 				# them the ability to do incremental overrides
 				self.aliases = layout_data['aliases'] + tuple(aliases)
 
+			if layout_data['repo-name']:
+				# allow layout.conf to override repository name
+				# useful when having two copies of the same repo enabled
+				# to avoid modifying profiles/repo_name in one of them
+				self.name = layout_data['repo-name']
+
 			for value in ('allow-missing-manifest',
 				'allow-provide-virtual', 'cache-formats',
 				'create-manifest', 'disable-manifest', 'manifest-hashes',
@@ -747,6 +753,8 @@ def parse_layout_conf(repo_location, repo_name=None):
 
 	data['thin-manifest'] = layout_data.get('thin-manifests', 'false').lower() \
 		== 'true'
+
+	data['repo-name'] = _gen_valid_repo(layout_data.get('repo-name', ''))
 
 	manifest_policy = layout_data.get('use-manifests', 'strict').lower()
 	data['allow-missing-manifest'] = manifest_policy != 'strict'

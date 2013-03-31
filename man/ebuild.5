@@ -676,6 +676,11 @@ files in \fBSRC_URI\fR will not be downloaded from the \fBGENTOO_MIRRORS\fR.
 .I primaryuri
 fetch from URIs in \fBSRC_URI\fR before \fBGENTOO_MIRRORS\fR.
 .TP
+.I splitdebug
+Disables splitdebug for specific packages. This is for packages with
+binaries that trigger problems with splitdebug, such as file\-collisions
+between symlinks in /usr/lib/debug/.build-id (triggered by bundled libraries).
+.TP
 .I strip
 final binaries/libraries will not be stripped of debug symbols.
 .TP

@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 __all__ = ['movefile']
 
 import errno
+import fnmatch
 import os as _os
 import shutil as _shutil
 import stat
@@ -27,10 +28,59 @@ def _apply_stat(src_stat, dest):
 	_os.chown(dest, src_stat.st_uid, src_stat.st_gid)
 	_os.chmod(dest, stat.S_IMODE(src_stat.st_mode))
 
+_xattr_excluder_cache = {}
+
+def _get_xattr_excluder(pattern):
+
+	try:
+		value = _xattr_excluder_cache[pattern]
+	except KeyError:
+		value = _xattr_excluder(pattern)
+		_xattr_excluder_cache[pattern] = value
+
+	return value
+
+class _xattr_excluder(object):
+
+	__slots__ = ('_pattern_split',)
+
+	def __init__(self, pattern):
+
+		if pattern is None:
+			self._pattern_split = None
+		else:
+			pattern = pattern.split()
+			if not pattern:
+				self._pattern_split = None
+			else:
+				pattern.sort()
+				self._pattern_split = tuple(pattern)
+
+	def __call__(self, attr):
+
+		if self._pattern_split is None:
+			return False
+
+		match = fnmatch.fnmatch
+		for x in self._pattern_split:
+			if match(attr, x):
+				return True
+
+		return False
+
 if hasattr(_os, "getxattr"):
 	# Python >=3.3 and GNU/Linux
-	def _copyxattr(src, dest):
-		for attr in _os.listxattr(src):
+	def _copyxattr(src, dest, exclude=None):
+
+		attrs = _os.listxattr(src)
+		if attrs:
+			if exclude is not None and isinstance(attrs[0], bytes):
+				exclude = exclude.encode(_encodings['fs'])
+			exclude = _get_xattr_excluder(exclude)
+
+		for attr in attrs:
+			if exclude(attr):
+				continue
 			try:
 				_os.setxattr(dest, attr, _os.getxattr(src, attr))
 				raise_exception = False
@@ -44,8 +94,17 @@ else:
 	except ImportError:
 		xattr = None
 	if xattr is not None:
-		def _copyxattr(src, dest):
-			for attr in xattr.list(src):
+		def _copyxattr(src, dest, exclude=None):
+
+			attrs = xattr.list(src)
+			if attrs:
+				if exclude is not None and isinstance(attrs[0], bytes):
+					exclude = exclude.encode(_encodings['fs'])
+				exclude = _get_xattr_excluder(exclude)
+
+			for attr in attrs:
+				if exclude(attr):
+					continue
 				try:
 					xattr.set(dest, attr, xattr.get(src, attr))
 					raise_exception = False
@@ -63,7 +122,8 @@ else:
 			_has_getfattr_and_setfattr = False
 		_devnull.close()
 		if _has_getfattr_and_setfattr:
-			def _copyxattr(src, dest):
+			def _copyxattr(src, dest, exclude=None):
+				# TODO: implement exclude
 				getfattr_process = subprocess.Popen(["getfattr", "-d", "--absolute-names", src], stdout=subprocess.PIPE)
 				getfattr_process.wait()
 				extended_attributes = getfattr_process.stdout.readlines()
@@ -75,7 +135,7 @@ else:
 					if setfattr_process.returncode != 0:
 						raise OperationNotSupported("Filesystem containing file '%s' does not support extended attributes" % dest)
 		else:
-			def _copyxattr(src, dest):
+			def _copyxattr(src, dest, exclude=None):
 				pass
 
 def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
@@ -246,7 +306,8 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 				_copyfile(src_bytes, dest_tmp_bytes)
 				if xattr_enabled:
 					try:
-						_copyxattr(src_bytes, dest_tmp_bytes)
+						_copyxattr(src_bytes, dest_tmp_bytes,
+							exclude=mysettings.get("PORTAGE_XATTR_EXCLUDE", "security.*"))
 					except SystemExit:
 						raise
 					except:

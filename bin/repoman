@@ -448,7 +448,7 @@ for x in missingvars:
 
 valid_restrict = frozenset(["binchecks", "bindist",
 	"fetch", "installsources", "mirror",
-	"primaryuri", "strip", "test", "userpriv"])
+	"primaryuri", "splitdebug", "strip", "test", "userpriv"])
 
 live_eclasses = frozenset([
 	"bzr",

@@ -484,6 +484,9 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=Fals
 					atoms.append(pkg_orig)
 	return atoms
 
+def _recursive_basename_filter(f):
+	return not f.startswith(".") and not f.endswith("~")
+
 def grablines(myfilename, recursive=0, remember_source_file=False):
 	mylines=[]
 	if recursive and os.path.isdir(myfilename):
@@ -500,7 +503,7 @@ def grablines(myfilename, recursive=0, remember_source_file=False):
 				raise
 		dirlist.sort()
 		for f in dirlist:
-			if not f.startswith(".") and not f.endswith("~"):
+			if _recursive_basename_filter(f):
 				mylines.extend(grablines(
 					os.path.join(myfilename, f), recursive, remember_source_file))
 	else:
@@ -559,7 +562,21 @@ class _tolerant_shlex(shlex.shlex):
 
 _invalid_var_name_re = re.compile(r'^\d|\W')
 
-def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
+def getconfig(mycfg, tolerant=False, allow_sourcing=False, expand=True,
+	recursive=False):
+
+	is_dir = False
+	if recursive:
+		try:
+			is_dir = stat.S_ISDIR(os.stat(mycfg).st_mode)
+		except OSError as e:
+			if e.errno == PermissionDenied.errno:
+				raise PermissionDenied(mycfg)
+			elif e.errno in (errno.ENOENT, errno.ESTALE, errno.EISDIR):
+				return None
+			else:
+				raise
+
 	if isinstance(expand, dict):
 		# Some existing variable definitions have been
 		# passed in, for use in substitutions.
@@ -568,6 +585,50 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 	else:
 		expand_map = {}
 	mykeys = {}
+
+	if recursive and is_dir:
+		# Emulate source commands so that syntax error messages
+		# can display real file names and line numbers.
+		def onerror(e):
+			if e.errno == PermissionDenied.errno:
+				raise PermissionDenied(mycfg)
+
+		recursive_files = []
+		for parent, dirs, files in os.walk(mycfg, onerror=onerror):
+			try:
+				parent = _unicode_decode(parent,
+					encoding=_encodings['fs'], errors='strict')
+			except UnicodeDecodeError:
+				continue
+			for fname_enc in dirs[:]:
+				try:
+					fname = _unicode_decode(fname_enc,
+						encoding=_encodings['fs'], errors='strict')
+				except UnicodeDecodeError:
+					dirs.remove(fname_enc)
+					continue
+				if fname in VCS_DIRS or not _recursive_basename_filter(fname):
+					dirs.remove(fname_enc)
+			for fname in files:
+				try:
+					fname = _unicode_decode(fname,
+						encoding=_encodings['fs'], errors='strict')
+				except UnicodeDecodeError:
+					pass
+				else:
+					if _recursive_basename_filter(fname):
+						fname = os.path.join(parent, fname)
+						if os.path.isfile(fname):
+							recursive_files.append(fname)
+		recursive_files.sort()
+		if not expand:
+			expand_map = False
+		for fname in recursive_files:
+			mykeys.update(getconfig(fname, tolerant=tolerant,
+				allow_sourcing=allow_sourcing, expand=expand_map,
+				recursive=False) or {})
+		return mykeys
+
 	f = None
 	try:
 		# NOTE: shlex doesn't support unicode objects with Python 2
