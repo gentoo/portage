@@ -224,6 +224,9 @@ def parse_args(args):
 
 def emirrordist_main(args):
 
+	if not sys.stdout.isatty():
+		portage.output.nocolor()
+
 	parser, options, args = parse_args(args)
 
 	if options.version:

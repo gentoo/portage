@@ -844,6 +844,10 @@ class GenChangeLogs(object):
 				self.generate_changelog(cp)
 
 def egencache_main(args):
+
+	if not sys.stdout.isatty():
+		portage.output.nocolor()
+
 	parser, options, atoms = parse_args(args)
 
 	config_root = options.config_root
