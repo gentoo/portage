@@ -3056,6 +3056,16 @@ class depgraph(object):
 						if pprovided_match:
 							continue
 
+						excluded = False
+						for any_match in self._iter_match_pkgs_any(
+							self._frozen_config.roots[myroot], atom):
+							if self._frozen_config.excluded_pkgs.findAtomForPackage(
+								any_match, modified_use=self._pkg_use_enabled(any_match)):
+								excluded = True
+								break
+						if excluded:
+							continue
+
 						if not (isinstance(arg, SetArg) and \
 							arg.name in ("selected", "system", "world")):
 							self._dynamic_config._unsatisfied_deps_for_display.append(
