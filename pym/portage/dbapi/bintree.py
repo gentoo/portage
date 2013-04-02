@@ -565,6 +565,20 @@ class binarytree(object):
 			if not os.path.isdir(path):
 				raise
 
+	def _file_permissions(self, path):
+		try:
+			pkgdir_st = os.stat(self.pkgdir)
+		except OSError:
+			pass
+		else:
+			pkgdir_gid = pkgdir_st.st_gid
+			pkgdir_grp_mode = 0o0060 & pkgdir_st.st_mode
+			try:
+				portage.util.apply_permissions(path, gid=pkgdir_gid,
+					mode=pkgdir_grp_mode, mask=0)
+			except PortageException:
+				pass
+
 	def _move_to_all(self, cpv):
 		"""If the file exists, move it.  Whether or not it exists, update state
 		for future getname() calls."""
@@ -1077,6 +1091,10 @@ class binarytree(object):
 				if not samefile:
 					self._ensure_dir(os.path.dirname(new_filename))
 					_movefile(filename, new_filename, mysettings=self.settings)
+				full_path = new_filename
+
+			self._file_permissions(full_path)
+
 			if self._all_directory and \
 				self.getname(cpv).split(os.path.sep)[-2] == "All":
 				self._create_symlink(cpv)
@@ -1149,6 +1167,7 @@ class binarytree(object):
 			f.close()
 			if f_close is not None:
 				f_close.close()
+			self._file_permissions(fname)
 			# some seconds might have elapsed since TIMESTAMP
 			os.utime(fname, (atime, mtime))
 

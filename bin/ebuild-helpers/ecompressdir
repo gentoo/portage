@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/helper-functions.sh
@@ -175,7 +175,7 @@ for dir in "$@" ; do
 	find "${dir}" -type f -name '*.ecompress.file' -print0 | ${XARGS} -0 rm -f
 
 	# not uncommon for packages to compress doc files themselves
-	for (( d = 0; d < ${#decompressors[@]}; d += 2 )) ; do
+	for (( i = 0; i < ${#decompressors[@]}; i += 2 )) ; do
 		# It's faster to parallelize at this stage than to try to
 		# parallelize the compressors.  This is because the find|xargs
 		# ends up launching less compressors overall, so the overhead

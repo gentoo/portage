@@ -224,6 +224,14 @@ def parse_args(args):
 
 def emirrordist_main(args):
 
+	# The calling environment is ignored, so the program is
+	# completely controlled by commandline arguments.
+	env = {}
+
+	if not sys.stdout.isatty():
+		portage.output.nocolor()
+		env['NOCOLOR'] = 'true'
+
 	parser, options, args = parse_args(args)
 
 	if options.version:
@@ -231,10 +239,6 @@ def emirrordist_main(args):
 		return os.EX_OK
 
 	config_root = options.config_root
-
-	# The calling environment is ignored, so the program is
-	# completely controlled by commandline arguments.
-	env = {}
 
 	if options.repo is None:
 		env['PORTDIR_OVERLAY'] = ''
