@@ -853,6 +853,10 @@ precedence over settings in \fBlayout.conf\fR, except tools such as
 
 .I Example:
 .nf
+# Specify the repository name (if there is a different setting in
+# profiles/repo_name, then this layout.conf setting will take precedence)
+repo\-name = foo-overlay
+
 # eclasses provided by java-overlay take precedence over identically named
 # eclasses that are provided by gentoo
 masters = gentoo java-overlay
@@ -1033,7 +1037,8 @@ x86-linux    prefix/linux/x86            exp
 .BR repo_name
 The first line of the file should define a unique repository name. The name
 may contain any of the characters [A\-Za\-z0\-9_\-]. It must not begin with a
-hyphen.
+hyphen. If the repo\-name attribute is specified in layout.conf, then that
+setting will take precedence.
 .TP
 .BR thirdpartymirrors
 Controls the mapping of mirror:// style URIs to actual lists of 
