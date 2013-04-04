@@ -114,6 +114,11 @@ Run package specific actions needed to be executed after the emerge process
 has completed.  This usually entails configuration file setup or other similar 
 setups that the user may wish to run.
 .TP
+.BR \-\-digest
+Prevent corruption from being noticed. The `repoman manifest` command is the
+preferred way to generate manifests and it is capable of doing an entire
+repository or category at once (see \fBrepoman\fR(1)).
+.TP
 .BR "\-\-depclean (-c)"
 Cleans the system by removing packages that are not associated
 with explicitly merged packages. Depclean works by creating the
