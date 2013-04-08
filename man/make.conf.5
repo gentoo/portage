@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Mar 2013" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Apr 2013" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -395,7 +395,9 @@ Enable GLEP 42 news support. See
 \fIhttp://www.gentoo.org/proj/en/glep/glep-0042.html\fR.
 .TP
 .B noauto
-When utilizing \fBebuild\fR(1), only run the function requested.
+When utilizing \fBebuild\fR(1), only run the function requested. Also, forces
+the corresponding ebuild and eclasses to be sourced again for each phase, in
+order to account for modifications.
 .TP
 .B noclean
 Do not delete the the source and temporary files after the merge process.
