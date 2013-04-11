@@ -841,16 +841,6 @@ install_qa_check() {
 
 		[[ ${abort} == yes ]] && die "multilib-strict check failed!"
 	fi
-
-	# ensure packages don't install systemd units automagically
-	if ! has systemd ${INHERITED} && \
-		[[ -d "${ED}"/lib/systemd/system ]]
-	then
-		eqawarn "QA Notice: package installs systemd unit files (/lib/systemd/system)"
-		eqawarn "           but does not inherit systemd.eclass."
-		has stricter ${FEATURES} \
-			&& die "install aborted due to missing inherit of systemd.eclass"
-	fi
 }
 
 install_qa_check_prefix() {
