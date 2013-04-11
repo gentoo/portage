@@ -5813,7 +5813,9 @@ class depgraph(object):
 		self._slot_operator_trigger_reinstalls()
 
 		if not self._validate_blockers():
-			self._dynamic_config._skip_restart = True
+			# Blockers don't trigger the _skip_restart flag, since
+			# backtracking may solve blockers when it solves slot
+			# conflicts (or by blind luck).
 			raise self._unknown_internal_error()
 
 	def _serialize_tasks(self):
@@ -6562,7 +6564,9 @@ class depgraph(object):
 			self._dynamic_config._unsatisfied_blockers_for_display = unsolvable_blockers
 			self._dynamic_config._serialized_tasks_cache = retlist[:]
 			self._dynamic_config._scheduler_graph = scheduler_graph
-			self._dynamic_config._skip_restart = True
+			# Blockers don't trigger the _skip_restart flag, since
+			# backtracking may solve blockers when it solves slot
+			# conflicts (or by blind luck).
 			raise self._unknown_internal_error()
 
 		if self._dynamic_config._slot_collision_info and \
