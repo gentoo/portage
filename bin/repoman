@@ -2265,8 +2265,7 @@ for x in effective_scanlist:
 				trees[root]["porttree"].settings = dep_settings
 				portdb.settings = dep_settings
 				portdb.xcache = xcache
-				# for package.use.mask support inside dep_check
-				dep_settings.setcpv(pkg)
+
 				dep_settings["ACCEPT_KEYWORDS"] = " ".join(groups)
 				# just in case, prevent config.reset() from nuking these.
 				dep_settings.backup_changes("ACCEPT_KEYWORDS")
@@ -2278,6 +2277,13 @@ for x in effective_scanlist:
 				# since otherwise use.stable.{mask,force} settings of
 				# dependencies may conflict (see bug #456342).
 				dep_settings._parent_stable = dep_settings._isStable(pkg)
+
+				# Handle package.use*.{force,mask) calculation, for use
+				# in dep_check.
+				dep_settings.useforce = dep_settings._use_manager.getUseForce(
+					pkg, stable=dep_settings._parent_stable)
+				dep_settings.usemask = dep_settings._use_manager.getUseMask(
+					pkg, stable=dep_settings._parent_stable)
 
 				if not baddepsyntax:
 					ismasked = not ebuild_archs or \
