@@ -1010,12 +1010,23 @@ class vardbapi(dbapi):
 				removed += 1
 
 		if removed:
-			self._bump_mtime(pkg.mycpv)
-			f = atomic_ofstream(os.path.join(pkg.dbdir, "CONTENTS"))
-			write_contents(new_contents, root, f)
-			f.close()
-			self._bump_mtime(pkg.mycpv)
-			pkg._clear_contents_cache()
+			self.writeContentsToContentsFile(pkg, new_contents)
+
+	def writeContentsToContentsFile(self, pkg, new_contents):
+		"""
+		@param pkg: package to write contents file for
+		@type pkg: dblink
+		@param new_contents: contents to write to CONTENTS file
+		@type new_contents: contents dictionary of the form
+					{u'/path/to/file' : (contents_attribute 1, ...), ...}
+		"""
+		root = self.settings['ROOT']
+		self._bump_mtime(pkg.mycpv)
+		f = atomic_ofstream(os.path.join(pkg.dbdir, "CONTENTS"))
+		write_contents(new_contents, root, f)
+		f.close()
+		self._bump_mtime(pkg.mycpv)
+		pkg._clear_contents_cache()
 
 	class _owners_cache(object):
 		"""
