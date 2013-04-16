@@ -311,9 +311,9 @@ def stale_env_warning():
 from portage.exception import PermissionDenied, \
 	PortagePackageException, UnsupportedAPIException
 
-if 'digest' in tmpsettings.features and \
-	pargs and pargs[0] not in ("digest", "manifest"):
-	pargs = ['digest'] + pargs
+if 'digest' in tmpsettings.features:
+	if pargs and pargs[0] not in ("digest", "manifest"):
+		pargs = ['digest'] + pargs
 	# We only need to build digests on the first pass.
 	tmpsettings.features.discard('digest')
 
