@@ -2658,6 +2658,7 @@ else:
 	commitmessage = commitmessage.rstrip()
 	changelog_msg = commitmessage
 	portage_version = getattr(portage, "VERSION", None)
+	gpg_key = repoman_settings.get("PORTAGE_GPG_KEY", "")
 	if portage_version is None:
 		sys.stderr.write("Failed to insert portage version in message!\n")
 		sys.stderr.flush()
@@ -2669,8 +2670,7 @@ else:
 		if options.force:
 			commit_footer += "\nRepoMan-Options: --force"
 		if sign_manifests:
-			commit_footer += "\nManifest-Sign-Key: %s" % \
-				repoman_settings.get("PORTAGE_GPG_KEY", "")
+			commit_footer += "\nManifest-Sign-Key: %s" % (gpg_key, )
 	else:
 		unameout = platform.system() + " "
 		if platform.system() in ["Darwin", "SunOS"]:
@@ -2683,7 +2683,7 @@ else:
 			commit_footer += ", RepoMan options: --force"
 		if sign_manifests:
 			commit_footer += ", signed Manifest commit with key %s" % \
-				repoman_settings.get("PORTAGE_GPG_KEY", "")
+				(gpg_key, )
 		else:
 			commit_footer += ", unsigned Manifest commit"
 		commit_footer += ")"
