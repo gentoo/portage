@@ -2659,6 +2659,7 @@ else:
 	changelog_msg = commitmessage
 	portage_version = getattr(portage, "VERSION", None)
 	gpg_key = repoman_settings.get("PORTAGE_GPG_KEY", "")
+	dco_sob = repoman_settings.get("DCO_SIGNED_OFF_BY", "")
 	if portage_version is None:
 		sys.stderr.write("Failed to insert portage version in message!\n")
 		sys.stderr.flush()
@@ -2671,13 +2672,18 @@ else:
 			commit_footer += "\nRepoMan-Options: --force"
 		if sign_manifests:
 			commit_footer += "\nManifest-Sign-Key: %s" % (gpg_key, )
+		if dco_sob:
+			commit_footer += "\nSigned-off-by: %s" % (dco_sob, )
 	else:
 		unameout = platform.system() + " "
 		if platform.system() in ["Darwin", "SunOS"]:
 			unameout += platform.processor()
 		else:
 			unameout += platform.machine()
-		commit_footer = "\n\n(Portage version: %s/%s/%s" % \
+		commit_footer = "\n\n"
+		if dco_sob:
+			commit_footer += "Signed-off-by: %s\n" % (dco_sob, )
+		commit_footer += "(Portage version: %s/%s/%s" % \
 			(portage_version, vcs, unameout)
 		if options.force:
 			commit_footer += ", RepoMan options: --force"
