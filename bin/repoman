@@ -235,6 +235,11 @@ def ParseArgs(argv, qahelp):
 	parser.add_option('-I', '--ignore-masked', dest='ignore_masked', action='store_true',
 		default=False, help='ignore masked packages (not allowed with commit mode)')
 
+	parser.add_option('--include-arches', dest='include_arches',
+		metavar='ARCHES', action='append',
+		help='A space separated list of arches used to '
+		'filter the selection of profiles for dependency checks')
+
 	parser.add_option('-d', '--include-dev', dest='include_dev', action='store_true',
 		default=False, help='include dev profiles in dependency checks')
 
@@ -1267,6 +1272,11 @@ arch_caches = {}
 arch_xmatch_caches = {}
 shared_xmatch_caches = {"cp-list":{}}
 
+include_arches = None
+if options.include_arches:
+	include_arches = set()
+	include_arches.update(*[x.split() for x in options.include_arches])
+
 # Disable the "ebuild.notadded" check when not in commit mode and
 # running `svn status` in every package dir will be too expensive.
 
@@ -2223,6 +2233,11 @@ for x in effective_scanlist:
 				# A missing profile will create an error further down
 				# during the KEYWORDS verification.
 				continue
+
+			if include_arches is not None:
+				if arch not in include_arches:
+					continue
+
 			relevant_profiles.extend((keyword, groups, prof)
 				for prof in profiles[arch])
 
