@@ -2680,11 +2680,20 @@ else:
 		sys.stderr.flush()
 		portage_version = "Unknown"
 
+	report_options = []
+	if options.force:
+		report_options.append("--force")
+	if options.ignore_arches:
+		report_options.append("--ignore-arches")
+	if include_arches is not None:
+		report_options.append("--include-arches=\"%s\"" %
+			" ".join(sorted(include_arches)))
+
 	if vcs == "git":
 		# Use new footer only for git (see bug #438364).
 		commit_footer = "\n\nPackage-Manager: portage-%s" % portage_version
-		if options.force:
-			commit_footer += "\nRepoMan-Options: --force"
+		if report_options:
+			commit_footer += "\nRepoMan-Options: " + " ".join(report_options)
 		if sign_manifests:
 			commit_footer += "\nManifest-Sign-Key: %s" % (gpg_key, )
 		if dco_sob:
@@ -2700,8 +2709,8 @@ else:
 			commit_footer += "Signed-off-by: %s\n" % (dco_sob, )
 		commit_footer += "(Portage version: %s/%s/%s" % \
 			(portage_version, vcs, unameout)
-		if options.force:
-			commit_footer += ", RepoMan options: --force"
+		if report_options:
+			commit_footer += ", RepoMan options: " + " ".join(report_options)
 		if sign_manifests:
 			commit_footer += ", signed Manifest commit with key %s" % \
 				(gpg_key, )
