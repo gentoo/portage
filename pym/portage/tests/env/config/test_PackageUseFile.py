@@ -12,7 +12,7 @@ class PackageUseFileTestCase(TestCase):
 
 	cpv = 'sys-apps/portage'
 	useflags = ['cdrom', 'far', 'boo', 'flag', 'blat']
-	
+
 	def testPackageUseFile(self):
 		"""
 		A simple test to ensure the load works properly
@@ -22,7 +22,7 @@ class PackageUseFileTestCase(TestCase):
 			f = PackageUseFile(self.fname)
 			f.load()
 			for cpv, use in f.items():
-				self.assertEqual( cpv, self.cpv )
+				self.assertEqual(cpv, self.cpv)
 				[flag for flag in use if self.assertTrue(flag in self.useflags)]
 		finally:
 			self.NukeFile()
@@ -32,6 +32,6 @@ class PackageUseFileTestCase(TestCase):
 		f = os.fdopen(fd, 'w')
 		f.write("%s %s" % (self.cpv, ' '.join(self.useflags)))
 		f.close()
-	
+
 	def NukeFile(self):
 		os.unlink(self.fname)

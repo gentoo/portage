@@ -45,8 +45,8 @@ class MultirepoTestCase(TestCase):
 			}
 
 		sets = {
-			"multirepotest": 
-				( "dev-libs/A::test_repo", )
+			"multirepotest":
+				("dev-libs/A::test_repo",)
 		}
 
 		test_cases = (

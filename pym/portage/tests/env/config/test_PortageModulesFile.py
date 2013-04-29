@@ -8,14 +8,13 @@ from tempfile import mkstemp
 
 class PortageModulesFileTestCase(TestCase):
 
-	keys = ['foo.bar','baz','bob','extra_key']
-	invalid_keys = ['',""]
-	modules = ['spanky','zmedico','antarus','ricer','5','6']
+	keys = ['foo.bar', 'baz', 'bob', 'extra_key']
+	invalid_keys = ['', ""]
+	modules = ['spanky', 'zmedico', 'antarus', 'ricer', '5', '6']
 
 	def setUp(self):
 		self.items = {}
-		for k, v in zip(self.keys + self.invalid_keys, 
-				self.modules):
+		for k, v in zip(self.keys + self.invalid_keys, self.modules):
 			self.items[k] = v
 
 	def testPortageModulesFile(self):
@@ -32,7 +31,7 @@ class PortageModulesFileTestCase(TestCase):
 		fd, self.fname = mkstemp()
 		f = os.fdopen(fd, 'w')
 		for k, v in self.items.items():
-			f.write('%s=%s\n' % (k,v))
+			f.write('%s=%s\n' % (k, v))
 		f.close()
 
 	def NukeFile(self):

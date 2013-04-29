@@ -26,7 +26,7 @@ class IsValidAtom(TestCase):
 			IsValidAtomTestCase("~sys-apps/portage-2.1", True),
 			IsValidAtomTestCase("sys-apps/portage:foo", True),
 			IsValidAtomTestCase("sys-apps/portage-2.1:foo", False),
-			IsValidAtomTestCase( "sys-apps/portage-2.1:", False),
+			IsValidAtomTestCase("sys-apps/portage-2.1:", False),
 			IsValidAtomTestCase("sys-apps/portage-2.1:", False),
 			IsValidAtomTestCase("sys-apps/portage-2.1:[foo]", False),
 			IsValidAtomTestCase("sys-apps/portage", True),
@@ -150,6 +150,6 @@ class IsValidAtom(TestCase):
 				atom_type = "valid"
 			else:
 				atom_type = "invalid"
-			self.assertEqual( bool(isvalidatom(test_case.atom, allow_wildcard=test_case.allow_wildcard, \
+			self.assertEqual(bool(isvalidatom(test_case.atom, allow_wildcard=test_case.allow_wildcard,
 				allow_repo=test_case.allow_repo)), test_case.expected,
-				msg="isvalidatom(%s) != %s" % ( test_case.atom, test_case.expected ) )
+				msg="isvalidatom(%s) != %s" % (test_case.atom, test_case.expected))

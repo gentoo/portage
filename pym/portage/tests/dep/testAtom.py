@@ -10,146 +10,146 @@ class TestAtom(TestCase):
 	def testAtom(self):
 
 		tests = (
-			( "=sys-apps/portage-2.1-r1:0[doc,a=,!b=,c?,!d?,-e]",
-				('=',  'sys-apps/portage', '2.1-r1', '0', '[doc,a=,!b=,c?,!d?,-e]', None), False, False ),
-			( "=sys-apps/portage-2.1-r1*:0[doc]",
-				('=*',  'sys-apps/portage', '2.1-r1', '0', '[doc]', None), False, False ),
-			( "sys-apps/portage:0[doc]",
-				(None,  'sys-apps/portage', None, '0', '[doc]', None), False, False ),
-			( "sys-apps/portage:0[doc]",
-				(None,  'sys-apps/portage', None, '0', '[doc]', None), False, False ),
-			( "*/*",
-				(None,  '*/*', None, None, None, None), True, False ),
-			( "=*/*-*9999*",
-				('=*',  '*/*', '*9999*', None, None, None), True, False ),
-			( "=*/*-*9999*:0::repo_name",
-				('=*',  '*/*', '*9999*', '0', None, 'repo_name'), True, True ),
-			( "=*/*-*_beta*",
-				('=*',  '*/*', '*_beta*', None, None, None), True, False ),
-			( "=*/*-*_beta*:0::repo_name",
-				('=*',  '*/*', '*_beta*', '0', None, 'repo_name'), True, True ),
-			( "sys-apps/*",
-				(None,  'sys-apps/*', None, None, None, None), True, False ),
-			( "*/portage",
-				(None,  '*/portage', None, None, None, None), True, False ),
-			( "s*s-*/portage:1",
-				(None,  's*s-*/portage', None, '1', None, None), True, False ),
-			( "*/po*ge:2",
-				(None,  '*/po*ge', None, '2', None, None), True, False ),
-			( "!dev-libs/A",
-				(None,  'dev-libs/A', None, None, None, None), True, True ),
-			( "!!dev-libs/A",
-				(None,  'dev-libs/A', None, None, None, None), True, True ),
-			( "!!dev-libs/A",
-				(None,  'dev-libs/A', None, None, None, None), True, True ),
-			( "dev-libs/A[foo(+)]",
-				(None,  'dev-libs/A', None, None, "[foo(+)]", None), True, True ),
-			( "dev-libs/A[a(+),b(-)=,!c(+)=,d(-)?,!e(+)?,-f(-)]",
-				(None,  'dev-libs/A', None, None, "[a(+),b(-)=,!c(+)=,d(-)?,!e(+)?,-f(-)]", None), True, True ),
-			( "dev-libs/A:2[a(+),b(-)=,!c(+)=,d(-)?,!e(+)?,-f(-)]",
-				(None,  'dev-libs/A', None, "2", "[a(+),b(-)=,!c(+)=,d(-)?,!e(+)?,-f(-)]", None), True, True ),
+			("=sys-apps/portage-2.1-r1:0[doc,a=,!b=,c?,!d?,-e]",
+				('=',  'sys-apps/portage', '2.1-r1', '0', '[doc,a=,!b=,c?,!d?,-e]', None), False, False),
+			("=sys-apps/portage-2.1-r1*:0[doc]",
+				('=*',  'sys-apps/portage', '2.1-r1', '0', '[doc]', None), False, False),
+			("sys-apps/portage:0[doc]",
+				(None,  'sys-apps/portage', None, '0', '[doc]', None), False, False),
+			("sys-apps/portage:0[doc]",
+				(None,  'sys-apps/portage', None, '0', '[doc]', None), False, False),
+			("*/*",
+				(None,  '*/*', None, None, None, None), True, False),
+			("=*/*-*9999*",
+				('=*',  '*/*', '*9999*', None, None, None), True, False),
+			("=*/*-*9999*:0::repo_name",
+				('=*',  '*/*', '*9999*', '0', None, 'repo_name'), True, True),
+			("=*/*-*_beta*",
+				('=*',  '*/*', '*_beta*', None, None, None), True, False),
+			("=*/*-*_beta*:0::repo_name",
+				('=*',  '*/*', '*_beta*', '0', None, 'repo_name'), True, True),
+			("sys-apps/*",
+				(None,  'sys-apps/*', None, None, None, None), True, False),
+			("*/portage",
+				(None,  '*/portage', None, None, None, None), True, False),
+			("s*s-*/portage:1",
+				(None,  's*s-*/portage', None, '1', None, None), True, False),
+			("*/po*ge:2",
+				(None,  '*/po*ge', None, '2', None, None), True, False),
+			("!dev-libs/A",
+				(None,  'dev-libs/A', None, None, None, None), True, True),
+			("!!dev-libs/A",
+				(None,  'dev-libs/A', None, None, None, None), True, True),
+			("!!dev-libs/A",
+				(None,  'dev-libs/A', None, None, None, None), True, True),
+			("dev-libs/A[foo(+)]",
+				(None,  'dev-libs/A', None, None, "[foo(+)]", None), True, True),
+			("dev-libs/A[a(+),b(-)=,!c(+)=,d(-)?,!e(+)?,-f(-)]",
+				(None,  'dev-libs/A', None, None, "[a(+),b(-)=,!c(+)=,d(-)?,!e(+)?,-f(-)]", None), True, True),
+			("dev-libs/A:2[a(+),b(-)=,!c(+)=,d(-)?,!e(+)?,-f(-)]",
+				(None,  'dev-libs/A', None, "2", "[a(+),b(-)=,!c(+)=,d(-)?,!e(+)?,-f(-)]", None), True, True),
 
-			( "=sys-apps/portage-2.1-r1:0::repo_name[doc,a=,!b=,c?,!d?,-e]",
-				('=',  'sys-apps/portage', '2.1-r1', '0', '[doc,a=,!b=,c?,!d?,-e]', 'repo_name'), False, True ),
-			( "=sys-apps/portage-2.1-r1*:0::repo_name[doc]",
-				('=*',  'sys-apps/portage', '2.1-r1', '0', '[doc]', 'repo_name'), False, True ),
-			( "sys-apps/portage:0::repo_name[doc]",
-				(None,  'sys-apps/portage', None, '0', '[doc]', 'repo_name'), False, True ),
+			("=sys-apps/portage-2.1-r1:0::repo_name[doc,a=,!b=,c?,!d?,-e]",
+				('=',  'sys-apps/portage', '2.1-r1', '0', '[doc,a=,!b=,c?,!d?,-e]', 'repo_name'), False, True),
+			("=sys-apps/portage-2.1-r1*:0::repo_name[doc]",
+				('=*',  'sys-apps/portage', '2.1-r1', '0', '[doc]', 'repo_name'), False, True),
+			("sys-apps/portage:0::repo_name[doc]",
+				(None,  'sys-apps/portage', None, '0', '[doc]', 'repo_name'), False, True),
 
-			( "*/*::repo_name",
-				(None,  '*/*', None, None, None, 'repo_name'), True, True ),
-			( "sys-apps/*::repo_name",
-				(None,  'sys-apps/*', None, None, None, 'repo_name'), True, True ),
-			( "*/portage::repo_name",
-				(None,  '*/portage', None, None, None, 'repo_name'), True, True ),
-			( "s*s-*/portage:1::repo_name",
-				(None,  's*s-*/portage', None, '1', None, 'repo_name'), True, True ),
+			("*/*::repo_name",
+				(None,  '*/*', None, None, None, 'repo_name'), True, True),
+			("sys-apps/*::repo_name",
+				(None,  'sys-apps/*', None, None, None, 'repo_name'), True, True),
+			("*/portage::repo_name",
+				(None,  '*/portage', None, None, None, 'repo_name'), True, True),
+			("s*s-*/portage:1::repo_name",
+				(None,  's*s-*/portage', None, '1', None, 'repo_name'), True, True),
 		)
-		
+
 		tests_xfail = (
-			( Atom("sys-apps/portage"), False, False ),
-			( "cat/pkg[a!]", False, False ),
-			( "cat/pkg[!a]", False, False ),
-			( "cat/pkg[!a!]", False, False ),
-			( "cat/pkg[!a-]", False, False ),
-			( "cat/pkg[-a=]", False, False ),
-			( "cat/pkg[-a?]", False, False ),
-			( "cat/pkg[-a!]", False, False ),
-			( "cat/pkg[=a]", False, False ),
-			( "cat/pkg[=a=]", False, False ),
-			( "cat/pkg[=a?]", False, False ),
-			( "cat/pkg[=a!]", False, False ),
-			( "cat/pkg[=a-]", False, False ),
-			( "cat/pkg[?a]", False, False ),
-			( "cat/pkg[?a=]", False, False ),
-			( "cat/pkg[?a?]", False, False ),
-			( "cat/pkg[?a!]", False, False ),
-			( "cat/pkg[?a-]", False, False ),
-			( "sys-apps/portage[doc]:0", False, False ),
-			( "*/*", False, False ),
-			( "sys-apps/*", False, False ),
-			( "*/portage", False, False ),
-			( "*/**", True, False ),
-			( "*/portage[use]", True, False ),
-			( "cat/pkg[a()]", False, False ),
-			( "cat/pkg[a(]", False, False ),
-			( "cat/pkg[a)]", False, False ),
-			( "cat/pkg[a(,b]", False, False ),
-			( "cat/pkg[a),b]", False, False ),
-			( "cat/pkg[a(*)]", False, False ),
-			( "cat/pkg[a(*)]", True, False ),
-			( "cat/pkg[a(+-)]", False, False ),
-			( "cat/pkg[a()]", False, False ),
-			( "cat/pkg[(+)a]", False, False ),
-			( "cat/pkg[a=(+)]", False, False ),
-			( "cat/pkg[!(+)a=]", False, False ),
-			( "cat/pkg[!a=(+)]", False, False ),
-			( "cat/pkg[a?(+)]", False, False ),
-			( "cat/pkg[!a?(+)]", False, False ),
-			( "cat/pkg[!(+)a?]", False, False ),
-			( "cat/pkg[-(+)a]", False, False ),
-			( "cat/pkg[a(+),-a]", False, False ),
-			( "cat/pkg[a(-),-a]", False, False ),
-			( "cat/pkg[-a,a(+)]", False, False ),
-			( "cat/pkg[-a,a(-)]", False, False ),
-			( "cat/pkg[-a(+),a(-)]", False, False ),
-			( "cat/pkg[-a(-),a(+)]", False, False ),
-			( "sys-apps/portage[doc]::repo_name", False, False ),
-			( "sys-apps/portage:0[doc]::repo_name", False, False ),
-			( "sys-apps/portage[doc]:0::repo_name", False, False ),
-			( "=sys-apps/portage-2.1-r1:0::repo_name[doc,a=,!b=,c?,!d?,-e]", False, False ),
-			( "=sys-apps/portage-2.1-r1*:0::repo_name[doc]", False, False ),
-			( "sys-apps/portage:0::repo_name[doc]", False, False ),
-			( "*/*::repo_name", True, False ),
+			(Atom("sys-apps/portage"), False, False),
+			("cat/pkg[a!]", False, False),
+			("cat/pkg[!a]", False, False),
+			("cat/pkg[!a!]", False, False),
+			("cat/pkg[!a-]", False, False),
+			("cat/pkg[-a=]", False, False),
+			("cat/pkg[-a?]", False, False),
+			("cat/pkg[-a!]", False, False),
+			("cat/pkg[=a]", False, False),
+			("cat/pkg[=a=]", False, False),
+			("cat/pkg[=a?]", False, False),
+			("cat/pkg[=a!]", False, False),
+			("cat/pkg[=a-]", False, False),
+			("cat/pkg[?a]", False, False),
+			("cat/pkg[?a=]", False, False),
+			("cat/pkg[?a?]", False, False),
+			("cat/pkg[?a!]", False, False),
+			("cat/pkg[?a-]", False, False),
+			("sys-apps/portage[doc]:0", False, False),
+			("*/*", False, False),
+			("sys-apps/*", False, False),
+			("*/portage", False, False),
+			("*/**", True, False),
+			("*/portage[use]", True, False),
+			("cat/pkg[a()]", False, False),
+			("cat/pkg[a(]", False, False),
+			("cat/pkg[a)]", False, False),
+			("cat/pkg[a(,b]", False, False),
+			("cat/pkg[a),b]", False, False),
+			("cat/pkg[a(*)]", False, False),
+			("cat/pkg[a(*)]", True, False),
+			("cat/pkg[a(+-)]", False, False),
+			("cat/pkg[a()]", False, False),
+			("cat/pkg[(+)a]", False, False),
+			("cat/pkg[a=(+)]", False, False),
+			("cat/pkg[!(+)a=]", False, False),
+			("cat/pkg[!a=(+)]", False, False),
+			("cat/pkg[a?(+)]", False, False),
+			("cat/pkg[!a?(+)]", False, False),
+			("cat/pkg[!(+)a?]", False, False),
+			("cat/pkg[-(+)a]", False, False),
+			("cat/pkg[a(+),-a]", False, False),
+			("cat/pkg[a(-),-a]", False, False),
+			("cat/pkg[-a,a(+)]", False, False),
+			("cat/pkg[-a,a(-)]", False, False),
+			("cat/pkg[-a(+),a(-)]", False, False),
+			("cat/pkg[-a(-),a(+)]", False, False),
+			("sys-apps/portage[doc]::repo_name", False, False),
+			("sys-apps/portage:0[doc]::repo_name", False, False),
+			("sys-apps/portage[doc]:0::repo_name", False, False),
+			("=sys-apps/portage-2.1-r1:0::repo_name[doc,a=,!b=,c?,!d?,-e]", False, False),
+			("=sys-apps/portage-2.1-r1*:0::repo_name[doc]", False, False),
+			("sys-apps/portage:0::repo_name[doc]", False, False),
+			("*/*::repo_name", True, False),
 		)
 
 		for atom, parts, allow_wildcard, allow_repo in tests:
 			a = Atom(atom, allow_wildcard=allow_wildcard, allow_repo=allow_repo)
 			op, cp, ver, slot, use, repo = parts
-			self.assertEqual( op, a.operator,
-				msg="Atom('%s').operator = %s == '%s'" % ( atom, a.operator, op ) )
-			self.assertEqual( cp, a.cp,
-				msg="Atom('%s').cp = %s == '%s'" % ( atom, a.cp, cp ) )
+			self.assertEqual(op, a.operator,
+				msg="Atom('%s').operator = %s == '%s'" % (atom, a.operator, op))
+			self.assertEqual(cp, a.cp,
+				msg="Atom('%s').cp = %s == '%s'" % (atom, a.cp, cp))
 			if ver is not None:
 				cpv = "%s-%s" % (cp, ver)
 			else:
 				cpv = cp
-			self.assertEqual( cpv, a.cpv,
-				msg="Atom('%s').cpv = %s == '%s'" % ( atom, a.cpv, cpv ) )
-			self.assertEqual( slot, a.slot,
-				msg="Atom('%s').slot = %s == '%s'" % ( atom, a.slot, slot ) )
-			self.assertEqual( repo, a.repo,
-				msg="Atom('%s').repo == %s == '%s'" % ( atom, a.repo, repo ) )
+			self.assertEqual(cpv, a.cpv,
+				msg="Atom('%s').cpv = %s == '%s'" % (atom, a.cpv, cpv))
+			self.assertEqual(slot, a.slot,
+				msg="Atom('%s').slot = %s == '%s'" % (atom, a.slot, slot))
+			self.assertEqual(repo, a.repo,
+				msg="Atom('%s').repo == %s == '%s'" % (atom, a.repo, repo))
 
 			if a.use:
 				returned_use = str(a.use)
 			else:
 				returned_use = None
-			self.assertEqual( use, returned_use,
-				msg="Atom('%s').use = %s == '%s'" % ( atom, returned_use, use ) )
+			self.assertEqual(use, returned_use,
+				msg="Atom('%s').use = %s == '%s'" % (atom, returned_use, use))
 
 		for atom, allow_wildcard, allow_repo in tests_xfail:
-			self.assertRaisesMsg(atom, (InvalidAtom, TypeError), Atom, atom, \
+			self.assertRaisesMsg(atom, (InvalidAtom, TypeError), Atom, atom,
 				allow_wildcard=allow_wildcard, allow_repo=allow_repo)
 
 	def testSlotAbiAtom(self):
@@ -168,7 +168,7 @@ class TestAtom(TestCase):
 			for k, v in parts.items():
 				self.assertEqual(v, getattr(a, k),
 					msg="Atom('%s').%s = %s == '%s'" %
-					(atom, k, getattr(a, k), v ))
+					(atom, k, getattr(a, k), v))
 
 	def test_intersects(self):
 		test_cases = (
@@ -185,7 +185,7 @@ class TestAtom(TestCase):
 		)
 
 		for atom, other, expected_result in test_cases:
-			self.assertEqual(Atom(atom).intersects(Atom(other)), expected_result, \
+			self.assertEqual(Atom(atom).intersects(Atom(other)), expected_result,
 				"%s and %s should intersect: %s" % (atom, other, expected_result))
 
 	def test_violated_conditionals(self):
@@ -279,7 +279,7 @@ class TestAtom(TestCase):
 		for atom, other_use, iuse, parent_use in test_cases_xfail:
 			a = Atom(atom)
 			validator = use_flag_validator(iuse)
-			self.assertRaisesMsg(atom, InvalidAtom, \
+			self.assertRaisesMsg(atom, InvalidAtom,
 				a.violated_conditionals, other_use, validator.is_valid_flag, parent_use)
 
 	def test_evaluate_conditionals(self):
@@ -328,9 +328,9 @@ class TestAtom(TestCase):
 			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["d", "e", "f"], [], "dev-libs/A[a,b,-b,c,-c,-e,-f]"),
 			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", [], ["d", "e", "f"], "dev-libs/A[a,b,-b,c,-c,d,-f]"),
 			
-			("dev-libs/A[a(-),b(+)=,!c(-)=,d(+)?,!e(-)?,-f(+)]", \
+			("dev-libs/A[a(-),b(+)=,!c(-)=,d(+)?,!e(-)?,-f(+)]",
 				["a", "b", "c", "d", "e", "f"], [], "dev-libs/A[a(-),-b(+),c(-),-e(-),-f(+)]"),
-			("dev-libs/A[a(+),b(-)=,!c(+)=,d(-)?,!e(+)?,-f(-)]", \
+			("dev-libs/A[a(+),b(-)=,!c(+)=,d(-)?,!e(+)?,-f(-)]",
 				[], ["a", "b", "c", "d", "e", "f"], "dev-libs/A[a(+),b(-),-c(+),d(-),-f(-)]"),
 		)
 

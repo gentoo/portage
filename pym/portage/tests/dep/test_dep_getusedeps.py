@@ -24,12 +24,12 @@ class DepGetUseDeps(TestCase):
 							cpv += ":" + slot
 						if isinstance(use, tuple):
 							cpv += "[%s]" % (",".join(use),)
-							self.assertEqual( dep_getusedeps(
-								cpv ), use )
+							self.assertEqual(dep_getusedeps(
+								cpv), use)
 						else:
 							if len(use):
-								self.assertEqual( dep_getusedeps(
-									cpv + "[" + use + "]" ), (use,) )
+								self.assertEqual(dep_getusedeps(
+									cpv + "[" + use + "]"), (use,))
 							else:
-								self.assertEqual( dep_getusedeps(
-									cpv + "[" + use + "]" ), () )
+								self.assertEqual(dep_getusedeps(
+									cpv + "[" + use + "]"), ())

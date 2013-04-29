@@ -85,7 +85,7 @@ class BacktrackingTestCase(TestCase):
 		test_cases = (
 				ResolverPlaygroundTestCase(
 					["dev-libs/A"],
-					mergelist = ["dev-libs/C-1", "dev-libs/B-1", "dev-libs/A-1", ],
+					mergelist = ["dev-libs/C-1", "dev-libs/B-1", "dev-libs/A-1",],
 					success = True),
 			)
 
@@ -118,7 +118,7 @@ class BacktrackingTestCase(TestCase):
 				ResolverPlaygroundTestCase(
 					["dev-libs/B", "dev-libs/A"],
 					all_permutations = True,
-					mergelist = ["dev-libs/Z-2", "dev-libs/B-1", "dev-libs/A-1", ],
+					mergelist = ["dev-libs/Z-2", "dev-libs/B-1", "dev-libs/A-1",],
 					ignore_mergelist_order = True,
 					success = True),
 			)
@@ -190,7 +190,7 @@ class BacktrackingTestCase(TestCase):
 			"dev-libs/D-1": { "RDEPEND": "<dev-libs/A-2" },
 			}
 
-		world = [ "dev-libs/B", "dev-libs/C" ]
+		world = ["dev-libs/B", "dev-libs/C"]
 
 		options = {'--update' : True, '--deep' : True, '--selective' : True}
 
