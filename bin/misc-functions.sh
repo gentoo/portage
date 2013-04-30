@@ -537,13 +537,12 @@ install_qa_check() {
 	fi
 
 	if [[ -d ${D%/}${D} ]] ; then
-		declare -i INSTALLTOD=0
-		for i in $(find "${D%/}${D}"); do
+		local -i INSTALLTOD=0
+		while read -r -d $'\0' i ; do
 			eqawarn "QA Notice: /${i##${D%/}${D}} installed in \${D}/\${D}"
 			((INSTALLTOD++))
-		done
+		done < <(find "${D%/}${D}" -print0)
 		die "Aborting due to QA concerns: ${INSTALLTOD} files installed in ${D%/}${D}"
-		unset INSTALLTOD
 	fi
 
 	# Sanity check syntax errors in init.d scripts
