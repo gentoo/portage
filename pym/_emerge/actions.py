@@ -987,10 +987,19 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	cleanlist = create_cleanlist()
 	clean_set = set(cleanlist)
 
-	if cleanlist and \
-		real_vardb._linkmap is not None and \
-		myopts.get("--depclean-lib-check", _DEPCLEAN_LIB_CHECK_DEFAULT) != "n" and \
-		"preserve-libs" not in settings.features:
+	depclean_lib_check = cleanlist and real_vardb._linkmap is not None and \
+		myopts.get("--depclean-lib-check", _DEPCLEAN_LIB_CHECK_DEFAULT) != "n"
+	preserve_libs = "preserve-libs" in settings.features
+	preserve_libs_restrict = False
+
+	if depclean_lib_check and preserve_libs:
+		for pkg in cleanlist:
+			if "preserve-libs" in pkg.restrict:
+				preserve_libs_restrict = True
+				break
+
+	if depclean_lib_check and \
+		(preserve_libs_restrict or not preserve_libs):
 
 		# Check if any of these packages are the sole providers of libraries
 		# with consumers that have not been selected for removal. If so, these
@@ -1003,6 +1012,13 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		writemsg_level(">>> Checking for lib consumers...\n")
 
 		for pkg in cleanlist:
+
+			if preserve_libs and "preserve-libs" not in pkg.restrict:
+				# Any needed libraries will be preserved
+				# when this package is unmerged, so there's
+				# no need to account for it here.
+				continue
+
 			pkg_dblink = real_vardb._dblink(pkg.cpv)
 			consumers = {}
 

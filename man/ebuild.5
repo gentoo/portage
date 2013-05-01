@@ -673,6 +673,11 @@ binaries that are not compatible with debugedit.
 .I mirror
 files in \fBSRC_URI\fR will not be downloaded from the \fBGENTOO_MIRRORS\fR.
 .TP
+.I preserve\-libs
+Disables preserve\-libs for specific packages. Note than when a package is
+merged, RESTRICT=preserve\-libs applies if either the new instance or the
+old instance sets RESTRICT=preserve\-libs.
+.TP
 .I primaryuri
 fetch from URIs in \fBSRC_URI\fR before \fBGENTOO_MIRRORS\fR.
 .TP

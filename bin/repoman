@@ -450,7 +450,7 @@ for x in missingvars:
 		qawarnings.add(x)
 
 valid_restrict = frozenset(["binchecks", "bindist",
-	"fetch", "installsources", "mirror",
+	"fetch", "installsources", "mirror", "preserve-libs",
 	"primaryuri", "splitdebug", "strip", "test", "userpriv"])
 
 live_eclasses = frozenset([

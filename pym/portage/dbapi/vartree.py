@@ -1519,6 +1519,10 @@ class dblink(object):
 		self._protect_obj = None
 		self._pipe = pipe
 
+		# When necessary, this attribute is modified for
+		# compliance with RESTRICT=preserve-libs.
+		self._preserve_libs = "preserve-libs" in mysettings.features
+
 	def __hash__(self):
 		return hash(self._hash_key)
 
@@ -1894,6 +1898,10 @@ class dblink(object):
 				settings=self.settings, db=self.vartree.dbapi)
 		except UnsupportedAPIException as e:
 			eapi_unsupported = e
+
+		if self._preserve_libs and "preserve-libs" in \
+			self.settings["PORTAGE_RESTRICT"].split():
+			self._preserve_libs = False
 
 		builddir_lock = None
 		scheduler = self._scheduler
@@ -2879,7 +2887,7 @@ class dblink(object):
 			self.vartree.dbapi._linkmap is None or \
 			self.vartree.dbapi._plib_registry is None or \
 			(not unmerge and self._installed_instance is None) or \
-			"preserve-libs" not in self.settings.features:
+			not self._preserve_libs:
 			return set()
 
 		os = _os_merge
@@ -3598,26 +3606,40 @@ class dblink(object):
 		cp = self.mysplit[0]
 		slot_atom = "%s:%s" % (cp, slot)
 
-		# filter any old-style virtual matches
-		slot_matches = [cpv for cpv in self.vartree.dbapi.match(slot_atom) \
-			if cpv_getkey(cpv) == cp]
+		self.lockdb()
+		try:
+			# filter any old-style virtual matches
+			slot_matches = [cpv for cpv in self.vartree.dbapi.match(slot_atom)
+				if cpv_getkey(cpv) == cp]
 
-		if self.mycpv not in slot_matches and \
-			self.vartree.dbapi.cpv_exists(self.mycpv):
-			# handle multislot or unapplied slotmove
-			slot_matches.append(self.mycpv)
+			if self.mycpv not in slot_matches and \
+				self.vartree.dbapi.cpv_exists(self.mycpv):
+				# handle multislot or unapplied slotmove
+				slot_matches.append(self.mycpv)
 
-		others_in_slot = []
-		for cur_cpv in slot_matches:
-			# Clone the config in case one of these has to be unmerged since
-			# we need it to have private ${T} etc... for things like elog.
-			settings_clone = portage.config(clone=self.settings)
-			settings_clone.pop("PORTAGE_BUILDDIR_LOCKED", None)
-			settings_clone.reset()
-			others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
-				settings=settings_clone,
-				vartree=self.vartree, treetype="vartree",
-				scheduler=self._scheduler, pipe=self._pipe))
+			others_in_slot = []
+			for cur_cpv in slot_matches:
+				# Clone the config in case one of these has to be unmerged,
+				# since we need it to have private ${T} etc... for things
+				# like elog.
+				settings_clone = portage.config(clone=self.settings)
+				settings_clone.pop("PORTAGE_BUILDDIR_LOCKED", None)
+				settings_clone.setcpv(cur_cpv, mydb=self.vartree.dbapi)
+				if self._preserve_libs and "preserve-libs" in \
+					settings_clone["PORTAGE_RESTRICT"].split():
+					self._preserve_libs = False
+				others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
+					settings=settings_clone,
+					vartree=self.vartree, treetype="vartree",
+					scheduler=self._scheduler, pipe=self._pipe))
+		finally:
+			self.unlockdb()
+
+		# If any instance has RESTRICT=preserve-libs, then
+		# restrict it for all instances.
+		if not self._preserve_libs:
+			for dblnk in others_in_slot:
+				dblnk._preserve_libs = False
 
 		retval = self._security_check(others_in_slot)
 		if retval:
