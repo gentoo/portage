@@ -677,6 +677,12 @@ Since this option requires
 checking of reverse dependencies, it enables \-\-complete\-graph
 mode whenever a new slot is installed. This option is enabled by
 default.
+
+NOTE: If you want to skip all rebuilds involving slot\-operator
+dependecies (including those that involve sub\-slot changes alone),
+then \fI\-\-ignore\-built\-slot\-operator\-deps=y\fR is the option
+that you are looking for, since \fI\-\-rebuild\-if\-new\-slot\fR
+does not affect rebuilds triggered by sub\-slot changes alone.
 .TP
 .BR "\-\-rebuild\-if\-new\-rev [ y | n ]"
 Rebuild packages when build\-time dependencies are built from source, if the
