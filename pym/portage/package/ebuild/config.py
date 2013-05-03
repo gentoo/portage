@@ -1011,11 +1011,21 @@ class config(object):
 					writemsg(_("!!! INVALID ACCEPT_KEYWORDS: %s\n") % str(group),
 						noiselevel=-1)
 
-		profile_broken = not self.profile_path or \
-			not exists_raise_eaccess(os.path.join(self.profile_path, "parent")) and \
-			exists_raise_eaccess(os.path.join(self["PORTDIR"], "profiles"))
+		profile_broken = False
 
-		if profile_broken:
+		if not self.profile_path:
+			profile_broken = True
+		else:
+			# If any one of these files exists, then
+			# the profile is considered valid.
+			for x in ("make.defaults", "parent",
+				"packages", "use.force", "use.mask"):
+				if exists_raise_eaccess(os.path.join(self.profile_path, x)):
+					break
+			else:
+				profile_broken = True
+
+		if profile_broken and not portage._sync_disabled_warnings:
 			abs_profile_path = None
 			for x in (PROFILE_PATH, 'etc/make.profile'):
 				x = os.path.join(self["PORTAGE_CONFIGROOT"], x)
