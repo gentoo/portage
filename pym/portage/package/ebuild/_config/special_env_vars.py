@@ -144,7 +144,8 @@ environ_filter += [
 
 # portage config variables and variables set directly by portage
 environ_filter += [
-	"ACCEPT_CHOSTS", "ACCEPT_KEYWORDS", "ACCEPT_PROPERTIES", "AUTOCLEAN",
+	"ACCEPT_CHOSTS", "ACCEPT_KEYWORDS", "ACCEPT_PROPERTIES",
+	"ACCEPT_RESTRICT", "AUTOCLEAN",
 	"CLEAN_DELAY", "COLLISION_IGNORE",
 	"CONFIG_PROTECT", "CONFIG_PROTECT_MASK",
 	"DCO_SIGNED_OFF_BY",

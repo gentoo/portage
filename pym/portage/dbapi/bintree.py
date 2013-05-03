@@ -314,7 +314,7 @@ class binarytree(object):
 				"PDEPEND", "PROPERTIES", "PROVIDE")
 			self._pkgindex_header_keys = set([
 				"ACCEPT_KEYWORDS", "ACCEPT_LICENSE",
-				"ACCEPT_PROPERTIES", "CBUILD",
+				"ACCEPT_PROPERTIES", "ACCEPT_RESTRICT", "CBUILD",
 				"CONFIG_PROTECT", "CONFIG_PROTECT_MASK", "FEATURES",
 				"GENTOO_MIRRORS", "INSTALL_MASK", "SYNC", "USE"])
 			self._pkgindex_default_pkg_data = {

@@ -988,6 +988,8 @@ class portdbapi(dbapi):
 					return False
 				if settings._getMissingProperties(cpv, metadata):
 					return False
+				if settings._getMissingRestrict(cpv, metadata):
+					return False
 			except InvalidDependString:
 				return False
 

@@ -219,6 +219,7 @@ class config(object):
 		self.uvlist = []
 		self._accept_chost_re = None
 		self._accept_properties = None
+		self._accept_restrict = None
 		self._features_overrides = []
 		self._make_defaults = None
 		self._parent_stable = None
@@ -307,6 +308,8 @@ class config(object):
 
 			self._accept_properties = copy.deepcopy(clone._accept_properties)
 			self._ppropertiesdict = copy.deepcopy(clone._ppropertiesdict)
+			self._accept_restrict = copy.deepcopy(clone._accept_restrict)
+			self._paccept_restrict = copy.deepcopy(clone._paccept_restrict)
 			self._penvdict = copy.deepcopy(clone._penvdict)
 			self._expand_map = copy.deepcopy(clone._expand_map)
 
@@ -603,6 +606,7 @@ class config(object):
 			self.backup_changes("EROOT")
 
 			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
+			self._paccept_restrict = portage.dep.ExtendedAtomDict(dict)
 			self._penvdict = portage.dep.ExtendedAtomDict(dict)
 
 			#filling PORTDIR and PORTDIR_OVERLAY variable for compatibility
@@ -676,6 +680,20 @@ class config(object):
 						self.configdict["conf"]["ACCEPT_PROPERTIES"] = " ".join(v)
 				for k, v in propdict.items():
 					self._ppropertiesdict.setdefault(k.cp, {})[k] = v
+
+				# package.accept_restrict
+				d = grabdict_package(os.path.join(
+					abs_user_config, "package.accept_restrict"),
+					recursive=True, allow_wildcard=True,
+					allow_repo=True, verify_eapi=False)
+				v = d.pop("*/*", None)
+				if v is not None:
+					if "ACCEPT_RESTRICT" in self.configdict["conf"]:
+						self.configdict["conf"]["ACCEPT_RESTRICT"] += " " + " ".join(v)
+					else:
+						self.configdict["conf"]["ACCEPT_RESTRICT"] = " ".join(v)
+				for k, v in d.items():
+					self._paccept_restrict.setdefault(k.cp, {})[k] = v
 
 				#package.env
 				penvdict = grabdict_package(os.path.join(
@@ -1970,6 +1988,56 @@ class config(object):
 		return [x for x in use_reduce(properties_str, uselist=use, flat=True)
 			if x not in acceptable_properties]
 
+	def _getMissingRestrict(self, cpv, metadata):
+		"""
+		Take a RESTRICT string and return a list of any tokens the user
+		may need to accept for the given package.  The returned list will not
+		contain any tokens that have already been accepted.  This method
+		can throw an InvalidDependString exception.
+
+		@param cpv: The package name (for package.accept_restrict support)
+		@type cpv: String
+		@param metadata: A dictionary of raw package metadata
+		@type metadata: dict
+		@rtype: List
+		@return: A list of tokens that have not been accepted.
+		"""
+		accept_restrict = self._accept_restrict
+		try:
+			cpv.slot
+		except AttributeError:
+			cpv = _pkg_str(cpv, metadata=metadata, settings=self)
+		cp = cpv_getkey(cpv)
+		cpdict = self._paccept_restrict.get(cp)
+		if cpdict:
+			paccept_restrict_list = ordered_by_atom_specificity(cpdict, cpv)
+			if paccept_restrict_list:
+				accept_restrict = list(self._accept_restrict)
+				for x in paccept_restrict_list:
+					accept_restrict.extend(x)
+
+		restrict_str = metadata.get("RESTRICT", "")
+		all_restricts = set(use_reduce(restrict_str, matchall=1, flat=True))
+
+		acceptable_restricts = set()
+		for x in accept_restrict:
+			if x == '*':
+				acceptable_restricts.update(all_restricts)
+			elif x == '-*':
+				acceptable_restricts.clear()
+			elif x[:1] == '-':
+				acceptable_restricts.discard(x[1:])
+			else:
+				acceptable_restricts.add(x)
+
+		if "?" in restrict_str:
+			use = metadata["USE"].split()
+		else:
+			use = []
+
+		return [x for x in use_reduce(restrict_str, uselist=use, flat=True)
+			if x not in acceptable_restricts]
+
 	def _accept_chost(self, cpv, metadata):
 		"""
 		@return True if pkg CHOST is accepted, False otherwise.
@@ -2106,6 +2174,18 @@ class config(object):
 		else:
 			# repoman will accept any property
 			self._accept_properties = ('*',)
+
+		if self.local_config:
+			mysplit = []
+			for curdb in mydbs:
+				mysplit.extend(curdb.get('ACCEPT_RESTRICT', '').split())
+			mysplit = prune_incremental(mysplit)
+			self.configlist[-1]['ACCEPT_RESTRICT'] = ' '.join(mysplit)
+			if tuple(mysplit) != self._accept_restrict:
+				self._accept_restrict = tuple(mysplit)
+		else:
+			# repoman will accept any property
+			self._accept_restrict = ('*',)
 
 		increment_lists = {}
 		for k in myincrementals:

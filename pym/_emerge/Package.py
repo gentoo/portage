@@ -332,6 +332,15 @@ class Package(Task):
 			# already recorded as 'invalid'
 			pass
 
+		try:
+			missing_restricts = settings._getMissingRestrict(
+				self.cpv, self._metadata)
+			if missing_restricts:
+				masks['RESTRICT'] = missing_restricts
+		except InvalidDependString:
+			# already recorded as 'invalid'
+			pass
+
 		mask_atom = settings._getMaskAtom(self.cpv, self._metadata)
 		if mask_atom is not None:
 			masks['package.mask'] = mask_atom
@@ -364,7 +373,8 @@ class Package(Task):
 				'CHOST' in masks or \
 				'EAPI.deprecated' in masks or \
 				'KEYWORDS' in masks or \
-				'PROPERTIES' in masks):
+				'PROPERTIES' in masks or \
+				'RESTRICT' in masks):
 				return False
 
 			if 'package.mask' in masks or \

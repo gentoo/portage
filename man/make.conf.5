@@ -80,6 +80,23 @@ ACCEPT_PROPERTIES="*"
 ACCEPT_PROPERTIES="* -interactive"
 .fi
 .TP
+\fBACCEPT_RESTRICT\fR = \fI[space delimited list of RESTRICT tokens]\fR
+This variable is used to mask packages based on RESTRICT tokens.
+In addition to RESTRICT tokens, the \fI*\fR and \fI-*\fR wildcard tokens are
+also supported. This variable can be temporarily overridden using the
+\fB\-\-accept\-restrict\fR option of \fBemerge\fR(1).
+See \fBebuild\fR(5) for more information about RESTRICT.
+.br
+Defaults to the value of *.
+.br
+.I Examples:
+.nf
+# Accept any restrict tokens
+ACCEPT_RESTRICT="*"
+# Accept any tokens except "bindist"
+ACCEPT_RESTRICT="* -bindist"
+.fi
+.TP
 .B CBUILD
 This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
 as \fI\-\-build=${CBUILD}\fR only if it is defined.  Do not set this yourself

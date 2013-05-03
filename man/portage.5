@@ -57,6 +57,7 @@ make.conf
 mirrors
 modules
 package.accept_keywords
+package.accept_restrict
 package.env
 package.keywords
 package.license
@@ -672,6 +673,16 @@ package.accept_keywords like this:
 
 games-fps/quake3-demo x86
 
+.TP
+.BR package.accept_restrict
+This will allow ACCEPT_RESTRICT (see \fBmake.conf\fR(5)) to be augmented for a
+single package.
+
+.I Format:
+.nf
+\- comment lines begin with # (no inline comments)
+\- one DEPEND atom per line followed by additional RESTRICT tokens
+.fi
 .TP
 .BR package.env
 Per\-package environment variable settings. Entries refer to
