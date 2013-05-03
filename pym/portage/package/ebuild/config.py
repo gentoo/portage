@@ -1950,7 +1950,6 @@ class config(object):
 
 		properties_str = metadata.get("PROPERTIES", "")
 		properties = set(use_reduce(properties_str, matchall=1, flat=True))
-		properties.discard('||')
 
 		acceptable_properties = set()
 		for x in accept_properties:
@@ -1968,40 +1967,8 @@ class config(object):
 		else:
 			use = []
 
-		properties_struct = use_reduce(properties_str, uselist=use, opconvert=True)
-		return self._getMaskedProperties(properties_struct, acceptable_properties)
-
-	def _getMaskedProperties(self, properties_struct, acceptable_properties):
-		if not properties_struct:
-			return []
-		if properties_struct[0] == "||":
-			ret = []
-			for element in properties_struct[1:]:
-				if isinstance(element, list):
-					if element:
-						tmp = self._getMaskedProperties(
-							element, acceptable_properties)
-						if not tmp:
-							return []
-						ret.extend(tmp)
-				else:
-					if element in acceptable_properties:
-						return[]
-					ret.append(element)
-			# Return all masked properties, since we don't know which combination
-			# (if any) the user will decide to unmask
-			return ret
-
-		ret = []
-		for element in properties_struct:
-			if isinstance(element, list):
-				if element:
-					ret.extend(self._getMaskedProperties(element,
-						acceptable_properties))
-			else:
-				if element not in acceptable_properties:
-					ret.append(element)
-		return ret
+		return [x for x in use_reduce(properties_str, uselist=use, flat=True)
+			if x not in acceptable_properties]
 
 	def _accept_chost(self, cpv, metadata):
 		"""
