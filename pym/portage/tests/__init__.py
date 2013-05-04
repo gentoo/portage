@@ -96,7 +96,7 @@ def getTestDirs(base_path):
 
 def getTestNames(path):
 	files = os.listdir(path)
-	files = [ f[:-3] for f in files if f.startswith("test") and f.endswith(".py") ]
+	files = [f[:-3] for f in files if f.startswith("test") and f.endswith(".py")]
 	files.sort()
 	return files
 
@@ -137,14 +137,14 @@ class TextTestResult(_TextTestResult):
 		self.portage_skipped = []
 
 	def addTodo(self, test, info):
-		self.todoed.append((test,info))
+		self.todoed.append((test, info))
 		if self.showAll:
 			self.stream.writeln("TODO")
 		elif self.dots:
 			self.stream.write(".")
 
 	def addPortageSkip(self, test, info):
-		self.portage_skipped.append((test,info))
+		self.portage_skipped.append((test, info))
 		if self.showAll:
 			self.stream.writeln("SKIP")
 		elif self.dots:
@@ -200,7 +200,7 @@ class TestCase(unittest.TestCase):
 						result.addPortageSkip(self, "%s: SKIP: %s" %
 							(testMethod, self.portage_skip))
 				elif self.todo:
-					result.addTodo(self,"%s: TODO" % testMethod)
+					result.addTodo(self, "%s: TODO" % testMethod)
 				else:
 					result.addFailure(self, sys.exc_info())
 			except (KeyboardInterrupt, SystemExit):
@@ -233,7 +233,7 @@ class TestCase(unittest.TestCase):
 		except excClass:
 			return
 		else:
-			if hasattr(excClass,'__name__'): excName = excClass.__name__
+			if hasattr(excClass, '__name__'): excName = excClass.__name__
 			else: excName = str(excClass)
 			raise self.failureException("%s not raised: %s" % (excName, msg))
 
@@ -274,8 +274,8 @@ class TextTestRunner(unittest.TextTestRunner):
 			self.stream.writeln("OK")
 		return result
 
-test_cps = ['sys-apps/portage','virtual/portage']
-test_versions = ['1.0', '1.0-r1','2.3_p4','1.0_alpha57']
-test_slots = [ None, '1','gentoo-sources-2.6.17','spankywashere']
-test_usedeps = ['foo','-bar', ('foo','bar'),
-	('foo','-bar'), ('foo?', '!bar?') ]
+test_cps = ['sys-apps/portage', 'virtual/portage']
+test_versions = ['1.0', '1.0-r1', '2.3_p4', '1.0_alpha57']
+test_slots = [None, '1', 'gentoo-sources-2.6.17', 'spankywashere']
+test_usedeps = ['foo', '-bar', ('foo', 'bar'),
+	('foo', '-bar'), ('foo?', '!bar?')]

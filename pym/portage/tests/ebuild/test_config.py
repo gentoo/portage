@@ -46,7 +46,7 @@ class ConfigTestCase(TestCase):
 			settings.features.add('noclean')
 			self.assertEqual('noclean' in settings['FEATURES'].split(), True)
 			settings.regenerate()
-			self.assertEqual('noclean' in settings['FEATURES'].split(),True)
+			self.assertEqual('noclean' in settings['FEATURES'].split(), True)
 
 			settings.features.discard('noclean')
 			self.assertEqual('noclean' in settings['FEATURES'].split(), False)
@@ -56,7 +56,7 @@ class ConfigTestCase(TestCase):
 			settings.features.add('noclean')
 			self.assertEqual('noclean' in settings['FEATURES'].split(), True)
 			settings.regenerate()
-			self.assertEqual('noclean' in settings['FEATURES'].split(),True)
+			self.assertEqual('noclean' in settings['FEATURES'].split(), True)
 
 			# before: ['noclean', '-noclean', 'noclean']
 			settings.features._prune_overrides()

@@ -30,10 +30,15 @@ except ImportError:
 if sys.hexversion >= 0x3000000:
 	basestring = str
 
-if os.path.isdir("/proc/%i/fd" % os.getpid()):
+for _fd_dir in ("/dev/fd", "/proc/self/fd"):
+	if os.path.isdir(_fd_dir):
+		break
+	else:
+		_fd_dir = None
+
+if _fd_dir is not None:
 	def get_open_fds():
-		return (int(fd) for fd in os.listdir("/proc/%i/fd" % os.getpid()) \
-			if fd.isdigit())
+		return (int(fd) for fd in os.listdir(_fd_dir) if fd.isdigit())
 
 	if platform.python_implementation() == 'PyPy':
 		# EAGAIN observed with PyPy 1.8.

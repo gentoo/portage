@@ -11,7 +11,7 @@ class PackageKeywordsFileTestCase(TestCase):
 
 	cpv = ['sys-apps/portage']
 	keywords = ['~x86', 'amd64', '-mips']
-	
+
 	def testPackageKeywordsFile(self):
 		"""
 		A simple test to ensure the load works properly
@@ -23,17 +23,17 @@ class PackageKeywordsFileTestCase(TestCase):
 			f.load()
 			i = 0
 			for cpv, keyword in f.items():
-				self.assertEqual( cpv, self.cpv[i] )
+				self.assertEqual(cpv, self.cpv[i])
 				[k for k in keyword if self.assertTrue(k in self.keywords)]
 				i = i + 1
 		finally:
 			self.NukeFile()
-	
+
 	def BuildFile(self):
 		fd, self.fname = mkstemp()
 		f = os.fdopen(fd, 'w')
 		for c in self.cpv:
-			f.write("%s %s\n" % (c,' '.join(self.keywords)))
+			f.write("%s %s\n" % (c, ' '.join(self.keywords)))
 		f.close()
 
 	def NukeFile(self):

@@ -11,9 +11,9 @@ class DepGetRepo(TestCase):
 	def testDepGetRepo(self):
 
 		repo_char = "::"
-		repos = ( "a", "repo-name", "repo_name", "repo123", None )
+		repos = ("a", "repo-name", "repo_name", "repo123", None)
 		cpvs = ["sys-apps/portage"]
-		versions = ["2.1.1","2.1-r1", None]
+		versions = ["2.1.1", "2.1-r1", None]
 		uses = ["[use]", None]
 		for cpv in cpvs:
 			for version in versions:
@@ -26,4 +26,4 @@ class DepGetRepo(TestCase):
 							pkg = pkg + repo_char + repo
 						if use:
 							pkg = pkg + use
-						self.assertEqual( dep_getrepo( pkg ), repo )
+						self.assertEqual(dep_getrepo(pkg), repo)

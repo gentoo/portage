@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Mar 2013" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Apr 2013" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -78,6 +78,23 @@ Defaults to the value of *.
 ACCEPT_PROPERTIES="*"
 # Accept any properties except the "interactive" property
 ACCEPT_PROPERTIES="* -interactive"
+.fi
+.TP
+\fBACCEPT_RESTRICT\fR = \fI[space delimited list of RESTRICT tokens]\fR
+This variable is used to mask packages based on RESTRICT tokens.
+In addition to RESTRICT tokens, the \fI*\fR and \fI-*\fR wildcard tokens are
+also supported. This variable can be temporarily overridden using the
+\fB\-\-accept\-restrict\fR option of \fBemerge\fR(1).
+See \fBebuild\fR(5) for more information about RESTRICT.
+.br
+Defaults to the value of *.
+.br
+.I Examples:
+.nf
+# Accept any restrict tokens
+ACCEPT_RESTRICT="*"
+# Accept any tokens except "bindist"
+ACCEPT_RESTRICT="* -bindist"
 .fi
 .TP
 .B CBUILD
@@ -168,6 +185,10 @@ that locations under /usr/portage are not necessarily safe for data storage.
 See the \fBPORTDIR\fR documentation for more information.
 .br
 Defaults to /usr/portage/distfiles.
+.TP
+.B DCO_SIGNED_OFF_BY
+This variable may contain a name and email address which will be used by
+\fBrepoman\fR(1) to add a Signed\-off\-by line to each commit message.
 .TP
 .B DOC_SYMLINKS_DIR
 If this variable contains a directory then symlinks to html documentation will
@@ -398,7 +419,9 @@ Enable GLEP 42 news support. See
 \fIhttp://www.gentoo.org/proj/en/glep/glep-0042.html\fR.
 .TP
 .B noauto
-When utilizing \fBebuild\fR(1), only run the function requested.
+When utilizing \fBebuild\fR(1), only run the function requested. Also, forces
+the corresponding ebuild and eclasses to be sourced again for each phase, in
+order to account for modifications.
 .TP
 .B noclean
 Do not delete the the source and temporary files after the merge process.

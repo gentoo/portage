@@ -277,6 +277,21 @@ temporarily mask interactive packages. With default
 configuration, this would result in an effective
 \fBACCEPT_PROPERTIES\fR value of "* -interactive".
 .TP
+.BR \-\-accept\-restrict=ACCEPT_RESTRICT
+This option temporarily overrides the \fBACCEPT_RESTRICT\fR
+variable. The \fBACCEPT_RESTRICT\fR variable is incremental,
+which means that the specified setting is appended to the
+existing value from your configuration. The special \fB-*\fR
+token can be used to discard the existing configuration
+value and start fresh. See the \fBMASKED PACKAGES\fR section
+and \fBmake.conf\fR(5) for more information about
+ACCEPT_RESTRICT. A typical usage example for this option
+would be to use \fI\-\-accept\-restrict=\-bindist\fR to
+temporarily mask packages that are not binary
+re\-distributable. With default
+configuration, this would result in an effective
+\fBACCEPT_RESTRICT\fR value of "* -bindist".
+.TP
 .BR "\-\-alphabetical "
 When displaying USE and other flag output, combines the enabled and
 disabled lists into one list and sorts the whole list alphabetically.
@@ -429,10 +444,16 @@ required.
 .BR "\-\-depclean\-lib\-check [ y | n ]"
 Account for library link-level dependencies during
 \fB\-\-depclean\fR and \fB\-\-prune\fR actions.
-This option is enabled by default. This option is ignored
-when FEATURES="preserve\-libs" is enabled in
-\fBmake.conf\fR(5), since any libraries that have
-consumers will simply be preserved.
+This option is enabled by default. If FEATURES="preserve\-libs" is
+enabled in \fBmake.conf\fR(5), and preserve\-libs is not restricted
+for any of the packages selected for removal, then this option is
+ignored because any libraries that have consumers will simply be
+preserved.
+.TP
+.BR \-\-digest
+Prevent corruption from being noticed. The `repoman manifest` command is the
+preferred way to generate manifests and it is capable of doing an entire
+repository or category at once (see \fBrepoman\fR(1)).
 .TP
 .BR "\-\-dynamic\-deps < y | n >"
 In dependency calculations, substitute the dependencies of installed
@@ -672,6 +693,12 @@ Since this option requires
 checking of reverse dependencies, it enables \-\-complete\-graph
 mode whenever a new slot is installed. This option is enabled by
 default.
+
+NOTE: If you want to skip all rebuilds involving slot\-operator
+dependecies (including those that involve sub\-slot changes alone),
+then \fI\-\-ignore\-built\-slot\-operator\-deps=y\fR is the option
+that you are looking for, since \fI\-\-rebuild\-if\-new\-slot\fR
+does not affect rebuilds triggered by sub\-slot changes alone.
 .TP
 .BR "\-\-rebuild\-if\-new\-rev [ y | n ]"
 Rebuild packages when build\-time dependencies are built from source, if the
@@ -1029,6 +1056,15 @@ of a package masked by \fBPROPERTIES\fR. See \fBmake.conf\fR(5) for information
 about \fBACCEPT_PROPERTIES\fR, and see \fBportage\fR(5) for information about
 \fI/etc/portage/package.properties\fR. Use the \fB\-\-accept\-properties\fR
 option to temporarily override \fBACCEPT_PROPERTIES\fR.
+.TP
+.BR RESTRICT
+The \fBRESTRICT\fR variable in an \fBebuild\fR file can be used to mask
+packages based on RESTRICT tokens. \fBemerge\fR examines the
+\fBACCEPT_RESTRICT\fR environment variable to allow or disallow the emerging
+of a package masked by \fBRESTRICT\fR. See \fBmake.conf\fR(5) for information
+about \fBACCEPT_RESTRICT\fR, and see \fBportage\fR(5) for information about
+\fI/etc/portage/package.accept_restrict\fR. Use the \fB\-\-accept\-restrict\fR
+option to temporarily override \fBACCEPT_RESTRICT\fR.
 .SH "CONFIGURATION FILES"
 Portage has a special feature called "config file protection". The purpose of
 this feature is to prevent new package installs from clobbering existing

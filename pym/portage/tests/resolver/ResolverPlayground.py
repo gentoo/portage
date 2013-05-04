@@ -59,7 +59,7 @@ class ResolverPlayground(object):
 		user_config={}, sets={}, world=[], world_sets=[], distfiles={},
 		targetroot=False, debug=False):
 		"""
-		ebuilds: cpv -> metadata mapping simulating available ebuilds. 
+		ebuilds: cpv -> metadata mapping simulating available ebuilds.
 		installed: cpv -> metadata mapping simulating installed packages.
 			If a metadata key is missing, it gets a default value.
 		profile: settings defined by the profile.
@@ -95,7 +95,7 @@ class ResolverPlayground(object):
 		self.settings, self.trees = self._load_config()
 
 		self._create_ebuild_manifests(ebuilds)
-		
+
 		portage.util.noiselimit = 0
 
 	def _get_repo_dir(self, repo):
@@ -273,17 +273,17 @@ class ResolverPlayground(object):
 			for cat in categories:
 				f.write(cat + "\n")
 			f.close()
-			
+
 			#Create $REPO/profiles/license_groups
 			license_file = os.path.join(profile_dir, "license_groups")
 			f = open(license_file, "w")
 			f.write("EULA TEST\n")
 			f.close()
 
-			repo_config = repo_configs.get(repo) 
+			repo_config = repo_configs.get(repo)
 			if repo_config:
 				for config_file, lines in repo_config.items():
-					if config_file not in self.config_files and not any(fnmatch.fnmatch(config_file, os.path.join(x, "*")) for x in self.config_files): 
+					if config_file not in self.config_files and not any(fnmatch.fnmatch(config_file, os.path.join(x, "*")) for x in self.config_files):
 						raise ValueError("Unknown config file: '%s'" % config_file)
 
 					if config_file in ("layout.conf",):
@@ -364,7 +364,7 @@ class ResolverPlayground(object):
 
 		# Write empty entries for each repository, in order to exercise
 		# RepoConfigLoader's repos.conf processing.
-		repos_conf_file = os.path.join(user_config_dir, "repos.conf")		
+		repos_conf_file = os.path.join(user_config_dir, "repos.conf")
 		f = open(repos_conf_file, "w")
 		for repo in sorted(self.repo_dirs.keys()):
 			f.write("[%s]\n" % repo)
@@ -434,7 +434,7 @@ class ResolverPlayground(object):
 
 		#Create /usr/share/portage/config/sets/portage.conf
 		default_sets_conf_dir = os.path.join(self.eroot, "usr/share/portage/config/sets")
-		
+
 		try:
 			os.makedirs(default_sets_conf_dir)
 		except os.error:
@@ -520,7 +520,7 @@ class ResolverPlayground(object):
 				rval, cleanlist, ordered, req_pkg_count = \
 					calc_depclean(self.settings, self.trees, None,
 					options, action, InternalPackageSet(initial_atoms=atoms, allow_wildcard=True), None)
-				result = ResolverPlaygroundDepcleanResult( \
+				result = ResolverPlaygroundDepcleanResult(
 					atoms, rval, cleanlist, ordered, req_pkg_count)
 			else:
 				params = create_depgraph_params(options, action)
@@ -764,7 +764,7 @@ class ResolverPlaygroundResult(object):
 		if self.depgraph._dynamic_config._circular_dependency_handler is not None:
 			handler = self.depgraph._dynamic_config._circular_dependency_handler
 			sol = handler.solutions
-			self.circular_dependency_solutions = dict( zip([x.cpv for x in sol.keys()], sol.values()) )
+			self.circular_dependency_solutions = dict(zip([x.cpv for x in sol.keys()], sol.values()))
 
 class ResolverPlaygroundDepcleanResult(object):
 

@@ -1,4 +1,4 @@
-# Copyright 2007-2012 Gentoo Foundation
+# Copyright 2007-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -49,7 +49,8 @@ class LibraryFileConsumerSet(LibraryConsumerSet):
 	def load(self):
 		consumers = set()
 		for lib in self.files:
-			consumers.update(self.dbapi._linkmap.findConsumers(lib))
+			consumers.update(
+				self.dbapi._linkmap.findConsumers(lib, greedy=False))
 
 		if not consumers:
 			return
@@ -77,10 +78,10 @@ class PreservedLibraryConsumerSet(LibraryConsumerSet):
 				for lib in libs:
 					if self.debug:
 						print(lib)
-						for x in sorted(self.dbapi._linkmap.findConsumers(lib)):
+						for x in sorted(self.dbapi._linkmap.findConsumers(lib, greedy=False)):
 							print("    ", x)
 						print("-"*40)
-					consumers.update(self.dbapi._linkmap.findConsumers(lib))
+					consumers.update(self.dbapi._linkmap.findConsumers(lib, greedy=False))
 			# Don't rebuild packages just because they contain preserved
 			# libs that happen to be consumers of other preserved libs.
 			for libs in plib_dict.values():

@@ -31,7 +31,7 @@ def display_preserved_libs(vardb):
 				if f in consumer_map:
 					continue
 				consumers = []
-				for c in linkmap.findConsumers(f):
+				for c in linkmap.findConsumers(f, greedy=False):
 					# Filter out any consumers that are also preserved libs
 					# belonging to the same package as the provider.
 					if linkmap._obj_key(c) not in internal_plib_keys:

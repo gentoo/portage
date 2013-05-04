@@ -583,12 +583,13 @@ install_qa_check_misc() {
 		die "Unsafe files found in \${D}.  Portage will not install them."
 	fi
 
-	if [[ -d ${D}/${D} ]] ; then
-		find "${D}/${D}" | \
-		while read i ; do
-			eqawarn "QA Notice: /${i##${D}/${D}} installed in \${D}/\${D}"
-		done
-		die "Aborting due to QA concerns: files installed in ${D}/${D}"
+	if [[ -d ${D%/}${D} ]] ; then
+		local -i INSTALLTOD=0
+		while read -r -d $'\0' i ; do
+			eqawarn "QA Notice: /${i##${D%/}${D}} installed in \${D}/\${D}"
+			((INSTALLTOD++))
+		done < <(find "${D%/}${D}" -print0)
+		die "Aborting due to QA concerns: ${INSTALLTOD} files installed in ${D%/}${D}"
 	fi
 
 	# Sanity check syntax errors in init.d scripts
@@ -895,29 +896,19 @@ install_qa_check_misc() {
 
 		[[ ${abort} == yes ]] && die "multilib-strict check failed!"
 	fi
-
-	# ensure packages don't install systemd units automagically
-	if ! has systemd ${INHERITED} && \
-		[[ -d "${ED}"/lib/systemd/system ]]
-	then
-		eqawarn "QA Notice: package installs systemd unit files (/lib/systemd/system)"
-		eqawarn "           but does not inherit systemd.eclass."
-		has stricter ${FEATURES} \
-			&& die "install aborted due to missing inherit of systemd.eclass"
-	fi
 }
 
 install_qa_check_prefix() {
-	if [[ -d ${ED}/${D} ]] ; then
-		find "${ED}/${D}" | \
+	if [[ -d ${ED%/}/${D} ]] ; then
+		find "${ED%/}/${D}" | \
 		while read i ; do
-			eqawarn "QA Notice: /${i##${ED}/${D}} installed in \${ED}/\${D}"
+			eqawarn "QA Notice: /${i##${ED%/}/${D}} installed in \${ED}/\${D}"
 		done
 		die "Aborting due to QA concerns: files installed in ${ED}/${D}"
 	fi
 
-	if [[ -d ${ED}/${EPREFIX} ]] ; then
-		find "${ED}/${EPREFIX}/" | \
+	if [[ -d ${ED%/}/${EPREFIX} ]] ; then
+		find "${ED%/}/${EPREFIX}/" | \
 		while read i ; do
 			eqawarn "QA Notice: ${i#${D}} double prefix"
 		done

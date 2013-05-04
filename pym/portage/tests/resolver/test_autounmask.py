@@ -10,9 +10,9 @@ class AutounmaskTestCase(TestCase):
 
 		ebuilds = {
 			#ebuilds to test use changes
-			"dev-libs/A-1": { "SLOT": 1, "DEPEND": "dev-libs/B[foo]", "EAPI": 2}, 
-			"dev-libs/A-2": { "SLOT": 2, "DEPEND": "dev-libs/B[bar]", "EAPI": 2}, 
-			"dev-libs/B-1": { "DEPEND": "foo? ( dev-libs/C ) bar? ( dev-libs/D )", "IUSE": "foo bar"}, 
+			"dev-libs/A-1": { "SLOT": 1, "DEPEND": "dev-libs/B[foo]", "EAPI": 2},
+			"dev-libs/A-2": { "SLOT": 2, "DEPEND": "dev-libs/B[bar]", "EAPI": 2},
+			"dev-libs/B-1": { "DEPEND": "foo? ( dev-libs/C ) bar? ( dev-libs/D )", "IUSE": "foo bar"},
 			"dev-libs/C-1": {},
 			"dev-libs/D-1": {},
 
@@ -56,10 +56,10 @@ class AutounmaskTestCase(TestCase):
 			"dev-util/R-1": { "IUSE": "bar" },
 
 			#ebuilds to test interaction with REQUIRED_USE
-			"app-portage/A-1": { "DEPEND": "app-portage/B[foo]", "EAPI": 2 }, 
-			"app-portage/A-2": { "DEPEND": "app-portage/B[foo=]", "IUSE": "+foo", "REQUIRED_USE": "foo", "EAPI": "4" }, 
+			"app-portage/A-1": { "DEPEND": "app-portage/B[foo]", "EAPI": 2 },
+			"app-portage/A-2": { "DEPEND": "app-portage/B[foo=]", "IUSE": "+foo", "REQUIRED_USE": "foo", "EAPI": "4" },
 
-			"app-portage/B-1": { "IUSE": "foo +bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": "4" }, 
+			"app-portage/B-1": { "IUSE": "foo +bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": "4" },
 			"app-portage/C-1": { "IUSE": "+foo +bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": "4" },
 			}
 
@@ -69,183 +69,183 @@ class AutounmaskTestCase(TestCase):
 
 				ResolverPlaygroundTestCase(
 					["dev-libs/A:1"],
-					options = {"--autounmask": "n"},
-					success = False),
+					options={"--autounmask": "n"},
+					success=False),
 				ResolverPlaygroundTestCase(
 					["dev-libs/A:1"],
-					options = {"--autounmask": True},
-					success = False,
-					mergelist = ["dev-libs/C-1", "dev-libs/B-1", "dev-libs/A-1"],
-					use_changes = { "dev-libs/B-1": {"foo": True} } ),
+					options={"--autounmask": True},
+					success=False,
+					mergelist=["dev-libs/C-1", "dev-libs/B-1", "dev-libs/A-1"],
+					use_changes={ "dev-libs/B-1": {"foo": True} }),
 
 				#Make sure we restart if needed.
 				ResolverPlaygroundTestCase(
 					["dev-libs/A:1", "dev-libs/B"],
-					options = {"--autounmask": True},
-					all_permutations = True,
-					success = False,
-					mergelist = ["dev-libs/C-1", "dev-libs/B-1", "dev-libs/A-1"],
-					use_changes = { "dev-libs/B-1": {"foo": True} } ),
+					options={"--autounmask": True},
+					all_permutations=True,
+					success=False,
+					mergelist=["dev-libs/C-1", "dev-libs/B-1", "dev-libs/A-1"],
+					use_changes={ "dev-libs/B-1": {"foo": True} }),
 				ResolverPlaygroundTestCase(
 					["dev-libs/A:1", "dev-libs/A:2", "dev-libs/B"],
-					options = {"--autounmask": True},
-					all_permutations = True,
-					success = False,
-					mergelist = ["dev-libs/D-1", "dev-libs/C-1", "dev-libs/B-1", "dev-libs/A-1", "dev-libs/A-2"],
-					ignore_mergelist_order = True,
-					use_changes = { "dev-libs/B-1": {"foo": True, "bar": True} } ),
+					options={"--autounmask": True},
+					all_permutations=True,
+					success=False,
+					mergelist=["dev-libs/D-1", "dev-libs/C-1", "dev-libs/B-1", "dev-libs/A-1", "dev-libs/A-2"],
+					ignore_mergelist_order=True,
+					use_changes={ "dev-libs/B-1": {"foo": True, "bar": True} }),
 
 				#Test keywording.
 				#The simple case.
 
 				ResolverPlaygroundTestCase(
 					["app-misc/Z"],
-					options = {"--autounmask": "n"},
-					success = False),
+					options={"--autounmask": "n"},
+					success=False),
 				ResolverPlaygroundTestCase(
 					["app-misc/Z"],
-					options = {"--autounmask": True},
-					success = False,
-					mergelist = ["app-misc/Y-1", "app-misc/Z-1"],
-					unstable_keywords = ["app-misc/Y-1", "app-misc/Z-1"]),
+					options={"--autounmask": True},
+					success=False,
+					mergelist=["app-misc/Y-1", "app-misc/Z-1"],
+					unstable_keywords=["app-misc/Y-1", "app-misc/Z-1"]),
 
 				#Make sure that the backtracking for slot conflicts handles our mess.
 
 				ResolverPlaygroundTestCase(
 					["=app-misc/V-1", "app-misc/W"],
-					options = {"--autounmask": True},
-					all_permutations = True,
-					success = False,
-					mergelist = ["app-misc/W-2", "app-misc/V-1"],
-					unstable_keywords = ["app-misc/W-2", "app-misc/V-1"]),
+					options={"--autounmask": True},
+					all_permutations=True,
+					success=False,
+					mergelist=["app-misc/W-2", "app-misc/V-1"],
+					unstable_keywords=["app-misc/W-2", "app-misc/V-1"]),
 
 				#Mixed testing
 				#Make sure we don't change use for something in a || dep if there is another choice
 				#that needs no change.
-				
+
 				ResolverPlaygroundTestCase(
 					["=sci-libs/K-1"],
-					options = {"--autounmask": True},
-					success = True,
-					mergelist = ["sci-libs/P-1", "sci-libs/K-1"]),
+					options={"--autounmask": True},
+					success=True,
+					mergelist=["sci-libs/P-1", "sci-libs/K-1"]),
 				ResolverPlaygroundTestCase(
 					["=sci-libs/K-2"],
-					options = {"--autounmask": True},
-					success = True,
-					mergelist = ["sci-libs/P-1", "sci-libs/K-2"]),
+					options={"--autounmask": True},
+					success=True,
+					mergelist=["sci-libs/P-1", "sci-libs/K-2"]),
 				ResolverPlaygroundTestCase(
 					["=sci-libs/K-3"],
-					options = {"--autounmask": True},
-					success = True,
-					mergelist = ["sci-libs/P-1", "sci-libs/K-3"]),
+					options={"--autounmask": True},
+					success=True,
+					mergelist=["sci-libs/P-1", "sci-libs/K-3"]),
 				ResolverPlaygroundTestCase(
 					["=sci-libs/K-4"],
-					options = {"--autounmask": True},
-					success = True,
-					mergelist = ["sci-libs/P-1", "sci-libs/K-4"]),
+					options={"--autounmask": True},
+					success=True,
+					mergelist=["sci-libs/P-1", "sci-libs/K-4"]),
 				ResolverPlaygroundTestCase(
 					["=sci-libs/K-5"],
-					options = {"--autounmask": True},
-					success = True,
-					mergelist = ["sci-libs/P-1", "sci-libs/K-5"]),
+					options={"--autounmask": True},
+					success=True,
+					mergelist=["sci-libs/P-1", "sci-libs/K-5"]),
 				ResolverPlaygroundTestCase(
 					["=sci-libs/K-6"],
-					options = {"--autounmask": True},
-					success = True,
-					mergelist = ["sci-libs/P-1", "sci-libs/K-6"]),
+					options={"--autounmask": True},
+					success=True,
+					mergelist=["sci-libs/P-1", "sci-libs/K-6"]),
 
 				#Make sure we prefer use changes over keyword changes.
 				ResolverPlaygroundTestCase(
 					["=sci-libs/K-7"],
-					options = {"--autounmask": True},
-					success = False,
-					mergelist = ["sci-libs/L-1", "sci-libs/K-7"],
-					use_changes = { "sci-libs/L-1": { "bar": True } }),
+					options={"--autounmask": True},
+					success=False,
+					mergelist=["sci-libs/L-1", "sci-libs/K-7"],
+					use_changes={ "sci-libs/L-1": { "bar": True } }),
 				ResolverPlaygroundTestCase(
 					["=sci-libs/K-8"],
-					options = {"--autounmask": True},
-					success = False,
-					mergelist = ["sci-libs/L-1", "sci-libs/K-8"],
-					use_changes = { "sci-libs/L-1": { "bar": True } }),
+					options={"--autounmask": True},
+					success=False,
+					mergelist=["sci-libs/L-1", "sci-libs/K-8"],
+					use_changes={ "sci-libs/L-1": { "bar": True } }),
 
 				#Test these nice "required by cat/pkg[foo]" messages.
 				ResolverPlaygroundTestCase(
 					["=dev-util/Q-1"],
-					options = {"--autounmask": True},
-					success = False,
-					mergelist = ["dev-util/R-1", "dev-util/Q-1"],
-					use_changes = { "dev-util/R-1": { "bar": True } }),
+					options={"--autounmask": True},
+					success=False,
+					mergelist=["dev-util/R-1", "dev-util/Q-1"],
+					use_changes={ "dev-util/R-1": { "bar": True } }),
 				ResolverPlaygroundTestCase(
 					["=dev-util/Q-2"],
-					options = {"--autounmask": True},
-					success = False,
-					mergelist = ["dev-util/R-1", "dev-util/Q-2"],
-					use_changes = { "dev-util/R-1": { "bar": True } }),
+					options={"--autounmask": True},
+					success=False,
+					mergelist=["dev-util/R-1", "dev-util/Q-2"],
+					use_changes={ "dev-util/R-1": { "bar": True } }),
 
 				#Test interaction with REQUIRED_USE.
 				ResolverPlaygroundTestCase(
 					["=app-portage/A-1"],
-					options = { "--autounmask": True },
-					use_changes = None,
-					success = False),
+					options={ "--autounmask": True },
+					use_changes=None,
+					success=False),
 				ResolverPlaygroundTestCase(
 					["=app-portage/A-2"],
-					options = { "--autounmask": True },
-					use_changes = None,
-					success = False),
+					options={ "--autounmask": True },
+					use_changes=None,
+					success=False),
 				ResolverPlaygroundTestCase(
 					["=app-portage/C-1"],
-					options = { "--autounmask": True },
-					use_changes = None,
-					success = False),
+					options={ "--autounmask": True },
+					use_changes=None,
+					success=False),
 
 				#Make sure we don't change masked/forced flags.
 				ResolverPlaygroundTestCase(
 					["dev-libs/E:1"],
-					options = {"--autounmask": True},
-					use_changes = None,
-					success = False),
+					options={"--autounmask": True},
+					use_changes=None,
+					success=False),
 				ResolverPlaygroundTestCase(
 					["dev-libs/E:2"],
-					options = {"--autounmask": True},
-					use_changes = None,
-					success = False),
+					options={"--autounmask": True},
+					use_changes=None,
+					success=False),
 
 				#Test mask and keyword changes.
 				ResolverPlaygroundTestCase(
 					["app-text/A"],
-					options = {"--autounmask": True},
-					success = False,
-					mergelist = ["app-text/A-1"],
-					needed_p_mask_changes = ["app-text/A-1"]),
+					options={"--autounmask": True},
+					success=False,
+					mergelist=["app-text/A-1"],
+					needed_p_mask_changes=["app-text/A-1"]),
 				ResolverPlaygroundTestCase(
 					["app-text/B"],
-					options = {"--autounmask": True},
-					success = False,
-					mergelist = ["app-text/B-1"],
-					unstable_keywords = ["app-text/B-1"],
-					needed_p_mask_changes = ["app-text/B-1"]),
+					options={"--autounmask": True},
+					success=False,
+					mergelist=["app-text/B-1"],
+					unstable_keywords=["app-text/B-1"],
+					needed_p_mask_changes=["app-text/B-1"]),
 				ResolverPlaygroundTestCase(
 					["app-text/C"],
-					options = {"--autounmask": True},
-					success = False,
-					mergelist = ["app-text/C-1"],
-					unstable_keywords = ["app-text/C-1"],
-					needed_p_mask_changes = ["app-text/C-1"]),
+					options={"--autounmask": True},
+					success=False,
+					mergelist=["app-text/C-1"],
+					unstable_keywords=["app-text/C-1"],
+					needed_p_mask_changes=["app-text/C-1"]),
 				#Make sure unstable keyword is preferred over missing keyword
 				ResolverPlaygroundTestCase(
 					["app-text/D"],
-					options = {"--autounmask": True},
-					success = False,
-					mergelist = ["app-text/D-1"],
-					unstable_keywords = ["app-text/D-1"]),
+					options={"--autounmask": True},
+					success=False,
+					mergelist=["app-text/D-1"],
+					unstable_keywords=["app-text/D-1"]),
 				#Test missing keyword
 				ResolverPlaygroundTestCase(
 					["=app-text/D-2"],
-					options = {"--autounmask": True},
-					success = False,
-					mergelist = ["app-text/D-2"],
-					unstable_keywords = ["app-text/D-2"])
+					options={"--autounmask": True},
+					success=False,
+					mergelist=["app-text/D-2"],
+					unstable_keywords=["app-text/D-2"])
 			)
 
 		profile = {
@@ -279,7 +279,7 @@ class AutounmaskTestCase(TestCase):
 			"dev-libs/A-1": { "LICENSE": "TEST" },
 			"dev-libs/B-1": { "LICENSE": "TEST", "IUSE": "foo", "KEYWORDS": "~x86"},
 			"dev-libs/C-1": { "DEPEND": "dev-libs/B[foo]", "EAPI": 2 },
-			
+
 			"dev-libs/D-1": { "DEPEND": "dev-libs/E dev-libs/F", "LICENSE": "TEST" },
 			"dev-libs/E-1": { "LICENSE": "TEST" },
 			"dev-libs/E-2": { "LICENSE": "TEST" },
@@ -292,40 +292,40 @@ class AutounmaskTestCase(TestCase):
 		test_cases = (
 				ResolverPlaygroundTestCase(
 					["=dev-libs/A-1"],
-					options = {"--autounmask": 'n'},
-					success = False),
+					options={"--autounmask": 'n'},
+					success=False),
 				ResolverPlaygroundTestCase(
 					["=dev-libs/A-1"],
-					options = {"--autounmask": True},
-					success = False,
-					mergelist = ["dev-libs/A-1"],
-					license_changes = { "dev-libs/A-1": set(["TEST"]) }),
+					options={"--autounmask": True},
+					success=False,
+					mergelist=["dev-libs/A-1"],
+					license_changes={ "dev-libs/A-1": set(["TEST"]) }),
 
 				#Test license+keyword+use change at once.
 				ResolverPlaygroundTestCase(
 					["=dev-libs/C-1"],
-					options = {"--autounmask": True},
-					success = False,
-					mergelist = ["dev-libs/B-1", "dev-libs/C-1"],
-					license_changes = { "dev-libs/B-1": set(["TEST"]) },
-					unstable_keywords = ["dev-libs/B-1"],
-					use_changes = { "dev-libs/B-1": { "foo": True } }),
+					options={"--autounmask": True},
+					success=False,
+					mergelist=["dev-libs/B-1", "dev-libs/C-1"],
+					license_changes={ "dev-libs/B-1": set(["TEST"]) },
+					unstable_keywords=["dev-libs/B-1"],
+					use_changes={ "dev-libs/B-1": { "foo": True } }),
 
 				#Test license with backtracking.
 				ResolverPlaygroundTestCase(
 					["=dev-libs/D-1"],
-					options = {"--autounmask": True},
-					success = False,
-					mergelist = ["dev-libs/E-1", "dev-libs/F-1", "dev-libs/D-1"],
-					license_changes = { "dev-libs/D-1": set(["TEST"]), "dev-libs/E-1": set(["TEST"]), "dev-libs/E-2": set(["TEST"]), "dev-libs/F-1": set(["TEST"]) }),
+					options={"--autounmask": True},
+					success=False,
+					mergelist=["dev-libs/E-1", "dev-libs/F-1", "dev-libs/D-1"],
+					license_changes={ "dev-libs/D-1": set(["TEST"]), "dev-libs/E-1": set(["TEST"]), "dev-libs/E-2": set(["TEST"]), "dev-libs/F-1": set(["TEST"]) }),
 
 				#Test license only for bug #420847
 				ResolverPlaygroundTestCase(
 					["dev-java/sun-jdk"],
-					options = {"--autounmask": True},
-					success = False,
-					mergelist = ["dev-java/sun-jdk-1.6.0.31"],
-					license_changes = { "dev-java/sun-jdk-1.6.0.31": set(["TEST"]) }),
+					options={"--autounmask": True},
+					success=False,
+					mergelist=["dev-java/sun-jdk-1.6.0.31"],
+					license_changes={ "dev-java/sun-jdk-1.6.0.31": set(["TEST"]) }),
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds)
@@ -348,7 +348,7 @@ class AutounmaskTestCase(TestCase):
 			"dev-libs/D-1": { "DEPEND": "dev-libs/A" },
 			}
 
-		world_sets = [ "@test-set" ]
+		world_sets = ["@test-set"]
 		sets = {
 			"test-set": (
 					"dev-libs/A", "dev-libs/B", "dev-libs/C", "dev-libs/D",
@@ -362,29 +362,29 @@ class AutounmaskTestCase(TestCase):
 				ResolverPlaygroundTestCase(
 					["dev-libs/B", "dev-libs/C", "dev-libs/D"],
 					all_permutations=True,
-					options = {"--autounmask": "y"},
+					options={"--autounmask": "y"},
 					mergelist=["dev-libs/A-2", "dev-libs/B-1", "dev-libs/C-1", "dev-libs/D-1"],
 					ignore_mergelist_order=True,
-					unstable_keywords = ["dev-libs/A-2"],
-					success = False),
+					unstable_keywords=["dev-libs/A-2"],
+					success=False),
 
 				ResolverPlaygroundTestCase(
 					["@test-set"],
 					all_permutations=True,
-					options = {"--autounmask": "y"},
+					options={"--autounmask": "y"},
 					mergelist=["dev-libs/A-2", "dev-libs/B-1", "dev-libs/C-1", "dev-libs/D-1"],
 					ignore_mergelist_order=True,
-					unstable_keywords = ["dev-libs/A-2"],
-					success = False),
+					unstable_keywords=["dev-libs/A-2"],
+					success=False),
 
 				ResolverPlaygroundTestCase(
 					["@world"],
 					all_permutations=True,
-					options = {"--autounmask": "y"},
+					options={"--autounmask": "y"},
 					mergelist=["dev-libs/A-2", "dev-libs/B-1", "dev-libs/C-1", "dev-libs/D-1"],
 					ignore_mergelist_order=True,
-					unstable_keywords = ["dev-libs/A-2"],
-					success = False),
+					unstable_keywords=["dev-libs/A-2"],
+					success=False),
 			)
 
 
@@ -411,16 +411,16 @@ class AutounmaskTestCase(TestCase):
 				#Test mask and keyword changes.
 				ResolverPlaygroundTestCase(
 					["app-text/A"],
-					options = {"--autounmask": True,
-								"--autounmask-keep-masks": "y"},
-					success = False),
+					options={"--autounmask": True,
+							"--autounmask-keep-masks": "y"},
+					success=False),
 				ResolverPlaygroundTestCase(
 					["app-text/A"],
-					options = {"--autounmask": True,
-								"--autounmask-keep-masks": "n"},
-					success = False,
-					mergelist = ["app-text/A-1"],
-					needed_p_mask_changes = ["app-text/A-1"]),
+					options={"--autounmask": True,
+							"--autounmask-keep-masks": "n"},
+					success=False,
+					mergelist=["app-text/A-1"],
+					needed_p_mask_changes=["app-text/A-1"]),
 			)
 
 		profile = {
@@ -460,16 +460,16 @@ class AutounmaskTestCase(TestCase):
 		test_cases = (
 			ResolverPlaygroundTestCase(
 				["dev-libs/B"],
-				success = False,
-				mergelist = ["dev-libs/A-2", "dev-libs/B-1"],
-				needed_p_mask_changes = set(["dev-libs/A-2"])),
+				success=False,
+				mergelist=["dev-libs/A-2", "dev-libs/B-1"],
+				needed_p_mask_changes=set(["dev-libs/A-2"])),
 
 			ResolverPlaygroundTestCase(
 				["dev-libs/C"],
-				success = False,
-				mergelist = ["dev-libs/A-9999", "dev-libs/C-1"],
-				unstable_keywords = set(["dev-libs/A-9999"]),
-				needed_p_mask_changes = set(["dev-libs/A-9999"])),
+				success=False,
+				mergelist=["dev-libs/A-9999", "dev-libs/C-1"],
+				unstable_keywords=set(["dev-libs/A-9999"]),
+				needed_p_mask_changes=set(["dev-libs/A-9999"])),
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, profile=profile)

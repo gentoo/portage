@@ -28,6 +28,7 @@ GENTOO_MIRRORS="http://distfiles.gentoo.org"
 
 ACCEPT_LICENSE="* -@EULA"
 ACCEPT_PROPERTIES="*"
+ACCEPT_RESTRICT="*"
 
 # Repository Paths
 PORTDIR="@PORTAGE_EPREFIX@/usr/portage"

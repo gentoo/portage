@@ -327,6 +327,11 @@ def parse_opts(tmpcmdline, silent=False):
 			"action":"store"
 		},
 
+		"--accept-restrict": {
+			"help":"temporarily override ACCEPT_RESTRICT",
+			"action":"store"
+		},
+
 		"--backtrack": {
 
 			"help"   : "Specifies how many times to backtrack if dependency " + \
@@ -1017,6 +1022,8 @@ def emerge_main(args=None):
 		os.environ["ROOT"] = myopts["--root"]
 	if "--accept-properties" in myopts:
 		os.environ["ACCEPT_PROPERTIES"] = myopts["--accept-properties"]
+	if "--accept-restrict" in myopts:
+		os.environ["ACCEPT_RESTRICT"] = myopts["--accept-restrict"]
 
 	# optimize --help (no need to load config / EMERGE_DEFAULT_OPTS)
 	if myaction == "help":

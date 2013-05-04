@@ -235,6 +235,11 @@ def ParseArgs(argv, qahelp):
 	parser.add_option('-I', '--ignore-masked', dest='ignore_masked', action='store_true',
 		default=False, help='ignore masked packages (not allowed with commit mode)')
 
+	parser.add_option('--include-arches', dest='include_arches',
+		metavar='ARCHES', action='append',
+		help='A space separated list of arches used to '
+		'filter the selection of profiles for dependency checks')
+
 	parser.add_option('-d', '--include-dev', dest='include_dev', action='store_true',
 		default=False, help='include dev profiles in dependency checks')
 
@@ -447,7 +452,7 @@ for x in missingvars:
 		qawarnings.add(x)
 
 valid_restrict = frozenset(["binchecks", "bindist",
-	"fetch", "installsources", "mirror",
+	"fetch", "installsources", "mirror", "preserve-libs",
 	"primaryuri", "splitdebug", "strip", "test", "userpriv"])
 
 live_eclasses = frozenset([
@@ -1268,6 +1273,11 @@ dofail = 0
 arch_caches = {}
 arch_xmatch_caches = {}
 shared_xmatch_caches = {"cp-list":{}}
+
+include_arches = None
+if options.include_arches:
+	include_arches = set()
+	include_arches.update(*[x.split() for x in options.include_arches])
 
 # Disable the "ebuild.notadded" check when not in commit mode and
 # running `svn status` in every package dir will be too expensive.
@@ -2225,6 +2235,11 @@ for x in effective_scanlist:
 				# A missing profile will create an error further down
 				# during the KEYWORDS verification.
 				continue
+
+			if include_arches is not None:
+				if arch not in include_arches:
+					continue
+
 			relevant_profiles.extend((keyword, groups, prof)
 				for prof in profiles[arch])
 
@@ -2267,8 +2282,7 @@ for x in effective_scanlist:
 				trees[root]["porttree"].settings = dep_settings
 				portdb.settings = dep_settings
 				portdb.xcache = xcache
-				# for package.use.mask support inside dep_check
-				dep_settings.setcpv(pkg)
+
 				dep_settings["ACCEPT_KEYWORDS"] = " ".join(groups)
 				# just in case, prevent config.reset() from nuking these.
 				dep_settings.backup_changes("ACCEPT_KEYWORDS")
@@ -2280,6 +2294,13 @@ for x in effective_scanlist:
 				# since otherwise use.stable.{mask,force} settings of
 				# dependencies may conflict (see bug #456342).
 				dep_settings._parent_stable = dep_settings._isStable(pkg)
+
+				# Handle package.use*.{force,mask) calculation, for use
+				# in dep_check.
+				dep_settings.useforce = dep_settings._use_manager.getUseForce(
+					pkg, stable=dep_settings._parent_stable)
+				dep_settings.usemask = dep_settings._use_manager.getUseMask(
+					pkg, stable=dep_settings._parent_stable)
 
 				if not baddepsyntax:
 					ismasked = not ebuild_archs or \
@@ -2654,32 +2675,47 @@ else:
 	commitmessage = commitmessage.rstrip()
 	changelog_msg = commitmessage
 	portage_version = getattr(portage, "VERSION", None)
+	gpg_key = repoman_settings.get("PORTAGE_GPG_KEY", "")
+	dco_sob = repoman_settings.get("DCO_SIGNED_OFF_BY", "")
 	if portage_version is None:
 		sys.stderr.write("Failed to insert portage version in message!\n")
 		sys.stderr.flush()
 		portage_version = "Unknown"
 
+	report_options = []
+	if options.force:
+		report_options.append("--force")
+	if options.ignore_arches:
+		report_options.append("--ignore-arches")
+	if include_arches is not None:
+		report_options.append("--include-arches=\"%s\"" %
+			" ".join(sorted(include_arches)))
+
 	if vcs == "git":
 		# Use new footer only for git (see bug #438364).
 		commit_footer = "\n\nPackage-Manager: portage-%s" % portage_version
-		if options.force:
-			commit_footer += "\nRepoMan-Options: --force"
+		if report_options:
+			commit_footer += "\nRepoMan-Options: " + " ".join(report_options)
 		if sign_manifests:
-			commit_footer += "\nManifest-Sign-Key: %s" % \
-				repoman_settings.get("PORTAGE_GPG_KEY", "")
+			commit_footer += "\nManifest-Sign-Key: %s" % (gpg_key, )
+		if dco_sob:
+			commit_footer += "\nSigned-off-by: %s" % (dco_sob, )
 	else:
 		unameout = platform.system() + " "
 		if platform.system() in ["Darwin", "SunOS"]:
 			unameout += platform.processor()
 		else:
 			unameout += platform.machine()
-		commit_footer = "\n\n(Portage version: %s/%s/%s" % \
+		commit_footer = "\n\n"
+		if dco_sob:
+			commit_footer += "Signed-off-by: %s\n" % (dco_sob, )
+		commit_footer += "(Portage version: %s/%s/%s" % \
 			(portage_version, vcs, unameout)
-		if options.force:
-			commit_footer += ", RepoMan options: --force"
+		if report_options:
+			commit_footer += ", RepoMan options: " + " ".join(report_options)
 		if sign_manifests:
 			commit_footer += ", signed Manifest commit with key %s" % \
-				repoman_settings.get("PORTAGE_GPG_KEY", "")
+				(gpg_key, )
 		else:
 			commit_footer += ", unsigned Manifest commit"
 		commit_footer += ")"

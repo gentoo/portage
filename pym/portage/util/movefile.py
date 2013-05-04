@@ -224,6 +224,12 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 					target != os.readlink(dest):
 					raise
 			lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
+
+			try:
+				_os.unlink(src_bytes)
+			except OSError:
+				pass
+
 			if sys.hexversion >= 0x3030000:
 				try:
 					os.utime(dest, ns=(sstat.st_mtime_ns, sstat.st_mtime_ns), follow_symlinks=False)
@@ -277,6 +283,10 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 					writemsg("!!! %s\n" % (e,), noiselevel=-1)
 					return None
 				hardlinked = True
+				try:
+					_os.unlink(src_bytes)
+				except OSError:
+					pass
 				break
 
 	renamefailed=1

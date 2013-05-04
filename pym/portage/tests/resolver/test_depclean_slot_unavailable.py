@@ -32,15 +32,14 @@ class DepcleanUnavailableSlotTestCase(TestCase):
 			},
 		}
 
-		world = [ "sys-kernel/gentoo-sources" ]
+		world = ["sys-kernel/gentoo-sources"]
 
 		test_cases = (
-
 			ResolverPlaygroundTestCase(
 				[],
-				options = {"--depclean": True},
-				success = True,
-				cleanlist = ["sys-kernel/gentoo-sources-3.2.21"]),
+				options={"--depclean": True},
+				success=True,
+				cleanlist=["sys-kernel/gentoo-sources-3.2.21"]),
 		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds,
@@ -64,9 +63,9 @@ class DepcleanUnavailableSlotTestCase(TestCase):
 		test_cases = (
 			ResolverPlaygroundTestCase(
 				[],
-				options = {"--depclean": True},
-				success = True,
-				cleanlist = ["sys-kernel/gentoo-sources-3.0.53"]),
+				options={"--depclean": True},
+				success=True,
+				cleanlist=["sys-kernel/gentoo-sources-3.0.53"]),
 		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds,
