@@ -643,7 +643,7 @@ class LinkageMapMachO(object):
 						rValue[install_name].add(provider)
 		return rValue
 
-	def findConsumers(self, obj, exclude_providers=None):
+	def findConsumers(self, obj, exclude_providers=None, greedy=True):
 		"""
 		Find consumers of an object or object key.
 
@@ -680,6 +680,9 @@ class LinkageMapMachO(object):
 			'/usr/lib/libssl.0.9.8.dylib'), and return True if the library is
 			owned by a provider which is planned for removal.
 		@type exclude_providers: collection
+        @param greedy: If True, then include consumers that are satisfied
+        by alternative providers, otherwise omit them. Default is True.
+        @type greedy: Boolean
 		@rtype: set of strings (example: set(['/bin/foo', '/usr/bin/bar']))
 		@return: The return value is a install_name -> set-of-library-paths, where
 		set-of-library-paths satisfy install_name.
@@ -733,16 +736,19 @@ class LinkageMapMachO(object):
 
 		satisfied_consumer_keys = set()
 		if install_name_node is not None:
-			if exclude_providers is not None:
+			if exclude_providers is not None and not greedy:
 				relevant_dir_keys = set()
 				for provider_key in install_name_node.providers:
+                    if not greedy and provider_key == obj_key:
+                        continue
 					provider_objs = self._obj_properties[provider_key].alt_paths
 					for p in provider_objs:
 						provider_excluded = False
-						for excluded_provider_isowner in exclude_providers:
-							if excluded_provider_isowner(p):
-								provider_excluded = True
-								break
+                        if exclude_providers is not None:
+                            for excluded_provider_isowner in exclude_providers:
+                                if excluded_provider_isowner(p):
+                                    provider_excluded = True
+                                    break
 						if not provider_excluded:
 							# This provider is not excluded. It will
 							# satisfy a consumer of this install_name.
