@@ -306,7 +306,7 @@ class binarytree(object):
 			self._pkgindex_aux_keys = \
 				["BUILD_TIME", "CHOST", "DEPEND", "DESCRIPTION", "EAPI",
 				"HDEPEND", "IUSE", "KEYWORDS", "LICENSE", "PDEPEND", "PROPERTIES",
-				"PROVIDE", "RDEPEND", "repository", "SLOT", "USE", "DEFINED_PHASES",
+				"PROVIDE", "RESTRICT", "RDEPEND", "repository", "SLOT", "USE", "DEFINED_PHASES",
 				"BASE_URI"]
 			self._pkgindex_aux_keys = list(self._pkgindex_aux_keys)
 			self._pkgindex_use_evaluated_keys = \
