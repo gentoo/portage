@@ -311,7 +311,7 @@ class binarytree(object):
 			self._pkgindex_aux_keys = list(self._pkgindex_aux_keys)
 			self._pkgindex_use_evaluated_keys = \
 				("DEPEND", "HDEPEND", "LICENSE", "RDEPEND",
-				"PDEPEND", "PROPERTIES", "PROVIDE")
+				"PDEPEND", "PROPERTIES", "PROVIDE", "RESTRICT")
 			self._pkgindex_header_keys = set([
 				"ACCEPT_KEYWORDS", "ACCEPT_LICENSE",
 				"ACCEPT_PROPERTIES", "ACCEPT_RESTRICT", "CBUILD",
