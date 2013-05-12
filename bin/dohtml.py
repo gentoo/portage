@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 #
@@ -32,6 +32,9 @@ from __future__ import print_function
 
 import os
 import sys
+
+# Change back to original cwd _after_ all imports (bug #469338).
+os.chdir(os.environ["__PORTAGE_HELPER_CWD"])
 
 def dodir(path):
 	os.spawnlp(os.P_WAIT, "install", "install", "-d", path)
