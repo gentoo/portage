@@ -582,9 +582,13 @@ __dyn_install() {
 	# local variables can leak into the saved environment.
 	unset f
 
+	# Use safe cwd, avoiding unsafe import for bug #469338.
+	cd "${PORTAGE_PYM_PATH}"
 	__save_ebuild_env --exclude-init-phases | __filter_readonly_variables \
-		--filter-path --filter-sandbox --allow-extra-vars > environment
+		--filter-path --filter-sandbox --allow-extra-vars > \
+		"${PORTAGE_BUILDDIR}"/build-info/environment
 	assert "__save_ebuild_env failed"
+	cd "${PORTAGE_BUILDDIR}"/build-info || die
 
 	${PORTAGE_BZIP2_COMMAND} -f9 environment
 
@@ -874,6 +878,8 @@ __ebuild_main() {
 		if [[ -n $PORTAGE_UPDATE_ENV ]] ; then
 			# Update environment.bz2 in case installation phases
 			# need to pass some variables to uninstallation phases.
+			# Use safe cwd, avoiding unsafe import for bug #469338.
+			cd "${PORTAGE_PYM_PATH}"
 			__save_ebuild_env --exclude-init-phases | \
 				__filter_readonly_variables --filter-path \
 				--filter-sandbox --allow-extra-vars \
@@ -974,6 +980,8 @@ __ebuild_main() {
 	# Save the env only for relevant phases.
 	if ! has "${1}" clean help info nofetch ; then
 		umask 002
+		# Use safe cwd, avoiding unsafe import for bug #469338.
+		cd "${PORTAGE_PYM_PATH}"
 		__save_ebuild_env | __filter_readonly_variables \
 			--filter-features > "$T/environment"
 		assert "__save_ebuild_env failed"
