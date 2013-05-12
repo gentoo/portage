@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2009-2010 Gentoo Foundation
+# Copyright 2009-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
@@ -13,5 +13,7 @@ PYTHONPATH=$PORTAGE_PYM_PATH${PYTHONPATH:+:}$PYTHONPATH \
 	"${PORTAGE_PYTHON:-/usr/bin/python}" "$PORTAGE_BIN_PATH/dohtml.py" "$@"
 
 ret=$?
+# Restore cwd for display by __helpers_die
+cd "${__PORTAGE_HELPER_CWD}"
 [[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
 exit $ret
