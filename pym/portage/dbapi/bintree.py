@@ -43,6 +43,7 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import traceback
 import warnings
 from gzip import GzipFile
 from itertools import chain
@@ -884,13 +885,29 @@ class binarytree(object):
 				# protocols and requires the base url to have a trailing
 				# slash, so join manually...
 				url = base_url.rstrip("/") + "/Packages"
-				try:
-					f = _urlopen(url, if_modified_since=local_timestamp)
-					if hasattr(f, 'headers') and f.headers.get('timestamp', ''):
-						remote_timestamp = f.headers.get('timestamp')
-				except IOError as err:
-					if hasattr(err, 'code') and err.code == 304: # not modified (since local_timestamp)
-						raise UseCachedCopyOfRemoteIndex()
+				f = None
+
+				# Don't use urlopen for https, since it doesn't support
+				# certificate/hostname verification (bug #469888).
+				if parsed_url.scheme not in ('https',):
+					try:
+						f = _urlopen(url, if_modified_since=local_timestamp)
+						if hasattr(f, 'headers') and f.headers.get('timestamp', ''):
+							remote_timestamp = f.headers.get('timestamp')
+					except IOError as err:
+						if hasattr(err, 'code') and err.code == 304: # not modified (since local_timestamp)
+							raise UseCachedCopyOfRemoteIndex()
+
+						if parsed_url.scheme in ('ftp', 'http', 'https'):
+							# This protocol is supposedly supported by urlopen,
+							# so apparently there's a problem with the url
+							# or a bug in urlopen.
+							if self.settings.get("PORTAGE_DEBUG", "0") != "0":
+								traceback.print_exc()
+
+							raise
+
+				if f is None:
 
 					path = parsed_url.path.rstrip("/") + "/Packages"
 
@@ -905,7 +922,7 @@ class binarytree(object):
 						proc = subprocess.Popen(['sftp'] + port_args + \
 							[user_passwd + host + ":" + path, tmp_filename])
 						if proc.wait() != os.EX_OK:
-							raise
+							raise EnvironmentError("sftp failed")
 						f = open(tmp_filename, 'rb')
 					elif parsed_url.scheme == 'ssh':
 						if port is not None:
@@ -918,7 +935,10 @@ class binarytree(object):
 						setting = 'FETCHCOMMAND_' + parsed_url.scheme.upper()
 						fcmd = self.settings.get(setting)
 						if not fcmd:
-							raise
+							fcmd = self.settings.get('FETCHCOMMAND')
+							if not fcmd:
+								raise EnvironmentError("FETCHCOMMAND is unset")
+
 						fd, tmp_filename = tempfile.mkstemp()
 						tmp_dirname, tmp_basename = os.path.split(tmp_filename)
 						os.close(fd)
