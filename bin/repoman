@@ -8,7 +8,6 @@
 
 from __future__ import print_function, unicode_literals
 
-import calendar
 import codecs
 import copy
 import errno
@@ -25,14 +24,13 @@ import tempfile
 import textwrap
 import time
 import platform
-
-try:
-	from urllib.request import urlopen as urllib_request_urlopen
-except ImportError:
-	from urllib import urlopen as urllib_request_urlopen
-
 from itertools import chain
 from stat import S_ISDIR
+
+try:
+	from urllib.parse import urlparse
+except ImportError:
+	from urlparse import urlparse
 
 from os import path as osp
 pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
@@ -1072,33 +1070,6 @@ for x in qacats:
 xmllint_capable = False
 metadata_dtd = os.path.join(repoman_settings["DISTDIR"], 'metadata.dtd')
 
-def parsedate(s):
-	"""Parse a RFC 822 date and time string.
-	This is required for python3 compatibility, since the
-	rfc822.parsedate() function is not available."""
-
-	s_split = []
-	for x in s.upper().split():
-		for y in x.split(','):
-			if y:
-				s_split.append(y)
-
-	if len(s_split) != 6:
-		return None
-
-	# %a, %d %b %Y %H:%M:%S %Z
-	a, d, b, Y, H_M_S, Z = s_split
-
-	# Convert month to integer, since strptime %w is locale-dependent.
-	month_map = {'JAN':1, 'FEB':2, 'MAR':3, 'APR':4, 'MAY':5, 'JUN':6,
-		'JUL':7, 'AUG':8, 'SEP':9, 'OCT':10, 'NOV':11, 'DEC':12}
-	m = month_map.get(b)
-	if m is None:
-		return None
-	m = "%02d" % m
-
-	return time.strptime(':'.join((Y, m, d, H_M_S)), '%Y:%m:%d:%H:%M:%S')
-
 def fetch_metadata_dtd():
 	"""
 	Fetch metadata.dtd if it doesn't exist or the ctime is older than
@@ -1127,45 +1098,40 @@ def fetch_metadata_dtd():
 		print(green("***") + " the local copy of metadata.dtd " + \
 			"needs to be refetched, doing that now")
 		print()
+		parsed_url = urlparse(metadata_dtd_uri)
+		setting = 'FETCHCOMMAND_' + parsed_url.scheme.upper()
+		fcmd = repoman_settings.get(setting)
+		if not fcmd:
+			fcmd = repoman_settings.get('FETCHCOMMAND')
+			if not fcmd:
+				logging.error("FETCHCOMMAND is unset")
+				return False
+
+		destdir = repoman_settings["DISTDIR"]
+		fd, metadata_dtd_tmp = tempfile.mkstemp(
+			prefix='metadata.dtd.', dir=destdir)
+		os.close(fd)
+
 		try:
-			url_f = urllib_request_urlopen(metadata_dtd_uri)
-			msg_info = url_f.info()
-			last_modified = msg_info.get('last-modified')
-			if last_modified is not None:
-				last_modified = parsedate(last_modified)
-				if last_modified is not None:
-					last_modified = calendar.timegm(last_modified)
+			if not portage.getbinpkg.file_get(metadata_dtd_uri,
+				destdir, fcmd=fcmd,
+				filename=os.path.basename(metadata_dtd_tmp)):
+				logging.error("failed to fetch metadata.dtd from '%s'" %
+					metadata_dtd_uri)
+				return False
 
-			metadata_dtd_tmp = "%s.%s" % (metadata_dtd, os.getpid())
 			try:
-				local_f = open(metadata_dtd_tmp, mode='wb')
-				local_f.write(url_f.read())
-				local_f.close()
-				if last_modified is not None:
-					try:
-						os.utime(metadata_dtd_tmp,
-							(int(last_modified), int(last_modified)))
-					except OSError:
-						# This fails on some odd non-unix-like filesystems.
-						# We don't really need the mtime to be preserved
-						# anyway here (currently we use ctime to trigger
-						# fetch), so just ignore it.
-						pass
-				os.rename(metadata_dtd_tmp, metadata_dtd)
-			finally:
-				try:
-					os.unlink(metadata_dtd_tmp)
-				except OSError:
-					pass
+				portage.util.apply_secpass_permissions(metadata_dtd_tmp,
+					gid=portage.data.portage_gid, mode=0o664, mask=0o2)
+			except portage.exception.PortageException:
+				pass
 
-			url_f.close()
-
-		except EnvironmentError as e:
-			print()
-			print(red("!!!")+" attempting to fetch '%s', caught" % metadata_dtd_uri)
-			print(red("!!!")+" exception '%s' though." % (e,))
-			print(red("!!!")+" fetching new metadata.dtd failed, aborting")
-			return False
+			os.rename(metadata_dtd_tmp, metadata_dtd)
+		finally:
+			try:
+				os.unlink(metadata_dtd_tmp)
+			except OSError:
+				pass
 
 	return True
 
