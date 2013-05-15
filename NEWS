@@ -2,7 +2,7 @@ News (mainly features/major bug fixes)
 
 portage-2.2
 -------------
-* FEATURES=preserve-libs is enabled by default.
+
 * Add extended set configuration via /etc/portage/sets.conf. See
   /usr/share/portage/config/sets/portage.conf for examples.
 

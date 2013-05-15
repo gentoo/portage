@@ -4,10 +4,14 @@ Features/major bugfixes are listed in NEWS
 portage-2.2
 ==================================
 
-* FEATURES=preserve-libs is enabled by default.
 * Portage now warns if an ebuild repository does not have a name, as several
   new features in 2.2 make use of or require named repositories. The repository
   name is stored in profiles/repo_name in each repository.
+
+portage-2.1.12
+==================================
+
+* FEATURES=preserve-libs is enabled by default.
 
 portage-2.1.11
 ==================================
