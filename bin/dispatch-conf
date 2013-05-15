@@ -22,10 +22,9 @@ sys.path.insert(0, pym_path)
 import portage
 portage._internal_caller = True
 from portage import os
-from portage import dispatch_conf
 from portage import _unicode_decode
 from portage.dispatch_conf import diffstatusoutput
-from portage.process import find_binary
+from portage.process import find_binary, spawn
 
 FIND_EXTANT_CONFIGS  = "find '%s' %s -name '._cfg????_%s' ! -name '.*~' ! -iname '.*.bak' -print"
 DIFF_CONTENTS        = "diff -Nu '%s' '%s'"
@@ -428,7 +427,7 @@ class dispatch:
 def getch ():
     # from ASPN - Danny Yoo
     #
-    import sys, tty, termios
+    import tty, termios
 
     fd = sys.stdin.fileno()
     old_settings = termios.tcgetattr(fd)
@@ -453,7 +452,6 @@ def clear_screen():
         pass
     os.system("clear 2>/dev/null")
 
-from portage.process import find_binary, spawn
 shell = os.environ.get("SHELL")
 if not shell or not os.access(shell, os.EX_OK):
     shell = find_binary("sh")

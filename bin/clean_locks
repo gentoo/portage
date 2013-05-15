@@ -10,10 +10,8 @@ pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
 sys.path.insert(0, pym_path)
 import portage
 portage._internal_caller = True
-from portage import os
 
 if not sys.argv[1:] or "--help" in sys.argv or "-h" in sys.argv:
-	import portage
 	print()
 	print("You must specify directories with hardlink-locks to clean.")
 	print("You may optionally specify --force, which will remove all")

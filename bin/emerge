@@ -45,7 +45,6 @@ try:
 	from _emerge.main import emerge_main
 
 	if __name__ == "__main__":
-		import sys
 		from portage.exception import ParseError, PermissionDenied
 		try:
 			retval = emerge_main()
