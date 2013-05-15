@@ -19,8 +19,8 @@ sys.path.insert(0, pym_path)
 import portage
 portage._internal_caller = True
 
+import portage.dispatch_conf
 from portage import os
-from portage import dispatch_conf
 
 FIND_EXTANT_CONTENTS  = "find %s -name CONTENTS"
 
@@ -42,12 +42,12 @@ except ImportError:
         blocksize=32768
         data = f.read(blocksize)
         size = 0
-        sum = md5.new()
+        checksum = md5.new()
         while data:
-            sum.update(data)
+            checksum.update(data)
             size = size + len(data)
             data = f.read(blocksize)
-        return (md5_to_hex(sum.digest()),size)
+        return (md5_to_hex(checksum.digest()), size)
 
 def archive_conf():
     args = []
@@ -70,12 +70,12 @@ def archive_conf():
     # and see if the current file is unmodified or not.
     try:
         todo_cnt = len(args)
-        for file in content_files:
-            file = file.rstrip()
+        for filename in content_files:
+            filename = filename.rstrip()
             try:
-                contents = open(file, "r")
+                contents = open(filename, "r")
             except IOError as e:
-                print('archive-conf: Unable to open %s: %s' % (file, e), file=sys.stderr)
+                print('archive-conf: Unable to open %s: %s' % (filename, e), file=sys.stderr)
                 sys.exit(1)
             lines = contents.readlines()
             for line in lines:
