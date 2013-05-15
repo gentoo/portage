@@ -407,7 +407,8 @@ class dispatch:
 
 
     def do_help (self):
-        print(); print
+        print()
+        print()
 
         print('  u -- update current config with new config and continue')
         print('  z -- zap (delete) new config and continue')
