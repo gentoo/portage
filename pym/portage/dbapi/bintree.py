@@ -911,20 +911,10 @@ class binarytree(object):
 
 					path = parsed_url.path.rstrip("/") + "/Packages"
 
-					if parsed_url.scheme == 'sftp':
-						# The sftp command complains about 'Illegal seek' if
-						# we try to make it write to /dev/stdout, so use a
-						# temp file instead.
-						fd, tmp_filename = tempfile.mkstemp()
-						os.close(fd)
-						if port is not None:
-							port_args = ['-P', "%s" % (port,)]
-						proc = subprocess.Popen(['sftp'] + port_args + \
-							[user_passwd + host + ":" + path, tmp_filename])
-						if proc.wait() != os.EX_OK:
-							raise EnvironmentError("sftp failed")
-						f = open(tmp_filename, 'rb')
-					elif parsed_url.scheme == 'ssh':
+					if parsed_url.scheme == 'ssh':
+						# Use a pipe so that we can terminate the download
+						# early if we detect that the TIMESTAMP header
+						# matches that of the cached Packages file.
 						if port is not None:
 							port_args = ['-p', "%s" % (port,)]
 						proc = subprocess.Popen(['ssh'] + port_args + \
