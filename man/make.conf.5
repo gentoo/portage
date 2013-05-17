@@ -965,6 +965,22 @@ Insert your preferred rsync mirror here.  This rsync server
 is used to sync the local portage tree when `emerge \-\-sync` is run.
 .br
 Defaults to rsync://rsync.gentoo.org/gentoo\-portage
+.RS
+.TP
+.B Usage:
+(rsync|ssh)://[username@]hostname[:port]/(module|path)
+.TP
+.B Examples:
+rsync://private\-mirror.com/portage\-module
+.br
+rsync://rsync\-user@private\-mirror.com:873/gentoo\-portage
+.br
+ssh://ssh\-user@192.168.0.1:22/usr/portage
+.br
+ssh://ssh\-user@192.168.0.1:22/\\${HOME}/portage\-storage
+.TP
+Note: For the ssh:// scheme, key\-based authentication might be of interest.
+.RE
 .TP
 \fBUNINSTALL_IGNORE\fR = \fI[space delimited list of fnmatch patterns]\fR
 This variable prevents uninstallation of files that match
