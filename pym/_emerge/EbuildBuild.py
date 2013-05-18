@@ -162,7 +162,7 @@ class EbuildBuild(CompositeTask):
 		if self.returncode != os.EX_OK:
 			portdb = self.pkg.root_config.trees[self._tree].dbapi
 			spawn_nofetch(portdb, self._ebuild_path, settings=self.settings)
-		if 'digest' in self.settings.features:
+		elif 'digest' in self.settings.features:
 			if not digestgen(mysettings=self.settings,
 				myportdb=self.pkg.root_config.trees[self._tree].dbapi):
 				self.returncode = 1
