@@ -698,6 +698,7 @@ install_qa_check() {
 			": warning: reference to local variable .* returned"
 			": warning: returning reference to temporary"
 			": warning: function returns address of local variable"
+			": warning: .*\\[-Wsizeof-pointer-memaccess\\]"
 			# this may be valid code :/
 			#": warning: multi-character character constant"
 			# need to check these two ...
