@@ -588,9 +588,6 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 		fetchall = 1
 		mydo = "fetch"
 
-	parallel_fetchonly = mydo in ("fetch", "fetchall") and \
-		"PORTAGE_PARALLEL_FETCHONLY" in mysettings
-
 	if mydo not in clean_phases and not os.path.exists(myebuild):
 		writemsg("!!! doebuild: %s not found for %s\n" % (myebuild, mydo),
 			noiselevel=-1)
@@ -837,8 +834,7 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 		# in order to satisfy the sane $PWD requirement (from bug #239560)
 		# when pkg_nofetch is spawned.
 		have_build_dirs = False
-		if not parallel_fetchonly and \
-			mydo not in ('digest', 'fetch', 'help', 'manifest'):
+		if mydo not in ('digest', 'fetch', 'help', 'manifest'):
 			if not returnpid and \
 				'PORTAGE_BUILDDIR_LOCKED' not in mysettings:
 				builddir_lock = EbuildBuildDir(
@@ -979,11 +975,7 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 				mf = None
 				_doebuild_manifest_cache = None
 				return not digestgen(mysettings=mysettings, myportdb=mydbapi)
-			elif mydo != 'fetch' and \
-				"digest" in mysettings.features:
-				# Don't do this when called by emerge or when called just
-				# for fetch (especially parallel-fetch) since it's not needed
-				# and it can interfere with parallel tasks.
+			elif "digest" in mysettings.features:
 				mf = None
 				_doebuild_manifest_cache = None
 				digestgen(mysettings=mysettings, myportdb=mydbapi)
@@ -992,13 +984,16 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 			if mydo in ("digest", "manifest"):
 				return 1
 
+		if mydo == "fetch":
+			# Return after digestgen for FEATURES=digest support.
+			# Return before digestcheck, since fetch() already
+			# checked any relevant digests.
+			return 0
+
 		# See above comment about fetching only when needed
 		if tree == 'porttree' and \
 			not digestcheck(checkme, mysettings, "strict" in features, mf=mf):
 			return 1
-
-		if mydo == "fetch":
-			return 0
 
 		# remove PORTAGE_ACTUAL_DISTDIR once cvs/svn is supported via SRC_URI
 		if tree == 'porttree' and \
