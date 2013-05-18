@@ -165,7 +165,8 @@ class EbuildFetcher(ForkProcess):
 			not in ('yes', 'true')
 
 		rval = 1
-		allow_missing = self._get_manifest().allow_missing
+		allow_missing = self._get_manifest().allow_missing or \
+			'digest' in self._settings.features
 		if fetch(self._uri_map, self._settings, fetchonly=self.fetchonly,
 			digests=copy.deepcopy(self._get_digests()),
 			allow_missing_digests=allow_missing):
