@@ -1,4 +1,4 @@
-.TH "EGENCACHE" "1" "Dec 2012" "Portage VERSION" "Portage"
+.TH "EGENCACHE" "1" "May 2013" "Portage VERSION" "Portage"
 .SH "NAME"
 egencache \- generate metadata cache for ebuild repositories
 .SH "SYNOPSIS"
@@ -6,12 +6,12 @@ egencache \- generate metadata cache for ebuild repositories
 .I [options] --update [ATOM]\fR...
 .SH "DESCRIPTION"
 The egencache program generates metadata cache for ebuild repositories and
-stores it in the \fImetadata/cache/\fR directory within the repository itself,
-for distribution.
+stores it in the \fImetadata/md5\-cache/\fR directory within the repository
+itself, for distribution.
 .SH ACTIONS
 .TP
 .BR "\-\-update [ATOM] ... "
-Update the \fImetadata/cache/\fR directory (generate metadata as necessary).
+Update the \fImetadata/md5\-cache/\fR directory (generate metadata as necessary).
 If no package atoms are specified then all will be updated. See ebuild(5)
 for the details on package atom syntax.
 .TP

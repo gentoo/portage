@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Apr 2013" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "May 2013" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -391,14 +391,8 @@ This feature is enabled by default.
 Automatically perform a metadata transfer when `emerge \-\-sync` is run.
 In versions of portage >=2.1.5, this feature is disabled by
 default. When metadata\-transfer is disabled, metadata cache from the
-${PORTDIR}/metadata/cache/ directory will be used directly (if available)
-and eclasses in ${PORTDIR}/eclass/ must not be modified except by
-`emerge \-\-sync` operations since the cache validation mechanism
-will not recognize eclass modifications. Normally, this issue only
-pertains to users of the rsync tree since the cvs tree does not contain
-a metadata/cache/ directory. Users of the rsync tree who want to modify
-eclasses should use \fBPORTDIR_OVERLAY\fR in order for the cache
-validation mechanism to work correctly.
+${PORTDIR}/metadata/md5\-cache/ directory will be used directly
+(if available).
 .TP
 .B mirror
 Fetch everything in \fBSRC_URI\fR regardless of \fBUSE\fR settings,
