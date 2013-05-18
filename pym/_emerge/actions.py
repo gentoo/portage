@@ -2253,6 +2253,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			writemsg_level("!!! SYNC is invalid: %s\n" % syncuri,
 				noiselevel=-1, level=logging.ERROR)
 			return 1
+
+		ssh_opts = settings.get("PORTAGE_SSH_OPTS")
+
 		if port is None:
 			port=""
 		if user_name is None:
@@ -2369,6 +2372,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				print(">>> Checking server timestamp ...")
 
 			rsynccommand = [rsync_binary] + rsync_opts + extra_rsync_opts
+
+			if proto == 'ssh' and ssh_opts:
+				rsynccommand.append("--rsh=ssh " + ssh_opts)
 
 			if "--debug" in myopts:
 				print(rsynccommand)

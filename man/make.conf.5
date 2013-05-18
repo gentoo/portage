@@ -854,6 +854,14 @@ addresses are exhausted.
 .br
 Defaults to -1.
 .TP
+\fBPORTAGE_SSH_OPTS\fR = \fI[list of ssh options]\fR
+Additional ssh options to be used when portage executes ssh or sftp.
+This variable supports use of embedded quote characters to quote
+whitespace or special shell characters within arguments (embedded
+quotes must be escaped in make.conf settings).
+.br
+Defaults to no value.
+.TP
 \fBPORTAGE_SYNC_STALE\fR = \fI[NUMBER]\fR
 Defines the number of days after the last `emerge \-\-sync` that a warning
 message should be produced. A value of 0 will disable warnings.

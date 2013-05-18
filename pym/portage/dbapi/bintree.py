@@ -915,10 +915,18 @@ class binarytree(object):
 						# Use a pipe so that we can terminate the download
 						# early if we detect that the TIMESTAMP header
 						# matches that of the cached Packages file.
+						ssh_args = ['ssh']
 						if port is not None:
-							port_args = ['-p', "%s" % (port,)]
-						proc = subprocess.Popen(['ssh'] + port_args + \
-							[user_passwd + host, '--', 'cat', path],
+							ssh_args.append("-p%s" % (port,))
+						# NOTE: shlex evaluates embedded quotes
+						ssh_args.extend(portage.util.shlex_split(
+							self.settings.get("PORTAGE_SSH_OPTS", "")))
+						ssh_args.append(user_passwd + host)
+						ssh_args.append('--')
+						ssh_args.append('cat')
+						ssh_args.append(path)
+
+						proc = subprocess.Popen(ssh_args,
 							stdout=subprocess.PIPE)
 						f = proc.stdout
 					else:
@@ -932,8 +940,21 @@ class binarytree(object):
 						fd, tmp_filename = tempfile.mkstemp()
 						tmp_dirname, tmp_basename = os.path.split(tmp_filename)
 						os.close(fd)
-						success = portage.getbinpkg.file_get(url,
-						     tmp_dirname, fcmd=fcmd, filename=tmp_basename)
+
+						fcmd_vars = {
+							"DISTDIR": tmp_dirname,
+							"FILE": tmp_basename,
+							"URI": url
+						}
+
+						for k in ("PORTAGE_SSH_OPTS",):
+							try:
+								fcmd_vars[k] = self.settings[k]
+							except KeyError:
+								pass
+
+						success = portage.getbinpkg.file_get(
+							fcmd=fcmd, fcmd_vars=fcmd_vars)
 						if not success:
 							raise EnvironmentError("%s failed" % (setting,))
 						f = open(tmp_filename, 'rb')

@@ -477,7 +477,8 @@ def file_get_metadata(baseurl,conn=None, chunk_size=3000):
 	return myid
 
 
-def file_get(baseurl,dest,conn=None,fcmd=None,filename=None):
+def file_get(baseurl=None, dest=None, conn=None, fcmd=None, filename=None,
+	fcmd_vars=None):
 	"""(baseurl,dest,fcmd=) -- Takes a base url to connect to and read from.
 	URI should be in the form <proto>://[user[:pass]@]<site>[:port]<path>"""
 
@@ -487,14 +488,30 @@ def file_get(baseurl,dest,conn=None,fcmd=None,filename=None):
 			"parameter is deprecated", DeprecationWarning, stacklevel=2)
 
 		return file_get_lib(baseurl,dest,conn)
-	if not filename:
-		filename = os.path.basename(baseurl)
 
-	variables = {
-		"DISTDIR": dest,
-		"URI":     baseurl,
-		"FILE":    filename
-	}
+	variables = {}
+
+	if fcmd_vars is not None:
+		variables.update(fcmd_vars)
+
+	if "DISTDIR" not in variables:
+		if dest is None:
+			raise portage.exception.MissingParameter(
+				_("%s is missing required '%s' key") %
+				("fcmd_vars", "DISTDIR"))
+		variables["DISTDIR"] = dest
+
+	if "URI" not in variables:
+		if baseurl is None:
+			raise portage.exception.MissingParameter(
+				_("%s is missing required '%s' key") %
+				("fcmd_vars", "URI"))
+		variables["URI"] = baseurl
+
+	if "FILE" not in variables:
+		if filename is None:
+			filename = os.path.basename(variables["URI"])
+		variables["FILE"] = filename
 
 	from portage.util import varexpand
 	from portage.process import spawn

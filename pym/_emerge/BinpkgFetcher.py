@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AsynchronousLock import AsynchronousLock
@@ -79,6 +79,12 @@ class BinpkgFetcher(SpawnProcess):
 			"URI"     : uri,
 			"FILE"    : os.path.basename(pkg_path)
 		}
+
+		for k in ("PORTAGE_SSH_OPTS",):
+			try:
+				fcmd_vars[k] = settings[k]
+			except KeyError:
+				pass
 
 		fetch_env = dict(settings.items())
 		fetch_args = [portage.util.varexpand(x, mydict=fcmd_vars) \
