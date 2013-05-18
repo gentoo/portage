@@ -12,6 +12,7 @@ portage-2.1.12
 ==================================
 
 * FEATURES=preserve-libs is enabled by default.
+* ACCEPT_RESTRICT variable may be used to mask packages based on RESTRICT.
 
 portage-2.1.11
 ==================================
