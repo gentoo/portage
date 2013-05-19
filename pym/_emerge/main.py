@@ -1043,7 +1043,8 @@ def emerge_main(args=None):
 
 	tmpcmdline = []
 	if "--ignore-default-opts" not in myopts:
-		tmpcmdline.extend(settings["EMERGE_DEFAULT_OPTS"].split())
+		tmpcmdline.extend(portage.util.shlex_split(
+			settings.get("EMERGE_DEFAULT_OPTS", "")))
 	tmpcmdline.extend(args)
 	myaction, myopts, myfiles = parse_opts(tmpcmdline)
 
