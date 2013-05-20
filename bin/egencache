@@ -873,7 +873,8 @@ def egencache_main(args):
 
 	default_opts = None
 	if not options.ignore_default_opts:
-		default_opts = settings.get('EGENCACHE_DEFAULT_OPTS', '').split()
+		default_opts = portage.util.shlex_split(
+			settings.get('EGENCACHE_DEFAULT_OPTS', ''))
 
 	if default_opts:
 		parser, options, args = parse_args(default_opts + args)

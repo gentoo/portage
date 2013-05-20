@@ -265,7 +265,8 @@ def ParseArgs(argv, qahelp):
 	opts, args = parser.parse_args(argv[1:])
 
 	if not opts.ignore_default_opts:
-		default_opts = repoman_settings.get("REPOMAN_DEFAULT_OPTS", "").split()
+		default_opts = portage.util.shlex_split(
+			repoman_settings.get("REPOMAN_DEFAULT_OPTS", ""))
 		if default_opts:
 			opts, args = parser.parse_args(default_opts + sys.argv[1:])
 
