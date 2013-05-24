@@ -29,7 +29,7 @@ from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString
 from portage.localization import _
 from portage.versions import catpkgsplit, catsplit, \
-	vercmp, ververify, _cp, _cpv, _pkg_str, _slot, _unknown_repo
+	vercmp, ververify, _cp, _cpv, _pkg_str, _slot, _unknown_repo, _vr
 import portage.cache.mappings
 
 if sys.hexversion >= 0x3000000:
@@ -121,7 +121,7 @@ def _get_atom_wildcard_re(eapi_attrs):
 		pkg_re = r'[\w+*][\w+*-]*?'
 
 	atom_re = re.compile(r'((?P<simple>(' +
-		_extended_cat + r')/(' + pkg_re + r'))' + \
+		_extended_cat + r')/(' + pkg_re + r'(-' + _vr + ')?))' + \
 		'|(?P<star>=((' + _extended_cat + r')/(' + pkg_re + r'))-(?P<version>\*\w+\*)))' + \
 		'(:(?P<slot>' + _slot_loose + r'))?(' +
 		_repo_separator + r'(?P<repo>' + _repo_name + r'))?$', re.UNICODE)
@@ -1243,6 +1243,8 @@ class Atom(_unicode):
 				else:
 					op = None
 					cpv = cp = m.group('simple')
+					if m.group(atom_re.groupindex['simple'] + 3) is not None:
+						raise InvalidAtom(self)
 				if cpv.find("**") != -1:
 					raise InvalidAtom(self)
 				slot = m.group('slot')
