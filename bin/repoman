@@ -380,6 +380,8 @@ qahelp = {
 	"metadata.bad": "Bad metadata.xml files",
 	"metadata.warning": "Warnings in metadata.xml files",
 	"portage.internal": "The ebuild uses an internal Portage function or variable",
+	"repo.eapi.banned": "The ebuild uses an EAPI which is banned by the repository's metadata/layout.conf settings",
+	"repo.eapi.deprecated": "The ebuild uses an EAPI which is deprecated by the repository's metadata/layout.conf settings",
 	"virtual.oldstyle": "The ebuild PROVIDEs an old-style virtual (see GLEP 37)",
 	"virtual.suspect": "Ebuild contains a package that usually should be pulled via virtual/, not directly.",
 	"usage.obsolete": "The ebuild makes use of an obsolete construct",
@@ -424,6 +426,7 @@ qawarnings = set((
 "wxwidgets.eclassnotused",
 "metadata.warning",
 "portage.internal",
+"repo.eapi.deprecated",
 "usage.obsolete",
 "upstream.workaround",
 "LIVEVCS.stable",
@@ -1814,6 +1817,16 @@ for x in effective_scanlist:
 		eapi = myaux["EAPI"]
 		inherited = pkg.inherited
 		live_ebuild = live_eclasses.intersection(inherited)
+
+		if repo_config.eapi_is_banned(eapi):
+			stats["repo.eapi.banned"] += 1
+			fails["repo.eapi.banned"].append(
+				"%s: %s" % (relative_path, eapi))
+
+		elif repo_config.eapi_is_deprecated(eapi):
+			stats["repo.eapi.deprecated"] += 1
+			fails["repo.eapi.deprecated"].append(
+				"%s: %s" % (relative_path, eapi))
 
 		for k, v in myaux.items():
 			if not isinstance(v, basestring):

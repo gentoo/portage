@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Nov 2012" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "May 2013" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -874,6 +874,12 @@ masters = gentoo java-overlay
 
 # indicate that this repo can be used as a substitute for foo-overlay
 aliases = foo-overlay
+
+# indicate that ebuilds with the specified EAPIs are banned
+eapis\-banned = 0 1
+
+# indicate that ebuilds with the specified EAPIs are deprecated
+eapis\-deprecated = 2 3
 
 # sign commits in this repo, which requires Git >=1.7.9, and
 # key configured by `git config user.signingkey key_id`
