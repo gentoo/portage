@@ -44,6 +44,11 @@ import sys
 import traceback
 import warnings
 
+try:
+	from urllib.parse import urlparse
+except ImportError:
+	from urlparse import urlparse
+
 if sys.hexversion >= 0x3000000:
 	basestring = str
 	long = int
@@ -1164,7 +1169,11 @@ def _parse_uri_map(cpv, metadata, use=None):
 			# while ensuring uniqueness.
 			uri_set = OrderedDict()
 			uri_map[distfile] = uri_set
-		uri_set[uri] = True
+
+		# SRC_URI may contain a file name with no scheme, and in
+		# this case it does not belong in uri_set.
+		if urlparse(uri).scheme:
+			uri_set[uri] = True
 
 	# Convert OrderedDicts to tuples.
 	for k, v in uri_map.items():

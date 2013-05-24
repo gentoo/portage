@@ -14,6 +14,10 @@ import stat
 import sys
 import tempfile
 
+try:
+	from urllib.parse import urlparse
+except ImportError:
+	from urlparse import urlparse
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -402,9 +406,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 		for myfile, uri_set in myuris.items():
 			for myuri in uri_set:
 				file_uri_tuples.append((myfile, myuri))
+			if not uri_set:
+				file_uri_tuples.append((myfile, None))
 	else:
 		for myuri in myuris:
-			file_uri_tuples.append((os.path.basename(myuri), myuri))
+			if urlparse(myuri).scheme:
+				file_uri_tuples.append((os.path.basename(myuri), myuri))
+			else:
+				file_uri_tuples.append((os.path.basename(myuri), None))
 
 	filedict = OrderedDict()
 	primaryuri_dict = {}
@@ -414,6 +423,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 			filedict[myfile]=[]
 			for y in range(0,len(locations)):
 				filedict[myfile].append(locations[y]+"/distfiles/"+myfile)
+		if myuri is None:
+			continue
 		if myuri[:9]=="mirror://":
 			eidx = myuri.find("/", 9)
 			if eidx != -1:
