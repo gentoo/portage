@@ -211,6 +211,9 @@ success condition. A resume list will persist until it has been completed in
 entirety or until another aborted merge list replaces it.  The resume history
 is capable of storing two merge lists.  After one resume list completes, it is
 possible to invoke \-\-resume once again in order to resume an older list.
+The resume lists are stored in \fI/var/cache/edb/mtimedb\fR, and may be
+explicitly discarded by running `emaint \-\-fix cleanresume` (see
+\fBemaint\fR(1)).
 .TP
 .BR "\-\-search " (\fB\-s\fR)
 Searches for matches of the supplied string in the portage tree.
