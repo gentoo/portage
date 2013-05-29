@@ -27,7 +27,7 @@ class LinkageMapMachO(object):
 	_installname_map_class = slot_dict_class(
 		("consumers", "providers"), prefix="")
 
-	class _obj_properies_class(object):
+	class _obj_properties_class(object):
 
 		__slots__ = ("arch", "needed", "install_name", "alt_paths",
 			"owner",)
@@ -301,7 +301,7 @@ class LinkageMapMachO(object):
 			myprops = obj_properties.get(obj_key)
 			if myprops is None:
 				indexed = False
-				myprops = self._obj_properies_class(
+				myprops = self._obj_properties_class(
 					arch, needed, install_name, [], owner)
 				obj_properties[obj_key] = myprops
 			# All object paths are added into the obj_properties tuple.

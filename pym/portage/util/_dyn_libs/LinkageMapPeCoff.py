@@ -248,7 +248,7 @@ class LinkageMapPeCoff(LinkageMapELF):
 			myprops = obj_properties.get(obj_key)
 			if myprops is None:
 				indexed = False
-				myprops = self._obj_properies_class(
+				myprops = self._obj_properties_class(
 					arch, needed, path, soname, [], owner)
 				obj_properties[obj_key] = myprops
 			# All object paths are added into the obj_properties tuple.
