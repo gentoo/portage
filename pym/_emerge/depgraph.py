@@ -424,6 +424,7 @@ class _dynamic_depgraph_config(object):
 		self._skip_restart = False
 		self._backtrack_infos = {}
 
+		self._buildpkgonly_deps_unsatisfied = False
 		self._autounmask = depgraph._frozen_config.myopts.get('--autounmask') != 'n'
 		self._success_without_autounmask = False
 		self._traverse_ignored_deps = False
@@ -3174,6 +3175,21 @@ class depgraph(object):
 		if self.need_restart():
 			# want_restart_for_use_change triggers this
 			return False, myfavorites
+
+		if "--fetchonly" not in self._frozen_config.myopts and \
+			"--buildpkgonly" in self._frozen_config.myopts:
+			graph_copy = self._dynamic_config.digraph.copy()
+			removed_nodes = set()
+			for node in graph_copy:
+				if not isinstance(node, Package) or \
+					node.operation == "nomerge":
+					removed_nodes.add(node)
+			graph_copy.difference_update(removed_nodes)
+			if not graph_copy.hasallzeros(ignore_priority = \
+				DepPrioritySatisfiedRange.ignore_medium):
+				self._dynamic_config._buildpkgonly_deps_unsatisfied = True
+				self._dynamic_config._skip_restart = True
+				return False, myfavorites
 
 		# Any failures except those due to autounmask *alone* should return
 		# before this point, since the success_without_autounmask flag that's
@@ -7238,6 +7254,13 @@ class depgraph(object):
 		for pargs, kwargs in self._dynamic_config._unsatisfied_deps_for_display:
 			self._show_unsatisfied_dep(*pargs,
 				**portage._native_kwargs(kwargs))
+
+		if self._dynamic_config._buildpkgonly_deps_unsatisfied:
+			self._show_merge_list()
+			writemsg("\n!!! --buildpkgonly requires all "
+				"dependencies to be merged.\n", noiselevel=-1)
+			writemsg("!!! Cannot merge requested packages. "
+				"Merge deps and try again.\n\n", noiselevel=-1)
 
 	def saveNomergeFavorites(self):
 		"""Find atoms in favorites that are not in the mergelist and add them
