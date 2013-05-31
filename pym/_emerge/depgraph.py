@@ -5704,9 +5704,13 @@ class depgraph(object):
 			except self._serialize_tasks_retry:
 				pass
 
-		retlist = self._dynamic_config._serialized_tasks_cache[:]
+		retlist = self._dynamic_config._serialized_tasks_cache
 		if reversed:
+			# TODO: deprecate the "reversed" parameter (builtin name collision)
+			retlist = list(retlist)
 			retlist.reverse()
+			retlist = tuple(retlist)
+
 		return retlist
 
 	def _implicit_libc_deps(self, mergelist, graph):
@@ -6575,10 +6579,12 @@ class depgraph(object):
 		for blocker in unsolvable_blockers:
 			retlist.append(blocker)
 
+		retlist = tuple(retlist)
+
 		if unsolvable_blockers and \
 			not self._accept_blocker_conflicts():
 			self._dynamic_config._unsatisfied_blockers_for_display = unsolvable_blockers
-			self._dynamic_config._serialized_tasks_cache = retlist[:]
+			self._dynamic_config._serialized_tasks_cache = retlist
 			self._dynamic_config._scheduler_graph = scheduler_graph
 			# Blockers don't trigger the _skip_restart flag, since
 			# backtracking may solve blockers when it solves slot
@@ -6587,7 +6593,7 @@ class depgraph(object):
 
 		if self._dynamic_config._slot_collision_info and \
 			not self._accept_blocker_conflicts():
-			self._dynamic_config._serialized_tasks_cache = retlist[:]
+			self._dynamic_config._serialized_tasks_cache = retlist
 			self._dynamic_config._scheduler_graph = scheduler_graph
 			raise self._unknown_internal_error()
 
@@ -6641,12 +6647,13 @@ class depgraph(object):
 	def _show_merge_list(self):
 		if self._dynamic_config._serialized_tasks_cache is not None and \
 			not (self._dynamic_config._displayed_list is not None and \
-			(self._dynamic_config._displayed_list == self._dynamic_config._serialized_tasks_cache or \
+			(self._dynamic_config._displayed_list is self._dynamic_config._serialized_tasks_cache or \
+			self._dynamic_config._displayed_list == self._dynamic_config._serialized_tasks_cache or \
 			self._dynamic_config._displayed_list == \
 				list(reversed(self._dynamic_config._serialized_tasks_cache)))):
-			display_list = self._dynamic_config._serialized_tasks_cache[:]
+			display_list = self._dynamic_config._serialized_tasks_cache
 			if "--tree" in self._frozen_config.myopts:
-				display_list.reverse()
+				display_list = tuple(reversed(display_list))
 			self.display(display_list)
 
 	def _show_unsatisfied_blockers(self, blockers):

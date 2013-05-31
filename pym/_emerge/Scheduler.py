@@ -1830,7 +1830,7 @@ class Scheduler(PollScheduler):
 			mylist = mydepgraph.altlist()
 			if mylist:
 				if "--tree" in self.myopts:
-					mylist.reverse()
+					mylist = tuple(reversed(mylist))
 				mydepgraph.display(mylist, favorites=self._favorites)
 
 		if not success:
