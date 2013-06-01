@@ -9,6 +9,7 @@ import logging
 import stat
 import sys
 import textwrap
+import warnings
 from collections import deque
 from itertools import chain
 
@@ -5694,7 +5695,12 @@ class depgraph(object):
 
 		mygraph.order.sort(key=cmp_sort_key(cmp_merge_preference))
 
-	def altlist(self, reversed=False):
+	def altlist(self, reversed=DeprecationWarning):
+
+		if reversed is not DeprecationWarning:
+			warnings.warn("The reversed parameter of "
+				"_emerge.depgraph.depgraph.altlist() is deprecated",
+				DeprecationWarning, stacklevel=2)
 
 		while self._dynamic_config._serialized_tasks_cache is None:
 			self._resolve_conflicts()
@@ -5705,8 +5711,8 @@ class depgraph(object):
 				pass
 
 		retlist = self._dynamic_config._serialized_tasks_cache
-		if reversed:
-			# TODO: deprecate the "reversed" parameter (builtin name collision)
+		if reversed is not DeprecationWarning and reversed:
+			# TODO: remove the "reversed" parameter (builtin name collision)
 			retlist = list(retlist)
 			retlist.reverse()
 			retlist = tuple(retlist)
@@ -6647,14 +6653,8 @@ class depgraph(object):
 	def _show_merge_list(self):
 		if self._dynamic_config._serialized_tasks_cache is not None and \
 			not (self._dynamic_config._displayed_list is not None and \
-			(self._dynamic_config._displayed_list is self._dynamic_config._serialized_tasks_cache or \
-			self._dynamic_config._displayed_list == self._dynamic_config._serialized_tasks_cache or \
-			self._dynamic_config._displayed_list == \
-				list(reversed(self._dynamic_config._serialized_tasks_cache)))):
-			display_list = self._dynamic_config._serialized_tasks_cache
-			if "--tree" in self._frozen_config.myopts:
-				display_list = tuple(reversed(display_list))
-			self.display(display_list)
+			self._dynamic_config._displayed_list is self._dynamic_config._serialized_tasks_cache):
+			self.display(self._dynamic_config._serialized_tasks_cache)
 
 	def _show_unsatisfied_blockers(self, blockers):
 		self._show_merge_list()
@@ -6749,6 +6749,10 @@ class depgraph(object):
 		# redundantly displaying this exact same merge list
 		# again via _show_merge_list().
 		self._dynamic_config._displayed_list = mylist
+
+		if "--tree" in self._frozen_config.myopts:
+			mylist = tuple(reversed(mylist))
+
 		display = Display()
 
 		return display(self, mylist, favorites, verbosity)

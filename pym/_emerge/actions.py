@@ -336,7 +336,7 @@ def action_build(settings, trees, mtimedb,
 				return os.EX_OK
 			favorites = mtimedb["resume"]["favorites"]
 			retval = mydepgraph.display(
-				mydepgraph.altlist(reversed=tree),
+				mydepgraph.altlist(),
 				favorites=favorites)
 			mydepgraph.display_problems()
 			mergelist_shown = True
@@ -345,7 +345,7 @@ def action_build(settings, trees, mtimedb,
 			prompt="Would you like to resume merging these packages?"
 		else:
 			retval = mydepgraph.display(
-				mydepgraph.altlist(reversed=("--tree" in myopts)),
+				mydepgraph.altlist(),
 				favorites=favorites)
 			mydepgraph.display_problems()
 			mergelist_shown = True
@@ -404,7 +404,7 @@ def action_build(settings, trees, mtimedb,
 				return os.EX_OK
 			favorites = mtimedb["resume"]["favorites"]
 			retval = mydepgraph.display(
-				mydepgraph.altlist(reversed=tree),
+				mydepgraph.altlist(),
 				favorites=favorites)
 			mydepgraph.display_problems()
 			mergelist_shown = True
@@ -412,7 +412,7 @@ def action_build(settings, trees, mtimedb,
 				return retval
 		else:
 			retval = mydepgraph.display(
-				mydepgraph.altlist(reversed=("--tree" in myopts)),
+				mydepgraph.altlist(),
 				favorites=favorites)
 			mydepgraph.display_problems()
 			mergelist_shown = True
