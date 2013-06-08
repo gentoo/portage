@@ -63,7 +63,7 @@ class _dummy_list(list):
 		# TODO: Trigger a DeprecationWarning here, after stable portage
 		# has dummy portdbapi_instances.
 		try:
-			self.remove(item)
+			list.remove(self, item)
 		except ValueError:
 			pass
 
