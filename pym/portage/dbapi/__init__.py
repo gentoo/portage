@@ -193,18 +193,27 @@ class dbapi(object):
 			except KeyError:
 				continue
 
+			try:
+				cpv.slot
+			except AttributeError:
+				try:
+					cpv = _pkg_str(cpv, metadata=metadata,
+						settings=self.settings)
+				except InvalidData:
+					continue
+
 			if not self._match_use(atom, cpv, metadata):
 				continue
 
 			yield cpv
 
-	def _match_use(self, atom, cpv, metadata):
+	def _match_use(self, atom, pkg, metadata):
 		eapi_attrs = _get_eapi_attrs(metadata["EAPI"])
 		if eapi_attrs.iuse_effective:
 			iuse_implicit_match = self.settings._iuse_effective_match
 		else:
 			iuse_implicit_match = self.settings._iuse_implicit_match
-		usealiases = self.settings._use_manager.getUseAliases(self._pkg_str(cpv, metadata["repository"]))
+		usealiases = self.settings._use_manager.getUseAliases(pkg)
 		iuse = Package._iuse(None, metadata["IUSE"].split(), iuse_implicit_match, usealiases, metadata["EAPI"])
 
 		for x in atom.unevaluated_atom.use.required:
@@ -245,12 +254,6 @@ class dbapi(object):
 
 		elif not self.settings.local_config:
 			# Check masked and forced flags for repoman.
-			try:
-				cpv.slot
-			except AttributeError:
-				pkg = _pkg_str(cpv, metadata=metadata, settings=self.settings)
-			else:
-				pkg = cpv
 			usemask = self.settings._getUseMask(pkg,
 				stable=self.settings._parent_stable)
 			if any(x in usemask for x in atom.use.enabled):
