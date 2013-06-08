@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from itertools import permutations
@@ -544,10 +544,6 @@ class ResolverPlayground(object):
 				return
 
 	def cleanup(self):
-		for eroot in self.trees:
-			portdb = self.trees[eroot]["porttree"].dbapi
-			portdb.close_caches()
-			portage.dbapi.porttree.portdbapi.portdbapi_instances.remove(portdb)
 		if self.debug:
 			print("\nEROOT=%s" % self.eroot)
 		else:

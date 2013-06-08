@@ -53,9 +53,27 @@ if sys.hexversion >= 0x3000000:
 	basestring = str
 	long = int
 
+# It used to be necessary for API consumers to remove portdbapi instances
+# from portdbapi_instances, in order to avoid having accumulated instances
+# consume memory. Now, portdbapi_instances is just an empty dummy list, so
+# for backward compatibility, ignore ValueError for removal on non-existent
+# items.
+class _dummy_list(list):
+	def remove(self, item):
+		# TODO: Trigger a DeprecationWarning here, after stable portage
+		# has dummy portdbapi_instances.
+		try:
+			self.remove(item)
+		except ValueError:
+			pass
+
+def close_portdbapi_caches():
+	# Since portdbapi_instances is a dummy list, there's nothing to do here.
+	pass
+
 class portdbapi(dbapi):
 	"""this tree will scan a portage directory located at root (passed to init)"""
-	portdbapi_instances = []
+	portdbapi_instances = _dummy_list()
 	_use_mutable = True
 
 	@property
@@ -80,7 +98,6 @@ class portdbapi(dbapi):
 		@param mysettings: an immutable config instance
 		@type mysettings: portage.config
 		"""
-		portdbapi.portdbapi_instances.append(self)
 
 		from portage import config
 		if mysettings:
@@ -999,12 +1016,6 @@ class portdbapi(dbapi):
 				return False
 
 		return True
-
-def close_portdbapi_caches():
-	for i in portdbapi.portdbapi_instances:
-		i.close_caches()
-
-portage.process.atexit_register(portage.portageexit)
 
 class portagetree(object):
 	def __init__(self, root=DeprecationWarning, virtual=DeprecationWarning,

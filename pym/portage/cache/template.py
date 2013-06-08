@@ -1,6 +1,6 @@
-# Copyright: 2005-2012 Gentoo Foundation
+# Copyright 2005-2013 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
-# License: GPL2
 
 from portage.cache import cache_errors
 from portage.cache.cache_errors import InvalidRestriction
@@ -164,7 +164,14 @@ class database(object):
 
 	def commit(self):
 		if not self.autocommits:
-			raise NotImplementedError
+			raise NotImplementedError(self)
+
+	def __del__(self):
+		# This used to be handled by an atexit hook that called
+		# close_portdbapi_caches() for all portdbapi instances, but that was
+		# prone to memory leaks for API consumers that needed to create/destroy
+		# many portdbapi instances. So, instead we rely on __del__.
+		self.sync()
 
 	def __contains__(self, cpv):
 		"""This method should always be overridden.  It is provided only for
