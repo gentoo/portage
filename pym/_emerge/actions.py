@@ -1968,6 +1968,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 		print()
 		signal.signal(signal.SIGWINCH, signal.SIG_DFL)
 
+	portdb.flush_cache()
 	sys.stdout.flush()
 	os.umask(old_umask)
 
