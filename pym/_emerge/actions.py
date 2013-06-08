@@ -55,6 +55,7 @@ from portage._sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, varexpand, \
 	writemsg_level, writemsg_stdout
 from portage.util.digraph import digraph
+from portage.util.SlotObject import SlotObject
 from portage.util._async.run_main_scheduler import run_main_scheduler
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.global_event_loop import global_event_loop
@@ -3128,25 +3129,49 @@ def git_sync_timestamps(portdb, portdir):
 
 	return os.EX_OK
 
-def load_emerge_config(trees=None):
+class _emerge_config(SlotObject):
+
+	__slots__ = ('action', 'args', 'mtimedb', 'opts', 'settings', 'trees')
+
+	# Support unpack as tuple, for load_emerge_config backward compatibility.
+	def __getitem__(self, index):
+		if index == 0:
+			return self.settings
+		elif index == 1:
+			return self.trees
+		elif index == 2:
+			return self.mtimedb
+		raise IndexError(index)
+
+	def __len__(self):
+		return 3
+
+def load_emerge_config(emerge_config=None, **kargs):
+
+	if emerge_config is None:
+		emerge_config = _emerge_config(**kargs)
+
 	kwargs = {}
 	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT")):
 		v = os.environ.get(envvar, None)
 		if v and v.strip():
 			kwargs[k] = v
-	trees = portage.create_trees(trees=trees, **portage._native_kwargs(kwargs))
+	emerge_config.trees = portage.create_trees(trees=emerge_config.trees,
+				**portage._native_kwargs(kwargs))
 
-	for root_trees in trees.values():
+	for root_trees in emerge_config.trees.values():
 		settings = root_trees["vartree"].settings
 		settings._init_dirs()
 		setconfig = load_default_config(settings, root_trees)
 		root_trees["root_config"] = RootConfig(settings, root_trees, setconfig)
 
-	settings = trees[trees._target_eroot]['vartree'].settings
-	mtimedbfile = os.path.join(settings['EROOT'], portage.CACHE_PATH, "mtimedb")
-	mtimedb = portage.MtimeDB(mtimedbfile)
-	QueryCommand._db = trees
-	return settings, trees, mtimedb
+	target_eroot = emerge_config.trees._target_eroot
+	emerge_config.settings = emerge_config.trees[target_eroot]['vartree'].settings
+	emerge_config.mtimedb = portage.MtimeDB(
+		os.path.join(target_eroot, portage.CACHE_PATH, "mtimedb"))
+	QueryCommand._db = emerge_config.trees
+
+	return emerge_config
 
 def getgccversion(chost):
 	"""
@@ -3506,14 +3531,14 @@ def repo_name_duplicate_check(trees):
 
 	return bool(ignored_repos)
 
-def run_action(settings, trees, mtimedb, myaction, myopts, myfiles,
-	gc_locals=None):
+def run_action(emerge_config):
 
-	# The caller may have its local variables garbage collected, so
-	# they don't consume any memory during this long-running function.
-	if gc_locals is not None:
-		gc_locals()
-		gc_locals = None
+	myaction = emerge_config.action
+	myfiles = emerge_config.args
+	mtimedb = emerge_config.mtimedb
+	myopts = emerge_config.opts
+	settings = emerge_config.settings
+	trees = emerge_config.trees
 
 	# skip global updates prior to sync, since it's called after sync
 	if myaction not in ('help', 'info', 'sync', 'version') and \
@@ -3521,7 +3546,8 @@ def run_action(settings, trees, mtimedb, myaction, myopts, myfiles,
 		_global_updates(trees, mtimedb["updates"], quiet=("--quiet" in myopts)):
 		mtimedb.commit()
 		# Reload the whole config from scratch.
-		settings, trees, mtimedb = load_emerge_config(trees=trees)
+		settings, trees, mtimedb = \
+			load_emerge_config(emerge_config=emerge_config)
 
 	xterm_titles = "notitles" not in settings.features
 	if xterm_titles:
@@ -3531,7 +3557,8 @@ def run_action(settings, trees, mtimedb, myaction, myopts, myfiles,
 		os.environ["FEATURES"] = os.environ.get("FEATURES","") + " digest"
 		# Reload the whole config from scratch so that the portdbapi internal
 		# config is updated with new FEATURES.
-		settings, trees, mtimedb = load_emerge_config(trees=trees)
+		settings, trees, mtimedb = \
+			load_emerge_config(emerge_config=emerge_config)
 
 	# NOTE: adjust_configs() can map options to FEATURES, so any relevant
 	# options adjustments should be made prior to calling adjust_configs().

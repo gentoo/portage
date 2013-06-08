@@ -1041,17 +1041,18 @@ def emerge_main(args=None):
 	os.umask(0o22)
 	if myaction == "sync":
 		portage._sync_disabled_warnings = True
-	settings, trees, mtimedb = load_emerge_config()
-	rval = profile_check(trees, myaction)
+	emerge_config = load_emerge_config(
+		action=myaction, args=myfiles, opts=myopts)
+	rval = profile_check(emerge_config.trees, emerge_config.action)
 	if rval != os.EX_OK:
 		return rval
 
 	tmpcmdline = []
 	if "--ignore-default-opts" not in myopts:
 		tmpcmdline.extend(portage.util.shlex_split(
-			settings.get("EMERGE_DEFAULT_OPTS", "")))
+			emerge_config.settings.get("EMERGE_DEFAULT_OPTS", "")))
 	tmpcmdline.extend(args)
-	myaction, myopts, myfiles = parse_opts(tmpcmdline)
+	emerge_config.action, emerge_config.opts, emerge_config.args = \
+		parse_opts(tmpcmdline)
 
-	return run_action(settings, trees, mtimedb, myaction, myopts, myfiles,
-		gc_locals=locals().clear)
+	return run_action(emerge_config)
