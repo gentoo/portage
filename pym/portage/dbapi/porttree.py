@@ -53,6 +53,39 @@ if sys.hexversion >= 0x3000000:
 	basestring = str
 	long = int
 
+def close_portdbapi_caches():
+	# The python interpreter does _not_ guarantee that destructors are
+	# called for objects that remain when the interpreter exits, so we
+	# use an atexit hook to call destructors for any global portdbapi
+	# instances that may have been constructed.
+	try:
+		portage._legacy_globals_constructed
+	except AttributeError:
+		pass
+	else:
+		if "db" in portage._legacy_globals_constructed:
+			try:
+				db = portage.db
+			except AttributeError:
+				pass
+			else:
+				if isinstance(db, dict):
+					for x in db.values():
+						try:
+							if "porttree" in x.lazy_items:
+								continue
+						except (AttributeError, TypeError):
+							continue
+						try:
+							x = x.pop("porttree").dbapi
+						except (AttributeError, KeyError):
+							continue
+						if not isinstance(x, portdbapi):
+							continue
+						x.close_caches()
+
+portage.process.atexit_register(close_portdbapi_caches)
+
 # It used to be necessary for API consumers to remove portdbapi instances
 # from portdbapi_instances, in order to avoid having accumulated instances
 # consume memory. Now, portdbapi_instances is just an empty dummy list, so
@@ -66,10 +99,6 @@ class _dummy_list(list):
 			list.remove(self, item)
 		except ValueError:
 			pass
-
-def close_portdbapi_caches():
-	# Since portdbapi_instances is a dummy list, there's nothing to do here.
-	pass
 
 class portdbapi(dbapi):
 	"""this tree will scan a portage directory located at root (passed to init)"""

@@ -544,6 +544,9 @@ class ResolverPlayground(object):
 				return
 
 	def cleanup(self):
+		for eroot in self.trees:
+			portdb = self.trees[eroot]["porttree"].dbapi
+			portdb.close_caches()
 		if self.debug:
 			print("\nEROOT=%s" % self.eroot)
 		else:
