@@ -550,7 +550,7 @@ auxdbkeys = (
 auxdbkeylen=len(auxdbkeys)
 
 def portageexit():
-	close_portdbapi_caches()
+	pass
 
 class _trees_dict(dict):
 	__slots__ = ('_running_eroot', '_target_eroot',)
@@ -561,13 +561,6 @@ class _trees_dict(dict):
 
 def create_trees(config_root=None, target_root=None, trees=None, env=None,
 	eprefix=None):
-	if trees is not None:
-		# clean up any existing portdbapi instances
-		for myroot in trees:
-			portdb = trees[myroot]["porttree"].dbapi
-			portdb.close_caches()
-			portdbapi.portdbapi_instances.remove(portdb)
-			del trees[myroot]["porttree"], myroot, portdb
 
 	if trees is None:
 		trees = _trees_dict()
@@ -673,33 +666,6 @@ _legacy_global_var_names = ("archlist", "db", "features",
 def _reset_legacy_globals():
 
 	global _legacy_globals_constructed
-
-	if "_legacy_globals_constructed" in globals() and \
-		"db" in _legacy_globals_constructed:
-		try:
-			db
-		except NameError:
-			pass
-		else:
-			if isinstance(db, dict) and db:
-				for _x in db.values():
-					try:
-						if "porttree" in _x.lazy_items:
-							continue
-					except (AttributeError, TypeError):
-						continue
-					try:
-						_x = _x["porttree"].dbapi
-					except (AttributeError, KeyError):
-						continue
-					if not isinstance(_x, portdbapi):
-						continue
-					_x.close_caches()
-					try:
-						portdbapi.portdbapi_instances.remove(_x)
-					except ValueError:
-						pass
-
 	_legacy_globals_constructed = set()
 	for k in _legacy_global_var_names:
 		globals()[k] = _LegacyGlobalProxy(k)

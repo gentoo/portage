@@ -145,11 +145,9 @@ export SANDBOX_ON=0
 
 # Ensure that $PWD is sane whenever possible, to protect against
 # exploitation of insecure search path for python -c in ebuilds.
-# See bug #239560.
-if ! has "$EBUILD_PHASE" clean cleanrm depend help ; then
-	cd "$PORTAGE_BUILDDIR" || \
-		die "PORTAGE_BUILDDIR does not exist: '$PORTAGE_BUILDDIR'"
-fi
+# See bug #239560 and bug #469338.
+cd "${PORTAGE_PYM_PATH}" || \
+	die "PORTAGE_PYM_PATH does not exist: '${PORTAGE_PYM_PATH}'"
 
 #if no perms are specified, dirs/files will have decent defaults
 #(not secretive, but not stupid)

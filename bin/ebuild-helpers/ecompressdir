@@ -85,6 +85,11 @@ funk_up_dir() {
 	find "${dir}" "${args[@]}" -print0 | ${XARGS} -0 ${binary}
 	((ret|=$?))
 
+	# Repeat until nothing changes, in order to handle multiple
+	# levels of indirection (see bug #470916).
+	local -i indirection=0
+	while true ; do
+	local something_changed=
 	while read -r -d $'\0' brokenlink ; do
 		[[ -e ${brokenlink} ]] && continue
 		olddest=$(readlink "${brokenlink}")
@@ -110,12 +115,22 @@ funk_up_dir() {
 		else
 			[[ -f "${dir}/${brokenlink%/*}/${newdest}" ]] || continue
 		fi
+		something_changed=${brokenlink}
 		rm -f "${brokenlink}"
 		[[ ${act} == "compress" ]] \
 			&& ln -snf "${newdest}" "${brokenlink}${suffix}" \
 			|| ln -snf "${newdest}" "${brokenlink%${suffix}}"
 		((ret|=$?))
 	done < <(find "${dir}" -type l -print0)
+	[[ -n ${something_changed} ]] || break
+	(( indirection++ ))
+	if (( indirection >= 100 )) ; then
+		# Protect against possibility of a bug triggering an endless loop.
+		eerror "ecompressdir: too many levels of indirection for" \
+			"'${actual_dir#${ED}}/${something_changed#./}'"
+		break
+	fi
+	done
 	return ${ret}
 }
 

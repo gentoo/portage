@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -14,6 +14,10 @@ import stat
 import sys
 import tempfile
 
+try:
+	from urllib.parse import urlparse
+except ImportError:
+	from urlparse import urlparse
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -403,9 +407,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 		for myfile, uri_set in myuris.items():
 			for myuri in uri_set:
 				file_uri_tuples.append((myfile, myuri))
+			if not uri_set:
+				file_uri_tuples.append((myfile, None))
 	else:
 		for myuri in myuris:
-			file_uri_tuples.append((os.path.basename(myuri), myuri))
+			if urlparse(myuri).scheme:
+				file_uri_tuples.append((os.path.basename(myuri), myuri))
+			else:
+				file_uri_tuples.append((os.path.basename(myuri), None))
 
 	filedict = OrderedDict()
 	primaryuri_dict = {}
@@ -415,6 +424,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 			filedict[myfile]=[]
 			for y in range(0,len(locations)):
 				filedict[myfile].append(locations[y]+"/distfiles/"+myfile)
+		if myuri is None:
+			continue
 		if myuri[:9]=="mirror://":
 			eidx = myuri.find("/", 9)
 			if eidx != -1:
@@ -965,10 +976,15 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 					writemsg_stdout(_(">>> Downloading '%s'\n") % \
 						_hide_url_passwd(loc))
 					variables = {
-						"DISTDIR": mysettings["DISTDIR"],
 						"URI":     loc,
 						"FILE":    myfile
 					}
+
+					for k in ("DISTDIR", "PORTAGE_SSH_OPTS"):
+						try:
+							variables[k] = mysettings[k]
+						except KeyError:
+							pass
 
 					myfetch = shlex_split(locfetch)
 					myfetch = [varexpand(x, mydict=variables) for x in myfetch]

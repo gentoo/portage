@@ -62,8 +62,7 @@ class circular_dependency_handler(object):
 				node = nodes[0]
 			display_order.append(node)
 			tempgraph.remove(node)
-		display_order.reverse()
-		return display_order
+		return tuple(display_order)
 
 	def _prepare_circular_dep_message(self):
 		"""

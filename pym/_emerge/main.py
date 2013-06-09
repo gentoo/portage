@@ -9,11 +9,13 @@ import sys
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'logging',
+	'portage.dep:Atom',
 	'portage.util:writemsg_level',
 	'textwrap',
 	'_emerge.actions:load_emerge_config,run_action,' + \
 		'validate_ebuild_environment',
 	'_emerge.help:help@emerge_help',
+	'_emerge.is_valid_package_atom:insert_category_into_atom'
 )
 from portage import os
 from portage.const import EPREFIX
@@ -259,14 +261,17 @@ def _find_bad_atoms(atoms, less_strict=False):
 	"""
 	bad_atoms = []
 	for x in ' '.join(atoms).split():
+		atom = x
+		if "/" not in x.split(":")[0]:
+			x_cat = insert_category_into_atom(x, 'dummy-category')
+			if x_cat is not None:
+				atom = x_cat
+
 		bad_atom = False
 		try:
-			atom = portage.dep.Atom(x, allow_wildcard=True, allow_repo=less_strict)
+			atom = Atom(atom, allow_wildcard=True, allow_repo=less_strict)
 		except portage.exception.InvalidAtom:
-			try:
-				atom = portage.dep.Atom("*/"+x, allow_wildcard=True, allow_repo=less_strict)
-			except portage.exception.InvalidAtom:
-				bad_atom = True
+			bad_atom = True
 
 		if bad_atom or (atom.operator and not less_strict) or atom.blocker or atom.use:
 			bad_atoms.append(x)
@@ -1037,16 +1042,25 @@ def emerge_main(args=None):
 	os.umask(0o22)
 	if myaction == "sync":
 		portage._sync_disabled_warnings = True
-	settings, trees, mtimedb = load_emerge_config()
-	rval = profile_check(trees, myaction)
+	emerge_config = load_emerge_config(
+		action=myaction, args=myfiles, opts=myopts)
+	rval = profile_check(emerge_config.trees, emerge_config.action)
 	if rval != os.EX_OK:
 		return rval
 
 	tmpcmdline = []
 	if "--ignore-default-opts" not in myopts:
-		tmpcmdline.extend(settings["EMERGE_DEFAULT_OPTS"].split())
+		tmpcmdline.extend(portage.util.shlex_split(
+			emerge_config.settings.get("EMERGE_DEFAULT_OPTS", "")))
 	tmpcmdline.extend(args)
-	myaction, myopts, myfiles = parse_opts(tmpcmdline)
+	emerge_config.action, emerge_config.opts, emerge_config.args = \
+		parse_opts(tmpcmdline)
 
-	return run_action(settings, trees, mtimedb, myaction, myopts, myfiles,
-		gc_locals=locals().clear)
+	try:
+		return run_action(emerge_config)
+	finally:
+		# Call destructors for our portdbapi instances.
+		for x in emerge_config.trees.values():
+			if "porttree" in x.lazy_items:
+				continue
+			x["porttree"].dbapi.close_caches()

@@ -89,7 +89,8 @@ if len(pargs) < 2:
 	parser.error("missing required args")
 
 if not opts.ignore_default_opts:
-	default_opts = portage.settings.get("EBUILD_DEFAULT_OPTS", "").split()
+	default_opts = portage.util.shlex_split(
+		portage.settings.get("EBUILD_DEFAULT_OPTS", ""))
 	opts, pargs = parser.parse_args(default_opts + sys.argv[1:])
 
 debug = opts.debug

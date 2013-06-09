@@ -122,7 +122,8 @@ class JobStatusDisplay(object):
 
 		term_codes = {}
 		for k, capname in self._termcap_name_map.items():
-			code = tigetstr(capname)
+			# Use _native_string for PyPy compat (bug #470258).
+			code = tigetstr(portage._native_string(capname))
 			if code is None:
 				code = self._default_term_codes[capname]
 			term_codes[k] = code

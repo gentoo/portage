@@ -9,6 +9,7 @@ import logging
 import stat
 import sys
 import textwrap
+import warnings
 from collections import deque
 from itertools import chain
 
@@ -424,6 +425,7 @@ class _dynamic_depgraph_config(object):
 		self._skip_restart = False
 		self._backtrack_infos = {}
 
+		self._buildpkgonly_deps_unsatisfied = False
 		self._autounmask = depgraph._frozen_config.myopts.get('--autounmask') != 'n'
 		self._success_without_autounmask = False
 		self._traverse_ignored_deps = False
@@ -3175,6 +3177,21 @@ class depgraph(object):
 			# want_restart_for_use_change triggers this
 			return False, myfavorites
 
+		if "--fetchonly" not in self._frozen_config.myopts and \
+			"--buildpkgonly" in self._frozen_config.myopts:
+			graph_copy = self._dynamic_config.digraph.copy()
+			removed_nodes = set()
+			for node in graph_copy:
+				if not isinstance(node, Package) or \
+					node.operation == "nomerge":
+					removed_nodes.add(node)
+			graph_copy.difference_update(removed_nodes)
+			if not graph_copy.hasallzeros(ignore_priority = \
+				DepPrioritySatisfiedRange.ignore_medium):
+				self._dynamic_config._buildpkgonly_deps_unsatisfied = True
+				self._dynamic_config._skip_restart = True
+				return False, myfavorites
+
 		# Any failures except those due to autounmask *alone* should return
 		# before this point, since the success_without_autounmask flag that's
 		# set below is reserved for cases where there are *zero* other
@@ -5678,7 +5695,12 @@ class depgraph(object):
 
 		mygraph.order.sort(key=cmp_sort_key(cmp_merge_preference))
 
-	def altlist(self, reversed=False):
+	def altlist(self, reversed=DeprecationWarning):
+
+		if reversed is not DeprecationWarning:
+			warnings.warn("The reversed parameter of "
+				"_emerge.depgraph.depgraph.altlist() is deprecated",
+				DeprecationWarning, stacklevel=2)
 
 		while self._dynamic_config._serialized_tasks_cache is None:
 			self._resolve_conflicts()
@@ -5688,9 +5710,13 @@ class depgraph(object):
 			except self._serialize_tasks_retry:
 				pass
 
-		retlist = self._dynamic_config._serialized_tasks_cache[:]
-		if reversed:
+		retlist = self._dynamic_config._serialized_tasks_cache
+		if reversed is not DeprecationWarning and reversed:
+			# TODO: remove the "reversed" parameter (builtin name collision)
+			retlist = list(retlist)
 			retlist.reverse()
+			retlist = tuple(retlist)
+
 		return retlist
 
 	def _implicit_libc_deps(self, mergelist, graph):
@@ -6559,10 +6585,12 @@ class depgraph(object):
 		for blocker in unsolvable_blockers:
 			retlist.append(blocker)
 
+		retlist = tuple(retlist)
+
 		if unsolvable_blockers and \
 			not self._accept_blocker_conflicts():
 			self._dynamic_config._unsatisfied_blockers_for_display = unsolvable_blockers
-			self._dynamic_config._serialized_tasks_cache = retlist[:]
+			self._dynamic_config._serialized_tasks_cache = retlist
 			self._dynamic_config._scheduler_graph = scheduler_graph
 			# Blockers don't trigger the _skip_restart flag, since
 			# backtracking may solve blockers when it solves slot
@@ -6571,7 +6599,7 @@ class depgraph(object):
 
 		if self._dynamic_config._slot_collision_info and \
 			not self._accept_blocker_conflicts():
-			self._dynamic_config._serialized_tasks_cache = retlist[:]
+			self._dynamic_config._serialized_tasks_cache = retlist
 			self._dynamic_config._scheduler_graph = scheduler_graph
 			raise self._unknown_internal_error()
 
@@ -6625,13 +6653,8 @@ class depgraph(object):
 	def _show_merge_list(self):
 		if self._dynamic_config._serialized_tasks_cache is not None and \
 			not (self._dynamic_config._displayed_list is not None and \
-			(self._dynamic_config._displayed_list == self._dynamic_config._serialized_tasks_cache or \
-			self._dynamic_config._displayed_list == \
-				list(reversed(self._dynamic_config._serialized_tasks_cache)))):
-			display_list = self._dynamic_config._serialized_tasks_cache[:]
-			if "--tree" in self._frozen_config.myopts:
-				display_list.reverse()
-			self.display(display_list)
+			self._dynamic_config._displayed_list is self._dynamic_config._serialized_tasks_cache):
+			self.display(self._dynamic_config._serialized_tasks_cache)
 
 	def _show_unsatisfied_blockers(self, blockers):
 		self._show_merge_list()
@@ -6726,6 +6749,10 @@ class depgraph(object):
 		# redundantly displaying this exact same merge list
 		# again via _show_merge_list().
 		self._dynamic_config._displayed_list = mylist
+
+		if "--tree" in self._frozen_config.myopts:
+			mylist = tuple(reversed(mylist))
+
 		display = Display()
 
 		return display(self, mylist, favorites, verbosity)
@@ -7238,6 +7265,13 @@ class depgraph(object):
 		for pargs, kwargs in self._dynamic_config._unsatisfied_deps_for_display:
 			self._show_unsatisfied_dep(*pargs,
 				**portage._native_kwargs(kwargs))
+
+		if self._dynamic_config._buildpkgonly_deps_unsatisfied:
+			self._show_merge_list()
+			writemsg("\n!!! --buildpkgonly requires all "
+				"dependencies to be merged.\n", noiselevel=-1)
+			writemsg("!!! Cannot merge requested packages. "
+				"Merge deps and try again.\n\n", noiselevel=-1)
 
 	def saveNomergeFavorites(self):
 		"""Find atoms in favorites that are not in the mergelist and add them

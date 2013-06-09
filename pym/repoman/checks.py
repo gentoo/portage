@@ -387,6 +387,7 @@ class InheritDeprecated(LineCheck):
 		"distutils": "distutils-r1",
 		"gems": "ruby-fakegem",
 		"git": "git-2",
+		"mono": "mono-env",
 		"mozconfig-2": "mozconfig-3",
 		"mozcoreconf": "mozcoreconf-2",
 		"php-ext-pecl-r1": "php-ext-pecl-r2",

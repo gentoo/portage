@@ -44,13 +44,65 @@ import sys
 import traceback
 import warnings
 
+try:
+	from urllib.parse import urlparse
+except ImportError:
+	from urlparse import urlparse
+
 if sys.hexversion >= 0x3000000:
 	basestring = str
 	long = int
 
+def close_portdbapi_caches():
+	# The python interpreter does _not_ guarantee that destructors are
+	# called for objects that remain when the interpreter exits, so we
+	# use an atexit hook to call destructors for any global portdbapi
+	# instances that may have been constructed.
+	try:
+		portage._legacy_globals_constructed
+	except AttributeError:
+		pass
+	else:
+		if "db" in portage._legacy_globals_constructed:
+			try:
+				db = portage.db
+			except AttributeError:
+				pass
+			else:
+				if isinstance(db, dict):
+					for x in db.values():
+						try:
+							if "porttree" in x.lazy_items:
+								continue
+						except (AttributeError, TypeError):
+							continue
+						try:
+							x = x.pop("porttree").dbapi
+						except (AttributeError, KeyError):
+							continue
+						if not isinstance(x, portdbapi):
+							continue
+						x.close_caches()
+
+portage.process.atexit_register(close_portdbapi_caches)
+
+# It used to be necessary for API consumers to remove portdbapi instances
+# from portdbapi_instances, in order to avoid having accumulated instances
+# consume memory. Now, portdbapi_instances is just an empty dummy list, so
+# for backward compatibility, ignore ValueError for removal on non-existent
+# items.
+class _dummy_list(list):
+	def remove(self, item):
+		# TODO: Trigger a DeprecationWarning here, after stable portage
+		# has dummy portdbapi_instances.
+		try:
+			list.remove(self, item)
+		except ValueError:
+			pass
+
 class portdbapi(dbapi):
 	"""this tree will scan a portage directory located at root (passed to init)"""
-	portdbapi_instances = []
+	portdbapi_instances = _dummy_list()
 	_use_mutable = True
 
 	@property
@@ -75,7 +127,6 @@ class portdbapi(dbapi):
 		@param mysettings: an immutable config instance
 		@type mysettings: portage.config
 		"""
-		portdbapi.portdbapi_instances.append(self)
 
 		from portage import config
 		if mysettings:
@@ -995,12 +1046,6 @@ class portdbapi(dbapi):
 
 		return True
 
-def close_portdbapi_caches():
-	for i in portdbapi.portdbapi_instances:
-		i.close_caches()
-
-portage.process.atexit_register(portage.portageexit)
-
 class portagetree(object):
 	def __init__(self, root=DeprecationWarning, virtual=DeprecationWarning,
 		settings=None):
@@ -1164,7 +1209,11 @@ def _parse_uri_map(cpv, metadata, use=None):
 			# while ensuring uniqueness.
 			uri_set = OrderedDict()
 			uri_map[distfile] = uri_set
-		uri_set[uri] = True
+
+		# SRC_URI may contain a file name with no scheme, and in
+		# this case it does not belong in uri_set.
+		if urlparse(uri).scheme:
+			uri_set[uri] = True
 
 	# Convert OrderedDicts to tuples.
 	for k, v in uri_map.items():

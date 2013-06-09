@@ -193,21 +193,31 @@ class dbapi(object):
 			except KeyError:
 				continue
 
+			try:
+				cpv.slot
+			except AttributeError:
+				try:
+					cpv = _pkg_str(cpv, metadata=metadata,
+						settings=self.settings)
+				except InvalidData:
+					continue
+
 			if not self._match_use(atom, cpv, metadata):
 				continue
 
 			yield cpv
 
-	def _match_use(self, atom, cpv, metadata):
+	def _match_use(self, atom, pkg, metadata):
 		eapi_attrs = _get_eapi_attrs(metadata["EAPI"])
 		if eapi_attrs.iuse_effective:
 			iuse_implicit_match = self.settings._iuse_effective_match
 		else:
 			iuse_implicit_match = self.settings._iuse_implicit_match
-		iuse = frozenset(x.lstrip('+-') for x in metadata["IUSE"].split())
+		usealiases = self.settings._use_manager.getUseAliases(pkg)
+		iuse = Package._iuse(None, metadata["IUSE"].split(), iuse_implicit_match, usealiases, metadata["EAPI"])
 
 		for x in atom.unevaluated_atom.use.required:
-			if x not in iuse and not iuse_implicit_match(x):
+			if iuse.get_real_flag(x) is None:
 				return False
 
 		if atom.use is None:
@@ -220,39 +230,30 @@ class dbapi(object):
 			# data corruption). The enabled flags must be consistent
 			# with implicit IUSE, in order to avoid potential
 			# inconsistencies in USE dep matching (see bug #453400).
-			use = frozenset(x for x in metadata["USE"].split()
-				if x in iuse or iuse_implicit_match(x))
-			missing_enabled = frozenset(x for x in
-				atom.use.missing_enabled if not
-				(x in iuse or iuse_implicit_match(x)))
-			missing_disabled = frozenset(x for x in
-				atom.use.missing_disabled if not
-				(x in iuse or iuse_implicit_match(x)))
+			use = frozenset(x for x in metadata["USE"].split() if iuse.get_real_flag(x) is not None)
+			missing_enabled = frozenset(x for x in atom.use.missing_enabled if iuse.get_real_flag(x) is None)
+			missing_disabled = frozenset(x for x in atom.use.missing_disabled if iuse.get_real_flag(x) is None)
+			enabled = frozenset((iuse.get_real_flag(x) or x) for x in atom.use.enabled)
+			disabled = frozenset((iuse.get_real_flag(x) or x) for x in atom.use.disabled)
 
-			if atom.use.enabled:
-				if any(x in atom.use.enabled for x in missing_disabled):
+			if enabled:
+				if any(x in enabled for x in missing_disabled):
 					return False
-				need_enabled = atom.use.enabled.difference(use)
+				need_enabled = enabled.difference(use)
 				if need_enabled:
 					if any(x not in missing_enabled for x in need_enabled):
 						return False
 
-			if atom.use.disabled:
-				if any(x in atom.use.disabled for x in missing_enabled):
+			if disabled:
+				if any(x in disabled for x in missing_enabled):
 					return False
-				need_disabled = atom.use.disabled.intersection(use)
+				need_disabled = disabled.intersection(use)
 				if need_disabled:
 					if any(x not in missing_disabled for x in need_disabled):
 						return False
 
 		elif not self.settings.local_config:
 			# Check masked and forced flags for repoman.
-			try:
-				cpv.slot
-			except AttributeError:
-				pkg = _pkg_str(cpv, metadata=metadata, settings=self.settings)
-			else:
-				pkg = cpv
 			usemask = self.settings._getUseMask(pkg,
 				stable=self.settings._parent_stable)
 			if any(x in usemask for x in atom.use.enabled):
@@ -266,15 +267,11 @@ class dbapi(object):
 
 			# Check unsatisfied use-default deps
 			if atom.use.enabled:
-				missing_disabled = frozenset(x for x in
-					atom.use.missing_disabled if not
-					(x in iuse or iuse_implicit_match(x)))
+				missing_disabled = frozenset(x for x in atom.use.missing_disabled if iuse.get_real_flag(x) is None)
 				if any(x in atom.use.enabled for x in missing_disabled):
 					return False
 			if atom.use.disabled:
-				missing_enabled = frozenset(x for x in
-					atom.use.missing_enabled if not
-					(x in iuse or iuse_implicit_match(x)))
+				missing_enabled = frozenset(x for x in atom.use.missing_enabled if iuse.get_real_flag(x) is None)
 				if any(x in atom.use.disabled for x in missing_enabled):
 					return False
 

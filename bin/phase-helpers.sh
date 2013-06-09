@@ -1,5 +1,5 @@
 #!@PREFIX_PORTAGE_BASH@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 export DESTTREE=/usr
@@ -683,8 +683,7 @@ has_version() {
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
 		"$PORTAGE_BIN_PATH"/ebuild-ipc has_version "${eroot}" "${atom}"
 	else
-		PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-		"${PORTAGE_PYTHON:-@PORTAGE_PREFIX_PYTHON@}" "${PORTAGE_BIN_PATH}/portageq" has_version "${eroot}" "${atom}"
+		"${PORTAGE_BIN_PATH}/ebuild-helpers/portageq" has_version "${eroot}" "${atom}"
 	fi
 	local retval=$?
 	case "${retval}" in
@@ -736,8 +735,7 @@ best_version() {
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
 		"$PORTAGE_BIN_PATH"/ebuild-ipc best_version "${eroot}" "${atom}"
 	else
-		PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-		"${PORTAGE_PYTHON:-@PORTAGE_PREFIX_PYTHON@}" "${PORTAGE_BIN_PATH}/portageq" best_version "${eroot}" "${atom}"
+		"${PORTAGE_BIN_PATH}/ebuild-helpers/portageq" best_version "${eroot}" "${atom}"
 	fi
 	local retval=$?
 	case "${retval}" in
@@ -766,8 +764,7 @@ if ___eapi_has_master_repositories; then
 		if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
 			"${PORTAGE_BIN_PATH}/ebuild-ipc" master_repositories "${EROOT}" "${repository}"
 		else
-			output=$(PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-			"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" master_repositories "${EROOT}" "${repository}")
+			output=$("${PORTAGE_BIN_PATH}/ebuild-helpers/portageq" master_repositories "${EROOT}" "${repository}")
 		fi
 		retval=$?
 		[[ -n ${output} ]] && echo "${output}"
@@ -798,8 +795,7 @@ if ___eapi_has_repository_path; then
 		if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
 			"${PORTAGE_BIN_PATH}/ebuild-ipc" repository_path "${EROOT}" "${repository}"
 		else
-			output=$(PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-			"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" get_repo_path "${EROOT}" "${repository}")
+			output=$("${PORTAGE_BIN_PATH}/ebuild-helpers/portageq" get_repo_path "${EROOT}" "${repository}")
 		fi
 		retval=$?
 		[[ -n ${output} ]] && echo "${output}"
@@ -829,8 +825,7 @@ if ___eapi_has_available_eclasses; then
 		if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
 			"${PORTAGE_BIN_PATH}/ebuild-ipc" available_eclasses "${EROOT}" "${repository}"
 		else
-			output=$(PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-			"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" available_eclasses "${EROOT}" "${repository}")
+			output=$("${PORTAGE_BIN_PATH}/ebuild-helpers/portageq" available_eclasses "${EROOT}" "${repository}")
 		fi
 		retval=$?
 		[[ -n ${output} ]] && echo "${output}"
@@ -861,8 +856,7 @@ if ___eapi_has_eclass_path; then
 		if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
 			"${PORTAGE_BIN_PATH}/ebuild-ipc" eclass_path "${EROOT}" "${repository}" "${eclass}"
 		else
-			output=$(PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-			"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" eclass_path "${EROOT}" "${repository}" "${eclass}")
+			output=$("${PORTAGE_BIN_PATH}/ebuild-helpers/portageq" eclass_path "${EROOT}" "${repository}" "${eclass}")
 		fi
 		retval=$?
 		[[ -n ${output} ]] && echo "${output}"
@@ -893,8 +887,7 @@ if ___eapi_has_license_path; then
 		if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
 			"${PORTAGE_BIN_PATH}/ebuild-ipc" license_path "${EROOT}" "${repository}" "${license}"
 		else
-			output=$(PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-			"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" license_path "${EROOT}" "${repository}" "${license}")
+			output=$("${PORTAGE_BIN_PATH}/ebuild-helpers/portageq" license_path "${EROOT}" "${repository}" "${license}")
 		fi
 		retval=$?
 		[[ -n ${output} ]] && echo "${output}"

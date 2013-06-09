@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.EbuildExecuter import EbuildExecuter
@@ -15,6 +15,7 @@ import portage
 from portage import os
 from portage.output import colorize
 from portage.package.ebuild.digestcheck import digestcheck
+from portage.package.ebuild.digestgen import digestgen
 from portage.package.ebuild.doebuild import _check_temp_dir
 from portage.const import EPREFIX
 from portage.package.ebuild._spawn_nofetch import spawn_nofetch
@@ -92,7 +93,8 @@ class EbuildBuild(CompositeTask):
 		success = True
 
 		settings = self.settings
-		if 'strict' in settings.features:
+		if 'strict' in settings.features and \
+			'digest' not in settings.features:
 			settings['O'] = os.path.dirname(self._ebuild_path)
 			quiet_setting = settings.get('PORTAGE_QUIET')
 			settings['PORTAGE_QUIET'] = '1'
@@ -161,6 +163,10 @@ class EbuildBuild(CompositeTask):
 		if self.returncode != os.EX_OK:
 			portdb = self.pkg.root_config.trees[self._tree].dbapi
 			spawn_nofetch(portdb, self._ebuild_path, settings=self.settings)
+		elif 'digest' in self.settings.features:
+			if not digestgen(mysettings=self.settings,
+				myportdb=self.pkg.root_config.trees[self._tree].dbapi):
+				self.returncode = 1
 		self.wait()
 
 	def _pre_clean_exit(self, pre_clean_phase):

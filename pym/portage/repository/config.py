@@ -80,7 +80,8 @@ class RepoConfig(object):
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'portage1_profiles', 'portage1_profiles_compat', 'priority',
 		'profile_formats', 'sign_commit', 'sign_manifest', 'sync',
-		'thin_manifest', 'update_changelog', 'user_location')
+		'thin_manifest', 'update_changelog', 'user_location',
+		'_eapis_banned', '_eapis_deprecated')
 
 	def __init__(self, name, repo_opts):
 		"""Build a RepoConfig with options in repo_opts
@@ -197,6 +198,15 @@ class RepoConfig(object):
 				any(x in _portage1_profiles_allow_directories for x in layout_data['profile-formats'])
 			self.portage1_profiles_compat = not eapi_allows_directories_on_profile_level_and_repository_level(eapi) and \
 				layout_data['profile-formats'] == ('portage-1-compat',)
+
+			self._eapis_banned = frozenset(layout_data['eapis-banned'])
+			self._eapis_deprecated = frozenset(layout_data['eapis-deprecated'])
+
+	def eapi_is_banned(self, eapi):
+		return eapi in self._eapis_banned
+
+	def eapi_is_deprecated(self, eapi):
+		return eapi in self._eapis_deprecated
 
 	def iter_pregenerated_caches(self, auxdbkeys, readonly=True, force=False):
 		"""
@@ -744,6 +754,9 @@ def parse_layout_conf(repo_location, repo_name=None):
 
 	data['allow-provide-virtual'] = \
 		layout_data.get('allow-provide-virtuals', 'false').lower() == 'true'
+
+	data['eapis-banned'] = tuple(layout_data.get('eapis-banned', '').split())
+	data['eapis-deprecated'] = tuple(layout_data.get('eapis-deprecated', '').split())
 
 	data['sign-commit'] = layout_data.get('sign-commits', 'false').lower() \
 		== 'true'

@@ -46,15 +46,17 @@ RESUMECOMMAND="wget -c -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\$
 FETCHCOMMAND_RSYNC="rsync -avP \"\${URI}\" \"\${DISTDIR}/\${FILE}\""
 RESUMECOMMAND_RSYNC="rsync -avP \"\${URI}\" \"\${DISTDIR}/\${FILE}\""
 
-FETCHCOMMAND_SSH="bash -c \"x=\\\${2#ssh://} ; host=\\\${x%%/*} ; port=\\\${host##*:} ; host=\\\${host%:*} ; [[ \\\${host} = \\\${port} ]] && port=22 ; exec rsync --rsh=\\\"ssh -p\\\${port}\\\" -avP \\\"\\\${host}:/\\\${x#*/}\\\" \\\"\\\$1\\\"\" rsync \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
+# NOTE: rsync will evaluate quotes embedded inside PORTAGE_SSH_OPTS
+FETCHCOMMAND_SSH="bash -c \"x=\\\${2#ssh://} ; host=\\\${x%%/*} ; port=\\\${host##*:} ; host=\\\${host%:*} ; [[ \\\${host} = \\\${port} ]] && port=22 ; exec rsync --rsh=\\\"ssh -p\\\${port} \\\${3}\\\" -avP \\\"\\\${host}:/\\\${x#*/}\\\" \\\"\\\$1\\\"\" rsync \"\${DISTDIR}/\${FILE}\" \"\${URI}\" \"\${PORTAGE_SSH_OPTS}\""
 RESUMECOMMAND_SSH=${FETCHCOMMAND_SSH}
 
-FETCHCOMMAND_SFTP="bash -c \"x=\\\${2#sftp://} ; host=\\\${x%%/*} ; port=\\\${host##*:} ; host=\\\${host%:*} ; [[ \\\${host} = \\\${port} ]] && port=22 ; exec sftp -P \\\${port} \\\"\\\${host}:/\\\${x#*/}\\\" \\\"\\\$1\\\"\" sftp \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
+# NOTE: bash eval is used to evaluate quotes embedded inside PORTAGE_SSH_OPTS
+FETCHCOMMAND_SFTP="bash -c \"x=\\\${2#sftp://} ; host=\\\${x%%/*} ; port=\\\${host##*:} ; host=\\\${host%:*} ; [[ \\\${host} = \\\${port} ]] && port=22 ; eval \\\"declare -a ssh_opts=(\\\${3})\\\" ; exec sftp -P \\\${port} \\\"\\\${ssh_opts[@]}\\\" \\\"\\\${host}:/\\\${x#*/}\\\" \\\"\\\$1\\\"\" sftp \"\${DISTDIR}/\${FILE}\" \"\${URI}\" \"\${PORTAGE_SSH_OPTS}\""
 
 # Default user options
 FEATURES="assume-digests binpkg-logs
           config-protect-if-modified distlocks ebuild-locks
-          fixlafiles merge-sync news parallel-fetch protect-owned
+          fixlafiles merge-sync news parallel-fetch preserve-libs protect-owned
           sandbox sfperms strict unknown-features-warn unmerge-logs
           unmerge-orphans userfetch"
 

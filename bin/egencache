@@ -83,7 +83,7 @@ def parse_args(args):
 	actions = optparse.OptionGroup(parser, 'Actions')
 	actions.add_option("--update",
 		action="store_true",
-		help="update metadata/cache/ (generate as necessary)")
+		help="update metadata/md5-cache/ (generate as necessary)")
 	actions.add_option("--update-use-local-desc",
 		action="store_true",
 		help="update the use.local.desc file from metadata.xml")
@@ -388,8 +388,8 @@ class GenCache(object):
 				self.returncode |= 1
 				writemsg_level(
 					"Error listing cache entries for " + \
-					"'%s/metadata/cache': %s, continuing...\n" % \
-					(self._portdb.porttree_root, ce),
+					"'%s': %s, continuing...\n" % \
+					(trg_cache.location, ce),
 					level=logging.ERROR, noiselevel=-1)
 
 		else:
@@ -410,8 +410,8 @@ class GenCache(object):
 				self.returncode |= 1
 				writemsg_level(
 					"Error listing cache entries for " + \
-					"'%s/metadata/cache': %s, continuing...\n" % \
-					(self._portdb.porttree_root, ce),
+					"'%s': %s, continuing...\n" % \
+					(trg_cache.location, ce),
 					level=logging.ERROR, noiselevel=-1)
 
 		if cp_missing:
@@ -874,7 +874,8 @@ def egencache_main(args):
 
 	default_opts = None
 	if not options.ignore_default_opts:
-		default_opts = settings.get('EGENCACHE_DEFAULT_OPTS', '').split()
+		default_opts = portage.util.shlex_split(
+			settings.get('EGENCACHE_DEFAULT_OPTS', ''))
 
 	if default_opts:
 		parser, options, args = parse_args(default_opts + args)

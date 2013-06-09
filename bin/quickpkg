@@ -310,7 +310,8 @@ if __name__ == "__main__":
 		help="include files protected by CONFIG_PROTECT that have not been modified since installation (as a security precaution, default is 'n')")
 	options, args = parser.parse_args(sys.argv[1:])
 	if not options.ignore_default_opts:
-		default_opts = portage.settings.get("QUICKPKG_DEFAULT_OPTS","").split()
+		default_opts = shlex_split(
+			portage.settings.get("QUICKPKG_DEFAULT_OPTS", ""))
 		options, args = parser.parse_args(default_opts + sys.argv[1:])
 	if not args:
 		parser.error("no packages atoms given")

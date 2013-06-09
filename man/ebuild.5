@@ -1,4 +1,4 @@
-.TH "EBUILD" "5" "Mar 2013" "Portage VERSION" "Portage"
+.TH "EBUILD" "5" "May 2013" "Portage VERSION" "Portage"
 
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
@@ -712,6 +712,10 @@ This variable should only be used when a package provides a virtual target.
 For example, blackdown\-jdk and sun\-jdk provide \fIvirtual/jdk\fR.  This
 allows for packages to depend on \fIvirtual/jdk\fR rather than on blackdown
 or sun specifically.
+
+The \fBPROVIDE\fR variable has been deprecated. See
+\fIhttp://www.gentoo.org/proj/en/glep/glep-0037.html\fR for details.
+
 .TP
 .B DOCS
 Beginning with \fBEAPI 4\fR, an array or space\-delimited list of documentation

@@ -413,7 +413,7 @@ class UseManager(object):
 		return frozenset(stack_lists(useforce, incremental=True))
 
 	def getUseAliases(self, pkg):
-		if not eapi_has_use_aliases(pkg.eapi):
+		if hasattr(pkg, "eapi") and not eapi_has_use_aliases(pkg.eapi):
 			return {}
 
 		cp = getattr(pkg, "cp", None)

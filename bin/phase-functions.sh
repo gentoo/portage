@@ -461,12 +461,6 @@ __dyn_test() {
 		return
 	fi
 
-	if [[ ${EBUILD_FORCE_TEST} == 1 && test =~ $PORTAGE_IUSE ]]; then
-		# If USE came from ${T}/environment then it might not have USE=test
-		# like it's supposed to here.
-		! has test ${USE} && export USE="${USE} test"
-	fi
-
 	trap "__abort_test" SIGINT SIGQUIT
 	if [ -d "${S}" ]; then
 		cd "${S}"
@@ -474,12 +468,22 @@ __dyn_test() {
 		cd "${WORKDIR}"
 	fi
 
-	if ! has test $FEATURES && [ "${EBUILD_FORCE_TEST}" != "1" ]; then
-		__vecho ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
-	elif has test $RESTRICT; then
+	if has test ${RESTRICT} ; then
 		einfo "Skipping make test/check due to ebuild restriction."
-		__vecho ">>> Test phase [explicitly disabled]: ${CATEGORY}/${PF}"
+		__vecho ">>> Test phase [disabled because of RESTRICT=test]: ${CATEGORY}/${PF}"
+
+	# If ${EBUILD_FORCE_TEST} == 1 and FEATURES came from ${T}/environment
+	# then it might not have FEATURES=test like it's supposed to here.
+	elif [[ ${EBUILD_FORCE_TEST} != 1 ]] && ! has test ${FEATURES} ; then
+		__vecho ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
 	else
+		# If ${EBUILD_FORCE_TEST} == 1 and USE came from ${T}/environment
+		# then it might not have USE=test like it's supposed to here.
+		if [[ ${EBUILD_FORCE_TEST} == 1 && test =~ ${PORTAGE_IUSE} ]] && \
+			! has test ${USE} ; then
+			export USE="${USE} test"
+		fi
+
 		local save_sp=${SANDBOX_PREDICT}
 		addpredict /
 		__ebuild_phase pre_src_test
@@ -582,9 +586,13 @@ __dyn_install() {
 	# local variables can leak into the saved environment.
 	unset f
 
+	# Use safe cwd, avoiding unsafe import for bug #469338.
+	cd "${PORTAGE_PYM_PATH}"
 	__save_ebuild_env --exclude-init-phases | __filter_readonly_variables \
-		--filter-path --filter-sandbox --allow-extra-vars > environment
+		--filter-path --filter-sandbox --allow-extra-vars > \
+		"${PORTAGE_BUILDDIR}"/build-info/environment
 	assert "__save_ebuild_env failed"
+	cd "${PORTAGE_BUILDDIR}"/build-info || die
 
 	${PORTAGE_BZIP2_COMMAND} -f9 environment
 
@@ -875,6 +883,8 @@ __ebuild_main() {
 		if [[ -n $PORTAGE_UPDATE_ENV ]] ; then
 			# Update environment.bz2 in case installation phases
 			# need to pass some variables to uninstallation phases.
+			# Use safe cwd, avoiding unsafe import for bug #469338.
+			cd "${PORTAGE_PYM_PATH}"
 			__save_ebuild_env --exclude-init-phases | \
 				__filter_readonly_variables --filter-path \
 				--filter-sandbox --allow-extra-vars \
@@ -975,6 +985,8 @@ __ebuild_main() {
 	# Save the env only for relevant phases.
 	if ! has "${1}" clean help info nofetch ; then
 		umask 002
+		# Use safe cwd, avoiding unsafe import for bug #469338.
+		cd "${PORTAGE_PYM_PATH}"
 		__save_ebuild_env | __filter_readonly_variables \
 			--filter-features > "$T/environment"
 		assert "__save_ebuild_env failed"

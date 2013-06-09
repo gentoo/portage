@@ -29,7 +29,7 @@ from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString
 from portage.localization import _
 from portage.versions import catpkgsplit, catsplit, \
-	vercmp, ververify, _cp, _cpv, _pkg_str, _slot, _unknown_repo
+	vercmp, ververify, _cp, _cpv, _pkg_str, _slot, _unknown_repo, _vr
 import portage.cache.mappings
 
 if sys.hexversion >= 0x3000000:
@@ -121,7 +121,7 @@ def _get_atom_wildcard_re(eapi_attrs):
 		pkg_re = r'[\w+*][\w+*-]*?'
 
 	atom_re = re.compile(r'((?P<simple>(' +
-		_extended_cat + r')/(' + pkg_re + r'))' + \
+		_extended_cat + r')/(' + pkg_re + r'(-' + _vr + ')?))' + \
 		'|(?P<star>=((' + _extended_cat + r')/(' + pkg_re + r'))-(?P<version>\*\w+\*)))' + \
 		'(:(?P<slot>' + _slot_loose + r'))?(' +
 		_repo_separator + r'(?P<repo>' + _repo_name + r'))?$', re.UNICODE)
@@ -1243,6 +1243,8 @@ class Atom(_unicode):
 				else:
 					op = None
 					cpv = cp = m.group('simple')
+					if m.group(atom_re.groupindex['simple'] + 3) is not None:
+						raise InvalidAtom(self)
 				if cpv.find("**") != -1:
 					raise InvalidAtom(self)
 				slot = m.group('slot')
@@ -2162,15 +2164,37 @@ def match_from_list(mydep, candidate_list):
 		myver = mycpv_cps[2].lstrip("0")
 		if not myver or not myver[0].isdigit():
 			myver = "0"+myver
-		mycpv_cmp = mycpv_cps[0] + "/" + mycpv_cps[1] + "-" + myver
+		if myver == mycpv_cps[2]:
+			mycpv_cmp = mycpv
+		else:
+			# Use replace to preserve the revision part if it exists
+			# (mycpv_cps[3] can't be trusted because in contains r0
+			# even when the input has no revision part).
+			mycpv_cmp = mycpv.replace(
+				mydep.cp + "-" + mycpv_cps[2],
+				mydep.cp + "-" + myver, 1)
 		for x in candidate_list:
-			xs = getattr(x, "cpv_split", None)
-			if xs is None:
-				xs = catpkgsplit(remove_slot(x))
+			try:
+				x.cp
+			except AttributeError:
+				try:
+					pkg = _pkg_str(remove_slot(x))
+				except InvalidData:
+					continue
+			else:
+				pkg = x
+
+			xs = pkg.cpv_split
 			myver = xs[2].lstrip("0")
 			if not myver or not myver[0].isdigit():
 				myver = "0"+myver
-			xcpv = xs[0]+"/"+xs[1]+"-"+myver
+			if myver == xs[2]:
+				xcpv = pkg.cpv
+			else:
+				# Use replace to preserve the revision part if it exists.
+				xcpv = pkg.cpv.replace(
+					pkg.cp + "-" + xs[2],
+					pkg.cp + "-" + myver, 1)
 			if xcpv.startswith(mycpv_cmp):
 				mylist.append(x)
 

@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Apr 2013" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "May 2013" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -394,14 +394,8 @@ This feature is enabled by default.
 Automatically perform a metadata transfer when `emerge \-\-sync` is run.
 In versions of portage >=2.1.5, this feature is disabled by
 default. When metadata\-transfer is disabled, metadata cache from the
-${PORTDIR}/metadata/cache/ directory will be used directly (if available)
-and eclasses in ${PORTDIR}/eclass/ must not be modified except by
-`emerge \-\-sync` operations since the cache validation mechanism
-will not recognize eclass modifications. Normally, this issue only
-pertains to users of the rsync tree since the cvs tree does not contain
-a metadata/cache/ directory. Users of the rsync tree who want to modify
-eclasses should use \fBPORTDIR_OVERLAY\fR in order for the cache
-validation mechanism to work correctly.
+${PORTDIR}/metadata/md5\-cache/ directory will be used directly
+(if available).
 .TP
 .B mirror
 Fetch everything in \fBSRC_URI\fR regardless of \fBUSE\fR settings,
@@ -866,6 +860,14 @@ addresses are exhausted.
 .br
 Defaults to -1.
 .TP
+\fBPORTAGE_SSH_OPTS\fR = \fI[list of ssh options]\fR
+Additional ssh options to be used when portage executes ssh or sftp.
+This variable supports use of embedded quote characters to quote
+whitespace or special shell characters within arguments (embedded
+quotes must be escaped in make.conf settings).
+.br
+Defaults to no value.
+.TP
 \fBPORTAGE_SYNC_STALE\fR = \fI[NUMBER]\fR
 Defines the number of days after the last `emerge \-\-sync` that a warning
 message should be produced. A value of 0 will disable warnings.
@@ -971,6 +973,22 @@ Insert your preferred rsync mirror here.  This rsync server
 is used to sync the local portage tree when `emerge \-\-sync` is run.
 .br
 Defaults to rsync://rsync.gentoo.org/gentoo\-portage
+.RS
+.TP
+.B Usage:
+(rsync|ssh)://[username@]hostname[:port]/(module|path)
+.TP
+.B Examples:
+rsync://private\-mirror.com/portage\-module
+.br
+rsync://rsync\-user@private\-mirror.com:873/gentoo\-portage
+.br
+ssh://ssh\-user@192.168.0.1:22/usr/portage
+.br
+ssh://ssh\-user@192.168.0.1:22/\\${HOME}/portage\-storage
+.TP
+Note: For the ssh:// scheme, key\-based authentication might be of interest.
+.RE
 .TP
 \fBUNINSTALL_IGNORE\fR = \fI[space delimited list of fnmatch patterns]\fR
 This variable prevents uninstallation of files that match

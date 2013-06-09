@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 #
 # Miscellaneous shell functions that make use of the ebuild env but don't need
@@ -754,6 +754,7 @@ install_qa_check_misc() {
 			": warning: reference to local variable .* returned"
 			": warning: returning reference to temporary"
 			": warning: function returns address of local variable"
+			": warning: .*\\[-Wsizeof-pointer-memaccess\\]"
 			# this may be valid code :/
 			#": warning: multi-character character constant"
 			# need to check these two ...
@@ -803,7 +804,8 @@ install_qa_check_misc() {
 		local cat_cmd=cat
 		[[ $PORTAGE_LOG_FILE = *.gz ]] && cat_cmd=zcat
 		[[ $reset_debug = 1 ]] && set -x
-		f=$($cat_cmd "${PORTAGE_LOG_FILE}" | \
+		# Use safe cwd, avoiding unsafe import for bug #469338.
+		f=$(cd "${PORTAGE_PYM_PATH}" ; $cat_cmd "${PORTAGE_LOG_FILE}" | \
 			"${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" "$PORTAGE_BIN_PATH"/check-implicit-pointer-usage.py || die "check-implicit-pointer-usage.py failed")
 		if [[ -n ${f} ]] ; then
 

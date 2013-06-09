@@ -86,6 +86,7 @@ class MetadataRegen(AsyncScheduler):
 
 		self._termination_check()
 		if self._terminated_tasks:
+			portdb.flush_cache()
 			self.returncode = self._cancelled_returncode
 			return self.returncode
 
@@ -130,6 +131,7 @@ class MetadataRegen(AsyncScheduler):
 					except (KeyError, CacheError):
 						pass
 
+		portdb.flush_cache()
 		return self.returncode
 
 	def _task_exit(self, metadata_process):

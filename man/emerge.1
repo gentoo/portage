@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Feb 2013" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "May 2013" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -170,7 +170,7 @@ with the \fI\-\-verbose\fR option.
 Displays a list of available package sets.
 .TP
 .BR \-\-metadata
-Transfers metadata cache from ${PORTDIR}/metadata/cache/ to
+Transfers metadata cache from ${PORTDIR}/metadata/md5\-cache/ to
 /var/cache/edb/dep/ as is normally done on the
 tail end of an rsync update using \fBemerge \-\-sync\fR.  This process
 populates the cache database that portage uses for pre-parsed lookups of
@@ -211,6 +211,9 @@ success condition. A resume list will persist until it has been completed in
 entirety or until another aborted merge list replaces it.  The resume history
 is capable of storing two merge lists.  After one resume list completes, it is
 possible to invoke \-\-resume once again in order to resume an older list.
+The resume lists are stored in \fI/var/cache/edb/mtimedb\fR, and may be
+explicitly discarded by running `emaint \-\-fix cleanresume` (see
+\fBemaint\fR(1)).
 .TP
 .BR "\-\-search " (\fB\-s\fR)
 Searches for matches of the supplied string in the portage tree.
