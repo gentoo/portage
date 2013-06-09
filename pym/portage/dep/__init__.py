@@ -2164,15 +2164,37 @@ def match_from_list(mydep, candidate_list):
 		myver = mycpv_cps[2].lstrip("0")
 		if not myver or not myver[0].isdigit():
 			myver = "0"+myver
-		mycpv_cmp = mycpv_cps[0] + "/" + mycpv_cps[1] + "-" + myver
+		if myver == mycpv_cps[2]:
+			mycpv_cmp = mycpv
+		else:
+			# Use replace to preserve the revision part if it exists
+			# (mycpv_cps[3] can't be trusted because in contains r0
+			# even when the input has no revision part).
+			mycpv_cmp = mycpv.replace(
+				mydep.cp + "-" + mycpv_cps[2],
+				mydep.cp + "-" + myver, 1)
 		for x in candidate_list:
-			xs = getattr(x, "cpv_split", None)
-			if xs is None:
-				xs = catpkgsplit(remove_slot(x))
+			try:
+				x.cp
+			except AttributeError:
+				try:
+					pkg = _pkg_str(remove_slot(x))
+				except InvalidData:
+					continue
+			else:
+				pkg = x
+
+			xs = pkg.cpv_split
 			myver = xs[2].lstrip("0")
 			if not myver or not myver[0].isdigit():
 				myver = "0"+myver
-			xcpv = xs[0]+"/"+xs[1]+"-"+myver
+			if myver == xs[2]:
+				xcpv = pkg.cpv
+			else:
+				# Use replace to preserve the revision part if it exists.
+				xcpv = pkg.cpv.replace(
+					pkg.cp + "-" + xs[2],
+					pkg.cp + "-" + myver, 1)
 			if xcpv.startswith(mycpv_cmp):
 				mylist.append(x)
 

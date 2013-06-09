@@ -1,4 +1,4 @@
-# Copyright 2006-2012 Gentoo Foundation
+# Copyright 2006-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -71,6 +71,11 @@ class Test_match_from_list(TestCase):
 			(">sys-apps/portage-047", ["sys-apps/portage-046-r1"], []),
 			("sys-apps/portage:0", [Package("=sys-apps/portage-045:0")], ["sys-apps/portage-045"]),
 			("sys-apps/portage:0", [Package("=sys-apps/portage-045:1")], []),
+			("=cat/pkg-1-r1*", ["cat/pkg-1_alpha1"], []),
+			("=cat/pkg-1-r1*", ["cat/pkg-1-r11"], ["cat/pkg-1-r11"]),
+			("=cat/pkg-1-r1*", ["cat/pkg-01-r11"], ["cat/pkg-01-r11"]),
+			("=cat/pkg-01-r1*", ["cat/pkg-1-r11"], ["cat/pkg-1-r11"]),
+			("=cat/pkg-01-r1*", ["cat/pkg-001-r11"], ["cat/pkg-001-r11"]),
 			("=sys-fs/udev-1*", ["sys-fs/udev-123"], ["sys-fs/udev-123"]),
 			("=sys-fs/udev-4*", ["sys-fs/udev-456"], ["sys-fs/udev-456"]),
 			("*/*", ["sys-fs/udev-456"], ["sys-fs/udev-456"]),
