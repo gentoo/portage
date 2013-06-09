@@ -1055,4 +1055,11 @@ def emerge_main(args=None):
 	emerge_config.action, emerge_config.opts, emerge_config.args = \
 		parse_opts(tmpcmdline)
 
-	return run_action(emerge_config)
+	try:
+		return run_action(emerge_config)
+	finally:
+		# Call destructors for our portdbapi instances.
+		for x in emerge_config.trees.values():
+			if "porttree" in x.lazy_items:
+				continue
+			x["porttree"].dbapi.close_caches()
