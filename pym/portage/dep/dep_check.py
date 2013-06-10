@@ -622,8 +622,8 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	except ParseError as e:
 		return [0, "%s" % (e,)]
 
-	mysplit2=mysplit[:]
-	mysplit2=dep_wordreduce(mysplit2,mysettings,mydbapi,mode,use_cache=use_cache)
+	mysplit2 = dep_wordreduce(mysplit,
+		mysettings, mydbapi, mode, use_cache=use_cache)
 	if mysplit2 is None:
 		return [0, _("Invalid token")]
 
