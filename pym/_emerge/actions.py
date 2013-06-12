@@ -3183,14 +3183,13 @@ class _emerge_config(SlotObject):
 	__slots__ = ('action', 'args', 'mtimedb', 'opts', 'settings', 'trees')
 
 	# Support unpack as tuple, for load_emerge_config backward compatibility.
+	def __iter__(self):
+		yield self.settings
+		yield self.trees
+		yield self.mtimedb
+
 	def __getitem__(self, index):
-		if index == 0:
-			return self.settings
-		elif index == 1:
-			return self.trees
-		elif index == 2:
-			return self.mtimedb
-		raise IndexError(index)
+		return list(self)[index]
 
 	def __len__(self):
 		return 3

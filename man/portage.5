@@ -15,11 +15,6 @@ If you are looking for information on how to emerge something, please see
 .BR emerge (1).
 .SH "SYNOPSIS"
 .TP
-.BR /etc/
-.nf
-.BR make.conf (5)
-.fi
-.TP
 \fB/etc/portage/make.profile/\fR or \fB/etc/make.profile/\fR
 site\-specific overrides go in \fB/etc/portage/profile/\fR
 .nf
@@ -53,7 +48,7 @@ bashrc
 categories
 color.map
 license_groups
-make.conf
+.BR make.conf (5)
 mirrors
 modules
 package.accept_keywords
@@ -204,13 +199,6 @@ More reading:
 .BR ebuild (5)
 .RE
 .SH "SPECIFIC FILE DESCRIPTIONS"
-.TP
-.BR /etc/
-.RS
-.TP
-.BR make.conf
-The global custom settings for Portage.  See \fBmake.conf\fR(5).
-.RE
 .TP
 \fB/etc/portage/make.profile/\fR or \fB/etc/make.profile/\fR
 This is usually just a symlink to the correct profile in 
@@ -577,7 +565,6 @@ Contains variables customizing colors. See \fBcolor.map\fR(5).
 .TP
 .BR make.conf
 The global custom settings for Portage. See \fBmake.conf\fR(5).
-If present, this file will override settings from /etc/make.conf.
 .TP
 .BR mirrors
 Whenever portage encounters a mirror:// style URI it will look up the actual 
