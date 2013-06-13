@@ -50,6 +50,7 @@ from _emerge.AtomArg import AtomArg
 from _emerge.Blocker import Blocker
 from _emerge.BlockerCache import BlockerCache
 from _emerge.BlockerDepPriority import BlockerDepPriority
+from .chk_updated_cfg_files import chk_updated_cfg_files
 from _emerge.countdown import countdown
 from _emerge.create_world_atom import create_world_atom
 from _emerge.Dependency import Dependency
@@ -7119,8 +7120,11 @@ class depgraph(object):
 				noiselevel=-1)
 			writemsg("".join(problems), noiselevel=-1)
 		elif write_to_file and roots:
-			writemsg("\nAutounmask changes successfully written. Remember to run dispatch-conf.\n", \
+			writemsg("\nAutounmask changes successfully written.\n",
 				noiselevel=-1)
+			for root in roots:
+				chk_updated_cfg_files(root,
+					[os.path.join(os.sep, USER_CONFIG_PATH)])
 		elif not pretend and not autounmask_write and roots:
 			writemsg("\nUse --autounmask-write to write changes to config files (honoring\n"
 				"CONFIG_PROTECT). Carefully examine the list of proposed changes,\n"
