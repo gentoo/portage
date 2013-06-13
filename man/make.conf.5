@@ -618,9 +618,9 @@ the \fIebuild scripts\fR. Merging 'mirrorselect' can help.  Entries in this
 variable that have no protocol and simply start with a '/' path separator may
 be used to specify mounted filesystem mirrors.
 .TP
-\fBhttp_proxy ftp_proxy\fR = \fI[protocol://host:port]\fR
-These vars are used if the sources must be downloaded from the
-internet by \fBwget\fR(1).  They are only required if you use a
+\fBhttp_proxy ftp_proxy RSYNC_PROXY\fR = \fI[protocol://host:port]\fR
+These variables are used by network clients such as \fBwget\fR(1) and
+\fBrsync\fR(1). They are only required if you use a
 proxy server for internet access.
 .TP
 \fBINSTALL_MASK\fR = \fI[space delimited list of file names]\fR
