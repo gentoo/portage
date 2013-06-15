@@ -6734,7 +6734,14 @@ class depgraph(object):
 					else:
 						# Display the specific atom from SetArg or
 						# Package types.
-						msg.append("%s required by %s" % (atom, parent))
+						if atom != atom.unevaluated_atom:
+							# Show the unevaluated atom, since it can reveal
+							# issues with conditional use-flags missing
+							# from IUSE.
+							msg.append("%s (%s) required by %s" %
+								(atom.unevaluated_atom, atom, parent))
+						else:
+							msg.append("%s required by %s" % (atom, parent))
 					msg.append("\n")
 
 				msg.append("\n")
