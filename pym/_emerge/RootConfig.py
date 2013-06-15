@@ -1,10 +1,10 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 class RootConfig(object):
 	"""This is used internally by depgraph to track information about a
 	particular $ROOT."""
-	__slots__ = ("root", "setconfig", "sets", "settings", "trees")
+	__slots__ = ("mtimedb", "root", "setconfig", "sets", "settings", "trees")
 
 	pkg_tree_map = {
 		"ebuild"    : "porttree",

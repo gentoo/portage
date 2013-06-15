@@ -3131,13 +3131,14 @@ def git_sync_timestamps(portdb, portdir):
 
 class _emerge_config(SlotObject):
 
-	__slots__ = ('action', 'args', 'mtimedb', 'opts', 'settings', 'trees')
+	__slots__ = ('action', 'args', 'opts',
+		'running_config', 'target_config', 'trees')
 
 	# Support unpack as tuple, for load_emerge_config backward compatibility.
 	def __iter__(self):
-		yield self.settings
+		yield self.target_config.settings
 		yield self.trees
-		yield self.mtimedb
+		yield self.target_config.mtimedb
 
 	def __getitem__(self, index):
 		return list(self)[index]
@@ -3165,9 +3166,12 @@ def load_emerge_config(emerge_config=None, **kargs):
 		root_trees["root_config"] = RootConfig(settings, root_trees, setconfig)
 
 	target_eroot = emerge_config.trees._target_eroot
-	emerge_config.settings = emerge_config.trees[target_eroot]['vartree'].settings
-	emerge_config.mtimedb = portage.MtimeDB(
+	emerge_config.target_config = \
+		emerge_config.trees[target_eroot]['root_config']
+	emerge_config.target_config.mtimedb = portage.MtimeDB(
 		os.path.join(target_eroot, portage.CACHE_PATH, "mtimedb"))
+	emerge_config.running_config = emerge_config.trees[
+		emerge_config.trees._running_eroot]['root_config']
 	QueryCommand._db = emerge_config.trees
 
 	return emerge_config
@@ -3532,204 +3536,211 @@ def repo_name_duplicate_check(trees):
 
 def run_action(emerge_config):
 
-	myaction = emerge_config.action
-	myfiles = emerge_config.args
-	mtimedb = emerge_config.mtimedb
-	myopts = emerge_config.opts
-	settings = emerge_config.settings
-	trees = emerge_config.trees
-
 	# skip global updates prior to sync, since it's called after sync
-	if myaction not in ('help', 'info', 'sync', 'version') and \
-		myopts.get('--package-moves') != 'n' and \
-		_global_updates(trees, mtimedb["updates"], quiet=("--quiet" in myopts)):
-		mtimedb.commit()
+	if emerge_config.action not in ('help', 'info', 'sync', 'version') and \
+		emerge_config.opts.get('--package-moves') != 'n' and \
+		_global_updates(emerge_config.trees,
+		emerge_config.target_config.mtimedb["updates"],
+		quiet=("--quiet" in emerge_config.opts)):
+		emerge_config.target_config.mtimedb.commit()
 		# Reload the whole config from scratch.
-		settings, trees, mtimedb = \
-			load_emerge_config(emerge_config=emerge_config)
+		load_emerge_config(emerge_config=emerge_config)
 
-	xterm_titles = "notitles" not in settings.features
+	xterm_titles = "notitles" not in \
+		emerge_config.target_config.settings.features
 	if xterm_titles:
 		xtermTitle("emerge")
 
-	if "--digest" in myopts:
+	if "--digest" in emerge_config.opts:
 		os.environ["FEATURES"] = os.environ.get("FEATURES","") + " digest"
 		# Reload the whole config from scratch so that the portdbapi internal
 		# config is updated with new FEATURES.
-		settings, trees, mtimedb = \
-			load_emerge_config(emerge_config=emerge_config)
+		load_emerge_config(emerge_config=emerge_config)
 
 	# NOTE: adjust_configs() can map options to FEATURES, so any relevant
 	# options adjustments should be made prior to calling adjust_configs().
-	if "--buildpkgonly" in myopts:
-		myopts["--buildpkg"] = True
+	if "--buildpkgonly" in emerge_config.opts:
+		emerge_config.opts["--buildpkg"] = True
 
-	if "getbinpkg" in settings.features:
-		myopts["--getbinpkg"] = True
+	if "getbinpkg" in emerge_config.target_config.settings.features:
+		emerge_config.opts["--getbinpkg"] = True
 
-	if "--getbinpkgonly" in myopts:
-		myopts["--getbinpkg"] = True
+	if "--getbinpkgonly" in emerge_config.opts:
+		emerge_config.opts["--getbinpkg"] = True
 
-	if "--getbinpkgonly" in myopts:
-		myopts["--usepkgonly"] = True
+	if "--getbinpkgonly" in emerge_config.opts:
+		emerge_config.opts["--usepkgonly"] = True
 
-	if "--getbinpkg" in myopts:
-		myopts["--usepkg"] = True
+	if "--getbinpkg" in emerge_config.opts:
+		emerge_config.opts["--usepkg"] = True
 
-	if "--usepkgonly" in myopts:
-		myopts["--usepkg"] = True
+	if "--usepkgonly" in emerge_config.opts:
+		emerge_config.opts["--usepkg"] = True
 
-	if "--buildpkgonly" in myopts:
+	if "--buildpkgonly" in emerge_config.opts:
 		# --buildpkgonly will not merge anything, so
 		# it cancels all binary package options.
 		for opt in ("--getbinpkg", "--getbinpkgonly",
 			"--usepkg", "--usepkgonly"):
-			myopts.pop(opt, None)
+			emerge_config.opts.pop(opt, None)
 
-	adjust_configs(myopts, trees)
-	apply_priorities(settings)
+	adjust_configs(emerge_config.opts, emerge_config.trees)
+	apply_priorities(emerge_config.target_config.settings)
 
-	if myaction == 'version':
+	if emerge_config.action == 'version':
 		writemsg_stdout(getportageversion(
-			settings["PORTDIR"], None,
-			settings.profile_path, settings["CHOST"],
-			trees[settings['EROOT']]['vartree'].dbapi) + '\n', noiselevel=-1)
+			emerge_config.target_config.settings["PORTDIR"],
+			None,
+			emerge_config.target_config.settings.profile_path,
+			emerge_config.target_config.settings["CHOST"],
+			emerge_config.target_config.trees['vartree'].dbapi) + '\n',
+			noiselevel=-1)
 		return 0
-	elif myaction == 'help':
+	elif emerge_config.action == 'help':
 		emerge_help()
 		return 0
 
 	spinner = stdout_spinner()
-	if "candy" in settings.features:
+	if "candy" in emerge_config.target_config.settings.features:
 		spinner.update = spinner.update_scroll
 
-	if "--quiet" not in myopts:
-		portage.deprecated_profile_check(settings=settings)
+	if "--quiet" not in emerge_config.opts:
+		portage.deprecated_profile_check(
+			settings=emerge_config.target_config.settings)
 		if portage.const._ENABLE_REPO_NAME_WARN:
 			# Bug #248603 - Disable warnings about missing
 			# repo_name entries for stable branch.
-			repo_name_check(trees)
-		repo_name_duplicate_check(trees)
-		config_protect_check(trees)
+			repo_name_check(emerge_config.trees)
+		repo_name_duplicate_check(emerge_config.trees)
+		config_protect_check(emerge_config.trees)
 	check_procfs()
 
-	for mytrees in trees.values():
+	for mytrees in emerge_config.trees.values():
 		mydb = mytrees["porttree"].dbapi
 		# Freeze the portdbapi for performance (memoize all xmatch results).
 		mydb.freeze()
 
-		if myaction in ('search', None) and \
-			"--usepkg" in myopts:
+		if emerge_config.action in ('search', None) and \
+			"--usepkg" in emerge_config.opts:
 			# Populate the bintree with current --getbinpkg setting.
 			# This needs to happen before expand_set_arguments(), in case
 			# any sets use the bintree.
 			mytrees["bintree"].populate(
-				getbinpkgs="--getbinpkg" in myopts)
+				getbinpkgs="--getbinpkg" in emerge_config.opts)
 
 	del mytrees, mydb
 
-	for x in myfiles:
+	for x in emerge_config.args:
 		if x.endswith((".ebuild", ".tbz2")) and \
 			os.path.exists(os.path.abspath(x)):
 			print(colorize("BAD", "\n*** emerging by path is broken "
 				"and may not always work!!!\n"))
 			break
 
-	root_config = trees[settings['EROOT']]['root_config']
-
-	if myaction == "list-sets":
-		writemsg_stdout("".join("%s\n" % s for s in sorted(root_config.sets)))
+	if emerge_config.action == "list-sets":
+		writemsg_stdout("".join("%s\n" % s for s in
+			sorted(emerge_config.target_config.sets)))
 		return os.EX_OK
-	elif myaction == "check-news":
+	elif emerge_config.action == "check-news":
 		news_counts = count_unread_news(
-			root_config.trees["porttree"].dbapi,
-			root_config.trees["vartree"].dbapi)
+			emerge_config.target_config.trees["porttree"].dbapi,
+			emerge_config.target_config.trees["vartree"].dbapi)
 		if any(news_counts.values()):
 			display_news_notifications(news_counts)
-		elif "--quiet" not in myopts:
+		elif "--quiet" not in emerge_config.opts:
 			print("", colorize("GOOD", "*"), "No news items were found.")
 		return os.EX_OK
 
-	ensure_required_sets(trees)
+	ensure_required_sets(emerge_config.trees)
 
 	# only expand sets for actions taking package arguments
-	oldargs = myfiles[:]
-	if myaction in ("clean", "config", "depclean",
+	oldargs = emerge_config.args[:]
+	if emerge_config.action in ("clean", "config", "depclean",
 		"info", "prune", "unmerge", None):
-		myfiles, retval = expand_set_arguments(myfiles, myaction, root_config)
+		newargs, retval = expand_set_arguments(
+			emerge_config.args, emerge_config.action,
+			emerge_config.target_config)
 		if retval != os.EX_OK:
 			return retval
 
 		# Need to handle empty sets specially, otherwise emerge will react 
 		# with the help message for empty argument lists
-		if oldargs and not myfiles:
+		if oldargs and not newargs:
 			print("emerge: no targets left after set expansion")
 			return 0
 
-	if ("--tree" in myopts) and ("--columns" in myopts):
+		emerge_config.args = newargs
+
+	if "--tree" in emerge_config.opts and \
+		"--columns" in emerge_config.opts:
 		print("emerge: can't specify both of \"--tree\" and \"--columns\".")
 		return 1
 
-	if '--emptytree' in myopts and '--noreplace' in myopts:
+	if '--emptytree' in emerge_config.opts and \
+		'--noreplace' in emerge_config.opts:
 		writemsg_level("emerge: can't specify both of " + \
 			"\"--emptytree\" and \"--noreplace\".\n",
 			level=logging.ERROR, noiselevel=-1)
 		return 1
 
-	if ("--quiet" in myopts):
+	if ("--quiet" in emerge_config.opts):
 		spinner.update = spinner.update_quiet
 		portage.util.noiselimit = -1
 
-	if "--fetch-all-uri" in myopts:
-		myopts["--fetchonly"] = True
+	if "--fetch-all-uri" in emerge_config.opts:
+		emerge_config.opts["--fetchonly"] = True
 
-	if "--skipfirst" in myopts and "--resume" not in myopts:
-		myopts["--resume"] = True
+	if "--skipfirst" in emerge_config.opts and \
+		"--resume" not in emerge_config.opts:
+		emerge_config.opts["--resume"] = True
 
 	# Allow -p to remove --ask
-	if "--pretend" in myopts:
-		myopts.pop("--ask", None)
+	if "--pretend" in emerge_config.opts:
+		emerge_config.opts.pop("--ask", None)
 
 	# forbid --ask when not in a terminal
 	# note: this breaks `emerge --ask | tee logfile`, but that doesn't work anyway.
-	if ("--ask" in myopts) and (not sys.stdin.isatty()):
+	if ("--ask" in emerge_config.opts) and (not sys.stdin.isatty()):
 		portage.writemsg("!!! \"--ask\" should only be used in a terminal. Exiting.\n",
 			noiselevel=-1)
 		return 1
 
-	if settings.get("PORTAGE_DEBUG", "") == "1":
+	if emerge_config.target_config.settings.get("PORTAGE_DEBUG", "") == "1":
 		spinner.update = spinner.update_quiet
 		portage.util.noiselimit = 0
-		if "python-trace" in settings.features:
+		if "python-trace" in emerge_config.target_config.settings.features:
 			portage.debug.set_trace(True)
 
-	if not ("--quiet" in myopts):
-		if '--nospinner' in myopts or \
-			settings.get('TERM') == 'dumb' or \
+	if not ("--quiet" in emerge_config.opts):
+		if '--nospinner' in emerge_config.opts or \
+			emerge_config.target_config.settings.get('TERM') == 'dumb' or \
 			not sys.stdout.isatty():
 			spinner.update = spinner.update_basic
 
-	if "--debug" in myopts:
-		print("myaction", myaction)
-		print("myopts", myopts)
+	if "--debug" in emerge_config.opts:
+		print("myaction", emerge_config.action)
+		print("myopts", emerge_config.opts)
 
-	if not myaction and not myfiles and "--resume" not in myopts:
+	if not emerge_config.action and not emerge_config.args and \
+		"--resume" not in emerge_config.opts:
 		emerge_help()
 		return 1
 
-	pretend = "--pretend" in myopts
-	fetchonly = "--fetchonly" in myopts or "--fetch-all-uri" in myopts
-	buildpkgonly = "--buildpkgonly" in myopts
+	pretend = "--pretend" in emerge_config.opts
+	fetchonly = "--fetchonly" in emerge_config.opts or \
+		"--fetch-all-uri" in emerge_config.opts
+	buildpkgonly = "--buildpkgonly" in emerge_config.opts
 
 	# check if root user is the current user for the actions where emerge needs this
 	if portage.data.secpass < 2:
 		# We've already allowed "--version" and "--help" above.
-		if "--pretend" not in myopts and myaction not in ("search","info"):
-			need_superuser = myaction in ('clean', 'depclean', 'deselect',
-				'prune', 'unmerge') or not \
+		if "--pretend" not in emerge_config.opts and \
+			emerge_config.action not in ("search", "info"):
+			need_superuser = emerge_config.action in ('clean', 'depclean',
+				'deselect', 'prune', 'unmerge') or not \
 				(fetchonly or \
 				(buildpkgonly and portage.data.secpass >= 1) or \
-				myaction in ("metadata", "regen", "sync"))
+				emerge_config.action in ("metadata", "regen", "sync"))
 			if portage.data.secpass < 1 or \
 				need_superuser:
 				if need_superuser:
@@ -3738,16 +3749,16 @@ def run_action(emerge_config):
 					access_desc = "portage group"
 				# Always show portage_group_warning() when only portage group
 				# access is required but the user is not in the portage group.
-				if "--ask" in myopts:
+				if "--ask" in emerge_config.opts:
 					writemsg_stdout("This action requires %s access...\n" % \
 						(access_desc,), noiselevel=-1)
 					if portage.data.secpass < 1 and not need_superuser:
 						portage.data.portage_group_warning()
 					if userquery("Would you like to add --pretend to options?",
-						"--ask-enter-invalid" in myopts) == "No":
+						"--ask-enter-invalid" in emerge_config.opts) == "No":
 						return 128 + signal.SIGINT
-					myopts["--pretend"] = True
-					myopts.pop("--ask")
+					emerge_config.opts["--pretend"] = True
+					emerge_config.opts.pop("--ask")
 				else:
 					sys.stderr.write(("emerge: %s access is required\n") \
 						% access_desc)
@@ -3760,12 +3771,12 @@ def run_action(emerge_config):
 	# parsers like genlop.
 	disable_emergelog = False
 	for x in ("--pretend", "--fetchonly", "--fetch-all-uri"):
-		if x in myopts:
+		if x in emerge_config.opts:
 			disable_emergelog = True
 			break
 	if disable_emergelog:
 		pass
-	elif myaction in ("search", "info"):
+	elif emerge_config.action in ("search", "info"):
 		disable_emergelog = True
 	elif portage.data.secpass < 1:
 		disable_emergelog = True
@@ -3774,24 +3785,27 @@ def run_action(emerge_config):
 	_emerge.emergelog._disable = disable_emergelog
 
 	if not disable_emergelog:
-		if 'EMERGE_LOG_DIR' in settings:
+		emerge_log_dir = \
+			emerge_config.target_config.settings.get('EMERGE_LOG_DIR')
+		if emerge_log_dir:
 			try:
 				# At least the parent needs to exist for the lock file.
-				portage.util.ensure_dirs(settings['EMERGE_LOG_DIR'])
+				portage.util.ensure_dirs(emerge_log_dir)
 			except portage.exception.PortageException as e:
 				writemsg_level("!!! Error creating directory for " + \
 					"EMERGE_LOG_DIR='%s':\n!!! %s\n" % \
-					(settings['EMERGE_LOG_DIR'], e),
+					(emerge_log_dir, e),
 					noiselevel=-1, level=logging.ERROR)
 				portage.util.ensure_dirs(_emerge.emergelog._emerge_log_dir)
 			else:
-				_emerge.emergelog._emerge_log_dir = settings["EMERGE_LOG_DIR"]
+				_emerge.emergelog._emerge_log_dir = emerge_log_dir
 		else:
 			_emerge.emergelog._emerge_log_dir = os.path.join(os.sep,
-				settings["EPREFIX"].lstrip(os.sep), "var", "log")
+				emerge_config.target_config.settings["EPREFIX"].lstrip(os.sep),
+				"var", "log")
 			portage.util.ensure_dirs(_emerge.emergelog._emerge_log_dir)
 
-	if not "--pretend" in myopts:
+	if not "--pretend" in emerge_config.opts:
 		time_fmt = "%b %d, %Y %H:%M:%S"
 		if sys.hexversion < 0x3000000:
 			time_fmt = portage._unicode_encode(time_fmt)
@@ -3802,9 +3816,9 @@ def run_action(emerge_config):
 			encoding=_encodings['content'], errors='replace')
 		emergelog(xterm_titles, "Started emerge on: %s" % time_str)
 		myelogstr=""
-		if myopts:
+		if emerge_config.opts:
 			opt_list = []
-			for opt, arg in myopts.items():
+			for opt, arg in emerge_config.opts.items():
 				if arg is True:
 					opt_list.append(opt)
 				elif isinstance(arg, list):
@@ -3814,9 +3828,9 @@ def run_action(emerge_config):
 				else:
 					opt_list.append("%s=%s" % (opt, arg))
 			myelogstr=" ".join(opt_list)
-		if myaction:
-			myelogstr += " --" + myaction
-		if myfiles:
+		if emerge_config.action:
+			myelogstr += " --" + emerge_config.action
+		if oldargs:
 			myelogstr += " " + " ".join(oldargs)
 		emergelog(xterm_titles, " *** emerge " + myelogstr)
 
@@ -3832,71 +3846,78 @@ def run_action(emerge_config):
 
 	def emergeexit():
 		"""This gets out final log message in before we quit."""
-		if "--pretend" not in myopts:
+		if "--pretend" not in emerge_config.opts:
 			emergelog(xterm_titles, " *** terminating.")
 		if xterm_titles:
 			xtermTitleReset()
 	portage.atexit_register(emergeexit)
 
-	if myaction in ("config", "metadata", "regen", "sync"):
-		if "--pretend" in myopts:
+	if emerge_config.action in ("config", "metadata", "regen", "sync"):
+		if "--pretend" in emerge_config.opts:
 			sys.stderr.write(("emerge: The '%s' action does " + \
-				"not support '--pretend'.\n") % myaction)
+				"not support '--pretend'.\n") % emerge_config.action)
 			return 1
 
-	if "sync" == myaction:
-		return action_sync(settings, trees, mtimedb, myopts, myaction)
-	elif "metadata" == myaction:
-		action_metadata(settings,
-			trees[settings['EROOT']]['porttree'].dbapi, myopts)
-	elif myaction=="regen":
-		validate_ebuild_environment(trees)
-		return action_regen(settings,
-			trees[settings['EROOT']]['porttree'].dbapi, myopts.get("--jobs"),
-			myopts.get("--load-average"))
+	if "sync" == emerge_config.action:
+		return action_sync(emerge_config.target_config.settings,
+			emerge_config.trees, emerge_config.target_config.mtimedb,
+			emerge_config.opts, emerge_config.action)
+	elif "metadata" == emerge_config.action:
+		action_metadata(emerge_config.target_config.settings,
+			emerge_config.target_config.trees['porttree'].dbapi,
+			emerge_config.opts)
+	elif emerge_config.action=="regen":
+		validate_ebuild_environment(emerge_config.trees)
+		return action_regen(emerge_config.target_config.settings,
+			emerge_config.target_config.trees['porttree'].dbapi,
+			emerge_config.opts.get("--jobs"),
+			emerge_config.opts.get("--load-average"))
 	# HELP action
-	elif "config"==myaction:
-		validate_ebuild_environment(trees)
-		action_config(settings, trees, myopts, myfiles)
+	elif "config" == emerge_config.action:
+		validate_ebuild_environment(emerge_config.trees)
+		action_config(emerge_config.target_config.settings,
+			emerge_config.trees, emerge_config.opts, emerge_config.args)
 
 	# SEARCH action
-	elif "search"==myaction:
-		validate_ebuild_environment(trees)
-		action_search(trees[settings['EROOT']]['root_config'],
-			myopts, myfiles, spinner)
+	elif "search" == emerge_config.action:
+		validate_ebuild_environment(emerge_config.trees)
+		action_search(emerge_config.target_config,
+			emerge_config.opts, emerge_config.args, spinner)
 
-	elif myaction in ('clean', 'depclean', 'deselect', 'prune', 'unmerge'):
-		validate_ebuild_environment(trees)
-		rval = action_uninstall(settings, trees, mtimedb["ldpath"],
-			myopts, myaction, myfiles, spinner)
-		if not (myaction == 'deselect' or
+	elif emerge_config.action in \
+		('clean', 'depclean', 'deselect', 'prune', 'unmerge'):
+		validate_ebuild_environment(emerge_config.trees)
+		rval = action_uninstall(emerge_config.target_config.settings,
+			emerge_config.trees, emerge_config.target_config.mtimedb["ldpath"],
+			emerge_config.opts, emerge_config.action,
+			emerge_config.args, spinner)
+		if not (emerge_config.action == 'deselect' or
 			buildpkgonly or fetchonly or pretend):
-			post_emerge(myaction, myopts, myfiles, settings['EROOT'],
-				trees, mtimedb, rval)
+			post_emerge(emerge_config.action, emerge_config.opts,
+				emerge_config.args, emerge_config.target_config.root,
+				emerge_config.trees, emerge_config.target_config.mtimedb, rval)
 		return rval
 
-	elif myaction == 'info':
+	elif emerge_config.action == 'info':
 
 		# Ensure atoms are valid before calling unmerge().
-		vardb = trees[settings['EROOT']]['vartree'].dbapi
-		portdb = trees[settings['EROOT']]['porttree'].dbapi
-		bindb = trees[settings['EROOT']]["bintree"].dbapi
+		vardb = emerge_config.target_config.trees['vartree'].dbapi
+		portdb = emerge_config.target_config.trees['porttree'].dbapi
+		bindb = emerge_config.target_config.trees['bintree'].dbapi
 		valid_atoms = []
-		for x in myfiles:
+		for x in emerge_config.args:
 			if is_valid_package_atom(x, allow_repo=True):
 				try:
 					#look at the installed files first, if there is no match
 					#look at the ebuilds, since EAPI 4 allows running pkg_info
 					#on non-installed packages
-					valid_atom = dep_expand(x, mydb=vardb, settings=settings)
+					valid_atom = dep_expand(x, mydb=vardb)
 					if valid_atom.cp.split("/")[0] == "null":
-						valid_atom = dep_expand(x,
-							mydb=portdb, settings=settings)
+						valid_atom = dep_expand(x, mydb=portdb)
 
 					if valid_atom.cp.split("/")[0] == "null" and \
-						"--usepkg" in myopts:
-						valid_atom = dep_expand(x,
-							mydb=bindb, settings=settings)
+						"--usepkg" in emerge_config.opts:
+						valid_atom = dep_expand(x, mydb=bindb)
 
 					valid_atoms.append(valid_atom)
 
@@ -3921,13 +3942,14 @@ def run_action(emerge_config):
 				level=logging.ERROR, noiselevel=-1)
 			return 1
 
-		return action_info(settings, trees, myopts, valid_atoms)
+		return action_info(emerge_config.target_config.settings,
+			emerge_config.trees, emerge_config.opts, valid_atoms)
 
 	# "update", "system", or just process files:
 	else:
-		validate_ebuild_environment(trees)
+		validate_ebuild_environment(emerge_config.trees)
 
-		for x in myfiles:
+		for x in emerge_config.args:
 			if x.startswith(SETPREFIX) or \
 				is_valid_package_atom(x, allow_repo=True):
 				continue
@@ -3946,11 +3968,15 @@ def run_action(emerge_config):
 			return 1
 
 		# GLEP 42 says to display news *after* an emerge --pretend
-		if "--pretend" not in myopts:
-			display_news_notification(root_config, myopts)
-		retval = action_build(settings, trees, mtimedb,
-			myopts, myaction, myfiles, spinner)
-		post_emerge(myaction, myopts, myfiles, settings['EROOT'],
-			trees, mtimedb, retval)
+		if "--pretend" not in emerge_config.opts:
+			display_news_notification(
+				emerge_config.target_config, emerge_config.opts)
+		retval = action_build(emerge_config.target_config.settings,
+			emerge_config.trees, emerge_config.target_config.mtimedb,
+			emerge_config.opts, emerge_config.action,
+			emerge_config.args, spinner)
+		post_emerge(emerge_config.action, emerge_config.opts,
+			emerge_config.args, emerge_config.target_config.root,
+			emerge_config.trees, emerge_config.target_config.mtimedb, retval)
 
 		return retval
