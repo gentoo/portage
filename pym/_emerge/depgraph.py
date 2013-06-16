@@ -6673,10 +6673,18 @@ class depgraph(object):
 		# the reasons are not apparent from the normal merge list
 		# display.
 
+		slot_collision_info = self._dynamic_config._slot_collision_info
+
 		conflict_pkgs = {}
 		for blocker in blockers:
 			for pkg in chain(self._dynamic_config._blocked_pkgs.child_nodes(blocker), \
 				self._dynamic_config._blocker_parents.parent_nodes(blocker)):
+				if (pkg.slot_atom, pkg.root) in slot_collision_info:
+					# The slot conflict display has better noise reduction
+					# than the unsatisfied blockers display, so skip
+					# unsatisfied blockers display for packages involved
+					# directly in slot conflicts (see bug #385391).
+					continue
 				parent_atoms = self._dynamic_config._parent_atoms.get(pkg)
 				if not parent_atoms:
 					atom = self._dynamic_config._blocked_world_pkgs.get(pkg)
@@ -7153,15 +7161,18 @@ class depgraph(object):
 			self._show_circular_deps(
 				self._dynamic_config._circular_deps_for_display)
 
-		# The slot conflict display has better noise reduction than
-		# the unsatisfied blockers display, so skip unsatisfied blockers
-		# display if there are slot conflicts (see bug #385391).
+		unresolved_conflicts = False
 		if self._dynamic_config._slot_collision_info:
+			unresolved_conflicts = True
 			self._show_slot_collision_notice()
-		elif self._dynamic_config._unsatisfied_blockers_for_display is not None:
+		if self._dynamic_config._unsatisfied_blockers_for_display is not None:
+			unresolved_conflicts = True
 			self._show_unsatisfied_blockers(
 				self._dynamic_config._unsatisfied_blockers_for_display)
-		else:
+
+		# Only show missed updates if there are no unresolved conflicts,
+		# since they may be irrelevant after the conflicts are solved.
+		if not unresolved_conflicts:
 			self._show_missed_update()
 
 		self._show_ignored_binaries()
