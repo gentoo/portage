@@ -375,8 +375,6 @@ def action_build(settings, trees, mtimedb,
 					not oneshot and world_candidates:
 					# Prompt later, inside saveNomergeFavorites.
 					prompt = None
-				elif settings["AUTOCLEAN"] and "yes"==settings["AUTOCLEAN"]:
-					prompt="Nothing to merge; would you like to auto-clean packages?"
 				else:
 					print()
 					print("Nothing to merge; quitting.")
