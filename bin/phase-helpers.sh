@@ -676,7 +676,11 @@ has_version() {
 	fi
 
 	if ___eapi_has_prefix_variables; then
-		eroot=${root%/}${EPREFIX}/
+		if [[ ${root} == / ]] ; then
+			eroot=${root%/}${PORTAGE_OVERRIDE_EPREFIX}/
+		else
+			eroot=${root%/}${EPREFIX}/
+		fi
 	else
 		eroot=${root}
 	fi
@@ -728,7 +732,11 @@ best_version() {
 	fi
 
 	if ___eapi_has_prefix_variables; then
-		eroot=${root%/}${EPREFIX}/
+		if [[ ${root} == / ]] ; then
+			eroot=${root%/}${PORTAGE_OVERRIDE_EPREFIX}/
+		else
+			eroot=${root%/}${EPREFIX}/
+		fi
 	else
 		eroot=${root}
 	fi

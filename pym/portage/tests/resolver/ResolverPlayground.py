@@ -66,6 +66,8 @@ class ResolverPlayground(object):
 		"""
 		self.debug = debug
 		self.eprefix = normalize_path(tempfile.mkdtemp())
+		portage.const.EPREFIX = self.eprefix.rstrip(os.sep)
+
 		self.eroot = self.eprefix + os.sep
 		if targetroot:
 			self.target_root = os.path.join(self.eroot, 'target_root')

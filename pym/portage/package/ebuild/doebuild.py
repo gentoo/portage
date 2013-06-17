@@ -159,7 +159,7 @@ def _doebuild_path(settings, eapi=None):
 	# Note: PORTAGE_BIN_PATH may differ from the global constant
 	# when portage is reinstalling itself.
 	portage_bin_path = settings["PORTAGE_BIN_PATH"]
-	eprefix = settings["EPREFIX"]
+	eprefix = portage.const.EPREFIX
 	prerootpath = [x for x in settings.get("PREROOTPATH", "").split(":") if x]
 	rootpath = [x for x in settings.get("ROOTPATH", "").split(":") if x]
 	overrides = [x for x in settings.get(

@@ -43,7 +43,7 @@ def diffstatusoutput(cmd, file1, file2):
     return (proc.wait(), output)
 
 def read_config(mandatory_opts):
-    eprefix = portage.const.EPREFIX
+    eprefix = portage.settings["EPREFIX"]
     config_path = os.path.join(eprefix or os.sep, "etc/dispatch-conf.conf")
     loader = KeyValuePairFileLoader(config_path, None)
     opts, errors = loader.load()

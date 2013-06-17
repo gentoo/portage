@@ -594,16 +594,16 @@ class config(object):
 			self.backup_changes("PORTAGE_CONFIGROOT")
 			self["ROOT"] = target_root
 			self.backup_changes("ROOT")
-
-			# The PORTAGE_OVERRIDE_EPREFIX variable propagates the EPREFIX
-			# of this config instance to any portage commands or API
-			# consumers running in subprocesses.
 			self["EPREFIX"] = eprefix
 			self.backup_changes("EPREFIX")
-			self["PORTAGE_OVERRIDE_EPREFIX"] = eprefix
-			self.backup_changes("PORTAGE_OVERRIDE_EPREFIX")
 			self["EROOT"] = eroot
 			self.backup_changes("EROOT")
+
+			# The prefix of the running portage instance is used in the
+			# ebuild environment to implement the --host-root option for
+			# best_version and has_version.
+			self["PORTAGE_OVERRIDE_EPREFIX"] = portage.const.EPREFIX
+			self.backup_changes("PORTAGE_OVERRIDE_EPREFIX")
 
 			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
 			self._paccept_restrict = portage.dep.ExtendedAtomDict(dict)
@@ -781,21 +781,9 @@ class config(object):
 				self.backupenv["USE_ORDER"] = "env:pkg:conf:defaults:pkginternal:repo:env.d"
 
 			self.depcachedir = DEPCACHE_PATH
-			if eprefix:
-				# See comments about make.globals and EPREFIX
-				# above. DEPCACHE_PATH is similar.
-				if target_root == "/":
-					# case (1) above
-					self.depcachedir = os.path.join(eprefix,
-						DEPCACHE_PATH.lstrip(os.sep))
-				else:
-					# case (2) above
-					# For now, just assume DEPCACHE_PATH is relative
-					# to EPREFIX.
-					# TODO: Pass in more info to the constructor,
-					# so we know the host system configuration.
-					self.depcachedir = os.path.join(eprefix,
-						DEPCACHE_PATH.lstrip(os.sep))
+			if portage.const.EPREFIX:
+				self.depcachedir = os.path.join(portage.const.EPREFIX,
+					DEPCACHE_PATH.lstrip(os.sep))
 
 			if self.get("PORTAGE_DEPCACHEDIR", None):
 				self.depcachedir = self["PORTAGE_DEPCACHEDIR"]

@@ -541,6 +541,11 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices"  : true_y_or_n
 		},
 
+		"--prefix": {
+			"help"     : "specify the installation prefix",
+			"action"   : "store"
+		},
+
 		"--quiet": {
 			"shortopt" : "-q",
 			"help"     : "reduced or condensed output",
@@ -1024,6 +1029,8 @@ def emerge_main(args=None):
 		os.environ["PORTAGE_CONFIGROOT"] = myopts["--config-root"]
 	if "--root" in myopts:
 		os.environ["ROOT"] = myopts["--root"]
+	if "--prefix" in myopts:
+		os.environ["EPREFIX"] = myopts["--prefix"]
 	if "--accept-properties" in myopts:
 		os.environ["ACCEPT_PROPERTIES"] = myopts["--accept-properties"]
 	if "--accept-restrict" in myopts:

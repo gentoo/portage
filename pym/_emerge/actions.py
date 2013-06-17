@@ -2017,8 +2017,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			myportdir = None
 	out = portage.output.EOutput()
 	global_config_path = GLOBAL_CONFIG_PATH
-	if settings['EPREFIX']:
-		global_config_path = os.path.join(settings['EPREFIX'],
+	if portage.const.EPREFIX:
+		global_config_path = os.path.join(portage.const.EPREFIX,
 				GLOBAL_CONFIG_PATH.lstrip(os.sep))
 	if not myportdir:
 		sys.stderr.write("!!! PORTDIR is undefined.  " + \
@@ -3150,7 +3150,8 @@ def load_emerge_config(emerge_config=None, **kargs):
 		emerge_config = _emerge_config(**kargs)
 
 	kwargs = {}
-	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT")):
+	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT"),
+			("eprefix", "EPREFIX")):
 		v = os.environ.get(envvar, None)
 		if v and v.strip():
 			kwargs[k] = v
@@ -3334,8 +3335,8 @@ def missing_sets_warning(root_config, missing_sets):
 	if root_config.sets:
 		msg.append("        sets defined: %s" % ", ".join(root_config.sets))
 	global_config_path = portage.const.GLOBAL_CONFIG_PATH
-	if root_config.settings['EPREFIX']:
-		global_config_path = os.path.join(root_config.settings['EPREFIX'],
+	if portage.const.EPREFIX:
+		global_config_path = os.path.join(portage.const.EPREFIX,
 				portage.const.GLOBAL_CONFIG_PATH.lstrip(os.sep))
 	msg.append("        This usually means that '%s'" % \
 		(os.path.join(global_config_path, "sets/portage.conf"),))
