@@ -767,6 +767,9 @@ performance issues under some circumstances (see \fBbug #124041\fR).
 .I Example:
 .nf
 [DEFAULT]
+# make gentoo the main repo (aka PORTDIR), which makes it the default master
+# repository for repostories that do not specify masters
+main\-repo = gentoo
 # make all repositories inherit eclasses from the java\-overlay and
 # java\-experimental repositories, with eclasses from java\-experimental
 # taking precedence over those from java\-overlay
