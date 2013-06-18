@@ -31,4 +31,8 @@ class RootConfig(object):
 		Shallow copy all attributes from another instance.
 		"""
 		for k in self.__slots__:
-			setattr(self, k, getattr(other, k))
+			try:
+				setattr(self, k, getattr(other, k))
+			except AttributeError:
+				# mtimedb is currently not a required attribute
+				pass
