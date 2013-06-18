@@ -776,6 +776,10 @@ main\-repo = gentoo
 eclass\-overrides = java\-overlay java\-experimental
 
 [gentoo]
+# repos with higher priorities are preferred when ebuilds with equal versions
+# are found in multiple repos (see the `emerge \-\-info \-\-verbose` repo
+# display for a listing of repos and their corresponding priorities).
+priority = 9999
 # disable all eclass overrides for ebuilds from the gentoo repository
 eclass\-overrides =
 # when processing metadata/layout.conf from other repositories, substitute
