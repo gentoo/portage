@@ -508,8 +508,16 @@ class RepoConfigLoader(object):
 
 		# Do this before expanding aliases, so that location_map and
 		# treemap consistently map unaliased names whenever available.
-		for repo_name, repo in prepos.items():
-			if repo.location is not None:
+		for repo_name, repo in list(prepos.items()):
+			if repo.location is None:
+				if repo_name != 'DEFAULT':
+					if paths:
+						writemsg_level(_("Location undefined for " \
+							"repository '%s' referenced in '%s'\n") % \
+							(repo.name, paths[0]),
+							level=logging.ERROR, noiselevel=-1)
+					del prepos[repo_name]
+			else:
 				location_map[repo.location] = repo_name
 				treemap[repo_name] = repo.location
 
