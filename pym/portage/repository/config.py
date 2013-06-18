@@ -355,8 +355,10 @@ class RepoConfigLoader(object):
 	def _add_repositories(portdir, portdir_overlay, prepos, ignored_map, ignored_location_map):
 		"""Add overlays in PORTDIR_OVERLAY as repositories"""
 		overlays = []
+		portdir_orig = None
 		if portdir:
 			portdir = normalize_path(portdir)
+			portdir_orig = portdir
 			overlays.append(portdir)
 		try:
 			port_ov = [normalize_path(i) for i in shlex_split(portdir_overlay)]
@@ -412,11 +414,15 @@ class RepoConfigLoader(object):
 							if old_location == portdir:
 								portdir = repo.user_location
 
-					if ov == portdir and portdir not in port_ov:
-						repo.priority = -1000
-					elif repo.priority is None:
-						repo.priority = base_priority
-						base_priority += 1
+					if repo.priority is None:
+						if base_priority == 0 and ov == portdir_orig:
+							# If it's the original PORTDIR setting and it's not
+							# in PORTDIR_OVERLAY, then it will be assigned a
+							# special priority setting later.
+							pass
+						else:
+							repo.priority = base_priority
+							base_priority += 1
 
 					prepos[repo.name] = repo
 				else:
@@ -556,17 +562,20 @@ class RepoConfigLoader(object):
 		prepos_order = [repo.name for (key, repo) in prepos_order
 			if repo.name == key and repo.location is not None]
 
-		if prepos['DEFAULT'].main_repo is None or \
-			prepos['DEFAULT'].main_repo not in prepos:
+		main_repo = prepos['DEFAULT'].main_repo
+		if main_repo is None or main_repo not in prepos:
 			#setting main_repo if it was not set in repos.conf
-			if portdir in location_map:
-				prepos['DEFAULT'].main_repo = location_map[portdir]
-			elif portdir in ignored_location_map:
-				prepos['DEFAULT'].main_repo = ignored_location_map[portdir]
+			main_repo = location_map.get(portdir)
+			if main_repo is not None:
+				prepos['DEFAULT'].main_repo = main_repo
 			else:
 				prepos['DEFAULT'].main_repo = None
 				if not portage._sync_disabled_warnings:
 					writemsg(_("!!! main-repo not set in DEFAULT and PORTDIR is empty.\n"), noiselevel=-1)
+
+		if main_repo is not None and prepos[main_repo].priority is None:
+			# This happens if main-repo has been set in repos.conf.
+			prepos[main_repo].priority = -1000
 
 		self.prepos = prepos
 		self.prepos_order = prepos_order
