@@ -554,14 +554,6 @@ class RepoConfigLoader(object):
 						location_map[repo.location] = name
 					treemap[name] = repo.location
 
-		# filter duplicates from aliases, by only including
-		# items where repo.name == key
-
-		prepos_order = sorted(prepos.items(), key=lambda r:r[1].priority or 0)
-
-		prepos_order = [repo.name for (key, repo) in prepos_order
-			if repo.name == key and repo.location is not None]
-
 		main_repo = prepos['DEFAULT'].main_repo
 		if main_repo is None or main_repo not in prepos:
 			#setting main_repo if it was not set in repos.conf
@@ -576,6 +568,13 @@ class RepoConfigLoader(object):
 		if main_repo is not None and prepos[main_repo].priority is None:
 			# This happens if main-repo has been set in repos.conf.
 			prepos[main_repo].priority = -1000
+
+		# filter duplicates from aliases, by only including
+		# items where repo.name == key
+		prepos_order = sorted(prepos.items(), key=lambda r:r[1].priority or 0)
+		prepos_order = [repo.name for (key, repo) in prepos_order
+			if repo.name == key and key != 'DEFAULT' and
+			repo.location is not None]
 
 		self.prepos = prepos
 		self.prepos_order = prepos_order
