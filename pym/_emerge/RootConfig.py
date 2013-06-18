@@ -35,4 +35,7 @@ class RootConfig(object):
 				setattr(self, k, getattr(other, k))
 			except AttributeError:
 				# mtimedb is currently not a required attribute
-				pass
+				try:
+					delattr(self, k)
+				except AttributeError:
+					pass
