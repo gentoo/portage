@@ -616,9 +616,13 @@ class RepoConfigLoader(object):
 			# This happens if main-repo has been set in repos.conf.
 			prepos[main_repo].priority = -1000
 
+		# Include repo.name in sort key, for predictable sorting
+		# even when priorities are equal.
+		prepos_order = sorted(prepos.items(),
+			key=lambda r:(r[1].priority or 0, repo.name))
+
 		# filter duplicates from aliases, by only including
 		# items where repo.name == key
-		prepos_order = sorted(prepos.items(), key=lambda r:r[1].priority or 0)
 		prepos_order = [repo.name for (key, repo) in prepos_order
 			if repo.name == key and key != 'DEFAULT' and
 			repo.location is not None]
