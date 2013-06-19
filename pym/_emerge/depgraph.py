@@ -4915,7 +4915,12 @@ class depgraph(object):
 						break
 					# Compare built package to current config and
 					# reject the built package if necessary.
-					if built and not useoldpkg and (not installed or matched_pkgs_ignore_use) and \
+					if built and not useoldpkg and \
+						(not installed or
+						any(other_pkg != pkg for other_pkg in matched_pkgs_ignore_use)) and \
+						not (installed and
+						self._frozen_config.excluded_pkgs.findAtomForPackage(pkg,
+						modified_use=self._pkg_use_enabled(pkg))) and \
 						("--newuse" in self._frozen_config.myopts or \
 						"--reinstall" in self._frozen_config.myopts or \
 						(not installed and self._dynamic_config.myparams.get(
