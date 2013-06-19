@@ -451,8 +451,10 @@ class RepoConfigLoader(object):
 		try:
 			# Python >=3.2
 			read_file = parser.read_file
+			source_kwarg = 'source'
 		except AttributeError:
 			read_file = parser.readfp
+			source_kwarg = 'filename'
 
 		for p in paths:
 			f = None
@@ -464,8 +466,13 @@ class RepoConfigLoader(object):
 			except EnvironmentError:
 				pass
 			else:
+				# The 'source' keyword argument is needed since
+				# otherwise ConfigParsier may throw a TypeError because
+				# it assumes that f.name is a native string rather
+				# than binary when constructing error messages.
+				kwargs = {source_kwarg: p}
 				try:
-					read_file(f)
+					read_file(f, **portage._native_kwargs(kwargs))
 				except ParsingError as e:
 					writemsg(
 						_("!!! Error while reading repo config file: %s\n") % e,
