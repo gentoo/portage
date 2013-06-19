@@ -471,12 +471,7 @@ class RepoConfigLoader(object):
 				# it assumes that f.name is a native string rather
 				# than binary when constructing error messages.
 				kwargs = {source_kwarg: p}
-				try:
-					read_file(f, **portage._native_kwargs(kwargs))
-				except ConfigParserError as e:
-					writemsg(
-						_("!!! Error while reading repo config file: %s\n") % e,
-						noiselevel=-1)
+				read_file(f, **portage._native_kwargs(kwargs))
 			finally:
 				if f is not None:
 					f.close()
@@ -514,7 +509,22 @@ class RepoConfigLoader(object):
 		portdir = settings.get('PORTDIR', '')
 		portdir_overlay = settings.get('PORTDIR_OVERLAY', '')
 
-		self._parse(paths, prepos, ignored_map, ignored_location_map)
+		try:
+			self._parse(paths, prepos, ignored_map, ignored_location_map)
+		except ConfigParserError as e:
+			writemsg(
+				_("!!! Error while reading repo config file: %s\n") % e,
+				noiselevel=-1)
+			# The configparser state is unreliable (prone to odd quirky
+			# exceptions) after is has thrown an error, so just return early.
+			self.prepos = {'DEFAULT': RepoConfig('DEFAULT', {})}
+			self.prepos_order = ()
+			self.ignored_repos = ()
+			self.location_map = {}
+			self.treemap = {}
+			self._prepos_changed = True
+			self._repo_location_list = ()
+			return
 
 		# If PORTDIR_OVERLAY contains a repo with the same repo_name as
 		# PORTDIR, then PORTDIR is overridden.
