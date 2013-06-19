@@ -619,7 +619,7 @@ class RepoConfigLoader(object):
 		# Include repo.name in sort key, for predictable sorting
 		# even when priorities are equal.
 		prepos_order = sorted(prepos.items(),
-			key=lambda r:(r[1].priority or 0, repo.name))
+			key=lambda r:(r[1].priority or 0, r[1].name))
 
 		# filter duplicates from aliases, by only including
 		# items where repo.name == key
