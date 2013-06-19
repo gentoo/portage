@@ -201,6 +201,8 @@ pkg_preinst() {
 		test_ebuild = portdb.findname("dev-libs/A-1")
 		self.assertFalse(test_ebuild is None)
 
+		cross_prefix = os.path.join(eprefix, "cross_prefix")
+
 		test_commands = (
 			env_update_cmd,
 			portageq_cmd + ("envvar", "-v", "CONFIG_PROTECT", "EROOT",
@@ -266,6 +268,24 @@ pkg_preinst() {
 			emerge_cmd + ("-p", "--unmerge", "-q", eroot + "usr"),
 			emerge_cmd + ("--unmerge", "--quiet", "dev-libs/A"),
 			emerge_cmd + ("-C", "--quiet", "dev-libs/B"),
+
+			# Test cross-prefix usage, including chpathtool for binpkgs.
+			({"EPREFIX" : cross_prefix},) + \
+				emerge_cmd + ("--usepkgonly", "dev-libs/A"),
+			({"EPREFIX" : cross_prefix},) + \
+				portageq_cmd + ("has_version", cross_prefix, "dev-libs/A"),
+			({"EPREFIX" : cross_prefix},) + \
+				portageq_cmd + ("has_version", cross_prefix, "dev-libs/B"),
+			({"EPREFIX" : cross_prefix},) + \
+				emerge_cmd + ("-C", "--quiet", "dev-libs/B"),
+			({"EPREFIX" : cross_prefix},) + \
+				emerge_cmd + ("-C", "--quiet", "dev-libs/A"),
+			({"EPREFIX" : cross_prefix},) + \
+				emerge_cmd + ("dev-libs/A",),
+			({"EPREFIX" : cross_prefix},) + \
+				portageq_cmd + ("has_version", cross_prefix, "dev-libs/A"),
+			({"EPREFIX" : cross_prefix},) + \
+				portageq_cmd + ("has_version", cross_prefix, "dev-libs/B"),
 		)
 
 		distdir = playground.distdir

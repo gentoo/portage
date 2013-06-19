@@ -577,7 +577,7 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None,
 
 	trees._target_eroot = settings['EROOT']
 	myroots = [(settings['EROOT'], settings)]
-	if settings["ROOT"] == "/":
+	if settings["ROOT"] == "/" and settings["EPREFIX"] == const.EPREFIX:
 		trees._running_eroot = trees._target_eroot
 	else:
 
@@ -593,7 +593,7 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None,
 			if v is not None:
 				clean_env[k] = v
 		settings = config(config_root=None, target_root="/",
-			env=clean_env, eprefix=eprefix)
+			env=clean_env, eprefix=None)
 		settings.lock()
 		trees._running_eroot = settings['EROOT']
 		myroots.append((settings['EROOT'], settings))

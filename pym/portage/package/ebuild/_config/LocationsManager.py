@@ -49,7 +49,7 @@ class LocationsManager(object):
 			self.eprefix = portage.const.EPREFIX
 
 		if self.config_root is None:
-			self.config_root = self.eprefix + os.sep
+			self.config_root = portage.const.EPREFIX + os.sep
 
 		self.config_root = normalize_path(os.path.abspath(
 			self.config_root)).rstrip(os.path.sep) + os.path.sep

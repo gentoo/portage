@@ -3800,8 +3800,7 @@ def run_action(emerge_config):
 				_emerge.emergelog._emerge_log_dir = emerge_log_dir
 		else:
 			_emerge.emergelog._emerge_log_dir = os.path.join(os.sep,
-				emerge_config.target_config.settings["EPREFIX"].lstrip(os.sep),
-				"var", "log")
+				portage.const.EPREFIX.lstrip(os.sep), "var", "log")
 			portage.util.ensure_dirs(_emerge.emergelog._emerge_log_dir)
 
 	if not "--pretend" in emerge_config.opts:
