@@ -76,34 +76,49 @@ class RepoConfig(object):
 	__slots__ = ('aliases', 'allow_missing_manifest', 'allow_provide_virtual',
 		'cache_formats', 'create_manifest', 'disable_manifest', 'eapi',
 		'eclass_db', 'eclass_locations', 'eclass_overrides',
-		'find_invalid_path_char', 'format', 'location',
+		'find_invalid_path_char', 'format', 'local_config', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'portage1_profiles', 'portage1_profiles_compat', 'priority',
 		'profile_formats', 'sign_commit', 'sign_manifest', 'sync',
 		'thin_manifest', 'update_changelog', 'user_location',
 		'_eapis_banned', '_eapis_deprecated')
 
-	def __init__(self, name, repo_opts):
+	def __init__(self, name, repo_opts, local_config=True):
 		"""Build a RepoConfig with options in repo_opts
 		   Try to read repo_name in repository location, but if
 		   it is not found use variable name as repository name"""
-		aliases = repo_opts.get('aliases')
-		if aliases is not None:
-			aliases = tuple(aliases.split())
+
+		self.local_config = local_config
+
+		if local_config:
+			aliases = repo_opts.get('aliases')
+			if aliases is not None:
+				aliases = tuple(aliases.split())
+		else:
+			aliases = None
+
 		self.aliases = aliases
 
-		eclass_overrides = repo_opts.get('eclass-overrides')
-		if eclass_overrides is not None:
-			eclass_overrides = tuple(eclass_overrides.split())
+		if local_config:
+			eclass_overrides = repo_opts.get('eclass-overrides')
+			if eclass_overrides is not None:
+				eclass_overrides = tuple(eclass_overrides.split())
+		else:
+			eclass_overrides = None
+
 		self.eclass_overrides = eclass_overrides
 		# Eclass databases and locations are computed later.
 		self.eclass_db = None
 		self.eclass_locations = None
 
-		# Masters from repos.conf override layout.conf.
-		masters = repo_opts.get('masters')
-		if masters is not None:
-			masters = tuple(masters.split())
+		if local_config:
+			# Masters from repos.conf override layout.conf.
+			masters = repo_opts.get('masters')
+			if masters is not None:
+				masters = tuple(masters.split())
+		else:
+			masters = None
+
 		self.masters = masters
 
 		#The main-repo key makes only sense for the 'DEFAULT' section.
@@ -173,7 +188,7 @@ class RepoConfig(object):
 			if self.masters is None:
 				self.masters = layout_data['masters']
 
-			if layout_data['aliases']:
+			if local_config and layout_data['aliases']:
 				aliases = self.aliases
 				if aliases is None:
 					aliases = ()
@@ -352,7 +367,8 @@ class RepoConfigLoader(object):
 	"""Loads and store config of several repositories, loaded from PORTDIR_OVERLAY or repos.conf"""
 
 	@staticmethod
-	def _add_repositories(portdir, portdir_overlay, prepos, ignored_map, ignored_location_map):
+	def _add_repositories(portdir, portdir_overlay, prepos,
+		ignored_map, ignored_location_map, local_config):
 		"""Add overlays in PORTDIR_OVERLAY as repositories"""
 		overlays = []
 		portdir_orig = None
@@ -395,7 +411,7 @@ class RepoConfigLoader(object):
 				if isdir_raise_eaccess(ov):
 					repo_opts = default_repo_opts.copy()
 					repo_opts['location'] = ov
-					repo = RepoConfig(None, repo_opts)
+					repo = RepoConfig(None, repo_opts, local_config=local_config)
 					# repos_conf_opts contains options from repos.conf
 					repos_conf_opts = repos_conf.get(repo.name)
 					if repos_conf_opts is not None:
@@ -443,7 +459,7 @@ class RepoConfigLoader(object):
 		return portdir
 
 	@staticmethod
-	def _parse(paths, prepos, ignored_map, ignored_location_map):
+	def _parse(paths, prepos, ignored_map, ignored_location_map, local_config):
 		"""Parse files in paths to load config"""
 		parser = SafeConfigParser()
 
@@ -476,13 +492,15 @@ class RepoConfigLoader(object):
 				if f is not None:
 					f.close()
 
-		prepos['DEFAULT'] = RepoConfig("DEFAULT", parser.defaults())
+		prepos['DEFAULT'] = RepoConfig("DEFAULT",
+			parser.defaults(), local_config=local_config)
+
 		for sname in parser.sections():
 			optdict = {}
 			for oname in parser.options(sname):
 				optdict[oname] = parser.get(sname, oname)
 
-			repo = RepoConfig(sname, optdict)
+			repo = RepoConfig(sname, optdict, local_config=local_config)
 			if repo.location and not exists_raise_eaccess(repo.location):
 				writemsg(_("!!! Invalid repos.conf entry '%s'"
 					" (not a dir): '%s'\n") % (sname, repo.location), noiselevel=-1)
@@ -510,7 +528,8 @@ class RepoConfigLoader(object):
 		portdir_overlay = settings.get('PORTDIR_OVERLAY', '')
 
 		try:
-			self._parse(paths, prepos, ignored_map, ignored_location_map)
+			self._parse(paths, prepos, ignored_map,
+				ignored_location_map, settings.local_config)
 		except ConfigParserError as e:
 			writemsg(
 				_("!!! Error while reading repo config file: %s\n") % e,
@@ -519,7 +538,8 @@ class RepoConfigLoader(object):
 			# exceptions) after it has thrown an error, so use empty
 			# config and try to fall back to PORTDIR{,_OVERLAY}.
 			prepos.clear()
-			prepos['DEFAULT'] = RepoConfig('DEFAULT', {})
+			prepos['DEFAULT'] = RepoConfig('DEFAULT',
+				{}, local_config=settings.local_config)
 			location_map.clear()
 			treemap.clear()
 			ignored_map.clear()
@@ -528,7 +548,7 @@ class RepoConfigLoader(object):
 		# If PORTDIR_OVERLAY contains a repo with the same repo_name as
 		# PORTDIR, then PORTDIR is overridden.
 		portdir = self._add_repositories(portdir, portdir_overlay, prepos,
-			ignored_map, ignored_location_map)
+			ignored_map, ignored_location_map, settings.local_config)
 		if portdir and portdir.strip():
 			portdir = os.path.realpath(portdir)
 
@@ -762,9 +782,8 @@ class RepoConfigLoader(object):
 def load_repository_config(settings):
 	#~ repoconfigpaths = [os.path.join(settings.global_config_path, "repos.conf")]
 	repoconfigpaths = []
-	if settings.local_config:
-		repoconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
-			USER_CONFIG_PATH, "repos.conf"))
+	repoconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
+		USER_CONFIG_PATH, "repos.conf"))
 	return RepoConfigLoader(repoconfigpaths, settings)
 
 def _get_repo_name(repo_location, cached=None):
