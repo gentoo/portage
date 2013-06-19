@@ -426,6 +426,17 @@ class RepoConfigLoader(object):
 
 					prepos[repo.name] = repo
 				else:
+					if base_priority == 0 and ov == '/usr/portage':
+						# Suppress warnings for the make.defaults
+						# PORTDIR setting if we have an existing
+						# main-repo defined in repos.conf.
+						main_repo = prepos['DEFAULT'].main_repo
+						if main_repo is not None and main_repo in prepos:
+							main_repo_loc = prepos[main_repo].location
+							if main_repo_loc and \
+								isdir_raise_eaccess(main_repo_loc):
+								continue
+
 					if not portage._sync_disabled_warnings:
 						writemsg(_("!!! Invalid PORTDIR_OVERLAY (not a dir): '%s'\n") % ov, noiselevel=-1)
 
