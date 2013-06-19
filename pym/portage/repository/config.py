@@ -10,13 +10,13 @@ import sys
 import re
 
 try:
-	from configparser import ParsingError
+	from configparser import Error as ConfigParserError
 	if sys.hexversion >= 0x3020000:
 		from configparser import ConfigParser as SafeConfigParser
 	else:
 		from configparser import SafeConfigParser
 except ImportError:
-	from ConfigParser import SafeConfigParser, ParsingError
+	from ConfigParser import SafeConfigParser, Error as ConfigParserError
 import portage
 from portage import eclass_cache, os
 from portage.const import (MANIFEST2_HASH_FUNCTIONS, MANIFEST2_REQUIRED_HASH,
@@ -473,7 +473,7 @@ class RepoConfigLoader(object):
 				kwargs = {source_kwarg: p}
 				try:
 					read_file(f, **portage._native_kwargs(kwargs))
-				except ParsingError as e:
+				except ConfigParserError as e:
 					writemsg(
 						_("!!! Error while reading repo config file: %s\n") % e,
 						noiselevel=-1)
