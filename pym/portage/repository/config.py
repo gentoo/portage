@@ -515,17 +515,15 @@ class RepoConfigLoader(object):
 			writemsg(
 				_("!!! Error while reading repo config file: %s\n") % e,
 				noiselevel=-1)
-			# The configparser state is unreliable (prone to odd quirky
-			# exceptions) after is has thrown an error, so just return early.
-			self.prepos = {'DEFAULT': RepoConfig('DEFAULT', {})}
-			self.prepos_order = ()
-			self.ignored_repos = ()
-			self.location_map = {}
-			self.treemap = {}
-			self._prepos_changed = True
-			self._repo_location_list = ()
-			self.missing_repo_names = frozenset()
-			return
+			# The configparser state is unreliable (prone to quirky
+			# exceptions) after it has thrown an error, so use empty
+			# config and try to fall back to PORTDIR{,_OVERLAY}.
+			prepos.clear()
+			prepos['DEFAULT'] = RepoConfig('DEFAULT', {})
+			location_map.clear()
+			treemap.clear()
+			ignored_map.clear()
+			ignored_location_map.clear()
 
 		# If PORTDIR_OVERLAY contains a repo with the same repo_name as
 		# PORTDIR, then PORTDIR is overridden.
