@@ -427,7 +427,7 @@ class RepoConfigLoader(object):
 					prepos[repo.name] = repo
 				else:
 					if base_priority == 0 and ov == '/usr/portage':
-						# Suppress warnings for the make.defaults
+						# Suppress warnings for the make.globals
 						# PORTDIR setting if we have an existing
 						# main-repo defined in repos.conf.
 						main_repo = prepos['DEFAULT'].main_repo
