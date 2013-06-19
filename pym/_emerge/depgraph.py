@@ -4642,7 +4642,6 @@ class depgraph(object):
 		vardb = self._frozen_config.roots[root].trees["vartree"].dbapi
 		# List of acceptable packages, ordered by type preference.
 		matched_packages = []
-		matched_pkgs_ignore_use = []
 		highest_version = None
 		if not isinstance(atom, portage.dep.Atom):
 			atom = portage.dep.Atom(atom)
@@ -4824,7 +4823,6 @@ class depgraph(object):
 
 					if atom.use:
 
-						matched_pkgs_ignore_use.append(pkg)
 						if autounmask_level and autounmask_level.allow_use_changes and not pkg.built:
 							target_use = {}
 							for flag in atom.use.enabled:
@@ -4916,8 +4914,7 @@ class depgraph(object):
 					# Compare built package to current config and
 					# reject the built package if necessary.
 					if built and not useoldpkg and \
-						(not installed or
-						any(other_pkg != pkg for other_pkg in matched_pkgs_ignore_use)) and \
+						(not installed or matched_packages) and \
 						not (installed and
 						self._frozen_config.excluded_pkgs.findAtomForPackage(pkg,
 						modified_use=self._pkg_use_enabled(pkg))) and \
