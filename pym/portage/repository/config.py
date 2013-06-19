@@ -524,6 +524,7 @@ class RepoConfigLoader(object):
 			self.treemap = {}
 			self._prepos_changed = True
 			self._repo_location_list = ()
+			self.missing_repo_names = frozenset()
 			return
 
 		# If PORTDIR_OVERLAY contains a repo with the same repo_name as
