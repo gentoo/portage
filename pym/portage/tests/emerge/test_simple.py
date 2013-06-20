@@ -76,13 +76,21 @@ pkg_preinst() {
 	else
 		einfo "has_version does not detect an installed instance of $CATEGORY/$PN:$SLOT"
 	fi
+	if [[ ${EPREFIX} != ${PORTAGE_OVERRIDE_EPREFIX} ]] ; then
+		if has_version --host-root $CATEGORY/$PN:$SLOT ; then
+			einfo "has_version --host-root detects an installed instance of $CATEGORY/$PN:$SLOT"
+			einfo "best_version --host-root reports that the installed instance is $(best_version $CATEGORY/$PN:$SLOT)"
+		else
+			einfo "has_version --host-root does not detect an installed instance of $CATEGORY/$PN:$SLOT"
+		fi
+	fi
 }
 
 """
 
 		ebuilds = {
 			"dev-libs/A-1": {
-				"EAPI" : "4",
+				"EAPI" : "5",
 				"IUSE" : "+flag",
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
@@ -90,14 +98,14 @@ pkg_preinst() {
 				"RDEPEND": "flag? ( dev-libs/B[flag] )",
 			},
 			"dev-libs/B-1": {
-				"EAPI" : "4",
+				"EAPI" : "5",
 				"IUSE" : "+flag",
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
 				"MISC_CONTENT": install_something,
 			},
 			"virtual/foo-0": {
-				"EAPI" : "4",
+				"EAPI" : "5",
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
 			},
@@ -105,7 +113,7 @@ pkg_preinst() {
 
 		installed = {
 			"dev-libs/A-1": {
-				"EAPI" : "4",
+				"EAPI" : "5",
 				"IUSE" : "+flag",
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
@@ -113,21 +121,21 @@ pkg_preinst() {
 				"USE": "flag",
 			},
 			"dev-libs/B-1": {
-				"EAPI" : "4",
+				"EAPI" : "5",
 				"IUSE" : "+flag",
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
 				"USE": "flag",
 			},
 			"dev-libs/depclean-me-1": {
-				"EAPI" : "4",
+				"EAPI" : "5",
 				"IUSE" : "",
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
 				"USE": "",
 			},
 			"app-misc/depclean-me-1": {
-				"EAPI" : "4",
+				"EAPI" : "5",
 				"IUSE" : "",
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
