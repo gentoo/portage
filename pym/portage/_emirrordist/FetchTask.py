@@ -20,7 +20,9 @@ from _emerge.CompositeTask import CompositeTask
 
 default_hash_name = portage.const.MANIFEST2_REQUIRED_HASH
 
-default_fetchcommand = "wget -c -v -t 1 --passive-ftp --timeout=60 -O \"${DISTDIR}/${FILE}\" \"${URI}\""
+# Use --no-check-certificate since Manifest digests should provide
+# enough security, and certificates can be self-signed or whatnot.
+default_fetchcommand = "wget -c -v -t 1 --passive-ftp --no-check-certificate --timeout=60 -O \"${DISTDIR}/${FILE}\" \"${URI}\""
 
 class FetchTask(CompositeTask):
 
