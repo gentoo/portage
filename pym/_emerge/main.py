@@ -981,10 +981,6 @@ def parse_opts(tmpcmdline, silent=False):
 	if myaction is None and myoptions.deselect is True:
 		myaction = 'deselect'
 
-	if myargs and isinstance(myargs[0], bytes):
-		for i in range(len(myargs)):
-			myargs[i] = portage._unicode_decode(myargs[i])
-
 	myfiles += myargs
 
 	return myaction, myopts, myfiles
@@ -1013,6 +1009,8 @@ def emerge_main(args=None):
 	"""
 	if args is None:
 		args = sys.argv[1:]
+
+	args = portage._decode_argv(args)
 
 	# Disable color until we're sure that it should be enabled (after
 	# EMERGE_DEFAULT_OPTS has been parsed).

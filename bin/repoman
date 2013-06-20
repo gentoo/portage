@@ -156,8 +156,7 @@ def ParseArgs(argv, qahelp):
 	  (opts, args), just like a call to parser.parse_args()
 	"""
 
-	if argv and isinstance(argv[0], bytes):
-		argv = [portage._unicode_decode(x) for x in argv]
+	argv = portage._decode_argv(argv)
 
 	modes = {
 		'commit' : 'Run a scan then commit changes',

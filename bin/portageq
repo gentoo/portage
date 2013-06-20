@@ -1148,8 +1148,7 @@ else:
 
 def main(argv):
 
-	if argv and isinstance(argv[0], bytes):
-		argv = [portage._unicode_decode(x) for x in argv]
+	argv = portage._decode_argv(argv)
 
 	nocolor = os.environ.get('NOCOLOR')
 	if nocolor in ('yes', 'true'):

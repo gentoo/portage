@@ -174,6 +174,15 @@ _encodings = {
 }
 
 if sys.hexversion >= 0x3000000:
+
+	def _decode_argv(argv):
+		# With Python 3, the surrogateescape encoding error handler makes it
+		# possible to access the original argv bytes, which can be useful
+		# if their actual encoding does no match the filesystem encoding.
+		fs_encoding = sys.getfilesystemencoding()
+		return [_unicode_decode(x.encode(fs_encoding, 'surrogateescape'))
+			for x in argv]
+
 	def _unicode_encode(s, encoding=_encodings['content'], errors='backslashreplace'):
 		if isinstance(s, str):
 			s = s.encode(encoding, errors)
@@ -186,6 +195,10 @@ if sys.hexversion >= 0x3000000:
 
 	_native_string = _unicode_decode
 else:
+
+	def _decode_argv(argv):
+		return [_unicode_decode(x) for x in argv]
+
 	def _unicode_encode(s, encoding=_encodings['content'], errors='backslashreplace'):
 		if isinstance(s, unicode):
 			s = s.encode(encoding, errors)
