@@ -1,6 +1,8 @@
 # Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from __future__ import unicode_literals
+
 __all__ = (
 	'LocationsManager',
 )
@@ -47,6 +49,10 @@ class LocationsManager(object):
 
 		if self.eprefix is None:
 			self.eprefix = portage.const.EPREFIX
+		elif self.eprefix:
+			self.eprefix = normalize_path(self.eprefix)
+			if self.eprefix == os.sep:
+				self.eprefix = ""
 
 		if self.config_root is None:
 			self.config_root = portage.const.EPREFIX + os.sep

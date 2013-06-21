@@ -164,6 +164,8 @@ if "PORTAGE_OVERRIDE_EPREFIX" in os.environ:
 	EPREFIX = os.environ["PORTAGE_OVERRIDE_EPREFIX"]
 	if EPREFIX:
 		EPREFIX = os.path.normpath(EPREFIX)
+		if EPREFIX == os.sep:
+			EPREFIX = ""
 
 VCS_DIRS = ("CVS", "RCS", "SCCS", ".bzr", ".git", ".hg", ".svn")
 
