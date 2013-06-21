@@ -4,13 +4,26 @@
 
 import os
 import sys
-import argparse
 import subprocess
 import traceback
 
 from portage.util.movefile import _copyxattr
 from portage.exception import OperationNotSupported
 
+try:
+	from argparse import ArgumentParser
+except ImportError:
+	# Compatibility with Python 2.6 and 3.1
+	from optparse import OptionParser
+
+	class ArgumentParser(object):
+		def __init__(self, **kwargs):
+			add_help = kwargs.pop("add_help", None)
+			if add_help is not None:
+				kwargs["add_help_option"] = add_help
+			parser = OptionParser(**kwargs)
+			self.add_argument = parser.add_option
+			self.parse_known_args = parser.parse_args
 
 def parse_args(args):
 	"""
@@ -20,7 +33,7 @@ def parse_args(args):
 	Returns:
 	  tuple of the Namespace of parsed options, and a list of order parameters
 	"""
-	parser = argparse.ArgumentParser(add_help=False)
+	parser = ArgumentParser(add_help=False)
 
 	parser.add_argument(
 		"-b",
