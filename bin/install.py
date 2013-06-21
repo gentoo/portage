@@ -142,6 +142,16 @@ def parse_args(args):
 		action="store_true",
 		dest="version"
 	)
+
+	# Use parse_known_args for maximum compatibility with
+	# getopt handling of non-option file arguments. Note
+	# that parser.add_argument("files", nargs='+') would
+	# be subtly incompatible because it requires that all
+	# of the file arguments be grouped sequentially. Also
+	# note that we have to explicitly call add_argument
+	# for known options in order for argparse to correctly
+	# separate option arguments from file arguments in all
+	# cases (it also allows for optparse compatibility).
 	parsed_args = parser.parse_known_args()
 
 	opts  = parsed_args[0]
