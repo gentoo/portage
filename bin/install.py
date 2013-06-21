@@ -223,6 +223,20 @@ def main(args):
 	path_installs = Which('install', all=True)
 	cmdline = path_installs[0:1]
 	cmdline += args
+
+	if sys.hexversion >= 0x3020000:
+		# We can't trust that the filesystem encoding (locale dependent)
+		# correctly matches the arguments, so use surrogateescape to
+		# pass through the original argv bytes for Python 3.
+		# Since Python <3.2 does not support bytes in Popen args, trust
+		# the locale in that case.
+		fs_encoding = sys.getfilesystemencoding()
+		cmdline = [x.encode(fs_encoding, 'surrogateescape') for x in cmdline]
+		files = [x.encode(fs_encoding, 'surrogateescape') for x in files]
+		if opts.target_directory is not None:
+			opts.target_directory = \
+				opts.target_directory.encode(fs_encoding, 'surrogateescape')
+
 	returncode = subprocess.call(cmdline)
 	if returncode == os.EX_OK:
 		returncode = copy_xattrs(opts, files)
