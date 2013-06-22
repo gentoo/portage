@@ -547,6 +547,7 @@ if ! type -p patcher &> /dev/null; then
 	echo "!!!"
 	sleep 10
 	if do_latest_snapshot; then
+		rm -fr "${TMPDIR}"
 		cleanse_state_dir
 		exit 0
 	fi
@@ -597,6 +598,7 @@ done
 if [[ -z ${base_version} ]]; then
 	echo "no base found.  resorting to pulling a full version"
 	if do_latest_snapshot; then
+		rm -fr "${TMPDIR}"
 		cleanse_state_dir
 		exit 0
 	fi
@@ -661,9 +663,9 @@ if [[ -z $patches ]]; then
 		if [[ ${WEBSYNC_VERIFY_SIGNATURE} == 1 ]] ; then
 			check_file_signature "${DISTDIR}/portage-${base_date}.tar.bz2.gpgsig" "${dfile}" || exit 1
 		fi
-		sync_local "${dfile}"
+		sync_local "${dfile}" && rm -fr "${TMPDIR}"
 	else
-		:
+		rm -fr "${TMPDIR}"
 	fi
 	exit $?
 fi
@@ -699,6 +701,7 @@ if ! patcher -v "${dfile}" ${patches} "${TMPDIR}/portage-${final_date}.tar"; the
 	echo "reconstruction failed (contact the author with the error from the reconstructor please)"
 	rm -f "${TMPDIR}/portage-${final_date}.tar"
 	if do_latest_snapshot; then
+		rm -fr "${TMPDIR}"
 		cleanse_state_dir
 		exit 0
 	fi
