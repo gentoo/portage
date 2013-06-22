@@ -9,6 +9,7 @@ import platform
 import signal
 import sys
 import traceback
+import os as _os
 
 from portage import os
 from portage import _encodings
@@ -520,8 +521,16 @@ def find_binary(binary):
 	@rtype: None or string
 	@return: full path to binary or None if the binary could not be located.
 	"""
-	for path in os.environ.get("PATH", "").split(":"):
-		filename = "%s/%s" % (path, binary)
-		if os.access(filename, os.X_OK) and os.path.isfile(filename):
+	paths = os.environ.get("PATH", "")
+	if sys.hexversion >= 0x3000000 and isinstance(binary, bytes):
+		# return bytes when input is bytes
+		paths = paths.encode(sys.getfilesystemencoding(), 'surrogateescape')
+		paths = paths.split(b':')
+	else:
+		paths = paths.split(':')
+
+	for path in paths:
+		filename = _os.path.join(path, binary)
+		if _os.access(filename, os.X_OK) and _os.path.isfile(filename):
 			return filename
 	return None
