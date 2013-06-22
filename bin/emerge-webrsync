@@ -129,7 +129,7 @@ fetch_file() {
 	elif [ "${FETCHCOMMAND/curl/}" != "${FETCHCOMMAND}" ]; then
 		opts="--continue-at - $(nvecho -s -f)"
 	else
-		rm -f "${FILE}"
+		rm -f "${DISTDIR}/${FILE}"
 	fi
 
 	__vecho "Fetching file ${FILE} ..."
