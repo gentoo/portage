@@ -3,6 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os
+import stat
 import sys
 import subprocess
 import traceback
@@ -24,6 +25,9 @@ except ImportError:
 			parser = OptionParser(**kwargs)
 			self.add_argument = parser.add_option
 			self.parse_known_args = parser.parse_args
+
+# Change back to original cwd _after_ all imports (bug #469338).
+os.chdir(os.environ["__PORTAGE_HELPER_CWD"])
 
 def parse_args(args):
 	"""
@@ -194,34 +198,45 @@ def copy_xattrs(opts, files):
 		return os.EX_OSERR
 
 
-def Which(filename, path=None, all=False):
+def Which(filename, path=None, exclude=None):
 	"""
 	Find the absolute path of 'filename' in a given search 'path'
 	Args:
 	  filename: basename of the file
 	  path: colon delimited search path
-	  all: return a list of all intances if true, else return just the first
+	  exclude: path of file to exclude
 	"""
 	if path is None:
 		path = os.environ.get('PATH', '')
-	ret = []
+
+	if exclude is not None:
+		st = os.stat(exclude)
+		exclude = (st.st_ino, st.st_dev)
+
 	for p in path.split(':'):
 		p = os.path.join(p, filename)
 		if os.access(p, os.X_OK):
-			if all:
-				ret.append(p)
+			try:
+				st = os.stat(p)
+			except OSError:
+				# file disappeared?
+				pass
 			else:
-				return p
-	if all:
-		return ret
-	else:
-		return None
+				if stat.S_ISREG(st.st_mode) and \
+					(exclude is None or exclude != (st.st_ino, st.st_dev)):
+					return p
+
+	return None
 
 
 def main(args):
 	opts, files = parse_args(args)
-	path_installs = Which('install', all=True)
-	cmdline = path_installs[0:1]
+	install_binary = Which('install', exclude=os.environ["__PORTAGE_HELPER_PATH"])
+	if install_binary is None:
+		sys.stderr.write("install: command not found\n")
+		return 127
+
+	cmdline = [install_binary]
 	cmdline += args
 
 	if sys.hexversion >= 0x3020000:
