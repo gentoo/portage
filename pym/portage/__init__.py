@@ -427,11 +427,18 @@ if platform.system() in ('FreeBSD',):
 				cmd.append(opts)
 			cmd.append('%o' % (flags,))
 			cmd.append(path)
+
+			if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000:
+				# Python 3.1 _execvp throws TypeError for non-absolute executable
+				# path passed as bytes (see http://bugs.python.org/issue8513).
+				fullname = process.find_binary(cmd[0])
+				if fullname is None:
+					raise exception.CommandNotFound(cmd[0])
+				cmd[0] = fullname
+
 			encoding = _encodings['fs']
-			if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
-				# Python 3.1 does not support bytes in Popen args.
-				cmd = [_unicode_encode(x, encoding=encoding, errors='strict')
-					for x in cmd]
+			cmd = [_unicode_encode(x, encoding=encoding, errors='strict')
+				for x in cmd]
 			proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
 				stderr=subprocess.STDOUT)
 			output = proc.communicate()[0]
@@ -635,10 +642,8 @@ if VERSION == 'HEAD':
 					"if [ -n \"`git diff-index --name-only --diff-filter=M HEAD`\" ] ; " + \
 					"then echo modified ; git rev-list --format=%%ct -n 1 HEAD ; fi ; " + \
 					"exit 0") % _shell_quote(PORTAGE_BASE_PATH)]
-				if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
-					# Python 3.1 does not support bytes in Popen args.
-					cmd = [_unicode_encode(x, encoding=encoding, errors='strict')
-						for x in cmd]
+				cmd = [_unicode_encode(x, encoding=encoding, errors='strict')
+					for x in cmd]
 				proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
 					stderr=subprocess.STDOUT)
 				output = _unicode_decode(proc.communicate()[0], encoding=encoding)

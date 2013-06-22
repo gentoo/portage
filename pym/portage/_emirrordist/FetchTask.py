@@ -431,10 +431,17 @@ class FetchTask(CompositeTask):
 		args = [portage.util.varexpand(x, mydict=variables)
 			for x in args]
 
-		if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
-			# Python 3.1 does not support bytes in Popen args.
-			args = [_unicode_encode(x,
-				encoding=_encodings['fs'], errors='strict') for x in args]
+		if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000 and \
+			not os.path.isabs(args[0]):
+			# Python 3.1 _execvp throws TypeError for non-absolute executable
+			# path passed as bytes (see http://bugs.python.org/issue8513).
+			fullname = portage.process.find_binary(args[0])
+			if fullname is None:
+				raise portage.exception.CommandNotFound(args[0])
+			args[0] = fullname
+
+		args = [_unicode_encode(x,
+			encoding=_encodings['fs'], errors='strict') for x in args]
 
 		null_fd = os.open(os.devnull, os.O_RDONLY)
 		fetcher = PopenProcess(background=self.background,

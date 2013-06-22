@@ -754,11 +754,19 @@ def repoman_getstatusoutput(cmd):
 	customized unicode handling (see bug #310789) and without the shell.
 	"""
 	args = portage.util.shlex_split(cmd)
+
+	if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000 and \
+		not os.path.isabs(args[0]):
+		# Python 3.1 _execvp throws TypeError for non-absolute executable
+		# path passed as bytes (see http://bugs.python.org/issue8513).
+		fullname = find_binary(args[0])
+		if fullname is None:
+			raise portage.exception.CommandNotFound(args[0])
+		args[0] = fullname
+
 	encoding = _encodings['fs']
-	if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
-		# Python 3.1 does not support bytes in Popen args.
-		args = [_unicode_encode(x,
-			encoding=encoding, errors='strict') for x in args]
+	args = [_unicode_encode(x,
+		encoding=encoding, errors='strict') for x in args]
 	proc = subprocess.Popen(args, stdout=subprocess.PIPE,
 		stderr=subprocess.STDOUT)
 	output = portage._unicode_decode(proc.communicate()[0],
@@ -778,11 +786,19 @@ class repoman_popen(portage.proxy.objectproxy.ObjectProxy):
 
 	def __init__(self, cmd):
 		args = portage.util.shlex_split(cmd)
+
+		if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000 and \
+			not os.path.isabs(args[0]):
+			# Python 3.1 _execvp throws TypeError for non-absolute executable
+			# path passed as bytes (see http://bugs.python.org/issue8513).
+			fullname = find_binary(args[0])
+			if fullname is None:
+				raise portage.exception.CommandNotFound(args[0])
+			args[0] = fullname
+
 		encoding = _encodings['fs']
-		if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
-			# Python 3.1 does not support bytes in Popen args.
-			args = [_unicode_encode(x,
-				encoding=encoding, errors='strict') for x in args]
+		args = [_unicode_encode(x,
+			encoding=encoding, errors='strict') for x in args]
 		proc = subprocess.Popen(args, stdout=subprocess.PIPE)
 		object.__setattr__(self, '_proc', proc)
 		object.__setattr__(self, '_stdout',
@@ -2763,15 +2779,17 @@ else:
 			portage.writemsg_stdout("(%s)\n" % " ".join(add_cmd),
 				noiselevel=-1)
 		else:
-			if not (sys.hexversion >= 0x3000000 and sys.hexversion < 0x3020000):
-				# Python 3.1 produces the following TypeError if raw bytes are
-				# passed to subprocess.call():
-				#   File "/usr/lib/python3.1/subprocess.py", line 646, in __init__
-				#     errread, errwrite)
-				#   File "/usr/lib/python3.1/subprocess.py", line 1157, in _execute_child
-				#     raise child_exception
-				# TypeError: expected an object with the buffer interface
-				add_cmd = [_unicode_encode(arg) for arg in add_cmd]
+
+			if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000 and \
+				not os.path.isabs(add_cmd[0]):
+				# Python 3.1 _execvp throws TypeError for non-absolute executable
+				# path passed as bytes (see http://bugs.python.org/issue8513).
+				fullname = find_binary(add_cmd[0])
+				if fullname is None:
+					raise portage.exception.CommandNotFound(add_cmd[0])
+				add_cmd[0] = fullname
+
+			add_cmd = [_unicode_encode(arg) for arg in add_cmd]
 			retcode = subprocess.call(add_cmd)
 			if retcode != os.EX_OK:
 				logging.error(
@@ -2919,10 +2937,18 @@ else:
 		else:
 			# Encode unicode manually for bug #310789.
 			gpgcmd = portage.util.shlex_split(gpgcmd)
-			if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
-				# Python 3.1 does not support bytes in Popen args.
-				gpgcmd = [_unicode_encode(arg,
-					encoding=_encodings['fs'], errors='strict') for arg in gpgcmd]
+
+			if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000 and \
+				not os.path.isabs(gpgcmd[0]):
+				# Python 3.1 _execvp throws TypeError for non-absolute executable
+				# path passed as bytes (see http://bugs.python.org/issue8513).
+				fullname = find_binary(gpgcmd[0])
+				if fullname is None:
+					raise portage.exception.CommandNotFound(gpgcmd[0])
+				gpgcmd[0] = fullname
+
+			gpgcmd = [_unicode_encode(arg,
+				encoding=_encodings['fs'], errors='strict') for arg in gpgcmd]
 			rValue = subprocess.call(gpgcmd)
 			if rValue == os.EX_OK:
 				os.rename(filename + ".asc", filename)

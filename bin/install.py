@@ -241,12 +241,10 @@ def main(args):
 	cmdline = [install_binary]
 	cmdline += args
 
-	if sys.hexversion >= 0x3020000:
+	if sys.hexversion >= 0x3000000:
 		# We can't trust that the filesystem encoding (locale dependent)
 		# correctly matches the arguments, so use surrogateescape to
 		# pass through the original argv bytes for Python 3.
-		# Since Python <3.2 does not support bytes in Popen args, trust
-		# the locale in that case.
 		fs_encoding = sys.getfilesystemencoding()
 		cmdline = [x.encode(fs_encoding, 'surrogateescape') for x in cmdline]
 		files = [x.encode(fs_encoding, 'surrogateescape') for x in files]

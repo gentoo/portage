@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from itertools import chain
@@ -43,10 +43,8 @@ class BashSyntaxTestCase(TestCase):
 				if line[:2] == '#!' and \
 					'bash' in line:
 					cmd = [BASH_BINARY, "-n", x]
-					if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
-						# Python 3.1 does not support bytes in Popen args.
-						cmd = [_unicode_encode(x,
-							encoding=_encodings['fs'], errors='strict') for x in cmd]
+					cmd = [_unicode_encode(x,
+						encoding=_encodings['fs'], errors='strict') for x in cmd]
 					proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
 						stderr=subprocess.STDOUT)
 					output = _unicode_decode(proc.communicate()[0],
