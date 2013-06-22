@@ -184,13 +184,15 @@ def copy_xattrs(opts, files):
 		source, target = files, opts.target_directory
 		target_is_directory = True
 
+	exclude = os.environ.get("PORTAGE_XATTR_EXCLUDE", "security.*")
+
 	try:
 		if target_is_directory:
 			for s in source:
 				abs_path = os.path.join(target, os.path.basename(s))
-				_copyxattr(s, abs_path)
+				_copyxattr(s, abs_path, exclude=exclude)
 		else:
-			_copyxattr(source[0], target)
+			_copyxattr(source[0], target, exclude=exclude)
 		return os.EX_OK
 
 	except OperationNotSupported:
