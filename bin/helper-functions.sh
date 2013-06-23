@@ -76,10 +76,14 @@ __redirect_alloc_fd() {
 	else
 			# Need to provide the functionality ourselves.
 			local fd=10
+			local fddir=/dev/fd
+			# Use /proc/<pid>/fd if available (/dev/fd
+			# doesn't work on solaris, see bug #474536).
+			[[ -d /proc/${BASHPID}/fd ]] && fddir=/proc/${BASHPID}/fd
 			while :; do
 					# Make sure the fd isn't open.  It could be a char device,
 					# or a symlink (possibly broken) to something else.
-					if [[ ! -e /dev/fd/${fd} ]] && [[ ! -L /dev/fd/${fd} ]] ; then
+					if [[ ! -e ${fddir}/${fd} ]] && [[ ! -L ${fddir}/${fd} ]] ; then
 							eval "exec ${fd}${redir}'${file}'" && break
 					fi
 					[[ ${fd} -gt 1024 ]] && die "__redirect_alloc_fd failed"

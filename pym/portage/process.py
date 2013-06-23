@@ -37,7 +37,9 @@ for _fd_dir in ("/dev/fd", "/proc/self/fd"):
 	else:
 		_fd_dir = None
 
-if _fd_dir is not None:
+# Use /proc/<pid>/fd for SunOS (/dev/fd
+# doesn't work on solaris, see bug #474536).
+if _fd_dir is not None and platform.system() not in ('SunOS',):
 	def get_open_fds():
 		return (int(fd) for fd in os.listdir(_fd_dir) if fd.isdigit())
 
@@ -51,6 +53,13 @@ if _fd_dir is not None:
 				if e.errno != errno.EAGAIN:
 					raise
 				return range(max_fd_limit)
+
+elif os.path.isdir("/proc/%s/fd" % os.getpid()):
+	# In order for this function to work in forked subprocesses,
+	# os.getpid() must be called from inside the function.
+	def get_open_fds():
+		return (int(fd) for fd in os.listdir("/proc/%s/fd" % os.getpid())
+			if fd.isdigit())
 
 else:
 	def get_open_fds():
