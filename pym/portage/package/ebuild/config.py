@@ -169,7 +169,7 @@ class config(object):
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
 		eprefix=None, local_config=True, env=None,
-		_unmatched_removal=False):
+		_unmatched_removal=False, repositories=None):
 		"""
 		@param clone: If provided, init will use deepcopy to copy by value the instance.
 		@type clone: Instance of config class.
@@ -197,6 +197,9 @@ class config(object):
 		@param _unmatched_removal: Enabled by repoman when the
 			--unmatched-removal option is given.
 		@type _unmatched_removal: Boolean
+		@param repositories: Configuration of repositories.
+			Defaults to portage.repository.config.load_repository_config().
+		@type repositories: Instance of portage.repository.config.RepoConfigLoader class.
 		"""
 
 		# This is important when config is reloaded after emerge --sync.
@@ -501,7 +504,10 @@ class config(object):
 			self["PORTDIR"] = portdir
 			self["PORTDIR_OVERLAY"] = portdir_overlay
 			self.lookuplist = [self.configdict["env"]]
-			self.repositories = load_repository_config(self)
+			if repositories is None:
+				self.repositories = load_repository_config(self)
+			else:
+				self.repositories = repositories
 
 			locations_manager.load_profiles(self.repositories, known_repos)
 
