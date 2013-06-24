@@ -784,13 +784,23 @@ class RepoConfigLoader(object):
 		return self.prepos[self.get_name_for_location(location)]
 
 	def __setitem__(self, repo_name, repo):
-		self.prepos[repo_name] = repo
+		# self.prepos[repo_name] = repo
+		raise NotImplementedError
 
 	def __getitem__(self, repo_name):
 		return self.prepos[repo_name]
 
 	def __delitem__(self, repo_name):
+		location = self.prepos[repo_name].location
 		del self.prepos[repo_name]
+		if repo_name in self.prepos_order:
+			self.prepos_order.remove(repo_name)
+		for k, v in self.location_map.copy().items():
+			if v == repo_name:
+				del self.location_map[k]
+		if repo_name in self.treemap:
+			del self.treemap[repo_name]
+		self._repo_location_list = tuple(x for x in self._repo_location_list if x != location)
 
 	def __iter__(self):
 		for repo_name in self.prepos_order:
