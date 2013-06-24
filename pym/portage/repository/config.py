@@ -783,8 +783,14 @@ class RepoConfigLoader(object):
 	def get_repo_for_location(self, location):
 		return self.prepos[self.get_name_for_location(location)]
 
+	def __setitem__(self, repo_name, repo):
+		self.prepos[repo_name] = repo
+
 	def __getitem__(self, repo_name):
 		return self.prepos[repo_name]
+
+	def __delitem__(self, repo_name):
+		del self.prepos[repo_name]
 
 	def __iter__(self):
 		for repo_name in self.prepos_order:
