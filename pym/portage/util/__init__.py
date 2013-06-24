@@ -1,6 +1,8 @@
 # Copyright 2004-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from __future__ import unicode_literals
+
 __all__ = ['apply_permissions', 'apply_recursive_permissions',
 	'apply_secpass_permissions', 'apply_stat_permissions', 'atomic_ofstream',
 	'cmp_sort_key', 'ConfigProtect', 'dump_traceback', 'ensure_dirs',
@@ -671,15 +673,19 @@ def getconfig(mycfg, tolerant=False, allow_sourcing=False, expand=True,
 		if f is not None:
 			f.close()
 
+	# Since this file has unicode_literals enabled, and Python 2's
+	# shlex implementation does not support unicode, the following code
+	# uses _native_string() to encode unicode literals when necessary.
+
 	# Workaround for avoiding a silent error in shlex that is
 	# triggered by a source statement at the end of the file
 	# without a trailing newline after the source statement.
-	if content and content[-1] != '\n':
-		content += '\n'
+	if content and content[-1] != portage._native_string('\n'):
+		content += portage._native_string('\n')
 
 	# Warn about dos-style line endings since that prevents
 	# people from being able to source them with bash.
-	if '\r' in content:
+	if portage._native_string('\r') in content:
 		writemsg(("!!! " + _("Please use dos2unix to convert line endings " + \
 			"in config file: '%s'") + "\n") % mycfg, noiselevel=-1)
 
@@ -690,27 +696,30 @@ def getconfig(mycfg, tolerant=False, allow_sourcing=False, expand=True,
 		# attribute is properly set.
 		lex = _getconfig_shlex(instream=content, infile=mycfg, posix=True,
 			portage_tolerant=tolerant)
-		lex.wordchars = string.digits + string.ascii_letters + \
-			"~!@#$%*_\:;?,./-+{}"
-		lex.quotes="\"'"
+		lex.wordchars = portage._native_string(string.digits +
+			string.ascii_letters + "~!@#$%*_\:;?,./-+{}")
+		lex.quotes = portage._native_string("\"'")
 		if allow_sourcing:
-			lex.source="source"
-		while 1:
-			key=lex.get_token()
+			lex.source = portage._native_string("source")
+
+		while True:
+			key = _unicode_decode(lex.get_token())
 			if key == "export":
-				key = lex.get_token()
+				key = _unicode_decode(lex.get_token())
 			if key is None:
 				#normal end of file
-				break;
-			equ=lex.get_token()
-			if (equ==''):
+				break
+
+			equ = _unicode_decode(lex.get_token())
+			if not equ:
 				msg = lex.error_leader() + _("Unexpected EOF")
 				if not tolerant:
 					raise ParseError(msg)
 				else:
 					writemsg("%s\n" % msg, noiselevel=-1)
 					return mykeys
-			elif (equ!='='):
+
+			elif equ != "=":
 				msg = lex.error_leader() + \
 					_("Invalid token '%s' (not '=')") % (equ,)
 				if not tolerant:
@@ -718,7 +727,8 @@ def getconfig(mycfg, tolerant=False, allow_sourcing=False, expand=True,
 				else:
 					writemsg("%s\n" % msg, noiselevel=-1)
 					return mykeys
-			val=lex.get_token()
+
+			val = _unicode_decode(lex.get_token())
 			if val is None:
 				msg = lex.error_leader() + \
 					_("Unexpected end of config file: variable '%s'") % (key,)
@@ -727,8 +737,6 @@ def getconfig(mycfg, tolerant=False, allow_sourcing=False, expand=True,
 				else:
 					writemsg("%s\n" % msg, noiselevel=-1)
 					return mykeys
-			key = _unicode_decode(key)
-			val = _unicode_decode(val)
 
 			if _invalid_var_name_re.search(key) is not None:
 				msg = lex.error_leader() + \
@@ -749,7 +757,7 @@ def getconfig(mycfg, tolerant=False, allow_sourcing=False, expand=True,
 	except Exception as e:
 		if isinstance(e, ParseError) or lex is None:
 			raise
-		msg = _unicode_decode("%s%s") % (lex.error_leader(), e)
+		msg = "%s%s" % (lex.error_leader(), e)
 		writemsg("%s\n" % msg, noiselevel=-1)
 		raise
 
@@ -1501,9 +1509,9 @@ class LazyItemsDict(UserDict):
 			lazy_item = self.lazy_items.get(k)
 			if lazy_item is not None:
 				if not lazy_item.singleton:
-					raise TypeError(_unicode_decode("LazyItemsDict " + \
+					raise TypeError("LazyItemsDict " + \
 						"deepcopy is unsafe with lazy items that are " + \
-						"not singletons: key=%s value=%s") % (k, lazy_item,))
+						"not singletons: key=%s value=%s" % (k, lazy_item,))
 			UserDict.__setitem__(result, k_copy, deepcopy(self[k], memo))
 		return result
 
