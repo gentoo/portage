@@ -348,7 +348,7 @@ class RepoConfig(object):
 		return "\n".join(repo_msg)
 
 	def __repr__(self):
-		return "<portage.repository.config.RepoConfig(name='%s', location='%s')>" % (self.name, _unicode_decode(self.location))
+		return "<portage.repository.config.RepoConfig(name=%r, location=%r)>" % (self.name, _unicode_decode(self.location))
 
 	def __str__(self):
 		d = {}
