@@ -1,0 +1,217 @@
+.TH "COLOR.MAP" "5" "Dec 2012" "Portage VERSION" "Portage"
+.SH "НАЗВАНИЕ"
+color.map \- пользовательские настройки цвета в Portage
+.SH "ПАРАМЕТРЫ"
+.B /etc/portage/color.map
+.SH "ОПИСАНИЕ"
+Указанный файл содержит переменные, определяющие классы цвета, которые
+использует Portage. Проверяя настройки цвета, Portage в первую очередь
+обращается к нему. Если тот или иной класс цвета не определен в
+\fB/etc/portage/color.map\fR, Portage использует внутренние значения,
+принятые по умолчанию.
+.SH "СИНТАКСИС"
+\fBПЕРЕМЕННАЯ\fR = \fI[атрибуты или коды ansi, через пробел]\fR
+.TP
+\fBАТРИБУТ\fR = \fI[атрибуты или коды ansi, через пробел]]\fR
+.SH "ПЕРЕМЕННЫЕ"
+.TP
+\fBNORMAL\fR = \fI"normal"\fR
+Определяет цвет, используемый для некоторых слов, встречающихся в контекстах,
+отличных от перечисленных ниже.
+.TP
+\fBBAD\fR = \fI"red"\fR
+Определяет цвет, используемый для некоторых слов, встречающихся в отрицательном
+контексте.
+.TP
+\fBBRACKET\fR = \fI"blue"\fR
+Определяет цвет, используемый для скобок.
+.TP
+\fBGOOD\fR = \fI"green"\fR
+Определяет цвет, используемый для некоторых слов, встречающихся в положительном
+контексте.
+.TP
+\fBHILITE\fR = \fI"teal"\fR
+Определяет цвет, используемый для выделения слов.
+.TP
+\fBINFORM\fR = \fI"darkgreen"\fR
+Определяет цвет, используемый для информационных сообщений.
+.TP
+\fBMERGE_LIST_PROGRESS\fR = \fI"yellow"\fR
+Определяет цвет, используемый для чисел, отображающих ход установки.
+.TP
+\fBPKG_BLOCKER\fR = \fI"red"\fR
+Определяет цвет, используемый для пакетов, создающих неразрешенный конфликт.
+.TP
+\fBPKG_BLOCKER_SATISFIED\fR = \fI"darkblue"\fR
+Определяет цвет, используемый для пакетов, создававших конфликт, который
+затем был разрешен.
+.TP
+\fBPKG_MERGE\fR = \fI"darkgreen"\fR
+Определяет цвет, используемый для пакетов, которые будут установлены.
+.TP
+\fBPKG_MERGE_SYSTEM\fR = \fI"darkgreen"\fR
+Определяет цвет, используемый для system-пакетов, которые будут установлены.
+.TP
+\fBPKG_MERGE_WORLD\fR = \fI"green"\fR
+Определяет цвет, используемый для world-пакетов, которые будут установлены.
+.TP
+\fBPKG_BINARY_MERGE\fR = \fI"purple"\fR
+Определяет цвет, используемый для пакетов, которые будут установлены в бинарной версии.
+.TP
+\fBPKG_BINARY_MERGE_SYSTEM\fR = \fI"purple"\fR
+Определяет цвет, используемый для system-пакетов, которые будут установлены в
+бинарной версии.
+.TP
+\fBPKG_BINARY_MERGE_WORLD\fR = \fI"fuchsia"\fR
+Определяет цвет, используемый для world-пакетов, которые будут установлены в
+бинарной версии.
+.TP
+\fBPKG_NOMERGE\fR = \fI"darkblue"\fR
+Определяет цвет, используемый для имен пакетов, которые не будут установлены.
+.TP
+\fBPKG_NOMERGE_SYSTEM\fR = \fI"darkblue"\fR
+Определяет цвет, используемый для имен system-пакетов, которые не будут установлены.
+.TP
+\fBPKG_NOMERGE_WORLD\fR = \fI"blue"\fR
+Определяет цвет, используемый для имен world-пакетов, которые не будут установлены.
+.TP
+\fBPKG_UNINSTALL\fR = \fI"red"\fR
+Определяет цвет, используемый для имен пакетов, которые должны быть удалены для
+разрешения конфликтов.
+.TP
+\fBPROMPT_CHOICE_DEFAULT\fR = \fI"green"\fR
+Определяет цвет, используемый для предлагаемого на выбор значения по умолчанию.
+.TP
+\fBPROMPT_CHOICE_OTHER\fR = \fI"red"\fR
+Определяет цвет, используемый для предлагаемого на выбор значения не по умолчанию.
+.TP
+\fBSECURITY_WARN\fR = \fI"red"\fR
+Определяет цвет, используемый для предупреждений о безопасности.
+.TP
+\fBUNMERGE_WARN\fR = \fI"red"\fR
+Определяет цвет, используемый для предупреждений об удалении пакета.
+.TP
+\fBWARN\fR = \fI"yellow"\fR
+Определяет цвет, используемый для предупреждений.
+.SH "ДОПУСТИМЫЕ АТРИБУТЫ"
+.TP
+.B Цвет текста
+.RS
+.TP
+.B black - черный
+.TP
+.B darkgray - темно-серый
+.TP
+.B darkred - темно-красный
+.TP
+.B red - красный
+.TP
+.B darkgreen - темно-зеленый
+.TP
+.B green - зеленый
+.TP
+.B brown - коричневый
+.TP
+.B yellow - желтый
+.TP
+.B darkyellow - темно-желтый
+.TP
+.B darkblue - темно-синий
+.TP
+.B blue - синий
+.TP
+.B purple - фиолетовый
+.TP
+.B fuchsia - лиловый
+.TP
+.B teal - серо-зеленый
+.TP
+\fBturquoise\fR = \fBdarkteal\fR - \fBбирюзовый\fR
+.TP
+.B lightgray - светло-серый
+.TP
+.B white - белый
+.RE
+.TP
+.B Цвет фона
+.RS
+.TP
+.B bg_black - черный фон
+.TP
+.B bg_darkred - темно-красный фон
+.TP
+.B bg_darkgreen - темно-зеленый фон
+.TP
+\fBbg_brown\fR = \fBbg_darkyellow\fR - \fBкоричневый фон\fR
+.TP
+.B bg_darkblue - темно-синий фон
+.TP
+.B bg_purple - фиолетовый фон
+.TP
+.B bg_teal - серо-зеленый фон
+.TP
+.B bg_lightgray - светло-серый фон
+.RE
+.TP
+.B Другие атрибуты
+.RS
+.TP
+.B normal - обычный
+.TP
+.B no\-attr - без атрибутов
+.TP
+.B reset - переопределить
+.TP
+.B bold - жирный
+.TP
+.B faint - бледный
+.TP
+.B standout - стандартный вывод
+.TP
+.B no\-standout - не использовать стандартный вывод
+.TP
+.B underline - с подчеркиванием
+.TP
+.B no\-underline - без подчеркивания
+.TP
+.B blink - мигающий
+.TP
+.B no\-blink - без мигания
+.TP
+.B overline - с надчеркиванием
+.TP
+.B no\-overline - без надчеркивания
+.TP
+.B reverse - негатив
+.TP
+.B no\-reverse - не отражать цвет
+.TP
+.B invisible - невидимый
+.RE
+.SH "БАГТРЕКЕР"
+Об обнаруженных ошибках сообщайте на http://bugs.gentoo.org/
+.SH "АВТОРЫ"
+.nf
+Arfrever Frehtes Taifersar Arahesis <Arfrever.FTA@gmail.com>
+.fi
+.SH "ФАЙЛЫ"
+.TP
+.B /etc/portage/color.map
+Содержит переменные, используемые для пользовательской настройки цветного вывода.
+.TP
+.B /etc/portage/make.conf
+Содержит другие переменные.
+.SH "СМ. ТАКЖЕ"
+.BR console_codes (4),
+.BR make.conf (5),
+.BR portage (5),
+.BR emerge (1),
+.BR ebuild (1),
+.BR ebuild (5)
+.TP
+Модуль \fIPython /usr/lib/portage/pym/portage/output.py\fR.
+.SH "ПЕРЕВОД"
+.nf
+\fRПереводчик\fR - Елена Гаврилова <e.vl.gavrilova@yandex.ru>
+\fRРедактор\fR - Романов Владимир <blueboar2@gmail.com>
+.fi
