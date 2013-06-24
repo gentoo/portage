@@ -806,6 +806,9 @@ class RepoConfigLoader(object):
 		for repo_name in self.prepos_order:
 			yield self.prepos[repo_name]
 
+	def __contains__(self, repo_name):
+		return repo_name in self.prepos
+
 def load_repository_config(settings):
 	#~ repoconfigpaths = [os.path.join(settings.global_config_path, "repos.conf")]
 	repoconfigpaths = []
