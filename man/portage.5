@@ -756,13 +756,15 @@ x11\-libs/qt \-mysql
 .TP
 .BR repos.conf
 Specifies \fIsite\-specific\fR repository configuration information. Note that
-local configuration overrides which are specified here do not apply to tools
-such as \fBrepoman\fR(1) and \fBegencache\fR(1), since operations
-performed by these tools
-are inherently \fBnot\fR \fIsite\-specific\fR. \fBWARNING:\fR Use of
-\fBrepos.conf\fR is generally not recommended since resulting changes in
-eclass inheritance (especially due to \fBeclass\-overrides\fR) may trigger
-performance issues under some circumstances (see \fBbug #124041\fR).
+local configuration overrides (i.e. \fBaliases\fR, \fBeclass-overrides\fR and
+\fBmasters\fR attributes) which are specified here do not apply to tools
+such as \fBrepoman\fR(1) and \fBegencache\fR(1), since operations performed by
+these tools are inherently \fBnot\fR \fIsite\-specific\fR.
+.br
+\fBWARNING:\fR Setting \fBaliases\fR, \fBeclass-overrides\fR or \fBmasters\fR
+attributes in \fBrepos.conf\fR is generally not recommended since resulting
+changes in eclass inheritance may trigger performance issues due to invalidation
+of metadata cache.
 
 .I Example:
 .nf
@@ -852,9 +854,9 @@ behaves like an "aliases" attribute in \fBrepos.conf\fR. \fISite-specific\fR
 overrides to \fBlayout.conf\fR settings may be specified in
 \fB/etc/portage/repos.conf\fR. Settings in \fBrepos.conf\fR take
 precedence over settings in \fBlayout.conf\fR, except tools such as
-\fBrepoman\fR(1) and \fBegencache\fR(1) will entirely ignore
-\fBrepos.conf\fR since their operations are inherently \fBnot\fR
-\fIsite\-specific\fR.
+\fBrepoman\fR(1) and \fBegencache\fR(1) ignore "aliases", "eclass-overrides"
+and "masters" attributes set in \fBrepos.conf\fR since their operations are
+inherently \fBnot\fR \fIsite\-specific\fR.
 
 .I Example:
 .nf
