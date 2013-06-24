@@ -217,10 +217,6 @@ class RepoConfig(object):
 			self._eapis_banned = frozenset(layout_data['eapis-banned'])
 			self._eapis_deprecated = frozenset(layout_data['eapis-deprecated'])
 
-		if name is not None and name != self.name:
-			raise ValueError(_("Section name '%s' set in repos.conf differs from name '%s' set inside repository") %
-				(name, self.name))
-
 	def eapi_is_banned(self, eapi):
 		return eapi in self._eapis_banned
 
@@ -504,11 +500,13 @@ class RepoConfigLoader(object):
 			for oname in parser.options(sname):
 				optdict[oname] = parser.get(sname, oname)
 
-			try:
-				repo = RepoConfig(sname, optdict, local_config=local_config)
-			except ValueError as e:
-				writemsg_level("!!! %s\n" % (e,), level=logging.ERROR, noiselevel=-1)
+			repo = RepoConfig(sname, optdict, local_config=local_config)
+			if repo.name != sname:
+				writemsg_level("!!! %s\n" %
+				   _("Section name '%s' set in repos.conf differs from name '%s' set inside repository") %
+					(sname, repo.name), level=logging.ERROR, noiselevel=-1)
 				continue
+
 			if repo.location and not exists_raise_eaccess(repo.location):
 				writemsg(_("!!! Invalid repos.conf entry '%s'"
 					" (not a dir): '%s'\n") % (sname, repo.location), noiselevel=-1)
