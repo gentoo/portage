@@ -570,7 +570,8 @@ class RepoConfigLoader(object):
 		for repo_name, repo in list(prepos.items()):
 			if repo.location is None:
 				if repo_name != 'DEFAULT':
-					if paths:
+					# Skip this warning for repoman (bug #474578).
+					if settings.local_config and paths:
 						writemsg_level(_("Location undefined for " \
 							"repository '%s' referenced in '%s'\n") % \
 							(repo.name, paths[0]),
