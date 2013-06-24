@@ -32,6 +32,9 @@ from portage import _unicode_encode
 from portage import _encodings
 from portage import manifest
 
+if sys.hexversion >= 0x3000000:
+	basestring = str
+
 # Characters prohibited by repoman's file.name check.
 _invalid_path_char_re = re.compile(r'[^a-zA-Z0-9._\-+:/]')
 
@@ -473,24 +476,30 @@ class RepoConfigLoader(object):
 			source_kwarg = 'filename'
 
 		for p in paths:
-			f = None
-			try:
-				f = io.open(_unicode_encode(p,
-					encoding=_encodings['fs'], errors='strict'),
-					mode='r', encoding=_encodings['repo.content'],
-					errors='replace')
-			except EnvironmentError:
-				pass
+			if isinstance(p, basestring):
+				f = None
+				try:
+					f = io.open(_unicode_encode(p,
+						encoding=_encodings['fs'], errors='strict'),
+						mode='r', encoding=_encodings['repo.content'],
+						errors='replace')
+				except EnvironmentError:
+					pass
+				else:
+					# The 'source' keyword argument is needed since
+					# otherwise ConfigParsier may throw a TypeError because
+					# it assumes that f.name is a native string rather
+					# than binary when constructing error messages.
+					kwargs = {source_kwarg: p}
+					read_file(f, **portage._native_kwargs(kwargs))
+				finally:
+					if f is not None:
+						f.close()
+			elif isinstance(p, io.StringIO):
+				kwargs = {source_kwarg: "<io.StringIO>"}
+				read_file(p, **portage._native_kwargs(kwargs))
 			else:
-				# The 'source' keyword argument is needed since
-				# otherwise ConfigParsier may throw a TypeError because
-				# it assumes that f.name is a native string rather
-				# than binary when constructing error messages.
-				kwargs = {source_kwarg: p}
-				read_file(f, **portage._native_kwargs(kwargs))
-			finally:
-				if f is not None:
-					f.close()
+				raise TypeError("Unsupported type %r of element %r of 'paths' argument" % (type(p), p))
 
 		prepos['DEFAULT'] = RepoConfig("DEFAULT",
 			parser.defaults(), local_config=local_config)
@@ -574,7 +583,7 @@ class RepoConfigLoader(object):
 					if settings.local_config and paths:
 						writemsg_level(_("Location undefined for " \
 							"repository '%s' referenced in '%s'\n") % \
-							(repo.name, paths[0]),
+							(repo.name, (paths if len(paths) > 1 else paths[0])),
 							level=logging.ERROR, noiselevel=-1)
 					del prepos[repo_name]
 			else:
