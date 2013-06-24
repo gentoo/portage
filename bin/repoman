@@ -2255,7 +2255,7 @@ for x in effective_scanlist:
 						config_root=config_root,
 						local_config=False,
 						_unmatched_removal=options.unmatched_removal,
-						env=env)
+						env=env, repositories=repoman_settings.repositories)
 					dep_settings.categories = repoman_settings.categories
 					if options.without_mask:
 						dep_settings._mask_manager_obj = \
