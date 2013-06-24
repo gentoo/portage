@@ -550,13 +550,32 @@ def shlex_split(s):
 		rval = [_unicode_decode(x) for x in rval]
 	return rval
 
-class _tolerant_shlex(shlex.shlex):
+class _getconfig_shlex(shlex.shlex):
+
+	def __init__(self, portage_tolerant=False, **kwargs):
+		shlex.shlex.__init__(self, **kwargs)
+		self.__portage_tolerant = portage_tolerant
+
 	def sourcehook(self, newfile):
 		try:
 			return shlex.shlex.sourcehook(self, newfile)
 		except EnvironmentError as e:
-			writemsg(_("!!! Parse error in '%s': source command failed: %s\n") % \
-				(self.infile, str(e)), noiselevel=-1)
+			if e.errno == PermissionDenied.errno:
+				raise PermissionDenied(newfile)
+			if e.errno not in (errno.ENOENT, errno.ENOTDIR):
+				writemsg("open('%s', 'r'): %s\n" % (newfile, e), noiselevel=-1)
+				raise
+
+			msg = self.error_leader()
+			if e.errno == errno.ENOTDIR:
+				msg += _("%s: Not a directory") % newfile
+			else:
+				msg += _("%s: No such file or directory") % newfile
+
+			if self.__portage_tolerant:
+				writemsg("%s\n" % msg, noiselevel=-1)
+			else:
+				raise ParseError(msg)
 			return (newfile, io.StringIO())
 
 _invalid_var_name_re = re.compile(r'^\d|\W')
@@ -666,14 +685,11 @@ def getconfig(mycfg, tolerant=False, allow_sourcing=False, expand=True,
 
 	lex = None
 	try:
-		if tolerant:
-			shlex_class = _tolerant_shlex
-		else:
-			shlex_class = shlex.shlex
 		# The default shlex.sourcehook() implementation
 		# only joins relative paths when the infile
 		# attribute is properly set.
-		lex = shlex_class(content, infile=mycfg, posix=True)
+		lex = _getconfig_shlex(instream=content, infile=mycfg, posix=True,
+			portage_tolerant=tolerant)
 		lex.wordchars = string.digits + string.ascii_letters + \
 			"~!@#$%*_\:;?,./-+{}"
 		lex.quotes="\"'"
