@@ -65,6 +65,7 @@ from _emerge.RootConfig import RootConfig
 from _emerge.userquery import userquery
 import portage.checksum
 import portage.const
+import portage.repository.config
 from portage import cvstree, normalize_path
 from portage import util
 from portage.exception import (FileNotFound, InvalidAtom, MissingParameter,
@@ -580,14 +581,23 @@ if options.mode == 'commit' and not options.pretend and not vcs:
 	logging.info("Not in a version controlled repository; enabling pretend mode.")
 	options.pretend = True
 
-# Ensure that PORTDIR_OVERLAY contains the repository corresponding to $PWD.
-repoman_settings['PORTDIR_OVERLAY'] = "%s %s" % \
-	(repoman_settings.get('PORTDIR_OVERLAY', ''),
-	portage._shell_quote(portdir_overlay))
-# We have to call the config constructor again so
-# that config.repositories is initialized correctly.
-repoman_settings = portage.config(config_root=config_root, local_config=False,
-	env=dict(os.environ, PORTDIR_OVERLAY=repoman_settings['PORTDIR_OVERLAY']))
+# Ensure that current repository is in the list of enabled repositories.
+try:
+	repoman_settings.repositories.get_repo_for_location(portdir_overlay)
+except KeyError:
+	repo_name = portage.repository.config.RepoConfig._read_valid_repo_name(portdir_overlay)[0]
+	layout_conf_data = portage.repository.config.parse_layout_conf(portdir_overlay)[0]
+	if layout_conf_data['repo-name']:
+		repo_name = layout_conf_data['repo-name']
+	repos_conf_file = os.path.join(repoman_settings["PORTAGE_CONFIGROOT"], portage.const.USER_CONFIG_PATH, "repos.conf")
+	tmp_conf_file = io.StringIO("""
+		[%s]
+		location = %s
+		""" % (repo_name, portdir_overlay))
+	repositories = portage.repository.config.RepoConfigLoader([repos_conf_file, tmp_conf_file], repoman_settings)
+	# We have to call the config constructor again so that attributes
+	# dependent on config.repositories are initialized correctly.
+	repoman_settings = portage.config(config_root=config_root, local_config=False, repositories=repositories)
 
 root = repoman_settings['EROOT']
 trees = {
@@ -602,6 +612,10 @@ repo_config = repoman_settings.repositories.get_repo_for_location(repodir)
 portdb.porttrees = list(repo_config.eclass_db.porttrees)
 portdir = portdb.porttrees[0]
 commit_env = os.environ.copy()
+# list() is for iteration on a copy.
+for repo in list(repoman_settings.repositories):
+	if repo.location not in [portdir_overlay] + [x.location for x in repo_config.masters]:
+		del repoman_settings.repositories[repo.name]
 
 if repo_config.allow_provide_virtual:
 	qawarnings.add("virtual.oldstyle")
@@ -695,18 +709,9 @@ logging.debug("vcs: %s" % (vcs,))
 logging.debug("repo config: %s" % (repo_config,))
 logging.debug("options: %s" % (options,))
 
-# Generate an appropriate PORTDIR_OVERLAY value for passing into the
-# profile-specific config constructor calls.
-env = os.environ.copy()
-env['PORTDIR'] = portdir
-env['PORTDIR_OVERLAY'] = ' '.join(portdb.porttrees[1:])
-
-logging.info('Setting paths:')
-logging.info('PORTDIR = "' + portdir + '"')
-logging.info('PORTDIR_OVERLAY = "%s"' % env['PORTDIR_OVERLAY'])
-
 # It's confusing if these warnings are displayed without the user
 # being told which profile they come from, so disable them.
+env = os.environ.copy()
 env['FEATURES'] = env.get('FEATURES', '') + ' -unknown-features-warn'
 
 categories = []
