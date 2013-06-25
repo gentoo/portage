@@ -590,10 +590,10 @@ except KeyError:
 	if layout_conf_data['repo-name']:
 		repo_name = layout_conf_data['repo-name']
 	repos_conf_file = os.path.join(repoman_settings["PORTAGE_CONFIGROOT"], portage.const.USER_CONFIG_PATH, "repos.conf")
-	tmp_conf_file = io.StringIO("""
+	tmp_conf_file = io.StringIO(textwrap.dedent("""
 		[%s]
 		location = %s
-		""" % (repo_name, portdir_overlay))
+		""") % (repo_name, portdir_overlay))
 	repositories = portage.repository.config.RepoConfigLoader([repos_conf_file, tmp_conf_file], repoman_settings)
 	# We have to call the config constructor again so that attributes
 	# dependent on config.repositories are initialized correctly.
