@@ -77,9 +77,9 @@ __redirect_alloc_fd() {
 			# Need to provide the functionality ourselves.
 			local fd=10
 			local fddir=/dev/fd
-			# Use /proc/<pid>/fd if available (/dev/fd
+			# Prefer /proc/self/fd if available (/dev/fd
 			# doesn't work on solaris, see bug #474536).
-			[[ -d /proc/${BASHPID}/fd ]] && fddir=/proc/${BASHPID}/fd
+			[[ -d /proc/self/fd ]] && fddir=/proc/self/fd
 			while :; do
 					# Make sure the fd isn't open.  It could be a char device,
 					# or a symlink (possibly broken) to something else.

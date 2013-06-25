@@ -31,15 +31,15 @@ except ImportError:
 if sys.hexversion >= 0x3000000:
 	basestring = str
 
-for _fd_dir in ("/dev/fd", "/proc/self/fd"):
+# Prefer /proc/self/fd if available (/dev/fd
+# doesn't work on solaris, see bug #474536).
+for _fd_dir in ("/proc/self/fd", "/dev/fd"):
 	if os.path.isdir(_fd_dir):
 		break
 	else:
 		_fd_dir = None
 
-# Use /proc/<pid>/fd for SunOS (/dev/fd
-# doesn't work on solaris, see bug #474536).
-if _fd_dir is not None and platform.system() not in ('SunOS',):
+if _fd_dir is not None:
 	def get_open_fds():
 		return (int(fd) for fd in os.listdir(_fd_dir) if fd.isdigit())
 
