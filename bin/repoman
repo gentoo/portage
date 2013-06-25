@@ -614,7 +614,15 @@ portdir = portdb.porttrees[0]
 commit_env = os.environ.copy()
 # list() is for iteration on a copy.
 for repo in list(repoman_settings.repositories):
-	if repo.location not in [portdir_overlay] + [x.location for x in repo_config.masters]:
+	found = False
+	for location in [portdir_overlay] + [x.location for x in repo_config.masters]:
+		try:
+			if os.path.samefile(location, repo.location):
+				found = True
+				break
+		except OSError:
+			pass
+	if not found:
 		del repoman_settings.repositories[repo.name]
 
 if repo_config.allow_provide_virtual:
