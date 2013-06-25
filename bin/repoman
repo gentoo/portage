@@ -615,7 +615,7 @@ commit_env = os.environ.copy()
 # list() is for iteration on a copy.
 for repo in list(repoman_settings.repositories):
 	# all paths are canonical
-	if repo.location not in [repodir] + [x.location for x in repo_config.masters]:
+	if repo.location not in repo_config.eclass_db.porttrees:
 		del repoman_settings.repositories[repo.name]
 
 if repo_config.allow_provide_virtual:
