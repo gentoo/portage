@@ -135,11 +135,13 @@ class RepoConfig(object):
 				priority = None
 		self.priority = priority
 
+		# Not implemented.
 		sync = repo_opts.get('sync')
 		if sync is not None:
 			sync = sync.strip()
 		self.sync = sync
 
+		# Not implemented.
 		format = repo_opts.get('format')
 		if format is not None:
 			format = format.strip()
@@ -486,9 +488,9 @@ class RepoConfigLoader(object):
 				except EnvironmentError:
 					pass
 				else:
-					# The 'source' keyword argument is needed since
-					# otherwise ConfigParsier may throw a TypeError because
-					# it assumes that f.name is a native string rather
+					# The 'source' keyword argument is needed since otherwise
+					# ConfigParser in Python <3.3.3 may throw a TypeError
+					# because it assumes that f.name is a native string rather
 					# than binary when constructing error messages.
 					kwargs = {source_kwarg: p}
 					read_file(f, **portage._native_kwargs(kwargs))
