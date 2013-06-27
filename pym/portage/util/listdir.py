@@ -5,32 +5,26 @@ __all__ = ['cacheddir', 'listdir']
 
 import errno
 import stat
-import time
 
 from portage import os
 from portage.const import VCS_DIRS
 from portage.exception import DirectoryNotFound, PermissionDenied, PortageException
-from portage.util import normalize_path, writemsg
+from portage.util import normalize_path
 
+# The global dircache is no longer supported, since it could
+# be a memory leak for API consumers. Any cacheddir callers
+# should use higher-level caches instead, when necessary.
+# TODO: Remove dircache variable after stable portage does
+# not use is (keep it for now, in case API consumers clear
+# it manually).
 dircache = {}
-cacheHit = 0
-cacheMiss = 0
-cacheStale = 0
 
 def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymlinks=True):
-	global cacheHit,cacheMiss,cacheStale
 	mypath = normalize_path(my_original_path)
-	if mypath in dircache:
-		cacheHit += 1
-		cached_mtime, list, ftype = dircache[mypath]
-	else:
-		cacheMiss += 1
-		cached_mtime, list, ftype = -1, [], []
+	cached_mtime, list, ftype = -1, [], []
 	try:
 		pathstat = os.stat(mypath)
-		if stat.S_ISDIR(pathstat[stat.ST_MODE]):
-			mtime = pathstat.st_mtime
-		else:
+		if not stat.S_ISDIR(pathstat.st_mode):
 			raise DirectoryNotFound(mypath)
 	except EnvironmentError as e:
 		if e.errno == PermissionDenied.errno:
@@ -39,10 +33,7 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 		return [], []
 	except PortageException:
 		return [], []
-	# Python retuns mtime in seconds, so if it was changed in the last few seconds, it could be invalid
-	if mtime != cached_mtime or time.time() - mtime < 4:
-		if mypath in dircache:
-			cacheStale += 1
+	else:
 		try:
 			list = os.listdir(mypath)
 		except EnvironmentError as e:
@@ -68,7 +59,6 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 					ftype.append(3)
 			except (IOError, OSError):
 				ftype.append(3)
-		dircache[mypath] = mtime, list, ftype
 
 	ret_list = []
 	ret_ftype = []
@@ -84,7 +74,6 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 			ret_list.append(list[x])
 			ret_ftype.append(ftype[x])
 
-	writemsg("cacheddirStats: H:%d/M:%d/S:%d\n" % (cacheHit, cacheMiss, cacheStale),10)
 	return ret_list, ret_ftype
 
 def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelist=[], followSymlinks=True,
