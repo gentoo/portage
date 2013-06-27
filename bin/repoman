@@ -65,6 +65,7 @@ from _emerge.RootConfig import RootConfig
 from _emerge.userquery import userquery
 import portage.checksum
 import portage.const
+import portage.repository.config
 from portage import cvstree, normalize_path
 from portage import util
 from portage.exception import (FileNotFound, InvalidAtom, MissingParameter,
@@ -156,8 +157,7 @@ def ParseArgs(argv, qahelp):
 	  (opts, args), just like a call to parser.parse_args()
 	"""
 
-	if argv and isinstance(argv[0], bytes):
-		argv = [portage._unicode_decode(x) for x in argv]
+	argv = portage._decode_argv(argv)
 
 	modes = {
 		'commit' : 'Run a scan then commit changes',
@@ -583,14 +583,24 @@ if options.mode == 'commit' and not options.pretend and not vcs:
 	logging.info("Not in a version controlled repository; enabling pretend mode.")
 	options.pretend = True
 
-# Ensure that PORTDIR_OVERLAY contains the repository corresponding to $PWD.
-repoman_settings['PORTDIR_OVERLAY'] = "%s %s" % \
-	(repoman_settings.get('PORTDIR_OVERLAY', ''),
-	portage._shell_quote(portdir_overlay))
-# We have to call the config constructor again so
-# that config.repositories is initialized correctly.
-repoman_settings = portage.config(config_root=config_root, local_config=False,
-	env=dict(os.environ, PORTDIR_OVERLAY=repoman_settings['PORTDIR_OVERLAY']))
+# Ensure that current repository is in the list of enabled repositories.
+repodir = os.path.realpath(portdir_overlay)
+try:
+	repoman_settings.repositories.get_repo_for_location(repodir)
+except KeyError:
+	repo_name = portage.repository.config.RepoConfig._read_valid_repo_name(portdir_overlay)[0]
+	layout_conf_data = portage.repository.config.parse_layout_conf(portdir_overlay)[0]
+	if layout_conf_data['repo-name']:
+		repo_name = layout_conf_data['repo-name']
+	repos_conf_file = os.path.join(repoman_settings["PORTAGE_CONFIGROOT"], portage.const.USER_CONFIG_PATH, "repos.conf")
+	tmp_conf_file = io.StringIO(textwrap.dedent("""
+		[%s]
+		location = %s
+		""") % (repo_name, portdir_overlay))
+	repositories = portage.repository.config.RepoConfigLoader([repos_conf_file, tmp_conf_file], repoman_settings)
+	# We have to call the config constructor again so that attributes
+	# dependent on config.repositories are initialized correctly.
+	repoman_settings = portage.config(config_root=config_root, local_config=False, repositories=repositories)
 
 root = repoman_settings['EROOT']
 trees = {
@@ -600,11 +610,15 @@ portdb = trees[root]['porttree'].dbapi
 
 # Constrain dependency resolution to the master(s)
 # that are specified in layout.conf.
-repodir = os.path.realpath(portdir_overlay)
 repo_config = repoman_settings.repositories.get_repo_for_location(repodir)
 portdb.porttrees = list(repo_config.eclass_db.porttrees)
 portdir = portdb.porttrees[0]
 commit_env = os.environ.copy()
+# list() is for iteration on a copy.
+for repo in list(repoman_settings.repositories):
+	# all paths are canonical
+	if repo.location not in repo_config.eclass_db.porttrees:
+		del repoman_settings.repositories[repo.name]
 
 if repo_config.allow_provide_virtual:
 	qawarnings.add("virtual.oldstyle")
@@ -698,18 +712,9 @@ logging.debug("vcs: %s" % (vcs,))
 logging.debug("repo config: %s" % (repo_config,))
 logging.debug("options: %s" % (options,))
 
-# Generate an appropriate PORTDIR_OVERLAY value for passing into the
-# profile-specific config constructor calls.
-env = os.environ.copy()
-env['PORTDIR'] = portdir
-env['PORTDIR_OVERLAY'] = ' '.join(portdb.porttrees[1:])
-
-logging.info('Setting paths:')
-logging.info('PORTDIR = "' + portdir + '"')
-logging.info('PORTDIR_OVERLAY = "%s"' % env['PORTDIR_OVERLAY'])
-
 # It's confusing if these warnings are displayed without the user
 # being told which profile they come from, so disable them.
+env = os.environ.copy()
 env['FEATURES'] = env.get('FEATURES', '') + ' -unknown-features-warn'
 
 categories = []
@@ -757,11 +762,19 @@ def repoman_getstatusoutput(cmd):
 	customized unicode handling (see bug #310789) and without the shell.
 	"""
 	args = portage.util.shlex_split(cmd)
+
+	if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000 and \
+		not os.path.isabs(args[0]):
+		# Python 3.1 _execvp throws TypeError for non-absolute executable
+		# path passed as bytes (see http://bugs.python.org/issue8513).
+		fullname = find_binary(args[0])
+		if fullname is None:
+			raise portage.exception.CommandNotFound(args[0])
+		args[0] = fullname
+
 	encoding = _encodings['fs']
-	if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
-		# Python 3.1 does not support bytes in Popen args.
-		args = [_unicode_encode(x,
-			encoding=encoding, errors='strict') for x in args]
+	args = [_unicode_encode(x,
+		encoding=encoding, errors='strict') for x in args]
 	proc = subprocess.Popen(args, stdout=subprocess.PIPE,
 		stderr=subprocess.STDOUT)
 	output = portage._unicode_decode(proc.communicate()[0],
@@ -781,11 +794,19 @@ class repoman_popen(portage.proxy.objectproxy.ObjectProxy):
 
 	def __init__(self, cmd):
 		args = portage.util.shlex_split(cmd)
+
+		if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000 and \
+			not os.path.isabs(args[0]):
+			# Python 3.1 _execvp throws TypeError for non-absolute executable
+			# path passed as bytes (see http://bugs.python.org/issue8513).
+			fullname = find_binary(args[0])
+			if fullname is None:
+				raise portage.exception.CommandNotFound(args[0])
+			args[0] = fullname
+
 		encoding = _encodings['fs']
-		if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
-			# Python 3.1 does not support bytes in Popen args.
-			args = [_unicode_encode(x,
-				encoding=encoding, errors='strict') for x in args]
+		args = [_unicode_encode(x,
+			encoding=encoding, errors='strict') for x in args]
 		proc = subprocess.Popen(args, stdout=subprocess.PIPE)
 		object.__setattr__(self, '_proc', proc)
 		object.__setattr__(self, '_stdout',
@@ -2242,7 +2263,7 @@ for x in effective_scanlist:
 						config_root=config_root,
 						local_config=False,
 						_unmatched_removal=options.unmatched_removal,
-						env=env)
+						env=env, repositories=repoman_settings.repositories)
 					dep_settings.categories = repoman_settings.categories
 					if options.without_mask:
 						dep_settings._mask_manager_obj = \
@@ -2766,15 +2787,17 @@ else:
 			portage.writemsg_stdout("(%s)\n" % " ".join(add_cmd),
 				noiselevel=-1)
 		else:
-			if not (sys.hexversion >= 0x3000000 and sys.hexversion < 0x3020000):
-				# Python 3.1 produces the following TypeError if raw bytes are
-				# passed to subprocess.call():
-				#   File "/usr/lib/python3.1/subprocess.py", line 646, in __init__
-				#     errread, errwrite)
-				#   File "/usr/lib/python3.1/subprocess.py", line 1157, in _execute_child
-				#     raise child_exception
-				# TypeError: expected an object with the buffer interface
-				add_cmd = [_unicode_encode(arg) for arg in add_cmd]
+
+			if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000 and \
+				not os.path.isabs(add_cmd[0]):
+				# Python 3.1 _execvp throws TypeError for non-absolute executable
+				# path passed as bytes (see http://bugs.python.org/issue8513).
+				fullname = find_binary(add_cmd[0])
+				if fullname is None:
+					raise portage.exception.CommandNotFound(add_cmd[0])
+				add_cmd[0] = fullname
+
+			add_cmd = [_unicode_encode(arg) for arg in add_cmd]
 			retcode = subprocess.call(add_cmd)
 			if retcode != os.EX_OK:
 				logging.error(
@@ -2922,10 +2945,18 @@ else:
 		else:
 			# Encode unicode manually for bug #310789.
 			gpgcmd = portage.util.shlex_split(gpgcmd)
-			if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
-				# Python 3.1 does not support bytes in Popen args.
-				gpgcmd = [_unicode_encode(arg,
-					encoding=_encodings['fs'], errors='strict') for arg in gpgcmd]
+
+			if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000 and \
+				not os.path.isabs(gpgcmd[0]):
+				# Python 3.1 _execvp throws TypeError for non-absolute executable
+				# path passed as bytes (see http://bugs.python.org/issue8513).
+				fullname = find_binary(gpgcmd[0])
+				if fullname is None:
+					raise portage.exception.CommandNotFound(gpgcmd[0])
+				gpgcmd[0] = fullname
+
+			gpgcmd = [_unicode_encode(arg,
+				encoding=_encodings['fs'], errors='strict') for arg in gpgcmd]
 			rValue = subprocess.call(gpgcmd)
 			if rValue == os.EX_OK:
 				os.rename(filename + ".asc", filename)

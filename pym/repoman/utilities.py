@@ -92,9 +92,7 @@ def detect_vcs_conflicts(options, vcs):
 		# Use Popen instead of getstatusoutput(), in order to avoid
 		# unicode handling problems (see bug #310789).
 		args = [BASH_BINARY, "-c", cmd]
-		if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
-			# Python 3.1 does not support bytes in Popen args.
-			args = [_unicode_encode(x) for x in args]
+		args = [_unicode_encode(x) for x in args]
 		proc = subprocess.Popen(args, stdout=subprocess.PIPE,
 			stderr=subprocess.STDOUT)
 		out = _unicode_decode(proc.communicate()[0])

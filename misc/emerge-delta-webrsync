@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # Author: Brian Harring <ferringb@gentoo.org>, karltk@gentoo.org originally.
 # Rewritten from the old, Perl-based emerge-webrsync script
@@ -13,12 +13,13 @@
 
 argv0=$0
 
+# Only echo if not in verbose mode
+nvecho() { [[ ${do_verbose} -eq 0 ]] && echo "$@" ; }
+# warning echos
+wecho() { echo "${argv0##*/}: warning: $*" 1>&2 ; }
 # error echos
 eecho() { echo "${argv0##*/}: error: $*" 1>&2 ; }
-# This function from isolated-functions.sh got renamed to __vecho.
-vecho() {
-	[[ ${PORTAGE_QUIET} -eq 1 ]] || echo "$@"
-}
+
 
 #-------------------
 #initialization
@@ -64,8 +65,9 @@ fi
 unset f
 unset IFS
 
+do_verbose=0
 MUST_SYNC='1'
-unset PUKE_HELP wgetops
+unset PUKE_HELP
 for x in $*; do
 	case "${x}" in
 		-q|--quiet)
@@ -80,7 +82,7 @@ for x in $*; do
 	elif [[ $x == "-h" ]]; then
 		PUKE_HELP=1
 	elif [[ $x == "-v" ]]; then
-		wgetops=
+		do_verbose=1
 	else
 		PUKE_HELP=1
 		echo "$x isn't a valid arg.  bailing."
@@ -129,15 +131,6 @@ fi
 cd "$DISTDIR"
 
 found=0
-if [ "${wgetops-UNSET}" == "unset" ]; then
-	#this sucks.  probably better to do 1> /dev/null
-	#that said, waiting on the refactoring.
-	if [ "${FETCHCOMMAND/wget}" != "${FETCHCOMMAND}" ]; then
-		wgetops="-q"
-	elif [ "${FETCHCOMMAND/curl}" != "${FETCHCOMMAND}" ]; then
-		wgetops="-s -f"
-	fi
-fi
 
 if type -p md5sum > /dev/null; then
 	md5_com='md5sum -c "${MD5_LOC}" &> /dev/null'
@@ -157,6 +150,20 @@ cleanse_state_dir() {
 	[[ ${STATE_DIR:-/} != '/' ]] && rm -f "${STATE_DIR}"/* &> /dev/null
 }
 
+do_tar() {
+	local file=$1; shift
+	local decompressor
+	case ${file} in
+		*.xz)   decompressor="xzcat" ;;
+		*.bz2)  decompressor="bzcat" ;;
+		*.gz)   decompressor="zcat"  ;;
+		*)      decompressor="cat"   ;;
+	esac
+	${decompressor} "${file}" | tar "$@"
+	_pipestatus=${PIPESTATUS[*]}
+	[[ ${_pipestatus// /} -eq 0 ]]
+}
+
 get_utc_date_in_seconds() {
 	date -u +"%s"
 }
@@ -172,6 +179,27 @@ get_date_part() {
 	fi
 }
 
+get_utc_second_from_string() {
+	local s="$1"
+	if [[ ${USERLAND} == BSD ]] ; then
+		# Specify zeros for the least significant digits, or else those
+		# digits are inherited from the current system clock time.
+		date -juf "%Y%m%d%H%M.%S" "${s}0000.00" +"%s"
+	else
+		date -d "${s:0:4}-${s:4:2}-${s:6:2}" -u +"%s"
+	fi
+}
+
+get_portage_timestamp() {
+	local portage_current_timestamp=0
+
+	if [ -f "${PORTDIR}/metadata/timestamp.x" ]; then
+		portage_current_timestamp=$(cut -f 1 -d " " "${PORTDIR}/metadata/timestamp.x" )
+	fi
+
+	echo "${portage_current_timestamp}"
+}
+
 increment_date() {
 	local s="$1" inc="$2"
 	if [[ ${USERLAND} == BSD ]] ; then
@@ -183,186 +211,44 @@ increment_date() {
 	fi
 }
 
-full_version_attempt() {
-	local FILE file_exists
-	echo "Fetching most recent snapshot"
 
-	local start_time=$(get_utc_date_in_seconds)
-	local start_hour=$(get_date_part ${start_time} "%H")
-	local snapshot_date=$(get_date_part ${start_time} "%Y%m%d")
+fetch_file() {
+	local URI="$1"
+	local FILE="$2"
+	local opts
 
-	# Daily snapshots are created at 00:45 and are not
-	# available until after 01:00. Don't waste time trying
-	# to fetch a snapshot before it's been created.
-	if [ ${start_hour} -lt 1 ] ; then
-		snapshot_date=$(increment_date ${snapshot_date} -1)
+	if [ "${FETCHCOMMAND/wget/}" != "${FETCHCOMMAND}" ]; then
+		opts="--continue $(nvecho -q)"
+	elif [ "${FETCHCOMMAND/curl/}" != "${FETCHCOMMAND}" ]; then
+		opts="--continue-at - $(nvecho -s -f)"
+	else
+		rm -f "${DISTDIR}/${FILE}"
 	fi
 
-	declare -i attempts=-1
-	while (( $attempts <  40 )) ; do
-		unset file_exists
-		attempts=$(( attempts + 1 ))
-		snapshot_date=$(increment_date ${snapshot_date} -1)
-
-		FILE="portage-${snapshot_date}.tar.bz2"
-
-		echo "Attempting to fetch file dated: ${snapshot_date}"
-		
-		got_md5=0
-
-		if [  ! -e "${FILE}.md5sum" ]; then
-			fetch_from_mirrors "/snapshots/${FILE}.md5sum" "${FILE}.md5sum"
-			got_md5=$?
-		else
-			file_exists='asdf'
-			got_md5=0
-		fi
-
-		if [[ $got_md5 != 0 ]]; then
-			echo " --- No md5sum present on the mirror. (Not yet available.)"
-			continue
-		elif [ -s "${FILE}" ]; then
-			if verify_md5_file "$FILE"; then
-				echo " === snapshot $FILE is correct, using it"
-				if [[ -n $MUST_SYNC ]] || [[ -z file_exists ]]; then
-					sync_local "${FILE}"
-					echo
-					echo " === Snapshot has been sync'd"
-					echo
-				else
-					echo
-					echo "skipped sync"
-					echo
-				fi
-				exit 0
-			else
-				echo "md5 on ${FILE} failed, removing it and starting anew"
-				rm -f "${FILE}" &> /dev/null
-			fi
-		fi
-	
-		if fetch_from_mirrors "/snapshots/${FILE}" "${FILE}"; then
-			if ! verify_md5_file "$FILE"; then
-				echo "md5 failed on $FILE"
-				rm -f "${FILE}" &> /dev/null
-				continue
-			else
-				sync_local "${FILE}"
-				cleanse_state_dir
-				echo
-				echo " *** Completed websync, please now perform a normal rsync if possible."
-				echo "     Update is current as of YYYYMMDD: ${snapshot_date}"
-				echo
-				exit 0
-			fi
-		fi
-
-	done
-	exit 1
+	__vecho "Fetching file ${FILE} ..."
+	# already set DISTDIR=
+	eval "${FETCHCOMMAND} ${opts}"
+	[ -s "${DISTDIR}/${FILE}" ]
 }
 
+check_file_digest() {
+	local digest="$1"
+	local file="$2"
+	local r=1
 
-sync_local() {
-	local FILE flags
-	FILE="$1"
-	if [ "${FILE/\/}" == "${FILE}" ]; then
-		FILE="${DISTDIR}/${FILE}";
-	fi
-	
-	echo Syncing local tree...
+	__vecho "Checking digest ..."
 
-	local ownership="portage:portage"
-	if has usersync ${FEATURES} ; then
-		case "${USERLAND}" in
-			BSD)
-				ownership=$(stat -f '%Su:%Sg' "${PORTDIR}")
-				;;
-			*)
-				ownership=$(stat -c '%U:%G' "${PORTDIR}")
-				;;
-		esac
-	fi
-
-	if type -p tarsync &> /dev/null; then
-		echo "apparently you have tarsync installed.  using it."
-		local chown_opts="-o ${ownership%:*} -g ${ownership#*:}"
-		chown ${ownership} "${PORTDIR}" > /dev/null 2>&1 || chown_opts=""
-		if ! tarsync "${FILE}" "${PORTDIR}" -v -s 1 ${chown_opts} -e /distfiles -e /packages -e /local; then
-			echo "ok, tarsync failed.  that's teh suck :/"
-			exit 6
-		fi
+	if type -P md5sum > /dev/null; then
+		local md5sum_output=$(md5sum "${file}")
+		local digest_content=$(< "${digest}")
+		[ "${md5sum_output%%[[:space:]]*}" = "${digest_content%%[[:space:]]*}" ] && r=0
+	elif type -P md5 > /dev/null; then
+		[ "$(md5 -q "${file}")" == "$(cut -d ' ' -f 1 "${digest}")" ] && r=0
 	else
-		cd "${TMPDIR}" || die "couldn't cd to tmpdir, ${TMPDIR}!?"
-		flags="xf"
-		if [ "${FILE%.bz2}" != "${FILE}" ]; then
-			flags="jxf"
-		fi
-		if ! tar ${flags} "$FILE"; then
-			echo "Tar failed to extract the image. Please review the output."
-			echo "Executed command: tar jxf $FILE"
-			exit 1
-		fi
+		eecho "cannot check digest: no suitable md5/md5sum binaries found"
+	fi
 
-		local rsync_opts="${PORTAGE_RSYNC_OPTS} ${PORTAGE_RSYNC_EXTRA_OPTS}"
-		if chown ${ownership} portage > /dev/null 2>&1; then
-			chown -R ${ownership} portage
-			rsync_opts+=" --owner --group"
-		fi
-		cd portage
-		rsync ${rsync_opts} . "${PORTDIR%%/}"
-		cd ..
-		echo "cleaning up"
-		rm -rf portage
-	fi
-	if has metadata-transfer ${FEATURES} ; then
-		echo "Updating cache ..."
-		"${PORTAGE_BIN_PATH}/emerge" --metadata
-	fi
-	local post_sync=${PORTAGE_CONFIGROOT}etc/portage/bin/post_sync
-	[ -x "${post_sync}" ] && "${post_sync}"
-	# --quiet suppresses output if there are no relevant news items
-	has news ${FEATURES} && "${PORTAGE_BIN_PATH}/emerge" --check-news --quiet
-}
-
-fetch_from_mirrors() {
-	local i URI FILE MIRRORS
-	if [[ "$#" == 3 ]]; then
-		MIRRORS="${3}"
-	else
-		MIRRORS=$GENTOO_MIRRORS
-	fi
-	FILE="$2"
-	for i in $MIRRORS ; do
-		URI="${i%/}/${1#/}"
-		if (eval "$FETCHCOMMAND $wgetops") && [ -s "${FILE}" ]; then
-			return 0
-		else
-			rm -f "${FILE}" &> /dev/null
-		fi
-	done
-	return 1
-}
-
-verify_md5_file() {
-	local FILE MD5_LOC CUR
-	FILE="$1"
-	if [[ $# == 2 ]]; then
-		MD5_LOC="$2"
-	else
-		MD5_LOC="$(pwd)/$1.md5sum"
-	fi
-	if [ "${FILE/*\/}" != "$1" ]; then
-		CUR="$(pwd)"
-		cd "$(dirname ${FILE})"
-		FILE="$(basename ${FILE})"
-	fi
-	if eval "$md5_com"; then
-		[ -n "${CUR}" ] && cd "${CUR}"
-		return 0
-	else
-		[ -n "${CUR}" ] && cd "${CUR}"
-		return 1
-	fi
+	return "${r}"
 }
 
 check_file_signature() {
@@ -372,7 +258,7 @@ check_file_signature() {
 
 	if [[ ${WEBSYNC_VERIFY_SIGNATURE} != 0 ]] ; then
 
-		vecho "Checking signature ..."
+		__vecho "Checking signature ..."
 
 		if type -P gpg > /dev/null; then
 			gpg --homedir "${PORTAGE_GPG_DIR}" --verify "$signature" "$file" && r=0
@@ -387,6 +273,269 @@ check_file_signature() {
 	return "${r}"
 }
 
+get_snapshot_timestamp() {
+	local file="$1"
+
+	do_tar "${file}" --to-stdout -xf - portage/metadata/timestamp.x | cut -f 1 -d " "
+}
+
+sync_local() {
+	local file="$1"
+
+	__vecho "Syncing local tree ..."
+
+	local ownership="portage:portage"
+	if has usersync ${FEATURES} ; then
+		case "${USERLAND}" in
+			BSD)
+				ownership=$(stat -f '%Su:%Sg' "${PORTDIR}")
+				;;
+			*)
+				ownership=$(stat -c '%U:%G' "${PORTDIR}")
+				;;
+		esac
+	fi
+
+	if type -P tarsync > /dev/null ; then
+		local chown_opts="-o ${ownership%:*} -g ${ownership#*:}"
+		chown ${ownership} "${PORTDIR}" > /dev/null 2>&1 || chown_opts=""
+		if ! tarsync $(__vecho -v) -s 1 ${chown_opts} \
+			-e /distfiles -e /packages -e /local "${file}" "${PORTDIR}"; then
+			eecho "tarsync failed; tarball is corrupt? (${file})"
+			return 1
+		fi
+	else
+		if ! do_tar "${file}" xf - -C "${TMPDIR}" ; then
+			eecho "tar failed to extract the image. tarball is corrupt? (${file})"
+			rm -fr "${TMPDIR}"/portage
+			return 1
+		fi
+
+		local rsync_opts="${PORTAGE_RSYNC_OPTS} ${PORTAGE_RSYNC_EXTRA_OPTS}"
+		if chown ${ownership} "${TMPDIR}"/portage > /dev/null 2>&1; then
+			chown -R ${ownership} "${TMPDIR}"/portage
+			rsync_opts+=" --owner --group"
+		fi
+		cd "${TMPDIR}"/portage
+		rsync ${rsync_opts} . "${PORTDIR%%/}"
+		cd "${DISTDIR}"
+
+		__vecho "Cleaning up ..."
+		rm -fr "${TMPDIR}"
+	fi
+
+	if has metadata-transfer ${FEATURES} ; then
+		__vecho "Updating cache ..."
+		"${PORTAGE_BIN_PATH}/emerge" --metadata
+	fi
+	local post_sync=${PORTAGE_CONFIGROOT}etc/portage/bin/post_sync
+	[ -x "${post_sync}" ] && "${post_sync}"
+	# --quiet suppresses output if there are no relevant news items
+	has news ${FEATURES} && "${PORTAGE_BIN_PATH}/emerge" --check-news --quiet
+	return 0
+}
+
+do_snapshot() {
+	local ignore_timestamp="$1"
+	local date="$2"
+
+	local r=1
+
+	local base_file="portage-${date}.tar"
+
+	local have_files=0
+	local mirror
+
+	local compressions=""
+	type -P bzcat > /dev/null && compressions="${compressions} bz2"
+
+	if [[ -z ${compressions} ]] ; then
+		eecho "unable to locate any decompressors (xzcat or bzcat or zcat)"
+		exit 1
+	fi
+
+	for mirror in ${GENTOO_MIRRORS} ; do
+
+		mirror=${mirror%/}
+		__vecho "Trying to retrieve ${date} snapshot from ${mirror} ..."
+
+		for compression in ${compressions} ; do
+			local file="portage-${date}.tar.${compression}"
+			local digest="${file}.md5sum"
+			local signature="${file}.gpgsig"
+
+			if [ -s "${DISTDIR}/${file}" -a -s "${DISTDIR}/${digest}" -a -s "${DISTDIR}/${signature}" ] ; then
+				check_file_digest "${DISTDIR}/${digest}" "${DISTDIR}/${file}" && \
+				check_file_signature "${DISTDIR}/${signature}" "${DISTDIR}/${file}" && \
+				have_files=1
+			fi
+
+			if [ ${have_files} -eq 0 ] ; then
+				fetch_file "${mirror}/snapshots/${digest}" "${digest}" && \
+				fetch_file "${mirror}/snapshots/${signature}" "${signature}" && \
+				fetch_file "${mirror}/snapshots/${file}" "${file}" && \
+				check_file_digest "${DISTDIR}/${digest}" "${DISTDIR}/${file}" && \
+				check_file_signature "${DISTDIR}/${signature}" "${DISTDIR}/${file}" && \
+				have_files=1
+			fi
+
+			#
+			# If timestamp is invalid
+			# we want to try and retrieve
+			# from a different mirror
+			#
+			if [ ${have_files} -eq 1 ]; then
+
+				__vecho "Getting snapshot timestamp ..."
+				local snapshot_timestamp=$(get_snapshot_timestamp "${DISTDIR}/${file}")
+
+				if [ ${ignore_timestamp} == 0 ]; then
+					if [ ${snapshot_timestamp} -lt $(get_portage_timestamp) ]; then
+						wecho "portage is newer than snapshot"
+						have_files=0
+					fi
+				else
+					local utc_seconds=$(get_utc_second_from_string "${date}")
+
+					#
+					# Check that this snapshot
+					# is what it claims to be ...
+					#
+					if [ ${snapshot_timestamp} -lt ${utc_seconds} ] || \
+						[ ${snapshot_timestamp} -gt $((${utc_seconds}+ 2*86400)) ]; then
+
+						wecho "snapshot timestamp is not in acceptable period"
+						have_files=0
+					fi
+				fi
+			fi
+
+			if [ ${have_files} -eq 1 ]; then
+				break
+			else
+				#
+				# Remove files and use a different mirror
+				#
+				rm -f "${DISTDIR}/${file}" "${DISTDIR}/${digest}" "${DISTDIR}/${signature}"
+			fi
+		done
+
+		[ ${have_files} -eq 1 ] && break
+	done
+
+	if [ ${have_files} -eq 1 ]; then
+		sync_local "${DISTDIR}/${file}" && r=0
+	else
+		__vecho "${date} snapshot was not found"
+	fi
+
+	return "${r}"
+}
+
+do_latest_snapshot() {
+	local attempts=0
+	local r=1
+
+	__vecho "Fetching most recent snapshot ..."
+
+	# The snapshot for a given day is generated at 00:45 UTC on the following
+	# day, so the current day's snapshot (going by UTC time) hasn't been
+	# generated yet.  Therefore, always start by looking for the previous day's
+	# snapshot (for attempts=1, subtract 1 day from the current UTC time).
+
+	# Timestamps that differ by less than 2 hours
+	# are considered to be approximately equal.
+	local min_time_diff=$(( 2 * 60 * 60 ))
+
+	local existing_timestamp=$(get_portage_timestamp)
+	local timestamp_difference
+	local timestamp_problem
+	local approx_snapshot_time
+	local start_time=$(get_utc_date_in_seconds)
+	local start_hour=$(get_date_part ${start_time} "%H")
+
+	# Daily snapshots are created at 00:45 and are not
+	# available until after 01:00. Don't waste time trying
+	# to fetch a snapshot before it's been created.
+	if [ ${start_hour} -lt 1 ] ; then
+		(( start_time -= 86400 ))
+	fi
+	local snapshot_date=$(get_date_part ${start_time} "%Y%m%d")
+	local snapshot_date_seconds=$(get_utc_second_from_string ${snapshot_date})
+
+	while (( ${attempts} <  40 )) ; do
+		(( attempts++ ))
+		(( snapshot_date_seconds -= 86400 ))
+		# snapshots are created at 00:45
+		(( approx_snapshot_time = snapshot_date_seconds + 86400 + 2700 ))
+		(( timestamp_difference = existing_timestamp - approx_snapshot_time ))
+		[ ${timestamp_difference} -lt 0 ] && (( timestamp_difference = -1 * timestamp_difference ))
+		snapshot_date=$(get_date_part ${snapshot_date_seconds} "%Y%m%d")
+
+		timestamp_problem=""
+		if [ ${timestamp_difference} -eq 0 ]; then
+			timestamp_problem="is identical to"
+		elif [ ${timestamp_difference} -lt ${min_time_diff} ]; then
+			timestamp_problem="is possibly identical to"
+		elif [ ${approx_snapshot_time} -lt ${existing_timestamp} ] ; then
+			timestamp_problem="is newer than"
+		fi
+
+		if [ -n "${timestamp_problem}" ]; then
+			ewarn "Latest snapshot date: ${snapshot_date}"
+			ewarn
+			ewarn "Approximate snapshot timestamp: ${approx_snapshot_time}"
+			ewarn "       Current local timestamp: ${existing_timestamp}"
+			ewarn
+			echo -e "The current local timestamp" \
+				"${timestamp_problem} the" \
+				"timestamp of the latest" \
+				"snapshot. In order to force sync," \
+				"use the --revert option or remove" \
+				"the timestamp file located at" \
+				"'${PORTDIR}/metadata/timestamp.x'." | fmt -w 70 | \
+				while read -r line ; do
+					ewarn "${line}"
+				done
+			r=0
+			break
+		fi
+
+		if do_snapshot 0 "${snapshot_date}"; then
+			r=0
+			break;
+		fi
+	done
+
+	return "${r}"
+}
+
+fetch_from_mirrors() {
+	local i URI FILE MIRRORS
+	if [[ "$#" == 3 ]]; then
+		MIRRORS="${3}"
+	else
+		MIRRORS=$GENTOO_MIRRORS
+	fi
+	FILE="$2"
+	for i in $MIRRORS ; do
+		URI="${i%/}/${1#/}"
+		fetch_file "${URI}" "${FILE}" && return 0
+	done
+	return 1
+}
+
+verify_md5_file() {
+	local FILE MD5_LOC
+	FILE="$1"
+	if [[ $# == 2 ]]; then
+		MD5_LOC="$2"
+	else
+		MD5_LOC="$(pwd)/$1.md5sum"
+	fi
+	check_file_digest "${MD5_LOC}" "${FILE}"
+}
+
 #--------------------
 #inline actual script
 #--------------------
@@ -397,7 +546,12 @@ if ! type -p patcher &> /dev/null; then
 	echo "!!! lack of patcher == have to do full fetch"
 	echo "!!!"
 	sleep 10
-	full_version_attempt
+	if do_latest_snapshot; then
+		rm -fr "${TMPDIR}"
+		cleanse_state_dir
+		exit 0
+	fi
+	exit 1
 fi
 
 echo "Looking for available base versions for a delta"
@@ -443,7 +597,12 @@ done
 #by this point, we either have a base_version, or we don't.
 if [[ -z ${base_version} ]]; then
 	echo "no base found.  resorting to pulling a full version"
-	full_version_attempt
+	if do_latest_snapshot; then
+		rm -fr "${TMPDIR}"
+		cleanse_state_dir
+		exit 0
+	fi
+	exit 1
 fi
 
 #we have a md5 verified base.  now we get the patch.
@@ -495,9 +654,18 @@ if [[ -z $patches ]]; then
 	echo "no patches found? up to date?"
 	if [[ -n $MUST_SYNC ]]; then
 		echo "syncing with existing file"
-		sync_local "${dfile}"
+		if [[ ${WEBSYNC_VERIFY_SIGNATURE} == 1 &&
+			! -e ${DISTDIR}/portage-${base_date}.tar.bz2.gpgsig ]] && \
+			! fetch_from_mirrors "/snapshots/portage-${base_date}.tar.bz2.gpgsig" "portage-${base_date}.tar.bz2.gpgsig" ; then
+			eecho "Couldn't fetch portage-${base_date}.tar.bz2.gpgsig"
+			exit 5
+		fi
+		if [[ ${WEBSYNC_VERIFY_SIGNATURE} == 1 ]] ; then
+			check_file_signature "${DISTDIR}/portage-${base_date}.tar.bz2.gpgsig" "${dfile}" || exit 1
+		fi
+		sync_local "${dfile}" && rm -fr "${TMPDIR}"
 	else
-		:
+		rm -fr "${TMPDIR}"
 	fi
 	exit $?
 fi
@@ -532,7 +700,12 @@ fi
 if ! patcher -v "${dfile}" ${patches} "${TMPDIR}/portage-${final_date}.tar"; then
 	echo "reconstruction failed (contact the author with the error from the reconstructor please)"
 	rm -f "${TMPDIR}/portage-${final_date}.tar"
-	full_version_attempt
+	if do_latest_snapshot; then
+		rm -fr "${TMPDIR}"
+		cleanse_state_dir
+		exit 0
+	fi
+	exit 1
 fi
 verified=0
 if [[ -n $got_umd5 ]]; then

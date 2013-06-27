@@ -631,6 +631,9 @@ exhaustively apply the entire history of package moves,
 regardless of whether or not any of the package moves have
 been previously applied.
 .TP
+.BR \-\-prefix=DIR
+Set the \fBEPREFIX\fR environment variable.
+.TP
 .BR "\-\-pretend " (\fB\-p\fR)
 Instead of actually performing the merge, simply display what *would*
 have been installed if \fB\-\-pretend\fR weren't used.  Using \fB\-\-pretend\fR
@@ -846,6 +849,13 @@ This setting can be added to
 \fBEMERGE_DEFAULT_OPTS\fR (see make.conf(5)) and later overridden via the
 command line.
 .SH "ENVIRONMENT OPTIONS"
+.TP
+\fBEPREFIX\fR = \fI[path]\fR
+Use \fBEPREFIX\fR to specify the target prefix to be used for merging packages
+or ebuilds. This variable can be set via the \fB\-\-prefix\fR
+option or in \fBmake.conf\fR(5) (the command line overrides other settings).
+.br
+Defaults to the prefix where portage is currently installed.
 .TP
 \fBROOT\fR = \fI[path]\fR
 Use \fBROOT\fR to specify the target root filesystem to be used for

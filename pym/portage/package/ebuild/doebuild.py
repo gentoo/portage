@@ -161,7 +161,7 @@ def _doebuild_path(settings, eapi=None):
 	# Note: PORTAGE_BIN_PATH may differ from the global constant
 	# when portage is reinstalling itself.
 	portage_bin_path = settings["PORTAGE_BIN_PATH"]
-	eprefix = settings["EPREFIX"]
+	eprefix = portage.const.EPREFIX
 	prerootpath = [x for x in settings.get("PREROOTPATH", "").split(":") if x]
 	rootpath = [x for x in settings.get("ROOTPATH", "").split(":") if x]
 	overrides = [x for x in settings.get(
@@ -176,6 +176,9 @@ def _doebuild_path(settings, eapi=None):
 	# PREFIX LOCAL: use DEFAULT_PATH and EXTRA_PATH from make.globals
 	defaultpath = [x for x in settings.get("DEFAULT_PATH", "").split(":") if x]
 	extrapath = [x for x in settings.get("EXTRA_PATH", "").split(":") if x]
+
+	if "xattr" in settings.features:
+		path.append(os.path.join(portage_bin_path, "ebuild-helpers", "xattr"))
 
 	if eprefix and uid != 0 and "fakeroot" not in settings.features:
 		path.append(os.path.join(portage_bin_path,

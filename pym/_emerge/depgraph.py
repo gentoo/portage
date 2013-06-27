@@ -50,6 +50,7 @@ from _emerge.AtomArg import AtomArg
 from _emerge.Blocker import Blocker
 from _emerge.BlockerCache import BlockerCache
 from _emerge.BlockerDepPriority import BlockerDepPriority
+from .chk_updated_cfg_files import chk_updated_cfg_files
 from _emerge.countdown import countdown
 from _emerge.create_world_atom import create_world_atom
 from _emerge.Dependency import Dependency
@@ -4641,7 +4642,6 @@ class depgraph(object):
 		vardb = self._frozen_config.roots[root].trees["vartree"].dbapi
 		# List of acceptable packages, ordered by type preference.
 		matched_packages = []
-		matched_pkgs_ignore_use = []
 		highest_version = None
 		if not isinstance(atom, portage.dep.Atom):
 			atom = portage.dep.Atom(atom)
@@ -4823,7 +4823,6 @@ class depgraph(object):
 
 					if atom.use:
 
-						matched_pkgs_ignore_use.append(pkg)
 						if autounmask_level and autounmask_level.allow_use_changes and not pkg.built:
 							target_use = {}
 							for flag in atom.use.enabled:
@@ -4914,7 +4913,11 @@ class depgraph(object):
 						break
 					# Compare built package to current config and
 					# reject the built package if necessary.
-					if built and not useoldpkg and (not installed or matched_pkgs_ignore_use) and \
+					if built and not useoldpkg and \
+						(not installed or matched_packages) and \
+						not (installed and
+						self._frozen_config.excluded_pkgs.findAtomForPackage(pkg,
+						modified_use=self._pkg_use_enabled(pkg))) and \
 						("--newuse" in self._frozen_config.myopts or \
 						"--reinstall" in self._frozen_config.myopts or \
 						(not installed and self._dynamic_config.myparams.get(
@@ -6672,10 +6675,18 @@ class depgraph(object):
 		# the reasons are not apparent from the normal merge list
 		# display.
 
+		slot_collision_info = self._dynamic_config._slot_collision_info
+
 		conflict_pkgs = {}
 		for blocker in blockers:
 			for pkg in chain(self._dynamic_config._blocked_pkgs.child_nodes(blocker), \
 				self._dynamic_config._blocker_parents.parent_nodes(blocker)):
+				if (pkg.slot_atom, pkg.root) in slot_collision_info:
+					# The slot conflict display has better noise reduction
+					# than the unsatisfied blockers display, so skip
+					# unsatisfied blockers display for packages involved
+					# directly in slot conflicts (see bug #385391).
+					continue
 				parent_atoms = self._dynamic_config._parent_atoms.get(pkg)
 				if not parent_atoms:
 					atom = self._dynamic_config._blocked_world_pkgs.get(pkg)
@@ -6733,7 +6744,14 @@ class depgraph(object):
 					else:
 						# Display the specific atom from SetArg or
 						# Package types.
-						msg.append("%s required by %s" % (atom, parent))
+						if atom != atom.unevaluated_atom:
+							# Show the unevaluated atom, since it can reveal
+							# issues with conditional use-flags missing
+							# from IUSE.
+							msg.append("%s (%s) required by %s" %
+								(atom.unevaluated_atom, atom, parent))
+						else:
+							msg.append("%s required by %s" % (atom, parent))
 					msg.append("\n")
 
 				msg.append("\n")
@@ -7119,8 +7137,11 @@ class depgraph(object):
 				noiselevel=-1)
 			writemsg("".join(problems), noiselevel=-1)
 		elif write_to_file and roots:
-			writemsg("\nAutounmask changes successfully written. Remember to run dispatch-conf.\n", \
+			writemsg("\nAutounmask changes successfully written.\n",
 				noiselevel=-1)
+			for root in roots:
+				chk_updated_cfg_files(root,
+					[os.path.join(os.sep, USER_CONFIG_PATH)])
 		elif not pretend and not autounmask_write and roots:
 			writemsg("\nUse --autounmask-write to write changes to config files (honoring\n"
 				"CONFIG_PROTECT). Carefully examine the list of proposed changes,\n"
@@ -7142,15 +7163,18 @@ class depgraph(object):
 			self._show_circular_deps(
 				self._dynamic_config._circular_deps_for_display)
 
-		# The slot conflict display has better noise reduction than
-		# the unsatisfied blockers display, so skip unsatisfied blockers
-		# display if there are slot conflicts (see bug #385391).
+		unresolved_conflicts = False
 		if self._dynamic_config._slot_collision_info:
+			unresolved_conflicts = True
 			self._show_slot_collision_notice()
-		elif self._dynamic_config._unsatisfied_blockers_for_display is not None:
+		if self._dynamic_config._unsatisfied_blockers_for_display is not None:
+			unresolved_conflicts = True
 			self._show_unsatisfied_blockers(
 				self._dynamic_config._unsatisfied_blockers_for_display)
-		else:
+
+		# Only show missed updates if there are no unresolved conflicts,
+		# since they may be irrelevant after the conflicts are solved.
+		if not unresolved_conflicts:
 			self._show_missed_update()
 
 		self._show_ignored_binaries()

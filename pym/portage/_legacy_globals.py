@@ -27,7 +27,8 @@ def _get_legacy_global(name):
 	os.umask(0o22)
 
 	kwargs = {}
-	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT")):
+	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"),
+			("target_root", "ROOT"), ("eprefix", "EPREFIX")):
 		kwargs[k] = os.environ.get(envvar)
 
 	portage._initializing_globals = True

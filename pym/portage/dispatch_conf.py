@@ -1,5 +1,5 @@
 # archive_conf.py -- functionality common to archive-conf and dispatch-conf
-# Copyright 2003-2012 Gentoo Foundation
+# Copyright 2003-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -32,9 +32,17 @@ def diffstatusoutput(cmd, file1, file2):
     # Use Popen to emulate getstatusoutput(), since getstatusoutput() may
     # raise a UnicodeDecodeError which makes the output inaccessible.
     args = shlex_split(cmd % (file1, file2))
-    if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
-        # Python 3.1 does not support bytes in Popen args.
-        args = [portage._unicode_encode(x, errors='strict') for x in args]
+
+    if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000 and \
+        not os.path.isabs(args[0]):
+        # Python 3.1 _execvp throws TypeError for non-absolute executable
+        # path passed as bytes (see http://bugs.python.org/issue8513).
+        fullname = portage.process.find_binary(args[0])
+        if fullname is None:
+            raise portage.exception.CommandNotFound(args[0])
+        args[0] = fullname
+
+    args = [portage._unicode_encode(x, errors='strict') for x in args]
     proc = subprocess.Popen(args,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     output = portage._unicode_decode(proc.communicate()[0])
@@ -44,7 +52,7 @@ def diffstatusoutput(cmd, file1, file2):
     return (proc.wait(), output)
 
 def read_config(mandatory_opts):
-    eprefix = EPREFIX
+    eprefix = portage.settings["EPREFIX"]
     config_path = os.path.join(eprefix or os.sep, "etc/dispatch-conf.conf")
     loader = KeyValuePairFileLoader(config_path, None)
     opts, errors = loader.load()

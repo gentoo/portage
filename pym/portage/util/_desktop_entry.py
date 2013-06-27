@@ -1,4 +1,4 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import io
@@ -11,6 +11,7 @@ try:
 except ImportError:
 	from ConfigParser import Error as ConfigParserError, RawConfigParser
 
+import portage
 from portage import _encodings, _unicode_encode, _unicode_decode
 from portage.util import writemsg
 
@@ -52,9 +53,16 @@ _ignored_errors = (
 
 def validate_desktop_entry(path):
 	args = ["desktop-file-validate", path]
-	if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
-		# Python 3.1 does not support bytes in Popen args.
-		args = [_unicode_encode(x, errors='strict') for x in args]
+
+	if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000:
+		# Python 3.1 _execvp throws TypeError for non-absolute executable
+		# path passed as bytes (see http://bugs.python.org/issue8513).
+		fullname = portage.process.find_binary(args[0])
+		if fullname is None:
+			raise portage.exception.CommandNotFound(args[0])
+		args[0] = fullname
+
+	args = [_unicode_encode(x, errors='strict') for x in args]
 	proc = subprocess.Popen(args,
 		stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 	output_lines = _unicode_decode(proc.communicate()[0]).splitlines()

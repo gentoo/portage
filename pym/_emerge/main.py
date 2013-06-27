@@ -542,6 +542,11 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices"  : true_y_or_n
 		},
 
+		"--prefix": {
+			"help"     : "specify the installation prefix",
+			"action"   : "store"
+		},
+
 		"--quiet": {
 			"shortopt" : "-q",
 			"help"     : "reduced or condensed output",
@@ -977,10 +982,6 @@ def parse_opts(tmpcmdline, silent=False):
 	if myaction is None and myoptions.deselect is True:
 		myaction = 'deselect'
 
-	if myargs and isinstance(myargs[0], bytes):
-		for i in range(len(myargs)):
-			myargs[i] = portage._unicode_decode(myargs[i])
-
 	myfiles += myargs
 
 	return myaction, myopts, myfiles
@@ -1010,6 +1011,8 @@ def emerge_main(args=None):
 	if args is None:
 		args = sys.argv[1:]
 
+	args = portage._decode_argv(args)
+
 	# Disable color until we're sure that it should be enabled (after
 	# EMERGE_DEFAULT_OPTS has been parsed).
 	portage.output.havecolor = 0
@@ -1025,6 +1028,8 @@ def emerge_main(args=None):
 		os.environ["PORTAGE_CONFIGROOT"] = myopts["--config-root"]
 	if "--root" in myopts:
 		os.environ["ROOT"] = myopts["--root"]
+	if "--prefix" in myopts:
+		os.environ["EPREFIX"] = myopts["--prefix"]
 	if "--accept-properties" in myopts:
 		os.environ["ACCEPT_PROPERTIES"] = myopts["--accept-properties"]
 	if "--accept-restrict" in myopts:
@@ -1051,7 +1056,8 @@ def emerge_main(args=None):
 	tmpcmdline = []
 	if "--ignore-default-opts" not in myopts:
 		tmpcmdline.extend(portage.util.shlex_split(
-			emerge_config.settings.get("EMERGE_DEFAULT_OPTS", "")))
+			emerge_config.target_config.settings.get(
+			"EMERGE_DEFAULT_OPTS", "")))
 	tmpcmdline.extend(args)
 	emerge_config.action, emerge_config.opts, emerge_config.args = \
 		parse_opts(tmpcmdline)

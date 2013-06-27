@@ -9,6 +9,7 @@ import platform
 import signal
 import sys
 import traceback
+import os as _os
 
 from portage import os
 from portage import _encodings
@@ -30,7 +31,9 @@ except ImportError:
 if sys.hexversion >= 0x3000000:
 	basestring = str
 
-for _fd_dir in ("/dev/fd", "/proc/self/fd"):
+# Prefer /proc/self/fd if available (/dev/fd
+# doesn't work on solaris, see bug #474536).
+for _fd_dir in ("/proc/self/fd", "/dev/fd"):
 	if os.path.isdir(_fd_dir):
 		break
 	else:
@@ -50,6 +53,13 @@ if _fd_dir is not None:
 				if e.errno != errno.EAGAIN:
 					raise
 				return range(max_fd_limit)
+
+elif os.path.isdir("/proc/%s/fd" % os.getpid()):
+	# In order for this function to work in forked subprocesses,
+	# os.getpid() must be called from inside the function.
+	def get_open_fds():
+		return (int(fd) for fd in os.listdir("/proc/%s/fd" % os.getpid())
+			if fd.isdigit())
 
 else:
 	def get_open_fds():
@@ -536,8 +546,16 @@ def find_binary(binary):
 	@rtype: None or string
 	@return: full path to binary or None if the binary could not be located.
 	"""
-	for path in os.environ.get("PATH", "").split(":"):
-		filename = "%s/%s" % (path, binary)
-		if os.access(filename, os.X_OK) and os.path.isfile(filename):
+	paths = os.environ.get("PATH", "")
+	if sys.hexversion >= 0x3000000 and isinstance(binary, bytes):
+		# return bytes when input is bytes
+		paths = paths.encode(sys.getfilesystemencoding(), 'surrogateescape')
+		paths = paths.split(b':')
+	else:
+		paths = paths.split(':')
+
+	for path in paths:
+		filename = _os.path.join(path, binary)
+		if _os.access(filename, os.X_OK) and _os.path.isfile(filename):
 			return filename
 	return None

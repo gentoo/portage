@@ -148,12 +148,20 @@ def _get_global(k):
 			# grp.getgrall() since it is known to trigger spurious
 			# SIGPIPE problems with nss_ldap.
 			cmd = ["id", "-G", _portage_username]
+
+			if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000:
+				# Python 3.1 _execvp throws TypeError for non-absolute executable
+				# path passed as bytes (see http://bugs.python.org/issue8513).
+				fullname = portage.process.find_binary(cmd[0])
+				if fullname is None:
+					globals()[k] = v
+					_initialized_globals.add(k)
+					return v
+				cmd[0] = fullname
+
 			encoding = portage._encodings['content']
-			if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
-				# Python 3.1 does not support bytes in Popen args.
-				cmd = [portage._unicode_encode(x,
-					encoding=encoding, errors='strict')
-					for x in cmd]
+			cmd = [portage._unicode_encode(x,
+				encoding=encoding, errors='strict') for x in cmd]
 			proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
 				stderr=subprocess.STDOUT)
 			myoutput = proc.communicate()[0]

@@ -175,6 +175,15 @@ _encodings = {
 }
 
 if sys.hexversion >= 0x3000000:
+
+	def _decode_argv(argv):
+		# With Python 3, the surrogateescape encoding error handler makes it
+		# possible to access the original argv bytes, which can be useful
+		# if their actual encoding does no match the filesystem encoding.
+		fs_encoding = sys.getfilesystemencoding()
+		return [_unicode_decode(x.encode(fs_encoding, 'surrogateescape'))
+			for x in argv]
+
 	def _unicode_encode(s, encoding=_encodings['content'], errors='backslashreplace'):
 		if isinstance(s, str):
 			s = s.encode(encoding, errors)
@@ -187,6 +196,10 @@ if sys.hexversion >= 0x3000000:
 
 	_native_string = _unicode_decode
 else:
+
+	def _decode_argv(argv):
+		return [_unicode_decode(x) for x in argv]
+
 	def _unicode_encode(s, encoding=_encodings['content'], errors='backslashreplace'):
 		if isinstance(s, unicode):
 			s = s.encode(encoding, errors)
@@ -415,11 +428,18 @@ if platform.system() in ('FreeBSD',) and rootuid == 0:
 				cmd.append(opts)
 			cmd.append('%o' % (flags,))
 			cmd.append(path)
+
+			if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000:
+				# Python 3.1 _execvp throws TypeError for non-absolute executable
+				# path passed as bytes (see http://bugs.python.org/issue8513).
+				fullname = process.find_binary(cmd[0])
+				if fullname is None:
+					raise exception.CommandNotFound(cmd[0])
+				cmd[0] = fullname
+
 			encoding = _encodings['fs']
-			if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
-				# Python 3.1 does not support bytes in Popen args.
-				cmd = [_unicode_encode(x, encoding=encoding, errors='strict')
-					for x in cmd]
+			cmd = [_unicode_encode(x, encoding=encoding, errors='strict')
+				for x in cmd]
 			proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
 				stderr=subprocess.STDOUT)
 			output = proc.communicate()[0]
@@ -577,7 +597,7 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None,
 
 	trees._target_eroot = settings['EROOT']
 	myroots = [(settings['EROOT'], settings)]
-	if settings["ROOT"] == "/":
+	if settings["ROOT"] == "/" and settings["EPREFIX"] == const.EPREFIX:
 		trees._running_eroot = trees._target_eroot
 	else:
 
@@ -593,7 +613,7 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None,
 			if v is not None:
 				clean_env[k] = v
 		settings = config(config_root=None, target_root="/",
-			env=clean_env, eprefix=eprefix)
+			env=clean_env, eprefix=None)
 		settings.lock()
 		trees._running_eroot = settings['EROOT']
 		myroots.append((settings['EROOT'], settings))
@@ -622,10 +642,8 @@ if VERSION == 'HEAD':
 					"if [ -n \"`git diff-index --name-only --diff-filter=M HEAD`\" ] ; " + \
 					"then echo modified ; git rev-list --format=%%ct -n 1 HEAD ; fi ; " + \
 					"exit 0") % _shell_quote(PORTAGE_BASE_PATH)]
-				if sys.hexversion < 0x3000000 or sys.hexversion >= 0x3020000:
-					# Python 3.1 does not support bytes in Popen args.
-					cmd = [_unicode_encode(x, encoding=encoding, errors='strict')
-						for x in cmd]
+				cmd = [_unicode_encode(x, encoding=encoding, errors='strict')
+					for x in cmd]
 				proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
 					stderr=subprocess.STDOUT)
 				output = _unicode_decode(proc.communicate()[0], encoding=encoding)

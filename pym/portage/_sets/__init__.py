@@ -17,6 +17,7 @@ try:
 		from configparser import SafeConfigParser
 except ImportError:
 	from ConfigParser import SafeConfigParser, NoOptionError, ParsingError
+import portage
 from portage import os
 from portage import load_mod
 from portage import _unicode_decode
@@ -295,8 +296,8 @@ def load_default_config(settings, trees):
 		return SetConfig(None, settings, trees)
 
 	global_config_path = GLOBAL_CONFIG_PATH
-	if settings['EPREFIX']:
-		global_config_path = os.path.join(settings['EPREFIX'],
+	if portage.const.EPREFIX:
+		global_config_path = os.path.join(portage.const.EPREFIX,
 			GLOBAL_CONFIG_PATH.lstrip(os.sep))
 	def _getfiles():
 		for path, dirs, files in os.walk(os.path.join(global_config_path, "sets")):

@@ -866,8 +866,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 				protocol = loc[0:loc.find("://")]
 
 				global_config_path = GLOBAL_CONFIG_PATH
-				if mysettings['EPREFIX']:
-					global_config_path = os.path.join(mysettings['EPREFIX'],
+				if portage.const.EPREFIX:
+					global_config_path = os.path.join(portage.const.EPREFIX,
 							GLOBAL_CONFIG_PATH.lstrip(os.sep))
 
 				missing_file_param = False

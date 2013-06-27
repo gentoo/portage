@@ -1,5 +1,5 @@
 #!@PREFIX_PORTAGE_PYTHON@
-# Copyright 2011-2012 Gentoo Foundation
+# Copyright 2011-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import io
@@ -41,6 +41,8 @@ class IsTextFile(object):
 
 	def _is_text_magic(self, filename):
 		mime_type = self._m.file(filename)
+		if isinstance(mime_type, bytes):
+			mime_type = mime_type.decode('ascii', 'replace')
 		return mime_type.startswith("text/")
 
 	def _is_text_encoding(self, filename):

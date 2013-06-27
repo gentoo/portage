@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "May 2013" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "Jun 2013" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -756,23 +756,32 @@ x11\-libs/qt \-mysql
 .TP
 .BR repos.conf
 Specifies \fIsite\-specific\fR repository configuration information. Note that
-configuration settings which are specified here do not apply to tools
-such as \fBrepoman\fR(1) and \fBegencache\fR(1), since operations
-performed by these tools
-are inherently \fBnot\fR \fIsite\-specific\fR. \fBWARNING:\fR Use of
-\fBrepos.conf\fR is generally not recommended since resulting changes in
-eclass inheritance (especially due to \fBeclass\-overrides\fR) may trigger
-performance issues under some circumstances (see \fBbug #124041\fR).
+local configuration overrides (i.e. \fBaliases\fR, \fBeclass-overrides\fR and
+\fBmasters\fR attributes) which are specified here do not apply to tools
+such as \fBrepoman\fR(1) and \fBegencache\fR(1), since operations performed by
+these tools are inherently \fBnot\fR \fIsite\-specific\fR.
+.br
+\fBWARNING:\fR Setting \fBaliases\fR, \fBeclass-overrides\fR or \fBmasters\fR
+attributes in \fBrepos.conf\fR is generally not recommended since resulting
+changes in eclass inheritance may trigger performance issues due to invalidation
+of metadata cache.
 
 .I Example:
 .nf
 [DEFAULT]
+# make gentoo the main repo (aka PORTDIR), which makes it the default master
+# repository for repostories that do not specify masters
+main\-repo = gentoo
 # make all repositories inherit eclasses from the java\-overlay and
 # java\-experimental repositories, with eclasses from java\-experimental
 # taking precedence over those from java\-overlay
 eclass\-overrides = java\-overlay java\-experimental
 
 [gentoo]
+# repos with higher priorities are preferred when ebuilds with equal versions
+# are found in multiple repos (see the `emerge \-\-info \-\-verbose` repo
+# display for a listing of repos and their corresponding priorities).
+priority = 9999
 # disable all eclass overrides for ebuilds from the gentoo repository
 eclass\-overrides =
 # when processing metadata/layout.conf from other repositories, substitute
@@ -845,9 +854,9 @@ behaves like an "aliases" attribute in \fBrepos.conf\fR. \fISite-specific\fR
 overrides to \fBlayout.conf\fR settings may be specified in
 \fB/etc/portage/repos.conf\fR. Settings in \fBrepos.conf\fR take
 precedence over settings in \fBlayout.conf\fR, except tools such as
-\fBrepoman\fR(1) and \fBegencache\fR(1) will entirely ignore
-\fBrepos.conf\fR since their operations are inherently \fBnot\fR
-\fIsite\-specific\fR.
+\fBrepoman\fR(1) and \fBegencache\fR(1) ignore "aliases", "eclass-overrides"
+and "masters" attributes set in \fBrepos.conf\fR since their operations are
+inherently \fBnot\fR \fIsite\-specific\fR.
 
 .I Example:
 .nf
