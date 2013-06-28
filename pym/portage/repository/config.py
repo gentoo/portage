@@ -24,7 +24,7 @@ from portage.const import (MANIFEST2_HASH_FUNCTIONS, MANIFEST2_REQUIRED_HASH,
 from portage.eapi import eapi_allows_directories_on_profile_level_and_repository_level
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.util import (normalize_path, read_corresponding_eapi_file, shlex_split,
-	stack_lists, writemsg, writemsg_level)
+	stack_lists, writemsg, writemsg_level, _recursive_file_list)
 from portage.util._path import exists_raise_eaccess, isdir_raise_eaccess
 from portage.localization import _
 from portage import _unicode_decode
@@ -477,7 +477,14 @@ class RepoConfigLoader(object):
 			read_file = parser.readfp
 			source_kwarg = 'filename'
 
+		recursive_paths = []
 		for p in paths:
+			if isinstance(p, basestring):
+				recursive_paths.extend(_recursive_file_list(p))
+			else:
+				recursive_paths.append(p)
+
+		for p in recursive_paths:
 			if isinstance(p, basestring):
 				f = None
 				try:
