@@ -597,6 +597,12 @@ except KeyError:
 		[%s]
 		location = %s
 		""") % (repo_name, portdir_overlay))
+	# Ensure that the repository corresponding to $PWD overrides a
+	# repository of the same name referenced by the existing PORTDIR
+	# or PORTDIR_OVERLAY settings.
+	repoman_settings['PORTDIR_OVERLAY'] = "%s %s" % \
+		(repoman_settings.get('PORTDIR_OVERLAY', ''),
+		portage._shell_quote(portdir_overlay))
 	repositories = portage.repository.config.RepoConfigLoader([repos_conf_file, tmp_conf_file], repoman_settings)
 	# We have to call the config constructor again so that attributes
 	# dependent on config.repositories are initialized correctly.

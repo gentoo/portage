@@ -489,25 +489,51 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=Fals
 def _recursive_basename_filter(f):
 	return not f.startswith(".") and not f.endswith("~")
 
+def _recursive_file_list(path):
+	# path may be a regular file or a directory
+
+	def onerror(e):
+		if e.errno == PermissionDenied.errno:
+			raise PermissionDenied(path)
+
+	stack = [os.path.split(path)]
+
+	while stack:
+		parent, fname = stack.pop()
+		fullpath = os.path.join(parent, fname)
+
+		try:
+			st = os.stat(fullpath)
+		except OSError as e:
+			onerror(e)
+			continue
+
+		if stat.S_ISDIR(st.st_mode):
+			if fname in VCS_DIRS or not _recursive_basename_filter(fname):
+				continue
+			try:
+				children = os.listdir(fullpath)
+			except OSError as e:
+				onerror(e)
+				continue
+
+			# Sort in reverse, since we pop from the end of the stack.
+			# Include regular files in the stack, so files are sorted
+			# together with directories.
+			children.sort(reverse=True)
+			stack.extend((fullpath, x) for x in children)
+
+		elif stat.S_ISREG(st.st_mode):
+			if _recursive_basename_filter(fname):
+				yield fullpath
+
 def grablines(myfilename, recursive=0, remember_source_file=False):
 	mylines=[]
-	if recursive and os.path.isdir(myfilename):
-		if os.path.basename(myfilename) in VCS_DIRS:
-			return mylines
-		try:
-			dirlist = os.listdir(myfilename)
-		except OSError as e:
-			if e.errno == PermissionDenied.errno:
-				raise PermissionDenied(myfilename)
-			elif e.errno in (errno.ENOENT, errno.ESTALE):
-				return mylines
-			else:
-				raise
-		dirlist.sort()
-		for f in dirlist:
-			if _recursive_basename_filter(f):
-				mylines.extend(grablines(
-					os.path.join(myfilename, f), recursive, remember_source_file))
+	if recursive:
+		for f in _recursive_file_list(myfilename):
+			mylines.extend(grablines(f, recursive=False,
+				remember_source_file=remember_source_file))
+
 	else:
 		try:
 			myfile = io.open(_unicode_encode(myfilename,
@@ -586,18 +612,6 @@ _invalid_var_name_re = re.compile(r'^\d|\W')
 def getconfig(mycfg, tolerant=False, allow_sourcing=False, expand=True,
 	recursive=False):
 
-	is_dir = False
-	if recursive:
-		try:
-			is_dir = stat.S_ISDIR(os.stat(mycfg).st_mode)
-		except OSError as e:
-			if e.errno == PermissionDenied.errno:
-				raise PermissionDenied(mycfg)
-			elif e.errno in (errno.ENOENT, errno.ESTALE, errno.EISDIR):
-				return None
-			else:
-				raise
-
 	if isinstance(expand, dict):
 		# Some existing variable definitions have been
 		# passed in, for use in substitutions.
@@ -607,47 +621,18 @@ def getconfig(mycfg, tolerant=False, allow_sourcing=False, expand=True,
 		expand_map = {}
 	mykeys = {}
 
-	if recursive and is_dir:
+	if recursive:
 		# Emulate source commands so that syntax error messages
 		# can display real file names and line numbers.
-		def onerror(e):
-			if e.errno == PermissionDenied.errno:
-				raise PermissionDenied(mycfg)
-
-		recursive_files = []
-		for parent, dirs, files in os.walk(mycfg, onerror=onerror):
-			try:
-				parent = _unicode_decode(parent,
-					encoding=_encodings['fs'], errors='strict')
-			except UnicodeDecodeError:
-				continue
-			for fname_enc in dirs[:]:
-				try:
-					fname = _unicode_decode(fname_enc,
-						encoding=_encodings['fs'], errors='strict')
-				except UnicodeDecodeError:
-					dirs.remove(fname_enc)
-					continue
-				if fname in VCS_DIRS or not _recursive_basename_filter(fname):
-					dirs.remove(fname_enc)
-			for fname in files:
-				try:
-					fname = _unicode_decode(fname,
-						encoding=_encodings['fs'], errors='strict')
-				except UnicodeDecodeError:
-					pass
-				else:
-					if _recursive_basename_filter(fname):
-						fname = os.path.join(parent, fname)
-						if os.path.isfile(fname):
-							recursive_files.append(fname)
-		recursive_files.sort()
 		if not expand:
 			expand_map = False
-		for fname in recursive_files:
+		fname = None
+		for fname in _recursive_file_list(mycfg):
 			mykeys.update(getconfig(fname, tolerant=tolerant,
 				allow_sourcing=allow_sourcing, expand=expand_map,
 				recursive=False) or {})
+		if fname is None:
+			return None
 		return mykeys
 
 	f = None
