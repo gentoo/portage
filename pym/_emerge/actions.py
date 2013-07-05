@@ -1470,7 +1470,6 @@ def action_info(settings, trees, myopts, myfiles):
 	output_buffer = []
 	append = output_buffer.append
 	root_config = trees[settings['EROOT']]['root_config']
-	running_eroot = trees._running_eroot
 	chost = settings.get("CHOST")
 
 	append(getportageversion(settings["PORTDIR"], None,
@@ -1558,7 +1557,6 @@ def action_info(settings, trees, myopts, myfiles):
 	           "sys-devel/binutils", "sys-devel/libtool",  "dev-lang/python"]
 	myvars += portage.util.grabfile(settings["PORTDIR"]+"/profiles/info_pkgs")
 	atoms = []
-	vardb = trees[running_eroot]['vartree'].dbapi
 	for x in myvars:
 		try:
 			x = Atom(x)
@@ -1571,7 +1569,6 @@ def action_info(settings, trees, myopts, myfiles):
 
 	myvars = sorted(set(atoms))
 
-	portdb = trees[running_eroot]['porttree'].dbapi
 	main_repo = portdb.getRepositoryName(portdb.porttree_root)
 	cp_map = {}
 	cp_max_len = 0
