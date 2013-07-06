@@ -51,10 +51,11 @@ class DepPrioritySatisfiedRange(object):
 	def _ignore_satisfied_buildtime(cls, priority):
 		if priority.__class__ is not DepPriority:
 			return False
+		if priority.optional:
+			return True
 		if priority.buildtime_slot_op:
 			return False
-		return bool(priority.optional or \
-			priority.satisfied)
+		return bool(priority.satisfied)
 
 	@classmethod
 	def _ignore_satisfied_buildtime_slot_op(cls, priority):
