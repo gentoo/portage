@@ -583,6 +583,15 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 		writemsg("\n", noiselevel=-1)
 		return 1
 
+	if returnpid and mydo != 'depend':
+		# This case is not supported, since it bypasses the EbuildPhase class
+		# which implements important functionality (including post phase hooks
+		# and IPC for things like best/has_version and die).
+		warnings.warn("portage.doebuild() called "
+			"with returnpid parameter enabled. This usage will "
+			"not be supported in the future.",
+			DeprecationWarning, stacklevel=2)
+
 	if mydo == "fetchall":
 		fetchall = 1
 		mydo = "fetch"
@@ -1506,6 +1515,12 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 # parse actionmap to spawn ebuild with the appropriate args
 def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 	logfile=None, fd_pipes=None, returnpid=False):
+
+	if returnpid:
+		warnings.warn("portage.spawnebuild() called "
+			"with returnpid parameter enabled. This usage will "
+			"not be supported in the future.",
+			DeprecationWarning, stacklevel=2)
 
 	if not returnpid and \
 		(alwaysdep or "noauto" not in mysettings.features):
