@@ -114,7 +114,6 @@ class SpawnProcess(SubProcess):
 			return
 
 		self.pid = retval[0]
-		portage.process.spawned_pids.remove(self.pid)
 
 		stdout_fd = None
 		if can_log and not self.background:

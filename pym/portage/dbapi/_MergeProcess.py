@@ -174,7 +174,6 @@ class MergeProcess(ForkProcess):
 				self.vartree.dbapi._pkgs_changed = True
 				self.vartree.dbapi._clear_pkg_cache(mylink)
 
-				portage.process.spawned_pids.append(pid)
 				return [pid]
 
 			os.close(elog_reader_fd)

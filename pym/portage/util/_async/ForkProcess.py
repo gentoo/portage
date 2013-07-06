@@ -26,7 +26,6 @@ class ForkProcess(SpawnProcess):
 				if not isinstance(pid, int):
 					raise AssertionError(
 						"fork returned non-integer: %s" % (repr(pid),))
-				portage.process.spawned_pids.append(pid)
 				return [pid]
 
 			rval = 1
