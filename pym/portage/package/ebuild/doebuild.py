@@ -499,7 +499,9 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 	@param prev_mtimes: A dict of { filename:mtime } keys used by merge() to do config_protection
 	@type prev_mtimes: dictionary
 	@param fd_pipes: A dict of mapping for pipes, { '0': stdin, '1': stdout }
-		for example.
+		for example. This is parameter only guaranteed to be respected when
+		returnpid is True (otherwise all subprocesses simply inherit file
+		descriptors from sys.__std* streams).
 	@type fd_pipes: Dictionary
 	@param returnpid: Return a list of process IDs for a successful spawn, or
 		an integer value if spawn is unsuccessful. NOTE: This requires the
@@ -580,12 +582,6 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 			writemsg(validcommands[vcount].ljust(11), noiselevel=-1)
 		writemsg("\n", noiselevel=-1)
 		return 1
-
-	if returnpid and mydo != 'depend':
-		warnings.warn("portage.doebuild() called " + \
-			"with returnpid parameter enabled. This usage will " + \
-			"not be supported in the future.",
-			DeprecationWarning, stacklevel=2)
 
 	if mydo == "fetchall":
 		fetchall = 1
@@ -697,7 +693,7 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 		# we can temporarily override PORTAGE_TMPDIR with a random temp dir
 		# so that there's no need for locking and it can be used even if the
 		# user isn't in the portage group.
-		if mydo in ("info",):
+		if not returnpid and mydo in ("info",):
 			tmpdir = tempfile.mkdtemp()
 			tmpdir_orig = mysettings["PORTAGE_TMPDIR"]
 			mysettings["PORTAGE_TMPDIR"] = tmpdir
@@ -736,14 +732,15 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 			return _spawn_phase(mydo, mysettings,
 				fd_pipes=fd_pipes, returnpid=returnpid)
 
-		# Validate dependency metadata here to ensure that ebuilds with invalid
-		# data are never installed via the ebuild command. Don't bother when
-		# returnpid == True since there's no need to do this every time emerge
-		# executes a phase.
 		if tree == "porttree":
-			rval = _validate_deps(mysettings, myroot, mydo, mydbapi)
-			if rval != os.EX_OK:
-				return rval
+
+			if not returnpid:
+				# Validate dependency metadata here to ensure that ebuilds with
+				# invalid data are never installed via the ebuild command. Skip
+				# this when returnpid is True (assume the caller handled it).
+				rval = _validate_deps(mysettings, myroot, mydo, mydbapi)
+				if rval != os.EX_OK:
+					return rval
 
 		else:
 			# FEATURES=noauto only makes sense for porttree, and we don't want
@@ -761,11 +758,16 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 				return rval
 
 		if mydo == "unmerge":
+			if returnpid:
+				writemsg("!!! doebuild: %s\n" %
+					_("returnpid is not supported for phase '%s'\n" % mydo),
+					noiselevel=-1)
 			return unmerge(mysettings["CATEGORY"],
 				mysettings["PF"], myroot, mysettings, vartree=vartree)
 
 		phases_to_run = set()
-		if "noauto" in mysettings.features or \
+		if returnpid or \
+			"noauto" in mysettings.features or \
 			mydo not in actionmap_deps:
 			phases_to_run.add(mydo)
 		else:
@@ -1013,7 +1015,9 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 			if len(actionmap_deps.get(x, [])):
 				actionmap[x]["dep"] = ' '.join(actionmap_deps[x])
 
-		if mydo in actionmap:
+		regular_actionmap_phase = mydo in actionmap
+
+		if regular_actionmap_phase:
 			bintree = None
 			if mydo == "package":
 				# Make sure the package directory exists before executing
@@ -1037,6 +1041,9 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 				actionmap, mysettings, debug, logfile=logfile,
 				fd_pipes=fd_pipes, returnpid=returnpid)
 
+			if returnpid and isinstance(retval, list):
+				return retval
+
 			if retval == os.EX_OK:
 				if mydo == "package" and bintree is not None:
 					bintree.inject(mysettings.mycpv,
@@ -1048,7 +1055,15 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 					except OSError:
 						pass
 
-		elif mydo=="qmerge":
+		elif returnpid:
+			writemsg("!!! doebuild: %s\n" %
+				_("returnpid is not supported for phase '%s'\n" % mydo),
+				noiselevel=-1)
+
+		if regular_actionmap_phase:
+			# handled above
+			pass
+		elif mydo == "qmerge":
 			# check to ensure install was run.  this *only* pops up when users
 			# forget it and are using ebuild
 			if not os.path.exists(
@@ -1491,12 +1506,6 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 # parse actionmap to spawn ebuild with the appropriate args
 def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 	logfile=None, fd_pipes=None, returnpid=False):
-
-	if returnpid:
-		warnings.warn("portage.spawnebuild() called " + \
-			"with returnpid parameter enabled. This usage will " + \
-			"not be supported in the future.",
-			DeprecationWarning, stacklevel=2)
 
 	if not returnpid and \
 		(alwaysdep or "noauto" not in mysettings.features):
