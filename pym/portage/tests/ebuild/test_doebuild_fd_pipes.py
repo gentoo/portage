@@ -22,14 +22,14 @@ class DoebuildProcess(ForkProcess):
 		return portage.doebuild(*self.doebuild_pargs, **self.doebuild_kwargs)
 
 class DoebuildFdPipesTestCase(TestCase):
-	"""
-	Invoke portage.package.ebuild.doebuild.spawn() with a
-	minimal environment. This gives coverage to some of
-	the ebuild execution internals, like ebuild.sh,
-	AbstractEbuildProcess, and EbuildIpcDaemon.
-	"""
 
 	def testDoebuild(self):
+		"""
+		Invoke portage.doebuild() with the fd_pipes parameter, and
+		check that the expected output appears in the pipe. This
+		functionality is not used by portage internally, but it is
+		supported for API consumers (see bug #475812).
+		"""
 
 		ebuild_body = textwrap.dedent("""
 			S=${WORKDIR}
