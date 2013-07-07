@@ -81,7 +81,7 @@ class DoebuildFdPipesTestCase(TestCase):
 
 			for phase in ('info', 'nofetch',
 				 'pretend', 'setup', 'unpack', 'prepare', 'configure',
-				 'compile', 'test', 'install', 'clean', 'merge'):
+				 'compile', 'test', 'install', 'qmerge', 'clean', 'merge'):
 
 				pr, pw = os.pipe()
 
@@ -113,7 +113,7 @@ class DoebuildFdPipesTestCase(TestCase):
 
 				self.assertEqual(task_scheduler.returncode, os.EX_OK)
 
-				if phase not in ('clean', 'merge'):
+				if phase not in ('clean', 'merge', 'qmerge'):
 					self.assertEqual(phase, output)
 
 		finally:
