@@ -1147,7 +1147,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 						"installed", root_config, installed=True)
 					if not resolver._add_pkg(pkg,
 						Dependency(parent=consumer_pkg,
-						priority=UnmergeDepPriority(runtime=True),
+						priority=UnmergeDepPriority(runtime=True,
+							runtime_slot_op=True),
 						root=pkg.root)):
 						resolver.display_problems()
 						return 1, [], False, 0
@@ -1235,7 +1236,15 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 						continue
 					for child_node in matches:
 						if child_node in clean_set:
-							graph.add(child_node, node, priority=priority)
+
+							mypriority = priority.copy()
+							if atom.slot_operator_built:
+								if mypriority.buildtime:
+									mypriority.buildtime_slot_op = True
+								if mypriority.runtime:
+									mypriority.runtime_slot_op = True
+
+							graph.add(child_node, node, priority=mypriority)
 
 		if debug:
 			writemsg_level("\nunmerge digraph:\n\n",

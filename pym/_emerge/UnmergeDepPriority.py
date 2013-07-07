@@ -37,6 +37,8 @@ class UnmergeDepPriority(AbstractDepPriority):
 	def __str__(self):
 		if self.ignored:
 			return "ignored"
+		if self.runtime_slot_op:
+			return "hard slot op"
 		myvalue = self.__int__()
 		if myvalue > self.SOFT:
 			return "hard"
