@@ -33,6 +33,7 @@ class DoebuildFdPipesTestCase(TestCase):
 
 		ebuild_body = textwrap.dedent("""
 			S=${WORKDIR}
+			pkg_info() { echo info ; }
 			pkg_nofetch() { echo nofetch ; }
 			pkg_pretend() { echo pretend ; }
 			pkg_setup() { echo setup ; }
@@ -78,8 +79,9 @@ class DoebuildFdPipesTestCase(TestCase):
 			ebuildpath = portdb.findname(cpv)
 			self.assertNotEqual(ebuildpath, None)
 
-			for phase in ('pretend', 'setup', 'unpack', 'prepare', 'configure',
-				 'compile', 'test', 'install', 'clean', 'merge', 'nofetch'):
+			for phase in ('info', 'nofetch',
+				 'pretend', 'setup', 'unpack', 'prepare', 'configure',
+				 'compile', 'test', 'install', 'clean', 'merge'):
 
 				pr, pw = os.pipe()
 
