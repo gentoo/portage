@@ -55,7 +55,7 @@ class MergeProcess(ForkProcess):
 			self.fd_pipes = {}
 		else:
 			self.fd_pipes = self.fd_pipes.copy()
-		self.fd_pipes.setdefault(0, sys.stdin.fileno())
+		self.fd_pipes.setdefault(0, portage._get_stdin().fileno())
 
 		super(MergeProcess, self)._start()
 

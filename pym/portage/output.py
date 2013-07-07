@@ -1,4 +1,4 @@
-# Copyright 1998-2011 Gentoo Foundation
+# Copyright 1998-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __docformat__ = "epytext"
@@ -245,7 +245,7 @@ _max_xtermTitle_len = 253
 def xtermTitle(mystr, raw=False):
 	global _disable_xtermTitle
 	if _disable_xtermTitle is None:
-		_disable_xtermTitle = not (sys.stderr.isatty() and \
+		_disable_xtermTitle = not (sys.__stderr__.isatty() and \
 		'TERM' in os.environ and \
 		_legal_terms_re.match(os.environ['TERM']) is not None)
 
@@ -278,15 +278,18 @@ def xtermTitleReset():
 			if dotitles and \
 				'TERM' in os.environ and \
 				_legal_terms_re.match(os.environ['TERM']) is not None and \
-				sys.stderr.isatty():
+				sys.__stderr__.isatty():
 				from portage.process import find_binary, spawn
 				shell = os.environ.get("SHELL")
 				if not shell or not os.access(shell, os.EX_OK):
 					shell = find_binary("sh")
 				if shell:
 					spawn([shell, "-c", prompt_command], env=os.environ,
-						fd_pipes={0:sys.stdin.fileno(),1:sys.stderr.fileno(),
-						2:sys.stderr.fileno()})
+						fd_pipes={
+							0: portage._get_stdin().fileno(),
+							1: sys.__stderr__.fileno(),
+							2: sys.__stderr__.fileno()
+						})
 				else:
 					os.system(prompt_command)
 			return

@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import gzip
@@ -174,7 +174,7 @@ class EbuildPhase(CompositeTask):
 			if not self.background and self.phase == 'nofetch':
 				# All the pkg_nofetch output goes to stderr since
 				# it's considered to be an error message.
-				fd_pipes = {1 : sys.stderr.fileno()}
+				fd_pipes = {1 : sys.__stderr__.fileno()}
 
 		ebuild_process = EbuildProcess(actionmap=self.actionmap,
 			background=self.background, fd_pipes=fd_pipes,
