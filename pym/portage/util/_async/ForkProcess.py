@@ -1,7 +1,8 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import signal
+import sys
 import traceback
 
 import portage
@@ -46,6 +47,8 @@ class ForkProcess(SpawnProcess):
 				raise
 			except:
 				traceback.print_exc()
+				# os._exit() skips stderr flush!
+				sys.stderr.flush()
 			finally:
 				os._exit(rval)
 
