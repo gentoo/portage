@@ -233,6 +233,8 @@ class MergeProcess(ForkProcess):
 				raise
 			except:
 				traceback.print_exc()
+				# os._exit() skips stderr flush!
+				sys.stderr.flush()
 			finally:
 				os._exit(rval)
 
