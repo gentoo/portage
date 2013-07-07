@@ -33,6 +33,7 @@ class DoebuildFdPipesTestCase(TestCase):
 
 		ebuild_body = textwrap.dedent("""
 			S=${WORKDIR}
+			pkg_nofetch() { echo nofetch ; }
 			pkg_pretend() { echo pretend ; }
 			pkg_setup() { echo setup ; }
 			src_unpack() { echo unpack ; }
@@ -78,7 +79,7 @@ class DoebuildFdPipesTestCase(TestCase):
 			self.assertNotEqual(ebuildpath, None)
 
 			for phase in ('pretend', 'setup', 'unpack', 'prepare', 'configure',
-				 'compile', 'test', 'install', 'clean', 'merge'):
+				 'compile', 'test', 'install', 'clean', 'merge', 'nofetch'):
 
 				pr, pw = os.pipe()
 

@@ -574,7 +574,7 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 	                "fetch", "fetchall", "digest",
 	                "unpack", "prepare", "configure", "compile", "test",
 	                "install", "rpm", "qmerge", "merge",
-	                "package","unmerge", "manifest"]
+	                "package", "unmerge", "manifest", "nofetch"]
 
 	if mydo not in validcommands:
 		validcommands.sort()
@@ -744,6 +744,16 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 
 			return _spawn_phase(mydo, mysettings,
 				fd_pipes=fd_pipes, returnpid=returnpid)
+
+		elif mydo == "nofetch":
+
+			if returnpid:
+				writemsg("!!! doebuild: %s\n" %
+					_("returnpid is not supported for phase '%s'\n" % mydo),
+					noiselevel=-1)
+
+			return spawn_nofetch(mydbapi, myebuild, settings=mysettings,
+				fd_pipes=fd_pipes)
 
 		if tree == "porttree":
 

@@ -50,7 +50,7 @@ def spawn_nofetch(portdb, ebuild_path, settings=None, fd_pipes=None):
 		settings = config(clone=settings)
 
 	if 'PORTAGE_PARALLEL_FETCHONLY' in settings:
-		return
+		return os.EX_OK
 
 	# We must create our private PORTAGE_TMPDIR before calling
 	# doebuild_environment(), since lots of variables such
@@ -76,7 +76,7 @@ def spawn_nofetch(portdb, ebuild_path, settings=None, fd_pipes=None):
 
 		if 'fetch' not in restrict and \
 			'nofetch' not in defined_phases:
-			return
+			return os.EX_OK
 
 		prepare_build_dirs(settings=settings)
 		ebuild_phase = EbuildPhase(background=False,
@@ -89,3 +89,5 @@ def spawn_nofetch(portdb, ebuild_path, settings=None, fd_pipes=None):
 		elog_process(settings.mycpv, settings)
 	finally:
 		shutil.rmtree(private_tmpdir)
+
+	return ebuild_phase.returncode
