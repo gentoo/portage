@@ -762,9 +762,9 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 			if "noauto" in mysettings.features:
 				mysettings.features.discard("noauto")
 
-		# The info phase is special because it uses mkdtemp so and
-		# user (not necessarily in the portage group) can run it.
-		if mydo not in ('info',) and \
+		# If we are not using a private temp dir, then check access
+		# to the global temp dir.
+		if tmpdir is None and \
 			mydo not in _doebuild_commands_without_builddir:
 			rval = _check_temp_dir(mysettings)
 			if rval != os.EX_OK:
