@@ -139,14 +139,20 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 	finally:
 		settings.pop('EBUILD_PHASE', None)
 
-def _spawn_phase(phase, settings, actionmap=None, **kwargs):
-	if kwargs.get('returnpid'):
-		return _doebuild_spawn(phase, settings, actionmap=actionmap, **kwargs)
+def _spawn_phase(phase, settings, actionmap=None, returnpid=False,
+		logfile=None, **kwargs):
 
+	if returnpid:
+		return _doebuild_spawn(phase, settings, actionmap=actionmap,
+			returnpid=returnpid, logfile=logfile, **kwargs)
+
+	# The logfile argument is unused here, since EbuildPhase uses
+	# the PORTAGE_LOG_FILE variable if set.
 	ebuild_phase = EbuildPhase(actionmap=actionmap, background=False,
 		phase=phase, scheduler=SchedulerInterface(portage._internal_caller and
 			global_event_loop() or EventLoop(main=False)),
-		settings=settings)
+		settings=settings, **kwargs)
+
 	ebuild_phase.start()
 	ebuild_phase.wait()
 	return ebuild_phase.returncode
@@ -499,9 +505,7 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 	@param prev_mtimes: A dict of { filename:mtime } keys used by merge() to do config_protection
 	@type prev_mtimes: dictionary
 	@param fd_pipes: A dict of mapping for pipes, { '0': stdin, '1': stdout }
-		for example. This is parameter only guaranteed to be respected when
-		returnpid is True (otherwise all subprocesses simply inherit file
-		descriptors from sys.__std* streams).
+		for example.
 	@type fd_pipes: Dictionary
 	@param returnpid: Return a list of process IDs for a successful spawn, or
 		an integer value if spawn is unsuccessful. NOTE: This requires the
@@ -957,7 +961,8 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 			if not fetch(fetchme, mysettings, listonly=listonly,
 				fetchonly=fetchonly, allow_missing_digests=True,
 				digests=dist_digests):
-				spawn_nofetch(mydbapi, myebuild, settings=mysettings)
+				spawn_nofetch(mydbapi, myebuild, settings=mysettings,
+					fd_pipes=fd_pipes)
 				if listonly:
 					# The convention for listonly mode is to report
 					# success in any case, even though fetch() may
@@ -1089,7 +1094,8 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 				mysettings["CATEGORY"], mysettings["PF"], mysettings["D"],
 				os.path.join(mysettings["PORTAGE_BUILDDIR"], "build-info"),
 				myroot, mysettings, myebuild=mysettings["EBUILD"], mytree=tree,
-				mydbapi=mydbapi, vartree=vartree, prev_mtimes=prev_mtimes)
+				mydbapi=mydbapi, vartree=vartree, prev_mtimes=prev_mtimes,
+				fd_pipes=fd_pipes)
 		elif mydo=="merge":
 			retval = spawnebuild("install", actionmap, mysettings, debug,
 				alwaysdep=1, logfile=logfile, fd_pipes=fd_pipes,
@@ -1105,7 +1111,9 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 					mysettings["D"], os.path.join(mysettings["PORTAGE_BUILDDIR"],
 					"build-info"), myroot, mysettings,
 					myebuild=mysettings["EBUILD"], mytree=tree, mydbapi=mydbapi,
-					vartree=vartree, prev_mtimes=prev_mtimes)
+					vartree=vartree, prev_mtimes=prev_mtimes,
+					fd_pipes=fd_pipes)
+
 		else:
 			writemsg_stdout(_("!!! Unknown mydo: %s\n") % mydo, noiselevel=-1)
 			return 1

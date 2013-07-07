@@ -38,6 +38,8 @@ class SpawnProcess(SubProcess):
 
 		if self.fd_pipes is None:
 			self.fd_pipes = {}
+		else:
+			self.fd_pipes = self.fd_pipes.copy()
 		fd_pipes = self.fd_pipes
 
 		master_fd, slave_fd = self._pipe(fd_pipes)

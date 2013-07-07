@@ -4995,7 +4995,7 @@ class dblink(object):
 def merge(mycat, mypkg, pkgloc, infloc,
 	myroot=None, settings=None, myebuild=None,
 	mytree=None, mydbapi=None, vartree=None, prev_mtimes=None, blockers=None,
-	scheduler=None):
+	scheduler=None, fd_pipes=None):
 	"""
 	@param myroot: ignored, settings['EROOT'] is used instead
 	"""
@@ -5014,7 +5014,8 @@ def merge(mycat, mypkg, pkgloc, infloc,
 			global_event_loop() or EventLoop(main=False)),
 		background=background, blockers=blockers, pkgloc=pkgloc,
 		infloc=infloc, myebuild=myebuild, mydbapi=mydbapi,
-		prev_mtimes=prev_mtimes, logfile=settings.get('PORTAGE_LOG_FILE'))
+		prev_mtimes=prev_mtimes, logfile=settings.get('PORTAGE_LOG_FILE'),
+		fd_pipes=fd_pipes)
 	merge_task.start()
 	retcode = merge_task.wait()
 	return retcode

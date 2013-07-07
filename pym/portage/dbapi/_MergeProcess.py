@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import io
@@ -53,6 +53,8 @@ class MergeProcess(ForkProcess):
 		# handler is usable for the subprocess.
 		if self.fd_pipes is None:
 			self.fd_pipes = {}
+		else:
+			self.fd_pipes = self.fd_pipes.copy()
 		self.fd_pipes.setdefault(0, sys.stdin.fileno())
 
 		super(MergeProcess, self)._start()

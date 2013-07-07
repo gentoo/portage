@@ -16,7 +16,7 @@ from portage.util._eventloop.EventLoop import EventLoop
 from portage.util._eventloop.global_event_loop import global_event_loop
 from _emerge.EbuildPhase import EbuildPhase
 
-def spawn_nofetch(portdb, ebuild_path, settings=None):
+def spawn_nofetch(portdb, ebuild_path, settings=None, fd_pipes=None):
 	"""
 	This spawns pkg_nofetch if appropriate. The settings parameter
 	is useful only if setcpv has already been called in order
@@ -83,7 +83,7 @@ def spawn_nofetch(portdb, ebuild_path, settings=None):
 			phase='nofetch',
 			scheduler=SchedulerInterface(portage._internal_caller and
 				global_event_loop() or EventLoop(main=False)),
-			settings=settings)
+			fd_pipes=fd_pipes, settings=settings)
 		ebuild_phase.start()
 		ebuild_phase.wait()
 		elog_process(settings.mycpv, settings)

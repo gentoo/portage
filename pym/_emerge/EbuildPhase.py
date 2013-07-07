@@ -39,7 +39,7 @@ from portage import _unicode_encode
 
 class EbuildPhase(CompositeTask):
 
-	__slots__ = ("actionmap", "phase", "settings") + \
+	__slots__ = ("actionmap", "fd_pipes", "phase", "settings") + \
 		("_ebuild_lock",)
 
 	# FEATURES displayed prior to setup phase
@@ -157,8 +157,7 @@ class EbuildPhase(CompositeTask):
 			return
 		self._start_ebuild()
 
-	def _start_ebuild(self):
-
+	def _get_log_path(self):
 		# Don't open the log file during the clean phase since the
 		# open file can result in an nfs lock on $T/build.log which
 		# prevents the clean phase from removing $T.
@@ -166,17 +165,21 @@ class EbuildPhase(CompositeTask):
 		if self.phase not in ("clean", "cleanrm") and \
 			self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
 			logfile = self.settings.get("PORTAGE_LOG_FILE")
+		return logfile
 
-		fd_pipes = None
-		if not self.background and self.phase == 'nofetch':
-			# All the pkg_nofetch output goes to stderr since
-			# it's considered to be an error message.
-			fd_pipes = {1 : sys.stderr.fileno()}
+	def _start_ebuild(self):
+
+		fd_pipes = self.fd_pipes
+		if fd_pipes is None:
+			if not self.background and self.phase == 'nofetch':
+				# All the pkg_nofetch output goes to stderr since
+				# it's considered to be an error message.
+				fd_pipes = {1 : sys.stderr.fileno()}
 
 		ebuild_process = EbuildProcess(actionmap=self.actionmap,
-			background=self.background, fd_pipes=fd_pipes, logfile=logfile,
-			phase=self.phase, scheduler=self.scheduler,
-			settings=self.settings)
+			background=self.background, fd_pipes=fd_pipes,
+			logfile=self._get_log_path(), phase=self.phase,
+			scheduler=self.scheduler, settings=self.settings)
 
 		self._start_task(ebuild_process, self._ebuild_exit)
 
@@ -204,9 +207,7 @@ class EbuildPhase(CompositeTask):
 		if not fail:
 			self.returncode = None
 
-		logfile = None
-		if self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
-			logfile = self.settings.get("PORTAGE_LOG_FILE")
+		logfile = self._get_log_path()
 
 		if self.phase == "install":
 			out = io.StringIO()
@@ -250,8 +251,9 @@ class EbuildPhase(CompositeTask):
 				fd, logfile = tempfile.mkstemp()
 				os.close(fd)
 			post_phase = MiscFunctionsProcess(background=self.background,
-				commands=post_phase_cmds, logfile=logfile, phase=self.phase,
-				scheduler=self.scheduler, settings=settings)
+				commands=post_phase_cmds, fd_pipes=self.fd_pipes,
+				logfile=logfile, phase=self.phase, scheduler=self.scheduler,
+				settings=settings)
 			self._start_task(post_phase, self._post_phase_exit)
 			return
 
@@ -326,8 +328,9 @@ class EbuildPhase(CompositeTask):
 		self.returncode = None
 		phase = 'die_hooks'
 		die_hooks = MiscFunctionsProcess(background=self.background,
-			commands=[phase], phase=phase,
-			scheduler=self.scheduler, settings=self.settings)
+			commands=[phase], phase=phase, logfile=self._get_log_path(),
+			fd_pipes=self.fd_pipes, scheduler=self.scheduler,
+			settings=self.settings)
 		self._start_task(die_hooks, self._die_hooks_exit)
 
 	def _die_hooks_exit(self, die_hooks):
@@ -346,7 +349,8 @@ class EbuildPhase(CompositeTask):
 		portage.elog.elog_process(self.settings.mycpv, self.settings)
 		phase = "clean"
 		clean_phase = EbuildPhase(background=self.background,
-			phase=phase, scheduler=self.scheduler, settings=self.settings)
+			fd_pipes=fd_pipes, phase=phase, scheduler=self.scheduler,
+			settings=self.settings)
 		self._start_task(clean_phase, self._fail_clean_exit)
 		return
 
