@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AbstractDepPriority import AbstractDepPriority
@@ -16,31 +16,38 @@ class DepPriority(AbstractDepPriority):
 
 		Attributes                            Hardness
 
-		buildtime                               0
-		runtime                                -1
-		runtime_post                           -2
-		optional                               -3
-		(none of the above)                    -4
+		buildtime_slot_op                       0
+		buildtime                              -1
+		runtime                                -2
+		runtime_post                           -3
+		optional                               -4
+		(none of the above)                    -5
 
 		"""
 
 		if self.optional:
-			return -3
-		if self.buildtime:
+			return -4
+		if self.buildtime_slot_op:
 			return 0
-		if self.runtime:
+		if self.buildtime:
 			return -1
-		if self.runtime_post:
+		if self.runtime:
 			return -2
-		return -4
+		if self.runtime_post:
+			return -3
+		return -5
 
 	def __str__(self):
 		if self.ignored:
 			return "ignored"
 		if self.optional:
 			return "optional"
+		if self.buildtime_slot_op:
+			return "buildtime_slot_op"
 		if self.buildtime:
 			return "buildtime"
+		if self.runtime_slot_op:
+			return "runtime_slot_op"
 		if self.runtime:
 			return "runtime"
 		if self.runtime_post:

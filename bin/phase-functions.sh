@@ -622,6 +622,7 @@ __dyn_help() {
 	echo "  pretend     : execute package specific pretend actions"
 	echo "  setup       : execute package specific setup actions"
 	echo "  fetch       : download source archive(s) and patches"
+	echo "  nofetch     : display special fetch instructions"
 	echo "  digest      : create a manifest file for the package"
 	echo "  manifest    : create a manifest file for the package"
 	echo "  unpack      : unpack sources (auto-dependencies if needed)"

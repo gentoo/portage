@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Jun 2013" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "Jul 2013" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -372,7 +372,9 @@ entries may cause installed packages satisfying equivalent dependencies
 to be removed by \fBemerge\fR(1) \fB\-\-depclean\fR actions (see the
 \fBACTIONS\fR section of the \fBemerge\fR(1) man page for more information).
 
-Virtual packages (virtual/*) should not be specified in package.provided.
+Virtual packages (virtual/*) should not be specified in package.provided,
+since virtual packages themselves do not provide any files, and
+package.provided is intended to represent packages that do provide files.
 Depending on the type of virtual, it may be necessary to add an entry to the
 virtuals file and/or add a package that satisfies a virtual to
 package.provided.

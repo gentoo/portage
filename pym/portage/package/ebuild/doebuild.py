@@ -141,14 +141,20 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 	finally:
 		settings.pop('EBUILD_PHASE', None)
 
-def _spawn_phase(phase, settings, actionmap=None, **kwargs):
-	if kwargs.get('returnpid'):
-		return _doebuild_spawn(phase, settings, actionmap=actionmap, **kwargs)
+def _spawn_phase(phase, settings, actionmap=None, returnpid=False,
+		logfile=None, **kwargs):
 
+	if returnpid:
+		return _doebuild_spawn(phase, settings, actionmap=actionmap,
+			returnpid=returnpid, logfile=logfile, **kwargs)
+
+	# The logfile argument is unused here, since EbuildPhase uses
+	# the PORTAGE_LOG_FILE variable if set.
 	ebuild_phase = EbuildPhase(actionmap=actionmap, background=False,
 		phase=phase, scheduler=SchedulerInterface(portage._internal_caller and
 			global_event_loop() or EventLoop(main=False)),
-		settings=settings)
+		settings=settings, **kwargs)
+
 	ebuild_phase.start()
 	ebuild_phase.wait()
 	return ebuild_phase.returncode
@@ -573,7 +579,7 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 	                "fetch", "fetchall", "digest",
 	                "unpack", "prepare", "configure", "compile", "test",
 	                "install", "rpm", "qmerge", "merge",
-	                "package","unmerge", "manifest"]
+	                "package", "unmerge", "manifest", "nofetch"]
 
 	if mydo not in validcommands:
 		validcommands.sort()
@@ -587,8 +593,11 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 		return 1
 
 	if returnpid and mydo != 'depend':
-		warnings.warn("portage.doebuild() called " + \
-			"with returnpid parameter enabled. This usage will " + \
+		# This case is not supported, since it bypasses the EbuildPhase class
+		# which implements important functionality (including post phase hooks
+		# and IPC for things like best/has_version and die).
+		warnings.warn("portage.doebuild() called "
+			"with returnpid parameter enabled. This usage will "
 			"not be supported in the future.",
 			DeprecationWarning, stacklevel=2)
 
@@ -702,7 +711,7 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 		# we can temporarily override PORTAGE_TMPDIR with a random temp dir
 		# so that there's no need for locking and it can be used even if the
 		# user isn't in the portage group.
-		if mydo in ("info",):
+		if not returnpid and mydo in ("info",):
 			tmpdir = tempfile.mkdtemp()
 			tmpdir_orig = mysettings["PORTAGE_TMPDIR"]
 			mysettings["PORTAGE_TMPDIR"] = tmpdir
@@ -741,14 +750,25 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 			return _spawn_phase(mydo, mysettings,
 				fd_pipes=fd_pipes, returnpid=returnpid)
 
-		# Validate dependency metadata here to ensure that ebuilds with invalid
-		# data are never installed via the ebuild command. Don't bother when
-		# returnpid == True since there's no need to do this every time emerge
-		# executes a phase.
+		elif mydo == "nofetch":
+
+			if returnpid:
+				writemsg("!!! doebuild: %s\n" %
+					_("returnpid is not supported for phase '%s'\n" % mydo),
+					noiselevel=-1)
+
+			return spawn_nofetch(mydbapi, myebuild, settings=mysettings,
+				fd_pipes=fd_pipes)
+
 		if tree == "porttree":
-			rval = _validate_deps(mysettings, myroot, mydo, mydbapi)
-			if rval != os.EX_OK:
-				return rval
+
+			if not returnpid:
+				# Validate dependency metadata here to ensure that ebuilds with
+				# invalid data are never installed via the ebuild command. Skip
+				# this when returnpid is True (assume the caller handled it).
+				rval = _validate_deps(mysettings, myroot, mydo, mydbapi)
+				if rval != os.EX_OK:
+					return rval
 
 		else:
 			# FEATURES=noauto only makes sense for porttree, and we don't want
@@ -757,20 +777,25 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 			if "noauto" in mysettings.features:
 				mysettings.features.discard("noauto")
 
-		# The info phase is special because it uses mkdtemp so and
-		# user (not necessarily in the portage group) can run it.
-		if mydo not in ('info',) and \
+		# If we are not using a private temp dir, then check access
+		# to the global temp dir.
+		if tmpdir is None and \
 			mydo not in _doebuild_commands_without_builddir:
 			rval = _check_temp_dir(mysettings)
 			if rval != os.EX_OK:
 				return rval
 
 		if mydo == "unmerge":
+			if returnpid:
+				writemsg("!!! doebuild: %s\n" %
+					_("returnpid is not supported for phase '%s'\n" % mydo),
+					noiselevel=-1)
 			return unmerge(mysettings["CATEGORY"],
 				mysettings["PF"], myroot, mysettings, vartree=vartree)
 
 		phases_to_run = set()
-		if "noauto" in mysettings.features or \
+		if returnpid or \
+			"noauto" in mysettings.features or \
 			mydo not in actionmap_deps:
 			phases_to_run.add(mydo)
 		else:
@@ -951,7 +976,8 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 			if not fetch(fetchme, mysettings, listonly=listonly,
 				fetchonly=fetchonly, allow_missing_digests=True,
 				digests=dist_digests):
-				spawn_nofetch(mydbapi, myebuild, settings=mysettings)
+				spawn_nofetch(mydbapi, myebuild, settings=mysettings,
+					fd_pipes=fd_pipes)
 				if listonly:
 					# The convention for listonly mode is to report
 					# success in any case, even though fetch() may
@@ -1018,7 +1044,9 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 			if len(actionmap_deps.get(x, [])):
 				actionmap[x]["dep"] = ' '.join(actionmap_deps[x])
 
-		if mydo in actionmap:
+		regular_actionmap_phase = mydo in actionmap
+
+		if regular_actionmap_phase:
 			bintree = None
 			if mydo == "package":
 				# Make sure the package directory exists before executing
@@ -1042,6 +1070,9 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 				actionmap, mysettings, debug, logfile=logfile,
 				fd_pipes=fd_pipes, returnpid=returnpid)
 
+			if returnpid and isinstance(retval, list):
+				return retval
+
 			if retval == os.EX_OK:
 				if mydo == "package" and bintree is not None:
 					bintree.inject(mysettings.mycpv,
@@ -1053,7 +1084,15 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 					except OSError:
 						pass
 
-		elif mydo=="qmerge":
+		elif returnpid:
+			writemsg("!!! doebuild: %s\n" %
+				_("returnpid is not supported for phase '%s'\n" % mydo),
+				noiselevel=-1)
+
+		if regular_actionmap_phase:
+			# handled above
+			pass
+		elif mydo == "qmerge":
 			# check to ensure install was run.  this *only* pops up when users
 			# forget it and are using ebuild
 			if not os.path.exists(
@@ -1070,7 +1109,8 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 				mysettings["CATEGORY"], mysettings["PF"], mysettings["D"],
 				os.path.join(mysettings["PORTAGE_BUILDDIR"], "build-info"),
 				myroot, mysettings, myebuild=mysettings["EBUILD"], mytree=tree,
-				mydbapi=mydbapi, vartree=vartree, prev_mtimes=prev_mtimes)
+				mydbapi=mydbapi, vartree=vartree, prev_mtimes=prev_mtimes,
+				fd_pipes=fd_pipes)
 		elif mydo=="merge":
 			retval = spawnebuild("install", actionmap, mysettings, debug,
 				alwaysdep=1, logfile=logfile, fd_pipes=fd_pipes,
@@ -1086,7 +1126,9 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 					mysettings["D"], os.path.join(mysettings["PORTAGE_BUILDDIR"],
 					"build-info"), myroot, mysettings,
 					myebuild=mysettings["EBUILD"], mytree=tree, mydbapi=mydbapi,
-					vartree=vartree, prev_mtimes=prev_mtimes)
+					vartree=vartree, prev_mtimes=prev_mtimes,
+					fd_pipes=fd_pipes)
+
 		else:
 			writemsg_stdout(_("!!! Unknown mydo: %s\n") % mydo, noiselevel=-1)
 			return 1
@@ -1568,8 +1610,8 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 	logfile=None, fd_pipes=None, returnpid=False):
 
 	if returnpid:
-		warnings.warn("portage.spawnebuild() called " + \
-			"with returnpid parameter enabled. This usage will " + \
+		warnings.warn("portage.spawnebuild() called "
+			"with returnpid parameter enabled. This usage will "
 			"not be supported in the future.",
 			DeprecationWarning, stacklevel=2)
 

@@ -2254,6 +2254,13 @@ class depgraph(object):
 
 			mypriority = dep_priority.copy()
 			if not atom.blocker:
+
+				if atom.slot_operator == "=":
+					if mypriority.buildtime:
+						mypriority.buildtime_slot_op = True
+					if mypriority.runtime:
+						mypriority.runtime_slot_op = True
+
 				inst_pkgs = [inst_pkg for inst_pkg in
 					reversed(vardb.match_pkgs(atom))
 					if not reinstall_atoms.findAtomForPackage(inst_pkg,

@@ -87,7 +87,9 @@ if hasattr(_os, "getxattr"):
 			except OSError:
 				raise_exception = True
 			if raise_exception:
-				raise OperationNotSupported("Filesystem containing file '%s' does not support extended attributes" % dest)
+				raise OperationNotSupported(_("Filesystem containing file '%s' "
+					"does not support extended attribute '%s'") %
+					(_unicode_decode(dest), _unicode_decode(attr)))
 else:
 	try:
 		import xattr
@@ -111,7 +113,9 @@ else:
 				except IOError:
 					raise_exception = True
 				if raise_exception:
-					raise OperationNotSupported("Filesystem containing file '%s' does not support extended attributes" % dest)
+					raise OperationNotSupported(_("Filesystem containing file '%s' "
+						"does not support extended attribute '%s'") %
+						(_unicode_decode(dest), _unicode_decode(attr)))
 	else:
 		_devnull = open("/dev/null", "wb")
 		try:

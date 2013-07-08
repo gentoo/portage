@@ -128,7 +128,6 @@ class EbuildMetadataPhase(SubProcess):
 			return
 
 		self.pid = retval[0]
-		portage.process.spawned_pids.remove(self.pid)
 
 	def _output_handler(self, fd, event):
 

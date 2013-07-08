@@ -172,26 +172,23 @@ def run_exitfuncs():
 
 atexit.register(run_exitfuncs)
 
-# We need to make sure that any processes spawned are killed off when
-# we exit. spawn() takes care of adding and removing pids to this list
-# as it creates and cleans up processes.
-spawned_pids = []
-def cleanup():
-	while spawned_pids:
-		pid = spawned_pids.pop()
+# It used to be necessary for API consumers to remove pids from spawned_pids,
+# since otherwise it would accumulate a pids endlessly. Now, spawned_pids is
+# just an empty dummy list, so for backward compatibility, ignore ValueError
+# for removal on non-existent items.
+class _dummy_list(list):
+	def remove(self, item):
+		# TODO: Trigger a DeprecationWarning here, after stable portage
+		# has dummy spawned_pids.
 		try:
-			# With waitpid and WNOHANG, only check the
-			# first element of the tuple since the second
-			# element may vary (bug #337465).
-			if os.waitpid(pid, os.WNOHANG)[0] == 0:
-				os.kill(pid, signal.SIGTERM)
-				os.waitpid(pid, 0)
-		except OSError:
-			# This pid has been cleaned up outside
-			# of spawn().
+			list.remove(self, item)
+		except ValueError:
 			pass
 
-atexit_register(cleanup)
+spawned_pids = _dummy_list()
+
+def cleanup():
+	pass
 
 def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
           uid=None, gid=None, groups=None, umask=None, logfile=None,
@@ -325,7 +322,6 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 
 	# Add the pid to our local and the global pid lists.
 	mypids.append(pid)
-	spawned_pids.append(pid)
 
 	# If we started a tee process the write side of the pipe is no
 	# longer needed, so close it.
@@ -348,10 +344,6 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 		# and wait for it.
 		retval = os.waitpid(pid, 0)[1]
 
-		# When it's done, we can remove it from the
-		# global pid list as well.
-		spawned_pids.remove(pid)
-
 		if retval:
 			# If it failed, kill off anything else that
 			# isn't dead yet.
@@ -362,7 +354,6 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 				if os.waitpid(pid, os.WNOHANG)[0] == 0:
 					os.kill(pid, signal.SIGTERM)
 					os.waitpid(pid, 0)
-				spawned_pids.remove(pid)
 
 			# If it got a signal, return the signal that was sent.
 			if (retval & 0xff):

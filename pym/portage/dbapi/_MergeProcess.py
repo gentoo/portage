@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import io
@@ -53,7 +53,9 @@ class MergeProcess(ForkProcess):
 		# handler is usable for the subprocess.
 		if self.fd_pipes is None:
 			self.fd_pipes = {}
-		self.fd_pipes.setdefault(0, sys.stdin.fileno())
+		else:
+			self.fd_pipes = self.fd_pipes.copy()
+		self.fd_pipes.setdefault(0, portage._get_stdin().fileno())
 
 		super(MergeProcess, self)._start()
 
@@ -174,7 +176,6 @@ class MergeProcess(ForkProcess):
 				self.vartree.dbapi._pkgs_changed = True
 				self.vartree.dbapi._clear_pkg_cache(mylink)
 
-				portage.process.spawned_pids.append(pid)
 				return [pid]
 
 			os.close(elog_reader_fd)
@@ -232,6 +233,8 @@ class MergeProcess(ForkProcess):
 				raise
 			except:
 				traceback.print_exc()
+				# os._exit() skips stderr flush!
+				sys.stderr.flush()
 			finally:
 				os._exit(rval)
 

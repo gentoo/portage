@@ -1148,7 +1148,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 						"installed", root_config, installed=True)
 					if not resolver._add_pkg(pkg,
 						Dependency(parent=consumer_pkg,
-						priority=UnmergeDepPriority(runtime=True),
+						priority=UnmergeDepPriority(runtime=True,
+							runtime_slot_op=True),
 						root=pkg.root)):
 						resolver.display_problems()
 						return 1, [], False, 0
@@ -1236,7 +1237,15 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 						continue
 					for child_node in matches:
 						if child_node in clean_set:
-							graph.add(child_node, node, priority=priority)
+
+							mypriority = priority.copy()
+							if atom.slot_operator_built:
+								if mypriority.buildtime:
+									mypriority.buildtime_slot_op = True
+								if mypriority.runtime:
+									mypriority.runtime_slot_op = True
+
+							graph.add(child_node, node, priority=mypriority)
 
 		if debug:
 			writemsg_level("\nunmerge digraph:\n\n",
@@ -1471,7 +1480,6 @@ def action_info(settings, trees, myopts, myfiles):
 	output_buffer = []
 	append = output_buffer.append
 	root_config = trees[settings['EROOT']]['root_config']
-	running_eroot = trees._running_eroot
 	chost = settings.get("CHOST")
 
 	append(getportageversion(settings["PORTDIR"], None,
@@ -1559,7 +1567,6 @@ def action_info(settings, trees, myopts, myfiles):
 	           "sys-devel/binutils", "sys-devel/libtool",  "dev-lang/python"]
 	myvars += portage.util.grabfile(settings["PORTDIR"]+"/profiles/info_pkgs")
 	atoms = []
-	vardb = trees[running_eroot]['vartree'].dbapi
 	for x in myvars:
 		try:
 			x = Atom(x)
@@ -1572,7 +1579,6 @@ def action_info(settings, trees, myopts, myfiles):
 
 	myvars = sorted(set(atoms))
 
-	portdb = trees[running_eroot]['porttree'].dbapi
 	main_repo = portdb.getRepositoryName(portdb.porttree_root)
 	cp_map = {}
 	cp_max_len = 0
@@ -2427,8 +2433,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 							exitcode = (exitcode & 0xff) << 8
 						else:
 							exitcode = exitcode >> 8
-				if mypids:
-					portage.process.spawned_pids.remove(mypids[0])
+
 				if content:
 					try:
 						servertimestamp = time.mktime(time.strptime(

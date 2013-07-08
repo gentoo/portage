@@ -1,4 +1,4 @@
-# Copyright 2011 Gentoo Foundation
+# Copyright 2011-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -191,6 +191,12 @@ class MergeOrderTestCase(TestCase):
 				"DEPEND"  : "kde-base/libkdegames",
 				"RDEPEND" : "kde-base/libkdegames",
 			},
+			"media-libs/mesa-9.1.3" : {
+				"EAPI" : "5",
+				"IUSE" : "+xorg",
+				"DEPEND" : "xorg? ( x11-base/xorg-server:= )",
+				"RDEPEND" : "xorg? ( x11-base/xorg-server:= )",
+			},
 			"media-video/libav-0.7_pre20110327" : {
 				"EAPI" : "2",
 				"IUSE" : "X +encode",
@@ -204,6 +210,12 @@ class MergeOrderTestCase(TestCase):
 				"EAPI" : "2",
 				"IUSE" : "X +encode",
 				"RDEPEND" : "|| ( >=media-video/ffmpeg-0.6.90_rc0-r2[X=,encode=] >=media-video/libav-0.6.90_rc[X=,encode=] )",
+			},
+			"x11-base/xorg-server-1.14.1" : {
+				"EAPI" : "5",
+				"SLOT": "0/1.14.1",
+				"DEPEND" : "media-libs/mesa",
+				"RDEPEND" : "media-libs/mesa",
 			},
 		}
 
@@ -256,6 +268,13 @@ class MergeOrderTestCase(TestCase):
 				"RDEPEND": "",
 			},
 			"app-arch/xz-utils-5.0.1" : {},
+			"media-libs/mesa-9.1.3" : {
+				"EAPI" : "5",
+				"IUSE" : "+xorg",
+				"USE": "xorg",
+				"DEPEND" : "x11-base/xorg-server:0/1.14.1=",
+				"RDEPEND" : "x11-base/xorg-server:0/1.14.1=",
+			},
 			"media-video/ffmpeg-0.7_rc1" : {
 				"EAPI" : "2",
 				"IUSE" : "X +encode",
@@ -266,6 +285,12 @@ class MergeOrderTestCase(TestCase):
 				"IUSE" : "X +encode",
 				"USE" : "encode",
 				"RDEPEND" : "|| ( >=media-video/ffmpeg-0.6.90_rc0-r2[X=,encode=] >=media-video/libav-0.6.90_rc[X=,encode=] )",
+			},
+			"x11-base/xorg-server-1.14.1" : {
+				"EAPI" : "5",
+				"SLOT": "0/1.14.1",
+				"DEPEND" : "media-libs/mesa",
+				"RDEPEND" : "media-libs/mesa",
 			},
 		}
 
@@ -434,6 +459,14 @@ class MergeOrderTestCase(TestCase):
 					('kde-base/libkdegames-3.5.7', 'kde-base/kmines-3.5.7'),
 				),
 				mergelist = [('kde-base/kdelibs-3.5.7', 'dev-util/pkgconfig-0.25-r2', 'kde-misc/kdnssd-avahi-0.1.2', 'app-arch/xz-utils-5.0.2', 'kde-base/libkdegames-3.5.7', 'kde-base/kdnssd-3.5.7', 'kde-base/kmines-3.5.7')]),
+			# Test satisfied circular DEPEND/RDEPEND with one := operator.
+			# Both deps are already satisfied by installed packages, but
+			# the := dep is given higher priority in merge order.
+			ResolverPlaygroundTestCase(
+				["media-libs/mesa", "x11-base/xorg-server"],
+				success=True,
+				all_permutations = True,
+				mergelist = ['x11-base/xorg-server-1.14.1', 'media-libs/mesa-9.1.3']),
 		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)
