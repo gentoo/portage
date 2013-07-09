@@ -349,7 +349,7 @@ class EbuildPhase(CompositeTask):
 		portage.elog.elog_process(self.settings.mycpv, self.settings)
 		phase = "clean"
 		clean_phase = EbuildPhase(background=self.background,
-			fd_pipes=fd_pipes, phase=phase, scheduler=self.scheduler,
+			fd_pipes=self.fd_pipes, phase=phase, scheduler=self.scheduler,
 			settings=self.settings)
 		self._start_task(clean_phase, self._fail_clean_exit)
 		return
