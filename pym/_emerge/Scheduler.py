@@ -251,6 +251,12 @@ class Scheduler(PollScheduler):
 		self._job_delay_max = 5
 		self._previous_job_start_time = None
 
+		# The load average takes some time to respond when after
+		# a SIGSTOP/SIGCONT cycle, so delay scheduling for some
+		# time after SIGCONT is received.
+		self._sigcont_delay = 5
+		self._sigcont_time = None
+
 		# This is used to memoize the _choose_pkg() result when
 		# no packages can be chosen until one of the existing
 		# jobs completes.
@@ -1005,6 +1011,8 @@ class Scheduler(PollScheduler):
 
 			earlier_sigint_handler = signal.signal(signal.SIGINT, sighandler)
 			earlier_sigterm_handler = signal.signal(signal.SIGTERM, sighandler)
+			earlier_sigcont_handler = \
+				signal.signal(signal.SIGCONT, self._sigcont_handler)
 
 			try:
 				rval = self._merge()
@@ -1018,6 +1026,10 @@ class Scheduler(PollScheduler):
 					signal.signal(signal.SIGTERM, earlier_sigterm_handler)
 				else:
 					signal.signal(signal.SIGTERM, signal.SIG_DFL)
+				if earlier_sigcont_handler is not None:
+					signal.signal(signal.SIGCONT, earlier_sigcont_handler)
+				else:
+					signal.signal(signal.SIGCONT, signal.SIG_DFL)
 
 			if received_signal:
 				sys.exit(received_signal[0])
@@ -1579,6 +1591,9 @@ class Scheduler(PollScheduler):
 				not self._task_queues.merge)):
 				break
 
+	def _sigcont_handler(self, signum, frame):
+		self._sigcont_time = time.time()
+
 	def _job_delay(self):
 		"""
 		@rtype: bool
@@ -1588,6 +1603,23 @@ class Scheduler(PollScheduler):
 		if self._jobs and self._max_load is not None:
 
 			current_time = time.time()
+
+			if self._sigcont_time is not None:
+
+				elapsed_seconds = current_time - self._sigcont_time
+				# elapsed_seconds < 0 means the system clock has been adjusted
+				if elapsed_seconds > 0 and \
+					elapsed_seconds < self._sigcont_delay:
+					self._event_loop.timeout_add(
+						1000 * (self._sigcont_delay - elapsed_seconds),
+						self._schedule_once)
+					return True
+
+				# Only set this to None after the delay has expired,
+				# since this method may be called again before the
+				# delay has expired.
+				self._sigcont_time = None
+
 			try:
 				avg1, avg5, avg15 = getloadavg()
 			except OSError:
