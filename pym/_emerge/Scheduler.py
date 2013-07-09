@@ -250,6 +250,7 @@ class Scheduler(PollScheduler):
 		# new jobs.
 		self._job_delay_max = 5
 		self._previous_job_start_time = None
+		self._job_delay_timeout_id = None
 
 		# The load average takes some time to respond when after
 		# a SIGSTOP/SIGCONT cycle, so delay scheduling for some
@@ -1610,7 +1611,12 @@ class Scheduler(PollScheduler):
 				# elapsed_seconds < 0 means the system clock has been adjusted
 				if elapsed_seconds > 0 and \
 					elapsed_seconds < self._sigcont_delay:
-					self._event_loop.timeout_add(
+
+					if self._job_delay_timeout_id is not None:
+						self._event_loop.source_remove(
+							self._job_delay_timeout_id)
+
+					self._job_delay_timeout_id = self._event_loop.timeout_add(
 						1000 * (self._sigcont_delay - elapsed_seconds),
 						self._schedule_once)
 					return True
@@ -1631,7 +1637,12 @@ class Scheduler(PollScheduler):
 			elapsed_seconds = current_time - self._previous_job_start_time
 			# elapsed_seconds < 0 means the system clock has been adjusted
 			if elapsed_seconds > 0 and elapsed_seconds < delay:
-				self._event_loop.timeout_add(
+
+				if self._job_delay_timeout_id is not None:
+					self._event_loop.source_remove(
+						self._job_delay_timeout_id)
+
+				self._job_delay_timeout_id = self._event_loop.timeout_add(
 					1000 * (delay - elapsed_seconds), self._schedule_once)
 				return True
 
