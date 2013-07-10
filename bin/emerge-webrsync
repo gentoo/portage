@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # Author: Karl Trygve Kalleberg <karltk@gentoo.org>
 # Rewritten from the old, Perl-based emerge-webrsync script
@@ -134,8 +134,13 @@ fetch_file() {
 
 	__vecho "Fetching file ${FILE} ..."
 	# already set DISTDIR=
-	eval "${FETCHCOMMAND}" ${opts}
-	[ -s "${DISTDIR}/${FILE}" ]
+	eval "${FETCHCOMMAND} ${opts}"
+	if [[ $? -eq 0 && -s ${DISTDIR}/${FILE} ]] ; then
+		return 0
+	else
+		rm -f "${DISTDIR}/${FILE}"
+		return 1
+	fi
 }
 
 check_file_digest() {

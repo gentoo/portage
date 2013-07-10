@@ -228,7 +228,12 @@ fetch_file() {
 	__vecho "Fetching file ${FILE} ..."
 	# already set DISTDIR=
 	eval "${FETCHCOMMAND} ${opts}"
-	[ -s "${DISTDIR}/${FILE}" ]
+	if [[ $? -eq 0 && -s ${DISTDIR}/${FILE} ]] ; then
+		return 0
+	else
+		rm -f "${DISTDIR}/${FILE}"
+		return 1
+	fi
 }
 
 check_file_digest() {
