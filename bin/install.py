@@ -184,7 +184,7 @@ def copy_xattrs(opts, files):
 		source, target = files, opts.target_directory
 		target_is_directory = True
 
-	exclude = os.environ.get("PORTAGE_XATTR_EXCLUDE", "security.*")
+	exclude = os.environ.get("PORTAGE_XATTR_EXCLUDE", "security.* system.nfs4_acl")
 
 	try:
 		if target_is_directory:
