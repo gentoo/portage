@@ -548,8 +548,12 @@ class RepoConfigLoader(object):
 		ignored_map = {}
 		ignored_location_map = {}
 
-		portdir = settings.get('PORTDIR', '')
-		portdir_overlay = settings.get('PORTDIR_OVERLAY', '')
+		if "PORTAGE_REPOSITORIES" in settings:
+			portdir = ""
+			portdir_overlay = ""
+		else:
+			portdir = settings.get("PORTDIR", "")
+			portdir_overlay = settings.get("PORTDIR_OVERLAY", "")
 
 		try:
 			self._parse(paths, prepos, ignored_map,
@@ -827,11 +831,28 @@ class RepoConfigLoader(object):
 	def __contains__(self, repo_name):
 		return repo_name in self.prepos
 
+	def config_string(self):
+		config_string = ""
+		for repo_name, repo in self.prepos.items():
+			config_string += "[%s]\n" % repo_name
+			for key in ("format", "location", "main_repo", "priority", "sync"):
+				if getattr(repo, key) is not None:
+					config_string += "%s = %s\n" % (key.replace("_", "-"), getattr(repo, key))
+			for key in ("aliases", "eclass_overrides"):
+				if getattr(repo, key) is not None:
+					config_string += "%s = %s\n" % (key.replace("_", "-"), " ".join(getattr(repo, key)))
+			for key in ("masters",):
+				if getattr(repo, key) is not None:
+					config_string += "%s = %s\n" % (key.replace("_", "-"), " ".join(x.name for x in getattr(repo, key)))
+		return config_string
+
 def load_repository_config(settings):
-	#~ repoconfigpaths = [os.path.join(settings.global_config_path, "repos.conf")]
 	repoconfigpaths = []
-	repoconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
-		USER_CONFIG_PATH, "repos.conf"))
+	if "PORTAGE_REPOSITORIES" in settings:
+		repoconfigpaths.append(io.StringIO(settings["PORTAGE_REPOSITORIES"]))
+	else:
+		# repoconfigpaths.append(os.path.join(settings.global_config_path, "repos.conf"))
+		repoconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH, "repos.conf"))
 	return RepoConfigLoader(repoconfigpaths, settings)
 
 def _get_repo_name(repo_location, cached=None):

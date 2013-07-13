@@ -306,6 +306,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 		repo = mydbapi.repositories.get_repo_for_location(mytree)
 		mysettings['PORTDIR'] = repo.eclass_db.porttrees[0]
 		mysettings['PORTDIR_OVERLAY'] = ' '.join(repo.eclass_db.porttrees[1:])
+		mysettings['PORTAGE_REPOSITORIES'] = mydbapi.repositories.config_string()
 		mysettings.configdict["pkg"]["PORTAGE_REPO_NAME"] = repo.name
 
 	mysettings["PORTDIR"] = os.path.realpath(mysettings["PORTDIR"])
