@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -239,28 +239,30 @@ class ConfigTestCase(TestCase):
 
 		playground = ResolverPlayground(ebuilds=ebuilds,
 			repo_configs=repo_configs, distfiles=distfiles)
+		settings = playground.settings
 
-		new_repo_config = playground.settings.repositories.prepos['new_repo']
+		new_repo_config = settings.repositories["new_repo"]
+		old_repo_config = settings.repositories["old_repo"]
 		self.assertTrue(len(new_repo_config.masters) > 0, "new_repo has no default master")
 		self.assertEqual(new_repo_config.masters[0].user_location, playground.portdir,
 			"new_repo default master is not PORTDIR")
 		self.assertEqual(new_repo_config.thin_manifest, True,
 			"new_repo_config.thin_manifest != True")
 
-		new_manifest_file = os.path.join(playground.repo_dirs["new_repo"], "dev-libs", "A", "Manifest")
+		new_manifest_file = os.path.join(new_repo_config.location, "dev-libs", "A", "Manifest")
 		self.assertEqual(os.path.exists(new_manifest_file), False)
 
-		new_manifest_file = os.path.join(playground.repo_dirs["new_repo"], "dev-libs", "B", "Manifest")
+		new_manifest_file = os.path.join(new_repo_config.location, "dev-libs", "B", "Manifest")
 		f = open(new_manifest_file)
 		self.assertEqual(len(list(f)), 1)
 		f.close()
 
-		new_manifest_file = os.path.join(playground.repo_dirs["new_repo"], "dev-libs", "C", "Manifest")
+		new_manifest_file = os.path.join(new_repo_config.location, "dev-libs", "C", "Manifest")
 		f = open(new_manifest_file)
 		self.assertEqual(len(list(f)), 2)
 		f.close()
 
-		old_manifest_file = os.path.join(playground.repo_dirs["old_repo"], "dev-libs", "A", "Manifest")
+		old_manifest_file = os.path.join(old_repo_config.location, "dev-libs", "A", "Manifest")
 		f = open(old_manifest_file)
 		self.assertEqual(len(list(f)), 1)
 		f.close()

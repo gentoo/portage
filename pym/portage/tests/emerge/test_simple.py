@@ -179,7 +179,9 @@ pkg_preinst() {
 		ebuild_cmd = (portage_python, "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "ebuild"))
 		egencache_cmd = (portage_python, "-Wd",
-			os.path.join(PORTAGE_BIN_PATH, "egencache"))
+			os.path.join(PORTAGE_BIN_PATH, "egencache"),
+			"--repo", "test_repo",
+			"--repositories-configuration", settings.repositories.config_string())
 		emerge_cmd = (portage_python, "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "emerge"))
 		emaint_cmd = (portage_python, "-Wd",
@@ -337,6 +339,7 @@ pkg_preinst() {
 			"PORTAGE_INST_GID" : str(portage.data.portage_gid),
 			"PORTAGE_INST_UID" : str(portage.data.portage_uid),
 			"PORTAGE_PYTHON" : portage_python,
+			"PORTAGE_REPOSITORIES" : settings.repositories.config_string(),
 			"PORTAGE_TMPDIR" : portage_tmpdir,
 			"PYTHONPATH" : pythonpath,
 			"__PORTAGE_TEST_PATH_OVERRIDE" : fake_bin,

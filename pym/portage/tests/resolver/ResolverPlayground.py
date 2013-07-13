@@ -83,7 +83,7 @@ class ResolverPlayground(object):
 		if not debug:
 			portage.util.noiselimit = -2
 
-		self.repo_dirs = {}
+		self._repositories = {}
 		#Make sure the main repo is always created
 		self._get_repo_dir("test_repo")
 
@@ -104,13 +104,14 @@ class ResolverPlayground(object):
 		"""
 		Create the repo directory if needed.
 		"""
-		if repo not in self.repo_dirs:
+		if repo not in self._repositories:
 			if repo == "test_repo":
 				repo_path = self.portdir
+				self._repositories["DEFAULT"] = {"main-repo": repo}
 			else:
 				repo_path = os.path.join(self.eroot, "usr", "local", repo)
 
-			self.repo_dirs[repo] = repo_path
+			self._repositories[repo] = {"location": repo_path}
 			profile_path = os.path.join(repo_path, "profiles")
 
 			try:
@@ -123,7 +124,7 @@ class ResolverPlayground(object):
 			f.write("%s\n" % repo)
 			f.close()
 
-		return self.repo_dirs[repo]
+		return self._repositories[repo]["location"]
 
 	def _create_distfiles(self, distfiles):
 		os.makedirs(self.distdir)
@@ -255,9 +256,12 @@ class ResolverPlayground(object):
 		except os.error:
 			pass
 
-		for repo in self.repo_dirs:
+		for repo in self._repositories:
+			if repo == "DEFAULT":
+				continue
+
 			repo_dir = self._get_repo_dir(repo)
-			profile_dir = os.path.join(self._get_repo_dir(repo), "profiles")
+			profile_dir = os.path.join(repo_dir, "profiles")
 			metadata_dir = os.path.join(repo_dir, "metadata")
 			os.makedirs(metadata_dir)
 
@@ -364,31 +368,14 @@ class ResolverPlayground(object):
 				with open(os.path.join(metadata_dir, "metadata.xml"), 'w') as f:
 					f.write(herds_xml)
 
-		# Write empty entries for each repository, in order to exercise
-		# RepoConfigLoader's repos.conf processing.
-		repos_conf_file = os.path.join(user_config_dir, "repos.conf")
-		f = open(repos_conf_file, "w")
-		for repo in sorted(self.repo_dirs.keys()):
-			f.write("[%s]\n" % repo)
-			f.write("\n")
-		f.close()
-
-		portdir_overlay = []
-		for repo_name in sorted(self.repo_dirs):
-			path = self.repo_dirs[repo_name]
-			if path != self.portdir:
-				portdir_overlay.append(path)
-
 		make_conf = {
 			"ACCEPT_KEYWORDS": "x86",
 			"CLEAN_DELAY": "0",
 			"DISTDIR" : self.distdir,
 			"EMERGE_WARNING_DELAY": "0",
 			"PKGDIR": self.pkgdir,
-			"PORTDIR": self.portdir,
 			"PORTAGE_INST_GID": str(portage.data.portage_gid),
 			"PORTAGE_INST_UID": str(portage.data.portage_uid),
-			"PORTDIR_OVERLAY": " ".join("'%s'" % x for x in portdir_overlay),
 			"PORTAGE_TMPDIR": os.path.join(self.eroot, 'var/tmp'),
 		}
 
@@ -484,7 +471,11 @@ class ResolverPlayground(object):
 		if self.target_root != os.sep:
 			create_trees_kwargs["target_root"] = self.target_root
 
-		trees = portage.create_trees(env={}, eprefix=self.eprefix,
+		env = {
+			"PORTAGE_REPOSITORIES": "\n".join("[%s]\n%s" % (repo_name, "\n".join("%s = %s" % (k, v) for k, v in repo_config.items())) for repo_name, repo_config in self._repositories.items())
+		}
+
+		trees = portage.create_trees(env=env, eprefix=self.eprefix,
 			**create_trees_kwargs)
 
 		for root, root_trees in trees.items():

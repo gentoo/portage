@@ -119,6 +119,7 @@ class SlotAbiEmergeTestCase(TestCase):
 			"PORTAGE_OVERRIDE_EPREFIX" : eprefix,
 			"PATH" : path,
 			"PORTAGE_PYTHON" : portage_python,
+			"PORTAGE_REPOSITORIES" : settings.repositories.config_string(),
 			"PYTHONPATH" : pythonpath,
 		}
 

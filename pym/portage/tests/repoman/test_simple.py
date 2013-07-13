@@ -228,7 +228,7 @@ class SimpleRepomanTestCase(TestCase):
 			"PATH" : os.environ["PATH"],
 			"PORTAGE_GRPNAME" : os.environ["PORTAGE_GRPNAME"],
 			"PORTAGE_USERNAME" : os.environ["PORTAGE_USERNAME"],
-			"PORTDIR" : test_repo_location,
+			"PORTAGE_REPOSITORIES" : settings.repositories.config_string(),
 			"PYTHONPATH" : pythonpath,
 		}
 

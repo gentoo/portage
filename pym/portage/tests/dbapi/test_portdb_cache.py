@@ -38,7 +38,9 @@ class PortdbCacheTestCase(TestCase):
 
 		portage_python = portage._python_interpreter
 		egencache_cmd = (portage_python, "-Wd",
-			os.path.join(PORTAGE_BIN_PATH, "egencache"))
+			os.path.join(PORTAGE_BIN_PATH, "egencache"),
+			"--repo", "test_repo",
+			"--repositories-configuration", settings.repositories.config_string())
 		python_cmd = (portage_python, "-Wd", "-c")
 
 		test_commands = (
@@ -132,6 +134,7 @@ class PortdbCacheTestCase(TestCase):
 			"PATH" : os.environ.get("PATH", ""),
 			"PORTAGE_OVERRIDE_EPREFIX" : eprefix,
 			"PORTAGE_PYTHON" : portage_python,
+			"PORTAGE_REPOSITORIES" : settings.repositories.config_string(),
 			"PYTHONPATH" : pythonpath,
 		}
 
