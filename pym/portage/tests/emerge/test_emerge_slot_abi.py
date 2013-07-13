@@ -1,4 +1,4 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -64,7 +64,6 @@ class SlotAbiEmergeTestCase(TestCase):
 		trees = playground.trees
 		portdb = trees[eroot]["porttree"].dbapi
 		vardb = trees[eroot]["vartree"].dbapi
-		portdir = settings["PORTDIR"]
 		var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
 		user_config_dir = os.path.join(eprefix, USER_CONFIG_PATH)
 		package_mask_path = os.path.join(user_config_dir, "package.mask")

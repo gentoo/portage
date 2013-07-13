@@ -1,4 +1,4 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -29,9 +29,9 @@ class PortdbCacheTestCase(TestCase):
 		playground = ResolverPlayground(ebuilds=ebuilds, debug=debug)
 		settings = playground.settings
 		eprefix = settings["EPREFIX"]
-		portdir = settings["PORTDIR"]
+		test_repo_location = settings.repositories["test_repo"].location
 		user_config_dir = os.path.join(eprefix, USER_CONFIG_PATH)
-		metadata_dir = os.path.join(portdir, "metadata")
+		metadata_dir = os.path.join(test_repo_location, "metadata")
 		md5_cache_dir = os.path.join(metadata_dir, "md5-cache")
 		pms_cache_dir = os.path.join(metadata_dir, "cache")
 		layout_conf_path = os.path.join(metadata_dir, "layout.conf")
