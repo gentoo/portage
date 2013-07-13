@@ -386,6 +386,7 @@ except (ImportError, OSError) as e:
 _python_interpreter = os.path.realpath(sys.executable)
 _bin_path = PORTAGE_BIN_PATH
 _pym_path = PORTAGE_PYM_PATH
+_working_copy = VERSION == "HEAD"
 
 # Api consumers included in portage should set this to True.
 _internal_caller = False
