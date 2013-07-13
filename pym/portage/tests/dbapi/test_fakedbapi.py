@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Gentoo Foundation
+# Copyright 2011-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
@@ -42,10 +42,12 @@ class TestFakedbapi(TestCase):
 
 		tempdir = tempfile.mkdtemp()
 		try:
-			portdir = os.path.join(tempdir, "usr/portage")
-			os.makedirs(portdir)
+			test_repo = os.path.join(tempdir, "var", "repositories", "test_repo")
+			os.makedirs(os.path.join(test_repo, "profiles"))
+			with open(os.path.join(test_repo, "profiles", "repo_name"), "w") as f:
+				f.write("test_repo")
 			env = {
-				"PORTDIR": portdir,
+				"PORTAGE_REPOSITORIES": "[DEFAULT]\nmain-repo = test_repo\n[test_repo]\nlocation = %s" % test_repo
 			}
 			fakedb = fakedbapi(settings=config(config_profile_path="",
 				env=env, eprefix=tempdir))

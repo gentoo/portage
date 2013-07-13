@@ -75,9 +75,7 @@ class ResolverPlayground(object):
 			self.target_root = os.sep
 		self.distdir = os.path.join(self.eroot, "var", "portage", "distfiles")
 		self.pkgdir = os.path.join(self.eprefix, "pkgdir")
-		self.portdir = os.path.join(self.eroot, "usr/portage")
 		self.vdbdir = os.path.join(self.eroot, "var/db/pkg")
-		os.makedirs(self.portdir)
 		os.makedirs(self.vdbdir)
 
 		if not debug:
@@ -106,11 +104,9 @@ class ResolverPlayground(object):
 		"""
 		if repo not in self._repositories:
 			if repo == "test_repo":
-				repo_path = self.portdir
 				self._repositories["DEFAULT"] = {"main-repo": repo}
-			else:
-				repo_path = os.path.join(self.eroot, "usr", "local", repo)
 
+			repo_path = os.path.join(self.eroot, "var", "repositories", repo)
 			self._repositories[repo] = {"location": repo_path}
 			profile_path = os.path.join(repo_path, "profiles")
 
