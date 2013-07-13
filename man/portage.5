@@ -106,6 +106,7 @@ use.stable.force
 .BR /usr/share/portage/config/
 .nf
 make.globals
+repos.conf
 .fi
 .TP
 .BR /var/cache/edb/
@@ -1114,9 +1115,14 @@ games\-emulation/xmess:net \- Adds network support
 .TP
 .BR make.globals
 The global default settings for Portage.  This comes from the portage package 
-itself.  Settings in \fBmake.conf\fR or \fBpackage.env\fR
-override values here. The format 
-is described extensivly in \fBmake.conf\fR(5).
+itself.  Settings in \fBmake.conf\fR or \fBpackage.env\fR override values set
+here. The format is described extensively in \fBmake.conf\fR(5).
+.TP
+.BR repos.conf
+The default configuration of repositories for Portage.  This comes from
+the portage package itself.  Settings in \fB/etc/portage/repos.conf\fR
+override values set here. The format is described extensively in section
+for \fB/etc/portage/repos.conf\fR.
 .RE
 .TP
 .BR /var/cache/edb/

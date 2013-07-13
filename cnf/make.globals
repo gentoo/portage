@@ -30,11 +30,10 @@ ACCEPT_LICENSE="* -@EULA"
 ACCEPT_PROPERTIES="*"
 ACCEPT_RESTRICT="*"
 
-# Repository Paths
-PORTDIR=/usr/portage
-DISTDIR=${PORTDIR}/distfiles
-PKGDIR=${PORTDIR}/packages
-RPMDIR=${PORTDIR}/rpm
+# Miscellaneous paths
+DISTDIR=/usr/portage/distfiles
+PKGDIR=/usr/portage/packages
+RPMDIR=/usr/portage/rpm
 
 # Temporary build directory
 PORTAGE_TMPDIR=/var/tmp

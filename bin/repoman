@@ -590,7 +590,6 @@ except KeyError:
 	layout_conf_data = portage.repository.config.parse_layout_conf(portdir_overlay)[0]
 	if layout_conf_data['repo-name']:
 		repo_name = layout_conf_data['repo-name']
-	repos_conf_file = os.path.join(repoman_settings["PORTAGE_CONFIGROOT"], portage.const.USER_CONFIG_PATH, "repos.conf")
 	tmp_conf_file = io.StringIO(textwrap.dedent("""
 		[%s]
 		location = %s
@@ -601,7 +600,7 @@ except KeyError:
 	repoman_settings['PORTDIR_OVERLAY'] = "%s %s" % \
 		(repoman_settings.get('PORTDIR_OVERLAY', ''),
 		portage._shell_quote(portdir_overlay))
-	repositories = portage.repository.config.RepoConfigLoader([repos_conf_file, tmp_conf_file], repoman_settings)
+	repositories = portage.repository.config.load_repository_config(repoman_settings, extra_files=[tmp_conf_file])
 	# We have to call the config constructor again so that attributes
 	# dependent on config.repositories are initialized correctly.
 	repoman_settings = portage.config(config_root=config_root, local_config=False, repositories=repositories)

@@ -20,7 +20,7 @@ except ImportError:
 import portage
 from portage import eclass_cache, os
 from portage.const import (MANIFEST2_HASH_FUNCTIONS, MANIFEST2_REQUIRED_HASH,
-	REPO_NAME_LOC, USER_CONFIG_PATH)
+	PORTAGE_BASE_PATH, REPO_NAME_LOC, USER_CONFIG_PATH)
 from portage.eapi import eapi_allows_directories_on_profile_level_and_repository_level
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.util import (normalize_path, read_corresponding_eapi_file, shlex_split,
@@ -846,13 +846,18 @@ class RepoConfigLoader(object):
 					config_string += "%s = %s\n" % (key.replace("_", "-"), " ".join(x.name for x in getattr(repo, key)))
 		return config_string
 
-def load_repository_config(settings):
+def load_repository_config(settings, extra_files=None):
 	repoconfigpaths = []
 	if "PORTAGE_REPOSITORIES" in settings:
 		repoconfigpaths.append(io.StringIO(settings["PORTAGE_REPOSITORIES"]))
 	else:
-		# repoconfigpaths.append(os.path.join(settings.global_config_path, "repos.conf"))
+		if portage._working_copy:
+			repoconfigpaths.append(os.path.join(PORTAGE_BASE_PATH, "cnf", "repos.conf"))
+		else:
+			repoconfigpaths.append(os.path.join(settings.global_config_path, "repos.conf"))
 		repoconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH, "repos.conf"))
+	if extra_files:
+		repoconfigpaths.extend(extra_files)
 	return RepoConfigLoader(repoconfigpaths, settings)
 
 def _get_repo_name(repo_location, cached=None):
