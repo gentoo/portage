@@ -108,11 +108,14 @@ def parse_args(args):
 		help="override the PORTAGE_GPG_KEY variable",
 		dest="gpg_key")
 	common.add_option("--portdir",
-		help="override the portage tree location",
+		help="override the portage tree location (deprecated in favor of --repositories-configuration)",
 		dest="portdir")
 	common.add_option("--portdir-overlay",
-		help="override the PORTDIR_OVERLAY variable (requires that --repo is also specified)",
+		help="override the PORTDIR_OVERLAY variable (requires that --repo is also specified) (deprecated in favor of --repositories-configuration)",
 		dest="portdir_overlay")
+	common.add_option("--repositories-configuration",
+		help="override configuration of repositories (in format of repos.conf) (requires that --repo is also specified)",
+		dest="repositories_configuration")
 	common.add_option("--sign-manifests",
 		type="choice",
 		choices=('y', 'n'),
@@ -209,9 +212,11 @@ def parse_args(args):
 			parser.error("Write access denied: --cache-dir='%s'" % \
 				(options.cache_dir,))
 
-	if options.portdir_overlay is not None and \
-		options.repo is None:
-		parser.error("--portdir-overlay option requires --repo option")
+	if options.repo is None:
+		if options.repositories_configuration is not None:
+			parser.error("--repositories-configuration option requires --repo option")
+		if options.portdir_overlay is not None:
+			parser.error("--portdir-overlay option requires --repo option")
 
 	for atom in args:
 		try:
@@ -859,6 +864,8 @@ def egencache_main(args):
 
 	if options.repo is None:
 		env['PORTDIR_OVERLAY'] = ''
+	elif options.repositories_configuration is not None:
+		env['PORTAGE_REPOSITORIES'] = options.repositories_configuration
 	elif options.portdir_overlay:
 		env['PORTDIR_OVERLAY'] = options.portdir_overlay
 
