@@ -916,7 +916,6 @@ class HerdMatcher(object):
 		return any(x in herds for x in metadata_xml.herds())
 
 
-@uses_eroot
 def pquery(parser, pquery_option_groups, opts, args):
 	"""[options] [atom]+
 	Emulates a subset of Pkgcore's pquery tool.
