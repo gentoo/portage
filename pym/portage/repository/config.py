@@ -832,19 +832,24 @@ class RepoConfigLoader(object):
 		return repo_name in self.prepos
 
 	def config_string(self):
+		str_or_int_keys = ("format", "location", "main_repo", "priority", "sync")
+		tuple_keys = ("aliases", "eclass_overrides")
+		repo_config_tuple_keys = ("masters",)
+		keys = str_or_int_keys + tuple_keys + repo_config_tuple_keys
 		config_string = ""
-		for repo_name, repo in self.prepos.items():
-			config_string += "[%s]\n" % repo_name
-			for key in ("format", "location", "main_repo", "priority", "sync"):
+		for repo_name, repo in sorted(self.prepos.items()):
+			config_string += "\n[%s]\n" % repo_name
+			for key in sorted(keys):
+				if key == "main_repo" and repo_name != "DEFAULT":
+					continue
 				if getattr(repo, key) is not None:
-					config_string += "%s = %s\n" % (key.replace("_", "-"), getattr(repo, key))
-			for key in ("aliases", "eclass_overrides"):
-				if getattr(repo, key) is not None:
-					config_string += "%s = %s\n" % (key.replace("_", "-"), " ".join(getattr(repo, key)))
-			for key in ("masters",):
-				if getattr(repo, key) is not None:
-					config_string += "%s = %s\n" % (key.replace("_", "-"), " ".join(x.name for x in getattr(repo, key)))
-		return config_string
+					if key in str_or_int_keys:
+						config_string += "%s = %s\n" % (key.replace("_", "-"), getattr(repo, key))
+					elif key in tuple_keys:
+						config_string += "%s = %s\n" % (key.replace("_", "-"), " ".join(getattr(repo, key)))
+					elif key in repo_config_tuple_keys:
+						config_string += "%s = %s\n" % (key.replace("_", "-"), " ".join(x.name for x in getattr(repo, key)))
+		return config_string.lstrip("\n")
 
 def load_repository_config(settings, extra_files=None):
 	repoconfigpaths = []
