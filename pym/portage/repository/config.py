@@ -833,9 +833,9 @@ class RepoConfigLoader(object):
 
 	def config_string(self):
 		str_or_int_keys = ("format", "location", "main_repo", "priority", "sync")
-		tuple_keys = ("aliases", "eclass_overrides")
+		str_tuple_keys = ("aliases", "eclass_overrides")
 		repo_config_tuple_keys = ("masters",)
-		keys = str_or_int_keys + tuple_keys + repo_config_tuple_keys
+		keys = str_or_int_keys + str_tuple_keys + repo_config_tuple_keys
 		config_string = ""
 		for repo_name, repo in sorted(self.prepos.items()):
 			config_string += "\n[%s]\n" % repo_name
@@ -845,7 +845,7 @@ class RepoConfigLoader(object):
 				if getattr(repo, key) is not None:
 					if key in str_or_int_keys:
 						config_string += "%s = %s\n" % (key.replace("_", "-"), getattr(repo, key))
-					elif key in tuple_keys:
+					elif key in str_tuple_keys:
 						config_string += "%s = %s\n" % (key.replace("_", "-"), " ".join(getattr(repo, key)))
 					elif key in repo_config_tuple_keys:
 						config_string += "%s = %s\n" % (key.replace("_", "-"), " ".join(x.name for x in getattr(repo, key)))
