@@ -509,6 +509,37 @@ class config(object):
 			else:
 				self.repositories = repositories
 
+			#filling PORTDIR and PORTDIR_OVERLAY variable for compatibility
+			main_repo = self.repositories.mainRepo()
+			if main_repo is not None:
+				self["PORTDIR"] = main_repo.user_location
+				self.backup_changes("PORTDIR")
+				expand_map["PORTDIR"] = self["PORTDIR"]
+
+			# repoman controls PORTDIR_OVERLAY via the environment, so no
+			# special cases are needed here.
+			portdir_overlay = list(self.repositories.repoUserLocationList())
+			if portdir_overlay and portdir_overlay[0] == self["PORTDIR"]:
+				portdir_overlay = portdir_overlay[1:]
+
+			new_ov = []
+			if portdir_overlay:
+				shell_quote_re = re.compile(r"[\s\\\"'$`]")
+				for ov in portdir_overlay:
+					ov = normalize_path(ov)
+					if isdir_raise_eaccess(ov):
+						if shell_quote_re.search(ov) is not None:
+							ov = portage._shell_quote(ov)
+						new_ov.append(ov)
+					else:
+						writemsg(_("!!! Invalid PORTDIR_OVERLAY"
+							" (not a dir): '%s'\n") % ov, noiselevel=-1)
+
+			self["PORTDIR_OVERLAY"] = " ".join(new_ov)
+			self.backup_changes("PORTDIR_OVERLAY")
+			expand_map["PORTDIR_OVERLAY"] = self["PORTDIR_OVERLAY"]
+
+			locations_manager.set_port_dirs(self["PORTDIR"], self["PORTDIR_OVERLAY"])
 			locations_manager.load_profiles(self.repositories, known_repos)
 
 			profiles_complex = locations_manager.profiles_complex
@@ -614,36 +645,6 @@ class config(object):
 			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
 			self._paccept_restrict = portage.dep.ExtendedAtomDict(dict)
 			self._penvdict = portage.dep.ExtendedAtomDict(dict)
-
-			#filling PORTDIR and PORTDIR_OVERLAY variable for compatibility
-			main_repo = self.repositories.mainRepo()
-			if main_repo is not None:
-				self["PORTDIR"] = main_repo.user_location
-				self.backup_changes("PORTDIR")
-
-			# repoman controls PORTDIR_OVERLAY via the environment, so no
-			# special cases are needed here.
-			portdir_overlay = list(self.repositories.repoUserLocationList())
-			if portdir_overlay and portdir_overlay[0] == self["PORTDIR"]:
-				portdir_overlay = portdir_overlay[1:]
-
-			new_ov = []
-			if portdir_overlay:
-				shell_quote_re = re.compile(r"[\s\\\"'$`]")
-				for ov in portdir_overlay:
-					ov = normalize_path(ov)
-					if isdir_raise_eaccess(ov):
-						if shell_quote_re.search(ov) is not None:
-							ov = portage._shell_quote(ov)
-						new_ov.append(ov)
-					else:
-						writemsg(_("!!! Invalid PORTDIR_OVERLAY"
-							" (not a dir): '%s'\n") % ov, noiselevel=-1)
-
-			self["PORTDIR_OVERLAY"] = " ".join(new_ov)
-			self.backup_changes("PORTDIR_OVERLAY")
-
-			locations_manager.set_port_dirs(self["PORTDIR"], self["PORTDIR_OVERLAY"])
 
 			self._repo_make_defaults = {}
 			for repo in self.repositories.repos_with_profiles():
