@@ -651,11 +651,15 @@ def gentoo_mirrors(argv):
 
 
 def repositories_configuration(argv):
-	"""
+	"""<eroot>
 	Returns the configuration of repositories.
 	"""
-	sys.stdout.write(portage.settings.repositories.config_string())
+	if len(argv) < 1:
+		print("ERROR: insufficient parameters!", file=sys.stderr)
+		return 3
+	sys.stdout.write(portage.db[argv[0]]["vartree"].settings.repositories.config_string())
 	sys.stdout.flush()
+repositories_configuration.uses_eroot = True
 
 
 def portdir(argv):
