@@ -650,6 +650,14 @@ def gentoo_mirrors(argv):
 	print(portage.settings["GENTOO_MIRRORS"])
 
 
+def repositories_configuration(argv):
+	"""
+	Returns the configuration of repositories.
+	"""
+	sys.stdout.write(portage.settings.repositories.config_string())
+	sys.stdout.flush()
+
+
 def portdir(argv):
 	"""
 	Returns the PORTDIR path.
