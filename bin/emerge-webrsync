@@ -43,9 +43,15 @@ eval $("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
 	FETCHCOMMAND GENTOO_MIRRORS \
 	PORTAGE_BIN_PATH PORTAGE_CONFIGROOT PORTAGE_GPG_DIR \
 	PORTAGE_NICENESS PORTAGE_RSYNC_EXTRA_OPTS \
-	PORTAGE_RSYNC_OPTS PORTAGE_TMPDIR PORTDIR \
+	PORTAGE_RSYNC_OPTS PORTAGE_TMPDIR \
 	SYNC USERLAND http_proxy ftp_proxy)
 export http_proxy ftp_proxy
+
+gentoo_repo_location=$("${portageq}" get_repo_path "${EPREFIX}/" gentoo)
+if [[ -z ${gentoo_repo_location} ]]; then
+	eecho "Repository 'gentoo' not found"
+	exit 1
+fi
 
 # If PORTAGE_NICENESS is overriden via the env then it will
 # still pass through the portageq call and override properly.
@@ -112,8 +118,8 @@ get_utc_second_from_string() {
 get_portage_timestamp() {
 	local portage_current_timestamp=0
 
-	if [ -f "${PORTDIR}/metadata/timestamp.x" ]; then
-		portage_current_timestamp=$(cut -f 1 -d " " "${PORTDIR}/metadata/timestamp.x" )
+	if [ -f "${gentoo_repo_location}/metadata/timestamp.x" ]; then
+		portage_current_timestamp=$(cut -f 1 -d " " "${gentoo_repo_location}/metadata/timestamp.x" )
 	fi
 
 	echo "${portage_current_timestamp}"
@@ -200,19 +206,19 @@ sync_local() {
 	if has usersync ${FEATURES} ; then
 		case "${USERLAND}" in
 			BSD)
-				ownership=$(stat -f '%Su:%Sg' "${PORTDIR}")
+				ownership=$(stat -f '%Su:%Sg' "${gentoo_repo_location}")
 				;;
 			*)
-				ownership=$(stat -c '%U:%G' "${PORTDIR}")
+				ownership=$(stat -c '%U:%G' "${gentoo_repo_location}")
 				;;
 		esac
 	fi
 
 	if type -P tarsync > /dev/null ; then
 		local chown_opts="-o ${ownership%:*} -g ${ownership#*:}"
-		chown ${ownership} "${PORTDIR}" > /dev/null 2>&1 || chown_opts=""
+		chown ${ownership} "${gentoo_repo_location}" > /dev/null 2>&1 || chown_opts=""
 		if ! tarsync $(vvecho -v) -s 1 ${chown_opts} \
-			-e /distfiles -e /packages -e /local "${file}" "${PORTDIR}"; then
+			-e /distfiles -e /packages -e /local "${file}" "${gentoo_repo_location}"; then
 			eecho "tarsync failed; tarball is corrupt? (${file})"
 			return 1
 		fi
@@ -232,7 +238,7 @@ sync_local() {
 			rsync_opts+=" --owner --group"
 		fi
 		cd portage
-		rsync ${rsync_opts} . "${PORTDIR%%/}"
+		rsync ${rsync_opts} . "${gentoo_repo_location%%/}"
 		cd ..
 
 		__vecho "Cleaning up ..."
@@ -414,7 +420,7 @@ do_latest_snapshot() {
 				"snapshot. In order to force sync," \
 				"use the --revert option or remove" \
 				"the timestamp file located at" \
-				"'${PORTDIR}/metadata/timestamp.x'." | fmt -w 70 | \
+				"'${gentoo_repo_location}/metadata/timestamp.x'." | fmt -w 70 | \
 				while read -r line ; do
 					ewarn "${line}"
 				done
@@ -468,9 +474,9 @@ main() {
 		esac
 	done
 
-	[[ -d ${PORTDIR} ]] || mkdir -p "${PORTDIR}"
-	if [[ ! -w ${PORTDIR} ]] ; then
-		eecho "PORTDIR is not writable: ${PORTDIR}"
+	[[ -d ${gentoo_repo_location} ]] || mkdir -p "${gentoo_repo_location}"
+	if [[ ! -w ${gentoo_repo_location} ]] ; then
+		eecho "Repository 'gentoo' is not writable: ${gentoo_repo_location}"
 		exit 1
 	fi
 
