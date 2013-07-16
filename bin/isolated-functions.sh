@@ -141,7 +141,7 @@ die() {
 	# get a stack trace, so at least report the phase that failed.
 	local phase_str=
 	[[ -n $EBUILD_PHASE ]] && phase_str=" ($EBUILD_PHASE phase)"
-	eerror "ERROR: $CATEGORY/$PF failed${phase_str}:"
+	eerror "ERROR: ${CATEGORY}/${PF}::${PORTAGE_REPO_NAME} failed${phase_str}:"
 	eerror "  ${*:-(no error message)}"
 	eerror
 	# __dump_trace is useless when the main script is a helper binary
@@ -174,28 +174,8 @@ die() {
 		| while read -r n ; do eerror "  ${n#RETAIN-LEADING-SPACE}" ; done
 	eerror
 	fi
-	eerror "If you need support, post the output of \`emerge --info '=$CATEGORY/$PF'\`,"
-	eerror "the complete build log and the output of \`emerge -pqv '=$CATEGORY/$PF'\`."
-	if [ "${EMERGE_FROM}" != "binary" ] && \
-		! has ${EBUILD_PHASE} prerm postrm && \
-		[ "${EBUILD#${PORTDIR}/}" == "${EBUILD}" ] ; then
-		local overlay=${EBUILD%/*}
-		overlay=${overlay%/*}
-		overlay=${overlay%/*}
-		if [[ -n $PORTAGE_REPO_NAME ]] ; then
-			eerror "This ebuild is from an overlay named" \
-				"'$PORTAGE_REPO_NAME': '${overlay}/'"
-		else
-			eerror "This ebuild is from an overlay: '${overlay}/'"
-		fi
-	elif [[ -n $PORTAGE_REPO_NAME && -f "$PORTDIR"/profiles/repo_name ]] ; then
-		local portdir_repo_name=$(<"$PORTDIR"/profiles/repo_name)
-		if [[ -n $portdir_repo_name && \
-			$portdir_repo_name != $PORTAGE_REPO_NAME ]] ; then
-			eerror "This ebuild is from a repository" \
-				"named '$PORTAGE_REPO_NAME'"
-		fi
-	fi
+	eerror "If you need support, post the output of \`emerge --info '=${CATEGORY}/${PF}::${PORTAGE_REPO_NAME}'\`,"
+	eerror "the complete build log and the output of \`emerge -pqv '=${CATEGORY}/${PF}::${PORTAGE_REPO_NAME}'\`."
 
 	# Only call die hooks here if we are executed via ebuild.sh or
 	# misc-functions.sh, since those are the only cases where the environment
