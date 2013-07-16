@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}/eapi.sh"
@@ -176,13 +176,6 @@ die() {
 	fi
 	eerror "If you need support, post the output of \`emerge --info '=$CATEGORY/$PF'\`,"
 	eerror "the complete build log and the output of \`emerge -pqv '=$CATEGORY/$PF'\`."
-	if [[ -n ${EBUILD_OVERLAY_ECLASSES} ]] ; then
-		eerror "This ebuild used the following eclasses from overlays:"
-		local x
-		for x in ${EBUILD_OVERLAY_ECLASSES} ; do
-			eerror "  ${x}"
-		done
-	fi
 	if [ "${EMERGE_FROM}" != "binary" ] && \
 		! has ${EBUILD_PHASE} prerm postrm && \
 		[ "${EBUILD#${PORTDIR}/}" == "${EBUILD}" ] ; then
@@ -480,6 +473,22 @@ has() {
 		[ "${x}" = "${needle}" ] && return 0
 	done
 	return 1
+}
+
+__repo_key() {
+	local appropriate_section=0 exit_status=1 line saved_extglob_shopt=$(shopt -p extglob)
+	shopt -s extglob
+	while read line; do
+		[[ ${appropriate_section} == 0 && ${line} == "[$1]" ]] && appropriate_section=1 && continue
+		[[ ${appropriate_section} == 1 && ${line} == "["*"]" ]] && appropriate_section=0 && continue
+		if [[ ${appropriate_section} == 1 && ${line} == $2*( )=* ]]; then
+			echo "${line##$2*( )=*( )}"
+			exit_status=0
+			break
+		fi
+	done <<< "${PORTAGE_REPOSITORIES}"
+	eval "${saved_extglob_shopt}"
+	return ${exit_status}
 }
 
 true
