@@ -202,9 +202,11 @@ generate and distribute cache for use by others, use \fBegencache\fR(1).
 .TP
 .BR "\-\-resume" (\fB\-r\fR)
 Resumes the most recent merge list that has been aborted due to an error.
-This re\-uses the options that were given with the original
+This re\-uses the arguments and options that were given with the original
 command that's being resumed, and the user may also provide
-additional options when calling \fB\-\-resume\fR.
+additional options when calling \fB\-\-resume\fR. It is an error to provide
+atoms or sets as arguments to \fB\-\-resume\fR, since the arguments from the
+resumed command are used instead.
 Please note that this operation will only return an error on failure.  If there
 is nothing for portage to do, then portage will exit with a message and a
 success condition. A resume list will persist until it has been completed in

@@ -3657,6 +3657,12 @@ def run_action(emerge_config):
 
 	ensure_required_sets(emerge_config.trees)
 
+	if emerge_config.action is None and \
+		"--resume" in emerge_config.opts and emerge_config.args:
+		writemsg("emerge: unexpected argument(s) for --resume: %s\n" %
+		   " ".join(emerge_config.args), noiselevel=-1)
+		return 1
+
 	# only expand sets for actions taking package arguments
 	oldargs = emerge_config.args[:]
 	if emerge_config.action in ("clean", "config", "depclean",
