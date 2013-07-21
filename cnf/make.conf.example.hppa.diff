@@ -1,6 +1,6 @@
---- make.conf	2006-03-19 18:40:11.000000000 +0100
-+++ make.conf.hppa	2006-03-24 18:36:24.000000000 +0100
-@@ -23,6 +23,18 @@
+--- make.conf.example
++++ make.conf.example
+@@ -22,6 +22,18 @@
  # Example:
  #USE="X gtk gnome -alsa"
  
@@ -19,9 +19,9 @@
  # Host and optimization settings 
  # ==============================
  #
-@@ -33,14 +45,38 @@
- # package (and in some cases the libraries it uses) at default optimizations
- # before reporting errors to developers.
+@@ -39,14 +51,38 @@
+ # -frecord-gcc-switches, since otherwise the check could result in false
+ # positive results.
  #
 -# Please refer to the GCC manual for a list of possible values.
 +# -march=<cpu-type> means to take full advantage of the ABI and instructions
@@ -35,10 +35,9 @@
 +#
 +# Architectures types supported in gcc-3.2 and higher: 1.0, 1.1 and 2.0
 +# Note that 64bit userspace is not yet implemented.
- #
--#CFLAGS="-O2 -pipe"
++#
 +# Decent examples:
- #
++#
 +#
 +# Use this one if you have a hppa1.1
 +#CFLAGS="-march=1.1 -O2 -pipe -mschedule=7100LC"
@@ -47,8 +46,9 @@
 +# Note that -march=2.0 was unstable on some stations.
 +# -march=1.0 will create problems too.
 +#CFLAGS="-O2 -pipe -mschedule=8000"
-+#
-+#
+ #
+-#CFLAGS="-O2 -pipe"
+ #
  # If you set a CFLAGS above, then this line will set your default C++ flags to
  # the same settings.
  #CXXFLAGS="${CFLAGS}"
@@ -60,12 +60,12 @@
  # If you set a CFLAGS above, then this line will set your default FORTRAN 77
  # flags to the same settings.
  #FFLAGS="${CFLAGS}"
-@@ -61,7 +97,7 @@
+@@ -76,7 +112,7 @@
  # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
  # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
  #
 -#ACCEPT_KEYWORDS="~arch"
 +#ACCEPT_KEYWORDS="~hppa"
  
- # Portage Directories
- # ===================
+ # ACCEPT_LICENSE is used to mask packages based on licensing restrictions.
+ # It may contain both license and group names, where group names are

@@ -1,6 +1,6 @@
---- make.conf	2006-03-19 18:40:11.000000000 +0100
-+++ make.conf.mips	2006-03-19 18:26:21.000000000 +0100
-@@ -23,6 +23,13 @@
+--- make.conf.example
++++ make.conf.example
+@@ -22,6 +22,13 @@
  # Example:
  #USE="X gtk gnome -alsa"
  
@@ -14,9 +14,9 @@
  # Host and optimization settings 
  # ==============================
  #
-@@ -33,10 +40,15 @@
- # package (and in some cases the libraries it uses) at default optimizations
- # before reporting errors to developers.
+@@ -39,10 +46,15 @@
+ # -frecord-gcc-switches, since otherwise the check could result in false
+ # positive results.
  #
 -# Please refer to the GCC manual for a list of possible values.
 +# -mcpu=<cpu-type> for MIPS systems selects the type of processor you want
@@ -32,12 +32,12 @@
  # If you set a CFLAGS above, then this line will set your default C++ flags to
  # the same settings.
  #CXXFLAGS="${CFLAGS}"
-@@ -61,7 +73,7 @@
+@@ -76,7 +88,7 @@
  # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
  # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
  #
 -#ACCEPT_KEYWORDS="~arch"
 +#ACCEPT_KEYWORDS="~mips"
  
- # Portage Directories
- # ===================
+ # ACCEPT_LICENSE is used to mask packages based on licensing restrictions.
+ # It may contain both license and group names, where group names are

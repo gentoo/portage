@@ -27,7 +27,7 @@ INSMODE = 0644
 EXEMODE = 0755
 DIRMODE = 0755
 SYSCONFDIR_FILES = etc-update.conf dispatch-conf.conf
-PORTAGE_CONFDIR_FILES = make.globals repos.conf
+PORTAGE_CONFDIR_FILES = make.conf.example make.globals repos.conf
 LOGROTATE_FILES = elog-save-summary
 BINDIR_FILES = ebuild egencache emerge emerge-webrsync \
 	emirrordist portageq quickpkg repoman
@@ -82,9 +82,6 @@ install:
 	cd "$(srcdir)/cnf"; \
 	install -m$(INSMODE) $(PORTAGE_CONFDIR_FILES) \
 		"$(DESTDIR)$(portage_confdir)"; \
-	install -m$(INSMODE) "$(srcdir)/cnf/make.conf" \
-		"$(DESTDIR)$(portage_confdir)/make.conf.example"; \
-	\
 	install -d -m$(DIRMODE) "$(DESTDIR)$(portage_setsdir)"; \
 	cd "$(S)/cnf/sets"; \
 	install -m$(INSMODE) *.conf "$(DESTDIR)$(portage_setsdir)"; \

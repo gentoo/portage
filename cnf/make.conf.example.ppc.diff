@@ -1,6 +1,6 @@
---- make.conf	2006-03-19 18:40:11.000000000 +0100
-+++ make.conf.ppc	2006-03-19 18:26:21.000000000 +0100
-@@ -23,6 +23,13 @@
+--- make.conf.example
++++ make.conf.example
+@@ -22,6 +22,13 @@
  # Example:
  #USE="X gtk gnome -alsa"
  
@@ -14,9 +14,9 @@
  # Host and optimization settings 
  # ==============================
  #
-@@ -33,10 +40,56 @@
- # package (and in some cases the libraries it uses) at default optimizations
- # before reporting errors to developers.
+@@ -39,10 +46,56 @@
+ # -frecord-gcc-switches, since otherwise the check could result in false
+ # positive results.
  #
 -# Please refer to the GCC manual for a list of possible values.
 +# -mcpu=<cpu-type> for PowerPC systems selects the type of processor you want
@@ -44,13 +44,13 @@
 +#
 +# Long term testing has shown that -O3 opts can be unreliable on G4's but work
 +# on G3 series processors or earlier.
-+#
-+# The following is the suggested CFLAGS for a generic G4 cpu
-+#
-+#CFLAGS="-O2 -pipe -mcpu=G4 -maltivec -mabi=altivec -fno-strict-aliasing"
  #
 -#CFLAGS="-O2 -pipe"
++# The following is the suggested CFLAGS for a generic G4 cpu
  #
++#CFLAGS="-O2 -pipe -mcpu=G4 -maltivec -mabi=altivec -fno-strict-aliasing"
++#
++#
 +# All non G4 PPC boxen should choose this next option.  It will work fine for
 +# all G3 and pre machines.  (note it will not hurt pre G3 machines either to 
 +# use this mcpu option as it is the default for gcc 3.2.x anyway)
@@ -73,7 +73,7 @@
  # If you set a CFLAGS above, then this line will set your default C++ flags to
  # the same settings.
  #CXXFLAGS="${CFLAGS}"
-@@ -61,7 +114,10 @@
+@@ -76,7 +129,10 @@
  # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
  # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
  #
@@ -83,5 +83,5 @@
 +#
 +#ACCEPT_KEYWORDS="~ppc"
  
- # Portage Directories
- # ===================
+ # ACCEPT_LICENSE is used to mask packages based on licensing restrictions.
+ # It may contain both license and group names, where group names are
