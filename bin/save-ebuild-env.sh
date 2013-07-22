@@ -70,7 +70,7 @@ __save_ebuild_env() {
 		__hasg __hasgq \
 		__save_ebuild_env __set_colors __filter_readonly_variables \
 		__preprocess_ebuild_env \
-		__source_all_bashrcs \
+		__repo_key __source_all_bashrcs \
 		__ebuild_main __ebuild_phase __ebuild_phase_with_hooks \
 		__ebuild_arg_to_phase __ebuild_phase_funcs default \
 		__unpack_tar __unset_colors \
