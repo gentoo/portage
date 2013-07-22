@@ -36,21 +36,22 @@ else
 	eecho "could not find 'portageq'; aborting"
 	exit 1
 fi
-eval $("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
+eval "$("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
 	FETCHCOMMAND GENTOO_MIRRORS \
 	PORTAGE_BIN_PATH PORTAGE_CONFIGROOT PORTAGE_GPG_DIR \
-	PORTAGE_NICENESS PORTAGE_RSYNC_EXTRA_OPTS \
+	PORTAGE_NICENESS PORTAGE_REPOSITORIES PORTAGE_RSYNC_EXTRA_OPTS \
 	PORTAGE_RSYNC_OPTS PORTAGE_TMPDIR \
-	USERLAND http_proxy ftp_proxy)
+	USERLAND http_proxy ftp_proxy)"
 export http_proxy ftp_proxy
 
-gentoo_repo_location=$("${portageq}" get_repo_path "${EPREFIX}/" gentoo)
-if [[ -z ${gentoo_repo_location} ]]; then
-	eecho "Repository 'gentoo' not found"
+source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 
+
+repo_name=gentoo
+repo_location=$(__repo_key "${repo_name}" location)
+if [[ -z ${repo_location} ]]; then
+	eecho "Repository '${repo_name}' not found"
 	exit 1
 fi
-
-source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 if [ -z "$NICENESS_PULLED" ]; then
 	if [ -n "${PORTAGE_NICENESS}" ]; then
@@ -115,9 +116,9 @@ if [ ${WEBSYNC_VERIFY_SIGNATURE} != 0 -a -z "${PORTAGE_GPG_DIR}" ]; then
 	exit 1
 fi
 
-[[ -d ${gentoo_repo_location} ]] || mkdir -p "${gentoo_repo_location}"
-if [[ ! -w ${gentoo_repo_location} ]] ; then
-	eecho "Repository 'gentoo' is not writable: ${gentoo_repo_location}"
+[[ -d ${repo_location} ]] || mkdir -p "${repo_location}"
+if [[ ! -w ${repo_location} ]] ; then
+	eecho "Repository '${repo_name}' is not writable: ${repo_location}"
 	exit 1
 fi
 
@@ -199,8 +200,8 @@ get_utc_second_from_string() {
 get_portage_timestamp() {
 	local portage_current_timestamp=0
 
-	if [ -f "${gentoo_repo_location}/metadata/timestamp.x" ]; then
-		portage_current_timestamp=$(cut -f 1 -d " " "${gentoo_repo_location}/metadata/timestamp.x" )
+	if [ -f "${repo_location}/metadata/timestamp.x" ]; then
+		portage_current_timestamp=$(cut -f 1 -d " " "${repo_location}/metadata/timestamp.x" )
 	fi
 
 	echo "${portage_current_timestamp}"
@@ -299,19 +300,19 @@ sync_local() {
 	if has usersync ${FEATURES} ; then
 		case "${USERLAND}" in
 			BSD)
-				ownership=$(stat -f '%Su:%Sg' "${gentoo_repo_location}")
+				ownership=$(stat -f '%Su:%Sg' "${repo_location}")
 				;;
 			*)
-				ownership=$(stat -c '%U:%G' "${gentoo_repo_location}")
+				ownership=$(stat -c '%U:%G' "${repo_location}")
 				;;
 		esac
 	fi
 
 	if type -P tarsync > /dev/null ; then
 		local chown_opts="-o ${ownership%:*} -g ${ownership#*:}"
-		chown ${ownership} "${gentoo_repo_location}" > /dev/null 2>&1 || chown_opts=""
+		chown ${ownership} "${repo_location}" > /dev/null 2>&1 || chown_opts=""
 		if ! tarsync $(__vecho -v) -s 1 ${chown_opts} \
-			-e /distfiles -e /packages -e /local "${file}" "${gentoo_repo_location}"; then
+			-e /distfiles -e /packages -e /local "${file}" "${repo_location}"; then
 			eecho "tarsync failed; tarball is corrupt? (${file})"
 			return 1
 		fi
@@ -328,7 +329,7 @@ sync_local() {
 			rsync_opts+=" --owner --group"
 		fi
 		cd "${TMPDIR}"/portage
-		rsync ${rsync_opts} . "${gentoo_repo_location%%/}"
+		rsync ${rsync_opts} . "${repo_location%%/}"
 		cd "${DISTDIR}"
 
 		__vecho "Cleaning up ..."
@@ -504,7 +505,7 @@ do_latest_snapshot() {
 				"snapshot. In order to force sync," \
 				"use the --revert option or remove" \
 				"the timestamp file located at" \
-				"'${gentoo_repo_location}/metadata/timestamp.x'." | fmt -w 70 | \
+				"'${repo_location}/metadata/timestamp.x'." | fmt -w 70 | \
 				while read -r line ; do
 					ewarn "${line}"
 				done

@@ -509,6 +509,9 @@ class config(object):
 			else:
 				self.repositories = repositories
 
+			self['PORTAGE_REPOSITORIES'] = self.repositories.config_string()
+			self.backup_changes('PORTAGE_REPOSITORIES')
+
 			#filling PORTDIR and PORTDIR_OVERLAY variable for compatibility
 			main_repo = self.repositories.mainRepo()
 			if main_repo is not None:
