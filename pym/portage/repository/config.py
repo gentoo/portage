@@ -82,9 +82,9 @@ class RepoConfig(object):
 		'find_invalid_path_char', 'format', 'local_config', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'portage1_profiles', 'portage1_profiles_compat', 'priority',
-		'profile_formats', 'sign_commit', 'sign_manifest', 'sync',
-		'thin_manifest', 'update_changelog', 'user_location',
-		'_eapis_banned', '_eapis_deprecated')
+		'profile_formats', 'sign_commit', 'sign_manifest', 'sync_cvs_repo',
+		'sync_type', 'sync_uri', 'thin_manifest', 'update_changelog',
+		'user_location', '_eapis_banned', '_eapis_deprecated')
 
 	def __init__(self, name, repo_opts, local_config=True):
 		"""Build a RepoConfig with options in repo_opts
@@ -135,11 +135,20 @@ class RepoConfig(object):
 				priority = None
 		self.priority = priority
 
-		# Not implemented.
-		sync = repo_opts.get('sync')
-		if sync is not None:
-			sync = sync.strip()
-		self.sync = sync
+		sync_cvs_repo = repo_opts.get('sync-cvs-repo')
+		if sync_cvs_repo is not None:
+			sync_cvs_repo = sync_cvs_repo.strip()
+		self.sync_cvs_repo = sync_cvs_repo or None
+
+		sync_type = repo_opts.get('sync-type')
+		if sync_type is not None:
+			sync_type = sync_type.strip()
+		self.sync_type = sync_type or None
+
+		sync_uri = repo_opts.get('sync-uri')
+		if sync_uri is not None:
+			sync_uri = sync_uri.strip()
+		self.sync_uri = sync_uri or None
 
 		# Not implemented.
 		format = repo_opts.get('format')
@@ -150,7 +159,7 @@ class RepoConfig(object):
 		location = repo_opts.get('location')
 		self.user_location = location
 		if location is not None and location.strip():
-			if os.path.isdir(location):
+			if os.path.isdir(location) or portage._sync_disabled_warnings:
 				location = os.path.realpath(location)
 		else:
 			location = None
@@ -160,9 +169,12 @@ class RepoConfig(object):
 		missing = True
 		self.name = name
 		if self.location is not None:
-			eapi = read_corresponding_eapi_file(os.path.join(self.location, REPO_NAME_LOC))
-			self.name, missing = self._read_valid_repo_name(self.location)
-		elif name == "DEFAULT": 
+			if os.path.isdir(location):
+				eapi = read_corresponding_eapi_file(os.path.join(self.location, REPO_NAME_LOC))
+				self.name, missing = self._read_valid_repo_name(self.location)
+			else:
+				missing = not portage._sync_disabled_warnings
+		elif name == "DEFAULT":
 			missing = False
 
 		self.eapi = eapi
@@ -338,8 +350,12 @@ class RepoConfig(object):
 			repo_msg.append(indent + "format: " + self.format)
 		if self.user_location:
 			repo_msg.append(indent + "location: " + self.user_location)
-		if self.sync:
-			repo_msg.append(indent + "sync: " + self.sync)
+		if self.sync_cvs_repo:
+			repo_msg.append(indent + "sync-cvs-repo: " + self.sync_cvs_repo)
+		if self.sync_type:
+			repo_msg.append(indent + "sync-type: " + self.sync_type)
+		if self.sync_uri:
+			repo_msg.append(indent + "sync-uri: " + self.sync_uri)
 		if self.masters:
 			repo_msg.append(indent + "masters: " + " ".join(master.name for master in self.masters))
 		if self.priority is not None:
@@ -347,7 +363,7 @@ class RepoConfig(object):
 		if self.aliases:
 			repo_msg.append(indent + "aliases: " + " ".join(self.aliases))
 		if self.eclass_overrides:
-			repo_msg.append(indent + "eclass_overrides: " + \
+			repo_msg.append(indent + "eclass-overrides: " + \
 				" ".join(self.eclass_overrides))
 		repo_msg.append("")
 		return "\n".join(repo_msg)
@@ -519,15 +535,35 @@ class RepoConfigLoader(object):
 				optdict[oname] = parser.get(sname, oname)
 
 			repo = RepoConfig(sname, optdict, local_config=local_config)
-			if repo.name != sname:
-				writemsg_level("!!! %s\n" %
-				   _("Section name '%s' set in repos.conf differs from name '%s' set inside repository") %
+
+			if repo.name != sname and not portage._sync_disabled_warnings:
+				writemsg_level("!!! %s\n" % _("Section name '%s' set in repos.conf differs from name '%s' set inside repository") %
 					(sname, repo.name), level=logging.ERROR, noiselevel=-1)
 				continue
 
-			if repo.location and not exists_raise_eaccess(repo.location):
-				writemsg(_("!!! Invalid repos.conf entry '%s'"
-					" (not a dir): '%s'\n") % (sname, repo.location), noiselevel=-1)
+			if repo.location and not exists_raise_eaccess(repo.location) and not portage._sync_disabled_warnings:
+				writemsg_level("!!! %s\n" % _("Repository '%s' has location attribute set to nonexistent directory: '%s'") %
+					(sname, repo.location), level=logging.ERROR, noiselevel=-1)
+				continue
+
+			if repo.sync_type is not None and repo.sync_uri is None:
+				writemsg_level("!!! %s\n" % _("Repository '%s' has sync-type attribute, but is missing sync-uri attribute") %
+					sname, level=logging.ERROR, noiselevel=-1)
+				continue
+
+			if repo.sync_uri is not None and repo.sync_type is None:
+				writemsg_level("!!! %s\n" % _("Repository '%s' has sync-uri attribute, but is missing sync-type attribute") %
+					sname, level=logging.ERROR, noiselevel=-1)
+				continue
+
+			if repo.sync_type not in (None, "cvs", "git", "rsync"):
+				writemsg_level("!!! %s\n" % _("Repository '%s' has sync-type attribute set to unsupported value: '%s'") %
+					(sname, repo.sync_type), level=logging.ERROR, noiselevel=-1)
+				continue
+
+			if repo.sync_type == "cvs" and repo.sync_cvs_repo is None:
+				writemsg_level("!!! %s\n" % _("Repository '%s' has sync-type=cvs, but is missing sync-cvs-repo attribute") %
+					sname, level=logging.ERROR, noiselevel=-1)
 				continue
 
 			if repo.name in prepos:
@@ -780,7 +816,7 @@ class RepoConfigLoader(object):
 				if r.location is None:
 					writemsg(_("!!! Location not set for repository %s\n") % name, noiselevel=-1)
 				else:
-					if not isdir_raise_eaccess(r.location):
+					if not isdir_raise_eaccess(r.location) and not portage._sync_disabled_warnings:
 						self.prepos_order.remove(name)
 						writemsg(_("!!! Invalid Repository Location"
 							" (not a dir): '%s'\n") % r.location, noiselevel=-1)
@@ -832,7 +868,7 @@ class RepoConfigLoader(object):
 		return repo_name in self.prepos
 
 	def config_string(self):
-		str_or_int_keys = ("format", "location", "main_repo", "priority", "sync")
+		str_or_int_keys = ("format", "location", "main_repo", "priority", "sync_cvs_repo", "sync_type", "sync_uri")
 		str_tuple_keys = ("aliases", "eclass_overrides")
 		repo_config_tuple_keys = ("masters",)
 		keys = str_or_int_keys + str_tuple_keys + repo_config_tuple_keys

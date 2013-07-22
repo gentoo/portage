@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "May 2013" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Jul 2013" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -235,20 +235,15 @@ the package name.  \fBTake caution\fR as the descriptions are also
 matched as regular expressions.
 .TP
 .BR \-\-sync
-This updates the portage tree that is located in the
-directory that the PORTDIR variable refers to (default
-location is /usr/portage). The SYNC variable specifies
-the remote URI from which files will be synchronized.
+Updates repositories, for which sync\-type and sync\-uri attributes are
+set in repos.conf. See \fBportage\fR(5) for more information.
 The \fBPORTAGE_SYNC_STALE\fR variable configures
 warnings that are shown when emerge \-\-sync has not
 been executed recently.
 
 \fBWARNING:\fR
-The emerge \-\-sync action will modify and/or delete
-files located inside the directory that the PORTDIR
-variable refers to (default location is /usr/portage).
-For more information, see the PORTDIR documentation in
-the make.conf(5) man page.
+The emerge \-\-sync action will revert local changes (e.g. modifications or
+additions of files) inside repositories synchronized using rsync.
 
 \fBNOTE:\fR
 The \fBemerge\-webrsync\fR program will download the entire

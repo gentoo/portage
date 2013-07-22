@@ -44,7 +44,7 @@ eval "$("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
 	PORTAGE_BIN_PATH PORTAGE_CONFIGROOT PORTAGE_GPG_DIR \
 	PORTAGE_NICENESS PORTAGE_REPOSITORIES PORTAGE_RSYNC_EXTRA_OPTS \
 	PORTAGE_RSYNC_OPTS PORTAGE_TMPDIR \
-	SYNC USERLAND http_proxy ftp_proxy)"
+	USERLAND http_proxy ftp_proxy)"
 export http_proxy ftp_proxy
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
@@ -55,6 +55,7 @@ if [[ -z ${repo_location} ]]; then
 	eecho "Repository '${repo_name}' not found"
 	exit 1
 fi
+repo_sync_type=$(__repo_key "${repo_name}" sync-type)
 
 # If PORTAGE_NICENESS is overriden via the env then it will
 # still pass through the portageq call and override properly.
@@ -500,14 +501,14 @@ main() {
 
 	# This is a sanity check to help prevent people like funtoo users
 	# from accidentally wiping out their git tree.
-	if [[ -n $SYNC && ${SYNC#rsync:} = $SYNC ]] ; then
-		echo "The current SYNC variable setting does not refer to an rsync URI:" >&2
+	if [[ -n ${repo_sync_type} && ${repo_sync_type} != rsync ]] ; then
+		echo "The current sync-type attribute of repository 'gentoo' is not set to 'rsync':" >&2
 		echo >&2
-		echo "  SYNC=$SYNC" >&2
+		echo "  sync-type=${repo_sync_type}" >&2
 		echo >&2
 		echo "If you intend to use emerge-webrsync then please" >&2
-		echo "adjust SYNC to refer to an rsync URI." >&2
-		echo "emerge-webrsync exiting due to abnormal SYNC setting." >&2
+		echo "adjust sync-type and sync-uri attributes to refer to rsync." >&2
+		echo "emerge-webrsync exiting due to abnormal sync-type setting." >&2
 		exit 1
 	fi
 

@@ -13,6 +13,8 @@ portage-2.1.12.14
 
 * FEATURES=userpriv and usersandbox are enabled by default.
 * FEATURES=usersync is enabled by default.
+* New sync-cvs-repo, sync-type and sync-uri attributes in repos.conf replace
+  SYNC variable.
 
 portage-2.1.12
 ==================================

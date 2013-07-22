@@ -19,9 +19,6 @@ LDFLAGS=""
 FFLAGS=""
 FCFLAGS=""
 
-# Default rsync mirror
-SYNC="rsync://rsync.gentoo.org/gentoo-portage"
-
 # Default distfiles mirrors. This rotation has multiple hosts and is reliable.
 # Approved by the mirror-admin team.
 GENTOO_MIRRORS="http://distfiles.gentoo.org"

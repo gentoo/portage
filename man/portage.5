@@ -819,6 +819,39 @@ since operations performed by these tools are inherently
 .TP
 .B priority
 Specifies priority of given repository.
+.TP
+.B sync\-cvs\-repo
+Specifies CVS repository.
+.TP
+.B sync\-type
+Specifies type of synchronization.
+.br
+Valid values: cvs, git, rsync
+.TP
+.B sync\-uri
+Specifies URI of repository used for synchronization performed by `emerge \-\-sync`.
+.RS
+.TP
+Syntax:
+cvs: [cvs://]:access_method:[username@]hostname[:port]:/path
+.br
+git: (git|git+ssh|http|https)://[username@]hostname[:port]/path
+.br
+rsync: (rsync|ssh)://[username@]hostname[:port]/(module|path)
+.TP
+Examples:
+.RS
+rsync://private\-mirror.com/portage\-module
+.br
+rsync://rsync\-user@private\-mirror.com:873/gentoo\-portage
+.br
+ssh://ssh\-user@192.168.0.1:22/usr/portage
+.br
+ssh://ssh\-user@192.168.0.1:22/\\${HOME}/portage\-storage
+.RE
+.TP
+Note: For the ssh:// scheme, key\-based authentication might be of interest.
+.RE
 .RE
 
 .I Example:
@@ -855,6 +888,7 @@ masters = gentoo kde
 # ensure that any required dependencies such as eclasses are satisfied)
 masters =
 .fi
+.RE
 .RE
 .TP
 .BR /etc/portage/env/

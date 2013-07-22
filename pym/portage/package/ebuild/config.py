@@ -529,7 +529,7 @@ class config(object):
 			if portdir_overlay:
 				for ov in portdir_overlay:
 					ov = normalize_path(ov)
-					if isdir_raise_eaccess(ov):
+					if isdir_raise_eaccess(ov) or portage._sync_disabled_warnings:
 						new_ov.append(portage._shell_quote(ov))
 					else:
 						writemsg(_("!!! Invalid PORTDIR_OVERLAY"
@@ -876,11 +876,6 @@ class config(object):
 				if k in self:
 					self[k] = self[k].lower()
 					self.backup_changes(k)
-
-			if main_repo is not None and not main_repo.sync:
-				main_repo_sync = self.get("SYNC")
-				if main_repo_sync:
-					main_repo.sync = main_repo_sync
 
 			# The first constructed config object initializes these modules,
 			# and subsequent calls to the _init() functions have no effect.

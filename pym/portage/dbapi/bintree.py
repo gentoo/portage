@@ -317,7 +317,7 @@ class binarytree(object):
 				"ACCEPT_KEYWORDS", "ACCEPT_LICENSE",
 				"ACCEPT_PROPERTIES", "ACCEPT_RESTRICT", "CBUILD",
 				"CONFIG_PROTECT", "CONFIG_PROTECT_MASK", "FEATURES",
-				"GENTOO_MIRRORS", "INSTALL_MASK", "SYNC", "USE"])
+				"GENTOO_MIRRORS", "INSTALL_MASK", "USE"])
 			self._pkgindex_default_pkg_data = {
 				"BUILD_TIME"         : "",
 				"DEFINED_PHASES"     : "",

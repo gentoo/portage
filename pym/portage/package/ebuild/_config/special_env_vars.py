@@ -179,8 +179,13 @@ environ_filter += [
 	"RESUMECOMMAND", "RESUMECOMMAND_FTP",
 	"RESUMECOMMAND_HTTP", "RESUMECOMMAND_HTTPS",
 	"RESUMECOMMAND_RSYNC", "RESUMECOMMAND_SFTP",
-	"SYNC", "UNINSTALL_IGNORE", "USE_EXPAND_HIDDEN", "USE_ORDER",
+	"UNINSTALL_IGNORE", "USE_EXPAND_HIDDEN", "USE_ORDER",
 	"__PORTAGE_HELPER"
+]
+
+# No longer supported variables
+environ_filter += [
+	"SYNC"
 ]
 
 environ_filter = frozenset(environ_filter)
