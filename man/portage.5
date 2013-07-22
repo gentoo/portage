@@ -758,22 +758,74 @@ x11\-libs/qt \-mysql
 .fi
 .TP
 .BR repos.conf
-Specifies \fIsite\-specific\fR repository configuration information. Note that
-local configuration overrides (i.e. \fBaliases\fR, \fBeclass-overrides\fR and
-\fBmasters\fR attributes) which are specified here do not apply to tools
-such as \fBrepoman\fR(1) and \fBegencache\fR(1), since operations performed by
-these tools are inherently \fBnot\fR \fIsite\-specific\fR.
+Specifies \fIsite\-specific\fR repository configuration information.
+
+.I Format:
+.nf
+\- comments begin with # (no inline comments)
+\- configuration of each repository is specified in a section starting with "[${repository_name}]"
+\- attributes are specified in "${attribute} = ${value}" format
+.fi
+
+.I Attributes supported in DEFAULT section:
+.RS
+.RS
+.TP
+.B main\-repo
+Specifies main repository.
+.TP
+.B eclass\-overrides
+Makes all repositories inherit eclasses from specified repositories.
 .br
-\fBWARNING:\fR Setting \fBaliases\fR, \fBeclass-overrides\fR or \fBmasters\fR
-attributes in \fBrepos.conf\fR is generally not recommended since resulting
-changes in eclass inheritance may trigger performance issues due to invalidation
+Setting this attribute is generally not recommended since resulting changes
+in eclass inheritance may trigger performance issues due to invalidation
 of metadata cache.
+.br
+Tools such as \fBrepoman\fR(1) and \fBegencache\fR(1) ignore this attribute,
+since operations performed by these tools are inherently
+\fBnot\fR \fIsite\-specific\fR.
+.RE
+
+.I Attributes supported in sections of repositories:
+.RS
+.TP
+.B aliases
+Specifies aliases of given repository.
+.TP
+.B eclass\-overrides
+Makes given repository inherit eclasses from specified repositories.
+.br
+Setting this attribute is generally not recommended since resulting changes
+in eclass inheritance may trigger performance issues due to invalidation
+of metadata cache.
+.br
+Tools such as \fBrepoman\fR(1) and \fBegencache\fR(1) ignore this attribute,
+since operations performed by these tools are inherently
+\fBnot\fR \fIsite\-specific\fR.
+.TP
+.B location
+Specifies location of given repository.
+.TP
+.B masters
+Specifies master repositories of given repository.
+.br
+Setting this attribute is generally not recommended since resulting changes
+in eclass inheritance may trigger performance issues due to invalidation
+of metadata cache.
+.br
+Tools such as \fBrepoman\fR(1) and \fBegencache\fR(1) ignore this attribute,
+since operations performed by these tools are inherently
+\fBnot\fR \fIsite\-specific\fR.
+.TP
+.B priority
+Specifies priority of given repository.
+.RE
 
 .I Example:
 .nf
 [DEFAULT]
-# make gentoo the main repo (aka PORTDIR), which makes it the default master
-# repository for repostories that do not specify masters
+# make gentoo the main repository, which makes it the default master
+# repository for repositories that do not specify masters
 main\-repo = gentoo
 # make all repositories inherit eclasses from the java\-overlay and
 # java\-experimental repositories, with eclasses from java\-experimental
