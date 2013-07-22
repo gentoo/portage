@@ -524,13 +524,10 @@ class config(object):
 
 			new_ov = []
 			if portdir_overlay:
-				shell_quote_re = re.compile(r"[\s\\\"'$`]")
 				for ov in portdir_overlay:
 					ov = normalize_path(ov)
 					if isdir_raise_eaccess(ov):
-						if shell_quote_re.search(ov) is not None:
-							ov = portage._shell_quote(ov)
-						new_ov.append(ov)
+						new_ov.append(portage._shell_quote(ov))
 					else:
 						writemsg(_("!!! Invalid PORTDIR_OVERLAY"
 							" (not a dir): '%s'\n") % ov, noiselevel=-1)

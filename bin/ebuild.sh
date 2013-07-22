@@ -207,7 +207,6 @@ inherit() {
 			| fmt -w 75 | while read -r ; do eqawarn "$REPLY" ; done
 	fi
 
-	local repo
 	local repo_location
 	local location
 	local potential_location
@@ -246,12 +245,12 @@ inherit() {
 			fi
 		fi
 
-		for repo in $(__repo_key ${PORTAGE_REPO_NAME} masters) ${PORTAGE_REPO_NAME} $(__repo_key ${PORTAGE_REPO_NAME} eclass-overrides); do
-			repo_location="$(__repo_key ${repo} location)"
+		for repo_location in ${PORTAGE_ECLASS_LOCATIONS[@]}; do
 			potential_location="${repo_location}/eclass/${1}.eclass"
 			if [[ -f ${potential_location} ]]; then
 				location="${potential_location}"
 				debug-print "  eclass exists: ${location}"
+				break
 			fi
 		done
 		debug-print "inherit: $1 -> $location"
@@ -514,6 +513,9 @@ fi
 if ___eapi_enables_globstar; then
 	shopt -s globstar
 fi
+
+# Convert quoted paths to array.
+eval "PORTAGE_ECLASS_LOCATIONS=(${PORTAGE_ECLASS_LOCATIONS})"
 
 # Source the ebuild every time for FEATURES=noauto, so that ebuild
 # modifications take effect immediately.

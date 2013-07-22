@@ -1,6 +1,8 @@
-# Copyright 2005-2011 Gentoo Foundation
+# Copyright 2005-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Nicholas Carpaski (carpaski@gentoo.org), Brian Harring (ferringb@gentoo.org)
+
+from __future__ import unicode_literals
 
 __all__ = ["cache"]
 
@@ -12,6 +14,7 @@ import errno
 from portage.exception import FileNotFound, PermissionDenied
 from portage import os
 from portage import checksum
+from portage import _shell_quote
 
 if sys.hexversion >= 0x3000000:
 	long = int
@@ -60,6 +63,7 @@ class cache(object):
 
 		self.eclasses = {} # {"Name": hashed_path}
 		self._eclass_locations = {}
+		self._eclass_locations_str = None
 
 		# screw with the porttree ordering, w/out having bash inherit match it, and I'll hurt you.
 		# ~harring
@@ -98,6 +102,7 @@ class cache(object):
 		self.porttrees = self.porttrees + other.porttrees
 		self.eclasses.update(other.eclasses)
 		self._eclass_locations.update(other._eclass_locations)
+		self._eclass_locations_str = None
 
 	def update_eclasses(self):
 		self.eclasses = {}
@@ -169,3 +174,10 @@ class cache(object):
 			ec_dict[x] = self.eclasses[x]
 
 		return ec_dict
+
+	@property
+	def eclass_locations_string(self):
+		if self._eclass_locations_str is None:
+			self._eclass_locations_str = " ".join(_shell_quote(x)
+				for x in reversed(self.porttrees))
+		return self._eclass_locations_str

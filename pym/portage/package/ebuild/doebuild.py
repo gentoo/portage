@@ -305,6 +305,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	if hasattr(mydbapi, 'repositories'):
 		repo = mydbapi.repositories.get_repo_for_location(mytree)
 		mysettings['PORTDIR'] = repo.eclass_db.porttrees[0]
+		mysettings['PORTAGE_ECLASS_LOCATIONS'] = repo.eclass_db.eclass_locations_string
 		mysettings['PORTAGE_REPOSITORIES'] = mydbapi.repositories.config_string()
 		mysettings.configdict["pkg"]["PORTAGE_REPO_NAME"] = repo.name
 

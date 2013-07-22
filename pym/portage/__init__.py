@@ -404,12 +404,16 @@ def _get_stdin():
 		return sys.__stdin__
 	return sys.stdin
 
+_shell_quote_re = re.compile(r"[\s><=*\\\"'$`]")
+
 def _shell_quote(s):
 	"""
 	Quote a string in double-quotes and use backslashes to
 	escape any backslashes, double-quotes, dollar signs, or
 	backquotes in the string.
 	"""
+	if _shell_quote_re.search(s) is None:
+		return s
 	for letter in "\\\"$`":
 		if letter in s:
 			s = s.replace(letter, "\\" + letter)
