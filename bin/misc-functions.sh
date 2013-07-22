@@ -1157,7 +1157,7 @@ __dyn_package() {
 	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${PROOT}" . | \
 		$PORTAGE_BZIP2_COMMAND -c > "$PORTAGE_BINPKG_TMPFILE"
 	assert "failed to pack binary package: '$PORTAGE_BINPKG_TMPFILE'"
-	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
+	PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
 		"${PORTAGE_PYTHON:-/usr/bin/python}" "$PORTAGE_BIN_PATH"/xpak-helper.py recompose \
 		"$PORTAGE_BINPKG_TMPFILE" "$PORTAGE_BUILDDIR/build-info"
 	if [ $? -ne 0 ]; then

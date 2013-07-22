@@ -607,7 +607,7 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None,
 		# with ROOT != "/", so pass a nearly empty dict for the env parameter.
 		clean_env = {}
 		for k in ('PATH', 'PORTAGE_GRPNAME', 'PORTAGE_REPOSITORIES', 'PORTAGE_USERNAME',
-			'SSH_AGENT_PID', 'SSH_AUTH_SOCK', 'TERM',
+			'PYTHONPATH', 'SSH_AGENT_PID', 'SSH_AUTH_SOCK', 'TERM',
 			'ftp_proxy', 'http_proxy', 'no_proxy',
 			'__PORTAGE_TEST_HARDLINK_LOCKS'):
 			v = settings.get(k)

@@ -146,7 +146,7 @@ class config(object):
 	"""
 
 	_constant_keys = frozenset(['PORTAGE_BIN_PATH', 'PORTAGE_GID',
-		'PORTAGE_PYM_PATH'])
+		'PORTAGE_PYM_PATH', 'PORTAGE_PYTHONPATH'])
 
 	_setcpv_aux_keys = ('DEFINED_PHASES', 'DEPEND', 'EAPI', 'HDEPEND',
 		'INHERITED', 'IUSE', 'REQUIRED_USE', 'KEYWORDS', 'LICENSE', 'PDEPEND',
@@ -2488,6 +2488,20 @@ class config(object):
 				return portage._bin_path
 			elif mykey == "PORTAGE_PYM_PATH":
 				return portage._pym_path
+
+			elif mykey == "PORTAGE_PYTHONPATH":
+				value = [x for x in \
+					self.backupenv.get("PYTHONPATH", "").split(":") if x]
+				need_pym_path = True
+				if value:
+					try:
+						need_pym_path = not os.path.samefile(value[0],
+							portage._pym_path)
+					except OSError:
+						pass
+				if need_pym_path:
+					value.insert(0, portage._pym_path)
+				return ":".join(value)
 
 			elif mykey == "PORTAGE_GID":
 				return "%s" % portage_gid

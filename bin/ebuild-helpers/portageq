@@ -6,5 +6,5 @@ PORTAGE_BIN_PATH=${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}
 PORTAGE_PYM_PATH=${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}
 # Use safe cwd, avoiding unsafe import for bug #469338.
 cd "${PORTAGE_PYM_PATH}"
-PYTHONPATH=$PORTAGE_PYM_PATH${PYTHONPATH:+:}$PYTHONPATH \
+PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
 	exec "${PORTAGE_PYTHON:-/usr/bin/python}" "$PORTAGE_BIN_PATH/portageq" "$@"

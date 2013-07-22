@@ -1,9 +1,9 @@
 #!/bin/bash
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 portageq() {
-	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
+	PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}}\
 	"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" "$@"
 }
 

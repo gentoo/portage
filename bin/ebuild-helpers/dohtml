@@ -9,7 +9,7 @@ PORTAGE_PYM_PATH=${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}
 # Use safe cwd, avoiding unsafe import for bug #469338.
 export __PORTAGE_HELPER_CWD=${PWD}
 cd "${PORTAGE_PYM_PATH}"
-PYTHONPATH=$PORTAGE_PYM_PATH${PYTHONPATH:+:}$PYTHONPATH \
+PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
 	"${PORTAGE_PYTHON:-/usr/bin/python}" "$PORTAGE_BIN_PATH/dohtml.py" "$@"
 
 ret=$?
