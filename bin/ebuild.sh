@@ -245,7 +245,7 @@ inherit() {
 			fi
 		fi
 
-		for repo_location in ${PORTAGE_ECLASS_LOCATIONS[@]}; do
+		for repo_location in "${PORTAGE_ECLASS_LOCATIONS[@]}"; do
 			potential_location="${repo_location}/eclass/${1}.eclass"
 			if [[ -f ${potential_location} ]]; then
 				location="${potential_location}"
