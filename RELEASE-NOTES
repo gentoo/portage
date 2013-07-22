@@ -8,6 +8,11 @@ portage-2.2
   new features in 2.2 make use of or require named repositories. The repository
   name is stored in profiles/repo_name in each repository.
 
+portage-2.1.12.14
+==================================
+
+* FEATURES=userpriv and usersandbox are enabled by default.
+
 portage-2.1.12
 ==================================
 
