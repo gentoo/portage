@@ -57,7 +57,7 @@ FEATURES="assume-digests binpkg-logs
           config-protect-if-modified distlocks ebuild-locks
           fixlafiles merge-sync news parallel-fetch preserve-libs protect-owned
           sandbox sfperms strict unknown-features-warn unmerge-logs
-          unmerge-orphans userfetch userpriv usersandbox"
+          unmerge-orphans userfetch userpriv usersandbox usersync"
 
 # Ignore file collisions in /lib/modules since files inside this directory
 # are never unmerged, and therefore collisions must be ignored in order for

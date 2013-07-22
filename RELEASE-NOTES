@@ -12,6 +12,7 @@ portage-2.1.12.14
 ==================================
 
 * FEATURES=userpriv and usersandbox are enabled by default.
+* FEATURES=usersync is enabled by default.
 
 portage-2.1.12
 ==================================
