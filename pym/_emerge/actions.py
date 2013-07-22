@@ -2112,7 +2112,7 @@ def _sync_repo(repo, settings, trees, myopts):
 		# git directly.
 		if portage.process.find_binary("git") is None:
 			msg = ["Command not found: git",
-			"Type \"emerge dev-util/git\" to enable git support."]
+			"Type \"emerge %s\" to enable git support." % portage.const.GIT_PACKAGE_ATOM]
 			for l in msg:
 				writemsg_level("!!! %s\n" % l,
 					level=logging.ERROR, noiselevel=-1)
@@ -2140,7 +2140,7 @@ def _sync_repo(repo, settings, trees, myopts):
 		rsync_binary = portage.process.find_binary("rsync")
 		if rsync_binary is None:
 			print("!!! /usr/bin/rsync does not exist, so rsync support is disabled.")
-			print("!!! Type \"emerge net-misc/rsync\" to enable rsync support.")
+			print("!!! Type \"emerge %s\" to enable rsync support." % portage.const.RSYNC_PACKAGE_ATOM)
 			return os.EX_UNAVAILABLE
 		mytimeout=180
 
@@ -2540,7 +2540,7 @@ def _sync_repo(repo, settings, trees, myopts):
 	elif repo.sync_type == "cvs":
 		if not os.path.exists("/usr/bin/cvs"):
 			print("!!! /usr/bin/cvs does not exist, so CVS support is disabled.")
-			print("!!! Type \"emerge dev-vcs/cvs\" to enable CVS support.")
+			print("!!! Type \"emerge %s\" to enable CVS support." % portage.const.CVS_PACKAGE_ATOM)
 			return os.EX_UNAVAILABLE
 		cvs_root = syncuri
 		if cvs_root.startswith("cvs://"):
