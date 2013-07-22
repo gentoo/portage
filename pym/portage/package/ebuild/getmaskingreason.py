@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['getmaskingreason']
@@ -71,7 +71,7 @@ def getmaskingreason(mycpv, metadata=None, settings=None,
 	# XXX- This is a temporary duplicate of code from the config constructor.
 	locations = [os.path.join(settings["PORTDIR"], "profiles")]
 	locations.extend(settings.profiles)
-	for ov in settings["PORTDIR_OVERLAY"].split():
+	for ov in portage.util.shlex_split(settings["PORTDIR_OVERLAY"]):
 		profdir = os.path.join(normalize_path(ov), "profiles")
 		if os.path.isdir(profdir):
 			locations.append(profdir)

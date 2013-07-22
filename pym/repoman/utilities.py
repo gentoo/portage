@@ -40,6 +40,7 @@ import textwrap
 import difflib
 from tempfile import mkstemp
 
+import portage
 from portage import os
 from portage import shutil
 from portage import _encodings
@@ -461,7 +462,7 @@ def FindPortdir(settings):
 	if location[-1] != "/":
 		location += "/"
 
-	for overlay in settings["PORTDIR_OVERLAY"].split():
+	for overlay in portage.util.shlex_split(settings["PORTDIR_OVERLAY"]):
 		overlay = os.path.realpath(overlay)
 		try:
 			s = os.stat(overlay)
