@@ -668,6 +668,13 @@ def repositories_configuration(argv):
 	sys.stdout.write(portage.db[argv[0]]["vartree"].settings.repositories.config_string())
 	sys.stdout.flush()
 
+@uses_eroot
+def repos_config(argv):
+	"""
+	<eroot>
+	This is an alias for the repositories_configuration command.
+	"""
+	return repositories_configuration(argv)
 
 def portdir(argv):
 	"""
@@ -769,6 +776,12 @@ def master_repositories(argv):
 		else:
 			print(" ".join(x.name for x in repo.masters))
 
+@uses_eroot
+def master_repos(argv):
+	"""<eroot> <repo_id>+
+	This is an alias for the master_repositories command.
+	"""
+	return master_repositories(argv)
 
 @uses_eroot
 def get_repo_path(argv):
