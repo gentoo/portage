@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "May 2013" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Jul 2013" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -583,7 +583,11 @@ Enable the sandbox in the compile phase, when running without root privs (\fIuse
 .TP
 .B usersync
 Drop privileges to the owner of \fBPORTDIR\fR for \fBemerge(1) --sync\fR
-operations.
+operations. Note that this feature assumes that all subdirectories of
+\fBPORTDIR\fR have the same ownership as \fBPORTDIR\fR itself. It is the
+user's responsibility to ensure correct ownership, since otherwise portage
+would have to waste time validating ownership for each and every sync
+operation.
 .TP
 .B webrsync-gpg
 Enable GPG verification when using \fIemerge\-webrsync\fR.
