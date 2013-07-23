@@ -2025,7 +2025,38 @@ def action_sync(emerge_config, trees=DeprecationWarning,
 		emerge_config.target_config.settings.features
 	emergelog(xterm_titles, " === sync")
 
-	for repo in emerge_config.target_config.settings.repositories:
+	selected_repos = []
+	unknown_repo_names = []
+	missing_sync_type = []
+	if emerge_config.args:
+		for repo_name in emerge_config.args:
+			try:
+				repo = emerge_config.target_config.settings.repositories[repo_name]
+			except KeyError:
+				unknown_repo_names.append(repo_name)
+			else:
+				selected_repos.append(repo)
+				if repo.sync_type is None:
+					missing_sync_type.append(repo)
+
+		if unknown_repo_names:
+			writemsg_level("!!! %s\n" % _("Unknown repo(s): %s") %
+				" ".join(unknown_repo_names),
+				level=logging.ERROR, noiselevel=-1)
+
+		if missing_sync_type:
+			writemsg_level("!!! %s\n" %
+				_("Missing sync-type for repo(s): %s") %
+				" ".join(repo.name for repo in missing_sync_type),
+				level=logging.ERROR, noiselevel=-1)
+
+		if unknown_repo_names or missing_sync_type:
+			return 1
+
+	else:
+		selected_repos.extend(emerge_config.target_config.settings.repositories)
+
+	for repo in selected_repos:
 		if repo.sync_type is not None:
 			returncode = _sync_repo(emerge_config, repo)
 			if returncode != os.EX_OK:
