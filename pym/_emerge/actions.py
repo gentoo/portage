@@ -18,6 +18,7 @@ import sys
 import tempfile
 import textwrap
 import time
+import warnings
 from itertools import chain
 
 import portage
@@ -2009,37 +2010,50 @@ def action_search(root_config, myopts, myfiles, spinner):
 				sys.exit(1)
 			searchinstance.output()
 
-def action_sync(settings, trees, myopts):
-	xterm_titles = "notitles" not in settings.features
+def action_sync(emerge_config, trees=DeprecationWarning, opts=DeprecationWarning):
+
+	if not isinstance(emerge_config, _emerge_config):
+		warnings.warn("_emerge.actions.action_sync() now expects "
+			"an _emerge_config instance as the first parameter",
+			DeprecationWarning, stacklevel=2)
+		emerge_config = load_emerge_config(
+			action='sync', args=[], trees=trees, opts=opts)
+
+	xterm_titles = "notitles" not in \
+		emerge_config.target_config.settings.features
 	emergelog(xterm_titles, " === sync")
 
-	for repo in settings.repositories:
+	for repo in emerge_config.target_config.settings.repositories:
 		if repo.sync_type is not None:
-			returncode = _sync_repo(repo, settings, trees, myopts)
+			returncode = _sync_repo(emerge_config, repo)
 			if returncode != os.EX_OK:
 				return returncode
 
 	# Reload the whole config from scratch.
 	portage._sync_disabled_warnings = False
-	settings, trees, mtimedb = load_emerge_config(trees=trees)
-	adjust_configs(myopts, trees)
-	portdb = trees[settings['EROOT']]['porttree'].dbapi
-	root_config = trees[settings['EROOT']]['root_config']
+	load_emerge_config(emerge_config=emerge_config)
+	adjust_configs(emerge_config.opts, emerge_config.trees)
 
-	if myopts.get('--package-moves') != 'n' and _global_updates(trees, mtimedb["updates"], quiet=("--quiet" in myopts)):
-		mtimedb.commit()
+	if emerge_config.opts.get('--package-moves') != 'n' and \
+		_global_updates(emerge_config.trees,
+		emerge_config.target_config.mtimedb["updates"],
+		quiet=("--quiet" in emerge_config.opts)):
+		emerge_config.target_config.mtimedb.commit()
 		# Reload the whole config from scratch.
-		settings, trees, mtimedb = load_emerge_config(trees=trees)
-		adjust_configs(myopts, trees)
-		portdb = trees[settings['EROOT']]['porttree'].dbapi
-		root_config = trees[settings['EROOT']]['root_config']
+		load_emerge_config(emerge_config=emerge_config)
+		adjust_configs(emerge_config.opts, emerge_config.trees)
 
-	mybestpv = portdb.xmatch("bestmatch-visible", portage.const.PORTAGE_PACKAGE_ATOM)
-	mypvs = portage.best(trees[settings['EROOT']]['vartree'].dbapi.match(portage.const.PORTAGE_PACKAGE_ATOM))
+	mybestpv = emerge_config.target_config.trees['porttree'].dbapi.xmatch(
+		"bestmatch-visible", portage.const.PORTAGE_PACKAGE_ATOM)
+	mypvs = portage.best(
+		emerge_config.target_config.trees['vartree'].dbapi.match(
+			portage.const.PORTAGE_PACKAGE_ATOM))
 
-	chk_updated_cfg_files(settings["EROOT"], portage.util.shlex_split(settings.get("CONFIG_PROTECT", "")))
+	chk_updated_cfg_files(emerge_config.target_config.root,
+		portage.util.shlex_split(
+			emerge_config.target_config.settings.get("CONFIG_PROTECT", "")))
 
-	if mybestpv != mypvs and "--quiet" not in myopts:
+	if mybestpv != mypvs and "--quiet" not in emerge_config.opts:
 		print()
 		print(warn(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended")
 		print(warn(" * ")+"that you update portage now, before any other packages are updated.")
@@ -2047,10 +2061,12 @@ def action_sync(settings, trees, myopts):
 		print(warn(" * ")+"To update portage, run 'emerge --oneshot portage' now.")
 		print()
 
-	display_news_notification(root_config, myopts)
+	display_news_notification(emerge_config.target_config, emerge_config.opts)
 	return os.EX_OK
 
-def _sync_repo(repo, settings, trees, myopts):
+def _sync_repo(emerge_config, repo):
+	settings, trees, mtimedb = emerge_config
+	myopts = emerge_config.opts
 	enter_invalid = '--ask-enter-invalid' in myopts
 	xterm_titles = "notitles" not in settings.features
 	msg = ">>> Synchronization of repository '%s' located in '%s'..." % (repo.name, repo.location)
@@ -2577,8 +2593,8 @@ def _sync_repo(repo, settings, trees, myopts):
 		dosyncuri = syncuri
 
 	# Reload the whole config from scratch.
-	settings, trees, mtimedb = load_emerge_config(trees=trees)
-	adjust_configs(myopts, trees)
+	settings, trees, mtimedb = load_emerge_config(emerge_config=emerge_config)
+	adjust_configs(emerge_config.opts, emerge_config.trees)
 	portdb = trees[settings['EROOT']]['porttree'].dbapi
 
 	if repo.sync_type == "git":
@@ -3842,8 +3858,7 @@ def run_action(emerge_config):
 			return 1
 
 	if "sync" == emerge_config.action:
-		return action_sync(emerge_config.target_config.settings,
-			emerge_config.trees, emerge_config.opts)
+		return action_sync(emerge_config)
 	elif "metadata" == emerge_config.action:
 		action_metadata(emerge_config.target_config.settings,
 			emerge_config.target_config.trees['porttree'].dbapi,
