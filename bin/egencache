@@ -97,7 +97,7 @@ def parse_args(args):
 	common = optparse.OptionGroup(parser, 'Common options')
 	common.add_option("--repo",
 		action="store",
-		help="name of repo to operate on (default repo is located at $PORTDIR)")
+		help="name of repo to operate on")
 	common.add_option("--config-root",
 		help="location of portage config files",
 		dest="portage_configroot")
@@ -111,10 +111,10 @@ def parse_args(args):
 		help="override the portage tree location (deprecated in favor of --repositories-configuration)",
 		dest="portdir")
 	common.add_option("--portdir-overlay",
-		help="override the PORTDIR_OVERLAY variable (requires that --repo is also specified) (deprecated in favor of --repositories-configuration)",
+		help="override the PORTDIR_OVERLAY variable (deprecated in favor of --repositories-configuration)",
 		dest="portdir_overlay")
 	common.add_option("--repositories-configuration",
-		help="override configuration of repositories (in format of repos.conf) (requires that --repo is also specified)",
+		help="override configuration of repositories (in format of repos.conf)",
 		dest="repositories_configuration")
 	common.add_option("--sign-manifests",
 		type="choice",
@@ -213,10 +213,7 @@ def parse_args(args):
 				(options.cache_dir,))
 
 	if options.repo is None:
-		if options.repositories_configuration is not None:
-			parser.error("--repositories-configuration option requires --repo option")
-		if options.portdir_overlay is not None:
-			parser.error("--portdir-overlay option requires --repo option")
+		parser.error("--repo option is required")
 
 	for atom in args:
 		try:
@@ -862,9 +859,7 @@ def egencache_main(args):
 
 	config_root = options.config_root
 
-	if options.repo is None:
-		env['PORTDIR_OVERLAY'] = ''
-	elif options.repositories_configuration is not None:
+	if options.repositories_configuration is not None:
 		env['PORTAGE_REPOSITORIES'] = options.repositories_configuration
 	elif options.portdir_overlay:
 		env['PORTDIR_OVERLAY'] = options.portdir_overlay
@@ -897,18 +892,10 @@ def egencache_main(args):
 		parser.error('No action specified')
 		return 1
 
-	repo_path = None
-	if options.repo is not None:
-		repo_path = settings.repositories.treemap.get(options.repo)
-		if repo_path is None:
-			parser.error("Unable to locate repository named '%s'" % \
-				(options.repo,))
-			return 1
-	else:
-		repo_path = settings.repositories.mainRepoLocation()
-		if not repo_path:
-			parser.error("PORTDIR is undefined")
-			return 1
+	repo_path = settings.repositories.treemap.get(options.repo)
+	if repo_path is None:
+		parser.error("Unable to locate repository named '%s'" % (options.repo,))
+		return 1
 
 	repo_config = settings.repositories.get_repo_for_location(repo_path)
 

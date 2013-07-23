@@ -61,8 +61,7 @@ Override the portage tree location. This option is deprecated in favor of
 \-\-repositories\-configuration option.
 .TP
 .BR "\-\-portdir\-overlay=PORTDIR_OVERLAY"
-Override the PORTDIR_OVERLAY variable (requires that
-\-\-repo is also specified). This option is deprecated in favor of
+Override the PORTDIR_OVERLAY variable. This option is deprecated in favor of
 \-\-repositories\-configuration option.
 .TP
 .BR "\-\-preserve\-comments"
@@ -70,10 +69,8 @@ Preserve the comments found in the output use.local.desc file. This requires
 the output file to exist before egencache is called.
 .TP
 .BR "\-\-repo=REPO"
-Name of the repo to operate on (default repo is located at \fBPORTDIR\fR).
-The name should correspond the value of a \fBrepo_name\fR entry (see
-\fBportage\fR(5)) from one of the repositories that is configured via the
-\fBPORTDIR\fR or \fBPORTDIR_OVERLAY\fR variables (see \fBmake.conf\fR(5)).
+Name of the repo to operate on. The name should correspond the value of
+a \fBrepo_name\fR entry (see \fBportage\fR(5)) from one of the repositories.
 .TP
 .BR "\-\-repositories\-configuration=REPOSITORIES_CONFIGURATION"
 Override configuration of repositories. The argument of this option has
@@ -153,6 +150,7 @@ Please report bugs via http://bugs.gentoo.org/
 .SH "AUTHORS"
 .nf
 Zac Medico <zmedico@gentoo.org>
+Arfrever Frehtes Taifersar Arahesis <arfrever@apache.org>
 .fi
 .SH "FILES"
 .TP
