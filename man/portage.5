@@ -887,6 +887,13 @@ masters = gentoo kde
 # those master repos won't be required as dependencies (the user must
 # ensure that any required dependencies such as eclasses are satisfied)
 masters =
+
+# Repository 'gentoo' synchronized using CVS
+[gentoo]
+location = /usr/portage
+sync-type = cvs
+sync-uri = :pserver:anonymous@anoncvs.gentoo.org:/var/cvsroot
+sync-cvs-repo = gentoo-x86
 .fi
 .RE
 .RE
