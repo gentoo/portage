@@ -69,8 +69,9 @@ def getmaskingreason(mycpv, metadata=None, settings=None,
 	mycp = pkg.cp
 
 	locations = []
-	for repo in settings.repositories[pkg.repo].masters + (settings.repositories[pkg.repo],):
-		locations.append(os.path.join(repo.location, "profiles"))
+	if pkg.repo in settings.repositories:
+		for repo in settings.repositories[pkg.repo].masters + (settings.repositories[pkg.repo],):
+			locations.append(os.path.join(repo.location, "profiles"))
 	locations.extend(settings.profiles)
 	locations.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
 		USER_CONFIG_PATH))
