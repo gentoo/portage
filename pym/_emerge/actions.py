@@ -2010,14 +2010,16 @@ def action_search(root_config, myopts, myfiles, spinner):
 				sys.exit(1)
 			searchinstance.output()
 
-def action_sync(emerge_config, trees=DeprecationWarning, opts=DeprecationWarning):
+def action_sync(emerge_config, trees=DeprecationWarning,
+	mtimedb=DeprecationWarning, opts=DeprecationWarning,
+	action=DeprecationWarning):
 
 	if not isinstance(emerge_config, _emerge_config):
 		warnings.warn("_emerge.actions.action_sync() now expects "
 			"an _emerge_config instance as the first parameter",
 			DeprecationWarning, stacklevel=2)
 		emerge_config = load_emerge_config(
-			action='sync', args=[], trees=trees, opts=opts)
+			action=action, args=[], trees=trees, opts=opts)
 
 	xterm_titles = "notitles" not in \
 		emerge_config.target_config.settings.features
