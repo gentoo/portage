@@ -543,7 +543,6 @@ class RepoConfigLoader(object):
 				prepos['DEFAULT'].main_repo == repo.name and \
 				portdir and exists_raise_eaccess(portdir):
 				optdict['location'] = portdir
-				print optdict
 				repo = RepoConfig(sname, optdict, local_config=local_config)
 
 			if repo.name != sname and not portage._sync_disabled_warnings:
