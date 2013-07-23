@@ -2169,6 +2169,7 @@ def _sync_repo(emerge_config, repo):
 				"--safe-links",   # Ignore links outside of tree
 				"--perms",        # Preserve permissions
 				"--times",        # Preserive mod times
+				"--omit-dir-times",
 				"--compress",     # Compress the data transmitted
 				"--force",        # Force deletion on non-empty dirs
 				"--whole-file",   # Don't do block transfers, only entire files
