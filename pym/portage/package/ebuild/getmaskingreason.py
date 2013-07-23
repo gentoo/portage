@@ -68,13 +68,10 @@ def getmaskingreason(mycpv, metadata=None, settings=None,
 
 	mycp = pkg.cp
 
-	# XXX- This is a temporary duplicate of code from the config constructor.
-	locations = [os.path.join(settings["PORTDIR"], "profiles")]
+	locations = []
+	for repo in settings.repositories[pkg.repo].masters + (settings.repositories[pkg.repo],):
+		locations.append(os.path.join(repo.location, "profiles"))
 	locations.extend(settings.profiles)
-	for ov in portage.util.shlex_split(settings["PORTDIR_OVERLAY"]):
-		profdir = os.path.join(normalize_path(ov), "profiles")
-		if os.path.isdir(profdir):
-			locations.append(profdir)
 	locations.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
 		USER_CONFIG_PATH))
 	locations.reverse()
