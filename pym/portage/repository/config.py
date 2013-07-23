@@ -389,7 +389,7 @@ class RepoConfigLoader(object):
 
 	@staticmethod
 	def _add_repositories(portdir, portdir_overlay, prepos,
-		ignored_map, ignored_location_map, local_config):
+		ignored_map, ignored_location_map, local_config, default_portdir):
 		"""Add overlays in PORTDIR_OVERLAY as repositories"""
 		overlays = []
 		portdir_orig = None
@@ -447,7 +447,10 @@ class RepoConfigLoader(object):
 
 					if repo.name in prepos:
 						old_location = prepos[repo.name].location
-						if old_location is not None and old_location != repo.location:
+						if old_location is not None and \
+							old_location != repo.location and \
+							not (old_location == default_portdir and
+							not exists_raise_eaccess(old_location)):
 							ignored_map.setdefault(repo.name, []).append(old_location)
 							ignored_location_map[old_location] = repo.name
 							if old_location == portdir:
@@ -465,16 +468,6 @@ class RepoConfigLoader(object):
 
 					prepos[repo.name] = repo
 				else:
-					if base_priority == 0 and ov == '/usr/portage':
-						# Suppress warnings for the make.globals
-						# PORTDIR setting if we have an existing
-						# main-repo defined in repos.conf.
-						main_repo = prepos['DEFAULT'].main_repo
-						if main_repo is not None and main_repo in prepos:
-							main_repo_loc = prepos[main_repo].location
-							if main_repo_loc and \
-								isdir_raise_eaccess(main_repo_loc):
-								continue
 
 					if not portage._sync_disabled_warnings:
 						writemsg(_("!!! Invalid PORTDIR_OVERLAY (not a dir): '%s'\n") % ov, noiselevel=-1)
@@ -538,23 +531,6 @@ class RepoConfigLoader(object):
 
 			repo = RepoConfig(sname, optdict, local_config=local_config)
 
-			if repo.location and \
-				not exists_raise_eaccess(repo.location) and \
-				prepos['DEFAULT'].main_repo == repo.name and \
-				portdir and exists_raise_eaccess(portdir):
-				optdict['location'] = portdir
-				repo = RepoConfig(sname, optdict, local_config=local_config)
-
-			if repo.name != sname and not portage._sync_disabled_warnings:
-				writemsg_level("!!! %s\n" % _("Section name '%s' set in repos.conf differs from name '%s' set inside repository") %
-					(sname, repo.name), level=logging.ERROR, noiselevel=-1)
-				continue
-
-			if repo.location and not exists_raise_eaccess(repo.location) and not portage._sync_disabled_warnings:
-				writemsg_level("!!! %s\n" % _("Repository '%s' has location attribute set to nonexistent directory: '%s'") %
-					(sname, repo.location), level=logging.ERROR, noiselevel=-1)
-				continue
-
 			if repo.sync_type is not None and repo.sync_uri is None:
 				writemsg_level("!!! %s\n" % _("Repository '%s' has sync-type attribute, but is missing sync-uri attribute") %
 					sname, level=logging.ERROR, noiselevel=-1)
@@ -575,14 +551,10 @@ class RepoConfigLoader(object):
 					sname, level=logging.ERROR, noiselevel=-1)
 				continue
 
-			if repo.name in prepos:
-				old_location = prepos[repo.name].location
-				if old_location is not None and repo.location is not None and old_location != repo.location:
-					ignored_map.setdefault(repo.name, []).append(old_location)
-					ignored_location_map[old_location] = repo.name
-				prepos[repo.name].update(repo)
-			else:
-				prepos[repo.name] = repo
+			# For backward compatibility with locations set via PORTDIR and
+			# PORTDIR_OVERLAY, delay validation of the location and repo.name
+			# until after PORTDIR and PORTDIR_OVERLAY have been processed.
+			prepos[sname] = repo
 
 	def __init__(self, paths, settings):
 		"""Load config from files in paths"""
@@ -619,10 +591,14 @@ class RepoConfigLoader(object):
 			ignored_map.clear()
 			ignored_location_map.clear()
 
+		default_portdir = os.path.join(os.sep,
+			settings['EPREFIX'].lstrip(os.sep), 'usr', 'portage')
+
 		# If PORTDIR_OVERLAY contains a repo with the same repo_name as
 		# PORTDIR, then PORTDIR is overridden.
 		portdir = self._add_repositories(portdir, portdir_overlay, prepos,
-			ignored_map, ignored_location_map, settings.local_config)
+			ignored_map, ignored_location_map, settings.local_config,
+			default_portdir)
 		if portdir and portdir.strip():
 			portdir = os.path.realpath(portdir)
 
@@ -646,6 +622,18 @@ class RepoConfigLoader(object):
 							level=logging.ERROR, noiselevel=-1)
 					del prepos[repo_name]
 			else:
+				if repo.name != repo_name and not portage._sync_disabled_warnings:
+					writemsg_level("!!! %s\n" % _("Section name '%s' set in repos.conf differs from name '%s' set inside repository") %
+						(repo_name, repo.name), level=logging.ERROR, noiselevel=-1)
+					del prepos[repo_name]
+					continue
+
+				if repo.location and not exists_raise_eaccess(repo.location) and not portage._sync_disabled_warnings:
+					writemsg_level("!!! %s\n" % _("Repository '%s' has location attribute set to nonexistent directory: '%s'") %
+						(repo_name, repo.location), level=logging.ERROR, noiselevel=-1)
+					del prepos[repo_name]
+					continue
+
 				location_map[repo.location] = repo_name
 				treemap[repo_name] = repo.location
 
