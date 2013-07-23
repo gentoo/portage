@@ -197,7 +197,6 @@ class RepoConfig(object):
 
 		# Parse layout.conf.
 		if self.location:
-			layout_filename = os.path.join(self.location, "metadata", "layout.conf")
 			layout_data = parse_layout_conf(self.location, self.name)[0]
 
 			# layout.conf masters may be overridden here if we have a masters
@@ -766,6 +765,17 @@ class RepoConfigLoader(object):
 				else:
 					eclass_db.append(tree_db)
 			repo.eclass_db = eclass_db
+
+		for repo_name, repo in prepos.items():
+			if repo_name == "DEFAULT":
+				continue
+
+			if parse_layout_conf(repo.location, repo_name)[0]["masters"] is None and self.mainRepo() and \
+				repo_name != self.mainRepo().name and not portage._sync_disabled_warnings:
+				writemsg_level("!!! %s\n" % _("Repository '%s' is missing masters attribute in '%s'") %
+					(repo_name, os.path.join(repo.location, "metadata", "layout.conf")) +
+					"!!! %s\n" % _("Set 'masters = %s' in this file for future compatibility") %
+					self.mainRepo().name, level=logging.WARNING, noiselevel=-1)
 
 		self._prepos_changed = True
 		self._repo_location_list = []
