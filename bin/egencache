@@ -108,7 +108,7 @@ def parse_args(args):
 		help="override the PORTAGE_GPG_KEY variable",
 		dest="gpg_key")
 	common.add_option("--portdir",
-		help="override the portage tree location (deprecated in favor of --repositories-configuration)",
+		help="override the PORTDIR variable (deprecated in favor of --repositories-configuration)",
 		dest="portdir")
 	common.add_option("--portdir-overlay",
 		help="override the PORTDIR_OVERLAY variable (deprecated in favor of --repositories-configuration)",
@@ -214,6 +214,13 @@ def parse_args(args):
 
 	if options.repo is None:
 		parser.error("--repo option is required")
+
+	if options.portdir is not None:
+		writemsg_level("egencache: warning: --portdir option is deprecated in favor of --repositories-configuration option\n",
+			level=logging.WARNING, noiselevel=-1)
+	if options.portdir_overlay is not None:
+		writemsg_level("egencache: warning: --portdir-overlay option is deprecated in favor of --repositories-configuration option\n",
+			level=logging.WARNING, noiselevel=-1)
 
 	for atom in args:
 		try:
