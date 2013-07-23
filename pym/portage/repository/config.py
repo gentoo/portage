@@ -438,7 +438,9 @@ class RepoConfigLoader(object):
 					if repos_conf_opts is not None:
 						# Selectively copy only the attributes which
 						# repos.conf is allowed to override.
-						for k in ('aliases', 'eclass_overrides', 'masters', 'priority'):
+						for k in ('aliases', 'eclass_overrides', 'masters',
+							'priority', 'sync_cvs_repo', 'sync_type',
+							'sync_uri'):
 							v = getattr(repos_conf_opts, k, None)
 							if v is not None:
 								setattr(repo, k, v)
@@ -480,7 +482,7 @@ class RepoConfigLoader(object):
 		return portdir
 
 	@staticmethod
-	def _parse(paths, prepos, ignored_map, ignored_location_map, local_config):
+	def _parse(paths, prepos, ignored_map, ignored_location_map, local_config, portdir):
 		"""Parse files in paths to load config"""
 		parser = SafeConfigParser()
 
@@ -535,6 +537,14 @@ class RepoConfigLoader(object):
 				optdict[oname] = parser.get(sname, oname)
 
 			repo = RepoConfig(sname, optdict, local_config=local_config)
+
+			if repo.location and \
+				not exists_raise_eaccess(repo.location) and \
+				prepos['DEFAULT'].main_repo == repo.name and \
+				portdir and exists_raise_eaccess(portdir):
+				optdict['location'] = portdir
+				print optdict
+				repo = RepoConfig(sname, optdict, local_config=local_config)
 
 			if repo.name != sname and not portage._sync_disabled_warnings:
 				writemsg_level("!!! %s\n" % _("Section name '%s' set in repos.conf differs from name '%s' set inside repository") %
@@ -593,7 +603,8 @@ class RepoConfigLoader(object):
 
 		try:
 			self._parse(paths, prepos, ignored_map,
-				ignored_location_map, settings.local_config)
+				ignored_location_map, settings.local_config,
+				portdir)
 		except ConfigParserError as e:
 			writemsg(
 				_("!!! Error while reading repo config file: %s\n") % e,
