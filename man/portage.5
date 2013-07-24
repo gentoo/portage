@@ -781,9 +781,16 @@ Setting this attribute is generally not recommended since resulting changes
 in eclass inheritance may trigger performance issues due to invalidation
 of metadata cache.
 .br
-Tools such as \fBrepoman\fR(1) and \fBegencache\fR(1) ignore this attribute,
+When 'force = eclass\-overrides' attribute is not set, \fBegencache\fR(1),
+\fBemirrordist\fR(1) and \fBrepoman\fR(1) ignore this attribute,
 since operations performed by these tools are inherently
 \fBnot\fR \fIsite\-specific\fR.
+.TP
+.B force
+Specifies names of attributes, which should be forcefully respected by
+\fBegencache\fR(1), \fBemirrordist\fR(1) and \fBrepoman\fR(1).
+.br
+Valid values: aliases, eclass\-overrides, masters
 .RE
 
 .I Attributes supported in sections of repositories:
@@ -791,6 +798,15 @@ since operations performed by these tools are inherently
 .TP
 .B aliases
 Specifies aliases of given repository.
+.br
+Setting this attribute is generally not recommended since resulting changes
+in eclass inheritance may trigger performance issues due to invalidation
+of metadata cache.
+.br
+When 'force = aliases' attribute is not set, \fBegencache\fR(1),
+\fBemirrordist\fR(1) and \fBrepoman\fR(1) ignore this attribute,
+since operations performed by these tools are inherently
+\fBnot\fR \fIsite\-specific\fR.
 .TP
 .B eclass\-overrides
 Makes given repository inherit eclasses from specified repositories.
@@ -799,9 +815,16 @@ Setting this attribute is generally not recommended since resulting changes
 in eclass inheritance may trigger performance issues due to invalidation
 of metadata cache.
 .br
-Tools such as \fBrepoman\fR(1) and \fBegencache\fR(1) ignore this attribute,
+When 'force = eclass\-overrides' attribute is not set, \fBegencache\fR(1),
+\fBemirrordist\fR(1) and \fBrepoman\fR(1) ignore this attribute,
 since operations performed by these tools are inherently
 \fBnot\fR \fIsite\-specific\fR.
+.TP
+.B force
+Specifies names of attributes, which should be forcefully respected by
+\fBegencache\fR(1), \fBemirrordist\fR(1) and \fBrepoman\fR(1).
+.br
+Valid values: aliases, eclass\-overrides, masters
 .TP
 .B location
 Specifies location of given repository.
@@ -813,7 +836,8 @@ Setting this attribute is generally not recommended since resulting changes
 in eclass inheritance may trigger performance issues due to invalidation
 of metadata cache.
 .br
-Tools such as \fBrepoman\fR(1) and \fBegencache\fR(1) ignore this attribute,
+When 'force = masters' attribute is not set, \fBegencache\fR(1),
+\fBemirrordist\fR(1) and \fBrepoman\fR(1) ignore this attribute,
 since operations performed by these tools are inherently
 \fBnot\fR \fIsite\-specific\fR.
 .TP
@@ -891,9 +915,9 @@ masters =
 # Repository 'gentoo' synchronized using CVS
 [gentoo]
 location = /usr/portage
-sync-type = cvs
-sync-uri = :pserver:anonymous@anoncvs.gentoo.org:/var/cvsroot
-sync-cvs-repo = gentoo-x86
+sync\-type = cvs
+sync\-uri = :pserver:anonymous@anoncvs.gentoo.org:/var/cvsroot
+sync\-cvs\-repo = gentoo\-x86
 .fi
 .RE
 .RE

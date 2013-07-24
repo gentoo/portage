@@ -79,7 +79,7 @@ class RepoConfig(object):
 	__slots__ = ('aliases', 'allow_missing_manifest', 'allow_provide_virtual',
 		'cache_formats', 'create_manifest', 'disable_manifest', 'eapi',
 		'eclass_db', 'eclass_locations', 'eclass_overrides',
-		'find_invalid_path_char', 'format', 'local_config', 'location',
+		'find_invalid_path_char', 'force', 'format', 'local_config', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'portage1_profiles', 'portage1_profiles_compat', 'priority',
 		'profile_formats', 'sign_commit', 'sign_manifest', 'sync_cvs_repo',
@@ -91,9 +91,16 @@ class RepoConfig(object):
 		   Try to read repo_name in repository location, but if
 		   it is not found use variable name as repository name"""
 
+		force = repo_opts.get('force')
+		if force is not None:
+			force = tuple(force.split())
+		self.force = force
+		if force is None:
+			force = ()
+
 		self.local_config = local_config
 
-		if local_config:
+		if local_config or 'aliases' in force:
 			aliases = repo_opts.get('aliases')
 			if aliases is not None:
 				aliases = tuple(aliases.split())
@@ -102,7 +109,7 @@ class RepoConfig(object):
 
 		self.aliases = aliases
 
-		if local_config:
+		if local_config or 'eclass-overrides' in force:
 			eclass_overrides = repo_opts.get('eclass-overrides')
 			if eclass_overrides is not None:
 				eclass_overrides = tuple(eclass_overrides.split())
@@ -114,7 +121,7 @@ class RepoConfig(object):
 		self.eclass_db = None
 		self.eclass_locations = None
 
-		if local_config:
+		if local_config or 'masters' in force:
 			# Masters from repos.conf override layout.conf.
 			masters = repo_opts.get('masters')
 			if masters is not None:
@@ -204,7 +211,7 @@ class RepoConfig(object):
 			if self.masters is None:
 				self.masters = layout_data['masters']
 
-			if local_config and layout_data['aliases']:
+			if (local_config or 'aliases' in force) and layout_data['aliases']:
 				aliases = self.aliases
 				if aliases is None:
 					aliases = ()
@@ -437,9 +444,8 @@ class RepoConfigLoader(object):
 					if repos_conf_opts is not None:
 						# Selectively copy only the attributes which
 						# repos.conf is allowed to override.
-						for k in ('aliases', 'eclass_overrides', 'masters',
-							'priority', 'sync_cvs_repo', 'sync_type',
-							'sync_uri'):
+						for k in ('aliases', 'eclass_overrides', 'force', 'masters',
+							'priority', 'sync_cvs_repo', 'sync_type', 'sync_uri'):
 							v = getattr(repos_conf_opts, k, None)
 							if v is not None:
 								setattr(repo, k, v)
@@ -877,7 +883,7 @@ class RepoConfigLoader(object):
 
 	def config_string(self):
 		str_or_int_keys = ("format", "location", "main_repo", "priority", "sync_cvs_repo", "sync_type", "sync_uri")
-		str_tuple_keys = ("aliases", "eclass_overrides")
+		str_tuple_keys = ("aliases", "eclass_overrides", "force")
 		repo_config_tuple_keys = ("masters",)
 		keys = str_or_int_keys + str_tuple_keys + repo_config_tuple_keys
 		config_string = ""
