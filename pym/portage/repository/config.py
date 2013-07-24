@@ -84,7 +84,7 @@ class RepoConfig(object):
 		'name', 'portage1_profiles', 'portage1_profiles_compat', 'priority',
 		'profile_formats', 'sign_commit', 'sign_manifest', 'sync_cvs_repo',
 		'sync_type', 'sync_uri', 'thin_manifest', 'update_changelog',
-		'user_location', '_eapis_banned', '_eapis_deprecated')
+		'user_location', '_eapis_banned', '_eapis_deprecated', '_masters_orig')
 
 	def __init__(self, name, repo_opts, local_config=True):
 		"""Build a RepoConfig with options in repo_opts
@@ -201,10 +201,12 @@ class RepoConfig(object):
 		self.portage1_profiles = True
 		self.portage1_profiles_compat = False
 		self.find_invalid_path_char = _find_invalid_path_char
+		self._masters_orig = None
 
 		# Parse layout.conf.
 		if self.location:
 			layout_data = parse_layout_conf(self.location, self.name)[0]
+			self._masters_orig = layout_data['masters']
 
 			# layout.conf masters may be overridden here if we have a masters
 			# setting from the user's repos.conf
@@ -776,7 +778,7 @@ class RepoConfigLoader(object):
 			if repo_name == "DEFAULT":
 				continue
 
-			if parse_layout_conf(repo.location, repo_name)[0]["masters"] is None and self.mainRepo() and \
+			if repo._masters_orig is None and self.mainRepo() and \
 				repo_name != self.mainRepo().name and not portage._sync_disabled_warnings:
 				writemsg_level("!!! %s\n" % _("Repository '%s' is missing masters attribute in '%s'") %
 					(repo_name, os.path.join(repo.location, "metadata", "layout.conf")) +
