@@ -798,9 +798,9 @@ class RepoConfigLoader(object):
 				continue
 
 			if repo._masters_orig is None and self.mainRepo() and \
-				repo_name != self.mainRepo().name and not portage._sync_disabled_warnings:
+				repo.name != self.mainRepo().name and not portage._sync_disabled_warnings:
 				writemsg_level("!!! %s\n" % _("Repository '%s' is missing masters attribute in '%s'") %
-					(repo_name, os.path.join(repo.location, "metadata", "layout.conf")) +
+					(repo.name, os.path.join(repo.location, "metadata", "layout.conf")) +
 					"!!! %s\n" % _("Set 'masters = %s' in this file for future compatibility") %
 					self.mainRepo().name, level=logging.WARNING, noiselevel=-1)
 
