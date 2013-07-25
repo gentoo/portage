@@ -395,7 +395,7 @@ class ResolverPlayground(object):
 		if not portage.process.sandbox_capable or \
 			os.environ.get("SANDBOX_ON") == "1":
 			# avoid problems from nested sandbox instances
-			make_conf_lines.append('FEATURES="${FEATURES} -sandbox"')
+			make_conf_lines.append('FEATURES="${FEATURES} -sandbox -usersandbox"')
 
 		configs = user_config.copy()
 		configs["make.conf"] = make_conf_lines

@@ -234,7 +234,7 @@ class SimpleRepomanTestCase(TestCase):
 
 		if os.environ.get("SANDBOX_ON") == "1":
 			# avoid problems from nested sandbox instances
-			env["FEATURES"] = "-sandbox"
+			env["FEATURES"] = "-sandbox -usersandbox"
 
 		dirs = [homedir, license_dir, profiles_dir, distdir]
 		try:
