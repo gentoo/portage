@@ -575,9 +575,11 @@ class RepoConfigLoader(object):
 		if "PORTAGE_REPOSITORIES" in settings:
 			portdir = ""
 			portdir_overlay = ""
+			portdir_sync = ""
 		else:
 			portdir = settings.get("PORTDIR", "")
 			portdir_overlay = settings.get("PORTDIR_OVERLAY", "")
+			portdir_sync = settings.get("SYNC", "")
 
 		try:
 			self._parse(paths, prepos, ignored_map,
@@ -696,6 +698,12 @@ class RepoConfigLoader(object):
 		if main_repo is not None and prepos[main_repo].priority is None:
 			# This happens if main-repo has been set in repos.conf.
 			prepos[main_repo].priority = -1000
+
+		# Backward compatible SYNC support for mirrorselect.
+		if portdir_sync and main_repo is not None:
+			if portdir_sync.startswith("rsync://"):
+				prepos[main_repo].sync_uri = portdir_sync
+				prepos[main_repo].sync_type = "rsync"
 
 		# Include repo.name in sort key, for predictable sorting
 		# even when priorities are equal.
