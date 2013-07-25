@@ -623,23 +623,32 @@ class RepoConfigLoader(object):
 				if repo_name != 'DEFAULT':
 					# Skip this warning for repoman (bug #474578).
 					if settings.local_config and paths:
-						writemsg_level(_("Location undefined for " \
-							"repository '%s' referenced in '%s'\n") % \
-							(repo.name, (paths if len(paths) > 1 else paths[0])),
-							level=logging.ERROR, noiselevel=-1)
+						writemsg_level("!!! %s\n" % _("Section '%s' in repos.conf is missing location attribute") %
+							repo.name, level=logging.ERROR, noiselevel=-1)
 					del prepos[repo_name]
+					continue
 			else:
-				if repo.name != repo_name and not portage._sync_disabled_warnings:
-					writemsg_level("!!! %s\n" % _("Section name '%s' set in repos.conf differs from name '%s' set inside repository") %
-						(repo_name, repo.name), level=logging.ERROR, noiselevel=-1)
-					del prepos[repo_name]
-					continue
+				if not portage._sync_disabled_warnings:
+					if repo.location and not isdir_raise_eaccess(repo.location):
+						writemsg_level("!!! %s\n" % _("Section '%s' in repos.conf has location attribute set "
+							"to nonexistent directory: '%s'") %
+							(repo_name, repo.location), level=logging.ERROR, noiselevel=-1)
+						del prepos[repo_name]
+						continue
 
-				if repo.location and not exists_raise_eaccess(repo.location) and not portage._sync_disabled_warnings:
-					writemsg_level("!!! %s\n" % _("Repository '%s' has location attribute set to nonexistent directory: '%s'") %
-						(repo_name, repo.location), level=logging.ERROR, noiselevel=-1)
-					del prepos[repo_name]
-					continue
+					if repo.missing_repo_name:
+						writemsg_level("!!! %s\n" % _("Section '%s' in repos.conf refers to repository "
+							"without repository name set in '%s'") %
+							(repo_name, os.path.join(repo.location, REPO_NAME_LOC)), level=logging.ERROR, noiselevel=-1)
+						del prepos[repo_name]
+						continue
+
+					if repo.name != repo_name:
+						writemsg_level("!!! %s\n" % _("Section '%s' in repos.conf has name different "
+							"from repository name '%s' set inside repository") %
+							(repo_name, repo.name), level=logging.ERROR, noiselevel=-1)
+						del prepos[repo_name]
+						continue
 
 				location_map[repo.location] = repo_name
 				treemap[repo_name] = repo.location
