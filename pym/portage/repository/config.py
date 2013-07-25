@@ -629,14 +629,16 @@ class RepoConfigLoader(object):
 					continue
 			else:
 				if not portage._sync_disabled_warnings:
-					if repo.location and not isdir_raise_eaccess(repo.location):
+					if not isdir_raise_eaccess(repo.location):
 						writemsg_level("!!! %s\n" % _("Section '%s' in repos.conf has location attribute set "
 							"to nonexistent directory: '%s'") %
 							(repo_name, repo.location), level=logging.ERROR, noiselevel=-1)
 						del prepos[repo_name]
 						continue
 
-					if repo.missing_repo_name:
+					# After removing support for PORTDIR_OVERLAY, the following check can be:
+					# if repo.missing_repo_name:
+					if repo.missing_repo_name and repo.name != repo_name:
 						writemsg_level("!!! %s\n" % _("Section '%s' in repos.conf refers to repository "
 							"without repository name set in '%s'") %
 							(repo_name, os.path.join(repo.location, REPO_NAME_LOC)), level=logging.ERROR, noiselevel=-1)
