@@ -28,12 +28,12 @@ ACCEPT_PROPERTIES="*"
 ACCEPT_RESTRICT="*"
 
 # Miscellaneous paths
-DISTDIR=/usr/portage/distfiles
-PKGDIR=/usr/portage/packages
-RPMDIR=/usr/portage/rpm
+DISTDIR="/usr/portage/distfiles"
+PKGDIR="/usr/portage/packages"
+RPMDIR="/usr/portage/rpm"
 
 # Temporary build directory
-PORTAGE_TMPDIR=/var/tmp
+PORTAGE_TMPDIR="/var/tmp"
 
 # Fetching command (3 tries, passive ftp for firewall compatibility)
 FETCHCOMMAND="wget -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
