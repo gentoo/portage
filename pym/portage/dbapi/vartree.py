@@ -3804,7 +3804,7 @@ class dblink(object):
 					_("Manually run `emerge --unmerge =%s` if you "
 					"really want to remove the above files. Set "
 					"PORTAGE_PACKAGE_EMPTY_ABORT=\"0\" in "
-					"/etc/make.conf if you do not want to "
+					"/etc/portage/make.conf if you do not want to "
 					"abort in cases like this.") % other_dblink.mycpv,
 					wrap_width))
 				eerror(msg)

@@ -3555,7 +3555,7 @@ def repo_name_duplicate_check(trees):
 			"All profiles/repo_name entries must be unique in order " + \
 			"to avoid having duplicates ignored. " + \
 			"Set PORTAGE_REPO_DUPLICATE_WARN=\"0\" in " + \
-			"/etc/make.conf if you would like to disable this warning."))
+			"/etc/portage/make.conf if you would like to disable this warning."))
 		msg.append("\n")
 		writemsg_level(''.join('%s\n' % l for l in msg),
 			level=logging.WARNING, noiselevel=-1)
