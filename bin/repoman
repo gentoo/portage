@@ -287,12 +287,6 @@ def ParseArgs(argv, qahelp):
 	if opts.mode == 'ci':
 		opts.mode = 'commit'  # backwards compat shortcut
 
-	if opts.mode == 'commit' and not (opts.force or opts.pretend):
-		if opts.ignore_masked:
-			parser.error('Commit mode and --ignore-masked are not compatible')
-		if opts.without_mask:
-			parser.error('Commit mode and --without-mask are not compatible')
-
 	# Use the verbosity and quiet options to fiddle with the loglevel appropriately
 	for val in range(opts.verbosity):
 		logger = logging.getLogger()
@@ -301,6 +295,14 @@ def ParseArgs(argv, qahelp):
 	for val in range(opts.quiet):
 		logger = logging.getLogger()
 		logger.setLevel(logger.getEffectiveLevel() + 10)
+
+	if opts.mode == 'commit' and not (opts.force or opts.pretend):
+		if opts.ignore_masked:
+			opts.ignore_masked = False
+			logging.warn('Commit mode automatically disables --ignore-masked')
+		if opts.without_mask:
+			opts.without_mask = False
+			logging.warn('Commit mode automatically disables --without-mask')
 
 	return (opts, args)
 
