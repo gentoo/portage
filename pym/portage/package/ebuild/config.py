@@ -491,6 +491,7 @@ class config(object):
 			known_repos = []
 			portdir = ""
 			portdir_overlay = ""
+			portdir_sync = None
 			for confs in [make_globals, make_conf, self.configdict["env"]]:
 				v = confs.get("PORTDIR")
 				if v is not None:
@@ -500,9 +501,15 @@ class config(object):
 				if v is not None:
 					portdir_overlay = v
 					known_repos.extend(shlex_split(v))
+				v = confs.get("SYNC")
+				if v is not None:
+					portdir_sync = v
+
 			known_repos = frozenset(known_repos)
 			self["PORTDIR"] = portdir
 			self["PORTDIR_OVERLAY"] = portdir_overlay
+			if portdir_sync:
+				self["SYNC"] = portdir_sync
 			self.lookuplist = [self.configdict["env"]]
 			if repositories is None:
 				self.repositories = load_repository_config(self)
