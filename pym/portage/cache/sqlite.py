@@ -51,10 +51,7 @@ class database(fs_template.FsBased):
 		try:
 			import sqlite3 as db_module
 		except ImportError:
-			try:
-				from pysqlite2 import dbapi2 as db_module
-			except ImportError as e:
-				raise cache_errors.InitializationError(self.__class__, e)
+			raise cache_errors.InitializationError(self.__class__, e)
 
 		self._db_module = db_module
 		self._db_error = db_module.Error
