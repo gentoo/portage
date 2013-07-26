@@ -51,8 +51,6 @@ docbook:
 
 epydoc:
 	set -e; \
-	# workaround for bug 282760 \
-	touch "$(srcdir)/pym/pysqlite2.py"; \
 	env PYTHONPATH="$(PYTHONPATH)" epydoc \
 		-o "$(WORKDIR)/epydoc" \
 		--name $(PN) \
@@ -64,9 +62,7 @@ epydoc:
 		-e s:^pym/:: \
 		-e s:/:.:g \
 		| sort); \
-	rm -f "$(srcdir)/pym/pysqlite2.py"* \
-		"$(WORKDIR)/epydoc/pysqlite2-"* \
-		"$(WORKDIR)/epydoc/api-objects.txt"; \
+	rm -f "$(WORKDIR)/epydoc/api-objects.txt"; \
 
 test:
 	set -e; \
@@ -214,7 +210,6 @@ install:
 clean:
 	set -e; \
 	$(MAKE) -C "$(srcdir)/doc" clean; \
-	rm -rf "$(srcdir)/pym/pysqlite2.py"* \
-		"$(WORKDIR)/epydoc"; \
+	rm -rf "$(WORKDIR)/epydoc"; \
 
 .PHONY: all clean docbook epydoc install test
