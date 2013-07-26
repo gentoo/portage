@@ -40,8 +40,8 @@ class database(fs_template.FsBased):
 		config.setdefault("autocommit", self.autocommits)
 		config.setdefault("cache_bytes", self.cache_bytes)
 		config.setdefault("synchronous", self.synchronous)
-		# Timeout for throwing a "database is locked" exception (pysqlite
-		# default is 5.0 seconds).
+		# Set longer timeout for throwing a "database is locked" exception.
+		# Default timeout in sqlite3 module is 5.0 seconds.
 		config.setdefault("timeout", 15)
 		self._db_init_connection(config)
 		self._db_init_structures()
@@ -50,7 +50,7 @@ class database(fs_template.FsBased):
 		# sqlite3 is optional with >=python-2.5
 		try:
 			import sqlite3 as db_module
-		except ImportError:
+		except ImportError as e:
 			raise cache_errors.InitializationError(self.__class__, e)
 
 		self._db_module = db_module
@@ -62,7 +62,6 @@ class database(fs_template.FsBased):
 			# Avoid potential UnicodeEncodeError in python-2.x by
 			# only calling str() when it's absolutely necessary.
 			s = str(s)
-		# This is equivalent to the _quote function from pysqlite 1.1.
 		return "'%s'" % s.replace("'", "''")
 
 	def _db_init_connection(self, config):
