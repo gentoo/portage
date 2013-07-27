@@ -638,6 +638,12 @@ if repo_config.sign_commit:
 			# Pass GNUPGHOME to git for bug #462362.
 			commit_env["GNUPGHOME"] = repoman_settings["PORTAGE_GPG_DIR"]
 
+		# Pass GPG_TTY to git for bug #477728.
+		try:
+			commit_env["GPG_TTY"] = os.ttyname(sys.stdin.fileno())
+		except OSError:
+			pass
+
 # In order to disable manifest signatures, repos may set
 # "sign-manifests = false" in metadata/layout.conf. This
 # can be used to prevent merge conflicts like those that
