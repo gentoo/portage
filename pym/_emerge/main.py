@@ -546,6 +546,11 @@ def parse_opts(tmpcmdline, silent=False):
 			"action"   : "store"
 		},
 
+		"--pkg-format": {
+			"help"     : "format of result binary package",
+			"action"   : "store",
+		},
+
 		"--quiet": {
 			"shortopt" : "-q",
 			"help"     : "reduced or condensed output",

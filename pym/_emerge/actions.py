@@ -39,6 +39,7 @@ from portage import shutil
 from portage import eapi_is_supported, _encodings, _unicode_decode
 from portage.cache.cache_errors import CacheError
 from portage.const import GLOBAL_CONFIG_PATH, VCS_DIRS, _DEPCLEAN_LIB_CHECK_DEFAULT
+from portage.const import SUPPORTED_BINPKG_FORMATS
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.dep import Atom
@@ -2933,6 +2934,10 @@ def adjust_config(myopts, settings):
 		settings["NOCOLOR"] = "true"
 		settings.backup_changes("NOCOLOR")
 
+	if "--pkg-format" in myopts:
+		settings["PORTAGE_BINPKG_FORMAT"] = myopts["--pkg-format"]
+		settings.backup_changes("PORTAGE_BINPKG_FORMAT")
+
 def display_missing_pkg_set(root_config, set_name):
 
 	msg = []
@@ -3614,6 +3619,18 @@ def run_action(emerge_config):
 
 	adjust_configs(emerge_config.opts, emerge_config.trees)
 	apply_priorities(emerge_config.target_config.settings)
+
+	for fmt in emerge_config.target_config.settings["PORTAGE_BINPKG_FORMAT"].split():
+		if not fmt in portage.const.SUPPORTED_BINPKG_FORMATS:
+			if "--pkg-format" in emerge_config.opts:
+				problematic="--pkg-format"
+			else:
+				problematic="PORTAGE_BINPKG_FORMAT"
+
+			writemsg_level(("emerge: %s is not set correctly. Format " + \
+				"'%s' is not supported.\n") % (problematic, fmt),
+				level=logging.ERROR, noiselevel=-1)
+			return 1
 
 	if emerge_config.action == 'version':
 		writemsg_stdout(getportageversion(

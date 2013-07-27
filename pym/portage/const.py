@@ -172,6 +172,7 @@ if "PORTAGE_OVERRIDE_EPREFIX" in os.environ:
 
 VCS_DIRS = ("CVS", "RCS", "SCCS", ".bzr", ".git", ".hg", ".svn")
 
+SUPPORTED_BINPKG_FORMATS = ("tar", "rpm")
 # ===========================================================================
 # END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANT
 # ===========================================================================

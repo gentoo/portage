@@ -10,6 +10,8 @@ from _emerge.EbuildMerge import EbuildMerge
 from _emerge.EbuildFetchonly import EbuildFetchonly
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
+from _emerge.TaskSequence import TaskSequence
+
 from portage.util import writemsg
 import portage
 from portage import os
@@ -306,10 +308,20 @@ class EbuildBuild(CompositeTask):
 			self.scheduler.output(msg,
 				log_path=self.settings.get("PORTAGE_LOG_FILE"))
 
-		packager = EbuildBinpkg(background=self.background, pkg=self.pkg,
-			scheduler=self.scheduler, settings=self.settings)
+		binpkg_tasks = TaskSequence()
+		requested_binpkg_formats = self.settings.get("PORTAGE_BINPKG_FORMAT", "tar").split()
+		for pkg_fmt in portage.const.SUPPORTED_BINPKG_FORMATS:
+			if pkg_fmt in requested_binpkg_formats:
+				if pkg_fmt == "rpm":
+					binpkg_tasks.add(EbuildPhase(background=self.background,
+						phase="rpm", scheduler=self.scheduler,
+						settings=self.settings))
+				else:
+					binpkg_tasks.add(EbuildBinpkg(background=self.background,
+						pkg=self.pkg, scheduler=self.scheduler,
+						settings=self.settings))
 
-		self._start_task(packager, self._buildpkg_exit)
+		self._start_task(binpkg_tasks, self._buildpkg_exit)
 
 	def _buildpkg_exit(self, packager):
 		"""
