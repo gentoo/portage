@@ -5084,9 +5084,16 @@ class depgraph(object):
 		matches = graph_db.match_pkgs(atom)
 		if not matches:
 			return None, None
-		pkg = matches[-1] # highest match
-		in_graph = self._dynamic_config._slot_pkg_map[root].get(pkg.slot_atom)
-		return pkg, in_graph
+
+		# There may be multiple matches, and they may
+		# conflict with eachother, so choose the highest
+		# version that has already been added to the graph.
+		for pkg in reversed(matches):
+			if pkg in self._dynamic_config.digraph:
+				return pkg, pkg
+
+		# Fall back to installed packages
+		return self._select_pkg_from_installed(root, atom, onlydeps=onlydeps)
 
 	def _select_pkg_from_installed(self, root, atom, onlydeps=False):
 		"""
