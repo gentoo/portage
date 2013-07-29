@@ -453,11 +453,13 @@ class RepoConfigLoader(object):
 								setattr(repo, k, v)
 
 					if repo.name in prepos:
+						# Silently ignore when PORTDIR overrides the location
+						# setting from the default repos.conf (bug #478544).
 						old_location = prepos[repo.name].location
 						if old_location is not None and \
 							old_location != repo.location and \
-							not (old_location == default_portdir and
-							not exists_raise_eaccess(old_location)):
+							not (base_priority == 0 and
+							old_location == default_portdir):
 							ignored_map.setdefault(repo.name, []).append(old_location)
 							ignored_location_map[old_location] = repo.name
 							if old_location == portdir:
