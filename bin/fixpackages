@@ -14,11 +14,19 @@ import portage
 portage._internal_caller = True
 from portage import os
 from portage.output import EOutput
+from portage.util._argparse import ArgumentParser
 from textwrap import wrap
 from portage._global_updates import _global_updates
 mysettings = portage.settings
 mytrees = portage.db
 mtimedb = portage.mtimedb
+
+description = """The fixpackages program performs package move updates on
+	configuration files, installed packages, and binary packages."""
+description = " ".join(description.split())
+
+parser = ArgumentParser(description=description)
+parser.parse_args()
 
 if mysettings['ROOT'] != "/":
 	out = EOutput()

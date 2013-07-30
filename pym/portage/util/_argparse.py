@@ -17,3 +17,4 @@ except ImportError:
 			parser = OptionParser(**kwargs)
 			self.add_argument = parser.add_option
 			self.parse_known_args = parser.parse_args
+			self.parse_args = parser.parse_args
