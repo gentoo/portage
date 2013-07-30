@@ -471,6 +471,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 								# installed yet for bug #478188.
 								want_update = True
 								for slot_atom, avail_pkg in slot_map.items():
+									if avail_pkg in graph:
+										continue
 									# New-style virtuals have zero cost to install.
 									if slot_atom.startswith("virtual/") or \
 										vardb.match(slot_atom):
