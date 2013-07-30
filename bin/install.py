@@ -160,7 +160,7 @@ def copy_xattrs(opts, files):
 	Returns:
 	  system exit code
 	"""
-	if opts.directory:
+	if opts.directory or not files:
 		return os.EX_OK
 
 	if opts.target_directory is None:
