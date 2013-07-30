@@ -7,16 +7,16 @@ quickpkg \- creates portage packages
 .I quickpkg
 can be utilized to quickly create a package for portage by
 utilizing the files already on your filesystem.  This package
-then can be emerged on any system.  To review syntax for 
+then can be emerged on any system.  To review syntax for
 emerging binary packages, review \fBemerge\fR(1).  The upside
-of this process is that you don't have to wait for the package 
-to unpack, configure, compile, and install before you can have 
-the package ready to go.  The downside is that the package will 
-contain the files that exist on your filesystem even if they have 
+of this process is that you don't have to wait for the package
+to unpack, configure, compile, and install before you can have
+the package ready to go.  The downside is that the package will
+contain the files that exist on your filesystem even if they have
 modified since they were first installed.
 .br
-The packages, after being created, will be placed in \fBPKGDIR\fR.  
-This variable is defined in \fBmake.conf\fR(5) and defaults to 
+The packages, after being created, will be placed in \fBPKGDIR\fR.
+This variable is defined in \fBmake.conf\fR(5) and defaults to
 /usr/portage/packages.
 .SH OPTIONS
 .TP

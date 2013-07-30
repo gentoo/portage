@@ -37,7 +37,7 @@ Defaults to the value of $CHOST.
 \fBACCEPT_KEYWORDS\fR = \fI[space delimited list of KEYWORDS]\fR
 Enable testing of ebuilds that have not yet been deemed 'stable'.  Users
 of the 'x86' architecture would set this to '~x86' while ppc users would
-set this to '~ppc'.  This is an incremental variable.  Only define a 
+set this to '~ppc'.  This is an incremental variable.  Only define a
 ~arch.
 .br
 Defaults to the value of $ARCH.
@@ -68,7 +68,7 @@ This variable is used to mask packages based on PROPERTIES restrictions.
 In addition to property names, the \fI*\fR and \fI-*\fR wildcard tokens are
 also supported. This variable can be temporarily overridden using the
 \fB\-\-accept\-properties\fR option of \fBemerge\fR(1).
-See \fBebuild\fR(5) for more information about PROPERTIES. 
+See \fBebuild\fR(5) for more information about PROPERTIES.
 .br
 Defaults to the value of *.
 .br
@@ -109,7 +109,7 @@ man page for more information.
 Defaults to /var/tmp/ccache
 .TP
 \fBCCACHE_SIZE\fR = \fI"size"\fR
-This controls the space use limitations for ccache.  The default is 2 gigabytes 
+This controls the space use limitations for ccache.  The default is 2 gigabytes
 ('2G').  Sizes are specified with 'G', 'M', or 'K'.
 .TP
 .B CFLAGS CXXFLAGS
@@ -229,7 +229,7 @@ should not be disabled by default.
 .RS
 .TP
 .B assume\-digests
-When commiting work to cvs with \fBrepoman\fR(1), assume that all existing 
+When commiting work to cvs with \fBrepoman\fR(1), assume that all existing
 SRC_URI digests are correct.  This feature also affects digest generation via
 \fBebuild\fR(1) and \fBemerge\fR(1) (emerge generates digests only when the
 \fIdigest\fR feature is enabled). Existing digests for files that do not exist
@@ -256,8 +256,8 @@ Enable a special progress indicator when \fBemerge\fR(1) is calculating
 dependencies.
 .TP
 .B ccache
-Enable portage support for the ccache package.  If the ccache dir is not 
-present in the user's environment, then portage will default to 
+Enable portage support for the ccache package.  If the ccache dir is not
+present in the user's environment, then portage will default to
 ${PORTAGE_TMPDIR}/ccache.
 
 \fBWarning\fR: This feature is known to cause numerous compilation failures.
@@ -344,7 +344,7 @@ Both the \fBebuild\fR(1) command and the \fInoclean\fR feature cause the
 \fIfail\-clean\fR feature to be automatically disabled.
 .TP
 .B getbinpkg
-Force emerges to always try to fetch files from the \fIPORTAGE_BINHOST\fR.  See 
+Force emerges to always try to fetch files from the \fIPORTAGE_BINHOST\fR.  See
 \fBmake.conf\fR(5) for more information.
 .TP
 .B installsources
@@ -475,10 +475,10 @@ selectively disable this feature. It is recommended to leave either
 since otherwise file collisions between packages may result in files being
 overwritten or uninstalled at inappropriate times.
 If \fIcollision\-protect\fR is enabled then it takes precedence over
-\fIprotect\-owned\fR. 
+\fIprotect\-owned\fR.
 .TP
 .B python\-trace
-Output a verbose trace of python execution to stderr when a command's 
+Output a verbose trace of python execution to stderr when a command's
 \-\-debug option is enabled.
 .TP
 .B sandbox
@@ -488,14 +488,14 @@ Enable sandbox\-ing when running \fBemerge\fR(1) and \fBebuild\fR(1).
 Enable SELinux sandbox\-ing.  Do not toggle this \fBFEATURE\fR yourself.
 .TP
 .B sfperms
-Stands for Smart Filesystem Permissions.  Before merging packages to the 
-live filesystem, automatically search for and set permissions on setuid 
-and setgid files.  Files that are setuid have the group and other read 
-bits removed while files that are setgid have the other read bit removed.  
+Stands for Smart Filesystem Permissions.  Before merging packages to the
+live filesystem, automatically search for and set permissions on setuid
+and setgid files.  Files that are setuid have the group and other read
+bits removed while files that are setgid have the other read bit removed.
 See also \fIsuidctl\fR below.
 .TP
 .B sign
-When commiting work to cvs with \fBrepoman\fR(1), sign the Manifest with 
+When commiting work to cvs with \fBrepoman\fR(1), sign the Manifest with
 a GPG key.  Read about the \fIPORTAGE_GPG_KEY\fR variable in
 \fBmake.conf\fR(5).
 .TP
@@ -512,20 +512,20 @@ incompatibility.
 Store logs created by \fBPORTAGE_ELOG_SYSTEM="save"\fR in category
 subdirectories of \fBPORT_LOGDIR/elog\fR, instead of using
 \fBPORT_LOGDIR/elog\fR directly.
-.TP 
+.TP
 .B split\-log
 Store build logs in category subdirectories of \fBPORT_LOGDIR/build\fR,
 instead of using \fBPORT_LOGDIR\fR directly.
 .TP
 .B splitdebug
-Prior to stripping ELF etdyn and etexec files, the debugging info is 
+Prior to stripping ELF etdyn and etexec files, the debugging info is
 stored for later use by various debuggers.  This feature is disabled by
 \fBnostrip\fR.  You should also consider setting \fBcompressdebug\fR so
 the files don't suck up a lot of space.  For installation of source code,
 see \fBinstallsources\fR.
 .TP
 .B strict
-Have portage react strongly to conditions that have the potential to be 
+Have portage react strongly to conditions that have the potential to be
 dangerous (like missing or incorrect digests for ebuilds).
 .TP
 .B stricter
@@ -534,12 +534,12 @@ security provisions (for example textrels, executable stack).  Read about
 the \fIQA_STRICT_*\fR variables in \fBmake.conf\fR(5).
 .TP
 .B suidctl
-Before merging packages to the live filesystem, automatically strip setuid 
+Before merging packages to the live filesystem, automatically strip setuid
 bits from any file that is not listed in \fI/etc/portage/suidctl.conf\fR.
 .TP
 .B test
-Run package\-specific tests during each merge to help make sure 
-the package compiled properly.  See \fItest\fR in \fBebuild\fR(1) 
+Run package\-specific tests during each merge to help make sure
+the package compiled properly.  See \fItest\fR in \fBebuild\fR(1)
 and \fIsrc_test()\fR in \fBebuild\fR(5). This feature implies the "test"
 \fBUSE\fR flag if it is a member of \fBIUSE\fR, either explicitly or
 implicitly (see \fBebuild\fR(5) for more information about \fBIUSE\fR).
@@ -577,7 +577,7 @@ When portage is run as root, drop privileges to portage:portage during the
 fetching of package sources.
 .TP
 .B userpriv
-Allow portage to drop root privileges and compile packages as 
+Allow portage to drop root privileges and compile packages as
 portage:portage without a sandbox (unless \fIusersandbox\fR is also used).
 .TP
 .B usersandbox
@@ -653,7 +653,7 @@ enabled for these flags may be closed as INVALID.
 .TP
 .B MAKEOPTS
 Use this variable if you want to use parallel make.  For example, if you
-have a dual\-processor system, set this variable to "\-j2" or "\-j3" for 
+have a dual\-processor system, set this variable to "\-j2" or "\-j3" for
 enhanced build performance with many packages. Suggested settings are
 between \fICPUs+1\fR and \fI2*CPUs+1\fR. In order to avoid
 excess load, the \fB\-\-load\-average\fR option is recommended.
@@ -698,7 +698,7 @@ This is a list of hosts from which portage will grab prebuilt\-binary packages.
 Each entry in the list must specify the full address of a directory
 serving tbz2's for your system (this directory must contain a 'Packages' index
 file). This is only used when running with
-the get binary pkg options are given to \fBemerge\fR.  Review \fBemerge\fR(1) 
+the get binary pkg options are given to \fBemerge\fR.  Review \fBemerge\fR(1)
 for more information.
 .TP
 \fBPORTAGE_BINHOST_HEADER_URI\fR = \
@@ -850,7 +850,7 @@ Additional rsync options to be used by \fBemerge \-\-sync\fR.
 Defaults to no value.
 .TP
 \fBPORTAGE_RSYNC_OPTS\fR = \fI[rsync options string]\fR
-Default rsync options to be used by \fBemerge \-\-sync\fR. 
+Default rsync options to be used by \fBemerge \-\-sync\fR.
 .br
 \fBDon't change this unless you know exactly what you're doing!\fR
 .br
@@ -908,7 +908,7 @@ Defines the location of the Portage tree. This is the repository for all
 profile information as well as all ebuilds. If you change this, you must update
 your /etc/portage/make.profile symlink accordingly.
 .br
-Defaults to /usr/portage. 
+Defaults to /usr/portage.
 .br
 \fB***Warning***\fR
 .br
@@ -916,13 +916,13 @@ Data stored inside \fBPORTDIR\fR is in peril of being overwritten or deleted by
 the emerge \-\-sync command. The default value of
 \fBPORTAGE_RSYNC_OPTS\fR will protect the default locations of
 \fBDISTDIR\fR and \fBPKGDIR\fR, but users are warned that any other locations
-inside \fBPORTDIR\fR are not necessarily safe for data storage.  You should not 
-put other data (such as overlays) in your \fBPORTDIR\fB.  Portage will walk 
+inside \fBPORTDIR\fR are not necessarily safe for data storage.  You should not
+put other data (such as overlays) in your \fBPORTDIR\fB.  Portage will walk
 directory structures and may arbitrarily add invalid categories as packages.
 .TP
 \fBPORTDIR_OVERLAY\fR = \fI"[path] [different\-path] [etc...]"\fR
-Defines the directories in which user made ebuilds may be stored and not 
-overwriten when `emerge \-\-sync` is run.  This is a space delimited list of 
+Defines the directories in which user made ebuilds may be stored and not
+overwriten when `emerge \-\-sync` is run.  This is a space delimited list of
 directories.
 .br
 Defaults to no value.
@@ -959,9 +959,9 @@ be necessary in order to continue a partially downloaded file located at
 \\${DISTDIR}/\\${FILE}.
 .TP
 \fBROOT\fR = \fI[path]\fR
-Use \fBROOT\fR to specify the target root filesystem to be used for merging 
+Use \fBROOT\fR to specify the target root filesystem to be used for merging
 packages or ebuilds.
-Typically, you should set this setting in the environment rather than in 
+Typically, you should set this setting in the environment rather than in
 \fImake.conf\fR itself. It's commonly used for creating new build
 images. Make sure you use an absolute path. Refer to the
 \fBCross-compilation\fR section of \fBebuild\fR(5) for information about
@@ -1085,6 +1085,6 @@ Contains a list of all local USE variables.
 .BR ebuild (1),
 .BR ebuild (5)
 .TP
-The \fI/usr/sbin/ebuild.sh\fR script. 
+The \fI/usr/sbin/ebuild.sh\fR script.
 .TP
 The helper apps in \fI/usr/lib/portage/bin\fR.
