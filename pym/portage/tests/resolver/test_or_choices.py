@@ -47,10 +47,24 @@ class OrChoicesTestCase(TestCase):
 		world = ["dev-libs/gobject-introspection", "sys-apps/systemd-ui"]
 
 		test_cases = (
-			# Demonstrate that vala:0.20 update is not pulled in, as in bug #478188
+			# Demonstrate that vala:0.20 update is pulled in, for bug #478188
 			ResolverPlaygroundTestCase(
 				["@world"],
 				options = {"--update": True, "--deep": True},
+				success=True,
+				all_permutations = True,
+				mergelist = ['dev-lang/vala-0.20.0']),
+			# Verify that vala:0.20 is not pulled in without --deep
+			ResolverPlaygroundTestCase(
+				["@world"],
+				options = {"--update": True},
+				success=True,
+				all_permutations = True,
+				mergelist = []),
+			# Verify that vala:0.20 is not pulled in without --update
+			ResolverPlaygroundTestCase(
+				["@world"],
+				options = {"--selective": True, "--deep": True},
 				success=True,
 				all_permutations = True,
 				mergelist = []),

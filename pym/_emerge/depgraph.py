@@ -454,6 +454,7 @@ class _dynamic_depgraph_config(object):
 			self._graph_trees[myroot]["vartree"]    = graph_tree
 			self._graph_trees[myroot]["graph_db"]   = graph_tree.dbapi
 			self._graph_trees[myroot]["graph"]      = self.digraph
+			self._graph_trees[myroot]["want_update_pkg"] = depgraph._want_update_pkg
 			def filtered_tree():
 				pass
 			filtered_tree.dbapi = _dep_check_composite_db(depgraph, myroot)
@@ -480,6 +481,7 @@ class _dynamic_depgraph_config(object):
 			self._filtered_trees[myroot]["graph"]    = self.digraph
 			self._filtered_trees[myroot]["vartree"] = \
 				depgraph._frozen_config.trees[myroot]["vartree"]
+			self._filtered_trees[myroot]["want_update_pkg"] = depgraph._want_update_pkg
 
 			dbs = []
 			#               (db, pkg_type, built, installed, db_keys)
@@ -4313,6 +4315,31 @@ class depgraph(object):
 			return True
 
 		return not arg
+
+	def _want_update_pkg(self, parent, pkg):
+		arg_atoms = None
+		try:
+			arg_atoms = list(self._iter_atoms_for_pkg(pkg))
+		except InvalidDependString:
+			if not pkg.installed:
+				# should have been masked before it was selected
+				raise
+
+		depth = parent.depth or 0
+		depth += 1
+
+		if arg_atoms:
+			for arg, atom in arg_atoms:
+				if arg.reset_depth:
+					depth = 0
+					break
+
+		deep = self._dynamic_config.myparams.get("deep", 0)
+		update = "--update" in self._frozen_config.myopts
+
+		return (not self._dynamic_config._complete_mode and
+			(arg_atoms or update) and
+			not (deep is not True and depth > deep))
 
 	def _equiv_ebuild_visible(self, pkg, autounmask_level=None):
 		try:
