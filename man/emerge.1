@@ -590,7 +590,8 @@ Skips the packages specified on the command\-line that have already
 been installed.  Without this option, any package atoms or package sets
 you specify on the command\-line \fBwill\fR cause Portage to remerge
 the package, even if it is already installed.  Note that Portage will
-not remerge dependencies by default.
+not remerge dependencies by default. This option can be used to update the
+world file without rebuilding the packages.
 .TP
 .BR "\-\-nospinner"
 Disables the spinner for the session.  The spinner is active when the
