@@ -4317,6 +4317,11 @@ class depgraph(object):
 		return not arg
 
 	def _want_update_pkg(self, parent, pkg):
+
+		if self._frozen_config.excluded_pkgs.findAtomForPackage(pkg,
+			modified_use=self._pkg_use_enabled(pkg)):
+			return False
+
 		arg_atoms = None
 		try:
 			arg_atoms = list(self._iter_atoms_for_pkg(pkg))
