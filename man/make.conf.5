@@ -154,13 +154,14 @@ automatically have /* appended to them.
 Defaults to "/lib/modules/* *.py[co]".
 .TP
 \fBCONFIG_PROTECT\fR = \fI[space delimited list of files and/or directories]\fR
-All files and/or directories that are defined here will have "config file protection"
-enabled for them. See the \fBCONFIGURATION FILES\fR section
+All files and/or directories that are defined here will have "config file
+protection" enabled for them. See the \fBCONFIGURATION FILES\fR section
 of \fBemerge\fR(1) for more information.
 .TP
-\fBCONFIG_PROTECT_MASK\fR = \fI[space delimited list of files and/or directories]\fR
-All files and/or directories that are defined here will have "config file protection"
-disabled for them. See the \fBCONFIGURATION FILES\fR section
+\fBCONFIG_PROTECT_MASK\fR = \fI[space delimited list of files and/or \
+directories]\fR
+All files and/or directories that are defined here will have "config file
+protection" disabled for them. See the \fBCONFIGURATION FILES\fR section
 of \fBemerge\fR(1) for more information.
 .TP
 .B CTARGET
@@ -196,9 +197,9 @@ Defines whether or not to ignore audible beeps when displaying important
 informational messages.  This variable is unset by default.
 .TP
 .B EMERGE_DEFAULT_OPTS
-Options to append to the end of the \fBemerge\fR(1) command line on every invocation.
-These options will not be appended to the command line if \-\-ignore\-default\-opts
-is specified.
+Options to append to the end of the \fBemerge\fR(1) command line on every
+invocation. These options will not be appended to the command line if
+\-\-ignore\-default\-opts is specified.
 .TP
 .B EMERGE_LOG_DIR
 Controls the location of emerge.log and emerge-fetch.log.
@@ -495,7 +496,8 @@ See also \fIsuidctl\fR below.
 .TP
 .B sign
 When commiting work to cvs with \fBrepoman\fR(1), sign the Manifest with 
-a GPG key.  Read about the \fIPORTAGE_GPG_KEY\fR variable in \fBmake.conf\fR(5).
+a GPG key.  Read about the \fIPORTAGE_GPG_KEY\fR variable in
+\fBmake.conf\fR(5).
 .TP
 .B skiprocheck
 Skip write access checks on \fBDISTDIR\fR when fetching files. This is
@@ -579,7 +581,8 @@ Allow portage to drop root privileges and compile packages as
 portage:portage without a sandbox (unless \fIusersandbox\fR is also used).
 .TP
 .B usersandbox
-Enable the sandbox in the compile phase, when running without root privs (\fIuserpriv\fR).
+Enable the sandbox in the compile phase, when running without root privs
+(\fIuserpriv\fR).
 .TP
 .B usersync
 Drop privileges to the owner of \fBPORTDIR\fR for \fBemerge(1) --sync\fR
@@ -679,9 +682,9 @@ Defaults to /usr/portage/packages.
 This variable defines the directory in which per\-ebuild logs are kept.
 Logs are created only when this is set. They are stored as
 ${CATEGORY}:${PF}:YYYYMMDD\-HHMMSS.log in the directory specified. If the
-directory does not exist, it will be created automatically and group permissions
-will be applied to it.  If the directory already exists, portage will not
-modify it's permissions.
+directory does not exist, it will be created automatically and group
+permissions will be applied to it.  If the directory already exists, portage
+will not modify it's permissions.
 .TP
 .B PORT_LOGDIR_CLEAN
 This variable should contain a command for portage to call in order
@@ -698,7 +701,8 @@ file). This is only used when running with
 the get binary pkg options are given to \fBemerge\fR.  Review \fBemerge\fR(1) 
 for more information.
 .TP
-\fBPORTAGE_BINHOST_HEADER_URI\fR = \fI"ftp://login:pass@grp.mirror.site/pub/grp/i686/athlon\-xp/"\fR
+\fBPORTAGE_BINHOST_HEADER_URI\fR = \
+\fI"ftp://login:pass@grp.mirror.site/pub/grp/i686/athlon\-xp/"\fR
 This variable only makes sense on a system that will serve as a binhost and
 build packages for clients.  It defines the URI header field for the package
 index file which is located at ${PKGDIR}/Packages. Clients that have
@@ -1060,10 +1064,12 @@ Arfrever Frehtes Taifersar Arahesis <arfrever@apache.org>
 .SH "FILES"
 .TP
 \fB/etc/make.conf\fR and \fB/etc/portage/make.conf\fR
-Contains variables for the build\-process and overwrites those in make.defaults.
+Contains variables for the build\-process and overwrites those in
+make.defaults.
 .TP
 .B /usr/share/portage/config/make.globals
-Contains the default variables for the build\-process, you should edit \fI/etc/portage/make.conf\fR instead.
+Contains the default variables for the build\-process, you should edit
+\fI/etc/portage/make.conf\fR instead.
 .TP
 .B /etc/portage/color.map
 Contains variables customizing colors.

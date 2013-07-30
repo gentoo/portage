@@ -240,7 +240,8 @@ explaining how they can upgrade.
 default-linux/x86/2005.0
 # emerge -n '>=sys-apps/portage-2.0.51'
 # rm -f /etc/portage/make.profile
-# ln -s /usr/portage/profiles/default-linux/alpha/2005.0 /etc/portage/make.profile
+# ln -s /usr/portage/profiles/default-linux/alpha/2005.0 \
+/etc/portage/make.profile
 .fi
 .TP
 .BR eapi
@@ -281,8 +282,8 @@ for every value in that variable, so USE_EXPAND="FOO" and FOO="bar bla" results
 in USE="foo_bar foo_bla".
 .TP
 \fBUSE_EXPAND_HIDDEN\fR = \fI[space delimited list of variable names]\fR
-Names of \fBUSE_EXPAND\fR variables that should not be shown in the verbose merge
-list output of the \fBemerge\fR(1) command.
+Names of \fBUSE_EXPAND\fR variables that should not be shown in the verbose
+merge list output of the \fBemerge\fR(1) command.
 .TP
 \fBUSE_EXPAND_IMPLICIT\fR = \fI[space delimited list of variable names]\fR
 Defines \fBUSE_EXPAND\fR and \fBUSE_EXPAND_UNPREFIXED\fR
@@ -307,7 +308,8 @@ Defines ELIBC values used to generate implicit
 Defines KERNEL values used to generate implicit
 \fBIUSE\fR for ebuilds using \fBEAPI 5\fR or later.
 .TP
-\fBUSE_EXPAND_VALUES_USERLAND\fR = \fI[space delimited list of USERLAND values]\fR
+\fBUSE_EXPAND_VALUES_USERLAND\fR = \fI[space delimited list of USERLAND \
+values]\fR
 Defines USERLAND values used to generate implicit
 \fBIUSE\fR for ebuilds using \fBEAPI 5\fR or later.
 .TP
@@ -615,9 +617,9 @@ to keep all metadata in that format alone (useful for querying), enable
 FEATURES="metadata-transfer" in \fBmake.conf\fR(5).
 .TP
 \fBpackage.accept_keywords\fR and \fBpackage.keywords\fR
-Per\-package ACCEPT_KEYWORDS.  Useful for mixing unstable packages in with a normally 
-stable system or vice versa.  This will allow ACCEPT_KEYWORDS to be augmented
-for a single package. If both \fBpackage.accept_keywords\fR and
+Per\-package ACCEPT_KEYWORDS.  Useful for mixing unstable packages in with a
+normally stable system or vice versa.  This will allow ACCEPT_KEYWORDS to be
+augmented for a single package. If both \fBpackage.accept_keywords\fR and
 \fBpackage.keywords\fR are present, both of them will be used, and values
 from \fBpackage.accept_keywords\fR will override values from
 \fBpackage.keywords\fR. The \fBpackage.accept_keywords\fR file is
@@ -658,8 +660,8 @@ example, a binary only package which is built for x86 will look like:
 
 games-fps/quake3-demo-1.11.ebuild:KEYWORDS="-* x86"
 
-If you wish to accept this package anyways, then use one of the other keywords in your 
-package.accept_keywords like this:
+If you wish to accept this package anyways, then use one of the other keywords
+in your package.accept_keywords like this:
 
 games-fps/quake3-demo x86
 
@@ -687,7 +689,8 @@ directory and have the same format as \fBmake.conf\fR(5).
 
 .I Example:
 .nf
-# use environment variables from /etc/portage/env/glibc.conf for the glibc package
+# use environment variables from /etc/portage/env/glibc.conf for the glibc \
+package
 sys\-libs/glibc glibc.conf
 .fi
 
@@ -722,8 +725,8 @@ versions earlier than 1.0.4496.  No problem!
 .fi
 .TP
 .BR package.properties
-This will allow ACCEPT_PROPERTIES (see \fBmake.conf\fR(5)) to be augmented for a
-single package.
+This will allow ACCEPT_PROPERTIES (see \fBmake.conf\fR(5)) to be augmented for
+a single package.
 
 .I Format:
 .nf
@@ -763,7 +766,8 @@ Specifies \fIsite\-specific\fR repository configuration information.
 .I Format:
 .nf
 \- comments begin with # (no inline comments)
-\- configuration of each repository is specified in a section starting with "[${repository_name}]"
+\- configuration of each repository is specified in a section starting with \
+"[${repository_name}]"
 \- attributes are specified in "${attribute} = ${value}" format
 .fi
 
@@ -853,7 +857,8 @@ Specifies type of synchronization.
 Valid values: cvs, git, rsync
 .TP
 .B sync\-uri
-Specifies URI of repository used for synchronization performed by `emerge \-\-sync`.
+Specifies URI of repository used for synchronization performed by `emerge
+\-\-sync`.
 .RS
 .TP
 Syntax:
@@ -1185,9 +1190,11 @@ mirrors.  Keeps us from overloading a single server.
 
 .I Example:
 .nf
-sourceforge http://aleron.dl.sourceforge.net/sourceforge http://unc.dl.sourceforge.net/sourceforge
+sourceforge http://aleron.dl.sourceforge.net/sourceforge \
+http://unc.dl.sourceforge.net/sourceforge
 
-gentoo http://distro.ibiblio.org/pub/linux/distributions/gentoo/distfiles/ ftp://ftp.gtlib.cc.gatech.edu/pub/gentoo/distfiles
+gentoo http://distro.ibiblio.org/pub/linux/distributions/gentoo/distfiles/ \
+ftp://ftp.gtlib.cc.gatech.edu/pub/gentoo/distfiles
 
 kernel http://www.kernel.org/pub http://www.us.kernel.org/pub
 .fi

@@ -12,9 +12,9 @@ contain pre/post install/remove commands, as required.  All ebuild scripts are
 written in bash.
 
 .SS "Dependencies"
-A \fIdepend atom\fR is simply a dependency that is used by portage when calculating
-relationships between packages.  Please note that if the atom has not already
-been emerged, then the latest version available is matched.
+A \fIdepend atom\fR is simply a dependency that is used by portage when
+calculating relationships between packages.  Please note that if the atom has
+not already been emerged, then the latest version available is matched.
 .TP
 .B Atom Bases
 The base atom is just a full category/packagename.
@@ -38,17 +38,18 @@ Examples:
 	net\-misc/dhcp\fI\-3.0_p2\fR
 .fi
 
-Versions are normally made up of two or three numbers separated by periods, such
-as 1.2 or 4.5.2.  This string may be followed by a character such as 1.2a or 
-4.5.2z.  Note that this letter is \fInot\fR meant to indicate alpha, beta,
+Versions are normally made up of two or three numbers separated by periods,
+such as 1.2 or 4.5.2.  This string may be followed by a character such as 1.2a
+or 4.5.2z.  Note that this letter is \fInot\fR meant to indicate alpha, beta,
 etc... status.  For that, use the optional suffix; either _alpha, _beta, _pre 
 (pre\-release), _rc (release candidate), or _p (patch).  This means for the 
 3rd pre\-release of a package, you would use something like 1.2_pre3.  The 
 suffixes here can be arbitrarily chained without limitation.
 .TP
 .B Atom Prefix Operators [> >= = <= <]
-Sometimes you want to be able to depend on general versions rather than specifying
-exact versions all the time.  Hence we provide standard boolean operators:
+Sometimes you want to be able to depend on general versions rather than
+specifying exact versions all the time.  Hence we provide standard boolean
+operators:
 
 Examples:
 .nf
@@ -261,13 +262,13 @@ following syntax:
 jpeg? ( media\-libs/jpeg )
 .TP
 .B !usevar? ( Atom )
-If you want to include a package only if the user does not have a certain option
-in their \fBUSE\fR variable, then use the following syntax:
+If you want to include a package only if the user does not have a certain
+option in their \fBUSE\fR variable, then use the following syntax:
 
 !nophysfs? ( dev\-games/physfs )
 
-This is often useful for those times when you want to want to add optional support
-for a feature and have it enabled by default.
+This is often useful for those times when you want to want to add optional
+support for a feature and have it enabled by default.
 .TP
 .B usevar? ( Atom if true ) !usevar? ( Atom if false )
 For functionality like the tertiary operator found in C you must use
@@ -769,7 +770,8 @@ The paths may contain fnmatch patterns.
 .B QA_FLAGS_IGNORED
 This should contain a list of file paths, relative to the image directory, of
 files that do not contain .GCC.command.line sections or contain .hash sections.
-The paths may contain regular expressions with escape\-quoted special characters.
+The paths may contain regular expressions with escape\-quoted special
+characters.
 
 This variable is intended to be used on files of binary packages which ignore
 CFLAGS, CXXFLAGS, FFLAGS, FCFLAGS, and LDFLAGS variables.
@@ -777,7 +779,8 @@ CFLAGS, CXXFLAGS, FFLAGS, FCFLAGS, and LDFLAGS variables.
 .B QA_MULTILIB_PATHS
 This should contain a list of file paths, relative to the image directory, of
 files that should be ignored for the multilib\-strict checks.
-The paths may contain regular expressions with escape\-quoted special characters.
+The paths may contain regular expressions with escape\-quoted special
+characters.
 .TP
 .B QA_PRESTRIPPED
 This should contain a list of file paths, relative to the image directory, of
@@ -999,7 +1002,8 @@ fi
 .fi
 .RE
 .TP
-.B usex\fR \fI<USE flag>\fR \fI[true output]\fR \fI[false output]\fR \fI[true suffix]\fR \fI[false suffix]
+.B usex\fR \fI<USE flag>\fR \fI[true output]\fR \fI[false output]\fR \fI[true \
+suffix]\fR \fI[false suffix]
 If USE flag is set, echo [true output][true suffix] (defaults to
 "yes"), otherwise echo [false output][false suffix] (defaults to
 "no"). The usex helper is available beginning with \fBEAPI 5\fR.
@@ -1007,14 +1011,14 @@ If USE flag is set, echo [true output][true suffix] (defaults to
 .B use_with\fR \fI<USE item>\fR \fI[configure name]\fR \fI[configure opt]
 Useful for creating custom options to pass to a configure script. If \fIUSE
 item\fR is in the \fBUSE\fR variable and a \fIconfigure opt\fR is specified,
-then the string \fI\-\-with\-[configure name]=[configure opt]\fR will be echoed.
-If \fIconfigure opt\fR is not specified, then just \fI\-\-with\-[configure
-name]\fR will be echoed.  If \fIUSE item\fR is not in the \fBUSE\fR variable,
-then the string \fI\-\-without\-[configure name]\fR will be echoed. If
-\fIconfigure name\fR is not specified, then \fIUSE item\fR will be used in
-its place. Beginning with \fBEAPI 4\fR, an empty \fIconfigure opt\fR argument
-is recognized. In \fBEAPI 3\fR and earlier, an empty \fIconfigure opt\fR
-argument is treated as if it weren't provided.
+then the string \fI\-\-with\-[configure name]=[configure opt]\fR will be
+echoed. If \fIconfigure opt\fR is not specified, then just
+\fI\-\-with\-[configure name]\fR will be echoed.  If \fIUSE item\fR is not in
+the \fBUSE\fR variable, then the string \fI\-\-without\-[configure name]\fR
+will be echoed. If \fIconfigure name\fR is not specified, then \fIUSE item\fR
+will be used in its place. Beginning with \fBEAPI 4\fR, an empty \fIconfigure
+opt\fR argument is recognized. In \fBEAPI 3\fR and earlier, an empty
+\fIconfigure opt\fR argument is treated as if it weren't provided.
 .RS
 .TP
 .I Examples:
@@ -1039,9 +1043,9 @@ myconf=$(use_with sdl SDL all\-plugins)
 .TP
 .B use_enable\fR \fI<USE item>\fR \fI[configure name]\fR \fI[configure opt]
 Same as \fBuse_with\fR above, except that the configure options are
-\fI\-\-enable\-\fR instead of \fI\-\-with\-\fR and \fI\-\-disable\-\fR instead of
-\fI\-\-without\-\fR. Beginning with \fBEAPI 4\fR, an empty \fIconfigure opt\fR
-argument is recognized. In \fBEAPI 3\fR and earlier, an empty
+\fI\-\-enable\-\fR instead of \fI\-\-with\-\fR and \fI\-\-disable\-\fR instead
+of \fI\-\-without\-\fR. Beginning with \fBEAPI 4\fR, an empty \fIconfigure
+opt\fR argument is recognized. In \fBEAPI 3\fR and earlier, an empty
 \fIconfigure opt\fR argument is treated as if it weren't provided.
 .TP
 .B hasv\fR \fI<item>\fR \fI<item list>
@@ -1071,7 +1075,8 @@ to apply to the host root instead of ${ROOT}.
 Example:
 .nf
 	VERINS="$(best_version net\-ftp/glftpd)"
-	(VERINS now has the value "net\-ftp/glftpd\-1.27" if glftpd\-1.27 is installed)
+	(VERINS now has the value "net\-ftp/glftpd\-1.27" if glftpd\-1.27 is \
+	installed)
 .fi
 
 .SS "Hooks:"
@@ -1391,12 +1396,15 @@ with file mode \fI0644\fR (this can be overridden with the
 \fBinsopts\fR function). Setting \-r sets recursive. The
 \fBdoheader\fR helper is available beginning with \fBEAPI 5\fR.
 .TP
-.B dohtml\fR \fI [\-a filetypes] [\-r] [\-x list\-of\-dirs\-to\-ignore] [list\-of\-files\-and\-dirs]
+.B dohtml\fR \fI [\-a filetypes] [\-r] [\-x list\-of\-dirs\-to\-ignore] \
+[list\-of\-files\-and\-dirs]
 Installs the files in the list of files (space\-separated list) into
-/usr/share/doc/${PF}/html provided the file ends in .htm, .html, .css, .js, .gif, .jpeg, .jpg, or .png.
+/usr/share/doc/${PF}/html provided the file ends in .htm, .html, .css, .js, \
+.gif, .jpeg, .jpg, or .png.
 Setting \fI\-a\fR limits what types of files will be included,
 \fI\-A\fR appends to the default list, setting \fI\-x\fR sets which dirs to
-exclude (CVS excluded by default), \fI\-p\fR sets a document prefix, \fI\-r\fR sets recursive.
+exclude (CVS excluded by default), \fI\-p\fR sets a document prefix,
+\fI\-r\fR sets recursive.
 .TP
 .B doinfo\fR \fI<info\-file> [list of more info\-files]
 Installs info\-pages into \fIDESTDIR\fR/info.  Files are automatically
@@ -1450,7 +1458,8 @@ when installing into the document tree
 (based in /usr/share/doc/${PF}/).  Default is no subdir, or just "".
 .TP
 .B dodoc\fR \fI[-r] <document> [list of more documents]
-Installs a document or a list of documents into /usr/share/doc/${PF}/\fI<docinto path>\fR.
+Installs a document or a list of documents into
+/usr/share/doc/${PF}/\fI<docinto path>\fR.
 Documents are marked for compression.  Creates all necessary dirs.
 Beginning with \fBEAPI 4\fR, there is support for recursion, enabled by the
 new \fI\-r\fR option.
@@ -1528,7 +1537,8 @@ The \fI/usr/lib/portage/bin/ebuild.sh\fR script.
 The helper apps in \fI/usr/lib/portage/bin\fR.
 .TP
 .B /etc/portage/make.conf
-Contains variables for the build\-process and overwrites those in make.defaults.
+Contains variables for the build\-process and overwrites those in
+make.defaults.
 .TP
 .B /usr/share/portage/config/make.globals
 Contains the default variables for the build\-process, you should edit
