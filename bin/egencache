@@ -35,7 +35,6 @@ signal.signal(debug_signum, debug_signal)
 
 import io
 import logging
-import optparse
 import subprocess
 import time
 import textwrap
@@ -52,6 +51,7 @@ from portage.cache.cache_errors import CacheError, StatCollision
 from portage.manifest import guessManifestFileType
 from portage.package.ebuild._parallel_manifest.ManifestScheduler import ManifestScheduler
 from portage.util import cmp_sort_key, writemsg_level
+from portage.util._argparse import ArgumentParser
 from portage.util._async.run_main_scheduler import run_main_scheduler
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage import cpv_getkey
@@ -77,95 +77,90 @@ if sys.hexversion >= 0x3000000:
 
 def parse_args(args):
 	usage = "egencache [options] <action> ... [atom] ..."
-	parser = optparse.OptionParser(usage=usage)
+	parser = ArgumentParser(usage=usage)
 
-	actions = optparse.OptionGroup(parser, 'Actions')
-	actions.add_option("--update",
+	actions = parser.add_argument_group('Actions')
+	actions.add_argument("--update",
 		action="store_true",
 		help="update metadata/md5-cache/ (generate as necessary)")
-	actions.add_option("--update-use-local-desc",
+	actions.add_argument("--update-use-local-desc",
 		action="store_true",
 		help="update the use.local.desc file from metadata.xml")
-	actions.add_option("--update-changelogs",
+	actions.add_argument("--update-changelogs",
 		action="store_true",
 		help="update the ChangeLog files from SCM logs")
-	actions.add_option("--update-manifests",
+	actions.add_argument("--update-manifests",
 		action="store_true",
 		help="update manifests")
-	parser.add_option_group(actions)
 
-	common = optparse.OptionGroup(parser, 'Common options')
-	common.add_option("--repo",
+	common = parser.add_argument_group('Common options')
+	common.add_argument("--repo",
 		action="store",
 		help="name of repo to operate on")
-	common.add_option("--config-root",
+	common.add_argument("--config-root",
 		help="location of portage config files",
 		dest="portage_configroot")
-	common.add_option("--gpg-dir",
+	common.add_argument("--gpg-dir",
 		help="override the PORTAGE_GPG_DIR variable",
 		dest="gpg_dir")
-	common.add_option("--gpg-key",
+	common.add_argument("--gpg-key",
 		help="override the PORTAGE_GPG_KEY variable",
 		dest="gpg_key")
-	common.add_option("--portdir",
+	common.add_argument("--portdir",
 		help="override the PORTDIR variable (deprecated in favor of --repositories-configuration)",
 		dest="portdir")
-	common.add_option("--portdir-overlay",
+	common.add_argument("--portdir-overlay",
 		help="override the PORTDIR_OVERLAY variable (deprecated in favor of --repositories-configuration)",
 		dest="portdir_overlay")
-	common.add_option("--repositories-configuration",
+	common.add_argument("--repositories-configuration",
 		help="override configuration of repositories (in format of repos.conf)",
 		dest="repositories_configuration")
-	common.add_option("--sign-manifests",
-		type="choice",
+	common.add_argument("--sign-manifests",
 		choices=('y', 'n'),
 		metavar="<y|n>",
 		help="manually override layout.conf sign-manifests setting")
-	common.add_option("--strict-manifests",
-		type="choice",
+	common.add_argument("--strict-manifests",
 		choices=('y', 'n'),
 		metavar="<y|n>",
 		help="manually override \"strict\" FEATURES setting")
-	common.add_option("--thin-manifests",
-		type="choice",
+	common.add_argument("--thin-manifests",
 		choices=('y', 'n'),
 		metavar="<y|n>",
 		help="manually override layout.conf thin-manifests setting")
-	common.add_option("--tolerant",
+	common.add_argument("--tolerant",
 		action="store_true",
 		help="exit successfully if only minor errors occurred")
-	common.add_option("--ignore-default-opts",
+	common.add_argument("--ignore-default-opts",
 		action="store_true",
 		help="do not use the EGENCACHE_DEFAULT_OPTS environment variable")
-	parser.add_option_group(common)
 
-	update = optparse.OptionGroup(parser, '--update options')
-	update.add_option("--cache-dir",
+	update = parser.add_argument_group('--update options')
+	update.add_argument("--cache-dir",
 		help="location of the metadata cache",
 		dest="cache_dir")
-	update.add_option("-j", "--jobs",
+	update.add_argument("-j", "--jobs",
+		type=int,
 		action="store",
 		help="max ebuild processes to spawn")
-	update.add_option("--load-average",
+	update.add_argument("--load-average",
+		type=float,
 		action="store",
 		help="max load allowed when spawning multiple jobs",
 		dest="load_average")
-	update.add_option("--rsync",
+	update.add_argument("--rsync",
 		action="store_true",
 		help="enable rsync stat collision workaround " + \
 			"for bug 139134 (use with --update)")
-	parser.add_option_group(update)
 
-	uld = optparse.OptionGroup(parser, '--update-use-local-desc options')
-	uld.add_option("--preserve-comments",
+	uld = parser.add_argument_group('--update-use-local-desc options')
+	uld.add_argument("--preserve-comments",
 		action="store_true",
 		help="preserve the comments from the existing use.local.desc file")
-	uld.add_option("--use-local-desc-output",
+	uld.add_argument("--use-local-desc-output",
 		help="output file for use.local.desc data (or '-' for stdout)",
 		dest="uld_output")
-	parser.add_option_group(uld)
 
-	options, args = parser.parse_args(args)
+	options, args = parser.parse_known_args(args)
 
 	if options.jobs:
 		jobs = None
