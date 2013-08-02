@@ -1,7 +1,8 @@
 #!/bin/bash
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+PORTAGE_PYM_PATH=${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/helper-functions.sh
 
 # avoid multiple calls to `has`.  this creates things like:
@@ -42,10 +43,12 @@ if [[ ${KERNEL} == linux ]] && ${FEATURES_xattr} ; then
 		}
 	else
 		dump_xattrs() {
+			PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
 			"${PORTAGE_PYTHON:-/usr/bin/python}" \
 			"${PORTAGE_BIN_PATH}/xattr-helper.py" --dump < <(echo -n "$1")
 		}
 		restore_xattrs() {
+			PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
 			"${PORTAGE_PYTHON:-/usr/bin/python}" \
 			"${PORTAGE_BIN_PATH}/xattr-helper.py" --restore
 		}
