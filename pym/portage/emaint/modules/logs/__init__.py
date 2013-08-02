@@ -1,4 +1,4 @@
-# Copyright 2005-2012 Gentoo Foundation
+# Copyright 2005-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """Check and clean old logs in the PORT_LOGDIR.
@@ -27,7 +27,7 @@ module_spec = {
 					"short": "-t", "long": "--time",
 					"help": "(cleanlogs only): -t, --time   Delete logs older than NUM of days",
 					'status': "",
-					'type': 'int',
+					'type': int,
 					'dest': 'NUM',
 					'func': 'clean'
 					},

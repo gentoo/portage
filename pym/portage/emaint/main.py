@@ -6,34 +6,56 @@ from __future__ import print_function
 
 import sys
 import textwrap
-from optparse import OptionParser
-
 
 import portage
 from portage import os
 from portage.emaint.module import Modules
 from portage.emaint.progress import ProgressBar
 from portage.emaint.defaults import DEFAULT_OPTIONS
+from portage.util._argparse import ArgumentParser
 
 class OptionItem(object):
-	"""class to hold module OptionParser options data
+	"""class to hold module ArgumentParser options data
 	"""
 
-	def __init__(self, opt, parser):
+	def __init__(self, opt):
 		"""
 		@type opt: dictionary
 		@param opt: options parser options
 		"""
-		self.parser = parser
-		self.short = opt['short']
-		self.long = opt['long']
-		self.help = opt['help']
-		self.status = opt['status']
-		self.func = opt['func']
-		self.action = opt.get('action', 'store')
-		self.type = opt.get('type', None)
-		self.dest = opt.get('dest', None)
+		self.short = opt.get('short')
+		self.long = opt.get('long')
+		self.help = opt.get('help')
+		self.status = opt.get('status')
+		self.func = opt.get('func')
+		self.action = opt.get('action')
+		self.type = opt.get('type')
+		self.dest = opt.get('dest')
 
+	@property
+	def pargs(self):
+		pargs = []
+		if self.short is not None:
+			pargs.append(self.short)
+		if self.long is not None:
+			pargs.append(self.long)
+		return pargs
+
+	@property
+	def kwargs(self):
+		# Support for keyword arguments varies depending on the action,
+		# so only pass in the keywords that are needed, in order
+		# to avoid a TypeError.
+		kwargs = {}
+		if self.help is not None:
+			kwargs['help'] = self.help
+		if self.action is not None:
+			kwargs['action'] = self.action
+		if self.type is not None:
+			kwargs['type'] = self.type
+		if self.dest is not None:
+			kwargs['dest'] = self.dest
+		return kwargs
 
 def usage(module_controller):
 		_usage = "usage: emaint [options] COMMAND"
@@ -133,21 +155,25 @@ def emaint_main(myargv):
 	module_names.insert(0, "all")
 
 
-	parser = OptionParser(usage=usage(module_controller), version=portage.VERSION)
+	parser = ArgumentParser(usage=usage(module_controller))
 	# add default options
 	parser_options = []
 	for opt in DEFAULT_OPTIONS:
-		parser_options.append(OptionItem(DEFAULT_OPTIONS[opt], parser))
+		parser_options.append(OptionItem(DEFAULT_OPTIONS[opt]))
 	for mod in module_names[1:]:
 		desc = module_controller.get_func_descriptions(mod)
 		if desc:
 			for opt in desc:
-				parser_options.append(OptionItem(desc[opt], parser))
+				parser_options.append(OptionItem(desc[opt]))
 	for opt in parser_options:
-		parser.add_option(opt.short, opt.long, help=opt.help, action=opt.action,
-		type=opt.type, dest=opt.dest)
+		parser.add_argument(*opt.pargs, **opt.kwargs)
 
-	(options, args) = parser.parse_args(args=myargv)
+	options, args = parser.parse_known_args(args=myargv)
+
+	if options.version:
+		print(portage.VERSION)
+		return os.EX_OK
+
 	if len(args) != 1:
 		parser.error("Incorrect number of arguments")
 	if args[0] not in module_names:

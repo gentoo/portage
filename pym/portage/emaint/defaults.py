@@ -16,5 +16,10 @@ FIX = {"short": "-f", "long": "--fix",
 	'func': 'fix'
 	}
 
+VERSION = {"long": "--version",
+	"help": "show program's version number and exit",
+	'action': 'store_true',
+	}
+
 # parser options
-DEFAULT_OPTIONS = {'check': CHECK, 'fix': FIX}
+DEFAULT_OPTIONS = {'check': CHECK, 'fix': FIX, 'version': VERSION}
