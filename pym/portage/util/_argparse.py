@@ -19,6 +19,7 @@ except ImportError:
 			self.add_argument = parser.add_option
 			self.parse_known_args = parser.parse_args
 			self.parse_args = parser.parse_args
+			self.error = parser.error
 
 		def add_argument_group(self, title=None, **kwargs):
 			optiongroup = OptionGroup(self._parser, title, **kwargs)
