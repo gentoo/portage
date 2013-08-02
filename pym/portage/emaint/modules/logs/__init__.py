@@ -20,17 +20,15 @@ module_spec = {
 					"help": "Cleans out logs more than 7 days old (cleanlogs only)" + \
 								 "   module-options: -t, -p",
 					'status': "Cleaning %s",
-					'func': 'clean'
+					'action': 'store_true',
+					'func': 'clean',
 					},
 				'time': {
 					"short": "-t", "long": "--time",
 					"help": "(cleanlogs only): -t, --time   Delete logs older than NUM of days",
 					'status': "",
-					'action': 'store',
 					'type': 'int',
 					'dest': 'NUM',
-					'callback': None,
-					'callback_kwargs': None,
 					'func': 'clean'
 					},
 				'pretend': {
@@ -39,8 +37,6 @@ module_spec = {
 					'status': "",
 					'action': 'store_true',
 					'dest': 'pretend',
-					'callback': None,
-					'callback_kwargs': None,
 					'func': 'clean'
 					}
 				}

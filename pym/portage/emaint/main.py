@@ -30,36 +30,16 @@ class OptionItem(object):
 		self.help = opt['help']
 		self.status = opt['status']
 		self.func = opt['func']
-		self.action = opt.get('action', "callback")
+		self.action = opt.get('action', 'store')
 		self.type = opt.get('type', None)
 		self.dest = opt.get('dest', None)
-		self.callback = opt.get('callback', self._exclusive)
-		self.callback_kwargs = opt.get('callback_kwargs', {"var":"action"})
-
 
 	def _exclusive(self, option, *args, **kw):
 		"""Generic check for the 2 default options
 		"""
-		var = kw.get("var", None)
-		if var is None:
-			raise ValueError("var not specified to exclusive()")
 		if getattr(self.parser, var, ""):
 			raise OptionValueError("%s and %s are exclusive options"
 				% (getattr(self.parser, var), option))
-		setattr(self.parser, var, str(option))
-
-	def check_action(self, action):
-		"""Checks if 'action' is the same as this option
-
-		@type action: string
-		@param action: the action to compare
-		@rtype: boolean
-		"""
-		if action == self.action:
-			return True
-		elif action == '/'.join([self.short, self.long]):
-			return True
-		return False
 
 
 def usage(module_controller):
@@ -172,24 +152,27 @@ def emaint_main(myargv):
 				parser_options.append(OptionItem(desc[opt], parser))
 	for opt in parser_options:
 		parser.add_option(opt.short, opt.long, help=opt.help, action=opt.action,
-		type=opt.type, dest=opt.dest,
-			callback=opt.callback, callback_kwargs=opt.callback_kwargs)
-
-	parser.action = None
+		type=opt.type, dest=opt.dest)
 
 	(options, args) = parser.parse_args(args=myargv)
-	#print('options', options, '\nargs', args, '\naction', parser.action)
 	if len(args) != 1:
 		parser.error("Incorrect number of arguments")
 	if args[0] not in module_names:
 		parser.error("%s target is not a known target" % args[0])
 
-	if parser.action:
-		action = parser.action
-	else:
-		action = "-c/--check"
-	long_action = action.split('/')[1].lstrip('-')
-	#print("DEBUG: action = ", action, long_action)
+
+	func = status = long_action = None
+	for opt in parser_options:
+		if opt.long == '--check':
+			# Default action
+			status = opt.status
+			func = opt.func
+			long_action = 'check'
+		elif opt.status and getattr(options, opt.long.lstrip("-"), False):
+			status = opt.status
+			func = opt.func
+			long_action = opt.long.lstrip('-')
+			break
 
 	if args[0] == "all":
 		tasks = []
@@ -200,15 +183,12 @@ def emaint_main(myargv):
 	elif long_action in module_controller.get_functions(args[0]):
 		tasks = [module_controller.get_class(args[0] )]
 	else:
-		print("\nERROR: module '%s' does not have option '%s'\n" %(args[0], action))
-		print(module_opts(module_controller, args[0]))
+		portage.util.writemsg(
+			"\nERROR: module '%s' does not have option '--%s'\n\n" %
+			(args[0], long_action), noiselevel=-1)
+		portage.util.writemsg(module_opts(module_controller, args[0]),
+			noiselevel=-1)
 		sys.exit(1)
-	func = status = None
-	for opt in parser_options:
-		if opt.check_action(action):
-			status = opt.status
-			func = opt.func
-			break
 
 	# need to pass the parser options dict to the modules
 	# so they are available if needed.
