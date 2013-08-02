@@ -1,4 +1,4 @@
-# Copyright 2005-2012 Gentoo Foundation
+# Copyright 2005-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -6,7 +6,7 @@ from __future__ import print_function
 
 import sys
 import textwrap
-from optparse import OptionParser, OptionValueError
+from optparse import OptionParser
 
 
 import portage
@@ -33,13 +33,6 @@ class OptionItem(object):
 		self.action = opt.get('action', 'store')
 		self.type = opt.get('type', None)
 		self.dest = opt.get('dest', None)
-
-	def _exclusive(self, option, *args, **kw):
-		"""Generic check for the 2 default options
-		"""
-		if getattr(self.parser, var, ""):
-			raise OptionValueError("%s and %s are exclusive options"
-				% (getattr(self.parser, var), option))
 
 
 def usage(module_controller):
@@ -160,19 +153,24 @@ def emaint_main(myargv):
 	if args[0] not in module_names:
 		parser.error("%s target is not a known target" % args[0])
 
-
+	check_opt = None
 	func = status = long_action = None
 	for opt in parser_options:
 		if opt.long == '--check':
 			# Default action
-			status = opt.status
-			func = opt.func
-			long_action = 'check'
-		elif opt.status and getattr(options, opt.long.lstrip("-"), False):
+			check_opt = opt
+		if opt.status and getattr(options, opt.long.lstrip("-"), False):
+			if long_action is not None:
+				parser.error("--%s and %s are exclusive options" %
+					(long_action, opt.long))
 			status = opt.status
 			func = opt.func
 			long_action = opt.long.lstrip('-')
-			break
+
+	if long_action is None:
+		long_action = 'check'
+		func = check_opt.func
+		status = check_opt.status
 
 	if args[0] == "all":
 		tasks = []
