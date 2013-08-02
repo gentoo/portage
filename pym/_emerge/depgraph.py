@@ -6,7 +6,6 @@ from __future__ import print_function, unicode_literals
 import errno
 import io
 import logging
-import operator
 import stat
 import sys
 import textwrap
@@ -959,20 +958,11 @@ class depgraph(object):
 
 		debug = "--debug" in self._frozen_config.myopts
 		existing_node = self._dynamic_config._slot_pkg_map[root][slot_atom]
+		# In order to avoid a missed update, first mask lower versions
+		# that conflict with higher versions (the backtracker visits
+		# these in reverse order).
+		conflict_pkgs.sort(reverse=True)
 		backtrack_data = []
-		# The ordering of backtrack_data can make
-		# a difference here, because both mask actions may lead
-		# to valid, but different, solutions and the one with
-		# 'existing_node' masked is usually the better one. Because
-		# of that, we choose an order such that
-		# the backtracker will first explore the choice with
-		# existing_node masked. The backtracker reverses the
-		# order, so the order it uses is the reverse of the
-		# order shown here. See bug #339606.
-		if existing_node in conflict_pkgs and \
-			existing_node is not conflict_pkgs[-1]:
-			conflict_pkgs.remove(existing_node)
-			conflict_pkgs.append(existing_node)
 		for to_be_masked in conflict_pkgs:
 			# For missed update messages, find out which
 			# atoms matched to_be_selected that did not
@@ -982,11 +972,6 @@ class depgraph(object):
 			conflict_atoms = set(parent_atom for parent_atom in all_parents \
 				if parent_atom not in parent_atoms)
 			backtrack_data.append((to_be_masked, conflict_atoms))
-
-		if len(backtrack_data) > 1:
-			# In order to avoid a missed update, first mask lower
-			# versions that conflict with higher versions.
-			backtrack_data.sort(key=operator.itemgetter(0), reverse=True)
 
 		to_be_masked = backtrack_data[-1][0]
 
