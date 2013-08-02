@@ -14,7 +14,6 @@ import errno
 import formatter
 import io
 import logging
-import optparse
 import re
 import signal
 import stat
@@ -76,6 +75,7 @@ from portage.output import bold, create_color_func, \
 	green, nocolor, red
 from portage.output import ConsoleStyleFile, StyleWriter
 from portage.util import writemsg_level
+from portage.util._argparse import ArgumentParser
 from portage.package.ebuild.digestgen import digestgen
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 
@@ -146,82 +146,82 @@ def ParseArgs(argv, qahelp):
 	mode_keys = list(modes)
 	mode_keys.sort()
 
-	parser = optparse.OptionParser(usage="%prog [options] [mode]",
+	parser = ArgumentParser(usage="repoman [options] [mode]",
 		description="Modes: %s" % " | ".join(mode_keys),
 		epilog="For more help consult the man page.")
 
-	parser.add_option('-a', '--ask', dest='ask', action='store_true', default=False,
+	parser.add_argument('-a', '--ask', dest='ask', action='store_true', default=False,
 		help='Request a confirmation before commiting')
 
-	parser.add_option('-m', '--commitmsg', dest='commitmsg',
+	parser.add_argument('-m', '--commitmsg', dest='commitmsg',
 		help='specify a commit message on the command line')
 
-	parser.add_option('-M', '--commitmsgfile', dest='commitmsgfile',
+	parser.add_argument('-M', '--commitmsgfile', dest='commitmsgfile',
 		help='specify a path to a file that contains a commit message')
 
-	parser.add_option('--digest',
-		type='choice', choices=('y', 'n'), metavar='<y|n>',
+	parser.add_argument('--digest',
+		choices=('y', 'n'), metavar='<y|n>',
 		help='Automatically update Manifest digests for modified files')
 
-	parser.add_option('-p', '--pretend', dest='pretend', default=False,
+	parser.add_argument('-p', '--pretend', dest='pretend', default=False,
 		action='store_true', help='don\'t commit or fix anything; just show what would be done')
 
-	parser.add_option('-q', '--quiet', dest="quiet", action="count", default=0,
+	parser.add_argument('-q', '--quiet', dest="quiet", action="count", default=0,
 		help='do not print unnecessary messages')
 
-	parser.add_option(
-		'--echangelog', type='choice', choices=('y', 'n', 'force'), metavar="<y|n|force>",
+	parser.add_argument(
+		'--echangelog', choices=('y', 'n', 'force'), metavar="<y|n|force>",
 		help='for commit mode, call echangelog if ChangeLog is unmodified (or '
 		'regardless of modification if \'force\' is specified)')
 
-	parser.add_option('-f', '--force', dest='force', default=False, action='store_true',
+	parser.add_argument('-f', '--force', dest='force', default=False, action='store_true',
 		help='Commit with QA violations')
 
-	parser.add_option('--vcs', dest='vcs',
+	parser.add_argument('--vcs', dest='vcs',
 		help='Force using specific VCS instead of autodetection')
 
-	parser.add_option('-v', '--verbose', dest="verbosity", action='count',
+	parser.add_argument('-v', '--verbose', dest="verbosity", action='count',
 		help='be very verbose in output', default=0)
 
-	parser.add_option('-V', '--version', dest='version', action='store_true',
+	parser.add_argument('-V', '--version', dest='version', action='store_true',
 		help='show version info')
 
-	parser.add_option('-x', '--xmlparse', dest='xml_parse', action='store_true',
+	parser.add_argument('-x', '--xmlparse', dest='xml_parse', action='store_true',
 		default=False, help='forces the metadata.xml parse check to be carried out')
 
-	parser.add_option(
-		'--if-modified', type='choice', choices=('y', 'n'), default='n',
+	parser.add_argument(
+		'--if-modified', choices=('y', 'n'), default='n',
 		metavar="<y|n>",
 		help='only check packages that have uncommitted modifications')
 
-	parser.add_option('-i', '--ignore-arches', dest='ignore_arches', action='store_true',
+	parser.add_argument('-i', '--ignore-arches', dest='ignore_arches', action='store_true',
 		default=False, help='ignore arch-specific failures (where arch != host)')
 
-	parser.add_option("--ignore-default-opts",
+	parser.add_argument("--ignore-default-opts",
 		action="store_true",
 		help="do not use the REPOMAN_DEFAULT_OPTS environment variable")
 
-	parser.add_option('-I', '--ignore-masked', dest='ignore_masked', action='store_true',
+	parser.add_argument('-I', '--ignore-masked', dest='ignore_masked', action='store_true',
 		default=False, help='ignore masked packages (not allowed with commit mode)')
 
-	parser.add_option('--include-arches', dest='include_arches',
+	parser.add_argument('--include-arches', dest='include_arches',
 		metavar='ARCHES', action='append',
 		help='A space separated list of arches used to '
 		'filter the selection of profiles for dependency checks')
 
-	parser.add_option('-d', '--include-dev', dest='include_dev', action='store_true',
+	parser.add_argument('-d', '--include-dev', dest='include_dev', action='store_true',
 		default=False, help='include dev profiles in dependency checks')
 
-	parser.add_option('--unmatched-removal', dest='unmatched_removal', action='store_true',
+	parser.add_argument('--unmatched-removal', dest='unmatched_removal', action='store_true',
 		default=False, help='enable strict checking of package.mask and package.unmask files for unmatched removal atoms')
 
-	parser.add_option('--without-mask', dest='without_mask', action='store_true',
+	parser.add_argument('--without-mask', dest='without_mask', action='store_true',
 		default=False, help='behave as if no package.mask entries exist (not allowed with commit mode)')
 
-	parser.add_option('--mode', type='choice', dest='mode', choices=list(modes),
+	parser.add_argument('--mode', dest='mode', choices=mode_keys,
 		help='specify which mode repoman will run in (default=full)')
 
-	opts, args = parser.parse_args(argv[1:])
+	opts, args = parser.parse_known_args(argv[1:])
 
 	if not opts.ignore_default_opts:
 		default_opts = portage.util.shlex_split(
