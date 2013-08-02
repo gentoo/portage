@@ -121,33 +121,6 @@ def exithandler(signum=None, frame=None):
 
 signal.signal(signal.SIGINT, exithandler)
 
-class RepomanHelpFormatter(optparse.IndentedHelpFormatter):
-	"""Repoman needs its own HelpFormatter for now, because the default ones
-	murder the help text."""
-
-	def __init__(self, indent_increment=1, max_help_position=24, width=150, short_first=1):
-		optparse.HelpFormatter.__init__(self, indent_increment, max_help_position, width, short_first)
-
-	def format_description(self, description):
-		return description
-
-class RepomanOptionParser(optparse.OptionParser):
-	"""Add the on_tail function, ruby has it, optionParser should too
-	"""
-
-	def __init__(self, *args, **kwargs):
-		optparse.OptionParser.__init__(self, *args, **kwargs)
-		self.tail = ""
-
-	def on_tail(self, description):
-		self.tail += description
-
-	def format_help(self, formatter=None):
-		result = optparse.OptionParser.format_help(self, formatter)
-		result += self.tail
-		return result
-
-
 def ParseArgs(argv, qahelp):
 	"""This function uses a customized optionParser to parse command line arguments for repoman
 	Args:
@@ -173,11 +146,9 @@ def ParseArgs(argv, qahelp):
 	mode_keys = list(modes)
 	mode_keys.sort()
 
-	parser = RepomanOptionParser(formatter=RepomanHelpFormatter(), usage="%prog [options] [mode]")
-	parser.description = green(" ".join((os.path.basename(argv[0]), "1.2")))
-	parser.description += "\nCopyright 1999-2007 Gentoo Foundation"
-	parser.description += "\nDistributed under the terms of the GNU General Public License v2"
-	parser.description += "\nmodes: " + " | ".join(map(green, mode_keys))
+	parser = optparse.OptionParser(usage="%prog [options] [mode]",
+		description="Modes: %s" % " | ".join(mode_keys),
+		epilog="For more help consult the man page.")
 
 	parser.add_option('-a', '--ask', dest='ask', action='store_true', default=False,
 		help='Request a confirmation before commiting')
@@ -249,18 +220,6 @@ def ParseArgs(argv, qahelp):
 
 	parser.add_option('--mode', type='choice', dest='mode', choices=list(modes),
 		help='specify which mode repoman will run in (default=full)')
-
-	parser.on_tail("\n " + green("Modes".ljust(20) + " Description\n"))
-
-	for k in mode_keys:
-		parser.on_tail(" %s %s\n" % (k.ljust(20), modes[k]))
-
-	parser.on_tail("\n " + green("QA keyword".ljust(20) + " Description\n"))
-
-	sorted_qa = list(qahelp)
-	sorted_qa.sort()
-	for k in sorted_qa:
-		parser.on_tail(" %s %s\n" % (k.ljust(20), qahelp[k]))
 
 	opts, args = parser.parse_args(argv[1:])
 
