@@ -6,6 +6,7 @@ from __future__ import print_function, unicode_literals
 import errno
 import io
 import logging
+import operator
 import stat
 import sys
 import textwrap
@@ -983,17 +984,9 @@ class depgraph(object):
 			backtrack_data.append((to_be_masked, conflict_atoms))
 
 		if len(backtrack_data) > 1:
-			# NOTE: Generally, we prefer to mask the higher
-			# version since this solves common cases in which a
-			# lower version is needed so that all dependencies
-			# will be satisfied (bug #337178). However, if
-			# existing_node happens to be installed then we
-			# mask that since this is a common case that is
-			# triggered when --update is not enabled.
-			if existing_node.installed:
-				pass
-			elif any(pkg > existing_node for pkg in conflict_pkgs):
-				backtrack_data.reverse()
+			# In order to avoid a missed update, first mask lower
+			# versions that conflict with higher versions.
+			backtrack_data.sort(key=operator.itemgetter(0), reverse=True)
 
 		to_be_masked = backtrack_data[-1][0]
 
