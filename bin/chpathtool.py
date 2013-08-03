@@ -3,10 +3,11 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import io
-import optparse
 import os
 import stat
 import sys
+
+from portage.util._argparse import ArgumentParser
 
 CONTENT_ENCODING = "utf_8"
 FS_ENCODING = "utf_8"
@@ -142,8 +143,8 @@ def chpath_inplace_symlink(filename, st, old, new):
 def main(argv):
 
 	usage = "%s [options] <location> <old> <new>" % (os.path.basename(argv[0],))
-	parser = optparse.OptionParser(usage=usage)
-	options, args = parser.parse_args(argv[1:])
+	parser = ArgumentParser(usage=usage)
+	options, args = parser.parse_known_args(argv[1:])
 
 	if len(args) != 3:
 		parser.error("3 args required, got %s" % (len(args),))
