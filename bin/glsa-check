@@ -14,67 +14,66 @@ import portage
 portage._internal_caller = True
 from portage import os
 from portage.output import green, red, nocolor, white
-
-from optparse import OptionGroup, OptionParser
+from portage.util._argparse import ArgumentParser
 
 __program__ = "glsa-check"
 __author__ = "Marius Mauch <genone@gentoo.org>"
 __version__ = "1.0"
 
-def cb_version(*args, **kwargs):
-	"""Callback for --version"""
+# option parsing
+epilog = "glsa-list can contain an arbitrary number of GLSA ids," \
+		" filenames containing GLSAs or the special identifiers" \
+		" 'all', 'new' and 'affected'"
+parser = ArgumentParser(usage=__program__ + " <option> [glsa-list]",
+	epilog=epilog)
+
+modes = parser.add_argument_group("Modes")
+modes.add_argument("-l", "--list", action="store_const",
+		const="list", dest="mode",
+		help="List all unapplied GLSA")
+modes.add_argument("-d", "--dump", action="store_const",
+		const="dump", dest="mode",
+		help="Show all information about the given GLSA")
+modes.add_argument("--print", action="store_const",
+		const="dump", dest="mode",
+		help="Alias for --dump")
+modes.add_argument("-t", "--test", action="store_const",
+		const="test", dest="mode",
+		help="Test if this system is affected by the given GLSA")
+modes.add_argument("-p", "--pretend", action="store_const",
+		const="pretend", dest="mode",
+		help="Show the necessary commands to apply this GLSA")
+modes.add_argument("-f", "--fix", action="store_const",
+		const="fix", dest="mode",
+		help="Try to auto-apply this GLSA (experimental)")
+modes.add_argument("-i", "--inject", action="store_const",
+		const="inject", dest="mode",
+		help="inject the given GLSA into the glsa_injected file")
+modes.add_argument("-m", "--mail", action="store_const",
+		const="mail", dest="mode",
+		help="Send a mail with the given GLSAs to the administrator")
+
+parser.add_argument("-V", "--version", action="store_true",
+		help="Some information about this tool")
+parser.add_argument("-v", "--verbose", action="store_true", dest="verbose",
+		help="Print more information")
+parser.add_argument("-n", "--nocolor", action="store_true",
+		help="Disable colors")
+parser.add_argument("-e", "--emergelike", action="store_false", dest="least_change",
+		help="Do not use a least-change algorithm")
+parser.add_argument("-c", "--cve", action="store_true", dest="list_cve",
+		help="Show CAN ids in listing mode")
+
+options, params = parser.parse_known_args()
+
+if options.nocolor:
+	nocolor()
+
+if options.version:
 	sys.stderr.write("\n"+ __program__ + ", version " + __version__ + "\n")
 	sys.stderr.write("Author: " + __author__ + "\n")
 	sys.stderr.write("This program is licensed under the GPL, version 2\n\n")
 	sys.exit(0)
-
-# option parsing
-parser = OptionParser(usage="%prog <option> [glsa-list]",
-		version="%prog "+ __version__)
-parser.epilog = "glsa-list can contain an arbitrary number of GLSA ids," \
-		" filenames containing GLSAs or the special identifiers" \
-		" 'all', 'new' and 'affected'"
-
-modes = OptionGroup(parser, "Modes")
-modes.add_option("-l", "--list", action="store_const",
-		const="list", dest="mode",
-		help="List all unapplied GLSA")
-modes.add_option("-d", "--dump", action="store_const",
-		const="dump", dest="mode",
-		help="Show all information about the given GLSA")
-modes.add_option("", "--print", action="store_const",
-		const="dump", dest="mode",
-		help="Alias for --dump")
-modes.add_option("-t", "--test", action="store_const",
-		const="test", dest="mode",
-		help="Test if this system is affected by the given GLSA")
-modes.add_option("-p", "--pretend", action="store_const",
-		const="pretend", dest="mode",
-		help="Show the necessary commands to apply this GLSA")
-modes.add_option("-f", "--fix", action="store_const",
-		const="fix", dest="mode",
-		help="Try to auto-apply this GLSA (experimental)")
-modes.add_option("-i", "--inject", action="store_const", dest="mode",
-		help="inject the given GLSA into the glsa_injected file")
-modes.add_option("-m", "--mail", action="store_const",
-		const="mail", dest="mode",
-		help="Send a mail with the given GLSAs to the administrator")
-parser.add_option_group(modes)
-
-parser.remove_option("--version")
-parser.add_option("-V", "--version", action="callback",
-		callback=cb_version, help="Some information about this tool")
-parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
-		help="Print more information")
-parser.add_option("-n", "--nocolor", action="callback",
-		callback=lambda *args, **kwargs: nocolor(),
-		help="Disable colors")
-parser.add_option("-e", "--emergelike", action="store_false", dest="least_change",
-		help="Do not use a least-change algorithm")
-parser.add_option("-c", "--cve", action="store_true", dest="list_cve",
-		help="Show CAN ids in listing mode")
-
-options, params = parser.parse_args()
 
 mode = options.mode
 least_change = options.least_change
