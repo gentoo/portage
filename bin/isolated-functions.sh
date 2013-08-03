@@ -461,7 +461,7 @@ __repo_key() {
 	while read line; do
 		[[ ${appropriate_section} == 0 && ${line} == "[$1]" ]] && appropriate_section=1 && continue
 		[[ ${appropriate_section} == 1 && ${line} == "["*"]" ]] && appropriate_section=0 && continue
-		if [[ ${appropriate_section} == 1 && ${line} == $2*( )=* ]]; then
+		if [[ ${appropriate_section} == 1 && ${line} =~ ^${2}[[:space:]]*= ]]; then
 			echo "${line##$2*( )=*( )}"
 			exit_status=0
 			break
