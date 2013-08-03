@@ -7,7 +7,6 @@ from __future__ import print_function
 import sys
 import time
 import unittest
-from optparse import OptionParser, OptionValueError
 
 try:
 	from unittest.runner import _TextTestResult # new in python-2.7
@@ -18,16 +17,17 @@ import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
+from portage.util._argparse import ArgumentParser
 
 def main():
 	suite = unittest.TestSuite()
 	basedir = os.path.dirname(os.path.realpath(__file__))
 
 	usage = "usage: %s [options] [tests to run]" % os.path.basename(sys.argv[0])
-	parser = OptionParser(usage=usage)
-	parser.add_option("-l", "--list", help="list all tests",
+	parser = ArgumentParser(usage=usage)
+	parser.add_argument("-l", "--list", help="list all tests",
 		action="store_true", dest="list_tests")
-	(options, args) = parser.parse_args(args=sys.argv)
+	options, args = parser.parse_known_args(args=sys.argv)
 
 	if (os.environ.get('NOCOLOR') in ('yes', 'true') or
 		os.environ.get('TERM') == 'dumb' or
