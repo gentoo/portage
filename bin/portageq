@@ -20,7 +20,6 @@ try:
 except KeyboardInterrupt:
 	sys.exit(128 + signal.SIGINT)
 
-import optparse
 import os
 import types
 
@@ -41,6 +40,7 @@ portage._internal_caller = True
 from portage import os
 from portage.eapi import eapi_has_repo_deps
 from portage.util import writemsg, writemsg_stdout
+from portage.util._argparse import ArgumentParser
 portage.proxy.lazyimport.lazyimport(globals(),
 	're',
 	'subprocess',
@@ -929,7 +929,7 @@ class HerdMatcher(object):
 		return any(x in herds for x in metadata_xml.herds())
 
 
-def pquery(parser, pquery_option_groups, opts, args):
+def pquery(parser, opts, args):
 	"""[options] [atom]+
 	Emulates a subset of Pkgcore's pquery tool.
 	"""
@@ -1122,7 +1122,81 @@ non_commands = frozenset(['elog', 'eval_atom_use', 'exithandler', 'main', 'usage
 commands = sorted(k for k, v in globals().items() \
 	if k not in non_commands and isinstance(v, types.FunctionType) and v.__module__ == "__main__")
 
-def usage(argv, parser=None, pquery_option_groups=None):
+
+def add_pquery_arguments(parser):
+	pquery_option_groups = (
+		(
+			'Repository matching options',
+			(
+				{
+					"longopt": "--no-filters",
+					"action": "store_true",
+					"help": "no visibility filters (ACCEPT_KEYWORDS, package masking, etc)"
+				},
+				{
+					"longopt": "--repo",
+					"help": "repo to use (default is PORTDIR if omitted)"
+				},
+				{
+					"longopt": "--all-repos",
+					"help": "search all repos"
+				}
+			)
+		),
+		(
+			'Package matching options',
+			(
+				{
+					"longopt": "--herd",
+					"action": "append",
+					"help": "exact match on a herd"
+				},
+				{
+					"longopt": "--maintainer-email",
+					"action": "append",
+					"help": "comma-separated list of maintainer email regexes to search for"
+				}
+			)
+		),
+		(
+			'Output formatting',
+			(
+				{
+					"shortopt": "-n",
+					"longopt": "--no-version",
+					"action": "store_true",
+					"help": "collapse multiple matching versions together"
+				},
+			)
+		),
+	)
+
+	for group_title, opt_data in pquery_option_groups:
+		arg_group = parser.add_argument_group(group_title)
+		for opt_info in opt_data:
+			pargs = []
+			try:
+				pargs.append(opt_info["shortopt"])
+			except KeyError:
+				pass
+			try:
+				pargs.append(opt_info["longopt"])
+			except KeyError:
+				pass
+
+			kwargs = {}
+			try:
+				kwargs["action"] = opt_info["action"]
+			except KeyError:
+				pass
+			try:
+				kwargs["help"] = opt_info["help"]
+			except KeyError:
+				pass
+			arg_group.add_argument(*pargs, **kwargs)
+
+
+def usage(argv):
 	print(">>> Portage information query tool")
 	print(">>> %s" % portage.VERSION)
 	print(">>> Usage: portageq <command> [<option> ...]")
@@ -1153,13 +1227,13 @@ def usage(argv, parser=None, pquery_option_groups=None):
 			for line in lines[1:]:
 				print("      " + line.strip())
 
-	if pquery_option_groups is not None:
-		parser.formatter.store_option_strings(parser)
-		print()
-		print('Pkgcore pquery compatible options:')
-		print()
-		for optgroup in pquery_option_groups:
-			print(optgroup.format_help(parser.formatter))
+	print()
+	print('Pkgcore pquery compatible options:')
+	print()
+	parser = ArgumentParser(add_help=False,
+		usage='portageq pquery [options] [atom ...]')
+	add_pquery_arguments(parser)
+	parser.print_help()
 
 	if len(argv) == 1:
 		print("\nRun portageq with --help for info")
@@ -1188,49 +1262,21 @@ def main(argv):
 	if nocolor in ('yes', 'true'):
 		portage.output.nocolor()
 
-	parser = optparse.OptionParser(add_help_option=False)
+	parser = ArgumentParser(add_help=False)
 
 	# used by envvar
-	parser.add_option("-v", dest="verbose", action="store_true")
+	parser.add_argument("-v", dest="verbose", action="store_true")
 
-	actions = optparse.OptionGroup(parser, 'Actions')
-	actions.add_option("-h", "--help", action="store_true")
-	actions.add_option("--version", action="store_true")
-	parser.add_option_group(actions)
+	actions = parser.add_argument_group('Actions')
+	actions.add_argument("-h", "--help", action="store_true")
+	actions.add_argument("--version", action="store_true")
 
-	pquery_option_groups = []
+	add_pquery_arguments(parser)
 
-	repo_optgroup = optparse.OptionGroup(parser,
-		'Repository matching options')
-	repo_optgroup.add_option("--no-filters", action="store_true",
-		help="no visibility filters (ACCEPT_KEYWORDS, package masking, etc)")
-	repo_optgroup.add_option("--repo", action="store",
-		help="repo to use (default is PORTDIR if omitted)")
-	repo_optgroup.add_option("--all-repos", action="store_true",
-		help="search all repos")
-	parser.add_option_group(repo_optgroup)
-	pquery_option_groups.append(repo_optgroup)
-
-	matching_optgroup = optparse.OptionGroup(parser,
-		'Package matching options')
-	matching_optgroup.add_option("--herd", action="append",
-		help="exact match on a herd")
-	matching_optgroup.add_option("--maintainer-email", action="append",
-		help="comma-separated list of maintainer email regexes to search for")
-	parser.add_option_group(matching_optgroup)
-	pquery_option_groups.append(matching_optgroup)
-
-	formatting_optgroup = optparse.OptionGroup(parser,
-		'Output formatting')
-	formatting_optgroup.add_option("-n", "--no-version", action="store_true",
-		help="collapse multiple matching versions together")
-	parser.add_option_group(formatting_optgroup)
-	pquery_option_groups.append(formatting_optgroup)
-
-	opts, args = parser.parse_args(argv[1:])
+	opts, args = parser.parse_known_args(argv[1:])
 
 	if opts.help:
-		usage(argv, parser=parser, pquery_option_groups=pquery_option_groups)
+		usage(argv)
 		return os.EX_OK
 	elif opts.version:
 		print("Portage", portage.VERSION)
@@ -1245,7 +1291,7 @@ def main(argv):
 		args = args[1:]
 
 	if cmd is None:
-		return pquery(parser, pquery_option_groups, opts, args)
+		return pquery(parser, opts, args)
 
 	if opts.verbose:
 		# used by envvar
