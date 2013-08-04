@@ -324,6 +324,7 @@ qahelp = {
 	"LIVEVCS.unmasked": "This ebuild is a live checkout from a VCS but has keywords and is not masked in the global package.mask.",
 	"IUSE.invalid": "This ebuild has a variable in IUSE that is not in the use.desc or its metadata.xml file",
 	"IUSE.missing": "This ebuild has a USE conditional which references a flag that is not listed in IUSE",
+	"IUSE.rubydeprecated": "The ebuild has set a ruby interpreter in USE_RUBY, that is not available as a ruby target anymore",
 	"LICENSE.invalid": "This ebuild is listing a license that doesnt exist in portages license/ dir.",
 	"LICENSE.deprecated": "This ebuild is listing a deprecated license.",
 	"KEYWORDS.invalid": "This ebuild contains KEYWORDS that are not listed in profiles/arch.list or for which no valid profile was found",
@@ -392,6 +393,7 @@ qawarnings = set((
 "upstream.workaround",
 "LIVEVCS.stable",
 "LIVEVCS.unmasked",
+"IUSE.rubydeprecated",
 ))
 
 if portage.const._ENABLE_INHERIT_CHECK:
@@ -474,6 +476,11 @@ suspect_virtual = {
 	"dev-libs/libusb":"virtual/libusb",
 	"dev-libs/libusbx":"virtual/libusb",
 	"dev-libs/libusb-compat":"virtual/libusb",
+}
+
+ruby_deprecated = {
+	"ruby_targets_rbx",
+	"ruby_targets_ree18",
 }
 
 metadata_xml_encoding = 'UTF-8'
@@ -2105,6 +2112,15 @@ for x in effective_scanlist:
 		for mypos in range(len(myuse)):
 			stats["IUSE.invalid"] += 1
 			fails["IUSE.invalid"].append(x + "/" + y + ".ebuild: %s" % myuse[mypos])
+		
+		# Check for outdated RUBY targets
+		if "ruby-ng" in inherited or "ruby-fakegem" in inherited or "ruby" in inherited:
+			ruby_intersection = pkg.iuse.all.intersection(ruby_deprecated)
+			if ruby_intersection:
+				for myruby in ruby_intersection:
+					stats["IUSE.rubydeprecated"] += 1
+					fails["IUSE.rubydeprecated"].append(
+						(relative_path + ": Deprecated ruby target: %s") % myruby)
 
 		# license checks
 		if not badlicsyntax:
