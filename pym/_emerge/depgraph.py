@@ -5863,7 +5863,8 @@ class depgraph(object):
 
 		self._process_slot_conflicts()
 
-		self._slot_operator_trigger_reinstalls()
+		if self._dynamic_config._allow_backtracking:
+			self._slot_operator_trigger_reinstalls()
 
 		if not self._validate_blockers():
 			# Blockers don't trigger the _skip_restart flag, since
