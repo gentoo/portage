@@ -479,7 +479,6 @@ suspect_virtual = {
 }
 
 ruby_deprecated = {
-	"ruby_targets_rbx",
 	"ruby_targets_ree18",
 }
 
