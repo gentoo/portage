@@ -2684,10 +2684,11 @@ class config(object):
 
 	def thirdpartymirrors(self):
 		if getattr(self, "_thirdpartymirrors", None) is None:
-			profileroots = [os.path.join(self["PORTDIR"], "profiles")]
-			for x in shlex_split(self.get("PORTDIR_OVERLAY", "")):
-				profileroots.insert(0, os.path.join(x, "profiles"))
-			thirdparty_lists = [grabdict(os.path.join(x, "thirdpartymirrors")) for x in profileroots]
+			thirdparty_lists = []
+			for repo_name in reversed(self.repositories.prepos_order):
+				thirdparty_lists.append(grabdict(os.path.join(
+					self.repositories[repo_name].location,
+					"profiles", "thirdpartymirrors")))
 			self._thirdpartymirrors = stack_dictlist(thirdparty_lists, incremental=True)
 		return self._thirdpartymirrors
 
