@@ -478,9 +478,9 @@ suspect_virtual = {
 	"dev-libs/libusb-compat":"virtual/libusb",
 }
 
-ruby_deprecated = {
+ruby_deprecated = frozenset([
 	"ruby_targets_ree18",
-}
+])
 
 metadata_xml_encoding = 'UTF-8'
 metadata_xml_declaration = '<?xml version="1.0" encoding="%s"?>' % \
