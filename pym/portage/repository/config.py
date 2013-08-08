@@ -886,6 +886,8 @@ class RepoConfigLoader(object):
 		return self.prepos[repo_name]
 
 	def __delitem__(self, repo_name):
+		if repo_name == self.prepos['DEFAULT'].main_repo:
+			self.prepos['DEFAULT'].main_repo = None
 		location = self.prepos[repo_name].location
 		del self.prepos[repo_name]
 		if repo_name in self.prepos_order:
