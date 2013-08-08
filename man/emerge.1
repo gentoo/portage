@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Jul 2013" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Aug 2013" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -1110,8 +1110,8 @@ deleted, which is of paramount importance.
 Protected directories are set using the \fICONFIG_PROTECT\fR variable, normally
 defined in make.globals. Directory exceptions to the CONFIG_PROTECTed
 directories can be specified using the \fICONFIG_PROTECT_MASK\fR variable.
-To find files that need to be updated in /etc, type \fBfind /etc \-iname \'.
-cfg????_*\'\fR.
+To find files that need to be updated in /etc, type \fBfind /etc \-name
+\[aq]._cfg????_*\[aq]\fR.
 .LP
 You can disable this feature by setting \fICONFIG_PROTECT="\-*"\fR in
 \fBmake.conf\fR(5).
