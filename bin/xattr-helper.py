@@ -1,12 +1,13 @@
 #!/usr/bin/python
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import array
-import optparse
 import os
 import re
 import sys
+
+from portage.util._argparse import ArgumentParser
 
 if hasattr(os, "getxattr"):
 
@@ -128,21 +129,20 @@ def main(argv):
 	usage = "usage: %s [--dump | --restore]\n" % \
 		os.path.basename(argv[0])
 
-	parser = optparse.OptionParser(description=description, usage=usage)
+	parser = ArgumentParser(description=description, usage=usage)
 
-	actions = optparse.OptionGroup(parser, 'Actions')
-	actions.add_option("--dump",
+	actions = parser.add_argument_group('Actions')
+	actions.add_argument("--dump",
 		action="store_true",
 		help="Dump the values of all extended "
 			"attributes associated with null-separated"
 			" paths read from stdin.")
-	actions.add_option("--restore",
+	actions.add_argument("--restore",
 		action="store_true",
 		help="Restore extended attributes using"
 			" a dump read from stdin.")
-	parser.add_option_group(actions)
 
-	options, args = parser.parse_args(argv[1:])
+	options, args = parser.parse_known_args(argv[1:])
 
 	if len(args) != 0:
 		parser.error("expected zero arguments, "

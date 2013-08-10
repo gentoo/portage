@@ -1,4 +1,4 @@
-# Copyright 2011 Gentoo Foundation
+# Copyright 2011-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -166,9 +166,9 @@ class SimpleRepomanTestCase(TestCase):
 		portdb = playground.trees[playground.eroot]["porttree"].dbapi
 		homedir = os.path.join(eroot, "home")
 		distdir = os.path.join(eprefix, "distdir")
-		portdir = settings["PORTDIR"]
-		profiles_dir = os.path.join(portdir, "profiles")
-		license_dir = os.path.join(portdir, "licenses")
+		test_repo_location = settings.repositories["test_repo"].location
+		profiles_dir = os.path.join(test_repo_location, "profiles")
+		license_dir = os.path.join(test_repo_location, "licenses")
 
 		repoman_cmd = (portage._python_interpreter, "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "repoman"))
@@ -228,19 +228,19 @@ class SimpleRepomanTestCase(TestCase):
 			"PATH" : os.environ["PATH"],
 			"PORTAGE_GRPNAME" : os.environ["PORTAGE_GRPNAME"],
 			"PORTAGE_USERNAME" : os.environ["PORTAGE_USERNAME"],
-			"PORTDIR" : portdir,
+			"PORTAGE_REPOSITORIES" : settings.repositories.config_string(),
 			"PYTHONPATH" : pythonpath,
 		}
 
 		if os.environ.get("SANDBOX_ON") == "1":
 			# avoid problems from nested sandbox instances
-			env["FEATURES"] = "-sandbox"
+			env["FEATURES"] = "-sandbox -usersandbox"
 
 		dirs = [homedir, license_dir, profiles_dir, distdir]
 		try:
 			for d in dirs:
 				ensure_dirs(d)
-			with open(os.path.join(portdir, "skel.ChangeLog"), 'w') as f:
+			with open(os.path.join(test_repo_location, "skel.ChangeLog"), 'w') as f:
 				f.write(copyright_header)
 			with open(os.path.join(profiles_dir, "profiles.desc"), 'w') as f:
 				for x in profiles:
@@ -266,12 +266,12 @@ class SimpleRepomanTestCase(TestCase):
 				for k, v in use_desc:
 					f.write("%s - %s\n" % (k, v))
 			for cp, xml_data in metadata_xml_files:
-				with open(os.path.join(portdir, cp, "metadata.xml"), 'w') as f:
+				with open(os.path.join(test_repo_location, cp, "metadata.xml"), 'w') as f:
 					f.write(playground.metadata_xml_template % xml_data)
-			# Use a symlink to portdir, in order to trigger bugs
+			# Use a symlink to test_repo, in order to trigger bugs
 			# involving canonical vs. non-canonical paths.
-			portdir_symlink = os.path.join(eroot, "portdir_symlink")
-			os.symlink(portdir, portdir_symlink)
+			test_repo_symlink = os.path.join(eroot, "test_repo_symlink")
+			os.symlink(test_repo_location, test_repo_symlink)
 			# repoman checks metadata.dtd for recent CTIME, so copy the file in
 			# order to ensure that the CTIME is current
 			shutil.copyfile(metadata_dtd, os.path.join(distdir, "metadata.dtd"))
@@ -286,7 +286,7 @@ class SimpleRepomanTestCase(TestCase):
 				stdout = subprocess.PIPE
 
 			for cwd in ("", "dev-libs", "dev-libs/A", "dev-libs/B"):
-				abs_cwd = os.path.join(portdir_symlink, cwd)
+				abs_cwd = os.path.join(test_repo_symlink, cwd)
 				proc = subprocess.Popen([portage._python_interpreter, "-Wd",
 					os.path.join(PORTAGE_BIN_PATH, "repoman"), "full"],
 					cwd=abs_cwd, env=env, stdout=stdout)
@@ -306,7 +306,7 @@ class SimpleRepomanTestCase(TestCase):
 
 			if git_binary is not None:
 				for cwd, cmd in git_test:
-					abs_cwd = os.path.join(portdir_symlink, cwd)
+					abs_cwd = os.path.join(test_repo_symlink, cwd)
 					proc = subprocess.Popen(cmd,
 						cwd=abs_cwd, env=env, stdout=stdout)
 

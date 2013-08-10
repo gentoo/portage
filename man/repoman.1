@@ -1,6 +1,7 @@
 .TH "REPOMAN" "1" "May 2013" "Portage VERSION" "Portage"
 .SH NAME
-repoman \- Gentoo's program to enforce a minimal level of quality assurance in packages added to the portage tree
+repoman \- Gentoo's program to enforce a minimal level of quality assurance in
+packages added to the portage tree
 .SH SYNOPSIS
 \fBrepoman\fR [\fIoption\fR] [\fImode\fR]
 .SH DESCRIPTION
@@ -9,7 +10,8 @@ repoman \- Gentoo's program to enforce a minimal level of quality assurance in p
 .BR repoman
 checks the quality of ebuild repositories.
 
-Note: \fBrepoman commit\fR only works \fIinside local\fR cvs, git, or subversion repositories.
+Note: \fBrepoman commit\fR only works \fIinside local\fR cvs, git, or
+subversion repositories.
 .SH OPTIONS
 .TP
 \fB-a\fR, \fB--ask\fR
@@ -151,16 +153,19 @@ Ebuilds that have a missing or empty HOMEPAGE variable
 Virtuals that have a non-empty HOMEPAGE variable
 .TP
 .B IUSE.invalid
-This ebuild has a variable in IUSE that is not in the use.desc or its metadata.xml file
+This ebuild has a variable in IUSE that is not in the use.desc or its
+metadata.xml file
 .TP
 .B IUSE.missing
-This ebuild has a USE conditional which references a flag that is not listed in IUSE
+This ebuild has a USE conditional which references a flag that is not listed in
+IUSE
 .TP
 .B KEYWORDS.dropped
 Ebuilds that appear to have dropped KEYWORDS for some arch
 .TP
 .B KEYWORDS.invalid
-This ebuild contains KEYWORDS that are not listed in profiles/arch.list or for which no valid profile was found
+This ebuild contains KEYWORDS that are not listed in profiles/arch.list or for
+which no valid profile was found
 .TP
 .B KEYWORDS.missing
 Ebuilds that have a missing or empty KEYWORDS variable
@@ -187,7 +192,8 @@ Syntax error in LICENSE (usually an extra/missing space/parenthesis)
 Virtuals that have a non-empty LICENSE variable
 .TP
 .B LIVEVCS.stable
-Ebuild is a live ebuild (cvs, git, darcs, svn, etc) checkout with stable keywords.
+Ebuild is a live ebuild (cvs, git, darcs, svn, etc) checkout with stable
+keywords.
 .TP
 .B LIVEVCS.unmasked
 Ebuild is a live ebuild (cvs, git, darcs, svn, etc) checkout but has keywords
@@ -227,19 +233,23 @@ Missing ChangeLog files
 ChangeLogs that exist but have not been added to cvs
 .TP
 .B dependency.bad
-User-visible ebuilds with unsatisfied dependencies (matched against *visible* ebuilds)
+User-visible ebuilds with unsatisfied dependencies (matched against *visible*
+ebuilds)
 .TP
 .B dependency.badindev
-User-visible ebuilds with unsatisfied dependencies (matched against *visible* ebuilds) in developing arch
+User-visible ebuilds with unsatisfied dependencies (matched against *visible*
+ebuilds) in developing arch
 .TP
 .B dependency.badmasked
 Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds)
 .TP
 .B dependency.badmaskedindev
-Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds) in developing arch
+Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds) in
+developing arch
 .TP
 .B dependency.badtilde
-Uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)
+Uses the ~ dep operator with a non-zero revision part, which is useless (the
+revision is ignored)
 .TP
 .B dependency.syntax
 Syntax error in dependency string (usually an extra/missing space/parenthesis)
@@ -262,10 +272,12 @@ Some files listed in the Manifest aren't referenced in SRC_URI
 This ebuild has a malformed header
 .TP
 .B ebuild.invalidname
-Ebuild files with a non-parseable or syntactically incorrect name (or using 2.1 versioning extensions)
+Ebuild files with a non-parseable or syntactically incorrect name (or using 2.1
+versioning extensions)
 .TP
 .B ebuild.majorsyn
-This ebuild has a major syntax error that may cause the ebuild to fail partially or fully
+This ebuild has a major syntax error that may cause the ebuild to fail
+partially or fully
 .TP
 .B ebuild.minorsyn
 This ebuild has a minor syntax error that contravenes gentoo coding style
@@ -286,14 +298,15 @@ A simple sourcing of the ebuild produces output; this breaks ebuild policy.
 PATCHES variable should be a bash array to ensure white space safety
 .TP
 .B ebuild.syntax
-Error generating cache entry for ebuild; typically caused by ebuild syntax error
-or digest verification failure.
+Error generating cache entry for ebuild; typically caused by ebuild syntax
+error or digest verification failure.
 .TP
 .B file.UTF8
 File is not UTF8 compliant
 .TP
 .B file.executable
-Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do not need the executable bit
+Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do not need the
+executable bit
 .TP
 .B file.name
 File/dir name must be composed of only the following chars: a-zA-Z0-9._-+:
@@ -333,6 +346,9 @@ metadata/layout.conf settings.
 .B repo.eapi.deprecated
 The ebuild uses an EAPI which is deprecated by the repository's
 metadata/layout.conf settings.
+.TP
+.B IUSE.rubydeprecated
+The ebuild has set a ruby interpreter in USE_RUBY, that is not available as a ruby target anymore
 .TP
 .B portage.internal
 The ebuild uses an internal Portage function or variable

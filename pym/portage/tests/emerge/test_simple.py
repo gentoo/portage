@@ -168,10 +168,10 @@ pkg_preinst() {
 		eroot = settings["EROOT"]
 		trees = playground.trees
 		portdb = trees[eroot]["porttree"].dbapi
-		portdir = settings["PORTDIR"]
+		test_repo_location = settings.repositories["test_repo"].location
 		var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
 		cachedir = os.path.join(var_cache_edb, "dep")
-		cachedir_pregen = os.path.join(portdir, "metadata", "md5-cache")
+		cachedir_pregen = os.path.join(test_repo_location, "metadata", "md5-cache")
 
 		portage_python = portage._python_interpreter
 		dispatch_conf_cmd = (portage_python, "-Wd",
@@ -179,7 +179,9 @@ pkg_preinst() {
 		ebuild_cmd = (portage_python, "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "ebuild"))
 		egencache_cmd = (portage_python, "-Wd",
-			os.path.join(PORTAGE_BIN_PATH, "egencache"))
+			os.path.join(PORTAGE_BIN_PATH, "egencache"),
+			"--repo", "test_repo",
+			"--repositories-configuration", settings.repositories.config_string())
 		emerge_cmd = (portage_python, "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "emerge"))
 		emaint_cmd = (portage_python, "-Wd",
@@ -337,6 +339,7 @@ pkg_preinst() {
 			"PORTAGE_INST_GID" : str(portage.data.portage_gid),
 			"PORTAGE_INST_UID" : str(portage.data.portage_uid),
 			"PORTAGE_PYTHON" : portage_python,
+			"PORTAGE_REPOSITORIES" : settings.repositories.config_string(),
 			"PORTAGE_TMPDIR" : portage_tmpdir,
 			"PYTHONPATH" : pythonpath,
 			"__PORTAGE_TEST_PATH_OVERRIDE" : fake_bin,
@@ -346,7 +349,7 @@ pkg_preinst() {
 			env["__PORTAGE_TEST_HARDLINK_LOCKS"] = \
 				os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"]
 
-		updates_dir = os.path.join(portdir, "profiles", "updates")
+		updates_dir = os.path.join(test_repo_location, "profiles", "updates")
 		dirs = [cachedir, cachedir_pregen, distdir, fake_bin,
 			portage_tmpdir, updates_dir,
 			user_config_dir, var_cache_edb]
@@ -372,7 +375,7 @@ pkg_preinst() {
 			with open(os.path.join(profile_path, "packages"), 'w') as f:
 				f.write("*dev-libs/token-system-pkg")
 			for cp, xml_data in metadata_xml_files:
-				with open(os.path.join(portdir, cp, "metadata.xml"), 'w') as f:
+				with open(os.path.join(test_repo_location, cp, "metadata.xml"), 'w') as f:
 					f.write(playground.metadata_xml_template % xml_data)
 			with open(os.path.join(updates_dir, "1Q-2010"), 'w') as f:
 				f.write("""

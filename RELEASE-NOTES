@@ -8,6 +8,14 @@ portage-2.2
   new features in 2.2 make use of or require named repositories. The repository
   name is stored in profiles/repo_name in each repository.
 
+portage-2.1.13
+==================================
+
+* FEATURES=userpriv and usersandbox are enabled by default.
+* FEATURES=usersync is enabled by default.
+* New sync-cvs-repo, sync-type and sync-uri attributes in repos.conf replace
+  SYNC variable.
+
 portage-2.1.12
 ==================================
 

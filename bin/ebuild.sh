@@ -207,8 +207,9 @@ inherit() {
 			| fmt -w 75 | while read -r ; do eqawarn "$REPLY" ; done
 	fi
 
+	local repo_location
 	local location
-	local olocation
+	local potential_location
 	local x
 
 	# These variables must be restored before returning.
@@ -222,8 +223,8 @@ inherit() {
 	local B_PDEPEND
 	local B_HDEPEND
 	while [ "$1" ]; do
-		location="${ECLASSDIR}/${1}.eclass"
-		olocation=""
+		location=""
+		potential_location=""
 
 		export ECLASS="$1"
 		__export_funcs_var=__export_functions_$ECLASS_DEPTH
@@ -244,24 +245,16 @@ inherit() {
 			fi
 		fi
 
-		# any future resolution code goes here
-		if [ -n "$PORTDIR_OVERLAY" ]; then
-			local overlay
-			for overlay in ${PORTDIR_OVERLAY}; do
-				olocation="${overlay}/eclass/${1}.eclass"
-				if [ -e "$olocation" ]; then
-					location="${olocation}"
-					debug-print "  eclass exists: ${location}"
-				fi
-			done
-		fi
+		for repo_location in "${PORTAGE_ECLASS_LOCATIONS[@]}"; do
+			potential_location="${repo_location}/eclass/${1}.eclass"
+			if [[ -f ${potential_location} ]]; then
+				location="${potential_location}"
+				debug-print "  eclass exists: ${location}"
+				break
+			fi
+		done
 		debug-print "inherit: $1 -> $location"
-		[ ! -e "$location" ] && die "${1}.eclass could not be found by inherit()"
-
-		if [ "${location}" == "${olocation}" ] && \
-			! has "${location}" ${EBUILD_OVERLAY_ECLASSES} ; then
-				EBUILD_OVERLAY_ECLASSES="${EBUILD_OVERLAY_ECLASSES} ${location}"
-		fi
+		[[ -z ${location} ]] && die "${1}.eclass could not be found by inherit()"
 
 		#We need to back up the values of *DEPEND to B_*DEPEND
 		#(if set).. and then restore them after the inherit call.
@@ -520,6 +513,9 @@ fi
 if ___eapi_enables_globstar; then
 	shopt -s globstar
 fi
+
+# Convert quoted paths to array.
+eval "PORTAGE_ECLASS_LOCATIONS=(${PORTAGE_ECLASS_LOCATIONS})"
 
 # Source the ebuild every time for FEATURES=noauto, so that ebuild
 # modifications take effect immediately.

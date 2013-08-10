@@ -8,23 +8,9 @@ import sys
 import subprocess
 import traceback
 
+from portage.util._argparse import ArgumentParser
 from portage.util.movefile import _copyxattr
 from portage.exception import OperationNotSupported
-
-try:
-	from argparse import ArgumentParser
-except ImportError:
-	# Compatibility with Python 2.6 and 3.1
-	from optparse import OptionParser
-
-	class ArgumentParser(object):
-		def __init__(self, **kwargs):
-			add_help = kwargs.pop("add_help", None)
-			if add_help is not None:
-				kwargs["add_help_option"] = add_help
-			parser = OptionParser(**kwargs)
-			self.add_argument = parser.add_option
-			self.parse_known_args = parser.parse_args
 
 # Change back to original cwd _after_ all imports (bug #469338).
 os.chdir(os.environ["__PORTAGE_HELPER_CWD"])
@@ -174,7 +160,7 @@ def copy_xattrs(opts, files):
 	Returns:
 	  system exit code
 	"""
-	if opts.directory:
+	if opts.directory or not files:
 		return os.EX_OK
 
 	if opts.target_directory is None:
@@ -184,7 +170,7 @@ def copy_xattrs(opts, files):
 		source, target = files, opts.target_directory
 		target_is_directory = True
 
-	exclude = os.environ.get("PORTAGE_XATTR_EXCLUDE", "security.*")
+	exclude = os.environ.get("PORTAGE_XATTR_EXCLUDE", "security.* system.nfs4_acl")
 
 	try:
 		if target_is_directory:

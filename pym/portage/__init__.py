@@ -387,6 +387,7 @@ except (ImportError, OSError) as e:
 _python_interpreter = os.path.realpath(sys.executable)
 _bin_path = PORTAGE_BIN_PATH
 _pym_path = PORTAGE_PYM_PATH
+_working_copy = VERSION == "HEAD"
 
 # Api consumers included in portage should set this to True.
 _internal_caller = False
@@ -404,12 +405,16 @@ def _get_stdin():
 		return sys.__stdin__
 	return sys.stdin
 
+_shell_quote_re = re.compile(r"[\s><=*\\\"'$`]")
+
 def _shell_quote(s):
 	"""
 	Quote a string in double-quotes and use backslashes to
 	escape any backslashes, double-quotes, dollar signs, or
 	backquotes in the string.
 	"""
+	if _shell_quote_re.search(s) is None:
+		return s
 	for letter in "\\\"$`":
 		if letter in s:
 			s = s.replace(letter, "\\" + letter)
@@ -605,8 +610,8 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None,
 		# environment to apply to the config that's associated
 		# with ROOT != "/", so pass a nearly empty dict for the env parameter.
 		clean_env = {}
-		for k in ('PATH', 'PORTAGE_GRPNAME', 'PORTAGE_USERNAME',
-			'SSH_AGENT_PID', 'SSH_AUTH_SOCK', 'TERM',
+		for k in ('PATH', 'PORTAGE_GRPNAME', 'PORTAGE_REPOSITORIES', 'PORTAGE_USERNAME',
+			'PYTHONPATH', 'SSH_AGENT_PID', 'SSH_AUTH_SOCK', 'TERM',
 			'ftp_proxy', 'http_proxy', 'no_proxy',
 			'__PORTAGE_TEST_HARDLINK_LOCKS'):
 			v = settings.get(k)

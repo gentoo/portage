@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['getmaskingreason']
@@ -68,13 +68,11 @@ def getmaskingreason(mycpv, metadata=None, settings=None,
 
 	mycp = pkg.cp
 
-	# XXX- This is a temporary duplicate of code from the config constructor.
-	locations = [os.path.join(settings["PORTDIR"], "profiles")]
+	locations = []
+	if pkg.repo in settings.repositories:
+		for repo in settings.repositories[pkg.repo].masters + (settings.repositories[pkg.repo],):
+			locations.append(os.path.join(repo.location, "profiles"))
 	locations.extend(settings.profiles)
-	for ov in settings["PORTDIR_OVERLAY"].split():
-		profdir = os.path.join(normalize_path(ov), "profiles")
-		if os.path.isdir(profdir):
-			locations.append(profdir)
 	locations.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
 		USER_CONFIG_PATH))
 	locations.reverse()

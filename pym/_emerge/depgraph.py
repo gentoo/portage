@@ -454,6 +454,7 @@ class _dynamic_depgraph_config(object):
 			self._graph_trees[myroot]["vartree"]    = graph_tree
 			self._graph_trees[myroot]["graph_db"]   = graph_tree.dbapi
 			self._graph_trees[myroot]["graph"]      = self.digraph
+			self._graph_trees[myroot]["want_update_pkg"] = depgraph._want_update_pkg
 			def filtered_tree():
 				pass
 			filtered_tree.dbapi = _dep_check_composite_db(depgraph, myroot)
@@ -480,6 +481,7 @@ class _dynamic_depgraph_config(object):
 			self._filtered_trees[myroot]["graph"]    = self.digraph
 			self._filtered_trees[myroot]["vartree"] = \
 				depgraph._frozen_config.trees[myroot]["vartree"]
+			self._filtered_trees[myroot]["want_update_pkg"] = depgraph._want_update_pkg
 
 			dbs = []
 			#               (db, pkg_type, built, installed, db_keys)
@@ -956,20 +958,11 @@ class depgraph(object):
 
 		debug = "--debug" in self._frozen_config.myopts
 		existing_node = self._dynamic_config._slot_pkg_map[root][slot_atom]
+		# In order to avoid a missed update, first mask lower versions
+		# that conflict with higher versions (the backtracker visits
+		# these in reverse order).
+		conflict_pkgs.sort(reverse=True)
 		backtrack_data = []
-		# The ordering of backtrack_data can make
-		# a difference here, because both mask actions may lead
-		# to valid, but different, solutions and the one with
-		# 'existing_node' masked is usually the better one. Because
-		# of that, we choose an order such that
-		# the backtracker will first explore the choice with
-		# existing_node masked. The backtracker reverses the
-		# order, so the order it uses is the reverse of the
-		# order shown here. See bug #339606.
-		if existing_node in conflict_pkgs and \
-			existing_node is not conflict_pkgs[-1]:
-			conflict_pkgs.remove(existing_node)
-			conflict_pkgs.append(existing_node)
 		for to_be_masked in conflict_pkgs:
 			# For missed update messages, find out which
 			# atoms matched to_be_selected that did not
@@ -979,19 +972,6 @@ class depgraph(object):
 			conflict_atoms = set(parent_atom for parent_atom in all_parents \
 				if parent_atom not in parent_atoms)
 			backtrack_data.append((to_be_masked, conflict_atoms))
-
-		if len(backtrack_data) > 1:
-			# NOTE: Generally, we prefer to mask the higher
-			# version since this solves common cases in which a
-			# lower version is needed so that all dependencies
-			# will be satisfied (bug #337178). However, if
-			# existing_node happens to be installed then we
-			# mask that since this is a common case that is
-			# triggered when --update is not enabled.
-			if existing_node.installed:
-				pass
-			elif any(pkg > existing_node for pkg in conflict_pkgs):
-				backtrack_data.reverse()
 
 		to_be_masked = backtrack_data[-1][0]
 
@@ -4314,6 +4294,36 @@ class depgraph(object):
 
 		return not arg
 
+	def _want_update_pkg(self, parent, pkg):
+
+		if self._frozen_config.excluded_pkgs.findAtomForPackage(pkg,
+			modified_use=self._pkg_use_enabled(pkg)):
+			return False
+
+		arg_atoms = None
+		try:
+			arg_atoms = list(self._iter_atoms_for_pkg(pkg))
+		except InvalidDependString:
+			if not pkg.installed:
+				# should have been masked before it was selected
+				raise
+
+		depth = parent.depth or 0
+		depth += 1
+
+		if arg_atoms:
+			for arg, atom in arg_atoms:
+				if arg.reset_depth:
+					depth = 0
+					break
+
+		deep = self._dynamic_config.myparams.get("deep", 0)
+		update = "--update" in self._frozen_config.myopts
+
+		return (not self._dynamic_config._complete_mode and
+			(arg_atoms or update) and
+			not (deep is not True and depth > deep))
+
 	def _equiv_ebuild_visible(self, pkg, autounmask_level=None):
 		try:
 			pkg_eb = self._pkg(
@@ -5084,9 +5094,16 @@ class depgraph(object):
 		matches = graph_db.match_pkgs(atom)
 		if not matches:
 			return None, None
-		pkg = matches[-1] # highest match
-		in_graph = self._dynamic_config._slot_pkg_map[root].get(pkg.slot_atom)
-		return pkg, in_graph
+
+		# There may be multiple matches, and they may
+		# conflict with eachother, so choose the highest
+		# version that has already been added to the graph.
+		for pkg in reversed(matches):
+			if pkg in self._dynamic_config.digraph:
+				return pkg, pkg
+
+		# Fall back to installed packages
+		return self._select_pkg_from_installed(root, atom, onlydeps=onlydeps)
 
 	def _select_pkg_from_installed(self, root, atom, onlydeps=False):
 		"""
@@ -5846,7 +5863,8 @@ class depgraph(object):
 
 		self._process_slot_conflicts()
 
-		self._slot_operator_trigger_reinstalls()
+		if self._dynamic_config._allow_backtracking:
+			self._slot_operator_trigger_reinstalls()
 
 		if not self._validate_blockers():
 			# Blockers don't trigger the _skip_restart flag, since

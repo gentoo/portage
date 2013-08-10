@@ -1,4 +1,4 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import re
@@ -189,14 +189,14 @@ class UpdateDbentryTestCase(TestCase):
 		settings = playground.settings
 		trees = playground.trees
 		eroot = settings["EROOT"]
-		portdir = settings["PORTDIR"]
+		test_repo_location = settings.repositories["test_repo"].location
 		portdb = trees[eroot]["porttree"].dbapi
 		vardb = trees[eroot]["vartree"].dbapi
 		bindb = trees[eroot]["bintree"].dbapi
 		setconfig = trees[eroot]["root_config"].setconfig
 		selected_set = setconfig.getSets()["selected"]
 
-		updates_dir = os.path.join(portdir, "profiles", "updates")
+		updates_dir = os.path.join(test_repo_location, "profiles", "updates")
 
 		try:
 			ensure_dirs(updates_dir)

@@ -319,7 +319,10 @@ class binarytree(object):
 				"ACCEPT_KEYWORDS", "ACCEPT_LICENSE",
 				"ACCEPT_PROPERTIES", "ACCEPT_RESTRICT", "CBUILD",
 				"CONFIG_PROTECT", "CONFIG_PROTECT_MASK", "FEATURES",
-				"GENTOO_MIRRORS", "INSTALL_MASK", "SYNC", "USE", "EPREFIX"])
+				"GENTOO_MIRRORS", "INSTALL_MASK", "IUSE_IMPLICIT", "USE",
+				"USE_EXPAND", "USE_EXPAND_HIDDEN", "USE_EXPAND_IMPLICIT",
+				"USE_EXPAND_UNPREFIXED",
+				"EPREFIX"])
 			self._pkgindex_default_pkg_data = {
 				"BUILD_TIME"         : "",
 				"DEFINED_PHASES"     : "",
@@ -1256,6 +1259,16 @@ class binarytree(object):
 			header.pop("URI", None)
 		for k in self._pkgindex_header_keys:
 			v = self.settings.get(k, None)
+			if v:
+				header[k] = v
+			else:
+				header.pop(k, None)
+
+		# These values may be useful for using a binhost without
+		# having a local copy of the profile (bug #470006).
+		for k in self.settings.get("USE_EXPAND_IMPLICIT", "").split():
+			k = "USE_EXPAND_VALUES_" + k
+			v = self.settings.get(k)
 			if v:
 				header[k] = v
 			else:

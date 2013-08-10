@@ -317,6 +317,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	priority = trees[myroot].get("priority")
 	graph_db = trees[myroot].get("graph_db")
 	graph    = trees[myroot].get("graph")
+	want_update_pkg = trees[myroot].get("want_update_pkg")
 	vardb = None
 	if "vartree" in trees[myroot]:
 		vardb = trees[myroot]["vartree"].dbapi
@@ -324,6 +325,13 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		mydbapi = trees[myroot]["bintree"].dbapi
 	else:
 		mydbapi = trees[myroot]["porttree"].dbapi
+
+	try:
+		mydbapi_match_pkgs = mydbapi.match_pkgs
+	except AttributeError:
+		def mydbapi_match_pkgs(atom):
+			return [mydbapi._pkg_str(cpv, atom.repo)
+				for cpv in mydbapi.match(atom)]
 
 	# Sort the deps into installed, not installed but already 
 	# in the graph and other, not installed and not in the graph
@@ -348,10 +356,9 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				continue
 			# Ignore USE dependencies here since we don't want USE
 			# settings to adversely affect || preference evaluation.
-			avail_pkg = mydbapi.match(atom.without_use)
+			avail_pkg = mydbapi_match_pkgs(atom.without_use)
 			if avail_pkg:
 				avail_pkg = avail_pkg[-1] # highest (ascending order)
-				avail_pkg = mydbapi._pkg_str(avail_pkg, atom.repo)
 				avail_slot = Atom("%s:%s" % (atom.cp, avail_pkg.slot))
 			if not avail_pkg:
 				all_available = False
@@ -359,7 +366,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				break
 
 			if atom.use:
-				avail_pkg_use = mydbapi.match(atom)
+				avail_pkg_use = mydbapi_match_pkgs(atom)
 				if not avail_pkg_use:
 					all_use_satisfied = False
 				else:
@@ -367,7 +374,6 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 					avail_pkg_use = avail_pkg_use[-1]
 					if avail_pkg_use != avail_pkg:
 						avail_pkg = avail_pkg_use
-					avail_pkg = mydbapi._pkg_str(avail_pkg, atom.repo)
 					avail_slot = Atom("%s:%s" % (atom.cp, avail_pkg.slot))
 
 			slot_map[avail_slot] = avail_pkg
@@ -458,8 +464,27 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						elif all_installed:
 							if all_installed_slots:
 								preferred_installed.append(this_choice)
-							else:
+							elif parent is None or want_update_pkg is None:
 								preferred_any_slot.append(this_choice)
+							else:
+								# When appropriate, prefer a slot that is not
+								# installed yet for bug #478188.
+								want_update = True
+								for slot_atom, avail_pkg in slot_map.items():
+									if avail_pkg in graph:
+										continue
+									# New-style virtuals have zero cost to install.
+									if slot_atom.startswith("virtual/") or \
+										vardb.match(slot_atom):
+										continue
+									if not want_update_pkg(parent, avail_pkg):
+										want_update = False
+										break
+
+								if want_update:
+									preferred_installed.append(this_choice)
+								else:
+									preferred_any_slot.append(this_choice)
 						else:
 							preferred_non_installed.append(this_choice)
 					else:

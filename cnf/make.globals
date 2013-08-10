@@ -19,8 +19,9 @@ LDFLAGS=""
 FFLAGS=""
 FCFLAGS=""
 
-# Default rsync mirror
+# PREFIX LOCAL: default rsync mirror
 SYNC="rsync://rsync.prefix.freens.org/gentoo-portage-prefix"
+# END PREFIX LOCAL
 
 # Default distfiles mirrors. This rotation has multiple hosts and is reliable.
 # Approved by the mirror-admin team.
@@ -30,14 +31,10 @@ ACCEPT_LICENSE="* -@EULA"
 ACCEPT_PROPERTIES="*"
 ACCEPT_RESTRICT="*"
 
-# Repository Paths
-PORTDIR="@PORTAGE_EPREFIX@/usr/portage"
-DISTDIR=${PORTDIR}/distfiles
-PKGDIR=${PORTDIR}/packages
-RPMDIR=${PORTDIR}/rpm
-
-# Temporary build directory
-PORTAGE_TMPDIR="@PORTAGE_EPREFIX@/var/tmp"
+# Miscellaneous paths
+DISTDIR="@PORTAGE_EPREFIX@/usr/portage/distfiles"
+PKGDIR="@PORTAGE_EPREFIX@/usr/portage/packages"
+RPMDIR="@PORTAGE_EPREFIX@/usr/portage/rpm"
 
 # Fetching command (3 tries, passive ftp for firewall compatibility)
 FETCHCOMMAND="wget -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
@@ -58,7 +55,7 @@ FEATURES="assume-digests binpkg-logs
           config-protect-if-modified distlocks ebuild-locks
           fixlafiles merge-sync news parallel-fetch preserve-libs protect-owned
           sandbox sfperms strict unknown-features-warn unmerge-logs
-          unmerge-orphans userfetch"
+          unmerge-orphans userfetch userpriv usersandbox usersync"
 
 # Ignore file collisions in /lib/modules since files inside this directory
 # are never unmerged, and therefore collisions must be ignored in order for
@@ -102,7 +99,7 @@ PORTAGE_RSYNC_RETRIES="-1"
 # Number of seconds rsync will wait before timing out.
 #RSYNC_TIMEOUT="180"
 
-PORTAGE_RSYNC_OPTS="--recursive --links --safe-links --perms --times --compress --force --whole-file --delete --stats --human-readable --timeout=180 --exclude=/distfiles --exclude=/local --exclude=/packages"
+PORTAGE_RSYNC_OPTS="--recursive --links --safe-links --perms --times --omit-dir-times --compress --force --whole-file --delete --stats --human-readable --timeout=180 --exclude=/distfiles --exclude=/local --exclude=/packages"
 
 # The number of days after the last `emerge --sync` that a warning
 # message should be produced.
@@ -153,7 +150,8 @@ PORTAGE_ELOG_MAILFROM="@portageuser@@localhost"
 PORTAGE_GPG_SIGNING_COMMAND="gpg --sign --digest-algo SHA256 --clearsign --yes --default-key \"\${PORTAGE_GPG_KEY}\" --homedir \"\${PORTAGE_GPG_DIR}\" \"\${FILE}\""
 
 # Security labels are special, see bug #461868.
-PORTAGE_XATTR_EXCLUDE="security.*"
+# system.nfs4_acl attributes are irrelevant, see bug #475496.
+PORTAGE_XATTR_EXCLUDE="security.* system.nfs4_acl"
 
 # Writeable paths for Mac OS X seatbelt sandbox
 #

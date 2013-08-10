@@ -52,6 +52,14 @@ class DoebuildFdPipesTestCase(TestCase):
 			}
 		}
 
+		# Override things that may be unavailable, or may have portability
+		# issues when running tests in exotic environments.
+		#   prepstrip - bug #447810 (bash read builtin EINTR problem)
+		true_symlinks = ("find", "prepstrip", "sed", "scanelf")
+		true_binary = portage.process.find_binary("true")
+		self.assertEqual(true_binary is None, False,
+			"true command not found")
+
 		playground = ResolverPlayground(ebuilds=ebuilds)
 		try:
 			QueryCommand._db = playground.trees
@@ -67,6 +75,14 @@ class DoebuildFdPipesTestCase(TestCase):
 			settings.features.add("test")
 			settings['PORTAGE_PYTHON'] = portage._python_interpreter
 			settings['PORTAGE_QUIET'] = "1"
+
+			fake_bin = os.path.join(settings["EPREFIX"], "bin")
+			portage.util.ensure_dirs(fake_bin)
+			for x in true_symlinks:
+				os.symlink(true_binary, os.path.join(fake_bin, x))
+
+			settings["__PORTAGE_TEST_PATH_OVERRIDE"] = fake_bin
+			settings.backup_changes("__PORTAGE_TEST_PATH_OVERRIDE")
 
 			cpv = 'app-misct/foo-1'
 			metadata = dict(zip(Package.metadata_keys,

@@ -146,7 +146,7 @@ class config(object):
 	"""
 
 	_constant_keys = frozenset(['PORTAGE_BIN_PATH', 'PORTAGE_GID',
-		'PORTAGE_PYM_PATH'])
+		'PORTAGE_PYM_PATH', 'PORTAGE_PYTHONPATH'])
 
 	_setcpv_aux_keys = ('DEFINED_PHASES', 'DEPEND', 'EAPI', 'HDEPEND',
 		'INHERITED', 'IUSE', 'REQUIRED_USE', 'KEYWORDS', 'LICENSE', 'PDEPEND',
@@ -491,6 +491,7 @@ class config(object):
 			known_repos = []
 			portdir = ""
 			portdir_overlay = ""
+			portdir_sync = None
 			for confs in [make_globals, make_conf, self.configdict["env"]]:
 				v = confs.get("PORTDIR")
 				if v is not None:
@@ -500,15 +501,52 @@ class config(object):
 				if v is not None:
 					portdir_overlay = v
 					known_repos.extend(shlex_split(v))
+				v = confs.get("SYNC")
+				if v is not None:
+					portdir_sync = v
+
 			known_repos = frozenset(known_repos)
 			self["PORTDIR"] = portdir
 			self["PORTDIR_OVERLAY"] = portdir_overlay
+			if portdir_sync:
+				self["SYNC"] = portdir_sync
 			self.lookuplist = [self.configdict["env"]]
 			if repositories is None:
 				self.repositories = load_repository_config(self)
 			else:
 				self.repositories = repositories
 
+			self['PORTAGE_REPOSITORIES'] = self.repositories.config_string()
+			self.backup_changes('PORTAGE_REPOSITORIES')
+
+			#filling PORTDIR and PORTDIR_OVERLAY variable for compatibility
+			main_repo = self.repositories.mainRepo()
+			if main_repo is not None:
+				self["PORTDIR"] = main_repo.user_location
+				self.backup_changes("PORTDIR")
+				expand_map["PORTDIR"] = self["PORTDIR"]
+
+			# repoman controls PORTDIR_OVERLAY via the environment, so no
+			# special cases are needed here.
+			portdir_overlay = list(self.repositories.repoUserLocationList())
+			if portdir_overlay and portdir_overlay[0] == self["PORTDIR"]:
+				portdir_overlay = portdir_overlay[1:]
+
+			new_ov = []
+			if portdir_overlay:
+				for ov in portdir_overlay:
+					ov = normalize_path(ov)
+					if isdir_raise_eaccess(ov) or portage._sync_disabled_warnings:
+						new_ov.append(portage._shell_quote(ov))
+					else:
+						writemsg(_("!!! Invalid PORTDIR_OVERLAY"
+							" (not a dir): '%s'\n") % ov, noiselevel=-1)
+
+			self["PORTDIR_OVERLAY"] = " ".join(new_ov)
+			self.backup_changes("PORTDIR_OVERLAY")
+			expand_map["PORTDIR_OVERLAY"] = self["PORTDIR_OVERLAY"]
+
+			locations_manager.set_port_dirs(self["PORTDIR"], self["PORTDIR_OVERLAY"])
 			locations_manager.load_profiles(self.repositories, known_repos)
 
 			profiles_complex = locations_manager.profiles_complex
@@ -614,36 +652,6 @@ class config(object):
 			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
 			self._paccept_restrict = portage.dep.ExtendedAtomDict(dict)
 			self._penvdict = portage.dep.ExtendedAtomDict(dict)
-
-			#filling PORTDIR and PORTDIR_OVERLAY variable for compatibility
-			main_repo = self.repositories.mainRepo()
-			if main_repo is not None:
-				self["PORTDIR"] = main_repo.user_location
-				self.backup_changes("PORTDIR")
-
-			# repoman controls PORTDIR_OVERLAY via the environment, so no
-			# special cases are needed here.
-			portdir_overlay = list(self.repositories.repoUserLocationList())
-			if portdir_overlay and portdir_overlay[0] == self["PORTDIR"]:
-				portdir_overlay = portdir_overlay[1:]
-
-			new_ov = []
-			if portdir_overlay:
-				shell_quote_re = re.compile(r"[\s\\\"'$`]")
-				for ov in portdir_overlay:
-					ov = normalize_path(ov)
-					if isdir_raise_eaccess(ov):
-						if shell_quote_re.search(ov) is not None:
-							ov = portage._shell_quote(ov)
-						new_ov.append(ov)
-					else:
-						writemsg(_("!!! Invalid PORTDIR_OVERLAY"
-							" (not a dir): '%s'\n") % ov, noiselevel=-1)
-
-			self["PORTDIR_OVERLAY"] = " ".join(new_ov)
-			self.backup_changes("PORTDIR_OVERLAY")
-
-			locations_manager.set_port_dirs(self["PORTDIR"], self["PORTDIR_OVERLAY"])
 
 			self._repo_make_defaults = {}
 			for repo in self.repositories.repos_with_profiles():
@@ -881,11 +889,6 @@ class config(object):
 				if k in self:
 					self[k] = self[k].lower()
 					self.backup_changes(k)
-
-			if main_repo is not None and not main_repo.sync:
-				main_repo_sync = self.get("SYNC")
-				if main_repo_sync:
-					main_repo.sync = main_repo_sync
 
 			# The first constructed config object initializes these modules,
 			# and subsequent calls to the _init() functions have no effect.
@@ -2494,6 +2497,20 @@ class config(object):
 			elif mykey == "PORTAGE_PYM_PATH":
 				return portage._pym_path
 
+			elif mykey == "PORTAGE_PYTHONPATH":
+				value = [x for x in \
+					self.backupenv.get("PYTHONPATH", "").split(":") if x]
+				need_pym_path = True
+				if value:
+					try:
+						need_pym_path = not os.path.samefile(value[0],
+							portage._pym_path)
+					except OSError:
+						pass
+				if need_pym_path:
+					value.insert(0, portage._pym_path)
+				return ":".join(value)
+
 			elif mykey == "PORTAGE_GID":
 				return "%s" % portage_gid
 
@@ -2673,10 +2690,11 @@ class config(object):
 
 	def thirdpartymirrors(self):
 		if getattr(self, "_thirdpartymirrors", None) is None:
-			profileroots = [os.path.join(self["PORTDIR"], "profiles")]
-			for x in shlex_split(self.get("PORTDIR_OVERLAY", "")):
-				profileroots.insert(0, os.path.join(x, "profiles"))
-			thirdparty_lists = [grabdict(os.path.join(x, "thirdpartymirrors")) for x in profileroots]
+			thirdparty_lists = []
+			for repo_name in reversed(self.repositories.prepos_order):
+				thirdparty_lists.append(grabdict(os.path.join(
+					self.repositories[repo_name].location,
+					"profiles", "thirdpartymirrors")))
 			self._thirdpartymirrors = stack_dictlist(thirdparty_lists, incremental=True)
 		return self._thirdpartymirrors
 

@@ -39,6 +39,10 @@ for _fd_dir in ("/proc/self/fd", "/dev/fd"):
 	else:
 		_fd_dir = None
 
+# /dev/fd does not work on FreeBSD, see bug #478446
+if platform.system() in ('FreeBSD',) and _fd_dir == '/dev/fd':
+	_fd_dir = None
+
 if _fd_dir is not None:
 	def get_open_fds():
 		return (int(fd) for fd in os.listdir(_fd_dir) if fd.isdigit())

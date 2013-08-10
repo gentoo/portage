@@ -1,6 +1,6 @@
---- make.conf	2006-03-19 18:40:11.000000000 +0100
-+++ make.conf.sh	2006-03-19 18:26:21.000000000 +0100
-@@ -23,6 +23,19 @@
+--- make.conf.example
++++ make.conf.example
+@@ -22,6 +22,19 @@
  # Example:
  #USE="X gtk gnome -alsa"
  
@@ -20,20 +20,19 @@
  # Host and optimization settings 
  # ==============================
  #
-@@ -33,10 +46,15 @@
- # package (and in some cases the libraries it uses) at default optimizations
- # before reporting errors to developers.
+@@ -39,10 +52,15 @@
+ # -frecord-gcc-switches, since otherwise the check could result in false
+ # positive results.
  #
 -# Please refer to the GCC manual for a list of possible values.
--#
--#CFLAGS="-O2 -pipe"
 +# -m# optimize code for the particular type of CPU.  The number should match
 +# your CHOST so if you are using "sh4-unknown-linux-gnu", you should have
 +# -m4 below.
  #
+-#CFLAGS="-O2 -pipe"
 +# For a full listing of supported CPU models, please refer to the GCC website:
 +# http://gcc.gnu.org/onlinedocs/gcc-3.3/gcc/SH-Options.html
-+#
+ #
 +#CFLAGS="-m4 -O2 -pipe"
 +
  # If you set a CFLAGS above, then this line will set your default C++ flags to

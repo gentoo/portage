@@ -2,12 +2,12 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
-import optparse
 import sys
 
 import portage
 from portage import os
-from portage.util import normalize_path
+from portage.util import normalize_path, writemsg_level
+from portage.util._argparse import ArgumentParser
 from portage.util._async.run_main_scheduler import run_main_scheduler
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.global_event_loop import global_event_loop
@@ -47,22 +47,25 @@ common_options = (
 	{
 		"longopt"  : "--jobs",
 		"shortopt" : "-j",
-		"help"     : "number of concurrent jobs to run"
+		"help"     : "number of concurrent jobs to run",
+		"type"     : int
 	},
 	{
 		"longopt"  : "--load-average",
 		"shortopt" : "-l",
 		"help"     : "load average limit for spawning of new concurrent jobs",
-		"metavar"  : "LOAD"
+		"metavar"  : "LOAD",
+		"type"     : float
 	},
 	{
 		"longopt"  : "--tries",
 		"help"     : "maximum number of tries per file, 0 means unlimited (default is 10)",
-		"default"  : 10
+		"default"  : 10,
+		"type"     : int
 	},
 	{
 		"longopt"  : "--repo",
-		"help"     : "name of repo to operate on (default repo is located at $PORTDIR)"
+		"help"     : "name of repo to operate on"
 	},
 	{
 		"longopt"  : "--config-root",
@@ -71,20 +74,22 @@ common_options = (
 	},
 	{
 		"longopt"  : "--portdir",
-		"help"     : "override the portage tree location",
+		"help"     : "override the PORTDIR variable (deprecated in favor of --repositories-configuration)",
 		"metavar"  : "DIR"
 	},
 	{
 		"longopt"  : "--portdir-overlay",
-		"help"     : "override the PORTDIR_OVERLAY variable (requires "
-			"that --repo is also specified)"
+		"help"     : "override the PORTDIR_OVERLAY variable (deprecated in favor of --repositories-configuration)"
+	},
+	{
+		"longopt"  : "--repositories-configuration",
+		"help"     : "override configuration of repositories (in format of repos.conf)"
 	},
 	{
 		"longopt"  : "--strict-manifests",
 		"help"     : "manually override \"strict\" FEATURES setting",
 		"choices"  : ("y", "n"),
 		"metavar"  : "<y|n>",
-		"type"     : "choice"
 	},
 	{
 		"longopt"  : "--failure-log",
@@ -175,7 +180,8 @@ common_options = (
 			"recycle dir, measured in seconds (defaults to "
 			"the equivalent of 60 days)",
 		"default"  : 60 * seconds_per_day,
-		"metavar"  : "SECONDS"
+		"metavar"  : "SECONDS",
+		"type"     : int
 	},
 	{
 		"longopt"  : "--fetch-log-dir",
@@ -195,18 +201,17 @@ def parse_args(args):
 	description = "emirrordist - a fetch tool for mirroring " \
 		"of package distfiles"
 	usage = "emirrordist [options] <action>"
-	parser = optparse.OptionParser(description=description, usage=usage)
+	parser = ArgumentParser(description=description, usage=usage)
 
-	actions = optparse.OptionGroup(parser, 'Actions')
-	actions.add_option("--version",
+	actions = parser.add_argument_group('Actions')
+	actions.add_argument("--version",
 		action="store_true",
 		help="display portage version and exit")
-	actions.add_option("--mirror",
+	actions.add_argument("--mirror",
 		action="store_true",
 		help="mirror distfiles for the selected repository")
-	parser.add_option_group(actions)
 
-	common = optparse.OptionGroup(parser, 'Common options')
+	common = parser.add_argument_group('Common options')
 	for opt_info in common_options:
 		opt_pargs = [opt_info["longopt"]]
 		if opt_info.get("shortopt"):
@@ -215,10 +220,9 @@ def parse_args(args):
 		for k in ("action", "choices", "default", "metavar", "type"):
 			if k in opt_info:
 				opt_kwargs[k] = opt_info[k]
-		common.add_option(*opt_pargs, **opt_kwargs)
-	parser.add_option_group(common)
+		common.add_argument(*opt_pargs, **opt_kwargs)
 
-	options, args = parser.parse_args(args)
+	options, args = parser.parse_known_args(args)
 
 	return (parser, options, args)
 
@@ -241,7 +245,17 @@ def emirrordist_main(args):
 	config_root = options.config_root
 
 	if options.repo is None:
-		env['PORTDIR_OVERLAY'] = ''
+		parser.error("--repo option is required")
+
+	if options.portdir is not None:
+		writemsg_level("emirrordist: warning: --portdir option is deprecated in favor of --repositories-configuration option\n",
+			level=logging.WARNING, noiselevel=-1)
+	if options.portdir_overlay is not None:
+		writemsg_level("emirrordist: warning: --portdir-overlay option is deprecated in favor of --repositories-configuration option\n",
+			level=logging.WARNING, noiselevel=-1)	
+
+	if options.repositories_configuration is not None:
+		env['PORTAGE_REPOSITORIES'] = options.repositories_configuration
 	elif options.portdir_overlay:
 		env['PORTDIR_OVERLAY'] = options.portdir_overlay
 
@@ -261,16 +275,9 @@ def emirrordist_main(args):
 		settings = portage.config(config_root=config_root,
 			local_config=False, env=env)
 
-	repo_path = None
-	if options.repo is not None:
-		repo_path = settings.repositories.treemap.get(options.repo)
-		if repo_path is None:
-			parser.error("Unable to locate repository named '%s'" % \
-				(options.repo,))
-	else:
-		repo_path = settings.repositories.mainRepoLocation()
-		if not repo_path:
-			parser.error("PORTDIR is undefined")
+	repo_path = settings.repositories.treemap.get(options.repo)
+	if repo_path is None:
+		parser.error("Unable to locate repository named '%s'" % (options.repo,))
 
 	if options.jobs is not None:
 		options.jobs = int(options.jobs)

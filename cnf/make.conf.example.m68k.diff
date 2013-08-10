@@ -1,6 +1,6 @@
---- make.conf
-+++ make.conf.m68k
-@@ -23,6 +23,13 @@
+--- make.conf.example
++++ make.conf.example
+@@ -22,6 +22,13 @@
  # Example:
  #USE="X gtk gnome -alsa"
  
@@ -14,7 +14,7 @@
  # Host and optimization settings 
  # ==============================
  #
-@@ -35,7 +42,7 @@
+@@ -41,7 +48,7 @@
  #
  # Please refer to the GCC manual for a list of possible values.
  #
@@ -23,12 +23,12 @@
  #
  # If you set a CFLAGS above, then this line will set your default C++ flags to
  # the same settings.
-@@ -61,7 +68,7 @@
+@@ -76,7 +83,7 @@
  # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
  # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
  #
 -#ACCEPT_KEYWORDS="~arch"
 +#ACCEPT_KEYWORDS="~m68k"
  
- # Portage Directories
- # ===================
+ # ACCEPT_LICENSE is used to mask packages based on licensing restrictions.
+ # It may contain both license and group names, where group names are

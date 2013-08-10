@@ -36,33 +36,7 @@ else:
 signal.signal(debug_signum, debug_signal)
 
 import io
-import optparse
 import os
-
-description = "See the ebuild(1) man page for more info"
-usage = "Usage: ebuild <ebuild file> <command> [command] ..."
-parser = optparse.OptionParser(description=description, usage=usage)
-
-force_help = "When used together with the digest or manifest " + \
-	"command, this option forces regeneration of digests for all " + \
-	"distfiles associated with the current ebuild. Any distfiles " + \
-	"that do not already exist in ${DISTDIR} will be automatically fetched."
-
-parser.add_option("--force", help=force_help, action="store_true", dest="force")
-parser.add_option("--color", help="enable or disable color output",
-	type="choice", choices=("y", "n"))
-parser.add_option("--debug", help="show debug output",
-	action="store_true", dest="debug")
-parser.add_option("--version", help="show version and exit",
-	action="store_true", dest="version")
-parser.add_option("--ignore-default-opts",
-	action="store_true",
-	help="do not use the EBUILD_DEFAULT_OPTS environment variable")
-parser.add_option("--skip-manifest", help="skip all manifest checks",
-	action="store_true", dest="skip_manifest")
-
-opts, pargs = parser.parse_args(args=sys.argv[1:])
-
 from os import path as osp
 pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
 sys.path.insert(0, pym_path)
@@ -74,8 +48,33 @@ from portage import _shell_quote
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.const import VDB_PATH
+from portage.util._argparse import ArgumentParser
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
+
+description = "See the ebuild(1) man page for more info"
+usage = "Usage: ebuild <ebuild file> <command> [command] ..."
+parser = ArgumentParser(description=description, usage=usage)
+
+force_help = "When used together with the digest or manifest " + \
+	"command, this option forces regeneration of digests for all " + \
+	"distfiles associated with the current ebuild. Any distfiles " + \
+	"that do not already exist in ${DISTDIR} will be automatically fetched."
+
+parser.add_argument("--force", help=force_help, action="store_true")
+parser.add_argument("--color", help="enable or disable color output",
+	choices=("y", "n"))
+parser.add_argument("--debug", help="show debug output",
+	action="store_true")
+parser.add_argument("--version", help="show version and exit",
+	action="store_true")
+parser.add_argument("--ignore-default-opts",
+	action="store_true",
+	help="do not use the EBUILD_DEFAULT_OPTS environment variable")
+parser.add_argument("--skip-manifest", help="skip all manifest checks",
+	action="store_true")
+
+opts, pargs = parser.parse_known_args(args=sys.argv[1:])
 
 def err(txt):
 	portage.writemsg('ebuild: %s\n' % (txt,), noiselevel=-1)
@@ -91,7 +90,7 @@ if len(pargs) < 2:
 if not opts.ignore_default_opts:
 	default_opts = portage.util.shlex_split(
 		portage.settings.get("EBUILD_DEFAULT_OPTS", ""))
-	opts, pargs = parser.parse_args(default_opts + sys.argv[1:])
+	opts, pargs = parser.parse_known_args(default_opts + sys.argv[1:])
 
 debug = opts.debug
 force = opts.force

@@ -99,6 +99,9 @@ REPO_NAME_LOC            = "profiles" + "/" + REPO_NAME_FILE
 PORTAGE_PACKAGE_ATOM     = "sys-apps/portage"
 LIBC_PACKAGE_ATOM        = "virtual/libc"
 OS_HEADERS_PACKAGE_ATOM  = "virtual/os-headers"
+CVS_PACKAGE_ATOM         = "dev-vcs/cvs"
+GIT_PACKAGE_ATOM         = "dev-vcs/git"
+RSYNC_PACKAGE_ATOM       = "net-misc/rsync"
 
 INCREMENTALS             = ("USE", "USE_EXPAND", "USE_EXPAND_HIDDEN",
                            "FEATURES", "ACCEPT_KEYWORDS",
@@ -191,6 +194,7 @@ if "PORTAGE_OVERRIDE_EPREFIX" in os.environ:
 
 VCS_DIRS = ("CVS", "RCS", "SCCS", ".bzr", ".git", ".hg", ".svn")
 
+SUPPORTED_BINPKG_FORMATS = ("tar", "rpm")
 # ===========================================================================
 # END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANT
 # ===========================================================================

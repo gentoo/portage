@@ -1,4 +1,4 @@
-# Copyright 2005-2012 Gentoo Foundation
+# Copyright 2005-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -6,61 +6,56 @@ from __future__ import print_function
 
 import sys
 import textwrap
-from optparse import OptionParser, OptionValueError
-
 
 import portage
 from portage import os
 from portage.emaint.module import Modules
 from portage.emaint.progress import ProgressBar
 from portage.emaint.defaults import DEFAULT_OPTIONS
+from portage.util._argparse import ArgumentParser
 
 class OptionItem(object):
-	"""class to hold module OptionParser options data
+	"""class to hold module ArgumentParser options data
 	"""
 
-	def __init__(self, opt, parser):
+	def __init__(self, opt):
 		"""
 		@type opt: dictionary
 		@param opt: options parser options
 		"""
-		self.parser = parser
-		self.short = opt['short']
-		self.long = opt['long']
-		self.help = opt['help']
-		self.status = opt['status']
-		self.func = opt['func']
-		self.action = opt.get('action', "callback")
-		self.type = opt.get('type', None)
-		self.dest = opt.get('dest', None)
-		self.callback = opt.get('callback', self._exclusive)
-		self.callback_kwargs = opt.get('callback_kwargs', {"var":"action"})
+		self.short = opt.get('short')
+		self.long = opt.get('long')
+		self.help = opt.get('help')
+		self.status = opt.get('status')
+		self.func = opt.get('func')
+		self.action = opt.get('action')
+		self.type = opt.get('type')
+		self.dest = opt.get('dest')
 
+	@property
+	def pargs(self):
+		pargs = []
+		if self.short is not None:
+			pargs.append(self.short)
+		if self.long is not None:
+			pargs.append(self.long)
+		return pargs
 
-	def _exclusive(self, option, *args, **kw):
-		"""Generic check for the 2 default options
-		"""
-		var = kw.get("var", None)
-		if var is None:
-			raise ValueError("var not specified to exclusive()")
-		if getattr(self.parser, var, ""):
-			raise OptionValueError("%s and %s are exclusive options"
-				% (getattr(self.parser, var), option))
-		setattr(self.parser, var, str(option))
-
-	def check_action(self, action):
-		"""Checks if 'action' is the same as this option
-
-		@type action: string
-		@param action: the action to compare
-		@rtype: boolean
-		"""
-		if action == self.action:
-			return True
-		elif action == '/'.join([self.short, self.long]):
-			return True
-		return False
-
+	@property
+	def kwargs(self):
+		# Support for keyword arguments varies depending on the action,
+		# so only pass in the keywords that are needed, in order
+		# to avoid a TypeError.
+		kwargs = {}
+		if self.help is not None:
+			kwargs['help'] = self.help
+		if self.action is not None:
+			kwargs['action'] = self.action
+		if self.type is not None:
+			kwargs['type'] = self.type
+		if self.dest is not None:
+			kwargs['dest'] = self.dest
+		return kwargs
 
 def usage(module_controller):
 		_usage = "usage: emaint [options] COMMAND"
@@ -160,36 +155,48 @@ def emaint_main(myargv):
 	module_names.insert(0, "all")
 
 
-	parser = OptionParser(usage=usage(module_controller), version=portage.VERSION)
+	parser = ArgumentParser(usage=usage(module_controller))
 	# add default options
 	parser_options = []
 	for opt in DEFAULT_OPTIONS:
-		parser_options.append(OptionItem(DEFAULT_OPTIONS[opt], parser))
+		parser_options.append(OptionItem(DEFAULT_OPTIONS[opt]))
 	for mod in module_names[1:]:
 		desc = module_controller.get_func_descriptions(mod)
 		if desc:
 			for opt in desc:
-				parser_options.append(OptionItem(desc[opt], parser))
+				parser_options.append(OptionItem(desc[opt]))
 	for opt in parser_options:
-		parser.add_option(opt.short, opt.long, help=opt.help, action=opt.action,
-		type=opt.type, dest=opt.dest,
-			callback=opt.callback, callback_kwargs=opt.callback_kwargs)
+		parser.add_argument(*opt.pargs, **opt.kwargs)
 
-	parser.action = None
+	options, args = parser.parse_known_args(args=myargv)
 
-	(options, args) = parser.parse_args(args=myargv)
-	#print('options', options, '\nargs', args, '\naction', parser.action)
+	if options.version:
+		print(portage.VERSION)
+		return os.EX_OK
+
 	if len(args) != 1:
 		parser.error("Incorrect number of arguments")
 	if args[0] not in module_names:
 		parser.error("%s target is not a known target" % args[0])
 
-	if parser.action:
-		action = parser.action
-	else:
-		action = "-c/--check"
-	long_action = action.split('/')[1].lstrip('-')
-	#print("DEBUG: action = ", action, long_action)
+	check_opt = None
+	func = status = long_action = None
+	for opt in parser_options:
+		if opt.long == '--check':
+			# Default action
+			check_opt = opt
+		if opt.status and getattr(options, opt.long.lstrip("-"), False):
+			if long_action is not None:
+				parser.error("--%s and %s are exclusive options" %
+					(long_action, opt.long))
+			status = opt.status
+			func = opt.func
+			long_action = opt.long.lstrip('-')
+
+	if long_action is None:
+		long_action = 'check'
+		func = check_opt.func
+		status = check_opt.status
 
 	if args[0] == "all":
 		tasks = []
@@ -200,15 +207,12 @@ def emaint_main(myargv):
 	elif long_action in module_controller.get_functions(args[0]):
 		tasks = [module_controller.get_class(args[0] )]
 	else:
-		print("\nERROR: module '%s' does not have option '%s'\n" %(args[0], action))
-		print(module_opts(module_controller, args[0]))
+		portage.util.writemsg(
+			"\nERROR: module '%s' does not have option '--%s'\n\n" %
+			(args[0], long_action), noiselevel=-1)
+		portage.util.writemsg(module_opts(module_controller, args[0]),
+			noiselevel=-1)
 		sys.exit(1)
-	func = status = None
-	for opt in parser_options:
-		if opt.check_action(action):
-			status = opt.status
-			func = opt.func
-			break
 
 	# need to pass the parser options dict to the modules
 	# so they are available if needed.

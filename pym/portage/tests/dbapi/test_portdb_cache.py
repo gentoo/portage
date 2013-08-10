@@ -1,4 +1,4 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -29,16 +29,18 @@ class PortdbCacheTestCase(TestCase):
 		playground = ResolverPlayground(ebuilds=ebuilds, debug=debug)
 		settings = playground.settings
 		eprefix = settings["EPREFIX"]
-		portdir = settings["PORTDIR"]
+		test_repo_location = settings.repositories["test_repo"].location
 		user_config_dir = os.path.join(eprefix, USER_CONFIG_PATH)
-		metadata_dir = os.path.join(portdir, "metadata")
+		metadata_dir = os.path.join(test_repo_location, "metadata")
 		md5_cache_dir = os.path.join(metadata_dir, "md5-cache")
 		pms_cache_dir = os.path.join(metadata_dir, "cache")
 		layout_conf_path = os.path.join(metadata_dir, "layout.conf")
 
 		portage_python = portage._python_interpreter
 		egencache_cmd = (portage_python, "-Wd",
-			os.path.join(PORTAGE_BIN_PATH, "egencache"))
+			os.path.join(PORTAGE_BIN_PATH, "egencache"),
+			"--repo", "test_repo",
+			"--repositories-configuration", settings.repositories.config_string())
 		python_cmd = (portage_python, "-Wd", "-c")
 
 		test_commands = (
@@ -132,6 +134,7 @@ class PortdbCacheTestCase(TestCase):
 			"PATH" : os.environ.get("PATH", ""),
 			"PORTAGE_OVERRIDE_EPREFIX" : eprefix,
 			"PORTAGE_PYTHON" : portage_python,
+			"PORTAGE_REPOSITORIES" : settings.repositories.config_string(),
 			"PYTHONPATH" : pythonpath,
 		}
 

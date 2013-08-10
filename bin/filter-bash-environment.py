@@ -1,10 +1,9 @@
 #!@PREFIX_PORTAGE_PYTHON@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import codecs
 import io
-import optparse
 import os
 import re
 import sys
@@ -126,10 +125,19 @@ if __name__ == "__main__":
 		"intact. The PATTERN is a space separated list of variable names" + \
 		" and it supports python regular expression syntax."
 	usage = "usage: %s PATTERN" % os.path.basename(sys.argv[0])
-	parser = optparse.OptionParser(description=description, usage=usage)
-	options, args = parser.parse_args(sys.argv[1:])
+	args = sys.argv[1:]
+
+	if '-h' in args or '--help' in args:
+		sys.stdout.write(usage + "\n")
+		sys.stdout.flush()
+		sys.exit(os.EX_OK)
+
 	if len(args) != 1:
-		parser.error("Missing required PATTERN argument.")
+		sys.stderr.write(usage + "\n")
+		sys.stderr.write("Exactly one PATTERN argument required.\n")
+		sys.stderr.flush()
+		sys.exit(2)
+
 	file_in = sys.stdin
 	file_out = sys.stdout
 	if sys.hexversion >= 0x3000000:

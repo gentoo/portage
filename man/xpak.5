@@ -11,7 +11,8 @@ The following conventions cover all occurrences in this documentation
 .IP Integer
 All offsets/lengths are big endian unsigned 32bit integers
 .IP String
-All strings are ASCII encoded, and not NUL terminated (quotes are for illustration only)
+All strings are ASCII encoded, and not NUL terminated (quotes are for
+illustration only)
 .IP Values
 The actual values of the individual xpak entries are stored as Strings
 .P
@@ -46,7 +47,7 @@ String \fI"STOP"\fR.
       |<xpak_offset>|
  <tar>|<---xpak---->|<xpak_offset>"STOP"
 
-Here you see the \fItar\fR archive, the attached \fIxpak\fR blob, the 
+Here you see the \fItar\fR archive, the attached \fIxpak\fR blob, the
 \fIxpak_offset\fR and the string \fI"STOP"\fR at the end.  This metadata
 is not considered "part" of the \fIxpak\fR, but rather part of the binpkg.
 

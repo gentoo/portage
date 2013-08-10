@@ -19,11 +19,15 @@ This must be a valid ebuild script.  For further information read
 \fBebuild\fR(5).
 .SH "COMMANDS"
 By default, portage will execute all the functions in order up to the
-one actually specified.  For example, simply issuing the command \fBcompile\fR
-will trigger the functions before it to also be run (such as \fBsetup\fR
-and \fBunpack\fR).  If you wish to only have the specified command run, then
-you should use the \fInoauto\fR option in the \fBFEATURES\fR environment
-variable.  See the \fBmake.conf\fR(5) man page for more information.
+one actually specified, except for the functions that have already been
+executed in a previous invocation of ebuild.  For example, simply issuing the
+command \fBcompile\fR will trigger the functions before it to also be run (such
+as \fBsetup\fR and \fBunpack\fR), unless they were run in a previous invocation
+of ebuild.  If you want to make sure they are all run, you need to use
+the command \fBclean\fR first.  If you wish to only have the specified command
+run, then you should use the \fInoauto\fR option in the \fBFEATURES\fR
+environment variable.  See the \fBmake.conf\fR(5) man page for more
+information.
 
 .TP
 .BR help
@@ -74,7 +78,7 @@ for all of the files listed in SRC_URI for each ebuild. For further
 information regarding the behavior of this command, see the documentation for
 the \fIassume\-digests\fR value of the \fBFEATURES\fR variable in
 \fBmake.conf\fR(5). See the \fB\-\-force\fR option if you would like to
-prevent digests from being assumed. 
+prevent digests from being assumed.
 .TP
 .BR unpack
 Extracts the sources to a subdirectory in the \fIbuild directory\fR
@@ -112,7 +116,7 @@ current working directory will be set to ${S}.  When src_compile()
 completes, the sources should be fully compiled.
 .TP
 .BR test
-Runs package-specific test cases to verify that everything was built 
+Runs package-specific test cases to verify that everything was built
 properly.
 .TP
 .BR preinst

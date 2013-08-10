@@ -1,6 +1,6 @@
 #!@PORTAGE_BASH@
 #!/bin/bash
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # Author: Karl Trygve Kalleberg <karltk@gentoo.org>
 # Rewritten from the old, Perl-based emerge-webrsync script
@@ -40,12 +40,12 @@ else
 	eecho "could not find 'portageq'; aborting"
 	exit 1
 fi
-eval $("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
+eval "$("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
 	FETCHCOMMAND GENTOO_MIRRORS \
 	PORTAGE_BIN_PATH PORTAGE_CONFIGROOT PORTAGE_GPG_DIR \
-	PORTAGE_NICENESS PORTAGE_RSYNC_EXTRA_OPTS \
-	PORTAGE_RSYNC_OPTS PORTAGE_TMPDIR PORTDIR \
-	SYNC USERLAND http_proxy ftp_proxy \
+	PORTAGE_NICENESS PORTAGE_REPOSITORIES PORTAGE_RSYNC_EXTRA_OPTS \
+	PORTAGE_RSYNC_OPTS PORTAGE_TMPDIR \
+	USERLAND http_proxy ftp_proxy \
 	PORTAGE_USER PORTAGE_GROUP)
 export http_proxy ftp_proxy
 
@@ -54,13 +54,21 @@ export http_proxy ftp_proxy
 GENTOO_MIRRORS="http://gentoo-mirror1.prefix.freens.org"
 # END PREFIX LOCAL
 
+source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
+
+repo_name=gentoo
+repo_location=$(__repo_key "${repo_name}" location)
+if [[ -z ${repo_location} ]]; then
+	eecho "Repository '${repo_name}' not found"
+	exit 1
+fi
+repo_sync_type=$(__repo_key "${repo_name}" sync-type)
+
 # If PORTAGE_NICENESS is overriden via the env then it will
 # still pass through the portageq call and override properly.
 if [ -n "${PORTAGE_NICENESS}" ]; then
 	renice $PORTAGE_NICENESS $$ > /dev/null
 fi
-
-source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 do_verbose=0
 do_debug=0
@@ -119,8 +127,8 @@ get_utc_second_from_string() {
 get_portage_timestamp() {
 	local portage_current_timestamp=0
 
-	if [ -f "${PORTDIR}/metadata/timestamp.x" ]; then
-		portage_current_timestamp=$(cut -f 1 -d " " "${PORTDIR}/metadata/timestamp.x" )
+	if [ -f "${repo_location}/metadata/timestamp.x" ]; then
+		portage_current_timestamp=$(cut -f 1 -d " " "${repo_location}/metadata/timestamp.x" )
 	fi
 
 	echo "${portage_current_timestamp}"
@@ -141,8 +149,13 @@ fetch_file() {
 
 	__vecho "Fetching file ${FILE} ..."
 	# already set DISTDIR=
-	eval "${FETCHCOMMAND}" ${opts}
-	[ -s "${DISTDIR}/${FILE}" ]
+	eval "${FETCHCOMMAND} ${opts}"
+	if [[ $? -eq 0 && -s ${DISTDIR}/${FILE} ]] ; then
+		return 0
+	else
+		rm -f "${DISTDIR}/${FILE}"
+		return 1
+	fi
 }
 
 check_file_digest() {
@@ -204,19 +217,19 @@ sync_local() {
 	if has usersync ${FEATURES} ; then
 		case "${USERLAND}" in
 			BSD)
-				ownership=$(stat -f '%Su:%Sg' "${PORTDIR}")
+				ownership=$(stat -f '%Su:%Sg' "${repo_location}")
 				;;
 			*)
-				ownership=$(stat -c '%U:%G' "${PORTDIR}")
+				ownership=$(stat -c '%U:%G' "${repo_location}")
 				;;
 		esac
 	fi
 
 	if type -P tarsync > /dev/null ; then
 		local chown_opts="-o ${ownership%:*} -g ${ownership#*:}"
-		chown ${ownership} "${PORTDIR}" > /dev/null 2>&1 || chown_opts=""
+		chown ${ownership} "${repo_location}" > /dev/null 2>&1 || chown_opts=""
 		if ! tarsync $(vvecho -v) -s 1 ${chown_opts} \
-			-e /distfiles -e /packages -e /local "${file}" "${PORTDIR}"; then
+			-e /distfiles -e /packages -e /local "${file}" "${repo_location}"; then
 			eecho "tarsync failed; tarball is corrupt? (${file})"
 			return 1
 		fi
@@ -236,7 +249,7 @@ sync_local() {
 			rsync_opts+=" --owner --group"
 		fi
 		cd portage
-		rsync ${rsync_opts} . "${PORTDIR%%/}"
+		rsync ${rsync_opts} . "${repo_location%%/}"
 		cd ..
 
 		__vecho "Cleaning up ..."
@@ -418,7 +431,7 @@ do_latest_snapshot() {
 				"snapshot. In order to force sync," \
 				"use the --revert option or remove" \
 				"the timestamp file located at" \
-				"'${PORTDIR}/metadata/timestamp.x'." | fmt -w 70 | \
+				"'${repo_location}/metadata/timestamp.x'." | fmt -w 70 | \
 				while read -r line ; do
 					ewarn "${line}"
 				done
@@ -472,9 +485,9 @@ main() {
 		esac
 	done
 
-	[[ -d ${PORTDIR} ]] || mkdir -p "${PORTDIR}"
-	if [[ ! -w ${PORTDIR} ]] ; then
-		eecho "PORTDIR is not writable: ${PORTDIR}"
+	[[ -d ${repo_location} ]] || mkdir -p "${repo_location}"
+	if [[ ! -w ${repo_location} ]] ; then
+		eecho "Repository '${repo_name}' is not writable: ${repo_location}"
 		exit 1
 	fi
 
@@ -497,14 +510,14 @@ main() {
 
 	# This is a sanity check to help prevent people like funtoo users
 	# from accidentally wiping out their git tree.
-	if [[ -n $SYNC && ${SYNC#rsync:} = $SYNC ]] ; then
-		echo "The current SYNC variable setting does not refer to an rsync URI:" >&2
+	if [[ -n ${repo_sync_type} && ${repo_sync_type} != rsync ]] ; then
+		echo "The current sync-type attribute of repository 'gentoo' is not set to 'rsync':" >&2
 		echo >&2
-		echo "  SYNC=$SYNC" >&2
+		echo "  sync-type=${repo_sync_type}" >&2
 		echo >&2
 		echo "If you intend to use emerge-webrsync then please" >&2
-		echo "adjust SYNC to refer to an rsync URI." >&2
-		echo "emerge-webrsync exiting due to abnormal SYNC setting." >&2
+		echo "adjust sync-type and sync-uri attributes to refer to rsync." >&2
+		echo "emerge-webrsync exiting due to abnormal sync-type setting." >&2
 		exit 1
 	fi
 

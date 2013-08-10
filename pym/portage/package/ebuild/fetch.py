@@ -348,7 +348,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 				_("!!! For fetching to a read-only filesystem, "
 				"locking should be turned off.\n")), noiselevel=-1)
 			writemsg(_("!!! This can be done by adding -distlocks to "
-				"FEATURES in /etc/make.conf\n"), noiselevel=-1)
+				"FEATURES in /etc/portage/make.conf\n"), noiselevel=-1)
 #			use_locks = 0
 
 	# local mirrors are always added
@@ -753,7 +753,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 							"remaining space.\n"), noiselevel=-1)
 						if userfetch:
 							writemsg(_("!!! You may set FEATURES=\"-userfetch\""
-								" in /etc/make.conf in order to fetch with\n"
+								" in /etc/portage/make.conf in order to fetch with\n"
 								"!!! superuser privileges.\n"), noiselevel=-1)
 
 				if fsmirrors and not os.path.exists(myfile_path) and has_space:

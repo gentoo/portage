@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}/eapi.sh"
@@ -141,7 +141,7 @@ die() {
 	# get a stack trace, so at least report the phase that failed.
 	local phase_str=
 	[[ -n $EBUILD_PHASE ]] && phase_str=" ($EBUILD_PHASE phase)"
-	eerror "ERROR: $CATEGORY/$PF failed${phase_str}:"
+	eerror "ERROR: ${CATEGORY}/${PF}::${PORTAGE_REPO_NAME} failed${phase_str}:"
 	eerror "  ${*:-(no error message)}"
 	eerror
 	# __dump_trace is useless when the main script is a helper binary
@@ -174,35 +174,8 @@ die() {
 		| while read -r n ; do eerror "  ${n#RETAIN-LEADING-SPACE}" ; done
 	eerror
 	fi
-	eerror "If you need support, post the output of \`emerge --info '=$CATEGORY/$PF'\`,"
-	eerror "the complete build log and the output of \`emerge -pqv '=$CATEGORY/$PF'\`."
-	if [[ -n ${EBUILD_OVERLAY_ECLASSES} ]] ; then
-		eerror "This ebuild used the following eclasses from overlays:"
-		local x
-		for x in ${EBUILD_OVERLAY_ECLASSES} ; do
-			eerror "  ${x}"
-		done
-	fi
-	if [ "${EMERGE_FROM}" != "binary" ] && \
-		! has ${EBUILD_PHASE} prerm postrm && \
-		[ "${EBUILD#${PORTDIR}/}" == "${EBUILD}" ] ; then
-		local overlay=${EBUILD%/*}
-		overlay=${overlay%/*}
-		overlay=${overlay%/*}
-		if [[ -n $PORTAGE_REPO_NAME ]] ; then
-			eerror "This ebuild is from an overlay named" \
-				"'$PORTAGE_REPO_NAME': '${overlay}/'"
-		else
-			eerror "This ebuild is from an overlay: '${overlay}/'"
-		fi
-	elif [[ -n $PORTAGE_REPO_NAME && -f "$PORTDIR"/profiles/repo_name ]] ; then
-		local portdir_repo_name=$(<"$PORTDIR"/profiles/repo_name)
-		if [[ -n $portdir_repo_name && \
-			$portdir_repo_name != $PORTAGE_REPO_NAME ]] ; then
-			eerror "This ebuild is from a repository" \
-				"named '$PORTAGE_REPO_NAME'"
-		fi
-	fi
+	eerror "If you need support, post the output of \`emerge --info '=${CATEGORY}/${PF}::${PORTAGE_REPO_NAME}'\`,"
+	eerror "the complete build log and the output of \`emerge -pqv '=${CATEGORY}/${PF}::${PORTAGE_REPO_NAME}'\`."
 
 	# Only call die hooks here if we are executed via ebuild.sh or
 	# misc-functions.sh, since those are the only cases where the environment
@@ -486,6 +459,26 @@ has() {
 		[ "${x}" = "${needle}" ] && return 0
 	done
 	return 1
+}
+
+__repo_key() {
+	local appropriate_section=0 exit_status=1 line saved_extglob_shopt=$(shopt -p extglob)
+	shopt -s extglob
+	while read line; do
+		[[ ${appropriate_section} == 0 && ${line} == "[$1]" ]] && appropriate_section=1 && continue
+		[[ ${appropriate_section} == 1 && ${line} == "["*"]" ]] && appropriate_section=0 && continue
+		# If a conditional expression like [[ ${line} == $2*( )=* ]] is used
+		# then bash-3.2 produces an error like the following when the file is
+		# sourced: syntax error in conditional expression: unexpected token `('
+		# Therefore, use a regular expression for compatibility.
+		if [[ ${appropriate_section} == 1 && ${line} =~ ^${2}[[:space:]]*= ]]; then
+			echo "${line##$2*( )=*( )}"
+			exit_status=0
+			break
+		fi
+	done <<< "${PORTAGE_REPOSITORIES}"
+	eval "${saved_extglob_shopt}"
+	return ${exit_status}
 }
 
 true

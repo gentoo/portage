@@ -18,6 +18,7 @@ import sys
 import tempfile
 import textwrap
 import time
+import warnings
 from itertools import chain
 
 import portage
@@ -39,6 +40,7 @@ from portage import eapi_is_supported, _encodings, _unicode_decode
 from portage.cache.cache_errors import CacheError
 from portage.const import EPREFIX
 from portage.const import GLOBAL_CONFIG_PATH, VCS_DIRS, _DEPCLEAN_LIB_CHECK_DEFAULT
+from portage.const import SUPPORTED_BINPKG_FORMATS
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.dep import Atom
@@ -1645,7 +1647,7 @@ def action_info(settings, trees, myopts, myfiles):
 		          'PORTDIR_OVERLAY', 'PORTAGE_BUNZIP2_COMMAND',
 		          'PORTAGE_BZIP2_COMMAND',
 		          'USE', 'CHOST', 'CFLAGS', 'CXXFLAGS',
-		          'ACCEPT_KEYWORDS', 'ACCEPT_LICENSE', 'SYNC', 'FEATURES',
+		          'ACCEPT_KEYWORDS', 'ACCEPT_LICENSE', 'FEATURES',
 		          'EMERGE_DEFAULT_OPTS']
 
 		myvars.extend(portage.util.grabfile(settings["PORTDIR"]+"/profiles/info_vars"))
@@ -2010,37 +2012,110 @@ def action_search(root_config, myopts, myfiles, spinner):
 				sys.exit(1)
 			searchinstance.output()
 
-def action_sync(settings, trees, mtimedb, myopts, myaction):
+def action_sync(emerge_config, trees=DeprecationWarning,
+	mtimedb=DeprecationWarning, opts=DeprecationWarning,
+	action=DeprecationWarning):
+
+	if not isinstance(emerge_config, _emerge_config):
+		warnings.warn("_emerge.actions.action_sync() now expects "
+			"an _emerge_config instance as the first parameter",
+			DeprecationWarning, stacklevel=2)
+		emerge_config = load_emerge_config(
+			action=action, args=[], trees=trees, opts=opts)
+
+	xterm_titles = "notitles" not in \
+		emerge_config.target_config.settings.features
+	emergelog(xterm_titles, " === sync")
+
+	selected_repos = []
+	unknown_repo_names = []
+	missing_sync_type = []
+	if emerge_config.args:
+		for repo_name in emerge_config.args:
+			try:
+				repo = emerge_config.target_config.settings.repositories[repo_name]
+			except KeyError:
+				unknown_repo_names.append(repo_name)
+			else:
+				selected_repos.append(repo)
+				if repo.sync_type is None:
+					missing_sync_type.append(repo)
+
+		if unknown_repo_names:
+			writemsg_level("!!! %s\n" % _("Unknown repo(s): %s") %
+				" ".join(unknown_repo_names),
+				level=logging.ERROR, noiselevel=-1)
+
+		if missing_sync_type:
+			writemsg_level("!!! %s\n" %
+				_("Missing sync-type for repo(s): %s") %
+				" ".join(repo.name for repo in missing_sync_type),
+				level=logging.ERROR, noiselevel=-1)
+
+		if unknown_repo_names or missing_sync_type:
+			return 1
+
+	else:
+		selected_repos.extend(emerge_config.target_config.settings.repositories)
+
+	for repo in selected_repos:
+		if repo.sync_type is not None:
+			returncode = _sync_repo(emerge_config, repo)
+			if returncode != os.EX_OK:
+				return returncode
+
+	# Reload the whole config from scratch.
+	portage._sync_disabled_warnings = False
+	load_emerge_config(emerge_config=emerge_config)
+	adjust_configs(emerge_config.opts, emerge_config.trees)
+
+	if emerge_config.opts.get('--package-moves') != 'n' and \
+		_global_updates(emerge_config.trees,
+		emerge_config.target_config.mtimedb["updates"],
+		quiet=("--quiet" in emerge_config.opts)):
+		emerge_config.target_config.mtimedb.commit()
+		# Reload the whole config from scratch.
+		load_emerge_config(emerge_config=emerge_config)
+		adjust_configs(emerge_config.opts, emerge_config.trees)
+
+	mybestpv = emerge_config.target_config.trees['porttree'].dbapi.xmatch(
+		"bestmatch-visible", portage.const.PORTAGE_PACKAGE_ATOM)
+	mypvs = portage.best(
+		emerge_config.target_config.trees['vartree'].dbapi.match(
+			portage.const.PORTAGE_PACKAGE_ATOM))
+
+	chk_updated_cfg_files(emerge_config.target_config.root,
+		portage.util.shlex_split(
+			emerge_config.target_config.settings.get("CONFIG_PROTECT", "")))
+
+	if mybestpv != mypvs and "--quiet" not in emerge_config.opts:
+		print()
+		print(warn(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended")
+		print(warn(" * ")+"that you update portage now, before any other packages are updated.")
+		print()
+		print(warn(" * ")+"To update portage, run 'emerge --oneshot portage' now.")
+		print()
+
+	display_news_notification(emerge_config.target_config, emerge_config.opts)
+	return os.EX_OK
+
+def _sync_repo(emerge_config, repo):
+	settings, trees, mtimedb = emerge_config
+	myopts = emerge_config.opts
 	enter_invalid = '--ask-enter-invalid' in myopts
 	xterm_titles = "notitles" not in settings.features
-	emergelog(xterm_titles, " === sync")
-	portdb = trees[settings['EROOT']]['porttree'].dbapi
-	myportdir = portdb.porttree_root
-	if not myportdir:
-		myportdir = settings.get('PORTDIR', '')
-		if myportdir and myportdir.strip():
-			myportdir = os.path.realpath(myportdir)
-		else:
-			myportdir = None
+	msg = ">>> Synchronization of repository '%s' located in '%s'..." % (repo.name, repo.location)
+	emergelog(xterm_titles, msg)
+	writemsg_level(msg + "\n")
 	out = portage.output.EOutput()
-	global_config_path = GLOBAL_CONFIG_PATH
-	if portage.const.EPREFIX:
-		global_config_path = os.path.join(portage.const.EPREFIX,
-				GLOBAL_CONFIG_PATH.lstrip(os.sep))
-	if not myportdir:
-		sys.stderr.write("!!! PORTDIR is undefined.  " + \
-			"Is %s/make.globals missing?\n" % global_config_path)
-		sys.exit(1)
-	if myportdir[-1]=="/":
-		myportdir=myportdir[:-1]
 	try:
-		st = os.stat(myportdir)
+		st = os.stat(repo.location)
 	except OSError:
 		st = None
 	if st is None:
-		print(">>>",myportdir,"not found, creating it.")
-		portage.util.ensure_dirs(myportdir, mode=0o755)
-		st = os.stat(myportdir)
+		print(">>> '%s' not found, creating it." % repo.location)
+		portage.util.ensure_dirs(repo.location, mode=0o755)
+		st = os.stat(repo.location)
 
 	usersync_uid = None
 	spawn_kwargs = {}
@@ -2073,61 +2148,51 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		if rval != os.EX_OK:
 			return rval
 
-	syncuri = settings.get("SYNC", "").strip()
-	if not syncuri:
-		writemsg_level("!!! SYNC is undefined. " + \
-			"Is %s/make.globals missing?\n" % global_config_path,
-			noiselevel=-1, level=logging.ERROR)
-		return 1
+	syncuri = repo.sync_uri
 
 	vcs_dirs = frozenset(VCS_DIRS)
-	vcs_dirs = vcs_dirs.intersection(os.listdir(myportdir))
+	vcs_dirs = vcs_dirs.intersection(os.listdir(repo.location))
 
 	os.umask(0o022)
 	dosyncuri = syncuri
 	updatecache_flg = False
-	git = False
-	if myaction == "metadata":
-		print("skipping sync")
-		updatecache_flg = True
-	elif ".git" in vcs_dirs:
+	if repo.sync_type == "git":
 		# Update existing git repository, and ignore the syncuri. We are
 		# going to trust the user and assume that the user is in the branch
 		# that he/she wants updated. We'll let the user manage branches with
 		# git directly.
 		if portage.process.find_binary("git") is None:
 			msg = ["Command not found: git",
-			"Type \"emerge dev-util/git\" to enable git support."]
+			"Type \"emerge %s\" to enable git support." % portage.const.GIT_PACKAGE_ATOM]
 			for l in msg:
 				writemsg_level("!!! %s\n" % l,
 					level=logging.ERROR, noiselevel=-1)
 			return 1
-		msg = ">>> Starting git pull in %s..." % myportdir
+		msg = ">>> Starting git pull in %s..." % repo.location
 		emergelog(xterm_titles, msg )
 		writemsg_level(msg + "\n")
 		exitcode = portage.process.spawn_bash("cd %s ; git pull" % \
-			(portage._shell_quote(myportdir),),
+			(portage._shell_quote(repo.location),),
 			**portage._native_kwargs(spawn_kwargs))
 		if exitcode != os.EX_OK:
-			msg = "!!! git pull error in %s." % myportdir
+			msg = "!!! git pull error in %s." % repo.location
 			emergelog(xterm_titles, msg)
 			writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
 			return exitcode
-		msg = ">>> Git pull in %s successful" % myportdir
+		msg = ">>> Git pull in %s successful" % repo.location
 		emergelog(xterm_titles, msg)
 		writemsg_level(msg + "\n")
-		git = True
-	elif syncuri[:8]=="rsync://" or syncuri[:6]=="ssh://":
+	elif repo.sync_type == "rsync":
 		for vcs_dir in vcs_dirs:
 			writemsg_level(("!!! %s appears to be under revision " + \
 				"control (contains %s).\n!!! Aborting rsync sync.\n") % \
-				(myportdir, vcs_dir), level=logging.ERROR, noiselevel=-1)
+				(repo.location, vcs_dir), level=logging.ERROR, noiselevel=-1)
 			return 1
 		rsync_binary = portage.process.find_binary("rsync")
 		if rsync_binary is None:
 			print("!!! /usr/bin/rsync does not exist, so rsync support is disabled.")
-			print("!!! Type \"emerge net-misc/rsync\" to enable rsync support.")
-			sys.exit(1)
+			print("!!! Type \"emerge %s\" to enable rsync support." % portage.const.RSYNC_PACKAGE_ATOM)
+			return os.EX_UNAVAILABLE
 		mytimeout=180
 
 		rsync_opts = []
@@ -2139,6 +2204,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				"--safe-links",   # Ignore links outside of tree
 				"--perms",        # Preserve permissions
 				"--times",        # Preserive mod times
+				"--omit-dir-times",
 				"--compress",     # Compress the data transmitted
 				"--force",        # Force deletion on non-empty dirs
 				"--whole-file",   # Don't do block transfers, only entire files
@@ -2201,7 +2267,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 		# Real local timestamp file.
 		servertimestampfile = os.path.join(
-			myportdir, "metadata", "timestamp.chk")
+			repo.location, "metadata", "timestamp.chk")
 
 		content = portage.util.grabfile(servertimestampfile)
 		mytimestamp = 0
@@ -2232,7 +2298,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				r"(rsync|ssh)://([^:/]+@)?(\[[:\da-fA-F]*\]|[^:/]*)(:[0-9]+)?",
 				syncuri, maxsplit=4)[1:5]
 		except ValueError:
-			writemsg_level("!!! SYNC is invalid: %s\n" % syncuri,
+			writemsg_level("!!! sync-uri is invalid: %s\n" % syncuri,
 				noiselevel=-1, level=logging.ERROR)
 			return 1
 
@@ -2453,7 +2519,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					print(">>> In order to force sync, remove '%s'." % servertimestampfile)
 					print(">>>")
 					print()
-					sys.exit(0)
+					return os.EX_OK
 				elif (servertimestamp != 0) and (servertimestamp < mytimestamp):
 					emergelog(xterm_titles,
 						">>> Server out of date: %s" % dosyncuri)
@@ -2467,7 +2533,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					exitcode = SERVER_OUT_OF_DATE
 				elif (servertimestamp == 0) or (servertimestamp > mytimestamp):
 					# actual sync
-					mycommand = rsynccommand + [dosyncuri+"/", myportdir]
+					mycommand = rsynccommand + [dosyncuri+"/", repo.location]
 					exitcode = portage.process.spawn(mycommand,
 						**portage._native_kwargs(spawn_kwargs))
 					if exitcode in [0,1,3,4,11,14,20,21]:
@@ -2495,23 +2561,23 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		if (exitcode==0):
 			emergelog(xterm_titles, "=== Sync completed with %s" % dosyncuri)
 		elif exitcode == SERVER_OUT_OF_DATE:
-			sys.exit(1)
+			return 1
 		elif exitcode == EXCEEDED_MAX_RETRIES:
 			sys.stderr.write(
 				">>> Exceeded PORTAGE_RSYNC_RETRIES: %s\n" % maxretries)
-			sys.exit(1)
+			return 1
 		elif (exitcode>0):
 			msg = []
 			if exitcode==1:
 				msg.append("Rsync has reported that there is a syntax error. Please ensure")
-				msg.append("that your SYNC statement is proper.")
-				msg.append("SYNC=" + settings["SYNC"])
+				msg.append("that sync-uri attribute for repository '%s' is proper." % repo.name)
+				msg.append("sync-uri: '%s'" % repo.sync_uri)
 			elif exitcode==11:
 				msg.append("Rsync has reported that there is a File IO error. Normally")
 				msg.append("this means your disk is full, but can be caused by corruption")
-				msg.append("on the filesystem that contains PORTDIR. Please investigate")
+				msg.append("on the filesystem that contains repository '%s'. Please investigate" % repo.name)
 				msg.append("and try again after the problem has been fixed.")
-				msg.append("PORTDIR=" + settings["PORTDIR"])
+				msg.append("Location of repository: '%s'" % repo.location)
 			elif exitcode==20:
 				msg.append("Rsync was killed before it finished.")
 			else:
@@ -2522,165 +2588,76 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				msg.append("(and possibly your system's filesystem) configuration.")
 			for line in msg:
 				out.eerror(line)
-			sys.exit(exitcode)
-	elif syncuri[:6]=="cvs://":
+			return exitcode
+	elif repo.sync_type == "cvs":
 		if not os.path.exists(EPREFIX + "/usr/bin/cvs"):
-			print("!!! " + EPREFIX + "/usr/bin/cvs does not exist, so CVS support is disabled.")
-			print("!!! Type \"emerge dev-vcs/cvs\" to enable CVS support.")
-			sys.exit(1)
-		cvsroot=syncuri[6:]
-		cvsdir=os.path.dirname(myportdir)
-		if not os.path.exists(myportdir+"/CVS"):
+			print("!!! %s/usr/bin/cvs does not exist, so CVS support is disabled." % (EPREFIX))
+			print("!!! Type \"emerge %s\" to enable CVS support." % portage.const.CVS_PACKAGE_ATOM)
+			return os.EX_UNAVAILABLE
+		cvs_root = syncuri
+		if cvs_root.startswith("cvs://"):
+			cvs_root = cvs_root[6:]
+		if not os.path.exists(os.path.join(repo.location, "CVS")):
 			#initial checkout
 			print(">>> Starting initial cvs checkout with "+syncuri+"...")
-			if os.path.exists(cvsdir+"/gentoo-x86"):
-				print("!!! existing",cvsdir+"/gentoo-x86 directory; exiting.")
-				sys.exit(1)
 			try:
-				os.rmdir(myportdir)
+				os.rmdir(repo.location)
 			except OSError as e:
 				if e.errno != errno.ENOENT:
 					sys.stderr.write(
-						"!!! existing '%s' directory; exiting.\n" % myportdir)
-					sys.exit(1)
+						"!!! existing '%s' directory; exiting.\n" % repo.location)
+					return 1
 				del e
 			if portage.process.spawn_bash(
-					"cd %s; exec cvs -z0 -d %s co -P gentoo-x86" % \
-					(portage._shell_quote(cvsdir), portage._shell_quote(cvsroot)),
+					"cd %s; exec cvs -z0 -d %s co -P -d %s %s" %
+					(portage._shell_quote(os.path.dirname(repo.location)), portage._shell_quote(cvs_root),
+					portage._shell_quote(os.path.basename(repo.location)), portage._shell_quote(repo.sync_cvs_repo)),
 					**portage._native_kwargs(spawn_kwargs)) != os.EX_OK:
 				print("!!! cvs checkout error; exiting.")
-				sys.exit(1)
-			os.rename(os.path.join(cvsdir, "gentoo-x86"), myportdir)
+				return 1
 		else:
 			#cvs update
 			print(">>> Starting cvs update with "+syncuri+"...")
 			retval = portage.process.spawn_bash(
 				"cd %s; exec cvs -z0 -q update -dP" % \
-				(portage._shell_quote(myportdir),),
+				(portage._shell_quote(repo.location),),
 				**portage._native_kwargs(spawn_kwargs))
 			if retval != os.EX_OK:
 				writemsg_level("!!! cvs update error; exiting.\n",
 					noiselevel=-1, level=logging.ERROR)
-				sys.exit(retval)
+				return retval
 		dosyncuri = syncuri
-	elif syncuri[:11]=="svn+http://" or syncuri[:6]=="svn://" or syncuri[:12]=="svn+https://":
-		# Gentoo Prefix hardcoded SVN support
-		if not os.path.exists(EPREFIX + "/usr/bin/svn"):
-			print("!!! " + EPREFIX + "/usr/bin/svn does not exist, so SVN support is disabled.")
-			print("!!! Type \"emerge dev-util/subversion\" to enable SVN support.")
-			sys.exit(1)
-		svndir=os.path.dirname(myportdir)
-		if not os.path.exists(myportdir+"/.svn"):
-			#initial checkout
-			if syncuri[:4] == "svn+":
-				syncuri = syncuri[4:]
-			print(">>> Starting initial svn checkout with "+syncuri+"...")
-			if os.path.exists(svndir+"/prefix-overlay"):
-				print("!!! existing",svndir+"/prefix-overlay directory; exiting.")
-				sys.exit(1)
-			try:
-				os.rmdir(myportdir)
-			except OSError as e:
-				if e.errno != errno.ENOENT:
-					sys.stderr.write(
-						"!!! existing '%s' directory; exiting.\n" % myportdir)
-					sys.exit(1)
-				del e
-			if portage.spawn("cd "+svndir+"; svn checkout "+syncuri,settings,free=1):
-				print("!!! svn checkout error; exiting.")
-				sys.exit(1)
-			os.rename(os.path.join(svndir, "prefix-overlay"), myportdir)
-		else:
-			#svn update
-			print(">>> Starting svn update...")
-			retval = portage.spawn("cd '%s'; svn update" % myportdir, \
-				settings, free=1)
-			if retval != os.EX_OK:
-				sys.exit(retval)
-
-		# write timestamp.chk
-		try:
-			if not os.path.exists(os.path.join(myportdir, "metadata")):
-				os.mkdir(os.path.join(myportdir, "metadata"))
-			f = open(os.path.join(myportdir, "metadata", "timestamp.chk"), 'w')
-			f.write(time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
-			f.write('\n')
-			f.close()
-		except IOError as e:
-			# too bad, next time better luck!
-			pass
-
-		dosyncuri = syncuri
-	else:
-		writemsg_level("!!! Unrecognized protocol: SYNC='%s'\n" % (syncuri,),
-			noiselevel=-1, level=logging.ERROR)
-		return 1
 
 	# Reload the whole config from scratch.
-	portage._sync_disabled_warnings = False
-	settings, trees, mtimedb = load_emerge_config(trees=trees)
-	adjust_configs(myopts, trees)
-	root_config = trees[settings['EROOT']]['root_config']
+	settings, trees, mtimedb = load_emerge_config(emerge_config=emerge_config)
+	adjust_configs(emerge_config.opts, emerge_config.trees)
 	portdb = trees[settings['EROOT']]['porttree'].dbapi
 
-	if git:
+	if repo.sync_type == "git":
 		# NOTE: Do this after reloading the config, in case
 		# it did not exist prior to sync, so that the config
 		# and portdb properly account for its existence.
-		exitcode = git_sync_timestamps(portdb, myportdir)
+		exitcode = git_sync_timestamps(portdb, repo.location)
 		if exitcode == os.EX_OK:
 			updatecache_flg = True
 
-	if updatecache_flg and  \
-		myaction != "metadata" and \
-		"metadata-transfer" not in settings.features:
+	if updatecache_flg and "metadata-transfer" not in settings.features:
 		updatecache_flg = False
 
 	if updatecache_flg and \
-		os.path.exists(os.path.join(myportdir, 'metadata', 'cache')):
+		os.path.exists(os.path.join(repo.location, 'metadata', 'cache')):
 
-		# Only update cache for myportdir since that's
+		# Only update cache for repo.location since that's
 		# the only one that's been synced here.
-		action_metadata(settings, portdb, myopts, porttrees=[myportdir])
+		action_metadata(settings, portdb, myopts, porttrees=[repo.location])
 
-	if myopts.get('--package-moves') != 'n' and \
-		_global_updates(trees, mtimedb["updates"], quiet=("--quiet" in myopts)):
-		mtimedb.commit()
-		# Reload the whole config from scratch.
-		settings, trees, mtimedb = load_emerge_config(trees=trees)
-		adjust_configs(myopts, trees)
-		portdb = trees[settings['EROOT']]['porttree'].dbapi
-		root_config = trees[settings['EROOT']]['root_config']
+	postsync = os.path.join(settings["PORTAGE_CONFIGROOT"], portage.USER_CONFIG_PATH, "bin", "post_sync")
+	if os.access(postsync, os.X_OK):
+		retval = portage.process.spawn([postsync, dosyncuri], env=settings.environ())
+		if retval != os.EX_OK:
+			writemsg_level(" %s spawn failed of %s\n" % (bad("*"), postsync,),
+				level=logging.ERROR, noiselevel=-1)
 
-	mybestpv = portdb.xmatch("bestmatch-visible",
-		portage.const.PORTAGE_PACKAGE_ATOM)
-	mypvs = portage.best(
-		trees[settings['EROOT']]['vartree'].dbapi.match(
-		portage.const.PORTAGE_PACKAGE_ATOM))
-
-	chk_updated_cfg_files(settings["EROOT"],
-		portage.util.shlex_split(settings.get("CONFIG_PROTECT", "")))
-
-	if myaction != "metadata":
-		postsync = os.path.join(settings["PORTAGE_CONFIGROOT"],
-			portage.USER_CONFIG_PATH, "bin", "post_sync")
-		if os.access(postsync, os.X_OK):
-			retval = portage.process.spawn(
-				[postsync, dosyncuri], env=settings.environ())
-			if retval != os.EX_OK:
-				writemsg_level(
-					" %s spawn failed of %s\n" % (bad("*"), postsync,),
-					level=logging.ERROR, noiselevel=-1)
-
-	if(mybestpv != mypvs) and not "--quiet" in myopts:
-		print()
-		print(warn(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended")
-		print(warn(" * ")+"that you update portage now, before any other packages are updated.")
-		print()
-		print(warn(" * ")+"To update portage, run 'emerge --oneshot portage' now.")
-		print()
-
-	display_news_notification(root_config, myopts)
 	return os.EX_OK
 
 def action_uninstall(settings, trees, ldpath_mtimes,
@@ -2957,6 +2934,10 @@ def adjust_config(myopts, settings):
 		portage.output.havecolor = 0
 		settings["NOCOLOR"] = "true"
 		settings.backup_changes("NOCOLOR")
+
+	if "--pkg-format" in myopts:
+		settings["PORTAGE_BINPKG_FORMAT"] = myopts["--pkg-format"]
+		settings.backup_changes("PORTAGE_BINPKG_FORMAT")
 
 def display_missing_pkg_set(root_config, set_name):
 
@@ -3580,7 +3561,7 @@ def repo_name_duplicate_check(trees):
 			"All profiles/repo_name entries must be unique in order " + \
 			"to avoid having duplicates ignored. " + \
 			"Set PORTAGE_REPO_DUPLICATE_WARN=\"0\" in " + \
-			"/etc/make.conf if you would like to disable this warning."))
+			"/etc/portage/make.conf if you would like to disable this warning."))
 		msg.append("\n")
 		writemsg_level(''.join('%s\n' % l for l in msg),
 			level=logging.WARNING, noiselevel=-1)
@@ -3639,6 +3620,18 @@ def run_action(emerge_config):
 
 	adjust_configs(emerge_config.opts, emerge_config.trees)
 	apply_priorities(emerge_config.target_config.settings)
+
+	for fmt in emerge_config.target_config.settings["PORTAGE_BINPKG_FORMAT"].split():
+		if not fmt in portage.const.SUPPORTED_BINPKG_FORMATS:
+			if "--pkg-format" in emerge_config.opts:
+				problematic="--pkg-format"
+			else:
+				problematic="PORTAGE_BINPKG_FORMAT"
+
+			writemsg_level(("emerge: %s is not set correctly. Format " + \
+				"'%s' is not supported.\n") % (problematic, fmt),
+				level=logging.ERROR, noiselevel=-1)
+			return 1
 
 	if emerge_config.action == 'version':
 		writemsg_stdout(getportageversion(
@@ -3705,6 +3698,12 @@ def run_action(emerge_config):
 		return os.EX_OK
 
 	ensure_required_sets(emerge_config.trees)
+
+	if emerge_config.action is None and \
+		"--resume" in emerge_config.opts and emerge_config.args:
+		writemsg("emerge: unexpected argument(s) for --resume: %s\n" %
+		   " ".join(emerge_config.args), noiselevel=-1)
+		return 1
 
 	# only expand sets for actions taking package arguments
 	oldargs = emerge_config.args[:]
@@ -3911,9 +3910,7 @@ def run_action(emerge_config):
 			return 1
 
 	if "sync" == emerge_config.action:
-		return action_sync(emerge_config.target_config.settings,
-			emerge_config.trees, emerge_config.target_config.mtimedb,
-			emerge_config.opts, emerge_config.action)
+		return action_sync(emerge_config)
 	elif "metadata" == emerge_config.action:
 		action_metadata(emerge_config.target_config.settings,
 			emerge_config.target_config.trees['porttree'].dbapi,
