@@ -3870,7 +3870,9 @@ class dblink(object):
 				" enough information to determine if a real problem"
 				" exists. Please do NOT file a bug report at"
 				" http://bugs.gentoo.org unless you report exactly which"
-				" two packages install the same file(s). Once again,"
+				" two packages install the same file(s). See"
+				" http://wiki.gentoo.org/wiki/Knowledge_Base:Blockers"
+				" for tips on how to solve the problem. And once again,"
 				" please do NOT file a bug report unless you have"
 				" completely understood the above message.")
 
