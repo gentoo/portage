@@ -679,7 +679,9 @@ single package.
 .BR package.env
 Per\-package environment variable settings. Entries refer to
 environment files that are placed in the \fB/etc/portage/env/\fR
-directory and have the same format as \fBmake.conf\fR(5).
+directory and have the same format as \fBmake.conf\fR(5). Note that these
+files are interpreted much earlier than the package specific bashrc files in
+\fB/etc/portage/env/\fR.
 
 .I Format:
 .nf
@@ -935,7 +937,9 @@ needed, then \fB/etc/portage/package.env\fR should be used instead of the
 bashrc approach that is described here. Also note that special variables
 such as \fBFEATURES\fR and \fBINSTALL_MASK\fR will not produce the intended
 results if they are set in bashrc, and therefore
-\fB/etc/portage/package.env\fR should be used instead.
+\fB/etc/portage/package.env\fR should be used instead. Lastly, note that these
+files are interpreted much later than the portage enviroment file
+\fBpackage.env\fR.
 
 Portage will source all of these bashrc files after \fB/etc/portage/bashrc\fR
 in the following order:
