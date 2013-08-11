@@ -32,7 +32,7 @@ if not lchown:
 				" exist.  Please rebuild python.\n"), noiselevel=-1)
 		lchown()
 
-lchown = portage._chown_func_wrapper(lchown)
+lchown = portage._unicode_func_wrapper(lchown)
 
 def portage_group_warning():
 	warn_prefix = colorize("BAD", "*** WARNING ***  ")

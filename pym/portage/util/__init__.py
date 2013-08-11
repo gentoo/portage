@@ -1014,6 +1014,10 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 
 	modified = False
 
+	# Since Python 3.4, chown requires int type (no proxies).
+	uid = int(uid)
+	gid = int(gid)
+
 	if stat_cached is None:
 		try:
 			if follow_links:

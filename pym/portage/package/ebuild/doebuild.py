@@ -1459,8 +1459,10 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 				"umask": 0o02
 			})
 		if "userpriv" in features and "userpriv" not in mysettings["PORTAGE_RESTRICT"].split() and secpass >= 2:
-			portage_build_uid = portage_uid
-			portage_build_gid = portage_gid
+			# Since Python 3.4, getpwuid and getgrgid
+			# require int type (no proxies).
+			portage_build_uid = int(portage_uid)
+			portage_build_gid = int(portage_gid)
 
 	if "PORTAGE_BUILD_USER" not in mysettings:
 		user = None

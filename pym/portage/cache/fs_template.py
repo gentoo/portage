@@ -1,4 +1,4 @@
-# Copyright 2005-2012 Gentoo Foundation
+# Copyright 2005-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
 
@@ -25,7 +25,8 @@ class FsBased(template.database):
 
 		for x, y in (("gid", -1), ("perms", -1)):
 			if x in config:
-				setattr(self, "_"+x, config[x])
+				# Since Python 3.4, chown requires int type (no proxies).
+				setattr(self, "_" + x, int(config[x]))
 				del config[x]
 			else:
 				setattr(self, "_"+x, y)
