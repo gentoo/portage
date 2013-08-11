@@ -4,7 +4,16 @@ make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
 \fB/etc/make.conf\fR and \fB/etc/portage/make.conf\fR
 .SH "DESCRIPTION"
-This file contains various variables that are used by Portage.
+
+This file contains various variables that are used by Portage. The file has a
+newline-delimited list of \fI<key>=<value>\fR pairs (see the default file for
+examples) which are accessible from the environment of ebuilds. It supports
+simple shell\-like expansion of the form \fIvar="${var}"\fR, the source
+keyword and variable substituton, but not some of the more advanced BASH
+features like arrays and special parameter expansions. For more details, see
+the Simple lexical analysis documentanion:
+\fLhttp://docs.python.org/3/library/shlex.html\fR.
+.br
 Portage will check the currently\-defined environment variables
 first for any settings.  If no environment settings are found,
 Portage then checks the make.conf files. Both /etc/make.conf and
