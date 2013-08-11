@@ -30,7 +30,7 @@ install:
 		"$(srcdir)"/sets/portage.conf
 	$(INSTALL_subst) \
 		-o "$(portageuser)" -g "$(portagegroup)" \
-		"$(srcdir)"/make.conf "$(DESTDIR)$(PORTAGE_CONF)"/make.conf.example
+		"$(srcdir)"/make.conf.example "$(DESTDIR)$(PORTAGE_CONF)"/make.conf.example
 	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(sysconfdir)
 	$(INSTALL_subst) \
 		-o "$(portageuser)" -g "$(portagegroup)" \
