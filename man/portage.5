@@ -680,8 +680,11 @@ single package.
 Per\-package environment variable settings. Entries refer to
 environment files that are placed in the \fB/etc/portage/env/\fR
 directory and have the same format as \fBmake.conf\fR(5). Note that these
-files are interpreted much earlier than the package specific bashrc files in
-\fB/etc/portage/env/\fR.
+files are interpreted much earlier than the package\-specific \fIbashrc\fR
+files which are described in a later section about \fB/etc/portage/env/\fR.
+Beginners should be careful to recognize the difference between these two types
+of files. When environment variable settings are all that's needed,
+\fBpackage.env\fR is the recommended approach to use.
 
 .I Format:
 .nf
