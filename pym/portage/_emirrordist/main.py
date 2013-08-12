@@ -253,7 +253,7 @@ def emirrordist_main(args):
 
 	if options.repositories_configuration is not None:
 		env['PORTAGE_REPOSITORIES'] = options.repositories_configuration
-	elif options.portdir_overlay:
+	elif options.portdir_overlay is not None:
 		env['PORTDIR_OVERLAY'] = options.portdir_overlay
 
 	if options.portdir is not None:
