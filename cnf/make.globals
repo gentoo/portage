@@ -19,10 +19,6 @@ LDFLAGS=""
 FFLAGS=""
 FCFLAGS=""
 
-# PREFIX LOCAL: default rsync mirror
-SYNC="rsync://rsync.prefix.freens.org/gentoo-portage-prefix"
-# END PREFIX LOCAL
-
 # Default distfiles mirrors. This rotation has multiple hosts and is reliable.
 # Approved by the mirror-admin team.
 GENTOO_MIRRORS="http://distfiles.gentoo.org"
