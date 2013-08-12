@@ -51,6 +51,11 @@ _ignored_errors = (
 		'warning: key "Encoding" in group "Desktop Entry" is deprecated'
 )
 
+_NotShowIn_exemptions = (
+	# See bug #480586.
+	'contains an unregistered value "Pantheon"',
+)
+
 def validate_desktop_entry(path):
 	args = ["desktop-file-validate", path]
 
@@ -75,6 +80,14 @@ def validate_desktop_entry(path):
 			# "hint:" output is new in desktop-file-utils-0.21
 			if msg.startswith('hint: ') or msg in _ignored_errors:
 				continue
+			if 'for key "NotShowIn" in group "Desktop Entry"' in msg:
+				exempt = False
+				for s in _NotShowIn_exemptions:
+					if s in msg:
+						exempt = True
+						break
+				if exempt:
+					continue
 			filtered_output.append(line)
 		output_lines = filtered_output
 
