@@ -207,9 +207,6 @@ def parse_args(args):
 			parser.error("Write access denied: --cache-dir='%s'" % \
 				(options.cache_dir,))
 
-	if options.repo is None:
-		parser.error("--repo option is required")
-
 	if options.portdir is not None:
 		writemsg_level("egencache: warning: --portdir option is deprecated in favor of --repositories-configuration option\n",
 			level=logging.WARNING, noiselevel=-1)
@@ -893,6 +890,16 @@ def egencache_main(args):
 			options.update_changelogs or options.update_manifests):
 		parser.error('No action specified')
 		return 1
+
+	if options.repo is None:
+		if len(settings.repositories.prepos) == 2:
+			for repo in settings.repositories:
+				if repo.name != "DEFAULT":
+					options.repo = repo.name
+					break
+
+		if options.repo is None:
+			parser.error("--repo option is required")
 
 	repo_path = settings.repositories.treemap.get(options.repo)
 	if repo_path is None:
