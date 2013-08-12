@@ -32,6 +32,9 @@ DISTDIR="@PORTAGE_EPREFIX@/usr/portage/distfiles"
 PKGDIR="@PORTAGE_EPREFIX@/usr/portage/packages"
 RPMDIR="@PORTAGE_EPREFIX@/usr/portage/rpm"
 
+# Temporary build directory
+PORTAGE_TMPDIR="@PORTAGE_EPREFIX@/var/tmp"
+
 # Fetching command (3 tries, passive ftp for firewall compatibility)
 FETCHCOMMAND="wget -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
 RESUMECOMMAND="wget -c -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
