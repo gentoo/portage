@@ -3518,6 +3518,13 @@ def repo_name_check(trees):
 				# so don't warn about it.
 				missing_repo_names.remove(portdb.porttree_root)
 
+	# Skip warnings about missing repo_name entries for
+	# /usr/local/portage (see bug #248603).
+	try:
+		missing_repo_names.remove('/usr/local/portage')
+	except KeyError:
+		pass
+
 	if missing_repo_names:
 		msg = []
 		msg.append("WARNING: One or more repositories " + \
@@ -3652,10 +3659,7 @@ def run_action(emerge_config):
 	if "--quiet" not in emerge_config.opts:
 		portage.deprecated_profile_check(
 			settings=emerge_config.target_config.settings)
-		if portage.const._ENABLE_REPO_NAME_WARN:
-			# Bug #248603 - Disable warnings about missing
-			# repo_name entries for stable branch.
-			repo_name_check(emerge_config.trees)
+		repo_name_check(emerge_config.trees)
 		repo_name_duplicate_check(emerge_config.trees)
 		config_protect_check(emerge_config.trees)
 	check_procfs()
