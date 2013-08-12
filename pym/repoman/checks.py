@@ -16,7 +16,6 @@ import portage
 from portage.eapi import eapi_supports_prefix, eapi_has_implicit_rdepend, \
 	eapi_has_src_prepare_and_src_configure, eapi_has_dosed_dohard, \
 	eapi_exports_AA
-from portage.const import _ENABLE_INHERIT_CHECK
 
 class LineCheck(object):
 	"""Run a check on a line of an ebuild."""
@@ -635,29 +634,6 @@ _eclass_info = {
 	}
 }
 
-if not _ENABLE_INHERIT_CHECK:
-	# Since the InheritEclass check is experimental, in the stable branch
-	# we emulate the old eprefixify.defined and inherit.autotools checks.
-	_eclass_info = {
-		'autotools': {
-			'funcs': (
-				'eaclocal', 'eautoconf', 'eautoheader',
-				'eautomake', 'eautoreconf', '_elibtoolize',
-				'eautopoint'
-			),
-			'comprehensive': True,
-			'ignore_missing': True,
-			'exempt_eclasses': ('git', 'git-2', 'subversion', 'autotools-utils')
-		},
-
-		'prefix': {
-			'funcs': (
-				'eprefixify',
-			),
-			'comprehensive': False
-		}
-	}
-
 class EMakeParallelDisabled(PhaseCheck):
 	"""Check for emake -j1 calls which disable parallelization."""
 	repoman_check_name = 'upstream.workaround'
@@ -824,10 +800,39 @@ class PortageInternalVariableAssignment(LineCheck):
 		return e
 
 _base_check_classes = (InheritEclass, LineCheck, PhaseCheck)
-_constant_checks = tuple(chain((v() for k, v in globals().items()
-	if isinstance(v, type) and issubclass(v, LineCheck) and v not in _base_check_classes),
-	(InheritEclass(k, **portage._native_kwargs(kwargs))
-	for k, kwargs in _eclass_info.items())))
+_constant_checks = None
+
+def _init(experimental_inherit=False):
+
+	global _constant_checks, _eclass_info
+
+	if not experimental_inherit:
+		# Emulate the old eprefixify.defined and inherit.autotools checks.
+		_eclass_info = {
+			'autotools': {
+				'funcs': (
+					'eaclocal', 'eautoconf', 'eautoheader',
+					'eautomake', 'eautoreconf', '_elibtoolize',
+					'eautopoint'
+				),
+				'comprehensive': True,
+				'ignore_missing': True,
+				'exempt_eclasses': ('git', 'git-2', 'subversion', 'autotools-utils')
+			},
+
+			'prefix': {
+				'funcs': (
+					'eprefixify',
+				),
+				'comprehensive': False
+			}
+		}
+
+	_constant_checks = tuple(chain((v() for k, v in globals().items()
+		if isinstance(v, type) and issubclass(v, LineCheck) and
+		v not in _base_check_classes),
+		(InheritEclass(k, **portage._native_kwargs(kwargs))
+		for k, kwargs in _eclass_info.items())))
 
 _here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
 _ignore_comment_re = re.compile(r'^\s*#')
@@ -835,6 +840,8 @@ _ignore_comment_re = re.compile(r'^\s*#')
 def run_checks(contents, pkg):
 	unicode_escape_codec = codecs.lookup('unicode_escape')
 	unicode_escape = lambda x: unicode_escape_codec.decode(x)[0]
+	if _constant_checks is None:
+		_init()
 	checks = _constant_checks
 	here_doc_delim = None
 	multiline = None

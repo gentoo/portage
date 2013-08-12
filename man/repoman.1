@@ -65,6 +65,10 @@ can be enabled by default for a particular repository by setting
 "update\-changelog = true" in metadata/layout.conf (see
 \fBportage(5)\fR).
 .TP
+\fB\-\-experimental\-inherit=<y|n>\fR
+Enable experimental inherit.missing checks which may misbehave when the
+internal eclass database becomes outdated.
+.TP
 \fB\-\-if\-modified=<y|n>\fR
 Only check packages that have uncommitted modifications
 .TP

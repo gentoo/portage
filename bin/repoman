@@ -56,6 +56,7 @@ except (ImportError, SystemError, RuntimeError, Exception):
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
+import repoman.checks
 from repoman.checks import run_checks
 from repoman import utilities
 from repoman.herdbase import make_herd_base
@@ -173,6 +174,11 @@ def ParseArgs(argv, qahelp):
 		'--echangelog', choices=('y', 'n', 'force'), metavar="<y|n|force>",
 		help='for commit mode, call echangelog if ChangeLog is unmodified (or '
 		'regardless of modification if \'force\' is specified)')
+
+	parser.add_argument('--experimental-inherit', choices=('y', 'n'),
+		metavar="<y|n>", default='n',
+		help='Enable experimental inherit.missing checks which may misbehave'
+			' when the internal eclass database becomes outdated')
 
 	parser.add_argument('-f', '--force', dest='force', default=False, action='store_true',
 		help='Commit with QA violations')
@@ -396,10 +402,6 @@ qawarnings = set((
 "IUSE.rubydeprecated",
 ))
 
-if portage.const._ENABLE_INHERIT_CHECK:
-	# This is experimental, so it's non-fatal.
-	qawarnings.add("inherit.missing")
-
 non_ascii_re = re.compile(r'[^\x00-\x7f]')
 
 missingvars = ["KEYWORDS", "LICENSE", "DESCRIPTION", "HOMEPAGE"]
@@ -498,6 +500,11 @@ options, arguments = ParseArgs(sys.argv, qahelp)
 if options.version:
 	print("Portage", portage.VERSION)
 	sys.exit(0)
+
+if options.experimental_inherit == 'y':
+	# This is experimental, so it's non-fatal.
+	qawarnings.add("inherit.missing")
+	repoman.checks._init(experimental_inherit=True)
 
 # Set this to False when an extraordinary issue (generally
 # something other than a QA issue) makes it impossible to
