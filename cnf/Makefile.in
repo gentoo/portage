@@ -22,7 +22,7 @@ install:
 	$(INSTALL_subst) \
 		-o "$(portageuser)" -g "$(portagegroup)" \
 		-t "$(DESTDIR)$(PORTAGE_CONF)" \
-		"$(srcdir)"/make.globals "$(srcdir)"/sets.conf
+		"$(srcdir)"/make.globals "$(srcdir)"/repos.conf
 	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(PORTAGE_CONF)/sets
 	$(INSTALL_subst) \
 		-o "$(portageuser)" -g "$(portagegroup)" \
