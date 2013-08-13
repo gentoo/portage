@@ -81,7 +81,7 @@ def validate_desktop_entry(path):
 			if msg.startswith('hint: ') or msg in _ignored_errors:
 				continue
 			if 'for key "NotShowIn" in group "Desktop Entry"' in msg or \
-				'for key "OnlyShowIn" in group "Desktop Entry"':
+				'for key "OnlyShowIn" in group "Desktop Entry"' in msg:
 				exempt = False
 				for s in _ShowIn_exemptions:
 					if s in msg:
