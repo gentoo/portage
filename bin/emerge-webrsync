@@ -46,7 +46,7 @@ eval "$("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
 	PORTAGE_NICENESS PORTAGE_REPOSITORIES PORTAGE_RSYNC_EXTRA_OPTS \
 	PORTAGE_RSYNC_OPTS PORTAGE_TMPDIR \
 	USERLAND http_proxy ftp_proxy \
-	PORTAGE_USER PORTAGE_GROUP)
+	PORTAGE_USER PORTAGE_GROUP)"
 export http_proxy ftp_proxy
 
 # PREFIX LOCAL: use Prefix servers, just because we want this and infra
