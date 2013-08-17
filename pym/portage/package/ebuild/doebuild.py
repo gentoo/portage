@@ -12,6 +12,7 @@ import io
 from itertools import chain
 import logging
 import os as _os
+import platform
 import pwd
 import re
 import signal
@@ -81,6 +82,15 @@ _unsandboxed_phases = frozenset([
 	"prerm", "setup"
 ])
 
+# phases in which networking access is allowed
+_networked_phases = frozenset([
+	# for VCS fetching
+	"unpack",
+	# for IPC
+	"setup", "pretend",
+	"preinst", "postinst", "prerm", "postrm",
+])
+
 _phase_func_map = {
 	"config": "pkg_config",
 	"setup": "pkg_setup",
@@ -110,6 +120,8 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 
 	if phase in _unsandboxed_phases:
 		kwargs['free'] = True
+	if phase in _networked_phases:
+		kwargs['networked'] = True
 
 	if phase == 'depend':
 		kwargs['droppriv'] = 'userpriv' in settings.features
@@ -1387,7 +1399,7 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 
 # XXX This would be to replace getstatusoutput completely.
 # XXX Issue: cannot block execution. Deadlock condition.
-def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakeroot=0, **keywords):
+def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakeroot=0, networked=0, **keywords):
 	"""
 	Spawn a subprocess with extra portage-specific options.
 	Optiosn include:
@@ -1417,6 +1429,8 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	@type sesandbox: Boolean
 	@param fakeroot: Run this command with faked root privileges
 	@type fakeroot: Boolean
+	@param networked: Run this command with networking access enabled
+	@type networked: Boolean
 	@param keywords: Extra options encoded as a dict, to be passed to spawn
 	@type keywords: Dictionary
 	@rtype: Integer
@@ -1444,6 +1458,11 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 			break
 
 	features = mysettings.features
+
+	# Unshare network namespace to keep ebuilds sanitized
+	if not networked and uid == 0 and platform.system() == 'Linux' and "network-sandbox" in features:
+		keywords['unshare_net'] = True
+
 	# TODO: Enable fakeroot to be used together with droppriv.  The
 	# fake ownership/permissions will have to be converted to real
 	# permissions in the merge phase.

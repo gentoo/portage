@@ -415,6 +415,10 @@ isn't a symlink to /usr/lib64. To find the bad packages, we have a
 portage feature called \fImultilib\-strict\fR. It will prevent emerge
 from putting 64bit libraries into anything other than (/usr)/lib64.
 .TP
+.B network\-sandbox
+Isolate the ebuild phase functions from host network interfaces.
+Supported only on Linux. Requires network namespace support in kernel.
+.TP
 .B news
 Enable GLEP 42 news support. See
 \fIhttp://www.gentoo.org/proj/en/glep/glep-0042.html\fR.

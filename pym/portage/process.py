@@ -5,8 +5,11 @@
 
 import atexit
 import errno
+import fcntl
 import platform
 import signal
+import socket
+import struct
 import sys
 import traceback
 import os as _os
@@ -21,6 +24,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 
 from portage.const import BASH_BINARY, SANDBOX_BINARY, FAKEROOT_BINARY
 from portage.exception import CommandNotFound
+from portage.util._ctypes import find_library, LoadLibrary, ctypes
 
 try:
 	import resource
@@ -180,7 +184,7 @@ def cleanup():
 
 def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
           uid=None, gid=None, groups=None, umask=None, logfile=None,
-          path_lookup=True, pre_exec=None, close_fds=True):
+          path_lookup=True, pre_exec=None, close_fds=True, unshare_net=False):
 	"""
 	Spawns a given command.
 	
@@ -213,7 +217,9 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	@param close_fds: If True, then close all file descriptors except those
 		referenced by fd_pipes (default is True).
 	@type close_fds: Boolean
-	
+	@param unshare_net: If True, networking will be unshared from the spawned process
+	@type unshare_net: Boolean
+
 	logfile requires stdout and stderr to be assigned to this process (ie not pointed
 	   somewhere else.)
 	
@@ -276,6 +282,12 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 		fd_pipes[1] = pw
 		fd_pipes[2] = pw
 
+	# This caches the libc library lookup in the current
+	# process, so that it's only done once rather than
+	# for each child process.
+	if unshare_net:
+		find_library("c")
+
 	parent_pid = os.getpid()
 	pid = None
 	try:
@@ -284,7 +296,8 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 		if pid == 0:
 			try:
 				_exec(binary, mycommand, opt_name, fd_pipes,
-					env, gid, groups, uid, umask, pre_exec, close_fds)
+					env, gid, groups, uid, umask, pre_exec, close_fds,
+					unshare_net)
 			except SystemExit:
 				raise
 			except Exception as e:
@@ -354,7 +367,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	return 0
 
 def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
-	pre_exec, close_fds):
+	pre_exec, close_fds, unshare_net):
 
 	"""
 	Execute a given binary with options
@@ -379,10 +392,12 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	@type umask: Integer
 	@param pre_exec: A function to be called with no arguments just prior to the exec call.
 	@type pre_exec: callable
+	@param unshare_net: If True, networking will be unshared from the spawned process
+	@type unshare_net: Boolean
 	@rtype: None
 	@return: Never returns (calls os.execve)
 	"""
-	
+
 	# If the process we're creating hasn't been given a name
 	# assign it the name of the executable.
 	if not opt_name:
@@ -414,6 +429,35 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	signal.signal(signal.SIGQUIT, signal.SIG_DFL)
 
 	_setup_pipes(fd_pipes, close_fds=close_fds)
+
+	# Unshare network (while still uid==0)
+	if unshare_net:
+		filename = find_library("c")
+		if filename is not None:
+			libc = LoadLibrary(filename)
+			if libc is not None:
+				CLONE_NEWNET = 0x40000000
+				try:
+					if libc.unshare(CLONE_NEWNET) != 0:
+						writemsg("Unable to unshare network: %s\n" % (
+							errno.errorcode.get(ctypes.get_errno(), '?')),
+							noiselevel=-1)
+					else:
+						# 'up' the loopback
+						IFF_UP = 0x1
+						ifreq = struct.pack('16sh', b'lo', IFF_UP)
+						SIOCSIFFLAGS = 0x8914
+
+						sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
+						try:
+							fcntl.ioctl(sock, SIOCSIFFLAGS, ifreq)
+						except IOError as e:
+							writemsg("Unable to enable loopback interface: %s\n" % (
+								errno.errorcode.get(e.errno, '?')),
+								noiselevel=-1)
+				except AttributeError:
+					# unshare() not supported by libc
+					pass
 
 	# Set requested process permissions.
 	if gid:
