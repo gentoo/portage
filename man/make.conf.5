@@ -385,6 +385,10 @@ would otherwise be useless with prefix configurations. This brings
 compatibility with the prefix branch of portage, which also supports EPREFIX
 for all EAPIs (for obvious reasons).
 .TP
+.B ipc\-sandbox
+Isolate the ebuild phase functions from host IPC namespace. Supported
+only on Linux. Requires network namespace support in kernel.
+.TP
 .B lmirror
 When \fImirror\fR is enabled in \fBFEATURES\fR, fetch files even
 when \fImirror\fR is also in the \fBebuild\fR(5) \fBRESTRICT\fR variable.

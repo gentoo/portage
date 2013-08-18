@@ -82,14 +82,18 @@ _unsandboxed_phases = frozenset([
 	"prerm", "setup"
 ])
 
+# phases in which IPC with host is allowed
+_ipc_phases = frozenset([
+	"setup", "pretend",
+	"preinst", "postinst", "prerm", "postrm",
+])
+
 # phases in which networking access is allowed
 _networked_phases = frozenset([
 	# for VCS fetching
 	"unpack",
-	# for IPC
-	"setup", "pretend",
-	"preinst", "postinst", "prerm", "postrm",
-])
+	# + for network-bound IPC
+] + list(_ipc_phases))
 
 _phase_func_map = {
 	"config": "pkg_config",
@@ -120,6 +124,8 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 
 	if phase in _unsandboxed_phases:
 		kwargs['free'] = True
+	if phase in _ipc_phases:
+		kwargs['ipc'] = True
 	if phase in _networked_phases:
 		kwargs['networked'] = True
 
@@ -1399,7 +1405,7 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 
 # XXX This would be to replace getstatusoutput completely.
 # XXX Issue: cannot block execution. Deadlock condition.
-def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakeroot=0, networked=0, **keywords):
+def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakeroot=0, networked=0, ipc=0, **keywords):
 	"""
 	Spawn a subprocess with extra portage-specific options.
 	Optiosn include:
@@ -1431,6 +1437,8 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	@type fakeroot: Boolean
 	@param networked: Run this command with networking access enabled
 	@type networked: Boolean
+	@param ipc: Run this command with host IPC access enabled
+	@type ipc: Boolean
 	@param keywords: Extra options encoded as a dict, to be passed to spawn
 	@type keywords: Dictionary
 	@rtype: Integer
@@ -1459,9 +1467,12 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 
 	features = mysettings.features
 
-	# Unshare network namespace to keep ebuilds sanitized
-	if not networked and uid == 0 and platform.system() == 'Linux' and "network-sandbox" in features:
-		keywords['unshare_net'] = True
+	# Use Linux namespaces if available
+	if uid == 0 and platform.system() == 'Linux':
+		if not networked and "network-sandbox" in features:
+			keywords['unshare_net'] = True
+		if not ipc and "ipc-sandbox" in features:
+			keywords['unshare_ipc'] = True
 
 	# TODO: Enable fakeroot to be used together with droppriv.  The
 	# fake ownership/permissions will have to be converted to real
