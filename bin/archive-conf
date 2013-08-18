@@ -21,33 +21,11 @@ portage._internal_caller = True
 
 import portage.dispatch_conf
 from portage import os
+from portage.checksum import perform_md5
 
 FIND_EXTANT_CONTENTS  = "find %s -name CONTENTS"
 
 MANDATORY_OPTS  = [ 'archive-dir' ]
-
-try:
-    import fchksum
-    def perform_checksum(filename): return fchksum.fmd5t(filename)
-except ImportError:
-    import md5
-    def md5_to_hex(md5sum):
-        hexform = ""
-        for ix in range(len(md5sum)):
-            hexform = hexform + "%02x" % ord(md5sum[ix])
-        return hexform.lower()
-
-    def perform_checksum(filename):
-        f = open(filename, 'rb')
-        blocksize=32768
-        data = f.read(blocksize)
-        size = 0
-        checksum = md5.new()
-        while data:
-            checksum.update(data)
-            size = size + len(data)
-            data = f.read(blocksize)
-        return (md5_to_hex(checksum.digest()), size)
 
 def archive_conf():
     args = []
@@ -84,7 +62,7 @@ def archive_conf():
                     for conf in args:
                         if items[1] == conf:
                             stored = items[2].lower()
-                            real = perform_checksum(conf)[0].lower()
+                            real = perform_md5(conf).lower()
                             if stored == real:
                                 md5_match_hash[conf] = conf
                             todo_cnt -= 1
