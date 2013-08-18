@@ -455,6 +455,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 							writemsg("Unable to enable loopback interface: %s\n" % (
 								errno.errorcode.get(e.errno, '?')),
 								noiselevel=-1)
+						sock.close()
 				except AttributeError:
 					# unshare() not supported by libc
 					pass
