@@ -2,7 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import io
+import platform
 import stat
+import subprocess
 import textwrap
 from _emerge.SpawnProcess import SpawnProcess
 from _emerge.EbuildBuildDir import EbuildBuildDir
@@ -20,8 +22,10 @@ class AbstractEbuildProcess(SpawnProcess):
 
 	__slots__ = ('phase', 'settings',) + \
 		('_build_dir', '_ipc_daemon', '_exit_command', '_exit_timeout_id')
+
 	_phases_without_builddir = ('clean', 'cleanrm', 'depend', 'help',)
 	_phases_interactive_whitelist = ('config',)
+	_phases_without_cgroup = ('preinst', 'postinst', 'prerm', 'postrm', 'config')
 
 	# Number of milliseconds to allow natural exit of the ebuild
 	# process after it has called the exit command via IPC. It
@@ -58,6 +62,41 @@ class AbstractEbuildProcess(SpawnProcess):
 			self._set_returncode((self.pid, 1 << 8))
 			self._async_wait()
 			return
+
+		# Check if the cgroup hierarchy is in place. If it's not, mount it.
+		if (os.geteuid() == 0 and platform.system() == 'Linux'
+				and 'cgroup' in self.settings.features
+				and self.phase not in self._phases_without_cgroup):
+			cgroup_root = '/sys/fs/cgroup'
+			cgroup_portage = os.path.join(cgroup_root, 'portage')
+			cgroup_path = os.path.join(cgroup_portage,
+					'%s:%s' % (self.settings["CATEGORY"],
+						self.settings["PF"]))
+			try:
+				# cgroup tmpfs
+				if not os.path.ismount(cgroup_root):
+					# we expect /sys/fs to be there already
+					if not os.path.isdir(cgroup_root):
+						os.mkdir(cgroup_root, 0o755)
+					subprocess.check_call(['mount', '-t', 'tmpfs',
+						'-o', 'rw,nosuid,nodev,noexec,mode=0755',
+						'tmpfs', cgroup_root])
+
+				# portage subsystem
+				if not os.path.ismount(cgroup_portage):
+					if not os.path.isdir(cgroup_portage):
+						os.mkdir(cgroup_portage, 0o755)
+					subprocess.check_call(['mount', '-t', 'cgroup',
+						'-o', 'rw,nosuid,nodev,noexec,none,name=portage',
+						'tmpfs', cgroup_portage])
+
+				# the ebuild cgroup
+				if not os.path.isdir(cgroup_path):
+					os.mkdir(cgroup_path)
+			except (subprocess.CalledProcessError, OSError):
+				pass
+			else:
+				self.cgroup = cgroup_path
 
 		if self.background:
 			# Automatically prevent color codes from showing up in logs,

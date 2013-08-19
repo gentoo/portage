@@ -276,6 +276,10 @@ like "File not recognized: File truncated"), try recompiling the application
 with ccache disabled before reporting a bug. Unless you are doing development
 work, do not enable ccache.
 .TP
+.B cgroup
+Use Linux control group to control processes spawned by ebuilds. This allows
+emerge to safely kill all subprocesses when ebuild phase exits.
+.TP
 .B clean\-logs
 Enable automatic execution of the command specified by the
 PORT_LOGDIR_CLEAN variable. The default PORT_LOGDIR_CLEAN setting will

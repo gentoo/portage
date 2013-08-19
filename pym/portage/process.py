@@ -185,7 +185,7 @@ def cleanup():
 def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
           uid=None, gid=None, groups=None, umask=None, logfile=None,
           path_lookup=True, pre_exec=None, close_fds=True, unshare_net=False,
-          unshare_ipc=False):
+          unshare_ipc=False, cgroup=None):
 	"""
 	Spawns a given command.
 	
@@ -222,6 +222,8 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	@type unshare_net: Boolean
 	@param unshare_ipc: If True, IPC will be unshared from the spawned process
 	@type unshare_ipc: Boolean
+	@param cgroup: CGroup path to bind the process to
+	@type cgroup: String
 
 	logfile requires stdout and stderr to be assigned to this process (ie not pointed
 	   somewhere else.)
@@ -300,7 +302,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 			try:
 				_exec(binary, mycommand, opt_name, fd_pipes,
 					env, gid, groups, uid, umask, pre_exec, close_fds,
-					unshare_net, unshare_ipc)
+					unshare_net, unshare_ipc, cgroup)
 			except SystemExit:
 				raise
 			except Exception as e:
@@ -370,7 +372,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	return 0
 
 def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
-	pre_exec, close_fds, unshare_net, unshare_ipc):
+	pre_exec, close_fds, unshare_net, unshare_ipc, cgroup):
 
 	"""
 	Execute a given binary with options
@@ -399,6 +401,8 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	@type unshare_net: Boolean
 	@param unshare_ipc: If True, IPC will be unshared from the spawned process
 	@type unshare_ipc: Boolean
+	@param cgroup: CGroup path to bind the process to
+	@type cgroup: String
 	@rtype: None
 	@return: Never returns (calls os.execve)
 	"""
@@ -434,6 +438,13 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	signal.signal(signal.SIGQUIT, signal.SIG_DFL)
 
 	_setup_pipes(fd_pipes, close_fds=close_fds)
+
+	# Add to cgroup
+	# it's better to do it from the child since we can guarantee
+	# it is done before we start forking children
+	if cgroup:
+		with open(os.path.join(cgroup, 'cgroup.procs'), 'a') as f:
+			f.write('%d\n' % os.getpid())
 
 	# Unshare (while still uid==0)
 	if unshare_net or unshare_ipc:

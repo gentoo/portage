@@ -7,7 +7,9 @@ except ImportError:
 	# http://bugs.jython.org/issue1074
 	fcntl = None
 
+import errno
 import platform
+import signal
 import sys
 
 from _emerge.SubProcess import SubProcess
@@ -29,7 +31,7 @@ class SpawnProcess(SubProcess):
 
 	_spawn_kwarg_names = ("env", "opt_name", "fd_pipes",
 		"uid", "gid", "groups", "umask", "logfile",
-		"path_lookup", "pre_exec", "close_fds")
+		"path_lookup", "pre_exec", "close_fds", "cgroup")
 
 	__slots__ = ("args",) + \
 		_spawn_kwarg_names + ("_pipe_logger", "_selinux_type",)
@@ -179,3 +181,36 @@ class SpawnProcess(SubProcess):
 			pipe_logger.removeExitListener(self._pipe_logger_exit)
 			pipe_logger.cancel()
 			pipe_logger.wait()
+
+	def _set_returncode(self, wait_retval):
+		SubProcess._set_returncode(self, wait_retval)
+
+		if self.cgroup:
+			def get_pids(cgroup):
+				try:
+					with open(os.path.join(cgroup, 'cgroup.procs'), 'r') as f:
+						return f.read().split()
+				except OSError:
+					# cgroup removed already?
+					return []
+
+			def kill_all(pids, sig):
+				for p in pids:
+					try:
+						os.kill(int(p), sig)
+					except OSError as e:
+						if e.errno != errno.ESRCH:
+							raise
+
+			# step 1: kill all orphans
+			pids = get_pids(self.cgroup)
+			if pids:
+				kill_all(pids, signal.SIGTERM)
+
+			# step 2: remove the cgroup
+			try:
+				os.rmdir(self.cgroup)
+			except OSError:
+				# it may be removed already, or busy
+				# we can't do anything good about it
+				pass
