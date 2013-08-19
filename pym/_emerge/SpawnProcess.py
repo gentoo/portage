@@ -205,7 +205,7 @@ class SpawnProcess(SubProcess):
 			# step 1: kill all orphans
 			pids = get_pids(self.cgroup)
 			if pids:
-				kill_all(pids, signal.SIGTERM)
+				kill_all(pids, signal.SIGKILL)
 
 			# step 2: remove the cgroup
 			try:
