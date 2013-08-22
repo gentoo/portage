@@ -694,7 +694,7 @@ class RepoConfigLoader(object):
 				prepos['DEFAULT'].main_repo = main_repo
 			else:
 				prepos['DEFAULT'].main_repo = None
-				if not portage._sync_disabled_warnings:
+				if portdir and not portage._sync_disabled_warnings:
 					writemsg(_("!!! main-repo not set in DEFAULT and PORTDIR is empty.\n"), noiselevel=-1)
 
 		if main_repo is not None and prepos[main_repo].priority is None:
