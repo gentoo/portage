@@ -77,3 +77,58 @@ class OrChoicesTestCase(TestCase):
 				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
 		finally:
 			playground.cleanup()
+
+	def testOrChoicesLibpostproc(self):
+		ebuilds = {
+			"media-video/ffmpeg-0.10" : {
+				"EAPI": "5",
+				"SLOT": "0.10"
+			},
+			"media-video/ffmpeg-1.2.2" : {
+				"EAPI": "5",
+				"SLOT": "0"
+			},
+			"media-libs/libpostproc-0.8.0.20121125" : {
+				"EAPI": "5"
+			},
+			"media-plugins/gst-plugins-ffmpeg-0.10.13_p201211-r1" : {
+				"EAPI": "5",
+				"RDEPEND" : "|| ( media-video/ffmpeg:0 media-libs/libpostproc )"
+			},
+		}
+
+		installed = {
+			"media-video/ffmpeg-0.10" : {
+				"EAPI": "5",
+				"SLOT": "0.10"
+			},
+			"media-libs/libpostproc-0.8.0.20121125" : {
+				"EAPI": "5"
+			},
+			"media-plugins/gst-plugins-ffmpeg-0.10.13_p201211-r1" : {
+				"EAPI": "5",
+				"RDEPEND" : "|| ( media-video/ffmpeg:0 media-libs/libpostproc )"
+			},
+		}
+
+		world = ["media-plugins/gst-plugins-ffmpeg"]
+
+		test_cases = (
+			# Demonstrate that libpostproc is preferred
+			# over ffmpeg:0 for bug #480736.
+			ResolverPlaygroundTestCase(
+				["@world"],
+				options = {"--update": True, "--deep": True},
+				success=True,
+				all_permutations = True,
+				mergelist = []),
+		)
+
+		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed,
+			world=world, debug=False)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
