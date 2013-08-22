@@ -56,7 +56,7 @@ __save_ebuild_env() {
 		addread addwrite adddeny addpredict __sb_append_var \
 		use usev useq has_version portageq \
 		best_version use_with use_enable register_die_hook \
-		keepdir unpack __strip_duplicate_slashes econf einstall \
+		unpack __strip_duplicate_slashes econf einstall \
 		__dyn_setup __dyn_unpack __dyn_clean \
 		into insinto exeinto docinto \
 		insopts diropts exeopts libopts docompress \

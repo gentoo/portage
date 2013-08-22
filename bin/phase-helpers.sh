@@ -141,30 +141,6 @@ docompress() {
 	fi
 }
 
-# adds ".keep" files so that dirs aren't auto-cleaned
-keepdir() {
-	dodir "$@"
-	local x
-	if ! ___eapi_has_prefix_variables; then
-		local ED=${D}
-	fi
-	if [ "$1" == "-R" ] || [ "$1" == "-r" ]; then
-		shift
-		find "$@" -type d -printf "${ED}%p/.keep_${CATEGORY}_${PN}-${SLOT%/*}\n" \
-			| tr "\n" "\0" | \
-			while read -r -d $'\0' ; do
-				>> "$REPLY" || \
-					die "Failed to recursively create .keep files"
-			done
-	else
-		for x in "$@"; do
-			>> "${ED}${x}/.keep_${CATEGORY}_${PN}-${SLOT%/*}" || \
-				die "Failed to create .keep in ${ED}${x}"
-		done
-	fi
-}
-
-
 useq() {
 	has $EBUILD_PHASE prerm postrm || eqawarn \
 		"QA Notice: The 'useq' function is deprecated (replaced by 'use')"

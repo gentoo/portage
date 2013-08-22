@@ -61,7 +61,6 @@
 					<listitem><para>docompress</para></listitem>
 					<listitem><para>exeopts</para></listitem>
 					<listitem><para>insopts</para></listitem>
-					<listitem><para>keepdir</para></listitem>
 					<listitem><para>libopts</para></listitem>
 					<listitem><para>use</para></listitem>
 					<listitem><para>use_enable</para></listitem>
