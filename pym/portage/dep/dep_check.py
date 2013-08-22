@@ -565,7 +565,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	for allow_masked in (False, True):
 		for choices in choice_bins:
 			for choice in choices:
-				if all_available or allow_masked:
+				if choice.all_available or allow_masked:
 					return choice.atoms
 
 	assert(False) # This point should not be reachable
