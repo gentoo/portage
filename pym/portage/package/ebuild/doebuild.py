@@ -124,10 +124,11 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 
 	if phase in _unsandboxed_phases:
 		kwargs['free'] = True
-	if phase in _ipc_phases:
-		kwargs['ipc'] = True
-	if phase in _networked_phases:
-		kwargs['networked'] = True
+
+	kwargs['ipc'] = 'ipc-sandbox' not in settings.features or \
+		phase in _ipc_phases
+	kwargs['networked'] = 'network-sandbox' not in settings.features or \
+		phase in _networked_phases
 
 	if phase == 'depend':
 		kwargs['droppriv'] = 'userpriv' in settings.features
@@ -1405,7 +1406,8 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 
 # XXX This would be to replace getstatusoutput completely.
 # XXX Issue: cannot block execution. Deadlock condition.
-def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakeroot=0, networked=0, ipc=0, **keywords):
+def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
+	sesandbox=False, fakeroot=False, networked=True, ipc=True, **keywords):
 	"""
 	Spawn a subprocess with extra portage-specific options.
 	Optiosn include:
@@ -1469,10 +1471,8 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 
 	# Use Linux namespaces if available
 	if uid == 0 and platform.system() == 'Linux':
-		if not networked and "network-sandbox" in features:
-			keywords['unshare_net'] = True
-		if not ipc and "ipc-sandbox" in features:
-			keywords['unshare_ipc'] = True
+		keywords['unshare_net'] = not networked
+		keywords['unshare_ipc'] = not ipc
 
 	# TODO: Enable fakeroot to be used together with droppriv.  The
 	# fake ownership/permissions will have to be converted to real
