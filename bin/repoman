@@ -219,7 +219,8 @@ def ParseArgs(argv, qahelp):
 		default=False, help='include dev profiles in dependency checks')
 
 	parser.add_argument('-e', '--include-exp-profiles', choices=('y', 'n'),
-		default=False, help='include exp profiles in dependency checks')
+		default=False, help='include exp profiles in dependency checks',
+		metavar='<y|n>')
 
 	parser.add_argument('--unmatched-removal', dest='unmatched_removal', action='store_true',
 		default=False, help='enable strict checking of package.mask and package.unmask files for unmatched removal atoms')
