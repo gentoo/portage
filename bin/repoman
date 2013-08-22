@@ -2719,6 +2719,7 @@ else:
 
 	commitmessage += commit_footer
 
+	broken_changelog_manifests = []
 	if options.echangelog in ('y', 'force'):
 		logging.info("checking for unmodified ChangeLog files")
 		committer_name = utilities.get_committer_name(env=repoman_settings)
@@ -2774,6 +2775,8 @@ else:
 				# regenerate Manifest for modified ChangeLog (bug #420735)
 				repoman_settings["O"] = checkdir
 				digestgen(mysettings=repoman_settings, myportdb=portdb)
+			else:
+				broken_changelog_manifests.append(x)
 
 	if myautoadd:
 		print(">>> Auto-Adding missing Manifest/ChangeLog file(s)...")
@@ -3000,6 +3003,11 @@ else:
 
 		for x in sorted(vcs_files_to_cps(
 			chain(myupdates, myremoved, mymanifests))):
+			repoman_settings["O"] = os.path.join(repodir, x)
+			digestgen(mysettings=repoman_settings, myportdb=portdb)
+
+	elif broken_changelog_manifests:
+		for x in broken_changelog_manifests:
 			repoman_settings["O"] = os.path.join(repodir, x)
 			digestgen(mysettings=repoman_settings, myportdb=portdb)
 
