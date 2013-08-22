@@ -1,5 +1,10 @@
 News (mainly features/major bug fixes)
 
+portage-2.2.1
+-------------
+
+* Add cgroups, ipc-sandbox, and network-sandbox FEATURES.
+
 portage-2.2
 -------------
 
