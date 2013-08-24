@@ -2542,21 +2542,22 @@ def _sync_repo(emerge_config, repo):
 							# interrupted
 							exitcode = 128 + signal.SIGINT
 
-					#   0	Success
-					#   1	Syntax or usage error
-					#   2	Protocol incompatibility
-					#   5	Error starting client-server protocol
-					#  35	Timeout waiting for daemon connection
-					if exitcode not in (0, 1, 2, 5, 35):
-						# If the exit code is not among those listed above,
-						# then we may have a partial/inconsistent sync state,
-						# so our previously read timestamp as well as the
-						# corresponding file can no longer be trusted.
-						mytimestamp = 0
-						try:
-							os.unlink(servertimestampfile)
-						except OSError:
-							pass
+						#   0	Success
+						#   1	Syntax or usage error
+						#   2	Protocol incompatibility
+						#   5	Error starting client-server protocol
+						#  35	Timeout waiting for daemon connection
+						if exitcode not in (0, 1, 2, 5, 35):
+							# If the exit code is not among those listed above,
+							# then we may have a partial/inconsistent sync
+							# state, so our previously read timestamp as well
+							# as the corresponding file can no longer be
+							# trusted.
+							mytimestamp = 0
+							try:
+								os.unlink(servertimestampfile)
+							except OSError:
+								pass
 
 					if exitcode in [0,1,3,4,11,14,20,21]:
 						break
