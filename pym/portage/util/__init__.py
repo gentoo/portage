@@ -428,24 +428,35 @@ def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=Fals
 	verify_eapi=False, eapi=None):
 	""" Does the same thing as grabdict except it validates keys
 	    with isvalidatom()"""
-	pkgs=grabdict(myfilename, juststrings, empty=1, recursive=recursive)
-	if not pkgs:
-		return pkgs
-	if verify_eapi and eapi is None:
-		eapi = read_corresponding_eapi_file(myfilename)
 
-	# We need to call keys() here in order to avoid the possibility of
-	# "RuntimeError: dictionary changed size during iteration"
-	# when an invalid atom is deleted.
+	if recursive:
+		file_list = _recursive_file_list(myfilename)
+	else:
+		file_list = [myfilename]
+
 	atoms = {}
-	for k, v in pkgs.items():
-		try:
-			k = Atom(k, allow_wildcard=allow_wildcard, allow_repo=allow_repo, eapi=eapi)
-		except InvalidAtom as e:
-			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, e),
-				noiselevel=-1)
-		else:
-			atoms[k] = v
+	for filename in file_list:
+		d = grabdict(filename, juststrings=False,
+			empty=True, recursive=False, incremental=True)
+		if not d:
+			continue
+		if verify_eapi and eapi is None:
+			eapi = read_corresponding_eapi_file(myfilename)
+
+		for k, v in d.items():
+			try:
+				k = Atom(k, allow_wildcard=allow_wildcard,
+					allow_repo=allow_repo, eapi=eapi)
+			except InvalidAtom as e:
+				writemsg(_("--- Invalid atom in %s: %s\n") % (filename, e),
+					noiselevel=-1)
+			else:
+				atoms.setdefault(k, []).extend(v)
+
+	if juststrings:
+		for k, v in atoms.items():
+			atoms[k] = " ".join(v)
+
 	return atoms
 
 def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=False, allow_repo=False,
