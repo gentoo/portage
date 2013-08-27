@@ -206,7 +206,14 @@ def main():
 	success = False
 
 	for x in args:
+		trailing_slash = x[-1:] == os.sep
 		x = normalize_path(x)
+		if trailing_slash:
+			# Modify behavior of basename and dirname
+			# as noted in bug #425214, causing foo/ to
+			# behave similarly to the way that foo/*
+			# behaves.
+			x += os.sep
 		basename = os.path.basename(x)
 		dirname  = os.path.dirname(x)
 		success |= install(basename, dirname, options)
