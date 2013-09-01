@@ -437,7 +437,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	# the parent process (see bug #289486).
 	signal.signal(signal.SIGQUIT, signal.SIG_DFL)
 
-	_setup_pipes(fd_pipes, close_fds=close_fds)
+	_setup_pipes(fd_pipes, close_fds=close_fds, inheritable=True)
 
 	# Add to cgroup
 	# it's better to do it from the child since we can guarantee
@@ -502,7 +502,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	# And switch to the new process.
 	os.execve(binary, myargs, env)
 
-def _setup_pipes(fd_pipes, close_fds=True):
+def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
 	"""Setup pipes for a forked process.
 
 	Even when close_fds is False, file descriptors referenced as
@@ -538,6 +538,13 @@ def _setup_pipes(fd_pipes, close_fds=True):
 	actually does nothing in this case), which avoids possible
 	interference.
 	"""
+
+	# Support PEP 446 for Python >=3.4
+	try:
+		set_inheritable = _os.set_inheritable
+	except AttributeError:
+		set_inheritable = None
+
 	reverse_map = {}
 	# To protect from cases where direct assignment could
 	# clobber needed fds ({1:2, 2:1}) we create a reverse map
@@ -569,6 +576,12 @@ def _setup_pipes(fd_pipes, close_fds=True):
 				reverse_map[backup_fd] = reverse_map.pop(newfd)
 			if oldfd != newfd:
 				os.dup2(oldfd, newfd)
+
+			if set_inheritable is not None:
+				if inheritable is not None:
+					set_inheritable(newfd, inheritable)
+				elif newfd in (0, 1, 2):
+					set_inheritable(newfd, True)
 
 		if oldfd not in fd_pipes:
 			# If oldfd is not a key in fd_pipes, then it's safe
