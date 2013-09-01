@@ -134,6 +134,10 @@ ___eapi_disallows_helpers_in_global_scope() {
 	[[ ${1-${EAPI}} =~ ^(4-python|5-progress)$ ]]
 }
 
+___eapi_unpack_is_case_sensitive() {
+	true
+}
+
 # OTHERS
 
 ___eapi_enables_globstar() {
