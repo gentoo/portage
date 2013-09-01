@@ -117,16 +117,17 @@ class MergeProcess(ForkProcess):
 
 		elog_reader_fd, elog_writer_fd = os.pipe()
 
-		fcntl_flags = os.O_NONBLOCK
+		fcntl.fcntl(elog_reader_fd, fcntl.F_SETFL,
+			fcntl.fcntl(elog_reader_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
+
 		try:
 			fcntl.FD_CLOEXEC
 		except AttributeError:
 			pass
 		else:
-			fcntl_flags |= fcntl.FD_CLOEXEC
+			fcntl.fcntl(elog_reader_fd, fcntl.F_SETFD,
+				fcntl.fcntl(elog_reader_fd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
-		fcntl.fcntl(elog_reader_fd, fcntl.F_SETFL,
-			fcntl.fcntl(elog_reader_fd, fcntl.F_GETFL) | fcntl_flags)
 		blockers = None
 		if self.blockers is not None:
 			# Query blockers in the main process, since closing

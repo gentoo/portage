@@ -91,9 +91,9 @@ class EventLoop(object):
 					except AttributeError:
 						pass
 					else:
-						fcntl.fcntl(epoll_obj.fileno(), fcntl.F_SETFL,
+						fcntl.fcntl(epoll_obj.fileno(), fcntl.F_SETFD,
 							fcntl.fcntl(epoll_obj.fileno(),
-								fcntl.F_GETFL) | fcntl.FD_CLOEXEC)
+								fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
 				self._poll_obj = _epoll_adapter(epoll_obj)
 				self.IO_ERR = select.EPOLLERR
@@ -315,17 +315,18 @@ class EventLoop(object):
 			if self._sigchld_read is None:
 				self._sigchld_read, self._sigchld_write = os.pipe()
 
-				fcntl_flags = os.O_NONBLOCK
+				fcntl.fcntl(self._sigchld_read, fcntl.F_SETFL,
+					fcntl.fcntl(self._sigchld_read,
+					fcntl.F_GETFL) | os.O_NONBLOCK)
+
 				try:
 					fcntl.FD_CLOEXEC
 				except AttributeError:
 					pass
 				else:
-					fcntl_flags |= fcntl.FD_CLOEXEC
-
-				fcntl.fcntl(self._sigchld_read, fcntl.F_SETFL,
-					fcntl.fcntl(self._sigchld_read,
-					fcntl.F_GETFL) | fcntl_flags)
+					fcntl.fcntl(self._sigchld_read, fcntl.F_SETFD,
+						fcntl.fcntl(self._sigchld_read,
+						fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
 			# The IO watch is dynamically registered and unregistered as
 			# needed, since we don't want to consider it as a valid source

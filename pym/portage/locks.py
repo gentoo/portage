@@ -239,8 +239,8 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 		except AttributeError:
 			pass
 		else:
-			fcntl.fcntl(myfd, fcntl.F_SETFL,
-				fcntl.fcntl(myfd, fcntl.F_GETFL) | fcntl.FD_CLOEXEC)
+			fcntl.fcntl(myfd, fcntl.F_SETFD,
+				fcntl.fcntl(myfd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
 		_open_fds.add(myfd)
 

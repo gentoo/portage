@@ -33,9 +33,9 @@ class FifoIpcDaemon(AbstractPollTask):
 			except AttributeError:
 				pass
 			else:
-				fcntl.fcntl(self._files.pipe_in, fcntl.F_SETFL,
+				fcntl.fcntl(self._files.pipe_in, fcntl.F_SETFD,
 					fcntl.fcntl(self._files.pipe_in,
-						fcntl.F_GETFL) | fcntl.FD_CLOEXEC)
+						fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
 		self._reg_id = self.scheduler.io_add_watch(
 			self._files.pipe_in,
@@ -59,9 +59,9 @@ class FifoIpcDaemon(AbstractPollTask):
 			except AttributeError:
 				pass
 			else:
-				fcntl.fcntl(self._files.pipe_in, fcntl.F_SETFL,
+				fcntl.fcntl(self._files.pipe_in, fcntl.F_SETFD,
 					fcntl.fcntl(self._files.pipe_in,
-						fcntl.F_GETFL) | fcntl.FD_CLOEXEC)
+						fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
 		self._reg_id = self.scheduler.io_add_watch(
 			self._files.pipe_in,

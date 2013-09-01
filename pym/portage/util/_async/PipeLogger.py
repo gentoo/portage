@@ -38,21 +38,21 @@ class PipeLogger(AbstractPollTask):
 				uid=portage.portage_uid, gid=portage.portage_gid,
 				mode=0o660)
 
-		fcntl_flags = os.O_NONBLOCK
-		try:
-			fcntl.FD_CLOEXEC
-		except AttributeError:
-			pass
-		else:
-			fcntl_flags |= fcntl.FD_CLOEXEC
-
 		if isinstance(self.input_fd, int):
 			fd = self.input_fd
 		else:
 			fd = self.input_fd.fileno()
 
 		fcntl.fcntl(fd, fcntl.F_SETFL,
-			fcntl.fcntl(fd, fcntl.F_GETFL) | fcntl_flags)
+			fcntl.fcntl(fd, fcntl.F_GETFL) | os.O_NONBLOCK)
+
+		try:
+			fcntl.FD_CLOEXEC
+		except AttributeError:
+			pass
+		else:
+			fcntl.fcntl(fd, fcntl.F_SETFD,
+				fcntl.fcntl(fd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
 		self._reg_id = self.scheduler.io_add_watch(fd,
 			self._registered_events, self._output_handler)

@@ -19,6 +19,8 @@ from portage.const import BASH_BINARY
 from portage.util._async.PipeLogger import PipeLogger
 
 # On Darwin, FD_CLOEXEC triggers errno 35 for stdout (bug #456296)
+# TODO: Test this again now that it's been fixed to use
+# F_GETFD/F_SETFD instead of F_GETFL/F_SETFL.
 _disable_cloexec_stdout = platform.system() in ("Darwin",)
 
 class SpawnProcess(SubProcess):
@@ -130,12 +132,14 @@ class SpawnProcess(SubProcess):
 					pass
 				else:
 					try:
-						fcntl.fcntl(stdout_fd, fcntl.F_SETFL,
+						fcntl.fcntl(stdout_fd, fcntl.F_SETFD,
 							fcntl.fcntl(stdout_fd,
-							fcntl.F_GETFL) | fcntl.FD_CLOEXEC)
+							fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 					except IOError:
 						# FreeBSD may return "Inappropriate ioctl for device"
-						# error here (ENOTTY).
+						# error here (ENOTTY). TODO: Test this again now that
+						# it's been fixed to use F_GETFD/F_SETFD instead of
+						# F_GETFL/F_SETFL.
 						pass
 
 		self._pipe_logger = PipeLogger(background=self.background,

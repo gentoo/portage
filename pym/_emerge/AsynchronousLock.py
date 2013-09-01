@@ -165,16 +165,17 @@ class _LockProcess(AbstractPollTask):
 		self._files['pipe_in'] = in_pr
 		self._files['pipe_out'] = out_pw
 
-		fcntl_flags = os.O_NONBLOCK
+		fcntl.fcntl(in_pr, fcntl.F_SETFL,
+			fcntl.fcntl(in_pr, fcntl.F_GETFL) | os.O_NONBLOCK)
+
 		try:
 			fcntl.FD_CLOEXEC
 		except AttributeError:
 			pass
 		else:
-			fcntl_flags |= fcntl.FD_CLOEXEC
+			fcntl.fcntl(in_pr, fcntl.F_SETFD,
+				fcntl.fcntl(in_pr, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
-		fcntl.fcntl(in_pr, fcntl.F_SETFL,
-			fcntl.fcntl(in_pr, fcntl.F_GETFL) | fcntl_flags)
 		self._reg_id = self.scheduler.io_add_watch(in_pr,
 			self.scheduler.IO_IN, self._output_handler)
 		self._registered = True
