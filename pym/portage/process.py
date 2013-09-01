@@ -35,6 +35,17 @@ except ImportError:
 if sys.hexversion >= 0x3000000:
 	basestring = str
 
+# Support PEP 446 for Python >=3.4
+try:
+	_set_inheritable = _os.set_inheritable
+except AttributeError:
+	_set_inheritable = None
+
+try:
+	_FD_CLOEXEC = fcntl.FD_CLOEXEC
+except AttributeError:
+	_FD_CLOEXEC = None
+
 # Prefer /proc/self/fd if available (/dev/fd
 # doesn't work on solaris, see bug #474536).
 for _fd_dir in ("/proc/self/fd", "/dev/fd"):
@@ -539,12 +550,6 @@ def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
 	interference.
 	"""
 
-	# Support PEP 446 for Python >=3.4
-	try:
-		set_inheritable = _os.set_inheritable
-	except AttributeError:
-		set_inheritable = None
-
 	reverse_map = {}
 	# To protect from cases where direct assignment could
 	# clobber needed fds ({1:2, 2:1}) we create a reverse map
@@ -564,6 +569,7 @@ def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
 	while reverse_map:
 
 		oldfd, newfds = reverse_map.popitem()
+		old_fdflags = None
 
 		for newfd in newfds:
 			if newfd in reverse_map:
@@ -574,14 +580,26 @@ def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
 				# unused file discriptors).
 				backup_fd = os.dup(newfd)
 				reverse_map[backup_fd] = reverse_map.pop(newfd)
+
 			if oldfd != newfd:
 				os.dup2(oldfd, newfd)
+				if old_fdflags is None:
+					old_fdflags = fcntl.fcntl(oldfd, fcntl.F_GETFD)
+				fcntl.fcntl(newfd, fcntl.F_SETFD, old_fdflags)
 
-			if set_inheritable is not None:
+			if _set_inheritable is not None:
+
+				inheritable_state = None
+				if not (old_fdflags is None or _FD_CLOEXEC is None):
+					inheritable_state = not bool(old_fdflags & _FD_CLOEXEC)
+
 				if inheritable is not None:
-					set_inheritable(newfd, inheritable)
+					if inheritable_state is not inheritable:
+						_set_inheritable(newfd, inheritable)
+
 				elif newfd in (0, 1, 2):
-					set_inheritable(newfd, True)
+					if inheritable_state is not True:
+						_set_inheritable(newfd, True)
 
 		if oldfd not in fd_pipes:
 			# If oldfd is not a key in fd_pipes, then it's safe
