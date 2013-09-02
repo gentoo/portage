@@ -166,8 +166,13 @@ class FakeVartree(vartree):
 			if self._global_updates is None:
 				self._global_updates = \
 					grab_global_updates(self._portdb)
+
+			# Bypass _aux_get_wrapper, since calling that
+			# here would trigger infinite recursion.
+			aux_keys = Package._dep_keys + self.dbapi._pkg_str_aux_keys
+			aux_dict = dict(zip(aux_keys, self._aux_get(pkg.cpv, aux_keys)))
 			perform_global_updates(
-				pkg.cpv, self.dbapi, self._global_updates)
+				pkg.cpv, aux_dict, self.dbapi, self._global_updates)
 
 	def dynamic_deps_preload(self, pkg, metadata):
 		if metadata is not None:
@@ -300,9 +305,7 @@ def grab_global_updates(portdb):
 
 	return retupdates
 
-def perform_global_updates(mycpv, mydb, myupdates):
-	aux_keys = Package._dep_keys + mydb._pkg_str_aux_keys
-	aux_dict = dict(zip(aux_keys, mydb.aux_get(mycpv, aux_keys)))
+def perform_global_updates(mycpv, aux_dict, mydb, myupdates):
 	try:
 		pkg = _pkg_str(mycpv, metadata=aux_dict, settings=mydb.settings)
 	except InvalidData:
