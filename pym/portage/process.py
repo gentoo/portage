@@ -583,9 +583,14 @@ def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
 
 			if oldfd != newfd:
 				os.dup2(oldfd, newfd)
-				if old_fdflags is None:
-					old_fdflags = fcntl.fcntl(oldfd, fcntl.F_GETFD)
-				fcntl.fcntl(newfd, fcntl.F_SETFD, old_fdflags)
+				if _set_inheritable is not None:
+					# Don't do this unless _set_inheritable is available,
+					# since it's used below to ensure correct state, and
+					# otherwise /dev/null stdin fails to inherit (at least
+					# with Python versions from 3.1 to 3.3).
+					if old_fdflags is None:
+						old_fdflags = fcntl.fcntl(oldfd, fcntl.F_GETFD)
+					fcntl.fcntl(newfd, fcntl.F_SETFD, old_fdflags)
 
 			if _set_inheritable is not None:
 
