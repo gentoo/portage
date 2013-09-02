@@ -168,13 +168,15 @@ class _LockProcess(AbstractPollTask):
 		fcntl.fcntl(in_pr, fcntl.F_SETFL,
 			fcntl.fcntl(in_pr, fcntl.F_GETFL) | os.O_NONBLOCK)
 
-		try:
-			fcntl.FD_CLOEXEC
-		except AttributeError:
-			pass
-		else:
-			fcntl.fcntl(in_pr, fcntl.F_SETFD,
-				fcntl.fcntl(in_pr, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
+		# FD_CLOEXEC is enabled by default in Python >=3.4.
+		if sys.hexversion < 0x3040000:
+			try:
+				fcntl.FD_CLOEXEC
+			except AttributeError:
+				pass
+			else:
+				fcntl.fcntl(in_pr, fcntl.F_SETFD,
+					fcntl.fcntl(in_pr, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
 		self._reg_id = self.scheduler.io_add_watch(in_pr,
 			self.scheduler.IO_IN, self._output_handler)

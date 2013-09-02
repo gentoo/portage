@@ -6,6 +6,7 @@ import logging
 import os
 import select
 import signal
+import sys
 import time
 
 try:
@@ -85,7 +86,8 @@ class EventLoop(object):
 				pass
 			else:
 
-				if fcntl is not None:
+				# FD_CLOEXEC is enabled by default in Python >=3.4.
+				if sys.hexversion < 0x3040000 and fcntl is not None:
 					try:
 						fcntl.FD_CLOEXEC
 					except AttributeError:
@@ -319,14 +321,16 @@ class EventLoop(object):
 					fcntl.fcntl(self._sigchld_read,
 					fcntl.F_GETFL) | os.O_NONBLOCK)
 
-				try:
-					fcntl.FD_CLOEXEC
-				except AttributeError:
-					pass
-				else:
-					fcntl.fcntl(self._sigchld_read, fcntl.F_SETFD,
-						fcntl.fcntl(self._sigchld_read,
-						fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
+				# FD_CLOEXEC is enabled by default in Python >=3.4.
+				if sys.hexversion < 0x3040000:
+					try:
+						fcntl.FD_CLOEXEC
+					except AttributeError:
+						pass
+					else:
+						fcntl.fcntl(self._sigchld_read, fcntl.F_SETFD,
+							fcntl.fcntl(self._sigchld_read,
+							fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
 			# The IO watch is dynamically registered and unregistered as
 			# needed, since we don't want to consider it as a valid source

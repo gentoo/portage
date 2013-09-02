@@ -234,13 +234,15 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 
 	if myfd != HARDLINK_FD:
 
-		try:
-			fcntl.FD_CLOEXEC
-		except AttributeError:
-			pass
-		else:
-			fcntl.fcntl(myfd, fcntl.F_SETFD,
-				fcntl.fcntl(myfd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
+		# FD_CLOEXEC is enabled by default in Python >=3.4.
+		if sys.hexversion < 0x3040000:
+			try:
+				fcntl.FD_CLOEXEC
+			except AttributeError:
+				pass
+			else:
+				fcntl.fcntl(myfd, fcntl.F_SETFD,
+					fcntl.fcntl(myfd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
 		_open_fds.add(myfd)
 

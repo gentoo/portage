@@ -125,7 +125,8 @@ class SpawnProcess(SubProcess):
 		stdout_fd = None
 		if can_log and not self.background:
 			stdout_fd = os.dup(fd_pipes_orig[1])
-			if fcntl is not None and not _disable_cloexec_stdout:
+			# FD_CLOEXEC is enabled by default in Python >=3.4.
+			if sys.hexversion < 0x3040000 and fcntl is not None and not _disable_cloexec_stdout:
 				try:
 					fcntl.FD_CLOEXEC
 				except AttributeError:

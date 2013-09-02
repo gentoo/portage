@@ -120,13 +120,15 @@ class MergeProcess(ForkProcess):
 		fcntl.fcntl(elog_reader_fd, fcntl.F_SETFL,
 			fcntl.fcntl(elog_reader_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 
-		try:
-			fcntl.FD_CLOEXEC
-		except AttributeError:
-			pass
-		else:
-			fcntl.fcntl(elog_reader_fd, fcntl.F_SETFD,
-				fcntl.fcntl(elog_reader_fd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
+		# FD_CLOEXEC is enabled by default in Python >=3.4.
+		if sys.hexversion < 0x3040000:
+			try:
+				fcntl.FD_CLOEXEC
+			except AttributeError:
+				pass
+			else:
+				fcntl.fcntl(elog_reader_fd, fcntl.F_SETFD,
+					fcntl.fcntl(elog_reader_fd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
 		blockers = None
 		if self.blockers is not None:

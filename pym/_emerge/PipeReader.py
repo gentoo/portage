@@ -1,9 +1,11 @@
 # Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import fcntl
+import sys
+
 from portage import os
 from _emerge.AbstractPollTask import AbstractPollTask
-import fcntl
 
 class PipeReader(AbstractPollTask):
 
@@ -30,13 +32,17 @@ class PipeReader(AbstractPollTask):
 			fd = isinstance(f, int) and f or f.fileno()
 			fcntl.fcntl(fd, fcntl.F_SETFL,
 				fcntl.fcntl(fd, fcntl.F_GETFL) | os.O_NONBLOCK)
-			try:
-				fcntl.FD_CLOEXEC
-			except AttributeError:
-				pass
-			else:
-				fcntl.fcntl(fd, fcntl.F_SETFD,
-					fcntl.fcntl(fd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
+
+			# FD_CLOEXEC is enabled by default in Python >=3.4.
+			if sys.hexversion < 0x3040000:
+				try:
+					fcntl.FD_CLOEXEC
+				except AttributeError:
+					pass
+				else:
+					fcntl.fcntl(fd, fcntl.F_SETFD,
+						fcntl.fcntl(fd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
+
 			self._reg_ids.add(self.scheduler.io_add_watch(fd,
 				self._registered_events, output_handler))
 		self._registered = True

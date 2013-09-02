@@ -1,6 +1,8 @@
 # Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import sys
+
 try:
 	import fcntl
 except ImportError:
@@ -27,7 +29,8 @@ class FifoIpcDaemon(AbstractPollTask):
 		self._files.pipe_in = \
 			os.open(self.input_fifo, os.O_RDONLY|os.O_NONBLOCK)
 
-		if fcntl is not None:
+		# FD_CLOEXEC is enabled by default in Python >=3.4.
+		if sys.hexversion < 0x3040000 and fcntl is not None:
 			try:
 				fcntl.FD_CLOEXEC
 			except AttributeError:
@@ -53,7 +56,8 @@ class FifoIpcDaemon(AbstractPollTask):
 		self._files.pipe_in = \
 			os.open(self.input_fifo, os.O_RDONLY|os.O_NONBLOCK)
 
-		if fcntl is not None:
+		# FD_CLOEXEC is enabled by default in Python >=3.4.
+		if sys.hexversion < 0x3040000 and fcntl is not None:
 			try:
 				fcntl.FD_CLOEXEC
 			except AttributeError:
