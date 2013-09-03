@@ -8,6 +8,7 @@ import sys
 import subprocess
 import traceback
 
+import portage
 from portage.util._argparse import ArgumentParser
 from portage.util.movefile import _copyxattr
 from portage.exception import OperationNotSupported
@@ -241,6 +242,10 @@ def main(args):
 	returncode = subprocess.call(cmdline)
 	if returncode == os.EX_OK:
 		returncode = copy_xattrs(opts, files)
+		if returncode != os.EX_OK:
+			portage.util.writemsg("!!! install: copy_xattrs failed with the "
+				"following arguments: %s\n" %
+				" ".join(portage._shell_quote(x) for x in args), noiselevel=-1)
 	return returncode
 
 
