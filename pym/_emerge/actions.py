@@ -1692,6 +1692,7 @@ def action_info(settings, trees, myopts, myfiles):
 	append("")
 	writemsg_stdout("\n".join(output_buffer),
 		noiselevel=-1)
+	del output_buffer[:]
 
 	# If some packages were found...
 	if mypkgs:
@@ -1705,11 +1706,15 @@ def action_info(settings, trees, myopts, myfiles):
 		# Loop through each package
 		# Only print settings if they differ from global settings
 		header_title = "Package Settings"
-		print(header_width * "=")
-		print(header_title.rjust(int(header_width/2 + len(header_title)/2)))
-		print(header_width * "=")
-		from portage.output import EOutput
-		out = EOutput()
+		append(header_width * "=")
+		append(header_title.rjust(int(header_width/2 + len(header_title)/2)))
+		append(header_width * "=")
+		append("")
+		writemsg_stdout("\n".join(output_buffer),
+			noiselevel=-1)
+		del output_buffer[:]
+
+		out = portage.output.EOutput()
 		for mypkg in mypkgs:
 			cpv = mypkg[0]
 			pkg_type = mypkg[1]
@@ -1727,28 +1732,32 @@ def action_info(settings, trees, myopts, myfiles):
 				root_config=root_config, type_name=pkg_type)
 
 			if pkg_type == "installed":
-				print("\n%s was built with the following:" % \
+				append("\n%s was built with the following:" % \
 					colorize("INFORM", str(pkg.cpv)))
 			elif pkg_type == "ebuild":
-				print("\n%s would be build with the following:" % \
+				append("\n%s would be build with the following:" % \
 					colorize("INFORM", str(pkg.cpv)))
 			elif pkg_type == "binary":
-				print("\n%s (non-installed binary) was built with the following:" % \
+				append("\n%s (non-installed binary) was built with the following:" % \
 					colorize("INFORM", str(pkg.cpv)))
 
-			writemsg_stdout('%s\n' % pkg_use_display(pkg, myopts),
-				noiselevel=-1)
+			append('%s' % pkg_use_display(pkg, myopts))
 			if pkg_type == "installed":
 				for myvar in mydesiredvars:
 					if metadata[myvar].split() != settings.get(myvar, '').split():
-						print("%s=\"%s\"" % (myvar, metadata[myvar]))
-			print()
+						append("%s=\"%s\"" % (myvar, metadata[myvar]))
+			append("")
+			append("")
+			writemsg_stdout("\n".join(output_buffer),
+				noiselevel=-1)
+			del output_buffer[:]
 
 			if metadata['DEFINED_PHASES']:
 				if 'info' not in metadata['DEFINED_PHASES'].split():
 					continue
 
-			print(">>> Attempting to run pkg_info() for '%s'" % pkg.cpv)
+			writemsg_stdout(">>> Attempting to run pkg_info() for '%s'\n"
+				% pkg.cpv, noiselevel=-1)
 
 			if pkg_type == "installed":
 				ebuildpath = vardb.findname(pkg.cpv)
