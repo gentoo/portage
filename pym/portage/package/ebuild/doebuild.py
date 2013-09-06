@@ -1488,6 +1488,25 @@ def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
 				"groups": userpriv_groups,
 				"umask": 0o02
 			})
+
+			# Adjust pty ownership so that subprocesses
+			# can directly access /dev/fd/{1,2}.
+			stdout_fd = fd_pipes.get(1)
+			if stdout_fd is not None:
+				try:
+					subprocess_tty = _os.ttyname(stdout_fd)
+				except OSError:
+					pass
+				else:
+					try:
+						parent_tty = _os.ttyname(sys.__stdout__.fileno())
+					except OSError:
+						parent_tty = None
+
+					if subprocess_tty != parent_tty:
+						_os.chown(subprocess_tty,
+							int(portage_uid), int(portage_gid))
+
 		if "userpriv" in features and "userpriv" not in mysettings["PORTAGE_RESTRICT"].split() and secpass >= 2:
 			# Since Python 3.4, getpwuid and getgrgid
 			# require int type (no proxies).
