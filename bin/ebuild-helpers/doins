@@ -49,7 +49,7 @@ else
 	PRESERVE_SYMLINKS=n
 fi
 
-export TMP=$T/.doins_tmp
+export TMP=$(mktemp -d "${T}/.doins_tmp_XXXXXX")
 # Use separate directories to avoid potential name collisions.
 mkdir -p "$TMP"/{1,2}
 
