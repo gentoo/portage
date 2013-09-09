@@ -19,14 +19,15 @@ if ___eapi_newins_supports_reading_from_standard_input && [[ $1 == "-" ]]; then
 	stdin=yes
 fi
 
-rm -rf "${T}/$2"
+TMP=$(mktemp -d "${T}/.newins_tmp_XXXXXX")
+trap 'rm -rf "${TMP}"' EXIT
 
 if [[ ${stdin} ]] ; then
 	if [[ -t 0 ]] ; then
 		__helpers_die "!!! ${helper}: Input is from a terminal"
 		exit 1
 	fi
-	cat > "${T}/$2"
+	cat > "${TMP}/$2"
 	ret=$?
 else
 	if [[ ! -e $1 ]] ; then
@@ -41,7 +42,7 @@ else
 		fi
 	fi
 
-	cp ${cp_args} "$1" "${T}/$2"
+	cp ${cp_args} "$1" "${TMP}/$2"
 	ret=$?
 fi
 
@@ -50,8 +51,7 @@ if [[ ${ret} -ne 0 ]] ; then
 	exit ${ret}
 fi
 
-do${helper#new} "${T}/$2"
+do${helper#new} "${TMP}/$2"
 ret=$?
-rm -rf "${T}/${2}"
 [[ $ret -ne 0 ]] && __helpers_die "${helper} failed"
 exit $ret
