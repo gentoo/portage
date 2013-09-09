@@ -1,7 +1,10 @@
 # Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import logging
+
 from portage import os
+from portage.util import writemsg_level
 from _emerge.AbstractPollTask import AbstractPollTask
 import signal
 import errno
@@ -45,7 +48,13 @@ class SubProcess(AbstractPollTask):
 			try:
 				os.kill(self.pid, signal.SIGTERM)
 			except OSError as e:
-				if e.errno != errno.ESRCH:
+				if e.errno == errno.EPERM:
+					# Reported with hardened kernel (bug #358211).
+					writemsg_level(
+						"!!! kill: (%i) - Operation not permitted\n" %
+						(self.pid,), level=logging.ERROR,
+						noiselevel=-1)
+				elif e.errno != errno.ESRCH:
 					raise
 
 	def isAlive(self):
@@ -64,7 +73,13 @@ class SubProcess(AbstractPollTask):
 					try:
 						os.kill(self.pid, signal.SIGKILL)
 					except OSError as e:
-						if e.errno != errno.ESRCH:
+						if e.errno == errno.EPERM:
+							# Reported with hardened kernel (bug #358211).
+							writemsg_level(
+								"!!! kill: (%i) - Operation not permitted\n" %
+								(self.pid,), level=logging.ERROR,
+								noiselevel=-1)
+						elif e.errno != errno.ESRCH:
 							raise
 						del e
 					self._wait_loop(timeout=self._cancel_timeout)

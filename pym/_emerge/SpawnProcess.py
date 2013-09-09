@@ -8,6 +8,7 @@ except ImportError:
 	fcntl = None
 
 import errno
+import logging
 import platform
 import signal
 import sys
@@ -16,6 +17,7 @@ from _emerge.SubProcess import SubProcess
 import portage
 from portage import os
 from portage.const import BASH_BINARY
+from portage.util import writemsg_level
 from portage.util._async.PipeLogger import PipeLogger
 
 # On Darwin, FD_CLOEXEC triggers errno 35 for stdout (bug #456296)
@@ -198,7 +200,13 @@ class SpawnProcess(SubProcess):
 					try:
 						os.kill(int(p), sig)
 					except OSError as e:
-						if e.errno != errno.ESRCH:
+						if e.errno == errno.EPERM:
+							# Reported with hardened kernel (bug #358211).
+							writemsg_level(
+								"!!! kill: (%i) - Operation not permitted\n" %
+								(p,), level=logging.ERROR,
+								noiselevel=-1)
+						elif e.errno != errno.ESRCH:
 							raise
 
 			# step 1: kill all orphans
