@@ -190,7 +190,7 @@ class SpawnProcess(SubProcess):
 			def get_pids(cgroup):
 				try:
 					with open(os.path.join(cgroup, 'cgroup.procs'), 'r') as f:
-						return f.read().split()
+						return [int(p) for p in f.read().split()]
 				except OSError:
 					# cgroup removed already?
 					return []
@@ -198,7 +198,7 @@ class SpawnProcess(SubProcess):
 			def kill_all(pids, sig):
 				for p in pids:
 					try:
-						os.kill(int(p), sig)
+						os.kill(p, sig)
 					except OSError as e:
 						if e.errno == errno.EPERM:
 							# Reported with hardened kernel (bug #358211).
