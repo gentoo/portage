@@ -135,7 +135,7 @@ ___eapi_disallows_helpers_in_global_scope() {
 }
 
 ___eapi_unpack_is_case_sensitive() {
-	true
+	[[ ${1-${EAPI}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend)$ ]]
 }
 
 # OTHERS
