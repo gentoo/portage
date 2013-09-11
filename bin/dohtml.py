@@ -77,7 +77,7 @@ def install(basename, dirname, options, prefix=""):
 		desttree = "html"
 
 	destdir = os.path.join(options.ED, "usr", "share", "doc",
-		options.PF.lstrip(os.sep), desttree,
+		options.PF.lstrip(os.sep), desttree.lstrip(os.sep),
 		options.doc_prefix.lstrip(os.sep), prefix).rstrip(os.sep)
 
 	if not os.path.exists(fullpath):
