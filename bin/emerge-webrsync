@@ -1,5 +1,4 @@
 #!@PORTAGE_BASH@
-#!/bin/bash
 # Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # Author: Karl Trygve Kalleberg <karltk@gentoo.org>
