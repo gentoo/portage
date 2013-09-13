@@ -204,9 +204,10 @@ def main():
 		print("Allowed files :", options.allowed_files)
 
 	success = False
+	endswith_slash = (os.sep, os.sep + ".")
 
 	for x in args:
-		trailing_slash = x[-1:] == os.sep
+		trailing_slash = x.endswith(endswith_slash)
 		x = normalize_path(x)
 		if trailing_slash:
 			# Modify behavior of basename and dirname
