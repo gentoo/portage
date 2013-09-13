@@ -17,7 +17,6 @@ import portage
 from portage import os, _encodings, _unicode_decode
 from portage.exception import DirectoryNotFound, FileNotFound, \
 	InvalidData, TryAgain, OperationNotPermitted, PermissionDenied
-from portage.data import portage_gid
 from portage.util import writemsg
 from portage.localization import _
 
@@ -63,6 +62,9 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 
 	if not mypath:
 		raise InvalidData(_("Empty path given"))
+
+	# Since Python 3.4, chown requires int type (no proxies).
+	portage_gid = int(portage.data.portage_gid)
 
 	# Support for file object or integer file descriptor parameters is
 	# deprecated due to ambiguity in whether or not it's safe to close
@@ -232,13 +234,15 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 
 	if myfd != HARDLINK_FD:
 
-		try:
-			fcntl.FD_CLOEXEC
-		except AttributeError:
-			pass
-		else:
-			fcntl.fcntl(myfd, fcntl.F_SETFL,
-				fcntl.fcntl(myfd, fcntl.F_GETFL) | fcntl.FD_CLOEXEC)
+		# FD_CLOEXEC is enabled by default in Python >=3.4.
+		if sys.hexversion < 0x3040000:
+			try:
+				fcntl.FD_CLOEXEC
+			except AttributeError:
+				pass
+			else:
+				fcntl.fcntl(myfd, fcntl.F_SETFD,
+					fcntl.fcntl(myfd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
 		_open_fds.add(myfd)
 
@@ -371,6 +375,9 @@ def hardlink_lockfile(lockfilename, max_wait=DeprecationWarning,
 	displayed_waiting_msg = False
 	preexisting = os.path.exists(lockfilename)
 	myhardlock = hardlock_name(lockfilename)
+
+	# Since Python 3.4, chown requires int type (no proxies).
+	portage_gid = int(portage.data.portage_gid)
 
 	# myhardlock must not exist prior to our link() call, and we can
 	# safely unlink it since its file name is unique to our PID

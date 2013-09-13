@@ -41,7 +41,7 @@ def LoadLibrary(name):
 	handle = _library_handles.get(name)
 
 	if handle is None and ctypes is not None:
-		handle = ctypes.cdll.LoadLibrary(name)
+		handle = ctypes.CDLL(name, use_errno=True)
 		_library_handles[name] = handle
 
 	return handle

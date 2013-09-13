@@ -1693,6 +1693,7 @@ def action_info(settings, trees, myopts, myfiles):
 	append("")
 	writemsg_stdout("\n".join(output_buffer),
 		noiselevel=-1)
+	del output_buffer[:]
 
 	# If some packages were found...
 	if mypkgs:
@@ -1706,11 +1707,15 @@ def action_info(settings, trees, myopts, myfiles):
 		# Loop through each package
 		# Only print settings if they differ from global settings
 		header_title = "Package Settings"
-		print(header_width * "=")
-		print(header_title.rjust(int(header_width/2 + len(header_title)/2)))
-		print(header_width * "=")
-		from portage.output import EOutput
-		out = EOutput()
+		append(header_width * "=")
+		append(header_title.rjust(int(header_width/2 + len(header_title)/2)))
+		append(header_width * "=")
+		append("")
+		writemsg_stdout("\n".join(output_buffer),
+			noiselevel=-1)
+		del output_buffer[:]
+
+		out = portage.output.EOutput()
 		for mypkg in mypkgs:
 			cpv = mypkg[0]
 			pkg_type = mypkg[1]
@@ -1728,28 +1733,32 @@ def action_info(settings, trees, myopts, myfiles):
 				root_config=root_config, type_name=pkg_type)
 
 			if pkg_type == "installed":
-				print("\n%s was built with the following:" % \
+				append("\n%s was built with the following:" % \
 					colorize("INFORM", str(pkg.cpv)))
 			elif pkg_type == "ebuild":
-				print("\n%s would be build with the following:" % \
+				append("\n%s would be build with the following:" % \
 					colorize("INFORM", str(pkg.cpv)))
 			elif pkg_type == "binary":
-				print("\n%s (non-installed binary) was built with the following:" % \
+				append("\n%s (non-installed binary) was built with the following:" % \
 					colorize("INFORM", str(pkg.cpv)))
 
-			writemsg_stdout('%s\n' % pkg_use_display(pkg, myopts),
-				noiselevel=-1)
+			append('%s' % pkg_use_display(pkg, myopts))
 			if pkg_type == "installed":
 				for myvar in mydesiredvars:
 					if metadata[myvar].split() != settings.get(myvar, '').split():
-						print("%s=\"%s\"" % (myvar, metadata[myvar]))
-			print()
+						append("%s=\"%s\"" % (myvar, metadata[myvar]))
+			append("")
+			append("")
+			writemsg_stdout("\n".join(output_buffer),
+				noiselevel=-1)
+			del output_buffer[:]
 
 			if metadata['DEFINED_PHASES']:
 				if 'info' not in metadata['DEFINED_PHASES'].split():
 					continue
 
-			print(">>> Attempting to run pkg_info() for '%s'" % pkg.cpv)
+			writemsg_stdout(">>> Attempting to run pkg_info() for '%s'\n"
+				% pkg.cpv, noiselevel=-1)
 
 			if pkg_type == "installed":
 				ebuildpath = vardb.findname(pkg.cpv)
@@ -2534,8 +2543,32 @@ def _sync_repo(emerge_config, repo):
 				elif (servertimestamp == 0) or (servertimestamp > mytimestamp):
 					# actual sync
 					mycommand = rsynccommand + [dosyncuri+"/", repo.location]
-					exitcode = portage.process.spawn(mycommand,
-						**portage._native_kwargs(spawn_kwargs))
+					exitcode = None
+					try:
+						exitcode = portage.process.spawn(mycommand,
+							**portage._native_kwargs(spawn_kwargs))
+					finally:
+						if exitcode is None:
+							# interrupted
+							exitcode = 128 + signal.SIGINT
+
+						#   0	Success
+						#   1	Syntax or usage error
+						#   2	Protocol incompatibility
+						#   5	Error starting client-server protocol
+						#  35	Timeout waiting for daemon connection
+						if exitcode not in (0, 1, 2, 5, 35):
+							# If the exit code is not among those listed above,
+							# then we may have a partial/inconsistent sync
+							# state, so our previously read timestamp as well
+							# as the corresponding file can no longer be
+							# trusted.
+							mytimestamp = 0
+							try:
+								os.unlink(servertimestampfile)
+							except OSError:
+								pass
+
 					if exitcode in [0,1,3,4,11,14,20,21]:
 						break
 			elif exitcode in [1,3,4,11,14,20,21]:
@@ -3519,6 +3552,13 @@ def repo_name_check(trees):
 				# so don't warn about it.
 				missing_repo_names.remove(portdb.porttree_root)
 
+	# Skip warnings about missing repo_name entries for
+	# /usr/local/portage (see bug #248603).
+	try:
+		missing_repo_names.remove('/usr/local/portage')
+	except KeyError:
+		pass
+
 	if missing_repo_names:
 		msg = []
 		msg.append("WARNING: One or more repositories " + \
@@ -3653,10 +3693,7 @@ def run_action(emerge_config):
 	if "--quiet" not in emerge_config.opts:
 		portage.deprecated_profile_check(
 			settings=emerge_config.target_config.settings)
-		if portage.const._ENABLE_REPO_NAME_WARN:
-			# Bug #248603 - Disable warnings about missing
-			# repo_name entries for stable branch.
-			repo_name_check(emerge_config.trees)
+		repo_name_check(emerge_config.trees)
 		repo_name_duplicate_check(emerge_config.trees)
 		config_protect_check(emerge_config.trees)
 	check_procfs()

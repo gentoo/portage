@@ -21,7 +21,7 @@ else
 	# in global scope, even though they are completely useless during
 	# the "depend" phase.
 	for x in diropts docompress exeopts get_KV insopts \
-		keepdir KV_major KV_micro KV_minor KV_to_int \
+		KV_major KV_micro KV_minor KV_to_int \
 		libopts register_die_hook register_success_hook \
 		__strip_duplicate_slashes \
 		use_with use_enable ; do

@@ -5,8 +5,11 @@
 
 import atexit
 import errno
+import fcntl
 import platform
 import signal
+import socket
+import struct
 import sys
 import traceback
 import os as _os
@@ -21,6 +24,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 
 from portage.const import BASH_BINARY, SANDBOX_BINARY, MACOSSANDBOX_BINARY, FAKEROOT_BINARY
 from portage.exception import CommandNotFound
+from portage.util._ctypes import find_library, LoadLibrary, ctypes
 
 try:
 	import resource
@@ -30,6 +34,17 @@ except ImportError:
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
+
+# Support PEP 446 for Python >=3.4
+try:
+	_set_inheritable = _os.set_inheritable
+except AttributeError:
+	_set_inheritable = None
+
+try:
+	_FD_CLOEXEC = fcntl.FD_CLOEXEC
+except AttributeError:
+	_FD_CLOEXEC = None
 
 # Prefer /proc/self/fd if available (/dev/fd
 # doesn't work on solaris, see bug #474536).
@@ -196,7 +211,8 @@ def cleanup():
 
 def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
           uid=None, gid=None, groups=None, umask=None, logfile=None,
-          path_lookup=True, pre_exec=None, close_fds=True):
+          path_lookup=True, pre_exec=None, close_fds=True, unshare_net=False,
+          unshare_ipc=False, cgroup=None):
 	"""
 	Spawns a given command.
 	
@@ -229,7 +245,13 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	@param close_fds: If True, then close all file descriptors except those
 		referenced by fd_pipes (default is True).
 	@type close_fds: Boolean
-	
+	@param unshare_net: If True, networking will be unshared from the spawned process
+	@type unshare_net: Boolean
+	@param unshare_ipc: If True, IPC will be unshared from the spawned process
+	@type unshare_ipc: Boolean
+	@param cgroup: CGroup path to bind the process to
+	@type cgroup: String
+
 	logfile requires stdout and stderr to be assigned to this process (ie not pointed
 	   somewhere else.)
 	
@@ -292,6 +314,12 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 		fd_pipes[1] = pw
 		fd_pipes[2] = pw
 
+	# This caches the libc library lookup in the current
+	# process, so that it's only done once rather than
+	# for each child process.
+	if unshare_net or unshare_ipc:
+		find_library("c")
+
 	parent_pid = os.getpid()
 	pid = None
 	try:
@@ -300,7 +328,8 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 		if pid == 0:
 			try:
 				_exec(binary, mycommand, opt_name, fd_pipes,
-					env, gid, groups, uid, umask, pre_exec, close_fds)
+					env, gid, groups, uid, umask, pre_exec, close_fds,
+					unshare_net, unshare_ipc, cgroup)
 			except SystemExit:
 				raise
 			except Exception as e:
@@ -370,7 +399,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	return 0
 
 def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
-	pre_exec, close_fds):
+	pre_exec, close_fds, unshare_net, unshare_ipc, cgroup):
 
 	"""
 	Execute a given binary with options
@@ -395,10 +424,16 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	@type umask: Integer
 	@param pre_exec: A function to be called with no arguments just prior to the exec call.
 	@type pre_exec: callable
+	@param unshare_net: If True, networking will be unshared from the spawned process
+	@type unshare_net: Boolean
+	@param unshare_ipc: If True, IPC will be unshared from the spawned process
+	@type unshare_ipc: Boolean
+	@param cgroup: CGroup path to bind the process to
+	@type cgroup: String
 	@rtype: None
 	@return: Never returns (calls os.execve)
 	"""
-	
+
 	# If the process we're creating hasn't been given a name
 	# assign it the name of the executable.
 	if not opt_name:
@@ -429,15 +464,63 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	# the parent process (see bug #289486).
 	signal.signal(signal.SIGQUIT, signal.SIG_DFL)
 
-	_setup_pipes(fd_pipes, close_fds=close_fds)
+	_setup_pipes(fd_pipes, close_fds=close_fds, inheritable=True)
+
+	# Add to cgroup
+	# it's better to do it from the child since we can guarantee
+	# it is done before we start forking children
+	if cgroup:
+		with open(os.path.join(cgroup, 'cgroup.procs'), 'a') as f:
+			f.write('%d\n' % os.getpid())
+
+	# Unshare (while still uid==0)
+	if unshare_net or unshare_ipc:
+		filename = find_library("c")
+		if filename is not None:
+			libc = LoadLibrary(filename)
+			if libc is not None:
+				CLONE_NEWIPC = 0x08000000
+				CLONE_NEWNET = 0x40000000
+
+				flags = 0
+				if unshare_net:
+					flags |= CLONE_NEWNET
+				if unshare_ipc:
+					flags |= CLONE_NEWIPC
+
+				try:
+					if libc.unshare(flags) != 0:
+						writemsg("Unable to unshare: %s\n" % (
+							errno.errorcode.get(ctypes.get_errno(), '?')),
+							noiselevel=-1)
+					else:
+						if unshare_net:
+							# 'up' the loopback
+							IFF_UP = 0x1
+							ifreq = struct.pack('16sh', b'lo', IFF_UP)
+							SIOCSIFFLAGS = 0x8914
+
+							sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
+							try:
+								fcntl.ioctl(sock, SIOCSIFFLAGS, ifreq)
+							except IOError as e:
+								writemsg("Unable to enable loopback interface: %s\n" % (
+									errno.errorcode.get(e.errno, '?')),
+									noiselevel=-1)
+							sock.close()
+				except AttributeError:
+					# unshare() not supported by libc
+					pass
 
 	# Set requested process permissions.
 	if gid:
-		os.setgid(gid)
+		# Cast proxies to int, in case it matters.
+		os.setgid(int(gid))
 	if groups:
 		os.setgroups(groups)
 	if uid:
-		os.setuid(uid)
+		# Cast proxies to int, in case it matters.
+		os.setuid(int(uid))
 	if umask:
 		os.umask(umask)
 	if pre_exec:
@@ -446,7 +529,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	# And switch to the new process.
 	os.execve(binary, myargs, env)
 
-def _setup_pipes(fd_pipes, close_fds=True):
+def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
 	"""Setup pipes for a forked process.
 
 	Even when close_fds is False, file descriptors referenced as
@@ -482,6 +565,7 @@ def _setup_pipes(fd_pipes, close_fds=True):
 	actually does nothing in this case), which avoids possible
 	interference.
 	"""
+
 	reverse_map = {}
 	# To protect from cases where direct assignment could
 	# clobber needed fds ({1:2, 2:1}) we create a reverse map
@@ -501,6 +585,7 @@ def _setup_pipes(fd_pipes, close_fds=True):
 	while reverse_map:
 
 		oldfd, newfds = reverse_map.popitem()
+		old_fdflags = None
 
 		for newfd in newfds:
 			if newfd in reverse_map:
@@ -511,8 +596,31 @@ def _setup_pipes(fd_pipes, close_fds=True):
 				# unused file discriptors).
 				backup_fd = os.dup(newfd)
 				reverse_map[backup_fd] = reverse_map.pop(newfd)
+
 			if oldfd != newfd:
 				os.dup2(oldfd, newfd)
+				if _set_inheritable is not None:
+					# Don't do this unless _set_inheritable is available,
+					# since it's used below to ensure correct state, and
+					# otherwise /dev/null stdin fails to inherit (at least
+					# with Python versions from 3.1 to 3.3).
+					if old_fdflags is None:
+						old_fdflags = fcntl.fcntl(oldfd, fcntl.F_GETFD)
+					fcntl.fcntl(newfd, fcntl.F_SETFD, old_fdflags)
+
+			if _set_inheritable is not None:
+
+				inheritable_state = None
+				if not (old_fdflags is None or _FD_CLOEXEC is None):
+					inheritable_state = not bool(old_fdflags & _FD_CLOEXEC)
+
+				if inheritable is not None:
+					if inheritable_state is not inheritable:
+						_set_inheritable(newfd, inheritable)
+
+				elif newfd in (0, 1, 2):
+					if inheritable_state is not True:
+						_set_inheritable(newfd, True)
 
 		if oldfd not in fd_pipes:
 			# If oldfd is not a key in fd_pipes, then it's safe

@@ -56,6 +56,7 @@ except (ImportError, SystemError, RuntimeError, Exception):
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
+import repoman.checks
 from repoman.checks import run_checks
 from repoman import utilities
 from repoman.herdbase import make_herd_base
@@ -174,6 +175,11 @@ def ParseArgs(argv, qahelp):
 		help='for commit mode, call echangelog if ChangeLog is unmodified (or '
 		'regardless of modification if \'force\' is specified)')
 
+	parser.add_argument('--experimental-inherit', choices=('y', 'n'),
+		metavar="<y|n>", default='n',
+		help='Enable experimental inherit.missing checks which may misbehave'
+			' when the internal eclass database becomes outdated')
+
 	parser.add_argument('-f', '--force', dest='force', default=False, action='store_true',
 		help='Commit with QA violations')
 
@@ -211,6 +217,10 @@ def ParseArgs(argv, qahelp):
 
 	parser.add_argument('-d', '--include-dev', dest='include_dev', action='store_true',
 		default=False, help='include dev profiles in dependency checks')
+
+	parser.add_argument('-e', '--include-exp-profiles', choices=('y', 'n'),
+		default=False, help='include exp profiles in dependency checks',
+		metavar='<y|n>')
 
 	parser.add_argument('--unmatched-removal', dest='unmatched_removal', action='store_true',
 		default=False, help='enable strict checking of package.mask and package.unmask files for unmatched removal atoms')
@@ -398,10 +408,6 @@ qawarnings = set((
 "IUSE.rubydeprecated",
 ))
 
-if portage.const._ENABLE_INHERIT_CHECK:
-	# This is experimental, so it's non-fatal.
-	qawarnings.add("inherit.missing")
-
 non_ascii_re = re.compile(r'[^\x00-\x7f]')
 
 missingvars = ["KEYWORDS", "LICENSE", "DESCRIPTION", "HOMEPAGE"]
@@ -500,6 +506,11 @@ options, arguments = ParseArgs(sys.argv, qahelp)
 if options.version:
 	print("Portage", portage.VERSION)
 	sys.exit(0)
+
+if options.experimental_inherit == 'y':
+	# This is experimental, so it's non-fatal.
+	qawarnings.add("inherit.missing")
+	repoman.checks._init(experimental_inherit=True)
 
 # Set this to False when an extraordinary issue (generally
 # something other than a QA issue) makes it impossible to
@@ -2238,8 +2249,9 @@ for x in effective_scanlist:
 
 		for keyword, groups, prof in relevant_profiles:
 
-				if prof.status not in ("stable", "dev") or \
-					prof.status == "dev" and not options.include_dev:
+				if not (prof.status == "stable" or \
+					(prof.status == "dev" and options.include_dev) or \
+					(prof.status == "exp" and options.include_exp_profiles == 'y')):
 					continue
 
 				dep_settings = arch_caches.get(prof.sub_path)
@@ -2710,6 +2722,7 @@ else:
 
 	commitmessage += commit_footer
 
+	broken_changelog_manifests = []
 	if options.echangelog in ('y', 'force'):
 		logging.info("checking for unmodified ChangeLog files")
 		committer_name = utilities.get_committer_name(env=repoman_settings)
@@ -2765,6 +2778,8 @@ else:
 				# regenerate Manifest for modified ChangeLog (bug #420735)
 				repoman_settings["O"] = checkdir
 				digestgen(mysettings=repoman_settings, myportdb=portdb)
+			else:
+				broken_changelog_manifests.append(x)
 
 	if myautoadd:
 		print(">>> Auto-Adding missing Manifest/ChangeLog file(s)...")
@@ -2991,6 +3006,11 @@ else:
 
 		for x in sorted(vcs_files_to_cps(
 			chain(myupdates, myremoved, mymanifests))):
+			repoman_settings["O"] = os.path.join(repodir, x)
+			digestgen(mysettings=repoman_settings, myportdb=portdb)
+
+	elif broken_changelog_manifests:
+		for x in broken_changelog_manifests:
 			repoman_settings["O"] = os.path.join(repodir, x)
 			digestgen(mysettings=repoman_settings, myportdb=portdb)
 

@@ -1,4 +1,4 @@
-.TH "REPOMAN" "1" "May 2013" "Portage VERSION" "Portage"
+.TH "REPOMAN" "1" "Aug 2013" "Portage VERSION" "Portage"
 .SH NAME
 repoman \- Gentoo's program to enforce a minimal level of quality assurance in
 packages added to the portage tree
@@ -65,6 +65,10 @@ can be enabled by default for a particular repository by setting
 "update\-changelog = true" in metadata/layout.conf (see
 \fBportage(5)\fR).
 .TP
+\fB\-\-experimental\-inherit=<y|n>\fR
+Enable experimental inherit.missing checks which may misbehave when the
+internal eclass database becomes outdated.
+.TP
 \fB\-\-if\-modified=<y|n>\fR
 Only check packages that have uncommitted modifications
 .TP
@@ -83,6 +87,9 @@ profiles for dependency checks.
 .TP
 \fB\-d\fR, \fB\-\-include\-dev\fR
 Include dev profiles in dependency checks.
+.TP
+\fB\-e <y|n>\fR, \fB\-\-include\-exp\-profiles=<y|n>\fR
+Include exp profiles in dependency checks.
 .TP
 \fB\-\-unmatched\-removal\fR
 Enable strict checking of package.mask and package.unmask files for

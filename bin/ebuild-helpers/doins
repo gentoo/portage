@@ -11,6 +11,7 @@ if [[ ${helper} == dodoc ]] ; then
 		# default_src_install may call dodoc with no arguments
 		# when DOC is defined but empty, so simply return
 		# sucessfully in this case.
+		eqawarn "QA Notice: dodoc called with no arguments"
 		exit 0
 	fi
 	export INSOPTIONS=-m0644
@@ -57,7 +58,7 @@ else
 	PRESERVE_SYMLINKS=n
 fi
 
-export TMP=$T/.doins_tmp
+export TMP=$(mktemp -d "${T}/.doins_tmp_XXXXXX")
 # Use separate directories to avoid potential name collisions.
 mkdir -p "$TMP"/{1,2}
 

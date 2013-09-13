@@ -141,30 +141,6 @@ docompress() {
 	fi
 }
 
-# adds ".keep" files so that dirs aren't auto-cleaned
-keepdir() {
-	dodir "$@"
-	local x
-	if ! ___eapi_has_prefix_variables; then
-		local ED=${D}
-	fi
-	if [ "$1" == "-R" ] || [ "$1" == "-r" ]; then
-		shift
-		find "$@" -type d -printf "${ED}%p/.keep_${CATEGORY}_${PN}-${SLOT%/*}\n" \
-			| tr "\n" "\0" | \
-			while read -r -d $'\0' ; do
-				>> "$REPLY" || \
-					die "Failed to recursively create .keep files"
-			done
-	else
-		for x in "$@"; do
-			>> "${ED}${x}/.keep_${CATEGORY}_${PN}-${SLOT%/*}" || \
-				die "Failed to create .keep in ${ED}${x}"
-		done
-	fi
-}
-
-
 useq() {
 	has $EBUILD_PHASE prerm postrm || eqawarn \
 		"QA Notice: The 'useq' function is deprecated (replaced by 'use')"
@@ -284,8 +260,8 @@ use_enable() {
 unpack() {
 	local srcdir
 	local x
-	local y
-	local suffix
+	local y y_insensitive
+	local suffix suffix_insensitive
 	local myfail
 	local eapi=${EAPI:-0}
 	[ -z "$*" ] && die "Nothing passed to the 'unpack' command"
@@ -293,10 +269,10 @@ unpack() {
 	for x in "$@"; do
 		__vecho ">>> Unpacking ${x} to ${PWD}"
 		suffix=${x##*.}
-		suffix=$(LC_ALL=C tr "[:upper:]" "[:lower:]" <<< "${suffix}")
+		suffix_insensitive=$(LC_ALL=C tr "[:upper:]" "[:lower:]" <<< "${suffix}")
 		y=${x%.*}
 		y=${y##*.}
-		y=$(LC_ALL=C tr "[:upper:]" "[:lower:]" <<< "${y}")
+		y_insensitive=$(LC_ALL=C tr "[:upper:]" "[:lower:]" <<< "${y}")
 
 		if [[ ${x} == "./"* ]] ; then
 			srcdir=""
@@ -310,7 +286,13 @@ unpack() {
 		[[ ! -s ${srcdir}${x} ]] && die "${x} does not exist"
 
 		__unpack_tar() {
-			if [ "${y}" == "tar" ]; then
+			if [[ ${y_insensitive} == tar ]] ; then
+				if ___eapi_unpack_is_case_sensitive && \
+					[[ tar != ${y} ]] ; then
+					eqawarn "QA Notice: unpack called with" \
+						"secondary suffix '${y}' which is unofficially" \
+						"supported with EAPI '${EAPI}'. Instead use 'tar'."
+				fi
 				$1 -c -- "$srcdir$x" | tar xof -
 				__assert_sigpipe_ok "$myfail"
 			else
@@ -321,27 +303,64 @@ unpack() {
 		}
 
 		myfail="failure unpacking ${x}"
-		case "${suffix}" in
+		case "${suffix_insensitive}" in
 			tar)
+				if ___eapi_unpack_is_case_sensitive && \
+					[[ tar != ${suffix} ]] ; then
+					eqawarn "QA Notice: unpack called with" \
+						"suffix '${suffix}' which is unofficially supported" \
+						"with EAPI '${EAPI}'. Instead use 'tar'."
+				fi
 				tar xof "$srcdir$x" || die "$myfail"
 				;;
 			tgz)
+				if ___eapi_unpack_is_case_sensitive && \
+					[[ tgz != ${suffix} ]] ; then
+					eqawarn "QA Notice: unpack called with" \
+						"suffix '${suffix}' which is unofficially supported" \
+						"with EAPI '${EAPI}'. Instead use 'tgz'."
+				fi
 				tar xozf "$srcdir$x" || die "$myfail"
 				;;
 			tbz|tbz2)
+				if ___eapi_unpack_is_case_sensitive && \
+					[[ " tbz tbz2 " != *" ${suffix} "* ]] ; then
+					eqawarn "QA Notice: unpack called with" \
+						"suffix '${suffix}' which is unofficially supported" \
+						"with EAPI '${EAPI}'. Instead use 'tbz' or 'tbz2'."
+				fi
 				${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d} -c -- "$srcdir$x" | tar xof -
 				__assert_sigpipe_ok "$myfail"
 				;;
 			zip|jar)
+				if ___eapi_unpack_is_case_sensitive && \
+					[[ " ZIP zip jar " != *" ${suffix} "* ]] ; then
+					eqawarn "QA Notice: unpack called with" \
+						"suffix '${suffix}' which is unofficially supported" \
+						"with EAPI '${EAPI}'." \
+						"Instead use 'ZIP', 'zip', or 'jar'."
+				fi
 				# unzip will interactively prompt under some error conditions,
 				# as reported in bug #336285
 				( set +x ; while true ; do echo n || break ; done ) | \
 				unzip -qo "${srcdir}${x}" || die "$myfail"
 				;;
 			gz|z)
+				if ___eapi_unpack_is_case_sensitive && \
+					[[ " gz z Z " != *" ${suffix} "* ]] ; then
+					eqawarn "QA Notice: unpack called with" \
+						"suffix '${suffix}' which is unofficially supported" \
+						"with EAPI '${EAPI}'. Instead use 'gz', 'z', or 'Z'."
+				fi
 				__unpack_tar "gzip -d"
 				;;
 			bz2|bz)
+				if ___eapi_unpack_is_case_sensitive && \
+					[[ " bz bz2 " != *" ${suffix} "* ]] ; then
+					eqawarn "QA Notice: unpack called with" \
+						"suffix '${suffix}' which is unofficially supported" \
+						"with EAPI '${EAPI}'. Instead use 'bz' or 'bz2'."
+				fi
 				__unpack_tar "${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d}"
 				;;
 			7z)
@@ -353,15 +372,40 @@ unpack() {
 				fi
 				;;
 			rar)
+				if ___eapi_unpack_is_case_sensitive && \
+					[[ " rar RAR " != *" ${suffix} "* ]] ; then
+					eqawarn "QA Notice: unpack called with" \
+						"suffix '${suffix}' which is unofficially supported" \
+						"with EAPI '${EAPI}'. Instead use 'rar' or 'RAR'."
+				fi
 				unrar x -idq -o+ "${srcdir}${x}" || die "$myfail"
 				;;
 			lha|lzh)
+				if ___eapi_unpack_is_case_sensitive && \
+					[[ " LHA LHa lha lzh " != *" ${suffix} "* ]] ; then
+					eqawarn "QA Notice: unpack called with" \
+						"suffix '${suffix}' which is unofficially supported" \
+						"with EAPI '${EAPI}'." \
+						"Instead use 'LHA', 'LHa', 'lha', or 'lzh'."
+				fi
 				lha xfq "${srcdir}${x}" || die "$myfail"
 				;;
 			a)
+				if ___eapi_unpack_is_case_sensitive && \
+					[[ " a " != *" ${suffix} "* ]] ; then
+					eqawarn "QA Notice: unpack called with" \
+						"suffix '${suffix}' which is unofficially supported" \
+						"with EAPI '${EAPI}'. Instead use 'a'."
+				fi
 				ar x "${srcdir}${x}" || die "$myfail"
 				;;
 			deb)
+				if ___eapi_unpack_is_case_sensitive && \
+					[[ " deb " != *" ${suffix} "* ]] ; then
+					eqawarn "QA Notice: unpack called with" \
+						"suffix '${suffix}' which is unofficially supported" \
+						"with EAPI '${EAPI}'. Instead use 'deb'."
+				fi
 				# Unpacking .deb archives can not always be done with
 				# `ar`.  For instance on AIX this doesn't work out.  If
 				# we have `deb2targz` installed, prefer it over `ar` for
@@ -389,9 +433,21 @@ unpack() {
 				fi
 				;;
 			lzma)
+				if ___eapi_unpack_is_case_sensitive && \
+					[[ " lzma " != *" ${suffix} "* ]] ; then
+					eqawarn "QA Notice: unpack called with" \
+						"suffix '${suffix}' which is unofficially supported" \
+						"with EAPI '${EAPI}'. Instead use 'lzma'."
+				fi
 				__unpack_tar "lzma -d"
 				;;
 			xz)
+				if ___eapi_unpack_is_case_sensitive && \
+					[[ " xz " != *" ${suffix} "* ]] ; then
+					eqawarn "QA Notice: unpack called with" \
+						"suffix '${suffix}' which is unofficially supported" \
+						"with EAPI '${EAPI}'. Instead use 'xz'."
+				fi
 				if ___eapi_unpack_supports_xz; then
 					__unpack_tar "xz -d"
 				else

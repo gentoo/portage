@@ -6,12 +6,14 @@ from __future__ import unicode_literals
 __all__ = ['dep_check', 'dep_eval', 'dep_wordreduce', 'dep_zapdeps']
 
 import logging
+import operator
 
 import portage
 from portage.dep import Atom, match_from_list, use_reduce
 from portage.exception import InvalidDependString, ParseError
 from portage.localization import _
 from portage.util import writemsg, writemsg_level
+from portage.util.SlotObject import SlotObject
 from portage.versions import vercmp, _pkg_str
 
 def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
@@ -255,6 +257,10 @@ def dep_eval(deplist):
 				return 0
 		return 1
 
+class _dep_choice(SlotObject):
+	__slots__ = ('atoms', 'slot_map', 'cp_map', 'all_available',
+		'all_installed_slots')
+
 def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	"""
 	Takes an unreduced and reduced deplist and removes satisfied dependencies.
@@ -382,7 +388,9 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				vercmp(avail_pkg.version, highest_cpv.version) > 0:
 				cp_map[avail_pkg.cp] = avail_pkg
 
-		this_choice = (atoms, slot_map, cp_map, all_available)
+		this_choice = _dep_choice(atoms=atoms, slot_map=slot_map,
+			cp_map=cp_map, all_available=all_available,
+			all_installed_slots=False)
 		if all_available:
 			# The "all installed" criterion is not version or slot specific.
 			# If any version of a package is already in the graph then we
@@ -403,6 +411,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						not slot_atom.startswith("virtual/"):
 						all_installed_slots = False
 						break
+			this_choice.all_installed_slots = all_installed_slots
 			if graph_db is None:
 				if all_use_satisfied:
 					if all_installed:
@@ -505,6 +514,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						all_installed = False
 
 			if all_installed:
+				this_choice.all_installed_slots = True
 				other_installed.append(this_choice)
 			elif some_installed:
 				other_installed_some.append(this_choice)
@@ -521,22 +531,23 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	for choices in choice_bins:
 		if len(choices) < 2:
 			continue
+		# Prefer choices with all_installed_slots for bug #480736.
+		choices.sort(key=operator.attrgetter('all_installed_slots'),
+			reverse=True)
 		for choice_1 in choices[1:]:
-			atoms_1, slot_map_1, cp_map_1, all_available_1 = choice_1
-			cps = set(cp_map_1)
+			cps = set(choice_1.cp_map)
 			for choice_2 in choices:
 				if choice_1 is choice_2:
 					# choice_1 will not be promoted, so move on
 					break
-				atoms_2, slot_map_2, cp_map_2, all_available_2 = choice_2
-				intersecting_cps = cps.intersection(cp_map_2)
+				intersecting_cps = cps.intersection(choice_2.cp_map)
 				if not intersecting_cps:
 					continue
 				has_upgrade = False
 				has_downgrade = False
 				for cp in intersecting_cps:
-					version_1 = cp_map_1[cp]
-					version_2 = cp_map_2[cp]
+					version_1 = choice_1.cp_map[cp]
+					version_2 = choice_2.cp_map[cp]
 					difference = vercmp(version_1.version, version_2.version)
 					if difference != 0:
 						if difference > 0:
@@ -553,9 +564,9 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 
 	for allow_masked in (False, True):
 		for choices in choice_bins:
-			for atoms, slot_map, cp_map, all_available in choices:
-				if all_available or allow_masked:
-					return atoms
+			for choice in choices:
+				if choice.all_available or allow_masked:
+					return choice.atoms
 
 	assert(False) # This point should not be reachable
 

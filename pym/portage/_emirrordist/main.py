@@ -244,9 +244,6 @@ def emirrordist_main(args):
 
 	config_root = options.config_root
 
-	if options.repo is None:
-		parser.error("--repo option is required")
-
 	if options.portdir is not None:
 		writemsg_level("emirrordist: warning: --portdir option is deprecated in favor of --repositories-configuration option\n",
 			level=logging.WARNING, noiselevel=-1)
@@ -256,7 +253,7 @@ def emirrordist_main(args):
 
 	if options.repositories_configuration is not None:
 		env['PORTAGE_REPOSITORIES'] = options.repositories_configuration
-	elif options.portdir_overlay:
+	elif options.portdir_overlay is not None:
 		env['PORTDIR_OVERLAY'] = options.portdir_overlay
 
 	if options.portdir is not None:
@@ -274,6 +271,16 @@ def emirrordist_main(args):
 
 		settings = portage.config(config_root=config_root,
 			local_config=False, env=env)
+
+	if options.repo is None:
+		if len(settings.repositories.prepos) == 2:
+			for repo in settings.repositories:
+				if repo.name != "DEFAULT":
+					options.repo = repo.name
+					break
+
+		if options.repo is None:
+			parser.error("--repo option is required")
 
 	repo_path = settings.repositories.treemap.get(options.repo)
 	if repo_path is None:

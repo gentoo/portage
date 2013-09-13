@@ -53,6 +53,12 @@
 				dohtml by default additionally installs files with .ico, .svg, .xhtml and .xml extensions.
 			</para>
 		</section>
+		<section id='package-ebuild-eapi-5-progress-helpers-unpack-case-insensitive'>
+			<title>Case-insensitive matching of extensions in unpack</title>
+			<para>
+				unpack matches extensions case-insensitively.
+			</para>
+		</section>
 		<section id='package-ebuild-eapi-5-progress-helpers-banned-in-global-scope'>
 			<title>Helpers Banned in Global Scope</title>
 			<para>
@@ -61,7 +67,6 @@
 					<listitem><para>docompress</para></listitem>
 					<listitem><para>exeopts</para></listitem>
 					<listitem><para>insopts</para></listitem>
-					<listitem><para>keepdir</para></listitem>
 					<listitem><para>libopts</para></listitem>
 					<listitem><para>use</para></listitem>
 					<listitem><para>use_enable</para></listitem>

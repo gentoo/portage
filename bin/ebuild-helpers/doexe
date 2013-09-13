@@ -17,8 +17,7 @@ if [[ ! -d ${ED}${_E_EXEDESTTREE_} ]] ; then
 	install -d "${ED}${_E_EXEDESTTREE_}"
 fi
 
-TMP=$T/.doexe_tmp
-mkdir "$TMP"
+TMP=$(mktemp -d "${T}/.doexe_tmp_XXXXXX")
 
 ret=0
 

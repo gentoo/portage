@@ -1,6 +1,8 @@
 # Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import sys
+
 try:
 	import fcntl
 except ImportError:
@@ -27,15 +29,16 @@ class FifoIpcDaemon(AbstractPollTask):
 		self._files.pipe_in = \
 			os.open(self.input_fifo, os.O_RDONLY|os.O_NONBLOCK)
 
-		if fcntl is not None:
+		# FD_CLOEXEC is enabled by default in Python >=3.4.
+		if sys.hexversion < 0x3040000 and fcntl is not None:
 			try:
 				fcntl.FD_CLOEXEC
 			except AttributeError:
 				pass
 			else:
-				fcntl.fcntl(self._files.pipe_in, fcntl.F_SETFL,
+				fcntl.fcntl(self._files.pipe_in, fcntl.F_SETFD,
 					fcntl.fcntl(self._files.pipe_in,
-						fcntl.F_GETFL) | fcntl.FD_CLOEXEC)
+						fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
 		self._reg_id = self.scheduler.io_add_watch(
 			self._files.pipe_in,
@@ -53,15 +56,16 @@ class FifoIpcDaemon(AbstractPollTask):
 		self._files.pipe_in = \
 			os.open(self.input_fifo, os.O_RDONLY|os.O_NONBLOCK)
 
-		if fcntl is not None:
+		# FD_CLOEXEC is enabled by default in Python >=3.4.
+		if sys.hexversion < 0x3040000 and fcntl is not None:
 			try:
 				fcntl.FD_CLOEXEC
 			except AttributeError:
 				pass
 			else:
-				fcntl.fcntl(self._files.pipe_in, fcntl.F_SETFL,
+				fcntl.fcntl(self._files.pipe_in, fcntl.F_SETFD,
 					fcntl.fcntl(self._files.pipe_in,
-						fcntl.F_GETFL) | fcntl.FD_CLOEXEC)
+						fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
 		self._reg_id = self.scheduler.io_add_watch(
 			self._files.pipe_in,

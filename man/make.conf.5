@@ -1,10 +1,19 @@
-.TH "MAKE.CONF" "5" "Jul 2013" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Aug 2013" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
 \fB/etc/make.conf\fR and \fB/etc/portage/make.conf\fR
 .SH "DESCRIPTION"
-This file contains various variables that are used by Portage.
+
+This file contains various variables that are used by Portage. The file has a
+newline\-delimited list of \fI<key>=<value>\fR pairs (see the default file for
+examples) which are accessible from the environment of ebuilds. It supports
+simple shell\-like expansion of the form \fIvar="${var}"\fR, the source
+keyword and variable substitution, but not some of the more advanced BASH
+features like arrays and special parameter expansions. For more details, see
+the Simple lexical analysis documentation:
+\fLhttp://docs.python.org/3/library/shlex.html\fR.
+.br
 Portage will check the currently\-defined environment variables
 first for any settings.  If no environment settings are found,
 Portage then checks the make.conf files. Both /etc/make.conf and
@@ -270,6 +279,10 @@ like "File not recognized: File truncated"), try recompiling the application
 with ccache disabled before reporting a bug. Unless you are doing development
 work, do not enable ccache.
 .TP
+.B cgroup
+Use Linux control group to control processes spawned by ebuilds. This allows
+emerge to safely kill all subprocesses when ebuild phase exits.
+.TP
 .B clean\-logs
 Enable automatic execution of the command specified by the
 PORT_LOGDIR_CLEAN variable. The default PORT_LOGDIR_CLEAN setting will
@@ -379,6 +392,10 @@ would otherwise be useless with prefix configurations. This brings
 compatibility with the prefix branch of portage, which also supports EPREFIX
 for all EAPIs (for obvious reasons).
 .TP
+.B ipc\-sandbox
+Isolate the ebuild phase functions from host IPC namespace. Supported
+only on Linux. Requires network namespace support in kernel.
+.TP
 .B lmirror
 When \fImirror\fR is enabled in \fBFEATURES\fR, fetch files even
 when \fImirror\fR is also in the \fBebuild\fR(5) \fBRESTRICT\fR variable.
@@ -408,6 +425,10 @@ $(prefix)/lib. This assumption can cause a serious mess if /usr/lib
 isn't a symlink to /usr/lib64. To find the bad packages, we have a
 portage feature called \fImultilib\-strict\fR. It will prevent emerge
 from putting 64bit libraries into anything other than (/usr)/lib64.
+.TP
+.B network\-sandbox
+Isolate the ebuild phase functions from host network interfaces.
+Supported only on Linux. Requires network namespace support in kernel.
 .TP
 .B news
 Enable GLEP 42 news support. See
@@ -1091,6 +1112,6 @@ Contains a list of all local USE variables.
 .BR ebuild (1),
 .BR ebuild (5)
 .TP
-The \fI/usr/sbin/ebuild.sh\fR script.
+The \fI/usr/lib/portage/bin/ebuild.sh\fR script.
 .TP
 The helper apps in \fI/usr/lib/portage/bin\fR.

@@ -116,15 +116,17 @@ EBUILD_PHASES            = ("pretend", "setup", "unpack", "prepare", "configure"
                            "nofetch", "config", "info", "other")
 SUPPORTED_FEATURES       = frozenset([
                            "assume-digests", "binpkg-logs", "buildpkg", "buildsyspkg", "candy",
-                           "ccache", "chflags", "clean-logs",
+                           "ccache", "cgroup", "chflags", "clean-logs",
                            "collision-protect", "compress-build-logs", "compressdebug",
                            "compress-index", "config-protect-if-modified",
                            "digest", "distcc", "distcc-pump", "distlocks",
                            "downgrade-backup", "ebuild-locks", "fakeroot",
                            "fail-clean", "force-mirror", "force-prefix", "getbinpkg",
-                           "installsources", "keeptemp", "keepwork", "fixlafiles", "lmirror",
+                           "installsources", "ipc-sandbox",
+                           "keeptemp", "keepwork", "fixlafiles", "lmirror",
                            "merge-sync",
-                           "metadata-transfer", "mirror", "multilib-strict", "news",
+                           "metadata-transfer", "mirror", "multilib-strict",
+                           "network-sandbox", "news",
                            "noauto", "noclean", "nodoc", "noinfo", "noman",
                            "nostrip", "notitles", "parallel-fetch", "parallel-install",
                            "prelink-checksums", "preserve-libs",
@@ -202,6 +204,4 @@ SUPPORTED_BINPKG_FORMATS = ("tar", "rpm")
 # Private constants for use in conditional code in order to minimize the diff
 # between branches.
 _DEPCLEAN_LIB_CHECK_DEFAULT = True
-_ENABLE_REPO_NAME_WARN  = True
 _ENABLE_SET_CONFIG      = True
-_ENABLE_INHERIT_CHECK   = True

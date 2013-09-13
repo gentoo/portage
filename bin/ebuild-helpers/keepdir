@@ -1,0 +1,20 @@
+#!/bin/bash
+# Copyright 1999-2013 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+
+source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+
+if ! ___eapi_has_prefix_variables; then
+	ED=${D}
+fi
+
+dodir "$@"
+ret=$?
+
+for x in "$@"; do
+	>> "${ED}${x}/.keep_${CATEGORY}_${PN}-${SLOT%/*}" || \
+		{ echo "!!! ${0##*/}: cannot write .keep in ${ED}${x}" 1>&2; ret=1; }
+done
+
+[[ ${ret} -ne 0 ]] && __helpers_die "${0##*/} failed"
+exit ${ret}
