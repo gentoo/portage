@@ -755,6 +755,7 @@ install_qa_check_misc() {
 			": warning: returning reference to temporary"
 			": warning: function returns address of local variable"
 			": warning: .*\\[-Wsizeof-pointer-memaccess\\]"
+			": warning: .*\\[-Waggressive-loop-optimizations\\]"
 			# this may be valid code :/
 			#": warning: multi-character character constant"
 			# need to check these two ...
