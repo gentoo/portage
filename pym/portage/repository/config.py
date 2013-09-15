@@ -178,9 +178,14 @@ class RepoConfig(object):
 		if self.location is not None:
 			eapi = read_corresponding_eapi_file(os.path.join(self.location, REPO_NAME_LOC))
 			self.name, missing = self._read_valid_repo_name(self.location)
-			if missing and portage._sync_disabled_warnings:
+			if missing:
+				# The name from repos.conf has to be used here for
+				# things like emerge-webrsync to work when the repo
+				# is empty (bug #484950).
 				self.name = name
-				missing = False
+				if portage._sync_disabled_warnings:
+					missing = False
+
 		elif name == "DEFAULT":
 			missing = False
 
