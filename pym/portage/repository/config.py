@@ -182,7 +182,8 @@ class RepoConfig(object):
 				# The name from repos.conf has to be used here for
 				# things like emerge-webrsync to work when the repo
 				# is empty (bug #484950).
-				self.name = name
+				if name is not None:
+					self.name = name
 				if portage._sync_disabled_warnings:
 					missing = False
 
