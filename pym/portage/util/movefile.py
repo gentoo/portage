@@ -72,7 +72,12 @@ if hasattr(_os, "getxattr"):
 	# Python >=3.3 and GNU/Linux
 	def _copyxattr(src, dest, exclude=None):
 
-		attrs = _os.listxattr(src)
+		try:
+			attrs = _os.listxattr(src)
+		except OSError as e:
+			if e.errno != OperationNotSupported.errno:
+				raise
+			attrs = ()
 		if attrs:
 			if exclude is not None and isinstance(attrs[0], bytes):
 				exclude = exclude.encode(_encodings['fs'])
