@@ -1193,7 +1193,7 @@ def add_pquery_arguments(parser):
 				kwargs["help"] = opt_info["help"]
 			except KeyError:
 				pass
-			arg_group.add_argument(*pargs, **kwargs)
+			arg_group.add_argument(*pargs, **portage._native_kwargs(kwargs))
 
 
 def usage(argv):
