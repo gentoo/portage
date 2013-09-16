@@ -1249,7 +1249,7 @@ class atomic_ofstream(ObjectProxy):
 				object.__setattr__(self, '_file',
 					open_func(_unicode_encode(tmp_name,
 						encoding=_encodings['fs'], errors='strict'),
-						mode=mode, **kargs))
+						mode=mode, **portage._native_kwargs(kargs)))
 				return
 			except IOError as e:
 				if canonical_path == filename:
