@@ -3753,6 +3753,13 @@ class dblink(object):
 						# to an infinite recursion loop.
 						mylinklist.append(relative_path)
 
+						myto = _unicode_decode(
+							_os.readlink(_unicode_encode(fpath,
+							encoding=_encodings['merge'], errors='strict')),
+							encoding=_encodings['merge'], errors='replace')
+						if line_ending_re.search(myto) is not None:
+							paths_with_newlines.append(relative_path)
+
 				if unicode_error:
 					break
 
