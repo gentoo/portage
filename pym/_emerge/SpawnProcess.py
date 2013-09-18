@@ -9,7 +9,6 @@ except ImportError:
 
 import errno
 import logging
-import platform
 import signal
 import sys
 
@@ -19,11 +18,6 @@ from portage import os
 from portage.const import BASH_BINARY
 from portage.util import writemsg_level
 from portage.util._async.PipeLogger import PipeLogger
-
-# On Darwin, FD_CLOEXEC triggers errno 35 for stdout (bug #456296)
-# TODO: Test this again now that it's been fixed to use
-# F_GETFD/F_SETFD instead of F_GETFL/F_SETFL.
-_disable_cloexec_stdout = platform.system() in ("Darwin",)
 
 class SpawnProcess(SubProcess):
 
@@ -128,7 +122,7 @@ class SpawnProcess(SubProcess):
 		if can_log and not self.background:
 			stdout_fd = os.dup(fd_pipes_orig[1])
 			# FD_CLOEXEC is enabled by default in Python >=3.4.
-			if sys.hexversion < 0x3040000 and fcntl is not None and not _disable_cloexec_stdout:
+			if sys.hexversion < 0x3040000 and fcntl is not None:
 				try:
 					fcntl.FD_CLOEXEC
 				except AttributeError:
