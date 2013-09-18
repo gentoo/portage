@@ -50,7 +50,7 @@ export http_proxy ftp_proxy
 
 # PREFIX LOCAL: use Prefix servers, just because we want this and infra
 # can't support us yet
-GENTOO_MIRRORS="http://gentoo-mirror1.prefix.freens.org"
+GENTOO_MIRRORS="http://prefix.gentooexperimental.org"
 # END PREFIX LOCAL
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1

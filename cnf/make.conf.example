@@ -217,11 +217,9 @@
 #     Instructions for setting up a local rsync server are available here:
 #     http://www.gentoo.org/doc/en/rsync.xml
 #
-# For Gentoo Prefix, you can choose from the following URLs:
+# For Gentoo Prefix, use the following URL:
 #
-#   Default:       "rsync://rsync.prefix.freens.org/gentoo-portage-prefix
-#   America:       "rsync://rsync.us.prefix.freens.org/gentoo-portage-prefix"
-#   Europe:        "rsync://rsync.eu.prefix.freens.org/gentoo-portage-prefix"
+#   Default:       "rsync://prefix.gentooexperimental.org/gentoo-portage-prefix
 #
 #SYNC="rsync://rsync.gentoo.org/gentoo-portage"
 #
