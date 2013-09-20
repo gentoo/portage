@@ -32,6 +32,7 @@ options=[
 "--debug",
 "--digest",
 "--emptytree",
+"--verbose-conflicts",
 "--fetchonly",    "--fetch-all-uri",
 "--ignore-default-opts",
 "--noconfmem",

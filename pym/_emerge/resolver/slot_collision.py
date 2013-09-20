@@ -241,6 +241,7 @@ class slot_conflict_handler(object):
 		Print all slot conflicts in a human readable way.
 		"""
 		_pkg_use_enabled = self.depgraph._pkg_use_enabled
+		verboseconflicts = "--verbose-conflicts" in self.myopts
 		msg = self.conflict_msg
 		indent = "  "
 		msg.append("\n!!! Multiple package instances within a single " + \
@@ -367,7 +368,11 @@ class slot_conflict_handler(object):
 										best_matches[atom.cp] = (ppkg, atom)
 								else:
 									best_matches[atom.cp] = (ppkg, atom)
-							selected_for_display.update(best_matches.values())
+								if verboseconflicts:
+									selected_for_display.add((ppkg, atom))
+							if not verboseconflicts:
+								selected_for_display.update(
+										best_matches.values())
 						elif type == "sub-slot":
 							for ppkg, atom, other_pkg in parents:
 								selected_for_display.add((ppkg, atom))
