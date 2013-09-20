@@ -917,7 +917,7 @@ __ebuild_main() {
 
 			x=LIBDIR_$ABI
 			[ -z "$PKG_CONFIG_PATH" -a -n "$ABI" -a -n "${!x}" ] && \
-				export PKG_CONFIG_PATH=/usr/${!x}/pkgconfig
+				export PKG_CONFIG_PATH=${EPREFIX}/usr/${!x}/pkgconfig
 
 			if has noauto $FEATURES && \
 				[[ ! -f $PORTAGE_BUILDDIR/.unpacked ]] ; then
