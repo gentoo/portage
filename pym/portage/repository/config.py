@@ -647,11 +647,11 @@ class RepoConfigLoader(object):
 							"to nonexistent directory: '%s'") %
 							(repo_name, repo.location), level=logging.ERROR, noiselevel=-1)
 
-					# Ignore missing directory for 'gentoo' so that
-					# first sync with emerge-webrsync is possible.
-					if repo.name != 'gentoo':
-						del prepos[repo_name]
-						continue
+						# Ignore missing directory for 'gentoo' so that
+						# first sync with emerge-webrsync is possible.
+						if repo.name != 'gentoo':
+							del prepos[repo_name]
+							continue
 
 					# After removing support for PORTDIR_OVERLAY, the following check can be:
 					# if repo.missing_repo_name:
