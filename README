@@ -2,5 +2,56 @@ This is the prefix branch of portage, a branch that deals with portage
 setup as packagemanager for a given offset in the filesystem running
 with user privileges.
 
-If you are not looking for something Gentoo/Alt:Prefix like, then this
+If you are not looking for something Gentoo Prefix like, then this
 is not the right place.
+
+
+=======
+About Portage
+=============
+
+Portage is a package management system based on ports collections. The
+Package Manager Specification Project (PMS) standardises and documents the
+behaviour of Portage so that the Portage tree can be used by other package
+managers.
+
+
+Dependencies
+============
+
+Python and Bash should be the only hard dependencies. Python 2.6 is the
+minimum supported version.
+
+
+Licensing and Legalese
+=======================
+
+Portage is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+version 2 as published by the Free Software Foundation.
+
+Portage is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Portage; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+
+More information
+================
+
+-DEVELOPING contains some code guidelines.
+-LICENSE contains the GNU General Public License version 2.
+-NEWS contains new features/major bug fixes for each version.
+-RELEASE NOTES contains mainly upgrade information for each version.
+-TEST-NOTES contains Portage unit test information.
+
+
+Links
+=====
+Gentoo project page: <http://www.gentoo.org/proj/en/portage/>
+PMS: <https://dev.gentoo.org/~ulm/pms/head/pms.html>
+PMS git repository: <http://git.overlays.gentoo.org/gitweb/?p=proj/pms.git>

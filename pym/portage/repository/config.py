@@ -443,7 +443,10 @@ class RepoConfigLoader(object):
 			#overlay priority is negative because we want them to be looked before any other repo
 			base_priority = 0
 			for ov in overlays:
-				if isdir_raise_eaccess(ov):
+				# Ignore missing directory for 'gentoo' so that
+				# first sync with emerge-webrsync is possible.
+				if isdir_raise_eaccess(ov) or \
+					(base_priority == 0 and ov is portdir):
 					repo_opts = default_repo_opts.copy()
 					repo_opts['location'] = ov
 					repo = RepoConfig(None, repo_opts, local_config=local_config)
@@ -643,8 +646,12 @@ class RepoConfigLoader(object):
 						writemsg_level("!!! %s\n" % _("Section '%s' in repos.conf has location attribute set "
 							"to nonexistent directory: '%s'") %
 							(repo_name, repo.location), level=logging.ERROR, noiselevel=-1)
-						del prepos[repo_name]
-						continue
+
+						# Ignore missing directory for 'gentoo' so that
+						# first sync with emerge-webrsync is possible.
+						if repo.name != 'gentoo':
+							del prepos[repo_name]
+							continue
 
 					# After removing support for PORTDIR_OVERLAY, the following check can be:
 					# if repo.missing_repo_name:
