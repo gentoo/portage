@@ -1,10 +1,14 @@
 # config.py -- Portage Config
-# Copyright 2007-2011 Gentoo Foundation
+# Copyright 2007-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
 import io
 import stat
+import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.util:writemsg',
+)
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
@@ -149,17 +153,21 @@ class FileLoader(DataLoader):
 		func = self.lineParser
 		for fn in RecursiveFileLoader(self.fname):
 			try:
-				f = io.open(_unicode_encode(fn,
+				with io.open(_unicode_encode(fn,
 					encoding=_encodings['fs'], errors='strict'), mode='r',
-					encoding=_encodings['content'], errors='replace')
+					encoding=_encodings['content'], errors='replace') as f:
+					lines = f.readlines()
 			except EnvironmentError as e:
-				if e.errno not in (errno.ENOENT, errno.ESTALE):
+				if e.errno == errno.EACCES:
+					writemsg(_("Permission denied: '%s'\n") % fn, noiselevel=-1)
+					del e
+				elif e.errno in (errno.ENOENT, errno.ESTALE):
+					del e
+				else:
 					raise
-				del e
-				continue
-			for line_num, line in enumerate(f):
-				func(line, line_num, data, errors)
-			f.close()
+			else:
+				for line_num, line in enumerate(lines):
+					func(line, line_num, data, errors)
 		return (data, errors)
 
 	def lineParser(self, line, line_num, data, errors):
