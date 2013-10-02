@@ -406,16 +406,15 @@ def read_corresponding_eapi_file(filename, default="0"):
 
 	eapi = None
 	try:
-		f = io.open(_unicode_encode(eapi_file,
+		with io.open(_unicode_encode(eapi_file,
 			encoding=_encodings['fs'], errors='strict'),
-			mode='r', encoding=_encodings['repo.content'], errors='replace')
-		lines = f.readlines()
+			mode='r', encoding=_encodings['repo.content'], errors='replace') as f:
+			lines = f.readlines()
 		if len(lines) == 1:
 			eapi = lines[0].rstrip("\n")
 		else:
 			writemsg(_("--- Invalid 'eapi' file (doesn't contain exactly one line): %s\n") % (eapi_file),
 				noiselevel=-1)
-		f.close()
 	except IOError:
 		pass
 
@@ -546,14 +545,13 @@ def grablines(myfilename, recursive=0, remember_source_file=False):
 
 	else:
 		try:
-			myfile = io.open(_unicode_encode(myfilename,
+			with io.open(_unicode_encode(myfilename,
 				encoding=_encodings['fs'], errors='strict'),
-				mode='r', encoding=_encodings['content'], errors='replace')
-			if remember_source_file:
-				mylines = [(line, myfilename) for line in myfile.readlines()]
-			else:
-				mylines = myfile.readlines()
-			myfile.close()
+				mode='r', encoding=_encodings['content'], errors='replace') as myfile:
+				if remember_source_file:
+					mylines = [(line, myfilename) for line in myfile.readlines()]
+				else:
+					mylines = myfile.readlines()
 		except IOError as e:
 			if e.errno == PermissionDenied.errno:
 				raise PermissionDenied(myfilename)

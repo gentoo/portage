@@ -164,15 +164,12 @@ def _parse_color_map(config_root='/', onerror=None):
 			token = token[1:-1]
 		return token
 
-	f = None
 	try:
-		f = io.open(_unicode_encode(myfile,
+		with io.open(_unicode_encode(myfile,
 			encoding=_encodings['fs'], errors='strict'),
-			mode='r', encoding=_encodings['content'], errors='replace')
-		lineno = 0
-		for line in f:
-			lineno += 1
-
+			mode='r', encoding=_encodings['content'], errors='replace') as f:
+			lines = f.readlines()
+		for lineno, line in enumerate(lines):
 			commenter_pos = line.find("#")
 			line = line[:commenter_pos].strip()
 			
@@ -230,9 +227,6 @@ def _parse_color_map(config_root='/', onerror=None):
 		elif e.errno == errno.EACCES:
 			raise PermissionDenied(myfile)
 		raise
-	finally:
-		if f is not None:
-			f.close()
 
 def nc_len(mystr):
 	tmp = re.sub(esc_seq + "^m]+m", "", mystr);
