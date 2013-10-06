@@ -21,8 +21,9 @@ __multijob_init() {
 	# Setup a pipe for children to write their pids to when they finish.
 	mj_control_pipe=$(mktemp -t multijob.XXXXXX)
 	rm "${mj_control_pipe}"
-	mkfifo "${mj_control_pipe}"
-	__redirect_alloc_fd mj_control_fd "${mj_control_pipe}"
+	mkfifo -m 600 "${mj_control_pipe}"
+	__redirect_alloc_fd mj_read_fd "${mj_control_pipe}"
+	__redirect_alloc_fd mj_write_fd "${mj_control_pipe}"
 	rm -f "${mj_control_pipe}"
 
 	# See how many children we can fork based on the user's settings.
@@ -31,13 +32,13 @@ __multijob_init() {
 }
 
 __multijob_child_init() {
-	trap 'echo ${BASHPID} $? >&'${mj_control_fd} EXIT
+	trap 'echo ${BASHPID} $? >&'${mj_write_fd} EXIT
 	trap 'exit 1' INT TERM
 }
 
 __multijob_finish_one() {
 	local pid ret
-	read -r -u ${mj_control_fd} pid ret
+	read -r -u ${mj_read_fd} pid ret
 	: $(( --mj_num_jobs ))
 	return ${ret}
 }
