@@ -557,10 +557,9 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	msg.append("\n")
 	msg.append("As a safety measure, depclean will not remove any packages\n")
 	msg.append("unless *all* required dependencies have been resolved.  As a\n")
-	msg.append("consequence, it is often necessary to run %s\n" % \
-		good("`emerge --update"))
-	msg.append(good("--newuse --deep @world`") + \
-		" prior to depclean.\n")
+	msg.append("consequence of this, it often becomes necessary to run \n")
+	msg.append("%s" % good("`emerge --update --newuse --deep @world`")
+			+ " prior to depclean.\n")
 
 	if action == "depclean" and "--quiet" not in myopts and not myfiles:
 		portage.writemsg_stdout("\n")
