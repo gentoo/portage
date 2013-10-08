@@ -9,8 +9,8 @@ import sys
 
 from portage.util._argparse import ArgumentParser
 
-CONTENT_ENCODING = "utf_8"
-FS_ENCODING = "utf_8"
+CONTENT_ENCODING = 'utf_8'
+FS_ENCODING = 'utf_8'
 
 try:
 	import magic
@@ -44,7 +44,7 @@ class IsTextFile(object):
 		mime_type = self._m.file(filename)
 		if isinstance(mime_type, bytes):
 			mime_type = mime_type.decode('ascii', 'replace')
-		return mime_type.startswith("text/")
+		return mime_type.startswith('text/')
 
 	def _is_text_encoding(self, filename):
 		try:
@@ -67,7 +67,7 @@ def chpath_inplace(filename, is_text_file, old, new):
 		try:
 			orig_mode = stat.S_IMODE(os.lstat(filename).st_mode)
 		except OSError as e:
-			sys.stderr.write("%s: %s\n" % (e, filename))
+			sys.stderr.write('%s: %s\n' % (e, filename))
 			return
 		temp_mode = 0o200 | orig_mode
 		os.chmod(filename, temp_mode)
@@ -142,12 +142,12 @@ def chpath_inplace_symlink(filename, st, old, new):
 
 def main(argv):
 
-	usage = "%s [options] <location> <old> <new>" % (os.path.basename(argv[0],))
+	usage = '%s [options] <location> <old> <new>' % (os.path.basename(argv[0],))
 	parser = ArgumentParser(usage=usage)
 	options, args = parser.parse_known_args(argv[1:])
 
 	if len(args) != 3:
-		parser.error("3 args required, got %s" % (len(args),))
+		parser.error('3 args required, got %s' % (len(args),))
 
 	location, old, new = args
 
@@ -185,5 +185,5 @@ def main(argv):
 
 	return os.EX_OK
 
-if __name__ == "__main__":
+if __name__ == '__main__':
 	sys.exit(main(sys.argv))
