@@ -142,9 +142,9 @@ def chpath_inplace_symlink(filename, st, old, new):
 
 def main(argv):
 
-	usage = '%s [options] <location> <old> <new>' % (os.path.basename(argv[0],))
+	usage = '%(prog)s [options] <location> <old> <new>'
 	parser = ArgumentParser(usage=usage)
-	options, args = parser.parse_known_args(argv[1:])
+	options, args = parser.parse_known_args(argv)
 
 	if len(args) != 3:
 		parser.error('3 args required, got %s' % (len(args),))
@@ -186,4 +186,4 @@ def main(argv):
 	return os.EX_OK
 
 if __name__ == '__main__':
-	sys.exit(main(sys.argv))
+	sys.exit(main(sys.argv[1:]))
