@@ -74,7 +74,7 @@ def quote(s, quote_chars):
 			result.append(octal_quote_byte(s[start:start+1]))
 			pos = start + 1
 
-	return b"".join(result)
+	return b''.join(result)
 
 
 def unquote(s):
@@ -100,7 +100,7 @@ def unquote(s):
 			except AttributeError:
 				result.append(a.tostring())
 
-	return b"".join(result)
+	return b''.join(result)
 
 
 def dump_xattrs(file_in, file_out):
@@ -153,15 +153,15 @@ def main(argv):
 	parser = ArgumentParser(description=description, usage=usage)
 
 	actions = parser.add_argument_group('Actions')
-	actions.add_argument("--dump",
-		action="store_true",
-		help="Dump the values of all extended "
-			"attributes associated with null-separated"
-			" paths read from stdin.")
-	actions.add_argument("--restore",
-		action="store_true",
-		help="Restore extended attributes using"
-			" a dump read from stdin.")
+	actions.add_argument('--dump',
+		action='store_true',
+		help='Dump the values of all extended '
+			'attributes associated with null-separated'
+			' paths read from stdin.')
+	actions.add_argument('--restore',
+		action='store_true',
+		help='Restore extended attributes using'
+			' a dump read from stdin.')
 
 	options, args = parser.parse_known_args(argv[1:])
 
@@ -188,11 +188,11 @@ def main(argv):
 		restore_xattrs(file_in)
 
 	else:
-		parser.error("available actions: --dump, --restore")
+		parser.error('missing action!')
 
 	return os.EX_OK
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
 	rval = main(sys.argv[:])
 	sys.exit(rval)
