@@ -105,6 +105,9 @@ def unquote(s):
 
 def dump_xattrs(file_in, file_out):
 	"""Dump the xattr data for files in |file_in| to |file_out|"""
+	# NOTE: Always quote backslashes, in order to ensure that they are
+	# not interpreted as quotes when they are processed by unquote.
+	quote_chars = b'\n\r\\\\'
 
 	for pathname in file_in.read().split(b'\0'):
 		if not pathname:
@@ -114,13 +117,14 @@ def dump_xattrs(file_in, file_out):
 		if not attrs:
 			continue
 
-		# NOTE: Always quote backslashes, in order to ensure that they are
-		# not interpreted as quotes when they are processed by unquote.
-		file_out.write(b'# file: ' + quote(pathname, b'\n\r\\\\') + b'\n')
+		file_out.write(b'# file: %s\n' % quote(pathname, quote_chars))
 		for attr in attrs:
 			attr = unicode_encode(attr)
-			file_out.write(quote(attr, b'=\n\r\\\\') + b'="' +
-				quote(xattr.get(pathname, attr), b'\0\n\r"\\\\') + b'"\n')
+			value = xattr.get(pathname, attr)
+			file_out.write(b'%s="%s"\n' % (
+				quote(attr, b'=' + quote_chars),
+				quote(value, b'\0"' + quote_chars)))
+
 
 def restore_xattrs(file_in):
 	"""Read |file_in| and restore xattrs content from it
