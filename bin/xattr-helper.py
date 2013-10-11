@@ -103,16 +103,13 @@ def unquote(s):
 	return b''.join(result)
 
 
-def dump_xattrs(file_in, file_out):
-	"""Dump the xattr data for files in |file_in| to |file_out|"""
+def dump_xattrs(pathnames, file_out):
+	"""Dump the xattr data for |pathnames| to |file_out|"""
 	# NOTE: Always quote backslashes, in order to ensure that they are
 	# not interpreted as quotes when they are processed by unquote.
 	quote_chars = b'\n\r\\\\'
 
-	for pathname in file_in.read().split(b'\0'):
-		if not pathname:
-			continue
-
+	for pathname in pathnames:
 		attrs = xattr.list(pathname)
 		if not attrs:
 			continue
@@ -147,14 +144,11 @@ def restore_xattrs(file_in):
 			elif line.strip():
 				raise ValueError('line %d: malformed entry' % (i + 1,))
 
+
 def main(argv):
 
-	description = "Dump and restore extended attributes," \
-		" using format like that used by getfattr --dump."
-	usage = "usage: %s [--dump | --restore]\n" % \
-		os.path.basename(argv[0])
-
-	parser = ArgumentParser(description=description, usage=usage)
+	parser = ArgumentParser(description=__doc__)
+	parser.add_argument('paths', nargs='*', default=[])
 
 	actions = parser.add_argument_group('Actions')
 	actions.add_argument('--dump',
@@ -167,28 +161,23 @@ def main(argv):
 		help='Restore extended attributes using'
 			' a dump read from stdin.')
 
-	options, args = parser.parse_known_args(argv[1:])
-
-	if len(args) != 0:
-		parser.error("expected zero arguments, "
-			"got %s" % len(args))
+	options = parser.parse_args(argv)
 
 	if sys.hexversion >= 0x3000000:
 		file_in = sys.stdin.buffer.raw
 	else:
 		file_in = sys.stdin
+	if not options.paths:
+		options.paths += [x for x in file_in.read().split(b'\0') if x]
 
 	if options.dump:
-
 		if sys.hexversion >= 0x3000000:
 			file_out = sys.stdout.buffer
 		else:
 			file_out = sys.stdout
-
-		dump_xattrs(file_in, file_out)
+		dump_xattrs(options.paths, file_out)
 
 	elif options.restore:
-
 		restore_xattrs(file_in)
 
 	else:
@@ -198,5 +187,4 @@ def main(argv):
 
 
 if __name__ == '__main__':
-	rval = main(sys.argv[:])
-	sys.exit(rval)
+	sys.exit(main(sys.argv[1:]))
