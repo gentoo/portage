@@ -2,6 +2,15 @@
 # Copyright 2012-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+"""Dump and restore extended attributes.
+
+We use formats like that used by getfattr --dump.  This is meant for shell
+helpers to save/restore.  If you're looking for a python/portage API, see
+portage.util.movefile._copyxattr instead.
+
+https://en.wikipedia.org/wiki/Extended_file_attributes
+"""
+
 import array
 import os
 import re
@@ -43,8 +52,12 @@ else:
 			s = s.encode(_FS_ENCODING)
 		return s
 
-def quote(s, quote_chars):
 
+def quote(s, quote_chars):
+	"""Convert all |quote_chars| in |s| to escape sequences
+
+	This is normally used to escape any embedded quotation marks.
+	"""
 	quote_re = re.compile(b'[' + quote_chars + b']')
 	result = []
 	pos = 0
@@ -63,8 +76,9 @@ def quote(s, quote_chars):
 
 	return b"".join(result)
 
-def unquote(s):
 
+def unquote(s):
+	"""Process all escape sequences in |s|"""
 	result = []
 	pos = 0
 	s_len = len(s)
@@ -88,7 +102,9 @@ def unquote(s):
 
 	return b"".join(result)
 
+
 def dump_xattrs(file_in, file_out):
+	"""Dump the xattr data for files in |file_in| to |file_out|"""
 
 	for pathname in file_in.read().split(b'\0'):
 		if not pathname:
@@ -107,7 +123,10 @@ def dump_xattrs(file_in, file_out):
 				quote(xattr.get(pathname, attr), b'\0\n\r"\\\\') + b'"\n')
 
 def restore_xattrs(file_in):
+	"""Read |file_in| and restore xattrs content from it
 
+	This expects textual data in the format written by dump_xattrs.
+	"""
 	pathname = None
 	for i, line in enumerate(file_in):
 		if line.startswith(b'# file: '):
@@ -172,6 +191,7 @@ def main(argv):
 		parser.error("available actions: --dump, --restore")
 
 	return os.EX_OK
+
 
 if __name__ == "__main__":
 	rval = main(sys.argv[:])
