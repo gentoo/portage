@@ -19,8 +19,10 @@ if hasattr(os, "getxattr"):
 else:
 	import xattr
 
-_unquote_re = re.compile(br'\\[0-7]{3}')
-_fs_encoding = sys.getfilesystemencoding()
+
+_UNQUOTE_RE = re.compile(br'\\[0-7]{3}')
+_FS_ENCODING = sys.getfilesystemencoding()
+
 
 if sys.hexversion < 0x3000000:
 
@@ -29,7 +31,7 @@ if sys.hexversion < 0x3000000:
 
 	def unicode_encode(s):
 		if isinstance(s, unicode):
-			s = s.encode(_fs_encoding)
+			s = s.encode(_FS_ENCODING)
 		return s
 else:
 
@@ -38,7 +40,7 @@ else:
 
 	def unicode_encode(s):
 		if isinstance(s, str):
-			s = s.encode(_fs_encoding)
+			s = s.encode(_FS_ENCODING)
 		return s
 
 def quote(s, quote_chars):
@@ -68,7 +70,7 @@ def unquote(s):
 	s_len = len(s)
 
 	while pos < s_len:
-		m = _unquote_re.search(s, pos=pos)
+		m = _UNQUOTE_RE.search(s, pos=pos)
 		if m is None:
 			result.append(s[pos:])
 			pos = s_len
