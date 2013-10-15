@@ -64,7 +64,7 @@ def initialize_logger(level=logging.WARN):
 	"""
 	logging.basicConfig(level=logging.WARN, format='[%(levelname)-4s] %(message)s')
 
-def writemsg(mystr,noiselevel=0,fd=None):
+def writemsg(mystr, noiselevel=0, fd=None):
 	"""Prints out warning and debug messages based on the noiselimit setting"""
 	global noiselimit
 	if fd is None:
@@ -82,7 +82,7 @@ def writemsg(mystr,noiselevel=0,fd=None):
 		fd.write(mystr)
 		fd.flush()
 
-def writemsg_stdout(mystr,noiselevel=0):
+def writemsg_stdout(mystr, noiselevel=0):
 	"""Prints messages stdout based on the noiselimit setting"""
 	writemsg(mystr, noiselevel=noiselevel, fd=sys.stdout)
 
@@ -107,7 +107,7 @@ def writemsg_level(msg, level=0, noiselevel=0):
 	writemsg(msg, noiselevel=noiselevel, fd=fd)
 
 def normalize_path(mypath):
-	""" 
+	"""
 	os.path.normpath("//foo") returns "//foo" instead of "/foo"
 	We dislike this behavior so we create our own normpath func
 	to fix it.
@@ -127,8 +127,8 @@ def grabfile(myfilename, compat_level=0, recursive=0, remember_source_file=False
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a list; if a line
 	begins with a #, it is ignored, as are empty lines"""
 
-	mylines=grablines(myfilename, recursive, remember_source_file=True)
-	newlines=[]
+	mylines = grablines(myfilename, recursive, remember_source_file=True)
+	newlines = []
 
 	for x, source_file in mylines:
 		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
@@ -146,10 +146,10 @@ def grabfile(myfilename, compat_level=0, recursive=0, remember_source_file=False
 		myline = " ".join(myline)
 		if not myline:
 			continue
-		if myline[0]=="#":
+		if myline[0] == "#":
 			# Check if we have a compat-level string. BC-integration data.
 			# '##COMPAT==>N<==' 'some string attached to it'
-			mylinetest = myline.split("<==",1)
+			mylinetest = myline.split("<==", 1)
 			if len(mylinetest) == 2:
 				myline_potential = mylinetest[1]
 				mylinetest = mylinetest[0].split("##COMPAT==>")
@@ -166,7 +166,7 @@ def grabfile(myfilename, compat_level=0, recursive=0, remember_source_file=False
 			newlines.append(myline)
 	return newlines
 
-def map_dictlist_vals(func,myDict):
+def map_dictlist_vals(func, myDict):
 	"""Performs a function on each value of each key in a dictlist.
 	Returns a new dictlist."""
 	new_dl = {}
@@ -180,7 +180,7 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
 	Stacks an array of dict-types into one array. Optionally merging or
 	overwriting matching key/value pairs for the dict[key]->list.
 	Returns a single dict. Higher index in lists is preferenced.
-	
+
 	Example usage:
 	   >>> from portage.util import stack_dictlist
 		>>> print stack_dictlist( [{'a':'b'},{'x':'y'}])
@@ -195,7 +195,7 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
 		>>> { 'KEYWORDS':['alpha'] }
 		>>> print stack_dictlist( [a,b], incrementals=['KEYWORDS'])
 		>>> { 'KEYWORDS':['alpha'] }
-	
+
 	@param original_dicts a list of (dictionary objects or None)
 	@type list
 	@param incremental True or false depending on whether new keys should overwrite
@@ -206,7 +206,7 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
 	@type list
 	@param ignore_none Appears to be ignored, but probably was used long long ago.
 	@type boolean
-	
+
 	"""
 	final_dict = {}
 	for mydict in original_dicts:
@@ -215,7 +215,7 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
 		for y in mydict:
 			if not y in final_dict:
 				final_dict[y] = []
-			
+
 			for thing in mydict[y]:
 				if thing:
 					if incremental or y in incrementals:
@@ -342,7 +342,7 @@ def stack_lists(lists, incremental=1, remember_source_file=False,
 def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 	"""
 	This function grabs the lines in a file, normalizes whitespace and returns lines in a dictionary
-	
+
 	@param myfilename: file to process
 	@type myfilename: string (path)
 	@param juststrings: only return strings
@@ -358,9 +358,9 @@ def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 	1.  Returns the lines in a file in a dictionary, for example:
 		'sys-apps/portage x86 amd64 ppc'
 		would return
-		{ "sys-apps/portage" : [ 'x86', 'amd64', 'ppc' ]
+		{"sys-apps/portage" : ['x86', 'amd64', 'ppc']}
 	"""
-	newdict={}
+	newdict = {}
 	for x in grablines(myfilename, recursive):
 		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
 		#into single spaces.
@@ -537,7 +537,7 @@ def _recursive_file_list(path):
 				yield fullpath
 
 def grablines(myfilename, recursive=0, remember_source_file=False):
-	mylines=[]
+	mylines = []
 	if recursive:
 		for f in _recursive_file_list(myfilename):
 			mylines.extend(grablines(f, recursive=False,
@@ -561,7 +561,7 @@ def grablines(myfilename, recursive=0, remember_source_file=False):
 				raise
 	return mylines
 
-def writedict(mydict,myfilename,writekey=True):
+def writedict(mydict, myfilename, writekey=True):
 	"""Writes out a dict to a file; writekey=0 mode doesn't write out
 	the key and assumes all values are strings, not lists."""
 	lines = []
@@ -769,10 +769,10 @@ def varexpand(mystring, mydict=None, error_leader=None):
 	This code is used by the configfile code, as well as others (parser)
 	This would be a good bunch of code to port to C.
 	"""
-	numvars=0
-	#in single, double quotes
-	insing=0
-	indoub=0
+	numvars = 0
+	# in single, double quotes
+	insing = 0
+	indoub = 0
 	pos = 0
 	length = len(mystring)
 	newstring = []
@@ -784,7 +784,7 @@ def varexpand(mystring, mydict=None, error_leader=None):
 			else:
 				newstring.append("'") # Quote removal is handled by shlex.
 				insing=not insing
-			pos=pos+1
+			pos += 1
 			continue
 		elif current == '"':
 			if (insing):
@@ -792,9 +792,9 @@ def varexpand(mystring, mydict=None, error_leader=None):
 			else:
 				newstring.append('"') # Quote removal is handled by shlex.
 				indoub=not indoub
-			pos=pos+1
+			pos += 1
 			continue
-		if (not insing): 
+		if not insing:
 			#expansion time
 			if current == "\n":
 				#convert newlines to spaces
@@ -809,7 +809,7 @@ def varexpand(mystring, mydict=None, error_leader=None):
 				# escaped newline characters. Note that we don't handle
 				# escaped quotes here, since getconfig() uses shlex
 				# to handle that earlier.
-				if (pos+1>=len(mystring)):
+				if pos + 1 >= len(mystring):
 					newstring.append(current)
 					break
 				else:
@@ -831,15 +831,15 @@ def varexpand(mystring, mydict=None, error_leader=None):
 						newstring.append(mystring[pos - 2:pos])
 					continue
 			elif current == "$":
-				pos=pos+1
-				if mystring[pos]=="{":
-					pos=pos+1
-					braced=True
+				pos += 1
+				if mystring[pos] == "{":
+					pos += 1
+					braced = True
 				else:
-					braced=False
-				myvstart=pos
+					braced = False
+				myvstart = pos
 				while mystring[pos] in _varexpand_word_chars:
-					if (pos+1)>=len(mystring):
+					if pos + 1 >= len(mystring):
 						if braced:
 							msg = _varexpand_unexpected_eof_msg
 							if error_leader is not None:
@@ -847,20 +847,20 @@ def varexpand(mystring, mydict=None, error_leader=None):
 							writemsg(msg + "\n", noiselevel=-1)
 							return ""
 						else:
-							pos=pos+1
+							pos += 1
 							break
-					pos=pos+1
-				myvarname=mystring[myvstart:pos]
+					pos += 1
+				myvarname = mystring[myvstart:pos]
 				if braced:
-					if mystring[pos]!="}":
+					if mystring[pos] != "}":
 						msg = _varexpand_unexpected_eof_msg
 						if error_leader is not None:
 							msg = error_leader() + msg
 						writemsg(msg + "\n", noiselevel=-1)
 						return ""
 					else:
-						pos=pos+1
-				if len(myvarname)==0:
+						pos += 1
+				if len(myvarname) == 0:
 					msg = "$"
 					if braced:
 						msg += "{}"
@@ -869,7 +869,7 @@ def varexpand(mystring, mydict=None, error_leader=None):
 						msg = error_leader() + msg
 					writemsg(msg + "\n", noiselevel=-1)
 					return ""
-				numvars=numvars+1
+				numvars += 1
 				if myvarname in mydict:
 					newstring.append(mydict[myvarname])
 			else:
@@ -884,9 +884,9 @@ def varexpand(mystring, mydict=None, error_leader=None):
 # broken and removed, but can still be imported
 pickle_write = None
 
-def pickle_read(filename,default=None,debug=0):
+def pickle_read(filename, default=None, debug=0):
 	if not os.access(filename, os.R_OK):
-		writemsg(_("pickle_read(): File not readable. '")+filename+"'\n",1)
+		writemsg(_("pickle_read(): File not readable. '") + filename + "'\n", 1)
 		return default
 	data = None
 	try:
@@ -895,12 +895,12 @@ def pickle_read(filename,default=None,debug=0):
 		mypickle = pickle.Unpickler(myf)
 		data = mypickle.load()
 		myf.close()
-		del mypickle,myf
-		writemsg(_("pickle_read(): Loaded pickle. '")+filename+"'\n",1)
+		del mypickle, myf
+		writemsg(_("pickle_read(): Loaded pickle. '") + filename + "'\n", 1)
 	except SystemExit as e:
 		raise
 	except Exception as e:
-		writemsg(_("!!! Failed to load pickle: ")+str(e)+"\n",1)
+		writemsg(_("!!! Failed to load pickle: ") + str(e) + "\n", 1)
 		data = default
 	return data
 
@@ -1681,9 +1681,9 @@ def find_updated_config_files(target_root, config_protect):
 	"""
 	Return a tuple of configuration files that needs to be updated.
 	The tuple contains lists organized like this:
-	[ protected_dir, file_list ]
+		[protected_dir, file_list]
 	If the protected config isn't a protected_dir but a procted_file, list is:
-	[ protected_file, None ]
+		[protected_file, None]
 	If no configuration files needs to be updated, None is returned
 	"""
 

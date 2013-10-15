@@ -17,24 +17,24 @@ class digraph(object):
 
 	def __init__(self):
 		"""Create an empty digraph"""
-		
+
 		# { node : ( { child : priority } , { parent : priority } ) }
 		self.nodes = {}
 		self.order = []
 
 	def add(self, node, parent, priority=0):
 		"""Adds the specified node with the specified parent.
-		
+
 		If the dep is a soft-dep and the node already has a hard
 		relationship to the parent, the relationship is left as hard."""
-		
+
 		if node not in self.nodes:
 			self.nodes[node] = ({}, {}, node)
 			self.order.append(node)
-		
+
 		if not parent:
 			return
-		
+
 		if parent not in self.nodes:
 			self.nodes[parent] = ({}, {}, parent)
 			self.order.append(parent)
@@ -51,15 +51,15 @@ class digraph(object):
 		"""Removes the specified node from the digraph, also removing
 		and ties to other nodes in the digraph. Raises KeyError if the
 		node doesn't exist."""
-		
+
 		if node not in self.nodes:
 			raise KeyError(node)
-		
+
 		for parent in self.nodes[node][1]:
 			del self.nodes[parent][0][node]
 		for child in self.nodes[node][0]:
 			del self.nodes[child][1][node]
-		
+
 		del self.nodes[node]
 		self.order.remove(node)
 
@@ -158,10 +158,10 @@ class digraph(object):
 
 	def leaf_nodes(self, ignore_priority=None):
 		"""Return all nodes that have no children
-		
+
 		If ignore_soft_deps is True, soft deps are not counted as
 		children in calculations."""
-		
+
 		leaf_nodes = []
 		if ignore_priority is None:
 			for node in self.order:
@@ -192,10 +192,10 @@ class digraph(object):
 
 	def root_nodes(self, ignore_priority=None):
 		"""Return all nodes that have no parents.
-		
+
 		If ignore_soft_deps is True, soft deps are not counted as
 		parents in calculations."""
-		
+
 		root_nodes = []
 		if ignore_priority is None:
 			for node in self.order:

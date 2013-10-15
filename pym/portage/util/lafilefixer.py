@@ -11,7 +11,7 @@ from portage.exception import InvalidData
 #	This an re-implementaion of dev-util/lafilefixer-0.5.
 #	rewrite_lafile() takes the contents of an lafile as a string
 #	It then parses the dependency_libs and inherited_linker_flags
-#	entries. 
+#	entries.
 #	We insist on dependency_libs being present. inherited_linker_flags
 #	is optional.
 #	There are strict rules about the syntax imposed by libtool's libltdl.
@@ -21,7 +21,7 @@ from portage.exception import InvalidData
 #	lafilefixer does).
 #	What it does:
 #		* Replaces all .la files with absolut paths in dependency_libs with
-#		  corresponding -l* and -L* entries 
+#		  corresponding -l* and -L* entries
 #		  (/usr/lib64/libfoo.la -> -L/usr/lib64 -lfoo)
 #		* Moves various flags (see flag_re below) to inherited_linker_flags,
 #		  if such an entry was present.
@@ -36,7 +36,7 @@ from portage.exception import InvalidData
 dep_libs_re = re.compile(b"dependency_libs='(?P<value>[^']*)'$")
 inh_link_flags_re = re.compile(b"inherited_linker_flags='(?P<value>[^']*)'$")
 
-#regexes for replacing stuff in -L entries. 
+#regexes for replacing stuff in -L entries.
 #replace 'X11R6/lib' and 'local/lib' with 'lib', no idea what's this about.
 X11_local_sub = re.compile(b"X11R6/lib|local/lib")
 #get rid of the '..'
@@ -129,11 +129,11 @@ def rewrite_lafile(contents):
 			#This allows us to place all -L entries at the beginning
 			#of 'dependency_libs'.
 			ladir = dep_libs_entry
-			
+
 			ladir = X11_local_sub.sub(b"lib", ladir)
 			ladir = pkgconfig_sub1.sub(b"usr", ladir)
 			ladir = pkgconfig_sub2.sub(b"\g<usrlib>", ladir)
-			
+
 			if ladir not in libladir:
 				libladir.append(ladir)
 

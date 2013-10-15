@@ -14,9 +14,9 @@ def chk_updated_info_files(root, infodirs, prev_mtimes):
 
 	if os.path.exists("/usr/bin/install-info"):
 		out = portage.output.EOutput()
-		regen_infodirs=[]
+		regen_infodirs = []
 		for z in infodirs:
-			if z=='':
+			if z == '':
 				continue
 			inforoot = portage.util.normalize_path(root + z)
 			if os.path.isdir(inforoot) and \
@@ -37,11 +37,11 @@ def chk_updated_info_files(root, infodirs, prev_mtimes):
 				out.einfo("Regenerating GNU info directory index...")
 
 			dir_extensions = ("", ".gz", ".bz2")
-			icount=0
-			badcount=0
+			icount = 0
+			badcount = 0
 			errmsg = ""
 			for inforoot in regen_infodirs:
-				if inforoot=='':
+				if inforoot == '':
 					continue
 
 				if not os.path.isdir(inforoot) or \
@@ -89,20 +89,20 @@ def chk_updated_info_files(root, infodirs, prev_mtimes):
 						myso = portage._unicode_decode(
 							proc.communicate()[0]).rstrip("\n")
 						proc.wait()
-					existsstr="already exists, for file `"
+					existsstr = "already exists, for file `"
 					if myso:
-						if re.search(existsstr,myso):
+						if re.search(existsstr, myso):
 							# Already exists... Don't increment the count for this.
 							pass
-						elif myso[:44]=="install-info: warning: no info dir entry in ":
+						elif myso[:44] == "install-info: warning: no info dir entry in ":
 							# This info file doesn't contain a DIR-header: install-info produces this
 							# (harmless) warning (the --quiet switch doesn't seem to work).
 							# Don't increment the count for this.
 							pass
 						else:
-							badcount=badcount+1
+							badcount += 1
 							errmsg += myso + "\n"
-					icount=icount+1
+					icount += 1
 
 				if moved_old_dir and not os.path.exists(dir_file):
 					# We didn't generate a new dir file, so put the old file

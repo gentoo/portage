@@ -61,18 +61,18 @@ def ExtractKernelVersion(base_dir):
 
 	# Grab a list of files named localversion* and sort them
 	localversions = os.listdir(base_dir)
-	for x in range(len(localversions)-1,-1,-1):
+	for x in range(len(localversions) - 1, -1, -1):
 		if localversions[x][:12] != "localversion":
 			del localversions[x]
 	localversions.sort()
 
 	# Append the contents of each to the version string, stripping ALL whitespace
 	for lv in localversions:
-		version += "".join( " ".join( grabfile( base_dir+ "/" + lv ) ).split() )
+		version += "".join(" ".join(grabfile(base_dir + "/" + lv)).split())
 
 	# Check the .config for a CONFIG_LOCALVERSION and append that too, also stripping whitespace
 	kernelconfig = getconfig(base_dir+"/.config")
 	if kernelconfig and "CONFIG_LOCALVERSION" in kernelconfig:
 		version += "".join(kernelconfig["CONFIG_LOCALVERSION"].split())
 
-	return (version,None)
+	return (version, None)
