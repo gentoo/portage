@@ -129,7 +129,7 @@ else:
 						(_unicode_decode(dest), _unicode_decode(attr)))
 	else:
 		try:
-			with open(os.devnull, 'wb') as f:
+			with open(_os.devnull, 'wb') as f:
 				subprocess.call(["getfattr", "--version"], stdout=f)
 				subprocess.call(["setfattr", "--version"], stdout=f)
 		except OSError:
