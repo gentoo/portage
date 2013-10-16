@@ -237,6 +237,27 @@ class TestCase(unittest.TestCase):
 			else: excName = str(excClass)
 			raise self.failureException("%s not raised: %s" % (excName, msg))
 
+	def assertExists(self, path):
+		"""Make sure |path| exists"""
+		if not os.path.exists(path):
+			msg = ['path is missing: %s' % (path,)]
+			while path != '/':
+				path = os.path.dirname(path)
+				if not path:
+					# If we're given something like "foo", abort once we get to "".
+					break
+				result = os.path.exists(path)
+				msg.append('\tos.path.exists(%s): %s' % (path, result))
+				if result:
+					msg.append('\tcontents: %r' % os.listdir(path))
+					break
+			raise self.failureException('\n'.join(msg))
+
+	def assertNotExists(self, path):
+		"""Make sure |path| does not exist"""
+		if os.path.exists(path):
+			raise self.failureException('path exists when it should not: %s' % path)
+
 class TextTestRunner(unittest.TextTestRunner):
 	"""
 	We subclass unittest.TextTestRunner to output SKIP for tests that fail but are skippable
