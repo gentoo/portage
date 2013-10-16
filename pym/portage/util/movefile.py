@@ -11,7 +11,6 @@ import os as _os
 import shutil as _shutil
 import stat
 import sys
-import subprocess
 import textwrap
 
 import portage
@@ -23,6 +22,7 @@ from portage.exception import OperationNotSupported
 from portage.localization import _
 from portage.process import spawn
 from portage.util import writemsg
+from portage.util._xattr import xattr
 
 def _apply_stat(src_stat, dest):
 	_os.chown(dest, src_stat.st_uid, src_stat.st_gid)
@@ -68,86 +68,32 @@ class _xattr_excluder(object):
 
 		return False
 
-if hasattr(_os, "getxattr"):
-	# Python >=3.3 and GNU/Linux
-	def _copyxattr(src, dest, exclude=None):
-
-		try:
-			attrs = _os.listxattr(src)
-		except OSError as e:
-			if e.errno != OperationNotSupported.errno:
-				raise
-			attrs = ()
-		if attrs:
-			if exclude is not None and isinstance(attrs[0], bytes):
-				exclude = exclude.encode(_encodings['fs'])
-			exclude = _get_xattr_excluder(exclude)
-
-		for attr in attrs:
-			if exclude(attr):
-				continue
-			try:
-				_os.setxattr(dest, attr, _os.getxattr(src, attr))
-				raise_exception = False
-			except OSError:
-				raise_exception = True
-			if raise_exception:
-				raise OperationNotSupported(_("Filesystem containing file '%s' "
-					"does not support extended attribute '%s'") %
-					(_unicode_decode(dest), _unicode_decode(attr)))
-else:
+def _copyxattr(src, dest, exclude=None):
+	"""Copy the extended attributes from |src| to |dest|"""
 	try:
-		import xattr
-	except ImportError:
-		xattr = None
-	if xattr is not None:
-		def _copyxattr(src, dest, exclude=None):
+		attrs = xattr.list(src)
+	except (OSError, IOError) as e:
+		if e.errno != OperationNotSupported.errno:
+			raise
+		attrs = ()
 
-			try:
-				attrs = xattr.list(src)
-			except IOError as e:
-				if e.errno != OperationNotSupported.errno:
-					raise
-				attrs = ()
+	if attrs:
+		if exclude is not None and isinstance(attrs[0], bytes):
+			exclude = exclude.encode(_encodings['fs'])
+		exclude = _get_xattr_excluder(exclude)
 
-			if attrs:
-				if exclude is not None and isinstance(attrs[0], bytes):
-					exclude = exclude.encode(_encodings['fs'])
-				exclude = _get_xattr_excluder(exclude)
-
-			for attr in attrs:
-				if exclude(attr):
-					continue
-				try:
-					xattr.set(dest, attr, xattr.get(src, attr))
-					raise_exception = False
-				except IOError:
-					raise_exception = True
-				if raise_exception:
-					raise OperationNotSupported(_("Filesystem containing file '%s' "
-						"does not support extended attribute '%s'") %
-						(_unicode_decode(dest), _unicode_decode(attr)))
-	else:
+	for attr in attrs:
+		if exclude(attr):
+			continue
 		try:
-			with open(_os.devnull, 'wb') as f:
-				subprocess.call(["getfattr", "--version"], stdout=f)
-				subprocess.call(["setfattr", "--version"], stdout=f)
-		except OSError:
-			def _copyxattr(src, dest, exclude=None):
-				# TODO: implement exclude
-				getfattr_process = subprocess.Popen(["getfattr", "-d", "--absolute-names", src], stdout=subprocess.PIPE)
-				getfattr_process.wait()
-				extended_attributes = getfattr_process.stdout.readlines()
-				getfattr_process.stdout.close()
-				if extended_attributes:
-					extended_attributes[0] = b"# file: " + _unicode_encode(dest) + b"\n"
-					setfattr_process = subprocess.Popen(["setfattr", "--restore=-"], stdin=subprocess.PIPE, stderr=subprocess.PIPE)
-					setfattr_process.communicate(input=b"".join(extended_attributes))
-					if setfattr_process.returncode != 0:
-						raise OperationNotSupported("Filesystem containing file '%s' does not support extended attributes" % dest)
-		else:
-			def _copyxattr(src, dest, exclude=None):
-				pass
+			xattr.set(dest, attr, xattr.get(src, attr))
+			raise_exception = False
+		except (OSError, IOError):
+			raise_exception = True
+		if raise_exception:
+			raise OperationNotSupported(_("Filesystem containing file '%s' "
+				"does not support extended attribute '%s'") %
+				(_unicode_decode(dest), _unicode_decode(attr)))
 
 def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		hardlink_candidates=None, encoding=_encodings['fs']):

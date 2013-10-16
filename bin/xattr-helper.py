@@ -19,16 +19,7 @@ import re
 import sys
 
 from portage.util._argparse import ArgumentParser
-
-if hasattr(os, "getxattr"):
-
-	class xattr(object):
-		get = os.getxattr
-		set = os.setxattr
-		list = os.listxattr
-
-else:
-	import xattr
+from portage.util._xattr import xattr
 
 
 _UNQUOTE_RE = re.compile(br'\\[0-7]{3}')
