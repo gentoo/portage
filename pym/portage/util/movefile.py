@@ -128,15 +128,11 @@ else:
 						"does not support extended attribute '%s'") %
 						(_unicode_decode(dest), _unicode_decode(attr)))
 	else:
-		_devnull = open("/dev/null", "wb")
 		try:
-			subprocess.call(["getfattr", "--version"], stdout=_devnull)
-			subprocess.call(["setfattr", "--version"], stdout=_devnull)
-			_has_getfattr_and_setfattr = True
+			with open(os.devnull, 'wb') as f:
+				subprocess.call(["getfattr", "--version"], stdout=f)
+				subprocess.call(["setfattr", "--version"], stdout=f)
 		except OSError:
-			_has_getfattr_and_setfattr = False
-		_devnull.close()
-		if _has_getfattr_and_setfattr:
 			def _copyxattr(src, dest, exclude=None):
 				# TODO: implement exclude
 				getfattr_process = subprocess.Popen(["getfattr", "-d", "--absolute-names", src], stdout=subprocess.PIPE)
