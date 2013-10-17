@@ -13,6 +13,14 @@ try:
 except ImportError:
 	from unittest import _TextTestResult
 
+try:
+	# They added the skip framework to python-2.7.
+	# Drop this once we drop python-2.6 support.
+	unittest_skip_shims = False
+	import unittest.SkipTest as SkipTest # new in python-2.7
+except ImportError:
+	unittest_skip_shims = True
+
 import portage
 from portage import os
 from portage import _encodings
@@ -188,10 +196,14 @@ class TestCase(unittest.TestCase):
 			except:
 				result.addError(self, sys.exc_info())
 				return
+
 			ok = False
 			try:
 				testMethod()
 				ok = True
+			except SkipTest as e:
+				result.addPortageSkip(self, "%s: SKIP: %s" %
+					(testMethod, str(e)))
 			except self.failureException:
 				if self.portage_skip is not None:
 					if self.portage_skip is True:
@@ -207,6 +219,7 @@ class TestCase(unittest.TestCase):
 				raise
 			except:
 				result.addError(self, sys.exc_info())
+
 			try:
 				self.tearDown()
 			except SystemExit:
@@ -216,7 +229,8 @@ class TestCase(unittest.TestCase):
 			except:
 				result.addError(self, sys.exc_info())
 				ok = False
-			if ok: result.addSuccess(self)
+			if ok:
+				result.addSuccess(self)
 		finally:
 			result.stopTest(self)
 
@@ -257,6 +271,16 @@ class TestCase(unittest.TestCase):
 		"""Make sure |path| does not exist"""
 		if os.path.exists(path):
 			raise self.failureException('path exists when it should not: %s' % path)
+
+if unittest_skip_shims:
+	# Shim code for <python-2.7.
+	class SkipTest(Exception):
+		"""unittest.SkipTest shim for <python-2.7"""
+
+	def skipTest(self, reason):
+		raise SkipTest(reason)
+
+	setattr(TestCase, 'skipTest', skipTest)
 
 class TextTestRunner(unittest.TextTestRunner):
 	"""
