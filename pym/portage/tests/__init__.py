@@ -279,8 +279,15 @@ if unittest_skip_shims:
 
 	def skipTest(self, reason):
 		raise SkipTest(reason)
-
 	setattr(TestCase, 'skipTest', skipTest)
+
+	def assertIn(self, member, container, msg=None):
+		self.assertTrue(member in container, msg=msg)
+	setattr(TestCase, 'assertIn', assertIn)
+
+	def assertNotIn(self, member, container, msg=None):
+		self.assertFalse(member in container, msg=msg)
+	setattr(TestCase, 'assertNotIn', assertNotIn)
 
 class TextTestRunner(unittest.TextTestRunner):
 	"""
