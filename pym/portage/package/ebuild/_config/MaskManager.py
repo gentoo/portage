@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -46,7 +46,7 @@ class MaskManager(object):
 						"the repository profiles are not marked as that format.  This will break "
 						"in the future.  Please either convert the following paths "
 						"to files, or add\nprofile-formats = portage-1\nto the "
-						"repositories layout.conf.\n")
+						"repository's layout.conf.\n")
 						% dict(repo_name=repo_config.name))
 
 			return pmask_cache[loc]
