@@ -121,7 +121,7 @@ __qa_source() {
 __qa_call() {
 	local shopts=$(shopt) OLDIFS="$IFS"
 	local retval
-	"$@"
+	__call-ebuildshell "$@"
 	retval=$?
 	set +e
 	[[ $shopts != $(shopt) ]] &&
@@ -546,6 +546,150 @@ if [[ -n ${QA_INTERCEPTORS} ]] ; then
 	done
 	unset BIN_PATH BIN BODY FUNC_SRC
 fi
+
+__call-ebuildshell() {
+	if ! has ebuildshell ${FEATURES}; then
+		"$@"
+		return $?
+	fi
+	local __ebuildshell_args=( "$@" )
+	# These are the variables I have seen 'bash -i' maintaining the values for:
+	local __ebuildshell_bash_i_vars="__ebuildshell_.*
+		_ BASH_ARGC BASH_ARGV BASH_COMMAND BASH_LINENO BASH_SOURCE
+		BASH_VERSINFO BASH_SUBSHELL BASHOPTS BASHPID COMP_WORDBREAKS
+		DIRSTACK EUID FUNCNAME GROUPS HISTCMD HISTFILE LINENO PIPESTATUS
+		PPID PS1 PS2 PS3 PS4 PWD RANDOM SECONDS SHELLOPTS UID"
+	# Allow recursive ebuildshell, for use in multibuild.eclass and similar:
+	local __ebuildshell_pid=${BASHPID:-$(__bashpid)}
+	local __ebuildshell_tmpf="${T}/ebuildshell.${__ebuildshell_pid}"
+	rm -f "${__ebuildshell_tmpf}."{ebuild,return}-{env,rovars}
+	(
+		cat <<-EOE
+			# local variables of functions using recursive ebuildshell are
+			# visible to the EXIT trap of that recursive ebuildshell.  To
+			# keep them local, we have to filter them from that recursive
+			# ebuildshell's return-env.  As 'declare -p' is unable to tell
+			# local-ity of variables, we abuse the trace attribute for local
+			# variables to filter them from the return-env.  So we need the
+			# local alias active before declaring any functions.
+			# On a sidehand, this allows for copy&paste of function body
+			# lines including the local keyword.
+			alias local='declare -t'
+			shopt -s expand_aliases
+		EOE
+		(
+			declare -p
+			declare -fp
+			shopt -p
+			[[ ${BASH_VERSINFO[0]} == 3 ]] && export
+		) |
+		(
+			# we need everything but the bash vars after 'env -i'
+			2>"${__ebuildshell_tmpf}.ebuild-rovars" \
+			"${PORTAGE_PYTHON:-/tools/haubi/gentoo/s01en24/usr/bin/python}" \
+				"${PORTAGE_BIN_PATH}"/filter-bash-environment.py \
+					--report-readonly-variables \
+					--preserve-readonly-attribute \
+					"${__ebuildshell_bash_i_vars}" \
+				|| die "filter-bash-environment.py failed"
+		)
+		# 'declare -g' is available since bash-4.2,
+		# https://bugs.gentoo.org/show_bug.cgi?id=155161#c35
+		if (( ${BASH_VERSINFO[0]} > 4 )) ||
+		   (( ${BASH_VERSINFO[0]} == 4 && ${BASH_VERSINFO[1]} >= 2 ))
+		then
+			__ebuildshell_bash42_true=
+			__ebuildshell_bash42_false='#bash-4.2#'
+		else
+		    __ebuildshell_bash42_true='#bash-4.2#'
+		    __ebuildshell_bash42_false=
+		fi
+		# The already readonly variables, without bash maintained ones:
+		__ebuildshell_ro_ebuild_vars=$(<"${__ebuildshell_tmpf}.ebuild-rovars")
+		cat <<-EOE
+			# properly quote the function arguments
+			$(declare -p __ebuildshell_args)
+			set -- "\${__ebuildshell_args[@]}"
+			unset __ebuildshell_args
+			# be informative about what to do
+			PS1="EBUILD ${PN} $1 \$ "
+			type $1
+			${__ebuildshell_bash42_false}echo 'warning: preserving variables across phases requires bash-4.2'
+			echo "WANTED: \$@"
+			echo "or use: \"\\\$@\""
+			# use bash history, but not the 'user's real one
+			HISTFILE=~/.bash_history
+			# but do not use history-expansion with '!',
+			# for copy&paste of function body lines containing: !
+			set +H
+			# this is a debugging shell already
+			shopt -u extdebug
+			trap - DEBUG
+			# at exit, dump the current environment
+			trap "
+				unalias local
+				unset -f __call-ebuildshell
+				rm -f '${__ebuildshell_tmpf}.return-'*
+				(
+					(
+						# declare -p does not tell the -g flag,
+						# so we add it by aliasing declare.
+						${__ebuildshell_bash42_true}echo \"alias declare='declare -g'\"
+						declare -p
+						${__ebuildshell_bash42_true}echo \"unalias declare\"
+						declare -fp
+						shopt -p | grep -v '\\(expand_aliases\\|extdebug\\)$'
+						$([[ ${BASH_VERSINFO[0]} == 3 ]] && echo export)
+					) |
+					(
+						# We may have more readonly variables now, yet we
+						# need to filter variables that were readonly before.
+						# And filter local variables by their trace attribute.
+						2>'${__ebuildshell_tmpf}.return-rovars' \\
+						'${PORTAGE_PYTHON:-/tools/haubi/gentoo/s01en24/usr/bin/python}' \\
+							'${PORTAGE_BIN_PATH}'/filter-bash-environment.py \\
+								--report-readonly-variables \\
+								--preserve-readonly-attribute \\
+								--filter-traced-variables \\
+								'${__ebuildshell_bash_i_vars} \
+								 ${__ebuildshell_ro_ebuild_vars}' \\
+							|| die 'filter-bash-environment.py failed'
+					)
+				) > '${__ebuildshell_tmpf}.return-env'
+				" EXIT
+			# can do some cleanup right now
+			rm -f '${__ebuildshell_tmpf}.ebuild-'*
+		EOE
+	) > "${__ebuildshell_tmpf}.ebuild-env"
+
+	# pre-fill the history with "$@"
+	echo '"$@"' >> ~/.bash_history
+	chown ${PORTAGE_USER:-portage}:${PORTAGE_GROUP:-portage} ~/.bash_history &>/dev/null
+
+	env -i HOME=~ ${BASH} --rcfile "${__ebuildshell_tmpf}.ebuild-env" -i
+
+	# The environment- and exit-status handling after leaving the ebuildshell
+	# prompt is expected to be identical as without the ebuildshell prompt.
+	local __ebuildshell_status=$?
+
+	# We might be in a recursive ebuildshell, but do not want
+	# any aliases being active while sourcing the return-env.
+	local __ebuildshell_orig_aliases=$(alias)
+	unalias -a
+	source "${__ebuildshell_tmpf}.return-env"
+	unalias -a
+	eval "${__ebuildshell_orig_aliases}"
+
+	# Portage has a whitelist of readonly variables: If an ebuild defines
+	# additional readonly variables, their readonly attribute is removed
+	# across ebuild phases.  If we ever want to preserve the readonly
+	# attribute of additional ebuild-defined variables across phases,
+	# when returning from the ebuildshell their names are in
+	# "${__ebuildshell_tmpf}.return-rovars"
+	rm -f "${__ebuildshell_tmpf}."{ebuild,return}-{env,rovars}
+
+	return ${__ebuildshell_status}
+}
 
 # Subshell/helper die support (must export for the die helper).
 export EBUILD_MASTER_PID=${BASHPID:-$(__bashpid)}

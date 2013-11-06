@@ -53,7 +53,7 @@ __save_ebuild_env() {
 		einfo einfon ewarn eerror ebegin __eend eend KV_major \
 		KV_minor KV_micro KV_to_int get_KV has \
 		__has_phase_defined_up_to \
-		hasv hasq __qa_source __qa_call \
+		hasv hasq __qa_source __qa_call __call-ebuildshell \
 		addread addwrite adddeny addpredict __sb_append_var \
 		use usev useq has_version portageq \
 		best_version use_with use_enable register_die_hook \

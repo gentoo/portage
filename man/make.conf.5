@@ -405,6 +405,12 @@ exist). Also see the related \fIunmerge\-backup\fR feature.
 Use locks to ensure that unsandboxed ebuild phases never execute
 concurrently. Also see \fIparallel\-install\fR.
 .TP
+.B ebuildshell
+Drop into an interactive shell for each phase function, meant for
+debugging.  Because the shell would normally be used to execute the
+phase function, commands like src_unpack or epatch are available in the
+interactive shell.  Use `die` to terminate the merge.
+.TP
 .B fail\-clean
 Clean up temporary files after a build failure. This is particularly useful
 if you have \fBPORTAGE_TMPDIR\fR on tmpfs. If this feature is enabled, you

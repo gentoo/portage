@@ -181,6 +181,7 @@ class AbstractEbuildProcess(SpawnProcess):
 			self.fd_pipes = {}
 		null_fd = None
 		if 0 not in self.fd_pipes and \
+			"ebuildshell" not in self.settings.features and \
 			self.phase not in self._phases_interactive_whitelist and \
 			"interactive" not in self.settings.get("PROPERTIES", "").split():
 			null_fd = os.open('/dev/null', os.O_RDONLY)
