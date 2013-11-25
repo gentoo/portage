@@ -650,11 +650,18 @@ class depgraph(object):
 		# has a parent that is matched by one of the atoms from above.
 		forced_rebuilds = {}
 		for (root, slot_atom), deps in self._dynamic_config._slot_operator_deps.items():
-			if slot_atom not in atoms.get(root, []):
-				continue
+			rebuild_atoms = atoms.get(root, set())
 
 			for dep in deps:
-				if dep.parent.installed:
+				if dep.parent.installed or dep.child.installed or \
+					dep.parent.slot_atom not in rebuild_atoms:
+					continue
+
+				# Make sure the child's slot/subslot has changed. If it hasn't,
+				# then another child has forced this rebuild.
+				installed_pkg, _ = self._select_pkg_from_installed(root, dep.child.slot_atom)
+				if installed_pkg and installed_pkg.slot == dep.child.slot and \
+					installed_pkg.sub_slot == dep.child.sub_slot:
 					continue
 
 				# The child has forced a rebuild of the parent
@@ -1627,12 +1634,10 @@ class depgraph(object):
 					if new_dep is not None:
 						self._slot_operator_update_backtrack(dep,
 							new_child_slot=new_dep.child)
-						break
 
 				if dep.want_update:
 					if self._slot_operator_update_probe(dep):
 						self._slot_operator_update_backtrack(dep)
-						break
 
 	def _reinstall_for_flags(self, pkg, forced_flags,
 		orig_use, orig_iuse, cur_use, cur_iuse):
@@ -2518,7 +2523,7 @@ class depgraph(object):
 				yield (atom, None)
 				continue
 			dep_pkg, existing_node = self._select_package(
-				root_config.root, atom)
+				root_config.root, atom, parent=parent)
 			if dep_pkg is None:
 				yield (atom, None)
 				continue
@@ -4345,12 +4350,12 @@ class depgraph(object):
 						yield inst_pkg
 						return
 
-	def _select_pkg_highest_available(self, root, atom, onlydeps=False):
+	def _select_pkg_highest_available(self, root, atom, onlydeps=False, parent=None):
 		cache_key = (root, atom, atom.unevaluated_atom, onlydeps, self._dynamic_config._autounmask)
 		ret = self._dynamic_config._highest_pkg_cache.get(cache_key)
 		if ret is not None:
 			return ret
-		ret = self._select_pkg_highest_available_imp(root, atom, onlydeps=onlydeps)
+		ret = self._select_pkg_highest_available_imp(root, atom, onlydeps=onlydeps, parent=parent)
 		self._dynamic_config._highest_pkg_cache[cache_key] = ret
 		pkg, existing = ret
 		if pkg is not None:
@@ -4511,8 +4516,9 @@ class depgraph(object):
 				yield autounmask_level
 
 
-	def _select_pkg_highest_available_imp(self, root, atom, onlydeps=False):
-		pkg, existing = self._wrapped_select_pkg_highest_available_imp(root, atom, onlydeps=onlydeps)
+	def _select_pkg_highest_available_imp(self, root, atom, onlydeps=False, parent=None):
+		pkg, existing = self._wrapped_select_pkg_highest_available_imp(
+			root, atom, onlydeps=onlydeps, parent=parent)
 
 		default_selection = (pkg, existing)
 
@@ -4534,7 +4540,7 @@ class depgraph(object):
 					pkg, existing = \
 						self._wrapped_select_pkg_highest_available_imp(
 							root, atom, onlydeps=onlydeps,
-							autounmask_level=autounmask_level)
+							autounmask_level=autounmask_level, parent=parent)
 
 					if pkg is not None and \
 						pkg.installed and \
@@ -4740,7 +4746,7 @@ class depgraph(object):
 				self._dynamic_config._need_restart = True
 		return new_use
 
-	def _wrapped_select_pkg_highest_available_imp(self, root, atom, onlydeps=False, autounmask_level=None):
+	def _wrapped_select_pkg_highest_available_imp(self, root, atom, onlydeps=False, autounmask_level=None, parent=None):
 		root_config = self._frozen_config.roots[root]
 		pkgsettings = self._frozen_config.pkgsettings[root]
 		dbs = self._dynamic_config._filtered_trees[root]["dbs"]
@@ -5107,6 +5113,26 @@ class depgraph(object):
 			return existing_node, existing_node
 
 		if len(matched_packages) > 1:
+			if parent is not None and \
+				(parent.root, parent.slot_atom) in self._dynamic_config._slot_operator_replace_installed:
+				# We're forcing a rebuild of the parent because we missed some
+				# update because of a slot operator dep.
+				if atom.slot_operator == "=" and atom.sub_slot is None:
+					# This one is a slot operator dep. Exclude the installed packages if a newer non-installed
+					# pkg exists.
+					highest_installed = None
+					for pkg in matched_packages:
+						if pkg.installed:
+							if highest_installed is None or pkg.version > highest_installed.version:
+								highest_installed = pkg
+
+					if highest_installed:
+						non_installed = [pkg for pkg in matched_packages \
+							if not pkg.installed and pkg.version > highest_installed.version]
+
+						if non_installed:
+							matched_packages = non_installed
+
 			if rebuilt_binaries:
 				inst_pkg = None
 				built_pkg = None
@@ -5172,7 +5198,7 @@ class depgraph(object):
 		# ordered by type preference ("ebuild" type is the last resort)
 		return  matched_packages[-1], existing_node
 
-	def _select_pkg_from_graph(self, root, atom, onlydeps=False):
+	def _select_pkg_from_graph(self, root, atom, onlydeps=False, parent=None):
 		"""
 		Select packages that have already been added to the graph or
 		those that are installed and have not been scheduled for
@@ -5191,9 +5217,9 @@ class depgraph(object):
 				return pkg, pkg
 
 		# Fall back to installed packages
-		return self._select_pkg_from_installed(root, atom, onlydeps=onlydeps)
+		return self._select_pkg_from_installed(root, atom, onlydeps=onlydeps, parent=parent)
 
-	def _select_pkg_from_installed(self, root, atom, onlydeps=False):
+	def _select_pkg_from_installed(self, root, atom, onlydeps=False, parent=None):
 		"""
 		Select packages that are installed.
 		"""
