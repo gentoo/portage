@@ -619,6 +619,94 @@ class depgraph(object):
 		if self._frozen_config.spinner:
 			self._frozen_config.spinner.update()
 
+	def _compute_abi_rebuild_info(self):
+		"""
+		Fill self._forced_rebuilds with packages that cause rebuilds.
+		"""
+
+		debug = "--debug" in self._frozen_config.myopts
+
+		# Get all atoms that might have caused a forced rebuild.
+		atoms = {}
+		for s in self._dynamic_config._initial_arg_list:
+			if s.force_reinstall:
+				root = s.root_config.root
+				atoms.setdefault(root, set()).update(s.pset)
+
+		if debug:
+			writemsg_level("forced reinstall atoms:\n",
+				level=logging.DEBUG, noiselevel=-1)
+
+			for root in atoms:
+				writemsg_level("   root: %s\n" % root,
+					level=logging.DEBUG, noiselevel=-1)
+				for atom in atoms[root]:
+					writemsg_level("      atom: %s\n" % atom,
+						level=logging.DEBUG, noiselevel=-1)
+			writemsg_level("\n\n",
+				level=logging.DEBUG, noiselevel=-1)
+
+		# Go through all slot operator deps and check if one of these deps
+		# has a parent that is matched by one of the atoms from above.
+		forced_rebuilds = {}
+		for (root, slot_atom), deps in self._dynamic_config._slot_operator_deps.items():
+			if slot_atom not in atoms.get(root, []):
+				continue
+
+			for dep in deps:
+				if dep.parent.installed:
+					continue
+
+				# The child has forced a rebuild of the parent
+				forced_rebuilds.setdefault(root, {})
+				forced_rebuilds[root].setdefault(dep.child, set())
+				forced_rebuilds[root][dep.child].add(dep.parent)
+
+		if debug:
+			writemsg_level("slot operator dependencies:\n",
+				level=logging.DEBUG, noiselevel=-1)
+
+			for (root, slot_atom), deps in self._dynamic_config._slot_operator_deps.items():
+				writemsg_level("   (%s, %s)\n" % \
+					(root, slot_atom), level=logging.DEBUG, noiselevel=-1)
+				for dep in deps:
+					writemsg_level("      parent: %s\n" % dep.parent, level=logging.DEBUG, noiselevel=-1)
+					writemsg_level("        child: %s (%s)\n" % (dep.child, dep.priority), level=logging.DEBUG, noiselevel=-1)
+
+			writemsg_level("\n\n",
+				level=logging.DEBUG, noiselevel=-1)
+
+
+			writemsg_level("forced rebuilds:\n",
+				level=logging.DEBUG, noiselevel=-1)
+
+			for root in forced_rebuilds:
+				writemsg_level("   root: %s\n" % root,
+					level=logging.DEBUG, noiselevel=-1)
+				for child in forced_rebuilds[root]:
+					writemsg_level("      child: %s\n" % child,
+						level=logging.DEBUG, noiselevel=-1)
+					for parent in forced_rebuilds[root][child]:
+						writemsg_level("         parent: %s\n" % parent,
+							level=logging.DEBUG, noiselevel=-1)
+			writemsg_level("\n\n",
+				level=logging.DEBUG, noiselevel=-1)
+
+		self._forced_rebuilds = forced_rebuilds
+
+	def _show_abi_rebuild_info(self):
+
+		if not self._forced_rebuilds:
+			return
+
+		writemsg("\nThe following packages are causing rebuilds:\n\n", noiselevel=-1)
+
+		for root in self._forced_rebuilds:
+			for child in self._forced_rebuilds[root]:
+				writemsg("  %s causes rebuilds for:\n" % (child,), noiselevel=-1)
+				for parent in self._forced_rebuilds[root][child]:
+					writemsg("    %s\n" % (parent,), noiselevel=-1)
+
 	def _show_ignored_binaries(self):
 		"""
 		Show binaries that have been ignored because their USE didn't
@@ -7201,6 +7289,9 @@ class depgraph(object):
 		# since they may be irrelevant after the conflicts are solved.
 		if not unresolved_conflicts:
 			self._show_missed_update()
+
+		self._compute_abi_rebuild_info()
+		self._show_abi_rebuild_info()
 
 		self._show_ignored_binaries()
 
