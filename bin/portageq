@@ -740,7 +740,7 @@ def envvar(argv):
 
 	for arg in argv:
 		if verbose:
-			print(arg +"='"+ portage.settings[arg] +"'")
+			print(arg + "=" + portage._shell_quote(portage.settings[arg]))
 		else:
 			print(portage.settings[arg])
 
