@@ -180,3 +180,58 @@ class SlotConflictRebuildTestCase(TestCase):
 				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
 		finally:
 			playground.cleanup()
+
+	def testSlotConflictDepChange(self):
+		"""
+		Bug 490362
+		The dependency in the ebuild was changed form slot operator to
+		no slot operator. The vdb contained the slot operator and emerge
+		would refuse to rebuild.
+		"""
+		ebuilds = {
+			"app-misc/A-1" : {
+				"EAPI": "5",
+				"DEPEND": "app-misc/B",
+				"RDEPEND": "app-misc/B"
+			},
+
+			"app-misc/B-1" : {
+				"EAPI": "5",
+				"SLOT": "0/1"
+			},
+
+			"app-misc/B-2" : {
+				"EAPI": "5",
+				"SLOT": "0/2"
+			},
+		}
+
+		installed = {
+			"app-misc/A-1" : {
+				"EAPI": "5",
+				"DEPEND": "app-misc/B:0/1=",
+				"RDEPEND": "app-misc/B:0/1="
+			},
+			"app-misc/B-1" : {
+				"EAPI": "5",
+				"SLOT": "0/1"
+			},
+		}
+
+		test_cases = (
+			ResolverPlaygroundTestCase(
+				["app-misc/B"],
+				success = True,
+				mergelist = ['app-misc/B-2', 'app-misc/A-1']),
+		)
+
+		world = ["app-misc/A"]
+
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			installed=installed, world=world, debug=False)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()

@@ -1301,8 +1301,7 @@ class depgraph(object):
 			selected_atoms = None
 
 			for atom in replacement_parent.validated_atoms:
-				if not atom.slot_operator == "=" or \
-					atom.blocker or \
+				if atom.blocker or \
 					atom.cp != dep.atom.cp:
 					continue
 
