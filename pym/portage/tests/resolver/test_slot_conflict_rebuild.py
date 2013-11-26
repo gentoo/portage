@@ -173,7 +173,7 @@ class SlotConflictRebuildTestCase(TestCase):
 		world = []
 
 		playground = ResolverPlayground(ebuilds=ebuilds,
-			installed=installed, world=world, debug=True)
+			installed=installed, world=world, debug=False)
 		try:
 			for test_case in test_cases:
 				playground.run_TestCase(test_case)
