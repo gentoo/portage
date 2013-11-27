@@ -142,7 +142,7 @@ class SlotConflictRebuildTestCase(TestCase):
 
 		expected_mergelist = ['app-misc/A-1', 'app-misc/B-2']
 
-		for i in list(range(5)):
+		for i in range(5):
 			ebuilds["app-misc/C%sC-1" % i] = {
 				"EAPI": "5",
 				"DEPEND": "app-misc/B:=",
