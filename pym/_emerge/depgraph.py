@@ -704,13 +704,13 @@ class depgraph(object):
 		if not self._forced_rebuilds:
 			return
 
-		writemsg("\nThe following packages are causing rebuilds:\n\n", noiselevel=-1)
+		writemsg_stdout("\nThe following packages are causing rebuilds:\n\n", noiselevel=-1)
 
 		for root in self._forced_rebuilds:
 			for child in self._forced_rebuilds[root]:
-				writemsg("  %s causes rebuilds for:\n" % (child,), noiselevel=-1)
+				writemsg_stdout("  %s causes rebuilds for:\n" % (child,), noiselevel=-1)
 				for parent in self._forced_rebuilds[root][child]:
-					writemsg("    %s\n" % (parent,), noiselevel=-1)
+					writemsg_stdout("    %s\n" % (parent,), noiselevel=-1)
 
 	def _show_ignored_binaries(self):
 		"""
