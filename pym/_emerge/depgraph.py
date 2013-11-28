@@ -659,15 +659,13 @@ class depgraph(object):
 
 				# Make sure the child's slot/subslot has changed. If it hasn't,
 				# then another child has forced this rebuild.
-				installed_pkg, _ = self._select_pkg_from_installed(root, dep.child.slot_atom)
+				installed_pkg = self._select_pkg_from_installed(root, dep.child.slot_atom)[0]
 				if installed_pkg and installed_pkg.slot == dep.child.slot and \
 					installed_pkg.sub_slot == dep.child.sub_slot:
 					continue
 
 				# The child has forced a rebuild of the parent
-				forced_rebuilds.setdefault(root, {})
-				forced_rebuilds[root].setdefault(dep.child, set())
-				forced_rebuilds[root][dep.child].add(dep.parent)
+				forced_rebuilds.setdefault(root, {}).setdefault(dep.child, set()).add(dep.parent)
 
 		if debug:
 			writemsg_level("slot operator dependencies:\n",
