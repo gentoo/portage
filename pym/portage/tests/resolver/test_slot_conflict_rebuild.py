@@ -181,6 +181,69 @@ class SlotConflictRebuildTestCase(TestCase):
 		finally:
 			playground.cleanup()
 
+	def testSlotConflictForgottenChild(self):
+		"""
+		Similar to testSlotConflictMassRebuild above, but this time the rebuilds are scheduled,
+		but the package causing the rebuild (the child) is not installed.
+		"""
+		ebuilds = {
+
+			"app-misc/A-2" : {
+				"EAPI": "5",
+				"DEPEND": "app-misc/B:= app-misc/C",
+				"RDEPEND": "app-misc/B:= app-misc/C",
+			},
+
+			"app-misc/B-2" : {
+				"EAPI": "5",
+				"SLOT": "2"
+			},
+
+			"app-misc/C-1": {
+				"EAPI": "5",
+				"DEPEND": "app-misc/B:=",
+				"RDEPEND": "app-misc/B:="
+			},
+		}
+
+		installed = {
+			"app-misc/A-1" : {
+				"EAPI": "5",
+				"DEPEND": "app-misc/B:1/1= app-misc/C",
+				"RDEPEND": "app-misc/B:1/1= app-misc/C",
+			},
+
+			"app-misc/B-1" : {
+				"EAPI": "5",
+				"SLOT": "1"
+			},
+
+			"app-misc/C-1": {
+				"EAPI": "5",
+				"DEPEND": "app-misc/B:1/1=",
+				"RDEPEND": "app-misc/B:1/1="
+			},
+		}
+
+		test_cases = (
+			ResolverPlaygroundTestCase(
+				["app-misc/A"],
+				success = True,
+				mergelist = ['app-misc/B-2', 'app-misc/C-1', 'app-misc/A-2']),
+		)
+
+		world = []
+
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			installed=installed, world=world, debug=False)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
+
+
 	def testSlotConflictDepChange(self):
 		"""
 		Bug 490362

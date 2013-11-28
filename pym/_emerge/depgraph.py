@@ -2266,6 +2266,36 @@ class depgraph(object):
 		finally:
 			self._dynamic_config._autounmask = _autounmask_backup
 
+	def _ignore_dependency(self, atom, pkg, child, dep, mypriority, recurse_satisfied):
+		"""
+		In some cases, dep_check will return deps that shouldn't
+		be proccessed any further, so they are identified and
+		discarded here. Try to discard as few as possible since
+		discarded dependencies reduce the amount of information
+		available for optimization of merge order.
+		Don't ignore dependencies if pkg has a slot operator dependency on the child
+		and the child has changed slot/sub_slot.
+		"""
+		slot_operator_rebuild = False
+		if atom.slot_operator == '=' and \
+			(pkg.root, pkg.slot_atom) in self._dynamic_config._slot_operator_replace_installed and \
+			mypriority.satisfied and \
+			mypriority.satisfied is not child and \
+			mypriority.satisfied.installed and \
+			not child.installed and \
+			(child.slot != mypriority.satisfied.slot or child.sub_slot != mypriority.satisfied.sub_slot):
+			slot_operator_rebuild = True
+
+		return not atom.blocker and \
+			not recurse_satisfied and \
+			mypriority.satisfied and \
+			mypriority.satisfied.visible and \
+			dep.child is not None and \
+			not dep.child.installed and \
+			self._dynamic_config._slot_pkg_map[dep.child.root].get(
+			dep.child.slot_atom) is None and \
+			not slot_operator_rebuild
+
 	def _wrapped_add_pkg_dep_string(self, pkg, dep_root, dep_priority,
 		dep_string, allow_unsatisfied):
 		depth = pkg.depth + 1
@@ -2355,14 +2385,7 @@ class depgraph(object):
 			# discarded dependencies reduce the amount of information
 			# available for optimization of merge order.
 			ignored = False
-			if not atom.blocker and \
-				not recurse_satisfied and \
-				mypriority.satisfied and \
-				mypriority.satisfied.visible and \
-				dep.child is not None and \
-				not dep.child.installed and \
-				self._dynamic_config._slot_pkg_map[dep.child.root].get(
-				dep.child.slot_atom) is None:
+			if self._ignore_dependency(atom, pkg, child, dep, mypriority, recurse_satisfied):
 				myarg = None
 				try:
 					myarg = next(self._iter_atoms_for_pkg(dep.child), None)
@@ -2465,14 +2488,7 @@ class depgraph(object):
 					collapsed_parent=pkg, collapsed_priority=dep_priority)
 
 				ignored = False
-				if not atom.blocker and \
-					not recurse_satisfied and \
-					mypriority.satisfied and \
-					mypriority.satisfied.visible and \
-					dep.child is not None and \
-					not dep.child.installed and \
-					self._dynamic_config._slot_pkg_map[dep.child.root].get(
-					dep.child.slot_atom) is None:
+				if self._ignore_dependency(atom, pkg, child, dep, mypriority, recurse_satisfied):
 					myarg = None
 					try:
 						myarg = next(self._iter_atoms_for_pkg(dep.child), None)
