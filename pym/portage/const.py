@@ -181,6 +181,7 @@ LIVE_ECLASSES = frozenset([
 	"darcs",
 	"git",
 	"git-2",
+	"git-r3",
 	"mercurial",
 	"subversion",
 	"tla",
