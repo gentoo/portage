@@ -113,7 +113,7 @@ def err(txt):
 	warn(txt)
 	sys.exit(1)
 
-def exithandler(signum=None, frame=None):
+def exithandler(signum=None, _frame=None):
 	logging.fatal("Interrupted; exiting...")
 	if signum is None:
 		sys.exit(1)
@@ -1319,7 +1319,7 @@ if options.if_modified == "y":
 		chain(mychanged, mynew, myremoved)))
 
 for x in effective_scanlist:
-	#ebuilds and digests added to cvs respectively.
+	# ebuilds and digests added to cvs respectively.
 	logging.info("checking package %s" % x)
 	# save memory by discarding xmatch caches from previous package(s)
 	arch_xmatch_caches.clear()
@@ -1413,9 +1413,9 @@ for x in effective_scanlist:
 	allvalid = True
 	for y in checkdirlist:
 		if (y in no_exec or y.endswith(".ebuild")) and \
-			stat.S_IMODE(os.stat(os.path.join(checkdir, y)).st_mode) & 0o111:
-				stats["file.executable"] += 1
-				fails["file.executable"].append(os.path.join(checkdir, y))
+				stat.S_IMODE(os.stat(os.path.join(checkdir, y)).st_mode) & 0o111:
+			stats["file.executable"] += 1
+			fails["file.executable"].append(os.path.join(checkdir, y))
 		if y.endswith(".ebuild"):
 			pf = y[:-7]
 			ebuildlist.append(pf)
@@ -1758,7 +1758,7 @@ for x in effective_scanlist:
 				fails["metadata.bad"].append("%s/metadata.xml: %s" % (x, e))
 				del e
 
-		#Only carry out if in package directory or check forced
+		# Only carry out if in package directory or check forced
 		if xmllint_capable and not metadata_bad:
 			# xmlint can produce garbage output even on success, so only dump
 			# the ouput when it fails.
@@ -1797,7 +1797,7 @@ for x in effective_scanlist:
 			fails['changelog.ebuildadded'].append(relative_path)
 
 		if vcs in ("cvs", "svn", "bzr") and check_ebuild_notadded and y not in eadded:
-			#ebuild not added to vcs
+			# ebuild not added to vcs
 			stats["ebuild.notadded"] += 1
 			fails["ebuild.notadded"].append(x + "/" + y + ".ebuild")
 		myesplit = portage.pkgsplit(y)
@@ -2122,7 +2122,7 @@ for x in effective_scanlist:
 		for mypos in range(len(myuse)):
 			stats["IUSE.invalid"] += 1
 			fails["IUSE.invalid"].append(x + "/" + y + ".ebuild: %s" % myuse[mypos])
-		
+
 		# Check for outdated RUBY targets
 		if "ruby-ng" in inherited or "ruby-fakegem" in inherited or "ruby" in inherited:
 			ruby_intersection = pkg.iuse.all.intersection(ruby_deprecated)
@@ -2149,7 +2149,7 @@ for x in effective_scanlist:
 					stats["LICENSE.deprecated"] += 1
 					fails["LICENSE.deprecated"].append("%s: %s" % (relative_path, lic))
 
-		#keyword checks
+		# keyword checks
 		myuse = myaux["KEYWORDS"].split()
 		for mykey in myuse:
 			if mykey not in ("-*", "*", "~*"):
@@ -2165,7 +2165,7 @@ for x in effective_scanlist:
 					stats["KEYWORDS.invalid"] += 1
 					fails["KEYWORDS.invalid"].append(x + "/" + y + ".ebuild: %s (profile invalid)" % mykey)
 
-		#restrict checks
+		# restrict checks
 		myrestrict = None
 		try:
 			myrestrict = portage.dep.use_reduce(myaux["RESTRICT"], matchall=1, flat=True)
@@ -2181,7 +2181,7 @@ for x in effective_scanlist:
 				stats["RESTRICT.invalid"] += len(mybadrestrict)
 				for mybad in mybadrestrict:
 					fails["RESTRICT.invalid"].append(x + "/" + y + ".ebuild: %s" % mybad)
-		#REQUIRED_USE check
+		# REQUIRED_USE check
 		required_use = myaux["REQUIRED_USE"]
 		if required_use:
 			if not eapi_has_required_use(eapi):
@@ -2247,133 +2247,133 @@ for x in effective_scanlist:
 
 		for keyword, groups, prof in relevant_profiles:
 
-				if not (prof.status == "stable" or \
-					(prof.status == "dev" and options.include_dev) or \
-					(prof.status == "exp" and options.include_exp_profiles == 'y')):
-					continue
+			if not (prof.status == "stable" or \
+				(prof.status == "dev" and options.include_dev) or \
+				(prof.status == "exp" and options.include_exp_profiles == 'y')):
+				continue
 
-				dep_settings = arch_caches.get(prof.sub_path)
-				if dep_settings is None:
-					dep_settings = portage.config(
-						config_profile_path=prof.abs_path,
-						config_incrementals=repoman_incrementals,
-						config_root=config_root,
-						local_config=False,
-						_unmatched_removal=options.unmatched_removal,
-						env=env, repositories=repoman_settings.repositories)
-					dep_settings.categories = repoman_settings.categories
-					if options.without_mask:
-						dep_settings._mask_manager_obj = \
-							copy.deepcopy(dep_settings._mask_manager)
-						dep_settings._mask_manager._pmaskdict.clear()
-					arch_caches[prof.sub_path] = dep_settings
+			dep_settings = arch_caches.get(prof.sub_path)
+			if dep_settings is None:
+				dep_settings = portage.config(
+					config_profile_path=prof.abs_path,
+					config_incrementals=repoman_incrementals,
+					config_root=config_root,
+					local_config=False,
+					_unmatched_removal=options.unmatched_removal,
+					env=env, repositories=repoman_settings.repositories)
+				dep_settings.categories = repoman_settings.categories
+				if options.without_mask:
+					dep_settings._mask_manager_obj = \
+						copy.deepcopy(dep_settings._mask_manager)
+					dep_settings._mask_manager._pmaskdict.clear()
+				arch_caches[prof.sub_path] = dep_settings
 
-				xmatch_cache_key = (prof.sub_path, tuple(groups))
-				xcache = arch_xmatch_caches.get(xmatch_cache_key)
-				if xcache is None:
-					portdb.melt()
-					portdb.freeze()
-					xcache = portdb.xcache
-					xcache.update(shared_xmatch_caches)
-					arch_xmatch_caches[xmatch_cache_key] = xcache
+			xmatch_cache_key = (prof.sub_path, tuple(groups))
+			xcache = arch_xmatch_caches.get(xmatch_cache_key)
+			if xcache is None:
+				portdb.melt()
+				portdb.freeze()
+				xcache = portdb.xcache
+				xcache.update(shared_xmatch_caches)
+				arch_xmatch_caches[xmatch_cache_key] = xcache
 
-				trees[root]["porttree"].settings = dep_settings
-				portdb.settings = dep_settings
-				portdb.xcache = xcache
+			trees[root]["porttree"].settings = dep_settings
+			portdb.settings = dep_settings
+			portdb.xcache = xcache
 
-				dep_settings["ACCEPT_KEYWORDS"] = " ".join(groups)
-				# just in case, prevent config.reset() from nuking these.
-				dep_settings.backup_changes("ACCEPT_KEYWORDS")
+			dep_settings["ACCEPT_KEYWORDS"] = " ".join(groups)
+			# just in case, prevent config.reset() from nuking these.
+			dep_settings.backup_changes("ACCEPT_KEYWORDS")
 
-				# This attribute is used in dbapi._match_use() to apply
-				# use.stable.{mask,force} settings based on the stable
-				# status of the parent package. This is required in order
-				# for USE deps of unstable packages to be resolved correctly,
-				# since otherwise use.stable.{mask,force} settings of
-				# dependencies may conflict (see bug #456342).
-				dep_settings._parent_stable = dep_settings._isStable(pkg)
+			# This attribute is used in dbapi._match_use() to apply
+			# use.stable.{mask,force} settings based on the stable
+			# status of the parent package. This is required in order
+			# for USE deps of unstable packages to be resolved correctly,
+			# since otherwise use.stable.{mask,force} settings of
+			# dependencies may conflict (see bug #456342).
+			dep_settings._parent_stable = dep_settings._isStable(pkg)
 
-				# Handle package.use*.{force,mask) calculation, for use
-				# in dep_check.
-				dep_settings.useforce = dep_settings._use_manager.getUseForce(
-					pkg, stable=dep_settings._parent_stable)
-				dep_settings.usemask = dep_settings._use_manager.getUseMask(
-					pkg, stable=dep_settings._parent_stable)
+			# Handle package.use*.{force,mask) calculation, for use
+			# in dep_check.
+			dep_settings.useforce = dep_settings._use_manager.getUseForce(
+				pkg, stable=dep_settings._parent_stable)
+			dep_settings.usemask = dep_settings._use_manager.getUseMask(
+				pkg, stable=dep_settings._parent_stable)
 
-				if not baddepsyntax:
-					ismasked = not ebuild_archs or \
-						pkg.cpv not in portdb.xmatch("match-visible", pkg.cp)
-					if ismasked:
-						if not have_pmasked:
-							have_pmasked = bool(dep_settings._getMaskAtom(
-								pkg.cpv, pkg._metadata))
-						if options.ignore_masked:
-							continue
-						#we are testing deps for a masked package; give it some lee-way
-						suffix = "masked"
-						matchmode = "minimum-all"
-					else:
-						suffix = ""
-						matchmode = "minimum-visible"
+			if not baddepsyntax:
+				ismasked = not ebuild_archs or \
+					pkg.cpv not in portdb.xmatch("match-visible", pkg.cp)
+				if ismasked:
+					if not have_pmasked:
+						have_pmasked = bool(dep_settings._getMaskAtom(
+							pkg.cpv, pkg._metadata))
+					if options.ignore_masked:
+						continue
+					# we are testing deps for a masked package; give it some lee-way
+					suffix = "masked"
+					matchmode = "minimum-all"
+				else:
+					suffix = ""
+					matchmode = "minimum-visible"
 
-					if not have_dev_keywords:
-						have_dev_keywords = \
-							bool(dev_keywords.intersection(keywords))
+				if not have_dev_keywords:
+					have_dev_keywords = \
+						bool(dev_keywords.intersection(keywords))
 
-					if prof.status == "dev":
-						suffix = suffix + "indev"
+				if prof.status == "dev":
+					suffix = suffix + "indev"
 
-					for mytype in Package._dep_keys:
+				for mytype in Package._dep_keys:
 
-						mykey = "dependency.bad" + suffix
-						myvalue = myaux[mytype]
-						if not myvalue:
-							continue
+					mykey = "dependency.bad" + suffix
+					myvalue = myaux[mytype]
+					if not myvalue:
+						continue
 
-						success, atoms = portage.dep_check(myvalue, portdb,
-							dep_settings, use="all", mode=matchmode,
-							trees=trees)
+					success, atoms = portage.dep_check(myvalue, portdb,
+						dep_settings, use="all", mode=matchmode,
+						trees=trees)
 
-						if success:
-							if atoms:
+					if success:
+						if atoms:
 
-								# Don't bother with dependency.unknown for
-								# cases in which *DEPEND.bad is triggered.
-								for atom in atoms:
-									# dep_check returns all blockers and they
-									# aren't counted for *DEPEND.bad, so we
-									# ignore them here.
-									if not atom.blocker:
-										unknown_pkgs.discard(
-											(mytype, atom.unevaluated_atom))
+							# Don't bother with dependency.unknown for
+							# cases in which *DEPEND.bad is triggered.
+							for atom in atoms:
+								# dep_check returns all blockers and they
+								# aren't counted for *DEPEND.bad, so we
+								# ignore them here.
+								if not atom.blocker:
+									unknown_pkgs.discard(
+										(mytype, atom.unevaluated_atom))
 
-								if not prof.sub_path:
-									# old-style virtuals currently aren't
-									# resolvable with empty profile, since
-									# 'virtuals' mappings are unavailable
-									# (it would be expensive to search
-									# for PROVIDE in all ebuilds)
-									atoms = [atom for atom in atoms if not \
-										(atom.cp.startswith('virtual/') and \
-										not portdb.cp_list(atom.cp))]
+							if not prof.sub_path:
+								# old-style virtuals currently aren't
+								# resolvable with empty profile, since
+								# 'virtuals' mappings are unavailable
+								# (it would be expensive to search
+								# for PROVIDE in all ebuilds)
+								atoms = [atom for atom in atoms if not \
+									(atom.cp.startswith('virtual/') and \
+									not portdb.cp_list(atom.cp))]
 
-								#we have some unsolvable deps
-								#remove ! deps, which always show up as unsatisfiable
-								atoms = [str(atom.unevaluated_atom) \
-									for atom in atoms if not atom.blocker]
+							# we have some unsolvable deps
+							# remove ! deps, which always show up as unsatisfiable
+							atoms = [str(atom.unevaluated_atom) \
+								for atom in atoms if not atom.blocker]
 
-								#if we emptied out our list, continue:
-								if not atoms:
-									continue
-								stats[mykey] += 1
-								fails[mykey].append("%s: %s: %s(%s) %s" % \
-									(relative_path, mytype, keyword,
-									prof, repr(atoms)))
-						else:
+							# if we emptied out our list, continue:
+							if not atoms:
+								continue
 							stats[mykey] += 1
 							fails[mykey].append("%s: %s: %s(%s) %s" % \
 								(relative_path, mytype, keyword,
 								prof, repr(atoms)))
+					else:
+						stats[mykey] += 1
+						fails[mykey].append("%s: %s: %s(%s) %s" % \
+							(relative_path, mytype, keyword,
+							prof, repr(atoms)))
 
 		if not baddepsyntax and unknown_pkgs:
 			type_map = {}
