@@ -424,16 +424,7 @@ valid_restrict = frozenset(["binchecks", "bindist",
 	"fetch", "installsources", "mirror", "preserve-libs",
 	"primaryuri", "splitdebug", "strip", "test", "userpriv"])
 
-live_eclasses = frozenset([
-	"bzr",
-	"cvs",
-	"darcs",
-	"git",
-	"git-2",
-	"mercurial",
-	"subversion",
-	"tla",
-])
+live_eclasses = portage.const.LIVE_ECLASSES
 
 suspect_rdepend = frozenset([
 	"app-arch/cabextract",

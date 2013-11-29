@@ -16,16 +16,7 @@ class EbuildExecuter(CompositeTask):
 
 	_phases = ("prepare", "configure", "compile", "test", "install")
 
-	_live_eclasses = frozenset([
-		"bzr",
-		"cvs",
-		"darcs",
-		"git",
-		"git-2",
-		"mercurial",
-		"subversion",
-		"tla",
-	])
+	_live_eclasses = portage.const.LIVE_ECLASSES
 
 	def _start(self):
 		pkg = self.pkg

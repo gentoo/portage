@@ -174,6 +174,18 @@ if "PORTAGE_OVERRIDE_EPREFIX" in os.environ:
 
 VCS_DIRS = ("CVS", "RCS", "SCCS", ".bzr", ".git", ".hg", ".svn")
 
+# List of known live eclasses. Keep it in sync with cnf/sets/portage.conf
+LIVE_ECLASSES = frozenset([
+	"bzr",
+	"cvs",
+	"darcs",
+	"git",
+	"git-2",
+	"mercurial",
+	"subversion",
+	"tla",
+])
+
 SUPPORTED_BINPKG_FORMATS = ("tar", "rpm")
 
 # Time formats used in various places like metadata.chk.
