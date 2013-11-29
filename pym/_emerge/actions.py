@@ -39,7 +39,7 @@ from portage import shutil
 from portage import eapi_is_supported, _encodings, _unicode_decode
 from portage.cache.cache_errors import CacheError
 from portage.const import GLOBAL_CONFIG_PATH, VCS_DIRS, _DEPCLEAN_LIB_CHECK_DEFAULT
-from portage.const import SUPPORTED_BINPKG_FORMATS
+from portage.const import SUPPORTED_BINPKG_FORMATS, TIMESTAMP_FORMAT
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.dep import Atom
@@ -2282,7 +2282,7 @@ def _sync_repo(emerge_config, repo):
 		if content:
 			try:
 				mytimestamp = time.mktime(time.strptime(content[0],
-					"%a, %d %b %Y %H:%M:%S +0000"))
+					TIMESTAMP_FORMAT))
 			except (OverflowError, ValueError):
 				pass
 		del content
@@ -2511,7 +2511,7 @@ def _sync_repo(emerge_config, repo):
 				if content:
 					try:
 						servertimestamp = time.mktime(time.strptime(
-							content[0], "%a, %d %b %Y %H:%M:%S +0000"))
+							content[0], TIMESTAMP_FORMAT))
 					except (OverflowError, ValueError):
 						pass
 				del mycommand, mypids, content
