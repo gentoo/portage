@@ -175,6 +175,10 @@ if "PORTAGE_OVERRIDE_EPREFIX" in os.environ:
 VCS_DIRS = ("CVS", "RCS", "SCCS", ".bzr", ".git", ".hg", ".svn")
 
 SUPPORTED_BINPKG_FORMATS = ("tar", "rpm")
+
+# Time formats used in various places like metadata.chk.
+TIMESTAMP_FORMAT = "%a, %d %b %Y %H:%M:%S +0000"	# to be used with time.gmtime()
+
 # ===========================================================================
 # END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANT
 # ===========================================================================

@@ -48,6 +48,7 @@ portage._internal_caller = True
 from portage import os, _encodings, _unicode_encode, _unicode_decode
 from _emerge.MetadataRegen import MetadataRegen
 from portage.cache.cache_errors import CacheError, StatCollision
+from portage.const import TIMESTAMP_FORMAT
 from portage.manifest import guessManifestFileType
 from portage.package.ebuild._parallel_manifest.ManifestScheduler import ManifestScheduler
 from portage.util import cmp_sort_key, writemsg_level
@@ -133,6 +134,9 @@ def parse_args(args):
 	common.add_argument("--ignore-default-opts",
 		action="store_true",
 		help="do not use the EGENCACHE_DEFAULT_OPTS environment variable")
+	common.add_argument("--write-timestamp",
+		action="store_true",
+		help="write metdata/timestamp.chk as required for rsync repositories")
 
 	update = parser.add_argument_group('--update options')
 	update.add_argument("--cache-dir",
@@ -1062,6 +1066,16 @@ def egencache_main(args):
 		gen_clogs = GenChangeLogs(portdb)
 		gen_clogs.run()
 		ret.append(gen_clogs.returncode)
+
+	if options.write_timestamp:
+		timestamp_path = os.path.join(repo_path, 'metadata', 'timestamp.chk')
+		try:
+			with open(timestamp_path, 'w') as f:
+				f.write(time.strftime('%s\n' % TIMESTAMP_FORMAT, time.gmtime()))
+		except IOError:
+			ret.append(os.EX_IOERR)
+		else:
+			ret.append(os.EX_OK)
 
 	return max(ret)
 
