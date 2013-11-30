@@ -60,7 +60,8 @@ GLOBAL_CONFIG_PATH       = "/usr/share/portage/config"
 # these variables are not used with target_root or config_root
 # NOTE: Use realpath(__file__) so that python module symlinks in site-packages
 # are followed back to the real location of the whole portage installation.
-PORTAGE_BASE_PATH        = os.path.join(os.sep, os.sep.join(os.path.realpath(__file__.rstrip("co")).split(os.sep)[:-3]))
+PORTAGE_BASE_PATH        = os.path.join(os.sep, os.sep.join(os.path.realpath(
+                               __file__.rstrip("co")).split(os.sep)[:-3]))
 PORTAGE_BIN_PATH         = PORTAGE_BASE_PATH + "/bin"
 PORTAGE_PYM_PATH         = PORTAGE_BASE_PATH + "/pym"
 LOCALE_DATA_PATH         = PORTAGE_BASE_PATH + "/locale"  # FIXME: not used
@@ -83,41 +84,115 @@ CVS_PACKAGE_ATOM         = "dev-vcs/cvs"
 GIT_PACKAGE_ATOM         = "dev-vcs/git"
 RSYNC_PACKAGE_ATOM       = "net-misc/rsync"
 
-INCREMENTALS             = ("USE", "USE_EXPAND", "USE_EXPAND_HIDDEN",
-                           "FEATURES", "ACCEPT_KEYWORDS",
-                           "CONFIG_PROTECT_MASK", "CONFIG_PROTECT",
-                           "IUSE_IMPLICIT",
-                           "PRELINK_PATH", "PRELINK_PATH_MASK",
-                           "PROFILE_ONLY_VARIABLES",
-                           "USE_EXPAND_IMPLICIT", "USE_EXPAND_UNPREFIXED")
-EBUILD_PHASES            = ("pretend", "setup", "unpack", "prepare", "configure",
-                           "compile", "test", "install",
-                           "package", "preinst", "postinst","prerm", "postrm",
-                           "nofetch", "config", "info", "other")
+INCREMENTALS             = (
+	"ACCEPT_KEYWORDS",
+	"CONFIG_PROTECT",
+	"CONFIG_PROTECT_MASK",
+	"FEATURES",
+	"IUSE_IMPLICIT",
+	"PRELINK_PATH",
+	"PRELINK_PATH_MASK",
+	"PROFILE_ONLY_VARIABLES",
+	"USE",
+	"USE_EXPAND",
+	"USE_EXPAND_HIDDEN",
+	"USE_EXPAND_IMPLICIT",
+	"USE_EXPAND_UNPREFIXED",
+)
+EBUILD_PHASES            = (
+	"pretend",
+	"setup",
+	"unpack",
+	"prepare",
+	"configure",
+	"compile",
+	"test",
+	"install",
+	"package",
+	"preinst",
+	"postinst",
+	"prerm",
+	"postrm",
+	"nofetch",
+	"config",
+	"info",
+	"other",
+)
 SUPPORTED_FEATURES       = frozenset([
-                           "assume-digests", "binpkg-logs", "buildpkg", "buildsyspkg", "candy",
-                           "ccache", "cgroup", "chflags", "clean-logs",
-                           "collision-protect", "compress-build-logs", "compressdebug",
-                           "compress-index", "config-protect-if-modified",
-                           "digest", "distcc", "distcc-pump", "distlocks",
-                           "downgrade-backup", "ebuild-locks", "fakeroot",
-                           "fail-clean", "force-mirror", "force-prefix", "getbinpkg",
-                           "installsources", "ipc-sandbox",
-                           "keeptemp", "keepwork", "fixlafiles", "lmirror",
-                           "merge-sync",
-                           "metadata-transfer", "mirror", "multilib-strict",
-                           "network-sandbox", "news",
-                           "noauto", "noclean", "nodoc", "noinfo", "noman",
-                           "nostrip", "notitles", "parallel-fetch", "parallel-install",
-                           "prelink-checksums", "preserve-libs",
-                           "protect-owned", "python-trace", "sandbox",
-                           "selinux", "sesandbox", "sfperms",
-                           "sign", "skiprocheck", "split-elog", "split-log", "splitdebug",
-                           "strict", "stricter", "suidctl", "test", "test-fail-continue",
-                           "unknown-features-filter", "unknown-features-warn",
-                           "unmerge-backup",
-                           "unmerge-logs", "unmerge-orphans", "userfetch", "userpriv",
-                           "usersandbox", "usersync", "webrsync-gpg", "xattr"])
+	"assume-digests",
+	"binpkg-logs",
+	"buildpkg",
+	"buildsyspkg",
+	"candy",
+	"ccache",
+	"cgroup",
+	"chflags",
+	"clean-logs",
+	"collision-protect",
+	"compress-build-logs",
+	"compressdebug",
+	"compress-index",
+	"config-protect-if-modified",
+	"digest",
+	"distcc",
+	"distcc-pump",
+	"distlocks",
+	"downgrade-backup",
+	"ebuild-locks",
+	"fail-clean",
+	"fakeroot",
+	"fixlafiles",
+	"force-mirror",
+	"force-prefix",
+	"getbinpkg",
+	"installsources",
+	"ipc-sandbox",
+	"keeptemp",
+	"keepwork",
+	"lmirror",
+	"metadata-transfer",
+	"mirror",
+	"multilib-strict",
+	"network-sandbox",
+	"news",
+	"noauto",
+	"noclean",
+	"nodoc",
+	"noinfo",
+	"noman",
+	"nostrip",
+	"notitles",
+	"parallel-fetch",
+	"parallel-install",
+	"prelink-checksums",
+	"preserve-libs",
+	"protect-owned",
+	"python-trace",
+	"sandbox",
+	"selinux",
+	"sesandbox",
+	"sfperms",
+	"sign",
+	"skiprocheck",
+	"splitdebug",
+	"split-elog",
+	"split-log",
+	"strict",
+	"stricter",
+	"suidctl",
+	"test",
+	"test-fail-continue",
+	"unknown-features-filter",
+	"unknown-features-warn",
+	"unmerge-logs",
+	"unmerge-orphans",
+	"userfetch",
+	"userpriv",
+	"usersandbox",
+	"usersync",
+	"webrsync-gpg",
+	"xattr",
+])
 
 EAPI                     = 5
 
@@ -162,7 +237,7 @@ MANIFEST2_IDENTIFIERS    = ("AUX", "MISC", "DIST", "EBUILD")
 # a config instance (since it's possible to contruct a config instance with
 # a different EPREFIX). Therefore, the EPREFIX constant should *NOT* be used
 # in the definition of any other constants within this file.
-EPREFIX=""
+EPREFIX = ""
 
 # pick up EPREFIX from the environment if set
 if "PORTAGE_OVERRIDE_EPREFIX" in os.environ:
