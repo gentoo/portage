@@ -137,7 +137,7 @@ def parse_args(args):
 		help="do not use the EGENCACHE_DEFAULT_OPTS environment variable")
 	common.add_argument("--write-timestamp",
 		action="store_true",
-		help="write metdata/timestamp.chk as required for rsync repositories")
+		help="write metadata/timestamp.chk as required for rsync repositories")
 
 	update = parser.add_argument_group('--update options')
 	update.add_argument("--cache-dir",

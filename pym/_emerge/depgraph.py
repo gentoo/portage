@@ -2269,7 +2269,7 @@ class depgraph(object):
 	def _ignore_dependency(self, atom, pkg, child, dep, mypriority, recurse_satisfied):
 		"""
 		In some cases, dep_check will return deps that shouldn't
-		be proccessed any further, so they are identified and
+		be processed any further, so they are identified and
 		discarded here. Try to discard as few as possible since
 		discarded dependencies reduce the amount of information
 		available for optimization of merge order.
@@ -2380,7 +2380,7 @@ class depgraph(object):
 				priority=mypriority, root=dep_root)
 
 			# In some cases, dep_check will return deps that shouldn't
-			# be proccessed any further, so they are identified and
+			# be processed any further, so they are identified and
 			# discarded here. Try to discard as few as possible since
 			# discarded dependencies reduce the amount of information
 			# available for optimization of merge order.
