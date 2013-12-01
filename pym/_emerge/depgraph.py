@@ -2276,10 +2276,11 @@ class depgraph(object):
 		Don't ignore dependencies if pkg has a slot operator dependency on the child
 		and the child has changed slot/sub_slot.
 		"""
+		if not mypriority.satisfied:
+			return False
 		slot_operator_rebuild = False
 		if atom.slot_operator == '=' and \
 			(pkg.root, pkg.slot_atom) in self._dynamic_config._slot_operator_replace_installed and \
-			mypriority.satisfied and \
 			mypriority.satisfied is not child and \
 			mypriority.satisfied.installed and \
 			not child.installed and \
@@ -2288,7 +2289,6 @@ class depgraph(object):
 
 		return not atom.blocker and \
 			not recurse_satisfied and \
-			mypriority.satisfied and \
 			mypriority.satisfied.visible and \
 			dep.child is not None and \
 			not dep.child.installed and \
