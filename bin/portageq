@@ -677,7 +677,9 @@ def repos_config(argv):
 def portdir(_argv):
 	"""
 	Returns the PORTDIR path.
+	Deprecated in favor of repositories_configuration command.
 	"""
+	print("WARNING: 'portageq portdir' is deprecated. Use 'portageq repositories_configuration' instead.", file=sys.stderr)
 	print(portage.settings["PORTDIR"])
 
 
@@ -698,7 +700,9 @@ def config_protect_mask(_argv):
 def portdir_overlay(_argv):
 	"""
 	Returns the PORTDIR_OVERLAY path.
+	Deprecated in favor of repositories_configuration command.
 	"""
+	print("WARNING: 'portageq portdir_overlay' is deprecated. Use 'portageq repositories_configuration' instead.", file=sys.stderr)
 	print(portage.settings["PORTDIR_OVERLAY"])
 
 
@@ -737,6 +741,8 @@ def envvar(argv):
 		return 2
 
 	for arg in argv:
+		if arg in ("PORTDIR", "PORTDIR_OVERLAY", "SYNC"):
+			print("WARNING: 'portageq envvar %s' is deprecated. Use 'portageq repositories_configuration' instead." % arg, file=sys.stderr)
 		if verbose:
 			print(arg + "=" + portage._shell_quote(portage.settings[arg]))
 		else:
