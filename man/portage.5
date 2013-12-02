@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Aug 2013" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "Dec 2013" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -217,10 +217,9 @@ will be preferred.
 
 Any file in this directory, directories of other profiles or top-level
 "profiles" directory that begins with "package." or "use." can be more than
-just a flat file. \fBrepos.conf\fR also follows this behaviour. If you use one
-of these files as a directory, then all the files in that directory will be
-sorted in ascending alphabetical order by file name and summed together as if
-it were a single file. Note that this behavior is only supported since
+just a flat file.  If it is a directory, then all the files in that directory
+will be sorted in ascending alphabetical order by file name and summed together
+as if it were a single file. Note that this behavior is only supported since
 portage-2.1.6.7, and it is not included in PMS at this time.
 
 .I Example:
@@ -530,10 +529,10 @@ virtual/aspell\-dict   app\-dicts/aspell\-en
 .RE
 .TP
 .BR /etc/portage/
-Any file in this directory that begins with "package." can be more than just a
-flat file.  If it is a directory, then all the files in that directory will be
-sorted in ascending alphabetical order by file name and summed together as if
-it were a single file.
+Any file in this directory that begins with "package." or is repos.conf can be
+more than just a flat file.  If it is a directory, then all the files in that
+directory will be sorted in ascending alphabetical order by file name and summed
+together as if it were a single file.
 
 .I Example:
 .nf
