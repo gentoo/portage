@@ -511,7 +511,7 @@ class _dynamic_depgraph_config(object):
 class depgraph(object):
 
 	pkg_tree_map = RootConfig.pkg_tree_map
-	
+
 	def __init__(self, settings, trees, myopts, myparams, spinner,
 		frozen_config=None, backtrack_parameters=BacktrackParameter(), allow_backtracking=False):
 		if frozen_config is None:
@@ -927,7 +927,7 @@ class depgraph(object):
 
 		conflict = handler.get_conflict()
 		writemsg(conflict, noiselevel=-1)
-		
+
 		explanation = handler.get_explanation()
 		if explanation:
 			writemsg(explanation, noiselevel=-1)
@@ -2618,7 +2618,7 @@ class depgraph(object):
 	def _queue_disjunctive_deps(self, pkg, dep_root, dep_priority, dep_struct):
 		"""
 		Queue disjunctive (virtual and ||) deps in self._dynamic_config._dep_disjunctive_stack.
-		Yields non-disjunctive deps. Raises InvalidDependString when 
+		Yields non-disjunctive deps. Raises InvalidDependString when
 		necessary.
 		"""
 		for x in dep_struct:
@@ -2742,7 +2742,7 @@ class depgraph(object):
 
 	def _select_files(self, myfiles):
 		"""Given a list of .tbz2s, .ebuilds sets, and deps, populate
-		self._dynamic_config._initial_arg_list and call self._resolve to create the 
+		self._dynamic_config._initial_arg_list and call self._resolve to create the
 		appropriate depgraph and return a favorite list."""
 		self._load_vdb()
 		debug = "--debug" in self._frozen_config.myopts
@@ -3070,7 +3070,7 @@ class depgraph(object):
 		# Order needs to be preserved since a feature of --nodeps
 		# is to allow the user to force a specific merge order.
 		self._dynamic_config._initial_arg_list = args[:]
-	
+
 		return self._resolve(myfavorites)
 
 	def _gen_reinstall_sets(self):
@@ -3100,8 +3100,8 @@ class depgraph(object):
 				root_config=self._frozen_config.roots[root])
 
 	def _resolve(self, myfavorites):
-		"""Given self._dynamic_config._initial_arg_list, pull in the root nodes, 
-		call self._creategraph to process theier deps and return 
+		"""Given self._dynamic_config._initial_arg_list, pull in the root nodes,
+		call self._creategraph to process theier deps and return
 		a favorite list."""
 		debug = "--debug" in self._frozen_config.myopts
 		onlydeps = "--onlydeps" in self._frozen_config.myopts
@@ -4817,7 +4817,7 @@ class depgraph(object):
 				# Ignore USE deps for the initial match since we want to
 				# ensure that updates aren't missed solely due to the user's
 				# USE configuration.
-				for pkg in self._iter_match_pkgs(root_config, pkg_type, atom.without_use, 
+				for pkg in self._iter_match_pkgs(root_config, pkg_type, atom.without_use,
 					onlydeps=onlydeps):
 					if pkg.cp != atom_cp and have_new_virt:
 						# pull in a new-style virtual instead
@@ -5444,7 +5444,7 @@ class depgraph(object):
 					return 0
 		return 1
 
-	def _pkg(self, cpv, type_name, root_config, installed=False, 
+	def _pkg(self, cpv, type_name, root_config, installed=False,
 		onlydeps=False, myrepo = None):
 		"""
 		Get a package instance from the cache, or create a new
@@ -5672,7 +5672,7 @@ class depgraph(object):
 			myroot = blocker.root
 			initial_db = self._frozen_config.trees[myroot]["vartree"].dbapi
 			final_db = self._dynamic_config.mydbapi[myroot]
-			
+
 			provider_virtual = False
 			if blocker.cp in virtuals and \
 				not self._have_new_virt(blocker.root, blocker.cp):
@@ -7818,7 +7818,7 @@ class depgraph(object):
 
 	def get_backtrack_infos(self):
 		return self._dynamic_config._backtrack_infos
-			
+
 
 class _dep_check_composite_db(dbapi):
 	"""
@@ -8027,14 +8027,14 @@ def _spinner_stop(spinner):
 
 	portage.writemsg_stdout("... done!\n")
 
-def backtrack_depgraph(settings, trees, myopts, myparams, 
+def backtrack_depgraph(settings, trees, myopts, myparams,
 	myaction, myfiles, spinner):
 	"""
 	Raises PackageSetNotFound if myfiles contains a missing package set.
 	"""
 	_spinner_start(spinner, myopts)
 	try:
-		return _backtrack_depgraph(settings, trees, myopts, myparams, 
+		return _backtrack_depgraph(settings, trees, myopts, myparams,
 			myaction, myfiles, spinner)
 	finally:
 		_spinner_stop(spinner)
