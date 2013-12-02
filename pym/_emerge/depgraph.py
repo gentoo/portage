@@ -1298,7 +1298,34 @@ class depgraph(object):
 
 			selected_atoms = None
 
-			for atom in replacement_parent.validated_atoms:
+			atoms = set()
+			invalid_metadata = False
+			for dep_key in ("DEPEND", "HDEPEND", "RDEPEND", "PDEPEND"):
+				dep_string = replacement_parent._metadata[dep_key]
+				if not dep_string:
+					continue
+
+				try:
+					dep_string = portage.dep.use_reduce(dep_string,
+						uselist=self._pkg_use_enabled(replacement_parent),
+						is_valid_flag=replacement_parent.iuse.is_valid_flag,
+						flat=True, token_class=Atom,
+						eapi=replacement_parent.eapi)
+				except portage.exception.InvalidDependString:
+					invalid_metadata = True
+					break
+
+				atoms.update(token for token in dep_string if isinstance(token, Atom))
+
+			if invalid_metadata:
+				continue
+
+			# List of list of child,atom pairs for each atom.
+			replacement_candidates = []
+			# Set of all packages all atoms can agree on.
+			all_candidate_pkgs = None
+
+			for atom in atoms:
 				if atom.blocker or \
 					atom.cp != dep.atom.cp:
 					continue
@@ -1316,6 +1343,8 @@ class depgraph(object):
 					# parent and search for another.
 					break
 
+				candidate_pkg_atoms = []
+				candidate_pkgs = []
 				for pkg in self._iter_similar_available(
 					dep.child, atom):
 					if pkg.slot == dep.child.slot and \
@@ -1367,26 +1396,51 @@ class depgraph(object):
 						if unevaluated_atom not in selected_atoms:
 							continue
 
-					if debug:
-						msg = []
-						msg.append("")
-						msg.append("")
-						msg.append("slot_operator_update_probe:")
-						msg.append("   existing child package:  %s" % dep.child)
-						msg.append("   existing parent package: %s" % dep.parent)
-						msg.append("   new child package:  %s" % pkg)
-						msg.append("   new parent package: %s" % replacement_parent)
-						if insignificant:
-							msg.append("insignificant changes detected")
-						msg.append("")
-						writemsg_level("\n".join(msg),
-							noiselevel=-1, level=logging.DEBUG)
+					if not insignificant:
+						candidate_pkg_atoms.append((pkg, unevaluated_atom))
+						candidate_pkgs.append(pkg)
 
-					if insignificant:
-						return None
+				replacement_candidates.append(candidate_pkg_atoms)
+				if all_candidate_pkgs is None:
+					all_candidate_pkgs = set(candidate_pkgs)
+				else:
+					all_candidate_pkgs.intersection_update(candidate_pkgs)
 
-					return Dependency(parent=replacement_parent,
-						child=pkg, atom=unevaluated_atom)
+			if not all_candidate_pkgs:
+				# If the atoms that connect parent and child can't agree on
+				# any replacement child, we can't do anything.
+				continue
+
+			# Now select one of the pkgs as replacement. This is as easy as
+			# selecting the highest version.
+			# The more complicated part is to choose an atom for the
+			# new Dependency object. Choose the one which ranked the selected
+			# parent highest.
+			selected = None
+			for candidate_pkg_atoms in replacement_candidates:
+				for i, (pkg, atom) in enumerate(candidate_pkg_atoms):
+					if pkg not in all_candidate_pkgs:
+						continue
+					if selected is None or \
+						selected[0] < pkg or \
+						(selected[0] is pkg and i < selected[2]):
+						selected = (pkg, atom, i)
+
+			if debug:
+				msg = []
+				msg.append("")
+				msg.append("")
+				msg.append("slot_operator_update_probe:")
+				msg.append("   existing child package:  %s" % dep.child)
+				msg.append("   existing parent package: %s" % dep.parent)
+				msg.append("   new child package:  %s" % selected[0])
+				msg.append("   new parent package: %s" % replacement_parent)
+				msg.append("")
+				writemsg_level("\n".join(msg),
+					noiselevel=-1, level=logging.DEBUG)
+
+			return Dependency(parent=replacement_parent,
+				child=selected[0], atom=selected[1])
 
 		if debug:
 			msg = []

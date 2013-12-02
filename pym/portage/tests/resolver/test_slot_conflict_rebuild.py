@@ -298,3 +298,69 @@ class SlotConflictRebuildTestCase(TestCase):
 				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
 		finally:
 			playground.cleanup()
+
+
+	def testSlotConflictMixedDependencies(self):
+		"""
+		Bug 487198
+		For parents with mixed >= and < dependencies, we scheduled rebuilds for the
+		>= atom, but in the end didn't install the child update becaue of the < atom.
+		"""
+		ebuilds = {
+			"cat/slotted-lib-1" : {
+				"EAPI": "5",
+				"SLOT": "1"
+			},
+			"cat/slotted-lib-2" : {
+				"EAPI": "5",
+				"SLOT": "2"
+			},
+			"cat/slotted-lib-3" : {
+				"EAPI": "5",
+				"SLOT": "3"
+			},
+			"cat/slotted-lib-4" : {
+				"EAPI": "5",
+				"SLOT": "4"
+			},
+			"cat/slotted-lib-5" : {
+				"EAPI": "5",
+				"SLOT": "5"
+			},
+			"cat/user-1" : {
+				"EAPI": "5",
+				"DEPEND": ">=cat/slotted-lib-2:= <cat/slotted-lib-4:=",
+				"RDEPEND": ">=cat/slotted-lib-2:= <cat/slotted-lib-4:=",
+			},
+		}
+
+		installed = {
+			"cat/slotted-lib-3" : {
+				"EAPI": "5",
+				"SLOT": "3"
+			},
+			"cat/user-1" : {
+				"EAPI": "5",
+				"DEPEND": ">=cat/slotted-lib-2:3/3= <cat/slotted-lib-4:3/3=",
+				"RDEPEND": ">=cat/slotted-lib-2:3/3= <cat/slotted-lib-4:3/3=",
+			},
+		}
+
+		test_cases = (
+			ResolverPlaygroundTestCase(
+				["cat/user"],
+				options = {"--deep": True, "--update": True},
+				success = True,
+				mergelist = []),
+		)
+
+		world = []
+
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			installed=installed, world=world, debug=False)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
