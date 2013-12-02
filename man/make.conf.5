@@ -12,7 +12,8 @@ simple shell\-like expansion of the form \fIvar="${var}"\fR, the source
 keyword and variable substitution, but not some of the more advanced BASH
 features like arrays and special parameter expansions. For more details, see
 the Simple lexical analysis documentation:
-\fLhttp://docs.python.org/3/library/shlex.html\fR.
+\fLhttp://docs.python.org/3/library/shlex.html\fR. Note that if you source
+files, they need to be in the same shlex syntax for portage to read them.
 .br
 Portage will check the currently\-defined environment variables
 first for any settings.  If no environment settings are found,
