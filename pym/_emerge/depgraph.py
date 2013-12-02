@@ -2283,6 +2283,7 @@ class depgraph(object):
 			(pkg.root, pkg.slot_atom) in self._dynamic_config._slot_operator_replace_installed and \
 			mypriority.satisfied is not child and \
 			mypriority.satisfied.installed and \
+			child and \
 			not child.installed and \
 			(child.slot != mypriority.satisfied.slot or child.sub_slot != mypriority.satisfied.sub_slot):
 			slot_operator_rebuild = True
