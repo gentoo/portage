@@ -857,13 +857,19 @@ Specifies priority of given repository.
 Specifies CVS repository.
 .TP
 .B sync\-type
-Specifies type of synchronization.
+Specifies type of synchronization performed by `emerge \-\-sync`.
 .br
-Valid values: cvs, git, rsync
+Valid non-empty values: cvs, git, rsync
+.br
+This attribute can be set to empty value to disable synchronization of given
+repository. Empty value is default.
 .TP
 .B sync\-uri
 Specifies URI of repository used for synchronization performed by `emerge
 \-\-sync`.
+.br
+This attribute can be set to empty value to disable synchronization of given
+repository. Empty value is default.
 .RS
 .TP
 Syntax:
