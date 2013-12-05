@@ -304,7 +304,7 @@ class SlotConflictRebuildTestCase(TestCase):
 		"""
 		Bug 487198
 		For parents with mixed >= and < dependencies, we scheduled rebuilds for the
-		>= atom, but in the end didn't install the child update becaue of the < atom.
+		>= atom, but in the end didn't install the child update because of the < atom.
 		"""
 		ebuilds = {
 			"cat/slotted-lib-1" : {
