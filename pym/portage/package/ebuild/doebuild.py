@@ -1311,10 +1311,8 @@ def _spawn_actionmap(settings):
 		nosandbox = ("sandbox" not in features and \
 			"usersandbox" not in features)
 
-	if not portage.process.sandbox_capable:
-		nosandbox = True
-
-	if not portage.process.macossandbox_capable:
+	if not (portage.process.sandbox_capable or \
+		portage.process.macossandbox_capable):
 		nosandbox = True
 
 	sesandbox = settings.selinux_enabled() and \
