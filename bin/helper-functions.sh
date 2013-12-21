@@ -34,7 +34,7 @@ __multijob_init() {
 }
 
 __multijob_child_init() {
-	trap 'echo ${BASHPID} $? >&'${mj_write_fd} EXIT
+	trap 'echo ${BASHPID:-$(__bashpid)} $? >&'${mj_write_fd} EXIT
 	trap 'exit 1' INT TERM
 }
 

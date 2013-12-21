@@ -469,7 +469,7 @@ unpack() {
 
 econf() {
 	local x
-	local pid=${BASHPID}
+	local pid=${BASHPID:-$(__bashpid)}
 
 	if ! ___eapi_has_prefix_variables; then
 		local EPREFIX=
