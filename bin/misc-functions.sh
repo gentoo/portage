@@ -1049,6 +1049,15 @@ install_qa_check_macho() {
 		rm -f "${T}/mach-o.check"
 	fi
 
+	install_name_is_relative() {
+		case $1 in
+			"@executable_path/"*)  return 0  ;;
+			"@loader_path"/*)      return 0  ;;
+			"@rpath/"*)            return 0  ;;
+			*)                     return 1  ;;
+		esac
+	}
+
 	# While we generate the NEEDED files, check that we don't get kernel
 	# traps at runtime because of broken install_names on Darwin.
 	rm -f "${T}"/.install_name_check_failed
@@ -1061,6 +1070,17 @@ install_qa_check_macho() {
 		# See if the self-reference install_name points to an existing
 		# and to be installed file.  This usually is a symlink for the
 		# major version.
+		if install_name_is_relative ${install_name} ; then
+			# try to locate the library in the installed image
+			local inpath=${install_name#@*/}
+			local libl
+			for libl in $(find "${ED}" -name "${inpath##*/}") ; do
+				if [[ ${libl} == */${inpath} ]] ; then
+					install_name=/${libl#${D}}
+					break
+				fi
+			done
+		fi
 		if [[ ! -e ${D}${install_name} ]] ; then
 			eqawarn "QA Notice: invalid self-reference install_name ${install_name} in ${obj}"
 			# remember we are in an implicit subshell, that's
@@ -1077,7 +1097,7 @@ install_qa_check_macho() {
 			elif [[ ${lib} == ${S}* ]] ; then
 				eqawarn "QA Notice: install_name references \${S}: ${lib} in ${obj}"
 				touch "${T}"/.install_name_check_failed
-			elif [[ ! -e ${lib} && ! -e ${D}${lib} && ${lib} != "@executable_path/"* && ${lib} != "@loader_path/"* ]] ; then
+			elif ! install_name_is_relative ${lib} && [[ ! -e ${lib} && ! -e ${D}${lib} ]] ; then
 				eqawarn "QA Notice: invalid reference to ${lib} in ${obj}"
 				# remember we are in an implicit subshell, that's
 				# why we touch a file here ... ideally we should be
@@ -1086,7 +1106,7 @@ install_qa_check_macho() {
 			fi
 		done
 
-		# backwards compatability
+		# backwards compatibility
 		echo "${obj} ${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
 		# what we use
 		echo "${arch};${obj};${install_name};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.MACHO.3
