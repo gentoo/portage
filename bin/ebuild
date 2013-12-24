@@ -306,7 +306,7 @@ def stale_env_warning():
 
 			if ebuild_changed:
 				open(os.path.join(tmpsettings['PORTAGE_BUILDDIR'],
-					'.ebuild_changed'), 'w')
+					'.ebuild_changed'), 'w').close()
 
 from portage.exception import PermissionDenied, \
 	PortagePackageException, UnsupportedAPIException
