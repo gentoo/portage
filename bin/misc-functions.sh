@@ -1166,6 +1166,7 @@ __dyn_package() {
 
 	local tar_options=""
 	[[ $PORTAGE_VERBOSE = 1 ]] && tar_options+=" -v"
+	has xattr ${FEATURES} && [[ $(tar --help 2> /dev/null) == *--xattrs* ]] && tar_options+=" --xattrs"
 	# Sandbox is disabled in case the user wants to use a symlink
 	# for $PKGDIR and/or $PKGDIR/All.
 	export SANDBOX_ON="0"
