@@ -13,6 +13,12 @@ import sys
 
 from portage.util._argparse import ArgumentParser
 
+# Argument parsing compatibility for Python 2.6 using optparse.
+if sys.hexversion < 0x2070000:
+	from optparse import OptionParser
+
+from optparse import OptionError
+
 CONTENT_ENCODING = 'utf_8'
 FS_ENCODING = 'utf_8'
 
@@ -147,15 +153,36 @@ def chpath_inplace_symlink(filename, st, old, new):
 def main(argv):
 
 	parser = ArgumentParser(description=__doc__)
-	parser.add_argument('location', default=None,
-		help='root directory (e.g. $D)')
-	parser.add_argument('old', default=None,
-		help='original build prefix (e.g. /)')
-	parser.add_argument('new', default=None,
-		help='new install prefix (e.g. $EPREFIX)')
-	opts = parser.parse_args(argv)
+	try:
+		parser.add_argument('location', default=None,
+			help='root directory (e.g. $D)')
+		parser.add_argument('old', default=None,
+			help='original build prefix (e.g. /)')
+		parser.add_argument('new', default=None,
+			help='new install prefix (e.g. $EPREFIX)')
+		opts = parser.parse_args(argv)
 
-	location, old, new = opts.location, opts.old, opts.new
+		location, old, new = opts.location, opts.old, opts.new
+	except OptionError:
+		# Argument parsing compatibility for Python 2.6 using optparse.
+		if sys.hexversion < 0x2070000:
+			parser = OptionParser(description=__doc__,
+				usage="usage: %prog [-h] location old new\n\n" + \
+				"  location: root directory (e.g. $D)\n" + \
+				"  old:      original build prefix (e.g. /)\n" + \
+				"  new:      new install prefix (e.g. $EPREFIX)")
+
+			(opts, args) = parser.parse_args()
+
+			if len(args) != 3:
+				parser.print_usage()
+				print("%s: error: expected 3 arguments, got %i"
+					% (__file__, len(args)))
+				return
+
+			location, old, new = args[0:3]
+		else:
+			raise
 
 	is_text_file = IsTextFile()
 
