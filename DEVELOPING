@@ -171,9 +171,9 @@ Then create the tarball:
 	./mkrelease.sh --changelog-rev v2.2.7 --tag 2.2.8
 
 Unpack the tarball and run tests:
-	./runtests.sh
-Make sure you have all supported python versions installed:
-	2.6 2.7 3.2 3.3
+	./runtests.sh --python-versions=supported
+Make sure you have all supported python versions installed first
+(see PYTHON_SUPPORTED_VERSIONS in runtests.sh).
 
 Version bump the ebuild and verify it can re-install itself:
 	emerge portage
