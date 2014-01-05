@@ -8,9 +8,10 @@ BRANCH=${BRANCH:-master}
 USE_TAG=false
 CHANGELOG_REVISION=
 UPLOAD_LOCATION=
+RUNTESTS=false
 
 usage() {
-	echo "Usage: ${0##*/} [--changelog-rev <tree-ish>] [-t|--tag] [-u|--upload <location>] <version>"
+	echo "Usage: ${0##*/} [--changelog-rev <tree-ish>] [-t|--tag] [-u|--upload <location>] [--runtests] <version>"
 	exit ${1:-0}
 }
 
@@ -19,7 +20,7 @@ die() {
 	usage 1
 }
 
-ARGS=$(getopt -o htu: --long help,changelog-rev:,tag,upload: \
+ARGS=$(getopt -o htu: --long help,changelog-rev:,runtests,tag,upload: \
 	-n "${0##*/}" -- "$@")
 [ $? != 0 ] && die "initialization error"
 
@@ -41,6 +42,10 @@ while true; do
 			;;
 		-h|--help)
 			usage
+			;;
+		--runtests)
+			RUNTESTS=true
+			shift
 			;;
 		--)
 			shift
@@ -77,6 +82,12 @@ echo ">>> Building release tree"
 cp -a "${SOURCE_DIR}/"{bin,cnf,doc,man,misc,pym} "${RELEASE_DIR}/" || die "directory copy failed"
 cp "${SOURCE_DIR}/"{DEVELOPING,LICENSE,Makefile,NEWS,README,RELEASE-NOTES,TEST-NOTES} \
 	"${RELEASE_DIR}/" || die "file copy failed"
+
+if [[ ${RUNTESTS} == "true" ]] ; then
+	pushd "${SOURCE_DIR}" >/dev/null
+	./runtests.sh --python-versions=supported || die "tests failed"
+	popd >/dev/null
+fi
 
 rm -rf "${SOURCE_DIR}" || die "directory cleanup failed"
 

@@ -167,11 +167,8 @@ Releases
 First create a git tag for this release:
 	git tag v2.2.8
 
-Then create the tarball:
-	./mkrelease.sh --changelog-rev v2.2.7 --tag 2.2.8
-
-Unpack the tarball and run tests:
-	./runtests.sh --python-versions=supported
+Then create the tarball and run the tests:
+	./mkrelease.sh --changelog-rev v2.2.7 --tag --runtests 2.2.8
 Make sure you have all supported python versions installed first
 (see PYTHON_SUPPORTED_VERSIONS in runtests.sh).
 
