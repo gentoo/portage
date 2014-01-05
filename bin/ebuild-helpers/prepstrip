@@ -339,8 +339,13 @@ do
 	if [[ ${f} == *"current ar archive"* ]] ; then
 		__vecho "   ${x:${#ED}}"
 		if ${strip_this} ; then
-			# hmm, can we split debug/sources for .a ?
-			${STRIP} -g "${x}"
+			# If we have split debug enabled, then do not strip this.
+			# There is no concept of splitdebug for objects not yet
+			# linked in (only for finally linked ELFs), so we have to
+			# retain the debug info in the archive itself.
+			if ! ${FEATURES_splitdebug} || ${RESTRICT_splitdebug} ; then
+				${STRIP} -g "${x}"
+			fi
 		fi
 	elif [[ ${f} == *"SB executable"* || ${f} == *"SB shared object"* ]] ; then
 		process_elf "${x}" "${inode_link}" ${PORTAGE_STRIP_FLAGS}
