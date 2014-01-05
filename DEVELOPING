@@ -57,7 +57,7 @@ should be replaced with:
 
 if foo is not None:
 
-Is not does a reference comparison (address1 = address2 basically) and 
+Is not does a reference comparison (address1 = address2 basically) and
 the == forces a by value compare (with __eq__())
 
 Dict Lookups
@@ -139,7 +139,7 @@ NO:
 
 Try not to import large numbers of things into the namespace of a module.
 I realize this is done all over the place in current code but it really makes it
-a pain to do code reflection when the namespace is cluttered with identifiers 
+a pain to do code reflection when the namespace is cluttered with identifiers
 from other modules.
 
 YES:
@@ -161,10 +161,13 @@ somewhat annoying because the import line needs to be modified when functions
 are needed and often unused functions are left in the import line until someone
 comes along with a linter to clean up (does not happen often).
 
+
 Releases
 --------
 
-First create a git tag for this release:
+First update the NEWS and RELEASE-NOTES files and commit.
+
+Second create a git tag for this release:
 	git tag v2.2.8
 
 Then create the tarball and run the tests:
