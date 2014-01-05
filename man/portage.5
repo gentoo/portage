@@ -1045,10 +1045,11 @@ The default setting for repoman's --echangelog option.
 The cache formats supported in the metadata tree.  There is the old "pms" format
 and the newer/faster "md5-dict" format.  Default is to detect dirs.
 .TP
-.BR profile\-formats " = [portage-1|" portage-1-compat "|portage-2]"
+.BR profile\-formats " = [pms|portage-1|portage-2]"
 Control functionality available to profiles in this repo such as which files
 may be dirs, or the syntax available in parent files.  Use "portage-2" if you're
-unsure.
+unsure.  The default is "portage-1-compat" mode which is meant to be compatible
+with old profiles, but is not allowed to be opted into directly.
 .RE
 .RE
 
