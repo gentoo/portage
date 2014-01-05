@@ -30,15 +30,18 @@ interrupted() {
 trap interrupted SIGINT
 
 unused_args=()
+IGNORE_MISSING_VERSIONS=true
 
 while [ $# -gt 0 ] ; do
 	case "$1" in
 		--python-versions=*)
 			PYTHON_VERSIONS=${1#--python-versions=}
+			IGNORE_MISSING_VERSIONS=false
 			;;
 		--python-versions)
 			shift
 			PYTHON_VERSIONS=$1
+			IGNORE_MISSING_VERSIONS=false
 			;;
 		*)
 			unused_args[${#unused_args[@]}]=$1
@@ -73,6 +76,9 @@ for version in ${PYTHON_VERSIONS}; do
 			exit_status="1"
 		fi
 		echo
+	elif [[ ${IGNORE_MISSING_VERSIONS} != "true" ]] ; then
+		echo -e "${BAD}Could not find requested Python ${version}${NORMAL}"
+		exit_status="1"
 	fi
 done
 
