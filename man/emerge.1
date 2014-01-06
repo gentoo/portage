@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Aug 2013" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Jan 2014" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -175,12 +175,12 @@ with the \fI\-\-verbose\fR option.
 Displays a list of available package sets.
 .TP
 .BR \-\-metadata
-Transfers metadata cache from ${PORTDIR}/metadata/md5\-cache/ to
-/var/cache/edb/dep/ as is normally done on the
-tail end of an rsync update using \fBemerge \-\-sync\fR.  This process
-populates the cache database that portage uses for pre-parsed lookups of
-package data.  It does not populate cache for the overlays listed in
-PORTDIR_OVERLAY.  In order to generate cache for overlays, use \fB\-\-regen\fR.
+Transfers pregenerated metadata cache from ${repository_location}/metadata/md5\-cache/
+to /var/cache/edb/dep/ as is normally done on the tail end of an rsync update using
+\fBemerge \-\-sync\fR. This process populates the cache database that Portage uses
+for pre-parsed lookups of package data. It does not populate cache for repositories
+not distributing pregenerated metadata cache. In order to generate cache for these
+repositories, use \fB\-\-regen\fR.
 In versions of portage >=2.1.5 the \-\-metadata action is totally unnecessary
 unless the user has enabled FEATURES="metadata-transfer" in \fBmake.conf\fR(5).
 .TP
@@ -824,8 +824,8 @@ dependencies.
 .BR "\-\-usepkgonly [ y | n ] (\-K short option)"
 Tells emerge to only use binary packages (from $PKGDIR).  All the binary
 packages must be available at the time of dependency calculation or emerge
-will simply abort.  Portage does not use $PORTDIR when calculating dependency
-information so all masking information is ignored.
+will simply abort.  Portage does not use ebuild repositories when calculating
+dependency information so all masking information is ignored.
 .TP
 .BR "\-\-verbose [ y | n ] (\-v short option)"
 Tell emerge to run in verbose mode.  Currently this flag causes emerge to print
