@@ -10,7 +10,7 @@ source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 #
 # API functions for doing parallel processing
 #
-__numjobs() {
+makeopts_jobs() {
 	# Copied from eutils.eclass:makeopts_jobs()
 	local jobs=$(echo " ${MAKEOPTS} " | \
 		sed -r -n 's:.*[[:space:]](-j|--jobs[=[:space:]])[[:space:]]*([0-9]+).*:\2:p')
@@ -19,20 +19,22 @@ __numjobs() {
 
 __multijob_init() {
 	# Setup a pipe for children to write their pids to when they finish.
-	mj_control_pipe=$(mktemp -t multijob.XXXXXX)
-	rm "${mj_control_pipe}"
-	mkfifo -m 600 "${mj_control_pipe}"
-	__redirect_alloc_fd mj_read_fd "${mj_control_pipe}"
-	__redirect_alloc_fd mj_write_fd "${mj_control_pipe}"
-	rm -f "${mj_control_pipe}"
+	# We have to allocate two fd's because POSIX has undefined behavior
+	# when you open a FIFO for simultaneous read/write. #487056
+	local pipe=$(mktemp -t multijob.XXXXXX)
+	rm -f "${pipe}"
+	mkfifo -m 600 "${pipe}"
+	__redirect_alloc_fd mj_write_fd "${pipe}"
+	__redirect_alloc_fd mj_read_fd "${pipe}"
+	rm -f "${pipe}"
 
 	# See how many children we can fork based on the user's settings.
-	mj_max_jobs=$(__numjobs)
+	mj_max_jobs=$(makeopts_jobs "$@")
 	mj_num_jobs=0
 }
 
 __multijob_child_init() {
-	trap 'echo ${BASHPID} $? >&'${mj_write_fd} EXIT
+	trap 'echo ${BASHPID:-$(__bashpid)} $? >&'${mj_write_fd} EXIT
 	trap 'exit 1' INT TERM
 }
 
@@ -72,24 +74,24 @@ __redirect_alloc_fd() {
 	local var=$1 file=$2 redir=${3:-"<>"}
 
 	if [[ $(( (BASH_VERSINFO[0] << 8) + BASH_VERSINFO[1] )) -ge $(( (4 << 8) + 1 )) ]] ; then
-			# Newer bash provides this functionality.
-			eval "exec {${var}}${redir}'${file}'"
+		# Newer bash provides this functionality.
+		eval "exec {${var}}${redir}'${file}'"
 	else
-			# Need to provide the functionality ourselves.
-			local fd=10
-			local fddir=/dev/fd
-			# Prefer /proc/self/fd if available (/dev/fd
-			# doesn't work on solaris, see bug #474536).
-			[[ -d /proc/self/fd ]] && fddir=/proc/self/fd
-			while :; do
-					# Make sure the fd isn't open.  It could be a char device,
-					# or a symlink (possibly broken) to something else.
-					if [[ ! -e ${fddir}/${fd} ]] && [[ ! -L ${fddir}/${fd} ]] ; then
-							eval "exec ${fd}${redir}'${file}'" && break
-					fi
-					[[ ${fd} -gt 1024 ]] && die "__redirect_alloc_fd failed"
-					: $(( ++fd ))
-			done
-			: $(( ${var} = fd ))
+		# Need to provide the functionality ourselves.
+		local fd=10
+		local fddir=/dev/fd
+		# Prefer /proc/self/fd if available (/dev/fd
+		# doesn't work on solaris, see bug #474536).
+		[[ -d /proc/self/fd ]] && fddir=/proc/self/fd
+		while :; do
+			# Make sure the fd isn't open.  It could be a char device,
+			# or a symlink (possibly broken) to something else.
+			if [[ ! -e ${fddir}/${fd} ]] && [[ ! -L ${fddir}/${fd} ]] ; then
+				eval "exec ${fd}${redir}'${file}'" && break
+			fi
+			[[ ${fd} -gt 1024 ]] && die 'could not locate a free temp fd !?'
+			: $(( ++fd ))
+		done
+		: $(( ${var} = fd ))
 	fi
 }

@@ -14,7 +14,8 @@ __save_ebuild_env() {
 	(
 	if has --exclude-init-phases $* ; then
 		unset S _E_DOCDESTTREE_ _E_EXEDESTTREE_ \
-			PORTAGE_DOCOMPRESS PORTAGE_DOCOMPRESS_SKIP
+			PORTAGE_DOCOMPRESS_SIZE_LIMIT PORTAGE_DOCOMPRESS \
+			PORTAGE_DOCOMPRESS_SKIP
 		if [[ -n $PYTHONPATH &&
 			${PYTHONPATH%%:*} -ef $PORTAGE_PYM_PATH ]] ; then
 			if [[ $PYTHONPATH == *:* ]] ; then

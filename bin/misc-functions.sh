@@ -160,7 +160,7 @@ prepcompress() {
 
 	# Queue up for compression.
 	# ecompress{,dir} doesn't like to be called with empty argument lists.
-	[[ ${#incl_d[@]} -gt 0 ]] && ecompressdir --queue "${incl_d[@]}"
+	[[ ${#incl_d[@]} -gt 0 ]] && ecompressdir --limit ${PORTAGE_DOCOMPRESS_SIZE_LIMIT:-0} --queue "${incl_d[@]}"
 	[[ ${#incl_f[@]} -gt 0 ]] && ecompress --queue "${incl_f[@]/#/${ED}}"
 	[[ ${#exclude[@]} -gt 0 ]] && ecompressdir --ignore "${exclude[@]}"
 	return 0
@@ -247,11 +247,28 @@ install_qa_check() {
 	for x in etc/app-defaults usr/man usr/info usr/X11R6 usr/doc usr/locale ; do
 		[[ -d ${ED}/$x ]] && f+="  $x\n"
 	done
-
 	if [[ -n $f ]] ; then
 		eqawarn "QA Notice: This ebuild installs into the following deprecated directories:"
 		eqawarn
 		eqawarn "$f"
+	fi
+
+	# It's ok create these directories, but not to install into them. #493154
+	# TODO: We should add var/lib to this list.
+	f=
+	for x in var/cache var/lock var/run run ; do
+		if [[ ! -L ${ED}/${x} && -d ${ED}/${x} ]] ; then
+			if [[ -z $(find "${ED}/${x}" -prune -empty) ]] ; then
+				f+=$(cd "${ED}"; find "${x}" -printf '  %p\n')
+			fi
+		fi
+	done
+	if [[ -n ${f} ]] ; then
+		eqawarn "QA Notice: This ebuild installs into paths that should be created at runtime."
+		eqawarn " To fix, simply do not install into these directories.  Instead, your package"
+		eqawarn " should create dirs on the fly at runtime as needed via init scripts/etc..."
+		eqawarn
+		eqawarn "${f}"
 	fi
 
 	set +f
@@ -1780,6 +1797,7 @@ __dyn_package() {
 
 	local tar_options=""
 	[[ $PORTAGE_VERBOSE = 1 ]] && tar_options+=" -v"
+	has xattr ${FEATURES} && [[ $(tar --help 2> /dev/null) == *--xattrs* ]] && tar_options+=" --xattrs"
 	# Sandbox is disabled in case the user wants to use a symlink
 	# for $PKGDIR and/or $PKGDIR/All.
 	export SANDBOX_ON="0"

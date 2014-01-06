@@ -10,7 +10,7 @@ import sys
 # This block ensures that ^C interrupts are handled quietly.
 try:
 
-	def exithandler(signum,frame):
+	def exithandler(signum, _frame):
 		signal.signal(signal.SIGINT, signal.SIG_IGN)
 		signal.signal(signal.SIGTERM, signal.SIG_IGN)
 		sys.exit(128 + signum)
@@ -24,7 +24,7 @@ try:
 except KeyboardInterrupt:
 	sys.exit(128 + signal.SIGINT)
 
-def debug_signal(signum, frame):
+def debug_signal(_signum, _frame):
 	import pdb
 	pdb.set_trace()
 
@@ -306,7 +306,7 @@ def stale_env_warning():
 
 			if ebuild_changed:
 				open(os.path.join(tmpsettings['PORTAGE_BUILDDIR'],
-					'.ebuild_changed'), 'w')
+					'.ebuild_changed'), 'w').close()
 
 from portage.exception import PermissionDenied, \
 	PortagePackageException, UnsupportedAPIException

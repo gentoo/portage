@@ -11,7 +11,7 @@ import sys
 # This block ensures that ^C interrupts are handled quietly.
 try:
 
-	def exithandler(signum,frame):
+	def exithandler(signum, _frame):
 		signal.signal(signal.SIGINT, signal.SIG_IGN)
 		signal.signal(signal.SIGTERM, signal.SIG_IGN)
 		sys.exit(128 + signum)
@@ -22,7 +22,7 @@ try:
 except KeyboardInterrupt:
 	sys.exit(128 + signal.SIGINT)
 
-def debug_signal(signum, frame):
+def debug_signal(_signum, _frame):
 	import pdb
 	pdb.set_trace()
 
@@ -48,6 +48,7 @@ portage._internal_caller = True
 from portage import os, _encodings, _unicode_encode, _unicode_decode
 from _emerge.MetadataRegen import MetadataRegen
 from portage.cache.cache_errors import CacheError, StatCollision
+from portage.const import TIMESTAMP_FORMAT
 from portage.manifest import guessManifestFileType
 from portage.package.ebuild._parallel_manifest.ManifestScheduler import ManifestScheduler
 from portage.util import cmp_sort_key, writemsg_level
@@ -74,6 +75,7 @@ else:
 from repoman.utilities import FindVCS
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	long = int
 
 def parse_args(args):
@@ -134,6 +136,9 @@ def parse_args(args):
 	common.add_argument("--ignore-default-opts",
 		action="store_true",
 		help="do not use the EGENCACHE_DEFAULT_OPTS environment variable")
+	common.add_argument("--write-timestamp",
+		action="store_true",
+		help="write metadata/timestamp.chk as required for rsync repositories")
 
 	update = parser.add_argument_group('--update options')
 	update.add_argument("--cache-dir",
@@ -297,69 +302,69 @@ class GenCache(object):
 
 	def _write_cache(self, trg_cache, cpv, repo_path, metadata, ebuild_hash):
 
-			if not hasattr(trg_cache, 'raise_stat_collision'):
-				# This cache does not avoid redundant writes automatically,
-				# so check for an identical existing entry before writing.
-				# This prevents unnecessary disk writes and can also prevent
-				# unnecessary rsync transfers.
-				try:
-					dest = trg_cache[cpv]
-				except (KeyError, CacheError):
-					pass
-				else:
-					if trg_cache.validate_entry(dest,
-						ebuild_hash, self._eclass_db):
-						identical = True
-						for k in self._auxdbkeys:
-							if dest.get(k, '') != metadata.get(k, ''):
-								identical = False
-								break
-						if identical:
-							return
-
+		if not hasattr(trg_cache, 'raise_stat_collision'):
+			# This cache does not avoid redundant writes automatically,
+			# so check for an identical existing entry before writing.
+			# This prevents unnecessary disk writes and can also prevent
+			# unnecessary rsync transfers.
 			try:
-				chf = trg_cache.validation_chf
-				metadata['_%s_' % chf] = getattr(ebuild_hash, chf)
-				try:
-					trg_cache[cpv] = metadata
-				except StatCollision as sc:
-					# If the content of a cache entry changes and neither the
-					# file mtime nor size changes, it will prevent rsync from
-					# detecting changes. Cache backends may raise this
-					# exception from _setitem() if they detect this type of stat
-					# collision. These exceptions are handled by bumping the
-					# mtime on the ebuild (and the corresponding cache entry).
-					# See bug #139134. It is convenient to include checks for
-					# redundant writes along with the internal StatCollision
-					# detection code, so for caches with the
-					# raise_stat_collision attribute, we do not need to
-					# explicitly check for redundant writes like we do for the
-					# other cache types above.
-					max_mtime = sc.mtime
-					for ec, ec_hash in metadata['_eclasses_'].items():
-						if max_mtime < ec_hash.mtime:
-							max_mtime = ec_hash.mtime
-					if max_mtime == sc.mtime:
-						max_mtime += 1
-					max_mtime = long(max_mtime)
-					try:
-						os.utime(ebuild_hash.location, (max_mtime, max_mtime))
-					except OSError as e:
-						self.returncode |= 1
-						writemsg_level(
-							"%s writing target: %s\n" % (cpv, e),
-							level=logging.ERROR, noiselevel=-1)
-					else:
-						ebuild_hash.mtime = max_mtime
-						metadata['_mtime_'] = max_mtime
-						trg_cache[cpv] = metadata
-						self._portdb.auxdb[repo_path][cpv] = metadata
+				dest = trg_cache[cpv]
+			except (KeyError, CacheError):
+				pass
+			else:
+				if trg_cache.validate_entry(dest,
+					ebuild_hash, self._eclass_db):
+					identical = True
+					for k in self._auxdbkeys:
+						if dest.get(k, '') != metadata.get(k, ''):
+							identical = False
+							break
+					if identical:
+						return
 
-			except CacheError as ce:
-				self.returncode |= 1
-				writemsg_level(
-					"%s writing target: %s\n" % (cpv, ce),
-					level=logging.ERROR, noiselevel=-1)
+		try:
+			chf = trg_cache.validation_chf
+			metadata['_%s_' % chf] = getattr(ebuild_hash, chf)
+			try:
+				trg_cache[cpv] = metadata
+			except StatCollision as sc:
+				# If the content of a cache entry changes and neither the
+				# file mtime nor size changes, it will prevent rsync from
+				# detecting changes. Cache backends may raise this
+				# exception from _setitem() if they detect this type of stat
+				# collision. These exceptions are handled by bumping the
+				# mtime on the ebuild (and the corresponding cache entry).
+				# See bug #139134. It is convenient to include checks for
+				# redundant writes along with the internal StatCollision
+				# detection code, so for caches with the
+				# raise_stat_collision attribute, we do not need to
+				# explicitly check for redundant writes like we do for the
+				# other cache types above.
+				max_mtime = sc.mtime
+				for _ec, ec_hash in metadata['_eclasses_'].items():
+					if max_mtime < ec_hash.mtime:
+						max_mtime = ec_hash.mtime
+				if max_mtime == sc.mtime:
+					max_mtime += 1
+				max_mtime = long(max_mtime)
+				try:
+					os.utime(ebuild_hash.location, (max_mtime, max_mtime))
+				except OSError as e:
+					self.returncode |= 1
+					writemsg_level(
+						"%s writing target: %s\n" % (cpv, e),
+						level=logging.ERROR, noiselevel=-1)
+				else:
+					ebuild_hash.mtime = max_mtime
+					metadata['_mtime_'] = max_mtime
+					trg_cache[cpv] = metadata
+					self._portdb.auxdb[repo_path][cpv] = metadata
+
+		except CacheError as ce:
+			self.returncode |= 1
+			writemsg_level(
+				"%s writing target: %s\n" % (cpv, ce),
+				level=logging.ERROR, noiselevel=-1)
 
 	def run(self):
 		signum = run_main_scheduler(self._regen)
@@ -641,7 +646,8 @@ class _special_filename(_filename_base):
 		self.file_name = file_name
 		self.file_type = guessManifestFileType(file_name)
 
-	def file_type_lt(self, a, b):
+	@staticmethod
+	def file_type_lt(a, b):
 		"""
 		Defines an ordering between file types.
 		"""
@@ -1063,6 +1069,16 @@ def egencache_main(args):
 		gen_clogs = GenChangeLogs(portdb)
 		gen_clogs.run()
 		ret.append(gen_clogs.returncode)
+
+	if options.write_timestamp:
+		timestamp_path = os.path.join(repo_path, 'metadata', 'timestamp.chk')
+		try:
+			with open(timestamp_path, 'w') as f:
+				f.write(time.strftime('%s\n' % TIMESTAMP_FORMAT, time.gmtime()))
+		except IOError:
+			ret.append(os.EX_IOERR)
+		else:
+			ret.append(os.EX_OK)
 
 	return max(ret)
 

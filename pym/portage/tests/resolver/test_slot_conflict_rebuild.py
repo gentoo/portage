@@ -1,4 +1,4 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -96,6 +96,265 @@ class SlotConflictRebuildTestCase(TestCase):
 				mergelist = ["app-misc/D-2", "app-misc/E-0"]),
 
 		)
+
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			installed=installed, world=world, debug=False)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
+
+
+	def testSlotConflictMassRebuild(self):
+		"""
+		Bug 486580
+		Before this bug was fixed, emerge would backtrack for each package that needs
+		a rebuild. This could cause it to hit the backtrack limit and not rebuild all
+		needed packages.
+		"""
+		ebuilds = {
+
+			"app-misc/A-1" : {
+				"EAPI": "5",
+				"DEPEND": "app-misc/B:=",
+				"RDEPEND": "app-misc/B:="
+			},
+
+			"app-misc/B-1" : {
+				"EAPI": "5",
+				"SLOT": "1"
+			},
+
+			"app-misc/B-2" : {
+				"EAPI": "5",
+				"SLOT": "2/2"
+			},
+		}
+
+		installed = {
+			"app-misc/B-1" : {
+				"EAPI": "5",
+				"SLOT": "1"
+			},
+		}
+
+		expected_mergelist = ['app-misc/A-1', 'app-misc/B-2']
+
+		for i in range(5):
+			ebuilds["app-misc/C%sC-1" % i] = {
+				"EAPI": "5",
+				"DEPEND": "app-misc/B:=",
+				"RDEPEND": "app-misc/B:="
+			}
+
+			installed["app-misc/C%sC-1" % i] = {
+				"EAPI": "5",
+				"DEPEND": "app-misc/B:1/1=",
+				"RDEPEND": "app-misc/B:1/1="
+			}
+			for x in ("DEPEND", "RDEPEND"):
+				ebuilds["app-misc/A-1"][x] += " app-misc/C%sC" % i
+
+			expected_mergelist.append("app-misc/C%sC-1" % i)
+
+
+		test_cases = (
+			ResolverPlaygroundTestCase(
+				["app-misc/A"],
+				ignore_mergelist_order=True,
+				all_permutations=True,
+				options = {"--backtrack": 3, '--deep': True},
+				success = True,
+				mergelist = expected_mergelist),
+		)
+
+		world = []
+
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			installed=installed, world=world, debug=False)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
+
+	def testSlotConflictForgottenChild(self):
+		"""
+		Similar to testSlotConflictMassRebuild above, but this time the rebuilds are scheduled,
+		but the package causing the rebuild (the child) is not installed.
+		"""
+		ebuilds = {
+
+			"app-misc/A-2" : {
+				"EAPI": "5",
+				"DEPEND": "app-misc/B:= app-misc/C",
+				"RDEPEND": "app-misc/B:= app-misc/C",
+			},
+
+			"app-misc/B-2" : {
+				"EAPI": "5",
+				"SLOT": "2"
+			},
+
+			"app-misc/C-1": {
+				"EAPI": "5",
+				"DEPEND": "app-misc/B:=",
+				"RDEPEND": "app-misc/B:="
+			},
+		}
+
+		installed = {
+			"app-misc/A-1" : {
+				"EAPI": "5",
+				"DEPEND": "app-misc/B:1/1= app-misc/C",
+				"RDEPEND": "app-misc/B:1/1= app-misc/C",
+			},
+
+			"app-misc/B-1" : {
+				"EAPI": "5",
+				"SLOT": "1"
+			},
+
+			"app-misc/C-1": {
+				"EAPI": "5",
+				"DEPEND": "app-misc/B:1/1=",
+				"RDEPEND": "app-misc/B:1/1="
+			},
+		}
+
+		test_cases = (
+			ResolverPlaygroundTestCase(
+				["app-misc/A"],
+				success = True,
+				mergelist = ['app-misc/B-2', 'app-misc/C-1', 'app-misc/A-2']),
+		)
+
+		world = []
+
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			installed=installed, world=world, debug=False)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
+
+
+	def testSlotConflictDepChange(self):
+		"""
+		Bug 490362
+		The dependency in the ebuild was changed form slot operator to
+		no slot operator. The vdb contained the slot operator and emerge
+		would refuse to rebuild.
+		"""
+		ebuilds = {
+			"app-misc/A-1" : {
+				"EAPI": "5",
+				"DEPEND": "app-misc/B",
+				"RDEPEND": "app-misc/B"
+			},
+
+			"app-misc/B-1" : {
+				"EAPI": "5",
+				"SLOT": "0/1"
+			},
+
+			"app-misc/B-2" : {
+				"EAPI": "5",
+				"SLOT": "0/2"
+			},
+		}
+
+		installed = {
+			"app-misc/A-1" : {
+				"EAPI": "5",
+				"DEPEND": "app-misc/B:0/1=",
+				"RDEPEND": "app-misc/B:0/1="
+			},
+			"app-misc/B-1" : {
+				"EAPI": "5",
+				"SLOT": "0/1"
+			},
+		}
+
+		test_cases = (
+			ResolverPlaygroundTestCase(
+				["app-misc/B"],
+				success = True,
+				mergelist = ['app-misc/B-2', 'app-misc/A-1']),
+		)
+
+		world = ["app-misc/A"]
+
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			installed=installed, world=world, debug=False)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
+
+
+	def testSlotConflictMixedDependencies(self):
+		"""
+		Bug 487198
+		For parents with mixed >= and < dependencies, we scheduled rebuilds for the
+		>= atom, but in the end didn't install the child update because of the < atom.
+		"""
+		ebuilds = {
+			"cat/slotted-lib-1" : {
+				"EAPI": "5",
+				"SLOT": "1"
+			},
+			"cat/slotted-lib-2" : {
+				"EAPI": "5",
+				"SLOT": "2"
+			},
+			"cat/slotted-lib-3" : {
+				"EAPI": "5",
+				"SLOT": "3"
+			},
+			"cat/slotted-lib-4" : {
+				"EAPI": "5",
+				"SLOT": "4"
+			},
+			"cat/slotted-lib-5" : {
+				"EAPI": "5",
+				"SLOT": "5"
+			},
+			"cat/user-1" : {
+				"EAPI": "5",
+				"DEPEND": ">=cat/slotted-lib-2:= <cat/slotted-lib-4:=",
+				"RDEPEND": ">=cat/slotted-lib-2:= <cat/slotted-lib-4:=",
+			},
+		}
+
+		installed = {
+			"cat/slotted-lib-3" : {
+				"EAPI": "5",
+				"SLOT": "3"
+			},
+			"cat/user-1" : {
+				"EAPI": "5",
+				"DEPEND": ">=cat/slotted-lib-2:3/3= <cat/slotted-lib-4:3/3=",
+				"RDEPEND": ">=cat/slotted-lib-2:3/3= <cat/slotted-lib-4:3/3=",
+			},
+		}
+
+		test_cases = (
+			ResolverPlaygroundTestCase(
+				["cat/user"],
+				options = {"--deep": True, "--update": True},
+				success = True,
+				mergelist = []),
+		)
+
+		world = []
 
 		playground = ResolverPlayground(ebuilds=ebuilds,
 			installed=installed, world=world, debug=False)

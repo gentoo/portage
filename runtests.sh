@@ -2,6 +2,8 @@
 # Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+# These are the versions we care about.  The rest are just "nice to have".
+PYTHON_SUPPORTED_VERSIONS="2.6 2.7 3.2 3.3"
 PYTHON_VERSIONS="2.6 2.7 2.7-pypy-1.8 2.7-pypy-1.9 2.7-pypy-2.0 3.1 3.2 3.3 3.4"
 
 # has to be run from portage root dir
@@ -28,15 +30,18 @@ interrupted() {
 trap interrupted SIGINT
 
 unused_args=()
+IGNORE_MISSING_VERSIONS=true
 
 while [ $# -gt 0 ] ; do
 	case "$1" in
 		--python-versions=*)
 			PYTHON_VERSIONS=${1#--python-versions=}
+			IGNORE_MISSING_VERSIONS=false
 			;;
 		--python-versions)
 			shift
 			PYTHON_VERSIONS=$1
+			IGNORE_MISSING_VERSIONS=false
 			;;
 		*)
 			unused_args[${#unused_args[@]}]=$1
@@ -44,6 +49,9 @@ while [ $# -gt 0 ] ; do
 	esac
 	shift
 done
+if [[ ${PYTHON_VERSIONS} == "supported" ]] ; then
+	PYTHON_VERSIONS=${PYTHON_SUPPORTED_VERSIONS}
+fi
 
 set -- "${unused_args[@]}"
 
@@ -68,6 +76,9 @@ for version in ${PYTHON_VERSIONS}; do
 			exit_status="1"
 		fi
 		echo
+	elif [[ ${IGNORE_MISSING_VERSIONS} != "true" ]] ; then
+		echo -e "${BAD}Could not find requested Python ${version}${NORMAL}"
+		exit_status="1"
 	fi
 done
 

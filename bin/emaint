@@ -13,10 +13,10 @@ import errno
 try:
 	import signal
 
-	def exithandler(signum,frame):
+	def exithandler(signum, _frame):
 		signal.signal(signal.SIGINT, signal.SIG_IGN)
 		signal.signal(signal.SIGTERM, signal.SIG_IGN)
-		sys.exit(1)
+		sys.exit(128 + signum)
 
 	signal.signal(signal.SIGINT, exithandler)
 	signal.signal(signal.SIGTERM, exithandler)

@@ -1286,11 +1286,6 @@ class binarytree(object):
 
 	def _eval_use_flags(self, cpv, metadata):
 		use = frozenset(metadata["USE"].split())
-		raw_use = use
-		iuse = set(f.lstrip("-+") for f in metadata["IUSE"].split())
-		use = [f for f in use if f in iuse]
-		use.sort()
-		metadata["USE"] = " ".join(use)
 		for k in self._pkgindex_use_evaluated_keys:
 			if k.endswith('DEPEND'):
 				token_class = Atom
@@ -1299,7 +1294,7 @@ class binarytree(object):
 
 			try:
 				deps = metadata[k]
-				deps = use_reduce(deps, uselist=raw_use, token_class=token_class)
+				deps = use_reduce(deps, uselist=use, token_class=token_class)
 				deps = paren_enclose(deps)
 			except portage.exception.InvalidDependString as e:
 				writemsg("%s: %s\n" % (k, str(e)),

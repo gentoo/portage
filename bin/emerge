@@ -15,7 +15,7 @@ import sys
 # Exception SystemExit: 130 in <function remove at 0x7fd2146c1320> ignored
 try:
 
-	def exithandler(signum,frame):
+	def exithandler(signum, _frame):
 		signal.signal(signal.SIGTERM, signal.SIG_IGN)
 		sys.exit(128 + signum)
 
@@ -24,7 +24,7 @@ try:
 	# writing to a pipe.
 	signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
-	def debug_signal(signum, frame):
+	def debug_signal(_signum, _frame):
 		import pdb
 		pdb.set_trace()
 

@@ -250,7 +250,7 @@ class ConfigTestCase(TestCase):
 			"new_repo_config.thin_manifest != True")
 
 		new_manifest_file = os.path.join(new_repo_config.location, "dev-libs", "A", "Manifest")
-		self.assertEqual(os.path.exists(new_manifest_file), False)
+		self.assertNotExists(new_manifest_file)
 
 		new_manifest_file = os.path.join(new_repo_config.location, "dev-libs", "B", "Manifest")
 		f = open(new_manifest_file)

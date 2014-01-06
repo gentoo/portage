@@ -115,7 +115,7 @@ save_elf_sources() {
 	buildid=$(debugedit -i \
 		-b "${WORKDIR}" \
 		-d "${prepstrip_sources_dir}" \
-		-l "${tmpdir}/sources/${x##*/}.${BASHPID}" \
+		-l "${tmpdir}/sources/${x##*/}.${BASHPID:-$(__bashpid)}" \
 		"${x}")
 }
 
@@ -207,7 +207,7 @@ process_elf() {
 		# see if we can split & strip at the same time
 		if [[ -n ${SPLIT_STRIP_FLAGS} ]] ; then
 			local shortname="${x##*/}.debug"
-			local splitdebug="${tmpdir}/splitdebug/${shortname}.${BASHPID}"
+			local splitdebug="${tmpdir}/splitdebug/${shortname}.${BASHPID:-$(__bashpid)}"
 			${already_stripped} || \
 			${STRIP} ${strip_flags} \
 				-f "${splitdebug}" \
@@ -338,8 +338,13 @@ do
 	if [[ ${f} == *"current ar archive"* ]] ; then
 		__vecho "   ${x:${#ED}}"
 		if ${strip_this} ; then
-			# hmm, can we split debug/sources for .a ?
-			${STRIP} -g "${x}"
+			# If we have split debug enabled, then do not strip this.
+			# There is no concept of splitdebug for objects not yet
+			# linked in (only for finally linked ELFs), so we have to
+			# retain the debug info in the archive itself.
+			if ! ${FEATURES_splitdebug} || ${RESTRICT_splitdebug} ; then
+				${STRIP} -g "${x}"
+			fi
 		fi
 	elif [[ ${f} == *"SB executable"* || ${f} == *"SB shared object"* ]] ; then
 		process_elf "${x}" "${inode_link}" ${PORTAGE_STRIP_FLAGS}

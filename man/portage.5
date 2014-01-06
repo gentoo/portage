@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Aug 2013" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "Dec 2013" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -529,10 +529,10 @@ virtual/aspell\-dict   app\-dicts/aspell\-en
 .RE
 .TP
 .BR /etc/portage/
-Any file in this directory that begins with "package." can be more than just a
-flat file.  If it is a directory, then all the files in that directory will be
-sorted in ascending alphabetical order by file name and summed together as if
-it were a single file.
+Any file in this directory that begins with "package." or is repos.conf can be
+more than just a flat file.  If it is a directory, then all the files in that
+directory will be sorted in ascending alphabetical order by file name and summed
+together as if it were a single file.
 
 .I Example:
 .nf
@@ -857,13 +857,19 @@ Specifies priority of given repository.
 Specifies CVS repository.
 .TP
 .B sync\-type
-Specifies type of synchronization.
+Specifies type of synchronization performed by `emerge \-\-sync`.
 .br
-Valid values: cvs, git, rsync
+Valid non-empty values: cvs, git, rsync
+.br
+This attribute can be set to empty value to disable synchronization of given
+repository. Empty value is default.
 .TP
 .B sync\-uri
 Specifies URI of repository used for synchronization performed by `emerge
 \-\-sync`.
+.br
+This attribute can be set to empty value to disable synchronization of given
+repository. Empty value is default.
 .RS
 .TP
 Syntax:
@@ -974,26 +980,83 @@ Also see \fB/var/lib/portage/world_sets\fR and the \fBemerge\fR(1)
 .RS
 .TP
 .BR layout.conf
-Specifies information about the repository layout. A
-"masters" attribute is supported, which is used to specify names of
-repositories which satisfy dependencies on eclasses and/or ebuilds. Each
+Specifies information about the repository layout.
+\fISite-specific\fR overrides to \fBlayout.conf\fR settings may be specified in
+\fB/etc/portage/repos.conf\fR.
+Settings in \fBrepos.conf\fR take precedence over settings in
+\fBlayout.conf\fR, except tools such as \fBrepoman\fR(1) and \fBegencache\fR(1)
+ignore "aliases", "eclass-overrides" and "masters" attributes set in
+\fBrepos.conf\fR since their operations are inherently \fBnot\fR
+\fIsite\-specific\fR.
+
+.I Format:
+.nf
+\- comments begin with # (no inline comments)
+\- attributes are specified in "${attribute} = ${value}" format
+.fi
+
+.I Supported attributes.
+.RS
+.RS
+.TP
+.BR aliases
+Behaves like an "aliases" attribute in \fBrepos.conf\fR.
+.TP
+.BR eapis\-banned
+List of EAPIs which are not allowed in this repo.
+.TP
+.BR eapis\-deprecated
+List of EAPIs which are allowed but generate warnings when used.
+.TP
+.BR masters
+Names of repositories which satisfy dependencies on eclasses and/or ebuilds. Each
 repository name should correspond the value of a \fBrepo_name\fR entry
 from one of the repositories that is configured via the \fBPORTDIR\fR or
 \fBPORTDIR_OVERLAY\fR variables (see \fBmake.conf\fR(5)). Repositories listed
 toward the right of the \fBmasters\fR list take precedence over those listed
-toward the left of the list. An "aliases" attribute is also supported, which
-behaves like an "aliases" attribute in \fBrepos.conf\fR. \fISite-specific\fR
-overrides to \fBlayout.conf\fR settings may be specified in
-\fB/etc/portage/repos.conf\fR. Settings in \fBrepos.conf\fR take
-precedence over settings in \fBlayout.conf\fR, except tools such as
-\fBrepoman\fR(1) and \fBegencache\fR(1) ignore "aliases", "eclass-overrides"
-and "masters" attributes set in \fBrepos.conf\fR since their operations are
-inherently \fBnot\fR \fIsite\-specific\fR.
+toward the left of the list.
+.TP
+.BR repo\-name " = <value of profiles/repo_name>"
+The name of this repository (overrides profiles/repo_name if it exists).
+.TP
+.BR sign\-commits " = [true|" false "]"
+Boolean value whether we should sign commits in this repo.
+.TP
+.BR sign\-manifests " = [" true "|false]"
+Boolean value whether we should sign Manifest files in this repo.
+.TP
+.BR thin\-manifests " = [true|" false "]"
+Boolean value whether Manifest files contain only DIST entries.
+.TP
+.BR use\-manifests " = [" strict "|true|false]"
+How Manifest files get used.  Possible values are "strict" (require an entry
+for every file), "true" (if an entry exists for a file, enforce it), or "false"
+(don't check Manifest files at all).
+.TP
+.BR manifest\-hashes
+List of hashes to generate/check in Manifest files.  Valid hashes depend on the
+current version of portage; see the portage.const.MANIFEST2_HASH_FUNCTIONS
+constant for the current list.
+.TP
+.BR update\-changelog " = [true|" false "]"
+The default setting for repoman's --echangelog option.
+.TP
+.BR cache\-formats " = [pms] [md5-dict]"
+The cache formats supported in the metadata tree.  There is the old "pms" format
+and the newer/faster "md5-dict" format.  Default is to detect dirs.
+.TP
+.BR profile\-formats " = [pms|portage-1|portage-2]"
+Control functionality available to profiles in this repo such as which files
+may be dirs, or the syntax available in parent files.  Use "portage-2" if you're
+unsure.  The default is "portage-1-compat" mode which is meant to be compatible
+with old profiles, but is not allowed to be opted into directly.
+.RE
+.RE
 
+.RS
 .I Example:
 .nf
-# Specify the repository name (if there is a different setting in
-# profiles/repo_name, then this layout.conf setting will take precedence)
+# Specify the repository name (overriding profils/repo_name).
 repo\-name = foo-overlay
 
 # eclasses provided by java-overlay take precedence over identically named
@@ -1044,6 +1107,7 @@ cache\-formats = md5-dict pms
 # the colon, it refers to the current repository the parent file is inside)
 profile\-formats = portage-2
 .fi
+.RE
 .RE
 .TP
 .BR /usr/portage/profiles/

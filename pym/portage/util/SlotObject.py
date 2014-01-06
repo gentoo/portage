@@ -48,4 +48,3 @@ class SlotObject(object):
 				setattr(obj, myattr, getattr(self, myattr))
 
 		return obj
-

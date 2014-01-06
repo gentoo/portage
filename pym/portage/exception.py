@@ -1,4 +1,4 @@
-# Copyright 1998-2011 Gentoo Foundation
+# Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import signal
@@ -11,26 +11,35 @@ if sys.hexversion >= 0x3000000:
 
 class PortageException(Exception):
 	"""General superclass for portage exceptions"""
-	def __init__(self,value):
-		self.value = value[:]
-		if isinstance(self.value, basestring):
-			self.value = _unicode_decode(self.value,
-				encoding=_encodings['content'], errors='replace')
-
-	def __str__(self):
-		if isinstance(self.value, basestring):
-			return self.value
-		else:
-			return _unicode_decode(repr(self.value),
-				encoding=_encodings['content'], errors='replace')
-
-	if sys.hexversion < 0x3000000:
-
-		__unicode__ = __str__
+	if sys.hexversion >= 0x3000000:
+		def __init__(self,value):
+			self.value = value[:]
 
 		def __str__(self):
-			return _unicode_encode(self.__unicode__(),
-				encoding=_encodings['content'], errors='backslashreplace')
+			if isinstance(self.value, str):
+				return self.value
+			else:
+				return repr(self.value)
+	else:
+		def __init__(self,value):
+			self.value = value[:]
+			if isinstance(self.value, basestring):
+				self.value = _unicode_decode(self.value,
+					encoding=_encodings['content'], errors='replace')
+
+		def __unicode__(self):
+			if isinstance(self.value, unicode):
+				return self.value
+			else:
+				return _unicode_decode(repr(self.value),
+					encoding=_encodings['content'], errors='replace')
+
+		def __str__(self):
+			if isinstance(self.value, unicode):
+				return _unicode_encode(self.value,
+					encoding=_encodings['content'], errors='backslashreplace')
+			else:
+				return repr(self.value)
 
 class CorruptionError(PortageException):
 	"""Corruption indication"""

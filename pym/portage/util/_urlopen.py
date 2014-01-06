@@ -23,7 +23,7 @@ if sys.hexversion >= 0x3000000:
 
 # to account for the difference between TIMESTAMP of the index' contents
 #  and the file-'mtime'
-TIMESTAMP_TOLERANCE=5
+TIMESTAMP_TOLERANCE = 5
 
 def urlopen(url, if_modified_since=None):
 	parse_result = urllib_parse.urlparse(url)

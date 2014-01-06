@@ -11,6 +11,8 @@ export EXEOPTIONS="-m0755"
 export LIBOPTIONS="-m0644"
 export DIROPTIONS="-m0755"
 export MOPREFIX=${PN}
+# Do not compress files which are smaller than this (in bytes). #169260
+export PORTAGE_DOCOMPRESS_SIZE_LIMIT="128"
 declare -a PORTAGE_DOCOMPRESS=( /usr/share/{doc,info,man} )
 declare -a PORTAGE_DOCOMPRESS_SKIP=( /usr/share/doc/${PF}/html )
 
@@ -467,6 +469,7 @@ unpack() {
 
 econf() {
 	local x
+	local pid=${BASHPID:-$(__bashpid)}
 
 	if ! ___eapi_has_prefix_variables; then
 		local EPREFIX=
@@ -499,18 +502,22 @@ econf() {
 		if [[ -n $CONFIG_SHELL && \
 			"$(head -n1 "$ECONF_SOURCE/configure")" =~ ^'#!'[[:space:]]*/bin/sh([[:space:]]|$) ]] ; then
 			# preserve timestamp, see bug #440304
-			touch -r "$ECONF_SOURCE/configure" "$ECONF_SOURCE/configure._portage_tmp_.$$" || die
-			sed -e "1s:^#![[:space:]]*/bin/sh:#!$CONFIG_SHELL:" -i "$ECONF_SOURCE/configure" || \
-				die "Substition of shebang in '$ECONF_SOURCE/configure' failed"
-			touch -r "$ECONF_SOURCE/configure._portage_tmp_.$$" "$ECONF_SOURCE/configure" || die
-			rm -f "$ECONF_SOURCE/configure._portage_tmp_.$$"
+			touch -r "${ECONF_SOURCE}/configure" "${ECONF_SOURCE}/configure._portage_tmp_.${pid}" || die
+			sed -i \
+				-e "1s:^#![[:space:]]*/bin/sh:#!$CONFIG_SHELL:" \
+				"${ECONF_SOURCE}/configure" \
+				|| die "Substition of shebang in '${ECONF_SOURCE}/configure' failed"
+			touch -r "${ECONF_SOURCE}/configure._portage_tmp_.${pid}" "${ECONF_SOURCE}/configure" || die
+			rm -f "${ECONF_SOURCE}/configure._portage_tmp_.${pid}"
 		fi
 		if [ -e "${EPREFIX}"/usr/share/gnuconfig/ ]; then
 			find "${WORKDIR}" -type f '(' \
 			-name config.guess -o -name config.sub ')' -print0 | \
 			while read -r -d $'\0' x ; do
 				__vecho " * econf: updating ${x/${WORKDIR}\/} with ${EPREFIX}/usr/share/gnuconfig/${x##*/}"
-				cp -f "${EPREFIX}"/usr/share/gnuconfig/"${x##*/}" "${x}"
+				# Make sure we do this atomically incase we're run in parallel. #487478
+				cp -f "${EPREFIX}"/usr/share/gnuconfig/"${x##*/}" "${x}.${pid}"
+				mv -f "${x}.${pid}" "${x}"
 			done
 		fi
 

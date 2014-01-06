@@ -13,6 +13,14 @@ try:
 except ImportError:
 	from unittest import _TextTestResult
 
+try:
+	# They added the skip framework to python-2.7.
+	# Drop this once we drop python-2.6 support.
+	unittest_skip_shims = False
+	import unittest.SkipTest as SkipTest # new in python-2.7
+except ImportError:
+	unittest_skip_shims = True
+
 import portage
 from portage import os
 from portage import _encodings
@@ -188,10 +196,14 @@ class TestCase(unittest.TestCase):
 			except:
 				result.addError(self, sys.exc_info())
 				return
+
 			ok = False
 			try:
 				testMethod()
 				ok = True
+			except SkipTest as e:
+				result.addPortageSkip(self, "%s: SKIP: %s" %
+					(testMethod, str(e)))
 			except self.failureException:
 				if self.portage_skip is not None:
 					if self.portage_skip is True:
@@ -207,6 +219,7 @@ class TestCase(unittest.TestCase):
 				raise
 			except:
 				result.addError(self, sys.exc_info())
+
 			try:
 				self.tearDown()
 			except SystemExit:
@@ -216,7 +229,8 @@ class TestCase(unittest.TestCase):
 			except:
 				result.addError(self, sys.exc_info())
 				ok = False
-			if ok: result.addSuccess(self)
+			if ok:
+				result.addSuccess(self)
 		finally:
 			result.stopTest(self)
 
@@ -236,6 +250,44 @@ class TestCase(unittest.TestCase):
 			if hasattr(excClass, '__name__'): excName = excClass.__name__
 			else: excName = str(excClass)
 			raise self.failureException("%s not raised: %s" % (excName, msg))
+
+	def assertExists(self, path):
+		"""Make sure |path| exists"""
+		if not os.path.exists(path):
+			msg = ['path is missing: %s' % (path,)]
+			while path != '/':
+				path = os.path.dirname(path)
+				if not path:
+					# If we're given something like "foo", abort once we get to "".
+					break
+				result = os.path.exists(path)
+				msg.append('\tos.path.exists(%s): %s' % (path, result))
+				if result:
+					msg.append('\tcontents: %r' % os.listdir(path))
+					break
+			raise self.failureException('\n'.join(msg))
+
+	def assertNotExists(self, path):
+		"""Make sure |path| does not exist"""
+		if os.path.exists(path):
+			raise self.failureException('path exists when it should not: %s' % path)
+
+if unittest_skip_shims:
+	# Shim code for <python-2.7.
+	class SkipTest(Exception):
+		"""unittest.SkipTest shim for <python-2.7"""
+
+	def skipTest(self, reason):
+		raise SkipTest(reason)
+	setattr(TestCase, 'skipTest', skipTest)
+
+	def assertIn(self, member, container, msg=None):
+		self.assertTrue(member in container, msg=msg)
+	setattr(TestCase, 'assertIn', assertIn)
+
+	def assertNotIn(self, member, container, msg=None):
+		self.assertFalse(member in container, msg=msg)
+	setattr(TestCase, 'assertNotIn', assertNotIn)
 
 class TextTestRunner(unittest.TextTestRunner):
 	"""

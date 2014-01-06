@@ -9,7 +9,7 @@ import sys
 # This block ensures that ^C interrupts are handled quietly.
 try:
 
-	def exithandler(signum, frame):
+	def exithandler(signum, _frame):
 		signal.signal(signal.SIGINT, signal.SIG_IGN)
 		signal.signal(signal.SIGTERM, signal.SIG_IGN)
 		sys.exit(128 + signum)
@@ -182,8 +182,8 @@ def mass_best_version(argv):
 		return 2
 	try:
 		for pack in argv[1:]:
-			mylist=portage.db[argv[0]]["vartree"].dbapi.match(pack)
-			print(pack+":"+portage.best(mylist))
+			mylist = portage.db[argv[0]]['vartree'].dbapi.match(pack)
+			print('%s:%s' % (pack, portage.best(mylist)))
 	except KeyError:
 		return 1
 
@@ -191,15 +191,16 @@ def mass_best_version(argv):
 @uses_eroot
 def metadata(argv):
 	if (len(argv) < 4):
-		print("ERROR: insufficient parameters!", file=sys.stderr)
+		print('ERROR: insufficient parameters!', file=sys.stderr)
 		return 2
 
 	eroot, pkgtype, pkgspec = argv[0:3]
 	metakeys = argv[3:]
 	type_map = {
-		"ebuild":"porttree",
-		"binary":"bintree",
-		"installed":"vartree"}
+		'ebuild': 'porttree',
+		'binary': 'bintree',
+		'installed': 'vartree'
+	}
 	if pkgtype not in type_map:
 		print("Unrecognized package type: '%s'" % pkgtype, file=sys.stderr)
 		return 1
@@ -207,9 +208,9 @@ def metadata(argv):
 	repo = portage.dep.dep_getrepo(pkgspec)
 	pkgspec = portage.dep.remove_slot(pkgspec)
 	try:
-			values = trees[eroot][type_map[pkgtype]].dbapi.aux_get(
-				pkgspec, metakeys, myrepo=repo)
-			writemsg_stdout(''.join('%s\n' % x for x in values), noiselevel=-1)
+		values = trees[eroot][type_map[pkgtype]].dbapi.aux_get(
+			pkgspec, metakeys, myrepo=repo)
+		writemsg_stdout(''.join('%s\n' % x for x in values), noiselevel=-1)
 	except KeyError:
 		print("Package not found: '%s'" % pkgspec, file=sys.stderr)
 		return 1
@@ -400,7 +401,6 @@ def filter_protected(argv):
 		settings.get("CONFIG_PROTECT_MASK", ""))
 	protect_obj = ConfigProtect(root, protect, protect_mask)
 
-	protected = 0
 	errors = 0
 
 	for line in sys.stdin:
@@ -422,7 +422,6 @@ def filter_protected(argv):
 			continue
 
 		if protect_obj.isprotected(f):
-			protected += 1
 			out.write("%s\n" % filename)
 	out.flush()
 
@@ -470,8 +469,7 @@ def best_visible(argv):
 			noiselevel=-1)
 		return 2
 
-	root_config = RootConfig(portage.settings,
-		portage.db[eroot], None)
+	root_config = RootConfig(portage.settings, portage.db[eroot], None)
 
 	if hasattr(db, "xmatch"):
 		cpv_list = db.xmatch("match-all-cpv-only", atom)
@@ -644,7 +642,7 @@ def expand_virtual(argv):
 	return os.EX_OK
 
 
-def vdb_path(argv):
+def vdb_path(_argv):
 	"""
 	Returns the path used for the var(installed) package database for the
 	set environment/configuration options.
@@ -654,7 +652,7 @@ def vdb_path(argv):
 	out.flush()
 	return os.EX_OK
 
-def gentoo_mirrors(argv):
+def gentoo_mirrors(_argv):
 	"""
 	Returns the mirrors set to use in the portage configuration.
 	"""
@@ -680,49 +678,53 @@ def repos_config(argv):
 	"""
 	return repositories_configuration(argv)
 
-def portdir(argv):
+def portdir(_argv):
 	"""
 	Returns the PORTDIR path.
+	Deprecated in favor of repositories_configuration command.
 	"""
+	print("WARNING: 'portageq portdir' is deprecated. Use 'portageq repositories_configuration' instead.", file=sys.stderr)
 	print(portage.settings["PORTDIR"])
 
 
-def config_protect(argv):
+def config_protect(_argv):
 	"""
 	Returns the CONFIG_PROTECT paths.
 	"""
 	print(portage.settings["CONFIG_PROTECT"])
 
 
-def config_protect_mask(argv):
+def config_protect_mask(_argv):
 	"""
 	Returns the CONFIG_PROTECT_MASK paths.
 	"""
 	print(portage.settings["CONFIG_PROTECT_MASK"])
 
 
-def portdir_overlay(argv):
+def portdir_overlay(_argv):
 	"""
 	Returns the PORTDIR_OVERLAY path.
+	Deprecated in favor of repositories_configuration command.
 	"""
+	print("WARNING: 'portageq portdir_overlay' is deprecated. Use 'portageq repositories_configuration' instead.", file=sys.stderr)
 	print(portage.settings["PORTDIR_OVERLAY"])
 
 
-def pkgdir(argv):
+def pkgdir(_argv):
 	"""
 	Returns the PKGDIR path.
 	"""
 	print(portage.settings["PKGDIR"])
 
 
-def distdir(argv):
+def distdir(_argv):
 	"""
 	Returns the DISTDIR path.
 	"""
 	print(portage.settings["DISTDIR"])
 
 
-def colormap(argv):
+def colormap(_argv):
 	"""
 	Display the color.map as environment variables.
 	"""
@@ -743,8 +745,10 @@ def envvar(argv):
 		return 2
 
 	for arg in argv:
+		if arg in ("PORTDIR", "PORTDIR_OVERLAY", "SYNC"):
+			print("WARNING: 'portageq envvar %s' is deprecated. Use 'portageq repositories_configuration' instead." % arg, file=sys.stderr)
 		if verbose:
-			print(arg +"='"+ portage.settings[arg] +"'")
+			print(arg + "=" + portage._shell_quote(portage.settings[arg]))
 		else:
 			print(portage.settings[arg])
 
@@ -1323,10 +1327,10 @@ def main(argv):
 				sys.stderr.write("ERROR: This version of portageq"
 						 " only supports <eroot>s ending in"
 						 " '%s'. The provided <eroot>, '%s',"
-						 " doesn't.\n" % (eprefix, eroot));
+						 " doesn't.\n" % (eprefix, eroot))
 				sys.stderr.flush()
 				sys.exit(os.EX_USAGE)
-			root = eroot[:1-len(eprefix)]
+			root = eroot[:1 - len(eprefix)]
 		else:
 			root = eroot
 

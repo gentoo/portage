@@ -16,7 +16,7 @@ import textwrap
 
 import portage
 from portage import bsd_chflags, _encodings, _os_overrides, _selinux, \
-	_unicode_decode, _unicode_encode, _unicode_func_wrapper,\
+	_unicode_decode, _unicode_encode, _unicode_func_wrapper, \
 	_unicode_module_wrapper
 from portage.const import MOVE_BINARY
 from portage.exception import OperationNotSupported
@@ -128,15 +128,11 @@ else:
 						"does not support extended attribute '%s'") %
 						(_unicode_decode(dest), _unicode_decode(attr)))
 	else:
-		_devnull = open("/dev/null", "wb")
 		try:
-			subprocess.call(["getfattr", "--version"], stdout=_devnull)
-			subprocess.call(["setfattr", "--version"], stdout=_devnull)
-			_has_getfattr_and_setfattr = True
+			with open(_os.devnull, 'wb') as f:
+				subprocess.call(["getfattr", "--version"], stdout=f)
+				subprocess.call(["setfattr", "--version"], stdout=f)
 		except OSError:
-			_has_getfattr_and_setfattr = False
-		_devnull.close()
-		if _has_getfattr_and_setfattr:
 			def _copyxattr(src, dest, exclude=None):
 				# TODO: implement exclude
 				getfattr_process = subprocess.Popen(["getfattr", "-d", "--absolute-names", src], stdout=subprocess.PIPE)
@@ -181,7 +177,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 
 	try:
 		if not sstat:
-			sstat=os.lstat(src)
+			sstat = os.lstat(src)
 
 	except SystemExit as e:
 		raise
@@ -191,12 +187,12 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		writemsg("!!! %s\n" % (e,), noiselevel=-1)
 		return None
 
-	destexists=1
+	destexists = 1
 	try:
-		dstat=os.lstat(dest)
+		dstat = os.lstat(dest)
 	except (OSError, IOError):
-		dstat=os.lstat(os.path.dirname(dest))
-		destexists=0
+		dstat = os.lstat(os.path.dirname(dest))
+		destexists = 0
 
 	if bsd_chflags:
 		if destexists and dstat.st_flags != 0:
@@ -211,7 +207,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		if stat.S_ISLNK(dstat[stat.ST_MODE]):
 			try:
 				os.unlink(dest)
-				destexists=0
+				destexists = 0
 			except SystemExit as e:
 				raise
 			except Exception as e:
@@ -219,7 +215,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 
 	if stat.S_ISLNK(sstat[stat.ST_MODE]):
 		try:
-			target=os.readlink(src)
+			target = os.readlink(src)
 			if mysettings and "D" in mysettings and \
 				target.startswith(mysettings["D"]):
 				target = target[len(mysettings["D"])-1:]
@@ -238,7 +234,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 				if e.errno not in (errno.ENOENT, errno.EEXIST) or \
 					target != os.readlink(dest):
 					raise
-			lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
+			lchown(dest, sstat[stat.ST_UID], sstat[stat.ST_GID])
 
 			try:
 				_os.unlink(src_bytes)
@@ -304,7 +300,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 					pass
 				break
 
-	renamefailed=1
+	renamefailed = 1
 	if hardlinked:
 		renamefailed = False
 	if not hardlinked and (selinux_enabled or sstat.st_dev == dstat.st_dev):
@@ -312,8 +308,8 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			if selinux_enabled:
 				selinux.rename(src, dest)
 			else:
-				os.rename(src,dest)
-			renamefailed=0
+				os.rename(src, dest)
+			renamefailed = 0
 		except OSError as e:
 			if e.errno != errno.EXDEV:
 				# Some random error.

@@ -140,7 +140,7 @@ class SetConfig(object):
 		parser.add_section("live-rebuild")
 		parser.set("live-rebuild", "class", "portage.sets.dbapi.VariableSet")
 		parser.set("live-rebuild", "variable", "INHERITED")
-		parser.set("live-rebuild", "includes", "bzr cvs darcs git git-2 mercurial subversion tla")
+		parser.set("live-rebuild", "includes", " ".join(sorted(portage.const.LIVE_ECLASSES)))
 
 		parser.remove_section("module-rebuild")
 		parser.add_section("module-rebuild")
