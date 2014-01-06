@@ -7692,8 +7692,9 @@ class depgraph(object):
 		if not unresolved_conflicts:
 			self._show_missed_update()
 
-		self._compute_abi_rebuild_info()
-		self._show_abi_rebuild_info()
+		if self._frozen_config.myopts.get("--verbose-slot-rebuilds", 'y') != 'n':
+			self._compute_abi_rebuild_info()
+			self._show_abi_rebuild_info()
 
 		self._show_ignored_binaries()
 

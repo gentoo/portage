@@ -156,6 +156,7 @@ def insert_optional_args(args):
 		'--usepkg'               : y_or_n,
 		'--usepkgonly'           : y_or_n,
 		'--verbose'              : y_or_n,
+		'--verbose-slot-rebuilds': y_or_n,
 	}
 
 	short_arg_opts = {
@@ -638,6 +639,10 @@ def parse_opts(tmpcmdline, silent=False):
 		"--verbose": {
 			"shortopt" : "-v",
 			"help"     : "verbose output",
+			"choices"  : true_y_or_n
+		},
+		"--verbose-slot-rebuilds": {
+			"help"     : "verbose slot rebuild output",
 			"choices"  : true_y_or_n
 		},
 	}
