@@ -293,15 +293,19 @@ class ResolverPlayground(object):
 					with open(file_name, "w") as f:
 						for line in lines:
 							f.write("%s\n" % line)
+						# Temporarily write empty value of masters until it becomes default.
+						# TODO: Delete all references to "# use implicit masters" when empty value becomes default.
+						if config_file == "layout.conf" and not any(line.startswith(("masters =", "# use implicit masters")) for line in lines):
+							f.write("masters =\n")
 
 			#Create $profile_dir/eclass (we fail to digest the ebuilds if it's not there)
 			os.makedirs(os.path.join(repo_dir, "eclass"))
 
-			# Set masters key in layout.conf for all repos except 'main-repo'
-			if repo != "test_repo" and (not repo_config or "layout.conf" not in repo_config):
+			# Temporarily write empty value of masters until it becomes default.
+			if not repo_config or "layout.conf" not in repo_config:
 				layout_conf_path = os.path.join(repo_dir, "metadata", "layout.conf")
 				with open(layout_conf_path, "w") as f:
-					f.write("masters = test_repo\n")
+					f.write("masters =\n")
 
 			if repo == "test_repo":
 				#Create a minimal profile in /usr/portage
