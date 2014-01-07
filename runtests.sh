@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # These are the versions we care about.  The rest are just "nice to have".

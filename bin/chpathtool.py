@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright 2011-2013 Gentoo Foundation
+# Copyright 2011-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """Helper tool for converting installed files to custom prefixes.
