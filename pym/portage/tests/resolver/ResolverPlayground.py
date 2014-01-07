@@ -1,4 +1,4 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from itertools import permutations
@@ -301,6 +301,12 @@ class ResolverPlayground(object):
 
 			#Create $profile_dir/eclass (we fail to digest the ebuilds if it's not there)
 			os.makedirs(os.path.join(repo_dir, "eclass"))
+
+			# Set masters key in layout.conf for all repos except 'main-repo'
+			if repo != "test_repo" and (not repo_config or "layout.conf" not in repo_config):
+				layout_conf_path = os.path.join(repo_dir, "metadata", "layout.conf")
+				with open(layout_conf_path, "w") as f:
+					f.write("masters = test_repo\n")
 
 			if repo == "test_repo":
 				#Create a minimal profile in /usr/portage
