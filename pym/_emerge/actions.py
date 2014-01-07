@@ -3486,7 +3486,7 @@ def expand_set_arguments(myfiles, myaction, root_config):
 	unmerge_actions = ("unmerge", "prune", "clean", "depclean")
 
 	for a in myfiles:
-		if a.startswith(SETPREFIX):		
+		if a.startswith(SETPREFIX):
 				s = a[len(SETPREFIX):]
 				if s not in sets:
 					display_missing_pkg_set(root_config, s)
@@ -3750,7 +3750,7 @@ def run_action(emerge_config):
 		if retval != os.EX_OK:
 			return retval
 
-		# Need to handle empty sets specially, otherwise emerge will react 
+		# Need to handle empty sets specially, otherwise emerge will react
 		# with the help message for empty argument lists
 		if oldargs and not newargs:
 			print("emerge: no targets left after set expansion")

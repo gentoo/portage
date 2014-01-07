@@ -81,7 +81,7 @@ COWSAY_MOO = """
  -----------------------
         \   ^__^
          \  (oo)\_______
-            (__)\       )\/\ 
+            (__)\       )\/\
                 ||----w |
                 ||     ||
 
@@ -583,7 +583,7 @@ def parse_opts(tmpcmdline, silent=False):
 			             "packages that have been rebuilt",
 			"choices"  : true_y_or_n
 		},
-		
+
 		"--rebuilt-binaries-timestamp": {
 			"help"   : "use only binaries that are newer than this " + \
 			           "timestamp for --rebuilt-binaries",
@@ -893,7 +893,7 @@ def parse_opts(tmpcmdline, silent=False):
 					(myoptions.load_average,))
 
 		myoptions.load_average = load_average
-	
+
 	if myoptions.rebuilt_binaries_timestamp:
 		try:
 			rebuilt_binaries_timestamp = int(myoptions.rebuilt_binaries_timestamp)
