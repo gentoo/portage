@@ -1,4 +1,4 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function, unicode_literals
@@ -1376,7 +1376,7 @@ class depgraph(object):
 						selective and \
 						dep.parent.installed and \
 						dep.child.installed and \
-						dep.parent.cpv == replacement_parent.cpv and \
+						dep.parent >= replacement_parent and \
 						dep.child.cpv == pkg.cpv:
 						# Then can happen if the child's sub-slot changed
 						# without a revision bump. The sub-slot change is

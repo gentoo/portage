@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Gentoo Foundation
+# Copyright 2012-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -355,6 +355,48 @@ class SlotConflictRebuildTestCase(TestCase):
 		)
 
 		world = []
+
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			installed=installed, world=world, debug=False)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
+
+
+	def testSlotConflictMultiRepo(self):
+		"""
+		Bug 497238
+		Different repositories contain the same cpv with different sub-slots for
+		a slot operator child.
+		Downgrading the slot operator parent would result in a sub-slot change of
+		the installed package by changing the source repository.
+		Make sure we don't perform this undesirable rebuild.
+		"""
+		ebuilds = {
+			"net-firewall/iptables-1.4.21::overlay" : { "EAPI": "5", "SLOT": "0/10" },
+			"sys-apps/iproute2-3.11.0::overlay" : { "EAPI": "5", "RDEPEND": "net-firewall/iptables:=" },
+
+			"net-firewall/iptables-1.4.21" : { "EAPI": "5", "SLOT": "0" },
+			"sys-apps/iproute2-3.12.0": { "EAPI": "5", "RDEPEND": "net-firewall/iptables:=" },
+		}
+
+		installed = {
+			"net-firewall/iptables-1.4.21::overlay" : { "EAPI": "5", "SLOT": "0/10" },
+			"sys-apps/iproute2-3.12.0": { "EAPI": "5", "RDEPEND": "net-firewall/iptables:0/10=" },
+		}
+
+		world = ["sys-apps/iproute2"]
+
+		test_cases = (
+			ResolverPlaygroundTestCase(
+				["@world"],
+				options = {"--deep": True, "--update": True, "--verbose": True},
+				success = True,
+				mergelist = []),
+		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds,
 			installed=installed, world=world, debug=False)
