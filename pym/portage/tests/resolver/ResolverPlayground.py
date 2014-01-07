@@ -116,9 +116,8 @@ class ResolverPlayground(object):
 				pass
 
 			repo_name_file = os.path.join(profile_path, "repo_name")
-			f = open(repo_name_file, "w")
-			f.write("%s\n" % repo)
-			f.close()
+			with open(repo_name_file, "w") as f:
+				f.write("%s\n" % repo)
 
 		return self._repositories[repo]["location"]
 
@@ -158,15 +157,14 @@ class ResolverPlayground(object):
 			except os.error:
 				pass
 
-			f = open(ebuild_path, "w")
-			if copyright_header is not None:
-				f.write(copyright_header)
-			f.write('EAPI="%s"\n' % eapi)
-			for k, v in metadata.items():
-				f.write('%s="%s"\n' % (k, v))
-			if misc_content is not None:
-				f.write(misc_content)
-			f.close()
+			with open(ebuild_path, "w") as f:
+				if copyright_header is not None:
+					f.write(copyright_header)
+				f.write('EAPI="%s"\n' % eapi)
+				for k, v in metadata.items():
+					f.write('%s="%s"\n' % (k, v))
+				if misc_content is not None:
+					f.write(misc_content)
 
 	def _create_ebuild_manifests(self, ebuilds):
 		tmpsettings = config(clone=self.settings)
@@ -271,16 +269,14 @@ class ResolverPlayground(object):
 					categories.add(catsplit(cpv)[0])
 
 			categories_file = os.path.join(profile_dir, "categories")
-			f = open(categories_file, "w")
-			for cat in categories:
-				f.write(cat + "\n")
-			f.close()
+			with open(categories_file, "w") as f:
+				for cat in categories:
+					f.write(cat + "\n")
 
 			#Create $REPO/profiles/license_groups
 			license_file = os.path.join(profile_dir, "license_groups")
-			f = open(license_file, "w")
-			f.write("EULA TEST\n")
-			f.close()
+			with open(license_file, "w") as f:
+				f.write("EULA TEST\n")
 
 			repo_config = repo_configs.get(repo)
 			if repo_config:
@@ -294,10 +290,9 @@ class ResolverPlayground(object):
 						file_name = os.path.join(profile_dir, config_file)
 						if "/" in config_file and not os.path.isdir(os.path.dirname(file_name)):
 							os.makedirs(os.path.dirname(file_name))
-					f = open(file_name, "w")
-					for line in lines:
-						f.write("%s\n" % line)
-					f.close()
+					with open(file_name, "w") as f:
+						for line in lines:
+							f.write("%s\n" % line)
 
 			#Create $profile_dir/eclass (we fail to digest the ebuilds if it's not there)
 			os.makedirs(os.path.join(repo_dir, "eclass"))
@@ -315,25 +310,21 @@ class ResolverPlayground(object):
 
 				if not (profile and "eapi" in profile):
 					eapi_file = os.path.join(sub_profile_dir, "eapi")
-					f = open(eapi_file, "w")
-					f.write("0\n")
-					f.close()
+					with open(eapi_file, "w") as f:
+						f.write("0\n")
 
 				make_defaults_file = os.path.join(sub_profile_dir, "make.defaults")
-				f = open(make_defaults_file, "w")
-				f.write("ARCH=\"x86\"\n")
-				f.write("ACCEPT_KEYWORDS=\"x86\"\n")
-				f.close()
+				with open(make_defaults_file, "w") as f:
+					f.write("ARCH=\"x86\"\n")
+					f.write("ACCEPT_KEYWORDS=\"x86\"\n")
 
 				use_force_file = os.path.join(sub_profile_dir, "use.force")
-				f = open(use_force_file, "w")
-				f.write("x86\n")
-				f.close()
+				with open(use_force_file, "w") as f:
+					f.write("x86\n")
 
 				parent_file = os.path.join(sub_profile_dir, "parent")
-				f = open(parent_file, "w")
-				f.write("..\n")
-				f.close()
+				with open(parent_file, "w") as f:
+					f.write("..\n")
 
 				if profile:
 					for config_file, lines in profile.items():
@@ -341,10 +332,9 @@ class ResolverPlayground(object):
 							raise ValueError("Unknown config file: '%s'" % config_file)
 
 						file_name = os.path.join(sub_profile_dir, config_file)
-						f = open(file_name, "w")
-						for line in lines:
-							f.write("%s\n" % line)
-						f.close()
+						with open(file_name, "w") as f:
+							for line in lines:
+								f.write("%s\n" % line)
 
 				#Create profile symlink
 				os.symlink(sub_profile_dir, os.path.join(user_config_dir, "make.profile"))
@@ -411,10 +401,9 @@ class ResolverPlayground(object):
 				raise ValueError("Unknown config file: '%s'" % config_file)
 
 			file_name = os.path.join(user_config_dir, config_file)
-			f = open(file_name, "w")
-			for line in lines:
-				f.write("%s\n" % line)
-			f.close()
+			with open(file_name, "w") as f:
+				for line in lines:
+					f.write("%s\n" % line)
 
 		#Create /usr/share/portage/config/make.globals
 		make_globals_path = os.path.join(self.eroot,
@@ -444,10 +433,9 @@ class ResolverPlayground(object):
 
 		for sets_file, lines in sets.items():
 			file_name = os.path.join(set_config_dir, sets_file)
-			f = open(file_name, "w")
-			for line in lines:
-				f.write("%s\n" % line)
-			f.close()
+			with open(file_name, "w") as f:
+				for line in lines:
+					f.write("%s\n" % line)
 
 	def _create_world(self, world, world_sets):
 		#Create /var/lib/portage/world
@@ -457,15 +445,13 @@ class ResolverPlayground(object):
 		world_file = os.path.join(var_lib_portage, "world")
 		world_set_file = os.path.join(var_lib_portage, "world_sets")
 
-		f = open(world_file, "w")
-		for atom in world:
-			f.write("%s\n" % atom)
-		f.close()
+		with open(world_file, "w") as f:
+			for atom in world:
+				f.write("%s\n" % atom)
 
-		f = open(world_set_file, "w")
-		for atom in world_sets:
-			f.write("%s\n" % atom)
-		f.close()
+		with open(world_set_file, "w") as f:
+			for atom in world_sets:
+				f.write("%s\n" % atom)
 
 	def _load_config(self):
 
@@ -746,7 +732,7 @@ class ResolverPlaygroundResult(object):
 				self.license_changes[pkg.cpv] = missing_licenses
 
 		if self.depgraph._dynamic_config._slot_conflict_handler is not None:
-			self.slot_collision_solutions  = []
+			self.slot_collision_solutions = []
 			handler = self.depgraph._dynamic_config._slot_conflict_handler
 
 			for change in handler.changes:
