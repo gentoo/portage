@@ -1,5 +1,5 @@
 # versions.py -- core Portage functionality
-# Copyright 1998-2013 Gentoo Foundation
+# Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -109,11 +109,11 @@ def _get_pv_re(eapi_attrs):
 
 def ververify(myver, silent=1):
 	if ver_regexp.match(myver):
-		return 1
+		return True
 	else:
 		if not silent:
 			print(_("!!! syntax error in version: %s") % myver)
-		return 0
+		return False
 
 def vercmp(ver1, ver2, silent=1):
 	"""
