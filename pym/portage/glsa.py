@@ -617,8 +617,8 @@ class Glsa:
 			for k in self.packages:
 				pkg = self.packages[k]
 				for path in pkg:
-					vul_vers = "".join(path["vul_vers"])
-					unaff_vers = "".join(path["unaff_vers"])
+					vul_vers = ", ".join(path["vul_vers"])
+					unaff_vers = ", ".join(path["unaff_vers"])
 					outstream.write(_("Affected package:  %s\n") % k)
 					outstream.write(_("Affected archs:    "))
 					if path["arch"] == "*":
