@@ -1,4 +1,4 @@
-# Copyright 1998-2013 Gentoo Foundation
+# Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -32,6 +32,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.env_update:env_update',
 	'portage.util.listdir:dircache,listdir',
 	'portage.util.movefile:movefile',
+	'portage.util.writeable_check:get_ro_checker',
 	'portage.util._dyn_libs.PreservedLibsRegistry:PreservedLibsRegistry',
 	'portage.util._dyn_libs.LinkageMapELF:LinkageMapELF@LinkageMap',
 	'portage.util._async.SchedulerInterface:SchedulerInterface',
@@ -3508,6 +3509,8 @@ class dblink(object):
 		
 		This function does the following:
 		
+		calls get_ro_checker to retrieve a function for checking whether Portage
+		will write to a read-only filesystem, then runs it against the directory list
 		calls self._preserve_libs if FEATURES=preserve-libs
 		calls self._collision_protect if FEATURES=collision-protect
 		calls doebuild(mydo=pkg_preinst)
@@ -3685,6 +3688,7 @@ class dblink(object):
 			eagain_error = False
 
 			myfilelist = []
+			mydirlist = []
 			mylinklist = []
 			paths_with_newlines = []
 			def onerror(e):
@@ -3716,6 +3720,9 @@ class dblink(object):
 					unicode_error = True
 					unicode_errors.append(new_parent[ed_len:])
 					break
+
+				relative_path = parent[srcroot_len:]
+				mydirlist.append(os.path.join("/", relative_path))
 
 				for fname in files:
 					try:
@@ -3828,6 +3835,31 @@ class dblink(object):
 			[portage.versions.cpv_getversion(other.mycpv)
 			for other in others_in_slot])
 		prepare_build_dirs(settings=self.settings, cleanup=cleanup)
+
+		# Check for read-only filesystems.
+		ro_checker = get_ro_checker()
+		rofilesystems = ro_checker(mydirlist)
+
+		if rofilesystems:
+			msg = _("One or more files installed to this package are "
+				"set to be installed to read-only filesystems. "
+				"Please mount the following filesystems as read-write "
+				"and retry.")
+			msg = textwrap.wrap(msg, 70)
+			msg.append("")
+			for f in rofilesystems:
+				msg.append("\t%s" % os.path.join(destroot,
+					f.lstrip(os.path.sep)))
+			msg.append("")
+			self._elog("eerror", "preinst", msg)
+
+			msg = _("Package '%s' NOT merged due to read-only file systems.") % \
+				self.settings.mycpv
+			msg += _(" If necessary, refer to your elog "
+				"messages for the whole content of the above message.")
+			msg = textwrap.wrap(msg, 70)
+			eerror(msg)
+			return 1
 
 		# check for package collisions
 		blockers = self._blockers
