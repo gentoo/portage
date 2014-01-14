@@ -1,5 +1,5 @@
 # repoman: Checks
-# Copyright 2007-2013 Gentoo Foundation
+# Copyright 2007-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """This module contains functions used in Repoman to ascertain the quality
@@ -15,7 +15,7 @@ import repoman.errors as errors
 import portage
 from portage.eapi import eapi_supports_prefix, eapi_has_implicit_rdepend, \
 	eapi_has_src_prepare_and_src_configure, eapi_has_dosed_dohard, \
-	eapi_exports_AA
+	eapi_exports_AA, eapi_has_pkg_pretend
 
 class LineCheck(object):
 	"""Run a check on a line of an ebuild."""
@@ -731,6 +731,21 @@ class DeprecatedHasq(LineCheck):
 	re = re.compile(r'(^|.*\b)hasq\b')
 	error = errors.HASQ_ERROR
 
+# EAPI <2 checks
+class UndefinedSrcPrepareSrcConfigurePhases(LineCheck):
+	repoman_check_name = 'EAPI.incompatible'
+	src_configprepare_re = re.compile(r'\s*(src_configure|src_prepare)\s*\(\)')
+
+	def check_eapi(self, eapi):
+		return not eapi_has_src_prepare_and_src_configure(eapi)
+
+	def check(self, num, line):
+		m = self.src_configprepare_re.match(line)
+		if m is not None:
+			return ("'%s'" % m.group(1)) + \
+				" phase is not defined in EAPI < 2 on line: %d"
+
+
 # EAPI-3 checks
 class Eapi3DeprecatedFuncs(LineCheck):
 	repoman_check_name = 'EAPI.deprecated'
@@ -744,6 +759,20 @@ class Eapi3DeprecatedFuncs(LineCheck):
 		if m is not None:
 			return ("'%s'" % m.group(1)) + \
 				" has been deprecated in EAPI=3 on line: %d"
+
+# EAPI <4 checks
+class UndefinedPkgPretendPhase(LineCheck):
+	repoman_check_name = 'EAPI.incompatible'
+	pkg_pretend_re = re.compile(r'\s*(pkg_pretend)\s*\(\)')
+
+	def check_eapi(self, eapi):
+		return not eapi_has_pkg_pretend(eapi)
+
+	def check(self, num, line):
+		m = self.pkg_pretend_re.match(line)
+		if m is not None:
+			return ("'%s'" % m.group(1)) + \
+				" phase is not defined in EAPI < 4 on line: %d"
 
 # EAPI-4 checks
 class Eapi4IncompatibleFuncs(LineCheck):
