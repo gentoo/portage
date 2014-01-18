@@ -1,5 +1,5 @@
-#!/usr/bin/python
-# Copyright 2010-2013 Gentoo Foundation
+#!/usr/bin/python -bb
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import os

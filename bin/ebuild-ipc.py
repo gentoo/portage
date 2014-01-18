@@ -1,5 +1,5 @@
-#!/usr/bin/python
-# Copyright 2010-2013 Gentoo Foundation
+#!/usr/bin/python -bb
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 #
 # This is a helper which ebuild processes can use
@@ -150,7 +150,7 @@ class EbuildIpc(object):
 					self._no_daemon_msg()
 					return 2
 
-		buf = pipe_reader.getvalue() 
+		buf = pipe_reader.getvalue()
 
 		retval = 2
 

@@ -1,4 +1,4 @@
-# Copyright 2011-2013 Gentoo Foundation
+# Copyright 2011-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -170,7 +170,7 @@ class SimpleRepomanTestCase(TestCase):
 		profiles_dir = os.path.join(test_repo_location, "profiles")
 		license_dir = os.path.join(test_repo_location, "licenses")
 
-		repoman_cmd = (portage._python_interpreter, "-Wd",
+		repoman_cmd = (portage._python_interpreter, "-bb", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "repoman"))
 
 		git_binary = find_binary("git")
@@ -287,8 +287,7 @@ class SimpleRepomanTestCase(TestCase):
 
 			for cwd in ("", "dev-libs", "dev-libs/A", "dev-libs/B"):
 				abs_cwd = os.path.join(test_repo_symlink, cwd)
-				proc = subprocess.Popen([portage._python_interpreter, "-Wd",
-					os.path.join(PORTAGE_BIN_PATH, "repoman"), "full"],
+				proc = subprocess.Popen(repoman_cmd + ("full",),
 					cwd=abs_cwd, env=env, stdout=stdout)
 
 				if debug:

@@ -1,5 +1,5 @@
-#!/usr/bin/python
-# Copyright 2008-2013 Gentoo Foundation
+#!/usr/bin/python -bb
+# Copyright 2008-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -244,7 +244,7 @@ if mode in ["dump", "fix", "inject", "pretend"]:
 				mergedict = {}
 				for (vuln, update) in myglsa.getAffectionTable(least_change=least_change):
 					mergedict.setdefault(update, []).append(vuln)
-				
+
 				sys.stdout.write(">>> The following updates will be performed for this GLSA:\n")
 				for pkg in mergedict:
 					if pkg != "":

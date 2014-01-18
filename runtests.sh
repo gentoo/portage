@@ -67,7 +67,7 @@ for version in ${PYTHON_VERSIONS}; do
 	fi
 	if [[ -x "${executable}" ]]; then
 		echo -e "${GOOD}Testing with Python ${version}...${NORMAL}"
-		"${executable}" -Wd pym/portage/tests/runTests "$@"
+		"${executable}" -bb -Wd pym/portage/tests/runTests "$@"
 		status=$?
 		status_array[${#status_array[@]}]=${status}
 		found_versions[${#found_versions[@]}]=${version}

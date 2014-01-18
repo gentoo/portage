@@ -1,5 +1,5 @@
-#!/usr/bin/python
-# Copyright 2013 Gentoo Foundation
+#!/usr/bin/python -bb
+# Copyright 2013-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import os
@@ -61,7 +61,7 @@ def parse_args(args):
 	parser.add_argument(
 		"--owner",
 		"-o",
-		action="store", 
+		action="store",
 		dest="owner"
 	)
 	parser.add_argument(

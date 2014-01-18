@@ -1,4 +1,4 @@
-# Copyright 2011-2013 Gentoo Foundation
+# Copyright 2011-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -174,29 +174,29 @@ pkg_preinst() {
 		cachedir_pregen = os.path.join(test_repo_location, "metadata", "md5-cache")
 
 		portage_python = portage._python_interpreter
-		dispatch_conf_cmd = (portage_python, "-Wd",
+		dispatch_conf_cmd = (portage_python, "-bb", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "dispatch-conf"))
-		ebuild_cmd = (portage_python, "-Wd",
+		ebuild_cmd = (portage_python, "-bb", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "ebuild"))
-		egencache_cmd = (portage_python, "-Wd",
+		egencache_cmd = (portage_python, "-bb", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "egencache"),
 			"--repo", "test_repo",
 			"--repositories-configuration", settings.repositories.config_string())
-		emerge_cmd = (portage_python, "-Wd",
+		emerge_cmd = (portage_python, "-bb", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "emerge"))
-		emaint_cmd = (portage_python, "-Wd",
+		emaint_cmd = (portage_python, "-bb", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "emaint"))
-		env_update_cmd = (portage_python, "-Wd",
+		env_update_cmd = (portage_python, "-bb", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "env-update"))
 		etc_update_cmd = (BASH_BINARY,
 			os.path.join(PORTAGE_BIN_PATH, "etc-update"))
-		fixpackages_cmd = (portage_python, "-Wd",
+		fixpackages_cmd = (portage_python, "-bb", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "fixpackages"))
-		portageq_cmd = (portage_python, "-Wd",
+		portageq_cmd = (portage_python, "-bb", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "portageq"))
-		quickpkg_cmd = (portage_python, "-Wd",
+		quickpkg_cmd = (portage_python, "-bb", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "quickpkg"))
-		regenworld_cmd = (portage_python, "-Wd",
+		regenworld_cmd = (portage_python, "-bb", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "regenworld"))
 
 		rm_binary = find_binary("rm")

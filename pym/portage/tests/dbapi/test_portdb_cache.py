@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Gentoo Foundation
+# Copyright 2012-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -37,11 +37,11 @@ class PortdbCacheTestCase(TestCase):
 		layout_conf_path = os.path.join(metadata_dir, "layout.conf")
 
 		portage_python = portage._python_interpreter
-		egencache_cmd = (portage_python, "-Wd",
+		egencache_cmd = (portage_python, "-bb", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "egencache"),
 			"--repo", "test_repo",
 			"--repositories-configuration", settings.repositories.config_string())
-		python_cmd = (portage_python, "-Wd", "-c")
+		python_cmd = (portage_python, "-bb", "-Wd", "-c")
 
 		test_commands = (
 			(lambda: not os.path.exists(pms_cache_dir),),
@@ -84,17 +84,17 @@ class PortdbCacheTestCase(TestCase):
 					sys.exit(1)
 			"""),),
 
-			# Don't use python -Wd, since the pms format triggers deprecation warnings
+			# Disable DeprecationWarnings, since the pms format triggers them
 			# in portdbapi._create_pregen_cache().
 			(BASH_BINARY, "-c", "echo %s > %s" %
 				tuple(map(portage._shell_quote,
 				("cache-formats = pms md5-dict", layout_conf_path,)))),
-			(portage_python, "-Wi", "-c") + (textwrap.dedent("""
+			(portage_python, "-bb", "-Wd", "-Wi::DeprecationWarning", "-c") + (textwrap.dedent("""
 				import os, sys, portage
 				if portage.portdb.porttree_root not in portage.portdb._pregen_auxdb:
 					sys.exit(1)
 			"""),),
-			(portage_python, "-Wi", "-c") + (textwrap.dedent("""
+			(portage_python, "-bb", "-Wd", "-Wi::DeprecationWarning", "-c") + (textwrap.dedent("""
 				import os, sys, portage
 				from portage.cache.metadata import database as pms_database
 				if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.porttree_root], pms_database):

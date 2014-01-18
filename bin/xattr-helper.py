@@ -1,5 +1,5 @@
-#!/usr/bin/python
-# Copyright 2012-2013 Gentoo Foundation
+#!/usr/bin/python -bb
+# Copyright 2012-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """Dump and restore extended attributes.

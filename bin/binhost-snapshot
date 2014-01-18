@@ -1,5 +1,5 @@
-#!/usr/bin/python
-# Copyright 2010-2013 Gentoo Foundation
+#!/usr/bin/python -bb
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import io
@@ -31,7 +31,7 @@ def parse_args(argv):
 
 	usage += "\n\n"
 	for line in textwrap.wrap(prog_desc, 70):
-		usage += line + "\n" 
+		usage += line + "\n"
 
 	usage += "\n"
 	usage += "Required Arguments:\n\n"
