@@ -1,4 +1,4 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['getmaskingreason']
@@ -70,7 +70,11 @@ def getmaskingreason(mycpv, metadata=None, settings=None,
 
 	locations = []
 	if pkg.repo in settings.repositories:
-		for repo in settings.repositories[pkg.repo].masters + (settings.repositories[pkg.repo],):
+		if settings.repositories[pkg.repo].package_mask_masters is not None:
+			masters = settings.repositories[pkg.repo].package_mask_masters
+		else:
+			masters = settings.repositories[pkg.repo].masters
+		for repo in masters + (settings.repositories[pkg.repo],):
 			locations.append(os.path.join(repo.location, "profiles"))
 	locations.extend(settings.profiles)
 	locations.append(os.path.join(settings["PORTAGE_CONFIGROOT"],

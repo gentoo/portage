@@ -800,7 +800,9 @@ since operations performed by these tools are inherently
 Specifies names of attributes, which should be forcefully respected by
 \fBegencache\fR(1), \fBemirrordist\fR(1) and \fBrepoman\fR(1).
 .br
-Valid values: aliases, eclass\-overrides, masters
+Valid values: aliases, eclass\-masters, eclass\-overrides, masters,
+package.mask\-masters, use.aliases\-masters, use.force\-masters,
+use.mask\-masters
 .RE
 
 .I Attributes supported in sections of repositories:
@@ -834,21 +836,24 @@ since operations performed by these tools are inherently
 Specifies names of attributes, which should be forcefully respected by
 \fBegencache\fR(1), \fBemirrordist\fR(1) and \fBrepoman\fR(1).
 .br
-Valid values: aliases, eclass\-overrides, masters
+Valid values: aliases, eclass\-masters, eclass\-overrides, masters,
+package.mask\-masters, use.aliases\-masters, use.force\-masters,
+use.mask\-masters
 .TP
 .B location
 Specifies location of given repository.
 .TP
-.B masters
-Specifies master repositories of given repository.
+.B masters, eclass\-masters, package.mask\-masters, use.aliases\-masters, use.force\-masters, use.mask\-masters
+Specifies master repositories of given repository. See documentation of
+\fBlayout.conf\fR file for more details.
 .br
-Setting this attribute is generally not recommended since resulting changes
+Setting these attribute is generally not recommended since resulting changes
 in eclass inheritance may trigger performance issues due to invalidation
 of metadata cache.
 .br
-When 'force = masters' attribute is not set, \fBegencache\fR(1),
-\fBemirrordist\fR(1) and \fBrepoman\fR(1) ignore this attribute,
-since operations performed by these tools are inherently
+When 'force = ${attribute}' (e.g. 'force = masters') attribute is not set,
+\fBegencache\fR(1), \fBemirrordist\fR(1) and \fBrepoman\fR(1) ignore given
+attribute, since operations performed by these tools are inherently
 \fBnot\fR \fIsite\-specific\fR.
 .TP
 .B priority
@@ -986,9 +991,10 @@ Specifies information about the repository layout.
 \fB/etc/portage/repos.conf\fR.
 Settings in \fBrepos.conf\fR take precedence over settings in
 \fBlayout.conf\fR, except tools such as \fBrepoman\fR(1) and \fBegencache\fR(1)
-ignore "aliases", "eclass-overrides" and "masters" attributes set in
-\fBrepos.conf\fR since their operations are inherently \fBnot\fR
-\fIsite\-specific\fR.
+ignore "aliases", "eclass\-masters", "eclass\-overrides", "masters",
+"package.mask\-masters", "use.aliases\-masters", "use.force\-masters" and
+"use.mask\-masters" attributes set in \fBrepos.conf\fR since their operations
+are inherently \fBnot\fR \fIsite\-specific\fR.
 
 .I Format:
 .nf
@@ -996,7 +1002,7 @@ ignore "aliases", "eclass-overrides" and "masters" attributes set in
 \- attributes are specified in "${attribute} = ${value}" format
 .fi
 
-.I Supported attributes.
+.I Supported attributes:
 .RS
 .RS
 .TP
@@ -1009,6 +1015,14 @@ List of EAPIs which are not allowed in this repo.
 .BR eapis\-deprecated
 List of EAPIs which are allowed but generate warnings when used.
 .TP
+.BR eclass\-masters
+Names of repositories wherefrom eclasses can be inherited.
+.br
+This attribute overrides \fBmasters\fR attribute and should be used only when
+there is a need to set this attribute to a different value than value of
+\fBmasters\fR attribute. See documentation of \fBmasters\fR attribute for more
+details.
+.TP
 .BR masters
 Names of repositories which satisfy dependencies on eclasses and from which
 settings specified in various repository\-level files (\fBpackage.mask\fR,
@@ -1017,6 +1031,15 @@ name should correspond to the value of a \fBrepo_name\fR entry from one of
 the repositories that is configured in \fBrepos.conf\fR file. Repositories
 listed toward the right of the \fBmasters\fR list take precedence over those
 listed toward the left of the list.
+.TP
+.BR package.mask-masters
+Names of repositories wherefrom settings specified in repository\-level
+\fBpackage.mask\fR files are inherited.
+.br
+This attribute overrides \fBmasters\fR attribute and should be used only when
+there is a need to set this attribute to a different value than value of
+\fBmasters\fR attribute. See documentation of \fBmasters\fR attribute for more
+details.
 .TP
 .BR repo\-name " = <value of profiles/repo_name>"
 The name of this repository (overrides profiles/repo_name if it exists).
@@ -1029,6 +1052,35 @@ Boolean value whether we should sign Manifest files in this repo.
 .TP
 .BR thin\-manifests " = [true|" false "]"
 Boolean value whether Manifest files contain only DIST entries.
+.TP
+.BR use.aliases\-masters
+Names of repositories wherefrom settings specified in repository\-level
+\fBpackage.use.aliases\fR and \fBuse.aliases\fR files are inherited.
+.br
+This attribute overrides \fBmasters\fR attribute and should be used only when
+there is a need to set this attribute to a different value than value of
+\fBmasters\fR attribute. See documentation of \fBmasters\fR attribute for more
+details.
+.TP
+.BR use.force\-masters
+Names of repositories wherefrom settings specified in repository\-level
+\fBpackage.use.force\fR, \fBpackage.use.stable.force\fR, \fBuse.force\fR and
+\fBuse.stable.force\fR files are inherited.
+.br
+This attribute overrides \fBmasters\fR attribute and should be used only when
+there is a need to set this attribute to a different value than value of
+\fBmasters\fR attribute. See documentation of \fBmasters\fR attribute for more
+details.
+.TP
+.BR use.mask\-masters
+Names of repositories wherefrom settings specified in repository\-level
+\fBpackage.use.mask\fR, \fBpackage.use.stable.mask\fR, \fuse.mask\fR and
+\fBuse.stable.mask\fR files are inherited.
+.br
+This attribute overrides \fBmasters\fR attribute and should be used only when
+there is a need to set this attribute to a different value than value of
+\fBmasters\fR attribute. See documentation of \fBmasters\fR attribute for more
+details.
 .TP
 .BR use\-manifests " = [" strict "|true|false]"
 How Manifest files get used.  Possible values are "strict" (require an entry
