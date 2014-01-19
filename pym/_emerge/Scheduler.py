@@ -165,6 +165,8 @@ class Scheduler(PollScheduler):
 		self._build_opts.buildpkg_exclude = InternalPackageSet( \
 			initial_atoms=" ".join(myopts.get("--buildpkg-exclude", [])).split(), \
 			allow_wildcard=True, allow_repo=True)
+		if "mirror" in self.settings.features:
+			self._build_opts.fetch_all_uri = True
 
 		self._binpkg_opts = self._binpkg_opts_class()
 		for k in self._binpkg_opts.__slots__:
@@ -756,7 +758,8 @@ class Scheduler(PollScheduler):
 			prefetcher = EbuildFetcher(background=True,
 				config_pool=self._ConfigPool(pkg.root,
 				self._allocate_config, self._deallocate_config),
-				fetchonly=1, logfile=self._fetch_log,
+				fetchonly=1, fetchall=self._build_opts.fetch_all_uri,
+				logfile=self._fetch_log,
 				pkg=pkg, prefetch=True, scheduler=self._sched_iface)
 
 		elif pkg.type_name == "binary" and \
