@@ -169,7 +169,7 @@ class RepoConfig(object):
 		location = repo_opts.get('location')
 		self.user_location = location
 		if location is not None and location.strip():
-			if os.path.isdir(location) or portage._sync_disabled_warnings:
+			if os.path.isdir(location) or portage._sync_mode:
 				location = os.path.realpath(location)
 		else:
 			location = None
@@ -187,7 +187,7 @@ class RepoConfig(object):
 				# is empty (bug #484950).
 				if name is not None:
 					self.name = name
-				if portage._sync_disabled_warnings:
+				if portage._sync_mode:
 					missing = False
 
 		elif name == "DEFAULT":
@@ -493,7 +493,7 @@ class RepoConfigLoader(object):
 					prepos[repo.name] = repo
 				else:
 
-					if not portage._sync_disabled_warnings:
+					if not portage._sync_mode:
 						writemsg(_("!!! Invalid PORTDIR_OVERLAY (not a dir): '%s'\n") % ov, noiselevel=-1)
 
 		return portdir
@@ -647,7 +647,7 @@ class RepoConfigLoader(object):
 					del prepos[repo_name]
 					continue
 			else:
-				if not portage._sync_disabled_warnings:
+				if not portage._sync_mode:
 					if not isdir_raise_eaccess(repo.location):
 						writemsg_level("!!! %s\n" % _("Section '%s' in repos.conf has location attribute set "
 							"to nonexistent directory: '%s'") %
@@ -713,7 +713,7 @@ class RepoConfigLoader(object):
 				prepos['DEFAULT'].main_repo = main_repo
 			else:
 				prepos['DEFAULT'].main_repo = None
-				if portdir and not portage._sync_disabled_warnings:
+				if portdir and not portage._sync_mode:
 					writemsg(_("!!! main-repo not set in DEFAULT and PORTDIR is empty.\n"), noiselevel=-1)
 
 		if main_repo is not None and prepos[main_repo].priority is None:
@@ -826,7 +826,7 @@ class RepoConfigLoader(object):
 				continue
 
 			if repo._masters_orig is None and self.mainRepo() and \
-				repo.name != self.mainRepo().name and not portage._sync_disabled_warnings:
+				repo.name != self.mainRepo().name and not portage._sync_mode:
 				# TODO: Delete masters code in pym/portage/tests/resolver/ResolverPlayground.py when deleting this warning.
 				writemsg_level("!!! %s\n" % _("Repository '%s' is missing masters attribute in '%s'") %
 					(repo.name, os.path.join(repo.location, "metadata", "layout.conf")) +
@@ -880,7 +880,7 @@ class RepoConfigLoader(object):
 				if r.location is None:
 					writemsg(_("!!! Location not set for repository %s\n") % name, noiselevel=-1)
 				else:
-					if not isdir_raise_eaccess(r.location) and not portage._sync_disabled_warnings:
+					if not isdir_raise_eaccess(r.location) and not portage._sync_mode:
 						self.prepos_order.remove(name)
 						writemsg(_("!!! Invalid Repository Location"
 							" (not a dir): '%s'\n") % r.location, noiselevel=-1)

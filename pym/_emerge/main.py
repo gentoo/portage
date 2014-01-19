@@ -1,4 +1,4 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -1011,7 +1011,7 @@ def emerge_main(args=None):
 	# Portage needs to ensure a sane umask for the files it creates.
 	os.umask(0o22)
 	if myaction == "sync":
-		portage._sync_disabled_warnings = True
+		portage._sync_mode = True
 	emerge_config = load_emerge_config(
 		action=myaction, args=myfiles, opts=myopts)
 	rval = profile_check(emerge_config.trees, emerge_config.action)

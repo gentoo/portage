@@ -1,4 +1,4 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -119,7 +119,7 @@ class LocationsManager(object):
 				self._addProfile(os.path.realpath(self.profile_path),
 					repositories, known_repos)
 			except ParseError as e:
-				if not portage._sync_disabled_warnings:
+				if not portage._sync_mode:
 					writemsg(_("!!! Unable to parse profile: '%s'\n") % self.profile_path, noiselevel=-1)
 					writemsg("!!! ParseError: %s\n" % str(e), noiselevel=-1)
 				self.profiles = []

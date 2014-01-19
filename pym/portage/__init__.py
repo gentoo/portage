@@ -1,5 +1,4 @@
-# portage.py -- core Portage functionality
-# Copyright 1998-2013 Gentoo Foundation
+# Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -373,7 +372,7 @@ _working_copy = VERSION == "HEAD"
 # Api consumers included in portage should set this to True.
 _internal_caller = False
 
-_sync_disabled_warnings = False
+_sync_mode = False
 
 def _get_stdin():
 	"""

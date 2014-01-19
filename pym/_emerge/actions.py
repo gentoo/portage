@@ -1,4 +1,4 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function, unicode_literals
@@ -2073,7 +2073,7 @@ def action_sync(emerge_config, trees=DeprecationWarning,
 				return returncode
 
 	# Reload the whole config from scratch.
-	portage._sync_disabled_warnings = False
+	portage._sync_mode = False
 	load_emerge_config(emerge_config=emerge_config)
 	adjust_configs(emerge_config.opts, emerge_config.trees)
 

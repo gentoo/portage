@@ -1,4 +1,4 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -536,7 +536,7 @@ class config(object):
 			if portdir_overlay:
 				for ov in portdir_overlay:
 					ov = normalize_path(ov)
-					if isdir_raise_eaccess(ov) or portage._sync_disabled_warnings:
+					if isdir_raise_eaccess(ov) or portage._sync_mode:
 						new_ov.append(portage._shell_quote(ov))
 					else:
 						writemsg(_("!!! Invalid PORTDIR_OVERLAY"
@@ -1040,7 +1040,7 @@ class config(object):
 			else:
 				profile_broken = True
 
-		if profile_broken and not portage._sync_disabled_warnings:
+		if profile_broken and not portage._sync_mode:
 			abs_profile_path = None
 			for x in (PROFILE_PATH, 'etc/make.profile'):
 				x = os.path.join(self["PORTAGE_CONFIGROOT"], x)
