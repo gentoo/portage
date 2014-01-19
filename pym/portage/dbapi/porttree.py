@@ -1,4 +1,4 @@
-# Copyright 1998-2013 Gentoo Foundation
+# Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -111,10 +111,16 @@ class portdbapi(dbapi):
 
 	@property
 	def porttree_root(self):
+		warnings.warn("portage.dbapi.porttree.portdbapi.porttree_root is deprecated in favor of portage.repository.config.RepoConfig.location "
+			"(available as repositories[repo_name].location attribute of instances of portage.dbapi.porttree.portdbapi class)",
+			DeprecationWarning, stacklevel=2)
 		return self.settings.repositories.mainRepoLocation()
 
 	@property
 	def eclassdb(self):
+		warnings.warn("portage.dbapi.porttree.portdbapi.eclassdb is deprecated in favor of portage.repository.config.RepoConfig.eclass_db "
+			"(available as repositories[repo_name].eclass_db attribute of instances of portage.dbapi.porttree.portdbapi class)",
+			DeprecationWarning, stacklevel=2)
 		main_repo = self.repositories.mainRepo()
 		if main_repo is None:
 			return None
