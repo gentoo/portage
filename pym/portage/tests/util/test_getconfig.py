@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
@@ -8,6 +8,7 @@ from portage import _unicode_encode
 from portage.const import PORTAGE_BASE_PATH
 from portage.tests import TestCase
 from portage.util import getconfig
+from portage.exception import ParseError
 
 class GetConfigTestCase(TestCase):
 	"""
@@ -30,6 +31,25 @@ class GetConfigTestCase(TestCase):
 		d = getconfig(make_globals_file)
 		for k, v in self._cases.items():
 			self.assertEqual(d[k], v)
+
+	def testGetConfigSourceLex(self):
+
+		base = os.path.dirname(__file__)
+		make_conf_file = os.path.join(base,
+			'make.conf.example.source_test')
+
+		d = getconfig(make_conf_file,
+			allow_sourcing=True, expand={"PORTAGE_BASE_PATH" : base})
+
+		# PASSES_SOURCING_TEST should exist in getconfig result
+		self.assertIsNotNone(d)
+		self.assertEqual("True", d['PASSES_SOURCING_TEST'])
+
+		# With allow_sourcing : True and empty expand map, this should
+		# Throw a FileNotFound exception
+		self.assertRaisesMsg("An empty expand map should throw an exception",
+			ParseError, getconfig, *(make_conf_file,),
+			**{'allow_sourcing' : True, 'expand' : {}})
 
 	def testGetConfigProfileEnv(self):
 		# Test the mode which is used to parse /etc/env.d and /etc/profile.env.
