@@ -1049,14 +1049,16 @@ of \fI\-\-without\-\fR. Beginning with \fBEAPI 4\fR, an empty \fIconfigure
 opt\fR argument is recognized. In \fBEAPI 3\fR and earlier, an empty
 \fIconfigure opt\fR argument is treated as if it weren't provided.
 .TP
-.B hasv\fR \fI<item>\fR \fI<item list>
-If \fIitem\fR is in \fIitem list\fR, then \fIitem\fR is echoed and \fBhasv\fR
-returns 0.  Otherwise, nothing is echoed and 1 is returned. As indicated with
-use, there is a non\-echoing version \fBhas\fR. Please use \fBhas\fR in all
-places where output is to be disregarded. Never use the output for calculation.
+.B has\fR \fI<item>\fR \fI<item list>
+If \fIitem\fR is in \fIitem list\fR, then \fBhas\fR returns
+0. Otherwise, 1 is returned. There is another version, \fBhasv\fR, that
+will conditionally echo \fIitem\fR.
 .br
 The \fIitem list\fR is delimited by the \fIIFS\fR variable.  This variable
 has a default value of ' ', or a space.  It is a \fBbash\fR(1) setting.
+.TP
+.B hasv\fR \fI<item>\fR \fI<item list>
+Like \fBhas\fR, but also echoes \fIitem\fR when \fBhas\fR returns true.
 .TP
 .B has_version\fR \fI[\-\-host\-root]\fR \fI<category/package\-version>
 Check to see if \fIcategory/package\-version\fR is installed on the system.
