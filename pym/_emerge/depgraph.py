@@ -75,6 +75,7 @@ from _emerge.UseFlagDisplay import pkg_use_display
 from _emerge.userquery import userquery
 
 from _emerge.resolver.backtracking import Backtracker, BacktrackParameter
+from _emerge.resolver.package_tracker import PackageTracker, PackageTrackerDbapiWrapper
 from _emerge.resolver.slot_collision import slot_conflict_handler
 from _emerge.resolver.circular_dependency import circular_dependency_handler
 from _emerge.resolver.output import Display
@@ -341,8 +342,6 @@ class _dynamic_depgraph_config(object):
 		self.myparams = myparams.copy()
 		self._vdb_loaded = False
 		self._allow_backtracking = allow_backtracking
-		# Maps slot atom to package for each Package added to the graph.
-		self._slot_pkg_map = {}
 		# Maps nodes to the reasons they were selected for reinstallation.
 		self._reinstall_nodes = {}
 		self.mydbapi = {}
@@ -432,14 +431,14 @@ class _dynamic_depgraph_config(object):
 		self._traverse_ignored_deps = False
 		self._complete_mode = False
 		self._slot_operator_deps = {}
+		self._package_tracker = PackageTracker()
 
 		for myroot in depgraph._frozen_config.trees:
 			self.sets[myroot] = _depgraph_sets()
-			self._slot_pkg_map[myroot] = {}
 			vardb = depgraph._frozen_config.trees[myroot]["vartree"].dbapi
 			# This dbapi instance will model the state that the vdb will
 			# have after new packages have been installed.
-			fakedb = PackageVirtualDbapi(vardb.settings)
+			fakedb = PackageTrackerDbapiWrapper(myroot, self._package_tracker)
 
 			self.mydbapi[myroot] = fakedb
 			def graph_tree():
@@ -564,12 +563,12 @@ class depgraph(object):
 
 				if not dynamic_deps:
 					for pkg in vardb:
-						fakedb.cpv_inject(pkg)
+						self._dynamic_config._package_tracker.add_installed_pkg(pkg)
 				else:
 					max_jobs = self._frozen_config.myopts.get("--jobs")
 					max_load = self._frozen_config.myopts.get("--load-average")
 					scheduler = TaskScheduler(
-						self._dynamic_deps_preload(fake_vartree, fakedb),
+						self._dynamic_deps_preload(fake_vartree),
 						max_jobs=max_jobs,
 						max_load=max_load,
 						event_loop=fake_vartree._portdb._event_loop)
@@ -578,11 +577,11 @@ class depgraph(object):
 
 		self._dynamic_config._vdb_loaded = True
 
-	def _dynamic_deps_preload(self, fake_vartree, fakedb):
+	def _dynamic_deps_preload(self, fake_vartree):
 		portdb = fake_vartree._portdb
 		for pkg in fake_vartree.dbapi:
 			self._spinner_update()
-			fakedb.cpv_inject(pkg)
+			self._dynamic_config._package_tracker.add_installed_pkg(pkg)
 			ebuild_path, repo_path = \
 				portdb.findname2(pkg.cpv, myrepo=pkg.repo)
 			if ebuild_path is None:
@@ -1050,7 +1049,8 @@ class depgraph(object):
 		all_parents, conflict_pkgs):
 
 		debug = "--debug" in self._frozen_config.myopts
-		existing_node = self._dynamic_config._slot_pkg_map[root][slot_atom]
+		existing_node = next(self._dynamic_config._package_tracker.match(
+			root, slot_atom, installed=False))
 		# In order to avoid a missed update, first mask lower versions
 		# that conflict with higher versions (the backtracker visits
 		# these in reverse order).
@@ -1827,8 +1827,8 @@ class depgraph(object):
 			# The caller has selected a specific package
 			# via self._minimize_packages().
 			dep_pkg = dep.child
-			existing_node = self._dynamic_config._slot_pkg_map[
-				dep.root].get(dep_pkg.slot_atom)
+			existing_node = next(self._dynamic_config._package_tracker.match(
+				dep.root, dep_pkg.slot_atom, installed=False), None)
 
 		if not dep_pkg:
 			if (dep.collapsed_priority.optional or
@@ -1893,7 +1893,9 @@ class depgraph(object):
 		return 1
 
 	def _check_slot_conflict(self, pkg, atom):
-		existing_node = self._dynamic_config._slot_pkg_map[pkg.root].get(pkg.slot_atom)
+		existing_node = next(self._dynamic_config._package_tracker.match(
+			pkg.root, pkg.slot_atom, installed=False), None)
+
 		matches = None
 		if existing_node:
 			matches = pkg.cpv == existing_node.cpv
@@ -2046,7 +2048,7 @@ class depgraph(object):
 				# function despite collisions.
 				pass
 			elif not previously_added:
-				self._dynamic_config._slot_pkg_map[pkg.root][pkg.slot_atom] = pkg
+				self._dynamic_config._package_tracker.add_pkg(pkg)
 				self._dynamic_config.mydbapi[pkg.root].cpv_inject(pkg)
 				self._dynamic_config._filtered_trees[pkg.root]["porttree"].dbapi._clear_cache()
 				self._dynamic_config._highest_pkg_cache.clear()
@@ -2162,7 +2164,8 @@ class depgraph(object):
 		slot_nodes = self._dynamic_config._slot_collision_info.get(slot_key)
 		if slot_nodes is None:
 			slot_nodes = set()
-			slot_nodes.add(self._dynamic_config._slot_pkg_map[pkg.root][pkg.slot_atom])
+			slot_nodes.update(self._dynamic_config._package_tracker.match(
+				pkg.root, pkg.slot_atom, installed=False))
 			self._dynamic_config._slot_collision_info[slot_key] = slot_nodes
 		slot_nodes.add(pkg)
 
@@ -2347,8 +2350,8 @@ class depgraph(object):
 			mypriority.satisfied.visible and \
 			dep.child is not None and \
 			not dep.child.installed and \
-			self._dynamic_config._slot_pkg_map[dep.child.root].get(
-			dep.child.slot_atom) is None and \
+			not any(self._dynamic_config._package_tracker.match(
+				dep.child.root, dep.child.slot_atom, installed=False)) and \
 			not slot_operator_rebuild
 
 	def _wrapped_add_pkg_dep_string(self, pkg, dep_root, dep_priority,
@@ -5071,7 +5074,9 @@ class depgraph(object):
 					# will always end with a break statement below
 					# this point.
 					if find_existing_node:
-						e_pkg = self._dynamic_config._slot_pkg_map[root].get(pkg.slot_atom)
+						e_pkg = next(self._dynamic_config._package_tracker.match(
+							root, pkg.slot_atom, installed=False), None)
+
 						if not e_pkg:
 							break
 
@@ -5319,7 +5324,9 @@ class depgraph(object):
 								matches = unmasked
 
 		pkg = matches[-1] # highest match
-		in_graph = self._dynamic_config._slot_pkg_map[root].get(pkg.slot_atom)
+		in_graph = next(self._dynamic_config._package_tracker.match(
+			root, pkg.slot_atom, installed=False), None)
+
 		return pkg, in_graph
 
 	def _complete_graph(self, required_sets=None):
@@ -7988,8 +7995,9 @@ class _dep_check_composite_db(dbapi):
 				elif not self._depgraph._equiv_ebuild_visible(pkg):
 					return False
 
-		in_graph = self._depgraph._dynamic_config._slot_pkg_map[
-			self._root].get(pkg.slot_atom)
+		in_graph = next(self._depgraph._dynamic_config._package_tracker.match(
+			self._root, pkg.slot_atom, installed=False), None)
+
 		if in_graph is None:
 			# Mask choices for packages which are not the highest visible
 			# version within their slot (since they usually trigger slot

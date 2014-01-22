@@ -227,7 +227,7 @@ class _DisplayConfig(object):
 		self.reinstall_nodes = dynamic_config._reinstall_nodes
 		self.digraph = dynamic_config.digraph
 		self.blocker_uninstalls = dynamic_config._blocker_uninstalls
-		self.slot_pkg_map = dynamic_config._slot_pkg_map
+		self.package_tracker = dynamic_config._package_tracker
 		self.set_nodes = dynamic_config._set_nodes
 
 		self.pkg_use_enabled = depgraph._pkg_use_enabled
@@ -370,8 +370,9 @@ def _tree_display(conf, mylist):
 		# If the uninstall task did not need to be executed because
 		# of an upgrade, display Blocker -> Upgrade edges since the
 		# corresponding Blocker -> Uninstall edges will not be shown.
-		upgrade_node = \
-			conf.slot_pkg_map[uninstall.root].get(uninstall.slot_atom)
+		upgrade_node = next(conf.package_tracker.match(
+			uninstall.root, uninstall.slot_atom), None)
+
 		if upgrade_node is not None and \
 			uninstall not in executed_uninstalls:
 			for blocker in uninstall_parents:
