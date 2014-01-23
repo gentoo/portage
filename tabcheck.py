@@ -1,4 +1,4 @@
-#!/usr/bin/python -bbO
+#!/usr/bin/python -bO
 
 import tabnanny,sys
 

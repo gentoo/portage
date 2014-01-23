@@ -37,11 +37,11 @@ class PortdbCacheTestCase(TestCase):
 		layout_conf_path = os.path.join(metadata_dir, "layout.conf")
 
 		portage_python = portage._python_interpreter
-		egencache_cmd = (portage_python, "-bb", "-Wd",
+		egencache_cmd = (portage_python, "-b", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "egencache"),
 			"--repo", "test_repo",
 			"--repositories-configuration", settings.repositories.config_string())
-		python_cmd = (portage_python, "-bb", "-Wd", "-c")
+		python_cmd = (portage_python, "-b", "-Wd", "-c")
 
 		test_commands = (
 			(lambda: not os.path.exists(pms_cache_dir),),
@@ -89,12 +89,12 @@ class PortdbCacheTestCase(TestCase):
 			(BASH_BINARY, "-c", "echo %s > %s" %
 				tuple(map(portage._shell_quote,
 				("cache-formats = pms md5-dict", layout_conf_path,)))),
-			(portage_python, "-bb", "-Wd", "-Wi::DeprecationWarning", "-c") + (textwrap.dedent("""
+			(portage_python, "-b", "-Wd", "-Wi::DeprecationWarning", "-c") + (textwrap.dedent("""
 				import os, sys, portage
 				if portage.portdb.porttree_root not in portage.portdb._pregen_auxdb:
 					sys.exit(1)
 			"""),),
-			(portage_python, "-bb", "-Wd", "-Wi::DeprecationWarning", "-c") + (textwrap.dedent("""
+			(portage_python, "-b", "-Wd", "-Wi::DeprecationWarning", "-c") + (textwrap.dedent("""
 				import os, sys, portage
 				from portage.cache.metadata import database as pms_database
 				if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.porttree_root], pms_database):

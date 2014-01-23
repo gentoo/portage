@@ -1,4 +1,4 @@
-#!/usr/bin/python -bb
+#!/usr/bin/python -b
 # Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 #

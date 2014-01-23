@@ -1,4 +1,4 @@
-#!/usr/bin/python -bb
+#!/usr/bin/python -b
 
 # Ripped from HP and updated from Debian
 # Update by Gentoo to support unicode output

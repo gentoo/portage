@@ -170,7 +170,7 @@ class SimpleRepomanTestCase(TestCase):
 		profiles_dir = os.path.join(test_repo_location, "profiles")
 		license_dir = os.path.join(test_repo_location, "licenses")
 
-		repoman_cmd = (portage._python_interpreter, "-bb", "-Wd",
+		repoman_cmd = (portage._python_interpreter, "-b", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "repoman"))
 
 		git_binary = find_binary("git")

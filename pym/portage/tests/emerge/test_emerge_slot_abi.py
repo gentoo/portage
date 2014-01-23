@@ -69,9 +69,9 @@ class SlotAbiEmergeTestCase(TestCase):
 		package_mask_path = os.path.join(user_config_dir, "package.mask")
 
 		portage_python = portage._python_interpreter
-		ebuild_cmd = (portage_python, "-bb", "-Wd",
+		ebuild_cmd = (portage_python, "-b", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "ebuild"))
-		emerge_cmd = (portage_python, "-bb", "-Wd",
+		emerge_cmd = (portage_python, "-b", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "emerge"))
 
 		test_ebuild = portdb.findname("dev-libs/dbus-glib-0.98")
