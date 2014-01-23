@@ -344,7 +344,6 @@ class _dynamic_depgraph_config(object):
 		self._allow_backtracking = allow_backtracking
 		# Maps nodes to the reasons they were selected for reinstallation.
 		self._reinstall_nodes = {}
-		self.mydbapi = {}
 		# Contains a filtered view of preferred packages that are selected
 		# from available repositories.
 		self._filtered_trees = {}
@@ -440,7 +439,6 @@ class _dynamic_depgraph_config(object):
 			# have after new packages have been installed.
 			fakedb = PackageTrackerDbapiWrapper(myroot, self._package_tracker)
 
-			self.mydbapi[myroot] = fakedb
 			def graph_tree():
 				pass
 			graph_tree.dbapi = fakedb
@@ -558,8 +556,6 @@ class depgraph(object):
 
 			if preload_installed_pkgs:
 				vardb = fake_vartree.dbapi
-				fakedb = self._dynamic_config._graph_trees[
-					myroot]["vartree"].dbapi
 
 				if not dynamic_deps:
 					for pkg in vardb:
@@ -724,25 +720,23 @@ class depgraph(object):
 
 		for pkg in list(self._dynamic_config.ignored_binaries):
 
-			selected_pkg = self._dynamic_config.mydbapi[pkg.root
-				].match_pkgs(pkg.slot_atom)
+			selected_pkg = list()
 
-			if not selected_pkg:
-				continue
+			for selected_pkg in self._dynamic_config._package_tracker.match(
+				pkg.root, pkg.slot_atom):
 
-			selected_pkg = selected_pkg[-1]
-			if selected_pkg > pkg:
-				self._dynamic_config.ignored_binaries.pop(pkg)
-				continue
+				if selected_pkg > pkg:
+					self._dynamic_config.ignored_binaries.pop(pkg)
+					break
 
-			if selected_pkg.installed and \
-				selected_pkg.cpv == pkg.cpv and \
-				selected_pkg.build_time == pkg.build_time:
-				# We don't care about ignored binaries when an
-				# identical installed instance is selected to
-				# fill the slot.
-				self._dynamic_config.ignored_binaries.pop(pkg)
-				continue
+				if selected_pkg.installed and \
+					selected_pkg.cpv == pkg.cpv and \
+					selected_pkg.build_time == pkg.build_time:
+					# We don't care about ignored binaries when an
+					# identical installed instance is selected to
+					# fill the slot.
+					self._dynamic_config.ignored_binaries.pop(pkg)
+					break
 
 		if not self._dynamic_config.ignored_binaries:
 			return
@@ -788,20 +782,25 @@ class depgraph(object):
 				# Exclude installed here since we only
 				# want to show available updates.
 				continue
-			chosen_pkg = self._dynamic_config.mydbapi[pkg.root
-				].match_pkgs(pkg.slot_atom)
-			if not chosen_pkg or chosen_pkg[-1] >= pkg:
-				continue
-			k = (pkg.root, pkg.slot_atom)
-			if k in missed_updates:
-				other_pkg, mask_type, parent_atoms = missed_updates[k]
-				if other_pkg > pkg:
-					continue
-			for mask_type, parent_atoms in mask_reasons.items():
-				if not parent_atoms:
-					continue
-				missed_updates[k] = (pkg, mask_type, parent_atoms)
-				break
+			missed_update = True
+			any_selected = False
+			for chosen_pkg in self._dynamic_config._package_tracker.match(
+				pkg.root, pkg.slot_atom):
+				any_selected = True
+				if chosen_pkg >= pkg:
+					missed_update = False
+					break
+			if any_selected and missed_update:
+				k = (pkg.root, pkg.slot_atom)
+				if k in missed_updates:
+					other_pkg, mask_type, parent_atoms = missed_updates[k]
+					if other_pkg > pkg:
+						continue
+				for mask_type, parent_atoms in mask_reasons.items():
+					if not parent_atoms:
+						continue
+					missed_updates[k] = (pkg, mask_type, parent_atoms)
+					break
 
 		return missed_updates
 
@@ -2040,16 +2039,13 @@ class depgraph(object):
 				# can show use flags and --tree portage.output.  This node is
 				# only being partially added to the graph.  It must not be
 				# allowed to interfere with the other nodes that have been
-				# added.  Do not overwrite data for existing nodes in
-				# self._dynamic_config.mydbapi since that data will be used for blocker
-				# validation.
+				# added.
 				# Even though the graph is now invalid, continue to process
 				# dependencies so that things like --fetchonly can still
 				# function despite collisions.
 				pass
 			elif not previously_added:
 				self._dynamic_config._package_tracker.add_pkg(pkg)
-				self._dynamic_config.mydbapi[pkg.root].cpv_inject(pkg)
 				self._dynamic_config._filtered_trees[pkg.root]["porttree"].dbapi._clear_cache()
 				self._dynamic_config._highest_pkg_cache.clear()
 				self._check_masks(pkg)
@@ -3639,35 +3635,37 @@ class depgraph(object):
 	def _expand_virt_from_graph(self, root, atom):
 		if not isinstance(atom, Atom):
 			atom = Atom(atom)
-		graphdb = self._dynamic_config.mydbapi[root]
-		match = graphdb.match_pkgs(atom)
-		if not match:
-			yield atom
-			return
-		pkg = match[-1]
-		if not pkg.cpv.startswith("virtual/"):
-			yield atom
-			return
-		try:
-			rdepend = self._select_atoms_from_graph(
-				pkg.root, pkg._metadata.get("RDEPEND", ""),
-				myuse=self._pkg_use_enabled(pkg),
-				parent=pkg, strict=False)
-		except InvalidDependString as e:
-			writemsg_level("!!! Invalid RDEPEND in " + \
-				"'%svar/db/pkg/%s/RDEPEND': %s\n" % \
-				(pkg.root, pkg.cpv, e),
-				noiselevel=-1, level=logging.ERROR)
+
+		if not atom.cp.startswith("virtual/"):
 			yield atom
 			return
 
-		for atoms in rdepend.values():
-			for atom in atoms:
-				if hasattr(atom, "_orig_atom"):
-					# Ignore virtual atoms since we're only
-					# interested in expanding the real atoms.
-					continue
-				yield atom
+		any_match = False
+		for pkg in self._dynamic_config._package_tracker.match(root, atom):
+			try:
+				rdepend = self._select_atoms_from_graph(
+					pkg.root, pkg._metadata.get("RDEPEND", ""),
+					myuse=self._pkg_use_enabled(pkg),
+					parent=pkg, strict=False)
+			except InvalidDependString as e:
+				writemsg_level("!!! Invalid RDEPEND in " + \
+					"'%svar/db/pkg/%s/RDEPEND': %s\n" % \
+					(pkg.root, pkg.cpv, e),
+					noiselevel=-1, level=logging.ERROR)
+				continue
+
+			for atoms in rdepend.values():
+				for atom in atoms:
+					if hasattr(atom, "_orig_atom"):
+						# Ignore virtual atoms since we're only
+						# interested in expanding the real atoms.
+						continue
+					yield atom
+
+			any_match = True
+
+		if not any_match:
+			yield atom
 
 	def _virt_deps_visible(self, pkg, ignore_use=False):
 		"""
@@ -5524,10 +5522,14 @@ class depgraph(object):
 			installed=installed, onlydeps=onlydeps))
 		if pkg is None and onlydeps and not installed:
 			# Maybe it already got pulled in as a "merge" node.
-			pkg = self._dynamic_config.mydbapi[root_config.root].get(
-				Package._gen_hash_key(cpv=cpv, type_name=type_name,
-				repo_name=myrepo, root_config=root_config,
-				installed=installed, onlydeps=False))
+			for candidate in self._dynamic_config._package_tracker.match(
+				root_config.root, cpv):
+				if candidate.type_name == type_name and \
+					candidate.repo_name == myrepo and \
+					candidate.root_config is root_config and \
+					candidate.installed == installed and \
+					not candidate.onlydeps:
+					pkg = candidate
 
 		if pkg is None:
 			tree_type = self.pkg_tree_map[type_name]
@@ -5587,7 +5589,8 @@ class depgraph(object):
 				vardb = self._frozen_config.trees[myroot]["vartree"].dbapi
 				pkgsettings = self._frozen_config.pkgsettings[myroot]
 				root_config = self._frozen_config.roots[myroot]
-				final_db = self._dynamic_config.mydbapi[myroot]
+				final_db = PackageTrackerDbapiWrapper(
+					myroot, self._dynamic_config._package_tracker)
 
 				blocker_cache = BlockerCache(myroot, vardb)
 				stale_cache = set(blocker_cache)
@@ -5604,7 +5607,7 @@ class depgraph(object):
 					# the merge process or by --depclean. Always warn about
 					# packages masked by license, since the user likely wants
 					# to adjust ACCEPT_LICENSE.
-					if pkg in final_db:
+					if pkg in self._dynamic_config._package_tracker:
 						if not self._pkg_visibility_check(pkg,
 							trust_graph=False) and \
 							(pkg_in_graph or 'LICENSE' in pkg.masks):
@@ -5686,9 +5689,10 @@ class depgraph(object):
 							del e
 							raise
 						if not success:
-							replacement_pkg = final_db.match_pkgs(pkg.slot_atom)
-							if replacement_pkg and \
-								replacement_pkg[0].operation == "merge":
+							replacement_pkgs = self._dynamic_config._package_tracker.match(
+								myroot, pkg.slot_atom)
+							if any(replacement_pkg[0].operation == "merge" for \
+								replacement_pkg in replacement_pkgs):
 								# This package is being replaced anyway, so
 								# ignore invalid dependencies so as not to
 								# annoy the user too much (otherwise they'd be
@@ -5733,7 +5737,6 @@ class depgraph(object):
 			virtuals = root_config.settings.getvirtuals()
 			myroot = blocker.root
 			initial_db = self._frozen_config.trees[myroot]["vartree"].dbapi
-			final_db = self._dynamic_config.mydbapi[myroot]
 
 			provider_virtual = False
 			if blocker.cp in virtuals and \
@@ -5761,7 +5764,7 @@ class depgraph(object):
 
 			blocked_final = set()
 			for atom in atoms:
-				for pkg in final_db.match_pkgs(atom):
+				for pkg in self._dynamic_config._package_tracker.match(myroot, atom):
 					if atom_set.findAtomForPackage(pkg, modified_use=self._pkg_use_enabled(pkg)):
 						blocked_final.add(pkg)
 
@@ -5943,19 +5946,15 @@ class depgraph(object):
 		libc_pkgs = {}
 		implicit_libc_roots = (self._frozen_config._running_root.root,)
 		for root in implicit_libc_roots:
-			graphdb = self._dynamic_config.mydbapi[root]
 			vardb = self._frozen_config.trees[root]["vartree"].dbapi
 			for atom in self._expand_virt_from_graph(root,
  				portage.const.LIBC_PACKAGE_ATOM):
 				if atom.blocker:
 					continue
-				match = graphdb.match_pkgs(atom)
-				if not match:
-					continue
-				pkg = match[-1]
-				if pkg.operation == "merge" and \
-					not vardb.cpv_exists(pkg.cpv):
-					libc_pkgs.setdefault(pkg.root, set()).add(pkg)
+				for pkg in self._dynamic_config._package_tracker.match(root, atom):
+					if pkg.operation == "merge" and \
+						not vardb.cpv_exists(pkg.cpv):
+						libc_pkgs.setdefault(pkg.root, set()).add(pkg)
 
 		if not libc_pkgs:
 			return
@@ -6156,8 +6155,8 @@ class depgraph(object):
 			initial_atoms=[PORTAGE_PACKAGE_ATOM])
 		running_portage = self._frozen_config.trees[running_root]["vartree"].dbapi.match_pkgs(
 			PORTAGE_PACKAGE_ATOM)
-		replacement_portage = self._dynamic_config.mydbapi[running_root].match_pkgs(
-			PORTAGE_PACKAGE_ATOM)
+		replacement_portage = list(self._dynamic_config._package_tracker.match(
+			running_root, Atom(PORTAGE_PACKAGE_ATOM)))
 
 		if running_portage:
 			running_portage = running_portage[0]
@@ -6194,18 +6193,15 @@ class depgraph(object):
 		for root in implicit_libc_roots:
 			libc_pkgs = set()
 			vardb = self._frozen_config.trees[root]["vartree"].dbapi
-			graphdb = self._dynamic_config.mydbapi[root]
 			for atom in self._expand_virt_from_graph(root,
 				portage.const.LIBC_PACKAGE_ATOM):
 				if atom.blocker:
 					continue
-				match = graphdb.match_pkgs(atom)
-				if not match:
-					continue
-				pkg = match[-1]
-				if pkg.operation == "merge" and \
-					not vardb.cpv_exists(pkg.cpv):
-					libc_pkgs.add(pkg)
+
+				for pkg in self._dynamic_config._package_tracker.match(root, atom):
+					if pkg.operation == "merge" and \
+						not vardb.cpv_exists(pkg.cpv):
+						libc_pkgs.add(pkg)
 
 			if libc_pkgs:
 				# If there's also an os-headers upgrade, we need to
@@ -6214,13 +6210,11 @@ class depgraph(object):
 					portage.const.OS_HEADERS_PACKAGE_ATOM):
 					if atom.blocker:
 						continue
-					match = graphdb.match_pkgs(atom)
-					if not match:
-						continue
-					pkg = match[-1]
-					if pkg.operation == "merge" and \
-						not vardb.cpv_exists(pkg.cpv):
-						asap_nodes.append(pkg)
+
+					for pkg in self._dynamic_config._package_tracker.match(root, atom):
+						if pkg.operation == "merge" and \
+							not vardb.cpv_exists(pkg.cpv):
+							asap_nodes.append(pkg)
 
 				asap_nodes.extend(libc_pkgs)
 
@@ -6562,13 +6556,12 @@ class depgraph(object):
 						# For packages in the world set, go ahead an uninstall
 						# when necessary, as long as the atom will be satisfied
 						# in the final state.
-						graph_db = self._dynamic_config.mydbapi[task.root]
 						skip = False
 						try:
 							for atom in root_config.sets[
 								"selected"].iterAtomsForPackage(task):
 								satisfied = False
-								for pkg in graph_db.match_pkgs(atom):
+								for pkg in self._dynamic_config._package_tracker.match(task.root, atom):
 									if pkg == inst_pkg:
 										continue
 									satisfied = True
@@ -6650,12 +6643,11 @@ class depgraph(object):
 					# node unnecessary (due to occupying the same SLOT),
 					# and we want to avoid executing a separate uninstall
 					# task in that case.
-					slot_node = self._dynamic_config.mydbapi[uninst_task.root
-						].match_pkgs(uninst_task.slot_atom)
-					if slot_node and \
-						slot_node[0].operation == "merge":
-						mygraph.add(slot_node[0], uninst_task,
-							priority=BlockerDepPriority.instance)
+					for slot_node in self._dynamic_config._package_tracker.match(
+						uninst_task.root, uninst_task.slot_atom):
+						if slot_node.operation == "merge":
+							mygraph.add(slot_node, uninst_task,
+								priority=BlockerDepPriority.instance)
 
 					# Reset the state variables for leaf node selection and
 					# continue trying to select leaf nodes.
@@ -7624,7 +7616,6 @@ class depgraph(object):
 		else:
 			args = []
 
-		fakedb = self._dynamic_config.mydbapi
 		serialized_tasks = []
 		masked_tasks = []
 		for x in mergelist:
@@ -7682,7 +7673,7 @@ class depgraph(object):
 					self._dynamic_config._unsatisfied_deps_for_display.append(
 						((pkg.root, "="+pkg.cpv), {"myparent":None}))
 
-			fakedb[myroot].cpv_inject(pkg)
+			self._dynamic_config._package_tracker.add_pkg(pkg)
 			serialized_tasks.append(pkg)
 			self._spinner_update()
 
