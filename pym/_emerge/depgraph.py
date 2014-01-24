@@ -378,9 +378,6 @@ class _dynamic_depgraph_config(object):
 		# This use used to check if we have accounted for blockers
 		# relevant to a package.
 		self._traversed_pkg_deps = set()
-		# Slot collision nodes are not allowed to block other packages since
-		# blocker validation is only able to account for one package per slot.
-		self._slot_collision_nodes = set()
 		self._parent_atoms = {}
 		self._slot_conflict_handler = None
 		self._circular_dependency_handler = None
@@ -1799,11 +1796,16 @@ class depgraph(object):
 		buildpkgonly = "--buildpkgonly" in self._frozen_config.myopts
 		nodeps = "--nodeps" in self._frozen_config.myopts
 		if dep.blocker:
+
+			# Slot collision nodes are not allowed to block other packages since
+			# blocker validation is only able to account for one package per slot.
+			is_slot_conflict_parent = any(dep.parent in conflict.pkgs[1:] for conflict in \
+				self._dynamic_config._package_tracker.slot_conflicts())
 			if not buildpkgonly and \
 				not nodeps and \
 				not dep.collapsed_priority.ignored and \
 				not dep.collapsed_priority.optional and \
-				dep.parent not in self._dynamic_config._slot_collision_nodes:
+				not is_slot_conflict_parent:
 				if dep.parent.onlydeps:
 					# It's safe to ignore blockers if the
 					# parent is an --onlydeps node.
@@ -2019,7 +2021,6 @@ class depgraph(object):
 								level=logging.DEBUG, noiselevel=-1)
 
 				else:
-					self._add_slot_conflict(pkg)
 					if debug:
 						writemsg_level(
 							"%s%s %s\n" % ("Slot Conflict:".ljust(15),
@@ -2137,9 +2138,6 @@ class depgraph(object):
 			slot_info = []
 			self._dynamic_config._slot_operator_deps[slot_key] = slot_info
 		slot_info.append(dep)
-
-	def _add_slot_conflict(self, pkg):
-		self._dynamic_config._slot_collision_nodes.add(pkg)
 
 	def _add_pkg_deps(self, pkg, allow_unsatisfied=False):
 
@@ -6019,7 +6017,7 @@ class depgraph(object):
 
 		if "complete" not in self._dynamic_config.myparams and \
 			self._dynamic_config._allow_backtracking and \
-			self._dynamic_config._slot_collision_nodes and \
+			any(self._dynamic_config._package_tracker.slot_conflicts()) and \
 			not self._accept_blocker_conflicts():
 			self._dynamic_config.myparams["complete"] = True
 
