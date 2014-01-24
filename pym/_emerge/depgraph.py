@@ -378,11 +378,6 @@ class _dynamic_depgraph_config(object):
 		# This use used to check if we have accounted for blockers
 		# relevant to a package.
 		self._traversed_pkg_deps = set()
-		# This should be ordered such that the backtracker will
-		# attempt to solve conflicts which occurred earlier first,
-		# since an earlier conflict can be the cause of a conflict
-		# which occurs later.
-		self._slot_collision_info = OrderedDict()
 		# Slot collision nodes are not allowed to block other packages since
 		# blocker validation is only able to account for one package per slot.
 		self._slot_collision_nodes = set()
@@ -915,7 +910,7 @@ class depgraph(object):
 		cases.
 		"""
 
-		if not self._dynamic_config._slot_collision_info:
+		if not any(self._dynamic_config._package_tracker.slot_conflicts()):
 			return
 
 		self._show_merge_list()
@@ -971,16 +966,18 @@ class depgraph(object):
 		is called, so that all relevant reverse dependencies are
 		available for use in backtracking decisions.
 		"""
-		for (slot_atom, root), slot_nodes in \
-			self._dynamic_config._slot_collision_info.items():
-			self._process_slot_conflict(root, slot_atom, slot_nodes)
+		for conflict in self._dynamic_config._package_tracker.slot_conflicts():
+			self._process_slot_conflict(conflict)
 
-	def _process_slot_conflict(self, root, slot_atom, slot_nodes):
+	def _process_slot_conflict(self, conflict):
 		"""
 		Process slot conflict data to identify specific atoms which
 		lead to conflict. These atoms only match a subset of the
 		packages that have been pulled into a given slot.
 		"""
+		root = conflict.root
+		slot_atom = conflict.atom
+		slot_nodes = conflict.pkgs
 
 		debug = "--debug" in self._frozen_config.myopts
 
@@ -1999,7 +1996,6 @@ class depgraph(object):
 
 			existing_node, existing_node_matches = \
 				self._check_slot_conflict(pkg, dep.atom)
-			slot_collision = False
 			if existing_node:
 				if existing_node_matches:
 					# The existing node can be reused.
@@ -2032,19 +2028,7 @@ class depgraph(object):
 							modified_use=self._pkg_use_enabled(existing_node))),
 							level=logging.DEBUG, noiselevel=-1)
 
-					slot_collision = True
-
-			if slot_collision:
-				# Now add this node to the graph so that self.display()
-				# can show use flags and --tree portage.output.  This node is
-				# only being partially added to the graph.  It must not be
-				# allowed to interfere with the other nodes that have been
-				# added.
-				# Even though the graph is now invalid, continue to process
-				# dependencies so that things like --fetchonly can still
-				# function despite collisions.
-				pass
-			elif not previously_added:
+			if not previously_added:
 				self._dynamic_config._package_tracker.add_pkg(pkg)
 				self._dynamic_config._filtered_trees[pkg.root]["porttree"].dbapi._clear_cache()
 				self._dynamic_config._highest_pkg_cache.clear()
@@ -2156,14 +2140,6 @@ class depgraph(object):
 
 	def _add_slot_conflict(self, pkg):
 		self._dynamic_config._slot_collision_nodes.add(pkg)
-		slot_key = (pkg.slot_atom, pkg.root)
-		slot_nodes = self._dynamic_config._slot_collision_info.get(slot_key)
-		if slot_nodes is None:
-			slot_nodes = set()
-			slot_nodes.update(self._dynamic_config._package_tracker.match(
-				pkg.root, pkg.slot_atom, installed=False))
-			self._dynamic_config._slot_collision_info[slot_key] = slot_nodes
-		slot_nodes.add(pkg)
 
 	def _add_pkg_deps(self, pkg, allow_unsatisfied=False):
 
@@ -3284,7 +3260,8 @@ class depgraph(object):
 		except self._unknown_internal_error:
 			return False, myfavorites
 
-		if (self._dynamic_config._slot_collision_info and
+		have_slot_conflict = any(self._dynamic_config._package_tracker.slot_conflicts())
+		if (have_slot_conflict and
 			not self._accept_blocker_conflicts()) or \
 			(self._dynamic_config._allow_backtracking and
 			"slot conflict" in self._dynamic_config._backtrack_infos):
@@ -6806,7 +6783,8 @@ class depgraph(object):
 			# conflicts (or by blind luck).
 			raise self._unknown_internal_error()
 
-		if self._dynamic_config._slot_collision_info and \
+		have_slot_conflict = any(self._dynamic_config._package_tracker.slot_conflicts())
+		if have_slot_conflict and \
 			not self._accept_blocker_conflicts():
 			self._dynamic_config._serialized_tasks_cache = retlist
 			self._dynamic_config._scheduler_graph = scheduler_graph
@@ -6881,13 +6859,17 @@ class depgraph(object):
 		# the reasons are not apparent from the normal merge list
 		# display.
 
-		slot_collision_info = self._dynamic_config._slot_collision_info
-
 		conflict_pkgs = {}
 		for blocker in blockers:
 			for pkg in chain(self._dynamic_config._blocked_pkgs.child_nodes(blocker), \
 				self._dynamic_config._blocker_parents.parent_nodes(blocker)):
-				if (pkg.slot_atom, pkg.root) in slot_collision_info:
+
+				is_slot_conflict_pkg = False
+				for conflict in self._dynamic_config._package_tracker.slot_conflicts():
+					if conflict.root == pkg.root and conflict.atom == pkg.slot_atom:
+						is_slot_conflict_pkg = True
+						break
+				if is_slot_conflict_pkg:
 					# The slot conflict display has better noise reduction
 					# than the unsatisfied blockers display, so skip
 					# unsatisfied blockers display for packages involved
@@ -7370,7 +7352,8 @@ class depgraph(object):
 				self._dynamic_config._circular_deps_for_display)
 
 		unresolved_conflicts = False
-		if self._dynamic_config._slot_collision_info:
+		have_slot_conflict = any(self._dynamic_config._package_tracker.slot_conflicts())
+		if have_slot_conflict:
 			unresolved_conflicts = True
 			self._show_slot_collision_notice()
 		if self._dynamic_config._unsatisfied_blockers_for_display is not None:

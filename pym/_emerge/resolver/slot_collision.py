@@ -89,10 +89,11 @@ class slot_conflict_handler(object):
 		self.debug = "--debug" in self.myopts
 		if self.debug:
 			writemsg("Starting slot conflict handler\n", noiselevel=-1)
-		#slot_collision_info is a dict mapping (slot atom, root) to set
-		#of packages. The packages in the set all belong to the same
-		#slot.
-		self.slot_collision_info = depgraph._dynamic_config._slot_collision_info
+
+		# List of tuples, where each tuple represents a slot conflict.
+		self.all_conflicts = []
+		for conflict in depgraph._dynamic_config._package_tracker.slot_conflicts():
+			self.all_conflicts.append((conflict.root, conflict.atom, conflict.pkgs))
 		
 		#A dict mapping packages to pairs of parent package
 		#and parent atom
@@ -109,8 +110,7 @@ class slot_conflict_handler(object):
 		all_conflict_atoms_by_slotatom = []
 		
 		#fill conflict_pkgs, all_conflict_atoms_by_slotatom
-		for (atom, root), pkgs \
-			in self.slot_collision_info.items():
+		for root, atom, pkgs in self.all_conflicts:
 			conflict_pkgs.append(list(pkgs))
 			all_conflict_atoms_by_slotatom.append(set())
 			
@@ -249,8 +249,7 @@ class slot_conflict_handler(object):
 		msg.append("!!! into the dependency graph, resulting" + \
 			" in a slot conflict:\n\n")
 
-		for (slot_atom, root), pkgs \
-			in self.slot_collision_info.items():
+		for root, slot_atom, pkgs in self.all_conflicts:
 			msg.append("%s" % (slot_atom,))
 			if root != self.depgraph._frozen_config._running_root.root:
 				msg.append(" for %s" % (root,))
@@ -536,13 +535,13 @@ class slot_conflict_handler(object):
 			return None
 
 		if len(solutions)==1:
-			if len(self.slot_collision_info)==1:
+			if len(self.all_conflicts) == 1:
 				msg += "It might be possible to solve this slot collision\n"
 			else:
 				msg += "It might be possible to solve these slot collisions\n"
 			msg += "by applying all of the following changes:\n"
 		else:
-			if len(self.slot_collision_info)==1:
+			if len(self.all_conflicts) == 1:
 				msg += "It might be possible to solve this slot collision\n"
 			else:
 				msg += "It might be possible to solve these slot collisions\n"
@@ -583,8 +582,7 @@ class slot_conflict_handler(object):
 			if not pkg.installed:
 				continue
 
-			for (atom, root), pkgs \
-				in self.slot_collision_info.items():
+			for root, atom, pkgs in self.all_conflicts:
 				if pkg not in pkgs:
 					continue
 				for other_pkg in pkgs:
