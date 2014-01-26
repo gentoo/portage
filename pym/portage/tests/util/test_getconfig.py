@@ -42,7 +42,7 @@ class GetConfigTestCase(TestCase):
 			allow_sourcing=True, expand={"PORTAGE_BASE_PATH" : base})
 
 		# PASSES_SOURCING_TEST should exist in getconfig result
-		self.assertIsNotNone(d)
+		self.assertTrue(d is not None)
 		self.assertEqual("True", d['PASSES_SOURCING_TEST'])
 
 		# With allow_sourcing : True and empty expand map, this should
