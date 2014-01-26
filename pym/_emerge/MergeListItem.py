@@ -1,7 +1,8 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
+from portage.dep import _repo_separator
 from portage.output import colorize
 
 from _emerge.AsynchronousTask import AsynchronousTask
@@ -59,16 +60,7 @@ class MergeListItem(CompositeTask):
 			(action_desc,
 			colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
 			colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)),
-			colorize(pkg_color, pkg.cpv))
-
-		portdb = pkg.root_config.trees["porttree"].dbapi
-		portdir_repo_name = portdb.getRepositoryName(portdb.porttree_root)
-		if portdir_repo_name:
-			pkg_repo_name = pkg.repo
-			if pkg_repo_name != portdir_repo_name:
-				if pkg_repo_name == pkg.UNKNOWN_REPO:
-					pkg_repo_name = "unknown repo"
-				msg += " from %s" % pkg_repo_name
+			colorize(pkg_color, pkg.cpv + _repo_separator + pkg.repo))
 
 		if pkg.root_config.settings["ROOT"] != "/":
 			msg += " %s %s" % (preposition, pkg.root)
