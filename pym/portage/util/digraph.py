@@ -1,4 +1,4 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -46,6 +46,16 @@ class digraph(object):
 			self.nodes[parent][0][node] = priorities
 		priorities.append(priority)
 		priorities.sort()
+
+	def discard(self, node):
+		"""
+		Like remove(), except it doesn't raises KeyError if the
+		node doesn't exist.
+		"""
+		try:
+			self.remove(node)
+		except KeyError:
+			pass
 
 	def remove(self, node):
 		"""Removes the specified node from the digraph, also removing
