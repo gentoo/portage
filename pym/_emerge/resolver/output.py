@@ -1,4 +1,4 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """Resolver output display operation.
@@ -7,7 +7,7 @@
 from __future__ import unicode_literals
 
 __all__ = (
-	"Display",
+	"Display", "format_unmatched_atom",
 	)
 
 import sys
@@ -23,8 +23,9 @@ from portage.package.ebuild._spawn_nofetch import spawn_nofetch
 from portage.output import ( blue, colorize, create_color_func,
 	darkblue, darkgreen, green, nc_len, teal)
 bad = create_color_func("BAD")
+from portage._sets.base import InternalPackageSet
 from portage.util import writemsg_stdout
-from portage.versions import best
+from portage.versions import best, cpv_getversion
 
 from _emerge.Blocker import Blocker
 from _emerge.create_world_atom import create_world_atom
@@ -916,3 +917,105 @@ class Display(object):
 			self.print_changelog()
 
 		return os.EX_OK
+
+
+def format_unmatched_atom(pkg, atom, pkg_use_enabled):
+	"""
+	Returns two strings. The first string contains the
+	'atom' with parts of the atom colored, which 'pkg'
+	doesn't match. The second string has the same number
+	of characters as the first one, but consists of only
+	white space or ^. The ^ characters have the same position
+	as the colored parts of the first string.
+	"""
+	# Things to check:
+	#	1. Version
+	#	2. cp
+	#   3. slot/sub_slot
+	#	4. repository
+	#	5. USE
+
+	highlight = set()
+
+	def perform_coloring():
+		atom_str = ""
+		marker_str = ""
+		for ii, x in enumerate(atom):
+			if ii in highlight:
+				atom_str += colorize("BAD", x)
+				marker_str += "^"
+			else:
+				atom_str += x
+				marker_str += " "
+		return atom_str, marker_str
+
+	if atom.cp != pkg.cp:
+		# Highlight the cp part only.
+		ii = atom.find(atom.cp)
+		highlight.update(range(ii, ii + len(atom.cp)))
+		return perform_coloring()
+
+	version_atom = atom.without_repo.without_slot.without_use
+	version_atom_set = InternalPackageSet(initial_atoms=(version_atom,))
+	highlight_version = not bool(version_atom_set.findAtomForPackage(pkg,
+		modified_use=pkg_use_enabled(pkg)))
+
+	highlight_slot = False
+	if (atom.slot and atom.slot != pkg.slot) or \
+		(atom.sub_slot and atom.sub_slot != pkg.sub_slot):
+		highlight_slot = True
+
+	if highlight_version:
+		op = atom.operator
+		ver = None
+		if atom.cp != atom.cpv:
+			ver = cpv_getversion(atom.cpv)
+
+		if op == "=*":
+			op = "="
+			ver += "*"
+
+		if op is not None:
+			highlight.update(range(len(op)))
+
+		if ver is not None:
+			start = atom.rfind(ver)
+			end = start + len(ver)
+			highlight.update(range(start, end))
+
+	if highlight_slot:
+		slot_str = ":" + atom.slot
+		if atom.sub_slot:
+			slot_str += "/" + atom.sub_slot
+		if atom.slot_operator:
+			slot_str += atom.slot_operator
+		start = atom.find(slot_str)
+		end = start + len(slot_str)
+		highlight.update(range(start, end))
+
+	highlight_use = set()
+	if atom.use:
+		use_atom = "%s[%s]" % (atom.cp, str(atom.use))
+		use_atom_set = InternalPackageSet(initial_atoms=(use_atom,))
+		if not use_atom_set.findAtomForPackage(pkg, \
+			modified_use=pkg_use_enabled(pkg)):
+			missing_iuse = pkg.iuse.get_missing_iuse(
+				atom.unevaluated_atom.use.required)
+			if missing_iuse:
+				highlight_use = set(missing_iuse)
+			else:
+				#Use conditionals not met.
+				violated_atom = atom.violated_conditionals(
+					pkg_use_enabled(pkg), pkg.iuse.is_valid_flag)
+				if violated_atom.use is not None:
+					highlight_use = set(violated_atom.use.enabled.union(
+						violated_atom.use.disabled))
+
+	if highlight_use:
+		ii = atom.find("[") + 1
+		for token in atom.use.tokens:
+			if token.lstrip("-!").rstrip("=?") in highlight_use:
+				highlight.update(range(ii, ii + len(token)))
+			ii += len(token) + 1
+
+	return perform_coloring()
