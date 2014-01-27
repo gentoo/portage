@@ -3688,9 +3688,9 @@ class dblink(object):
 			unicode_error = False
 			eagain_error = False
 
-			myfilelist = []
-			mydirlist = []
-			mylinklist = []
+			filelist = []
+			dirlist = []
+			linklist = []
 			paths_with_newlines = []
 			def onerror(e):
 				raise
@@ -3723,7 +3723,7 @@ class dblink(object):
 					break
 
 				relative_path = parent[srcroot_len:]
-				mydirlist.append(os.path.join("/", relative_path))
+				dirlist.append(os.path.join("/", relative_path))
 
 				for fname in files:
 					try:
@@ -3754,12 +3754,12 @@ class dblink(object):
 
 					file_mode = os.lstat(fpath).st_mode
 					if stat.S_ISREG(file_mode):
-						myfilelist.append(relative_path)
+						filelist.append(relative_path)
 					elif stat.S_ISLNK(file_mode):
 						# Note: os.walk puts symlinks to directories in the "dirs"
 						# list and it does not traverse them since that could lead
 						# to an infinite recursion loop.
-						mylinklist.append(relative_path)
+						linklist.append(relative_path)
 
 						myto = _unicode_decode(
 							_os.readlink(_unicode_encode(fpath,
@@ -3794,7 +3794,7 @@ class dblink(object):
 		# If there are no files to merge, and an installed package in the same
 		# slot has files, it probably means that something went wrong.
 		if self.settings.get("PORTAGE_PACKAGE_EMPTY_ABORT") == "1" and \
-			not myfilelist and not mylinklist and others_in_slot:
+			not filelist and not linklist and others_in_slot:
 			installed_files = None
 			for other_dblink in others_in_slot:
 				installed_files = other_dblink.getcontents()
@@ -3839,7 +3839,7 @@ class dblink(object):
 
 		# Check for read-only filesystems.
 		ro_checker = get_ro_checker()
-		rofilesystems = ro_checker(mydirlist)
+		rofilesystems = ro_checker(dirlist)
 
 		if rofilesystems:
 			msg = _("One or more files installed to this package are "
@@ -3868,7 +3868,7 @@ class dblink(object):
 			blockers = []
 		collisions, symlink_collisions, plib_collisions = \
 			self._collision_protect(srcroot, destroot,
-			others_in_slot + blockers, myfilelist, mylinklist)
+			others_in_slot + blockers, filelist, linklist)
 
 		if symlink_collisions:
 			# Symlink collisions need to be distinguished from other types
