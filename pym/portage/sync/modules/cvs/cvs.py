@@ -34,7 +34,7 @@ class CVSSync(object):
 		if not os.path.exists("/usr/bin/cvs"):
 			print("!!! /usr/bin/cvs does not exist, so CVS support is disabled.")
 			print("!!! Type \"emerge %s\" to enable CVS support." % portage.const.CVS_PACKAGE_ATOM)
-			return os.EX_UNAVAILABLE
+			return os.EX_UNAVAILABLE, False
 
 		if kwargs:
 			options = kwargs.get('options', {})
@@ -54,7 +54,7 @@ class CVSSync(object):
 					sys.stderr.write(
 						"!!! existing '%s' directory; exiting.\n" % repo.location)
 					exitcode = 1
-					return self.post_sync(repo.location, exitcode)
+					return (exitcode, False)
 				del e
 			if portage.process.spawn_bash(
 					"cd %s; exec cvs -z0 -d %s co -P -d %s %s" %
@@ -73,8 +73,5 @@ class CVSSync(object):
 			if exitcode != os.EX_OK:
 				writemsg_level("!!! cvs update error; exiting.\n",
 					noiselevel=-1, level=logging.ERROR)
-		return self.post_sync(repo.location, exitcode)
+		return (exitcode, False)
 
-
-	def post_sync(self, location, exitcode):
-		return location, exitcode, False
