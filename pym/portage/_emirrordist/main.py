@@ -1,4 +1,4 @@
-# Copyright 2013 Gentoo Foundation
+# Copyright 2013-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
@@ -6,7 +6,7 @@ import sys
 
 import portage
 from portage import os
-from portage.util import normalize_path, writemsg_level
+from portage.util import normalize_path, writemsg_level, _recursive_file_list
 from portage.util._argparse import ArgumentParser
 from portage.util._async.run_main_scheduler import run_main_scheduler
 from portage.util._async.SchedulerInterface import SchedulerInterface
@@ -414,10 +414,17 @@ def emirrordist_main(args):
 		normalized_paths = []
 		for x in options.whitelist_from:
 			path = normalize_path(os.path.abspath(x))
-			normalized_paths.append(path)
-			if not (os.access(path, os.R_OK) and os.path.isfile(path)):
-				parser.error(
-					"--whitelist-from '%s' is not a readable file" % x)
+			if not os.access(path, os.R_OK):
+				parser.error("--whitelist-from '%s' is not readable" % x)
+			if os.path.isfile(path):
+				normalized_paths.append(path)
+			elif os.path.isdir(path):
+				for file in _recursive_file_list(path):
+					if not os.access(file, os.R_OK):
+						parser.error("--whitelist-from '%s' directory contains not readable file '%s'" % (x, file))
+					normalized_paths.append(file)
+			else:
+				parser.error("--whitelist-from '%s' is not a regular file or a directory" % x)
 		options.whitelist_from = normalized_paths
 
 	if options.strict_manifests is not None:
