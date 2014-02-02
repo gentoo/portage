@@ -1,7 +1,0 @@
-# Copyright 1999-2014 Gentoo Foundation
-# Distributed under the terms of the GNU General Public License v2
-# Contains local system settings for Portage system
-
-# Test make.conf for variable expansion in source tokens.
-# We should see this variable in getconfig result
-PASSES_SOURCING_TEST="True"

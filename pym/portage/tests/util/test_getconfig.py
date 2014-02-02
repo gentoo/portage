@@ -4,6 +4,7 @@
 import tempfile
 
 from portage import os
+from portage import shutil
 from portage import _unicode_encode
 from portage.const import PORTAGE_BASE_PATH
 from portage.tests import TestCase
@@ -33,23 +34,27 @@ class GetConfigTestCase(TestCase):
 			self.assertEqual(d[k], v)
 
 	def testGetConfigSourceLex(self):
+		try:
+			tempdir = tempfile.mkdtemp()
+			make_conf_file = os.path.join(tempdir, 'make.conf')
+			with open(make_conf_file, 'w') as f:
+				f.write('source "${DIR}/sourced_file"\n')
+			sourced_file = os.path.join(tempdir, 'sourced_file')
+			with open(sourced_file, 'w') as f:
+				f.write('PASSES_SOURCING_TEST="True"\n')
 
-		base = os.path.dirname(__file__)
-		make_conf_file = os.path.join(base,
-			'make.conf.example.source_test')
+			d = getconfig(make_conf_file, allow_sourcing=True, expand={"DIR": tempdir})
 
-		d = getconfig(make_conf_file,
-			allow_sourcing=True, expand={"PORTAGE_BASE_PATH" : base})
+			# PASSES_SOURCING_TEST should exist in getconfig result.
+			self.assertTrue(d is not None)
+			self.assertEqual("True", d['PASSES_SOURCING_TEST'])
 
-		# PASSES_SOURCING_TEST should exist in getconfig result
-		self.assertTrue(d is not None)
-		self.assertEqual("True", d['PASSES_SOURCING_TEST'])
-
-		# With allow_sourcing : True and empty expand map, this should
-		# Throw a FileNotFound exception
-		self.assertRaisesMsg("An empty expand map should throw an exception",
-			ParseError, getconfig, *(make_conf_file,),
-			**{'allow_sourcing' : True, 'expand' : {}})
+			# With allow_sourcing=True and empty expand map, this should
+			# throw a FileNotFound exception.
+			self.assertRaisesMsg("An empty expand map should throw an exception",
+				ParseError, getconfig, make_conf_file, allow_sourcing=True, expand={})
+		finally:
+			shutil.rmtree(tempdir)
 
 	def testGetConfigProfileEnv(self):
 		# Test the mode which is used to parse /etc/env.d and /etc/profile.env.
