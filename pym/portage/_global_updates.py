@@ -86,14 +86,10 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 				if not update_notice_printed:
 					update_notice_printed = True
 					writemsg_stdout("\n")
-					if quiet:
-						writemsg_stdout(colorize("GOOD",
-							_("Performing Global Updates\n")))
-						writemsg_stdout(_("(Could take a couple of minutes if you have a lot of binary packages.)\n"))
-					else:
-						writemsg_stdout(colorize("GOOD",
-							_("Performing Global Updates:\n")))
-						writemsg_stdout(_("(Could take a couple of minutes if you have a lot of binary packages.)\n"))
+					writemsg_stdout(colorize("GOOD",
+						_("Performing Global Updates\n")))
+					writemsg_stdout(_("(Could take a couple of minutes if you have a lot of binary packages.)\n"))
+					if not quiet:
 						writemsg_stdout(_("  %s='update pass'  %s='binary update'  "
 							"%s='/var/db update'  %s='/var/db move'\n"
 							"  %s='/var/db SLOT move'  %s='binary move'  "
