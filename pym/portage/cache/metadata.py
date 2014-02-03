@@ -16,6 +16,7 @@ from portage.cache.template import reconstruct_eclasses
 from portage.cache.mappings import ProtectedDict
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 	long = int
 

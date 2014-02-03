@@ -62,6 +62,7 @@ from portage.package.ebuild._config.helper import ordered_by_atom_specificity, p
 from portage.package.ebuild._config.unpack_dependencies import load_unpack_dependencies_configuration
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 
 _feature_flags_cache = {}

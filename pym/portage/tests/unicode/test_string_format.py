@@ -12,6 +12,7 @@ from _emerge.DependencyArg import DependencyArg
 from _emerge.UseFlagDisplay import UseFlagDisplay
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 
 STR_IS_UNICODE = sys.hexversion >= 0x3000000

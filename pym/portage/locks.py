@@ -21,6 +21,7 @@ from portage.util import writemsg
 from portage.localization import _
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 
 HARDLINK_FD = -2
@@ -246,8 +247,8 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 
 		_open_fds.add(myfd)
 
-	writemsg(str((lockfilename,myfd,unlinkfile))+"\n",1)
-	return (lockfilename,myfd,unlinkfile,locking_method)
+	writemsg(str((lockfilename, myfd, unlinkfile)) + "\n", 1)
+	return (lockfilename, myfd, unlinkfile, locking_method)
 
 def _fstat_nlink(fd):
 	"""
@@ -269,10 +270,10 @@ def unlockfile(mytuple):
 
 	#XXX: Compatability hack.
 	if len(mytuple) == 3:
-		lockfilename,myfd,unlinkfile = mytuple
+		lockfilename, myfd, unlinkfile = mytuple
 		locking_method = fcntl.flock
 	elif len(mytuple) == 4:
-		lockfilename,myfd,unlinkfile,locking_method = mytuple
+		lockfilename, myfd, unlinkfile, locking_method = mytuple
 	else:
 		raise InvalidData
 
@@ -283,7 +284,7 @@ def unlockfile(mytuple):
 	# myfd may be None here due to myfd = mypath in lockfile()
 	if isinstance(lockfilename, basestring) and \
 		not os.path.exists(lockfilename):
-		writemsg(_("lockfile does not exist '%s'\n") % lockfilename,1)
+		writemsg(_("lockfile does not exist '%s'\n") % lockfilename, 1)
 		if myfd is not None:
 			os.close(myfd)
 			_open_fds.remove(myfd)
@@ -291,9 +292,9 @@ def unlockfile(mytuple):
 
 	try:
 		if myfd is None:
-			myfd = os.open(lockfilename, os.O_WRONLY,0o660)
+			myfd = os.open(lockfilename, os.O_WRONLY, 0o660)
 			unlinkfile = 1
-		locking_method(myfd,fcntl.LOCK_UN)
+		locking_method(myfd, fcntl.LOCK_UN)
 	except OSError:
 		if isinstance(lockfilename, basestring):
 			os.close(myfd)
@@ -308,14 +309,14 @@ def unlockfile(mytuple):
 		# commenting until it is proved necessary.
 		#time.sleep(0.0001)
 		if unlinkfile:
-			locking_method(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+			locking_method(myfd, fcntl.LOCK_EX | fcntl.LOCK_NB)
 			# We won the lock, so there isn't competition for it.
 			# We can safely delete the file.
 			writemsg(_("Got the lockfile...\n"), 1)
 			if _fstat_nlink(myfd) == 1:
 				os.unlink(lockfilename)
 				writemsg(_("Unlinked lockfile...\n"), 1)
-				locking_method(myfd,fcntl.LOCK_UN)
+				locking_method(myfd, fcntl.LOCK_UN)
 			else:
 				writemsg(_("lockfile does not exist '%s'\n") % lockfilename, 1)
 				os.close(myfd)
@@ -325,7 +326,7 @@ def unlockfile(mytuple):
 		raise
 	except Exception as e:
 		writemsg(_("Failed to get lock... someone took it.\n"), 1)
-		writemsg(str(e)+"\n",1)
+		writemsg(str(e) + "\n", 1)
 
 	# why test lockfilename?  because we may have been handed an
 	# fd originally, and the caller might not like having their
@@ -337,14 +338,12 @@ def unlockfile(mytuple):
 	return True
 
 
-
-
 def hardlock_name(path):
 	base, tail = os.path.split(path)
 	return os.path.join(base, ".%s.hardlock-%s-%s" %
 		(tail, os.uname()[1], os.getpid()))
 
-def hardlink_is_mine(link,lock):
+def hardlink_is_mine(link, lock):
 	try:
 		lock_st = os.stat(lock)
 		if lock_st.st_nlink == 2:
@@ -496,7 +495,6 @@ def unhardlink_lockfile(lockfilename, unlinkfile=True):
 		pass
 
 def hardlock_cleanup(path, remove_all_locks=False):
-	mypid  = str(os.getpid())
 	myhost = os.uname()[1]
 	mydl = os.listdir(path)
 
@@ -505,7 +503,7 @@ def hardlock_cleanup(path, remove_all_locks=False):
 
 	mylist = {}
 	for x in mydl:
-		if os.path.isfile(path+"/"+x):
+		if os.path.isfile(path + "/" + x):
 			parts = x.split(".hardlock-")
 			if len(parts) == 2:
 				filename = parts[0][1:]
@@ -522,17 +520,17 @@ def hardlock_cleanup(path, remove_all_locks=False):
 				mycount += 1
 
 
-	results.append(_("Found %(count)s locks") % {"count":mycount})
+	results.append(_("Found %(count)s locks") % {"count": mycount})
 	
 	for x in mylist:
 		if myhost in mylist[x] or remove_all_locks:
-			mylockname = hardlock_name(path+"/"+x)
-			if hardlink_is_mine(mylockname, path+"/"+x) or \
-			   not os.path.exists(path+"/"+x) or \
+			mylockname = hardlock_name(path + "/" + x)
+			if hardlink_is_mine(mylockname, path + "/" + x) or \
+			   not os.path.exists(path + "/" + x) or \
 				 remove_all_locks:
 				for y in mylist[x]:
 					for z in mylist[x][y]:
-						filename = path+"/."+x+".hardlock-"+y+"-"+z
+						filename = path + "/." + x + ".hardlock-" + y + "-" + z
 						if filename == mylockname:
 							continue
 						try:
@@ -542,8 +540,8 @@ def hardlock_cleanup(path, remove_all_locks=False):
 						except OSError:
 							pass
 				try:
-					os.unlink(path+"/"+x)
-					results.append(_("Unlinked: ") + path+"/"+x)
+					os.unlink(path + "/" + x)
+					results.append(_("Unlinked: ") + path + "/" + x)
 					os.unlink(mylockname)
 					results.append(_("Unlinked: ") + mylockname)
 				except OSError:

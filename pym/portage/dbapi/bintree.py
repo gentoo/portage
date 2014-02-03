@@ -53,6 +53,7 @@ except ImportError:
 	from urlparse import urlparse
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	_unicode = str
 	basestring = str
 	long = int

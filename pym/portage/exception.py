@@ -7,12 +7,13 @@ from portage import _encodings, _unicode_encode, _unicode_decode
 from portage.localization import _
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 
 class PortageException(Exception):
 	"""General superclass for portage exceptions"""
 	if sys.hexversion >= 0x3000000:
-		def __init__(self,value):
+		def __init__(self, value):
 			self.value = value[:]
 
 		def __str__(self):
@@ -21,7 +22,7 @@ class PortageException(Exception):
 			else:
 				return repr(self.value)
 	else:
-		def __init__(self,value):
+		def __init__(self, value):
 			self.value = value[:]
 			if isinstance(self.value, basestring):
 				self.value = _unicode_decode(self.value,
@@ -84,20 +85,20 @@ class DirectoryNotFound(InvalidLocation):
 	"""A directory was not found when it was expected to exist"""
 
 class OperationNotPermitted(PortageException):
-	from errno import EPERM as errno
 	"""An operation was not permitted operating system"""
+	from errno import EPERM as errno
 
 class OperationNotSupported(PortageException):
-	from errno import EOPNOTSUPP as errno
 	"""Operation not supported"""
+	from errno import EOPNOTSUPP as errno
 
 class PermissionDenied(PortageException):
-	from errno import EACCES as errno
 	"""Permission denied"""
+	from errno import EACCES as errno
 
 class TryAgain(PortageException):
-	from errno import EAGAIN as errno
 	"""Try again"""
+	from errno import EAGAIN as errno
 
 class TimeoutException(PortageException):
 	"""Operation timed out"""

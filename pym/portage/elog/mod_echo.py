@@ -10,6 +10,7 @@ from portage.const import EBUILD_PHASES
 from portage.localization import _
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 
 _items = []

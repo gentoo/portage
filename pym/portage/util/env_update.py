@@ -24,6 +24,7 @@ from portage.dbapi.vartree import vartree
 from portage.package.ebuild.config import config
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	long = int
 
 def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,

@@ -19,6 +19,7 @@ from .FetchIterator import FetchIterator
 from .DeletionIterator import DeletionIterator
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	long = int
 
 class MirrorDistTask(CompositeTask):

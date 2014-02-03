@@ -7,6 +7,7 @@ from portage.exception import InvalidAtom
 from portage.versions import cpv_getkey
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 
 OPERATIONS = ["merge", "unmerge"]

@@ -12,7 +12,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 from portage.localization import _
 
-ostype=platform.system()
+ostype = platform.system()
 userland = None
 if ostype == "DragonFly" or ostype.endswith("BSD"):
 	userland = "BSD"
@@ -23,10 +23,10 @@ lchown = getattr(os, "lchown", None)
 
 if not lchown:
 	if ostype == "Darwin":
-		def lchown(*pos_args, **key_args):
+		def lchown(*_args, **_kwargs):
 			pass
 	else:
-		def lchown(*pargs, **kwargs):
+		def lchown(*_args, **_kwargs):
 			writemsg(colorize("BAD", "!!!") + _(
 				" It seems that os.lchown does not"
 				" exist.  Please rebuild python.\n"), noiselevel=-1)
@@ -59,11 +59,10 @@ def portage_group_warning():
 # If the "wheel" group does not exist then wheelgid falls back to 0.
 # If the "portage" group does not exist then portage_uid falls back to wheelgid.
 
-uid=os.getuid()
-wheelgid=0
-
+uid = os.getuid()
+wheelgid = 0
 try:
-	wheelgid=grp.getgrnam("wheel")[2]
+	wheelgid = grp.getgrnam("wheel")[2]
 except KeyError:
 	pass
 

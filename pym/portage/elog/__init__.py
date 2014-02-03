@@ -4,6 +4,7 @@
 
 import sys
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 
 import portage

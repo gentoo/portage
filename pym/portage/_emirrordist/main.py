@@ -15,6 +15,7 @@ from .Config import Config
 from .MirrorDistTask import MirrorDistTask
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	long = int
 
 seconds_per_day = 24 * 60 * 60

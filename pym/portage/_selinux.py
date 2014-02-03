@@ -66,7 +66,7 @@ def rename(src, dest):
 
 	setfscreate(ctx)
 	try:
-		os.rename(src,dest)
+		os.rename(src, dest)
 	finally:
 		setfscreate()
 

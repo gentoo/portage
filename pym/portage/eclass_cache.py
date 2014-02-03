@@ -18,6 +18,7 @@ from portage import checksum
 from portage import _shell_quote
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	long = int
 
 
@@ -132,7 +133,7 @@ class cache(object):
 					mtime = obj.mtime
 				except FileNotFound:
 					continue
-				ys=y[:-eclass_len]
+				ys = y[:-eclass_len]
 				if x == self._master_eclass_root:
 					master_eclasses[ys] = mtime
 					self.eclasses[ys] = obj

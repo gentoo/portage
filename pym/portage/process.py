@@ -33,6 +33,7 @@ except ImportError:
 	max_fd_limit = 256
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 
 # Support PEP 446 for Python >=3.4
@@ -117,14 +118,14 @@ def spawn_bash(mycommand, debug=False, opt_name=None, **keywords):
 def spawn_sandbox(mycommand, opt_name=None, **keywords):
 	if not sandbox_capable:
 		return spawn_bash(mycommand, opt_name=opt_name, **keywords)
-	args=[SANDBOX_BINARY]
+	args = [SANDBOX_BINARY]
 	if not opt_name:
 		opt_name = os.path.basename(mycommand.split()[0])
 	args.append(mycommand)
 	return spawn(args, opt_name=opt_name, **keywords)
 
 def spawn_fakeroot(mycommand, fakeroot_state=None, opt_name=None, **keywords):
-	args=[FAKEROOT_BINARY]
+	args = [FAKEROOT_BINARY]
 	if not opt_name:
 		opt_name = os.path.basename(mycommand.split()[0])
 	if fakeroot_state:

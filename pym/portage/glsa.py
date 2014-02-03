@@ -21,7 +21,7 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
-from portage.versions import pkgsplit, vercmp, best
+from portage.versions import pkgsplit, vercmp
 from portage.util import grabfile
 from portage.const import PRIVATE_PATH
 from portage.localization import _

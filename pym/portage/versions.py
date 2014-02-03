@@ -337,11 +337,11 @@ def catpkgsplit(mydata, silent=1, eapi=None):
 	except AttributeError:
 		pass
 	mysplit = mydata.split('/', 1)
-	p_split=None
-	if len(mysplit)==1:
+	p_split = None
+	if len(mysplit) == 1:
 		cat = _missing_cat
 		p_split = _pkgsplit(mydata, eapi=eapi)
-	elif len(mysplit)==2:
+	elif len(mysplit) == 2:
 		cat = mysplit[0]
 		if _cat_re.match(cat) is not None:
 			p_split = _pkgsplit(mysplit[1], eapi=eapi)
@@ -539,7 +539,7 @@ def cpv_sort_key(eapi=None):
 	return cmp_sort_key(cmp_cpv)
 
 def catsplit(mydep):
-        return mydep.split("/", 1)
+	return mydep.split("/", 1)
 
 def best(mymatches, eapi=None):
 	"""Accepts None arguments; assumes matches are valid."""

@@ -3,7 +3,7 @@
 
 from __future__ import unicode_literals
 
-VERSION="HEAD"
+VERSION = "HEAD"
 
 # ===========================================================================
 # START OF IMPORTS -- START OF IMPORTS -- START OF IMPORTS -- START OF IMPORT
@@ -34,7 +34,7 @@ except ImportError as e:
 
 	sys.stderr.write("!!! You might consider starting python with verbose flags to see what has\n")
 	sys.stderr.write("!!! gone wrong. Here is the information we got for this exception:\n")
-	sys.stderr.write("    "+str(e)+"\n\n");
+	sys.stderr.write("    "+str(e)+"\n\n")
 	raise
 
 try:
@@ -140,6 +140,7 @@ except ImportError as e:
 	raise
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 	long = int
 
@@ -484,8 +485,8 @@ def abssymlink(symlink, target=None):
 	else:
 		mylink = os.readlink(symlink)
 	if mylink[0] != '/':
-		mydir=os.path.dirname(symlink)
-		mylink=mydir+"/"+mylink
+		mydir = os.path.dirname(symlink)
+		mylink = mydir + "/" + mylink
 	return os.path.normpath(mylink)
 
 _doebuild_manifest_exempt_depend = 0
@@ -552,7 +553,7 @@ auxdbkeys = (
 	'PROPERTIES', 'DEFINED_PHASES', 'HDEPEND', 'UNUSED_04',
 	'UNUSED_03', 'UNUSED_02', 'UNUSED_01',
 )
-auxdbkeylen=len(auxdbkeys)
+auxdbkeylen = len(auxdbkeys)
 
 def portageexit():
 	pass
@@ -643,7 +644,7 @@ if VERSION == 'HEAD':
 							patchlevel = False
 							if len(version_split) > 1:
 								patchlevel = True
-								VERSION = "%s_p%s" %(VERSION, version_split[1])
+								VERSION = "%s_p%s" % (VERSION, version_split[1])
 							if len(output_lines) > 1 and output_lines[1] == 'modified':
 								head_timestamp = None
 								if len(output_lines) > 3:

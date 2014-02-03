@@ -33,6 +33,7 @@ from portage.versions import catpkgsplit, catsplit, \
 import portage.cache.mappings
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 	_unicode = str
 else:

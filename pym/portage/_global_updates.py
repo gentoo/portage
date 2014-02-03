@@ -123,58 +123,58 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 		repo_map['DEFAULT'] = repo_map[master_repo]
 
 	for repo_name, myupd in repo_map.items():
-			if repo_name == 'DEFAULT':
-				continue
-			if not myupd:
-				continue
+		if repo_name == 'DEFAULT':
+			continue
+		if not myupd:
+			continue
 
-			def repo_match(repository):
-				return repository == repo_name or \
-					(repo_name == master_repo and repository not in repo_map)
+		def repo_match(repository):
+			return repository == repo_name or \
+				(repo_name == master_repo and repository not in repo_map)
 
-			def _world_repo_match(atoma, atomb):
-				"""
-				Check whether to perform a world change from atoma to atomb.
-				If best vardb match for atoma comes from the same repository
-				as the update file, allow that. Additionally, if portdb still
-				can find a match for old atom name, warn about that.
-				"""
-				matches = vardb.match(atoma)
-				if not matches:
-					matches = vardb.match(atomb)
-				if matches and \
-					repo_match(vardb.aux_get(best(matches), ['repository'])[0]):
-					if portdb.match(atoma):
-						world_warnings.add((atoma, atomb))
-					return True
-				else:
-					return False
+		def _world_repo_match(atoma, atomb):
+			"""
+			Check whether to perform a world change from atoma to atomb.
+			If best vardb match for atoma comes from the same repository
+			as the update file, allow that. Additionally, if portdb still
+			can find a match for old atom name, warn about that.
+			"""
+			matches = vardb.match(atoma)
+			if not matches:
+				matches = vardb.match(atomb)
+			if matches and \
+				repo_match(vardb.aux_get(best(matches), ['repository'])[0]):
+				if portdb.match(atoma):
+					world_warnings.add((atoma, atomb))
+				return True
+			else:
+				return False
 
-			for update_cmd in myupd:
-				for pos, atom in enumerate(world_list):
-					new_atom = update_dbentry(update_cmd, atom)
-					if atom != new_atom:
-						if _world_repo_match(atom, new_atom):
-							world_list[pos] = new_atom
-							world_modified = True
+		for update_cmd in myupd:
+			for pos, atom in enumerate(world_list):
+				new_atom = update_dbentry(update_cmd, atom)
+				if atom != new_atom:
+					if _world_repo_match(atom, new_atom):
+						world_list[pos] = new_atom
+						world_modified = True
 
-			for update_cmd in myupd:
-				if update_cmd[0] == "move":
-					moves = vardb.move_ent(update_cmd, repo_match=repo_match)
+		for update_cmd in myupd:
+			if update_cmd[0] == "move":
+				moves = vardb.move_ent(update_cmd, repo_match=repo_match)
+				if moves:
+					writemsg_stdout(moves * "@")
+				if bindb:
+					moves = bindb.move_ent(update_cmd, repo_match=repo_match)
 					if moves:
-						writemsg_stdout(moves * "@")
-					if bindb:
-						moves = bindb.move_ent(update_cmd, repo_match=repo_match)
-						if moves:
-							writemsg_stdout(moves * "%")
-				elif update_cmd[0] == "slotmove":
-					moves = vardb.move_slot_ent(update_cmd, repo_match=repo_match)
+						writemsg_stdout(moves * "%")
+			elif update_cmd[0] == "slotmove":
+				moves = vardb.move_slot_ent(update_cmd, repo_match=repo_match)
+				if moves:
+					writemsg_stdout(moves * "s")
+				if bindb:
+					moves = bindb.move_slot_ent(update_cmd, repo_match=repo_match)
 					if moves:
-						writemsg_stdout(moves * "s")
-					if bindb:
-						moves = bindb.move_slot_ent(update_cmd, repo_match=repo_match)
-						if moves:
-							writemsg_stdout(moves * "S")
+						writemsg_stdout(moves * "S")
 
 	if world_modified:
 		world_list.sort()
@@ -187,65 +187,65 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 
 	if retupd:
 
-			def _config_repo_match(repo_name, atoma, atomb):
-				"""
-				Check whether to perform a world change from atoma to atomb.
-				If best vardb match for atoma comes from the same repository
-				as the update file, allow that. Additionally, if portdb still
-				can find a match for old atom name, warn about that.
-				"""
-				matches = vardb.match(atoma)
+		def _config_repo_match(repo_name, atoma, atomb):
+			"""
+			Check whether to perform a world change from atoma to atomb.
+			If best vardb match for atoma comes from the same repository
+			as the update file, allow that. Additionally, if portdb still
+			can find a match for old atom name, warn about that.
+			"""
+			matches = vardb.match(atoma)
+			if not matches:
+				matches = vardb.match(atomb)
 				if not matches:
-					matches = vardb.match(atomb)
-					if not matches:
-						return False
-				repository = vardb.aux_get(best(matches), ['repository'])[0]
-				return repository == repo_name or \
-					(repo_name == master_repo and repository not in repo_map)
+					return False
+			repository = vardb.aux_get(best(matches), ['repository'])[0]
+			return repository == repo_name or \
+				(repo_name == master_repo and repository not in repo_map)
 
-			update_config_files(root,
-				shlex_split(mysettings.get("CONFIG_PROTECT", "")),
-				shlex_split(mysettings.get("CONFIG_PROTECT_MASK", "")),
-				repo_map, match_callback=_config_repo_match)
+		update_config_files(root,
+			shlex_split(mysettings.get("CONFIG_PROTECT", "")),
+			shlex_split(mysettings.get("CONFIG_PROTECT_MASK", "")),
+			repo_map, match_callback=_config_repo_match)
 
-			# The above global updates proceed quickly, so they
-			# are considered a single mtimedb transaction.
-			if timestamps:
-				# We do not update the mtime in the mtimedb
-				# until after _all_ of the above updates have
-				# been processed because the mtimedb will
-				# automatically commit when killed by ctrl C.
-				for mykey, mtime in timestamps.items():
-					prev_mtimes[mykey] = mtime
+		# The above global updates proceed quickly, so they
+		# are considered a single mtimedb transaction.
+		if timestamps:
+			# We do not update the mtime in the mtimedb
+			# until after _all_ of the above updates have
+			# been processed because the mtimedb will
+			# automatically commit when killed by ctrl C.
+			for mykey, mtime in timestamps.items():
+				prev_mtimes[mykey] = mtime
 
-			do_upgrade_packagesmessage = False
-			# We gotta do the brute force updates for these now.
-			if True:
-				def onUpdate(maxval, curval):
+		do_upgrade_packagesmessage = False
+		# We gotta do the brute force updates for these now.
+		if True:
+			def onUpdate(_maxval, curval):
+				if curval > 0:
+					writemsg_stdout("#")
+			if quiet:
+				onUpdate = None
+			vardb.update_ents(repo_map, onUpdate=onUpdate)
+			if bindb:
+				def onUpdate(_maxval, curval):
 					if curval > 0:
-						writemsg_stdout("#")
+						writemsg_stdout("*")
 				if quiet:
 					onUpdate = None
-				vardb.update_ents(repo_map, onUpdate=onUpdate)
-				if bindb:
-					def onUpdate(maxval, curval):
-						if curval > 0:
-							writemsg_stdout("*")
-					if quiet:
-						onUpdate = None
-					bindb.update_ents(repo_map, onUpdate=onUpdate)
-			else:
-				do_upgrade_packagesmessage = 1
+				bindb.update_ents(repo_map, onUpdate=onUpdate)
+		else:
+			do_upgrade_packagesmessage = 1
 
-			# Update progress above is indicated by characters written to stdout so
-			# we print a couple new lines here to separate the progress output from
-			# what follows.
-			writemsg_stdout("\n\n")
+		# Update progress above is indicated by characters written to stdout so
+		# we print a couple new lines here to separate the progress output from
+		# what follows.
+		writemsg_stdout("\n\n")
 
-			if do_upgrade_packagesmessage and bindb and \
-				bindb.cpv_all():
-				writemsg_stdout(_(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the tbz2's in the packages directory.\n"))
-				writemsg_stdout(bold(_("Note: This can take a very long time.")))
-				writemsg_stdout("\n")
+		if do_upgrade_packagesmessage and bindb and \
+			bindb.cpv_all():
+			writemsg_stdout(_(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the tbz2's in the packages directory.\n"))
+			writemsg_stdout(bold(_("Note: This can take a very long time.")))
+			writemsg_stdout("\n")
 
 	return retupd

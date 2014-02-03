@@ -9,7 +9,9 @@ from portage import os
 from portage.util import writemsg
 
 import sys
+
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	long = int
 
 class BinhostHandler(object):

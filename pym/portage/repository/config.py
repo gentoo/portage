@@ -33,6 +33,7 @@ from portage import _encodings
 from portage import manifest
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 
 # Characters prohibited by repoman's file.name check.

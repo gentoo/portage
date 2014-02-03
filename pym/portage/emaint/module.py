@@ -37,10 +37,10 @@ class Module(object):
 		self.valid = False
 		try:
 			mod_name = ".".join([self._namepath, self.name])
-			self._module = __import__(mod_name, [],[], ["not empty"])
+			self._module = __import__(mod_name, [], [], ["not empty"])
 			self.valid = True
 		except ImportError as e:
-			print("MODULE; failed import", mod_name, "  error was:",e)
+			print("MODULE; failed import", mod_name, "  error was:", e)
 			return False
 		self.module_spec = self._module.module_spec
 		for submodule in self.module_spec['provides']:
@@ -61,7 +61,7 @@ class Module(object):
 			module = kid['instance']
 		else:
 			try:
-				module = __import__(kid['module_name'], [],[], ["not empty"])
+				module = __import__(kid['module_name'], [], [], ["not empty"])
 				kid['instance'] = module
 				kid['is_imported'] = True
 			except ImportError:

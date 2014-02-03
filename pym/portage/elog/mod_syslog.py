@@ -8,12 +8,13 @@ from portage.const import EBUILD_PHASES
 from portage import _encodings
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 
 _pri = {
-	"INFO"   : syslog.LOG_INFO, 
-	"WARN"   : syslog.LOG_WARNING, 
-	"ERROR"  : syslog.LOG_ERR, 
+	"INFO"   : syslog.LOG_INFO,
+	"WARN"   : syslog.LOG_WARNING,
+	"ERROR"  : syslog.LOG_ERR,
 	"LOG"    : syslog.LOG_NOTICE,
 	"QA"     : syslog.LOG_WARNING
 }
@@ -23,14 +24,14 @@ def process(mysettings, key, logentries, fulltext):
 	for phase in EBUILD_PHASES:
 		if not phase in logentries:
 			continue
-		for msgtype,msgcontent in logentries[phase]:
+		for msgtype, msgcontent in logentries[phase]:
 			if isinstance(msgcontent, basestring):
 				msgcontent = [msgcontent]
 			for line in msgcontent:
 				line = "%s: %s: %s" % (key, phase, line)
 				if sys.hexversion < 0x3000000 and not isinstance(line, bytes):
 					# Avoid TypeError from syslog.syslog()
-					line = line.encode(_encodings['content'], 
+					line = line.encode(_encodings['content'],
 						'backslashreplace')
 				syslog.syslog(_pri[msgtype], line.rstrip("\n"))
 	syslog.closelog()

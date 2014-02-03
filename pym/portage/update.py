@@ -28,6 +28,7 @@ from portage.exception import DirectoryNotFound, InvalidAtom, PortageException
 from portage.localization import _
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	long = int
 	_unicode = str
 else:

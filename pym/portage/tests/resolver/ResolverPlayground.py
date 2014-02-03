@@ -26,6 +26,7 @@ from _emerge.depgraph import backtrack_depgraph
 from _emerge.RootConfig import RootConfig
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 
 class ResolverPlayground(object):

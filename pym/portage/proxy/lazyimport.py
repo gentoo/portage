@@ -14,6 +14,7 @@ except ImportError:
 from portage.proxy.objectproxy import ObjectProxy
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 
 _module_proxies = {}

@@ -21,6 +21,7 @@ def localization_example():
 
 	a_value = "value.of.a"
 	b_value = 123
-	c_value = [1,2,3,4]
-	print(_("A: %(a)s -- B: %(b)s -- C: %(c)s") % {"a":a_value,"b":b_value,"c":c_value})
+	c_value = [1, 2, 3, 4]
+	print(_("A: %(a)s -- B: %(b)s -- C: %(c)s") %
+	      {"a": a_value, "b": b_value, "c": c_value})
 

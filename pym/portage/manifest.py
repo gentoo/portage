@@ -33,6 +33,7 @@ _manifest_re = re.compile(
 	re.UNICODE)
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	_unicode = str
 	basestring = str
 else:

@@ -18,6 +18,7 @@ from portage.exception import InvalidData
 from portage.versions import _pkg_str
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	long = int
 
 class database(fs_template.FsBased):

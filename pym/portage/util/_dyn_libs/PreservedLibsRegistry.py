@@ -25,6 +25,7 @@ from portage.versions import cpv_getkey
 from portage.locks import lockfile, unlockfile
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 
 class PreservedLibsRegistry(object):

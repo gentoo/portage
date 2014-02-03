@@ -42,7 +42,7 @@ except ImportError:
 try:
 	import ftplib
 except ImportError as e:
-	sys.stderr.write(colorize("BAD","!!! CANNOT IMPORT FTPLIB: ")+str(e)+"\n")
+	sys.stderr.write(colorize("BAD", "!!! CANNOT IMPORT FTPLIB: ") + str(e) + "\n")
 else:
 	_all_errors.extend(ftplib.all_errors)
 
@@ -58,13 +58,14 @@ try:
 		from httplib import ResponseNotReady as http_client_ResponseNotReady
 		from httplib import error as http_client_error
 except ImportError as e:
-	sys.stderr.write(colorize("BAD","!!! CANNOT IMPORT HTTP.CLIENT: ")+str(e)+"\n")
+	sys.stderr.write(colorize("BAD", "!!! CANNOT IMPORT HTTP.CLIENT: ") + str(e) + "\n")
 else:
 	_all_errors.append(http_client_error)
 
 _all_errors = tuple(_all_errors)
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	long = int
 
 def make_metadata_dict(data):
@@ -72,14 +73,13 @@ def make_metadata_dict(data):
 	warnings.warn("portage.getbinpkg.make_metadata_dict() is deprecated",
 		DeprecationWarning, stacklevel=2)
 
-	myid,myglob = data
+	myid, _myglob = data
 	
 	mydict = {}
 	for k_bytes in portage.xpak.getindex_mem(myid):
 		k = _unicode_decode(k_bytes,
 			encoding=_encodings['repo.content'], errors='replace')
-		if k not in _all_metadata_keys and \
-			k != "CATEGORY":
+		if k not in _all_metadata_keys and k != "CATEGORY":
 			continue
 		v = _unicode_decode(portage.xpak.getitem(data, k_bytes),
 			encoding=_encodings['repo.content'], errors='replace')
@@ -101,7 +101,7 @@ class ParseLinks(html_parser_HTMLParser):
 	def get_anchors(self):
 		return self.PL_anchors
 		
-	def get_anchors_by_prefix(self,prefix):
+	def get_anchors_by_prefix(self, prefix):
 		newlist = []
 		for x in self.PL_anchors:
 			if x.startswith(prefix):
@@ -109,7 +109,7 @@ class ParseLinks(html_parser_HTMLParser):
 					newlist.append(x[:])
 		return newlist
 		
-	def get_anchors_by_suffix(self,suffix):
+	def get_anchors_by_suffix(self, suffix):
 		newlist = []
 		for x in self.PL_anchors:
 			if x.endswith(suffix):
@@ -117,10 +117,10 @@ class ParseLinks(html_parser_HTMLParser):
 					newlist.append(x[:])
 		return newlist
 		
-	def	handle_endtag(self,tag):
+	def	handle_endtag(self, tag):
 		pass
 
-	def	handle_starttag(self,tag,attrs):
+	def	handle_starttag(self, tag, attrs):
 		if tag == "a":
 			for x in attrs:
 				if x[0] == 'href':
@@ -128,19 +128,19 @@ class ParseLinks(html_parser_HTMLParser):
 						self.PL_anchors.append(urllib_parse_unquote(x[1]))
 
 
-def create_conn(baseurl,conn=None):
-	"""(baseurl,conn) --- Takes a protocol://site:port/address url, and an
+def create_conn(baseurl, conn=None):
+	"""Takes a protocol://site:port/address url, and an
 	optional connection. If connection is already active, it is passed on.
 	baseurl is reduced to address and is returned in tuple (conn,address)"""
 
 	warnings.warn("portage.getbinpkg.create_conn() is deprecated",
 		DeprecationWarning, stacklevel=2)
 
-	parts = baseurl.split("://",1)
+	parts = baseurl.split("://", 1)
 	if len(parts) != 2:
 		raise ValueError(_("Provided URI does not "
 			"contain protocol identifier. '%s'") % baseurl)
-	protocol,url_parts = parts
+	protocol, url_parts = parts
 	del parts
 
 	url_parts = url_parts.split("/")
@@ -151,7 +151,7 @@ def create_conn(baseurl,conn=None):
 		address = "/"+"/".join(url_parts[1:])
 	del url_parts
 
-	userpass_host = host.split("@",1)
+	userpass_host = host.split("@", 1)
 	if len(userpass_host) == 1:
 		host = userpass_host[0]
 		userpass = ["anonymous"]
@@ -210,10 +210,10 @@ def create_conn(baseurl,conn=None):
 				host = host[:-1]
 			conn = ftplib.FTP(host)
 			if password:
-				conn.login(username,password)
+				conn.login(username, password)
 			else:
 				sys.stderr.write(colorize("WARN",
-					_(" * No password provided for username"))+" '%s'" % \
+					_(" * No password provided for username")) + " '%s'" % \
 					(username,) + "\n\n")
 				conn.login(username)
 			conn.set_pasv(passive)
@@ -230,10 +230,10 @@ def create_conn(baseurl,conn=None):
 		else:
 			raise NotImplementedError(_("%s is not a supported protocol.") % protocol)
 
-	return (conn,protocol,address, http_params, http_headers)
+	return (conn, protocol, address, http_params, http_headers)
 
 def make_ftp_request(conn, address, rest=None, dest=None):
-	"""(conn,address,rest) --- uses the conn object to request the data
+	"""Uses the |conn| object to request the data
 	from address and issuing a rest if it is passed."""
 
 	warnings.warn("portage.getbinpkg.make_ftp_request() is deprecated",
@@ -253,9 +253,9 @@ def make_ftp_request(conn, address, rest=None, dest=None):
 			rest = 0
 
 		if rest != None:
-			mysocket = conn.transfercmd("RETR "+str(address), rest)
+			mysocket = conn.transfercmd("RETR %s" % str(address), rest)
 		else:
-			mysocket = conn.transfercmd("RETR "+str(address))
+			mysocket = conn.transfercmd("RETR %s" % str(address))
 
 		mydata = ""
 		while 1:
@@ -277,14 +277,14 @@ def make_ftp_request(conn, address, rest=None, dest=None):
 		conn.voidresp()
 		conn.voidcmd("TYPE A")
 
-		return mydata,not (fsize==data_size),""
+		return mydata, (fsize != data_size), ""
 
 	except ValueError as e:
-		return None,int(str(e)[:4]),str(e)
+		return None, int(str(e)[:4]), str(e)
 	
 
-def make_http_request(conn, address, params={}, headers={}, dest=None):
-	"""(conn,address,params,headers) --- uses the conn object to request
+def make_http_request(conn, address, _params={}, headers={}, dest=None):
+	"""Uses the |conn| object to request
 	the data from address, performing Location forwarding and using the
 	optional params and headers."""
 
@@ -295,13 +295,13 @@ def make_http_request(conn, address, params={}, headers={}, dest=None):
 	response = None
 	while (rc == 0) or (rc == 301) or (rc == 302):
 		try:
-			if (rc != 0):
-				conn,ignore,ignore,ignore,ignore = create_conn(address)
+			if rc != 0:
+				conn = create_conn(address)[0]
 			conn.request("GET", address, body=None, headers=headers)
 		except SystemExit as e:
 			raise
 		except Exception as e:
-			return None,None,"Server request failed: "+str(e)
+			return None, None, "Server request failed: %s" % str(e)
 		response = conn.getresponse()
 		rc = response.status
 
@@ -310,7 +310,7 @@ def make_http_request(conn, address, params={}, headers={}, dest=None):
 			ignored_data = response.read()
 			del ignored_data
 			for x in str(response.msg).split("\n"):
-				parts = x.split(": ",1)
+				parts = x.split(": ", 1)
 				if parts[0] == "Location":
 					if (rc == 301):
 						sys.stderr.write(colorize("BAD",
@@ -323,13 +323,13 @@ def make_http_request(conn, address, params={}, headers={}, dest=None):
 					break
 	
 	if (rc != 200) and (rc != 206):
-		return None,rc,"Server did not respond successfully ("+str(response.status)+": "+str(response.reason)+")"
+		return None, rc, "Server did not respond successfully (%s: %s)" % (str(response.status), str(response.reason))
 
 	if dest:
 		dest.write(response.read())
-		return "",0,""
+		return "", 0, ""
 
-	return response.read(),0,""
+	return response.read(), 0, ""
 
 
 def match_in_array(array, prefix="", suffix="", match_both=1, allow_overlap=0):
@@ -369,11 +369,10 @@ def match_in_array(array, prefix="", suffix="", match_both=1, allow_overlap=0):
 			continue            # Doesn't match.
 
 	return myarray
-			
 
 
-def dir_get_list(baseurl,conn=None):
-	"""(baseurl[,connection]) -- Takes a base url to connect to and read from.
+def dir_get_list(baseurl, conn=None):
+	"""Takes a base url to connect to and read from.
 	URI should be in the form <proto>://<site>[:port]<path>
 	Connection is used for persistent connection instances."""
 
@@ -385,7 +384,7 @@ def dir_get_list(baseurl,conn=None):
 	else:
 		keepconnection = 1
 
-	conn,protocol,address,params,headers = create_conn(baseurl, conn)
+	conn, protocol, address, params, headers = create_conn(baseurl, conn)
 
 	listing = None
 	if protocol in ["http","https"]:
@@ -393,7 +392,7 @@ def dir_get_list(baseurl,conn=None):
 			# http servers can return a 400 error here
 			# if the address doesn't end with a slash.
 			address += "/"
-		page,rc,msg = make_http_request(conn,address,params,headers)
+		page, rc, msg = make_http_request(conn, address, params, headers)
 		
 		if page:
 			parser = ParseLinks()
@@ -423,8 +422,8 @@ def dir_get_list(baseurl,conn=None):
 
 	return listing
 
-def file_get_metadata(baseurl,conn=None, chunk_size=3000):
-	"""(baseurl[,connection]) -- Takes a base url to connect to and read from.
+def file_get_metadata(baseurl, conn=None, chunk_size=3000):
+	"""Takes a base url to connect to and read from.
 	URI should be in the form <proto>://<site>[:port]<path>
 	Connection is used for persistent connection instances."""
 
@@ -436,13 +435,13 @@ def file_get_metadata(baseurl,conn=None, chunk_size=3000):
 	else:
 		keepconnection = 1
 
-	conn,protocol,address,params,headers = create_conn(baseurl, conn)
+	conn, protocol, address, params, headers = create_conn(baseurl, conn)
 
 	if protocol in ["http","https"]:
-		headers["Range"] = "bytes=-"+str(chunk_size)
-		data,rc,msg = make_http_request(conn, address, params, headers)
+		headers["Range"] = "bytes=-%s" % str(chunk_size)
+		data, _x, _x = make_http_request(conn, address, params, headers)
 	elif protocol in ["ftp"]:
-		data,rc,msg = make_ftp_request(conn, address, -chunk_size)
+		data, _x, _x = make_ftp_request(conn, address, -chunk_size)
 	elif protocol == "sftp":
 		f = conn.open(address)
 		try:
@@ -455,21 +454,21 @@ def file_get_metadata(baseurl,conn=None, chunk_size=3000):
 	
 	if data:
 		xpaksize = portage.xpak.decodeint(data[-8:-4])
-		if (xpaksize+8) > chunk_size:
-			myid = file_get_metadata(baseurl, conn, (xpaksize+8))
+		if (xpaksize + 8) > chunk_size:
+			myid = file_get_metadata(baseurl, conn, xpaksize + 8)
 			if not keepconnection:
 				conn.close()
 			return myid
 		else:
-			xpak_data = data[len(data)-(xpaksize+8):-8]
+			xpak_data = data[len(data) - (xpaksize + 8):-8]
 		del data
 
 		myid = portage.xpak.xsplit_mem(xpak_data)
 		if not myid:
-			myid = None,None
+			myid = None, None
 		del xpak_data
 	else:
-		myid = None,None
+		myid = None, None
 
 	if not keepconnection:
 		conn.close()
@@ -479,7 +478,7 @@ def file_get_metadata(baseurl,conn=None, chunk_size=3000):
 
 def file_get(baseurl=None, dest=None, conn=None, fcmd=None, filename=None,
 	fcmd_vars=None):
-	"""(baseurl,dest,fcmd=) -- Takes a base url to connect to and read from.
+	"""Takes a base url to connect to and read from.
 	URI should be in the form <proto>://[user[:pass]@]<site>[:port]<path>"""
 
 	if not fcmd:
@@ -487,7 +486,7 @@ def file_get(baseurl=None, dest=None, conn=None, fcmd=None, filename=None,
 		warnings.warn("Use of portage.getbinpkg.file_get() without the fcmd "
 			"parameter is deprecated", DeprecationWarning, stacklevel=2)
 
-		return file_get_lib(baseurl,dest,conn)
+		return file_get_lib(baseurl, dest, conn)
 
 	variables = {}
 
@@ -517,10 +516,10 @@ def file_get(baseurl=None, dest=None, conn=None, fcmd=None, filename=None,
 	from portage.process import spawn
 	myfetch = portage.util.shlex_split(fcmd)
 	myfetch = [varexpand(x, mydict=variables) for x in myfetch]
-	fd_pipes= {
-		0:portage._get_stdin().fileno(),
-		1:sys.__stdout__.fileno(),
-		2:sys.__stdout__.fileno()
+	fd_pipes = {
+		0: portage._get_stdin().fileno(),
+		1: sys.__stdout__.fileno(),
+		2: sys.__stdout__.fileno()
 	}
 	sys.__stdout__.flush()
 	sys.__stderr__.flush()
@@ -530,8 +529,8 @@ def file_get(baseurl=None, dest=None, conn=None, fcmd=None, filename=None,
 		return 0
 	return 1
 
-def file_get_lib(baseurl,dest,conn=None):
-	"""(baseurl[,connection]) -- Takes a base url to connect to and read from.
+def file_get_lib(baseurl, dest, conn=None):
+	"""Takes a base url to connect to and read from.
 	URI should be in the form <proto>://<site>[:port]<path>
 	Connection is used for persistent connection instances."""
 
@@ -543,13 +542,13 @@ def file_get_lib(baseurl,dest,conn=None):
 	else:
 		keepconnection = 1
 
-	conn,protocol,address,params,headers = create_conn(baseurl, conn)
+	conn, protocol, address, params, headers = create_conn(baseurl, conn)
 
-	sys.stderr.write("Fetching '"+str(os.path.basename(address)+"'\n"))
-	if protocol in ["http","https"]:
-		data,rc,msg = make_http_request(conn, address, params, headers, dest=dest)
+	sys.stderr.write("Fetching '" + str(os.path.basename(address)) + "'\n")
+	if protocol in ["http", "https"]:
+		data, rc, _msg = make_http_request(conn, address, params, headers, dest=dest)
 	elif protocol in ["ftp"]:
-		data,rc,msg = make_ftp_request(conn, address, dest=dest)
+		data, rc, _msg = make_ftp_request(conn, address, dest=dest)
 	elif protocol == "sftp":
 		rc = 0
 		try:
@@ -579,8 +578,6 @@ def file_get_lib(baseurl,dest,conn=None):
 
 
 def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=1, makepickle=None):
-	"""(baseurl,conn,chunk_size,verbose) -- 
-	"""
 
 	warnings.warn("portage.getbinpkg.dir_get_metadata() is deprecated",
 		DeprecationWarning, stacklevel=2)
@@ -597,7 +594,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 		makepickle = "/var/cache/edb/metadata.idx.most_recent"
 
 	try:
-		conn, protocol, address, params, headers = create_conn(baseurl, conn)
+		conn = create_conn(baseurl, conn)[0]
 	except _all_errors as e:
 		# ftplib.FTP(host) can raise errors like this:
 		#   socket.error: (111, 'Connection refused')
@@ -623,15 +620,15 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 	except Exception:
 		metadata = {}
 	if baseurl not in metadata:
-		metadata[baseurl]={}
+		metadata[baseurl] = {}
 	if "indexname" not in metadata[baseurl]:
-		metadata[baseurl]["indexname"]=""
+		metadata[baseurl]["indexname"] = ""
 	if "timestamp" not in metadata[baseurl]:
-		metadata[baseurl]["timestamp"]=0
+		metadata[baseurl]["timestamp"] = 0
 	if "unmodified" not in metadata[baseurl]:
-		metadata[baseurl]["unmodified"]=0
+		metadata[baseurl]["unmodified"] = 0
 	if "data" not in metadata[baseurl]:
-		metadata[baseurl]["data"]={}
+		metadata[baseurl]["data"] = {}
 
 	if not os.access(cache_path, os.W_OK):
 		sys.stderr.write(_("!!! Unable to write binary metadata to disk!\n"))
@@ -657,36 +654,36 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 	for mfile in metalist:
 		if usingcache and \
 		   ((metadata[baseurl]["indexname"] != mfile) or \
-			  (metadata[baseurl]["timestamp"] < int(time.time()-(60*60*24)))):
+			  (metadata[baseurl]["timestamp"] < int(time.time() - (60 * 60 * 24)))):
 			# Try to download new cache until we succeed on one.
-			data=""
-			for trynum in [1,2,3]:
+			data = ""
+			for trynum in [1, 2, 3]:
 				mytempfile = tempfile.TemporaryFile()
 				try:
-					file_get(baseurl+"/"+mfile, mytempfile, conn)
+					file_get(baseurl + "/" + mfile, mytempfile, conn)
 					if mytempfile.tell() > len(data):
 						mytempfile.seek(0)
 						data = mytempfile.read()
 				except ValueError as e:
-					sys.stderr.write("--- "+str(e)+"\n")
+					sys.stderr.write("--- %s\n" % str(e))
 					if trynum < 3:
 						sys.stderr.write(_("Retrying...\n"))
 					sys.stderr.flush()
 					mytempfile.close()
 					continue
-				if match_in_array([mfile],suffix=".gz"):
+				if match_in_array([mfile], suffix=".gz"):
 					out.write("gzip'd\n")
 					out.flush()
 					try:
 						import gzip
 						mytempfile.seek(0)
-						gzindex = gzip.GzipFile(mfile[:-3],'rb',9,mytempfile)
+						gzindex = gzip.GzipFile(mfile[:-3], 'rb', 9, mytempfile)
 						data = gzindex.read()
 					except SystemExit as e:
 						raise
 					except Exception as e:
 						mytempfile.close()
-						sys.stderr.write(_("!!! Failed to use gzip: ")+str(e)+"\n")
+						sys.stderr.write(_("!!! Failed to use gzip: ") + str(e) + "\n")
 						sys.stderr.flush()
 					mytempfile.close()
 				try:
@@ -701,8 +698,8 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 				except SystemExit as e:
 					raise
 				except Exception as e:
-					sys.stderr.write(_("!!! Failed to read data from index: ")+str(mfile)+"\n")
-					sys.stderr.write("!!! "+str(e)+"\n")
+					sys.stderr.write(_("!!! Failed to read data from index: ") + str(mfile) + "\n")
+					sys.stderr.write("!!! %s" % str(e))
 					sys.stderr.flush()
 			try:
 				metadatafile = open(_unicode_encode(metadatafilename,
@@ -713,7 +710,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 				raise
 			except Exception as e:
 				sys.stderr.write(_("!!! Failed to write binary metadata to disk!\n"))
-				sys.stderr.write("!!! "+str(e)+"\n")
+				sys.stderr.write("!!! %s\n" % str(e))
 				sys.stderr.flush()
 			break
 	# We may have metadata... now we run through the tbz2 list and check.
@@ -733,8 +730,8 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 				self.display()
 		def display(self):
 			self.out.write("\r"+colorize("WARN",
-				_("cache miss: '")+str(self.misses)+"'") + \
-				" --- "+colorize("GOOD", _("cache hit: '")+str(self.hits)+"'"))
+				_("cache miss: '") + str(self.misses) + "'") + \
+				" --- " + colorize("GOOD", _("cache hit: '") + str(self.hits) + "'"))
 			self.out.flush()
 
 	cache_stats = CacheStats(out)
@@ -751,7 +748,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 				cache_stats.update()
 			metadata[baseurl]["modified"] = 1
 			myid = None
-			for retry in range(3):
+			for _x in range(3):
 				try:
 					myid = file_get_metadata(
 						"/".join((baseurl.rstrip("/"), x.lstrip("/"))),
@@ -762,22 +759,20 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 					# make_http_request().  The docstring for this error in
 					# httplib.py says "Presumably, the server closed the
 					# connection before sending a valid response".
-					conn, protocol, address, params, headers = create_conn(
-						baseurl)
+					conn = create_conn(baseurl)[0]
 				except http_client_ResponseNotReady:
 					# With some http servers this error is known to be thrown
 					# from conn.getresponse() in make_http_request() when the
 					# remote file does not have appropriate read permissions.
 					# Maybe it's possible to recover from this exception in
 					# cases though, so retry.
-					conn, protocol, address, params, headers = create_conn(
-						baseurl)
+					conn = create_conn(baseurl)[0]
 
 			if myid and myid[0]:
 				metadata[baseurl]["data"][x] = make_metadata_dict(myid)
 			elif verbose:
 				sys.stderr.write(colorize("BAD",
-					_("!!! Failed to retrieve metadata on: "))+str(x)+"\n")
+					_("!!! Failed to retrieve metadata on: ")) + str(x) + "\n")
 				sys.stderr.flush()
 		else:
 			cache_stats.hits += 1
@@ -924,7 +919,6 @@ class PackageIndex(object):
 		for metadata in sorted(self.packages,
 			key=portage.util.cmp_sort_key(_cmp_cpv)):
 			metadata = metadata.copy()
-			cpv = metadata["CPV"]
 			if self._inherited_keys:
 				for k in self._inherited_keys:
 					v = self.header.get(k)

@@ -38,7 +38,7 @@ class trace_handler(object):
 		self.max_repr_length = 200
 
 	def event_handler(self, *args):
-		frame, event, arg = args
+		frame, event, _arg = args
 		if "line" == event:
 			if self.show_local_lines:
 				self.trace_line(*args)
@@ -56,7 +56,7 @@ class trace_handler(object):
 		self.arg_repr(frame, event, arg),
 		self.locals_repr(frame, event, arg)))
 
-	def arg_repr(self, frame, event, arg):
+	def arg_repr(self, _frame, event, arg):
 		my_repr = None
 		if "return" == event:
 			my_repr = repr(arg)
@@ -71,7 +71,7 @@ class trace_handler(object):
 
 		return ""
 
-	def trace_line(self, frame, event, arg):
+	def trace_line(self, frame, _event, _arg):
 		writemsg("%s line=%d\n" % (self.trim_filename(frame.f_code.co_filename), frame.f_lineno))
 
 	def ignore_filename(self, filename):
@@ -81,7 +81,7 @@ class trace_handler(object):
 					return True
 		return False
 
-	def locals_repr(self, frame, event, arg):
+	def locals_repr(self, frame, _event, _arg):
 		"""Create a representation of the locals dict that is suitable for
 		tracing output."""
 
