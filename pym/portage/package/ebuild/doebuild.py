@@ -319,7 +319,6 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 		# due to how it's coded... Don't overwrite this so we can use it.
 		mysettings["PORTAGE_DEBUG"] = "1"
 
-	mysettings["EPREFIX"]  = EPREFIX
 	mysettings["EBUILD"]   = ebuild_path
 	mysettings["O"]        = pkg_dir
 	mysettings.configdict["pkg"]["CATEGORY"] = cat
