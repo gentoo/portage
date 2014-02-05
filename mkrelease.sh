@@ -80,7 +80,7 @@ git archive --format=tar ${TREE_ISH} | \
 
 echo ">>> Building release tree"
 cp -a "${SOURCE_DIR}/"{bin,cnf,doc,man,misc,pym} "${RELEASE_DIR}/" || die "directory copy failed"
-cp "${SOURCE_DIR}/"{DEVELOPING,LICENSE,Makefile,NEWS,README,RELEASE-NOTES,TEST-NOTES} \
+cp "${SOURCE_DIR}/"{.portage_not_installed,DEVELOPING,LICENSE,Makefile,NEWS,README,RELEASE-NOTES,TEST-NOTES} \
 	"${RELEASE_DIR}/" || die "file copy failed"
 
 if [[ ${RUNTESTS} == "true" ]] ; then

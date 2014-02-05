@@ -960,7 +960,7 @@ def load_repository_config(settings, extra_files=None):
 	if "PORTAGE_REPOSITORIES" in settings:
 		repoconfigpaths.append(io.StringIO(settings["PORTAGE_REPOSITORIES"]))
 	else:
-		if portage._working_copy:
+		if portage._not_installed:
 			repoconfigpaths.append(os.path.join(PORTAGE_BASE_PATH, "cnf", "repos.conf"))
 		else:
 			repoconfigpaths.append(os.path.join(settings.global_config_path, "repos.conf"))
