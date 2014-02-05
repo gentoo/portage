@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # Author: Karl Trygve Kalleberg <karltk@gentoo.org>
 # Rewritten from the old, Perl-based emerge-webrsync script
@@ -50,12 +50,12 @@ export http_proxy ftp_proxy
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 repo_name=gentoo
-repo_location=$(__repo_key "${repo_name}" location)
+repo_location=$(__repo_attr "${repo_name}" location)
 if [[ -z ${repo_location} ]]; then
 	eecho "Repository '${repo_name}' not found"
 	exit 1
 fi
-repo_sync_type=$(__repo_key "${repo_name}" sync-type)
+repo_sync_type=$(__repo_attr "${repo_name}" sync-type)
 
 # If PORTAGE_NICENESS is overriden via the env then it will
 # still pass through the portageq call and override properly.
