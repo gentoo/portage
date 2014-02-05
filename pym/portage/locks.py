@@ -1,5 +1,5 @@
 # portage: Lock management code
-# Copyright 2004-2013 Gentoo Foundation
+# Copyright 2004-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \

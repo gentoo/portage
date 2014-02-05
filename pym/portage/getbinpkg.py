@@ -1,5 +1,5 @@
 # getbinpkg.py -- Portage binary-package helper functions
-# Copyright 2003-2013 Gentoo Foundation
+# Copyright 2003-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals

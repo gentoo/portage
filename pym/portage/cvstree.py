@@ -1,5 +1,5 @@
 # cvstree.py -- cvs tree utilities
-# Copyright 1998-2011 Gentoo Foundation
+# Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function

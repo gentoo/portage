@@ -1,4 +1,4 @@
-# Copyright 2001-2012 Gentoo Foundation
+# Copyright 2001-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 

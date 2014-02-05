@@ -1,5 +1,5 @@
 # elog/mod_echo.py - elog dispatch module
-# Copyright 2007 Gentoo Foundation
+# Copyright 2007-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function

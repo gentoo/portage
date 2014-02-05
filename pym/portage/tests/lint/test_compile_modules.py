@@ -1,4 +1,4 @@
-# Copyright 2009-2013 Gentoo Foundation
+# Copyright 2009-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
