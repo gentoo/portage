@@ -1,5 +1,5 @@
 # archive_conf.py -- functionality common to archive-conf and dispatch-conf
-# Copyright 2003-2013 Gentoo Foundation
+# Copyright 2003-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -52,7 +52,10 @@ def diffstatusoutput(cmd, file1, file2):
 
 def read_config(mandatory_opts):
 	eprefix = portage.settings["EPREFIX"]
-	config_path = os.path.join(eprefix or os.sep, "etc/dispatch-conf.conf")
+	if portage._not_installed:
+		config_path = os.path.join(portage.PORTAGE_BASE_PATH, "cnf", "dispatch-conf.conf")
+	else:
+		config_path = os.path.join(eprefix or os.sep, "etc/dispatch-conf.conf")
 	loader = KeyValuePairFileLoader(config_path, None)
 	opts, _errors = loader.load()
 	if not opts:

@@ -28,7 +28,7 @@ from portage import bsd_chflags, \
 	load_mod, os, selinux, _unicode_decode
 from portage.const import CACHE_PATH, \
 	DEPCACHE_PATH, INCREMENTALS, MAKE_CONF_FILE, \
-	MODULES_FILE_PATH, \
+	MODULES_FILE_PATH, PORTAGE_BASE_PATH, \
 	PRIVATE_PATH, PROFILE_PATH, USER_CONFIG_PATH, \
 	USER_VIRTUALS_FILE
 from portage.dbapi import dbapi
@@ -387,10 +387,11 @@ class config(object):
 			# Allow make.globals to set default paths relative to ${EPREFIX}.
 			expand_map["EPREFIX"] = eprefix
 
-			make_globals_path = os.path.join(
-				self.global_config_path, 'make.globals')
-			old_make_globals = os.path.join(config_root,
-				'etc', 'make.globals')
+			if portage._not_installed:
+				make_globals_path = os.path.join(PORTAGE_BASE_PATH, "cnf", "make.globals")
+			else:
+				make_globals_path = os.path.join(self.global_config_path, "make.globals")
+			old_make_globals = os.path.join(config_root, "etc", "make.globals")
 			if os.path.isfile(old_make_globals) and \
 				not os.path.samefile(make_globals_path, old_make_globals):
 				# Don't warn if they refer to the same path, since
