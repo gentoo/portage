@@ -1,4 +1,4 @@
-# Copyright 2004-2013 Gentoo Foundation
+# Copyright 2004-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -594,8 +594,13 @@ class _getconfig_shlex(shlex.shlex):
 		shlex.shlex.__init__(self, **kwargs)
 		self.__portage_tolerant = portage_tolerant
 
+	def allow_sourcing(self, var_expand_map):
+		self.source = portage._native_string("source")
+		self.var_expand_map = var_expand_map
+
 	def sourcehook(self, newfile):
 		try:
+			newfile = varexpand(newfile, self.var_expand_map)
 			return shlex.shlex.sourcehook(self, newfile)
 		except EnvironmentError as e:
 			if e.errno == PermissionDenied.errno:
@@ -695,7 +700,7 @@ def getconfig(mycfg, tolerant=False, allow_sourcing=False, expand=True,
 			string.ascii_letters + "~!@#$%*_\:;?,./-+{}")
 		lex.quotes = portage._native_string("\"'")
 		if allow_sourcing:
-			lex.source = portage._native_string("source")
+			lex.allow_sourcing(expand_map)
 
 		while True:
 			key = _unicode_decode(lex.get_token())

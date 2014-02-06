@@ -1,13 +1,15 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
 
 from portage import os
+from portage import shutil
 from portage import _unicode_encode
 from portage.const import PORTAGE_BASE_PATH
 from portage.tests import TestCase
 from portage.util import getconfig
+from portage.exception import ParseError
 
 class GetConfigTestCase(TestCase):
 	"""
@@ -30,6 +32,29 @@ class GetConfigTestCase(TestCase):
 		d = getconfig(make_globals_file)
 		for k, v in self._cases.items():
 			self.assertEqual(d[k], v)
+
+	def testGetConfigSourceLex(self):
+		try:
+			tempdir = tempfile.mkdtemp()
+			make_conf_file = os.path.join(tempdir, 'make.conf')
+			with open(make_conf_file, 'w') as f:
+				f.write('source "${DIR}/sourced_file"\n')
+			sourced_file = os.path.join(tempdir, 'sourced_file')
+			with open(sourced_file, 'w') as f:
+				f.write('PASSES_SOURCING_TEST="True"\n')
+
+			d = getconfig(make_conf_file, allow_sourcing=True, expand={"DIR": tempdir})
+
+			# PASSES_SOURCING_TEST should exist in getconfig result.
+			self.assertTrue(d is not None)
+			self.assertEqual("True", d['PASSES_SOURCING_TEST'])
+
+			# With allow_sourcing=True and empty expand map, this should
+			# throw a FileNotFound exception.
+			self.assertRaisesMsg("An empty expand map should throw an exception",
+				ParseError, getconfig, make_conf_file, allow_sourcing=True, expand={})
+		finally:
+			shutil.rmtree(tempdir)
 
 	def testGetConfigProfileEnv(self):
 		# Test the mode which is used to parse /etc/env.d and /etc/profile.env.

@@ -1,4 +1,4 @@
-# Copyright 2007-2011 Gentoo Foundation
+# Copyright 2007-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -7,6 +7,7 @@ from portage.exception import InvalidAtom
 from portage.versions import cpv_getkey
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 
 OPERATIONS = ["merge", "unmerge"]

@@ -1,5 +1,5 @@
-#!@PREFIX_PORTAGE_PYTHON@ -O
-# Copyright 1999-2013 Gentoo Foundation
+#!@PREFIX_PORTAGE_PYTHON@ -bO
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -22,11 +22,11 @@ if not sys.argv[1:] or "--help" in sys.argv or "-h" in sys.argv:
 	print("%s --force %s/.locks" % (sys.argv[0], portage.settings["DISTDIR"]))
 	print()
 	sys.exit(1)
-	
+
 force = False
 if "--force" in sys.argv[1:]:
 	force=True
-	
+
 for x in sys.argv[1:]:
 	if x == "--force":
 		continue
@@ -34,7 +34,7 @@ for x in sys.argv[1:]:
 		for y in portage.locks.hardlock_cleanup(x, remove_all_locks=force):
 			print(y)
 		print()
-		
+
 	except OSError as e:
 		if e.errno in (errno.ENOENT, errno.ENOTDIR):
 			print("!!! %s is not a directory or does not exist" % x)

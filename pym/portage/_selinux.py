@@ -1,4 +1,4 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # Don't use the unicode-wrapped os and shutil modules here since
@@ -66,7 +66,7 @@ def rename(src, dest):
 
 	setfscreate(ctx)
 	try:
-		os.rename(src,dest)
+		os.rename(src, dest)
 	finally:
 		setfscreate()
 

@@ -1,4 +1,4 @@
-# Copyright: 2005 Gentoo Foundation
+# Copyright 2005-2014 Gentoo Foundation
 # Author(s): Brian Harring (ferringb@gentoo.org)
 # License: GPL2
 
@@ -16,6 +16,7 @@ from portage.cache.template import reconstruct_eclasses
 from portage.cache.mappings import ProtectedDict
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 	long = int
 

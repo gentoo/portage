@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Gentoo Foundation
+# Copyright 2012-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -69,9 +69,9 @@ class SlotAbiEmergeTestCase(TestCase):
 		package_mask_path = os.path.join(user_config_dir, "package.mask")
 
 		portage_python = portage._python_interpreter
-		ebuild_cmd = (portage_python, "-Wd",
+		ebuild_cmd = (portage_python, "-b", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "ebuild"))
-		emerge_cmd = (portage_python, "-Wd",
+		emerge_cmd = (portage_python, "-b", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "emerge"))
 
 		test_ebuild = portdb.findname("dev-libs/dbus-glib-0.98")

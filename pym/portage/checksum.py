@@ -1,16 +1,15 @@
 # checksum.py -- core Portage functionality
-# Copyright 1998-2013 Gentoo Foundation
+# Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
-from portage.const import PRELINK_BINARY,HASHING_BLOCKSIZE
+from portage.const import PRELINK_BINARY, HASHING_BLOCKSIZE
 from portage.localization import _
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
 import errno
 import stat
-import sys
 import subprocess
 import tempfile
 
@@ -172,7 +171,7 @@ if os.path.exists(PRELINK_BINARY):
 	proc.communicate()
 	status = proc.wait()
 	if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
-		prelink_capable=1
+		prelink_capable = 1
 	del cmd, proc, status
 
 def is_prelinkable_elf(filename):
@@ -339,9 +338,10 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 						{"file" : filename, "type" : x})
 				else:
 					file_is_ok = False
-					reason     = (("Failed on %s verification" % x), myhash,mydict[x])
+					reason = (("Failed on %s verification" % x), myhash, mydict[x])
 					break
-	return file_is_ok,reason
+
+	return file_is_ok, reason
 
 def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 	"""

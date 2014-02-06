@@ -1,5 +1,5 @@
 # elog/mod_echo.py - elog dispatch module
-# Copyright 2007 Gentoo Foundation
+# Copyright 2007-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -10,6 +10,7 @@ from portage.const import EBUILD_PHASES
 from portage.localization import _
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 
 _items = []

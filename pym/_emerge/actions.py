@@ -1,4 +1,4 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function, unicode_literals
@@ -2074,7 +2074,7 @@ def action_sync(emerge_config, trees=DeprecationWarning,
 				return returncode
 
 	# Reload the whole config from scratch.
-	portage._sync_disabled_warnings = False
+	portage._sync_mode = False
 	load_emerge_config(emerge_config=emerge_config)
 	adjust_configs(emerge_config.opts, emerge_config.trees)
 
@@ -3545,12 +3545,6 @@ def repo_name_check(trees):
 		if porttree:
 			portdb = porttree.dbapi
 			missing_repo_names.update(portdb.getMissingRepoNames())
-			if portdb.porttree_root in missing_repo_names and \
-				not os.path.exists(os.path.join(
-				portdb.porttree_root, "profiles")):
-				# This is normal if $PORTDIR happens to be empty,
-				# so don't warn about it.
-				missing_repo_names.remove(portdb.porttree_root)
 
 	# Skip warnings about missing repo_name entries for
 	# /usr/local/portage (see bug #248603).

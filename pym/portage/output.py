@@ -1,4 +1,4 @@
-# Copyright 1998-2013 Gentoo Foundation
+# Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __docformat__ = "epytext"
@@ -24,8 +24,8 @@ from portage.exception import CommandNotFound, FileNotFound, \
 	ParseError, PermissionDenied, PortageException
 from portage.localization import _
 
-havecolor=1
-dotitles=1
+havecolor = 1
+dotitles = 1
 
 _styles = {}
 """Maps style class to tuple of attribute names."""
@@ -299,12 +299,12 @@ def xtermTitleReset():
 
 def notitles():
 	"turn off title setting"
-	dotitles=0
+	dotitles = 0
 
 def nocolor():
 	"turn off colorization"
 	global havecolor
-	havecolor=0
+	havecolor = 0
 
 def resetColor():
 	return codes["reset"]
@@ -341,9 +341,11 @@ def colorize(color_key, text):
 	else:
 		return text
 
-compat_functions_colors = ["bold","white","teal","turquoise","darkteal",
-	"fuchsia","purple","blue","darkblue","green","darkgreen","yellow",
-	"brown","darkyellow","red","darkred"]
+compat_functions_colors = [
+	"bold", "white", "teal", "turquoise", "darkteal",
+	"fuchsia", "purple", "blue", "darkblue", "green", "darkgreen", "yellow",
+	"brown", "darkyellow", "red", "darkred",
+]
 
 class create_color_func(object):
 	__slots__ = ("_color_key",)

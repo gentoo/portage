@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Dec 2013" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "Jan 2014" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -146,8 +146,7 @@ configuration files and command line arguments for programs such as
 Atoms with repository constraints have a '::' separator appended to the
 right side, followed by a repository name. Each repository name should
 correspond to the value of a \fBrepo_name\fR entry from one of the
-repositories that is configured via the \fBPORTDIR\fR or
-\fBPORTDIR_OVERLAY\fR variables (see \fBmake.conf\fR(5)).
+repositories that is configured in \fBrepos.conf\fR file.
 
 .I Examples:
 .nf
@@ -224,8 +223,8 @@ portage-2.1.6.7, and it is not included in PMS at this time.
 
 .I Example:
 .nf
-${PORTDIR}/profiles/package.mask/removals
-${PORTDIR}/profiles/package.mask/testing
+${repository_location}/profiles/package.mask/removals
+${repository_location}/profiles/package.mask/testing
 .fi
 .RS
 .TP
@@ -550,9 +549,8 @@ any other bash script.
 Additional package-specific bashrc files can be created in /etc/portage/env.
 .TP
 .BR categories
-A simple list of valid categories that may be used in /usr/portage,
-PORTDIR_OVERLAY, and PKGDIR (see \fBmake.conf\fR(5)).  This allows for custom
-categories to be created.
+A simple list of valid categories that may be used in repositories and PKGDIR
+(see \fBmake.conf\fR(5)). This allows for custom categories to be created.
 
 .I Format:
 .nf
@@ -611,7 +609,7 @@ After changing the portdbapi.auxdbmodule setting, it may be necessary to
 transfer or regenerate metadata cache. Users of the rsync tree need to
 run `emerge \-\-metadata` if they have enabled FEATURES="metadata-transfer"
 in \fBmake.conf\fR(5). In order to regenerate metadata for repositories
-listed in \fBPORTDIR_OVERLAY\fR or a cvs tree, run `emerge \-\-regen`
+not distributing pregenerated metadata cache, run `emerge \-\-regen`
 (see \fBemerge\fR(1)). If you use something like the sqlite module and want
 to keep all metadata in that format alone (useful for querying), enable
 FEATURES="metadata-transfer" in \fBmake.conf\fR(5).
@@ -767,6 +765,9 @@ x11\-libs/qt \-mysql
 .TP
 .BR repos.conf
 Specifies \fIsite\-specific\fR repository configuration information.
+.br
+Configuration specified in \fBrepos.conf\fR can be overriden by \fBPORTAGE_REPOSITORIES\fR
+environmental variable, which has the same format as \fBrepos.conf\fR.
 
 .I Format:
 .nf
@@ -799,7 +800,9 @@ since operations performed by these tools are inherently
 Specifies names of attributes, which should be forcefully respected by
 \fBegencache\fR(1), \fBemirrordist\fR(1) and \fBrepoman\fR(1).
 .br
-Valid values: aliases, eclass\-overrides, masters
+Valid values: aliases, eclass\-masters, eclass\-overrides, masters,
+package.mask\-masters, use.aliases\-masters, use.force\-masters,
+use.mask\-masters
 .RE
 
 .I Attributes supported in sections of repositories:
@@ -833,21 +836,24 @@ since operations performed by these tools are inherently
 Specifies names of attributes, which should be forcefully respected by
 \fBegencache\fR(1), \fBemirrordist\fR(1) and \fBrepoman\fR(1).
 .br
-Valid values: aliases, eclass\-overrides, masters
+Valid values: aliases, eclass\-masters, eclass\-overrides, masters,
+package.mask\-masters, use.aliases\-masters, use.force\-masters,
+use.mask\-masters
 .TP
 .B location
 Specifies location of given repository.
 .TP
-.B masters
-Specifies master repositories of given repository.
+.B masters, eclass\-masters, package.mask\-masters, use.aliases\-masters, use.force\-masters, use.mask\-masters
+Specifies master repositories of given repository. See documentation of
+\fBlayout.conf\fR file for more details.
 .br
-Setting this attribute is generally not recommended since resulting changes
+Setting these attribute is generally not recommended since resulting changes
 in eclass inheritance may trigger performance issues due to invalidation
 of metadata cache.
 .br
-When 'force = masters' attribute is not set, \fBegencache\fR(1),
-\fBemirrordist\fR(1) and \fBrepoman\fR(1) ignore this attribute,
-since operations performed by these tools are inherently
+When 'force = ${attribute}' (e.g. 'force = masters') attribute is not set,
+\fBegencache\fR(1), \fBemirrordist\fR(1) and \fBrepoman\fR(1) ignore given
+attribute, since operations performed by these tools are inherently
 \fBnot\fR \fIsite\-specific\fR.
 .TP
 .B priority
@@ -859,7 +865,7 @@ Specifies CVS repository.
 .B sync\-type
 Specifies type of synchronization performed by `emerge \-\-sync`.
 .br
-Valid non-empty values: cvs, git, rsync
+Valid non\-empty values: cvs, git, rsync
 .br
 This attribute can be set to empty value to disable synchronization of given
 repository. Empty value is default.
@@ -985,9 +991,10 @@ Specifies information about the repository layout.
 \fB/etc/portage/repos.conf\fR.
 Settings in \fBrepos.conf\fR take precedence over settings in
 \fBlayout.conf\fR, except tools such as \fBrepoman\fR(1) and \fBegencache\fR(1)
-ignore "aliases", "eclass-overrides" and "masters" attributes set in
-\fBrepos.conf\fR since their operations are inherently \fBnot\fR
-\fIsite\-specific\fR.
+ignore "aliases", "eclass\-masters", "eclass\-overrides", "masters",
+"package.mask\-masters", "use.aliases\-masters", "use.force\-masters" and
+"use.mask\-masters" attributes set in \fBrepos.conf\fR since their operations
+are inherently \fBnot\fR \fIsite\-specific\fR.
 
 .I Format:
 .nf
@@ -995,7 +1002,7 @@ ignore "aliases", "eclass-overrides" and "masters" attributes set in
 \- attributes are specified in "${attribute} = ${value}" format
 .fi
 
-.I Supported attributes.
+.I Supported attributes:
 .RS
 .RS
 .TP
@@ -1008,13 +1015,31 @@ List of EAPIs which are not allowed in this repo.
 .BR eapis\-deprecated
 List of EAPIs which are allowed but generate warnings when used.
 .TP
+.BR eclass\-masters
+Names of repositories wherefrom eclasses can be inherited.
+.br
+This attribute overrides \fBmasters\fR attribute and should be used only when
+there is a need to set this attribute to a different value than value of
+\fBmasters\fR attribute. See documentation of \fBmasters\fR attribute for more
+details.
+.TP
 .BR masters
-Names of repositories which satisfy dependencies on eclasses and/or ebuilds. Each
-repository name should correspond the value of a \fBrepo_name\fR entry
-from one of the repositories that is configured via the \fBPORTDIR\fR or
-\fBPORTDIR_OVERLAY\fR variables (see \fBmake.conf\fR(5)). Repositories listed
-toward the right of the \fBmasters\fR list take precedence over those listed
-toward the left of the list.
+Names of repositories which satisfy dependencies on eclasses and from which
+settings specified in various repository\-level files (\fBpackage.mask\fR,
+\fBpackage.use.mask\fR, \fBuse.mask\fR etc.) are inherited. Each repository
+name should correspond to the value of a \fBrepo_name\fR entry from one of
+the repositories that is configured in \fBrepos.conf\fR file. Repositories
+listed toward the right of the \fBmasters\fR list take precedence over those
+listed toward the left of the list.
+.TP
+.BR package.mask-masters
+Names of repositories wherefrom settings specified in repository\-level
+\fBpackage.mask\fR files are inherited.
+.br
+This attribute overrides \fBmasters\fR attribute and should be used only when
+there is a need to set this attribute to a different value than value of
+\fBmasters\fR attribute. See documentation of \fBmasters\fR attribute for more
+details.
 .TP
 .BR repo\-name " = <value of profiles/repo_name>"
 The name of this repository (overrides profiles/repo_name if it exists).
@@ -1027,6 +1052,35 @@ Boolean value whether we should sign Manifest files in this repo.
 .TP
 .BR thin\-manifests " = [true|" false "]"
 Boolean value whether Manifest files contain only DIST entries.
+.TP
+.BR use.aliases\-masters
+Names of repositories wherefrom settings specified in repository\-level
+\fBpackage.use.aliases\fR and \fBuse.aliases\fR files are inherited.
+.br
+This attribute overrides \fBmasters\fR attribute and should be used only when
+there is a need to set this attribute to a different value than value of
+\fBmasters\fR attribute. See documentation of \fBmasters\fR attribute for more
+details.
+.TP
+.BR use.force\-masters
+Names of repositories wherefrom settings specified in repository\-level
+\fBpackage.use.force\fR, \fBpackage.use.stable.force\fR, \fBuse.force\fR and
+\fBuse.stable.force\fR files are inherited.
+.br
+This attribute overrides \fBmasters\fR attribute and should be used only when
+there is a need to set this attribute to a different value than value of
+\fBmasters\fR attribute. See documentation of \fBmasters\fR attribute for more
+details.
+.TP
+.BR use.mask\-masters
+Names of repositories wherefrom settings specified in repository\-level
+\fBpackage.use.mask\fR, \fBpackage.use.stable.mask\fR, \fuse.mask\fR and
+\fBuse.stable.mask\fR files are inherited.
+.br
+This attribute overrides \fBmasters\fR attribute and should be used only when
+there is a need to set this attribute to a different value than value of
+\fBmasters\fR attribute. See documentation of \fBmasters\fR attribute for more
+details.
 .TP
 .BR use\-manifests " = [" strict "|true|false]"
 How Manifest files get used.  Possible values are "strict" (require an entry
@@ -1131,8 +1185,8 @@ sparc
 .fi
 .TP
 .BR categories
-A simple list of valid categories that may be used in /usr/portage,
-PORTDIR_OVERLAY, and PKGDIR (see \fBmake.conf\fR(5)).
+A simple list of valid categories that may be used in repositories and PKGDIR
+(see \fBmake.conf\fR(5)).
 
 .I Format:
 .nf

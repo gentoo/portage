@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Aug 2013" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Jan 2014" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -413,7 +413,7 @@ This feature is enabled by default.
 Automatically perform a metadata transfer when `emerge \-\-sync` is run.
 In versions of portage >=2.1.5, this feature is disabled by
 default. When metadata\-transfer is disabled, metadata cache from the
-${PORTDIR}/metadata/md5\-cache/ directory will be used directly
+${repository_location}/metadata/md5\-cache/ directory will be used directly
 (if available).
 .TP
 .B mirror
@@ -613,11 +613,11 @@ Enable the sandbox in the compile phase, when running without root privs
 (\fIuserpriv\fR).
 .TP
 .B usersync
-Drop privileges to the owner of \fBPORTDIR\fR for \fBemerge(1) --sync\fR
+Drop privileges to the owner of ${repository_location} for \fBemerge(1) --sync\fR
 operations. Note that this feature assumes that all subdirectories of
-\fBPORTDIR\fR have the same ownership as \fBPORTDIR\fR itself. It is the
-user's responsibility to ensure correct ownership, since otherwise portage
-would have to waste time validating ownership for each and every sync
+${repository_location} have the same ownership as ${repository_location} itself.
+It is the user's responsibility to ensure correct ownership, since otherwise
+Portage would have to waste time validating ownership for each and every sync
 operation.
 .TP
 .B webrsync-gpg
@@ -913,8 +913,7 @@ Defines the location of the temporary build directories.
 .br
 Defaults to /var/tmp.
 
-This should not be set to point anywhere under the directory tree
-specified by \fBPORTDIR\fR (/usr/portage by default).
+This should not be set to point anywhere under location of any repository.
 .TP
 \fBPORTAGE_USERNAME\fR = \fI[user]\fR
 Defines the username to use when executing in userpriv/etc... modes (i.e.
@@ -932,8 +931,8 @@ when \fBxattr\fR is in \fBFEATURES\fR.
 Defaults to "security.*" (security labels are special, see bug #461868).
 .TP
 \fBPORTDIR\fR = \fI[path]\fR
-Defines the location of the Portage tree. This is the repository for all
-profile information as well as all ebuilds. If you change this, you must update
+Defines the location of main repository. This variable is deprecated in favor of
+settings in \fBrepos.conf\fR. If you change this, you must update
 your /etc/portage/make.profile symlink accordingly.
 .br
 Defaults to /usr/portage.
@@ -949,8 +948,8 @@ put other data (such as overlays) in your \fBPORTDIR\fB.  Portage will walk
 directory structures and may arbitrarily add invalid categories as packages.
 .TP
 \fBPORTDIR_OVERLAY\fR = \fI"[path] [different\-path] [etc...]"\fR
-Defines the directories in which user made ebuilds may be stored and not
-overwriten when `emerge \-\-sync` is run.  This is a space delimited list of
+Defines the locations of other repositories. This variable is deprecated in
+favor of settings in \fBrepos.conf\fR. This variable is a space\-delimited list of
 directories.
 .br
 Defaults to no value.
@@ -1000,7 +999,7 @@ Defaults to /.
 \fBRPMDIR\fR = \fI[path]\fR
 Defines the location where created RPM packages will be stored.
 .br
-Defaults to ${PORTDIR}/rpm.
+Defaults to /usr/portage/rpm.
 .TP
 \fBSYNC\fR = \fI[RSYNC]\fR
 Insert your preferred rsync mirror here.  This rsync server

@@ -1,5 +1,5 @@
-#!@PREFIX_PORTAGE_PYTHON@
-# Copyright 2010-2013 Gentoo Foundation
+#!@PREFIX_PORTAGE_PYTHON@ -b
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import os

@@ -1,4 +1,4 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -28,7 +28,7 @@ from portage import bsd_chflags, \
 	load_mod, os, selinux, _unicode_decode
 from portage.const import CACHE_PATH, \
 	DEPCACHE_PATH, INCREMENTALS, MAKE_CONF_FILE, \
-	MODULES_FILE_PATH, \
+	MODULES_FILE_PATH, PORTAGE_BASE_PATH, \
 	PRIVATE_PATH, PROFILE_PATH, USER_CONFIG_PATH, \
 	USER_VIRTUALS_FILE
 from portage.dbapi import dbapi
@@ -62,6 +62,7 @@ from portage.package.ebuild._config.helper import ordered_by_atom_specificity, p
 from portage.package.ebuild._config.unpack_dependencies import load_unpack_dependencies_configuration
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 
 _feature_flags_cache = {}
@@ -386,10 +387,11 @@ class config(object):
 			# Allow make.globals to set default paths relative to ${EPREFIX}.
 			expand_map["EPREFIX"] = eprefix
 
-			make_globals_path = os.path.join(
-				self.global_config_path, 'make.globals')
-			old_make_globals = os.path.join(config_root,
-				'etc', 'make.globals')
+			if portage._not_installed:
+				make_globals_path = os.path.join(PORTAGE_BASE_PATH, "cnf", "make.globals")
+			else:
+				make_globals_path = os.path.join(self.global_config_path, "make.globals")
+			old_make_globals = os.path.join(config_root, "etc", "make.globals")
 			if os.path.isfile(old_make_globals) and \
 				not os.path.samefile(make_globals_path, old_make_globals):
 				# Don't warn if they refer to the same path, since
@@ -536,7 +538,7 @@ class config(object):
 			if portdir_overlay:
 				for ov in portdir_overlay:
 					ov = normalize_path(ov)
-					if isdir_raise_eaccess(ov) or portage._sync_disabled_warnings:
+					if isdir_raise_eaccess(ov) or portage._sync_mode:
 						new_ov.append(portage._shell_quote(ov))
 					else:
 						writemsg(_("!!! Invalid PORTDIR_OVERLAY"
@@ -1046,7 +1048,7 @@ class config(object):
 			else:
 				profile_broken = True
 
-		if profile_broken and not portage._sync_disabled_warnings:
+		if profile_broken and not portage._sync_mode:
 			abs_profile_path = None
 			for x in (PROFILE_PATH, 'etc/make.profile'):
 				x = os.path.join(self["PORTAGE_CONFIGROOT"], x)

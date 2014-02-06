@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -31,7 +31,7 @@ class BacktrackingTestCase(TestCase):
 			playground.cleanup()
 
 
-	def testHittingTheBacktrackLimit(self):
+	def testBacktrackNotNeeded(self):
 		ebuilds = {
 			"dev-libs/A-1": {},
 			"dev-libs/A-2": {},
@@ -45,17 +45,10 @@ class BacktrackingTestCase(TestCase):
 				ResolverPlaygroundTestCase(
 					["dev-libs/C", "dev-libs/D"],
 					all_permutations = True,
+					options = { "--backtrack": 1 },
 					mergelist = ["dev-libs/A-1", "dev-libs/B-1", "dev-libs/C-1", "dev-libs/D-1"],
 					ignore_mergelist_order = True,
 					success = True),
-				#This one hits the backtrack limit. Be aware that this depends on the argument order.
-				ResolverPlaygroundTestCase(
-					["dev-libs/D", "dev-libs/C"],
-					options = { "--backtrack": 1 },
-					mergelist = ["dev-libs/A-1", "dev-libs/B-1", "dev-libs/A-2", "dev-libs/B-2", "dev-libs/C-1", "dev-libs/D-1"],
-					ignore_mergelist_order = True,
-					slot_collision_solutions = [],
-					success = False),
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds)

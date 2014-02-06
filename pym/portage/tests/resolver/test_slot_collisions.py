@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2011,2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -147,6 +147,79 @@ class SlotCollisionTestCase(TestCase):
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
+
+	def testConnectedCollision(self):
+		"""
+		Ensure that we are able to solve connected slot conflicts
+		which cannot be solved each on their own.
+		"""
+		ebuilds = {
+			"dev-libs/A-1": { "RDEPEND": "=dev-libs/X-1" },
+			"dev-libs/B-1": { "RDEPEND": "dev-libs/X" },
+
+			"dev-libs/X-1": { "RDEPEND": "=dev-libs/Y-1" },
+			"dev-libs/X-2": { "RDEPEND": "=dev-libs/Y-2" },
+
+			"dev-libs/Y-1": { "PDEPEND": "=dev-libs/X-1" },
+			"dev-libs/Y-2": { "PDEPEND": "=dev-libs/X-2" },
+			}
+
+		test_cases = (
+			ResolverPlaygroundTestCase(
+				["dev-libs/A", "dev-libs/B"],
+				all_permutations = True,
+				options = { "--backtrack": 0 },
+				success = True,
+				ambiguous_merge_order = True,
+				mergelist = ["dev-libs/Y-1", "dev-libs/X-1", ("dev-libs/A-1", "dev-libs/B-1")]),
+			)
+
+		playground = ResolverPlayground(ebuilds=ebuilds, debug=False)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
+
+
+	def testDeeplyConnectedCollision(self):
+		"""
+		Like testConnectedCollision, except that there is another
+		level of dependencies between the two conflicts.
+		"""
+		ebuilds = {
+			"dev-libs/A-1": { "RDEPEND": "=dev-libs/X-1" },
+			"dev-libs/B-1": { "RDEPEND": "dev-libs/X" },
+
+			"dev-libs/X-1": { "RDEPEND": "dev-libs/K" },
+			"dev-libs/X-2": { "RDEPEND": "dev-libs/L" },
+
+			"dev-libs/K-1": { "RDEPEND": "=dev-libs/Y-1" },
+			"dev-libs/L-1": { "RDEPEND": "=dev-libs/Y-2" },
+
+			"dev-libs/Y-1": { "PDEPEND": "=dev-libs/X-1" },
+			"dev-libs/Y-2": { "PDEPEND": "=dev-libs/X-2" },
+			}
+
+		test_cases = (
+			ResolverPlaygroundTestCase(
+				["dev-libs/A", "dev-libs/B"],
+				all_permutations = True,
+				options = { "--backtrack": 0 },
+				success = True,
+				ignore_mergelist_order = True,
+				mergelist = ["dev-libs/Y-1", "dev-libs/X-1", "dev-libs/K-1", \
+					"dev-libs/A-1", "dev-libs/B-1"]),
+			)
+
+		playground = ResolverPlayground(ebuilds=ebuilds, debug=False)
 		try:
 			for test_case in test_cases:
 				playground.run_TestCase(test_case)

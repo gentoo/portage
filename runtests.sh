@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # These are the versions we care about.  The rest are just "nice to have".
@@ -67,7 +67,7 @@ for version in ${PYTHON_VERSIONS}; do
 	fi
 	if [[ -x "${executable}" ]]; then
 		echo -e "${GOOD}Testing with Python ${version}...${NORMAL}"
-		"${executable}" -Wd pym/portage/tests/runTests "$@"
+		"${executable}" -b -Wd pym/portage/tests/runTests "$@"
 		status=$?
 		status_array[${#status_array[@]}]=${status}
 		found_versions[${#found_versions[@]}]=${version}

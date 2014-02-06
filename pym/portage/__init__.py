@@ -1,10 +1,9 @@
-# portage.py -- core Portage functionality
-# Copyright 1998-2013 Gentoo Foundation
+# Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
 
-VERSION="HEAD"
+VERSION = "HEAD"
 
 # ===========================================================================
 # START OF IMPORTS -- START OF IMPORTS -- START OF IMPORTS -- START OF IMPORT
@@ -35,7 +34,7 @@ except ImportError as e:
 
 	sys.stderr.write("!!! You might consider starting python with verbose flags to see what has\n")
 	sys.stderr.write("!!! gone wrong. Here is the information we got for this exception:\n")
-	sys.stderr.write("    "+str(e)+"\n\n");
+	sys.stderr.write("    "+str(e)+"\n\n")
 	raise
 
 try:
@@ -142,6 +141,7 @@ except ImportError as e:
 	raise
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 	long = int
 
@@ -369,12 +369,12 @@ except (ImportError, OSError) as e:
 _python_interpreter = os.path.realpath(sys.executable)
 _bin_path = PORTAGE_BIN_PATH
 _pym_path = PORTAGE_PYM_PATH
-_working_copy = VERSION == "HEAD"
+_not_installed = os.path.isfile(os.path.join(PORTAGE_BASE_PATH, ".portage_not_installed"))
 
 # Api consumers included in portage should set this to True.
 _internal_caller = False
 
-_sync_disabled_warnings = False
+_sync_mode = False
 
 def _get_stdin():
 	"""
@@ -486,8 +486,8 @@ def abssymlink(symlink, target=None):
 	else:
 		mylink = os.readlink(symlink)
 	if mylink[0] != '/':
-		mydir=os.path.dirname(symlink)
-		mylink=mydir+"/"+mylink
+		mydir = os.path.dirname(symlink)
+		mylink = mydir + "/" + mylink
 	return os.path.normpath(mylink)
 
 _doebuild_manifest_exempt_depend = 0
@@ -554,7 +554,7 @@ auxdbkeys = (
 	'PROPERTIES', 'DEFINED_PHASES', 'HDEPEND', 'UNUSED_04',
 	'UNUSED_03', 'UNUSED_02', 'UNUSED_01',
 )
-auxdbkeylen=len(auxdbkeys)
+auxdbkeylen = len(auxdbkeys)
 
 def portageexit():
 	pass
@@ -644,7 +644,7 @@ if VERSION == 'HEAD':
 							patchlevel = False
 							if len(version_split) > 1:
 								patchlevel = True
-								VERSION = "%s_p%s" %(VERSION, version_split[1])
+								VERSION = "%s_p%s" % (VERSION, version_split[1])
 							if len(output_lines) > 1 and output_lines[1] == 'modified':
 								head_timestamp = None
 								if len(output_lines) > 3:

@@ -1,4 +1,4 @@
-# Copyright 2013 Gentoo Foundation
+# Copyright 2013-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -19,6 +19,7 @@ from .FetchIterator import FetchIterator
 from .DeletionIterator import DeletionIterator
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	long = int
 
 class MirrorDistTask(CompositeTask):

@@ -17,9 +17,8 @@
 		<varname>system</varname> or <varname>security</varname>.
 		<!-- TODO: Add reference to currently non-existing documentation about
 		set usage and default sets -->
-		After that it will read repository specific configurations from 
-		<envar>PORTDIR</envar> and <envar>PORTDIR_OVERLAY</envar> that might
-		include definitions of sets included in the repository.
+		After that it will read configurations located in repositories
+		configured in <filename>repos.conf</filename>.
 		Finally a system-specific set configuration may reside in 
 		<filename>/etc/portage</filename> to either define additional sets or
 		alter the default and repository sets.

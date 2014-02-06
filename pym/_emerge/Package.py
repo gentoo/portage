@@ -1,4 +1,4 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -479,7 +479,8 @@ class Package(Task):
 			cpv_color = "PKG_NOMERGE"
 
 		s = "(%s, %s" \
-			% (portage.output.colorize(cpv_color, self.cpv + _repo_separator + self.repo) , self.type_name)
+			% (portage.output.colorize(cpv_color, self.cpv + _slot_separator + \
+			self.slot + "/" + self.sub_slot + _repo_separator + self.repo) , self.type_name)
 
 		if self.type_name == "installed":
 			if self.root_config.settings['ROOT'] != "/":

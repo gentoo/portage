@@ -1,4 +1,4 @@
-# Copyright 2005-2013 Gentoo Foundation
+# Copyright 2005-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
 
@@ -15,6 +15,7 @@ lazyimport(globals(),
 del lazyimport
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	long = int
 
 class FsBased(template.database):

@@ -1,4 +1,4 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -12,6 +12,7 @@ from _emerge.DependencyArg import DependencyArg
 from _emerge.UseFlagDisplay import UseFlagDisplay
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 
 STR_IS_UNICODE = sys.hexversion >= 0x3000000

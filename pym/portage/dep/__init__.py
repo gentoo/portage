@@ -1,5 +1,5 @@
 # deps.py -- Portage dependency resolution functions
-# Copyright 2003-2013 Gentoo Foundation
+# Copyright 2003-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -33,6 +33,7 @@ from portage.versions import catpkgsplit, catsplit, \
 import portage.cache.mappings
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 	_unicode = str
 else:

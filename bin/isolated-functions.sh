@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}/eapi.sh"
@@ -468,7 +468,7 @@ has() {
 	return 1
 }
 
-__repo_key() {
+__repo_attr() {
 	local appropriate_section=0 exit_status=1 line saved_extglob_shopt=$(shopt -p extglob)
 	shopt -s extglob
 	while read line; do
