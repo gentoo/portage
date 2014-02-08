@@ -28,7 +28,12 @@ class GitSync(object):
 
 
 	def __init__(self):
+		self.options = None
 		self.settings = None
+		self.logger = None
+		self.repo = None
+		self.xterm_titles = None
+
 		self.has_git = True
 		if portage.process.find_binary("git") is None:
 			msg = ["Command not found: git",
@@ -39,6 +44,13 @@ class GitSync(object):
 			self.has_git = False
 
 
+	def _kwargs(self, kwargs):
+		self.options = kwargs.get('options', {})
+		self.settings = self.options.get('settings', None)
+		self.logger = self.options.get('logger', None)
+		self.repo = self.options.get('repo', None)
+		self.xterm_titles = self.options.get('xterm_titles', False)
+
 	def sync(self, **kwargs):
 		''' Update existing git repository, and ignore the syncuri. We are
 		going to trust the user and assume that the user is in the branch
@@ -46,51 +58,48 @@ class GitSync(object):
 		git directly.
 		'''
 		if kwargs:
-			options = kwargs.get('options', {})
-			emerge_config = options.get('emerge_config', None)
-			logger = options.get('logger', None)
-			repo = options.get('repo', None)
-			portdb = options.get('portdb', None)
-			spawn_kwargs = options.get('spawn_kwargs', None)
-			xterm_titles = options.get('xterm_titles', False)
+			self._kwargs(kwargs)
+			emerge_config = self.options.get('emerge_config', None)
+			spawn_kwargs = self.options.get('spawn_kwargs', None)
+			portdb = self.options.get('portdb', None)
 
 		if not self.has_git:
-			return repo.location, 1, False
+			return self.repo.location, 1, False
 
 		# Test if the directory is a valid git repo, and run
 		# git clone if not
 		exitcode = portage.process.spawn_bash("cd %s ; git rev-parse" %\
-			(portage._shell_quote(repo.location),),
+			(portage._shell_quote(self.repo.location),),
 			**portage._native_kwargs(spawn_kwargs))
 		if exitcode == 128:
 			msg = "!!! Git repo does not already exist, cloning from upstream..."
-			logger(xterm_titles, msg)
+			self.logger(self.xterm_titles, msg)
 			writemsg_level(msg + "\n")
 			exitcode = portage.process.spawn_bash("cd %s ; git clone %s ." % \
-				(portage._shell_quote(repo.location),
-				portage._shell_quote(repo.sync_uri)),
+				(portage._shell_quote(self.repo.location),
+				portage._shell_quote(self.repo.sync_uri)),
 				**portage._native_kwargs(spawn_kwargs))
 			if exitcode != os.EX_OK:
-				msg = "!!! git clone error in %s." % repo.location
-				logger(xterm_titles, msg)
+				msg = "!!! git clone error in %s." % self.repo.location
+				self.logger(self.xterm_titles, msg)
 				writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
 			return (exitcode, False)
 		else:
-			msg = ">>> Starting git pull in %s..." % repo.location
-			logger(xterm_titles, msg )
+			msg = ">>> Starting git pull in %s..." % self.repo.location
+			self.logger(self.xterm_titles, msg )
 			writemsg_level(msg + "\n")
 			exitcode = portage.process.spawn_bash("cd %s ; git pull" % \
-				(portage._shell_quote(repo.location),),
+				(portage._shell_quote(self.repo.location),),
 			**portage._native_kwargs(spawn_kwargs))
 			if exitcode != os.EX_OK:
-				msg = "!!! git pull error in %s." % repo.location
-				logger(xterm_titles, msg)
+				msg = "!!! git pull error in %s." % self.repo.location
+				self.logger(self.xterm_titles, msg)
 				writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
 				return (exitcode, False)
-		msg = ">>> Git pull in %s successful" % repo.location
-		logger(xterm_titles, msg)
+		msg = ">>> Git pull in %s successful" % self.repo.location
+		self.logger(self.xterm_titles, msg)
 		writemsg_level(msg + "\n")
-		return self.post_sync(portdb, repo.location, emerge_config)
+		return self.post_sync(portdb, self.repo.location, emerge_config)
 
 
 	def post_sync(self, portdb, location, emerge_config):
