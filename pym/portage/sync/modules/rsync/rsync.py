@@ -38,33 +38,41 @@ class RsyncSync(object):
 
 
 	def __init__(self):
-		pass
+		self.settings = None
+		self.logger = None
+		self.repo = None
+		self.options = None
+		self.xterm_titles = None
+
+
+	def _kwargs(self, kwargs):
+			self.options = kwargs.get('options', {})
+			self.settings = self.options.get('settings', None)
+			self.logger = self.options.get('logger', None)
+			self.repo = self.options.get('repo', None)
+			self.xterm_titles = self.options.get('xterm_titles', False)
 
 
 	def sync(self, **kwargs):
 		'''Rsync the repo'''
 		if kwargs:
-			options = kwargs.get('options', {})
-			settings = options.get('settings', None)
-			logger = options.get('logger', None)
-			myopts = options.get('emerge_config').opts
-			repo = options.get('repo', None)
-			spawn_kwargs = options.get('spawn_kwargs', None)
-			usersync_uid = options.get('usersync_uid', None)
-			xterm_titles = options.get('xterm_titles', False)
+			self._kwargs(kwargs)
+			myopts = self.options.get('emerge_config').opts
+			spawn_kwargs = self.options.get('spawn_kwargs', None)
+			usersync_uid = self.options.get('usersync_uid', None)
 
 		enter_invalid = '--ask-enter-invalid' in myopts
 		out = portage.output.EOutput()
-		syncuri = repo.sync_uri
+		syncuri = self.repo.sync_uri
 		dosyncuri = syncuri
 		vcs_dirs = frozenset(VCS_DIRS)
-		vcs_dirs = vcs_dirs.intersection(os.listdir(repo.location))
+		vcs_dirs = vcs_dirs.intersection(os.listdir(self.repo.location))
 
 
 		for vcs_dir in vcs_dirs:
 			writemsg_level(("!!! %s appears to be under revision " + \
 				"control (contains %s).\n!!! Aborting rsync sync.\n") % \
-				(repo.location, vcs_dir), level=logging.ERROR, noiselevel=-1)
+				(self.repo.location, vcs_dir), level=logging.ERROR, noiselevel=-1)
 			return (1, False)
 		rsync_binary = portage.process.find_binary("rsync")
 		if rsync_binary is None:
@@ -74,7 +82,7 @@ class RsyncSync(object):
 		mytimeout=180
 
 		rsync_opts = []
-		if settings["PORTAGE_RSYNC_OPTS"] == "":
+		if self.settings["PORTAGE_RSYNC_OPTS"] == "":
 			portage.writemsg("PORTAGE_RSYNC_OPTS empty or unset, using hardcoded defaults\n")
 			rsync_opts.extend([
 				"--recursive",    # Recurse directories
@@ -101,7 +109,7 @@ class RsyncSync(object):
 
 			portage.writemsg("Using PORTAGE_RSYNC_OPTS instead of hardcoded defaults\n", 1)
 			rsync_opts.extend(portage.util.shlex_split(
-				settings.get("PORTAGE_RSYNC_OPTS", "")))
+				self.settings.get("PORTAGE_RSYNC_OPTS", "")))
 			for opt in ("--recursive", "--times"):
 				if opt not in rsync_opts:
 					portage.writemsg(yellow("WARNING:") + " adding required option " + \
@@ -145,7 +153,7 @@ class RsyncSync(object):
 
 		# Real local timestamp file.
 		servertimestampfile = os.path.join(
-			repo.location, "metadata", "timestamp.chk")
+			self.repo.location, "metadata", "timestamp.chk")
 
 		content = portage.util.grabfile(servertimestampfile)
 		mytimestamp = 0
@@ -159,12 +167,12 @@ class RsyncSync(object):
 
 		try:
 			rsync_initial_timeout = \
-				int(settings.get("PORTAGE_RSYNC_INITIAL_TIMEOUT", "15"))
+				int(self.settings.get("PORTAGE_RSYNC_INITIAL_TIMEOUT", "15"))
 		except ValueError:
 			rsync_initial_timeout = 15
 
 		try:
-			maxretries=int(settings["PORTAGE_RSYNC_RETRIES"])
+			maxretries=int(self.settings["PORTAGE_RSYNC_RETRIES"])
 		except SystemExit as e:
 			raise # Needed else can't exit
 		except:
@@ -180,7 +188,7 @@ class RsyncSync(object):
 				noiselevel=-1, level=logging.ERROR)
 			return (1, False)
 
-		ssh_opts = settings.get("PORTAGE_SSH_OPTS")
+		ssh_opts = self.settings.get("PORTAGE_SSH_OPTS")
 
 		if port is None:
 			port=""
@@ -194,7 +202,7 @@ class RsyncSync(object):
 		updatecache_flg=True
 		all_rsync_opts = set(rsync_opts)
 		extra_rsync_opts = portage.util.shlex_split(
-			settings.get("PORTAGE_RSYNC_EXTRA_OPTS",""))
+			self.settings.get("PORTAGE_RSYNC_EXTRA_OPTS",""))
 		all_rsync_opts.update(extra_rsync_opts)
 
 		family = socket.AF_UNSPEC
@@ -281,11 +289,12 @@ class RsyncSync(object):
 						print("Quitting.")
 						print()
 						sys.exit(128 + signal.SIGINT)
-				logger(xterm_titles, ">>> Starting rsync with " + dosyncuri)
+				self.logger(self.xterm_titles,
+					">>> Starting rsync with " + dosyncuri)
 				if "--quiet" not in myopts:
 					print(">>> Starting rsync with "+dosyncuri+"...")
 			else:
-				logger(xterm_titles,
+				self.logger(self.xterm_titles,
 					">>> Starting retry %d of %d with %s" % \
 						(retries, effective_maxretries, dosyncuri))
 				writemsg_stdout(
@@ -321,7 +330,7 @@ class RsyncSync(object):
 				# requirement, since that's not necessarily true for the
 				# default directory used by the tempfile module.
 				if usersync_uid is not None:
-					tmpdir = settings['PORTAGE_TMPDIR']
+					tmpdir = self.settings['PORTAGE_TMPDIR']
 				else:
 					# use default dir from tempfile module
 					tmpdir = None
@@ -388,7 +397,7 @@ class RsyncSync(object):
 				del mycommand, mypids, content
 			if exitcode == os.EX_OK:
 				if (servertimestamp != 0) and (servertimestamp == mytimestamp):
-					logger(xterm_titles,
+					self.logger(self.xterm_titles,
 						">>> Cancelling sync -- Already current.")
 					print()
 					print(">>>")
@@ -400,7 +409,7 @@ class RsyncSync(object):
 					print()
 					return (exitcode, updatecache_flg)
 				elif (servertimestamp != 0) and (servertimestamp < mytimestamp):
-					logger(xterm_titles,
+					self.logger(self.xterm_titles,
 						">>> Server out of date: %s" % dosyncuri)
 					print()
 					print(">>>")
@@ -412,7 +421,7 @@ class RsyncSync(object):
 					exitcode = SERVER_OUT_OF_DATE
 				elif (servertimestamp == 0) or (servertimestamp > mytimestamp):
 					# actual sync
-					mycommand = rsynccommand + [dosyncuri+"/", repo.location]
+					mycommand = rsynccommand + [dosyncuri+"/", self.repo.location]
 					exitcode = None
 					try:
 						exitcode = portage.process.spawn(mycommand,
@@ -462,7 +471,7 @@ class RsyncSync(object):
 				break
 
 		if (exitcode==0):
-			logger(xterm_titles, "=== Sync completed with %s" % dosyncuri)
+			self.logger(self.xterm_titles, "=== Sync completed with %s" % dosyncuri)
 		elif exitcode == SERVER_OUT_OF_DATE:
 			exitcode = 1
 		elif exitcode == EXCEEDED_MAX_RETRIES:
@@ -473,14 +482,14 @@ class RsyncSync(object):
 			msg = []
 			if exitcode==1:
 				msg.append("Rsync has reported that there is a syntax error. Please ensure")
-				msg.append("that sync-uri attribute for repository '%s' is proper." % repo.name)
-				msg.append("sync-uri: '%s'" % repo.sync_uri)
+				msg.append("that sync-uri attribute for repository '%s' is proper." % self.repo.name)
+				msg.append("sync-uri: '%s'" % self.repo.sync_uri)
 			elif exitcode==11:
 				msg.append("Rsync has reported that there is a File IO error. Normally")
 				msg.append("this means your disk is full, but can be caused by corruption")
-				msg.append("on the filesystem that contains repository '%s'. Please investigate" % repo.name)
+				msg.append("on the filesystem that contains repository '%s'. Please investigate" % self.repo.name)
 				msg.append("and try again after the problem has been fixed.")
-				msg.append("Location of repository: '%s'" % repo.location)
+				msg.append("Location of repository: '%s'" % self.repo.location)
 			elif exitcode==20:
 				msg.append("Rsync was killed before it finished.")
 			else:
