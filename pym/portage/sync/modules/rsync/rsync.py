@@ -57,14 +57,17 @@ class RsyncSync(object):
 		'''Rsync the repo'''
 		if kwargs:
 			self._kwargs(kwargs)
-			myopts = self.options.get('emerge_config').opts
-			spawn_kwargs = self.options.get('spawn_kwargs', None)
-			usersync_uid = self.options.get('usersync_uid', None)
 
 		if not self.exists():
-			if not self.new():
-				return (1, False)
+			return self.new()
+		return self._sync()
 
+
+	def _sync(self):
+		'''Internal sync function which performs only the sync'''
+		myopts = self.options.get('emerge_config').opts
+		spawn_kwargs = self.options.get('spawn_kwargs', None)
+		usersync_uid = self.options.get('usersync_uid', None)
 		enter_invalid = '--ask-enter-invalid' in myopts
 		out = portage.output.EOutput()
 		syncuri = self.repo.sync_uri
@@ -525,6 +528,6 @@ class RsyncSync(object):
 				self.logger(self.self.xterm_titles,
 					'Created New Directory %s ' % self.repo.location )
 		except IOError:
-			return False
-		return True
+			return (1, False)
+		return self._sync()
 
