@@ -45,6 +45,7 @@ class GitSync(object):
 
 
 	def _kwargs(self, kwargs):
+		'''Sets internal variables from kwargs'''
 		self.options = kwargs.get('options', {})
 		self.settings = self.options.get('settings', None)
 		self.logger = self.options.get('logger', None)
@@ -53,7 +54,7 @@ class GitSync(object):
 
 
 	def exists(self, **kwargs):
-                '''Tests whether the repo actually exists'''
+		'''Tests whether the repo actually exists'''
 		if kwargs:
 			self._kwargs(kwargs)
 		elif not self.repo:
@@ -87,7 +88,7 @@ class GitSync(object):
 		'''Do the initial clone of the repository'''
 		if kwargs:
 			self._kwargs(kwargs)
-                emerge_config = self.options.get('emerge_config', None)
+		emerge_config = self.options.get('emerge_config', None)
 		spawn_kwargs = self.options.get('spawn_kwargs', None)
 		portdb = self.options.get('portdb', None)
 		try:
@@ -115,14 +116,14 @@ class GitSync(object):
 		return self.post_sync(portdb, self.repo.location, emerge_config)
 
 
-	def _sync(self, **kwargs):
+	def _sync(self):
 		''' Update existing git repository, and ignore the syncuri. We are
 		going to trust the user and assume that the user is in the branch
 		that he/she wants updated. We'll let the user manage branches with
 		git directly.
 		'''
-		if kwargs:
-			self._kwargs(kwargs)
+		# No kwargs call here; this is internal, so it should have been
+		# called by something which set the internal variables
 		emerge_config = self.options.get('emerge_config', None)
 		spawn_kwargs = self.options.get('spawn_kwargs', None)
 		portdb = self.options.get('portdb', None)
