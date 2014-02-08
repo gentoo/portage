@@ -1527,6 +1527,8 @@ def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
 				user = "root"
 			elif portage_build_uid == portage_uid:
 				user = portage.data._portage_username
+			else:
+				user = portage_uid
 		if user is not None:
 			mysettings["PORTAGE_BUILD_USER"] = user
 
@@ -1539,6 +1541,8 @@ def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
 				group = "root"
 			elif portage_build_gid == portage_gid:
 				group = portage.data._portage_grpname
+			else:
+				group = portage_gid
 		if group is not None:
 			mysettings["PORTAGE_BUILD_GROUP"] = group
 

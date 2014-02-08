@@ -24,8 +24,14 @@ signal.signal(debug_signum, debug_signal)
 # Pretend that the current user's uid/gid are the 'portage' uid/gid,
 # so things go smoothly regardless of the current user and global
 # user/group configuration.
-os.environ["PORTAGE_USERNAME"] = pwd.getpwuid(os.getuid()).pw_name
-os.environ["PORTAGE_GRPNAME"] = grp.getgrgid(os.getgid()).gr_name
+try:
+	os.environ["PORTAGE_USERNAME"] = pwd.getpwuid(os.getuid()).pw_name
+except KeyError:
+	os.environ["PORTAGE_USERNAME"] = str(os.getuid())
+try:
+	os.environ["PORTAGE_GRPNAME"] = grp.getgrgid(os.getgid()).gr_name
+except KeyError:
+	os.environ["PORTAGE_GRPNAME"] = str(os.getgid())
 
 # Insert our parent dir so we can do shiny import "tests"
 # This line courtesy of Marienz and Pkgcore ;)

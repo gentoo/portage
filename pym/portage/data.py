@@ -91,21 +91,28 @@ def _get_global(k):
 		#Discover the uid and gid of the portage user/group
 		keyerror = False
 		try:
-			portage_uid = pwd.getpwnam(_get_global('_portage_username')).pw_uid
+			username = str(_get_global('_portage_username'))
+			portage_uid = pwd.getpwnam(username).pw_uid
 		except KeyError:
 			# PREFIX LOCAL: some sysadmins are insane, bug #344307
-			if _portage_grpname.isdigit():
-				portage_gid = int(_portage_grpname)
+			if username.isdigit():
+				portage_uid = int(username)
 			else:
 				keyerror = True
+				portage_uid = 0
 			# END PREFIX LOCAL
-			portage_uid = 0
 
 		try:
-			portage_gid = grp.getgrnam(_get_global('_portage_grpname')).gr_gid
+			grpname = str(_get_global('_portage_grpname'))
+			portage_gid = grp.getgrnam(grpname).gr_gid
 		except KeyError:
-			keyerror = True
-			portage_gid = 0
+			# PREFIX LOCAL: some sysadmins are insane, bug #344307
+			if grpname.isdigit():
+				portage_gid = int(grpname)
+			else:
+				keyerror = True
+				portage_gid = 0
+			# END PREFIX LOCAL
 
 		if secpass < 1 and portage_gid in os.getgroups():
 			secpass = 1
@@ -203,14 +210,14 @@ def _get_global(k):
 					try:
 						grp_struct = grp.getgrgid(eroot_st.st_gid)
 					except KeyError:
-						pass
+						v = eroot_st.st_gid
 					else:
 						v = grp_struct.gr_name
 				else:
 					try:
 						pwd_struct = pwd.getpwuid(eroot_st.st_uid)
 					except KeyError:
-						pass
+						v = eroot_st.st_uid
 					else:
 						v = pwd_struct.pw_name
 
