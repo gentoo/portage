@@ -61,6 +61,10 @@ class RsyncSync(object):
 			spawn_kwargs = self.options.get('spawn_kwargs', None)
 			usersync_uid = self.options.get('usersync_uid', None)
 
+		if not self.exists():
+			if not self.new():
+				return (1, False)
+
 		enter_invalid = '--ask-enter-invalid' in myopts
 		out = portage.output.EOutput()
 		syncuri = self.repo.sync_uri
@@ -501,3 +505,26 @@ class RsyncSync(object):
 			for line in msg:
 				out.eerror(line)
 		return (exitcode, updatecache_flg)
+
+
+	def exists(self, **kwargs):
+		if kwargs:
+			self._kwargs(kwargs)
+		elif not self.repo:
+			return False
+		return os.path.exists(self.repo.location)
+
+
+
+	def new(self, **kwargs):
+		if kwargs:
+			self._kwargs(kwargs)
+		try:
+			if not os.path.exists(self.repo.location):
+				os.makedirs(self.repo.location)
+				self.logger(self.self.xterm_titles,
+					'Created New Directory %s ' % self.repo.location )
+		except IOError:
+			return False
+		return True
+
