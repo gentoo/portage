@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -312,11 +312,8 @@ class UseManager(object):
 		if hasattr(pkg, "repo") and pkg.repo != Package.UNKNOWN_REPO:
 			repos = []
 			try:
-				if self.repositories[pkg.repo].use_mask_masters is not None:
-					masters = self.repositories[pkg.repo].use_mask_masters
-				else:
-					masters = self.repositories[pkg.repo].masters
-				repos.extend(repo.name for repo in masters)
+				repos.extend(repo.name for repo in
+					self.repositories[pkg.repo].masters)
 			except KeyError:
 				pass
 			repos.append(pkg.repo)
@@ -375,11 +372,8 @@ class UseManager(object):
 		if hasattr(pkg, "repo") and pkg.repo != Package.UNKNOWN_REPO:
 			repos = []
 			try:
-				if self.repositories[pkg.repo].use_force_masters is not None:
-					masters = self.repositories[pkg.repo].use_force_masters
-				else:
-					masters = self.repositories[pkg.repo].masters
-				repos.extend(repo.name for repo in masters)
+				repos.extend(repo.name for repo in
+					self.repositories[pkg.repo].masters)
 			except KeyError:
 				pass
 			repos.append(pkg.repo)
@@ -434,11 +428,8 @@ class UseManager(object):
 		if hasattr(pkg, "repo") and pkg.repo != Package.UNKNOWN_REPO:
 			repos = []
 			try:
-				if self.repositories[pkg.repo].use_aliases_masters is not None:
-					masters = self.repositories[pkg.repo].use_aliases_masters
-				else:
-					masters = self.repositories[pkg.repo].masters
-				repos.extend(repo.name for repo in masters)
+				repos.extend(repo.name for repo in
+					self.repositories[pkg.repo].masters)
 			except KeyError:
 				pass
 			repos.append(pkg.repo)
