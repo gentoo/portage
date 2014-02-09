@@ -940,7 +940,7 @@ class RepoConfigLoader(object):
 		repo_config_tuple_attrs = tuple(_masters_attributes.keys())
 		attrs = str_or_int_attrs + str_tuple_attrs + repo_config_tuple_attrs
 		config_string = ""
-		for repo_name, repo in sorted(self.prepos.items()):
+		for repo_name, repo in sorted(self.prepos.items(), key=lambda x: (x[0] != "DEFAULT", x[0])):
 			config_string += "\n[%s]\n" % repo_name
 			for attr in sorted(attrs):
 				underscorized_attr = attr.replace("-", "_").replace(".", "_")
