@@ -330,6 +330,50 @@ def format_qa_output(formatter, stats, fails, dofull, dofail, options, qawarning
 				formatter.add_line_break()
 
 
+def format_qa_output_column(formatter, stats, fails, dofull, dofail, options, qawarnings):
+	"""Helper function that formats output in a machine-parseable column format
+
+	@param formatter: an instance of Formatter
+	@type formatter: Formatter
+	@param path: dict of qa status items
+	@type path: dict
+	@param fails: dict of qa status failures
+	@type fails: dict
+	@param dofull: Whether to print full results or a summary
+	@type dofull: boolean
+	@param dofail: Whether failure was hard or soft
+	@type dofail: boolean
+	@param options: The command-line options provided to repoman
+	@type options: Namespace
+	@param qawarnings: the set of warning types
+	@type qawarnings: set
+	@return: None (modifies formatter)
+	"""
+	full = options.mode == 'full'
+	for category, number in stats.items():
+		# we only want key value pairs where value > 0
+		if number < 1:
+			continue
+
+		formatter.add_literal_data("NumberOf " + category + " ")
+		if category in qawarnings:
+			formatter.push_style("WARN")
+		else:
+			formatter.push_style("BAD")
+		formatter.add_literal_data("%s" % number)
+		formatter.pop_style()
+		formatter.add_line_break()
+		if not dofull:
+			if not full and dofail and category in qawarnings:
+				# warnings are considered noise when there are failures
+				continue
+			fails_list = fails[category]
+			if not full and len(fails_list) > 12:
+				fails_list = fails_list[:12]
+			for failure in fails_list:
+				formatter.add_literal_data(category + " " + failure)
+				formatter.add_line_break()
+
 def editor_is_executable(editor):
 	"""
 	Given an EDITOR string, validate that it refers to
