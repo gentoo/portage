@@ -457,9 +457,6 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 			writemsg_level(colorize("WARN","!!! Unmerging it may " + \
 				"be damaging to your system.\n\n"),
 				level=logging.WARNING, noiselevel=-1)
-			if clean_delay and "--pretend" not in myopts and "--ask" not in myopts:
-				countdown(int(settings["EMERGE_WARNING_DELAY"]),
-					colorize("UNMERGE_WARN", "Press Ctrl-C to Stop"))
 		if not quiet:
 			writemsg_level("\n %s\n" % (bold(cp),), noiselevel=-1)
 		else:
