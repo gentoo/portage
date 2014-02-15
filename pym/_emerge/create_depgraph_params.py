@@ -46,6 +46,7 @@ def create_depgraph_params(myopts, myaction):
 		myparams['rebuild_if_new_slot'] = rebuild_if_new_slot
 
 	if "--update" in myopts or \
+		"--newrepo" in myopts or \
 		"--newuse" in myopts or \
 		"--reinstall" in myopts or \
 		"--noreplace" in myopts or \

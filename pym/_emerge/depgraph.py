@@ -5396,54 +5396,56 @@ class depgraph(object):
 						break
 					# Compare built package to current config and
 					# reject the built package if necessary.
+					reinstall_use = ("--newuse" in self._frozen_config.myopts or \
+						"--reinstall" in self._frozen_config.myopts)
+					respect_use = self._dynamic_config.myparams.get("binpkg_respect_use") in ("y", "auto")
 					if built and not useoldpkg and \
 						(not installed or matched_packages) and \
 						not (installed and
 						self._frozen_config.excluded_pkgs.findAtomForPackage(pkg,
-						modified_use=self._pkg_use_enabled(pkg))) and \
-						("--newuse" in self._frozen_config.myopts or \
-						"--reinstall" in self._frozen_config.myopts or \
-						(not installed and self._dynamic_config.myparams.get(
-						"binpkg_respect_use") in ("y", "auto"))):
-						iuses = pkg.iuse.all
-						old_use = self._pkg_use_enabled(pkg)
-						if myeb:
-							pkgsettings.setcpv(myeb)
-						else:
-							pkgsettings.setcpv(pkg)
-						now_use = pkgsettings["PORTAGE_USE"].split()
-						forced_flags = set()
-						forced_flags.update(pkgsettings.useforce)
-						forced_flags.update(pkgsettings.usemask)
-						cur_iuse = iuses
-						if myeb and not usepkgonly and not useoldpkg:
-							cur_iuse = myeb.iuse.all
-						reinstall_for_flags = self._reinstall_for_flags(pkg,
-							forced_flags, old_use, iuses, now_use, cur_iuse)
-						if reinstall_for_flags:
-							if not pkg.installed:
-								self._dynamic_config.ignored_binaries.setdefault(pkg, set()).update(reinstall_for_flags)
+						modified_use=self._pkg_use_enabled(pkg))):
+						if myeb and "--newrepo" in self._frozen_config.myopts and myeb.repo != pkg.repo:
 							break
+						elif reinstall_use or (not installed and respect_use):
+							iuses = pkg.iuse.all
+							old_use = self._pkg_use_enabled(pkg)
+							if myeb:
+								pkgsettings.setcpv(myeb)
+							else:
+								pkgsettings.setcpv(pkg)
+							now_use = pkgsettings["PORTAGE_USE"].split()
+							forced_flags = set()
+							forced_flags.update(pkgsettings.useforce)
+							forced_flags.update(pkgsettings.usemask)
+							cur_iuse = iuses
+							if myeb and not usepkgonly and not useoldpkg:
+								cur_iuse = myeb.iuse.all
+							reinstall_for_flags = self._reinstall_for_flags(pkg,
+								forced_flags, old_use, iuses, now_use, cur_iuse)
+							if reinstall_for_flags:
+								if not pkg.installed:
+									self._dynamic_config.ignored_binaries.setdefault(pkg, set()).update(reinstall_for_flags)
+								break
 					# Compare current config to installed package
 					# and do not reinstall if possible.
-					if not installed and not useoldpkg and \
-						("--newuse" in self._frozen_config.myopts or \
-						"--reinstall" in self._frozen_config.myopts) and \
-						cpv in vardb.match(atom):
-						forced_flags = set()
-						forced_flags.update(pkg.use.force)
-						forced_flags.update(pkg.use.mask)
+					if not installed and not useoldpkg and cpv in vardb.match(atom):
 						inst_pkg = vardb.match_pkgs('=' + pkg.cpv)[0]
-						old_use = inst_pkg.use.enabled
-						old_iuse = inst_pkg.iuse.all
-						cur_use = self._pkg_use_enabled(pkg)
-						cur_iuse = pkg.iuse.all
-						reinstall_for_flags = \
-							self._reinstall_for_flags(pkg,
-							forced_flags, old_use, old_iuse,
-							cur_use, cur_iuse)
-						if reinstall_for_flags:
+						if "--newrepo" in self._frozen_config.myopts and pkg.repo != inst_pkg.repo:
 							reinstall = True
+						elif reinstall_use:
+							forced_flags = set()
+							forced_flags.update(pkg.use.force)
+							forced_flags.update(pkg.use.mask)
+							old_use = inst_pkg.use.enabled
+							old_iuse = inst_pkg.iuse.all
+							cur_use = self._pkg_use_enabled(pkg)
+							cur_iuse = pkg.iuse.all
+							reinstall_for_flags = \
+								self._reinstall_for_flags(pkg,
+								forced_flags, old_use, old_iuse,
+								cur_use, cur_iuse)
+							if reinstall_for_flags:
+								reinstall = True
 					if reinstall_atoms.findAtomForPackage(pkg, \
 							modified_use=self._pkg_use_enabled(pkg)):
 						reinstall = True

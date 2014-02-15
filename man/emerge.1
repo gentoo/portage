@@ -553,6 +553,11 @@ a list of packages with similar names when a package doesn't exist.
 The \fIEMERGE_DEFAULT_OPTS\fR variable may be used to disable this
 option by default.
 .TP
+.BR "\-\-newrepo "
+Tells emerge to recompile a package if it is now being pulled from a
+different repository. This option also implies the
+\fB\-\-selective\fR option.
+.TP
 .BR "\-\-newuse " (\fB\-N\fR)
 Tells emerge to include installed packages where USE
 flags have changed since compilation. This option

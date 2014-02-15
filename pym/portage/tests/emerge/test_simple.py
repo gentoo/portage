@@ -247,6 +247,7 @@ pkg_preinst() {
 			ebuild_cmd + (test_ebuild, "manifest", "clean", "package", "merge"),
 			emerge_cmd + ("--pretend", "--tree", "--complete-graph", "dev-libs/A"),
 			emerge_cmd + ("-p", "dev-libs/B"),
+			emerge_cmd + ("-p", "--newrepo", "dev-libs/B"),
 			emerge_cmd + ("-B", "dev-libs/B",),
 			emerge_cmd + ("--oneshot", "--usepkg", "dev-libs/B",),
 

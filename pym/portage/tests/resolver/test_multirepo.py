@@ -37,11 +37,20 @@ class MultirepoTestCase(TestCase):
 
 			"dev-libs/I-1::repo2": { "SLOT" : "1"},
 			"dev-libs/I-2::repo2": { "SLOT" : "2"},
+
+			"dev-libs/K-1::repo2": { },
 			}
 
 		installed = {
 			"dev-libs/H-1": { "RDEPEND" : "|| ( dev-libs/I:2 dev-libs/I:1 )"},
 			"dev-libs/I-2::repo1": {"SLOT" : "2"},
+			"dev-libs/K-1::repo1": { },
+			}
+
+		binpkgs = {
+			"dev-libs/C-1::repo2": { },
+			"dev-libs/I-2::repo1": {"SLOT" : "2"},
+			"dev-libs/K-1::repo2": { },
 			}
 
 		sets = {
@@ -96,6 +105,68 @@ class MultirepoTestCase(TestCase):
 				check_repo_names = True,
 				mergelist = ["dev-libs/D-1::repo2"]),
 
+			#--usepkg: don't reinstall on new repo without --newrepo
+			ResolverPlaygroundTestCase(
+				["dev-libs/C"],
+				options = {"--usepkg": True, "--selective": True},
+				success = True,
+				check_repo_names = True,
+				mergelist = ["[binary]dev-libs/C-1::repo2"]),
+
+			#--usepkgonly: don't reinstall on new repo without --newrepo
+			ResolverPlaygroundTestCase(
+				["dev-libs/C"],
+				options = {"--usepkgonly": True, "--selective": True},
+				success = True,
+				check_repo_names = True,
+				mergelist = ["[binary]dev-libs/C-1::repo2"]),
+
+			#--newrepo: pick ebuild if binpkg/ebuild have different repo
+			ResolverPlaygroundTestCase(
+				["dev-libs/C"],
+				options = {"--usepkg": True, "--newrepo": True, "--selective": True},
+				success = True,
+				check_repo_names = True,
+				mergelist = ["dev-libs/C-1::repo1"]),
+
+			#--newrepo --usepkgonly: ebuild is ignored
+			ResolverPlaygroundTestCase(
+				["dev-libs/C"],
+				options = {"--usepkgonly": True, "--newrepo": True, "--selective": True},
+				success = True,
+				check_repo_names = True,
+				mergelist = ["[binary]dev-libs/C-1::repo2"]),
+
+			#--newrepo: pick ebuild if binpkg/ebuild have different repo
+			ResolverPlaygroundTestCase(
+				["dev-libs/I"],
+				options = {"--usepkg": True, "--newrepo": True, "--selective": True},
+				success = True,
+				check_repo_names = True,
+				mergelist = ["dev-libs/I-2::repo2"]),
+
+			#--newrepo --usepkgonly: if binpkg matches installed, do nothing
+			ResolverPlaygroundTestCase(
+				["dev-libs/I"],
+				options = {"--usepkgonly": True, "--newrepo": True, "--selective": True},
+				success = True,
+				mergelist = []),
+
+			#--newrepo --usepkgonly: reinstall if binpkg has new repo.
+			ResolverPlaygroundTestCase(
+				["dev-libs/K"],
+				options = {"--usepkgonly": True, "--newrepo": True, "--selective": True},
+				success = True,
+				check_repo_names = True,
+				mergelist = ["[binary]dev-libs/K-1::repo2"]),
+
+			#--usepkgonly: don't reinstall on new repo without --newrepo.
+			ResolverPlaygroundTestCase(
+				["dev-libs/K"],
+				options = {"--usepkgonly": True, "--selective": True},
+				success = True,
+				mergelist = []),
+
 			#Atoms with slots
 			ResolverPlaygroundTestCase(
 				["dev-libs/E"],
@@ -137,6 +208,15 @@ class MultirepoTestCase(TestCase):
 				success = True,
 				mergelist = []),
 
+			# Dependency on installed dev-libs/I-2 ebuild should trigger reinstall
+			# when --newrepo flag is used.
+			ResolverPlaygroundTestCase(
+				["dev-libs/H"],
+				options = {"--update": True, "--deep": True, "--newrepo": True},
+				success = True,
+				check_repo_names = True,
+				mergelist = ["dev-libs/I-2::repo2"]),
+
 			# Check interaction between repo priority and unsatisfied
 			# REQUIRED_USE, for bug #350254.
 			ResolverPlaygroundTestCase(
@@ -147,7 +227,7 @@ class MultirepoTestCase(TestCase):
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds,
-			installed=installed, sets=sets)
+			binpkgs=binpkgs, installed=installed, sets=sets)
 		try:
 			for test_case in test_cases:
 				playground.run_TestCase(test_case)
