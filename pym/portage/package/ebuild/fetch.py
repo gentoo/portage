@@ -445,8 +445,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 					filedict[myfile].extend(uris)
 					thirdpartymirror_uris.setdefault(myfile, []).extend(uris)
 
-				if not filedict[myfile]:
-					writemsg(_("No known mirror by the name: %s\n") % (mirrorname))
+				if mirrorname not in custommirrors and \
+					mirrorname not in thirdpartymirrors:
+					writemsg(_("!!! No known mirror by the name: %s\n") % (mirrorname))
 			else:
 				writemsg(_("Invalid mirror definition in SRC_URI:\n"), noiselevel=-1)
 				writemsg("  %s\n" % (myuri), noiselevel=-1)
