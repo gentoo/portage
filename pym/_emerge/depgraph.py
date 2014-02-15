@@ -5817,7 +5817,7 @@ class depgraph(object):
 		if pkg is None and onlydeps and not installed:
 			# Maybe it already got pulled in as a "merge" node.
 			for candidate in self._dynamic_config._package_tracker.match(
-				root_config.root, cpv):
+				root_config.root, Atom("="+cpv)):
 				if candidate.type_name == type_name and \
 					candidate.repo_name == myrepo and \
 					candidate.root_config is root_config and \
