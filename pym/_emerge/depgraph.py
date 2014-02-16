@@ -2388,8 +2388,15 @@ class depgraph(object):
 		Remove a package and all its then parentless digraph
 		children from all depgraph datastructures.
 		"""
+		debug = "--debug" in self._frozen_config.myopts
+		if debug:
+			writemsg_level(
+				"Removing package: %s\n" % pkg,
+				level=logging.DEBUG, noiselevel=-1)
+
 		try:
-			children = self._dynamic_config.digraph.child_nodes(pkg)
+			children = [child for child in self._dynamic_config.digraph.child_nodes(pkg) \
+				if child is not pkg]
 			self._dynamic_config.digraph.remove(pkg)
 		except KeyError:
 			children = []
