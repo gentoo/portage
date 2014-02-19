@@ -2432,10 +2432,14 @@ console_writer.style_listener = style_file.new_styles
 
 f = formatter.AbstractFormatter(console_writer)
 
-if options.output_style == 'column':
-	utilities.format_qa_output_column(f, stats, fails, dofull, dofail, options, qawarnings)
-else:
-	utilities.format_qa_output(f, stats, fails, dofull, dofail, options, qawarnings)
+format_outputs = {
+	'column': utilities.format_qa_output_column,
+	'default': utilities.format_qa_output
+}
+
+format_output = format_outputs.get(options.output_style,
+	format_outputs['default'])
+format_output(f, stats, fails, dofull, dofail, options, qawarnings)
 
 style_file.flush()
 del console_writer, f, style_file
