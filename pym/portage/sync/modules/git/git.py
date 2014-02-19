@@ -139,7 +139,7 @@ class GitSync(object):
 			self.logger(self.xterm_titles, msg)
 			writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
 			return (exitcode, False)
-		msg = ">>> Git pull successful" % self.repo.location
+		msg = ">>> Git pull successful: %s" % self.repo.location
 		self.logger(self.xterm_titles, msg)
 		writemsg_level(msg + "\n")
 		return self.post_sync(portdb, self.repo.location, emerge_config)
