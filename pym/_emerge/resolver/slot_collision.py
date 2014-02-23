@@ -537,6 +537,7 @@ class slot_conflict_handler(object):
 							# redundant to display the atom attribute.
 							msg.append("%s\n" % (parent,))
 						elif isinstance(parent, AtomArg):
+							msg.append(2*indent)
 							msg.append("%s (Argument)\n" % (atom,))
 						else:
 							# Display the specific atom from SetArg or
