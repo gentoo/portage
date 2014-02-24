@@ -909,6 +909,11 @@ class binarytree(object):
 								traceback.print_exc()
 
 							raise
+					except ValueError as _:
+						writemsg("\n\n!!! Invalid PORTAGE_BINHOST value "
+								 "'%s'.\nSee man make.conf(5) for more info."
+								 "\n" % url.lstrip(), noiselevel=-1)
+						exit(1)
 
 				if f is None:
 
