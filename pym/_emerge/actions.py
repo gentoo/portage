@@ -44,7 +44,7 @@ from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.dep import Atom
 from portage.eclass_cache import hashed_path
-from portage.exception import InvalidAtom, InvalidData
+from portage.exception import InvalidAtom, InvalidData, ParseError
 from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 	red, xtermTitle, xtermTitleReset, yellow
 good = create_color_func("GOOD")
@@ -3701,8 +3701,13 @@ def run_action(emerge_config):
 			# Populate the bintree with current --getbinpkg setting.
 			# This needs to happen before expand_set_arguments(), in case
 			# any sets use the bintree.
-			mytrees["bintree"].populate(
-				getbinpkgs="--getbinpkg" in emerge_config.opts)
+			try:
+				mytrees["bintree"].populate(
+					getbinpkgs="--getbinpkg" in emerge_config.opts)
+			except ParseError as e:
+				writemsg("\n\n!!!%s.\nSee make.conf(5) for more info.\n"
+						 % e, noiselevel=-1)
+				return 1
 
 	del mytrees, mydb
 
