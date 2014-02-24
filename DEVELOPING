@@ -24,7 +24,8 @@ Tabs
 ----
 
 The current code uses tabs, not spaces.  Keep whitespace usage consistent
-between files.  New files should use tabs.
+between files.  New files should use tabs.  Space is sometimes used for
+indentation in Python code.  Tab stop should for this reason be set to 4.
 
 Line-Wrapping
 -------------
