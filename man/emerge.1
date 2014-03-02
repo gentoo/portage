@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Feb 2014" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Mar 2014" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -857,6 +857,10 @@ hundreds of packages for slot conflicts.
 .TP
 .BR "\-\-verbose\-main\-repo\-display"
 In the package merge list display, print ::repository even for main repository.
+.TP
+.BR "\-\-verbose\-slot\-rebuilds [ y | n ]"
+Turns on/off the extra emerge output to list which packages are causing rebuilds.
+The default is set to "y" (on).
 .TP
 .BR "\-\-with\-bdeps < y | n >"
 In dependency calculations, pull in build time dependencies
