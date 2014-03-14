@@ -11,9 +11,10 @@ good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 warn = create_color_func("WARN")
 from .timestamps import git_sync_timestamps
+from portage.sync.syncbase import SyncBase
 
 
-class GitSync(object):
+class GitSync(SyncBase):
 	'''Git sync class'''
 
 	short_desc = "Perform sync operations on git based repositories"
@@ -23,34 +24,8 @@ class GitSync(object):
 		return "GitSync"
 
 
-	def can_progressbar(self, func):
-		return False
-
-
 	def __init__(self):
-		self.options = None
-		self.settings = None
-		self.logger = None
-		self.repo = None
-		self.xterm_titles = None
-
-		self.has_git = True
-		if portage.process.find_binary("git") is None:
-			msg = ["Command not found: git",
-			"Type \"emerge %s\" to enable git support." % portage.const.GIT_PACKAGE_ATOM]
-			for l in msg:
-				writemsg_level("!!! %s\n" % l,
-					level=logging.ERROR, noiselevel=-1)
-			self.has_git = False
-
-
-	def _kwargs(self, kwargs):
-		'''Sets internal variables from kwargs'''
-		self.options = kwargs.get('options', {})
-		self.settings = self.options.get('settings', None)
-		self.logger = self.options.get('logger', None)
-		self.repo = self.options.get('repo', None)
-		self.xterm_titles = self.options.get('xterm_titles', False)
+		SyncBase.__init__(self, "git", portage.const.GIT_PACKAGE_ATOM)
 
 
 	def exists(self, **kwargs):
@@ -59,29 +34,15 @@ class GitSync(object):
 			self._kwargs(kwargs)
 		elif not self.repo:
 			return False
-		spawn_kwargs = self.options.get('spawn_kwargs', None)
 
 		if not os.path.exists(self.repo.location):
 			return False
 		exitcode = portage.process.spawn_bash("cd %s ; git rev-parse" %\
 			(portage._shell_quote(self.repo.location),),
-			**portage._native_kwargs(spawn_kwargs))
+			**portage._native_kwargs(self.spawn_kwargs))
 		if exitcode == 128:
 			return False
 		return True
-
-
-	def sync(self, **kwargs):
-		'''Sync/Clone the repository'''
-		if kwargs:
-			self._kwargs(kwargs)
-
-		if not self.has_git:
-			return (1, False)
-
-		if not self.exists():
-			return self.new()
-		return self._sync()
 
 
 	def new(self, **kwargs):
@@ -89,7 +50,6 @@ class GitSync(object):
 		if kwargs:
 			self._kwargs(kwargs)
 		emerge_config = self.options.get('emerge_config', None)
-		spawn_kwargs = self.options.get('spawn_kwargs', None)
 		portdb = self.options.get('portdb', None)
 		try:
 			if not os.path.exists(self.repo.location):
@@ -101,10 +61,11 @@ class GitSync(object):
 		msg = ">>> Cloning git repository from upstream into %s..." % self.repo.location
 		self.logger(self.xterm_titles, msg)
 		writemsg_level(msg + "\n")
-		exitcode = portage.process.spawn_bash("cd %s ; git clone %s ." % \
+		exitcode = portage.process.spawn_bash("cd %s ; %s clone %s ." % \
 			(portage._shell_quote(self.repo.location),
+			self.bin_command,
 			portage._shell_quote(self.repo.sync_uri)),
-			**portage._native_kwargs(spawn_kwargs))
+			**portage._native_kwargs(self.spawn_kwargs))
 		if exitcode != os.EX_OK:
 			msg = "!!! git clone error in %s" % self.repo.location
 			self.logger(self.xterm_titles, msg)
@@ -125,7 +86,6 @@ class GitSync(object):
 		# No kwargs call here; this is internal, so it should have been
 		# called by something which set the internal variables
 		emerge_config = self.options.get('emerge_config', None)
-		spawn_kwargs = self.options.get('spawn_kwargs', None)
 		portdb = self.options.get('portdb', None)
 
 		msg = ">>> Starting git pull in %s..." % self.repo.location
@@ -133,7 +93,7 @@ class GitSync(object):
 		writemsg_level(msg + "\n")
 		exitcode = portage.process.spawn_bash("cd %s ; git pull" % \
 			(portage._shell_quote(self.repo.location),),
-			**portage._native_kwargs(spawn_kwargs))
+			**portage._native_kwargs(self.spawn_kwargs))
 		if exitcode != os.EX_OK:
 			msg = "!!! git pull error in %s" % self.repo.location
 			self.logger(self.xterm_titles, msg)
