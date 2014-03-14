@@ -17,13 +17,14 @@ from portage.output import create_color_func, yellow, blue, bold
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 warn = create_color_func("WARN")
-from portage.const import VCS_DIRS, TIMESTAMP_FORMAT
+from portage.const import VCS_DIRS, TIMESTAMP_FORMAT, RSYNC_PACKAGE_ATOM
 from portage.util import writemsg, writemsg_stdout
 from portage.sync.getaddrinfo_validate import getaddrinfo_validate
 from _emerge.UserQuery import UserQuery
+from portage.sync.syncbase import SyncBase
 
 
-class RsyncSync(object):
+class RsyncSync(SyncBase):
 	'''Rsync sync module'''
 
 	short_desc = "Perform sync operations on rsync based repositories"
@@ -33,40 +34,13 @@ class RsyncSync(object):
 		return "RsyncSync"
 
 
-	def can_progressbar(self, func):
-		return False
-
-
 	def __init__(self):
-		self.settings = None
-		self.logger = None
-		self.repo = None
-		self.options = None
-		self.xterm_titles = None
-
-
-	def _kwargs(self, kwargs):
-			self.options = kwargs.get('options', {})
-			self.settings = self.options.get('settings', None)
-			self.logger = self.options.get('logger', None)
-			self.repo = self.options.get('repo', None)
-			self.xterm_titles = self.options.get('xterm_titles', False)
-
-
-	def sync(self, **kwargs):
-		'''Rsync the repo'''
-		if kwargs:
-			self._kwargs(kwargs)
-
-		if not self.exists():
-			return self.new()
-		return self._sync()
+		SyncBase.__init__(self, "rsync", RSYNC_PACKAGE_ATOM)
 
 
 	def _sync(self):
 		'''Internal sync function which performs only the sync'''
 		myopts = self.options.get('emerge_config').opts
-		spawn_kwargs = self.options.get('spawn_kwargs', None)
 		usersync_uid = self.options.get('usersync_uid', None)
 		enter_invalid = '--ask-enter-invalid' in myopts
 		out = portage.output.EOutput()
@@ -81,11 +55,6 @@ class RsyncSync(object):
 				"control (contains %s).\n!!! Aborting rsync sync.\n") % \
 				(self.repo.location, vcs_dir), level=logging.ERROR, noiselevel=-1)
 			return (1, False)
-		rsync_binary = portage.process.find_binary("rsync")
-		if rsync_binary is None:
-			print("!!! /usr/bin/rsync does not exist, so rsync support is disabled.")
-			print("!!! Type \"emerge %s\" to enable rsync support." % portage.const.RSYNC_PACKAGE_ATOM)
-			return (os.EX_UNAVAILABLE, False)
 		mytimeout=180
 
 		rsync_opts = []
@@ -314,7 +283,7 @@ class RsyncSync(object):
 			if mytimestamp != 0 and "--quiet" not in myopts:
 				print(">>> Checking server timestamp ...")
 
-			rsynccommand = [rsync_binary] + rsync_opts + extra_rsync_opts
+			rsynccommand = [self.bin_command] + rsync_opts + extra_rsync_opts
 
 			if proto == 'ssh' and ssh_opts:
 				rsynccommand.append("--rsh=ssh " + ssh_opts)
@@ -364,7 +333,7 @@ class RsyncSync(object):
 
 						mypids.extend(portage.process.spawn(
 							mycommand, returnpid=True,
-							**portage._native_kwargs(spawn_kwargs)))
+							**portage._native_kwargs(self.spawn_kwargs)))
 						exitcode = os.waitpid(mypids[0], 0)[1]
 						if usersync_uid is not None:
 							portage.util.apply_permissions(tmpservertimestampfile,
@@ -432,7 +401,7 @@ class RsyncSync(object):
 					exitcode = None
 					try:
 						exitcode = portage.process.spawn(mycommand,
-							**portage._native_kwargs(spawn_kwargs))
+							**portage._native_kwargs(self.spawn_kwargs))
 					finally:
 						if exitcode is None:
 							# interrupted
@@ -508,15 +477,6 @@ class RsyncSync(object):
 			for line in msg:
 				out.eerror(line)
 		return (exitcode, updatecache_flg)
-
-
-	def exists(self, **kwargs):
-		if kwargs:
-			self._kwargs(kwargs)
-		elif not self.repo:
-			return False
-		return os.path.exists(self.repo.location)
-
 
 
 	def new(self, **kwargs):
