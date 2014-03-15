@@ -62,7 +62,9 @@ from portage.util._async.run_main_scheduler import run_main_scheduler
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage._global_updates import _global_updates
-from portage.sync.controller import SyncManager
+from portage.sync import get_syncer
+from portage.sync.getaddrinfo_validate import getaddrinfo_validate
+from portage.sync.old_tree_timestamp import old_tree_timestamp_warn
 from portage.metadata import action_metadata
 
 from _emerge.clear_caches import clear_caches
@@ -81,8 +83,6 @@ from _emerge.Scheduler import Scheduler
 from _emerge.search import search
 from _emerge.SetArg import SetArg
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
-from portage.sync.getaddrinfo_validate import getaddrinfo_validate
-from portage.sync.old_tree_timestamp import old_tree_timestamp_warn
 from _emerge.unmerge import unmerge
 from _emerge.UnmergeDepPriority import UnmergeDepPriority
 from _emerge.UseFlagDisplay import pkg_use_display
@@ -1958,7 +1958,7 @@ def action_sync(emerge_config, trees=DeprecationWarning,
 	else:
 		selected_repos.extend(emerge_config.target_config.settings.repositories)
 
-	sync_manager = SyncManager(emerge_config.target_config.settings, emergelog)
+	sync_manager = get_syncer(emerge_config.target_config.settings, emergelog)
 	retvals = []
 	for repo in selected_repos:
 		if repo.sync_type is not None:

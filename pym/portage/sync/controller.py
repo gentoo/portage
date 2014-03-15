@@ -10,7 +10,6 @@ import pwd
 
 import portage
 from portage import os
-from portage.emaint.module import Modules
 from portage.emaint.progress import ProgressBar
 #from portage.emaint.defaults import DEFAULT_OPTIONS
 #from portage.util._argparse import ArgumentParser
@@ -85,13 +84,8 @@ class SyncManager(object):
 		# files have sane permissions.
 		os.umask(0o22)
 
-		path = os.path.join(os.path.dirname(__file__), "modules")
-		print("module path:", path)
-		self.module_controller = Modules(path=path,
-			namepath="portage.sync.modules")
-		print(self.module_controller.module_names)
+		self.module_controller = portage.sync.module_controller
 		self.module_names = self.module_controller.module_names[:]
-		#self.module_names.insert(0, "all")
 
 
 	def get_modules(self, mod):
