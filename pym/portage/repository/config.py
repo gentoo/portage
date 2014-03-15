@@ -560,7 +560,7 @@ class RepoConfigLoader(object):
 					sname, level=logging.ERROR, noiselevel=-1)
 				continue
 
-			if repo.sync_type not in (None, "cvs", "git", "rsync"):
+			if repo.sync_type not in portage.sync.module_names + [None]:
 				writemsg_level("!!! %s\n" % _("Repository '%s' has sync-type attribute set to unsupported value: '%s'") %
 					(sname, repo.sync_type), level=logging.ERROR, noiselevel=-1)
 				continue
