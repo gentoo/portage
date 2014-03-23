@@ -97,7 +97,7 @@ fi
 rm -rf "${SOURCE_DIR}" || die "directory cleanup failed"
 
 echo ">>> Setting portage.VERSION"
-sed -e "s/^VERSION=.*/VERSION=\"${VERSION}\"/" \
+sed -e "s/^VERSION = .*/VERSION = \"${VERSION}\"/" \
 	-i "${RELEASE_DIR}/pym/portage/__init__.py" || \
 	die "Failed to patch portage.VERSION"
 
