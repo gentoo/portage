@@ -3,8 +3,8 @@
 # Distributed under the terms of the GNU General Public License v2
 
 # These are the versions we care about.  The rest are just "nice to have".
-PYTHON_SUPPORTED_VERSIONS="2.6 2.7 3.2 3.3"
-PYTHON_VERSIONS="2.6 2.7 2.7-pypy-1.8 2.7-pypy-1.9 2.7-pypy-2.0 3.1 3.2 3.3 3.4"
+PYTHON_SUPPORTED_VERSIONS="2.6 2.7 3.2 3.3 3.4"
+PYTHON_VERSIONS="2.6 2.7 2.7-pypy-1.8 2.7-pypy-1.9 2.7-pypy-2.0 3.1 3.2 3.3 3.4 3.5"
 
 # has to be run from portage root dir
 cd "${0%/*}" || exit 1
