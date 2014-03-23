@@ -31,6 +31,7 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 from portage import _encodings
 from portage import manifest
+import portage.sync
 
 if sys.hexversion >= 0x3000000:
 	# pylint: disable=W0622
@@ -550,25 +551,8 @@ class RepoConfigLoader(object):
 
 			repo = RepoConfig(sname, optdict, local_config=local_config)
 
-			if repo.sync_type is not None and repo.sync_uri is None:
-				writemsg_level("!!! %s\n" % _("Repository '%s' has sync-type attribute, but is missing sync-uri attribute") %
-					sname, level=logging.ERROR, noiselevel=-1)
-				continue
-
-			if repo.sync_uri is not None and repo.sync_type is None:
-				writemsg_level("!!! %s\n" % _("Repository '%s' has sync-uri attribute, but is missing sync-type attribute") %
-					sname, level=logging.ERROR, noiselevel=-1)
-				continue
-
-			if repo.sync_type not in portage.sync.module_names + [None]:
-				writemsg_level("!!! %s\n" % _("Repository '%s' has sync-type attribute set to unsupported value: '%s'") %
-					(sname, repo.sync_type), level=logging.ERROR, noiselevel=-1)
-				continue
-
-			if repo.sync_type == "cvs" and repo.sync_cvs_repo is None:
-				writemsg_level("!!! %s\n" % _("Repository '%s' has sync-type=cvs, but is missing sync-cvs-repo attribute") %
-					sname, level=logging.ERROR, noiselevel=-1)
-				continue
+			# Perform repos.conf sync variable validation
+			portage.sync.validate_config(repo)
 
 			# For backward compatibility with locations set via PORTDIR and
 			# PORTDIR_OVERLAY, delay validation of the location and repo.name
