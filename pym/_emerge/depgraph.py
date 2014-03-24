@@ -2431,7 +2431,8 @@ class depgraph(object):
 		self._dynamic_config._blocked_world_pkgs.pop(pkg, None)
 
 		for child in children:
-			if not self._dynamic_config.digraph.parent_nodes(child):
+			if child in self._dynamic_config.digraph and \
+				not self._dynamic_config.digraph.parent_nodes(child):
 				self._remove_pkg(child)
 
 		# Clear caches.
