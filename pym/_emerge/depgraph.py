@@ -643,7 +643,7 @@ class depgraph(object):
 			rebuild_atoms = atoms.get(root, set())
 
 			for dep in deps:
-				if dep.parent.installed or dep.child.installed or \
+				if getattr(dep.parent, "installed", False) or dep.child.installed or \
 					dep.parent.slot_atom not in rebuild_atoms:
 					continue
 
