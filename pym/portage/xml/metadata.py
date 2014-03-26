@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """Provides an easy-to-use python interface to Gentoo's metadata.xml file.
@@ -27,6 +27,8 @@
 		>>> upstream[0].maintainer[0].name
 		'Thomas Mills Hinkle'
 """
+
+from __future__ import unicode_literals
 
 __all__ = ('MetaDataXML',)
 
@@ -58,8 +60,7 @@ except (ImportError, SystemError, RuntimeError, Exception):
 
 import re
 import xml.etree.ElementTree
-import portage
-from portage import os, _unicode_decode
+from portage import _encodings, _unicode_encode
 from portage.util import unique_everseen
 
 class _MetadataTreeBuilder(xml.etree.ElementTree.TreeBuilder):
@@ -203,12 +204,13 @@ class MetaDataXML(object):
 		self._xml_tree = None
 
 		try:
-			self._xml_tree = etree.parse(metadata_xml_path,
+			self._xml_tree = etree.parse(_unicode_encode(metadata_xml_path,
+				encoding=_encodings['fs'], errors='strict'),
 				parser=etree.XMLParser(target=_MetadataTreeBuilder()))
 		except ImportError:
 			pass
 		except ExpatError as e:
-			raise SyntaxError(_unicode_decode("%s") % (e,))
+			raise SyntaxError("%s" % (e,))
 
 		if isinstance(herds, etree.ElementTree):
 			herds_etree = herds
@@ -241,7 +243,8 @@ class MetaDataXML(object):
 
 		if self._herdstree is None:
 			try:
-				self._herdstree = etree.parse(self._herds_path,
+				self._herdstree = etree.parse(_unicode_encode(self._herds_path,
+					encoding=_encodings['fs'], errors='strict'),
 					parser=etree.XMLParser(target=_MetadataTreeBuilder()))
 			except (ImportError, IOError, SyntaxError):
 				return None

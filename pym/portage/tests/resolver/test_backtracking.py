@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -31,7 +31,7 @@ class BacktrackingTestCase(TestCase):
 			playground.cleanup()
 
 
-	def testHittingTheBacktrackLimit(self):
+	def testBacktrackNotNeeded(self):
 		ebuilds = {
 			"dev-libs/A-1": {},
 			"dev-libs/A-2": {},
@@ -45,47 +45,9 @@ class BacktrackingTestCase(TestCase):
 				ResolverPlaygroundTestCase(
 					["dev-libs/C", "dev-libs/D"],
 					all_permutations = True,
+					options = { "--backtrack": 1 },
 					mergelist = ["dev-libs/A-1", "dev-libs/B-1", "dev-libs/C-1", "dev-libs/D-1"],
 					ignore_mergelist_order = True,
-					success = True),
-				#This one hits the backtrack limit. Be aware that this depends on the argument order.
-				ResolverPlaygroundTestCase(
-					["dev-libs/D", "dev-libs/C"],
-					options = { "--backtrack": 1 },
-					mergelist = ["dev-libs/A-1", "dev-libs/B-1", "dev-libs/A-2", "dev-libs/B-2", "dev-libs/C-1", "dev-libs/D-1"],
-					ignore_mergelist_order = True,
-					slot_collision_solutions = [],
-					success = False),
-			)
-
-		playground = ResolverPlayground(ebuilds=ebuilds)
-
-		try:
-			for test_case in test_cases:
-				playground.run_TestCase(test_case)
-				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
-		finally:
-			playground.cleanup()
-
-
-	def testBacktrackingGoodVersionFirst(self):
-		"""
-		When backtracking due to slot conflicts, we masked the version that has been pulled
-		in first. This is not always a good idea. Mask the highest version instead.
-		"""
-
-		ebuilds = {
-			"dev-libs/A-1": { "DEPEND": "=dev-libs/C-1 dev-libs/B" },
-			"dev-libs/B-1": { "DEPEND": "=dev-libs/C-1" },
-			"dev-libs/B-2": { "DEPEND": "=dev-libs/C-2" },
-			"dev-libs/C-1": { },
-			"dev-libs/C-2": { },
-			}
-
-		test_cases = (
-				ResolverPlaygroundTestCase(
-					["dev-libs/A"],
-					mergelist = ["dev-libs/C-1", "dev-libs/B-1", "dev-libs/A-1", ],
 					success = True),
 			)
 
@@ -118,7 +80,7 @@ class BacktrackingTestCase(TestCase):
 				ResolverPlaygroundTestCase(
 					["dev-libs/B", "dev-libs/A"],
 					all_permutations = True,
-					mergelist = ["dev-libs/Z-2", "dev-libs/B-1", "dev-libs/A-1", ],
+					mergelist = ["dev-libs/Z-2", "dev-libs/B-1", "dev-libs/A-1",],
 					ignore_mergelist_order = True,
 					success = True),
 			)
@@ -190,7 +152,7 @@ class BacktrackingTestCase(TestCase):
 			"dev-libs/D-1": { "RDEPEND": "<dev-libs/A-2" },
 			}
 
-		world = [ "dev-libs/B", "dev-libs/C" ]
+		world = ["dev-libs/B", "dev-libs/C"]
 
 		options = {'--update' : True, '--deep' : True, '--selective' : True}
 

@@ -1,4 +1,4 @@
-.TH "EGENCACHE" "1" "Oct 2010" "Portage VERSION" "Portage"
+.TH "EGENCACHE" "1" "Jul 2013" "Portage VERSION" "Portage"
 .SH "NAME"
 egencache \- generate metadata cache for ebuild repositories
 .SH "SYNOPSIS"
@@ -6,12 +6,13 @@ egencache \- generate metadata cache for ebuild repositories
 .I [options] --update [ATOM]\fR...
 .SH "DESCRIPTION"
 The egencache program generates metadata cache for ebuild repositories and
-stores it in the \fImetadata/cache/\fR directory within the repository itself,
-for distribution.
+stores it in the \fImetadata/md5\-cache/\fR directory within the repository
+itself, for distribution.
 .SH ACTIONS
 .TP
 .BR "\-\-update [ATOM] ... "
-Update the \fImetadata/cache/\fR directory (generate metadata as necessary).
+Update the \fImetadata/md5\-cache/\fR directory (generate metadata as
+necessary).
 If no package atoms are specified then all will be updated. See ebuild(5)
 for the details on package atom syntax.
 .TP
@@ -20,6 +21,12 @@ Update the ChangeLog files from SCM logs (supported only in git repos).
 .TP
 .BR "\-\-update\-use\-local\-desc"
 Update the \fIprofiles/use.local.desc\fR file from metadata.xml.
+.TP
+.BR "\-\-update\-manifests"
+Update manifest files, and sign them if signing is enabled. This supports
+parallelization if enabled via the \-\-jobs option. The \-\-thin\-manifests
+and \-\-sign\-manifests options may be used to manually override layout.conf
+settings.
 .SH OPTIONS
 .TP
 .BR "\-\-cache\-dir=CACHE_DIR"
@@ -34,6 +41,12 @@ Location of portage config files.
 .br
 Defaults to /.
 .TP
+.BR "\-\-gpg\-dir"
+Override the PORTAGE_GPG_DIR variable.
+.TP
+.BR "\-\-gpg\-key"
+Override the PORTAGE_GPG_KEY variable.
+.TP
 .BR "\-\-ignore-default-opts"
 Causes \fIEGENCACHE_DEFAULT_OPTS\fR to be ignored.
 .TP
@@ -45,21 +58,24 @@ Also see the related \fB\-\-load\-average\fR option.
 Specifies that maximum load allowed when spawning multiple jobs.
 .TP
 .BR "\-\-portdir=PORTDIR"
-Override the portage tree location.
+Override the PORTDIR variable. This option is deprecated in favor of
+\-\-repositories\-configuration option.
 .TP
 .BR "\-\-portdir\-overlay=PORTDIR_OVERLAY"
-Override the PORTDIR_OVERLAY variable (requires that
-\-\-repo is also specified).
+Override the PORTDIR_OVERLAY variable. This option is deprecated in favor of
+\-\-repositories\-configuration option.
 .TP
 .BR "\-\-preserve\-comments"
 Preserve the comments found in the output use.local.desc file. This requires
 the output file to exist before egencache is called.
 .TP
 .BR "\-\-repo=REPO"
-Name of the repo to operate on (default repo is located at \fBPORTDIR\fR).
-The name should correspond the value of a \fBrepo_name\fR entry (see
-\fBportage\fR(5)) from one of the repositories that is configured via the
-\fBPORTDIR\fR or \fBPORTDIR_OVERLAY\fR variables (see \fBmake.conf\fR(5)).
+Name of the repo to operate on. The name should correspond the value of
+a \fBrepo_name\fR entry (see \fBportage\fR(5)) from one of the repositories.
+.TP
+.BR "\-\-repositories\-configuration=REPOSITORIES_CONFIGURATION"
+Override configuration of repositories. The argument of this option has
+the same format as repos.conf (see \fBportage\fR(5)).
 .TP
 .BR "\-\-rsync"
 When used together with the \fB\-\-update\fR action, this enables a workaround
@@ -71,6 +87,15 @@ This option should only be needed for distribution via something like
 (see \fBbug 139134\fR). It's not needed with \fBgit\fR(1) since that uses a
 more thorough mechanism which allows it to detect changed inode numbers
 (described in \fIracy-git.txt\fR in the git technical docs).
+.TP
+.BR "\-\-sign\-manifests< y | n >"
+Manually override layout.conf sign-manifests setting.
+.TP
+.BR "\-\-strict\-manifests< y | n >"
+Manually override "strict" FEATURES setting.
+.TP
+.BR "\-\-thin\-manifests< y | n >"
+Manually override layout.conf thin-manifests setting.
 .TP
 .BR "\-\-tolerant"
 Exit successfully if only minor errors occurred, such as skipped cache
@@ -87,10 +112,10 @@ contains will be added to the beginning of the command line on every
 invocation. These options will not be added if the
 \fB\-\-ignore-default\-opts\fR option is specified.
 .SH "BUGS"
-There are significant limitations associated with the metadata
-cache format that is distributed in the \fImetadata/cache/\fR directory
-of the repository. These limitations are related to the cache validation
-mechanism. Currently, the validation mechanism involves comparison of
+Prior to portage-2.1.11.32, the 'pms' cache format was enabled by default.
+This 'pms' format, which is distributed in the \fImetadata/cache/\fR
+directory of the repository, has significant limitations related to the
+cache validation mechanism which involves comparison of
 a cache entry mtime to the mtime of the corresponding \fBebuild(5)\fR. This
 mechanism is unreliable in cases when eclass changes result in metadata
 changes, since no information about eclass state is available in the cache.
@@ -102,11 +127,21 @@ implemented in \fBemerge\fR(1) \fB\-\-sync\fR which updates ebuild mtimes
 to match their corresponding cache entries (except for ebuilds that are
 modified relative to HEAD).
 
-In order to solve the above problems, a future extension
-to the cache format will include additional
-validation data in the form of digests for both the ebuild
-and its inherited eclasses. Until the
-cache format has been extended in this way, it is necessary to enable
+In order to solve the above problems, the newer 'md5-dict' format has been
+enabled by default since portage-2.1.11.32. This format is distributed in
+the \fImetadata/md5-cache/\fR directory of the repository, and includes
+additional validation data in the form of digests for both the ebuild
+and its inherited eclasses. \fBWARNING:\fR Portage versions prior to
+portage-2.1.11.14 will \fBNOT\fR recognize the 'md5-dict' format unless it is
+explicitly listed in \fImetadata/layout.conf\fR (refer to \fBportage\fR(5)
+for example usage).
+
+\fBWARNING:\fR For backward compatibility, the obsolete 'pms' cache format
+will still be generated by default if the \fImetadata/cache/\fR directory
+exists in the repository. It can also be explicitly enabled via the
+cache\-formats setting in \fImetadata/layout.conf\fR (refer to \fBportage\fR(5)
+for example usage). If the 'pms' cache format is enabled and the 'md5-dict'
+format is not enabled, then it is necessary to enable
 \fBmetadata-transfer\fR in \fBFEATURES\fR (see \fBmake.conf(5)\fR).
 This causes intermediate cache (in a different format that includes
 eclass state) to be generated inside the directory which is configurable
@@ -116,10 +151,11 @@ Please report bugs via http://bugs.gentoo.org/
 .SH "AUTHORS"
 .nf
 Zac Medico <zmedico@gentoo.org>
+Arfrever Frehtes Taifersar Arahesis <arfrever@apache.org>
 .fi
 .SH "FILES"
 .TP
-.B /etc/make.conf
+.B /etc/portage/make.conf
 Contains variables.
 .SH "SEE ALSO"
 .BR emerge (1),

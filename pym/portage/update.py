@@ -1,11 +1,14 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 import errno
 import io
 import re
 import stat
 import sys
+import warnings
 
 from portage import os
 from portage import _encodings
@@ -13,21 +16,19 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.dep:Atom,dep_getkey,isvalidatom,' + \
-	'remove_slot',
+	'portage.dep:Atom,dep_getkey,isvalidatom,match_from_list',
 	'portage.util:ConfigProtect,new_protect_filename,' + \
 		'normalize_path,write_atomic,writemsg',
-	'portage.util.listdir:_ignorecvs_dirs',
-	'portage.versions:catsplit,ververify'
+	'portage.versions:_get_slot_re',
 )
 
-from portage.const import USER_CONFIG_PATH
-from portage.dep import _get_slot_re
+from portage.const import USER_CONFIG_PATH, VCS_DIRS
 from portage.eapi import _get_eapi_attrs
 from portage.exception import DirectoryNotFound, InvalidAtom, PortageException
 from portage.localization import _
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	long = int
 	_unicode = str
 else:
@@ -35,7 +36,10 @@ else:
 
 ignored_dbentries = ("CONTENTS", "environment.bz2")
 
-def update_dbentry(update_cmd, mycontent, eapi=None):
+def update_dbentry(update_cmd, mycontent, eapi=None, parent=None):
+
+	if parent is not None:
+		eapi = parent.eapi
 
 	if update_cmd[0] == "move":
 		old_value = _unicode(update_cmd[1])
@@ -44,28 +48,76 @@ def update_dbentry(update_cmd, mycontent, eapi=None):
 		# Use isvalidatom() to check if this move is valid for the
 		# EAPI (characters allowed in package names may vary).
 		if old_value in mycontent and isvalidatom(new_value, eapi=eapi):
-			old_value = re.escape(old_value);
-			mycontent = re.sub(old_value+"(:|$|\\s)", new_value+"\\1", mycontent)
-			def myreplace(matchobj):
-				# Strip slot and * operator if necessary
-				# so that ververify works.
-				ver = remove_slot(matchobj.group(2))
-				ver = ver.rstrip("*")
-				if ververify(ver):
-					return "%s-%s" % (new_value, matchobj.group(2))
-				else:
-					return "".join(matchobj.groups())
-			mycontent = re.sub("(%s-)(\\S*)" % old_value, myreplace, mycontent)
+			# this split preserves existing whitespace
+			split_content = re.split(r'(\s+)', mycontent)
+			modified = False
+			for i, token in enumerate(split_content):
+				if old_value not in token:
+					continue
+				try:
+					atom = Atom(token, eapi=eapi)
+				except InvalidAtom:
+					continue
+				if atom.cp != old_value:
+					continue
+
+				new_atom = Atom(token.replace(old_value, new_value, 1),
+					eapi=eapi)
+
+				# Avoid creating self-blockers for bug #367215.
+				if new_atom.blocker and parent is not None and \
+					parent.cp == new_atom.cp and \
+					match_from_list(new_atom, [parent]):
+					continue
+
+				split_content[i] = _unicode(new_atom)
+				modified = True
+
+			if modified:
+				mycontent = "".join(split_content)
+
 	elif update_cmd[0] == "slotmove" and update_cmd[1].operator is None:
-		pkg, origslot, newslot = update_cmd[1:]
-		old_value = "%s:%s" % (pkg, origslot)
-		if old_value in mycontent:
-			old_value = re.escape(old_value)
-			new_value = "%s:%s" % (pkg, newslot)
-			mycontent = re.sub(old_value+"($|\\s)", new_value+"\\1", mycontent)
+		orig_atom, origslot, newslot = update_cmd[1:]
+		orig_cp = orig_atom.cp
+
+		# We don't support versioned slotmove atoms here, since it can be
+		# difficult to determine if the version constraints really match
+		# the atoms that we're trying to update.
+		if orig_atom.version is None and orig_cp in mycontent:
+			# this split preserves existing whitespace
+			split_content = re.split(r'(\s+)', mycontent)
+			modified = False
+			for i, token in enumerate(split_content):
+				if orig_cp not in token:
+					continue
+				try:
+					atom = Atom(token, eapi=eapi)
+				except InvalidAtom:
+					continue
+				if atom.cp != orig_cp:
+					continue
+				if atom.slot is None or atom.slot != origslot:
+					continue
+
+				slot_part = newslot
+				if atom.sub_slot is not None:
+					if atom.sub_slot == origslot:
+						sub_slot = newslot
+					else:
+						sub_slot = atom.sub_slot
+					slot_part += "/" + sub_slot
+				if atom.slot_operator is not None:
+					slot_part += atom.slot_operator
+
+				split_content[i] = atom.with_slot(slot_part)
+				modified = True
+
+			if modified:
+				mycontent = "".join(split_content)
+
 	return mycontent
 
-def update_dbentries(update_iter, mydata, eapi=None):
+def update_dbentries(update_iter, mydata, eapi=None, parent=None):
 	"""Performs update commands and returns a
 	dict containing only the updated items."""
 	updated_items = {}
@@ -79,7 +131,8 @@ def update_dbentries(update_iter, mydata, eapi=None):
 			is_encoded = mycontent is not orig_content
 			orig_content = mycontent
 			for update_cmd in update_iter:
-				mycontent = update_dbentry(update_cmd, mycontent, eapi=eapi)
+				mycontent = update_dbentry(update_cmd, mycontent,
+					eapi=eapi, parent=parent)
 			if mycontent != orig_content:
 				if is_encoded:
 					mycontent = _unicode_encode(mycontent,
@@ -88,10 +141,14 @@ def update_dbentries(update_iter, mydata, eapi=None):
 				updated_items[k] = mycontent
 	return updated_items
 
-def fixdbentries(update_iter, dbdir, eapi=None):
+def fixdbentries(update_iter, dbdir, eapi=None, parent=None):
 	"""Performs update commands which result in search and replace operations
 	for each of the files in dbdir (excluding CONTENTS and environment.bz2).
 	Returns True when actual modifications are necessary and False otherwise."""
+
+	warnings.warn("portage.update.fixdbentries() is deprecated",
+		DeprecationWarning, stacklevel=2)
+
 	mydata = {}
 	for myfile in [f for f in os.listdir(dbdir) if f not in ignored_dbentries]:
 		file_path = os.path.join(dbdir, myfile)
@@ -100,7 +157,8 @@ def fixdbentries(update_iter, dbdir, eapi=None):
 			mode='r', encoding=_encodings['repo.content'],
 			errors='replace') as f:
 			mydata[myfile] = f.read()
-	updated_items = update_dbentries(update_iter, mydata, eapi=eapi)
+	updated_items = update_dbentries(update_iter, mydata,
+		eapi=eapi, parent=parent)
 	for myfile, mycontent in updated_items.items():
 		file_path = os.path.join(dbdir, myfile)
 		write_atomic(file_path, mycontent, encoding=_encodings['repo.content'])
@@ -225,7 +283,8 @@ def parse_updates(mycontent):
 	return myupd, errors
 
 def update_config_files(config_root, protect, protect_mask, update_iter, match_callback = None):
-	"""Perform global updates on /etc/portage/package.*.
+	"""Perform global updates on /etc/portage/package.*, /etc/portage/profile/package.*,
+	/etc/portage/profile/packages and /etc/portage/sets.
 	config_root - location of files to update
 	protect - list of paths from CONFIG_PROTECT
 	protect_mask - list of paths from CONFIG_PROTECT_MASK
@@ -248,9 +307,15 @@ def update_config_files(config_root, protect, protect_mask, update_iter, match_c
 		"package.accept_keywords", "package.env",
 		"package.keywords", "package.license",
 		"package.mask", "package.properties",
-		"package.unmask", "package.use"
+		"package.unmask", "package.use", "sets"
 	]
-	myxfiles += [os.path.join("profile", x) for x in myxfiles]
+	myxfiles += [os.path.join("profile", x) for x in (
+		"packages", "package.accept_keywords",
+		"package.keywords", "package.mask",
+		"package.unmask", "package.use",
+		"package.use.force", "package.use.mask",
+		"package.use.stable.force", "package.use.stable.mask"
+	)]
 	abs_user_config = os.path.join(config_root, USER_CONFIG_PATH)
 	recursivefiles = []
 	for x in myxfiles:
@@ -269,7 +334,7 @@ def update_config_files(config_root, protect, protect_mask, update_iter, match_c
 					except UnicodeDecodeError:
 						dirs.remove(y_enc)
 						continue
-					if y.startswith(".") or y in _ignorecvs_dirs:
+					if y.startswith(".") or y in VCS_DIRS:
 						dirs.remove(y_enc)
 				for y in files:
 					try:
@@ -299,7 +364,6 @@ def update_config_files(config_root, protect, protect_mask, update_iter, match_c
 			if f is not None:
 				f.close()
 
-	# update /etc/portage/packages.*
 	ignore_line_re = re.compile(r'^#|^\s*$')
 	if repo_dict is None:
 		update_items = [(None, update_iter)]
@@ -318,6 +382,9 @@ def update_config_files(config_root, protect, protect_mask, update_iter, match_c
 					atom = line.split()[0]
 					if atom[:1] == "-":
 						# package.mask supports incrementals
+						atom = atom[1:]
+					if atom[:1] == "*":
+						# packages file supports "*"-prefixed atoms as indication of system packages.
 						atom = atom[1:]
 					if not isvalidatom(atom):
 						continue

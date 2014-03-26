@@ -1,6 +1,8 @@
 # portage: Constants
-# Copyright 1998-2012 Gentoo Foundation
+# Copyright 1998-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 import os
 
@@ -27,8 +29,8 @@ import os
 # The variables in this file are grouped by config_root, target_root.
 
 # variables used with config_root (these need to be relative)
-MAKE_CONF_FILE           = "etc/make.conf"
 USER_CONFIG_PATH         = "etc/portage"
+MAKE_CONF_FILE           = USER_CONFIG_PATH + "/make.conf"
 MODULES_FILE_PATH        = USER_CONFIG_PATH + "/modules"
 CUSTOM_PROFILE_PATH      = USER_CONFIG_PATH + "/profile"
 USER_VIRTUALS_FILE       = USER_CONFIG_PATH + "/virtuals"
@@ -36,7 +38,7 @@ EBUILD_SH_ENV_FILE       = USER_CONFIG_PATH + "/bashrc"
 EBUILD_SH_ENV_DIR        = USER_CONFIG_PATH + "/env"
 CUSTOM_MIRRORS_FILE      = USER_CONFIG_PATH + "/mirrors"
 COLOR_MAP_FILE           = USER_CONFIG_PATH + "/color.map"
-PROFILE_PATH             = "etc/make.profile"
+PROFILE_PATH             = USER_CONFIG_PATH + "/make.profile"
 MAKE_DEFAULTS_FILE       = PROFILE_PATH + "/make.defaults"  # FIXME: not used
 DEPRECATED_PROFILE_FILE  = PROFILE_PATH + "/deprecated"
 
@@ -56,7 +58,10 @@ DEPCACHE_PATH            = "/var/cache/edb/dep"
 GLOBAL_CONFIG_PATH       = "/usr/share/portage/config"
 
 # these variables are not used with target_root or config_root
-PORTAGE_BASE_PATH        = os.path.join(os.sep, os.sep.join(__file__.split(os.sep)[:-3]))
+# NOTE: Use realpath(__file__) so that python module symlinks in site-packages
+# are followed back to the real location of the whole portage installation.
+PORTAGE_BASE_PATH        = os.path.join(os.sep, os.sep.join(os.path.realpath(
+                               __file__.rstrip("co")).split(os.sep)[:-3]))
 PORTAGE_BIN_PATH         = PORTAGE_BASE_PATH + "/bin"
 PORTAGE_PYM_PATH         = PORTAGE_BASE_PATH + "/pym"
 LOCALE_DATA_PATH         = PORTAGE_BASE_PATH + "/locale"  # FIXME: not used
@@ -75,40 +80,123 @@ REPO_NAME_LOC            = "profiles" + "/" + REPO_NAME_FILE
 PORTAGE_PACKAGE_ATOM     = "sys-apps/portage"
 LIBC_PACKAGE_ATOM        = "virtual/libc"
 OS_HEADERS_PACKAGE_ATOM  = "virtual/os-headers"
+CVS_PACKAGE_ATOM         = "dev-vcs/cvs"
+GIT_PACKAGE_ATOM         = "dev-vcs/git"
+RSYNC_PACKAGE_ATOM       = "net-misc/rsync"
 
-INCREMENTALS             = ("USE", "USE_EXPAND", "USE_EXPAND_HIDDEN",
-                           "FEATURES", "ACCEPT_KEYWORDS",
-                           "CONFIG_PROTECT_MASK", "CONFIG_PROTECT",
-                           "PRELINK_PATH", "PRELINK_PATH_MASK",
-                           "PROFILE_ONLY_VARIABLES")
-EBUILD_PHASES            = ("pretend", "setup", "unpack", "prepare", "configure",
-                           "compile", "test", "install",
-                           "package", "preinst", "postinst","prerm", "postrm",
-                           "nofetch", "config", "info", "other")
+INCREMENTALS             = (
+	"ACCEPT_KEYWORDS",
+	"CONFIG_PROTECT",
+	"CONFIG_PROTECT_MASK",
+	"FEATURES",
+	"IUSE_IMPLICIT",
+	"PRELINK_PATH",
+	"PRELINK_PATH_MASK",
+	"PROFILE_ONLY_VARIABLES",
+	"USE",
+	"USE_EXPAND",
+	"USE_EXPAND_HIDDEN",
+	"USE_EXPAND_IMPLICIT",
+	"USE_EXPAND_UNPREFIXED",
+)
+EBUILD_PHASES            = (
+	"pretend",
+	"setup",
+	"unpack",
+	"prepare",
+	"configure",
+	"compile",
+	"test",
+	"install",
+	"package",
+	"preinst",
+	"postinst",
+	"prerm",
+	"postrm",
+	"nofetch",
+	"config",
+	"info",
+	"other",
+)
 SUPPORTED_FEATURES       = frozenset([
-                           "assume-digests", "binpkg-logs", "buildpkg", "buildsyspkg", "candy",
-                           "ccache", "chflags", "clean-logs",
-                           "collision-protect", "compress-build-logs", "compressdebug",
-                           "config-protect-if-modified",
-                           "digest", "distcc", "distcc-pump", "distlocks",
-                           "downgrade-backup", "ebuild-locks", "fakeroot",
-                           "fail-clean", "force-mirror", "force-prefix", "getbinpkg",
-                           "installsources", "keeptemp", "keepwork", "fixlafiles", "lmirror",
-                           "metadata-transfer", "mirror", "multilib-strict", "news",
-                           "noauto", "noclean", "nodoc", "noinfo", "noman",
-                           "nostrip", "notitles", "parallel-fetch", "parallel-install",
-                           "parse-eapi-ebuild-head",
-                           "prelink-checksums",
-                           "protect-owned", "python-trace", "sandbox",
-                           "selinux", "sesandbox", "sfperms",
-                           "sign", "skiprocheck", "split-elog", "split-log", "splitdebug",
-                           "strict", "stricter", "suidctl", "test", "test-fail-continue",
-                           "unknown-features-filter", "unknown-features-warn",
-                           "unmerge-backup",
-                           "unmerge-logs", "unmerge-orphans", "userfetch", "userpriv",
-                           "usersandbox", "usersync", "webrsync-gpg", "xattr"])
+	"assume-digests",
+	"binpkg-logs",
+	"buildpkg",
+	"buildsyspkg",
+	"candy",
+	"ccache",
+	"cgroup",
+	"chflags",
+	"clean-logs",
+	"collision-protect",
+	"compress-build-logs",
+	"compressdebug",
+	"compress-index",
+	"config-protect-if-modified",
+	"digest",
+	"distcc",
+	"distcc-pump",
+	"distlocks",
+	"downgrade-backup",
+	"ebuild-locks",
+	"fail-clean",
+	"fakeroot",
+	"fixlafiles",
+	"force-mirror",
+	"force-prefix",
+	"getbinpkg",
+	"installsources",
+	"ipc-sandbox",
+	"keeptemp",
+	"keepwork",
+	"lmirror",
+	"merge-sync",
+	"metadata-transfer",
+	"mirror",
+	"multilib-strict",
+	"network-sandbox",
+	"news",
+	"noauto",
+	"noclean",
+	"nodoc",
+	"noinfo",
+	"noman",
+	"nostrip",
+	"notitles",
+	"parallel-fetch",
+	"parallel-install",
+	"prelink-checksums",
+	"preserve-libs",
+	"protect-owned",
+	"python-trace",
+	"sandbox",
+	"selinux",
+	"sesandbox",
+	"sfperms",
+	"sign",
+	"skiprocheck",
+	"splitdebug",
+	"split-elog",
+	"split-log",
+	"strict",
+	"stricter",
+	"suidctl",
+	"test",
+	"test-fail-continue",
+	"unknown-features-filter",
+	"unknown-features-warn",
+	"unmerge-backup",
+	"unmerge-logs",
+	"unmerge-orphans",
+	"userfetch",
+	"userpriv",
+	"usersandbox",
+	"usersync",
+	"webrsync-gpg",
+	"xattr",
+])
 
-EAPI                     = 4
+EAPI                     = 5
 
 HASHING_BLOCKSIZE        = 32768
 MANIFEST1_HASH_FUNCTIONS = ("MD5", "SHA256", "RMD160")
@@ -151,13 +239,35 @@ MANIFEST2_IDENTIFIERS    = ("AUX", "MISC", "DIST", "EBUILD")
 # a config instance (since it's possible to contruct a config instance with
 # a different EPREFIX). Therefore, the EPREFIX constant should *NOT* be used
 # in the definition of any other constants within this file.
-EPREFIX=""
+EPREFIX = ""
 
 # pick up EPREFIX from the environment if set
 if "PORTAGE_OVERRIDE_EPREFIX" in os.environ:
 	EPREFIX = os.environ["PORTAGE_OVERRIDE_EPREFIX"]
 	if EPREFIX:
 		EPREFIX = os.path.normpath(EPREFIX)
+		if EPREFIX == os.sep:
+			EPREFIX = ""
+
+VCS_DIRS = ("CVS", "RCS", "SCCS", ".bzr", ".git", ".hg", ".svn")
+
+# List of known live eclasses. Keep it in sync with cnf/sets/portage.conf
+LIVE_ECLASSES = frozenset([
+	"bzr",
+	"cvs",
+	"darcs",
+	"git",
+	"git-2",
+	"git-r3",
+	"mercurial",
+	"subversion",
+	"tla",
+])
+
+SUPPORTED_BINPKG_FORMATS = ("tar", "rpm")
+
+# Time formats used in various places like metadata.chk.
+TIMESTAMP_FORMAT = "%a, %d %b %Y %H:%M:%S +0000"	# to be used with time.gmtime()
 
 # ===========================================================================
 # END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANT
@@ -165,17 +275,5 @@ if "PORTAGE_OVERRIDE_EPREFIX" in os.environ:
 
 # Private constants for use in conditional code in order to minimize the diff
 # between branches.
-_ENABLE_DYN_LINK_MAP    = True
-_ENABLE_PRESERVE_LIBS   = True
-_ENABLE_REPO_NAME_WARN  = True
+_DEPCLEAN_LIB_CHECK_DEFAULT = True
 _ENABLE_SET_CONFIG      = True
-_ENABLE_INHERIT_CHECK   = True
-
-
-# The definitions above will differ between branches, so it's useful to have
-# common lines of diff context here in order to avoid merge conflicts.
-
-if _ENABLE_PRESERVE_LIBS:
-	SUPPORTED_FEATURES = set(SUPPORTED_FEATURES)
-	SUPPORTED_FEATURES.add("preserve-libs")
-	SUPPORTED_FEATURES = frozenset(SUPPORTED_FEATURES)

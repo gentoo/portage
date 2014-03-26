@@ -1,5 +1,5 @@
-#!/usr/bin/python -O
-# Copyright 1999-2011 Gentoo Foundation
+#!/usr/bin/python -bO
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 #
@@ -16,19 +16,15 @@ from __future__ import print_function
 from stat import ST_GID, ST_MODE, ST_UID
 from random import random
 import atexit, re, shutil, stat, sys
-
-try:
-    import portage
-except ImportError:
-    from os import path as osp
-    sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-    import portage
-
+from os import path as osp
+pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
+sys.path.insert(0, pym_path)
+import portage
+portage._internal_caller = True
 from portage import os
-from portage import dispatch_conf
 from portage import _unicode_decode
 from portage.dispatch_conf import diffstatusoutput
-from portage.process import find_binary
+from portage.process import find_binary, spawn
 
 FIND_EXTANT_CONFIGS  = "find '%s' %s -name '._cfg????_%s' ! -name '.*~' ! -iname '.*.bak' -print"
 DIFF_CONTENTS        = "diff -Nu '%s' '%s'"
@@ -83,7 +79,7 @@ class dispatch:
         confs = []
         count = 0
 
-        config_root = portage.const.EPREFIX or os.sep
+        config_root = portage.settings["EPREFIX"] or os.sep
         self.options = portage.dispatch_conf.read_config(MANDATORY_OPTS)
 
         if "log-file" in self.options:
@@ -411,7 +407,8 @@ class dispatch:
 
 
     def do_help (self):
-        print(); print
+        print()
+        print()
 
         print('  u -- update current config with new config and continue')
         print('  z -- zap (delete) new config and continue')
@@ -431,7 +428,7 @@ class dispatch:
 def getch ():
     # from ASPN - Danny Yoo
     #
-    import sys, tty, termios
+    import tty, termios
 
     fd = sys.stdin.fileno()
     old_settings = termios.tcgetattr(fd)
@@ -456,17 +453,18 @@ def clear_screen():
         pass
     os.system("clear 2>/dev/null")
 
-from portage.process import find_binary, spawn
 shell = os.environ.get("SHELL")
 if not shell or not os.access(shell, os.EX_OK):
     shell = find_binary("sh")
 
 def spawn_shell(cmd):
     if shell:
+        sys.__stdout__.flush()
+        sys.__stderr__.flush()
         spawn([shell, "-c", cmd], env=os.environ,
-            fd_pipes = {  0 : sys.stdin.fileno(),
-                          1 : sys.stdout.fileno(),
-                          2 : sys.stderr.fileno()})
+            fd_pipes = {  0 : portage._get_stdin().fileno(),
+                          1 : sys.__stdout__.fileno(),
+                          2 : sys.__stderr__.fileno()})
     else:
         os.system(cmd)
 

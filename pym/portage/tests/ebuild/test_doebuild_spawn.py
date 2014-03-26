@@ -1,5 +1,7 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+import textwrap
 
 from portage import os
 from portage import _python_interpreter
@@ -7,12 +9,14 @@ from portage import _shell_quote
 from portage.const import EBUILD_SH_BINARY
 from portage.package.ebuild.config import config
 from portage.package.ebuild.doebuild import spawn as doebuild_spawn
+from portage.package.ebuild._spawn_nofetch import spawn_nofetch
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
+from portage.util._async.SchedulerInterface import SchedulerInterface
+from portage.util._eventloop.global_event_loop import global_event_loop
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.Package import Package
-from _emerge.PollScheduler import PollScheduler
 
 class DoebuildSpawnTestCase(TestCase):
 	"""
@@ -23,8 +27,27 @@ class DoebuildSpawnTestCase(TestCase):
 	"""
 
 	def testDoebuildSpawn(self):
-		playground = ResolverPlayground()
+
+		ebuild_body = textwrap.dedent("""
+			pkg_nofetch() { : ; }
+		""")
+
+		ebuilds = {
+			'sys-apps/portage-2.1': {
+				'EAPI'      : '2',
+				'IUSE'      : 'build doc epydoc python3 selinux',
+				'KEYWORDS'  : 'x86',
+				'LICENSE'   : 'GPL-2',
+				'RDEPEND'   : '>=app-shells/bash-3.2_p17 >=dev-lang/python-2.6',
+				'SLOT'      : '0',
+				"MISC_CONTENT": ebuild_body,
+			}
+		}
+
+		playground = ResolverPlayground(ebuilds=ebuilds)
 		try:
+			root_config = playground.trees[playground.eroot]['root_config']
+			portdb = root_config.trees["porttree"].dbapi
 			settings = config(clone=playground.settings)
 			if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
 				settings["__PORTAGE_TEST_HARDLINK_LOCKS"] = \
@@ -32,16 +55,9 @@ class DoebuildSpawnTestCase(TestCase):
 				settings.backup_changes("__PORTAGE_TEST_HARDLINK_LOCKS")
 
 			cpv = 'sys-apps/portage-2.1'
-			metadata = {
-				'EAPI'      : '2',
-				'INHERITED' : 'python eutils',
-				'IUSE'      : 'build doc epydoc python3 selinux',
-				'LICENSE'   : 'GPL-2',
-				'PROVIDE'   : 'virtual/portage',
-				'RDEPEND'   : '>=app-shells/bash-3.2_p17 >=dev-lang/python-2.6',
-				'SLOT'      : '0',
-			}
-			root_config = playground.trees[playground.eroot]['root_config']
+			metadata = dict(zip(Package.metadata_keys,
+				portdb.aux_get(cpv, Package.metadata_keys)))
+
 			pkg = Package(built=False, cpv=cpv, installed=False,
 				metadata=metadata, root_config=root_config,
 				type_name='ebuild')
@@ -57,7 +73,7 @@ class DoebuildSpawnTestCase(TestCase):
 			# has been sourced already.
 			open(os.path.join(settings['T'], 'environment'), 'wb').close()
 
-			scheduler = PollScheduler().sched_iface
+			scheduler = SchedulerInterface(global_event_loop())
 			for phase in ('_internal_test',):
 
 				# Test EbuildSpawnProcess by calling doebuild.spawn() with
@@ -83,5 +99,7 @@ class DoebuildSpawnTestCase(TestCase):
 			ebuild_phase.start()
 			ebuild_phase.wait()
 			self.assertEqual(ebuild_phase.returncode, os.EX_OK)
+
+			spawn_nofetch(portdb, portdb.findname(cpv), settings=settings)
 		finally:
 			playground.cleanup()

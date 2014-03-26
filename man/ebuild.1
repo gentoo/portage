@@ -1,4 +1,4 @@
-.TH "EBUILD" "1" "Feb 2011" "Portage VERSION" "Portage"
+.TH "EBUILD" "1" "Mar 2013" "Portage VERSION" "Portage"
 .SH "NAME"
 ebuild \- a low level interface to the Portage system
 .SH "SYNOPSIS"
@@ -19,11 +19,15 @@ This must be a valid ebuild script.  For further information read
 \fBebuild\fR(5).
 .SH "COMMANDS"
 By default, portage will execute all the functions in order up to the
-one actually specified.  For example, simply issuing the command \fBcompile\fR
-will trigger the functions before it to also be run (such as \fBsetup\fR
-and \fBunpack\fR).  If you wish to only have the specified command run, then
-you should use the \fInoauto\fR option in the \fBFEATURES\fR environment
-variable.  See the \fBmake.conf\fR(5) man page for more information.
+one actually specified, except for the functions that have already been
+executed in a previous invocation of ebuild.  For example, simply issuing the
+command \fBcompile\fR will trigger the functions before it to also be run (such
+as \fBsetup\fR and \fBunpack\fR), unless they were run in a previous invocation
+of ebuild.  If you want to make sure they are all run, you need to use
+the command \fBclean\fR first.  If you wish to only have the specified command
+run, then you should use the \fInoauto\fR option in the \fBFEATURES\fR
+environment variable.  See the \fBmake.conf\fR(5) man page for more
+information.
 
 .TP
 .BR help
@@ -53,13 +57,13 @@ manually clean these files with \fIrm \-rf /var/tmp/portage\fR.
 .BR fetch
 Checks to see if all the sources specified in SRC_URI are available in
 DISTDIR (see \fBmake.conf\fR(5) for more information) and have a valid
-md5 checksum.  If the sources aren't available, an attempt is made to
+checksum.  If the sources aren't available, an attempt is made to
 download them from the locations specified in SRC_URI.  If multiple
 download locations are listed for a particular file, Portage pings
 each location to see which location is closer. (May not be true
 presently.)  The Gentoo Linux mirrors defined by GENTOO_MIRRORS is
 always considered first.  If for some reason the current or
-just\-downloaded sources' md5 digests don't match those recorded
+just\-downloaded sources' checksums don't match those recorded
 in files/digest\-[package]\-[version\-rev], a warning is printed
 and ebuild exits with an error code of 1.
 .TP
@@ -74,7 +78,7 @@ for all of the files listed in SRC_URI for each ebuild. For further
 information regarding the behavior of this command, see the documentation for
 the \fIassume\-digests\fR value of the \fBFEATURES\fR variable in
 \fBmake.conf\fR(5). See the \fB\-\-force\fR option if you would like to
-prevent digests from being assumed. 
+prevent digests from being assumed.
 .TP
 .BR unpack
 Extracts the sources to a subdirectory in the \fIbuild directory\fR
@@ -112,7 +116,7 @@ current working directory will be set to ${S}.  When src_compile()
 completes, the sources should be fully compiled.
 .TP
 .BR test
-Runs package-specific test cases to verify that everything was built 
+Runs package-specific test cases to verify that everything was built
 properly.
 .TP
 .BR preinst
@@ -135,8 +139,8 @@ shown here.
 This function installs all the files in the \fIinstall directory\fR
 to the live filesystem.  The process works as follows: first, the
 \fIpkg_preinst()\fR function (if specified) is run.  Then, the files
-are merged into the live filesystem, and the installed files' md5
-digests are recorded in
+are merged into the live filesystem, and the installed files'
+checksums are recorded in
 \fI/var/db/pkg/${CATEGORY}/${PN}\-${PVR}/CONTENTS\fR.  After
 all the files have been merged, the \fIpkg_postinst()\fR function
 (if specified) is executed.
@@ -150,7 +154,7 @@ particular step doesn't complete successfully.
 .TP
 .BR unmerge
 This function first executes the \fIpkg_prerm()\fR function (if specified).
-Then it removes all files from the live filesystem that have a valid md5
+Then it removes all files from the live filesystem that have a valid
 checksum and mtime in the package contents file.  Any empty directories
 are recursively removed.  Finally, it runs \fIpkg_postrm()\fR function (if
 specified).  It is safe to merge a new version of a package first and
@@ -179,7 +183,7 @@ tarball is created and stored in \fBPKGDIR\fR (see \fBmake.conf\fR(5)).
 Builds a RedHat RPM package from the files in the temporary
 \fIinstall directory\fR.  At the moment, the ebuild's dependency
 information is not incorporated into the RPM.
-.SH OPTIONS
+.SH "OPTIONS"
 .TP
 .BR "\-\-debug"
 Run bash with the \-x option, causing it to output verbose debugging
@@ -212,7 +216,7 @@ Mike Frysinger <vapier@gentoo.org>
 .fi
 .SH "FILES"
 .TP
-.B /etc/make.conf 
+.B /etc/portage/make.conf
 Contains variables for the build\-process and overwrites those
 in make.globals.
 .TP
@@ -224,6 +228,6 @@ Contains variables customizing colors.
 .BR make.conf (5),
 .BR color.map (5)
 .TP
-The \fI/usr/sbin/ebuild.sh\fR script. 
+The \fI/usr/lib/portage/bin/ebuild.sh\fR script.
 .TP
 The helper apps in \fI/usr/lib/portage/bin\fR.

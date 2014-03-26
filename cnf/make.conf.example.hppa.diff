@@ -1,0 +1,71 @@
+--- make.conf.example
++++ make.conf.example
+@@ -22,6 +22,18 @@
+ # Example:
+ #USE="X gtk gnome -alsa"
+ 
++# Host Setting
++# ============
++#
++# DO NOT CHANGE THIS SETTING UNLESS YOU ARE USING STAGE1!
++# The generic CHOST value for hppa is hppa-unknown-linux-gnu.
++# But you might want to use hppa1.1-unknown-linux-gnu or hppa2.0-unknown-linux-gnu
++# according to your station.
++#
++CHOST="hppa-unknown-linux-gnu"
++#CHOST="hppa1.1-unknown-linux-gnu"
++#CHOST="hppa2.0-unknown-linux-gnu"
++
+ # Host and optimization settings 
+ # ==============================
+ #
+@@ -39,14 +51,38 @@
+ # -frecord-gcc-switches, since otherwise the check could result in false
+ # positive results.
+ #
+-# Please refer to the GCC manual for a list of possible values.
++# -march=<cpu-type> means to take full advantage of the ABI and instructions
++# for the particular CPU; this will break compatibility with older CPUs (for
++# example, -march=2.0 code will not run on a regular hppa1.1 station)
++#
++# -mschedule=cpu-type create schedule code according to the constraints for the machine
++# cpu-type.  The choices for cpu-type are 700 7100, 7100LC, 7200, and 8000.
++# Use 'cat /proc/cpuinfo' to know the right schedule for your hppa.
++# Note that you must use 7100LC for 7300LC.
++#
++# Architectures types supported in gcc-3.2 and higher: 1.0, 1.1 and 2.0
++# Note that 64bit userspace is not yet implemented.
++#
++# Decent examples:
++#
++#
++# Use this one if you have a hppa1.1
++#CFLAGS="-march=1.1 -O2 -pipe -mschedule=7100LC"
++#
++# Or this one if you have a hppa2.0
++# Note that -march=2.0 was unstable on some stations.
++# -march=1.0 will create problems too.
++#CFLAGS="-O2 -pipe -mschedule=8000"
+ #
+-#CFLAGS="-O2 -pipe"
+ #
+ # If you set a CFLAGS above, then this line will set your default C++ flags to
+ # the same settings.
+ #CXXFLAGS="${CFLAGS}"
+ #
++# Btw it's recommended to use this setting for stability.
++# There are still many bugs with higher level of optimisation.
++#CXXFLAGS="-O1 -pipe"
++#
+ # If you set a CFLAGS above, then this line will set your default FORTRAN 77
+ # flags to the same settings.
+ #FFLAGS="${CFLAGS}"
+@@ -76,7 +112,7 @@
+ # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
+ # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
+ #
+-#ACCEPT_KEYWORDS="~arch"
++#ACCEPT_KEYWORDS="~hppa"
+ 
+ # ACCEPT_LICENSE is used to mask packages based on licensing restrictions.
+ # It may contain both license and group names, where group names are

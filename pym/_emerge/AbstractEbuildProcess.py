@@ -1,8 +1,10 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import io
+import platform
 import stat
+import subprocess
 import textwrap
 from _emerge.SpawnProcess import SpawnProcess
 from _emerge.EbuildBuildDir import EbuildBuildDir
@@ -20,8 +22,10 @@ class AbstractEbuildProcess(SpawnProcess):
 
 	__slots__ = ('phase', 'settings',) + \
 		('_build_dir', '_ipc_daemon', '_exit_command', '_exit_timeout_id')
+
 	_phases_without_builddir = ('clean', 'cleanrm', 'depend', 'help',)
 	_phases_interactive_whitelist = ('config',)
+	_phases_without_cgroup = ('preinst', 'postinst', 'prerm', 'postrm', 'config')
 
 	# Number of milliseconds to allow natural exit of the ebuild
 	# process after it has called the exit command via IPC. It
@@ -52,12 +56,47 @@ class AbstractEbuildProcess(SpawnProcess):
 		if need_builddir and \
 			not os.path.isdir(self.settings['PORTAGE_BUILDDIR']):
 			msg = _("The ebuild phase '%s' has been aborted "
-			"since PORTAGE_BUILDIR does not exist: '%s'") % \
+			"since PORTAGE_BUILDDIR does not exist: '%s'") % \
 			(self.phase, self.settings['PORTAGE_BUILDDIR'])
 			self._eerror(textwrap.wrap(msg, 72))
 			self._set_returncode((self.pid, 1 << 8))
-			self.wait()
+			self._async_wait()
 			return
+
+		# Check if the cgroup hierarchy is in place. If it's not, mount it.
+		if (os.geteuid() == 0 and platform.system() == 'Linux'
+				and 'cgroup' in self.settings.features
+				and self.phase not in self._phases_without_cgroup):
+			cgroup_root = '/sys/fs/cgroup'
+			cgroup_portage = os.path.join(cgroup_root, 'portage')
+			cgroup_path = os.path.join(cgroup_portage,
+					'%s:%s' % (self.settings["CATEGORY"],
+						self.settings["PF"]))
+			try:
+				# cgroup tmpfs
+				if not os.path.ismount(cgroup_root):
+					# we expect /sys/fs to be there already
+					if not os.path.isdir(cgroup_root):
+						os.mkdir(cgroup_root, 0o755)
+					subprocess.check_call(['mount', '-t', 'tmpfs',
+						'-o', 'rw,nosuid,nodev,noexec,mode=0755',
+						'tmpfs', cgroup_root])
+
+				# portage subsystem
+				if not os.path.ismount(cgroup_portage):
+					if not os.path.isdir(cgroup_portage):
+						os.mkdir(cgroup_portage, 0o755)
+					subprocess.check_call(['mount', '-t', 'cgroup',
+						'-o', 'rw,nosuid,nodev,noexec,none,name=portage',
+						'tmpfs', cgroup_portage])
+
+				# the ebuild cgroup
+				if not os.path.isdir(cgroup_path):
+					os.mkdir(cgroup_path)
+			except (subprocess.CalledProcessError, OSError):
+				pass
+			else:
+				self.cgroup = cgroup_path
 
 		if self.background:
 			# Automatically prevent color codes from showing up in logs,
@@ -67,7 +106,7 @@ class AbstractEbuildProcess(SpawnProcess):
 		if self._enable_ipc_daemon:
 			self.settings.pop('PORTAGE_EBUILD_EXIT_FILE', None)
 			if self.phase not in self._phases_without_builddir:
-				if 'PORTAGE_BUILDIR_LOCKED' not in self.settings:
+				if 'PORTAGE_BUILDDIR_LOCKED' not in self.settings:
 					self._build_dir = EbuildBuildDir(
 						scheduler=self.scheduler, settings=self.settings)
 					self._build_dir.lock()
@@ -143,9 +182,14 @@ class AbstractEbuildProcess(SpawnProcess):
 		self._exit_command.reply_hook = self._exit_command_callback
 		query_command = QueryCommand(self.settings, self.phase)
 		commands = {
-			'best_version' : query_command,
-			'exit'         : self._exit_command,
-			'has_version'  : query_command,
+			'available_eclasses'  : query_command,
+			'best_version'        : query_command,
+			'eclass_path'         : query_command,
+			'exit'                : self._exit_command,
+			'has_version'         : query_command,
+			'license_path'        : query_command,
+			'master_repositories' : query_command,
+			'repository_path'     : query_command,
 		}
 		input_fifo, output_fifo = self._init_ipc_fifos()
 		self._ipc_daemon = EbuildIpcDaemon(commands=commands,

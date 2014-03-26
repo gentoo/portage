@@ -1,36 +1,33 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['cacheddir', 'listdir']
 
 import errno
 import stat
-import time
+import sys
+
+if sys.hexversion < 0x3000000:
+	from itertools import izip as zip
 
 from portage import os
+from portage.const import VCS_DIRS
 from portage.exception import DirectoryNotFound, PermissionDenied, PortageException
-from portage.util import normalize_path, writemsg
+from portage.util import normalize_path
 
-_ignorecvs_dirs = ('CVS', 'RCS', 'SCCS', '.svn', '.git')
+# The global dircache is no longer supported, since it could
+# be a memory leak for API consumers. Any cacheddir callers
+# should use higher-level caches instead, when necessary.
+# TODO: Remove dircache variable after stable portage does
+# not use is (keep it for now, in case API consumers clear
+# it manually).
 dircache = {}
-cacheHit = 0
-cacheMiss = 0
-cacheStale = 0
 
 def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymlinks=True):
-	global cacheHit,cacheMiss,cacheStale
 	mypath = normalize_path(my_original_path)
-	if mypath in dircache:
-		cacheHit += 1
-		cached_mtime, list, ftype = dircache[mypath]
-	else:
-		cacheMiss += 1
-		cached_mtime, list, ftype = -1, [], []
 	try:
 		pathstat = os.stat(mypath)
-		if stat.S_ISDIR(pathstat[stat.ST_MODE]):
-			mtime = pathstat.st_mtime
-		else:
+		if not stat.S_ISDIR(pathstat.st_mode):
 			raise DirectoryNotFound(mypath)
 	except EnvironmentError as e:
 		if e.errno == PermissionDenied.errno:
@@ -39,19 +36,16 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 		return [], []
 	except PortageException:
 		return [], []
-	# Python retuns mtime in seconds, so if it was changed in the last few seconds, it could be invalid
-	if mtime != cached_mtime or time.time() - mtime < 4:
-		if mypath in dircache:
-			cacheStale += 1
+	else:
 		try:
-			list = os.listdir(mypath)
+			fpaths = os.listdir(mypath)
 		except EnvironmentError as e:
 			if e.errno != errno.EACCES:
 				raise
 			del e
 			raise PermissionDenied(mypath)
 		ftype = []
-		for x in list:
+		for x in fpaths:
 			try:
 				if followSymlinks:
 					pathstat = os.stat(mypath+"/"+x)
@@ -68,23 +62,22 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 					ftype.append(3)
 			except (IOError, OSError):
 				ftype.append(3)
-		dircache[mypath] = mtime, list, ftype
 
-	ret_list = []
-	ret_ftype = []
-	for x in range(0, len(list)):
-		if list[x] in ignorelist:
-			pass
-		elif ignorecvs:
-			if list[x][:2] != ".#" and \
-				not (ftype[x] == 1 and list[x] in _ignorecvs_dirs):
-				ret_list.append(list[x])
-				ret_ftype.append(ftype[x])
-		else:
-			ret_list.append(list[x])
-			ret_ftype.append(ftype[x])
+	if ignorelist or ignorecvs:
+		ret_list = []
+		ret_ftype = []
+		for file_path, file_type in zip(fpaths, ftype):
+			if file_path in ignorelist:
+				pass
+			elif ignorecvs:
+				if file_path[:2] != ".#" and \
+					not (file_type == 1 and file_path in VCS_DIRS):
+					ret_list.append(file_path)
+					ret_ftype.append(file_type)
+	else:
+		ret_list = fpaths
+		ret_ftype = ftype
 
-	writemsg("cacheddirStats: H:%d/M:%d/S:%d\n" % (cacheHit, cacheMiss, cacheStale),10)
 	return ret_list, ret_ftype
 
 def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelist=[], followSymlinks=True,
@@ -98,7 +91,7 @@ def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelis
 	@type recursive: Boolean
 	@param filesonly; Only return files, not more directories
 	@type filesonly: Boolean
-	@param ignorecvs: Ignore CVS directories ('CVS','SCCS','.svn','.git')
+	@param ignorecvs: Ignore VCS directories
 	@type ignorecvs: Boolean
 	@param ignorelist: List of filenames/directories to exclude
 	@type ignorelist: List
@@ -112,40 +105,35 @@ def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelis
 	@return: A list of files and directories (or just files or just directories) or an empty list.
 	"""
 
-	list, ftype = cacheddir(mypath, ignorecvs, ignorelist, EmptyOnError, followSymlinks)
+	fpaths, ftype = cacheddir(mypath, ignorecvs, ignorelist, EmptyOnError, followSymlinks)
 
-	if list is None:
-		list=[]
+	if fpaths is None:
+		fpaths = []
 	if ftype is None:
-		ftype=[]
+		ftype = []
 
 	if not (filesonly or dirsonly or recursive):
-		return list
+		return fpaths
 
 	if recursive:
-		x=0
-		while x<len(ftype):
-			if ftype[x] == 1:
-				l,f = cacheddir(mypath+"/"+list[x], ignorecvs, ignorelist, EmptyOnError,
-					followSymlinks)
+		stack = list(zip(fpaths, ftype))
+		fpaths = []
+		ftype = []
+		while stack:
+			file_path, file_type = stack.pop()
+			fpaths.append(file_path)
+			ftype.append(file_type)
+			if file_type == 1:
+				subdir_list, subdir_types = cacheddir(
+					os.path.join(mypath, file_path), ignorecvs,
+					ignorelist, EmptyOnError, followSymlinks)
+				stack.extend((os.path.join(file_path, x), x_type)
+					for x, x_type in zip(subdir_list, subdir_types))
 
-				l=l[:]
-				for y in range(0,len(l)):
-					l[y]=list[x]+"/"+l[y]
-				list=list+l
-				ftype=ftype+f
-			x+=1
 	if filesonly:
-		rlist=[]
-		for x in range(0,len(ftype)):
-			if ftype[x]==0:
-				rlist=rlist+[list[x]]
-	elif dirsonly:
-		rlist = []
-		for x in range(0, len(ftype)):
-			if ftype[x] == 1:
-				rlist = rlist + [list[x]]	
-	else:
-		rlist=list
+		fpaths = [x for x, x_type in zip(fpaths, ftype) if x_type == 0]
 
-	return rlist
+	elif dirsonly:
+		fpaths = [x for x, x_type in zip(fpaths, ftype) if x_type == 1]
+
+	return fpaths

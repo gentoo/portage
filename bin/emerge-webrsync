@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # Author: Karl Trygve Kalleberg <karltk@gentoo.org>
 # Rewritten from the old, Perl-based emerge-webrsync script
@@ -22,9 +22,9 @@ vvecho() { [[ ${do_verbose} -eq 1 ]] && echo "$@" ; }
 # Only echo if not in verbose mode
 nvecho() { [[ ${do_verbose} -eq 0 ]] && echo "$@" ; }
 # warning echos
-wecho() { echo "${argv0}: warning: $*" 1>&2 ; }
+wecho() { echo "${argv0##*/}: warning: $*" 1>&2 ; }
 # error echos
-eecho() { echo "${argv0}: error: $*" 1>&2 ; }
+eecho() { echo "${argv0##*/}: error: $*" 1>&2 ; }
 
 argv0=$0
 
@@ -39,12 +39,23 @@ else
 	eecho "could not find 'portageq'; aborting"
 	exit 1
 fi
-eval $("${portageq}" envvar -v FEATURES FETCHCOMMAND GENTOO_MIRRORS \
-	PORTAGE_BIN_PATH PORTAGE_GPG_DIR \
-	PORTAGE_NICENESS PORTAGE_RSYNC_EXTRA_OPTS PORTAGE_TMPDIR PORTDIR \
-	SYNC http_proxy ftp_proxy)
-DISTDIR="${PORTAGE_TMPDIR}/emerge-webrsync"
+eval "$("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
+	FETCHCOMMAND GENTOO_MIRRORS \
+	PORTAGE_BIN_PATH PORTAGE_CONFIGROOT PORTAGE_GPG_DIR \
+	PORTAGE_NICENESS PORTAGE_REPOSITORIES PORTAGE_RSYNC_EXTRA_OPTS \
+	PORTAGE_RSYNC_OPTS PORTAGE_TMPDIR \
+	USERLAND http_proxy ftp_proxy)"
 export http_proxy ftp_proxy
+
+source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
+
+repo_name=gentoo
+repo_location=$(__repo_attr "${repo_name}" location)
+if [[ -z ${repo_location} ]]; then
+	eecho "Repository '${repo_name}' not found"
+	exit 1
+fi
+repo_sync_type=$(__repo_attr "${repo_name}" sync-type)
 
 # If PORTAGE_NICENESS is overriden via the env then it will
 # still pass through the portageq call and override properly.
@@ -52,10 +63,9 @@ if [ -n "${PORTAGE_NICENESS}" ]; then
 	renice $PORTAGE_NICENESS $$ > /dev/null
 fi
 
-source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
-
 do_verbose=0
 do_debug=0
+keep=false
 
 if has webrsync-gpg ${FEATURES} ; then
 	WEBSYNC_VERIFY_SIGNATURE=1
@@ -99,7 +109,9 @@ get_date_part() {
 get_utc_second_from_string() {
 	local s="$1"
 	if [[ ${USERLAND} == BSD ]] ; then
-		date -juf "%Y%m%d" "$s" +"%s"
+		# Specify zeros for the least significant digits, or else those
+		# digits are inherited from the current system clock time.
+		date -juf "%Y%m%d%H%M.%S" "${s}0000.00" +"%s"
 	else
 		date -d "${s:0:4}-${s:4:2}-${s:6:2}" -u +"%s"
 	fi
@@ -108,8 +120,8 @@ get_utc_second_from_string() {
 get_portage_timestamp() {
 	local portage_current_timestamp=0
 
-	if [ -f "${PORTDIR}/metadata/timestamp.x" ]; then
-		portage_current_timestamp=$(cut -f 1 -d " " "${PORTDIR}/metadata/timestamp.x" )
+	if [ -f "${repo_location}/metadata/timestamp.x" ]; then
+		portage_current_timestamp=$(cut -f 1 -d " " "${repo_location}/metadata/timestamp.x" )
 	fi
 
 	echo "${portage_current_timestamp}"
@@ -125,13 +137,18 @@ fetch_file() {
 	elif [ "${FETCHCOMMAND/curl/}" != "${FETCHCOMMAND}" ]; then
 		opts="--continue-at - $(nvecho -s -f)"
 	else
-		rm -f "${FILE}"
+		rm -f "${DISTDIR}/${FILE}"
 	fi
 
-	vecho "Fetching file ${FILE} ..."
+	__vecho "Fetching file ${FILE} ..."
 	# already set DISTDIR=
-	eval "${FETCHCOMMAND}" ${opts}
-	[ -s "${FILE}" ]
+	eval "${FETCHCOMMAND} ${opts}"
+	if [[ $? -eq 0 && -s ${DISTDIR}/${FILE} ]] ; then
+		return 0
+	else
+		rm -f "${DISTDIR}/${FILE}"
+		return 1
+	fi
 }
 
 check_file_digest() {
@@ -139,10 +156,12 @@ check_file_digest() {
 	local file="$2"
 	local r=1
 
-	vecho "Checking digest ..."
+	__vecho "Checking digest ..."
 
 	if type -P md5sum > /dev/null; then
-		md5sum -c $digest && r=0
+		local md5sum_output=$(md5sum "${file}")
+		local digest_content=$(< "${digest}")
+		[ "${md5sum_output%%[[:space:]]*}" = "${digest_content%%[[:space:]]*}" ] && r=0
 	elif type -P md5 > /dev/null; then
 		[ "$(md5 -q "${file}")" == "$(cut -d ' ' -f 1 "${digest}")" ] && r=0
 	else
@@ -159,7 +178,7 @@ check_file_signature() {
 
 	if [ ${WEBSYNC_VERIFY_SIGNATURE} != 0 ]; then
 
-		vecho "Checking signature ..."
+		__vecho "Checking signature ..."
 
 		if type -P gpg > /dev/null; then
 			gpg --homedir "${PORTAGE_GPG_DIR}" --verify "$signature" "$file" && r=0
@@ -183,13 +202,25 @@ get_snapshot_timestamp() {
 sync_local() {
 	local file="$1"
 
-	vecho "Syncing local tree ..."
+	__vecho "Syncing local tree ..."
+
+	local ownership="portage:portage"
+	if has usersync ${FEATURES} ; then
+		case "${USERLAND}" in
+			BSD)
+				ownership=$(stat -f '%Su:%Sg' "${repo_location}")
+				;;
+			*)
+				ownership=$(stat -c '%U:%G' "${repo_location}")
+				;;
+		esac
+	fi
 
 	if type -P tarsync > /dev/null ; then
-		local chown_opts="-o portage -g portage"
-		chown portage:portage portage > /dev/null 2>&1 || chown_opts=""
+		local chown_opts="-o ${ownership%:*} -g ${ownership#*:}"
+		chown ${ownership} "${repo_location}" > /dev/null 2>&1 || chown_opts=""
 		if ! tarsync $(vvecho -v) -s 1 ${chown_opts} \
-			-e /distfiles -e /packages -e /local "${file}" "${PORTDIR}"; then
+			-e /distfiles -e /packages -e /local "${file}" "${repo_location}"; then
 			eecho "tarsync failed; tarball is corrupt? (${file})"
 			return 1
 		fi
@@ -201,27 +232,29 @@ sync_local() {
 		fi
 
 		# Free disk space
-		rm -f "${file}"
+		${keep} || rm -f "${file}"
 
-		chown portage:portage portage > /dev/null 2>&1 && \
-			chown -R portage:portage portage
+		local rsync_opts="${PORTAGE_RSYNC_OPTS} ${PORTAGE_RSYNC_EXTRA_OPTS}"
+		if chown ${ownership} portage > /dev/null 2>&1; then
+			chown -R ${ownership} portage
+			rsync_opts+=" --owner --group"
+		fi
 		cd portage
-		rsync -av --progress --stats --delete --delete-after \
-			--exclude='/distfiles' --exclude='/packages' \
-			--exclude='/local' ${PORTAGE_RSYNC_EXTRA_OPTS} . "${PORTDIR%%/}"
+		rsync ${rsync_opts} . "${repo_location%%/}"
 		cd ..
 
-		vecho "Cleaning up ..."
+		__vecho "Cleaning up ..."
 		rm -fr portage
 	fi
 
 	if has metadata-transfer ${FEATURES} ; then
-		vecho "Updating cache ..."
-		emerge --metadata
+		__vecho "Updating cache ..."
+		"${PORTAGE_BIN_PATH}/emerge" --metadata
 	fi
-	[ -x /etc/portage/bin/post_sync ] && /etc/portage/bin/post_sync
+	local post_sync=${PORTAGE_CONFIGROOT}etc/portage/bin/post_sync
+	[ -x "${post_sync}" ] && "${post_sync}"
 	# --quiet suppresses output if there are no relevant news items
-	has news ${FEATURES} && emerge --check-news --quiet
+	has news ${FEATURES} && "${PORTAGE_BIN_PATH}/emerge" --check-news --quiet
 	return 0
 }
 
@@ -251,14 +284,15 @@ do_snapshot() {
 
 	for mirror in ${GENTOO_MIRRORS} ; do
 
-		vecho "Trying to retrieve ${date} snapshot from ${mirror} ..."
+		mirror=${mirror%/}
+		__vecho "Trying to retrieve ${date} snapshot from ${mirror} ..."
 
 		for compression in ${compressions} ; do
 			local file="portage-${date}.tar.${compression}"
 			local digest="${file}.md5sum"
 			local signature="${file}.gpgsig"
 
-			if [ -s "${file}" -a -s "${digest}" -a -s "${signature}" ] ; then
+			if [ -s "${DISTDIR}/${file}" -a -s "${DISTDIR}/${digest}" -a -s "${DISTDIR}/${signature}" ] ; then
 				check_file_digest "${DISTDIR}/${digest}" "${DISTDIR}/${file}" && \
 				check_file_signature "${DISTDIR}/${signature}" "${DISTDIR}/${file}" && \
 				have_files=1
@@ -280,8 +314,8 @@ do_snapshot() {
 			#
 			if [ ${have_files} -eq 1 ]; then
 
-				vecho "Getting snapshot timestamp ..."
-				local snapshot_timestamp=$(get_snapshot_timestamp "${file}")
+				__vecho "Getting snapshot timestamp ..."
+				local snapshot_timestamp=$(get_snapshot_timestamp "${DISTDIR}/${file}")
 
 				if [ ${ignore_timestamp} == 0 ]; then
 					if [ ${snapshot_timestamp} -lt $(get_portage_timestamp) ]; then
@@ -310,7 +344,7 @@ do_snapshot() {
 				#
 				# Remove files and use a different mirror
 				#
-				rm -f "${file}" "${digest}" "${signature}"
+				rm -f "${DISTDIR}/${file}" "${DISTDIR}/${digest}" "${DISTDIR}/${signature}"
 			fi
 		done
 
@@ -318,12 +352,12 @@ do_snapshot() {
 	done
 
 	if [ ${have_files} -eq 1 ]; then
-		sync_local "${file}" && r=0
+		sync_local "${DISTDIR}/${file}" && r=0
 	else
-		vecho "${date} snapshot was not found"
+		__vecho "${date} snapshot was not found"
 	fi
-	
-	rm -f "${file}" "${digest}" "${signature}"
+
+	${keep} || rm -f "${DISTDIR}/${file}" "${DISTDIR}/${digest}" "${DISTDIR}/${signature}"
 	return "${r}"
 }
 
@@ -331,9 +365,9 @@ do_latest_snapshot() {
 	local attempts=0
 	local r=1
 
-	vecho "Fetching most recent snapshot ..."
+	__vecho "Fetching most recent snapshot ..."
 
-	# The snapshot for a given day is generated at 01:45 UTC on the following
+	# The snapshot for a given day is generated at 00:45 UTC on the following
 	# day, so the current day's snapshot (going by UTC time) hasn't been
 	# generated yet.  Therefore, always start by looking for the previous day's
 	# snapshot (for attempts=1, subtract 1 day from the current UTC time).
@@ -349,10 +383,10 @@ do_latest_snapshot() {
 	local start_time=$(get_utc_date_in_seconds)
 	local start_hour=$(get_date_part ${start_time} "%H")
 
-	# Daily snapshots are created at 1:45 AM and are not
-	# available until after 2 AM. Don't waste time trying
+	# Daily snapshots are created at 00:45 and are not
+	# available until after 01:00. Don't waste time trying
 	# to fetch a snapshot before it's been created.
-	if [ ${start_hour} -lt 2 ] ; then
+	if [ ${start_hour} -lt 1 ] ; then
 		(( start_time -= 86400 ))
 	fi
 	local snapshot_date=$(get_date_part ${start_time} "%Y%m%d")
@@ -361,8 +395,8 @@ do_latest_snapshot() {
 	while (( ${attempts} <  40 )) ; do
 		(( attempts++ ))
 		(( snapshot_date_seconds -= 86400 ))
-		# snapshots are created at 1:45 AM
-		(( approx_snapshot_time = snapshot_date_seconds + 86400 + 6300 ))
+		# snapshots are created at 00:45
+		(( approx_snapshot_time = snapshot_date_seconds + 86400 + 2700 ))
 		(( timestamp_difference = existing_timestamp - approx_snapshot_time ))
 		[ ${timestamp_difference} -lt 0 ] && (( timestamp_difference = -1 * timestamp_difference ))
 		snapshot_date=$(get_date_part ${snapshot_date_seconds} "%Y%m%d")
@@ -388,7 +422,7 @@ do_latest_snapshot() {
 				"snapshot. In order to force sync," \
 				"use the --revert option or remove" \
 				"the timestamp file located at" \
-				"'${PORTDIR}/metadata/timestamp.x'." | fmt -w 70 | \
+				"'${repo_location}/metadata/timestamp.x'." | fmt -w 70 | \
 				while read -r line ; do
 					ewarn "${line}"
 				done
@@ -408,9 +442,10 @@ do_latest_snapshot() {
 usage() {
 	cat <<-EOF
 	Usage: $0 [options]
-	
+
 	Options:
 	  --revert=yyyymmdd   Revert to snapshot
+	  -k, --keep          Keep snapshots in DISTDIR (don't delete)
 	  -q, --quiet         Only output errors
 	  -v, --verbose       Enable verbose output
 	  -x, --debug         Enable debug output
@@ -427,14 +462,12 @@ usage() {
 main() {
 	local arg
 	local revert_date
-	
-	[ ! -d "${DISTDIR}" ] && mkdir -p "${DISTDIR}"
-	cd "${DISTDIR}"
 
 	for arg in "$@" ; do
 		local v=${arg#*=}
 		case ${arg} in
 			-h|--help)    usage ;;
+			-k|--keep)    keep=true ;;
 			-q|--quiet)   PORTAGE_QUIET=1 ;;
 			-v|--verbose) do_verbose=1 ;;
 			-x|--debug)   do_debug=1 ;;
@@ -443,16 +476,39 @@ main() {
 		esac
 	done
 
+	[[ -d ${repo_location} ]] || mkdir -p "${repo_location}"
+	if [[ ! -w ${repo_location} ]] ; then
+		eecho "Repository '${repo_name}' is not writable: ${repo_location}"
+		exit 1
+	fi
+
+	[[ -d ${PORTAGE_TMPDIR}/portage ]] || mkdir -p "${PORTAGE_TMPDIR}/portage"
+	TMPDIR=$(mktemp -d "${PORTAGE_TMPDIR}/portage/webrsync-XXXXXX")
+	if [[ ! -w ${TMPDIR} ]] ; then
+		eecho "TMPDIR is not writable: ${TMPDIR}"
+		exit 1
+	fi
+	trap 'cd / ; rm -rf "${TMPDIR}"' EXIT
+	cd "${TMPDIR}" || exit 1
+
+	${keep} || DISTDIR=${TMPDIR}
+	[ ! -d "${DISTDIR}" ] && mkdir -p "${DISTDIR}"
+
+	if ${keep} && [[ ! -w ${DISTDIR} ]] ; then
+		eecho "DISTDIR is not writable: ${DISTDIR}"
+		exit 1
+	fi
+
 	# This is a sanity check to help prevent people like funtoo users
 	# from accidentally wiping out their git tree.
-	if [[ -n $SYNC && ${SYNC#rsync:} = $SYNC ]] ; then
-		echo "The current SYNC variable setting does not refer to an rsync URI:" >&2
+	if [[ -n ${repo_sync_type} && ${repo_sync_type} != rsync ]] ; then
+		echo "The current sync-type attribute of repository 'gentoo' is not set to 'rsync':" >&2
 		echo >&2
-		echo "  SYNC=$SYNC" >&2
+		echo "  sync-type=${repo_sync_type}" >&2
 		echo >&2
 		echo "If you intend to use emerge-webrsync then please" >&2
-		echo "adjust SYNC to refer to an rsync URI." >&2
-		echo "emerge-webrsync exiting due to abnormal SYNC setting." >&2
+		echo "adjust sync-type and sync-uri attributes to refer to rsync." >&2
+		echo "emerge-webrsync exiting due to abnormal sync-type setting." >&2
 		exit 1
 	fi
 

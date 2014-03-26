@@ -1,4 +1,4 @@
-# Copyright 2001-2012 Gentoo Foundation
+# Copyright 2001-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -15,10 +15,12 @@
 # (integer) == encodeint(integer)  ===> 4 characters (big-endian copy)
 # '+' means concatenate the fields ===> All chunks are strings
 
-__all__ = ['addtolist', 'decodeint', 'encodeint', 'getboth',
+__all__ = [
+	'addtolist', 'decodeint', 'encodeint', 'getboth',
 	'getindex', 'getindex_mem', 'getitem', 'listindex',
 	'searchindex', 'tbz2', 'xpak_mem', 'xpak', 'xpand',
-	'xsplit', 'xsplit_mem']
+	'xsplit', 'xsplit_mem',
+]
 
 import array
 import errno

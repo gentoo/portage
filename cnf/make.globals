@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # System-wide defaults for the Portage system
 
@@ -19,24 +19,21 @@ LDFLAGS=""
 FFLAGS=""
 FCFLAGS=""
 
-# Default rsync mirror
-SYNC="rsync://rsync.gentoo.org/gentoo-portage"
-
 # Default distfiles mirrors. This rotation has multiple hosts and is reliable.
 # Approved by the mirror-admin team.
 GENTOO_MIRRORS="http://distfiles.gentoo.org"
 
 ACCEPT_LICENSE="* -@EULA"
 ACCEPT_PROPERTIES="*"
+ACCEPT_RESTRICT="*"
 
-# Repository Paths
-PORTDIR=/usr/portage
-DISTDIR=${PORTDIR}/distfiles
-PKGDIR=${PORTDIR}/packages
-RPMDIR=${PORTDIR}/rpm
+# Miscellaneous paths
+DISTDIR="/usr/portage/distfiles"
+PKGDIR="/usr/portage/packages"
+RPMDIR="/usr/portage/rpm"
 
 # Temporary build directory
-PORTAGE_TMPDIR=/var/tmp
+PORTAGE_TMPDIR="/var/tmp"
 
 # Fetching command (3 tries, passive ftp for firewall compatibility)
 FETCHCOMMAND="wget -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
@@ -45,17 +42,19 @@ RESUMECOMMAND="wget -c -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\$
 FETCHCOMMAND_RSYNC="rsync -avP \"\${URI}\" \"\${DISTDIR}/\${FILE}\""
 RESUMECOMMAND_RSYNC="rsync -avP \"\${URI}\" \"\${DISTDIR}/\${FILE}\""
 
-FETCHCOMMAND_SSH="bash -c \"x=\\\${2#ssh://} ; host=\\\${x%%/*} ; port=\\\${host##*:} ; host=\\\${host%:*} ; [[ \\\${host} = \\\${port} ]] && port=22 ; exec rsync --rsh=\\\"ssh -p\\\${port}\\\" -avP \\\"\\\${host}:/\\\${x#*/}\\\" \\\"\\\$1\\\"\" rsync \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
+# NOTE: rsync will evaluate quotes embedded inside PORTAGE_SSH_OPTS
+FETCHCOMMAND_SSH="bash -c \"x=\\\${2#ssh://} ; host=\\\${x%%/*} ; port=\\\${host##*:} ; host=\\\${host%:*} ; [[ \\\${host} = \\\${port} ]] && port=22 ; exec rsync --rsh=\\\"ssh -p\\\${port} \\\${3}\\\" -avP \\\"\\\${host}:/\\\${x#*/}\\\" \\\"\\\$1\\\"\" rsync \"\${DISTDIR}/\${FILE}\" \"\${URI}\" \"\${PORTAGE_SSH_OPTS}\""
 RESUMECOMMAND_SSH=${FETCHCOMMAND_SSH}
 
-FETCHCOMMAND_SFTP="bash -c \"x=\\\${2#sftp://} ; host=\\\${x%%/*} ; port=\\\${host##*:} ; host=\\\${host%:*} ; [[ \\\${host} = \\\${port} ]] && port=22 ; exec sftp -P \\\${port} \\\"\\\${host}:/\\\${x#*/}\\\" \\\"\\\$1\\\"\" sftp \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
+# NOTE: bash eval is used to evaluate quotes embedded inside PORTAGE_SSH_OPTS
+FETCHCOMMAND_SFTP="bash -c \"x=\\\${2#sftp://} ; host=\\\${x%%/*} ; port=\\\${host##*:} ; host=\\\${host%:*} ; [[ \\\${host} = \\\${port} ]] && port=22 ; eval \\\"declare -a ssh_opts=(\\\${3})\\\" ; exec sftp -P \\\${port} \\\"\\\${ssh_opts[@]}\\\" \\\"\\\${host}:/\\\${x#*/}\\\" \\\"\\\$1\\\"\" sftp \"\${DISTDIR}/\${FILE}\" \"\${URI}\" \"\${PORTAGE_SSH_OPTS}\""
 
 # Default user options
 FEATURES="assume-digests binpkg-logs
           config-protect-if-modified distlocks ebuild-locks
-          fixlafiles news parallel-fetch parse-eapi-ebuild-head protect-owned
+          fixlafiles merge-sync news parallel-fetch preserve-libs protect-owned
           sandbox sfperms strict unknown-features-warn unmerge-logs
-          unmerge-orphans userfetch"
+          unmerge-orphans userfetch userpriv usersandbox usersync"
 
 # Ignore file collisions in /lib/modules since files inside this directory
 # are never unmerged, and therefore collisions must be ignored in order for
@@ -63,15 +62,8 @@ FEATURES="assume-digests binpkg-logs
 # Ignore file collisions for unowned *.pyo and *.pyc files, this helps during
 # transition from compiling python modules in live file system to compiling
 # them in src_install() function.
-COLLISION_IGNORE="/lib/modules/* *.py[co]"
+COLLISION_IGNORE="/lib/modules/* *.py[co] *\$py.class"
 UNINSTALL_IGNORE="/lib/modules/*"
-
-# Enable preserve-libs for testing with portage versions that support it.
-# This setting is commented out for portage versions that don't support it.
-FEATURES="${FEATURES} preserve-libs"
-
-# Default chunksize for binhost comms
-PORTAGE_BINHOST_CHUNKSIZE="3000"
 
 # By default wait 5 secs before cleaning a package
 CLEAN_DELAY="5"
@@ -100,7 +92,7 @@ PORTAGE_RSYNC_RETRIES="-1"
 # Number of seconds rsync will wait before timing out.
 #RSYNC_TIMEOUT="180"
 
-PORTAGE_RSYNC_OPTS="--recursive --links --safe-links --perms --times --compress --force --whole-file --delete --stats --human-readable --timeout=180 --exclude=/distfiles --exclude=/local --exclude=/packages"
+PORTAGE_RSYNC_OPTS="--recursive --links --safe-links --perms --times --omit-dir-times --compress --force --whole-file --delete --stats --human-readable --timeout=180 --exclude=/distfiles --exclude=/local --exclude=/packages"
 
 # The number of days after the last `emerge --sync` that a warning
 # message should be produced.
@@ -121,7 +113,7 @@ PORTAGE_WORKDIR_MODE="0700"
 
 # Some defaults for elog
 PORTAGE_ELOG_CLASSES="log warn error"
-PORTAGE_ELOG_SYSTEM="save_summary echo"
+PORTAGE_ELOG_SYSTEM="save_summary:log,warn,error,qa echo"
 
 PORTAGE_ELOG_MAILURI="root"
 PORTAGE_ELOG_MAILSUBJECT="[portage] ebuild log for \${PACKAGE} on \${HOST}"
@@ -129,6 +121,10 @@ PORTAGE_ELOG_MAILFROM="portage@localhost"
 
 # Signing command used by repoman
 PORTAGE_GPG_SIGNING_COMMAND="gpg --sign --digest-algo SHA256 --clearsign --yes --default-key \"\${PORTAGE_GPG_KEY}\" --homedir \"\${PORTAGE_GPG_DIR}\" \"\${FILE}\""
+
+# Security labels are special, see bug #461868.
+# system.nfs4_acl attributes are irrelevant, see bug #475496.
+PORTAGE_XATTR_EXCLUDE="security.* system.nfs4_acl"
 
 #            *****************************
 #            **  DO NOT EDIT THIS FILE  **

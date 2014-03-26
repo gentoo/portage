@@ -1,38 +1,34 @@
-# Copyright 2005-2012 Gentoo Foundation
+# Copyright 2005-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-"""'This emaint module provides checks and maintenance for:
-Cleaning the PORT_LOGDIR logs
+"""Check and clean old logs in the PORT_LOGDIR.
 """
 
 
 module_spec = {
 	'name': 'logs',
-	'description': "Provides functions to scan, check and clean old logs " +\
-		"in the PORT_LOGDIR",
+	'description': __doc__,
 	'provides':{
 		'module1': {
 			'name': "logs",
 			'class': "CleanLogs",
-			'description':  "Clean out old logs from the PORT_LOGDIR",
+			'description': __doc__,
 			'functions': ['check','clean'],
 			'func_desc': {
 				'clean': {
 					"short": "-C", "long": "--clean",
 					"help": "Cleans out logs more than 7 days old (cleanlogs only)" + \
-								 "   modulke-options: -t, -p",
+								 "   module-options: -t, -p",
 					'status': "Cleaning %s",
-					'func': 'clean'
+					'action': 'store_true',
+					'func': 'clean',
 					},
 				'time': {
 					"short": "-t", "long": "--time",
 					"help": "(cleanlogs only): -t, --time   Delete logs older than NUM of days",
 					'status': "",
-					'action': 'store',
-					'type': 'int',
+					'type': int,
 					'dest': 'NUM',
-					'callback': None,
-					'callback_kwargs': None,
 					'func': 'clean'
 					},
 				'pretend': {
@@ -41,8 +37,6 @@ module_spec = {
 					'status': "",
 					'action': 'store_true',
 					'dest': 'pretend',
-					'callback': None,
-					'callback_kwargs': None,
 					'func': 'clean'
 					}
 				}

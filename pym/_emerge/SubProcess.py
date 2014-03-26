@@ -1,7 +1,10 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import logging
+
 from portage import os
+from portage.util import writemsg_level
 from _emerge.AbstractPollTask import AbstractPollTask
 import signal
 import errno
@@ -9,12 +12,7 @@ import errno
 class SubProcess(AbstractPollTask):
 
 	__slots__ = ("pid",) + \
-		("_files", "_reg_id")
-
-	# A file descriptor is required for the scheduler to monitor changes from
-	# inside a poll() loop. When logging is not enabled, create a pipe just to
-	# serve this purpose alone.
-	_dummy_pipe_fd = 9
+		("_dummy_pipe_fd", "_files", "_reg_id")
 
 	# This is how much time we allow for waitpid to succeed after
 	# we've sent a kill signal to our subprocess.
@@ -50,7 +48,13 @@ class SubProcess(AbstractPollTask):
 			try:
 				os.kill(self.pid, signal.SIGTERM)
 			except OSError as e:
-				if e.errno != errno.ESRCH:
+				if e.errno == errno.EPERM:
+					# Reported with hardened kernel (bug #358211).
+					writemsg_level(
+						"!!! kill: (%i) - Operation not permitted\n" %
+						(self.pid,), level=logging.ERROR,
+						noiselevel=-1)
+				elif e.errno != errno.ESRCH:
 					raise
 
 	def isAlive(self):
@@ -69,7 +73,13 @@ class SubProcess(AbstractPollTask):
 					try:
 						os.kill(self.pid, signal.SIGKILL)
 					except OSError as e:
-						if e.errno != errno.ESRCH:
+						if e.errno == errno.EPERM:
+							# Reported with hardened kernel (bug #358211).
+							writemsg_level(
+								"!!! kill: (%i) - Operation not permitted\n" %
+								(self.pid,), level=logging.ERROR,
+								noiselevel=-1)
+						elif e.errno != errno.ESRCH:
 							raise
 						del e
 					self._wait_loop(timeout=self._cancel_timeout)
@@ -116,7 +126,7 @@ class SubProcess(AbstractPollTask):
 		self._registered = False
 
 		if self._reg_id is not None:
-			self.scheduler.unregister(self._reg_id)
+			self.scheduler.source_remove(self._reg_id)
 			self._reg_id = None
 
 		if self._files is not None:

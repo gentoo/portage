@@ -1,46 +1,36 @@
 .TH "DISPATCH-CONF" "1" "Jan 2011" "Portage VERSION" "Portage"
-.SH NAME
-dispatch-conf \- Sanely update configuration files after emerging new packages
-.SH SYNOPSIS
-.B dispatch-conf
-.SH DESCRIPTION
-.I dispatch-conf
-is designed to be run after merging new packages in order to see if
-there are updates to the configuration files.  If a new
-configuration file will overwrite an old one, 
-.I dispatch-conf 
-will prompt the user for a decision about how to resolve the
-discrepancy.  
-Advantages of 
-.I dispatch-conf
-include easy rollback (changes to config files are stored either using
-patches or rcs) and the ability to automatically update config files
-that the user has never modified or 
+.SH "NAME"
+dispatch\-conf \- Sanely update configuration files after emerging new packages
+.SH "SYNOPSIS"
+.B dispatch\-conf
+.SH "DESCRIPTION"
+\fIdispatch\-conf\fR is designed to be run after merging new packages
+in order to see if there are updates to the configuration files.
+If a new configuration file will overwrite an old one, \fIdispatch\-conf\fR
+will prompt the user for a decision about how to resolve the discrepancy.
+Advantages of \fIdispatch\-conf\fR include easy rollback (changes to config
+files are stored either using patches or rcs) and the ability to
+automatically update config files that the user has never modified or
 that differ from the current version only in CVS cruft or white space.
 
-.I dispatch-conf
-will check all directories in the \fICONFIG_PROTECT\fR variable.  All
-config files found in \fICONFIG_PROTECT_MASK\fR will automatically be
-updated for you by \fIdispatch-conf\fR.  See \fBmake.conf\fR(5) for more
-information.
-.SH OPTIONS
+\fIdispatch\-conf\fR will check all directories in the \fICONFIG_PROTECT\fR
+variable.  All config files found in \fICONFIG_PROTECT_MASK\fR will
+automatically be updated for you by \fIdispatch\-conf\fR.  See
+\fBmake.conf\fR(5) for more information.
+.SH "OPTIONS"
 .TP
 None.
-.SH USAGE
-.I dispatch-conf
-must be run as root, since the config files to be replaced are generally
-owned by root.  Before running
-.I dispatch-conf
-for the first time the settings in 
-.B /etc/dispatch-conf.conf
-should be edited and the archive directory specified in 
-\fI/etc/dispatch-conf.conf\fR will need to be created.  All changes to
+.SH "USAGE"
+\fIdispatch\-conf\fR must be run as root, since the config files to be
+replaced are generally owned by root.  Before running \fIdispatch\-conf\fR
+for the first time the settings in \fB/etc/dispatch\-conf.conf\fR
+should be edited and the archive directory specified in
+\fB/etc/dispatch\-conf.conf\fR will need to be created.  All changes to
 config files will be saved in the archive directory either as patches
 or using rcs, making restoration to an earlier version rather simple.
 
-When dispatch-conf finds a config file that has a new update the user 
-is provided
-with a menu of options for how to handle the update:
+When \fIdispatch\-conf\fR finds a config file that has a new update the user
+is provided with a menu of options for how to handle the update:
 .TP
 .B u
 Update (replace) the current config file with the new config file and continue.
@@ -53,7 +43,7 @@ Skip to the next config file, leaving both the original config file and any
 \fICONFIG_PROTECT\fRed files.
 .TP
 .B e
-Edit the new config file, using the editor defined in \fI$EDITOR\fR.
+Edit the new config file, using the editor defined in \fIEDITOR\fR.
 .TP
 .B m
 Interactively merge the current and new config files.
@@ -63,17 +53,14 @@ Look at the differences between the pre-merged and merged config files.
 .TP
 .B t
 Toggle between the merged and pre-merged config files (in terms of which
-should be installed using the 
-.Qt u
-command).
+should be installed using the \fBu\fR command).
 .TP
 .B h
 Display a help screen.
 .TP
 .B q
-Quit
-.I dispatch-conf.
-.SH FILE MODES
+Quit \fIdispatch\-conf\fR.
+.SH "FILE MODES"
 \fBWARNING:\fR When \fB/etc/dispatch\-conf.conf\fR is configured
 to use \fBrcs\fR(1), read and execute permissions of archived
 files may be inherited from the first check in of a working file,
@@ -85,7 +72,7 @@ to RCS files by setting the permissions of the directory
 containing the files.
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
-.SH AUTHORS
+.SH "AUTHORS"
 .nf
 Jeremy Wohl
 Karl Trygve Kalleberg <karltk@gentoo.org>
@@ -94,8 +81,8 @@ Grant Goodyear <g2boojum@gentoo.org>
 .fi
 .SH "FILES"
 .TP
-.B /etc/dispatch-conf.conf
-Configuration settings for \fIdispatch-conf\fR are stored here.
+.B /etc/dispatch\-conf.conf
+Configuration settings for \fIdispatch\-conf\fR are stored here.
 .SH "SEE ALSO"
 .BR make.conf (5),
 .BR ci (1),

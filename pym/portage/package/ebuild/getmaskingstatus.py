@@ -1,5 +1,7 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 __all__ = ['getmaskingstatus']
 
@@ -7,11 +9,13 @@ import sys
 
 import portage
 from portage import eapi_is_supported, _eapi_is_deprecated
+from portage.exception import InvalidDependString
 from portage.localization import _
 from portage.package.ebuild.config import config
 from portage.versions import catpkgsplit, _pkg_str
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 
 class _UnmaskHint(object):
@@ -48,7 +52,7 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 		# emerge passed in a Package instance
 		pkg = mycpv
 		mycpv = pkg.cpv
-		metadata = pkg.metadata
+		metadata = pkg._metadata
 		installed = pkg.installed
 
 	if metadata is None:
@@ -65,10 +69,11 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 		else:
 			metadata["USE"] = ""
 
-	if not hasattr(mycpv, 'slot'):
+	try:
+		mycpv.slot
+	except AttributeError:
 		try:
-			mycpv = _pkg_str(mycpv, slot=metadata['SLOT'],
-				repo=metadata.get('repository'))
+			mycpv = _pkg_str(mycpv, metadata=metadata, settings=settings)
 		except portage.exception.InvalidData:
 			raise ValueError(_("invalid CPV: %s") % mycpv)
 
@@ -83,6 +88,7 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 	mygroups = settings._getKeywords(mycpv, metadata)
 	licenses = metadata["LICENSE"]
 	properties = metadata["PROPERTIES"]
+	restrict = metadata["RESTRICT"]
 	if not eapi_is_supported(eapi):
 		return [_MaskReason("EAPI", "EAPI %s" % eapi)]
 	elif _eapi_is_deprecated(eapi) and not installed:
@@ -122,6 +128,13 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 			if gp=="*":
 				kmask=None
 				break
+			elif gp == "~*":
+				for x in pgroups:
+					if x[:1] == "~":
+						kmask = None
+						break
+				if kmask is None:
+					break
 			elif gp=="-"+myarch and myarch in pgroups:
 				kmask="-"+myarch
 				break
@@ -160,6 +173,15 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 			rValue.append(_MaskReason("PROPERTIES", " ".join(msg)))
 	except portage.exception.InvalidDependString as e:
 		rValue.append(_MaskReason("invalid", "PROPERTIES: "+str(e)))
+
+	try:
+		missing_restricts = settings._getMissingRestrict(mycpv, metadata)
+		if missing_restricts:
+			msg = list(missing_restricts)
+			msg.append("in RESTRICT")
+			rValue.append(_MaskReason("RESTRICT", " ".join(msg)))
+	except InvalidDependString as e:
+		rValue.append(_MaskReason("invalid", "RESTRICT: %s" % (e,)))
 
 	# Only show KEYWORDS masks for installed packages
 	# if they're not masked for any other reason.

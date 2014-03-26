@@ -28,12 +28,12 @@ Refer to the
 </para>
 </section>
 <section id='package-ebuild-eapi-4-slot-abi-metadata-dependency-atom-slot-abi-equal-operator'>
-<title>Dependency Atom SLOT/ABI := Operator</title>
+<title>Dependency Atom slot/sub-slot := Operator</title>
 <para>
-Dependency atom syntax now supports SLOT/ABI := operators which allow the
-specific SLOT/ABI that a package is built against to be recorded, so that it's
+Dependency atom syntax now supports slot/sub-slot := operators which allow the
+specific slot/sub-slot that a package is built against to be recorded, so that it's
 possible to automatically determine when a package needs to be rebuilt due to
-having a dependency upgraded to a different SLOT/ABI.
+having a dependency upgraded to a different slot/sub-slot.
 </para>
 <para>
 For example, if a package is built
@@ -50,13 +50,13 @@ not contain a sub-slot part, the sub-slot is considered to be implicitly equal
 to "4.8".
 </para>
 <para>
-When dependencies are rewritten as described above, the SLOT/ABI recorded in
+When dependencies are rewritten as described above, the slot/sub-slot recorded in
 the atom is always equal to that of the highest matched version that is
 installed at build time.
 </para>
 </section>
 <section id='package-ebuild-eapi-4-slot-abi-metadata-dependency-atom-slot-abi-asterisk-operator'>
-<title>Dependency Atom SLOT/ABI :* Operator</title>
+<title>Dependency Atom slot/sub-slot :* Operator</title>
 <para>
 The new :* operator is used to express dependencies that can change versions
 at runtime without requiring reverse dependencies to be rebuilt. For example,

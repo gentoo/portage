@@ -1,12 +1,12 @@
-# Copyright 2007-2011 Gentoo Foundation
+# Copyright 2007-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
 
+from portage.exception import InvalidData
 from portage.localization import _
 from portage._sets.base import PackageSet
 from portage._sets import get_boolean, SetConfigError
-from portage.versions import cpv_getkey
 import portage
 
 class LibraryConsumerSet(PackageSet):
@@ -22,14 +22,14 @@ class LibraryConsumerSet(PackageSet):
 		for p in paths:
 			for cpv in self.dbapi._linkmap.getOwners(p):
 				try:
-					slot, = self.dbapi.aux_get(cpv, ["SLOT"])
-				except KeyError:
+					pkg = self.dbapi._pkg_str(cpv, None)
+				except (KeyError, InvalidData):
 					# This is expected for preserved libraries
 					# of packages that have been uninstalled
 					# without replacement.
 					pass
 				else:
-					rValue.add("%s:%s" % (cpv_getkey(cpv), slot))
+					rValue.add("%s:%s" % (pkg.cp, pkg.slot))
 		return rValue
 
 class LibraryFileConsumerSet(LibraryConsumerSet):
@@ -49,7 +49,8 @@ class LibraryFileConsumerSet(LibraryConsumerSet):
 	def load(self):
 		consumers = set()
 		for lib in self.files:
-			consumers.update(self.dbapi._linkmap.findConsumers(lib))
+			consumers.update(
+				self.dbapi._linkmap.findConsumers(lib, greedy=False))
 
 		if not consumers:
 			return
@@ -77,10 +78,10 @@ class PreservedLibraryConsumerSet(LibraryConsumerSet):
 				for lib in libs:
 					if self.debug:
 						print(lib)
-						for x in sorted(self.dbapi._linkmap.findConsumers(lib)):
+						for x in sorted(self.dbapi._linkmap.findConsumers(lib, greedy=False)):
 							print("    ", x)
 						print("-"*40)
-					consumers.update(self.dbapi._linkmap.findConsumers(lib))
+					consumers.update(self.dbapi._linkmap.findConsumers(lib, greedy=False))
 			# Don't rebuild packages just because they contain preserved
 			# libs that happen to be consumers of other preserved libs.
 			for libs in plib_dict.values():

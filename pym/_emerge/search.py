@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -69,7 +69,7 @@ class search(object):
 				return db.aux_get(*args, **kwargs)
 			except KeyError:
 				pass
-		raise
+		raise KeyError(args[0])
 
 	def _findname(self, *args, **kwargs):
 		for db in self._dbs:

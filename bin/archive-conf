@@ -1,5 +1,5 @@
-#!/usr/bin/python
-# Copyright 1999-2006 Gentoo Foundation
+#!/usr/bin/python -b
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 #
@@ -12,42 +12,20 @@
 from __future__ import print_function
 
 import sys
-try:
-    import portage
-except ImportError:
-    from os import path as osp
-    sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-    import portage
 
+from os import path as osp
+pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
+sys.path.insert(0, pym_path)
+import portage
+portage._internal_caller = True
+
+import portage.dispatch_conf
 from portage import os
-from portage import dispatch_conf
+from portage.checksum import perform_md5
 
 FIND_EXTANT_CONTENTS  = "find %s -name CONTENTS"
 
 MANDATORY_OPTS  = [ 'archive-dir' ]
-
-try:
-    import fchksum
-    def perform_checksum(filename): return fchksum.fmd5t(filename)
-except ImportError:
-    import md5
-    def md5_to_hex(md5sum):
-        hexform = ""
-        for ix in range(len(md5sum)):
-            hexform = hexform + "%02x" % ord(md5sum[ix])
-        return hexform.lower()
-    
-    def perform_checksum(filename):
-        f = open(filename, 'rb')
-        blocksize=32768
-        data = f.read(blocksize)
-        size = 0
-        sum = md5.new()
-        while data:
-            sum.update(data)
-            size = size + len(data)
-            data = f.read(blocksize)
-        return (md5_to_hex(sum.digest()),size)
 
 def archive_conf():
     args = []
@@ -63,19 +41,19 @@ def archive_conf():
         md5_match_hash[conf] = ''
 
     # Find all the CONTENT files in VDB_PATH.
-    content_files += os.popen(FIND_EXTANT_CONTENTS %
-			(os.path.join(portage.settings['EROOT'], portage.VDB_PATH))).readlines()
+    with os.popen(FIND_EXTANT_CONTENTS % (os.path.join(portage.settings['EROOT'], portage.VDB_PATH))) as f:
+	    content_files += f.readlines()
 
     # Search for the saved md5 checksum of all the specified config files
     # and see if the current file is unmodified or not.
     try:
         todo_cnt = len(args)
-        for file in content_files:
-            file = file.rstrip()
+        for filename in content_files:
+            filename = filename.rstrip()
             try:
-                contents = open(file, "r")
+                contents = open(filename, "r")
             except IOError as e:
-                print('archive-conf: Unable to open %s: %s' % (file, e), file=sys.stderr)
+                print('archive-conf: Unable to open %s: %s' % (filename, e), file=sys.stderr)
                 sys.exit(1)
             lines = contents.readlines()
             for line in lines:
@@ -84,7 +62,7 @@ def archive_conf():
                     for conf in args:
                         if items[1] == conf:
                             stored = items[2].lower()
-                            real = perform_checksum(conf)[0].lower()
+                            real = perform_md5(conf).lower()
                             if stored == real:
                                 md5_match_hash[conf] = conf
                             todo_cnt -= 1

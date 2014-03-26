@@ -1,0 +1,65 @@
+--- make.conf.example
++++ make.conf.example
+@@ -22,6 +22,16 @@
+ # Example:
+ #USE="X gtk gnome -alsa"
+ 
++# Host Setting
++# ============
++#
++# Change this line as appropriate (i686, i586, i486 or i386).
++# All modern systems (even Athlons) should use "i686-pc-linux-gnu".
++# All K6's are i586.
++# The version number at the end has to correspond to the version of the
++# profile and of freebsd-lib package.
++CHOST="i686-gentoo-freebsd6.1"
++
+ # Host and optimization settings 
+ # ==============================
+ #
+@@ -39,10 +49,34 @@
+ # -frecord-gcc-switches, since otherwise the check could result in false
+ # positive results.
+ #
+-# Please refer to the GCC manual for a list of possible values.
++# -mtune=<cpu-type> means optimize code for the particular type of CPU without
++# breaking compatibility with other CPUs.
+ #
+-#CFLAGS="-O2 -pipe"
++# -march=<cpu-type> means to take full advantage of the ABI and instructions
++# for the particular CPU; this will break compatibility with older CPUs (for
++# example, -march=athlon-xp code will not run on a regular Athlon, and
++# -march=i686 code will not run on a Pentium Classic.
++#
++# CPU types supported in gcc-3.2 and higher: athlon-xp, athlon-mp,
++# athlon-tbird, athlon, k6, k6-2, k6-3, i386, i486, i586 (Pentium), i686
++# (PentiumPro), pentium, pentium-mmx, pentiumpro, pentium2 (Celeron),
++# pentium3, and pentium4.
++#
++# Note that Gentoo Linux 1.4 and higher include at least gcc-3.2.
++# 
++# CPU types supported in gcc-2.95*: k6, i386, i486, i586 (Pentium), i686
++# (Pentium Pro), pentium, pentiumpro Gentoo Linux 1.2 and below use gcc-2.95*
++#
++# CRITICAL WARNINGS: ****************************************************** #
++# K6 markings are deceptive. Avoid setting -march for them. See Bug #24379. #
++# Pentium-M CPUs should not enable sse2 until at least gcc-3.4. Bug 50616. #
++# ************************************************************************* #
+ #
++# Decent examples:
++#
++#CFLAGS="-mtune=athlon-xp -O2 -pipe"
++#CFLAGS="-march=pentium3 -O2 -pipe"
++
+ # If you set a CFLAGS above, then this line will set your default C++ flags to
+ # the same settings.
+ #CXXFLAGS="${CFLAGS}"
+@@ -76,7 +110,7 @@
+ # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
+ # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
+ #
+-#ACCEPT_KEYWORDS="~arch"
++ACCEPT_KEYWORDS="~x86-fbsd"
+ 
+ # ACCEPT_LICENSE is used to mask packages based on licensing restrictions.
+ # It may contain both license and group names, where group names are

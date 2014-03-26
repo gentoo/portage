@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.SubProcess import SubProcess
@@ -6,12 +6,14 @@ import sys
 from portage.cache.mappings import slot_dict_class
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.package.ebuild._eapi_invalid:eapi_invalid',
+	'portage.package.ebuild._metadata_invalid:eapi_invalid',
 )
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
+from portage.dep import extract_unpack_dependencies
+from portage.eapi import eapi_has_automatic_unpack_dependencies
 
 import errno
 import fcntl
@@ -25,12 +27,11 @@ class EbuildMetadataPhase(SubProcess):
 	"""
 
 	__slots__ = ("cpv", "eapi_supported", "ebuild_hash", "fd_pipes",
-		"metadata", "portdb", "repo_path", "settings") + \
+		"metadata", "portdb", "repo_path", "settings", "write_auxdb") + \
 		("_eapi", "_eapi_lineno", "_raw_metadata",)
 
 	_file_names = ("ebuild",)
 	_files_dict = slot_dict_class(_file_names, prefix="")
-	_metadata_fd = 9
 
 	def _start(self):
 		ebuild_path = self.ebuild_hash.location
@@ -49,14 +50,14 @@ class EbuildMetadataPhase(SubProcess):
 			# An empty EAPI setting is invalid.
 			self._eapi_invalid(None)
 			self._set_returncode((self.pid, 1 << 8))
-			self.wait()
+			self._async_wait()
 			return
 
 		self.eapi_supported = portage.eapi_is_supported(parsed_eapi)
 		if not self.eapi_supported:
 			self.metadata = {"EAPI": parsed_eapi}
 			self._set_returncode((self.pid, os.EX_OK << 8))
-			self.wait()
+			self._async_wait()
 			return
 
 		settings = self.settings
@@ -74,28 +75,41 @@ class EbuildMetadataPhase(SubProcess):
 
 		null_input = open('/dev/null', 'rb')
 		fd_pipes.setdefault(0, null_input.fileno())
-		fd_pipes.setdefault(1, sys.stdout.fileno())
-		fd_pipes.setdefault(2, sys.stderr.fileno())
+		fd_pipes.setdefault(1, sys.__stdout__.fileno())
+		fd_pipes.setdefault(2, sys.__stderr__.fileno())
 
 		# flush any pending output
+		stdout_filenos = (sys.__stdout__.fileno(), sys.__stderr__.fileno())
 		for fd in fd_pipes.values():
-			if fd == sys.stdout.fileno():
-				sys.stdout.flush()
-			if fd == sys.stderr.fileno():
-				sys.stderr.flush()
+			if fd in stdout_filenos:
+				sys.__stdout__.flush()
+				sys.__stderr__.flush()
+				break
 
 		self._files = self._files_dict()
 		files = self._files
 
 		master_fd, slave_fd = os.pipe()
+
 		fcntl.fcntl(master_fd, fcntl.F_SETFL,
 			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 
-		fd_pipes[self._metadata_fd] = slave_fd
+		# FD_CLOEXEC is enabled by default in Python >=3.4.
+		if sys.hexversion < 0x3040000:
+			try:
+				fcntl.FD_CLOEXEC
+			except AttributeError:
+				pass
+			else:
+				fcntl.fcntl(master_fd, fcntl.F_SETFD,
+					fcntl.fcntl(master_fd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
+
+		fd_pipes[slave_fd] = slave_fd
+		settings["PORTAGE_PIPE_FD"] = str(slave_fd)
 
 		self._raw_metadata = []
 		files.ebuild = master_fd
-		self._reg_id = self.scheduler.register(files.ebuild,
+		self._reg_id = self.scheduler.io_add_watch(files.ebuild,
 			self._registered_events, self._output_handler)
 		self._registered = True
 
@@ -103,6 +117,7 @@ class EbuildMetadataPhase(SubProcess):
 			settings=settings, debug=debug,
 			mydbapi=self.portdb, tree="porttree",
 			fd_pipes=fd_pipes, returnpid=True)
+		settings.pop("PORTAGE_PIPE_FD", None)
 
 		os.close(slave_fd)
 		null_input.close()
@@ -111,11 +126,10 @@ class EbuildMetadataPhase(SubProcess):
 			# doebuild failed before spawning
 			self._unregister()
 			self._set_returncode((self.pid, retval << 8))
-			self.wait()
+			self._async_wait()
 			return
 
 		self.pid = retval[0]
-		portage.process.spawned_pids.remove(self.pid)
 
 	def _output_handler(self, fd, event):
 
@@ -141,8 +155,7 @@ class EbuildMetadataPhase(SubProcess):
 	def _set_returncode(self, wait_retval):
 		SubProcess._set_returncode(self, wait_retval)
 		# self._raw_metadata is None when _start returns
-		# early due to an unsupported EAPI detected with
-		# FEATURES=parse-eapi-ebuild-head
+		# early due to an unsupported EAPI
 		if self.returncode == os.EX_OK and \
 			self._raw_metadata is not None:
 			metadata_lines = _unicode_decode(b''.join(self._raw_metadata),
@@ -163,8 +176,7 @@ class EbuildMetadataPhase(SubProcess):
 				if (not metadata["EAPI"] or self.eapi_supported) and \
 					metadata["EAPI"] != parsed_eapi:
 					self._eapi_invalid(metadata)
-					if 'parse-eapi-ebuild-head' in self.settings.features:
-						metadata_valid = False
+					metadata_valid = False
 
 			if metadata_valid:
 				# Since we're supposed to be able to efficiently obtain the
@@ -181,8 +193,18 @@ class EbuildMetadataPhase(SubProcess):
 						metadata["_eclasses_"] = {}
 					metadata.pop("INHERITED", None)
 
-					self.portdb._write_cache(self.cpv,
-						self.repo_path, metadata, self.ebuild_hash)
+					if eapi_has_automatic_unpack_dependencies(metadata["EAPI"]):
+						repo = self.portdb.repositories.get_name_for_location(self.repo_path)
+						unpackers = self.settings.unpack_dependencies.get(repo, {}).get(metadata["EAPI"], {})
+						unpack_dependencies = extract_unpack_dependencies(metadata["SRC_URI"], unpackers)
+						if unpack_dependencies:
+							metadata["DEPEND"] += (" " if metadata["DEPEND"] else "") + unpack_dependencies
+
+					# If called by egencache, this cache write is
+					# undesirable when metadata-transfer is disabled.
+					if self.write_auxdb is not False:
+						self.portdb._write_cache(self.cpv,
+							self.repo_path, metadata, self.ebuild_hash)
 				else:
 					metadata = {"EAPI": metadata["EAPI"]}
 				self.metadata = metadata

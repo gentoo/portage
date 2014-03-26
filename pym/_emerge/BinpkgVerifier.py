@@ -1,75 +1,120 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from _emerge.AsynchronousTask import AsynchronousTask
-from portage.util import writemsg
+import errno
 import io
 import sys
+
+from _emerge.CompositeTask import CompositeTask
 import portage
 from portage import os
+from portage.checksum import (_apply_hash_filter,
+	_filter_unaccelarated_hashes, _hash_filter)
+from portage.output import EOutput
+from portage.util._async.FileDigester import FileDigester
 from portage.package.ebuild.fetch import _checksum_failure_temp_file
 
-class BinpkgVerifier(AsynchronousTask):
-	__slots__ = ("logfile", "pkg", "scheduler")
+class BinpkgVerifier(CompositeTask):
+	__slots__ = ("logfile", "pkg", "_digests", "_pkg_path")
 
 	def _start(self):
-		"""
-		Note: Unlike a normal AsynchronousTask.start() method,
-		this one does all work is synchronously. The returncode
-		attribute will be set before it returns.
-		"""
 
-		pkg = self.pkg
-		root_config = pkg.root_config
-		bintree = root_config.trees["bintree"]
-		rval = os.EX_OK
+		bintree = self.pkg.root_config.trees["bintree"]
+		digests = bintree._get_digests(self.pkg)
+		if "size" not in digests:
+			self.returncode = os.EX_OK
+			self._async_wait()
+			return
+
+		digests = _filter_unaccelarated_hashes(digests)
+		hash_filter = _hash_filter(
+			bintree.settings.get("PORTAGE_CHECKSUM_FILTER", ""))
+		if not hash_filter.transparent:
+			digests = _apply_hash_filter(digests, hash_filter)
+
+		self._digests = digests
+		self._pkg_path = bintree.getname(self.pkg.cpv)
+
+		try:
+			size = os.stat(self._pkg_path).st_size
+		except OSError as e:
+			if e.errno not in (errno.ENOENT, errno.ESTALE):
+				raise
+			self.scheduler.output(("!!! Fetching Binary failed "
+				"for '%s'\n") % self.pkg.cpv, log_path=self.logfile,
+				background=self.background)
+			self.returncode = 1
+			self._async_wait()
+			return
+		else:
+			if size != digests["size"]:
+				self._digest_exception("size", size, digests["size"])
+				self.returncode = 1
+				self._async_wait()
+				return
+
+		self._start_task(FileDigester(file_path=self._pkg_path,
+			hash_names=(k for k in digests if k != "size"),
+			background=self.background, logfile=self.logfile,
+			scheduler=self.scheduler),
+			self._digester_exit)
+
+	def _digester_exit(self, digester):
+
+		if self._default_exit(digester) != os.EX_OK:
+			self.wait()
+			return
+
+		for hash_name in digester.hash_names:
+			if digester.digests[hash_name] != self._digests[hash_name]:
+				self._digest_exception(hash_name,
+					digester.digests[hash_name], self._digests[hash_name])
+				self.returncode = 1
+				self.wait()
+				return
+
+		if self.pkg.root_config.settings.get("PORTAGE_QUIET") != "1":
+			self._display_success()
+
+		self.returncode = os.EX_OK
+		self.wait()
+
+	def _display_success(self):
 		stdout_orig = sys.stdout
 		stderr_orig = sys.stderr
 		global_havecolor = portage.output.havecolor
 		out = io.StringIO()
-		file_exists = True
 		try:
 			sys.stdout = out
 			sys.stderr = out
 			if portage.output.havecolor:
 				portage.output.havecolor = not self.background
-			try:
-				bintree.digestCheck(pkg)
-			except portage.exception.FileNotFound:
-				writemsg("!!! Fetching Binary failed " + \
-					"for '%s'\n" % pkg.cpv, noiselevel=-1)
-				rval = 1
-				file_exists = False
-			except portage.exception.DigestException as e:
-				writemsg("\n!!! Digest verification failed:\n",
-					noiselevel=-1)
-				writemsg("!!! %s\n" % e.value[0],
-					noiselevel=-1)
-				writemsg("!!! Reason: %s\n" % e.value[1],
-					noiselevel=-1)
-				writemsg("!!! Got: %s\n" % e.value[2],
-					noiselevel=-1)
-				writemsg("!!! Expected: %s\n" % e.value[3],
-					noiselevel=-1)
-				rval = 1
-			if rval == os.EX_OK:
-				pass
-			elif file_exists:
-				pkg_path = bintree.getname(pkg.cpv)
-				head, tail = os.path.split(pkg_path)
-				temp_filename = _checksum_failure_temp_file(head, tail)
-				writemsg("File renamed to '%s'\n" % (temp_filename,),
-					noiselevel=-1)
+
+			eout = EOutput()
+			eout.ebegin("%s %s ;-)" % (os.path.basename(self._pkg_path),
+				" ".join(sorted(self._digests))))
+			eout.eend(0)
+
 		finally:
 			sys.stdout = stdout_orig
 			sys.stderr = stderr_orig
 			portage.output.havecolor = global_havecolor
 
-		msg = out.getvalue()
-		if msg:
-			self.scheduler.output(msg, log_path=self.logfile,
-				background=self.background)
+		self.scheduler.output(out.getvalue(), log_path=self.logfile,
+			background=self.background)
 
-		self.returncode = rval
-		self.wait()
+	def _digest_exception(self, name, value, expected):
 
+		head, tail = os.path.split(self._pkg_path)
+		temp_filename = _checksum_failure_temp_file(head, tail)
+
+		self.scheduler.output((
+			"\n!!! Digest verification failed:\n"
+			"!!! %s\n"
+			"!!! Reason: Failed on %s verification\n"
+			"!!! Got: %s\n"
+			"!!! Expected: %s\n"
+			"File renamed to '%s'\n") %
+			(self._pkg_path, name, value, expected, temp_filename),
+			log_path=self.logfile,
+			background=self.background)

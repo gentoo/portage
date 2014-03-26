@@ -1,9 +1,8 @@
-#!/usr/bin/python -O
-# Copyright 2005-2012 Gentoo Foundation
+#!/usr/bin/python -bO
+# Copyright 2005-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-"""'The emaint program provides an interface to system health
-	checks and maintenance.
+"""System health checks and maintenance utilities.
 """
 
 from __future__ import print_function
@@ -14,10 +13,10 @@ import errno
 try:
 	import signal
 
-	def exithandler(signum,frame):
+	def exithandler(signum, _frame):
 		signal.signal(signal.SIGINT, signal.SIG_IGN)
 		signal.signal(signal.SIGTERM, signal.SIG_IGN)
-		sys.exit(1)
+		sys.exit(128 + signum)
 
 	signal.signal(signal.SIGINT, exithandler)
 	signal.signal(signal.SIGTERM, exithandler)
@@ -26,13 +25,11 @@ try:
 except KeyboardInterrupt:
 	sys.exit(1)
 
-try:
-	import portage
-except ImportError:
-	from os import path as osp
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
-
+from os import path as osp
+pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
+sys.path.insert(0, pym_path)
+import portage
+portage._internal_caller = True
 from portage.emaint.main import emaint_main
 
 try:

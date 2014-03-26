@@ -1,17 +1,18 @@
 # data.py -- Calculated/Discovered Data Values
-# Copyright 1998-2011 Gentoo Foundation
+# Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import os, pwd, grp, platform
+import os, pwd, grp, platform, sys
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.output:colorize',
 	'portage.util:writemsg',
+	'subprocess'
 )
 from portage.localization import _
 
-ostype=platform.system()
+ostype = platform.system()
 userland = None
 if ostype == "DragonFly" or ostype.endswith("BSD"):
 	userland = "BSD"
@@ -22,10 +23,10 @@ lchown = getattr(os, "lchown", None)
 
 if not lchown:
 	if ostype == "Darwin":
-		def lchown(*pos_args, **key_args):
+		def lchown(*_args, **_kwargs):
 			pass
 	else:
-		def lchown(*pargs, **kwargs):
+		def lchown(*_args, **_kwargs):
 			writemsg(colorize("BAD", "!!!") + _(
 				" It seems that os.lchown does not"
 				" exist.  Please rebuild python.\n"), noiselevel=-1)
@@ -58,11 +59,10 @@ def portage_group_warning():
 # If the "wheel" group does not exist then wheelgid falls back to 0.
 # If the "portage" group does not exist then portage_uid falls back to wheelgid.
 
-uid=os.getuid()
-wheelgid=0
-
+uid = os.getuid()
+wheelgid = 0
 try:
-	wheelgid=grp.getgrnam("wheel")[2]
+	wheelgid = grp.getgrnam("wheel")[2]
 except KeyError:
 	pass
 
@@ -85,19 +85,27 @@ def _get_global(k):
 		elif portage.const.EPREFIX:
 			secpass = 2
 		#Discover the uid and gid of the portage user/group
+		keyerror = False
 		try:
 			portage_uid = pwd.getpwnam(_get_global('_portage_username')).pw_uid
-			_portage_grpname = _get_global('_portage_grpname')
-			if platform.python_implementation() == 'PyPy':
-				# Somehow this prevents "TypeError: expected string" errors
-				# from grp.getgrnam() with PyPy 1.7
-				_portage_grpname = str(_portage_grpname)
-			portage_gid = grp.getgrnam(_portage_grpname).gr_gid
-			if secpass < 1 and portage_gid in os.getgroups():
-				secpass = 1
 		except KeyError:
+			keyerror = True
 			portage_uid = 0
+
+		try:
+			portage_gid = grp.getgrnam(_get_global('_portage_grpname')).gr_gid
+		except KeyError:
+			keyerror = True
 			portage_gid = 0
+
+		if secpass < 1 and portage_gid in os.getgroups():
+			secpass = 1
+
+		# Suppress this error message if both PORTAGE_GRPNAME and
+		# PORTAGE_USERNAME are set to "root", for things like
+		# Android (see bug #454060).
+		if keyerror and not (_get_global('_portage_username') == "root" and
+			_get_global('_portage_grpname') == "root"):
 			writemsg(colorize("BAD",
 				_("portage: 'portage' user or group missing.")) + "\n", noiselevel=-1)
 			writemsg(_(
@@ -129,10 +137,28 @@ def _get_global(k):
 			# Get a list of group IDs for the portage user. Do not use
 			# grp.getgrall() since it is known to trigger spurious
 			# SIGPIPE problems with nss_ldap.
-			mystatus, myoutput = \
-				portage.subprocess_getstatusoutput("id -G %s" % _portage_username)
-			if mystatus == os.EX_OK:
-				for x in myoutput.split():
+			cmd = ["id", "-G", _portage_username]
+
+			if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000:
+				# Python 3.1 _execvp throws TypeError for non-absolute executable
+				# path passed as bytes (see http://bugs.python.org/issue8513).
+				fullname = portage.process.find_binary(cmd[0])
+				if fullname is None:
+					globals()[k] = v
+					_initialized_globals.add(k)
+					return v
+				cmd[0] = fullname
+
+			encoding = portage._encodings['content']
+			cmd = [portage._unicode_encode(x,
+				encoding=encoding, errors='strict') for x in cmd]
+			proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+				stderr=subprocess.STDOUT)
+			myoutput = proc.communicate()[0]
+			status = proc.wait()
+			if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
+				for x in portage._unicode_decode(myoutput,
+					encoding=encoding, errors='strict').split():
 					try:
 						v.append(int(x))
 					except ValueError:
@@ -213,10 +239,18 @@ def _init(settings):
 	if '_portage_grpname' not in _initialized_globals and \
 		'_portage_username' not in _initialized_globals:
 
+		# Prevents "TypeError: expected string" errors
+		# from grp.getgrnam() with PyPy
+		native_string = platform.python_implementation() == 'PyPy'
+
 		v = settings.get('PORTAGE_GRPNAME', 'portage')
+		if native_string:
+			v = portage._native_string(v)
 		globals()['_portage_grpname'] = v
 		_initialized_globals.add('_portage_grpname')
 
 		v = settings.get('PORTAGE_USERNAME', 'portage')
+		if native_string:
+			v = portage._native_string(v)
 		globals()['_portage_username'] = v
 		_initialized_globals.add('_portage_username')

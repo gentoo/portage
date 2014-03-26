@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import platform
@@ -53,17 +53,18 @@ class stdout_spinner(object):
 	def update_basic(self):
 		self.spinpos = (self.spinpos + 1) % 500
 		if self._return_early():
-			return
+			return True
 		if (self.spinpos % 100) == 0:
 			if self.spinpos == 0:
 				sys.stdout.write(". ")
 			else:
 				sys.stdout.write(".")
 		sys.stdout.flush()
+		return True
 
 	def update_scroll(self):
 		if self._return_early():
-			return
+			return True
 		if(self.spinpos >= len(self.scroll_sequence)):
 			sys.stdout.write(darkgreen(" \b\b\b" + self.scroll_sequence[
 				len(self.scroll_sequence) - 1 - (self.spinpos % len(self.scroll_sequence))]))
@@ -71,13 +72,15 @@ class stdout_spinner(object):
 			sys.stdout.write(green("\b " + self.scroll_sequence[self.spinpos]))
 		sys.stdout.flush()
 		self.spinpos = (self.spinpos + 1) % (2 * len(self.scroll_sequence))
+		return True
 
 	def update_twirl(self):
 		self.spinpos = (self.spinpos + 1) % len(self.twirl_sequence)
 		if self._return_early():
-			return
+			return True
 		sys.stdout.write("\b\b " + self.twirl_sequence[self.spinpos])
 		sys.stdout.flush()
+		return True
 
 	def update_quiet(self):
-		return
+		return True

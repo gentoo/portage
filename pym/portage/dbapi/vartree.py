@@ -1,5 +1,7 @@
-# Copyright 1998-2012 Gentoo Foundation
+# Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 __all__ = [
 	"vardbapi", "vartree", "dblink"] + \
@@ -11,8 +13,9 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.data:portage_gid,portage_uid,secpass',
 	'portage.dbapi.dep_expand:dep_expand',
 	'portage.dbapi._MergeProcess:MergeProcess',
+	'portage.dbapi._SyncfsProcess:SyncfsProcess',
 	'portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list,' + \
-	 	'use_reduce,_get_slot_re',
+	 	'use_reduce,_slot_separator,_repo_separator',
 	'portage.eapi:_get_eapi_attrs',
 	'portage.elog:collect_ebuild_messages,collect_messages,' + \
 		'elog_process,_merge_logentries',
@@ -22,7 +25,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 		'_merge_unicode_error', '_spawn_phase',
 	'portage.package.ebuild.prepare_build_dirs:prepare_build_dirs',
 	'portage.package.ebuild._ipc.QueryCommand:QueryCommand',
-	'portage.update:fixdbentries',
 	'portage.util:apply_secpass_permissions,ConfigProtect,ensure_dirs,' + \
 		'writemsg,writemsg_level,write_atomic,atomic_ofstream,writedict,' + \
 		'grabdict,normalize_path,new_protect_filename',
@@ -30,17 +32,20 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.env_update:env_update',
 	'portage.util.listdir:dircache,listdir',
 	'portage.util.movefile:movefile',
+	'portage.util.writeable_check:get_ro_checker',
 	'portage.util._dyn_libs.PreservedLibsRegistry:PreservedLibsRegistry',
 	'portage.util._dyn_libs.LinkageMapELF:LinkageMapELF@LinkageMap',
+	'portage.util._async.SchedulerInterface:SchedulerInterface',
+	'portage.util._eventloop.EventLoop:EventLoop',
+	'portage.util._eventloop.global_event_loop:global_event_loop',
 	'portage.versions:best,catpkgsplit,catsplit,cpv_getkey,vercmp,' + \
-		'_pkgsplit@pkgsplit,_pkg_str',
+		'_get_slot_re,_pkgsplit@pkgsplit,_pkg_str,_unknown_repo',
 	'subprocess',
 	'tarfile',
 )
 
 from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, \
 	PORTAGE_PACKAGE_ATOM, PRIVATE_PATH, VDB_PATH
-from portage.const import _ENABLE_DYN_LINK_MAP, _ENABLE_PRESERVE_LIBS
 from portage.dbapi import dbapi
 from portage.exception import CommandNotFound, \
 	InvalidData, InvalidLocation, InvalidPackageName, \
@@ -61,7 +66,6 @@ from portage import _unicode_encode
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.emergelog import emergelog
-from _emerge.PollScheduler import PollScheduler
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.SpawnProcess import SpawnProcess
 
@@ -73,6 +77,7 @@ import io
 from itertools import chain
 import logging
 import os as _os
+import platform
 import pwd
 import re
 import stat
@@ -88,6 +93,7 @@ except ImportError:
 	import pickle
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 	long = int
 	_unicode = str
@@ -111,7 +117,8 @@ class vardbapi(dbapi):
 	_aux_cache_keys_re = re.compile(r'^NEEDED\..*$')
 	_aux_multi_line_re = re.compile(r'^(CONTENTS|NEEDED\..*)$')
 
-	def __init__(self, _unused_param=None, categories=None, settings=None, vartree=None):
+	def __init__(self, _unused_param=DeprecationWarning,
+		categories=None, settings=None, vartree=None):
 		"""
 		The categories parameter is unused since the dbapi class
 		now has a categories property that is generated from the
@@ -141,11 +148,11 @@ class vardbapi(dbapi):
 			settings = portage.settings
 		self.settings = settings
 
-		if _unused_param is not None and _unused_param != settings['ROOT']:
+		if _unused_param is not DeprecationWarning:
 			warnings.warn("The first parameter of the "
 				"portage.dbapi.vartree.vardbapi"
-				" constructor is now unused. Use "
-				"settings['ROOT'] instead.",
+				" constructor is now unused. Instead "
+				"settings['ROOT'] is used.",
 				DeprecationWarning, stacklevel=2)
 
 		self._eroot = settings['EROOT']
@@ -162,7 +169,7 @@ class vardbapi(dbapi):
 		self.vartree = vartree
 		self._aux_cache_keys = set(
 			["BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "DESCRIPTION",
-			"EAPI", "HOMEPAGE", "IUSE", "KEYWORDS",
+			"EAPI", "HDEPEND", "HOMEPAGE", "IUSE", "KEYWORDS",
 			"LICENSE", "PDEPEND", "PROPERTIES", "PROVIDE", "RDEPEND",
 			"repository", "RESTRICT" , "SLOT", "USE", "DEFINED_PHASES",
 			])
@@ -172,15 +179,9 @@ class vardbapi(dbapi):
 		self._counter_path = os.path.join(self._eroot,
 			CACHE_PATH, "counter")
 
-		self._plib_registry = None
-		if _ENABLE_PRESERVE_LIBS:
-			self._plib_registry = PreservedLibsRegistry(settings["ROOT"],
-				os.path.join(self._eroot, PRIVATE_PATH,
-				"preserved_libs_registry"))
-
-		self._linkmap = None
-		if _ENABLE_DYN_LINK_MAP:
-			self._linkmap = LinkageMap(self)
+		self._plib_registry = PreservedLibsRegistry(settings["ROOT"],
+			os.path.join(self._eroot, PRIVATE_PATH, "preserved_libs_registry"))
+		self._linkmap = LinkageMap(self)
 		self._owners = self._owners_db(self)
 
 		self._cached_counter = None
@@ -368,7 +369,7 @@ class vardbapi(dbapi):
 					del e
 			write_atomic(os.path.join(newpath, "PF"), new_pf+"\n")
 			write_atomic(os.path.join(newpath, "CATEGORY"), mynewcat+"\n")
-			fixdbentries([mylist], newpath, eapi=mycpv.eapi)
+
 		return moves
 
 	def cp_list(self, mycp, use_cache=1):
@@ -376,7 +377,10 @@ class vardbapi(dbapi):
 		if mysplit[0] == '*':
 			mysplit[0] = mysplit[0][1:]
 		try:
-			mystat = os.stat(self.getpath(mysplit[0])).st_mtime
+			if sys.hexversion >= 0x3030000:
+				mystat = os.stat(self.getpath(mysplit[0])).st_mtime_ns
+			else:
+				mystat = os.stat(self.getpath(mysplit[0])).st_mtime
 		except OSError:
 			mystat = 0
 		if use_cache and mycp in self.cpcache:
@@ -511,7 +515,10 @@ class vardbapi(dbapi):
 			return list(self._iter_match(mydep,
 				self.cp_list(mydep.cp, use_cache=use_cache)))
 		try:
-			curmtime = os.stat(os.path.join(self._eroot, VDB_PATH, mycat)).st_mtime
+			if sys.hexversion >= 0x3030000:
+				curmtime = os.stat(os.path.join(self._eroot, VDB_PATH, mycat)).st_mtime_ns
+			else:
+				curmtime = os.stat(os.path.join(self._eroot, VDB_PATH, mycat)).st_mtime
 		except (IOError, OSError):
 			curmtime=0
 
@@ -566,31 +573,32 @@ class vardbapi(dbapi):
 	def _aux_cache_init(self):
 		aux_cache = None
 		open_kwargs = {}
-		if sys.hexversion >= 0x3000000:
+		if sys.hexversion >= 0x3000000 and sys.hexversion < 0x3020000:
 			# Buffered io triggers extreme performance issues in
 			# Unpickler.load() (problem observed with python-3.0.1).
 			# Unfortunately, performance is still poor relative to
-			# python-2.x, but buffering makes it much worse.
+			# python-2.x, but buffering makes it much worse (problem
+			# appears to be solved in Python >=3.2 at least).
 			open_kwargs["buffering"] = 0
 		try:
-			f = open(_unicode_encode(self._aux_cache_filename,
+			with open(_unicode_encode(self._aux_cache_filename,
 				encoding=_encodings['fs'], errors='strict'),
-				mode='rb', **open_kwargs)
-			mypickle = pickle.Unpickler(f)
-			try:
-				mypickle.find_global = None
-			except AttributeError:
-				# TODO: If py3k, override Unpickler.find_class().
-				pass
-			aux_cache = mypickle.load()
-			f.close()
-			del f
-		except (AttributeError, EOFError, EnvironmentError, ValueError, pickle.UnpicklingError) as e:
+				mode='rb', **open_kwargs) as f:
+				mypickle = pickle.Unpickler(f)
+				try:
+					mypickle.find_global = None
+				except AttributeError:
+					# TODO: If py3k, override Unpickler.find_class().
+					pass
+				aux_cache = mypickle.load()
+		except (SystemExit, KeyboardInterrupt):
+			raise
+		except Exception as e:
 			if isinstance(e, EnvironmentError) and \
 				getattr(e, 'errno', None) in (errno.ENOENT, errno.EACCES):
 				pass
 			else:
-				writemsg(_unicode_decode(_("!!! Error loading '%s': %s\n")) % \
+				writemsg(_("!!! Error loading '%s': %s\n") % \
 					(self._aux_cache_filename, e), noiselevel=-1)
 			del e
 
@@ -710,7 +718,7 @@ class vardbapi(dbapi):
 		if _get_slot_re(eapi_attrs).match(mydata['SLOT']) is None:
 			# Empty or invalid slot triggers InvalidAtom exceptions when
 			# generating slot atoms for packages, so translate it to '0' here.
-			mydata['SLOT'] = _unicode_decode('0')
+			mydata['SLOT'] = '0'
 
 		return [mydata[x] for x in wants]
 
@@ -735,21 +743,18 @@ class vardbapi(dbapi):
 				results[x] = st[stat.ST_MTIME]
 				continue
 			try:
-				myf = io.open(
+				with io.open(
 					_unicode_encode(os.path.join(mydir, x),
 					encoding=_encodings['fs'], errors='strict'),
 					mode='r', encoding=_encodings['repo.content'],
-					errors='replace')
-				try:
-					myd = myf.read()
-				finally:
-					myf.close()
+					errors='replace') as f:
+					myd = f.read()
 			except IOError:
 				if x not in self._aux_cache_keys and \
 					self._aux_cache_keys_re.match(x) is None:
 					env_keys.append(x)
 					continue
-				myd = _unicode_decode('')
+				myd = ''
 
 			# Preserve \n for metadata that is known to
 			# contain multiple lines.
@@ -763,13 +768,13 @@ class vardbapi(dbapi):
 			for k in env_keys:
 				v = env_results.get(k)
 				if v is None:
-					v = _unicode_decode('')
+					v = ''
 				if self._aux_multi_line_re.match(k) is None:
 					v = " ".join(v.split())
 				results[k] = v
 
 		if results.get("EAPI") == "":
-			results[_unicode_decode("EAPI")] = _unicode_decode('0')
+			results["EAPI"] = '0'
 
 		return results
 
@@ -889,11 +894,17 @@ class vardbapi(dbapi):
 		del myroot
 		counter = -1
 		try:
-			cfile = io.open(
+			with io.open(
 				_unicode_encode(self._counter_path,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],
-				errors='replace')
+				errors='replace') as f:
+				try:
+					counter = long(f.readline().strip())
+				except (OverflowError, ValueError) as e:
+					writemsg(_("!!! COUNTER file is corrupt: '%s'\n") %
+						self._counter_path, noiselevel=-1)
+					writemsg("!!! %s\n" % (e,), noiselevel=-1)
 		except EnvironmentError as e:
 			# Silently allow ENOENT since files under
 			# /var/cache/ are allowed to disappear.
@@ -902,17 +913,6 @@ class vardbapi(dbapi):
 					self._counter_path, noiselevel=-1)
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 			del e
-		else:
-			try:
-				try:
-					counter = long(cfile.readline().strip())
-				finally:
-					cfile.close()
-			except (OverflowError, ValueError) as e:
-				writemsg(_("!!! COUNTER file is corrupt: '%s'\n") % \
-					self._counter_path, noiselevel=-1)
-				writemsg("!!! %s\n" % str(e), noiselevel=-1)
-				del e
 
 		if self._cached_counter == counter:
 			max_counter = counter
@@ -1004,16 +1004,31 @@ class vardbapi(dbapi):
 				relative_filename = filename[root_len:]
 			contents_key = pkg._match_contents(relative_filename)
 			if contents_key:
-				del new_contents[contents_key]
+				# It's possible for two different paths to refer to the same
+				# contents_key, due to directory symlinks. Therefore, pass a
+				# default value to pop, in order to avoid a KeyError which
+				# could otherwise be triggered (see bug #454400).
+				new_contents.pop(contents_key, None)
 				removed += 1
 
 		if removed:
-			self._bump_mtime(pkg.mycpv)
-			f = atomic_ofstream(os.path.join(pkg.dbdir, "CONTENTS"))
-			write_contents(new_contents, root, f)
-			f.close()
-			self._bump_mtime(pkg.mycpv)
-			pkg._clear_contents_cache()
+			self.writeContentsToContentsFile(pkg, new_contents)
+
+	def writeContentsToContentsFile(self, pkg, new_contents):
+		"""
+		@param pkg: package to write contents file for
+		@type pkg: dblink
+		@param new_contents: contents to write to CONTENTS file
+		@type new_contents: contents dictionary of the form
+					{u'/path/to/file' : (contents_attribute 1, ...), ...}
+		"""
+		root = self.settings['ROOT']
+		self._bump_mtime(pkg.mycpv)
+		f = atomic_ofstream(os.path.join(pkg.dbdir, "CONTENTS"))
+		write_contents(new_contents, root, f)
+		f.close()
+		self._bump_mtime(pkg.mycpv)
+		pkg._clear_contents_cache()
 
 	class _owners_cache(object):
 		"""
@@ -1258,18 +1273,35 @@ class vardbapi(dbapi):
 					name = os.path.basename(path.rstrip(os.path.sep))
 				path_info_list.append((path, name, is_basename))
 
+			# Do work via the global event loop, so that it can be used
+			# for indication of progress during the search (bug #461412).
+			event_loop = (portage._internal_caller and
+				global_event_loop() or EventLoop(main=False))
 			root = self._vardb._eroot
-			for cpv in self._vardb.cpv_all():
-				dblnk =  self._vardb._dblink(cpv)
 
+			def search_pkg(cpv):
+				dblnk = self._vardb._dblink(cpv)
 				for path, name, is_basename in path_info_list:
 					if is_basename:
 						for p in dblnk.getcontents():
 							if os.path.basename(p) == name:
-								yield dblnk, p[len(root):]
+								search_pkg.results.append((dblnk, p[len(root):]))
 					else:
 						if dblnk.isowner(path):
-							yield dblnk, path
+							search_pkg.results.append((dblnk, path))
+				search_pkg.complete = True
+				return False
+
+			search_pkg.results = []
+
+			for cpv in self._vardb.cpv_all():
+				del search_pkg.results[:]
+				search_pkg.complete = False
+				event_loop.idle_add(search_pkg, cpv)
+				while not search_pkg.complete:
+					event_loop.iteration()
+				for result in search_pkg.results:
+					yield result
 
 class vartree(object):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"
@@ -1390,7 +1422,7 @@ class vartree(object):
 	def getslot(self, mycatpkg):
 		"Get a slot for a catpkg; assume it exists."
 		try:
-			return self.dbapi.aux_get(mycatpkg, ["SLOT"])[0]
+			return self.dbapi._pkg_str(mycatpkg, None).slot
 		except KeyError:
 			return ""
 
@@ -1483,10 +1515,15 @@ class dblink(object):
 		self._contents_inodes = None
 		self._contents_basenames = None
 		self._linkmap_broken = False
+		self._device_path_map = {}
 		self._hardlink_merge_map = {}
 		self._hash_key = (self._eroot, self.mycpv)
 		self._protect_obj = None
 		self._pipe = pipe
+
+		# When necessary, this attribute is modified for
+		# compliance with RESTRICT=preserve-libs.
+		self._preserve_libs = "preserve-libs" in mysettings.features
 
 	def __hash__(self):
 		return hash(self._hash_key)
@@ -1530,7 +1567,11 @@ class dblink(object):
 		"""
 		Remove this entry from the database
 		"""
-		if not os.path.exists(self.dbdir):
+		try:
+			os.lstat(self.dbdir)
+		except OSError as e:
+			if e.errno not in (errno.ENOENT, errno.ENOTDIR, errno.ESTALE):
+				raise
 			return
 
 		# Check validity of self.dbdir before attempting to remove it.
@@ -1546,6 +1587,14 @@ class dblink(object):
 		except OSError:
 			pass
 		self.vartree.dbapi._remove(self)
+
+		# Use self.dbroot since we need an existing path for syncfs.
+		try:
+			self._merged_path(self.dbroot, os.lstat(self.dbroot))
+		except OSError:
+			pass
+
+		self._post_merge_sync()
 
 	def clearcontents(self):
 		"""
@@ -1572,18 +1621,18 @@ class dblink(object):
 			return self.contentscache
 		pkgfiles = {}
 		try:
-			myc = io.open(_unicode_encode(contents_file,
+			with io.open(_unicode_encode(contents_file,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],
-				errors='replace')
+				errors='replace') as f:
+				mylines = f.readlines()
 		except EnvironmentError as e:
 			if e.errno != errno.ENOENT:
 				raise
 			del e
 			self.contentscache = pkgfiles
 			return pkgfiles
-		mylines = myc.readlines()
-		myc.close()
+
 		null_byte = "\0"
 		normalize_needed = self._normalize_needed
 		contents_re = self._contents_re
@@ -1598,7 +1647,7 @@ class dblink(object):
 		if myroot == os.path.sep:
 			myroot = None
 		# used to generate parent dir entries
-		dir_entry = (_unicode_decode("dir"),)
+		dir_entry = ("dir",)
 		eroot_split_len = len(self.settings["EROOT"].split(os.sep)) - 1
 		pos = 0
 		errors = []
@@ -1698,8 +1747,11 @@ class dblink(object):
 						unmerge_preserve = \
 							self._find_libs_to_preserve(unmerge=True)
 					counter = self.vartree.dbapi.cpv_counter(self.mycpv)
-					plib_registry.unregister(self.mycpv,
-						self.settings["SLOT"], counter)
+					try:
+						slot = self.mycpv.slot
+					except AttributeError:
+						slot = _pkg_str(self.mycpv, slot=self.settings["SLOT"]).slot
+					plib_registry.unregister(self.mycpv, slot, counter)
 					if unmerge_preserve:
 						for path in sorted(unmerge_preserve):
 							contents_key = self._match_contents(path)
@@ -1709,7 +1761,7 @@ class dblink(object):
 							self._display_merge(_(">>> needed   %s %s\n") % \
 								(obj_type, contents_key), noiselevel=-1)
 						plib_registry.register(self.mycpv,
-							self.settings["SLOT"], counter, unmerge_preserve)
+							slot, counter, unmerge_preserve)
 						# Remove the preserved files from our contents
 						# so that they won't be unmerged.
 						self.vartree.dbapi.removeFromContents(self,
@@ -1779,7 +1831,8 @@ class dblink(object):
 		if self._scheduler is None:
 			# We create a scheduler instance and use it to
 			# log unmerge output separately from merge output.
-			self._scheduler = PollScheduler().sched_iface
+			self._scheduler = SchedulerInterface(portage._internal_caller and
+				global_event_loop() or EventLoop(main=False))
 		if self.settings.get("PORTAGE_BACKGROUND") == "subprocess":
 			if self.settings.get("PORTAGE_BACKGROUND_UNMERGE") == "1":
 				self.settings["PORTAGE_BACKGROUND"] = "1"
@@ -1804,7 +1857,7 @@ class dblink(object):
 		# done for this slot, so it shouldn't be repeated until the next
 		# replacement or unmerge operation.
 		if others_in_slot is None:
-			slot = self.vartree.dbapi.aux_get(self.mycpv, ["SLOT"])[0]
+			slot = self.vartree.dbapi._pkg_str(self.mycpv, None).slot
 			slot_matches = self.vartree.dbapi.match(
 				"%s:%s" % (portage.cpv_getkey(self.mycpv), slot))
 			others_in_slot = []
@@ -1848,13 +1901,17 @@ class dblink(object):
 		except UnsupportedAPIException as e:
 			eapi_unsupported = e
 
+		if self._preserve_libs and "preserve-libs" in \
+			self.settings["PORTAGE_RESTRICT"].split():
+			self._preserve_libs = False
+
 		builddir_lock = None
 		scheduler = self._scheduler
 		retval = os.EX_OK
 		try:
 			# Only create builddir_lock if the caller
 			# has not already acquired the lock.
-			if "PORTAGE_BUILDIR_LOCKED" not in self.settings:
+			if "PORTAGE_BUILDDIR_LOCKED" not in self.settings:
 				builddir_lock = EbuildBuildDir(
 					scheduler=scheduler,
 					settings=self.settings)
@@ -1883,7 +1940,7 @@ class dblink(object):
 				showMessage(_("!!! FAILED prerm: %s\n") % \
 					os.path.join(self.dbdir, "EAPI"),
 					level=logging.ERROR, noiselevel=-1)
-				showMessage(_unicode_decode("%s\n") % (eapi_unsupported,),
+				showMessage("%s\n" % (eapi_unsupported,),
 					level=logging.ERROR, noiselevel=-1)
 			elif os.path.isfile(myebuildpath):
 				phase = EbuildPhase(background=background,
@@ -2072,7 +2129,7 @@ class dblink(object):
 
 		if others_in_slot is None:
 			others_in_slot = []
-			slot = self.vartree.dbapi.aux_get(self.mycpv, ["SLOT"])[0]
+			slot = self.vartree.dbapi._pkg_str(self.mycpv, None).slot
 			slot_matches = self.vartree.dbapi.match(
 				"%s:%s" % (portage.cpv_getkey(self.mycpv), slot))
 			for cur_cpv in slot_matches:
@@ -2129,6 +2186,14 @@ class dblink(object):
 					self._eerror("postrm", 
 						["Could not chmod or unlink '%s': %s" % \
 						(file_name, ose)])
+				else:
+
+					# Even though the file no longer exists, we log it
+					# here so that _unmerge_dirs can see that we've
+					# removed a file from this device, and will record
+					# the parent directory for a syncfs call.
+					self._merged_path(file_name, lstatobj, exists=False)
+
 				finally:
 					if bsd_chflags and pflags != 0:
 						# Restore the parent flags we saved before unlinking
@@ -2549,15 +2614,19 @@ class dblink(object):
 								raise
 							del e
 							show_unmerge("!!!", "", "obj", child)
+
 			try:
+				parent_name = os.path.dirname(obj)
+				parent_stat = os.stat(parent_name)
+
 				if bsd_chflags:
 					lstatobj = os.lstat(obj)
 					if lstatobj.st_flags != 0:
 						bsd_chflags.lchflags(obj, 0)
-					parent_name = os.path.dirname(obj)
+
 					# Use normal stat/chflags for the parent since we want to
 					# follow any symlinks to the real parent directory.
-					pflags = os.stat(parent_name).st_flags
+					pflags = parent_stat.st_flags
 					if pflags != 0:
 						bsd_chflags.chflags(parent_name, 0)
 				try:
@@ -2566,13 +2635,34 @@ class dblink(object):
 					if bsd_chflags and pflags != 0:
 						# Restore the parent flags we saved before unlinking
 						bsd_chflags.chflags(parent_name, pflags)
+
+				# Record the parent directory for use in syncfs calls.
+				# Note that we use a realpath and a regular stat here, since
+				# we want to follow any symlinks back to the real device where
+				# the real parent directory resides.
+				self._merged_path(os.path.realpath(parent_name), parent_stat)
+
 				show_unmerge("<<<", "", "dir", obj)
 			except EnvironmentError as e:
 				if e.errno not in ignored_rmdir_errnos:
 					raise
 				if e.errno != errno.ENOENT:
 					show_unmerge("---", unmerge_desc["!empty"], "dir", obj)
-				del e
+
+				# Since we didn't remove this directory, record the directory
+				# itself for use in syncfs calls, if we have removed another
+				# file from the same device.
+				# Note that we use a realpath and a regular stat here, since
+				# we want to follow any symlinks back to the real device where
+				# the real directory resides.
+				try:
+					dir_stat = os.stat(obj)
+				except OSError:
+					pass
+				else:
+					if dir_stat.st_dev in self._device_path_map:
+						self._merged_path(os.path.realpath(obj), dir_stat)
+
 			else:
 				# When a directory is successfully removed, there's
 				# no need to protect symlinks that point to it.
@@ -2799,7 +2889,7 @@ class dblink(object):
 			self.vartree.dbapi._linkmap is None or \
 			self.vartree.dbapi._plib_registry is None or \
 			(not unmerge and self._installed_instance is None) or \
-			"preserve-libs" not in self.settings.features:
+			not self._preserve_libs:
 			return set()
 
 		os = _os_merge
@@ -3383,7 +3473,10 @@ class dblink(object):
 		else:
 			logdir = os.path.join(self.settings["T"], "logging")
 			ebuild_logentries = collect_ebuild_messages(logdir)
-			py_logentries = collect_messages(key=cpv).get(cpv, {})
+			# phasefilter is irrelevant for the above collect_ebuild_messages
+			# call, since this package instance has a private logdir. However,
+			# it may be relevant for the following collect_messages call.
+			py_logentries = collect_messages(key=cpv, phasefilter=phasefilter).get(cpv, {})
 			logentries = _merge_logentries(py_logentries, ebuild_logentries)
 			funcnames = {
 				"INFO": "einfo",
@@ -3404,7 +3497,9 @@ class dblink(object):
 							str_buffer.append(' '.join(fields))
 							str_buffer.append('\n')
 			if str_buffer:
-				os.write(self._pipe, _unicode_encode(''.join(str_buffer)))
+				str_buffer = _unicode_encode(''.join(str_buffer))
+				while str_buffer:
+					str_buffer = str_buffer[os.write(self._pipe, str_buffer):]
 
 	def _emerge_log(self, msg):
 		emergelog(False, msg)
@@ -3415,6 +3510,8 @@ class dblink(object):
 		
 		This function does the following:
 		
+		calls get_ro_checker to retrieve a function for checking whether Portage
+		will write to a read-only filesystem, then runs it against the directory list
 		calls self._preserve_libs if FEATURES=preserve-libs
 		calls self._collision_protect if FEATURES=collision-protect
 		calls doebuild(mydo=pkg_preinst)
@@ -3462,6 +3559,7 @@ class dblink(object):
 				level=logging.ERROR, noiselevel=-1)
 			return 1
 
+		is_binpkg = self.settings.get("EMERGE_FROM") == "binary"
 		slot = ''
 		for var_name in ('CHOST', 'SLOT'):
 			if var_name == 'CHOST' and self.cat == 'virtual':
@@ -3471,22 +3569,18 @@ class dblink(object):
 					pass
 				continue
 
-			f = None
 			try:
-				f = io.open(_unicode_encode(
+				with io.open(_unicode_encode(
 					os.path.join(inforoot, var_name),
 					encoding=_encodings['fs'], errors='strict'),
 					mode='r', encoding=_encodings['repo.content'],
-					errors='replace')
-				val = f.readline().strip()
+					errors='replace') as f:
+					val = f.readline().strip()
 			except EnvironmentError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
 				val = ''
-			finally:
-				if f is not None:
-					f.close()
 
 			if var_name == 'SLOT':
 				slot = val
@@ -3499,7 +3593,9 @@ class dblink(object):
 						return 1
 					write_atomic(os.path.join(inforoot, var_name), slot + '\n')
 
-			if val != self.settings.get(var_name, ''):
+			# This check only applies when built from source, since
+			# inforoot values are written just after src_install.
+			if not is_binpkg and val != self.settings.get(var_name, ''):
 				self._eqawarn('preinst',
 					[_("QA Notice: Expected %(var_name)s='%(expected_value)s', got '%(actual_value)s'\n") % \
 					{"var_name":var_name, "expected_value":self.settings.get(var_name, ''), "actual_value":val}])
@@ -3517,27 +3613,40 @@ class dblink(object):
 		cp = self.mysplit[0]
 		slot_atom = "%s:%s" % (cp, slot)
 
-		# filter any old-style virtual matches
-		slot_matches = [cpv for cpv in self.vartree.dbapi.match(slot_atom) \
-			if cpv_getkey(cpv) == cp]
+		self.lockdb()
+		try:
+			# filter any old-style virtual matches
+			slot_matches = [cpv for cpv in self.vartree.dbapi.match(slot_atom)
+				if cpv_getkey(cpv) == cp]
 
-		if self.mycpv not in slot_matches and \
-			self.vartree.dbapi.cpv_exists(self.mycpv):
-			# handle multislot or unapplied slotmove
-			slot_matches.append(self.mycpv)
+			if self.mycpv not in slot_matches and \
+				self.vartree.dbapi.cpv_exists(self.mycpv):
+				# handle multislot or unapplied slotmove
+				slot_matches.append(self.mycpv)
 
-		others_in_slot = []
-		from portage import config
-		for cur_cpv in slot_matches:
-			# Clone the config in case one of these has to be unmerged since
-			# we need it to have private ${T} etc... for things like elog.
-			settings_clone = config(clone=self.settings)
-			settings_clone.pop("PORTAGE_BUILDIR_LOCKED", None)
-			settings_clone.reset()
-			others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
-				settings=settings_clone,
-				vartree=self.vartree, treetype="vartree",
-				scheduler=self._scheduler, pipe=self._pipe))
+			others_in_slot = []
+			for cur_cpv in slot_matches:
+				# Clone the config in case one of these has to be unmerged,
+				# since we need it to have private ${T} etc... for things
+				# like elog.
+				settings_clone = portage.config(clone=self.settings)
+				settings_clone.pop("PORTAGE_BUILDDIR_LOCKED", None)
+				settings_clone.setcpv(cur_cpv, mydb=self.vartree.dbapi)
+				if self._preserve_libs and "preserve-libs" in \
+					settings_clone["PORTAGE_RESTRICT"].split():
+					self._preserve_libs = False
+				others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
+					settings=settings_clone,
+					vartree=self.vartree, treetype="vartree",
+					scheduler=self._scheduler, pipe=self._pipe))
+		finally:
+			self.unlockdb()
+
+		# If any instance has RESTRICT=preserve-libs, then
+		# restrict it for all instances.
+		if not self._preserve_libs:
+			for dblnk in others_in_slot:
+				dblnk._preserve_libs = False
 
 		retval = self._security_check(others_in_slot)
 		if retval:
@@ -3579,8 +3688,9 @@ class dblink(object):
 			unicode_error = False
 			eagain_error = False
 
-			myfilelist = []
-			mylinklist = []
+			filelist = []
+			dirlist = []
+			linklist = []
 			paths_with_newlines = []
 			def onerror(e):
 				raise
@@ -3612,6 +3722,9 @@ class dblink(object):
 					unicode_errors.append(new_parent[ed_len:])
 					break
 
+				relative_path = parent[srcroot_len:]
+				dirlist.append(os.path.join("/", relative_path))
+
 				for fname in files:
 					try:
 						fname = _unicode_decode(fname,
@@ -3641,12 +3754,19 @@ class dblink(object):
 
 					file_mode = os.lstat(fpath).st_mode
 					if stat.S_ISREG(file_mode):
-						myfilelist.append(relative_path)
+						filelist.append(relative_path)
 					elif stat.S_ISLNK(file_mode):
 						# Note: os.walk puts symlinks to directories in the "dirs"
 						# list and it does not traverse them since that could lead
 						# to an infinite recursion loop.
-						mylinklist.append(relative_path)
+						linklist.append(relative_path)
+
+						myto = _unicode_decode(
+							_os.readlink(_unicode_encode(fpath,
+							encoding=_encodings['merge'], errors='strict')),
+							encoding=_encodings['merge'], errors='replace')
+						if line_ending_re.search(myto) is not None:
+							paths_with_newlines.append(relative_path)
 
 				if unicode_error:
 					break
@@ -3674,7 +3794,7 @@ class dblink(object):
 		# If there are no files to merge, and an installed package in the same
 		# slot has files, it probably means that something went wrong.
 		if self.settings.get("PORTAGE_PACKAGE_EMPTY_ABORT") == "1" and \
-			not myfilelist and not mylinklist and others_in_slot:
+			not filelist and not linklist and others_in_slot:
 			installed_files = None
 			for other_dblink in others_in_slot:
 				installed_files = other_dblink.getcontents()
@@ -3699,7 +3819,7 @@ class dblink(object):
 					_("Manually run `emerge --unmerge =%s` if you "
 					"really want to remove the above files. Set "
 					"PORTAGE_PACKAGE_EMPTY_ABORT=\"0\" in "
-					"/etc/make.conf if you do not want to "
+					"/etc/portage/make.conf if you do not want to "
 					"abort in cases like this.") % other_dblink.mycpv,
 					wrap_width))
 				eerror(msg)
@@ -3717,13 +3837,38 @@ class dblink(object):
 			for other in others_in_slot])
 		prepare_build_dirs(settings=self.settings, cleanup=cleanup)
 
+		# Check for read-only filesystems.
+		ro_checker = get_ro_checker()
+		rofilesystems = ro_checker(dirlist)
+
+		if rofilesystems:
+			msg = _("One or more files installed to this package are "
+				"set to be installed to read-only filesystems. "
+				"Please mount the following filesystems as read-write "
+				"and retry.")
+			msg = textwrap.wrap(msg, 70)
+			msg.append("")
+			for f in rofilesystems:
+				msg.append("\t%s" % os.path.join(destroot,
+					f.lstrip(os.path.sep)))
+			msg.append("")
+			self._elog("eerror", "preinst", msg)
+
+			msg = _("Package '%s' NOT merged due to read-only file systems.") % \
+				self.settings.mycpv
+			msg += _(" If necessary, refer to your elog "
+				"messages for the whole content of the above message.")
+			msg = textwrap.wrap(msg, 70)
+			eerror(msg)
+			return 1
+
 		# check for package collisions
 		blockers = self._blockers
 		if blockers is None:
 			blockers = []
 		collisions, symlink_collisions, plib_collisions = \
 			self._collision_protect(srcroot, destroot,
-			others_in_slot + blockers, myfilelist, mylinklist)
+			others_in_slot + blockers, filelist, linklist)
 
 		if symlink_collisions:
 			# Symlink collisions need to be distinguished from other types
@@ -3765,7 +3910,9 @@ class dblink(object):
 				" enough information to determine if a real problem"
 				" exists. Please do NOT file a bug report at"
 				" http://bugs.gentoo.org unless you report exactly which"
-				" two packages install the same file(s). Once again,"
+				" two packages install the same file(s). See"
+				" http://wiki.gentoo.org/wiki/Knowledge_Base:Blockers"
+				" for tips on how to solve the problem. And once again,"
 				" please do NOT file a bug report unless you have"
 				" completely understood the above message.")
 
@@ -3800,17 +3947,28 @@ class dblink(object):
 					# get_owners is slow for large numbers of files, so
 					# don't look them all up.
 					collisions = collisions[:20]
+
+				pkg_info_strs = {}
 				self.lockdb()
 				try:
 					owners = self.vartree.dbapi._owners.get_owners(collisions)
 					self.vartree.dbapi.flush_cache()
+
+					for pkg in owners:
+						pkg = self.vartree.dbapi._pkg_str(pkg.mycpv, None)
+						pkg_info_str = "%s%s%s" % (pkg,
+							_slot_separator, pkg.slot)
+						if pkg.repo != _unknown_repo:
+							pkg_info_str += "%s%s" % (_repo_separator,
+								pkg.repo)
+						pkg_info_strs[pkg] = pkg_info_str
+
 				finally:
 					self.unlockdb()
 
 				for pkg, owned_files in owners.items():
-					cpv = pkg.mycpv
 					msg = []
-					msg.append("%s" % cpv)
+					msg.append(pkg_info_strs[pkg.mycpv])
 					for f in sorted(owned_files):
 						msg.append("\t%s" % os.path.join(destroot,
 							f.lstrip(os.path.sep)))
@@ -3901,12 +4059,11 @@ class dblink(object):
 		# write local package counter for recording
 		if counter is None:
 			counter = self.vartree.dbapi.counter_tick(mycpv=self.mycpv)
-		f = io.open(_unicode_encode(os.path.join(self.dbtmpdir, 'COUNTER'),
+		with io.open(_unicode_encode(os.path.join(self.dbtmpdir, 'COUNTER'),
 			encoding=_encodings['fs'], errors='strict'),
 			mode='w', encoding=_encodings['repo.content'],
-			errors='backslashreplace')
-		f.write(_unicode_decode(str(counter)))
-		f.close()
+			errors='backslashreplace') as f:
+			f.write("%s" % counter)
 
 		self.updateprotect()
 
@@ -4031,6 +4188,7 @@ class dblink(object):
 		try:
 			self.delete()
 			_movefile(self.dbtmpdir, self.dbpkgdir, mysettings=self.settings)
+			self._merged_path(self.dbpkgdir, os.lstat(self.dbpkgdir))
 		finally:
 			self.unlockdb()
 
@@ -4075,9 +4233,9 @@ class dblink(object):
 						self.vartree.dbapi.lock()
 						try:
 							try:
-								slot, counter = self.vartree.dbapi.aux_get(
-									cpv, ["SLOT", "COUNTER"])
-							except KeyError:
+								slot = self.vartree.dbapi._pkg_str(cpv, None).slot
+								counter = self.vartree.dbapi.cpv_counter(cpv)
+							except (KeyError, InvalidData):
 								pass
 							else:
 								has_vdb_entry = True
@@ -4146,6 +4304,7 @@ class dblink(object):
 		# For gcc upgrades, preserved libs have to be removed after the
 		# the library path has been updated.
 		self._prune_plib_registry()
+		self._post_merge_sync()
 
 		return os.EX_OK
 
@@ -4161,7 +4320,7 @@ class dblink(object):
 		x = -1
 		while True:
 			x += 1
-			backup_p = p + '.backup.' + str(x).rjust(4, '0')
+			backup_p = '%s.backup.%04d' % (p, x)
 			try:
 				os.lstat(backup_p)
 			except OSError:
@@ -4262,8 +4421,9 @@ class dblink(object):
 		@type stufftomerge: String or List
 		@param cfgfiledict: { File:mtime } mapping for config_protected files
 		@type cfgfiledict: Dictionary
-		@param thismtime: The current time (typically long(time.time())
-		@type thismtime: Long
+		@param thismtime: None or new mtime for merged files (expressed in seconds
+		in Python <3.3 and nanoseconds in Python >=3.3)
+		@type thismtime: None or Int
 		@rtype: None or Boolean
 		@return:
 		1. True on failure
@@ -4288,18 +4448,18 @@ class dblink(object):
 		# this is supposed to merge a list of files.  There will be 2 forms of argument passing.
 		if isinstance(stufftomerge, basestring):
 			#A directory is specified.  Figure out protection paths, listdir() it and process it.
-			mergelist = os.listdir(join(srcroot, stufftomerge))
-			offset = stufftomerge
+			mergelist = [join(stufftomerge, child) for child in \
+				os.listdir(join(srcroot, stufftomerge))]
 		else:
-			mergelist = stufftomerge
-			offset = ""
+			mergelist = stufftomerge[:]
 
-		for i, x in enumerate(mergelist):
+		while mergelist:
 
-			mysrc = join(srcroot, offset, x)
-			mydest = join(destroot, offset, x)
+			relative_path = mergelist.pop()
+			mysrc = join(srcroot, relative_path)
+			mydest = join(destroot, relative_path)
 			# myrealdest is mydest without the $ROOT prefix (makes a difference if ROOT!="/")
-			myrealdest = join(sep, offset, x)
+			myrealdest = join(sep, relative_path)
 			# stat file once, test using S_* macros many times (faster that way)
 			mystat = os.lstat(mysrc)
 			mymode = mystat[stat.ST_MODE]
@@ -4394,9 +4554,26 @@ class dblink(object):
 				mymtime = movefile(mysrc, mydest, newmtime=thismtime,
 					sstat=mystat, mysettings=self.settings,
 					encoding=_encodings['merge'])
+
+				try:
+					self._merged_path(mydest, os.lstat(mydest))
+				except OSError:
+					pass
+
 				if mymtime != None:
+					# Use lexists, since if the target happens to be a broken
+					# symlink then that should trigger an independent warning.
+					if not (os.path.lexists(myrealto) or
+						os.path.lexists(join(srcroot, myabsto))):
+						self._eqawarn('preinst',
+							[_("QA Notice: Symbolic link /%s points to /%s which does not exist.")
+							% (relative_path, myabsto)])
+
 					showMessage(">>> %s -> %s\n" % (mydest, myto))
-					outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime)+"\n")
+					if sys.hexversion >= 0x3030000:
+						outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime // 1000000000)+"\n")
+					else:
+						outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime)+"\n")
 				else:
 					showMessage(_("!!! Failed to move file.\n"),
 						level=logging.ERROR, noiselevel=-1)
@@ -4490,11 +4667,17 @@ class dblink(object):
 					os.chmod(mydest, mystat[0])
 					os.chown(mydest, mystat[4], mystat[5])
 					showMessage(">>> %s/\n" % mydest)
+
+				try:
+					self._merged_path(mydest, os.lstat(mydest))
+				except OSError:
+					pass
+
 				outfile.write("dir "+myrealdest+"\n")
 				# recurse and merge this directory
-				if self.mergeme(srcroot, destroot, outfile, secondhand,
-					join(offset, x), cfgfiledict, thismtime):
-					return 1
+				mergelist.extend(join(relative_path, child) for child in
+					os.listdir(join(srcroot, relative_path)))
+
 			elif stat.S_ISREG(mymode):
 				# we are merging a regular file
 				mymd5 = perform_md5(mysrc, calc_prelink=calc_prelink)
@@ -4550,7 +4733,10 @@ class dblink(object):
 									cfgprot = cfgfiledict["IGNORE"]
 									if not moveme:
 										zing = "---"
-										mymtime = mystat[stat.ST_MTIME]
+										if sys.hexversion >= 0x3030000:
+											mymtime = mystat.st_mtime_ns
+										else:
+											mymtime = mystat[stat.ST_MTIME]
 								else:
 									moveme = 1
 									cfgprot = 1
@@ -4586,8 +4772,16 @@ class dblink(object):
 					hardlink_candidates.append(mydest)
 					zing = ">>>"
 
+					try:
+						self._merged_path(mydest, os.lstat(mydest))
+					except OSError:
+						pass
+
 				if mymtime != None:
-					outfile.write("obj "+myrealdest+" "+mymd5+" "+str(mymtime)+"\n")
+					if sys.hexversion >= 0x3030000:
+						outfile.write("obj "+myrealdest+" "+mymd5+" "+str(mymtime // 1000000000)+"\n")
+					else:
+						outfile.write("obj "+myrealdest+" "+mymd5+" "+str(mymtime)+"\n")
 				showMessage("%s %s\n" % (zing,mydest))
 			else:
 				# we are merging a fifo or device node
@@ -4598,6 +4792,12 @@ class dblink(object):
 						sstat=mystat, mysettings=self.settings,
 						encoding=_encodings['merge']) is not None:
 						zing = ">>>"
+
+						try:
+							self._merged_path(mydest, os.lstat(mydest))
+						except OSError:
+							pass
+
 					else:
 						return 1
 				if stat.S_ISFIFO(mymode):
@@ -4605,6 +4805,52 @@ class dblink(object):
 				else:
 					outfile.write("dev %s\n" % myrealdest)
 				showMessage(zing + " " + mydest + "\n")
+
+	def _merged_path(self, path, lstatobj, exists=True):
+		previous_path = self._device_path_map.get(lstatobj.st_dev)
+		if previous_path is None or previous_path is False or \
+			(exists and len(path) < len(previous_path)):
+			if exists:
+				self._device_path_map[lstatobj.st_dev] = path
+			else:
+				# This entry is used to indicate that we've unmerged
+				# a file from this device, and later, this entry is
+				# replaced by a parent directory.
+				self._device_path_map[lstatobj.st_dev] = False
+
+	def _post_merge_sync(self):
+		"""
+		Call this after merge or unmerge, in order to sync relevant files to
+		disk and avoid data-loss in the event of a power failure. This method
+		does nothing if FEATURES=merge-sync is disabled.
+		"""
+		if not self._device_path_map or \
+			"merge-sync" not in self.settings.features:
+			return
+
+		returncode = None
+		if platform.system() == "Linux":
+
+			paths = []
+			for path in self._device_path_map.values():
+				if path is not False:
+					paths.append(path)
+			paths = tuple(paths)
+
+			proc = SyncfsProcess(paths=paths,
+				scheduler=(self._scheduler or
+					portage._internal_caller and global_event_loop() or
+					EventLoop(main=False)))
+			proc.start()
+			returncode = proc.wait()
+
+		if returncode is None or returncode != os.EX_OK:
+			try:
+				proc = subprocess.Popen(["sync"])
+			except EnvironmentError:
+				pass
+			else:
+				proc.wait()
 
 	def merge(self, mergeroot, inforoot, myroot=None, myebuild=None, cleanup=0,
 		mydbapi=None, prev_mtimes=None, counter=None):
@@ -4618,7 +4864,8 @@ class dblink(object):
 			self.lockdb()
 		self.vartree.dbapi._bump_mtime(self.mycpv)
 		if self._scheduler is None:
-			self._scheduler = PollScheduler().sched_iface
+			self._scheduler = SchedulerInterface(portage._internal_caller and
+				global_event_loop() or EventLoop(main=False))
 		try:
 			retval = self.treewalk(mergeroot, myroot, inforoot, myebuild,
 				cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes,
@@ -4669,11 +4916,12 @@ class dblink(object):
 		"returns contents of a file with whitespace converted to spaces"
 		if not os.path.exists(self.dbdir+"/"+name):
 			return ""
-		mydata = io.open(
+		with io.open(
 			_unicode_encode(os.path.join(self.dbdir, name),
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['repo.content'], errors='replace'
-			).read().split()
+			) as f:
+			mydata = f.read().split()
 		return " ".join(mydata)
 
 	def copyfile(self,fname):
@@ -4682,10 +4930,11 @@ class dblink(object):
 	def getfile(self,fname):
 		if not os.path.exists(self.dbdir+"/"+fname):
 			return ""
-		return io.open(_unicode_encode(os.path.join(self.dbdir, fname),
+		with io.open(_unicode_encode(os.path.join(self.dbdir, fname),
 			encoding=_encodings['fs'], errors='strict'), 
 			mode='r', encoding=_encodings['repo.content'], errors='replace'
-			).read()
+			) as f:
+			return f.read()
 
 	def setfile(self,fname,data):
 		kwargs = {}
@@ -4694,16 +4943,18 @@ class dblink(object):
 		else:
 			kwargs['mode'] = 'w'
 			kwargs['encoding'] = _encodings['repo.content']
-		write_atomic(os.path.join(self.dbdir, fname), data, **kwargs)
+		write_atomic(os.path.join(self.dbdir, fname), data,
+			**portage._native_kwargs(kwargs))
 
 	def getelements(self,ename):
 		if not os.path.exists(self.dbdir+"/"+ename):
 			return []
-		mylines = io.open(_unicode_encode(
+		with io.open(_unicode_encode(
 			os.path.join(self.dbdir, ename),
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['repo.content'], errors='replace'
-			).readlines()
+			) as f:
+			mylines = f.readlines()
 		myreturn = []
 		for x in mylines:
 			for y in x[:-1].split():
@@ -4711,14 +4962,13 @@ class dblink(object):
 		return myreturn
 
 	def setelements(self,mylist,ename):
-		myelement = io.open(_unicode_encode(
+		with io.open(_unicode_encode(
 			os.path.join(self.dbdir, ename),
 			encoding=_encodings['fs'], errors='strict'),
 			mode='w', encoding=_encodings['repo.content'],
-			errors='backslashreplace')
-		for x in mylist:
-			myelement.write(_unicode_decode(x+"\n"))
-		myelement.close()
+			errors='backslashreplace') as f:
+			for x in mylist:
+				f.write("%s\n" % x)
 
 	def isregular(self):
 		"Is this a regular package (does it have a CATEGORY file?  A dblink can be virtual *and* regular)"
@@ -4787,7 +5037,7 @@ class dblink(object):
 def merge(mycat, mypkg, pkgloc, infloc,
 	myroot=None, settings=None, myebuild=None,
 	mytree=None, mydbapi=None, vartree=None, prev_mtimes=None, blockers=None,
-	scheduler=None):
+	scheduler=None, fd_pipes=None):
 	"""
 	@param myroot: ignored, settings['EROOT'] is used instead
 	"""
@@ -4802,10 +5052,12 @@ def merge(mycat, mypkg, pkgloc, infloc,
 	merge_task = MergeProcess(
 		mycat=mycat, mypkg=mypkg, settings=settings,
 		treetype=mytree, vartree=vartree,
-		scheduler=(scheduler or PollScheduler().sched_iface),
+		scheduler=(scheduler or portage._internal_caller and
+			global_event_loop() or EventLoop(main=False)),
 		background=background, blockers=blockers, pkgloc=pkgloc,
 		infloc=infloc, myebuild=myebuild, mydbapi=mydbapi,
-		prev_mtimes=prev_mtimes, logfile=settings.get('PORTAGE_LOG_FILE'))
+		prev_mtimes=prev_mtimes, logfile=settings.get('PORTAGE_LOG_FILE'),
+		fd_pipes=fd_pipes)
 	merge_task.start()
 	retcode = merge_task.wait()
 	return retcode
@@ -4985,13 +5237,11 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 				tar.addfile(tarinfo, f)
 				f.close()
 			else:
-				f = open(_unicode_encode(path,
+				with open(_unicode_encode(path,
 					encoding=encoding,
-					errors='strict'), 'rb')
-				try:
+					errors='strict'), 'rb') as f:
 					tar.addfile(tarinfo, f)
-				finally:
-					f.close()
+
 		else:
 			tar.addfile(tarinfo)
 		if onProgress:

@@ -1,4 +1,4 @@
-# Copyright 2007-2011 Gentoo Foundation
+# Copyright 2007-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -7,6 +7,7 @@ from portage.exception import InvalidAtom
 from portage.versions import cpv_getkey
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 
 OPERATIONS = ["merge", "unmerge"]
@@ -126,7 +127,7 @@ class PackageSet(object):
 
 		if modified_use is not None and modified_use is not pkg.use.enabled:
 			pkg = pkg.copy()
-			pkg.metadata["USE"] = " ".join(modified_use)
+			pkg._metadata["USE"] = " ".join(modified_use)
 
 		# Atoms matched via PROVIDE must be temporarily transformed since
 		# match_from_list() only works correctly when atom.cp == pkg.cp.
@@ -156,7 +157,7 @@ class PackageSet(object):
 			for atom in atoms:
 				if match_from_list(atom, cpv_slot_list):
 					yield atom
-		provides = pkg.metadata['PROVIDE']
+		provides = pkg._metadata['PROVIDE']
 		if not provides:
 			return
 		provides = provides.split()

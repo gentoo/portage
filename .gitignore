@@ -1,3 +1,4 @@
 *.py[co]
-/pym/portage/public_api.bz2
-/testpath
+__pycache__/
+*.class
+/tags

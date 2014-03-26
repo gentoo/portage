@@ -1,6 +1,7 @@
-.TH "REPOMAN" "1" "June 2012" "Portage VERSION" "Portage"
+.TH "REPOMAN" "1" "Aug 2013" "Portage VERSION" "Portage"
 .SH NAME
-repoman \- Gentoo's program to enforce a minimal level of quality assurance in packages added to the portage tree
+repoman \- Gentoo's program to enforce a minimal level of quality assurance in
+packages added to the portage tree
 .SH SYNOPSIS
 \fBrepoman\fR [\fIoption\fR] [\fImode\fR]
 .SH DESCRIPTION
@@ -9,7 +10,8 @@ repoman \- Gentoo's program to enforce a minimal level of quality assurance in p
 .BR repoman
 checks the quality of ebuild repositories.
 
-Note: \fBrepoman commit\fR only works \fIinside local\fR cvs, git, or subversion repositories.
+Note: \fBrepoman commit\fR only works \fIinside local\fR cvs, git, or
+subversion repositories.
 .SH OPTIONS
 .TP
 \fB-a\fR, \fB--ask\fR
@@ -63,6 +65,10 @@ can be enabled by default for a particular repository by setting
 "update\-changelog = true" in metadata/layout.conf (see
 \fBportage(5)\fR).
 .TP
+\fB\-\-experimental\-inherit=<y|n>\fR
+Enable experimental inherit.missing checks which may misbehave when the
+internal eclass database becomes outdated.
+.TP
 \fB\-\-if\-modified=<y|n>\fR
 Only check packages that have uncommitted modifications
 .TP
@@ -75,8 +81,15 @@ Do not use the \fIREPOMAN_DEFAULT_OPTS\fR environment variable.
 \fB\-I\fR, \fB\-\-ignore\-masked\fR
 Ignore masked packages (not allowed with commit mode)
 .TP
+.BR "\-\-include\-arches " ARCHES
+A space separated list of arches used to filter the selection of
+profiles for dependency checks.
+.TP
 \fB\-d\fR, \fB\-\-include\-dev\fR
 Include dev profiles in dependency checks.
+.TP
+\fB\-e <y|n>\fR, \fB\-\-include\-exp\-profiles=<y|n>\fR
+Include exp profiles in dependency checks.
 .TP
 \fB\-\-unmatched\-removal\fR
 Enable strict checking of package.mask and package.unmask files for
@@ -124,24 +137,6 @@ Scan directory tree for QA issues; if OK, commit via cvs
 .B CVS/Entries.IO_error
 Attempting to commit, and an IO error was encountered access the Entries file
 .TP
-.B DEPEND.bad
-User-visible ebuilds with bad DEPEND settings (matched against *visible* ebuilds)
-.TP
-.B DEPEND.badindev
-User-visible ebuilds with bad DEPEND settings (matched against *visible* ebuilds) in developing arch
-.TP
-.B DEPEND.badmasked
-Masked ebuilds with bad DEPEND settings (matched against *all* ebuilds)
-.TP
-.B DEPEND.badmaskedindev
-Masked ebuilds with bad DEPEND settings (matched against *all* ebuilds) in developing arch
-.TP
-.B DEPEND.badtilde
-DEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)
-.TP
-.B DEPEND.syntax
-Syntax error in DEPEND (usually an extra/missing space/parenthesis)
-.TP
 .B DESCRIPTION.missing
 Ebuilds that have a missing or empty DESCRIPTION variable
 .TP
@@ -165,19 +160,19 @@ Ebuilds that have a missing or empty HOMEPAGE variable
 Virtuals that have a non-empty HOMEPAGE variable
 .TP
 .B IUSE.invalid
-This ebuild has a variable in IUSE that is not in the use.desc or its metadata.xml file
+This ebuild has a variable in IUSE that is not in the use.desc or its
+metadata.xml file
 .TP
 .B IUSE.missing
-This ebuild has a USE conditional which references a flag that is not listed in IUSE
-.TP
-.B IUSE.undefined
-This ebuild does not define IUSE (style guideline says to define IUSE even when empty)
+This ebuild has a USE conditional which references a flag that is not listed in
+IUSE
 .TP
 .B KEYWORDS.dropped
 Ebuilds that appear to have dropped KEYWORDS for some arch
 .TP
 .B KEYWORDS.invalid
-This ebuild contains KEYWORDS that are not listed in profiles/arch.list or for which no valid profile was found
+This ebuild contains KEYWORDS that are not listed in profiles/arch.list or for
+which no valid profile was found
 .TP
 .B KEYWORDS.missing
 Ebuilds that have a missing or empty KEYWORDS variable
@@ -187,6 +182,9 @@ Ebuilds that have been added directly with stable KEYWORDS
 .TP
 .B KEYWORDS.stupid
 Ebuilds that use KEYWORDS=-* instead of package.mask
+.TP
+.B LICENSE.deprecated
+This ebuild is listing a deprecated license.
 .TP
 .B LICENSE.invalid
 This ebuild is listing a license that doesnt exist in portages license/ dir.
@@ -201,50 +199,18 @@ Syntax error in LICENSE (usually an extra/missing space/parenthesis)
 Virtuals that have a non-empty LICENSE variable
 .TP
 .B LIVEVCS.stable
-Ebuild is a live ebuild (cvs, git, darcs, svn, etc) checkout with stable keywords.
+Ebuild is a live ebuild (cvs, git, darcs, svn, etc) checkout with stable
+keywords.
 .TP
 .B LIVEVCS.unmasked
 Ebuild is a live ebuild (cvs, git, darcs, svn, etc) checkout but has keywords
 and is not masked in the global package.mask.
 .TP
-.B PDEPEND.bad
-User-visible ebuilds with bad PDEPEND settings (matched against *visible* ebuilds)
-.TP
-.B PDEPEND.badindev
-User-visible ebuilds with bad PDEPEND settings (matched against *visible* ebuilds) in developing arch
-.TP
-.B PDEPEND.badmasked
-Masked ebuilds with PDEPEND settings (matched against *all* ebuilds)
-.TP
-.B PDEPEND.badmaskedindev
-Masked ebuilds with PDEPEND settings (matched against *all* ebuilds) in developing arch
-.TP
-.B PDEPEND.badtilde
-PDEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)
-.TP
 .B PDEPEND.suspect
 PDEPEND contains a package that usually only belongs in DEPEND
 .TP
-.B PDEPEND.syntax
-Syntax error in PDEPEND (usually an extra/missing space/parenthesis)
-.TP
 .B PROVIDE.syntax
 Syntax error in PROVIDE (usually an extra/missing space/parenthesis)
-.TP
-.B RDEPEND.bad
-User-visible ebuilds with bad RDEPEND settings (matched against *visible* ebuilds)
-.TP
-.B RDEPEND.badindev
-User-visible ebuilds with bad RDEPEND settings (matched against *visible* ebuilds) in developing arch
-.TP
-.B RDEPEND.badmasked
-Masked ebuilds with RDEPEND settings (matched against *all* ebuilds)
-.TP
-.B RDEPEND.badmaskedindev
-Masked ebuilds with RDEPEND settings (matched against *all* ebuilds) in developing arch
-.TP
-.B RDEPEND.badtilde
-RDEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)
 .TP
 .B RDEPEND.implicit
 RDEPEND is unset in the ebuild which triggers implicit RDEPEND=$DEPEND
@@ -252,9 +218,6 @@ assignment (prior to EAPI 4)
 .TP
 .B RDEPEND.suspect
 RDEPEND contains a package that usually only belongs in DEPEND
-.TP
-.B RDEPEND.syntax
-Syntax error in RDEPEND (usually an extra/missing space/parenthesis)
 .TP
 .B PROPERTIES.syntax
 Syntax error in PROPERTIES (usually an extra/missing space/parenthesis)
@@ -276,6 +239,28 @@ Missing ChangeLog files
 .B changelog.notadded
 ChangeLogs that exist but have not been added to cvs
 .TP
+.B dependency.bad
+User-visible ebuilds with unsatisfied dependencies (matched against *visible*
+ebuilds)
+.TP
+.B dependency.badindev
+User-visible ebuilds with unsatisfied dependencies (matched against *visible*
+ebuilds) in developing arch
+.TP
+.B dependency.badmasked
+Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds)
+.TP
+.B dependency.badmaskedindev
+Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds) in
+developing arch
+.TP
+.B dependency.badtilde
+Uses the ~ dep operator with a non-zero revision part, which is useless (the
+revision is ignored)
+.TP
+.B dependency.syntax
+Syntax error in dependency string (usually an extra/missing space/parenthesis)
+.TP
 .B dependency.unknown
 Ebuild has a dependency that refers to an unknown package (which may be
 valid if it is a blocker for a renamed/removed package, or is an
@@ -294,10 +279,12 @@ Some files listed in the Manifest aren't referenced in SRC_URI
 This ebuild has a malformed header
 .TP
 .B ebuild.invalidname
-Ebuild files with a non-parseable or syntactically incorrect name (or using 2.1 versioning extensions)
+Ebuild files with a non-parseable or syntactically incorrect name (or using 2.1
+versioning extensions)
 .TP
 .B ebuild.majorsyn
-This ebuild has a major syntax error that may cause the ebuild to fail partially or fully
+This ebuild has a major syntax error that may cause the ebuild to fail
+partially or fully
 .TP
 .B ebuild.minorsyn
 This ebuild has a minor syntax error that contravenes gentoo coding style
@@ -318,14 +305,15 @@ A simple sourcing of the ebuild produces output; this breaks ebuild policy.
 PATCHES variable should be a bash array to ensure white space safety
 .TP
 .B ebuild.syntax
-Error generating cache entry for ebuild; typically caused by ebuild syntax error
-or digest verification failure.
+Error generating cache entry for ebuild; typically caused by ebuild syntax
+error or digest verification failure.
 .TP
 .B file.UTF8
 File is not UTF8 compliant
 .TP
 .B file.executable
-Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do not need the executable bit
+Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do not need the
+executable bit
 .TP
 .B file.name
 File/dir name must be composed of only the following chars: a-zA-Z0-9._-+:
@@ -358,8 +346,19 @@ Missing metadata.xml files
 .B metadata.warning
 Warnings in metadata.xml files
 .TP
+.B repo.eapi.banned
+The ebuild uses an EAPI which is banned by the repository's
+metadata/layout.conf settings.
+.TP
+.B repo.eapi.deprecated
+The ebuild uses an EAPI which is deprecated by the repository's
+metadata/layout.conf settings.
+.TP
+.B IUSE.rubydeprecated
+The ebuild has set a ruby interpreter in USE_RUBY, that is not available as a ruby target anymore
+.TP
 .B portage.internal
-The ebuild uses an internal Portage function
+The ebuild uses an internal Portage function or variable
 .TP
 .B upstream.workaround
 The ebuild works around an upstream bug, an upstream bug should be filed and

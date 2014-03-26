@@ -1,30 +1,53 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.2.
+==================================
+* Bug Fixes:
+    - Bug # 450372 Russian translation update.
+    - Bug #497238: Fix unnecessary rebuild caused by equal versions
+      in different repositories.
+    - Bug #501360 Only use Atoms with package_tracker.match
+    - For a complete list of bug fixes, changes, See the Changelog installed at
+      /usr/share/doc/portage-2.2.9/ChangeLog.bz2
+
+portage-2.2.8
+==================================
+* Bug Fixes:
+    - Bug 488972 - sys-apps/portage-2.2.7:
+      "egencache --update --rsync" does not create metadata/timestamp.chk
+    - For a complete list of bug fixes, changes, See the Changelog installed at
+      /usr/share/doc/portage-2.2.8/ChangeLog.bz2
+
 portage-2.2
 ==================================
 
 * Portage now warns if an ebuild repository does not have a name, as several
   new features in 2.2 make use of or require named repositories. The repository
   name is stored in profiles/repo_name in each repository.
-* Package set support: There are several important notes regarding package
-  sets:
-  - they may currently only include simple and versioned atoms or other sets,
-    use conditionals or any-of constructs aren't possible yet
-  - sets can be referenced either in other file-based sets or as argument to
-    emerge, but not in ebuilds, config files or other tools at this time.
-  - packages won't be unmerged if they are referenced by an installed package
-    set (with the exception of the world set, and installed being determined
-    by the world_sets file).
-* The "selected" package set, which includes packages listed in
-  /var/lib/portage/world, has been extended to include nested sets that may
-  be listed /var/lib/portage/world_sets.
+
+portage-2.1.13
+==================================
+
+* FEATURES=userpriv and usersandbox are enabled by default.
+* FEATURES=usersync is enabled by default.
+* New sync-cvs-repo, sync-type and sync-uri attributes in repos.conf replace
+  SYNC variable.
+
+portage-2.1.12
+==================================
+
+* FEATURES=preserve-libs is enabled by default.
+* ACCEPT_RESTRICT variable may be used to mask packages based on RESTRICT.
 
 portage-2.1.11
 ==================================
 * User-defined package sets can now be created by placing files in the
   /etc/portage/sets/ directory. Refer to the emerge(1) and portage(5) man
   pages for more information.
+* The "selected" package set, which includes packages listed in
+  /var/lib/portage/world, has been extended to include nested sets that may
+  be listed /var/lib/portage/world_sets.
 
 portage-2.1.10.61
 ==================================
@@ -119,7 +142,7 @@ portage-2.1.6
 * The python namespace for portage has been sanitized, all portage related code
   is now contained within the portage namespace. External script should be
   updated accordingly, though links exist for backward compability.
-* -* support in package.keywords was changed as it was inconsistent with 
+* -* support in package.keywords was changed as it was inconsistent with
   ACCEPT_KEYWORDS behavior (also see
   http://dev.gentoo.org/~genone/docs/KEYWORDS.stupid).
   Previously having -* in package.keywords matched packages with KEYWORDS="-*",
@@ -225,7 +248,7 @@ portage-2.1.1
 
 * emerge --search doesn't use regular expressions now anymore by default, so
   emerge --search dvd+rw-tools now works as expected. Regular expressions can be enabled
-  by prefixing the search string with %. 
+  by prefixing the search string with %.
 * emerge --depclean algorithm is much safer than the old one.
 * emerge --newuse detects changes in IUSE that previously went undetected.
 
@@ -238,9 +261,9 @@ portage-2.1
   by the name of --alphabetical.  Adding the option to EMERGE_DEFAULT_OPTS
   in make.conf will restore the old behaviour permanently.
 * The deprecated --inject has been removed, use /etc/portage/profile/package.provided
-* The deprecated --upgradeonly has been removed, use /etc/portage/package.* 
+* The deprecated --upgradeonly has been removed, use /etc/portage/package.*
   instead.
-* 'emerge sync' has been deprecated, use 'emerge --sync' instead (same 
+* 'emerge sync' has been deprecated, use 'emerge --sync' instead (same
   for other actions)
 * Tools that call emerge should override the EMERGE_DEFAULT_OPTS environment
   variable or use the emerge --ignore-default-opts option.
@@ -249,6 +272,6 @@ portage-2.1
 * autouse (use.defaults) has been deprecated by specifying USE_ORDER in make.defaults
   Users may still turn this back on by specifying USE_ORDER="env:pkg:conf:auto:defaults"
   in make.conf.  Interested in figuring out what use flags were turned off?  Check out
-  /usr/portage/profiles/base/use.defaults and other use.defaults files that correspond 
+  /usr/portage/profiles/base/use.defaults and other use.defaults files that correspond
   to your profile.
 

@@ -39,11 +39,10 @@ class CleanLogs(object):
 			options: dict: 
 				'NUM': int: number of days
 				'pretend': boolean
-				'eerror': defaults to None, optional output module to output errors.
-				'einfo': defaults to None, optional output module to output info msgs.
 		"""
 		messages = []
 		num_of_days = None
+		pretend = False
 		if kwargs:
 			# convuluted, I know, but portage.settings does not exist in
 			# kwargs.get() when called from _emerge.main.clean_logs()
@@ -54,8 +53,6 @@ class CleanLogs(object):
 			if options:
 				num_of_days = options.get('NUM', None)
 				pretend = options.get('pretend', False)
-				eerror = options.get('eerror', None)
-				einfo = options.get('einfo', None)
 
 		clean_cmd = settings.get("PORT_LOGDIR_CLEAN")
 		if clean_cmd:
@@ -75,7 +72,7 @@ class CleanLogs(object):
 		if not clean_cmd:
 			return []
 		rval = self._clean_logs(clean_cmd, settings)
-		messages += self._convert_errors(rval, eerror, einfo)
+		messages += self._convert_errors(rval)
 		return messages
 
 
@@ -96,19 +93,11 @@ class CleanLogs(object):
 
 
 	@staticmethod
-	def _convert_errors(rval, eerror=None, einfo=None):
+	def _convert_errors(rval):
 		msg = []
 		if rval != os.EX_OK:
 			msg.append("PORT_LOGDIR_CLEAN command returned %s"
 				% ("%d" % rval if rval else "None"))
 			msg.append("See the make.conf(5) man page for "
 				"PORT_LOGDIR_CLEAN usage instructions.")
-			if eerror:
-				for m in msg:
-					eerror(m)
-		else:
-			msg.append("PORT_LOGDIR_CLEAN command succeeded")
-			if einfo:
-				for m in msg:
-					einfo(m)
 		return msg

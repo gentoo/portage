@@ -1,0 +1,61 @@
+--- make.conf.example
++++ make.conf.example
+@@ -22,6 +22,11 @@
+ # Example:
+ #USE="X gtk gnome -alsa"
+ 
++# Host Setting
++# ============
++#
++CHOST="x86_64-pc-linux-gnu"
++
+ # Host and optimization settings 
+ # ==============================
+ #
+@@ -39,10 +44,35 @@
+ # -frecord-gcc-switches, since otherwise the check could result in false
+ # positive results.
+ #
+-# Please refer to the GCC manual for a list of possible values.
++# -mcpu=<cpu-type> means optimize code for the particular type of CPU without
++# breaking compatibility with other CPUs. GCC 3.4 has deprecated support for
++# -mcpu, so use -mtune instead if using this compiler.
++#
++# -march=<cpu-type> means to take full advantage of the ABI and instructions
++# for the particular CPU; this will break compatibility with older CPUs (for
++# example, -march=athlon-xp code will not run on a regular Athlon, and
++# -march=i686 code will not run on a Pentium Classic.)
++#
++# CPU types supported in gcc-3.2 and higher: athlon-xp, athlon-mp,
++# athlon-tbird, athlon, k6, k6-2, k6-3, i386, i486, i586 (Pentium), i686
++# (PentiumPro), pentium, pentium-mmx, pentiumpro, pentium2 (Celeron),
++# pentium3, and pentium4.
++#
++# Note that Gentoo Linux 1.4 and higher include at least gcc-3.2.
++#
++# amd64 CPU types supported in gcc-3.4: athlon64, opteron, k8
++# 
++# CRITICAL WARNINGS: ****************************************************** #
++# K6 markings are deceptive. Avoid setting -march for them. See Bug #24379. #
++# Pentium-M CPUs should not enable sse2 until at least gcc-3.4. Bug 50616. #
++# GCC 3.3 doesnt support an amd64 specific -march setting, use 3.4.         #
++# ************************************************************************* #
+ #
+-#CFLAGS="-O2 -pipe"
++# Decent examples:
+ #
++#CFLAGS="-mtune=k8 -O2 -pipe"
++#CFLAGS="-march=athlon64 -O2 -pipe"
++
+ # If you set a CFLAGS above, then this line will set your default C++ flags to
+ # the same settings.
+ #CXXFLAGS="${CFLAGS}"
+@@ -76,7 +106,7 @@
+ # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
+ # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
+ #
+-#ACCEPT_KEYWORDS="~arch"
++#ACCEPT_KEYWORDS="~amd64"
+ 
+ # ACCEPT_LICENSE is used to mask packages based on licensing restrictions.
+ # It may contain both license and group names, where group names are

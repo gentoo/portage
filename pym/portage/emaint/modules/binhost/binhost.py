@@ -1,4 +1,4 @@
-# Copyright 2005-2012 Gentoo Foundation
+# Copyright 2005-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -9,7 +9,9 @@ from portage import os
 from portage.util import writemsg
 
 import sys
+
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	long = int
 
 class BinhostHandler(object):
@@ -151,12 +153,8 @@ class BinhostHandler(object):
 
 				del pkgindex.packages[:]
 				pkgindex.packages.extend(metadata.values())
-				from portage.util import atomic_ofstream
-				f = atomic_ofstream(self._pkgindex_file)
-				try:
-					self._pkgindex.write(f)
-				finally:
-					f.close()
+				bintree._pkgindex_write(self._pkgindex)
+
 			finally:
 				locks.unlockfile(pkgindex_lock)
 

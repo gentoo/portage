@@ -24,7 +24,8 @@ Tabs
 ----
 
 The current code uses tabs, not spaces.  Keep whitespace usage consistent
-between files.  New files should use tabs.
+between files.  New files should use tabs.  Space is sometimes used for
+indentation in Python code.  Tab stop should for this reason be set to 4.
 
 Line-Wrapping
 -------------
@@ -51,13 +52,13 @@ wrapping is always clear (but you cannot convert spaces as easily as tabwidth).
 Comparisons
 -----------
 
-if foo == None
+if foo != None
 
 should be replaced with:
 
 if foo is not None:
 
-Is not does a reference comparison (address1 = address2 basically) and 
+Is not does a reference comparison (address1 = address2 basically) and
 the == forces a by value compare (with __eq__())
 
 Dict Lookups
@@ -139,7 +140,7 @@ NO:
 
 Try not to import large numbers of things into the namespace of a module.
 I realize this is done all over the place in current code but it really makes it
-a pain to do code reflection when the namespace is cluttered with identifiers 
+a pain to do code reflection when the namespace is cluttered with identifiers
 from other modules.
 
 YES:
@@ -159,13 +160,29 @@ just COLOR.  However it means during introspection of the current namespace
 The NO example just imports a set of functions from the output module.  It is
 somewhat annoying because the import line needs to be modified when functions
 are needed and often unused functions are left in the import line until someone
-comes along with a linter to clean up (does not happen often).  The color is a
-bit clearer as
+comes along with a linter to clean up (does not happen often).
 
-  print red('blar')
 
-is shorter than:
+Releases
+--------
 
-  print output.red('blar')
+First update the NEWS and RELEASE-NOTES files and commit.
 
-Rationale: python -c 'import portage; dir(portage)' (circa 02/2008)
+Second create a git tag for this release:
+	git tag v2.2.8
+
+Then create the tarball and run the tests:
+	./mkrelease.sh --changelog-rev v2.2.7 --tag --runtests 2.2.8
+Make sure you have all supported python versions installed first
+(see PYTHON_SUPPORTED_VERSIONS in runtests.sh).
+
+Version bump the ebuild and verify it can re-install itself:
+	emerge portage
+	emerge portage
+
+Publish the results (no going back now):
+	- Push the new git tag
+	- Upload the tarball
+	- Commit the new ebuild version
+
+Close the bugs blocking the tracker bug for this release.

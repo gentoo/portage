@@ -1,0 +1,48 @@
+--- make.conf.example
++++ make.conf.example
+@@ -22,6 +22,19 @@
+ # Example:
+ #USE="X gtk gnome -alsa"
+ 
++# Host Setting
++# ============
++#
++# DO NOT CHANGE THIS SETTING UNLESS YOU ARE USING STAGE1!
++# It's very important you select the right CHOST from the start.  A wrong
++# CHOST could easily lead to weird errors either in compiling or running.
++#
++# Netwinder (or any StrongArm110): armv4l-unknown-linux-gnu
++# nslu2: armvbe-unknown-linux-gnu
++# Generic ARM: arm-unknown-linux-gnu
++#
++CHOST="armv4l-unknown-linux-gnu"
++
+ # Host and optimization settings 
+ # ==============================
+ #
+@@ -39,10 +52,22 @@
+ # -frecord-gcc-switches, since otherwise the check could result in false
+ # positive results.
+ #
+-# Please refer to the GCC manual for a list of possible values.
+-#
+-#CFLAGS="-O2 -pipe"
++# -mcpu=<cpu-type> means optimize code for the particular type of CPU without
++# breaking compatibility with other CPUs.
+ #
++# -march=<cpu-type> means to take full advantage of the ABI and instructions
++# for the particular CPU; this will break compatibility with older CPUs (for
++# example, -march=xscale code will not run on a StrongARM 11x0, and
++# -march=strongarm110 code will not run on a regular StrongARM).
++#
++# For a full listing of supported CPU models, please refer to the GCC website:
++# http://gcc.gnu.org/onlinedocs/gcc-3.3/gcc/ARM-Options.html
++#
++# Netwinder:
++#CFLAGS="-mcpu=strongarm110 -O2 -pipe"
++# NSLU2:
++#CFLAGS="-mcpu=armeb -O2 -pipe"
++
+ # If you set a CFLAGS above, then this line will set your default C++ flags to
+ # the same settings.
+ #CXXFLAGS="${CFLAGS}"

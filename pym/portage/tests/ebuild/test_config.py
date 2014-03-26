@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -46,7 +46,7 @@ class ConfigTestCase(TestCase):
 			settings.features.add('noclean')
 			self.assertEqual('noclean' in settings['FEATURES'].split(), True)
 			settings.regenerate()
-			self.assertEqual('noclean' in settings['FEATURES'].split(),True)
+			self.assertEqual('noclean' in settings['FEATURES'].split(), True)
 
 			settings.features.discard('noclean')
 			self.assertEqual('noclean' in settings['FEATURES'].split(), False)
@@ -56,7 +56,7 @@ class ConfigTestCase(TestCase):
 			settings.features.add('noclean')
 			self.assertEqual('noclean' in settings['FEATURES'].split(), True)
 			settings.regenerate()
-			self.assertEqual('noclean' in settings['FEATURES'].split(),True)
+			self.assertEqual('noclean' in settings['FEATURES'].split(), True)
 
 			# before: ['noclean', '-noclean', 'noclean']
 			settings.features._prune_overrides()
@@ -92,7 +92,7 @@ class ConfigTestCase(TestCase):
 		try:
 			portage.util.noiselimit = -2
 
-			license_group_locations = (os.path.join(playground.portdir, "profiles"),)
+			license_group_locations = (os.path.join(playground.settings.repositories["test_repo"].location, "profiles"),)
 			pkg_license = os.path.join(playground.eroot, "etc", "portage")
 
 			lic_man = LicenseManager(license_group_locations, pkg_license)
@@ -221,6 +221,7 @@ class ConfigTestCase(TestCase):
 						"profile-formats = pms",
 						"thin-manifests = true",
 						"manifest-hashes = SHA256 SHA512 WHIRLPOOL",
+						"# use implicit masters"
 					),
 			}
 		}
@@ -239,28 +240,30 @@ class ConfigTestCase(TestCase):
 
 		playground = ResolverPlayground(ebuilds=ebuilds,
 			repo_configs=repo_configs, distfiles=distfiles)
+		settings = playground.settings
 
-		new_repo_config = playground.settings.repositories.prepos['new_repo']
+		new_repo_config = settings.repositories["new_repo"]
+		old_repo_config = settings.repositories["old_repo"]
 		self.assertTrue(len(new_repo_config.masters) > 0, "new_repo has no default master")
-		self.assertEqual(new_repo_config.masters[0].user_location, playground.portdir,
-			"new_repo default master is not PORTDIR")
+		self.assertEqual(new_repo_config.masters[0].user_location, playground.settings.repositories["test_repo"].location,
+			"new_repo default master is not test_repo")
 		self.assertEqual(new_repo_config.thin_manifest, True,
 			"new_repo_config.thin_manifest != True")
 
-		new_manifest_file = os.path.join(playground.repo_dirs["new_repo"], "dev-libs", "A", "Manifest")
-		self.assertEqual(os.path.exists(new_manifest_file), False)
+		new_manifest_file = os.path.join(new_repo_config.location, "dev-libs", "A", "Manifest")
+		self.assertNotExists(new_manifest_file)
 
-		new_manifest_file = os.path.join(playground.repo_dirs["new_repo"], "dev-libs", "B", "Manifest")
+		new_manifest_file = os.path.join(new_repo_config.location, "dev-libs", "B", "Manifest")
 		f = open(new_manifest_file)
 		self.assertEqual(len(list(f)), 1)
 		f.close()
 
-		new_manifest_file = os.path.join(playground.repo_dirs["new_repo"], "dev-libs", "C", "Manifest")
+		new_manifest_file = os.path.join(new_repo_config.location, "dev-libs", "C", "Manifest")
 		f = open(new_manifest_file)
 		self.assertEqual(len(list(f)), 2)
 		f.close()
 
-		old_manifest_file = os.path.join(playground.repo_dirs["old_repo"], "dev-libs", "A", "Manifest")
+		old_manifest_file = os.path.join(old_repo_config.location, "dev-libs", "A", "Manifest")
 		f = open(old_manifest_file)
 		self.assertEqual(len(list(f)), 1)
 		f.close()

@@ -1,6 +1,8 @@
 #!/bin/bash
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}/eapi.sh"
 
 # We need this next line for "die" and "assert". It expands
 # It _must_ preceed all the calls to die and assert.
@@ -15,7 +17,7 @@ assert() {
 	done
 }
 
-assert_sigpipe_ok() {
+__assert_sigpipe_ok() {
 	# When extracting a tar file like this:
 	#
 	#     bzip2 -dc foo.tar.bz2 | tar xof -
@@ -43,21 +45,21 @@ assert_sigpipe_ok() {
 
 shopt -s extdebug
 
-# dump_trace([number of funcs on stack to skip],
+# __dump_trace([number of funcs on stack to skip],
 #            [whitespacing for filenames],
 #            [whitespacing for line numbers])
-dump_trace() {
+__dump_trace() {
 	local funcname="" sourcefile="" lineno="" s="yes" n p
 	declare -i strip=${1:-1}
 	local filespacing=$2 linespacing=$3
 
-	# The qa_call() function and anything before it are portage internals
+	# The __qa_call() function and anything before it are portage internals
 	# that the user will not be interested in. Therefore, the stack trace
-	# should only show calls that come after qa_call().
+	# should only show calls that come after __qa_call().
 	(( n = ${#FUNCNAME[@]} - 1 ))
 	(( p = ${#BASH_ARGV[@]} ))
 	while (( n > 0 )) ; do
-		[ "${FUNCNAME[${n}]}" == "qa_call" ] && break
+		[ "${FUNCNAME[${n}]}" == "__qa_call" ] && break
 		(( p -= ${BASH_ARGC[${n}]} ))
 		(( n-- ))
 	done
@@ -86,7 +88,7 @@ dump_trace() {
 }
 
 nonfatal() {
-	if has "${EAPI:-0}" 0 1 2 3 3_pre2 ; then
+	if ! ___eapi_has_nonfatal; then
 		die "$FUNCNAME() not supported in this EAPI"
 	fi
 	if [[ $# -lt 1 ]]; then
@@ -96,18 +98,24 @@ nonfatal() {
 	PORTAGE_NONFATAL=1 "$@"
 }
 
-helpers_die() {
-	case "${EAPI:-0}" in
-		0|1|2|3)
-			echo -e "$@" >&2
-			;;
-		*)
-			die "$@"
-			;;
-	esac
+__bashpid() {
+	# The BASHPID variable is new to bash-4.0, so add a hack for older
+	# versions.  This must be used like so:
+	# ${BASHPID:-$(__bashpid)}
+	sh -c 'echo ${PPID}'
+}
+
+__helpers_die() {
+	if ___eapi_helpers_can_die; then
+		die "$@"
+	else
+		echo -e "$@" >&2
+	fi
 }
 
 die() {
+	local IFS=$' \t\n'
+
 	if [[ $PORTAGE_NONFATAL -eq 1 ]]; then
 		echo -e " $WARN*$NORMAL ${FUNCNAME[1]}: WARNING: $@" >&2
 		return 1
@@ -124,7 +132,7 @@ die() {
 	# setup spacing to make output easier to read
 	(( n = ${#FUNCNAME[@]} - 1 ))
 	while (( n > 0 )) ; do
-		[ "${FUNCNAME[${n}]}" == "qa_call" ] && break
+		[ "${FUNCNAME[${n}]}" == "__qa_call" ] && break
 		(( n-- ))
 	done
 	(( n == 0 )) && (( n = ${#FUNCNAME[@]} - 1 ))
@@ -140,14 +148,14 @@ die() {
 	# get a stack trace, so at least report the phase that failed.
 	local phase_str=
 	[[ -n $EBUILD_PHASE ]] && phase_str=" ($EBUILD_PHASE phase)"
-	eerror "ERROR: $CATEGORY/$PF failed${phase_str}:"
+	eerror "ERROR: ${CATEGORY}/${PF}::${PORTAGE_REPO_NAME} failed${phase_str}:"
 	eerror "  ${*:-(no error message)}"
 	eerror
-	# dump_trace is useless when the main script is a helper binary
+	# __dump_trace is useless when the main script is a helper binary
 	local main_index
 	(( main_index = ${#BASH_SOURCE[@]} - 1 ))
 	if has ${BASH_SOURCE[$main_index]##*/} ebuild.sh misc-functions.sh ; then
-	dump_trace 2 ${filespacing} ${linespacing}
+	__dump_trace 2 ${filespacing} ${linespacing}
 	eerror "  $(printf "%${filespacing}s" "${BASH_SOURCE[1]##*/}"), line $(printf "%${linespacing}s" "${BASH_LINENO[0]}"):  Called die"
 	eerror "The specific snippet of code:"
 	# This scans the file that called die and prints out the logic that
@@ -173,39 +181,12 @@ die() {
 		| while read -r n ; do eerror "  ${n#RETAIN-LEADING-SPACE}" ; done
 	eerror
 	fi
-	eerror "If you need support, post the output of \`emerge --info '=$CATEGORY/$PF'\`,"
-	eerror "the complete build log and the output of \`emerge -pqv '=$CATEGORY/$PF'\`."
-	if [[ -n ${EBUILD_OVERLAY_ECLASSES} ]] ; then
-		eerror "This ebuild used the following eclasses from overlays:"
-		local x
-		for x in ${EBUILD_OVERLAY_ECLASSES} ; do
-			eerror "  ${x}"
-		done
-	fi
-	if [ "${EMERGE_FROM}" != "binary" ] && \
-		! has ${EBUILD_PHASE} prerm postrm && \
-		[ "${EBUILD#${PORTDIR}/}" == "${EBUILD}" ] ; then
-		local overlay=${EBUILD%/*}
-		overlay=${overlay%/*}
-		overlay=${overlay%/*}
-		if [[ -n $PORTAGE_REPO_NAME ]] ; then
-			eerror "This ebuild is from an overlay named" \
-				"'$PORTAGE_REPO_NAME': '${overlay}/'"
-		else
-			eerror "This ebuild is from an overlay: '${overlay}/'"
-		fi
-	elif [[ -n $PORTAGE_REPO_NAME && -f "$PORTDIR"/profiles/repo_name ]] ; then
-		local portdir_repo_name=$(<"$PORTDIR"/profiles/repo_name)
-		if [[ -n $portdir_repo_name && \
-			$portdir_repo_name != $PORTAGE_REPO_NAME ]] ; then
-			eerror "This ebuild is from a repository" \
-				"named '$PORTAGE_REPO_NAME'"
-		fi
-	fi
+	eerror "If you need support, post the output of \`emerge --info '=${CATEGORY}/${PF}::${PORTAGE_REPO_NAME}'\`,"
+	eerror "the complete build log and the output of \`emerge -pqv '=${CATEGORY}/${PF}::${PORTAGE_REPO_NAME}'\`."
 
 	# Only call die hooks here if we are executed via ebuild.sh or
 	# misc-functions.sh, since those are the only cases where the environment
-	# contains the hook functions. When necessary (like for helpers_die), die
+	# contains the hook functions. When necessary (like for __helpers_die), die
 	# hooks are automatically called later by a misc-functions.sh invocation.
 	if has ${BASH_SOURCE[$main_index]##*/} ebuild.sh misc-functions.sh && \
 		[[ ${EBUILD_PHASE} != depend ]] ; then
@@ -218,7 +199,8 @@ die() {
 
 	if [[ -n ${PORTAGE_LOG_FILE} ]] ; then
 		eerror "The complete build log is located at '${PORTAGE_LOG_FILE}'."
-		if [[ ${PORTAGE_LOG_FILE} != ${T}/* ]] ; then
+		if [[ ${PORTAGE_LOG_FILE} != ${T}/* ]] && \
+			! has fail-clean ${FEATURES} ; then
 			# Display path to symlink in ${T}, as requested in bug #412865.
 			local log_ext=log
 			[[ ${PORTAGE_LOG_FILE} != *.log ]] && log_ext+=.${PORTAGE_LOG_FILE##*.}
@@ -241,26 +223,20 @@ die() {
 	[[ -n $PORTAGE_IPC_DAEMON ]] && "$PORTAGE_BIN_PATH"/ebuild-ipc exit 1
 
 	# subshell die support
-	[[ $BASHPID = $EBUILD_MASTER_PID ]] || kill -s SIGTERM $EBUILD_MASTER_PID
+	[[ ${BASHPID:-$(__bashpid)} == ${EBUILD_MASTER_PID} ]] || kill -s SIGTERM ${EBUILD_MASTER_PID}
 	exit 1
 }
 
-# We need to implement diefunc() since environment.bz2 files contain
-# calls to it (due to alias expansion).
-diefunc() {
-	die "${@}"
-}
-
-quiet_mode() {
+__quiet_mode() {
 	[[ ${PORTAGE_QUIET} -eq 1 ]]
 }
 
-vecho() {
-	quiet_mode || echo "$@"
+__vecho() {
+	__quiet_mode || echo "$@"
 }
 
 # Internal logging function, don't use this in ebuilds
-elog_base() {
+__elog_base() {
 	local messagetype
 	[ -z "${1}" -o -z "${T}" -o ! -d "${T}/logging" ] && return 1
 	case "${1}" in
@@ -269,7 +245,7 @@ elog_base() {
 			shift
 			;;
 		*)
-			vecho -e " ${BAD}*${NORMAL} Invalid use of internal function elog_base(), next message will not be logged"
+			__vecho -e " ${BAD}*${NORMAL} Invalid use of internal function __elog_base(), next message will not be logged"
 			return 1
 			;;
 	esac
@@ -281,17 +257,17 @@ elog_base() {
 }
 
 eqawarn() {
-	elog_base QA "$*"
+	__elog_base QA "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
 	echo -e "$@" | while read -r ; do
-		vecho " $WARN*$NORMAL $REPLY" >&2
+		__vecho " $WARN*$NORMAL $REPLY" >&2
 	done
 	LAST_E_CMD="eqawarn"
 	return 0
 }
 
 elog() {
-	elog_base LOG "$*"
+	__elog_base LOG "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
 	echo -e "$@" | while read -r ; do
 		echo " $GOOD*$NORMAL $REPLY"
@@ -300,26 +276,8 @@ elog() {
 	return 0
 }
 
-esyslog() {
-	local pri=
-	local tag=
-
-	if [ -x /usr/bin/logger ]
-	then
-		pri="$1"
-		tag="$2"
-
-		shift 2
-		[ -z "$*" ] && return 0
-
-		/usr/bin/logger -p "${pri}" -t "${tag}" -- "$*"
-	fi
-
-	return 0
-}
-
 einfo() {
-	elog_base INFO "$*"
+	__elog_base INFO "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
 	echo -e "$@" | while read -r ; do
 		echo " $GOOD*$NORMAL $REPLY"
@@ -329,7 +287,7 @@ einfo() {
 }
 
 einfon() {
-	elog_base INFO "$*"
+	__elog_base INFO "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
 	echo -ne " ${GOOD}*${NORMAL} $*"
 	LAST_E_CMD="einfon"
@@ -337,7 +295,7 @@ einfon() {
 }
 
 ewarn() {
-	elog_base WARN "$*"
+	__elog_base WARN "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
 	echo -e "$@" | while read -r ; do
 		echo " $WARN*$NORMAL $RC_INDENTATION$REPLY" >&2
@@ -347,7 +305,7 @@ ewarn() {
 }
 
 eerror() {
-	elog_base ERROR "$*"
+	__elog_base ERROR "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
 	echo -e "$@" | while read -r ; do
 		echo " $BAD*$NORMAL $RC_INDENTATION$REPLY" >&2
@@ -372,7 +330,7 @@ ebegin() {
 	return 0
 }
 
-_eend() {
+__eend() {
 	local retval=${1:-0} efunc=${2:-eerror} msg
 	shift 2
 
@@ -399,13 +357,13 @@ eend() {
 	local retval=${1:-0}
 	shift
 
-	_eend ${retval} eerror "$*"
+	__eend ${retval} eerror "$*"
 
 	LAST_E_CMD="eend"
 	return ${retval}
 }
 
-unset_colors() {
+__unset_colors() {
 	COLS=80
 	ENDCOL=
 
@@ -417,7 +375,7 @@ unset_colors() {
 	BRACKET=
 }
 
-set_colors() {
+__set_colors() {
 	COLS=${COLUMNS:-0}      # bash's internal COLUMNS variable
 	# Avoid wasteful stty calls during the "depend" phases.
 	# If stdout is a pipe, the parent process can export COLUMNS
@@ -450,10 +408,10 @@ RC_DOT_PATTERN=''
 
 case "${NOCOLOR:-false}" in
 	yes|true)
-		unset_colors
+		__unset_colors
 		;;
 	no|false)
-		set_colors
+		__set_colors
 		;;
 esac
 
@@ -502,6 +460,26 @@ has() {
 		[ "${x}" = "${needle}" ] && return 0
 	done
 	return 1
+}
+
+__repo_attr() {
+	local appropriate_section=0 exit_status=1 line saved_extglob_shopt=$(shopt -p extglob)
+	shopt -s extglob
+	while read line; do
+		[[ ${appropriate_section} == 0 && ${line} == "[$1]" ]] && appropriate_section=1 && continue
+		[[ ${appropriate_section} == 1 && ${line} == "["*"]" ]] && appropriate_section=0 && continue
+		# If a conditional expression like [[ ${line} == $2*( )=* ]] is used
+		# then bash-3.2 produces an error like the following when the file is
+		# sourced: syntax error in conditional expression: unexpected token `('
+		# Therefore, use a regular expression for compatibility.
+		if [[ ${appropriate_section} == 1 && ${line} =~ ^${2}[[:space:]]*= ]]; then
+			echo "${line##$2*( )=*( )}"
+			exit_status=0
+			break
+		fi
+	done <<< "${PORTAGE_REPOSITORIES}"
+	eval "${saved_extglob_shopt}"
+	return ${exit_status}
 }
 
 true

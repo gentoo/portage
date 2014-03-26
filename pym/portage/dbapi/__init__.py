@@ -1,5 +1,7 @@
-# Copyright 1998-2012 Gentoo Foundation
+# Copyright 1998-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 __all__ = ["dbapi"]
 
@@ -16,16 +18,18 @@ portage.proxy.lazyimport.lazyimport(globals(),
 
 from portage import os
 from portage import auxdbkeys
+from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidData
 from portage.localization import _
+from _emerge.Package import Package
 
 class dbapi(object):
-	_category_re = re.compile(r'^\w[-.+\w]*$')
+	_category_re = re.compile(r'^\w[-.+\w]*$', re.UNICODE)
 	_categories = None
 	_use_mutable = False
 	_known_keys = frozenset(x for x in auxdbkeys
 		if not x.startswith("UNUSED_0"))
-	_pkg_str_aux_keys = ("EAPI", "SLOT", "repository")
+	_pkg_str_aux_keys = ("EAPI", "KEYWORDS", "SLOT", "repository")
 
 	def __init__(self):
 		pass
@@ -153,8 +157,7 @@ class dbapi(object):
 		metadata = dict(zip(self._pkg_str_aux_keys,
 			self.aux_get(cpv, self._pkg_str_aux_keys, myrepo=repo)))
 
-		return _pkg_str(cpv, slot=metadata["SLOT"],
-			repo=metadata["repository"], eapi=metadata["EAPI"])
+		return _pkg_str(cpv, metadata=metadata, settings=self.settings)
 
 	def _iter_match_repo(self, atom, cpv_iter):
 		for cpv in cpv_iter:
@@ -182,7 +185,7 @@ class dbapi(object):
 		2) Check enabled/disabled flag states.
 		"""
 
-		aux_keys = ["IUSE", "SLOT", "USE", "repository"]
+		aux_keys = ["EAPI", "IUSE", "KEYWORDS", "SLOT", "USE", "repository"]
 		for cpv in cpv_iter:
 			try:
 				metadata = dict(zip(aux_keys,
@@ -190,17 +193,31 @@ class dbapi(object):
 			except KeyError:
 				continue
 
+			try:
+				cpv.slot
+			except AttributeError:
+				try:
+					cpv = _pkg_str(cpv, metadata=metadata,
+						settings=self.settings)
+				except InvalidData:
+					continue
+
 			if not self._match_use(atom, cpv, metadata):
 				continue
 
 			yield cpv
 
-	def _match_use(self, atom, cpv, metadata):
-		iuse_implicit_match = self.settings._iuse_implicit_match
-		iuse = frozenset(x.lstrip('+-') for x in metadata["IUSE"].split())
+	def _match_use(self, atom, pkg, metadata):
+		eapi_attrs = _get_eapi_attrs(metadata["EAPI"])
+		if eapi_attrs.iuse_effective:
+			iuse_implicit_match = self.settings._iuse_effective_match
+		else:
+			iuse_implicit_match = self.settings._iuse_implicit_match
+		usealiases = self.settings._use_manager.getUseAliases(pkg)
+		iuse = Package._iuse(None, metadata["IUSE"].split(), iuse_implicit_match, usealiases, metadata["EAPI"])
 
 		for x in atom.unevaluated_atom.use.required:
-			if x not in iuse and not iuse_implicit_match(x):
+			if iuse.get_real_flag(x) is None:
 				return False
 
 		if atom.use is None:
@@ -210,43 +227,53 @@ class dbapi(object):
 			# Use IUSE to validate USE settings for built packages,
 			# in case the package manager that built this package
 			# failed to do that for some reason (or in case of
-			# data corruption).
-			use = frozenset(x for x in metadata["USE"].split()
-				if x in iuse or iuse_implicit_match(x))
-			missing_enabled = atom.use.missing_enabled.difference(iuse)
-			missing_disabled = atom.use.missing_disabled.difference(iuse)
+			# data corruption). The enabled flags must be consistent
+			# with implicit IUSE, in order to avoid potential
+			# inconsistencies in USE dep matching (see bug #453400).
+			use = frozenset(x for x in metadata["USE"].split() if iuse.get_real_flag(x) is not None)
+			missing_enabled = frozenset(x for x in atom.use.missing_enabled if iuse.get_real_flag(x) is None)
+			missing_disabled = frozenset(x for x in atom.use.missing_disabled if iuse.get_real_flag(x) is None)
+			enabled = frozenset((iuse.get_real_flag(x) or x) for x in atom.use.enabled)
+			disabled = frozenset((iuse.get_real_flag(x) or x) for x in atom.use.disabled)
 
-			if atom.use.enabled:
-				if any(x in atom.use.enabled for x in missing_disabled):
+			if enabled:
+				if any(x in enabled for x in missing_disabled):
 					return False
-				need_enabled = atom.use.enabled.difference(use)
+				need_enabled = enabled.difference(use)
 				if need_enabled:
 					if any(x not in missing_enabled for x in need_enabled):
 						return False
 
-			if atom.use.disabled:
-				if any(x in atom.use.disabled for x in missing_enabled):
+			if disabled:
+				if any(x in disabled for x in missing_enabled):
 					return False
-				need_disabled = atom.use.disabled.intersection(use)
+				need_disabled = disabled.intersection(use)
 				if need_disabled:
 					if any(x not in missing_disabled for x in need_disabled):
 						return False
 
 		elif not self.settings.local_config:
 			# Check masked and forced flags for repoman.
-			if hasattr(cpv, 'slot'):
-				pkg = cpv
-			else:
-				pkg = _pkg_str(cpv, slot=metadata["SLOT"],
-					repo=metadata.get("repository"))
-			usemask = self.settings._getUseMask(pkg)
+			usemask = self.settings._getUseMask(pkg,
+				stable=self.settings._parent_stable)
 			if any(x in usemask for x in atom.use.enabled):
 				return False
 
-			useforce = self.settings._getUseForce(pkg)
+			useforce = self.settings._getUseForce(pkg,
+				stable=self.settings._parent_stable)
 			if any(x in useforce and x not in usemask
 				for x in atom.use.disabled):
 				return False
+
+			# Check unsatisfied use-default deps
+			if atom.use.enabled:
+				missing_disabled = frozenset(x for x in atom.use.missing_disabled if iuse.get_real_flag(x) is None)
+				if any(x in atom.use.enabled for x in missing_disabled):
+					return False
+			if atom.use.disabled:
+				missing_enabled = frozenset(x for x in atom.use.missing_enabled if iuse.get_real_flag(x) is None)
+				if any(x in atom.use.disabled for x in missing_enabled):
+					return False
 
 		return True
 
@@ -275,7 +302,8 @@ class dbapi(object):
 		maxval = len(cpv_all)
 		aux_get = self.aux_get
 		aux_update = self.aux_update
-		meta_keys = ["DEPEND", "EAPI", "RDEPEND", "PDEPEND", "PROVIDE", 'repository']
+		update_keys = Package._dep_keys + ("PROVIDE",)
+		meta_keys = update_keys + self._pkg_str_aux_keys
 		repo_dict = None
 		if isinstance(updates, dict):
 			repo_dict = updates
@@ -284,14 +312,20 @@ class dbapi(object):
 		if onProgress:
 			onProgress(maxval, 0)
 		for i, cpv in enumerate(cpv_all):
-			metadata = dict(zip(meta_keys, aux_get(cpv, meta_keys)))
-			eapi = metadata.pop('EAPI')
-			repo = metadata.pop('repository')
+			try:
+				metadata = dict(zip(meta_keys, aux_get(cpv, meta_keys)))
+			except KeyError:
+				continue
+			try:
+				pkg = _pkg_str(cpv, metadata=metadata, settings=self.settings)
+			except InvalidData:
+				continue
+			metadata = dict((k, metadata[k]) for k in update_keys)
 			if repo_dict is None:
 				updates_list = updates
 			else:
 				try:
-					updates_list = repo_dict[repo]
+					updates_list = repo_dict[pkg.repo]
 				except KeyError:
 					try:
 						updates_list = repo_dict['DEFAULT']
@@ -302,7 +336,7 @@ class dbapi(object):
 				continue
 
 			metadata_updates = \
-				portage.update_dbentries(updates_list, metadata, eapi=eapi)
+				portage.update_dbentries(updates_list, metadata, parent=pkg)
 			if metadata_updates:
 				aux_update(cpv, metadata_updates)
 				if onUpdate:
@@ -343,9 +377,9 @@ class dbapi(object):
 				continue
 			moves += 1
 			if "/" not in newslot and \
-				mycpv.slot_abi and \
-				mycpv.slot_abi not in (mycpv.slot, newslot):
-				newslot = "%s/%s" % (newslot, mycpv.slot_abi)
+				mycpv.sub_slot and \
+				mycpv.sub_slot not in (mycpv.slot, newslot):
+				newslot = "%s/%s" % (newslot, mycpv.sub_slot)
 			mydata = {"SLOT": newslot+"\n"}
 			self.aux_update(mycpv, mydata)
 		return moves

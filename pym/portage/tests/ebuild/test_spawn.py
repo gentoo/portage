@@ -1,17 +1,18 @@
-# Copyright 1998-2011 Gentoo Foundation
+# Copyright 1998-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
 import io
 import sys
 import tempfile
+import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
 from portage.const import BASH_BINARY
 from portage.tests import TestCase
+from portage.util._eventloop.global_event_loop import global_event_loop
 from _emerge.SpawnProcess import SpawnProcess
-from _emerge.PollScheduler import PollScheduler
 
 class SpawnTestCase(TestCase):
 
@@ -22,12 +23,16 @@ class SpawnTestCase(TestCase):
 			os.close(fd)
 			null_fd = os.open('/dev/null', os.O_RDWR)
 			test_string = 2 * "blah blah blah\n"
-			scheduler = PollScheduler().sched_iface
 			proc = SpawnProcess(
 				args=[BASH_BINARY, "-c",
 				"echo -n '%s'" % test_string],
-				env={}, fd_pipes={0:sys.stdin.fileno(), 1:null_fd, 2:null_fd},
-				scheduler=scheduler,
+				env={},
+				fd_pipes={
+					0: portage._get_stdin().fileno(),
+					1: null_fd,
+					2: null_fd
+				},
+				scheduler=global_event_loop(),
 				logfile=logfile)
 			proc.start()
 			os.close(null_fd)

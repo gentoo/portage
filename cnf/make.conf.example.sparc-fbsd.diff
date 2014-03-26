@@ -1,0 +1,25 @@
+--- make.conf.example
++++ make.conf.example
+@@ -22,6 +22,13 @@
+ # Example:
+ #USE="X gtk gnome -alsa"
+ 
++# Host Setting
++# ============
++#
++# The version number at the end has to correspond to the version of the
++# profile and of freebsd-lib package.
++CHOST="sparc64-gentoo-freebsd6.2"
++
+ # Host and optimization settings 
+ # ==============================
+ #
+@@ -76,7 +83,7 @@
+ # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
+ # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
+ #
+-#ACCEPT_KEYWORDS="~arch"
++ACCEPT_KEYWORDS="~sparc-fbsd"
+ 
+ # ACCEPT_LICENSE is used to mask packages based on licensing restrictions.
+ # It may contain both license and group names, where group names are

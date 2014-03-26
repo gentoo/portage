@@ -1,6 +1,8 @@
-# Copyright: 2005-2011 Gentoo Foundation
+# Copyright 2005-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
+
+from __future__ import unicode_literals
 
 from portage.cache import fs_template
 from portage.cache import cache_errors
@@ -11,15 +13,13 @@ import sys
 import os as _os
 from portage import os
 from portage import _encodings
-from portage import _unicode_decode
 from portage import _unicode_encode
+from portage.exception import InvalidData
+from portage.versions import _pkg_str
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	long = int
-
-# Coerce to unicode, in order to prevent TypeError when writing
-# raw bytes to TextIOWrapper with python2.
-_setitem_fmt = _unicode_decode("%s=%s\n")
 
 class database(fs_template.FsBased):
 
@@ -40,11 +40,10 @@ class database(fs_template.FsBased):
 		# Don't use os.path.join, for better performance.
 		fp = self.location + _os.sep + cpv
 		try:
-			myf = io.open(_unicode_encode(fp,
+			with io.open(_unicode_encode(fp,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],
-				errors='replace')
-			try:
+				errors='replace') as myf:
 				lines = myf.read().split("\n")
 				if not lines[-1]:
 					lines.pop()
@@ -54,8 +53,6 @@ class database(fs_template.FsBased):
 					# that uses mtime mangling.
 					d['_mtime_'] = _os.fstat(myf.fileno())[stat.ST_MTIME]
 				return d
-			finally:
-				myf.close()
 		except (IOError, OSError) as e:
 			if e.errno != errno.ENOENT:
 				raise cache_errors.CacheCorruption(cpv, e)
@@ -94,7 +91,10 @@ class database(fs_template.FsBased):
 				v = values.get(k)
 				if not v:
 					continue
-				myf.write(_setitem_fmt % (k, v))
+				# NOTE: This format string requires unicode_literals, so that
+				# k and v are coerced to unicode, in order to prevent TypeError
+				# when writing raw bytes to TextIOWrapper with Python 2.
+				myf.write("%s=%s\n" % (k, v))
 		finally:
 			myf.close()
 		self._ensure_access(fp)
@@ -135,8 +135,6 @@ class database(fs_template.FsBased):
 				del e
 				continue
 			for l in dir_list:
-				if l.endswith(".cpickle"):
-					continue
 				p = os.path.join(dir_path, l)
 				try:
 					st = os.lstat(p)
@@ -151,7 +149,11 @@ class database(fs_template.FsBased):
 					if depth < 1:
 						dirs.append((depth+1, p))
 					continue
-				yield p[len_base+1:]
+
+				try:
+					yield _pkg_str(p[len_base+1:])
+				except InvalidData:
+					continue
 
 
 class md5_database(database):

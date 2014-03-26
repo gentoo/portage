@@ -1,6 +1,8 @@
 # versions.py -- core Portage functionality
-# Copyright 1998-2012 Gentoo Foundation
+# Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 __all__ = [
 	'best', 'catpkgsplit', 'catsplit',
@@ -19,7 +21,6 @@ else:
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.dep:_get_slot_re',
 	'portage.repository.config:_gen_valid_repo',
 	'portage.util:cmp_sort_key',
 )
@@ -31,6 +32,10 @@ from portage.localization import _
 _unknown_repo = "__unknown__"
 
 # \w is [a-zA-Z0-9_]
+
+# PMS 3.1.3: A slot name may contain any of the characters [A-Za-z0-9+_.-].
+# It must not begin with a hyphen or a dot.
+_slot = r'([\w+][\w+.-]*)'
 
 # 2.1.1 A category name may contain any of the characters [A-Za-z0-9+_.-].
 # It must not begin with a hyphen or a dot.
@@ -66,6 +71,24 @@ suffix_regexp = re.compile("^(alpha|beta|rc|pre|p)(\\d*)$")
 suffix_value = {"pre": -2, "p": 0, "alpha": -4, "beta": -3, "rc": -1}
 endversion_keys = ["pre", "p", "alpha", "beta", "rc"]
 
+_slot_re_cache = {}
+
+def _get_slot_re(eapi_attrs):
+	cache_key = eapi_attrs.slot_operator
+	slot_re = _slot_re_cache.get(cache_key)
+	if slot_re is not None:
+		return slot_re
+
+	if eapi_attrs.slot_operator:
+		slot_re = _slot + r'(/' + _slot + r')?'
+	else:
+		slot_re = _slot
+
+	slot_re = re.compile('^' + slot_re + '$', re.VERBOSE | re.UNICODE)
+
+	_slot_re_cache[cache_key] = slot_re
+	return slot_re
+
 _pv_re_cache = {}
 
 def _get_pv_re(eapi_attrs):
@@ -79,18 +102,18 @@ def _get_pv_re(eapi_attrs):
 	else:
 		pv_re = _pv['dots_disallowed_in_PN']
 
-	pv_re = re.compile('^' + pv_re + '$', re.VERBOSE)
+	pv_re = re.compile(r'^' + pv_re + r'$', re.VERBOSE | re.UNICODE)
 
 	_pv_re_cache[cache_key] = pv_re
 	return pv_re
 
 def ververify(myver, silent=1):
 	if ver_regexp.match(myver):
-		return 1
+		return True
 	else:
 		if not silent:
 			print(_("!!! syntax error in version: %s") % myver)
-		return 0
+		return False
 
 def vercmp(ver1, ver2, silent=1):
 	"""
@@ -292,7 +315,7 @@ def _pkgsplit(mypkg, eapi=None):
 
 	return  (m.group('pn'), m.group('ver'), rev) 
 
-_cat_re = re.compile('^%s$' % _cat)
+_cat_re = re.compile('^%s$' % _cat, re.UNICODE)
 _missing_cat = 'null'
 
 def catpkgsplit(mydata, silent=1, eapi=None):
@@ -314,11 +337,11 @@ def catpkgsplit(mydata, silent=1, eapi=None):
 	except AttributeError:
 		pass
 	mysplit = mydata.split('/', 1)
-	p_split=None
-	if len(mysplit)==1:
+	p_split = None
+	if len(mysplit) == 1:
 		cat = _missing_cat
 		p_split = _pkgsplit(mydata, eapi=eapi)
-	elif len(mysplit)==2:
+	elif len(mysplit) == 2:
 		cat = mysplit[0]
 		if _cat_re.match(cat) is not None:
 			p_split = _pkgsplit(mysplit[1], eapi=eapi)
@@ -337,14 +360,23 @@ class _pkg_str(_unicode):
 	manually convert them to a plain unicode object first.
 	"""
 
-	def __new__(cls, cpv, slot=None, repo=None, eapi=None):
+	def __new__(cls, cpv, metadata=None, settings=None, eapi=None,
+		repo=None, slot=None):
 		return _unicode.__new__(cls, cpv)
 
-	def __init__(self, cpv, slot=None, repo=None, eapi=None):
+	def __init__(self, cpv, metadata=None, settings=None, eapi=None,
+		repo=None, slot=None):
 		if not isinstance(cpv, _unicode):
 			# Avoid TypeError from _unicode.__init__ with PyPy.
 			cpv = _unicode_decode(cpv)
 		_unicode.__init__(cpv)
+		if metadata is not None:
+			self.__dict__['_metadata'] = metadata
+			slot = metadata.get('SLOT', slot)
+			repo = metadata.get('repository', repo)
+			eapi = metadata.get('EAPI', eapi)
+		if settings is not None:
+			self.__dict__['_settings'] = settings
 		if eapi is not None:
 			self.__dict__['eapi'] = eapi
 		self.__dict__['cpv_split'] = catpkgsplit(cpv, eapi=eapi)
@@ -363,19 +395,19 @@ class _pkg_str(_unicode):
 			if slot_match is None:
 				# Avoid an InvalidAtom exception when creating SLOT atoms
 				self.__dict__['slot'] = '0'
-				self.__dict__['slot_abi'] = '0'
+				self.__dict__['sub_slot'] = '0'
 				self.__dict__['slot_invalid'] = slot
 			else:
-				if eapi_attrs.slot_abi:
+				if eapi_attrs.slot_operator:
 					slot_split = slot.split("/")
 					self.__dict__['slot'] = slot_split[0]
 					if len(slot_split) > 1:
-						self.__dict__['slot_abi'] = slot_split[1]
+						self.__dict__['sub_slot'] = slot_split[1]
 					else:
-						self.__dict__['slot_abi'] = slot_split[0]
+						self.__dict__['sub_slot'] = slot_split[0]
 				else:
 					self.__dict__['slot'] = slot
-					self.__dict__['slot_abi'] = slot
+					self.__dict__['sub_slot'] = slot
 
 		if repo is not None:
 			repo = _gen_valid_repo(repo)
@@ -386,6 +418,25 @@ class _pkg_str(_unicode):
 	def __setattr__(self, name, value):
 		raise AttributeError("_pkg_str instances are immutable",
 			self.__class__, name, value)
+
+	@property
+	def stable(self):
+		try:
+			return self._stable
+		except AttributeError:
+			try:
+				metadata = self._metadata
+				settings = self._settings
+			except AttributeError:
+				raise AttributeError('stable')
+			if not settings.local_config:
+				# Since repoman uses different config instances for
+				# different profiles, our local instance does not
+				# refer to the correct profile.
+				raise AssertionError('invalid context')
+			stable = settings._isStable(self)
+			self.__dict__['_stable'] = stable
+			return stable
 
 def pkgsplit(mypkg, silent=1, eapi=None):
 	"""
@@ -488,7 +539,7 @@ def cpv_sort_key(eapi=None):
 	return cmp_sort_key(cmp_cpv)
 
 def catsplit(mydep):
-        return mydep.split("/", 1)
+	return mydep.split("/", 1)
 
 def best(mymatches, eapi=None):
 	"""Accepts None arguments; assumes matches are valid."""

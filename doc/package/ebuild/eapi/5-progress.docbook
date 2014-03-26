@@ -1,0 +1,247 @@
+<section id='package-ebuild-eapi-5-progress'>
+	<title>EAPI 5-progress</title>
+	<para>
+		Also see the <ulink url="http://people.apache.org/~Arfrever/EAPI_5-progress_Specification">official EAPI 5-progress Specification</ulink>.
+	</para>
+	<section id='package-ebuild-eapi-5-progress-helpers'>
+		<title>Helpers</title>
+		<section id='package-ebuild-eapi-5-progress-helpers-master-repositories'>
+			<title>master_repositories</title>
+			<para>
+				New master_repositories function prints space-separated list of master repositories for specified repository.
+			</para>
+		</section>
+		<section id='package-ebuild-eapi-5-progress-helpers-repository-path'>
+			<title>repository_path</title>
+			<para>
+				New repository_path function prints path to specified repository.
+			</para>
+		</section>
+		<section id='package-ebuild-eapi-5-progress-helpers-available-eclasses'>
+			<title>available_eclasses</title>
+			<para>
+				New available_eclasses function prints space-separated list of available eclasses for current repository.
+			</para>
+		</section>
+		<section id='package-ebuild-eapi-5-progress-helpers-eclass-path'>
+			<title>eclass_path</title>
+			<para>
+				New eclass_path function prints path to specified eclass for current repository.
+			</para>
+		</section>
+		<section id='package-ebuild-eapi-5-progress-helpers-license-path'>
+			<title>license_path</title>
+			<para>
+				New license_path function prints path to specified license for current repository.
+			</para>
+		</section>
+		<section id='package-ebuild-eapi-5-progress-helpers-package-manager-build-user'>
+			<title>package_manager_build_user</title>
+			<para>
+				New package_manager_build_user function prints name of user used by package manager in build phases.
+			</para>
+		</section>
+		<section id='package-ebuild-eapi-5-progress-helpers-package-manager-build-group'>
+			<title>package_manager_build_group</title>
+			<para>
+				New package_manager_build_group function prints name of group used by package manager in build phases.
+			</para>
+		</section>
+		<section id='package-ebuild-eapi-5-progress-helpers-dohtml-extended-default-list-of-extensions'>
+			<title>Extended default list of extensions in dohtml</title>
+			<para>
+				dohtml by default additionally installs files with .ico, .svg, .xhtml and .xml extensions.
+			</para>
+		</section>
+		<section id='package-ebuild-eapi-5-progress-helpers-unpack-case-insensitive'>
+			<title>Case-insensitive matching of extensions in unpack</title>
+			<para>
+				unpack matches extensions case-insensitively.
+			</para>
+		</section>
+		<section id='package-ebuild-eapi-5-progress-helpers-banned-in-global-scope'>
+			<title>Helpers Banned in Global Scope</title>
+			<para>
+				<itemizedlist>
+					<listitem><para>diropts</para></listitem>
+					<listitem><para>docompress</para></listitem>
+					<listitem><para>exeopts</para></listitem>
+					<listitem><para>insopts</para></listitem>
+					<listitem><para>libopts</para></listitem>
+					<listitem><para>use</para></listitem>
+					<listitem><para>use_enable</para></listitem>
+					<listitem><para>use_with</para></listitem>
+					<listitem><para>useq</para></listitem>
+					<listitem><para>usev</para></listitem>
+					<listitem><para>usex</para></listitem>
+				</itemizedlist>
+			</para>
+		</section>
+	</section>
+	<section id='package-ebuild-eapi-5-progress-metadata'>
+		<title>Metadata</title>
+		<section id='package-ebuild-eapi-5-progress-metadata-package-names-allow-period-characters'>
+			<title>Support for Period Characters in Package Names</title>
+			<para>
+				The "." character is allowed in package names.
+			</para>
+		</section>
+		<section id='package-ebuild-eapi-5-progress-metadata-use-flags-allow-period-characters'>
+			<title>Support for Period Characters in USE Flags</title>
+			<para>
+				The "." character is allowed in USE flags.
+			</para>
+		</section>
+		<section id='package-ebuild-eapi-5-progress-metadata-repository-dependencies'>
+			<title>Repository Dependencies</title>
+			<para>
+				Repository dependencies are supported in atoms in DEPEND, PDEPEND and RDEPEND and atoms passed to best_version and has_version functions.
+				Repository dependency is specified by two colons followed by repository name.
+			</para>
+			<table><title>Repository Dependency Examples</title>
+				<tgroup cols='1' align='left'>
+					<colspec colname='atom'/>
+					<thead>
+						<row>
+							<entry>Atom</entry>
+						</row>
+					</thead>
+					<tbody>
+						<row>
+							<entry>dev-lang/python::progress</entry>
+						</row>
+						<row>
+							<entry>&gt;=dev-lang/python-3.2::progress</entry>
+						</row>
+						<row>
+							<entry>dev-lang/python:3.2::progress</entry>
+						</row>
+						<row>
+							<entry>dev-lang/python::progress[xml]</entry>
+						</row>
+						<row>
+							<entry>dev-lang/python:3.2::progress[xml]</entry>
+						</row>
+					</tbody>
+				</tgroup>
+			</table>
+		</section>
+		<section id='package-ebuild-eapi-5-progress-metadata-automatic-unpack-dependencies'>
+			<title>Automatic Unpack Dependencies</title>
+			<para>
+				Dependencies on packages required to unpack archives specified in SRC_URI are automatically appended to DEPEND. These dependencies are calculated from filename extensions of archives specified in SRC_URI. Dependencies (for ebuilds using given EAPI) corresponding to given filename extensions are configured in ${repository_path}/profiles/unpack_dependencies/${EAPI} files.
+			</para>
+			<table><title>Unpack Dependencies Configuration Examples</title>
+				<tgroup cols='1' align='left'>
+					<tbody>
+						<row>
+							<entry>bz2 app-arch/bzip2</entry>
+						</row>
+						<row>
+							<entry>gz app-arch/gzip</entry>
+						</row>
+						<row>
+							<entry>tar app-arch/tar</entry>
+						</row>
+						<row>
+							<entry>tar.bz2 app-arch/tar app-arch/bzip2</entry>
+						</row>
+						<row>
+							<entry>tar.gz app-arch/tar app-arch/gzip</entry>
+						</row>
+						<row>
+							<entry>zip app-arch/unzip</entry>
+						</row>
+					</tbody>
+				</tgroup>
+			</table>
+		</section>
+	</section>
+	<section id='package-ebuild-eapi-5-progress-globstar'>
+		<title>globstar shell option enabled by default</title>
+		<para>
+			globstar shell option is enabled by default, which enables recursive expansion of ** pattern in pathname expansion context.
+		</para>
+	</section>
+	<section id='package-ebuild-eapi-5-progress-variables'>
+		<title>Variables</title>
+		<section id='package-ebuild-eapi-5-progress-variables-repository'>
+			<title>REPOSITORY Variable</title>
+			<para>
+				The new REPOSITORY variable is set in ebuild environment. This variable contains name of repository, which contains currently used ebuild.
+			</para>
+		</section>
+	</section>
+	<section id='package-ebuild-eapi-5-progress-repo-level-config'>
+		<title>Extended Repository-Level Configuration</title>
+		<para>
+			Repository-level configuration in ${repository_path}/profiles is supported for the following files:
+			<itemizedlist>
+				<listitem><para>make.defaults</para></listitem>
+				<listitem><para>package.use</para></listitem>
+				<listitem><para>package.use.force</para></listitem>
+				<listitem><para>package.use.mask</para></listitem>
+				<listitem><para>package.use.stable.force</para></listitem>
+				<listitem><para>package.use.stable.mask</para></listitem>
+				<listitem><para>use.force</para></listitem>
+				<listitem><para>use.mask</para></listitem>
+				<listitem><para>use.stable.force</para></listitem>
+				<listitem><para>use.stable.mask</para></listitem>
+			</itemizedlist>
+		</para>
+	</section>
+	<section id='package-ebuild-eapi-5-progress-directories'>
+		<title>Directories Allowed for Profile-Level and Repository-Level Configuration</title>
+		<para>
+			The following files can be directories:
+			<itemizedlist>
+				<listitem><para>package.mask</para></listitem>
+				<listitem><para>package.use</para></listitem>
+				<listitem><para>package.use.force</para></listitem>
+				<listitem><para>package.use.mask</para></listitem>
+				<listitem><para>package.use.stable.force</para></listitem>
+				<listitem><para>package.use.stable.mask</para></listitem>
+				<listitem><para>use.force</para></listitem>
+				<listitem><para>use.mask</para></listitem>
+				<listitem><para>use.stable.force</para></listitem>
+				<listitem><para>use.stable.mask</para></listitem>
+			</itemizedlist>
+		</para>
+	</section>
+	<section id='package-ebuild-eapi-5-progress-use-aliases'>
+		<title>USE Flag Aliases</title>
+		<para>
+			USE flag aliases are supported to allow to satisfy dependencies of packages from other repositories, which require differently named USE flags. USE flag aliases are defined in ${repository_path}/profiles/use.aliases and ${repository_path}/profiles/package.use.aliases files.
+		</para>
+		<table><title>use.aliases Example</title>
+			<tgroup cols='1' align='left'>
+				<tbody>
+					<row>
+						<entry>real_flag1 alias1 alias2</entry>
+					</row>
+					<row>
+						<entry>real_flag2 alias3 alias4</entry>
+					</row>
+				</tbody>
+			</tgroup>
+		</table>
+		<table><title>package.use.aliases Example</title>
+			<tgroup cols='1' align='left'>
+				<tbody>
+					<row>
+						<entry>category/package1 real_flag1 alias1 alias2</entry>
+					</row>
+					<row>
+						<entry>category/package1 real_flag2 alias3 alias4</entry>
+					</row>
+					<row>
+						<entry>=category/package2-1* real_flag3 alias5 alias6</entry>
+					</row>
+					<row>
+						<entry>=category/package2-2* real_flag4 alias5 alias6</entry>
+					</row>
+				</tbody>
+			</tgroup>
+		</table>
+	</section>
+</section>

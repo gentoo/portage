@@ -1,18 +1,22 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 __all__ = ['movefile']
 
 import errno
+import fnmatch
 import os as _os
 import shutil as _shutil
 import stat
+import sys
 import subprocess
 import textwrap
 
 import portage
 from portage import bsd_chflags, _encodings, _os_overrides, _selinux, \
-	_unicode_decode, _unicode_encode, _unicode_func_wrapper,\
+	_unicode_decode, _unicode_encode, _unicode_func_wrapper, \
 	_unicode_module_wrapper
 from portage.const import MOVE_BINARY
 from portage.exception import OperationNotSupported
@@ -24,43 +28,113 @@ def _apply_stat(src_stat, dest):
 	_os.chown(dest, src_stat.st_uid, src_stat.st_gid)
 	_os.chmod(dest, stat.S_IMODE(src_stat.st_mode))
 
+_xattr_excluder_cache = {}
+
+def _get_xattr_excluder(pattern):
+
+	try:
+		value = _xattr_excluder_cache[pattern]
+	except KeyError:
+		value = _xattr_excluder(pattern)
+		_xattr_excluder_cache[pattern] = value
+
+	return value
+
+class _xattr_excluder(object):
+
+	__slots__ = ('_pattern_split',)
+
+	def __init__(self, pattern):
+
+		if pattern is None:
+			self._pattern_split = None
+		else:
+			pattern = pattern.split()
+			if not pattern:
+				self._pattern_split = None
+			else:
+				pattern.sort()
+				self._pattern_split = tuple(pattern)
+
+	def __call__(self, attr):
+
+		if self._pattern_split is None:
+			return False
+
+		match = fnmatch.fnmatch
+		for x in self._pattern_split:
+			if match(attr, x):
+				return True
+
+		return False
+
 if hasattr(_os, "getxattr"):
 	# Python >=3.3 and GNU/Linux
-	def _copyxattr(src, dest):
-		for attr in _os.listxattr(src):
+	def _copyxattr(src, dest, exclude=None):
+
+		try:
+			attrs = _os.listxattr(src)
+		except OSError as e:
+			if e.errno != OperationNotSupported.errno:
+				raise
+			attrs = ()
+		if attrs:
+			if exclude is not None and isinstance(attrs[0], bytes):
+				exclude = exclude.encode(_encodings['fs'])
+			exclude = _get_xattr_excluder(exclude)
+
+		for attr in attrs:
+			if exclude(attr):
+				continue
 			try:
 				_os.setxattr(dest, attr, _os.getxattr(src, attr))
 				raise_exception = False
 			except OSError:
 				raise_exception = True
 			if raise_exception:
-				raise OperationNotSupported("Filesystem containing file '%s' does not support extended attributes" % dest)
+				raise OperationNotSupported(_("Filesystem containing file '%s' "
+					"does not support extended attribute '%s'") %
+					(_unicode_decode(dest), _unicode_decode(attr)))
 else:
 	try:
 		import xattr
 	except ImportError:
 		xattr = None
 	if xattr is not None:
-		def _copyxattr(src, dest):
-			for attr in xattr.list(src):
+		def _copyxattr(src, dest, exclude=None):
+
+			try:
+				attrs = xattr.list(src)
+			except IOError as e:
+				if e.errno != OperationNotSupported.errno:
+					raise
+				attrs = ()
+
+			if attrs:
+				if exclude is not None and isinstance(attrs[0], bytes):
+					exclude = exclude.encode(_encodings['fs'])
+				exclude = _get_xattr_excluder(exclude)
+
+			for attr in attrs:
+				if exclude(attr):
+					continue
 				try:
 					xattr.set(dest, attr, xattr.get(src, attr))
 					raise_exception = False
 				except IOError:
 					raise_exception = True
 				if raise_exception:
-					raise OperationNotSupported("Filesystem containing file '%s' does not support extended attributes" % dest)
+					raise OperationNotSupported(_("Filesystem containing file '%s' "
+						"does not support extended attribute '%s'") %
+						(_unicode_decode(dest), _unicode_decode(attr)))
 	else:
-		_devnull = open("/dev/null", "wb")
 		try:
-			subprocess.call(["getfattr", "--version"], stdout=_devnull)
-			subprocess.call(["setfattr", "--version"], stdout=_devnull)
-			_has_getfattr_and_setfattr = True
+			with open(_os.devnull, 'wb') as f:
+				subprocess.call(["getfattr", "--version"], stdout=f)
+				subprocess.call(["setfattr", "--version"], stdout=f)
 		except OSError:
-			_has_getfattr_and_setfattr = False
-		_devnull.close()
-		if _has_getfattr_and_setfattr:
-			def _copyxattr(src, dest):
+			def _copyxattr(src, dest, exclude=None):
+				# TODO: implement exclude
 				getfattr_process = subprocess.Popen(["getfattr", "-d", "--absolute-names", src], stdout=subprocess.PIPE)
 				getfattr_process.wait()
 				extended_attributes = getfattr_process.stdout.readlines()
@@ -72,14 +146,15 @@ else:
 					if setfattr_process.returncode != 0:
 						raise OperationNotSupported("Filesystem containing file '%s' does not support extended attributes" % dest)
 		else:
-			def _copyxattr(src, dest):
+			def _copyxattr(src, dest, exclude=None):
 				pass
 
 def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		hardlink_candidates=None, encoding=_encodings['fs']):
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
-	be preserved even when moving across filesystems.  Returns true on success and false on
-	failure.  Move is atomic."""
+	be preserved even when moving across filesystems.  Returns mtime as integer on success
+	and None on failure.  mtime is expressed in seconds in Python <3.3 and nanoseconds in
+	Python >=3.3.  Move is atomic."""
 
 	if mysettings is None:
 		mysettings = portage.settings
@@ -102,22 +177,22 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 
 	try:
 		if not sstat:
-			sstat=os.lstat(src)
+			sstat = os.lstat(src)
 
 	except SystemExit as e:
 		raise
 	except Exception as e:
 		writemsg("!!! %s\n" % _("Stating source file failed... movefile()"),
 			noiselevel=-1)
-		writemsg(_unicode_decode("!!! %s\n") % (e,), noiselevel=-1)
+		writemsg("!!! %s\n" % (e,), noiselevel=-1)
 		return None
 
-	destexists=1
+	destexists = 1
 	try:
-		dstat=os.lstat(dest)
+		dstat = os.lstat(dest)
 	except (OSError, IOError):
-		dstat=os.lstat(os.path.dirname(dest))
-		destexists=0
+		dstat = os.lstat(os.path.dirname(dest))
+		destexists = 0
 
 	if bsd_chflags:
 		if destexists and dstat.st_flags != 0:
@@ -132,7 +207,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		if stat.S_ISLNK(dstat[stat.ST_MODE]):
 			try:
 				os.unlink(dest)
-				destexists=0
+				destexists = 0
 			except SystemExit as e:
 				raise
 			except Exception as e:
@@ -140,7 +215,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 
 	if stat.S_ISLNK(sstat[stat.ST_MODE]):
 		try:
-			target=os.readlink(src)
+			target = os.readlink(src)
 			if mysettings and "D" in mysettings and \
 				target.startswith(mysettings["D"]):
 				target = target[len(mysettings["D"])-1:]
@@ -159,17 +234,32 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 				if e.errno not in (errno.ENOENT, errno.EEXIST) or \
 					target != os.readlink(dest):
 					raise
-			lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
-			# utime() only works on the target of a symlink, so it's not
-			# possible to perserve mtime on symlinks.
-			return os.lstat(dest)[stat.ST_MTIME]
+			lchown(dest, sstat[stat.ST_UID], sstat[stat.ST_GID])
+
+			try:
+				_os.unlink(src_bytes)
+			except OSError:
+				pass
+
+			if sys.hexversion >= 0x3030000:
+				try:
+					os.utime(dest, ns=(sstat.st_mtime_ns, sstat.st_mtime_ns), follow_symlinks=False)
+				except NotImplementedError:
+					# utimensat() and lutimes() missing in libc.
+					return os.stat(dest, follow_symlinks=False).st_mtime_ns
+				else:
+					return sstat.st_mtime_ns
+			else:
+				# utime() in Python <3.3 only works on the target of a symlink, so it's not
+				# possible to preserve mtime on symlinks.
+				return os.lstat(dest)[stat.ST_MTIME]
 		except SystemExit as e:
 			raise
 		except Exception as e:
 			writemsg("!!! %s\n" % _("failed to properly create symlink:"),
 				noiselevel=-1)
 			writemsg("!!! %s -> %s\n" % (dest, target), noiselevel=-1)
-			writemsg(_unicode_decode("!!! %s\n") % (e,), noiselevel=-1)
+			writemsg("!!! %s\n" % (e,), noiselevel=-1)
 			return None
 
 	hardlinked = False
@@ -204,9 +294,13 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 					writemsg("!!! %s\n" % (e,), noiselevel=-1)
 					return None
 				hardlinked = True
+				try:
+					_os.unlink(src_bytes)
+				except OSError:
+					pass
 				break
 
-	renamefailed=1
+	renamefailed = 1
 	if hardlinked:
 		renamefailed = False
 	if not hardlinked and (selinux_enabled or sstat.st_dev == dstat.st_dev):
@@ -214,14 +308,14 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			if selinux_enabled:
 				selinux.rename(src, dest)
 			else:
-				os.rename(src,dest)
-			renamefailed=0
+				os.rename(src, dest)
+			renamefailed = 0
 		except OSError as e:
 			if e.errno != errno.EXDEV:
 				# Some random error.
 				writemsg("!!! %s\n" % _("Failed to move %(src)s to %(dest)s") %
 					{"src": src, "dest": dest}, noiselevel=-1)
-				writemsg(_unicode_decode("!!! %s\n") % (e,), noiselevel=-1)
+				writemsg("!!! %s\n" % (e,), noiselevel=-1)
 				return None
 			# Invalid cross-device-link 'bind' mounted or actually Cross-Device
 	if renamefailed:
@@ -233,7 +327,8 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 				_copyfile(src_bytes, dest_tmp_bytes)
 				if xattr_enabled:
 					try:
-						_copyxattr(src_bytes, dest_tmp_bytes)
+						_copyxattr(src_bytes, dest_tmp_bytes,
+							exclude=mysettings.get("PORTAGE_XATTR_EXCLUDE", "security.* system.nfs4_acl"))
 					except SystemExit:
 						raise
 					except:
@@ -252,7 +347,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			except Exception as e:
 				writemsg("!!! %s\n" % _('copy %(src)s -> %(dest)s failed.') %
 					{"src": src, "dest": dest}, noiselevel=-1)
-				writemsg(_unicode_decode("!!! %s\n") % (e,), noiselevel=-1)
+				writemsg("!!! %s\n" % (e,), noiselevel=-1)
 				return None
 		else:
 			#we don't yet handle special, so we need to fall back to /bin/mv
@@ -265,35 +360,54 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 				writemsg("!!! %s\n" % a, noiselevel=-1)
 				return None # failure
 
-	# Always use stat_obj[stat.ST_MTIME] for the integral timestamp which
-	# is returned, since the stat_obj.st_mtime float attribute rounds *up*
+	# In Python <3.3 always use stat_obj[stat.ST_MTIME] for the integral timestamp
+	# which is returned, since the stat_obj.st_mtime float attribute rounds *up*
 	# if the nanosecond part of the timestamp is 999999881 ns or greater.
 	try:
 		if hardlinked:
-			newmtime = os.stat(dest)[stat.ST_MTIME]
+			if sys.hexversion >= 0x3030000:
+				newmtime = os.stat(dest).st_mtime_ns
+			else:
+				newmtime = os.stat(dest)[stat.ST_MTIME]
 		else:
 			# Note: It is not possible to preserve nanosecond precision
 			# (supported in POSIX.1-2008 via utimensat) with the IEEE 754
 			# double precision float which only has a 53 bit significand.
 			if newmtime is not None:
-				os.utime(dest, (newmtime, newmtime))
-			else:
-				newmtime = sstat[stat.ST_MTIME]
-				if renamefailed:
-					# If rename succeeded then timestamps are automatically
-					# preserved with complete precision because the source
-					# and destination inode are the same. Otherwise, round
-					# down to the nearest whole second since python's float
-					# st_mtime cannot be used to preserve the st_mtim.tv_nsec
-					# field with complete precision. Note that we have to use
-					# stat_obj[stat.ST_MTIME] here because the float
-					# stat_obj.st_mtime rounds *up* sometimes.
+				if sys.hexversion >= 0x3030000:
+					os.utime(dest, ns=(newmtime, newmtime))
+				else:
 					os.utime(dest, (newmtime, newmtime))
+			else:
+				if sys.hexversion >= 0x3030000:
+					newmtime = sstat.st_mtime_ns
+				else:
+					newmtime = sstat[stat.ST_MTIME]
+				if renamefailed:
+					if sys.hexversion >= 0x3030000:
+						# If rename succeeded then timestamps are automatically
+						# preserved with complete precision because the source
+						# and destination inodes are the same. Otherwise, manually
+						# update timestamps with nanosecond precision.
+						os.utime(dest, ns=(newmtime, newmtime))
+					else:
+						# If rename succeeded then timestamps are automatically
+						# preserved with complete precision because the source
+						# and destination inodes are the same. Otherwise, round
+						# down to the nearest whole second since python's float
+						# st_mtime cannot be used to preserve the st_mtim.tv_nsec
+						# field with complete precision. Note that we have to use
+						# stat_obj[stat.ST_MTIME] here because the float
+						# stat_obj.st_mtime rounds *up* sometimes.
+						os.utime(dest, (newmtime, newmtime))
 	except OSError:
 		# The utime can fail here with EPERM even though the move succeeded.
 		# Instead of failing, use stat to return the mtime if possible.
 		try:
-			newmtime = os.stat(dest)[stat.ST_MTIME]
+			if sys.hexversion >= 0x3030000:
+				newmtime = os.stat(dest).st_mtime_ns
+			else:
+				newmtime = os.stat(dest)[stat.ST_MTIME]
 		except OSError as e:
 			writemsg(_("!!! Failed to stat in movefile()\n"), noiselevel=-1)
 			writemsg("!!! %s\n" % dest, noiselevel=-1)

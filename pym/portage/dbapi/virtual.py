@@ -1,6 +1,7 @@
-# Copyright 1998-2012 Gentoo Foundation
+# Copyright 1998-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from __future__ import unicode_literals
 
 from portage.dbapi import dbapi
 from portage.dbapi.dep_expand import dep_expand
@@ -89,8 +90,8 @@ class fakedbapi(dbapi):
 			if metadata is None:
 				mycpv = _pkg_str(mycpv)
 			else:
-				mycpv = _pkg_str(mycpv, slot=metadata.get('SLOT'),
-					repo=metadata.get('repository'), eapi=metadata.get('EAPI'))
+				mycpv = _pkg_str(mycpv, metadata=metadata,
+					settings=self.settings)
 
 			mycp = mycpv.cp
 			try:

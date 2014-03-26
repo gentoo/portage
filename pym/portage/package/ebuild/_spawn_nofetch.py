@@ -1,8 +1,9 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
 
+import portage
 from portage import os
 from portage import shutil
 from portage.const import EBUILD_PHASES
@@ -10,10 +11,12 @@ from portage.elog import elog_process
 from portage.package.ebuild.config import config
 from portage.package.ebuild.doebuild import doebuild_environment
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
+from portage.util._async.SchedulerInterface import SchedulerInterface
+from portage.util._eventloop.EventLoop import EventLoop
+from portage.util._eventloop.global_event_loop import global_event_loop
 from _emerge.EbuildPhase import EbuildPhase
-from _emerge.PollScheduler import PollScheduler
 
-def spawn_nofetch(portdb, ebuild_path, settings=None):
+def spawn_nofetch(portdb, ebuild_path, settings=None, fd_pipes=None):
 	"""
 	This spawns pkg_nofetch if appropriate. The settings parameter
 	is useful only if setcpv has already been called in order
@@ -47,7 +50,7 @@ def spawn_nofetch(portdb, ebuild_path, settings=None):
 		settings = config(clone=settings)
 
 	if 'PORTAGE_PARALLEL_FETCHONLY' in settings:
-		return
+		return os.EX_OK
 
 	# We must create our private PORTAGE_TMPDIR before calling
 	# doebuild_environment(), since lots of variables such
@@ -59,7 +62,7 @@ def spawn_nofetch(portdb, ebuild_path, settings=None):
 	settings['PORTAGE_TMPDIR'] = private_tmpdir
 	settings.backup_changes('PORTAGE_TMPDIR')
 	# private temp dir was just created, so it's not locked yet
-	settings.pop('PORTAGE_BUILDIR_LOCKED', None)
+	settings.pop('PORTAGE_BUILDDIR_LOCKED', None)
 
 	try:
 		doebuild_environment(ebuild_path, 'nofetch',
@@ -73,14 +76,18 @@ def spawn_nofetch(portdb, ebuild_path, settings=None):
 
 		if 'fetch' not in restrict and \
 			'nofetch' not in defined_phases:
-			return
+			return os.EX_OK
 
 		prepare_build_dirs(settings=settings)
 		ebuild_phase = EbuildPhase(background=False,
-			phase='nofetch', scheduler=PollScheduler().sched_iface,
-			settings=settings)
+			phase='nofetch',
+			scheduler=SchedulerInterface(portage._internal_caller and
+				global_event_loop() or EventLoop(main=False)),
+			fd_pipes=fd_pipes, settings=settings)
 		ebuild_phase.start()
 		ebuild_phase.wait()
 		elog_process(settings.mycpv, settings)
 	finally:
 		shutil.rmtree(private_tmpdir)
+
+	return ebuild_phase.returncode

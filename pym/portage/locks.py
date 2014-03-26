@@ -1,5 +1,5 @@
 # portage: Lock management code
-# Copyright 2004-2012 Gentoo Foundation
+# Copyright 2004-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
@@ -17,11 +17,11 @@ import portage
 from portage import os, _encodings, _unicode_decode
 from portage.exception import DirectoryNotFound, FileNotFound, \
 	InvalidData, TryAgain, OperationNotPermitted, PermissionDenied
-from portage.data import portage_gid
 from portage.util import writemsg
 from portage.localization import _
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 
 HARDLINK_FD = -2
@@ -63,6 +63,9 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 
 	if not mypath:
 		raise InvalidData(_("Empty path given"))
+
+	# Since Python 3.4, chown requires int type (no proxies).
+	portage_gid = int(portage.data.portage_gid)
 
 	# Support for file object or integer file descriptor parameters is
 	# deprecated due to ambiguity in whether or not it's safe to close
@@ -148,7 +151,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 	except IOError as e:
 		if not hasattr(e, "errno"):
 			raise
-		if e.errno in (errno.EACCES, errno.EAGAIN):
+		if e.errno in (errno.EACCES, errno.EAGAIN, errno.ENOLCK):
 			# resource temp unavailable; eg, someone beat us to the lock.
 			if flags & os.O_NONBLOCK:
 				os.close(myfd)
@@ -163,19 +166,43 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 				if isinstance(mypath, int):
 					waiting_msg = _("waiting for lock on fd %i") % myfd
 				else:
-					waiting_msg = _("waiting for lock on %s\n") % lockfilename
+					waiting_msg = _("waiting for lock on %s") % lockfilename
 			if out is not None:
 				out.ebegin(waiting_msg)
 			# try for the exclusive lock now.
-			try:
-				locking_method(myfd, fcntl.LOCK_EX)
-			except EnvironmentError as e:
-				if out is not None:
-					out.eend(1, str(e))
-				raise
+			enolock_msg_shown = False
+			while True:
+				try:
+					locking_method(myfd, fcntl.LOCK_EX)
+				except EnvironmentError as e:
+					if e.errno == errno.ENOLCK:
+						# This is known to occur on Solaris NFS (see
+						# bug #462694). Assume that the error is due
+						# to temporary exhaustion of record locks,
+						# and loop until one becomes available.
+						if not enolock_msg_shown:
+							enolock_msg_shown = True
+							if isinstance(mypath, int):
+								context_desc = _("Error while waiting "
+									"to lock fd %i") % myfd
+							else:
+								context_desc = _("Error while waiting "
+									"to lock '%s'") % lockfilename
+							writemsg("\n!!! %s: %s\n" % (context_desc, e),
+								noiselevel=-1)
+
+						time.sleep(_HARDLINK_POLL_LATENCY)
+						continue
+
+					if out is not None:
+						out.eend(1, str(e))
+					raise
+				else:
+					break
+
 			if out is not None:
 				out.eend(os.EX_OK)
-		elif e.errno in (errno.ENOSYS, errno.ENOLCK):
+		elif e.errno in (errno.ENOSYS,):
 			# We're not allowed to lock on this FS.
 			if not isinstance(lockfilename, int):
 				# If a file object was passed in, it's not safe
@@ -207,10 +234,21 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 			waiting_msg=waiting_msg, flags=flags)
 
 	if myfd != HARDLINK_FD:
+
+		# FD_CLOEXEC is enabled by default in Python >=3.4.
+		if sys.hexversion < 0x3040000:
+			try:
+				fcntl.FD_CLOEXEC
+			except AttributeError:
+				pass
+			else:
+				fcntl.fcntl(myfd, fcntl.F_SETFD,
+					fcntl.fcntl(myfd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
+
 		_open_fds.add(myfd)
 
-	writemsg(str((lockfilename,myfd,unlinkfile))+"\n",1)
-	return (lockfilename,myfd,unlinkfile,locking_method)
+	writemsg(str((lockfilename, myfd, unlinkfile)) + "\n", 1)
+	return (lockfilename, myfd, unlinkfile, locking_method)
 
 def _fstat_nlink(fd):
 	"""
@@ -232,10 +270,10 @@ def unlockfile(mytuple):
 
 	#XXX: Compatability hack.
 	if len(mytuple) == 3:
-		lockfilename,myfd,unlinkfile = mytuple
+		lockfilename, myfd, unlinkfile = mytuple
 		locking_method = fcntl.flock
 	elif len(mytuple) == 4:
-		lockfilename,myfd,unlinkfile,locking_method = mytuple
+		lockfilename, myfd, unlinkfile, locking_method = mytuple
 	else:
 		raise InvalidData
 
@@ -246,7 +284,7 @@ def unlockfile(mytuple):
 	# myfd may be None here due to myfd = mypath in lockfile()
 	if isinstance(lockfilename, basestring) and \
 		not os.path.exists(lockfilename):
-		writemsg(_("lockfile does not exist '%s'\n") % lockfilename,1)
+		writemsg(_("lockfile does not exist '%s'\n") % lockfilename, 1)
 		if myfd is not None:
 			os.close(myfd)
 			_open_fds.remove(myfd)
@@ -254,9 +292,9 @@ def unlockfile(mytuple):
 
 	try:
 		if myfd is None:
-			myfd = os.open(lockfilename, os.O_WRONLY,0o660)
+			myfd = os.open(lockfilename, os.O_WRONLY, 0o660)
 			unlinkfile = 1
-		locking_method(myfd,fcntl.LOCK_UN)
+		locking_method(myfd, fcntl.LOCK_UN)
 	except OSError:
 		if isinstance(lockfilename, basestring):
 			os.close(myfd)
@@ -271,14 +309,14 @@ def unlockfile(mytuple):
 		# commenting until it is proved necessary.
 		#time.sleep(0.0001)
 		if unlinkfile:
-			locking_method(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+			locking_method(myfd, fcntl.LOCK_EX | fcntl.LOCK_NB)
 			# We won the lock, so there isn't competition for it.
 			# We can safely delete the file.
 			writemsg(_("Got the lockfile...\n"), 1)
 			if _fstat_nlink(myfd) == 1:
 				os.unlink(lockfilename)
 				writemsg(_("Unlinked lockfile...\n"), 1)
-				locking_method(myfd,fcntl.LOCK_UN)
+				locking_method(myfd, fcntl.LOCK_UN)
 			else:
 				writemsg(_("lockfile does not exist '%s'\n") % lockfilename, 1)
 				os.close(myfd)
@@ -288,7 +326,7 @@ def unlockfile(mytuple):
 		raise
 	except Exception as e:
 		writemsg(_("Failed to get lock... someone took it.\n"), 1)
-		writemsg(str(e)+"\n",1)
+		writemsg(str(e) + "\n", 1)
 
 	# why test lockfilename?  because we may have been handed an
 	# fd originally, and the caller might not like having their
@@ -300,14 +338,12 @@ def unlockfile(mytuple):
 	return True
 
 
-
-
 def hardlock_name(path):
 	base, tail = os.path.split(path)
 	return os.path.join(base, ".%s.hardlock-%s-%s" %
 		(tail, os.uname()[1], os.getpid()))
 
-def hardlink_is_mine(link,lock):
+def hardlink_is_mine(link, lock):
 	try:
 		lock_st = os.stat(lock)
 		if lock_st.st_nlink == 2:
@@ -338,6 +374,9 @@ def hardlink_lockfile(lockfilename, max_wait=DeprecationWarning,
 	displayed_waiting_msg = False
 	preexisting = os.path.exists(lockfilename)
 	myhardlock = hardlock_name(lockfilename)
+
+	# Since Python 3.4, chown requires int type (no proxies).
+	portage_gid = int(portage.data.portage_gid)
 
 	# myhardlock must not exist prior to our link() call, and we can
 	# safely unlink it since its file name is unique to our PID
@@ -456,7 +495,6 @@ def unhardlink_lockfile(lockfilename, unlinkfile=True):
 		pass
 
 def hardlock_cleanup(path, remove_all_locks=False):
-	mypid  = str(os.getpid())
 	myhost = os.uname()[1]
 	mydl = os.listdir(path)
 
@@ -465,7 +503,7 @@ def hardlock_cleanup(path, remove_all_locks=False):
 
 	mylist = {}
 	for x in mydl:
-		if os.path.isfile(path+"/"+x):
+		if os.path.isfile(path + "/" + x):
 			parts = x.split(".hardlock-")
 			if len(parts) == 2:
 				filename = parts[0][1:]
@@ -482,17 +520,17 @@ def hardlock_cleanup(path, remove_all_locks=False):
 				mycount += 1
 
 
-	results.append(_("Found %(count)s locks") % {"count":mycount})
+	results.append(_("Found %(count)s locks") % {"count": mycount})
 	
 	for x in mylist:
 		if myhost in mylist[x] or remove_all_locks:
-			mylockname = hardlock_name(path+"/"+x)
-			if hardlink_is_mine(mylockname, path+"/"+x) or \
-			   not os.path.exists(path+"/"+x) or \
+			mylockname = hardlock_name(path + "/" + x)
+			if hardlink_is_mine(mylockname, path + "/" + x) or \
+			   not os.path.exists(path + "/" + x) or \
 				 remove_all_locks:
 				for y in mylist[x]:
 					for z in mylist[x][y]:
-						filename = path+"/."+x+".hardlock-"+y+"-"+z
+						filename = path + "/." + x + ".hardlock-" + y + "-" + z
 						if filename == mylockname:
 							continue
 						try:
@@ -502,8 +540,8 @@ def hardlock_cleanup(path, remove_all_locks=False):
 						except OSError:
 							pass
 				try:
-					os.unlink(path+"/"+x)
-					results.append(_("Unlinked: ") + path+"/"+x)
+					os.unlink(path + "/" + x)
+					results.append(_("Unlinked: ") + path + "/" + x)
 					os.unlink(mylockname)
 					results.append(_("Unlinked: ") + mylockname)
 				except OSError:

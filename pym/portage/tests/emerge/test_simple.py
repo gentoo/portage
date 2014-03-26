@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Gentoo Foundation
+# Copyright 2011-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -7,7 +7,8 @@ import sys
 import portage
 from portage import os
 from portage import _unicode_decode
-from portage.const import PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, USER_CONFIG_PATH
+from portage.const import (BASH_BINARY, PORTAGE_BASE_PATH,
+	PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, USER_CONFIG_PATH)
 from portage.process import find_binary
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
@@ -75,13 +76,21 @@ pkg_preinst() {
 	else
 		einfo "has_version does not detect an installed instance of $CATEGORY/$PN:$SLOT"
 	fi
+	if [[ ${EPREFIX} != ${PORTAGE_OVERRIDE_EPREFIX} ]] ; then
+		if has_version --host-root $CATEGORY/$PN:$SLOT ; then
+			einfo "has_version --host-root detects an installed instance of $CATEGORY/$PN:$SLOT"
+			einfo "best_version --host-root reports that the installed instance is $(best_version $CATEGORY/$PN:$SLOT)"
+		else
+			einfo "has_version --host-root does not detect an installed instance of $CATEGORY/$PN:$SLOT"
+		fi
+	fi
 }
 
 """
 
 		ebuilds = {
 			"dev-libs/A-1": {
-				"EAPI" : "4",
+				"EAPI" : "5",
 				"IUSE" : "+flag",
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
@@ -89,14 +98,14 @@ pkg_preinst() {
 				"RDEPEND": "flag? ( dev-libs/B[flag] )",
 			},
 			"dev-libs/B-1": {
-				"EAPI" : "4",
+				"EAPI" : "5",
 				"IUSE" : "+flag",
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
 				"MISC_CONTENT": install_something,
 			},
 			"virtual/foo-0": {
-				"EAPI" : "4",
+				"EAPI" : "5",
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
 			},
@@ -104,7 +113,7 @@ pkg_preinst() {
 
 		installed = {
 			"dev-libs/A-1": {
-				"EAPI" : "4",
+				"EAPI" : "5",
 				"IUSE" : "+flag",
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
@@ -112,21 +121,21 @@ pkg_preinst() {
 				"USE": "flag",
 			},
 			"dev-libs/B-1": {
-				"EAPI" : "4",
+				"EAPI" : "5",
 				"IUSE" : "+flag",
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
 				"USE": "flag",
 			},
 			"dev-libs/depclean-me-1": {
-				"EAPI" : "4",
+				"EAPI" : "5",
 				"IUSE" : "",
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
 				"USE": "",
 			},
 			"app-misc/depclean-me-1": {
-				"EAPI" : "4",
+				"EAPI" : "5",
 				"IUSE" : "",
 				"KEYWORDS": "x86",
 				"LICENSE": "GPL-2",
@@ -159,29 +168,35 @@ pkg_preinst() {
 		eroot = settings["EROOT"]
 		trees = playground.trees
 		portdb = trees[eroot]["porttree"].dbapi
-		portdir = settings["PORTDIR"]
+		test_repo_location = settings.repositories["test_repo"].location
 		var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
 		cachedir = os.path.join(var_cache_edb, "dep")
-		cachedir_pregen = os.path.join(portdir, "metadata", "cache")
+		cachedir_pregen = os.path.join(test_repo_location, "metadata", "md5-cache")
 
 		portage_python = portage._python_interpreter
-		ebuild_cmd = (portage_python, "-Wd",
+		dispatch_conf_cmd = (portage_python, "-b", "-Wd",
+			os.path.join(PORTAGE_BIN_PATH, "dispatch-conf"))
+		ebuild_cmd = (portage_python, "-b", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "ebuild"))
-		egencache_cmd = (portage_python, "-Wd",
-			os.path.join(PORTAGE_BIN_PATH, "egencache"))
-		emerge_cmd = (portage_python, "-Wd",
+		egencache_cmd = (portage_python, "-b", "-Wd",
+			os.path.join(PORTAGE_BIN_PATH, "egencache"),
+			"--repo", "test_repo",
+			"--repositories-configuration", settings.repositories.config_string())
+		emerge_cmd = (portage_python, "-b", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "emerge"))
-		emaint_cmd = (portage_python, "-Wd",
+		emaint_cmd = (portage_python, "-b", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "emaint"))
-		env_update_cmd = (portage_python, "-Wd",
+		env_update_cmd = (portage_python, "-b", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "env-update"))
-		fixpackages_cmd = (portage_python, "-Wd",
+		etc_update_cmd = (BASH_BINARY,
+			os.path.join(PORTAGE_BIN_PATH, "etc-update"))
+		fixpackages_cmd = (portage_python, "-b", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "fixpackages"))
-		portageq_cmd = (portage_python, "-Wd",
+		portageq_cmd = (portage_python, "-b", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "portageq"))
-		quickpkg_cmd = (portage_python, "-Wd",
+		quickpkg_cmd = (portage_python, "-b", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "quickpkg"))
-		regenworld_cmd = (portage_python, "-Wd",
+		regenworld_cmd = (portage_python, "-b", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "regenworld"))
 
 		rm_binary = find_binary("rm")
@@ -196,8 +211,14 @@ pkg_preinst() {
 		test_ebuild = portdb.findname("dev-libs/A-1")
 		self.assertFalse(test_ebuild is None)
 
+		cross_prefix = os.path.join(eprefix, "cross_prefix")
+
 		test_commands = (
 			env_update_cmd,
+			portageq_cmd + ("envvar", "-v", "CONFIG_PROTECT", "EROOT",
+				"PORTAGE_CONFIGROOT", "PORTAGE_TMPDIR", "USERLAND"),
+			etc_update_cmd,
+			dispatch_conf_cmd,
 			emerge_cmd + ("--version",),
 			emerge_cmd + ("--info",),
 			emerge_cmd + ("--info", "--verbose"),
@@ -210,7 +231,7 @@ pkg_preinst() {
 			({"FEATURES" : "metadata-transfer"},) + \
 				emerge_cmd + ("--regen",),
 			rm_cmd + ("-rf", cachedir),
-			({"FEATURES" : "metadata-transfer parse-eapi-ebuild-head"},) + \
+			({"FEATURES" : "metadata-transfer"},) + \
 				emerge_cmd + ("--regen",),
 			rm_cmd + ("-rf", cachedir),
 			egencache_cmd + ("--update",) + tuple(egencache_extra_args),
@@ -226,6 +247,7 @@ pkg_preinst() {
 			ebuild_cmd + (test_ebuild, "manifest", "clean", "package", "merge"),
 			emerge_cmd + ("--pretend", "--tree", "--complete-graph", "dev-libs/A"),
 			emerge_cmd + ("-p", "dev-libs/B"),
+			emerge_cmd + ("-p", "--newrepo", "dev-libs/B"),
 			emerge_cmd + ("-B", "dev-libs/B",),
 			emerge_cmd + ("--oneshot", "--usepkg", "dev-libs/B",),
 
@@ -257,6 +279,24 @@ pkg_preinst() {
 			emerge_cmd + ("-p", "--unmerge", "-q", eroot + "usr"),
 			emerge_cmd + ("--unmerge", "--quiet", "dev-libs/A"),
 			emerge_cmd + ("-C", "--quiet", "dev-libs/B"),
+
+			# Test cross-prefix usage, including chpathtool for binpkgs.
+			({"EPREFIX" : cross_prefix},) + \
+				emerge_cmd + ("--usepkgonly", "dev-libs/A"),
+			({"EPREFIX" : cross_prefix},) + \
+				portageq_cmd + ("has_version", cross_prefix, "dev-libs/A"),
+			({"EPREFIX" : cross_prefix},) + \
+				portageq_cmd + ("has_version", cross_prefix, "dev-libs/B"),
+			({"EPREFIX" : cross_prefix},) + \
+				emerge_cmd + ("-C", "--quiet", "dev-libs/B"),
+			({"EPREFIX" : cross_prefix},) + \
+				emerge_cmd + ("-C", "--quiet", "dev-libs/A"),
+			({"EPREFIX" : cross_prefix},) + \
+				emerge_cmd + ("dev-libs/A",),
+			({"EPREFIX" : cross_prefix},) + \
+				portageq_cmd + ("has_version", cross_prefix, "dev-libs/A"),
+			({"EPREFIX" : cross_prefix},) + \
+				portageq_cmd + ("has_version", cross_prefix, "dev-libs/B"),
 		)
 
 		distdir = playground.distdir
@@ -265,20 +305,6 @@ pkg_preinst() {
 		portage_tmpdir = os.path.join(eprefix, "var", "tmp", "portage")
 		profile_path = settings.profile_path
 		user_config_dir = os.path.join(os.sep, eprefix, USER_CONFIG_PATH)
-
-		features = []
-		if not portage.process.sandbox_capable or \
-			os.environ.get("SANDBOX_ON") == "1":
-			features.append("-sandbox")
-
-		# Since egencache ignores settings from the calling environment,
-		# configure it via make.conf.
-		make_conf = (
-			"FEATURES=\"%s\"\n" % (" ".join(features),),
-			"PORTDIR=\"%s\"\n" % (portdir,),
-			"PORTAGE_GRPNAME=\"%s\"\n" % (os.environ["PORTAGE_GRPNAME"],),
-			"PORTAGE_USERNAME=\"%s\"\n" % (os.environ["PORTAGE_USERNAME"],),
-		)
 
 		path =  os.environ.get("PATH")
 		if path is not None and not path.strip():
@@ -314,37 +340,43 @@ pkg_preinst() {
 			"PORTAGE_INST_GID" : str(portage.data.portage_gid),
 			"PORTAGE_INST_UID" : str(portage.data.portage_uid),
 			"PORTAGE_PYTHON" : portage_python,
+			"PORTAGE_REPOSITORIES" : settings.repositories.config_string(),
 			"PORTAGE_TMPDIR" : portage_tmpdir,
 			"PYTHONPATH" : pythonpath,
+			"__PORTAGE_TEST_PATH_OVERRIDE" : fake_bin,
 		}
 
 		if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
 			env["__PORTAGE_TEST_HARDLINK_LOCKS"] = \
 				os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"]
 
-		updates_dir = os.path.join(portdir, "profiles", "updates")
+		updates_dir = os.path.join(test_repo_location, "profiles", "updates")
 		dirs = [cachedir, cachedir_pregen, distdir, fake_bin,
 			portage_tmpdir, updates_dir,
 			user_config_dir, var_cache_edb]
-		true_symlinks = ["chown", "chgrp"]
+		etc_symlinks = ("dispatch-conf.conf", "etc-update.conf")
+		# Override things that may be unavailable, or may have portability
+		# issues when running tests in exotic environments.
+		#   prepstrip - bug #447810 (bash read builtin EINTR problem)
+		true_symlinks = ["find", "prepstrip", "sed", "scanelf"]
 		true_binary = find_binary("true")
 		self.assertEqual(true_binary is None, False,
 			"true command not found")
 		try:
 			for d in dirs:
 				ensure_dirs(d)
-			with open(os.path.join(user_config_dir, "make.conf"), 'w') as f:
-				for line in make_conf:
-					f.write(line)
 			for x in true_symlinks:
 				os.symlink(true_binary, os.path.join(fake_bin, x))
+			for x in etc_symlinks:
+				os.symlink(os.path.join(PORTAGE_BASE_PATH, "cnf", x),
+					os.path.join(eprefix, "etc", x))
 			with open(os.path.join(var_cache_edb, "counter"), 'wb') as f:
 				f.write(b"100")
 			# non-empty system set keeps --depclean quiet
 			with open(os.path.join(profile_path, "packages"), 'w') as f:
 				f.write("*dev-libs/token-system-pkg")
 			for cp, xml_data in metadata_xml_files:
-				with open(os.path.join(portdir, cp, "metadata.xml"), 'w') as f:
+				with open(os.path.join(test_repo_location, cp, "metadata.xml"), 'w') as f:
 					f.write(playground.metadata_xml_template % xml_data)
 			with open(os.path.join(updates_dir, "1Q-2010"), 'w') as f:
 				f.write("""

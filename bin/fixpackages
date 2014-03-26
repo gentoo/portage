@@ -1,5 +1,5 @@
-#!/usr/bin/python
-# Copyright 1999-2011 Gentoo Foundation
+#!/usr/bin/python -b
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -7,20 +7,26 @@ from __future__ import print_function
 import os
 import sys
 
-try:
-	import portage
-except ImportError:
-	from os import path as osp
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
-
+from os import path as osp
+pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
+sys.path.insert(0, pym_path)
+import portage
+portage._internal_caller = True
 from portage import os
 from portage.output import EOutput
+from portage.util._argparse import ArgumentParser
 from textwrap import wrap
 from portage._global_updates import _global_updates
 mysettings = portage.settings
 mytrees = portage.db
 mtimedb = portage.mtimedb
+
+description = """The fixpackages program performs package move updates on
+	configuration files, installed packages, and binary packages."""
+description = " ".join(description.split())
+
+parser = ArgumentParser(description=description)
+parser.parse_args()
 
 if mysettings['ROOT'] != "/":
 	out = EOutput()

@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -8,11 +8,10 @@ __all__ = (
 import warnings
 
 from portage import os
-from portage.dep import ExtendedAtomDict, match_from_list, _repo_separator, _slot_separator
+from portage.dep import ExtendedAtomDict, match_from_list
 from portage.localization import _
 from portage.util import append_repo, grabfile_package, stack_lists, writemsg
-from portage.versions import cpv_getkey
-from _emerge.Package import Package
+from portage.versions import _pkg_str
 
 class MaskManager(object):
 
@@ -47,7 +46,7 @@ class MaskManager(object):
 						"the repository profiles are not marked as that format.  This will break "
 						"in the future.  Please either convert the following paths "
 						"to files, or add\nprofile-formats = portage-1\nto the "
-						"repositories layout.conf.\n")
+						"repository's layout.conf.\n")
 						% dict(repo_name=repo_config.name))
 
 			return pmask_cache[loc]
@@ -185,12 +184,15 @@ class MaskManager(object):
 		@return: A matching atom string or None if one is not found.
 		"""
 
-		cp = cpv_getkey(cpv)
-		mask_atoms = self._pmaskdict.get(cp)
+		try:
+			cpv.slot
+		except AttributeError:
+			pkg = _pkg_str(cpv, slot=slot, repo=repo)
+		else:
+			pkg = cpv
+
+		mask_atoms = self._pmaskdict.get(pkg.cp)
 		if mask_atoms:
-			pkg = "".join((cpv, _slot_separator, slot))
-			if repo and repo != Package.UNKNOWN_REPO:
-				pkg = "".join((pkg, _repo_separator, repo))
 			pkg_list = [pkg]
 			for x in mask_atoms:
 				if not match_from_list(x, pkg_list):
@@ -219,8 +221,15 @@ class MaskManager(object):
 		@return: A matching atom string or None if one is not found.
 		"""
 
-		cp = cpv_getkey(cpv)
-		return self._getMaskAtom(cpv, slot, repo, self._punmaskdict.get(cp))
+		try:
+			cpv.slot
+		except AttributeError:
+			pkg = _pkg_str(cpv, slot=slot, repo=repo)
+		else:
+			pkg = cpv
+
+		return self._getMaskAtom(pkg, slot, repo,
+			self._punmaskdict.get(pkg.cp))
 
 
 	def getRawMaskAtom(self, cpv, slot, repo):

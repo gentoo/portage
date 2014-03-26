@@ -1,0 +1,232 @@
+<section id='package-ebuild-eapi-5'>
+<title>EAPI 5</title>
+<section id='package-ebuild-eapi-5-metadata'>
+<title>Metadata</title>
+<section id='package-ebuild-eapi-5-metadata-required-use-at-most-one-of'>
+<title>REQUIRED_USE supports new at-most-one-of operator</title>
+<para>
+The new at-most-one-of operator consists of the string '??',
+and is satisfied if zero or one (but no more) of its child
+elements is matched.
+</para>
+</section>
+<section id='package-ebuild-eapi-5-metadata-slot-sub-slot'>
+<title>SLOT supports optional "sub-slot" part</title>
+<para>
+The SLOT variable may contain an optional sub-slot part that
+follows the regular slot and is delimited by a / character.
+The sub-slot must be a valid slot name. The sub-slot is used
+to represent cases in which an upgrade to a new version of a
+package with a different sub-slot may require dependent
+packages to be rebuilt. When the sub-slot part is omitted from
+the SLOT definition, the package is considered to have an
+implicit sub-slot which is equal to the regular slot.
+</para>
+<para>
+Refer to the
+<link linkend="package-ebuild-eapi-5-metadata-dependency-atom-slot-operators">
+slot operators</link> documentation for more information about sub-slot usage.
+</para>
+</section>
+<section id='package-ebuild-eapi-5-metadata-dependency-atom-slot-operators'>
+<title>Dependency atom slot operators</title>
+<para>
+A slot dependency may contain an optional sub-slot part that
+follows the regular slot and is delimited by a / character.
+An operator slot dependency consists of a colon followed by
+one of the following operators:
+<itemizedlist>
+<listitem><para>
+* Indicates that any slot value is acceptable. In addition,
+for runtime dependencies, indicates that the package will not
+break if the matched package is uninstalled and replaced by
+a different matching package in a different slot.
+</para></listitem>
+<listitem><para>
+= Indicates that any slot value is acceptable. In addition,
+for runtime dependencies, indicates that the package will
+break unless a matching package with slot and sub-slot equal
+to the slot and sub-slot of the best installed version at the
+time the package was installed is available.
+</para></listitem>
+<listitem><para>
+slot= Indicates that only a specific slot value is acceptable,
+and otherwise behaves identically to the plain equals slot
+operator.
+</para></listitem>
+</itemizedlist>
+</para>
+<para>
+To implement the equals slot operator, the package manager
+will need to store the slot/sub-slot pair of the best installed
+version of the matching package. This syntax is only for package
+manager use and must not be used by ebuilds. The package manager
+may do this by inserting the appropriate slot/sub-slot pair
+between the colon and equals sign when saving the package's
+dependencies. The sub-slot part must not be omitted here
+(when the SLOT variable omits the sub-slot part, the package
+is considered to have an implicit sub-slot which is equal to
+the regular slot).
+</para>
+</section>
+</section>
+<section id='package-ebuild-eapi-5-profile'>
+<title>Profiles</title>
+<section id='package-ebuild-eapi-5-profile-iuse-injection'>
+<title>Profile IUSE Injection</title>
+<para>
+IUSE_EFFECTIVE is a variable calculated from IUSE and
+a variety of other sources described below. It is purely
+a conceptual variable; it is not exported to the ebuild
+environment.  Values in IUSE_EFFECTIVE may legally be
+used in queries about an ebuild's state (for example, for use
+dependencies, for the use function, and for use in dependency
+specification conditional blocks).
+</para>
+<para>
+For EAPIs that support profile defined IUSE injection, IUSE_EFFECTIVE
+contains the following values:
+<itemizedlist>
+<listitem><para>
+All values in the calculated IUSE value.
+</para></listitem>
+<listitem><para>
+All values in the profile IUSE_IMPLICIT variable.
+</para></listitem>
+<listitem><para>
+All values in the profile variable named USE_EXPAND_VALUES_${v},
+where ${v} is any value in the intersection of the profile
+USE_EXPAND_UNPREFIXED and USE_EXPAND_IMPLICIT variables.
+</para></listitem>
+<listitem><para>
+All values for ${lower_v}_${x}, where ${x} is all values in
+the profile variable named USE_EXPAND_VALUES_${v}, where ${v}
+is any value in the intersection of the profile USE_EXPAND and
+USE_EXPAND_IMPLICIT variables and ${lower_v} is the lowercase
+equivalent of ${v}.
+</para></listitem>
+</itemizedlist>
+</para>
+<para>
+<table><title>Example Variable Settings</title>
+<tgroup cols='2' align='left' >
+<colspec colname='source'/>
+<colspec colname='destination'/>
+<thead>
+<row>
+<entry>Variable</entry>
+<entry>Value</entry>
+</row>
+</thead>
+<tbody>
+<row>
+<entry>IUSE_IMPLICIT</entry>
+<entry>prefix selinux</entry>
+</row>
+<row>
+<entry>USE_EXPAND</entry>
+<entry>ELIBC KERNEL USERLAND</entry>
+</row>
+<row>
+<entry>USE_EXPAND_UNPREFIXED</entry>
+<entry>ARCH</entry>
+</row>
+<row>
+<entry>USE_EXPAND_IMPLICIT</entry>
+<entry>ARCH ELIBC KERNEL USERLAND</entry>
+</row>
+<row>
+<entry>USE_EXPAND_VALUES_ARCH</entry>
+<entry>amd64 ppc ppc64 x86 x86-fbsd x86-solaris</entry>
+</row>
+<row>
+<entry>USE_EXPAND_VALUES_ELIBC</entry>
+<entry>FreeBSD glibc</entry>
+</row>
+<row>
+<entry>USE_EXPAND_VALUES_KERNEL</entry>
+<entry>FreeBSD linux SunOS</entry>
+</row>
+<row>
+<entry>USE_EXPAND_VALUES_USERLAND</entry>
+<entry>BSD GNU</entry>
+</row>
+</tbody>
+</tgroup>
+</table>
+</para>
+</section>
+<section id='package-ebuild-eapi-5-profile-stable-use-masking'>
+<title>Profile stable USE forcing and masking</title>
+<para>
+In profile directories with an EAPI supporting stable masking,
+new USE configuration files are supported: use.stable.mask,
+use.stable.force, package.use.stable.mask and
+package.use.stable.force. These files behave similarly to
+previously supported USE configuration files, except that they
+only influence packages that are merged due to a stable keyword.
+</para>
+</section>
+</section>
+<section id='package-ebuild-eapi-5-helpers'>
+<title>Helpers</title>
+<section id='package-ebuild-eapi-5-helpers-econf-disable-silent-rules'>
+<title>econf adds --disable-silent-rules</title>
+<para>
+This option will automatically be passed if
+--disable-silent-rules occurs in the output of configure --help.
+</para>
+</section>
+<section id='package-ebuild-eapi-5-helpers-newfoo-stdin'>
+<title>new* commands can read from standard input</title>
+<para>
+Standard input is read when the first parameter is - (a hyphen).
+</para>
+</section>
+<section id='package-ebuild-eapi-5-helpers-foo-version-host-root'>
+<title>New option --host-root for {has,best}_version</title>
+<para>
+This option --host-root will cause the query to apply to the
+host root instead of ROOT.
+</para>
+</section>
+<section id='package-ebuild-eapi-5-helpers-doheader'>
+<title>New doheader helper function</title>
+<para>
+Installs the given header files into /usr/include/, by default
+with file mode 0644. This can be overridden by setting
+INSOPTIONS with the insopts function.
+</para>
+</section>
+<section id='package-ebuild-eapi-5-helpers-usex'>
+<title>New usex helper function</title>
+<programlisting>
+USAGE: usex &lt;USE flag&gt; [true output] [false output] [true suffix] [false suffix]
+DESCRIPTION:
+ If USE flag is set, echo [true output][true suffix] (defaults to "yes"),
+ otherwise echo [false output][false suffix] (defaults to "no").
+</programlisting>
+</section>
+</section>
+<section id='package-ebuild-eapi-5-phases'>
+<title>Phases</title>
+<section id='package-ebuild-eapi-5-phases-src-test-parallel'>
+<title>src_test supports parallel tests</title>
+<para>
+Unlike older EAPIs, the default src_test implementation will not
+pass the -j1 option to emake.
+</para>
+</section>
+</section>
+<section id='package-ebuild-eapi-5-ebuild-environment-variables'>
+<title>Ebuild Environment Variables</title>
+<section id='package-ebuild-eapi-5-ebuild-environment-variables-ebuild-phase-func'>
+<title>New EBUILD_PHASE_FUNC variable</title>
+<para>
+During execution of an ebuild phase function (such as pkg_setup
+or src_unpack), the EBUILD_PHASE_FUNC variable will contain the
+name of the phase function that is currently executing.
+</para>
+</section>
+</section>
+</section>

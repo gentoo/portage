@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import dummy_threading
@@ -49,7 +49,7 @@ class AsynchronousLock(AsynchronousTask):
 				pass
 			else:
 				self.returncode = os.EX_OK
-				self.wait()
+				self._async_wait()
 				return
 
 		if self._force_process or \
@@ -105,44 +105,27 @@ class _LockThread(AbstractPollTask):
 	"""
 
 	__slots__ = ('path',) + \
-		('_files', '_force_dummy', '_lock_obj',
-		'_thread', '_reg_id',)
+		('_force_dummy', '_lock_obj', '_thread',)
 
 	def _start(self):
-		pr, pw = os.pipe()
-		self._files = {}
-		self._files['pipe_read'] = pr
-		self._files['pipe_write'] = pw
-		for f in self._files.values():
-			fcntl.fcntl(f, fcntl.F_SETFL,
-				fcntl.fcntl(f, fcntl.F_GETFL) | os.O_NONBLOCK)
-		self._reg_id = self.scheduler.register(self._files['pipe_read'],
-			self.scheduler.IO_IN, self._output_handler)
 		self._registered = True
 		threading_mod = threading
 		if self._force_dummy:
 			threading_mod = dummy_threading
 		self._thread = threading_mod.Thread(target=self._run_lock)
+		self._thread.daemon = True
 		self._thread.start()
 
 	def _run_lock(self):
 		self._lock_obj = lockfile(self.path, wantnewlockfile=True)
-		os.write(self._files['pipe_write'], b'\0')
+		# Thread-safe callback to EventLoop
+		self.scheduler.idle_add(self._run_lock_cb)
 
-	def _output_handler(self, f, event):
-		buf = None
-		if event & self.scheduler.IO_IN:
-			try:
-				buf = os.read(self._files['pipe_read'], self._bufsize)
-			except OSError as e:
-				if e.errno not in (errno.EAGAIN,):
-					raise
-		if buf:
-			self._unregister()
-			self.returncode = os.EX_OK
-			self.wait()
-
-		return True
+	def _run_lock_cb(self):
+		self._unregister()
+		self.returncode = os.EX_OK
+		self.wait()
+		return False
 
 	def _cancel(self):
 		# There's currently no way to force thread termination.
@@ -163,15 +146,6 @@ class _LockThread(AbstractPollTask):
 			self._thread.join()
 			self._thread = None
 
-		if self._reg_id is not None:
-			self.scheduler.unregister(self._reg_id)
-			self._reg_id = None
-
-		if self._files is not None:
-			for f in self._files.values():
-				os.close(f)
-			self._files = None
-
 class _LockProcess(AbstractPollTask):
 	"""
 	This uses the portage.locks module to acquire a lock asynchronously,
@@ -190,16 +164,28 @@ class _LockProcess(AbstractPollTask):
 		self._files = {}
 		self._files['pipe_in'] = in_pr
 		self._files['pipe_out'] = out_pw
+
 		fcntl.fcntl(in_pr, fcntl.F_SETFL,
 			fcntl.fcntl(in_pr, fcntl.F_GETFL) | os.O_NONBLOCK)
-		self._reg_id = self.scheduler.register(in_pr,
+
+		# FD_CLOEXEC is enabled by default in Python >=3.4.
+		if sys.hexversion < 0x3040000:
+			try:
+				fcntl.FD_CLOEXEC
+			except AttributeError:
+				pass
+			else:
+				fcntl.fcntl(in_pr, fcntl.F_SETFD,
+					fcntl.fcntl(in_pr, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
+
+		self._reg_id = self.scheduler.io_add_watch(in_pr,
 			self.scheduler.IO_IN, self._output_handler)
 		self._registered = True
 		self._proc = SpawnProcess(
 			args=[portage._python_interpreter,
 				os.path.join(portage._bin_path, 'lock-helper.py'), self.path],
 				env=dict(os.environ, PORTAGE_PYM_PATH=portage._pym_path),
-				fd_pipes={0:out_pr, 1:in_pw, 2:sys.stderr.fileno()},
+				fd_pipes={0:out_pr, 1:in_pw, 2:sys.__stderr__.fileno()},
 				scheduler=self.scheduler)
 		self._proc.addExitListener(self._proc_exit)
 		self._proc.start()
@@ -273,7 +259,7 @@ class _LockProcess(AbstractPollTask):
 		self._registered = False
 
 		if self._reg_id is not None:
-			self.scheduler.unregister(self._reg_id)
+			self.scheduler.source_remove(self._reg_id)
 			self._reg_id = None
 
 		if self._files is not None:

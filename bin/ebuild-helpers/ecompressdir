@@ -1,18 +1,21 @@
 #!/bin/bash
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/helper-functions.sh
 
 if [[ -z $1 ]] ; then
-	helpers_die "${0##*/}: at least one argument needed"
+	__helpers_die "${0##*/}: at least one argument needed"
 	exit 1
 fi
 
-[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-	case "$EAPI" in 0|1|2) ED=${D} EPREFIX= ;; esac
+if ! ___eapi_has_prefix_variables; then
+	ED=${D} EPREFIX=
+fi
 
-case $1 in
+SIZE_LIMIT=''
+while [[ $# -gt 0 ]] ; do
+	case $1 in
 	--ignore)
 		shift
 		for skip in "$@" ; do
@@ -27,45 +30,66 @@ case $1 in
 		set -- "${@/#/${ED}}"
 		ret=0
 		for x in "$@" ; do
-			>> "$x"
+			# Stash the limit in the .dir file so we can reload it later.
+			printf "${SIZE_LIMIT}" > "${x}"
 			((ret|=$?))
 		done
-		[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
+		[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
 		exit $ret
 		;;
 	--dequeue)
-		[[ -n $2 ]] && vecho "${0##*/}: --dequeue takes no additional arguments" 1>&2
+		[[ -n $2 ]] && __vecho "${0##*/}: --dequeue takes no additional arguments" 1>&2
 		find "${ED}" -name '*.ecompress.dir' -print0 \
 			| sed -e 's:\.ecompress\.dir::g' -e "s:${ED}:/:g" \
 			| ${XARGS} -0 ecompressdir
 		find "${ED}" -name '*.ecompress.skip' -print0 | ${XARGS} -0 rm -f
 		exit 0
 		;;
+	--limit)
+		SIZE_LIMIT=$2
+		shift
+		;;
 	--*)
-		helpers_die "${0##*/}: unknown arguments '$*'"
+		__helpers_die "${0##*/}: unknown arguments '$*'"
 		exit 1
 		;;
-esac
+	*)
+		break
+		;;
+	esac
+	shift
+done
 
 # figure out the new suffix
 suffix=$(ecompress --suffix)
 
-# funk_up_dir(action, suffix, binary)
+# funk_up_dir(action, suffix, binary, [size_limit])
 #	- action: compress or decompress
 #	- suffix: the compression suffix to work with
 #	- binary: the program to execute that'll compress/decompress
+#   - size_limit: if compressing, skip files smaller than this
 # The directory we act on is implied in the ${dir} variable
 funk_up_dir() {
-	local act=$1 suffix=$2 binary=$3
+	local act=$1 suffix=$2 binary=$3 size_limit=$4
 
 	local negate=""
 	[[ ${act} == "compress" ]] && negate="!"
 
 	local ret=0
 	# first we act on all the files
-	find "${dir}" -type f ${negate} -iname '*'${suffix} -print0 | ${XARGS} -0 ${binary}
+	local args=(
+		-type f
+		${negate} -iname "*${suffix}"
+	)
+	[[ -n ${size_limit} ]] && args+=( -size "+${size_limit}c" )
+	find "${dir}" "${args[@]}" -print0 | ${XARGS} -0 ${binary}
 	((ret|=$?))
 
+	# Repeat until nothing changes, in order to handle multiple
+	# levels of indirection (see bug #470916).
+	local -i indirection=0
+	while true ; do
+	local something_changed=
 	while read -r -d $'\0' brokenlink ; do
 		[[ -e ${brokenlink} ]] && continue
 		olddest=$(readlink "${brokenlink}")
@@ -91,12 +115,22 @@ funk_up_dir() {
 		else
 			[[ -f "${dir}/${brokenlink%/*}/${newdest}" ]] || continue
 		fi
+		something_changed=${brokenlink}
 		rm -f "${brokenlink}"
 		[[ ${act} == "compress" ]] \
 			&& ln -snf "${newdest}" "${brokenlink}${suffix}" \
 			|| ln -snf "${newdest}" "${brokenlink%${suffix}}"
 		((ret|=$?))
 	done < <(find "${dir}" -type l -print0)
+	[[ -n ${something_changed} ]] || break
+	(( indirection++ ))
+	if (( indirection >= 100 )) ; then
+		# Protect against possibility of a bug triggering an endless loop.
+		eerror "ecompressdir: too many levels of indirection for" \
+			"'${actual_dir#${ED}}/${something_changed#./}'"
+		break
+	fi
+	done
 	return ${ret}
 }
 
@@ -133,13 +167,13 @@ decompressors=(
 	".lzma" "unxz -f"
 )
 
-multijob_init
+__multijob_init
 
 for dir in "$@" ; do
 	dir=${dir#/}
 	dir="${ED}${dir}"
 	if [[ ! -d ${dir} ]] ; then
-		vecho "${0##*/}: /${dir#${ED}} does not exist!"
+		__vecho "${0##*/}: /${dir#${ED}} does not exist!"
 		continue
 	fi
 	cd "${dir}"
@@ -151,24 +185,25 @@ for dir in "$@" ; do
 
 	# since we've been requested to compress the whole dir,
 	# delete any individual queued requests
+	size_limit=${SIZE_LIMIT:-$(<"${actual_dir}.ecompress.dir")}
 	rm -f "${actual_dir}.ecompress.dir"
 	find "${dir}" -type f -name '*.ecompress.file' -print0 | ${XARGS} -0 rm -f
 
 	# not uncommon for packages to compress doc files themselves
-	for (( d = 0; d < ${#decompressors[@]}; d += 2 )) ; do
+	for (( i = 0; i < ${#decompressors[@]}; i += 2 )) ; do
 		# It's faster to parallelize at this stage than to try to
 		# parallelize the compressors.  This is because the find|xargs
 		# ends up launching less compressors overall, so the overhead
 		# of forking children ends up dominating.
 		(
-		multijob_child_init
+		__multijob_child_init
 		funk_up_dir "decompress" "${decompressors[i]}" "${decompressors[i+1]}"
 		) &
-		multijob_post_fork
+		__multijob_post_fork
 		: $(( ret |= $? ))
 	done
 
-	multijob_finish
+	__multijob_finish
 	: $(( ret |= $? ))
 
 	# forcibly break all hard links as some compressors whine about it
@@ -177,8 +212,8 @@ for dir in "$@" ; do
 
 	# now lets do our work
 	if [[ -n ${suffix} ]] ; then
-		vecho "${0##*/}: $(ecompress --bin) /${actual_dir#${ED}}"
-		funk_up_dir "compress" "${suffix}" "ecompress"
+		__vecho "${0##*/}: $(ecompress --bin) /${actual_dir#${ED}}"
+		funk_up_dir "compress" "${suffix}" "ecompress" "${size_limit}"
 		: $(( ret |= $? ))
 	fi
 
@@ -186,5 +221,5 @@ for dir in "$@" ; do
 	restore_skip_dirs
 done
 
-[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
+[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
 exit ${ret}

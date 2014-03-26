@@ -1,0 +1,25 @@
+--- make.conf.example
++++ make.conf.example
+@@ -22,6 +22,13 @@
+ # Example:
+ #USE="X gtk gnome -alsa"
+ 
++# Host Setting
++# ============
++#
++# All Itanium systems should use this host setting:
++
++CHOST="ia64-unknown-linux-gnu"
++
+ # Host and optimization settings 
+ # ==============================
+ #
+@@ -76,7 +83,7 @@
+ # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
+ # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
+ #
+-#ACCEPT_KEYWORDS="~arch"
++#ACCEPT_KEYWORDS="~ia64"
+ 
+ # ACCEPT_LICENSE is used to mask packages based on licensing restrictions.
+ # It may contain both license and group names, where group names are

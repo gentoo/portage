@@ -27,13 +27,14 @@ INSMODE = 0644
 EXEMODE = 0755
 DIRMODE = 0755
 SYSCONFDIR_FILES = etc-update.conf dispatch-conf.conf
-PORTAGE_CONFDIR_FILES = make.globals
+PORTAGE_CONFDIR_FILES = make.conf.example make.globals repos.conf
 LOGROTATE_FILES = elog-save-summary
 BINDIR_FILES = ebuild egencache emerge emerge-webrsync \
-	portageq quickpkg repoman
+	emirrordist portageq quickpkg repoman
 SBINDIR_FILES = archive-conf dispatch-conf emaint \
 	env-update etc-update fixpackages regenworld
 DOCS = ChangeLog NEWS RELEASE-NOTES
+LINGUAS ?= $(shell cd "$(srcdir)/man" && find -mindepth 1 -type d)
 
 ifdef PYTHONPATH
 	PYTHONPATH := $(srcdir)/pym:$(PYTHONPATH)
@@ -50,8 +51,6 @@ docbook:
 
 epydoc:
 	set -e; \
-	# workaround for bug 282760 \
-	touch "$(srcdir)/pym/pysqlite2.py"; \
 	env PYTHONPATH="$(PYTHONPATH)" epydoc \
 		-o "$(WORKDIR)/epydoc" \
 		--name $(PN) \
@@ -63,9 +62,7 @@ epydoc:
 		-e s:^pym/:: \
 		-e s:/:.:g \
 		| sort); \
-	rm -f "$(srcdir)/pym/pysqlite2.py"* \
-		"$(WORKDIR)/epydoc/pysqlite2-"* \
-		"$(WORKDIR)/epydoc/api-objects.txt"; \
+	rm -f "$(WORKDIR)/epydoc/api-objects.txt"; \
 
 test:
 	set -e; \
@@ -81,9 +78,6 @@ install:
 	cd "$(srcdir)/cnf"; \
 	install -m$(INSMODE) $(PORTAGE_CONFDIR_FILES) \
 		"$(DESTDIR)$(portage_confdir)"; \
-	install -m$(INSMODE) "$(srcdir)/cnf/make.conf" \
-		"$(DESTDIR)$(portage_confdir)/make.conf.example"; \
-	\
 	install -d -m$(DIRMODE) "$(DESTDIR)$(portage_setsdir)"; \
 	cd "$(S)/cnf/sets"; \
 	install -m$(INSMODE) *.conf "$(DESTDIR)$(portage_setsdir)"; \
@@ -184,10 +178,18 @@ install:
 	cd "$(srcdir)"; \
 	install -m $(INSMODE) $(DOCS) "$(DESTDIR)$(docdir)"; \
 	\
-	for x in 1 5 ; do \
-		install -d -m$(DIRMODE) "$(DESTDIR)$(mandir)/man$$x"; \
-		cd "$(srcdir)/man"; \
-		install -m$(INSMODE) *.$$x "$(DESTDIR)$(mandir)/man$$x"; \
+	for x in "" $(LINGUAS); do \
+		for y in 1 5 ; do \
+			if [ -d "$(srcdir)/man/$$x" ]; then \
+				cd "$(srcdir)/man/$$x"; \
+				files=$$(echo *.$$y); \
+				if [ -z "$$files" ] || [ "$$files" = "*.$$y" ]; then \
+					continue; \
+				fi; \
+				install -d -m$(DIRMODE) "$(DESTDIR)$(mandir)/$$x/man$$y"; \
+				install -m$(INSMODE) *.$$y "$(DESTDIR)$(mandir)/$$x/man$$y"; \
+			fi; \
+		done; \
 	done; \
 	\
 	if [ -f "$(srcdir)/doc/portage.html" ] ; then \
@@ -208,7 +210,6 @@ install:
 clean:
 	set -e; \
 	$(MAKE) -C "$(srcdir)/doc" clean; \
-	rm -rf "$(srcdir)/pym/pysqlite2.py"* \
-		"$(WORKDIR)/epydoc"; \
+	rm -rf "$(WORKDIR)/epydoc"; \
 
 .PHONY: all clean docbook epydoc install test

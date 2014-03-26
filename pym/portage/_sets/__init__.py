@@ -17,6 +17,7 @@ try:
 		from configparser import SafeConfigParser
 except ImportError:
 	from ConfigParser import SafeConfigParser, NoOptionError, ParsingError
+import portage
 from portage import os
 from portage import load_mod
 from portage import _unicode_decode
@@ -124,12 +125,37 @@ class SetConfig(object):
 		parser.add_section("system")
 		parser.set("system", "class", "portage.sets.profiles.PackagesSystemSet")
 
+		parser.remove_section("security")
+		parser.add_section("security")
+		parser.set("security", "class", "portage.sets.security.NewAffectedSet")
+
 		parser.remove_section("usersets")
 		parser.add_section("usersets")
 		parser.set("usersets", "class", "portage.sets.files.StaticFileSet")
 		parser.set("usersets", "multiset", "true")
 		parser.set("usersets", "directory", "%(PORTAGE_CONFIGROOT)setc/portage/sets")
 		parser.set("usersets", "world-candidate", "true")
+
+		parser.remove_section("live-rebuild")
+		parser.add_section("live-rebuild")
+		parser.set("live-rebuild", "class", "portage.sets.dbapi.VariableSet")
+		parser.set("live-rebuild", "variable", "INHERITED")
+		parser.set("live-rebuild", "includes", " ".join(sorted(portage.const.LIVE_ECLASSES)))
+
+		parser.remove_section("module-rebuild")
+		parser.add_section("module-rebuild")
+		parser.set("module-rebuild", "class", "portage.sets.dbapi.OwnerSet")
+		parser.set("module-rebuild", "files", "/lib/modules")
+
+		parser.remove_section("preserved-rebuild")
+		parser.add_section("preserved-rebuild")
+		parser.set("preserved-rebuild", "class", "portage.sets.libs.PreservedLibraryConsumerSet")
+
+		parser.remove_section("x11-module-rebuild")
+		parser.add_section("x11-module-rebuild")
+		parser.set("x11-module-rebuild", "class", "portage.sets.dbapi.OwnerSet")
+		parser.set("x11-module-rebuild", "files", "/usr/lib/xorg/modules")
+		parser.set("x11-module-rebuild", "exclude-files", "/usr/bin/Xorg")
 
 	def update(self, setname, options):
 		parser = self._parser
@@ -270,8 +296,8 @@ def load_default_config(settings, trees):
 		return SetConfig(None, settings, trees)
 
 	global_config_path = GLOBAL_CONFIG_PATH
-	if settings['EPREFIX']:
-		global_config_path = os.path.join(settings['EPREFIX'],
+	if portage.const.EPREFIX:
+		global_config_path = os.path.join(portage.const.EPREFIX,
 			GLOBAL_CONFIG_PATH.lstrip(os.sep))
 	def _getfiles():
 		for path, dirs, files in os.walk(os.path.join(global_config_path, "sets")):

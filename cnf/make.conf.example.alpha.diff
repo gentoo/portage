@@ -1,0 +1,50 @@
+--- make.conf.example
++++ make.conf.example
+@@ -22,6 +22,17 @@
+ # Example:
+ #USE="X gtk gnome -alsa"
+ 
++# Host Setting
++# ============
++#
++# DO NOT CHANGE THIS SETTING UNLESS YOU ARE USING STAGE1!
++# The generic HOST setting on alpha is alpha-unknown-linux-gnu. If your machine
++# is an ev6 or ev67 based system you might want to use 
++# either alphaev6-unknown-linux-gnu or alphaev67-unknown-linux-gnu accordingly.
++#
++#CHOST="alphaev67-unknown-linux-gnu"
++CHOST="alpha-unknown-linux-gnu"
++
+ # Host and optimization settings 
+ # ==============================
+ #
+@@ -39,10 +50,18 @@
+ # -frecord-gcc-switches, since otherwise the check could result in false
+ # positive results.
+ #
+-# Please refer to the GCC manual for a list of possible values.
++# -mcpu=<cpu-type> means optimize code for the particular type of CPU. In 
++#                  difference to x86 for example -mcpu does break compatibility
++#                  to older cpu types in case of ev6 or higher.
++#                  On Alpha there is no -march= option in gcc-3.
+ #
+-#CFLAGS="-O2 -pipe"
++# CPU types supported in gcc-3.2 or higher: ev4, ev45, ev5, ev56, ev6, ev67
+ #
++# Decent examples:
++#
++#CFLAGS="-mcpu=ev67 -O2 -pipe "
++CFLAGS="-mcpu=ev5 -O2 -pipe "
++
+ # If you set a CFLAGS above, then this line will set your default C++ flags to
+ # the same settings.
+ #CXXFLAGS="${CFLAGS}"
+@@ -76,7 +95,7 @@
+ # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
+ # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
+ #
+-#ACCEPT_KEYWORDS="~arch"
++#ACCEPT_KEYWORDS="~alpha"
+ 
+ # ACCEPT_LICENSE is used to mask packages based on licensing restrictions.
+ # It may contain both license and group names, where group names are

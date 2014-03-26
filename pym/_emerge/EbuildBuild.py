@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.EbuildExecuter import EbuildExecuter
@@ -10,11 +10,14 @@ from _emerge.EbuildMerge import EbuildMerge
 from _emerge.EbuildFetchonly import EbuildFetchonly
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
+from _emerge.TaskSequence import TaskSequence
+
 from portage.util import writemsg
 import portage
 from portage import os
 from portage.output import colorize
 from portage.package.ebuild.digestcheck import digestcheck
+from portage.package.ebuild.digestgen import digestgen
 from portage.package.ebuild.doebuild import _check_temp_dir
 from portage.package.ebuild._spawn_nofetch import spawn_nofetch
 
@@ -35,7 +38,7 @@ class EbuildBuild(CompositeTask):
 			if rval != os.EX_OK:
 				self.returncode = rval
 				self._current_task = None
-				self.wait()
+				self._async_wait()
 				return
 
 		root_config = pkg.root_config
@@ -60,7 +63,7 @@ class EbuildBuild(CompositeTask):
 		if not self._check_manifest():
 			self.returncode = 1
 			self._current_task = None
-			self.wait()
+			self._async_wait()
 			return
 
 		prefetcher = self.prefetcher
@@ -91,7 +94,8 @@ class EbuildBuild(CompositeTask):
 		success = True
 
 		settings = self.settings
-		if 'strict' in settings.features:
+		if 'strict' in settings.features and \
+			'digest' not in settings.features:
 			settings['O'] = os.path.dirname(self._ebuild_path)
 			quiet_setting = settings.get('PORTAGE_QUIET')
 			settings['PORTAGE_QUIET'] = '1'
@@ -160,6 +164,10 @@ class EbuildBuild(CompositeTask):
 		if self.returncode != os.EX_OK:
 			portdb = self.pkg.root_config.trees[self._tree].dbapi
 			spawn_nofetch(portdb, self._ebuild_path, settings=self.settings)
+		elif 'digest' in self.settings.features:
+			if not digestgen(mysettings=self.settings,
+				myportdb=self.pkg.root_config.trees[self._tree].dbapi):
+				self.returncode = 1
 		self.wait()
 
 	def _pre_clean_exit(self, pre_clean_phase):
@@ -260,8 +268,8 @@ class EbuildBuild(CompositeTask):
 		# to be displayed for problematic packages even though they do
 		# not set RESTRICT=fetch (bug #336499).
 
-		if 'fetch' not in self.pkg.metadata.restrict and \
-			'nofetch' not in self.pkg.metadata.defined_phases:
+		if 'fetch' not in self.pkg.restrict and \
+			'nofetch' not in self.pkg.defined_phases:
 			self._unlock_builddir()
 			self.wait()
 			return
@@ -300,10 +308,20 @@ class EbuildBuild(CompositeTask):
 			self.scheduler.output(msg,
 				log_path=self.settings.get("PORTAGE_LOG_FILE"))
 
-		packager = EbuildBinpkg(background=self.background, pkg=self.pkg,
-			scheduler=self.scheduler, settings=self.settings)
+		binpkg_tasks = TaskSequence()
+		requested_binpkg_formats = self.settings.get("PORTAGE_BINPKG_FORMAT", "tar").split()
+		for pkg_fmt in portage.const.SUPPORTED_BINPKG_FORMATS:
+			if pkg_fmt in requested_binpkg_formats:
+				if pkg_fmt == "rpm":
+					binpkg_tasks.add(EbuildPhase(background=self.background,
+						phase="rpm", scheduler=self.scheduler,
+						settings=self.settings))
+				else:
+					binpkg_tasks.add(EbuildBinpkg(background=self.background,
+						pkg=self.pkg, scheduler=self.scheduler,
+						settings=self.settings))
 
-		self._start_task(packager, self._buildpkg_exit)
+		self._start_task(binpkg_tasks, self._buildpkg_exit)
 
 	def _buildpkg_exit(self, packager):
 		"""

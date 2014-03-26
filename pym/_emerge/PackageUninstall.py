@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
@@ -33,7 +33,7 @@ class PackageUninstall(CompositeTask):
 			# Apparently the package got uninstalled
 			# already, so we can safely return early.
 			self.returncode = os.EX_OK
-			self.wait()
+			self._async_wait()
 			return
 
 		self.settings.setcpv(self.pkg)
@@ -67,7 +67,7 @@ class PackageUninstall(CompositeTask):
 		if retval != os.EX_OK:
 			self._builddir_lock.unlock()
 			self.returncode = retval
-			self.wait()
+			self._async_wait()
 			return
 
 		self._writemsg_level(">>> Unmerging %s...\n" % (self.pkg.cpv,),

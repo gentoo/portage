@@ -1,21 +1,17 @@
-#!/usr/bin/python -O
-# Copyright 1999-2006 Gentoo Foundation
+#!/usr/bin/python -bO
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
 
 import sys, errno
-try:
-	import portage
-except ImportError:
-	from os import path as osp
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
-
-from portage import os
+from os import path as osp
+pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
+sys.path.insert(0, pym_path)
+import portage
+portage._internal_caller = True
 
 if not sys.argv[1:] or "--help" in sys.argv or "-h" in sys.argv:
-	import portage
 	print()
 	print("You must specify directories with hardlink-locks to clean.")
 	print("You may optionally specify --force, which will remove all")
@@ -26,11 +22,11 @@ if not sys.argv[1:] or "--help" in sys.argv or "-h" in sys.argv:
 	print("%s --force %s/.locks" % (sys.argv[0], portage.settings["DISTDIR"]))
 	print()
 	sys.exit(1)
-	
+
 force = False
 if "--force" in sys.argv[1:]:
 	force=True
-	
+
 for x in sys.argv[1:]:
 	if x == "--force":
 		continue
@@ -38,7 +34,7 @@ for x in sys.argv[1:]:
 		for y in portage.locks.hardlock_cleanup(x, remove_all_locks=force):
 			print(y)
 		print()
-		
+
 	except OSError as e:
 		if e.errno in (errno.ENOENT, errno.ENOTDIR):
 			print("!!! %s is not a directory or does not exist" % x)

@@ -1,0 +1,87 @@
+--- make.conf.example
++++ make.conf.example
+@@ -22,6 +22,13 @@
+ # Example:
+ #USE="X gtk gnome -alsa"
+ 
++# Host Setting
++# ============
++#
++# All PowerPC systems should use this host setting:
++
++CHOST="powerpc-unknown-linux-gnu"
++
+ # Host and optimization settings 
+ # ==============================
+ #
+@@ -39,10 +46,56 @@
+ # -frecord-gcc-switches, since otherwise the check could result in false
+ # positive results.
+ #
+-# Please refer to the GCC manual for a list of possible values.
++# -mcpu=<cpu-type> for PowerPC systems selects the type of processor you want
++# to optimize your code for.   Code generated under those options will run best
++# on that processor, and may not run at all on others.
++#
++# GCC 3.4 supports many powerpc processor types including: 401, 403, 405,
++# 405fp, 440, 440fp, 505, 601, 602, 603, 603e, 604, 604e, 620, 630, 740, 7400,
++# 7450, 750, 801, 821, 823, 860, 970, 8540, common, ec603e, G3, G4, G5, power,
++# power2, power3, power4, power5, powerpc, powerpc64, rios, rios1, rios2, rsc,
++# and rs64a
++#
++# Recommended settings for GCC 3.4 only :
++#
++# -maltivec enables optional altivec support and should be used
++# only for G4 processors,  on GCC 3.2 or newer.  It also requires that you have
++# the alitvec option compiled into your kernel to take full advantage of this
++# feature.  Note: you should also include -mabi=altivec flag if using this 
++# option.
++#
++# The newer gcc has a stricter aliasing ruleset that makes type punned 
++# expression faulty compiled if -fstrict-aliasing is enabled.
++# That option is implied by -O2 -Os and -O3. Make SURE you don't have that
++# option enabled by adding -fno-strict-aliasing to your CFLAGS and CXXFLAGS
++#
++# Long term testing has shown that -O3 opts can be unreliable on G4's but work
++# on G3 series processors or earlier.
+ #
+-#CFLAGS="-O2 -pipe"
++# The following is the suggested CFLAGS for a generic G4 cpu
+ #
++#CFLAGS="-O2 -pipe -mcpu=G4 -maltivec -mabi=altivec -fno-strict-aliasing"
++#
++#
++# All non G4 PPC boxen should choose this next option.  It will work fine for
++# all G3 and pre machines.  (note it will not hurt pre G3 machines either to 
++# use this mcpu option as it is the default for gcc 3.2.x anyway)
++#
++#CFLAGS="-O2 -pipe -mcpu=G3 -fno-strict-aliasing"
++
++# Recommended settings for GCC 2.95.3 only (Gentoo 1.2 or older):
++#
++# PowerPC 750 > up: this works on G3's and G4s, gcc 2.95.3 doesn't make the
++# distinction between G3 and G4, so this is fine for all NewWorld machines, if
++# you use yaboot to boot you should select this option
++#
++#CFLAGS="-O2 -pipe -mcpu=750 -mpowerpc-gfxopt -mmultiple -mstring"
++#
++# This will run on all other processors, by building more generic code This is
++# safe for all PPC machines running gcc 2.95.3, and works for all OldWorld
++# machines - if you use BootX to boot you should select this option
++#CFLAGS="-O2 -pipe -mmultiple -mstring"
++
+ # If you set a CFLAGS above, then this line will set your default C++ flags to
+ # the same settings.
+ #CXXFLAGS="${CFLAGS}"
+@@ -76,7 +129,10 @@
+ # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
+ # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
+ #
+-#ACCEPT_KEYWORDS="~arch"
++# Note: this really shouldn't be enabled until _AFTER_ you bootstrap and emerge
++# system.  If you want the testing things update after these steps are completed.
++#
++#ACCEPT_KEYWORDS="~ppc"
+ 
+ # ACCEPT_LICENSE is used to mask packages based on licensing restrictions.
+ # It may contain both license and group names, where group names are

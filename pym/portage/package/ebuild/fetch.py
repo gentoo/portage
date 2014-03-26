@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -14,6 +14,10 @@ import stat
 import sys
 import tempfile
 
+try:
+	from urllib.parse import urlparse
+except ImportError:
+	from urlparse import urlparse
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -26,7 +30,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 from portage import OrderedDict, os, selinux, shutil, _encodings, \
 	_shell_quote, _unicode_encode
 from portage.checksum import (hashfunc_map, perform_md5, verify_all,
-	_filter_unaccelarated_hashes)
+	_filter_unaccelarated_hashes, _hash_filter, _apply_hash_filter)
 from portage.const import BASH_BINARY, CUSTOM_MIRRORS_FILE, \
 	GLOBAL_CONFIG_PATH
 from portage.data import portage_gid, portage_uid, secpass, userpriv_groups
@@ -64,9 +68,9 @@ def _spawn_fetch(settings, args, **kwargs):
 	if "fd_pipes" not in kwargs:
 
 		kwargs["fd_pipes"] = {
-			0 : sys.stdin.fileno(),
-			1 : sys.stdout.fileno(),
-			2 : sys.stdout.fileno(),
+			0 : portage._get_stdin().fileno(),
+			1 : sys.__stdout__.fileno(),
+			2 : sys.__stdout__.fileno(),
 		}
 
 	if "userfetch" in settings.features and \
@@ -185,7 +189,7 @@ def _check_digests(filename, digests, show_errors=1):
 		return False
 	return True
 
-def _check_distfile(filename, digests, eout, show_errors=1):
+def _check_distfile(filename, digests, eout, show_errors=1, hash_filter=None):
 	"""
 	@return a tuple of (match, stat_obj) where match is True if filename
 	matches all given digests (if any) and stat_obj is a stat result, or
@@ -212,6 +216,8 @@ def _check_distfile(filename, digests, eout, show_errors=1):
 			return (False, st)
 	else:
 		digests = _filter_unaccelarated_hashes(digests)
+		if hash_filter is not None:
+			digests = _apply_hash_filter(digests, hash_filter)
 		if _check_digests(filename, digests, show_errors=show_errors):
 			eout.ebegin("%s %s ;-)" % (os.path.basename(filename),
 				" ".join(sorted(digests))))
@@ -341,7 +347,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 				_("!!! For fetching to a read-only filesystem, "
 				"locking should be turned off.\n")), noiselevel=-1)
 			writemsg(_("!!! This can be done by adding -distlocks to "
-				"FEATURES in /etc/make.conf\n"), noiselevel=-1)
+				"FEATURES in /etc/portage/make.conf\n"), noiselevel=-1)
 #			use_locks = 0
 
 	# local mirrors are always added
@@ -355,6 +361,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 		if try_mirrors:
 			mymirrors += [x.rstrip("/") for x in mysettings["GENTOO_MIRRORS"].split() if x]
 
+	hash_filter = _hash_filter(mysettings.get("PORTAGE_CHECKSUM_FILTER", ""))
+	if hash_filter.transparent:
+		hash_filter = None
 	skip_manifest = mysettings.get("EBUILD_SKIP_MANIFEST") == "1"
 	if skip_manifest:
 		allow_missing_digests = True
@@ -397,12 +406,16 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 		for myfile, uri_set in myuris.items():
 			for myuri in uri_set:
 				file_uri_tuples.append((myfile, myuri))
+			if not uri_set:
+				file_uri_tuples.append((myfile, None))
 	else:
 		for myuri in myuris:
-			file_uri_tuples.append((os.path.basename(myuri), myuri))
+			if urlparse(myuri).scheme:
+				file_uri_tuples.append((os.path.basename(myuri), myuri))
+			else:
+				file_uri_tuples.append((os.path.basename(myuri), None))
 
 	filedict = OrderedDict()
-	primaryuri_indexes={}
 	primaryuri_dict = {}
 	thirdpartymirror_uris = {}
 	for myfile, myuri in file_uri_tuples:
@@ -410,6 +423,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 			filedict[myfile]=[]
 			for y in range(0,len(locations)):
 				filedict[myfile].append(locations[y]+"/distfiles/"+myfile)
+		if myuri is None:
+			continue
 		if myuri[:9]=="mirror://":
 			eidx = myuri.find("/", 9)
 			if eidx != -1:
@@ -424,15 +439,15 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 
 				# now try the official mirrors
 				if mirrorname in thirdpartymirrors:
-					random.shuffle(thirdpartymirrors[mirrorname])
-
 					uris = [locmirr.rstrip("/") + "/" + path \
 						for locmirr in thirdpartymirrors[mirrorname]]
+					random.shuffle(uris)
 					filedict[myfile].extend(uris)
 					thirdpartymirror_uris.setdefault(myfile, []).extend(uris)
 
-				if not filedict[myfile]:
-					writemsg(_("No known mirror by the name: %s\n") % (mirrorname))
+				if mirrorname not in custommirrors and \
+					mirrorname not in thirdpartymirrors:
+					writemsg(_("!!! No known mirror by the name: %s\n") % (mirrorname))
 			else:
 				writemsg(_("Invalid mirror definition in SRC_URI:\n"), noiselevel=-1)
 				writemsg("  %s\n" % (myuri), noiselevel=-1)
@@ -440,25 +455,29 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 			if restrict_fetch or force_mirror:
 				# Only fetch from specific mirrors is allowed.
 				continue
-			if "primaryuri" in restrict:
-				# Use the source site first.
-				if myfile in primaryuri_indexes:
-					primaryuri_indexes[myfile] += 1
-				else:
-					primaryuri_indexes[myfile] = 0
-				filedict[myfile].insert(primaryuri_indexes[myfile], myuri)
-			else:
-				filedict[myfile].append(myuri)
 			primaryuris = primaryuri_dict.get(myfile)
 			if primaryuris is None:
 				primaryuris = []
 				primaryuri_dict[myfile] = primaryuris
 			primaryuris.append(myuri)
 
+	# Order primaryuri_dict values to match that in SRC_URI.
+	for uris in primaryuri_dict.values():
+		uris.reverse()
+
 	# Prefer thirdpartymirrors over normal mirrors in cases when
 	# the file does not yet exist on the normal mirrors.
 	for myfile, uris in thirdpartymirror_uris.items():
 		primaryuri_dict.setdefault(myfile, []).extend(uris)
+
+	# Now merge primaryuri values into filedict (includes mirrors
+	# explicitly referenced in SRC_URI).
+	if "primaryuri" in restrict:
+		for myfile, uris in filedict.items():
+			filedict[myfile] = primaryuri_dict.get(myfile, []) + uris
+	else:
+		for myfile in filedict:
+			filedict[myfile] += primaryuri_dict.get(myfile, [])
 
 	can_fetch=True
 
@@ -637,7 +656,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 				eout = EOutput()
 				eout.quiet = mysettings.get("PORTAGE_QUIET") == "1"
 				match, mystat = _check_distfile(
-					myfile_path, pruned_digests, eout)
+					myfile_path, pruned_digests, eout, hash_filter=hash_filter)
 				if match:
 					# Skip permission adjustment for symlinks, since we don't
 					# want to modify anything outside of the primary DISTDIR,
@@ -709,7 +728,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 					for x in ro_distdirs:
 						filename = os.path.join(x, myfile)
 						match, mystat = _check_distfile(
-							filename, pruned_digests, eout)
+							filename, pruned_digests, eout, hash_filter=hash_filter)
 						if match:
 							readonly_file = filename
 							break
@@ -734,7 +753,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 							"remaining space.\n"), noiselevel=-1)
 						if userfetch:
 							writemsg(_("!!! You may set FEATURES=\"-userfetch\""
-								" in /etc/make.conf in order to fetch with\n"
+								" in /etc/portage/make.conf in order to fetch with\n"
 								"!!! superuser privileges.\n"), noiselevel=-1)
 
 				if fsmirrors and not os.path.exists(myfile_path) and has_space:
@@ -796,6 +815,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 							continue
 						else:
 							digests = _filter_unaccelarated_hashes(mydigests[myfile])
+							if hash_filter is not None:
+								digests = _apply_hash_filter(digests, hash_filter)
 							verified_ok, reason = verify_all(myfile_path, digests)
 							if not verified_ok:
 								writemsg(_("!!! Previously fetched"
@@ -845,8 +866,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 				protocol = loc[0:loc.find("://")]
 
 				global_config_path = GLOBAL_CONFIG_PATH
-				if mysettings['EPREFIX']:
-					global_config_path = os.path.join(mysettings['EPREFIX'],
+				if portage.const.EPREFIX:
+					global_config_path = os.path.join(portage.const.EPREFIX,
 							GLOBAL_CONFIG_PATH.lstrip(os.sep))
 
 				missing_file_param = False
@@ -955,10 +976,15 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 					writemsg_stdout(_(">>> Downloading '%s'\n") % \
 						_hide_url_passwd(loc))
 					variables = {
-						"DISTDIR": mysettings["DISTDIR"],
 						"URI":     loc,
 						"FILE":    myfile
 					}
+
+					for k in ("DISTDIR", "PORTAGE_SSH_OPTS"):
+						try:
+							variables[k] = mysettings[k]
+						except KeyError:
+							pass
 
 					myfetch = shlex_split(locfetch)
 					myfetch = [varexpand(x, mydict=variables) for x in myfetch]
@@ -1053,6 +1079,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 								# net connection. This way we have a chance to try to download
 								# from another mirror...
 								digests = _filter_unaccelarated_hashes(mydigests[myfile])
+								if hash_filter is not None:
+									digests = _apply_hash_filter(digests, hash_filter)
 								verified_ok, reason = verify_all(myfile_path, digests)
 								if not verified_ok:
 									writemsg(_("!!! Fetched file: %s VERIFY FAILED!\n") % myfile,

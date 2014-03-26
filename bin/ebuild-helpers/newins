@@ -1,38 +1,57 @@
 #!/bin/bash
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
-if [[ -z ${T} ]] || [[ -z ${2} ]] ; then
-	helpers_die "${0##*/}: Need two arguments, old file and new file"
-	exit 1
-fi
+helper=${0##*/}
 
-if [ ! -e "$1" ] ; then
-	helpers_die "!!! ${0##*/}: $1 does not exist"
+if [[ -z ${T} ]] || [[ -z ${2} ]] ; then
+	__helpers_die "${helper}: Need two arguments, old file and new file"
 	exit 1
 fi
 
 (($#>2)) && \
-	eqawarn "QA Notice: ${0##*/} called with more than 2 arguments: ${@:3}"
+	eqawarn "QA Notice: ${helper} called with more than 2 arguments: ${@:3}"
 
-rm -rf "${T}/${2}" || exit $?
-case "$EAPI" in
-	0|1|2|3|3_pre2)
-		cp "$1" "$T/$2" || exit $?
-		;;
-	*)
-		cp -P "$1" "$T/$2"
-		ret=$?
-		if [[ $ret -ne 0 ]] ; then
-			helpers_die "${0##*/} failed"
-			exit $ret
+stdin=
+if ___eapi_newins_supports_reading_from_standard_input && [[ $1 == "-" ]]; then
+	stdin=yes
+fi
+
+TMP=$(mktemp -d "${T}/.newins_tmp_XXXXXX")
+trap 'rm -rf "${TMP}"' EXIT
+
+if [[ ${stdin} ]] ; then
+	if [[ -t 0 ]] ; then
+		__helpers_die "!!! ${helper}: Input is from a terminal"
+		exit 1
+	fi
+	cat > "${TMP}/$2"
+	ret=$?
+else
+	if [[ ! -e $1 ]] ; then
+		__helpers_die "!!! ${helper}: $1 does not exist"
+		exit 1
+	fi
+
+	cp_args="-f"
+	if [[ ${helper} == newins ]] ; then
+		if ___eapi_doins_and_newins_preserve_symlinks; then
+			cp_args+=" -P"
 		fi
-		;;
-esac
-doins "${T}/${2}"
+	fi
+
+	cp ${cp_args} "$1" "${TMP}/$2"
+	ret=$?
+fi
+
+if [[ ${ret} -ne 0 ]] ; then
+	__helpers_die "${0##*/} failed"
+	exit ${ret}
+fi
+
+do${helper#new} "${TMP}/$2"
 ret=$?
-rm -rf "${T}/${2}"
-[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
+[[ $ret -ne 0 ]] && __helpers_die "${helper} failed"
 exit $ret

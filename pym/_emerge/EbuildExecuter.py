@@ -16,16 +16,7 @@ class EbuildExecuter(CompositeTask):
 
 	_phases = ("prepare", "configure", "compile", "test", "install")
 
-	_live_eclasses = frozenset([
-		"bzr",
-		"cvs",
-		"darcs",
-		"git",
-		"git-2",
-		"mercurial",
-		"subversion",
-		"tla",
-	])
+	_live_eclasses = portage.const.LIVE_ECLASSES
 
 	def _start(self):
 		pkg = self.pkg
@@ -83,7 +74,7 @@ class EbuildExecuter(CompositeTask):
 
 		pkg = self.pkg
 		phases = self._phases
-		eapi = pkg.metadata["EAPI"]
+		eapi = pkg.eapi
 		if not eapi_has_src_prepare_and_src_configure(eapi):
 			# skip src_prepare and src_configure
 			phases = phases[2:]

@@ -1,0 +1,19 @@
+#!/bin/bash
+# Copyright 1999-2012 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+
+source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+
+if ! ___eapi_has_doheader; then
+	die "${0##*/} is not supported in EAPI ${EAPI}"
+fi
+
+if [[ $# -lt 1 ]] || [[ $1 == -r && $# -lt 2 ]] ; then
+	__helpers_die "${0##*/}: at least one argument needed"
+	exit 1
+fi
+
+exec \
+env \
+INSDESTTREE="/usr/include/" \
+doins "$@"

@@ -1,19 +1,17 @@
 # setup_env.py -- Make sure bin subdir has sane env for testing
-# Copyright 2007-2011 Gentoo Foundation
+# Copyright 2007-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
 
 from portage import os
 from portage import shutil
+from portage.const import PORTAGE_BIN_PATH
+from portage.const import PORTAGE_PYM_PATH
 from portage.tests import TestCase
 from portage.process import spawn
 
-basepath = os.path.join(os.path.dirname(os.path.dirname(
-	os.path.abspath(__file__))),
-	"..", "..", "..")
-bindir = os.path.join(basepath, "bin")
-pymdir = os.path.join(basepath, "pym")
+bindir = PORTAGE_BIN_PATH
 basedir = None
 env = None
 
@@ -30,20 +28,20 @@ def binTestsInit():
 	global basedir, env
 	basedir = tempfile.mkdtemp()
 	env = {}
-	env["EAPI"] = "0"
-	env["D"] = os.path.join(basedir, "image")
-	env["T"] = os.path.join(basedir, "temp")
-	env["S"] = os.path.join(basedir, "workdir")
-	env["PF"] = "portage-tests-0.09-r1"
-	env["PATH"] = bindir + ":" + os.environ["PATH"]
-	env["PORTAGE_BIN_PATH"] = bindir
-	env["PORTAGE_PYM_PATH"] = pymdir
-	env["PORTAGE_INST_UID"] = str(os.getuid())
-	env["PORTAGE_INST_GID"] = str(os.getgid())
-	env["DESTTREE"] = "/usr"
-	os.mkdir(env["D"])
-	os.mkdir(env["T"])
-	os.mkdir(env["S"])
+	env['EAPI'] = '0'
+	env['D'] = os.path.join(basedir, 'image')
+	env['T'] = os.path.join(basedir, 'temp')
+	env['S'] = os.path.join(basedir, 'workdir')
+	env['PF'] = 'portage-tests-0.09-r1'
+	env['PATH'] = bindir + ':' + os.environ['PATH']
+	env['PORTAGE_BIN_PATH'] = bindir
+	env['PORTAGE_PYM_PATH'] = PORTAGE_PYM_PATH
+	env['PORTAGE_INST_UID'] = str(os.getuid())
+	env['PORTAGE_INST_GID'] = str(os.getgid())
+	env['DESTTREE'] = '/usr'
+	os.mkdir(env['D'])
+	os.mkdir(env['T'])
+	os.mkdir(env['S'])
 
 class BinTestCase(TestCase):
 	def init(self):
@@ -53,7 +51,7 @@ class BinTestCase(TestCase):
 
 def _exists_in_D(path):
 	# Note: do not use os.path.join() here, we assume D to end in /
-	return os.access(env["D"] + path, os.W_OK)
+	return os.access(env['D'] + path, os.W_OK)
 def exists_in_D(path):
 	if not _exists_in_D(path):
 		raise TestCase.failureException
@@ -68,7 +66,7 @@ def portage_func(func, args, exit_status=0):
 	f = open('/dev/null', 'wb')
 	fd_pipes = {0:0,1:f.fileno(),2:f.fileno()}
 	def pre_exec():
-		os.chdir(env["S"])
+		os.chdir(env['S'])
 	spawn([func] + args.split(), env=env,
 		fd_pipes=fd_pipes, pre_exec=pre_exec)
 	f.close()
@@ -80,10 +78,10 @@ def create_portage_wrapper(bin):
 		return portage_func(*newargs)
 	return derived_func
 
-for bin in os.listdir(os.path.join(bindir, "ebuild-helpers")):
-	if bin.startswith("do") or \
-	   bin.startswith("new") or \
-	   bin.startswith("prep") or \
-	   bin in ["ecompress","ecompressdir","fowners","fperms"]:
+for bin in os.listdir(os.path.join(bindir, 'ebuild-helpers')):
+	if bin.startswith('do') or \
+	   bin.startswith('new') or \
+	   bin.startswith('prep') or \
+	   bin in ('ecompress', 'ecompressdir', 'fowners', 'fperms'):
 		globals()[bin] = create_portage_wrapper(
-			os.path.join(bindir, "ebuild-helpers", bin))
+			os.path.join(bindir, 'ebuild-helpers', bin))

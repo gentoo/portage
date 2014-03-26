@@ -1,4 +1,4 @@
-# Copyright 1998-2011 Gentoo Foundation
+# Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # Since python ebuilds remove the 'email' module when USE=build
@@ -21,6 +21,7 @@ from portage.localization import _
 import portage
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 
 	def _force_ascii_if_necessary(s):
@@ -117,13 +118,13 @@ def send_mail(mysettings, message):
 		if "@" in mymailuri:
 			myauthdata, myconndata = mymailuri.rsplit("@", 1)
 			try:
-				mymailuser,mymailpasswd = myauthdata.split(":")
+				mymailuser, mymailpasswd = myauthdata.split(":")
 			except ValueError:
 				print(_("!!! invalid SMTP AUTH configuration, trying unauthenticated ..."))
 		else:
 			myconndata = mymailuri
 		if ":" in myconndata:
-			mymailhost,mymailport = myconndata.split(":")
+			mymailhost, mymailport = myconndata.split(":")
 		else:
 			mymailhost = myconndata
 	else:

@@ -6,8 +6,8 @@ import portage
 from portage import os
 from portage.const import PORTAGE_PYM_PATH
 from portage.tests import TestCase
+from portage.util._eventloop.global_event_loop import global_event_loop
 
-from _emerge.PollScheduler import PollScheduler
 from _emerge.PipeReader import PipeReader
 from _emerge.SpawnProcess import SpawnProcess
 
@@ -52,7 +52,7 @@ sys.stdout.write(" ".join(k for k in sys.modules
 		# then the above PYTHONPATH override doesn't help.
 		env['PORTAGE_PYM_PATH'] = PORTAGE_PYM_PATH
 
-		scheduler = PollScheduler().sched_iface
+		scheduler = global_event_loop()
 		master_fd, slave_fd = os.pipe()
 		master_file = os.fdopen(master_fd, 'rb', 0)
 		slave_file = os.fdopen(slave_fd, 'wb')

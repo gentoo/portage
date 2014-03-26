@@ -1,4 +1,4 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -64,15 +64,14 @@ class SlotAbiEmergeTestCase(TestCase):
 		trees = playground.trees
 		portdb = trees[eroot]["porttree"].dbapi
 		vardb = trees[eroot]["vartree"].dbapi
-		portdir = settings["PORTDIR"]
 		var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
 		user_config_dir = os.path.join(eprefix, USER_CONFIG_PATH)
 		package_mask_path = os.path.join(user_config_dir, "package.mask")
 
 		portage_python = portage._python_interpreter
-		ebuild_cmd = (portage_python, "-Wd",
+		ebuild_cmd = (portage_python, "-b", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "ebuild"))
-		emerge_cmd = (portage_python, "-Wd",
+		emerge_cmd = (portage_python, "-b", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "emerge"))
 
 		test_ebuild = portdb.findname("dev-libs/dbus-glib-0.98")
@@ -93,25 +92,6 @@ class SlotAbiEmergeTestCase(TestCase):
 		fake_bin = os.path.join(eprefix, "bin")
 		portage_tmpdir = os.path.join(eprefix, "var", "tmp", "portage")
 		profile_path = settings.profile_path
-
-		features = []
-		if not portage.process.sandbox_capable or \
-			os.environ.get("SANDBOX_ON") == "1":
-			features.append("-sandbox")
-
-		make_conf = (
-			"FEATURES=\"%s\"\n" % (" ".join(features),),
-			"PORTDIR=\"%s\"\n" % (portdir,),
-			"PORTAGE_GRPNAME=\"%s\"\n" % (os.environ["PORTAGE_GRPNAME"],),
-			"PORTAGE_USERNAME=\"%s\"\n" % (os.environ["PORTAGE_USERNAME"],),
-			"PKGDIR=\"%s\"\n" % (pkgdir,),
-			"PORTAGE_INST_GID=%s\n" % (portage.data.portage_gid,),
-			"PORTAGE_INST_UID=%s\n" % (portage.data.portage_uid,),
-			"PORTAGE_TMPDIR=\"%s\"\n" % (portage_tmpdir,),
-			"CLEAN_DELAY=0\n",
-			"DISTDIR=\"%s\"\n" % (distdir,),
-			"EMERGE_WARNING_DELAY=0\n",
-		)
 
 		path =  os.environ.get("PATH")
 		if path is not None and not path.strip():
@@ -139,6 +119,7 @@ class SlotAbiEmergeTestCase(TestCase):
 			"PORTAGE_OVERRIDE_EPREFIX" : eprefix,
 			"PATH" : path,
 			"PORTAGE_PYTHON" : portage_python,
+			"PORTAGE_REPOSITORIES" : settings.repositories.config_string(),
 			"PYTHONPATH" : pythonpath,
 		}
 
@@ -155,9 +136,6 @@ class SlotAbiEmergeTestCase(TestCase):
 		try:
 			for d in dirs:
 				ensure_dirs(d)
-			with open(os.path.join(user_config_dir, "make.conf"), 'w') as f:
-				for line in make_conf:
-					f.write(line)
 			for x in true_symlinks:
 				os.symlink(true_binary, os.path.join(fake_bin, x))
 			with open(os.path.join(var_cache_edb, "counter"), 'wb') as f:

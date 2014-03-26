@@ -1,8 +1,8 @@
 # portage: news management code
-# Copyright 2006-2011 Gentoo Foundation
+# Copyright 2006-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
 __all__ = ["NewsManager", "NewsItem", "DisplayRestriction",
 	"DisplayProfileRestriction", "DisplayKeywordRestriction",
@@ -13,6 +13,7 @@ import io
 import logging
 import os as _os
 import re
+import portage
 from portage import OrderedDict
 from portage import os
 from portage import _encodings
@@ -241,7 +242,8 @@ class NewsItem(object):
 		for values in self.restrictions.values():
 			any_match = False
 			for restriction in values:
-				if restriction.checkRestriction(**kwargs):
+				if restriction.checkRestriction(
+					**portage._native_kwargs(kwargs)):
 					any_match = True
 			if not any_match:
 				all_match = False
@@ -388,7 +390,7 @@ def count_unread_news(portdb, vardb, repos=None, update=True):
 			# NOTE: The NewsManager typically handles permission errors by
 			# returning silently, so PermissionDenied won't necessarily be
 			# raised even if we do trigger a permission error above.
-			msg = _unicode_decode("Permission denied: '%s'\n") % (e,)
+			msg = "Permission denied: '%s'\n" % (e,)
 			if msg in permission_msgs:
 				pass
 			else:

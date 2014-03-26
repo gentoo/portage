@@ -26,8 +26,7 @@ class EverythingSet(PackageSet):
 
 	def load(self):
 		myatoms = []
-		db_keys = ["SLOT"]
-		aux_get = self._db.aux_get
+		pkg_str = self._db._pkg_str
 		cp_list = self._db.cp_list
 
 		for cp in self._db.cp_all():
@@ -35,8 +34,8 @@ class EverythingSet(PackageSet):
 				# NOTE: Create SLOT atoms even when there is only one
 				# SLOT installed, in order to avoid the possibility
 				# of unwanted upgrades as reported in bug #338959.
-				slot, = aux_get(cpv, db_keys)
-				atom = Atom("%s:%s" % (cp, slot))
+				pkg = pkg_str(cpv, None)
+				atom = Atom("%s:%s" % (pkg.cp, pkg.slot))
 				if self._filter:
 					if self._filter(atom):
 						myatoms.append(atom)
@@ -68,20 +67,19 @@ class OwnerSet(PackageSet):
 		"""
 		rValue = set()
 		vardb = self._db
-		aux_get = vardb.aux_get
-		aux_keys = ["SLOT"]
+		pkg_str = vardb._pkg_str
 		if exclude_paths is None:
 			for link, p in vardb._owners.iter_owners(paths):
-				slot, = aux_get(link.mycpv, aux_keys)
-				rValue.add("%s:%s" % (link.mycpv.cp, slot))
+				pkg = pkg_str(link.mycpv, None)
+				rValue.add("%s:%s" % (pkg.cp, pkg.slot))
 		else:
 			all_paths = set()
 			all_paths.update(paths)
 			all_paths.update(exclude_paths)
 			exclude_atoms = set()
 			for link, p in vardb._owners.iter_owners(all_paths):
-				slot, = aux_get(link.mycpv, aux_keys)
-				atom = "%s:%s" % (link.mycpv.cp, slot)
+				pkg = pkg_str(link.mycpv, None)
+				atom = "%s:%s" % (pkg.cp, pkg.slot)
 				rValue.add(atom)
 				if p in exclude_paths:
 					exclude_atoms.add(atom)
@@ -173,12 +171,11 @@ class DowngradeSet(PackageSet):
 		xmatch = self._portdb.xmatch
 		xmatch_level = "bestmatch-visible"
 		cp_list = self._vardb.cp_list
-		aux_get = self._vardb.aux_get
-		aux_keys = ["SLOT"]
+		pkg_str = self._vardb._pkg_str
 		for cp in self._vardb.cp_all():
 			for cpv in cp_list(cp):
-				slot, = aux_get(cpv, aux_keys)
-				slot_atom = "%s:%s" % (cp, slot)
+				pkg = pkg_str(cpv, None)
+				slot_atom = "%s:%s" % (pkg.cp, pkg.slot)
 				ebuild = xmatch(xmatch_level, slot_atom)
 				if not ebuild:
 					continue
@@ -326,6 +323,7 @@ class CategorySet(PackageSet):
 
 class AgeSet(EverythingSet):
 	_operations = ["merge", "unmerge"]
+	_aux_keys = ('BUILD_TIME',)
 
 	def __init__(self, vardb, mode="older", age=7):
 		super(AgeSet, self).__init__(vardb)
@@ -335,8 +333,12 @@ class AgeSet(EverythingSet):
 	def _filter(self, atom):
 	
 		cpv = self._db.match(atom)[0]
-		path = self._db.getpath(cpv, filename="COUNTER")
-		age = (time.time() - os.stat(path).st_mtime) / (3600 * 24)
+		try:
+			date, = self._db.aux_get(cpv, self._aux_keys)
+			date = int(date)
+		except (KeyError, ValueError):
+			return bool(self._mode == "older")
+		age = (time.time() - date) / (3600 * 24)
 		if ((self._mode == "older" and age <= self._age) \
 			or (self._mode == "newer" and age >= self._age)):
 			return False
@@ -352,6 +354,83 @@ class AgeSet(EverythingSet):
 		except ValueError as e:
 			raise SetConfigError(_("value of option 'age' is not an integer"))
 		return AgeSet(vardb=trees["vartree"].dbapi, mode=mode, age=age)
+
+	singleBuilder = classmethod(singleBuilder)
+
+class DateSet(EverythingSet):
+	_operations = ["merge", "unmerge"]
+	_aux_keys = ('BUILD_TIME',)
+
+	def __init__(self, vardb, date, mode="older"):
+		super(DateSet, self).__init__(vardb)
+		self._mode = mode
+		self._date = date
+
+	def _filter(self, atom):
+
+		cpv = self._db.match(atom)[0]
+		try:
+			date, = self._db.aux_get(cpv, self._aux_keys)
+			date = int(date)
+		except (KeyError, ValueError):
+			return bool(self._mode == "older")
+		# Make sure inequality is _strict_ to exclude tested package
+		if ((self._mode == "older" and date < self._date) \
+			or (self._mode == "newer" and date > self._date)):
+			return True
+		else:
+			return False
+
+	def singleBuilder(cls, options, settings, trees):
+		vardbapi = trees["vartree"].dbapi
+		mode = options.get("mode", "older")
+		if str(mode).lower() not in ["newer", "older"]:
+			raise SetConfigError(_("invalid 'mode' value %s (use either 'newer' or 'older')") % mode)
+
+		formats = []
+		if options.get("package") is not None:
+			formats.append("package")
+		if options.get("filestamp") is not None:
+			formats.append("filestamp")
+		if options.get("seconds") is not None:
+			formats.append("seconds")
+		if options.get("date") is not None:
+			formats.append("date")
+
+		if not formats:
+			raise SetConfigError(_("none of these options specified: 'package', 'filestamp', 'seconds', 'date'"))
+		elif len(formats) > 1:
+			raise SetConfigError(_("no more than one of these options is allowed: 'package', 'filestamp', 'seconds', 'date'"))
+
+		format = formats[0]
+
+		if (format == "package"):
+			package = options.get("package")
+			try:
+				cpv = vardbapi.match(package)[0]
+				date, = vardbapi.aux_get(cpv, ('BUILD_TIME',))
+				date = int(date)
+			except (KeyError, ValueError):
+				raise SetConfigError(_("cannot determine installation date of package %s") % package)
+		elif (format == "filestamp"):
+			filestamp = options.get("filestamp")
+			try:
+				date = int(os.stat(filestamp).st_mtime)
+			except (OSError, ValueError):
+				raise SetConfigError(_("cannot determine 'filestamp' of '%s'") % filestamp)
+		elif (format == "seconds"):
+			try:
+				date = int(options.get("seconds"))
+			except ValueError:
+				raise SetConfigError(_("option 'seconds' must be an integer"))
+		else:
+			dateopt = options.get("date")
+			try:
+				dateformat = options.get("dateformat", "%x %X")
+				date = int(time.mktime(time.strptime(dateopt, dateformat)))
+			except ValueError:
+				raise SetConfigError(_("'date=%s' does not match 'dateformat=%s'") % (dateopt, dateformat))
+		return DateSet(vardb=vardbapi, date=date, mode=mode)
 
 	singleBuilder = classmethod(singleBuilder)
 

@@ -1,0 +1,35 @@
+.TH "ENV-UPDATE" "1" "Aug 2008" "Portage VERSION" "Portage"
+.SH "НАЗВАНИЕ"
+env\-update \- автоматическое обновление настроек окружения
+.SH "СИНТАКСИС"
+\fBenv\-update\fR \fI[опции]\fR
+.SH "ОПИСАНИЕ"
+.B env\-update
+читает файлы в каталоге \fI/etc/env.d\fR и автоматически генерирует
+\fI/etc/profile.env\fR и \fI/etc/ld.so.conf\fR. Затем для обновления
+\fI/etc/ld.so.cache\fR запускается \fBldconfig\fR(8). \fBemerge\fR(1)
+автоматически вызывает \fBenv-update\fR после каждой установки пакета.
+Если же вы вносите изменения в \fI/etc/env.d\fR, вам следует
+самостоятельно выполнить \fBenv-update\fR, чтобы внесенные
+изменения вступили в силу. Обратите внимание, что это повлияет
+только на последующие операции. Чтобы изменения отразились на уже
+запущенных процессах, вероятно, понадобится выполнить
+\fIsource /etc/profile\fR.
+.SH "ОПЦИИ"
+.TP
+.B \-\-no\-ldconfig
+Не запускать \fBldconfig\fR (и, тем самым, опустить пересборку
+кэша \fIld.so.cache\fR и т.д.).
+.SH "БАГТРЕКЕР"
+Об обнаруженных ошибках сообщайте на http://bugs.gentoo.org/
+.SH "АВТОРЫ"
+Daniel Robbins <drobbins@gentoo.org>
+.SH "СМОТРИ ТАКЖЕ"
+.BR emerge (1),
+.BR ldconfig (8)
+
+.SH "ПЕРЕВОД"
+.nf
+Переводчик: Елена Гаврилова <e.vl.gavrilova@yandex.ru>
+Правка и обновление: Романов Владимир <blueboar2@gmail.com>
+.fi

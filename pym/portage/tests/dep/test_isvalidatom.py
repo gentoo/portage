@@ -1,4 +1,4 @@
-# Copyright 2006-2010 Gentoo Foundation
+# Copyright 2006-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -26,7 +26,7 @@ class IsValidAtom(TestCase):
 			IsValidAtomTestCase("~sys-apps/portage-2.1", True),
 			IsValidAtomTestCase("sys-apps/portage:foo", True),
 			IsValidAtomTestCase("sys-apps/portage-2.1:foo", False),
-			IsValidAtomTestCase( "sys-apps/portage-2.1:", False),
+			IsValidAtomTestCase("sys-apps/portage-2.1:", False),
 			IsValidAtomTestCase("sys-apps/portage-2.1:", False),
 			IsValidAtomTestCase("sys-apps/portage-2.1:[foo]", False),
 			IsValidAtomTestCase("sys-apps/portage", True),
@@ -141,8 +141,11 @@ class IsValidAtom(TestCase):
 			IsValidAtomTestCase("virtual/ffmpeg:=", True),
 			IsValidAtomTestCase("virtual/ffmpeg:0=", True),
 			IsValidAtomTestCase("virtual/ffmpeg:*", True),
-			IsValidAtomTestCase("virtual/ffmpeg:0*", True),
+			IsValidAtomTestCase("virtual/ffmpeg:0*", False),
 			IsValidAtomTestCase("virtual/ffmpeg:0", True),
+
+			# Wildcard atoms
+			IsValidAtomTestCase("*/portage-2.1", False, allow_wildcard=True),
 		)
 
 		for test_case in test_cases:
@@ -150,6 +153,6 @@ class IsValidAtom(TestCase):
 				atom_type = "valid"
 			else:
 				atom_type = "invalid"
-			self.assertEqual( bool(isvalidatom(test_case.atom, allow_wildcard=test_case.allow_wildcard, \
+			self.assertEqual(bool(isvalidatom(test_case.atom, allow_wildcard=test_case.allow_wildcard,
 				allow_repo=test_case.allow_repo)), test_case.expected,
-				msg="isvalidatom(%s) != %s" % ( test_case.atom, test_case.expected ) )
+				msg="isvalidatom(%s) != %s" % (test_case.atom, test_case.expected))

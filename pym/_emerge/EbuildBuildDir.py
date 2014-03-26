@@ -7,7 +7,6 @@ import portage
 from portage import os
 from portage.exception import PortageException
 from portage.util.SlotObject import SlotObject
-import errno
 
 class EbuildBuildDir(SlotObject):
 
@@ -60,7 +59,7 @@ class EbuildBuildDir(SlotObject):
 			builddir_lock.wait()
 			self._assert_lock(builddir_lock)
 			self._lock_obj = builddir_lock
-			self.settings['PORTAGE_BUILDIR_LOCKED'] = '1'
+			self.settings['PORTAGE_BUILDDIR_LOCKED'] = '1'
 		finally:
 			self.locked = self._lock_obj is not None
 			catdir_lock.unlock()
@@ -92,16 +91,14 @@ class EbuildBuildDir(SlotObject):
 		self._lock_obj.unlock()
 		self._lock_obj = None
 		self.locked = False
-		self.settings.pop('PORTAGE_BUILDIR_LOCKED', None)
+		self.settings.pop('PORTAGE_BUILDDIR_LOCKED', None)
 		catdir_lock = AsynchronousLock(path=self._catdir, scheduler=self.scheduler)
 		catdir_lock.start()
 		if catdir_lock.wait() == os.EX_OK:
 			try:
 				os.rmdir(self._catdir)
-			except OSError as e:
-				if e.errno not in (errno.ENOENT,
-					errno.ENOTEMPTY, errno.EEXIST, errno.EPERM):
-					raise
+			except OSError:
+				pass
 			finally:
 				catdir_lock.unlock()
 

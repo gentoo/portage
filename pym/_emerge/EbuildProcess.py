@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
@@ -17,5 +17,11 @@ class EbuildProcess(AbstractEbuildProcess):
 		if actionmap is None:
 			actionmap = _spawn_actionmap(self.settings)
 
-		return _doebuild_spawn(self.phase, self.settings,
-				actionmap=actionmap, **kwargs)
+		if self._dummy_pipe_fd is not None:
+			self.settings["PORTAGE_PIPE_FD"] = str(self._dummy_pipe_fd)
+
+		try:
+			return _doebuild_spawn(self.phase, self.settings,
+					actionmap=actionmap, **kwargs)
+		finally:
+			self.settings.pop("PORTAGE_PIPE_FD", None)

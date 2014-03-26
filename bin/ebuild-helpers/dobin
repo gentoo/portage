@@ -1,19 +1,20 @@
 #!/bin/bash
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 if [[ $# -lt 1 ]] ; then
-	helpers_die "${0##*/}: at least one argument needed"
+	__helpers_die "${0##*/}: at least one argument needed"
 	exit 1
 fi
 
-[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-	case "$EAPI" in 0|1|2) ED=${D} ;; esac
+if ! ___eapi_has_prefix_variables; then
+	ED=${D}
+fi
 
 if [[ ! -d ${ED}${DESTTREE}/bin ]] ; then
-	install -d "${ED}${DESTTREE}/bin" || { helpers_die "${0##*/}: failed to install ${ED}${DESTTREE}/bin"; exit 2; }
+	install -d "${ED}${DESTTREE}/bin" || { __helpers_die "${0##*/}: failed to install ${ED}${DESTTREE}/bin"; exit 2; }
 fi
 
 ret=0
@@ -28,5 +29,5 @@ for x in "$@" ; do
 	((ret|=$?))
 done
 
-[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
+[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
 exit ${ret}

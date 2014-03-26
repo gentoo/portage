@@ -1,8 +1,12 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 import sys
 from itertools import chain
+import warnings
+
 import portage
 from portage import _encodings, _unicode_decode, _unicode_encode
 from portage.cache.mappings import slot_dict_class
@@ -10,67 +14,82 @@ from portage.const import EBUILD_PHASES
 from portage.dep import Atom, check_required_use, use_reduce, \
 	paren_enclose, _slot_separator, _repo_separator
 from portage.versions import _pkg_str, _unknown_repo
-from portage.eapi import _get_eapi_attrs
+from portage.eapi import _get_eapi_attrs, eapi_has_use_aliases
 from portage.exception import InvalidDependString
+from portage.localization import _
 from _emerge.Task import Task
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
 	long = int
+	_unicode = str
+else:
+	_unicode = unicode
 
 class Package(Task):
 
 	__hash__ = Task.__hash__
 	__slots__ = ("built", "cpv", "depth",
-		"installed", "metadata", "onlydeps", "operation",
+		"installed", "onlydeps", "operation",
 		"root_config", "type_name",
 		"category", "counter", "cp", "cpv_split",
 		"inherited", "iuse", "mtime",
-		"pf", "root", "slot", "slot_abi", "slot_atom", "version") + \
-		("_invalid", "_raw_metadata", "_masks", "_use",
+		"pf", "root", "slot", "sub_slot", "slot_atom", "version") + \
+		("_invalid", "_masks", "_metadata", "_raw_metadata", "_use",
 		"_validated_atoms", "_visible")
 
 	metadata_keys = [
 		"BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "EAPI",
-		"INHERITED", "IUSE", "KEYWORDS",
+		"HDEPEND", "INHERITED", "IUSE", "KEYWORDS",
 		"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
 		"repository", "PROPERTIES", "RESTRICT", "SLOT", "USE",
 		"_mtime_", "DEFINED_PHASES", "REQUIRED_USE"]
 
-	_dep_keys = ('DEPEND', 'PDEPEND', 'RDEPEND',)
+	_dep_keys = ('DEPEND', 'HDEPEND', 'PDEPEND', 'RDEPEND')
+	_buildtime_keys = ('DEPEND', 'HDEPEND')
+	_runtime_keys = ('PDEPEND', 'RDEPEND')
 	_use_conditional_misc_keys = ('LICENSE', 'PROPERTIES', 'RESTRICT')
 	UNKNOWN_REPO = _unknown_repo
 
 	def __init__(self, **kwargs):
+		metadata = _PackageMetadataWrapperBase(kwargs.pop('metadata'))
 		Task.__init__(self, **kwargs)
 		# the SlotObject constructor assigns self.root_config from keyword args
 		# and is an instance of a '_emerge.RootConfig.RootConfig class
 		self.root = self.root_config.root
-		self._raw_metadata = _PackageMetadataWrapperBase(self.metadata)
-		self.metadata = _PackageMetadataWrapper(self, self._raw_metadata)
+		self._raw_metadata = metadata
+		self._metadata = _PackageMetadataWrapper(self, metadata)
 		if not self.built:
-			self.metadata['CHOST'] = self.root_config.settings.get('CHOST', '')
-		eapi_attrs = _get_eapi_attrs(self.metadata["EAPI"])
-		self.cpv = _pkg_str(self.cpv, slot=self.metadata["SLOT"],
-			repo=self.metadata.get('repository', ''),
-			eapi=self.metadata["EAPI"])
+			self._metadata['CHOST'] = self.root_config.settings.get('CHOST', '')
+		eapi_attrs = _get_eapi_attrs(self.eapi)
+		self.cpv = _pkg_str(self.cpv, metadata=self._metadata,
+			settings=self.root_config.settings)
 		if hasattr(self.cpv, 'slot_invalid'):
 			self._invalid_metadata('SLOT.invalid',
-				"SLOT: invalid value: '%s'" % self.metadata["SLOT"])
+				"SLOT: invalid value: '%s'" % self._metadata["SLOT"])
+		self.cpv_split = self.cpv.cpv_split
+		self.category, self.pf = portage.catsplit(self.cpv)
 		self.cp = self.cpv.cp
+		self.version = self.cpv.version
 		self.slot = self.cpv.slot
-		self.slot_abi = self.cpv.slot_abi
+		self.sub_slot = self.cpv.sub_slot
+		self.slot_atom = Atom("%s%s%s" % (self.cp, _slot_separator, self.slot))
 		# sync metadata with validated repo (may be UNKNOWN_REPO)
-		self.metadata['repository'] = self.cpv.repo
+		self._metadata['repository'] = self.cpv.repo
+
+		if eapi_attrs.iuse_effective:
+			implicit_match = self.root_config.settings._iuse_effective_match
+		else:
+			implicit_match = self.root_config.settings._iuse_implicit_match
+		usealiases = self.root_config.settings._use_manager.getUseAliases(self)
+		self.iuse = self._iuse(self, self._metadata["IUSE"].split(), implicit_match,
+			usealiases, self.eapi)
+
 		if (self.iuse.enabled or self.iuse.disabled) and \
 			not eapi_attrs.iuse_defaults:
 			if not self.installed:
 				self._invalid_metadata('EAPI.incompatible',
 					"IUSE contains defaults, but EAPI doesn't allow them")
-		self.slot_atom = Atom("%s%s%s" % (self.cp, _slot_separator, self.slot))
-		self.category, self.pf = portage.catsplit(self.cpv)
-		self.cpv_split = self.cpv.cpv_split
-		self.version = self.cpv.version
 		if self.inherited is None:
 			self.inherited = frozenset()
 
@@ -86,6 +105,37 @@ class Package(Task):
 			root_config=self.root_config,
 			type_name=self.type_name)
 		self._hash_value = hash(self._hash_key)
+
+	@property
+	def eapi(self):
+		return self._metadata["EAPI"]
+
+	@property
+	def build_time(self):
+		if not self.built:
+			raise AttributeError('build_time')
+		try:
+			return long(self._metadata['BUILD_TIME'])
+		except (KeyError, ValueError):
+			return 0
+
+	@property
+	def defined_phases(self):
+		return self._metadata.defined_phases
+
+	@property
+	def properties(self):
+		return self._metadata.properties
+
+	@property
+	def restrict(self):
+		return self._metadata.restrict
+
+	@property
+	def metadata(self):
+		warnings.warn("_emerge.Package.Package.metadata is deprecated",
+			DeprecationWarning, stacklevel=3)
+		return self._metadata
 
 	# These are calculated on-demand, so that they are calculated
 	# after FakeVartree applies its metadata tweaks.
@@ -119,6 +169,10 @@ class Package(Task):
 		if self._validated_atoms is None:
 			self._validate_deps()
 		return self._validated_atoms
+
+	@property
+	def stable(self):
+		return self.cpv.stable
 
 	@classmethod
 	def _gen_hash_key(cls, cpv=None, installed=None, onlydeps=None,
@@ -154,15 +208,15 @@ class Package(Task):
 			# So overwrite the repo_key with type_name.
 			repo_key = type_name
 
-		return (type_name, root, cpv, operation, repo_key)
+		return (type_name, root, _unicode(cpv), operation, repo_key)
 
 	def _validate_deps(self):
 		"""
 		Validate deps. This does not trigger USE calculation since that
 		is expensive for ebuilds and therefore we want to avoid doing
-		in unnecessarily (like for masked packages).
+		it unnecessarily (like for masked packages).
 		"""
-		eapi = self.metadata['EAPI']
+		eapi = self.eapi
 		dep_eapi = eapi
 		dep_valid_flag = self.iuse.is_valid_flag
 		if self.installed:
@@ -175,31 +229,42 @@ class Package(Task):
 
 		validated_atoms = []
 		for k in self._dep_keys:
-			v = self.metadata.get(k)
+			v = self._metadata.get(k)
 			if not v:
 				continue
 			try:
-				validated_atoms.extend(use_reduce(v, eapi=dep_eapi,
+				atoms = use_reduce(v, eapi=dep_eapi,
 					matchall=True, is_valid_flag=dep_valid_flag,
-					token_class=Atom, flat=True))
+					token_class=Atom, flat=True)
 			except InvalidDependString as e:
 				self._metadata_exception(k, e)
+			else:
+				validated_atoms.extend(atoms)
+				if not self.built:
+					for atom in atoms:
+						if not isinstance(atom, Atom):
+							continue
+						if atom.slot_operator_built:
+							e = InvalidDependString(
+								_("Improper context for slot-operator "
+								"\"built\" atom syntax: %s") %
+								(atom.unevaluated_atom,))
+							self._metadata_exception(k, e)
 
 		self._validated_atoms = tuple(set(atom for atom in
 			validated_atoms if isinstance(atom, Atom)))
 
 		k = 'PROVIDE'
-		v = self.metadata.get(k)
+		v = self._metadata.get(k)
 		if v:
 			try:
 				use_reduce(v, eapi=dep_eapi, matchall=True,
 					is_valid_flag=dep_valid_flag, token_class=Atom)
 			except InvalidDependString as e:
-				self._invalid_metadata("PROVIDE.syntax",
-					_unicode_decode("%s: %s") % (k, e))
+				self._invalid_metadata("PROVIDE.syntax", "%s: %s" % (k, e))
 
 		for k in self._use_conditional_misc_keys:
-			v = self.metadata.get(k)
+			v = self._metadata.get(k)
 			if not v:
 				continue
 			try:
@@ -209,24 +274,20 @@ class Package(Task):
 				self._metadata_exception(k, e)
 
 		k = 'REQUIRED_USE'
-		v = self.metadata.get(k)
-		if v:
+		v = self._metadata.get(k)
+		if v and not self.built:
 			if not _get_eapi_attrs(eapi).required_use:
 				self._invalid_metadata('EAPI.incompatible',
 					"REQUIRED_USE set, but EAPI='%s' doesn't allow it" % eapi)
 			else:
 				try:
 					check_required_use(v, (),
-						self.iuse.is_valid_flag)
+						self.iuse.is_valid_flag, eapi=eapi)
 				except InvalidDependString as e:
-					# Force unicode format string for python-2.x safety,
-					# ensuring that PortageException.__unicode__() is used
-					# when necessary.
-					self._invalid_metadata(k + ".syntax",
-						_unicode_decode("%s: %s") % (k, e))
+					self._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
 
 		k = 'SRC_URI'
-		v = self.metadata.get(k)
+		v = self._metadata.get(k)
 		if v:
 			try:
 				use_reduce(v, is_src_uri=True, eapi=eapi, matchall=True,
@@ -248,36 +309,45 @@ class Package(Task):
 		if self.invalid is not False:
 			masks['invalid'] = self.invalid
 
-		if not settings._accept_chost(self.cpv, self.metadata):
-			masks['CHOST'] = self.metadata['CHOST']
+		if not settings._accept_chost(self.cpv, self._metadata):
+			masks['CHOST'] = self._metadata['CHOST']
 
-		eapi = self.metadata["EAPI"]
+		eapi = self.eapi
 		if not portage.eapi_is_supported(eapi):
 			masks['EAPI.unsupported'] = eapi
 		if portage._eapi_is_deprecated(eapi):
 			masks['EAPI.deprecated'] = eapi
 
 		missing_keywords = settings._getMissingKeywords(
-			self.cpv, self.metadata)
+			self.cpv, self._metadata)
 		if missing_keywords:
 			masks['KEYWORDS'] = missing_keywords
 
 		try:
 			missing_properties = settings._getMissingProperties(
-				self.cpv, self.metadata)
+				self.cpv, self._metadata)
 			if missing_properties:
 				masks['PROPERTIES'] = missing_properties
 		except InvalidDependString:
 			# already recorded as 'invalid'
 			pass
 
-		mask_atom = settings._getMaskAtom(self.cpv, self.metadata)
+		try:
+			missing_restricts = settings._getMissingRestrict(
+				self.cpv, self._metadata)
+			if missing_restricts:
+				masks['RESTRICT'] = missing_restricts
+		except InvalidDependString:
+			# already recorded as 'invalid'
+			pass
+
+		mask_atom = settings._getMaskAtom(self.cpv, self._metadata)
 		if mask_atom is not None:
 			masks['package.mask'] = mask_atom
 
 		try:
 			missing_licenses = settings._getMissingLicenses(
-				self.cpv, self.metadata)
+				self.cpv, self._metadata)
 			if missing_licenses:
 				masks['LICENSE'] = missing_licenses
 		except InvalidDependString:
@@ -303,7 +373,8 @@ class Package(Task):
 				'CHOST' in masks or \
 				'EAPI.deprecated' in masks or \
 				'KEYWORDS' in masks or \
-				'PROPERTIES' in masks):
+				'PROPERTIES' in masks or \
+				'RESTRICT' in masks):
 				return False
 
 			if 'package.mask' in masks or \
@@ -316,7 +387,7 @@ class Package(Task):
 		"""returns None, 'missing', or 'unstable'."""
 
 		missing = self.root_config.settings._getRawMissingKeywords(
-				self.cpv, self.metadata)
+				self.cpv, self._metadata)
 
 		if not missing:
 			return None
@@ -337,17 +408,22 @@ class Package(Task):
 		"""returns a bool if the cpv is in the list of
 		expanded pmaskdict[cp] available ebuilds"""
 		pmask = self.root_config.settings._getRawMaskAtom(
-			self.cpv, self.metadata)
+			self.cpv, self._metadata)
 		return pmask is not None
 
 	def _metadata_exception(self, k, e):
+
+		if k.endswith('DEPEND'):
+			qacat = 'dependency.syntax'
+		else:
+			qacat = k + ".syntax"
 
 		# For unicode safety with python-2.x we need to avoid
 		# using the string format operator with a non-unicode
 		# format string, since that will result in the
 		# PortageException.__str__() method being invoked,
 		# followed by unsafe decoding that may result in a
-		# UnicodeDecodeError. Therefore, use _unicode_decode()
+		# UnicodeDecodeError. Therefore, use unicode_literals
 		# to ensure that format strings are unicode, so that
 		# PortageException.__unicode__() is used when necessary
 		# in python-2.x.
@@ -359,19 +435,17 @@ class Package(Task):
 						continue
 					categorized_error = True
 					self._invalid_metadata(error.category,
-						_unicode_decode("%s: %s") % (k, error))
+						"%s: %s" % (k, error))
 
 			if not categorized_error:
-				self._invalid_metadata(k + ".syntax",
-					_unicode_decode("%s: %s") % (k, e))
+				self._invalid_metadata(qacat,"%s: %s" % (k, e))
 		else:
 			# For installed packages, show the path of the file
 			# containing the invalid metadata, since the user may
 			# want to fix the deps by hand.
 			vardb = self.root_config.trees['vartree'].dbapi
 			path = vardb.getpath(self.cpv, filename=k)
-			self._invalid_metadata(k + ".syntax",
-				_unicode_decode("%s: %s in '%s'") % (k, e, path))
+			self._invalid_metadata(qacat, "%s: %s in '%s'" % (k, e, path))
 
 	def _invalid_metadata(self, msg_type, msg):
 		if self._invalid is None:
@@ -394,7 +468,8 @@ class Package(Task):
 			cpv_color = "PKG_NOMERGE"
 
 		s = "(%s, %s" \
-			% (portage.output.colorize(cpv_color, self.cpv + _repo_separator + self.repo) , self.type_name)
+			% (portage.output.colorize(cpv_color, self.cpv + _slot_separator + \
+			self.slot + "/" + self.sub_slot + _repo_separator + self.repo) , self.type_name)
 
 		if self.type_name == "installed":
 			if self.root_config.settings['ROOT'] != "/":
@@ -425,13 +500,16 @@ class Package(Task):
 		# Share identical frozenset instances when available.
 		_frozensets = {}
 
-		def __init__(self, pkg, use_str):
+		def __init__(self, pkg, enabled_flags):
 			self._pkg = pkg
 			self._expand = None
 			self._expand_hidden = None
 			self._force = None
 			self._mask = None
-			self.enabled = frozenset(use_str.split())
+			if eapi_has_use_aliases(pkg.eapi):
+				for enabled_flag in enabled_flags:
+					enabled_flags.extend(pkg.iuse.alias_mapping.get(enabled_flag, []))
+			self.enabled = frozenset(enabled_flags)
 			if pkg.built:
 				# Use IUSE to validate USE settings for built packages,
 				# in case the package manager that built this package
@@ -481,7 +559,7 @@ class Package(Task):
 
 	@property
 	def repo(self):
-		return self.metadata['repository']
+		return self._metadata['repository']
 
 	@property
 	def repo_priority(self):
@@ -493,7 +571,7 @@ class Package(Task):
 	@property
 	def use(self):
 		if self._use is None:
-			self.metadata._init_use()
+			self._init_use()
 		return self._use
 
 	def _get_pkgsettings(self):
@@ -502,28 +580,81 @@ class Package(Task):
 		pkgsettings.setcpv(self)
 		return pkgsettings
 
+	def _init_use(self):
+		if self.built:
+			# Use IUSE to validate USE settings for built packages,
+			# in case the package manager that built this package
+			# failed to do that for some reason (or in case of
+			# data corruption). The enabled flags must be consistent
+			# with implicit IUSE, in order to avoid potential
+			# inconsistencies in USE dep matching (see bug #453400).
+			use_str = self._metadata['USE']
+			is_valid_flag = self.iuse.is_valid_flag
+			enabled_flags = [x for x in use_str.split() if is_valid_flag(x)]
+			use_str = " ".join(enabled_flags)
+			self._use = self._use_class(
+				self, enabled_flags)
+		else:
+			try:
+				use_str = _PackageMetadataWrapperBase.__getitem__(
+					self._metadata, 'USE')
+			except KeyError:
+				use_str = None
+			calculated_use = False
+			if not use_str:
+				use_str = self._get_pkgsettings()["PORTAGE_USE"]
+				calculated_use = True
+			self._use = self._use_class(
+				self, use_str.split())
+			# Initialize these now, since USE access has just triggered
+			# setcpv, and we want to cache the result of the force/mask
+			# calculations that were done.
+			if calculated_use:
+				self._use._init_force_mask()
+
+		_PackageMetadataWrapperBase.__setitem__(
+			self._metadata, 'USE', use_str)
+
+		return use_str
+
 	class _iuse(object):
 
-		__slots__ = ("__weakref__", "all", "enabled", "disabled",
-			"tokens") + ("_iuse_implicit_match",)
+		__slots__ = ("__weakref__", "_iuse_implicit_match", "_pkg", "alias_mapping",
+			"all", "all_aliases", "enabled", "disabled", "tokens")
 
-		def __init__(self, tokens, iuse_implicit_match):
+		def __init__(self, pkg, tokens, iuse_implicit_match, aliases, eapi):
+			self._pkg = pkg
 			self.tokens = tuple(tokens)
 			self._iuse_implicit_match = iuse_implicit_match
 			enabled = []
 			disabled = []
 			other = []
+			enabled_aliases = []
+			disabled_aliases = []
+			other_aliases = []
+			aliases_supported = eapi_has_use_aliases(eapi)
+			self.alias_mapping = {}
 			for x in tokens:
 				prefix = x[:1]
 				if prefix == "+":
 					enabled.append(x[1:])
+					if aliases_supported:
+						self.alias_mapping[x[1:]] = aliases.get(x[1:], [])
+						enabled_aliases.extend(self.alias_mapping[x[1:]])
 				elif prefix == "-":
 					disabled.append(x[1:])
+					if aliases_supported:
+						self.alias_mapping[x[1:]] = aliases.get(x[1:], [])
+						disabled_aliases.extend(self.alias_mapping[x[1:]])
 				else:
 					other.append(x)
-			self.enabled = frozenset(enabled)
-			self.disabled = frozenset(disabled)
+					if aliases_supported:
+						self.alias_mapping[x] = aliases.get(x, [])
+						other_aliases.extend(self.alias_mapping[x])
+			self.enabled = frozenset(chain(enabled, enabled_aliases))
+			self.disabled = frozenset(chain(disabled, disabled_aliases))
 			self.all = frozenset(chain(enabled, disabled, other))
+			self.all_aliases = frozenset(chain(enabled_aliases, disabled_aliases, other_aliases))
 
 		def is_valid_flag(self, flags):
 			"""
@@ -534,7 +665,7 @@ class Package(Task):
 				flags = [flags]
 
 			for flag in flags:
-				if not flag in self.all and \
+				if not flag in self.all and not flag in self.all_aliases and \
 					not self._iuse_implicit_match(flag):
 					return False
 			return True
@@ -547,10 +678,27 @@ class Package(Task):
 				flags = [flags]
 			missing_iuse = []
 			for flag in flags:
-				if not flag in self.all and \
+				if not flag in self.all and not flag in self.all_aliases and \
 					not self._iuse_implicit_match(flag):
 					missing_iuse.append(flag)
 			return missing_iuse
+
+		def get_real_flag(self, flag):
+			"""
+			Returns the flag's name within the scope of this package
+			(accounting for aliases), or None if the flag is unknown.
+			"""
+			if flag in self.all:
+				return flag
+			elif flag in self.all_aliases:
+				for k, v in self.alias_mapping.items():
+					if flag in v:
+						return k
+
+			if self._iuse_implicit_match(flag):
+				return flag
+
+			return None
 
 	def __len__(self):
 		return 4
@@ -604,7 +752,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 
 	__slots__ = ("_pkg",)
 	_wrapped_keys = frozenset(
-		["COUNTER", "INHERITED", "IUSE", "USE", "_mtime_"])
+		["COUNTER", "INHERITED", "USE", "_mtime_"])
 	_use_conditional_keys = frozenset(
 		['LICENSE', 'PROPERTIES', 'PROVIDE', 'RESTRICT',])
 
@@ -616,31 +764,6 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 			_PackageMetadataWrapperBase.__setitem__(self, 'USE', '')
 
 		self.update(metadata)
-
-	def _init_use(self):
-		if self._pkg.built:
-			use_str = self['USE']
-			self._pkg._use = self._pkg._use_class(
-				self._pkg, use_str)
-		else:
-			try:
-				use_str = _PackageMetadataWrapperBase.__getitem__(self, 'USE')
-			except KeyError:
-				use_str = None
-			calculated_use = False
-			if not use_str:
-				use_str = self._pkg._get_pkgsettings()["PORTAGE_USE"]
-				calculated_use = True
-			_PackageMetadataWrapperBase.__setitem__(self, 'USE', use_str)
-			self._pkg._use = self._pkg._use_class(
-				self._pkg, use_str)
-			# Initialize these now, since USE access has just triggered
-			# setcpv, and we want to cache the result of the force/mask
-			# calculations that were done.
-			if calculated_use:
-				self._pkg._use._init_force_mask()
-
-		return use_str
 
 	def __getitem__(self, k):
 		v = _PackageMetadataWrapperBase.__getitem__(self, k)
@@ -659,7 +782,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 		elif k == 'USE' and not self._pkg.built:
 			if not v:
 				# This is lazy because it's expensive.
-				v = self._init_use()
+				v = self._pkg._init_use()
 
 		return v
 
@@ -672,10 +795,6 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 		if isinstance(v, basestring):
 			v = frozenset(v.split())
 		self._pkg.inherited = v
-
-	def _set_iuse(self, k, v):
-		self._pkg.iuse = self._pkg._iuse(
-			v.split(), self._pkg.root_config.settings._iuse_implicit_match)
 
 	def _set_counter(self, k, v):
 		if isinstance(v, basestring):

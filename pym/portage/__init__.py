@@ -1,8 +1,9 @@
-# portage.py -- core Portage functionality
-# Copyright 1998-2011 Gentoo Foundation
+# Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-VERSION="HEAD"
+from __future__ import unicode_literals
+
+VERSION = "HEAD"
 
 # ===========================================================================
 # START OF IMPORTS -- START OF IMPORTS -- START OF IMPORTS -- START OF IMPORT
@@ -16,14 +17,6 @@ try:
 		errno.ESTALE = -1
 	import re
 	import types
-
-	# Try the commands module first, since this allows us to eliminate
-	# the subprocess module from the baseline imports under python2.
-	try:
-		from commands import getstatusoutput as subprocess_getstatusoutput
-	except ImportError:
-		from subprocess import getstatusoutput as subprocess_getstatusoutput
-
 	import platform
 
 	# Temporarily delete these imports, to ensure that only the
@@ -41,7 +34,7 @@ except ImportError as e:
 
 	sys.stderr.write("!!! You might consider starting python with verbose flags to see what has\n")
 	sys.stderr.write("!!! gone wrong. Here is the information we got for this exception:\n")
-	sys.stderr.write("    "+str(e)+"\n\n");
+	sys.stderr.write("    "+str(e)+"\n\n")
 	raise
 
 try:
@@ -70,6 +63,7 @@ try:
 			'match_from_list,match_to_list',
 		'portage.dep.dep_check:dep_check,dep_eval,dep_wordreduce,dep_zapdeps',
 		'portage.eclass_cache',
+		'portage.elog',
 		'portage.exception',
 		'portage.getbinpkg',
 		'portage.locks',
@@ -114,6 +108,7 @@ try:
 			'cpv_getkey@getCPFromCPV,endversion_keys,' + \
 			'suffix_value@endversion,pkgcmp,pkgsplit,vercmp,ververify',
 		'portage.xpak',
+		'subprocess',
 		'time',
 	)
 
@@ -145,6 +140,7 @@ except ImportError as e:
 	raise
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 	long = int
 
@@ -178,6 +174,15 @@ _encodings = {
 }
 
 if sys.hexversion >= 0x3000000:
+
+	def _decode_argv(argv):
+		# With Python 3, the surrogateescape encoding error handler makes it
+		# possible to access the original argv bytes, which can be useful
+		# if their actual encoding does no match the filesystem encoding.
+		fs_encoding = sys.getfilesystemencoding()
+		return [_unicode_decode(x.encode(fs_encoding, 'surrogateescape'))
+			for x in argv]
+
 	def _unicode_encode(s, encoding=_encodings['content'], errors='backslashreplace'):
 		if isinstance(s, str):
 			s = s.encode(encoding, errors)
@@ -187,7 +192,13 @@ if sys.hexversion >= 0x3000000:
 		if isinstance(s, bytes):
 			s = str(s, encoding=encoding, errors=errors)
 		return s
+
+	_native_string = _unicode_decode
 else:
+
+	def _decode_argv(argv):
+		return [_unicode_decode(x) for x in argv]
+
 	def _unicode_encode(s, encoding=_encodings['content'], errors='backslashreplace'):
 		if isinstance(s, unicode):
 			s = s.encode(encoding, errors)
@@ -197,6 +208,17 @@ else:
 		if isinstance(s, bytes):
 			s = unicode(s, encoding=encoding, errors=errors)
 		return s
+
+	_native_string = _unicode_encode
+
+if sys.hexversion >= 0x20605f0:
+	def _native_kwargs(kwargs):
+		return kwargs
+else:
+	# Avoid "TypeError: keywords must be strings" issue triggered
+	# by unicode_literals: http://bugs.python.org/issue4978
+	def _native_kwargs(kwargs):
+		return dict((_native_string(k), v) for k, v in kwargs.iteritems())
 
 class _unicode_func_wrapper(object):
 	"""
@@ -215,7 +237,7 @@ class _unicode_func_wrapper(object):
 		self._func = func
 		self._encoding = encoding
 
-	def __call__(self, *args, **kwargs):
+	def _process_args(self, args, kwargs):
 
 		encoding = self._encoding
 		wrapped_args = [_unicode_encode(x, encoding=encoding, errors='strict')
@@ -226,6 +248,13 @@ class _unicode_func_wrapper(object):
 				for k, v in kwargs.items())
 		else:
 			wrapped_kwargs = {}
+
+		return (wrapped_args, wrapped_kwargs)
+
+	def __call__(self, *args, **kwargs):
+
+		encoding = self._encoding
+		wrapped_args, wrapped_kwargs = self._process_args(args, kwargs)
 
 		rval = self._func(*wrapped_args, **wrapped_kwargs)
 
@@ -294,11 +323,16 @@ class _unicode_module_wrapper(object):
 import os as _os
 _os_overrides = {
 	id(_os.fdopen)        : _os.fdopen,
-	id(_os.mkfifo)        : _os.mkfifo,
 	id(_os.popen)         : _os.popen,
 	id(_os.read)          : _os.read,
 	id(_os.system)        : _os.system,
 }
+
+
+try:
+	_os_overrides[id(_os.mkfifo)] = _os.mkfifo
+except AttributeError:
+	pass # Jython
 
 if hasattr(_os, 'statvfs'):
 	_os_overrides[id(_os.statvfs)] = _os.statvfs
@@ -334,6 +368,25 @@ except (ImportError, OSError) as e:
 _python_interpreter = os.path.realpath(sys.executable)
 _bin_path = PORTAGE_BIN_PATH
 _pym_path = PORTAGE_PYM_PATH
+_not_installed = os.path.isfile(os.path.join(PORTAGE_BASE_PATH, ".portage_not_installed"))
+
+# Api consumers included in portage should set this to True.
+_internal_caller = False
+
+_sync_mode = False
+
+def _get_stdin():
+	"""
+	Buggy code in python's multiprocessing/process.py closes sys.stdin
+	and reassigns it to open(os.devnull), but fails to update the
+	corresponding __stdin__ reference. So, detect that case and handle
+	it appropriately.
+	"""
+	if not sys.__stdin__.closed:
+		return sys.__stdin__
+	return sys.stdin
+
+_shell_quote_re = re.compile(r"[\s><=*\\\"'$`]")
 
 def _shell_quote(s):
 	"""
@@ -341,6 +394,8 @@ def _shell_quote(s):
 	escape any backslashes, double-quotes, dollar signs, or
 	backquotes in the string.
 	"""
+	if _shell_quote_re.search(s) is None:
+		return s
 	for letter in "\\\"$`":
 		if letter in s:
 			s = s.replace(letter, "\\" + letter)
@@ -354,8 +409,27 @@ if platform.system() in ('FreeBSD',):
 
 		@classmethod
 		def chflags(cls, path, flags, opts=""):
-			cmd = 'chflags %s %o %s' % (opts, flags, _shell_quote(path))
-			status, output = subprocess_getstatusoutput(cmd)
+			cmd = ['chflags']
+			if opts:
+				cmd.append(opts)
+			cmd.append('%o' % (flags,))
+			cmd.append(path)
+
+			if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000:
+				# Python 3.1 _execvp throws TypeError for non-absolute executable
+				# path passed as bytes (see http://bugs.python.org/issue8513).
+				fullname = process.find_binary(cmd[0])
+				if fullname is None:
+					raise exception.CommandNotFound(cmd[0])
+				cmd[0] = fullname
+
+			encoding = _encodings['fs']
+			cmd = [_unicode_encode(x, encoding=encoding, errors='strict')
+				for x in cmd]
+			proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+				stderr=subprocess.STDOUT)
+			output = proc.communicate()[0]
+			status = proc.wait()
 			if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
 				return
 			# Try to generate an ENOENT error if appropriate.
@@ -368,6 +442,7 @@ if platform.system() in ('FreeBSD',):
 				raise portage.exception.CommandNotFound('chflags')
 			# Now we're not sure exactly why it failed or what
 			# the real errno was, so just report EPERM.
+			output = _unicode_decode(output, encoding=encoding)
 			e = OSError(errno.EPERM, output)
 			e.errno = errno.EPERM
 			e.filename = path
@@ -396,20 +471,29 @@ def getcwd():
 getcwd()
 
 def abssymlink(symlink, target=None):
-	"This reads symlinks, resolving the relative symlinks, and returning the absolute."
+	"""
+	This reads symlinks, resolving the relative symlinks,
+	and returning the absolute.
+	@param symlink: path of symlink (must be absolute)
+	@param target: the target of the symlink (as returned
+		by readlink)
+	@rtype: str
+	@return: the absolute path of the symlink target
+	"""
 	if target is not None:
 		mylink = target
 	else:
 		mylink = os.readlink(symlink)
 	if mylink[0] != '/':
-		mydir=os.path.dirname(symlink)
-		mylink=mydir+"/"+mylink
+		mydir = os.path.dirname(symlink)
+		mylink = mydir + "/" + mylink
 	return os.path.normpath(mylink)
 
 _doebuild_manifest_exempt_depend = 0
 
-_testing_eapis = frozenset(["4-python", "4-slot-abi"])
-_deprecated_eapis = frozenset(["4_pre1", "3_pre2", "3_pre1"])
+_testing_eapis = frozenset(["4-python", "4-slot-abi", "5-progress", "5-hdepend"])
+_deprecated_eapis = frozenset(["4_pre1", "3_pre2", "3_pre1", "5_pre1", "5_pre2"])
+_supported_eapis = frozenset([str(x) for x in range(portage.const.EAPI)] + list(_testing_eapis) + list(_deprecated_eapis))
 
 def _eapi_is_deprecated(eapi):
 	return eapi in _deprecated_eapis
@@ -466,13 +550,13 @@ auxdbkeys = (
 	'RESTRICT',  'HOMEPAGE',  'LICENSE',   'DESCRIPTION',
 	'KEYWORDS',  'INHERITED', 'IUSE', 'REQUIRED_USE',
 	'PDEPEND',   'PROVIDE', 'EAPI',
-	'PROPERTIES', 'DEFINED_PHASES', 'UNUSED_05', 'UNUSED_04',
+	'PROPERTIES', 'DEFINED_PHASES', 'HDEPEND', 'UNUSED_04',
 	'UNUSED_03', 'UNUSED_02', 'UNUSED_01',
 )
-auxdbkeylen=len(auxdbkeys)
+auxdbkeylen = len(auxdbkeys)
 
 def portageexit():
-	close_portdbapi_caches()
+	pass
 
 class _trees_dict(dict):
 	__slots__ = ('_running_eroot', '_target_eroot',)
@@ -483,13 +567,6 @@ class _trees_dict(dict):
 
 def create_trees(config_root=None, target_root=None, trees=None, env=None,
 	eprefix=None):
-	if trees is not None:
-		# clean up any existing portdbapi instances
-		for myroot in trees:
-			portdb = trees[myroot]["porttree"].dbapi
-			portdb.close_caches()
-			portdbapi.portdbapi_instances.remove(portdb)
-			del trees[myroot]["porttree"], myroot, portdb
 
 	if trees is None:
 		trees = _trees_dict()
@@ -507,7 +584,7 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None,
 
 	trees._target_eroot = settings['EROOT']
 	myroots = [(settings['EROOT'], settings)]
-	if settings["ROOT"] == "/":
+	if settings["ROOT"] == "/" and settings["EPREFIX"] == const.EPREFIX:
 		trees._running_eroot = trees._target_eroot
 	else:
 
@@ -515,15 +592,15 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None,
 		# environment to apply to the config that's associated
 		# with ROOT != "/", so pass a nearly empty dict for the env parameter.
 		clean_env = {}
-		for k in ('PATH', 'PORTAGE_GRPNAME', 'PORTAGE_USERNAME',
-			'SSH_AGENT_PID', 'SSH_AUTH_SOCK', 'TERM',
+		for k in ('PATH', 'PORTAGE_GRPNAME', 'PORTAGE_REPOSITORIES', 'PORTAGE_USERNAME',
+			'PYTHONPATH', 'SSH_AGENT_PID', 'SSH_AUTH_SOCK', 'TERM',
 			'ftp_proxy', 'http_proxy', 'no_proxy',
 			'__PORTAGE_TEST_HARDLINK_LOCKS'):
 			v = settings.get(k)
 			if v is not None:
 				clean_env[k] = v
 		settings = config(config_root=None, target_root="/",
-			env=clean_env, eprefix=eprefix)
+			env=clean_env, eprefix=None)
 		settings.lock()
 		trees._running_eroot = settings['EROOT']
 		myroots.append((settings['EROOT'], settings))
@@ -547,11 +624,17 @@ if VERSION == 'HEAD':
 			if VERSION is not self:
 				return VERSION
 			if os.path.isdir(os.path.join(PORTAGE_BASE_PATH, '.git')):
-				status, output = subprocess_getstatusoutput((
-					"cd %s ; git describe --tags || exit $? ; " + \
+				encoding = _encodings['fs']
+				cmd = [BASH_BINARY, "-c", ("cd %s ; git describe --tags || exit $? ; " + \
 					"if [ -n \"`git diff-index --name-only --diff-filter=M HEAD`\" ] ; " + \
 					"then echo modified ; git rev-list --format=%%ct -n 1 HEAD ; fi ; " + \
-					"exit 0") % _shell_quote(PORTAGE_BASE_PATH))
+					"exit 0") % _shell_quote(PORTAGE_BASE_PATH)]
+				cmd = [_unicode_encode(x, encoding=encoding, errors='strict')
+					for x in cmd]
+				proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+					stderr=subprocess.STDOUT)
+				output = _unicode_decode(proc.communicate()[0], encoding=encoding)
+				status = proc.wait()
 				if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
 					output_lines = output.splitlines()
 					if output_lines:
@@ -561,7 +644,7 @@ if VERSION == 'HEAD':
 							patchlevel = False
 							if len(version_split) > 1:
 								patchlevel = True
-								VERSION = "%s_p%s" %(VERSION, version_split[1])
+								VERSION = "%s_p%s" % (VERSION, version_split[1])
 							if len(output_lines) > 1 and output_lines[1] == 'modified':
 								head_timestamp = None
 								if len(output_lines) > 3:
@@ -580,34 +663,17 @@ if VERSION == 'HEAD':
 			return VERSION
 	VERSION = _LazyVersion()
 
-if "_legacy_globals_constructed" in globals():
-	# The module has been reloaded, so perform any relevant cleanup
-	# and prevent memory leaks.
-	if "db" in _legacy_globals_constructed:
-		try:
-			db
-		except NameError:
-			pass
-		else:
-			if isinstance(db, dict) and db:
-				for _x in db.values():
-					try:
-						if "porttree" in _x.lazy_items:
-							continue
-					except (AttributeError, TypeError):
-						continue
-					try:
-						_x = _x["porttree"].dbapi
-					except (AttributeError, KeyError):
-						continue
-					if not isinstance(_x, portdbapi):
-						continue
-					_x.close_caches()
-					try:
-						portdbapi.portdbapi_instances.remove(_x)
-					except ValueError:
-						pass
-				del _x
+_legacy_global_var_names = ("archlist", "db", "features",
+	"groups", "mtimedb", "mtimedbfile", "pkglines",
+	"portdb", "profiledir", "root", "selinux_enabled",
+	"settings", "thirdpartymirrors")
+
+def _reset_legacy_globals():
+
+	global _legacy_globals_constructed
+	_legacy_globals_constructed = set()
+	for k in _legacy_global_var_names:
+		globals()[k] = _LegacyGlobalProxy(k)
 
 class _LegacyGlobalProxy(proxy.objectproxy.ObjectProxy):
 
@@ -622,16 +688,7 @@ class _LegacyGlobalProxy(proxy.objectproxy.ObjectProxy):
 		from portage._legacy_globals import _get_legacy_global
 		return _get_legacy_global(name)
 
-_legacy_global_var_names = ("archlist", "db", "features",
-	"groups", "mtimedb", "mtimedbfile", "pkglines",
-	"portdb", "profiledir", "root", "selinux_enabled",
-	"settings", "thirdpartymirrors")
-
-for k in _legacy_global_var_names:
-	globals()[k] = _LegacyGlobalProxy(k)
-del k
-
-_legacy_globals_constructed = set()
+_reset_legacy_globals()
 
 def _disable_legacy_globals():
 	"""

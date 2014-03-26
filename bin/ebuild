@@ -1,5 +1,5 @@
-#!/usr/bin/python -O
-# Copyright 1999-2012 Gentoo Foundation
+#!/usr/bin/python -bO
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -10,7 +10,7 @@ import sys
 # This block ensures that ^C interrupts are handled quietly.
 try:
 
-	def exithandler(signum,frame):
+	def exithandler(signum, _frame):
 		signal.signal(signal.SIGINT, signal.SIG_IGN)
 		signal.signal(signal.SIGTERM, signal.SIG_IGN)
 		sys.exit(128 + signum)
@@ -24,7 +24,7 @@ try:
 except KeyboardInterrupt:
 	sys.exit(128 + signal.SIGINT)
 
-def debug_signal(signum, frame):
+def debug_signal(_signum, _frame):
 	import pdb
 	pdb.set_trace()
 
@@ -35,51 +35,50 @@ else:
 
 signal.signal(debug_signum, debug_signal)
 
-import imp
 import io
-import optparse
 import os
-
-description = "See the ebuild(1) man page for more info"
-usage = "Usage: ebuild <ebuild file> <command> [command] ..."
-parser = optparse.OptionParser(description=description, usage=usage)
-
-force_help = "When used together with the digest or manifest " + \
-	"command, this option forces regeneration of digests for all " + \
-	"distfiles associated with the current ebuild. Any distfiles " + \
-	"that do not already exist in ${DISTDIR} will be automatically fetched."
-
-parser.add_option("--force", help=force_help, action="store_true", dest="force")
-parser.add_option("--color", help="enable or disable color output",
-	type="choice", choices=("y", "n"))
-parser.add_option("--debug", help="show debug output",
-	action="store_true", dest="debug")
-parser.add_option("--version", help="show version and exit",
-	action="store_true", dest="version")
-parser.add_option("--ignore-default-opts",
-	action="store_true",
-	help="do not use the EBUILD_DEFAULT_OPTS environment variable")
-parser.add_option("--skip-manifest", help="skip all manifest checks",
-	action="store_true", dest="skip_manifest")
-
-opts, pargs = parser.parse_args(args=sys.argv[1:])
-
-try:
-	import portage
-except ImportError:
-	from os import path as osp
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
-
-portage.dep._internal_warnings = True
+from os import path as osp
+pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
+sys.path.insert(0, pym_path)
+import portage
+portage._internal_caller = True
 from portage import os
 from portage import _encodings
 from portage import _shell_quote
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.const import VDB_PATH
+from portage.util._argparse import ArgumentParser
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
+
+description = "See the ebuild(1) man page for more info"
+usage = "Usage: ebuild <ebuild file> <command> [command] ..."
+parser = ArgumentParser(description=description, usage=usage)
+
+force_help = "When used together with the digest or manifest " + \
+	"command, this option forces regeneration of digests for all " + \
+	"distfiles associated with the current ebuild. Any distfiles " + \
+	"that do not already exist in ${DISTDIR} will be automatically fetched."
+
+parser.add_argument("--force", help=force_help, action="store_true")
+parser.add_argument("--color", help="enable or disable color output",
+	choices=("y", "n"))
+parser.add_argument("--debug", help="show debug output",
+	action="store_true")
+parser.add_argument("--version", help="show version and exit",
+	action="store_true")
+parser.add_argument("--ignore-default-opts",
+	action="store_true",
+	help="do not use the EBUILD_DEFAULT_OPTS environment variable")
+parser.add_argument("--skip-manifest", help="skip all manifest checks",
+	action="store_true")
+
+opts, pargs = parser.parse_known_args(args=sys.argv[1:])
+
+def err(txt):
+	portage.writemsg('ebuild: %s\n' % (txt,), noiselevel=-1)
+	sys.exit(1)
 
 if opts.version:
 	print("Portage", portage.VERSION)
@@ -89,8 +88,9 @@ if len(pargs) < 2:
 	parser.error("missing required args")
 
 if not opts.ignore_default_opts:
-	default_opts = portage.settings.get("EBUILD_DEFAULT_OPTS", "").split()
-	opts, pargs = parser.parse_args(default_opts + sys.argv[1:])
+	default_opts = portage.util.shlex_split(
+		portage.settings.get("EBUILD_DEFAULT_OPTS", ""))
+	opts, pargs = parser.parse_known_args(default_opts + sys.argv[1:])
 
 debug = opts.debug
 force = opts.force
@@ -119,9 +119,7 @@ if ebuild.endswith(".ebuild"):
 	pf = os.path.basename(ebuild)[:-7]
 
 if pf is None:
-	portage.writemsg("'%s' does not end with '.ebuild'.\n" % \
-		(ebuild,), noiselevel=-1)
-	sys.exit(1)
+	err("%s: does not end with '.ebuild'" % (ebuild,))
 
 if not os.path.isabs(ebuild):
 	mycwd = os.getcwd()
@@ -160,15 +158,14 @@ if ebuild_portdir != vdb_path and \
 			encoding=_encodings['content'], errors='strict')
 
 	print("Appending %s to PORTDIR_OVERLAY..." % ebuild_portdir)
-	imp.reload(portage)
+	portage._reset_legacy_globals()
 
 myrepo = None
 if ebuild_portdir != vdb_path:
 	myrepo = portage.portdb.getRepositoryName(ebuild_portdir)
 
 if not os.path.exists(ebuild):
-	print("'%s' does not exist." % ebuild)
-	sys.exit(1)
+	err('%s: does not exist' % (ebuild,))
 
 ebuild_split = ebuild.split("/")
 cpv = "%s/%s" % (ebuild_split[-3], pf)
@@ -179,8 +176,7 @@ with io.open(_unicode_encode(ebuild, encoding=_encodings['fs'], errors='strict')
 if eapi is None:
 	eapi = "0"
 if not portage.catpkgsplit(cpv, eapi=eapi):
-	print("!!! %s does not follow correct package syntax." % (cpv))
-	sys.exit(1)
+	err('%s: %s: does not follow correct package syntax' % (ebuild, cpv))
 
 if ebuild.startswith(vdb_path):
 	mytree = "vartree"
@@ -189,8 +185,7 @@ if ebuild.startswith(vdb_path):
 	portage_ebuild = portage.db[portage.root][mytree].dbapi.findname(cpv, myrepo=myrepo)
 
 	if os.path.realpath(portage_ebuild) != ebuild:
-		print("!!! Portage seems to think that %s is at %s" % (cpv, portage_ebuild))
-		sys.exit(1)
+		err('Portage seems to think that %s is at %s' % (cpv, portage_ebuild))
 
 else:
 	mytree = "porttree"
@@ -199,12 +194,10 @@ else:
 	portage_ebuild = portage.portdb.findname(cpv, myrepo=myrepo)
 
 	if not portage_ebuild or portage_ebuild != ebuild:
-		print("!!! %s does not seem to have a valid PORTDIR structure." % ebuild)
-		sys.exit(1)
+		err('%s: does not seem to have a valid PORTDIR structure' % (ebuild,))
 
 if len(pargs) > 1 and "config" in pargs:
-	print("config must be called on it's own, not combined with any other phase")
-	sys.exit(1)
+	err('"config" must not be called with any other phase')
 
 def discard_digests(myebuild, mysettings, mydbapi):
 	"""Discard all distfiles digests for the given ebuild.  This is useful when
@@ -313,14 +306,16 @@ def stale_env_warning():
 
 			if ebuild_changed:
 				open(os.path.join(tmpsettings['PORTAGE_BUILDDIR'],
-					'.ebuild_changed'), 'w')
+					'.ebuild_changed'), 'w').close()
 
 from portage.exception import PermissionDenied, \
 	PortagePackageException, UnsupportedAPIException
 
-if 'digest' in tmpsettings.features and \
-	not set(["digest", "manifest"]).intersection(pargs):
-	pargs = ['digest'] + pargs
+if 'digest' in tmpsettings.features:
+	if pargs and pargs[0] not in ("digest", "manifest"):
+		pargs = ['digest'] + pargs
+	# We only need to build digests on the first pass.
+	tmpsettings.features.discard('digest')
 
 checked_for_stale_env = False
 
@@ -334,7 +329,7 @@ for arg in pargs:
 
 		if arg in ("digest", "manifest") and force:
 			discard_digests(ebuild, tmpsettings, portage.portdb)
-		a = portage.doebuild(ebuild, arg, portage.root, tmpsettings,
+		a = portage.doebuild(ebuild, arg, settings=tmpsettings,
 			debug=debug, tree=mytree,
 			vartree=portage.db[portage.root]['vartree'])
 	except KeyboardInterrupt:

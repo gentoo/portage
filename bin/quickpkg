@@ -1,23 +1,20 @@
-#!/usr/bin/python
-# Copyright 1999-2012 Gentoo Foundation
+#!/usr/bin/python -b
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
 
 import errno
 import math
-import optparse
 import signal
 import sys
 import tarfile
 
-try:
-	import portage
-except ImportError:
-	from os import path as osp
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
-
+from os import path as osp
+pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
+sys.path.insert(0, pym_path)
+import portage
+portage._internal_caller = True
 from portage import os
 from portage import xpak
 from portage.dbapi.dep_expand import dep_expand
@@ -28,6 +25,7 @@ from portage.util import ConfigProtect, ensure_dirs, shlex_split
 from portage.dbapi.vartree import dblink, tar_contents
 from portage.checksum import perform_md5
 from portage._sets import load_default_config, SETPREFIX
+from portage.util._argparse import ArgumentParser
 
 def quickpkg_atom(options, infos, arg, eout):
 	settings = portage.settings
@@ -291,29 +289,28 @@ def quickpkg_main(options, args, eout):
 
 if __name__ == "__main__":
 	usage = "quickpkg [options] <list of package atoms or package sets>"
-	parser = optparse.OptionParser(usage=usage)
-	parser.add_option("--umask",
+	parser = ArgumentParser(usage=usage)
+	parser.add_argument("--umask",
 		default="0077",
 		help="umask used during package creation (default is 0077)")
-	parser.add_option("--ignore-default-opts",
+	parser.add_argument("--ignore-default-opts",
 		action="store_true",
 		help="do not use the QUICKPKG_DEFAULT_OPTS environment variable")
-	parser.add_option("--include-config",
-		type="choice",
+	parser.add_argument("--include-config",
 		choices=["y","n"],
 		default="n",
 		metavar="<y|n>",
 		help="include all files protected by CONFIG_PROTECT (as a security precaution, default is 'n')")
-	parser.add_option("--include-unmodified-config",
-		type="choice",
+	parser.add_argument("--include-unmodified-config",
 		choices=["y","n"],
 		default="n",
 		metavar="<y|n>",
 		help="include files protected by CONFIG_PROTECT that have not been modified since installation (as a security precaution, default is 'n')")
-	options, args = parser.parse_args(sys.argv[1:])
+	options, args = parser.parse_known_args(sys.argv[1:])
 	if not options.ignore_default_opts:
-		default_opts = portage.settings.get("QUICKPKG_DEFAULT_OPTS","").split()
-		options, args = parser.parse_args(default_opts + sys.argv[1:])
+		default_opts = shlex_split(
+			portage.settings.get("QUICKPKG_DEFAULT_OPTS", ""))
+		options, args = parser.parse_known_args(default_opts + sys.argv[1:])
 	if not args:
 		parser.error("no packages atoms given")
 	try:

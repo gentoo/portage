@@ -1,17 +1,23 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 2008-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from _emerge.SubProcess import SubProcess
+try:
+	import fcntl
+except ImportError:
+	# http://bugs.jython.org/issue1074
+	fcntl = None
+
+import errno
+import logging
+import signal
 import sys
-from portage.cache.mappings import slot_dict_class
+
+from _emerge.SubProcess import SubProcess
 import portage
-from portage import _encodings
-from portage import _unicode_encode
 from portage import os
 from portage.const import BASH_BINARY
-import fcntl
-import errno
-import gzip
+from portage.util import writemsg_level
+from portage.util._async.PipeLogger import PipeLogger
 
 class SpawnProcess(SubProcess):
 
@@ -23,31 +29,27 @@ class SpawnProcess(SubProcess):
 
 	_spawn_kwarg_names = ("env", "opt_name", "fd_pipes",
 		"uid", "gid", "groups", "umask", "logfile",
-		"path_lookup", "pre_exec")
+		"path_lookup", "pre_exec", "close_fds", "cgroup",
+		"unshare_ipc", "unshare_net")
 
 	__slots__ = ("args",) + \
-		_spawn_kwarg_names + ("_log_file_real", "_selinux_type",)
-
-	_file_names = ("log", "process", "stdout")
-	_files_dict = slot_dict_class(_file_names, prefix="")
+		_spawn_kwarg_names + ("_pipe_logger", "_selinux_type",)
 
 	def _start(self):
 
 		if self.fd_pipes is None:
 			self.fd_pipes = {}
+		else:
+			self.fd_pipes = self.fd_pipes.copy()
 		fd_pipes = self.fd_pipes
 
-		self._files = self._files_dict()
-		files = self._files
-
 		master_fd, slave_fd = self._pipe(fd_pipes)
-		fcntl.fcntl(master_fd, fcntl.F_SETFL,
-			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
-		files.process = master_fd
 
-		logfile = None
-		if self._can_log(slave_fd):
-			logfile = self.logfile
+		can_log = self._can_log(slave_fd)
+		if can_log:
+			log_file_path = self.logfile
+		else:
+			log_file_path = None
 
 		null_input = None
 		if not self.background or 0 in fd_pipes:
@@ -62,48 +64,34 @@ class SpawnProcess(SubProcess):
 			null_input = os.open('/dev/null', os.O_RDWR)
 			fd_pipes[0] = null_input
 
-		fd_pipes.setdefault(0, sys.stdin.fileno())
-		fd_pipes.setdefault(1, sys.stdout.fileno())
-		fd_pipes.setdefault(2, sys.stderr.fileno())
+		fd_pipes.setdefault(0, portage._get_stdin().fileno())
+		fd_pipes.setdefault(1, sys.__stdout__.fileno())
+		fd_pipes.setdefault(2, sys.__stderr__.fileno())
 
 		# flush any pending output
+		stdout_filenos = (sys.__stdout__.fileno(), sys.__stderr__.fileno())
 		for fd in fd_pipes.values():
-			if fd == sys.stdout.fileno():
-				sys.stdout.flush()
-			if fd == sys.stderr.fileno():
-				sys.stderr.flush()
+			if fd in stdout_filenos:
+				sys.__stdout__.flush()
+				sys.__stderr__.flush()
+				break
 
-		if logfile is not None:
+		fd_pipes_orig = fd_pipes.copy()
 
-			fd_pipes_orig = fd_pipes.copy()
+		if log_file_path is not None or self.background:
 			fd_pipes[1] = slave_fd
 			fd_pipes[2] = slave_fd
 
-			files.log = open(_unicode_encode(logfile,
-				encoding=_encodings['fs'], errors='strict'), mode='ab')
-			if logfile.endswith('.gz'):
-				self._log_file_real = files.log
-				files.log = gzip.GzipFile(filename='', mode='ab',
-					fileobj=files.log)
-
-			portage.util.apply_secpass_permissions(logfile,
-				uid=portage.portage_uid, gid=portage.portage_gid,
-				mode=0o660)
-
-			if not self.background:
-				files.stdout = os.dup(fd_pipes_orig[1])
-
-			output_handler = self._output_handler
-
 		else:
-
-			# Create a dummy pipe so the scheduler can monitor
-			# the process from inside a poll() loop.
-			fd_pipes[self._dummy_pipe_fd] = slave_fd
-			if self.background:
-				fd_pipes[1] = slave_fd
-				fd_pipes[2] = slave_fd
-			output_handler = self._dummy_handler
+			# Create a dummy pipe that PipeLogger uses to efficiently
+			# monitor for process exit by listening for the EOF event.
+			# Re-use of the allocated fd number for the key in fd_pipes
+			# guarantees that the keys will not collide for similarly
+			# allocated pipes which are used by callers such as
+			# FileDigester and MergeProcess. See the _setup_pipes
+			# docstring for more benefits of this allocation approach.
+			self._dummy_pipe_fd = slave_fd
+			fd_pipes[slave_fd] = slave_fd
 
 		kwargs = {}
 		for k in self._spawn_kwarg_names:
@@ -115,10 +103,6 @@ class SpawnProcess(SubProcess):
 		kwargs["returnpid"] = True
 		kwargs.pop("logfile", None)
 
-		self._reg_id = self.scheduler.register(files.process,
-			self._registered_events, output_handler)
-		self._registered = True
-
 		retval = self._spawn(self.args, **kwargs)
 
 		os.close(slave_fd)
@@ -129,11 +113,32 @@ class SpawnProcess(SubProcess):
 			# spawn failed
 			self._unregister()
 			self._set_returncode((self.pid, retval))
-			self.wait()
+			self._async_wait()
 			return
 
 		self.pid = retval[0]
-		portage.process.spawned_pids.remove(self.pid)
+
+		stdout_fd = None
+		if can_log and not self.background:
+			stdout_fd = os.dup(fd_pipes_orig[1])
+			# FD_CLOEXEC is enabled by default in Python >=3.4.
+			if sys.hexversion < 0x3040000 and fcntl is not None:
+				try:
+					fcntl.FD_CLOEXEC
+				except AttributeError:
+					pass
+				else:
+					fcntl.fcntl(stdout_fd, fcntl.F_SETFD,
+						fcntl.fcntl(stdout_fd,
+						fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
+
+		self._pipe_logger = PipeLogger(background=self.background,
+			scheduler=self.scheduler, input_fd=master_fd,
+			log_file_path=log_file_path,
+			stdout_fd=stdout_fd)
+		self._pipe_logger.addExitListener(self._pipe_logger_exit)
+		self._pipe_logger.start()
+		self._registered = True
 
 	def _can_log(self, slave_fd):
 		return True
@@ -157,92 +162,56 @@ class SpawnProcess(SubProcess):
 
 		return spawn_func(args, **kwargs)
 
-	def _output_handler(self, fd, event):
+	def _pipe_logger_exit(self, pipe_logger):
+		self._pipe_logger = None
+		self._unregister()
+		self.wait()
 
-		files = self._files
-		while True:
-			buf = self._read_buf(fd, event)
+	def _waitpid_loop(self):
+		SubProcess._waitpid_loop(self)
 
-			if buf is None:
-				# not a POLLIN event, EAGAIN, etc...
-				break
+		pipe_logger = self._pipe_logger
+		if pipe_logger is not None:
+			self._pipe_logger = None
+			pipe_logger.removeExitListener(self._pipe_logger_exit)
+			pipe_logger.cancel()
+			pipe_logger.wait()
 
-			if not buf:
-				# EOF
-				self._unregister()
-				self.wait()
-				break
+	def _set_returncode(self, wait_retval):
+		SubProcess._set_returncode(self, wait_retval)
 
-			else:
-				if not self.background:
-					write_successful = False
-					failures = 0
-					while True:
-						try:
-							if not write_successful:
-								os.write(files.stdout, buf)
-								write_successful = True
-							break
-						except OSError as e:
-							if e.errno != errno.EAGAIN:
-								raise
-							del e
-							failures += 1
-							if failures > 50:
-								# Avoid a potentially infinite loop. In
-								# most cases, the failure count is zero
-								# and it's unlikely to exceed 1.
-								raise
+		if self.cgroup:
+			def get_pids(cgroup):
+				try:
+					with open(os.path.join(cgroup, 'cgroup.procs'), 'r') as f:
+						return [int(p) for p in f.read().split()]
+				except OSError:
+					# cgroup removed already?
+					return []
 
-							# This means that a subprocess has put an inherited
-							# stdio file descriptor (typically stdin) into
-							# O_NONBLOCK mode. This is not acceptable (see bug
-							# #264435), so revert it. We need to use a loop
-							# here since there's a race condition due to
-							# parallel processes being able to change the
-							# flags on the inherited file descriptor.
-							# TODO: When possible, avoid having child processes
-							# inherit stdio file descriptors from portage
-							# (maybe it can't be avoided with
-							# PROPERTIES=interactive).
-							fcntl.fcntl(files.stdout, fcntl.F_SETFL,
-								fcntl.fcntl(files.stdout,
-								fcntl.F_GETFL) ^ os.O_NONBLOCK)
+			def kill_all(pids, sig):
+				for p in pids:
+					try:
+						os.kill(p, sig)
+					except OSError as e:
+						if e.errno == errno.EPERM:
+							# Reported with hardened kernel (bug #358211).
+							writemsg_level(
+								"!!! kill: (%i) - Operation not permitted\n" %
+								(p,), level=logging.ERROR,
+								noiselevel=-1)
+						elif e.errno != errno.ESRCH:
+							raise
 
-				files.log.write(buf)
-				files.log.flush()
+			# step 1: kill all orphans
+			pids = get_pids(self.cgroup)
+			if pids:
+				kill_all(pids, signal.SIGKILL)
 
-		self._unregister_if_appropriate(event)
-
-		return True
-
-	def _dummy_handler(self, fd, event):
-		"""
-		This method is mainly interested in detecting EOF, since
-		the only purpose of the pipe is to allow the scheduler to
-		monitor the process from inside a poll() loop.
-		"""
-
-		while True:
-			buf = self._read_buf(fd, event)
-
-			if buf is None:
-				# not a POLLIN event, EAGAIN, etc...
-				break
-
-			if not buf:
-				# EOF
-				self._unregister()
-				self.wait()
-				break
-
-		self._unregister_if_appropriate(event)
-
-		return True
-
-	def _unregister(self):
-		super(SpawnProcess, self)._unregister()
-		if self._log_file_real is not None:
-			# Avoid "ResourceWarning: unclosed file" since python 3.2.
-			self._log_file_real.close()
-			self._log_file_real = None
+			# step 2: remove the cgroup
+			try:
+				os.rmdir(self.cgroup)
+			except OSError:
+				# it may be removed already, or busy
+				# we can't do anything good about it
+				pass

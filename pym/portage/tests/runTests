@@ -1,6 +1,6 @@
-#!/usr/bin/python -Wd
+#!/usr/bin/python -bWd
 # runTests.py -- Portage Unit Test Functionality
-# Copyright 2006-2012 Gentoo Foundation
+# Copyright 2006-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import os, sys
@@ -29,9 +29,10 @@ os.environ["PORTAGE_GRPNAME"] = grp.getgrgid(os.getgid()).gr_name
 
 # Insert our parent dir so we can do shiny import "tests"
 # This line courtesy of Marienz and Pkgcore ;)
-sys.path.insert(0, osp.dirname(osp.dirname(osp.dirname(osp.abspath(__file__)))))
+sys.path.insert(0, osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__)))))
 
 import portage
+portage._internal_caller = True
 
 # Ensure that we don't instantiate portage.settings, so that tests should
 # work the same regardless of global configuration file state/existence.
@@ -44,11 +45,17 @@ import portage.tests as tests
 from portage.const import PORTAGE_BIN_PATH
 path = os.environ.get("PATH", "").split(":")
 path = [x for x in path if x]
-if not path or not os.path.samefile(path[0], PORTAGE_BIN_PATH):
+
+insert_bin_path = True
+try:
+	insert_bin_path = not path or \
+		not os.path.samefile(path[0], PORTAGE_BIN_PATH)
+except OSError:
+	pass
+
+if insert_bin_path:
 	path.insert(0, PORTAGE_BIN_PATH)
 	os.environ["PATH"] = ":".join(path)
-del path
-
 
 if __name__ == "__main__":
 	sys.exit(tests.main())

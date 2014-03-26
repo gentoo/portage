@@ -1,5 +1,7 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 __all__ = ["dep_expand"]
 
@@ -23,7 +25,7 @@ def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
 		if mydep[0] == "*":
 			mydep = mydep[1:]
 			orig_dep = mydep
-		has_cat = '/' in orig_dep
+		has_cat = '/' in orig_dep.split(':')[0]
 		if not has_cat:
 			alphanum = re.search(r'\w', orig_dep)
 			if alphanum:

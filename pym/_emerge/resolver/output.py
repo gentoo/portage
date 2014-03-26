@@ -1,26 +1,31 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """Resolver output display operation.
 """
 
+from __future__ import unicode_literals
+
 __all__ = (
-	"Display",
+	"Display", "format_unmatched_atom",
 	)
 
 import sys
 
+import portage
 from portage import os
-from portage import _unicode_decode
 from portage.dbapi.dep_expand import dep_expand
-from portage.dep import cpvequal, _repo_separator
+from portage.dep import cpvequal, _repo_separator, _slot_separator
+from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidDependString, SignatureException
+from portage.package.ebuild.config import _get_feature_flags
 from portage.package.ebuild._spawn_nofetch import spawn_nofetch
 from portage.output import ( blue, colorize, create_color_func,
-	darkblue, darkgreen, green, nc_len, red, teal, turquoise, yellow )
+	darkblue, darkgreen, green, nc_len, teal)
 bad = create_color_func("BAD")
+from portage._sets.base import InternalPackageSet
 from portage.util import writemsg_stdout
-from portage.versions import best, catpkgsplit
+from portage.versions import best, cpv_getversion
 
 from _emerge.Blocker import Blocker
 from _emerge.create_world_atom import create_world_atom
@@ -30,7 +35,9 @@ from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
-
+	_unicode = str
+else:
+	_unicode = unicode
 
 class Display(object):
 	"""Formats and outputs the depgrah supplied it for merge/re-merge, etc.
@@ -54,11 +61,6 @@ class Display(object):
 		self.oldlp = None
 		self.myfetchlist = None
 		self.indent = ''
-		self.is_new = True
-		self.cur_use = None
-		self.cur_iuse = None
-		self.old_use = ''
-		self.old_iuse = ''
 		self.use_expand = None
 		self.use_expand_hidden = None
 		self.pkgsettings = None
@@ -68,93 +70,54 @@ class Display(object):
 		self.blocker_style = None
 
 
-	def _blockers(self, pkg, fetch_symbol):
-		"""Processes pkg for blockers and adds colorized strings to
+	def _blockers(self, blocker):
+		"""Adds colorized strings to
 		self.print_msg and self.blockers
 
-		@param pkg: _emerge.Package.Package instance
-		@param fetch_symbol: string
+		@param blocker: _emerge.Blocker.Blocker instance
 		@rtype: bool
 		Modifies class globals: self.blocker_style, self.resolved,
 			self.print_msg
 		"""
-		if pkg.satisfied:
+		if blocker.satisfied:
 			self.blocker_style = "PKG_BLOCKER_SATISFIED"
-			addl = "%s  %s  " % (colorize(self.blocker_style, "b"),
-				fetch_symbol)
+			addl = "%s     " % (colorize(self.blocker_style, "b"),)
 		else:
 			self.blocker_style = "PKG_BLOCKER"
-			addl = "%s  %s  " % (colorize(self.blocker_style, "B"),
-				fetch_symbol)
+			addl = "%s     " % (colorize(self.blocker_style, "B"),)
 		addl += self.empty_space_in_brackets()
 		self.resolved = dep_expand(
-			str(pkg.atom).lstrip("!"), mydb=self.vardb,
+			_unicode(blocker.atom).lstrip("!"), mydb=self.vardb,
 			settings=self.pkgsettings
 			)
 		if self.conf.columns and self.conf.quiet:
-			addl += " " + colorize(self.blocker_style, str(self.resolved))
+			addl += " " + colorize(self.blocker_style, _unicode(self.resolved))
 		else:
 			addl = "[%s %s] %s%s" % \
 				(colorize(self.blocker_style, "blocks"),
 				addl, self.indent,
-				colorize(self.blocker_style, str(self.resolved))
+				colorize(self.blocker_style, _unicode(self.resolved))
 				)
-		block_parents = self.conf.blocker_parents.parent_nodes(pkg)
-		block_parents = set([pnode[2] for pnode in block_parents])
+		block_parents = self.conf.blocker_parents.parent_nodes(blocker)
+		block_parents = set(_unicode(pnode.cpv) for pnode in block_parents)
 		block_parents = ", ".join(block_parents)
-		if self.resolved != pkg[2]:
+		if blocker.atom.blocker.overlap.forbid:
+			blocking_desc = "hard blocking"
+		else:
+			blocking_desc = "blocking"
+		if self.resolved != blocker.atom:
 			addl += colorize(self.blocker_style,
-				" (\"%s\" is blocking %s)") % \
-				(str(pkg.atom).lstrip("!"), block_parents)
+				" (\"%s\" is %s %s)" %
+				(_unicode(blocker.atom).lstrip("!"),
+				blocking_desc, block_parents))
 		else:
 			addl += colorize(self.blocker_style,
-				" (is blocking %s)") % block_parents
-		if isinstance(pkg, Blocker) and pkg.satisfied:
-			if self.conf.columns:
-				return True
-			self.print_msg.append(addl)
+				" (is %s %s)" % (blocking_desc, block_parents))
+		if blocker.satisfied:
+			if not self.conf.columns:
+				self.print_msg.append(addl)
 		else:
 			self.blockers.append(addl)
-		return False
-
-
-	def _display_use(self, pkg, myoldbest, myinslotlist):
-		""" USE flag display
-
-		@param pkg: _emerge.Package.Package instance
-		@param myoldbest: list of installed versions
-		@param myinslotlist: list of installed slots
-		Modifies class globals: self.forced_flags, self.cur_iuse,
-			self.old_iuse, self.old_use, self.use_expand
-		"""
-
-		self.forced_flags = set()
-		self.forced_flags.update(pkg.use.force)
-		self.forced_flags.update(pkg.use.mask)
-
-		self.cur_use = [flag for flag in self.conf.pkg_use_enabled(pkg) \
-			if flag in pkg.iuse.all]
-		self.cur_iuse = sorted(pkg.iuse.all)
-
-		if myoldbest and myinslotlist:
-			previous_cpv = myoldbest[0].cpv
-		else:
-			previous_cpv = pkg.cpv
-		if self.vardb.cpv_exists(previous_cpv):
-			previous_pkg = self.vardb.match_pkgs('=' + previous_cpv)[0]
-			self.old_iuse = sorted(previous_pkg.iuse.all)
-			self.old_use = previous_pkg.use.enabled
-			self.is_new = False
-		else:
-			self.old_iuse = []
-			self.old_use = []
-			self.is_new = True
-
-		self.old_use = [flag for flag in self.old_use if flag in self.old_iuse]
-
-		self.use_expand = pkg.use.expand
-		self.use_expand_hidden = pkg.use.expand_hidden
-		return
 
 	def include_mask_str(self):
 		return self.conf.verbosity > 1
@@ -219,13 +182,40 @@ class Display(object):
 		return ret
 
 
-	def recheck_hidden(self, pkg):
-		""" Prevent USE_EXPAND_HIDDEN flags from being hidden if they
-		are the only thing that triggered reinstallation.
+	def _display_use(self, pkg, pkg_info):
+		""" USE flag display
 
 		@param pkg: _emerge.Package.Package instance
-		Modifies self.use_expand_hidden, self.use_expand, self.verboseadd
+		@param pkg_info: PkgInfo instance
+		Modifies self.use_expand_hidden, self.use_expand, self.verboseadd,
+			self.forced_flags
 		"""
+
+		self.forced_flags = set()
+		self.forced_flags.update(pkg.use.force)
+		self.forced_flags.update(pkg.use.mask)
+
+		cur_use = [flag for flag in self.conf.pkg_use_enabled(pkg) \
+			if flag in pkg.iuse.all]
+		cur_iuse = sorted(pkg.iuse.all)
+
+		if pkg_info.previous_pkg is not None:
+			previous_pkg = pkg_info.previous_pkg
+			old_iuse = sorted(previous_pkg.iuse.all)
+			old_use = previous_pkg.use.enabled
+			is_new = False
+		else:
+			old_iuse = []
+			old_use = []
+			is_new = True
+
+		old_use = [flag for flag in old_use if flag in old_iuse]
+
+		self.use_expand = pkg.use.expand
+		self.use_expand_hidden = pkg.use.expand_hidden
+
+		# Prevent USE_EXPAND_HIDDEN flags from being hidden if they
+		# are the only thing that triggered reinstallation.
 		reinst_flags_map = {}
 		reinstall_for_flags = self.conf.reinstall_nodes.get(pkg)
 		reinst_expand_map = None
@@ -246,13 +236,14 @@ class Display(object):
 				reinst_expand_map)
 
 		cur_iuse_map, iuse_forced = \
-			self.map_to_use_expand(self.cur_iuse, forced_flags=True)
-		cur_use_map = self.map_to_use_expand(self.cur_use)
-		old_iuse_map = self.map_to_use_expand(self.old_iuse)
-		old_use_map = self.map_to_use_expand(self.old_use)
+			self.map_to_use_expand(cur_iuse, forced_flags=True)
+		cur_use_map = self.map_to_use_expand(cur_use)
+		old_iuse_map = self.map_to_use_expand(old_iuse)
+		old_use_map = self.map_to_use_expand(old_use)
 
 		use_expand = sorted(self.use_expand)
 		use_expand.insert(0, "USE")
+		feature_flags = _get_feature_flags(_get_eapi_attrs(pkg.eapi))
 
 		for key in use_expand:
 			if key in self.use_expand_hidden:
@@ -260,7 +251,7 @@ class Display(object):
 			self.verboseadd += _create_use_string(self.conf, key.upper(),
 				cur_iuse_map[key], iuse_forced[key],
 				cur_use_map[key], old_iuse_map[key],
-				old_use_map[key], self.is_new,
+				old_use_map[key], is_new, feature_flags,
 				reinst_flags_map.get(key))
 		return
 
@@ -318,13 +309,14 @@ class Display(object):
 				kwargs["myrepo"] = pkg.repo
 			myfilesdict = None
 			try:
-				myfilesdict = db.getfetchsizes(pkg.cpv, **kwargs)
+				myfilesdict = db.getfetchsizes(pkg.cpv,
+					**portage._native_kwargs(kwargs))
 			except InvalidDependString as e:
 				# FIXME: validate SRC_URI earlier
 				depstr, = db.aux_get(pkg.cpv,
 					["SRC_URI"], myrepo=pkg.repo)
 				show_invalid_depstring_notice(
-					pkg, depstr, str(e))
+					pkg, depstr, _unicode(e))
 				raise
 			except SignatureException:
 				# missing/invalid binary package SIZE signature
@@ -343,15 +335,13 @@ class Display(object):
 		if self.quiet_repo_display:
 			# overlay verbose
 			# assign index for a previous version in the same slot
-			slot_matches = self.vardb.match(pkg.slot_atom)
-			if slot_matches:
-				repo_name_prev = self.vardb.aux_get(slot_matches[0],
-					["repository"])[0]
+			if pkg_info.previous_pkg is not None:
+				repo_name_prev = pkg_info.previous_pkg.repo
 			else:
 				repo_name_prev = None
 
 			# now use the data to generate output
-			if pkg.installed or not slot_matches:
+			if pkg.installed or pkg_info.previous_pkg is None:
 				self.repoadd = self.conf.repo_display.repoStr(
 					pkg_info.repo_path_real)
 			else:
@@ -370,58 +360,86 @@ class Display(object):
 				repoadd_set.add(self.repoadd)
 
 
-	def convert_myoldbest(self, pkg, myoldbest):
+	def convert_myoldbest(self, pkg, pkg_info):
 		"""converts and colorizes a version list to a string
 
 		@param pkg: _emerge.Package.Package instance
-		@param myoldbest: list
+		@param pkg_info: dictionary
 		@rtype string.
 		"""
+		myoldbest = pkg_info.oldbest_list
 		# Convert myoldbest from a list to a string.
 		myoldbest_str = ""
 		if myoldbest:
 			versions = []
 			for pos, old_pkg in enumerate(myoldbest):
-				key = catpkgsplit(old_pkg.cpv)[2] + "-" + catpkgsplit(old_pkg.cpv)[3]
+				key = old_pkg.version
 				if key[-3:] == "-r0":
 					key = key[:-3]
-				if self.conf.verbosity == 3 and not self.quiet_repo_display and (self.verbose_main_repo_display or
-					any(x.repo != self.portdb.repositories.mainRepo().name for x in myoldbest + [pkg])):
-					key += _repo_separator + old_pkg.repo
+				if self.conf.verbosity == 3:
+					if pkg_info.attr_display.new_slot:
+						key += _slot_separator + old_pkg.slot
+						if old_pkg.slot != old_pkg.sub_slot:
+							key += "/" + old_pkg.sub_slot
+					elif any(x.slot + "/" + x.sub_slot != "0/0" for x in myoldbest + [pkg]):
+						key += _slot_separator + old_pkg.slot
+						if old_pkg.slot != old_pkg.sub_slot or \
+							old_pkg.slot == pkg.slot and old_pkg.sub_slot != pkg.sub_slot:
+							key += "/" + old_pkg.sub_slot
+					if not self.quiet_repo_display and (self.verbose_main_repo_display or
+						self.portdb.repositories.mainRepo() is None or
+						any(x.repo != self.portdb.repositories.mainRepo().name for x in myoldbest + [pkg])):
+						key += _repo_separator + old_pkg.repo
 				versions.append(key)
 			myoldbest_str = blue("["+", ".join(versions)+"]")
 		return myoldbest_str
 
+	def _append_slot(self, pkg_str, pkg, pkg_info):
+		"""Potentially appends slot and subslot to package string.
 
-	def set_interactive(self, pkg, ordered, addl):
-		"""Increments counters.interactive if the pkg is to
-		be merged and it's metadata has interactive set True
-
+		@param pkg_str: string
 		@param pkg: _emerge.Package.Package instance
-		@param ordered: boolean
-		@param addl: already defined string to add to
+		@param pkg_info: dictionary
+		@rtype string
 		"""
-		if 'interactive' in pkg.metadata.properties and \
-			pkg.operation == 'merge':
-			addl = colorize("WARN", "I") + addl[1:]
-			if ordered:
-				self.counters.interactive += 1
-		return addl
+		if pkg_info.attr_display.new_slot:
+			pkg_str += _slot_separator + pkg_info.slot
+			if pkg_info.slot != pkg_info.sub_slot:
+				pkg_str += "/" + pkg_info.sub_slot
+		elif any(x.slot + "/" + x.sub_slot != "0/0" for x in pkg_info.oldbest_list + [pkg]):
+			pkg_str += _slot_separator + pkg_info.slot
+			if pkg_info.slot != pkg_info.sub_slot or \
+				any(x.slot == pkg_info.slot and x.sub_slot != pkg_info.sub_slot for x in pkg_info.oldbest_list):
+				pkg_str += "/" + pkg_info.sub_slot
+		return pkg_str
 
-	def _set_non_root_columns(self, addl, pkg_info, pkg):
+	def _append_repository(self, pkg_str, pkg, pkg_info):
+		"""Potentially appends repository to package string.
+
+		@param pkg_str: string
+		@param pkg: _emerge.Package.Package instance
+		@param pkg_info: dictionary
+		@rtype string
+		"""
+		if not self.quiet_repo_display and (self.verbose_main_repo_display or
+			self.portdb.repositories.mainRepo() is None or
+			any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
+			pkg_str += _repo_separator + pkg.repo
+		return pkg_str
+
+	def _set_non_root_columns(self, pkg, pkg_info):
 		"""sets the indent level and formats the output
 
-		@param addl: already defined string to add to
-		@param pkg_info: dictionary
 		@param pkg: _emerge.Package.Package instance
+		@param pkg_info: dictionary
 		@rtype string
 		"""
 		ver_str = pkg_info.ver
-		if self.conf.verbosity == 3 and not self.quiet_repo_display and (self.verbose_main_repo_display or
-			any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
-			ver_str += _repo_separator + pkg.repo
+		if self.conf.verbosity == 3:
+			ver_str = self._append_slot(ver_str, pkg, pkg_info)
+			ver_str = self._append_repository(ver_str, pkg, pkg_info)
 		if self.conf.quiet:
-			myprint = addl + " " + self.indent + \
+			myprint = _unicode(pkg_info.attr_display) + " " + self.indent + \
 				self.pkgprint(pkg_info.cp, pkg_info)
 			myprint = myprint+darkblue(" "+ver_str)+" "
 			myprint = myprint+pkg_info.oldbest
@@ -434,7 +452,8 @@ class Display(object):
 					self.indent, self.pkgprint(pkg.cp, pkg_info))
 			else:
 				myprint = "[%s %s] %s%s" % \
-					(self.pkgprint(pkg.type_name, pkg_info), addl,
+					(self.pkgprint(pkg.type_name, pkg_info),
+					pkg_info.attr_display,
 					self.indent, self.pkgprint(pkg.cp, pkg_info))
 			if (self.newlp-nc_len(myprint)) > 0:
 				myprint = myprint+(" "*(self.newlp-nc_len(myprint)))
@@ -446,21 +465,20 @@ class Display(object):
 		return myprint
 
 
-	def _set_root_columns(self, addl, pkg_info, pkg):
+	def _set_root_columns(self, pkg, pkg_info):
 		"""sets the indent level and formats the output
 
-		@param addl: already defined string to add to
-		@param pkg_info: dictionary
 		@param pkg: _emerge.Package.Package instance
+		@param pkg_info: dictionary
 		@rtype string
 		Modifies self.verboseadd
 		"""
 		ver_str = pkg_info.ver
-		if self.conf.verbosity == 3 and not self.quiet_repo_display and (self.verbose_main_repo_display or
-			any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
-			ver_str += _repo_separator + pkg.repo
+		if self.conf.verbosity == 3:
+			ver_str = self._append_slot(ver_str, pkg, pkg_info)
+			ver_str = self._append_repository(ver_str, pkg, pkg_info)
 		if self.conf.quiet:
-			myprint = addl + " " + self.indent + \
+			myprint = _unicode(pkg_info.attr_display) + " " + self.indent + \
 				self.pkgprint(pkg_info.cp, pkg_info)
 			myprint = myprint+" "+green(ver_str)+" "
 			myprint = myprint+pkg_info.oldbest
@@ -473,7 +491,8 @@ class Display(object):
 					addl, self.indent, self.pkgprint(pkg.cp, pkg_info))
 			else:
 				myprint = "[%s %s] %s%s" % \
-					(self.pkgprint(pkg.type_name, pkg_info), addl,
+					(self.pkgprint(pkg.type_name, pkg_info),
+					pkg_info.attr_display,
 					self.indent, self.pkgprint(pkg.cp, pkg_info))
 			if (self.newlp-nc_len(myprint)) > 0:
 				myprint = myprint+(" "*(self.newlp-nc_len(myprint)))
@@ -484,18 +503,17 @@ class Display(object):
 		return myprint
 
 
-	def _set_no_columns(self, pkg, pkg_info, addl):
+	def _set_no_columns(self, pkg, pkg_info):
 		"""prints pkg info without column indentation.
 
 		@param pkg: _emerge.Package.Package instance
 		@param pkg_info: dictionary
-		@param addl: the current text to add for the next line to output
 		@rtype the updated addl
 		"""
 		pkg_str = pkg.cpv
-		if self.conf.verbosity == 3 and not self.quiet_repo_display and (self.verbose_main_repo_display or
-			any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
-			pkg_str += _repo_separator + pkg.repo
+		if self.conf.verbosity == 3:
+			pkg_str = self._append_slot(pkg_str, pkg, pkg_info)
+			pkg_str = self._append_repository(pkg_str, pkg, pkg_info)
 		if not pkg_info.merge:
 			addl = self.empty_space_in_brackets()
 			myprint = "[%s%s] %s%s %s" % \
@@ -506,45 +524,9 @@ class Display(object):
 		else:
 			myprint = "[%s %s] %s%s %s" % \
 				(self.pkgprint(pkg.type_name, pkg_info),
-				addl, self.indent,
+				pkg_info.attr_display, self.indent,
 				self.pkgprint(pkg_str, pkg_info), pkg_info.oldbest)
 		return myprint
-
-
-	def _insert_slot(self, pkg, pkg_info, myinslotlist):
-		"""Adds slot info to the message
-
-		@return addl: formatted slot info
-		@return myoldbest: installed version list
-		Modifies self.counters.downgrades, self.counters.upgrades
-		"""
-		addl = "   " + pkg_info.fetch_symbol
-		if not cpvequal(pkg.cpv,
-			best([pkg.cpv] + [x.cpv for x in myinslotlist])):
-			# Downgrade in slot
-			addl += turquoise("U")+blue("D")
-			if pkg_info.ordered:
-				self.counters.downgrades += 1
-		else:
-			# Update in slot
-			addl += turquoise("U") + " "
-			if pkg_info.ordered:
-				self.counters.upgrades += 1
-		return addl
-
-
-	def _new_slot(self, pkg, pkg_info):
-		"""New slot, mark it new.
-
-		@return addl: formatted slot info
-		@return myoldbest: installed version list
-		Modifies self.counters.newslot
-		"""
-		addl = " " + green("NS") + pkg_info.fetch_symbol + "  "
-		if pkg_info.ordered:
-			self.counters.newslot += 1
-		return addl
-
 
 	def print_messages(self, show_repos):
 		"""Performs the actual output printing of the pre-formatted
@@ -581,9 +563,9 @@ class Display(object):
 		"""
 		writemsg_stdout('\n%s\n' % (self.counters,), noiselevel=-1)
 		if show_repos:
-			# Use _unicode_decode() to force unicode format string so
+			# Use unicode_literals to force unicode format string so
 			# that RepoDisplay.__unicode__() is called in python2.
-			writemsg_stdout(_unicode_decode("%s") % (self.conf.repo_display,),
+			writemsg_stdout("%s" % (self.conf.repo_display,),
 				noiselevel=-1)
 		return
 
@@ -635,15 +617,18 @@ class Display(object):
 			self.counters.restrict_fetch_satisfied
 		"""
 		pkg_info = PkgInfo()
+		pkg_info.cp = pkg.cp
+		pkg_info.ver = self.get_ver_str(pkg)
+		pkg_info.slot = pkg.slot
+		pkg_info.sub_slot = pkg.sub_slot
+		pkg_info.repo_name = pkg.repo
 		pkg_info.ordered = ordered
-		pkg_info.fetch_symbol = " "
 		pkg_info.operation = pkg.operation
 		pkg_info.merge = ordered and pkg_info.operation == "merge"
 		if not pkg_info.merge and pkg_info.operation == "merge":
 			pkg_info.operation = "nomerge"
 		pkg_info.built = pkg.type_name != "ebuild"
 		pkg_info.ebuild_path = None
-		pkg_info.repo_name = pkg.repo
 		if ordered:
 			if pkg_info.merge:
 				if pkg.type_name == "binary":
@@ -659,22 +644,30 @@ class Display(object):
 			pkg_info.repo_path_real = os.path.dirname(os.path.dirname(
 				os.path.dirname(pkg_info.ebuild_path)))
 		else:
-			pkg_info.repo_path_real = \
-				self.portdb.getRepositoryPath(pkg.metadata["repository"])
+			pkg_info.repo_path_real = self.portdb.getRepositoryPath(pkg.repo)
 		pkg_info.use = list(self.conf.pkg_use_enabled(pkg))
 		if not pkg.built and pkg.operation == 'merge' and \
-			'fetch' in pkg.metadata.restrict:
+			'fetch' in pkg.restrict:
 			if pkg_info.ordered:
 				self.counters.restrict_fetch += 1
+			pkg_info.attr_display.fetch_restrict = True
 			if not self.portdb.getfetchsizes(pkg.cpv,
 				useflags=pkg_info.use, myrepo=pkg.repo):
-				pkg_info.fetch_symbol = green("f")
+				pkg_info.attr_display.fetch_restrict_satisfied = True
 				if pkg_info.ordered:
 					self.counters.restrict_fetch_satisfied += 1
 			else:
-				pkg_info.fetch_symbol = red("F")
 				if pkg_info.ebuild_path is not None:
 					self.restrict_fetch_list[pkg] = pkg_info
+
+		if self.vardb.cpv_exists(pkg.cpv):
+			# Do a cpv match first, in case the SLOT has changed.
+			pkg_info.previous_pkg = self.vardb.match_pkgs('=' + pkg.cpv)[0]
+		else:
+			slot_matches = self.vardb.match_pkgs(pkg.slot_atom)
+			if slot_matches:
+				pkg_info.previous_pkg = slot_matches[0]
+
 		return pkg_info
 
 
@@ -685,15 +678,14 @@ class Display(object):
 		@param pkg_info: dictionay
 		Modifies self.changelogs
 		"""
-		inst_matches = self.vardb.match(pkg.slot_atom)
-		if inst_matches:
+		if pkg_info.previous_pkg is not None:
 			ebuild_path_cl = pkg_info.ebuild_path
 			if ebuild_path_cl is None:
 				# binary package
 				ebuild_path_cl = self.portdb.findname(pkg.cpv, myrepo=pkg.repo)
 			if ebuild_path_cl is not None:
 				self.changelogs.extend(_calc_changelog(
-					ebuild_path_cl, inst_matches[0], pkg.cpv))
+					ebuild_path_cl, pkg_info.previous_pkg, pkg.cpv))
 		return
 
 
@@ -733,12 +725,10 @@ class Display(object):
 		@param pkg: _emerge.Package.Package instance
 		@rtype string
 		"""
-		ver_str = list(catpkgsplit(pkg.cpv)[2:])
-		if ver_str[1] == "r0":
-			ver_str[1] = ""
-		else:
-			ver_str[1] = "-" + ver_str[1]
-		return ver_str[0]+ver_str[1]
+		ver_str = pkg.cpv.version
+		if ver_str.endswith("-r0"):
+			ver_str = ver_str[:-3]
+		return ver_str
 
 
 	def _get_installed_best(self, pkg, pkg_info):
@@ -757,9 +747,10 @@ class Display(object):
 		myinslotlist = None
 		installed_versions = self.vardb.match_pkgs(pkg.cp)
 		if self.vardb.cpv_exists(pkg.cpv):
-			addl = "  "+yellow("R")+pkg_info.fetch_symbol+"  "
-			installed_version = self.vardb.match_pkgs(pkg.cpv)[0]
-			if not self.quiet_repo_display and installed_version.repo != pkg.repo:
+			pkg_info.attr_display.replace = True
+			installed_version = pkg_info.previous_pkg
+			if installed_version.slot != pkg.slot or installed_version.sub_slot != pkg.sub_slot or \
+				not self.quiet_repo_display and installed_version.repo != pkg.repo:
 				myoldbest = [installed_version]
 			if pkg_info.ordered:
 				if pkg_info.merge:
@@ -775,17 +766,31 @@ class Display(object):
 				myinslotlist = None
 			if myinslotlist:
 				myoldbest = myinslotlist[:]
-				addl = self._insert_slot(pkg, pkg_info, myinslotlist)
+				if not cpvequal(pkg.cpv,
+					best([pkg.cpv] + [x.cpv for x in myinslotlist])):
+					# Downgrade in slot
+					pkg_info.attr_display.new_version = True
+					pkg_info.attr_display.downgrade = True
+					if pkg_info.ordered:
+						self.counters.downgrades += 1
+				else:
+					# Update in slot
+					pkg_info.attr_display.new_version = True
+					if pkg_info.ordered:
+						self.counters.upgrades += 1
 			else:
 				myoldbest = installed_versions
-				addl = self._new_slot(pkg, pkg_info)
+				pkg_info.attr_display.new = True
+				pkg_info.attr_display.new_slot = True
+				if pkg_info.ordered:
+					self.counters.newslot += 1
 			if self.conf.changelog:
 				self.do_changelog(pkg, pkg_info)
 		else:
-			addl = " " + green("N") + " " + pkg_info.fetch_symbol + "  "
+			pkg_info.attr_display.new = True
 			if pkg_info.ordered:
 				self.counters.new += 1
-		return addl, myoldbest, myinslotlist
+		return myoldbest, myinslotlist
 
 
 	def __call__(self, depgraph, mylist, favorites=None, verbosity=None):
@@ -806,7 +811,7 @@ class Display(object):
 		# files to fetch list - avoids counting a same file twice
 		# in size display (verbose mode)
 		self.myfetchlist = set()
-		
+
 		self.quiet_repo_display = "--quiet-repo-display" in depgraph._frozen_config.myopts
 		if self.quiet_repo_display:
 			# Use this set to detect when all the "repoadd" strings are "[0]"
@@ -824,47 +829,52 @@ class Display(object):
 			self.indent = " " * depth
 
 			if isinstance(pkg, Blocker):
-				if self._blockers(pkg, fetch_symbol=" "):
-					continue
+				self._blockers(pkg)
 			else:
 				pkg_info = self.set_pkg_info(pkg, ordered)
-				addl, pkg_info.oldbest_list, myinslotlist = \
+				pkg_info.oldbest_list, myinslotlist = \
 					self._get_installed_best(pkg, pkg_info)
+				if ordered and pkg_info.merge and \
+					not pkg_info.attr_display.new:
+					for arg, atom in depgraph._iter_atoms_for_pkg(pkg):
+						if arg.force_reinstall:
+							pkg_info.attr_display.force_reinstall = True
+							break
+
 				self.verboseadd = ""
 				if self.quiet_repo_display:
 					self.repoadd = None
-				self._display_use(pkg, pkg_info.oldbest_list, myinslotlist)
-				self.recheck_hidden(pkg)
+				self._display_use(pkg, pkg_info)
 				if self.conf.verbosity == 3:
 					if self.quiet_repo_display:
 						self.verbose_size(pkg, repoadd_set, pkg_info)
 					else:
 						self.verbose_size(pkg, None, pkg_info)
 
-				pkg_info.cp = pkg.cp
-				pkg_info.ver = self.get_ver_str(pkg)
-
 				self.oldlp = self.conf.columnwidth - 30
 				self.newlp = self.oldlp - 30
-				pkg_info.oldbest = self.convert_myoldbest(pkg, pkg_info.oldbest_list)
+				pkg_info.oldbest = self.convert_myoldbest(pkg, pkg_info)
 				pkg_info.system, pkg_info.world = \
 					self.check_system_world(pkg)
-				addl = self.set_interactive(pkg, pkg_info.ordered, addl)
+				if 'interactive' in pkg.properties and \
+					pkg.operation == 'merge':
+					pkg_info.attr_display.interactive = True
+					if ordered:
+						self.counters.interactive += 1
 
 				if self.include_mask_str():
-					addl += self.gen_mask_str(pkg)
+					pkg_info.attr_display.mask = self.gen_mask_str(pkg)
 
 				if pkg.root_config.settings["ROOT"] != "/":
 					if pkg_info.oldbest:
 						pkg_info.oldbest += " "
 					if self.conf.columns:
-						myprint = self._set_non_root_columns(
-							addl, pkg_info, pkg)
+						myprint = self._set_non_root_columns(pkg, pkg_info)
 					else:
 						pkg_str = pkg.cpv
-						if self.conf.verbosity == 3 and not self.quiet_repo_display and (self.verbose_main_repo_display or
-							any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
-							pkg_str += _repo_separator + pkg.repo
+						if self.conf.verbosity == 3:
+							pkg_str = self._append_slot(pkg_str, pkg, pkg_info)
+							pkg_str = self._append_repository(pkg_str, pkg, pkg_info)
 						if not pkg_info.merge:
 							addl = self.empty_space_in_brackets()
 							myprint = "[%s%s] " % (
@@ -873,17 +883,16 @@ class Display(object):
 								)
 						else:
 							myprint = "[%s %s] " % (
-								self.pkgprint(pkg.type_name, pkg_info), addl)
+								self.pkgprint(pkg.type_name, pkg_info),
+								pkg_info.attr_display)
 						myprint += self.indent + \
 							self.pkgprint(pkg_str, pkg_info) + " " + \
 							pkg_info.oldbest + darkgreen("to " + pkg.root)
 				else:
 					if self.conf.columns:
-						myprint = self._set_root_columns(
-							addl, pkg_info, pkg)
+						myprint = self._set_root_columns(pkg, pkg_info)
 					else:
-						myprint = self._set_no_columns(
-							pkg, pkg_info, addl)
+						myprint = self._set_no_columns(pkg, pkg_info)
 
 				if self.conf.columns and pkg.operation == "uninstall":
 					continue
@@ -908,3 +917,105 @@ class Display(object):
 			self.print_changelog()
 
 		return os.EX_OK
+
+
+def format_unmatched_atom(pkg, atom, pkg_use_enabled):
+	"""
+	Returns two strings. The first string contains the
+	'atom' with parts of the atom colored, which 'pkg'
+	doesn't match. The second string has the same number
+	of characters as the first one, but consists of only
+	white space or ^. The ^ characters have the same position
+	as the colored parts of the first string.
+	"""
+	# Things to check:
+	#	1. Version
+	#	2. cp
+	#   3. slot/sub_slot
+	#	4. repository
+	#	5. USE
+
+	highlight = set()
+
+	def perform_coloring():
+		atom_str = ""
+		marker_str = ""
+		for ii, x in enumerate(atom):
+			if ii in highlight:
+				atom_str += colorize("BAD", x)
+				marker_str += "^"
+			else:
+				atom_str += x
+				marker_str += " "
+		return atom_str, marker_str
+
+	if atom.cp != pkg.cp:
+		# Highlight the cp part only.
+		ii = atom.find(atom.cp)
+		highlight.update(range(ii, ii + len(atom.cp)))
+		return perform_coloring()
+
+	version_atom = atom.without_repo.without_slot.without_use
+	version_atom_set = InternalPackageSet(initial_atoms=(version_atom,))
+	highlight_version = not bool(version_atom_set.findAtomForPackage(pkg,
+		modified_use=pkg_use_enabled(pkg)))
+
+	highlight_slot = False
+	if (atom.slot and atom.slot != pkg.slot) or \
+		(atom.sub_slot and atom.sub_slot != pkg.sub_slot):
+		highlight_slot = True
+
+	if highlight_version:
+		op = atom.operator
+		ver = None
+		if atom.cp != atom.cpv:
+			ver = cpv_getversion(atom.cpv)
+
+		if op == "=*":
+			op = "="
+			ver += "*"
+
+		if op is not None:
+			highlight.update(range(len(op)))
+
+		if ver is not None:
+			start = atom.rfind(ver)
+			end = start + len(ver)
+			highlight.update(range(start, end))
+
+	if highlight_slot:
+		slot_str = ":" + atom.slot
+		if atom.sub_slot:
+			slot_str += "/" + atom.sub_slot
+		if atom.slot_operator:
+			slot_str += atom.slot_operator
+		start = atom.find(slot_str)
+		end = start + len(slot_str)
+		highlight.update(range(start, end))
+
+	highlight_use = set()
+	if atom.use:
+		use_atom = "%s[%s]" % (atom.cp, str(atom.use))
+		use_atom_set = InternalPackageSet(initial_atoms=(use_atom,))
+		if not use_atom_set.findAtomForPackage(pkg, \
+			modified_use=pkg_use_enabled(pkg)):
+			missing_iuse = pkg.iuse.get_missing_iuse(
+				atom.unevaluated_atom.use.required)
+			if missing_iuse:
+				highlight_use = set(missing_iuse)
+			else:
+				#Use conditionals not met.
+				violated_atom = atom.violated_conditionals(
+					pkg_use_enabled(pkg), pkg.iuse.is_valid_flag)
+				if violated_atom.use is not None:
+					highlight_use = set(violated_atom.use.enabled.union(
+						violated_atom.use.disabled))
+
+	if highlight_use:
+		ii = atom.find("[") + 1
+		for token in atom.use.tokens:
+			if token.lstrip("-!").rstrip("=?") in highlight_use:
+				highlight.update(range(ii, ii + len(token)))
+			ii += len(token) + 1
+
+	return perform_coloring()

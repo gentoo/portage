@@ -1,0 +1,13 @@
+#!/usr/bin/python -b
+# Copyright 2013-2014 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+
+import sys
+
+import portage
+portage._internal_caller = True
+portage._disable_legacy_globals()
+from portage._emirrordist.main import emirrordist_main
+
+if __name__ == "__main__":
+	sys.exit(emirrordist_main(sys.argv[1:]))

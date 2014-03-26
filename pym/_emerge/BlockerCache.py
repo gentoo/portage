@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -62,7 +62,9 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 			self._cache_data = mypickle.load()
 			f.close()
 			del f
-		except (AttributeError, EOFError, EnvironmentError, ValueError, pickle.UnpicklingError) as e:
+		except (SystemExit, KeyboardInterrupt):
+			raise
+		except Exception as e:
 			if isinstance(e, EnvironmentError) and \
 				getattr(e, 'errno', None) in (errno.ENOENT, errno.EACCES):
 				pass
@@ -126,9 +128,9 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 		self._modified.clear()
 
 	def flush(self):
-		"""If the current user has permission and the internal blocker cache
+		"""If the current user has permission and the internal blocker cache has
 		been updated, save it to disk and mark it unmodified.  This is called
-		by emerge after it has proccessed blockers for all installed packages.
+		by emerge after it has processed blockers for all installed packages.
 		Currently, the cache is only written if the user has superuser
 		privileges (since that's required to obtain a lock), but all users
 		have read access and benefit from faster blocker lookups (as long as

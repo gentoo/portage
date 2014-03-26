@@ -1,9 +1,12 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """Contains private support functions for the Display class
 in output.py
 """
+
+from __future__ import unicode_literals
+
 __all__ = (
 	)
 
@@ -15,9 +18,10 @@ from portage import os
 from portage import _encodings, _unicode_encode
 from portage._sets.base import InternalPackageSet
 from portage.output import (blue, bold, colorize, create_color_func,
-	green, red, teal, yellow)
+	green, red, teal, turquoise, yellow)
 bad = create_color_func("BAD")
 from portage.util import shlex_split, writemsg
+from portage.util.SlotObject import SlotObject
 from portage.versions import catpkgsplit
 
 from _emerge.Blocker import Blocker
@@ -223,7 +227,7 @@ class _DisplayConfig(object):
 		self.reinstall_nodes = dynamic_config._reinstall_nodes
 		self.digraph = dynamic_config.digraph
 		self.blocker_uninstalls = dynamic_config._blocker_uninstalls
-		self.slot_pkg_map = dynamic_config._slot_pkg_map
+		self.package_tracker = dynamic_config._package_tracker
 		self.set_nodes = dynamic_config._set_nodes
 
 		self.pkg_use_enabled = depgraph._pkg_use_enabled
@@ -245,10 +249,9 @@ def _format_size(mysize):
 		mystr=mystr[:mycount]+","+mystr[mycount:]
 	return mystr+" kB"
 
-
 def _create_use_string(conf, name, cur_iuse, iuse_forced, cur_use,
 	old_iuse, old_use,
-	is_new, reinst_flags):
+	is_new, feature_flags, reinst_flags):
 
 	if not conf.print_use_string:
 		return ""
@@ -266,6 +269,7 @@ def _create_use_string(conf, name, cur_iuse, iuse_forced, cur_use,
 	any_iuse = cur_iuse.union(old_iuse)
 	any_iuse = list(any_iuse)
 	any_iuse.sort()
+
 	for flag in any_iuse:
 		flag_str = None
 		isEnabled = False
@@ -299,7 +303,9 @@ def _create_use_string(conf, name, cur_iuse, iuse_forced, cur_use,
 			elif flag in old_use:
 				flag_str = green("-" + flag) + "*"
 		if flag_str:
-			if flag in iuse_forced:
+			if flag in feature_flags:
+				flag_str = "{" + flag_str + "}"
+			elif flag in iuse_forced:
 				flag_str = "(" + flag_str + ")"
 			if isEnabled:
 				enabled.append(flag_str)
@@ -364,8 +370,9 @@ def _tree_display(conf, mylist):
 		# If the uninstall task did not need to be executed because
 		# of an upgrade, display Blocker -> Upgrade edges since the
 		# corresponding Blocker -> Uninstall edges will not be shown.
-		upgrade_node = \
-			conf.slot_pkg_map[uninstall.root].get(uninstall.slot_atom)
+		upgrade_node = next(conf.package_tracker.match(
+			uninstall.root, uninstall.slot_atom), None)
+
 		if upgrade_node is not None and \
 			uninstall not in executed_uninstalls:
 			for blocker in uninstall_parents:
@@ -611,9 +618,10 @@ class PkgInfo(object):
 	information about the pkg being printed.
 	"""
 	
-	__slots__ = ("built", "cp", "ebuild_path", "fetch_symbol", "merge",
-		"oldbest", "oldbest_list", "operation", "ordered",
-		"repo_name", "repo_path_real", "system", "use", "ver", "world")
+	__slots__ = ("attr_display", "built", "cp",
+		"ebuild_path", "fetch_symbol", "merge",
+		"oldbest", "oldbest_list", "operation", "ordered", "previous_pkg",
+		"repo_name", "repo_path_real", "slot", "sub_slot", "system", "use", "ver", "world")
 
 
 	def __init__(self):
@@ -626,9 +634,74 @@ class PkgInfo(object):
 		self.oldbest_list = []
 		self.operation = ''
 		self.ordered = False
+		self.previous_pkg = None
 		self.repo_path_real = ''
 		self.repo_name = ''
+		self.slot = ''
+		self.sub_slot = ''
 		self.system = False
 		self.use = ''
 		self.ver = ''
 		self.world = False
+		self.attr_display = PkgAttrDisplay()
+
+class PkgAttrDisplay(SlotObject):
+
+	__slots__ = ("downgrade", "fetch_restrict", "fetch_restrict_satisfied",
+		"force_reinstall",
+		"interactive", "mask", "new", "new_slot", "new_version", "replace")
+
+	def __str__(self):
+		output = []
+
+		if self.interactive:
+			output.append(colorize("WARN", "I"))
+		else:
+			output.append(" ")
+
+		if self.new or self.force_reinstall:
+			if self.force_reinstall:
+				output.append(red("r"))
+			else:
+				output.append(green("N"))
+		else:
+			output.append(" ")
+
+		if self.new_slot or self.replace:
+			if self.replace:
+				output.append(yellow("R"))
+			else:
+				output.append(green("S"))
+		else:
+			output.append(" ")
+
+		if self.fetch_restrict or self.fetch_restrict_satisfied:
+			if self.fetch_restrict_satisfied:
+				output.append(green("f"))
+			else:
+				output.append(red("F"))
+		else:
+			output.append(" ")
+
+		if self.new_version:
+			output.append(turquoise("U"))
+		else:
+			output.append(" ")
+
+		if self.downgrade:
+			output.append(blue("D"))
+		else:
+			output.append(" ")
+
+		if self.mask is not None:
+			output.append(self.mask)
+
+		return "".join(output)
+
+	if sys.hexversion < 0x3000000:
+
+		__unicode__ = __str__
+
+		def __str__(self):
+			return _unicode_encode(self.__unicode__(),
+				encoding=_encodings['content'])

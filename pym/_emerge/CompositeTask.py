@@ -142,6 +142,10 @@ class CompositeTask(AsynchronousTask):
 		a task.
 
 		"""
+		try:
+			task.scheduler = self.scheduler
+		except AttributeError:
+			pass
 		task.addExitListener(exit_handler)
 		self._current_task = task
 		task.start()

@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
@@ -15,11 +15,11 @@ def create_depgraph_params(myopts, myaction):
 	# complete:  completely account for all known dependencies
 	# remove:    build graph for use in removing packages
 	# rebuilt_binaries: replace installed packages with rebuilt binaries
-	# rebuild_if_new_slot_abi: rebuild or reinstall packages when
-	#	SLOT/ABI := operator dependencies can be satisfied by a newer
-	#	SLOT/ABI, so that older packages slots will become eligible for
+	# rebuild_if_new_slot: rebuild or reinstall packages when
+	#	slot/sub-slot := operator dependencies can be satisfied by a newer
+	#	slot/sub-slot, so that older packages slots will become eligible for
 	#	removal by the --depclean action as soon as possible
-	# ignore_built_slot_abi_deps: ignore the SLOT/ABI := operator parts
+	# ignore_built_slot_operator_deps: ignore the slot/sub-slot := operator parts
 	#	of dependencies that have been recorded when packages where built
 	myparams = {"recurse" : True}
 
@@ -27,9 +27,9 @@ def create_depgraph_params(myopts, myaction):
 	if bdeps is not None:
 		myparams["bdeps"] = bdeps
 
-	ignore_built_slot_abi_deps = myopts.get("--ignore-built-slot-abi-deps")
-	if ignore_built_slot_abi_deps is not None:
-		myparams["ignore_built_slot_abi_deps"] = ignore_built_slot_abi_deps
+	ignore_built_slot_operator_deps = myopts.get("--ignore-built-slot-operator-deps")
+	if ignore_built_slot_operator_deps is not None:
+		myparams["ignore_built_slot_operator_deps"] = ignore_built_slot_operator_deps
 
 	dynamic_deps = myopts.get("--dynamic-deps")
 	if dynamic_deps is not None:
@@ -41,11 +41,12 @@ def create_depgraph_params(myopts, myaction):
 		myparams["selective"] = True
 		return myparams
 
-	rebuild_if_new_slot_abi = myopts.get('--rebuild-if-new-slot-abi')
-	if rebuild_if_new_slot_abi is not None:
-		myparams['rebuild_if_new_slot_abi'] = rebuild_if_new_slot_abi
+	rebuild_if_new_slot = myopts.get('--rebuild-if-new-slot')
+	if rebuild_if_new_slot is not None:
+		myparams['rebuild_if_new_slot'] = rebuild_if_new_slot
 
 	if "--update" in myopts or \
+		"--newrepo" in myopts or \
 		"--newuse" in myopts or \
 		"--reinstall" in myopts or \
 		"--noreplace" in myopts or \

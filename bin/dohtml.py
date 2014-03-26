@@ -1,5 +1,5 @@
-#!/usr/bin/python
-# Copyright 1999-2012 Gentoo Foundation
+#!/usr/bin/python -b
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 #
@@ -31,13 +31,25 @@
 from __future__ import print_function
 
 import os
+import shutil
 import sys
 
+from portage.util import normalize_path
+
+# Change back to original cwd _after_ all imports (bug #469338).
+os.chdir(os.environ["__PORTAGE_HELPER_CWD"])
+
 def dodir(path):
-	os.spawnlp(os.P_WAIT, "install", "install", "-d", path)
+	try:
+		os.makedirs(path, 0o755)
+	except OSError:
+		if not os.path.isdir(path):
+			raise
+		os.chmod(path, 0o755)
 
 def dofile(src,dst):
-	os.spawnlp(os.P_WAIT, "install", "install", "-m0644", src, dst)
+	shutil.copy(src, dst)
+	os.chmod(dst, 0o644)
 
 def eqawarn(lines):
 	cmd = "source '%s/isolated-functions.sh' ; " % \
@@ -55,14 +67,18 @@ unwarned_skipped_files = os.environ.get("PORTAGE_DOHTML_UNWARNED_SKIPPED_FILES",
 def install(basename, dirname, options, prefix=""):
 	fullpath = basename
 	if prefix:
-		fullpath = prefix + "/" + fullpath
+		fullpath = os.path.join(prefix, fullpath)
 	if dirname:
-		fullpath = dirname + "/" + fullpath
+		fullpath = os.path.join(dirname, fullpath)
 
 	if options.DOCDESTTREE:
-		destdir = options.ED + "usr/share/doc/" + options.PF + "/" + options.DOCDESTTREE + "/" + options.doc_prefix + "/" + prefix
+		desttree = options.DOCDESTTREE
 	else:
-		destdir = options.ED + "usr/share/doc/" + options.PF + "/html/" + options.doc_prefix + "/" + prefix
+		desttree = "html"
+
+	destdir = os.path.join(options.ED, "usr", "share", "doc",
+		options.PF.lstrip(os.sep), desttree.lstrip(os.sep),
+		options.doc_prefix.lstrip(os.sep), prefix).rstrip(os.sep)
 
 	if not os.path.exists(fullpath):
 		sys.stderr.write("!!! dohtml: %s does not exist\n" % fullpath)
@@ -71,14 +87,15 @@ def install(basename, dirname, options, prefix=""):
 		ext = os.path.splitext(basename)[1][1:]
 		if ext in options.allowed_exts or basename in options.allowed_files:
 			dodir(destdir)
-			dofile(fullpath, destdir + "/" + basename)
+			dofile(fullpath, os.path.join(destdir, basename))
 		elif warn_on_skipped_files and ext not in unwarned_skipped_extensions and basename not in unwarned_skipped_files:
 			skipped_files.append(fullpath)
 	elif options.recurse and os.path.isdir(fullpath) and \
 	     basename not in options.disallowed_dirs:
 		for i in os.listdir(fullpath):
 			pfx = basename
-			if prefix: pfx = prefix + "/" + pfx
+			if prefix:
+				pfx = os.path.join(prefix, pfx)
 			install(i, dirname, options, pfx)
 	elif not options.recurse and os.path.isdir(fullpath):
 		global skipped_directories
@@ -97,16 +114,22 @@ class OptionsClass:
 
 		if "PF" in os.environ:
 			self.PF = os.environ["PF"]
+			if self.PF:
+				self.PF = normalize_path(self.PF)
 		if "force-prefix" not in os.environ.get("FEATURES", "").split() and \
 			os.environ.get("EAPI", "0") in ("0", "1", "2"):
 			self.ED = os.environ.get("D", "")
 		else:
 			self.ED = os.environ.get("ED", "")
+		if self.ED:
+			self.ED = normalize_path(self.ED)
 		if "_E_DOCDESTTREE_" in os.environ:
 			self.DOCDESTTREE = os.environ["_E_DOCDESTTREE_"]
+			if self.DOCDESTTREE:
+				self.DOCDESTTREE = normalize_path(self.DOCDESTTREE)
 
 		self.allowed_exts = ['css', 'gif', 'htm', 'html', 'jpeg', 'jpg', 'js', 'png']
-		if os.environ.get("EAPI", "0") in ("4-python",):
+		if os.environ.get("EAPI", "0") in ("4-python", "5-progress"):
 			self.allowed_exts += ['ico', 'svg', 'xhtml', 'xml']
 		self.allowed_files = []
 		self.disallowed_dirs = ['CVS']
@@ -153,6 +176,8 @@ def parse_args():
 				sys.exit(0)
 			elif arg == "-p":
 				options.doc_prefix = sys.argv[x]
+				if options.doc_prefix:
+					options.doc_prefix = normalize_path(options.doc_prefix)
 			else:
 				values = sys.argv[x].split(",")
 				if arg == "-A":
@@ -179,8 +204,17 @@ def main():
 		print("Allowed files :", options.allowed_files)
 
 	success = False
+	endswith_slash = (os.sep, os.sep + ".")
 
 	for x in args:
+		trailing_slash = x.endswith(endswith_slash)
+		x = normalize_path(x)
+		if trailing_slash:
+			# Modify behavior of basename and dirname
+			# as noted in bug #425214, causing foo/ to
+			# behave similarly to the way that foo/*
+			# behaves.
+			x += os.sep
 		basename = os.path.basename(x)
 		dirname  = os.path.dirname(x)
 		success |= install(basename, dirname, options)

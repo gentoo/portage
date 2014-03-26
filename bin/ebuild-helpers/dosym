@@ -5,12 +5,13 @@
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 if [[ $# -ne 2 ]] ; then
-	helpers_die "${0##*/}: two arguments needed"
+	__helpers_die "${0##*/}: two arguments needed"
 	exit 1
 fi
 
-[[ " ${FEATURES} " == *" force-prefix "* ]] || \
-	case "$EAPI" in 0|1|2) ED=${D} ;; esac
+if ! ___eapi_has_prefix_variables; then
+	ED=${D}
+fi
 
 if [[ ${2} == */ ]] || \
 	[[ -d ${ED}${2} && ! -L ${ED}${2} ]] ; then
@@ -26,5 +27,5 @@ target="${1}"
 ln -snf "${target}" "${ED}${2}"
 
 ret=$?
-[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
+[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
 exit $ret

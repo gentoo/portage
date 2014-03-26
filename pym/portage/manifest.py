@@ -1,15 +1,19 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 import errno
 import io
 import re
+import sys
 import warnings
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum:hashfunc_map,perform_multiple_checksums,' + \
-		'verify_all,_filter_unaccelarated_hashes',
+		'verify_all,_apply_hash_filter,_filter_unaccelarated_hashes',
+	'portage.repository.config:_find_invalid_path_char',
 	'portage.util:write_atomic',
 )
 
@@ -24,8 +28,16 @@ from portage.const import (MANIFEST1_HASH_FUNCTIONS, MANIFEST2_HASH_DEFAULTS,
 	MANIFEST2_HASH_FUNCTIONS, MANIFEST2_IDENTIFIERS, MANIFEST2_REQUIRED_HASH)
 from portage.localization import _
 
-# Characters prohibited by repoman's file.name check.
-_prohibited_filename_chars_re = re.compile(r'[^a-zA-Z0-9._\-+:]')
+_manifest_re = re.compile(
+	r'^(' + '|'.join(MANIFEST2_IDENTIFIERS) + r') (.*)( \d+( \S+ \S+)+)$',
+	re.UNICODE)
+
+if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
+	_unicode = str
+	basestring = str
+else:
+	_unicode = unicode
 
 class FileNotInManifestException(PortageException):
 	pass
@@ -38,15 +50,10 @@ def manifest2AuxfileFilter(filename):
 	for x in mysplit:
 		if x[:1] == '.':
 			return False
-		if _prohibited_filename_chars_re.search(x) is not None:
-			return False
 	return not filename[:7] == 'digest-'
 
 def manifest2MiscfileFilter(filename):
-	filename = filename.strip(os.sep)
-	if _prohibited_filename_chars_re.search(filename) is not None:
-		return False
-	return not (filename in ["CVS", ".svn", "files", "Manifest"] or filename.endswith(".ebuild"))
+	return not (filename == "Manifest" or filename.endswith(".ebuild"))
 
 def guessManifestFileType(filename):
 	""" Perform a best effort guess of which type the given filename is, avoid using this if possible """
@@ -67,18 +74,17 @@ def guessThinManifestFileType(filename):
 		return None
 	return "DIST"
 
-def parseManifest2(mysplit):
+def parseManifest2(line):
+	if not isinstance(line, basestring):
+		line = ' '.join(line)
 	myentry = None
-	if len(mysplit) > 4 and mysplit[0] in MANIFEST2_IDENTIFIERS:
-		mytype = mysplit[0]
-		myname = mysplit[1]
-		try:
-			mysize = int(mysplit[2])
-		except ValueError:
-			return None
-		myhashes = dict(zip(mysplit[3::2], mysplit[4::2]))
-		myhashes["size"] = mysize
-		myentry = Manifest2Entry(type=mytype, name=myname, hashes=myhashes)
+	match = _manifest_re.match(line)
+	if match is not None:
+		tokens = match.group(3).split()
+		hashes = dict(zip(tokens[1::2], tokens[2::2]))
+		hashes["size"] = int(tokens[0])
+		myentry = Manifest2Entry(type=match.group(1),
+			name=match.group(2), hashes=hashes)
 	return myentry
 
 class ManifestEntry(object):
@@ -108,11 +114,20 @@ class Manifest2Entry(ManifestEntry):
 	def __ne__(self, other):
 		return not self.__eq__(other)
 
+	if sys.hexversion < 0x3000000:
+
+		__unicode__ = __str__
+
+		def __str__(self):
+			return _unicode_encode(self.__unicode__(),
+				encoding=_encodings['repo.content'], errors='strict')
+
 class Manifest(object):
 	parsers = (parseManifest2,)
-	def __init__(self, pkgdir, distdir, fetchlist_dict=None,
+	def __init__(self, pkgdir, distdir=None, fetchlist_dict=None,
 		manifest1_compat=DeprecationWarning, from_scratch=False, thin=False,
-			allow_missing=False, allow_create=True, hashes=None):
+		allow_missing=False, allow_create=True, hashes=None,
+		find_invalid_path_char=None):
 		""" Create new Manifest instance for package in pkgdir.
 		    Do not parse Manifest file if from_scratch == True (only for internal use)
 			The fetchlist_dict parameter is required only for generation of
@@ -125,6 +140,9 @@ class Manifest(object):
 				"portage.manifest.Manifest constructor is deprecated.",
 				DeprecationWarning, stacklevel=2)
 
+		if find_invalid_path_char is None:
+			find_invalid_path_char = _find_invalid_path_char
+		self._find_invalid_path_char = find_invalid_path_char
 		self.pkgdir = _unicode_decode(pkgdir).rstrip(os.sep) + os.sep
 		self.fhashdict = {}
 		self.hashes = set()
@@ -173,13 +191,12 @@ class Manifest(object):
 		"""Parse a manifest.  If myhashdict is given then data will be added too it.
 		   Otherwise, a new dict will be created and returned."""
 		try:
-			fd = io.open(_unicode_encode(file_path,
+			with io.open(_unicode_encode(file_path,
 				encoding=_encodings['fs'], errors='strict'), mode='r',
-				encoding=_encodings['repo.content'], errors='replace')
-			if myhashdict is None:
-				myhashdict = {}
-			self._parseDigests(fd, myhashdict=myhashdict, **kwargs)
-			fd.close()
+				encoding=_encodings['repo.content'], errors='replace') as f:
+				if myhashdict is None:
+					myhashdict = {}
+				self._parseDigests(f, myhashdict=myhashdict, **kwargs)
 			return myhashdict
 		except (OSError, IOError) as e:
 			if e.errno == errno.ENOENT:
@@ -198,9 +215,8 @@ class Manifest(object):
 		"""Parse manifest lines and return a list of manifest entries."""
 		for myline in mylines:
 			myentry = None
-			mysplit = myline.split()
 			for parser in self.parsers:
-				myentry = parser(mysplit)
+				myentry = parser(myline)
 				if myentry is not None:
 					yield myentry
 					break # go to the next line
@@ -255,9 +271,12 @@ class Manifest(object):
 						(MANIFEST2_REQUIRED_HASH, t, f))
 
 	def write(self, sign=False, force=False):
-		""" Write Manifest instance to disk, optionally signing it """
+		""" Write Manifest instance to disk, optionally signing it. Returns
+		True if the Manifest is actually written, and False if the write
+		is skipped due to existing Manifest being identical."""
+		rval = False
 		if not self.allow_create:
-			return
+			return rval
 		self.checkIntegrity()
 		try:
 			myentries = list(self._createManifestEntries())
@@ -289,7 +308,8 @@ class Manifest(object):
 					# thin manifests with no DIST entries, myentries is
 					# non-empty for all currently known use cases.
 					write_atomic(self.getFullname(), "".join("%s\n" %
-						str(myentry) for myentry in myentries))
+						_unicode(myentry) for myentry in myentries))
+					rval = True
 				else:
 					# With thin manifest, there's no need to have
 					# a Manifest file if there are no DIST entries.
@@ -298,6 +318,7 @@ class Manifest(object):
 					except OSError as e:
 						if e.errno != errno.ENOENT:
 							raise
+					rval = True
 
 			if sign:
 				self.sign()
@@ -305,6 +326,7 @@ class Manifest(object):
 			if e.errno == errno.EACCES:
 				raise PermissionDenied(str(e))
 			raise
+		return rval
 
 	def sign(self):
 		""" Sign the Manifest """
@@ -363,10 +385,11 @@ class Manifest(object):
 			distfilehashes = self.fhashdict["DIST"]
 		else:
 			distfilehashes = {}
-		self.__init__(self.pkgdir, self.distdir,
+		self.__init__(self.pkgdir, distdir=self.distdir,
 			fetchlist_dict=self.fetchlist_dict, from_scratch=True,
 			thin=self.thin, allow_missing=self.allow_missing,
-			allow_create=self.allow_create, hashes=self.hashes)
+			allow_create=self.allow_create, hashes=self.hashes,
+			find_invalid_path_char=self._find_invalid_path_char)
 		pn = os.path.basename(self.pkgdir.rstrip(os.path.sep))
 		cat = self._pkgdir_category()
 
@@ -461,7 +484,8 @@ class Manifest(object):
 			if pf is not None:
 				mytype = "EBUILD"
 				cpvlist.append(pf)
-			elif manifest2MiscfileFilter(f):
+			elif self._find_invalid_path_char(f) == -1 and \
+				manifest2MiscfileFilter(f):
 				mytype = "MISC"
 			else:
 				continue
@@ -480,7 +504,8 @@ class Manifest(object):
 				full_path = os.path.join(parentdir, f)
 				recursive_files.append(full_path[cut_len:])
 		for f in recursive_files:
-			if not manifest2AuxfileFilter(f):
+			if self._find_invalid_path_char(f) != -1 or \
+				not manifest2AuxfileFilter(f):
 				continue
 			self.fhashdict["AUX"][f] = perform_multiple_checksums(
 				os.path.join(self.pkgdir, "files", f.lstrip(os.sep)), self.hashes)
@@ -502,14 +527,17 @@ class Manifest(object):
 		for t in MANIFEST2_IDENTIFIERS:
 			self.checkTypeHashes(t, ignoreMissingFiles=ignoreMissingFiles)
 	
-	def checkTypeHashes(self, idtype, ignoreMissingFiles=False):
+	def checkTypeHashes(self, idtype, ignoreMissingFiles=False, hash_filter=None):
 		for f in self.fhashdict[idtype]:
-			self.checkFileHashes(idtype, f, ignoreMissing=ignoreMissingFiles)
+			self.checkFileHashes(idtype, f, ignoreMissing=ignoreMissingFiles,
+				hash_filter=hash_filter)
 	
-	def checkFileHashes(self, ftype, fname, ignoreMissing=False):
+	def checkFileHashes(self, ftype, fname, ignoreMissing=False, hash_filter=None):
+		digests = _filter_unaccelarated_hashes(self.fhashdict[ftype][fname])
+		if hash_filter is not None:
+			digests = _apply_hash_filter(digests, hash_filter)
 		try:
-			ok, reason = verify_all(self._getAbsname(ftype, fname),
-				_filter_unaccelarated_hashes(self.fhashdict[ftype][fname]))
+			ok, reason = verify_all(self._getAbsname(ftype, fname), digests)
 			if not ok:
 				raise DigestException(tuple([self._getAbsname(ftype, fname)]+list(reason)))
 			return ok, reason

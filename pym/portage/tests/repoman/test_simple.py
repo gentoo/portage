@@ -1,4 +1,4 @@
-# Copyright 2011 Gentoo Foundation
+# Copyright 2011-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -76,9 +76,26 @@ class SimpleRepomanTestCase(TestCase):
 
 		profiles = (
 			("x86", "default/linux/x86/test_profile", "stable"),
+			("x86", "default/linux/x86/test_dev", "dev"),
+			("x86", "default/linux/x86/test_exp", "exp"),
 		)
 
+		profile = {
+			"eapi": ("5",),
+			"package.use.stable.mask": ("dev-libs/A flag",)
+		}
+
 		ebuilds = {
+			"dev-libs/A-0": {
+				"COPYRIGHT_HEADER" : copyright_header,
+				"DESCRIPTION" : "Desc goes here",
+				"EAPI" : "5",
+				"HOMEPAGE" : "http://example.com",
+				"IUSE" : "flag",
+				"KEYWORDS": "x86",
+				"LICENSE": "GPL-2",
+				"RDEPEND": "flag? ( dev-libs/B[flag] )",
+			},
 			"dev-libs/A-1": {
 				"COPYRIGHT_HEADER" : copyright_header,
 				"DESCRIPTION" : "Desc goes here",
@@ -98,6 +115,17 @@ class SimpleRepomanTestCase(TestCase):
 				"KEYWORDS": "~x86",
 				"LICENSE": "GPL-2",
 			},
+			"dev-libs/C-0": {
+				"COPYRIGHT_HEADER" : copyright_header,
+				"DESCRIPTION" : "Desc goes here",
+				"EAPI" : "4",
+				"HOMEPAGE" : "http://example.com",
+				"IUSE" : "flag",
+				# must be unstable, since dev-libs/A[flag] is stable masked
+				"KEYWORDS": "~x86",
+				"LICENSE": "GPL-2",
+				"RDEPEND": "flag? ( dev-libs/A[flag] )",
+			},
 		}
 		licenses = ["GPL-2"]
 		arch_list = ["x86"]
@@ -107,11 +135,18 @@ class SimpleRepomanTestCase(TestCase):
 				"dev-libs/A",
 				{
 					"herd" : "base-system",
-					"flags" : "<flag name='flag'>Description of how USE='flag' affects this package</flag>",
+					"flags" : "<flag name='flag' restrict='&gt;=dev-libs/A-0'>Description of how USE='flag' affects this package</flag>",
 				},
 			),
 			(
 				"dev-libs/B",
+				{
+					"herd" : "no-herd",
+					"flags" : "<flag name='flag'>Description of how USE='flag' affects this package</flag>",
+				},
+			),
+			(
+				"dev-libs/C",
 				{
 					"herd" : "no-herd",
 					"flags" : "<flag name='flag'>Description of how USE='flag' affects this package</flag>",
@@ -124,18 +159,18 @@ class SimpleRepomanTestCase(TestCase):
 		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds,
-			repo_configs=repo_configs, debug=debug)
+			profile=profile, repo_configs=repo_configs, debug=debug)
 		settings = playground.settings
 		eprefix = settings["EPREFIX"]
 		eroot = settings["EROOT"]
 		portdb = playground.trees[playground.eroot]["porttree"].dbapi
 		homedir = os.path.join(eroot, "home")
 		distdir = os.path.join(eprefix, "distdir")
-		portdir = settings["PORTDIR"]
-		profiles_dir = os.path.join(portdir, "profiles")
-		license_dir = os.path.join(portdir, "licenses")
+		test_repo_location = settings.repositories["test_repo"].location
+		profiles_dir = os.path.join(test_repo_location, "profiles")
+		license_dir = os.path.join(test_repo_location, "licenses")
 
-		repoman_cmd = (portage._python_interpreter, "-Wd",
+		repoman_cmd = (portage._python_interpreter, "-b", "-Wd",
 			os.path.join(PORTAGE_BIN_PATH, "repoman"))
 
 		git_binary = find_binary("git")
@@ -159,6 +194,7 @@ class SimpleRepomanTestCase(TestCase):
 			("", git_cmd + ("init-db",)),
 			("", git_cmd + ("add", ".")),
 			("", git_cmd + ("commit", "-a", "-m", "add whole repo")),
+			("", repoman_cmd + ("full", "-d")),
 			("", cp_cmd + (test_ebuild, test_ebuild[:-8] + "2.ebuild")),
 			("", git_cmd + ("add", test_ebuild[:-8] + "2.ebuild")),
 			("", repoman_cmd + ("commit", "-m", "bump to version 2")),
@@ -192,23 +228,35 @@ class SimpleRepomanTestCase(TestCase):
 			"PATH" : os.environ["PATH"],
 			"PORTAGE_GRPNAME" : os.environ["PORTAGE_GRPNAME"],
 			"PORTAGE_USERNAME" : os.environ["PORTAGE_USERNAME"],
-			"PORTDIR" : portdir,
+			"PORTAGE_REPOSITORIES" : settings.repositories.config_string(),
 			"PYTHONPATH" : pythonpath,
 		}
 
 		if os.environ.get("SANDBOX_ON") == "1":
 			# avoid problems from nested sandbox instances
-			env["FEATURES"] = "-sandbox"
+			env["FEATURES"] = "-sandbox -usersandbox"
 
 		dirs = [homedir, license_dir, profiles_dir, distdir]
 		try:
 			for d in dirs:
 				ensure_dirs(d)
-			with open(os.path.join(portdir, "skel.ChangeLog"), 'w') as f:
+			with open(os.path.join(test_repo_location, "skel.ChangeLog"), 'w') as f:
 				f.write(copyright_header)
 			with open(os.path.join(profiles_dir, "profiles.desc"), 'w') as f:
 				for x in profiles:
 					f.write("%s %s %s\n" % x)
+
+			# ResolverPlayground only created the first profile,
+			# so create the remaining ones.
+			for x in profiles[1:]:
+				sub_profile_dir = os.path.join(profiles_dir, x[1])
+				ensure_dirs(sub_profile_dir)
+				for config_file, lines in profile.items():
+					file_name = os.path.join(sub_profile_dir, config_file)
+					with open(file_name, "w") as f:
+						for line in lines:
+							f.write("%s\n" % line)
+
 			for x in licenses:
 				open(os.path.join(license_dir, x), 'wb').close()
 			with open(os.path.join(profiles_dir, "arch.list"), 'w') as f:
@@ -218,12 +266,12 @@ class SimpleRepomanTestCase(TestCase):
 				for k, v in use_desc:
 					f.write("%s - %s\n" % (k, v))
 			for cp, xml_data in metadata_xml_files:
-				with open(os.path.join(portdir, cp, "metadata.xml"), 'w') as f:
+				with open(os.path.join(test_repo_location, cp, "metadata.xml"), 'w') as f:
 					f.write(playground.metadata_xml_template % xml_data)
-			# Use a symlink to portdir, in order to trigger bugs
+			# Use a symlink to test_repo, in order to trigger bugs
 			# involving canonical vs. non-canonical paths.
-			portdir_symlink = os.path.join(eroot, "portdir_symlink")
-			os.symlink(portdir, portdir_symlink)
+			test_repo_symlink = os.path.join(eroot, "test_repo_symlink")
+			os.symlink(test_repo_location, test_repo_symlink)
 			# repoman checks metadata.dtd for recent CTIME, so copy the file in
 			# order to ensure that the CTIME is current
 			shutil.copyfile(metadata_dtd, os.path.join(distdir, "metadata.dtd"))
@@ -238,9 +286,8 @@ class SimpleRepomanTestCase(TestCase):
 				stdout = subprocess.PIPE
 
 			for cwd in ("", "dev-libs", "dev-libs/A", "dev-libs/B"):
-				abs_cwd = os.path.join(portdir_symlink, cwd)
-				proc = subprocess.Popen([portage._python_interpreter, "-Wd",
-					os.path.join(PORTAGE_BIN_PATH, "repoman"), "full"],
+				abs_cwd = os.path.join(test_repo_symlink, cwd)
+				proc = subprocess.Popen(repoman_cmd + ("full",),
 					cwd=abs_cwd, env=env, stdout=stdout)
 
 				if debug:
@@ -258,7 +305,7 @@ class SimpleRepomanTestCase(TestCase):
 
 			if git_binary is not None:
 				for cwd, cmd in git_test:
-					abs_cwd = os.path.join(portdir_symlink, cwd)
+					abs_cwd = os.path.join(test_repo_symlink, cwd)
 					proc = subprocess.Popen(cmd,
 						cwd=abs_cwd, env=env, stdout=stdout)
 

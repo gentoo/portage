@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
@@ -11,7 +11,8 @@ if getloadavg is None:
 		Raises OSError if the load average was unobtainable.
 		"""
 		try:
-			loadavg_str = open('/proc/loadavg').readline()
+			with open('/proc/loadavg') as f:
+				loadavg_str = f.readline()
 		except IOError:
 			# getloadavg() is only supposed to raise OSError, so convert
 			raise OSError('unknown')

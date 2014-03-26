@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
@@ -29,6 +29,10 @@ class MiscFunctionsProcess(AbstractEbuildProcess):
 		AbstractEbuildProcess._start(self)
 
 	def _spawn(self, args, **kwargs):
+
+		if self._dummy_pipe_fd is not None:
+			self.settings["PORTAGE_PIPE_FD"] = str(self._dummy_pipe_fd)
+
 		# Temporarily unset EBUILD_PHASE so that bashrc code doesn't
 		# think this is a real phase.
 		phase_backup = self.settings.pop("EBUILD_PHASE", None)
@@ -37,3 +41,4 @@ class MiscFunctionsProcess(AbstractEbuildProcess):
 		finally:
 			if phase_backup is not None:
 				self.settings["EBUILD_PHASE"] = phase_backup
+			self.settings.pop("PORTAGE_PIPE_FD", None)

@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -13,6 +13,8 @@ class TestCheckRequiredUse(TestCase):
 
 			("|| ( a b c )", ["a", "b", "c"]),
 			("^^ ( a b c )", ["a", "b", "c"]),
+			("?? ( a b c )", ["a", "b", "c"]),
+			("?? ( )", []),
 
 			("|| ( a b ^^ ( d e f ) )", ["a", "b", "d", "e", "f"]),
 			("^^ ( a b || ( d e f ) )", ["a", "b", "d", "e", "f"]),

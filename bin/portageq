@@ -1,15 +1,15 @@
-#!/usr/bin/python -O
-# Copyright 1999-2012 Gentoo Foundation
+#!/usr/bin/python -bO
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
 import signal
 import sys
 # This block ensures that ^C interrupts are handled quietly.
 try:
 
-	def exithandler(signum, frame):
+	def exithandler(signum, _frame):
 		signal.signal(signal.SIGINT, signal.SIG_IGN)
 		signal.signal(signal.SIGTERM, signal.SIG_IGN)
 		sys.exit(128 + signum)
@@ -34,23 +34,22 @@ if os.environ.get("SANDBOX_ON") == "1":
 			":".join(filter(None, sandbox_write))
 	del sandbox_write
 
-try:
-	import portage
-except ImportError:
-	sys.path.insert(0, pym_path)
-	import portage
-del pym_path
-
+sys.path.insert(0, pym_path)
+import portage
+portage._internal_caller = True
 from portage import os
 from portage.eapi import eapi_has_repo_deps
 from portage.util import writemsg, writemsg_stdout
-from portage.output import colormap
+from portage.util._argparse import ArgumentParser
 portage.proxy.lazyimport.lazyimport(globals(),
+	're',
 	'subprocess',
 	'_emerge.Package:Package',
 	'_emerge.RootConfig:RootConfig',
+	'_emerge.is_valid_package_atom:insert_category_into_atom',
 	'portage.dbapi._expand_new_virt:expand_new_virt',
 	'portage._sets.base:InternalPackageSet',
+	'portage.xml.metadata:MetaDataXML'
 )
 
 def eval_atom_use(atom):
@@ -58,6 +57,10 @@ def eval_atom_use(atom):
 		use = frozenset(os.environ['USE'].split())
 		atom = atom.evaluate_conditionals(use)
 	return atom
+
+def uses_eroot(function):
+	function.uses_eroot = True
+	return function
 
 #-----------------------------------------------------------------------------
 #
@@ -80,13 +83,14 @@ def eval_atom_use(atom):
 # and will automaticly add a command by the same name as the function!
 #
 
+@uses_eroot
 def has_version(argv):
 	"""<eroot> <category/package>
 	Return code 0 if it's available, 1 otherwise.
 	"""
 	if (len(argv) < 2):
 		print("ERROR: insufficient parameters!")
-		return 2
+		return 3
 
 	warnings = []
 
@@ -105,9 +109,7 @@ def has_version(argv):
 			try:
 				atom = portage.dep.Atom(argv[1], allow_repo=allow_repo, eapi=eapi)
 			except portage.exception.InvalidAtom as e:
-				warnings.append(
-					portage._unicode_decode("QA Notice: %s: %s") % \
-					('has_version', e))
+				warnings.append("QA Notice: %s: %s" % ('has_version', e))
 		atom = eval_atom_use(atom)
 
 	if warnings:
@@ -125,16 +127,16 @@ def has_version(argv):
 		portage.writemsg("ERROR: Invalid atom: '%s'\n" % argv[1],
 			noiselevel=-1)
 		return 2
-has_version.uses_root = True
 
 
+@uses_eroot
 def best_version(argv):
 	"""<eroot> <category/package>
 	Returns category/package-version (without .ebuild).
 	"""
 	if (len(argv) < 2):
 		print("ERROR: insufficient parameters!")
-		return 2
+		return 3
 
 	warnings = []
 
@@ -153,9 +155,7 @@ def best_version(argv):
 			try:
 				atom = portage.dep.Atom(argv[1], allow_repo=allow_repo, eapi=eapi)
 			except portage.exception.InvalidAtom as e:
-				warnings.append(
-					portage._unicode_decode("QA Notice: %s: %s") % \
-					('best_version', e))
+				warnings.append("QA Notice: %s: %s" % ('best_version', e))
 		atom = eval_atom_use(atom)
 
 	if warnings:
@@ -166,9 +166,9 @@ def best_version(argv):
 		print(portage.best(mylist))
 	except KeyError:
 		return 1
-best_version.uses_root = True
 
 
+@uses_eroot
 def mass_best_version(argv):
 	"""<eroot> [<category/package>]+
 	Returns category/package-version (without .ebuild).
@@ -178,23 +178,25 @@ def mass_best_version(argv):
 		return 2
 	try:
 		for pack in argv[1:]:
-			mylist=portage.db[argv[0]]["vartree"].dbapi.match(pack)
-			print(pack+":"+portage.best(mylist))
+			mylist = portage.db[argv[0]]['vartree'].dbapi.match(pack)
+			print('%s:%s' % (pack, portage.best(mylist)))
 	except KeyError:
 		return 1
-mass_best_version.uses_root = True
 
+
+@uses_eroot
 def metadata(argv):
 	if (len(argv) < 4):
-		print("ERROR: insufficient parameters!", file=sys.stderr)
+		print('ERROR: insufficient parameters!', file=sys.stderr)
 		return 2
 
 	eroot, pkgtype, pkgspec = argv[0:3]
 	metakeys = argv[3:]
 	type_map = {
-		"ebuild":"porttree",
-		"binary":"bintree",
-		"installed":"vartree"}
+		'ebuild': 'porttree',
+		'binary': 'bintree',
+		'installed': 'vartree'
+	}
 	if pkgtype not in type_map:
 		print("Unrecognized package type: '%s'" % pkgtype, file=sys.stderr)
 		return 1
@@ -202,9 +204,9 @@ def metadata(argv):
 	repo = portage.dep.dep_getrepo(pkgspec)
 	pkgspec = portage.dep.remove_slot(pkgspec)
 	try:
-			values = trees[eroot][type_map[pkgtype]].dbapi.aux_get(
-				pkgspec, metakeys, myrepo=repo)
-			writemsg_stdout(''.join('%s\n' % x for x in values), noiselevel=-1)
+		values = trees[eroot][type_map[pkgtype]].dbapi.aux_get(
+			pkgspec, metakeys, myrepo=repo)
+		writemsg_stdout(''.join('%s\n' % x for x in values), noiselevel=-1)
 	except KeyError:
 		print("Package not found: '%s'" % pkgspec, file=sys.stderr)
 		return 1
@@ -216,8 +218,8 @@ Available keys: %s
 """  % ','.join(sorted(x for x in portage.auxdbkeys \
 if not x.startswith('UNUSED_')))
 
-metadata.uses_root = True
 
+@uses_eroot
 def contents(argv):
 	"""<eroot> <category/package>
 	List the files that are installed for a given package, with
@@ -238,8 +240,9 @@ def contents(argv):
 		treetype="vartree", vartree=vartree)
 	writemsg_stdout(''.join('%s\n' % x for x in sorted(db.getcontents())),
 		noiselevel=-1)
-contents.uses_root = True
 
+
+@uses_eroot
 def owners(argv):
 	"""<eroot> [<filename>]+
 	Given a list of files, print the packages that own the files and which
@@ -253,7 +256,6 @@ def owners(argv):
 		sys.stderr.flush()
 		return 2
 
-	from portage import catsplit, dblink
 	eroot = argv[0]
 	vardb = portage.db[eroot]["vartree"].dbapi
 	root = portage.settings['ROOT']
@@ -319,8 +321,8 @@ def owners(argv):
 		return 0
 	return 1
 
-owners.uses_root = True
 
+@uses_eroot
 def is_protected(argv):
 	"""<eroot> <filename>
 	Given a single filename, return code 0 if it's protected, 1 otherwise.
@@ -366,8 +368,8 @@ def is_protected(argv):
 		return 0
 	return 1
 
-is_protected.uses_root = True
 
+@uses_eroot
 def filter_protected(argv):
 	"""<eroot>
 	Read filenames from stdin and write them to stdout if they are protected.
@@ -395,7 +397,6 @@ def filter_protected(argv):
 		settings.get("CONFIG_PROTECT_MASK", ""))
 	protect_obj = ConfigProtect(root, protect, protect_mask)
 
-	protected = 0
 	errors = 0
 
 	for line in sys.stdin:
@@ -417,7 +418,6 @@ def filter_protected(argv):
 			continue
 
 		if protect_obj.isprotected(f):
-			protected += 1
 			out.write("%s\n" % filename)
 	out.flush()
 
@@ -426,8 +426,8 @@ def filter_protected(argv):
 
 	return 0
 
-filter_protected.uses_root = True
 
+@uses_eroot
 def best_visible(argv):
 	"""<eroot> [pkgtype] <atom>
 	Returns category/package-version (without .ebuild).
@@ -465,8 +465,7 @@ def best_visible(argv):
 			noiselevel=-1)
 		return 2
 
-	root_config = RootConfig(portage.settings,
-		portage.db[eroot], None)
+	root_config = RootConfig(portage.settings, portage.db[eroot], None)
 
 	if hasattr(db, "xmatch"):
 		cpv_list = db.xmatch("match-all-cpv-only", atom)
@@ -508,11 +507,11 @@ def best_visible(argv):
 	writemsg_stdout("\n", noiselevel=-1)
 
 	return 1
-best_visible.uses_root = True
 
 
+@uses_eroot
 def mass_best_visible(argv):
-	"""<root> [<type>] [<category/package>]+
+	"""<eroot> [<type>] [<category/package>]+
 	Returns category/package-version (without .ebuild).
 	The pkgtype argument defaults to "ebuild" if unspecified,
 	otherwise it must be one of ebuild, binary, or installed.
@@ -535,9 +534,9 @@ def mass_best_visible(argv):
 			best_visible([root, pkgtype, pack])
 	except KeyError:
 		return 1
-mass_best_visible.uses_root = True
 
 
+@uses_eroot
 def all_best_visible(argv):
 	"""<eroot>
 	Returns all best_visible packages (without .ebuild).
@@ -552,9 +551,9 @@ def all_best_visible(argv):
 		mybest=portage.best(portage.db[argv[0]]["porttree"].dbapi.match(pkg))
 		if mybest:
 			print(mybest)
-all_best_visible.uses_root = True
 
 
+@uses_eroot
 def match(argv):
 	"""<eroot> <atom>
 	Returns a \\n separated list of category/package-version.
@@ -601,8 +600,9 @@ def match(argv):
 		results = vardb.match(atom)
 	for cpv in results:
 		print(cpv)
-match.uses_root = True
 
+
+@uses_eroot
 def expand_virtual(argv):
 	"""<eroot> <atom>
 	Returns a \\n separated list of atoms expanded from a
@@ -637,9 +637,8 @@ def expand_virtual(argv):
 
 	return os.EX_OK
 
-expand_virtual.uses_root = True
 
-def vdb_path(argv):
+def vdb_path(_argv):
 	"""
 	Returns the path used for the var(installed) package database for the
 	set environment/configuration options.
@@ -649,56 +648,79 @@ def vdb_path(argv):
 	out.flush()
 	return os.EX_OK
 
-def gentoo_mirrors(argv):
+def gentoo_mirrors(_argv):
 	"""
 	Returns the mirrors set to use in the portage configuration.
 	"""
 	print(portage.settings["GENTOO_MIRRORS"])
 
 
-def portdir(argv):
+@uses_eroot
+def repositories_configuration(argv):
+	"""<eroot>
+	Returns the configuration of repositories.
+	"""
+	if len(argv) < 1:
+		print("ERROR: insufficient parameters!", file=sys.stderr)
+		return 3
+	sys.stdout.write(portage.db[argv[0]]["vartree"].settings.repositories.config_string())
+	sys.stdout.flush()
+
+@uses_eroot
+def repos_config(argv):
+	"""
+	<eroot>
+	This is an alias for the repositories_configuration command.
+	"""
+	return repositories_configuration(argv)
+
+def portdir(_argv):
 	"""
 	Returns the PORTDIR path.
+	Deprecated in favor of repositories_configuration command.
 	"""
+	print("WARNING: 'portageq portdir' is deprecated. Use 'portageq repositories_configuration' instead.", file=sys.stderr)
 	print(portage.settings["PORTDIR"])
 
 
-def config_protect(argv):
+def config_protect(_argv):
 	"""
 	Returns the CONFIG_PROTECT paths.
 	"""
 	print(portage.settings["CONFIG_PROTECT"])
 
 
-def config_protect_mask(argv):
+def config_protect_mask(_argv):
 	"""
 	Returns the CONFIG_PROTECT_MASK paths.
 	"""
 	print(portage.settings["CONFIG_PROTECT_MASK"])
 
 
-def portdir_overlay(argv):
+def portdir_overlay(_argv):
 	"""
 	Returns the PORTDIR_OVERLAY path.
+	Deprecated in favor of repositories_configuration command.
 	"""
+	print("WARNING: 'portageq portdir_overlay' is deprecated. Use 'portageq repositories_configuration' instead.", file=sys.stderr)
 	print(portage.settings["PORTDIR_OVERLAY"])
 
 
-def pkgdir(argv):
+def pkgdir(_argv):
 	"""
 	Returns the PKGDIR path.
 	"""
 	print(portage.settings["PKGDIR"])
 
 
-def distdir(argv):
+def distdir(_argv):
 	"""
 	Returns the DISTDIR path.
 	"""
 	print(portage.settings["DISTDIR"])
 
 
-def colormap(argv):
+def colormap(_argv):
 	"""
 	Display the color.map as environment variables.
 	"""
@@ -719,11 +741,15 @@ def envvar(argv):
 		return 2
 
 	for arg in argv:
+		if arg in ("PORTDIR", "PORTDIR_OVERLAY", "SYNC"):
+			print("WARNING: 'portageq envvar %s' is deprecated. Use 'portageq repositories_configuration' instead." % arg, file=sys.stderr)
 		if verbose:
-			print(arg +"='"+ portage.settings[arg] +"'")
+			print(arg + "=" + portage._shell_quote(portage.settings[arg]))
 		else:
 			print(portage.settings[arg])
 
+
+@uses_eroot
 def get_repos(argv):
 	"""<eroot>
 	Returns all repos with names (repo_name file) argv[0] = $EROOT
@@ -731,25 +757,137 @@ def get_repos(argv):
 	if len(argv) < 1:
 		print("ERROR: insufficient parameters!")
 		return 2
-	print(" ".join(portage.db[argv[0]]["porttree"].dbapi.getRepositories()))
+	print(" ".join(reversed(portage.db[argv[0]]["vartree"].settings.repositories.prepos_order)))
 
-get_repos.uses_root = True
 
+@uses_eroot
+def master_repositories(argv):
+	"""<eroot> <repo_id>+
+	Returns space-separated list of master repositories for specified repository.
+	"""
+	if len(argv) < 2:
+		print("ERROR: insufficient parameters!", file=sys.stderr)
+		return 3
+	for arg in argv[1:]:
+		if portage.dep._repo_name_re.match(arg) is None:
+			print("ERROR: invalid repository: %s" % arg, file=sys.stderr)
+			return 2
+		try:
+			repo = portage.db[argv[0]]["vartree"].settings.repositories[arg]
+		except KeyError:
+			print("")
+			return 1
+		else:
+			print(" ".join(x.name for x in repo.masters))
+
+@uses_eroot
+def master_repos(argv):
+	"""<eroot> <repo_id>+
+	This is an alias for the master_repositories command.
+	"""
+	return master_repositories(argv)
+
+@uses_eroot
 def get_repo_path(argv):
 	"""<eroot> <repo_id>+
 	Returns the path to the repo named argv[1], argv[0] = $EROOT
 	"""
 	if len(argv) < 2:
-		print("ERROR: insufficient parameters!")
-		return 2
+		print("ERROR: insufficient parameters!", file=sys.stderr)
+		return 3
 	for arg in argv[1:]:
-		path = portage.db[argv[0]]["porttree"].dbapi.getRepositoryPath(arg)
+		if portage.dep._repo_name_re.match(arg) is None:
+			print("ERROR: invalid repository: %s" % arg, file=sys.stderr)
+			return 2
+		path = portage.db[argv[0]]["vartree"].settings.repositories.treemap.get(arg)
 		if path is None:
-			path = ""
+			print("")
+			return 1
 		print(path)
 
-get_repo_path.uses_root = True
 
+@uses_eroot
+def available_eclasses(argv):
+	"""<eroot> <repo_id>+
+	Returns space-separated list of available eclasses for specified repository.
+	"""
+	if len(argv) < 2:
+		print("ERROR: insufficient parameters!", file=sys.stderr)
+		return 3
+	for arg in argv[1:]:
+		if portage.dep._repo_name_re.match(arg) is None:
+			print("ERROR: invalid repository: %s" % arg, file=sys.stderr)
+			return 2
+		try:
+			repo = portage.db[argv[0]]["vartree"].settings.repositories[arg]
+		except KeyError:
+			print("")
+			return 1
+		else:
+			print(" ".join(sorted(repo.eclass_db.eclasses)))
+
+
+@uses_eroot
+def eclass_path(argv):
+	"""<eroot> <repo_id> <eclass>+
+	Returns the path to specified eclass for specified repository.
+	"""
+	if len(argv) < 3:
+		print("ERROR: insufficient parameters!", file=sys.stderr)
+		return 3
+	if portage.dep._repo_name_re.match(argv[1]) is None:
+		print("ERROR: invalid repository: %s" % argv[1], file=sys.stderr)
+		return 2
+	try:
+		repo = portage.db[argv[0]]["vartree"].settings.repositories[argv[1]]
+	except KeyError:
+		print("")
+		return 1
+	else:
+		retval = 0
+		for arg in argv[2:]:
+			try:
+				eclass = repo.eclass_db.eclasses[arg]
+			except KeyError:
+				print("")
+				retval = 1
+			else:
+				print(eclass.location)
+		return retval
+
+
+@uses_eroot
+def license_path(argv):
+	"""<eroot> <repo_id> <license>+
+	Returns the path to specified license for specified repository.
+	"""
+	if len(argv) < 3:
+		print("ERROR: insufficient parameters!", file=sys.stderr)
+		return 3
+	if portage.dep._repo_name_re.match(argv[1]) is None:
+		print("ERROR: invalid repository: %s" % argv[1], file=sys.stderr)
+		return 2
+	try:
+		repo = portage.db[argv[0]]["vartree"].settings.repositories[argv[1]]
+	except KeyError:
+		print("")
+		return 1
+	else:
+		retval = 0
+		for arg in argv[2:]:
+			eclass_path = ""
+			paths = reversed([os.path.join(x.location, 'licenses', arg) for x in list(repo.masters) + [repo]])
+			for path in paths:
+				if os.path.exists(path):
+					eclass_path = path
+					break
+			if eclass_path == "":
+				retval = 1
+			print(eclass_path)
+		return retval
+
+
+@uses_eroot
 def list_preserved_libs(argv):
 	"""<eroot>
 	Print a list of libraries preserved during a package update in the form
@@ -771,21 +909,296 @@ def list_preserved_libs(argv):
 		msg.append('\n')
 	writemsg_stdout(''.join(msg), noiselevel=-1)
 	return rValue
-list_preserved_libs.uses_root = True
+
+
+class MaintainerEmailMatcher(object):
+	def __init__(self, maintainer_emails):
+		self._re = re.compile("^(%s)$" % "|".join(maintainer_emails))
+
+	def __call__(self, metadata_xml):
+		match = False
+		matcher = self._re.match
+		for x in metadata_xml.maintainers():
+			if x.email is not None and matcher(x.email) is not None:
+				match = True
+				break
+		return match
+
+class HerdMatcher(object):
+	def __init__(self, herds):
+		self._herds = frozenset(herds)
+
+	def __call__(self, metadata_xml):
+		herds = self._herds
+		return any(x in herds for x in metadata_xml.herds())
+
+
+def pquery(parser, opts, args):
+	"""[options] [atom]+
+	Emulates a subset of Pkgcore's pquery tool.
+	"""
+
+	portdb = portage.db[portage.root]['porttree'].dbapi
+	root_config = RootConfig(portdb.settings,
+		portage.db[portage.root], None)
+
+	def _pkg(cpv, repo_name):
+		try:
+			metadata = dict(zip(
+				Package.metadata_keys,
+				portdb.aux_get(cpv,
+				Package.metadata_keys,
+				myrepo=repo_name)))
+		except KeyError:
+			raise portage.exception.PackageNotFound(cpv)
+		return Package(built=False, cpv=cpv,
+			installed=False, metadata=metadata,
+			root_config=root_config,
+			type_name="ebuild")
+
+	need_metadata = False
+	atoms = []
+	for arg in args:
+		if "/" not in arg.split(":")[0]:
+			atom = insert_category_into_atom(arg, '*')
+			if atom is None:
+				writemsg("ERROR: Invalid atom: '%s'\n" % arg,
+					noiselevel=-1)
+				return 2
+		else:
+			atom = arg
+
+		try:
+			atom = portage.dep.Atom(atom, allow_wildcard=True, allow_repo=True)
+		except portage.exception.InvalidAtom:
+			writemsg("ERROR: Invalid atom: '%s'\n" % arg,
+				noiselevel=-1)
+			return 2
+
+		if atom.slot is not None:
+			need_metadata = True
+
+		atoms.append(atom)
+
+	if "*/*" in atoms:
+		del atoms[:]
+		need_metadata = False
+
+	if not opts.no_filters:
+		need_metadata = True
+
+	xml_matchers = []
+	if opts.maintainer_email:
+		maintainer_emails = []
+		for x in opts.maintainer_email:
+			maintainer_emails.extend(x.split(","))
+		xml_matchers.append(MaintainerEmailMatcher(maintainer_emails))
+	if opts.herd is not None:
+		herds  = []
+		for x in opts.herd:
+			herds.extend(x.split(","))
+		xml_matchers.append(HerdMatcher(herds))
+
+	repos = []
+	if opts.all_repos:
+		repos.extend(portdb.repositories.get_repo_for_location(location)
+			for location in portdb.porttrees)
+	elif opts.repo is not None:
+		repos.append(portdb.repositories[opts.repo])
+	else:
+		repos.append(portdb.repositories.mainRepo())
+
+	if not atoms:
+		names = None
+		categories = list(portdb.categories)
+	else:
+		category_wildcard = False
+		name_wildcard = False
+		categories = []
+		names = []
+		for atom in atoms:
+			category, name = portage.catsplit(atom.cp)
+			categories.append(category)
+			names.append(name)
+			if "*" in category:
+				category_wildcard = True
+			if "*" in name:
+				name_wildcard = True
+
+		if category_wildcard:
+			categories = list(portdb.categories)
+		else:
+			categories = list(set(categories))
+
+		if name_wildcard:
+			names = None
+		else:
+			names = sorted(set(names))
+
+	no_version = opts.no_version
+	categories.sort()
+
+	for category in categories:
+		if names is None:
+			cp_list = portdb.cp_all(categories=(category,))
+		else:
+			cp_list = [category + "/" + name for name in names]
+		for cp in cp_list:
+			matches = []
+			for repo in repos:
+				match = True
+				if xml_matchers:
+					metadata_xml_path = os.path.join(
+						repo.location, cp, 'metadata.xml')
+					try:
+						metadata_xml = MetaDataXML(metadata_xml_path, None)
+					except (EnvironmentError, SyntaxError):
+						match = False
+					else:
+						for matcher in xml_matchers:
+							if not matcher(metadata_xml):
+								match = False
+								break
+				if not match:
+					continue
+				cpv_list = portdb.cp_list(cp, mytree=[repo.location])
+				if atoms:
+					for cpv in cpv_list:
+						pkg = None
+						for atom in atoms:
+							if atom.repo is not None and \
+								atom.repo != repo.name:
+								continue
+							if not portage.match_from_list(atom, [cpv]):
+								continue
+							if need_metadata:
+								if pkg is None:
+									try:
+										pkg = _pkg(cpv, repo.name)
+									except portage.exception.PackageNotFound:
+										continue
+
+								if not (opts.no_filters or pkg.visible):
+									continue
+								if not portage.match_from_list(atom, [pkg]):
+									continue
+							matches.append(cpv)
+							break
+						if no_version and matches:
+							break
+				elif opts.no_filters:
+					matches.extend(cpv_list)
+				else:
+					for cpv in cpv_list:
+						try:
+							pkg = _pkg(cpv, repo.name)
+						except portage.exception.PackageNotFound:
+							continue
+						else:
+							if pkg.visible:
+								matches.append(cpv)
+								if no_version:
+									break
+
+				if no_version and matches:
+					break
+
+			if not matches:
+				continue
+
+			if no_version:
+				writemsg_stdout("%s\n" % (cp,), noiselevel=-1)
+			else:
+				matches = list(set(matches))
+				portdb._cpv_sort_ascending(matches)
+				for cpv in matches:
+					writemsg_stdout("%s\n" % (cpv,), noiselevel=-1)
+
+	return os.EX_OK
+
 
 #-----------------------------------------------------------------------------
 #
 # DO NOT CHANGE CODE BEYOND THIS POINT - IT'S NOT NEEDED!
 #
 
-if not portage.const._ENABLE_PRESERVE_LIBS:
-	del list_preserved_libs
-
-non_commands = frozenset(['elog', 'eval_atom_use',
-	'exithandler', 'expand_new_virt', 'main',
-	'usage', 'writemsg', 'writemsg_stdout'])
+non_commands = frozenset(['elog', 'eval_atom_use', 'exithandler', 'main', 'usage', 'uses_eroot'])
 commands = sorted(k for k, v in globals().items() \
-	if k not in non_commands and isinstance(v, types.FunctionType))
+	if k not in non_commands and isinstance(v, types.FunctionType) and v.__module__ == "__main__")
+
+
+def add_pquery_arguments(parser):
+	pquery_option_groups = (
+		(
+			'Repository matching options',
+			(
+				{
+					"longopt": "--no-filters",
+					"action": "store_true",
+					"help": "no visibility filters (ACCEPT_KEYWORDS, package masking, etc)"
+				},
+				{
+					"longopt": "--repo",
+					"help": "repo to use (default is PORTDIR if omitted)"
+				},
+				{
+					"longopt": "--all-repos",
+					"help": "search all repos"
+				}
+			)
+		),
+		(
+			'Package matching options',
+			(
+				{
+					"longopt": "--herd",
+					"action": "append",
+					"help": "exact match on a herd"
+				},
+				{
+					"longopt": "--maintainer-email",
+					"action": "append",
+					"help": "comma-separated list of maintainer email regexes to search for"
+				}
+			)
+		),
+		(
+			'Output formatting',
+			(
+				{
+					"shortopt": "-n",
+					"longopt": "--no-version",
+					"action": "store_true",
+					"help": "collapse multiple matching versions together"
+				},
+			)
+		),
+	)
+
+	for group_title, opt_data in pquery_option_groups:
+		arg_group = parser.add_argument_group(group_title)
+		for opt_info in opt_data:
+			pargs = []
+			try:
+				pargs.append(opt_info["shortopt"])
+			except KeyError:
+				pass
+			try:
+				pargs.append(opt_info["longopt"])
+			except KeyError:
+				pass
+
+			kwargs = {}
+			try:
+				kwargs["action"] = opt_info["action"]
+			except KeyError:
+				pass
+			try:
+				kwargs["help"] = opt_info["help"]
+			except KeyError:
+				pass
+			arg_group.add_argument(*pargs, **portage._native_kwargs(kwargs))
+
 
 def usage(argv):
 	print(">>> Portage information query tool")
@@ -798,7 +1211,7 @@ def usage(argv):
 	# Show our commands -- we do this by scanning the functions in this
 	# file, and formatting each functions documentation.
 	#
-	help_mode = '--help' in sys.argv
+	help_mode = '--help' in argv
 	for name in commands:
 		# Drop non-functions
 		obj = globals()[name]
@@ -812,12 +1225,21 @@ def usage(argv):
 
 		lines = doc.lstrip("\n").split("\n")
 		print("   " + name + " " + lines[0].strip())
-		if (len(sys.argv) > 1):
+		if len(argv) > 1:
 			if (not help_mode):
 				lines = lines[:-1]
 			for line in lines[1:]:
 				print("      " + line.strip())
-	if (len(sys.argv) == 1):
+
+	print()
+	print('Pkgcore pquery compatible options:')
+	print()
+	parser = ArgumentParser(add_help=False,
+		usage='portageq pquery [options] [atom ...]')
+	add_pquery_arguments(parser)
+	parser.print_help()
+
+	if len(argv) == 1:
 		print("\nRun portageq with --help for info")
 
 atom_validate_strict = "EBUILD_PHASE" in os.environ
@@ -836,52 +1258,84 @@ else:
 	def elog(elog_funcname, lines):
 		pass
 
-def main():
+def main(argv):
+
+	argv = portage._decode_argv(argv)
 
 	nocolor = os.environ.get('NOCOLOR')
 	if nocolor in ('yes', 'true'):
 		portage.output.nocolor()
 
-	if len(sys.argv) < 2:
-		usage(sys.argv)
+	parser = ArgumentParser(add_help=False)
+
+	# used by envvar
+	parser.add_argument("-v", dest="verbose", action="store_true")
+
+	actions = parser.add_argument_group('Actions')
+	actions.add_argument("-h", "--help", action="store_true")
+	actions.add_argument("--version", action="store_true")
+
+	add_pquery_arguments(parser)
+
+	opts, args = parser.parse_known_args(argv[1:])
+
+	if opts.help:
+		usage(argv)
+		return os.EX_OK
+	elif opts.version:
+		print("Portage", portage.VERSION)
+		return os.EX_OK
+
+	cmd = None
+	if args and args[0] in commands:
+		cmd = args[0]
+
+	if cmd == 'pquery':
+		cmd = None
+		args = args[1:]
+
+	if cmd is None:
+		return pquery(parser, opts, args)
+
+	if opts.verbose:
+		# used by envvar
+		args.append("-v")
+
+	argv = argv[:1] + args
+
+	if len(argv) < 2:
+		usage(argv)
 		sys.exit(os.EX_USAGE)
 
-	for x in sys.argv:
-		if x in ("-h", "--help"):
-			usage(sys.argv)
-			sys.exit(os.EX_OK)
-		elif x == "--version":
-			print("Portage", portage.VERSION)
-			sys.exit(os.EX_OK)
-
-	cmd = sys.argv[1]
-	function = globals().get(cmd)
-	if function is None or cmd not in commands:
-		usage(sys.argv)
-		sys.exit(os.EX_USAGE)
 	function = globals()[cmd]
-	uses_root = getattr(function, "uses_root", False) and len(sys.argv) > 2
-	if uses_root:
-		if not os.path.isdir(sys.argv[2]):
-			sys.stderr.write("Not a directory: '%s'\n" % sys.argv[2])
+	uses_eroot = getattr(function, "uses_eroot", False) and len(argv) > 2
+	if uses_eroot:
+		if not os.path.isdir(argv[2]):
+			sys.stderr.write("Not a directory: '%s'\n" % argv[2])
 			sys.stderr.write("Run portageq with --help for info\n")
 			sys.stderr.flush()
 			sys.exit(os.EX_USAGE)
-		eprefix = portage.const.EPREFIX
-		eroot = portage.util.normalize_path(sys.argv[2])
+		eprefix = portage.settings["EPREFIX"]
+		eroot = portage.util.normalize_path(argv[2])
+
 		if eprefix:
-			root = eroot[:1-len(eprefix)]
+			if not eroot.endswith(eprefix):
+				sys.stderr.write("ERROR: This version of portageq"
+						 " only supports <eroot>s ending in"
+						 " '%s'. The provided <eroot>, '%s',"
+						 " doesn't.\n" % (eprefix, eroot))
+				sys.stderr.flush()
+				sys.exit(os.EX_USAGE)
+			root = eroot[:1 - len(eprefix)]
 		else:
 			root = eroot
+
 		os.environ["ROOT"] = root
 
-	args = sys.argv[2:]
-	if args and isinstance(args[0], bytes):
-		for i in range(len(args)):
-			args[i] = portage._unicode_decode(args[i])
+	args = argv[2:]
 
 	try:
-		if uses_root:
+		if uses_eroot:
 			args[0] = portage.settings['EROOT']
 		retval = function(args)
 		if retval:
@@ -902,6 +1356,7 @@ def main():
 		portage.writemsg("\nPlease use a more specific atom.\n", noiselevel=-1)
 		sys.exit(1)
 
-main()
+if __name__ == '__main__':
+	sys.exit(main(sys.argv))
 
 #-----------------------------------------------------------------------------

@@ -1,0 +1,96 @@
+--- make.conf.example
++++ make.conf.example
+@@ -22,6 +22,15 @@
+ # Example:
+ #USE="X gtk gnome -alsa"
+ 
++# Host Setting
++# ============
++#
++# DO NOT CHANGE THIS SETTING UNLESS YOU ARE USING STAGE1!
++# Change this line as appropriate (i686, i586, i486 or i386).
++# All modern systems (even Athlons) should use "i686-pc-linux-gnu".
++# All K6's are i586.
++CHOST="i686-pc-linux-gnu"
++
+ # Host and optimization settings 
+ # ==============================
+ #
+@@ -39,10 +48,65 @@
+ # -frecord-gcc-switches, since otherwise the check could result in false
+ # positive results.
+ #
+-# Please refer to the GCC manual for a list of possible values.
+-#
+-#CFLAGS="-O2 -pipe"
++# -mcpu=<cpu-type> means optimize code for the particular type of CPU without
++# breaking compatibility with other CPUs.
+ #
++# -march=<cpu-type> means to take full advantage of the ABI and instructions
++# for the particular CPU; this will break compatibility with older CPUs (for
++# example, -march=athlon-xp code will not run on a regular Athlon, and
++# -march=i686 code will not run on a Pentium Classic.
++#
++# CPU types supported by gcc version:
++# (Higher versions include the targets from older ones,
++# those listed on the same line are equivalent.)
++# === >=gcc-2.95
++# i386			Original Intel's i386.
++# i486			Intel's i486. (No scheduling implemented.)
++# i586, pentium	Intel Pentium with no MMX support.
++# pentium-mmx	Intel PentiumMMX based on Pentium core with MMX.
++# i686, pentiumpro	Intel PentiumPro.
++# === >=gcc-3.2
++# k6			AMD K6 with MMX.
++# k6-2, k6-3	AMD K6 with MMX and 3dNOW!.
++# pentium2		Intel Pentium2 based on PentiumPro with MMX.
++# pentium3		Intel Pentium3 based on PentiumPro with MMX and SSE.
++# pentium4		Intel Pentium4 with MMX, SSE and SSE2.
++# athlon, athlon-tbird	AMD Athlon with MMX, 3dNOW!, enhanced 3dNOW!
++#				and SSE prefetch.
++# athlon-4, athlon-xp, athlon-mp	AMD Athlon with MMX, 3dNOW!, enhanced
++#				3dNOW! and full SSE.
++# === >=gcc-3.3
++# winchip-c6	IDT Winchip C6, i486 with MMX.
++# winchip2		IDT Winchip2, i486 MMX and 3dNOW!.
++# c3			Via C3 with MMX and 3dNOW! (No scheduling implemented.)
++# === >=gcc-4.1
++# c3-2			Via C3-2 with MMX and SSE. (No scheduling implemented.)
++# pentium-m		Low power version of Intel Pentium3 with MMX, SSE, SSE2.
++#				Used by Centrino notebooks.
++# prescott		Intel Pentium4 with MMX, SSE, SSE2 and SSE3.
++# nocona		Intel Pentium4 with 64-bit extensions, MMX, SSE, SSE2
++#				and SSE3.
++# k8, opteron, athlon64, athlon-fx	AMD K8 core based CPUs with x86-64.
++#				(This supersets MMX, SSE, SSE2, 3dNOW!, enhanced 3dNOW! and
++#				64-bit extensions.)
++#
++# Gentoo Linux 1.2 and below used gcc-2.95*
++# Gentoo Linux 1.4 and 2004.* had gcc-3.2
++# Gentoo Linux 2005.1 through 2006.0 use gcc-3.3
++# Gentoo Linux 2006.1 has gcc-4.1
++# 
++#
++# CRITICAL WARNINGS: ****************************************************** #
++# K6 markings are deceptive. Avoid setting -march for them. See Bug #24379. #
++# Pentium-M CPUs should not enable sse2 until at least gcc-3.4. Bug 50616. #
++# ************************************************************************* #
++#
++# NOTE: the -On optimization levels are set with the letter O, not -0 (zero).
++#
++# Decent examples:
++#CFLAGS="-mcpu=athlon-xp -O2 -pipe"
++#CFLAGS="-march=pentium3 -O2 -pipe"
++
+ # If you set a CFLAGS above, then this line will set your default C++ flags to
+ # the same settings.
+ #CXXFLAGS="${CFLAGS}"
+@@ -76,7 +140,7 @@
+ # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
+ # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
+ #
+-#ACCEPT_KEYWORDS="~arch"
++#ACCEPT_KEYWORDS="~x86"
+ 
+ # ACCEPT_LICENSE is used to mask packages based on licensing restrictions.
+ # It may contain both license and group names, where group names are

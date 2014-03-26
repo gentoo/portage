@@ -1,5 +1,7 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 import sys
 import warnings
@@ -10,11 +12,11 @@ from _emerge.Package import Package
 from _emerge.PackageVirtualDbapi import PackageVirtualDbapi
 from portage.const import VDB_PATH
 from portage.dbapi.vartree import vartree
-from portage.dep._slot_abi import find_built_slot_abi_atoms
+from portage.dep._slot_operator import find_built_slot_operator_atoms
 from portage.eapi import _get_eapi_attrs
-from portage.exception import InvalidDependString
-from portage.repository.config import _gen_valid_repo
+from portage.exception import InvalidData, InvalidDependString
 from portage.update import grab_updates, parse_updates, update_dbentries
+from portage.versions import _pkg_str
 
 if sys.hexversion >= 0x3000000:
 	long = int
@@ -33,6 +35,9 @@ class FakeVardbapi(PackageVirtualDbapi):
 			path =os.path.join(path, filename)
 		return path
 
+class _DynamicDepsNotApplicable(Exception):
+	pass
+
 class FakeVartree(vartree):
 	"""This is implements an in-memory copy of a vartree instance that provides
 	all the interfaces required for use by the depgraph.  The vardb is locked
@@ -45,10 +50,10 @@ class FakeVartree(vartree):
 	is not a matching ebuild in the tree). Instances of this class are not
 	populated until the sync() method is called."""
 	def __init__(self, root_config, pkg_cache=None, pkg_root_config=None,
-		dynamic_deps=True, ignore_built_slot_abi_deps=False):
+		dynamic_deps=True, ignore_built_slot_operator_deps=False):
 		self._root_config = root_config
 		self._dynamic_deps = dynamic_deps
-		self._ignore_built_slot_abi_deps = ignore_built_slot_abi_deps
+		self._ignore_built_slot_operator_deps = ignore_built_slot_operator_deps
 		if pkg_root_config is None:
 			pkg_root_config = self._root_config
 		self._pkg_root_config = pkg_root_config
@@ -75,7 +80,7 @@ class FakeVartree(vartree):
 			self.dbapi.aux_get = self._aux_get_wrapper
 			self.dbapi.match = self._match_wrapper
 		self._aux_get_history = set()
-		self._portdb_keys = ["EAPI", "KEYWORDS", "DEPEND", "RDEPEND", "PDEPEND"]
+		self._portdb_keys = Package._dep_keys + ("EAPI", "KEYWORDS")
 		self._portdb = portdb
 		self._global_updates = None
 
@@ -102,29 +107,30 @@ class FakeVartree(vartree):
 			self._aux_get_wrapper(cpv, [])
 		return matches
 
-	def _aux_get_wrapper(self, pkg, wants, myrepo=None):
-		if pkg in self._aux_get_history:
-			return self._aux_get(pkg, wants)
-		self._aux_get_history.add(pkg)
-		# We need to check the EAPI, and this also raises
-		# a KeyError to the caller if appropriate.
-		pkg_obj = self.dbapi._cpv_map[pkg]
-		installed_eapi = pkg_obj.metadata['EAPI']
-		repo = pkg_obj.metadata['repository']
-		eapi_attrs = _get_eapi_attrs(installed_eapi)
-		built_slot_abi_atoms = None
+	def _aux_get_wrapper(self, cpv, wants, myrepo=None):
+		if cpv in self._aux_get_history:
+			return self._aux_get(cpv, wants)
+		self._aux_get_history.add(cpv)
 
-		if eapi_attrs.slot_abi and not self._ignore_built_slot_abi_deps:
-			try:
-				built_slot_abi_atoms = find_built_slot_abi_atoms(pkg_obj)
-			except InvalidDependString:
-				pass
+		# This raises a KeyError to the caller if appropriate.
+		pkg = self.dbapi._cpv_map[cpv]
 
 		try:
-			# Use the live ebuild metadata if possible.
-			repo = _gen_valid_repo(repo)
 			live_metadata = dict(zip(self._portdb_keys,
-				self._portdb.aux_get(pkg, self._portdb_keys, myrepo=repo)))
+				self._portdb.aux_get(cpv, self._portdb_keys,
+				myrepo=pkg.repo)))
+		except (KeyError, portage.exception.PortageException):
+			live_metadata = None
+
+		self._apply_dynamic_deps(pkg, live_metadata)
+
+		return self._aux_get(cpv, wants)
+
+	def _apply_dynamic_deps(self, pkg, live_metadata):
+
+		try:
+			if live_metadata is None:
+				raise _DynamicDepsNotApplicable()
 			# Use the metadata from the installed instance if the EAPI
 			# of either instance is unsupported, since if the installed
 			# instance has an unsupported or corrupt EAPI then we don't
@@ -134,26 +140,46 @@ class FakeVartree(vartree):
 			# order to respect dep updates without revision bump or EAPI
 			# bump, as in bug #368725.
 			if not (portage.eapi_is_supported(live_metadata["EAPI"]) and \
-				portage.eapi_is_supported(installed_eapi)):
-				raise KeyError(pkg)
+				portage.eapi_is_supported(pkg.eapi)):
+				raise _DynamicDepsNotApplicable()
 
-			# preserve built SLOT/ABI := operator deps
-			if built_slot_abi_atoms:
+			# preserve built slot/sub-slot := operator deps
+			built_slot_operator_atoms = None
+			if not self._ignore_built_slot_operator_deps and \
+				_get_eapi_attrs(pkg.eapi).slot_operator:
+				try:
+					built_slot_operator_atoms = \
+						find_built_slot_operator_atoms(pkg)
+				except InvalidDependString:
+					pass
+
+			if built_slot_operator_atoms:
 				live_eapi_attrs = _get_eapi_attrs(live_metadata["EAPI"])
-				if not live_eapi_attrs.slot_abi:
-					raise KeyError(pkg)
-				for k, v in built_slot_abi_atoms.items():
+				if not live_eapi_attrs.slot_operator:
+					raise _DynamicDepsNotApplicable()
+				for k, v in built_slot_operator_atoms.items():
 					live_metadata[k] += (" " +
 						" ".join(_unicode(atom) for atom in v))
 
-			self.dbapi.aux_update(pkg, live_metadata)
-		except (KeyError, portage.exception.PortageException):
+			self.dbapi.aux_update(pkg.cpv, live_metadata)
+		except _DynamicDepsNotApplicable:
 			if self._global_updates is None:
 				self._global_updates = \
 					grab_global_updates(self._portdb)
+
+			# Bypass _aux_get_wrapper, since calling that
+			# here would trigger infinite recursion.
+			aux_keys = Package._dep_keys + self.dbapi._pkg_str_aux_keys
+			aux_dict = dict(zip(aux_keys, self._aux_get(pkg.cpv, aux_keys)))
 			perform_global_updates(
-				pkg, self.dbapi, self._global_updates)
-		return self._aux_get(pkg, wants)
+				pkg.cpv, aux_dict, self.dbapi, self._global_updates)
+
+	def dynamic_deps_preload(self, pkg, metadata):
+		if metadata is not None:
+			metadata = dict((k, metadata.get(k, ''))
+				for k in self._portdb_keys)
+		self._apply_dynamic_deps(pkg, metadata)
+		self._aux_get_history.add(pkg.cpv)
 
 	def cpv_discard(self, pkg):
 		"""
@@ -251,12 +277,6 @@ class FakeVartree(vartree):
 			root_config=self._pkg_root_config,
 			type_name="installed")
 
-		try:
-			mycounter = long(pkg.metadata["COUNTER"])
-		except ValueError:
-			mycounter = 0
-			pkg.metadata["COUNTER"] = str(mycounter)
-
 		self._pkg_cache[pkg] = pkg
 		return pkg
 
@@ -285,13 +305,14 @@ def grab_global_updates(portdb):
 
 	return retupdates
 
-def perform_global_updates(mycpv, mydb, myupdates):
-	aux_keys = ["DEPEND", "EAPI", "RDEPEND", "PDEPEND", 'repository']
-	aux_dict = dict(zip(aux_keys, mydb.aux_get(mycpv, aux_keys)))
-	eapi = aux_dict.pop('EAPI')
-	repository = aux_dict.pop('repository')
+def perform_global_updates(mycpv, aux_dict, mydb, myupdates):
 	try:
-		mycommands = myupdates[repository]
+		pkg = _pkg_str(mycpv, metadata=aux_dict, settings=mydb.settings)
+	except InvalidData:
+		return
+	aux_dict = dict((k, aux_dict[k]) for k in Package._dep_keys)
+	try:
+		mycommands = myupdates[pkg.repo]
 	except KeyError:
 		try:
 			mycommands = myupdates['DEFAULT']
@@ -301,6 +322,6 @@ def perform_global_updates(mycpv, mydb, myupdates):
 	if not mycommands:
 		return
 
-	updates = update_dbentries(mycommands, aux_dict, eapi=eapi)
+	updates = update_dbentries(mycommands, aux_dict, parent=pkg)
 	if updates:
 		mydb.aux_update(mycpv, updates)

@@ -1,19 +1,24 @@
-# Copyright 2005-2011 Gentoo Foundation
+# Copyright 2005-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Nicholas Carpaski (carpaski@gentoo.org), Brian Harring (ferringb@gentoo.org)
+
+from __future__ import unicode_literals
 
 __all__ = ["cache"]
 
 import stat
 import sys
 import operator
+import warnings
 from portage.util import normalize_path
 import errno
 from portage.exception import FileNotFound, PermissionDenied
 from portage import os
 from portage import checksum
+from portage import _shell_quote
 
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	long = int
 
 
@@ -56,17 +61,20 @@ class cache(object):
 	"""
 	Maintains the cache information about eclasses used in ebuild.
 	"""
-	def __init__(self, porttree_root, overlays=[]):
+	def __init__(self, porttree_root, overlays=None):
+		if overlays is not None:
+			warnings.warn("overlays parameter of portage.eclass_cache.cache constructor is deprecated and no longer used",
+			DeprecationWarning, stacklevel=2)
 
 		self.eclasses = {} # {"Name": hashed_path}
 		self._eclass_locations = {}
+		self._eclass_locations_str = None
 
 		# screw with the porttree ordering, w/out having bash inherit match it, and I'll hurt you.
 		# ~harring
 		if porttree_root:
 			self.porttree_root = porttree_root
-			self.porttrees = [self.porttree_root] + overlays
-			self.porttrees = tuple(map(normalize_path, self.porttrees))
+			self.porttrees = (normalize_path(self.porttree_root),)
 			self._master_eclass_root = os.path.join(self.porttrees[0], "eclass")
 			self.update_eclasses()
 		else:
@@ -98,6 +106,7 @@ class cache(object):
 		self.porttrees = self.porttrees + other.porttrees
 		self.eclasses.update(other.eclasses)
 		self._eclass_locations.update(other._eclass_locations)
+		self._eclass_locations_str = None
 
 	def update_eclasses(self):
 		self.eclasses = {}
@@ -124,7 +133,7 @@ class cache(object):
 					mtime = obj.mtime
 				except FileNotFound:
 					continue
-				ys=y[:-eclass_len]
+				ys = y[:-eclass_len]
 				if x == self._master_eclass_root:
 					master_eclasses[ys] = mtime
 					self.eclasses[ys] = obj
@@ -169,3 +178,10 @@ class cache(object):
 			ec_dict[x] = self.eclasses[x]
 
 		return ec_dict
+
+	@property
+	def eclass_locations_string(self):
+		if self._eclass_locations_str is None:
+			self._eclass_locations_str = " ".join(_shell_quote(x)
+				for x in reversed(self.porttrees))
+		return self._eclass_locations_str

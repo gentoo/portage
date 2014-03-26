@@ -1,5 +1,5 @@
 # tests/__init__.py -- Portage Unit Test functionality
-# Copyright 2006-2011 Gentoo Foundation
+# Copyright 2006-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -7,26 +7,40 @@ from __future__ import print_function
 import sys
 import time
 import unittest
-from optparse import OptionParser, OptionValueError
 
 try:
 	from unittest.runner import _TextTestResult # new in python-2.7
 except ImportError:
 	from unittest import _TextTestResult
 
+try:
+	# They added the skip framework to python-2.7.
+	# Drop this once we drop python-2.6 support.
+	unittest_skip_shims = False
+	import unittest.SkipTest as SkipTest # new in python-2.7
+except ImportError:
+	unittest_skip_shims = True
+
+import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
+from portage.util._argparse import ArgumentParser
 
 def main():
 	suite = unittest.TestSuite()
 	basedir = os.path.dirname(os.path.realpath(__file__))
 
 	usage = "usage: %s [options] [tests to run]" % os.path.basename(sys.argv[0])
-	parser = OptionParser(usage=usage)
-	parser.add_option("-l", "--list", help="list all tests",
+	parser = ArgumentParser(usage=usage)
+	parser.add_argument("-l", "--list", help="list all tests",
 		action="store_true", dest="list_tests")
-	(options, args) = parser.parse_args(args=sys.argv)
+	options, args = parser.parse_known_args(args=sys.argv)
+
+	if (os.environ.get('NOCOLOR') in ('yes', 'true') or
+		os.environ.get('TERM') == 'dumb' or
+		not sys.stdout.isatty()):
+		portage.output.nocolor()
 
 	if options.list_tests:
 		testdir = os.path.dirname(sys.argv[0])
@@ -70,15 +84,12 @@ def getTestFromCommandLine(args, base_path):
 
 def getTestDirs(base_path):
 	TEST_FILE = b'__test__'
-	svn_dirname = b'.svn'
 	testDirs = []
 
 	# the os.walk help mentions relative paths as being quirky
 	# I was tired of adding dirs to the list, so now we add __test__
 	# to each dir we want tested.
 	for root, dirs, files in os.walk(base_path):
-		if svn_dirname in dirs:
-			dirs.remove(svn_dirname)
 		try:
 			root = _unicode_decode(root,
 				encoding=_encodings['fs'], errors='strict')
@@ -93,7 +104,7 @@ def getTestDirs(base_path):
 
 def getTestNames(path):
 	files = os.listdir(path)
-	files = [ f[:-3] for f in files if f.startswith("test") and f.endswith(".py") ]
+	files = [f[:-3] for f in files if f.startswith("test") and f.endswith(".py")]
 	files.sort()
 	return files
 
@@ -134,14 +145,14 @@ class TextTestResult(_TextTestResult):
 		self.portage_skipped = []
 
 	def addTodo(self, test, info):
-		self.todoed.append((test,info))
+		self.todoed.append((test, info))
 		if self.showAll:
 			self.stream.writeln("TODO")
 		elif self.dots:
 			self.stream.write(".")
 
 	def addPortageSkip(self, test, info):
-		self.portage_skipped.append((test,info))
+		self.portage_skipped.append((test, info))
 		if self.showAll:
 			self.stream.writeln("SKIP")
 		elif self.dots:
@@ -185,10 +196,14 @@ class TestCase(unittest.TestCase):
 			except:
 				result.addError(self, sys.exc_info())
 				return
+
 			ok = False
 			try:
 				testMethod()
 				ok = True
+			except SkipTest as e:
+				result.addPortageSkip(self, "%s: SKIP: %s" %
+					(testMethod, str(e)))
 			except self.failureException:
 				if self.portage_skip is not None:
 					if self.portage_skip is True:
@@ -197,13 +212,14 @@ class TestCase(unittest.TestCase):
 						result.addPortageSkip(self, "%s: SKIP: %s" %
 							(testMethod, self.portage_skip))
 				elif self.todo:
-					result.addTodo(self,"%s: TODO" % testMethod)
+					result.addTodo(self, "%s: TODO" % testMethod)
 				else:
 					result.addFailure(self, sys.exc_info())
 			except (KeyboardInterrupt, SystemExit):
 				raise
 			except:
 				result.addError(self, sys.exc_info())
+
 			try:
 				self.tearDown()
 			except SystemExit:
@@ -213,7 +229,8 @@ class TestCase(unittest.TestCase):
 			except:
 				result.addError(self, sys.exc_info())
 				ok = False
-			if ok: result.addSuccess(self)
+			if ok:
+				result.addSuccess(self)
 		finally:
 			result.stopTest(self)
 
@@ -230,9 +247,47 @@ class TestCase(unittest.TestCase):
 		except excClass:
 			return
 		else:
-			if hasattr(excClass,'__name__'): excName = excClass.__name__
+			if hasattr(excClass, '__name__'): excName = excClass.__name__
 			else: excName = str(excClass)
 			raise self.failureException("%s not raised: %s" % (excName, msg))
+
+	def assertExists(self, path):
+		"""Make sure |path| exists"""
+		if not os.path.exists(path):
+			msg = ['path is missing: %s' % (path,)]
+			while path != '/':
+				path = os.path.dirname(path)
+				if not path:
+					# If we're given something like "foo", abort once we get to "".
+					break
+				result = os.path.exists(path)
+				msg.append('\tos.path.exists(%s): %s' % (path, result))
+				if result:
+					msg.append('\tcontents: %r' % os.listdir(path))
+					break
+			raise self.failureException('\n'.join(msg))
+
+	def assertNotExists(self, path):
+		"""Make sure |path| does not exist"""
+		if os.path.exists(path):
+			raise self.failureException('path exists when it should not: %s' % path)
+
+if unittest_skip_shims:
+	# Shim code for <python-2.7.
+	class SkipTest(Exception):
+		"""unittest.SkipTest shim for <python-2.7"""
+
+	def skipTest(self, reason):
+		raise SkipTest(reason)
+	setattr(TestCase, 'skipTest', skipTest)
+
+	def assertIn(self, member, container, msg=None):
+		self.assertTrue(member in container, msg=msg)
+	setattr(TestCase, 'assertIn', assertIn)
+
+	def assertNotIn(self, member, container, msg=None):
+		self.assertFalse(member in container, msg=msg)
+	setattr(TestCase, 'assertNotIn', assertNotIn)
 
 class TextTestRunner(unittest.TextTestRunner):
 	"""
@@ -271,8 +326,8 @@ class TextTestRunner(unittest.TextTestRunner):
 			self.stream.writeln("OK")
 		return result
 
-test_cps = ['sys-apps/portage','virtual/portage']
-test_versions = ['1.0', '1.0-r1','2.3_p4','1.0_alpha57']
-test_slots = [ None, '1','gentoo-sources-2.6.17','spankywashere']
-test_usedeps = ['foo','-bar', ('foo','bar'),
-	('foo','-bar'), ('foo?', '!bar?') ]
+test_cps = ['sys-apps/portage', 'virtual/portage']
+test_versions = ['1.0', '1.0-r1', '2.3_p4', '1.0_alpha57']
+test_slots = [None, '1', 'gentoo-sources-2.6.17', 'spankywashere']
+test_usedeps = ['foo', '-bar', ('foo', 'bar'),
+	('foo', '-bar'), ('foo?', '!bar?')]

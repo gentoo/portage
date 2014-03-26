@@ -1,15 +1,16 @@
 # checksum.py -- core Portage functionality
-# Copyright 1998-2012 Gentoo Foundation
+# Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
-from portage.const import PRELINK_BINARY,HASHING_BLOCKSIZE
+from portage.const import PRELINK_BINARY, HASHING_BLOCKSIZE
 from portage.localization import _
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
 import errno
 import stat
+import subprocess
 import tempfile
 
 #dict of all available hash functions
@@ -48,16 +49,15 @@ class _generate_hash_function(object):
 		@type filename: String
 		@return: The hash and size of the data
 		"""
-		f = _open_file(filename)
-		blocksize = HASHING_BLOCKSIZE
-		data = f.read(blocksize)
-		size = 0
-		checksum = self._hashobject()
-		while data:
-			checksum.update(data)
-			size = size + len(data)
+		with _open_file(filename) as f:
+			blocksize = HASHING_BLOCKSIZE
+			size = 0
+			checksum = self._hashobject()
 			data = f.read(blocksize)
-		f.close()
+			while data:
+				checksum.update(data)
+				size = size + len(data)
+				data = f.read(blocksize)
 
 		return (checksum.hexdigest(), size)
 
@@ -163,11 +163,16 @@ hashfunc_map["size"] = getsize
 
 prelink_capable = False
 if os.path.exists(PRELINK_BINARY):
-	results = portage.subprocess_getstatusoutput(
-		"%s --version > /dev/null 2>&1" % (PRELINK_BINARY,))
-	if (results[0] >> 8) == 0:
-		prelink_capable=1
-	del results
+	cmd = [PRELINK_BINARY, "--version"]
+	cmd = [_unicode_encode(x, encoding=_encodings['fs'], errors='strict')
+		for x in cmd]
+	proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+		stderr=subprocess.STDOUT)
+	proc.communicate()
+	status = proc.wait()
+	if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
+		prelink_capable = 1
+	del cmd, proc, status
 
 def is_prelinkable_elf(filename):
 	f = _open_file(filename)
@@ -214,6 +219,64 @@ def _filter_unaccelarated_hashes(digests):
 		if len(verifiable_hash_types) > 1:
 			digests = dict(digests)
 			digests.pop("WHIRLPOOL")
+
+	return digests
+
+class _hash_filter(object):
+	"""
+	Implements filtering for PORTAGE_CHECKSUM_FILTER.
+	"""
+
+	__slots__ = ('transparent', '_tokens',)
+
+	def __init__(self, filter_str):
+		tokens = filter_str.upper().split()
+		if not tokens or tokens[-1] == "*":
+			del tokens[:]
+		self.transparent = not tokens
+		tokens.reverse()
+		self._tokens = tuple(tokens)
+
+	def __call__(self, hash_name):
+		if self.transparent:
+			return True
+		matches = ("*", hash_name)
+		for token in self._tokens:
+			if token in matches:
+				return True
+			elif token[:1] == "-":
+				if token[1:] in matches:
+					return False
+		return False
+
+def _apply_hash_filter(digests, hash_filter):
+	"""
+	Return a new dict containing the filtered digests, or the same
+	dict if no changes are necessary. This will always preserve at
+	at least one digest, in order to ensure that they are not all
+	discarded.
+	@param digests: dictionary of digests
+	@type digests: dict
+	@param hash_filter: A callable that takes a single hash name
+		argument, and returns True if the hash is to be used or
+		False otherwise
+	@type hash_filter: callable
+	"""
+
+	verifiable_hash_types = set(digests).intersection(hashfunc_map)
+	verifiable_hash_types.discard("size")
+	modified = False
+	if len(verifiable_hash_types) > 1:
+		for k in list(verifiable_hash_types):
+			if not hash_filter(k):
+				modified = True
+				verifiable_hash_types.remove(k)
+				if len(verifiable_hash_types) == 1:
+					break
+
+	if modified:
+		digests = dict((k, v) for (k, v) in digests.items()
+			if k == "size" or k in verifiable_hash_types)
 
 	return digests
 
@@ -275,9 +338,10 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 						{"file" : filename, "type" : x})
 				else:
 					file_is_ok = False
-					reason     = (("Failed on %s verification" % x), myhash,mydict[x])
+					reason = (("Failed on %s verification" % x), myhash, mydict[x])
 					break
-	return file_is_ok,reason
+
+	return file_is_ok, reason
 
 def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 	"""

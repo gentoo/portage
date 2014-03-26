@@ -1,9 +1,11 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+import fcntl
+import sys
 
 from portage import os
 from _emerge.AbstractPollTask import AbstractPollTask
-import fcntl
 
 class PipeReader(AbstractPollTask):
 
@@ -27,18 +29,28 @@ class PipeReader(AbstractPollTask):
 			output_handler = self._output_handler
 
 		for f in self.input_files.values():
-			fcntl.fcntl(f.fileno(), fcntl.F_SETFL,
-				fcntl.fcntl(f.fileno(), fcntl.F_GETFL) | os.O_NONBLOCK)
-			self._reg_ids.add(self.scheduler.register(f.fileno(),
+			fd = isinstance(f, int) and f or f.fileno()
+			fcntl.fcntl(fd, fcntl.F_SETFL,
+				fcntl.fcntl(fd, fcntl.F_GETFL) | os.O_NONBLOCK)
+
+			# FD_CLOEXEC is enabled by default in Python >=3.4.
+			if sys.hexversion < 0x3040000:
+				try:
+					fcntl.FD_CLOEXEC
+				except AttributeError:
+					pass
+				else:
+					fcntl.fcntl(fd, fcntl.F_SETFD,
+						fcntl.fcntl(fd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
+
+			self._reg_ids.add(self.scheduler.io_add_watch(fd,
 				self._registered_events, output_handler))
 		self._registered = True
 
-	def isAlive(self):
-		return self._registered
-
 	def _cancel(self):
+		self._unregister()
 		if self.returncode is None:
-			self.returncode = 1
+			self.returncode = self._cancelled_returncode
 
 	def _wait(self):
 		if self.returncode is not None:
@@ -102,11 +114,14 @@ class PipeReader(AbstractPollTask):
 
 		if self._reg_ids is not None:
 			for reg_id in self._reg_ids:
-				self.scheduler.unregister(reg_id)
+				self.scheduler.source_remove(reg_id)
 			self._reg_ids = None
 
 		if self.input_files is not None:
 			for f in self.input_files.values():
-				f.close()
+				if isinstance(f, int):
+					os.close(f)
+				else:
+					f.close()
 			self.input_files = None
 

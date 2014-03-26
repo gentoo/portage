@@ -1,0 +1,27 @@
+#!/bin/bash
+# Copyright 2007-2012 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+
+scriptpath=${BASH_SOURCE[0]}
+scriptname=${scriptpath##*/}
+
+if [[ sed == ${scriptname} && -n ${ESED} ]]; then
+	exec ${ESED} "$@"
+elif type -P g${scriptname} > /dev/null ; then
+	exec g${scriptname} "$@"
+else
+	old_IFS="${IFS}"
+	IFS=":"
+
+	for path in $PATH; do
+		if [[ -x ${path}/${scriptname} ]]; then
+			[[ ${path}/${scriptname} -ef ${scriptpath} ]] && continue
+			exec "${path}/${scriptname}" "$@"
+			exit 0
+		fi
+	done
+
+	IFS="${old_IFS}"
+fi
+
+exit 1

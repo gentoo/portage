@@ -1,11 +1,12 @@
-#!/usr/bin/python
-# Copyright 2009-2011 Gentoo Foundation
+#!/usr/bin/python -b
+# Copyright 2009-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import optparse
 import sys
 import portage
+portage._internal_caller = True
 from portage import os
+from portage.util._argparse import ArgumentParser
 
 def command_recompose(args):
 
@@ -45,8 +46,8 @@ def main(argv):
 	usage = "usage: %s COMMAND [args]" % \
 		os.path.basename(argv[0])
 
-	parser = optparse.OptionParser(description=description, usage=usage)
-	options, args = parser.parse_args(argv[1:])
+	parser = ArgumentParser(description=description, usage=usage)
+	options, args = parser.parse_known_args(argv[1:])
 
 	if not args:
 		parser.error("missing command argument")

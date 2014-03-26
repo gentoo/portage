@@ -1,5 +1,7 @@
-# Copyright 1998-2012 Gentoo Foundation
+# Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 __all__ = [
 	"close_portdbapi_caches", "FetchlistDict", "portagetree", "portdbapi"
@@ -33,21 +35,75 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_encode
 from portage import OrderedDict
+from portage.util._eventloop.EventLoop import EventLoop
+from portage.util._eventloop.global_event_loop import global_event_loop
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
-from _emerge.PollScheduler import PollScheduler
 
 import os as _os
 import sys
 import traceback
 import warnings
 
+try:
+	from urllib.parse import urlparse
+except ImportError:
+	from urlparse import urlparse
+
 if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
 	basestring = str
 	long = int
 
+def close_portdbapi_caches():
+	# The python interpreter does _not_ guarantee that destructors are
+	# called for objects that remain when the interpreter exits, so we
+	# use an atexit hook to call destructors for any global portdbapi
+	# instances that may have been constructed.
+	try:
+		portage._legacy_globals_constructed
+	except AttributeError:
+		pass
+	else:
+		if "db" in portage._legacy_globals_constructed:
+			try:
+				db = portage.db
+			except AttributeError:
+				pass
+			else:
+				if isinstance(db, dict):
+					for x in db.values():
+						try:
+							if "porttree" in x.lazy_items:
+								continue
+						except (AttributeError, TypeError):
+							continue
+						try:
+							x = x.pop("porttree").dbapi
+						except (AttributeError, KeyError):
+							continue
+						if not isinstance(x, portdbapi):
+							continue
+						x.close_caches()
+
+portage.process.atexit_register(close_portdbapi_caches)
+
+# It used to be necessary for API consumers to remove portdbapi instances
+# from portdbapi_instances, in order to avoid having accumulated instances
+# consume memory. Now, portdbapi_instances is just an empty dummy list, so
+# for backward compatibility, ignore ValueError for removal on non-existent
+# items.
+class _dummy_list(list):
+	def remove(self, item):
+		# TODO: Trigger a DeprecationWarning here, after stable portage
+		# has dummy portdbapi_instances.
+		try:
+			list.remove(self, item)
+		except ValueError:
+			pass
+
 class portdbapi(dbapi):
 	"""this tree will scan a portage directory located at root (passed to init)"""
-	portdbapi_instances = []
+	portdbapi_instances = _dummy_list()
 	_use_mutable = True
 
 	@property
@@ -56,23 +112,28 @@ class portdbapi(dbapi):
 
 	@property
 	def porttree_root(self):
+		warnings.warn("portage.dbapi.porttree.portdbapi.porttree_root is deprecated in favor of portage.repository.config.RepoConfig.location "
+			"(available as repositories[repo_name].location attribute of instances of portage.dbapi.porttree.portdbapi class)",
+			DeprecationWarning, stacklevel=2)
 		return self.settings.repositories.mainRepoLocation()
 
 	@property
 	def eclassdb(self):
+		warnings.warn("portage.dbapi.porttree.portdbapi.eclassdb is deprecated in favor of portage.repository.config.RepoConfig.eclass_db "
+			"(available as repositories[repo_name].eclass_db attribute of instances of portage.dbapi.porttree.portdbapi class)",
+			DeprecationWarning, stacklevel=2)
 		main_repo = self.repositories.mainRepo()
 		if main_repo is None:
 			return None
 		return main_repo.eclass_db
 
-	def __init__(self, _unused_param=None, mysettings=None):
+	def __init__(self, _unused_param=DeprecationWarning, mysettings=None):
 		"""
 		@param _unused_param: deprecated, use mysettings['PORTDIR'] instead
 		@type _unused_param: None
 		@param mysettings: an immutable config instance
 		@type mysettings: portage.config
 		"""
-		portdbapi.portdbapi_instances.append(self)
 
 		from portage import config
 		if mysettings:
@@ -81,7 +142,7 @@ class portdbapi(dbapi):
 			from portage import settings
 			self.settings = config(clone=settings)
 
-		if _unused_param is not None:
+		if _unused_param is not DeprecationWarning:
 			warnings.warn("The first parameter of the " + \
 				"portage.dbapi.porttree.portdbapi" + \
 				" constructor is unused since portage-2.1.8. " + \
@@ -96,7 +157,6 @@ class portdbapi(dbapi):
 		# this purpose because doebuild makes many changes to the config
 		# instance that is passed in.
 		self.doebuild_settings = config(clone=self.settings)
-		self._scheduler = PollScheduler().sched_iface
 		self.depcachedir = os.path.realpath(self.settings.depcachedir)
 		
 		if os.environ.get("SANDBOX_ON") == "1":
@@ -153,10 +213,10 @@ class portdbapi(dbapi):
 			# portage group.
 			depcachedir_unshared = True
 		else:
-			cache_kwargs.update({
+			cache_kwargs.update(portage._native_kwargs({
 				'gid'     : portage_gid,
 				'perms'   : 0o664
-			})
+			}))
 
 		# If secpass < 1, we don't want to write to the cache
 		# since then we won't be able to apply group permissions
@@ -187,12 +247,24 @@ class portdbapi(dbapi):
 					self._pregen_auxdb[x] = cache
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(
-			["DEPEND", "EAPI", "INHERITED", "IUSE", "KEYWORDS", "LICENSE",
+			["DEPEND", "EAPI", "HDEPEND",
+			"INHERITED", "IUSE", "KEYWORDS", "LICENSE",
 			"PDEPEND", "PROPERTIES", "PROVIDE", "RDEPEND", "repository",
 			"RESTRICT", "SLOT", "DEFINED_PHASES", "REQUIRED_USE"])
 
 		self._aux_cache = {}
 		self._broken_ebuilds = set()
+
+	@property
+	def _event_loop(self):
+		if portage._internal_caller:
+			# For internal portage usage, the global_event_loop is safe.
+			return global_event_loop()
+		else:
+			# For external API consumers, use a local EventLoop, since
+			# we don't want to assume that it's safe to override the
+			# global SIGCHLD handler.
+			return EventLoop(main=False)
 
 	def _create_pregen_cache(self, tree):
 		conf = self.repositories.get_repo_for_location(tree)
@@ -203,6 +275,13 @@ class portdbapi(dbapi):
 				cache.ec = self.repositories.get_repo_for_location(tree).eclass_db
 			except AttributeError:
 				pass
+
+			if not cache.complete_eclass_entries:
+				warnings.warn(
+					("Repository '%s' used deprecated 'pms' cache format. "
+					"Please migrate to 'md5-dict' format.") % (conf.name,),
+					DeprecationWarning)
+
 		return cache
 
 	def _init_cache_dirs(self):
@@ -447,7 +526,7 @@ class portdbapi(dbapi):
 
 			proc = EbuildMetadataPhase(cpv=mycpv,
 				ebuild_hash=ebuild_hash, portdb=self,
-				repo_path=mylocation, scheduler=self._scheduler,
+				repo_path=mylocation, scheduler=self._event_loop,
 				settings=self.doebuild_settings)
 
 			proc.start()
@@ -627,13 +706,14 @@ class portdbapi(dbapi):
 		else:
 			return 0
 
-	def cp_all(self, categories=None, trees=None):
+	def cp_all(self, categories=None, trees=None, reverse=False):
 		"""
 		This returns a list of all keys in our tree or trees
 		@param categories: optional list of categories to search or 
 			defaults to self.settings.categories
 		@param trees: optional list of trees to search the categories in or
 			defaults to self.porttrees
+		@param reverse: reverse sort order (default is False)
 		@rtype list of [cat/pkg,...]
 		"""
 		d = {}
@@ -652,7 +732,7 @@ class portdbapi(dbapi):
 						continue
 					d[atom.cp] = None
 		l = list(d)
-		l.sort()
+		l.sort(reverse=reverse)
 		return l
 
 	def cp_list(self, mycp, use_cache=1, mytree=None):
@@ -827,8 +907,8 @@ class portdbapi(dbapi):
 						continue
 
 					try:
-						pkg_str = _pkg_str(cpv, slot=metadata["SLOT"],
-							repo=metadata["repository"], eapi=metadata["EAPI"])
+						pkg_str = _pkg_str(cpv, metadata=metadata,
+							settings=self.settings)
 					except InvalidData:
 						continue
 
@@ -966,19 +1046,16 @@ class portdbapi(dbapi):
 					return False
 				if settings._getMissingProperties(cpv, metadata):
 					return False
+				if settings._getMissingRestrict(cpv, metadata):
+					return False
 			except InvalidDependString:
 				return False
 
 		return True
 
-def close_portdbapi_caches():
-	for i in portdbapi.portdbapi_instances:
-		i.close_caches()
-
-portage.process.atexit_register(portage.portageexit)
-
 class portagetree(object):
-	def __init__(self, root=None, virtual=DeprecationWarning, settings=None):
+	def __init__(self, root=DeprecationWarning, virtual=DeprecationWarning,
+		settings=None):
 		"""
 		Constructor for a PortageTree
 		
@@ -994,7 +1071,7 @@ class portagetree(object):
 			settings = portage.settings
 		self.settings = settings
 
-		if root is not None and root != settings['ROOT']:
+		if root is not DeprecationWarning:
 			warnings.warn("The root parameter of the " + \
 				"portage.dbapi.porttree.portagetree" + \
 				" constructor is now unused. Use " + \
@@ -1062,10 +1139,8 @@ class portagetree(object):
 		"Get a slot for a catpkg; assume it exists."
 		myslot = ""
 		try:
-			myslot = self.dbapi.aux_get(mycatpkg, ["SLOT"])[0]
-		except SystemExit:
-			raise
-		except Exception:
+			myslot = self.dbapi._pkg_str(mycatpkg, None).slot
+		except KeyError:
 			pass
 		return myslot
 
@@ -1137,9 +1212,18 @@ def _parse_uri_map(cpv, metadata, use=None):
 
 		uri_set = uri_map.get(distfile)
 		if uri_set is None:
-			uri_set = set()
+			# Use OrderedDict to preserve order from SRC_URI
+			# while ensuring uniqueness.
+			uri_set = OrderedDict()
 			uri_map[distfile] = uri_set
-		uri_set.add(uri)
-		uri = None
+
+		# SRC_URI may contain a file name with no scheme, and in
+		# this case it does not belong in uri_set.
+		if urlparse(uri).scheme:
+			uri_set[uri] = True
+
+	# Convert OrderedDicts to tuples.
+	for k, v in uri_map.items():
+		uri_map[k] = tuple(v)
 
 	return uri_map

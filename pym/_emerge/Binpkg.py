@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.EbuildPhase import EbuildPhase
@@ -298,6 +298,7 @@ class Binpkg(CompositeTask):
 
 		extractor = BinpkgExtractorAsync(background=self.background,
 			env=self.settings.environ(),
+			features=self.settings.features,
 			image_dir=self._image_dir,
 			pkg=self.pkg, pkg_path=self._pkg_path,
 			logfile=self.settings.get("PORTAGE_LOG_FILE"),
@@ -328,11 +329,13 @@ class Binpkg(CompositeTask):
 			self.wait()
 			return
 
+		env = self.settings.environ()
+		env["PYTHONPATH"] = self.settings["PORTAGE_PYTHONPATH"]
 		chpathtool = SpawnProcess(
 			args=[portage._python_interpreter,
 			os.path.join(self.settings["PORTAGE_BIN_PATH"], "chpathtool.py"),
 			self.settings["D"], self._build_prefix, self.settings["EPREFIX"]],
-			background=self.background, env=self.settings.environ(), 
+			background=self.background, env=env,
 			scheduler=self.scheduler,
 			logfile=self.settings.get('PORTAGE_LOG_FILE'))
 		self._writemsg_level(">>> Adjusting Prefix to %s\n" % self.settings["EPREFIX"])

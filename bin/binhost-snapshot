@@ -1,9 +1,8 @@
-#!/usr/bin/python
-# Copyright 2010-2011 Gentoo Foundation
+#!/usr/bin/python -b
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import io
-import optparse
 import os
 import sys
 import textwrap
@@ -13,13 +12,12 @@ try:
 except ImportError:
 	from urlparse import urlparse
 
-try:
-	import portage
-except ImportError:
-	from os import path as osp
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(
-		osp.realpath(__file__))), "pym"))
-	import portage
+from os import path as osp
+pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
+sys.path.insert(0, pym_path)
+import portage
+portage._internal_caller = True
+from portage.util._argparse import ArgumentParser
 
 def parse_args(argv):
 	prog_name = os.path.basename(argv[0])
@@ -33,7 +31,7 @@ def parse_args(argv):
 
 	usage += "\n\n"
 	for line in textwrap.wrap(prog_desc, 70):
-		usage += line + "\n" 
+		usage += line + "\n"
 
 	usage += "\n"
 	usage += "Required Arguments:\n\n"
@@ -47,11 +45,12 @@ def parse_args(argv):
 		"write Packages index with\n" + \
 		"                 snapshot_uri"
 
-	parser = optparse.OptionParser(usage=usage)
-	parser.add_option('--hardlinks', help='create hardlinks (y or n, default is y)',
-		choices=('y', 'n'))
-	parser.set_defaults(hardlinks='y')
-	options, args = parser.parse_args(argv[1:])
+	parser = ArgumentParser(usage=usage)
+	parser.add_argument('--hardlinks',
+		help='create hardlinks (y or n, default is y)',
+		choices=('y', 'n'),
+		default='y')
+	options, args = parser.parse_known_args(argv[1:])
 
 	if len(args) != 4:
 		parser.error("Required 4 arguments, got %d" % (len(args),))

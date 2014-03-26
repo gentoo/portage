@@ -19,7 +19,6 @@
 					<listitem><para>docompress</para></listitem>
 					<listitem><para>exeopts</para></listitem>
 					<listitem><para>insopts</para></listitem>
-					<listitem><para>keepdir</para></listitem>
 					<listitem><para>libopts</para></listitem>
 					<listitem><para>use</para></listitem>
 					<listitem><para>use_enable</para></listitem>
@@ -97,7 +96,7 @@
 	<section id='package-ebuild-eapi-4-python-repo-level-config'>
 		<title>Extended Repository-Level Configuration</title>
 		<para>
-			Repository-level configuration in ${repository}/profiles is supported for the following files:
+			Repository-level configuration in ${repository_path}/profiles is supported for the following files:
 			<itemizedlist>
 				<listitem><para>make.defaults</para></listitem>
 				<listitem><para>package.use</para></listitem>
@@ -107,8 +106,11 @@
 				<listitem><para>use.mask</para></listitem>
 			</itemizedlist>
 		</para>
+	</section>
+	<section id='package-ebuild-eapi-4-python-directories'>
+		<title>Directories Allowed for Profile-Level and Repository-Level Configuration</title>
 		<para>
-			By default, the following files in ${repository}/profiles can be also directories:
+			The following files can be directories:
 			<itemizedlist>
 				<listitem><para>package.mask</para></listitem>
 				<listitem><para>package.use</para></listitem>
@@ -118,5 +120,41 @@
 				<listitem><para>use.mask</para></listitem>
 			</itemizedlist>
 		</para>
+	</section>
+	<section id='package-ebuild-eapi-4-python-use-aliases'>
+		<title>USE Flag Aliases</title>
+		<para>
+			USE flag aliases are supported to allow to satisfy dependencies of packages from other repositories, which require differently named USE flags. USE flag aliases are defined in ${repository_path}/profiles/use.aliases and ${repository_path}/profiles/package.use.aliases files.
+		</para>
+		<table><title>use.aliases Example</title>
+			<tgroup cols='1' align='left'>
+				<tbody>
+					<row>
+						<entry>real_flag1 alias1 alias2</entry>
+					</row>
+					<row>
+						<entry>real_flag2 alias3 alias4</entry>
+					</row>
+				</tbody>
+			</tgroup>
+		</table>
+		<table><title>package.use.aliases Example</title>
+			<tgroup cols='1' align='left'>
+				<tbody>
+					<row>
+						<entry>category/package1 real_flag1 alias1 alias2</entry>
+					</row>
+					<row>
+						<entry>category/package1 real_flag2 alias3 alias4</entry>
+					</row>
+					<row>
+						<entry>=category/package2-1* real_flag3 alias5 alias6</entry>
+					</row>
+					<row>
+						<entry>=category/package2-2* real_flag4 alias5 alias6</entry>
+					</row>
+				</tbody>
+			</tgroup>
+		</table>
 	</section>
 </section>

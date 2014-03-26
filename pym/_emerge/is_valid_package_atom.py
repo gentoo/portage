@@ -1,11 +1,12 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import re
 from portage.dep import isvalidatom
 
 def insert_category_into_atom(atom, category):
-	alphanum = re.search(r'\w', atom)
+	# Handle '*' character for "extended syntax" wildcard support.
+	alphanum = re.search(r'[\*\w]', atom, re.UNICODE)
 	if alphanum:
 		ret = atom[:alphanum.start()] + "%s/" % category + \
 			atom[alphanum.start():]
@@ -14,7 +15,7 @@ def insert_category_into_atom(atom, category):
 	return ret
 
 def is_valid_package_atom(x, allow_repo=False):
-	if "/" not in x:
+	if "/" not in x.split(":")[0]:
 		x2 = insert_category_into_atom(x, 'cat')
 		if x2 != None:
 			x = x2

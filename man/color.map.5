@@ -1,4 +1,4 @@
-.TH "COLOR.MAP" "5" "Mar 2010" "Portage VERSION" "Portage"
+.TH "COLOR.MAP" "5" "Jul 2013" "Portage VERSION" "Portage"
 .SH "NAME"
 color.map \- custom color settings for Portage
 .SH "SYNOPSIS"
@@ -9,9 +9,11 @@ Portage will check this file first for color classes settings. If no setting
 of given color class is found in /etc/portage/color.map, Portage uses default
 value defined internally.
 .SH "SYNTAX"
-\fBVARIABLE\fR = \fI[space delimited list of attributes or ansi code pattern]\fR
+\fBVARIABLE\fR = \fI[space delimited list of attributes or ansi code
+pattern]\fR
 .TP
-\fBATTRIBUTE\fR = \fI[space delimited list of attributes or ansi code pattern]\fR
+\fBATTRIBUTE\fR = \fI[space delimited list of attributes or ansi code \
+pattern]\fR
 .SH "VARIABLES"
 .TP
 \fBNORMAL\fR = \fI"normal"\fR
@@ -54,10 +56,12 @@ Defines color used for world packages planned to be merged.
 Defines color used for packages planned to be merged using a binary package.
 .TP
 \fBPKG_BINARY_MERGE_SYSTEM\fR = \fI"purple"\fR
-Defines color used for system packages planned to be merged using a binary package.
+Defines color used for system packages planned to be merged using a binary
+package.
 .TP
 \fBPKG_BINARY_MERGE_WORLD\fR = \fI"fuchsia"\fR
-Defines color used for world packages planned to be merged using a binary package.
+Defines color used for world packages planned to be merged using a binary
+package.
 .TP
 \fBPKG_NOMERGE\fR = \fI"darkblue"\fR
 Defines color used for packages not planned to be merged.
@@ -185,14 +189,14 @@ Defines color used for warnings.
 Please report bugs via http://bugs.gentoo.org/
 .SH "AUTHORS"
 .nf
-Arfrever Frehtes Taifersar Arahesis <Arfrever.FTA@gmail.com>
+Arfrever Frehtes Taifersar Arahesis <arfrever@apache.org>
 .fi
 .SH "FILES"
 .TP
 .B /etc/portage/color.map
 Contains variables customizing colors.
 .TP
-.B /etc/make.conf
+.B /etc/portage/make.conf
 Contains other variables.
 .SH "SEE ALSO"
 .BR console_codes (4),

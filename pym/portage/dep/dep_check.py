@@ -1,16 +1,19 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 __all__ = ['dep_check', 'dep_eval', 'dep_wordreduce', 'dep_zapdeps']
 
 import logging
+import operator
 
 import portage
-from portage import _unicode_decode
 from portage.dep import Atom, match_from_list, use_reduce
 from portage.exception import InvalidDependString, ParseError
 from portage.localization import _
 from portage.util import writemsg, writemsg_level
+from portage.util.SlotObject import SlotObject
 from portage.versions import vercmp, _pkg_str
 
 def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
@@ -160,7 +163,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			# According to GLEP 37, RDEPEND is the only dependency
 			# type that is valid for new-style virtuals. Repoman
 			# should enforce this.
-			depstring = pkg.metadata['RDEPEND']
+			depstring = pkg._metadata['RDEPEND']
 			pkg_kwargs = kwargs.copy()
 			pkg_kwargs["myuse"] = pkg_use_enabled(pkg)
 			if edebug:
@@ -183,7 +186,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					del mytrees["virt_parent"]
 
 			if not mycheck[0]:
-				raise ParseError(_unicode_decode("%s: %s '%s'") % \
+				raise ParseError("%s: %s '%s'" % \
 					(pkg, mycheck[1], depstring))
 
 			# pull in the new-style virtual
@@ -254,6 +257,10 @@ def dep_eval(deplist):
 				return 0
 		return 1
 
+class _dep_choice(SlotObject):
+	__slots__ = ('atoms', 'slot_map', 'cp_map', 'all_available',
+		'all_installed_slots')
+
 def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	"""
 	Takes an unreduced and reduced deplist and removes satisfied dependencies.
@@ -316,6 +323,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	priority = trees[myroot].get("priority")
 	graph_db = trees[myroot].get("graph_db")
 	graph    = trees[myroot].get("graph")
+	want_update_pkg = trees[myroot].get("want_update_pkg")
 	vardb = None
 	if "vartree" in trees[myroot]:
 		vardb = trees[myroot]["vartree"].dbapi
@@ -323,6 +331,13 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		mydbapi = trees[myroot]["bintree"].dbapi
 	else:
 		mydbapi = trees[myroot]["porttree"].dbapi
+
+	try:
+		mydbapi_match_pkgs = mydbapi.match_pkgs
+	except AttributeError:
+		def mydbapi_match_pkgs(atom):
+			return [mydbapi._pkg_str(cpv, atom.repo)
+				for cpv in mydbapi.match(atom)]
 
 	# Sort the deps into installed, not installed but already 
 	# in the graph and other, not installed and not in the graph
@@ -347,24 +362,17 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				continue
 			# Ignore USE dependencies here since we don't want USE
 			# settings to adversely affect || preference evaluation.
-			avail_pkg = mydbapi.match(atom.without_use)
+			avail_pkg = mydbapi_match_pkgs(atom.without_use)
 			if avail_pkg:
 				avail_pkg = avail_pkg[-1] # highest (ascending order)
-				try:
-					slot = avail_pkg.slot
-				except AttributeError:
-					eapi, slot, repo = mydbapi.aux_get(avail_pkg,
-						["EAPI", "SLOT", "repository"])
-					avail_pkg = _pkg_str(avail_pkg, eapi=eapi,
-						slot=slot, repo=repo)
-				avail_slot = Atom("%s:%s" % (atom.cp, slot))
+				avail_slot = Atom("%s:%s" % (atom.cp, avail_pkg.slot))
 			if not avail_pkg:
 				all_available = False
 				all_use_satisfied = False
 				break
 
 			if atom.use:
-				avail_pkg_use = mydbapi.match(atom)
+				avail_pkg_use = mydbapi_match_pkgs(atom)
 				if not avail_pkg_use:
 					all_use_satisfied = False
 				else:
@@ -372,13 +380,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 					avail_pkg_use = avail_pkg_use[-1]
 					if avail_pkg_use != avail_pkg:
 						avail_pkg = avail_pkg_use
-						try:
-							slot = avail_pkg.slot
-						except AttributeError:
-							eapi, slot, repo = mydbapi.aux_get(avail_pkg,
-								["EAPI", "SLOT", "repository"])
-							avail_pkg = _pkg_str(avail_pkg,
-								eapi=eapi, slot=slot, repo=repo)
+					avail_slot = Atom("%s:%s" % (atom.cp, avail_pkg.slot))
 
 			slot_map[avail_slot] = avail_pkg
 			highest_cpv = cp_map.get(avail_pkg.cp)
@@ -386,7 +388,9 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				vercmp(avail_pkg.version, highest_cpv.version) > 0:
 				cp_map[avail_pkg.cp] = avail_pkg
 
-		this_choice = (atoms, slot_map, cp_map, all_available)
+		this_choice = _dep_choice(atoms=atoms, slot_map=slot_map,
+			cp_map=cp_map, all_available=all_available,
+			all_installed_slots=False)
 		if all_available:
 			# The "all installed" criterion is not version or slot specific.
 			# If any version of a package is already in the graph then we
@@ -407,6 +411,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						not slot_atom.startswith("virtual/"):
 						all_installed_slots = False
 						break
+			this_choice.all_installed_slots = all_installed_slots
 			if graph_db is None:
 				if all_use_satisfied:
 					if all_installed:
@@ -468,8 +473,27 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						elif all_installed:
 							if all_installed_slots:
 								preferred_installed.append(this_choice)
-							else:
+							elif parent is None or want_update_pkg is None:
 								preferred_any_slot.append(this_choice)
+							else:
+								# When appropriate, prefer a slot that is not
+								# installed yet for bug #478188.
+								want_update = True
+								for slot_atom, avail_pkg in slot_map.items():
+									if avail_pkg in graph:
+										continue
+									# New-style virtuals have zero cost to install.
+									if slot_atom.startswith("virtual/") or \
+										vardb.match(slot_atom):
+										continue
+									if not want_update_pkg(parent, avail_pkg):
+										want_update = False
+										break
+
+								if want_update:
+									preferred_installed.append(this_choice)
+								else:
+									preferred_any_slot.append(this_choice)
 						else:
 							preferred_non_installed.append(this_choice)
 					else:
@@ -490,6 +514,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						all_installed = False
 
 			if all_installed:
+				this_choice.all_installed_slots = True
 				other_installed.append(this_choice)
 			elif some_installed:
 				other_installed_some.append(this_choice)
@@ -506,22 +531,23 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	for choices in choice_bins:
 		if len(choices) < 2:
 			continue
+		# Prefer choices with all_installed_slots for bug #480736.
+		choices.sort(key=operator.attrgetter('all_installed_slots'),
+			reverse=True)
 		for choice_1 in choices[1:]:
-			atoms_1, slot_map_1, cp_map_1, all_available_1 = choice_1
-			cps = set(cp_map_1)
+			cps = set(choice_1.cp_map)
 			for choice_2 in choices:
 				if choice_1 is choice_2:
 					# choice_1 will not be promoted, so move on
 					break
-				atoms_2, slot_map_2, cp_map_2, all_available_2 = choice_2
-				intersecting_cps = cps.intersection(cp_map_2)
+				intersecting_cps = cps.intersection(choice_2.cp_map)
 				if not intersecting_cps:
 					continue
 				has_upgrade = False
 				has_downgrade = False
 				for cp in intersecting_cps:
-					version_1 = cp_map_1[cp]
-					version_2 = cp_map_2[cp]
+					version_1 = choice_1.cp_map[cp]
+					version_2 = choice_2.cp_map[cp]
 					difference = vercmp(version_1.version, version_2.version)
 					if difference != 0:
 						if difference > 0:
@@ -538,9 +564,9 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 
 	for allow_masked in (False, True):
 		for choices in choice_bins:
-			for atoms, slot_map, cp_map, all_available in choices:
-				if all_available or allow_masked:
-					return atoms
+			for choice in choices:
+				if choice.all_available or allow_masked:
+					return choice.atoms
 
 	assert(False) # This point should not be reachable
 
@@ -575,18 +601,15 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 
 	mymasks = set()
 	useforce = set()
-	useforce.add(mysettings["ARCH"])
 	if use == "all":
-		# This masking/forcing is only for repoman.  In other cases, relevant
-		# masking/forcing should have already been applied via
-		# config.regenerate().  Also, binary or installed packages may have
-		# been built with flags that are now masked, and it would be
-		# inconsistent to mask them now.  Additionally, myuse may consist of
-		# flags from a parent package that is being merged to a $ROOT that is
-		# different from the one that mysettings represents.
+		# This is only for repoman, in order to constrain the use_reduce
+		# matchall behavior to account for profile use.mask/force. The
+		# ARCH/archlist code here may be redundant, since the profile
+		# really should be handling ARCH masking/forcing itself.
 		mymasks.update(mysettings.usemask)
 		mymasks.update(mysettings.archlist())
 		mymasks.discard(mysettings["ARCH"])
+		useforce.add(mysettings["ARCH"])
 		useforce.update(mysettings.useforce)
 		useforce.difference_update(mymasks)
 
@@ -609,7 +632,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		# dependencies so that things like --depclean work as well as possible
 		# in spite of partial invalidity.
 		if not current_parent.installed:
-			eapi = current_parent.metadata['EAPI']
+			eapi = current_parent.eapi
 
 	if isinstance(depstring, list):
 		mysplit = depstring
@@ -619,7 +642,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 			masklist=mymasks, matchall=(use=="all"), excludeall=useforce,
 			opconvert=True, token_class=Atom, eapi=eapi)
 		except InvalidDependString as e:
-			return [0, _unicode_decode("%s") % (e,)]
+			return [0, "%s" % (e,)]
 
 	if mysplit == []:
 		#dependencies were reduced to nothing
@@ -633,10 +656,10 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 			use_force=useforce, use_mask=mymasks, use_cache=use_cache,
 			use_binaries=use_binaries, myroot=myroot, trees=trees)
 	except ParseError as e:
-		return [0, _unicode_decode("%s") % (e,)]
+		return [0, "%s" % (e,)]
 
-	mysplit2=mysplit[:]
-	mysplit2=dep_wordreduce(mysplit2,mysettings,mydbapi,mode,use_cache=use_cache)
+	mysplit2 = dep_wordreduce(mysplit,
+		mysettings, mydbapi, mode, use_cache=use_cache)
 	if mysplit2 is None:
 		return [0, _("Invalid token")]
 

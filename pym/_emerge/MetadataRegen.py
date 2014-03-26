@@ -1,18 +1,20 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
 from portage import os
 from portage.dep import _repo_separator
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
-from _emerge.PollScheduler import PollScheduler
+from portage.cache.cache_errors import CacheError
+from portage.util._async.AsyncScheduler import AsyncScheduler
 
-class MetadataRegen(PollScheduler):
+class MetadataRegen(AsyncScheduler):
 
 	def __init__(self, portdb, cp_iter=None, consumer=None,
-		max_jobs=None, max_load=None):
-		PollScheduler.__init__(self, main=True)
+		write_auxdb=True, **kwargs):
+		AsyncScheduler.__init__(self, **kwargs)
 		self._portdb = portdb
+		self._write_auxdb = write_auxdb
 		self._global_cleanse = False
 		if cp_iter is None:
 			cp_iter = self._iter_every_cp()
@@ -22,34 +24,21 @@ class MetadataRegen(PollScheduler):
 		self._cp_iter = cp_iter
 		self._consumer = consumer
 
-		if max_jobs is None:
-			max_jobs = 1
-
-		self._max_jobs = max_jobs
-		self._max_load = max_load
-
 		self._valid_pkgs = set()
 		self._cp_set = set()
 		self._process_iter = self._iter_metadata_processes()
-		self.returncode = os.EX_OK
-		self._error_count = 0
 		self._running_tasks = set()
-		self._remaining_tasks = True
 
-	def _terminate_tasks(self):
-		for task in list(self._running_tasks):
-			task.cancel()
+	def _next_task(self):
+		return next(self._process_iter)
 
 	def _iter_every_cp(self):
-		portage.writemsg_stdout("Listing available packages...\n")
-		every_cp = self._portdb.cp_all()
-		portage.writemsg_stdout("Regenerating cache entries...\n")
-		every_cp.sort(reverse=True)
-		try:
-			while not self._terminated_tasks:
-				yield every_cp.pop()
-		except IndexError:
-			pass
+		# List categories individually, in order to start yielding quicker,
+		# and in order to reduce latency in case of a signal interrupt.
+		cp_all = self._portdb.cp_all
+		for category in sorted(self._portdb.categories):
+			for cp in cp_all(categories=(category,)):
+				yield cp
 
 	def _iter_metadata_processes(self):
 		portdb = self._portdb
@@ -57,8 +46,9 @@ class MetadataRegen(PollScheduler):
 		cp_set = self._cp_set
 		consumer = self._consumer
 
+		portage.writemsg_stdout("Regenerating cache entries...\n")
 		for cp in self._cp_iter:
-			if self._terminated_tasks:
+			if self._terminated.is_set():
 				break
 			cp_set.add(cp)
 			portage.writemsg_stdout("Processing %s\n" % cp)
@@ -68,7 +58,7 @@ class MetadataRegen(PollScheduler):
 				repo = portdb.repositories.get_repo_for_location(mytree)
 				cpv_list = portdb.cp_list(cp, mytree=[repo.location])
 				for cpv in cpv_list:
-					if self._terminated_tasks:
+					if self._terminated.is_set():
 						break
 					valid_pkgs.add(cpv)
 					ebuild_path, repo_path = portdb.findname2(cpv, myrepo=repo.name)
@@ -84,22 +74,21 @@ class MetadataRegen(PollScheduler):
 					yield EbuildMetadataPhase(cpv=cpv,
 						ebuild_hash=ebuild_hash,
 						portdb=portdb, repo_path=repo_path,
-						settings=portdb.doebuild_settings)
+						settings=portdb.doebuild_settings,
+						write_auxdb=self._write_auxdb)
 
-	def _keep_scheduling(self):
-		return self._remaining_tasks and not self._terminated_tasks
+	def _wait(self):
 
-	def run(self):
+		AsyncScheduler._wait(self)
 
 		portdb = self._portdb
-		from portage.cache.cache_errors import CacheError
 		dead_nodes = {}
 
-		self._main_loop()
-
+		self._termination_check()
 		if self._terminated_tasks:
-			self.returncode = 1
-			return
+			portdb.flush_cache()
+			self.returncode = self._cancelled_returncode
+			return self.returncode
 
 		if self._global_cleanse:
 			for mytree in portdb.porttrees:
@@ -142,29 +131,12 @@ class MetadataRegen(PollScheduler):
 					except (KeyError, CacheError):
 						pass
 
-	def _schedule_tasks(self):
-		if self._terminated_tasks:
-			return
+		portdb.flush_cache()
+		return self.returncode
 
-		while self._can_add_job():
-			try:
-				metadata_process = next(self._process_iter)
-			except StopIteration:
-				self._remaining_tasks = False
-				return
+	def _task_exit(self, metadata_process):
 
-			self._jobs += 1
-			self._running_tasks.add(metadata_process)
-			metadata_process.scheduler = self.sched_iface
-			metadata_process.addExitListener(self._metadata_exit)
-			metadata_process.start()
-
-	def _metadata_exit(self, metadata_process):
-		self._jobs -= 1
-		self._running_tasks.discard(metadata_process)
 		if metadata_process.returncode != os.EX_OK:
-			self.returncode = 1
-			self._error_count += 1
 			self._valid_pkgs.discard(metadata_process.cpv)
 			if not self._terminated_tasks:
 				portage.writemsg("Error processing %s, continuing...\n" % \
@@ -179,5 +151,4 @@ class MetadataRegen(PollScheduler):
 				metadata_process.ebuild_hash,
 				metadata_process.eapi_supported)
 
-		self._schedule()
-
+		AsyncScheduler._task_exit(self, metadata_process)

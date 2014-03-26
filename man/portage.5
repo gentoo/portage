@@ -1,26 +1,21 @@
-.TH "PORTAGE" "5" "Jun 2012" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "Feb 2014" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
-The current portage code uses many different configuration files, most of which 
-are unknown to users and normal developers.  Here we will try to collect all 
-the odds and ends so as to help users more effectively utilize portage.  This 
+The current portage code uses many different configuration files, most of which
+are unknown to users and normal developers.  Here we will try to collect all
+the odds and ends so as to help users more effectively utilize portage.  This
 is a reference only for files which do not already have a man page.
 
-All files in the make.profile directory may be tweaked via parent profiles 
-when using cascading profiles.  For more info, please see 
+All files in the make.profile directory may be tweaked via parent profiles
+when using cascading profiles.  For more info, please see
 http://www.gentoo.org/proj/en/releng/docs/cascading-profiles.xml
 .IP Note:
-If you are looking for information on how to emerge something, please see 
+If you are looking for information on how to emerge something, please see
 .BR emerge (1).
 .SH "SYNOPSIS"
 .TP
-.BR /etc/
-.nf
-.BR make.conf (5)
-.fi
-.TP
-\fB/etc/make.profile/\fR or \fB/etc/portage/make.profile/\fR
+\fB/etc/portage/make.profile/\fR or \fB/etc/make.profile/\fR
 site\-specific overrides go in \fB/etc/portage/profile/\fR
 .nf
 deprecated
@@ -36,10 +31,14 @@ package.unmask
 package.use
 package.use.force
 package.use.mask
+package.use.stable.force
+package.use.stable.mask
 parent
 profile.bashrc
 use.force
 use.mask
+use.stable.mask
+use.stable.force
 virtuals
 .fi
 .TP
@@ -49,10 +48,11 @@ bashrc
 categories
 color.map
 license_groups
-make.conf
+.BR make.conf (5)
 mirrors
 modules
 package.accept_keywords
+package.accept_restrict
 package.env
 package.keywords
 package.license
@@ -67,7 +67,7 @@ repos.conf
 package-specific bashrc files
 .TP
 .BR /etc/portage/profile/
-site-specific overrides of \fB/etc/make.profile/\fR
+site-specific overrides of \fB/etc/portage/make.profile/\fR
 .TP
 .BR /etc/portage/sets/
 user\-defined package sets
@@ -90,6 +90,8 @@ package.unmask
 package.use
 package.use.force
 package.use.mask
+package.use.stable.force
+package.use.stable.mask
 profiles.desc
 repo_name
 thirdpartymirrors
@@ -97,11 +99,14 @@ use.desc
 use.force
 use.local.desc
 use.mask
+use.stable.mask
+use.stable.force
 .fi
 .TP
 .BR /usr/share/portage/config/
 .nf
 make.globals
+repos.conf
 .fi
 .TP
 .BR /var/cache/edb/
@@ -117,8 +122,8 @@ world
 world_sets
 .fi
 .SH "GLOSSARY"
-In the following sections, some terminology may be foreign to you or used 
-with meaning specific to Portage.  Please see the referenced manpages for 
+In the following sections, some terminology may be foreign to you or used
+with meaning specific to Portage.  Please see the referenced manpages for
 more detailed explanations.
 .RS
 .TP
@@ -127,7 +132,7 @@ An atom is either of the form category/package or consists of an operator
 followed by category/package followed by a hyphen and a version specification.
 An atom might be suffixed by a slot specification.
 .br
-More reading: 
+More reading:
 .BR ebuild (5)
 
 .B Extended Atom Syntax
@@ -141,8 +146,7 @@ configuration files and command line arguments for programs such as
 Atoms with repository constraints have a '::' separator appended to the
 right side, followed by a repository name. Each repository name should
 correspond to the value of a \fBrepo_name\fR entry from one of the
-repositories that is configured via the \fBPORTDIR\fR or
-\fBPORTDIR_OVERLAY\fR variables (see \fBmake.conf\fR(5)).
+repositories that is configured in \fBrepos.conf\fR file.
 
 .I Examples:
 .nf
@@ -165,6 +169,8 @@ next to each other.
 # match anything with a version containing 9999, which can be used in
 # package.mask to prevent emerge --autounmask from selecting live ebuilds
 =*/*-*9999*
+# match anything with a version containing _beta
+=*/*-*_beta*
 # match anything from the 'sys\-apps' category
 sys\-apps/*
 # match packages named 'zlib' from any category
@@ -181,38 +187,31 @@ net\-*/*
 .B KEYWORD
 Each architecture has a unique KEYWORD.
 .br
-More reading: 
+More reading:
 .BR ebuild (5)
 .TP
 .B virtual
-A DEPEND atom that is part of the "virtual" category.  They are used 
-when different packages can satisfy a dependency and only one of them is 
+A DEPEND atom that is part of the "virtual" category.  They are used
+when different packages can satisfy a dependency and only one of them is
 needed.
 .br
-More reading: 
+More reading:
 .BR ebuild (5)
 .RE
 .SH "SPECIFIC FILE DESCRIPTIONS"
 .TP
-.BR /etc/
-.RS
-.TP
-.BR make.conf
-The global custom settings for Portage.  See \fBmake.conf\fR(5).
-.RE
-.TP
-\fB/etc/make.profile/\fR or \fB/etc/portage/make.profile/\fR
-This is usually just a symlink to the correct profile in 
-\fB/usr/portage/profiles/\fR.  Since it is part of the portage tree, it 
-may easily be updated/regenerated by running `emerge \-\-sync`.  It defines 
-what a profile is (usually arch specific stuff).  If you need a custom 
-profile, then you should make your own \fB/etc/make.profile/\fR 
-directory and populate it.  However, if you just wish to override some 
+\fB/etc/portage/make.profile/\fR or \fB/etc/make.profile/\fR
+This is usually just a symlink to the correct profile in
+\fB/usr/portage/profiles/\fR.  Since it is part of the portage tree, it
+may easily be updated/regenerated by running `emerge \-\-sync`.  It defines
+what a profile is (usually arch specific stuff).  If you need a custom
+profile, then you should make your own \fBmake.profile\fR
+directory and populate it.  However, if you just wish to override some
 settings, use \fB/etc/portage/profile/\fR (it supports all of the same file
-types that \fB/etc/make.profile/\fR does, except parent). Do NOT edit the
-settings in \fB/etc/make.profile/\fR because they WILL be lost with the next
-`emerge \-\-sync`. If both \fB/etc/make.profile/\fR and
-\fB/etc/portage/make.profile/\fR exist, then \fB/etc/make.profile/\fR
+types that \fBmake.profile\fR does, except parent). Do NOT edit the
+settings in \fBmake.profile\fR because they WILL be lost with the next
+`emerge \-\-sync`. If both \fB/etc/portage/make.profile/\fR and
+\fB/etc/make.profile/\fR exist, then \fB/etc/portage/make.profile/\fR
 will be preferred.
 
 Any file in this directory, directories of other profiles or top-level
@@ -224,33 +223,39 @@ portage-2.1.6.7, and it is not included in PMS at this time.
 
 .I Example:
 .nf
-${PORTDIR}/profiles/package.mask/removals
-${PORTDIR}/profiles/package.mask/testing
+${repository_location}/profiles/package.mask/removals
+${repository_location}/profiles/package.mask/testing
 .fi
 .RS
 .TP
 .BR deprecated
-The existence of this file marks a profile as deprecated, meaning it is 
-not supported by Gentoo anymore.  The first line must be the profile to which 
-users are encouraged to upgrade, optionally followed by some instructions 
+The existence of this file marks a profile as deprecated, meaning it is
+not supported by Gentoo anymore.  The first line must be the profile to which
+users are encouraged to upgrade, optionally followed by some instructions
 explaining how they can upgrade.
 
 .I Example:
 .nf
 default-linux/x86/2005.0
 # emerge -n '>=sys-apps/portage-2.0.51'
-# rm -f /etc/make.profile
-# ln -s /usr/portage/profiles/default-linux/alpha/2005.0 /etc/make.profile
+# rm -f /etc/portage/make.profile
+# ln -s /usr/portage/profiles/default-linux/alpha/2005.0 \
+/etc/portage/make.profile
 .fi
 .TP
 .BR eapi
 The first line of this file specifies the \fBEAPI\fR to which files in the
 same directory conform. See \fBebuild\fR(5) for information about \fBEAPI\fR
-and related features.
+and related features. Beginning with \fBEAPI 5\fR, new USE
+configuration files are supported: use.stable.mask,
+use.stable.force, package.use.stable.mask and
+package.use.stable.force. These files behave similarly to
+previously supported USE configuration files, except that they
+only influence packages that are merged due to a stable keyword.
 .TP
 .BR make.defaults
-The profile default settings for Portage.  The general format is described 
-in \fBmake.conf\fR(5).  The \fImake.defaults\fR for your profile defines a 
+The profile default settings for Portage.  The general format is described
+in \fBmake.conf\fR(5).  The \fImake.defaults\fR for your profile defines a
 few specific variables too:
 
 .PD 0
@@ -259,21 +264,66 @@ few specific variables too:
 .BR ARCH
 Architecture type (x86/ppc/hppa/etc...).
 .TP
+\fBIUSE_IMPLICIT\fR = \fI[space delimited list of USE flags]\fR
+Defines implicit \fBIUSE\fR for ebuilds using \fBEAPI 5\fR or
+later. Flags that come from \fBUSE_EXPAND\fR or
+\fBUSE_EXPAND_UNPREFIXED\fR variables do not belong in
+\fBIUSE_IMPLICIT\fR, since \fBUSE_EXPAND_VALUES_*\fR variables
+are used to define implicit \fBIUSE\fR for those flags. See
+\fBebuild\fR(5) for more information about \fBIUSE\fR.
+.TP
 .B USERLAND = \fI"GNU"\fR
 Support BSD/cygwin/etc...
+.TP
+\fBUSE_EXPAND\fR = \fI[space delimited list of variable names]\fR
+Any variable listed here will be used to augment USE by inserting a new flag
+for every value in that variable, so USE_EXPAND="FOO" and FOO="bar bla" results
+in USE="foo_bar foo_bla".
+.TP
+\fBUSE_EXPAND_HIDDEN\fR = \fI[space delimited list of variable names]\fR
+Names of \fBUSE_EXPAND\fR variables that should not be shown in the verbose
+merge list output of the \fBemerge\fR(1) command.
+.TP
+\fBUSE_EXPAND_IMPLICIT\fR = \fI[space delimited list of variable names]\fR
+Defines \fBUSE_EXPAND\fR and \fBUSE_EXPAND_UNPREFIXED\fR
+variables for which the corresponding USE flags may have
+implicit \fBIUSE\fR for ebuilds using \fBEAPI 5\fR or later.
+.TP
+\fBUSE_EXPAND_UNPREFIXED\fR = \fI[space delimited list of variable names]\fR
+Any variable listed here will be used to augment USE by
+inserting a new flag for every value in that variable, so
+USE_EXPAND_UNPREFIXED="FOO" and FOO="bar bla" results in
+USE="bar bla".
+.TP
+\fBUSE_EXPAND_VALUES_ARCH\fR = \fI[space delimited list of ARCH values]\fR
+Defines ARCH values used to generate implicit
+\fBIUSE\fR for ebuilds using \fBEAPI 5\fR or later.
+.TP
+\fBUSE_EXPAND_VALUES_ELIBC\fR = \fI[space delimited list of ELIBC values]\fR
+Defines ELIBC values used to generate implicit
+\fBIUSE\fR for ebuilds using \fBEAPI 5\fR or later.
+.TP
+\fBUSE_EXPAND_VALUES_KERNEL\fR = \fI[space delimited list of KERNEL values]\fR
+Defines KERNEL values used to generate implicit
+\fBIUSE\fR for ebuilds using \fBEAPI 5\fR or later.
+.TP
+\fBUSE_EXPAND_VALUES_USERLAND\fR = \fI[space delimited list of USERLAND \
+values]\fR
+Defines USERLAND values used to generate implicit
+\fBIUSE\fR for ebuilds using \fBEAPI 5\fR or later.
 .TP
 .B ELIBC = \fI"glibc"\fR
 Support uClibc/BSD libc/etc...
 .TP
 .B PROFILE_ONLY_VARIABLES = \fI"ARCH"\fR
-Prevent critical variables from being changed by the user in make.conf 
+Prevent critical variables from being changed by the user in make.conf
 or the env.
 .TP
 .BR PROFILE_ARCH
-Distinguish machines classes that have the same \fBARCH\fR.  All sparc 
+Distinguish machines classes that have the same \fBARCH\fR.  All sparc
 machines have ARCH=sparc but set this to either 'sparc32' or 'sparc64'.
 .TP
-.BR STAGE1_USE
+.BR BOOTSTRAP_USE
 Special USE flags which may be needed when bootstrapping from stage1 to stage2.
 .RE
 .PD 1
@@ -289,8 +339,8 @@ Provides the list of packages that compose the special \fIsystem\fR set.
 \- atoms without * only appear for legacy reasons
 .fi
 .I Note:
-In a cascading profile setup, you can remove packages in children 
-profiles which were added by parent profiles by prefixing the atom with 
+In a cascading profile setup, you can remove packages in children
+profiles which were added by parent profiles by prefixing the atom with
 a '\-'.
 
 .I Example:
@@ -305,16 +355,16 @@ a '\-'.
 .fi
 .TP
 .BR packages.build
-A list of packages (one per line) that make up a stage1 tarball.  Really only 
+A list of packages (one per line) that make up a stage1 tarball.  Really only
 useful for stage builders.
 .TP
 .BR package.provided
-A list of packages (one per line) that portage should assume have been 
+A list of packages (one per line) that portage should assume have been
 provided.  Useful for porting to non-Linux systems. Basically, it's a
 list that replaces the \fBemerge \-\-inject\fR syntax.
 
-For example, if you manage your own copy of a 2.6 kernel, then you can 
-tell portage that 'sys-kernel/development-sources-2.6.7' is already taken 
+For example, if you manage your own copy of a 2.6 kernel, then you can
+tell portage that 'sys-kernel/development-sources-2.6.7' is already taken
 care of and it should get off your back about it.
 
 Portage will not attempt to update a package that is listed here unless
@@ -324,7 +374,9 @@ entries may cause installed packages satisfying equivalent dependencies
 to be removed by \fBemerge\fR(1) \fB\-\-depclean\fR actions (see the
 \fBACTIONS\fR section of the \fBemerge\fR(1) man page for more information).
 
-Virtual packages (virtual/*) should not be specified in package.provided.
+Virtual packages (virtual/*) should not be specified in package.provided,
+since virtual packages themselves do not provide any files, and
+package.provided is intended to represent packages that do provide files.
 Depending on the type of virtual, it may be necessary to add an entry to the
 virtuals file and/or add a package that satisfies a virtual to
 package.provided.
@@ -349,12 +401,12 @@ x11-libs/qt-3.3.0
 x11-base/xorg-x11-6.8
 .fi
 .TP
-.BR package.use.force
+\fBpackage.use.force\fR and \fBpackage.use.stable.force\fR
 Per\-package USE flag forcing.
 
 .I Note:
-In a cascading profile setup, you can remove USE flags in children 
-profiles which were added by parent profiles by prefixing the flag with 
+In a cascading profile setup, you can remove USE flags in children
+profiles which were added by parent profiles by prefixing the flag with
 a '\-'.
 
 .I Format:
@@ -371,12 +423,12 @@ a '\-'.
 x11\-libs/qt \-mysql
 .fi
 .TP
-.BR package.use.mask
+\fBpackage.use.mask\fR and \fBpackage.use.stable.mask\fR
 Per\-package USE flag masks.
 
 .I Note:
-In a cascading profile setup, you can remove USE flags in children 
-profiles which were added by parent profiles by prefixing the flag with 
+In a cascading profile setup, you can remove USE flags in children
+profiles which were added by parent profiles by prefixing the flag with
 a '\-'.
 
 .I Format:
@@ -394,23 +446,31 @@ x11\-libs/qt \-mysql
 .fi
 .TP
 .BR parent
-This contains a path to the parent profile.  It may be either relative or 
-absolute.  The paths will be relative to the location of the profile.  Most 
-commonly this file contains '..' to indicate the directory above.  Utilized 
-only in cascading profiles.
+This contains paths to the parent profiles (one per line).  They may be either
+relative (to the location of the profile) or absolute.  Most commonly this file
+contains '..' to indicate the directory above.  Utilized only in cascading
+profiles.
+
+When multiple parent profiles are specified, they are inherited in order from
+the first line to the last.
+
+If \fBlayout.conf\fR is new enough, you can also use the <repo>:<path>
+syntax.  The <repo> is the same string as is stored in the \fBrepo_name\fR
+file (or omitted to refer to the current repo), and <path> is a subdir starting
+at profiles/.
 .TP
 .BR profile.bashrc
 If needed, this file can be used to set up a special environment for ebuilds,
 different from the standard root environment.  The syntax is the same as for
 any other bash script.
 .TP
-.BR use.force
+\fBuse.force\fR and \fBuse.stable.force\fR
 Some USE flags don't make sense to disable under certain conditions.  Here we
 list forced flags.
 
 .I Note:
-In a cascading profile setup, you can remove USE flags in children 
-profiles which were added by parent profiles by prefixing the flag with 
+In a cascading profile setup, you can remove USE flags in children
+profiles which were added by parent profiles by prefixing the flag with
 a '\-'.
 
 .I Format:
@@ -419,14 +479,14 @@ a '\-'.
 \- one USE flag per line
 .fi
 .TP
-.BR use.mask
-Some USE flags don't make sense on some archs (for example altivec on 
-non\-ppc or mmx on non\-x86), or haven't yet been tested.  Here we list 
+\fBuse.mask\fR and \fBuse.stable.mask\fR
+Some USE flags don't make sense on some archs (for example altivec on
+non\-ppc or mmx on non\-x86), or haven't yet been tested.  Here we list
 the masked ones.
 
 .I Note:
-In a cascading profile setup, you can remove USE flags in children 
-profiles which were added by parent profiles by prefixing the flag with 
+In a cascading profile setup, you can remove USE flags in children
+profiles which were added by parent profiles by prefixing the flag with
 a '\-'.
 
 .I Format:
@@ -444,12 +504,13 @@ doc
 .fi
 .TP
 .BR virtuals
-This controls what packages will provide a virtual by default.  For example, 
-if a package needs to send e\-mail, it will need virtual/mta.  In the absence 
-of a package that provides virtual/mta (like qmail, sendmail, postfix, etc...), 
-portage will look here to see what package to use.  In this case, Gentoo uses 
-net\-mail/ssmtp as the default (as defined in the virtuals file) because it's 
-the package that does the very bare minimum to send e\-mail.
+The virtuals file controls default preferences for virtuals that
+are defined via the \fBPROVIDE\fR ebuild variable (see
+\fBebuild\fR(5)). Since Gentoo now uses \fBGLEP 37\fR virtuals
+instead of \fBPROVIDE\fR virtuals, the virtuals file is
+irrelevant for all Gentoo ebuilds. However, it is still possible
+for third\-parties to distribute ebuilds that make use of
+\fBPROVIDE\fR.
 
 .I Format:
 .nf
@@ -467,10 +528,10 @@ virtual/aspell\-dict   app\-dicts/aspell\-en
 .RE
 .TP
 .BR /etc/portage/
-Any file in this directory that begins with "package." can be more than just a 
-flat file.  If it is a directory, then all the files in that directory will be 
-sorted in ascending alphabetical order by file name and summed together as if
-it were a single file.
+Any file in this directory that begins with "package." or is repos.conf can be
+more than just a flat file.  If it is a directory, then all the files in that
+directory will be sorted in ascending alphabetical order by file name and summed
+together as if it were a single file.
 
 .I Example:
 .nf
@@ -488,9 +549,8 @@ any other bash script.
 Additional package-specific bashrc files can be created in /etc/portage/env.
 .TP
 .BR categories
-A simple list of valid categories that may be used in /usr/portage, 
-PORTDIR_OVERLAY, and PKGDIR (see \fBmake.conf\fR(5)).  This allows for custom 
-categories to be created.
+A simple list of valid categories that may be used in repositories and PKGDIR
+(see \fBmake.conf\fR(5)). This allows for custom categories to be created.
 
 .I Format:
 .nf
@@ -508,14 +568,13 @@ Contains variables customizing colors. See \fBcolor.map\fR(5).
 .TP
 .BR make.conf
 The global custom settings for Portage. See \fBmake.conf\fR(5).
-If present, this file will override settings from /etc/make.conf.
 .TP
 .BR mirrors
-Whenever portage encounters a mirror:// style URI it will look up the actual 
-hosts here.  If the mirror set is not found here, it will check the global 
-mirrors file at /usr/portage/profiles/thirdpartymirrors.  You may also set a 
-special mirror type called "local".  This list of mirrors will be checked 
-before GENTOO_MIRRORS and will be used even if the package has 
+Whenever portage encounters a mirror:// style URI it will look up the actual
+hosts here.  If the mirror set is not found here, it will check the global
+mirrors file at /usr/portage/profiles/thirdpartymirrors.  You may also set a
+special mirror type called "local".  This list of mirrors will be checked
+before GENTOO_MIRRORS and will be used even if the package has
 RESTRICT="mirror" or RESTRICT="fetch".
 
 .I Format:
@@ -550,15 +609,15 @@ After changing the portdbapi.auxdbmodule setting, it may be necessary to
 transfer or regenerate metadata cache. Users of the rsync tree need to
 run `emerge \-\-metadata` if they have enabled FEATURES="metadata-transfer"
 in \fBmake.conf\fR(5). In order to regenerate metadata for repositories
-listed in \fBPORTDIR_OVERLAY\fR or a cvs tree, run `emerge \-\-regen`
+not distributing pregenerated metadata cache, run `emerge \-\-regen`
 (see \fBemerge\fR(1)). If you use something like the sqlite module and want
 to keep all metadata in that format alone (useful for querying), enable
 FEATURES="metadata-transfer" in \fBmake.conf\fR(5).
 .TP
 \fBpackage.accept_keywords\fR and \fBpackage.keywords\fR
-Per\-package ACCEPT_KEYWORDS.  Useful for mixing unstable packages in with a normally 
-stable system or vice versa.  This will allow ACCEPT_KEYWORDS to be augmented
-for a single package. If both \fBpackage.accept_keywords\fR and
+Per\-package ACCEPT_KEYWORDS.  Useful for mixing unstable packages in with a
+normally stable system or vice versa.  This will allow ACCEPT_KEYWORDS to be
+augmented for a single package. If both \fBpackage.accept_keywords\fR and
 \fBpackage.keywords\fR are present, both of them will be used, and values
 from \fBpackage.accept_keywords\fR will override values from
 \fBpackage.keywords\fR. The \fBpackage.accept_keywords\fR file is
@@ -593,22 +652,37 @@ three special tokens:
 .fi
 
 .I Additional Note:
-If you encounter the \fB-*\fR KEYWORD, this indicates that the package is known 
-to be broken on all systems which are not otherwise listed in KEYWORDS.  For 
+If you encounter the \fB-*\fR KEYWORD, this indicates that the package is known
+to be broken on all systems which are not otherwise listed in KEYWORDS.  For
 example, a binary only package which is built for x86 will look like:
 
 games-fps/quake3-demo-1.11.ebuild:KEYWORDS="-* x86"
 
-If you wish to accept this package anyways, then use one of the other keywords in your 
-package.accept_keywords like this:
+If you wish to accept this package anyways, then use one of the other keywords
+in your package.accept_keywords like this:
 
 games-fps/quake3-demo x86
 
 .TP
+.BR package.accept_restrict
+This will allow ACCEPT_RESTRICT (see \fBmake.conf\fR(5)) to be augmented for a
+single package.
+
+.I Format:
+.nf
+\- comment lines begin with # (no inline comments)
+\- one DEPEND atom per line followed by additional RESTRICT tokens
+.fi
+.TP
 .BR package.env
 Per\-package environment variable settings. Entries refer to
 environment files that are placed in the \fB/etc/portage/env/\fR
-directory and have the same format as \fBmake.conf\fR(5).
+directory and have the same format as \fBmake.conf\fR(5). Note that these
+files are interpreted much earlier than the package\-specific \fIbashrc\fR
+files which are described in a later section about \fB/etc/portage/env/\fR.
+Beginners should be careful to recognize the difference between these two types
+of files. When environment variable settings are all that's needed,
+\fBpackage.env\fR is the recommended approach to use.
 
 .I Format:
 .nf
@@ -618,13 +692,15 @@ directory and have the same format as \fBmake.conf\fR(5).
 
 .I Example:
 .nf
-# use environment variables from /etc/portage/env/glibc.conf for the glibc package
+# use environment variables from /etc/portage/env/glibc.conf for the glibc \
+package
 sys\-libs/glibc glibc.conf
 .fi
 
 .TP
 .BR package.license
-This will allow ACCEPT_LICENSE to be augmented for a single package.
+This will allow ACCEPT_LICENSE (see \fBmake.conf\fR(5)) to be augmented for a
+single package.
 
 .I Format:
 .nf
@@ -652,7 +728,8 @@ versions earlier than 1.0.4496.  No problem!
 .fi
 .TP
 .BR package.properties
-This will allow ACCEPT_PROPERTIES to be augmented for a single package.
+This will allow ACCEPT_PROPERTIES (see \fBmake.conf\fR(5)) to be augmented for
+a single package.
 
 .I Format:
 .nf
@@ -661,15 +738,15 @@ This will allow ACCEPT_PROPERTIES to be augmented for a single package.
 .fi
 .TP
 .BR package.unmask
-Just like package.mask above, except here you list packages you want to 
-unmask.  Useful for overriding the global package.mask file (see 
-above).  Note that this does not override packages that are masked via 
+Just like package.mask above, except here you list packages you want to
+unmask.  Useful for overriding the global package.mask file (see
+above).  Note that this does not override packages that are masked via
 KEYWORDS.
 .TP
 .BR package.use
-Per\-package USE flags.  Useful for tracking local USE flags or for 
-enabling USE flags for certain packages only.  Perhaps you develop GTK 
-and thus you want documentation for it, but you don't want 
+Per\-package USE flags.  Useful for tracking local USE flags or for
+enabling USE flags for certain packages only.  Perhaps you develop GTK
+and thus you want documentation for it, but you don't want
 documentation for QT.  Easy as pie my friend!
 
 .I Format:
@@ -687,30 +764,153 @@ x11\-libs/qt \-mysql
 .fi
 .TP
 .BR repos.conf
-Specifies \fIsite\-specific\fR repository configuration information. Note that
-configuration settings which are specified here do not apply to tools
-such as \fBrepoman\fR(1) and \fBegencache\fR(1), since operations
-performed by these tools
-are inherently \fBnot\fR \fIsite\-specific\fR. \fBWARNING:\fR Use of
-\fBrepos.conf\fR is generally not recommended since resulting changes in
-eclass inheritance (especially due to \fBeclass\-overrides\fR) may trigger
-performance issues under some circumstances (see \fBbug #124041\fR). When
-using \fBeclass\-overrides\fR, due to bug #276264, you must ensure that
-your portage tree does not contain a metadata/cache/ directory. If that
-directory exists then you should remove it entirely, and set
-PORTAGE_RSYNC_EXTRA_OPTS="\-\-exclude=/metadata/cache" in
-make.conf in order to exclude the metadata/cache/ directory during
-\fBemerge\fR(1) \-\-sync operations.
+Specifies \fIsite\-specific\fR repository configuration information.
+.br
+Configuration specified in \fBrepos.conf\fR can be overriden by \fBPORTAGE_REPOSITORIES\fR
+environmental variable, which has the same format as \fBrepos.conf\fR.
+
+.I Format:
+.nf
+\- comments begin with # (no inline comments)
+\- configuration of each repository is specified in a section starting with \
+"[${repository_name}]"
+\- attributes are specified in "${attribute} = ${value}" format
+.fi
+
+.I Attributes supported in DEFAULT section:
+.RS
+.RS
+.TP
+.B main\-repo
+Specifies main repository.
+.TP
+.B eclass\-overrides
+Makes all repositories inherit eclasses from specified repositories.
+.br
+Setting this attribute is generally not recommended since resulting changes
+in eclass inheritance may trigger performance issues due to invalidation
+of metadata cache.
+.br
+When 'force = eclass\-overrides' attribute is not set, \fBegencache\fR(1),
+\fBemirrordist\fR(1) and \fBrepoman\fR(1) ignore this attribute,
+since operations performed by these tools are inherently
+\fBnot\fR \fIsite\-specific\fR.
+.TP
+.B force
+Specifies names of attributes, which should be forcefully respected by
+\fBegencache\fR(1), \fBemirrordist\fR(1) and \fBrepoman\fR(1).
+.br
+Valid values: aliases, eclass\-overrides, masters
+.RE
+
+.I Attributes supported in sections of repositories:
+.RS
+.TP
+.B aliases
+Specifies aliases of given repository.
+.br
+Setting this attribute is generally not recommended since resulting changes
+in eclass inheritance may trigger performance issues due to invalidation
+of metadata cache.
+.br
+When 'force = aliases' attribute is not set, \fBegencache\fR(1),
+\fBemirrordist\fR(1) and \fBrepoman\fR(1) ignore this attribute,
+since operations performed by these tools are inherently
+\fBnot\fR \fIsite\-specific\fR.
+.TP
+.B eclass\-overrides
+Makes given repository inherit eclasses from specified repositories.
+.br
+Setting this attribute is generally not recommended since resulting changes
+in eclass inheritance may trigger performance issues due to invalidation
+of metadata cache.
+.br
+When 'force = eclass\-overrides' attribute is not set, \fBegencache\fR(1),
+\fBemirrordist\fR(1) and \fBrepoman\fR(1) ignore this attribute,
+since operations performed by these tools are inherently
+\fBnot\fR \fIsite\-specific\fR.
+.TP
+.B force
+Specifies names of attributes, which should be forcefully respected by
+\fBegencache\fR(1), \fBemirrordist\fR(1) and \fBrepoman\fR(1).
+.br
+Valid values: aliases, eclass\-overrides, masters
+.TP
+.B location
+Specifies location of given repository.
+.TP
+.B masters
+Specifies master repositories of given repository.
+.br
+Setting this attribute is generally not recommended since resulting changes
+in eclass inheritance may trigger performance issues due to invalidation
+of metadata cache.
+.br
+When 'force = masters' attribute is not set, \fBegencache\fR(1),
+\fBemirrordist\fR(1) and \fBrepoman\fR(1) ignore this attribute,
+since operations performed by these tools are inherently
+\fBnot\fR \fIsite\-specific\fR.
+.TP
+.B priority
+Specifies priority of given repository.
+.TP
+.B sync\-cvs\-repo
+Specifies CVS repository.
+.TP
+.B sync\-type
+Specifies type of synchronization performed by `emerge \-\-sync`.
+.br
+Valid non\-empty values: cvs, git, rsync
+.br
+This attribute can be set to empty value to disable synchronization of given
+repository. Empty value is default.
+.TP
+.B sync\-uri
+Specifies URI of repository used for synchronization performed by `emerge
+\-\-sync`.
+.br
+This attribute can be set to empty value to disable synchronization of given
+repository. Empty value is default.
+.RS
+.TP
+Syntax:
+cvs: [cvs://]:access_method:[username@]hostname[:port]:/path
+.br
+git: (git|git+ssh|http|https)://[username@]hostname[:port]/path
+.br
+rsync: (rsync|ssh)://[username@]hostname[:port]/(module|path)
+.TP
+Examples:
+.RS
+rsync://private\-mirror.com/portage\-module
+.br
+rsync://rsync\-user@private\-mirror.com:873/gentoo\-portage
+.br
+ssh://ssh\-user@192.168.0.1:22/usr/portage
+.br
+ssh://ssh\-user@192.168.0.1:22/\\${HOME}/portage\-storage
+.RE
+.TP
+Note: For the ssh:// scheme, key\-based authentication might be of interest.
+.RE
+.RE
 
 .I Example:
 .nf
 [DEFAULT]
+# make gentoo the main repository, which makes it the default master
+# repository for repositories that do not specify masters
+main\-repo = gentoo
 # make all repositories inherit eclasses from the java\-overlay and
 # java\-experimental repositories, with eclasses from java\-experimental
 # taking precedence over those from java\-overlay
 eclass\-overrides = java\-overlay java\-experimental
 
 [gentoo]
+# repos with higher priorities are preferred when ebuilds with equal versions
+# are found in multiple repos (see the `emerge \-\-info \-\-verbose` repo
+# display for a listing of repos and their corresponding priorities).
+priority = 9999
 # disable all eclass overrides for ebuilds from the gentoo repository
 eclass\-overrides =
 # when processing metadata/layout.conf from other repositories, substitute
@@ -728,7 +928,15 @@ masters = gentoo kde
 # those master repos won't be required as dependencies (the user must
 # ensure that any required dependencies such as eclasses are satisfied)
 masters =
+
+# Repository 'gentoo' synchronized using CVS
+[gentoo]
+location = /usr/portage
+sync\-type = cvs
+sync\-uri = :pserver:anonymous@anoncvs.gentoo.org:/var/cvsroot
+sync\-cvs\-repo = gentoo\-x86
 .fi
+.RE
 .RE
 .TP
 .BR /etc/portage/env/
@@ -739,20 +947,9 @@ needed, then \fB/etc/portage/package.env\fR should be used instead of the
 bashrc approach that is described here. Also note that special variables
 such as \fBFEATURES\fR and \fBINSTALL_MASK\fR will not produce the intended
 results if they are set in bashrc, and therefore
-\fB/etc/portage/package.env\fR should be used instead.
-
-set_unless_changed and unset_unless_changed functions can be used to set or
-unset given variables only if these variable have not been set to values
-different than values set in make.conf. This functionality can be useful for
-temporary overriding of these variables during emerge invocation. Variables
-set without using set_unless_changed will unconditionally override variables
-set during emerge invocation.
-
-.I Syntax:
-.nf
-set_unless_changed VARIABLE=VALUE
-unset_unless_changed VALUE
-.fi
+\fB/etc/portage/package.env\fR should be used instead. Lastly, note that these
+files are interpreted much later than the portage environment file
+\fBpackage.env\fR.
 
 Portage will source all of these bashrc files after \fB/etc/portage/bashrc\fR
 in the following order:
@@ -771,8 +968,10 @@ in the following order:
 .RS
 For each file in this directory, a package set is created with its name
 corresponding to the name of the file. Each file should contain a list
-of package atoms, one per line. When referencing package sets in
-\fBemerge\fR(1) arguments, the set name is prefixed with \fB@\fR.
+of package atoms and nested package sets, one per line. When a package
+set is referenced as an \fBemerge\fR(1) argument or when it is
+referenced as a nested package set (inside of another package set), the
+set name is prefixed with \fB@\fR.
 
 Also see \fB/var/lib/portage/world_sets\fR and the \fBemerge\fR(1)
 \fB\-\-list\-sets\fR option.
@@ -782,49 +981,127 @@ Also see \fB/var/lib/portage/world_sets\fR and the \fBemerge\fR(1)
 .RS
 .TP
 .BR layout.conf
-Specifies information about the repository layout. A
-"masters" attribute is supported, which is used to specify names of
-repositories which satisfy dependencies on eclasses and/or ebuilds. Each
-repository name should correspond the value of a \fBrepo_name\fR entry
-from one of the repositories that is configured via the \fBPORTDIR\fR or
-\fBPORTDIR_OVERLAY\fR variables (see \fBmake.conf\fR(5)). Repositories listed
-toward the right of the \fBmasters\fR list take precedence over those listed
-toward the left of the list. An "aliases" attribute is also supported, which
-behaves like an "aliases" attribute in \fBrepos.conf\fR. \fISite-specific\fR
-overrides to \fBlayout.conf\fR settings may be specified in
-\fB/etc/portage/repos.conf\fR. Settings in \fBrepos.conf\fR take
-precedence over settings in \fBlayout.conf\fR, except tools such as
-\fBrepoman\fR(1) and \fBegencache\fR(1) will entirely ignore
+Specifies information about the repository layout.
+\fISite-specific\fR overrides to \fBlayout.conf\fR settings may be specified in
+\fB/etc/portage/repos.conf\fR.
+Settings in \fBrepos.conf\fR take precedence over settings in
+\fBlayout.conf\fR, except tools such as \fBrepoman\fR(1) and \fBegencache\fR(1)
+ignore "aliases", "eclass-overrides" and "masters" attributes set in
 \fBrepos.conf\fR since their operations are inherently \fBnot\fR
 \fIsite\-specific\fR.
 
+.I Format:
+.nf
+\- comments begin with # (no inline comments)
+\- attributes are specified in "${attribute} = ${value}" format
+.fi
+
+.I Supported attributes.
+.RS
+.RS
+.TP
+.BR aliases
+Behaves like an "aliases" attribute in \fBrepos.conf\fR.
+.TP
+.BR eapis\-banned
+List of EAPIs which are not allowed in this repo.
+.TP
+.BR eapis\-deprecated
+List of EAPIs which are allowed but generate warnings when used.
+.TP
+.BR masters
+Names of repositories which satisfy dependencies on eclasses and from which
+settings specified in various repository\-level files (\fBpackage.mask\fR,
+\fBpackage.use.mask\fR, \fBuse.mask\fR etc.) are inherited. Each repository
+name should correspond to the value of a \fBrepo_name\fR entry from one of
+the repositories that is configured in \fBrepos.conf\fR file. Repositories
+listed toward the right of the \fBmasters\fR list take precedence over those
+listed toward the left of the list.
+.TP
+.BR repo\-name " = <value of profiles/repo_name>"
+The name of this repository (overrides profiles/repo_name if it exists).
+.TP
+.BR sign\-commits " = [true|" false "]"
+Boolean value whether we should sign commits in this repo.
+.TP
+.BR sign\-manifests " = [" true "|false]"
+Boolean value whether we should sign Manifest files in this repo.
+.TP
+.BR thin\-manifests " = [true|" false "]"
+Boolean value whether Manifest files contain only DIST entries.
+.TP
+.BR use\-manifests " = [" strict "|true|false]"
+How Manifest files get used.  Possible values are "strict" (require an entry
+for every file), "true" (if an entry exists for a file, enforce it), or "false"
+(don't check Manifest files at all).
+.TP
+.BR manifest\-hashes
+List of hashes to generate/check in Manifest files.  Valid hashes depend on the
+current version of portage; see the portage.const.MANIFEST2_HASH_FUNCTIONS
+constant for the current list.
+.TP
+.BR update\-changelog " = [true|" false "]"
+The default setting for repoman's --echangelog option.
+.TP
+.BR cache\-formats " = [pms] [md5-dict]"
+The cache formats supported in the metadata tree.  There is the old "pms" format
+and the newer/faster "md5-dict" format.  Default is to detect dirs.
+.TP
+.BR profile\-formats " = [pms|portage-1|portage-2]"
+Control functionality available to profiles in this repo such as which files
+may be dirs, or the syntax available in parent files.  Use "portage-2" if you're
+unsure.  The default is "portage-1-compat" mode which is meant to be compatible
+with old profiles, but is not allowed to be opted into directly.
+.RE
+.RE
+
+.RS
 .I Example:
 .nf
+# Specify the repository name (overriding profils/repo_name).
+repo\-name = foo-overlay
+
 # eclasses provided by java-overlay take precedence over identically named
 # eclasses that are provided by gentoo
 masters = gentoo java-overlay
+
 # indicate that this repo can be used as a substitute for foo-overlay
 aliases = foo-overlay
+
+# indicate that ebuilds with the specified EAPIs are banned
+eapis\-banned = 0 1
+
+# indicate that ebuilds with the specified EAPIs are deprecated
+eapis\-deprecated = 2 3
+
 # sign commits in this repo, which requires Git >=1.7.9, and
 # key configured by `git config user.signingkey key_id`
 sign\-commits = true
-# do not sign manifests in this repo
+
+# do not sign Manifest files in this repo
 sign\-manifests = false
-# thin\-manifests only contain DIST entries
+
+# Manifest files only contain DIST entries
 thin\-manifests = true
+
 # indicate that this repo requires manifests for each package, and is
 # considered a failure if a manifest file is missing/incorrect
 use\-manifests = strict
+
 # customize the set of hashes generated for Manifest entries
 manifest\-hashes = SHA256 SHA512 WHIRLPOOL
+
 # indicate that this repo enables repoman's --echangelog=y option automatically
 update\-changelog = true
+
 # indicate that this repo contains both md5-dict and pms cache formats,
 # which may be generated by egencache(1)
 cache\-formats = md5-dict pms
+
 # indicate that this repo contains profiles that may use directories for
-# package.mask, package.provided, package.use, package.use.mask,
-# package.use.force, use.mask and use.force.
+# package.mask, package.provided, package.use, package.use.force,
+# package.use.mask, package.use.stable.force, package.use.stable.mask,
+# use.force, use.mask, use.stable.force, and use.stable.mask.
 # profile\-formats = portage-1
 # indicate that paths such as 'gentoo:targets/desktop' or ':targets/desktop' in
 # profile parent files can be used to express paths relative to the root
@@ -833,9 +1110,10 @@ cache\-formats = md5-dict pms
 profile\-formats = portage-2
 .fi
 .RE
+.RE
 .TP
 .BR /usr/portage/profiles/
-Global Gentoo settings that are controlled by the developers.  To override 
+Global Gentoo settings that are controlled by the developers.  To override
 these settings, you can use the files in \fB/etc/portage/\fR.
 .RS
 .TP
@@ -855,8 +1133,8 @@ sparc
 .fi
 .TP
 .BR categories
-A simple list of valid categories that may be used in /usr/portage, 
-PORTDIR_OVERLAY, and PKGDIR (see \fBmake.conf\fR(5)).
+A simple list of valid categories that may be used in repositories and PKGDIR
+(see \fBmake.conf\fR(5)).
 
 .I Format:
 .nf
@@ -925,10 +1203,10 @@ net-analyzer/netcat -*
 .fi
 .TP
 .BR package.mask
-This contains a list of DEPEND atoms for packages that should not be installed 
-in any profile.  Useful for adding the latest KDE betas and making sure no 
-one accidentally upgrades to them.  Also useful for quickly masking specific 
-versions due to security issues.  ALWAYS include a comment explaining WHY the 
+This contains a list of DEPEND atoms for packages that should not be installed
+in any profile.  Useful for adding the latest KDE betas and making sure no
+one accidentally upgrades to them.  Also useful for quickly masking specific
+versions due to security issues.  ALWAYS include a comment explaining WHY the
 package has been masked and WHO is doing the masking.
 
 .I Format:
@@ -948,7 +1226,7 @@ package has been masked and WHO is doing the masking.
 .fi
 .TP
 .BR profiles.desc
-List all the current stable and development profiles.  If a profile is listed 
+List all the current stable and development profiles.  If a profile is listed
 here, then it will be checked by repoman.
 .I Format:
 .nf
@@ -970,10 +1248,11 @@ x86-linux    prefix/linux/x86            exp
 .BR repo_name
 The first line of the file should define a unique repository name. The name
 may contain any of the characters [A\-Za\-z0\-9_\-]. It must not begin with a
-hyphen.
+hyphen. If the repo\-name attribute is specified in layout.conf, then that
+setting will take precedence.
 .TP
 .BR thirdpartymirrors
-Controls the mapping of mirror:// style URIs to actual lists of 
+Controls the mapping of mirror:// style URIs to actual lists of
 mirrors.  Keeps us from overloading a single server.
 
 .I Format:
@@ -984,15 +1263,17 @@ mirrors.  Keeps us from overloading a single server.
 
 .I Example:
 .nf
-sourceforge http://aleron.dl.sourceforge.net/sourceforge http://unc.dl.sourceforge.net/sourceforge
+sourceforge http://aleron.dl.sourceforge.net/sourceforge \
+http://unc.dl.sourceforge.net/sourceforge
 
-gentoo http://distro.ibiblio.org/pub/linux/distributions/gentoo/distfiles/ ftp://ftp.gtlib.cc.gatech.edu/pub/gentoo/distfiles
+gentoo http://distro.ibiblio.org/pub/linux/distributions/gentoo/distfiles/ \
+ftp://ftp.gtlib.cc.gatech.edu/pub/gentoo/distfiles
 
 kernel http://www.kernel.org/pub http://www.us.kernel.org/pub
 .fi
 .TP
 .BR use.desc
-All global USE flags must be listed here with a description of what they do.  
+All global USE flags must be listed here with a description of what they do.
 
 .I Format:
 .nf
@@ -1008,7 +1289,7 @@ doc \- Adds extra documentation
 .fi
 .TP
 .BR use.local.desc
-All local USE flags are listed here along with the package and a 
+All local USE flags are listed here along with the package and a
 description. This file is automatically generated from the
 metadata.xml files that are included with each individual package.
 Refer to GLEP 56 for further information:
@@ -1030,10 +1311,15 @@ games\-emulation/xmess:net \- Adds network support
 .RS
 .TP
 .BR make.globals
-The global default settings for Portage.  This comes from the portage package 
-itself.  Settings in \fBmake.conf\fR or \fBpackage.env\fR
-override values here. The format 
-is described extensivly in \fBmake.conf\fR(5).
+The global default settings for Portage.  This comes from the portage package
+itself.  Settings in \fBmake.conf\fR or \fBpackage.env\fR override values set
+here. The format is described extensively in \fBmake.conf\fR(5).
+.TP
+.BR repos.conf
+The default configuration of repositories for Portage.  This comes from
+the portage package itself.  Settings in \fB/etc/portage/repos.conf\fR
+override values set here. The format is described extensively in section
+for \fB/etc/portage/repos.conf\fR.
 .RE
 .TP
 .BR /var/cache/edb/
@@ -1077,12 +1363,12 @@ directories have been modified since being installed.  Files which have not
 been modified will automatically be unmerged.
 .TP
 .BR world
-Every time you emerge a package, the package that you requested is 
-recorded here.  Then when you run `emerge world \-up`, the list of 
-packages is read from this file.  Note that this does not mean that the 
-packages that were installed as dependencies are listed here.  For 
-example, if you run `emerge mod_wsgi` and you do not have apache 
-already, then "www\-apache/mod_wsgi" is recorded in the world file but 
+Every time you emerge a package, the package that you requested is
+recorded here.  Then when you run `emerge world \-up`, the list of
+packages is read from this file.  Note that this does not mean that the
+packages that were installed as dependencies are listed here.  For
+example, if you run `emerge mod_wsgi` and you do not have apache
+already, then "www\-apache/mod_wsgi" is recorded in the world file but
 "www\-servers/apache" is not.  For more information, review \fBemerge\fR(1).
 
 .I Format:
@@ -1114,7 +1400,7 @@ Please report bugs via http://bugs.gentoo.org/
 Marius Mauch <genone@gentoo.org>
 Mike Frysinger <vapier@gentoo.org>
 Drake Wyrm <wyrm@haell.com>
-Arfrever Frehtes Taifersar Arahesis <arfrever@gentoo.org>
+Arfrever Frehtes Taifersar Arahesis <arfrever@apache.org>
 .fi
 .SH "SEE ALSO"
 .BR emerge (1),

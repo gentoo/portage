@@ -1,15 +1,26 @@
-#!/usr/bin/python
-# Copyright 2011 Gentoo Foundation
+#!/usr/bin/python -b
+# Copyright 2011-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+"""Helper tool for converting installed files to custom prefixes.
+
+In other words, eprefixy $D for Gentoo/Prefix."""
+
 import io
-import optparse
 import os
 import stat
 import sys
 
-CONTENT_ENCODING = "utf_8"
-FS_ENCODING = "utf_8"
+from portage.util._argparse import ArgumentParser
+
+# Argument parsing compatibility for Python 2.6 using optparse.
+if sys.hexversion < 0x2070000:
+	from optparse import OptionParser
+
+from optparse import OptionError
+
+CONTENT_ENCODING = 'utf_8'
+FS_ENCODING = 'utf_8'
 
 try:
 	import magic
@@ -41,7 +52,9 @@ class IsTextFile(object):
 
 	def _is_text_magic(self, filename):
 		mime_type = self._m.file(filename)
-		return mime_type.startswith("text/")
+		if isinstance(mime_type, bytes):
+			mime_type = mime_type.decode('ascii', 'replace')
+		return mime_type.startswith('text/')
 
 	def _is_text_encoding(self, filename):
 		try:
@@ -64,7 +77,7 @@ def chpath_inplace(filename, is_text_file, old, new):
 		try:
 			orig_mode = stat.S_IMODE(os.lstat(filename).st_mode)
 		except OSError as e:
-			sys.stderr.write("%s: %s\n" % (e, filename))
+			sys.stderr.write('%s: %s\n' % (e, filename))
 			return
 		temp_mode = 0o200 | orig_mode
 		os.chmod(filename, temp_mode)
@@ -121,8 +134,12 @@ def chpath_inplace(filename, is_text_file, old, new):
 
 	f.close()
 	if modified:
-		orig_mtime = orig_stat[stat.ST_MTIME]
-		os.utime(filename, (orig_mtime, orig_mtime))
+		if sys.hexversion >= 0x3030000:
+			orig_mtime = orig_stat.st_mtime_ns
+			os.utime(filename, ns=(orig_mtime, orig_mtime))
+		else:
+			orig_mtime = orig_stat[stat.ST_MTIME]
+			os.utime(filename, (orig_mtime, orig_mtime))
 	return modified
 
 def chpath_inplace_symlink(filename, st, old, new):
@@ -135,14 +152,37 @@ def chpath_inplace_symlink(filename, st, old, new):
 
 def main(argv):
 
-	usage = "%s [options] <location> <old> <new>" % (os.path.basename(argv[0],))
-	parser = optparse.OptionParser(usage=usage)
-	options, args = parser.parse_args(argv[1:])
+	parser = ArgumentParser(description=__doc__)
+	try:
+		parser.add_argument('location', default=None,
+			help='root directory (e.g. $D)')
+		parser.add_argument('old', default=None,
+			help='original build prefix (e.g. /)')
+		parser.add_argument('new', default=None,
+			help='new install prefix (e.g. $EPREFIX)')
+		opts = parser.parse_args(argv)
 
-	if len(args) != 3:
-		parser.error("3 args required, got %s" % (len(args),))
+		location, old, new = opts.location, opts.old, opts.new
+	except OptionError:
+		# Argument parsing compatibility for Python 2.6 using optparse.
+		if sys.hexversion < 0x2070000:
+			parser = OptionParser(description=__doc__,
+				usage="usage: %prog [-h] location old new\n\n" + \
+				"  location: root directory (e.g. $D)\n" + \
+				"  old:      original build prefix (e.g. /)\n" + \
+				"  new:      new install prefix (e.g. $EPREFIX)")
 
-	location, old, new = args
+			(opts, args) = parser.parse_args()
+
+			if len(args) != 3:
+				parser.print_usage()
+				print("%s: error: expected 3 arguments, got %i"
+					% (__file__, len(args)))
+				return
+
+			location, old, new = args[0:3]
+		else:
+			raise
 
 	is_text_file = IsTextFile()
 
@@ -178,5 +218,5 @@ def main(argv):
 
 	return os.EX_OK
 
-if __name__ == "__main__":
-	sys.exit(main(sys.argv))
+if __name__ == '__main__':
+	sys.exit(main(sys.argv[1:]))

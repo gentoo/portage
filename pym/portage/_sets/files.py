@@ -1,4 +1,4 @@
-# Copyright 2007-2012 Gentoo Foundation
+# Copyright 2007-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -86,8 +86,8 @@ class StaticFileSet(EditablePackageSet):
 				for a in data:
 					matches = self.dbapi.match(a)
 					for cpv in matches:
-						atoms.append("%s:%s" % (cpv_getkey(cpv),
-							self.dbapi.aux_get(cpv, ["SLOT"])[0]))
+						pkg = self.dbapi._pkg_str(cpv, None)
+						atoms.append("%s:%s" % (pkg.cp, pkg.slot))
 					# In addition to any installed slots, also try to pull
 					# in the latest new slot that may be available.
 					atoms.append(a)
@@ -296,10 +296,14 @@ class WorldSelectedSet(EditablePackageSet):
 		ensure_dirs(os.path.dirname(self._filename), gid=portage_gid, mode=0o2750, mask=0o2)
 
 	def lock(self):
+		if self._lock is not None:
+			raise AssertionError("already locked")
 		self._ensure_dirs()
 		self._lock = lockfile(self._filename, wantnewlockfile=1)
 
 	def unlock(self):
+		if self._lock is None:
+			raise AssertionError("not locked")
 		unlockfile(self._lock)
 		self._lock = None
 

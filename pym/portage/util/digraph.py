@@ -1,12 +1,13 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 __all__ = ['digraph']
 
 from collections import deque
 import sys
 
-from portage import _unicode_decode
 from portage.util import writemsg
 
 class digraph(object):
@@ -16,24 +17,24 @@ class digraph(object):
 
 	def __init__(self):
 		"""Create an empty digraph"""
-		
+
 		# { node : ( { child : priority } , { parent : priority } ) }
 		self.nodes = {}
 		self.order = []
 
 	def add(self, node, parent, priority=0):
 		"""Adds the specified node with the specified parent.
-		
+
 		If the dep is a soft-dep and the node already has a hard
 		relationship to the parent, the relationship is left as hard."""
-		
+
 		if node not in self.nodes:
 			self.nodes[node] = ({}, {}, node)
 			self.order.append(node)
-		
+
 		if not parent:
 			return
-		
+
 		if parent not in self.nodes:
 			self.nodes[parent] = ({}, {}, parent)
 			self.order.append(parent)
@@ -46,19 +47,29 @@ class digraph(object):
 		priorities.append(priority)
 		priorities.sort()
 
+	def discard(self, node):
+		"""
+		Like remove(), except it doesn't raises KeyError if the
+		node doesn't exist.
+		"""
+		try:
+			self.remove(node)
+		except KeyError:
+			pass
+
 	def remove(self, node):
 		"""Removes the specified node from the digraph, also removing
 		and ties to other nodes in the digraph. Raises KeyError if the
 		node doesn't exist."""
-		
+
 		if node not in self.nodes:
 			raise KeyError(node)
-		
+
 		for parent in self.nodes[node][1]:
 			del self.nodes[parent][0][node]
 		for child in self.nodes[node][0]:
 			del self.nodes[child][1][node]
-		
+
 		del self.nodes[node]
 		self.order.remove(node)
 
@@ -157,10 +168,10 @@ class digraph(object):
 
 	def leaf_nodes(self, ignore_priority=None):
 		"""Return all nodes that have no children
-		
+
 		If ignore_soft_deps is True, soft deps are not counted as
 		children in calculations."""
-		
+
 		leaf_nodes = []
 		if ignore_priority is None:
 			for node in self.order:
@@ -191,10 +202,10 @@ class digraph(object):
 
 	def root_nodes(self, ignore_priority=None):
 		"""Return all nodes that have no parents.
-		
+
 		If ignore_soft_deps is True, soft deps are not counted as
 		parents in calculations."""
-		
+
 		root_nodes = []
 		if ignore_priority is None:
 			for node in self.order:
@@ -272,18 +283,17 @@ class digraph(object):
 	def debug_print(self):
 		def output(s):
 			writemsg(s, noiselevel=-1)
-		# Use _unicode_decode() to force unicode format
+		# Use unicode_literals to force unicode format
 		# strings for python-2.x safety, ensuring that
 		# node.__unicode__() is used when necessary.
 		for node in self.nodes:
-			output(_unicode_decode("%s ") % (node,))
+			output("%s " % (node,))
 			if self.nodes[node][0]:
 				output("depends on\n")
 			else:
 				output("(no children)\n")
 			for child, priorities in self.nodes[node][0].items():
-				output(_unicode_decode("  %s (%s)\n") % \
-					(child, priorities[-1],))
+				output("  %s (%s)\n" % (child, priorities[-1],))
 
 	def bfs(self, start, ignore_priority=None):
 		if start not in self:

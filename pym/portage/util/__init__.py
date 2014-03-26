@@ -1,5 +1,7 @@
-# Copyright 2004-2012 Gentoo Foundation
+# Copyright 2004-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import unicode_literals
 
 __all__ = ['apply_permissions', 'apply_recursive_permissions',
 	'apply_secpass_permissions', 'apply_stat_permissions', 'atomic_ofstream',
@@ -31,20 +33,25 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'pickle',
 	'portage.dep:Atom',
-	'portage.util.listdir:_ignorecvs_dirs'
+	'subprocess',
 )
 
 from portage import os
-from portage import subprocess_getstatusoutput
 from portage import _encodings
 from portage import _os_merge
 from portage import _unicode_encode
 from portage import _unicode_decode
+from portage.const import VCS_DIRS
 from portage.exception import InvalidAtom, PortageException, FileNotFound, \
        OperationNotPermitted, ParseError, PermissionDenied, ReadOnlyFileSystem
 from portage.localization import _
 from portage.proxy.objectproxy import ObjectProxy
 from portage.cache.mappings import UserDict
+
+if sys.hexversion >= 0x3000000:
+	_unicode = str
+else:
+	_unicode = unicode
 
 noiselimit = 0
 
@@ -57,7 +64,7 @@ def initialize_logger(level=logging.WARN):
 	"""
 	logging.basicConfig(level=logging.WARN, format='[%(levelname)-4s] %(message)s')
 
-def writemsg(mystr,noiselevel=0,fd=None):
+def writemsg(mystr, noiselevel=0, fd=None):
 	"""Prints out warning and debug messages based on the noiselimit setting"""
 	global noiselimit
 	if fd is None:
@@ -75,7 +82,7 @@ def writemsg(mystr,noiselevel=0,fd=None):
 		fd.write(mystr)
 		fd.flush()
 
-def writemsg_stdout(mystr,noiselevel=0):
+def writemsg_stdout(mystr, noiselevel=0):
 	"""Prints messages stdout based on the noiselimit setting"""
 	writemsg(mystr, noiselevel=noiselevel, fd=sys.stdout)
 
@@ -100,7 +107,7 @@ def writemsg_level(msg, level=0, noiselevel=0):
 	writemsg(msg, noiselevel=noiselevel, fd=fd)
 
 def normalize_path(mypath):
-	""" 
+	"""
 	os.path.normpath("//foo") returns "//foo" instead of "/foo"
 	We dislike this behavior so we create our own normpath func
 	to fix it.
@@ -120,8 +127,8 @@ def grabfile(myfilename, compat_level=0, recursive=0, remember_source_file=False
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a list; if a line
 	begins with a #, it is ignored, as are empty lines"""
 
-	mylines=grablines(myfilename, recursive, remember_source_file=True)
-	newlines=[]
+	mylines = grablines(myfilename, recursive, remember_source_file=True)
+	newlines = []
 
 	for x, source_file in mylines:
 		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
@@ -139,10 +146,10 @@ def grabfile(myfilename, compat_level=0, recursive=0, remember_source_file=False
 		myline = " ".join(myline)
 		if not myline:
 			continue
-		if myline[0]=="#":
+		if myline[0] == "#":
 			# Check if we have a compat-level string. BC-integration data.
 			# '##COMPAT==>N<==' 'some string attached to it'
-			mylinetest = myline.split("<==",1)
+			mylinetest = myline.split("<==", 1)
 			if len(mylinetest) == 2:
 				myline_potential = mylinetest[1]
 				mylinetest = mylinetest[0].split("##COMPAT==>")
@@ -159,7 +166,7 @@ def grabfile(myfilename, compat_level=0, recursive=0, remember_source_file=False
 			newlines.append(myline)
 	return newlines
 
-def map_dictlist_vals(func,myDict):
+def map_dictlist_vals(func, myDict):
 	"""Performs a function on each value of each key in a dictlist.
 	Returns a new dictlist."""
 	new_dl = {}
@@ -173,7 +180,7 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
 	Stacks an array of dict-types into one array. Optionally merging or
 	overwriting matching key/value pairs for the dict[key]->list.
 	Returns a single dict. Higher index in lists is preferenced.
-	
+
 	Example usage:
 	   >>> from portage.util import stack_dictlist
 		>>> print stack_dictlist( [{'a':'b'},{'x':'y'}])
@@ -188,7 +195,7 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
 		>>> { 'KEYWORDS':['alpha'] }
 		>>> print stack_dictlist( [a,b], incrementals=['KEYWORDS'])
 		>>> { 'KEYWORDS':['alpha'] }
-	
+
 	@param original_dicts a list of (dictionary objects or None)
 	@type list
 	@param incremental True or false depending on whether new keys should overwrite
@@ -199,7 +206,7 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
 	@type list
 	@param ignore_none Appears to be ignored, but probably was used long long ago.
 	@type boolean
-	
+
 	"""
 	final_dict = {}
 	for mydict in original_dicts:
@@ -208,7 +215,7 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
 		for y in mydict:
 			if not y in final_dict:
 				final_dict[y] = []
-			
+
 			for thing in mydict[y]:
 				if thing:
 					if incremental or y in incrementals:
@@ -245,12 +252,13 @@ def stack_dicts(dicts, incremental=0, incrementals=[], ignore_none=0):
 def append_repo(atom_list, repo_name, remember_source_file=False):
 	"""
 	Takes a list of valid atoms without repo spec and appends ::repo_name.
+	If an atom already has a repo part, then it is preserved (see bug #461948).
 	"""
 	if remember_source_file:
-		return [(Atom(atom + "::" + repo_name, allow_wildcard=True, allow_repo=True), source) \
+		return [(atom.repo is not None and atom or atom.with_repo(repo_name), source) \
 			for atom, source in atom_list]
 	else:
-		return [Atom(atom + "::" + repo_name, allow_wildcard=True, allow_repo=True) \
+		return [atom.repo is not None and atom or atom.with_repo(repo_name) \
 			for atom in atom_list]
 
 def stack_lists(lists, incremental=1, remember_source_file=False,
@@ -334,7 +342,7 @@ def stack_lists(lists, incremental=1, remember_source_file=False,
 def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 	"""
 	This function grabs the lines in a file, normalizes whitespace and returns lines in a dictionary
-	
+
 	@param myfilename: file to process
 	@type myfilename: string (path)
 	@param juststrings: only return strings
@@ -350,9 +358,9 @@ def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 	1.  Returns the lines in a file in a dictionary, for example:
 		'sys-apps/portage x86 amd64 ppc'
 		would return
-		{ "sys-apps/portage" : [ 'x86', 'amd64', 'ppc' ]
+		{"sys-apps/portage" : ['x86', 'amd64', 'ppc']}
 	"""
-	newdict={}
+	newdict = {}
 	for x in grablines(myfilename, recursive):
 		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
 		#into single spaces.
@@ -379,52 +387,75 @@ def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 			newdict[k] = " ".join(v)
 	return newdict
 
-def read_corresponding_eapi_file(filename):
+_eapi_cache = {}
+
+def read_corresponding_eapi_file(filename, default="0"):
 	"""
 	Read the 'eapi' file from the directory 'filename' is in.
 	Returns "0" if the file is not present or invalid.
 	"""
-	default = "0"
 	eapi_file = os.path.join(os.path.dirname(filename), "eapi")
 	try:
-		f = io.open(_unicode_encode(eapi_file,
+		eapi = _eapi_cache[eapi_file]
+	except KeyError:
+		pass
+	else:
+		if eapi is None:
+			return default
+		return eapi
+
+	eapi = None
+	try:
+		with io.open(_unicode_encode(eapi_file,
 			encoding=_encodings['fs'], errors='strict'),
-			mode='r', encoding=_encodings['repo.content'], errors='replace')
-		lines = f.readlines()
+			mode='r', encoding=_encodings['repo.content'], errors='replace') as f:
+			lines = f.readlines()
 		if len(lines) == 1:
 			eapi = lines[0].rstrip("\n")
 		else:
 			writemsg(_("--- Invalid 'eapi' file (doesn't contain exactly one line): %s\n") % (eapi_file),
 				noiselevel=-1)
-			eapi = default
-		f.close()
 	except IOError:
-		eapi = default
+		pass
 
+	_eapi_cache[eapi_file] = eapi
+	if eapi is None:
+		return default
 	return eapi
 
 def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=False, allow_repo=False,
 	verify_eapi=False, eapi=None):
 	""" Does the same thing as grabdict except it validates keys
 	    with isvalidatom()"""
-	pkgs=grabdict(myfilename, juststrings, empty=1, recursive=recursive)
-	if not pkgs:
-		return pkgs
-	if verify_eapi and eapi is None:
-		eapi = read_corresponding_eapi_file(myfilename)
 
-	# We need to call keys() here in order to avoid the possibility of
-	# "RuntimeError: dictionary changed size during iteration"
-	# when an invalid atom is deleted.
+	if recursive:
+		file_list = _recursive_file_list(myfilename)
+	else:
+		file_list = [myfilename]
+
 	atoms = {}
-	for k, v in pkgs.items():
-		try:
-			k = Atom(k, allow_wildcard=allow_wildcard, allow_repo=allow_repo, eapi=eapi)
-		except InvalidAtom as e:
-			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, e),
-				noiselevel=-1)
-		else:
-			atoms[k] = v
+	for filename in file_list:
+		d = grabdict(filename, juststrings=False,
+			empty=True, recursive=False, incremental=True)
+		if not d:
+			continue
+		if verify_eapi and eapi is None:
+			eapi = read_corresponding_eapi_file(myfilename)
+
+		for k, v in d.items():
+			try:
+				k = Atom(k, allow_wildcard=allow_wildcard,
+					allow_repo=allow_repo, eapi=eapi)
+			except InvalidAtom as e:
+				writemsg(_("--- Invalid atom in %s: %s\n") % (filename, e),
+					noiselevel=-1)
+			else:
+				atoms.setdefault(k, []).extend(v)
+
+	if juststrings:
+		for k, v in atoms.items():
+			atoms[k] = " ".join(v)
+
 	return atoms
 
 def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=False, allow_repo=False,
@@ -450,7 +481,7 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=Fals
 			writemsg(_("--- Invalid atom in %s: %s\n") % (source_file, e),
 				noiselevel=-1)
 		else:
-			if pkg_orig == str(pkg):
+			if pkg_orig == _unicode(pkg):
 				# normal atom, so return as Atom instance
 				if remember_source_file:
 					atoms.append((pkg, source_file))
@@ -464,35 +495,63 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=Fals
 					atoms.append(pkg_orig)
 	return atoms
 
-def grablines(myfilename, recursive=0, remember_source_file=False):
-	mylines=[]
-	if recursive and os.path.isdir(myfilename):
-		if os.path.basename(myfilename) in _ignorecvs_dirs:
-			return mylines
+def _recursive_basename_filter(f):
+	return not f.startswith(".") and not f.endswith("~")
+
+def _recursive_file_list(path):
+	# path may be a regular file or a directory
+
+	def onerror(e):
+		if e.errno == PermissionDenied.errno:
+			raise PermissionDenied(path)
+
+	stack = [os.path.split(path)]
+
+	while stack:
+		parent, fname = stack.pop()
+		fullpath = os.path.join(parent, fname)
+
 		try:
-			dirlist = os.listdir(myfilename)
+			st = os.stat(fullpath)
 		except OSError as e:
-			if e.errno == PermissionDenied.errno:
-				raise PermissionDenied(myfilename)
-			elif e.errno in (errno.ENOENT, errno.ESTALE):
-				return mylines
-			else:
-				raise
-		dirlist.sort()
-		for f in dirlist:
-			if not f.startswith(".") and not f.endswith("~"):
-				mylines.extend(grablines(
-					os.path.join(myfilename, f), recursive, remember_source_file))
+			onerror(e)
+			continue
+
+		if stat.S_ISDIR(st.st_mode):
+			if fname in VCS_DIRS or not _recursive_basename_filter(fname):
+				continue
+			try:
+				children = os.listdir(fullpath)
+			except OSError as e:
+				onerror(e)
+				continue
+
+			# Sort in reverse, since we pop from the end of the stack.
+			# Include regular files in the stack, so files are sorted
+			# together with directories.
+			children.sort(reverse=True)
+			stack.extend((fullpath, x) for x in children)
+
+		elif stat.S_ISREG(st.st_mode):
+			if _recursive_basename_filter(fname):
+				yield fullpath
+
+def grablines(myfilename, recursive=0, remember_source_file=False):
+	mylines = []
+	if recursive:
+		for f in _recursive_file_list(myfilename):
+			mylines.extend(grablines(f, recursive=False,
+				remember_source_file=remember_source_file))
+
 	else:
 		try:
-			myfile = io.open(_unicode_encode(myfilename,
+			with io.open(_unicode_encode(myfilename,
 				encoding=_encodings['fs'], errors='strict'),
-				mode='r', encoding=_encodings['content'], errors='replace')
-			if remember_source_file:
-				mylines = [(line, myfilename) for line in myfile.readlines()]
-			else:
-				mylines = myfile.readlines()
-			myfile.close()
+				mode='r', encoding=_encodings['content'], errors='replace') as myfile:
+				if remember_source_file:
+					mylines = [(line, myfilename) for line in myfile.readlines()]
+				else:
+					mylines = myfile.readlines()
 		except IOError as e:
 			if e.errno == PermissionDenied.errno:
 				raise PermissionDenied(myfilename)
@@ -502,7 +561,7 @@ def grablines(myfilename, recursive=0, remember_source_file=False):
 				raise
 	return mylines
 
-def writedict(mydict,myfilename,writekey=True):
+def writedict(mydict, myfilename, writekey=True):
 	"""Writes out a dict to a file; writekey=0 mode doesn't write out
 	the key and assumes all values are strings, not lists."""
 	lines = []
@@ -528,18 +587,44 @@ def shlex_split(s):
 		rval = [_unicode_decode(x) for x in rval]
 	return rval
 
-class _tolerant_shlex(shlex.shlex):
+class _getconfig_shlex(shlex.shlex):
+
+	def __init__(self, portage_tolerant=False, **kwargs):
+		shlex.shlex.__init__(self, **kwargs)
+		self.__portage_tolerant = portage_tolerant
+
+	def allow_sourcing(self, var_expand_map):
+		self.source = portage._native_string("source")
+		self.var_expand_map = var_expand_map
+
 	def sourcehook(self, newfile):
 		try:
+			newfile = varexpand(newfile, self.var_expand_map)
 			return shlex.shlex.sourcehook(self, newfile)
 		except EnvironmentError as e:
-			writemsg(_("!!! Parse error in '%s': source command failed: %s\n") % \
-				(self.infile, str(e)), noiselevel=-1)
+			if e.errno == PermissionDenied.errno:
+				raise PermissionDenied(newfile)
+			if e.errno not in (errno.ENOENT, errno.ENOTDIR):
+				writemsg("open('%s', 'r'): %s\n" % (newfile, e), noiselevel=-1)
+				raise
+
+			msg = self.error_leader()
+			if e.errno == errno.ENOTDIR:
+				msg += _("%s: Not a directory") % newfile
+			else:
+				msg += _("%s: No such file or directory") % newfile
+
+			if self.__portage_tolerant:
+				writemsg("%s\n" % msg, noiselevel=-1)
+			else:
+				raise ParseError(msg)
 			return (newfile, io.StringIO())
 
 _invalid_var_name_re = re.compile(r'^\d|\W')
 
-def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
+def getconfig(mycfg, tolerant=False, allow_sourcing=False, expand=True,
+	recursive=False):
+
 	if isinstance(expand, dict):
 		# Some existing variable definitions have been
 		# passed in, for use in substitutions.
@@ -548,6 +633,21 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 	else:
 		expand_map = {}
 	mykeys = {}
+
+	if recursive:
+		# Emulate source commands so that syntax error messages
+		# can display real file names and line numbers.
+		if not expand:
+			expand_map = False
+		fname = None
+		for fname in _recursive_file_list(mycfg):
+			mykeys.update(getconfig(fname, tolerant=tolerant,
+				allow_sourcing=allow_sourcing, expand=expand_map,
+				recursive=False) or {})
+		if fname is None:
+			return None
+		return mykeys
+
 	f = None
 	try:
 		# NOTE: shlex doesn't support unicode objects with Python 2
@@ -572,49 +672,53 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 		if f is not None:
 			f.close()
 
+	# Since this file has unicode_literals enabled, and Python 2's
+	# shlex implementation does not support unicode, the following code
+	# uses _native_string() to encode unicode literals when necessary.
+
 	# Workaround for avoiding a silent error in shlex that is
 	# triggered by a source statement at the end of the file
 	# without a trailing newline after the source statement.
-	if content and content[-1] != '\n':
-		content += '\n'
+	if content and content[-1] != portage._native_string('\n'):
+		content += portage._native_string('\n')
 
 	# Warn about dos-style line endings since that prevents
 	# people from being able to source them with bash.
-	if '\r' in content:
+	if portage._native_string('\r') in content:
 		writemsg(("!!! " + _("Please use dos2unix to convert line endings " + \
 			"in config file: '%s'") + "\n") % mycfg, noiselevel=-1)
 
 	lex = None
 	try:
-		if tolerant:
-			shlex_class = _tolerant_shlex
-		else:
-			shlex_class = shlex.shlex
 		# The default shlex.sourcehook() implementation
 		# only joins relative paths when the infile
 		# attribute is properly set.
-		lex = shlex_class(content, infile=mycfg, posix=True)
-		lex.wordchars = string.digits + string.ascii_letters + \
-			"~!@#$%*_\:;?,./-+{}"
-		lex.quotes="\"'"
+		lex = _getconfig_shlex(instream=content, infile=mycfg, posix=True,
+			portage_tolerant=tolerant)
+		lex.wordchars = portage._native_string(string.digits +
+			string.ascii_letters + "~!@#$%*_\:;?,./-+{}")
+		lex.quotes = portage._native_string("\"'")
 		if allow_sourcing:
-			lex.source="source"
-		while 1:
-			key=lex.get_token()
+			lex.allow_sourcing(expand_map)
+
+		while True:
+			key = _unicode_decode(lex.get_token())
 			if key == "export":
-				key = lex.get_token()
+				key = _unicode_decode(lex.get_token())
 			if key is None:
 				#normal end of file
-				break;
-			equ=lex.get_token()
-			if (equ==''):
+				break
+
+			equ = _unicode_decode(lex.get_token())
+			if not equ:
 				msg = lex.error_leader() + _("Unexpected EOF")
 				if not tolerant:
 					raise ParseError(msg)
 				else:
 					writemsg("%s\n" % msg, noiselevel=-1)
 					return mykeys
-			elif (equ!='='):
+
+			elif equ != "=":
 				msg = lex.error_leader() + \
 					_("Invalid token '%s' (not '=')") % (equ,)
 				if not tolerant:
@@ -622,7 +726,8 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 				else:
 					writemsg("%s\n" % msg, noiselevel=-1)
 					return mykeys
-			val=lex.get_token()
+
+			val = _unicode_decode(lex.get_token())
 			if val is None:
 				msg = lex.error_leader() + \
 					_("Unexpected end of config file: variable '%s'") % (key,)
@@ -631,8 +736,6 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 				else:
 					writemsg("%s\n" % msg, noiselevel=-1)
 					return mykeys
-			key = _unicode_decode(key)
-			val = _unicode_decode(val)
 
 			if _invalid_var_name_re.search(key) is not None:
 				msg = lex.error_leader() + \
@@ -653,7 +756,7 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 	except Exception as e:
 		if isinstance(e, ParseError) or lex is None:
 			raise
-		msg = _unicode_decode("%s%s") % (lex.error_leader(), e)
+		msg = "%s%s" % (lex.error_leader(), e)
 		writemsg("%s\n" % msg, noiselevel=-1)
 		raise
 
@@ -671,10 +774,10 @@ def varexpand(mystring, mydict=None, error_leader=None):
 	This code is used by the configfile code, as well as others (parser)
 	This would be a good bunch of code to port to C.
 	"""
-	numvars=0
-	#in single, double quotes
-	insing=0
-	indoub=0
+	numvars = 0
+	# in single, double quotes
+	insing = 0
+	indoub = 0
 	pos = 0
 	length = len(mystring)
 	newstring = []
@@ -686,7 +789,7 @@ def varexpand(mystring, mydict=None, error_leader=None):
 			else:
 				newstring.append("'") # Quote removal is handled by shlex.
 				insing=not insing
-			pos=pos+1
+			pos += 1
 			continue
 		elif current == '"':
 			if (insing):
@@ -694,9 +797,9 @@ def varexpand(mystring, mydict=None, error_leader=None):
 			else:
 				newstring.append('"') # Quote removal is handled by shlex.
 				indoub=not indoub
-			pos=pos+1
+			pos += 1
 			continue
-		if (not insing): 
+		if not insing:
 			#expansion time
 			if current == "\n":
 				#convert newlines to spaces
@@ -711,7 +814,7 @@ def varexpand(mystring, mydict=None, error_leader=None):
 				# escaped newline characters. Note that we don't handle
 				# escaped quotes here, since getconfig() uses shlex
 				# to handle that earlier.
-				if (pos+1>=len(mystring)):
+				if pos + 1 >= len(mystring):
 					newstring.append(current)
 					break
 				else:
@@ -733,15 +836,15 @@ def varexpand(mystring, mydict=None, error_leader=None):
 						newstring.append(mystring[pos - 2:pos])
 					continue
 			elif current == "$":
-				pos=pos+1
-				if mystring[pos]=="{":
-					pos=pos+1
-					braced=True
+				pos += 1
+				if mystring[pos] == "{":
+					pos += 1
+					braced = True
 				else:
-					braced=False
-				myvstart=pos
+					braced = False
+				myvstart = pos
 				while mystring[pos] in _varexpand_word_chars:
-					if (pos+1)>=len(mystring):
+					if pos + 1 >= len(mystring):
 						if braced:
 							msg = _varexpand_unexpected_eof_msg
 							if error_leader is not None:
@@ -749,20 +852,20 @@ def varexpand(mystring, mydict=None, error_leader=None):
 							writemsg(msg + "\n", noiselevel=-1)
 							return ""
 						else:
-							pos=pos+1
+							pos += 1
 							break
-					pos=pos+1
-				myvarname=mystring[myvstart:pos]
+					pos += 1
+				myvarname = mystring[myvstart:pos]
 				if braced:
-					if mystring[pos]!="}":
+					if mystring[pos] != "}":
 						msg = _varexpand_unexpected_eof_msg
 						if error_leader is not None:
 							msg = error_leader() + msg
 						writemsg(msg + "\n", noiselevel=-1)
 						return ""
 					else:
-						pos=pos+1
-				if len(myvarname)==0:
+						pos += 1
+				if len(myvarname) == 0:
 					msg = "$"
 					if braced:
 						msg += "{}"
@@ -771,7 +874,7 @@ def varexpand(mystring, mydict=None, error_leader=None):
 						msg = error_leader() + msg
 					writemsg(msg + "\n", noiselevel=-1)
 					return ""
-				numvars=numvars+1
+				numvars += 1
 				if myvarname in mydict:
 					newstring.append(mydict[myvarname])
 			else:
@@ -786,9 +889,9 @@ def varexpand(mystring, mydict=None, error_leader=None):
 # broken and removed, but can still be imported
 pickle_write = None
 
-def pickle_read(filename,default=None,debug=0):
+def pickle_read(filename, default=None, debug=0):
 	if not os.access(filename, os.R_OK):
-		writemsg(_("pickle_read(): File not readable. '")+filename+"'\n",1)
+		writemsg(_("pickle_read(): File not readable. '") + filename + "'\n", 1)
 		return default
 	data = None
 	try:
@@ -797,12 +900,12 @@ def pickle_read(filename,default=None,debug=0):
 		mypickle = pickle.Unpickler(myf)
 		data = mypickle.load()
 		myf.close()
-		del mypickle,myf
-		writemsg(_("pickle_read(): Loaded pickle. '")+filename+"'\n",1)
+		del mypickle, myf
+		writemsg(_("pickle_read(): Loaded pickle. '") + filename + "'\n", 1)
 	except SystemExit as e:
 		raise
 	except Exception as e:
-		writemsg(_("!!! Failed to load pickle: ")+str(e)+"\n",1)
+		writemsg(_("!!! Failed to load pickle: ") + str(e) + "\n", 1)
 		data = default
 	return data
 
@@ -830,6 +933,9 @@ class cmp_sort_key(object):
 	list.sort(), making it easier to port code for python-3.0 compatibility.
 	It works by generating key objects which use the given cmp function to
 	implement their __lt__ method.
+
+	Beginning with Python 2.7 and 3.2, equivalent functionality is provided
+	by functools.cmp_to_key().
 	"""
 	__slots__ = ("_cmp_func",)
 
@@ -921,6 +1027,10 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 	Returns True if the permissions were modified and False otherwise."""
 
 	modified = False
+
+	# Since Python 3.4, chown requires int type (no proxies).
+	uid = int(uid)
+	gid = int(gid)
 
 	if stat_cached is None:
 		try:
@@ -1141,7 +1251,7 @@ class atomic_ofstream(ObjectProxy):
 				object.__setattr__(self, '_file',
 					open_func(_unicode_encode(tmp_name,
 						encoding=_encodings['fs'], errors='strict'),
-						mode=mode, **kargs))
+						mode=mode, **portage._native_kwargs(kargs)))
 				return
 			except IOError as e:
 				if canonical_path == filename:
@@ -1223,7 +1333,7 @@ class atomic_ofstream(ObjectProxy):
 			self.close()
 
 	def __del__(self):
-		"""If the user does not explicitely call close(), it is
+		"""If the user does not explicitly call close(), it is
 		assumed that an error has occurred, so we abort()."""
 		try:
 			f = object.__getattribute__(self, '_file')
@@ -1402,9 +1512,9 @@ class LazyItemsDict(UserDict):
 			lazy_item = self.lazy_items.get(k)
 			if lazy_item is not None:
 				if not lazy_item.singleton:
-					raise TypeError(_unicode_decode("LazyItemsDict " + \
+					raise TypeError("LazyItemsDict " + \
 						"deepcopy is unsafe with lazy items that are " + \
-						"not singletons: key=%s value=%s") % (k, lazy_item,))
+						"not singletons: key=%s value=%s" % (k, lazy_item,))
 			UserDict.__setitem__(result, k_copy, deepcopy(self[k], memo))
 		return result
 
@@ -1576,13 +1686,13 @@ def find_updated_config_files(target_root, config_protect):
 	"""
 	Return a tuple of configuration files that needs to be updated.
 	The tuple contains lists organized like this:
-	[ protected_dir, file_list ]
+		[protected_dir, file_list]
 	If the protected config isn't a protected_dir but a procted_file, list is:
-	[ protected_file, None ]
+		[protected_file, None]
 	If no configuration files needs to be updated, None is returned
 	"""
 
-	os = _os_merge
+	encoding = _encodings['fs']
 
 	if config_protect:
 		# directories with some protect files in them
@@ -1614,10 +1724,24 @@ def find_updated_config_files(target_root, config_protect):
 				mycommand = "find '%s' -maxdepth 1 -name '._cfg????_%s'" % \
 						os.path.split(x.rstrip(os.path.sep))
 			mycommand += " ! -name '.*~' ! -iname '.*.bak' -print0"
-			a = subprocess_getstatusoutput(mycommand)
+			cmd = shlex_split(mycommand)
 
-			if a[0] == 0:
-				files = a[1].split('\0')
+			if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000:
+				# Python 3.1 _execvp throws TypeError for non-absolute executable
+				# path passed as bytes (see http://bugs.python.org/issue8513).
+				fullname = portage.process.find_binary(cmd[0])
+				if fullname is None:
+					raise portage.exception.CommandNotFound(cmd[0])
+				cmd[0] = fullname
+
+			cmd = [_unicode_encode(arg, encoding=encoding, errors='strict')
+				for arg in cmd]
+			proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+				stderr=subprocess.STDOUT)
+			output = _unicode_decode(proc.communicate()[0], encoding=encoding)
+			status = proc.wait()
+			if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
+				files = output.split('\0')
 				# split always produces an empty string as the last element
 				if files and not files[-1]:
 					del files[-1]
