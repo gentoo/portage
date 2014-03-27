@@ -167,6 +167,13 @@ when functions are needed and often unused functions are left in the
 import line until someone comes along with a linter to clean up (does
 not happen often).
 
+Commits
+-------
+
+Prefer small commits that change specific things to big commits that
+change a lot of unrelated things.  This makes it easier to see what
+parts of the system have actually changed.  It also makes it easier to
+cherry-pick and revert commits. Use your common sense!
 
 Releases
 --------
