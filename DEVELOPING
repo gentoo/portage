@@ -175,6 +175,26 @@ change a lot of unrelated things.  This makes it easier to see what
 parts of the system have actually changed.  It also makes it easier to
 cherry-pick and revert commits. Use your common sense!
 
+Commit messages
+---------------
+
+Commit messages should be in the imperative mood with a capitalised
+header, optionally followed by a newline and a more detailed explanatory
+text.  The headline should be capped at 50 characters, the detailed text
+at 72.  Prefix the message with the component you touched if this makes
+sense.  Postfix the message with the bug it fixes, if it does.  Example:
+
+"
+emerge: Fix --tree output (bug 555555)
+
+Make sure newlines appear where they are supposed to. Fix a bug with
+colourisation of --tree output when used in tandem with --verbose
+--pretend --ask.
+"
+
+For a more detailed explanation (and rationalisation) of these rules:
+<http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html>
+
 Releases
 --------
 
