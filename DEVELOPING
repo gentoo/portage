@@ -23,10 +23,9 @@ with Python itself, must be optionally enabled by run-time detection.
 Tabs
 ----
 
-The current code uses tabs, not spaces.  Keep whitespace usage
-consistent between files.  New files should use tabs.  Space is
-sometimes used for indentation in Python code.  Tab stop should for this
-reason be set to 4.
+For legacy reasons, all leading whitespace should be tabs. All internal
+whitespace should be regular spaces. Set tab stop to 4 to calculate line
+width.
 
 Line-Wrapping
 -------------
