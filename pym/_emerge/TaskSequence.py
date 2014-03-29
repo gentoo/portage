@@ -30,8 +30,9 @@ class TaskSequence(CompositeTask):
 		CompositeTask._cancel(self)
 
 	def _start_next_task(self):
-		self._start_task(self._task_queue.popleft(),
-			self._task_exit_handler)
+		if self._task_queue:
+			self._start_task(self._task_queue.popleft(),
+				self._task_exit_handler)
 
 	def _task_exit_handler(self, task):
 		if self._default_exit(task) != os.EX_OK:
