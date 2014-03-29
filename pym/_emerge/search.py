@@ -1,4 +1,4 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -7,6 +7,7 @@ import re
 import portage
 from portage import os
 from portage.dbapi.porttree import _parse_uri_map
+from portage.localization import localized_size
 from portage.output import  bold, bold as white, darkgreen, green, red
 from portage.util import writemsg_stdout
 
@@ -348,12 +349,7 @@ class search(object):
 							break
 
 					if myebuild and file_size_str is None:
-						mystr = str(mysum[0] // 1024)
-						mycount = len(mystr)
-						while (mycount > 3):
-							mycount -= 3
-							mystr = mystr[:mycount] + "," + mystr[mycount:]
-						file_size_str = mystr + " kB"
+						file_size_str = localized_size(mysum[0])
 
 					if self.verbose:
 						if available:

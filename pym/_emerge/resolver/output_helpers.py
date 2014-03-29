@@ -1,4 +1,4 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """Contains private support functions for the Display class
@@ -17,6 +17,7 @@ import sys
 from portage import os
 from portage import _encodings, _unicode_encode
 from portage._sets.base import InternalPackageSet
+from portage.localization import localized_size
 from portage.output import (blue, bold, colorize, create_color_func,
 	green, red, teal, turquoise, yellow)
 bad = create_color_func("BAD")
@@ -158,7 +159,7 @@ class _PackageCounters(object):
 		myoutput.append(", ".join(details))
 		if total_installs != 0:
 			myoutput.append(")")
-		myoutput.append(", Size of downloads: %s" % _format_size(self.totalsize))
+		myoutput.append(", Size of downloads: %s" % localized_size(self.totalsize))
 		if self.restrict_fetch:
 			myoutput.append("\nFetch Restriction: %s package" % \
 				self.restrict_fetch)
@@ -233,21 +234,6 @@ class _DisplayConfig(object):
 		self.pkg_use_enabled = depgraph._pkg_use_enabled
 		self.pkg = depgraph._pkg
 
-
-# formats a size given in bytes nicely
-def _format_size(mysize):
-	if isinstance(mysize, basestring):
-		return mysize
-	if 0 != mysize % 1024:
-		# Always round up to the next kB so that it doesn't show 0 kB when
-		# some small file still needs to be fetched.
-		mysize += 1024 - mysize % 1024
-	mystr=str(mysize//1024)
-	mycount=len(mystr)
-	while (mycount > 3):
-		mycount-=3
-		mystr=mystr[:mycount]+","+mystr[mycount:]
-	return mystr+" kB"
 
 def _create_use_string(conf, name, cur_iuse, iuse_forced, cur_use,
 	old_iuse, old_use,

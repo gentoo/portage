@@ -2,6 +2,9 @@
 # Copyright 2004-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import locale
+import math
+
 from portage import _unicode_decode
 
 # We define this to make the transition easier for us.
@@ -25,3 +28,12 @@ def localization_example():
 	print(_("A: %(a)s -- B: %(b)s -- C: %(c)s") %
 	      {"a": a_value, "b": b_value, "c": c_value})
 
+def localized_size(num_bytes):
+	"""
+	Return pretty localized size string for num_bytes size
+	(given in bytes). The output will be in kibibytes.
+	"""
+
+	# always round up, so that small files don't end up as '0 KiB'
+	num_kib = math.ceil(num_bytes / 1024)
+	return locale.format('%d', num_kib, grouping=True) + ' KiB'
