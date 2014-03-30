@@ -6,6 +6,9 @@
 """
 
 
+from portage.sync.config_checks import CheckSyncConfig
+
+
 module_spec = {
 	'name': 'rsync',
 	'description': __doc__,
@@ -28,6 +31,7 @@ module_spec = {
 						'"https://wiki.gentoo.org:Project:Portage" for details',
 					},
 				},
+			'validate_config': CheckSyncConfig,
 			}
 		}
 	}

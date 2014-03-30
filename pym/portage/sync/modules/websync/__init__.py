@@ -8,6 +8,9 @@ Performs a http download of a portage snapshot and verifies and
 
 import os
 
+from portage.sync.config_checks import CheckSyncConfig
+
+
 DEFAULT_CLASS = "WebRsync"
 AVAILABLE_CLASSES = [ "WebRsync",  "PyWebsync"]
 options = {"1": "WebRsync", "2": "PyWebsync"}
@@ -47,6 +50,7 @@ module_spec = {
 						'"https://wiki.gentoo.org:Project:Portage" for details',
 				},
 			},
+			'validate_config': CheckSyncConfig,
 		},
 	}
 }

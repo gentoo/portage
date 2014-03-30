@@ -1,4 +1,4 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -88,10 +88,11 @@ class SyncManager(object):
 		self.module_names = self.module_controller.module_names[:]
 
 
-	def get_modules(self, mod):
+	def get_module_descriptions(self, mod):
 		desc = self.module_controller.get_func_descriptions(mod)
 		if desc:
-			pass
+			return desc
+		return []
 
 
 	def sync(self, emerge_config=None, repo=None, callback=None):

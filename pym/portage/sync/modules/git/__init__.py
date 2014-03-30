@@ -6,6 +6,9 @@ Performs a git pull on repositories
 """
 
 
+from portage.sync.config_checks import CheckSyncConfig
+
+
 module_spec = {
 	'name': 'git',
 	'description': __doc__,
@@ -29,6 +32,7 @@ module_spec = {
 						'"https://wiki.gentoo.org:Project:Portage" for details',
 				},
 			},
+			'validate_config': CheckSyncConfig,
 		}
 	}
 }
