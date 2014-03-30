@@ -79,8 +79,8 @@ class RepoConfig(object):
 	"""Stores config of one repository"""
 
 	__slots__ = ('aliases', 'allow_missing_manifest', 'allow_provide_virtual',
-		'cache_formats', 'create_manifest', 'disable_manifest', 'eapi',
-		'eclass_db', 'eclass_locations', 'eclass_overrides',
+		'auto_sync', 'cache_formats', 'create_manifest', 'disable_manifest',
+		'eapi', 'eclass_db', 'eclass_locations', 'eclass_overrides',
 		'find_invalid_path_char', 'force', 'format', 'local_config', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'portage1_profiles', 'portage1_profiles_compat', 'priority',
@@ -158,6 +158,11 @@ class RepoConfig(object):
 		if sync_uri is not None:
 			sync_uri = sync_uri.strip()
 		self.sync_uri = sync_uri or None
+
+		auto_sync = repo_opts.get('auto-sync')
+		if auto_sync is not None:
+			auto_sync = auto_sync.strip().lower()
+		self.auto_sync = auto_sync
 
 		# Not implemented.
 		format = repo_opts.get('format')
@@ -552,7 +557,7 @@ class RepoConfigLoader(object):
 			repo = RepoConfig(sname, optdict, local_config=local_config)
 
 			# Perform repos.conf sync variable validation
-			portage.sync.validate_config(repo)
+			portage.sync.validate_config(repo, logging)
 
 			# For backward compatibility with locations set via PORTDIR and
 			# PORTDIR_OVERLAY, delay validation of the location and repo.name
