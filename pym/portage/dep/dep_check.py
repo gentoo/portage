@@ -91,7 +91,6 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			if portdb.cp_list(x.cp):
 				newsplit.append(x)
 			else:
-				# TODO: Add PROVIDE check for repoman.
 				a = []
 				myvartree = mytrees.get("vartree")
 				if myvartree is not None:
@@ -196,19 +195,6 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				virt_atom_node = (virt_atom, id(virt_atom))
 				atom_graph.add(virt_atom_node, graph_parent)
 				atom_graph.add(pkg, virt_atom_node)
-		# Plain old-style virtuals.  New-style virtuals are preferred.
-		if not pkgs:
-				for y in mychoices:
-					new_atom = Atom(x.replace(x.cp, y.cp, 1))
-					matches = portdb.match(new_atom)
-					# portdb is an instance of depgraph._dep_check_composite_db, so
-					# USE conditionals are already evaluated.
-					if matches and mykey in \
-						portdb.aux_get(matches[-1], ['PROVIDE'])[0].split():
-						a.append(new_atom)
-						if atom_graph is not None:
-							atom_graph.add((new_atom, id(new_atom)),
-								graph_parent)
 
 		if not a and mychoices:
 			# Check for a virtual package.provided match.
