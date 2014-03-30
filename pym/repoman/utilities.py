@@ -309,7 +309,7 @@ def format_qa_output(formatter, stats, fails, dofull, dofail, options, qawarning
 	full = options.mode == 'full'
 	# we only want key value pairs where value > 0 
 	for category, number in \
-		filter(lambda myitem: myitem[1] > 0, iter(stats.items())):
+		filter(lambda myitem: myitem[1] > 0, sorted(stats.items())):
 		formatter.add_literal_data("  " + category.ljust(30))
 		if category in qawarnings:
 			formatter.push_style("WARN")
