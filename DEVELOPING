@@ -179,7 +179,7 @@ Commit messages
 
 Commit messages should be in the imperative mood with a capitalised
 header, optionally followed by a newline and a more detailed explanatory
-text.  The headline should be capped at 50 characters, the detailed text
+text.  The headline should be capped at 70 characters, the detailed text
 at 72.  Prefix the message with the component you touched if this makes
 sense.  Postfix the message with the bug it fixes, if it does.  Example:
 
