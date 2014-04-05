@@ -2211,7 +2211,8 @@ class depgraph(object):
 				# Display the specific atom from SetArg or
 				# Package types.
 				uneval = ""
-				if dep.atom is not dep.atom.unevaluated_atom:
+				if dep.atom and dep.atom.unevaluated_atom and \
+						dep.atom is not dep.atom.unevaluated_atom:
 					uneval = " (%s)" % (dep.atom.unevaluated_atom,)
 				writemsg_level(
 					"%s%s%s required by %s\n" %
