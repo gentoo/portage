@@ -394,6 +394,7 @@ def getMinUpgrade(vulnerableList, unaffectedList, portdbapi, vardbapi, minimize=
 				update = c_pv[0]+"/"+c_pv[1]+"-"+c_pv[2]
 				if c_pv[3] != "r0":		# we don't like -r0 for display
 					update += "-"+c_pv[3]
+				update = portdbapi._pkg_str(update, None)
 		vuln_update.append([vuln, update])
 
 	return vuln_update
