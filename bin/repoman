@@ -489,6 +489,7 @@ suspect_virtual = {
 
 ruby_deprecated = frozenset([
 	"ruby_targets_ree18",
+	"ruby_targets_ruby18",
 ])
 
 metadata_xml_encoding = 'UTF-8'
