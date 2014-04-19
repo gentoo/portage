@@ -1897,7 +1897,7 @@ for x in effective_scanlist:
 			stats['DESCRIPTION.punctuation'] += 1
 			fails['DESCRIPTION.punctuation'].append(
 				"%s: DESCRIPTION ends with a '%s' character"
-				% (relative_path, myaux['DESCRIPTION'][-1:])
+				% (relative_path, myaux['DESCRIPTION'][-1:]))
 
 		# 14 is the length of DESCRIPTION=""
 		if len(myaux['DESCRIPTION']) > max_desc_len:
