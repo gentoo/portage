@@ -318,6 +318,7 @@ qahelp = {
 	"LICENSE.missing": "Ebuilds that have a missing or empty LICENSE variable",
 	"LICENSE.virtual": "Virtuals that have a non-empty LICENSE variable",
 	"DESCRIPTION.missing": "Ebuilds that have a missing or empty DESCRIPTION variable",
+	"DESCRIPTION.punctuation": "DESCRIPTION ends with a period character",
 	"DESCRIPTION.toolong": "DESCRIPTION is over %d characters" % max_desc_len,
 	"EAPI.definition": "EAPI definition does not conform to PMS section 7.3.1 (first non-comment, non-blank line)",
 	"EAPI.deprecated": "Ebuilds that use features that are deprecated in the current EAPI",
@@ -385,6 +386,7 @@ qawarnings = set((
 "dependency.badindev",
 "dependency.badmaskedindev",
 "dependency.badtilde",
+"DESCRIPTION.punctuation",
 "DESCRIPTION.toolong",
 "EAPI.deprecated",
 "HOMEPAGE.virtual",
@@ -1889,6 +1891,12 @@ for x in effective_scanlist:
 					myqakey = var + ".virtual"
 					stats[myqakey] += 1
 					fails[myqakey].append(relative_path)
+
+		if myaux['DESCRIPTION'][-1:] in ['.']:
+			stats['DESCRIPTION.punctuation'] += 1
+			fails['DESCRIPTION.punctuation'].append(
+				"%s: DESCRIPTION ends with a '%s' character"
+				% (relative_path, myaux['DESCRIPTION'][-1:])
 
 		# 14 is the length of DESCRIPTION=""
 		if len(myaux['DESCRIPTION']) > max_desc_len:
