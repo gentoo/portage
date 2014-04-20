@@ -2,8 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 
 """WebRSync plug-in module for portage.
-Performs a http download of a portage snapshot and verifies and
- unpacks it to the repo location.
+Performs a http download of a portage snapshot, verifies and
+unpacks it to the repo location.
 """
 
 import os
@@ -29,7 +29,7 @@ module_spec = {
 	'name': 'webrsync',
 	'description': __doc__,
 	'provides':{
-		'module1': {
+		'websync-module': {
 			'name': "websync",
 			'class': config_class,
 			'description': __doc__,
@@ -48,6 +48,8 @@ module_spec = {
 					'description': 'Standard python **kwargs parameter format' +
 						'Please refer to the sync modules specs at ' +
 						'"https://wiki.gentoo.org:Project:Portage" for details',
+					'required-keys': ['options', 'settings', 'logger', 'repo',
+						'xterm_titles', 'spawn_kwargs'],
 				},
 			},
 			'validate_config': CheckSyncConfig,

@@ -13,7 +13,7 @@ module_spec = {
 	'name': 'git',
 	'description': __doc__,
 	'provides':{
-		'module1': {
+		'git-module': {
 			'name': "git",
 			'class': "GitSync",
 			'description': __doc__,
@@ -30,6 +30,8 @@ module_spec = {
 					'description': 'Standard python **kwargs parameter format' +
 						'Please refer to the sync modules specs at ' +
 						'"https://wiki.gentoo.org:Project:Portage" for details',
+					'required-keys': ['options', 'settings', 'logger', 'repo',
+						'xterm_titles', 'spawn_kwargs'],
 				},
 			},
 			'validate_config': CheckSyncConfig,

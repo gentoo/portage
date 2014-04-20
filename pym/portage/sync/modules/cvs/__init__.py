@@ -29,7 +29,7 @@ module_spec = {
 	'name': 'cvs',
 	'description': __doc__,
 	'provides':{
-		'module1': {
+		'cvs-module': {
 			'name': "cvs",
 			'class': "CVSSync",
 			'description': __doc__,
@@ -46,6 +46,8 @@ module_spec = {
 					'description': 'Standard python **kwargs parameter format' +
 						'Please refer to the sync modules specs at ' +
 						'"https://wiki.gentoo.org:Project:Portage" for details',
+					'required-keys': ['options', 'settings', 'logger', 'repo',
+						'xterm_titles', 'spawn_kwargs'],
 				},
 			},
 			'validate_config': CheckCVSConfig,
