@@ -1060,8 +1060,6 @@ def emerge_main(args=None):
 
 	# Portage needs to ensure a sane umask for the files it creates.
 	os.umask(0o22)
-	if myaction == "sync":
-		portage._sync_mode = True
 	emerge_config = load_emerge_config(
 		action=myaction, args=myfiles, opts=myopts)
 	rval = profile_check(emerge_config.trees, emerge_config.action)
