@@ -42,16 +42,6 @@ module_spec = {
 				'exists': 'Returns a boolean of whether the specified dir ' +
 					'exists and is a valid repository',
 			},
-			'func_parameters': {
-				'kwargs': {
-					'type': dict,
-					'description': 'Standard python **kwargs parameter format' +
-						'Please refer to the sync modules specs at ' +
-						'"https://wiki.gentoo.org:Project:Portage" for details',
-					'required-keys': ['options', 'settings', 'logger', 'repo',
-						'xterm_titles', 'spawn_kwargs'],
-				},
-			},
 			'validate_config': CheckSyncConfig,
 		},
 	}
