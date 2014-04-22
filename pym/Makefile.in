@@ -27,7 +27,7 @@ install:
 		$(INSTALL_subst) \
 			-o "$(portageuser)" -g "$(portagegroup)" \
 			-t "$(DESTDIR)$(PORTAGE_PYM)/$${f}" \
-			"$(srcdir)/$${f}"/*.py \
+			"$(srcdir)/$${f}"/* \
 	; done
 
 .PHONY:	all install
