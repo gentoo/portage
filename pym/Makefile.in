@@ -21,13 +21,19 @@ all:
 install:
 	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(PORTAGE_PYM)
 	( cd "$(srcdir)" && find * -type d ) | while read f ; do \
+		files=( ) ; \
+		for t in "$(srcdir)/$${f}"/* ; do \
+			[[ -d $${t} ]] && continue ; \
+			[[ $${t} == */Makefile* ]] && continue ; \
+			files=( "$${files[@]}" "$${t}" ) ; \
+		done ; \
 		$(INSTALL) -d -m 755 \
 			-o "$(portageuser)" -g "$(portagegroup)" \
 			"$(DESTDIR)$(PORTAGE_PYM)/$${f}" && \
 		$(INSTALL_subst) \
 			-o "$(portageuser)" -g "$(portagegroup)" \
 			-t "$(DESTDIR)$(PORTAGE_PYM)/$${f}" \
-			"$(srcdir)/$${f}"/* \
+			"$${files[@]}" \
 	; done
 
 .PHONY:	all install
