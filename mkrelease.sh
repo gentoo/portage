@@ -9,9 +9,10 @@ USE_TAG=false
 CHANGELOG_REVISION=
 UPLOAD_LOCATION=
 RUNTESTS=false
+USER=
 
 usage() {
-	echo "Usage: ${0##*/} [--changelog-rev <tree-ish>] [-t|--tag] [-u|--upload <location>] [--runtests] <version>"
+	echo "Usage: ${0##*/} [--changelog-rev <tree-ish>] [-t|--tag] [-u|--upload <location>]  [--user <username>] [--runtests] <version>"
 	exit ${1:-0}
 }
 
@@ -20,7 +21,7 @@ die() {
 	usage 1
 }
 
-ARGS=$(getopt -o htu: --long help,changelog-rev:,runtests,tag,upload: \
+ARGS=$(getopt -o htu: --long help,changelog-rev:,runtests,tag,upload:,user: \
 	-n "${0##*/}" -- "$@")
 [ $? != 0 ] && die "initialization error"
 
@@ -38,6 +39,10 @@ while true; do
 			;;
 		-u|--upload)
 			UPLOAD_LOCATION=$2
+			shift 2
+			;;
+		--user)
+			USER=$2"@"
 			shift 2
 			;;
 		-h|--help)
@@ -92,7 +97,7 @@ fi
 rm -rf "${SOURCE_DIR}" || die "directory cleanup failed"
 
 echo ">>> Setting portage.VERSION"
-sed -e "s/^VERSION=.*/VERSION=\"${VERSION}\"/" \
+sed -e "s/^VERSION = .*/VERSION = \"${VERSION}\"/" \
 	-i "${RELEASE_DIR}/pym/portage/__init__.py" || \
 	die "Failed to patch portage.VERSION"
 
@@ -127,8 +132,8 @@ if [[ -n ${DISTDIR} && -d ${DISTDIR} && -w ${DISTDIR} ]] ; then
 fi
 
 if [[ -n ${UPLOAD_LOCATION} ]] ; then
-	echo ">>> Uploading ${RELEASE_TARBALL} to ${UPLOAD_LOCATION}"
-	scp "${RELEASE_TARBALL}" "dev.gentoo.org:${UPLOAD_LOCATION}" || die "upload failed"
+	echo ">>> Uploading ${RELEASE_TARBALL} to ${USER}dev.gentoo.org:${UPLOAD_LOCATION}"
+	scp "${RELEASE_TARBALL}" "${USER}dev.gentoo.org:${UPLOAD_LOCATION}" || die "upload failed"
 else
 	du -h "${RELEASE_TARBALL}"
 fi

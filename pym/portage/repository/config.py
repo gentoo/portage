@@ -45,9 +45,6 @@ _valid_profile_formats = frozenset(
 _portage1_profiles_allow_directories = frozenset(
 	["portage-1-compat", "portage-1", 'portage-2'])
 
-_masters_attributes = dict((x, x.replace("-", "_").replace(".", "_")) for x in
-	("masters", "eclass-masters", "package.mask-masters", "use.aliases-masters", "use.force-masters", "use.mask-masters"))
-
 _repo_name_sub_re = re.compile(r'[^\w-]')
 
 def _gen_valid_repo(name):
@@ -84,12 +81,11 @@ class RepoConfig(object):
 		'cache_formats', 'create_manifest', 'disable_manifest', 'eapi',
 		'eclass_db', 'eclass_locations', 'eclass_overrides',
 		'find_invalid_path_char', 'force', 'format', 'local_config', 'location',
-		'main_repo', 'manifest_hashes', 'missing_repo_name',
+		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'portage1_profiles', 'portage1_profiles_compat', 'priority',
 		'profile_formats', 'sign_commit', 'sign_manifest', 'sync_cvs_repo',
 		'sync_type', 'sync_uri', 'thin_manifest', 'update_changelog',
-		'user_location', '_eapis_banned', '_eapis_deprecated', '_masters_orig') + \
-		tuple(_masters_attributes.values())
+		'user_location', '_eapis_banned', '_eapis_deprecated', '_masters_orig')
 
 	def __init__(self, name, repo_opts, local_config=True):
 		"""Build a RepoConfig with options in repo_opts
@@ -111,6 +107,7 @@ class RepoConfig(object):
 				aliases = tuple(aliases.split())
 		else:
 			aliases = None
+
 		self.aliases = aliases
 
 		if local_config or 'eclass-overrides' in force:
@@ -119,21 +116,21 @@ class RepoConfig(object):
 				eclass_overrides = tuple(eclass_overrides.split())
 		else:
 			eclass_overrides = None
-		self.eclass_overrides = eclass_overrides
 
+		self.eclass_overrides = eclass_overrides
 		# Eclass databases and locations are computed later.
 		self.eclass_db = None
 		self.eclass_locations = None
 
-		for attr, underscorized_attr in _masters_attributes.items():
-			if local_config or attr in force:
-				# Masters from repos.conf override layout.conf.
-				masters = repo_opts.get(attr)
-				if masters is not None:
-					masters = tuple(masters.split())
-			else:
-				masters = None
-			setattr(self, underscorized_attr, masters)
+		if local_config or 'masters' in force:
+			# Masters from repos.conf override layout.conf.
+			masters = repo_opts.get('masters')
+			if masters is not None:
+				masters = tuple(masters.split())
+		else:
+			masters = None
+
+		self.masters = masters
 
 		#The main-repo key makes only sense for the 'DEFAULT' section.
 		self.main_repo = repo_opts.get('main-repo')
@@ -220,9 +217,8 @@ class RepoConfig(object):
 
 			# layout.conf masters may be overridden here if we have a masters
 			# setting from the user's repos.conf
-			for attr, underscorized_attr in _masters_attributes.items():
-				if getattr(self, underscorized_attr) is None:
-					setattr(self, underscorized_attr, layout_data[attr])
+			if self.masters is None:
+				self.masters = layout_data['masters']
 
 			if (local_config or 'aliases' in force) and layout_data['aliases']:
 				aliases = self.aliases
@@ -375,10 +371,8 @@ class RepoConfig(object):
 			repo_msg.append(indent + "sync-type: " + self.sync_type)
 		if self.sync_uri:
 			repo_msg.append(indent + "sync-uri: " + self.sync_uri)
-		for attr, underscorized_attr in _masters_attributes.items():
-			masters = getattr(self, underscorized_attr)
-			if masters:
-				repo_msg.append(indent + attr + ": " + " ".join(master.name for master in masters))
+		if self.masters:
+			repo_msg.append(indent + "masters: " + " ".join(master.name for master in self.masters))
 		if self.priority is not None:
 			repo_msg.append(indent + "priority: " + str(self.priority))
 		if self.aliases:
@@ -750,43 +744,36 @@ class RepoConfigLoader(object):
 		for repo_name, repo in prepos.items():
 			if repo_name == "DEFAULT":
 				continue
-			for attr, underscorized_attr in _masters_attributes.items():
-				masters = getattr(repo, underscorized_attr)
-				if masters is None:
-					if attr == 'masters':
-						if self.mainRepo() and repo_name != self.mainRepo().name:
-							setattr(repo, underscorized_attr, (self.mainRepo(),))
-						else:
-							setattr(repo, underscorized_attr, ())
+			if repo.masters is None:
+				if self.mainRepo() and repo_name != self.mainRepo().name:
+					repo.masters = self.mainRepo(),
 				else:
-					if masters and isinstance(masters[0], RepoConfig):
-						# This one has already been processed
-						# because it has an alias.
-						continue
-					master_repos = []
-					for master_name in masters:
-						if master_name not in prepos:
-							layout_filename = os.path.join(repo.user_location,
-								"metadata", "layout.conf")
-							writemsg_level(_("Unavailable repository '%s' " \
-								"referenced by %s attribute in '%s'\n") % \
-								(master_name, attr, layout_filename),
-								level=logging.ERROR, noiselevel=-1)
-						else:
-							master_repos.append(prepos[master_name])
-					setattr(repo, underscorized_attr, tuple(master_repos))
+					repo.masters = ()
+			else:
+				if repo.masters and isinstance(repo.masters[0], RepoConfig):
+					# This one has already been processed
+					# because it has an alias.
+					continue
+				master_repos = []
+				for master_name in repo.masters:
+					if master_name not in prepos:
+						layout_filename = os.path.join(repo.user_location,
+							"metadata", "layout.conf")
+						writemsg_level(_("Unavailable repository '%s' " \
+							"referenced by masters entry in '%s'\n") % \
+							(master_name, layout_filename),
+							level=logging.ERROR, noiselevel=-1)
+					else:
+						master_repos.append(prepos[master_name])
+				repo.masters = tuple(master_repos)
 
 		#The 'eclass_overrides' key currently contains repo names. Replace them with the matching repo paths.
 		for repo_name, repo in prepos.items():
 			if repo_name == "DEFAULT":
 				continue
 
-			if repo.eclass_masters is not None:
-				masters = repo.eclass_masters
-			else:
-				masters = repo.masters
 			eclass_locations = []
-			eclass_locations.extend(master_repo.location for master_repo in masters)
+			eclass_locations.extend(master_repo.location for master_repo in repo.masters)
 			# Only append the current repo to eclass_locations if it's not
 			# there already. This allows masters to have more control over
 			# eclass override order, which may be useful for scenarios in
@@ -935,24 +922,23 @@ class RepoConfigLoader(object):
 		return repo_name in self.prepos
 
 	def config_string(self):
-		str_or_int_attrs = ("format", "location", "main-repo", "priority", "sync-cvs-repo", "sync-type", "sync-uri")
-		str_tuple_attrs = ("aliases", "eclass-overrides", "force")
-		repo_config_tuple_attrs = tuple(_masters_attributes.keys())
-		attrs = str_or_int_attrs + str_tuple_attrs + repo_config_tuple_attrs
+		str_or_int_keys = ("format", "location", "main_repo", "priority", "sync_cvs_repo", "sync_type", "sync_uri")
+		str_tuple_keys = ("aliases", "eclass_overrides", "force")
+		repo_config_tuple_keys = ("masters",)
+		keys = str_or_int_keys + str_tuple_keys + repo_config_tuple_keys
 		config_string = ""
-		for repo_name, repo in sorted(self.prepos.items()):
+		for repo_name, repo in sorted(self.prepos.items(), key=lambda x: (x[0] != "DEFAULT", x[0])):
 			config_string += "\n[%s]\n" % repo_name
-			for attr in sorted(attrs):
-				underscorized_attr = attr.replace("-", "_").replace(".", "_")
-				if attr == "main-repo" and repo_name != "DEFAULT":
+			for key in sorted(keys):
+				if key == "main_repo" and repo_name != "DEFAULT":
 					continue
-				if getattr(repo, underscorized_attr) is not None:
-					if attr in str_or_int_attrs:
-						config_string += "%s = %s\n" % (attr, getattr(repo, underscorized_attr))
-					elif attr in str_tuple_attrs:
-						config_string += "%s = %s\n" % (attr, " ".join(getattr(repo, underscorized_attr)))
-					elif attr in repo_config_tuple_attrs:
-						config_string += "%s = %s\n" % (attr, " ".join(x.name for x in getattr(repo, underscorized_attr)))
+				if getattr(repo, key) is not None:
+					if key in str_or_int_keys:
+						config_string += "%s = %s\n" % (key.replace("_", "-"), getattr(repo, key))
+					elif key in str_tuple_keys:
+						config_string += "%s = %s\n" % (key.replace("_", "-"), " ".join(getattr(repo, key)))
+					elif key in repo_config_tuple_keys:
+						config_string += "%s = %s\n" % (key.replace("_", "-"), " ".join(x.name for x in getattr(repo, key)))
 		return config_string.lstrip("\n")
 
 def load_repository_config(settings, extra_files=None):
@@ -986,17 +972,15 @@ def parse_layout_conf(repo_location, repo_name=None):
 
 	data = {}
 
-	# None indicates absence of a masters setting, which later code uses
+	# None indicates abscence of a masters setting, which later code uses
 	# to trigger a backward compatibility fallback that sets an implicit
 	# master. In order to avoid this fallback behavior, layout.conf can
 	# explicitly set masters to an empty value, which will result in an
 	# empty tuple here instead of None.
-	for attr in _masters_attributes.keys():
-		masters = layout_data.get(attr)
-		if masters is not None:
-			masters = tuple(masters.split())
-		data[attr] = masters
-
+	masters = layout_data.get('masters')
+	if masters is not None:
+		masters = tuple(masters.split())
+	data['masters'] = masters
 	data['aliases'] = tuple(layout_data.get('aliases', '').split())
 
 	data['allow-provide-virtual'] = \

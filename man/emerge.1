@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Jan 2014" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Mar 2014" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -553,6 +553,11 @@ a list of packages with similar names when a package doesn't exist.
 The \fIEMERGE_DEFAULT_OPTS\fR variable may be used to disable this
 option by default.
 .TP
+.BR "\-\-newrepo "
+Tells emerge to recompile a package if it is now being pulled from a
+different repository. This option also implies the
+\fB\-\-selective\fR option.
+.TP
 .BR "\-\-newuse " (\fB\-N\fR)
 Tells emerge to include installed packages where USE
 flags have changed since compilation. This option
@@ -852,6 +857,10 @@ hundreds of packages for slot conflicts.
 .TP
 .BR "\-\-verbose\-main\-repo\-display"
 In the package merge list display, print ::repository even for main repository.
+.TP
+.BR "\-\-verbose\-slot\-rebuilds [ y | n ]"
+Turns on/off the extra emerge output to list which packages are causing rebuilds.
+The default is set to "y" (on).
 .TP
 .BR "\-\-with\-bdeps < y | n >"
 In dependency calculations, pull in build time dependencies

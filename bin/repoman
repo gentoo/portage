@@ -144,8 +144,15 @@ def ParseArgs(argv, qahelp):
 		'scan' : 'Scan directory tree for QA issues'
 	}
 
+	output_choices = {
+		'default' : 'The normal output format',
+		'column' : 'Columnar output suitable for use with grep'
+	}
+
 	mode_keys = list(modes)
 	mode_keys.sort()
+
+	output_keys = sorted(output_choices)
 
 	parser = ArgumentParser(usage="repoman [options] [mode]",
 		description="Modes: %s" % " | ".join(mode_keys),
@@ -227,6 +234,9 @@ def ParseArgs(argv, qahelp):
 
 	parser.add_argument('--without-mask', dest='without_mask', action='store_true',
 		default=False, help='behave as if no package.mask entries exist (not allowed with commit mode)')
+
+	parser.add_argument('--output-style', dest='output_style', choices=output_keys,
+		help='select output type', default='default')
 
 	parser.add_argument('--mode', dest='mode', choices=mode_keys,
 		help='specify which mode repoman will run in (default=full)')
@@ -2424,7 +2434,14 @@ console_writer.style_listener = style_file.new_styles
 
 f = formatter.AbstractFormatter(console_writer)
 
-utilities.format_qa_output(f, stats, fails, dofull, dofail, options, qawarnings)
+format_outputs = {
+	'column': utilities.format_qa_output_column,
+	'default': utilities.format_qa_output
+}
+
+format_output = format_outputs.get(options.output_style,
+	format_outputs['default'])
+format_output(f, stats, fails, dofull, dofail, options, qawarnings)
 
 style_file.flush()
 del console_writer, f, style_file

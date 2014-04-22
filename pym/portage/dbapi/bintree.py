@@ -27,7 +27,7 @@ from portage.const import CACHE_PATH
 from portage.dbapi.virtual import fakedbapi
 from portage.dep import Atom, use_reduce, paren_enclose
 from portage.exception import AlarmSignal, InvalidData, InvalidPackageName, \
-	PermissionDenied, PortageException
+	ParseError, PermissionDenied, PortageException
 from portage.const import EAPI
 from portage.localization import _
 from portage import _movefile
@@ -912,6 +912,9 @@ class binarytree(object):
 								traceback.print_exc()
 
 							raise
+					except ValueError:
+						raise ParseError("Invalid Portage BINHOST value '%s'"
+										 % url.lstrip())
 
 				if f is None:
 

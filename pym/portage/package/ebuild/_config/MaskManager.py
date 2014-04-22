@@ -58,11 +58,7 @@ class MaskManager(object):
 			removals = frozenset(line[0][1:] for line in repo_lines
 				if line[0][:1] == "-")
 			matched_removals = set()
-			if repo.package_mask_masters is not None:
-				masters = repo.package_mask_masters
-			else:
-				masters = repo.masters
-			for master in masters:
+			for master in repo.masters:
 				master_lines = grab_pmask(master.location, master)
 				for line in master_lines:
 					if line[0] in removals:
@@ -79,7 +75,7 @@ class MaskManager(object):
 			# It's safe to warn for unmatched removal if masters have not
 			# been overridden by the user, which is guaranteed when
 			# user_config is false (when called by repoman).
-			if masters:
+			if repo.masters:
 				unmatched_removals = removals.difference(matched_removals)
 				if unmatched_removals and not user_config:
 					source_file = os.path.join(repo.location,

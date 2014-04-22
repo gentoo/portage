@@ -643,7 +643,7 @@ class depgraph(object):
 			rebuild_atoms = atoms.get(root, set())
 
 			for dep in deps:
-				if dep.parent.installed or dep.child.installed or \
+				if getattr(dep.parent, "installed", False) or dep.child.installed or \
 					dep.parent.slot_atom not in rebuild_atoms:
 					continue
 
@@ -2388,8 +2388,15 @@ class depgraph(object):
 		Remove a package and all its then parentless digraph
 		children from all depgraph datastructures.
 		"""
+		debug = "--debug" in self._frozen_config.myopts
+		if debug:
+			writemsg_level(
+				"Removing package: %s\n" % pkg,
+				level=logging.DEBUG, noiselevel=-1)
+
 		try:
-			children = self._dynamic_config.digraph.child_nodes(pkg)
+			children = [child for child in self._dynamic_config.digraph.child_nodes(pkg) \
+				if child is not pkg]
 			self._dynamic_config.digraph.remove(pkg)
 		except KeyError:
 			children = []
@@ -2424,7 +2431,8 @@ class depgraph(object):
 		self._dynamic_config._blocked_world_pkgs.pop(pkg, None)
 
 		for child in children:
-			if not self._dynamic_config.digraph.parent_nodes(child):
+			if child in self._dynamic_config.digraph and \
+				not self._dynamic_config.digraph.parent_nodes(child):
 				self._remove_pkg(child)
 
 		# Clear caches.
@@ -5389,54 +5397,56 @@ class depgraph(object):
 						break
 					# Compare built package to current config and
 					# reject the built package if necessary.
+					reinstall_use = ("--newuse" in self._frozen_config.myopts or \
+						"--reinstall" in self._frozen_config.myopts)
+					respect_use = self._dynamic_config.myparams.get("binpkg_respect_use") in ("y", "auto")
 					if built and not useoldpkg and \
 						(not installed or matched_packages) and \
 						not (installed and
 						self._frozen_config.excluded_pkgs.findAtomForPackage(pkg,
-						modified_use=self._pkg_use_enabled(pkg))) and \
-						("--newuse" in self._frozen_config.myopts or \
-						"--reinstall" in self._frozen_config.myopts or \
-						(not installed and self._dynamic_config.myparams.get(
-						"binpkg_respect_use") in ("y", "auto"))):
-						iuses = pkg.iuse.all
-						old_use = self._pkg_use_enabled(pkg)
-						if myeb:
-							pkgsettings.setcpv(myeb)
-						else:
-							pkgsettings.setcpv(pkg)
-						now_use = pkgsettings["PORTAGE_USE"].split()
-						forced_flags = set()
-						forced_flags.update(pkgsettings.useforce)
-						forced_flags.update(pkgsettings.usemask)
-						cur_iuse = iuses
-						if myeb and not usepkgonly and not useoldpkg:
-							cur_iuse = myeb.iuse.all
-						reinstall_for_flags = self._reinstall_for_flags(pkg,
-							forced_flags, old_use, iuses, now_use, cur_iuse)
-						if reinstall_for_flags:
-							if not pkg.installed:
-								self._dynamic_config.ignored_binaries.setdefault(pkg, set()).update(reinstall_for_flags)
+						modified_use=self._pkg_use_enabled(pkg))):
+						if myeb and "--newrepo" in self._frozen_config.myopts and myeb.repo != pkg.repo:
 							break
+						elif reinstall_use or (not installed and respect_use):
+							iuses = pkg.iuse.all
+							old_use = self._pkg_use_enabled(pkg)
+							if myeb:
+								pkgsettings.setcpv(myeb)
+							else:
+								pkgsettings.setcpv(pkg)
+							now_use = pkgsettings["PORTAGE_USE"].split()
+							forced_flags = set()
+							forced_flags.update(pkgsettings.useforce)
+							forced_flags.update(pkgsettings.usemask)
+							cur_iuse = iuses
+							if myeb and not usepkgonly and not useoldpkg:
+								cur_iuse = myeb.iuse.all
+							reinstall_for_flags = self._reinstall_for_flags(pkg,
+								forced_flags, old_use, iuses, now_use, cur_iuse)
+							if reinstall_for_flags:
+								if not pkg.installed:
+									self._dynamic_config.ignored_binaries.setdefault(pkg, set()).update(reinstall_for_flags)
+								break
 					# Compare current config to installed package
 					# and do not reinstall if possible.
-					if not installed and not useoldpkg and \
-						("--newuse" in self._frozen_config.myopts or \
-						"--reinstall" in self._frozen_config.myopts) and \
-						cpv in vardb.match(atom):
-						forced_flags = set()
-						forced_flags.update(pkg.use.force)
-						forced_flags.update(pkg.use.mask)
+					if not installed and not useoldpkg and cpv in vardb.match(atom):
 						inst_pkg = vardb.match_pkgs('=' + pkg.cpv)[0]
-						old_use = inst_pkg.use.enabled
-						old_iuse = inst_pkg.iuse.all
-						cur_use = self._pkg_use_enabled(pkg)
-						cur_iuse = pkg.iuse.all
-						reinstall_for_flags = \
-							self._reinstall_for_flags(pkg,
-							forced_flags, old_use, old_iuse,
-							cur_use, cur_iuse)
-						if reinstall_for_flags:
+						if "--newrepo" in self._frozen_config.myopts and pkg.repo != inst_pkg.repo:
 							reinstall = True
+						elif reinstall_use:
+							forced_flags = set()
+							forced_flags.update(pkg.use.force)
+							forced_flags.update(pkg.use.mask)
+							old_use = inst_pkg.use.enabled
+							old_iuse = inst_pkg.iuse.all
+							cur_use = self._pkg_use_enabled(pkg)
+							cur_iuse = pkg.iuse.all
+							reinstall_for_flags = \
+								self._reinstall_for_flags(pkg,
+								forced_flags, old_use, old_iuse,
+								cur_use, cur_iuse)
+							if reinstall_for_flags:
+								reinstall = True
 					if reinstall_atoms.findAtomForPackage(pkg, \
 							modified_use=self._pkg_use_enabled(pkg)):
 						reinstall = True
@@ -5817,7 +5827,7 @@ class depgraph(object):
 		if pkg is None and onlydeps and not installed:
 			# Maybe it already got pulled in as a "merge" node.
 			for candidate in self._dynamic_config._package_tracker.match(
-				root_config.root, cpv):
+				root_config.root, Atom("="+cpv)):
 				if candidate.type_name == type_name and \
 					candidate.repo_name == myrepo and \
 					candidate.root_config is root_config and \
@@ -7683,8 +7693,9 @@ class depgraph(object):
 		if not unresolved_conflicts:
 			self._show_missed_update()
 
-		self._compute_abi_rebuild_info()
-		self._show_abi_rebuild_info()
+		if self._frozen_config.myopts.get("--verbose-slot-rebuilds", 'y') != 'n':
+			self._compute_abi_rebuild_info()
+			self._show_abi_rebuild_info()
 
 		self._show_ignored_binaries()
 

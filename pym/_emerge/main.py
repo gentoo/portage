@@ -37,6 +37,7 @@ options=[
 "--fetchonly",    "--fetch-all-uri",
 "--ignore-default-opts",
 "--noconfmem",
+"--newrepo",
 "--newuse",
 "--nodeps",       "--noreplace",
 "--nospinner",    "--oneshot",
@@ -81,7 +82,7 @@ COWSAY_MOO = """
  -----------------------
         \   ^__^
          \  (oo)\_______
-            (__)\       )\/\ 
+            (__)\       )\/\\
                 ||----w |
                 ||     ||
 
@@ -156,6 +157,7 @@ def insert_optional_args(args):
 		'--usepkg'               : y_or_n,
 		'--usepkgonly'           : y_or_n,
 		'--verbose'              : y_or_n,
+		'--verbose-slot-rebuilds': y_or_n,
 	}
 
 	short_arg_opts = {
@@ -582,7 +584,7 @@ def parse_opts(tmpcmdline, silent=False):
 			             "packages that have been rebuilt",
 			"choices"  : true_y_or_n
 		},
-		
+
 		"--rebuilt-binaries-timestamp": {
 			"help"   : "use only binaries that are newer than this " + \
 			           "timestamp for --rebuilt-binaries",
@@ -638,6 +640,10 @@ def parse_opts(tmpcmdline, silent=False):
 		"--verbose": {
 			"shortopt" : "-v",
 			"help"     : "verbose output",
+			"choices"  : true_y_or_n
+		},
+		"--verbose-slot-rebuilds": {
+			"help"     : "verbose slot rebuild output",
 			"choices"  : true_y_or_n
 		},
 	}
@@ -888,7 +894,7 @@ def parse_opts(tmpcmdline, silent=False):
 					(myoptions.load_average,))
 
 		myoptions.load_average = load_average
-	
+
 	if myoptions.rebuilt_binaries_timestamp:
 		try:
 			rebuilt_binaries_timestamp = int(myoptions.rebuilt_binaries_timestamp)

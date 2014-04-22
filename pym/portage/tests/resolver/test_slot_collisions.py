@@ -1,4 +1,4 @@
-# Copyright 2010-2011,2014 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -217,6 +217,37 @@ class SlotCollisionTestCase(TestCase):
 				ignore_mergelist_order = True,
 				mergelist = ["dev-libs/Y-1", "dev-libs/X-1", "dev-libs/K-1", \
 					"dev-libs/A-1", "dev-libs/B-1"]),
+			)
+
+		playground = ResolverPlayground(ebuilds=ebuilds, debug=False)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
+
+
+	def testSelfDEPENDRemovalCrash(self):
+		"""
+		Make sure we don't try to remove a packages twice. This happened
+		in the past when a package had a DEPEND on itself.
+		"""
+		ebuilds = {
+			"dev-libs/A-1": { "RDEPEND": "=dev-libs/X-1" },
+			"dev-libs/B-1": { "RDEPEND": "dev-libs/X" },
+
+			"dev-libs/X-1": { },
+			"dev-libs/X-2": { "DEPEND": ">=dev-libs/X-2" },
+			}
+
+		test_cases = (
+			ResolverPlaygroundTestCase(
+				["dev-libs/A", "dev-libs/B"],
+				all_permutations = True,
+				success = True,
+				ignore_mergelist_order = True,
+				mergelist = ["dev-libs/X-1", "dev-libs/A-1", "dev-libs/B-1"]),
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, debug=False)

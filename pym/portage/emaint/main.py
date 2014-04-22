@@ -25,6 +25,9 @@ class OptionItem(object):
 		"""
 		self.short = opt.get('short')
 		self.long = opt.get('long')
+		# '-' are not allowed in python identifiers
+		# so store the sanitized target variable name
+		self.target = self.long[2:].replace('-','_')
 		self.help = opt.get('help')
 		self.status = opt.get('status')
 		self.func = opt.get('func')
@@ -183,7 +186,7 @@ def emaint_main(myargv):
 		if opt.long == '--check':
 			# Default action
 			check_opt = opt
-		if opt.status and getattr(options, opt.long.lstrip("-"), False):
+		if opt.status and getattr(options, opt.target, False):
 			if long_action is not None:
 				parser.error("--%s and %s are exclusive options" %
 					(long_action, opt.long))
@@ -192,6 +195,7 @@ def emaint_main(myargv):
 			long_action = opt.long.lstrip('-')
 
 	if long_action is None:
+		#print("DEBUG: long_action is None: setting to 'check'")
 		long_action = 'check'
 		func = check_opt.func
 		status = check_opt.status
@@ -200,9 +204,9 @@ def emaint_main(myargv):
 		tasks = []
 		for m in module_names[1:]:
 			#print("DEBUG: module: %s, functions: " % (m, str(module_controller.get_functions(m))))
-			if long_action in module_controller.get_functions(m):
+			if func in module_controller.get_functions(m):
 				tasks.append(module_controller.get_class(m))
-	elif long_action in module_controller.get_functions(args[0]):
+	elif func in module_controller.get_functions(args[0]):
 		tasks = [module_controller.get_class(args[0] )]
 	else:
 		portage.util.writemsg(
