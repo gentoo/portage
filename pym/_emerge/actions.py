@@ -27,13 +27,13 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.debug',
 	'portage.news:count_unread_news,display_news_notifications',
 	'portage.util._get_vm_info:get_vm_info',
+	'portage.emaint.modules.sync.sync:SyncRepos',
 	'_emerge.chk_updated_cfg_files:chk_updated_cfg_files',
 	'_emerge.help:help@emerge_help',
 	'_emerge.post_emerge:display_news_notification,post_emerge',
 	'_emerge.stdout_spinner:stdout_spinner',
 )
 
-from portage.localization import _
 from portage import os
 from portage import shutil
 from portage import eapi_is_supported, _encodings, _unicode_decode
@@ -45,7 +45,7 @@ from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.dep import Atom
 from portage.eclass_cache import hashed_path
 from portage.exception import InvalidAtom, InvalidData, ParseError
-from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
+from portage.output import blue, colorize, create_color_func, darkgreen, \
 	red, xtermTitle, xtermTitleReset, yellow
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
@@ -62,8 +62,6 @@ from portage.util._async.run_main_scheduler import run_main_scheduler
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage._global_updates import _global_updates
-from portage.sync import get_syncer
-from portage.sync.getaddrinfo_validate import getaddrinfo_validate
 from portage.sync.old_tree_timestamp import old_tree_timestamp_warn
 from portage.metadata import action_metadata
 
@@ -1923,84 +1921,13 @@ def action_sync(emerge_config, trees=DeprecationWarning,
 		emerge_config = load_emerge_config(
 			action=action, args=[], trees=trees, opts=opts)
 
-	xterm_titles = "notitles" not in \
-		emerge_config.target_config.settings.features
-	emergelog(xterm_titles, " === sync")
+	syncer = SyncRepos(emerge_config)
 
-	selected_repos = []
-	unknown_repo_names = []
-	missing_sync_type = []
-	if emerge_config.args:
-		for repo_name in emerge_config.args:
-			try:
-				repo = emerge_config.target_config.settings.repositories[repo_name]
-			except KeyError:
-				unknown_repo_names.append(repo_name)
-			else:
-				selected_repos.append(repo)
-				if repo.sync_type is None:
-					missing_sync_type.append(repo)
 
-		if unknown_repo_names:
-			writemsg_level("!!! %s\n" % _("Unknown repo(s): %s") %
-				" ".join(unknown_repo_names),
-				level=logging.ERROR, noiselevel=-1)
+	retvals = syncer.auto_sync(options={'return-messages': False})
 
-		if missing_sync_type:
-			writemsg_level("!!! %s\n" %
-				_("Missing sync-type for repo(s): %s") %
-				" ".join(repo.name for repo in missing_sync_type),
-				level=logging.ERROR, noiselevel=-1)
-
-		if unknown_repo_names or missing_sync_type:
-			return 1
-
-	else:
-		selected_repos.extend(emerge_config.target_config.settings.repositories)
-
-	sync_manager = get_syncer(emerge_config.target_config.settings, emergelog)
-	retvals = []
-	for repo in selected_repos:
-		if repo.sync_type is not None:
-			returncode = sync_manager.sync(emerge_config, repo)
-			if returncode != os.EX_OK:
-				retvals.append(returncode)
-
-	# Reload the whole config from scratch.
-	portage._sync_mode = False
-	load_emerge_config(emerge_config=emerge_config)
-	adjust_configs(emerge_config.opts, emerge_config.trees)
-
-	if emerge_config.opts.get('--package-moves') != 'n' and \
-		_global_updates(emerge_config.trees,
-		emerge_config.target_config.mtimedb["updates"],
-		quiet=("--quiet" in emerge_config.opts)):
-		emerge_config.target_config.mtimedb.commit()
-		# Reload the whole config from scratch.
-		load_emerge_config(emerge_config=emerge_config)
-		adjust_configs(emerge_config.opts, emerge_config.trees)
-
-	mybestpv = emerge_config.target_config.trees['porttree'].dbapi.xmatch(
-		"bestmatch-visible", portage.const.PORTAGE_PACKAGE_ATOM)
-	mypvs = portage.best(
-		emerge_config.target_config.trees['vartree'].dbapi.match(
-			portage.const.PORTAGE_PACKAGE_ATOM))
-
-	chk_updated_cfg_files(emerge_config.target_config.root,
-		portage.util.shlex_split(
-			emerge_config.target_config.settings.get("CONFIG_PROTECT", "")))
-
-	if mybestpv != mypvs and "--quiet" not in emerge_config.opts:
-		print()
-		print(warn(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended")
-		print(warn(" * ")+"that you update portage now, before any other packages are updated.")
-		print()
-		print(warn(" * ")+"To update portage, run 'emerge --oneshot portage' now.")
-		print()
-
-	display_news_notification(emerge_config.target_config, emerge_config.opts)
 	if retvals:
-		return retvals[0]
+		return retvals[0][1]
 	return os.EX_OK
 
 
