@@ -1631,6 +1631,8 @@ class depgraph(object):
 							# different slot_operator is an older version
 							if not want_downgrade:
 								continue
+						if pkg.version == dep.child.version and not dep.child.built:
+							continue
 
 					insignificant = False
 					if not slot_conflict and \

@@ -406,3 +406,44 @@ class SlotConflictRebuildTestCase(TestCase):
 				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
 		finally:
 			playground.cleanup()
+
+	def testSlotConflictMultiRepoUpdates(self):
+		"""
+		Bug 508236 (similar to testSlotConflictMultiRepo)
+		Different repositories contain the same cpv with different sub-slots for
+		a slot operator child. For both the installed version and an updated version.
+
+		"""
+		ebuilds = {
+			"net-firewall/iptables-1.4.21::overlay" : { "EAPI": "5", "SLOT": "0/10" },
+			"net-firewall/iptables-1.4.21-r1::overlay" : { "EAPI": "5", "SLOT": "0/10" },
+			"sys-apps/iproute2-3.11.0::overlay" : { "EAPI": "5", "RDEPEND": "net-firewall/iptables:=" },
+
+			"net-firewall/iptables-1.4.21" : { "EAPI": "5", "SLOT": "0" },
+			"net-firewall/iptables-1.4.21-r1" : { "EAPI": "5", "SLOT": "0" },
+			"sys-apps/iproute2-3.12.0": { "EAPI": "5", "RDEPEND": "net-firewall/iptables:=" },
+		}
+
+		installed = {
+			"net-firewall/iptables-1.4.21::overlay" : { "EAPI": "5", "SLOT": "0/10" },
+			"sys-apps/iproute2-3.12.0": { "EAPI": "5", "RDEPEND": "net-firewall/iptables:0/10=" },
+		}
+
+		world = ["sys-apps/iproute2"]
+
+		test_cases = (
+			ResolverPlaygroundTestCase(
+				["@world"],
+				options = {"--deep": True, "--update": True, "--verbose": True},
+				success = True,
+				mergelist = ["net-firewall/iptables-1.4.21-r1::overlay"]),
+		)
+
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			installed=installed, world=world, debug=False)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
