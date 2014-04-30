@@ -844,6 +844,16 @@ When 'force = aliases' attribute is not set, \fBegencache\fR(1),
 since operations performed by these tools are inherently
 \fBnot\fR \fIsite\-specific\fR.
 .TP
+.B auto\-sync
+This setting determines if the repo will be synced during "\fBemerge \-\-sync\fR" or
+"\fBemaint sync \-\-auto\fR" runs.  This allows for repositories to be synced only when
+desired via "\fBemaint sync \-\-repo foo\fR".
+.br
+Valid values: yes, no, true, false.
+.br
+If unset, the repo will be treated as set
+no, false.
+.TP
 .B eclass\-overrides
 Makes given repository inherit eclasses from specified repositories.
 .br

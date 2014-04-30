@@ -37,6 +37,9 @@ Perform package move updates for binary packages located in \fBPKGDIR\fR.
 .BR moveinst
 Perform package move updates for installed packages.
 .TP
+.BR sync
+Perform sync actions on specified repositories.
+.TP
 .BR world
 Fix problems in the \fIworld\fR file.
 .SH DEFAULT OPTIONS
@@ -46,7 +49,7 @@ Check for any problems that may exist.  (all commands)
 .TP
 .B \-f, \-\-fix
 Fix any problems that may exist.  (not all commands)
-.SH OPTIONS
+.SH OPTIONS logs command
 .TP
 .B \-C, \-\-clean
 Cleans the logs from \fBPORT_LOGDIR\fR (logs command only)
@@ -58,6 +61,16 @@ OPTION (logs command only)
 .B \-t NUM, \-\-time NUM
 Changes the minimum age \fBNUM\fR (in days) of the logs to be listed or
 deleted. (logs command only)
+.SH OPTIONS sync command
+.TP
+.B \-a, \-\-auto
+Sync repositories which have its auto\-sync setting set yes, true. (sync command only)
+.TP
+.B \-A, \-\-allrepos
+Sync all repositories which have a sync\-uri specified. (sync command only)
+.TP
+.B \-r, \-\-repo REPO
+Sync the repository specified. (sync command only)
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
 .SH AUTHORS

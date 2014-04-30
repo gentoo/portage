@@ -240,7 +240,7 @@ the package name.  \fBTake caution\fR as the descriptions are also
 matched as regular expressions.
 .TP
 .BR \-\-sync
-Updates repositories, for which sync\-type and sync\-uri attributes are
+Updates repositories, for which auto\-sync, sync\-type and sync\-uri attributes are
 set in repos.conf. See \fBportage\fR(5) for more information.
 The \fBPORTAGE_SYNC_STALE\fR variable configures
 warnings that are shown when emerge \-\-sync has not
@@ -249,6 +249,12 @@ been executed recently.
 \fBWARNING:\fR
 The emerge \-\-sync action will revert local changes (e.g. modifications or
 additions of files) inside repositories synchronized using rsync.
+
+\fBNOTE:\fR
+The emerge \-\-sync command is a compatibility command.  Sync operations are
+now performed using the the new emaint sync module. This new emaint sync module
+has greater functionality and flexibility.  Please refer to \fBemaint(1)\fR for
+more information about sync operations.
 
 \fBNOTE:\fR
 The \fBemerge\-webrsync\fR program will download the entire
