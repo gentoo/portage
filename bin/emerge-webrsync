@@ -501,8 +501,8 @@ main() {
 
 	# This is a sanity check to help prevent people like funtoo users
 	# from accidentally wiping out their git tree.
-	if [[ -n ${repo_sync_type} && ${repo_sync_type} != rsync ]] ; then
-		echo "The current sync-type attribute of repository 'gentoo' is not set to 'rsync':" >&2
+	if [[ -n ${repo_sync_type} && ( ${repo_sync_type} != rsync || ${repo_sync_type} != websync ) ]] ; then
+		echo "The current sync-type attribute of repository 'gentoo' is not set to 'rsync' or 'websync':" >&2
 		echo >&2
 		echo "  sync-type=${repo_sync_type}" >&2
 		echo >&2
