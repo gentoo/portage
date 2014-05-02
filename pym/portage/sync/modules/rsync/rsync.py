@@ -24,6 +24,10 @@ from _emerge.UserQuery import UserQuery
 from portage.sync.syncbase import SyncBase
 
 
+SERVER_OUT_OF_DATE = -1
+EXCEEDED_MAX_RETRIES = -2
+
+
 class RsyncSync(SyncBase):
 	'''Rsync sync module'''
 
@@ -40,112 +44,47 @@ class RsyncSync(SyncBase):
 
 	def _sync(self):
 		'''Internal sync function which performs only the sync'''
-		myopts = self.options.get('emerge_config').opts
-		usersync_uid = self.options.get('usersync_uid', None)
-		enter_invalid = '--ask-enter-invalid' in myopts
+		opts = self.options.get('emerge_config').opts
+		self.usersync_uid = self.options.get('usersync_uid', None)
+		enter_invalid = '--ask-enter-invalid' in opts
 		out = portage.output.EOutput()
 		syncuri = self.repo.sync_uri
-		dosyncuri = syncuri
 		vcs_dirs = frozenset(VCS_DIRS)
 		vcs_dirs = vcs_dirs.intersection(os.listdir(self.repo.location))
-
 
 		for vcs_dir in vcs_dirs:
 			writemsg_level(("!!! %s appears to be under revision " + \
 				"control (contains %s).\n!!! Aborting rsync sync.\n") % \
 				(self.repo.location, vcs_dir), level=logging.ERROR, noiselevel=-1)
 			return (1, False)
-		mytimeout=180
+		self.timeout=180
 
 		rsync_opts = []
 		if self.settings["PORTAGE_RSYNC_OPTS"] == "":
-			portage.writemsg("PORTAGE_RSYNC_OPTS empty or unset, using hardcoded defaults\n")
-			rsync_opts.extend([
-				"--recursive",    # Recurse directories
-				"--links",        # Consider symlinks
-				"--safe-links",   # Ignore links outside of tree
-				"--perms",        # Preserve permissions
-				"--times",        # Preserive mod times
-				"--omit-dir-times",
-				"--compress",     # Compress the data transmitted
-				"--force",        # Force deletion on non-empty dirs
-				"--whole-file",   # Don't do block transfers, only entire files
-				"--delete",       # Delete files that aren't in the master tree
-				"--stats",        # Show final statistics about what was transfered
-				"--human-readable",
-				"--timeout="+str(mytimeout), # IO timeout if not done in X seconds
-				"--exclude=/distfiles",   # Exclude distfiles from consideration
-				"--exclude=/local",       # Exclude local     from consideration
-				"--exclude=/packages",    # Exclude packages  from consideration
-			])
-
+			rsync_opts = self._set_rsync_defaults()
 		else:
-			# The below validation is not needed when using the above hardcoded
-			# defaults.
-
-			portage.writemsg("Using PORTAGE_RSYNC_OPTS instead of hardcoded defaults\n", 1)
-			rsync_opts.extend(portage.util.shlex_split(
-				self.settings.get("PORTAGE_RSYNC_OPTS", "")))
-			for opt in ("--recursive", "--times"):
-				if opt not in rsync_opts:
-					portage.writemsg(yellow("WARNING:") + " adding required option " + \
-					"%s not included in PORTAGE_RSYNC_OPTS\n" % opt)
-					rsync_opts.append(opt)
-
-			for exclude in ("distfiles", "local", "packages"):
-				opt = "--exclude=/%s" % exclude
-				if opt not in rsync_opts:
-					portage.writemsg(yellow("WARNING:") + \
-					" adding required option %s not included in "  % opt + \
-					"PORTAGE_RSYNC_OPTS (can be overridden with --exclude='!')\n")
-					rsync_opts.append(opt)
-
-			if syncuri.rstrip("/").endswith(".gentoo.org/gentoo-portage"):
-				def rsync_opt_startswith(opt_prefix):
-					for x in rsync_opts:
-						if x.startswith(opt_prefix):
-							return (1, False)
-					return (0, False)
-
-				if not rsync_opt_startswith("--timeout="):
-					rsync_opts.append("--timeout=%d" % mytimeout)
-
-				for opt in ("--compress", "--whole-file"):
-					if opt not in rsync_opts:
-						portage.writemsg(yellow("WARNING:") + " adding required option " + \
-						"%s not included in PORTAGE_RSYNC_OPTS\n" % opt)
-						rsync_opts.append(opt)
-
-		if "--quiet" in myopts:
-			rsync_opts.append("--quiet")    # Shut up a lot
-		else:
-			rsync_opts.append("--verbose")	# Print filelist
-
-		if "--verbose" in myopts:
-			rsync_opts.append("--progress")  # Progress meter for each file
-
-		if "--debug" in myopts:
-			rsync_opts.append("--checksum") # Force checksum on all files
+			rsync_opts = self._validate_rsync_opts(rsync_opts, syncuri)
+		self.rsync_opts = self._rsync_opts_extend(opts, rsync_opts)
 
 		# Real local timestamp file.
-		servertimestampfile = os.path.join(
+		self.servertimestampfile = os.path.join(
 			self.repo.location, "metadata", "timestamp.chk")
 
-		content = portage.util.grabfile(servertimestampfile)
-		mytimestamp = 0
+		content = portage.util.grabfile(self.servertimestampfile)
+		timestamp = 0
 		if content:
 			try:
-				mytimestamp = time.mktime(time.strptime(content[0],
+				timestamp = time.mktime(time.strptime(content[0],
 					TIMESTAMP_FORMAT))
 			except (OverflowError, ValueError):
 				pass
 		del content
 
 		try:
-			rsync_initial_timeout = \
+			self.rsync_initial_timeout = \
 				int(self.settings.get("PORTAGE_RSYNC_INITIAL_TIMEOUT", "15"))
 		except ValueError:
-			rsync_initial_timeout = 15
+			self.rsync_initial_timeout = 15
 
 		try:
 			maxretries=int(self.settings["PORTAGE_RSYNC_RETRIES"])
@@ -156,7 +95,7 @@ class RsyncSync(SyncBase):
 
 		retries=0
 		try:
-			proto, user_name, hostname, port = re.split(
+			self.proto, user_name, hostname, port = re.split(
 				r"(rsync|ssh)://([^:/]+@)?(\[[:\da-fA-F]*\]|[^:/]*)(:[0-9]+)?",
 				syncuri, maxsplit=4)[1:5]
 		except ValueError:
@@ -164,7 +103,7 @@ class RsyncSync(SyncBase):
 				noiselevel=-1, level=logging.ERROR)
 			return (1, False)
 
-		ssh_opts = self.settings.get("PORTAGE_SSH_OPTS")
+		self.ssh_opts = self.settings.get("PORTAGE_SSH_OPTS")
 
 		if port is None:
 			port=""
@@ -176,10 +115,10 @@ class RsyncSync(SyncBase):
 			# getaddrinfo needs the brackets stripped
 			getaddrinfo_host = hostname[1:-1]
 		updatecache_flg=True
-		all_rsync_opts = set(rsync_opts)
-		extra_rsync_opts = portage.util.shlex_split(
+		all_rsync_opts = set(self.rsync_opts)
+		self.extra_rsync_opts = portage.util.shlex_split(
 			self.settings.get("PORTAGE_RSYNC_EXTRA_OPTS",""))
-		all_rsync_opts.update(extra_rsync_opts)
+		all_rsync_opts.update(self.extra_rsync_opts)
 
 		family = socket.AF_UNSPEC
 		if "-4" in all_rsync_opts or "--ipv4" in all_rsync_opts:
@@ -245,8 +184,6 @@ class RsyncSync(SyncBase):
 		if effective_maxretries < 0:
 			effective_maxretries = len(uris) - 1
 
-		SERVER_OUT_OF_DATE = -1
-		EXCEEDED_MAX_RETRIES = -2
 		while (1):
 			if uris:
 				dosyncuri = uris.pop()
@@ -267,7 +204,7 @@ class RsyncSync(SyncBase):
 						sys.exit(128 + signal.SIGINT)
 				self.logger(self.xterm_titles,
 					">>> Starting rsync with " + dosyncuri)
-				if "--quiet" not in myopts:
+				if "--quiet" not in opts:
 					print(">>> Starting rsync with "+dosyncuri+"...")
 			else:
 				self.logger(self.xterm_titles,
@@ -280,160 +217,9 @@ class RsyncSync(SyncBase):
 			if dosyncuri.startswith('ssh://'):
 				dosyncuri = dosyncuri[6:].replace('/', ':/', 1)
 
-			if mytimestamp != 0 and "--quiet" not in myopts:
-				print(">>> Checking server timestamp ...")
-
-			rsynccommand = [self.bin_command] + rsync_opts + extra_rsync_opts
-
-			if proto == 'ssh' and ssh_opts:
-				rsynccommand.append("--rsh=ssh " + ssh_opts)
-
-			if "--debug" in myopts:
-				print(rsynccommand)
-
-			exitcode = os.EX_OK
-			servertimestamp = 0
-			# Even if there's no timestamp available locally, fetch the
-			# timestamp anyway as an initial probe to verify that the server is
-			# responsive.  This protects us from hanging indefinitely on a
-			# connection attempt to an unresponsive server which rsync's
-			# --timeout option does not prevent.
-			if True:
-				# Temporary file for remote server timestamp comparison.
-				# NOTE: If FEATURES=usersync is enabled then the tempfile
-				# needs to be in a directory that's readable by the usersync
-				# user. We assume that PORTAGE_TMPDIR will satisfy this
-				# requirement, since that's not necessarily true for the
-				# default directory used by the tempfile module.
-				if usersync_uid is not None:
-					tmpdir = self.settings['PORTAGE_TMPDIR']
-				else:
-					# use default dir from tempfile module
-					tmpdir = None
-				fd, tmpservertimestampfile = \
-					tempfile.mkstemp(dir=tmpdir)
-				os.close(fd)
-				if usersync_uid is not None:
-					portage.util.apply_permissions(tmpservertimestampfile,
-						uid=usersync_uid)
-				mycommand = rsynccommand[:]
-				mycommand.append(dosyncuri.rstrip("/") + \
-					"/metadata/timestamp.chk")
-				mycommand.append(tmpservertimestampfile)
-				content = None
-				mypids = []
-				try:
-					# Timeout here in case the server is unresponsive.  The
-					# --timeout rsync option doesn't apply to the initial
-					# connection attempt.
-					try:
-						if rsync_initial_timeout:
-							portage.exception.AlarmSignal.register(
-								rsync_initial_timeout)
-
-						mypids.extend(portage.process.spawn(
-							mycommand, returnpid=True,
-							**portage._native_kwargs(self.spawn_kwargs)))
-						exitcode = os.waitpid(mypids[0], 0)[1]
-						if usersync_uid is not None:
-							portage.util.apply_permissions(tmpservertimestampfile,
-								uid=os.getuid())
-						content = portage.grabfile(tmpservertimestampfile)
-					finally:
-						if rsync_initial_timeout:
-							portage.exception.AlarmSignal.unregister()
-						try:
-							os.unlink(tmpservertimestampfile)
-						except OSError:
-							pass
-				except portage.exception.AlarmSignal:
-					# timed out
-					print('timed out')
-					# With waitpid and WNOHANG, only check the
-					# first element of the tuple since the second
-					# element may vary (bug #337465).
-					if mypids and os.waitpid(mypids[0], os.WNOHANG)[0] == 0:
-						os.kill(mypids[0], signal.SIGTERM)
-						os.waitpid(mypids[0], 0)
-					# This is the same code rsync uses for timeout.
-					exitcode = 30
-				else:
-					if exitcode != os.EX_OK:
-						if exitcode & 0xff:
-							exitcode = (exitcode & 0xff) << 8
-						else:
-							exitcode = exitcode >> 8
-
-				if content:
-					try:
-						servertimestamp = time.mktime(time.strptime(
-							content[0], TIMESTAMP_FORMAT))
-					except (OverflowError, ValueError):
-						pass
-				del mycommand, mypids, content
-			if exitcode == os.EX_OK:
-				if (servertimestamp != 0) and (servertimestamp == mytimestamp):
-					self.logger(self.xterm_titles,
-						">>> Cancelling sync -- Already current.")
-					print()
-					print(">>>")
-					print(">>> Timestamps on the server and in the local repository are the same.")
-					print(">>> Cancelling all further sync action. You are already up to date.")
-					print(">>>")
-					print(">>> In order to force sync, remove '%s'." % servertimestampfile)
-					print(">>>")
-					print()
-					return (exitcode, updatecache_flg)
-				elif (servertimestamp != 0) and (servertimestamp < mytimestamp):
-					self.logger(self.xterm_titles,
-						">>> Server out of date: %s" % dosyncuri)
-					print()
-					print(">>>")
-					print(">>> SERVER OUT OF DATE: %s" % dosyncuri)
-					print(">>>")
-					print(">>> In order to force sync, remove '%s'." % servertimestampfile)
-					print(">>>")
-					print()
-					exitcode = SERVER_OUT_OF_DATE
-				elif (servertimestamp == 0) or (servertimestamp > mytimestamp):
-					# actual sync
-					mycommand = rsynccommand + [dosyncuri+"/", self.repo.location]
-					exitcode = None
-					try:
-						exitcode = portage.process.spawn(mycommand,
-							**portage._native_kwargs(self.spawn_kwargs))
-					finally:
-						if exitcode is None:
-							# interrupted
-							exitcode = 128 + signal.SIGINT
-
-						#   0	Success
-						#   1	Syntax or usage error
-						#   2	Protocol incompatibility
-						#   5	Error starting client-server protocol
-						#  35	Timeout waiting for daemon connection
-						if exitcode not in (0, 1, 2, 5, 35):
-							# If the exit code is not among those listed above,
-							# then we may have a partial/inconsistent sync
-							# state, so our previously read timestamp as well
-							# as the corresponding file can no longer be
-							# trusted.
-							mytimestamp = 0
-							try:
-								os.unlink(servertimestampfile)
-							except OSError:
-								pass
-
-					if exitcode in [0,1,3,4,11,14,20,21]:
-						break
-			elif exitcode in [1,3,4,11,14,20,21]:
+			is_synced, exitcode = self._do_rsync(dosyncuri, timestamp, opts)
+			if is_synced:
 				break
-			else:
-				# Code 2 indicates protocol incompatibility, which is expected
-				# for servers with protocol < 29 that don't support
-				# --prune-empty-directories.  Retry for a server that supports
-				# at least rsync protocol version 29 (>=rsync-2.6.4).
-				pass
 
 			retries=retries+1
 
@@ -445,9 +231,13 @@ class RsyncSync(SyncBase):
 				updatecache_flg=False
 				exitcode = EXCEEDED_MAX_RETRIES
 				break
+		self._process_exitcode(exitcode, dosyncuri, out, maxretries)
+		return (exitcode, updatecache_flg)
 
+
+	def _process_exitcode(self, exitcode, syncuri, out, maxretries):
 		if (exitcode==0):
-			self.logger(self.xterm_titles, "=== Sync completed with %s" % dosyncuri)
+			self.logger(self.xterm_titles, "=== Sync completed with %s" % syncuri)
 		elif exitcode == SERVER_OUT_OF_DATE:
 			exitcode = 1
 		elif exitcode == EXCEEDED_MAX_RETRIES:
@@ -476,7 +266,6 @@ class RsyncSync(SyncBase):
 				msg.append("(and possibly your system's filesystem) configuration.")
 			for line in msg:
 				out.eerror(line)
-		return (exitcode, updatecache_flg)
 
 
 	def new(self, **kwargs):
@@ -491,3 +280,240 @@ class RsyncSync(SyncBase):
 			return (1, False)
 		return self._sync()
 
+
+	def _set_rsync_defaults(self):
+		portage.writemsg("PORTAGE_RSYNC_OPTS empty or unset, using hardcoded defaults\n")
+		rsync_opts = [
+			"--recursive",    # Recurse directories
+			"--links",        # Consider symlinks
+			"--safe-links",   # Ignore links outside of tree
+			"--perms",        # Preserve permissions
+			"--times",        # Preserive mod times
+			"--omit-dir-times",
+			"--compress",     # Compress the data transmitted
+			"--force",        # Force deletion on non-empty dirs
+			"--whole-file",   # Don't do block transfers, only entire files
+			"--delete",       # Delete files that aren't in the master tree
+			"--stats",        # Show final statistics about what was transfered
+			"--human-readable",
+			"--timeout="+str(self.timeout), # IO timeout if not done in X seconds
+			"--exclude=/distfiles",   # Exclude distfiles from consideration
+			"--exclude=/local",       # Exclude local     from consideration
+			"--exclude=/packages",    # Exclude packages  from consideration
+		]
+		return rsync_opts
+
+
+	def _validate_rsync_opts(self, rsync_opts, syncuri):
+		# The below validation is not needed when using the above hardcoded
+		# defaults.
+
+		portage.writemsg("Using PORTAGE_RSYNC_OPTS instead of hardcoded defaults\n", 1)
+		rsync_opts.extend(portage.util.shlex_split(
+			self.settings.get("PORTAGE_RSYNC_OPTS", "")))
+		for opt in ("--recursive", "--times"):
+			if opt not in rsync_opts:
+				portage.writemsg(yellow("WARNING:") + " adding required option " + \
+				"%s not included in PORTAGE_RSYNC_OPTS\n" % opt)
+				rsync_opts.append(opt)
+
+		for exclude in ("distfiles", "local", "packages"):
+			opt = "--exclude=/%s" % exclude
+			if opt not in rsync_opts:
+				portage.writemsg(yellow("WARNING:") + \
+				" adding required option %s not included in "  % opt + \
+				"PORTAGE_RSYNC_OPTS (can be overridden with --exclude='!')\n")
+				rsync_opts.append(opt)
+
+		if syncuri.rstrip("/").endswith(".gentoo.org/gentoo-portage"):
+			def rsync_opt_startswith(opt_prefix):
+				for x in rsync_opts:
+					if x.startswith(opt_prefix):
+						return (1, False)
+				return (0, False)
+
+			if not rsync_opt_startswith("--timeout="):
+				rsync_opts.append("--timeout=%d" % self.timeout)
+
+			for opt in ("--compress", "--whole-file"):
+				if opt not in rsync_opts:
+					portage.writemsg(yellow("WARNING:") + " adding required option " + \
+					"%s not included in PORTAGE_RSYNC_OPTS\n" % opt)
+					rsync_opts.append(opt)
+		return rsync_opts
+
+
+	@staticmethod
+	def _rsync_opts_extend(opts, rsync_opts):
+		if "--quiet" in opts:
+			rsync_opts.append("--quiet")    # Shut up a lot
+		else:
+			rsync_opts.append("--verbose")	# Print filelist
+
+		if "--verbose" in opts:
+			rsync_opts.append("--progress")  # Progress meter for each file
+
+		if "--debug" in opts:
+			rsync_opts.append("--checksum") # Force checksum on all files
+		return rsync_opts
+
+
+	def _do_rsync(self, syncuri, timestamp, opts):
+		is_synced = False
+		if timestamp != 0 and "--quiet" not in opts:
+			print(">>> Checking server timestamp ...")
+
+		rsynccommand = [self.bin_command] + self.rsync_opts + self.extra_rsync_opts
+
+		if self.proto == 'ssh' and self.ssh_opts:
+			rsynccommand.append("--rsh=ssh " + self.ssh_opts)
+
+		if "--debug" in opts:
+			print(rsynccommand)
+
+		exitcode = os.EX_OK
+		servertimestamp = 0
+		# Even if there's no timestamp available locally, fetch the
+		# timestamp anyway as an initial probe to verify that the server is
+		# responsive.  This protects us from hanging indefinitely on a
+		# connection attempt to an unresponsive server which rsync's
+		# --timeout option does not prevent.
+
+		#if True:
+		# Temporary file for remote server timestamp comparison.
+		# NOTE: If FEATURES=usersync is enabled then the tempfile
+		# needs to be in a directory that's readable by the usersync
+		# user. We assume that PORTAGE_TMPDIR will satisfy this
+		# requirement, since that's not necessarily true for the
+		# default directory used by the tempfile module.
+		if self.usersync_uid is not None:
+			tmpdir = self.settings['PORTAGE_TMPDIR']
+		else:
+			# use default dir from tempfile module
+			tmpdir = None
+		fd, tmpservertimestampfile = \
+			tempfile.mkstemp(dir=tmpdir)
+		os.close(fd)
+		if self.usersync_uid is not None:
+			portage.util.apply_permissions(tmpservertimestampfile,
+				uid=self.usersync_uid)
+		command = rsynccommand[:]
+		command.append(syncuri.rstrip("/") + \
+			"/metadata/timestamp.chk")
+		command.append(tmpservertimestampfile)
+		content = None
+		pids = []
+		try:
+			# Timeout here in case the server is unresponsive.  The
+			# --timeout rsync option doesn't apply to the initial
+			# connection attempt.
+			try:
+				if self.rsync_initial_timeout:
+					portage.exception.AlarmSignal.register(
+						self.rsync_initial_timeout)
+
+				pids.extend(portage.process.spawn(
+					command, returnpid=True,
+					**portage._native_kwargs(self.spawn_kwargs)))
+				exitcode = os.waitpid(pids[0], 0)[1]
+				if self.usersync_uid is not None:
+					portage.util.apply_permissions(tmpservertimestampfile,
+						uid=os.getuid())
+				content = portage.grabfile(tmpservertimestampfile)
+			finally:
+				if self.rsync_initial_timeout:
+					portage.exception.AlarmSignal.unregister()
+				try:
+					os.unlink(tmpservertimestampfile)
+				except OSError:
+					pass
+		except portage.exception.AlarmSignal:
+			# timed out
+			print('timed out')
+			# With waitpid and WNOHANG, only check the
+			# first element of the tuple since the second
+			# element may vary (bug #337465).
+			if pids and os.waitpid(pids[0], os.WNOHANG)[0] == 0:
+				os.kill(pids[0], signal.SIGTERM)
+				os.waitpid(pids[0], 0)
+			# This is the same code rsync uses for timeout.
+			exitcode = 30
+		else:
+			if exitcode != os.EX_OK:
+				if exitcode & 0xff:
+					exitcode = (exitcode & 0xff) << 8
+				else:
+					exitcode = exitcode >> 8
+
+		if content:
+			try:
+				servertimestamp = time.mktime(time.strptime(
+					content[0], TIMESTAMP_FORMAT))
+			except (OverflowError, ValueError):
+				pass
+		del command, pids, content
+
+		if exitcode == os.EX_OK:
+			if (servertimestamp != 0) and (servertimestamp == timestamp):
+				self.logger(self.xterm_titles,
+					">>> Cancelling sync -- Already current.")
+				print()
+				print(">>>")
+				print(">>> Timestamps on the server and in the local repository are the same.")
+				print(">>> Cancelling all further sync action. You are already up to date.")
+				print(">>>")
+				print(">>> In order to force sync, remove '%s'." % self.servertimestampfile)
+				print(">>>")
+				print()
+				return is_synced, exitcode
+			elif (servertimestamp != 0) and (servertimestamp < timestamp):
+				self.logger(self.xterm_titles,
+					">>> Server out of date: %s" % syncuri)
+				print()
+				print(">>>")
+				print(">>> SERVER OUT OF DATE: %s" % syncuri)
+				print(">>>")
+				print(">>> In order to force sync, remove '%s'." % self.servertimestampfile)
+				print(">>>")
+				print()
+				exitcode = SERVER_OUT_OF_DATE
+			elif (servertimestamp == 0) or (servertimestamp > timestamp):
+				# actual sync
+				command = rsynccommand + [syncuri+"/", self.repo.location]
+				exitcode = None
+				try:
+					exitcode = portage.process.spawn(command,
+						**portage._native_kwargs(self.spawn_kwargs))
+				finally:
+					if exitcode is None:
+						# interrupted
+						exitcode = 128 + signal.SIGINT
+
+					#   0	Success
+					#   1	Syntax or usage error
+					#   2	Protocol incompatibility
+					#   5	Error starting client-server protocol
+					#  35	Timeout waiting for daemon connection
+					if exitcode not in (0, 1, 2, 5, 35):
+						# If the exit code is not among those listed above,
+						# then we may have a partial/inconsistent sync
+						# state, so our previously read timestamp as well
+						# as the corresponding file can no longer be
+						# trusted.
+						timestamp = 0
+						try:
+							os.unlink(self.servertimestampfile)
+						except OSError:
+							pass
+
+				if exitcode in [0,1,3,4,11,14,20,21]:
+					is_synced = True
+		elif exitcode in [1,3,4,11,14,20,21]:
+			is_synced = True
+		else:
+			# Code 2 indicates protocol incompatibility, which is expected
+			# for servers with protocol < 29 that don't support
+			# --prune-empty-directories.  Retry for a server that supports
+			# at least rsync protocol version 29 (>=rsync-2.6.4).
+			pass
+		return is_synced, exitcode
