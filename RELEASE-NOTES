@@ -1,7 +1,24 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
-portage-2.2.
+portage-2.2.11
+==================================
+* Bug Fixes:
+    - Remove some broken old style virtual code
+    - Bug # 505428 RO only filesystem check
+    - Bug # 506186 TaskSequence starting bug.
+    - Sort repoman check output
+    - remove obsolete repoman eclass checks
+    - Bug # 505944 Improve mismatch checking
+    - Bug # 488820 fix @security crash
+
+portage-2.2.10
+==================================
+* Bug Fixes:
+    - Fix broken --moo output
+    - Bug # 505422 depgraph: "remove pkg" logic fix
+
+portage-2.2.9
 ==================================
 * Bug Fixes:
     - Bug # 450372 Russian translation update.

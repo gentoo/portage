@@ -13,7 +13,6 @@ from __future__ import unicode_literals
 
 import io
 import logging
-import re
 
 from portage import _encodings
 from portage.util import writemsg_level
@@ -34,8 +33,8 @@ def get_ro_checker():
 
 def linux_ro_checker(dir_list):
 	"""
-	Use /proc/mounts to check that no directories installed by the ebuild are set
-	to be installed to a read-only filesystem.
+	Use /proc/self/mountinfo to check that no directories installed by the
+	ebuild are set to be installed to a read-only filesystem.
 
 	@param dir_list: A list of directories installed by the ebuild.
 	@type dir_list: List
@@ -46,18 +45,26 @@ def linux_ro_checker(dir_list):
 	ro_filesystems = set()
 
 	try:
-		with io.open("/proc/mounts", mode='r', encoding=_encodings['content'],
-			errors='replace') as f:
-			roregex = re.compile(r'(\A|,)ro(\Z|,)')
+		with io.open("/proc/self/mountinfo", mode='r',
+			encoding=_encodings['content'], errors='replace') as f:
 			for line in f:
-				if roregex.search(line.split(" ")[3].strip()) is not None:
-					romount = line.split(" ")[1].strip()
-					ro_filesystems.add(romount)
+				# we're interested in dir and both attr fileds which always
+				# start with either 'ro' or 'rw'
+				# example line:
+				# 14 1 8:3 / / rw,noatime - ext3 /dev/root rw,errors=continue,commit=5,barrier=1,data=writeback
+				#       _dir ^ ^ attr1                     ^ attr2
+				# there can be a variable number of fields
+				# to the left of the ' - ', after the attr's, so split it there
+				mount = line.split(' - ')
+				_dir, attr1 = mount[0].split()[4:6]
+				attr2 = mount[1].split()[2]
+				if attr1.startswith('ro') or attr2.startswith('ro'):
+					ro_filesystems.add(_dir)
 
-	# If /proc/mounts can't be read, assume that there are no RO
+	# If /proc/self/mountinfo can't be read, assume that there are no RO
 	# filesystems and return.
 	except EnvironmentError:
-		writemsg_level(_("!!! /proc/mounts cannot be read"),
+		writemsg_level(_("!!! /proc/self/mountinfo cannot be read"),
 			level=logging.WARNING, noiselevel=-1)
 		return []
 

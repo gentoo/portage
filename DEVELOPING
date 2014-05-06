@@ -1,37 +1,38 @@
 Code Guidelines
 ---------------
-A few code guidelines to try to stick to, please comment if none of these make
-sense, they are pretty basic and mostly apply to old code.  However for people
-who are looking at current code, they make take up bad habits that exist in the
-current codebase.
+A few code guidelines to try to stick to, please comment if none of
+these make sense, they are pretty basic and mostly apply to old code.
+However for people who are looking at current code, they make take up
+bad habits that exist in the current codebase.
 
 Python Version
 --------------
 
-Python 2.6 is the minimum supported version, since it is the first version to
-support Python 3 syntax. All exception handling should use Python 3 'except'
-syntax, and the print function should be used instead of Python 2's print
-statement (from __future__ import print_function).
+Python 2.6 is the minimum supported version, since it is the first
+version to support Python 3 syntax. All exception handling should use
+Python 3 'except' syntax, and the print function should be used instead
+of Python 2's print statement (from __future__ import print_function).
 
 Dependencies
 ------------
 
-Python and Bash should be the only hard dependencies. Any other dependencies,
-including external Python modules that are not included with Python itself,
-must be optionally enabled by run-time detection.
+Python and Bash should be the only hard dependencies. Any other
+dependencies, including external Python modules that are not included
+with Python itself, must be optionally enabled by run-time detection.
 
 Tabs
 ----
 
-The current code uses tabs, not spaces.  Keep whitespace usage consistent
-between files.  New files should use tabs.  Space is sometimes used for
-indentation in Python code.  Tab stop should for this reason be set to 4.
+For legacy reasons, all leading whitespace should be tabs. All internal
+whitespace should be regular spaces. Set tab stop to 4 to calculate line
+width.
 
 Line-Wrapping
 -------------
 
-Lines should typically not be longer than 80 characters; if they are an attempt
-should be made to wrap them.  Move code to the line below and indent once (\t).
+Lines should typically not be longer than 80 characters; if they are an
+attempt should be made to wrap them.  Move code to the line below and
+indent once (\t).
 
 errors.append(MalformedMetadata(
 	errors.DESCRIPTION_TOO_LONG_ERROR % \
@@ -45,9 +46,10 @@ errors.append(MalformedMetadata(
               (length, max_desc_len),
               attr='DESCRIPTION.toolong')
 
-The mixing of tabs and spaces means other developers can't read what you did.
-This is why the python peps state spaces over tabs; because with spaces the line
-wrapping is always clear (but you cannot convert spaces as easily as tabwidth).
+The mixing of tabs and spaces means other developers can't read what you
+did. This is why the python peps state spaces over tabs; because with
+spaces the line wrapping is always clear (but you cannot convert spaces
+as easily as tabwidth).
 
 Comparisons
 -----------
@@ -78,9 +80,9 @@ Generally you can do two things here, if you are messing with defaults..
 
 dict.get(foo, some_default)
 
-will try to retrieve foo from dict, if there is a KeyError, will insert foo
-into dict with the value of some_default.  This method is preferred in cases where
-you are messing with defaults:
+will try to retrieve foo from dict, if there is a KeyError, will insert
+foo into dict with the value of some_default.  This method is preferred
+in cases where you are messing with defaults:
 
 try:
 	dict[foo]
@@ -114,7 +116,8 @@ YES:
 NO:
   import os,sys,time
 
-When importing from a module, you may import more than 1 thing at a time.
+When importing from a module, you may import more than 1 thing at a
+time.
 
 YES:
   from portage.module import foo, bar, baz
@@ -139,9 +142,9 @@ NO:
   import sys
 
 Try not to import large numbers of things into the namespace of a module.
-I realize this is done all over the place in current code but it really makes it
-a pain to do code reflection when the namespace is cluttered with identifiers
-from other modules.
+I realize this is done all over the place in current code but it really
+makes it a pain to do code reflection when the namespace is cluttered
+with identifiers from other modules.
 
 YES:
 
@@ -153,15 +156,43 @@ from portage.output import bold, create_color_func, darkgreen, \
   green, nocolor, red, turquoise, yellow
 
 The YES example imports the 'output' module into the current namespace.
-The negative here is having to use output.COLOR all over the place instead of
-just COLOR.  However it means during introspection of the current namespace
-'green','red', 'yellow', etc. will not show up.
+The negative here is having to use output.COLOR all over the place
+instead of just COLOR.  However it means during introspection of the
+current namespace 'green','red', 'yellow', etc. will not show up.
 
-The NO example just imports a set of functions from the output module.  It is
-somewhat annoying because the import line needs to be modified when functions
-are needed and often unused functions are left in the import line until someone
-comes along with a linter to clean up (does not happen often).
+The NO example just imports a set of functions from the output module.
+It is somewhat annoying because the import line needs to be modified
+when functions are needed and often unused functions are left in the
+import line until someone comes along with a linter to clean up (does
+not happen often).
 
+Commits
+-------
+
+Prefer small commits that change specific things to big commits that
+change a lot of unrelated things.  This makes it easier to see what
+parts of the system have actually changed.  It also makes it easier to
+cherry-pick and revert commits. Use your common sense!
+
+Commit messages
+---------------
+
+Commit messages should be in the imperative mood with a capitalised
+header, optionally followed by a newline and a more detailed explanatory
+text.  The headline should be capped at 70 characters, the detailed text
+at 72.  Prefix the message with the component you touched if this makes
+sense.  Postfix the message with the bug it fixes, if it does.  Example:
+
+"
+emerge: Fix --tree output (bug 555555)
+
+Make sure newlines appear where they are supposed to. Fix a bug with
+colourisation of --tree output when used in tandem with --verbose
+--pretend --ask.
+"
+
+For a more detailed explanation (and rationalisation) of these rules:
+<http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html>
 
 Releases
 --------

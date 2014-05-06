@@ -1,10 +1,12 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+import sys
+from collections import deque
 
 from portage import os
 from _emerge.CompositeTask import CompositeTask
 from _emerge.AsynchronousTask import AsynchronousTask
-from collections import deque
 
 class TaskSequence(CompositeTask):
 	"""
@@ -30,8 +32,15 @@ class TaskSequence(CompositeTask):
 		CompositeTask._cancel(self)
 
 	def _start_next_task(self):
-		self._start_task(self._task_queue.popleft(),
-			self._task_exit_handler)
+		try:
+			task = self._task_queue.popleft()
+		except IndexError:
+			self._current_task = None
+			self.returncode = os.EX_OK
+			self.wait()
+			return
+
+		self._start_task(task, self._task_exit_handler)
 
 	def _task_exit_handler(self, task):
 		if self._default_exit(task) != os.EX_OK:
@@ -42,3 +51,11 @@ class TaskSequence(CompositeTask):
 			self._final_exit(task)
 			self.wait()
 
+	def __bool__(self):
+		return bool(self._task_queue)
+
+	if sys.hexversion < 0x3000000:
+		__nonzero__ = __bool__
+
+	def __len__(self):
+		return len(self._task_queue)

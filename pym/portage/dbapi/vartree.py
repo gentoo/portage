@@ -1480,7 +1480,7 @@ class dblink(object):
 		"""
 		Creates a DBlink object for a given CPV.
 		The given CPV may not be present in the database already.
-		
+
 		@param cat: Category
 		@type cat: String
 		@param pkg: Package (PV)
@@ -1811,7 +1811,7 @@ class dblink(object):
 		calls postrm
 		calls cleanrm
 		calls env_update
-		
+
 		@param pkgfiles: files to unmerge (generally self.getcontents() )
 		@type pkgfiles: Dictionary
 		@param trimworld: Unused
@@ -2120,10 +2120,10 @@ class dblink(object):
 
 	def _unmerge_pkgfiles(self, pkgfiles, others_in_slot):
 		"""
-		
+
 		Unmerges the contents of a package from the liveFS
 		Removes the VDB entry for self
-		
+
 		@param pkgfiles: typically self.getcontents()
 		@type pkgfiles: Dictionary { filename: [ 'type', '?', 'md5sum' ] }
 		@param others_in_slot: all dblink instances in this slot, excluding self
@@ -2198,7 +2198,7 @@ class dblink(object):
 					# in a totally undefined state, hence we just bleed
 					# like hell and continue to hopefully finish all our
 					# administrative and pkg_postinst stuff.
-					self._eerror("postrm", 
+					self._eerror("postrm",
 						["Could not chmod or unlink '%s': %s" % \
 						(file_name, ose)])
 				else:
@@ -2252,7 +2252,7 @@ class dblink(object):
 						_unicode_encode(obj,
 							encoding=_encodings['merge'], errors='strict')
 					except UnicodeEncodeError:
-						# The package appears to have been merged with a 
+						# The package appears to have been merged with a
 						# different value of sys.getfilesystemencoding(),
 						# so fall back to utf_8 if appropriate.
 						try:
@@ -2696,7 +2696,7 @@ class dblink(object):
 							show_unmerge("!!!", "", "sym", obj)
 
 	def isowner(self, filename, destroot=None):
-		""" 
+		"""
 		Check if a file belongs to this package. This may
 		result in a stat call for the parent directory of
 		every installed file, since the inode numbers are
@@ -2828,7 +2828,7 @@ class dblink(object):
 								encoding=_encodings['merge'],
 								errors='strict')
 					except UnicodeEncodeError:
-						# The package appears to have been merged with a 
+						# The package appears to have been merged with a
 						# different value of sys.getfilesystemencoding(),
 						# so fall back to utf_8 if appropriate.
 						try:
@@ -2940,7 +2940,7 @@ class dblink(object):
 					_unicode_encode(f_abs,
 						encoding=_encodings['merge'], errors='strict')
 				except UnicodeEncodeError:
-					# The package appears to have been merged with a 
+					# The package appears to have been merged with a
 					# different value of sys.getfilesystemencoding(),
 					# so fall back to utf_8 if appropriate.
 					try:
@@ -3413,7 +3413,7 @@ class dblink(object):
 					_unicode_encode(path,
 						encoding=_encodings['merge'], errors='strict')
 				except UnicodeEncodeError:
-					# The package appears to have been merged with a 
+					# The package appears to have been merged with a
 					# different value of sys.getfilesystemencoding(),
 					# so fall back to utf_8 if appropriate.
 					try:
@@ -3459,7 +3459,7 @@ class dblink(object):
 			for path, s in path_list:
 				msg.append("\t%s" % path)
 		msg.append("")
-		msg.append(_("See the Gentoo Security Handbook " 
+		msg.append(_("See the Gentoo Security Handbook "
 			"guide for advice on how to proceed."))
 
 		self._eerror("preinst", msg)
@@ -3530,9 +3530,9 @@ class dblink(object):
 	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
 		mydbapi=None, prev_mtimes=None, counter=None):
 		"""
-		
+
 		This function does the following:
-		
+
 		calls get_ro_checker to retrieve a function for checking whether Portage
 		will write to a read-only filesystem, then runs it against the directory list
 		calls self._preserve_libs if FEATURES=preserve-libs
@@ -3542,7 +3542,7 @@ class dblink(object):
 		unmerges old version (if required)
 		calls doebuild(mydo=pkg_postinst)
 		calls env_update
-		
+
 		@param srcroot: Typically this is ${D}
 		@type srcroot: String (Path)
 		@param destroot: ignored, self.settings['ROOT'] is used instead
@@ -3559,7 +3559,7 @@ class dblink(object):
 		@return:
 		1. 0 on success
 		2. 1 on failure
-		
+
 		secondhand is a list of symlinks that have been skipped due to their target
 		not existing; we will merge these symlinks at a later time.
 		"""
@@ -3914,7 +3914,7 @@ class dblink(object):
 			msg = _("This package will overwrite one or more files that"
 			" may belong to other packages (see list below).")
 			if not (collision_protect or protect_owned):
-				msg += _(" Add either \"collision-protect\" or" 
+				msg += _(" Add either \"collision-protect\" or"
 				" \"protect-owned\" to FEATURES in"
 				" make.conf if you would like the merge to abort"
 				" in cases like this. See the make.conf man page for"
@@ -4427,10 +4427,10 @@ class dblink(object):
 
 	def mergeme(self, srcroot, destroot, outfile, secondhand, stufftomerge, cfgfiledict, thismtime):
 		"""
-		
+
 		This function handles actual merging of the package contents to the livefs.
 		It also handles config protection.
-		
+
 		@param srcroot: Where are we copying files from (usually ${D})
 		@type srcroot: String (Path)
 		@param destroot: Typically ${ROOT}
@@ -4451,7 +4451,7 @@ class dblink(object):
 		@return:
 		1. True on failure
 		2. None otherwise
-		
+
 		"""
 
 		showMessage = self._display_merge
@@ -4712,7 +4712,7 @@ class dblink(object):
 				protected = self.isprotected(mydest)
 				if mydmode != None:
 					# destination file exists
-					
+
 					if stat.S_ISDIR(mydmode):
 						# install of destination is blocked by an existing directory with the same name
 						newdest = self._new_backup_path(mydest)
@@ -4954,7 +4954,7 @@ class dblink(object):
 		if not os.path.exists(self.dbdir+"/"+fname):
 			return ""
 		with io.open(_unicode_encode(os.path.join(self.dbdir, fname),
-			encoding=_encodings['fs'], errors='strict'), 
+			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['repo.content'], errors='replace'
 			) as f:
 			return f.read()

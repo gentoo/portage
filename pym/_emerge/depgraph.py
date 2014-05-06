@@ -1631,6 +1631,8 @@ class depgraph(object):
 							# different slot_operator is an older version
 							if not want_downgrade:
 								continue
+						if pkg.version == dep.child.version and not dep.child.built:
+							continue
 
 					insignificant = False
 					if not slot_conflict and \
@@ -2211,7 +2213,8 @@ class depgraph(object):
 				# Display the specific atom from SetArg or
 				# Package types.
 				uneval = ""
-				if dep.atom is not dep.atom.unevaluated_atom:
+				if dep.atom and dep.atom.unevaluated_atom and \
+						dep.atom is not dep.atom.unevaluated_atom:
 					uneval = " (%s)" % (dep.atom.unevaluated_atom,)
 				writemsg_level(
 					"%s%s%s required by %s\n" %

@@ -3,6 +3,7 @@
 
 from __future__ import print_function
 
+import locale
 import platform
 import sys
 
@@ -984,6 +985,9 @@ def emerge_main(args=None):
 		args = sys.argv[1:]
 
 	args = portage._decode_argv(args)
+
+	# Use system locale.
+	locale.setlocale(locale.LC_ALL, '')
 
 	# Disable color until we're sure that it should be enabled (after
 	# EMERGE_DEFAULT_OPTS has been parsed).

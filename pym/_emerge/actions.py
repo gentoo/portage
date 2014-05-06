@@ -2997,6 +2997,7 @@ def relative_profile_path(portdir, abs_profile):
 	return profilever
 
 def getportageversion(portdir, _unused, profile, chost, vardb):
+	pythonver = 'python %d.%d.%d-%s-%d' % sys.version_info[:]
 	profilever = None
 	repositories = vardb.settings.repositories
 	if profile:
@@ -3052,8 +3053,8 @@ def getportageversion(portdir, _unused, profile, chost, vardb):
 	gccver = getgccversion(chost)
 	unameout=platform.release()+" "+platform.machine()
 
-	return "Portage %s (%s, %s, %s, %s)" % \
-		(portage.VERSION, profilever, gccver, ",".join(libcver), unameout)
+	return "Portage %s (%s, %s, %s, %s, %s)" % \
+		(portage.VERSION, pythonver, profilever, gccver, ",".join(libcver), unameout)
 
 def git_sync_timestamps(portdb, portdir):
 	"""

@@ -1,4 +1,4 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.EbuildExecuter import EbuildExecuter
@@ -322,7 +322,12 @@ class EbuildBuild(CompositeTask):
 						pkg=self.pkg, scheduler=self.scheduler,
 						settings=self.settings))
 
-		self._start_task(binpkg_tasks, self._buildpkg_exit)
+		if binpkg_tasks:
+			self._start_task(binpkg_tasks, self._buildpkg_exit)
+			return
+
+		self._final_exit(build)
+		self.wait()
 
 	def _buildpkg_exit(self, packager):
 		"""

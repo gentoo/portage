@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Jan 2014" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Apr 2014" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -181,6 +181,10 @@ of \fBemerge\fR(1) for more information.
 This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
 as \fI\-\-target=${CTARGET}\fR only if it is defined.
 .TP
+.B DCO_SIGNED_OFF_BY
+This variable may contain a name and email address which will be used by
+\fBrepoman\fR(1) to add a Signed\-off\-by line to each commit message.
+.TP
 \fBDISTDIR\fR = \fI[path]\fR
 Defines the location of your local source file repository. After packages
 are built, it is safe to remove any and all files from this directory since
@@ -196,10 +200,6 @@ that locations under /usr/portage are not necessarily safe for data storage.
 See the \fBPORTDIR\fR documentation for more information.
 .br
 Defaults to /usr/portage/distfiles.
-.TP
-.B DCO_SIGNED_OFF_BY
-This variable may contain a name and email address which will be used by
-\fBrepoman\fR(1) to add a Signed\-off\-by line to each commit message.
 .TP
 .B DOC_SYMLINKS_DIR
 If this variable contains a directory then symlinks to html documentation will
@@ -301,18 +301,18 @@ Log file names have an extension that is appropriate for the compression
 type. Currently, only \fBgzip\fR(1) compression is supported, so build
 logs will have a '.gz' extension when this feature is enabled.
 .TP
-.B compressdebug
-Compress the debug sections in the split debug files with zlib to save
-space.  Make sure you have built both binutils and gdb with USE=zlib
-support for this to work.  See \fBsplitdebug\fR for general split debug
-information (upon which this feature depends).
-.TP
 .B compress\-index
 If set then a compressed copy of 'Packages' index file will be written.
 This feature is intended for Gentoo binhosts using certain webservers
 (such as, but not limited to, Nginx with gzip_static module) to avoid
 redundant on\-the\-fly compression.  The resulting file will be called
 \[aq]Packages.gz' and its modification time will match that of 'Packages'.
+.TP
+.B compressdebug
+Compress the debug sections in the split debug files with zlib to save
+space.  Make sure you have built both binutils and gdb with USE=zlib
+support for this to work.  See \fBsplitdebug\fR for general split debug
+information (upon which this feature depends).
 .TP
 .B config\-protect\-if\-modified
 This causes the \fBCONFIG_PROTECT\fR behavior to be skipped for files
@@ -349,10 +349,6 @@ exist). Also see the related \fIunmerge\-backup\fR feature.
 Use locks to ensure that unsandboxed ebuild phases never execute
 concurrently. Also see \fIparallel\-install\fR.
 .TP
-.B fakeroot
-Enable fakeroot for the install and package phases when a non-root user runs
-the \fBebuild\fR(1) command.
-.TP
 .B fail\-clean
 Clean up temporary files after a build failure. This is particularly useful
 if you have \fBPORTAGE_TMPDIR\fR on tmpfs. If this feature is enabled, you
@@ -360,24 +356,9 @@ probably also want to enable \fBPORT_LOGDIR\fR in order to save the build log.
 Both the \fBebuild\fR(1) command and the \fInoclean\fR feature cause the
 \fIfail\-clean\fR feature to be automatically disabled.
 .TP
-.B getbinpkg
-Force emerges to always try to fetch files from the \fIPORTAGE_BINHOST\fR.  See
-\fBmake.conf\fR(5) for more information.
-.TP
-.B installsources
-Install source code into /usr/src/debug/${CATEGORY}/${PF} (also see
-\fBsplitdebug\fR). This feature works only if debugedit is installed and CFLAGS
-is set to include debug information (such as with the \-ggdb flag).
-.TP
-.B keeptemp
-Do not delete the ${T} directory after the merge process.
-.TP
-.B keepwork
-Do not delete the ${WORKDIR} directory after the merge process. ${WORKDIR} can
-then be reused since this feature disables most of the clean phase that runs
-prior to each build. Due to lack of proper cleanup, this feature can
-interfere with normal emerge operation and therefore it should not be left
-enabled for more than a short period of time.
+.B fakeroot
+Enable fakeroot for the install and package phases when a non-root user runs
+the \fBebuild\fR(1) command.
 .TP
 .B fixlafiles
 Modifies .la files to not include other .la files and some other
@@ -393,9 +374,28 @@ would otherwise be useless with prefix configurations. This brings
 compatibility with the prefix branch of portage, which also supports EPREFIX
 for all EAPIs (for obvious reasons).
 .TP
+.B getbinpkg
+Force emerges to always try to fetch files from the \fIPORTAGE_BINHOST\fR.  See
+\fBmake.conf\fR(5) for more information.
+.TP
+.B installsources
+Install source code into /usr/src/debug/${CATEGORY}/${PF} (also see
+\fBsplitdebug\fR). This feature works only if debugedit is installed and CFLAGS
+is set to include debug information (such as with the \-ggdb flag).
+.TP
 .B ipc\-sandbox
 Isolate the ebuild phase functions from host IPC namespace. Supported
 only on Linux. Requires IPC namespace support in kernel.
+.TP
+.B keeptemp
+Do not delete the ${T} directory after the merge process.
+.TP
+.B keepwork
+Do not delete the ${WORKDIR} directory after the merge process. ${WORKDIR} can
+then be reused since this feature disables most of the clean phase that runs
+prior to each build. Due to lack of proper cleanup, this feature can
+interfere with normal emerge operation and therefore it should not be left
+enabled for more than a short period of time.
 .TP
 .B lmirror
 When \fImirror\fR is enabled in \fBFEATURES\fR, fetch files even
@@ -580,6 +580,12 @@ continue to execute the remaining phases as if the failure had not occurred.
 Note that the test phase for a specific package may be disabled by masking
 the "test" \fBUSE\fR flag in \fBpackage.use.mask\fR (see \fBportage\fR(5)).
 .TP
+.B unknown\-features\-filter
+Filter out any unknown values that the FEATURES variable contains.
+.TP
+.B unknown\-features\-warn
+Warn if FEATURES contains one or more unknown values.
+.TP
 .B unmerge\-backup
 Call \fBquickpkg\fR(1) to create a backup of each package before it is
 unmerged (if a binary package of the same version does not already exist).
@@ -593,12 +599,6 @@ Keep logs from successful unmerge phases. This is relevant only when
 If a file is not claimed by another package in the same slot and it is not
 protected by \fICONFIG_PROTECT\fR, unmerge it even if the modification time or
 checksum differs from the file that was originally installed.
-.TP
-.B unknown\-features\-filter
-Filter out any unknown values that the FEATURES variable contains.
-.TP
-.B unknown\-features\-warn
-Warn if FEATURES contains one or more unknown values.
 .TP
 .B userfetch
 When portage is run as root, drop privileges to portage:portage during the
@@ -739,13 +739,13 @@ use the URI header field as a base URI for fetching binary packages. If the URI
 header field is not defined then the client will use it's ${PORTAGE_BINHOST}
 setting as the base URI.
 .TP
-.B PORTAGE_BINPKG_TAR_OPTS
-This variable contains options to be passed to the tar command for creation
-of binary packages.
-.TP
 .B PORTAGE_BINPKG_FORMAT
 This variable sets default format used for binary packages. Possible values
 are tar and rpm or both.
+.TP
+.B PORTAGE_BINPKG_TAR_OPTS
+This variable contains options to be passed to the tar command for creation
+of binary packages.
 .TP
 \fBPORTAGE_BUNZIP2_COMMAND\fR = \fI[bunzip2 command string]\fR
 This variable should contain a command that is suitable for portage to call
@@ -778,27 +778,26 @@ PORTAGE_CHECKSUM_FILTER="\-* sha256"
 This variable contains the command used to compress documentation during the
 install phase.
 .TP
-\fBPORTAGE_COMPRESS_FLAGS\fR = \fI"\-9"\fR
-This variable contains flags for the \fBPORTAGE_COMPRESS\fR command.
-.TP
-.TP
 \fBPORTAGE_COMPRESS_EXCLUDE_SUFFIXES\fR = \fI"gif htm[l]? jp[e]?g pdf png"\fR
 This variable contains a space delimited list of file suffixes for which
 matching files are excluded when the \fBPORTAGE_COMPRESS\fR command is
 called. Regular expressions are supported and the match is performed only
 against the portion of the file name which follows the last period character.
 .TP
+\fBPORTAGE_COMPRESS_FLAGS\fR = \fI"\-9"\fR
+This variable contains flags for the \fBPORTAGE_COMPRESS\fR command.
+.TP
 .B PORTAGE_ELOG_CLASSES
 .TP
-.B PORTAGE_ELOG_SYSTEM
-.TP
 .B PORTAGE_ELOG_COMMAND
-.TP
-.B PORTAGE_ELOG_MAILURI
 .TP
 .B PORTAGE_ELOG_MAILFROM
 .TP
 .B PORTAGE_ELOG_MAILSUBJECT
+.TP
+.B PORTAGE_ELOG_MAILURI
+.TP
+.B PORTAGE_ELOG_SYSTEM
 Please see /usr/share/portage/config/make.conf.example for elog documentation.
 .TP
 \fBPORTAGE_FETCH_CHECKSUM_TRY_MIRRORS\fR = \fI5\fR
@@ -866,16 +865,16 @@ in this list of directories. Search order is from left to right. Note
 that the current implementation works by creating a symlink inside
 \fBDISTDIR\fR, but that may change in the future.
 .TP
+\fBPORTAGE_RSYNC_EXTRA_OPTS\fR = \fI[rsync options string]\fR
+Additional rsync options to be used by \fBemerge \-\-sync\fR.
+.br
+Defaults to no value.
+.TP
 \fBPORTAGE_RSYNC_INITIAL_TIMEOUT\fR = \fIinteger\fR
 Used by \fBemerge \-\-sync\fR as a timeout for the initial connection to an
 rsync server.
 .br
 Defaults to 15 seconds.
-.TP
-\fBPORTAGE_RSYNC_EXTRA_OPTS\fR = \fI[rsync options string]\fR
-Additional rsync options to be used by \fBemerge \-\-sync\fR.
-.br
-Defaults to no value.
 .TP
 \fBPORTAGE_RSYNC_OPTS\fR = \fI[rsync options string]\fR
 Default rsync options to be used by \fBemerge \-\-sync\fR.
@@ -958,14 +957,6 @@ Defaults to no value.
 Set this to cause portage to ignore any \fIQA_EXECSTACK\fR override
 settings from ebuilds.  See also \fBebuild\fR(5).
 .TP
-\fBQA_STRICT_WX_LOAD = \fI"set"\fR
-Set this to cause portage to ignore any \fIQA_WX_LOAD\fR override
-settings from ebuilds.  See also \fBebuild\fR(5).
-.TP
-\fBQA_STRICT_TEXTRELS = \fI"set"\fR
-Set this to cause portage to ignore any \fIQA_TEXTREL\fR override
-settings from ebuilds.  See also \fBebuild\fR(5).
-.TP
 \fBQA_STRICT_FLAGS_IGNORED = \fI"set"\fR
 Set this to cause portage to ignore any \fIQA_FLAGS_IGNORED\fR override
 settings from ebuilds.  See also \fBebuild\fR(5).
@@ -976,6 +967,14 @@ settings from ebuilds.  See also \fBebuild\fR(5).
 .TP
 \fBQA_STRICT_PRESTRIPPED = \fI"set"\fR
 Set this to cause portage to ignore any \fIQA_PRESTRIPPED\fR override
+settings from ebuilds.  See also \fBebuild\fR(5).
+.TP
+\fBQA_STRICT_TEXTRELS = \fI"set"\fR
+Set this to cause portage to ignore any \fIQA_TEXTREL\fR override
+settings from ebuilds.  See also \fBebuild\fR(5).
+.TP
+\fBQA_STRICT_WX_LOAD = \fI"set"\fR
+Set this to cause portage to ignore any \fIQA_WX_LOAD\fR override
 settings from ebuilds.  See also \fBebuild\fR(5).
 .TP
 .B RESUMECOMMAND

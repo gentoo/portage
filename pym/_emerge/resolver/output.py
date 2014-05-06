@@ -18,6 +18,7 @@ from portage.dbapi.dep_expand import dep_expand
 from portage.dep import cpvequal, _repo_separator, _slot_separator
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidDependString, SignatureException
+from portage.localization import localized_size
 from portage.package.ebuild.config import _get_feature_flags
 from portage.package.ebuild._spawn_nofetch import spawn_nofetch
 from portage.output import ( blue, colorize, create_color_func,
@@ -30,7 +31,7 @@ from portage.versions import best, cpv_getversion
 from _emerge.Blocker import Blocker
 from _emerge.create_world_atom import create_world_atom
 from _emerge.resolver.output_helpers import ( _DisplayConfig, _tree_display,
-	_PackageCounters, _create_use_string, _format_size, _calc_changelog, PkgInfo)
+	_PackageCounters, _create_use_string, _calc_changelog, PkgInfo)
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
 
 if sys.hexversion >= 0x3000000:
@@ -330,7 +331,7 @@ class Display(object):
 						self.myfetchlist.add(myfetchfile)
 				if pkg_info.ordered:
 					self.counters.totalsize += mysize
-			self.verboseadd += _format_size(mysize)
+			self.verboseadd += localized_size(mysize)
 
 		if self.quiet_repo_display:
 			# overlay verbose
