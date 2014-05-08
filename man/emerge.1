@@ -297,6 +297,20 @@ re\-distributable. With default
 configuration, this would result in an effective
 \fBACCEPT_RESTRICT\fR value of "* -bindist".
 .TP
+.BR "\-\-alert [ y | n ] (\-A short option)"
+Add a terminal bell character ('\\a') to all interactive prompts. This
+is especially useful if dependency resolution is taking a long time, and
+you want emerge to alert you when it is finished. If you use
+\fBemerge -auAD world\fR, emerge will courteously point out when it has
+finished calculating the graph.
+
+\fB--alert\fR may be 'y' or 'n'. 'true' and 'false' mean the same thing.
+Using \fB--alert\fR without an option is the same as using it with 'y'.
+Try it with 'emerge -aAC gcc'. Remember to answer \fBno\fR!
+
+If your terminal emulator is set up to make '\\a' into a window manager
+urgency hint, move your cursor to a different window to get the effect.
+.TP
 .BR "\-\-alphabetical "
 When displaying USE and other flag output, combines the enabled and
 disabled lists into one list and sorts the whole list alphabetically.
