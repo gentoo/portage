@@ -462,8 +462,10 @@ class RepoConfigLoader(object):
 					if repos_conf_opts is not None:
 						# Selectively copy only the attributes which
 						# repos.conf is allowed to override.
-						for k in ('aliases', 'eclass_overrides', 'force', 'masters',
-							'priority', 'sync_cvs_repo', 'sync_type', 'sync_uri'):
+						for k in ('aliases', 'auto_sync', 'eclass_overrides',
+							'force', 'masters', 'priority', 'sync_cvs_repo',
+							'sync_type', 'sync_uri',
+							):
 							v = getattr(repos_conf_opts, k, None)
 							if v is not None:
 								setattr(repo, k, v)
