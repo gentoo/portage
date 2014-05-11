@@ -6,6 +6,8 @@ import os
 import sys
 
 import portage
+portage._internal_caller = True
+portage._sync_mode = True
 from portage.localization import _
 from portage.output import bold, create_color_func
 from portage.sync import get_syncer
@@ -169,7 +171,6 @@ class SyncRepos(object):
 			return [('None', os.EX_OK)]
 		# Portage needs to ensure a sane umask for the files it creates.
 		os.umask(0o22)
-		portage._sync_mode = True
 
 		sync_manager = get_syncer(self.emerge_config.target_config.settings, emergelog)
 		retvals = []
