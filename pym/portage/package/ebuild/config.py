@@ -557,7 +557,7 @@ class config(object):
 			self.user_profile_dir = locations_manager.user_profile_dir
 
 			packages_list = [grabfile_package(os.path.join(x, "packages"),
-				verify_eapi=True) for x in self.profiles]
+				recursive=True, verify_eapi=True) for x in self.profiles]
 			self.packages = tuple(stack_lists(packages_list, incremental=1))
 
 			# revmaskdict
