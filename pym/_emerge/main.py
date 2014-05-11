@@ -1057,6 +1057,10 @@ def emerge_main(args=None):
 	elif myaction == "moo":
 		print(COWSAY_MOO % platform.system())
 		return os.EX_OK
+	elif myaction == "sync":
+		# need to set this to True now in order for the repository config
+		# loading to allow new repos with non-existent directories
+		portage._sync_mode = True
 
 	# Portage needs to ensure a sane umask for the files it creates.
 	os.umask(0o22)
