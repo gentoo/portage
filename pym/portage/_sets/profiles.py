@@ -33,7 +33,9 @@ class PackagesSystemSet(PackageSet):
 			writemsg_level("\nPackagesSystemSet: profile paths: %s\n" % \
 				(self._profile_paths,), level=logging.DEBUG, noiselevel=-1)
 
-		mylist = [grabfile_package(os.path.join(x, "packages"), recursive=True, verify_eapi=True) for x in self._profile_paths]
+		mylist = [grabfile_package(os.path.join(x, "packages"),
+							 recursive=True,
+							 verify_eapi=True) for x in self._profile_paths]
 
 		if debug:
 			writemsg_level("\nPackagesSystemSet: raw packages: %s\n" % \
