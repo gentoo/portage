@@ -45,11 +45,18 @@ try:
 	from _emerge.main import emerge_main
 
 	if __name__ == "__main__":
-		from portage.exception import ParseError, PermissionDenied
+		from portage.exception import IsADirectory, ParseError, \
+				PermissionDenied
 		try:
 			retval = emerge_main()
 		except PermissionDenied as e:
 			sys.stderr.write("Permission denied: '%s'\n" % str(e))
+			sys.exit(e.errno)
+		except IsADirectory as e:
+			sys.stderr.write("'%s' is a directory, but should be a file!\n"
+					"See portage man page for information on "
+					"which files may be directories.\n" %
+					str(e))
 			sys.exit(e.errno)
 		except ParseError as e:
 			sys.stderr.write("%s\n" % str(e))

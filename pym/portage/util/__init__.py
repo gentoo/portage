@@ -43,7 +43,8 @@ from portage import _unicode_encode
 from portage import _unicode_decode
 from portage.const import VCS_DIRS
 from portage.exception import InvalidAtom, PortageException, FileNotFound, \
-       OperationNotPermitted, ParseError, PermissionDenied, ReadOnlyFileSystem
+       IsADirectory, OperationNotPermitted, ParseError, PermissionDenied, \
+	   ReadOnlyFileSystem
 from portage.localization import _
 from portage.proxy.objectproxy import ObjectProxy
 from portage.cache.mappings import UserDict
