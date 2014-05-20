@@ -27,6 +27,7 @@ __all__ = [
 	"make_herd_base"
 ]
 
+
 def _make_email(nick_name):
 	if not nick_name.endswith('@gentoo.org'):
 		nick_name = nick_name + '@gentoo.org'
@@ -47,6 +48,7 @@ class HerdBase(object):
 	def maintainer_in_herd(self, nick_name, herd_name):
 		return _make_email(nick_name) in self.herd_to_emails[herd_name]
 
+
 class _HerdsTreeBuilder(xml.etree.ElementTree.TreeBuilder):
 	"""
 	Implements doctype() as required to avoid deprecation warnings with
@@ -55,13 +57,15 @@ class _HerdsTreeBuilder(xml.etree.ElementTree.TreeBuilder):
 	def doctype(self, name, pubid, system):
 		pass
 
+
 def make_herd_base(filename):
 	herd_to_emails = dict()
 	all_emails = set()
 
 	try:
-		xml_tree = xml.etree.ElementTree.parse(_unicode_encode(filename,
-				encoding=_encodings['fs'], errors='strict'),
+		xml_tree = xml.etree.ElementTree.parse(
+			_unicode_encode(
+				filename, encoding=_encodings['fs'], errors='strict'),
 			parser=xml.etree.ElementTree.XMLParser(
 				target=_HerdsTreeBuilder()))
 	except ExpatError as e:

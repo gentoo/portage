@@ -59,16 +59,17 @@ util.initialize_logger()
 if sys.hexversion >= 0x3000000:
 	basestring = str
 
+
 def detect_vcs_conflicts(options, vcs):
 	"""Determine if the checkout has problems like cvs conflicts.
-	
+
 	If you want more vcs support here just keep adding if blocks...
 	This could be better.
-	
+
 	TODO(antarus): Also this should probably not call sys.exit() as
 	repoman is run on >1 packages and one failure should not cause
 	subsequent packages to fail.
-	
+
 	Args:
 		vcs - A string identifying the version control system in use
 	Returns:
@@ -77,25 +78,29 @@ def detect_vcs_conflicts(options, vcs):
 
 	cmd = None
 	if vcs == 'cvs':
-		logging.info("Performing a " + output.green("cvs -n up") + \
-			" with a little magic grep to check for updates.")
-		cmd = "cvs -n up 2>/dev/null | " + \
-			"egrep '^[^\?] .*' | " + \
-			"egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'"
+		logging.info(
+			"Performing a %s with a little magic grep to check for updates." %
+			output.green("cvs -n up"))
+		cmd = (
+			"cvs -n up 2>/dev/null | "
+			"egrep '^[^\?] .*' | "
+			"egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
 	if vcs == 'svn':
-		logging.info("Performing a " + output.green("svn status -u") + \
-			" with a little magic grep to check for updates.")
-		cmd = "svn status -u 2>&1 | " + \
-			"egrep -v '^.  +.*/digest-[^/]+' | " + \
-			"head -n-1"
+		logging.info(
+			"Performing a %s with a little magic grep to check for updates." %
+			output.green("svn status -u"))
+		cmd = (
+			"svn status -u 2>&1 | "
+			"egrep -v '^.  +.*/digest-[^/]+' | "
+			"head -n-1")
 
 	if cmd is not None:
 		# Use Popen instead of getstatusoutput(), in order to avoid
 		# unicode handling problems (see bug #310789).
 		args = [BASH_BINARY, "-c", cmd]
 		args = [_unicode_encode(x) for x in args]
-		proc = subprocess.Popen(args, stdout=subprocess.PIPE,
-			stderr=subprocess.STDOUT)
+		proc = subprocess.Popen(
+			args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 		out = _unicode_decode(proc.communicate()[0])
 		proc.wait()
 		mylines = out.splitlines()
@@ -103,13 +108,19 @@ def detect_vcs_conflicts(options, vcs):
 		for line in mylines:
 			if not line:
 				continue
-			if line[0] not in " UPMARD": # unmodified(svn),Updates,Patches,Modified,Added,Removed/Replaced(svn),Deleted(svn)
+
+			# [ ] Unmodified (SVN)	[U] Updates		[P] Patches
+			# [M] Modified			[A] Added		[R] Removed / Replaced
+			# [D] Deleted
+			if line[0] not in " UPMARD":
 				# Stray Manifest is fine, we will readd it anyway.
 				if line[0] == '?' and line[1:].lstrip() == 'Manifest':
 					continue
-				logging.error(red("!!! Please fix the following issues reported " + \
-					"from cvs: ")+green("(U,P,M,A,R,D are ok)"))
-				logging.error(red("!!! Note: This is a pretend/no-modify pass..."))
+				logging.error(red(
+					"!!! Please fix the following issues reported "
+					"from cvs: %s" % green("(U,P,M,A,R,D are ok)")))
+				logging.error(red(
+					"!!! Note: This is a pretend/no-modify pass..."))
 				logging.error(out)
 				sys.exit(1)
 			elif vcs == 'cvs' and line[0] in "UP":
@@ -130,7 +141,7 @@ def detect_vcs_conflicts(options, vcs):
 
 
 def have_profile_dir(path, maxdepth=3, filename="profiles.desc"):
-	""" 
+	"""
 	Try to figure out if 'path' has a profiles/
 	dir in it by checking for the given filename.
 	"""
@@ -140,8 +151,9 @@ def have_profile_dir(path, maxdepth=3, filename="profiles.desc"):
 		path = normalize_path(path + "/..")
 		maxdepth -= 1
 
+
 def have_ebuild_dir(path, maxdepth=3):
-	""" 
+	"""
 	Try to figure out if 'path' or a subdirectory contains one or more
 	ebuild files named appropriately for their parent directory.
 	"""
@@ -166,6 +178,7 @@ def have_ebuild_dir(path, maxdepth=3):
 				if filename.endswith(".ebuild") and \
 					filename.startswith(basename + "-"):
 					return os.path.dirname(os.path.dirname(path))
+
 
 def parse_metadata_use(xml_tree):
 	"""
@@ -215,30 +228,35 @@ def parse_metadata_use(xml_tree):
 
 	return uselist
 
+
 class UnknownHerdsError(ValueError):
 	def __init__(self, herd_names):
 		_plural = len(herd_names) != 1
 		super(UnknownHerdsError, self).__init__(
-			'Unknown %s %s' % (_plural and 'herds' or 'herd',
-			','.join('"%s"' % e for e in herd_names)))
+			'Unknown %s %s' % (
+				_plural and 'herds' or 'herd',
+				','.join('"%s"' % e for e in herd_names)))
 
 
 def check_metadata_herds(xml_tree, herd_base):
 	herd_nodes = xml_tree.findall('herd')
-	unknown_herds = [name for name in
-			(e.text.strip() for e in herd_nodes if e.text is not None)
-			if not herd_base.known_herd(name)]
+	unknown_herds = [
+		name for name in (
+			e.text.strip() for e in herd_nodes if e.text is not None)
+		if not herd_base.known_herd(name)]
 
 	if unknown_herds:
 		raise UnknownHerdsError(unknown_herds)
+
 
 def check_metadata(xml_tree, herd_base):
 	if herd_base is not None:
 		check_metadata_herds(xml_tree, herd_base)
 
+
 def FindPackagesToScan(settings, startdir, reposplit):
 	""" Try to find packages that need to be scanned
-	
+
 	Args:
 		settings - portage.config instance, preferably repoman_settings
 		startdir - directory that repoman was run in
@@ -246,8 +264,7 @@ def FindPackagesToScan(settings, startdir, reposplit):
 	Returns:
 		A list of directories to scan
 	"""
-	
-	
+
 	def AddPackagesInDir(path):
 		""" Given a list of dirs, add any packages in it """
 		ret = []
@@ -262,30 +279,33 @@ def FindPackagesToScan(settings, startdir, reposplit):
 				logging.debug('adding %s to scanlist' % cat_pkg_dir)
 				ret.append(cat_pkg_dir)
 		return ret
-	
+
 	scanlist = []
 	repolevel = len(reposplit)
-	if repolevel == 1: # root of the tree, startdir = repodir
+	if repolevel == 1:  # root of the tree, startdir = repodir
 		for cat in settings.categories:
 			path = os.path.join(startdir, cat)
 			if not os.path.isdir(path):
 				continue
 			pkgdirs = os.listdir(path)
 			scanlist.extend(AddPackagesInDir(path))
-	elif repolevel == 2: # category level, startdir = catdir
-		# we only want 1 segment of the directory, is why we use catdir instead of startdir
+	elif repolevel == 2:  # category level, startdir = catdir
+		# We only want 1 segment of the directory,
+		# this is why we use catdir instead of startdir.
 		catdir = reposplit[-2]
 		if catdir not in settings.categories:
-			logging.warning('%s is not a valid category according to '
-				'profiles/categories, skipping checks in %s' % (catdir, catdir))
+			logging.warn(
+				'%s is not a valid category according to profiles/categories, '
+				'skipping checks in %s' % (catdir, catdir))
 		else:
 			scanlist = AddPackagesInDir(catdir)
-	elif repolevel == 3: # pkgdir level, startdir = pkgdir
+	elif repolevel == 3:  # pkgdir level, startdir = pkgdir
 		catdir = reposplit[-2]
 		pkgdir = reposplit[-1]
 		if catdir not in settings.categories:
-			logging.warning('%s is not a valid category according to '
-				'profiles/categories, skipping checks in %s' % (catdir, catdir))
+			logging.warn(
+				'%s is not a valid category according to profiles/categories, '
+				'skipping checks in %s' % (catdir, catdir))
 		else:
 			path = os.path.join(catdir, pkgdir)
 			logging.debug('adding %s to scanlist' % path)
@@ -293,21 +313,22 @@ def FindPackagesToScan(settings, startdir, reposplit):
 	return scanlist
 
 
-def format_qa_output(formatter, stats, fails, dofull, dofail, options, qawarnings):
+def format_qa_output(
+	formatter, stats, fails, dofull, dofail, options, qawarnings):
 	"""Helper function that formats output properly
-	
+
 	Args:
 		formatter - a subclass of Formatter
 		stats - a dict of qa status items
 		fails - a dict of qa status failures
 		dofull - boolean to print full results or a summary
 		dofail - boolean to decide if failure was hard or soft
-	
+
 	Returns:
 		None (modifies formatter)
 	"""
 	full = options.mode == 'full'
-	# we only want key value pairs where value > 0 
+	# we only want key value pairs where value > 0
 	for category, number in \
 		filter(lambda myitem: myitem[1] > 0, sorted(stats.items())):
 		formatter.add_literal_data("  " + category)
@@ -335,7 +356,8 @@ def format_qa_output(formatter, stats, fails, dofull, dofail, options, qawarning
 				formatter.add_line_break()
 
 
-def format_qa_output_column(formatter, stats, fails, dofull, dofail, options, qawarnings):
+def format_qa_output_column(
+	formatter, stats, fails, dofull, dofail, options, qawarnings):
 	"""Helper function that formats output in a machine-parseable column format
 
 	@param formatter: an instance of Formatter
@@ -379,6 +401,7 @@ def format_qa_output_column(formatter, stats, fails, dofull, dofail, options, qa
 				formatter.add_literal_data(category + " " + failure)
 				formatter.add_line_break()
 
+
 def editor_is_executable(editor):
 	"""
 	Given an EDITOR string, validate that it refers to
@@ -415,26 +438,28 @@ def get_commit_message_with_editor(editor, message=None, prefix=""):
 	"""
 	fd, filename = mkstemp()
 	try:
-		os.write(fd, _unicode_encode(_(
-			prefix +
-			"\n\n# Please enter the commit message " + \
-			"for your changes.\n# (Comment lines starting " + \
-			"with '#' will not be included)\n"),
-			encoding=_encodings['content'], errors='backslashreplace'))
+		os.write(
+			fd, _unicode_encode(_(
+				prefix +
+				"\n\n# Please enter the commit message "
+				"for your changes.\n# (Comment lines starting "
+				"with '#' will not be included)\n"),
+				encoding=_encodings['content'], errors='backslashreplace'))
 		if message:
 			os.write(fd, b"#\n")
 			for line in message:
-				os.write(fd, _unicode_encode("#" + line,
-					encoding=_encodings['content'], errors='backslashreplace'))
+				os.write(
+					fd, _unicode_encode(
+						"#" + line, encoding=_encodings['content'],
+						errors='backslashreplace'))
 		os.close(fd)
 		retval = os.system(editor + " '%s'" % filename)
 		if not (os.WIFEXITED(retval) and os.WEXITSTATUS(retval) == os.EX_OK):
 			return None
 		try:
-			with io.open(_unicode_encode(filename,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='r', encoding=_encodings['content'], errors='replace'
-				) as f:
+			with io.open(_unicode_encode(
+				filename, encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['content'], errors='replace') as f:
 				mylines = f.readlines()
 		except OSError as e:
 			if e.errno != errno.ENOENT:
@@ -456,7 +481,9 @@ def get_commit_message_with_stdin():
 	@rtype: string or None
 	@return: A string on success or None if an error occurs.
 	"""
-	print("Please enter a commit message. Use Ctrl-d to finish or Ctrl-c to abort.")
+	print(
+		"Please enter a commit message."
+		" Use Ctrl-d to finish or Ctrl-c to abort.")
 	commitmessage = []
 	while True:
 		commitmessage.append(sys.stdin.readline())
@@ -469,20 +496,22 @@ def get_commit_message_with_stdin():
 def FindPortdir(settings):
 	""" Try to figure out what repo we are in and whether we are in a regular
 	tree or an overlay.
-	
+
 	Basic logic is:
-	
+
 	1. Determine what directory we are in (supports symlinks).
 	2. Build a list of directories from / to our current location
-	3. Iterate over PORTDIR_OVERLAY, if we find a match, search for a profiles directory
-		 in the overlay.  If it has one, make it portdir, otherwise make it portdir_overlay.
-	4. If we didn't find an overlay in PORTDIR_OVERLAY, see if we are in PORTDIR; if so, set
-		 portdir_overlay to PORTDIR.  If we aren't in PORTDIR, see if PWD has a profiles dir, if
-		 so, set portdir_overlay and portdir to PWD, else make them False.
-	5. If we haven't found portdir_overlay yet, it means the user is doing something odd, report
-		 an error.
+	3. Iterate over PORTDIR_OVERLAY, if we find a match,
+	search for a profiles directory in the overlay.  If it has one,
+	make it portdir, otherwise make it portdir_overlay.
+	4. If we didn't find an overlay in PORTDIR_OVERLAY,
+	see if we are in PORTDIR; if so, set portdir_overlay to PORTDIR.
+	If we aren't in PORTDIR, see if PWD has a profiles dir, if so,
+	set portdir_overlay and portdir to PWD, else make them False.
+	5. If we haven't found portdir_overlay yet,
+	it means the user is doing something odd, report an error.
 	6. If we haven't found a portdir yet, set portdir to PORTDIR.
-	
+
 	Args:
 		settings - portage.config instance, preferably repoman_settings
 	Returns:
@@ -556,7 +585,7 @@ def FindPortdir(settings):
 		else:
 			portdir_overlay = have_profile_dir(location)
 		portdir = portdir_overlay
-	
+
 	if not portdir_overlay:
 		msg = 'Repoman is unable to determine PORTDIR or PORTDIR_OVERLAY' + \
 			' from the current working directory'
@@ -568,40 +597,40 @@ def FindPortdir(settings):
 
 	if not portdir_overlay.endswith('/'):
 		portdir_overlay += '/'
-	
+
 	if not portdir.endswith('/'):
 		portdir += '/'
 
 	return [normalize_path(x) for x in (portdir, portdir_overlay, location)]
 
-_vcs_type = collections.namedtuple('_vcs_type',
-	'name dir_name')
+_vcs_type = collections.namedtuple('_vcs_type', 'name dir_name')
 
 _FindVCS_data = (
 	_vcs_type(
-		name = 'git',
-		dir_name = '.git'
+		name='git',
+		dir_name='.git'
 	),
 	_vcs_type(
-		name = 'bzr',
-		dir_name = '.bzr'
+		name='bzr',
+		dir_name='.bzr'
 	),
 	_vcs_type(
-		name = 'hg',
-		dir_name = '.hg'
+		name='hg',
+		dir_name='.hg'
 	),
 	_vcs_type(
-		name = 'svn',
-		dir_name = '.svn'
+		name='svn',
+		dir_name='.svn'
 	)
 )
+
 
 def FindVCS():
 	""" Try to figure out in what VCS' working tree we are. """
 
 	outvcs = []
 
-	def seek(depth = None):
+	def seek(depth=None):
 		""" Seek for VCSes that have a top-level data directory only. """
 		retvcs = []
 		pathprep = ''
@@ -610,9 +639,10 @@ def FindVCS():
 			for vcs_type in _FindVCS_data:
 				vcs_dir = os.path.join(pathprep, vcs_type.dir_name)
 				if os.path.isdir(vcs_dir):
-					logging.debug('FindVCS: found %(name)s dir: %(vcs_dir)s' %
-						{'name': vcs_type.name,
-						'vcs_dir': os.path.abspath(vcs_dir)})
+					logging.debug(
+						'FindVCS: found %(name)s dir: %(vcs_dir)s' % {
+							'name': vcs_type.name,
+							'vcs_dir': os.path.abspath(vcs_dir)})
 					retvcs.append(vcs_type.name)
 
 			if retvcs:
@@ -651,14 +681,17 @@ _copyright_re2 = re.compile(br'^(# Copyright )(\d\d\d\d) ')
 
 class _copyright_repl(object):
 	__slots__ = ('year',)
+
 	def __init__(self, year):
 		self.year = year
+
 	def __call__(self, matchobj):
 		if matchobj.group(2) == self.year:
 			return matchobj.group(0)
 		else:
 			return matchobj.group(1) + matchobj.group(2) + \
 				b'-' + self.year + b' '
+
 
 def _update_copyright_year(year, line):
 	"""
@@ -683,6 +716,7 @@ def _update_copyright_year(year, line):
 		line = _unicode_decode(line)
 	return line
 
+
 def update_copyright(fn_path, year, pretend=False):
 	"""
 	Check file for a Copyright statement, and update its year.  The
@@ -695,8 +729,8 @@ def update_copyright(fn_path, year, pretend=False):
 	"""
 
 	try:
-		fn_hdl = io.open(_unicode_encode(fn_path,
-			encoding=_encodings['fs'], errors='strict'),
+		fn_hdl = io.open(_unicode_encode(
+			fn_path, encoding=_encodings['fs'], errors='strict'),
 			mode='rb')
 	except EnvironmentError:
 		return
@@ -718,7 +752,7 @@ def update_copyright(fn_path, year, pretend=False):
 	for line in difflib.unified_diff(
 		[_unicode_decode(line) for line in orig_header],
 		[_unicode_decode(line) for line in new_header],
-			fromfile=fn_path, tofile=fn_path, n=0):
+		fromfile=fn_path, tofile=fn_path, n=0):
 		util.writemsg_stdout(line, noiselevel=-1)
 		difflines += 1
 	util.writemsg_stdout("\n", noiselevel=-1)
@@ -746,17 +780,18 @@ def update_copyright(fn_path, year, pretend=False):
 			util.apply_stat_permissions(fn_path, fn_stat)
 	fn_hdl.close()
 
+
 def get_committer_name(env=None):
 	"""Generate a committer string like echangelog does."""
 	if env is None:
 		env = os.environ
-	if 'GENTOO_COMMITTER_NAME' in env and \
-		'GENTOO_COMMITTER_EMAIL' in env:
-		user = '%s <%s>' % (env['GENTOO_COMMITTER_NAME'],
+	if 'GENTOO_COMMITTER_NAME' in env and 'GENTOO_COMMITTER_EMAIL' in env:
+		user = '%s <%s>' % (
+			env['GENTOO_COMMITTER_NAME'],
 			env['GENTOO_COMMITTER_EMAIL'])
-	elif 'GENTOO_AUTHOR_NAME' in env and \
-			'GENTOO_AUTHOR_EMAIL' in env:
-		user = '%s <%s>' % (env['GENTOO_AUTHOR_NAME'],
+	elif 'GENTOO_AUTHOR_NAME' in env and 'GENTOO_AUTHOR_EMAIL' in env:
+		user = '%s <%s>' % (
+			env['GENTOO_AUTHOR_NAME'],
 			env['GENTOO_AUTHOR_EMAIL'])
 	elif 'ECHANGELOG_USER' in env:
 		user = env['ECHANGELOG_USER']
@@ -766,7 +801,9 @@ def get_committer_name(env=None):
 		user = '%s <%s@gentoo.org>' % (gecos, pwd_struct.pw_name)
 	return user
 
-def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
+
+def UpdateChangeLog(
+	pkgdir, user, msg, skel_path, category, package,
 	new=(), removed=(), changed=(), pretend=False, quiet=False):
 	"""
 	Write an entry to an existing ChangeLog, or create a new one.
@@ -799,8 +836,8 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 
 	clold_file = None
 	try:
-		clold_file = io.open(_unicode_encode(cl_path,
-			encoding=_encodings['fs'], errors='strict'),
+		clold_file = io.open(_unicode_encode(
+			cl_path, encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['repo.content'], errors='replace')
 	except EnvironmentError:
 		pass
@@ -832,8 +869,8 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 		if not header_lines:
 			# delay opening this until we find we need a header
 			try:
-				clskel_file = io.open(_unicode_encode(skel_path,
-					encoding=_encodings['fs'], errors='strict'),
+				clskel_file = io.open(_unicode_encode(
+					skel_path, encoding=_encodings['fs'], errors='strict'),
 					mode='r', encoding=_encodings['repo.content'],
 					errors='replace')
 			except EnvironmentError:
@@ -858,16 +895,21 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 		for fn in new:
 			if not fn.endswith('.ebuild'):
 				continue
-			ebuild = fn.split(os.sep)[-1][0:-7] 
+			ebuild = fn.split(os.sep)[-1][0:-7]
 			clnew_lines.append('*%s (%s)\n' % (ebuild, date))
 			newebuild = True
 		if newebuild:
 			clnew_lines.append('\n')
 		trivial_files = ('ChangeLog', 'Manifest')
-		display_new = ['+' + elem for elem in new
+		display_new = [
+			'+' + elem
+			for elem in new
 			if elem not in trivial_files]
-		display_removed = ['-' + elem for elem in removed]
-		display_changed = [elem for elem in changed
+		display_removed = [
+			'-' + elem
+			for elem in removed]
+		display_changed = [
+			elem for elem in changed
 			if elem not in trivial_files]
 		if not (display_new or display_removed or display_changed):
 			# If there's nothing else to display, show one of the
@@ -886,18 +928,19 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 
 		mesg = '%s; %s %s:' % (date, user, ', '.join(chain(
 			display_new, display_removed, display_changed)))
-		for line in textwrap.wrap(mesg, 80, \
-				initial_indent='  ', subsequent_indent='  ', \
-				break_on_hyphens=False):
+		for line in textwrap.wrap(
+			mesg, 80, initial_indent='  ', subsequent_indent='  ',
+			break_on_hyphens=False):
 			clnew_lines.append('%s\n' % line)
-		for line in textwrap.wrap(msg, 80, \
-				initial_indent='  ', subsequent_indent='  '):
+		for line in textwrap.wrap(
+			msg, 80, initial_indent='  ', subsequent_indent='  '):
 			clnew_lines.append('%s\n' % line)
 		# Don't append a trailing newline if the file is new.
 		if clold_file is not None:
 			clnew_lines.append('\n')
 
-		f = io.open(f, mode='w', encoding=_encodings['repo.content'],
+		f = io.open(
+			f, mode='w', encoding=_encodings['repo.content'],
 			errors='backslashreplace')
 
 		for line in clnew_lines:
@@ -937,8 +980,9 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 
 		# show diff
 		if not quiet:
-			for line in difflib.unified_diff(clold_lines, clnew_lines,
-					fromfile=cl_path, tofile=cl_path, n=0):
+			for line in difflib.unified_diff(
+				clold_lines, clnew_lines,
+				fromfile=cl_path, tofile=cl_path, n=0):
 				util.writemsg_stdout(line, noiselevel=-1)
 			util.writemsg_stdout("\n", noiselevel=-1)
 
@@ -972,4 +1016,3 @@ def UpdateChangeLog(pkgdir, user, msg, skel_path, category, package,
 		except OSError:
 			pass
 		return None
-
