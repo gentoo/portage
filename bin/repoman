@@ -2,10 +2,6 @@
 # Copyright 1999-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-# Next to do: dep syntax checking in mask files
-# Then, check to make sure deps are satisfiable (to avoid "can't find match for" problems)
-# that last one is tricky because multiple profiles need to be checked.
-
 from __future__ import print_function, unicode_literals
 
 import codecs
