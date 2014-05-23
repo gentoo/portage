@@ -1,0 +1,42 @@
+#!/usr/bin/python -bO
+# Copyright 1999-2014 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+
+"""Ebuild and tree health checks and maintenance utilities.
+"""
+
+from __future__ import print_function
+
+import sys
+import errno
+# This block ensures that ^C interrupts are handled quietly.
+try:
+	import signal
+
+	def exithandler(signum, _frame):
+		signal.signal(signal.SIGINT, signal.SIG_IGN)
+		signal.signal(signal.SIGTERM, signal.SIG_IGN)
+		sys.exit(128 + signum)
+
+	signal.signal(signal.SIGINT, exithandler)
+	signal.signal(signal.SIGTERM, exithandler)
+	signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
+except KeyboardInterrupt:
+	sys.exit(1)
+
+from os import path as osp
+pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
+sys.path.insert(0, pym_path)
+import portage
+portage._internal_caller = True
+from repoman.main import repoman_main
+
+try:
+	repoman_main(sys.argv[1:])
+except IOError as e:
+	if e.errno == errno.EACCES:
+		print("\nRepoman: Need user access")
+		sys.exit(1)
+	else:
+		raise
