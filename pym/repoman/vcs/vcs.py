@@ -1,6 +1,12 @@
 
+import re
+from itertools import chain
 
-def vcs_files_to_cps(vcs_file_iter):
+from portage import os
+from repoman.subprocess import repoman_getstatusoutput
+
+
+def vcs_files_to_cps(vcs_file_iter, repolevel, reposplit, categories):
 	"""
 	Iterate over the given modified file paths returned from the vcs,
 	and return a frozenset containing category/pn strings for each
@@ -34,7 +40,7 @@ def vcs_files_to_cps(vcs_file_iter):
 	return frozenset(modified_cps)
 
 
-def vcs_new_changed(relative_path):
+def vcs_new_changed(relative_path, mychanged, mynew):
 	for x in chain(mychanged, mynew):
 		if x == relative_path:
 			return True

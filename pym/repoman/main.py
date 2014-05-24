@@ -78,6 +78,8 @@ from repoman.profile import dev_keywords, ProfileDesc, valid_profile_types
 from repoman.qa_data import (qahelp, qawarnings, qacats, no_exec, allvars,
 	max_desc_len, missingvars, suspect_virtual, suspect_rdepend, valid_restrict)
 from repoman.subprocess import repoman_popen, repoman_getstatusoutput
+from repoman.vcs import (vcs_files_to_cps, vcs_new_changed,
+	git_supports_gpg_sign, ruby_deprecated)
 
 
 if sys.hexversion >= 0x3000000:
