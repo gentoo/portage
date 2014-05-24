@@ -45,10 +45,6 @@ except (ImportError, SystemError, RuntimeError, Exception):
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
-import portage.util.formatter as formatter
-import repoman.argparser
-from repoman.argparser import parse_args
-from repoman import utilities
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
 from _emerge.UserQuery import UserQuery
@@ -64,10 +60,12 @@ from portage.process import find_binary, spawn
 from portage.output import (
 	bold, create_color_func, green, nocolor, red)
 from portage.output import ConsoleStyleFile, StyleWriter
+from portage.util import formatter
 from portage.util import writemsg_level
 from portage.package.ebuild.digestgen import digestgen
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 
+from repoman.argparser import parse_args
 from repoman.checks.ebuilds import run_checks, checks_init
 from repoman.checks.herds.herdbase import make_herd_base
 from repoman.check_missingslot import check_missingslot
@@ -77,6 +75,7 @@ from repoman.profile import dev_keywords, ProfileDesc, valid_profile_types
 from repoman.qa_data import (qahelp, qawarnings, qacats, no_exec, allvars,
 	max_desc_len, missingvars, suspect_virtual, suspect_rdepend, valid_restrict)
 from repoman.subprocess import repoman_popen, repoman_getstatusoutput
+from repoman import utilities
 from repoman.vcs import (vcs_files_to_cps, vcs_new_changed,
 	git_supports_gpg_sign, ruby_deprecated)
 from repoman._xml import _XMLParser, _MetadataTreeBuilder, metadata_dtd_uri
