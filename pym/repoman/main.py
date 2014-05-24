@@ -75,6 +75,7 @@ from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 
 from repoman.metadata import (fetch_metadata_dtd, metadata_xml_encoding,
 	metadata_doctype_name, metadata_xml_declaration)
+from repoman.profile import dev_keywords, ProfileDesc, valid_profile_types
 
 
 if sys.hexversion >= 0x3000000:

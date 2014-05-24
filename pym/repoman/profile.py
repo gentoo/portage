@@ -1,4 +1,7 @@
 
+from portage import os
+from portage import normalize_path
+
 
 class ProfileDesc(object):
 	__slots__ = ('abs_path', 'arch', 'status', 'sub_path', 'tree_path',)
