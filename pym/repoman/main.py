@@ -16,16 +16,10 @@ import subprocess
 import sys
 import tempfile
 import textwrap
-import time
 import platform
 from itertools import chain
 from stat import S_ISDIR
 from pprint import pformat
-
-try:
-	from urllib.parse import urlparse
-except ImportError:
-	from urlparse import urlparse
 
 from os import path as osp
 if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")):
@@ -78,6 +72,10 @@ from portage.output import ConsoleStyleFile, StyleWriter
 from portage.util import writemsg_level
 from portage.package.ebuild.digestgen import digestgen
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
+
+from repoman.metadata import (fetch_metadata_dtd, metadata_xml_encoding,
+	metadata_doctype_name, metadata_xml_declaration)
+
 
 if sys.hexversion >= 0x3000000:
 	basestring = str

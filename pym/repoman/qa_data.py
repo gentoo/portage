@@ -337,13 +337,6 @@ ruby_deprecated = frozenset([
 	"ruby_targets_ruby18",
 ])
 
-metadata_xml_encoding = 'UTF-8'
-metadata_xml_declaration = '<?xml version="1.0" encoding="%s"?>' % \
-	(metadata_xml_encoding,)
-metadata_doctype_name = 'pkgmetadata'
-metadata_dtd_uri = 'http://www.gentoo.org/dtd/metadata.dtd'
-# force refetch if the local copy creation time is older than this
-metadata_dtd_ctime_interval = 60 * 60 * 24 * 7  # 7 days
 
 # file.executable
 no_exec = frozenset(["Manifest", "ChangeLog", "metadata.xml"])

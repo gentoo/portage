@@ -1,5 +1,32 @@
 
-def fetch_metadata_dtd():
+import errno
+import logging
+import tempfile
+import time
+
+try:
+	from urllib.parse import urlparse
+except ImportError:
+	from urlparse import urlparse
+
+
+import portage
+from portage import os
+from portage.output import green
+
+from repoman.qa_data import metadata_dtd_ctime_interval, metadata_dtd_uri
+
+
+metadata_xml_encoding = 'UTF-8'
+metadata_xml_declaration = '<?xml version="1.0" encoding="%s"?>' \
+	% (metadata_xml_encoding,)
+metadata_doctype_name = 'pkgmetadata'
+metadata_dtd_uri = 'http://www.gentoo.org/dtd/metadata.dtd'
+# force refetch if the local copy creation time is older than this
+metadata_dtd_ctime_interval = 60 * 60 * 24 * 7  # 7 days
+
+
+def fetch_metadata_dtd(metadata_dtd, repoman_settings):
 	"""
 	Fetch metadata.dtd if it doesn't exist or the ctime is older than
 	metadata_dtd_ctime_interval.
