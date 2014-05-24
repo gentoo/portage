@@ -80,6 +80,7 @@ from repoman.qa_data import (qahelp, qawarnings, qacats, no_exec, allvars,
 from repoman.subprocess import repoman_popen, repoman_getstatusoutput
 from repoman.vcs import (vcs_files_to_cps, vcs_new_changed,
 	git_supports_gpg_sign, ruby_deprecated)
+from repoman._xml import _XMLParser, _MetadataTreeBuilder, metadata_dtd_uri
 
 
 if sys.hexversion >= 0x3000000:

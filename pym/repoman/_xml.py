@@ -1,4 +1,6 @@
 
+import xml
+
 
 class _XMLParser(xml.etree.ElementTree.XMLParser):
 	def __init__(self, data, **kwargs):
