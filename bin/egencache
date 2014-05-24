@@ -71,7 +71,7 @@ else:
 	except ImportError:
 		pass
 	else:
-		from repoman.utilities import parse_metadata_use
+		from repoman.metadata import parse_metadata_use
 
 from repoman.utilities import FindVCS
 
