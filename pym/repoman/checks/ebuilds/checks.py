@@ -914,6 +914,8 @@ def run_checks(contents, pkg):
 
 	for lc in checks:
 		lc.new(pkg)
+
+	multinum = 0
 	for num, line in enumerate(contents):
 
 		# Check if we're inside a here-document.
