@@ -49,7 +49,6 @@ import portage.util.formatter as formatter
 import repoman.argparser
 from repoman.argparser import parse_args
 from repoman import utilities
-from repoman.herdbase import make_herd_base
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
 from _emerge.UserQuery import UserQuery
@@ -70,6 +69,7 @@ from portage.package.ebuild.digestgen import digestgen
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 
 from repoman.checks.ebuilds import run_checks, checks_init
+from repoman.checks.herds.herdbase import make_herd_base
 from repoman.check_missingslot import check_missingslot
 from repoman.metadata import (fetch_metadata_dtd, metadata_xml_encoding,
 	metadata_doctype_name, metadata_xml_declaration)
