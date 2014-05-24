@@ -348,3 +348,86 @@ ruby_deprecated = frozenset([
 # file.executable
 no_exec = frozenset(["Manifest", "ChangeLog", "metadata.xml"])
 
+
+def format_qa_output(
+	formatter, stats, fails, dofull, dofail, options, qawarnings):
+	"""Helper function that formats output properly
+
+	Args:
+		formatter - a subclass of Formatter
+		stats - a dict of qa status items
+		fails - a dict of qa status failures
+		dofull - boolean to print full results or a summary
+		dofail - boolean to decide if failure was hard or soft
+
+	Returns:
+		None (modifies formatter)
+	"""
+	full = options.mode == 'full'
+	# we only want key value pairs where value > 0
+	for category, number in \
+		filter(lambda myitem: myitem[1] > 0, sorted(stats.items())):
+		formatter.add_literal_data("  " + category.ljust(30))
+		if category in qawarnings:
+			formatter.push_style("WARN")
+		else:
+			formatter.push_style("BAD")
+		formatter.add_literal_data("%s" % number)
+		formatter.pop_style()
+		formatter.add_line_break()
+		if not dofull:
+			if not full and dofail and category in qawarnings:
+				# warnings are considered noise when there are failures
+				continue
+			fails_list = fails[category]
+			if not full and len(fails_list) > 12:
+				fails_list = fails_list[:12]
+			for failure in fails_list:
+				formatter.add_literal_data("   " + failure)
+				formatter.add_line_break()
+
+
+def format_qa_output_column(
+	formatter, stats, fails, dofull, dofail, options, qawarnings):
+	"""Helper function that formats output in a machine-parseable column format
+
+	@param formatter: an instance of Formatter
+	@type formatter: Formatter
+	@param path: dict of qa status items
+	@type path: dict
+	@param fails: dict of qa status failures
+	@type fails: dict
+	@param dofull: Whether to print full results or a summary
+	@type dofull: boolean
+	@param dofail: Whether failure was hard or soft
+	@type dofail: boolean
+	@param options: The command-line options provided to repoman
+	@type options: Namespace
+	@param qawarnings: the set of warning types
+	@type qawarnings: set
+	@return: None (modifies formatter)
+	"""
+	full = options.mode == 'full'
+	for category, number in stats.items():
+		# we only want key value pairs where value > 0
+		if number < 1:
+			continue
+
+		formatter.add_literal_data("NumberOf " + category + " ")
+		if category in qawarnings:
+			formatter.push_style("WARN")
+		else:
+			formatter.push_style("BAD")
+		formatter.add_literal_data("%s" % number)
+		formatter.pop_style()
+		formatter.add_line_break()
+		if not dofull:
+			if not full and dofail and category in qawarnings:
+				# warnings are considered noise when there are failures
+				continue
+			fails_list = fails[category]
+			if not full and len(fails_list) > 12:
+				fails_list = fails_list[:12]
+			for failure in fails_list:
+				formatter.add_literal_data(category + " " + failure)
+				formatter.add_line_break()
