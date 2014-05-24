@@ -14,8 +14,6 @@ import portage
 from portage import os
 from portage.output import green
 
-from repoman.qa_data import metadata_dtd_ctime_interval, metadata_dtd_uri
-
 
 metadata_xml_encoding = 'UTF-8'
 metadata_xml_declaration = '<?xml version="1.0" encoding="%s"?>' \
