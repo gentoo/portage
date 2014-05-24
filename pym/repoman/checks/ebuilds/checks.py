@@ -862,7 +862,7 @@ _base_check_classes = (InheritEclass, LineCheck, PhaseCheck)
 _constant_checks = None
 
 
-def _init(experimental_inherit=False):
+def checks_init(experimental_inherit=False):
 
 	global _constant_checks, _eclass_info
 
@@ -907,7 +907,7 @@ def run_checks(contents, pkg):
 	unicode_escape_codec = codecs.lookup('unicode_escape')
 	unicode_escape = lambda x: unicode_escape_codec.decode(x)[0]
 	if _constant_checks is None:
-		_init()
+		checks_init()
 	checks = _constant_checks
 	here_doc_delim = None
 	multiline = None
