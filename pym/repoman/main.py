@@ -4,7 +4,6 @@
 
 from __future__ import print_function, unicode_literals
 
-import codecs
 import copy
 import errno
 import io
@@ -78,6 +77,7 @@ from repoman.metadata import (fetch_metadata_dtd, metadata_xml_encoding,
 from repoman.profile import dev_keywords, ProfileDesc, valid_profile_types
 from repoman.qa_data import (qahelp, qawarnings, qacats, no_exec, allvars,
 	max_desc_len, missingvars, suspect_virtual, suspect_rdepend, valid_restrict)
+from repoman.subprocess import repoman_popen, repoman_getstatusoutput
 
 
 if sys.hexversion >= 0x3000000:

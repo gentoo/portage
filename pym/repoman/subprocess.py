@@ -1,4 +1,15 @@
 
+
+import codecs
+import subprocess
+import sys
+
+import portage
+from portage import os
+from portage.process import find_binary
+from portage import _encodings, _unicode_encode
+
+
 def repoman_getstatusoutput(cmd):
 	"""
 	Implements an interface similar to getstatusoutput(), but with
