@@ -76,8 +76,8 @@ from repoman.qa_data import (qahelp, qawarnings, qacats, no_exec, allvars,
 	max_desc_len, missingvars, suspect_virtual, suspect_rdepend, valid_restrict)
 from repoman.subprocess import repoman_popen, repoman_getstatusoutput
 from repoman import utilities
-from repoman.vcs import (detect_vcs_conflicts, FindVCS, git_supports_gpg_sign,
-	ruby_deprecated, vcs_files_to_cps, vcs_new_changed)
+from repoman.vcs import (detect_vcs_conflicts, git_supports_gpg_sign,
+	ruby_deprecated, vcs_files_to_cps, vcs_new_changed, VCSSettings)
 from repoman._xml import _XMLParser, _MetadataTreeBuilder, metadata_dtd_uri
 
 
@@ -153,47 +153,9 @@ if portdir is None:
 myreporoot = os.path.basename(portdir_overlay)
 myreporoot += mydir[len(portdir_overlay):]
 
-if options.vcs:
-	if options.vcs in ('cvs', 'svn', 'git', 'bzr', 'hg'):
-		vcs = options.vcs
-	else:
-		vcs = None
-else:
-	vcses = FindVCS()
-	if len(vcses) > 1:
-		print(red(
-			'*** Ambiguous workdir -- more than one VCS found'
-			' at the same depth: %s.' % ', '.join(vcses)))
-		print(red(
-			'*** Please either clean up your workdir'
-			' or specify --vcs option.'))
-		sys.exit(1)
-	elif vcses:
-		vcs = vcses[0]
-	else:
-		vcs = None
+##################
 
-if options.if_modified == "y" and vcs is None:
-	logging.info(
-		"Not in a version controlled repository; "
-		"disabling --if-modified.")
-	options.if_modified = "n"
-
-# Disable copyright/mtime check if vcs does not preserve mtime (bug #324075).
-vcs_preserves_mtime = vcs in ('cvs', None)
-
-vcs_local_opts = repoman_settings.get("REPOMAN_VCS_LOCAL_OPTS", "").split()
-vcs_global_opts = repoman_settings.get("REPOMAN_VCS_GLOBAL_OPTS")
-if vcs_global_opts is None:
-	if vcs in ('cvs', 'svn'):
-		vcs_global_opts = "-q"
-	else:
-		vcs_global_opts = ""
-vcs_global_opts = vcs_global_opts.split()
-
-if options.mode == 'commit' and not options.pretend and not vcs:
-	logging.info("Not in a version controlled repository; enabling pretend mode.")
-	options.pretend = True
+vcs_settings = VCSSettings(options, repoman_settings)
 
 # Ensure that current repository is in the list of enabled repositories.
 repodir = os.path.realpath(portdir_overlay)
@@ -244,11 +206,11 @@ if repo_config.allow_provide_virtual:
 	qawarnings.add("virtual.oldstyle")
 
 if repo_config.sign_commit:
-	if vcs == 'git':
+	if vcs_settings.vcs == 'git':
 		# NOTE: It's possible to use --gpg-sign=key_id to specify the key in
 		# the commit arguments. If key_id is unspecified, then it must be
 		# configured by `git config user.signingkey key_id`.
-		vcs_local_opts.append("--gpg-sign")
+		vcs_settings.vcs_local_opts.append("--gpg-sign")
 		if repoman_settings.get("PORTAGE_GPG_DIR"):
 			# Pass GNUPGHOME to git for bug #462362.
 			commit_env["GNUPGHOME"] = repoman_settings["PORTAGE_GPG_DIR"]
@@ -322,7 +284,7 @@ if options.mode in ("commit", "fix", "manifest"):
 if options.echangelog is None and repo_config.update_changelog:
 	options.echangelog = 'y'
 
-if vcs is None:
+if vcs_settings.vcs is None:
 	options.echangelog = 'n'
 
 # The --echangelog option causes automatic ChangeLog generation,
@@ -335,13 +297,13 @@ if vcs is None:
 # Gentoo's Council decided to always use the ChangeLog file.
 # TODO: shouldn't this just be switched on the repo, iso the VCS?
 is_echangelog_enabled = options.echangelog in ('y', 'force')
-vcs_is_cvs_or_svn = vcs in ('cvs', 'svn')
-check_changelog = not is_echangelog_enabled and vcs_is_cvs_or_svn
+vcs_settings.vcs_is_cvs_or_svn = vcs_settings.vcs in ('cvs', 'svn')
+check_changelog = not is_echangelog_enabled and vcs_settings.vcs_is_cvs_or_svn
 
 if 'digest' in repoman_settings.features and options.digest != 'n':
 	options.digest = 'y'
 
-logging.debug("vcs: %s" % (vcs,))
+logging.debug("vcs: %s" % (vcs_settings.vcs,))
 logging.debug("repo config: %s" % (repo_config,))
 logging.debug("options: %s" % (options,))
 
@@ -621,8 +583,8 @@ else:
 	# this can be problematic if xmllint changes their output
 	xmllint_capable = True
 
-if options.mode == 'commit' and vcs:
-	detect_vcs_conflicts(options, vcs)
+if options.mode == 'commit' and vcs_settings.vcs:
+	detect_vcs_conflicts(options, vcs_settings.vcs)
 
 if options.mode == "manifest":
 	pass
@@ -641,14 +603,14 @@ myremoved = []
 if (options.if_modified != "y" and
 	options.mode in ("manifest", "manifest-check")):
 	pass
-elif vcs == "cvs":
+elif vcs_settings.vcs == "cvs":
 	mycvstree = cvstree.getentries("./", recursive=1)
 	mychanged = cvstree.findchanged(mycvstree, recursive=1, basedir="./")
 	mynew = cvstree.findnew(mycvstree, recursive=1, basedir="./")
 	if options.if_modified == "y":
 		myremoved = cvstree.findremoved(mycvstree, recursive=1, basedir="./")
 
-elif vcs == "svn":
+elif vcs_settings.vcs == "svn":
 	with repoman_popen("svn status") as f:
 		svnstatus = f.readlines()
 	mychanged = [
@@ -665,7 +627,7 @@ elif vcs == "svn":
 			for elem in svnstatus
 			if elem.startswith("D")]
 
-elif vcs == "git":
+elif vcs_settings.vcs == "git":
 	with repoman_popen(
 		"git diff-index --name-only "
 		"--relative --diff-filter=M HEAD") as f:
@@ -684,7 +646,7 @@ elif vcs == "git":
 			myremoved = f.readlines()
 		myremoved = ["./" + elem[:-1] for elem in myremoved]
 
-elif vcs == "bzr":
+elif vcs_settings.vcs == "bzr":
 	with repoman_popen("bzr status -S .") as f:
 		bzrstatus = f.readlines()
 	mychanged = [
@@ -701,7 +663,7 @@ elif vcs == "bzr":
 			for elem in bzrstatus
 			if elem and (elem[1:2] == "K" or elem[0:1] == "R")]
 
-elif vcs == "hg":
+elif vcs_settings.vcs == "hg":
 	with repoman_popen("hg status --no-status --modified .") as f:
 		mychanged = f.readlines()
 	mychanged = ["./" + elem.rstrip() for elem in mychanged]
@@ -713,7 +675,7 @@ elif vcs == "hg":
 			myremoved = f.readlines()
 		myremoved = ["./" + elem.rstrip() for elem in myremoved]
 
-if vcs:
+if vcs_settings.vcs:
 	new_ebuilds.update(x for x in mynew if x.endswith(".ebuild"))
 	modified_ebuilds.update(x for x in mychanged if x.endswith(".ebuild"))
 	modified_changelogs.update(
@@ -739,7 +701,7 @@ if options.include_arches:
 # running `svn status` in every package dir will be too expensive.
 
 check_ebuild_notadded = not \
-	(vcs == "svn" and repolevel < 3 and options.mode != "commit")
+	(vcs_settings.vcs == "svn" and repolevel < 3 and options.mode != "commit")
 
 # Build a regex from thirdpartymirrors for the SRC_URI.mirror check.
 thirdpartymirrors = {}
@@ -917,7 +879,7 @@ for x in effective_scanlist:
 		index = repo_config.find_invalid_path_char(y)
 		if index != -1:
 			y_relative = os.path.join(checkdir_relative, y)
-			if vcs is not None and not vcs_new_changed(y_relative):
+			if vcs_settings.vcs is not None and not vcs_new_changed(y_relative):
 				# If the file isn't in the VCS new or changed set, then
 				# assume that it's an irrelevant temporary file (Manifest
 				# entries are not generated for file names containing
@@ -953,12 +915,12 @@ for x in effective_scanlist:
 			if f is not None:
 				f.close()
 
-	if vcs in ("git", "hg") and check_ebuild_notadded:
-		if vcs == "git":
+	if vcs_settings.vcs in ("git", "hg") and check_ebuild_notadded:
+		if vcs_settings.vcs == "git":
 			myf = repoman_popen(
 				"git ls-files --others %s" %
 				(portage._shell_quote(checkdir_relative),))
-		if vcs == "hg":
+		if vcs_settings.vcs == "hg":
 			myf = repoman_popen(
 				"hg status --no-status --unknown %s" %
 				(portage._shell_quote(checkdir_relative),))
@@ -969,22 +931,22 @@ for x in effective_scanlist:
 					os.path.join(x, os.path.basename(l[:-1])))
 		myf.close()
 
-	if vcs in ("cvs", "svn", "bzr") and check_ebuild_notadded:
+	if vcs_settings.vcs in ("cvs", "svn", "bzr") and check_ebuild_notadded:
 		try:
-			if vcs == "cvs":
+			if vcs_settings.vcs == "cvs":
 				myf = open(checkdir + "/CVS/Entries", "r")
-			if vcs == "svn":
+			if vcs_settings.vcs == "svn":
 				myf = repoman_popen(
 					"svn status --depth=files --verbose " +
 					portage._shell_quote(checkdir))
-			if vcs == "bzr":
+			if vcs_settings.vcs == "bzr":
 				myf = repoman_popen(
 					"bzr ls -v --kind=file " +
 					portage._shell_quote(checkdir))
 			myl = myf.readlines()
 			myf.close()
 			for l in myl:
-				if vcs == "cvs":
+				if vcs_settings.vcs == "cvs":
 					if l[0] != "/":
 						continue
 					splitl = l[1:].split("/")
@@ -992,7 +954,7 @@ for x in effective_scanlist:
 						continue
 					if splitl[0][-7:] == ".ebuild":
 						eadded.append(splitl[0][:-7])
-				if vcs == "svn":
+				if vcs_settings.vcs == "svn":
 					if l[:1] == "?":
 						continue
 					if l[:7] == '      >':
@@ -1001,13 +963,13 @@ for x in effective_scanlist:
 					l = l.split()[-1]
 					if l[-7:] == ".ebuild":
 						eadded.append(os.path.basename(l[:-7]))
-				if vcs == "bzr":
+				if vcs_settings.vcs == "bzr":
 					if l[1:2] == "?":
 						continue
 					l = l.split()[-1]
 					if l[-7:] == ".ebuild":
 						eadded.append(os.path.basename(l[:-7]))
-			if vcs == "svn":
+			if vcs_settings.vcs == "svn":
 				myf = repoman_popen(
 					"svn status " +
 					portage._shell_quote(checkdir))
@@ -1019,7 +981,7 @@ for x in effective_scanlist:
 						if l[-7:] == ".ebuild":
 							eadded.append(os.path.basename(l[:-7]))
 		except IOError:
-			if vcs == "cvs":
+			if vcs_settings.vcs == "cvs":
 				stats["CVS/Entries.IO_error"] += 1
 				fails["CVS/Entries.IO_error"].append(checkdir + "/CVS/Entries")
 			else:
@@ -1107,7 +1069,7 @@ for x in effective_scanlist:
 			index = repo_config.find_invalid_path_char(y)
 			if index != -1:
 				y_relative = os.path.join(checkdir_relative, "files", y)
-				if vcs is not None and not vcs_new_changed(y_relative):
+				if vcs_settings.vcs is not None and not vcs_new_changed(y_relative):
 					# If the file isn't in the VCS new or changed set, then
 					# assume that it's an irrelevant temporary file (Manifest
 					# entries are not generated for file names containing
@@ -1272,9 +1234,9 @@ for x in effective_scanlist:
 			stats['changelog.ebuildadded'] += 1
 			fails['changelog.ebuildadded'].append(relative_path)
 
-		vcs_is_cvs_or_svn_or_bzr = vcs in ("cvs", "svn", "bzr")
+		vcs_settings.vcs_is_cvs_or_svn_or_bzr = vcs_settings.vcs in ("cvs", "svn", "bzr")
 		check_ebuild_really_notadded = check_ebuild_notadded and y not in eadded
-		if vcs_is_cvs_or_svn_or_bzr and check_ebuild_really_notadded:
+		if vcs_settings.vcs_is_cvs_or_svn_or_bzr and check_ebuild_really_notadded:
 			# ebuild not added to vcs
 			stats["ebuild.notadded"] += 1
 			fails["ebuild.notadded"].append(x + "/" + y + ".ebuild")
@@ -1707,7 +1669,7 @@ for x in effective_scanlist:
 		# Syntax Checks
 		relative_path = os.path.join(x, y + ".ebuild")
 		full_path = os.path.join(repodir, relative_path)
-		if not vcs_preserves_mtime:
+		if not vcs_settings.vcs_preserves_mtime:
 			if ebuild_path not in new_ebuilds and \
 				ebuild_path not in modified_ebuilds:
 				pkg.mtime = None
@@ -2023,7 +1985,7 @@ else:
 			"\"So, you want to play it safe. Good call.\"\n")
 
 	myunadded = []
-	if vcs == "cvs":
+	if vcs_settings.vcs == "cvs":
 		try:
 			myvcstree = portage.cvstree.getentries("./", recursive=1)
 			myunadded = portage.cvstree.findunadded(
@@ -2032,7 +1994,7 @@ else:
 			raise  # TODO propagate this
 		except:
 			err("Error retrieving CVS tree; exiting.")
-	if vcs == "svn":
+	if vcs_settings.vcs == "svn":
 		try:
 			with repoman_popen("svn status --no-ignore") as f:
 				svnstatus = f.readlines()
@@ -2044,12 +2006,12 @@ else:
 			raise  # TODO propagate this
 		except:
 			err("Error retrieving SVN info; exiting.")
-	if vcs == "git":
+	if vcs_settings.vcs == "git":
 		# get list of files not under version control or missing
 		myf = repoman_popen("git ls-files --others")
 		myunadded = ["./" + elem[:-1] for elem in myf]
 		myf.close()
-	if vcs == "bzr":
+	if vcs_settings.vcs == "bzr":
 		try:
 			with repoman_popen("bzr status -S .") as f:
 				bzrstatus = f.readlines()
@@ -2061,7 +2023,7 @@ else:
 			raise  # TODO propagate this
 		except:
 			err("Error retrieving bzr info; exiting.")
-	if vcs == "hg":
+	if vcs_settings.vcs == "hg":
 		with repoman_popen("hg status --no-status --unknown .") as f:
 			myunadded = f.readlines()
 		myunadded = ["./" + elem.rstrip() for elem in myunadded]
@@ -2102,7 +2064,7 @@ else:
 		print()
 		sys.exit(1)
 
-	if vcs == "hg" and mydeleted:
+	if vcs_settings.vcs == "hg" and mydeleted:
 		print(red(
 			"!!! The following files are removed manually"
 			" from your local tree but are not"))
@@ -2115,7 +2077,7 @@ else:
 		print()
 		sys.exit(1)
 
-	if vcs == "cvs":
+	if vcs_settings.vcs == "cvs":
 		mycvstree = cvstree.getentries("./", recursive=1)
 		mychanged = cvstree.findchanged(mycvstree, recursive=1, basedir="./")
 		mynew = cvstree.findnew(mycvstree, recursive=1, basedir="./")
@@ -2124,7 +2086,7 @@ else:
 		no_expansion = set(portage.cvstree.findoption(
 			mycvstree, bin_blob_pattern, recursive=1, basedir="./"))
 
-	if vcs == "svn":
+	if vcs_settings.vcs == "svn":
 		with repoman_popen("svn status") as f:
 			svnstatus = f.readlines()
 		mychanged = [
@@ -2147,7 +2109,7 @@ else:
 			("./" + prop.split(" - ")[0], prop.split(" - ")[1].split())
 			for prop in props if " - " in prop)
 
-	elif vcs == "git":
+	elif vcs_settings.vcs == "git":
 		with repoman_popen(
 			"git diff-index --name-only "
 			"--relative --diff-filter=M HEAD") as f:
@@ -2166,7 +2128,7 @@ else:
 			myremoved = f.readlines()
 		myremoved = ["./" + elem[:-1] for elem in myremoved]
 
-	if vcs == "bzr":
+	if vcs_settings.vcs == "bzr":
 		with repoman_popen("bzr status -S .") as f:
 			bzrstatus = f.readlines()
 		mychanged = [
@@ -2187,7 +2149,7 @@ else:
 			if elem and (elem[1:2] == "K" or elem[0:1] == "R")]
 		# Bazaar expands nothing.
 
-	if vcs == "hg":
+	if vcs_settings.vcs == "hg":
 		with repoman_popen("hg status --no-status --modified .") as f:
 			mychanged = f.readlines()
 		mychanged = ["./" + elem.rstrip() for elem in mychanged]
@@ -2200,8 +2162,8 @@ else:
 			myremoved = f.readlines()
 		myremoved = ["./" + elem.rstrip() for elem in myremoved]
 
-	if vcs:
-		if not (mychanged or mynew or myremoved or (vcs == "hg" and mydeleted)):
+	if vcs_settings.vcs:
+		if not (mychanged or mynew or myremoved or (vcs_settings.vcs == "hg" and mydeleted)):
 			print(green("RepoMan sez:"), "\"Doing nothing is not always good for QA.\"")
 			print()
 			print("(Didn't find any changed files...)")
@@ -2281,7 +2243,7 @@ else:
 			"--include-arches=\"%s\"" %
 			" ".join(sorted(include_arches)))
 
-	if vcs == "git":
+	if vcs_settings.vcs == "git":
 		# Use new footer only for git (see bug #438364).
 		commit_footer = "\n\nPackage-Manager: portage-%s" % portage_version
 		if report_options:
@@ -2300,7 +2262,7 @@ else:
 		if dco_sob:
 			commit_footer += "Signed-off-by: %s\n" % (dco_sob, )
 		commit_footer += "(Portage version: %s/%s/%s" % \
-			(portage_version, vcs, unameout)
+			(portage_version, vcs_settings.vcs, unameout)
 		if report_options:
 			commit_footer += ", RepoMan options: " + " ".join(report_options)
 		if sign_manifests:
@@ -2376,7 +2338,7 @@ else:
 
 	if myautoadd:
 		print(">>> Auto-Adding missing Manifest/ChangeLog file(s)...")
-		add_cmd = [vcs, "add"]
+		add_cmd = [vcs_settings.vcs, "add"]
 		add_cmd += myautoadd
 		if options.pretend:
 			portage.writemsg_stdout(
@@ -2397,22 +2359,22 @@ else:
 			retcode = subprocess.call(add_cmd)
 			if retcode != os.EX_OK:
 				logging.error(
-					"Exiting on %s error code: %s\n" % (vcs, retcode))
+					"Exiting on %s error code: %s\n" % (vcs_settings.vcs, retcode))
 				sys.exit(retcode)
 
 		myupdates += myautoadd
 
 	print("* %s files being committed..." % green(str(len(myupdates))), end=' ')
 
-	if vcs not in ('cvs', 'svn'):
+	if vcs_settings.vcs not in ('cvs', 'svn'):
 		# With git, bzr and hg, there's never any keyword expansion, so
 		# there's no need to regenerate manifests and all files will be
 		# committed in one big commit at the end.
 		print()
 	elif not repo_config.thin_manifest:
-		if vcs == 'cvs':
+		if vcs_settings.vcs == 'cvs':
 			headerstring = "'\$(Header|Id).*\$'"
-		elif vcs == "svn":
+		elif vcs_settings.vcs == "svn":
 			svn_keywords = dict((k.lower(), k) for k in [
 				"Rev",
 				"Revision",
@@ -2430,12 +2392,12 @@ else:
 		for myfile in myupdates:
 
 			# for CVS, no_expansion contains files that are excluded from expansion
-			if vcs == "cvs":
+			if vcs_settings.vcs == "cvs":
 				if myfile in no_expansion:
 					continue
 
 			# for SVN, expansion contains files that are included in expansion
-			elif vcs == "svn":
+			elif vcs_settings.vcs == "svn":
 				if myfile not in expansion:
 					continue
 
@@ -2492,10 +2454,10 @@ else:
 		# so strip the prefix.
 		myfiles = [f.lstrip("./") for f in myfiles]
 
-		commit_cmd = [vcs]
-		commit_cmd.extend(vcs_global_opts)
+		commit_cmd = [vcs_settings.vcs]
+		commit_cmd.extend(vcs_settings.vcs_global_opts)
 		commit_cmd.append("commit")
-		commit_cmd.extend(vcs_local_opts)
+		commit_cmd.extend(vcs_settings.vcs_local_opts)
 		commit_cmd.extend(["-F", commitmessagefile])
 		commit_cmd.extend(myfiles)
 
@@ -2507,7 +2469,7 @@ else:
 				if retval != os.EX_OK:
 					writemsg_level(
 						"!!! Exiting on %s (shell) "
-						"error code: %s\n" % (vcs, retval),
+						"error code: %s\n" % (vcs_settings.vcs, retval),
 						level=logging.ERROR, noiselevel=-1)
 					sys.exit(retval)
 		finally:
@@ -2610,7 +2572,7 @@ else:
 			"\"You're rather crazy... "
 			"doing the entire repository.\"\n")
 
-	if vcs in ('cvs', 'svn') and (myupdates or myremoved):
+	if vcs_settings.vcs in ('cvs', 'svn') and (myupdates or myremoved):
 
 		for x in sorted(vcs_files_to_cps(
 			chain(myupdates, myremoved, mymanifests))):
@@ -2638,7 +2600,7 @@ else:
 			portage.writemsg("!!! Disabled FEATURES='sign'\n")
 			signed = False
 
-	if vcs == 'git':
+	if vcs_settings.vcs == 'git':
 		# It's not safe to use the git commit -a option since there might
 		# be some modified files elsewhere in the working tree that the
 		# user doesn't want to commit. Therefore, call git update-index
@@ -2656,7 +2618,7 @@ else:
 			if retval != os.EX_OK:
 				writemsg_level(
 					"!!! Exiting on %s (shell) "
-					"error code: %s\n" % (vcs, retval),
+					"error code: %s\n" % (vcs_settings.vcs, retval),
 					level=logging.ERROR, noiselevel=-1)
 				sys.exit(retval)
 
@@ -2676,15 +2638,15 @@ else:
 		mymsg.close()
 
 		commit_cmd = []
-		if options.pretend and vcs is None:
+		if options.pretend and vcs_settings.vcs is None:
 			# substitute a bogus value for pretend output
 			commit_cmd.append("cvs")
 		else:
-			commit_cmd.append(vcs)
-		commit_cmd.extend(vcs_global_opts)
+			commit_cmd.append(vcs_settings.vcs)
+		commit_cmd.extend(vcs_settings.vcs_global_opts)
 		commit_cmd.append("commit")
-		commit_cmd.extend(vcs_local_opts)
-		if vcs == "hg":
+		commit_cmd.extend(vcs_settings.vcs_local_opts)
+		if vcs_settings.vcs == "hg":
 			commit_cmd.extend(["--logfile", commitmessagefile])
 			commit_cmd.extend(myfiles)
 		else:
@@ -2697,7 +2659,7 @@ else:
 			else:
 				retval = spawn(commit_cmd, env=commit_env)
 				if retval != os.EX_OK:
-					if repo_config.sign_commit and vcs == 'git' and \
+					if repo_config.sign_commit and vcs_settings.vcs == 'git' and \
 						not git_supports_gpg_sign():
 						# Inform user that newer git is needed (bug #403323).
 						logging.error(
@@ -2705,7 +2667,7 @@ else:
 
 					writemsg_level(
 						"!!! Exiting on %s (shell) "
-						"error code: %s\n" % (vcs, retval),
+						"error code: %s\n" % (vcs_settings.vcs, retval),
 						level=logging.ERROR, noiselevel=-1)
 					sys.exit(retval)
 		finally:
@@ -2715,7 +2677,7 @@ else:
 				pass
 
 	print()
-	if vcs:
+	if vcs_settings.vcs:
 		print("Commit complete.")
 	else:
 		print(

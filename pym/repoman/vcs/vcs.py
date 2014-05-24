@@ -222,3 +222,49 @@ def detect_vcs_conflicts(options, vcs):
 				logging.fatal("!!! " + vcs + " exited with an error. Terminating.")
 				sys.exit(retval)
 
+
+class VCSSettings(object):
+	'''Holds various VCS settings'''
+
+	def __init__(self, options=None, repoman_settings=None):
+		if options.vcs:
+			if options.vcs in ('cvs', 'svn', 'git', 'bzr', 'hg'):
+				self.vcs = options.vcs
+			else:
+				self.vcs = None
+		else:
+			vcses = FindVCS()
+			if len(vcses) > 1:
+				print(red(
+					'*** Ambiguous workdir -- more than one VCS found'
+					' at the same depth: %s.' % ', '.join(vcses)))
+				print(red(
+					'*** Please either clean up your workdir'
+					' or specify --vcs option.'))
+				sys.exit(1)
+			elif vcses:
+				self.vcs = vcses[0]
+			else:
+				self.vcs = None
+
+		if options.if_modified == "y" and self.vcs is None:
+			logging.info(
+				"Not in a version controlled repository; "
+				"disabling --if-modified.")
+			options.if_modified = "n"
+
+		# Disable copyright/mtime check if vcs does not preserve mtime (bug #324075).
+		self.vcs_preserves_mtime = self.vcs in ('cvs',)
+
+		self.vcs_local_opts = repoman_settings.get("REPOMAN_VCS_LOCAL_OPTS", "").split()
+		self.vcs_global_opts = repoman_settings.get("REPOMAN_VCS_GLOBAL_OPTS")
+		if self.vcs_global_opts is None:
+			if self.vcs in ('cvs', 'svn'):
+				self.vcs_global_opts = "-q"
+			else:
+				self.vcs_global_opts = ""
+		self.vcs_global_opts = self.vcs_global_opts.split()
+
+		if options.mode == 'commit' and not options.pretend and not self.vcs:
+			logging.info("Not in a version controlled repository; enabling pretend mode.")
+			options.pretend = True
