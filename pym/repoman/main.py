@@ -76,6 +76,8 @@ from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 from repoman.metadata import (fetch_metadata_dtd, metadata_xml_encoding,
 	metadata_doctype_name, metadata_xml_declaration)
 from repoman.profile import dev_keywords, ProfileDesc, valid_profile_types
+from repoman.qa_data import (qahelp, qawarnings, qacats, no_exec, allvars,
+	max_desc_len, missingvars, suspect_virtual, suspect_rdepend, valid_restrict)
 
 
 if sys.hexversion >= 0x3000000:
@@ -83,12 +85,14 @@ if sys.hexversion >= 0x3000000:
 
 util.initialize_logger()
 
-# 14 is the length of DESCRIPTION=""
-max_desc_len = 100
-allowed_filename_chars = "a-zA-Z0-9._-+:"
+commitmessage = None
+
 pv_toolong_re = re.compile(r'[0-9]{19,}')
 GPG_KEY_ID_REGEX = r'(0x)?([0-9a-fA-F]{8}){1,5}!?'
 bad = create_color_func("BAD")
+
+live_eclasses = portage.const.LIVE_ECLASSES
+non_ascii_re = re.compile(r'[^\x00-\x7f]')
 
 # A sane umask is needed for files that portage creates.
 os.umask(0o22)

@@ -1,4 +1,13 @@
 
+import logging
+
+from _emerge.Package import Package
+import portage
+
+
+# 14 is the length of DESCRIPTION=""
+max_desc_len = 100
+allowed_filename_chars = "a-zA-Z0-9._-+:"
 
 qahelp = {
 	"CVS/Entries.IO_error": (
@@ -263,13 +272,12 @@ qawarnings = set((
 	"IUSE.rubydeprecated",
 ))
 
-non_ascii_re = re.compile(r'[^\x00-\x7f]')
 
 missingvars = ["KEYWORDS", "LICENSE", "DESCRIPTION", "HOMEPAGE"]
 allvars = set(x for x in portage.auxdbkeys if not x.startswith("UNUSED_"))
 allvars.update(Package.metadata_keys)
 allvars = sorted(allvars)
-commitmessage = None
+
 for x in missingvars:
 	x += ".missing"
 	if x not in qacats:
@@ -281,7 +289,6 @@ valid_restrict = frozenset([
 	"binchecks", "bindist", "fetch", "installsources", "mirror",
 	"preserve-libs", "primaryuri", "splitdebug", "strip", "test", "userpriv"])
 
-live_eclasses = portage.const.LIVE_ECLASSES
 
 suspect_rdepend = frozenset([
 	"app-arch/cabextract",
