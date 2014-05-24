@@ -14,7 +14,6 @@ import stat
 import subprocess
 import sys
 import tempfile
-import textwrap
 import platform
 from itertools import chain
 from stat import S_ISDIR
@@ -74,6 +73,7 @@ from repoman.metadata import (fetch_metadata_dtd, metadata_xml_encoding,
 from repoman.profile import dev_keywords, ProfileDesc, valid_profile_types
 from repoman.qa_data import (qahelp, qawarnings, qacats, no_exec, allvars,
 	max_desc_len, missingvars, suspect_virtual, suspect_rdepend, valid_restrict)
+from repoman.repos import RepoSettings
 from repoman.subprocess import repoman_popen, repoman_getstatusoutput
 from repoman import utilities
 from repoman.vcs import (detect_vcs_conflicts, git_supports_gpg_sign,
@@ -89,7 +89,7 @@ util.initialize_logger()
 commitmessage = None
 
 pv_toolong_re = re.compile(r'[0-9]{19,}')
-GPG_KEY_ID_REGEX = r'(0x)?([0-9a-fA-F]{8}){1,5}!?'
+
 bad = create_color_func("BAD")
 
 live_eclasses = portage.const.LIVE_ECLASSES
@@ -157,131 +157,17 @@ myreporoot += mydir[len(portdir_overlay):]
 
 vcs_settings = VCSSettings(options, repoman_settings)
 
-# Ensure that current repository is in the list of enabled repositories.
-repodir = os.path.realpath(portdir_overlay)
-try:
-	repoman_settings.repositories.get_repo_for_location(repodir)
-except KeyError:
-	repo_conf = portage.repository.config
-	repo_name = repo_conf.RepoConfig._read_valid_repo_name(portdir_overlay)[0]
-	layout_conf_data = repo_conf.parse_layout_conf(portdir_overlay)[0]
-	if layout_conf_data['repo-name']:
-		repo_name = layout_conf_data['repo-name']
-	tmp_conf_file = io.StringIO(textwrap.dedent("""
-		[%s]
-		location = %s
-		""") % (repo_name, portdir_overlay))
-	# Ensure that the repository corresponding to $PWD overrides a
-	# repository of the same name referenced by the existing PORTDIR
-	# or PORTDIR_OVERLAY settings.
-	repoman_settings['PORTDIR_OVERLAY'] = "%s %s" % (
-		repoman_settings.get('PORTDIR_OVERLAY', ''),
-		portage._shell_quote(portdir_overlay))
-	repositories = repo_conf.load_repository_config(
-		repoman_settings, extra_files=[tmp_conf_file])
-	# We have to call the config constructor again so that attributes
-	# dependent on config.repositories are initialized correctly.
-	repoman_settings = portage.config(
-		config_root=config_root, local_config=False, repositories=repositories)
 
-root = repoman_settings['EROOT']
-trees = {
-	root: {'porttree': portage.portagetree(settings=repoman_settings)}
-}
-portdb = trees[root]['porttree'].dbapi
+##################
 
-# Constrain dependency resolution to the master(s)
-# that are specified in layout.conf.
-repo_config = repoman_settings.repositories.get_repo_for_location(repodir)
-portdb.porttrees = list(repo_config.eclass_db.porttrees)
-portdir = portdb.porttrees[0]
-commit_env = os.environ.copy()
-# list() is for iteration on a copy.
-for repo in list(repoman_settings.repositories):
-	# all paths are canonical
-	if repo.location not in repo_config.eclass_db.porttrees:
-		del repoman_settings.repositories[repo.name]
+repo_settings = RepoSettings(config_root, portdir, portdir_overlay,
+		repoman_settings, vcs_settings, options, qawarnings)
 
-if repo_config.allow_provide_virtual:
-	qawarnings.add("virtual.oldstyle")
+portdb = repo_settings.portdb
+##################
 
-if repo_config.sign_commit:
-	if vcs_settings.vcs == 'git':
-		# NOTE: It's possible to use --gpg-sign=key_id to specify the key in
-		# the commit arguments. If key_id is unspecified, then it must be
-		# configured by `git config user.signingkey key_id`.
-		vcs_settings.vcs_local_opts.append("--gpg-sign")
-		if repoman_settings.get("PORTAGE_GPG_DIR"):
-			# Pass GNUPGHOME to git for bug #462362.
-			commit_env["GNUPGHOME"] = repoman_settings["PORTAGE_GPG_DIR"]
 
-		# Pass GPG_TTY to git for bug #477728.
-		try:
-			commit_env["GPG_TTY"] = os.ttyname(sys.stdin.fileno())
-		except OSError:
-			pass
-
-# In order to disable manifest signatures, repos may set
-# "sign-manifests = false" in metadata/layout.conf. This
-# can be used to prevent merge conflicts like those that
-# thin-manifests is designed to prevent.
-sign_manifests = "sign" in repoman_settings.features and \
-	repo_config.sign_manifest
-
-if repo_config.sign_manifest and repo_config.name == "gentoo" and \
-	options.mode in ("commit",) and not sign_manifests:
-	msg = (
-		"The '%s' repository has manifest signatures enabled, "
-		"but FEATURES=sign is currently disabled. In order to avoid this "
-		"warning, enable FEATURES=sign in make.conf. Alternatively, "
-		"repositories can disable manifest signatures by setting "
-		"'sign-manifests = false' in metadata/layout.conf.") % (
-			repo_config.name,)
-	for line in textwrap.wrap(msg, 60):
-		logging.warning(line)
-
-is_commit = options.mode in ("commit",)
-valid_gpg_key = repoman_settings.get("PORTAGE_GPG_KEY") and re.match(
-	r'^%s$' % GPG_KEY_ID_REGEX, repoman_settings["PORTAGE_GPG_KEY"])
-
-if sign_manifests and is_commit and not valid_gpg_key:
-	logging.error(
-		"PORTAGE_GPG_KEY value is invalid: %s" %
-		repoman_settings["PORTAGE_GPG_KEY"])
-	sys.exit(1)
-
-manifest_hashes = repo_config.manifest_hashes
-if manifest_hashes is None:
-	manifest_hashes = portage.const.MANIFEST2_HASH_DEFAULTS
-
-if options.mode in ("commit", "fix", "manifest"):
-	if portage.const.MANIFEST2_REQUIRED_HASH not in manifest_hashes:
-		msg = (
-			"The 'manifest-hashes' setting in the '%s' repository's "
-			"metadata/layout.conf does not contain the '%s' hash which "
-			"is required by this portage version. You will have to "
-			"upgrade portage if you want to generate valid manifests for "
-			"this repository.") % (
-			repo_config.name, portage.const.MANIFEST2_REQUIRED_HASH)
-		for line in textwrap.wrap(msg, 70):
-			logging.error(line)
-		sys.exit(1)
-
-	unsupported_hashes = manifest_hashes.difference(
-		portage.const.MANIFEST2_HASH_FUNCTIONS)
-	if unsupported_hashes:
-		msg = (
-			"The 'manifest-hashes' setting in the '%s' repository's "
-			"metadata/layout.conf contains one or more hash types '%s' "
-			"which are not supported by this portage version. You will "
-			"have to upgrade portage if you want to generate valid "
-			"manifests for this repository.") % (
-			repo_config.name, " ".join(sorted(unsupported_hashes)))
-		for line in textwrap.wrap(msg, 70):
-			logging.error(line)
-		sys.exit(1)
-
-if options.echangelog is None and repo_config.update_changelog:
+if options.echangelog is None and repo_settings.repo_config.update_changelog:
 	options.echangelog = 'y'
 
 if vcs_settings.vcs is None:
@@ -304,7 +190,7 @@ if 'digest' in repoman_settings.features and options.digest != 'n':
 	options.digest = 'y'
 
 logging.debug("vcs: %s" % (vcs_settings.vcs,))
-logging.debug("repo config: %s" % (repo_config,))
+logging.debug("repo config: %s" % (repo_settings.repo_config,))
 logging.debug("options: %s" % (options,))
 
 # It's confusing if these warnings are displayed without the user
@@ -313,7 +199,7 @@ env = os.environ.copy()
 env['FEATURES'] = env.get('FEATURES', '') + ' -unknown-features-warn'
 
 categories = []
-for path in repo_config.eclass_db.porttrees:
+for path in repo_settings.repo_config.eclass_db.porttrees:
 	categories.extend(portage.util.grabfile(
 		os.path.join(path, 'profiles', 'categories')))
 repoman_settings.categories = frozenset(
@@ -321,7 +207,7 @@ repoman_settings.categories = frozenset(
 categories = repoman_settings.categories
 
 portdb.settings = repoman_settings
-root_config = RootConfig(repoman_settings, trees[root], None)
+root_config = RootConfig(repoman_settings, repo_settings.trees[repo_settings.root], None)
 # We really only need to cache the metadata that's necessary for visibility
 # filtering. Anything else can be discarded to reduce memory consumption.
 portdb._aux_cache_keys.clear()
@@ -354,10 +240,10 @@ if options.mode == 'commit' and repolevel not in [1, 2, 3]:
 # Make startdir relative to the canonical repodir, so that we can pass
 # it to digestgen and it won't have to be canonicalized again.
 if repolevel == 1:
-	startdir = repodir
+	startdir = repo_settings.repodir
 else:
 	startdir = normalize_path(mydir)
-	startdir = os.path.join(repodir, *startdir.split(os.sep)[-2 - repolevel + 3:])
+	startdir = os.path.join(repo_settings.repodir, *startdir.split(os.sep)[-2 - repolevel + 3:])
 
 
 def caterror(mycat):
@@ -365,7 +251,7 @@ def caterror(mycat):
 		"%s is not an official category."
 		"  Skipping QA checks in this directory.\n"
 		"Please ensure that you add %s to %s/profiles/categories\n"
-		"if it is a new category." % (mycat, catdir, repodir))
+		"if it is a new category." % (mycat, catdir, repo_settings.repodir))
 
 
 profile_list = []
@@ -733,7 +619,7 @@ for x in effective_scanlist:
 	arch_xmatch_caches.clear()
 	eadded = []
 	catdir, pkgdir = x.split("/")
-	checkdir = repodir + "/" + x
+	checkdir = repo_settings.repodir + "/" + x
 	checkdir_relative = ""
 	if repolevel < 3:
 		checkdir_relative = os.path.join(pkgdir, checkdir_relative)
@@ -876,7 +762,7 @@ for x in effective_scanlist:
 	ebuildlist = [pkg.pf for pkg in ebuildlist]
 
 	for y in checkdirlist:
-		index = repo_config.find_invalid_path_char(y)
+		index = repo_settings.repo_config.find_invalid_path_char(y)
 		if index != -1:
 			y_relative = os.path.join(checkdir_relative, y)
 			if vcs_settings.vcs is not None and not vcs_new_changed(y_relative):
@@ -1037,7 +923,7 @@ for x in effective_scanlist:
 		while filesdirlist:
 			y = filesdirlist.pop(0)
 			relative_path = os.path.join(x, "files", y)
-			full_path = os.path.join(repodir, relative_path)
+			full_path = os.path.join(repo_settings.repodir, relative_path)
 			try:
 				mystat = os.stat(full_path)
 			except OSError as oe:
@@ -1066,7 +952,7 @@ for x in effective_scanlist:
 				fails["file.size"].append(
 					"(%d KiB) %s/files/%s" % (mystat.st_size // 1024, x, y))
 
-			index = repo_config.find_invalid_path_char(y)
+			index = repo_settings.repo_config.find_invalid_path_char(y)
 			if index != -1:
 				y_relative = os.path.join(checkdir_relative, "files", y)
 				if vcs_settings.vcs is not None and not vcs_new_changed(y_relative):
@@ -1222,7 +1108,7 @@ for x in effective_scanlist:
 
 	for y in ebuildlist:
 		relative_path = os.path.join(x, y + ".ebuild")
-		full_path = os.path.join(repodir, relative_path)
+		full_path = os.path.join(repo_settings.repodir, relative_path)
 		ebuild_path = y + ".ebuild"
 		if repolevel < 3:
 			ebuild_path = os.path.join(pkgdir, ebuild_path)
@@ -1273,12 +1159,12 @@ for x in effective_scanlist:
 		inherited = pkg.inherited
 		live_ebuild = live_eclasses.intersection(inherited)
 
-		if repo_config.eapi_is_banned(eapi):
+		if repo_settings.repo_config.eapi_is_banned(eapi):
 			stats["repo.eapi.banned"] += 1
 			fails["repo.eapi.banned"].append(
 				"%s: %s" % (relative_path, eapi))
 
-		elif repo_config.eapi_is_deprecated(eapi):
+		elif repo_settings.repo_config.eapi_is_deprecated(eapi):
 			stats["repo.eapi.deprecated"] += 1
 			fails["repo.eapi.deprecated"].append(
 				"%s: %s" % (relative_path, eapi))
@@ -1389,7 +1275,7 @@ for x in effective_scanlist:
 		Ebuilds that inherit a "Live" eclass (darcs,subversion,git,cvs,etc..) should
 		not be allowed to be marked stable
 		"""
-		if live_ebuild and repo_config.name == "gentoo":
+		if live_ebuild and repo_settings.repo_config.name == "gentoo":
 			bad_stable_keywords = []
 			for keyword in keywords:
 				if not keyword.startswith("~") and \
@@ -1668,7 +1554,7 @@ for x in effective_scanlist:
 
 		# Syntax Checks
 		relative_path = os.path.join(x, y + ".ebuild")
-		full_path = os.path.join(repodir, relative_path)
+		full_path = os.path.join(repo_settings.repodir, relative_path)
 		if not vcs_settings.vcs_preserves_mtime:
 			if ebuild_path not in new_ebuilds and \
 				ebuild_path not in modified_ebuilds:
@@ -1749,7 +1635,7 @@ for x in effective_scanlist:
 				xcache.update(shared_xmatch_caches)
 				arch_xmatch_caches[xmatch_cache_key] = xcache
 
-			trees[root]["porttree"].settings = dep_settings
+			repo_settings.trees[repo_settings.root]["porttree"].settings = dep_settings
 			portdb.settings = dep_settings
 			portdb.xcache = xcache
 
@@ -1775,7 +1661,7 @@ for x in effective_scanlist:
 			if not baddepsyntax:
 				ismasked = not ebuild_archs or \
 					pkg.cpv not in portdb.xmatch("match-visible",
-					Atom("%s::%s" % (pkg.cp, repo_config.name)))
+					Atom("%s::%s" % (pkg.cp, repo_settings.repo_config.name)))
 				if ismasked:
 					if not have_pmasked:
 						have_pmasked = bool(dep_settings._getMaskAtom(
@@ -1805,7 +1691,7 @@ for x in effective_scanlist:
 
 					success, atoms = portage.dep_check(
 						myvalue, portdb, dep_settings,
-						use="all", mode=matchmode, trees=trees)
+						use="all", mode=matchmode, trees=repo_settings.trees)
 
 					if success:
 						if atoms:
@@ -2039,7 +1925,7 @@ else:
 	if myunadded:
 		for x in range(len(myunadded) - 1, -1, -1):
 			xs = myunadded[x].split("/")
-			if repo_config.find_invalid_path_char(myunadded[x]) != -1:
+			if repo_settings.repo_config.find_invalid_path_char(myunadded[x]) != -1:
 				# The Manifest excludes this file,
 				# so it's safe to ignore.
 				del myunadded[x]
@@ -2248,7 +2134,7 @@ else:
 		commit_footer = "\n\nPackage-Manager: portage-%s" % portage_version
 		if report_options:
 			commit_footer += "\nRepoMan-Options: " + " ".join(report_options)
-		if sign_manifests:
+		if repo_settings.sign_manifests:
 			commit_footer += "\nManifest-Sign-Key: %s" % (gpg_key, )
 		if dco_sob:
 			commit_footer += "\nSigned-off-by: %s" % (dco_sob, )
@@ -2265,7 +2151,7 @@ else:
 			(portage_version, vcs_settings.vcs, unameout)
 		if report_options:
 			commit_footer += ", RepoMan options: " + " ".join(report_options)
-		if sign_manifests:
+		if repo_settings.sign_manifests:
 			commit_footer += ", signed Manifest commit with key %s" % \
 				(gpg_key, )
 		else:
@@ -2281,7 +2167,7 @@ else:
 		for x in sorted(vcs_files_to_cps(
 			chain(myupdates, mymanifests, myremoved))):
 			catdir, pkgdir = x.split("/")
-			checkdir = repodir + "/" + x
+			checkdir = repo_settings.repodir + "/" + x
 			checkdir_relative = ""
 			if repolevel < 3:
 				checkdir_relative = os.path.join(pkgdir, checkdir_relative)
@@ -2312,7 +2198,7 @@ else:
 
 			new_changelog = utilities.UpdateChangeLog(
 				checkdir_relative, committer_name, changelog_msg,
-				os.path.join(repodir, 'skel.ChangeLog'),
+				os.path.join(repo_settings.repodir, 'skel.ChangeLog'),
 				catdir, pkgdir,
 				new=clnew, removed=clremoved, changed=clchanged,
 				pretend=options.pretend)
@@ -2371,7 +2257,7 @@ else:
 		# there's no need to regenerate manifests and all files will be
 		# committed in one big commit at the end.
 		print()
-	elif not repo_config.thin_manifest:
+	elif not repo_settings.repo_config.thin_manifest:
 		if vcs_settings.vcs == 'cvs':
 			headerstring = "'\$(Header|Id).*\$'"
 		elif vcs_settings.vcs == "svn":
@@ -2465,7 +2351,7 @@ else:
 			if options.pretend:
 				print("(%s)" % (" ".join(commit_cmd),))
 			else:
-				retval = spawn(commit_cmd, env=commit_env)
+				retval = spawn(commit_cmd, env=repo_settings.commit_env)
 				if retval != os.EX_OK:
 					writemsg_level(
 						"!!! Exiting on %s (shell) "
@@ -2576,21 +2462,21 @@ else:
 
 		for x in sorted(vcs_files_to_cps(
 			chain(myupdates, myremoved, mymanifests))):
-			repoman_settings["O"] = os.path.join(repodir, x)
+			repoman_settings["O"] = os.path.join(repo_settings.repodir, x)
 			digestgen(mysettings=repoman_settings, myportdb=portdb)
 
 	elif broken_changelog_manifests:
 		for x in broken_changelog_manifests:
-			repoman_settings["O"] = os.path.join(repodir, x)
+			repoman_settings["O"] = os.path.join(repo_settings.repodir, x)
 			digestgen(mysettings=repoman_settings, myportdb=portdb)
 
 	signed = False
-	if sign_manifests:
+	if repo_settings.sign_manifests:
 		signed = True
 		try:
 			for x in sorted(vcs_files_to_cps(
 				chain(myupdates, myremoved, mymanifests))):
-				repoman_settings["O"] = os.path.join(repodir, x)
+				repoman_settings["O"] = os.path.join(repo_settings.repodir, x)
 				manifest_path = os.path.join(repoman_settings["O"], "Manifest")
 				if not need_signature(manifest_path):
 					continue
@@ -2657,9 +2543,9 @@ else:
 			if options.pretend:
 				print("(%s)" % (" ".join(commit_cmd),))
 			else:
-				retval = spawn(commit_cmd, env=commit_env)
+				retval = spawn(commit_cmd, env=repo_settings.commit_env)
 				if retval != os.EX_OK:
-					if repo_config.sign_commit and vcs_settings.vcs == 'git' and \
+					if repo_settings.repo_config.sign_commit and vcs_settings.vcs == 'git' and \
 						not git_supports_gpg_sign():
 						# Inform user that newer git is needed (bug #403323).
 						logging.error(
