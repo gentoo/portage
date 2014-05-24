@@ -76,8 +76,8 @@ from repoman.qa_data import (qahelp, qawarnings, qacats, no_exec, allvars,
 	max_desc_len, missingvars, suspect_virtual, suspect_rdepend, valid_restrict)
 from repoman.subprocess import repoman_popen, repoman_getstatusoutput
 from repoman import utilities
-from repoman.vcs import (vcs_files_to_cps, vcs_new_changed,
-	git_supports_gpg_sign, ruby_deprecated)
+from repoman.vcs import (detect_vcs_conflicts, FindVCS, git_supports_gpg_sign,
+	ruby_deprecated, vcs_files_to_cps, vcs_new_changed)
 from repoman._xml import _XMLParser, _MetadataTreeBuilder, metadata_dtd_uri
 
 
@@ -159,7 +159,7 @@ if options.vcs:
 	else:
 		vcs = None
 else:
-	vcses = utilities.FindVCS()
+	vcses = FindVCS()
 	if len(vcses) > 1:
 		print(red(
 			'*** Ambiguous workdir -- more than one VCS found'
@@ -622,7 +622,7 @@ else:
 	xmllint_capable = True
 
 if options.mode == 'commit' and vcs:
-	utilities.detect_vcs_conflicts(options, vcs)
+	detect_vcs_conflicts(options, vcs)
 
 if options.mode == "manifest":
 	pass

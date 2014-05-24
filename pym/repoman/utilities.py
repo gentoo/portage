@@ -8,11 +8,9 @@ scan"""
 from __future__ import print_function, unicode_literals
 
 __all__ = [
-	"detect_vcs_conflicts",
 	"editor_is_executable",
 	"FindPackagesToScan",
 	"FindPortdir",
-	"FindVCS",
 	"format_qa_output",
 	"get_commit_message_with_editor",
 	"get_commit_message_with_stdin",
@@ -25,7 +23,6 @@ __all__ = [
 	"UpdateChangeLog"
 ]
 
-import collections
 import errno
 import io
 from itertools import chain
@@ -34,7 +31,6 @@ import pwd
 import re
 import stat
 import sys
-import subprocess
 import time
 import textwrap
 import difflib
@@ -46,10 +42,7 @@ from portage import shutil
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
-from portage import output
-from portage.const import BASH_BINARY
 from portage.localization import _
-from portage.output import red, green
 from portage.process import find_binary
 from portage import exception
 from portage import util
@@ -58,86 +51,6 @@ util.initialize_logger()
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
-
-
-def detect_vcs_conflicts(options, vcs):
-	"""Determine if the checkout has problems like cvs conflicts.
-
-	If you want more vcs support here just keep adding if blocks...
-	This could be better.
-
-	TODO(antarus): Also this should probably not call sys.exit() as
-	repoman is run on >1 packages and one failure should not cause
-	subsequent packages to fail.
-
-	Args:
-		vcs - A string identifying the version control system in use
-	Returns:
-		None (calls sys.exit on fatal problems)
-	"""
-
-	cmd = None
-	if vcs == 'cvs':
-		logging.info(
-			"Performing a %s with a little magic grep to check for updates." %
-			output.green("cvs -n up"))
-		cmd = (
-			"cvs -n up 2>/dev/null | "
-			"egrep '^[^\?] .*' | "
-			"egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
-	if vcs == 'svn':
-		logging.info(
-			"Performing a %s with a little magic grep to check for updates." %
-			output.green("svn status -u"))
-		cmd = (
-			"svn status -u 2>&1 | "
-			"egrep -v '^.  +.*/digest-[^/]+' | "
-			"head -n-1")
-
-	if cmd is not None:
-		# Use Popen instead of getstatusoutput(), in order to avoid
-		# unicode handling problems (see bug #310789).
-		args = [BASH_BINARY, "-c", cmd]
-		args = [_unicode_encode(x) for x in args]
-		proc = subprocess.Popen(
-			args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-		out = _unicode_decode(proc.communicate()[0])
-		proc.wait()
-		mylines = out.splitlines()
-		myupdates = []
-		for line in mylines:
-			if not line:
-				continue
-
-			# [ ] Unmodified (SVN)	[U] Updates		[P] Patches
-			# [M] Modified			[A] Added		[R] Removed / Replaced
-			# [D] Deleted
-			if line[0] not in " UPMARD":
-				# Stray Manifest is fine, we will readd it anyway.
-				if line[0] == '?' and line[1:].lstrip() == 'Manifest':
-					continue
-				logging.error(red(
-					"!!! Please fix the following issues reported "
-					"from cvs: %s" % green("(U,P,M,A,R,D are ok)")))
-				logging.error(red(
-					"!!! Note: This is a pretend/no-modify pass..."))
-				logging.error(out)
-				sys.exit(1)
-			elif vcs == 'cvs' and line[0] in "UP":
-				myupdates.append(line[2:])
-			elif vcs == 'svn' and line[8] == '*':
-				myupdates.append(line[9:].lstrip(" 1234567890"))
-
-		if myupdates:
-			logging.info(green("Fetching trivial updates..."))
-			if options.pretend:
-				logging.info("(" + vcs + " update " + " ".join(myupdates) + ")")
-				retval = os.EX_OK
-			else:
-				retval = os.system(vcs + " update " + " ".join(myupdates))
-			if retval != os.EX_OK:
-				logging.fatal("!!! " + vcs + " exited with an error. Terminating.")
-				sys.exit(retval)
 
 
 def have_profile_dir(path, maxdepth=3, filename="profiles.desc"):
@@ -603,77 +516,6 @@ def FindPortdir(settings):
 
 	return [normalize_path(x) for x in (portdir, portdir_overlay, location)]
 
-_vcs_type = collections.namedtuple('_vcs_type', 'name dir_name')
-
-_FindVCS_data = (
-	_vcs_type(
-		name='git',
-		dir_name='.git'
-	),
-	_vcs_type(
-		name='bzr',
-		dir_name='.bzr'
-	),
-	_vcs_type(
-		name='hg',
-		dir_name='.hg'
-	),
-	_vcs_type(
-		name='svn',
-		dir_name='.svn'
-	)
-)
-
-
-def FindVCS():
-	""" Try to figure out in what VCS' working tree we are. """
-
-	outvcs = []
-
-	def seek(depth=None):
-		""" Seek for VCSes that have a top-level data directory only. """
-		retvcs = []
-		pathprep = ''
-
-		while depth is None or depth > 0:
-			for vcs_type in _FindVCS_data:
-				vcs_dir = os.path.join(pathprep, vcs_type.dir_name)
-				if os.path.isdir(vcs_dir):
-					logging.debug(
-						'FindVCS: found %(name)s dir: %(vcs_dir)s' % {
-							'name': vcs_type.name,
-							'vcs_dir': os.path.abspath(vcs_dir)})
-					retvcs.append(vcs_type.name)
-
-			if retvcs:
-				break
-			pathprep = os.path.join(pathprep, '..')
-			if os.path.realpath(pathprep).strip('/') == '':
-				break
-			if depth is not None:
-				depth = depth - 1
-
-		return retvcs
-
-	# Level zero VCS-es.
-	if os.path.isdir('CVS'):
-		outvcs.append('cvs')
-	if os.path.isdir('.svn'):  # <1.7
-		outvcs.append('svn')
-
-	# If we already found one of 'level zeros', just take a quick look
-	# at the current directory. Otherwise, seek parents till we get
-	# something or reach root.
-	if outvcs:
-		outvcs.extend(seek(1))
-	else:
-		outvcs = seek()
-
-	if len(outvcs) > 1:
-		# eliminate duplicates, like for svn in bug #391199
-		outvcs = list(set(outvcs))
-
-	return outvcs
 
 _copyright_re1 = re.compile(br'^(# Copyright \d\d\d\d)-\d\d\d\d ')
 _copyright_re2 = re.compile(br'^(# Copyright )(\d\d\d\d) ')
