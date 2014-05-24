@@ -17,7 +17,6 @@ __all__ = [
 	"get_committer_name",
 	"have_ebuild_dir",
 	"have_profile_dir",
-	"parse_metadata_use",
 	"UpdateChangeLog"
 ]
 
@@ -42,7 +41,6 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.localization import _
 from portage.process import find_binary
-from portage import exception
 from portage import util
 normalize_path = util.normalize_path
 util.initialize_logger()
@@ -89,55 +87,6 @@ def have_ebuild_dir(path, maxdepth=3):
 				if filename.endswith(".ebuild") and \
 					filename.startswith(basename + "-"):
 					return os.path.dirname(os.path.dirname(path))
-
-
-def parse_metadata_use(xml_tree):
-	"""
-	Records are wrapped in XML as per GLEP 56
-	returns a dict with keys constisting of USE flag names and values
-	containing their respective descriptions
-	"""
-	uselist = {}
-
-	usetags = xml_tree.findall("use")
-	if not usetags:
-		return uselist
-
-	# It's possible to have multiple 'use' elements.
-	for usetag in usetags:
-		flags = usetag.findall("flag")
-		if not flags:
-			# DTD allows use elements containing no flag elements.
-			continue
-
-		for flag in flags:
-			pkg_flag = flag.get("name")
-			if pkg_flag is None:
-				raise exception.ParseError("missing 'name' attribute for 'flag' tag")
-			flag_restrict = flag.get("restrict")
-
-			# emulate the Element.itertext() method from python-2.7
-			inner_text = []
-			stack = []
-			stack.append(flag)
-			while stack:
-				obj = stack.pop()
-				if isinstance(obj, basestring):
-					inner_text.append(obj)
-					continue
-				if isinstance(obj.text, basestring):
-					inner_text.append(obj.text)
-				if isinstance(obj.tail, basestring):
-					stack.append(obj.tail)
-				stack.extend(reversed(obj))
-
-			if pkg_flag not in uselist:
-				uselist[pkg_flag] = {}
-
-			# (flag_restrict can be None)
-			uselist[pkg_flag][flag_restrict] = " ".join("".join(inner_text).split())
-
-	return uselist
 
 
 def FindPackagesToScan(settings, startdir, reposplit):
