@@ -68,6 +68,7 @@ from repoman.argparser import parse_args
 from repoman.checks.ebuilds import run_checks, checks_init
 from repoman.checks.herds.herdbase import make_herd_base
 from repoman.check_missingslot import check_missingslot
+from repoman.errors import warn, err
 from repoman.metadata import (fetch_metadata_dtd, metadata_xml_encoding,
 	metadata_doctype_name, metadata_xml_declaration)
 from repoman.profile import dev_keywords, ProfileDesc, valid_profile_types
@@ -108,15 +109,6 @@ if repoman_settings.get("NOCOLOR", "").lower() in ("yes", "true") or \
 	repoman_settings.get('TERM') == 'dumb' or \
 	not sys.stdout.isatty():
 	nocolor()
-
-
-def warn(txt):
-	print("repoman: " + txt)
-
-
-def err(txt):
-	warn(txt)
-	sys.exit(1)
 
 
 def exithandler(signum=None, _frame=None):
