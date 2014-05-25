@@ -47,3 +47,37 @@ def dev_keywords(profiles):
 	dev_keywords.update(['~' + arch for arch in dev_keywords])
 	return frozenset(dev_keywords)
 
+
+def setup_profile(profile_list):
+	# Ensure that profile sub_path attributes are unique. Process in reverse order
+	# so that profiles with duplicate sub_path from overlays will override
+	# profiles with the same sub_path from parent repos.
+	profiles = {}
+	profile_list.reverse()
+	profile_sub_paths = set()
+	for prof in profile_list:
+		if prof.sub_path in profile_sub_paths:
+			continue
+		profile_sub_paths.add(prof.sub_path)
+		profiles.setdefault(prof.arch, []).append(prof)
+
+	# Use an empty profile for checking dependencies of
+	# packages that have empty KEYWORDS.
+	prof = ProfileDesc('**', 'stable', '', '')
+	profiles.setdefault(prof.arch, []).append(prof)
+	return profiles
+
+
+def check_profiles(profiles, archlist):
+	for x in archlist:
+		if x[0] == "~":
+			continue
+		if x not in profiles:
+			print(red(
+				"\"%s\" doesn't have a valid profile listed in profiles.desc." % x))
+			print(red(
+				"You need to either \"cvs update\" your profiles dir"
+				" or follow this"))
+			print(red(
+				"up with the " + x + " team."))
+			print()

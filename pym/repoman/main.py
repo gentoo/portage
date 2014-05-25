@@ -72,7 +72,7 @@ from repoman.errors import caterror, err
 from repoman.metadata import (fetch_metadata_dtd, metadata_xml_encoding,
 	metadata_doctype_name, metadata_xml_declaration)
 from repoman.modules import commit
-from repoman.profile import dev_keywords, ProfileDesc
+from repoman.profile import check_profiles, dev_keywords, setup_profile
 from repoman.qa_data import (qahelp, qawarnings, qacats, no_exec, allvars,
 	max_desc_len, missingvars, suspect_virtual, suspect_rdepend, valid_restrict)
 from repoman.repos import has_global_mask, RepoSettings, repo_metadata
@@ -237,35 +237,15 @@ kwlist, liclist, uselist, profile_list, global_pmaskdict = new_data
 repoman_settings['PORTAGE_ARCHLIST'] = ' '.join(sorted(kwlist))
 repoman_settings.backup_changes('PORTAGE_ARCHLIST')
 
-# Ensure that profile sub_path attributes are unique. Process in reverse order
-# so that profiles with duplicate sub_path from overlays will override
-# profiles with the same sub_path from parent repos.
-profiles = {}
-profile_list.reverse()
-profile_sub_paths = set()
-for prof in profile_list:
-	if prof.sub_path in profile_sub_paths:
-		continue
-	profile_sub_paths.add(prof.sub_path)
-	profiles.setdefault(prof.arch, []).append(prof)
+####################
 
-# Use an empty profile for checking dependencies of
-# packages that have empty KEYWORDS.
-prof = ProfileDesc('**', 'stable', '', '')
-profiles.setdefault(prof.arch, []).append(prof)
+profiles = setup_profile(profile_list)
 
-for x in repoman_settings.archlist():
-	if x[0] == "~":
-		continue
-	if x not in profiles:
-		print(red(
-			"\"%s\" doesn't have a valid profile listed in profiles.desc." % x))
-		print(red(
-			"You need to either \"cvs update\" your profiles dir"
-			" or follow this"))
-		print(red(
-			"up with the " + x + " team."))
-		print()
+####################
+
+check_profiles(profiles, repoman_settings.archlist())
+
+####################
 
 liclist_deprecated = set()
 if "DEPRECATED" in repoman_settings._license_manager._license_groups:
