@@ -71,6 +71,7 @@ from repoman.check_missingslot import check_missingslot
 from repoman.errors import warn, err
 from repoman.metadata import (fetch_metadata_dtd, metadata_xml_encoding,
 	metadata_doctype_name, metadata_xml_declaration)
+from repoman.modules import commit
 from repoman.profile import dev_keywords, ProfileDesc, valid_profile_types
 from repoman.qa_data import (qahelp, qawarnings, qacats, no_exec, allvars,
 	max_desc_len, missingvars, suspect_virtual, suspect_rdepend, valid_restrict)
@@ -209,25 +210,13 @@ portdb._aux_cache_keys.update(
 reposplit = myreporoot.split(os.path.sep)
 repolevel = len(reposplit)
 
-# Check if it's in $PORTDIR/$CATEGORY/$PN , otherwise bail if commiting.
-# Reason for this is if they're trying to commit in just $FILESDIR/*,
-# the Manifest needs updating.
-# This check ensures that repoman knows where it is,
-# and the manifest recommit is at least possible.
-if options.mode == 'commit' and repolevel not in [1, 2, 3]:
-	print(red("***") + (
-		" Commit attempts *must* be from within a vcs checkout,"
-		" category, or package directory."))
-	print(red("***") + (
-		" Attempting to commit from a packages files directory"
-		" will be blocked for instance."))
-	print(red("***") + (
-		" This is intended behaviour,"
-		" to ensure the manifest is recommitted for a package."))
-	print(red("***"))
-	err(
-		"Unable to identify level we're commiting from for %s" %
-		'/'.join(reposplit))
+
+###################
+
+if options.mode == 'commit':
+	commit.repochecks.commit_check(repolevel, reposplit)
+
+###################
 
 # Make startdir relative to the canonical repodir, so that we can pass
 # it to digestgen and it won't have to be canonicalized again.
