@@ -72,10 +72,10 @@ from repoman.errors import caterror, err
 from repoman.metadata import (fetch_metadata_dtd, metadata_xml_encoding,
 	metadata_doctype_name, metadata_xml_declaration)
 from repoman.modules import commit
-from repoman.profile import dev_keywords, ProfileDesc, valid_profile_types
+from repoman.profile import dev_keywords, ProfileDesc
 from repoman.qa_data import (qahelp, qawarnings, qacats, no_exec, allvars,
 	max_desc_len, missingvars, suspect_virtual, suspect_rdepend, valid_restrict)
-from repoman.repos import RepoSettings
+from repoman.repos import has_global_mask, RepoSettings, repo_metadata
 from repoman.subprocess import repoman_popen, repoman_getstatusoutput
 from repoman import utilities
 from repoman.vcs import (git_supports_gpg_sign, ruby_deprecated,
@@ -228,106 +228,14 @@ else:
 	startdir = os.path.join(repo_settings.repodir, *startdir.split(os.sep)[-2 - repolevel + 3:])
 
 
-profile_list = []
+###################
 
 # get lists of valid keywords, licenses, and use
-kwlist = set()
-liclist = set()
-uselist = set()
-global_pmasklines = []
-
-for path in portdb.porttrees:
-	try:
-		liclist.update(os.listdir(os.path.join(path, "licenses")))
-	except OSError:
-		pass
-	kwlist.update(
-		portage.grabfile(os.path.join(path, "profiles", "arch.list")))
-
-	use_desc = portage.grabfile(os.path.join(path, 'profiles', 'use.desc'))
-	for x in use_desc:
-		x = x.split()
-		if x:
-			uselist.add(x[0])
-
-	expand_desc_dir = os.path.join(path, 'profiles', 'desc')
-	try:
-		expand_list = os.listdir(expand_desc_dir)
-	except OSError:
-		pass
-	else:
-		for fn in expand_list:
-			if not fn[-5:] == '.desc':
-				continue
-			use_prefix = fn[:-5].lower() + '_'
-			for x in portage.grabfile(os.path.join(expand_desc_dir, fn)):
-				x = x.split()
-				if x:
-					uselist.add(use_prefix + x[0])
-
-	global_pmasklines.append(
-		portage.util.grabfile_package(
-			os.path.join(path, 'profiles', 'package.mask'),
-			recursive=1, verify_eapi=True))
-
-	desc_path = os.path.join(path, 'profiles', 'profiles.desc')
-	try:
-		desc_file = io.open(
-			_unicode_encode(
-				desc_path, encoding=_encodings['fs'], errors='strict'),
-			mode='r', encoding=_encodings['repo.content'], errors='replace')
-	except EnvironmentError:
-		pass
-	else:
-		for i, x in enumerate(desc_file):
-			if x[0] == "#":
-				continue
-			arch = x.split()
-			if len(arch) == 0:
-				continue
-			if len(arch) != 3:
-				err(
-					"wrong format: \"%s\" in %s line %d" %
-					(bad(x.strip()), desc_path, i + 1, ))
-			elif arch[0] not in kwlist:
-				err(
-					"invalid arch: \"%s\" in %s line %d" %
-					(bad(arch[0]), desc_path, i + 1, ))
-			elif arch[2] not in valid_profile_types:
-				err(
-					"invalid profile type: \"%s\" in %s line %d" %
-					(bad(arch[2]), desc_path, i + 1, ))
-			profile_desc = ProfileDesc(arch[0], arch[2], arch[1], path)
-			if not os.path.isdir(profile_desc.abs_path):
-				logging.error(
-					"Invalid %s profile (%s) for arch %s in %s line %d",
-					arch[2], arch[1], arch[0], desc_path, i + 1)
-				continue
-			if os.path.exists(
-				os.path.join(profile_desc.abs_path, 'deprecated')):
-				continue
-			profile_list.append(profile_desc)
-		desc_file.close()
+new_data = repo_metadata(repo_settings.portdb)
+kwlist, liclist, uselist, profile_list, global_pmaskdict = new_data
 
 repoman_settings['PORTAGE_ARCHLIST'] = ' '.join(sorted(kwlist))
 repoman_settings.backup_changes('PORTAGE_ARCHLIST')
-
-global_pmasklines = portage.util.stack_lists(global_pmasklines, incremental=1)
-global_pmaskdict = {}
-for x in global_pmasklines:
-	global_pmaskdict.setdefault(x.cp, []).append(x)
-del global_pmasklines
-
-
-def has_global_mask(pkg):
-	mask_atoms = global_pmaskdict.get(pkg.cp)
-	if mask_atoms:
-		pkg_list = [pkg]
-		for x in mask_atoms:
-			if portage.dep.match_from_list(x, pkg_list):
-				return x
-	return None
-
 
 # Ensure that profile sub_path attributes are unique. Process in reverse order
 # so that profiles with duplicate sub_path from overlays will override

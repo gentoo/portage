@@ -8,9 +8,14 @@ import textwrap
 
 import portage
 from portage import os
+from portage import _encodings
+from portage import _unicode_encode
 
+from repoman.errors import err
+from repoman.profile import ProfileDesc, valid_profile_types
 
 GPG_KEY_ID_REGEX = r'(0x)?([0-9a-fA-F]{8}){1,5}!?'
+bad = portage.output.create_color_func("BAD")
 
 
 class RepoSettings(object):
@@ -142,3 +147,105 @@ class RepoSettings(object):
 				for line in textwrap.wrap(msg, 70):
 					logging.error(line)
 				sys.exit(1)
+
+
+def repo_metadata(portdb):
+	# get lists of valid keywords, licenses, and use
+	kwlist = set()
+	liclist = set()
+	uselist = set()
+	profile_list = []
+	global_pmasklines = []
+
+	for path in portdb.porttrees:
+		try:
+			liclist.update(os.listdir(os.path.join(path, "licenses")))
+		except OSError:
+			pass
+		kwlist.update(
+			portage.grabfile(os.path.join(path, "profiles", "arch.list")))
+
+		use_desc = portage.grabfile(os.path.join(path, 'profiles', 'use.desc'))
+		for x in use_desc:
+			x = x.split()
+			if x:
+				uselist.add(x[0])
+
+		expand_desc_dir = os.path.join(path, 'profiles', 'desc')
+		try:
+			expand_list = os.listdir(expand_desc_dir)
+		except OSError:
+			pass
+		else:
+			for fn in expand_list:
+				if not fn[-5:] == '.desc':
+					continue
+				use_prefix = fn[:-5].lower() + '_'
+				for x in portage.grabfile(os.path.join(expand_desc_dir, fn)):
+					x = x.split()
+					if x:
+						uselist.add(use_prefix + x[0])
+
+		global_pmasklines.append(
+			portage.util.grabfile_package(
+				os.path.join(path, 'profiles', 'package.mask'),
+				recursive=1, verify_eapi=True))
+
+		desc_path = os.path.join(path, 'profiles', 'profiles.desc')
+		try:
+			desc_file = io.open(
+				_unicode_encode(
+					desc_path, encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['repo.content'], errors='replace')
+		except EnvironmentError:
+			pass
+		else:
+			for i, x in enumerate(desc_file):
+				if x[0] == "#":
+					continue
+				arch = x.split()
+				if len(arch) == 0:
+					continue
+				if len(arch) != 3:
+					err(
+						"wrong format: \"%s\" in %s line %d" %
+						(bad(x.strip()), desc_path, i + 1, ))
+				elif arch[0] not in kwlist:
+					err(
+						"invalid arch: \"%s\" in %s line %d" %
+						(bad(arch[0]), desc_path, i + 1, ))
+				elif arch[2] not in valid_profile_types:
+					err(
+						"invalid profile type: \"%s\" in %s line %d" %
+						(bad(arch[2]), desc_path, i + 1, ))
+				profile_desc = ProfileDesc(arch[0], arch[2], arch[1], path)
+				if not os.path.isdir(profile_desc.abs_path):
+					logging.error(
+						"Invalid %s profile (%s) for arch %s in %s line %d",
+						arch[2], arch[1], arch[0], desc_path, i + 1)
+					continue
+				if os.path.exists(
+					os.path.join(profile_desc.abs_path, 'deprecated')):
+					continue
+				profile_list.append(profile_desc)
+			desc_file.close()
+
+	global_pmasklines = portage.util.stack_lists(global_pmasklines, incremental=1)
+	global_pmaskdict = {}
+	for x in global_pmasklines:
+		global_pmaskdict.setdefault(x.cp, []).append(x)
+	del global_pmasklines
+
+	return (kwlist, liclist, uselist, profile_list, global_pmaskdict)
+
+
+def has_global_mask(pkg, global_pmaskdict):
+	mask_atoms = global_pmaskdict.get(pkg.cp)
+	if mask_atoms:
+		pkg_list = [pkg]
+		for x in mask_atoms:
+			if portage.dep.match_from_list(x, pkg_list):
+				return x
+	return None
+
+
