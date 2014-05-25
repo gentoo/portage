@@ -78,8 +78,8 @@ from repoman.qa_data import (qahelp, qawarnings, qacats, no_exec, allvars,
 from repoman.repos import RepoSettings
 from repoman.subprocess import repoman_popen, repoman_getstatusoutput
 from repoman import utilities
-from repoman.vcs import (detect_vcs_conflicts, git_supports_gpg_sign,
-	ruby_deprecated, vcs_files_to_cps, vcs_new_changed, VCSSettings)
+from repoman.vcs import (git_supports_gpg_sign, ruby_deprecated,
+	vcs_files_to_cps, vcs_new_changed, VCSSettings)
 from repoman._xml import _XMLParser, _MetadataTreeBuilder, metadata_dtd_uri
 
 
@@ -215,6 +215,7 @@ repolevel = len(reposplit)
 
 if options.mode == 'commit':
 	commit.repochecks.commit_check(repolevel, reposplit)
+	commit.repochecks.conflict_check(vcs_settings, options)
 
 ###################
 
@@ -442,8 +443,6 @@ else:
 	# this can be problematic if xmllint changes their output
 	xmllint_capable = True
 
-if options.mode == 'commit' and vcs_settings.vcs:
-	detect_vcs_conflicts(options, vcs_settings.vcs)
 
 if options.mode == "manifest":
 	pass

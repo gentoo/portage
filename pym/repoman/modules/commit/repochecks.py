@@ -1,7 +1,9 @@
 
 
 from portage.output import red
+
 from repoman.errors import err
+from repoman.vcs import detect_vcs_conflicts
 
 
 def commit_check(repolevel, reposplit):
@@ -24,3 +26,8 @@ def commit_check(repolevel, reposplit):
 		err(
 			"Unable to identify level we're commiting from for %s" %
 			'/'.join(reposplit))
+
+
+def conflict_check(vcs_settings, options):
+	if vcs_settings.vcs:
+		detect_vcs_conflicts(options, vcs_settings.vcs)
