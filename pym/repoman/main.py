@@ -21,7 +21,8 @@ from pprint import pformat
 
 from os import path as osp
 if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")):
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
+	pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__)))) #, "pym")
+	sys.path.insert(0, pym_path)
 import portage
 portage._internal_caller = True
 portage._disable_legacy_globals()
