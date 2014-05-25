@@ -68,7 +68,7 @@ from repoman.argparser import parse_args
 from repoman.checks.ebuilds import run_checks, checks_init
 from repoman.checks.herds.herdbase import make_herd_base
 from repoman.check_missingslot import check_missingslot
-from repoman.errors import warn, err
+from repoman.errors import caterror, err
 from repoman.metadata import (fetch_metadata_dtd, metadata_xml_encoding,
 	metadata_doctype_name, metadata_xml_declaration)
 from repoman.modules import commit
@@ -227,14 +227,6 @@ else:
 	startdir = os.path.join(repo_settings.repodir, *startdir.split(os.sep)[-2 - repolevel + 3:])
 
 
-def caterror(mycat):
-	err(
-		"%s is not an official category."
-		"  Skipping QA checks in this directory.\n"
-		"Please ensure that you add %s to %s/profiles/categories\n"
-		"if it is a new category." % (mycat, catdir, repo_settings.repodir))
-
-
 profile_list = []
 
 # get lists of valid keywords, licenses, and use
@@ -388,7 +380,7 @@ if repolevel == 2:
 	# we are inside a category directory
 	catdir = reposplit[-1]
 	if catdir not in categories:
-		caterror(catdir)
+		caterror(catdir, repo_settings.repodir)
 	mydirlist = os.listdir(startdir)
 	for x in mydirlist:
 		if x == "CVS" or x.startswith("."):
@@ -409,7 +401,7 @@ elif repolevel == 1:
 elif repolevel == 3:
 	catdir = reposplit[-2]
 	if catdir not in categories:
-		caterror(catdir)
+		caterror(catdir,repo_settings.repodir)
 	scanlist.append(catdir + "/" + reposplit[-1])
 	repo_subdir = scanlist[-1] + os.sep
 else:
