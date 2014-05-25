@@ -2954,9 +2954,9 @@ else:
 			cdrlen = len(checkdir_relative)
 			check_relative = lambda e: e.startswith(checkdir_relative)
 			split_relative = lambda e: e[cdrlen:]
-			clnew = map(split_relative, filter(check_relative, mynew))
-			clremoved = map(split_relative, filter(check_relative, myremoved))
-			clchanged = map(split_relative, filter(check_relative, mychanged))
+			clnew = list(map(split_relative, filter(check_relative, mynew)))
+			clremoved = list(map(split_relative, filter(check_relative, myremoved)))
+			clchanged = list(map(split_relative, filter(check_relative, mychanged)))
 
 			# Skip ChangeLog generation if only the Manifest was modified,
 			# as discussed in bug #398009.
