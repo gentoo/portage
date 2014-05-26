@@ -75,12 +75,13 @@ from repoman.metadata import (fetch_metadata_dtd, metadata_xml_encoding,
 from repoman.modules import commit
 from repoman.profile import check_profiles, dev_keywords, setup_profile
 from repoman.qa_data import (qahelp, qawarnings, qacats, no_exec, allvars,
-	max_desc_len, missingvars, suspect_virtual, suspect_rdepend, valid_restrict)
+	max_desc_len, missingvars, ruby_deprecated, suspect_virtual,
+	suspect_rdepend, valid_restrict)
 from repoman.repos import has_global_mask, RepoSettings, repo_metadata
 from repoman.subprocess import repoman_popen, repoman_getstatusoutput
 from repoman import utilities
-from repoman.vcs import (git_supports_gpg_sign, ruby_deprecated,
-	vcs_files_to_cps, vcs_new_changed, VCSSettings)
+from repoman.vcs.vcs import (git_supports_gpg_sign, vcs_files_to_cps,
+	vcs_new_changed, VCSSettings)
 from repoman._xml import _XMLParser, _MetadataTreeBuilder
 
 
