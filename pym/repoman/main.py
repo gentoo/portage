@@ -71,7 +71,7 @@ from repoman.checks.herds.herdbase import make_herd_base
 from repoman.check_missingslot import check_missingslot
 from repoman.errors import caterror, err
 from repoman.metadata import (fetch_metadata_dtd, metadata_xml_encoding,
-	metadata_doctype_name, metadata_xml_declaration)
+	metadata_doctype_name, metadata_dtd_uri, metadata_xml_declaration)
 from repoman.modules import commit
 from repoman.profile import check_profiles, dev_keywords, setup_profile
 from repoman.qa_data import (qahelp, qawarnings, qacats, no_exec, allvars,
@@ -81,7 +81,7 @@ from repoman.subprocess import repoman_popen, repoman_getstatusoutput
 from repoman import utilities
 from repoman.vcs import (git_supports_gpg_sign, ruby_deprecated,
 	vcs_files_to_cps, vcs_new_changed, VCSSettings)
-from repoman._xml import _XMLParser, _MetadataTreeBuilder, metadata_dtd_uri
+from repoman._xml import _XMLParser, _MetadataTreeBuilder
 
 
 if sys.hexversion >= 0x3000000:
