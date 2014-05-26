@@ -78,7 +78,7 @@ from repoman.qa_data import (qahelp, qawarnings, qacats, no_exec, allvars,
 	max_desc_len, missingvars, ruby_deprecated, suspect_virtual,
 	suspect_rdepend, valid_restrict)
 from repoman.repos import has_global_mask, RepoSettings, repo_metadata
-from repoman.subprocess import repoman_popen, repoman_getstatusoutput
+from repoman._subprocess import repoman_popen, repoman_getstatusoutput
 from repoman import utilities
 from repoman.vcs.vcs import (git_supports_gpg_sign, vcs_files_to_cps,
 	vcs_new_changed, VCSSettings)

@@ -11,7 +11,7 @@ from portage.const import BASH_BINARY
 from portage.output import red, green
 from portage import _unicode_encode, _unicode_decode
 
-from repoman.subprocess import repoman_getstatusoutput
+from repoman._subprocess import repoman_getstatusoutput
 
 
 _vcs_type = collections.namedtuple('_vcs_type', 'name dir_name')
