@@ -328,7 +328,7 @@ elif not find_binary('xmllint'):
 		print("%s sorry, xmllint is needed.  failing\n" % red("!!!"))
 		sys.exit(1)
 else:
-	if not fetch_metadata_dtd():
+	if not fetch_metadata_dtd(metadata_dtd, repoman_settings):
 		sys.exit(1)
 	# this can be problematic if xmllint changes their output
 	xmllint_capable = True
