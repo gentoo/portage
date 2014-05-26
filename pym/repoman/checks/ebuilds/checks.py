@@ -11,7 +11,7 @@ import codecs
 from itertools import chain
 import re
 import time
-import repoman.errors as errors
+import repoman.checks.ebuilds.errors as errors
 import portage
 from portage.eapi import (
 	eapi_supports_prefix, eapi_has_implicit_rdepend,
