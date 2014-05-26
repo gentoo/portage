@@ -74,9 +74,9 @@ from repoman.metadata import (fetch_metadata_dtd, metadata_xml_encoding,
 	metadata_doctype_name, metadata_dtd_uri, metadata_xml_declaration)
 from repoman.modules import commit
 from repoman.profile import check_profiles, dev_keywords, setup_profile
-from repoman.qa_data import (qahelp, qawarnings, qacats, no_exec, allvars,
-	max_desc_len, missingvars, ruby_deprecated, suspect_virtual,
-	suspect_rdepend, valid_restrict)
+from repoman.qa_data import (format_qa_output, format_qa_output_column, qahelp,
+	qawarnings, qacats, no_exec, allvars, max_desc_len, missingvars,
+	ruby_deprecated, suspect_virtual, suspect_rdepend, valid_restrict)
 from repoman.repos import has_global_mask, RepoSettings, repo_metadata
 from repoman._subprocess import repoman_popen, repoman_getstatusoutput
 from repoman import utilities
@@ -1656,8 +1656,8 @@ console_writer.style_listener = style_file.new_styles
 f = formatter.AbstractFormatter(console_writer)
 
 format_outputs = {
-	'column': utilities.format_qa_output_column,
-	'default': utilities.format_qa_output
+	'column': format_qa_output_column,
+	'default': format_qa_output
 }
 
 format_output = format_outputs.get(
