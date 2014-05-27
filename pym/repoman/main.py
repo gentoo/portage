@@ -69,7 +69,7 @@ from repoman.argparser import parse_args
 from repoman.checks.ebuilds.checks import run_checks, checks_init
 from repoman.checks.herds.herdbase import make_herd_base
 from repoman.check_missingslot import check_missingslot
-from repoman.errors import caterror, err
+from repoman.errors import err
 from repoman.metadata import (fetch_metadata_dtd, metadata_xml_encoding,
 	metadata_doctype_name, metadata_dtd_uri, metadata_xml_declaration)
 from repoman.modules import commit
@@ -78,6 +78,7 @@ from repoman.qa_data import (format_qa_output, format_qa_output_column, qahelp,
 	qawarnings, qacats, no_exec, allvars, max_desc_len, missingvars,
 	ruby_deprecated, suspect_virtual, suspect_rdepend, valid_restrict)
 from repoman.repos import has_global_mask, RepoSettings, repo_metadata
+from repoman.scan import scan
 from repoman._subprocess import repoman_popen, repoman_getstatusoutput
 from repoman import utilities
 from repoman.vcs.vcs import (git_supports_gpg_sign, vcs_files_to_cps,
@@ -266,47 +267,11 @@ if not uselist:
 	logging.fatal("Couldn't find use.desc?")
 	sys.exit(1)
 
-scanlist = []
-if repolevel == 2:
-	# we are inside a category directory
-	catdir = reposplit[-1]
-	if catdir not in categories:
-		caterror(catdir, repo_settings.repodir)
-	mydirlist = os.listdir(startdir)
-	for x in mydirlist:
-		if x == "CVS" or x.startswith("."):
-			continue
-		if os.path.isdir(startdir + "/" + x):
-			scanlist.append(catdir + "/" + x)
-	repo_subdir = catdir + os.sep
-elif repolevel == 1:
-	for x in categories:
-		if not os.path.isdir(startdir + "/" + x):
-			continue
-		for y in os.listdir(startdir + "/" + x):
-			if y == "CVS" or y.startswith("."):
-				continue
-			if os.path.isdir(startdir + "/" + x + "/" + y):
-				scanlist.append(x + "/" + y)
-	repo_subdir = ""
-elif repolevel == 3:
-	catdir = reposplit[-2]
-	if catdir not in categories:
-		caterror(catdir,repo_settings.repodir)
-	scanlist.append(catdir + "/" + reposplit[-1])
-	repo_subdir = scanlist[-1] + os.sep
-else:
-	msg = 'Repoman is unable to determine PORTDIR or PORTDIR_OVERLAY' + \
-		' from the current working directory'
-	logging.critical(msg)
-	sys.exit(1)
+####################
 
-repo_subdir_len = len(repo_subdir)
-scanlist.sort()
+scanlist = scan(repolevel, reposplit, startdir, categories, repo_settings)
 
-logging.debug(
-	"Found the following packages to scan:\n%s" % '\n'.join(scanlist))
-
+####################
 
 dev_keywords = dev_keywords(profiles)
 
