@@ -68,6 +68,7 @@ from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 from repoman.argparser import parse_args
 from repoman.checks.ebuilds.checks import run_checks, checks_init
 from repoman.checks.ebuilds.thirdpartymirrors import ThirdPartyMirrors
+from repoman.checks.ebuilds.manifests import Manifests
 from repoman.checks.herds.herdbase import make_herd_base
 from repoman.check_missingslot import check_missingslot
 from repoman.ebuild import Ebuild
@@ -336,76 +337,15 @@ for x in effective_scanlist:
 	if repolevel < 2:
 		checkdir_relative = os.path.join(catdir, checkdir_relative)
 	checkdir_relative = os.path.join(".", checkdir_relative)
-	generated_manifest = False
 
-	do_manifest = options.mode == "manifest"
-	do_digest_only = options.mode != 'manifest-check' and options.digest == 'y'
-	do_commit_or_fix = options.mode in ('commit', 'fix')
-	do_something = not options.pretend
+#####################
+	manifester = Manifests(options, repoman_settings)
+	skip = manifester.run(checkdir, portdb)
+	if skip:
+		continue
+######################
 
-	if do_manifest or do_digest_only or do_commit_or_fix and do_something:
-		auto_assumed = set()
-		fetchlist_dict = portage.FetchlistDict(
-			checkdir, repoman_settings, portdb)
-		if options.mode == 'manifest' and options.force:
-			portage._doebuild_manifest_exempt_depend += 1
-			try:
-				distdir = repoman_settings['DISTDIR']
-				mf = repoman_settings.repositories.get_repo_for_location(
-					os.path.dirname(os.path.dirname(checkdir)))
-				mf = mf.load_manifest(
-					checkdir, distdir, fetchlist_dict=fetchlist_dict)
-				mf.create(
-					requiredDistfiles=None, assumeDistHashesAlways=True)
-				for distfiles in fetchlist_dict.values():
-					for distfile in distfiles:
-						if os.path.isfile(os.path.join(distdir, distfile)):
-							mf.fhashdict['DIST'].pop(distfile, None)
-						else:
-							auto_assumed.add(distfile)
-				mf.write()
-			finally:
-				portage._doebuild_manifest_exempt_depend -= 1
-
-		repoman_settings["O"] = checkdir
-		try:
-			generated_manifest = digestgen(
-				mysettings=repoman_settings, myportdb=portdb)
-		except portage.exception.PermissionDenied as e:
-			generated_manifest = False
-			writemsg_level(
-				"!!! Permission denied: '%s'\n" % (e,),
-				level=logging.ERROR, noiselevel=-1)
-
-		if not generated_manifest:
-			print("Unable to generate manifest.")
-			dofail = 1
-
-		if options.mode == "manifest":
-			if not dofail and options.force and auto_assumed and \
-				'assume-digests' in repoman_settings.features:
-				# Show which digests were assumed despite the --force option
-				# being given. This output will already have been shown by
-				# digestgen() if assume-digests is not enabled, so only show
-				# it here if assume-digests is enabled.
-				pkgs = list(fetchlist_dict)
-				pkgs.sort()
-				portage.writemsg_stdout(
-					"  digest.assumed %s" %
-					portage.output.colorize(
-						"WARN", str(len(auto_assumed)).rjust(18)) + "\n")
-				for cpv in pkgs:
-					fetchmap = fetchlist_dict[cpv]
-					pf = portage.catsplit(cpv)[1]
-					for distfile in sorted(fetchmap):
-						if distfile in auto_assumed:
-							portage.writemsg_stdout(
-								"   %s::%s\n" % (pf, distfile))
-			continue
-		elif dofail:
-			sys.exit(1)
-
-	if not generated_manifest:
+	if not manifester.generated_manifest:
 		repoman_settings['O'] = checkdir
 		repoman_settings['PORTAGE_QUIET'] = '1'
 		if not portage.digestcheck([], repoman_settings, strict=1):
