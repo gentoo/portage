@@ -67,6 +67,7 @@ from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 
 from repoman.argparser import parse_args
 from repoman.checks.ebuilds.checks import run_checks, checks_init
+from repoman.checks.ebuilds.thirdpartymirrors import ThirdPartyMirrors
 from repoman.checks.herds.herdbase import make_herd_base
 from repoman.check_missingslot import check_missingslot
 from repoman.errors import err
@@ -304,14 +305,6 @@ if options.include_arches:
 
 check_ebuild_notadded = not \
 	(vcs_settings.vcs == "svn" and repolevel < 3 and options.mode != "commit")
-
-# Build a regex from thirdpartymirrors for the SRC_URI.mirror check.
-thirdpartymirrors = {}
-for k, v in repoman_settings.thirdpartymirrors().items():
-	for v in v:
-		if not v.endswith("/"):
-			v += "/"
-		thirdpartymirrors[v] = k
 
 try:
 	herd_base = make_herd_base(
@@ -889,23 +882,12 @@ for x in effective_scanlist:
 					(relative_path, k, m.start() + 1))
 
 		if not src_uri_error:
-			# Check that URIs don't reference a server from thirdpartymirrors.
-			for uri in portage.dep.use_reduce(
-				myaux["SRC_URI"], matchall=True, is_src_uri=True, eapi=eapi, flat=True):
-				contains_mirror = False
-				for mirror, mirror_alias in thirdpartymirrors.items():
-					if uri.startswith(mirror):
-						contains_mirror = True
-						break
-				if not contains_mirror:
-					continue
-
-				new_uri = "mirror://%s/%s" % (mirror_alias, uri[len(mirror):])
-				stats["SRC_URI.mirror"] += 1
-				fails["SRC_URI.mirror"].append(
-					"%s: '%s' found in thirdpartymirrors, use '%s'" %
-					(relative_path, mirror, new_uri))
-
+			#######################
+			thirdparty = ThirdPartyMirrors(repoman_settings)
+			thirdparty.check(myaux, relative_path)
+			stats["SRC_URI.mirror"] = thirdparty.stats
+			fails["SRC_URI.mirror"] = thirdparty.fails
+			#######################
 		if myaux.get("PROVIDE"):
 			stats["virtual.oldstyle"] += 1
 			fails["virtual.oldstyle"].append(relative_path)
