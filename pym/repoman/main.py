@@ -70,8 +70,8 @@ from repoman.checks.ebuilds.checks import run_checks, checks_init
 from repoman.checks.herds.herdbase import make_herd_base
 from repoman.check_missingslot import check_missingslot
 from repoman.errors import err
-from repoman.metadata import (fetch_metadata_dtd, metadata_xml_encoding,
-	metadata_doctype_name, metadata_dtd_uri, metadata_xml_declaration)
+from repoman.metadata import (metadata_xml_encoding, metadata_doctype_name,
+	metadata_dtd_uri, metadata_xml_declaration)
 from repoman.modules import commit
 from repoman.profile import check_profiles, dev_keywords, setup_profile
 from repoman.qa_data import (format_qa_output, format_qa_output_column, qahelp,
@@ -83,7 +83,7 @@ from repoman._subprocess import repoman_popen, repoman_getstatusoutput
 from repoman import utilities
 from repoman.vcs.vcs import (git_supports_gpg_sign, vcs_files_to_cps,
 	vcs_new_changed, VCSSettings)
-from repoman._xml import _XMLParser, _MetadataTreeBuilder
+from repoman._xml import _XMLParser, _MetadataTreeBuilder, XmlLint
 
 
 if sys.hexversion >= 0x3000000:
@@ -263,22 +263,12 @@ for x in qacats:
 	stats[x] = 0
 	fails[x] = []
 
-xmllint_capable = False
+####################
+
 metadata_dtd = os.path.join(repoman_settings["DISTDIR"], 'metadata.dtd')
+xmllint = XmlLint(metadata_dtd, options, repolevel, repoman_settings)
 
-if options.mode == "manifest":
-	pass
-elif not find_binary('xmllint'):
-	print(red("!!! xmllint not found. Can't check metadata.xml.\n"))
-	if options.xml_parse or repolevel == 3:
-		print("%s sorry, xmllint is needed.  failing\n" % red("!!!"))
-		sys.exit(1)
-else:
-	if not fetch_metadata_dtd(metadata_dtd, repoman_settings):
-		sys.exit(1)
-	# this can be problematic if xmllint changes their output
-	xmllint_capable = True
-
+#####################
 
 if options.mode == "manifest":
 	pass
@@ -889,22 +879,14 @@ for x in effective_scanlist:
 				fails["metadata.bad"].append("%s/metadata.xml: %s" % (x, e))
 				del e
 
+#################
 		# Only carry out if in package directory or check forced
-		if xmllint_capable and not metadata_bad:
-			# xmlint can produce garbage output even on success, so only dump
-			# the ouput when it fails.
-			st, out = repoman_getstatusoutput(
-				"xmllint --nonet --noout --dtdvalid %s %s" % (
-					portage._shell_quote(metadata_dtd),
-					portage._shell_quote(
-						os.path.join(checkdir, "metadata.xml"))))
-			if st != os.EX_OK:
-				print(red("!!!") + " metadata.xml is invalid:")
-				for z in out.splitlines():
-					print(red("!!! ") + z)
+		if not metadata_bad:
+			if not xmllint.check(checkdir):
 				stats["metadata.bad"] += 1
 				fails["metadata.bad"].append(x + "/metadata.xml")
 
+#################
 		del metadata_bad
 	muselist = frozenset(musedict)
 
