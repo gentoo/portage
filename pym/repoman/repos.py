@@ -148,8 +148,27 @@ class RepoSettings(object):
 					logging.error(line)
 				sys.exit(1)
 
+def list_checks(kwlist, liclist, uselist, repoman_settings):
+	liclist_deprecated = set()
+	if "DEPRECATED" in repoman_settings._license_manager._license_groups:
+		liclist_deprecated.update(
+			repoman_settings._license_manager.expandLicenseTokens(["@DEPRECATED"]))
 
-def repo_metadata(portdb):
+	if not liclist:
+		logging.fatal("Couldn't find licenses?")
+		sys.exit(1)
+
+	if not kwlist:
+		logging.fatal("Couldn't read KEYWORDS from arch.list")
+		sys.exit(1)
+
+	if not uselist:
+		logging.fatal("Couldn't find use.desc?")
+		sys.exit(1)
+	return liclist_deprecated
+
+
+def repo_metadata(portdb, repoman_settings):
 	# get lists of valid keywords, licenses, and use
 	kwlist = set()
 	liclist = set()
@@ -236,7 +255,8 @@ def repo_metadata(portdb):
 		global_pmaskdict.setdefault(x.cp, []).append(x)
 	del global_pmasklines
 
-	return (kwlist, liclist, uselist, profile_list, global_pmaskdict)
+	return (kwlist, liclist, uselist, profile_list, global_pmaskdict,
+		list_checks(kwlist, liclist, uselist, repoman_settings))
 
 
 def has_global_mask(pkg, global_pmaskdict):

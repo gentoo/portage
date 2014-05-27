@@ -234,8 +234,8 @@ else:
 ###################
 
 # get lists of valid keywords, licenses, and use
-new_data = repo_metadata(repo_settings.portdb)
-kwlist, liclist, uselist, profile_list, global_pmaskdict = new_data
+new_data = repo_metadata(repo_settings.portdb, repoman_settings)
+kwlist, liclist, uselist, profile_list, global_pmaskdict, liclist_deprecated = new_data
 
 repoman_settings['PORTAGE_ARCHLIST'] = ' '.join(sorted(kwlist))
 repoman_settings.backup_changes('PORTAGE_ARCHLIST')
@@ -247,25 +247,6 @@ profiles = setup_profile(profile_list)
 ####################
 
 check_profiles(profiles, repoman_settings.archlist())
-
-####################
-
-liclist_deprecated = set()
-if "DEPRECATED" in repoman_settings._license_manager._license_groups:
-	liclist_deprecated.update(
-		repoman_settings._license_manager.expandLicenseTokens(["@DEPRECATED"]))
-
-if not liclist:
-	logging.fatal("Couldn't find licenses?")
-	sys.exit(1)
-
-if not kwlist:
-	logging.fatal("Couldn't read KEYWORDS from arch.list")
-	sys.exit(1)
-
-if not uselist:
-	logging.fatal("Couldn't find use.desc?")
-	sys.exit(1)
 
 ####################
 
