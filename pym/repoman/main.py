@@ -78,7 +78,7 @@ from repoman.qa_data import (format_qa_output, format_qa_output_column, qahelp,
 	qawarnings, qacats, no_exec, allvars, max_desc_len, missingvars,
 	ruby_deprecated, suspect_virtual, suspect_rdepend, valid_restrict)
 from repoman.repos import has_global_mask, RepoSettings, repo_metadata
-from repoman.scan import scan
+from repoman.scan import Changes, scan
 from repoman._subprocess import repoman_popen, repoman_getstatusoutput
 from repoman import utilities
 from repoman.vcs.vcs import (git_supports_gpg_sign, vcs_files_to_cps,
@@ -277,94 +277,12 @@ elif options.pretend:
 else:
 	print(green("\nRepoMan scours the neighborhood..."))
 
-new_ebuilds = set()
-modified_ebuilds = set()
-modified_changelogs = set()
-mychanged = []
-mynew = []
-myremoved = []
+#####################
 
-if (options.if_modified != "y" and
-	options.mode in ("manifest", "manifest-check")):
-	pass
-elif vcs_settings.vcs == "cvs":
-	mycvstree = cvstree.getentries("./", recursive=1)
-	mychanged = cvstree.findchanged(mycvstree, recursive=1, basedir="./")
-	mynew = cvstree.findnew(mycvstree, recursive=1, basedir="./")
-	if options.if_modified == "y":
-		myremoved = cvstree.findremoved(mycvstree, recursive=1, basedir="./")
+changed = Changes(options)
+changed.scan(vcs_settings)
 
-elif vcs_settings.vcs == "svn":
-	with repoman_popen("svn status") as f:
-		svnstatus = f.readlines()
-	mychanged = [
-		"./" + elem.split()[-1:][0]
-		for elem in svnstatus
-		if elem and elem[:1] in "MR"]
-	mynew = [
-		"./" + elem.split()[-1:][0]
-		for elem in svnstatus
-		if elem.startswith("A")]
-	if options.if_modified == "y":
-		myremoved = [
-			"./" + elem.split()[-1:][0]
-			for elem in svnstatus
-			if elem.startswith("D")]
-
-elif vcs_settings.vcs == "git":
-	with repoman_popen(
-		"git diff-index --name-only "
-		"--relative --diff-filter=M HEAD") as f:
-		mychanged = f.readlines()
-	mychanged = ["./" + elem[:-1] for elem in mychanged]
-
-	with repoman_popen(
-		"git diff-index --name-only "
-		"--relative --diff-filter=A HEAD") as f:
-		mynew = f.readlines()
-	mynew = ["./" + elem[:-1] for elem in mynew]
-	if options.if_modified == "y":
-		with repoman_popen(
-			"git diff-index --name-only "
-			"--relative --diff-filter=D HEAD") as f:
-			myremoved = f.readlines()
-		myremoved = ["./" + elem[:-1] for elem in myremoved]
-
-elif vcs_settings.vcs == "bzr":
-	with repoman_popen("bzr status -S .") as f:
-		bzrstatus = f.readlines()
-	mychanged = [
-		"./" + elem.split()[-1:][0].split('/')[-1:][0]
-		for elem in bzrstatus
-		if elem and elem[1:2] == "M"]
-	mynew = [
-		"./" + elem.split()[-1:][0].split('/')[-1:][0]
-		for elem in bzrstatus
-		if elem and (elem[1:2] == "NK" or elem[0:1] == "R")]
-	if options.if_modified == "y":
-		myremoved = [
-			"./" + elem.split()[-3:-2][0].split('/')[-1:][0]
-			for elem in bzrstatus
-			if elem and (elem[1:2] == "K" or elem[0:1] == "R")]
-
-elif vcs_settings.vcs == "hg":
-	with repoman_popen("hg status --no-status --modified .") as f:
-		mychanged = f.readlines()
-	mychanged = ["./" + elem.rstrip() for elem in mychanged]
-	with repoman_popen("hg status --no-status --added .") as f:
-		mynew = f.readlines()
-	mynew = ["./" + elem.rstrip() for elem in mynew]
-	if options.if_modified == "y":
-		with repoman_popen("hg status --no-status --removed .") as f:
-			myremoved = f.readlines()
-		myremoved = ["./" + elem.rstrip() for elem in myremoved]
-
-if vcs_settings.vcs:
-	new_ebuilds.update(x for x in mynew if x.endswith(".ebuild"))
-	modified_ebuilds.update(x for x in mychanged if x.endswith(".ebuild"))
-	modified_changelogs.update(
-		x for x in chain(mychanged, mynew)
-		if os.path.basename(x) == "ChangeLog")
+######################
 
 have_pmasked = False
 have_dev_keywords = False
@@ -408,7 +326,7 @@ except FileNotFound:
 effective_scanlist = scanlist
 if options.if_modified == "y":
 	effective_scanlist = sorted(vcs_files_to_cps(
-		chain(mychanged, mynew, myremoved)))
+		chain(changed.changed, changed.new, changed.removed)))
 
 for x in effective_scanlist:
 	# ebuilds and digests added to cvs respectively.
@@ -891,7 +809,7 @@ for x in effective_scanlist:
 	muselist = frozenset(musedict)
 
 	changelog_path = os.path.join(checkdir_relative, "ChangeLog")
-	changelog_modified = changelog_path in modified_changelogs
+	changelog_modified = changelog_path in changed.changelogs
 
 	# detect unused local USE-descriptions
 	used_useflags = set()
@@ -906,7 +824,7 @@ for x in effective_scanlist:
 			ebuild_path = os.path.join(catdir, ebuild_path)
 		ebuild_path = os.path.join(".", ebuild_path)
 		if check_changelog and not changelog_modified \
-			and ebuild_path in new_ebuilds:
+			and ebuild_path in changed.new_ebuilds:
 			stats['changelog.ebuildadded'] += 1
 			fails['changelog.ebuildadded'].append(relative_path)
 
@@ -1346,8 +1264,8 @@ for x in effective_scanlist:
 		relative_path = os.path.join(x, y + ".ebuild")
 		full_path = os.path.join(repo_settings.repodir, relative_path)
 		if not vcs_settings.vcs_preserves_mtime:
-			if ebuild_path not in new_ebuilds and \
-				ebuild_path not in modified_ebuilds:
+			if ebuild_path not in changed.new_ebuilds and \
+				ebuild_path not in changed.ebuilds:
 				pkg.mtime = None
 		try:
 			# All ebuilds should have utf_8 encoding.
@@ -1966,7 +1884,7 @@ else:
 			checkdir_relative = os.path.join(".", checkdir_relative)
 
 			changelog_path = os.path.join(checkdir_relative, "ChangeLog")
-			changelog_modified = changelog_path in modified_changelogs
+			changelog_modified = changelog_path in changed.changelogs
 			if changelog_modified and options.echangelog != 'force':
 				continue
 
