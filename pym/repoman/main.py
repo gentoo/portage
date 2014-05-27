@@ -70,6 +70,7 @@ from repoman.checks.ebuilds.checks import run_checks, checks_init
 from repoman.checks.ebuilds.thirdpartymirrors import ThirdPartyMirrors
 from repoman.checks.herds.herdbase import make_herd_base
 from repoman.check_missingslot import check_missingslot
+from repoman.ebuild import Ebuild
 from repoman.errors import err
 from repoman.metadata import (metadata_xml_encoding, metadata_doctype_name,
 	metadata_dtd_uri, metadata_xml_declaration)
@@ -808,22 +809,16 @@ for x in effective_scanlist:
 	used_useflags = set()
 
 	for y in ebuildlist:
-		relative_path = os.path.join(x, y + ".ebuild")
-		full_path = os.path.join(repo_settings.repodir, relative_path)
-		ebuild_path = y + ".ebuild"
-		if repolevel < 3:
-			ebuild_path = os.path.join(pkgdir, ebuild_path)
-		if repolevel < 2:
-			ebuild_path = os.path.join(catdir, ebuild_path)
-		ebuild_path = os.path.join(".", ebuild_path)
-		if check_changelog and not changelog_modified \
-			and ebuild_path in changed.new_ebuilds:
-			stats['changelog.ebuildadded'] += 1
-			fails['changelog.ebuildadded'].append(relative_path)
+##################
+		ebuild = Ebuild(repo_settings, repolevel, pkgdir, catdir, vcs_settings, x, y)
+##################
 
-		vcs_settings.vcs_is_cvs_or_svn_or_bzr = vcs_settings.vcs in ("cvs", "svn", "bzr")
-		check_ebuild_really_notadded = check_ebuild_notadded and y not in eadded
-		if vcs_settings.vcs_is_cvs_or_svn_or_bzr and check_ebuild_really_notadded:
+		if check_changelog and not changelog_modified \
+			and ebuild.ebuild_path in changed.new_ebuilds:
+			stats['changelog.ebuildadded'] += 1
+			fails['changelog.ebuildadded'].append(ebuild.relative_path)
+
+		if ebuild.untracked(check_ebuild_notadded, y, eadded):
 			# ebuild not added to vcs
 			stats["ebuild.notadded"] += 1
 			fails["ebuild.notadded"].append(x + "/" + y + ".ebuild")
@@ -852,7 +847,7 @@ for x in effective_scanlist:
 			for k, msgs in pkg.invalid.items():
 				for msg in msgs:
 					stats[k] += 1
-					fails[k].append("%s: %s" % (relative_path, msg))
+					fails[k].append("%s: %s" % (ebuild.relative_path, msg))
 			continue
 
 		myaux = pkg._metadata
@@ -863,12 +858,12 @@ for x in effective_scanlist:
 		if repo_settings.repo_config.eapi_is_banned(eapi):
 			stats["repo.eapi.banned"] += 1
 			fails["repo.eapi.banned"].append(
-				"%s: %s" % (relative_path, eapi))
+				"%s: %s" % (ebuild.relative_path, eapi))
 
 		elif repo_settings.repo_config.eapi_is_deprecated(eapi):
 			stats["repo.eapi.deprecated"] += 1
 			fails["repo.eapi.deprecated"].append(
-				"%s: %s" % (relative_path, eapi))
+				"%s: %s" % (ebuild.relative_path, eapi))
 
 		for k, v in myaux.items():
 			if not isinstance(v, basestring):
@@ -879,18 +874,18 @@ for x in effective_scanlist:
 				fails["variable.invalidchar"].append(
 					"%s: %s variable contains non-ASCII "
 					"character at position %s" %
-					(relative_path, k, m.start() + 1))
+					(ebuild.relative_path, k, m.start() + 1))
 
 		if not src_uri_error:
 			#######################
 			thirdparty = ThirdPartyMirrors(repoman_settings)
-			thirdparty.check(myaux, relative_path)
+			thirdparty.check(myaux, ebuild.relative_path)
 			stats["SRC_URI.mirror"] = thirdparty.stats
 			fails["SRC_URI.mirror"] = thirdparty.fails
 			#######################
 		if myaux.get("PROVIDE"):
 			stats["virtual.oldstyle"] += 1
-			fails["virtual.oldstyle"].append(relative_path)
+			fails["virtual.oldstyle"].append(ebuild.relative_path)
 
 		for pos, missing_var in enumerate(missingvars):
 			if not myaux.get(missing_var):
@@ -908,14 +903,14 @@ for x in effective_scanlist:
 				if myaux.get(var):
 					myqakey = var + ".virtual"
 					stats[myqakey] += 1
-					fails[myqakey].append(relative_path)
+					fails[myqakey].append(ebuild.relative_path)
 
 		# 14 is the length of DESCRIPTION=""
 		if len(myaux['DESCRIPTION']) > max_desc_len:
 			stats['DESCRIPTION.toolong'] += 1
 			fails['DESCRIPTION.toolong'].append(
 				"%s: DESCRIPTION is %d characters (max %d)" %
-				(relative_path, len(myaux['DESCRIPTION']), max_desc_len))
+				(ebuild.relative_path, len(myaux['DESCRIPTION']), max_desc_len))
 
 		keywords = myaux["KEYWORDS"].split()
 		if not options.straight_to_stable:
@@ -925,7 +920,7 @@ for x in effective_scanlist:
 					not keyword.startswith("-"):
 					stable_keywords.append(keyword)
 			if stable_keywords:
-				if ebuild_path in new_ebuilds and catdir != "virtual":
+				if ebuild.ebuild_path in changed.new_ebuilds and catdir != "virtual":
 					stable_keywords.sort()
 					stats["KEYWORDS.stable"] += 1
 					fails["KEYWORDS.stable"].append(
@@ -944,7 +939,7 @@ for x in effective_scanlist:
 				stats["KEYWORDS.dropped"] += 1
 				fails["KEYWORDS.dropped"].append(
 					"%s: %s" %
-					(relative_path, " ".join(sorted(dropped_keywords))))
+					(ebuild.relative_path, " ".join(sorted(dropped_keywords))))
 
 		slot_keywords[pkg.slot].update(ebuild_archs)
 
@@ -981,7 +976,7 @@ for x in effective_scanlist:
 
 			if keywords and not has_global_mask(pkg):
 				stats["LIVEVCS.unmasked"] += 1
-				fails["LIVEVCS.unmasked"].append(relative_path)
+				fails["LIVEVCS.unmasked"].append(ebuild.relative_path)
 
 		if options.ignore_arches:
 			arches = [[
@@ -1051,7 +1046,7 @@ for x in effective_scanlist:
 					stats[mytype + '.suspect'] += 1
 					fails[mytype + '.suspect'].append(
 						"%s: 'test?' USE conditional in %s" %
-						(relative_path, mytype))
+						(ebuild.relative_path, mytype))
 
 				for atom in atoms:
 					if atom == "||":
@@ -1073,14 +1068,14 @@ for x in effective_scanlist:
 							atom.cp in suspect_virtual:
 							stats['virtual.suspect'] += 1
 							fails['virtual.suspect'].append(
-								relative_path +
+								ebuild.relative_path +
 								": %s: consider using '%s' instead of '%s'" %
 								(mytype, suspect_virtual[atom.cp], atom))
 						if not is_blocker and \
 							atom.cp.startswith("perl-core/"):
 							stats['dependency.perlcore'] += 1
 							fails['dependency.perlcore'].append(
-								relative_path +
+								ebuild.relative_path +
 								": %s: please use '%s' instead of '%s'" %
 								(mytype, atom.replace("perl-core/","virtual/perl-"), atom))
 
@@ -1089,7 +1084,7 @@ for x in effective_scanlist:
 						not inherited_java_eclass and \
 						atom.cp == "virtual/jdk":
 						stats['java.eclassesnotused'] += 1
-						fails['java.eclassesnotused'].append(relative_path)
+						fails['java.eclassesnotused'].append(ebuild.relative_path)
 					elif buildtime and \
 						not is_blocker and \
 						not inherited_wxwidgets_eclass and \
@@ -1097,13 +1092,13 @@ for x in effective_scanlist:
 						stats['wxwidgets.eclassnotused'] += 1
 						fails['wxwidgets.eclassnotused'].append(
 							"%s: %ss on x11-libs/wxGTK without inheriting"
-							" wxwidgets.eclass" % (relative_path, mytype))
+							" wxwidgets.eclass" % (ebuild.relative_path, mytype))
 					elif runtime:
 						if not is_blocker and \
 							atom.cp in suspect_rdepend:
 							stats[mytype + '.suspect'] += 1
 							fails[mytype + '.suspect'].append(
-								relative_path + ": '%s'" % atom)
+								ebuild.relative_path + ": '%s'" % atom)
 
 					if atom.operator == "~" and \
 						portage.versions.catpkgsplit(atom.cpv)[3] != "r0":
@@ -1112,10 +1107,10 @@ for x in effective_scanlist:
 						fails[qacat].append(
 							"%s: %s uses the ~ operator"
 							" with a non-zero revision: '%s'" %
-							(relative_path, mytype, atom))
+							(ebuild.relative_path, mytype, atom))
 
 					check_missingslot(atom, mytype, eapi, portdb, stats, fails,
-						relative_path, myaux)
+						ebuild.relative_path, myaux)
 
 			type_list.extend([mytype] * (len(badsyntax) - len(type_list)))
 
@@ -1125,7 +1120,7 @@ for x in effective_scanlist:
 			else:
 				qacat = m + ".syntax"
 			stats[qacat] += 1
-			fails[qacat].append("%s: %s: %s" % (relative_path, m, b))
+			fails[qacat].append("%s: %s: %s" % (ebuild.relative_path, m, b))
 
 		badlicsyntax = len([z for z in type_list if z == "LICENSE"])
 		badprovsyntax = len([z for z in type_list if z == "PROVIDE"])
@@ -1155,7 +1150,7 @@ for x in effective_scanlist:
 				fails['EAPI.incompatible'].append(
 					"%s: IUSE defaults"
 					" not supported with EAPI='%s': '%s'" %
-					(relative_path, eapi, myflag))
+					(ebuild.relative_path, eapi, myflag))
 
 		for mypos in range(len(myuse)):
 			stats["IUSE.invalid"] += 1
@@ -1171,7 +1166,7 @@ for x in effective_scanlist:
 				for myruby in ruby_intersection:
 					stats["IUSE.rubydeprecated"] += 1
 					fails["IUSE.rubydeprecated"].append(
-						(relative_path + ": Deprecated ruby target: %s") % myruby)
+						(ebuild.relative_path + ": Deprecated ruby target: %s") % myruby)
 
 		# license checks
 		if not badlicsyntax:
@@ -1188,7 +1183,7 @@ for x in effective_scanlist:
 					fails["LICENSE.invalid"].append(x + "/" + y + ".ebuild: %s" % lic)
 				elif lic in liclist_deprecated:
 					stats["LICENSE.deprecated"] += 1
-					fails["LICENSE.deprecated"].append("%s: %s" % (relative_path, lic))
+					fails["LICENSE.deprecated"].append("%s: %s" % (ebuild.relative_path, lic))
 
 		# keyword checks
 		myuse = myaux["KEYWORDS"].split()
@@ -1216,7 +1211,7 @@ for x in effective_scanlist:
 		except portage.exception.InvalidDependString as e:
 			stats["RESTRICT.syntax"] += 1
 			fails["RESTRICT.syntax"].append(
-				"%s: RESTRICT: %s" % (relative_path, e))
+				"%s: RESTRICT: %s" % (ebuild.relative_path, e))
 			del e
 		if myrestrict:
 			myrestrict = set(myrestrict)
@@ -1232,33 +1227,32 @@ for x in effective_scanlist:
 				stats['EAPI.incompatible'] += 1
 				fails['EAPI.incompatible'].append(
 					"%s: REQUIRED_USE"
-					" not supported with EAPI='%s'" % (relative_path, eapi,))
+					" not supported with EAPI='%s'" % (ebuild.relative_path, eapi,))
 			try:
 				portage.dep.check_required_use(
 					required_use, (), pkg.iuse.is_valid_flag, eapi=eapi)
 			except portage.exception.InvalidDependString as e:
 				stats["REQUIRED_USE.syntax"] += 1
 				fails["REQUIRED_USE.syntax"].append(
-					"%s: REQUIRED_USE: %s" % (relative_path, e))
+					"%s: REQUIRED_USE: %s" % (ebuild.relative_path, e))
 				del e
 
 		# Syntax Checks
-		relative_path = os.path.join(x, y + ".ebuild")
-		full_path = os.path.join(repo_settings.repodir, relative_path)
+
 		if not vcs_settings.vcs_preserves_mtime:
-			if ebuild_path not in changed.new_ebuilds and \
-				ebuild_path not in changed.ebuilds:
+			if ebuild.ebuild_path not in changed.new_ebuilds and \
+				ebuild.ebuild_path not in changed.ebuilds:
 				pkg.mtime = None
 		try:
 			# All ebuilds should have utf_8 encoding.
 			f = io.open(
 				_unicode_encode(
-					full_path, encoding=_encodings['fs'], errors='strict'),
+					ebuild.full_path, encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'])
 			try:
 				for check_name, e in run_checks(f, pkg):
 					stats[check_name] += 1
-					fails[check_name].append(relative_path + ': %s' % e)
+					fails[check_name].append(ebuild.relative_path + ': %s' % e)
 			finally:
 				f.close()
 		except UnicodeDecodeError:
@@ -1434,7 +1428,7 @@ for x in effective_scanlist:
 				stats["dependency.unknown"] += 1
 				fails["dependency.unknown"].append(
 					"%s: %s: %s" % (
-						relative_path, mytype, ", ".join(sorted(atoms))))
+						ebuild.relative_path, mytype, ", ".join(sorted(atoms))))
 
 	# check if there are unused local USE-descriptions in metadata.xml
 	# (unless there are any invalids, to avoid noise)
