@@ -748,9 +748,9 @@ for xpkg in effective_scanlist:
 	# detect unused local USE-descriptions
 	used_useflags = set()
 
-	for y in ebuildlist:
+	for y_ebuild in ebuildlist:
 ##################
-		ebuild = Ebuild(repo_settings, repolevel, pkgdir, catdir, vcs_settings, xpkg, y)
+		ebuild = Ebuild(repo_settings, repolevel, pkgdir, catdir, vcs_settings, xpkg, y_ebuild)
 ##################
 
 		if check_changelog and not changelog_modified \
@@ -758,11 +758,11 @@ for xpkg in effective_scanlist:
 			stats['changelog.ebuildadded'] += 1
 			fails['changelog.ebuildadded'].append(ebuild.relative_path)
 
-		if ebuild.untracked(check_ebuild_notadded, y, eadded):
+		if ebuild.untracked(check_ebuild_notadded, y_ebuild, eadded):
 			# ebuild not added to vcs
 			stats["ebuild.notadded"] += 1
-			fails["ebuild.notadded"].append(xpkg + "/" + y + ".ebuild")
-		myesplit = portage.pkgsplit(y)
+			fails["ebuild.notadded"].append(xpkg + "/" + y_ebuild + ".ebuild")
+		myesplit = portage.pkgsplit(y_ebuild)
 
 		is_bad_split = myesplit is None or myesplit[0] != xpkg.split("/")[-1]
 
@@ -772,15 +772,15 @@ for xpkg in effective_scanlist:
 
 			if is_pv_toolong or is_pv_toolong2:
 				stats["ebuild.invalidname"] += 1
-				fails["ebuild.invalidname"].append(xpkg + "/" + y + ".ebuild")
+				fails["ebuild.invalidname"].append(xpkg + "/" + y_ebuild + ".ebuild")
 				continue
 		elif myesplit[0] != pkgdir:
 			print(pkgdir, myesplit[0])
 			stats["ebuild.namenomatch"] += 1
-			fails["ebuild.namenomatch"].append(xpkg + "/" + y + ".ebuild")
+			fails["ebuild.namenomatch"].append(xpkg + "/" + y_ebuild + ".ebuild")
 			continue
 
-		pkg = pkgs[y]
+		pkg = pkgs[y_ebuild]
 
 		if pkg.invalid:
 			allvalid = False
@@ -836,7 +836,7 @@ for xpkg in effective_scanlist:
 					continue
 				myqakey = missingvars[pos] + ".missing"
 				stats[myqakey] += 1
-				fails[myqakey].append(xpkg + "/" + y + ".ebuild")
+				fails[myqakey].append(xpkg + "/" + y_ebuild + ".ebuild")
 
 		if catdir == "virtual":
 			for var in ("HOMEPAGE", "LICENSE"):
@@ -894,7 +894,7 @@ for xpkg in effective_scanlist:
 					haskeyword = True
 			if not haskeyword:
 				stats["KEYWORDS.stupid"] += 1
-				fails["KEYWORDS.stupid"].append(xpkg + "/" + y + ".ebuild")
+				fails["KEYWORDS.stupid"].append(xpkg + "/" + y_ebuild + ".ebuild")
 
 		"""
 		Ebuilds that inherit a "Live" eclass (darcs,subversion,git,cvs,etc..) should
@@ -911,7 +911,7 @@ for xpkg in effective_scanlist:
 				stats["LIVEVCS.stable"] += 1
 				fails["LIVEVCS.stable"].append(
 					"%s/%s.ebuild with stable keywords:%s " %
-					(xpkg, y, bad_stable_keywords))
+					(xpkg, y_ebuild, bad_stable_keywords))
 			del bad_stable_keywords
 
 			if keywords and not has_global_mask(pkg):
@@ -956,7 +956,7 @@ for xpkg in effective_scanlist:
 		baddepsyntax = False
 		badlicsyntax = False
 		badprovsyntax = False
-		catpkg = catdir + "/" + y
+		catpkg = catdir + "/" + y_ebuild
 
 		inherited_java_eclass = "java-pkg-2" in inherited or \
 			"java-pkg-opt-2" in inherited
@@ -1094,7 +1094,7 @@ for xpkg in effective_scanlist:
 
 		for mypos in range(len(myuse)):
 			stats["IUSE.invalid"] += 1
-			fails["IUSE.invalid"].append(xpkg + "/" + y + ".ebuild: %s" % myuse[mypos])
+			fails["IUSE.invalid"].append(xpkg + "/" + y_ebuild + ".ebuild: %s" % myuse[mypos])
 
 		# Check for outdated RUBY targets
 		old_ruby_eclasses = ["ruby-ng", "ruby-fakegem", "ruby"]
@@ -1120,7 +1120,7 @@ for xpkg in effective_scanlist:
 				# function will remove it without removing values.
 				if lic not in liclist and lic != "||":
 					stats["LICENSE.invalid"] += 1
-					fails["LICENSE.invalid"].append(xpkg + "/" + y + ".ebuild: %s" % lic)
+					fails["LICENSE.invalid"].append(xpkg + "/" + y_ebuild + ".ebuild: %s" % lic)
 				elif lic in liclist_deprecated:
 					stats["LICENSE.deprecated"] += 1
 					fails["LICENSE.deprecated"].append("%s: %s" % (ebuild.relative_path, lic))
@@ -1137,11 +1137,11 @@ for xpkg in effective_scanlist:
 				if myskey not in kwlist:
 					stats["KEYWORDS.invalid"] += 1
 					fails["KEYWORDS.invalid"].append(
-						"%s/%s.ebuild: %s" % (xpkg, y, mykey))
+						"%s/%s.ebuild: %s" % (xpkg, y_ebuild, mykey))
 				elif myskey not in profiles:
 					stats["KEYWORDS.invalid"] += 1
 					fails["KEYWORDS.invalid"].append(
-						"%s/%s.ebuild: %s (profile invalid)" % (xpkg, y, mykey))
+						"%s/%s.ebuild: %s (profile invalid)" % (xpkg, y_ebuild, mykey))
 
 		# restrict checks
 		myrestrict = None
@@ -1159,7 +1159,7 @@ for xpkg in effective_scanlist:
 			if mybadrestrict:
 				stats["RESTRICT.invalid"] += len(mybadrestrict)
 				for mybad in mybadrestrict:
-					fails["RESTRICT.invalid"].append(xpkg + "/" + y + ".ebuild: %s" % mybad)
+					fails["RESTRICT.invalid"].append(xpkg + "/" + y_ebuild + ".ebuild: %s" % mybad)
 		# REQUIRED_USE check
 		required_use = myaux["REQUIRED_USE"]
 		if required_use:
