@@ -86,6 +86,7 @@ from repoman._subprocess import repoman_popen, repoman_getstatusoutput
 from repoman import utilities
 from repoman.vcs.vcs import (git_supports_gpg_sign, vcs_files_to_cps,
 	vcs_new_changed, VCSSettings)
+from repoman.vcs.vcsstatus import VCSStatus
 from repoman._xml import _XMLParser, _MetadataTreeBuilder, XmlLint
 
 
@@ -451,78 +452,14 @@ for xpkg in effective_scanlist:
 			if f is not None:
 				f.close()
 
-	if vcs_settings.vcs in ("git", "hg") and check_ebuild_notadded:
-		if vcs_settings.vcs == "git":
-			myf = repoman_popen(
-				"git ls-files --others %s" %
-				(portage._shell_quote(checkdir_relative),))
-		if vcs_settings.vcs == "hg":
-			myf = repoman_popen(
-				"hg status --no-status --unknown %s" %
-				(portage._shell_quote(checkdir_relative),))
-		for l in myf:
-			if l[:-1][-7:] == ".ebuild":
-				stats["ebuild.notadded"] += 1
-				fails["ebuild.notadded"].append(
-					os.path.join(xpkg, os.path.basename(l[:-1])))
-		myf.close()
-
-	if vcs_settings.vcs in ("cvs", "svn", "bzr") and check_ebuild_notadded:
-		try:
-			if vcs_settings.vcs == "cvs":
-				myf = open(checkdir + "/CVS/Entries", "r")
-			if vcs_settings.vcs == "svn":
-				myf = repoman_popen(
-					"svn status --depth=files --verbose " +
-					portage._shell_quote(checkdir))
-			if vcs_settings.vcs == "bzr":
-				myf = repoman_popen(
-					"bzr ls -v --kind=file " +
-					portage._shell_quote(checkdir))
-			myl = myf.readlines()
-			myf.close()
-			for l in myl:
-				if vcs_settings.vcs == "cvs":
-					if l[0] != "/":
-						continue
-					splitl = l[1:].split("/")
-					if not len(splitl):
-						continue
-					if splitl[0][-7:] == ".ebuild":
-						eadded.append(splitl[0][:-7])
-				if vcs_settings.vcs == "svn":
-					if l[:1] == "?":
-						continue
-					if l[:7] == '      >':
-						# tree conflict, new in subversion 1.6
-						continue
-					l = l.split()[-1]
-					if l[-7:] == ".ebuild":
-						eadded.append(os.path.basename(l[:-7]))
-				if vcs_settings.vcs == "bzr":
-					if l[1:2] == "?":
-						continue
-					l = l.split()[-1]
-					if l[-7:] == ".ebuild":
-						eadded.append(os.path.basename(l[:-7]))
-			if vcs_settings.vcs == "svn":
-				myf = repoman_popen(
-					"svn status " +
-					portage._shell_quote(checkdir))
-				myl = myf.readlines()
-				myf.close()
-				for l in myl:
-					if l[0] == "A":
-						l = l.rstrip().split(' ')[-1]
-						if l[-7:] == ".ebuild":
-							eadded.append(os.path.basename(l[:-7]))
-		except IOError:
-			if vcs_settings.vcs == "cvs":
-				stats["CVS/Entries.IO_error"] += 1
-				fails["CVS/Entries.IO_error"].append(checkdir + "/CVS/Entries")
-			else:
-				raise
-			continue
+###############
+	status_check = VCSStatus(vcs_settings, checkdir, checkdir_relative, xpkg)
+	status_check.check(check_ebuild_notadded)
+	eadded.extend(status_check.eadded)
+	for key in list(status_check.stats):
+		stats[key] += status_check.stats[key]
+		fails[key].extend(status_check.fails[key])
+###############
 
 	mf = repoman_settings.repositories.get_repo_for_location(
 		os.path.dirname(os.path.dirname(checkdir)))
