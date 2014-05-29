@@ -323,14 +323,14 @@ if options.if_modified == "y":
 	effective_scanlist = sorted(vcs_files_to_cps(
 		chain(changed.changed, changed.new, changed.removed)))
 
-for x in effective_scanlist:
+for xpkg in effective_scanlist:
 	# ebuilds and digests added to cvs respectively.
-	logging.info("checking package %s" % x)
+	logging.info("checking package %s" % xpkg)
 	# save memory by discarding xmatch caches from previous package(s)
 	arch_xmatch_caches.clear()
 	eadded = []
-	catdir, pkgdir = x.split("/")
-	checkdir = repo_settings.repodir + "/" + x
+	catdir, pkgdir = xpkg.split("/")
+	checkdir = repo_settings.repodir + "/" + xpkg
 	checkdir_relative = ""
 	if repolevel < 3:
 		checkdir_relative = os.path.join(pkgdir, checkdir_relative)
@@ -350,7 +350,7 @@ for x in effective_scanlist:
 		repoman_settings['PORTAGE_QUIET'] = '1'
 		if not portage.digestcheck([], repoman_settings, strict=1):
 			stats["manifest.bad"] += 1
-			fails["manifest.bad"].append(os.path.join(x, 'Manifest'))
+			fails["manifest.bad"].append(os.path.join(xpkg, 'Manifest'))
 		repoman_settings.pop('PORTAGE_QUIET', None)
 
 	if options.mode == 'manifest-check':
@@ -380,17 +380,17 @@ for x in effective_scanlist:
 			except KeyError:
 				allvalid = False
 				stats["ebuild.syntax"] += 1
-				fails["ebuild.syntax"].append(os.path.join(x, y))
+				fails["ebuild.syntax"].append(os.path.join(xpkg, y))
 				continue
 			except IOError:
 				allvalid = False
 				stats["ebuild.output"] += 1
-				fails["ebuild.output"].append(os.path.join(x, y))
+				fails["ebuild.output"].append(os.path.join(xpkg, y))
 				continue
 			if not portage.eapi_is_supported(myaux["EAPI"]):
 				allvalid = False
 				stats["EAPI.unsupported"] += 1
-				fails["EAPI.unsupported"].append(os.path.join(x, y))
+				fails["EAPI.unsupported"].append(os.path.join(xpkg, y))
 				continue
 			pkgs[pf] = Package(
 				cpv=cpv, metadata=myaux, root_config=root_config,
@@ -464,7 +464,7 @@ for x in effective_scanlist:
 			if l[:-1][-7:] == ".ebuild":
 				stats["ebuild.notadded"] += 1
 				fails["ebuild.notadded"].append(
-					os.path.join(x, os.path.basename(l[:-1])))
+					os.path.join(xpkg, os.path.basename(l[:-1])))
 		myf.close()
 
 	if vcs_settings.vcs in ("cvs", "svn", "bzr") and check_ebuild_notadded:
@@ -572,7 +572,7 @@ for x in effective_scanlist:
 		# so people can't hide > 20k files in a subdirectory.
 		while filesdirlist:
 			y = filesdirlist.pop(0)
-			relative_path = os.path.join(x, "files", y)
+			relative_path = os.path.join(xpkg, "files", y)
 			full_path = os.path.join(repo_settings.repodir, relative_path)
 			try:
 				mystat = os.stat(full_path)
@@ -596,11 +596,11 @@ for x in effective_scanlist:
 			elif mystat.st_size > 61440:
 				stats["file.size.fatal"] += 1
 				fails["file.size.fatal"].append(
-					"(%d KiB) %s/files/%s" % (mystat.st_size // 1024, x, y))
+					"(%d KiB) %s/files/%s" % (mystat.st_size // 1024, xpkg, y))
 			elif mystat.st_size > 20480:
 				stats["file.size"] += 1
 				fails["file.size"].append(
-					"(%d KiB) %s/files/%s" % (mystat.st_size // 1024, x, y))
+					"(%d KiB) %s/files/%s" % (mystat.st_size // 1024, xpkg, y))
 
 			index = repo_settings.repo_config.find_invalid_path_char(y)
 			if index != -1:
@@ -619,13 +619,13 @@ for x in effective_scanlist:
 
 	if check_changelog and "ChangeLog" not in checkdirlist:
 		stats["changelog.missing"] += 1
-		fails["changelog.missing"].append(x + "/ChangeLog")
+		fails["changelog.missing"].append(xpkg + "/ChangeLog")
 
 	musedict = {}
 	# metadata.xml file check
 	if "metadata.xml" not in checkdirlist:
 		stats["metadata.missing"] += 1
-		fails["metadata.missing"].append(x + "/metadata.xml")
+		fails["metadata.missing"].append(xpkg + "/metadata.xml")
 	# metadata.xml parse check
 	else:
 		metadata_bad = False
@@ -642,7 +642,7 @@ for x in effective_scanlist:
 		except (ExpatError, SyntaxError, EnvironmentError) as e:
 			metadata_bad = True
 			stats["metadata.bad"] += 1
-			fails["metadata.bad"].append("%s/metadata.xml: %s" % (x, e))
+			fails["metadata.bad"].append("%s/metadata.xml: %s" % (xpkg, e))
 			del e
 		else:
 			if not hasattr(xml_parser, 'parser') or \
@@ -656,7 +656,7 @@ for x in effective_scanlist:
 					fails["metadata.bad"].append(
 						"%s/metadata.xml: "
 						"xml declaration is missing on first line, "
-						"should be '%s'" % (x, metadata_xml_declaration))
+						"should be '%s'" % (xpkg, metadata_xml_declaration))
 				else:
 					xml_version, xml_encoding, xml_standalone = \
 						xml_info["XML_DECLARATION"]
@@ -670,13 +670,13 @@ for x in effective_scanlist:
 						fails["metadata.bad"].append(
 							"%s/metadata.xml: "
 							"xml declaration encoding should be '%s', %s" %
-							(x, metadata_xml_encoding, encoding_problem))
+							(xpkg, metadata_xml_encoding, encoding_problem))
 
 				if "DOCTYPE" not in xml_info:
 					metadata_bad = True
 					stats["metadata.bad"] += 1
 					fails["metadata.bad"].append(
-						"%s/metadata.xml: %s" % (x, "DOCTYPE is missing"))
+						"%s/metadata.xml: %s" % (xpkg, "DOCTYPE is missing"))
 				else:
 					doctype_name, doctype_system, doctype_pubid = \
 						xml_info["DOCTYPE"]
@@ -689,14 +689,14 @@ for x in effective_scanlist:
 						fails["metadata.bad"].append(
 							"%s/metadata.xml: "
 							"DOCTYPE: SYSTEM should refer to '%s', %s" %
-							(x, metadata_dtd_uri, system_problem))
+							(xpkg, metadata_dtd_uri, system_problem))
 
 					if doctype_name != metadata_doctype_name:
 						stats["metadata.bad"] += 1
 						fails["metadata.bad"].append(
 							"%s/metadata.xml: "
 							"DOCTYPE: name should be '%s', not '%s'" %
-							(x, metadata_doctype_name, doctype_name))
+							(xpkg, metadata_doctype_name, doctype_name))
 
 			# load USE flags from metadata.xml
 			try:
@@ -704,7 +704,7 @@ for x in effective_scanlist:
 			except portage.exception.ParseError as e:
 				metadata_bad = True
 				stats["metadata.bad"] += 1
-				fails["metadata.bad"].append("%s/metadata.xml: %s" % (x, e))
+				fails["metadata.bad"].append("%s/metadata.xml: %s" % (xpkg, e))
 			else:
 				for atom in chain(*musedict.values()):
 					if atom is None:
@@ -714,13 +714,13 @@ for x in effective_scanlist:
 					except InvalidAtom as e:
 						stats["metadata.bad"] += 1
 						fails["metadata.bad"].append(
-							"%s/metadata.xml: Invalid atom: %s" % (x, e))
+							"%s/metadata.xml: Invalid atom: %s" % (xpkg, e))
 					else:
-						if atom.cp != x:
+						if atom.cp != xpkg:
 							stats["metadata.bad"] += 1
 							fails["metadata.bad"].append(
 								"%s/metadata.xml: Atom contains "
-								"unexpected cat/pn: %s" % (x, atom))
+								"unexpected cat/pn: %s" % (xpkg, atom))
 
 			# Run other metadata.xml checkers
 			try:
@@ -728,7 +728,7 @@ for x in effective_scanlist:
 			except (utilities.UnknownHerdsError, ) as e:
 				metadata_bad = True
 				stats["metadata.bad"] += 1
-				fails["metadata.bad"].append("%s/metadata.xml: %s" % (x, e))
+				fails["metadata.bad"].append("%s/metadata.xml: %s" % (xpkg, e))
 				del e
 
 #################
@@ -736,7 +736,7 @@ for x in effective_scanlist:
 		if not metadata_bad:
 			if not xmllint.check(checkdir):
 				stats["metadata.bad"] += 1
-				fails["metadata.bad"].append(x + "/metadata.xml")
+				fails["metadata.bad"].append(xpkg + "/metadata.xml")
 
 #################
 		del metadata_bad
@@ -750,7 +750,7 @@ for x in effective_scanlist:
 
 	for y in ebuildlist:
 ##################
-		ebuild = Ebuild(repo_settings, repolevel, pkgdir, catdir, vcs_settings, x, y)
+		ebuild = Ebuild(repo_settings, repolevel, pkgdir, catdir, vcs_settings, xpkg, y)
 ##################
 
 		if check_changelog and not changelog_modified \
@@ -761,10 +761,10 @@ for x in effective_scanlist:
 		if ebuild.untracked(check_ebuild_notadded, y, eadded):
 			# ebuild not added to vcs
 			stats["ebuild.notadded"] += 1
-			fails["ebuild.notadded"].append(x + "/" + y + ".ebuild")
+			fails["ebuild.notadded"].append(xpkg + "/" + y + ".ebuild")
 		myesplit = portage.pkgsplit(y)
 
-		is_bad_split = myesplit is None or myesplit[0] != x.split("/")[-1]
+		is_bad_split = myesplit is None or myesplit[0] != xpkg.split("/")[-1]
 
 		if is_bad_split:
 			is_pv_toolong = pv_toolong_re.search(myesplit[1])
@@ -772,12 +772,12 @@ for x in effective_scanlist:
 
 			if is_pv_toolong or is_pv_toolong2:
 				stats["ebuild.invalidname"] += 1
-				fails["ebuild.invalidname"].append(x + "/" + y + ".ebuild")
+				fails["ebuild.invalidname"].append(xpkg + "/" + y + ".ebuild")
 				continue
 		elif myesplit[0] != pkgdir:
 			print(pkgdir, myesplit[0])
 			stats["ebuild.namenomatch"] += 1
-			fails["ebuild.namenomatch"].append(x + "/" + y + ".ebuild")
+			fails["ebuild.namenomatch"].append(xpkg + "/" + y + ".ebuild")
 			continue
 
 		pkg = pkgs[y]
@@ -836,7 +836,7 @@ for x in effective_scanlist:
 					continue
 				myqakey = missingvars[pos] + ".missing"
 				stats[myqakey] += 1
-				fails[myqakey].append(x + "/" + y + ".ebuild")
+				fails[myqakey].append(xpkg + "/" + y + ".ebuild")
 
 		if catdir == "virtual":
 			for var in ("HOMEPAGE", "LICENSE"):
@@ -894,7 +894,7 @@ for x in effective_scanlist:
 					haskeyword = True
 			if not haskeyword:
 				stats["KEYWORDS.stupid"] += 1
-				fails["KEYWORDS.stupid"].append(x + "/" + y + ".ebuild")
+				fails["KEYWORDS.stupid"].append(xpkg + "/" + y + ".ebuild")
 
 		"""
 		Ebuilds that inherit a "Live" eclass (darcs,subversion,git,cvs,etc..) should
@@ -911,7 +911,7 @@ for x in effective_scanlist:
 				stats["LIVEVCS.stable"] += 1
 				fails["LIVEVCS.stable"].append(
 					"%s/%s.ebuild with stable keywords:%s " %
-					(x, y, bad_stable_keywords))
+					(xpkg, y, bad_stable_keywords))
 			del bad_stable_keywords
 
 			if keywords and not has_global_mask(pkg):
@@ -1094,7 +1094,7 @@ for x in effective_scanlist:
 
 		for mypos in range(len(myuse)):
 			stats["IUSE.invalid"] += 1
-			fails["IUSE.invalid"].append(x + "/" + y + ".ebuild: %s" % myuse[mypos])
+			fails["IUSE.invalid"].append(xpkg + "/" + y + ".ebuild: %s" % myuse[mypos])
 
 		# Check for outdated RUBY targets
 		old_ruby_eclasses = ["ruby-ng", "ruby-fakegem", "ruby"]
@@ -1120,7 +1120,7 @@ for x in effective_scanlist:
 				# function will remove it without removing values.
 				if lic not in liclist and lic != "||":
 					stats["LICENSE.invalid"] += 1
-					fails["LICENSE.invalid"].append(x + "/" + y + ".ebuild: %s" % lic)
+					fails["LICENSE.invalid"].append(xpkg + "/" + y + ".ebuild: %s" % lic)
 				elif lic in liclist_deprecated:
 					stats["LICENSE.deprecated"] += 1
 					fails["LICENSE.deprecated"].append("%s: %s" % (ebuild.relative_path, lic))
@@ -1137,11 +1137,11 @@ for x in effective_scanlist:
 				if myskey not in kwlist:
 					stats["KEYWORDS.invalid"] += 1
 					fails["KEYWORDS.invalid"].append(
-						"%s/%s.ebuild: %s" % (x, y, mykey))
+						"%s/%s.ebuild: %s" % (xpkg, y, mykey))
 				elif myskey not in profiles:
 					stats["KEYWORDS.invalid"] += 1
 					fails["KEYWORDS.invalid"].append(
-						"%s/%s.ebuild: %s (profile invalid)" % (x, y, mykey))
+						"%s/%s.ebuild: %s (profile invalid)" % (xpkg, y, mykey))
 
 		# restrict checks
 		myrestrict = None
@@ -1159,7 +1159,7 @@ for x in effective_scanlist:
 			if mybadrestrict:
 				stats["RESTRICT.invalid"] += len(mybadrestrict)
 				for mybad in mybadrestrict:
-					fails["RESTRICT.invalid"].append(x + "/" + y + ".ebuild: %s" % mybad)
+					fails["RESTRICT.invalid"].append(xpkg + "/" + y + ".ebuild: %s" % mybad)
 		# REQUIRED_USE check
 		required_use = myaux["REQUIRED_USE"]
 		if required_use:
@@ -1377,7 +1377,7 @@ for x in effective_scanlist:
 			stats["metadata.warning"] += 1
 			fails["metadata.warning"].append(
 				"%s/metadata.xml: unused local USE-description: '%s'" %
-				(x, myflag))
+				(xpkg, myflag))
 
 if options.if_modified == "y" and len(effective_scanlist) < 1:
 	logging.warning("--if-modified is enabled, but no modified packages were found!")
