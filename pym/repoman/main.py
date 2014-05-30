@@ -80,6 +80,7 @@ from repoman.profile import check_profiles, dev_keywords, setup_profile
 from repoman.qa_data import (format_qa_output, format_qa_output_column, qahelp,
 	qawarnings, qacats, no_exec, allvars, max_desc_len, missingvars,
 	ruby_deprecated, suspect_virtual, suspect_rdepend, valid_restrict)
+from qa_tracker import QATracker
 from repoman.repos import has_global_mask, RepoSettings, repo_metadata
 from repoman.scan import Changes, scan
 from repoman._subprocess import repoman_popen, repoman_getstatusoutput
@@ -260,12 +261,7 @@ scanlist = scan(repolevel, reposplit, startdir, categories, repo_settings)
 
 dev_keywords = dev_keywords(profiles)
 
-stats = {}
-fails = {}
-
-for x in qacats:
-	stats[x] = 0
-	fails[x] = []
+qatracker = QATracker()
 
 ####################
 
@@ -350,8 +346,7 @@ for xpkg in effective_scanlist:
 		repoman_settings['O'] = checkdir
 		repoman_settings['PORTAGE_QUIET'] = '1'
 		if not portage.digestcheck([], repoman_settings, strict=1):
-			stats["manifest.bad"] += 1
-			fails["manifest.bad"].append(os.path.join(xpkg, 'Manifest'))
+			qatracker.add_error("manifest.bad", os.path.join(xpkg, 'Manifest'))
 		repoman_settings.pop('PORTAGE_QUIET', None)
 
 	if options.mode == 'manifest-check':
@@ -370,8 +365,7 @@ for xpkg in effective_scanlist:
 				os.stat(os.path.join(checkdir, y)).st_mode) & 0o111
 
 			if file_is_executable:
-				stats["file.executable"] += 1
-				fails["file.executable"].append(os.path.join(checkdir, y))
+				qatracker.add_error("file.executable", os.path.join(checkdir, y))
 		if file_is_ebuild:
 			pf = y[:-7]
 			ebuildlist.append(pf)
@@ -380,18 +374,15 @@ for xpkg in effective_scanlist:
 				myaux = dict(zip(allvars, portdb.aux_get(cpv, allvars)))
 			except KeyError:
 				allvalid = False
-				stats["ebuild.syntax"] += 1
-				fails["ebuild.syntax"].append(os.path.join(xpkg, y))
+				qatracker.add_error("ebuild.syntax", os.path.join(xpkg, y))
 				continue
 			except IOError:
 				allvalid = False
-				stats["ebuild.output"] += 1
-				fails["ebuild.output"].append(os.path.join(xpkg, y))
+				qatracker.add_error("ebuild.output", os.path.join(xpkg, y))
 				continue
 			if not portage.eapi_is_supported(myaux["EAPI"]):
 				allvalid = False
-				stats["EAPI.unsupported"] += 1
-				fails["EAPI.unsupported"].append(os.path.join(xpkg, y))
+				qatracker.add_error("EAPI.unsupported", os.path.join(xpkg, y))
 				continue
 			pkgs[pf] = Package(
 				cpv=cpv, metadata=myaux, root_config=root_config,
@@ -423,8 +414,7 @@ for xpkg in effective_scanlist:
 				# prohibited characters). See bug #406877.
 				index = -1
 		if index != -1:
-			stats["file.name"] += 1
-			fails["file.name"].append(
+			qatracker.add_error("file.name",
 				"%s/%s: char '%s'" % (checkdir, y, y[index]))
 
 		if not (y in ("ChangeLog", "metadata.xml") or y.endswith(".ebuild")):
@@ -440,25 +430,21 @@ for xpkg in effective_scanlist:
 			for l in f:
 				line += 1
 		except UnicodeDecodeError as ue:
-			stats["file.UTF8"] += 1
 			s = ue.object[:ue.start]
 			l2 = s.count("\n")
 			line += l2
 			if l2 != 0:
 				s = s[s.rfind("\n") + 1:]
-			fails["file.UTF8"].append(
+			qatracker.add_error("file.UTF8",
 				"%s/%s: line %i, just after: '%s'" % (checkdir, y, line, s))
 		finally:
 			if f is not None:
 				f.close()
 
 ###############
-	status_check = VCSStatus(vcs_settings, checkdir, checkdir_relative, xpkg)
+	status_check = VCSStatus(vcs_settings, checkdir, checkdir_relative, xpkg, qatracker)
 	status_check.check(check_ebuild_notadded)
 	eadded.extend(status_check.eadded)
-	for key in list(status_check.stats):
-		stats[key] += status_check.stats[key]
-		fails[key].extend(status_check.fails[key])
 ###############
 
 	mf = repoman_settings.repositories.get_repo_for_location(
@@ -480,8 +466,7 @@ for xpkg in effective_scanlist:
 				# This will be reported as an "ebuild.syntax" error.
 				pass
 			else:
-				stats["SRC_URI.syntax"] += 1
-				fails["SRC_URI.syntax"].append(
+				qatracker.add_error("SRC_URI.syntax",
 					"%s.ebuild SRC_URI: %s" % (mykey, e))
 	del fetchlist_dict
 	if not src_uri_error:
@@ -493,12 +478,10 @@ for xpkg in effective_scanlist:
 		myfiles_all = set(myfiles_all)
 		for entry in mydigests:
 			if entry not in myfiles_all:
-				stats["digest.unused"] += 1
-				fails["digest.unused"].append(checkdir + "::" + entry)
+				qatracker.add_error("digest.unused", checkdir + "::" + entry)
 		for entry in myfiles_all:
 			if entry not in mydigests:
-				stats["digest.missing"] += 1
-				fails["digest.missing"].append(checkdir + "::" + entry)
+				qatracker.add_error("digest.missing", checkdir + "::" + entry)
 	del myfiles_all
 
 	if os.path.exists(checkdir + "/files"):
@@ -531,12 +514,10 @@ for xpkg in effective_scanlist:
 			# File size between 20 KiB and 60 KiB causes a warning,
 			# while file size over 60 KiB causes an error.
 			elif mystat.st_size > 61440:
-				stats["file.size.fatal"] += 1
-				fails["file.size.fatal"].append(
+				qatracker.add_error("file.size.fatal",
 					"(%d KiB) %s/files/%s" % (mystat.st_size // 1024, xpkg, y))
 			elif mystat.st_size > 20480:
-				stats["file.size"] += 1
-				fails["file.size"].append(
+				qatracker.add_error("file.size",
 					"(%d KiB) %s/files/%s" % (mystat.st_size // 1024, xpkg, y))
 
 			index = repo_settings.repo_config.find_invalid_path_char(y)
@@ -549,20 +530,17 @@ for xpkg in effective_scanlist:
 					# prohibited characters). See bug #406877.
 					index = -1
 			if index != -1:
-				stats["file.name"] += 1
-				fails["file.name"].append(
+				qatracker.add_error("file.name",
 					"%s/files/%s: char '%s'" % (checkdir, y, y[index]))
 	del mydigests
 
 	if check_changelog and "ChangeLog" not in checkdirlist:
-		stats["changelog.missing"] += 1
-		fails["changelog.missing"].append(xpkg + "/ChangeLog")
+		qatracker.add_error("changelog.missing", xpkg + "/ChangeLog")
 
 	musedict = {}
 	# metadata.xml file check
 	if "metadata.xml" not in checkdirlist:
-		stats["metadata.missing"] += 1
-		fails["metadata.missing"].append(xpkg + "/metadata.xml")
+		qatracker.add_error("metadata.missing", xpkg + "/metadata.xml")
 	# metadata.xml parse check
 	else:
 		metadata_bad = False
@@ -578,8 +556,7 @@ for xpkg in effective_scanlist:
 				parser=xml_parser)
 		except (ExpatError, SyntaxError, EnvironmentError) as e:
 			metadata_bad = True
-			stats["metadata.bad"] += 1
-			fails["metadata.bad"].append("%s/metadata.xml: %s" % (xpkg, e))
+			qatracker.add_error("metadata.bad", "%s/metadata.xml: %s" % (xpkg, e))
 			del e
 		else:
 			if not hasattr(xml_parser, 'parser') or \
@@ -589,8 +566,7 @@ for xpkg in effective_scanlist:
 				pass
 			else:
 				if "XML_DECLARATION" not in xml_info:
-					stats["metadata.bad"] += 1
-					fails["metadata.bad"].append(
+					qatracker.add_error("metadata.bad",
 						"%s/metadata.xml: "
 						"xml declaration is missing on first line, "
 						"should be '%s'" % (xpkg, metadata_xml_declaration))
@@ -599,38 +575,34 @@ for xpkg in effective_scanlist:
 						xml_info["XML_DECLARATION"]
 					if xml_encoding is None or \
 						xml_encoding.upper() != metadata_xml_encoding:
-						stats["metadata.bad"] += 1
 						if xml_encoding is None:
 							encoding_problem = "but it is undefined"
 						else:
 							encoding_problem = "not '%s'" % xml_encoding
-						fails["metadata.bad"].append(
+						qatracker.add_error("metadata.bad",
 							"%s/metadata.xml: "
 							"xml declaration encoding should be '%s', %s" %
 							(xpkg, metadata_xml_encoding, encoding_problem))
 
 				if "DOCTYPE" not in xml_info:
 					metadata_bad = True
-					stats["metadata.bad"] += 1
-					fails["metadata.bad"].append(
+					qatracker.add_error("metadata.bad",
 						"%s/metadata.xml: %s" % (xpkg, "DOCTYPE is missing"))
 				else:
 					doctype_name, doctype_system, doctype_pubid = \
 						xml_info["DOCTYPE"]
 					if doctype_system != metadata_dtd_uri:
-						stats["metadata.bad"] += 1
 						if doctype_system is None:
 							system_problem = "but it is undefined"
 						else:
 							system_problem = "not '%s'" % doctype_system
-						fails["metadata.bad"].append(
+						qatracker.add_error("metadata.bad",
 							"%s/metadata.xml: "
 							"DOCTYPE: SYSTEM should refer to '%s', %s" %
 							(xpkg, metadata_dtd_uri, system_problem))
 
 					if doctype_name != metadata_doctype_name:
-						stats["metadata.bad"] += 1
-						fails["metadata.bad"].append(
+						qatracker.add_error("metadata.bad",
 							"%s/metadata.xml: "
 							"DOCTYPE: name should be '%s', not '%s'" %
 							(xpkg, metadata_doctype_name, doctype_name))
@@ -640,8 +612,8 @@ for xpkg in effective_scanlist:
 				musedict = utilities.parse_metadata_use(_metadata_xml)
 			except portage.exception.ParseError as e:
 				metadata_bad = True
-				stats["metadata.bad"] += 1
-				fails["metadata.bad"].append("%s/metadata.xml: %s" % (xpkg, e))
+				qatracker.add_error("metadata.bad",
+					"%s/metadata.xml: %s" % (xpkg, e))
 			else:
 				for atom in chain(*musedict.values()):
 					if atom is None:
@@ -649,13 +621,11 @@ for xpkg in effective_scanlist:
 					try:
 						atom = Atom(atom)
 					except InvalidAtom as e:
-						stats["metadata.bad"] += 1
-						fails["metadata.bad"].append(
+						qatracker.add_error("metadata.bad",
 							"%s/metadata.xml: Invalid atom: %s" % (xpkg, e))
 					else:
 						if atom.cp != xpkg:
-							stats["metadata.bad"] += 1
-							fails["metadata.bad"].append(
+							qatracker.add_error("metadata.bad",
 								"%s/metadata.xml: Atom contains "
 								"unexpected cat/pn: %s" % (xpkg, atom))
 
@@ -664,16 +634,15 @@ for xpkg in effective_scanlist:
 				utilities.check_metadata(_metadata_xml, herd_base)
 			except (utilities.UnknownHerdsError, ) as e:
 				metadata_bad = True
-				stats["metadata.bad"] += 1
-				fails["metadata.bad"].append("%s/metadata.xml: %s" % (xpkg, e))
+				qatracker.add_error("metadata.bad",
+					"%s/metadata.xml: %s" % (xpkg, e))
 				del e
 
 #################
 		# Only carry out if in package directory or check forced
 		if not metadata_bad:
 			if not xmllint.check(checkdir):
-				stats["metadata.bad"] += 1
-				fails["metadata.bad"].append(xpkg + "/metadata.xml")
+				qatracker.add_error("metadata.bad", xpkg + "/metadata.xml")
 
 #################
 		del metadata_bad
@@ -692,13 +661,12 @@ for xpkg in effective_scanlist:
 
 		if check_changelog and not changelog_modified \
 			and ebuild.ebuild_path in changed.new_ebuilds:
-			stats['changelog.ebuildadded'] += 1
-			fails['changelog.ebuildadded'].append(ebuild.relative_path)
+			qatracker.add_error('changelog.ebuildadded', ebuild.relative_path)
 
 		if ebuild.untracked(check_ebuild_notadded, y_ebuild, eadded):
 			# ebuild not added to vcs
-			stats["ebuild.notadded"] += 1
-			fails["ebuild.notadded"].append(xpkg + "/" + y_ebuild + ".ebuild")
+			qatracker.add_error("ebuild.notadded",
+				xpkg + "/" + y_ebuild + ".ebuild")
 		myesplit = portage.pkgsplit(y_ebuild)
 
 		is_bad_split = myesplit is None or myesplit[0] != xpkg.split("/")[-1]
@@ -708,13 +676,13 @@ for xpkg in effective_scanlist:
 			is_pv_toolong2 = pv_toolong_re.search(myesplit[2])
 
 			if is_pv_toolong or is_pv_toolong2:
-				stats["ebuild.invalidname"] += 1
-				fails["ebuild.invalidname"].append(xpkg + "/" + y_ebuild + ".ebuild")
+				qatracker.add_error("ebuild.invalidname",
+					xpkg + "/" + y_ebuild + ".ebuild")
 				continue
 		elif myesplit[0] != pkgdir:
 			print(pkgdir, myesplit[0])
-			stats["ebuild.namenomatch"] += 1
-			fails["ebuild.namenomatch"].append(xpkg + "/" + y_ebuild + ".ebuild")
+			qatracker.add_error("ebuild.namenomatch",
+				xpkg + "/" + y_ebuild + ".ebuild")
 			continue
 
 		pkg = pkgs[y_ebuild]
@@ -723,8 +691,8 @@ for xpkg in effective_scanlist:
 			allvalid = False
 			for k, msgs in pkg.invalid.items():
 				for msg in msgs:
-					stats[k] += 1
-					fails[k].append("%s: %s" % (ebuild.relative_path, msg))
+					qatracker.add_error(k,
+						"%s: %s" % (ebuild.relative_path, msg))
 			continue
 
 		myaux = pkg._metadata
@@ -733,13 +701,11 @@ for xpkg in effective_scanlist:
 		live_ebuild = live_eclasses.intersection(inherited)
 
 		if repo_settings.repo_config.eapi_is_banned(eapi):
-			stats["repo.eapi.banned"] += 1
-			fails["repo.eapi.banned"].append(
+			qatracker.add_error("repo.eapi.banned",
 				"%s: %s" % (ebuild.relative_path, eapi))
 
 		elif repo_settings.repo_config.eapi_is_deprecated(eapi):
-			stats["repo.eapi.deprecated"] += 1
-			fails["repo.eapi.deprecated"].append(
+			qatracker.add_error("repo.eapi.deprecated",
 				"%s: %s" % (ebuild.relative_path, eapi))
 
 		for k, v in myaux.items():
@@ -747,22 +713,18 @@ for xpkg in effective_scanlist:
 				continue
 			m = non_ascii_re.search(v)
 			if m is not None:
-				stats["variable.invalidchar"] += 1
-				fails["variable.invalidchar"].append(
+				qatracker.add_error("variable.invalidchar",
 					"%s: %s variable contains non-ASCII "
 					"character at position %s" %
 					(ebuild.relative_path, k, m.start() + 1))
 
 		if not src_uri_error:
 			#######################
-			thirdparty = ThirdPartyMirrors(repoman_settings)
+			thirdparty = ThirdPartyMirrors(repoman_settings, qatracker)
 			thirdparty.check(myaux, ebuild.relative_path)
-			stats["SRC_URI.mirror"] = thirdparty.stats
-			fails["SRC_URI.mirror"] = thirdparty.fails
 			#######################
 		if myaux.get("PROVIDE"):
-			stats["virtual.oldstyle"] += 1
-			fails["virtual.oldstyle"].append(ebuild.relative_path)
+			qatracker.add_error("virtual.oldstyle", ebuild.relative_path)
 
 		for pos, missing_var in enumerate(missingvars):
 			if not myaux.get(missing_var):
@@ -772,20 +734,17 @@ for xpkg in effective_scanlist:
 				if live_ebuild and missing_var == "KEYWORDS":
 					continue
 				myqakey = missingvars[pos] + ".missing"
-				stats[myqakey] += 1
-				fails[myqakey].append(xpkg + "/" + y_ebuild + ".ebuild")
+				qatracker.add_error(myqakey, xpkg + "/" + y_ebuild + ".ebuild")
 
 		if catdir == "virtual":
 			for var in ("HOMEPAGE", "LICENSE"):
 				if myaux.get(var):
 					myqakey = var + ".virtual"
-					stats[myqakey] += 1
-					fails[myqakey].append(ebuild.relative_path)
+					qatracker.add_error(myqakey, ebuild.relative_path)
 
 		# 14 is the length of DESCRIPTION=""
 		if len(myaux['DESCRIPTION']) > max_desc_len:
-			stats['DESCRIPTION.toolong'] += 1
-			fails['DESCRIPTION.toolong'].append(
+			qatracker.add_error('DESCRIPTION.toolong',
 				"%s: DESCRIPTION is %d characters (max %d)" %
 				(ebuild.relative_path, len(myaux['DESCRIPTION']), max_desc_len))
 
@@ -799,10 +758,9 @@ for xpkg in effective_scanlist:
 			if stable_keywords:
 				if ebuild.ebuild_path in changed.new_ebuilds and catdir != "virtual":
 					stable_keywords.sort()
-					stats["KEYWORDS.stable"] += 1
-					fails["KEYWORDS.stable"].append(
-						relative_path + " added with stable keywords: %s" % \
-							" ".join(stable_keywords))
+					qatracker.add_error("KEYWORDS.stable",
+						"%s/%s.ebuild added with stable keywords: %s" %
+						(xpkg, y_ebuild, " ".join(stable_keywords)))
 
 		ebuild_archs = set(
 			kw.lstrip("~") for kw in keywords if not kw.startswith("-"))
@@ -813,8 +771,7 @@ for xpkg in effective_scanlist:
 		elif ebuild_archs and "*" not in ebuild_archs and not live_ebuild:
 			dropped_keywords = previous_keywords.difference(ebuild_archs)
 			if dropped_keywords:
-				stats["KEYWORDS.dropped"] += 1
-				fails["KEYWORDS.dropped"].append(
+				qatracker.add_error("KEYWORDS.dropped",
 					"%s: %s" %
 					(ebuild.relative_path, " ".join(sorted(dropped_keywords))))
 
@@ -830,8 +787,8 @@ for xpkg in effective_scanlist:
 				if kw in kwlist:
 					haskeyword = True
 			if not haskeyword:
-				stats["KEYWORDS.stupid"] += 1
-				fails["KEYWORDS.stupid"].append(xpkg + "/" + y_ebuild + ".ebuild")
+				qatracker.add_error("KEYWORDS.stupid",
+					xpkg + "/" + y_ebuild + ".ebuild")
 
 		"""
 		Ebuilds that inherit a "Live" eclass (darcs,subversion,git,cvs,etc..) should
@@ -845,15 +802,13 @@ for xpkg in effective_scanlist:
 					bad_stable_keywords.append(keyword)
 				del keyword
 			if bad_stable_keywords:
-				stats["LIVEVCS.stable"] += 1
-				fails["LIVEVCS.stable"].append(
+				qatracker.add_error("LIVEVCS.stable",
 					"%s/%s.ebuild with stable keywords:%s " %
 					(xpkg, y_ebuild, bad_stable_keywords))
 			del bad_stable_keywords
 
 			if keywords and not has_global_mask(pkg):
-				stats["LIVEVCS.unmasked"] += 1
-				fails["LIVEVCS.unmasked"].append(ebuild.relative_path)
+				qatracker.add_error("LIVEVCS.unmasked", ebuild.relative_path)
 
 		if options.ignore_arches:
 			arches = [[
@@ -920,8 +875,7 @@ for xpkg in effective_scanlist:
 			if atoms and mytype.endswith("DEPEND"):
 				if runtime and \
 					"test?" in mydepstr.split():
-					stats[mytype + '.suspect'] += 1
-					fails[mytype + '.suspect'].append(
+					qatracker.add_error(mytype + '.suspect',
 						"%s: 'test?' USE conditional in %s" %
 						(ebuild.relative_path, mytype))
 
@@ -943,15 +897,13 @@ for xpkg in effective_scanlist:
 					if catdir != "virtual":
 						if not is_blocker and \
 							atom.cp in suspect_virtual:
-							stats['virtual.suspect'] += 1
-							fails['virtual.suspect'].append(
+							qatracker.add_error('virtual.suspect',
 								ebuild.relative_path +
 								": %s: consider using '%s' instead of '%s'" %
 								(mytype, suspect_virtual[atom.cp], atom))
 						if not is_blocker and \
 							atom.cp.startswith("perl-core/"):
-							stats['dependency.perlcore'] += 1
-							fails['dependency.perlcore'].append(
+							qatracker.add_error('dependency.perlcore',
 								ebuild.relative_path +
 								": %s: please use '%s' instead of '%s'" %
 								(mytype, atom.replace("perl-core/","virtual/perl-"), atom))
@@ -960,33 +912,30 @@ for xpkg in effective_scanlist:
 						not is_blocker and \
 						not inherited_java_eclass and \
 						atom.cp == "virtual/jdk":
-						stats['java.eclassesnotused'] += 1
-						fails['java.eclassesnotused'].append(ebuild.relative_path)
+						qatracker.add_error('java.eclassesnotused',
+							ebuild.relative_path)
 					elif buildtime and \
 						not is_blocker and \
 						not inherited_wxwidgets_eclass and \
 						atom.cp == "x11-libs/wxGTK":
-						stats['wxwidgets.eclassnotused'] += 1
-						fails['wxwidgets.eclassnotused'].append(
+						qatracker.add_error('wxwidgets.eclassnotused',
 							"%s: %ss on x11-libs/wxGTK without inheriting"
 							" wxwidgets.eclass" % (ebuild.relative_path, mytype))
 					elif runtime:
 						if not is_blocker and \
 							atom.cp in suspect_rdepend:
-							stats[mytype + '.suspect'] += 1
-							fails[mytype + '.suspect'].append(
+							qatracker.add_error(mytype + '.suspect',
 								ebuild.relative_path + ": '%s'" % atom)
 
 					if atom.operator == "~" and \
 						portage.versions.catpkgsplit(atom.cpv)[3] != "r0":
 						qacat = 'dependency.badtilde'
-						stats[qacat] += 1
-						fails[qacat].append(
+						qatracker.add_error(qacat,
 							"%s: %s uses the ~ operator"
 							" with a non-zero revision: '%s'" %
 							(ebuild.relative_path, mytype, atom))
 
-					check_missingslot(atom, mytype, eapi, portdb, stats, fails,
+					check_missingslot(atom, mytype, eapi, portdb, qatracker,
 						ebuild.relative_path, myaux)
 
 			type_list.extend([mytype] * (len(badsyntax) - len(type_list)))
@@ -996,8 +945,8 @@ for xpkg in effective_scanlist:
 				qacat = "dependency.syntax"
 			else:
 				qacat = m + ".syntax"
-			stats[qacat] += 1
-			fails[qacat].append("%s: %s: %s" % (ebuild.relative_path, m, b))
+			qatracker.add_error(qacat,
+				"%s: %s: %s" % (ebuild.relative_path, m, b))
 
 		badlicsyntax = len([z for z in type_list if z == "LICENSE"])
 		badprovsyntax = len([z for z in type_list if z == "PROVIDE"])
@@ -1023,15 +972,14 @@ for xpkg in effective_scanlist:
 
 		if default_use and not eapi_has_iuse_defaults(eapi):
 			for myflag in default_use:
-				stats['EAPI.incompatible'] += 1
-				fails['EAPI.incompatible'].append(
+				qatracker.add_error('EAPI.incompatible',
 					"%s: IUSE defaults"
 					" not supported with EAPI='%s': '%s'" %
 					(ebuild.relative_path, eapi, myflag))
 
 		for mypos in range(len(myuse)):
-			stats["IUSE.invalid"] += 1
-			fails["IUSE.invalid"].append(xpkg + "/" + y_ebuild + ".ebuild: %s" % myuse[mypos])
+			qatracker.add_error("IUSE.invalid",
+				xpkg + "/" + y_ebuild + ".ebuild: %s" % myuse[mypos])
 
 		# Check for outdated RUBY targets
 		old_ruby_eclasses = ["ruby-ng", "ruby-fakegem", "ruby"]
@@ -1041,9 +989,9 @@ for xpkg in effective_scanlist:
 			ruby_intersection = pkg.iuse.all.intersection(ruby_deprecated)
 			if ruby_intersection:
 				for myruby in ruby_intersection:
-					stats["IUSE.rubydeprecated"] += 1
-					fails["IUSE.rubydeprecated"].append(
-						(ebuild.relative_path + ": Deprecated ruby target: %s") % myruby)
+					qatracker.add_error("IUSE.rubydeprecated",
+						(ebuild.relative_path + ": Deprecated ruby target: %s")
+						% myruby)
 
 		# license checks
 		if not badlicsyntax:
@@ -1056,11 +1004,11 @@ for xpkg in effective_scanlist:
 				# Need to check for "||" manually as no portage
 				# function will remove it without removing values.
 				if lic not in liclist and lic != "||":
-					stats["LICENSE.invalid"] += 1
-					fails["LICENSE.invalid"].append(xpkg + "/" + y_ebuild + ".ebuild: %s" % lic)
+					qatracker.add_error("LICENSE.invalid",
+						xpkg + "/" + y_ebuild + ".ebuild: %s" % lic)
 				elif lic in liclist_deprecated:
-					stats["LICENSE.deprecated"] += 1
-					fails["LICENSE.deprecated"].append("%s: %s" % (ebuild.relative_path, lic))
+					qatracker.add_error("LICENSE.deprecated",
+						"%s: %s" % (ebuild.relative_path, lic))
 
 		# keyword checks
 		myuse = myaux["KEYWORDS"].split()
@@ -1072,13 +1020,12 @@ for xpkg in effective_scanlist:
 				if myskey[:1] == "~":
 					myskey = myskey[1:]
 				if myskey not in kwlist:
-					stats["KEYWORDS.invalid"] += 1
-					fails["KEYWORDS.invalid"].append(
+					qatracker.add_error("KEYWORDS.invalid",
 						"%s/%s.ebuild: %s" % (xpkg, y_ebuild, mykey))
 				elif myskey not in profiles:
-					stats["KEYWORDS.invalid"] += 1
-					fails["KEYWORDS.invalid"].append(
-						"%s/%s.ebuild: %s (profile invalid)" % (xpkg, y_ebuild, mykey))
+					qatracker.add_error("KEYWORDS.invalid",
+						"%s/%s.ebuild: %s (profile invalid)"
+						% (xpkg, y_ebuild, mykey))
 
 		# restrict checks
 		myrestrict = None
@@ -1086,31 +1033,29 @@ for xpkg in effective_scanlist:
 			myrestrict = portage.dep.use_reduce(
 				myaux["RESTRICT"], matchall=1, flat=True)
 		except portage.exception.InvalidDependString as e:
-			stats["RESTRICT.syntax"] += 1
-			fails["RESTRICT.syntax"].append(
+			qatracker.add_error("RESTRICT.syntax",
 				"%s: RESTRICT: %s" % (ebuild.relative_path, e))
 			del e
 		if myrestrict:
 			myrestrict = set(myrestrict)
 			mybadrestrict = myrestrict.difference(valid_restrict)
 			if mybadrestrict:
-				stats["RESTRICT.invalid"] += len(mybadrestrict)
 				for mybad in mybadrestrict:
-					fails["RESTRICT.invalid"].append(xpkg + "/" + y_ebuild + ".ebuild: %s" % mybad)
+					qatracker.add_error("RESTRICT.invalid",
+						xpkg + "/" + y_ebuild + ".ebuild: %s" % mybad)
 		# REQUIRED_USE check
 		required_use = myaux["REQUIRED_USE"]
 		if required_use:
 			if not eapi_has_required_use(eapi):
-				stats['EAPI.incompatible'] += 1
-				fails['EAPI.incompatible'].append(
+				qatracker.add_error('EAPI.incompatible',
 					"%s: REQUIRED_USE"
-					" not supported with EAPI='%s'" % (ebuild.relative_path, eapi,))
+					" not supported with EAPI='%s'"
+					% (ebuild.relative_path, eapi,))
 			try:
 				portage.dep.check_required_use(
 					required_use, (), pkg.iuse.is_valid_flag, eapi=eapi)
 			except portage.exception.InvalidDependString as e:
-				stats["REQUIRED_USE.syntax"] += 1
-				fails["REQUIRED_USE.syntax"].append(
+				qatracker.add_error("REQUIRED_USE.syntax",
 					"%s: REQUIRED_USE: %s" % (ebuild.relative_path, e))
 				del e
 
@@ -1128,8 +1073,8 @@ for xpkg in effective_scanlist:
 				mode='r', encoding=_encodings['repo.content'])
 			try:
 				for check_name, e in run_checks(f, pkg):
-					stats[check_name] += 1
-					fails[check_name].append(ebuild.relative_path + ': %s' % e)
+					qatracker.add_error(check_name,
+						ebuild.relative_path + ': %s' % e)
 			finally:
 				f.close()
 		except UnicodeDecodeError:
@@ -1287,34 +1232,32 @@ for xpkg in effective_scanlist:
 							# if we emptied out our list, continue:
 							if not atoms:
 								continue
-							stats[mykey] += 1
-							fails[mykey].append("%s: %s: %s(%s)\n%s"
-								% (relative_path, mytype, keyword,
-								prof, pformat(atoms, indent=6)))
+							qatracker.add_error(mykey,
+								"%s: %s: %s(%s)\n%s"
+								% (ebuild.relative_path, mytype, keyword, prof,
+									pformat(atoms, indent=6)))
 					else:
-						stats[mykey] += 1
-						fails[mykey].append("%s: %s: %s(%s)\n%s"
-							% (relative_path, mytype, keyword,
-							prof, pformat(atoms, indent=6)))
+						qatracker.add_error(mykey,
+							"%s: %s: %s(%s)\n%s"
+							% (ebuild.relative_path, mytype, keyword, prof,
+								pformat(atoms, indent=6)))
 
 		if not baddepsyntax and unknown_pkgs:
 			type_map = {}
 			for mytype, atom in unknown_pkgs:
 				type_map.setdefault(mytype, set()).add(atom)
 			for mytype, atoms in type_map.items():
-				stats["dependency.unknown"] += 1
-				fails["dependency.unknown"].append(
-					"%s: %s: %s" % (
-						ebuild.relative_path, mytype, ", ".join(sorted(atoms))))
+				qatracker.add_error("dependency.unknown",
+					"%s: %s: %s"
+					% (ebuild.relative_path, mytype, ", ".join(sorted(atoms))))
 
 	# check if there are unused local USE-descriptions in metadata.xml
 	# (unless there are any invalids, to avoid noise)
 	if allvalid:
 		for myflag in muselist.difference(used_useflags):
-			stats["metadata.warning"] += 1
-			fails["metadata.warning"].append(
-				"%s/metadata.xml: unused local USE-description: '%s'" %
-				(xpkg, myflag))
+			qatracker.add_error("metadata.warning",
+				"%s/metadata.xml: unused local USE-description: '%s'"
+				% (xpkg, myflag))
 
 if options.if_modified == "y" and len(effective_scanlist) < 1:
 	logging.warning("--if-modified is enabled, but no modified packages were found!")
@@ -1330,7 +1273,7 @@ dowarn = 0
 dofull = options.mode != 'full'
 
 for x in qacats:
-	if not stats[x]:
+	if x not in qatracker.fails:
 		continue
 	dowarn = 1
 	if x not in qawarnings:
@@ -1361,7 +1304,7 @@ format_outputs = {
 
 format_output = format_outputs.get(
 	options.output_style, format_outputs['default'])
-format_output(f, stats, fails, dofull, dofail, options, qawarnings)
+format_output(f, qatracker.fails, dofull, dofail, options, qawarnings)
 
 style_file.flush()
 del console_writer, f, style_file

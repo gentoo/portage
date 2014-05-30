@@ -7,7 +7,7 @@ in dependencies."""
 
 from portage.eapi import eapi_has_slot_operator
 
-def check_missingslot(atom, mytype, eapi, portdb, stats, fails, relative_path, my_aux):
+def check_missingslot(atom, mytype, eapi, portdb, qatracker, relative_path, my_aux):
 	# If no slot or slot operator is specified in RDEP...
 	if (not atom.blocker and not atom.slot and not atom.slot_operator
 			and mytype == 'RDEPEND' and eapi_has_slot_operator(eapi)):
@@ -24,8 +24,6 @@ def check_missingslot(atom, mytype, eapi, portdb, stats, fails, relative_path, m
 			if atom not in depend:
 				return
 
-			stats["dependency.missingslot"] += 1
-			fails["dependency.missingslot"].append(
-				relative_path +
+			qatracker.add_error("dependency.missingslot", relative_path +
 				": %s: '%s' matches more than one slot, please specify an explicit slot and/or use the := or :* slot operator" %
 				(mytype, atom))

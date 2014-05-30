@@ -350,12 +350,11 @@ no_exec = frozenset(["Manifest", "ChangeLog", "metadata.xml"])
 
 
 def format_qa_output(
-	formatter, stats, fails, dofull, dofail, options, qawarnings):
+	formatter, fails, dofull, dofail, options, qawarnings):
 	"""Helper function that formats output properly
 
 	Args:
 		formatter - a subclass of Formatter
-		stats - a dict of qa status items
 		fails - a dict of qa status failures
 		dofull - boolean to print full results or a summary
 		dofail - boolean to decide if failure was hard or soft
@@ -365,8 +364,8 @@ def format_qa_output(
 	"""
 	full = options.mode == 'full'
 	# we only want key value pairs where value > 0
-	for category, number in \
-		filter(lambda myitem: myitem[1] > 0, sorted(stats.items())):
+	for category in sorted(fails):
+		number = len(fails[category])
 		formatter.add_literal_data("  " + category.ljust(30))
 		if category in qawarnings:
 			formatter.push_style("WARN")
@@ -388,7 +387,7 @@ def format_qa_output(
 
 
 def format_qa_output_column(
-	formatter, stats, fails, dofull, dofail, options, qawarnings):
+	formatter, fails, dofull, dofail, options, qawarnings):
 	"""Helper function that formats output in a machine-parseable column format
 
 	@param formatter: an instance of Formatter
@@ -408,11 +407,8 @@ def format_qa_output_column(
 	@return: None (modifies formatter)
 	"""
 	full = options.mode == 'full'
-	for category, number in stats.items():
-		# we only want key value pairs where value > 0
-		if number < 1:
-			continue
-
+	for category in sorted(fails):
+		number = len(fails[category])
 		formatter.add_literal_data("NumberOf " + category + " ")
 		if category in qawarnings:
 			formatter.push_style("WARN")
