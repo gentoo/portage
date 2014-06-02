@@ -328,18 +328,12 @@ for xpkg in effective_scanlist:
 	checkdir_relative = os.path.join(".", checkdir_relative)
 
 #####################
-	manifester = Manifests(options, repoman_settings)
-	continue_ = manifester.run(checkdir, portdb)
-	if continue_:
+	manifester = Manifests(options, qatracker, repoman_settings)
+	if manifester.run(checkdir, portdb):
 		continue
-######################
-
 	if not manifester.generated_manifest:
-		repoman_settings['O'] = checkdir
-		repoman_settings['PORTAGE_QUIET'] = '1'
-		if not portage.digestcheck([], repoman_settings, strict=1):
-			qatracker.add_error("manifest.bad", os.path.join(xpkg, 'Manifest'))
-		repoman_settings.pop('PORTAGE_QUIET', None)
+		 manifester.digest_check(checkdir)
+######################
 
 	if options.mode == 'manifest-check':
 		continue

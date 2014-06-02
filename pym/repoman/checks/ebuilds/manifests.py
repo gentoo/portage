@@ -11,8 +11,9 @@ from portage.util import writemsg_level
 class Manifests(object):
 
 
-	def __init__(self, options, repoman_settings):
+	def __init__(self, options, qatracker, repoman_settings):
 		self.options = options
+		self.qatracker = qatracker
 		self.repoman_settings = repoman_settings
 
 		self.digest_only = options.mode != 'manifest-check' and options.digest == 'y'
@@ -41,7 +42,8 @@ class Manifests(object):
 					level=logging.ERROR, noiselevel=-1)
 
 			if not self.generated_manifest:
-				print("Unable to generate manifest.")
+				writemsg_level("Unable to generate manifest.",
+					level=logging.ERROR, noiselevel=-1)
 				failed = True
 
 			if self.options.mode == "manifest":
@@ -64,11 +66,11 @@ class Manifests(object):
 							if distfile in self.auto_assumed:
 								portage.writemsg_stdout(
 									"   %s::%s\n" % (pf, distfile))
-
-				return True  # continue, skip remaining loop code
+				# continue, skip remaining main loop code
+				return True
 			elif failed:
 				sys.exit(1)
-		return False  # stay in the loop
+		return False
 
 
 	def create_manifest(self, checkdir, fetchlist_dict):
@@ -89,3 +91,11 @@ class Manifests(object):
 			mf.write()
 		finally:
 			portage._doebuild_manifest_exempt_depend -= 1
+
+
+	def digest_check(self, checkdir):
+		self.repoman_settings['O'] = checkdir
+		self.repoman_settings['PORTAGE_QUIET'] = '1'
+		if not portage.digestcheck([], self.repoman_settings, strict=1):
+			self.qatracker.add_error("manifest.bad", os.path.join(xpkg, 'Manifest'))
+		self.repoman_settings.pop('PORTAGE_QUIET', None)
