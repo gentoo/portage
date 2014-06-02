@@ -48,6 +48,7 @@ from portage.package.ebuild.digestgen import digestgen
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 
 from repoman.argparser import parse_args
+from repoman.checks.directories.files import FileChecks
 from repoman.checks.ebuilds.checks import run_checks, checks_init
 from repoman.checks.ebuilds.fetches import FetchChecks
 from repoman.checks.ebuilds.isebuild import IsEbuild
@@ -328,50 +329,15 @@ for xpkg in effective_scanlist:
 	# Sort ebuilds in ascending order for the KEYWORDS.dropped check.
 	ebuildlist = sorted(pkgs.values())
 	ebuildlist = [pkg.pf for pkg in ebuildlist]
-
-	for y in checkdirlist:
-		index = repo_settings.repo_config.find_invalid_path_char(y)
-		if index != -1:
-			y_relative = os.path.join(checkdir_relative, y)
-			if vcs_settings.vcs is not None and not vcs_new_changed(y_relative):
-				# If the file isn't in the VCS new or changed set, then
-				# assume that it's an irrelevant temporary file (Manifest
-				# entries are not generated for file names containing
-				# prohibited characters). See bug #406877.
-				index = -1
-		if index != -1:
-			qatracker.add_error("file.name",
-				"%s/%s: char '%s'" % (checkdir, y, y[index]))
-
-		if not (y in ("ChangeLog", "metadata.xml") or y.endswith(".ebuild")):
-			continue
-		f = None
-		try:
-			line = 1
-			f = io.open(
-				_unicode_encode(
-					os.path.join(checkdir, y),
-					encoding=_encodings['fs'], errors='strict'),
-				mode='r', encoding=_encodings['repo.content'])
-			for l in f:
-				line += 1
-		except UnicodeDecodeError as ue:
-			s = ue.object[:ue.start]
-			l2 = s.count("\n")
-			line += l2
-			if l2 != 0:
-				s = s[s.rfind("\n") + 1:]
-			qatracker.add_error("file.UTF8",
-				"%s/%s: line %i, just after: '%s'" % (checkdir, y, line, s))
-		finally:
-			if f is not None:
-				f.close()
-
-###############
+#######################
+	filescheck = FileChecks(qatracker, repoman_settings, repo_settings, portdb,
+		vcs_settings, vcs_new_changed)
+	filescheck.check(checkdir, checkdirlist, checkdir_relative)
+#######################
 	status_check = VCSStatus(vcs_settings, checkdir, checkdir_relative, xpkg, qatracker)
 	status_check.check(check_ebuild_notadded)
 	eadded.extend(status_check.eadded)
-###############
+
 #################
 	fetchcheck = FetchChecks(qatracker, repoman_settings, repo_settings, portdb,
 		vcs_settings, vcs_new_changed)
