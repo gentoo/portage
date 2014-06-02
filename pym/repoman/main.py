@@ -64,7 +64,7 @@ from repoman.profile import check_profiles, dev_keywords, setup_profile
 from repoman.qa_data import (format_qa_output, format_qa_output_column, qahelp,
 	qawarnings, qacats, max_desc_len, missingvars,
 	ruby_deprecated, suspect_virtual, suspect_rdepend, valid_restrict)
-from qa_tracker import QATracker
+from repoman.qa_tracker import QATracker
 from repoman.repos import has_global_mask, RepoSettings, repo_metadata
 from repoman.scan import Changes, scan
 from repoman._subprocess import repoman_popen, repoman_getstatusoutput
