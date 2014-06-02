@@ -22,9 +22,10 @@ except (ImportError, SystemError, RuntimeError, Exception):
 
 from portage import _encodings, _unicode_encode
 from portage.exception import FileNotFound, ParseError, PermissionDenied
+from portage import os
 
 __all__ = [
-	"make_herd_base"
+	"make_herd_base", "get_herd_base"
 ]
 
 
@@ -100,6 +101,19 @@ def make_herd_base(filename):
 		herd_to_emails[herd_name] = herd_emails
 
 	return HerdBase(herd_to_emails, all_emails)
+
+
+def get_herd_base(repoman_settings):
+	try:
+		herd_base = make_herd_base(
+			os.path.join(repoman_settings["PORTDIR"], "metadata/herds.xml"))
+	except (EnvironmentError, ParseError, PermissionDenied) as e:
+		err(str(e))
+	except FileNotFound:
+		# TODO: Download as we do for metadata.dtd, but add a way to
+		# disable for non-gentoo repoman users who may not have herds.
+		herd_base = None
+	return herd_base
 
 
 if __name__ == '__main__':

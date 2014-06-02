@@ -26,20 +26,6 @@ import portage
 portage._internal_caller = True
 portage._disable_legacy_globals()
 
-try:
-	import xml.etree.ElementTree
-	from xml.parsers.expat import ExpatError
-except (SystemExit, KeyboardInterrupt):
-	raise
-except (ImportError, SystemError, RuntimeError, Exception):
-	# broken or missing xml support
-	# http://bugs.python.org/issue14988
-	msg = ["Please enable python's \"xml\" USE flag in order to use repoman."]
-	from portage.output import EOutput
-	out = EOutput()
-	for line in msg:
-		out.eerror(line)
-	sys.exit(1)
 
 from portage import os
 from portage import _encodings
@@ -51,9 +37,8 @@ import portage.const
 import portage.repository.config
 from portage import cvstree, normalize_path
 from portage import util
-from portage.exception import (
-	FileNotFound, InvalidAtom, MissingParameter, ParseError, PermissionDenied)
 from portage.dep import Atom
+from portage.exception import MissingParameter
 from portage.process import find_binary, spawn
 from portage.output import (
 	bold, create_color_func, green, nocolor, red)
@@ -68,12 +53,10 @@ from repoman.checks.ebuilds.checks import run_checks, checks_init
 from repoman.checks.ebuilds.isebuild import IsEbuild
 from repoman.checks.ebuilds.thirdpartymirrors import ThirdPartyMirrors
 from repoman.checks.ebuilds.manifests import Manifests
-from repoman.checks.herds.herdbase import make_herd_base
 from repoman.check_missingslot import check_missingslot
+from repoman.checks.ebuilds.pkgmetadata import PkgMetadata
 from repoman.ebuild import Ebuild
 from repoman.errors import err
-from repoman.metadata import (metadata_xml_encoding, metadata_doctype_name,
-	metadata_dtd_uri, metadata_xml_declaration)
 from repoman.modules import commit
 from repoman.profile import check_profiles, dev_keywords, setup_profile
 from repoman.qa_data import (format_qa_output, format_qa_output_column, qahelp,
@@ -87,7 +70,6 @@ from repoman import utilities
 from repoman.vcs.vcs import (git_supports_gpg_sign, vcs_files_to_cps,
 	vcs_new_changed, VCSSettings)
 from repoman.vcs.vcsstatus import VCSStatus
-from repoman._xml import _XMLParser, _MetadataTreeBuilder, XmlLint
 
 
 if sys.hexversion >= 0x3000000:
@@ -216,7 +198,6 @@ portdb._aux_cache_keys.update(
 reposplit = myreporoot.split(os.path.sep)
 repolevel = len(reposplit)
 
-
 ###################
 
 if options.mode == 'commit':
@@ -232,7 +213,6 @@ if repolevel == 1:
 else:
 	startdir = normalize_path(mydir)
 	startdir = os.path.join(repo_settings.repodir, *startdir.split(os.sep)[-2 - repolevel + 3:])
-
 
 ###################
 
@@ -296,16 +276,6 @@ if options.include_arches:
 
 check_ebuild_notadded = not \
 	(vcs_settings.vcs == "svn" and repolevel < 3 and options.mode != "commit")
-
-try:
-	herd_base = make_herd_base(
-		os.path.join(repoman_settings["PORTDIR"], "metadata/herds.xml"))
-except (EnvironmentError, ParseError, PermissionDenied) as e:
-	err(str(e))
-except FileNotFound:
-	# TODO: Download as we do for metadata.dtd, but add a way to
-	# disable for non-gentoo repoman users who may not have herds.
-	herd_base = None
 
 effective_scanlist = scanlist
 if options.if_modified == "y":
@@ -492,118 +462,11 @@ for xpkg in effective_scanlist:
 
 	if check_changelog and "ChangeLog" not in checkdirlist:
 		qatracker.add_error("changelog.missing", xpkg + "/ChangeLog")
-
-	musedict = {}
-	# metadata.xml file check
-	if "metadata.xml" not in checkdirlist:
-		qatracker.add_error("metadata.missing", xpkg + "/metadata.xml")
-	# metadata.xml parse check
-	else:
-		metadata_bad = False
-		xml_info = {}
-		xml_parser = _XMLParser(xml_info, target=_MetadataTreeBuilder())
-
-		# read metadata.xml into memory
-		try:
-			_metadata_xml = xml.etree.ElementTree.parse(
-				_unicode_encode(
-					os.path.join(checkdir, "metadata.xml"),
-					encoding=_encodings['fs'], errors='strict'),
-				parser=xml_parser)
-		except (ExpatError, SyntaxError, EnvironmentError) as e:
-			metadata_bad = True
-			qatracker.add_error("metadata.bad", "%s/metadata.xml: %s" % (xpkg, e))
-			del e
-		else:
-			if not hasattr(xml_parser, 'parser') or \
-				sys.hexversion < 0x2070000 or \
-				(sys.hexversion > 0x3000000 and sys.hexversion < 0x3020000):
-				# doctype is not parsed with python 2.6 or 3.1
-				pass
-			else:
-				if "XML_DECLARATION" not in xml_info:
-					qatracker.add_error("metadata.bad",
-						"%s/metadata.xml: "
-						"xml declaration is missing on first line, "
-						"should be '%s'" % (xpkg, metadata_xml_declaration))
-				else:
-					xml_version, xml_encoding, xml_standalone = \
-						xml_info["XML_DECLARATION"]
-					if xml_encoding is None or \
-						xml_encoding.upper() != metadata_xml_encoding:
-						if xml_encoding is None:
-							encoding_problem = "but it is undefined"
-						else:
-							encoding_problem = "not '%s'" % xml_encoding
-						qatracker.add_error("metadata.bad",
-							"%s/metadata.xml: "
-							"xml declaration encoding should be '%s', %s" %
-							(xpkg, metadata_xml_encoding, encoding_problem))
-
-				if "DOCTYPE" not in xml_info:
-					metadata_bad = True
-					qatracker.add_error("metadata.bad",
-						"%s/metadata.xml: %s" % (xpkg, "DOCTYPE is missing"))
-				else:
-					doctype_name, doctype_system, doctype_pubid = \
-						xml_info["DOCTYPE"]
-					if doctype_system != metadata_dtd_uri:
-						if doctype_system is None:
-							system_problem = "but it is undefined"
-						else:
-							system_problem = "not '%s'" % doctype_system
-						qatracker.add_error("metadata.bad",
-							"%s/metadata.xml: "
-							"DOCTYPE: SYSTEM should refer to '%s', %s" %
-							(xpkg, metadata_dtd_uri, system_problem))
-
-					if doctype_name != metadata_doctype_name:
-						qatracker.add_error("metadata.bad",
-							"%s/metadata.xml: "
-							"DOCTYPE: name should be '%s', not '%s'" %
-							(xpkg, metadata_doctype_name, doctype_name))
-
-			# load USE flags from metadata.xml
-			try:
-				musedict = utilities.parse_metadata_use(_metadata_xml)
-			except portage.exception.ParseError as e:
-				metadata_bad = True
-				qatracker.add_error("metadata.bad",
-					"%s/metadata.xml: %s" % (xpkg, e))
-			else:
-				for atom in chain(*musedict.values()):
-					if atom is None:
-						continue
-					try:
-						atom = Atom(atom)
-					except InvalidAtom as e:
-						qatracker.add_error("metadata.bad",
-							"%s/metadata.xml: Invalid atom: %s" % (xpkg, e))
-					else:
-						if atom.cp != xpkg:
-							qatracker.add_error("metadata.bad",
-								"%s/metadata.xml: Atom contains "
-								"unexpected cat/pn: %s" % (xpkg, atom))
-
-			# Run other metadata.xml checkers
-			try:
-				utilities.check_metadata(_metadata_xml, herd_base)
-			except (utilities.UnknownHerdsError, ) as e:
-				metadata_bad = True
-				qatracker.add_error("metadata.bad",
-					"%s/metadata.xml: %s" % (xpkg, e))
-				del e
-
 #################
-		# Only carry out if in package directory or check forced
-		if not metadata_bad:
-			xmllint = XmlLint(options, repolevel, repoman_settings)
-			if not xmllint.check(checkdir):
-				qatracker.add_error("metadata.bad", xpkg + "/metadata.xml")
-
+	pkgmeta = PkgMetadata(options, qatracker, repolevel, repoman_settings)
+	pkgmeta.check(xpkg, checkdir, checkdirlist)
+	muselist = frozenset(pkgmeta.musedict)
 #################
-		del metadata_bad
-	muselist = frozenset(musedict)
 
 	changelog_path = os.path.join(checkdir_relative, "ChangeLog")
 	changelog_modified = changelog_path in changed.changelogs
