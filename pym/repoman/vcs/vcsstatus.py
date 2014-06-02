@@ -22,7 +22,7 @@ class VCSStatus(object):
 
 
 	def check(self, check_not_added):
-		if check_not_added:
+		if self.vcs and check_not_added:
 			vcscheck = getattr(self, 'check_%s' % self.vcs)
 			vcscheck()
 
