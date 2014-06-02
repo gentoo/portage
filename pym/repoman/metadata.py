@@ -16,6 +16,8 @@ from portage import exception
 from portage import os
 from portage.output import green
 
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
