@@ -261,12 +261,6 @@ dev_keywords = dev_keywords(profiles)
 
 qatracker = QATracker()
 
-####################
-
-metadata_dtd = os.path.join(repoman_settings["DISTDIR"], 'metadata.dtd')
-xmllint = XmlLint(metadata_dtd, options, repolevel, repoman_settings)
-
-#####################
 
 if options.mode == "manifest":
 	pass
@@ -609,6 +603,7 @@ for xpkg in effective_scanlist:
 #################
 		# Only carry out if in package directory or check forced
 		if not metadata_bad:
+			xmllint = XmlLint(options, repolevel, repoman_settings)
 			if not xmllint.check(checkdir):
 				qatracker.add_error("metadata.bad", xpkg + "/metadata.xml")
 

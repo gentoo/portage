@@ -47,8 +47,8 @@ class _MetadataTreeBuilder(xml.etree.ElementTree.TreeBuilder):
 
 class XmlLint(object):
 
-	def __init__(self, metadata_dtd, options, repolevel, repoman_settings):
-		self.metadata_dtd = metadata_dtd
+	def __init__(self, options, repolevel, repoman_settings):
+		self.metadata_dtd = os.path.join(repoman_settings["DISTDIR"], 'metadata.dtd')
 		self._is_capable = False
 		self.binary = None
 		self._check_capable(options, repolevel, repoman_settings)
