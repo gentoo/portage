@@ -10,7 +10,6 @@ import io
 import logging
 import re
 import signal
-import stat
 import subprocess
 import sys
 import tempfile
@@ -46,7 +45,6 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_encode
 from _emerge.Package import Package
-from _emerge.RootConfig import RootConfig
 from _emerge.UserQuery import UserQuery
 import portage.checksum
 import portage.const
@@ -67,6 +65,7 @@ from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 
 from repoman.argparser import parse_args
 from repoman.checks.ebuilds.checks import run_checks, checks_init
+from repoman.checks.ebuilds.isebuild import IsEbuild
 from repoman.checks.ebuilds.thirdpartymirrors import ThirdPartyMirrors
 from repoman.checks.ebuilds.manifests import Manifests
 from repoman.checks.herds.herdbase import make_herd_base
@@ -78,7 +77,7 @@ from repoman.metadata import (metadata_xml_encoding, metadata_doctype_name,
 from repoman.modules import commit
 from repoman.profile import check_profiles, dev_keywords, setup_profile
 from repoman.qa_data import (format_qa_output, format_qa_output_column, qahelp,
-	qawarnings, qacats, no_exec, allvars, max_desc_len, missingvars,
+	qawarnings, qacats, max_desc_len, missingvars,
 	ruby_deprecated, suspect_virtual, suspect_rdepend, valid_restrict)
 from qa_tracker import QATracker
 from repoman.repos import has_global_mask, RepoSettings, repo_metadata
@@ -208,7 +207,6 @@ repoman_settings.categories = frozenset(
 categories = repoman_settings.categories
 
 portdb.settings = repoman_settings
-root_config = RootConfig(repoman_settings, repo_settings.trees[repo_settings.root], None)
 # We really only need to cache the metadata that's necessary for visibility
 # filtering. Anything else can be discarded to reduce memory consumption.
 portdb._aux_cache_keys.clear()
@@ -353,44 +351,11 @@ for xpkg in effective_scanlist:
 		continue
 
 	checkdirlist = os.listdir(checkdir)
-	ebuildlist = []
-	pkgs = {}
-	allvalid = True
-	for y in checkdirlist:
-		file_is_ebuild = y.endswith(".ebuild")
-		file_should_be_non_executable = y in no_exec or file_is_ebuild
 
-		if file_should_be_non_executable:
-			file_is_executable = stat.S_IMODE(
-				os.stat(os.path.join(checkdir, y)).st_mode) & 0o111
-
-			if file_is_executable:
-				qatracker.add_error("file.executable", os.path.join(checkdir, y))
-		if file_is_ebuild:
-			pf = y[:-7]
-			ebuildlist.append(pf)
-			cpv = "%s/%s" % (catdir, pf)
-			try:
-				myaux = dict(zip(allvars, portdb.aux_get(cpv, allvars)))
-			except KeyError:
-				allvalid = False
-				qatracker.add_error("ebuild.syntax", os.path.join(xpkg, y))
-				continue
-			except IOError:
-				allvalid = False
-				qatracker.add_error("ebuild.output", os.path.join(xpkg, y))
-				continue
-			if not portage.eapi_is_supported(myaux["EAPI"]):
-				allvalid = False
-				qatracker.add_error("EAPI.unsupported", os.path.join(xpkg, y))
-				continue
-			pkgs[pf] = Package(
-				cpv=cpv, metadata=myaux, root_config=root_config,
-				type_name="ebuild")
-
-	slot_keywords = {}
-
-	if len(pkgs) != len(ebuildlist):
+######################
+	is_ebuild = IsEbuild(repoman_settings, repo_settings, portdb, qatracker)
+	pkgs, allvalid = is_ebuild.check(checkdirlist, checkdir, xpkg)
+	if is_ebuild.continue_:
 		# If we can't access all the metadata then it's totally unsafe to
 		# commit since there's no way to generate a correct Manifest.
 		# Do not try to do any more QA checks on this package since missing
@@ -398,6 +363,9 @@ for xpkg in effective_scanlist:
 		# positives confuse users.
 		can_force = False
 		continue
+######################
+
+	slot_keywords = {}
 
 	# Sort ebuilds in ascending order for the KEYWORDS.dropped check.
 	ebuildlist = sorted(pkgs.values())
