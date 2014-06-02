@@ -40,7 +40,7 @@ class FileChecks(object):
 			if index != -1:
 				y_relative = os.path.join(checkdir_relative, y_file)
 				invcs = self.vcs_settings.vcs is not None
-				inchangeset = self.vcs_new_changed(y_relative, changed, new)
+				inchangeset = vcs_new_changed(y_relative, changed, new)
 				if invcs and not inchangeset:
 					# If the file isn't in the VCS new or changed set, then
 					# assume that it's an irrelevant temporary file (Manifest
