@@ -5,13 +5,15 @@ import portage
 class ThirdPartyMirrors(object):
 
 	def __init__(self, repoman_settings, qatracker):
-		# Build a regex from thirdpartymirrors for the SRC_URI.mirror check.
+		# TODO: Build a regex instead here, for the SRC_URI.mirror check.
 		self.thirdpartymirrors = {}
-		for k, v in repoman_settings.thirdpartymirrors().items():
-			for v in v:
-				if not v.endswith("/"):
-					v += "/"
-		self.thirdpartymirrors[v] = k
+		profile_thirdpartymirrors = repoman_settings.thirdpartymirrors().items()
+		for mirror_alias, mirrors in profile_thirdpartymirrors:
+			for mirror in mirrors:
+				if not mirror.endswith("/"):
+					mirror += "/"
+				self.thirdpartymirrors[mirror] = mirror_alias
+
 		self.qatracker = qatracker
 
 
