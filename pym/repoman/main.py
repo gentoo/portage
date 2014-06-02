@@ -70,7 +70,7 @@ from repoman.scan import Changes, scan
 from repoman._subprocess import repoman_popen, repoman_getstatusoutput
 from repoman import utilities
 from repoman.vcs.vcs import (git_supports_gpg_sign, vcs_files_to_cps,
-	vcs_new_changed, VCSSettings)
+	VCSSettings)
 from repoman.vcs.vcsstatus import VCSStatus
 
 
@@ -317,14 +317,19 @@ for xpkg in effective_scanlist:
 	ebuildlist = sorted(pkgs.values())
 	ebuildlist = [pkg.pf for pkg in ebuildlist]
 #######################
+	filescheck = FileChecks(qatracker, repoman_settings, repo_settings, portdb,
+		vcs_settings)
+	filescheck.check(checkdir, checkdirlist, checkdir_relative,
+		changed.changed, changed.new)
+#######################
 	status_check = VCSStatus(vcs_settings, checkdir, checkdir_relative, xpkg, qatracker)
 	status_check.check(check_ebuild_notadded)
 	eadded.extend(status_check.eadded)
 
 #################
 	fetchcheck = FetchChecks(qatracker, repoman_settings, repo_settings, portdb,
-		vcs_settings, vcs_new_changed)
-	fetchcheck.check(xpkg, checkdir, checkdir_relative)
+		vcs_settings)
+	fetchcheck.check(xpkg, checkdir, checkdir_relative, changed.changed, changed.new)
 #################
 
 	if check_changelog and "ChangeLog" not in checkdirlist:
@@ -1228,12 +1233,6 @@ else:
 			print("(Didn't find any changed files...)")
 			print()
 			sys.exit(1)
-
-	#######################
-	filescheck = FileChecks(qatracker, repoman_settings, repo_settings, portdb,
-		vcs_settings, vcs_new_changed)
-	filescheck.check(checkdir, checkdirlist, checkdir_relative, mychanged, mynew)
-	#######################
 
 	# Manifests need to be regenerated after all other commits, so don't commit
 	# them now even if they have changed.

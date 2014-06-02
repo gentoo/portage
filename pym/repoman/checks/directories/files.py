@@ -8,12 +8,13 @@ import io
 from portage import _encodings, _unicode_encode
 from portage import os
 
+from repoman.vcs.vcs import vcs_new_changed
 
 
 class FileChecks(object):
 
 	def __init__(self, qatracker, repoman_settings, repo_settings, portdb,
-		vcs_settings, vcs_new_changed):
+		vcs_settings):
 		'''
 		@param qatracker: QATracker instance
 		@param repoman_settings: settings instance
@@ -25,7 +26,6 @@ class FileChecks(object):
 		self.repo_settings = repo_settings
 		self.repoman_settings = repoman_settings
 		self.vcs_settings = vcs_settings
-		self.vcs_new_changed = vcs_new_changed
 
 
 	def check(self, checkdir, checkdirlist, checkdir_relative, changed, new):

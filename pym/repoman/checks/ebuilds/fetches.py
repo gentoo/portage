@@ -8,12 +8,14 @@ from stat import S_ISDIR
 import portage
 from portage import os
 
+from repoman.vcs.vcs import vcs_new_changed
+
 
 class FetchChecks(object):
 	'''Performs checks on the files needed for the ebuild'''
 
 	def __init__(self, qatracker, repoman_settings, repo_settings, portdb,
-		vcs_settings, vcs_new_changed):
+		vcs_settings):
 		'''
 		@param qatracker: QATracker instance
 		@param repoman_settings: settings instance
@@ -25,11 +27,10 @@ class FetchChecks(object):
 		self.repo_settings = repo_settings
 		self.repoman_settings = repoman_settings
 		self.vcs_settings = vcs_settings
-		self.vcs_new_changed = vcs_new_changed
 		self._digests = None
 
 
-	def check(self, xpkg, checkdir, checkdir_relative):
+	def check(self, xpkg, checkdir, checkdir_relative, mychanged, mynew):
 		'''Checks the ebuild sources and files for errors
 
 		@param xpkg: the pacakge being checked
@@ -108,7 +109,7 @@ class FetchChecks(object):
 				index = self.repo_settings.repo_config.find_invalid_path_char(y)
 				if index != -1:
 					y_relative = os.path.join(checkdir_relative, "files", y)
-					if self.vcs_settings.vcs is not None and not self.vcs_new_changed(y_relative):
+					if self.vcs_settings.vcs is not None and not vcs_new_changed(y_relative, mychanged, mynew):
 						# If the file isn't in the VCS new or changed set, then
 						# assume that it's an irrelevant temporary file (Manifest
 						# entries are not generated for file names containing
