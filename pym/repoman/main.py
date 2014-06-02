@@ -59,7 +59,7 @@ from repoman.checks.ebuilds.misc import bad_split_check, pkg_invalid
 from repoman.checks.ebuilds.pkgmetadata import PkgMetadata
 from repoman.ebuild import Ebuild
 from repoman.errors import err
-from repoman.modules import commit
+from repoman.modules.commit import repochecks
 from repoman.profile import check_profiles, dev_keywords, setup_profile
 from repoman.qa_data import (format_qa_output, format_qa_output_column, qahelp,
 	qawarnings, qacats, max_desc_len, missingvars,
@@ -190,8 +190,8 @@ repolevel = len(reposplit)
 ###################
 
 if options.mode == 'commit':
-	commit.repochecks.commit_check(repolevel, reposplit)
-	commit.repochecks.conflict_check(vcs_settings, options)
+	repochecks.commit_check(repolevel, reposplit)
+	repochecks.conflict_check(vcs_settings, options)
 
 ###################
 
@@ -268,7 +268,8 @@ check_ebuild_notadded = not \
 effective_scanlist = scanlist
 if options.if_modified == "y":
 	effective_scanlist = sorted(vcs_files_to_cps(
-		chain(changed.changed, changed.new, changed.removed)))
+		chain(changed.changed, changed.new, changed.removed),
+		repolevel, reposplit, categories))
 
 for xpkg in effective_scanlist:
 	# ebuilds and digests added to cvs respectively.
@@ -1282,7 +1283,8 @@ else:
 			else:
 				commitmessage = utilities.get_commit_message_with_stdin()
 		except KeyboardInterrupt:
-			exithandler()
+			logging.fatal("Interrupted; exiting...")
+			sys.exit(1)
 		if (not commitmessage or not commitmessage.strip()
 				or commitmessage.strip() == msg_prefix):
 			print("* no commit message?  aborting commit.")
@@ -1343,7 +1345,8 @@ else:
 		logging.info("checking for unmodified ChangeLog files")
 		committer_name = utilities.get_committer_name(env=repoman_settings)
 		for x in sorted(vcs_files_to_cps(
-			chain(myupdates, mymanifests, myremoved))):
+			chain(myupdates, mymanifests, myremoved),
+			repolevel, reposplit, categories)):
 			catdir, pkgdir = x.split("/")
 			checkdir = repo_settings.repodir + "/" + x
 			checkdir_relative = ""
@@ -1483,7 +1486,7 @@ else:
 
 		print("%s have headers that will change." % green(str(len(myheaders))))
 		print(
-			"* Files with headers will "
+			"* Files with headers will"
 			" cause the manifests to be changed and committed separately.")
 
 	logging.info("myupdates: %s", myupdates)
@@ -1637,9 +1640,9 @@ else:
 			"doing the entire repository.\"\n")
 
 	if vcs_settings.vcs in ('cvs', 'svn') and (myupdates or myremoved):
-
 		for x in sorted(vcs_files_to_cps(
-			chain(myupdates, myremoved, mymanifests))):
+			chain(myupdates, myremoved, mymanifests),
+			repolevel, reposplit, categories)):
 			repoman_settings["O"] = os.path.join(repo_settings.repodir, x)
 			digestgen(mysettings=repoman_settings, myportdb=portdb)
 
@@ -1653,7 +1656,8 @@ else:
 		signed = True
 		try:
 			for x in sorted(vcs_files_to_cps(
-				chain(myupdates, myremoved, mymanifests))):
+				chain(myupdates, myremoved, mymanifests),
+				repolevel, reposplit, categories)):
 				repoman_settings["O"] = os.path.join(repo_settings.repodir, x)
 				manifest_path = os.path.join(repoman_settings["O"], "Manifest")
 				if not need_signature(manifest_path):

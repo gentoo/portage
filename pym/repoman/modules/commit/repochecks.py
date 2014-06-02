@@ -3,7 +3,8 @@
 from portage.output import red
 
 from repoman.errors import err
-from repoman.vcs import detect_vcs_conflicts
+from repoman.vcs import vcs
+from repoman.vcs.vcs import detect_vcs_conflicts
 
 
 def commit_check(repolevel, reposplit):

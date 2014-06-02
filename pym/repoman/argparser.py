@@ -8,6 +8,7 @@ import logging
 import sys
 
 import portage
+from portage import util
 from portage.util._argparse import ArgumentParser
 
 def parse_args(argv, qahelp, repoman_default_opts):
@@ -176,7 +177,7 @@ def parse_args(argv, qahelp, repoman_default_opts):
 	opts, args = parser.parse_known_args(argv[1:])
 
 	if not opts.ignore_default_opts:
-		default_opts = portage.util.shlex_split(repoman_default_opts)
+		default_opts = util.shlex_split(repoman_default_opts)
 		if default_opts:
 			opts, args = parser.parse_known_args(default_opts + sys.argv[1:])
 

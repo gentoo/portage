@@ -83,7 +83,7 @@ def update_copyright(fn_path, year, pretend=False):
 			new_header.append(line)
 			break
 
-		line = _update_copyright_year(year, line)
+		line = update_copyright_year(year, line)
 		new_header.append(line)
 
 	difflines = 0
