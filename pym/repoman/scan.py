@@ -85,8 +85,9 @@ class Changes(object):
 	def scan(self, vcs_settings):
 		self._reset()
 
-		vcscheck = getattr(self, 'scan_%s' % vcs_settings.vcs)
-		vcscheck()
+		if vcs_settings.vcs:
+			vcscheck = getattr(self, 'scan_%s' % vcs_settings.vcs)
+			vcscheck()
 
 		if vcs_settings.vcs:
 			self.new_ebuilds.update(x for x in self.new if x.endswith(".ebuild"))
