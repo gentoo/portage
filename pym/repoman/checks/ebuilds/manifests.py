@@ -21,6 +21,7 @@ class Manifests(object):
 
 
 	def run(self, checkdir, portdb):
+		self.generated_manifest = False
 		if self.options.pretend:
 			return False
 		if self.options.mode in ("manifest", 'commit', 'fix') or self.digest_only:
@@ -93,7 +94,7 @@ class Manifests(object):
 			portage._doebuild_manifest_exempt_depend -= 1
 
 
-	def digest_check(self, checkdir):
+	def digest_check(self, xpkg, checkdir):
 		self.repoman_settings['O'] = checkdir
 		self.repoman_settings['PORTAGE_QUIET'] = '1'
 		if not portage.digestcheck([], self.repoman_settings, strict=1):
