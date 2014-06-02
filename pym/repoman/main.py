@@ -55,6 +55,7 @@ from repoman.checks.ebuilds.isebuild import IsEbuild
 from repoman.checks.ebuilds.thirdpartymirrors import ThirdPartyMirrors
 from repoman.checks.ebuilds.manifests import Manifests
 from repoman.check_missingslot import check_missingslot
+from repoman.checks.ebuilds.misc import bad_split_check, pkg_invalid
 from repoman.checks.ebuilds.pkgmetadata import PkgMetadata
 from repoman.ebuild import Ebuild
 from repoman.errors import err
@@ -79,8 +80,6 @@ if sys.hexversion >= 0x3000000:
 util.initialize_logger()
 
 commitmessage = None
-
-pv_toolong_re = re.compile(r'[0-9]{19,}')
 
 bad = create_color_func("BAD")
 
@@ -371,32 +370,14 @@ for xpkg in effective_scanlist:
 			# ebuild not added to vcs
 			qatracker.add_error("ebuild.notadded",
 				xpkg + "/" + y_ebuild + ".ebuild")
-		myesplit = portage.pkgsplit(y_ebuild)
 
-		is_bad_split = myesplit is None or myesplit[0] != xpkg.split("/")[-1]
-
-		if is_bad_split:
-			is_pv_toolong = pv_toolong_re.search(myesplit[1])
-			is_pv_toolong2 = pv_toolong_re.search(myesplit[2])
-
-			if is_pv_toolong or is_pv_toolong2:
-				qatracker.add_error("ebuild.invalidname",
-					xpkg + "/" + y_ebuild + ".ebuild")
-				continue
-		elif myesplit[0] != pkgdir:
-			print(pkgdir, myesplit[0])
-			qatracker.add_error("ebuild.namenomatch",
-				xpkg + "/" + y_ebuild + ".ebuild")
+##################
+		if bad_split_check(xpkg, y_ebuild, pkgdir, qatracker):
 			continue
-
+###################
 		pkg = pkgs[y_ebuild]
-
-		if pkg.invalid:
+		if pkg_invalid(pkg, qatracker):
 			allvalid = False
-			for k, msgs in pkg.invalid.items():
-				for msg in msgs:
-					qatracker.add_error(k,
-						"%s: %s" % (ebuild.relative_path, msg))
 			continue
 
 		myaux = pkg._metadata
