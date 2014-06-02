@@ -28,7 +28,7 @@ class FileChecks(object):
 		self.vcs_new_changed = vcs_new_changed
 
 
-	def check(self, checkdir, checkdirlist, checkdir_relative):
+	def check(self, checkdir, checkdirlist, checkdir_relative, changed, new):
 		'''Checks the ebuild sources and files for errors
 
 		@param xpkg: the pacakge being checked
@@ -39,7 +39,9 @@ class FileChecks(object):
 			index = self.repo_settings.repo_config.find_invalid_path_char(y_file)
 			if index != -1:
 				y_relative = os.path.join(checkdir_relative, y_file)
-				if self.vcs_settings.vcs is not None and not self.vcs_new_changed(y_relative):
+				invcs = self.vcs_settings.vcs is not None
+				inchangeset = self.vcs_new_changed(y_relative, changed, new)
+				if invcs and not inchangeset:
 					# If the file isn't in the VCS new or changed set, then
 					# assume that it's an irrelevant temporary file (Manifest
 					# entries are not generated for file names containing

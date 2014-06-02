@@ -317,10 +317,6 @@ for xpkg in effective_scanlist:
 	ebuildlist = sorted(pkgs.values())
 	ebuildlist = [pkg.pf for pkg in ebuildlist]
 #######################
-	filescheck = FileChecks(qatracker, repoman_settings, repo_settings, portdb,
-		vcs_settings, vcs_new_changed)
-	filescheck.check(checkdir, checkdirlist, checkdir_relative)
-#######################
 	status_check = VCSStatus(vcs_settings, checkdir, checkdir_relative, xpkg, qatracker)
 	status_check.check(check_ebuild_notadded)
 	eadded.extend(status_check.eadded)
@@ -1232,6 +1228,12 @@ else:
 			print("(Didn't find any changed files...)")
 			print()
 			sys.exit(1)
+
+	#######################
+	filescheck = FileChecks(qatracker, repoman_settings, repo_settings, portdb,
+		vcs_settings, vcs_new_changed)
+	filescheck.check(checkdir, checkdirlist, checkdir_relative, mychanged, mynew)
+	#######################
 
 	# Manifests need to be regenerated after all other commits, so don't commit
 	# them now even if they have changed.
