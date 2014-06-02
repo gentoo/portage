@@ -15,7 +15,6 @@ import sys
 import tempfile
 import platform
 from itertools import chain
-from stat import S_ISDIR
 from pprint import pformat
 
 from os import path as osp
@@ -50,6 +49,7 @@ from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 
 from repoman.argparser import parse_args
 from repoman.checks.ebuilds.checks import run_checks, checks_init
+from repoman.checks.ebuilds.fetches import FetchChecks
 from repoman.checks.ebuilds.isebuild import IsEbuild
 from repoman.checks.ebuilds.thirdpartymirrors import ThirdPartyMirrors
 from repoman.checks.ebuilds.manifests import Manifests
@@ -372,93 +372,11 @@ for xpkg in effective_scanlist:
 	status_check.check(check_ebuild_notadded)
 	eadded.extend(status_check.eadded)
 ###############
-
-	mf = repoman_settings.repositories.get_repo_for_location(
-		os.path.dirname(os.path.dirname(checkdir)))
-	mf = mf.load_manifest(checkdir, repoman_settings["DISTDIR"])
-	mydigests = mf.getTypeDigests("DIST")
-
-	fetchlist_dict = portage.FetchlistDict(checkdir, repoman_settings, portdb)
-	myfiles_all = []
-	src_uri_error = False
-	for mykey in fetchlist_dict:
-		try:
-			myfiles_all.extend(fetchlist_dict[mykey])
-		except portage.exception.InvalidDependString as e:
-			src_uri_error = True
-			try:
-				portdb.aux_get(mykey, ["SRC_URI"])
-			except KeyError:
-				# This will be reported as an "ebuild.syntax" error.
-				pass
-			else:
-				qatracker.add_error("SRC_URI.syntax",
-					"%s.ebuild SRC_URI: %s" % (mykey, e))
-	del fetchlist_dict
-	if not src_uri_error:
-		# This test can produce false positives if SRC_URI could not
-		# be parsed for one or more ebuilds. There's no point in
-		# producing a false error here since the root cause will
-		# produce a valid error elsewhere, such as "SRC_URI.syntax"
-		# or "ebuild.sytax".
-		myfiles_all = set(myfiles_all)
-		for entry in mydigests:
-			if entry not in myfiles_all:
-				qatracker.add_error("digest.unused", checkdir + "::" + entry)
-		for entry in myfiles_all:
-			if entry not in mydigests:
-				qatracker.add_error("digest.missing", checkdir + "::" + entry)
-	del myfiles_all
-
-	if os.path.exists(checkdir + "/files"):
-		filesdirlist = os.listdir(checkdir + "/files")
-
-		# Recurse through files directory, use filesdirlist as a stack;
-		# appending directories as needed,
-		# so people can't hide > 20k files in a subdirectory.
-		while filesdirlist:
-			y = filesdirlist.pop(0)
-			relative_path = os.path.join(xpkg, "files", y)
-			full_path = os.path.join(repo_settings.repodir, relative_path)
-			try:
-				mystat = os.stat(full_path)
-			except OSError as oe:
-				if oe.errno == 2:
-					# don't worry about it.  it likely was removed via fix above.
-					continue
-				else:
-					raise oe
-			if S_ISDIR(mystat.st_mode):
-				# !!! VCS "portability" alert!  Need some function isVcsDir() or alike !!!
-				if y == "CVS" or y == ".svn":
-					continue
-				for z in os.listdir(checkdir + "/files/" + y):
-					if z == "CVS" or z == ".svn":
-						continue
-					filesdirlist.append(y + "/" + z)
-			# Current policy is no files over 20 KiB, these are the checks.
-			# File size between 20 KiB and 60 KiB causes a warning,
-			# while file size over 60 KiB causes an error.
-			elif mystat.st_size > 61440:
-				qatracker.add_error("file.size.fatal",
-					"(%d KiB) %s/files/%s" % (mystat.st_size // 1024, xpkg, y))
-			elif mystat.st_size > 20480:
-				qatracker.add_error("file.size",
-					"(%d KiB) %s/files/%s" % (mystat.st_size // 1024, xpkg, y))
-
-			index = repo_settings.repo_config.find_invalid_path_char(y)
-			if index != -1:
-				y_relative = os.path.join(checkdir_relative, "files", y)
-				if vcs_settings.vcs is not None and not vcs_new_changed(y_relative):
-					# If the file isn't in the VCS new or changed set, then
-					# assume that it's an irrelevant temporary file (Manifest
-					# entries are not generated for file names containing
-					# prohibited characters). See bug #406877.
-					index = -1
-			if index != -1:
-				qatracker.add_error("file.name",
-					"%s/files/%s: char '%s'" % (checkdir, y, y[index]))
-	del mydigests
+#################
+	fetchcheck = FetchChecks(qatracker, repoman_settings, repo_settings, portdb,
+		vcs_settings, vcs_new_changed)
+	fetchcheck.check(xpkg, checkdir, checkdir_relative)
+#################
 
 	if check_changelog and "ChangeLog" not in checkdirlist:
 		qatracker.add_error("changelog.missing", xpkg + "/ChangeLog")
@@ -538,7 +456,7 @@ for xpkg in effective_scanlist:
 					"character at position %s" %
 					(ebuild.relative_path, k, m.start() + 1))
 
-		if not src_uri_error:
+		if not fetchcheck.src_uri_error:
 			#######################
 			thirdparty = ThirdPartyMirrors(repoman_settings, qatracker)
 			thirdparty.check(myaux, ebuild.relative_path)
