@@ -481,7 +481,7 @@ for xpkg in effective_scanlist:
 					(xpkg, y_ebuild, bad_stable_keywords))
 			del bad_stable_keywords
 
-			if keywords and not has_global_mask(pkg):
+			if keywords and not has_global_mask(pkg, global_pmaskdict):
 				qatracker.add_error("LIVEVCS.unmasked", ebuild.relative_path)
 
 		if options.ignore_arches:
