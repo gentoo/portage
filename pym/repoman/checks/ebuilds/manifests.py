@@ -2,7 +2,9 @@
 import logging
 import sys
 
-import portage
+# import our initialized portage instance
+from repoman._portage import portage
+
 from portage import os
 from portage.package.ebuild.digestgen import digestgen
 from portage.util import writemsg_level
@@ -11,17 +13,17 @@ from portage.util import writemsg_level
 class Manifests(object):
 
 
-	def __init__(self, options, qatracker, repoman_settings):
+	def __init__(self, options, qatracker=None, repoman_settings=None):
 		self.options = options
 		self.qatracker = qatracker
 		self.repoman_settings = repoman_settings
-
-		self.digest_only = options.mode != 'manifest-check' and options.digest == 'y'
 		self.generated_manifest = False
 
 
 	def run(self, checkdir, portdb):
 		self.generated_manifest = False
+		self.digest_only = self.options.mode != 'manifest-check' \
+			and self.options.digest == 'y'
 		if self.options.pretend:
 			return False
 		if self.options.mode in ("manifest", 'commit', 'fix') or self.digest_only:

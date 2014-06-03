@@ -21,7 +21,8 @@ from os import path as osp
 if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")):
 	pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__)))) #, "pym")
 	sys.path.insert(0, pym_path)
-import portage
+# import our centrally initialized portage instance
+from repoman._portage import portage
 portage._internal_caller = True
 portage._disable_legacy_globals()
 
@@ -118,12 +119,15 @@ if options.experimental_inherit == 'y':
 can_force = True
 
 portdir, portdir_overlay, mydir = utilities.FindPortdir(repoman_settings)
+print("portdir", portdir)
+print("portdir_overlay", portdir_overlay)
+print("mydir", mydir)
 if portdir is None:
 	sys.exit(1)
 
 myreporoot = os.path.basename(portdir_overlay)
 myreporoot += mydir[len(portdir_overlay):]
-
+print("myreporoot", myreporoot)
 ##################
 
 vcs_settings = VCSSettings(options, repoman_settings)
@@ -286,12 +290,12 @@ for xpkg in effective_scanlist:
 		checkdir_relative = os.path.join(catdir, checkdir_relative)
 	checkdir_relative = os.path.join(".", checkdir_relative)
 
-#####################
+#####################^^^^^^^^^^^^^^
 	manifester = Manifests(options, qatracker, repoman_settings)
 	if manifester.run(checkdir, portdb):
 		continue
 	if not manifester.generated_manifest:
-		 manifester.digest_check(xpkg, checkdir)
+		manifester.digest_check(xpkg, checkdir)
 ######################
 
 	if options.mode == 'manifest-check':

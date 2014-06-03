@@ -11,12 +11,16 @@ import codecs
 from itertools import chain
 import re
 import time
-import repoman.checks.ebuilds.errors as errors
-import portage
+
+# import our initialized portage instance
+from repoman._portage import portage
+
 from portage.eapi import (
 	eapi_supports_prefix, eapi_has_implicit_rdepend,
 	eapi_has_src_prepare_and_src_configure, eapi_has_dosed_dohard,
 	eapi_exports_AA, eapi_has_pkg_pretend)
+
+import repoman.checks.ebuilds.errors as errors
 
 
 class LineCheck(object):

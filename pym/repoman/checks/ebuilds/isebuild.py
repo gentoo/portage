@@ -4,7 +4,9 @@ import stat
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
 
-import portage
+# import our initialized portage instance
+from repoman._portage import portage
+
 from portage import os
 
 from repoman.qa_data import no_exec, allvars

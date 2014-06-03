@@ -4,7 +4,8 @@ Miscelaneous ebuild check functions'''
 
 import re
 
-import portage
+# import our initialized portage instance
+from repoman._portage import portage
 
 
 pv_toolong_re = re.compile(r'[0-9]{19,}')

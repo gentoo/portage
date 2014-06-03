@@ -1,6 +1,8 @@
 
 
-import portage
+# import our initialized portage instance
+from repoman._portage import portage
+
 from portage import os
 
 from repoman._subprocess import repoman_popen

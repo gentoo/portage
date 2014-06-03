@@ -31,7 +31,9 @@ import textwrap
 import difflib
 from tempfile import mkstemp
 
-import portage
+# import our initialized portage instance
+from repoman._portage import portage
+
 from portage import os
 from portage import shutil
 from portage import _encodings

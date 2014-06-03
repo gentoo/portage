@@ -6,7 +6,9 @@ import re
 import sys
 import textwrap
 
-import portage
+# import our initialized portage instance
+from repoman._portage import portage
+
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode

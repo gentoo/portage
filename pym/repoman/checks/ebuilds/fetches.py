@@ -5,7 +5,9 @@ Performs the src_uri fetchlist and files checks
 
 from stat import S_ISDIR
 
-import portage
+# import our initialized portage instance
+from repoman._portage import portage
+
 from portage import os
 
 from repoman.vcs.vcs import vcs_new_changed

@@ -20,7 +20,9 @@ except (ImportError, SystemError, RuntimeError, Exception):
 		out.eerror(line)
 	sys.exit(1)
 
-import portage
+# import our initialized portage instance
+from repoman._portage import portage
+
 from portage.exception import InvalidAtom
 from portage import os
 from portage import _encodings, _unicode_encode

@@ -2,7 +2,10 @@
 import logging
 
 from _emerge.Package import Package
-import portage
+
+# import our initialized portage instance
+from repoman._portage import portage
+
 
 
 # 14 is the length of DESCRIPTION=""

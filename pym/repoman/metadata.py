@@ -11,7 +11,9 @@ except ImportError:
 	from urlparse import urlparse
 
 
-import portage
+# import our initialized portage instance
+from repoman._portage import portage
+
 from portage import exception
 from portage import os
 from portage.output import green
