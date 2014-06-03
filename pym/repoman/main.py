@@ -273,6 +273,19 @@ if options.if_modified == "y":
 		chain(changed.changed, changed.new, changed.removed),
 		repolevel, reposplit, categories))
 
+#######  initialize our checks classes here before the big xpkg loop
+manifester = Manifests(options, qatracker, repoman_settings)
+is_ebuild = IsEbuild(repoman_settings, repo_settings, portdb, qatracker)
+filescheck = FileChecks(qatracker, repoman_settings, repo_settings, portdb,
+	vcs_settings)
+status_check = VCSStatus(vcs_settings, qatracker)
+fetchcheck = FetchChecks(qatracker, repoman_settings, repo_settings, portdb,
+	vcs_settings)
+pkgmeta = PkgMetadata(options, qatracker, repoman_settings)
+thirdparty = ThirdPartyMirrors(repoman_settings, qatracker)
+use_flag_checks = USEFlagChecks(qatracker, uselist)
+
+
 for xpkg in effective_scanlist:
 	# ebuilds and digests added to cvs respectively.
 	logging.info("checking package %s" % xpkg)
@@ -289,7 +302,6 @@ for xpkg in effective_scanlist:
 	checkdir_relative = os.path.join(".", checkdir_relative)
 
 #####################
-	manifester = Manifests(options, qatracker, repoman_settings)
 	if manifester.run(checkdir, portdb):
 		continue
 	if not manifester.generated_manifest:
@@ -302,7 +314,6 @@ for xpkg in effective_scanlist:
 	checkdirlist = os.listdir(checkdir)
 
 ######################
-	is_ebuild = IsEbuild(repoman_settings, repo_settings, portdb, qatracker)
 	pkgs, allvalid = is_ebuild.check(checkdirlist, checkdir, xpkg)
 	if is_ebuild.continue_:
 		# If we can't access all the metadata then it's totally unsafe to
@@ -320,26 +331,20 @@ for xpkg in effective_scanlist:
 	ebuildlist = sorted(pkgs.values())
 	ebuildlist = [pkg.pf for pkg in ebuildlist]
 #######################
-	filescheck = FileChecks(qatracker, repoman_settings, repo_settings, portdb,
-		vcs_settings)
 	filescheck.check(checkdir, checkdirlist, checkdir_relative,
 		changed.changed, changed.new)
 #######################
-	status_check = VCSStatus(vcs_settings, qatracker)
 	status_check.check(check_ebuild_notadded, checkdir, checkdir_relative, xpkg)
 	eadded.extend(status_check.eadded)
 
 #################
-	fetchcheck = FetchChecks(qatracker, repoman_settings, repo_settings, portdb,
-		vcs_settings)
 	fetchcheck.check(xpkg, checkdir, checkdir_relative, changed.changed, changed.new)
 #################
 
 	if check_changelog and "ChangeLog" not in checkdirlist:
 		qatracker.add_error("changelog.missing", xpkg + "/ChangeLog")
 #################
-	pkgmeta = PkgMetadata(options, qatracker, repolevel, repoman_settings)
-	pkgmeta.check(xpkg, checkdir, checkdirlist)
+	pkgmeta.check(xpkg, checkdir, checkdirlist, repolevel)
 	muselist = frozenset(pkgmeta.musedict)
 #################
 
@@ -397,7 +402,6 @@ for xpkg in effective_scanlist:
 
 		if not fetchcheck.src_uri_error:
 			#######################
-			thirdparty = ThirdPartyMirrors(repoman_settings, qatracker)
 			thirdparty.check(myaux, ebuild.relative_path)
 			#######################
 		if myaux.get("PROVIDE"):
@@ -632,7 +636,6 @@ for xpkg in effective_scanlist:
 		badprovsyntax = badprovsyntax > 0
 
 		#################
-		use_flag_checks = USEFlagChecks(qatracker, uselist)
 		use_flag_checks.check(pkg, xpkg, ebuild, y_ebuild, muselist)
 
 		ebuild_used_useflags = use_flag_checks.getUsedUseFlags()
