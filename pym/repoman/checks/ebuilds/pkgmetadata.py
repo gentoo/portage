@@ -38,27 +38,28 @@ from repoman._xml import _XMLParser, _MetadataTreeBuilder, XmlLint
 class PkgMetadata(object):
 	'''Package metadata.xml checks'''
 
-	def __init__(self, options, qatracker, repolevel, repoman_settings):
+	def __init__(self, options, qatracker, repoman_settings):
 		'''PkgMetadata init function
 
 		@param options: ArgumentParser.parse_known_args(argv[1:]) options
 		@param qatracker: QATracker instance
-		@param repolevel: integer
 		@param repoman_settings: settings instance
 		'''
 		self.options = options
 		self.qatracker = qatracker
-		self.repolevel = repolevel
 		self.repoman_settings = repoman_settings
 		self.musedict = {}
+		self.xmllint = XmlLint(self.options, self.repoman_settings)
 
 
-	def check(self, xpkg, checkdir, checkdirlist):
+
+	def check(self, xpkg, checkdir, checkdirlist, repolevel):
 		'''Performs the checks on the metadata.xml for the package
 
 		@param xpkg: the pacakge being checked
 		@param checkdir: string, directory path
 		@param checkdirlist: list of checkdir's
+		@param repolevel: integer
 		'''
 
 		self.musedict = {}
@@ -165,8 +166,7 @@ class PkgMetadata(object):
 
 			# Only carry out if in package directory or check forced
 			if not metadata_bad:
-				xmllint = XmlLint(self.options, self.repolevel, self.repoman_settings)
-				if not xmllint.check(checkdir):
+				if not self.xmllint.check(checkdir, repolevel):
 					self.qatracker.add_error("metadata.bad", xpkg + "/metadata.xml")
 			del metadata_bad
 		return

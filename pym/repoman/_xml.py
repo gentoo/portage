@@ -14,6 +14,8 @@ from repoman._subprocess import repoman_getstatusoutput
 
 
 class _XMLParser(xml.etree.ElementTree.XMLParser):
+
+
 	def __init__(self, data, **kwargs):
 		xml.etree.ElementTree.XMLParser.__init__(self, **kwargs)
 		self._portage_data = data
@@ -25,10 +27,12 @@ class _XMLParser(xml.etree.ElementTree.XMLParser):
 			self.parser.StartDoctypeDeclHandler = \
 				self._portage_StartDoctypeDeclHandler
 
+
 	def _portage_XmlDeclHandler(self, version, encoding, standalone):
 		if self._base_XmlDeclHandler is not None:
 			self._base_XmlDeclHandler(version, encoding, standalone)
 		self._portage_data["XML_DECLARATION"] = (version, encoding, standalone)
+
 
 	def _portage_StartDoctypeDeclHandler(
 		self, doctypeName, systemId, publicId, has_internal_subset):
@@ -49,33 +53,44 @@ class _MetadataTreeBuilder(xml.etree.ElementTree.TreeBuilder):
 
 class XmlLint(object):
 
-	def __init__(self, options, repolevel, repoman_settings):
+	def __init__(self, options, repoman_settings):
 		self.metadata_dtd = os.path.join(repoman_settings["DISTDIR"], 'metadata.dtd')
+		self.options = options
+		self.repoman_settings = repoman_settings
 		self._is_capable = False
 		self.binary = None
-		self._check_capable(options, repolevel, repoman_settings)
+		self._check_capable()
 
-	def _check_capable(self, options, repolevel, repoman_settings):
-		if options.mode == "manifest":
+
+	def _check_capable(self):
+		if self.options.mode == "manifest":
 			return
 		self.binary = find_binary('xmllint')
 		if not self.binary:
 			print(red("!!! xmllint not found. Can't check metadata.xml.\n"))
-			if options.xml_parse or repolevel == 3:
-				print("%s sorry, xmllint is needed.  failing\n" % red("!!!"))
-				sys.exit(1)
 		else:
-			if not fetch_metadata_dtd(self.metadata_dtd, repoman_settings):
+			if not fetch_metadata_dtd(self.metadata_dtd, self.repoman_settings):
 				sys.exit(1)
 			# this can be problematic if xmllint changes their output
 			self._is_capable = True
+
 
 	@property
 	def capable(self):
 		return self._is_capable
 
-	def check(self, checkdir):
+
+	def check(self, checkdir, repolevel):
+		'''Runs checks on the package metadata.xml file
+
+		@param checkdir: string, path
+		@param repolevel: integer
+		@return boolean, False == bad metadata
+		'''
 		if not self.capable:
+			if self.options.xml_parse or repolevel == 3:
+				print("%s sorry, xmllint is needed.  failing\n" % red("!!!"))
+				sys.exit(1)
 			return True
 		# xmlint can produce garbage output even on success, so only dump
 		# the ouput when it fails.
