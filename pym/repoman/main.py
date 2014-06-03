@@ -325,8 +325,8 @@ for xpkg in effective_scanlist:
 	filescheck.check(checkdir, checkdirlist, checkdir_relative,
 		changed.changed, changed.new)
 #######################
-	status_check = VCSStatus(vcs_settings, checkdir, checkdir_relative, xpkg, qatracker)
-	status_check.check(check_ebuild_notadded)
+	status_check = VCSStatus(vcs_settings, qatracker)
+	status_check.check(check_ebuild_notadded, checkdir, checkdir_relative, xpkg)
 	eadded.extend(status_check.eadded)
 
 #################

@@ -13,52 +13,49 @@ class VCSStatus(object):
 	'''Determines the status of the vcs repositories
 	to determine if files are not added'''
 
-	def __init__(self, vcs_settings, checkdir, checkdir_relative, xpkg, qatracker):
+	def __init__(self, vcs_settings, qatracker):
 		self.vcs_settings = vcs_settings
 		self.vcs = vcs_settings.vcs
 		self.eadded = []
-		self.checkdir = checkdir
-		self.checkdir_relative = checkdir_relative
-		self.xpkg = xpkg
 		self.qatracker = qatracker
 
 
-	def check(self, check_not_added):
+	def check(self, check_not_added, checkdir, checkdir_relative, xpkg):
 		if self.vcs and check_not_added:
 			vcscheck = getattr(self, 'check_%s' % self.vcs)
-			vcscheck()
+			vcscheck(checkdir, checkdir_relative, xpkg)
 
 
-	def post_git_hg(self, myf):
+	def post_git_hg(self, myf, xpkg):
 			for l in myf:
 				if l[:-1][-7:] == ".ebuild":
 					self.qatracker.add_error("ebuild.notadded",
-						os.path.join(self.xpkg, os.path.basename(l[:-1])))
+						os.path.join(xpkg, os.path.basename(l[:-1])))
 			myf.close()
 
 
-	def check_git(self):
+	def check_git(self, checkdir, checkdir_relative, xpkg):
 		myf = repoman_popen(
 			"git ls-files --others %s" %
-			(portage._shell_quote(self.checkdir_relative),))
-		self.post_git_hg(myf)
+			(portage._shell_quote(checkdir_relative),))
+		self.post_git_hg(myf, xpkg)
 
 
-	def check_hg(self):
+	def check_hg(self, checkdir, checkdir_relative, xpkg):
 		myf = repoman_popen(
 			"hg status --no-status --unknown %s" %
-			(portage._shell_quote(self.checkdir_relative),))
-		self.post_git_hg(myf)
+			(portage._shell_quote(checkdir_relative),))
+		self.post_git_hg(myf, xpkg)
 
 
-	def check_cvs(self):
+	def check_cvs(self, checkdir, checkdir_relative, xpkg):
 			try:
-				myf = open(self.checkdir + "/CVS/Entries", "r")
+				myf = open(checkdir + "/CVS/Entries", "r")
 				myl = myf.readlines()
 				myf.close()
 			except IOError:
 				self.qatracker.add_error("CVS/Entries.IO_error",
-					self.checkdir + "/CVS/Entries")
+					checkdir + "/CVS/Entries")
 				return True
 			for l in myl:
 				if l[0] != "/":
@@ -71,7 +68,7 @@ class VCSStatus(object):
 			return True
 
 
-	def check_svn(self):
+	def check_svn(self, checkdir, checkdir_relative, xpkg):
 		try:
 			myf = repoman_popen(
 				"svn status --depth=files --verbose " +
@@ -92,7 +89,7 @@ class VCSStatus(object):
 		try:
 			myf = repoman_popen(
 				"svn status " +
-				portage._shell_quote(self.checkdir))
+				portage._shell_quote(checkdir))
 			myl = myf.readlines()
 			myf.close()
 		except IOError:
@@ -105,11 +102,11 @@ class VCSStatus(object):
 		return True
 
 
-	def check_bzr(self):
+	def check_bzr(self, checkdir, checkdir_relative, xpkg):
 		try:
 			myf = repoman_popen(
 				"bzr ls -v --kind=file " +
-				portage._shell_quote(self.checkdir))
+				portage._shell_quote(checkdir))
 			myl = myf.readlines()
 			myf.close()
 		except IOError:
