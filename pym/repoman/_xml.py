@@ -55,7 +55,6 @@ class XmlLint(object):
 		self.binary = None
 		self._check_capable(options, repolevel, repoman_settings)
 
-
 	def _check_capable(self, options, repolevel, repoman_settings):
 		if options.mode == "manifest":
 			return
@@ -71,15 +70,13 @@ class XmlLint(object):
 			# this can be problematic if xmllint changes their output
 			self._is_capable = True
 
-
 	@property
 	def capable(self):
 		return self._is_capable
 
-
 	def check(self, checkdir):
 		if not self.capable:
-			return true
+			return True
 		# xmlint can produce garbage output even on success, so only dump
 		# the ouput when it fails.
 		st, out = repoman_getstatusoutput(

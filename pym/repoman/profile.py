@@ -1,6 +1,7 @@
 
-from portage import os
 from portage import normalize_path
+from portage import os
+from portage.output import red
 
 
 class ProfileDesc(object):

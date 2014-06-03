@@ -24,6 +24,8 @@ from portage import _encodings, _unicode_encode
 from portage.exception import FileNotFound, ParseError, PermissionDenied
 from portage import os
 
+from repoman.errors import err
+
 __all__ = [
 	"make_herd_base", "get_herd_base"
 ]

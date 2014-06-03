@@ -87,11 +87,11 @@ def update_copyright(fn_path, year, pretend=False):
 		new_header.append(line)
 
 	difflines = 0
-	for line in difflib.unified_diff(
-		[_unicode_decode(line) for line in orig_header],
-		[_unicode_decode(line) for line in new_header],
+	for diffline in difflib.unified_diff(
+		[_unicode_decode(diffline) for diffline in orig_header],
+		[_unicode_decode(diffline) for diffline in new_header],
 		fromfile=fn_path, tofile=fn_path, n=0):
-		util.writemsg_stdout(line, noiselevel=-1)
+		util.writemsg_stdout(diffline, noiselevel=-1)
 		difflines += 1
 	util.writemsg_stdout("\n", noiselevel=-1)
 
@@ -117,5 +117,3 @@ def update_copyright(fn_path, year, pretend=False):
 		else:
 			util.apply_stat_permissions(fn_path, fn_stat)
 	fn_hdl.close()
-
-
