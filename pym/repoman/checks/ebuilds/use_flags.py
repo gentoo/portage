@@ -19,10 +19,11 @@ class USEFlagChecks(object):
 		@param globalUseFlags: Global USE flags
 		'''
 		self.qatracker = qatracker
+		self.globalUseFlags = globalUseFlags
 		self.useFlags = []
 		self.defaultUseFlags = []
 		self.usedUseFlags = set()
-		self.globalUseFlags = globalUseFlags
+
 
 	def check(self, pkg, package, ebuild, y_ebuild, localUseFlags):
 		'''Perform the check.
@@ -33,13 +34,19 @@ class USEFlagChecks(object):
 		@param y_ebuild: Ebuild which we check (string).
 		@param localUseFlags: Local USE flags of the package
 		'''
+		# reset state variables for the run
+		self.useFlags = []
+		self.defaultUseFlags = []
+		self.usedUseFlags = set()
 		self._checkGlobal(pkg)
 		self._checkMetadata(package, ebuild, y_ebuild, localUseFlags)
 		self._checkRequiredUSE(pkg, ebuild)
 
+
 	def getUsedUseFlags(self):
 		'''Get the USE flags that this check has seen'''
 		return self.usedUseFlags
+
 
 	def _checkGlobal(self, pkg):
 		for myflag in pkg._metadata["IUSE"].split():
@@ -49,6 +56,7 @@ class USEFlagChecks(object):
 				self.defaultUseFlags.append(myflag)
 			if flag_name not in self.globalUseFlags:
 				self.useFlags.append(flag_name)
+
 
 	def _checkMetadata(self, package, ebuild, y_ebuild, localUseFlags):
 		for mypos in range(len(self.useFlags) - 1, -1, -1):
@@ -66,6 +74,7 @@ class USEFlagChecks(object):
 			self.qatracker.add_error(
 				"IUSE.invalid",
 				"%s/%s.ebuild: %s" % (package, y_ebuild, self.useFlags[mypos]))
+
 
 	def _checkRequiredUSE(self, pkg, ebuild):
 		required_use = pkg._metadata["REQUIRED_USE"]
