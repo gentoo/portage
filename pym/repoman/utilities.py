@@ -39,9 +39,10 @@ from portage import shutil
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
+from portage import util
 from portage.localization import _
 from portage.process import find_binary
-from portage import util
+from portage.output import green
 
 from repoman.copyrights import update_copyright, update_copyright_year
 
@@ -126,7 +127,6 @@ def FindPackagesToScan(settings, startdir, reposplit):
 			path = os.path.join(startdir, cat)
 			if not os.path.isdir(path):
 				continue
-			pkgdirs = os.listdir(path)
 			scanlist.extend(AddPackagesInDir(path))
 	elif repolevel == 2:  # category level, startdir = catdir
 		# We only want 1 segment of the directory,
@@ -589,3 +589,7 @@ def UpdateChangeLog(
 		except OSError:
 			pass
 		return None
+
+
+def repoman_sez(msg):
+	print (green("RepoMan sez:"), msg)

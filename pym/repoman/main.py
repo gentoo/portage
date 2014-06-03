@@ -981,25 +981,21 @@ if options.mode != 'commit':
 	if dofull:
 		print(bold("Note: type \"repoman full\" for a complete listing."))
 	if dowarn and not dofail:
-		print(
-			green("RepoMan sez:"),
+		utilities.repoman_sez(
 			"\"You're only giving me a partial QA payment?\n"
 			"              I'll take it this time, but I'm not happy.\"")
 	elif not dofail:
-		print(
-			green("RepoMan sez:"),
+		utilities.repoman_sez(
 			"\"If everyone were like you, I'd be out of business!\"")
 	elif dofail:
 		print(bad("Please fix these important QA issues first."))
-		print(
-			green("RepoMan sez:"),
+		utilities.repoman_sez(
 			"\"Make your QA payment on time"
 			" and you'll never see the likes of me.\"\n")
 		sys.exit(1)
 else:
 	if dofail and can_force and options.force and not options.pretend:
-		print(
-			green("RepoMan sez:"),
+		utilities.repoman_sez(
 			" \"You want to commit even with these QA issues?\n"
 			"              I'll take it this time, but I'm not happy.\"\n")
 	elif dofail:
@@ -1008,15 +1004,13 @@ else:
 				"The --force option has been disabled"
 				" due to extraordinary issues."))
 		print(bad("Please fix these important QA issues first."))
-		print(
-			green("RepoMan sez:"),
+		utilities.repoman_sez(
 			"\"Make your QA payment on time"
 			" and you'll never see the likes of me.\"\n")
 		sys.exit(1)
 
 	if options.pretend:
-		print(
-			green("RepoMan sez:"),
+		utilities.repoman_sez(
 			"\"So, you want to play it safe. Good call.\"\n")
 
 	myunadded = []
@@ -1199,7 +1193,8 @@ else:
 
 	if vcs_settings.vcs:
 		if not (mychanged or mynew or myremoved or (vcs_settings.vcs == "hg" and mydeleted)):
-			print(green("RepoMan sez:"), "\"Doing nothing is not always good for QA.\"")
+			utilities.repoman_sez(
+				"\"Doing nothing is not always good for QA.\"")
 			print()
 			print("(Didn't find any changed files...)")
 			print()
@@ -1604,8 +1599,7 @@ else:
 			portage.util.write_atomic(x, b''.join(mylines), mode='wb')
 
 	if repolevel == 1:
-		print(
-			green("RepoMan sez:"),
+		utilities.repoman_sez(
 			"\"You're rather crazy... "
 			"doing the entire repository.\"\n")
 
@@ -1722,7 +1716,6 @@ else:
 			"repoman was too scared"
 			" by not seeing any familiar version control file"
 			" that he forgot to commit anything")
-	print(
-		green("RepoMan sez:"),
+	utilities.repoman_sez(
 		"\"If everyone were like you, I'd be out of business!\"\n")
 sys.exit(0)
