@@ -138,6 +138,8 @@ vcs_settings = VCSSettings(options, repoman_settings)
 repo_settings = RepoSettings(config_root, portdir, portdir_overlay,
 		repoman_settings, vcs_settings, options, qawarnings)
 
+repoman_settings = repo_settings.repoman_settings
+
 portdb = repo_settings.portdb
 ##################
 
