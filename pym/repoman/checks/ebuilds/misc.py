@@ -39,7 +39,7 @@ def bad_split_check(xpkg, y_ebuild, pkgdir, qatracker):
 	return False
 
 
-def pkg_invalid(pkg, qatracker):
+def pkg_invalid(pkg, qatracker, ebuild):
 	'''Checks for invalid packages
 
 	@param pkg: _emerge.Package instance

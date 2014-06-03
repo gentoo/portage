@@ -46,7 +46,6 @@ from portage.output import ConsoleStyleFile, StyleWriter
 from portage.util import formatter
 from portage.util import writemsg_level
 from portage.package.ebuild.digestgen import digestgen
-from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 
 from repoman.argparser import parse_args
 from repoman.checks.directories.files import FileChecks
@@ -58,6 +57,7 @@ from repoman.checks.ebuilds.manifests import Manifests
 from repoman.check_missingslot import check_missingslot
 from repoman.checks.ebuilds.misc import bad_split_check, pkg_invalid
 from repoman.checks.ebuilds.pkgmetadata import PkgMetadata
+from repoman.checks.ebuilds.use_flags import USEFlagChecks
 from repoman.ebuild import Ebuild
 from repoman.errors import err
 from repoman.modules.commit import repochecks
@@ -370,7 +370,7 @@ for xpkg in effective_scanlist:
 			continue
 ###################
 		pkg = pkgs[y_ebuild]
-		if pkg_invalid(pkg, qatracker):
+		if pkg_invalid(pkg, qatracker, ebuild):
 			allvalid = False
 			continue
 
@@ -633,32 +633,13 @@ for xpkg in effective_scanlist:
 		badlicsyntax = badlicsyntax > 0
 		badprovsyntax = badprovsyntax > 0
 
-		# uselist checks - global
-		myuse = []
-		default_use = []
-		for myflag in myaux["IUSE"].split():
-			flag_name = myflag.lstrip("+-")
-			used_useflags.add(flag_name)
-			if myflag != flag_name:
-				default_use.append(myflag)
-			if flag_name not in uselist:
-				myuse.append(flag_name)
+		#################
+		use_flag_checks = USEFlagChecks(qatracker, uselist)
+		use_flag_checks.check(pkg, xpkg, ebuild, y_ebuild, muselist)
 
-		# uselist checks - metadata
-		for mypos in range(len(myuse) - 1, -1, -1):
-			if myuse[mypos] and (myuse[mypos] in muselist):
-				del myuse[mypos]
-
-		if default_use and not eapi_has_iuse_defaults(eapi):
-			for myflag in default_use:
-				qatracker.add_error('EAPI.incompatible',
-					"%s: IUSE defaults"
-					" not supported with EAPI='%s': '%s'" %
-					(ebuild.relative_path, eapi, myflag))
-
-		for mypos in range(len(myuse)):
-			qatracker.add_error("IUSE.invalid",
-				xpkg + "/" + y_ebuild + ".ebuild: %s" % myuse[mypos])
+		ebuild_used_useflags = use_flag_checks.getUsedUseFlags()
+		used_useflags = used_useflags.union(ebuild_used_useflags)
+		#################
 
 		# Check for outdated RUBY targets
 		old_ruby_eclasses = ["ruby-ng", "ruby-fakegem", "ruby"]
@@ -722,21 +703,6 @@ for xpkg in effective_scanlist:
 				for mybad in mybadrestrict:
 					qatracker.add_error("RESTRICT.invalid",
 						xpkg + "/" + y_ebuild + ".ebuild: %s" % mybad)
-		# REQUIRED_USE check
-		required_use = myaux["REQUIRED_USE"]
-		if required_use:
-			if not eapi_has_required_use(eapi):
-				qatracker.add_error('EAPI.incompatible',
-					"%s: REQUIRED_USE"
-					" not supported with EAPI='%s'"
-					% (ebuild.relative_path, eapi,))
-			try:
-				portage.dep.check_required_use(
-					required_use, (), pkg.iuse.is_valid_flag, eapi=eapi)
-			except portage.exception.InvalidDependString as e:
-				qatracker.add_error("REQUIRED_USE.syntax",
-					"%s: REQUIRED_USE: %s" % (ebuild.relative_path, e))
-				del e
 
 		# Syntax Checks
 
