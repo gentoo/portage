@@ -51,6 +51,7 @@ from repoman.argparser import parse_args
 from repoman.checks.directories.files import FileChecks
 from repoman.checks.ebuilds.checks import run_checks, checks_init
 from repoman.checks.ebuilds.eclasses.live import LiveEclassChecks
+from repoman.checks.ebuilds.eclasses.ruby import RubyEclassChecks
 from repoman.checks.ebuilds.fetches import FetchChecks
 from repoman.checks.ebuilds.keywords import KeywordChecks
 from repoman.checks.ebuilds.isebuild import IsEbuild
@@ -67,7 +68,7 @@ from repoman.profile import check_profiles, dev_keywords, setup_profile
 from repoman.qa_data import (
 	format_qa_output, format_qa_output_column, qahelp,
 	qawarnings, qacats, max_desc_len, missingvars,
-	ruby_deprecated, suspect_virtual, suspect_rdepend, valid_restrict)
+	suspect_virtual, suspect_rdepend, valid_restrict)
 from repoman.qa_tracker import QATracker
 from repoman.repos import RepoSettings, repo_metadata
 from repoman.scan import Changes, scan
@@ -290,6 +291,7 @@ thirdparty = ThirdPartyMirrors(repoman_settings, qatracker)
 use_flag_checks = USEFlagChecks(qatracker, uselist)
 keywordcheck = KeywordChecks(qatracker, options)
 liveeclasscheck = LiveEclassChecks(qatracker)
+rubyeclasscheck = RubyEclassChecks(qatracker)
 ######################
 
 for xpkg in effective_scanlist:
@@ -615,18 +617,8 @@ for xpkg in effective_scanlist:
 		ebuild_used_useflags = use_flag_checks.getUsedUseFlags()
 		used_useflags = used_useflags.union(ebuild_used_useflags)
 		#################
-
-		# Check for outdated RUBY targets
-		old_ruby_eclasses = ["ruby-ng", "ruby-fakegem", "ruby"]
-		is_old_ruby_eclass_inherited = filter(
-			lambda e: e in inherited, old_ruby_eclasses)
-		if is_old_ruby_eclass_inherited:
-			ruby_intersection = pkg.iuse.all.intersection(ruby_deprecated)
-			if ruby_intersection:
-				for myruby in ruby_intersection:
-					qatracker.add_error("IUSE.rubydeprecated",
-						(ebuild.relative_path + ": Deprecated ruby target: %s")
-						% myruby)
+		rubyeclasscheck.check(pkg, ebuild)
+		#################
 
 		# license checks
 		if not badlicsyntax:
