@@ -445,21 +445,8 @@ for xpkg in effective_scanlist:
 		#######################
 		keywordcheck.check(
 			pkg, xpkg, ebuild, y_ebuild, keywords, ebuild_archs, changed,
-			live_ebuild)
+			live_ebuild, kwlist, profiles)
 		#######################
-
-		# KEYWORDS="-*" is a stupid replacement for package.mask
-		# and screws general KEYWORDS semantics
-		if "-*" in keywords:
-			haskeyword = False
-			for kw in keywords:
-				if kw[0] == "~":
-					kw = kw[1:]
-				if kw in kwlist:
-					haskeyword = True
-			if not haskeyword:
-				qatracker.add_error("KEYWORDS.stupid",
-					xpkg + "/" + y_ebuild + ".ebuild")
 
 		if live_ebuild and repo_settings.repo_config.name == "gentoo":
 			#######################
@@ -636,23 +623,6 @@ for xpkg in effective_scanlist:
 				elif lic in liclist_deprecated:
 					qatracker.add_error("LICENSE.deprecated",
 						"%s: %s" % (ebuild.relative_path, lic))
-
-		# keyword checks
-		myuse = myaux["KEYWORDS"].split()
-		for mykey in myuse:
-			if mykey not in ("-*", "*", "~*"):
-				myskey = mykey
-				if myskey[:1] == "-":
-					myskey = myskey[1:]
-				if myskey[:1] == "~":
-					myskey = myskey[1:]
-				if myskey not in kwlist:
-					qatracker.add_error("KEYWORDS.invalid",
-						"%s/%s.ebuild: %s" % (xpkg, y_ebuild, mykey))
-				elif myskey not in profiles:
-					qatracker.add_error("KEYWORDS.invalid",
-						"%s/%s.ebuild: %s (profile invalid)"
-						% (xpkg, y_ebuild, mykey))
 
 		# restrict checks
 		myrestrict = None
