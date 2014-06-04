@@ -50,6 +50,7 @@ from portage.package.ebuild.digestgen import digestgen
 from repoman.argparser import parse_args
 from repoman.checks.directories.files import FileChecks
 from repoman.checks.ebuilds.checks import run_checks, checks_init
+from repoman.checks.ebuilds.eclasses.live import LiveEclassChecks
 from repoman.checks.ebuilds.fetches import FetchChecks
 from repoman.checks.ebuilds.keywords import KeywordChecks
 from repoman.checks.ebuilds.isebuild import IsEbuild
@@ -63,16 +64,17 @@ from repoman.ebuild import Ebuild
 from repoman.errors import err
 from repoman.modules.commit import repochecks
 from repoman.profile import check_profiles, dev_keywords, setup_profile
-from repoman.qa_data import (format_qa_output, format_qa_output_column, qahelp,
+from repoman.qa_data import (
+	format_qa_output, format_qa_output_column, qahelp,
 	qawarnings, qacats, max_desc_len, missingvars,
 	ruby_deprecated, suspect_virtual, suspect_rdepend, valid_restrict)
 from repoman.qa_tracker import QATracker
-from repoman.repos import has_global_mask, RepoSettings, repo_metadata
+from repoman.repos import RepoSettings, repo_metadata
 from repoman.scan import Changes, scan
 from repoman._subprocess import repoman_popen, repoman_getstatusoutput
 from repoman import utilities
-from repoman.vcs.vcs import (git_supports_gpg_sign, vcs_files_to_cps,
-	VCSSettings)
+from repoman.vcs.vcs import (
+	git_supports_gpg_sign, vcs_files_to_cps, VCSSettings)
 from repoman.vcs.vcsstatus import VCSStatus
 
 
@@ -274,18 +276,21 @@ if options.if_modified == "y":
 		chain(changed.changed, changed.new, changed.removed),
 		repolevel, reposplit, categories))
 
-#######  initialize our checks classes here before the big xpkg loop
+######################
+# initialize our checks classes here before the big xpkg loop
 manifester = Manifests(options, qatracker, repoman_settings)
 is_ebuild = IsEbuild(repoman_settings, repo_settings, portdb, qatracker)
-filescheck = FileChecks(qatracker, repoman_settings, repo_settings, portdb,
-	vcs_settings)
+filescheck = FileChecks(
+	qatracker, repoman_settings, repo_settings, portdb, vcs_settings)
 status_check = VCSStatus(vcs_settings, qatracker)
-fetchcheck = FetchChecks(qatracker, repoman_settings, repo_settings, portdb,
-	vcs_settings)
+fetchcheck = FetchChecks(
+	qatracker, repoman_settings, repo_settings, portdb, vcs_settings)
 pkgmeta = PkgMetadata(options, qatracker, repoman_settings)
 thirdparty = ThirdPartyMirrors(repoman_settings, qatracker)
 use_flag_checks = USEFlagChecks(qatracker, uselist)
 keywordcheck = KeywordChecks(qatracker, options)
+liveeclasscheck = LiveEclassChecks(qatracker)
+######################
 
 for xpkg in effective_scanlist:
 	# ebuilds and digests added to cvs respectively.
@@ -454,25 +459,11 @@ for xpkg in effective_scanlist:
 				qatracker.add_error("KEYWORDS.stupid",
 					xpkg + "/" + y_ebuild + ".ebuild")
 
-		"""
-		Ebuilds that inherit a "Live" eclass (darcs,subversion,git,cvs,etc..) should
-		not be allowed to be marked stable
-		"""
 		if live_ebuild and repo_settings.repo_config.name == "gentoo":
-			bad_stable_keywords = []
-			for keyword in keywords:
-				if not keyword.startswith("~") and \
-					not keyword.startswith("-"):
-					bad_stable_keywords.append(keyword)
-				del keyword
-			if bad_stable_keywords:
-				qatracker.add_error("LIVEVCS.stable",
-					"%s/%s.ebuild with stable keywords:%s " %
-					(xpkg, y_ebuild, bad_stable_keywords))
-			del bad_stable_keywords
-
-			if keywords and not has_global_mask(pkg, global_pmaskdict):
-				qatracker.add_error("LIVEVCS.unmasked", ebuild.relative_path)
+			#######################
+			liveeclasscheck.check(
+				pkg, xpkg, ebuild, y_ebuild, keywords, global_pmaskdict)
+			#######################
 
 		if options.ignore_arches:
 			arches = [[
