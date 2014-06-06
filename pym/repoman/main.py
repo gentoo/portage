@@ -61,6 +61,7 @@ from repoman.check_missingslot import check_missingslot
 from repoman.checks.ebuilds.misc import bad_split_check, pkg_invalid
 from repoman.checks.ebuilds.pkgmetadata import PkgMetadata
 from repoman.checks.ebuilds.use_flags import USEFlagChecks
+from repoman.checks.ebuilds.variables.description import DescriptionChecks
 from repoman.checks.ebuilds.variables.eapi import EAPIChecks
 from repoman.ebuild import Ebuild
 from repoman.errors import err
@@ -68,7 +69,7 @@ from repoman.modules.commit import repochecks
 from repoman.profile import check_profiles, dev_keywords, setup_profile
 from repoman.qa_data import (
 	format_qa_output, format_qa_output_column, qahelp,
-	qawarnings, qacats, max_desc_len, missingvars,
+	qawarnings, qacats, missingvars,
 	suspect_virtual, suspect_rdepend, valid_restrict)
 from repoman.qa_tracker import QATracker
 from repoman.repos import RepoSettings, repo_metadata
@@ -297,6 +298,7 @@ keywordcheck = KeywordChecks(qatracker, options)
 liveeclasscheck = LiveEclassChecks(qatracker)
 rubyeclasscheck = RubyEclassChecks(qatracker)
 eapicheck = EAPIChecks(qatracker, repo_settings)
+descriptioncheck = DescriptionChecks(qatracker)
 ######################
 
 for xpkg in effective_scanlist:
@@ -436,12 +438,9 @@ for xpkg in effective_scanlist:
 					myqakey = var + ".virtual"
 					qatracker.add_error(myqakey, ebuild.relative_path)
 
-		# 14 is the length of DESCRIPTION=""
-		if len(myaux['DESCRIPTION']) > max_desc_len:
-			qatracker.add_error(
-				'DESCRIPTION.toolong',
-				"%s: DESCRIPTION is %d characters (max %d)" %
-				(ebuild.relative_path, len(myaux['DESCRIPTION']), max_desc_len))
+		#######################
+		descriptioncheck.check(pkg, ebuild)
+		#######################
 
 		keywords = myaux["KEYWORDS"].split()
 
