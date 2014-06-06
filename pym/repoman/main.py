@@ -64,6 +64,7 @@ from repoman.checks.ebuilds.use_flags import USEFlagChecks
 from repoman.checks.ebuilds.variables.description import DescriptionChecks
 from repoman.checks.ebuilds.variables.eapi import EAPIChecks
 from repoman.checks.ebuilds.variables.license import LicenseChecks
+from repoman.checks.ebuilds.variables.restrict import RestrictChecks
 from repoman.ebuild import Ebuild
 from repoman.errors import err
 from repoman.modules.commit import repochecks
@@ -71,7 +72,7 @@ from repoman.profile import check_profiles, dev_keywords, setup_profile
 from repoman.qa_data import (
 	format_qa_output, format_qa_output_column, qahelp,
 	qawarnings, qacats, missingvars,
-	suspect_virtual, suspect_rdepend, valid_restrict)
+	suspect_virtual, suspect_rdepend)
 from repoman.qa_tracker import QATracker
 from repoman.repos import RepoSettings, repo_metadata
 from repoman.scan import Changes, scan
@@ -301,6 +302,7 @@ rubyeclasscheck = RubyEclassChecks(qatracker)
 eapicheck = EAPIChecks(qatracker, repo_settings)
 descriptioncheck = DescriptionChecks(qatracker)
 licensecheck = LicenseChecks(qatracker, liclist, liclist_deprecated)
+restrictcheck = RestrictChecks(qatracker)
 ######################
 
 for xpkg in effective_scanlist:
@@ -623,24 +625,9 @@ for xpkg in effective_scanlist:
 			licensecheck.check(pkg, xpkg, ebuild, y_ebuild)
 			#################
 
-		# restrict checks
-		myrestrict = None
-		try:
-			myrestrict = portage.dep.use_reduce(
-				myaux["RESTRICT"], matchall=1, flat=True)
-		except portage.exception.InvalidDependString as e:
-			qatracker.add_error(
-				"RESTRICT.syntax",
-				"%s: RESTRICT: %s" % (ebuild.relative_path, e))
-			del e
-		if myrestrict:
-			myrestrict = set(myrestrict)
-			mybadrestrict = myrestrict.difference(valid_restrict)
-			if mybadrestrict:
-				for mybad in mybadrestrict:
-					qatracker.add_error(
-						"RESTRICT.invalid",
-						xpkg + "/" + y_ebuild + ".ebuild: %s" % mybad)
+		#################
+		restrictcheck.check(pkg, xpkg, ebuild, y_ebuild)
+		#################
 
 		# Syntax Checks
 
