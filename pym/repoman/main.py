@@ -61,6 +61,7 @@ from repoman.check_missingslot import check_missingslot
 from repoman.checks.ebuilds.misc import bad_split_check, pkg_invalid
 from repoman.checks.ebuilds.pkgmetadata import PkgMetadata
 from repoman.checks.ebuilds.use_flags import USEFlagChecks
+from repoman.checks.ebuilds.variables.eapi import EAPIChecks
 from repoman.ebuild import Ebuild
 from repoman.errors import err
 from repoman.modules.commit import repochecks
@@ -295,6 +296,7 @@ use_flag_checks = USEFlagChecks(qatracker, uselist)
 keywordcheck = KeywordChecks(qatracker, options)
 liveeclasscheck = LiveEclassChecks(qatracker)
 rubyeclasscheck = RubyEclassChecks(qatracker)
+eapicheck = EAPIChecks(qatracker, repo_settings)
 ######################
 
 for xpkg in effective_scanlist:
@@ -396,13 +398,9 @@ for xpkg in effective_scanlist:
 		inherited = pkg.inherited
 		live_ebuild = live_eclasses.intersection(inherited)
 
-		if repo_settings.repo_config.eapi_is_banned(eapi):
-			qatracker.add_error(
-				"repo.eapi.banned", "%s: %s" % (ebuild.relative_path, eapi))
-
-		elif repo_settings.repo_config.eapi_is_deprecated(eapi):
-			qatracker.add_error(
-				"repo.eapi.deprecated", "%s: %s" % (ebuild.relative_path, eapi))
+		#######################
+		eapicheck.check(pkg, ebuild)
+		#######################
 
 		for k, v in myaux.items():
 			if not isinstance(v, basestring):
