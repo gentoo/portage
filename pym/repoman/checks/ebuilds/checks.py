@@ -517,7 +517,7 @@ class InheritEclass(LineCheck):
 
 	def end(self):
 		if not self._disabled and self._comprehensive and self._inherit \
-		and not self._func_call:
+			and not self._func_call:
 			self.repoman_check_name = 'inherit.unused'
 			yield 'no function called from %s.eclass; please drop' % self._eclass
 

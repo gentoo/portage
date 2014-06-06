@@ -13,8 +13,8 @@ from repoman.vcs.vcs import vcs_new_changed
 
 class FileChecks(object):
 
-	def __init__(self, qatracker, repoman_settings, repo_settings, portdb,
-		vcs_settings):
+	def __init__(
+		self, qatracker, repoman_settings, repo_settings, portdb, vcs_settings):
 		'''
 		@param qatracker: QATracker instance
 		@param repoman_settings: settings instance
@@ -26,7 +26,6 @@ class FileChecks(object):
 		self.repo_settings = repo_settings
 		self.repoman_settings = repoman_settings
 		self.vcs_settings = vcs_settings
-
 
 	def check(self, checkdir, checkdirlist, checkdir_relative, changed, new):
 		'''Checks the ebuild sources and files for errors
@@ -48,10 +47,12 @@ class FileChecks(object):
 					# prohibited characters). See bug #406877.
 					index = -1
 			if index != -1:
-				self.qatracker.add_error("file.name",
+				self.qatracker.add_error(
+					"file.name",
 					"%s/%s: char '%s'" % (checkdir, y_file, y_file[index]))
 
-			if not (y_file in ("ChangeLog", "metadata.xml")
+			if not (
+				y_file in ("ChangeLog", "metadata.xml")
 				or y_file.endswith(".ebuild")):
 				continue
 			f = None
@@ -70,10 +71,10 @@ class FileChecks(object):
 				line += l2
 				if l2 != 0:
 					s = s[s.rfind("\n") + 1:]
-				self.qatracker.add_error("file.UTF8",
-					"%s/%s: line %i, just after: '%s'" % (checkdir, y_file, line, s))
+				self.qatracker.add_error(
+					"file.UTF8", "%s/%s: line %i, just after: '%s'" % (
+						checkdir, y_file, line, s))
 			finally:
 				if f is not None:
 					f.close()
 		return
-

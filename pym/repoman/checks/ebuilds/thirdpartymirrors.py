@@ -17,7 +17,6 @@ class ThirdPartyMirrors(object):
 
 		self.qatracker = qatracker
 
-
 	def check(self, myaux, relative_path):
 		# Check that URIs don't reference a server from thirdpartymirrors.
 		for uri in portage.dep.use_reduce(
@@ -32,7 +31,8 @@ class ThirdPartyMirrors(object):
 				continue
 
 			new_uri = "mirror://%s/%s" % (mirror_alias, uri[len(mirror):])
-			self.qatracker.add_error("SRC_URI.mirror",
-				"%s: '%s' found in thirdpartymirrors, use '%s'" %
-				(relative_path, mirror, new_uri))
+			self.qatracker.add_error(
+				"SRC_URI.mirror",
+				"%s: '%s' found in thirdpartymirrors, use '%s'" % (
+					relative_path, mirror, new_uri))
 		return

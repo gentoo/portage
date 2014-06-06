@@ -15,7 +15,6 @@ from repoman._subprocess import repoman_getstatusoutput
 
 class _XMLParser(xml.etree.ElementTree.XMLParser):
 
-
 	def __init__(self, data, **kwargs):
 		xml.etree.ElementTree.XMLParser.__init__(self, **kwargs)
 		self._portage_data = data
@@ -27,12 +26,10 @@ class _XMLParser(xml.etree.ElementTree.XMLParser):
 			self.parser.StartDoctypeDeclHandler = \
 				self._portage_StartDoctypeDeclHandler
 
-
 	def _portage_XmlDeclHandler(self, version, encoding, standalone):
 		if self._base_XmlDeclHandler is not None:
 			self._base_XmlDeclHandler(version, encoding, standalone)
 		self._portage_data["XML_DECLARATION"] = (version, encoding, standalone)
-
 
 	def _portage_StartDoctypeDeclHandler(
 		self, doctypeName, systemId, publicId, has_internal_subset):
@@ -61,7 +58,6 @@ class XmlLint(object):
 		self.binary = None
 		self._check_capable()
 
-
 	def _check_capable(self):
 		if self.options.mode == "manifest":
 			return
@@ -74,11 +70,9 @@ class XmlLint(object):
 			# this can be problematic if xmllint changes their output
 			self._is_capable = True
 
-
 	@property
 	def capable(self):
 		return self._is_capable
-
 
 	def check(self, checkdir, repolevel):
 		'''Runs checks on the package metadata.xml file

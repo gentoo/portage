@@ -12,13 +12,11 @@ from portage.util import writemsg_level
 
 class Manifests(object):
 
-
 	def __init__(self, options, qatracker=None, repoman_settings=None):
 		self.options = options
 		self.qatracker = qatracker
 		self.repoman_settings = repoman_settings
 		self.generated_manifest = False
-
 
 	def run(self, checkdir, portdb):
 		self.generated_manifest = False
@@ -45,7 +43,8 @@ class Manifests(object):
 					level=logging.ERROR, noiselevel=-1)
 
 			if not self.generated_manifest:
-				writemsg_level("Unable to generate manifest.",
+				writemsg_level(
+					"Unable to generate manifest.",
 					level=logging.ERROR, noiselevel=-1)
 				failed = True
 
@@ -75,7 +74,6 @@ class Manifests(object):
 				sys.exit(1)
 		return False
 
-
 	def create_manifest(self, checkdir, fetchlist_dict):
 		try:
 			distdir = self.repoman_settings['DISTDIR']
@@ -94,7 +92,6 @@ class Manifests(object):
 			mf.write()
 		finally:
 			portage._doebuild_manifest_exempt_depend -= 1
-
 
 	def digest_check(self, xpkg, checkdir):
 		self.repoman_settings['O'] = checkdir

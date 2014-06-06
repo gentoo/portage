@@ -256,8 +256,10 @@ class VCSSettings(object):
 		# Disable copyright/mtime check if vcs does not preserve mtime (bug #324075).
 		self.vcs_preserves_mtime = self.vcs in ('cvs',)
 
-		self.vcs_local_opts = repoman_settings.get("REPOMAN_VCS_LOCAL_OPTS", "").split()
-		self.vcs_global_opts = repoman_settings.get("REPOMAN_VCS_GLOBAL_OPTS")
+		self.vcs_local_opts = repoman_settings.get(
+			"REPOMAN_VCS_LOCAL_OPTS", "").split()
+		self.vcs_global_opts = repoman_settings.get(
+			"REPOMAN_VCS_GLOBAL_OPTS")
 		if self.vcs_global_opts is None:
 			if self.vcs in ('cvs', 'svn'):
 				self.vcs_global_opts = "-q"
@@ -266,5 +268,7 @@ class VCSSettings(object):
 		self.vcs_global_opts = self.vcs_global_opts.split()
 
 		if options.mode == 'commit' and not options.pretend and not self.vcs:
-			logging.info("Not in a version controlled repository; enabling pretend mode.")
+			logging.info(
+				"Not in a version controlled repository; "
+				"enabling pretend mode.")
 			options.pretend = True

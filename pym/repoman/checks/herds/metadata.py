@@ -1,7 +1,5 @@
 
 
-
-
 class UnknownHerdsError(ValueError):
 	def __init__(self, herd_names):
 		_plural = len(herd_names) != 1
@@ -25,5 +23,3 @@ def check_metadata_herds(xml_tree, herd_base):
 def check_metadata(xml_tree, herd_base):
 	if herd_base is not None:
 		check_metadata_herds(xml_tree, herd_base)
-
-

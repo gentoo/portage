@@ -14,14 +14,12 @@ from repoman.qa_data import no_exec, allvars
 
 class IsEbuild(object):
 
-
 	def __init__(self, repoman_settings, repo_settings, portdb, qatracker):
 		''''''
 		self.portdb = portdb
 		self.qatracker = qatracker
-		self.root_config = RootConfig(repoman_settings,
-			repo_settings.trees[repo_settings.root], None)
-
+		self.root_config = RootConfig(
+			repoman_settings, repo_settings.trees[repo_settings.root], None)
 
 	def check(self, checkdirlist, checkdir, xpkg):
 		self.continue_ = False

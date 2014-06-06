@@ -17,5 +17,3 @@ def caterror(catdir, repodir):
 		"  Skipping QA checks in this directory.\n"
 		"Please ensure that you add %s to %s/profiles/categories\n"
 		"if it is a new category." % (catdir, catdir, repodir))
-
-

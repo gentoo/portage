@@ -135,8 +135,9 @@ vcs_settings = VCSSettings(options, repoman_settings)
 
 ##################
 
-repo_settings = RepoSettings(config_root, portdir, portdir_overlay,
-		repoman_settings, vcs_settings, options, qawarnings)
+repo_settings = RepoSettings(
+	config_root, portdir, portdir_overlay,
+	repoman_settings, vcs_settings, options, qawarnings)
 
 repoman_settings = repo_settings.repoman_settings
 
@@ -207,12 +208,14 @@ if repolevel == 1:
 	startdir = repo_settings.repodir
 else:
 	startdir = normalize_path(mydir)
-	startdir = os.path.join(repo_settings.repodir, *startdir.split(os.sep)[-2 - repolevel + 3:])
+	startdir = os.path.join(
+		repo_settings.repodir, *startdir.split(os.sep)[-2 - repolevel + 3:])
 ###################
 
 # get lists of valid keywords, licenses, and use
 new_data = repo_metadata(repo_settings.portdb, repoman_settings)
-kwlist, liclist, uselist, profile_list, global_pmaskdict, liclist_deprecated = new_data
+kwlist, liclist, uselist, profile_list, \
+	global_pmaskdict, liclist_deprecated = new_data
 
 repoman_settings['PORTAGE_ARCHLIST'] = ' '.join(sorted(kwlist))
 repoman_settings.backup_changes('PORTAGE_ARCHLIST')
@@ -339,14 +342,15 @@ for xpkg in effective_scanlist:
 	ebuildlist = sorted(pkgs.values())
 	ebuildlist = [pkg.pf for pkg in ebuildlist]
 #######################
-	filescheck.check(checkdir, checkdirlist, checkdir_relative,
-		changed.changed, changed.new)
+	filescheck.check(
+		checkdir, checkdirlist, checkdir_relative, changed.changed, changed.new)
 #######################
 	status_check.check(check_ebuild_notadded, checkdir, checkdir_relative, xpkg)
 	eadded.extend(status_check.eadded)
 
 #################
-	fetchcheck.check(xpkg, checkdir, checkdir_relative, changed.changed, changed.new)
+	fetchcheck.check(
+		xpkg, checkdir, checkdir_relative, changed.changed, changed.new)
 #################
 
 	if check_changelog and "ChangeLog" not in checkdirlist:
@@ -363,9 +367,11 @@ for xpkg in effective_scanlist:
 	used_useflags = set()
 
 	for y_ebuild in ebuildlist:
-##################
-		ebuild = Ebuild(repo_settings, repolevel, pkgdir, catdir, vcs_settings, xpkg, y_ebuild)
-##################
+		##################
+		ebuild = Ebuild(
+			repo_settings, repolevel, pkgdir, catdir, vcs_settings,
+			xpkg, y_ebuild)
+		##################
 
 		if check_changelog and not changelog_modified \
 			and ebuild.ebuild_path in changed.new_ebuilds:
@@ -373,8 +379,8 @@ for xpkg in effective_scanlist:
 
 		if ebuild.untracked(check_ebuild_notadded, y_ebuild, eadded):
 			# ebuild not added to vcs
-			qatracker.add_error("ebuild.notadded",
-				xpkg + "/" + y_ebuild + ".ebuild")
+			qatracker.add_error(
+				"ebuild.notadded", xpkg + "/" + y_ebuild + ".ebuild")
 
 ##################
 		if bad_split_check(xpkg, y_ebuild, pkgdir, qatracker):
@@ -391,19 +397,20 @@ for xpkg in effective_scanlist:
 		live_ebuild = live_eclasses.intersection(inherited)
 
 		if repo_settings.repo_config.eapi_is_banned(eapi):
-			qatracker.add_error("repo.eapi.banned",
-				"%s: %s" % (ebuild.relative_path, eapi))
+			qatracker.add_error(
+				"repo.eapi.banned", "%s: %s" % (ebuild.relative_path, eapi))
 
 		elif repo_settings.repo_config.eapi_is_deprecated(eapi):
-			qatracker.add_error("repo.eapi.deprecated",
-				"%s: %s" % (ebuild.relative_path, eapi))
+			qatracker.add_error(
+				"repo.eapi.deprecated", "%s: %s" % (ebuild.relative_path, eapi))
 
 		for k, v in myaux.items():
 			if not isinstance(v, basestring):
 				continue
 			m = non_ascii_re.search(v)
 			if m is not None:
-				qatracker.add_error("variable.invalidchar",
+				qatracker.add_error(
+					"variable.invalidchar",
 					"%s: %s variable contains non-ASCII "
 					"character at position %s" %
 					(ebuild.relative_path, k, m.start() + 1))
@@ -433,7 +440,8 @@ for xpkg in effective_scanlist:
 
 		# 14 is the length of DESCRIPTION=""
 		if len(myaux['DESCRIPTION']) > max_desc_len:
-			qatracker.add_error('DESCRIPTION.toolong',
+			qatracker.add_error(
+				'DESCRIPTION.toolong',
 				"%s: DESCRIPTION is %d characters (max %d)" %
 				(ebuild.relative_path, len(myaux['DESCRIPTION']), max_desc_len))
 
@@ -519,7 +527,8 @@ for xpkg in effective_scanlist:
 			if atoms and mytype.endswith("DEPEND"):
 				if runtime and \
 					"test?" in mydepstr.split():
-					qatracker.add_error(mytype + '.suspect',
+					qatracker.add_error(
+						mytype + '.suspect',
 						"%s: 'test?' USE conditional in %s" %
 						(ebuild.relative_path, mytype))
 
@@ -541,8 +550,8 @@ for xpkg in effective_scanlist:
 					if catdir != "virtual":
 						if not is_blocker and \
 							atom.cp in suspect_virtual:
-							qatracker.add_error('virtual.suspect',
-								ebuild.relative_path +
+							qatracker.add_error(
+								'virtual.suspect', ebuild.relative_path +
 								": %s: consider using '%s' instead of '%s'" %
 								(mytype, suspect_virtual[atom.cp], atom))
 						if not is_blocker and \
@@ -556,26 +565,28 @@ for xpkg in effective_scanlist:
 						not is_blocker and \
 						not inherited_java_eclass and \
 						atom.cp == "virtual/jdk":
-						qatracker.add_error('java.eclassesnotused',
-							ebuild.relative_path)
+						qatracker.add_error(
+							'java.eclassesnotused', ebuild.relative_path)
 					elif buildtime and \
 						not is_blocker and \
 						not inherited_wxwidgets_eclass and \
 						atom.cp == "x11-libs/wxGTK":
-						qatracker.add_error('wxwidgets.eclassnotused',
+						qatracker.add_error(
+							'wxwidgets.eclassnotused',
 							"%s: %ss on x11-libs/wxGTK without inheriting"
 							" wxwidgets.eclass" % (ebuild.relative_path, mytype))
 					elif runtime:
 						if not is_blocker and \
 							atom.cp in suspect_rdepend:
-							qatracker.add_error(mytype + '.suspect',
+							qatracker.add_error(
+								mytype + '.suspect',
 								ebuild.relative_path + ": '%s'" % atom)
 
 					if atom.operator == "~" and \
 						portage.versions.catpkgsplit(atom.cpv)[3] != "r0":
 						qacat = 'dependency.badtilde'
-						qatracker.add_error(qacat,
-							"%s: %s uses the ~ operator"
+						qatracker.add_error(
+							qacat, "%s: %s uses the ~ operator"
 							" with a non-zero revision: '%s'" %
 							(ebuild.relative_path, mytype, atom))
 
@@ -589,8 +600,8 @@ for xpkg in effective_scanlist:
 				qacat = "dependency.syntax"
 			else:
 				qacat = m + ".syntax"
-			qatracker.add_error(qacat,
-				"%s: %s: %s" % (ebuild.relative_path, m, b))
+			qatracker.add_error(
+				qacat, "%s: %s: %s" % (ebuild.relative_path, m, b))
 
 		badlicsyntax = len([z for z in type_list if z == "LICENSE"])
 		badprovsyntax = len([z for z in type_list if z == "PROVIDE"])
@@ -618,10 +629,12 @@ for xpkg in effective_scanlist:
 				# Need to check for "||" manually as no portage
 				# function will remove it without removing values.
 				if lic not in liclist and lic != "||":
-					qatracker.add_error("LICENSE.invalid",
+					qatracker.add_error(
+						"LICENSE.invalid",
 						xpkg + "/" + y_ebuild + ".ebuild: %s" % lic)
 				elif lic in liclist_deprecated:
-					qatracker.add_error("LICENSE.deprecated",
+					qatracker.add_error(
+						"LICENSE.deprecated",
 						"%s: %s" % (ebuild.relative_path, lic))
 
 		# restrict checks
@@ -630,7 +643,8 @@ for xpkg in effective_scanlist:
 			myrestrict = portage.dep.use_reduce(
 				myaux["RESTRICT"], matchall=1, flat=True)
 		except portage.exception.InvalidDependString as e:
-			qatracker.add_error("RESTRICT.syntax",
+			qatracker.add_error(
+				"RESTRICT.syntax",
 				"%s: RESTRICT: %s" % (ebuild.relative_path, e))
 			del e
 		if myrestrict:
@@ -638,7 +652,8 @@ for xpkg in effective_scanlist:
 			mybadrestrict = myrestrict.difference(valid_restrict)
 			if mybadrestrict:
 				for mybad in mybadrestrict:
-					qatracker.add_error("RESTRICT.invalid",
+					qatracker.add_error(
+						"RESTRICT.invalid",
 						xpkg + "/" + y_ebuild + ".ebuild: %s" % mybad)
 
 		# Syntax Checks
@@ -655,8 +670,8 @@ for xpkg in effective_scanlist:
 				mode='r', encoding=_encodings['repo.content'])
 			try:
 				for check_name, e in run_checks(f, pkg):
-					qatracker.add_error(check_name,
-						ebuild.relative_path + ': %s' % e)
+					qatracker.add_error(
+						check_name, ebuild.relative_path + ': %s' % e)
 			finally:
 				f.close()
 		except UnicodeDecodeError:
@@ -829,15 +844,16 @@ for xpkg in effective_scanlist:
 			for mytype, atom in unknown_pkgs:
 				type_map.setdefault(mytype, set()).add(atom)
 			for mytype, atoms in type_map.items():
-				qatracker.add_error("dependency.unknown",
-					"%s: %s: %s"
+				qatracker.add_error(
+					"dependency.unknown", "%s: %s: %s"
 					% (ebuild.relative_path, mytype, ", ".join(sorted(atoms))))
 
 	# check if there are unused local USE-descriptions in metadata.xml
 	# (unless there are any invalids, to avoid noise)
 	if allvalid:
 		for myflag in muselist.difference(used_useflags):
-			qatracker.add_error("metadata.warning",
+			qatracker.add_error(
+				"metadata.warning",
 				"%s/metadata.xml: unused local USE-description: '%s'"
 				% (xpkg, myflag))
 
@@ -1129,7 +1145,10 @@ else:
 		myremoved = ["./" + elem.rstrip() for elem in myremoved]
 
 	if vcs_settings.vcs:
-		if not (mychanged or mynew or myremoved or (vcs_settings.vcs == "hg" and mydeleted)):
+		a_file_is_changed = mychanged or mynew or myremoved
+		a_file_is_deleted_hg = vcs_settings.vcs == "hg" and mydeleted
+
+		if not (a_file_is_changed or a_file_is_deleted_hg):
 			utilities.repoman_sez(
 				"\"Doing nothing is not always good for QA.\"")
 			print()

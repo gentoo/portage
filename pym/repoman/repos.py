@@ -23,16 +23,19 @@ bad = portage.output.create_color_func("BAD")
 class RepoSettings(object):
 	'''Holds out repo specific settings'''
 
-	def __init__(self, config_root, portdir, portdir_overlay,
+	def __init__(
+		self, config_root, portdir, portdir_overlay,
 		repoman_settings=None, vcs_settings=None, options=None,
 		qawarnings=None):
 		self.repoman_settings = repoman_settings
 		self.vcs_settings = vcs_settings
 
+		repoman_repos = self.repoman_settings.repositories
+
 		# Ensure that current repository is in the list of enabled repositories.
 		self.repodir = os.path.realpath(portdir_overlay)
 		try:
-			repoman_settings.repositories.get_repo_for_location(self.repodir)
+			repoman_repos.get_repo_for_location(self.repodir)
 		except KeyError:
 			self._add_repo(config_root, portdir_overlay)
 
@@ -44,15 +47,15 @@ class RepoSettings(object):
 
 		# Constrain dependency resolution to the master(s)
 		# that are specified in layout.conf.
-		self.repo_config = self.repoman_settings.repositories.get_repo_for_location(self.repodir)
+		self.repo_config = repoman_repos.get_repo_for_location(self.repodir)
 		self.portdb.porttrees = list(self.repo_config.eclass_db.porttrees)
 		self.portdir = self.portdb.porttrees[0]
 		self.commit_env = os.environ.copy()
 		# list() is for iteration on a copy.
-		for repo in list(self.repoman_settings.repositories):
+		for repo in list(repoman_repos):
 			# all paths are canonical
 			if repo.location not in self.repo_config.eclass_db.porttrees:
-				del self.repoman_settings.repositories[repo.name]
+				del repoman_repos[repo.name]
 
 		if self.repo_config.allow_provide_virtual:
 			qawarnings.add("virtual.oldstyle")
@@ -124,10 +127,10 @@ class RepoSettings(object):
 					logging.error(line)
 				sys.exit(1)
 
-
 	def _add_repo(self, config_root, portdir_overlay):
 			self.repo_conf = portage.repository.config
-			self.repo_name = self.repo_conf.RepoConfig._read_valid_repo_name(portdir_overlay)[0]
+			self.repo_name = self.repo_conf.RepoConfig._read_valid_repo_name(
+				portdir_overlay)[0]
 			self.layout_conf_data = self.repo_conf.parse_layout_conf(portdir_overlay)[0]
 			if self.layout_conf_data['repo-name']:
 				self.repo_name = self.layout_conf_data['repo-name']
@@ -146,17 +149,18 @@ class RepoSettings(object):
 			# We have to call the config constructor again so that attributes
 			# dependent on config.repositories are initialized correctly.
 			self.repoman_settings = portage.config(
-				config_root=config_root, local_config=False, repositories=self.repositories)
+				config_root=config_root, local_config=False,
+				repositories=self.repositories)
 
-	###########  future vcs plugin functions
+	##########
+	# future vcs plugin functions
+	##########
 
 	def _vcs_gpg_bzr(self):
 		pass
 
-
 	def _vcs_gpg_cvs(self):
 		pass
-
 
 	def _vcs_gpg_git(self):
 		# NOTE: It's possible to use --gpg-sign=key_id to specify the key in
@@ -173,15 +177,11 @@ class RepoSettings(object):
 		except OSError:
 			pass
 
-
 	def _vcs_gpg_hg(self):
 		pass
 
-
 	def _vcs_gpg_svn(self):
 		pass
-
-
 
 
 def list_checks(kwlist, liclist, uselist, repoman_settings):
@@ -291,7 +291,8 @@ def repo_metadata(portdb, repoman_settings):
 		global_pmaskdict.setdefault(x.cp, []).append(x)
 	del global_pmasklines
 
-	return (kwlist, liclist, uselist, profile_list, global_pmaskdict,
+	return (
+		kwlist, liclist, uselist, profile_list, global_pmaskdict,
 		list_checks(kwlist, liclist, uselist, repoman_settings))
 
 
@@ -303,5 +304,3 @@ def has_global_mask(pkg, global_pmaskdict):
 			if portage.dep.match_from_list(x, pkg_list):
 				return x
 	return None
-
-

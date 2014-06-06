@@ -8,7 +8,6 @@ from portage import os
 from repoman._subprocess import repoman_popen
 
 
-
 class VCSStatus(object):
 	'''Determines the status of the vcs repositories
 	to determine if files are not added'''
@@ -19,20 +18,18 @@ class VCSStatus(object):
 		self.eadded = []
 		self.qatracker = qatracker
 
-
 	def check(self, check_not_added, checkdir, checkdir_relative, xpkg):
 		if self.vcs and check_not_added:
 			vcscheck = getattr(self, 'check_%s' % self.vcs)
 			vcscheck(checkdir, checkdir_relative, xpkg)
 
-
 	def post_git_hg(self, myf, xpkg):
 			for l in myf:
 				if l[:-1][-7:] == ".ebuild":
-					self.qatracker.add_error("ebuild.notadded",
+					self.qatracker.add_error(
+						"ebuild.notadded",
 						os.path.join(xpkg, os.path.basename(l[:-1])))
 			myf.close()
-
 
 	def check_git(self, checkdir, checkdir_relative, xpkg):
 		myf = repoman_popen(
@@ -40,13 +37,11 @@ class VCSStatus(object):
 			(portage._shell_quote(checkdir_relative),))
 		self.post_git_hg(myf, xpkg)
 
-
 	def check_hg(self, checkdir, checkdir_relative, xpkg):
 		myf = repoman_popen(
 			"hg status --no-status --unknown %s" %
 			(portage._shell_quote(checkdir_relative),))
 		self.post_git_hg(myf, xpkg)
-
 
 	def check_cvs(self, checkdir, checkdir_relative, xpkg):
 			try:
@@ -54,8 +49,8 @@ class VCSStatus(object):
 				myl = myf.readlines()
 				myf.close()
 			except IOError:
-				self.qatracker.add_error("CVS/Entries.IO_error",
-					checkdir + "/CVS/Entries")
+				self.qatracker.add_error(
+					"CVS/Entries.IO_error", checkdir + "/CVS/Entries")
 				return True
 			for l in myl:
 				if l[0] != "/":
@@ -66,7 +61,6 @@ class VCSStatus(object):
 				if splitl[0][-7:] == ".ebuild":
 					self.eadded.append(splitl[0][:-7])
 			return True
-
 
 	def check_svn(self, checkdir, checkdir_relative, xpkg):
 		try:
@@ -101,7 +95,6 @@ class VCSStatus(object):
 					self.eadded.append(os.path.basename(l[:-7]))
 		return True
 
-
 	def check_bzr(self, checkdir, checkdir_relative, xpkg):
 		try:
 			myf = repoman_popen(
@@ -117,4 +110,4 @@ class VCSStatus(object):
 			l = l.split()[-1]
 			if l[-7:] == ".ebuild":
 				self.eadded.append(os.path.basename(l[:-7]))
-		return  True
+		return True

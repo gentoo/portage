@@ -28,13 +28,13 @@ def bad_split_check(xpkg, y_ebuild, pkgdir, qatracker):
 		is_pv_toolong2 = pv_toolong_re.search(myesplit[2])
 
 		if is_pv_toolong or is_pv_toolong2:
-			qatracker.add_error("ebuild.invalidname",
-				xpkg + "/" + y_ebuild + ".ebuild")
+			qatracker.add_error(
+				"ebuild.invalidname", xpkg + "/" + y_ebuild + ".ebuild")
 			return True
 	elif myesplit[0] != pkgdir:
 		print(pkgdir, myesplit[0])
-		qatracker.add_error("ebuild.namenomatch",
-			xpkg + "/" + y_ebuild + ".ebuild")
+		qatracker.add_error(
+			"ebuild.namenomatch", xpkg + "/" + y_ebuild + ".ebuild")
 		return True
 	return False
 
@@ -49,7 +49,6 @@ def pkg_invalid(pkg, qatracker, ebuild):
 	if pkg.invalid:
 		for k, msgs in pkg.invalid.items():
 			for msg in msgs:
-				qatracker.add_error(k,
-					"%s: %s" % (ebuild.relative_path, msg))
+				qatracker.add_error(k, "%s: %s" % (ebuild.relative_path, msg))
 		return True
 	return False

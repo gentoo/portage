@@ -23,4 +23,3 @@ sys.path.insert(0, pym_path)
 import portage
 portage._internal_caller = True
 portage._disable_legacy_globals()
-
