@@ -63,6 +63,7 @@ from repoman.checks.ebuilds.pkgmetadata import PkgMetadata
 from repoman.checks.ebuilds.use_flags import USEFlagChecks
 from repoman.checks.ebuilds.variables.description import DescriptionChecks
 from repoman.checks.ebuilds.variables.eapi import EAPIChecks
+from repoman.checks.ebuilds.variables.license import LicenseChecks
 from repoman.ebuild import Ebuild
 from repoman.errors import err
 from repoman.modules.commit import repochecks
@@ -299,6 +300,7 @@ liveeclasscheck = LiveEclassChecks(qatracker)
 rubyeclasscheck = RubyEclassChecks(qatracker)
 eapicheck = EAPIChecks(qatracker, repo_settings)
 descriptioncheck = DescriptionChecks(qatracker)
+licensecheck = LicenseChecks(qatracker, liclist, liclist_deprecated)
 ######################
 
 for xpkg in effective_scanlist:
@@ -617,22 +619,9 @@ for xpkg in effective_scanlist:
 
 		# license checks
 		if not badlicsyntax:
-			# Parse the LICENSE variable, remove USE conditions and
-			# flatten it.
-			licenses = portage.dep.use_reduce(myaux["LICENSE"], matchall=1, flat=True)
-			# Check each entry to ensure that it exists in PORTDIR's
-			# license directory.
-			for lic in licenses:
-				# Need to check for "||" manually as no portage
-				# function will remove it without removing values.
-				if lic not in liclist and lic != "||":
-					qatracker.add_error(
-						"LICENSE.invalid",
-						xpkg + "/" + y_ebuild + ".ebuild: %s" % lic)
-				elif lic in liclist_deprecated:
-					qatracker.add_error(
-						"LICENSE.deprecated",
-						"%s: %s" % (ebuild.relative_path, lic))
+			#################
+			licensecheck.check(pkg, xpkg, ebuild, y_ebuild)
+			#################
 
 		# restrict checks
 		myrestrict = None
