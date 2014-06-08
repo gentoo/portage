@@ -990,6 +990,11 @@ class depgraph(object):
 		if not conflicts:
 			return
 
+		if debug:
+			writemsg_level(
+				"\n!!! Slot conflict handler started.\n",
+				level=logging.DEBUG, noiselevel=-1)
+
 		# Get a set of all conflicting packages.
 		conflict_pkgs = set()
 		for conflict in conflicts:
@@ -1044,6 +1049,13 @@ class depgraph(object):
 				return "(%s)" % ",".join(str(pkg) for pkg in self)
 
 		for conflict in conflicts:
+			if debug:
+				writemsg_level("   conflict:\n", level=logging.DEBUG, noiselevel=-1)
+				writemsg_level("      root: %s\n" % conflict.root, level=logging.DEBUG, noiselevel=-1)
+				writemsg_level("      atom: %s\n" % conflict.atom, level=logging.DEBUG, noiselevel=-1)
+				for pkg in conflict:
+					writemsg_level("      pkg: %s\n" % pkg, level=logging.DEBUG, noiselevel=-1)
+
 			all_parent_atoms = set()
 			for pkg in conflict:
 				all_parent_atoms.update(
@@ -1051,9 +1063,16 @@ class depgraph(object):
 
 			for parent, atom in all_parent_atoms:
 				is_arg_parent = isinstance(parent, AtomArg)
+				is_non_conflict_parent = parent not in conflict_pkgs and \
+					parent not in indirect_conflict_pkgs
 
-				if parent not in conflict_pkgs and \
-					parent not in indirect_conflict_pkgs:
+				if debug:
+					writemsg_level("      parent: %s\n" % parent, level=logging.DEBUG, noiselevel=-1)
+					writemsg_level("      arg, non-conflict: %s, %s\n" % (is_arg_parent, is_non_conflict_parent),
+						level=logging.DEBUG, noiselevel=-1)
+					writemsg_level("         atom: %s\n" % atom, level=logging.DEBUG, noiselevel=-1)
+
+				if is_non_conflict_parent:
 					parent = non_conflict_node
 
 				atom_set = InternalPackageSet(
@@ -1065,6 +1084,11 @@ class depgraph(object):
 						modified_use=self._pkg_use_enabled(pkg)) and \
 						not (is_arg_parent and pkg.installed):
 						matched.append(pkg)
+
+				if debug:
+					for match in matched:
+						writemsg_level("         match: %s\n" % match, level=logging.DEBUG, noiselevel=-1)
+
 				if len(matched) == len(conflict):
 					# All packages match.
 					continue
