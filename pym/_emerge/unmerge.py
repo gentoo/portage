@@ -488,7 +488,8 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 		if quiet:
 			writemsg_level("\n", noiselevel=-1)
 
-	writemsg_level("\nAll selected packages: %s\n" % " ".join(all_selected), noiselevel=-1)
+	writemsg_level("\nAll selected packages: %s\n" %
+				" ".join('=%s' % x for x in all_selected), noiselevel=-1)
 
 	writemsg_level("\n>>> " + colorize("UNMERGE_WARN", "'Selected'") + \
 		" packages are slated for removal.\n")
