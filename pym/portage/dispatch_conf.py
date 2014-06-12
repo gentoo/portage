@@ -207,4 +207,5 @@ def rcs_archive_post_process(archive):
 
 def file_archive_post_process(archive):
 	"""Rename the archive file with the .dist.new suffix to a .dist suffix"""
-	os.rename(archive + '.dist.new', archive + '.dist')
+	if os.path.exists(archive + '.dist.new'):
+		os.rename(archive + '.dist.new', archive + '.dist')
