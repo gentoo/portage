@@ -73,7 +73,7 @@ from _emerge.SetArg import SetArg
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
 from _emerge.UnmergeDepPriority import UnmergeDepPriority
 from _emerge.UseFlagDisplay import pkg_use_display
-from _emerge.UserQuery import UserQuery
+from _emerge.userquery import userquery
 
 from _emerge.resolver.backtracking import Backtracker, BacktrackParameter
 from _emerge.resolver.package_tracker import PackageTracker, PackageTrackerDbapiWrapper
@@ -519,9 +519,6 @@ class depgraph(object):
 
 		self._event_loop = (portage._internal_caller and
 			global_event_loop() or EventLoop(main=False))
-
-		self.uq = UserQuery(myopts)
-		self.query = UserQuery.query
 
 	def _load_vdb(self):
 		"""
@@ -7658,7 +7655,7 @@ class depgraph(object):
 		if ask and write_to_file and file_to_write_to:
 			prompt = "\nWould you like to add these " + \
 				"changes to your config files?"
-			if self.query(prompt, enter_invalid) == 'No':
+			if userquery(prompt, enter_invalid) == 'No':
 				write_to_file = False
 
 		if write_to_file and file_to_write_to:
@@ -7925,7 +7922,7 @@ class depgraph(object):
 					"favorites?"
 				enter_invalid = '--ask-enter-invalid' in \
 					self._frozen_config.myopts
-				if self.query(prompt, enter_invalid) == "No":
+				if userquery(prompt, enter_invalid) == "No":
 					skip = True
 
 			if not skip:

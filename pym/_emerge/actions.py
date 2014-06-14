@@ -84,7 +84,7 @@ from _emerge.sync.old_tree_timestamp import old_tree_timestamp_warn
 from _emerge.unmerge import unmerge
 from _emerge.UnmergeDepPriority import UnmergeDepPriority
 from _emerge.UseFlagDisplay import pkg_use_display
-from _emerge.UserQuery import UserQuery
+from _emerge.userquery import userquery
 
 if sys.hexversion >= 0x3000000:
 	long = int
@@ -387,9 +387,8 @@ def action_build(settings, trees, mtimedb,
 			else:
 				prompt="Would you like to merge these packages?"
 		print()
-		uq = UserQuery(myopts)
 		if prompt is not None and "--ask" in myopts and \
-			uq.query(prompt, enter_invalid) == "No":
+			userquery(prompt, enter_invalid) == "No":
 			print()
 			print("Quitting.")
 			print()
@@ -469,7 +468,6 @@ def action_build(settings, trees, mtimedb,
 
 def action_config(settings, trees, myopts, myfiles):
 	enter_invalid = '--ask-enter-invalid' in myopts
-	uq = UserQuery(myopts)
 	if len(myfiles) != 1:
 		print(red("!!! config can only take a single package atom at this time\n"))
 		sys.exit(1)
@@ -499,7 +497,7 @@ def action_config(settings, trees, myopts, myfiles):
 				print(options[-1]+") "+pkg)
 			print("X) Cancel")
 			options.append("X")
-			idx = uq.query("Selection?", enter_invalid, responses=options)
+			idx = userquery("Selection?", enter_invalid, responses=options)
 			if idx == "X":
 				sys.exit(128 + signal.SIGINT)
 			pkg = pkgs[int(idx)-1]
@@ -514,7 +512,7 @@ def action_config(settings, trees, myopts, myfiles):
 
 	print()
 	if "--ask" in myopts:
-		if uq.query("Ready to configure %s?" % pkg, enter_invalid) == "No":
+		if userquery("Ready to configure %s?" % pkg, enter_invalid) == "No":
 			sys.exit(128 + signal.SIGINT)
 	else:
 		print("Configuring pkg...")
@@ -1366,8 +1364,7 @@ def action_deselect(settings, trees, opts, atoms):
 			if '--ask' in opts:
 				prompt = "Would you like to remove these " + \
 					"packages from your world favorites?"
-				uq = UserQuery(opts)
-				if uq.query(prompt, enter_invalid) == 'No':
+				if userquery(prompt, enter_invalid) == 'No':
 					return 128 + signal.SIGINT
 
 			remaining = set(world_set)
@@ -2405,8 +2402,7 @@ def _sync_repo(emerge_config, repo):
 
 			if (retries==0):
 				if "--ask" in myopts:
-					uq = UserQuery(myopts)
-					if uq.query("Do you want to sync your Portage tree " + \
+					if userquery("Do you want to sync your Portage tree " + \
 						"with the mirror at\n" + blue(dosyncuri) + bold("?"),
 						enter_invalid) == "No":
 						print()
@@ -3845,8 +3841,7 @@ def run_action(emerge_config):
 						(access_desc,), noiselevel=-1)
 					if portage.data.secpass < 1 and not need_superuser:
 						portage.data.portage_group_warning()
-					uq = UserQuery(emerge_config.opts)
-					if uq.query("Would you like to add --pretend to options?",
+					if userquery("Would you like to add --pretend to options?",
 						"--ask-enter-invalid" in emerge_config.opts) == "No":
 						return 128 + signal.SIGINT
 					emerge_config.opts["--pretend"] = True
