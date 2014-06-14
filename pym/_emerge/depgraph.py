@@ -643,7 +643,10 @@ class depgraph(object):
 			rebuild_atoms = atoms.get(root, set())
 
 			for dep in deps:
-				if getattr(dep.parent, "installed", False) or dep.child.installed or \
+				if not isinstance(dep.parent, Package):
+					continue
+
+				if dep.parent.installed or dep.child.installed or \
 					dep.parent.slot_atom not in rebuild_atoms:
 					continue
 
@@ -1360,6 +1363,10 @@ class depgraph(object):
 		found_update = False
 		for parent_atom, conflict_pkgs in conflict_atoms.items():
 			parent, atom = parent_atom
+
+			if not isinstance(parent, Package):
+				continue
+
 			if atom.slot_operator != "=" or not parent.built:
 				continue
 
@@ -1564,7 +1571,7 @@ class depgraph(object):
 			slot operator parents.
 			"""
 			for parent, atom in self._dynamic_config._parent_atoms.get(existing_pkg, []):
-				if atom.slot_operator == "=" and parent.built:
+				if atom.slot_operator == "=" and getattr(parent, "built", False):
 					continue
 
 				atom_set = InternalPackageSet(initial_atoms=(atom,),
