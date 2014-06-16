@@ -62,7 +62,7 @@ from repoman import utilities
 from repoman.herdbase import make_herd_base
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
-from _emerge.userquery import userquery
+from _emerge.UserQuery import UserQuery
 import portage.checksum
 import portage.const
 import portage.repository.config
@@ -2880,7 +2880,8 @@ else:
 	logging.info("myupdates: %s", myupdates)
 	logging.info("myheaders: %s", myheaders)
 
-	if options.ask and userquery('Commit changes?', True) != 'Yes':
+	uq = UserQuery(options)
+	if options.ask and uq.query('Commit changes?', True) != 'Yes':
 		print("* aborting commit.")
 		sys.exit(128 + signal.SIGINT)
 
