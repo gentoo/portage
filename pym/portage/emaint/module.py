@@ -66,7 +66,7 @@ class Module(object):
 				kid['is_imported'] = True
 			except ImportError:
 				raise
-			mod_class = getattr(module, kid['class'])
+		mod_class = getattr(module, kid['class'])
 		return mod_class
 
 
