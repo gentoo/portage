@@ -62,6 +62,10 @@ class SVNSync(SyncBase):
 		@rtype: (int, bool)
 		"""
 
+		exitcode, d = self._svn_upgrade()
+		if exitcode != os.EX_OK:
+			return (exitcode, False)
+
 		svn_root = self.repo.sync_uri
 
 		if svn_root.startswith("svn://"):
@@ -78,4 +82,23 @@ class SVNSync(SyncBase):
 				msg = "!!! svn update error; exiting."
 				self.logger(self.xterm_titles, msg)
 				writemsg_level(msg + "\n", noiselevel=-1, level=logging.ERROR)
+		return (exitcode, False)
+
+
+	def _svn_upgrade(self):
+		"""
+		Internal function which performs an svn upgrade on the repo
+
+		@return: tuple of return code (0=success), whether the cache
+			needs to be updated
+		@rtype: (int, bool)
+		"""
+		exitcode = portage.process.spawn_bash(
+			"cd %s; exec svn upgrade" %
+			(portage._shell_quote(self.repo.location),),
+			**portage._native_kwargs(self.spawn_kwargs))
+		if exitcode != os.EX_OK:
+			msg = "!!! svn upgrade error; exiting."
+			self.logger(self.xterm_titles, msg)
+			writemsg_level(msg + "\n", noiselevel=-1, level=logging.ERROR)
 		return (exitcode, False)
