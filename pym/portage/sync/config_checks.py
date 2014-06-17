@@ -26,6 +26,10 @@ def check_type(repo, logger, module_names):
 			_("Repository '%s' has sync-type attribute set to unsupported value: '%s'")
 			% (repo.name, repo.sync_type),
 			level=logger.ERROR, noiselevel=-1)
+		writemsg_level("!!! %s\n" %
+			_("Installed sync-types are: '%s'")
+			% (str(module_names)),
+			level=logger.ERROR, noiselevel=-1)
 		return False
 	return True
 

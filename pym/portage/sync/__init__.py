@@ -11,12 +11,12 @@ sync_manager = None
 
 path = os.path.join(os.path.dirname(__file__), "modules")
 # initial development debug info
-print("module path:", path)
+#print("module path:", path)
 
 module_controller = Modules(path=path, namepath="portage.sync.modules")
 
 # initial development debug info
-print(module_controller.module_names)
+#print(module_controller.module_names)
 module_names = module_controller.module_names[:]
 
 
@@ -43,6 +43,7 @@ def get_syncer(settings=None, logger=None):
 
 def validate_config(repo, logger):
 	'''Validate the repos.conf settings for the repo'''
+	global module_names, module_controller
 	if not check_type(repo, logger, module_names):
 		return False
 
