@@ -34,16 +34,18 @@ class SyncBase(object):
 		self.repo = None
 		self.xterm_titles = None
 		self.spawn_kwargs = None
-		self.bin_command = portage.process.find_binary(bin_command)
-
-		self.has_bin = True
-		if bin_command and self.bin_command is None:
-			msg = ["Command not found: %s" % bin_command,
-			"Type \"emerge %s\" to enable %s support." % (bin_pkg, bin_command)]
-			for l in msg:
-				writemsg_level("!!! %s\n" % l,
-					level=self.logger.ERROR, noiselevel=-1)
-			self.has_bin = False
+		self.bin_command = None
+		self.has_bin = False
+		if bin_command:
+			self.bin_command = portage.process.find_binary(bin_command)
+			if self.bin_command is None:
+				msg = ["Command not found: %s" % bin_command,
+				"Type \"emerge %s\" to enable %s support." % (bin_pkg, bin_command)]
+				for l in msg:
+					writemsg_level("!!! %s\n" % l,
+						level=self.logger.ERROR, noiselevel=-1)
+			else:
+				self.has_bin = True
 
 
 	def _kwargs(self, kwargs):
