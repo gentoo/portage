@@ -1098,7 +1098,27 @@ install_qa_check_macho() {
 				fi
 			done
 		fi
-		if [[ ! -e ${D}${install_name} ]] ; then
+
+		ignore=
+		qa_var="QA_INSTALL_NAME_${ARCH/-/_}"
+		eval "[[ -n \${!qa_var} ]] && QA_INSTALL_NAME=(\"\${${qa_var}[@]}\")"
+		if [[ ${#QA_INSTALL_NAME[@]} -gt 1 ]] ; then
+			for x in "${QA_INSTALL_NAME[@]}" ; do
+				[[ ${EPREFIX}/${x#/} == ${install_name} ]] && \
+					ignore=true
+			done
+		else
+			local shopts=$-
+			set -o noglob
+			for x in ${QA_INSTALL_NAME} ; do
+				[[ ${EPREFIX}/${x#/} == ${install_name} ]] && \
+					ignore=true
+			done
+			set +o noglob
+			set -${shopts}
+		fi
+
+		if [[ -z ${ignore} && ! -e ${D}${install_name} ]] ; then
 			eqawarn "QA Notice: invalid self-reference install_name ${install_name} in ${obj}"
 			# remember we are in an implicit subshell, that's
 			# why we touch a file here ... ideally we should be

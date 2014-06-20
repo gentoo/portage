@@ -799,6 +799,11 @@ shared libraries that have SONAMEs but should not have a corresponding SONAME
 symlink in the same directory. The paths may contain regular expressions
 with escape\-quoted special characters.
 .TP
+.B QA_INSTALL_NAME
+This should contain a list of install_names (excluding leading EPREFIX
+or EROOT) of shared libraries that are allowed, despite pointing to
+something not available in the image directory.
+.TP
 .B QA_AM_MAINTAINER_MODE
 This should contain a list of lines containing automake missing \-\-run
 commands. The lines may contain regular expressions with escape\-quoted
