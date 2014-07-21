@@ -299,6 +299,7 @@ qahelp = {
 	"dependency.badindev": "User-visible ebuilds with unsatisfied dependencies (matched against *visible* ebuilds) in developing arch",
 	"dependency.badmaskedindev": "Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds) in developing arch",
 	"dependency.badtilde": "Uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)",
+	"dependency.perlcore": "This ebuild directly depends on a package in perl-core; it should use the corresponding virtual instead.",
 	"dependency.syntax": "Syntax error in dependency string (usually an extra/missing space/parenthesis)",
 	"dependency.unknown": "Ebuild has a dependency that refers to an unknown package (which may be valid if it is a blocker for a renamed/removed package, or is an alternative choice provided by an overlay)",
 	"file.executable": "Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do not need the executable bit",
@@ -386,6 +387,7 @@ qawarnings = set((
 "dependency.badindev",
 "dependency.badmaskedindev",
 "dependency.badtilde",
+"dependency.perlcore",
 "DESCRIPTION.punctuation",
 "DESCRIPTION.toolong",
 "EAPI.deprecated",
@@ -2058,6 +2060,13 @@ for x in effective_scanlist:
 								relative_path +
 								": %s: consider using '%s' instead of '%s'" %
 								(mytype, suspect_virtual[atom.cp], atom))
+						if not is_blocker and \
+							atom.cp.startswith("perl-core/"):
+							stats['dependency.perlcore'] += 1
+							fails['dependency.perlcore'].append(
+								relative_path +
+								": %s: please use '%s' instead of '%s'" %
+								(mytype, atom.replace("perl-core/","virtual/perl-"), atom))
 
 					if buildtime and \
 						not is_blocker and \
