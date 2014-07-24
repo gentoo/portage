@@ -3,17 +3,19 @@
 
 from __future__ import division
 
+import re
 import time
 
 from portage import os
 from portage.versions import best, catsplit, vercmp
-from portage.dep import Atom
+from portage.dep import Atom, use_reduce
+from portage.exception import InvalidAtom
 from portage.localization import _
 from portage._sets.base import PackageSet
 from portage._sets import SetConfigError, get_boolean
 import portage
 
-__all__ = ["CategorySet", "DowngradeSet",
+__all__ = ["CategorySet", "ChangedDepsSet", "DowngradeSet",
 	"EverythingSet", "OwnerSet", "VariableSet"]
 
 class EverythingSet(PackageSet):
@@ -456,5 +458,80 @@ class RebuiltBinaries(EverythingSet):
 	def singleBuilder(cls, options, settings, trees):
 		return RebuiltBinaries(trees["vartree"].dbapi,
 			bindb=trees["bintree"].dbapi)
+
+	singleBuilder = classmethod(singleBuilder)
+
+class ChangedDepsSet(PackageSet):
+
+	_operations = ["merge", "unmerge"]
+
+	description = "Package set which contains all installed " + \
+		"packages for which the vdb *DEPEND entries are outdated " + \
+		"compared to corresponding portdb entries."
+
+	def __init__(self, portdb=None, vardb=None):
+		super(ChangedDepsSet, self).__init__()
+		self._portdb = portdb
+		self._vardb = vardb
+
+	def load(self):
+		depvars = ('RDEPEND', 'PDEPEND')
+
+		# regexp used to match atoms using subslot operator :=
+		subslot_repl_re = re.compile(r':[^[]*=')
+
+		atoms = []
+		for cpv in self._vardb.cpv_all():
+			# no ebuild, no update :).
+			if not self._portdb.cpv_exists(cpv):
+				continue
+
+			# USE flags used to build the ebuild and EAPI
+			# (needed for Atom & use_reduce())
+			use, eapi = self._vardb.aux_get(cpv, ('USE', 'EAPI'))
+			usel = use.split()
+
+			# function used to recursively process atoms in nested lists.
+			def clean_subslots(depatom, usel=None):
+				if isinstance(depatom, list):
+					# process the nested list.
+					return [clean_subslots(x, usel) for x in depatom]
+				else:
+					try:
+						# this can be either an atom or some special operator.
+						# in the latter case, we get InvalidAtom and pass it as-is.
+						a = Atom(depatom)
+					except InvalidAtom:
+						return depatom
+					else:
+						# if we're processing portdb, we need to evaluate USE flag
+						# dependency conditionals to make them match vdb. this
+						# requires passing the list of USE flags, so we reuse it
+						# as conditional for the operation as well.
+						if usel is not None:
+							a = a.evaluate_conditionals(usel)
+
+						# replace slot operator := dependencies with plain :=
+						# since we can't properly compare expanded slots
+						# in vardb to abstract slots in portdb.
+						return subslot_repl_re.sub(':=', a)
+
+			# get all *DEPEND variables from vdb & portdb and compare them.
+			# we need to do some cleaning up & expansion to make matching
+			# meaningful since vdb dependencies are conditional-free.
+			vdbvars = [clean_subslots(use_reduce(x, uselist=usel, eapi=eapi))
+					for x in self._vardb.aux_get(cpv, depvars)]
+			pdbvars = [clean_subslots(use_reduce(x, uselist=usel, eapi=eapi), usel)
+					for x in self._portdb.aux_get(cpv, depvars)]
+
+			# if dependencies don't match, trigger the rebuild.
+			if vdbvars != pdbvars:
+				atoms.append('=%s' % cpv)
+
+		self._setAtoms(atoms)
+
+	def singleBuilder(cls, options, settings, trees):
+		return cls(portdb=trees["porttree"].dbapi,
+			vardb=trees["vartree"].dbapi)
 
 	singleBuilder = classmethod(singleBuilder)
