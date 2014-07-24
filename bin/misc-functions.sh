@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 #
 # Miscellaneous shell functions that make use of the ebuild env but don't need
@@ -593,6 +593,21 @@ install_qa_check() {
 				done <<< "${f//${ED}}"
 			done
 		done
+	fi
+
+	# Common mistakes in systemd service files.
+	if type -P pkg-config >/dev/null && pkg-config --exists systemd; then
+		systemddir=$(pkg-config --variable=systemdsystemunitdir systemd)
+	else
+		systemddir=/usr/lib/systemd/system
+	fi
+	if [[ -d ${ED%/}${systemddir} ]]; then
+		f=$(grep -sH '^EnvironmentFile.*=.*/etc/conf\.d' "${ED%/}${systemddir}"/*.service)
+		if [[ -n ${f} ]] ; then
+			eqawarn "QA Notice: systemd units using /etc/conf.d detected:"
+			eqawarn "${f//${D}}"
+			eqawarn "See: https://wiki.gentoo.org/wiki/Project:Systemd/conf.d_files"
+		fi
 	fi
 
 	# Look for leaking LDFLAGS into pkg-config files
