@@ -595,6 +595,21 @@ install_qa_check() {
 		done
 	fi
 
+	# Common mistakes in systemd service files.
+	if type -P pkg-config >/dev/null && pkg-config --exists systemd; then
+		systemddir=$(pkg-config --variable=systemdsystemunitdir systemd)
+	else
+		systemddir=/usr/lib/systemd/system
+	fi
+	if [[ -d ${ED%/}${systemddir} ]]; then
+		f=$(grep -sH '^EnvironmentFile.*=.*/etc/conf\.d' "${ED%/}${systemddir}"/*.service)
+		if [[ -n ${f} ]] ; then
+			eqawarn "QA Notice: systemd units using /etc/conf.d detected:"
+			eqawarn "${f//${D}}"
+			eqawarn "See: https://wiki.gentoo.org/wiki/Project:Systemd/conf.d_files"
+		fi
+	fi
+
 	# Look for leaking LDFLAGS into pkg-config files
 	f=$(egrep -sH '^Libs.*-Wl,(-O[012]|--hash-style)' "${ED}"/usr/*/pkgconfig/*.pc)
 	if [[ -n ${f} ]] ; then
