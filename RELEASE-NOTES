@@ -8,9 +8,21 @@ portage-2.2.11
     - Bug # 505428 RO only filesystem check
     - Bug # 506186 TaskSequence starting bug.
     - Sort repoman check output
-    - remove obsolete repoman eclass checks
+    - Remove obsolete repoman eclass checks
     - Bug # 505944 Improve mismatch checking
     - Bug # 488820 fix @security crash
+    - Bug # 438976 Add DESCRIPTION.puntuation check to repoman
+    - Add ruby18 warning for deprecated ruby target to repoman
+    - Add Python ersion to Portage version line
+    - Prevent rebuild code from performing unwanted repository changes
+    - Include "::repository" more consistently in output
+    - Make the slot conflict handler output more debug information
+    - Bug # 487074 Don't split suggested commands when printing them
+    - Handle 'mkdir -p /etc/portage/make.profile/packages' gracefully
+      -- i.e. produce an error instead of crashing with a traceback
+    - Implement --alert
+    - Bug # 516428 Make repoman warn if non-virtuals depend on
+      perl-core
 
 portage-2.2.10
 ==================================
