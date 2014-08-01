@@ -11,9 +11,9 @@ portage-2.2.11
     - Remove obsolete repoman eclass checks
     - Bug # 505944 Improve mismatch checking
     - Bug # 488820 fix @security crash
-    - Bug # 438976 Add DESCRIPTION.puntuation check to repoman
+    - Bug # 438976 Add DESCRIPTION.punctuation check to repoman
     - Add ruby18 warning for deprecated ruby target to repoman
-    - Add Python ersion to Portage version line
+    - Add Python version to Portage version line
     - Prevent rebuild code from performing unwanted repository changes
     - Include "::repository" more consistently in output
     - Make the slot conflict handler output more debug information
@@ -23,6 +23,9 @@ portage-2.2.11
     - Implement --alert
     - Bug # 516428 Make repoman warn if non-virtuals depend on
       perl-core
+    - Prefer install-xattr to install.py as a wrapper to coreutils'
+    /usr/bin/install to preserve file system extended attribute.
+
 
 portage-2.2.10
 ==================================
