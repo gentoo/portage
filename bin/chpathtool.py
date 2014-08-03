@@ -51,9 +51,12 @@ class IsTextFile(object):
 		return self._call(filename)
 
 	def _is_text_magic(self, filename):
-		mime_type = self._m.file(filename)
-		if isinstance(mime_type, bytes):
-			mime_type = mime_type.decode('ascii', 'replace')
+		# regression in sys-apps/file causes
+		# py 3.2 & 3.3 magic module to not handle bytes properly
+		if isinstance(filename, bytes):
+			mime_type = self._m.file(str(filename))
+		else:
+			mime_type = self._m.file(filename)
 		return mime_type.startswith('text/')
 
 	def _is_text_encoding(self, filename):
