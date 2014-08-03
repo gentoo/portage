@@ -344,7 +344,7 @@ class Binpkg(CompositeTask):
 	def _chpathtool_exit(self, chpathtool):
 		if self._final_exit(chpathtool) != os.EX_OK:
 			self._unlock_builddir()
-			self._writemsg_level("!!! Error Adjusting Prefix to %s" %
+			self._writemsg_level("!!! Error Adjusting Prefix to %s\n" %
 				(self.settings["EPREFIX"],),
 				noiselevel=-1, level=logging.ERROR)
 			self.wait()
