@@ -16,6 +16,8 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.versions:catsplit,catpkgsplit,vercmp,_pkg_str',
 )
 
+from portage.const import MERGING_IDENTIFIER
+
 from portage import os
 from portage import auxdbkeys
 from portage.eapi import _get_eapi_attrs
@@ -278,7 +280,7 @@ class dbapi(object):
 		return True
 
 	def invalidentry(self, mypath):
-		if '/-MERGING-' in mypath:
+		if MERGING_IDENTIFIER in mypath:
 			if os.path.exists(mypath):
 				writemsg(colorize("BAD", _("INCOMPLETE MERGE:"))+" %s\n" % mypath,
 					noiselevel=-1)

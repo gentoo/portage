@@ -74,6 +74,7 @@ MOVE_BINARY              = "/bin/mv"
 PRELINK_BINARY           = "/usr/sbin/prelink"
 
 INVALID_ENV_FILE         = "/etc/spork/is/not/valid/profile.env"
+MERGING_IDENTIFIER       = "-MERGING-"
 REPO_NAME_FILE           = "repo_name"
 REPO_NAME_LOC            = "profiles" + "/" + REPO_NAME_FILE
 
