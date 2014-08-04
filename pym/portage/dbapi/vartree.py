@@ -446,7 +446,7 @@ class vardbapi(dbapi):
 				if self._excluded_dirs.match(y) is not None:
 					continue
 				subpath = x + "/" + y
-				# MERGING_IDENTIFIER should never be a cpv, nor should files.
+				# -MERGING- should never be a cpv, nor should files.
 				try:
 					if catpkgsplit(subpath) is None:
 						self.invalidentry(self.getpath(subpath))
@@ -1504,7 +1504,7 @@ class dblink(object):
 		self.dbroot = normalize_path(os.path.join(self._eroot, VDB_PATH))
 		self.dbcatdir = self.dbroot+"/"+cat
 		self.dbpkgdir = self.dbcatdir+"/"+pkg
-		self.dbtmpdir = self.dbcatdir+MERGING_IDENTIFIER+pkg
+		self.dbtmpdir = self.dbcatdir+"/"+MERGING_IDENTIFIER+pkg
 		self.dbdir = self.dbpkgdir
 		self.settings = mysettings
 		self._verbose = self.settings.get("PORTAGE_VERBOSE") == "1"
