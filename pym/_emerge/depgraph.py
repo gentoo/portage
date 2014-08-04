@@ -520,8 +520,7 @@ class depgraph(object):
 		self._event_loop = (portage._internal_caller and
 			global_event_loop() or EventLoop(main=False))
 
-		self.uq = UserQuery(myopts)
-		self.query = UserQuery.query
+		self.query = UserQuery(myopts).query
 
 	def _load_vdb(self):
 		"""
