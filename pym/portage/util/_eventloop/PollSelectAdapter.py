@@ -1,5 +1,7 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import division
 
 from .PollConstants import PollConstants
 import select
@@ -64,7 +66,7 @@ class PollSelectAdapter(object):
 			if timeout is not None and timeout < 0:
 				timeout = None
 			if timeout is not None:
-				select_args.append(float(timeout) / 1000)
+				select_args.append(timeout / 1000)
 
 		select_events = select.select(*select_args)
 		poll_events = []

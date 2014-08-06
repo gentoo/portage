@@ -1,6 +1,8 @@
 # Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from __future__ import division
+
 __docformat__ = "epytext"
 
 import errno
@@ -778,14 +780,14 @@ class TermProgressBar(ProgressBar):
 				"<=>" + ((max_bar_width - bar_width) * " ") + "]")
 			return image
 		else:
-			percentage = int(100 * float(curval) / maxval)
+			percentage = 100 * curval // maxval
 			max_bar_width = bar_space - 1
 			_percent = ("%d%% " % percentage).rjust(percentage_str_width)
 			image = "%s%s" % (self._desc, _percent)
 
 			if cols < min_columns:
 				return image
-			offset = float(curval) / maxval
+			offset = curval / maxval
 			bar_width = int(offset * max_bar_width)
 			image = image + "[" + (bar_width * "=") + \
 				">" + ((max_bar_width - bar_width) * " ") + "]"
