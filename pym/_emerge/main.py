@@ -999,7 +999,10 @@ def emerge_main(args=None):
 	args = portage._decode_argv(args)
 
 	# Use system locale.
-	locale.setlocale(locale.LC_ALL, '')
+	try:
+		locale.setlocale(locale.LC_ALL, '')
+	except locale.Error as e:
+		writemsg_level("setlocale: %s\n" % e, level=logging.WARN)
 
 	# Disable color until we're sure that it should be enabled (after
 	# EMERGE_DEFAULT_OPTS has been parsed).
