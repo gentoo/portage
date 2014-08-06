@@ -1,7 +1,7 @@
 # Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function, unicode_literals
+from __future__ import division, print_function, unicode_literals
 
 import errno
 import logging
@@ -1499,14 +1499,14 @@ def action_info(settings, trees, myopts, myfiles):
 
 	vm_info = get_vm_info()
 	if "ram.total" in vm_info:
-		line = "%-9s %10d total" % ("KiB Mem:", vm_info["ram.total"] / 1024)
+		line = "%-9s %10d total" % ("KiB Mem:", vm_info["ram.total"] // 1024)
 		if "ram.free" in vm_info:
-			line += ",%10d free" % (vm_info["ram.free"] / 1024,)
+			line += ",%10d free" % (vm_info["ram.free"] // 1024,)
 		append(line)
 	if "swap.total" in vm_info:
-		line = "%-9s %10d total" % ("KiB Swap:", vm_info["swap.total"] / 1024)
+		line = "%-9s %10d total" % ("KiB Swap:", vm_info["swap.total"] // 1024)
 		if "swap.free" in vm_info:
-			line += ",%10d free" % (vm_info["swap.free"] / 1024,)
+			line += ",%10d free" % (vm_info["swap.free"] // 1024,)
 		append(line)
 
 	lastSync = portage.grabfile(os.path.join(

@@ -1,7 +1,7 @@
 # Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function, unicode_literals
+from __future__ import division, print_function, unicode_literals
 
 import collections
 import errno
@@ -8446,7 +8446,7 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
 	debug = "--debug" in myopts
 	mydepgraph = None
 	max_retries = myopts.get('--backtrack', 10)
-	max_depth = max(1, (max_retries + 1) / 2)
+	max_depth = max(1, (max_retries + 1) // 2)
 	allow_backtracking = max_retries > 0
 	backtracker = Backtracker(max_depth)
 	backtracked = 0

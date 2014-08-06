@@ -1,5 +1,7 @@
-# Copyright 2013 Gentoo Foundation
+# Copyright 2013-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import division
 
 import collections
 import errno
@@ -242,7 +244,7 @@ class FetchTask(CompositeTask):
 		remaining_tries = self.config.options.tries - len(self._tried_uris)
 		if remaining_tries > 0:
 
-			if remaining_tries <= self.config.options.tries / 2:
+			if remaining_tries <= self.config.options.tries // 2:
 				while self._primaryuri_stack:
 					uri = self._primaryuri_stack.pop()
 					if uri not in self._tried_uris:

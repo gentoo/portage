@@ -1,5 +1,7 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import division
 
 import locale
 import logging
@@ -27,16 +29,16 @@ def whenago(seconds):
 	out = []
 
 	if sec > 60:
-		mins = sec / 60
+		mins = sec // 60
 		sec = sec % 60
 	if mins > 60:
-		hrs = mins / 60
+		hrs = mins // 60
 		mins = mins % 60
 	if hrs > 24:
-		days = hrs / 24
+		days = hrs // 24
 		hrs = hrs % 24
 	if days > 365:
-		years = days / 365
+		years = days // 365
 		days = days % 365
 
 	if years:

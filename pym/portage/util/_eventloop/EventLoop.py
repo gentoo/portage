@@ -1,5 +1,7 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import division
 
 import errno
 import logging
@@ -211,7 +213,7 @@ class EventLoop(object):
 					if timeout is None:
 						wait_timeout = None
 					else:
-						wait_timeout = float(timeout) / 1000
+						wait_timeout = timeout / 1000
 					# NOTE: In order to avoid a possible infinite wait when
 					# wait_timeout is None, the previous _run_timeouts()
 					# call must have returned False *with* _thread_condition
@@ -657,6 +659,6 @@ class _epoll_adapter(object):
 			if timeout is None or timeout < 0:
 				timeout = -1
 			elif timeout != 0:
-				 timeout = float(timeout) / 1000
+				timeout = timeout / 1000
 
 		return self._epoll_obj.poll(timeout)
