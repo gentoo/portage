@@ -1,4 +1,4 @@
-# Copyright 1998-2013 Gentoo Foundation
+# Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -280,7 +280,7 @@ class dbapi(object):
 		return True
 
 	def invalidentry(self, mypath):
-		if MERGING_IDENTIFIER in mypath:
+		if "/" + MERGING_IDENTIFIER in mypath:
 			if os.path.exists(mypath):
 				writemsg(colorize("BAD", _("INCOMPLETE MERGE:"))+" %s\n" % mypath,
 					noiselevel=-1)

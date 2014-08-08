@@ -5,7 +5,7 @@
 import locale
 import math
 
-from portage import _unicode_decode
+from portage import _encodings, _unicode_decode
 
 # We define this to make the transition easier for us.
 def _(mystr):
@@ -36,4 +36,5 @@ def localized_size(num_bytes):
 
 	# always round up, so that small files don't end up as '0 KiB'
 	num_kib = math.ceil(num_bytes / 1024)
-	return locale.format('%d', num_kib, grouping=True) + ' KiB'
+	formatted_num = locale.format('%d', num_kib, grouping=True)
+	return (_unicode_decode(formatted_num, encoding=_encodings['stdio']) + ' KiB')
