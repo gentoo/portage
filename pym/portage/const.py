@@ -63,7 +63,7 @@ GLOBAL_CONFIG_PATH       = "/usr/share/portage/config"
 PORTAGE_BASE_PATH        = os.path.join(os.sep, os.sep.join(os.path.realpath(
                                __file__.rstrip("co")).split(os.sep)[:-3]))
 PORTAGE_BIN_PATH         = PORTAGE_BASE_PATH + "/bin"
-PORTAGE_PYM_PATH         = PORTAGE_BASE_PATH + "/pym"
+PORTAGE_PYM_PATH         = os.path.realpath(os.path.join(__file__, '../..'))
 LOCALE_DATA_PATH         = PORTAGE_BASE_PATH + "/locale"  # FIXME: not used
 EBUILD_SH_BINARY         = PORTAGE_BIN_PATH + "/ebuild.sh"
 MISC_SH_BINARY           = PORTAGE_BIN_PATH + "/misc-functions.sh"
