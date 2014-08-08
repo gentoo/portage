@@ -45,7 +45,7 @@ from portage import auxdbkeys, bsd_chflags, \
 	unmerge, _encodings, _os_merge, \
 	_shell_quote, _unicode_decode, _unicode_encode
 from portage.const import EBUILD_SH_ENV_FILE, EBUILD_SH_ENV_DIR, \
-	EBUILD_SH_BINARY, INVALID_ENV_FILE, MISC_SH_BINARY
+	EBUILD_SH_BINARY, INVALID_ENV_FILE, MISC_SH_BINARY, PORTAGE_PYM_PACKAGES
 from portage.data import portage_gid, portage_uid, secpass, \
 	uid, userpriv_groups
 from portage.dbapi.porttree import _parse_uri_map
@@ -2327,7 +2327,11 @@ def _prepare_self_update(settings):
 
 	orig_pym_path = portage._pym_path
 	portage._pym_path = os.path.join(base_path_tmp, "pym")
-	shutil.copytree(orig_pym_path, portage._pym_path, symlinks=True)
+	os.mkdir(portage._pym_path)
+	for pmod in PORTAGE_PYM_PACKAGES:
+		shutil.copytree(os.path.join(orig_pym_path, pmod),
+			os.path.join(portage._pym_path, pmod),
+			symlinks=True)
 
 	for dir_path in (base_path_tmp, portage._bin_path, portage._pym_path):
 		os.chmod(dir_path, 0o755)

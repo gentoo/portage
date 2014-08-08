@@ -270,6 +270,9 @@ SUPPORTED_BINPKG_FORMATS = ("tar", "rpm")
 # Time formats used in various places like metadata.chk.
 TIMESTAMP_FORMAT = "%a, %d %b %Y %H:%M:%S +0000"	# to be used with time.gmtime()
 
+# Top-level names of Python packages installed by Portage.
+PORTAGE_PYM_PACKAGES = ("_emerge", "portage", "repoman")
+
 # ===========================================================================
 # END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANT
 # ===========================================================================
