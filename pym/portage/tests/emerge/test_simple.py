@@ -8,7 +8,7 @@ import portage
 from portage import os
 from portage import _unicode_decode
 from portage.const import (BASH_BINARY, PORTAGE_BASE_PATH,
-	PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, USER_CONFIG_PATH)
+	PORTAGE_PYM_PATH, USER_CONFIG_PATH)
 from portage.process import find_binary
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
@@ -175,29 +175,29 @@ pkg_preinst() {
 
 		portage_python = portage._python_interpreter
 		dispatch_conf_cmd = (portage_python, "-b", "-Wd",
-			os.path.join(PORTAGE_BIN_PATH, "dispatch-conf"))
+			os.path.join(self.sbindir, "dispatch-conf"))
 		ebuild_cmd = (portage_python, "-b", "-Wd",
-			os.path.join(PORTAGE_BIN_PATH, "ebuild"))
+			os.path.join(self.bindir, "ebuild"))
 		egencache_cmd = (portage_python, "-b", "-Wd",
-			os.path.join(PORTAGE_BIN_PATH, "egencache"),
+			os.path.join(self.bindir, "egencache"),
 			"--repo", "test_repo",
 			"--repositories-configuration", settings.repositories.config_string())
 		emerge_cmd = (portage_python, "-b", "-Wd",
-			os.path.join(PORTAGE_BIN_PATH, "emerge"))
+			os.path.join(self.bindir, "emerge"))
 		emaint_cmd = (portage_python, "-b", "-Wd",
-			os.path.join(PORTAGE_BIN_PATH, "emaint"))
+			os.path.join(self.sbindir, "emaint"))
 		env_update_cmd = (portage_python, "-b", "-Wd",
-			os.path.join(PORTAGE_BIN_PATH, "env-update"))
+			os.path.join(self.sbindir, "env-update"))
 		etc_update_cmd = (BASH_BINARY,
-			os.path.join(PORTAGE_BIN_PATH, "etc-update"))
+			os.path.join(self.sbindir, "etc-update"))
 		fixpackages_cmd = (portage_python, "-b", "-Wd",
-			os.path.join(PORTAGE_BIN_PATH, "fixpackages"))
+			os.path.join(self.sbindir, "fixpackages"))
 		portageq_cmd = (portage_python, "-b", "-Wd",
-			os.path.join(PORTAGE_BIN_PATH, "portageq"))
+			os.path.join(self.bindir, "portageq"))
 		quickpkg_cmd = (portage_python, "-b", "-Wd",
-			os.path.join(PORTAGE_BIN_PATH, "quickpkg"))
+			os.path.join(self.bindir, "quickpkg"))
 		regenworld_cmd = (portage_python, "-b", "-Wd",
-			os.path.join(PORTAGE_BIN_PATH, "regenworld"))
+			os.path.join(self.sbindir, "regenworld"))
 
 		rm_binary = find_binary("rm")
 		self.assertEqual(rm_binary is None, False,
@@ -368,7 +368,7 @@ pkg_preinst() {
 			for x in true_symlinks:
 				os.symlink(true_binary, os.path.join(fake_bin, x))
 			for x in etc_symlinks:
-				os.symlink(os.path.join(PORTAGE_BASE_PATH, "cnf", x),
+				os.symlink(os.path.join(self.cnf_etc_path, x),
 					os.path.join(eprefix, "etc", x))
 			with open(os.path.join(var_cache_edb, "counter"), 'wb') as f:
 				f.write(b"100")

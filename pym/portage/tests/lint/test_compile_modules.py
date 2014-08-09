@@ -5,7 +5,7 @@ import errno
 import itertools
 import stat
 
-from portage.const import PORTAGE_BIN_PATH, PORTAGE_PYM_PATH
+from portage.const import PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, PORTAGE_PYM_PACKAGES
 from portage.tests import TestCase
 from portage import os
 from portage import _encodings
@@ -14,9 +14,11 @@ from portage import _unicode_decode, _unicode_encode
 class CompileModulesTestCase(TestCase):
 
 	def testCompileModules(self):
-		for parent, _dirs, files in itertools.chain(
-			os.walk(PORTAGE_BIN_PATH),
-			os.walk(PORTAGE_PYM_PATH)):
+		iters = [os.walk(os.path.join(PORTAGE_PYM_PATH, x))
+			for x in PORTAGE_PYM_PACKAGES]
+		iters.append(os.walk(PORTAGE_BIN_PATH))
+
+		for parent, _dirs, files in itertools.chain(*iters):
 			parent = _unicode_decode(parent,
 				encoding=_encodings['fs'], errors='strict')
 			for x in files:

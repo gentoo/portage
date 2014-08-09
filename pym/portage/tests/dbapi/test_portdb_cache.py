@@ -8,8 +8,7 @@ import textwrap
 import portage
 from portage import os
 from portage import _unicode_decode
-from portage.const import (BASH_BINARY, PORTAGE_BIN_PATH,
-	PORTAGE_PYM_PATH, USER_CONFIG_PATH)
+from portage.const import (BASH_BINARY, PORTAGE_PYM_PATH, USER_CONFIG_PATH)
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util import ensure_dirs
@@ -38,7 +37,7 @@ class PortdbCacheTestCase(TestCase):
 
 		portage_python = portage._python_interpreter
 		egencache_cmd = (portage_python, "-b", "-Wd",
-			os.path.join(PORTAGE_BIN_PATH, "egencache"),
+			os.path.join(self.bindir, "egencache"),
 			"--repo", "test_repo",
 			"--repositories-configuration", settings.repositories.config_string())
 		python_cmd = (portage_python, "-b", "-Wd", "-c")

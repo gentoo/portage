@@ -7,8 +7,7 @@ import sys
 import portage
 from portage import os
 from portage import _unicode_decode
-from portage.const import (BASH_BINARY, PORTAGE_BIN_PATH,
-	PORTAGE_PYM_PATH, USER_CONFIG_PATH)
+from portage.const import (BASH_BINARY, PORTAGE_PYM_PATH, USER_CONFIG_PATH)
 from portage.process import find_binary
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
@@ -70,9 +69,9 @@ class SlotAbiEmergeTestCase(TestCase):
 
 		portage_python = portage._python_interpreter
 		ebuild_cmd = (portage_python, "-b", "-Wd",
-			os.path.join(PORTAGE_BIN_PATH, "ebuild"))
+			os.path.join(self.bindir, "ebuild"))
 		emerge_cmd = (portage_python, "-b", "-Wd",
-			os.path.join(PORTAGE_BIN_PATH, "emerge"))
+			os.path.join(self.bindir, "emerge"))
 
 		test_ebuild = portdb.findname("dev-libs/dbus-glib-0.98")
 		self.assertFalse(test_ebuild is None)

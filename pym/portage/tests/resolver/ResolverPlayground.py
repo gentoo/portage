@@ -15,6 +15,7 @@ from portage.package.ebuild.config import config
 from portage.package.ebuild.digestgen import digestgen
 from portage._sets import load_default_config
 from portage._sets.base import InternalPackageSet
+from portage.tests import cnf_path
 from portage.util import ensure_dirs, normalize_path
 from portage.versions import catsplit
 
@@ -65,6 +66,7 @@ class ResolverPlayground(object):
 			If a metadata key is missing, it gets a default value.
 		profile: settings defined by the profile.
 		"""
+
 		self.debug = debug
 		if eprefix is None:
 			self.eprefix = normalize_path(tempfile.mkdtemp())
@@ -417,7 +419,7 @@ class ResolverPlayground(object):
 		make_globals_path = os.path.join(self.eroot,
 			GLOBAL_CONFIG_PATH.lstrip(os.sep), "make.globals")
 		ensure_dirs(os.path.dirname(make_globals_path))
-		os.symlink(os.path.join(PORTAGE_BASE_PATH, "cnf", "make.globals"),
+		os.symlink(os.path.join(cnf_path, "make.globals"),
 			make_globals_path)
 
 		#Create /usr/share/portage/config/sets/portage.conf
@@ -428,8 +430,8 @@ class ResolverPlayground(object):
 		except os.error:
 			pass
 
-		provided_sets_portage_conf = \
-			os.path.join(PORTAGE_BASE_PATH, "cnf/sets/portage.conf")
+		provided_sets_portage_conf = (
+			os.path.join(cnf_path, "sets", "portage.conf"))
 		os.symlink(provided_sets_portage_conf, os.path.join(default_sets_conf_dir, "portage.conf"))
 
 		set_config_dir = os.path.join(user_config_dir, "sets")
