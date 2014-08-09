@@ -7,4 +7,7 @@ python:
     - 3.4
     - pypy
 script:
-    - python -b -Wd pym/portage/tests/runTests.py
+    - ./setup.py test
+    - ./setup.py install --root=/tmp/install-root
+    - sudo rsync -a /tmp/install-root/. /
+    - python -b -Wd -m portage.tests.runTests
