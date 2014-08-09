@@ -66,7 +66,7 @@ epydoc:
 
 test:
 	set -e; \
-	"$(srcdir)/pym/portage/tests/runTests"; \
+	"$(srcdir)/pym/portage/tests/runTests.py"; \
 
 install:
 	set -e; \

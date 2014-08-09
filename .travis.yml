@@ -7,4 +7,4 @@ python:
     - 3.4
     - pypy
 script:
-    - python -b -Wd pym/portage/tests/runTests
+    - python -b -Wd pym/portage/tests/runTests.py

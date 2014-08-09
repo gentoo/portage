@@ -83,11 +83,11 @@ def getTestFromCommandLine(args, base_path):
 	return result
 
 def getTestDirs(base_path):
-	TEST_FILE = b'__test__'
+	TEST_FILE = b'__test__.py'
 	testDirs = []
 
 	# the os.walk help mentions relative paths as being quirky
-	# I was tired of adding dirs to the list, so now we add __test__
+	# I was tired of adding dirs to the list, so now we add __test__.py
 	# to each dir we want tested.
 	for root, dirs, files in os.walk(base_path):
 		try:
