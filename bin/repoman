@@ -1895,7 +1895,11 @@ for x in effective_scanlist:
 					stats[myqakey] += 1
 					fails[myqakey].append(relative_path)
 
-		if myaux['DESCRIPTION'][-1:] in ['.']:
+		# Abbreviations usable at the end of sentence.
+		abbreviations = (
+			'etc.',
+		)
+		if myaux['DESCRIPTION'][-1:] == '.' and not myaux['DESCRIPTION'].split()[-1] in abbreviations:
 			stats['DESCRIPTION.punctuation'] += 1
 			fails['DESCRIPTION.punctuation'].append(
 				"%s: DESCRIPTION ends with a '%s' character"
