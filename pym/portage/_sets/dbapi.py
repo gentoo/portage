@@ -1,5 +1,7 @@
-# Copyright 2007-2012 Gentoo Foundation
+# Copyright 2007-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import division
 
 import time
 

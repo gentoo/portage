@@ -1,7 +1,7 @@
 # Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
+from __future__ import division, unicode_literals
 
 import re
 import sys
@@ -174,7 +174,7 @@ class database(fs_template.FsBased):
 		cursor.execute("PRAGMA page_size")
 		page_size=int(cursor.fetchone()[0])
 		# number of pages, sqlite default is 2000
-		cache_size = cache_bytes / page_size
+		cache_size = cache_bytes // page_size
 		cursor.execute("PRAGMA cache_size = %d" % cache_size)
 		cursor.execute("PRAGMA cache_size")
 		actual_cache_size = int(cursor.fetchone()[0])

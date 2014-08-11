@@ -1,7 +1,7 @@
 # Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
+from __future__ import division, unicode_literals
 
 __all__ = [
 	"vardbapi", "vartree", "dblink"] + \
@@ -1043,7 +1043,7 @@ class vardbapi(dbapi):
 			from md5 import new as _new_hash
 
 		_hash_bits = 16
-		_hex_chars = int(_hash_bits / 4)
+		_hex_chars = _hash_bits // 4
 
 		def __init__(self, vardb):
 			self._vardb = vardb
