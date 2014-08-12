@@ -2345,7 +2345,8 @@ def _sync_repo(emerge_config, repo):
 				family, socket.SOCK_STREAM))
 		except socket.error as e:
 			writemsg_level(
-				"!!! getaddrinfo failed for '%s': %s\n" % (hostname, e),
+				"!!! getaddrinfo failed for '%s': %s\n" % (hostname,
+					_unicode_decode(e.strerror, encoding=_encodings['stdio'])),
 				noiselevel=-1, level=logging.ERROR)
 
 		if addrinfos:
