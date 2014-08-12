@@ -1,6 +1,11 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.2.13
+==================================
+* Bug Fixes:
+    - Bug # 438976 Remove DESCRIPTION.punctuation check from repoman
+
 portage-2.2.12
 ==================================
 * Bug Fixes:
