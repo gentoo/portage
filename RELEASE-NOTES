@@ -1,6 +1,27 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.2.12
+==================================
+* Bug Fixes:
+    - Bug # 519074 fix invalid locale setting
+    - Repoman: fix atom.blocker checks
+    - Bug # 519124 properly decode formatted number for localized_size()
+    - Revert an incorrect test fix from 2.2.11 which broke mime type detection
+    - Bug # 518968 Fix and incorrect userquery change
+    - QA systemd warning check for using /etc/conf.d
+    - QA Use pngfix to find broken PNG files
+    - Bug # 512578 Prepend '=' to unmerge atoms
+    - Repoman: Do not report DESCRIPTION.punctuation warning for "etc."
+    - Fix a py2/py3 discrepency involing integer division causing number output
+      to be inconsistent
+    - Fix an unicode-decode error in a gettaddrinfo() error message
+* New emaint module "merges"  for finding and fixing failed merges
+  If a pkg fails to merge to the live filesystem correctly, that pkg may
+  not work correctly if at all.  This module scans the installed pkg database
+  for those failures and can re-emerge those packages.
+
+
 portage-2.2.11
 ==================================
 * Bug Fixes:
