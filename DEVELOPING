@@ -195,7 +195,7 @@ Tested-by:  Tested the patch thoroughly
 Acked-by: Approved the concept but did not read the patch in detail
 (typically used by the maintainer of a specific portion, or a lead)
 Suggested-by: Designed the implementation
-Reported-by: Reported the bug/feature request
+Requested-by: Reported the bug/made the feature request
 
 Example:
 
