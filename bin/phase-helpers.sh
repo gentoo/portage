@@ -667,15 +667,13 @@ __eapi0_src_test() {
 		internal_opts+=" -j1"
 	fi
 	if $emake_cmd ${internal_opts} check -n &> /dev/null; then
-		__vecho ">>> Test phase [check]: ${CATEGORY}/${PF}"
+		__vecho "${emake_cmd} ${internal_opts} check" >&2
 		$emake_cmd ${internal_opts} check || \
 			die "Make check failed. See above for details."
 	elif $emake_cmd ${internal_opts} test -n &> /dev/null; then
-		__vecho ">>> Test phase [test]: ${CATEGORY}/${PF}"
+		__vecho "${emake_cmd} ${internal_opts} test" >&2
 		$emake_cmd ${internal_opts} test || \
 			die "Make test failed. See above for details."
-	else
-		__vecho ">>> Test phase [none]: ${CATEGORY}/${PF}"
 	fi
 }
 

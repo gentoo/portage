@@ -499,7 +499,11 @@ __dyn_test() {
 		local save_sp=${SANDBOX_PREDICT}
 		addpredict /
 		__ebuild_phase pre_src_test
+
+		__vecho ">>> Test phase: ${CATEGORY}/${PF}"
 		__ebuild_phase src_test
+		__vecho ">>> Completed testing ${CATEGORY}/${PF}"
+
 		>> "$PORTAGE_BUILDDIR/.tested" || \
 			die "Failed to create $PORTAGE_BUILDDIR/.tested"
 		__ebuild_phase post_src_test
