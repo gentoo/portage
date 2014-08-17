@@ -885,6 +885,17 @@ best_version() {
 	esac
 }
 
+if ___eapi_has_get_libdir; then
+	get_libdir() {
+		local libdir_var="LIBDIR_${ABI}"
+		local libdir="lib"
+
+		[[ -n ${ABI} && -n ${!libdir_var} ]] && libdir=${!libdir_var}
+
+		echo "${libdir}"
+	}
+fi
+
 if ___eapi_has_master_repositories; then
 	master_repositories() {
 		local output repository=$1 retval
