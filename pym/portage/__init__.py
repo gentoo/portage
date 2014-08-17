@@ -505,19 +505,7 @@ def eapi_is_supported(eapi):
 		eapi = str(eapi)
 	eapi = eapi.strip()
 
-	if _eapi_is_deprecated(eapi):
-		return True
-
-	if eapi in _testing_eapis:
-		return True
-
-	try:
-		eapi = int(eapi)
-	except ValueError:
-		eapi = -1
-	if eapi < 0:
-		return False
-	return eapi <= portage.const.EAPI
+	return eapi in _supported_eapis
 
 # This pattern is specified by PMS section 7.3.1.
 _pms_eapi_re = re.compile(r"^[ \t]*EAPI=(['\"]?)([A-Za-z0-9+_.-]*)\1[ \t]*([ \t]#.*)?$")
