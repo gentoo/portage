@@ -986,6 +986,28 @@ if ___eapi_has_eapply; then
 	}
 fi
 
+if ___eapi_has_eapply_user; then
+	eapply_user() {
+		local basedir=${PORTAGE_CONFIGROOT%/}/etc/portage/patches
+
+		local d applied
+		# possibilities:
+		# 1. ${CATEGORY}/${P}-${PR} (note: -r0 desired to avoid applying
+		#    ${P} twice)
+		# 2. ${CATEGORY}/${P}
+		# 3. ${CATEGORY}/${PN}
+		# all of the above may be optionally followed by a slot
+		for d in "${basedir}"/${CATEGORY}/{${P}-${PR},${P},${PN}}{,:${SLOT%/*}}; do
+			if [[ -d ${d} ]]; then
+				eapply "${d}"
+				applied=1
+			fi
+		done
+
+		[[ -n ${applied} ]] && ewarn "User patches applied."
+	}
+fi
+
 if ___eapi_has_master_repositories; then
 	master_repositories() {
 		local output repository=$1 retval

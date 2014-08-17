@@ -76,6 +76,10 @@ ___eapi_has_eapply() {
 	[[ ! ${1-${EAPI}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
 }
 
+___eapi_has_eapply_user() {
+	[[ ! ${1-${EAPI}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
+}
+
 ___eapi_has_master_repositories() {
 	[[ ${1-${EAPI}} =~ ^(5-progress)$ ]]
 }
