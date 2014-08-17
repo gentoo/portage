@@ -924,6 +924,68 @@ if ___eapi_has_einstalldocs; then
 	}
 fi
 
+if ___eapi_has_eapply; then
+	eapply() {
+		_eapply_patch() {
+			local f=${1}
+			local prefix=${2}
+
+			started_applying=1
+			ebegin "${prefix:-Applying }${f##*/}"
+			# -p1 as a sane default
+			# -f to avoid interactivity
+			# -s to silence progress output
+			patch -p1 -f -s "${patch_options[@]}" < "${f}"
+			if ! eend ${?}; then
+				__helpers_die "patch -p1 ${patch_options[*]} failed with ${f}"
+				failed=1
+			fi
+		}
+
+		local f patch_options=() failed started_applying options_terminated
+		for f; do
+			if [[ ${f} == -* && -z ${options_terminated} ]]; then
+				if [[ -n ${started_applying} ]]; then
+					die "eapply: options need to be specified before files"
+				fi
+				if [[ ${f} == -- ]]; then
+					options_terminated=1
+				else
+					patch_options+=( ${f} )
+				fi
+			elif [[ -d ${f} ]]; then
+				_eapply_get_files() {
+					local LC_ALL=POSIX
+					local prev_shopt=$(shopt -p nullglob)
+					shopt -s nullglob
+					files=( "${f}"/*.{patch,diff} )
+					${prev_shopt}
+				}
+
+				local files
+				_eapply_get_files
+				[[ -z ${files[@]} ]] && die "No *.{patch,diff} files in directory ${f}"
+
+				einfo "Applying patches from ${f} ..."
+				local f2
+				for f2 in "${files[@]}"; do
+					_eapply_patch "${f2}" '  '
+
+					# in case of nonfatal
+					[[ -n ${failed} ]] && return 1
+				done
+			else
+				_eapply_patch "${f}"
+
+				# in case of nonfatal
+				[[ -n ${failed} ]] && return 1
+			fi
+		done
+
+		return 0
+	}
+fi
+
 if ___eapi_has_master_repositories; then
 	master_repositories() {
 		local output repository=$1 retval
