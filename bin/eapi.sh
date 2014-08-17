@@ -110,6 +110,10 @@ ___eapi_econf_passes_--disable-silent-rules() {
 	[[ ! ${1-${EAPI}} =~ ^(0|1|2|3|4|4-python|4-slot-abi)$ ]]
 }
 
+___eapi_econf_passes_--docdir_and_--htmldir() {
+	[[ ! ${1-${EAPI}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
+}
+
 ___eapi_use_enable_and_use_with_support_empty_third_argument() {
 	[[ ! ${1-${EAPI}} =~ ^(0|1|2|3)$ ]]
 }

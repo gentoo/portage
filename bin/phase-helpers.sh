@@ -558,7 +558,7 @@ econf() {
 		fi
 
 		local conf_args=()
-		if ___eapi_econf_passes_--disable-dependency-tracking || ___eapi_econf_passes_--disable-silent-rules; then
+		if ___eapi_econf_passes_--disable-dependency-tracking || ___eapi_econf_passes_--disable-silent-rules || ___eapi_econf_passes_--docdir_and_--htmldir; then
 			local conf_help=$("${ECONF_SOURCE}/configure" --help 2>/dev/null)
 
 			if ___eapi_econf_passes_--disable-dependency-tracking; then
@@ -570,6 +570,16 @@ econf() {
 			if ___eapi_econf_passes_--disable-silent-rules; then
 				if [[ ${conf_help} == *--disable-silent-rules* ]]; then
 					conf_args+=( --disable-silent-rules )
+				fi
+			fi
+
+			if ___eapi_econf_passes_--docdir_and_--htmldir; then
+				if [[ ${conf_help} == *--docdir* ]]; then
+					conf_args+=( --docdir="${EPREFIX}"/usr/share/doc/${PF} )
+				fi
+
+				if [[ ${conf_help} == *--htmldir* ]]; then
+					conf_args+=( --htmldir="${EPREFIX}"/usr/share/doc/${PF}/html )
 				fi
 			fi
 		fi
