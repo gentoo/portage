@@ -896,6 +896,34 @@ if ___eapi_has_get_libdir; then
 	}
 fi
 
+if ___eapi_has_einstalldocs; then
+	einstalldocs() {
+		(
+			docinto .
+			if ! declare -p DOCS &>/dev/null ; then
+				local d
+				for d in README* ChangeLog AUTHORS NEWS TODO CHANGES \
+						THANKS BUGS FAQ CREDITS CHANGELOG ; do
+					[[ -s ${d} ]] && dodoc "${d}"
+				done
+			elif [[ $(declare -p DOCS) == "declare -a"* ]] ; then
+				[[ ${DOCS[@]} ]] && dodoc -r "${DOCS[@]}"
+			else
+				[[ ${DOCS} ]] && dodoc -r ${DOCS}
+			fi
+		)
+
+		(
+			docinto html
+			if [[ $(declare -p HTML_DOCS 2>/dev/null) == "declare -a"* ]] ; then
+				[[ ${HTML_DOCS[@]} ]] && dodoc -r "${HTML_DOCS[@]}"
+			else
+				[[ ${HTML_DOCS} ]] && dodoc -r ${HTML_DOCS}
+			fi
+		)
+	}
+fi
+
 if ___eapi_has_master_repositories; then
 	master_repositories() {
 		local output repository=$1 retval
