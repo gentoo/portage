@@ -525,19 +525,15 @@ econf() {
 			local conf_help=$("${ECONF_SOURCE}/configure" --help 2>/dev/null)
 
 			if ___eapi_econf_passes_--disable-dependency-tracking; then
-				case "${conf_help}" in
-					*--disable-dependency-tracking*)
-						set -- --disable-dependency-tracking "$@"
-						;;
-				esac
+				if [[ ${conf_help} == *--disable-dependency-tracking* ]]; then
+					set -- --disable-dependency-tracking "$@"
+				fi
 			fi
 
 			if ___eapi_econf_passes_--disable-silent-rules; then
-				case "${conf_help}" in
-					*--disable-silent-rules*)
-						set -- --disable-silent-rules "$@"
-						;;
-				esac
+				if [[ ${conf_help} == *--disable-silent-rules* ]]; then
+					set -- --disable-silent-rules "$@"
+				fi
 			fi
 		fi
 
