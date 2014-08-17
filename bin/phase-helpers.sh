@@ -521,18 +521,19 @@ econf() {
 			done
 		fi
 
+		local conf_args=()
 		if ___eapi_econf_passes_--disable-dependency-tracking || ___eapi_econf_passes_--disable-silent-rules; then
 			local conf_help=$("${ECONF_SOURCE}/configure" --help 2>/dev/null)
 
 			if ___eapi_econf_passes_--disable-dependency-tracking; then
 				if [[ ${conf_help} == *--disable-dependency-tracking* ]]; then
-					set -- --disable-dependency-tracking "$@"
+					conf_args+=( --disable-dependency-tracking )
 				fi
 			fi
 
 			if ___eapi_econf_passes_--disable-silent-rules; then
 				if [[ ${conf_help} == *--disable-silent-rules* ]]; then
-					set -- --disable-silent-rules "$@"
+					conf_args+=( --disable-silent-rules )
 				fi
 			fi
 		fi
@@ -550,7 +551,9 @@ econf() {
 			CONF_PREFIX=${CONF_PREFIX#*=}
 			[[ ${CONF_PREFIX} != /* ]] && CONF_PREFIX="/${CONF_PREFIX}"
 			[[ ${CONF_LIBDIR} != /* ]] && CONF_LIBDIR="/${CONF_LIBDIR}"
-			set -- --libdir="$(__strip_duplicate_slashes "${CONF_PREFIX}${CONF_LIBDIR}")" "$@"
+			conf_args+=(
+				--libdir="$(__strip_duplicate_slashes "${CONF_PREFIX}${CONF_LIBDIR}")"
+			)
 		fi
 
 		# Handle arguments containing quoted whitespace (see bug #457136).
@@ -566,6 +569,7 @@ econf() {
 			--datadir="${EPREFIX}"/usr/share \
 			--sysconfdir="${EPREFIX}"/etc \
 			--localstatedir="${EPREFIX}"/var/lib \
+			"${conf_args[@]}" \
 			"$@" \
 			"${EXTRA_ECONF[@]}"
 		__vecho "${ECONF_SOURCE}/configure" "$@"
