@@ -160,6 +160,10 @@ ___eapi_unpack_is_case_sensitive() {
 
 # OTHERS
 
+___eapi_enables_failglob_in_global_scope() {
+	[[ ! ${1-${EAPI}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
+}
+
 ___eapi_enables_globstar() {
 	[[ ${1-${EAPI}} =~ ^(4-python|5-progress)$ ]]
 }
