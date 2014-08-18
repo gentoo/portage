@@ -795,6 +795,24 @@ __eapi4_src_install() {
 	fi
 }
 
+__eapi6_src_prepare() {
+	if [[ $(declare -p PATCHES) == "declare -a"* ]]; then
+		eapply "${PATCHES[@]}"
+	elif [[ -n ${PATCHES} ]]; then
+		eapply ${PATCHES}
+	fi
+
+	eapply_user
+}
+
+__eapi6_src_install() {
+	if [[ -f Makefile || -f GNUmakefile || -f makefile ]] ; then
+		emake DESTDIR="${D}" install
+	fi
+
+	einstalldocs
+}
+
 # @FUNCTION: has_version
 # @USAGE: [--host-root] <DEPEND ATOM>
 # @DESCRIPTION:
