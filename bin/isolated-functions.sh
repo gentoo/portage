@@ -113,7 +113,7 @@ __bashpid() {
 }
 
 __helpers_die() {
-	if ___eapi_helpers_can_die; then
+	if ___eapi_helpers_can_die && [[ ${PORTAGE_NONFATAL} != 1 ]]; then
 		die "$@"
 	else
 		echo -e "$@" >&2
@@ -122,11 +122,6 @@ __helpers_die() {
 
 die() {
 	local IFS=$' \t\n'
-
-	if [[ $PORTAGE_NONFATAL -eq 1 ]]; then
-		echo -e " $WARN*$NORMAL ${FUNCNAME[1]}: WARNING: $@" >&2
-		return 1
-	fi
 
 	set +e
 	if [ -n "${QA_INTERCEPTORS}" ] ; then
