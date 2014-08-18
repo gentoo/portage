@@ -1036,6 +1036,22 @@ if ___eapi_has_eapply_user; then
 	}
 fi
 
+if ___eapi_has_in_iuse; then
+	in_iuse() {
+		local use=${1}
+
+		if [[ -z "${use}" ]]; then
+			echo "!!! in_iuse() called without a parameter." >&2
+			echo "!!! in_iuse <USEFLAG>" >&2
+			die "in_iuse() called without a parameter"
+		fi
+
+		local liuse=( ${IUSE_EFFECTIVE} )
+
+		has "${use}" "${liuse[@]#[+-]}"
+	}
+fi
+
 if ___eapi_has_master_repositories; then
 	master_repositories() {
 		local output repository=$1 retval
