@@ -492,6 +492,19 @@ unpack() {
 					__vecho "unpack ${x}: file format not recognized. Ignoring."
 				fi
 				;;
+			txz)
+				if ___eapi_unpack_is_case_sensitive && \
+					[[ " txz " != *" ${suffix} "* ]] ; then
+					eqawarn "QA Notice: unpack called with" \
+						"suffix '${suffix}' which is unofficially supported" \
+						"with EAPI '${EAPI}'. Instead use 'txz'."
+				fi
+				if ___eapi_supports_txz; then
+					__unpack_tar "xz -d" || return 1
+				else
+					__vecho "unpack ${x}: file format not recognized. Ignoring."
+				fi
+				;;
 			*)
 				__vecho "unpack ${x}: file format not recognized. Ignoring."
 				;;

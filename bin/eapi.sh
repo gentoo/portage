@@ -118,6 +118,10 @@ ___eapi_unpack_supports_xz() {
 	[[ ! ${1-${EAPI}} =~ ^(0|1|2)$ ]]
 }
 
+___eapi_unpack_supports_txz() {
+	[[ ! ${1-${EAPI}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
+}
+
 ___eapi_econf_passes_--disable-dependency-tracking() {
 	[[ ! ${1-${EAPI}} =~ ^(0|1|2|3)$ ]]
 }
