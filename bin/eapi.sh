@@ -162,6 +162,10 @@ ___eapi_unpack_is_case_sensitive() {
 	[[ ${1-${EAPI}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend)$ ]]
 }
 
+___eapi_unpack_supports_absolute_paths() {
+	[[ ${1-${EAPI}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend)$ ]]
+}
+
 # OTHERS
 
 ___eapi_enables_failglob_in_global_scope() {

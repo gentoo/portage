@@ -276,14 +276,29 @@ unpack() {
 		y=${y##*.}
 		y_insensitive=$(LC_ALL=C tr "[:upper:]" "[:lower:]" <<< "${y}")
 
-		if [[ ${x} == "./"* ]] ; then
-			srcdir=""
-		elif [[ ${x} == ${DISTDIR%/}/* ]] ; then
-			die "Arguments to unpack() cannot begin with \${DISTDIR}."
-		elif [[ ${x} == "/"* ]] ; then
-			die "Arguments to unpack() cannot be absolute"
+		# wrt PMS 11.3.3.13 Misc Commands
+		if [[ ${x} != */* ]]; then
+			# filename without path of any kind
+			srcdir=${DISTDIR}/
+		elif [[ ${x} == ./* ]]; then
+			# relative path starting with './'
+			srcdir=
 		else
-			srcdir="${DISTDIR}/"
+			# non-'./' filename with path of some kind
+			if ___eapi_unpack_supports_absolute_paths; then
+				# EAPI 6 allows absolute and deep relative paths
+				srcdir=
+
+				if [[ ${x} == ${DISTDIR%/}/* ]]; then
+					eqawarn "QA Notice: unpack called with redundant \${DISTDIR} in path"
+				fi
+			elif [[ ${x} == ${DISTDIR%/}/* ]]; then
+				die "Arguments to unpack() cannot begin with \${DISTDIR} in EAPI ${EAPI}"
+			elif [[ ${x} == /* ]] ; then
+				die "Arguments to unpack() cannot be absolute in EAPI ${EAPI}"
+			else
+				die "Relative paths to unpack() must be prefixed with './' in EAPI ${EAPI}"
+			fi
 		fi
 		if [[ ! -s ${srcdir}${x} ]]; then
 			__helpers_die "unpack: ${x} does not exist"
