@@ -123,6 +123,13 @@ __helpers_die() {
 die() {
 	local IFS=$' \t\n'
 
+	if ___eapi_die_can_respect_nonfatal; then
+		if [[ ${1} == -n ]]; then
+			[[ ${PORTAGE_NONFATAL} == 1 ]] && return 1
+			shift
+		fi
+	fi
+
 	set +e
 	if [ -n "${QA_INTERCEPTORS}" ] ; then
 		# die was called from inside inherit. We need to clean up
