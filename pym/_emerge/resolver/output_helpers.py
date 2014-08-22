@@ -53,7 +53,7 @@ class _RepoDisplay(object):
 		# pre-allocate index for PORTDIR so that it always has index 0.
 		for root_config in roots.values():
 			portdb = root_config.trees["porttree"].dbapi
-			portdir = portdb.porttree_root
+			portdir = portdb.repositories.mainRepoLocation()
 			if portdir:
 				self.repoStr(portdir)
 

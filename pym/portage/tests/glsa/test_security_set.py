@@ -129,7 +129,8 @@ class SecuritySetTestCase(TestCase):
 		try:
 
 			portdb = playground.trees[playground.eroot]["porttree"].dbapi
-			glsa_dir = os.path.join(portdb.porttree_root, 'metadata', 'glsa')
+			glsa_dir = os.path.join(
+				portdb.repositories.mainRepoLocation(), 'metadata', 'glsa')
 			portage.util.ensure_dirs(glsa_dir)
 			for glsa in glsas:
 				with io.open(os.path.join(glsa_dir,

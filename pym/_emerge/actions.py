@@ -1582,7 +1582,9 @@ def action_info(settings, trees, myopts, myfiles):
 
 	myvars = sorted(set(atoms))
 
-	main_repo = portdb.getRepositoryName(portdb.porttree_root)
+	main_repo = portdb.repositories.mainRepo()
+	if main_repo is not None:
+		main_repo = main_repo.name
 	cp_map = {}
 	cp_max_len = 0
 

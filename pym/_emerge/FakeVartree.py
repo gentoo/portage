@@ -299,7 +299,9 @@ def grab_global_updates(portdb):
 			upd_commands.extend(commands)
 		retupdates[repo_name] = upd_commands
 
-	master_repo = portdb.getRepositoryName(portdb.porttree_root)
+	master_repo = portdb.repositories.mainRepo()
+	if master_repo is not None:
+		master_repo = master_repo.name
 	if master_repo in retupdates:
 		retupdates['DEFAULT'] = retupdates[master_repo]
 
