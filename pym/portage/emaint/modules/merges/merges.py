@@ -168,9 +168,9 @@ class MergesHandler(object):
 
 		@param failed_pkgs: failed packages to iterate
 		@type failed_pkgs: dict
-		@param pkg_atoms: append package atoms to this set
+		@param pkg_atoms: add package atoms to this set
 		@type pkg_atoms: set
-		@param pkg_invalid_entries: append any packages that are invalid to this set
+		@param pkg_invalid_entries: add any packages that are invalid to this set
 		@type pkg_invalid_entries: set
 		"""
 
@@ -182,10 +182,10 @@ class MergesHandler(object):
 			pkg_atom = '=%s' % pkg_name
 
 			if not isvalidatom(pkg_atom):
-				pkg_invalid_entries.append("'%s' is an invalid package atom."
+				pkg_invalid_entries.add("'%s' is an invalid package atom."
 					% pkg_atom)
 			if not portdb.cpv_exists(pkg_name):
-				pkg_invalid_entries.append(
+				pkg_invalid_entries.add(
 					"'%s' does not exist in the portage tree." % pkg_name)
 			pkg_atoms.add(pkg_atom)
 

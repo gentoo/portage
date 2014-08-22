@@ -5,6 +5,7 @@ portage-2.2.13
 ==================================
 * Bug Fixes:
     - Bug # 438976 Remove DESCRIPTION.punctuation check from repoman
+    - Bug # 520542 Replace .append() with .add() for set variables
 
 portage-2.2.12
 ==================================
