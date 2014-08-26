@@ -882,7 +882,7 @@ install_qa_check() {
 		local next
 
 		while read -r -a pngout ; do
-			local error
+			local error=""
 
 			case "${pngout[1]}" in
 				CHK)
