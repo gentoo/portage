@@ -8259,18 +8259,20 @@ class _dep_check_composite_db(dbapi):
 
 		return ret
 
-	def match(self, atom):
+	def match_pkgs(self, atom):
 		cache_key = (atom, atom.unevaluated_atom)
 		ret = self._match_cache.get(cache_key)
 		if ret is not None:
+			for pkg in ret:
+				self._cpv_pkg_map[pkg.cpv] = pkg
 			return ret[:]
 
+		atom_set = InternalPackageSet(initial_atoms=(atom,))
 		ret = []
 		pkg, existing = self._depgraph._select_package(self._root, atom)
 
-		if pkg is not None and self._visible(pkg):
-			self._cpv_pkg_map[pkg.cpv] = pkg
-			ret.append(pkg.cpv)
+		if pkg is not None and self._visible(pkg, atom_set):
+			ret.append(pkg)
 
 		if pkg is not None and \
 			atom.slot is None and \
@@ -8301,18 +8303,19 @@ class _dep_check_composite_db(dbapi):
 					self._root, slot_atom)
 				if not pkg:
 					continue
-				if not self._visible(pkg):
+				if not self._visible(pkg, atom_set):
 					continue
-				self._cpv_pkg_map[pkg.cpv] = pkg
-				ret.append(pkg.cpv)
+				ret.append(pkg)
 
 			if len(ret) > 1:
-				self._cpv_sort_ascending(ret)
+				ret.sort()
 
 		self._match_cache[cache_key] = ret
+		for pkg in ret:
+			self._cpv_pkg_map[pkg.cpv] = pkg
 		return ret[:]
 
-	def _visible(self, pkg):
+	def _visible(self, pkg, atom_set):
 		if pkg.installed and not self._depgraph._want_installed_pkg(pkg):
 			return False
 		if pkg.installed and \
@@ -8350,6 +8353,11 @@ class _dep_check_composite_db(dbapi):
 		elif in_graph != pkg:
 			# Mask choices for packages that would trigger a slot
 			# conflict with a previously selected package.
+			if not atom_set.findAtomForPackage(in_graph,
+				modified_use=self._depgraph._pkg_use_enabled(in_graph)):
+				# Only mask if the graph package matches the given
+				# atom (fixes bug #515230).
+				return True
 			return False
 		return True
 
@@ -8357,8 +8365,8 @@ class _dep_check_composite_db(dbapi):
 		metadata = self._cpv_pkg_map[cpv]._metadata
 		return [metadata.get(x, "") for x in wants]
 
-	def match_pkgs(self, atom):
-		return [self._cpv_pkg_map[cpv] for cpv in self.match(atom)]
+	def match(self, atom):
+		return [pkg.cpv for pkg in self.match_pkgs(atom)]
 
 def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
 
