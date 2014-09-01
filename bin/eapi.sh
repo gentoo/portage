@@ -159,7 +159,7 @@ ___eapi_helpers_can_die() {
 }
 
 ___eapi_disallows_helpers_in_global_scope() {
-	[[ ${1-${EAPI}} =~ ^(4-python|5-progress)$ ]]
+	[[ ! ${1-${EAPI}} =~ ^(0|1|2|3|4|4-slot-abi|5|5-hdepend)$ ]]
 }
 
 ___eapi_unpack_is_case_sensitive() {
