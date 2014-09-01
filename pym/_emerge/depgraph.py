@@ -1567,14 +1567,40 @@ class depgraph(object):
 		selective = "selective" in self._dynamic_config.myparams
 		want_downgrade = None
 
-		def check_reverse_dependencies(existing_pkg, candidate_pkg):
+		def check_reverse_dependencies(existing_pkg, candidate_pkg,
+			replacement_parent=None):
 			"""
 			Check if candidate_pkg satisfies all of existing_pkg's non-
 			slot operator parents.
 			"""
+			built_slot_operator_parents = set()
 			for parent, atom in self._dynamic_config._parent_atoms.get(existing_pkg, []):
-				if atom.slot_operator == "=" and getattr(parent, "built", False):
-					continue
+				if atom.slot_operator_built:
+					built_slot_operator_parents.add(parent)
+
+			for parent, atom in self._dynamic_config._parent_atoms.get(existing_pkg, []):
+				if isinstance(parent, Package):
+					if parent in built_slot_operator_parents:
+						# This parent may need to be rebuilt, so its
+						# dependencies aren't necessarily relevant.
+						continue
+
+					if replacement_parent is not None and \
+						(replacement_parent.slot_atom == parent.slot_atom
+						or replacement_parent.cpv == parent.cpv):
+						# This parent is irrelevant because we intend to
+						# replace it with replacement_parent.
+						continue
+
+					if any(pkg is not parent and
+						(pkg.slot_atom == parent.slot_atom or
+						pkg.cpv == parent.cpv) for pkg in
+						self._dynamic_config._package_tracker.match(
+						parent.root, Atom(parent.cp))):
+						# This parent may need to be eliminated due to a
+						# slot conflict,  so its dependencies aren't
+						# necessarily relevant.
+						continue
 
 				atom_set = InternalPackageSet(initial_atoms=(atom,),
 					allow_repo=True)
@@ -1693,7 +1719,8 @@ class depgraph(object):
 							continue
 
 					if not insignificant and \
-						check_reverse_dependencies(dep.child, pkg):
+						check_reverse_dependencies(dep.child, pkg,
+							replacement_parent=replacement_parent):
 
 						candidate_pkg_atoms.append((pkg, unevaluated_atom))
 						candidate_pkgs.append(pkg)
