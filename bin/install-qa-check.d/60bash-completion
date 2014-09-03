@@ -1,0 +1,130 @@
+# QA checks for bash-completion files
+
+bashcomp_check() {
+	# Check for correct bash-completion install path.
+	local syscompdir=$(pkg-config --variable=completionsdir bash-completion 2>/dev/null)
+	: ${syscompdir:=${EPREFIX}/usr/share/bash-completion/completions}
+
+	local instcompdir
+	if [[ -d ${ED}/usr/share/bash-completion/completions ]]; then
+		instcompdir=${ED}/usr/share/bash-completion/completions
+	elif [[ -d ${ED}/usr/share/bash-completion ]]; then
+		if [[ ${syscompdir} != ${EPREFIX}/usr/share/bash-completion ]]; then
+			eqawarn "Bash completions were installed in legacy location. Please update"
+			eqawarn "the ebuild to get the install paths using bash-completion-r1.eclass."
+			eqawarn
+		fi
+
+		instcompdir=${ED}/usr/share/bash-completion
+	fi
+
+	# Do a few QA tests on bash completions.
+	if [[ -n ${instcompdir} && -f ${EROOT}/usr/share/bash-completion/bash_completion ]]; then
+		_get_completions() {
+			# source the file
+			source "${1}" &>/dev/null
+
+			[[ ${USED_HAVE} == yes ]] && echo '__HAVE_USED__'
+
+			# print the completed commands
+			while read -a args; do
+				[[ ${args[0]} == complete ]] || continue
+				# command always comes last, one per line
+				echo "${args[$(( ${#args[@]} - 1))]}"
+			done < <(complete -p)
+		}
+
+		# load the global helpers
+		source "${EROOT}"/usr/share/bash-completion/bash_completion
+
+		# clean up predefined completions
+		complete -r
+
+		# force all completions on
+		_have() {
+			return 0
+		}
+
+		local USED_HAVE=no
+		# add a replacement for have()
+		have() {
+			USED_HAVE=yes
+
+			unset -v have
+			_have ${1} && have=yes
+		}
+
+		local f c completions
+		local all_compls=()
+		local all_files=()
+		local qa_warnings=()
+
+		for f in "${instcompdir}"/*; do
+			# ignore directories and other non-files
+			[[ ! -f ${f} ]] && continue
+
+			# skip the common code file
+			# (in case we're run in /usr/share/bash-completion)
+			[[ ${f##*/} == bash_completion ]] && continue
+
+			completions=( $(_get_completions "${f}") )
+
+			if [[ ${completions[0]} == __HAVE_USED__ ]]; then
+				qa_warnings+=(
+					"${f##*/}: 'have' command is deprecated and must not be used."
+				)
+				unset 'completions[0]'
+			fi
+
+			if [[ -z ${completions[@]} ]]; then
+				qa_warnings+=(
+					"${f##*/}: does not define any completions (failed to source?)."
+				)
+				continue
+			fi
+
+			for c in "${completions[@]}"; do
+				if [[ ${c} == /* ]]; then
+					qa_warnings+=(
+						"${f##*/}: absolute paths can not be used for completions (on '${c}')."
+					)
+				else
+					all_compls+=( "${c}" )
+				fi
+			done
+
+			if ! has "${f##*/}" "${all_compls[@]}"; then
+				qa_warnings+=(
+					"${f##*/}: incorrect name, no completions for '${f##*/}' command defined."
+				)
+			fi
+
+			all_files+=( "${f##*/}" )
+		done
+
+		for c in "${all_compls[@]}"; do
+			if ! has "${c}" "${all_files[@]}"; then
+				qa_warnings+=(
+					"${c}: missing alias (symlink) for completed command."
+				)
+			fi
+		done
+
+		if [[ -n ${qa_warnings[@]} ]]; then
+			eqawarn "Problems with installed bash completions were found:"
+			eqawarn
+			for c in "${qa_warnings[@]}"; do
+				eqawarn "	${c}"
+			done
+			eqawarn
+			eqawarn "For more details on installing bash-completions, please see:"
+			eqawarn "https://wiki.gentoo.org/wiki/Bash/Installing_completion_files"
+			eqawarn
+		fi
+	fi
+}
+
+bashcomp_check
+: # guarantee successful exit
+
+# vim:ft=sh

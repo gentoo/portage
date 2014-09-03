@@ -1,0 +1,25 @@
+# Check for world-writable files
+
+world_writable_check() {
+	# Now we look for all world writable files.
+	local unsafe_files=$(find "${ED}" -type f -perm -2 | sed -e "s:^${ED}:- :")
+	if [[ -n ${unsafe_files} ]] ; then
+		__vecho "QA Security Notice: world writable file(s):"
+		__vecho "${unsafe_files}"
+		__vecho "- This may or may not be a security problem, most of the time it is one."
+		__vecho "- Please double check that $PF really needs a world writeable bit and file bugs accordingly."
+		sleep 1
+	fi
+
+	local unsafe_files=$(find "${ED}" -type f '(' -perm -2002 -o -perm -4002 ')' | sed -e "s:^${ED}:/:")
+	if [[ -n ${unsafe_files} ]] ; then
+		eqawarn "QA Notice: Unsafe files detected (set*id and world writable)"
+		eqawarn "${unsafe_files}"
+		die "Unsafe files found in \${D}.  Portage will not install them."
+	fi
+}
+
+world_writable_check
+: # guarantee successful exit
+
+# vim:ft=sh

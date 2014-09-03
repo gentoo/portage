@@ -1,0 +1,140 @@
+# Check for major issues with built executables: insecure RPATHs,
+# text relocations, executable stacks
+
+elf_check() {
+	if type -P scanelf > /dev/null && ! has binchecks ${RESTRICT}; then
+		local insecure_rpath=0 tmp_quiet=${PORTAGE_QUIET}
+		local f x
+
+		# display warnings when using stricter because we die afterwards
+		if has stricter ${FEATURES} ; then
+			local PORTAGE_QUIET
+		fi
+
+		# Make sure we disallow insecure RUNPATH/RPATHs.
+		#   1) References to PORTAGE_BUILDDIR are banned because it's a
+		#      security risk. We don't want to load files from a
+		#      temporary directory.
+		#   2) If ROOT != "/", references to ROOT are banned because
+		#      that directory won't exist on the target system.
+		#   3) Null paths are banned because the loader will search $PWD when
+		#      it finds null paths.
+		local forbidden_dirs="${PORTAGE_BUILDDIR}"
+		if [[ -n "${ROOT}" && "${ROOT}" != "/" ]]; then
+			forbidden_dirs+=" ${ROOT}"
+		fi
+		local dir l rpath_files=$(scanelf -F '%F:%r' -qBR "${ED}")
+		f=""
+		for dir in ${forbidden_dirs}; do
+			for l in $(echo "${rpath_files}" | grep -E ":${dir}|::|: "); do
+				f+="  ${l%%:*}\n"
+				if ! has stricter ${FEATURES}; then
+					__vecho "Auto fixing rpaths for ${l%%:*}"
+					TMPDIR="${dir}" scanelf -BXr "${l%%:*}" -o /dev/null
+				fi
+			done
+		done
+
+		# Reject set*id binaries with $ORIGIN in RPATH #260331
+		x=$(
+			find "${ED}" -type f \( -perm -u+s -o -perm -g+s \) -print0 | \
+			xargs -0 scanelf -qyRF '%r %p' | grep '$ORIGIN'
+		)
+
+		# Print QA notice.
+		if [[ -n ${f}${x} ]] ; then
+			__vecho -ne '\n'
+			eqawarn "QA Notice: The following files contain insecure RUNPATHs"
+			eqawarn " Please file a bug about this at http://bugs.gentoo.org/"
+			eqawarn " with the maintaining herd of the package."
+			eqawarn "${f}${f:+${x:+\n}}${x}"
+			__vecho -ne '\n'
+			if [[ -n ${x} ]] || has stricter ${FEATURES} ; then
+				insecure_rpath=1
+			fi
+		fi
+
+		# TEXTRELs are baaaaaaaad
+		# Allow devs to mark things as ignorable ... e.g. things that are
+		# binary-only and upstream isn't cooperating (nvidia-glx) ... we
+		# allow ebuild authors to set QA_TEXTRELS_arch and QA_TEXTRELS ...
+		# the former overrides the latter ... regexes allowed ! :)
+		local qa_var="QA_TEXTRELS_${ARCH/-/_}"
+		[[ -n ${!qa_var} ]] && QA_TEXTRELS=${!qa_var}
+		[[ -n ${QA_STRICT_TEXTRELS} ]] && QA_TEXTRELS=""
+		export QA_TEXTRELS="${QA_TEXTRELS} lib*/modules/*.ko"
+		f=$(scanelf -qyRF '%t %p' "${ED}" | grep -v 'usr/lib/debug/')
+		if [[ -n ${f} ]] ; then
+			scanelf -qyRAF '%T %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-textrel.log
+			__vecho -ne '\n'
+			eqawarn "QA Notice: The following files contain runtime text relocations"
+			eqawarn " Text relocations force the dynamic linker to perform extra"
+			eqawarn " work at startup, waste system resources, and may pose a security"
+			eqawarn " risk.  On some architectures, the code may not even function"
+			eqawarn " properly, if at all."
+			eqawarn " For more information, see http://hardened.gentoo.org/pic-fix-guide.xml"
+			eqawarn " Please include the following list of files in your report:"
+			eqawarn "${f}"
+			__vecho -ne '\n'
+			die_msg="${die_msg} textrels,"
+			sleep 1
+		fi
+
+		# Also, executable stacks only matter on linux (and just glibc atm ...)
+		f=""
+		case ${CTARGET:-${CHOST}} in
+			*-linux-gnu*)
+			# Check for files with executable stacks, but only on arches which
+			# are supported at the moment.  Keep this list in sync with
+			# http://www.gentoo.org/proj/en/hardened/gnu-stack.xml (Arch Status)
+			case ${CTARGET:-${CHOST}} in
+				arm*|i?86*|ia64*|m68k*|s390*|sh*|x86_64*)
+					# Allow devs to mark things as ignorable ... e.g. things
+					# that are binary-only and upstream isn't cooperating ...
+					# we allow ebuild authors to set QA_EXECSTACK_arch and
+					# QA_EXECSTACK ... the former overrides the latter ...
+					# regexes allowed ! :)
+
+					qa_var="QA_EXECSTACK_${ARCH/-/_}"
+					[[ -n ${!qa_var} ]] && QA_EXECSTACK=${!qa_var}
+					[[ -n ${QA_STRICT_EXECSTACK} ]] && QA_EXECSTACK=""
+					qa_var="QA_WX_LOAD_${ARCH/-/_}"
+					[[ -n ${!qa_var} ]] && QA_WX_LOAD=${!qa_var}
+					[[ -n ${QA_STRICT_WX_LOAD} ]] && QA_WX_LOAD=""
+					export QA_EXECSTACK="${QA_EXECSTACK} lib*/modules/*.ko"
+					export QA_WX_LOAD="${QA_WX_LOAD} lib*/modules/*.ko"
+					f=$(scanelf -qyRAF '%e %p' "${ED}" | grep -v 'usr/lib/debug/')
+					;;
+			esac
+			;;
+		esac
+		if [[ -n ${f} ]] ; then
+			# One more pass to help devs track down the source
+			scanelf -qyRAF '%e %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-execstack.log
+			__vecho -ne '\n'
+			eqawarn "QA Notice: The following files contain writable and executable sections"
+			eqawarn " Files with such sections will not work properly (or at all!) on some"
+			eqawarn " architectures/operating systems.  A bug should be filed at"
+			eqawarn " http://bugs.gentoo.org/ to make sure the issue is fixed."
+			eqawarn " For more information, see http://hardened.gentoo.org/gnu-stack.xml"
+			eqawarn " Please include the following list of files in your report:"
+			eqawarn " Note: Bugs should be filed for the respective maintainers"
+			eqawarn " of the package in question and not hardened@g.o."
+			eqawarn "${f}"
+			__vecho -ne '\n'
+			die_msg="${die_msg} execstacks"
+			sleep 1
+		fi
+
+		if [[ ${insecure_rpath} -eq 1 ]] ; then
+			die "Aborting due to serious QA concerns with RUNPATH/RPATH"
+		elif [[ -n ${die_msg} ]] && has stricter ${FEATURES} ; then
+			die "Aborting due to QA concerns: ${die_msg}"
+		fi
+	fi
+}
+
+elf_check
+: # guarantee successful exit
+
+# vim:ft=sh

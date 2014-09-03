@@ -1,0 +1,117 @@
+# Prefix specific QA checks
+
+install_qa_check_prefix() {
+	[[ ${ED} == ${D} ]] && return
+
+	if [[ -d ${ED}/${D} ]] ; then
+		find "${ED}/${D}" | \
+		while read i ; do
+			eqawarn "QA Notice: /${i##${ED}/${D}} installed in \${ED}/\${D}"
+		done
+		die "Aborting due to QA concerns: files installed in ${ED}/${D}"
+	fi
+
+	if [[ -d ${ED}/${EPREFIX} ]] ; then
+		find "${ED}/${EPREFIX}/" | \
+		while read i ; do
+			eqawarn "QA Notice: ${i#${D}} double prefix"
+		done
+		die "Aborting due to QA concerns: double prefix files installed"
+	fi
+
+	if [[ -d ${D} ]] ; then
+		INSTALLTOD=$(find ${D%/} | egrep -v "^${ED}" | sed -e "s|^${D%/}||" | awk '{if (length($0) <= length("'"${EPREFIX}"'")) { if (substr("'"${EPREFIX}"'", 1, length($0)) != $0) {print $0;} } else if (substr($0, 1, length("'"${EPREFIX}"'")) != "'"${EPREFIX}"'") {print $0;} }')
+		if [[ -n ${INSTALLTOD} ]] ; then
+			eqawarn "QA Notice: the following files are outside of the prefix:"
+			eqawarn "${INSTALLTOD}"
+			die "Aborting due to QA concerns: there are files installed outside the prefix"
+		fi
+	fi
+
+	# all further checks rely on ${ED} existing
+	[[ -d ${ED} ]] || return
+
+	# check shebangs, bug #282539
+	rm -f "${T}"/non-prefix-shebangs-errs
+	local WHITELIST=" /usr/bin/env "
+	# this is hell expensive, but how else?
+	find "${ED}" -executable \! -type d -print0 \
+			| xargs -0 grep -H -n -m1 "^#!" \
+			| while read f ;
+	do
+		local fn=${f%%:*}
+		local pos=${f#*:} ; pos=${pos%:*}
+		local line=${f##*:}
+		# shebang always appears on the first line ;)
+		[[ ${pos} != 1 ]] && continue
+		local oldIFS=${IFS}
+		IFS=$'\r'$'\n'$'\t'" "
+		line=( ${line#"#!"} )
+		IFS=${oldIFS}
+		[[ ${WHITELIST} == *" ${line[0]} "* ]] && continue
+		local fp=${fn#${D}} ; fp=/${fp%/*}
+		# line[0] can be an absolutised path, bug #342929
+		local eprefix=$(canonicalize ${EPREFIX})
+		local rf=${fn}
+		# in case we deal with a symlink, make sure we don't replace it
+		# with a real file (sed -i does that)
+		if [[ -L ${fn} ]] ; then
+			rf=$(readlink ${fn})
+			[[ ${rf} != /* ]] && rf=${fn%/*}/${rf}
+			# ignore symlinks pointing to outside prefix
+			# as seen in sys-devel/native-cctools
+			[[ $(canonicalize "/${rf#${D}}") != ${eprefix}/* ]] && continue
+		fi
+		# does the shebang start with ${EPREFIX}, and does it exist?
+		if [[ ${line[0]} == ${EPREFIX}/* || ${line[0]} == ${eprefix}/* ]] ; then
+			if [[ ! -e ${ROOT%/}${line[0]} && ! -e ${D%/}${line[0]} ]] ; then
+				# hmm, refers explicitly to $EPREFIX, but doesn't exist,
+				# if it's in PATH that's wrong in any case
+				if [[ ":${PATH}:" == *":${fp}:"* ]] ; then
+					echo "${fn#${D}}:${line[0]} (explicit EPREFIX but target not found)" \
+						>> "${T}"/non-prefix-shebangs-errs
+				else
+					eqawarn "${fn#${D}} has explicit EPREFIX in shebang but target not found (${line[0]})"
+				fi
+			fi
+			continue
+		fi
+		# unprefixed shebang, is the script directly in $PATH?
+		if [[ ":${PATH}:" == *":${fp}:"* ]] ; then
+			if [[ -e ${EROOT}${line[0]} || -e ${ED}${line[0]} ]] ; then
+				# is it unprefixed, but we can just fix it because a
+				# prefixed variant exists
+				eqawarn "prefixing shebang of ${fn#${D}}"
+				# statement is made idempotent on purpose, because
+				# symlinks may point to the same target, and hence the
+				# same real file may be sedded multiple times since we
+				# read the shebangs in one go upfront for performance
+				# reasons
+				sed -i -e '1s:^#! \?'"${line[0]}"':#!'"${EPREFIX}"${line[0]}':' "${rf}"
+				continue
+			else
+				# this is definitely wrong: script in $PATH and invalid shebang
+				echo "${fn#${D}}:${line[0]} (script ${fn##*/} installed in PATH but interpreter ${line[0]} not found)" \
+					>> "${T}"/non-prefix-shebangs-errs
+			fi
+		else
+			# unprefixed/invalid shebang, but outside $PATH, this may be
+			# intended (e.g. config.guess) so remain silent by default
+			has stricter ${FEATURES} && \
+				eqawarn "invalid shebang in ${fn#${D}}: ${line[0]}"
+		fi
+	done
+	if [[ -e "${T}"/non-prefix-shebangs-errs ]] ; then
+		eqawarn "QA Notice: the following files use invalid (possible non-prefixed) shebangs:"
+		while read line ; do
+			eqawarn "  ${line}"
+		done < "${T}"/non-prefix-shebangs-errs
+		rm -f "${T}"/non-prefix-shebangs-errs
+		die "Aborting due to QA concerns: invalid shebangs found"
+	fi
+}
+
+install_qa_check_prefix
+: # guarantee successful exit
+
+# vim:ft=sh

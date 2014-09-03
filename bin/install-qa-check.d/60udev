@@ -1,0 +1,21 @@
+# Check udev rule installs
+
+udev_check() {
+	set +f
+	local x f=
+	for x in "${ED}etc/udev/rules.d/"* "${ED}lib"*"/udev/rules.d/"* ; do
+		[[ -e ${x} ]] || continue
+		[[ ${x} == ${ED}lib/udev/rules.d/* ]] && continue
+		f+="  ${x#${ED}}\n"
+	done
+	if [[ -n $f ]] ; then
+		eqawarn "QA Notice: udev rules should be installed in /lib/udev/rules.d:"
+		eqawarn
+		eqawarn "$f"
+	fi
+}
+
+udev_check
+: # guarantee successful exit
+
+# vim:ft=sh

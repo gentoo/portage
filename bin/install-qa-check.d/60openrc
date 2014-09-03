@@ -1,0 +1,41 @@
+# QA checks for OpenRC init.d files.
+
+openrc_check() {
+	# Sanity check syntax errors in init.d scripts
+	local d i
+	for d in /etc/conf.d /etc/init.d ; do
+		[[ -d ${ED}/${d} ]] || continue
+		for i in "${ED}"/${d}/* ; do
+			[[ -L ${i} ]] && continue
+			# if empty conf.d/init.d dir exists (baselayout), then i will be "/etc/conf.d/*" and not exist
+			[[ ! -e ${i} ]] && continue
+			if [[ ${d} == /etc/init.d && ${i} != *.sh ]] ; then
+				# skip non-shell-script for bug #451386
+				[[ $(head -n1 "${i}") =~ ^#!.*[[:space:]/](runscript|sh)$ ]] || continue
+			fi
+			bash -n "${i}" || die "The init.d file has syntax errors: ${i}"
+		done
+	done
+
+	local checkbashisms=$(type -P checkbashisms)
+	if [[ -n ${checkbashisms} ]] ; then
+		for d in /etc/init.d ; do
+			[[ -d ${ED}${d} ]] || continue
+			for i in "${ED}${d}"/* ; do
+				[[ -e ${i} ]] || continue
+				[[ -L ${i} ]] && continue
+				f=$("${checkbashisms}" -f "${i}" 2>&1)
+				[[ $? != 0 && -n ${f} ]] || continue
+				eqawarn "QA Notice: shell script appears to use non-POSIX feature(s):"
+				while read -r ;
+					do eqawarn "   ${REPLY}"
+				done <<< "${f//${ED}}"
+			done
+		done
+	fi
+}
+
+openrc_check
+: # guarantee successful exit
+
+# vim:ft=sh

@@ -1,0 +1,158 @@
+# Check for issues with installed libraries
+
+lib_check() {
+	local f x i j
+
+	if type -P scanelf > /dev/null && ! has binchecks ${RESTRICT}; then
+		# Check for shared libraries lacking SONAMEs
+		local qa_var="QA_SONAME_${ARCH/-/_}"
+		eval "[[ -n \${!qa_var} ]] && QA_SONAME=(\"\${${qa_var}[@]}\")"
+		f=$(scanelf -ByF '%S %p' "${ED}"{,usr/}lib*/lib*.so* | awk '$2 == "" { print }' | sed -e "s:^[[:space:]]${ED}:/:")
+		if [[ -n ${f} ]] ; then
+			echo "${f}" > "${T}"/scanelf-missing-SONAME.log
+			if [[ "${QA_STRICT_SONAME-unset}" == unset ]] ; then
+				if [[ ${#QA_SONAME[@]} -gt 1 ]] ; then
+					for x in "${QA_SONAME[@]}" ; do
+						sed -e "s#^/${x#/}\$##" -i "${T}"/scanelf-missing-SONAME.log
+					done
+				else
+					local shopts=$-
+					set -o noglob
+					for x in ${QA_SONAME} ; do
+						sed -e "s#^/${x#/}\$##" -i "${T}"/scanelf-missing-SONAME.log
+					done
+					set +o noglob
+					set -${shopts}
+				fi
+			fi
+			sed -e "/^\$/d" -i "${T}"/scanelf-missing-SONAME.log
+			f=$(<"${T}"/scanelf-missing-SONAME.log)
+			if [[ -n ${f} ]] ; then
+				__vecho -ne '\n'
+				eqawarn "QA Notice: The following shared libraries lack a SONAME"
+				eqawarn "${f}"
+				__vecho -ne '\n'
+				sleep 1
+			else
+				rm -f "${T}"/scanelf-missing-SONAME.log
+			fi
+		fi
+
+		# Check for shared libraries lacking NEEDED entries
+		qa_var="QA_DT_NEEDED_${ARCH/-/_}"
+		eval "[[ -n \${!qa_var} ]] && QA_DT_NEEDED=(\"\${${qa_var}[@]}\")"
+		f=$(scanelf -ByF '%n %p' "${ED}"{,usr/}lib*/lib*.so* | awk '$2 == "" { print }' | sed -e "s:^[[:space:]]${ED}:/:")
+		if [[ -n ${f} ]] ; then
+			echo "${f}" > "${T}"/scanelf-missing-NEEDED.log
+			if [[ "${QA_STRICT_DT_NEEDED-unset}" == unset ]] ; then
+				if [[ ${#QA_DT_NEEDED[@]} -gt 1 ]] ; then
+					for x in "${QA_DT_NEEDED[@]}" ; do
+						sed -e "s#^/${x#/}\$##" -i "${T}"/scanelf-missing-NEEDED.log
+					done
+				else
+					local shopts=$-
+					set -o noglob
+					for x in ${QA_DT_NEEDED} ; do
+						sed -e "s#^/${x#/}\$##" -i "${T}"/scanelf-missing-NEEDED.log
+					done
+					set +o noglob
+					set -${shopts}
+				fi
+			fi
+			sed -e "/^\$/d" -i "${T}"/scanelf-missing-NEEDED.log
+			f=$(<"${T}"/scanelf-missing-NEEDED.log)
+			if [[ -n ${f} ]] ; then
+				__vecho -ne '\n'
+				eqawarn "QA Notice: The following shared libraries lack NEEDED entries"
+				eqawarn "${f}"
+				__vecho -ne '\n'
+				sleep 1
+			else
+				rm -f "${T}"/scanelf-missing-NEEDED.log
+			fi
+		fi
+	fi
+
+	# this should help to ensure that all (most?) shared libraries are executable
+	# and that all libtool scripts / static libraries are not executable
+	for i in "${ED}"opt/*/lib* \
+	         "${ED}"lib* \
+	         "${ED}"usr/lib* ; do
+		[[ ! -d ${i} ]] && continue
+
+		for j in "${i}"/*.so.* "${i}"/*.so ; do
+			[[ ! -e ${j} ]] && continue
+			[[ -L ${j} ]] && continue
+			[[ -x ${j} ]] && continue
+			__vecho "making executable: ${j#${ED}}"
+			chmod +x "${j}"
+		done
+
+		for j in "${i}"/*.a "${i}"/*.la ; do
+			[[ ! -e ${j} ]] && continue
+			[[ -L ${j} ]] && continue
+			[[ ! -x ${j} ]] && continue
+			__vecho "removing executable bit: ${j#${ED}}"
+			chmod -x "${j}"
+		done
+
+		for j in "${i}"/*.{a,dll,dylib,sl,so}.* "${i}"/*.{a,dll,dylib,sl,so} ; do
+			[[ ! -e ${j} ]] && continue
+			[[ ! -L ${j} ]] && continue
+			linkdest=$(readlink "${j}")
+			if [[ ${linkdest} == /* ]] ; then
+				__vecho -ne '\n'
+				eqawarn "QA Notice: Found an absolute symlink in a library directory:"
+				eqawarn "           ${j#${D}} -> ${linkdest}"
+				eqawarn "           It should be a relative symlink if in the same directory"
+				eqawarn "           or a linker script if it crosses the /usr boundary."
+			fi
+		done
+	done
+
+	# When installing static libraries into /usr/lib and shared libraries into
+	# /lib, we have to make sure we have a linker script in /usr/lib along side
+	# the static library, or gcc will utilize the static lib when linking :(.
+	# http://bugs.gentoo.org/4411
+	local abort="no"
+	local a s
+	for a in "${ED}"usr/lib*/*.a ; do
+		s=${a%.a}.so
+		if [[ ! -e ${s} ]] ; then
+			s=${s%usr/*}${s##*/usr/}
+			if [[ -e ${s} ]] ; then
+				__vecho -ne '\n'
+				eqawarn "QA Notice: Missing gen_usr_ldscript for ${s##*/}"
+				abort="yes"
+			fi
+		fi
+	done
+	[[ ${abort} == "yes" ]] && die "add those ldscripts"
+
+	# Make sure people don't store libtool files or static libs in /lib
+	f=$(ls "${ED}"lib*/*.{a,la} 2>/dev/null)
+	if [[ -n ${f} ]] ; then
+		__vecho -ne '\n'
+		eqawarn "QA Notice: Excessive files found in the / partition"
+		eqawarn "${f}"
+		__vecho -ne '\n'
+		die "static archives (*.a) and libtool library files (*.la) belong in /usr/lib*, not /lib*"
+	fi
+
+	# Verify that the libtool files don't contain bogus $D entries.
+	local abort=no gentoo_bug=no always_overflow=no
+	for a in "${ED}"usr/lib*/*.la ; do
+		s=${a##*/}
+		if grep -qs "${ED}" "${a}" ; then
+			__vecho -ne '\n'
+			eqawarn "QA Notice: ${s} appears to contain PORTAGE_TMPDIR paths"
+			abort="yes"
+		fi
+	done
+	[[ ${abort} == "yes" ]] && die "soiled libtool library files found"
+}
+
+lib_check
+: # guarantee successful exit
+
+# vim:ft=sh

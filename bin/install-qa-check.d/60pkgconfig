@@ -1,0 +1,15 @@
+# Check for pkg-config file issues
+
+pkgconfig_check() {
+	# Look for leaking LDFLAGS into pkg-config files
+	local f=$(egrep -sH '^Libs.*-Wl,(-O[012]|--hash-style)' "${ED}"/usr/*/pkgconfig/*.pc)
+	if [[ -n ${f} ]] ; then
+		eqawarn "QA Notice: pkg-config files with wrong LDFLAGS detected:"
+		eqawarn "${f//${D}}"
+	fi
+}
+
+pkgconfig_check
+: # guarantee successful exit
+
+# vim:ft=sh
