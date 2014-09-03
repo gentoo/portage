@@ -395,11 +395,8 @@ class InheritDeprecated(LineCheck):
 
 	def new(self, pkg):
 		self._errors = []
-		self._indirect_deprecated = set(eclass for eclass in \
-			self.deprecated_classes if eclass in pkg.inherited)
 
 	def check(self, num, line):
-
 		direct_inherits = None
 		m = self._inherit_re.match(line)
 		if m is not None:
@@ -415,11 +412,9 @@ class InheritDeprecated(LineCheck):
 			if replacement is None:
 				pass
 			elif replacement is False:
-				self._indirect_deprecated.discard(eclass)
 				self._errors.append("please migrate from " + \
 					"'%s' (no replacement) on line: %d" % (eclass, num + 1))
 			else:
-				self._indirect_deprecated.discard(eclass)
 				self._errors.append("please migrate from " + \
 					"'%s' to '%s' on line: %d" % \
 					(eclass, replacement, num + 1))
@@ -428,17 +423,6 @@ class InheritDeprecated(LineCheck):
 		for error in self._errors:
 			yield error
 		del self._errors
-
-		for eclass in self._indirect_deprecated:
-			replacement = self.deprecated_classes[eclass]
-			if replacement is False:
-				yield "please migrate from indirect " + \
-					"inherit of '%s' (no replacement)" % (eclass,)
-			else:
-				yield "please migrate from indirect " + \
-					"inherit of '%s' to '%s'" % \
-					(eclass, replacement)
-		del self._indirect_deprecated
 
 class InheritEclass(LineCheck):
 	"""
