@@ -113,7 +113,7 @@ class TaskHandler(object):
 		for task in tasks:
 			inst = task()
 			show_progress = self.show_progress_bar and self.isatty
-			# check if the function is capable of progressbar 
+			# check if the function is capable of progressbar
 			# and possibly override it off
 			if show_progress and hasattr(inst, 'can_progressbar'):
 				show_progress = inst.can_progressbar(func)
@@ -206,9 +206,9 @@ def emaint_main(myargv):
 		tasks = []
 		for m in module_names[1:]:
 			#print("DEBUG: module: %s, functions: " % (m, str(module_controller.get_functions(m))))
-			if func in module_controller.get_functions(m):
+			if long_action in module_controller.get_functions(m):
 				tasks.append(module_controller.get_class(m))
-	elif func in module_controller.get_functions(args[0]):
+	elif long_action in module_controller.get_functions(args[0]):
 		tasks = [module_controller.get_class(args[0] )]
 	else:
 		portage.util.writemsg(
