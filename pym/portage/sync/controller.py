@@ -10,7 +10,7 @@ import pwd
 
 import portage
 from portage import os
-from portage.emaint.progress import ProgressBar
+from portage.progress import ProgressBar
 #from portage.emaint.defaults import DEFAULT_OPTIONS
 #from portage.util._argparse import ArgumentParser
 from portage.util import writemsg_level

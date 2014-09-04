@@ -9,8 +9,8 @@ import textwrap
 
 import portage
 from portage import os
-from portage.emaint.module import Modules
-from portage.emaint.progress import ProgressBar
+from portage.module import Modules
+from portage.progress import ProgressBar
 from portage.emaint.defaults import DEFAULT_OPTIONS
 from portage.util._argparse import ArgumentParser
 
@@ -153,7 +153,13 @@ def emaint_main(myargv):
 	# files (such as the world file) have sane permissions.
 	os.umask(0o22)
 
-	module_controller = Modules(namepath="portage.emaint.modules")
+	module_path = os.path.join(
+		(os.path.dirname(
+		os.path.realpath(__file__))), "modules"
+		)
+	module_controller = Modules(
+		path=module_path,
+		namepath="portage.emaint.modules")
 	module_names = module_controller.module_names[:]
 	module_names.insert(0, "all")
 

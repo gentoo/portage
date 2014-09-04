@@ -74,29 +74,16 @@ class Modules(object):
 	"""Dynamic modules system for loading and retrieving any of the
 	installed emaint modules and/or provided class's
 
-	@param path: Optional path to the "modules" directory or
-			defaults to the directory of this file + '/modules'
-	@param namepath: Optional python import path to the "modules" directory or
-			defaults to the directory name of this file + '.modules'
+	@param path: Path to the "modules" directory
+	@param namepath: Python import path to the "modules" directory
 	"""
 
-	def __init__(self, path=None, namepath=None):
-		if path:
-			self._module_path = path
-		else:
-			self._module_path = os.path.join((
-				os.path.dirname(os.path.realpath(__file__))), "modules")
-		if namepath:
-			self._namepath = namepath
-		else:
-			self._namepath = '.'.join(os.path.dirname(
-				os.path.realpath(__file__)), "modules")
+	def __init__(self, path, namepath):
+		self._module_path = path
+		self._namepath = namepath
 		self._modules = self._get_all_modules()
 		self.modules = ProtectedDict(self._modules)
 		self.module_names = sorted(self._modules)
-		#self.modules = {}
-		#for mod in self.module_names:
-			#self.module[mod] = LazyLoad(
 
 	def _get_all_modules(self):
 		"""scans the emaint modules dir for loadable modules
