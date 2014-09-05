@@ -253,6 +253,7 @@ class RepoConfig(object):
 				# useful when having two copies of the same repo enabled
 				# to avoid modifying profiles/repo_name in one of them
 				self.name = layout_data['repo-name']
+				self.missing_repo_name = False
 
 			for value in ('allow-missing-manifest',
 				'allow-provide-virtual', 'cache-formats',
