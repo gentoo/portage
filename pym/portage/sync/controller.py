@@ -85,7 +85,7 @@ class SyncManager(object):
 		os.umask(0o22)
 
 		self.module_controller = portage.sync.module_controller
-		self.module_names = self.module_controller.module_names[:]
+		self.module_names = self.module_controller.module_names
 
 
 	def get_module_descriptions(self, mod):
