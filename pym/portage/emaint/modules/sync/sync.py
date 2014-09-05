@@ -70,20 +70,22 @@ class SyncRepos(object):
 		'''Sync auto-sync enabled repos'''
 		options = kwargs.get('options', None)
 		selected = self._get_repos(True)
-		if options.get('return-messages', False):
-			return self.rmessage(self._sync(selected), 'sync')
-		return self._sync(selected)
+		if options:
+			return_messages = options.get('return-messages', False)
+		else:
+			return_messages = False
+		return self._sync(selected, return_messages)
 
 
 	def all_repos(self, **kwargs):
 		'''Sync all repos defined in repos.conf'''
 		selected = self._get_repos(auto_sync_only=False)
 		options = kwargs.get('options', None)
-		if options.get('return-messages', False):
-			return self.rmessage(
-				self._sync(selected),
-				'sync')
-		return self._sync(selected)
+		if options:
+			return_messages = options.get('return-messages', False)
+		else:
+			return_messages = False
+		return self._sync(selected, return_messages)
 
 
 	def repo(self, **kwargs):
@@ -98,9 +100,7 @@ class SyncRepos(object):
 			repos = repos.split()
 		available = self._get_repos(auto_sync_only=False)
 		selected = self._match_repos(repos, available)
-		if return_messages:
-			return self.rmessage(self._sync(selected), 'sync')
-		return self._sync(selected)
+		return self._sync(selected, return_messages)
 
 
 	@staticmethod
@@ -124,7 +124,7 @@ class SyncRepos(object):
 		missing_sync_type = []
 		if self.emerge_config.args:
 			for repo_name in self.emerge_config.args:
-				print("_get_repos(): repo_name =", repo_name)
+				#print("_get_repos(): repo_name =", repo_name)
 				try:
 					repo = self.emerge_config.target_config.settings.repositories[repo_name]
 				except KeyError:
@@ -146,7 +146,8 @@ class SyncRepos(object):
 					level=logging.ERROR, noiselevel=-1)
 
 			if unknown_repo_names or missing_sync_type:
-				print("missing or unknown repos... returning")
+				writemsg_level("Missing or unknown repos... returning",
+					level=logging.INFO, noiselevel=2)
 				return []
 
 		else:
@@ -165,17 +166,20 @@ class SyncRepos(object):
 		return selected
 
 
-	def _sync(self, selected_repos):
+	def _sync(self, selected_repos, return_messages):
+		msgs = []
 		if not selected_repos:
-			print("_sync(), nothing to sync... returning")
-			return [('None', os.EX_OK)]
+			msgs.append("Emaint sync, nothing to sync... returning")
+			if return_messages:
+				return msgs.append(self.rmessage(('None', os.EX_OK), 'sync'))
+			return
 		# Portage needs to ensure a sane umask for the files it creates.
 		os.umask(0o22)
 
 		sync_manager = get_syncer(self.emerge_config.target_config.settings, emergelog)
 		retvals = []
 		for repo in selected_repos:
-			print("syncing repo:", repo.name)
+			#print("syncing repo:", repo.name)
 			if repo.sync_type is not None:
 				returncode = sync_manager.sync(self.emerge_config, repo)
 				#if returncode != os.EX_OK:
@@ -185,12 +189,16 @@ class SyncRepos(object):
 		portage._sync_mode = False
 		self._reload_config()
 		self._do_pkg_moves()
-		self._check_updates()
+		msgs.extend(self._check_updates())
 		display_news_notification(self.emerge_config.target_config,
 			self.emerge_config.opts)
 		if retvals:
-			return retvals
-		return [('None', os.EX_OK)]
+			msgs.extend(self.rmessage(retvals, 'sync'))
+		else:
+			msgs.append(self.rmessage(('None', os.EX_OK), 'sync'))
+		if return_messages:
+			return msgs
+		return
 
 
 	def _do_pkg_moves(self):
@@ -214,13 +222,15 @@ class SyncRepos(object):
 			portage.util.shlex_split(
 				self.emerge_config.target_config.settings.get("CONFIG_PROTECT", "")))
 
+		msgs = []
 		if mybestpv != mypvs and "--quiet" not in self.emerge_config.opts:
-			print()
-			print(warn(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended")
-			print(warn(" * ")+"that you update portage now, before any other packages are updated.")
-			print()
-			print(warn(" * ")+"To update portage, run 'emerge --oneshot portage' now.")
-			print()
+			msgs.append('')
+			msgs.append(warn(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended")
+			msgs.append(warn(" * ")+"that you update portage now, before any other packages are updated.")
+			msgs.append('')
+			msgs.append(warn(" * ")+"To update portage, run 'emerge --oneshot portage' now.")
+			msgs.append('')
+		return msgs
 
 
 	def _reload_config(self):
