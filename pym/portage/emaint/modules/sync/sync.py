@@ -179,11 +179,11 @@ class SyncRepos(object):
 		sync_manager = get_syncer(self.emerge_config.target_config.settings, emergelog)
 		retvals = []
 		for repo in selected_repos:
-			#print("syncing repo:", repo.name)
 			if repo.sync_type is not None:
-				returncode = sync_manager.sync(self.emerge_config, repo)
-				#if returncode != os.EX_OK:
+				returncode, message = sync_manager.sync(self.emerge_config, repo)
 				retvals.append((repo.name, returncode))
+				if message:
+					msgs.append(message)
 
 		# Reload the whole config.
 		portage._sync_mode = False

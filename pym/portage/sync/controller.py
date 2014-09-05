@@ -103,14 +103,13 @@ class SyncManager(object):
 		if repo.sync_type in self.module_names[1:]:
 			tasks = [self.module_controller.get_class(repo.sync_type)]
 		else:
-			portage.util.writemsg(
-				"\nERROR: Sync module '%s' is not an installed/known type'\n\n"
-				% (repo.sync_type), noiselevel=-1)
-			return self.exitcode
+			msg = "\n%s: Sync module '%s' is not an installed/known type'\n" \
+				% (bad("ERROR"), repo.sync_type)
+			return self.exitcode, msg
 
 		rval = self.pre_sync(repo)
 		if rval != os.EX_OK:
-			return rval
+			return rval, None
 
 		# need to pass the kwargs dict to the modules
 		# so they are available if needed.
@@ -131,7 +130,7 @@ class SyncManager(object):
 
 		self.perform_post_sync_hook(repo.sync_uri)
 
-		return self.exitcode
+		return self.exitcode, None
 
 
 	def do_callback(self, result):
@@ -168,7 +167,7 @@ class SyncManager(object):
 		except OSError:
 			st = None
 		if st is None:
-			print(">>> '%s' not found, creating it." % repo.location)
+			writemsg_level(">>> '%s' not found, creating it." % repo.location)
 			portage.util.ensure_dirs(repo.location, mode=0o755)
 			st = os.stat(repo.location)
 
