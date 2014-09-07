@@ -36,8 +36,9 @@ class TaskHandler(object):
 
 	def run_tasks(self, tasks, func, status=None, verbose=True, options=None):
 		"""Runs the module tasks"""
-		if tasks is None or func is None:
-			return
+		# Ensure we have a task and function
+		assert(tasks)
+		assert(func)
 		for task in tasks:
 			inst = task()
 			show_progress = self.show_progress_bar and self.isatty
