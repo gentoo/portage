@@ -662,7 +662,8 @@ class ResolverPlaygroundTestCase(object):
 									str((node1, node2))) + \
 									", got: " + str(got))
 
-			elif key in ("unstable_keywords", "needed_p_mask_changes") and expected is not None:
+			elif key in ("unstable_keywords", "needed_p_mask_changes",
+				"unsatisfied_deps") and expected is not None:
 				expected = set(expected)
 
 			if got != expected:
@@ -678,9 +679,10 @@ class ResolverPlaygroundResult(object):
 
 	checks = (
 		"success", "mergelist", "use_changes", "license_changes", "unstable_keywords", "slot_collision_solutions",
-		"circular_dependency_solutions", "needed_p_mask_changes",
+		"circular_dependency_solutions", "needed_p_mask_changes", "unsatisfied_deps",
 		)
 	optional_checks = (
+		"unsatisfied_deps"
 		)
 
 	def __init__(self, atoms, success, mydepgraph, favorites):
@@ -695,6 +697,7 @@ class ResolverPlaygroundResult(object):
 		self.needed_p_mask_changes = None
 		self.slot_collision_solutions = None
 		self.circular_dependency_solutions = None
+		self.unsatisfied_deps = frozenset()
 
 		if self.depgraph._dynamic_config._serialized_tasks_cache is not None:
 			self.mergelist = []
@@ -753,6 +756,10 @@ class ResolverPlaygroundResult(object):
 			handler = self.depgraph._dynamic_config._circular_dependency_handler
 			sol = handler.solutions
 			self.circular_dependency_solutions = dict(zip([x.cpv for x in sol.keys()], sol.values()))
+
+		if self.depgraph._dynamic_config._unsatisfied_deps_for_display:
+			self.unsatisfied_deps = set(dep_info[0][1]
+				for dep_info in self.depgraph._dynamic_config._unsatisfied_deps_for_display)
 
 class ResolverPlaygroundDepcleanResult(object):
 
