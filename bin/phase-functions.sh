@@ -382,6 +382,19 @@ __dyn_prepare() {
 	trap - SIGINT SIGQUIT
 }
 
+# @FUNCTION: __start_distcc
+# @DESCRIPTION:
+# Start distcc-pump if necessary.
+__start_distcc() {
+	if has distcc $FEATURES && has distcc-pump $FEATURES ; then
+		if [[ -z $INCLUDE_SERVER_PORT ]] || [[ ! -w $INCLUDE_SERVER_PORT ]] ; then
+			# adding distcc to PATH repeatedly results in fatal distcc recursion :)
+			eval $(pump --startup | grep -v PATH)
+			trap "pump --shutdown >/dev/null" EXIT
+		fi
+	fi
+}
+
 __dyn_configure() {
 
 	if [[ -e $PORTAGE_BUILDDIR/.configured ]] ; then
@@ -401,6 +414,7 @@ __dyn_configure() {
 	fi
 
 	trap __abort_configure SIGINT SIGQUIT
+	__start_distcc
 
 	__ebuild_phase pre_src_configure
 
@@ -434,13 +448,7 @@ __dyn_compile() {
 	fi
 
 	trap __abort_compile SIGINT SIGQUIT
-
-	if has distcc $FEATURES && has distcc-pump $FEATURES ; then
-		if [[ -z $INCLUDE_SERVER_PORT ]] || [[ ! -w $INCLUDE_SERVER_PORT ]] ; then
-			eval $(pump --startup)
-			trap "pump --shutdown" EXIT
-		fi
-	fi
+	__start_distcc
 
 	__ebuild_phase pre_src_compile
 
@@ -464,6 +472,8 @@ __dyn_test() {
 	fi
 
 	trap "__abort_test" SIGINT SIGQUIT
+	__start_distcc
+
 	if [ -d "${S}" ]; then
 		cd "${S}"
 	else
@@ -509,6 +519,8 @@ __dyn_install() {
 		return 0
 	fi
 	trap "__abort_install" SIGINT SIGQUIT
+	__start_distcc
+
 	__ebuild_phase pre_src_install
 
 	if ___eapi_has_prefix_variables; then
