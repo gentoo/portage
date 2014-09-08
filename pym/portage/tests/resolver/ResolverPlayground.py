@@ -58,7 +58,7 @@ class ResolverPlayground(object):
 
 	def __init__(self, ebuilds={}, binpkgs={}, installed={}, profile={}, repo_configs={}, \
 		user_config={}, sets={}, world=[], world_sets=[], distfiles={},
-		targetroot=False, debug=False):
+		eprefix=None, targetroot=False, debug=False):
 		"""
 		ebuilds: cpv -> metadata mapping simulating available ebuilds.
 		installed: cpv -> metadata mapping simulating installed packages.
@@ -66,7 +66,10 @@ class ResolverPlayground(object):
 		profile: settings defined by the profile.
 		"""
 		self.debug = debug
-		self.eprefix = normalize_path(tempfile.mkdtemp())
+		if eprefix is None:
+			self.eprefix = normalize_path(tempfile.mkdtemp())
+		else:
+			self.eprefix = normalize_path(eprefix)
 		portage.const.EPREFIX = self.eprefix.rstrip(os.sep)
 
 		self.eroot = self.eprefix + os.sep

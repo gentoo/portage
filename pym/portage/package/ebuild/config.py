@@ -1360,6 +1360,7 @@ class config(object):
 		previous_iuse = pkg_configdict.get("IUSE")
 		previous_iuse_effective = pkg_configdict.get("IUSE_EFFECTIVE")
 		previous_features = pkg_configdict.get("FEATURES")
+		previous_penv = self._penv
 
 		aux_keys = self._setcpv_aux_keys
 
@@ -1526,6 +1527,9 @@ class config(object):
 						pkg_configdict['USE'] + " " + self.puse
 				else:
 					pkg_configdict['USE'] = self.puse
+
+		elif previous_penv:
+			has_changed = True
 
 		if has_changed:
 			self.reset(keeping_pkg=1)
