@@ -1488,7 +1488,7 @@ def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
 				"uid": portage_uid,
 				"gid": portage_gid,
 				"groups": userpriv_groups,
-				"umask": 0o02
+				"umask": 0o22
 			})
 
 			# Adjust pty ownership so that subprocesses
@@ -1646,8 +1646,9 @@ def _post_phase_userpriv_perms(mysettings):
 		""" Privileged phases may have left files that need to be made
 		writable to a less privileged user."""
 		apply_recursive_permissions(mysettings["T"],
-			uid=portage_uid, gid=portage_gid, dirmode=0o70, dirmask=0,
-			filemode=0o60, filemask=0)
+			uid=portage_uid, gid=portage_gid, dirmode=0o700, dirmask=0,
+			filemode=0o600, filemask=0)
+
 
 def _check_build_log(mysettings, out=None):
 	"""

@@ -76,17 +76,12 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
 			ensure_dirs(mydir)
 			try:
 				apply_secpass_permissions(mydir,
-					gid=portage_gid, uid=portage_uid, mode=0o70, mask=0)
+					gid=portage_gid, uid=portage_uid, mode=0o700, mask=0)
 			except PortageException:
 				if not os.path.isdir(mydir):
 					raise
 		for dir_key in ("PORTAGE_BUILDDIR", "HOME", "PKG_LOGDIR", "T"):
-			"""These directories don't necessarily need to be group writable.
-			However, the setup phase is commonly run as a privileged user prior
-			to the other phases being run by an unprivileged user.  Currently,
-			we use the portage group to ensure that the unprivleged user still
-			has write access to these directories in any case."""
-			ensure_dirs(mysettings[dir_key], mode=0o775)
+			ensure_dirs(mysettings[dir_key], mode=0o755)
 			apply_secpass_permissions(mysettings[dir_key],
 				uid=portage_uid, gid=portage_gid)
 	except PermissionDenied as e:
