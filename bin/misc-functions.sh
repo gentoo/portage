@@ -189,6 +189,8 @@ install_qa_check() {
 		for f in "${repo_location}"/metadata/install-qa-check.d/*; do
 			if [[ -f ${f} ]]; then
 				(
+					# allow inheriting eclasses
+					_IN_INSTALL_QA_CHECK=1
 					source "${f}" || eerror "Post-install QA check ${f##*/} failed to run"
 				)
 			fi

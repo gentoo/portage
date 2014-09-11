@@ -230,10 +230,10 @@ inherit() {
 		__export_funcs_var=__export_functions_$ECLASS_DEPTH
 		unset $__export_funcs_var
 
-		if [ "${EBUILD_PHASE}" != "depend" ] && \
-			[ "${EBUILD_PHASE}" != "nofetch" ] && \
-			[[ ${EBUILD_PHASE} != *rm ]] && \
-			[[ ${EMERGE_FROM} != "binary" ]] ; then
+		if [[ ${EBUILD_PHASE} != depend && ${EBUILD_PHASE} != nofetch && \
+			${EBUILD_PHASE} != *rm && ${EMERGE_FROM} != "binary" && \
+			-z ${_IN_INSTALL_QA_CHECK} ]]
+		then
 			# This is disabled in the *rm phases because they frequently give
 			# false alarms due to INHERITED in /var/db/pkg being outdated
 			# in comparison the the eclasses from the portage tree. It's
@@ -256,70 +256,75 @@ inherit() {
 		debug-print "inherit: $1 -> $location"
 		[[ -z ${location} ]] && die "${1}.eclass could not be found by inherit()"
 
-		#We need to back up the values of *DEPEND to B_*DEPEND
-		#(if set).. and then restore them after the inherit call.
+		# inherits in QA checks can't handle metadata assignments
+		if [[ -z ${_IN_INSTALL_QA_CHECK} ]]; then
+			#We need to back up the values of *DEPEND to B_*DEPEND
+			#(if set).. and then restore them after the inherit call.
 
-		#turn off glob expansion
-		set -f
+			#turn off glob expansion
+			set -f
 
-		# Retain the old data and restore it later.
-		unset B_IUSE B_REQUIRED_USE B_DEPEND B_RDEPEND B_PDEPEND B_HDEPEND
-		[ "${IUSE+set}"       = set ] && B_IUSE="${IUSE}"
-		[ "${REQUIRED_USE+set}" = set ] && B_REQUIRED_USE="${REQUIRED_USE}"
-		[ "${DEPEND+set}"     = set ] && B_DEPEND="${DEPEND}"
-		[ "${RDEPEND+set}"    = set ] && B_RDEPEND="${RDEPEND}"
-		[ "${PDEPEND+set}"    = set ] && B_PDEPEND="${PDEPEND}"
-		[ "${HDEPEND+set}"    = set ] && B_HDEPEND="${HDEPEND}"
-		unset IUSE REQUIRED_USE DEPEND RDEPEND PDEPEND HDEPEND
-		#turn on glob expansion
-		set +f
+			# Retain the old data and restore it later.
+			unset B_IUSE B_REQUIRED_USE B_DEPEND B_RDEPEND B_PDEPEND B_HDEPEND
+			[ "${IUSE+set}"       = set ] && B_IUSE="${IUSE}"
+			[ "${REQUIRED_USE+set}" = set ] && B_REQUIRED_USE="${REQUIRED_USE}"
+			[ "${DEPEND+set}"     = set ] && B_DEPEND="${DEPEND}"
+			[ "${RDEPEND+set}"    = set ] && B_RDEPEND="${RDEPEND}"
+			[ "${PDEPEND+set}"    = set ] && B_PDEPEND="${PDEPEND}"
+			[ "${HDEPEND+set}"    = set ] && B_HDEPEND="${HDEPEND}"
+			unset IUSE REQUIRED_USE DEPEND RDEPEND PDEPEND HDEPEND
+			#turn on glob expansion
+			set +f
+		fi
 
 		__qa_source "$location" || die "died sourcing $location in inherit()"
 		
-		#turn off glob expansion
-		set -f
+		if [[ -z ${_IN_INSTALL_QA_CHECK} ]]; then
+			#turn off glob expansion
+			set -f
 
-		# If each var has a value, append it to the global variable E_* to
-		# be applied after everything is finished. New incremental behavior.
-		[ "${IUSE+set}"         = set ] && E_IUSE+="${E_IUSE:+ }${IUSE}"
-		[ "${REQUIRED_USE+set}" = set ] && E_REQUIRED_USE+="${E_REQUIRED_USE:+ }${REQUIRED_USE}"
-		[ "${DEPEND+set}"       = set ] && E_DEPEND+="${E_DEPEND:+ }${DEPEND}"
-		[ "${RDEPEND+set}"      = set ] && E_RDEPEND+="${E_RDEPEND:+ }${RDEPEND}"
-		[ "${PDEPEND+set}"      = set ] && E_PDEPEND+="${E_PDEPEND:+ }${PDEPEND}"
-		[ "${HDEPEND+set}"      = set ] && E_HDEPEND+="${E_HDEPEND:+ }${HDEPEND}"
+			# If each var has a value, append it to the global variable E_* to
+			# be applied after everything is finished. New incremental behavior.
+			[ "${IUSE+set}"         = set ] && E_IUSE+="${E_IUSE:+ }${IUSE}"
+			[ "${REQUIRED_USE+set}" = set ] && E_REQUIRED_USE+="${E_REQUIRED_USE:+ }${REQUIRED_USE}"
+			[ "${DEPEND+set}"       = set ] && E_DEPEND+="${E_DEPEND:+ }${DEPEND}"
+			[ "${RDEPEND+set}"      = set ] && E_RDEPEND+="${E_RDEPEND:+ }${RDEPEND}"
+			[ "${PDEPEND+set}"      = set ] && E_PDEPEND+="${E_PDEPEND:+ }${PDEPEND}"
+			[ "${HDEPEND+set}"      = set ] && E_HDEPEND+="${E_HDEPEND:+ }${HDEPEND}"
 
-		[ "${B_IUSE+set}"     = set ] && IUSE="${B_IUSE}"
-		[ "${B_IUSE+set}"     = set ] || unset IUSE
-		
-		[ "${B_REQUIRED_USE+set}"     = set ] && REQUIRED_USE="${B_REQUIRED_USE}"
-		[ "${B_REQUIRED_USE+set}"     = set ] || unset REQUIRED_USE
+			[ "${B_IUSE+set}"     = set ] && IUSE="${B_IUSE}"
+			[ "${B_IUSE+set}"     = set ] || unset IUSE
+			
+			[ "${B_REQUIRED_USE+set}"     = set ] && REQUIRED_USE="${B_REQUIRED_USE}"
+			[ "${B_REQUIRED_USE+set}"     = set ] || unset REQUIRED_USE
 
-		[ "${B_DEPEND+set}"   = set ] && DEPEND="${B_DEPEND}"
-		[ "${B_DEPEND+set}"   = set ] || unset DEPEND
+			[ "${B_DEPEND+set}"   = set ] && DEPEND="${B_DEPEND}"
+			[ "${B_DEPEND+set}"   = set ] || unset DEPEND
 
-		[ "${B_RDEPEND+set}"  = set ] && RDEPEND="${B_RDEPEND}"
-		[ "${B_RDEPEND+set}"  = set ] || unset RDEPEND
+			[ "${B_RDEPEND+set}"  = set ] && RDEPEND="${B_RDEPEND}"
+			[ "${B_RDEPEND+set}"  = set ] || unset RDEPEND
 
-		[ "${B_PDEPEND+set}"  = set ] && PDEPEND="${B_PDEPEND}"
-		[ "${B_PDEPEND+set}"  = set ] || unset PDEPEND
+			[ "${B_PDEPEND+set}"  = set ] && PDEPEND="${B_PDEPEND}"
+			[ "${B_PDEPEND+set}"  = set ] || unset PDEPEND
 
-		[ "${B_HDEPEND+set}"  = set ] && HDEPEND="${B_HDEPEND}"
-		[ "${B_HDEPEND+set}"  = set ] || unset HDEPEND
+			[ "${B_HDEPEND+set}"  = set ] && HDEPEND="${B_HDEPEND}"
+			[ "${B_HDEPEND+set}"  = set ] || unset HDEPEND
 
-		#turn on glob expansion
-		set +f
+			#turn on glob expansion
+			set +f
 
-		if [[ -n ${!__export_funcs_var} ]] ; then
-			for x in ${!__export_funcs_var} ; do
-				debug-print "EXPORT_FUNCTIONS: $x -> ${ECLASS}_$x"
-				declare -F "${ECLASS}_$x" >/dev/null || \
-					die "EXPORT_FUNCTIONS: ${ECLASS}_$x is not defined"
-				eval "$x() { ${ECLASS}_$x \"\$@\" ; }" > /dev/null
-			done
+			if [[ -n ${!__export_funcs_var} ]] ; then
+				for x in ${!__export_funcs_var} ; do
+					debug-print "EXPORT_FUNCTIONS: $x -> ${ECLASS}_$x"
+					declare -F "${ECLASS}_$x" >/dev/null || \
+						die "EXPORT_FUNCTIONS: ${ECLASS}_$x is not defined"
+					eval "$x() { ${ECLASS}_$x \"\$@\" ; }" > /dev/null
+				done
+			fi
+			unset $__export_funcs_var
+
+			has $1 $INHERITED || export INHERITED="$INHERITED $1"
 		fi
-		unset $__export_funcs_var
-
-		has $1 $INHERITED || export INHERITED="$INHERITED $1"
 
 		shift
 	done
