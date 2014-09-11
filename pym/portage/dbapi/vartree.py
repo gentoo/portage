@@ -3723,7 +3723,7 @@ class dblink(object):
 					break
 
 				relative_path = parent[srcroot_len:]
-				dirlist.append(os.path.join("/", relative_path))
+				dirlist.append(os.path.join(destroot, relative_path))
 
 				for fname in files:
 					try:
@@ -3849,8 +3849,7 @@ class dblink(object):
 			msg = textwrap.wrap(msg, 70)
 			msg.append("")
 			for f in rofilesystems:
-				msg.append("\t%s" % os.path.join(destroot,
-					f.lstrip(os.path.sep)))
+				msg.append("\t%s" % f)
 			msg.append("")
 			self._elog("eerror", "preinst", msg)
 
