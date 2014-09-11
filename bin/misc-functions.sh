@@ -182,6 +182,19 @@ install_qa_check() {
 		)
 	done
 
+	# Run QA checks from repositories
+	# (yes, PORTAGE_ECLASS_LOCATIONS contains repo paths...)
+	local repo_location
+	for repo_location in "${PORTAGE_ECLASS_LOCATIONS[@]}"; do
+		for f in "${repo_location}"/metadata/install-qa-check.d/*; do
+			if [[ -f ${f} ]]; then
+				(
+					source "${f}" || eerror "Post-install QA check ${f##*/} failed to run"
+				)
+			fi
+		done
+	done
+
 	export STRIP_MASK
 	prepall
 	___eapi_has_docompress && prepcompress
