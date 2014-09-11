@@ -12,7 +12,6 @@
 
 import socket
 import sys
-import time
 
 from portage import os
 from portage import _encodings
@@ -49,6 +48,7 @@ def create_message(sender, recipient, subject, body, attachments=None):
 	from email.header import Header
 	from email.mime.base import MIMEBase as BaseMessage
 	from email.mime.multipart import MIMEMultipart as MultipartMessage
+	from email.utils import formatdate
 
 	if sys.hexversion < 0x3000000:
 		sender = _unicode_encode(sender,
@@ -91,8 +91,9 @@ def create_message(sender, recipient, subject, body, attachments=None):
 	#    input_bytes = s.encode(input_charset, errors)
 	#UnicodeEncodeError: 'ascii' codec can't encode characters in position 0-9: ordinal not in range(128)
 	mymessage["Subject"] = Header(_force_ascii_if_necessary(subject))
-	mymessage["Date"] = time.strftime("%a, %d %b %Y %H:%M:%S %z")
-	
+	mymessage["Date"] = _unicode_encode(formatdate(localtime=True),
+		encoding=_encodings['content'], errors='backslashreplace')
+
 	return mymessage
 
 def send_mail(mysettings, message):
