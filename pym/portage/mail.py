@@ -91,8 +91,7 @@ def create_message(sender, recipient, subject, body, attachments=None):
 	#    input_bytes = s.encode(input_charset, errors)
 	#UnicodeEncodeError: 'ascii' codec can't encode characters in position 0-9: ordinal not in range(128)
 	mymessage["Subject"] = Header(_force_ascii_if_necessary(subject))
-	mymessage["Date"] = _unicode_encode(formatdate(localtime=True),
-		encoding=_encodings['content'], errors='backslashreplace')
+	mymessage["Date"] = formatdate(localtime=True)
 
 	return mymessage
 
