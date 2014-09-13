@@ -287,6 +287,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	unsat_use_non_installed = []
 	other_installed = []
 	other_installed_some = []
+	other_installed_any_slot = []
 	other = []
 
 	# unsat_use_* must come after preferred_non_installed
@@ -301,6 +302,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		unsat_use_non_installed,
 		other_installed,
 		other_installed_some,
+		other_installed_any_slot,
 		other,
 	)
 
@@ -504,6 +506,14 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				other_installed.append(this_choice)
 			elif some_installed:
 				other_installed_some.append(this_choice)
+
+			# Use Atom(atom.cp) for a somewhat "fuzzy" match, since
+			# the whole atom may be too specific. For example, see
+			# bug #522652, where using the whole atom leads to an
+			# unsatisfiable choice.
+			elif any(vardb.match(Atom(atom.cp)) for atom in atoms
+				if not atom.blocker):
+				other_installed_any_slot.append(this_choice)
 			else:
 				other.append(this_choice)
 
