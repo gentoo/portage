@@ -89,7 +89,8 @@ class Binpkg(CompositeTask):
 			waiting_msg = ("Fetching '%s' " + \
 				"in the background. " + \
 				"To view fetch progress, run `tail -f %s` in another terminal.") \
-				% (prefetcher.pkg_path, _emerge.emergelog._emerge_log_dir)
+				% (prefetcher.pkg_path, os.path.join(
+					_emerge.emergelog._emerge_log_dir, "emerge-fetch.log"))
 			msg_prefix = colorize("GOOD", " * ")
 			waiting_msg = "".join("%s%s\n" % (msg_prefix, line) \
 				for line in textwrap.wrap(waiting_msg, 65))

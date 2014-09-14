@@ -76,7 +76,7 @@ class EbuildBuild(CompositeTask):
 			waiting_msg = "Fetching files " + \
 				"in the background. " + \
 				"To view fetch progress, run `tail -f %s` in another terminal." \
-				% (_emerge.emergelog._emerge_log_dir)
+				% (os.path.join(_emerge.emergelog._emerge_log_dir, "emerge-fetch.log"))
 			msg_prefix = colorize("GOOD", " * ")
 			from textwrap import wrap
 			waiting_msg = "".join("%s%s\n" % (msg_prefix, line) \
