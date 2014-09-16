@@ -6,6 +6,27 @@ portage-2.2.13
 * Bug Fixes:
     - Bug # 438976 Remove DESCRIPTION.punctuation check from repoman
     - Bug # 520542 Replace .append() with .add() for set variables
+    - Bug # 515230 package_tracker.match: account for unevaluated_atom
+    - Bug # 508762 _slot_operator_update_probe: This fixes the
+        check_reverse_dependencies function.
+    - Bug # 522362 Fix config.setcpv to regenerate USE settings in order to
+        account for package.env USE settings from the previous package
+        instance.
+    - Bug # 507482 Run distcc-pump server throughout src_configure()
+        to src_install()
+    - Bug # 520950 This handles a case which occurs when
+        _solve_non_slot_operator_slot_conflicts calls _create_graph.
+    - Bug # 520752 Make email date, timestamp RFC-compliant
+    - Bug # 520378 Fix hard-coded emerge-fetch.log locations
+    - Bug # 522652 For cases such as || ( X <A-2 ), where X is unsatisfiable
+        and A-1 is installed, fix dep_zapdeps to make the correct choice.
+    - Bug # 510270 This fixes an IndexError in
+        _solve_non_slot_operator_slot_conflicts which occurs when none of the
+        conflict packages matched a particular atom.
+* No longer include a Changelog with release tarball.
+    For a complete log of the Changes please refer to the git log viewable
+        online at https://github.com/gentoo/portage/commits/master
+
 
 portage-2.2.12
 ==================================

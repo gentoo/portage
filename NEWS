@@ -1,7 +1,17 @@
 News (mainly features/major bug fixes)
 
-portage-2.2.12
 
+portage-2.2.13
+-------------
+* New setup.py build system and distutils-r1 ebuild at EAPI 5
+* PORTAGE_{BIN,PYM}_PATH variables. If you want to call internal portage tools,
+    you need to query PORTAGE_BIN_PATH and PORTAGE_PYM_PATH, use them
+    and re-export them.
+* New @changed-deps set to update packages which need dependecy change updates.
+
+
+portage-2.2.12
+-------------
 * New emaint module "merges"  for finding and fixing failed merges
   If a pkg fails to merge to the live filesystem correctly, that pkg may
   not work correctly if at all.  This module scans the installed pkg database
