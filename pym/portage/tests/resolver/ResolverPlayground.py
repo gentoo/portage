@@ -549,6 +549,7 @@ class ResolverPlaygroundTestCase(object):
 		self.all_permutations = kwargs.pop("all_permutations", False)
 		self.ignore_mergelist_order = kwargs.pop("ignore_mergelist_order", False)
 		self.ambiguous_merge_order = kwargs.pop("ambiguous_merge_order", False)
+		self.ambiguous_slot_collision_solutions = kwargs.pop("ambiguous_slot_collision_solutions", False)
 		self.check_repo_names = kwargs.pop("check_repo_names", False)
 		self.merge_order_assertions = kwargs.pop("merge_order_assertions", False)
 
@@ -664,6 +665,14 @@ class ResolverPlaygroundTestCase(object):
 									str((node1, node2))) + \
 									", got: " + str(got))
 
+			elif key == "slot_collision_solutions" and \
+				self.ambiguous_slot_collision_solutions:
+				# Tests that use all_permutations can have multiple
+				# outcomes here.
+				for x in expected:
+					if x == got:
+						expected = x
+						break
 			elif key in ("unstable_keywords", "needed_p_mask_changes",
 				"unsatisfied_deps") and expected is not None:
 				expected = set(expected)

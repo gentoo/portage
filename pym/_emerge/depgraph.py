@@ -1059,6 +1059,7 @@ class depgraph(object):
 			def __str__(self):
 				return "(%s)" % ",".join(str(pkg) for pkg in self)
 
+		non_matching_forced = set()
 		for conflict in conflicts:
 			if debug:
 				writemsg_level("   conflict:\n", level=logging.DEBUG, noiselevel=-1)
@@ -1105,6 +1106,18 @@ class depgraph(object):
 					continue
 				elif len(matched) == 1:
 					conflict_graph.add(matched[0], parent)
+				elif len(matched) == 0:
+					# This typically means that autounmask broke a
+					# USE-dep, but it could also be due to the slot
+					# not matching due to multislot (bug #220341).
+					# Either way, don't try to solve this conflict.
+					# Instead, force them all into the graph so that
+					# they are protected from removal.
+					non_matching_forced.update(conflict)
+					if debug:
+						for pkg in conflict:
+							writemsg_level("         non-match: %s\n" % pkg,
+								level=logging.DEBUG, noiselevel=-1)
 				else:
 					# More than one packages matched, but not all.
 					conflict_graph.add(or_tuple(matched), parent)
@@ -1125,6 +1138,7 @@ class depgraph(object):
 		# Now select required packages. Collect them in the
 		# 'forced' set.
 		forced = set([non_conflict_node])
+		forced.update(non_matching_forced)
 		unexplored = set([non_conflict_node])
 		# or_tuples get special handling. We first explore
 		# all packages in the hope of having forced one of
