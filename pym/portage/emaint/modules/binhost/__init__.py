@@ -1,18 +1,18 @@
 # Copyright 2005-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-"""Scan and generate metadata indexes for binary packages.
-"""
+doc = """Scan and generate metadata indexes for binary packages."""
+__doc__ = doc
 
 
 module_spec = {
 	'name': 'binhost',
-	'description': __doc__,
+	'description': doc,
 	'provides':{
 		'module1': {
 			'name': "binhost",
 			'class': "BinhostHandler",
-			'description': __doc__,
+			'description': doc,
 			'functions': ['check', 'fix'],
 			'func_desc': {}
 			}

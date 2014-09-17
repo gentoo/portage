@@ -1,17 +1,18 @@
 # Copyright 2005-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-"""Scan for failed merges and fix them."""
+doc = """Scan for failed merges and fix them."""
+__doc__ = doc
 
 
 module_spec = {
 	'name': 'merges',
-	'description': __doc__,
+	'description': doc,
 	'provides': {
 		'merges': {
 			'name': "merges",
 			'class': "MergesHandler",
-			'description': __doc__,
+			'description': doc,
 			'functions': ['check', 'fix', 'purge'],
 			'func_desc': {
 				'purge': {
