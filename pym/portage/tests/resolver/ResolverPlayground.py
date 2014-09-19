@@ -674,7 +674,8 @@ class ResolverPlaygroundTestCase(object):
 						expected = x
 						break
 			elif key in ("unstable_keywords", "needed_p_mask_changes",
-				"unsatisfied_deps") and expected is not None:
+				"unsatisfied_deps", "required_use_unsatisfied") and \
+				expected is not None:
 				expected = set(expected)
 
 			elif key == "forced_rebuilds" and expected is not None:
@@ -692,11 +693,14 @@ class ResolverPlaygroundTestCase(object):
 class ResolverPlaygroundResult(object):
 
 	checks = (
-		"success", "mergelist", "use_changes", "license_changes", "unstable_keywords", "slot_collision_solutions",
-		"circular_dependency_solutions", "needed_p_mask_changes", "unsatisfied_deps", "forced_rebuilds"
+		"success", "mergelist", "use_changes", "license_changes",
+		"unstable_keywords", "slot_collision_solutions",
+		"circular_dependency_solutions", "needed_p_mask_changes",
+		"unsatisfied_deps", "forced_rebuilds", "required_use_unsatisfied"
 		)
 	optional_checks = (
 		"forced_rebuilds",
+		"required_use_unsatisfied",
 		"unsatisfied_deps"
 		)
 
@@ -714,6 +718,7 @@ class ResolverPlaygroundResult(object):
 		self.circular_dependency_solutions = None
 		self.unsatisfied_deps = frozenset()
 		self.forced_rebuilds = None
+		self.required_use_unsatisfied = None
 
 		if self.depgraph._dynamic_config._serialized_tasks_cache is not None:
 			self.mergelist = []
@@ -782,6 +787,14 @@ class ResolverPlaygroundResult(object):
 				(child.cpv, set(parent.cpv for parent in parents))
 				for child_dict in self.depgraph._forced_rebuilds.values()
 				for child, parents in child_dict.items())
+
+		required_use_unsatisfied = []
+		for pargs, kwargs in \
+			self.depgraph._dynamic_config._unsatisfied_deps_for_display:
+			if "show_req_use" in kwargs:
+				required_use_unsatisfied.append(pargs[1])
+		if required_use_unsatisfied:
+			self.required_use_unsatisfied = set(required_use_unsatisfied)
 
 class ResolverPlaygroundDepcleanResult(object):
 

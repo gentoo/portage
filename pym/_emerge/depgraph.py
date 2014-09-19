@@ -421,6 +421,7 @@ class _dynamic_depgraph_config(object):
 		self._buildpkgonly_deps_unsatisfied = False
 		self._autounmask = depgraph._frozen_config.myopts.get('--autounmask') != 'n'
 		self._success_without_autounmask = False
+		self._required_use_unsatisfied = False
 		self._traverse_ignored_deps = False
 		self._complete_mode = False
 		self._slot_operator_deps = {}
@@ -2461,6 +2462,7 @@ class depgraph(object):
 				self._dynamic_config._unsatisfied_deps_for_display.append(
 					((pkg.root, atom),
 					{"myparent" : dep.parent, "show_req_use" : pkg}))
+				self._dynamic_config._required_use_unsatisfied = True
 				self._dynamic_config._skip_restart = True
 				return 0
 
@@ -8390,8 +8392,9 @@ class depgraph(object):
 		return self._dynamic_config._need_restart and \
 			not self._dynamic_config._skip_restart
 
-	def success_without_autounmask(self):
-		return self._dynamic_config._success_without_autounmask
+	def need_config_change(self):
+		return self._dynamic_config._success_without_autounmask or \
+			self._dynamic_config._required_use_unsatisfied
 
 	def autounmask_breakage_detected(self):
 		try:
@@ -8665,7 +8668,7 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
 			backtrack_parameters=backtrack_parameters)
 		success, favorites = mydepgraph.select_files(myfiles)
 
-		if success or mydepgraph.success_without_autounmask():
+		if success or mydepgraph.need_config_change():
 			break
 		elif not allow_backtracking:
 			break
@@ -8677,7 +8680,7 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
 		else:
 			break
 
-	if not (success or mydepgraph.success_without_autounmask()) and backtracked:
+	if not (success or mydepgraph.need_config_change()) and backtracked:
 
 		if debug:
 			writemsg_level(
