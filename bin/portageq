@@ -66,6 +66,10 @@ def uses_eroot(function):
 	function.uses_eroot = True
 	return function
 
+# global to hold all function docstrings to be used for argparse help.
+# Avoids python compilation level 2 optimization troubles.
+docstrings = {}
+
 #-----------------------------------------------------------------------------
 #
 # To add functionality to this tool, add a function below.
@@ -73,10 +77,12 @@ def uses_eroot(function):
 # The format for functions is:
 #
 #   def function(argv):
-#       """<list of options for this function>
+#       <code>
+#
+#   docstrings['function'] = """<list of options for this function>
 #       <description of the function>
 #       """
-#       <code>
+#   function.__doc__ = docstrings['function']
 #
 # "argv" is an array of the command line parameters provided after the command.
 #
@@ -89,9 +95,6 @@ def uses_eroot(function):
 
 @uses_eroot
 def has_version(argv):
-	"""<eroot> <category/package>
-	Return code 0 if it's available, 1 otherwise.
-	"""
 	if (len(argv) < 2):
 		print("ERROR: insufficient parameters!")
 		return 3
@@ -132,12 +135,14 @@ def has_version(argv):
 			noiselevel=-1)
 		return 2
 
+docstrings['has_version'] = """<eroot> <category/package>
+	Return code 0 if it's available, 1 otherwise.
+	"""
+has_version.__doc__ = docstrings['has_version']
+
 
 @uses_eroot
 def best_version(argv):
-	"""<eroot> <category/package>
-	Returns category/package-version (without .ebuild).
-	"""
 	if (len(argv) < 2):
 		print("ERROR: insufficient parameters!")
 		return 3
@@ -171,12 +176,14 @@ def best_version(argv):
 	except KeyError:
 		return 1
 
+docstrings['best_version'] = """<eroot> <category/package>
+	Returns category/package-version (without .ebuild).
+	"""
+best_version.__doc__ = docstrings['best_version']
+
 
 @uses_eroot
 def mass_best_version(argv):
-	"""<eroot> [<category/package>]+
-	Returns category/package-version (without .ebuild).
-	"""
 	if (len(argv) < 2):
 		print("ERROR: insufficient parameters!")
 		return 2
@@ -186,6 +193,11 @@ def mass_best_version(argv):
 			print('%s:%s' % (pack, portage.best(mylist)))
 	except KeyError:
 		return 1
+
+docstrings['mass_best_version'] = """<eroot> [<category/package>]+
+	Returns category/package-version (without .ebuild).
+	"""
+mass_best_version.__doc__ = docstrings['mass_best_version']
 
 
 @uses_eroot
@@ -215,21 +227,17 @@ def metadata(argv):
 		print("Package not found: '%s'" % pkgspec, file=sys.stderr)
 		return 1
 
-metadata.__doc__ = """
+docstrings['metadata'] = """
 <eroot> <pkgtype> <category/package> [<key>]+
 Returns metadata values for the specified package.
 Available keys: %s
 """  % ','.join(sorted(x for x in portage.auxdbkeys \
 if not x.startswith('UNUSED_')))
+metadata.__doc__ = docstrings['metadata']
 
 
 @uses_eroot
 def contents(argv):
-	"""<eroot> <category/package>
-	List the files that are installed for a given package, with
-	one file listed on each line. All file names will begin with
-	<eroot>.
-	"""
 	if len(argv) != 2:
 		print("ERROR: expected 2 parameters, got %d!" % len(argv))
 		return 2
@@ -245,16 +253,16 @@ def contents(argv):
 	writemsg_stdout(''.join('%s\n' % x for x in sorted(db.getcontents())),
 		noiselevel=-1)
 
+docstrings['contents'] = """<eroot> <category/package>
+	List the files that are installed for a given package, with
+	one file listed on each line. All file names will begin with
+	<eroot>.
+	"""
+contents.__doc__ = docstrings['contents']
+
 
 @uses_eroot
 def owners(argv):
-	"""<eroot> [<filename>]+
-	Given a list of files, print the packages that own the files and which
-	files belong to each package. Files owned by a package are listed on
-	the lines below it, indented by a single tab character (\\t). All file
-	paths must either start with <eroot> or be a basename alone.
-	Returns 1 if no owners could be found, and 0 otherwise.
-	"""
 	if len(argv) < 2:
 		sys.stderr.write("ERROR: insufficient parameters!\n")
 		sys.stderr.flush()
@@ -325,13 +333,18 @@ def owners(argv):
 		return 0
 	return 1
 
+docstrings['owners'] = """<eroot> [<filename>]+
+	Given a list of files, print the packages that own the files and which
+	files belong to each package. Files owned by a package are listed on
+	the lines below it, indented by a single tab character (\\t). All file
+	paths must either start with <eroot> or be a basename alone.
+	Returns 1 if no owners could be found, and 0 otherwise.
+	"""
+owners.__doc__ = docstrings['owners']
+
 
 @uses_eroot
 def is_protected(argv):
-	"""<eroot> <filename>
-	Given a single filename, return code 0 if it's protected, 1 otherwise.
-	The filename must begin with <eroot>.
-	"""
 	if len(argv) != 2:
 		sys.stderr.write("ERROR: expected 2 parameters, got %d!\n" % len(argv))
 		sys.stderr.flush()
@@ -372,13 +385,15 @@ def is_protected(argv):
 		return 0
 	return 1
 
+docstrings['is_protected'] = """<eroot> <filename>
+	Given a single filename, return code 0 if it's protected, 1 otherwise.
+	The filename must begin with <eroot>.
+	"""
+is_protected.__doc__ = docstrings['is_protected']
+
 
 @uses_eroot
 def filter_protected(argv):
-	"""<eroot>
-	Read filenames from stdin and write them to stdout if they are protected.
-	All filenames are delimited by \\n and must begin with <eroot>.
-	"""
 	if len(argv) != 1:
 		sys.stderr.write("ERROR: expected 1 parameter, got %d!\n" % len(argv))
 		sys.stderr.flush()
@@ -430,14 +445,15 @@ def filter_protected(argv):
 
 	return 0
 
+docstrings['filter_protected'] = """<eroot>
+	Read filenames from stdin and write them to stdout if they are protected.
+	All filenames are delimited by \\n and must begin with <eroot>.
+	"""
+filter_protected.__doc__ = docstrings['filter_protected']
+
 
 @uses_eroot
 def best_visible(argv):
-	"""<eroot> [pkgtype] <atom>
-	Returns category/package-version (without .ebuild).
-	The pkgtype argument defaults to "ebuild" if unspecified,
-	otherwise it must be one of ebuild, binary, or installed.
-	"""
 	if (len(argv) < 2):
 		writemsg("ERROR: insufficient parameters!\n", noiselevel=-1)
 		return 2
@@ -512,14 +528,16 @@ def best_visible(argv):
 
 	return 1
 
-
-@uses_eroot
-def mass_best_visible(argv):
-	"""<eroot> [<type>] [<category/package>]+
+docstrings['best_visible'] = """<eroot> [pkgtype] <atom>
 	Returns category/package-version (without .ebuild).
 	The pkgtype argument defaults to "ebuild" if unspecified,
 	otherwise it must be one of ebuild, binary, or installed.
 	"""
+best_visible.__doc__ = docstrings['best_visible']
+
+
+@uses_eroot
+def mass_best_visible(argv):
 	type_map = {
 		"ebuild":"porttree",
 		"binary":"bintree",
@@ -539,12 +557,16 @@ def mass_best_visible(argv):
 	except KeyError:
 		return 1
 
+docstrings['mass_best_visible'] = """<eroot> [<type>] [<category/package>]+
+	Returns category/package-version (without .ebuild).
+	The pkgtype argument defaults to "ebuild" if unspecified,
+	otherwise it must be one of ebuild, binary, or installed.
+	"""
+mass_best_visible.__doc__ = docstrings['mass_best_visible']
+
 
 @uses_eroot
 def all_best_visible(argv):
-	"""<eroot>
-	Returns all best_visible packages (without .ebuild).
-	"""
 	if len(argv) < 1:
 		sys.stderr.write("ERROR: insufficient parameters!\n")
 		sys.stderr.flush()
@@ -556,14 +578,14 @@ def all_best_visible(argv):
 		if mybest:
 			print(mybest)
 
+docstrings['all_best_visible'] = """<eroot>
+	Returns all best_visible packages (without .ebuild).
+	"""
+all_best_visible.__doc__ = docstrings['all_best_visible']
+
 
 @uses_eroot
 def match(argv):
-	"""<eroot> <atom>
-	Returns a \\n separated list of category/package-version.
-	When given an empty string, all installed packages will
-	be listed.
-	"""
 	if len(argv) != 2:
 		print("ERROR: expected 2 parameters, got %d!" % len(argv))
 		return 2
@@ -605,20 +627,16 @@ def match(argv):
 	for cpv in results:
 		print(cpv)
 
+docstrings['match'] = """<eroot> <atom>
+	Returns a \\n separated list of category/package-version.
+	When given an empty string, all installed packages will
+	be listed.
+	"""
+match.__doc__ = docstrings['match']
+
 
 @uses_eroot
 def expand_virtual(argv):
-	"""<eroot> <atom>
-	Returns a \\n separated list of atoms expanded from a
-	given virtual atom (GLEP 37 virtuals only),
-	excluding blocker atoms. Satisfied
-	virtual atoms are not included in the output, since
-	they are expanded to real atoms which are displayed.
-	Unsatisfied virtual atoms are displayed without
-	any expansion. The "match" command can be used to
-	resolve the returned atoms to specific installed
-	packages.
-	"""
 	if len(argv) != 2:
 		writemsg("ERROR: expected 2 parameters, got %d!\n" % len(argv),
 			noiselevel=-1)
@@ -641,101 +659,134 @@ def expand_virtual(argv):
 
 	return os.EX_OK
 
+docstrings['expand_virtual'] = """<eroot> <atom>
+	Returns a \\n separated list of atoms expanded from a
+	given virtual atom (GLEP 37 virtuals only),
+	excluding blocker atoms. Satisfied
+	virtual atoms are not included in the output, since
+	they are expanded to real atoms which are displayed.
+	Unsatisfied virtual atoms are displayed without
+	any expansion. The "match" command can be used to
+	resolve the returned atoms to specific installed
+	packages.
+	"""
+expand_virtual.__doc__ = docstrings['expand_virtual']
+
 
 def vdb_path(_argv):
-	"""
-	Returns the path used for the var(installed) package database for the
-	set environment/configuration options.
-	"""
 	out = sys.stdout
 	out.write(os.path.join(portage.settings["EROOT"], portage.VDB_PATH) + "\n")
 	out.flush()
 	return os.EX_OK
 
-def gentoo_mirrors(_argv):
+docstrings['vdb_path'] = """
+	Returns the path used for the var(installed) package database for the
+	set environment/configuration options.
 	"""
+vdb_path.__doc__ = docstrings['vdb_path']
+
+
+def gentoo_mirrors(_argv):
+	print(portage.settings["GENTOO_MIRRORS"])
+
+docstrings['gentoo_mirrors'] = """
 	Returns the mirrors set to use in the portage configuration.
 	"""
-	print(portage.settings["GENTOO_MIRRORS"])
+gentoo_mirrors.__doc__ = docstrings['gentoo_mirrors']
 
 
 @uses_eroot
 def repositories_configuration(argv):
-	"""<eroot>
-	Returns the configuration of repositories.
-	"""
 	if len(argv) < 1:
 		print("ERROR: insufficient parameters!", file=sys.stderr)
 		return 3
 	sys.stdout.write(portage.db[argv[0]]["vartree"].settings.repositories.config_string())
 	sys.stdout.flush()
 
+docstrings['repositories_configuration'] = """<eroot>
+	Returns the configuration of repositories.
+	"""
+repositories_configuration.__doc__ = docstrings['repositories_configuration']
+
+
 @uses_eroot
 def repos_config(argv):
-	"""
+	return repositories_configuration(argv)
+
+docstrings['repos_config'] = """
 	<eroot>
 	This is an alias for the repositories_configuration command.
 	"""
-	return repositories_configuration(argv)
+repos_config.__doc__ = docstrings['repos_config']
+
 
 def portdir(_argv):
-	"""
-	Returns the PORTDIR path.
-	Deprecated in favor of repositories_configuration command.
-	"""
 	print("WARNING: 'portageq portdir' is deprecated. Use 'portageq repositories_configuration' instead.", file=sys.stderr)
 	print(portage.settings["PORTDIR"])
 
+docstrings['portdir'] = """
+	Returns the PORTDIR path.
+	Deprecated in favor of repositories_configuration command.
+	"""
+portdir.__doc__ = docstrings['portdir']
+
 
 def config_protect(_argv):
-	"""
+	print(portage.settings["CONFIG_PROTECT"])
+
+docstrings['config_protect'] = """
 	Returns the CONFIG_PROTECT paths.
 	"""
-	print(portage.settings["CONFIG_PROTECT"])
+config_protect.__doc__ = docstrings['config_protect']
 
 
 def config_protect_mask(_argv):
-	"""
-	Returns the CONFIG_PROTECT_MASK paths.
-	"""
 	print(portage.settings["CONFIG_PROTECT_MASK"])
 
+docstrings['config_protect_mask'] = """
+	Returns the CONFIG_PROTECT_MASK paths.
+	"""
+config_protect_mask.__doc__ = docstrings['config_protect_mask']
 
 def portdir_overlay(_argv):
-	"""
-	Returns the PORTDIR_OVERLAY path.
-	Deprecated in favor of repositories_configuration command.
-	"""
 	print("WARNING: 'portageq portdir_overlay' is deprecated. Use 'portageq repositories_configuration' instead.", file=sys.stderr)
 	print(portage.settings["PORTDIR_OVERLAY"])
 
+docstrings['portdir_overlay'] = """
+	Returns the PORTDIR_OVERLAY path.
+	Deprecated in favor of repositories_configuration command.
+	"""
+portdir_overlay.__doc__ = docstrings['portdir_overlay']
+
 
 def pkgdir(_argv):
-	"""
+	print(portage.settings["PKGDIR"])
+
+docstrings['pkgdir'] = """
 	Returns the PKGDIR path.
 	"""
-	print(portage.settings["PKGDIR"])
+pkgdir.__doc__ = docstrings['pkgdir']
 
 
 def distdir(_argv):
-	"""
+	print(portage.settings["DISTDIR"])
+
+docstrings['distdir'] = """
 	Returns the DISTDIR path.
 	"""
-	print(portage.settings["DISTDIR"])
+distdir.__doc__ = docstrings['distdir']
 
 
 def colormap(_argv):
-	"""
+	print(portage.output.colormap())
+
+docstrings['colormap'] = """
 	Display the color.map as environment variables.
 	"""
-	print(portage.output.colormap())
+colormap.__doc__ = docstrings['colormap']
 
 
 def envvar(argv):
-	"""<variable>+
-	Returns a specific environment variable as exists prior to ebuild.sh.
-	Similar to: emerge --verbose --info | egrep '^<variable>='
-	"""
 	verbose = "-v" in argv
 	if verbose:
 		argv.pop(argv.index("-v"))
@@ -752,23 +803,28 @@ def envvar(argv):
 		else:
 			print(portage.settings[arg])
 
+docstrings['envvar'] = """<variable>+
+	Returns a specific environment variable as exists prior to ebuild.sh.
+	Similar to: emerge --verbose --info | egrep '^<variable>='
+	"""
+envvar.__doc__ = docstrings['envvar']
+
 
 @uses_eroot
 def get_repos(argv):
-	"""<eroot>
-	Returns all repos with names (repo_name file) argv[0] = $EROOT
-	"""
 	if len(argv) < 1:
 		print("ERROR: insufficient parameters!")
 		return 2
 	print(" ".join(reversed(portage.db[argv[0]]["vartree"].settings.repositories.prepos_order)))
 
+docstrings['get_repos'] = """<eroot>
+	Returns all repos with names (repo_name file) argv[0] = $EROOT
+	"""
+get_repos.__doc__ = docstrings['get_repos']
+
 
 @uses_eroot
 def master_repositories(argv):
-	"""<eroot> <repo_id>+
-	Returns space-separated list of master repositories for specified repository.
-	"""
 	if len(argv) < 2:
 		print("ERROR: insufficient parameters!", file=sys.stderr)
 		return 3
@@ -784,18 +840,25 @@ def master_repositories(argv):
 		else:
 			print(" ".join(x.name for x in repo.masters))
 
+docstrings['master_repositories'] = """<eroot> <repo_id>+
+	Returns space-separated list of master repositories for specified repository.
+	"""
+master_repositories.__doc__ = docstrings['master_repositories']
+
+
 @uses_eroot
 def master_repos(argv):
-	"""<eroot> <repo_id>+
+	return master_repositories(argv)
+
+docstrings['master_repos'] = """<eroot> <repo_id>+
 	This is an alias for the master_repositories command.
 	"""
-	return master_repositories(argv)
+master_repos.__doc__ = docstrings['master_repos']
+
 
 @uses_eroot
 def get_repo_path(argv):
-	"""<eroot> <repo_id>+
-	Returns the path to the repo named argv[1], argv[0] = $EROOT
-	"""
+
 	if len(argv) < 2:
 		print("ERROR: insufficient parameters!", file=sys.stderr)
 		return 3
@@ -809,12 +872,14 @@ def get_repo_path(argv):
 			return 1
 		print(path)
 
+docstrings['get_repo_path'] = """<eroot> <repo_id>+
+	Returns the path to the repo named argv[1], argv[0] = $EROOT
+	"""
+get_repo_path.__doc__ = docstrings['get_repo_path']
+
 
 @uses_eroot
 def available_eclasses(argv):
-	"""<eroot> <repo_id>+
-	Returns space-separated list of available eclasses for specified repository.
-	"""
 	if len(argv) < 2:
 		print("ERROR: insufficient parameters!", file=sys.stderr)
 		return 3
@@ -830,12 +895,14 @@ def available_eclasses(argv):
 		else:
 			print(" ".join(sorted(repo.eclass_db.eclasses)))
 
+docstrings['available_eclasses'] = """<eroot> <repo_id>+
+	Returns space-separated list of available eclasses for specified repository.
+	"""
+available_eclasses.__doc__ = docstrings['available_eclasses']
+
 
 @uses_eroot
 def eclass_path(argv):
-	"""<eroot> <repo_id> <eclass>+
-	Returns the path to specified eclass for specified repository.
-	"""
 	if len(argv) < 3:
 		print("ERROR: insufficient parameters!", file=sys.stderr)
 		return 3
@@ -859,12 +926,14 @@ def eclass_path(argv):
 				print(eclass.location)
 		return retval
 
+docstrings['eclass_path'] = """<eroot> <repo_id> <eclass>+
+	Returns the path to specified eclass for specified repository.
+	"""
+eclass_path.__doc__ = docstrings['eclass_path']
+
 
 @uses_eroot
 def license_path(argv):
-	"""<eroot> <repo_id> <license>+
-	Returns the path to specified license for specified repository.
-	"""
 	if len(argv) < 3:
 		print("ERROR: insufficient parameters!", file=sys.stderr)
 		return 3
@@ -890,15 +959,14 @@ def license_path(argv):
 			print(eclass_path)
 		return retval
 
+docstrings['license_path'] = """<eroot> <repo_id> <license>+
+	Returns the path to specified license for specified repository.
+	"""
+license_path.__doc__ = docstrings['license_path']
+
 
 @uses_eroot
 def list_preserved_libs(argv):
-	"""<eroot>
-	Print a list of libraries preserved during a package update in the form
-	package: path. Returns 1 if no preserved libraries could be found,
-	0 otherwise.
-	"""
-
 	if len(argv) != 1:
 		print("ERROR: wrong number of arguments")
 		return 2
@@ -913,6 +981,13 @@ def list_preserved_libs(argv):
 		msg.append('\n')
 	writemsg_stdout(''.join(msg), noiselevel=-1)
 	return rValue
+
+docstrings['list_preserved_libs'] = """<eroot>
+	Print a list of libraries preserved during a package update in the form
+	package: path. Returns 1 if no preserved libraries could be found,
+	0 otherwise.
+	"""
+list_preserved_libs.__doc__ = docstrings['list_preserved_libs']
 
 
 class MaintainerEmailMatcher(object):
@@ -938,10 +1013,6 @@ class HerdMatcher(object):
 
 
 def pquery(parser, opts, args):
-	"""[options] [atom]+
-	Emulates a subset of Pkgcore's pquery tool.
-	"""
-
 	portdb = portage.db[portage.root]['porttree'].dbapi
 	root_config = RootConfig(portdb.settings,
 		portage.db[portage.root], None)
@@ -1120,6 +1191,11 @@ def pquery(parser, opts, args):
 
 	return os.EX_OK
 
+docstrings['pquery'] = """[options] [atom]+
+	Emulates a subset of Pkgcore's pquery tool.
+	"""
+pquery.__doc__ = docstrings['pquery']
+
 
 #-----------------------------------------------------------------------------
 #
@@ -1217,10 +1293,7 @@ def usage(argv):
 	#
 	help_mode = '--help' in argv
 	for name in commands:
-		# Drop non-functions
-		obj = globals()[name]
-
-		doc = obj.__doc__
+		doc = docstrings.get(name)
 		if (doc == None):
 			print("   " + name)
 			print("      MISSING DOCUMENTATION!")
