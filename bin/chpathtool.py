@@ -2,9 +2,11 @@
 # Copyright 2011-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-"""Helper tool for converting installed files to custom prefixes.
+doc = """Helper tool for converting installed files to custom prefixes.
 
 In other words, eprefixy $D for Gentoo/Prefix."""
+__doc__ = doc
+
 
 import io
 import os
@@ -152,7 +154,7 @@ def chpath_inplace_symlink(filename, st, old, new):
 
 def main(argv):
 
-	parser = ArgumentParser(description=__doc__)
+	parser = ArgumentParser(description=doc)
 	try:
 		parser.add_argument('location', default=None,
 			help='root directory (e.g. $D)')
@@ -166,7 +168,7 @@ def main(argv):
 	except OptionError:
 		# Argument parsing compatibility for Python 2.6 using optparse.
 		if sys.hexversion < 0x2070000:
-			parser = OptionParser(description=__doc__,
+			parser = OptionParser(description=doc,
 				usage="usage: %prog [-h] location old new\n\n" + \
 				"  location: root directory (e.g. $D)\n" + \
 				"  old:      original build prefix (e.g. /)\n" + \
