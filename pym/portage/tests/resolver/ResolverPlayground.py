@@ -778,12 +778,10 @@ class ResolverPlaygroundResult(object):
 				for dep_info in self.depgraph._dynamic_config._unsatisfied_deps_for_display)
 
 		if self.depgraph._forced_rebuilds:
-			self.forced_rebuilds = dict(self._iter_forced_rebuilds())
-
-	def _iter_forced_rebuilds(self):
-		for child_dict in self.depgraph._forced_rebuilds.values():
-			for child, parents in child_dict.items():
-				yield child.cpv, set(parent.cpv for parent in parents)
+			self.forced_rebuilds = dict(
+				(child.cpv, set(parent.cpv for parent in parents))
+				for child_dict in self.depgraph._forced_rebuilds.values()
+				for child, parents in child_dict.items())
 
 class ResolverPlaygroundDepcleanResult(object):
 
