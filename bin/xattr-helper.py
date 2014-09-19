@@ -2,7 +2,7 @@
 # Copyright 2012-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-"""Dump and restore extended attributes.
+doc = """Dump and restore extended attributes.
 
 We use formats like that used by getfattr --dump.  This is meant for shell
 helpers to save/restore.  If you're looking for a python/portage API, see
@@ -10,6 +10,8 @@ portage.util.movefile._copyxattr instead.
 
 https://en.wikipedia.org/wiki/Extended_file_attributes
 """
+__doc__ = doc
+
 
 import array
 import os
@@ -147,7 +149,7 @@ def restore_xattrs(file_in):
 
 def main(argv):
 
-	parser = ArgumentParser(description=__doc__)
+	parser = ArgumentParser(description=doc)
 	parser.add_argument('paths', nargs='*', default=[])
 
 	actions = parser.add_argument_group('Actions')
