@@ -25,6 +25,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 		'_merge_unicode_error', '_spawn_phase',
 	'portage.package.ebuild.prepare_build_dirs:prepare_build_dirs',
 	'portage.package.ebuild._ipc.QueryCommand:QueryCommand',
+	'portage.process:find_binary',
 	'portage.util:apply_secpass_permissions,ConfigProtect,ensure_dirs,' + \
 		'writemsg,writemsg_level,write_atomic,atomic_ofstream,writedict,' + \
 		'grabdict,normalize_path,new_protect_filename',
@@ -5010,6 +5011,15 @@ class dblink(object):
 			# Call quickpkg for support of QUICKPKG_DEFAULT_OPTS and stuff.
 			quickpkg_binary = os.path.join(self.settings["PORTAGE_BIN_PATH"],
 				"quickpkg")
+
+			if not os.access(quickpkg_binary, os.X_OK):
+				# If not running from the source tree, use PATH.
+				quickpkg_binary = find_binary("quickpkg")
+				if quickpkg_binary is None:
+					self._display_merge(
+						_("%s: command not found") % "quickpkg",
+						level=logging.ERROR, noiselevel=-1)
+					return 127
 
 			# Let quickpkg inherit the global vartree config's env.
 			env = dict(self.vartree.settings.items())

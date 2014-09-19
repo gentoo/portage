@@ -243,6 +243,12 @@ pkg_preinst() {
 			emerge_cmd + ("--metadata",),
 			rm_cmd + ("-rf", cachedir),
 			emerge_cmd + ("--oneshot", "virtual/foo"),
+			lambda: self.assertFalse(os.path.exists(
+				os.path.join(pkgdir, "virtual", "foo-0.tbz2"))),
+			({"FEATURES" : "unmerge-backup"},) + \
+				emerge_cmd + ("--unmerge", "virtual/foo"),
+			lambda: self.assertTrue(os.path.exists(
+				os.path.join(pkgdir, "virtual", "foo-0.tbz2"))),
 			emerge_cmd + ("--pretend", "dev-libs/A"),
 			ebuild_cmd + (test_ebuild, "manifest", "clean", "package", "merge"),
 			emerge_cmd + ("--pretend", "--tree", "--complete-graph", "dev-libs/A"),
@@ -394,6 +400,10 @@ move dev-util/git dev-vcs/git
 				stdout = subprocess.PIPE
 
 			for args in test_commands:
+
+				if hasattr(args, '__call__'):
+					args()
+					continue
 
 				if isinstance(args[0], dict):
 					local_env = env.copy()
