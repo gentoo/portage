@@ -1172,12 +1172,15 @@ class depgraph(object):
 					for match in matched:
 						writemsg_level("         match: %s\n" % match, level=logging.DEBUG, noiselevel=-1)
 
-				if len(matched) == len(conflict):
-					# All packages match.
-					continue
+				if len(matched) > 1:
+					# Even if all packages match, this parent must still
+					# be added to the conflict_graph. Otherwise, we risk
+					# removing all of these packages from the depgraph,
+					# which could cause a missed update (bug #522084).
+					conflict_graph.add(or_tuple(matched), parent)
 				elif len(matched) == 1:
 					conflict_graph.add(matched[0], parent)
-				elif len(matched) == 0:
+				else:
 					# This typically means that autounmask broke a
 					# USE-dep, but it could also be due to the slot
 					# not matching due to multislot (bug #220341).
@@ -1189,9 +1192,6 @@ class depgraph(object):
 						for pkg in conflict:
 							writemsg_level("         non-match: %s\n" % pkg,
 								level=logging.DEBUG, noiselevel=-1)
-				else:
-					# More than one packages matched, but not all.
-					conflict_graph.add(or_tuple(matched), parent)
 
 		for pkg in indirect_conflict_pkgs:
 			for parent, atom in self._dynamic_config._parent_atoms.get(pkg, []):
