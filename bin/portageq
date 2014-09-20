@@ -23,18 +23,22 @@ except KeyboardInterrupt:
 import os
 import types
 
-# Avoid sandbox violations after python upgrade.
-pym_path = os.path.join(os.path.dirname(
-	os.path.dirname(os.path.realpath(__file__))), "pym")
+if os.path.isfile(os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), ".portage_not_installed")):
+	pym_paths = [os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym")]
+	sys.path.insert(0, pym_paths[0])
+else:
+	import distutils.sysconfig
+	pym_paths = [os.path.join(distutils.sysconfig.get_python_lib(), x) for x in ("_emerge", "portage")]
+# Avoid sandbox violations after Python upgrade.
 if os.environ.get("SANDBOX_ON") == "1":
 	sandbox_write = os.environ.get("SANDBOX_WRITE", "").split(":")
-	if pym_path not in sandbox_write:
-		sandbox_write.append(pym_path)
-		os.environ["SANDBOX_WRITE"] = \
-			":".join(filter(None, sandbox_write))
-	del sandbox_write
+	for pym_path in pym_paths:
+		if pym_path not in sandbox_write:
+			sandbox_write.append(pym_path)
+			os.environ["SANDBOX_WRITE"] = ":".join(filter(None, sandbox_write))
+	del pym_path, sandbox_write
+del pym_paths
 
-sys.path.insert(0, pym_path)
 import portage
 portage._internal_caller = True
 from portage import os
