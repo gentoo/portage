@@ -7517,12 +7517,14 @@ class depgraph(object):
 		(using CONFIG_PROTECT). The message includes the comments and the changes.
 		"""
 
-		autounmask_write = self._frozen_config.myopts.get("--autounmask-write", "n") == True
+		ask = "--ask" in self._frozen_config.myopts
+		autounmask_write = \
+				self._frozen_config.myopts.get("--autounmask-write",
+								   ask) is True
 		autounmask_unrestricted_atoms = \
 			self._frozen_config.myopts.get("--autounmask-unrestricted-atoms", "n") == True
 		quiet = "--quiet" in self._frozen_config.myopts
 		pretend = "--pretend" in self._frozen_config.myopts
-		ask = "--ask" in self._frozen_config.myopts
 		enter_invalid = '--ask-enter-invalid' in self._frozen_config.myopts
 
 		def check_if_latest(pkg):
