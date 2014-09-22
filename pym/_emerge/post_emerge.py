@@ -37,11 +37,14 @@ def clean_logs(settings):
 
 def display_news_notification(root_config, myopts):
 	if "news" not in root_config.settings.features:
-		return
+		return False
 	portdb = root_config.trees["porttree"].dbapi
 	vardb = root_config.trees["vartree"].dbapi
 	news_counts = count_unread_news(portdb, vardb)
+	if all(v == 0 for v in news_counts.values()):
+		return False
 	display_news_notifications(news_counts)
+	return True
 
 def show_depclean_suggestion():
 	out = portage.output.EOutput()

@@ -4061,8 +4061,21 @@ def run_action(emerge_config):
 
 		# GLEP 42 says to display news *after* an emerge --pretend
 		if "--pretend" not in emerge_config.opts:
-			display_news_notification(
-				emerge_config.target_config, emerge_config.opts)
+			uq = UserQuery(emerge_config.opts)
+			if display_news_notification(emerge_config.target_config,
+								emerge_config.opts) \
+				and "--ask" in emerge_config.opts \
+				and uq.query("Would you like to read the news items while " \
+						"calculating dependencies?",
+						'--ask-enter-invalid' in emerge_config.opts) == "Yes":
+				try:
+					subprocess.call(['eselect', 'news', 'read'])
+				# If eselect is not installed, Python <3.3 will throw an
+				# OSError. >=3.3 will throw a FileNotFoundError, which is a
+				# subclass of OSError.
+				except OSError:
+					writemsg("Please install eselect to use this feature.\n",
+							noiselevel=-1)
 		retval = action_build(emerge_config.target_config.settings,
 			emerge_config.trees, emerge_config.target_config.mtimedb,
 			emerge_config.opts, emerge_config.action,
