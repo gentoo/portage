@@ -4993,7 +4993,8 @@ class depgraph(object):
 				raise
 
 		depth = parent.depth or 0
-		depth += 1
+		if isinstance(depth, int):
+			depth += 1
 
 		if arg_atoms:
 			for arg, atom in arg_atoms:
