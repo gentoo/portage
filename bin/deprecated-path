@@ -1,0 +1,28 @@
+#!/bin/bash
+# Copyright 2014 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# Author:
+#
+
+source /lib/gentoo/functions.sh
+
+scriptpath=${BASH_SOURCE[0]}
+scriptname=${scriptpath##*/}
+
+IFS=':'
+
+for path in ${PATH}; do
+	[[ -x ${path}/${scriptname} ]] || continue
+	[[ ${path}/${scriptname} -ef ${scriptpath} ]] && continue
+
+	unset IFS
+	eerror "Deprecation warning: Calling ${scriptname} from wrong path: '${scriptpath}'"
+	eerror "Correct path should be '${path}/${scriptname}', Please correct your scripts or file a bug with the maintainer..."
+	exec "${path}/${scriptname}" "$@"
+done
+
+unset IFS
+
+eerror "ERROR: portage file: deprecated-path: Failed to locate ${scriptname} in PATH"
+eerror "PATH: ${PATH}"
+exit 1
