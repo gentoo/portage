@@ -682,6 +682,10 @@ __eapi1_src_compile() {
 	__eapi2_src_compile
 }
 
+__eapi2_src_prepare() {
+	:
+}
+
 __eapi2_src_configure() {
 	if [[ -x ${ECONF_SOURCE:-.}/configure ]] ; then
 		econf
