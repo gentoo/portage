@@ -15,7 +15,15 @@ from distutils.dep_util import newer
 from distutils.dir_util import mkpath, remove_tree
 from distutils.util import change_root, subst_vars
 
-import codecs, collections, errno, glob, os, os.path, re, subprocess, sys
+import codecs
+import collections
+import glob
+import os
+import os.path
+import re
+import subprocess
+import sys
+
 
 # TODO:
 # - smarter rebuilds of docs w/ 'install_docbook' and 'install_epydoc'.
