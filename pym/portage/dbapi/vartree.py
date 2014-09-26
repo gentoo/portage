@@ -4687,10 +4687,7 @@ class dblink(object):
 				zing = "!!!"
 				mymtime = None
 				protected = self.isprotected(mydest)
-				if mydmode != None:
-					# destination file exists
-
-					if stat.S_ISDIR(mydmode):
+				if mydmode is not None and stat.S_ISDIR(mydmode):
 						# install of destination is blocked by an existing directory with the same name
 						newdest = self._new_backup_path(mydest)
 						msg = []
@@ -4703,12 +4700,15 @@ class dblink(object):
 						self._eerror("preinst", msg)
 						mydest = newdest
 
-					elif stat.S_ISREG(mydmode) or (stat.S_ISLNK(mydmode) and os.path.exists(mydest) and stat.S_ISREG(os.stat(mydest)[stat.ST_MODE])):
+				elif mydmode is None or stat.S_ISREG(mydmode) or \
+					(stat.S_ISLNK(mydmode) and os.path.exists(mydest)
+					and stat.S_ISREG(os.stat(mydest)[stat.ST_MODE])):
 						# install of destination is blocked by an existing regular file,
 						# or by a symlink to an existing regular file;
 						# now, config file management may come into play.
 						# we only need to tweak mydest if cfg file management is in play.
-						if protected:
+						destmd5 = None
+						if protected and mydmode is not None:
 							destmd5 = perform_md5(mydest, calc_prelink=calc_prelink)
 							if protect_if_modified:
 								contents_key = \
@@ -4721,7 +4721,21 @@ class dblink(object):
 						if protected:
 							# we have a protection path; enable config file management.
 							cfgprot = 0
-							if mymd5 == destmd5:
+							cfgprot_force = False
+							if mydmode is None:
+								if self._installed_instance is not None and \
+									self._installed_instance._match_contents(
+									myrealdest) is not False:
+									# If the file doesn't exist, then it may
+									# have been deleted or renamed by the
+									# admin. Therefore, force the file to be
+									# merged with a ._cfg name, so that the
+									# admin will be prompted for this update
+									# (see bug #523684).
+									cfgprot_force = True
+									moveme = True
+									cfgprot = True
+							elif mymd5 == destmd5:
 								#file already in place; simply update mtimes of destination
 								moveme = 1
 							else:
@@ -4749,7 +4763,9 @@ class dblink(object):
 								del cfgfiledict[myrealdest]
 
 							if cfgprot:
-								mydest = new_protect_filename(mydest, newmd5=mymd5)
+								mydest = new_protect_filename(mydest,
+									newmd5=mymd5,
+									force=cfgprot_force)
 
 				# whether config protection or not, we merge the new file the
 				# same way.  Unless moveme=0 (blocking directory)
