@@ -1,22 +1,21 @@
 # Copyright 2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-"""Git plug-in module for portage.
-Performs a git pull on repositories
-"""
-
+doc = """Git plug-in module for portage.
+Performs a git pull on repositories."""
+__doc__ = doc[:]
 
 from portage.sync.config_checks import CheckSyncConfig
 
 
 module_spec = {
 	'name': 'git',
-	'description': __doc__,
+	'description': doc,
 	'provides':{
 		'git-module': {
 			'name': "git",
 			'class': "GitSync",
-			'description': __doc__,
+			'description': doc,
 			'functions': ['sync', 'new', 'exists'],
 			'func_desc': {
 				'sync': 'Performs a git pull on the repository',

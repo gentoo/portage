@@ -1,18 +1,17 @@
 # Copyright 2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-"""Check repos.conf settings and sync repositories.
-"""
-
+doc = """Check repos.conf settings and sync repositories."""
+__doc__ = doc[:]
 
 module_spec = {
 	'name': 'sync',
-	'description': __doc__,
+	'description': doc,
 	'provides':{
 		'sync-module': {
 			'name': "sync",
 			'class': "SyncRepos",
-			'description': __doc__,
+			'description': doc,
 			'functions': ['allrepos', 'auto', 'repo'],
 			'func_desc': {
 				'repo': {

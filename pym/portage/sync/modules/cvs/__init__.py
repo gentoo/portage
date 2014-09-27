@@ -1,10 +1,9 @@
 # Copyright 2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-"""CVS plug-in module for portage.
-Performs a cvs up on repositories
-"""
-
+doc = """CVS plug-in module for portage.
+Performs a cvs up on repositories."""
+__doc__ = doc[:]
 
 from portage.localization import _
 from portage.sync.config_checks import CheckSyncConfig
@@ -27,12 +26,12 @@ class CheckCVSConfig(CheckSyncConfig):
 
 module_spec = {
 	'name': 'cvs',
-	'description': __doc__,
+	'description': doc,
 	'provides':{
 		'cvs-module': {
 			'name': "cvs",
 			'class': "CVSSync",
-			'description': __doc__,
+			'description': doc,
 			'functions': ['sync', 'new', 'exists'],
 			'func_desc': {
 				'sync': 'Performs a cvs up on the repository',

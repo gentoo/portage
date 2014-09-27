@@ -1,10 +1,11 @@
 # Copyright 2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-"""WebRSync plug-in module for portage.
+doc = """WebRSync plug-in module for portage.
 Performs a http download of a portage snapshot, verifies and
-unpacks it to the repo location.
-"""
+unpacks it to the repo location."""
+__doc__ = doc[:]
+
 
 import os
 
@@ -27,12 +28,12 @@ except KeyError:
 
 module_spec = {
 	'name': 'webrsync',
-	'description': __doc__,
+	'description': doc,
 	'provides':{
 		'websync-module': {
 			'name': "websync",
 			'class': config_class,
-			'description': __doc__,
+			'description': doc,
 			'functions': ['sync', 'new', 'exists'],
 			'func_desc': {
 				'sync': 'Performs an archived http download of the ' +
