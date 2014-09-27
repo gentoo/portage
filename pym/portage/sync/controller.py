@@ -87,6 +87,19 @@ class SyncManager(object):
 
 		self.module_controller = portage.sync.module_controller
 		self.module_names = self.module_controller.module_names
+		postsync_dir = os.path.join(self.settings["PORTAGE_CONFIGROOT"],
+			portage.USER_CONFIG_PATH, "postsync.d")
+		hooks = []
+		for root, dirs, names in os.walk(postsync_dir, topdown=True):
+			#print("root:", root, "dirs:", dirs, "names:", names)
+			for name in names:
+				filepath = os.path.join(root, name)
+				if os.access(filepath, os.X_OK):
+					hooks.append((filepath, name))
+				else:
+					writemsg_level(" %s postsync.d hook: '%s' is not executable\n"
+						% (warn("*"), name,), level=logging.WARN, noiselevel=2)
+		self.hooks = hooks
 
 
 	def get_module_descriptions(self, mod):
@@ -129,7 +142,7 @@ class SyncManager(object):
 		taskmaster = TaskHandler(callback=self.do_callback)
 		taskmaster.run_tasks(tasks, func, status, options=task_opts)
 
-		self.perform_post_sync_hook(repo.sync_uri)
+		self.perform_post_sync_hook(repo.name, repo.sync_uri)
 
 		return self.exitcode, None
 
@@ -143,17 +156,18 @@ class SyncManager(object):
 		return
 
 
-	def perform_post_sync_hook(self, dosyncuri):
-		postsync = os.path.join(self.settings["PORTAGE_CONFIGROOT"],
-			portage.USER_CONFIG_PATH, "bin", "post_sync")
-		if os.access(postsync, os.X_OK):
-			retval = portage.process.spawn([postsync, dosyncuri],
-				env=self.settings.environ())
+	def perform_post_sync_hook(self, reponame, dosyncuri=''):
+		succeeded = os.EX_OK
+		for filepath, hook in self.hooks:
+			writemsg_level("Spawning post_sync hook: %s\n" % (hook,),
+				level=logging.ERROR, noiselevel=4)
+			retval = portage.process.spawn([filepath,
+				reponame, dosyncuri], env=self.settings.environ())
 			if retval != os.EX_OK:
-				writemsg_level(" %s spawn failed of %s\n" % (bad("*"),
-					postsync,), level=logging.ERROR, noiselevel=-1)
-			return retval
-		return os.EX_OK
+				writemsg_level(" %s Spawn failed for: %s, %s\n" % (bad("*"),
+					hook, filepath), level=logging.ERROR, noiselevel=-1)
+				succeeded = retval
+		return succeeded
 
 
 	def pre_sync(self, repo):
