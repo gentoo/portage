@@ -777,6 +777,12 @@ characters.
 This variable is intended to be used on files of binary packages which ignore
 CFLAGS, CXXFLAGS, FFLAGS, FCFLAGS, and LDFLAGS variables.
 .TP
+.B QA_IGNORE_INSTALL_NAME_FILES
+This should contain a list of file names (without path) that should be
+ignored in the install_name check.  That is, if these files point to
+something not available in the image directory or live filesystem, these
+files are ignored, albeit being broken.
+.TP
 .B QA_MULTILIB_PATHS
 This should contain a list of file paths, relative to the image directory, of
 files that should be ignored for the multilib\-strict checks.
